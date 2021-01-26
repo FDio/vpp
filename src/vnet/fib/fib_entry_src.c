@@ -253,7 +253,7 @@ typedef struct fib_entry_src_collect_forwarding_ctx_t_
 {
     load_balance_path_t *next_hops;
     const fib_entry_t *fib_entry;
-    const fib_entry_src_t *esrc;
+    i32 start_source_index, end_source_index;
     fib_forward_chain_type_t fct;
     int n_recursive_constrained;
     u16 preference;
@@ -263,15 +263,16 @@ typedef struct fib_entry_src_collect_forwarding_ctx_t_
  * @brief Determine whether this FIB entry should use a load-balance MAP
  * to support PIC edge fast convergence
  */
-load_balance_flags_t
-fib_entry_calc_lb_flags (fib_entry_src_collect_forwarding_ctx_t *ctx)
+static load_balance_flags_t
+fib_entry_calc_lb_flags (fib_entry_src_collect_forwarding_ctx_t *ctx,
+                         const fib_entry_src_t *esrc)
 {
     /**
      * We'll use a LB map if the path-list has multiple recursive paths.
      * recursive paths implies BGP, and hence scale.
      */
     if (ctx->n_recursive_constrained > 1 &&
-        fib_path_list_is_popular(ctx->esrc->fes_pl))
+        fib_path_list_is_popular(esrc->fes_pl))
     {
         return (LOAD_BALANCE_FLAG_USES_MAP);
     }
@@ -419,11 +420,17 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
                                   void *arg)
 {
     fib_entry_src_collect_forwarding_ctx_t *ctx;
+    const fib_entry_src_t *esrc;
     fib_path_ext_t *path_ext;
     u32 n_nhs;
 
     ctx = arg;
     n_nhs = vec_len(ctx->next_hops);
+
+    /*
+     * walk the paths and extension of the best non-interpose source
+     */
+    esrc = &ctx->fib_entry->fe_srcs[ctx->end_source_index];
 
     /*
      * if the path is not resolved, don't include it.
@@ -457,7 +464,7 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
     /*
      * get the matching path-extension for the path being visited.
      */
-    path_ext = fib_path_ext_list_find_by_path_index(&ctx->esrc->fes_path_exts,
+    path_ext = fib_path_ext_list_find_by_path_index(&esrc->fes_path_exts,
                                                     path_index);
 
     if (NULL != path_ext)
@@ -514,14 +521,26 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
          */
         const fib_entry_src_vft_t *vft;
 
-        vft = fib_entry_src_get_vft(ctx->esrc);
+        /*
+         * roll up the sources that are interposes
+         */
+        i32 index;
 
-        if (NULL != vft->fesv_contribute_interpose)
+        for (index = ctx->end_source_index;
+             index >= ctx->start_source_index;
+             index--)
         {
             const dpo_id_t *interposer;
 
-            interposer = vft->fesv_contribute_interpose(ctx->esrc,
-                                                        ctx->fib_entry);
+            esrc = &ctx->fib_entry->fe_srcs[index];
+            vft = fib_entry_src_get_vft(esrc);
+
+            if (!(esrc->fes_flags & FIB_ENTRY_SRC_FLAG_CONTRIBUTING) ||
+                !(esrc->fes_entry_flags & FIB_ENTRY_FLAG_INTERPOSE))
+                continue;
+
+            ASSERT(vft->fesv_contribute_interpose);
+            interposer = vft->fesv_contribute_interpose(esrc, ctx->fib_entry);
 
             if (NULL != interposer)
             {
@@ -542,11 +561,40 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
 
 void
 fib_entry_src_mk_lb (fib_entry_t *fib_entry,
-		     const fib_entry_src_t *esrc,
+                     fib_source_t source,
 		     fib_forward_chain_type_t fct,
 		     dpo_id_t *dpo_lb)
 {
+    const fib_entry_src_t *esrc;
     dpo_proto_t lb_proto;
+    u32 start, end;
+
+    /*
+     * The source passed here is the 'best', i.e. the one the client
+     * wants. however, if it's an interpose then it does not contribute
+     * the forwarding, the next best source that is not an interpose does.
+     * So roll down the sources, to find the best non-interpose
+     */
+    vec_foreach_index (start, fib_entry->fe_srcs)
+    {
+        if (source == fib_entry->fe_srcs[start].fes_src)
+            break;
+    }
+    for (end = start; end < vec_len (fib_entry->fe_srcs); end++)
+    {
+        if (!(fib_entry->fe_srcs[end].fes_entry_flags &
+              FIB_ENTRY_FLAG_INTERPOSE) &&
+            (fib_entry->fe_srcs[end].fes_flags &
+             FIB_ENTRY_SRC_FLAG_CONTRIBUTING))
+            break;
+    }
+    if (end == vec_len(fib_entry->fe_srcs))
+    {
+        /* didn't find any contributing non-interpose sources */
+        end = start;
+    }
+
+    esrc = &fib_entry->fe_srcs[end];
 
     /*
      * If the entry has path extensions then we construct a load-balance
@@ -554,12 +602,13 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
      * Otherwise we use the load-balance of the path-list
      */
     fib_entry_src_collect_forwarding_ctx_t ctx = {
-        .esrc = esrc,
         .fib_entry = fib_entry,
         .next_hops = NULL,
         .n_recursive_constrained = 0,
         .fct = fct,
         .preference = 0xffff,
+        .start_source_index = start,
+        .end_source_index = end,
     };
 
     /*
@@ -644,7 +693,7 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
     {
         load_balance_multipath_update(dpo_lb,
                                       ctx.next_hops,
-                                      fib_entry_calc_lb_flags(&ctx));
+                                      fib_entry_calc_lb_flags(&ctx, esrc));
         vec_free(ctx.next_hops);
 
         /*
@@ -688,11 +737,9 @@ fib_entry_src_action_install (fib_entry_t *fib_entry,
      * tables
      */
     fib_forward_chain_type_t fct;
-    fib_entry_src_t *esrc;
     int insert;
 
     fct = fib_entry_get_default_chain_type(fib_entry);
-    esrc = fib_entry_src_find(fib_entry, source);
 
     /*
      * Every entry has its own load-balance object. All changes to the entry's
@@ -702,7 +749,7 @@ fib_entry_src_action_install (fib_entry_t *fib_entry,
      */
     insert = !dpo_id_is_valid(&fib_entry->fe_lb);
 
-    fib_entry_src_mk_lb(fib_entry, esrc, fct, &fib_entry->fe_lb);
+    fib_entry_src_mk_lb(fib_entry, source, fct, &fib_entry->fe_lb);
 
     ASSERT(dpo_id_is_valid(&fib_entry->fe_lb));
     FIB_ENTRY_DBG(fib_entry, "install: %d", fib_entry->fe_lb);
@@ -726,7 +773,7 @@ fib_entry_src_action_install (fib_entry_t *fib_entry,
 
     FOR_EACH_DELEGATE_CHAIN(fib_entry, fdt, fed,
     {
-        fib_entry_src_mk_lb(fib_entry, esrc,
+        fib_entry_src_mk_lb(fib_entry, source,
                             fib_entry_delegate_type_to_chain_type(fdt),
                             &fed->fd_dpo);
     });

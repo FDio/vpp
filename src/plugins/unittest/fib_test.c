@@ -43,6 +43,8 @@
 
 #include <vlib/unix/plugin.h>
 
+// clang-format off
+
 /*
  * Add debugs for passing tests
  */
@@ -444,6 +446,46 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 			    "bucket %d label stacks on adj %d",
 			    bucket,
 			    exp->label_stack_o_adj.adj);
+	    }
+	    break;
+	case FT_LB_LABEL_CHAIN_O_ADJ:
+	    {
+		const mpls_label_dpo_t *mld;
+                mpls_label_dpo_flags_t mf;
+                mpls_label_t hdr;
+		u32 ii;
+
+                mf = ((exp->label_chain_o_adj.mode ==
+                       FIB_MPLS_LSP_MODE_UNIFORM) ?
+                      MPLS_LABEL_DPO_FLAG_UNIFORM_MODE :
+                      MPLS_LABEL_DPO_FLAG_NONE);
+
+                for (ii = 0; ii < exp->label_chain_o_adj.label_chain_size; ii++)
+                {
+                    FIB_TEST_LB((mpls_label_dpo_get_type(mf) == dpo->dpoi_type),
+                                "bucket %d stacks on %U",
+                                bucket,
+                                format_dpo_type, dpo->dpoi_type);
+                    mld = mpls_label_dpo_get(dpo->dpoi_index);
+
+		    hdr = clib_net_to_host_u32(mld->mld_hdr[0].label_exp_s_ttl);
+		    FIB_TEST_LB((vnet_mpls_uc_get_label(hdr) ==
+				 exp->label_chain_o_adj.label_chain[ii]),
+				"bucket %d stacks on label %d",
+				bucket,
+				exp->label_chain_o_adj.label_chain[ii]);
+                    dpo = &mld->mld_dpo;
+		}
+
+		FIB_TEST_LB((DPO_ADJACENCY_INCOMPLETE == mld->mld_dpo.dpoi_type),
+			    "bucket %d label stacks on %U",
+			    bucket,
+			    format_dpo_type, mld->mld_dpo.dpoi_type);
+
+		FIB_TEST_LB((exp->label_chain_o_adj.adj == mld->mld_dpo.dpoi_index),
+			    "bucket %d label stacks on adj %d",
+			    bucket,
+			    exp->label_chain_o_adj.adj);
 	    }
 	    break;
 	case FT_LB_LABEL_O_ADJ:
@@ -9667,6 +9709,82 @@ fib_test_inherit (void)
                                       &adj_o_10_10_10_3),
              "%U via 10.10.10.1",
              format_fib_prefix, &pfx_11_11_11_11_s_32);
+    dpo_reset(&interposer);
+    fib_table_entry_delete(0, &pfx_11_11_11_11_s_32, FIB_SOURCE_API);
+
+    /*
+     * add an interposer to a source with path-extensions
+     */
+    fib_mpls_label_t *l3300 = NULL, fml_3300 = {
+        .fml_value = 3300,
+    };
+    vec_add1(l3300, fml_3300);
+    fib_table_entry_update_one_path(0,
+                                    &pfx_11_11_11_11_s_32,
+                                    FIB_SOURCE_API,
+                                    FIB_ENTRY_FLAG_NONE,
+                                    DPO_PROTO_IP4,
+                                    &nh_10_10_10_3,
+                                    tm->hw[0]->sw_if_index,
+                                    ~0,
+                                    1,
+                                    l3300,
+                                    FIB_ROUTE_PATH_FLAG_NONE);
+
+    mpls_label_dpo_create(l99,
+                          MPLS_EOS,
+                          DPO_PROTO_IP4,
+                          MPLS_LABEL_DPO_FLAG_NONE,
+                          punt_dpo_get(DPO_PROTO_MPLS),
+                          &interposer);
+
+    adj_index_t ai_mpls_10_10_10_3 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+                                                         VNET_LINK_MPLS,
+                                                         &nh_10_10_10_3,
+                                                         tm->hw[0]->sw_if_index);
+    fib_test_lb_bucket_t l3300_o_10_10_10_3 = {
+        .type = FT_LB_LABEL_O_ADJ,
+        .label_o_adj = {
+            .adj = ai_mpls_10_10_10_3,
+            .label = 3300,
+            .eos = MPLS_EOS,
+        },
+    };
+    fib_test_lb_bucket_t lchain_o_10_10_10_3 = {
+        .type = FT_LB_LABEL_CHAIN_O_ADJ,
+        .label_chain_o_adj = {
+            .adj = ai_mpls_10_10_10_3,
+            .label_chain_size = 2,
+            .label_chain = {
+                99, 3300
+            },
+            .eos = MPLS_EOS,
+        },
+    };
+
+    fei = fib_table_entry_special_dpo_add(0,
+                                          &pfx_11_11_11_11_s_32,
+                                          FIB_SOURCE_SPECIAL,
+                                          FIB_ENTRY_FLAG_INTERPOSE,
+                                          &interposer);
+
+    FIB_TEST(!fib_test_validate_entry(fei,
+                                      FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                      1,
+                                      &lchain_o_10_10_10_3),
+             "%U via interposer & mpls on adj",
+             format_fib_prefix, &pfx_11_11_11_11_s_32);
+
+    fib_table_entry_special_remove(0,
+                                   &pfx_11_11_11_11_s_32,
+                                   FIB_SOURCE_SPECIAL);
+    FIB_TEST(!fib_test_validate_entry(fei,
+                                      FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                      1,
+                                      &l3300_o_10_10_10_3),
+             "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_11_11_11_11_s_32);
+    adj_unlock(ai_mpls_10_10_10_3);
 
     /*
      * remove and re-add the second best API source while the interpose
@@ -9680,11 +9798,11 @@ fib_test_inherit (void)
     FIB_TEST(!fib_test_validate_entry(fei,
                                       FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
                                       1,
-                                      &l99_o_10_10_10_3),
+                                      &lchain_o_10_10_10_3),
              "%U via interposer adj",
              format_fib_prefix,&pfx_11_11_11_11_s_32);
 
-    FIB_TEST(2 == pool_elts(mpls_label_dpo_pool),
+    FIB_TEST(3 == pool_elts(mpls_label_dpo_pool),
              "MPLS label pool: %d",
              pool_elts(mpls_label_dpo_pool));
 
@@ -9756,6 +9874,18 @@ fib_test_inherit (void)
      * multiple interpose sources on the same entry. Only the high
      * priority source gets to add the interpose.
      */
+    fib_table_entry_update_one_path(0,
+                                    &pfx_11_11_11_11_s_32,
+                                    FIB_SOURCE_API,
+                                    FIB_ENTRY_FLAG_NONE,
+                                    DPO_PROTO_IP4,
+                                    &nh_10_10_10_3,
+                                    tm->hw[0]->sw_if_index,
+                                    ~0,
+                                    1,
+                                    NULL,
+                                    FIB_ROUTE_PATH_FLAG_NONE);
+
     dpo_id_t interposer2 = DPO_INVALID;
     fib_mpls_label_t *l100 = NULL, fml_100 = {
         .fml_value = 100,
@@ -9774,10 +9904,23 @@ fib_test_inherit (void)
                                           FIB_SOURCE_CLASSIFY,
                                           FIB_ENTRY_FLAG_INTERPOSE,
                                           &interposer2);
+
+    fib_test_lb_bucket_t lc100_o_10_10_10_3 = {
+        .type = FT_LB_LABEL_CHAIN_O_ADJ,
+        .label_chain_o_adj = {
+            .adj = ai_10_10_10_3,
+            .label_chain_size = 2,
+            .label_chain = {
+                99, 100
+            },
+            .eos = MPLS_EOS,
+        },
+    };
+
     FIB_TEST(!fib_test_validate_entry(fei,
                                       FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
                                       1,
-                                      &l99_o_10_10_10_3),
+                                      &lc100_o_10_10_10_3),
              "%U via interposer label 99",
              format_fib_prefix,&pfx_11_11_11_11_s_32);
 
@@ -9800,6 +9943,7 @@ fib_test_inherit (void)
              format_fib_prefix,&pfx_11_11_11_11_s_32);
 
     fib_table_entry_delete(0, &pfx_11_11_11_0_s_24, FIB_SOURCE_API);
+    fib_table_entry_delete(0, &pfx_11_11_11_11_s_32, FIB_SOURCE_API);
     FIB_TEST(!fib_test_validate_entry(fei,
                                       FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
                                       1,
@@ -10626,3 +10770,5 @@ fib_test_init (vlib_main_t *vm)
 }
 
 VLIB_INIT_FUNCTION (fib_test_init);
+
+// clang-format on
