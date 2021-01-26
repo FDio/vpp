@@ -808,15 +808,15 @@ echo_process_rpcs (echo_main_t * em)
 
   while (em->state < STATE_DATA_DONE && !em->time_to_stop)
     {
-      svm_msg_q_lock (mq);
-      if (svm_msg_q_is_empty (mq) && svm_msg_q_timedwait (mq, 1))
+//      svm_msg_q_lock (mq);
+      if (svm_msg_q_is_empty (mq) && svm_msg_q_timedwait2 (mq, 1))
 	{
-	  svm_msg_q_unlock (mq);
+//	  svm_msg_q_unlock (mq);
 	  continue;
 	}
       svm_msg_q_sub_w_lock (mq, &msg);
       rpc = svm_msg_q_msg_data (mq, &msg);
-      svm_msg_q_unlock (mq);
+//      svm_msg_q_unlock (mq);
       ((echo_rpc_t) rpc->fp) (em, &rpc->args);
       svm_msg_q_free_msg (mq, &msg);
     }
@@ -876,10 +876,10 @@ echo_mq_thread_fn (void *arg)
       if (em->periodic_stats_delta)
 	echo_print_periodic_stats (em);
 
-      svm_msg_q_lock (mq);
-      if (svm_msg_q_is_empty (mq) && svm_msg_q_timedwait (mq, 1))
+//      svm_msg_q_lock (mq);
+      if (svm_msg_q_is_empty (mq) && svm_msg_q_timedwait2 (mq, 1))
 	{
-	  svm_msg_q_unlock (mq);
+//	  svm_msg_q_unlock (mq);
 	  continue;
 	}
       for (i = 0; i < svm_msg_q_size (mq); i++)
@@ -887,7 +887,7 @@ echo_mq_thread_fn (void *arg)
 	  vec_add2 (msg_vec, msg, 1);
 	  svm_msg_q_sub_w_lock (mq, msg);
 	}
-      svm_msg_q_unlock (mq);
+//      svm_msg_q_unlock (mq);
 
       for (i = 0; i < vec_len (msg_vec); i++)
 	{
