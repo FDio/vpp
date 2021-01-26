@@ -1742,8 +1742,11 @@ ikev2_sa_auth (ikev2_sa_t * sa)
     }
   else
     {
-      ikev2_elog_uint (IKEV2_LOG_ERROR, "authentication failed, no matching "
-		       "profile found! ispi %lx", sa->ispi);
+      ikev2_elog_uint (IKEV2_LOG_ERROR,
+		       "authentication failed, no matching "
+		       "profile found! Please check IDs and auth method "
+		       "on both sides. (ispi %lx)",
+		       sa->ispi);
       ikev2_set_state (sa, IKEV2_STATE_AUTH_FAILED);
     }
   vec_free (psk);
