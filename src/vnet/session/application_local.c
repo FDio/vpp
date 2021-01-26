@@ -520,13 +520,14 @@ ct_custom_tx (void *session, transport_send_params_t * sp)
   session_t *s = (session_t *) session;
   if (session_has_transport (s))
     return 0;
-  /* If event enqueued towards peer, remove from scheduler and
-   * remove session tx flag, i.e., accept new tx events */
+  /* If event enqueued towards peer, remove from scheduler and remove
+   * session tx flag, i.e., accept new tx events. Unset fifo flag now to
+   * avoid missing events if peer did not clear fifo flag yet, which is
+   * interpreted as successful notification and session is descheduled. */
+  svm_fifo_unset_event (s->tx_fifo);
   if (!ct_session_tx (s))
-    {
-      sp->flags = TRANSPORT_SND_F_DESCHED;
-      svm_fifo_unset_event (s->tx_fifo);
-    }
+    sp->flags = TRANSPORT_SND_F_DESCHED;
+
   /* The scheduler uses packet count as a means of upper bounding the amount
    * of work done per dispatch. So make it look like we have sent something */
   return 1;
