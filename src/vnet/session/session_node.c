@@ -1425,16 +1425,15 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
    * XXX: we may need priorities here */
   mq = wrk->vpp_event_queue;
   n_to_dequeue = svm_msg_q_size (mq);
-  if (n_to_dequeue && svm_msg_q_try_lock (mq) == 0)
+  if (n_to_dequeue)
     {
       for (i = 0; i < n_to_dequeue; i++)
 	{
-	  svm_msg_q_sub_w_lock (mq, msg);
+	  svm_msg_q_sub_raw (mq, msg);
 	  evt = svm_msg_q_msg_data (mq, msg);
 	  session_evt_add_to_list (wrk, evt);
 	  svm_msg_q_free_msg (mq, msg);
 	}
-      svm_msg_q_unlock (mq);
     }
 
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, MQ_DEQ, wrk, n_to_dequeue, !i);
