@@ -390,6 +390,42 @@ define nat_get_timeouts_reply {
   u32 icmp;
 };
 
+/** \brief Set NAT handoff frame queue options
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param frame_queue_nelts - number of worker handoff frame queue elements
+*/
+autoreply define nat_set_fq_options {
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  u32 frame_queue_nelts;
+};
+
+/** \brief Show NAT handoff frame queue options
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat_show_fq_options
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Show NAT handoff frame queue options reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param frame_queue_nelts - number of worker handoff frame queue elements
+*/
+define nat_show_fq_options_reply
+{
+  option in_progress;
+  u32 context;
+  i32 retval;
+  u32 frame_queue_nelts;
+};
+
 /** \brief Set address and port assignment algorithm
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

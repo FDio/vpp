@@ -334,6 +334,31 @@ vl_api_nat_get_timeouts_t_handler (vl_api_nat_get_timeouts_t * mp)
 }
 
 static void
+vl_api_nat_set_fq_options_t_handler (vl_api_nat_set_fq_options_t *mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_set_fq_options_reply_t *rmp;
+  int rv = 0;
+  u32 frame_queue_nelts = ntohl (mp->frame_queue_nelts);
+  rv = snat_set_frame_queue_nelts (frame_queue_nelts);
+  REPLY_MACRO (VL_API_NAT_SET_FQ_OPTIONS_REPLY);
+}
+
+static void
+vl_api_nat_show_fq_options_t_handler (vl_api_nat_show_fq_options_t *mp)
+{
+  vl_api_nat_show_fq_options_reply_t *rmp;
+  snat_main_t *sm = &snat_main;
+  int rv = 0;
+  /* clang-format off */
+  REPLY_MACRO2_ZERO (VL_API_NAT_SHOW_FQ_OPTIONS_REPLY,
+  ({
+    rmp->frame_queue_nelts = htonl (sm->frame_queue_nelts);
+  }));
+  /* clang-format on */
+}
+
+static void
   vl_api_nat_set_addr_and_port_alloc_alg_t_handler
   (vl_api_nat_set_addr_and_port_alloc_alg_t * mp)
 {
