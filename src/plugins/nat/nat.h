@@ -492,10 +492,6 @@ typedef struct
 
 typedef struct
 {
-  /* Main lookup tables */
-  clib_bihash_8_8_t out2in;
-  clib_bihash_8_8_t in2out;
-
   /* Find-a-user => src address lookup */
   clib_bihash_8_8_t user_hash;
 
@@ -589,6 +585,10 @@ typedef struct snat_main_s
 
   /* Static mapping pool */
   snat_static_mapping_t *static_mappings;
+
+  /* Endpoint independent lookup tables */
+  clib_bihash_8_8_t in2out;
+  clib_bihash_8_8_t out2in;
 
   /* Endpoint dependent lookup table */
   clib_bihash_16_8_t flow_hash;
