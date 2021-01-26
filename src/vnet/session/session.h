@@ -91,6 +91,8 @@ typedef struct session_worker_
   /** Per-proto vector of sessions to enqueue */
   u32 **session_to_enqueue;
 
+  svm_msg_q_msg_t *mq_msgs;
+
   /** Context for session tx */
   session_tx_context_t ctx;
 
