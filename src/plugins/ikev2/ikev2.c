@@ -3103,6 +3103,7 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  sa0->stats.n_sa_auth_req++;
 		  stats->n_sa_auth_req++;
 		  ike0->flags = IKEV2_HDR_FLAG_RESPONSE;
+		  sa0->last_init_msg_id = 1;
 		  slen =
 		    ikev2_generate_message (b0, sa0, ike0, 0, udp0, stats);
 		  if (~0 == slen)
