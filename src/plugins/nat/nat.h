@@ -36,9 +36,6 @@
 #include <nat/lib/lib.h>
 #include <nat/lib/inlines.h>
 
-/* number of worker handoff frame queue elements */
-#define NAT_FQ_NELTS 64
-
 /* NAT buffer flags */
 #define SNAT_FLAG_HAIRPINNING (1 << 0)
 
@@ -781,6 +778,9 @@ typedef struct snat_main_s
 
   /* pat - dynamic mapping enabled or conneciton tracking */
   u8 pat;
+
+  /* number of worker handoff frame queue elements */
+  u32 frame_queue_nelts;
 
   /* nat44 plugin enabled */
   u8 enabled;
