@@ -2248,6 +2248,13 @@ class TestIP6Punt(IP6PuntSetup, VppTestCase):
         # but not equal to the number sent, since some were policed
         #
         rx = self.pg1._get_capture(1)
+        stats = policer.get_stats()
+
+        # Single rate policer - expect conform, violate but no exceed
+        self.assertGreater(stats['conform_packets'], 0)
+        self.assertEqual(stats['exceed_packets'], 0)
+        self.assertGreater(stats['violate_packets'], 0)
+
         self.assertGreater(len(rx), 0)
         self.assertLess(len(rx), len(pkts))
 
@@ -2351,6 +2358,24 @@ class TestIP6PuntHandoff(IP6PuntSetup, VppTestCase):
             self.send_and_expect(self.pg0, pkts, self.pg1, worker=worker)
             if worker == 0:
                 self.logger.debug(self.vapi.cli("show trace max 100"))
+
+        # Combined stats, all threads
+        stats = policer.get_stats()
+
+        # Single rate policer - expect conform, violate but no exceed
+        self.assertGreater(stats['conform_packets'], 0)
+        self.assertEqual(stats['exceed_packets'], 0)
+        self.assertGreater(stats['violate_packets'], 0)
+
+        # Worker 0, should have done all the policing
+        stats0 = policer.get_stats(worker=0)
+        self.assertEqual(stats, stats0)
+
+        # Worker 1, should have handed everything off
+        stats1 = policer.get_stats(worker=1)
+        self.assertEqual(stats1['conform_packets'], 0)
+        self.assertEqual(stats1['exceed_packets'], 0)
+        self.assertEqual(stats1['violate_packets'], 0)
 
         #
         # Clean up
