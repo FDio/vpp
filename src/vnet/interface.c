@@ -810,7 +810,7 @@ vnet_register_interface (vnet_main_t * vnm,
   vnet_config_main_t *cm;
   u32 hw_index, i;
   char *tx_node_name = NULL, *output_node_name = NULL;
-  vlib_node_function_t *output_node = vnet_interface_output_node_get (vm);
+  vlib_node_function_t *output_node = vnet_interface_output_node_get ();
 
   pool_get (im->hw_interfaces, hw);
   clib_memset (hw, 0, sizeof (*hw));
