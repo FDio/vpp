@@ -1521,17 +1521,18 @@ error:
  * Create ethernet interface for vhost user interface.
  */
 static void
-vhost_user_create_ethernet (vnet_main_t * vnm, vlib_main_t * vm,
-			    vhost_user_intf_t * vui, u8 * hwaddress)
+vhost_user_create_ethernet (vnet_main_t *vnm, vlib_main_t *vm,
+			    vhost_user_intf_t *vui,
+			    vhost_user_create_if_args_t *args)
 {
   vhost_user_main_t *vum = &vhost_user_main;
   u8 hwaddr[6];
   clib_error_t *error;
 
   /* create hw and sw interface */
-  if (hwaddress)
+  if (args->use_custom_mac)
     {
-      clib_memcpy (hwaddr, hwaddress, 6);
+      clib_memcpy (hwaddr, args->hwaddr, 6);
     }
   else
     {
@@ -1667,7 +1668,7 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
   /* Protect the uninitialized vui from being dispatched by rx/tx */
   vlib_worker_thread_barrier_sync (vm);
   pool_get (vhost_user_main.vhost_user_interfaces, vui);
-  vhost_user_create_ethernet (vnm, vm, vui, args->hwaddr);
+  vhost_user_create_ethernet (vnm, vm, vui, args);
   vlib_worker_thread_barrier_release (vm);
 
   vhost_user_vui_init (vnm, vui, server_sock_fd, args, &sw_if_idx);
@@ -1775,7 +1776,7 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "hwaddr %U", unformat_ethernet_address,
 			 args.hwaddr))
-	;
+	args.use_custom_mac = 1;
       else if (unformat (line_input, "renumber %d",
 			 &args.custom_dev_instance))
 	args.renumber = 1;
