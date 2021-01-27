@@ -19,4 +19,5 @@ Programming notes for developers.
 - @subpage handoff_queue_demo_plugin
 - @subpage lcov_code_coverage
 - @subpage mdata_doc
+- @subpage mempreload_doc
 
