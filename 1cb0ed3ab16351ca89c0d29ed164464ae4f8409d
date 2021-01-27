@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "e4c9b0ae_4dd62134",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1676,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2021-01-27T10:48:05Z",
+      "side": 1,
+      "message": "correct. I just noticed there is a mix of break and continue statements inside of pool_foreach macro which has several nested blocks so the use of these statements is likely incorrect. i\u0027ll recactor the whole function",
+      "parentUuid": "4ac47e45_48bdfcef",
+      "revId": "1cb0ed3ab16351ca89c0d29ed164464ae4f8409d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "bb83d81a_019984de",
         "filename": "src/plugins/ikev2/ikev2.c",
         "patchSetId": 2
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "1aa9527a_ea30fbdf",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1689,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2021-01-27T10:48:05Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "bb83d81a_019984de",
+      "revId": "1cb0ed3ab16351ca89c0d29ed164464ae4f8409d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2f6234a0_a36b4684",
         "filename": "src/plugins/ikev2/ikev2.c",
         "patchSetId": 2
@@ -50,6 +86,24 @@
       "revId": "1cb0ed3ab16351ca89c0d29ed164464ae4f8409d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "33a40429_10c4a07d",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1745,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2021-01-27T10:48:05Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "2f6234a0_a36b4684",
+      "revId": "1cb0ed3ab16351ca89c0d29ed164464ae4f8409d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
