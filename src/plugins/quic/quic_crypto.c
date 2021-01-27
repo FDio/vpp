@@ -55,18 +55,18 @@ quic_crypto_setup_cipher (quicly_crypto_engine_t *engine, quicly_conn_t *conn,
   int ret;
 
   *packet_protect_ctx = NULL;
-
   /* generate new header protection key */
   if (header_protect_ctx != NULL)
     {
       *header_protect_ctx = NULL;
-      if ((ret = ptls_hkdf_expand_label (
-	     hash, hpkey, aead->ctr_cipher->key_size,
-	     ptls_iovec_init (secret, hash->digest_size), "quic hp",
-	     ptls_iovec_init (NULL, 0), NULL)) != 0)
+      ret =
+	ptls_hkdf_expand_label (hash, hpkey, aead->ctr_cipher->key_size,
+				ptls_iovec_init (secret, hash->digest_size),
+				"quic hp", ptls_iovec_init (NULL, 0), NULL);
+      if (ret)
 	goto Exit;
-      if ((*header_protect_ctx =
-	     ptls_cipher_new (aead->ctr_cipher, is_enc, hpkey)) == NULL)
+      *header_protect_ctx = ptls_cipher_new (aead->ctr_cipher, is_enc, hpkey);
+      if (NULL == *header_protect_ctx)
 	{
 	  ret = PTLS_ERROR_NO_MEMORY;
 	  goto Exit;
@@ -74,8 +74,9 @@ quic_crypto_setup_cipher (quicly_crypto_engine_t *engine, quicly_conn_t *conn,
     }
 
   /* generate new AEAD context */
-  if ((*packet_protect_ctx = ptls_aead_new (aead, hash, is_enc, secret,
-					    QUICLY_AEAD_BASE_LABEL)) == NULL)
+  *packet_protect_ctx =
+    ptls_aead_new (aead, hash, is_enc, secret, QUICLY_AEAD_BASE_LABEL);
+  if (NULL == *packet_protect_ctx)
     {
       ret = PTLS_ERROR_NO_MEMORY;
       goto Exit;
@@ -97,7 +98,7 @@ quic_crypto_setup_cipher (quicly_crypto_engine_t *engine, quicly_conn_t *conn,
 Exit:
   if (ret)
     {
-      if (packet_protect_ctx && *packet_protect_ctx != NULL)
+      if (*packet_protect_ctx != NULL)
 	{
 	  ptls_aead_free (*packet_protect_ctx);
 	  *packet_protect_ctx = NULL;
