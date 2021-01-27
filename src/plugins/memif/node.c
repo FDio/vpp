@@ -353,7 +353,8 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
       if (mif->per_interface_next_index != ~0)
 	next_index = mif->per_interface_next_index;
-      else
+
+      if (PREDICT_FALSE (vnet_device_input_have_features (mif->sw_if_index)))
 	vnet_feature_start_device_input_x1 (mif->sw_if_index, &next_index,
 					    &ptd->buffer_template);
 
@@ -688,6 +689,7 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else if (mode == MEMIF_INTERFACE_MODE_ETHERNET)
 	    {
+	      next0 = next1 = next2 = next3 = next_index;
 	      if (PREDICT_FALSE (mif->per_interface_next_index != ~0))
 		{
 		  next0 = mif->per_interface_next_index;
@@ -695,9 +697,9 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  next2 = mif->per_interface_next_index;
 		  next3 = mif->per_interface_next_index;
 		}
-	      else
+
+	     if (PREDICT_FALSE (vnet_device_input_have_features (mif->sw_if_index)))
 		{
-		  next0 = next1 = next2 = next3 = next_index;
 		  /* redirect if feature path enabled */
 		  vnet_feature_start_device_input_x1 (mif->sw_if_index,
 						      &next0, b0);
@@ -748,15 +750,14 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else if (mode == MEMIF_INTERFACE_MODE_ETHERNET)
 	    {
+	      next0 = next_index;
 	      if (PREDICT_FALSE (mif->per_interface_next_index != ~0))
 		next0 = mif->per_interface_next_index;
-	      else
-		{
-		  next0 = next_index;
-		  /* redirect if feature path enabled */
-		  vnet_feature_start_device_input_x1 (mif->sw_if_index,
-						      &next0, b0);
-		}
+
+	      if (PREDICT_FALSE (vnet_device_input_have_features (mif->sw_if_index)))
+		/* redirect if feature path enabled */
+		vnet_feature_start_device_input_x1 (mif->sw_if_index,
+						    &next0, b0);
 	    }
 
 	  /* trace */
