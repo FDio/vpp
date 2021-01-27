@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4ac47e45_48bdfcef",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1676,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-01-27T10:04:46Z",
+      "side": 1,
+      "message": "maybe add else { log(\"wrong key\") } here. If I understand correctly, it is the correct profile id and the correct auth method but wrong key. In most cases this would be a config error.",
+      "revId": "1cb0ed3ab16351ca89c0d29ed164464ae4f8409d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bb83d81a_019984de",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1689,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-01-27T10:04:46Z",
+      "side": 1,
+      "message": "maybe add else { log(\"wrong certificate \u003cadd openssl failure reason here\u003e\") } here. If I understand correctly, it is the correct profile id and the correct auth method but wrong cert. In most cases this would be a config error.",
+      "revId": "1cb0ed3ab16351ca89c0d29ed164464ae4f8409d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2f6234a0_a36b4684",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1745,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-01-27T10:04:46Z",
+      "side": 1,
+      "message": "We should add logs for error cases above instead I think (see other comments)",
+      "revId": "1cb0ed3ab16351ca89c0d29ed164464ae4f8409d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
