@@ -142,6 +142,30 @@
       "revId": "3829c812f0475370217a5b71039b36723a8c2a31",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f81bb3f6_1d7e2dc8",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1112,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-01-27T15:56:26Z",
+      "side": 1,
+      "message": "Hi Hanlin! I suspect there might\u0027ve been a misunderstanding above. I only recommended to go with what you suggested, i.e., make sure vcl can store all sockopts attributes and then do the synchronization. I was not planning to work on this.",
+      "parentUuid": "da6c0b20_17efad8e",
+      "range": {
+        "startLine": 1112,
+        "startChar": 3,
+        "endLine": 1112,
+        "endChar": 34
+      },
+      "revId": "3829c812f0475370217a5b71039b36723a8c2a31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
