@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "6cff7f44_0645d9a5",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1676,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2021-01-27T11:04:45Z",
+      "side": 1,
+      "message": "actually this is not true anymore, the definition of pool_foreach has been simplified",
+      "parentUuid": "e4c9b0ae_4dd62134",
+      "revId": "1cb0ed3ab16351ca89c0d29ed164464ae4f8409d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "bb83d81a_019984de",
         "filename": "src/plugins/ikev2/ikev2.c",
         "patchSetId": 2
