@@ -109,6 +109,7 @@ typedef struct
   u8 enable_gso;
   u8 enable_packed;
   u8 enable_event_idx;
+  u8 use_custom_mac;
 
   /* return */
   u32 sw_if_index;
