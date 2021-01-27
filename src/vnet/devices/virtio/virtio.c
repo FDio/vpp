@@ -109,10 +109,13 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   if (idx & 1)
     {
       clib_memset_u32 (vring->buffers, ~0, sz);
+      // tx path: suppress the interrupts from kernel
+      vring->call_fd = -1;
     }
+  else
+    vring->call_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
 
   vring->size = sz;
-  vring->call_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
   vring->kick_fd = eventfd (0, EFD_NONBLOCK | EFD_CLOEXEC);
   virtio_log_debug (vif, "vring %u size %u call_fd %d kick_fd %d", idx,
 		    vring->size, vring->call_fd, vring->kick_fd);
@@ -163,9 +166,7 @@ virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
   virtio_vring_t *vring =
     vec_elt_at_index (vif->txq_vrings, TX_QUEUE_ACCESS (idx));
 
-  clib_file_del_by_index (&file_main, vring->call_file_index);
   close (vring->kick_fd);
-  close (vring->call_fd);
   if (vring->used)
     {
       virtio_free_buffers (vm, vring);
