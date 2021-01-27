@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5c6f81ca_fcc69357",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3106,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-01-27T09:53:31Z",
+      "side": 1,
+      "message": "If I understand correctly, this the response to the AUTH message.\nIt should indeed be 1 as we should have already sent a INIT response before. Why id was not incremented?",
+      "revId": "94f8b0b4416fe365b1805a72ae81db969b7ac675",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
