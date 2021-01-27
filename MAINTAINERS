@@ -632,6 +632,11 @@ M:	Florin Coras <fcoras@cisco.com>
 Y:	src/plugins/quic/FEATURE.yaml
 F:	src/plugins/quic/
 
+Plugin - snort plugin
+I:	snort
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/snort/
+
 libmemif
 I:	libmemif
 M:	Damjan Marion <damarion@cisco.com>
