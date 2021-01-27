@@ -1872,6 +1872,39 @@ class TestResponderRekey(TestResponderPsk):
         self.assertEqual(r[0].sa.stats.n_rekey_req, 1)
 
 
+class TestResponderVrf(TestResponderPsk, Ikev2Params):
+    """ test ikev2 responder - non-default table id """
+
+    @classmethod
+    def setUpClass(cls):
+        import scapy.contrib.ikev2 as _ikev2
+        globals()['ikev2'] = _ikev2
+        super(IkePeer, cls).setUpClass()
+        cls.create_pg_interfaces(range(1))
+        cls.vapi.cli("ip table add 1")
+        cls.vapi.cli("set interface ip table pg0 1")
+        for i in cls.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+            i.config_ip6()
+            i.resolve_ndp()
+
+    def config_tc(self):
+        self.config_params({'dpd_disabled': False})
+
+    def test_responder(self):
+        self.vapi.ikev2_profile_set_liveness(period=2, max_retries=1)
+        super(TestResponderVrf, self).test_responder()
+        self.pg0.enable_capture()
+        self.pg_start()
+        capture = self.pg0.get_capture(expected_count=1, timeout=5)
+        ih = self.get_ike_header(capture[0])
+        self.assertEqual(ih.exch_type, 37)  # INFORMATIONAL
+        plain = self.sa.hmac_and_decrypt(ih)
+        self.assertEqual(plain, b'')
+
+
 class TestResponderRsaSign(TemplateResponder, Ikev2Params):
     """ test ikev2 responder - cert based auth """
     def config_tc(self):
