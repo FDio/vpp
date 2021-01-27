@@ -16,6 +16,24 @@
       "revId": "2a81d9a4cc3436d63dad618ec654572343e89257",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "85b575dc_b47b7456",
+        "filename": "src/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 1964
+      },
+      "writtenOn": "2021-01-27T09:07:29Z",
+      "side": 1,
+      "message": "\u003e On some systems, we run into https://sourceware.org/git/?p\u003dglibc.git;a\u003dcommit;h\u003d05c2c9618f583ea4acd69b3fe5ae2a2922dd2ddc now...\n\u003e Ubuntu/Debian reverted this change, so no problem here, but I am not sure for other distros... Consider disabling fortification in debug mode?\n\nI encountered the same problem when I tried to build VPP debug image on CentOS 7 with its default glibc 2.17. The error msg echoed with what Mohammed mentioned in the link.\n\n/usr/include/features.h:330:4: error: #warning _FORTIFY_SOURCE requires compiling with optimization (-O) [-Werror\u003dcpp]\n  330 | #  warning _FORTIFY_SOURCE requires compiling with optimization (-O)\n      |    ^~~~~~~\n\nI just leave a comment here to let you guys know the potential risk of enabling FORTIFY_SOURCE macro on CentOS 7. Please let me be aware of the updates if there is any progress for this issue.",
+      "parentUuid": "46400b00_981e96ff",
+      "revId": "2a81d9a4cc3436d63dad618ec654572343e89257",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
