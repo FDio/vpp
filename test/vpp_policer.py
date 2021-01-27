@@ -67,3 +67,24 @@ class VppPolicer(VppObject):
 
     def object_id(self):
         return ("policer-%s" % (self.name))
+
+    def get_stats(self, worker=None):
+        conform = self._test.statistics.get_counter("/net/policer/conform")
+        exceed = self._test.statistics.get_counter("/net/policer/exceed")
+        violate = self._test.statistics.get_counter("/net/policer/violate")
+
+        counters = {"conform": conform, "exceed": exceed, "violate": violate}
+
+        total = {}
+        for name, c in counters.items():
+            total[f'{name}_packets'] = 0
+            total[f'{name}_bytes'] = 0
+            for i in range(len(c)):
+                t = c[i]
+                if worker is not None and i != worker + 1:
+                    continue
+                stat_index = self._policer_index
+                total[f'{name}_packets'] += t[stat_index]['packets']
+                total[f'{name}_bytes'] += t[stat_index]['bytes']
+
+        return total
