@@ -1,0 +1,310 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e13807f1_34b5fd0d",
+        "filename": "src/plugins/nat/pnat/pnat.api",
+        "patchSetId": 20
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "vl_api_ip_proto_t",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5f4ce45e_24ce4254",
+        "filename": "src/plugins/nat/pnat/pnat.api",
+        "patchSetId": 20
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "vl_api_interface_index_t",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ed308736_218936b7",
+        "filename": "src/plugins/nat/pnat/pnat.api",
+        "patchSetId": 20
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "vl_api_interface_index_t.\nsince \u0027index\u0027 is unique (for stats purposes) why does the delete need the sw_if_index as well?",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a75b0ee2_323e2cc9",
+        "filename": "src/plugins/nat/pnat/pnat.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "IMO this, and other places like it, would be neater with:\n  interface-\u003eenabled[dir]\n\nwith vlib_dir_t dir as a parameter.",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b07cc5ad_0332711c",
+        "filename": "src/plugins/nat/pnat/pnat.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "if (BV(clib_bihash_is_initialised(\u0026pm-\u003eflowhash))",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d36dc30d_1ac36ad7",
+        "filename": "src/plugins/nat/pnat/pnat.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "const for rewrite and match",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "75f36dff_ae03fdf2",
+        "filename": "src/plugins/nat/pnat/pnat_api.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "put these in pnat.h so you can be sure the signatures for the declaration and definition match.",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ff51f535_ccb3c2b5",
+        "filename": "src/plugins/nat/pnat/pnat_api.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "why not VALIDATE_SW_IF_INDEX ?",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e7b8a11f_5363b725",
+        "filename": "src/plugins/nat/pnat/pnat_cli.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "likewise these...",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "87ac2889_1cabe856",
+        "filename": "src/plugins/nat/pnat/pnat_node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "if it\u0027s after ACLs on output, should it be before ACLs on input? or vice-versa?",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cc4d6a57_28b7da3b",
+        "filename": "src/plugins/nat/pnat/pnat_node.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "s/could/should/; 😊",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7dafd89b_3b30f26a",
+        "filename": "src/plugins/nat/pnat/pnat_node.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "this short write after long might be bad for performance.",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2a080416_ebcfa9a1",
+        "filename": "src/plugins/nat/pnat/pnat_node.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "no prefetch of the next buffer?",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8a2ff7cd_055495a5",
+        "filename": "src/plugins/nat/pnat/pnat_node.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "...\n lookup_mask \u003d interface-\u003elookup_mask[dir];\n\ni appreciate that the branch is optimised out, but it\u0027s still \u0027easier to read\u0027 without it.",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a3d398a3_77f8a4e4",
+        "filename": "src/plugins/nat/pnat/pnat_node.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 197,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "make k an array of bihash kv_pairs so you can elide this copy?",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "90f2b8e3_59083c9c",
+        "filename": "src/plugins/nat/pnat/pnat_node.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "s/to_buffers/from/;\n\nyou don\u0027t need bi nor to_buffers.",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0c799fd5_03031350",
+        "filename": "src/plugins/nat/test/test_pnat.py",
+        "patchSetId": 20
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "the _get API is not tested.\nalso add a:\n  self.logger.info(self.vapi.cli(\"sh pat\"))\nto test the formatters (don\u0027t crash)",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "95591fba_8457f1e5",
+        "filename": "src/vnet/ip/ip_checksum.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-27T19:36:42Z",
+      "side": 1,
+      "message": "why this?",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
