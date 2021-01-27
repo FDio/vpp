@@ -68,10 +68,16 @@ vnet_policer_police (vlib_main_t * vm,
   policer_read_response_type_st *pol;
   vnet_policer_main_t *pm = &vnet_policer_main;
 
+  /* Speculative prefetch assuming a conform result */
+  vlib_prefetch_combined_counter (&policer_counters[POLICE_CONFORM],
+				  vm->thread_index, policer_index);
+
   len = vlib_buffer_length_in_chain (vm, b);
   pol = &pm->policers[policer_index];
   col = vnet_police_packet (pol, len, packet_color, time_in_policer_periods);
   act = pol->action[col];
+  vlib_increment_combined_counter (&policer_counters[col], vm->thread_index,
+				   policer_index, 1, len);
   if (PREDICT_TRUE (act == SSE2_QOS_ACTION_MARK_AND_TRANSMIT))
     vnet_policer_mark (b, pol->mark_dscp[col]);
 

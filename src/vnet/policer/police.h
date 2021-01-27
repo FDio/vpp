@@ -22,6 +22,8 @@ typedef enum
   POLICE_VIOLATE = 2,
 } policer_result_e;
 
+#define NUM_POLICE_RESULTS 3
+
 // This is the hardware representation of the policer.
 // To be multithread-safe, the policer is accessed through a spin-lock
 // on the lock field. (For a policer update operation, 24B needs to be
