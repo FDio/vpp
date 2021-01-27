@@ -32,6 +32,21 @@ format_policer_handoff_trace (u8 *s, va_list *args)
   return s;
 }
 
+vlib_combined_counter_main_t policer_counters[] = {
+  {
+    .name = "Policer-Conform",
+    .stat_segment_name = "/net/policer/conform",
+  },
+  {
+    .name = "Policer-Exceed",
+    .stat_segment_name = "/net/policer/exceed",
+  },
+  {
+    .name = "Policer-Violate",
+    .stat_segment_name = "/net/policer/violate",
+  },
+};
+
 clib_error_t *
 policer_add_del (vlib_main_t * vm,
 		 u8 * name,
@@ -86,6 +101,7 @@ policer_add_del (vlib_main_t * vm,
     {
       policer_read_response_type_st *pp;
       sse2_qos_pol_cfg_params_st *cp;
+      int i;
 
       pool_get (pm->configs, cp);
       pool_get (pm->policer_templates, pp);
@@ -102,6 +118,12 @@ policer_add_del (vlib_main_t * vm,
       hash_set_mem (pm->policer_index_by_name, name, pi);
       *policer_index = pi;
       policer->thread_index = ~0;
+
+      for (i = 0; i < NUM_POLICE_RESULTS; i++)
+	{
+	  vlib_validate_combined_counter (&policer_counters[i], pi);
+	  vlib_zero_combined_counter (&policer_counters[i], pi);
+	}
     }
   else
     {
@@ -117,6 +139,15 @@ format_policer_instance (u8 * s, va_list * va)
 {
   policer_read_response_type_st *i
     = va_arg (*va, policer_read_response_type_st *);
+  uword pi = va_arg (*va, uword);
+  int result;
+  vlib_counter_t counts[NUM_POLICE_RESULTS];
+
+  for (result = 0; result < NUM_POLICE_RESULTS; result++)
+    {
+      vlib_get_combined_counter (&policer_counters[result], pi,
+				 &counts[result]);
+    }
 
   s = format (s, "policer at %llx: %s rate, %s color-aware\n",
 	      i, i->single_rate ? "single" : "dual",
@@ -127,6 +158,12 @@ format_policer_instance (u8 * s, va_list * va)
 	      i->current_limit,
 	      i->current_bucket, i->extended_limit, i->extended_bucket);
   s = format (s, "last update %llu\n", i->last_update_time);
+  s = format (s, "conform %llu packets, %llu bytes\n",
+	      counts[POLICE_CONFORM].packets, counts[POLICE_CONFORM].bytes);
+  s = format (s, "exceed %llu packets, %llu bytes\n",
+	      counts[POLICE_EXCEED].packets, counts[POLICE_EXCEED].bytes);
+  s = format (s, "violate %llu packets, %llu bytes\n",
+	      counts[POLICE_VIOLATE].packets, counts[POLICE_VIOLATE].bytes);
   return s;
 }
 
@@ -496,6 +533,7 @@ show_policer_command_fn (vlib_main_t * vm,
   u32 pool_index;
   u8 *match_name = 0;
   u8 *name;
+  uword *pi;
   sse2_qos_pol_cfg_params_st *config;
   policer_read_response_type_st *templ;
 
@@ -507,14 +545,16 @@ show_policer_command_fn (vlib_main_t * vm,
     name = (u8 *) p->key;
     if (match_name == 0 || !strcmp((char *) name, (char *) match_name))
       {
-        pool_index = p->value[0];
-        config = pool_elt_at_index (pm->configs, pool_index);
-        templ = pool_elt_at_index (pm->policer_templates, pool_index);
-        vlib_cli_output (vm, "Name \"%s\" %U ",
-                         name, format_policer_config, config);
-        vlib_cli_output (vm, "Template %U",
-                         format_policer_instance, templ);
-        vlib_cli_output (vm, "-----------");
+	pi = hash_get_mem (pm->policer_index_by_name, name);
+
+	pool_index = p->value[0];
+	config = pool_elt_at_index (pm->configs, pool_index);
+	templ = pool_elt_at_index (pm->policer_templates, pool_index);
+	vlib_cli_output (vm, "Name \"%s\" %U ", name, format_policer_config,
+			 config);
+	vlib_cli_output (vm, "Template %U", format_policer_instance, templ,
+			 pi[0]);
+	vlib_cli_output (vm, "-----------");
       }
   }));
   /* *INDENT-ON* */

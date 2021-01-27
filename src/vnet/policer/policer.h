@@ -46,6 +46,8 @@ typedef struct
 
 extern vnet_policer_main_t vnet_policer_main;
 
+extern vlib_combined_counter_main_t policer_counters[];
+
 typedef enum
 {
   VNET_POLICER_INDEX_BY_SW_IF_INDEX,
