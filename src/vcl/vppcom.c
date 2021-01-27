@@ -2392,7 +2392,7 @@ vppcom_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
 {
   u32 sid, minbits = clib_max (n_bits, BITS (uword)), bits_set = 0;
   vcl_worker_t *wrk = vcl_worker_get_current ();
-  vcl_session_t *session = 0;
+  vcl_session_t *s = 0;
   int i;
 
   if (n_bits && read_map)
@@ -2423,43 +2423,46 @@ vppcom_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
   if (!write_map)
     goto check_rd;
 
-  /* *INDENT-OFF* */
-  clib_bitmap_foreach (sid, wrk->wr_bitmap)  {
-    if (!(session = vcl_session_get (wrk, sid)))
-      {
-	clib_bitmap_set_no_check ((uword*)write_map, sid, 1);
-	bits_set++;
-	continue;
-      }
+  clib_bitmap_foreach (sid, wrk->wr_bitmap)
+    {
+      if (!(s = vcl_session_get (wrk, sid)))
+	{
+	  clib_bitmap_set_no_check ((uword *) write_map, sid, 1);
+	  bits_set++;
+	  continue;
+	}
 
-    if (vcl_session_write_ready (session))
-      {
-        clib_bitmap_set_no_check ((uword*)write_map, sid, 1);
-        bits_set++;
-      }
-    else
-      svm_fifo_add_want_deq_ntf (session->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
-  }
+      if (vcl_session_write_ready (s))
+	{
+	  clib_bitmap_set_no_check ((uword *) write_map, sid, 1);
+	  bits_set++;
+	}
+      else
+	{
+	  svm_fifo_t *txf = vcl_session_is_ct (s) ? s->ct_tx_fifo : s->tx_fifo;
+	  svm_fifo_add_want_deq_ntf (txf, SVM_FIFO_WANT_DEQ_NOTIF);
+	}
+    }
 
 check_rd:
   if (!read_map)
     goto check_mq;
 
-  clib_bitmap_foreach (sid, wrk->rd_bitmap)  {
-    if (!(session = vcl_session_get (wrk, sid)))
-      {
-	clib_bitmap_set_no_check ((uword*)read_map, sid, 1);
-	bits_set++;
-	continue;
-      }
+  clib_bitmap_foreach (sid, wrk->rd_bitmap)
+    {
+      if (!(s = vcl_session_get (wrk, sid)))
+	{
+	  clib_bitmap_set_no_check ((uword *) read_map, sid, 1);
+	  bits_set++;
+	  continue;
+	}
 
-    if (vcl_session_read_ready (session))
-      {
-        clib_bitmap_set_no_check ((uword*)read_map, sid, 1);
-        bits_set++;
-      }
-  }
-  /* *INDENT-ON* */
+      if (vcl_session_read_ready (s))
+	{
+	  clib_bitmap_set_no_check ((uword *) read_map, sid, 1);
+	  bits_set++;
+	}
+    }
 
 check_mq:
 
