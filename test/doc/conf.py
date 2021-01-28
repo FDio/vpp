@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 #
+# Add a header with copyright and license.
+#
 # VPP test framework documentation build configuration file, created by
 # sphinx-quickstart on Thu Oct 13 08:45:03 2016.
 #
