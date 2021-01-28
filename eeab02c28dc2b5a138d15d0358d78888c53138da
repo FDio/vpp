@@ -1,0 +1,191 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4a364cb3_f64fade0",
+        "filename": "src/plugins/linux-cp/CMakeLists.txt",
+        "patchSetId": 7
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-01-28T09:45:30Z",
+      "side": 1,
+      "message": "Unittest as executable?\nAnd add NO_INSTALL",
+      "revId": "eeab02c28dc2b5a138d15d0358d78888c53138da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0f7e3bed_d237fc92",
+        "filename": "src/plugins/linux-cp/FEATURE.yaml",
+        "patchSetId": 7
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-01-28T09:45:30Z",
+      "side": 1,
+      "message": "Run spelling check. 5 spelling mistakes.",
+      "revId": "eeab02c28dc2b5a138d15d0358d78888c53138da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "997a4df0_4a51f28b",
+        "filename": "src/plugins/linux-cp/lcp.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-01-28T09:45:30Z",
+      "side": 1,
+      "message": "Drop this and do modern stream instead",
+      "revId": "eeab02c28dc2b5a138d15d0358d78888c53138da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "11be1ec7_3a1e5000",
+        "filename": "src/plugins/linux-cp/lcp.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-01-28T09:45:30Z",
+      "side": 1,
+      "message": "Drop gnu?",
+      "revId": "eeab02c28dc2b5a138d15d0358d78888c53138da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "28a87c17_74d7013a",
+        "filename": "src/plugins/linux-cp/lcp.rst",
+        "patchSetId": 7
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-01-28T09:45:30Z",
+      "side": 1,
+      "message": "Spelling check and language review.",
+      "revId": "eeab02c28dc2b5a138d15d0358d78888c53138da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ad6bb31e_f1bd7a34",
+        "filename": "src/plugins/linux-cp/lcp_adj.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-01-28T09:45:30Z",
+      "side": 1,
+      "message": "Add a comment why you are zeroing here?",
+      "revId": "eeab02c28dc2b5a138d15d0358d78888c53138da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "36439146_224aabd7",
+        "filename": "src/plugins/linux-cp/lcp_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-01-28T09:45:30Z",
+      "side": 1,
+      "message": "General comment. Use the endian independent messages.",
+      "revId": "eeab02c28dc2b5a138d15d0358d78888c53138da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f926b607_ef64538f",
+        "filename": "src/plugins/linux-cp/lcp_cli.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-01-28T09:45:30Z",
+      "side": 1,
+      "message": "Doesn’t lcp conflict with other abbreviations? Use linuxcp instead?",
+      "revId": "eeab02c28dc2b5a138d15d0358d78888c53138da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f17bdd5c_cf1d4d7a",
+        "filename": "src/plugins/linux-cp/lcp_interface.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-01-28T09:45:30Z",
+      "side": 1,
+      "message": "2017?",
+      "revId": "eeab02c28dc2b5a138d15d0358d78888c53138da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6f5e6c7e_f52fb517",
+        "filename": "src/plugins/linux-cp/lcp_node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 612,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-01-28T09:45:30Z",
+      "side": 1,
+      "message": "Do counter model in .api instead.",
+      "revId": "eeab02c28dc2b5a138d15d0358d78888c53138da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "70dd4ece_28bdda93",
+        "filename": "src/plugins/linux-cp/lcp_test.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-01-28T09:45:30Z",
+      "side": 1,
+      "message": "Delete this and use vat2 instead.",
+      "revId": "eeab02c28dc2b5a138d15d0358d78888c53138da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
