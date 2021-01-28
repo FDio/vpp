@@ -34,6 +34,24 @@
       "revId": "65640b550862bf0f8d26cf8ec74c1e69afe7a53d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "31247aee_0b18f1e5",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 420,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-28T13:17:33Z",
+      "side": 1,
+      "message": "it would be an issue. in the case of no ESN we don\u0027t add the hi seq to the AAD, but we can still increase it.",
+      "parentUuid": "322c68b4_50aa98a5",
+      "revId": "65640b550862bf0f8d26cf8ec74c1e69afe7a53d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
