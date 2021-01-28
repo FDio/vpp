@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# TODO: Add a header with copyright and license.
+
 # this script verifies that /dev/shm is big enough for test purposes
 # 512MB seems to be enough with room to spare at the time of writing this test
 # (motivation for this check is the default docker /dev/shm size of 64M, which

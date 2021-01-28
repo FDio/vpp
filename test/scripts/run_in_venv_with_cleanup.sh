@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# TODO: Add a header with copyright and license.
+
 rv=0
 
 atexit() {

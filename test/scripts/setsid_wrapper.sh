@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# TODO: Add a header with copyright and license.
+
 if [[ "$1" == "1" ]]
 then
 	setsid scripts/run_in_venv_with_cleanup.sh $*
