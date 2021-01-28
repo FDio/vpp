@@ -139,8 +139,8 @@ typedef struct
   u32 next_index;
   // error next index - used by custom apps (~0 if not used)
   u32 error_next_index;
-  // minimum fragment length for this reassembly - used to estimate MTU
-  u16 min_fragment_length;
+  // maximum fragment length for this reassembly - used to estimate MTU
+  u16 max_fragment_length;
   // number of fragments in this reassembly
   u32 fragments_n;
   // thread owning memory for this context (whose pool contains this ctx)
@@ -755,7 +755,7 @@ ip4_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       *next0 = reass->next_index;
     }
-  vnet_buffer (first_b)->ip.reass.estimated_mtu = reass->min_fragment_length;
+  vnet_buffer (first_b)->ip.reass.estimated_mtu = reass->max_fragment_length;
   *error0 = IP4_ERROR_NONE;
   ip4_full_reass_free (rm, rt, reass);
   reass = NULL;
@@ -902,13 +902,13 @@ ip4_full_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
 				    ~0);
 	}
       *bi0 = ~0;
-      reass->min_fragment_length = clib_net_to_host_u16 (fip->length);
+      reass->max_fragment_length = clib_net_to_host_u16 (fip->length);
       reass->fragments_n = 1;
       return IP4_REASS_RC_OK;
     }
-  reass->min_fragment_length =
-    clib_min (clib_net_to_host_u16 (fip->length),
-	      fvnb->ip.reass.estimated_mtu);
+  reass->max_fragment_length =
+    clib_max (clib_net_to_host_u16 (fip->length),
+              reass->max_fragment_length);
   while (~0 != candidate_range_bi)
     {
       vlib_buffer_t *candidate_b = vlib_get_buffer (vm, candidate_range_bi);
