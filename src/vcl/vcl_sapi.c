@@ -71,10 +71,6 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
 			    SSVM_SEGMENT_MEMFD, fds[n_fds_used++]))
       goto failed;
 
-  vcl_segment_attach_mq (vcl_vpp_worker_segment_handle (0), mp->vpp_ctrl_mq,
-			 mp->vpp_ctrl_mq_thread, &wrk->ctrl_mq);
-  vcm->ctrl_mq = wrk->ctrl_mq;
-
   if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
     {
       segment_name = format (0, "memfd-%ld%c", segment_handle, 0);
@@ -92,6 +88,12 @@ vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
       svm_msg_q_set_eventfd (wrk->app_event_queue, fds[n_fds_used++]);
       vcl_mq_epoll_add_evfd (wrk, wrk->app_event_queue);
     }
+
+  vcl_segment_discover_mqs (vcl_vpp_worker_segment_handle (0),
+			    fds + n_fds_used, mp->n_fds - n_fds_used);
+  vcl_segment_attach_mq (vcl_vpp_worker_segment_handle (0), mp->vpp_ctrl_mq,
+			 mp->vpp_ctrl_mq_thread, &wrk->ctrl_mq);
+  vcm->ctrl_mq = wrk->ctrl_mq;
 
   vcm->app_index = mp->app_index;
 

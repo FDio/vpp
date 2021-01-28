@@ -301,6 +301,7 @@ fifo_segment_init (fifo_segment_t * fs)
   fsh->max_log2_fifo_size = min_log2 (max_fifo);
   fsh->n_cached_bytes = 0;
   fsh->n_reserved_bytes = fsh->byte_index;
+  fsh->start_byte_index = fsh->byte_index;
   ASSERT (fsh->max_byte_index <= sh->ssvm_size - offset);
 
   fs->max_byte_index = fsh->max_byte_index;
@@ -1052,6 +1053,38 @@ fifo_segment_msg_q_attach (fifo_segment_t *fs, uword offset, u32 mq_index)
   ASSERT (fifo_segment_msg_q_offset (fs, mq_index) == offset);
 
   return mq;
+}
+
+void
+fifo_segment_msg_qs_discover (fifo_segment_t *fs, int *fds, u32 n_fds)
+{
+  svm_msg_q_shared_t *smq;
+  u32 n_mqs, size, i;
+  uword offset = 0, n_alloced;
+  svm_msg_q_t *mq;
+
+  n_mqs = fs->h->n_mqs;
+  if (n_fds && n_mqs != n_fds)
+    {
+      clib_warning ("expected %u fds got %u", n_mqs, n_fds);
+      return;
+    }
+
+  vec_validate (fs->mqs, n_mqs - 1);
+  n_alloced = fs->h->n_reserved_bytes - fs->h->start_byte_index;
+  ASSERT (n_alloced % n_mqs == 0);
+  size = n_alloced / n_mqs;
+
+  offset = fs->h->start_byte_index;
+  for (i = 0; i < n_mqs; i++)
+    {
+      mq = vec_elt_at_index (fs->mqs, i);
+      smq = (svm_msg_q_shared_t *) ((u8 *) fs->h + offset);
+      svm_msg_q_attach (mq, smq);
+      if (n_fds)
+	svm_msg_q_set_eventfd (mq, fds[i]);
+      offset += size;
+    }
 }
 
 uword

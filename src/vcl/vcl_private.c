@@ -456,6 +456,29 @@ vcl_segment_attach_mq (uword segment_handle, uword mq_offset, u32 mq_index,
   return 0;
 }
 
+int
+vcl_segment_discover_mqs (uword segment_handle, int *fds, u32 n_fds)
+{
+  fifo_segment_t *fs;
+  u32 fs_index;
+
+  fs_index = vcl_segment_table_lookup (segment_handle);
+  if (fs_index == VCL_INVALID_SEGMENT_INDEX)
+    {
+      VDBG (0, "ERROR: mq segment %lx for is not attached!", segment_handle);
+      return -1;
+    }
+
+  clib_rwlock_reader_lock (&vcm->segment_table_lock);
+
+  fs = fifo_segment_get_segment (&vcm->segment_main, fs_index);
+  fifo_segment_msg_qs_discover (fs, fds, n_fds);
+
+  clib_rwlock_reader_unlock (&vcm->segment_table_lock);
+
+  return 0;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
