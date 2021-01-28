@@ -183,6 +183,7 @@ vcl_send_session_listen (vcl_worker_t * wrk, vcl_session_t * s)
   mp->port = s->transport.lcl_port;
   mp->proto = s->session_type;
   mp->ckpair_index = s->ckpair_index;
+  mp->vrf = s->vrf;
   if (s->flags & VCL_SESSION_F_CONNECTED)
     mp->flags = TRANSPORT_CFG_F_CONNECTED;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
@@ -210,6 +211,7 @@ vcl_send_session_connect (vcl_worker_t * wrk, vcl_session_t * s)
   mp->lcl_port = s->transport.lcl_port;
   mp->proto = s->session_type;
   mp->ckpair_index = s->ckpair_index;
+  mp->vrf = s->vrf;
   if (s->flags & VCL_SESSION_F_CONNECTED)
     mp->flags |= TRANSPORT_CFG_F_CONNECTED;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
@@ -3671,6 +3673,25 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	  break;
 	}
       session->ckpair_index = *(uint32_t *) buffer;
+      break;
+
+    case VPPCOM_ATTR_SET_VRF:
+      if (!(buffer && buflen && (*buflen == sizeof (u32))))
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      session->vrf = *(u32 *) buffer;
+      break;
+
+    case VPPCOM_ATTR_GET_VRF:
+      if (!(buffer && buflen && (*buflen >= sizeof (u32))))
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+      *(u32 *) buffer = session->vrf;
+      *buflen = sizeof (u32);
       break;
 
     default:

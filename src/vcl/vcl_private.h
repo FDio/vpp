@@ -161,6 +161,7 @@ typedef struct vcl_session_
   u32 attributes;		/**< see @ref vppcom_session_attr_t */
   int libc_epfd;
   u32 ckpair_index;
+  u32 vrf;
 
   u32 sndbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_SNDBUF)
   u32 rcvbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_RCVBUF)
