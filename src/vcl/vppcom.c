@@ -3009,25 +3009,49 @@ static int
 vppcom_epoll_wait_eventfd (vcl_worker_t * wrk, struct epoll_event *events,
 			   int maxevents, u32 n_evts, double wait_for_time)
 {
-  vcl_mq_evt_conn_t *mqc;
+  double wait = 0, start = 0, now;
   int __clib_unused n_read;
+  vcl_mq_evt_conn_t *mqc;
   int n_mq_evts, i;
   u64 buf;
 
   vec_validate (wrk->mq_events, pool_elts (wrk->mq_evt_conns));
-again:
-  n_mq_evts = epoll_wait (wrk->mqs_epfd, wrk->mq_events,
-			  vec_len (wrk->mq_events), wait_for_time);
-  for (i = 0; i < n_mq_evts; i++)
+  if (!n_evts)
     {
-      mqc = vcl_mq_evt_conn_get (wrk, wrk->mq_events[i].data.u32);
-      n_read = read (mqc->mq_fd, &buf, sizeof (buf));
-      vcl_epoll_wait_handle_mq (wrk, mqc->mq, events, maxevents, 0, &n_evts);
+      wait = wait_for_time;
+      start = clib_time_now (&wrk->clib_time);
     }
-  if (!n_evts && n_mq_evts > 0)
-    goto again;
 
-  return (int) n_evts;
+  do
+    {
+      n_mq_evts = epoll_wait (wrk->mqs_epfd, wrk->mq_events,
+			      vec_len (wrk->mq_events), wait);
+      if (n_mq_evts < 0)
+	{
+	  VDBG (0, "epoll_wait error %u", errno);
+	  return n_evts;
+	}
+
+      for (i = 0; i < n_mq_evts; i++)
+	{
+	  mqc = vcl_mq_evt_conn_get (wrk, wrk->mq_events[i].data.u32);
+	  n_read = read (mqc->mq_fd, &buf, sizeof (buf));
+	  vcl_epoll_wait_handle_mq (wrk, mqc->mq, events, maxevents, 0,
+				    &n_evts);
+	}
+
+      if (n_evts)
+	return n_evts;
+      if (wait == -1)
+	continue;
+
+      now = clib_time_now (&wrk->clib_time);
+      wait -= (now - start) * 1e3;
+      start = now;
+    }
+  while (wait > 0);
+
+  return 0;
 }
 
 int
