@@ -2221,6 +2221,7 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
   /* Sort per-thread init functions before we start threads */
   vlib_sort_init_exit_functions (&vm->worker_init_function_registrations);
 
+  vlib_worker_thread_barrier_sync (vm);
   /* Call all main loop enter functions. */
   {
     clib_error_t *sub_error;
@@ -2228,6 +2229,7 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
     if (sub_error)
       clib_error_report (sub_error);
   }
+  vlib_worker_thread_barrier_release (vm);
 
   switch (clib_setjmp (&vm->main_loop_exit, VLIB_MAIN_LOOP_EXIT_NONE))
     {
