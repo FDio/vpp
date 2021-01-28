@@ -1,4 +1,6 @@
 #! /bin/bash
+
+# TODO: Add a header with copyright and license.
 #
 # socket_test.sh -- script to run socket tests.
 #
