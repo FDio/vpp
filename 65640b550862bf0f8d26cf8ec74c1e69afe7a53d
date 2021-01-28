@@ -16,6 +16,24 @@
       "revId": "65640b550862bf0f8d26cf8ec74c1e69afe7a53d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "322c68b4_50aa98a5",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 420,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-01-28T11:20:27Z",
+      "side": 1,
+      "message": "but in case of no ESN, it will be 32-bits only. That could be an issue?",
+      "parentUuid": "c07ea5db_91fba987",
+      "revId": "65640b550862bf0f8d26cf8ec74c1e69afe7a53d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
