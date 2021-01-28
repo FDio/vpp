@@ -1298,6 +1298,38 @@ vnet_sw_interface_is_nbma (vnet_main_t * vnm, u32 sw_if_index)
   return (hc->flags & VNET_HW_INTERFACE_CLASS_FLAG_NBMA);
 }
 
+static_always_inline void
+vnet_update_nr_variant_default (vlib_node_fn_registration_t *fnr, u8 *variant)
+{
+  vlib_node_fn_registration_t *p_reg = 0;
+  vlib_node_fn_registration_t *v_reg = 0;
+  u32 tmp;
+
+  while (fnr)
+    {
+      /* which is the highest priority registration */
+      if (!p_reg || fnr->priority > p_reg->priority)
+	p_reg = fnr;
+
+      /* which is the variant we want to prioritize */
+      if (!strncmp (fnr->name, (char *) variant, vec_len (variant) - 1))
+	v_reg = fnr;
+
+      fnr = fnr->next_registration;
+    }
+
+  /* node doesn't have the variants */
+  if (!v_reg)
+    return;
+
+  ASSERT (p_reg != 0 && v_reg != 0);
+
+  /* swap priorities */
+  tmp = p_reg->priority;
+  p_reg->priority = v_reg->priority;
+  v_reg->priority = tmp;
+}
+
 clib_error_t *
 vnet_interface_init (vlib_main_t * vm)
 {
@@ -1362,6 +1394,13 @@ vnet_interface_init (vlib_main_t * vm)
 	    /* to avoid confusion, please remove ".tx_function" statement
 	       from VNET_DEVICE_CLASS() if using function candidates */
 	    ASSERT (c->tx_function == 0);
+
+	    /* Update priority if node variant is configured */
+	    if (vm->node_main.cfg_node_variant)
+	      {
+		vnet_update_nr_variant_default (
+		  c->tx_fn_registrations, vm->node_main.cfg_node_variant);
+	      }
 
 	    while (fnr)
 	      {
