@@ -440,19 +440,21 @@ int vnet_vxlan_add_del_tunnel
       hw_addr[0] = 2;
       hw_addr[1] = 0xfe;
 
+      hash_set (vxm->instance_used, user_instance, 1);
+
+      t->dev_instance = dev_instance;	/* actual */
+      t->user_instance = user_instance; /* name */
+      t->flow_index = ~0;
+
       if (ethernet_register_interface (vnm, vxlan_device_class.index,
 				       dev_instance, hw_addr, &t->hw_if_index,
 				       vxlan_eth_flag_change))
 	{
+	  hash_unset (vxm->instance_used, t->user_instance);
+
 	  pool_put (vxm->tunnels, t);
 	  return VNET_API_ERROR_SYSCALL_ERROR_2;
 	}
-
-      hash_set (vxm->instance_used, user_instance, 1);
-
-      t->dev_instance = dev_instance;	/* actual */
-      t->user_instance = user_instance;	/* name */
-      t->flow_index = ~0;
 
       vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, t->hw_if_index);
 
