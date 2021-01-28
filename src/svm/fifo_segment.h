@@ -167,6 +167,15 @@ svm_msg_q_t *fifo_segment_msg_q_attach (fifo_segment_t *fs, uword offset,
 					u32 mq_index);
 
 /**
+ *  Discover mqs on mq only segment
+ *
+ *  @param fs		fifo segment for mq
+ *  @param fds  	array of fds is mqs use eventfds
+ *  @param n_fds	number of fds
+ */
+void fifo_segment_msg_qs_discover (fifo_segment_t *fs, int *fds, u32 n_fds);
+
+/**
  * Message queue offset on segment
  *
  * @param fs		fifo segment for mq
