@@ -33,6 +33,7 @@ from scapy.all import bind_layers, Packet, ByteEnumField, ShortField, \
 from ipaddress import IPv6Network
 
 
+@tag_fixme_vpp_workers
 class TestDSlite(VppTestCase):
     """ DS-Lite Test Cases """
 

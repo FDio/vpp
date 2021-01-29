@@ -18,6 +18,7 @@ class IgmpMode:
     ROUTER = 0
 
 
+@tag_fixme_vpp_workers
 class TestIgmp(VppTestCase):
     """ IGMP Test Case """
 

@@ -345,6 +345,7 @@ class MethodHolder(VppTestCase):
 
 
 @tag_run_solo
+@tag_fixme_vpp_workers
 class Flowprobe(MethodHolder):
     """Template verification, timer tests"""
 
@@ -483,6 +484,7 @@ class Flowprobe(MethodHolder):
         self.logger.info("FFP_TEST_FINISH_0000")
 
 
+@tag_fixme_vpp_workers
 class Datapath(MethodHolder):
     """collect information on Ethernet, IP4 and IP6 datapath (no timers)"""
 

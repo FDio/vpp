@@ -59,6 +59,7 @@ def verify_mpls_stack(tst, rx, mpls_labels):
             rx_mpls = rx_mpls[MPLS].payload
 
 
+@tag_fixme_vpp_workers
 class TestMPLS(VppTestCase):
     """ MPLS Test Case """
 

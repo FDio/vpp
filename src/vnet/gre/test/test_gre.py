@@ -21,6 +21,7 @@ from util import ppp, ppc
 from vpp_papi import VppEnum
 
 
+@tag_fixme_vpp_workers
 class TestGREInputNodes(VppTestCase):
     """ GRE Input Nodes Test Case """
 

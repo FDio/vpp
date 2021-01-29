@@ -475,6 +475,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         self.assertEqual(len(new_addresses), 0)
 
 
+@tag_fixme_vpp_workers
 class TestDHCPv6PDControlPlane(VppTestCase):
     """ DHCPv6 PD Control Plane Test Case """
 

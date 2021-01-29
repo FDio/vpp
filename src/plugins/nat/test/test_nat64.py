@@ -25,6 +25,7 @@ from util import ppc, ppp
 from vpp_papi import VppEnum
 
 
+@tag_fixme_vpp_workers
 class TestNAT64(VppTestCase):
     """ NAT64 Test Cases """
 

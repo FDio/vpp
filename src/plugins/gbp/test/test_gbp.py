@@ -572,6 +572,7 @@ class VppGbpVxlanTunnel(VppInterface):
         return find_gbp_vxlan(self._test, self.vni)
 
 
+@tag_fixme_vpp_workers
 class TestGBP(VppTestCase):
     """ GBP Test Case """
 

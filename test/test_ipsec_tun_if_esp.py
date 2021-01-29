@@ -476,6 +476,7 @@ class TestIpsec4TunIfEspHandoff(TemplateIpsec4TunIfEsp,
     tun4_decrypt_node_name = "esp4-decrypt-tun"
 
 
+@tag_fixme_vpp_workers
 class TestIpsec4MultiTunIfEsp(TemplateIpsec4TunProtect,
                               TemplateIpsec,
                               IpsecTun4):
@@ -750,6 +751,7 @@ class TestIpsec4TunIfEspNoAlgo(TemplateIpsec4TunProtect,
         self.unconfig_network(p)
 
 
+@tag_fixme_vpp_workers
 class TestIpsec6MultiTunIfEsp(TemplateIpsec6TunProtect,
                               TemplateIpsec,
                               IpsecTun6):
@@ -1839,6 +1841,7 @@ class TestIpsecMGreIfEspTra6(TemplateIpsec, IpsecTun6):
             self.verify_tun_66(p, count=63)
 
 
+@tag_fixme_vpp_workers
 class TestIpsec4TunProtect(TemplateIpsec,
                            TemplateIpsec4TunProtect,
                            IpsecTun4):
@@ -1900,6 +1903,7 @@ class TestIpsec4TunProtect(TemplateIpsec,
         self.unconfig_network(p)
 
 
+@tag_fixme_vpp_workers
 class TestIpsec4TunProtectUdp(TemplateIpsec,
                               TemplateIpsec4TunProtect,
                               IpsecTun4):
@@ -1948,6 +1952,7 @@ class TestIpsec4TunProtectUdp(TemplateIpsec,
         self.verify_keepalive(self.ipv4_params)
 
 
+@tag_fixme_vpp_workers
 class TestIpsec4TunProtectTun(TemplateIpsec,
                               TemplateIpsec4TunProtect,
                               IpsecTun4):
@@ -2110,6 +2115,7 @@ class TestIpsec4TunProtectTunDrop(TemplateIpsec,
         self.unconfig_network(p)
 
 
+@tag_fixme_vpp_workers
 class TestIpsec6TunProtect(TemplateIpsec,
                            TemplateIpsec6TunProtect,
                            IpsecTun6):
@@ -2236,6 +2242,7 @@ class TestIpsec6TunProtect(TemplateIpsec,
         self.unconfig_network(p)
 
 
+@tag_fixme_vpp_workers
 class TestIpsec6TunProtectTun(TemplateIpsec,
                               TemplateIpsec6TunProtect,
                               IpsecTun6):
@@ -2452,6 +2459,7 @@ class TemplateIpsecItf4(object):
         p.tun_sa_in.remove_vpp_config()
 
 
+@tag_fixme_vpp_workers
 class TestIpsecItf4(TemplateIpsec,
                     TemplateIpsecItf4,
                     IpsecTun4):
@@ -2713,6 +2721,7 @@ class TemplateIpsecItf6(object):
         p.tun_sa_in.remove_vpp_config()
 
 
+@tag_fixme_vpp_workers
 class TestIpsecItf6(TemplateIpsec,
                     TemplateIpsecItf6,
                     IpsecTun6):

@@ -858,6 +858,7 @@ class MethodHolder(VppTestCase):
             self.assertEqual(data, p[Raw].load)
 
 
+@tag_fixme_vpp_workers
 class TestNAT44EI(MethodHolder):
     """ NAT44EI Test Cases """
 

@@ -47,6 +47,7 @@ class TestMFIB(VppTestCase):
         self.assertNotIn("Failed", error)
 
 
+@tag_fixme_vpp_workers
 class TestIPMcast(VppTestCase):
     """ IP Multicast Test Case """
 

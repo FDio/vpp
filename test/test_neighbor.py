@@ -1815,6 +1815,7 @@ class ARPTestCase(VppTestCase):
         conn2.remove_vpp_config()
 
 
+@tag_fixme_vpp_workers
 class NeighborStatsTestCase(VppTestCase):
     """ ARP/ND Counters """
 

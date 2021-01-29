@@ -1046,6 +1046,7 @@ class TestIpProtoPuntSocket(TestPuntSocket):
         self.vapi.punt_socket_deregister(punt_ospf)
 
 
+@tag_fixme_vpp_workers
 class TestPunt(VppTestCase):
     """ Exception Punt Test Case """
 
