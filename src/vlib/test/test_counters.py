@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 from framework import VppTestCase
+from framework import tag_fixme_vpp_workers
 
 
+@tag_fixme_vpp_workers
 class TestCounters(VppTestCase):
     """ Counters C Unit Tests """
 

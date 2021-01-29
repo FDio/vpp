@@ -13,6 +13,7 @@ from scapy.utils6 import in6_getnsma, in6_getnsmac
 from scapy.layers.vxlan import VXLAN
 from scapy.data import ETH_P_IP, ETH_P_IPV6, ETH_P_ARP
 
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 from vpp_object import VppObject
 from vpp_interface import VppInterface
@@ -572,6 +573,7 @@ class VppGbpVxlanTunnel(VppInterface):
         return find_gbp_vxlan(self._test, self.vni)
 
 
+@tag_fixme_vpp_workers
 class TestGBP(VppTestCase):
     """ GBP Test Case """
 

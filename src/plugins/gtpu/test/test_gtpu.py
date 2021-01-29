@@ -3,6 +3,7 @@
 import socket
 from util import ip4_range
 import unittest
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
 
@@ -18,6 +19,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import INVALID_INDEX
 
 
+@tag_fixme_vpp_workers
 class TestGtpuUDP(VppTestCase):
     """ GTPU UDP ports Test Case """
 

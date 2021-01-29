@@ -4,6 +4,7 @@ import unittest
 import os
 from socket import AF_INET, AF_INET6, inet_pton
 
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 from vpp_neighbor import VppNeighbor, find_nbr
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, \
@@ -1815,6 +1816,7 @@ class ARPTestCase(VppTestCase):
         conn2.remove_vpp_config()
 
 
+@tag_fixme_vpp_workers
 class NeighborStatsTestCase(VppTestCase):
     """ ARP/ND Counters """
 
