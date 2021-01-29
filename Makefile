@@ -92,6 +92,7 @@ else ifeq ($(OS_VERSION_ID),20.10)
         DEB_DEPENDS += clang-format-10
         LIBFFI=libffi8ubuntu1
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-10)
+	DEB_DEPENDS += python3-virtualenv
 	DEB_DEPENDS += libssl-dev
 	DEB_DEPENDS += libelf-dev # for libbpf (af_xdp)
 else
@@ -709,14 +710,14 @@ pkg-verify: install-dep $(BR)/.deps.ok install-ext-deps
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
 
-MAKE_VERIFY_GATE_OS ?= ubuntu-18.04
+MAKE_VERIFY_GATE_OS ?= debian-10
 .PHONY: verify
 verify: pkg-verify
 ifeq ($(OS_ID)-$(OS_VERSION_ID),$(MAKE_VERIFY_GATE_OS))
 	$(call banner,"Testing vppapigen")
 	@src/tools/vppapigen/test_vppapigen.py
 	$(call banner,"Running tests")
-	@make COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
+	@make COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 VPP_WORKER_CONFIG="workers 2" test
 else
 	$(call banner,"Skipping tests. Tests under 'make verify' supported on $(MAKE_VERIFY_GATE_OS)")
 endif
