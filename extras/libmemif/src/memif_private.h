@@ -260,6 +260,14 @@ memif_get_buffer (memif_connection_t * conn, memif_ring_t * ring,
 	  ring->desc[index].offset);
 }
 
+static inline char* memif_strlcpy(const char *dest, const char *src, size_t n) {
+  size_t i;
+  for (i = 0; i < (n-1) && src[i] != '\0'; i++)
+      dest[i] = src[i];
+  dest[i] = '\0';
+  return dest;
+}
+
 #ifndef F_LINUX_SPECIFIC_BASE
 #define F_LINUX_SPECIFIC_BASE 1024
 #endif
