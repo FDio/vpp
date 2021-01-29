@@ -26,6 +26,7 @@ from scapy.layers.ipsec import ESP
 import scapy.layers.inet6 as inet6
 from scapy.layers.inet6 import IPv6, ICMPv6DestUnreach
 from scapy.contrib.ospf import OSPF_Hdr, OSPFv3_Hello
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 
 from vpp_ip import DpoProto
@@ -1046,6 +1047,7 @@ class TestIpProtoPuntSocket(TestPuntSocket):
         self.vapi.punt_socket_deregister(punt_ospf)
 
 
+@tag_fixme_vpp_workers
 class TestPunt(VppTestCase):
     """ Exception Punt Test Case """
 

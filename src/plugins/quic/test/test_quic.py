@@ -5,6 +5,7 @@ import unittest
 import os
 import subprocess
 import signal
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
     Worker
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
@@ -138,6 +139,7 @@ class QUICEchoIntTestCase(QUICTestCase):
             self.assertNotIn("failed", error)
 
 
+@tag_fixme_vpp_workers
 class QUICEchoIntTransferTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal Transfer Test Case"""
     def test_quic_int_transfer(self):
@@ -146,6 +148,7 @@ class QUICEchoIntTransferTestCase(QUICEchoIntTestCase):
         self.client("no-output", "mbytes", "2")
 
 
+@tag_fixme_vpp_workers
 class QUICEchoIntSerialTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal Serial Transfer Test Case"""
     def test_quic_serial_int_transfer(self):
@@ -158,6 +161,7 @@ class QUICEchoIntSerialTestCase(QUICEchoIntTestCase):
         self.client("no-output", "mbytes", "2")
 
 
+@tag_fixme_vpp_workers
 class QUICEchoIntMStreamTestCase(QUICEchoIntTestCase):
     """QUIC Echo Internal MultiStream Test Case"""
     def test_quic_int_multistream_transfer(self):
