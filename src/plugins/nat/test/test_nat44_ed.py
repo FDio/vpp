@@ -5,6 +5,7 @@ from io import BytesIO
 from random import randint
 
 import scapy.compat
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, TCP, UDP, ICMP, GRE
@@ -916,6 +917,7 @@ class NAT44EDTestCase(VppTestCase):
                              "%d" % self.tcp_external_port)
 
 
+@tag_fixme_vpp_workers
 class TestNAT44ED(NAT44EDTestCase):
     """ NAT44ED Test Case """
 
@@ -1904,6 +1906,7 @@ class TestNAT44ED(NAT44EDTestCase):
             raise
 
 
+@tag_fixme_vpp_workers
 class TestNAT44EDMW(TestNAT44ED):
     """ NAT44ED MW Test Case """
     worker_config = "workers 1"

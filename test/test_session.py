@@ -2,11 +2,13 @@
 
 import unittest
 
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 from framework import tag_run_solo
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
+@tag_fixme_vpp_workers
 class TestSession(VppTestCase):
     """ Session Test Case """
 
@@ -90,6 +92,7 @@ class TestSession(VppTestCase):
         ip_t10.remove_vpp_config()
 
 
+@tag_fixme_vpp_workers
 class TestSessionUnitTests(VppTestCase):
     """ Session Unit Tests Case """
 
