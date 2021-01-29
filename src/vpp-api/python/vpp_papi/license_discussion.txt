@@ -1,0 +1,108 @@
+
+Contents:
+1. Disclaimer.
+2. Copyleft.
+3. Software.
+4. Distribution.
+5. Files.
+6. Libraries.
+7. VPP test framework.
+8. CSIT test framework.
+9. Dual license.
+10. Pure Apache for VPP PAPI?
+
+Disclaimer.
+Vratko Polak is not a lawyer,
+and it is hard to tell which of his opinios are reliable facts
+(as opposed to unreliable guesses).
+
+Copyleft.
+Software can be consumed in various ways.
+Users are interested in running the software
+and in tweaking the software to their needs.
+Developers are interested in integrating with the software,
+or in extending the software and distributing the extended software.
+The rights of the two groups are frequently at odds.
+For example, the developers may want to restrict usage of their
+extended software, to gain advantage over other developers.
+Permisive licenses (such as Apache) avoid imposing restrictions.
+Copyleft licenses (such as GPL) impose some restrictions,
+in order to prevent developers from adding even more restrictions.
+
+Software.
+License is granted to a software, not to a specific file.
+Sometimes it is not clear when a set of interacting components
+forms a single software (so a single license should apply)
+or a several "softwares" (each can have different license).
+For GPL, it usually boils down to the nature of interaction.
+An application executing system calls to Linux kernel
+is a situation with two softwares.
+A python script importing from scapy package is a single software.
+
+Distribution.
+GPL has a very specific wording
+on what is considered an act of distributing software.
+User has to agree to license terms before using the software.
+Some distrinution packages contain multiple softwares.
+Some distribution packages contain only parts of the whole software,
+other parts usually need to be installed as dependencies.
+For interpreted languages such as Python,
+a public git repository is already a form of distribution
+(wihout any additional packaging).
+
+Files.
+Some projects offer a "software suite". That is a set of softwares
+(independent from GPL point of view), but intended to be deployed together
+(at least in some circumstances). It is easier to maintain the multiple
+softwares in the same source repository. If the softwares have different licenses,
+it is important to be very clear about which license applies to which software.
+So the recommended way is to add a license header into each source file.
+This way, developers are informed on how they can integrate this file into their software.
+But the situation gets complicated when the same file can be used as a component
+of two or more softwares with different licenses.
+
+Libraries.
+Library acts both as a re-usable software component, and as a standalone software.
+Library as a standalone software is not usable, as it cannot be executed directly.
+But library can be easily extended to become an executable,
+just by writing a small script that links with the library and calls few library functions.
+Scapy is a library, and it is GPL licensed, implying strict copyleft.
+Any software that links with scapy has to be distributed under GPL.
+
+VPP test framework.
+VPP test framework (the thing that gets executed by "make test") is a software,
+it links with scapy, so it has to be distributed under GPL license.
+VPP PAPI is a library, VPP test framework links with it,
+so it is a component of VPP test framework software.
+Any user running VPP test framework has to accept its GPL license.
+Any developer extending VPP test framework has to distribute the extended software
+under GPL license (even if they remove all scapy linkage?).
+
+CSIT test framework.
+CSIT does contain components that link with scapy,
+but such components are isolated enough to be considered separate software
+from the main CSIT code (called CSIT test framework here).
+So CSIT test framework is an examle of a software which links with VPP PAPI
+but does not need to be distributed under GPL (so it is distributed under Apache).
+There are other non-scapy softwares using VPP PAPI as well.
+
+Dual license.
+"SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later"
+The above informs users and developers they have to accept either Apache or GPL.
+In general, the choice is theirs, but our license text clarifies
+that if the file in question is used in a software linking with Scapy,
+the Apache option is not available and they must chose GPL.
+At first, this was chosen as a way to easily switch back to pure Apache
+if we replace scapy with something less strict about copyleft in the future.
+But the wording coincidentally matches exactly the situation
+of developer thinking about using VPP PAPI in their software.
+Does your software links with Scapy? Then be reminded you have to
+distribute it under GPL. If not, you may use Apache.
+Or you may still use GPL, as that is allowed for any Apache-licensed software anyway.
+
+Pure Apache for VPP PAPI?
+I guess we could keep pure Apache license text in VPP PAPI files,
+as those are only hints and GPL restrictions take precedence.
+But I think it is more helpful with our hints
+(as opposed to pretending we are distributing VPP PAPI only under Apache license,
+which is clearly not true for VPP test framework software).
