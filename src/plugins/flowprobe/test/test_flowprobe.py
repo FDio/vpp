@@ -12,6 +12,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import IPv6
 
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from framework import tag_run_solo
 from vpp_object import VppObject
@@ -345,6 +346,7 @@ class MethodHolder(VppTestCase):
 
 
 @tag_run_solo
+@tag_fixme_vpp_workers
 class Flowprobe(MethodHolder):
     """Template verification, timer tests"""
 
@@ -483,6 +485,7 @@ class Flowprobe(MethodHolder):
         self.logger.info("FFP_TEST_FINISH_0000")
 
 
+@tag_fixme_vpp_workers
 class Datapath(MethodHolder):
     """collect information on Ethernet, IP4 and IP6 datapath (no timers)"""
 

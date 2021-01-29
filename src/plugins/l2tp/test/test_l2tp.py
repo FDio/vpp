@@ -5,9 +5,11 @@ import unittest
 from scapy.layers.l2 import Ether
 from scapy.layers.inet6 import IPv6
 
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase
 
 
+@tag_fixme_vpp_workers
 class TestL2tp(VppTestCase):
     """ L2TP Test Case """
 

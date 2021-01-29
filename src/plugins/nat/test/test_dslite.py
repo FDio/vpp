@@ -5,6 +5,7 @@ import unittest
 import struct
 import random
 
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 
 import scapy.compat
@@ -33,6 +34,7 @@ from scapy.all import bind_layers, Packet, ByteEnumField, ShortField, \
 from ipaddress import IPv6Network
 
 
+@tag_fixme_vpp_workers
 class TestDSlite(VppTestCase):
     """ DS-Lite Test Cases """
 

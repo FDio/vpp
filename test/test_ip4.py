@@ -11,6 +11,7 @@ from scapy.layers.l2 import Ether, Dot1Q, ARP
 from scapy.packet import Raw
 from six import moves
 
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
@@ -2069,6 +2070,7 @@ class TestIPLPM(VppTestCase):
         rx = self.send_and_expect(self.pg0, p_24 * NUM_PKTS, self.pg1)
 
 
+@tag_fixme_vpp_workers
 class TestIPv4Frag(VppTestCase):
     """ IPv4 fragmentation """
 

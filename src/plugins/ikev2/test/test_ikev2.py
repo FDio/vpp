@@ -18,6 +18,7 @@ from scapy.layers.inet import IP, UDP, Ether
 from scapy.layers.inet6 import IPv6
 from scapy.packet import raw, Raw
 from scapy.utils import long_converter
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 from vpp_ikev2 import Profile, IDType, AuthMethod
 from vpp_papi import VppEnum
@@ -1638,6 +1639,7 @@ class TestApi(VppTestCase):
             self.assertEqual(ap.tun_itf, 0xffffffff)
 
 
+@tag_fixme_vpp_workers
 class TestResponderBehindNAT(TemplateResponder, Ikev2Params):
     """ test responder - responder behind NAT """
 
@@ -1647,6 +1649,7 @@ class TestResponderBehindNAT(TemplateResponder, Ikev2Params):
         self.config_params({'r_natt': True})
 
 
+@tag_fixme_vpp_workers
 class TestInitiatorNATT(TemplateInitiator, Ikev2Params):
     """ test ikev2 initiator - NAT traversal (intitiator behind NAT) """
 
@@ -1672,6 +1675,7 @@ class TestInitiatorNATT(TemplateInitiator, Ikev2Params):
                 'integ_alg': 12}})
 
 
+@tag_fixme_vpp_workers
 class TestInitiatorPsk(TemplateInitiator, Ikev2Params):
     """ test ikev2 initiator - pre shared key auth """
 
@@ -1696,6 +1700,7 @@ class TestInitiatorPsk(TemplateInitiator, Ikev2Params):
                 'integ_alg': 12}})
 
 
+@tag_fixme_vpp_workers
 class TestInitiatorRequestWindowSize(TestInitiatorPsk):
     """ test initiator - request window size (1) """
 
@@ -1737,6 +1742,7 @@ class TestInitiatorRequestWindowSize(TestInitiatorPsk):
         self.verify_ipsec_sas(is_rekey=True)
 
 
+@tag_fixme_vpp_workers
 class TestInitiatorRekey(TestInitiatorPsk):
     """ test ikev2 initiator - rekey """
 
@@ -1774,6 +1780,7 @@ class TestInitiatorRekey(TestInitiatorPsk):
         self.verify_ipsec_sas(is_rekey=True)
 
 
+@tag_fixme_vpp_workers
 class TestInitiatorDelSAFromResponder(TemplateInitiator, Ikev2Params):
     """ test ikev2 initiator - delete IKE SA from responder """
 
@@ -1799,6 +1806,7 @@ class TestInitiatorDelSAFromResponder(TemplateInitiator, Ikev2Params):
                 'integ_alg': 12}})
 
 
+@tag_fixme_vpp_workers
 class TestResponderInitBehindNATT(TemplateResponder, Ikev2Params):
     """ test ikev2 responder - initiator behind NAT """
 
@@ -1809,12 +1817,14 @@ class TestResponderInitBehindNATT(TemplateResponder, Ikev2Params):
                 {'i_natt': True})
 
 
+@tag_fixme_vpp_workers
 class TestResponderPsk(TemplateResponder, Ikev2Params):
     """ test ikev2 responder - pre shared key auth """
     def config_tc(self):
         self.config_params()
 
 
+@tag_fixme_vpp_workers
 class TestResponderDpd(TestResponderPsk):
     """
     Dead peer detection test
@@ -1844,6 +1854,7 @@ class TestResponderDpd(TestResponderPsk):
         self.assertEqual(len(ipsec_sas), 0)
 
 
+@tag_fixme_vpp_workers
 class TestResponderRekey(TestResponderPsk):
     """ test ikev2 responder - rekey """
 
@@ -1872,6 +1883,7 @@ class TestResponderRekey(TestResponderPsk):
         self.assertEqual(r[0].sa.stats.n_rekey_req, 1)
 
 
+@tag_fixme_vpp_workers
 class TestResponderRsaSign(TemplateResponder, Ikev2Params):
     """ test ikev2 responder - cert based auth """
     def config_tc(self):
@@ -1884,6 +1896,7 @@ class TestResponderRsaSign(TemplateResponder, Ikev2Params):
             'server-cert': 'server-cert.pem'})
 
 
+@tag_fixme_vpp_workers
 class Test_IKE_AES_CBC_128_SHA256_128_MODP2048_ESP_AES_CBC_192_SHA_384_192\
         (TemplateResponder, Ikev2Params):
     """
@@ -1898,6 +1911,7 @@ class Test_IKE_AES_CBC_128_SHA256_128_MODP2048_ESP_AES_CBC_192_SHA_384_192\
             'ike-dh': '2048MODPgr'})
 
 
+@tag_fixme_vpp_workers
 class TestAES_CBC_128_SHA256_128_MODP3072_ESP_AES_GCM_16\
         (TemplateResponder, Ikev2Params):
 
@@ -1913,6 +1927,7 @@ class TestAES_CBC_128_SHA256_128_MODP3072_ESP_AES_GCM_16\
             'ike-dh': '3072MODPgr'})
 
 
+@tag_fixme_vpp_workers
 class Test_IKE_AES_GCM_16_256(TemplateResponder, Ikev2Params):
     """
     IKE:AES_GCM_16_256
@@ -1934,6 +1949,7 @@ class Test_IKE_AES_GCM_16_256(TemplateResponder, Ikev2Params):
                        'end_addr': '11::100'}})
 
 
+@tag_fixme_vpp_workers
 class TestInitiatorKeepaliveMsg(TestInitiatorPsk):
     """
     Test for keep alive messages

@@ -9,6 +9,7 @@ from io import BytesIO
 from time import sleep
 
 import scapy.compat
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from scapy.all import bind_layers, Packet, ByteEnumField, ShortField, \
@@ -858,6 +859,7 @@ class MethodHolder(VppTestCase):
             self.assertEqual(data, p[Raw].load)
 
 
+@tag_fixme_vpp_workers
 class TestNAT44EI(MethodHolder):
     """ NAT44EI Test Cases """
 

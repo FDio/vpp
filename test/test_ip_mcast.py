@@ -2,6 +2,7 @@
 
 import unittest
 
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpMRoute, VppMRoutePath, VppMFibSignal, \
@@ -47,6 +48,7 @@ class TestMFIB(VppTestCase):
         self.assertNotIn("Failed", error)
 
 
+@tag_fixme_vpp_workers
 class TestIPMcast(VppTestCase):
     """ IP Multicast Test Case """
 
