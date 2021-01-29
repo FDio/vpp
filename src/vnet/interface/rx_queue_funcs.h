@@ -54,8 +54,10 @@ vnet_hw_if_rx_queue_set_int_pending (vnet_main_t *vnm, u32 queue_index)
   vnet_hw_if_rx_queue_t *rxq = vnet_hw_if_get_rx_queue (vnm, queue_index);
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, rxq->hw_if_index);
   vlib_main_t *vm = vlib_mains[rxq->thread_index];
-
   vnet_hw_if_rx_node_runtime_t *rt;
+  if (PREDICT_FALSE (rxq->mode != VNET_HW_IF_RX_MODE_INTERRUPT &&
+		     rxq->mode != VNET_HW_IF_RX_MODE_ADAPTIVE))
+    return;
   rt = vlib_node_get_runtime_data (vm, hi->input_node_index);
   if (vm == vlib_get_main ())
     clib_interrupt_set (rt->rxq_interrupts, queue_index);
