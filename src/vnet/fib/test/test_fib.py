@@ -2,9 +2,11 @@
 
 import unittest
 
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 
 
+@tag_fixme_vpp_workers
 class TestFIB(VppTestCase):
     """ FIB Test Case """
 

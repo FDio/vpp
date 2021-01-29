@@ -21,6 +21,7 @@ from scapy.packet import Raw
 
 from bfd import VppBFDAuthKey, BFD, BFDAuthType, VppBFDUDPSession, \
     BFDDiagCode, BFDState, BFD_vpp_echo
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from framework import tag_run_solo
 from util import ppp
@@ -1488,6 +1489,7 @@ class BFD4TestCase(VppTestCase):
 
 
 @tag_run_solo
+@tag_fixme_vpp_workers
 class BFD6TestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (IPv6) """
 
