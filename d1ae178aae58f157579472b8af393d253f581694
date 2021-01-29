@@ -172,6 +172,23 @@
     },
     {
       "key": {
+        "uuid": "074b11f0_90059cdc",
+        "filename": "src/plugins/nat/pnat/pnat_node.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-01-29T23:21:43Z",
+      "side": 1,
+      "message": "The value of PNAT_ERROR_REWRITE is 0. So both good and bad returns got the rc of 0. The caller will be confused.\nWhere and how is PNAT_ERROR_REWRITE generated? I couldn\u0027t find it.",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "cc4d6a57_28b7da3b",
         "filename": "src/plugins/nat/pnat/pnat_node.h",
         "patchSetId": 20
