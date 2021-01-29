@@ -88,6 +88,23 @@
       "revId": "65640b550862bf0f8d26cf8ec74c1e69afe7a53d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "24817215_2c213422",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 630,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-01-29T13:05:29Z",
+      "side": 1,
+      "message": "have a non-zero salt in one of these.",
+      "revId": "65640b550862bf0f8d26cf8ec74c1e69afe7a53d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
