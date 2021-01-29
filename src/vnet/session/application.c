@@ -569,32 +569,165 @@ application_alloc_and_init (app_init_args_t * a)
 }
 
 void
+app_pending_rx_mqs_add_tail (app_wrk_t *aw, app_rx_mq_elt_t *elt)
+{
+  app_rx_mq_elt_t *head;
+
+  if (!aw->pending_rx_mqs)
+    {
+      aw->pending_rx_mqs = elt;
+      elt->next = elt;
+      elt->prev = elt;
+      return;
+    }
+
+  head = aw->pending_rx_mqs;
+
+  head->prev->next = elt;
+  elt->prev = head->prev;
+
+  head->prev = elt;
+  elt->next = head;
+}
+
+void
+app_pending_rx_mqs_del (app_wrk_t *aw, app_rx_mq_elt_t *elt)
+{
+  if (elt->next == elt)
+    {
+      aw->pending_rx_mqs = 0;
+      return;
+    }
+
+  elt->next->prev = elt->prev;
+  elt->prev->next = elt->next;
+}
+
+vlib_node_registration_t app_rx_mq_input_node;
+
+VLIB_NODE_FN (app_rx_mq_input_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
+{
+  u32 thread_index = vm->thread_index, n_msgs = 0;
+  app_rx_mq_elt_t *head, *elt, *next;
+  app_main_t *am = &app_main;
+  session_worker_t *wrk;
+  app_wrk_t *aw;
+  u64 buf;
+
+  aw = &am->wrk[thread_index];
+  elt = head = aw->pending_rx_mqs;
+  if (!elt)
+    return 0;
+
+  wrk = session_main_get_worker (thread_index);
+
+  do
+    {
+      (void) read (svm_msg_q_get_eventfd (elt->mq), &buf, sizeof (buf));
+      n_msgs += session_wrk_handle_mq (wrk, elt->mq);
+
+      next = elt->next;
+      app_pending_rx_mqs_del (aw, elt);
+      if (!svm_msg_q_is_empty (elt->mq))
+	app_pending_rx_mqs_add_tail (aw, elt);
+      else
+	elt->is_pending = 0;
+      elt = next;
+    }
+  while (elt != head);
+
+  if (aw->pending_rx_mqs && n_msgs < 10)
+    vlib_node_set_interrupt_pending (vm, app_rx_mq_input_node.index);
+
+  return n_msgs;
+}
+
+VLIB_REGISTER_NODE (app_rx_mq_input_node) = {
+  .name = "app-rx-mq-input",
+  .type = VLIB_NODE_TYPE_INPUT,
+  .state = VLIB_NODE_STATE_INTERRUPT,
+};
+
+static clib_error_t *
+app_rx_mq_fd_read_ready (clib_file_t * cf)
+{
+  app_rx_mq_handle_t *handle = (app_rx_mq_handle_t *) &cf->private_data;
+  vlib_main_t *vm = vlib_get_main ();
+  app_main_t *am = &app_main;
+  app_rx_mq_elt_t *mqe;
+  application_t *app;
+  app_wrk_t *aw;
+
+  ASSERT (vlib_get_thread_index () == handle->thread_index);
+  app = application_get_if_valid (handle->app_index);
+  if (!app)
+    return 0;
+
+  mqe = &app->rx_mqs[handle->thread_index];
+  if (mqe->is_pending)
+    return 0;
+
+  aw = &am->wrk[handle->thread_index];
+  app_pending_rx_mqs_add_tail (aw, mqe);
+  mqe->is_pending = 1;
+
+  vlib_node_set_interrupt_pending (vm, app_rx_mq_input_node.index);
+
+  return 0;
+}
+
+static clib_error_t *
+app_rx_mq_fd_write_ready (clib_file_t * cf)
+{
+  clib_warning ("should not be called");
+  return 0;
+}
+
+void
 session_rx_mqs_epoll_add (session_worker_t *wrk, application_t *app)
 {
   u32 thread_index = wrk->vm->thread_index;
-  struct epoll_event evt;
-  int rv, fd;
+  app_rx_mq_elt_t *mqe;
+//  struct epoll_event evt;
+  int fd;
 
-  fd = svm_msg_q_get_eventfd (app->rx_mqs[thread_index]);
+  mqe = &app->rx_mqs[thread_index];
+  fd = svm_msg_q_get_eventfd (mqe->mq);
+//
+//  evt.events = EPOLLIN;
+//  evt.data.u64 = ((u64) app->app_index << 32) | (u64) thread_index;
+//
+//  rv = epoll_ctl (wrk->app_rx_mqs_epfd, EPOLL_CTL_ADD, fd, &evt);
+//  if (rv < 0)
+//    clib_unix_warning ("epoll add");
 
-  evt.events = EPOLLIN;
-  evt.data.u64 = ((u64) app->app_index << 32) | (u64) thread_index;
+  app_rx_mq_handle_t handle;
+  handle.app_index = app->app_index;
+  handle.thread_index = thread_index;
 
-  rv = epoll_ctl (wrk->app_rx_mqs_epfd, EPOLL_CTL_ADD, fd, &evt);
-  if (rv < 0)
-    clib_unix_warning ("epoll add");
+  clib_file_t template = { 0 };
+  template.read_function = app_rx_mq_fd_read_ready;
+  template.write_function = app_rx_mq_fd_write_ready;
+  template.file_descriptor = fd;
+  template.private_data = handle.as_u64;
+  template.polling_thread_index = thread_index;
+  template.description = format (0, "app-%u-rx-mq-%u", app->app_index,
+                                 thread_index);
+  clib_file_add (&file_main, &template);
 }
 
 void
 session_rx_mqs_epoll_del (session_worker_t *wrk, application_t *app)
 {
-  u32 thread_index = wrk->vm->thread_index;
-  int rv, fd;
-
-  fd = svm_msg_q_get_eventfd (app->rx_mqs[thread_index]);
-  rv = epoll_ctl (wrk->app_rx_mqs_epfd, EPOLL_CTL_DEL, fd, 0);
-  if (rv < 0)
-    clib_unix_warning ("epoll del");
+//  u32 thread_index = wrk->vm->thread_index;
+//  int rv, fd;
+//
+//  fd = svm_msg_q_get_eventfd (app->rx_mqs[thread_index]);
+//  rv = epoll_ctl (wrk->app_rx_mqs_epfd, EPOLL_CTL_DEL, fd, 0);
+//  if (rv < 0)
+//    clib_unix_warning ("epoll del");
 }
 
 static void
@@ -859,13 +992,13 @@ app_rx_mqs_get_w_handle (u64 rx_mq_handle)
     return 0;
   mq_index = rx_mq_handle & 0xffffffff;
   ASSERT (mq_index < vec_len (app->rx_mqs));
-  return app->rx_mqs[mq_index];
+  return app->rx_mqs[mq_index].mq;
 }
 
 svm_msg_q_t *
 app_rx_mqs_get (application_t *app, u32 mq_index)
 {
-  return app->rx_mqs[mq_index];
+  return app->rx_mqs[mq_index].mq;
 }
 
 static void
@@ -907,8 +1040,8 @@ app_rx_mqs_alloc (application_t *app)
 
   for (i = 0; i < n_mqs; i++)
     {
-      app->rx_mqs[i] = fifo_segment_msg_q_alloc (eqs, i, cfg);
-      if (svm_msg_q_alloc_eventfd (app->rx_mqs[i]))
+      app->rx_mqs[i].mq = fifo_segment_msg_q_alloc (eqs, i, cfg);
+      if (svm_msg_q_alloc_eventfd (app->rx_mqs[i].mq))
 	clib_warning ("eventfd returned");
 
       wrk = session_main_get_worker (i);
@@ -1665,7 +1798,7 @@ appliction_format_app_mq (vlib_main_t * vm, application_t * app)
 
   for (i = 0; i < vec_len (app->rx_mqs); i++)
     vlib_cli_output (vm, "[A%d][R%d]%U", app->app_index, i, format_svm_msg_q,
-		     app->rx_mqs[i]);
+		     app->rx_mqs[i].mq);
 }
 
 static clib_error_t *
@@ -1852,10 +1985,18 @@ vnet_app_del_cert_key_pair (u32 index)
 clib_error_t *
 application_init (vlib_main_t * vm)
 {
+  app_main_t *am = &app_main;
+  u32 n_workers;
+
+  n_workers = vlib_num_workers ();
+
   /* Index 0 was originally used by legacy apis, maintain as invalid */
   (void) app_cert_key_pair_alloc ();
-  app_main.last_crypto_engine = CRYPTO_ENGINE_LAST;
-  app_main.app_by_name = hash_create_vec (0, sizeof (u8), sizeof (uword));
+  am->last_crypto_engine = CRYPTO_ENGINE_LAST;
+  am->app_by_name = hash_create_vec (0, sizeof (u8), sizeof (uword));
+
+  vec_validate (am->wrk, n_workers);
+
   return 0;
 }
 
