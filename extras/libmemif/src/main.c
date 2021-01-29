@@ -158,14 +158,11 @@ memif_strerror (int err_code)
 {
   if (err_code >= ERRLIST_LEN)
     {
-      strncpy (memif_buf, MEMIF_ERR_UNDEFINED, strlen (MEMIF_ERR_UNDEFINED));
-      memif_buf[strlen (MEMIF_ERR_UNDEFINED)] = '\0';
+      memif_strlcpy (memif_buf, MEMIF_ERR_UNDEFINED, sizeof (memif_buf));
     }
   else
     {
-      strncpy (memif_buf, memif_errlist[err_code],
-	       strlen (memif_errlist[err_code]));
-      memif_buf[strlen (memif_errlist[err_code])] = '\0';
+      memif_strlcpy (memif_buf, memif_errlist[err_code], sizeof (memif_buf));
     }
   return memif_buf;
 }
@@ -532,14 +529,12 @@ memif_init (memif_control_fd_update_t * on_control_fd_update, char *app_name,
 
   if (app_name != NULL)
     {
-      uint8_t len = (strlen (app_name) > MEMIF_NAME_LEN)
-	? strlen (app_name) : MEMIF_NAME_LEN;
-      strncpy ((char *) lm->app_name, app_name, len);
+      memif_strlcpy ((char *) lm->app_name, app_name, sizeof (lm->app_name));
     }
   else
     {
-      strncpy ((char *) lm->app_name, MEMIF_DEFAULT_APP_NAME,
-	       strlen (MEMIF_DEFAULT_APP_NAME));
+      memif_strlcpy ((char *) lm->app_name, MEMIF_DEFAULT_APP_NAME,
+	       sizeof (lm->app_name));
     }
 
   lm->poll_cancel_fd = -1;
@@ -699,14 +694,12 @@ memif_per_thread_init (memif_per_thread_main_handle_t * pt_main,
   /* set app name */
   if (app_name != NULL)
     {
-      uint8_t len = (strlen (app_name) > MEMIF_NAME_LEN)
-	? strlen (app_name) : MEMIF_NAME_LEN;
-      strncpy ((char *) lm->app_name, app_name, len);
+      memif_strlcpy ((char *) lm->app_name, app_name, MEMIF_NAME_LEN);
     }
   else
     {
-      strncpy ((char *) lm->app_name, MEMIF_DEFAULT_APP_NAME,
-	       strlen (MEMIF_DEFAULT_APP_NAME));
+      memif_strlcpy ((char *) lm->app_name, MEMIF_DEFAULT_APP_NAME,
+	       sizeof (lm->app_name));
     }
 
   lm->poll_cancel_fd = -1;
@@ -885,8 +878,7 @@ memif_socket_start_listening (memif_socket_t * ms)
 
   DBG ("socket %d created", ms->fd);
   un.sun_family = AF_UNIX;
-  strncpy ((char *) un.sun_path, (char *) ms->filename,
-	   sizeof (un.sun_path) - 1);
+  memif_strlcpy ((char *) un.sun_path, (char *) ms->filename, sizeof (un.sun_path));
   if (setsockopt (ms->fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on)) < 0)
     {
       err = memif_syscall_error_handler (errno);
@@ -963,7 +955,7 @@ memif_create_socket (memif_socket_handle_t * sock, const char *filename,
       goto error;
     }
   memset (ms->filename, 0, strlen (filename) + sizeof (char));
-  strncpy ((char *) ms->filename, filename, strlen (filename));
+  memif_strlcpy ((char *) ms->filename, filename, sizeof (ms->filename));
 
   ms->type = MEMIF_SOCKET_TYPE_NONE;
 
@@ -1047,7 +1039,7 @@ memif_per_thread_create_socket (memif_per_thread_main_handle_t pt_main,
       goto error;
     }
   memset (ms->filename, 0, strlen (filename) + sizeof (char));
-  strncpy ((char *) ms->filename, filename, strlen (filename));
+  memif_strlcpy ((char *) ms->filename, filename, sizeof (ms->filename));
 
   ms->type = MEMIF_SOCKET_TYPE_NONE;
 
@@ -1150,12 +1142,12 @@ memif_create (memif_conn_handle_t * c, memif_conn_args_t * args,
   conn->private_ctx = private_ctx;
   memset (&conn->run_args, 0, sizeof (memif_conn_run_args_t));
 
-  uint8_t l = strlen ((char *) args->interface_name);
-  strncpy ((char *) conn->args.interface_name, (char *) args->interface_name,
-	   l);
+  memif_strlcpy ((char *) conn->args.interface_name, (char *) args->interface_name,
+	   sizeof (conn->args.interface_name));
 
-  if ((l = strlen ((char *) args->secret)) > 0)
-    strncpy ((char *) conn->args.secret, (char *) args->secret, l);
+  if ((strlen ((char *) args->secret)) > 0)
+    memif_strlcpy ((char *) conn->args.secret, (char *) args->secret,
+	     sizeof (conn->args.secret));
 
   if (args->socket != NULL)
     conn->args.socket = args->socket;
@@ -1260,7 +1252,7 @@ memif_request_connection (memif_conn_handle_t c)
 
   sun.sun_family = AF_UNIX;
 
-  strncpy (sun.sun_path, (char *) ms->filename, sizeof (sun.sun_path) - 1);
+  memif_strlcpy (sun.sun_path, (char *) ms->filename, sizeof (sun.sun_path));
 
   if (connect (sockfd, (struct sockaddr *) &sun,
 	       sizeof (struct sockaddr_un)) == 0)
