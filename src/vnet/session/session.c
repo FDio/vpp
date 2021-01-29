@@ -1699,8 +1699,6 @@ session_manager_main_enable (vlib_main_t * vm)
 
       if (num_threads > 1)
 	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);
-
-      wrk->app_rx_mqs_epfd = epoll_create1 (0);
     }
 
   /* Allocate vpp event queues segment and queue */
@@ -1785,6 +1783,9 @@ session_node_enable_disable (u8 is_en)
                          state);
   }));
   /* *INDENT-ON* */
+
+  if (session_main.use_private_rx_mqs)
+    application_enable_rx_mqs_nodes (is_en);
 }
 
 clib_error_t *
@@ -1817,6 +1818,7 @@ session_main_init (vlib_main_t * vm)
   smm->is_enabled = 0;
   smm->session_enable_asap = 0;
   smm->poll_main = 0;
+  smm->use_private_rx_mqs = 0;
   smm->session_baseva = HIGH_SEGMENT_BASEVA;
 
 #if (HIGH_SEGMENT_BASEVA > (4ULL << 30))
@@ -1936,6 +1938,8 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	appns_sapi_enable ();
       else if (unformat (input, "poll-main"))
 	smm->poll_main = 1;
+      else if (unformat (input, "use-private-rx-mqs"))
+	smm->use_private_rx_mqs = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);

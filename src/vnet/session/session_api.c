@@ -151,7 +151,7 @@ mq_send_session_accepted_cb (session_t * s)
   mp->segment_handle = session_segment_handle (s);
   mp->flags = s->flags;
 
-  eq_seg = &app->rx_mqs_segment;
+  eq_seg = application_get_rx_mqs_segment (app);
 
   if (session_has_transport (s))
     {
@@ -295,7 +295,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
     goto done;
 
   app = application_get (app_wrk->app_index);
-  eq_seg = &app->rx_mqs_segment;
+  eq_seg = application_get_rx_mqs_segment (app);
 
   if (session_has_transport (s))
     {
@@ -392,7 +392,7 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
   clib_memcpy_fast (mp->lcl_ip, &tep.ip, sizeof (tep.ip));
 
   app = application_get (app_wrk->app_index);
-  eq_seg = &app->rx_mqs_segment;
+  eq_seg = application_get_rx_mqs_segment (app);
 
   mp->vpp_evt_q = fifo_segment_msg_q_offset (eq_seg, ls->thread_index);
 
@@ -452,7 +452,7 @@ mq_send_session_migrate_cb (session_t * s, session_handle_t new_sh)
     return;
 
   app = application_get (app_wrk->app_index);
-  eq_seg = &app->rx_mqs_segment;
+  eq_seg = application_get_rx_mqs_segment (app);
 
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));
@@ -619,7 +619,7 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
 {
   int rv = 0, *fds = 0, n_fds = 0, i;
   vl_api_app_attach_reply_t *rmp;
-  fifo_segment_t *segp;
+  fifo_segment_t *segp, *rx_mqs_seg;
   vnet_app_attach_args_t _a, *a = &_a;
   u8 fd_flags = 0, ctrl_thread;
   vl_api_registration_t *reg;
@@ -666,8 +666,10 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
 
   /* Send rx mqs segment */
   app = application_get (a->app_index);
+  rx_mqs_seg = application_get_rx_mqs_segment (app);
+
   fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
-  fds[n_fds] = app->rx_mqs_segment.ssvm.fd;
+  fds[n_fds] = rx_mqs_seg->ssvm.fd;
   n_fds += 1;
 
   /* Send fifo segment fd if needed */
@@ -684,12 +686,15 @@ vl_api_app_attach_t_handler (vl_api_app_attach_t * mp)
       n_fds += 1;
     }
 
-  fd_flags |= SESSION_FD_F_VPP_MQ_EVENTFD;
-  for (i = 0; i < n_workers + 1; i++)
+  if (application_use_private_rx_mqs ())
     {
-      rx_mq = app_rx_mqs_get (app, i);
-      fds[n_fds] = svm_msg_q_get_eventfd (rx_mq);
-      n_fds += 1;
+      fd_flags |= SESSION_FD_F_VPP_MQ_EVENTFD;
+      for (i = 0; i < n_workers + 1; i++)
+	{
+	  rx_mq = application_rx_mq_get (app, i);
+	  fds[n_fds] = svm_msg_q_get_eventfd (rx_mq);
+	  n_fds += 1;
+	}
     }
 
 done:
@@ -701,8 +706,7 @@ done:
 	segp = (fifo_segment_t *) a->segment;
 	rmp->app_index = clib_host_to_net_u32 (a->app_index);
 	rmp->app_mq = fifo_segment_msg_q_offset (segp, 0);
-	rmp->vpp_ctrl_mq =
-	  fifo_segment_msg_q_offset (&app->rx_mqs_segment, ctrl_thread);
+	rmp->vpp_ctrl_mq = fifo_segment_msg_q_offset (rx_mqs_seg, ctrl_thread);
 	rmp->vpp_ctrl_mq_thread = ctrl_thread;
 	rmp->n_fds = n_fds;
 	rmp->fd_flags = fd_flags;
@@ -1300,6 +1304,7 @@ session_api_attach_handler (app_namespace_t * app_ns, clib_socket_t * cs,
   app_sapi_attach_reply_msg_t *rmp;
   u8 fd_flags = 0, ctrl_thread;
   app_ns_api_handle_t *handle;
+  fifo_segment_t *rx_mqs_seg;
   app_sapi_msg_t msg = { 0 };
   app_worker_t *app_wrk;
   application_t *app;
@@ -1327,8 +1332,10 @@ session_api_attach_handler (app_namespace_t * app_ns, clib_socket_t * cs,
 
   /* Send event queues segment */
   app = application_get (a->app_index);
+  rx_mqs_seg = application_get_rx_mqs_segment (app);
+
   fd_flags |= SESSION_FD_F_VPP_MQ_SEGMENT;
-  fds[n_fds] = app->rx_mqs_segment.ssvm.fd;
+  fds[n_fds] = rx_mqs_seg->ssvm.fd;
   n_fds += 1;
 
   /* Send fifo segment fd if needed */
@@ -1345,12 +1352,15 @@ session_api_attach_handler (app_namespace_t * app_ns, clib_socket_t * cs,
       n_fds += 1;
     }
 
-  fd_flags |= SESSION_FD_F_VPP_MQ_EVENTFD;
-  for (i = 0; i < n_workers + 1; i++)
+  if (application_use_private_rx_mqs ())
     {
-      rx_mq = app_rx_mqs_get (app, i);
-      fds[n_fds] = svm_msg_q_get_eventfd (rx_mq);
-      n_fds += 1;
+      fd_flags |= SESSION_FD_F_VPP_MQ_EVENTFD;
+      for (i = 0; i < n_workers + 1; i++)
+	{
+	  rx_mq = application_rx_mq_get (app, i);
+	  fds[n_fds] = svm_msg_q_get_eventfd (rx_mq);
+	  n_fds += 1;
+	}
     }
 
 done:
@@ -1364,8 +1374,7 @@ done:
       rmp->app_index = a->app_index;
       rmp->app_mq =
 	fifo_segment_msg_q_offset ((fifo_segment_t *) a->segment, 0);
-      rmp->vpp_ctrl_mq =
-	fifo_segment_msg_q_offset (&app->rx_mqs_segment, ctrl_thread);
+      rmp->vpp_ctrl_mq = fifo_segment_msg_q_offset (rx_mqs_seg, ctrl_thread);
       rmp->vpp_ctrl_mq_thread = ctrl_thread;
       rmp->n_fds = n_fds;
       rmp->fd_flags = fd_flags;
