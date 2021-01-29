@@ -15,6 +15,11 @@ cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
 set(HEADERS_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
+find_library(LIB_BSD bsd)
+if(LIB_BSD)
+  add_compile_definitions(HAS_LIB_BSD)
+endif()
+
 list(APPEND MEMIF_HEADERS
   libmemif.h
   memif.h
@@ -33,7 +38,7 @@ list(APPEND MEMIF_SOURCES
 include_directories(${HEADERS_DIR})
 
 add_library(memif SHARED ${MEMIF_SOURCES})
-target_link_libraries(memif ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(memif ${CMAKE_THREAD_LIBS_INIT} ${LIB_BSD})
 foreach(file ${MEMIF_HEADERS})
   get_filename_component(dir ${file} DIRECTORY)
      install(
