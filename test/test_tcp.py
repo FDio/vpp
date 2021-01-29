@@ -2,10 +2,12 @@
 
 import unittest
 
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
+@tag_fixme_vpp_workers
 class TestTCP(VppTestCase):
     """ TCP Test Case """
 

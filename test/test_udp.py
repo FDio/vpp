@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import unittest
+from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 
 from vpp_udp_encap import find_udp_encap, VppUdpEncap
@@ -15,6 +16,7 @@ from scapy.contrib.mpls import MPLS
 NUM_PKTS = 67
 
 
+@tag_fixme_vpp_workers
 class TestUdpEncap(VppTestCase):
     """ UDP Encap Test Case """
 
@@ -247,6 +249,7 @@ class TestUdpEncap(VppTestCase):
         self.assertEqual(udp_encap_1.get_stats()['packets'], 2*NUM_PKTS)
 
 
+@tag_fixme_vpp_workers
 class TestUDP(VppTestCase):
     """ UDP Test Case """
 
