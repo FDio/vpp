@@ -92,6 +92,16 @@ typedef struct app_listener_
 				     the app listener */
 } app_listener_t;
 
+typedef struct app_rx_mq_elt_
+{
+  struct app_rx_mq_elt_ *next;
+  struct app_rx_mq_elt_ *prev;
+  svm_msg_q_t *mq;
+  uword file_index;
+  u32 app_index;
+  u8 is_pending;
+} app_rx_mq_elt_t;
+
 typedef struct application_
 {
   /** App index in app pool */
@@ -127,9 +137,33 @@ typedef struct application_
   char quic_iv[17];
   u8 quic_iv_set;
 
+  /** Segment where rx mqs were allocated */
   fifo_segment_t rx_mqs_segment;
-  svm_msg_q_t **rx_mqs;
+
+  /**
+   * Fixed vector of rx mqs that can be a part of pending_rx_mqs
+   * linked list maintained by the app for each worker
+   */
+  app_rx_mq_elt_t *rx_mqs;
 } application_t;
+
+typedef struct app_rx_mq_handle_
+{
+  union
+  {
+    struct
+    {
+      u32 app_index;
+      u32 thread_index;
+    };
+    u64 as_u64;
+  };
+} __attribute__ ((aligned (sizeof (u64)))) app_rx_mq_handle_t;
+
+typedef struct app_wrk_
+{
+  app_rx_mq_elt_t *pending_rx_mqs;
+} app_wrk_t;
 
 typedef struct app_main_
 {
@@ -157,6 +191,9 @@ typedef struct app_main_
    * Last registered crypto engine type
    */
   crypto_engine_type_t last_crypto_engine;
+
+  /** per thread list of app rx mq linked lists */
+  app_wrk_t *wrk;
 } app_main_t;
 
 typedef struct app_init_args_
