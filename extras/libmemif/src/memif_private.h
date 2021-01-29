@@ -66,6 +66,33 @@ _Static_assert (strlen (MEMIF_DEFAULT_APP_NAME) <= MEMIF_NAME_LEN,
 #define DBG(...)
 #endif /* MEMIF_DBG */
 
+#ifndef HAS_LIB_BSD
+static inline size_t
+strlcpy (char *dest, const char *src, size_t len)
+{
+  const char *s = src;
+  size_t n = len;
+
+  while (--n > 0)
+    {
+      if ((*dest++ = *s++) == '\0')
+	break;
+    }
+
+  if (n == 0)
+    {
+      if (len != 0)
+	*dest = '\0';
+      while (*s++)
+	;
+    }
+
+  return (s - src - 1);
+}
+#else
+#include <bsd/string.h>
+#endif
+
 typedef enum
 {
   MEMIF_SOCKET_TYPE_NONE = 0,	/* unassigned, not used by any interface */
