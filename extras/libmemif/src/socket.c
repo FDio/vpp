@@ -111,8 +111,7 @@ memif_msg_send_hello (libmemif_main_t * lm, int fd)
   h->max_region = MEMIF_MAX_REGION;
   h->max_log2_ring_size = MEMIF_MAX_LOG2_RING_SIZE;
 
-  strncpy ((char *) h->name, (char *) lm->app_name,
-	   strlen ((char *) lm->app_name));
+  memif_strlcpy ((char *) h->name, (char *) lm->app_name, sizeof (h->name));
 
   /* msg hello is not enqueued but sent directly,
      because it is the first msg to be sent */
@@ -139,8 +138,7 @@ memif_msg_enq_init (memif_connection_t * c)
   i->id = c->args.interface_id;
   i->mode = c->args.mode;
 
-  strncpy ((char *) i->name, (char *) lm->app_name,
-	   strlen ((char *) lm->app_name));
+  memif_strlcpy ((char *) i->name, (char *) lm->app_name, sizeof (i->name));
   if (strlen ((char *) c->args.secret) > 0)
     strncpy ((char *) i->secret, (char *) c->args.secret, sizeof (i->secret));
 
@@ -260,8 +258,8 @@ memif_msg_enq_connect (memif_connection_t * c)
 
   e->msg.type = MEMIF_MSG_TYPE_CONNECT;
   e->fd = -1;
-  strncpy ((char *) cm->if_name, (char *) c->args.interface_name,
-	   strlen ((char *) c->args.interface_name));
+  memif_strlcpy ((char *) cm->if_name, (char *) c->args.interface_name,
+		 sizeof (cm->if_name));
 
   e->next = NULL;
   if (c->msg_queue == NULL)
@@ -295,8 +293,8 @@ memif_msg_enq_connected (memif_connection_t * c)
 
   e->msg.type = MEMIF_MSG_TYPE_CONNECTED;
   e->fd = -1;
-  strncpy ((char *) cm->if_name, (char *) c->args.interface_name,
-	   strlen ((char *) c->args.interface_name));
+  memif_strlcpy ((char *) cm->if_name, (char *) c->args.interface_name,
+		 sizeof (cm->if_name));
 
   e->next = NULL;
   if (c->msg_queue == NULL)
@@ -327,12 +325,12 @@ memif_msg_send_disconnect (int fd, uint8_t * err_string, uint32_t err_code)
   msg.type = MEMIF_MSG_TYPE_DISCONNECT;
   d->code = err_code;
   uint16_t l = strlen ((char *) err_string);
-  if (l > 96)
+  if (l > sizeof (d->string) - 1)
     {
-      DBG ("Disconnect string too long. Sending first 96 characters.");
-      l = 96;
+      DBG ("Disconnect string too long. Sending the first %d characters.",
+	   sizeof (d->string) - 1);
     }
-  strncpy ((char *) d->string, (char *) err_string, l);
+  memif_strlcpy ((char *) d->string, (char *) err_string, sizeof (d->string));
 
   return memif_msg_send (fd, &msg, -1);
 }
@@ -356,8 +354,8 @@ memif_msg_receive_hello (memif_connection_t * c, memif_msg_t * msg)
   c->run_args.log2_ring_size = memif_min (h->max_log2_ring_size,
 					  c->args.log2_ring_size);
   c->run_args.buffer_size = c->args.buffer_size;
-  strncpy ((char *) c->remote_name, (char *) h->name,
-	   strlen ((char *) h->name));
+  memif_strlcpy ((char *) c->remote_name, (char *) h->name,
+		 sizeof (c->remote_name));
 
   return MEMIF_ERR_SUCCESS;	/* 0 */
 }
@@ -420,8 +418,8 @@ memif_msg_receive_init (memif_socket_t * ms, int fd, memif_msg_t * msg)
       goto error;
     }
 
-  strncpy ((char *) c->remote_name, (char *) i->name,
-	   strlen ((char *) i->name));
+  memif_strlcpy ((char *) c->remote_name, (char *) i->name,
+		 sizeof (c->remote_name));
 
   if (strlen ((char *) c->args.secret) > 0)
     {
@@ -588,8 +586,8 @@ memif_msg_receive_connect (memif_connection_t * c, memif_msg_t * msg)
   if (err != MEMIF_ERR_SUCCESS)
     return err;
 
-  strncpy ((char *) c->remote_if_name, (char *) cm->if_name,
-	   strlen ((char *) cm->if_name));
+  memif_strlcpy ((char *) c->remote_if_name, (char *) cm->if_name,
+		 sizeof (c->remove_if_name));
 
   int i;
   if (c->on_interrupt != NULL)
@@ -625,7 +623,7 @@ memif_msg_receive_connected (memif_connection_t * c, memif_msg_t * msg)
     return err;
 
   strncpy ((char *) c->remote_if_name, (char *) cm->if_name,
-	   strlen ((char *) cm->if_name));
+	   sizeof (c_remote_if_name));
 
   int i;
   if (c->on_interrupt != NULL)
@@ -650,7 +648,7 @@ memif_msg_receive_disconnect (memif_connection_t * c, memif_msg_t * msg)
   memset (c->remote_disconnect_string, 0,
 	  sizeof (c->remote_disconnect_string));
   strncpy ((char *) c->remote_disconnect_string, (char *) d->string,
-	   strlen ((char *) d->string));
+	   sizeof (c->remote_disconnect_string));
 
   /* on returning error, handle function will call memif_disconnect () */
   DBG ("disconnect received: %s, mode: %d",
