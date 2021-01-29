@@ -92,7 +92,7 @@ typedef struct session_worker_
   /** Per-proto vector of sessions to enqueue */
   u32 **session_to_enqueue;
 
-  clib_time_type_t last_epoll_time;
+  //  clib_time_type_t last_epoll_time;
 
   /** Context for session tx */
   session_tx_context_t ctx;
@@ -124,8 +124,8 @@ typedef struct session_worker_
   /** Vector of nexts for the pending tx buffers */
   u16 *pending_tx_nexts;
 
-  struct epoll_event *app_rx_mqs_evts;
-  int app_rx_mqs_epfd;
+  //  struct epoll_event *app_rx_mqs_evts;
+  //  int app_rx_mqs_epfd;
 
 #if SESSION_DEBUG
   /** last event poll time by thread */
@@ -179,6 +179,9 @@ typedef struct session_main_
 
   /** Poll session node in main thread */
   u8 poll_main;
+
+  /** Allocate private rx mqs for external apps */
+  u8 use_private_rx_mqs;
 
   /** vpp fifo event queue configured length */
   u32 configured_event_queue_length;
@@ -301,6 +304,8 @@ session_evt_alloc_old (session_worker_t * wrk)
 		       pool_elt_at_index (wrk->event_elts, wrk->old_head));
   return elt;
 }
+
+int session_wrk_handle_mq (session_worker_t *wrk, svm_msg_q_t *mq);
 
 session_t *session_alloc (u32 thread_index);
 void session_free (session_t * s);

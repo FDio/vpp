@@ -92,6 +92,22 @@ typedef struct app_listener_
 				     the app listener */
 } app_listener_t;
 
+typedef enum app_rx_mq_flags_
+{
+  APP_RX_MQ_F_PENDING = 1 << 0,
+  APP_RX_MQ_F_POSTPONED = 1 << 1,
+} app_rx_mq_flags_t;
+
+typedef struct app_rx_mq_elt_
+{
+  struct app_rx_mq_elt_ *next;
+  struct app_rx_mq_elt_ *prev;
+  svm_msg_q_t *mq;
+  uword file_index;
+  u32 app_index;
+  u8 flags;
+} app_rx_mq_elt_t;
+
 typedef struct application_
 {
   /** App index in app pool */
@@ -127,9 +143,33 @@ typedef struct application_
   char quic_iv[17];
   u8 quic_iv_set;
 
+  /** Segment where rx mqs were allocated */
   fifo_segment_t rx_mqs_segment;
-  svm_msg_q_t **rx_mqs;
+
+  /**
+   * Fixed vector of rx mqs that can be a part of pending_rx_mqs
+   * linked list maintained by the app for each worker
+   */
+  app_rx_mq_elt_t *rx_mqs;
 } application_t;
+
+typedef struct app_rx_mq_handle_
+{
+  union
+  {
+    struct
+    {
+      u32 app_index;
+      u32 thread_index;
+    };
+    u64 as_u64;
+  };
+} __attribute__ ((aligned (sizeof (u64)))) app_rx_mq_handle_t;
+
+typedef struct app_wrk_
+{
+  app_rx_mq_elt_t *pending_rx_mqs;
+} app_wrk_t;
 
 typedef struct app_main_
 {
@@ -157,6 +197,9 @@ typedef struct app_main_
    * Last registered crypto engine type
    */
   crypto_engine_type_t last_crypto_engine;
+
+  /** per thread list of app rx mq linked lists */
+  app_wrk_t *wrk;
 } app_main_t;
 
 typedef struct app_init_args_
@@ -241,6 +284,11 @@ segment_manager_props_t *application_get_segment_manager_properties (u32
 segment_manager_props_t
   * application_segment_manager_properties (application_t * app);
 
+svm_msg_q_t *application_rx_mq_get (application_t *app, u32 mq_index);
+u8 application_use_private_rx_mqs (void);
+fifo_segment_t *application_get_rx_mqs_segment (application_t *app);
+void application_enable_rx_mqs_nodes (u8 is_en);
+
 /*
  * App worker
  */
@@ -324,9 +372,6 @@ void mq_send_unlisten_reply (app_worker_t * app_wrk, session_handle_t sh,
 
 crypto_engine_type_t app_crypto_engine_type_add (void);
 u8 app_crypto_engine_n_types (void);
-
-svm_msg_q_t *app_rx_mqs_get_w_handle (u64 rx_mq_handle);
-svm_msg_q_t *app_rx_mqs_get (application_t *app, u32 mq_index);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 

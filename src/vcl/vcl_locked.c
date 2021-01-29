@@ -1797,8 +1797,7 @@ vls_app_create (char *app_name)
 unsigned char
 vls_use_eventfd (void)
 {
-  //  return vcm->cfg.use_mq_eventfd;
-  return 1;
+  return vcm->cfg.use_mq_eventfd;
 }
 
 unsigned char
