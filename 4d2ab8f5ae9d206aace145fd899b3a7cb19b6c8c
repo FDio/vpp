@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b0701088_5b290a0e",
+        "filename": "src/vpp-api/python/vpp_papi/license_discussion.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-01-30T01:24:19Z",
+      "side": 1,
+      "message": "I disagree with this, only to the point that this conflates three distinct areas.  \n1. vpp_papi\n2. test framework\n3. individual unit tests.\n\nI agree that some the individual unit tests rely on gpl code.\n\n1. vpp papi does not rely on gpl code and does not need to be gpl.\n\n2. test framework - components such as framework.py, run_tests.py and the vpp_\u003cobject\u003e code. I cannot think of anywhere where gpl code is linked in.  This should not need to be gpl.\n\n3. Individual tests.  Some but not all of these rely on GPL code from scapy and therefore need to be GPL\u0027d.",
+      "range": {
+        "startLine": 72,
+        "startChar": 0,
+        "endLine": 79,
+        "endChar": 59
+      },
+      "revId": "4d2ab8f5ae9d206aace145fd899b3a7cb19b6c8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "405d7424_0ca5f36e",
+        "filename": "src/vpp-api/python/vpp_papi/license_discussion.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-01-30T01:24:19Z",
+      "side": 1,
+      "message": "I\u0027m not sure what you are trying to say here.  If you link Apache2 code to GPL, the result is GPL code.  We do not need to relicense our Apache-2 code to GPL to allow a consumer to link it into GPL code.",
+      "range": {
+        "startLine": 101,
+        "startChar": 0,
+        "endLine": 101,
+        "endChar": 85
+      },
+      "revId": "4d2ab8f5ae9d206aace145fd899b3a7cb19b6c8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c6b6cec3_b5c3c225",
+        "filename": "src/vpp-api/python/vpp_papi/license_discussion.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-01-30T01:24:19Z",
+      "side": 1,
+      "message": "My opinion is that VPP PAPI is Apache 2.  The test framework is Apache2.  Individual unit tests that rely on scapy would need to be gpl, or the test writers could update the code to use dpkt(bsd) for packet creation.\nhttps://softwareengineering.stackexchange.com/questions/40561/is-bsd-license-compatible-with-apache",
+      "range": {
+        "startLine": 108,
+        "startChar": 0,
+        "endLine": 108,
+        "endChar": 59
+      },
+      "revId": "4d2ab8f5ae9d206aace145fd899b3a7cb19b6c8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
