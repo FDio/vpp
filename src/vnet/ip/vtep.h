@@ -111,6 +111,7 @@ vtep4_check (vtep_table_t * t, vlib_buffer_t * b0, ip4_header_t * ip40,
   return VTEP_CHECK_PASS;
 }
 
+#ifdef CLIB_HAVE_VEC512
 typedef struct
 {
   vtep4_key_t vtep4_cache[8];
@@ -128,7 +129,6 @@ vtep4_check_vector (vtep_table_t * t, vlib_buffer_t * b0, ip4_header_t * ip40,
   if (PREDICT_TRUE (k4.as_u64 == last_k4->as_u64))
     return VTEP_CHECK_PASS_UNCHANGED;
 
-#ifdef CLIB_HAVE_VEC512
   u64x8 k4_u64x8 = u64x8_splat (k4.as_u64);
   u64x8 cache = u64x8_load_unaligned (vtep4_u512->vtep4_cache);
   u8 result = u64x8_mask_is_equal (cache, k4_u64x8);
@@ -138,20 +138,18 @@ vtep4_check_vector (vtep_table_t * t, vlib_buffer_t * b0, ip4_header_t * ip40,
 	vtep4_u512->vtep4_cache[count_trailing_zeros (result)].as_u64;
       return VTEP_CHECK_PASS_UNCHANGED;
     }
-#endif
 
   if (PREDICT_FALSE (!hash_get (t->vtep4, k4.as_u64)))
     return VTEP_CHECK_FAIL;
 
-  last_k4->as_u64 = k4.as_u64;
-
-#ifdef CLIB_HAVE_VEC512
   vtep4_u512->vtep4_cache[vtep4_u512->idx].as_u64 = k4.as_u64;
   vtep4_u512->idx = (vtep4_u512->idx + 1) & 0x7;
-#endif
+
+  last_k4->as_u64 = k4.as_u64;
 
   return VTEP_CHECK_PASS;
 }
+#endif
 
 always_inline u8
 vtep6_check (vtep_table_t * t, vlib_buffer_t * b0, ip6_header_t * ip60,
