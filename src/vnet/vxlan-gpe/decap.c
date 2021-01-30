@@ -794,8 +794,7 @@ ip_vxlan_gpe_bypass_inline (vlib_main_t * vm,
 				   matching a local VTEP address */
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
 #ifdef CLIB_HAVE_VEC512
-  vtep4_cache_t vtep4_u512;
-  clib_memset (&vtep4_u512, 0, sizeof (vtep4_u512));
+  ngm->vtep4_u512.idx = 0;
 #endif
 
   from = vlib_frame_vector_args (frame);
@@ -890,7 +889,7 @@ ip_vxlan_gpe_bypass_inline (vlib_main_t * vm,
 	    {
 #ifdef CLIB_HAVE_VEC512
 	      if (!vtep4_check_vector
-		  (&ngm->vtep_table, b0, ip40, &last_vtep4, &vtep4_u512))
+		  (&ngm->vtep_table, b0, ip40, &last_vtep4, &ngm->vtep4_u512))
 #else
 	      if (!vtep4_check (&ngm->vtep_table, b0, ip40, &last_vtep4))
 #endif
@@ -973,7 +972,7 @@ ip_vxlan_gpe_bypass_inline (vlib_main_t * vm,
 	    {
 #ifdef CLIB_HAVE_VEC512
 	      if (!vtep4_check_vector
-		  (&ngm->vtep_table, b1, ip41, &last_vtep4, &vtep4_u512))
+		  (&ngm->vtep_table, b1, ip41, &last_vtep4, &ngm->vtep4_u512))
 #else
 	      if (!vtep4_check (&ngm->vtep_table, b1, ip41, &last_vtep4))
 #endif
@@ -1092,7 +1091,7 @@ ip_vxlan_gpe_bypass_inline (vlib_main_t * vm,
 	    {
 #ifdef CLIB_HAVE_VEC512
 	      if (!vtep4_check_vector
-		  (&ngm->vtep_table, b0, ip40, &last_vtep4, &vtep4_u512))
+		  (&ngm->vtep_table, b0, ip40, &last_vtep4, &ngm->vtep4_u512))
 #else
 	      if (!vtep4_check (&ngm->vtep_table, b0, ip40, &last_vtep4))
 #endif
