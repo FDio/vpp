@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "61a23dc9_390ad207",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 464,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-02-01T09:26:47Z",
+      "side": 1,
+      "message": "Why reset the LRU index?",
+      "range": {
+        "startLine": 464,
+        "startChar": 7,
+        "endLine": 464,
+        "endChar": 17
+      },
+      "revId": "3d9bd00be82f0855585069dd72f7b0efcc8181c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
