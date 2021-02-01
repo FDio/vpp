@@ -377,11 +377,6 @@ I:	dns
 M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/dns/
 
-Plugin - Group Based Policy (GBP)
-I:	gbp
-M:	Neale Ranns <neale@graphiant.com>
-F:	src/plugins/gbp/
-
 Plugin - ACL
 I:	acl
 M:	Andrew Yourtchenko <ayourtch@gmail.com>
