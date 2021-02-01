@@ -83,8 +83,29 @@ af_packet_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
 	  clib_error_free (error);
 	  return VNET_API_ERROR_SYSCALL_ERROR_1;
 	}
+      else
+	apif->host_mtu = hi->max_packet_bytes;
     }
 
+  return 0;
+}
+
+static int
+af_packet_read_mtu (af_packet_if_t *apif)
+{
+  af_packet_main_t *apm = &af_packet_main;
+  clib_error_t *error;
+  u8 *s;
+  s = format (0, "/sys/class/net/%s/mtu%c", apif->host_if_name, 0);
+  error = clib_sysfs_read ((char *) s, "%d", &apif->host_mtu);
+  vec_free (s);
+  if (error)
+    {
+      vlib_log_err (apm->log_class, "sysfs read failed to get MTU: %U",
+		    format_clib_error, error);
+      clib_error_free (error);
+      return VNET_API_ERROR_SYSCALL_ERROR_1;
+    }
   return 0;
 }
 
@@ -337,6 +358,10 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   apif->per_interface_next_index = ~0;
   apif->next_tx_frame = 0;
   apif->next_rx_frame = 0;
+
+  ret = af_packet_read_mtu (apif);
+  if (ret != 0)
+    goto error;
 
   if (tm->n_vlib_mains > 1)
     clib_spinlock_init (&apif->lockp);
