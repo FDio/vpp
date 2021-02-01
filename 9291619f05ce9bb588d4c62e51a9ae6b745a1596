@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "d8c4ff1b_a2c711aa",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-02-01T11:46:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b4e96685_c92287fc",
+      "revId": "9291619f05ce9bb588d4c62e51a9ae6b745a1596",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a21fbcd9_d7757a70",
         "filename": "src/vppinfra/atomics.h",
         "patchSetId": 3
@@ -30,6 +48,24 @@
       "writtenOn": "2021-01-25T10:28:23Z",
       "side": 1,
       "message": "that looks ugly. Is it automatically done by clang-format?",
+      "revId": "9291619f05ce9bb588d4c62e51a9ae6b745a1596",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4b15467d_d6cb0b0f",
+        "filename": "src/vppinfra/atomics.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-02-01T11:46:21Z",
+      "side": 1,
+      "message": "Yes, it is automatically done by clang-format.",
+      "parentUuid": "a21fbcd9_d7757a70",
       "revId": "9291619f05ce9bb588d4c62e51a9ae6b745a1596",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
