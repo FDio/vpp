@@ -283,9 +283,9 @@ vnet_crypto_register_async_handler (vlib_main_t * vm, u32 engine_index,
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *ae, *e = vec_elt_at_index (cm->engines, engine_index);
   vnet_crypto_async_op_data_t *otd = cm->async_opt_data + opt;
-  vec_validate_aligned (cm->enqueue_handlers, VNET_CRYPTO_ASYNC_OP_N_IDS - 1,
+  vec_validate_aligned (cm->enqueue_handlers, VNET_CRYPTO_ASYNC_OP_N_IDS,
 			CLIB_CACHE_LINE_BYTES);
-  vec_validate_aligned (cm->dequeue_handlers, VNET_CRYPTO_ASYNC_OP_N_IDS - 1,
+  vec_validate_aligned (cm->dequeue_handlers, VNET_CRYPTO_ASYNC_OP_N_IDS,
 			CLIB_CACHE_LINE_BYTES);
 
   /* both enqueue hdl and dequeue hdl should present */
@@ -722,7 +722,7 @@ vnet_crypto_init (vlib_main_t * vm)
     pool_alloc_aligned (ct->frame_pool, 1024, CLIB_CACHE_LINE_BYTES);
   vec_validate (cm->algs, VNET_CRYPTO_N_ALGS);
   vec_validate (cm->async_algs, VNET_CRYPTO_N_ASYNC_ALGS);
-  clib_bitmap_validate (cm->async_active_ids, VNET_CRYPTO_ASYNC_OP_N_IDS - 1);
+  clib_bitmap_validate (cm->async_active_ids, VNET_CRYPTO_ASYNC_OP_N_IDS);
 
 #define _(n, s, l) \
   vnet_crypto_init_cipher_data (VNET_CRYPTO_ALG_##n, \
