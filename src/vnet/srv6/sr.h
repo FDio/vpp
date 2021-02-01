@@ -76,6 +76,8 @@ typedef struct
   u8 *rewrite;					/**< Precomputed rewrite header */
   u8 *rewrite_bsid;				/**< Precomputed rewrite header for bindingSID */
 
+  u32 egress_fib_table; /**< Egress FIB table for encap packet */
+
   dpo_id_t bsid_dpo;				/**< DPO for Encaps/Insert for BSID */
   dpo_id_t ip6_dpo;				/**< DPO for Encaps/Insert IPv6 */
   dpo_id_t ip4_dpo;				/**< DPO for Encaps IPv6 */
@@ -403,7 +405,6 @@ ip6_sr_compute_rewrite_string_insert (ip6_address_t * sl)
   }
   return rs;
 }
-
 
 #endif /* included_vnet_sr_h */
 
