@@ -368,7 +368,8 @@ VLIB_NODE_FN (wg_input_node) (vlib_main_t * vm,
 
 	  clib_memcpy (vlib_buffer_get_current (b[0]), decr_data, decr_len);
 	  b[0]->current_length = decr_len;
-	  b[0]->flags &= ~VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+	  vnet_buffer_offload_flags_clear (b[0],
+					   VNET_BUFFER_OFFLOAD_F_UDP_CKSUM);
 
 	  wg_timers_any_authenticated_packet_received (peer);
 	  wg_timers_any_authenticated_packet_traversal (peer);
