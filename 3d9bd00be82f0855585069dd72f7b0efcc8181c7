@@ -22,6 +22,30 @@
       "revId": "3d9bd00be82f0855585069dd72f7b0efcc8181c7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c6e2bc0b_03564ad3",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 464,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2021-02-01T10:05:05Z",
+      "side": 1,
+      "message": "init the idx, the idx is used to decide where of vtep4_cache[8] to add new tunnel cache, it will also be ok if we delete this line.",
+      "parentUuid": "61a23dc9_390ad207",
+      "range": {
+        "startLine": 464,
+        "startChar": 7,
+        "endLine": 464,
+        "endChar": 17
+      },
+      "revId": "3d9bd00be82f0855585069dd72f7b0efcc8181c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
