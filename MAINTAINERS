@@ -28,7 +28,7 @@ M:	Dave Barach <vpp@barachs.net>
 F:	build-root/Makefile
 F:	build-data/
 
-Link Bonding
+VNET Link Bonding
 I:	bonding
 M:	Steven Luong <sluong@cisco.com>
 F:	src/vnet/bonding/
@@ -645,34 +645,34 @@ M:	Ole Troan <ot@cisco.com>
 M:	Paul Vinciguerra <pvinci@vinciconsulting.com>
 F:	src/vpp-api/python
 
-Cisco Discovery Protocol
+Plugin - Cisco Discovery Protocol
 I:	cdp
 F:	src/plugins/cdp/
 
-Source VRF Select
+Plugin - Source VRF Select
 I:	svs
 M:	Neale Ranns <neale@graphiant.com>
 F:	src/plugins/svs/
 
-LAN Emulation
+Plugin - LAN Emulation
 I:	l2e
 M:	Neale Ranns <neale@graphiant.com>
 F:	src/plugins/l2e/
 
-IPv6 Connection Tracker
+Plugin - IPv6 Connection Tracker
 I:	ct6
 M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/ct6
 
-Steal The NIC
+Plugin - Steal The NIC
 I:	stn
 F:	src/plugins/stn
 
-IOAM
+Plugin - IOAM
 I:	ioam
 F:	src/plugins/ioam
 
-Awkward chained buffer geometry tool
+Plugin - Awkward chained buffer geometry tool
 I:	oddbuf
 M:	Dave Barach <vpp@barachs.net>
 F:	src/plugins/oddbuf
