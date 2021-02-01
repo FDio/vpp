@@ -411,7 +411,7 @@ sr_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (!traffic_type)
     return clib_error_return (0, "No L2/L3 traffic specified");
-  if (!sr_policy_set)
+  if (!is_del && !sr_policy_set)
     return clib_error_return (0, "No SR policy specified");
 
   /* Make sure that the prefixes are clean */
