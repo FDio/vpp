@@ -449,13 +449,6 @@ static unix_cli_parse_actions_t unix_cli_parse_pager[] = {
 
 #undef _
 
-/** CLI session events. */
-typedef enum
-{
-  UNIX_CLI_PROCESS_EVENT_READ_READY,  /**< A file descriptor has data to be read. */
-  UNIX_CLI_PROCESS_EVENT_QUIT,	      /**< A CLI session wants to close. */
-} unix_cli_process_event_type_t;
-
 /** CLI session telnet negotiation timer events. */
 typedef enum
 {
