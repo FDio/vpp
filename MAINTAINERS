@@ -95,7 +95,7 @@ F:	src/vnet/classify
 
 VNET Policer
 I:	policer
-M:	N/A
+M:	Neale Ranns <neale@graphiant.com>
 F:	src/vnet/policer/
 
 VNET Device Drivers
