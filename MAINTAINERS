@@ -388,9 +388,9 @@ M:	Andrew Yourtchenko <ayourtch@gmail.com>
 F:	src/plugins/acl/
 
 Plugin - NAT
-I:      nat
-M:      Ole Troan <ot@cisco.com>
-F:      src/plugins/nat/
+I:	nat
+M:	Ole Troan <ot@cisco.com>
+F:	src/plugins/nat/
 
 Plugin - AVF Device driver
 I:	avf
@@ -493,10 +493,10 @@ M:	Francois Clad <fclad@cisco.com>
 F:	src/plugins/srv6-as/
 
 Plugin - IPv6 Segment Routing Mobile
-I:      srv6-mobile
-M:      Tetsuya Murakami <tetsuya.mrk@gmail.com>
+I:	srv6-mobile
+M:	Tetsuya Murakami <tetsuya.mrk@gmail.com>
 M:	Satoru Matsushima <satoru.matsushima@gmail.com>
-F:      src/plugins/srv6-mobile/
+F:	src/plugins/srv6-mobile/
 
 Plugin - Link Aggregation Control Protocol
 I:	lacp
