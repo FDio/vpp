@@ -359,6 +359,9 @@ create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
 
   segment_list->segments = vec_dup (sl);
 
+  segment_list->egress_fib_table =
+    ip6_fib_index_from_table_id (sr_policy->fib_table);
+
   if (is_encap)
     {
       segment_list->rewrite = compute_rewrite_encaps (sl);
@@ -1375,6 +1378,11 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  encaps_processing_v6 (node, b2, ip2, ip2_encap);
 	  encaps_processing_v6 (node, b3, ip3, ip3_encap);
 
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sl0->egress_fib_table;
+	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = sl1->egress_fib_table;
+	  vnet_buffer (b2)->sw_if_index[VLIB_TX] = sl2->egress_fib_table;
+	  vnet_buffer (b3)->sw_if_index[VLIB_TX] = sl3->egress_fib_table;
+
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -1456,6 +1464,8 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip0 = vlib_buffer_get_current (b0);
 
 	  encaps_processing_v6 (node, b0, ip0, ip0_encap);
+
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sl0->egress_fib_table;
 
 	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
 	      PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -1660,6 +1670,11 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  encaps_processing_v4 (node, b2, ip2, ip2_encap);
 	  encaps_processing_v4 (node, b3, ip3, ip3_encap);
 
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sl0->egress_fib_table;
+	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = sl1->egress_fib_table;
+	  vnet_buffer (b2)->sw_if_index[VLIB_TX] = sl2->egress_fib_table;
+	  vnet_buffer (b3)->sw_if_index[VLIB_TX] = sl3->egress_fib_table;
+
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -1742,6 +1757,8 @@ sr_policy_rewrite_encaps_v4 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip0 = vlib_buffer_get_current (b0);
 
 	  encaps_processing_v4 (node, b0, ip0, ip0_encap);
+
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sl0->egress_fib_table;
 
 	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
 	      PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
