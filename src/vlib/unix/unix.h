@@ -111,6 +111,14 @@ typedef struct
 
 } unix_main_t;
 
+/** CLI session events. */
+typedef enum
+{
+  UNIX_CLI_PROCESS_EVENT_READ_READY, /**< A file descriptor has data to be
+					read. */
+  UNIX_CLI_PROCESS_EVENT_QUIT,	     /**< A CLI session wants to close. */
+} unix_cli_process_event_type_t;
+
 /* Global main structure. */
 extern unix_main_t unix_main;
 extern clib_file_main_t file_main;
