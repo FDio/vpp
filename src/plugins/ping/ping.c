@@ -16,6 +16,7 @@
 #include <stddef.h>
 
 #include <vlib/vlib.h>
+#include <vlib/unix/unix.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/fib_sas.h>
@@ -1173,11 +1174,11 @@ run_ping_ip46_address (vlib_main_t * vm, u32 table_id, ip4_address_t * pa4,
 		  }
 	      }
 	      break;
-	    default:
+	    case UNIX_CLI_PROCESS_EVENT_READ_READY:
+	    case UNIX_CLI_PROCESS_EVENT_QUIT:
 	      /* someone pressed a key, abort */
 	      vlib_cli_output (vm, "Aborted due to a keypress.");
 	      goto double_break;
-	      break;
 	    }
 	  vec_free (event_data);
 	}
