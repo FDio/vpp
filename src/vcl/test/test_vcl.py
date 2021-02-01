@@ -262,8 +262,8 @@ class LDPCutThruTestCase(VCLTestCase):
         self.client_echo_test_args = ["-E", self.echo_phrase, "-X",
                                       self.server_addr, self.server_port]
         self.client_iperf3_timeout = 20
-        self.client_iperf3_args = ["-V4d", "-t 2", "-c", self.server_addr]
-        self.server_iperf3_args = ["-V4d", "-s"]
+        self.client_iperf3_args = ["-4d", "-t 2", "-c", self.server_addr]
+        self.server_iperf3_args = ["-4d", "-s"]
         self.client_uni_dir_nsock_timeout = 20
         self.client_uni_dir_nsock_test_args = ["-N", "1000", "-U", "-X",
                                                "-I", "2",
@@ -623,8 +623,8 @@ class LDPThruHostStackIperf(VCLTestCase):
 
         self.thru_host_stack_setup()
         self.client_iperf3_timeout = 20
-        self.client_iperf3_args = ["-V4d", "-t 2", "-c", self.loop0.local_ip4]
-        self.server_iperf3_args = ["-V4d", "-s"]
+        self.client_iperf3_args = ["-4d", "-t 2", "-c", self.loop0.local_ip4]
+        self.server_iperf3_args = ["-4d", "-s"]
 
     def tearDown(self):
         self.thru_host_stack_tear_down()
@@ -658,9 +658,9 @@ class LDPThruHostStackIperfUdp(VCLTestCase):
 
         self.thru_host_stack_setup()
         self.client_iperf3_timeout = 20
-        self.client_iperf3_args = ["-V4d", "-t 2", "-u", "-l 1400",
+        self.client_iperf3_args = ["-4d", "-t 2", "-u", "-l 1400",
                                    "-c", self.loop0.local_ip4]
-        self.server_iperf3_args = ["-V4d", "-s"]
+        self.server_iperf3_args = ["-4d", "-s"]
 
     def tearDown(self):
         self.thru_host_stack_tear_down()
@@ -699,9 +699,9 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
         self.client_ipv6_echo_test_args = ["-6", "-E", self.echo_phrase, "-X",
                                            self.server_ipv6_addr,
                                            self.server_port]
-        self.client_ipv6_iperf3_args = ["-V6d", "-t 2", "-c",
+        self.client_ipv6_iperf3_args = ["-6d", "-t 2", "-c",
                                         self.server_ipv6_addr]
-        self.server_ipv6_iperf3_args = ["-V6d", "-s"]
+        self.server_ipv6_iperf3_args = ["-6d", "-s"]
         self.client_ipv6_uni_dir_nsock_test_args = ["-N", "1000", "-U", "-X",
                                                     "-6",
                                                     "-I", "2",
