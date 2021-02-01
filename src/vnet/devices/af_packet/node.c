@@ -224,6 +224,9 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  while (data_len)
 	    {
+	      // fprintf(stderr, "len:%d snap:%d\n", tph->tp_len,
+	      // tph->tp_snaplen);
+
 	      /* grab free buffer */
 	      u32 last_empty_buffer =
 		vec_len (apm->rx_buffers[thread_index]) - 1;
@@ -263,13 +266,16 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 				(u8 *) tph + tph->tp_mac + offset +
 				bytes_copied, (bytes_to_copy - bytes_copied));
 
+	      b0->flags =
+		tph->tp_snaplen > apif->host_mtu ? VNET_BUFFER_F_GSO : 0;
+
 	      /* fill buffer header */
 	      b0->current_length = bytes_to_copy + vlan_len;
 
 	      if (offset == 0)
 		{
 		  b0->total_length_not_including_first_buffer = 0;
-		  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+		  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 		  vnet_buffer (b0)->sw_if_index[VLIB_RX] = apif->sw_if_index;
 		  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 		  first_bi0 = bi0;

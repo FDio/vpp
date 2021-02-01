@@ -157,6 +157,7 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 			    unix_error_is_fatal (errno) ?
 			    AF_PACKET_TX_ERROR_TXRING_FATAL :
 			    AF_PACKET_TX_ERROR_TXRING_EAGAIN, n_sent);
+	  fprintf (stderr, "SENDTO :: %d\n", errno);
 	}
     }
 
