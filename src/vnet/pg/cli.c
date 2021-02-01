@@ -378,8 +378,15 @@ new_stream (vlib_main_t * vm,
 
       else if (unformat (input, "buffer-flags %U",
 			 unformat_vnet_buffer_flags, &s.buffer_flags))
-	;
-
+	{
+	  if (s.buffer_flags & VNET_BUFFER_F_OFFLOAD)
+	    {
+	      if (unformat (input, "buffer-offload-flags %U",
+			    unformat_vnet_buffer_offload_flags,
+			    &s.buffer_oflags))
+		;
+	    }
+	}
       else if (unformat (input, "node %U",
 			 unformat_vlib_node, vm, &s.node_index))
 	;
