@@ -214,6 +214,30 @@
       "revId": "3829c812f0475370217a5b71039b36723a8c2a31",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5e9188cb_9c33f341",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1112,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-02-01T19:21:14Z",
+      "side": 1,
+      "message": "Hi Hanlin, \n\nWe do intercept fctl and ioctl in ldp and inject the configs/attributes into vcl but only for a limited number of options. Is the issue the fact that we don\u0027t support all the options or something more fundamental?\n\nI might need a refresher, as it\u0027s been a while since I last looked at this, but the original comment still looks like something that we should use as a guiding principle. That is, the thing we\u0027re missing is a way to selectively \"route\" (as you put it) socket calls to either linux or vls. Now, because that is something that only ldp could understand, most of the logic should be there, although we might need some support from vls/vcl (e.g., dump all attributes for a session handle).\n\nI assume there\u0027s now way to detect what way a socket wants to go before connect/bind, is there?",
+      "parentUuid": "84179e52_320b80fb",
+      "range": {
+        "startLine": 1112,
+        "startChar": 3,
+        "endLine": 1112,
+        "endChar": 34
+      },
+      "revId": "3829c812f0475370217a5b71039b36723a8c2a31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
