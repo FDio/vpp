@@ -22,6 +22,7 @@
 #include <vnet/fib/ip4_fib.h>
 #include <nat/nat.h>
 #include <nat/nat_inlines.h>
+#include <nat/nat44_hairpinning.h>
 
 typedef enum
 {
@@ -36,6 +37,7 @@ typedef enum
 {
   NAT_HAIRPIN_NEXT_LOOKUP,
   NAT_HAIRPIN_NEXT_DROP,
+  NAT_HAIRPIN_NEXT_HANDOFF,
   NAT_HAIRPIN_N_NEXT,
 } nat_hairpin_next_t;
 
@@ -77,13 +79,11 @@ is_hairpinning (snat_main_t * sm, ip4_address_t * dst_addr)
   snat_address_t *ap;
   clib_bihash_kv_8_8_t kv, value;
 
-  /* *INDENT-OFF* */
   vec_foreach (ap, sm->addresses)
     {
       if (ap->addr.as_u32 == dst_addr->as_u32)
         return 1;
     }
-  /* *INDENT-ON* */
 
   init_nat_k (&kv, *dst_addr, 0, 0, 0);
   if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
@@ -95,13 +95,14 @@ is_hairpinning (snat_main_t * sm, ip4_address_t * dst_addr)
 #ifndef CLIB_MARCH_VARIANT
 int
 snat_hairpinning (vlib_main_t *vm, vlib_node_runtime_t *node, snat_main_t *sm,
-		  vlib_buffer_t *b0, ip4_header_t *ip0, udp_header_t *udp0,
-		  tcp_header_t *tcp0, u32 proto0, int do_trace)
+		  u32 thread_index, vlib_buffer_t *b0, ip4_header_t *ip0,
+		  udp_header_t *udp0, tcp_header_t *tcp0, u32 proto0,
+		  int do_trace, u32 *required_thread_index)
 {
   snat_session_t *s0 = NULL;
   clib_bihash_kv_8_8_t kv0, value0;
   ip_csum_t sum0;
-  u32 new_dst_addr0 = 0, old_dst_addr0, ti = 0, si = ~0;
+  u32 new_dst_addr0 = 0, old_dst_addr0, si = ~0;
   u16 new_dst_port0 = ~0, old_dst_port0;
   int rv;
   ip4_address_t sm0_addr;
@@ -120,13 +121,6 @@ snat_hairpinning (vlib_main_t *vm, vlib_node_runtime_t *node, snat_main_t *sm,
   /* or active session */
   else
     {
-      if (sm->num_workers > 1)
-	ti =
-	  (clib_net_to_host_u16 (udp0->dst_port) -
-	   1024) / sm->port_per_thread;
-      else
-	ti = sm->num_workers;
-
       init_nat_k (&kv0, ip0->dst_address, udp0->dst_port,
 		  sm->outside_fib_index, proto0);
       rv = clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0);
@@ -136,8 +130,14 @@ snat_hairpinning (vlib_main_t *vm, vlib_node_runtime_t *node, snat_main_t *sm,
 	  goto trace;
 	}
 
+      if (thread_index != nat_value_get_thread_index (&value0))
+	{
+	  *required_thread_index = nat_value_get_thread_index (&value0);
+	  return 0;
+	}
+
       si = nat_value_get_session_index (&value0);
-      s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
+      s0 = pool_elt_at_index (sm->per_thread_data[thread_index].sessions, si);
       new_dst_addr0 = s0->in2out.addr.as_u32;
       new_dst_port0 = s0->in2out.port;
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
@@ -220,8 +220,9 @@ trace:
 
 #ifndef CLIB_MARCH_VARIANT
 u32
-snat_icmp_hairpinning (snat_main_t *sm, vlib_buffer_t *b0, ip4_header_t *ip0,
-		       icmp46_header_t *icmp0)
+snat_icmp_hairpinning (snat_main_t *sm, vlib_buffer_t *b0, u32 thread_index,
+		       ip4_header_t *ip0, icmp46_header_t *icmp0,
+		       u32 *required_thread_index)
 {
   clib_bihash_kv_8_8_t kv0, value0;
   u32 old_dst_addr0, new_dst_addr0;
@@ -250,6 +251,12 @@ snat_icmp_hairpinning (snat_main_t *sm, vlib_buffer_t *b0, ip4_header_t *ip0,
 		  sm->outside_fib_index, protocol);
       if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
 	return 1;
+      ti = nat_value_get_thread_index (&value0);
+      if (ti != thread_index)
+	{
+	  *required_thread_index = ti;
+	  return 1;
+	}
       si = nat_value_get_session_index (&value0);
       s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
       new_dst_addr0 = s0->in2out.addr.as_u32;
@@ -295,14 +302,15 @@ snat_icmp_hairpinning (snat_main_t *sm, vlib_buffer_t *b0, ip4_header_t *ip0,
 	  u16 icmp_id0 = echo0->identifier;
 	  init_nat_k (&kv0, ip0->dst_address, icmp_id0, sm->outside_fib_index,
 		      NAT_PROTOCOL_ICMP);
-	  if (sm->num_workers > 1)
-	    ti =
-	      (clib_net_to_host_u16 (icmp_id0) - 1024) / sm->port_per_thread;
-	  else
-	    ti = sm->num_workers;
 	  int rv = clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0);
 	  if (!rv)
 	    {
+	      ti = nat_value_get_thread_index (&value0);
+	      if (ti != thread_index)
+		{
+		  *required_thread_index = ti;
+		  return 1;
+		}
 	      si = nat_value_get_session_index (&value0);
 	      s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
 	      new_dst_addr0 = s0->in2out.addr.as_u32;
@@ -371,6 +379,7 @@ nat44_hairpinning_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 			     vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
+  u32 thread_index = vm->thread_index;
   nat_hairpin_next_t next_index;
   snat_main_t *sm = &snat_main;
   vnet_feature_main_t *fm = &feature_main;
@@ -397,6 +406,7 @@ nat44_hairpinning_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  udp_header_t *udp0;
 	  tcp_header_t *tcp0;
 	  u32 sw_if_index0;
+	  u32 required_thread_index = thread_index;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -413,13 +423,27 @@ nat44_hairpinning_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
 	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
+	  int next0_resolved = 0;
 
-	  vnet_get_config_data (&cm->config_main, &b0->current_config_index,
-				&next0, 0);
+	  if (snat_hairpinning (vm, node, sm, thread_index, b0, ip0, udp0,
+				tcp0, proto0, 1 /* do_trace */,
+				&required_thread_index))
+	    {
+	      next0 = NAT_HAIRPIN_NEXT_LOOKUP;
+	      next0_resolved = 1;
+	    }
 
-	  if (snat_hairpinning (vm, node, sm, b0, ip0, udp0, tcp0, proto0,
-				1 /* do_trace */))
-	    next0 = NAT_HAIRPIN_NEXT_LOOKUP;
+	  if (thread_index != required_thread_index)
+	    {
+	      vnet_buffer (b0)->snat.required_thread_index =
+		required_thread_index;
+	      next0 = NAT_HAIRPIN_NEXT_HANDOFF;
+	      next0_resolved = 1;
+	    }
+
+	  if (!next0_resolved)
+	    vnet_get_config_data (&cm->config_main, &b0->current_config_index,
+				  &next0, 0);
 
 	  if (next0 != NAT_HAIRPIN_NEXT_DROP)
 	    {
@@ -447,7 +471,6 @@ VLIB_NODE_FN (nat44_hairpinning_node) (vlib_main_t * vm,
   return nat44_hairpinning_fn_inline (vm, node, frame);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_hairpinning_node) = {
   .name = "nat44-hairpinning",
   .vector_size = sizeof (u32),
@@ -457,15 +480,37 @@ VLIB_REGISTER_NODE (nat44_hairpinning_node) = {
   .next_nodes = {
     [NAT_HAIRPIN_NEXT_DROP] = "error-drop",
     [NAT_HAIRPIN_NEXT_LOOKUP] = "ip4-lookup",
+    [NAT_HAIRPIN_NEXT_HANDOFF] = "nat44-hairpinning-handoff",
   },
 };
-/* *INDENT-ON* */
+
+VLIB_NODE_FN (nat44_hairpinning_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return nat44_hairpinning_handoff_fn_inline (
+    vm, node, frame, snat_main.nat44_hairpinning_fq_index);
+}
+
+VLIB_REGISTER_NODE (nat44_hairpinning_handoff_node) = {
+  .name = "nat44-hairpinning-handoff",
+  .vector_size = sizeof (u32),
+  .n_errors = ARRAY_LEN(nat44_hairpinning_handoff_error_strings),
+  .error_strings = nat44_hairpinning_handoff_error_strings,
+  .format_trace = format_nat44_hairpinning_handoff_trace,
+
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
 
 static inline uword
 snat_hairpin_dst_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 			    vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
+  u32 thread_index = vm->thread_index;
   nat_hairpin_next_t next_index;
   snat_main_t *sm = &snat_main;
 
@@ -487,6 +532,7 @@ snat_hairpin_dst_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  ip4_header_t *ip0;
 	  u32 proto0;
 	  u32 sw_if_index0;
+	  u32 required_thread_index = thread_index;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -511,14 +557,16 @@ snat_hairpin_dst_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 		  udp_header_t *udp0 = ip4_next_header (ip0);
 		  tcp_header_t *tcp0 = (tcp_header_t *) udp0;
 
-		  snat_hairpinning (vm, node, sm, b0, ip0, udp0, tcp0, proto0,
-				    1 /* do_trace */);
+		  snat_hairpinning (vm, node, sm, thread_index, b0, ip0, udp0,
+				    tcp0, proto0, 1 /* do_trace */,
+				    &required_thread_index);
 		}
 	      else if (proto0 == NAT_PROTOCOL_ICMP)
 		{
 		  icmp46_header_t *icmp0 = ip4_next_header (ip0);
 
-		  snat_icmp_hairpinning (sm, b0, ip0, icmp0);
+		  snat_icmp_hairpinning (sm, b0, thread_index, ip0, icmp0,
+					 &required_thread_index);
 		}
 	      else
 		{
@@ -528,6 +576,12 @@ snat_hairpin_dst_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      vnet_buffer (b0)->snat.flags = SNAT_FLAG_HAIRPINNING;
 	    }
 
+	  if (thread_index != required_thread_index)
+	    {
+	      vnet_buffer (b0)->snat.required_thread_index =
+		required_thread_index;
+	      next0 = NAT_HAIRPIN_NEXT_HANDOFF;
+	    }
 
 	  if (next0 != NAT_HAIRPIN_NEXT_DROP)
 	    {
@@ -555,7 +609,6 @@ VLIB_NODE_FN (snat_hairpin_dst_node) (vlib_main_t * vm,
   return snat_hairpin_dst_fn_inline (vm, node, frame);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_hairpin_dst_node) = {
   .name = "nat44-hairpin-dst",
   .vector_size = sizeof (u32),
@@ -565,9 +618,30 @@ VLIB_REGISTER_NODE (snat_hairpin_dst_node) = {
   .next_nodes = {
     [NAT_HAIRPIN_NEXT_DROP] = "error-drop",
     [NAT_HAIRPIN_NEXT_LOOKUP] = "ip4-lookup",
+    [NAT_HAIRPIN_NEXT_HANDOFF] = "nat44-hairpin-dst-handoff",
   },
 };
-/* *INDENT-ON* */
+
+VLIB_NODE_FN (nat44_hairpinning_dst_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return nat44_hairpinning_handoff_fn_inline (
+    vm, node, frame, snat_main.snat_hairpin_dst_fq_index);
+}
+
+VLIB_REGISTER_NODE (nat44_hairpinning_dst_handoff_node) = {
+  .name = "nat44-hairpin-dst-handoff",
+  .vector_size = sizeof (u32),
+  .n_errors = ARRAY_LEN(nat44_hairpinning_handoff_error_strings),
+  .error_strings = nat44_hairpinning_handoff_error_strings,
+  .format_trace = format_nat44_hairpinning_handoff_trace,
+
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
 
 static inline uword
 snat_hairpin_src_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
@@ -607,7 +681,6 @@ snat_hairpin_src_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  vnet_feature_next (&next0, b0);
 
-          /* *INDENT-OFF* */
           pool_foreach (i, sm->output_feature_interfaces)
            {
             /* Only packets from NAT inside interface */
@@ -624,7 +697,6 @@ snat_hairpin_src_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
                 break;
               }
           }
-          /* *INDENT-ON* */
 
 	  if (next0 != SNAT_HAIRPIN_SRC_NEXT_DROP)
 	    {
@@ -652,7 +724,6 @@ VLIB_NODE_FN (snat_hairpin_src_node) (vlib_main_t * vm,
   return snat_hairpin_src_fn_inline (vm, node, frame);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_hairpin_src_node) = {
   .name = "nat44-hairpin-src",
   .vector_size = sizeof (u32),
@@ -665,7 +736,6 @@ VLIB_REGISTER_NODE (snat_hairpin_src_node) = {
      [SNAT_HAIRPIN_SRC_NEXT_SNAT_IN2OUT_WH] = "nat44-in2out-output-worker-handoff",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
