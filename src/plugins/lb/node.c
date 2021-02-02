@@ -538,7 +538,16 @@ lb_node_fn (vlib_main_t * vm,
                           csum, lbm->ass[asindex0].address.ip6.as_u64[1]);
                       uh->checksum = ip_csum_fold (csum);
                     }
+                  else if (ip40->protocol == IP_PROTOCOL_TCP)
+                    {
+                      tcp_header_t *th0;
+                      th0 = (tcp_header_t *)(ip40 + 1);
+                      th0->dst_port = vip0->encap_args.target_port;
+                      th0->checksum = 0;
+                      th0->checksum = ip4_tcp_udp_compute_checksum (vm, p0, ip40);
+                    }
                   else
+
                     {
                       asindex0 = 0;
                     }
@@ -802,7 +811,7 @@ lb_nat_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
               ip40 = vlib_buffer_get_current (b0);
               udp0 = ip4_next_header (ip40);
               tcp0 = (tcp_header_t *) udp0;
-              proto0 = lb_ip_proto_to_nat_proto (ip40->protocol);
+              proto0 = ip40->protocol;
 
               key40.addr = ip40->src_address;
               key40.protocol = proto0;
@@ -817,7 +826,7 @@ lb_nat_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
               sm40 = pool_elt_at_index(lbm->snat_mappings, index40);
               new_addr0 = sm40->src_ip.ip4.as_u32;
-              new_port0 = sm40->src_port;
+              new_port0 = clib_host_to_net_u16(sm40->src_port);
               vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm40->fib_index;
               old_addr0 = ip40->src_address.as_u32;
               ip40->src_address.as_u32 = new_addr0;
