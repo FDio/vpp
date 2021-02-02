@@ -252,6 +252,12 @@ u64x8_mask_is_equal (u64x8 a, u64x8 b)
   return _mm512_cmpeq_epu64_mask ((__m512i) a, (__m512i) b);
 }
 
+static_always_inline u8
+u32x16_mask_is_nequal (u64x8 a, u64x8 b, u16 mask)
+{
+  return _mm512_mask_cmpneq_epu32_mask (mask, (__m512i) a, (__m512i) b);
+}
+
 static_always_inline void
 u32x16_transpose (u32x16 m[16])
 {

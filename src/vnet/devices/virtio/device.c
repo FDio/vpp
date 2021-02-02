@@ -226,6 +226,83 @@ virtio_free_used_device_desc_split (vlib_main_t * vm, virtio_vring_t * vring,
   vring->last_used_idx = last;
 }
 
+#if defined(CLIB_HAVE_VEC512)
+static_always_inline void
+virtio_free_used_device_desc_packed (vlib_main_t *vm, virtio_vring_t *vring,
+				     uword node_index)
+{
+  vring_packed_desc_t *d;
+  u16 sz = vring->size;
+  u16 last = vring->last_used_idx;
+  u16 n_buffers = 0, start;
+  u16 flags;
+  u64 used_flag = (0ULL | VRING_DESC_F_AVAIL | VRING_DESC_F_USED) << 48;
+
+  if (vring->desc_in_use == 0)
+    return;
+
+  d = &vring->packed_desc[last];
+  start = d->id;
+
+  while (1)
+    {
+      if ((last + 4) < vring->size)
+	{
+	  u64x8 v_desc = u64x8_load_unaligned (&vring->packed_desc[last]);
+	  u64x8 v_used;
+	  if (vring->used_wrap_counter)
+	    v_used = u64x8_splat (used_flag);
+	  else
+	    v_used = u64x8_splat (0);
+	  /* calculate number of used descs */
+	  u8 cmp = u32x16_mask_is_nequal (v_desc, v_used, 0x8888);
+	  u8 cnt = __builtin_ctz (cmp) >> 1;
+
+	  last += cnt;
+	  n_buffers += cnt;
+
+	  if (last >= sz)
+	    {
+	      last = 0;
+	      vring->used_wrap_counter ^= 1;
+	    }
+	  if (cnt == 4)
+	    continue;
+	  else
+	    break;
+	}
+      else
+	{
+	  flags = d->flags;
+	  if ((flags & VRING_DESC_F_AVAIL) ==
+		(vring->used_wrap_counter << 7) &&
+	      (flags & VRING_DESC_F_USED) == (vring->used_wrap_counter << 15))
+	    {
+	      last++;
+	      n_buffers++;
+
+	      if (last >= sz)
+		{
+		  last = 0;
+		  vring->used_wrap_counter ^= 1;
+		}
+	      d = &vring->packed_desc[last];
+	      continue;
+	    }
+	  else
+	    break;
+	}
+    }
+
+  if (n_buffers)
+    {
+      vlib_buffer_free_from_ring (vm, vring->buffers, start, sz, n_buffers);
+      virtio_memset_ring_u32 (vring->buffers, start, sz, n_buffers);
+      vring->desc_in_use -= n_buffers;
+      vring->last_used_idx = last;
+    }
+}
+#else
 static_always_inline void
 virtio_free_used_device_desc_packed (vlib_main_t * vm, virtio_vring_t * vring,
 				     uword node_index)
@@ -266,6 +343,7 @@ virtio_free_used_device_desc_packed (vlib_main_t * vm, virtio_vring_t * vring,
       vring->last_used_idx = last;
     }
 }
+#endif
 
 static_always_inline void
 virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring,
