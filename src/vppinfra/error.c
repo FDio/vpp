@@ -95,7 +95,7 @@ dispatch_message (u8 * msg)
 {
   word i;
 
-  if (!msg)
+  if (!badmsg)
     return msg;
 
   for (i = 0; i < vec_len (handlers); i++)
