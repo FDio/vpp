@@ -525,17 +525,11 @@ typedef struct
 struct snat_main_s;
 
 /* ICMP session match function */
-typedef u32 (snat_icmp_match_function_t) (struct snat_main_s * sm,
-					  vlib_node_runtime_t * node,
-					  u32 thread_index,
-					  vlib_buffer_t * b0,
-					  ip4_header_t * ip0,
-					  ip4_address_t * addr,
-					  u16 * port,
-					  u32 * fib_index,
-					  nat_protocol_t * proto,
-					  void *d, void *e,
-					  u8 * dont_translate);
+typedef u32 (snat_icmp_match_function_t) (
+  struct snat_main_s *sm, vlib_node_runtime_t *node, u32 thread_index,
+  vlib_buffer_t *b0, ip4_header_t *ip0, ip4_address_t *addr, u16 *port,
+  u32 *fib_index, nat_protocol_t *proto, snat_session_t **s_out,
+  u8 *dont_translate);
 
 /* Return worker thread index for given packet */
 typedef u32 (snat_get_worker_in2out_function_t) (ip4_header_t * ip,
@@ -1129,40 +1123,26 @@ do                                                        \
   nat_elog_X1(SNAT_LOG_INFO, "[info] " nat_elog_fmt_str, nat_elog_fmt_arg, nat_elog_val1)
 
 /* ICMP session match functions */
-u32 icmp_match_in2out_fast (snat_main_t * sm, vlib_node_runtime_t * node,
-			    u32 thread_index, vlib_buffer_t * b0,
-			    ip4_header_t * ip0, ip4_address_t * addr,
-			    u16 * port, u32 * fib_index,
-			    nat_protocol_t * proto, void *d, void *e,
-			    u8 * dont_translate);
-u32 icmp_match_in2out_slow (snat_main_t * sm, vlib_node_runtime_t * node,
-			    u32 thread_index, vlib_buffer_t * b0,
-			    ip4_header_t * ip0, ip4_address_t * addr,
-			    u16 * port, u32 * fib_index,
-			    nat_protocol_t * proto, void *d, void *e,
-			    u8 * dont_translate);
-u32 icmp_match_out2in_fast (snat_main_t * sm, vlib_node_runtime_t * node,
-			    u32 thread_index, vlib_buffer_t * b0,
-			    ip4_header_t * ip0, ip4_address_t * addr,
-			    u16 * port, u32 * fib_index,
-			    nat_protocol_t * proto, void *d, void *e,
-			    u8 * dont_translate);
-u32 icmp_match_out2in_slow (snat_main_t * sm, vlib_node_runtime_t * node,
-			    u32 thread_index, vlib_buffer_t * b0,
-			    ip4_header_t * ip0, ip4_address_t * addr,
-			    u16 * port, u32 * fib_index,
-			    nat_protocol_t * proto, void *d, void *e,
-			    u8 * dont_translate);
-
-u32 icmp_in2out (snat_main_t * sm, vlib_buffer_t * b0, ip4_header_t * ip0,
-		 icmp46_header_t * icmp0, u32 sw_if_index0, u32 rx_fib_index0,
-		 vlib_node_runtime_t * node, u32 next0, u32 thread_index,
-		 void *d, void *e);
-
-u32 icmp_out2in (snat_main_t * sm, vlib_buffer_t * b0, ip4_header_t * ip0,
-		 icmp46_header_t * icmp0, u32 sw_if_index0, u32 rx_fib_index0,
-		 vlib_node_runtime_t * node, u32 next0, u32 thread_index,
-		 void *d, void *e);
+u32 icmp_match_in2out_fast (snat_main_t *sm, vlib_node_runtime_t *node,
+			    u32 thread_index, vlib_buffer_t *b0,
+			    ip4_header_t *ip0, ip4_address_t *addr, u16 *port,
+			    u32 *fib_index, nat_protocol_t *proto,
+			    snat_session_t **s0, u8 *dont_translate);
+u32 icmp_match_in2out_slow (snat_main_t *sm, vlib_node_runtime_t *node,
+			    u32 thread_index, vlib_buffer_t *b0,
+			    ip4_header_t *ip0, ip4_address_t *addr, u16 *port,
+			    u32 *fib_index, nat_protocol_t *proto,
+			    snat_session_t **s0, u8 *dont_translate);
+u32 icmp_match_out2in_fast (snat_main_t *sm, vlib_node_runtime_t *node,
+			    u32 thread_index, vlib_buffer_t *b0,
+			    ip4_header_t *ip0, ip4_address_t *addr, u16 *port,
+			    u32 *fib_index, nat_protocol_t *proto,
+			    snat_session_t **s0, u8 *dont_translate);
+u32 icmp_match_out2in_slow (snat_main_t *sm, vlib_node_runtime_t *node,
+			    u32 thread_index, vlib_buffer_t *b0,
+			    ip4_header_t *ip0, ip4_address_t *addr, u16 *port,
+			    u32 *fib_index, nat_protocol_t *proto,
+			    snat_session_t **s0, u8 *dont_translate);
 
 /* hairpinning functions */
 u32 snat_icmp_hairpinning (snat_main_t *sm, vlib_buffer_t *b0,
