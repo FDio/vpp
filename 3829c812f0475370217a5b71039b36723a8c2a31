@@ -238,6 +238,30 @@
       "revId": "3829c812f0475370217a5b71039b36723a8c2a31",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b2b1c667_20faf234",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1112,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2021-02-02T06:08:25Z",
+      "side": 1,
+      "message": "We can only synchronize all configs/attributes to support all cases, and now only a few of them are supported.\nYes, I agree most of the logic should be in ldp. Because there\u0027s no way to detect what way a socket wants to go before connect/bind, I\u0027d like to create vlc session and linux fd both and  fcntl/ioctl/setsockopt them both (avoid synchronize configs/attributes) until connect/bind.",
+      "parentUuid": "5e9188cb_9c33f341",
+      "range": {
+        "startLine": 1112,
+        "startChar": 3,
+        "endLine": 1112,
+        "endChar": 34
+      },
+      "revId": "3829c812f0475370217a5b71039b36723a8c2a31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
