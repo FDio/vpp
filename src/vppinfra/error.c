@@ -67,7 +67,7 @@ typedef struct
 {
   clib_error_handler_func_t *func;
   void *arg;
-} clib_error_handler_t;
+} clib_error_handler_t
 
 static clib_error_handler_t *handlers = 0;
 
