@@ -272,6 +272,8 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid):
             except Exception as e:
                 logger.exception("Unexpected error running `file' utility "
                                  "on core-file")
+            logger.error("gdb %s %s" %
+                         (os.getenv('VPP_BIN', 'vpp'), core_path))
 
     if vpp_pid:
         # Copy api post mortem

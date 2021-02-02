@@ -2514,6 +2514,13 @@ do                                        \
     vlib_zero_simple_counter (&c, 0);     \
   } while (0);
 
+extern vlib_node_registration_t nat44_hairpinning_node;
+extern vlib_node_registration_t snat_hairpin_dst_node;
+extern vlib_node_registration_t
+  nat44_in2out_hairpinning_finish_ip4_lookup_node;
+extern vlib_node_registration_t
+  nat44_in2out_hairpinning_finish_interface_output_node;
+
 static clib_error_t *
 nat_init (vlib_main_t * vm)
 {
@@ -2632,6 +2639,17 @@ nat_init (vlib_main_t * vm)
   nat_ha_init (vm, sm->num_workers, num_threads);
 
   test_key_calc_split ();
+
+  sm->nat44_hairpinning_fq_index =
+    vlib_frame_queue_main_init (nat44_hairpinning_node.index, 0);
+  sm->snat_hairpin_dst_fq_index =
+    vlib_frame_queue_main_init (snat_hairpin_dst_node.index, 0);
+  sm->nat44_in2out_hairpinning_finish_ip4_lookup_node_fq_index =
+    vlib_frame_queue_main_init (
+      nat44_in2out_hairpinning_finish_ip4_lookup_node.index, 0);
+  sm->nat44_in2out_hairpinning_finish_interface_output_node_fq_index =
+    vlib_frame_queue_main_init (
+      nat44_in2out_hairpinning_finish_interface_output_node.index, 0);
   return nat44_api_hookup (vm);
 }
 

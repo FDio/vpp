@@ -378,6 +378,7 @@ typedef struct
     struct
     {
       u32 flags;
+      u32 required_thread_index;
     } snat;
 
     u32 unused[6];
