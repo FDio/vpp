@@ -60,8 +60,7 @@ class BoolEnvironmentVariable(object):
     def __init__(self, env_var_name, default='n', true_values=None):
         self.name = env_var_name
         self.default = default
-        self.true_values = true_values if true_values is not None else \
-            ("y", "yes", "1")
+        self.true_values = true_values if true_values is not None else            ("y", "yes", "1")
 
     def __bool__(self):
         return os.getenv(self.name, self.default).lower() in self.true_values
