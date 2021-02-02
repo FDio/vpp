@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "031ca772_e0146e3c",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1421,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-02-02T15:38:54Z",
+      "side": 1,
+      "message": "Sorry, I wasn\u0027t clear enough, it should look like this:\n``` \n(_b-\u003eflags \u0026 VNET_BUFFER_F_OFFLOAD) \n\u0026\u0026 (vnet_buffer2 (_b)-\u003eoflags \u0026 (VNET_BUFFER_OFFLOAD_F_TCP_CKSUM | VNET_BUFFER_OFFLOAD_F_UDP_CKSUM))\n```",
+      "parentUuid": "59cc2713_c35b03f9",
+      "range": {
+        "startLine": 1421,
+        "startChar": 3,
+        "endLine": 1421,
+        "endChar": 37
+      },
+      "revId": "46e72645611f2d46cae0bf1d17dc7d2645c08195",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "976938fb_047d5131",
         "filename": "src/vnet/udp/udp_inlines.h",
         "patchSetId": 5
