@@ -56,6 +56,8 @@ class QUICTestCase(VppTestCase):
 
     def setUp(self):
         super(QUICTestCase, self).setUp()
+        self.assertEqual(1, 0, "Jenkins Failure Cause Test Failure!!!")
+
         var = "VPP_BUILD_DIR"
         self.build_dir = os.getenv(var, None)
         if self.build_dir is None:
