@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "d8603ad5_a44448f1",
+        "filename": "src/plugins/nat/pnat/pnat.api",
+        "patchSetId": 20
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e13807f1_34b5fd0d",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5f4ce45e_24ce4254",
         "filename": "src/plugins/nat/pnat/pnat.api",
         "patchSetId": 20
@@ -33,6 +51,24 @@
       "revId": "d1ae178aae58f157579472b8af393d253f581694",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "37473883_328272e2",
+        "filename": "src/plugins/nat/pnat/pnat.api",
+        "patchSetId": 20
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5f4ce45e_24ce4254",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "b65d79fe_723c3eee",
+        "filename": "src/plugins/nat/pnat/pnat.api",
+        "patchSetId": 20
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ed308736_218936b7",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a75b0ee2_323e2cc9",
         "filename": "src/plugins/nat/pnat/pnat.c",
         "patchSetId": 20
@@ -67,6 +121,24 @@
       "revId": "d1ae178aae58f157579472b8af393d253f581694",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "104b70b5_32caba79",
+        "filename": "src/plugins/nat/pnat/pnat.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a75b0ee2_323e2cc9",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "d33849be_97cbaf0d",
+        "filename": "src/plugins/nat/pnat/pnat.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "Allowing for other initialisations too. Not only the bihash.",
+      "parentUuid": "b07cc5ad_0332711c",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d36dc30d_1ac36ad7",
         "filename": "src/plugins/nat/pnat/pnat.c",
         "patchSetId": 20
@@ -101,6 +191,24 @@
       "revId": "d1ae178aae58f157579472b8af393d253f581694",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "65c428fe_7f248e7c",
+        "filename": "src/plugins/nat/pnat/pnat.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "Yes... but I dislike const.",
+      "parentUuid": "d36dc30d_1ac36ad7",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -121,6 +229,24 @@
     },
     {
       "key": {
+        "uuid": "4a292b30_188bc78c",
+        "filename": "src/plugins/nat/pnat/pnat_api.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "75f36dff_ae03fdf2",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ff51f535_ccb3c2b5",
         "filename": "src/plugins/nat/pnat/pnat_api.c",
         "patchSetId": 20
@@ -135,6 +261,24 @@
       "revId": "d1ae178aae58f157579472b8af393d253f581694",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1c492d8b_cd8e6b39",
+        "filename": "src/plugins/nat/pnat/pnat_api.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "VALIDATE_SW_IF_INDEX assumes big-endian. I will add a native endian version in separate patch.",
+      "parentUuid": "ff51f535_ccb3c2b5",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -155,6 +299,24 @@
     },
     {
       "key": {
+        "uuid": "820ee286_ba30704e",
+        "filename": "src/plugins/nat/pnat/pnat_cli.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e7b8a11f_5363b725",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "87ac2889_1cabe856",
         "filename": "src/plugins/nat/pnat/pnat_node.c",
         "patchSetId": 20
@@ -169,6 +331,24 @@
       "revId": "d1ae178aae58f157579472b8af393d253f581694",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d09d7cac_7a71dbc9",
+        "filename": "src/plugins/nat/pnat/pnat_node.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "This order (which is the same as NAT) gives ACL a chance to look at the unaltered packet on RX, and equally check the unchanged packet on output. It might be worth considering making this configurable.",
+      "parentUuid": "87ac2889_1cabe856",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -189,6 +369,24 @@
     },
     {
       "key": {
+        "uuid": "dfae25e7_b77fca2f",
+        "filename": "src/plugins/nat/pnat/pnat_node.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "Thanks! Added PNAT_ERROR_NONE. The counters are defined in pnat.api.",
+      "parentUuid": "074b11f0_90059cdc",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "cc4d6a57_28b7da3b",
         "filename": "src/plugins/nat/pnat/pnat_node.h",
         "patchSetId": 20
@@ -203,6 +401,24 @@
       "revId": "d1ae178aae58f157579472b8af393d253f581694",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dac82da9_07329ad7",
+        "filename": "src/plugins/nat/pnat/pnat_node.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "At least in theory the transform can be independent of the match, so that the checksum delta is not known at the time of rule creation.\nE.g. match on SA and rewrite DA.\nI will remove comment.",
+      "parentUuid": "cc4d6a57_28b7da3b",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -223,6 +439,24 @@
     },
     {
       "key": {
+        "uuid": "859fe591_53515ea3",
+        "filename": "src/plugins/nat/pnat/pnat_node.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "Yes, will change this function in stage 2. When adding performance tests in unit testing.",
+      "parentUuid": "7dafd89b_3b30f26a",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2a080416_ebcfa9a1",
         "filename": "src/plugins/nat/pnat/pnat_node.h",
         "patchSetId": 20
@@ -237,6 +471,24 @@
       "revId": "d1ae178aae58f157579472b8af393d253f581694",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7179e2af_9e356712",
+        "filename": "src/plugins/nat/pnat/pnat_node.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "Will add stage 2.",
+      "parentUuid": "2a080416_ebcfa9a1",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -257,6 +509,24 @@
     },
     {
       "key": {
+        "uuid": "5e7ba713_cc165018",
+        "filename": "src/plugins/nat/pnat/pnat_node.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8a2ff7cd_055495a5",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a3d398a3_77f8a4e4",
         "filename": "src/plugins/nat/pnat/pnat_node.h",
         "patchSetId": 20
@@ -271,6 +541,24 @@
       "revId": "d1ae178aae58f157579472b8af393d253f581694",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fa1d2675_fb9b74e0",
+        "filename": "src/plugins/nat/pnat/pnat_node.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 197,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a3d398a3_77f8a4e4",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -291,6 +579,24 @@
     },
     {
       "key": {
+        "uuid": "7a63918e_c1585c11",
+        "filename": "src/plugins/nat/pnat/pnat_node.h",
+        "patchSetId": 20
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "90f2b8e3_59083c9c",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0c799fd5_03031350",
         "filename": "src/plugins/nat/test/test_pnat.py",
         "patchSetId": 20
@@ -308,6 +614,24 @@
     },
     {
       "key": {
+        "uuid": "a5c665b9_5d70f739",
+        "filename": "src/plugins/nat/test/test_pnat.py",
+        "patchSetId": 20
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "0c799fd5_03031350",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "95591fba_8457f1e5",
         "filename": "src/vnet/ip/ip_checksum.c",
         "patchSetId": 20
@@ -322,6 +646,24 @@
       "revId": "d1ae178aae58f157579472b8af393d253f581694",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4f88a4ce_b3e9ca6c",
+        "filename": "src/vnet/ip/ip_checksum.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-02T11:09:56Z",
+      "side": 1,
+      "message": "Used in C unit test pnat/pnat_test.c",
+      "parentUuid": "95591fba_8457f1e5",
+      "revId": "d1ae178aae58f157579472b8af393d253f581694",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
