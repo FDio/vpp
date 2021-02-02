@@ -3859,5 +3859,345 @@ class TestNAT44Out2InDPO(MethodHolder):
         self.verify_capture_in(capture, self.pg0)
 
 
+class TestNAT44EIMW(MethodHolder):
+    """ NAT44EI Test Cases (multiple workers) """
+
+    worker_config = "workers %d" % 2
+
+    max_translations = 10240
+    max_users = 10240
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestNAT44EIMW, cls).setUpClass()
+        cls.vapi.cli("set log class nat level debug")
+
+        cls.tcp_port_in = 6303
+        cls.tcp_port_out = 6303
+        cls.udp_port_in = 6304
+        cls.udp_port_out = 6304
+        cls.icmp_id_in = 6305
+        cls.icmp_id_out = 6305
+        cls.nat_addr = '10.0.0.3'
+        cls.ipfix_src_port = 4739
+        cls.ipfix_domain_id = 1
+        cls.tcp_external_port = 80
+        cls.udp_external_port = 69
+
+        cls.create_pg_interfaces(range(10))
+        cls.interfaces = list(cls.pg_interfaces[0:4])
+
+        for i in cls.interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+        cls.pg0.generate_remote_hosts(3)
+        cls.pg0.configure_ipv4_neighbors()
+
+        cls.pg1.generate_remote_hosts(1)
+        cls.pg1.configure_ipv4_neighbors()
+
+        cls.overlapping_interfaces = list(list(cls.pg_interfaces[4:7]))
+        cls.vapi.ip_table_add_del(is_add=1, table={'table_id': 10})
+        cls.vapi.ip_table_add_del(is_add=1, table={'table_id': 20})
+
+        cls.pg4._local_ip4 = "172.16.255.1"
+        cls.pg4._remote_hosts[0]._ip4 = "172.16.255.2"
+        cls.pg4.set_table_ip4(10)
+        cls.pg5._local_ip4 = "172.17.255.3"
+        cls.pg5._remote_hosts[0]._ip4 = "172.17.255.4"
+        cls.pg5.set_table_ip4(10)
+        cls.pg6._local_ip4 = "172.16.255.1"
+        cls.pg6._remote_hosts[0]._ip4 = "172.16.255.2"
+        cls.pg6.set_table_ip4(20)
+        for i in cls.overlapping_interfaces:
+            i.config_ip4()
+            i.admin_up()
+            i.resolve_arp()
+
+        cls.pg7.admin_up()
+        cls.pg8.admin_up()
+
+        cls.pg9.generate_remote_hosts(2)
+        cls.pg9.config_ip4()
+        cls.vapi.sw_interface_add_del_address(
+            sw_if_index=cls.pg9.sw_if_index,
+            prefix="10.0.0.1/24")
+
+        cls.pg9.admin_up()
+        cls.pg9.resolve_arp()
+        cls.pg9._remote_hosts[1]._ip4 = cls.pg9._remote_hosts[0]._ip4
+        cls.pg4._remote_ip4 = cls.pg9._remote_hosts[0]._ip4 = "10.0.0.2"
+        cls.pg9.resolve_arp()
+
+    def setUp(self):
+        super(TestNAT44EIMW, self).setUp()
+        self.vapi.nat44_plugin_enable_disable(
+            sessions=self.max_translations,
+            users=self.max_users, enable=1)
+
+    def tearDown(self):
+        super(TestNAT44EIMW, self).tearDown()
+        if not self.vpp_dead:
+            self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
+                                               src_port=self.ipfix_src_port,
+                                               enable=0)
+            self.ipfix_src_port = 4739
+            self.ipfix_domain_id = 1
+
+            self.vapi.nat44_plugin_enable_disable(enable=0)
+            self.vapi.cli("clear logging")
+
+    def test_hairpinning(self):
+        """ NAT44EI hairpinning - 1:1 NAPT """
+
+        host = self.pg0.remote_hosts[0]
+        server = self.pg0.remote_hosts[1]
+        host_in_port = 1234
+        host_out_port = 0
+        server_in_port = 5678
+        server_out_port = 8765
+        worker_1 = 1
+        worker_2 = 2
+
+        self.nat44_add_address(self.nat_addr)
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            flags=flags, is_add=1)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1)
+
+        # add static mapping for server
+        self.nat44_add_static_mapping(server.ip4, self.nat_addr,
+                                      server_in_port, server_out_port,
+                                      proto=IP_PROTOS.tcp)
+
+        cnt = self.statistics.get_counter('/nat44/hairpinning')
+        # send packet from host to server
+        p = (Ether(src=host.mac, dst=self.pg0.local_mac) /
+             IP(src=host.ip4, dst=self.nat_addr) /
+             TCP(sport=host_in_port, dport=server_out_port))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, self.nat_addr)
+            self.assertEqual(ip.dst, server.ip4)
+            self.assertNotEqual(tcp.sport, host_in_port)
+            self.assertEqual(tcp.dport, server_in_port)
+            self.assert_packet_checksums_valid(p)
+            host_out_port = tcp.sport
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        after = self.statistics.get_counter('/nat44/hairpinning')
+
+        if_idx = self.pg0.sw_if_index
+        self.assertEqual(after[worker_2][if_idx] - cnt[worker_1][if_idx], 1)
+
+        # send reply from server to host
+        p = (Ether(src=server.mac, dst=self.pg0.local_mac) /
+             IP(src=server.ip4, dst=self.nat_addr) /
+             TCP(sport=server_in_port, dport=host_out_port))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, self.nat_addr)
+            self.assertEqual(ip.dst, host.ip4)
+            self.assertEqual(tcp.sport, server_out_port)
+            self.assertEqual(tcp.dport, host_in_port)
+            self.assert_packet_checksums_valid(p)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        after = self.statistics.get_counter('/nat44/hairpinning')
+        if_idx = self.pg0.sw_if_index
+        self.assertEqual(after[worker_1][if_idx] - cnt[worker_1][if_idx], 1)
+        self.assertEqual(after[worker_2][if_idx] - cnt[worker_2][if_idx], 2)
+
+    def test_hairpinning2(self):
+        """ NAT44EI hairpinning - 1:1 NAT"""
+
+        server1_nat_ip = "10.0.0.10"
+        server2_nat_ip = "10.0.0.11"
+        host = self.pg0.remote_hosts[0]
+        server1 = self.pg0.remote_hosts[1]
+        server2 = self.pg0.remote_hosts[2]
+        server_tcp_port = 22
+        server_udp_port = 20
+
+        self.nat44_add_address(self.nat_addr)
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            flags=flags, is_add=1)
+        self.vapi.nat44_interface_add_del_feature(
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1)
+
+        # add static mapping for servers
+        self.nat44_add_static_mapping(server1.ip4, server1_nat_ip)
+        self.nat44_add_static_mapping(server2.ip4, server2_nat_ip)
+
+        # host to server1
+        pkts = []
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=host.ip4, dst=server1_nat_ip) /
+             TCP(sport=self.tcp_port_in, dport=server_tcp_port))
+        pkts.append(p)
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=host.ip4, dst=server1_nat_ip) /
+             UDP(sport=self.udp_port_in, dport=server_udp_port))
+        pkts.append(p)
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=host.ip4, dst=server1_nat_ip) /
+             ICMP(id=self.icmp_id_in, type='echo-request'))
+        pkts.append(p)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(len(pkts))
+        for packet in capture:
+            try:
+                self.assertEqual(packet[IP].src, self.nat_addr)
+                self.assertEqual(packet[IP].dst, server1.ip4)
+                if packet.haslayer(TCP):
+                    self.assertNotEqual(packet[TCP].sport, self.tcp_port_in)
+                    self.assertEqual(packet[TCP].dport, server_tcp_port)
+                    self.tcp_port_out = packet[TCP].sport
+                    self.assert_packet_checksums_valid(packet)
+                elif packet.haslayer(UDP):
+                    self.assertNotEqual(packet[UDP].sport, self.udp_port_in)
+                    self.assertEqual(packet[UDP].dport, server_udp_port)
+                    self.udp_port_out = packet[UDP].sport
+                else:
+                    self.assertNotEqual(packet[ICMP].id, self.icmp_id_in)
+                    self.icmp_id_out = packet[ICMP].id
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
+                raise
+
+        # server1 to host
+        pkts = []
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=server1.ip4, dst=self.nat_addr) /
+             TCP(sport=server_tcp_port, dport=self.tcp_port_out))
+        pkts.append(p)
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=server1.ip4, dst=self.nat_addr) /
+             UDP(sport=server_udp_port, dport=self.udp_port_out))
+        pkts.append(p)
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=server1.ip4, dst=self.nat_addr) /
+             ICMP(id=self.icmp_id_out, type='echo-reply'))
+        pkts.append(p)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(len(pkts))
+        for packet in capture:
+            try:
+                self.assertEqual(packet[IP].src, server1_nat_ip)
+                self.assertEqual(packet[IP].dst, host.ip4)
+                if packet.haslayer(TCP):
+                    self.assertEqual(packet[TCP].dport, self.tcp_port_in)
+                    self.assertEqual(packet[TCP].sport, server_tcp_port)
+                    self.assert_packet_checksums_valid(packet)
+                elif packet.haslayer(UDP):
+                    self.assertEqual(packet[UDP].dport, self.udp_port_in)
+                    self.assertEqual(packet[UDP].sport, server_udp_port)
+                else:
+                    self.assertEqual(packet[ICMP].id, self.icmp_id_in)
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
+                raise
+
+        # server2 to server1
+        pkts = []
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=server2.ip4, dst=server1_nat_ip) /
+             TCP(sport=self.tcp_port_in, dport=server_tcp_port))
+        pkts.append(p)
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=server2.ip4, dst=server1_nat_ip) /
+             UDP(sport=self.udp_port_in, dport=server_udp_port))
+        pkts.append(p)
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=server2.ip4, dst=server1_nat_ip) /
+             ICMP(id=self.icmp_id_in, type='echo-request'))
+        pkts.append(p)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(len(pkts))
+        for packet in capture:
+            try:
+                self.assertEqual(packet[IP].src, server2_nat_ip)
+                self.assertEqual(packet[IP].dst, server1.ip4)
+                if packet.haslayer(TCP):
+                    self.assertEqual(packet[TCP].sport, self.tcp_port_in)
+                    self.assertEqual(packet[TCP].dport, server_tcp_port)
+                    self.tcp_port_out = packet[TCP].sport
+                    self.assert_packet_checksums_valid(packet)
+                elif packet.haslayer(UDP):
+                    self.assertEqual(packet[UDP].sport, self.udp_port_in)
+                    self.assertEqual(packet[UDP].dport, server_udp_port)
+                    self.udp_port_out = packet[UDP].sport
+                else:
+                    self.assertEqual(packet[ICMP].id, self.icmp_id_in)
+                    self.icmp_id_out = packet[ICMP].id
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
+                raise
+
+        # server1 to server2
+        pkts = []
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=server1.ip4, dst=server2_nat_ip) /
+             TCP(sport=server_tcp_port, dport=self.tcp_port_out))
+        pkts.append(p)
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=server1.ip4, dst=server2_nat_ip) /
+             UDP(sport=server_udp_port, dport=self.udp_port_out))
+        pkts.append(p)
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=server1.ip4, dst=server2_nat_ip) /
+             ICMP(id=self.icmp_id_out, type='echo-reply'))
+        pkts.append(p)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(len(pkts))
+        for packet in capture:
+            try:
+                self.assertEqual(packet[IP].src, server1_nat_ip)
+                self.assertEqual(packet[IP].dst, server2.ip4)
+                if packet.haslayer(TCP):
+                    self.assertEqual(packet[TCP].dport, self.tcp_port_in)
+                    self.assertEqual(packet[TCP].sport, server_tcp_port)
+                    self.assert_packet_checksums_valid(packet)
+                elif packet.haslayer(UDP):
+                    self.assertEqual(packet[UDP].dport, self.udp_port_in)
+                    self.assertEqual(packet[UDP].sport, server_udp_port)
+                else:
+                    self.assertEqual(packet[ICMP].id, self.icmp_id_in)
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
+                raise
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

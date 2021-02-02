@@ -783,6 +783,11 @@ typedef struct snat_main_s
   u8 enabled;
 
   vnet_main_t *vnet_main;
+
+  u32 nat44_in2out_hairpinning_finish_ip4_lookup_node_fq_index;
+  u32 nat44_in2out_hairpinning_finish_interface_output_node_fq_index;
+  u32 nat44_hairpinning_fq_index;
+  u32 snat_hairpin_dst_fq_index;
 } snat_main_t;
 
 typedef struct
@@ -1149,14 +1154,17 @@ u32 icmp_match_out2in_slow (snat_main_t *sm, vlib_node_runtime_t *node,
 
 /* hairpinning functions */
 u32 snat_icmp_hairpinning (snat_main_t *sm, vlib_buffer_t *b0,
-			   ip4_header_t *ip0, icmp46_header_t *icmp0);
+			   u32 thread_index, ip4_header_t *ip0,
+			   icmp46_header_t *icmp0, u32 *required_thread_index);
 
 void nat_hairpinning_sm_unknown_proto (snat_main_t * sm, vlib_buffer_t * b,
 				       ip4_header_t * ip);
+
 int snat_hairpinning (vlib_main_t *vm, vlib_node_runtime_t *node,
-		      snat_main_t *sm, vlib_buffer_t *b0, ip4_header_t *ip0,
-		      udp_header_t *udp0, tcp_header_t *tcp0, u32 proto0,
-		      int do_trace);
+		      snat_main_t *sm, u32 thread_index, vlib_buffer_t *b0,
+		      ip4_header_t *ip0, udp_header_t *udp0,
+		      tcp_header_t *tcp0, u32 proto0, int do_trace,
+		      u32 *required_thread_index);
 
 /* Call back functions for clib_bihash_add_or_overwrite_stale */
 int nat44_i2o_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg);
