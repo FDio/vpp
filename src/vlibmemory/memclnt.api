@@ -33,7 +33,6 @@ manual_print
 define memclnt_create {
     u32 context;                /* opaque value to be returned in the reply */
     i32 ctx_quota;              /* requested punt context quota */
-    u64 input_queue;            /* client's queue */
     string name[64];            /* for show, find by name, whatever */
     u32 api_versions[8];        /* client-server pairs use as desired */
 };
