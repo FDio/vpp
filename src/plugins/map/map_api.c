@@ -560,8 +560,6 @@ map_plugin_api_hookup (vlib_main_t * vm)
 
   mm->msg_id_base = setup_message_id_table ();
 
-  api_main_t *am = vlibapi_get_main ();
-  am->is_autoendian[mm->msg_id_base + VL_API_MAP_ADD_DOMAIN] = 1;
   return 0;
 }
 
