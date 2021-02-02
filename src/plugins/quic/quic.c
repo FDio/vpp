@@ -58,13 +58,7 @@ static quicly_now_t quicly_vpp_now_cb;
 
 static inline void
 quic_crypto_context_make_key_from_ctx (clib_bihash_kv_24_8_t * kv,
-				       quic_ctx_t * ctx)
-{
-  application_t *app = application_get (ctx->parent_app_id);
-  kv->key[0] = ((u64) ctx->ckpair_index) << 32 | (u64) ctx->crypto_engine;
-  kv->key[1] = app->sm_properties.rx_fifo_size - 1;
-  kv->key[2] = app->sm_properties.tx_fifo_size - 1;
-}
+				       quic_ctx_t * ctx) { application_t *app = application_get (ctx->parent_app_id); kv->key[0] = ((u64) ctx->ckpair_index) << 32 | (u64) ctx->crypto_engine; kv->key[1] = app->sm_properties.rx_fifo_size - 1; kv->key[2] = app->sm_properties.tx_fifo_size - 1;}
 
 static inline void
 quic_crypto_context_make_key_from_crctx (clib_bihash_kv_24_8_t * kv,
