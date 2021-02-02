@@ -262,6 +262,30 @@
       "revId": "3829c812f0475370217a5b71039b36723a8c2a31",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0de965a0_8119ef6d",
+        "filename": "src/vcl/ldp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1112,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-02-02T16:23:59Z",
+      "side": 1,
+      "message": "That should be doable, as long as we make it configurable. As far as I can tell, this options needs changes to:\n1) socket, setsockopt, fcntl, ioctl - to keep track of both sockets and their options\n2) connect, bind - to \"select\" the socket that\u0027s wanted and to close the other one. \n\nAnything else?\n\nHaving said that, long term, if we want to get closer to a fully featured ldp, we should support as many options as possible. We don\u0027t necessarily need to terminate all in vpp but we should at least store them in vcl.",
+      "parentUuid": "b2b1c667_20faf234",
+      "range": {
+        "startLine": 1112,
+        "startChar": 3,
+        "endLine": 1112,
+        "endChar": 34
+      },
+      "revId": "3829c812f0475370217a5b71039b36723a8c2a31",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
