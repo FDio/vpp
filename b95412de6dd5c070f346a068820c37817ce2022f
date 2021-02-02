@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7afe25f1_8790f57d",
+        "filename": "src/vnet/srv6/sr.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2021-02-02T10:23:47Z",
+      "side": 1,
+      "message": "Could we rename this variable to egress_fib_table or outgoing_fib_table or out_fib_table or out_vrf or something along those lines?\n\nElse it could be miselading with the other usages of FIB table in SRv6.",
+      "revId": "b95412de6dd5c070f346a068820c37817ce2022f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
