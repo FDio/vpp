@@ -28,6 +28,7 @@ class QUICAppWorker(Worker):
 
     def run(self):
         super(QUICAppWorker, self).run()
+        self.assertEqual(1, 0, "Jenkins Failure Cause Rule Test Failure!")
 
     def teardown(self, logger, timeout):
         if self.process is None:
