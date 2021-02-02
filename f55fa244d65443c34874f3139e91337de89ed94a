@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ff79de9e_e09d6cd4",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 807,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-02-02T10:28:03Z",
+      "side": 1,
+      "message": "make the port, in network byte order, part of the key, that way you don\u0027t incur the cache miss dereferencing t0. The fib_index can be considered a u16 to make space if necessary.",
+      "revId": "f55fa244d65443c34874f3139e91337de89ed94a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f3bd11f2_0234bd83",
+        "filename": "src/vnet/vxlan/vxlan.api",
+        "patchSetId": 8
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-02-02T10:28:03Z",
+      "side": 1,
+      "message": "c-n-p error.\nmight be worth a comment to say the source port is not set to this value in packets sent, it is used only as the dst-port in packets received.",
+      "revId": "f55fa244d65443c34874f3139e91337de89ed94a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
