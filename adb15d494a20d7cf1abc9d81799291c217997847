@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b866dab9_aa2b0b0c",
+        "filename": "src/plugins/nat/CMakeLists.txt",
+        "patchSetId": 21
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-02-04T10:09:13Z",
+      "side": 1,
+      "message": "MULTIARCH_SOURCES\n  pnat/pnat_node.c",
+      "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "763e6c76_f9383e2e",
+        "filename": "src/plugins/nat/pnat/pnat.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-02-04T10:09:13Z",
+      "side": 1,
+      "message": "use the port value in network byte order, then you don\u0027t need the byte-swap in the data-plane.",
+      "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "38ab9657_5af2ceae",
+        "filename": "src/plugins/nat/pnat/pnat.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-02-04T10:09:13Z",
+      "side": 1,
+      "message": "s/17/IP_PROTOCOL_UDP/",
+      "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f01cf5ff_320b9a4e",
+        "filename": "src/plugins/nat/pnat/pnat.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 299,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-02-04T10:09:13Z",
+      "side": 1,
+      "message": "to modify a binding, does one need to delete the old and add a new?\ncan this add API be add-or-update?",
+      "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "460e89e4_f39c9303",
+        "filename": "src/plugins/nat/pnat/pnat.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-02-04T10:09:13Z",
+      "side": 1,
+      "message": "delete this.",
+      "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "861c0515_bd3352d1",
+        "filename": "src/plugins/nat/pnat/pnat_api.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-02-04T10:09:13Z",
+      "side": 1,
+      "message": "rebase on our recent autoendian patch.",
+      "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1cbbd548_fdad0dec",
+        "filename": "src/plugins/nat/pnat/pnat_node.h",
+        "patchSetId": 21
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-02-04T10:09:13Z",
+      "side": 1,
+      "message": "bi is unused",
+      "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "99c3ddc9_ed849a7e",
+        "filename": "src/plugins/nat/pnat/pnat_test.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 403,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-02-04T10:09:13Z",
+      "side": 1,
+      "message": "how is this called during the CI jobs?",
+      "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
