@@ -1347,13 +1347,17 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
   ikev2_ts_t *tsr = 0;
   ikev2_sa_proposal_t *proposal = 0;
   ikev2_child_sa_t *child_sa;
-  u32 dlen = 0;
+  u32 dlen = 0, src;
   u16 plen;
 
-  ikev2_elog_exchange ("ispi %lx rspi %lx CREATE_CHILD_SA received "
-		       "from ", clib_host_to_net_u64 (ike->ispi),
-		       clib_host_to_net_u64 (ike->rspi),
-		       ip_addr_v4 (&sa->raddr).as_u32,
+  if (sa->is_initiator)
+    src = ip_addr_v4 (&sa->raddr).as_u32;
+  else
+    src = ip_addr_v4 (&sa->iaddr).as_u32;
+
+  ikev2_elog_exchange ("ispi %lx rspi %lx CREATE_CHILD_SA received from",
+		       clib_host_to_net_u64 (ike->ispi),
+		       clib_host_to_net_u64 (ike->rspi), src,
 		       ip_addr_version (&sa->raddr) == AF_IP4);
 
   plaintext = ikev2_decrypt_sk_payload (sa, ike, &payload, len, &dlen);
