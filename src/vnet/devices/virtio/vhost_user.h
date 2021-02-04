@@ -108,6 +108,7 @@ typedef struct
   u8 is_server;
   u8 enable_gso;
   u8 enable_packed;
+  u8 multi_txq_enabled;
   u8 enable_event_idx;
   u8 use_custom_mac;
 
@@ -288,6 +289,7 @@ typedef struct
   u8 enable_packed;
 
   u8 enable_event_idx;
+  u8 multi_txq_enabled;
 } vhost_user_intf_t;
 
 typedef struct
