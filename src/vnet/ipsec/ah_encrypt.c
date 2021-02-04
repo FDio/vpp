@@ -251,7 +251,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  oh6_0->ip6.ip_version_traffic_class_and_flow_label =
 	    ih6_0->ip6.ip_version_traffic_class_and_flow_label;
 
-	  ip6_set_dscp_network_order (&oh6_0->ip6, sa0->dscp);
+	  ip6_set_dscp_network_order (&oh6_0->ip6, sa0->tunnel.t_dscp);
 
 	  tunnel_encap_fixup_6o6 (sa0->tunnel_flags,
 				  &ih6_0->ip6, &oh6_0->ip6);
@@ -287,8 +287,8 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  oh0 = vlib_buffer_get_current (b[0]);
 	  pd->ttl = ih0->ip4.ttl;
 
-	  if (sa0->dscp)
-	    pd->tos = sa0->dscp << 2;
+	  if (sa0->tunnel.t_dscp)
+	    pd->tos = sa0->tunnel.t_dscp << 2;
 	  else
 	    {
 	      pd->tos = ih0->ip4.tos;
