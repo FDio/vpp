@@ -439,6 +439,7 @@ dpdk_buffer_pools_create (vlib_main_t * vm)
 {
   clib_error_t *err;
   vlib_buffer_pool_t *bp;
+  char *vname = (char *) vm->node_main.cfg_node_variant;
 
   struct rte_mempool_ops ops = { };
 
@@ -446,13 +447,14 @@ dpdk_buffer_pools_create (vlib_main_t * vm)
   ops.alloc = dpdk_ops_vpp_alloc;
   ops.free = dpdk_ops_vpp_free;
   ops.get_count = dpdk_ops_vpp_get_count;
-  ops.enqueue = CLIB_MARCH_FN_POINTER (dpdk_ops_vpp_enqueue);
-  ops.dequeue = CLIB_MARCH_FN_POINTER (dpdk_ops_vpp_dequeue);
+  ops.enqueue = CLIB_MARCH_FN_POINTER_BY_NAME (dpdk_ops_vpp_enqueue, vname);
+  ops.dequeue = CLIB_MARCH_FN_POINTER_BY_NAME (dpdk_ops_vpp_dequeue, vname);
   rte_mempool_register_ops (&ops);
 
   strncpy (ops.name, "vpp-no-cache", 13);
   ops.get_count = dpdk_ops_vpp_get_count_no_cache;
-  ops.enqueue = CLIB_MARCH_FN_POINTER (dpdk_ops_vpp_enqueue_no_cache);
+  ops.enqueue =
+    CLIB_MARCH_FN_POINTER_BY_NAME (dpdk_ops_vpp_enqueue_no_cache, vname);
   ops.dequeue = dpdk_ops_vpp_dequeue_no_cache;
   rte_mempool_register_ops (&ops);
 

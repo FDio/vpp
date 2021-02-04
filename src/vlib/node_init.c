@@ -88,10 +88,9 @@ unformat_vlib_node_variant (unformat_input_t * input, va_list * args)
   return 0;
 }
 
-static_always_inline void
-vlib_update_nr_variant_default (vlib_node_registration_t *nr, u8 *variant)
+void
+vlib_update_nr_variant_default (vlib_node_fn_registration_t *fnr, u8 *variant)
 {
-  vlib_node_fn_registration_t *fnr = nr->node_fn_registrations;
   vlib_node_fn_registration_t *p_reg = 0;
   vlib_node_fn_registration_t *v_reg = 0;
   u32 tmp;
@@ -161,10 +160,12 @@ vlib_early_node_config (vlib_main_t * vm, unformat_input_t * input)
 	      nr = vm->node_main.node_registrations;
 	      while (nr)
 		{
-		  vlib_update_nr_variant_default (nr, variant);
+		  vlib_update_nr_variant_default (nr->node_fn_registrations,
+						  variant);
 		  nr = nr->next_registration;
 		}
 
+	      vm->node_main.cfg_node_variant = vec_dup (variant);
 	      vec_free (variant);
 	    }
 	}
@@ -192,7 +193,8 @@ vlib_early_node_config (vlib_main_t * vm, unformat_input_t * input)
 					      "please specify a valid node variant");
 		  vec_add1 (variant, 0);
 
-		  vlib_update_nr_variant_default (nr, variant);
+		  vlib_update_nr_variant_default (nr->node_fn_registrations,
+						  variant);
 
 		  vec_free (variant);
 		}

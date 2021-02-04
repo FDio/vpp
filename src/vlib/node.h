@@ -727,6 +727,9 @@ typedef struct
 
   /* Node index from error code */
   u32 *node_by_error;
+
+  /* configured default node variant */
+  u8 *cfg_node_variant;
 } vlib_node_main_t;
 
 typedef u16 vlib_error_t;

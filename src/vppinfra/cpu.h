@@ -84,8 +84,30 @@ clib_march_select_fn_ptr (clib_march_fn_registration * r)
   return rv;
 }
 
+static_always_inline void *
+clib_march_select_fn_ptr_by_name (clib_march_fn_registration *r, char *name)
+{
+  void *rv = 0;
+
+  while (r)
+    {
+      if (strcmp (name, r->name) == 0)
+	{
+	  rv = r->function;
+	  break;
+	}
+      r = r->next;
+    }
+  return rv;
+}
+
 #define CLIB_MARCH_FN_POINTER(fn) \
   clib_march_select_fn_ptr (fn##_march_fn_registrations);
+
+#define CLIB_MARCH_FN_POINTER_BY_NAME(fn, name)                               \
+  (name) ?                                                                    \
+    clib_march_select_fn_ptr_by_name (fn##_march_fn_registrations, name) :    \
+    clib_march_select_fn_ptr (fn##_march_fn_registrations)
 
 #define _CLIB_MARCH_FN_REGISTRATION(fn) \
 static clib_march_fn_registration \
