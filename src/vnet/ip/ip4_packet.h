@@ -359,6 +359,18 @@ ip4_header_get_ecn (const ip4_header_t * ip4)
   return (ip4->tos & IP_PACKET_TC_FIELD_ECN_MASK);
 }
 
+always_inline u8
+ip4_header_get_ttl (const ip4_header_t *ip4)
+{
+  return (ip4->ttl);
+}
+
+always_inline void
+ip4_header_set_ttl (ip4_header_t *ip4, u8 ttl)
+{
+  ip4->ttl = ttl;
+}
+
 always_inline void
 ip4_header_set_df (ip4_header_t * ip4)
 {

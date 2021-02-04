@@ -36,6 +36,12 @@ tunnel_encap_decap_flags_encode (tunnel_encap_decap_flags_t f);
 extern int tunnel_mode_decode (vl_api_tunnel_mode_t in, tunnel_mode_t * out);
 extern vl_api_tunnel_mode_t tunnel_mode_encode (tunnel_mode_t in);
 
+extern int tunnel_flags_decode (vl_api_tunnel_flags_t in, tunnel_flags_t *out);
+extern vl_api_tunnel_flags_t tunnel_flags_encode (tunnel_flags_t in);
+
+extern int tunnel_decode (const vl_api_tunnel_t *in, tunnel_t *out);
+extern void tunnel_encode (const tunnel_t *in, vl_api_tunnel_t *out);
+
 #endif
 
 /*
