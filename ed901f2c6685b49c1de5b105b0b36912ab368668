@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f12abc83_f9e392b7",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-04T18:11:25Z",
+      "side": 1,
+      "message": "I think you can use vnet_get_sw_interface() and remove the \u0027if (NULL \u003d\u003d swif)\u0027 branch as you already have VALIDATE_SW_IF_INDEX () above",
+      "revId": "ed901f2c6685b49c1de5b105b0b36912ab368668",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
