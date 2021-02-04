@@ -211,8 +211,7 @@ ipsec_sa_add_and_lock (u32 id,
   sa->tunnel_flags = tunnel_flags;
   sa->dscp = dscp;
   sa->salt = salt;
-  sa->encrypt_thread_index = (vlib_num_workers ())? ~0 : 0;
-  sa->decrypt_thread_index = (vlib_num_workers ())? ~0 : 0;
+  sa->thread_index = (vlib_num_workers ()) ? ~0 : 0;
   if (integ_alg != IPSEC_INTEG_ALG_NONE)
     {
       ipsec_sa_set_integ_alg (sa, integ_alg);

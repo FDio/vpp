@@ -176,16 +176,16 @@ ah_decrypt_inline (vlib_main_t * vm,
 					  thread_index, current_sa_index);
 	}
 
-      if (PREDICT_FALSE (~0 == sa0->decrypt_thread_index))
+      if (PREDICT_FALSE (~0 == sa0->thread_index))
 	{
 	  /* this is the first packet to use this SA, claim the SA
 	   * for this thread. this could happen simultaneously on
 	   * another thread */
-	  clib_atomic_cmp_and_swap (&sa0->decrypt_thread_index, ~0,
+	  clib_atomic_cmp_and_swap (&sa0->thread_index, ~0,
 				    ipsec_sa_assign_thread (thread_index));
 	}
 
-      if (PREDICT_TRUE (thread_index != sa0->decrypt_thread_index))
+      if (PREDICT_TRUE (thread_index != sa0->thread_index))
 	{
 	  next[0] = AH_DECRYPT_NEXT_HANDOFF;
 	  goto next;

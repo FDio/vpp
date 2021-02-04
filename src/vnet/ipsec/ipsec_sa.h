@@ -116,8 +116,8 @@ typedef struct
   u8 crypto_iv_size;
   u8 esp_block_align;
   u8 integ_icv_size;
-  u32 encrypt_thread_index;
-  u32 decrypt_thread_index;
+  u32 thread_index;
+  u32 __pad_u32;
   u32 spi;
   u32 seq;
   u32 seq_hi;

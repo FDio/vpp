@@ -54,9 +54,8 @@ format_ipsec_handoff_trace (u8 * s, va_list * args)
 
 /* do worker handoff based on thread_index in NAT HA protcol header */
 static_always_inline uword
-ipsec_handoff (vlib_main_t * vm,
-	       vlib_node_runtime_t * node,
-	       vlib_frame_t * frame, u32 fq_index, bool is_enc)
+ipsec_handoff (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+	       u32 fq_index)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 thread_indices[VLIB_FRAME_SIZE], *ti;
@@ -99,20 +98,10 @@ ipsec_handoff (vlib_main_t * vm,
       sa2 = pool_elt_at_index (im->sad, sai2);
       sa3 = pool_elt_at_index (im->sad, sai3);
 
-      if (is_enc)
-	{
-	  ti[0] = sa0->encrypt_thread_index;
-	  ti[1] = sa1->encrypt_thread_index;
-	  ti[2] = sa2->encrypt_thread_index;
-	  ti[3] = sa3->encrypt_thread_index;
-	}
-      else
-	{
-	  ti[0] = sa0->decrypt_thread_index;
-	  ti[1] = sa1->decrypt_thread_index;
-	  ti[2] = sa2->decrypt_thread_index;
-	  ti[3] = sa3->decrypt_thread_index;
-	}
+      ti[0] = sa0->thread_index;
+      ti[1] = sa1->thread_index;
+      ti[2] = sa2->thread_index;
+      ti[3] = sa3->thread_index;
 
       if (node->flags & VLIB_NODE_FLAG_TRACE)
 	{
@@ -154,10 +143,7 @@ ipsec_handoff (vlib_main_t * vm,
       sai0 = vnet_buffer (b[0])->ipsec.sad_index;
       sa0 = pool_elt_at_index (im->sad, sai0);
 
-      if (is_enc)
-	ti[0] = sa0->encrypt_thread_index;
-      else
-	ti[0] = sa0->decrypt_thread_index;
+      ti[0] = sa0->thread_index;
 
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{
@@ -188,7 +174,7 @@ VLIB_NODE_FN (esp4_encrypt_handoff) (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
 
-  return ipsec_handoff (vm, node, from_frame, im->esp4_enc_fq_index, true);
+  return ipsec_handoff (vm, node, from_frame, im->esp4_enc_fq_index);
 }
 
 VLIB_NODE_FN (esp6_encrypt_handoff) (vlib_main_t * vm,
@@ -197,7 +183,7 @@ VLIB_NODE_FN (esp6_encrypt_handoff) (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
 
-  return ipsec_handoff (vm, node, from_frame, im->esp6_enc_fq_index, true);
+  return ipsec_handoff (vm, node, from_frame, im->esp6_enc_fq_index);
 }
 
 VLIB_NODE_FN (esp4_encrypt_tun_handoff) (vlib_main_t * vm,
@@ -206,8 +192,7 @@ VLIB_NODE_FN (esp4_encrypt_tun_handoff) (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
 
-  return ipsec_handoff (vm, node, from_frame, im->esp4_enc_tun_fq_index,
-			true);
+  return ipsec_handoff (vm, node, from_frame, im->esp4_enc_tun_fq_index);
 }
 
 VLIB_NODE_FN (esp6_encrypt_tun_handoff) (vlib_main_t * vm,
@@ -216,8 +201,7 @@ VLIB_NODE_FN (esp6_encrypt_tun_handoff) (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
 
-  return ipsec_handoff (vm, node, from_frame, im->esp6_enc_tun_fq_index,
-			true);
+  return ipsec_handoff (vm, node, from_frame, im->esp6_enc_tun_fq_index);
 }
 
 VLIB_NODE_FN (esp_mpls_encrypt_tun_handoff)
@@ -225,8 +209,7 @@ VLIB_NODE_FN (esp_mpls_encrypt_tun_handoff)
 {
   ipsec_main_t *im = &ipsec_main;
 
-  return ipsec_handoff (vm, node, from_frame, im->esp_mpls_enc_tun_fq_index,
-			true);
+  return ipsec_handoff (vm, node, from_frame, im->esp_mpls_enc_tun_fq_index);
 }
 
 VLIB_NODE_FN (esp4_decrypt_handoff) (vlib_main_t * vm,
@@ -235,7 +218,7 @@ VLIB_NODE_FN (esp4_decrypt_handoff) (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
 
-  return ipsec_handoff (vm, node, from_frame, im->esp4_dec_fq_index, false);
+  return ipsec_handoff (vm, node, from_frame, im->esp4_dec_fq_index);
 }
 
 VLIB_NODE_FN (esp6_decrypt_handoff) (vlib_main_t * vm,
@@ -244,7 +227,7 @@ VLIB_NODE_FN (esp6_decrypt_handoff) (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
 
-  return ipsec_handoff (vm, node, from_frame, im->esp6_dec_fq_index, false);
+  return ipsec_handoff (vm, node, from_frame, im->esp6_dec_fq_index);
 }
 
 VLIB_NODE_FN (esp4_decrypt_tun_handoff) (vlib_main_t * vm,
@@ -253,8 +236,7 @@ VLIB_NODE_FN (esp4_decrypt_tun_handoff) (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
 
-  return ipsec_handoff (vm, node, from_frame, im->esp4_dec_tun_fq_index,
-			false);
+  return ipsec_handoff (vm, node, from_frame, im->esp4_dec_tun_fq_index);
 }
 
 VLIB_NODE_FN (esp6_decrypt_tun_handoff) (vlib_main_t * vm,
@@ -263,8 +245,7 @@ VLIB_NODE_FN (esp6_decrypt_tun_handoff) (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
 
-  return ipsec_handoff (vm, node, from_frame, im->esp6_dec_tun_fq_index,
-			false);
+  return ipsec_handoff (vm, node, from_frame, im->esp6_dec_tun_fq_index);
 }
 
 VLIB_NODE_FN (ah4_encrypt_handoff) (vlib_main_t * vm,
@@ -273,7 +254,7 @@ VLIB_NODE_FN (ah4_encrypt_handoff) (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
 
-  return ipsec_handoff (vm, node, from_frame, im->ah4_enc_fq_index, true);
+  return ipsec_handoff (vm, node, from_frame, im->ah4_enc_fq_index);
 }
 
 VLIB_NODE_FN (ah6_encrypt_handoff) (vlib_main_t * vm,
@@ -282,7 +263,7 @@ VLIB_NODE_FN (ah6_encrypt_handoff) (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
 
-  return ipsec_handoff (vm, node, from_frame, im->ah6_enc_fq_index, true);
+  return ipsec_handoff (vm, node, from_frame, im->ah6_enc_fq_index);
 }
 
 VLIB_NODE_FN (ah4_decrypt_handoff) (vlib_main_t * vm,
@@ -291,7 +272,7 @@ VLIB_NODE_FN (ah4_decrypt_handoff) (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
 
-  return ipsec_handoff (vm, node, from_frame, im->ah4_dec_fq_index, false);
+  return ipsec_handoff (vm, node, from_frame, im->ah4_dec_fq_index);
 }
 
 VLIB_NODE_FN (ah6_decrypt_handoff) (vlib_main_t * vm,
@@ -300,7 +281,7 @@ VLIB_NODE_FN (ah6_decrypt_handoff) (vlib_main_t * vm,
 {
   ipsec_main_t *im = &ipsec_main;
 
-  return ipsec_handoff (vm, node, from_frame, im->ah6_dec_fq_index, false);
+  return ipsec_handoff (vm, node, from_frame, im->ah6_dec_fq_index);
 }
 
 /* *INDENT-OFF* */

@@ -1122,16 +1122,16 @@ esp_decrypt_inline (vlib_main_t * vm,
 	    }
 	}
 
-      if (PREDICT_FALSE (~0 == sa0->decrypt_thread_index))
+      if (PREDICT_FALSE (~0 == sa0->thread_index))
 	{
 	  /* this is the first packet to use this SA, claim the SA
 	   * for this thread. this could happen simultaneously on
 	   * another thread */
-	  clib_atomic_cmp_and_swap (&sa0->decrypt_thread_index, ~0,
+	  clib_atomic_cmp_and_swap (&sa0->thread_index, ~0,
 				    ipsec_sa_assign_thread (thread_index));
 	}
 
-      if (PREDICT_FALSE (thread_index != sa0->decrypt_thread_index))
+      if (PREDICT_FALSE (thread_index != sa0->thread_index))
 	{
 	  esp_set_next_index (is_async, from, nexts, from[b - bufs],
 			      &n_async_drop, ESP_DECRYPT_NEXT_HANDOFF, next);

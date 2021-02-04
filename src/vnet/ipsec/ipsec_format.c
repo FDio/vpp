@@ -293,8 +293,7 @@ format_ipsec_sa (u8 * s, va_list * args)
 
   s = format (s, "\n   locks %d", sa->node.fn_locks);
   s = format (s, "\n   salt 0x%x", clib_net_to_host_u32 (sa->salt));
-  s = format (s, "\n   thread-indices [encrypt:%d decrypt:%d]",
-	      sa->encrypt_thread_index, sa->decrypt_thread_index);
+  s = format (s, "\n   thread-index:%d", sa->thread_index);
   s = format (s, "\n   seq %u seq-hi %u", sa->seq, sa->seq_hi);
   s = format (s, "\n   last-seq %u last-seq-hi %u window %U",
 	      sa->last_seq, sa->last_seq_hi,
