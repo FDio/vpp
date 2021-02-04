@@ -810,7 +810,7 @@ vnet_register_interface (vnet_main_t * vnm,
   vnet_config_main_t *cm;
   u32 hw_index, i;
   char *tx_node_name = NULL, *output_node_name = NULL;
-  vlib_node_function_t *output_node = vnet_interface_output_node_get ();
+  vlib_node_function_t *output_node = vnet_interface_output_node_get (vm);
 
   pool_get (im->hw_interfaces, hw);
   clib_memset (hw, 0, sizeof (*hw));
@@ -1362,6 +1362,13 @@ vnet_interface_init (vlib_main_t * vm)
 	    /* to avoid confusion, please remove ".tx_function" statement
 	       from VNET_DEVICE_CLASS() if using function candidates */
 	    ASSERT (c->tx_function == 0);
+
+	    /* Update priority if node variant is configured */
+	    if (vm->node_main.cfg_node_variant)
+	      {
+		vlib_update_nr_variant_default (
+		  c->tx_fn_registrations, vm->node_main.cfg_node_variant);
+	      }
 
 	    while (fnr)
 	      {

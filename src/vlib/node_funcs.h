@@ -1201,6 +1201,10 @@ void vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n);
 /* Node graph initialization function. */
 clib_error_t *vlib_node_main_init (vlib_main_t * vm);
 
+/* Variant override. */
+void vlib_update_nr_variant_default (vlib_node_fn_registration_t *fnr,
+				     u8 *variant);
+
 format_function_t format_vlib_node_graph;
 format_function_t format_vlib_node_name;
 format_function_t format_vlib_next_node_name;
