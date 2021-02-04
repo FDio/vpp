@@ -165,6 +165,7 @@ vlib_early_node_config (vlib_main_t * vm, unformat_input_t * input)
 		  nr = nr->next_registration;
 		}
 
+	      vm->node_main.cfg_node_variant = vec_dup (variant);
 	      vec_free (variant);
 	    }
 	}
