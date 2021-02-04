@@ -42,6 +42,8 @@
 #include <vnet/devices/virtio/vhost_user_inline.h>
 
 #include <vnet/gso/hdr_offset_parser.h>
+
+#include <vnet/multi-txq/multi_txq.h>
 /*
  * On the transmit side, we keep processing the buffers from vlib in the while
  * loop and prepare the copy order to be executed later. However, the static
@@ -730,8 +732,17 @@ VNET_DEVICE_CLASS_TX_FN (vhost_user_device_class) (vlib_main_t * vm,
       goto done3;
     }
 
-  qid = VHOST_VRING_IDX_RX (*vec_elt_at_index (vui->per_cpu_tx_qid,
-					       thread_index));
+  if (frame->flags & MULTI_TXQ_INDEX_SET)
+    {
+      qid = *(u32 *) vlib_frame_scalar_args (frame);
+      qid = VHOST_VRING_IDX_RX (qid);
+    }
+  else
+    qid = VHOST_VRING_IDX_RX (
+      *vec_elt_at_index (vui->per_cpu_tx_qid, thread_index));
+
+  ASSERT (qid <= vui->num_qid);
+
   rxvq = &vui->vrings[qid];
   if (PREDICT_FALSE (rxvq->avail == 0))
     {

@@ -122,7 +122,10 @@ vhost_user_tx_thread_placement (vhost_user_intf_t * vui)
   u32 qid;
   u32 thread_index = 0;
 
-  vui->use_tx_spinlock = 0;
+  if (vui->multi_txq_enabled)
+    vui->use_tx_spinlock = 1;
+  else
+    vui->use_tx_spinlock = 0;
   while (1)
     {
       for (qid = 0; qid < vui->num_qid / 2; qid++)
@@ -1594,6 +1597,7 @@ vhost_user_vui_init (vnet_main_t * vnm, vhost_user_intf_t * vui,
   vui->enable_gso = args->enable_gso;
   vui->enable_event_idx = args->enable_event_idx;
   vui->enable_packed = args->enable_packed;
+  vui->multi_txq_enabled = args->multi_txq_enabled;
   /*
    * enable_gso takes precedence over configurable feature mask if there
    * is a clash.
@@ -1769,6 +1773,8 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
 	args.enable_gso = 1;
       else if (unformat (line_input, "packed"))
 	args.enable_packed = 1;
+      else if (unformat (line_input, "multi-txq"))
+	args.multi_txq_enabled = 1;
       else if (unformat (line_input, "event-idx"))
 	args.enable_event_idx = 1;
       else if (unformat (line_input, "feature-mask 0x%llx",
@@ -2346,12 +2352,13 @@ done:
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vhost_user_connect_command, static) = {
-    .path = "create vhost-user",
-    .short_help = "create vhost-user socket <socket-filename> [server] "
+  .path = "create vhost-user",
+  .short_help =
+    "create vhost-user socket <socket-filename> [server] "
     "[feature-mask <hex>] [hwaddr <mac-addr>] [renumber <dev_instance>] [gso] "
-    "[packed] [event-idx]",
-    .function = vhost_user_connect_command_fn,
-    .is_mp_safe = 1,
+    "[packed] [multi-txq] [event-idx]",
+  .function = vhost_user_connect_command_fn,
+  .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 
