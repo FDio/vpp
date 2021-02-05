@@ -154,7 +154,6 @@ vl_api_lcp_default_ns_set_t_handler (vl_api_lcp_default_ns_set_t *mp)
 static void
 vl_api_lcp_default_ns_get_t_handler (vl_api_lcp_default_ns_get_t *mp)
 {
-  lcp_main_t *lcpm = &lcp_main;
   vl_api_lcp_default_ns_get_reply_t *rmp;
   vl_api_registration_t *reg;
   char *ns;
@@ -165,7 +164,7 @@ vl_api_lcp_default_ns_get_t_handler (vl_api_lcp_default_ns_get_t *mp)
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = (VL_API_LCP_DEFAULT_NS_GET_REPLY + lcpm->msg_id_base);
+  rmp->_vl_msg_id = (VL_API_LCP_DEFAULT_NS_GET_REPLY);
   rmp->context = mp->context;
 
   ns = (char *) lcp_get_default_ns ();
