@@ -451,6 +451,26 @@ unformat_punt_client (unformat_input_t * input, va_list * args)
 			punt_client_db, result);
 }
 
+/* Parse punt reason */
+uword
+unformat_punt_reason (unformat_input_t *input, va_list *args)
+{
+  u32 *result = va_arg (*args, u32 *);
+  u8 *s = 0;
+  for (int i = 0; i < punt_reason_last - 1; i++)
+    {
+      punt_reason_data_t *pd = vec_elt_at_index (punt_reason_data, 1 + i);
+      vec_reset_length (s);
+      s = format (0, "%v%c", pd->pd_name, 0);
+      if (unformat (input, (const char *) s))
+	{
+	  *result = pd->pd_reason;
+	  return 1;
+	}
+    }
+  return 0;
+}
+
 u8 *
 format_punt_reg (u8 * s, va_list * args)
 {
