@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3c9900e8_4a073095",
+        "filename": "src/plugins/nat/CMakeLists.txt",
+        "patchSetId": 21
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-05T11:24:04Z",
+      "side": 1,
+      "message": "Yes, will do. But need to resolve a cmake dependency problem for .api from multiarch sources first (separate patch).",
+      "parentUuid": "b866dab9_aa2b0b0c",
+      "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "763e6c76_f9383e2e",
         "filename": "src/plugins/nat/pnat/pnat.c",
         "patchSetId": 21
@@ -33,6 +51,24 @@
       "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "55f23d67_869d7503",
+        "filename": "src/plugins/nat/pnat/pnat.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-05T11:24:04Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "763e6c76_f9383e2e",
+      "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "47c4a715_73ca912b",
+        "filename": "src/plugins/nat/pnat/pnat.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-05T11:24:04Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "38ab9657_5af2ceae",
+      "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f01cf5ff_320b9a4e",
         "filename": "src/plugins/nat/pnat/pnat.c",
         "patchSetId": 21
@@ -67,6 +121,24 @@
       "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a7248aa1_5493b9e5",
+        "filename": "src/plugins/nat/pnat/pnat.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 299,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-05T11:24:04Z",
+      "side": 1,
+      "message": "Yes, a binding must be deleted and then added. Not convinced modify operation makes sense.",
+      "parentUuid": "f01cf5ff_320b9a4e",
+      "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "561aea45_0922c2fb",
+        "filename": "src/plugins/nat/pnat/pnat.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-05T11:24:04Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "460e89e4_f39c9303",
+      "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "861c0515_bd3352d1",
         "filename": "src/plugins/nat/pnat/pnat_api.c",
         "patchSetId": 21
@@ -101,6 +191,24 @@
       "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0260aefb_21665682",
+        "filename": "src/plugins/nat/pnat/pnat_api.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-05T11:24:04Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "861c0515_bd3352d1",
+      "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -121,6 +229,24 @@
     },
     {
       "key": {
+        "uuid": "32de3ede_f67068e5",
+        "filename": "src/plugins/nat/pnat/pnat_node.h",
+        "patchSetId": 21
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-05T11:24:04Z",
+      "side": 1,
+      "message": "Simplified and removed.",
+      "parentUuid": "1cbbd548_fdad0dec",
+      "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "99c3ddc9_ed849a7e",
         "filename": "src/plugins/nat/pnat/pnat_test.c",
         "patchSetId": 21
@@ -135,6 +261,24 @@
       "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9b3e2fbd_fd1dc994",
+        "filename": "src/plugins/nat/pnat/pnat_test.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 403,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-05T11:24:04Z",
+      "side": 1,
+      "message": "Currently it is not. Will have to be run manually while modifying component. Might add to CI as later patch.",
+      "parentUuid": "99c3ddc9_ed849a7e",
+      "revId": "adb15d494a20d7cf1abc9d81799291c217997847",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
