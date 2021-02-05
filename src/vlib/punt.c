@@ -63,6 +63,16 @@ typedef struct punt_reason_data_t_
    * Data to pass to the callback
    */
   void *pd_data;
+
+  /**
+   * Flags associated to the reason
+   */
+  u32 flags;
+
+  /**
+   * Formatting function for flags;
+   */
+  format_function_t *flags_format;
 } punt_reason_data_t;
 
 /**
@@ -148,8 +158,13 @@ u8 *
 format_vlib_punt_reason (u8 * s, va_list * args)
 {
   vlib_punt_reason_t pr = va_arg (*args, int);
-
-  return (format (s, "[%d] %v", pr, punt_reason_data[pr].pd_name));
+  format_function_t *flags_format = punt_reason_data[pr].flags_format;
+  u32 flags = punt_reason_data[pr].flags;
+  if (flags_format)
+    return (format (s, "[%d] %v flags: %U", pr, punt_reason_data[pr].pd_name,
+		    flags_format, flags));
+  else
+    return (format (s, "[%d] %v", pr, punt_reason_data[pr].pd_name));
 }
 
 vlib_punt_hdl_t
@@ -400,11 +415,17 @@ vlib_punt_reason_validate (vlib_punt_reason_t reason)
   return (-1);
 }
 
+u32
+vlib_punt_reason_get_flags (vlib_punt_reason_t pr)
+{
+  return pr < punt_reason_last ? punt_reason_data[pr].flags : 0;
+}
+
 int
-vlib_punt_reason_alloc (vlib_punt_hdl_t client,
-			const char *reason_name,
-			punt_interested_listener_t fn,
-			void *data, vlib_punt_reason_t * reason)
+vlib_punt_reason_alloc (vlib_punt_hdl_t client, const char *reason_name,
+			punt_interested_listener_t fn, void *data,
+			vlib_punt_reason_t *reason, u32 flags,
+			format_function_t *flags_format)
 {
   vlib_punt_reason_t new;
 
@@ -417,6 +438,8 @@ vlib_punt_reason_alloc (vlib_punt_hdl_t client,
   punt_reason_data[new].pd_reason = new;
   punt_reason_data[new].pd_fn = fn;
   punt_reason_data[new].pd_data = data;
+  punt_reason_data[new].flags = flags;
+  punt_reason_data[new].flags_format = flags_format;
   vec_add1 (punt_reason_data[new].pd_owners, client);
 
   vlib_validate_combined_counter (&punt_counters, new);
@@ -451,6 +474,29 @@ unformat_punt_client (unformat_input_t * input, va_list * args)
 			punt_client_db, result);
 }
 
+/* Parse punt reason */
+uword
+unformat_punt_reason (unformat_input_t *input, va_list *args)
+{
+  u32 *result = va_arg (*args, u32 *);
+  u8 *s = 0;
+  u8 found = 0;
+  for (int i = 0; i < punt_reason_last - 1; i++)
+    {
+      punt_reason_data_t *pd = vec_elt_at_index (punt_reason_data, 1 + i);
+      vec_reset_length (s);
+      s = format (0, "%v%c", pd->pd_name, 0);
+      if (unformat (input, (const char *) s))
+	{
+	  *result = pd->pd_reason;
+	  found = 1;
+	  break;
+	}
+    }
+  vec_free (s);
+  return found;
+}
+
 u8 *
 format_punt_reg (u8 * s, va_list * args)
 {
@@ -472,8 +518,11 @@ format_punt_reason_data (u8 * s, va_list * args)
   punt_reason_data_t *pd = va_arg (*args, punt_reason_data_t *);
   punt_client_t *pc;
   u32 *pci;
-
-  s = format (s, "[%d] %v from:[", pd->pd_reason, pd->pd_name);
+  if (pd->flags_format)
+    s = format (s, "[%d] %v flags: %U from:[", pd->pd_reason, pd->pd_name,
+		pd->flags_format, pd->flags);
+  else
+    s = format (s, "[%d] %v from:[", pd->pd_reason, pd->pd_name);
   vec_foreach (pci, pd->pd_owners)
   {
     pc = pool_elt_at_index (punt_client_pool, *pci);

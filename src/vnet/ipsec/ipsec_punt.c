@@ -18,6 +18,7 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_punt.h>
 #include <vnet/ipsec/ipsec_tun.h>
+#include <vnet/ip/punt.h>
 
 static vlib_punt_hdl_t punt_hdl;
 
@@ -48,10 +49,11 @@ ipsec_punt_init (vlib_main_t * vm)
 
   punt_hdl = vlib_punt_client_register ("ipsec");
 
-#define _(s,v)  vlib_punt_reason_alloc (punt_hdl, v,                    \
-                                        ipsec_punt_interested_listener, \
-                                        NULL,                           \
-                                        &ipsec_punt_reason[IPSEC_PUNT_##s]);
+#define _(s, v, f)                                                            \
+  vlib_punt_reason_alloc (punt_hdl, v, ipsec_punt_interested_listener, NULL,  \
+			  &ipsec_punt_reason[IPSEC_PUNT_##s],                 \
+			  VNET_PUNT_REASON_F_##f,                             \
+			  format_vnet_punt_reason_flags);
   foreach_ipsec_punt_reason
 #undef _
     return (error);
