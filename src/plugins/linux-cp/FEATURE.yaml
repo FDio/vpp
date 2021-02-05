@@ -3,10 +3,10 @@ name: Linux Control Plane (integration)
 maintainer: Neale Ranns <neale@grahpiant.com>
 
 description: |-
-        This plugin provides the beginnings of an integration with the
-        Linux network stack.
-        The plugin provides the capability to 'mirror' VPP interfaces in
-        the Linux kernel. This means that for any interface in VPP the user
+        These plugins provide an integration with the Linux network stack.
+
+        The "linux_cp" plugin provides the capability to 'mirror' VPP interfaces
+        in the Linux kernel. This means that for any interface in VPP the user
         can create a corresponding TAP or TUN device in the Linux kernel
         and have VPP plumb them together.
         The plumbing mechanics is different in each direction.
@@ -17,8 +17,7 @@ description: |-
         In the TX direction, packets received by VPP an the mirror Tap/Tun
         are cross-connected to the VPP interfaces. For IP packets, IP output
         features are applied.
-        This is the beginnings of integration, because there needs to be
-        an external agent that will configure (and synchronize) the IP
+        The "linux_nl" plugin listens to netlink messages and synchronizes the IP
         configuration of the paired interfaces.
 
 state: experimental
