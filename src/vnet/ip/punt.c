@@ -405,6 +405,32 @@ punt_l4_add_del (vlib_main_t * vm,
     }
 }
 
+/**
+ * @brief Request exception traffic punt.
+ *
+ * @param reason   Punting reason
+ *
+ * @returns 0 on success, non-zero value otherwise
+ */
+static clib_error_t *
+punt_exception_add_del (vlib_punt_reason_t reason, bool is_add)
+{
+  punt_main_t *pm = &punt_main;
+  int rv = 0;
+  vnet_punt_reason_flag_t flag = vlib_punt_reason_get_flags (reason);
+  const char *node_name =
+    vnet_punt_reason_flag_is_IP6_PACKET (flag) ? "ip6-punt" : "ip4-punt";
+  if (is_add)
+    rv = vlib_punt_register (pm->hdl, reason, node_name);
+  else
+    rv = vlib_punt_unregister (pm->hdl, reason, node_name);
+  if (!rv)
+    return 0;
+  else
+    return clib_error_return (0, is_add ? "Existing punting registration..." :
+					  "Punting registration not found...");
+}
+
 clib_error_t *
 vnet_punt_add_del (vlib_main_t * vm, const punt_reg_t * pr, bool is_add)
 {
@@ -414,6 +440,7 @@ vnet_punt_add_del (vlib_main_t * vm, const punt_reg_t * pr, bool is_add)
       return (punt_l4_add_del (vm, pr->punt.l4.af, pr->punt.l4.protocol,
 			       pr->punt.l4.port, is_add));
     case PUNT_TYPE_EXCEPTION:
+      return punt_exception_add_del (pr->punt.exception.reason, is_add);
     case PUNT_TYPE_IP_PROTO:
       break;
     }
@@ -449,6 +476,9 @@ punt_cli (vlib_main_t * vm,
     {
       if (unformat (input, "del"))
 	is_add = false;
+      else if (unformat (input, "reason %U", unformat_punt_reason,
+			 &pr.punt.exception.reason))
+	pr.type = PUNT_TYPE_EXCEPTION;
       else if (unformat (input, "ipv4"))
 	pr.punt.l4.af = AF_IP4;
       else if (unformat (input, "ipv6"))
@@ -807,6 +837,19 @@ ip_punt_init (vlib_main_t * vm)
 			CLIB_CACHE_LINE_BYTES);
 
   return (error);
+}
+
+u8 *
+format_vnet_punt_reason_flags (u8 *s, va_list *args)
+{
+  vnet_punt_reason_flag_t flag = va_arg (*args, int);
+#define _(pos, len, value, name, str)                                         \
+  if (vnet_punt_reason_flag_is_##name (flag))                                 \
+    s = format (s, "%s ", str);
+
+  foreach_vnet_punt_reason_flag
+#undef _
+    return (s);
 }
 
 VLIB_INIT_FUNCTION (ip_punt_init);

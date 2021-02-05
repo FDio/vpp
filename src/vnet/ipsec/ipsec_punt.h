@@ -17,14 +17,14 @@
 
 #include <vlib/vlib.h>
 
-#define foreach_ipsec_punt_reason                             \
-  _(IP4_SPI_UDP_0, "ipsec4-spi-o-udp-0")                      \
-  _(IP4_NO_SUCH_TUNNEL, "ipsec4-no-such-tunnel")              \
-  _(IP6_NO_SUCH_TUNNEL, "ipsec6-no-such-tunnel")
+#define foreach_ipsec_punt_reason                                             \
+  _ (IP4_SPI_UDP_0, "ipsec4-spi-o-udp-0", IP4_PACKET)                         \
+  _ (IP4_NO_SUCH_TUNNEL, "ipsec4-no-such-tunnel", IP4_PACKET)                 \
+  _ (IP6_NO_SUCH_TUNNEL, "ipsec6-no-such-tunnel", IP6_PACKET)
 
 typedef enum ipsec_punt_reason_t_
 {
-#define _(s,v) IPSEC_PUNT_##s,
+#define _(s, v, f) IPSEC_PUNT_##s,
   foreach_ipsec_punt_reason
 #undef _
     IPSEC_PUNT_N_REASONS,
