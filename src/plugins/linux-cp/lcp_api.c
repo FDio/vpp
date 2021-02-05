@@ -41,22 +41,6 @@ api_encode_host_type (lip_host_type_t type)
   return LCP_API_ITF_HOST_TAP;
 }
 
-void
-lcp_set_auto_intf (u8 is_auto)
-{
-  lcp_main_t *lcpm = &lcp_main;
-
-  lcpm->auto_intf = (is_auto != 0);
-}
-
-int
-lcp_auto_intf (void)
-{
-  lcp_main_t *lcpm = &lcp_main;
-
-  return lcpm->auto_intf;
-}
-
 static int
 vl_api_lcp_itf_pair_add (u32 phy_sw_if_index, lip_host_type_t lip_host_type,
 			 u8 *mp_host_if_name, size_t sizeof_host_if_name,
@@ -199,7 +183,6 @@ vl_api_lcp_default_ns_set_t_handler (vl_api_lcp_default_ns_set_t *mp)
 static void
 vl_api_lcp_default_ns_get_t_handler (vl_api_lcp_default_ns_get_t *mp)
 {
-  lcp_main_t *lcpm = &lcp_main;
   vl_api_lcp_default_ns_get_reply_t *rmp;
   vl_api_registration_t *reg;
   char *ns;
@@ -210,7 +193,7 @@ vl_api_lcp_default_ns_get_t_handler (vl_api_lcp_default_ns_get_t *mp)
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = (VL_API_LCP_DEFAULT_NS_GET_REPLY + lcpm->msg_id_base);
+  rmp->_vl_msg_id = (VL_API_LCP_DEFAULT_NS_GET_REPLY);
   rmp->context = mp->context;
 
   ns = (char *) lcp_get_default_ns ();
@@ -250,7 +233,7 @@ vl_api_lcp_itf_pair_replace_end_t_handler (
 #include <linux-cp/lcp.api.c>
 
 static clib_error_t *
-lcp_plugin_api_hookup (vlib_main_t *vm)
+lcp_api_init (vlib_main_t *vm)
 {
   /* Ask for a correctly-sized block of API message decode slots */
   lcp_msg_id_base = setup_message_id_table ();
@@ -258,7 +241,7 @@ lcp_plugin_api_hookup (vlib_main_t *vm)
   return (NULL);
 }
 
-VLIB_INIT_FUNCTION (lcp_plugin_api_hookup);
+VLIB_INIT_FUNCTION (lcp_api_init);
 
 #include <vpp/app/version.h>
 VLIB_PLUGIN_REGISTER () = {
