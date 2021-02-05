@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bb92a0e0_841519e4",
+        "filename": "src/plugins/mss_clamp/mss_clamp.api",
+        "patchSetId": 15
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-05T12:23:39Z",
+      "side": 1,
+      "message": "Use enum flags instead?",
+      "revId": "36511de66f3671ae03ad0428d58a1cc40ebc562c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "51f6ed00_9f81e4df",
+        "filename": "src/plugins/mss_clamp/mss_clamp.api",
+        "patchSetId": 15
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-05T12:23:39Z",
+      "side": 1,
+      "message": "You don\u0027t need to start off with a deprecated API message? ;-)",
+      "revId": "36511de66f3671ae03ad0428d58a1cc40ebc562c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "30850381_f9c75e36",
+        "filename": "src/plugins/mss_clamp/mss_clamp.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-05T12:23:39Z",
+      "side": 1,
+      "message": "Should you be able to enable for both v4 and v6 and both directions in a single message?",
+      "revId": "36511de66f3671ae03ad0428d58a1cc40ebc562c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1f0ff2fb_8ca39184",
+        "filename": "src/plugins/mss_clamp/mss_clamp_node.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-05T12:23:39Z",
+      "side": 1,
+      "message": "Put counters in .api?",
+      "revId": "36511de66f3671ae03ad0428d58a1cc40ebc562c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
