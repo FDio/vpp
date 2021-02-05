@@ -97,6 +97,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   ipsec_key_t ck = { 0 };
   ipsec_key_t ik = { 0 };
   u32 id, spi, salt, sai;
+  int i = 0;
   u16 udp_src, udp_dst;
   int is_add, rv;
   u32 m_args = 0;
@@ -158,6 +159,10 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "tunnel-dst %U",
 			 unformat_ip46_address, &tun_dst, IP46_TYPE_ANY))
 	;
+      else if (unformat (line_input, "udp-src-port %d", &i))
+	udp_src = i;
+      else if (unformat (line_input, "udp-dst-port %d", &i))
+	udp_dst = i;
       else if (unformat (line_input, "tx-table-id %d", &tx_table_id))
 	;
       else if (unformat (line_input, "inbound"))
