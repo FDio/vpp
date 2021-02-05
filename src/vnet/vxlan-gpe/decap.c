@@ -79,8 +79,104 @@ format_vxlan_gpe_with_length (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
 
-
   return s;
+}
+
+typedef struct
+{
+  vxlan4_gpe_tunnel_key_t key;
+  vxlan_gpe_decap_info_t val;
+} vxlan4_gpe_tunnel_cache_t;
+
+static const vxlan_gpe_decap_info_t decap_not_found = {
+  .tunnel_index = ~0,
+  .next_index = VXLAN_GPE_INPUT_NEXT_DROP,
+  .error = VXLAN_GPE_ERROR_NO_SUCH_TUNNEL
+};
+
+always_inline vxlan_gpe_decap_info_t
+vxlan4_gpe_find_tunnel (vxlan_gpe_main_t *nngm,
+			vxlan4_gpe_tunnel_cache_t *cache,
+			ip4_vxlan_gpe_header_t *iuvn4_0)
+{
+  /* Make sure VXLAN GPE tunnel exist according to packet S/D IP, UDP port and
+   * VNI */
+  vxlan4_gpe_tunnel_key_t key4 = {
+    .local = iuvn4_0->ip4.dst_address.as_u32,
+    .remote = iuvn4_0->ip4.src_address.as_u32,
+    .vni = iuvn4_0->vxlan.vni_res,
+    .port = (u32) iuvn4_0->udp.dst_port,
+  };
+
+  if (PREDICT_TRUE (key4.as_u64[0] == cache->key.as_u64[0] &&
+		    key4.as_u64[1] == cache->key.as_u64[1]))
+    {
+      /* cache hit */
+      return cache->val;
+    }
+
+  uword *p = hash_get_mem (nngm->vxlan4_gpe_tunnel_by_key, &key4);
+  if (PREDICT_TRUE (p != 0))
+    {
+      u32 next = (iuvn4_0->vxlan.protocol < VXLAN_GPE_PROTOCOL_MAX) ?
+		   nngm->decap_next_node_list[iuvn4_0->vxlan.protocol] :
+		   VXLAN_GPE_INPUT_NEXT_DROP;
+
+      cache->key.as_u64[0] = key4.as_u64[0];
+      cache->key.as_u64[1] = key4.as_u64[1];
+
+      cache->val.error = 0;
+      cache->val.tunnel_index = p[0];
+      cache->val.next_index = next;
+
+      return cache->val;
+    }
+
+  return decap_not_found;
+}
+
+typedef struct
+{
+  vxlan6_gpe_tunnel_key_t key;
+  vxlan_gpe_decap_info_t val;
+} vxlan6_gpe_tunnel_cache_t;
+
+always_inline vxlan_gpe_decap_info_t
+vxlan6_gpe_find_tunnel (vxlan_gpe_main_t *nngm,
+			vxlan6_gpe_tunnel_cache_t *cache,
+			ip6_vxlan_gpe_header_t *iuvn6_0)
+{
+  /* Make sure VXLAN GPE tunnel exist according to packet S/D IP, UDP port and
+   * VNI */
+  vxlan6_gpe_tunnel_key_t key6;
+
+  ip6_address_copy (&key6.local, &iuvn6_0->ip6.dst_address);
+  ip6_address_copy (&key6.remote, &iuvn6_0->ip6.src_address);
+  key6.vni = iuvn6_0->vxlan.vni_res;
+  key6.port = iuvn6_0->udp.dst_port;
+
+  if (PREDICT_TRUE (memcmp (&key6, &cache->key, sizeof (cache->key)) == 0))
+    {
+      /* cache hit */
+      return cache->val;
+    }
+
+  uword *p = hash_get_mem (nngm->vxlan6_gpe_tunnel_by_key, &key6);
+  if (PREDICT_TRUE (p != 0))
+    {
+      u32 next = (iuvn6_0->vxlan.protocol < VXLAN_GPE_PROTOCOL_MAX) ?
+		   nngm->decap_next_node_list[iuvn6_0->vxlan.protocol] :
+		   VXLAN_GPE_INPUT_NEXT_DROP;
+
+      memcpy (&cache->key, &key6, sizeof (key6));
+      cache->val.error = 0;
+      cache->val.tunnel_index = p[0];
+      cache->val.next_index = next;
+
+      return cache->val;
+    }
+
+  return decap_not_found;
 }
 
 /**
@@ -111,17 +207,16 @@ vxlan_gpe_input (vlib_main_t * vm,
   vxlan_gpe_main_t *nngm = &vxlan_gpe_main;
   vnet_main_t *vnm = nngm->vnet_main;
   vnet_interface_main_t *im = &vnm->interface_main;
-  u32 last_tunnel_index = ~0;
-  vxlan4_gpe_tunnel_key_t last_key4;
-  vxlan6_gpe_tunnel_key_t last_key6;
+  vxlan4_gpe_tunnel_cache_t last4;
+  vxlan6_gpe_tunnel_cache_t last6;
   u32 pkts_decapsulated = 0;
   u32 thread_index = vm->thread_index;
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
 
   if (is_ip4)
-    clib_memset (&last_key4, 0xff, sizeof (last_key4));
+    clib_memset (&last4, 0xff, sizeof (last4));
   else
-    clib_memset (&last_key6, 0xff, sizeof (last_key6));
+    clib_memset (&last6, 0xff, sizeof (last6));
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -143,11 +238,7 @@ vxlan_gpe_input (vlib_main_t * vm,
 	  u32 next0, next1;
 	  ip4_vxlan_gpe_header_t *iuvn4_0, *iuvn4_1;
 	  ip6_vxlan_gpe_header_t *iuvn6_0, *iuvn6_1;
-	  uword *p0, *p1;
-	  u32 tunnel_index0, tunnel_index1;
 	  vxlan_gpe_tunnel_t *t0, *t1;
-	  vxlan4_gpe_tunnel_key_t key4_0, key4_1;
-	  vxlan6_gpe_tunnel_key_t key6_0, key6_1;
 	  u32 error0, error1;
 	  u32 sw_if_index0, sw_if_index1, len0, len1;
 
@@ -212,123 +303,19 @@ vxlan_gpe_input (vlib_main_t * vm,
 	      vlib_buffer_advance (b1, sizeof (*iuvn6_1));
 	    }
 
-	  tunnel_index0 = ~0;
-	  tunnel_index1 = ~0;
-	  error0 = 0;
-	  error1 = 0;
+	  /* Process packet 0 */
+	  vxlan_gpe_decap_info_t di0 =
+	    is_ip4 ? vxlan4_gpe_find_tunnel (nngm, &last4, iuvn4_0) :
+		     vxlan6_gpe_find_tunnel (nngm, &last6, iuvn6_0);
 
-	  if (is_ip4)
+	  next0 = di0.next_index;
+	  error0 = di0.error;
+	  if (error0 != 0)
 	    {
-	      next0 =
-		(iuvn4_0->vxlan.protocol < VXLAN_GPE_PROTOCOL_MAX) ?
-		nngm->decap_next_node_list[iuvn4_0->vxlan.protocol] :
-		VXLAN_GPE_INPUT_NEXT_DROP;
-	      next1 =
-		(iuvn4_1->vxlan.protocol < VXLAN_GPE_PROTOCOL_MAX) ?
-		nngm->decap_next_node_list[iuvn4_1->vxlan.protocol] :
-		VXLAN_GPE_INPUT_NEXT_DROP;
-
-	      key4_0.local = iuvn4_0->ip4.dst_address.as_u32;
-	      key4_1.local = iuvn4_1->ip4.dst_address.as_u32;
-
-	      key4_0.remote = iuvn4_0->ip4.src_address.as_u32;
-	      key4_1.remote = iuvn4_1->ip4.src_address.as_u32;
-
-	      key4_0.vni = iuvn4_0->vxlan.vni_res;
-	      key4_1.vni = iuvn4_1->vxlan.vni_res;
-
-	      key4_0.pad = 0;
-	      key4_1.pad = 0;
-	    }
-	  else			/* is_ip6 */
-	    {
-	      next0 = (iuvn6_0->vxlan.protocol < node->n_next_nodes) ?
-		iuvn6_0->vxlan.protocol : VXLAN_GPE_INPUT_NEXT_DROP;
-	      next1 = (iuvn6_1->vxlan.protocol < node->n_next_nodes) ?
-		iuvn6_1->vxlan.protocol : VXLAN_GPE_INPUT_NEXT_DROP;
-
-	      key6_0.local.as_u64[0] = iuvn6_0->ip6.dst_address.as_u64[0];
-	      key6_0.local.as_u64[1] = iuvn6_0->ip6.dst_address.as_u64[1];
-	      key6_1.local.as_u64[0] = iuvn6_1->ip6.dst_address.as_u64[0];
-	      key6_1.local.as_u64[1] = iuvn6_1->ip6.dst_address.as_u64[1];
-
-	      key6_0.remote.as_u64[0] = iuvn6_0->ip6.src_address.as_u64[0];
-	      key6_0.remote.as_u64[1] = iuvn6_0->ip6.src_address.as_u64[1];
-	      key6_1.remote.as_u64[0] = iuvn6_1->ip6.src_address.as_u64[0];
-	      key6_1.remote.as_u64[1] = iuvn6_1->ip6.src_address.as_u64[1];
-
-	      key6_0.vni = iuvn6_0->vxlan.vni_res;
-	      key6_1.vni = iuvn6_1->vxlan.vni_res;
+	      goto trace0;
 	    }
 
-	  /* Processing packet 0 */
-	  if (is_ip4)
-	    {
-	      /* Processing for key4_0 */
-	      if (PREDICT_FALSE ((key4_0.as_u64[0] != last_key4.as_u64[0])
-				 || (key4_0.as_u64[1] !=
-				     last_key4.as_u64[1])))
-		{
-		  p0 = hash_get_mem (nngm->vxlan4_gpe_tunnel_by_key, &key4_0);
-
-		  if (p0 == 0)
-		    {
-		      error0 = VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
-		      goto trace0;
-		    }
-
-		  last_key4.as_u64[0] = key4_0.as_u64[0];
-		  last_key4.as_u64[1] = key4_0.as_u64[1];
-		  tunnel_index0 = last_tunnel_index = p0[0];
-		}
-	      else
-		tunnel_index0 = last_tunnel_index;
-	    }
-	  else			/* is_ip6 */
-	    {
-	      next0 =
-		(iuvn6_0->vxlan.protocol < VXLAN_GPE_PROTOCOL_MAX) ?
-		nngm->decap_next_node_list[iuvn6_0->vxlan.protocol] :
-		VXLAN_GPE_INPUT_NEXT_DROP;
-	      next1 =
-		(iuvn6_1->vxlan.protocol < VXLAN_GPE_PROTOCOL_MAX) ?
-		nngm->decap_next_node_list[iuvn6_1->vxlan.protocol] :
-		VXLAN_GPE_INPUT_NEXT_DROP;
-
-	      key6_0.local.as_u64[0] = iuvn6_0->ip6.dst_address.as_u64[0];
-	      key6_0.local.as_u64[1] = iuvn6_0->ip6.dst_address.as_u64[1];
-	      key6_1.local.as_u64[0] = iuvn6_1->ip6.dst_address.as_u64[0];
-	      key6_1.local.as_u64[1] = iuvn6_1->ip6.dst_address.as_u64[1];
-
-	      key6_0.remote.as_u64[0] = iuvn6_0->ip6.src_address.as_u64[0];
-	      key6_0.remote.as_u64[1] = iuvn6_0->ip6.src_address.as_u64[1];
-	      key6_1.remote.as_u64[0] = iuvn6_1->ip6.src_address.as_u64[0];
-	      key6_1.remote.as_u64[1] = iuvn6_1->ip6.src_address.as_u64[1];
-
-	      key6_0.vni = iuvn6_0->vxlan.vni_res;
-	      key6_1.vni = iuvn6_1->vxlan.vni_res;
-
-	      /* Processing for key6_0 */
-	      if (PREDICT_FALSE
-		  (memcmp (&key6_0, &last_key6, sizeof (last_key6)) != 0))
-		{
-		  p0 = hash_get_mem (nngm->vxlan6_gpe_tunnel_by_key, &key6_0);
-
-		  if (p0 == 0)
-		    {
-		      error0 = VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
-		      goto trace0;
-		    }
-
-		  memcpy (&last_key6, &key6_0, sizeof (key6_0));
-		  tunnel_index0 = last_tunnel_index = p0[0];
-		}
-	      else
-		tunnel_index0 = last_tunnel_index;
-	    }
-
-	  t0 = pool_elt_at_index (nngm->tunnels, tunnel_index0);
-
+	  t0 = pool_elt_at_index (nngm->tunnels, di0.tunnel_index);
 
 	  sw_if_index0 = t0->sw_if_index;
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
@@ -372,54 +359,22 @@ vxlan_gpe_input (vlib_main_t * vm,
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->next_index = next0;
 	      tr->error = error0;
-	      tr->tunnel_index = tunnel_index0;
+	      tr->tunnel_index = di0.tunnel_index;
 	    }
 
 	  /* Process packet 1 */
-	  if (is_ip4)
+	  vxlan_gpe_decap_info_t di1 =
+	    is_ip4 ? vxlan4_gpe_find_tunnel (nngm, &last4, iuvn4_1) :
+		     vxlan6_gpe_find_tunnel (nngm, &last6, iuvn6_1);
+
+	  next1 = di1.next_index;
+	  error1 = di1.error;
+	  if (error1 != 0)
 	    {
-	      /* Processing for key4_1 */
-	      if (PREDICT_FALSE ((key4_1.as_u64[0] != last_key4.as_u64[0])
-				 || (key4_1.as_u64[1] !=
-				     last_key4.as_u64[1])))
-		{
-		  p1 = hash_get_mem (nngm->vxlan4_gpe_tunnel_by_key, &key4_1);
-
-		  if (p1 == 0)
-		    {
-		      error1 = VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
-		      goto trace1;
-		    }
-
-		  last_key4.as_u64[0] = key4_1.as_u64[0];
-		  last_key4.as_u64[1] = key4_1.as_u64[1];
-		  tunnel_index1 = last_tunnel_index = p1[0];
-		}
-	      else
-		tunnel_index1 = last_tunnel_index;
-	    }
-	  else			/* is_ip6 */
-	    {
-	      /* Processing for key6_1 */
-	      if (PREDICT_FALSE
-		  (memcmp (&key6_1, &last_key6, sizeof (last_key6)) != 0))
-		{
-		  p1 = hash_get_mem (nngm->vxlan6_gpe_tunnel_by_key, &key6_1);
-
-		  if (p1 == 0)
-		    {
-		      error1 = VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
-		      goto trace1;
-		    }
-
-		  memcpy (&last_key6, &key6_1, sizeof (key6_1));
-		  tunnel_index1 = last_tunnel_index = p1[0];
-		}
-	      else
-		tunnel_index1 = last_tunnel_index;
+	      goto trace1;
 	    }
 
-	  t1 = pool_elt_at_index (nngm->tunnels, tunnel_index1);
+	  t1 = pool_elt_at_index (nngm->tunnels, di1.tunnel_index);
 
 	  sw_if_index1 = t1->sw_if_index;
 	  len1 = vlib_buffer_length_in_chain (vm, b1);
@@ -466,7 +421,7 @@ vxlan_gpe_input (vlib_main_t * vm,
 		vlib_add_trace (vm, node, b1, sizeof (*tr));
 	      tr->next_index = next1;
 	      tr->error = error1;
-	      tr->tunnel_index = tunnel_index1;
+	      tr->tunnel_index = di1.tunnel_index;
 	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
@@ -481,11 +436,7 @@ vxlan_gpe_input (vlib_main_t * vm,
 	  u32 next0;
 	  ip4_vxlan_gpe_header_t *iuvn4_0;
 	  ip6_vxlan_gpe_header_t *iuvn6_0;
-	  uword *p0;
-	  u32 tunnel_index0;
 	  vxlan_gpe_tunnel_t *t0;
-	  vxlan4_gpe_tunnel_key_t key4_0;
-	  vxlan6_gpe_tunnel_key_t key6_0;
 	  u32 error0;
 	  u32 sw_if_index0, len0;
 
@@ -523,75 +474,18 @@ vxlan_gpe_input (vlib_main_t * vm,
 	      vlib_buffer_advance (b0, sizeof (*iuvn6_0));
 	    }
 
-	  tunnel_index0 = ~0;
-	  error0 = 0;
+	  vxlan_gpe_decap_info_t di0 =
+	    is_ip4 ? vxlan4_gpe_find_tunnel (nngm, &last4, iuvn4_0) :
+		     vxlan6_gpe_find_tunnel (nngm, &last6, iuvn6_0);
 
-	  if (is_ip4)
+	  next0 = di0.next_index;
+	  error0 = di0.error;
+	  if (error0 != 0)
 	    {
-	      next0 =
-		(iuvn4_0->vxlan.protocol < VXLAN_GPE_PROTOCOL_MAX) ?
-		nngm->decap_next_node_list[iuvn4_0->vxlan.protocol] :
-		VXLAN_GPE_INPUT_NEXT_DROP;
-
-	      key4_0.local = iuvn4_0->ip4.dst_address.as_u32;
-	      key4_0.remote = iuvn4_0->ip4.src_address.as_u32;
-	      key4_0.vni = iuvn4_0->vxlan.vni_res;
-	      key4_0.pad = 0;
-
-	      /* Processing for key4_0 */
-	      if (PREDICT_FALSE ((key4_0.as_u64[0] != last_key4.as_u64[0])
-				 || (key4_0.as_u64[1] !=
-				     last_key4.as_u64[1])))
-		{
-		  p0 = hash_get_mem (nngm->vxlan4_gpe_tunnel_by_key, &key4_0);
-
-		  if (p0 == 0)
-		    {
-		      error0 = VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
-		      goto trace00;
-		    }
-
-		  last_key4.as_u64[0] = key4_0.as_u64[0];
-		  last_key4.as_u64[1] = key4_0.as_u64[1];
-		  tunnel_index0 = last_tunnel_index = p0[0];
-		}
-	      else
-		tunnel_index0 = last_tunnel_index;
-	    }
-	  else			/* is_ip6 */
-	    {
-	      next0 =
-		(iuvn6_0->vxlan.protocol < VXLAN_GPE_PROTOCOL_MAX) ?
-		nngm->decap_next_node_list[iuvn6_0->vxlan.protocol] :
-		VXLAN_GPE_INPUT_NEXT_DROP;
-
-	      key6_0.local.as_u64[0] = iuvn6_0->ip6.dst_address.as_u64[0];
-	      key6_0.local.as_u64[1] = iuvn6_0->ip6.dst_address.as_u64[1];
-	      key6_0.remote.as_u64[0] = iuvn6_0->ip6.src_address.as_u64[0];
-	      key6_0.remote.as_u64[1] = iuvn6_0->ip6.src_address.as_u64[1];
-	      key6_0.vni = iuvn6_0->vxlan.vni_res;
-
-	      /* Processing for key6_0 */
-	      if (PREDICT_FALSE
-		  (memcmp (&key6_0, &last_key6, sizeof (last_key6)) != 0))
-		{
-		  p0 = hash_get_mem (nngm->vxlan6_gpe_tunnel_by_key, &key6_0);
-
-		  if (p0 == 0)
-		    {
-		      error0 = VXLAN_GPE_ERROR_NO_SUCH_TUNNEL;
-		      goto trace00;
-		    }
-
-		  memcpy (&last_key6, &key6_0, sizeof (key6_0));
-		  tunnel_index0 = last_tunnel_index = p0[0];
-		}
-	      else
-		tunnel_index0 = last_tunnel_index;
+	      goto trace00;
 	    }
 
-	  t0 = pool_elt_at_index (nngm->tunnels, tunnel_index0);
-
+	  t0 = pool_elt_at_index (nngm->tunnels, di0.tunnel_index);
 
 	  sw_if_index0 = t0->sw_if_index;
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
@@ -637,7 +531,7 @@ vxlan_gpe_input (vlib_main_t * vm,
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->next_index = next0;
 	      tr->error = error0;
-	      tr->tunnel_index = tunnel_index0;
+	      tr->tunnel_index = di0.tunnel_index;
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -794,6 +688,9 @@ ip_vxlan_gpe_bypass_inline (vlib_main_t * vm,
 				   matching a local VTEP address */
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
 
+  vxlan4_gpe_tunnel_cache_t last4;
+  vxlan6_gpe_tunnel_cache_t last6;
+
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
@@ -804,9 +701,15 @@ ip_vxlan_gpe_bypass_inline (vlib_main_t * vm,
     ip4_forward_next_trace (vm, node, frame, VLIB_TX);
 
   if (is_ip4)
-    vtep4_key_init (&last_vtep4);
+    {
+      vtep4_key_init (&last_vtep4);
+      clib_memset (&last4, 0xff, sizeof last4);
+    }
   else
-    vtep6_key_init (&last_vtep6);
+    {
+      vtep6_key_init (&last_vtep6);
+      clib_memset (&last6, 0xff, sizeof last6);
+    }
 
   while (n_left_from > 0)
     {
@@ -818,6 +721,8 @@ ip_vxlan_gpe_bypass_inline (vlib_main_t * vm,
 	  ip4_header_t *ip40, *ip41;
 	  ip6_header_t *ip60, *ip61;
 	  udp_header_t *udp0, *udp1;
+	  ip4_vxlan_gpe_header_t *iuvn4_0, *iuvn4_1;
+	  ip6_vxlan_gpe_header_t *iuvn6_0, *iuvn6_1;
 	  u32 bi0, ip_len0, udp_len0, flags0, next0;
 	  u32 bi1, ip_len1, udp_len1, flags1, next1;
 	  i32 len_diff0, len_diff1;
@@ -878,8 +783,17 @@ ip_vxlan_gpe_bypass_inline (vlib_main_t * vm,
 	  else
 	    udp0 = ip6_next_header (ip60);
 
-	  if (udp0->dst_port != clib_host_to_net_u16 (UDP_DST_PORT_VXLAN_GPE))
-	    goto exit0;		/* not VXLAN packet */
+	  if (is_ip4)
+	    iuvn4_0 = vlib_buffer_get_current (b0);
+	  else
+	    iuvn6_0 = vlib_buffer_get_current (b0);
+
+	  vxlan_gpe_decap_info_t di0 =
+	    is_ip4 ? vxlan4_gpe_find_tunnel (ngm, &last4, iuvn4_0) :
+		     vxlan6_gpe_find_tunnel (ngm, &last6, iuvn6_0);
+
+	  if (PREDICT_FALSE (di0.tunnel_index == ~0))
+	    goto exit0; /* unknown interface */
 
 	  /* Validate DIP against VTEPs */
 	  if (is_ip4)
@@ -961,8 +875,17 @@ ip_vxlan_gpe_bypass_inline (vlib_main_t * vm,
 	  else
 	    udp1 = ip6_next_header (ip61);
 
-	  if (udp1->dst_port != clib_host_to_net_u16 (UDP_DST_PORT_VXLAN_GPE))
-	    goto exit1;		/* not VXLAN packet */
+	  if (is_ip4)
+	    iuvn4_1 = vlib_buffer_get_current (b1);
+	  else
+	    iuvn6_1 = vlib_buffer_get_current (b1);
+
+	  vxlan_gpe_decap_info_t di1 =
+	    is_ip4 ? vxlan4_gpe_find_tunnel (ngm, &last4, iuvn4_1) :
+		     vxlan6_gpe_find_tunnel (ngm, &last6, iuvn6_1);
+
+	  if (PREDICT_FALSE (di1.tunnel_index == ~0))
+	    goto exit1; /* unknown interface */
 
 	  /* Validate DIP against VTEPs */
 	  if (is_ip4)
@@ -1046,6 +969,8 @@ ip_vxlan_gpe_bypass_inline (vlib_main_t * vm,
 	  ip4_header_t *ip40;
 	  ip6_header_t *ip60;
 	  udp_header_t *udp0;
+	  ip4_vxlan_gpe_header_t *iuvn4_0;
+	  ip6_vxlan_gpe_header_t *iuvn6_0;
 	  u32 bi0, ip_len0, udp_len0, flags0, next0;
 	  i32 len_diff0;
 	  u8 error0, good_udp0, proto0;
@@ -1079,8 +1004,17 @@ ip_vxlan_gpe_bypass_inline (vlib_main_t * vm,
 	  else
 	    udp0 = ip6_next_header (ip60);
 
-	  if (udp0->dst_port != clib_host_to_net_u16 (UDP_DST_PORT_VXLAN_GPE))
-	    goto exit;		/* not VXLAN packet */
+	  if (is_ip4)
+	    iuvn4_0 = vlib_buffer_get_current (b0);
+	  else
+	    iuvn6_0 = vlib_buffer_get_current (b0);
+
+	  vxlan_gpe_decap_info_t di0 =
+	    is_ip4 ? vxlan4_gpe_find_tunnel (ngm, &last4, iuvn4_0) :
+		     vxlan6_gpe_find_tunnel (ngm, &last6, iuvn6_0);
+
+	  if (PREDICT_FALSE (di0.tunnel_index == ~0))
+	    goto exit; /* unknown interface */
 
 	  /* Validate DIP against VTEPs */
 
