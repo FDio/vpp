@@ -18,6 +18,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/adj/adj.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/punt.h>
 
 typedef enum punt_next_t_
 {
@@ -316,12 +317,12 @@ punt_test (vlib_main_t * vm,
 	   */
 	  punt_hdl = vlib_punt_client_register ("test");
 
-	  rc =
-	    vlib_punt_reason_alloc (punt_hdl, "reason-v4",
-				    NULL, NULL, &punt_reason_v4);
-	  rc |=
-	    vlib_punt_reason_alloc (punt_hdl, "reason-v6",
-				    NULL, NULL, &punt_reason_v6);
+	  rc = vlib_punt_reason_alloc (
+	    punt_hdl, "reason-v4", NULL, NULL, &punt_reason_v4,
+	    VNET_PUNT_REASON_F_IP4_PACKET, format_vnet_punt_reason_flags);
+	  rc |= vlib_punt_reason_alloc (
+	    punt_hdl, "reason-v6", NULL, NULL, &punt_reason_v6,
+	    VNET_PUNT_REASON_F_IP6_PACKET, format_vnet_punt_reason_flags);
 	  ASSERT (!rc);
 
 	  vnet_feature_enable_disable ("ip4-unicast",

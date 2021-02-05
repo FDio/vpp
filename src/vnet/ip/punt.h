@@ -24,17 +24,49 @@
 #include <stdbool.h>
 #include <vnet/ip/ip.h>
 
+/* Punting reason flags bitfield
+ * (position, length, value, name, string)
+ */
+#define foreach_vnet_punt_reason_flag                                         \
+  _ (0, 1, 0, IP4_PACKET, "ip4-packet")                                       \
+  _ (0, 1, 1, IP6_PACKET, "ip6-packet")
+
+typedef enum vnet_punt_reason_flag_t_
+{
+#define _(pos, len, value, name, str)                                         \
+  VNET_PUNT_REASON_F_##name = ((value) << (pos)),
+  foreach_vnet_punt_reason_flag
+#undef _
+} __clib_packed vnet_punt_reason_flag_t;
+
+enum vnet_punt_reason_flag_mask_t_
+{
+#define _(pos, len, value, name, str)                                         \
+  VNET_PUNT_REASON_F_MASK_##name = (((1 << (len)) - 1) << (pos)),
+  foreach_vnet_punt_reason_flag
+#undef _
+};
+
+/* predicates associated with vlib_punt_reason_flag_t*/
+#define _(pos, len, value, name, str)                                         \
+  static_always_inline int vnet_punt_reason_flag_is_##name (                  \
+    vnet_punt_reason_flag_t f)                                                \
+  {                                                                           \
+    return (f & VNET_PUNT_REASON_F_MASK_##name) == VNET_PUNT_REASON_F_##name; \
+  }
+foreach_vnet_punt_reason_flag
+#undef _
+
 #define foreach_punt_type                       \
   _(L4, "l4")                                   \
   _(EXCEPTION, "exception")                     \
   _(IP_PROTO, "ip-proto")
 
-typedef enum punt_type_t_
-{
+  typedef enum punt_type_t_ {
 #define _(v, s) PUNT_TYPE_##v,
-  foreach_punt_type
+    foreach_punt_type
 #undef _
-} punt_type_t;
+  } punt_type_t;
 
 typedef struct punt_l4_t_
 {
@@ -137,6 +169,8 @@ typedef walk_rc_t (*punt_client_walk_cb_t) (const punt_client_t * pc,
 					    void *ctx);
 extern void punt_client_walk (punt_type_t pt,
 			      punt_client_walk_cb_t cb, void *ctx);
+
+extern u8 *format_vnet_punt_reason_flags (u8 *s, va_list *args);
 
 /*
  * inlines for the data-plane

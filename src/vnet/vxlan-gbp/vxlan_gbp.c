@@ -14,6 +14,7 @@
  */
 #include <vnet/vxlan-gbp/vxlan_gbp.h>
 #include <vnet/ip/format.h>
+#include <vnet/ip/punt.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_entry_track.h>
@@ -1163,14 +1164,14 @@ vxlan_gbp_init (vlib_main_t * vm)
 
   punt_hdl = vlib_punt_client_register ("vxlan-gbp");
 
-  vlib_punt_reason_alloc (punt_hdl,
-			  "VXLAN-GBP-no-such-v4-tunnel",
-			  NULL, NULL,
-			  &vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP4]);
-  vlib_punt_reason_alloc (punt_hdl,
-			  "VXLAN-GBP-no-such-v6-tunnel",
-			  NULL, NULL,
-			  &vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP6]);
+  vlib_punt_reason_alloc (punt_hdl, "VXLAN-GBP-no-such-v4-tunnel", NULL, NULL,
+			  &vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP4],
+			  VNET_PUNT_REASON_F_IP4_PACKET,
+			  format_vnet_punt_reason_flags);
+  vlib_punt_reason_alloc (punt_hdl, "VXLAN-GBP-no-such-v6-tunnel", NULL, NULL,
+			  &vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP6],
+			  VNET_PUNT_REASON_F_IP6_PACKET,
+			  format_vnet_punt_reason_flags);
 
   return (0);
 }
