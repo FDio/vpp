@@ -42,10 +42,7 @@ interfaces. Any configuration that is made on these Linux interfaces,
 also needs to be applied on the corresponding physical interface in
 VPP.
 
-This is functionality is not provided in this plugin, but it can be
-achieved in various ways, for example by listening to the netlink
-messages and applying the config. As a result all e.g. routes
-programmed in Linux, will also be present in VPP's FIB.
+This is functionality is provided by the "linux_nl" plugin.
 
 Linux will own the [ARP/ND] neighbor tables (which will be copied via
 netlink to VPP also). This means that Linux will send packets with the
