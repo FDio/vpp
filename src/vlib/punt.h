@@ -42,6 +42,11 @@ extern void punt_reason_walk (punt_reason_walk_cb_t cb, void *cxt);
 extern u8 *format_vlib_punt_reason (u8 * s, va_list * args);
 
 /**
+ * @brief Unformat a punt reason
+ */
+extern uword unformat_punt_reason (unformat_input_t *input, va_list *args);
+
+/**
  * Typedef for a client handle
  */
 typedef int vlib_punt_hdl_t;
