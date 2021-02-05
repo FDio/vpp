@@ -1120,7 +1120,7 @@ lcp_itf_pair_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
 
 VLIB_REGISTER_NODE (lcp_itf_pair_process_node, static) = {
   .function = lcp_itf_pair_process,
-  .name = "linux-cp-itf-process",
+  .name = "linux-cp-interface-process",
   .type = VLIB_NODE_TYPE_PROCESS,
 };
 
@@ -1191,7 +1191,7 @@ lcp_itf_pair_link_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (lcp_itf_pair_link_up_down);
 
 static clib_error_t *
-lcp_itf_pair_init (vlib_main_t *vm)
+lcp_interface_init (vlib_main_t *vm)
 {
   vlib_punt_hdl_t punt_hdl = vlib_punt_client_register ("linux-cp");
 
@@ -1210,7 +1210,7 @@ lcp_itf_pair_init (vlib_main_t *vm)
   return NULL;
 }
 
-VLIB_INIT_FUNCTION (lcp_itf_pair_init) = {
+VLIB_INIT_FUNCTION (lcp_interface_init) = {
   .runs_after = VLIB_INITS ("vnet_interface_init", "tcp_init", "udp_init"),
 };
 
