@@ -60,3 +60,12 @@ add_vpp_plugin(linux_cp_unittest
   LINK_LIBRARIES
   lcp
 )
+
+add_vpp_plugin(linux_nl
+  SOURCES
+  lcp_router.c
+  lcp_nl.c
+
+  LINK_LIBRARIES
+  lcp
+)
