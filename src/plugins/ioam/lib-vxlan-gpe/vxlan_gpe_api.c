@@ -27,6 +27,7 @@
 #include <vlibmemory/api.h>
 #include <vnet/format_fns.h>
 #include <vnet/ip/ip_types_api.h>
+#include <vnet/udp/udp_local.h>
 
 /* define message IDs */
 #include <ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api_enum.h>
@@ -92,7 +93,7 @@ static void vl_api_vxlan_gpe_ioam_vni_enable_t_handler
       clib_memcpy (&key4.remote, &mp->remote.un.ip4, sizeof (key4.remote));
       vni = clib_net_to_host_u32 (mp->vni);
       key4.vni = clib_host_to_net_u32 (vni << 8);
-      key4.pad = 0;
+      key4.port = (u32) clib_host_to_net_u16 (UDP_DST_PORT_VXLAN_GPE);
 
       p = hash_get_mem (gm->vxlan4_gpe_tunnel_by_key, &key4);
     }
@@ -141,7 +142,7 @@ static void vl_api_vxlan_gpe_ioam_vni_disable_t_handler
       clib_memcpy (&key4.remote, &mp->remote, sizeof (key4.remote));
       vni = clib_net_to_host_u32 (mp->vni);
       key4.vni = clib_host_to_net_u32 (vni << 8);
-      key4.pad = 0;
+      key4.port = (u32) clib_host_to_net_u16 (UDP_DST_PORT_VXLAN_GPE);
 
       p = hash_get_mem (gm->vxlan4_gpe_tunnel_by_key, &key4);
     }
