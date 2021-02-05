@@ -64,7 +64,7 @@ typedef CLIB_PACKED (struct {
 
 /**
  * @brief Key struct for IPv4 VXLAN GPE tunnel.
- * Key fields: local remote, vni
+ * Key fields: local remote, vni, udp-port
  * all fields in NET byte order
  * VNI shifted 8 bits
  */
@@ -76,7 +76,7 @@ typedef CLIB_PACKED(struct {
       u32 remote;
 
       u32 vni;
-      u32 pad;
+      u32 port;
     };
     u64 as_u64[2];
   };
@@ -85,7 +85,7 @@ typedef CLIB_PACKED(struct {
 
 /**
  * @brief Key struct for IPv6 VXLAN GPE tunnel.
- * Key fields: local remote, vni
+ * Key fields: local remote, vni, udp-port
  * all fields in NET byte order
  * VNI shifted 8 bits
  */
@@ -94,8 +94,20 @@ typedef CLIB_PACKED(struct {
   ip6_address_t local;
   ip6_address_t remote;
   u32 vni;
+  u32 port;
 }) vxlan6_gpe_tunnel_key_t;
 /* *INDENT-ON* */
+
+typedef union
+{
+  struct
+  {
+    u32 tunnel_index;
+    u16 next_index;
+    u8 error;
+  };
+  u64 as_u64;
+} vxlan_gpe_decap_info_t;
 
 /**
  * @brief Struct for VXLAN GPE tunnel
@@ -117,6 +129,10 @@ typedef struct
   ip46_address_t local;
   /** tunnel remote address */
   ip46_address_t remote;
+  /** local udp-port **/
+  u16 local_port;
+  /** remote udp-port **/
+  u16 remote_port;
 
   /* mcast packet output intfc index (used only if dst is mcast) */
   u32 mcast_sw_if_index;
@@ -248,6 +264,8 @@ typedef struct
   u32 encap_fib_index;
   u32 decap_fib_index;
   u32 vni;
+  u16 local_port;
+  u16 remote_port;
 } vnet_vxlan_gpe_add_del_tunnel_args_t;
 
 
