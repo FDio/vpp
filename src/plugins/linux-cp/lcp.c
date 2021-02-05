@@ -23,6 +23,22 @@
 
 lcp_main_t lcp_main;
 
+void
+lcp_set_auto_intf (u8 is_auto)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  lcpm->auto_intf = (is_auto != 0);
+}
+
+int
+lcp_auto_intf (void)
+{
+  lcp_main_t *lcpm = &lcp_main;
+
+  return lcpm->auto_intf;
+}
+
 u8 *
 lcp_get_default_ns (void)
 {

@@ -26,6 +26,8 @@ typedef struct lcp_main_s
   int default_ns_fd;
   /* Set when Unit testing */
   u8 test_mode;
+
+  u8 auto_intf;
 } lcp_main_t;
 
 extern lcp_main_t lcp_main;
