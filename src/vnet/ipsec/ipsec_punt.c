@@ -48,10 +48,10 @@ ipsec_punt_init (vlib_main_t * vm)
 
   punt_hdl = vlib_punt_client_register ("ipsec");
 
-#define _(s,v)  vlib_punt_reason_alloc (punt_hdl, v,                    \
-                                        ipsec_punt_interested_listener, \
-                                        NULL,                           \
-                                        &ipsec_punt_reason[IPSEC_PUNT_##s]);
+#define _(s, v, f)                                                            \
+  vlib_punt_reason_alloc (punt_hdl, v, ipsec_punt_interested_listener, NULL,  \
+			  &ipsec_punt_reason[IPSEC_PUNT_##s],                 \
+			  VLIB_PUNT_REASON_F_##f);
   foreach_ipsec_punt_reason
 #undef _
     return (error);

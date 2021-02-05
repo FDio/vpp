@@ -405,6 +405,33 @@ punt_l4_add_del (vlib_main_t * vm,
     }
 }
 
+/**
+ * @brief Request exception traffic punt.
+ *
+ * @param reason   Punting reason
+ *
+ * @returns 0 on success, non-zero value otherwise
+ */
+static clib_error_t *
+punt_exception_add_del (vlib_punt_reason_t reason, bool is_add)
+{
+  punt_main_t *pm = &punt_main;
+  int rv = 0;
+  const char *node_name =
+    vlib_punt_reason_get_flags (reason) & VLIB_PUNT_REASON_F_IP6_PACKET ?
+      "ip6-punt" :
+      "ip4-punt";
+  if (is_add)
+    rv = vlib_punt_register (pm->hdl, reason, node_name);
+  else
+    rv = vlib_punt_unregister (pm->hdl, reason, node_name);
+  if (!rv)
+    return 0;
+  else
+    return clib_error_return (0, is_add ? "Existing punting registration..." :
+					  "Punting registration not found...");
+}
+
 clib_error_t *
 vnet_punt_add_del (vlib_main_t * vm, const punt_reg_t * pr, bool is_add)
 {
@@ -414,6 +441,7 @@ vnet_punt_add_del (vlib_main_t * vm, const punt_reg_t * pr, bool is_add)
       return (punt_l4_add_del (vm, pr->punt.l4.af, pr->punt.l4.protocol,
 			       pr->punt.l4.port, is_add));
     case PUNT_TYPE_EXCEPTION:
+      return punt_exception_add_del (pr->punt.exception.reason, is_add);
     case PUNT_TYPE_IP_PROTO:
       break;
     }
@@ -428,6 +456,7 @@ punt_cli (vlib_main_t * vm,
   unformat_input_t line_input, *input = &line_input;
   clib_error_t *error = NULL;
   bool is_add = true;
+  bool is_reason = false;
   /* *INDENT-OFF* */
   punt_reg_t pr = {
     .punt = {
@@ -449,20 +478,35 @@ punt_cli (vlib_main_t * vm,
     {
       if (unformat (input, "del"))
 	is_add = false;
-      else if (unformat (input, "ipv4"))
+      else if (unformat (input, "reason"))
+	{
+	  is_reason = true;
+	  pr.type = PUNT_TYPE_EXCEPTION;
+	}
+      else if (!is_reason && unformat (input, "ipv4"))
 	pr.punt.l4.af = AF_IP4;
-      else if (unformat (input, "ipv6"))
+      else if (!is_reason && unformat (input, "ipv6"))
 	pr.punt.l4.af = AF_IP6;
-      else if (unformat (input, "ip6"))
+      else if (!is_reason && unformat (input, "ip6"))
 	pr.punt.l4.af = AF_IP6;
-      else if (unformat (input, "%d", &port))
+      else if (!is_reason && unformat (input, "%d", &port))
 	pr.punt.l4.port = port;
-      else if (unformat (input, "all"))
+      else if (!is_reason && unformat (input, "all"))
 	pr.punt.l4.port = ~0;
-      else if (unformat (input, "udp"))
+      else if (!is_reason && unformat (input, "udp"))
 	pr.punt.l4.protocol = IP_PROTOCOL_UDP;
-      else if (unformat (input, "tcp"))
+      else if (!is_reason && unformat (input, "tcp"))
 	pr.punt.l4.protocol = IP_PROTOCOL_TCP;
+      else if (is_reason)
+	{
+	  if (!unformat (input, "%U", unformat_punt_reason,
+			 &pr.punt.exception.reason))
+	    {
+	      error = clib_error_return (0, "Unknown reason",
+					 format_unformat_error, input);
+	      goto done;
+	    }
+	}
       else
 	{
 	  error = clib_error_return (0, "parse error: '%U'",

@@ -63,6 +63,11 @@ typedef struct punt_reason_data_t_
    * Data to pass to the callback
    */
   void *pd_data;
+
+  /**
+   * Flags associated to the reason
+   */
+  vlib_punt_reason_flag_t flags;
 } punt_reason_data_t;
 
 /**
@@ -144,12 +149,26 @@ static punt_client_t *punt_client_pool;
  */
 static uword *punt_client_db;
 
+static u8 *
+format_vlib_punt_reason_flags (u8 *s, va_list *args)
+{
+  vlib_punt_reason_flag_t flag = va_arg (*args, vlib_punt_reason_flag_t);
+#define _(x, name, str)                                                       \
+  if (flag & VLIB_PUNT_REASON_F_##name)                                       \
+    s = format (s, "%s ", str);
+
+  foreach_vlib_punt_reason_flag
+#undef _
+    return (s);
+}
+
 u8 *
 format_vlib_punt_reason (u8 * s, va_list * args)
 {
   vlib_punt_reason_t pr = va_arg (*args, int);
-
-  return (format (s, "[%d] %v", pr, punt_reason_data[pr].pd_name));
+  vlib_punt_reason_flag_t flags = punt_reason_data[pr].flags;
+  return (format (s, "[%d] %v flags: %U", pr, punt_reason_data[pr].pd_name,
+		  format_vlib_punt_reason_flags, flags));
 }
 
 vlib_punt_hdl_t
@@ -400,11 +419,17 @@ vlib_punt_reason_validate (vlib_punt_reason_t reason)
   return (-1);
 }
 
+vlib_punt_reason_flag_t
+vlib_punt_reason_get_flags (vlib_punt_reason_t pr)
+{
+  return pr < punt_reason_last ? punt_reason_data[pr].flags : 0;
+}
+
 int
-vlib_punt_reason_alloc (vlib_punt_hdl_t client,
-			const char *reason_name,
-			punt_interested_listener_t fn,
-			void *data, vlib_punt_reason_t * reason)
+vlib_punt_reason_alloc (vlib_punt_hdl_t client, const char *reason_name,
+			punt_interested_listener_t fn, void *data,
+			vlib_punt_reason_t *reason,
+			vlib_punt_reason_flag_t flags)
 {
   vlib_punt_reason_t new;
 
@@ -417,6 +442,7 @@ vlib_punt_reason_alloc (vlib_punt_hdl_t client,
   punt_reason_data[new].pd_reason = new;
   punt_reason_data[new].pd_fn = fn;
   punt_reason_data[new].pd_data = data;
+  punt_reason_data[new].flags = flags;
   vec_add1 (punt_reason_data[new].pd_owners, client);
 
   vlib_validate_combined_counter (&punt_counters, new);
@@ -449,6 +475,29 @@ unformat_punt_client (unformat_input_t * input, va_list * args)
 
   return unformat_user (input, unformat_hash_vec_string,
 			punt_client_db, result);
+}
+
+/* Parse punt reason */
+uword
+unformat_punt_reason (unformat_input_t *input, va_list *args)
+{
+  u32 *result = va_arg (*args, u32 *);
+  u8 *s = 0;
+  u8 found = 0;
+  for (int i = 0; i < punt_reason_last - 1; i++)
+    {
+      punt_reason_data_t *pd = vec_elt_at_index (punt_reason_data, 1 + i);
+      vec_reset_length (s);
+      s = format (0, "%v%c", pd->pd_name, 0);
+      if (unformat (input, (const char *) s))
+	{
+	  *result = pd->pd_reason;
+	  found = 1;
+	  break;
+	}
+    }
+  vec_free (s);
+  return found;
 }
 
 u8 *
