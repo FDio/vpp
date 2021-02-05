@@ -19,6 +19,7 @@
 #include <vnet/dpo/load_balance.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/fib_entry.h>
+#include <vnet/udp/udp_local.h>
 
 vxlan_gpe_ioam_main_t vxlan_gpe_ioam_main;
 
@@ -478,7 +479,7 @@ vxlan_gpe_set_ioam_rewrite_command_fn (vlib_main_t *
       key4.local = local.ip4.as_u32;
       key4.remote = remote.ip4.as_u32;
       key4.vni = clib_host_to_net_u32 (vni << 8);
-      key4.pad = 0;
+      key4.port = (u32) clib_host_to_net_u16 (UDP_DST_PORT_VXLAN_GPE);
       p = hash_get_mem (gm->vxlan4_gpe_tunnel_by_key, &key4);
     }
   else
@@ -488,6 +489,7 @@ vxlan_gpe_set_ioam_rewrite_command_fn (vlib_main_t *
       key6.remote.as_u64[0] = remote.ip6.as_u64[0];
       key6.remote.as_u64[1] = remote.ip6.as_u64[1];
       key6.vni = clib_host_to_net_u32 (vni << 8);
+      key6.port = (u32) clib_host_to_net_u16 (UDP_DST_PORT_VXLAN6_GPE);
       p = hash_get_mem (gm->vxlan6_gpe_tunnel_by_key, &key6);
     }
 
