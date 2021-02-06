@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3850594b_2d8042eb",
+        "filename": "src/cmake/library.cmake",
+        "patchSetId": 14
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-02-06T18:46:47Z",
+      "side": 1,
+      "message": "Why?\n\napi_headers is a dependency of api.cmake.\n\nI grepped the sources, but can find no documentation of a definition for VPP_EXTERNAL_PROJECT.  The only use is set is in VOM. I thought it might be VPP_API_CONSUMER, but it is not set for vapi.  Not knowing anything about it, it reads as a tight coupling defining a specific workflow.\n\nAs I understand it, we have 3 classes of API definitions.\n1. vpp, vapi, or vpe, depending on which name you prefer, but exposes things like the show ver, memory, threads, cli, and the vlib graph.\n2. vnet\n3. plugins\n\nRight now, they are all conflated by a common use of vnet/api_errno.h.  This is a separate larger undertaking.\n\nWe also have the fib referencing plugins which is an issue, The fib has the code for registering the info into the fib, but some key structures need to be rewritten.\n\nWe have PLUGIN_API_FILES which makes sense.  Maybe we should have VPP_API_FILES and VNET_API_FILES (I think somewhere this is also called core) and specify what we want instead of adding the corner cases to remove products from the default build.\n\nI know this change didn\u0027t introduce VPP_EXTERNAL_PROJECT, but should we expand upon it, or fix it?  \n\nWhere we are now is that one needs to understand the default build options, the differences VOM introduces, and the relationships between the internal code, to be able to turn on or turn off a build option.",
+      "range": {
+        "startLine": 68,
+        "startChar": 0,
+        "endLine": 71,
+        "endChar": 0
+      },
+      "revId": "cd67f57efb22eeed96d504c8fe803cd1ec0a8e77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
