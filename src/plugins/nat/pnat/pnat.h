@@ -109,12 +109,11 @@ static inline void
 pnat_calc_key(u32 sw_if_index, pnat_attachment_point_t attachment,
               ip4_address_t src, ip4_address_t dst, u8 protocol, u16 sport,
               u16 dport, pnat_mask_fast_t mask, clib_bihash_kv_16_8_t *kv) {
-    kv->key[0] = kv->key[1] = 0;
     kv->key[0] = (u64)src.as_u32 << 32 | dst.as_u32;
     kv->key[0] &= mask.as_u64[0];
-    kv->key[1] |=
+    kv->key[1] =
         (u64)protocol << 56 | (u64)sw_if_index << 36 | (u64)attachment << 32;
-    kv->key[1] |= sport << 16 | dport;
+    kv->key[1] |= (u32)sport << 16 | dport;
     kv->key[1] &= mask.as_u64[1];
 }
 
