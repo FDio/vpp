@@ -97,12 +97,12 @@ uword unformat_pnat_5tuple(unformat_input_t *input, va_list *args) {
         else if (unformat(input, "dst %U", unformat_ip4_address, &t->dst))
             t->mask |= PNAT_DA;
         else if (unformat(input, "sport %d", &sport)) {
-            if (sport < 0 || sport > 65535)
+            if (sport == 0 || sport > 65535)
                 return 0;
             t->mask |= PNAT_SPORT;
             t->sport = sport;
         } else if (unformat(input, "dport %d", &dport)) {
-            if (dport < 0 || dport > 65535)
+            if (dport == 0 || dport > 65535)
                 return 0;
             t->mask |= PNAT_DPORT;
             t->dport = dport;

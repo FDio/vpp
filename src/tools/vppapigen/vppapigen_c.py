@@ -367,7 +367,7 @@ class FromJSON():
             write('    {msgvar} = {t}_fromjson({msgvar}, '
                   '{msgsize}, item, &a->{n});\n'
                   .format(t=t, n=o.fieldname, msgvar=msgvar, msgsize=msgsize))
-            write('    if (!{msgvar}) return 0;\n'.format(msgvar=msgvar))
+            write('    if (!{msgvar}) {{ free(a); return 0;}} \n'.format(msgvar=msgvar))
 
         write('    // end field {}\n'.format(o.fieldname))
 
