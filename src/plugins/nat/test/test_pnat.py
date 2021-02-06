@@ -93,10 +93,10 @@ class TestPNAT(VppTestCase):
                 'rewrite': {'mask': 0xa, 'dst': self.pg1.remote_ip4,
                             'dport': 5555},
                 'send': (IP(src=self.pg0.remote_ip4, dst='10.10.10.10') /
-                         UDP(dport=6871)),
+                         UDP(sport=65530, dport=6871)),
                 'reply': (IP(src=self.pg0.remote_ip4,
                              dst=self.pg1.remote_ip4) /
-                          UDP(dport=5555))
+                          UDP(sport=65530, dport=5555))
             },
             {
                 'input': PNAT_IP4_INPUT,
