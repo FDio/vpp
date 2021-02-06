@@ -389,6 +389,12 @@ va_format (u8 * s, const char *fmt, va_list * va)
   const u8 *f = (u8 *) fmt, *g;
   u8 c;
 
+  if (f == 0)
+    {
+      vec_add (s, "(null fmt)", 10);
+      return s;
+    }
+
   g = f;
   while (1)
     {
