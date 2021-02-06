@@ -114,7 +114,7 @@ pnat_calc_key(u32 sw_if_index, pnat_attachment_point_t attachment,
     kv->key[0] &= mask.as_u64[0];
     kv->key[1] |=
         (u64)protocol << 56 | (u64)sw_if_index << 36 | (u64)attachment << 32;
-    kv->key[1] |= sport << 16 | dport;
+    kv->key[1] |= (u32)sport << 16 | dport;
     kv->key[1] &= mask.as_u64[1];
 }
 
