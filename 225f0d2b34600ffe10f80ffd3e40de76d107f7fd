@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cca15986_325375ea",
+        "filename": "test/test_ip_api.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-07T10:36:20Z",
+      "side": 1,
+      "message": "What\u0027s the purpose of sending a comment to the cli?",
+      "revId": "225f0d2b34600ffe10f80ffd3e40de76d107f7fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8507817c_426aedc7",
+        "filename": "test/test_ip_api.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-07T10:36:20Z",
+      "side": 1,
+      "message": "The debug CLI is unsupported. You can argue if it should be used in tests.",
+      "revId": "225f0d2b34600ffe10f80ffd3e40de76d107f7fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
