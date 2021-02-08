@@ -65,7 +65,11 @@ VLIB_REGISTER_NODE(pnat_output_node) = {
     .type = VLIB_NODE_TYPE_INTERNAL,
     .n_errors = PNAT_N_ERROR,
     .error_counters = pnat_error_counters,
-    .sibling_of = "pnat-input",
+    .n_next_nodes = PNAT_N_NEXT,
+    .next_nodes =
+        {
+            [PNAT_NEXT_DROP] = "error-drop",
+        },
 };
 
 /* Hook up features */
