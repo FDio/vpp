@@ -1467,6 +1467,21 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
       vec_validate (sa->r_nonce, IKEV2_NONCE_SIZE - 1);
       RAND_bytes ((u8 *) sa->r_nonce, IKEV2_NONCE_SIZE);
     }
+  else if (proposal)
+    {
+      ikev2_rekey_t *rekey;
+      vec_add2 (sa->new_child, rekey, 1);
+      rekey->i_proposal = proposal;
+      rekey->r_proposal = ikev2_select_proposal (proposal, IKEV2_PROTOCOL_ESP);
+      rekey->tsi = tsi;
+      rekey->tsr = tsr;
+      /* update Ni */
+      vec_reset_length (sa->i_nonce);
+      vec_add (sa->i_nonce, nonce, IKEV2_NONCE_SIZE);
+      /* generate new Nr */
+      vec_validate (sa->r_nonce, IKEV2_NONCE_SIZE - 1);
+      RAND_bytes ((u8 *) sa->r_nonce, IKEV2_NONCE_SIZE);
+    }
   else
     goto cleanup_and_exit;
   vec_free (n);
@@ -2484,35 +2499,38 @@ ikev2_generate_message (vlib_buffer_t *b, ikev2_sa_t *sa, ike_header_t *ike,
 
 	  vec_free (data);
 	}
+      else if (vec_len (sa->rekey) > 0)
+	{
+	  ikev2_payload_add_sa (chain, sa->rekey[0].r_proposal);
+	  ikev2_payload_add_nonce (chain, sa->r_nonce);
+	  ikev2_payload_add_ts (chain, sa->rekey[0].tsi, IKEV2_PAYLOAD_TSI);
+	  ikev2_payload_add_ts (chain, sa->rekey[0].tsr, IKEV2_PAYLOAD_TSR);
+	  vec_del1 (sa->rekey, 0);
+	}
+      else if (vec_len (sa->new_child) > 0)
+	{
+	  ikev2_payload_add_sa (chain, sa->new_child[0].r_proposal);
+	  ikev2_payload_add_nonce (chain, sa->r_nonce);
+	  ikev2_payload_add_ts (chain, sa->new_child[0].tsi,
+				IKEV2_PAYLOAD_TSI);
+	  ikev2_payload_add_ts (chain, sa->new_child[0].tsr,
+				IKEV2_PAYLOAD_TSR);
+	  vec_del1 (sa->new_child, 0);
+	}
+      else if (sa->unsupported_cp)
+	{
+	  u8 *data = vec_new (u8, 1);
+
+	  data[0] = sa->unsupported_cp;
+	  ikev2_payload_add_notify (
+	    chain, IKEV2_NOTIFY_MSG_UNSUPPORTED_CRITICAL_PAYLOAD, data);
+	  vec_free (data);
+	  sa->unsupported_cp = 0;
+	}
       else
 	{
-	  if (vec_len (sa->rekey) > 0)
-	    {
-	      ikev2_payload_add_sa (chain, sa->rekey[0].r_proposal);
-	      ikev2_payload_add_nonce (chain, sa->r_nonce);
-	      ikev2_payload_add_ts (chain, sa->rekey[0].tsi,
-				    IKEV2_PAYLOAD_TSI);
-	      ikev2_payload_add_ts (chain, sa->rekey[0].tsr,
-				    IKEV2_PAYLOAD_TSR);
-	      vec_del1 (sa->rekey, 0);
-	    }
-	  else if (sa->unsupported_cp)
-	    {
-	      u8 *data = vec_new (u8, 1);
-
-	      data[0] = sa->unsupported_cp;
-	      ikev2_payload_add_notify (chain,
-					IKEV2_NOTIFY_MSG_UNSUPPORTED_CRITICAL_PAYLOAD,
-					data);
-	      vec_free (data);
-	      sa->unsupported_cp = 0;
-	    }
-	  else
-	    {
-	      ikev2_payload_add_notify (chain,
-					IKEV2_NOTIFY_MSG_NO_ADDITIONAL_SAS,
-					0);
-	    }
+	  ikev2_payload_add_notify (chain, IKEV2_NOTIFY_MSG_NO_ADDITIONAL_SAS,
+				    0);
 	}
     }
 
@@ -3274,6 +3292,27 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
 			vlib_node_increment_counter (vm, node->node_index,
 						     IKEV2_ERROR_NO_BUFF_SPACE,
 						     1);
+		    }
+		}
+	      else if (sa0->new_child)
+		{
+		  ikev2_child_sa_t *c;
+		  vec_add2 (sa0->childs, c, 1);
+		  memset (c, 0, sizeof (*c));
+		  c->r_proposals = sa0->new_child[0].r_proposal;
+		  c->i_proposals = sa0->new_child[0].i_proposal;
+		  c->tsi = sa0->new_child[0].tsi;
+		  c->tsr = sa0->new_child[0].tsr;
+		  ikev2_create_tunnel_interface (vm, sa0, c, p[0],
+						 c - sa0->childs, 0);
+		  if (ike_hdr_is_request (ike0))
+		    {
+		      ike0->flags = IKEV2_HDR_FLAG_RESPONSE;
+		      slen =
+			ikev2_generate_message (b0, sa0, ike0, 0, udp0, 0);
+		      if (~0 == slen)
+			vlib_node_increment_counter (
+			  vm, node->node_index, IKEV2_ERROR_NO_BUFF_SPACE, 1);
 		    }
 		}
 	    }
