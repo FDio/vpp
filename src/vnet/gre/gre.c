@@ -410,11 +410,15 @@ gre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
   t = pool_elt_at_index (gm->tunnels, ti);
+  af = ADJ_FLAG_NONE;
 
-  if (t->flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_INNER_HASH)
-    af = ADJ_FLAG_MIDCHAIN_FIXUP_FLOW_HASH;
-  else
-    af = ADJ_FLAG_MIDCHAIN_IP_STACK;
+  /*
+   * the user has not requested that the load-balancing be based on
+   * a flow hash of the inner packet. so use the stacking to choose
+   * a path.
+   */
+  if (!(t->flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_INNER_HASH))
+    af |= ADJ_FLAG_MIDCHAIN_IP_STACK;
 
   if (VNET_LINK_ETHERNET == adj_get_link_type (ai))
     af |= ADJ_FLAG_MIDCHAIN_NO_COUNT;
@@ -435,10 +439,15 @@ mgre_mk_complete_walk (adj_index_t ai, void *data)
   mgre_walk_ctx_t *ctx = data;
   adj_flags_t af;
 
-  if (ctx->t->flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_INNER_HASH)
-    af = ADJ_FLAG_MIDCHAIN_FIXUP_FLOW_HASH;
-  else
-    af = ADJ_FLAG_MIDCHAIN_IP_STACK;
+  af = ADJ_FLAG_NONE;
+
+  /*
+   * the user has not requested that the load-balancing be based on
+   * a flow hash of the inner packet. so use the stacking to choose
+   * a path.
+   */
+  if (!(ctx->t->flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_INNER_HASH))
+    af |= ADJ_FLAG_MIDCHAIN_IP_STACK;
 
   adj_nbr_midchain_update_rewrite
     (ai, gre_get_fixup (ctx->t->tunnel_dst.fp_proto,
