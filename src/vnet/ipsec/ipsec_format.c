@@ -273,6 +273,7 @@ format_ipsec_sa (u8 * s, va_list * args)
   ipsec_format_flags_t flags = va_arg (*args, ipsec_format_flags_t);
   ipsec_main_t *im = &ipsec_main;
   vlib_counter_t counts;
+  u32 tx_table_id;
   ipsec_sa_t *sa;
 
   if (pool_is_free_index (im->sad, sai))
@@ -317,7 +318,26 @@ format_ipsec_sa (u8 * s, va_list * args)
   s = format (s, "\n   packets %u bytes %u", counts.packets, counts.bytes);
 
   if (ipsec_sa_is_set_IS_TUNNEL (sa))
-    s = format (s, "\n%U", format_tunnel, &sa->tunnel, 3);
+    {
+      tx_table_id = fib_table_get_table_id (
+	sa->tx_fib_index,
+	(ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ? FIB_PROTOCOL_IP6 :
+					     FIB_PROTOCOL_IP4));
+      s = format (s, "\n   table-ID %d tunnel %U src %U dst %U flags %U",
+		  tx_table_id,
+		  format_ip_dscp, sa->dscp,
+		  format_ip46_address, &sa->tunnel_src_addr, IP46_TYPE_ANY,
+		  format_ip46_address, &sa->tunnel_dst_addr, IP46_TYPE_ANY,
+		  format_tunnel_encap_decap_flags, sa->tunnel_flags);
+      if (!ipsec_sa_is_set_IS_INBOUND (sa))
+	{
+	  s =
+	    format (s, "\n    resovle via fib-entry: %d",
+		    sa->fib_entry_index);
+	  s = format (s, "\n    stacked on:");
+	  s = format (s, "\n      %U", format_dpo_id, &sa->dpo, 6);
+	}
+    }
 
 done:
   return (s);
