@@ -623,7 +623,7 @@ adj_nbr_midchain_stack_on_fib_entry (adj_index_t ai,
                 choice = load_balance_get_bucket_i (lb, hash & lb->lb_n_buckets_minus_1);
                 dpo_copy (&tmp, choice);
             }
-            else if (adj->ia_flags & ADJ_FLAG_MIDCHAIN_FIXUP_FLOW_HASH)
+            if (adj->ia_flags & ADJ_FLAG_MIDCHAIN_FIXUP_FLOW_HASH)
             {
                 adj->rewrite_header.flags |= VNET_REWRITE_FIXUP_FLOW_HASH;
             }
