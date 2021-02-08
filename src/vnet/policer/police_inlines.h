@@ -25,7 +25,7 @@
 #define IP6_DSCP_SHIFT    22
 
 static_always_inline void
-vnet_policer_mark (vlib_buffer_t * b, u8 dscp)
+vnet_policer_mark (vlib_buffer_t *b, ip_dscp_t dscp)
 {
   ethernet_header_t *eh;
   ip4_header_t *ip4h;

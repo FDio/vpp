@@ -530,11 +530,10 @@ unformat_dscp (unformat_input_t * input, va_list * va)
   u8 *r = va_arg (*va, u8 *);
 
   if (0);
-#define _(v,f,str) else if (unformat (input, str)) *r = VNET_DSCP_##f;
-  foreach_vnet_dscp
+#define _(v, f) else if (unformat (input, #f)) *r = IP_DSCP_##f;
+  foreach_ip_dscp
 #undef _
-    else
-    return 0;
+    else return 0;
   return 1;
 }
 
@@ -2751,14 +2750,14 @@ format_dscp (u8 * s, va_list * va)
 
   switch (i)
     {
-#define _(v,f,str) case VNET_DSCP_##f: t = str; break;
-      foreach_vnet_dscp
+#define _(v, f)                                                               \
+  case IP_DSCP_##f:                                                           \
+    return (format (s, "%s", #f));
+      foreach_ip_dscp
 #undef _
-    default:
-      return format (s, "ILLEGAL");
     }
   s = format (s, "%s", t);
-  return s;
+  return (format (s, "ILLEGAL"));
 }
 
 static void

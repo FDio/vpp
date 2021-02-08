@@ -16,6 +16,7 @@
 #include <vnet/policer/policer.h>
 #include <vnet/policer/police_inlines.h>
 #include <vnet/classify/vnet_classify.h>
+#include <vnet/ip/ip_packet.h>
 
 vnet_policer_main_t vnet_policer_main;
 
@@ -223,24 +224,6 @@ format_policer_type (u8 * s, va_list * va)
 }
 
 static u8 *
-format_dscp (u8 * s, va_list * va)
-{
-  u32 i = va_arg (*va, u32);
-  char *t = 0;
-
-  switch (i)
-    {
-#define _(v,f,str) case VNET_DSCP_##f: t = str; break;
-      foreach_vnet_dscp
-#undef _
-    default:
-      return format (s, "ILLEGAL");
-    }
-  s = format (s, "%s", t);
-  return s;
-}
-
-static u8 *
 format_policer_action_type (u8 * s, va_list * va)
 {
   sse2_qos_pol_action_params_st *a
@@ -251,7 +234,7 @@ format_policer_action_type (u8 * s, va_list * va)
   else if (a->action_type == SSE2_QOS_ACTION_TRANSMIT)
     s = format (s, "transmit");
   else if (a->action_type == SSE2_QOS_ACTION_MARK_AND_TRANSMIT)
-    s = format (s, "mark-and-transmit %U", format_dscp, a->dscp);
+    s = format (s, "mark-and-transmit %U", format_ip_dscp, a->dscp);
   else
     s = format (s, "ILLEGAL");
   return s;
@@ -375,20 +358,6 @@ unformat_policer_eb (unformat_input_t * input, va_list * va)
 }
 
 static uword
-unformat_dscp (unformat_input_t * input, va_list * va)
-{
-  u8 *r = va_arg (*va, u8 *);
-
-  if (0);
-#define _(v,f,str) else if (unformat (input, str)) *r = VNET_DSCP_##f;
-  foreach_vnet_dscp
-#undef _
-    else
-    return 0;
-  return 1;
-}
-
-static uword
 unformat_policer_action_type (unformat_input_t * input, va_list * va)
 {
   sse2_qos_pol_action_params_st *a
@@ -398,7 +367,8 @@ unformat_policer_action_type (unformat_input_t * input, va_list * va)
     a->action_type = SSE2_QOS_ACTION_DROP;
   else if (unformat (input, "transmit"))
     a->action_type = SSE2_QOS_ACTION_TRANSMIT;
-  else if (unformat (input, "mark-and-transmit %U", unformat_dscp, &a->dscp))
+  else if (unformat (input, "mark-and-transmit %U", unformat_ip_dscp,
+		     &a->dscp))
     a->action_type = SSE2_QOS_ACTION_MARK_AND_TRANSMIT;
   else
     return 0;

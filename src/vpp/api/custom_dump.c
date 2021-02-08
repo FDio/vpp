@@ -2029,7 +2029,6 @@ format_policer_action (u8 * s, va_list * va)
 {
   u32 action = va_arg (*va, u32);
   u32 dscp = va_arg (*va, u32);
-  char *t = 0;
 
   if (action == SSE2_QOS_ACTION_DROP)
     s = format (s, "drop");
@@ -2040,13 +2039,12 @@ format_policer_action (u8 * s, va_list * va)
       s = format (s, "mark-and-transmit ");
       switch (dscp)
 	{
-#define _(v,f,str) case VNET_DSCP_##f: t = str; break;
-	  foreach_vnet_dscp
+#define _(v, f)                                                               \
+  case IP_DSCP_##f:                                                           \
+    format (s, "%s", #f);
+	  foreach_ip_dscp
 #undef _
-	default:
-	  break;
 	}
-      s = format (s, "%s", t);
     }
   return s;
 }
