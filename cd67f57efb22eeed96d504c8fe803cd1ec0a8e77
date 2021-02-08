@@ -22,6 +22,30 @@
       "revId": "cd67f57efb22eeed96d504c8fe803cd1ec0a8e77",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1d420e3f_7f045629",
+        "filename": "src/cmake/library.cmake",
+        "patchSetId": 14
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-08T09:42:08Z",
+      "side": 1,
+      "message": "This is a bigger discussion taken to email.\nThis patch is only concerned about solving the issue of adding api generated include files to multiarch sources.",
+      "parentUuid": "3850594b_2d8042eb",
+      "range": {
+        "startLine": 68,
+        "startChar": 0,
+        "endLine": 71,
+        "endChar": 0
+      },
+      "revId": "cd67f57efb22eeed96d504c8fe803cd1ec0a8e77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
