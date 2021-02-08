@@ -244,6 +244,7 @@ always_inline vlib_process_t *
 vlib_get_process_from_node (vlib_main_t * vm, vlib_node_t * node)
 {
   vlib_node_main_t *nm = &vm->node_main;
+  ASSERT (vm == vlib_get_main ());
   ASSERT (node->type == VLIB_NODE_TYPE_PROCESS);
   return vec_elt (nm->processes, node->runtime_index);
 }
