@@ -16,6 +16,24 @@
       "revId": "ec13b2643f8fca759ca2f64c21ea33e37feb8319",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "219b6de6_ee0a2d89",
+        "filename": "src/plugins/nat/pnat/pnat.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-08T11:49:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c60add82_f3854232",
+      "revId": "ec13b2643f8fca759ca2f64c21ea33e37feb8319",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
