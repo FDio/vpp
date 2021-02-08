@@ -122,6 +122,8 @@ vlib_frame_alloc_to_node (vlib_main_t * vm, u32 to_node_index,
   vlib_frame_t *f;
   u32 l, n, scalar_size, vector_size;
 
+  ASSERT (vm == vlib_get_main ());
+
   to_node = vlib_get_node (vm, to_node_index);
 
   scalar_size = to_node->scalar_size;
@@ -221,6 +223,8 @@ vlib_put_frame_to_node (vlib_main_t * vm, u32 to_node_index, vlib_frame_t * f)
   if (f->n_vectors == 0)
     return;
 
+  ASSERT (vm == vlib_get_main ());
+
   vlib_validate_frame_indices (f);
 
   to_node = vlib_get_node (vm, to_node_index);
@@ -241,6 +245,7 @@ vlib_frame_free (vlib_main_t * vm, vlib_node_runtime_t * r, vlib_frame_t * f)
   vlib_node_t *node;
   vlib_frame_size_t *fs;
 
+  ASSERT (vm == vlib_get_main ());
   ASSERT (f->frame_flags & VLIB_FRAME_IS_ALLOCATED);
 
   node = vlib_get_node (vm, r->node_index);
