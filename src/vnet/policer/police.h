@@ -71,7 +71,7 @@ typedef struct
   u32 color_aware;		// for hierarchical policing
   u32 scale;			// power-of-2 shift amount for lower rates
   u8 action[3];
-  u8 mark_dscp[3];
+  ip_dscp_t mark_dscp[3];
   u8 pad[2];
 
   // Fields are marked as 2R if they are only used for a 2-rate policer,

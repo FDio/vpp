@@ -20,6 +20,7 @@
 #ifndef __included_xlate_h__
 #define __included_xlate_h__
 
+#include <vnet/ip/ip_packet.h>
 #include <vnet/policer/police.h>
 
 /*
@@ -88,7 +89,7 @@ typedef enum
 typedef struct sse2_qos_pol_action_params_st_
 {
   u8 action_type;
-  u8 dscp;
+  ip_dscp_t dscp;
 } sse2_qos_pol_action_params_st;
 
 /*
