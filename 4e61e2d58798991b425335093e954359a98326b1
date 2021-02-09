@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "21a2ffd7_ce12b8a6",
+        "filename": "src/vnet/ipsec/ipsec_format.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-02-09T20:19:17Z",
+      "side": 1,
+      "message": "Is this intentionally commented out or was this done for debugging purposes?",
+      "revId": "4e61e2d58798991b425335093e954359a98326b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
