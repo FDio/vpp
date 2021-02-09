@@ -24,6 +24,13 @@ typedef enum
 
 #define NUM_POLICE_RESULTS 3
 
+typedef enum
+{
+  QOS_ACTION_DROP = 0,
+  QOS_ACTION_TRANSMIT,
+  QOS_ACTION_MARK_AND_TRANSMIT
+} __clib_packed qos_action_type_en;
+
 // This is the hardware representation of the policer.
 // To be multithread-safe, the policer is accessed through a spin-lock
 // on the lock field. (For a policer update operation, 24B needs to be
@@ -70,7 +77,7 @@ typedef struct
   u32 single_rate;		// 1 = single rate policer, 0 = two rate policer
   u32 color_aware;		// for hierarchical policing
   u32 scale;			// power-of-2 shift amount for lower rates
-  u8 action[3];
+  qos_action_type_en action[3];
   ip_dscp_t mark_dscp[3];
   u8 pad[2];
 
