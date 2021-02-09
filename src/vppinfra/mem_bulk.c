@@ -220,7 +220,7 @@ format_clib_mem_bulk (u8 *s, va_list *args)
     }
 
   n_elts = n_chunks * b->elts_per_chunk;
-  chunk_sz = b->chunk_hdr_sz + b->elts_per_chunk * b->elt_sz;
+  chunk_sz = b->chunk_hdr_sz + (uword) b->elts_per_chunk * b->elt_sz;
 
   s = format (s, "%u bytes/elt, align %u, chunk-align %u, ", b->elt_sz,
 	      b->align, b->chunk_align);
