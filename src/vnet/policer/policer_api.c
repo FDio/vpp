@@ -61,9 +61,9 @@ vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
   vec_terminate_c_string (name);
 
   clib_memset (&cfg, 0, sizeof (cfg));
-  cfg.rfc = mp->type;
-  cfg.rnd_type = mp->round_type;
-  cfg.rate_type = mp->rate_type;
+  cfg.rfc = (qos_policer_type_en) mp->type;
+  cfg.rnd_type = (qos_round_type_en) mp->round_type;
+  cfg.rate_type = (qos_rate_type_en) mp->rate_type;
   cfg.rb.kbps.cir_kbps = ntohl (mp->cir);
   cfg.rb.kbps.eir_kbps = ntohl (mp->eir);
   cfg.rb.kbps.cb_bytes = clib_net_to_host_u64 (mp->cb);
