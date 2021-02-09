@@ -61,9 +61,9 @@ vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
   vec_terminate_c_string (name);
 
   clib_memset (&cfg, 0, sizeof (cfg));
-  cfg.rfc = mp->type;
-  cfg.rnd_type = mp->round_type;
-  cfg.rate_type = mp->rate_type;
+  cfg.rfc = (qos_policer_type_en) mp->type;
+  cfg.rnd_type = (qos_round_type_en) mp->round_type;
+  cfg.rate_type = (qos_rate_type_en) mp->rate_type;
   cfg.rb.kbps.cir_kbps = ntohl (mp->cir);
   cfg.rb.kbps.eir_kbps = ntohl (mp->eir);
   cfg.rb.kbps.cb_bytes = clib_net_to_host_u64 (mp->cb);
@@ -110,9 +110,9 @@ send_policer_details (u8 *name, qos_pol_cfg_params_st *config,
   mp->eir = htonl (config->rb.kbps.eir_kbps);
   mp->cb = clib_host_to_net_u64 (config->rb.kbps.cb_bytes);
   mp->eb = clib_host_to_net_u64 (config->rb.kbps.eb_bytes);
-  mp->rate_type = config->rate_type;
-  mp->round_type = config->rnd_type;
-  mp->type = config->rfc;
+  mp->rate_type = (vl_api_sse2_qos_rate_type_t) config->rate_type;
+  mp->round_type = (vl_api_sse2_qos_round_type_t) config->rnd_type;
+  mp->type = (vl_api_sse2_qos_policer_type_t) config->rfc;
   mp->conform_action.type =
     (vl_api_sse2_qos_action_type_t) config->conform_action.action_type;
   mp->conform_action.dscp = config->conform_action.dscp;

@@ -256,8 +256,7 @@ pol_validate_cfg_params (qos_pol_cfg_params_st *cfg)
    */
   numer = (u64) (cfg->rb.kbps.cir_kbps);
   denom = (u64) (8 * QOS_POL_TICKS_PER_SEC) / 1000;
-  rc = qos_pol_round (numer, denom, &rnd_value,
-		      (qos_round_type_en) cfg->rnd_type);
+  rc = qos_pol_round (numer, denom, &rnd_value, cfg->rnd_type);
   if (rc != 0)
     {
       QOS_DEBUG_ERROR ("Unable to convert CIR to bytes/tick format");
@@ -267,8 +266,7 @@ pol_validate_cfg_params (qos_pol_cfg_params_st *cfg)
   cir_hw = (u32) rnd_value;
 
   numer = (u64) (cfg->rb.kbps.eir_kbps);
-  rc = qos_pol_round (numer, denom, &rnd_value,
-		      (qos_round_type_en) cfg->rnd_type);
+  rc = qos_pol_round (numer, denom, &rnd_value, cfg->rnd_type);
   if (rc != 0)
     {
       QOS_DEBUG_ERROR ("Unable to convert EIR to bytes/tick format");
@@ -390,8 +388,7 @@ pol_convert_cfg_rates_to_hw (qos_pol_cfg_params_st *cfg,
    */
   denom = (u64) ((QOS_POL_TICKS_PER_SEC * 8) / 1000);
   numer = (u64) (cfg->rb.kbps.cir_kbps);
-  rc = qos_pol_round (numer, denom, &rnd_value,
-		      (qos_round_type_en) cfg->rnd_type);
+  rc = qos_pol_round (numer, denom, &rnd_value, cfg->rnd_type);
   if (rc != 0)
     {
       QOS_DEBUG_ERROR ("Rounding error, rate: %d kbps, rounding_type: %d",
@@ -427,8 +424,7 @@ pol_convert_cfg_rates_to_hw (qos_pol_cfg_params_st *cfg,
     }
 
   numer = (u64) eir_kbps;
-  rc = qos_pol_round (numer, denom, &rnd_value,
-		      (qos_round_type_en) cfg->rnd_type);
+  rc = qos_pol_round (numer, denom, &rnd_value, cfg->rnd_type);
   if (rc != 0)
     {
       QOS_DEBUG_ERROR ("Rounding error, rate: %d kbps, rounding_type: %d",
@@ -471,24 +467,22 @@ pol_convert_cfg_rates_to_hw (qos_pol_cfg_params_st *cfg,
     }
   else
     {
-      qos_convert_value_to_exp_mant_fmt (
-	hi_rate, (u16) QOS_POL_RATE_EXP_MAX, (u16) QOS_POL_AVG_RATE_MANT_MAX,
-	(qos_round_type_en) cfg->rnd_type, &exp, &hi_mant);
+      qos_convert_value_to_exp_mant_fmt (hi_rate, (u16) QOS_POL_RATE_EXP_MAX,
+					 (u16) QOS_POL_AVG_RATE_MANT_MAX,
+					 cfg->rnd_type, &exp, &hi_mant);
     }
 
   denom = (1ULL << exp);
   if (hi_rate == eir_hw)
     {
       hw->peak_rate_man = (u16) hi_mant;
-      rc = qos_pol_round ((u64) cir_hw, denom, &rnd_value,
-			  (qos_round_type_en) cfg->rnd_type);
+      rc = qos_pol_round ((u64) cir_hw, denom, &rnd_value, cfg->rnd_type);
       hw->avg_rate_man = (u16) rnd_value;
     }
   else
     {
       hw->avg_rate_man = (u16) hi_mant;
-      rc = qos_pol_round ((u64) eir_hw, denom, &rnd_value,
-			  (qos_round_type_en) cfg->rnd_type);
+      rc = qos_pol_round ((u64) eir_hw, denom, &rnd_value, cfg->rnd_type);
       hw->peak_rate_man = (u16) rnd_value;
     }
   if (rc != 0)

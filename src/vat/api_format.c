@@ -11652,11 +11652,14 @@ api_policer_add_del (vat_main_t * vam)
   mp->rate_type = rate_type;
   mp->round_type = round_type;
   mp->type = type;
-  mp->conform_action.type = conform_action.action_type;
+  mp->conform_action.type =
+    (vl_api_sse2_qos_action_type_t) conform_action.action_type;
   mp->conform_action.dscp = conform_action.dscp;
-  mp->exceed_action.type = exceed_action.action_type;
+  mp->exceed_action.type =
+    (vl_api_sse2_qos_action_type_t) exceed_action.action_type;
   mp->exceed_action.dscp = exceed_action.dscp;
-  mp->violate_action.type = violate_action.action_type;
+  mp->violate_action.type =
+    (vl_api_sse2_qos_action_type_t) violate_action.action_type;
   mp->violate_action.dscp = violate_action.dscp;
   mp->color_aware = color_aware;
 
