@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "e9aac443_91593fd1",
+        "filename": "src/plugins/mss_clamp/mss_clamp.api",
+        "patchSetId": 15
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2021-02-09T18:27:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "bb92a0e0_841519e4",
+      "revId": "36511de66f3671ae03ad0428d58a1cc40ebc562c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "51f6ed00_9f81e4df",
         "filename": "src/plugins/mss_clamp/mss_clamp.api",
         "patchSetId": 15
@@ -33,6 +51,24 @@
       "revId": "36511de66f3671ae03ad0428d58a1cc40ebc562c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "109078ca_13805e78",
+        "filename": "src/plugins/mss_clamp/mss_clamp.api",
+        "patchSetId": 15
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2021-02-09T18:27:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "51f6ed00_9f81e4df",
+      "revId": "36511de66f3671ae03ad0428d58a1cc40ebc562c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "4cb9aad7_b70a4a29",
+        "filename": "src/plugins/mss_clamp/mss_clamp.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2021-02-09T18:27:12Z",
+      "side": 1,
+      "message": "\u003e Should you be able to enable for both v4 and v6 and both directions in a single message?\n\nThis was already the case with the binary API, the CLI is made the same with the latest change.",
+      "parentUuid": "30850381_f9c75e36",
+      "revId": "36511de66f3671ae03ad0428d58a1cc40ebc562c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1f0ff2fb_8ca39184",
         "filename": "src/plugins/mss_clamp/mss_clamp_node.c",
         "patchSetId": 15
@@ -67,6 +121,24 @@
       "revId": "36511de66f3671ae03ad0428d58a1cc40ebc562c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9c501031_0941b6f9",
+        "filename": "src/plugins/mss_clamp/mss_clamp_node.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 1961
+      },
+      "writtenOn": "2021-02-09T18:27:12Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "1f0ff2fb_8ca39184",
+      "revId": "36511de66f3671ae03ad0428d58a1cc40ebc562c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
