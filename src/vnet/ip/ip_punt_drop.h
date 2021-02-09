@@ -140,12 +140,12 @@ ip_punt_policer (vlib_main_t * vm,
 		vnet_policer_police (vm, b1, policer_index,
 				     time_in_policer_periods, POLICE_CONFORM);
 
-	      if (PREDICT_FALSE (act0 == SSE2_QOS_ACTION_DROP))
+	      if (PREDICT_FALSE (act0 == QOS_ACTION_DROP))
 		{
 		  next0 = IP_PUNT_POLICER_NEXT_DROP;
 		  b0->error = node->errors[IP_PUNT_POLICER_ERROR_DROP];
 		}
-	      if (PREDICT_FALSE (act1 == SSE2_QOS_ACTION_DROP))
+	      if (PREDICT_FALSE (act1 == QOS_ACTION_DROP))
 		{
 		  next1 = IP_PUNT_POLICER_NEXT_DROP;
 		  b1->error = node->errors[IP_PUNT_POLICER_ERROR_DROP];
@@ -200,7 +200,7 @@ ip_punt_policer (vlib_main_t * vm,
 	      act0 =
 		vnet_policer_police (vm, b0, policer_index,
 				     time_in_policer_periods, POLICE_CONFORM);
-	      if (PREDICT_FALSE (act0 == SSE2_QOS_ACTION_DROP))
+	      if (PREDICT_FALSE (act0 == QOS_ACTION_DROP))
 		{
 		  next0 = IP_PUNT_POLICER_NEXT_DROP;
 		  b0->error = node->errors[IP_PUNT_POLICER_ERROR_DROP];
