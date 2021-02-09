@@ -480,9 +480,9 @@ unformat_policer_rate_type (unformat_input_t * input, va_list * args)
   u8 *r = va_arg (*args, u8 *);
 
   if (unformat (input, "kbps"))
-    *r = SSE2_QOS_RATE_KBPS;
+    *r = QOS_RATE_KBPS;
   else if (unformat (input, "pps"))
-    *r = SSE2_QOS_RATE_PPS;
+    *r = QOS_RATE_PPS;
   else
     return 0;
   return 1;
@@ -494,11 +494,11 @@ unformat_policer_round_type (unformat_input_t * input, va_list * args)
   u8 *r = va_arg (*args, u8 *);
 
   if (unformat (input, "closest"))
-    *r = SSE2_QOS_ROUND_TO_CLOSEST;
+    *r = QOS_ROUND_TO_CLOSEST;
   else if (unformat (input, "up"))
-    *r = SSE2_QOS_ROUND_TO_UP;
+    *r = QOS_ROUND_TO_UP;
   else if (unformat (input, "down"))
-    *r = SSE2_QOS_ROUND_TO_DOWN;
+    *r = QOS_ROUND_TO_DOWN;
   else
     return 0;
   return 1;
@@ -510,15 +510,15 @@ unformat_policer_type (unformat_input_t * input, va_list * args)
   u8 *r = va_arg (*args, u8 *);
 
   if (unformat (input, "1r2c"))
-    *r = SSE2_QOS_POLICER_TYPE_1R2C;
+    *r = QOS_POLICER_TYPE_1R2C;
   else if (unformat (input, "1r3c"))
-    *r = SSE2_QOS_POLICER_TYPE_1R3C_RFC_2697;
+    *r = QOS_POLICER_TYPE_1R3C_RFC_2697;
   else if (unformat (input, "2r3c-2698"))
-    *r = SSE2_QOS_POLICER_TYPE_2R3C_RFC_2698;
+    *r = QOS_POLICER_TYPE_2R3C_RFC_2698;
   else if (unformat (input, "2r3c-4115"))
-    *r = SSE2_QOS_POLICER_TYPE_2R3C_RFC_4115;
+    *r = QOS_POLICER_TYPE_2R3C_RFC_4115;
   else if (unformat (input, "2r3c-mef5cf1"))
-    *r = SSE2_QOS_POLICER_TYPE_2R3C_RFC_MEF5CF1;
+    *r = QOS_POLICER_TYPE_2R3C_RFC_MEF5CF1;
   else
     return 0;
   return 1;
@@ -540,15 +540,14 @@ unformat_dscp (unformat_input_t * input, va_list * va)
 static uword
 unformat_policer_action_type (unformat_input_t * input, va_list * va)
 {
-  sse2_qos_pol_action_params_st *a
-    = va_arg (*va, sse2_qos_pol_action_params_st *);
+  qos_pol_action_params_st *a = va_arg (*va, qos_pol_action_params_st *);
 
   if (unformat (input, "drop"))
-    a->action_type = SSE2_QOS_ACTION_DROP;
+    a->action_type = QOS_ACTION_DROP;
   else if (unformat (input, "transmit"))
-    a->action_type = SSE2_QOS_ACTION_TRANSMIT;
+    a->action_type = QOS_ACTION_TRANSMIT;
   else if (unformat (input, "mark-and-transmit %U", unformat_dscp, &a->dscp))
-    a->action_type = SSE2_QOS_ACTION_MARK_AND_TRANSMIT;
+    a->action_type = QOS_ACTION_MARK_AND_TRANSMIT;
   else
     return 0;
   return 1;
@@ -2681,15 +2680,15 @@ format_policer_type (u8 * s, va_list * va)
 {
   u32 i = va_arg (*va, u32);
 
-  if (i == SSE2_QOS_POLICER_TYPE_1R2C)
+  if (i == QOS_POLICER_TYPE_1R2C)
     s = format (s, "1r2c");
-  else if (i == SSE2_QOS_POLICER_TYPE_1R3C_RFC_2697)
+  else if (i == QOS_POLICER_TYPE_1R3C_RFC_2697)
     s = format (s, "1r3c");
-  else if (i == SSE2_QOS_POLICER_TYPE_2R3C_RFC_2698)
+  else if (i == QOS_POLICER_TYPE_2R3C_RFC_2698)
     s = format (s, "2r3c-2698");
-  else if (i == SSE2_QOS_POLICER_TYPE_2R3C_RFC_4115)
+  else if (i == QOS_POLICER_TYPE_2R3C_RFC_4115)
     s = format (s, "2r3c-4115");
-  else if (i == SSE2_QOS_POLICER_TYPE_2R3C_RFC_MEF5CF1)
+  else if (i == QOS_POLICER_TYPE_2R3C_RFC_MEF5CF1)
     s = format (s, "2r3c-mef5cf1");
   else
     s = format (s, "ILLEGAL");
@@ -2701,9 +2700,9 @@ format_policer_rate_type (u8 * s, va_list * va)
 {
   u32 i = va_arg (*va, u32);
 
-  if (i == SSE2_QOS_RATE_KBPS)
+  if (i == QOS_RATE_KBPS)
     s = format (s, "kbps");
-  else if (i == SSE2_QOS_RATE_PPS)
+  else if (i == QOS_RATE_PPS)
     s = format (s, "pps");
   else
     s = format (s, "ILLEGAL");
@@ -2715,11 +2714,11 @@ format_policer_round_type (u8 * s, va_list * va)
 {
   u32 i = va_arg (*va, u32);
 
-  if (i == SSE2_QOS_ROUND_TO_CLOSEST)
+  if (i == QOS_ROUND_TO_CLOSEST)
     s = format (s, "closest");
-  else if (i == SSE2_QOS_ROUND_TO_UP)
+  else if (i == QOS_ROUND_TO_UP)
     s = format (s, "up");
-  else if (i == SSE2_QOS_ROUND_TO_DOWN)
+  else if (i == QOS_ROUND_TO_DOWN)
     s = format (s, "down");
   else
     s = format (s, "ILLEGAL");
@@ -2731,11 +2730,11 @@ format_policer_action_type (u8 * s, va_list * va)
 {
   u32 i = va_arg (*va, u32);
 
-  if (i == SSE2_QOS_ACTION_DROP)
+  if (i == QOS_ACTION_DROP)
     s = format (s, "drop");
-  else if (i == SSE2_QOS_ACTION_TRANSMIT)
+  else if (i == QOS_ACTION_TRANSMIT)
     s = format (s, "transmit");
-  else if (i == SSE2_QOS_ACTION_MARK_AND_TRANSMIT)
+  else if (i == QOS_ACTION_MARK_AND_TRANSMIT)
     s = format (s, "mark-and-transmit");
   else
     s = format (s, "ILLEGAL");
@@ -11582,14 +11581,14 @@ api_policer_add_del (vat_main_t * vam)
   u8 round_type = 0;
   u8 type = 0;
   u8 color_aware = 0;
-  sse2_qos_pol_action_params_st conform_action, exceed_action, violate_action;
+  qos_pol_action_params_st conform_action, exceed_action, violate_action;
   int ret;
 
-  conform_action.action_type = SSE2_QOS_ACTION_TRANSMIT;
+  conform_action.action_type = QOS_ACTION_TRANSMIT;
   conform_action.dscp = 0;
-  exceed_action.action_type = SSE2_QOS_ACTION_MARK_AND_TRANSMIT;
+  exceed_action.action_type = QOS_ACTION_MARK_AND_TRANSMIT;
   exceed_action.dscp = 0;
-  violate_action.action_type = SSE2_QOS_ACTION_DROP;
+  violate_action.action_type = QOS_ACTION_DROP;
   violate_action.dscp = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)

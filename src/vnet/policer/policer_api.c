@@ -53,7 +53,7 @@ vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
   vl_api_policer_add_del_reply_t *rmp;
   int rv = 0;
   u8 *name = NULL;
-  sse2_qos_pol_cfg_params_st cfg;
+  qos_pol_cfg_params_st cfg;
   clib_error_t *error;
   u32 policer_index;
 
@@ -69,13 +69,12 @@ vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
   cfg.rb.kbps.cb_bytes = clib_net_to_host_u64 (mp->cb);
   cfg.rb.kbps.eb_bytes = clib_net_to_host_u64 (mp->eb);
   cfg.conform_action.action_type =
-    (sse2_qos_action_type_en) mp->conform_action.type;
+    (qos_action_type_en) mp->conform_action.type;
   cfg.conform_action.dscp = mp->conform_action.dscp;
-  cfg.exceed_action.action_type =
-    (sse2_qos_action_type_en) mp->exceed_action.type;
+  cfg.exceed_action.action_type = (qos_action_type_en) mp->exceed_action.type;
   cfg.exceed_action.dscp = mp->exceed_action.dscp;
   cfg.violate_action.action_type =
-    (sse2_qos_action_type_en) mp->violate_action.type;
+    (qos_action_type_en) mp->violate_action.type;
   cfg.violate_action.dscp = mp->violate_action.dscp;
 
   cfg.color_aware = mp->color_aware;
@@ -97,10 +96,9 @@ vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
 }
 
 static void
-send_policer_details (u8 * name,
-		      sse2_qos_pol_cfg_params_st * config,
-		      policer_read_response_type_st * templ,
-		      vl_api_registration_t * reg, u32 context)
+send_policer_details (u8 *name, qos_pol_cfg_params_st *config,
+		      policer_read_response_type_st *templ,
+		      vl_api_registration_t *reg, u32 context)
 {
   vl_api_policer_details_t *mp;
 
@@ -150,7 +148,7 @@ vl_api_policer_dump_t_handler (vl_api_policer_dump_t * mp)
   u32 pool_index;
   u8 *match_name = 0;
   u8 *name;
-  sse2_qos_pol_cfg_params_st *config;
+  qos_pol_cfg_params_st *config;
   policer_read_response_type_st *templ;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
