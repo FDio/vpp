@@ -35,7 +35,7 @@ typedef enum qos_policer_type_en_
   QOS_POLICER_TYPE_2R3C_RFC_4115 = 3,
   QOS_POLICER_TYPE_2R3C_RFC_MEF5CF1 = 4,
   QOS_POLICER_TYPE_MAX
-} qos_policer_type_en;
+} __clib_packed qos_policer_type_en;
 
 /*
  * edt: * enum
@@ -47,7 +47,7 @@ typedef enum
   QOS_ROUND_TO_UP,
   QOS_ROUND_TO_DOWN,
   QOS_ROUND_INVALID
-} qos_round_type_en;
+} __clib_packed qos_round_type_en;
 
 /*
  * edt: * enum
@@ -64,18 +64,7 @@ typedef enum
   QOS_RATE_KBPS = 0,
   QOS_RATE_PPS,
   QOS_RATE_INVALID
-} qos_rate_type_en;
-
-/*
- * edt: * enum
- * Defines type of policer actions.
- */
-typedef enum
-{
-  QOS_ACTION_DROP = 0,
-  QOS_ACTION_TRANSMIT,
-  QOS_ACTION_MARK_AND_TRANSMIT
-} qos_action_type_en;
+} __clib_packed qos_rate_type_en;
 
 /*
  * edt * struct qos_pol_action_params_st
@@ -88,7 +77,7 @@ typedef enum
  */
 typedef struct qos_pol_action_params_st_
 {
-  u8 action_type;
+  qos_action_type_en action_type;
   ip_dscp_t dscp;
 } qos_pol_action_params_st;
 
@@ -142,9 +131,9 @@ typedef struct qos_pol_cfg_params_st_
       u64 eb_ms;
     } pps;
   } rb;				/* rate burst config */
-  u8 rate_type;			/* qos_rate_type_en */
-  u8 rnd_type;			/* qos_round_type_en */
-  u8 rfc;			/* qos_policer_type_en */
+  qos_rate_type_en rate_type;
+  qos_round_type_en rnd_type;
+  qos_policer_type_en rfc;
   u8 color_aware;
   u8 overwrite_bucket;		/* for debugging purposes */
   u32 current_bucket;		/* for debugging purposes */

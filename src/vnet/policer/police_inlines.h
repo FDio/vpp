@@ -62,7 +62,7 @@ vnet_policer_police (vlib_main_t * vm,
 		     u64 time_in_policer_periods,
 		     policer_result_e packet_color)
 {
-  u8 act;
+  qos_action_type_en act;
   u32 len;
   u32 col;
   policer_read_response_type_st *pol;
