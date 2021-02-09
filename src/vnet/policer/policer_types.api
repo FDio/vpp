@@ -46,7 +46,7 @@ enum sse2_qos_action_type : u8
   SSE2_QOS_ACTION_API_MARK_AND_TRANSMIT,
 };
 
-/** \brief SSE2 QOS action
+/** \brief QOS action
     @param conform_action_type - conform action type
     @param conform_dscp - DSCP for conform mark-and-transmit action
 */

@@ -2030,11 +2030,11 @@ format_policer_action (u8 * s, va_list * va)
   u32 action = va_arg (*va, u32);
   u32 dscp = va_arg (*va, u32);
 
-  if (action == SSE2_QOS_ACTION_DROP)
+  if (action == QOS_ACTION_DROP)
     s = format (s, "drop");
-  else if (action == SSE2_QOS_ACTION_TRANSMIT)
+  else if (action == QOS_ACTION_TRANSMIT)
     s = format (s, "transmit");
-  else if (action == SSE2_QOS_ACTION_MARK_AND_TRANSMIT)
+  else if (action == QOS_ACTION_MARK_AND_TRANSMIT)
     {
       s = format (s, "mark-and-transmit ");
       switch (dscp)
@@ -2063,10 +2063,10 @@ static void *vl_api_policer_add_del_t_print
 
   switch (mp->rate_type)
     {
-    case SSE2_QOS_RATE_KBPS:
+    case QOS_RATE_KBPS:
       s = format (s, "rate_type kbps ");
       break;
-    case SSE2_QOS_RATE_PPS:
+    case QOS_RATE_PPS:
       s = format (s, "rate_type pps ");
       break;
     default:
@@ -2075,13 +2075,13 @@ static void *vl_api_policer_add_del_t_print
 
   switch (mp->round_type)
     {
-    case SSE2_QOS_ROUND_TO_CLOSEST:
+    case QOS_ROUND_TO_CLOSEST:
       s = format (s, "round_type closest ");
       break;
-    case SSE2_QOS_ROUND_TO_UP:
+    case QOS_ROUND_TO_UP:
       s = format (s, "round_type up ");
       break;
-    case SSE2_QOS_ROUND_TO_DOWN:
+    case QOS_ROUND_TO_DOWN:
       s = format (s, "round_type down ");
       break;
     default:
@@ -2090,19 +2090,19 @@ static void *vl_api_policer_add_del_t_print
 
   switch (mp->type)
     {
-    case SSE2_QOS_POLICER_TYPE_1R2C:
+    case QOS_POLICER_TYPE_1R2C:
       s = format (s, "type 1r2c ");
       break;
-    case SSE2_QOS_POLICER_TYPE_1R3C_RFC_2697:
+    case QOS_POLICER_TYPE_1R3C_RFC_2697:
       s = format (s, "type 1r3c ");
       break;
-    case SSE2_QOS_POLICER_TYPE_2R3C_RFC_2698:
+    case QOS_POLICER_TYPE_2R3C_RFC_2698:
       s = format (s, "type 2r3c-2698 ");
       break;
-    case SSE2_QOS_POLICER_TYPE_2R3C_RFC_4115:
+    case QOS_POLICER_TYPE_2R3C_RFC_4115:
       s = format (s, "type 2r3c-4115 ");
       break;
-    case SSE2_QOS_POLICER_TYPE_2R3C_RFC_MEF5CF1:
+    case QOS_POLICER_TYPE_2R3C_RFC_MEF5CF1:
       s = format (s, "type 2r3c-mef5cf1 ");
       break;
     default:

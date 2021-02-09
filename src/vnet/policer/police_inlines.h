@@ -78,7 +78,7 @@ vnet_policer_police (vlib_main_t * vm,
   act = pol->action[col];
   vlib_increment_combined_counter (&policer_counters[col], vm->thread_index,
 				   policer_index, 1, len);
-  if (PREDICT_TRUE (act == SSE2_QOS_ACTION_MARK_AND_TRANSMIT))
+  if (PREDICT_TRUE (act == QOS_ACTION_MARK_AND_TRANSMIT))
     vnet_policer_mark (b, pol->mark_dscp[col]);
 
   return act;

@@ -27,7 +27,7 @@ typedef struct
   policer_read_response_type_st *policers;
 
   /* config + template h/w policer instance parallel pools */
-  sse2_qos_pol_cfg_params_st *configs;
+  qos_pol_cfg_params_st *configs;
   policer_read_response_type_st *policer_templates;
 
   /* Config by name hash */
@@ -63,10 +63,9 @@ typedef enum
 } vnet_policer_next_t;
 
 u8 *format_policer_instance (u8 * s, va_list * va);
-clib_error_t *policer_add_del (vlib_main_t * vm,
-			       u8 * name,
-			       sse2_qos_pol_cfg_params_st * cfg,
-			       u32 * policer_index, u8 is_add);
+clib_error_t *policer_add_del (vlib_main_t *vm, u8 *name,
+			       qos_pol_cfg_params_st *cfg, u32 *policer_index,
+			       u8 is_add);
 
 #endif /* __included_policer_h__ */
 
