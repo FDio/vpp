@@ -16,6 +16,24 @@
       "revId": "639d1a5b38b4527aaf196b651b40c25bdd1ef49b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8f90a496_882b8275",
+        "filename": "src/vpp-api/python/CMakeLists.txt",
+        "patchSetId": 5
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-02-09T19:27:34Z",
+      "side": 1,
+      "message": "You asked this in patch set 2, yes?\n\nFor convenience, I copied it here.\n\nThis doesn\u0027t change what is there for cmake from what I\u0027ve looked at. This just kicks in if a system has 2 versions installed, and picks the newer version. Presumably, the older python version was successful in a past run. \n\nFrom the docs:\nThe Python_ADDITIONAL_VERSIONS variable can be used to specify a list of version numbers that should be taken into account when searching for Python. You need to set this variable before calling find_package(PythonLibs).\n\nDamjan\u0027s commit to add the check on v3.12 is about the syntax change that happened within cmake.  We somehow conflated that to also peg builds to python2.7 when there is no dependency.\n\nAre you asking something different?",
+      "parentUuid": "afa4d06a_7fbd5163",
+      "revId": "639d1a5b38b4527aaf196b651b40c25bdd1ef49b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
