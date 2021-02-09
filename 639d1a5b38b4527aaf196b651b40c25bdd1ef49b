@@ -52,6 +52,24 @@
       "revId": "639d1a5b38b4527aaf196b651b40c25bdd1ef49b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0a45740c_d989d27b",
+        "filename": "src/vpp-api/python/CMakeLists.txt",
+        "patchSetId": 5
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-02-09T20:17:07Z",
+      "side": 1,
+      "message": "No.  This is not about PYTHON\u003d in the makefile.  This is about what version packaging uses as \"python3\" when building the distributions.  We want packaging to use the most current version on the box.  \nI can probably add 3.11, 3.10 to the list if you are worried, but it will probably change before we get to that point.\n\nThe other way to do this is to use `alternatives` to set the system python3 version outside of cmake, but that means that we have to list them, and parse out the installed options and select the highest version.",
+      "parentUuid": "a7d32733_21ff912c",
+      "revId": "639d1a5b38b4527aaf196b651b40c25bdd1ef49b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
