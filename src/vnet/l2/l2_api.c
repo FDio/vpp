@@ -116,10 +116,13 @@ vl_api_l2_xconnect_dump_t_handler (vl_api_l2_xconnect_dump_t * mp)
   /* *INDENT-OFF* */
   pool_foreach (swif, im->sw_interfaces)
    {
-    config = vec_elt_at_index (l2im->configs, swif->sw_if_index);
-    if (l2_input_is_xconnect(config))
-      send_l2_xconnect_details (reg, mp->context, swif->sw_if_index,
-                                config->output_sw_if_index);
+     if (vec_len (l2im->configs) > swif->sw_if_index)
+       {
+	 config = vec_elt_at_index (l2im->configs, swif->sw_if_index);
+	 if (l2_input_is_xconnect (config))
+	   send_l2_xconnect_details (reg, mp->context, swif->sw_if_index,
+				     config->output_sw_if_index);
+       }
   }
   /* *INDENT-ON* */
 }
