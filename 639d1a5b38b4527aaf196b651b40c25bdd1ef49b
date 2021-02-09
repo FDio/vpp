@@ -70,6 +70,24 @@
       "revId": "639d1a5b38b4527aaf196b651b40c25bdd1ef49b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6aaa4fcc_7f5102d4",
+        "filename": "src/vpp-api/python/CMakeLists.txt",
+        "patchSetId": 5
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-09T20:19:13Z",
+      "side": 1,
+      "message": "Why is it better to use latest if that’s what cmake does instead of system default which you presumably get without the line?",
+      "parentUuid": "0a45740c_d989d27b",
+      "revId": "639d1a5b38b4527aaf196b651b40c25bdd1ef49b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
