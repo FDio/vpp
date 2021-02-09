@@ -70,20 +70,11 @@ ipsec_itf_adj_stack (adj_index_t ai, u32 sai)
   if (hw->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)
     {
       const ipsec_sa_t *sa;
+      fib_prefix_t dst;
 
       sa = ipsec_sa_get (sai);
-
-      /* *INDENT-OFF* */
-      const fib_prefix_t dst = {
-        .fp_len = (ipsec_sa_is_set_IS_TUNNEL_V6(sa) ? 128 : 32),
-        .fp_proto = (ipsec_sa_is_set_IS_TUNNEL_V6(sa)?
-                     FIB_PROTOCOL_IP6 :
-                     FIB_PROTOCOL_IP4),
-        .fp_addr = sa->tunnel_dst_addr,
-      };
-      /* *INDENT-ON* */
-
-      adj_midchain_delegate_stack (ai, sa->tx_fib_index, &dst);
+      ip_address_to_fib_prefix (&sa->tunnel.t_dst, &dst);
+      adj_midchain_delegate_stack (ai, sa->tunnel.t_fib_index, &dst);
     }
   else
     adj_midchain_delegate_unstack (ai);

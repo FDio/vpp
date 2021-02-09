@@ -116,8 +116,8 @@ typedef struct
      * integrity check */
     struct
     {
-      u8 hop_limit;
       u32 ip_version_traffic_class_and_flow_label;
+      u8 hop_limit;
     };
     struct
     {
@@ -125,8 +125,8 @@ typedef struct
       u8 tos;
     };
   };
-  i16 current_data;
   u8 skip;
+  i16 current_data;
   u32 sa_index;
 } ah_encrypt_packet_data_t;
 
@@ -251,14 +251,14 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  oh6_0->ip6.ip_version_traffic_class_and_flow_label =
 	    ih6_0->ip6.ip_version_traffic_class_and_flow_label;
 
-	  ip6_set_dscp_network_order (&oh6_0->ip6, sa0->dscp);
-
-	  tunnel_encap_fixup_6o6 (sa0->tunnel_flags,
-				  &ih6_0->ip6, &oh6_0->ip6);
-
+	  if (PREDICT_FALSE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
+	    {
+	      ip6_set_dscp_network_order (&oh6_0->ip6, sa0->tunnel.t_dscp);
+	      tunnel_encap_fixup_6o6 (sa0->tunnel_flags, &ih6_0->ip6,
+				      &oh6_0->ip6);
+	    }
 	  pd->ip_version_traffic_class_and_flow_label =
 	    oh6_0->ip6.ip_version_traffic_class_and_flow_label;
-	  oh6_0->ip6.ip_version_traffic_class_and_flow_label = 0;
 
 	  if (PREDICT_TRUE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
 	    {
@@ -287,20 +287,27 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  oh0 = vlib_buffer_get_current (b[0]);
 	  pd->ttl = ih0->ip4.ttl;
 
-	  if (sa0->dscp)
-	    pd->tos = sa0->dscp << 2;
+	  if (PREDICT_FALSE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
+	    {
+	      if (sa0->tunnel.t_dscp)
+		pd->tos = sa0->tunnel.t_dscp << 2;
+	      else
+		{
+		  pd->tos = ih0->ip4.tos;
+
+		  if (!(sa0->tunnel_flags &
+			TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP))
+		    pd->tos &= 0x3;
+		  if (!(sa0->tunnel_flags &
+			TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN))
+		    pd->tos &= 0xfc;
+		}
+	    }
 	  else
 	    {
 	      pd->tos = ih0->ip4.tos;
-	      if (!
-		  (sa0->tunnel_flags &
-		   TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_DSCP))
-		pd->tos &= 0x3;
-	      if (!
-		  (sa0->tunnel_flags &
-		   TUNNEL_ENCAP_DECAP_FLAG_ENCAP_COPY_ECN))
-		pd->tos &= 0xfc;
 	    }
+
 	  pd->current_data = b[0]->current_data;
 	  clib_memset (oh0, 0, sizeof (ip4_and_ah_header_t));
 
@@ -377,6 +384,18 @@ ah_encrypt_inline (vlib_main_t * vm,
 	}
 
     next:
+      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  sa0 = vec_elt_at_index (im->sad, pd->sa_index);
+	  ah_encrypt_trace_t *tr =
+	    vlib_add_trace (vm, node, b[0], sizeof (*tr));
+	  tr->spi = sa0->spi;
+	  tr->seq_lo = sa0->seq;
+	  tr->seq_hi = sa0->seq_hi;
+	  tr->integ_alg = sa0->integ_alg;
+	  tr->sa_index = pd->sa_index;
+	}
+
       n_left -= 1;
       next += 1;
       pd += 1;
@@ -399,7 +418,7 @@ ah_encrypt_inline (vlib_main_t * vm,
   while (n_left)
     {
       if (pd->skip)
-	goto trace;
+	goto next_pkt;
 
       if (is_ip6)
 	{
@@ -416,19 +435,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  oh0->ip4.checksum = ip4_header_checksum (&oh0->ip4);
 	}
 
-    trace:
-      if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
-	{
-	  sa0 = vec_elt_at_index (im->sad, pd->sa_index);
-	  ah_encrypt_trace_t *tr =
-	    vlib_add_trace (vm, node, b[0], sizeof (*tr));
-	  tr->spi = sa0->spi;
-	  tr->seq_lo = sa0->seq;
-	  tr->seq_hi = sa0->seq_hi;
-	  tr->integ_alg = sa0->integ_alg;
-	  tr->sa_index = pd->sa_index;
-	}
-
+    next_pkt:
       n_left -= 1;
       next += 1;
       pd += 1;
