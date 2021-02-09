@@ -66,7 +66,7 @@ clib_mem_bulk_init (u32 elt_sz, u32 align, u32 min_elts_per_chunk)
   b->elt_sz = round_pow2 (elt_sz, align);
   b->chunk_hdr_sz = round_pow2 (sizeof (clib_mem_bulk_chunk_hdr_t), align);
   b->elts_per_chunk = min_elts_per_chunk;
-  sz = b->elts_per_chunk * b->elt_sz + b->chunk_hdr_sz;
+  sz = (uword) b->elts_per_chunk * b->elt_sz + b->chunk_hdr_sz;
   b->chunk_align = max_pow2 (sz);
   b->elts_per_chunk += (b->chunk_align - sz) / b->elt_sz;
   return b;
@@ -220,7 +220,7 @@ format_clib_mem_bulk (u8 *s, va_list *args)
     }
 
   n_elts = n_chunks * b->elts_per_chunk;
-  chunk_sz = b->chunk_hdr_sz + b->elts_per_chunk * b->elt_sz;
+  chunk_sz = b->chunk_hdr_sz + (uword) b->elts_per_chunk * b->elt_sz;
 
   s = format (s, "%u bytes/elt, align %u, chunk-align %u, ", b->elt_sz,
 	      b->align, b->chunk_align);
