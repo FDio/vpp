@@ -16,6 +16,24 @@
       "revId": "fe638733b162014f407bf01455f49df988e29a45",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ef8f4261_d11e3f3b",
+        "filename": "src/vnet/l2/l2_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-02-09T15:15:42Z",
+      "side": 1,
+      "message": "I modify the patch to use vec_foreach_index instead of vec_foreach as suggested. The reason is I still need the sw_if_index when calling send_l2_xconnect_details.",
+      "parentUuid": "9ac768ac_52d81f91",
+      "revId": "fe638733b162014f407bf01455f49df988e29a45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
