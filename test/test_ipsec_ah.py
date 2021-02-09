@@ -126,6 +126,8 @@ class ConfigIpsecAH(TemplateIpsec):
         tun_flags = params.tun_flags
         e = VppEnum.vl_api_ipsec_spd_action_t
         objs = []
+        params.outer_hop_limit = 253
+        params.outer_flow_label = 0x12345
 
         params.tun_sa_in = VppIpsecSA(self, scapy_tun_sa_id, scapy_tun_spi,
                                       auth_algo_vpp_id, auth_key,
@@ -336,7 +338,7 @@ class TestIpsecAhTun(TemplateIpsecAh, IpsecTun46Tests):
                 Raw(b'X' * payload_size)
                 for i in range(count)]
 
-    def gen_pkts6(self, sw_intf, src, dst, count=1, payload_size=54):
+    def gen_pkts6(self, p, sw_intf, src, dst, count=1, payload_size=54):
         # set the DSCP + ECN - flags are set to copy both
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
                 IPv6(src=src, dst=dst, tc=5) /
@@ -375,7 +377,7 @@ class TestIpsecAhTun2(TemplateIpsecAh, IpsecTun46Tests):
                 Raw(b'X' * payload_size)
                 for i in range(count)]
 
-    def gen_pkts6(self, sw_intf, src, dst, count=1, payload_size=54):
+    def gen_pkts6(self, p, sw_intf, src, dst, count=1, payload_size=54):
         # set the DSCP + ECN - flags are set to copy both
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
                 IPv6(src=src, dst=dst, tc=0) /

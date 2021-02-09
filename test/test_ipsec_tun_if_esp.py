@@ -1494,7 +1494,7 @@ class TestIpsecGre6IfEspTra(TemplateIpsec,
                            Raw(b'X' * payload_size))
                 for i in range(count)]
 
-    def gen_pkts6(self, sw_intf, src, dst, count=1,
+    def gen_pkts6(self, p, sw_intf, src, dst, count=1,
                   payload_size=100):
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
                 IPv6(src="1::1", dst="1::2") /
@@ -1724,7 +1724,7 @@ class TestIpsecMGreIfEspTra6(TemplateIpsec, IpsecTun6):
                            Raw(b'X' * payload_size))
                 for i in range(count)]
 
-    def gen_pkts6(self, sw_intf, src, dst, count=1,
+    def gen_pkts6(self, p, sw_intf, src, dst, count=1,
                   payload_size=100):
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
                 IPv6(src="1::1", dst=dst) /
@@ -2263,7 +2263,7 @@ class TestIpsec6TunProtectTun(TemplateIpsec,
                            Raw(b'X' * payload_size))
                 for i in range(count)]
 
-    def gen_pkts6(self, sw_intf, src, dst, count=1,
+    def gen_pkts6(self, p, sw_intf, src, dst, count=1,
                   payload_size=100):
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
                 IPv6(src=src, dst=dst) /
@@ -2659,12 +2659,19 @@ class TemplateIpsecItf6(object):
     def config_sa_tun(self, p, src, dst):
         config_tun_params(p, self.encryption_type, None, src, dst)
 
+        if not hasattr(p, 'tun_flags'):
+            p.tun_flags = None
+        if not hasattr(p, 'hop_limit'):
+            p.hop_limit = 255
+
         p.tun_sa_out = VppIpsecSA(self, p.scapy_tun_sa_id, p.scapy_tun_spi,
                                   p.auth_algo_vpp_id, p.auth_key,
                                   p.crypt_algo_vpp_id, p.crypt_key,
                                   self.vpp_esp_protocol,
                                   src, dst,
-                                  flags=p.flags)
+                                  flags=p.flags,
+                                  tun_flags=p.tun_flags,
+                                  hop_limit=p.hop_limit)
         p.tun_sa_out.add_vpp_config()
 
         p.tun_sa_in = VppIpsecSA(self, p.vpp_tun_sa_id, p.vpp_tun_spi,
@@ -2729,8 +2736,13 @@ class TestIpsecItf6(TemplateIpsec,
     def test_tun_44(self):
         """IPSEC interface IPv6"""
 
+        tf = VppEnum.vl_api_tunnel_encap_decap_flags_t
         n_pkts = 127
         p = self.ipv6_params
+        p.inner_hop_limit = 24
+        p.outer_hop_limit = 23
+        p.outer_flow_label = 243224
+        p.tun_flags = tf.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_HOP_LIMIT
 
         self.config_network(p)
         self.config_sa_tun(p,
@@ -2776,6 +2788,12 @@ class TestIpsecItf6(TemplateIpsec,
         np.vpp_tun_sa_id += 1
         np.tun_if.local_spi = p.vpp_tun_spi
         np.tun_if.remote_spi = p.scapy_tun_spi
+        np.inner_hop_limit = 24
+        np.outer_hop_limit = 128
+        np.inner_flow_label = 0xabcde
+        np.outer_flow_label = 0xabcde
+        np.hop_limit = 128
+        np.tun_flags = tf.TUNNEL_API_ENCAP_DECAP_FLAG_ENCAP_COPY_FLOW_LABEL
 
         self.config_sa_tun(np,
                            self.pg0.local_ip6,
@@ -2828,6 +2846,7 @@ class TestIpsecMIfEsp4(TemplateIpsec, IpsecTun4):
             try:
                 self.assertEqual(rx[IP].tos,
                                  VppEnum.vl_api_ip_dscp_t.IP_API_DSCP_EF << 2)
+                self.assertEqual(rx[IP].ttl, p.hop_limit)
                 pkt = sa.decrypt(rx[IP])
                 if not pkt.haslayer(IP):
                     pkt = IP(pkt[Raw].load)
@@ -2876,6 +2895,7 @@ class TestIpsecMIfEsp4(TemplateIpsec, IpsecTun4):
             p.scapy_tra_spi = p.scapy_tra_spi + ii
             p.vpp_tra_sa_id = p.vpp_tra_sa_id + ii
             p.vpp_tra_spi = p.vpp_tra_spi + ii
+            p.hop_limit = ii+10
             p.tun_sa_out = VppIpsecSA(
                 self, p.scapy_tun_sa_id, p.scapy_tun_spi,
                 p.auth_algo_vpp_id, p.auth_key,
@@ -2883,7 +2903,8 @@ class TestIpsecMIfEsp4(TemplateIpsec, IpsecTun4):
                 self.vpp_esp_protocol,
                 self.pg0.local_ip4,
                 self.pg0.remote_hosts[ii].ip4,
-                dscp=VppEnum.vl_api_ip_dscp_t.IP_API_DSCP_EF)
+                dscp=VppEnum.vl_api_ip_dscp_t.IP_API_DSCP_EF,
+                hop_limit=p.hop_limit)
             p.tun_sa_out.add_vpp_config()
 
             p.tun_sa_in = VppIpsecSA(
@@ -2893,7 +2914,8 @@ class TestIpsecMIfEsp4(TemplateIpsec, IpsecTun4):
                 self.vpp_esp_protocol,
                 self.pg0.remote_hosts[ii].ip4,
                 self.pg0.local_ip4,
-                dscp=VppEnum.vl_api_ip_dscp_t.IP_API_DSCP_EF)
+                dscp=VppEnum.vl_api_ip_dscp_t.IP_API_DSCP_EF,
+                hop_limit=p.hop_limit)
             p.tun_sa_in.add_vpp_config()
 
             p.tun_protect = VppIpsecTunProtect(
