@@ -97,6 +97,7 @@ clib_error_t *policer_add_del (vlib_main_t * vm,
 			       u8 * name,
 			       sse2_qos_pol_cfg_params_st * cfg,
 			       u32 * policer_index, u8 is_add);
+int policer_bind_worker (u8 *name, u32 worker, bool bind);
 
 #endif /* __included_policer_h__ */
 

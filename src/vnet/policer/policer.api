@@ -17,6 +17,23 @@ option version = "2.0.0";
 
 import "vnet/policer/policer_types.api";
 
+/** \brief policer bind: Associate/disassociate a policer with a worker thread.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param name - policer name to bind
+    @param worker_index - the worker thread to bind to
+    @param bind_enable - Associate/disassociate
+*/
+autoreply define policer_bind
+{
+  u32 client_index;
+  u32 context;
+
+  string name[64];
+  u32 worker_index;
+  bool bind_enable;
+};
+
 /** \brief Add/del policer
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

@@ -14,6 +14,7 @@
  */
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
