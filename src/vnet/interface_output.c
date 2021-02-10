@@ -491,7 +491,7 @@ VLIB_NODE_FN (vnet_interface_output_node)
   vnet_interface_pcap_tx_trace (vm, node, frame,
 				0 /* sw_if_index_from_buffer */ );
 
-  if (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD)
+  if (hi->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM)
     return vnet_interface_output_node_inline (vm, node, frame, vnm, hi,
 					      /* do_tx_offloads */ 0);
   else

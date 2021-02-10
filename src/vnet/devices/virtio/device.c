@@ -965,12 +965,12 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
 
-  if (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO)
+  if (hw->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO)
     return virtio_interface_tx_gso_inline (vm, node, vif, type, vring,
 					   buffers, n_left, packed,
 					   1 /* do_gso */ ,
 					   1 /* checksum offload */ );
-  else if (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD)
+  else if (hw->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_L4_TX_CKSUM)
     return virtio_interface_tx_gso_inline (vm, node, vif, type, vring,
 					   buffers, n_left, packed,
 					   0 /* no do_gso */ ,
