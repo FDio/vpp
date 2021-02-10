@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "618678e7_bca7a627",
+        "filename": "src/plugins/vmxnet3/input.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-02-10T16:57:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d58c59d6_da266ef5",
+      "revId": "49331048d9ba8550df8645f376706129f395e89d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f45ccd4f_6df8e52e",
         "filename": "src/vnet/interface_format.c",
         "patchSetId": 7
@@ -30,6 +48,24 @@
       "writtenOn": "2021-02-10T14:22:34Z",
       "side": 1,
       "message": "this looks like a copy/paste leftover, isn\u0027t it?",
+      "revId": "49331048d9ba8550df8645f376706129f395e89d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "217a9ae1_3751a0c8",
+        "filename": "src/vnet/interface_format.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 753,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-02-10T16:57:29Z",
+      "side": 1,
+      "message": "The only purpose of above if is to facilitate following macro to expand with else if statements.",
+      "parentUuid": "f45ccd4f_6df8e52e",
       "revId": "49331048d9ba8550df8645f376706129f395e89d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "2a8fc352_490edc54",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 330,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-02-10T16:57:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1ec8e21f_e9c079da",
+      "revId": "49331048d9ba8550df8645f376706129f395e89d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6a6323d6_eaa711bb",
         "filename": "src/vnet/ipsec/ipsec_output.c",
         "patchSetId": 7
@@ -67,6 +121,24 @@
       "revId": "49331048d9ba8550df8645f376706129f395e89d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2e3ffb7e_a157c98b",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 350,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-02-10T16:57:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6a6323d6_eaa711bb",
+      "revId": "49331048d9ba8550df8645f376706129f395e89d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     },
     {
       "key": {
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "a2557742_8d916f54",
+        "filename": "src/vnet/pg/cli.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 382,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-02-10T16:57:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "11f086cf_75dee506",
+      "revId": "49331048d9ba8550df8645f376706129f395e89d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a42397b_3a476444",
         "filename": "src/vnet/vxlan-gbp/encap.c",
         "patchSetId": 7
@@ -104,6 +194,24 @@
     },
     {
       "key": {
+        "uuid": "01468e45_a815b199",
+        "filename": "src/vnet/vxlan-gbp/encap.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-02-10T16:57:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a42397b_3a476444",
+      "revId": "49331048d9ba8550df8645f376706129f395e89d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5f8d20f2_863e7abe",
         "filename": "src/vnet/vxlan/encap.c",
         "patchSetId": 7
@@ -118,6 +226,24 @@
       "revId": "49331048d9ba8550df8645f376706129f395e89d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9ce0b0e3_f81ce62b",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-02-10T16:57:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5f8d20f2_863e7abe",
+      "revId": "49331048d9ba8550df8645f376706129f395e89d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
