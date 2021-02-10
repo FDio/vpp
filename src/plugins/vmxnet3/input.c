@@ -79,6 +79,7 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
 			u16 gso_size)
 {
   u8 l4_hdr_sz = 0;
+  u32 oflags = 0;
 
   if (rx_comp->flags & VMXNET3_RXCF_IP4)
     {
@@ -90,15 +91,15 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
       vnet_buffer (hb)->l4_hdr_offset = sizeof (ethernet_header_t) +
 	ip4_header_bytes (ip4);
       hb->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
-	VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
-	VNET_BUFFER_F_L4_HDR_OFFSET_VALID | VNET_BUFFER_F_IS_IP4;
+		   VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		   VNET_BUFFER_F_L4_HDR_OFFSET_VALID | VNET_BUFFER_F_IS_IP4;
 
       /* checksum offload */
       if (!(rx_comp->index & VMXNET3_RXCI_CNC))
 	{
 	  if (!(rx_comp->flags & VMXNET3_RXCF_IPC))
 	    {
-	      hb->flags |= VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
+	      oflags |= VNET_BUFFER_OFFLOAD_F_IP_CKSUM;
 	      ip4->checksum = 0;
 	    }
 	  if (!(rx_comp->flags & VMXNET3_RXCF_TUC))
@@ -108,7 +109,7 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
 		  tcp_header_t *tcp =
 		    (tcp_header_t *) (hb->data +
 				      vnet_buffer (hb)->l4_hdr_offset);
-		  hb->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+		  oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
 		  tcp->checksum = 0;
 		}
 	      else if (rx_comp->flags & VMXNET3_RXCF_UDP)
@@ -116,7 +117,7 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
 		  udp_header_t *udp =
 		    (udp_header_t *) (hb->data +
 				      vnet_buffer (hb)->l4_hdr_offset);
-		  hb->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+		  oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
 		  udp->checksum = 0;
 		}
 	    }
@@ -148,8 +149,8 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
       vnet_buffer (hb)->l4_hdr_offset = sizeof (ethernet_header_t) +
 	sizeof (ip6_header_t);
       hb->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
-	VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
-	VNET_BUFFER_F_L4_HDR_OFFSET_VALID | VNET_BUFFER_F_IS_IP6;
+		   VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+		   VNET_BUFFER_F_L4_HDR_OFFSET_VALID | VNET_BUFFER_F_IS_IP6;
 
       /* checksum offload */
       if (!(rx_comp->index & VMXNET3_RXCI_CNC))
@@ -161,7 +162,7 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
 		  tcp_header_t *tcp =
 		    (tcp_header_t *) (hb->data +
 				      vnet_buffer (hb)->l4_hdr_offset);
-		  hb->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+		  oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
 		  tcp->checksum = 0;
 		}
 	      else if (rx_comp->flags & VMXNET3_RXCF_UDP)
@@ -169,7 +170,7 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
 		  udp_header_t *udp =
 		    (udp_header_t *) (hb->data +
 				      vnet_buffer (hb)->l4_hdr_offset);
-		  hb->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+		  oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
 		  udp->checksum = 0;
 		}
 	    }
@@ -194,6 +195,8 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
 	  hb->flags |= VNET_BUFFER_F_GSO;
 	}
     }
+  if (oflags)
+    vnet_buffer_offload_flags_set (hb, oflags);
 }
 
 static_always_inline uword
