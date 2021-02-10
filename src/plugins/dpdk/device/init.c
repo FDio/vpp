@@ -469,6 +469,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
 		}
 
+	      xd->port_conf.intr_conf.rxq = 1;
 
 	      break;
 	    case VNET_DPDK_PMD_CXGBE:
@@ -750,8 +751,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      dm->vnet_main, xd->hw_if_index, q, VNET_HW_IF_RXQ_THREAD_ANY);
 	  }
 
-      vnet_hw_if_update_runtime_data (dm->vnet_main, xd->hw_if_index);
-
       /*Get vnet hardware interface */
       hi = vnet_get_hw_interface (dm->vnet_main, xd->hw_if_index);
 
@@ -806,6 +805,7 @@ dpdk_lib_init (dpdk_main_t * dm)
                       format_dpdk_device_name, i,
                       format_dpdk_device_errors, xd);
 
+      vnet_hw_if_update_runtime_data (dm->vnet_main, xd->hw_if_index);
       /*
        * A note on Cisco VIC (PMD_ENIC) and VLAN:
        *
