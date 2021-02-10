@@ -770,24 +770,28 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	  /* Indicate ability to support L3 DMAC filtering and
 	   * initialize interface to L3 non-promisc mode */
-	  hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER;
+	  hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_MAC_FILTER;
 	  ethernet_set_flags (dm->vnet_main, xd->hw_if_index,
 			     ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
 	}
 
       if (dm->conf->no_tx_checksum_offload == 0)
 	if (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD && hi != NULL)
-	  hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
-
+	  {
+	    hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TX_IP4_CKSUM |
+			VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
+			VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM;
+	  }
       if (devconf->tso == DPDK_DEVICE_TSO_ON && hi != NULL)
 	{
 	  /*tcp_udp checksum must be enabled*/
 	  if ((dm->conf->enable_tcp_udp_checksum) &&
-	      (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD))
+	      (hi->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM))
 	    {
-		hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
-		xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_TSO |
-		  DEV_TX_OFFLOAD_UDP_TSO;
+	      hi->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
+			  VNET_HW_INTERFACE_CAP_SUPPORTS_UDP_GSO;
+	      xd->port_conf.txmode.offloads |=
+		DEV_TX_OFFLOAD_TCP_TSO | DEV_TX_OFFLOAD_UDP_TSO;
 	    }
 	  else
 	    clib_warning ("%s: TCP/UDP checksum offload must be enabled",

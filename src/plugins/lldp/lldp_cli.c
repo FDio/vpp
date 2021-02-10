@@ -103,7 +103,7 @@ lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
 	}
 
       /* Add MAC address to an interface's filter */
-      if (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER)
+      if (hi->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_MAC_FILTER)
 	{
 	  error =
 	    vnet_hw_interface_add_del_mac_address (lm->vnet_main,
@@ -130,7 +130,7 @@ lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
       lldp_intf_t *n = lldp_get_intf (lm, hi->sw_if_index);
       lldp_delete_intf (lm, n);
       /* Remove MAC address from the interface's filter */
-      if ((n) && (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER))
+      if ((n) && (hi->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_MAC_FILTER))
 	{
 	  error =
 	    vnet_hw_interface_add_del_mac_address (lm->vnet_main,
