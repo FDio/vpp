@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cf9347f7_ee2c9b43",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 526,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-10T14:34:08Z",
+      "side": 1,
+      "message": "this is just an example but I do not get why sometime you use VNET_HW_INTERFACE_CAP_SUPPORTS_L4_TX_CKSUM instead of (VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM | VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM) and vice versa.\nI personally prefer to be explicit and use the latter, but then we should just remove the former. I you prefer otherwise it is fine by me but then we should use it consistently",
+      "revId": "2cde3b70e9cd6dfb0f88a521b1a2ed8bbe1323c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
