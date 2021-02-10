@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ed958eb3_23e92d05",
+        "filename": "src/vlib/punt.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-10T13:28:19Z",
+      "side": 1,
+      "message": "I do not think it should be a bitfield here - I think it should just be a plain standard enum as they are exclusive. Thougths?",
+      "revId": "08647574c384513e6898d3834ab1770aad09c66a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bf1e0a7a_73dcfe6a",
+        "filename": "src/vlib/punt.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-10T13:28:19Z",
+      "side": 1,
+      "message": "we probably want to add __clib_packed so the enum takes less space",
+      "revId": "08647574c384513e6898d3834ab1770aad09c66a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
