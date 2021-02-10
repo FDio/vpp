@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include <stdint.h>
+#include <stdbool.h>
 #include <vnet/policer/policer.h>
 #include <vnet/policer/police_inlines.h>
 #include <vnet/classify/vnet_classify.h>
@@ -130,6 +131,37 @@ policer_add_del (vlib_main_t *vm, u8 *name, qos_pol_cfg_params_st *cfg,
       return clib_error_return (0, "Config failed sanity check");
     }
 
+  return 0;
+}
+
+int
+policer_bind_worker (u8 *name, u32 worker, bool bind)
+{
+  vnet_policer_main_t *pm = &vnet_policer_main;
+  policer_read_response_type_st *policer;
+  uword *p;
+
+  p = hash_get_mem (pm->policer_index_by_name, name);
+  if (p == 0)
+    {
+      return VNET_API_ERROR_NO_SUCH_ENTRY;
+    }
+
+  policer = &pm->policers[p[0]];
+
+  if (bind)
+    {
+      if (worker >= vlib_num_workers ())
+	{
+	  return VNET_API_ERROR_INVALID_WORKER;
+	}
+
+      policer->thread_index = vlib_get_worker_thread_index (worker);
+    }
+  else
+    {
+      policer->thread_index = ~0;
+    }
   return 0;
 }
 

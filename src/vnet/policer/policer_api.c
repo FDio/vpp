@@ -42,9 +42,10 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                             \
-_(POLICER_ADD_DEL, policer_add_del)                     \
-_(POLICER_DUMP, policer_dump)
+#define foreach_vpe_api_msg                                                   \
+  _ (POLICER_ADD_DEL, policer_add_del)                                        \
+  _ (POLICER_BIND, policer_bind)                                              \
+  _ (POLICER_DUMP, policer_dump)
 
 static void
 vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
@@ -93,6 +94,26 @@ vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
       rmp->policer_index = ~0;
   }));
   /* *INDENT-ON* */
+}
+
+static void
+vl_api_policer_bind_t_handler (vl_api_policer_bind_t *mp)
+{
+  vl_api_policer_bind_reply_t *rmp;
+  u8 *name;
+  u32 worker_index;
+  u8 bind_enable;
+  int rv;
+
+  name = format (0, "%s", mp->name);
+  vec_terminate_c_string (name);
+
+  worker_index = ntohl (mp->worker_index);
+  bind_enable = mp->bind_enable;
+
+  rv = policer_bind_worker (name, worker_index, bind_enable);
+  vec_free (name);
+  REPLY_MACRO (VL_API_POLICER_BIND_REPLY);
 }
 
 static void
