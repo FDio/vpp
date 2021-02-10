@@ -385,6 +385,8 @@ F:	src/plugins/acl/
 Plugin - NAT
 I:	nat
 M:	Ole Troan <ot@cisco.com>
+M:  Filip Varga <fivarga@cisco.com>
+M:  Klement Sekera <ksekera@cisco.com>
 F:	src/plugins/nat/
 
 Plugin - AVF Device driver
@@ -642,6 +644,8 @@ F:	src/vpp-api/python
 
 Plugin - Cisco Discovery Protocol
 I:	cdp
+M:	vpp-dev Mailing List <vpp-dev@fd.io>
+C:  Unmaintained
 F:	src/plugins/cdp/
 
 Plugin - Source VRF Select
@@ -661,10 +665,14 @@ F:	src/plugins/ct6
 
 Plugin - Steal The NIC
 I:	stn
+M:	vpp-dev Mailing List <vpp-dev@fd.io>
+C:  Unmaintained
 F:	src/plugins/stn
 
 Plugin - IOAM
 I:	ioam
+M:	vpp-dev Mailing List <vpp-dev@fd.io>
+C:  Unmaintained
 F:	src/plugins/ioam
 
 Plugin - Awkward chained buffer geometry tool
@@ -722,6 +730,7 @@ F:	src/plugins/linux-cp/
 
 THE REST
 I:	misc
-C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
+M:	vpp-dev Mailing List <vpp-dev@fd.io>
+C:	Missing Maintainer
 F:	*
 F:	*/
