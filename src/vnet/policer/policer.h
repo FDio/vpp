@@ -42,6 +42,8 @@ typedef struct
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
+
+  vlib_log_class_t log_class;
 } vnet_policer_main_t;
 
 extern vnet_policer_main_t vnet_policer_main;
