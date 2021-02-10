@@ -454,7 +454,7 @@ mq_send_session_migrate_cb (session_t * s, session_handle_t new_sh)
   mp->new_handle = new_sh;
   mp->vpp_thread_index = thread_index;
   mp->vpp_evt_q = fifo_segment_msg_q_offset (eq_seg, thread_index);
-  mp->segment_handle = session_segment_handle (s);
+  mp->segment_handle = SESSION_INVALID_HANDLE;
   svm_msg_q_add_and_unlock (app_mq, msg);
 }
 

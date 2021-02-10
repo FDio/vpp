@@ -636,12 +636,17 @@ vcl_session_migrated_handler (vcl_worker_t * wrk, void *data)
       return;
     }
 
-  fs_index = vcl_segment_table_lookup (mp->segment_handle);
-  if (fs_index == VCL_INVALID_SEGMENT_INDEX)
+  /* Only validate if a value is provided */
+  if (mp->segment_handle != SESSION_INVALID_HANDLE)
     {
-      VDBG (0, "segment for session %u is not mounted!", s->session_index);
-      s->session_state = VCL_STATE_DETACHED;
-      return;
+      fs_index = vcl_segment_table_lookup (mp->segment_handle);
+      if (fs_index == VCL_INVALID_SEGMENT_INDEX)
+	{
+	  VDBG (0, "segment %lx for session %u is not mounted!",
+		mp->segment_handle, s->session_index);
+	  s->session_state = VCL_STATE_DETACHED;
+	  return;
+	}
     }
 
   s->vpp_handle = mp->new_handle;
