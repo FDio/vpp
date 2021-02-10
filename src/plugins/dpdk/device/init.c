@@ -470,6 +470,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
 		}
 
+	      xd->port_conf.intr_conf.rxq = 1;
 
 	      break;
 	    case VNET_DPDK_PMD_CXGBE:
@@ -493,6 +494,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 		    DPDK_DEVICE_FLAG_TX_OFFLOAD |
 		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
 		}
+	      /*xd->port_conf.intr_conf.rxq = 1;*/
 	      break;
 
 	      /* iAVF */
@@ -512,7 +514,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 		    DPDK_DEVICE_FLAG_TX_OFFLOAD |
 		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
 		}
-              break;
+	      xd->port_conf.intr_conf.rxq = 1;
+	      break;
 
 	    case VNET_DPDK_PMD_THUNDERX:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
@@ -528,6 +531,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_ENA:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
 	      xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_SCATTER;
+	      xd->port_conf.intr_conf.rxq = 1;
 	      break;
 
 	    case VNET_DPDK_PMD_DPAA2:
