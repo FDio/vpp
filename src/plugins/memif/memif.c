@@ -1048,7 +1048,7 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
     }
 
   hw = vnet_get_hw_interface (vnm, mif->hw_if_index);
-  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
+  hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
   vnet_hw_if_set_input_node (vnm, mif->hw_if_index, memif_input_node.index);
   mhash_set (&msf->dev_instance_by_id, &mif->id, mif->dev_instance, 0);
 
