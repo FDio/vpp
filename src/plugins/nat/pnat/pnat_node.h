@@ -132,7 +132,8 @@ static_always_inline uword pnat_node_inline(vlib_main_t *vm,
         u32 sw_if_index0 = vnet_buffer(b[0])->sw_if_index[dir];
         u16 sport0 = vnet_buffer(b[0])->ip.reass.l4_src_port;
         u16 dport0 = vnet_buffer(b[0])->ip.reass.l4_dst_port;
-        u32 iph_offset = vnet_buffer(b[0])->ip.reass.save_rewrite_length;
+        u32 iph_offset =
+            dir == VLIB_TX ? vnet_buffer(b[0])->ip.save_rewrite_length : 0;
         ip0 = (ip4_header_t *)(vlib_buffer_get_current(b[0]) + iph_offset);
         interface = pnat_interface_by_sw_if_index(sw_if_index0);
         ASSERT(interface);
@@ -146,8 +147,6 @@ static_always_inline uword pnat_node_inline(vlib_main_t *vm,
         if (clib_bihash_search_16_8(&pm->flowhash, &kv, &value) == 0) {
             /* Cache hit */
             *pi = value.value;
-            u32 iph_offset = vnet_buffer(b[0])->ip.reass.save_rewrite_length;
-            ip0 = (ip4_header_t *)(vlib_buffer_get_current(b[0]) + iph_offset);
             u32 errno0 = pnat_rewrite_ip4(value.value, ip0);
             if (PREDICT_FALSE(errno0)) {
                 next[0] = PNAT_NEXT_DROP;
