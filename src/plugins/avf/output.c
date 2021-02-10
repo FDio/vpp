@@ -57,12 +57,12 @@ static_always_inline u64
 avf_tx_prepare_cksum (vlib_buffer_t * b, u8 is_tso)
 {
   u64 flags = 0;
-  if (!is_tso && !(b->flags & ((VNET_BUFFER_F_OFFLOAD_IP_CKSUM |
-				VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
-				VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))))
+  if (!is_tso && !(b->flags & VNET_BUFFER_F_OFFLOAD))
     return 0;
-  u32 is_tcp = is_tso || b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
-  u32 is_udp = !is_tso && b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+
+  u32 oflags = vnet_buffer2 (b)->oflags;
+  u32 is_tcp = is_tso || oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
+  u32 is_udp = !is_tso && oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
   u32 is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
   u32 is_ip6 = b->flags & VNET_BUFFER_F_IS_IP6;
   ASSERT (!is_tcp || !is_udp);
@@ -173,9 +173,7 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
 {
   u16 next = txq->next;
   u64 bits = AVF_TXD_CMD_EOP | AVF_TXD_CMD_RSV;
-  const u32 offload_mask = VNET_BUFFER_F_OFFLOAD_IP_CKSUM |
-    VNET_BUFFER_F_OFFLOAD_TCP_CKSUM | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
-    VNET_BUFFER_F_GSO;
+  const u32 offload_mask = VNET_BUFFER_F_OFFLOAD | VNET_BUFFER_F_GSO;
   u64 one_by_one_offload_flags = 0;
   int is_tso;
   u16 n_desc = 0;
