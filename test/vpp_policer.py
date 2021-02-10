@@ -57,6 +57,10 @@ class VppPolicer(VppObject):
         self._test.vapi.policer_add_del(is_add=False, name=self.name)
         self._policer_index = INVALID_INDEX
 
+    def bind_vpp_config(self, worker, bind):
+        self._test.vapi.policer_bind(name=self.name, worker_index=worker,
+                                     bind_enable=bind)
+
     def query_vpp_config(self):
         dump = self._test.vapi.policer_dump(
             match_name_valid=True, match_name=self.name)
