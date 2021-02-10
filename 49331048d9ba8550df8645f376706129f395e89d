@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d58c59d6_da266ef5",
+        "filename": "src/plugins/vmxnet3/input.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-10T14:22:34Z",
+      "side": 1,
+      "message": "is this correct? what if none of VNET_BUFFER_OFFLOAD_F_{IP,UDP,TCP}_CKSUM flags are set?\nMaybe do not set it here and use vnet_buffer_offload_flags_set() as you did in other drivers?",
+      "revId": "49331048d9ba8550df8645f376706129f395e89d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f45ccd4f_6df8e52e",
+        "filename": "src/vnet/interface_format.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 753,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-10T14:22:34Z",
+      "side": 1,
+      "message": "this looks like a copy/paste leftover, isn\u0027t it?",
+      "revId": "49331048d9ba8550df8645f376706129f395e89d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1ec8e21f_e9c079da",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 330,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-10T14:22:34Z",
+      "side": 1,
+      "message": "I think it should be oflags and not b0-\u003eflags",
+      "revId": "49331048d9ba8550df8645f376706129f395e89d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6a6323d6_eaa711bb",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 350,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-10T14:22:34Z",
+      "side": 1,
+      "message": "I think it should be oflags and not b0-\u003eflags",
+      "revId": "49331048d9ba8550df8645f376706129f395e89d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "11f086cf_75dee506",
+        "filename": "src/vnet/pg/cli.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 382,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-10T14:22:34Z",
+      "side": 1,
+      "message": "this means buffer-offload-flags must always immediately follow buffer-flags\nmaybe put the unformat for offload flags at the same level as the others so that we can parse them in any order and call vnet_buffer_offload_set_flags() at the end to automatically add the offload flag as needed?",
+      "revId": "49331048d9ba8550df8645f376706129f395e89d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9a42397b_3a476444",
+        "filename": "src/vnet/vxlan-gbp/encap.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-10T14:22:34Z",
+      "side": 1,
+      "message": "why not vnet_buffer_offload_flag_set() here and below?",
+      "revId": "49331048d9ba8550df8645f376706129f395e89d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5f8d20f2_863e7abe",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-10T14:22:34Z",
+      "side": 1,
+      "message": "why not vnet_buffer_offload_flag_set() here and below?",
+      "revId": "49331048d9ba8550df8645f376706129f395e89d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
