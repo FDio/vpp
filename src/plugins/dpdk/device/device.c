@@ -694,6 +694,25 @@ done:
   return err;
 }
 
+static clib_error_t *
+dpdk_interface_rx_mode_change (vnet_main_t *vnm, u32 hw_if_index, u32 qid,
+			       vnet_hw_if_rx_mode mode)
+{
+  dpdk_main_t *xm = &dpdk_main;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  dpdk_device_t *xd = vec_elt_at_index (xm->devices, hw->dev_instance);
+  int rv = 0;
+  if (!(xd->flags & DPDK_DEVICE_FLAG_INT_SUPPORTED))
+    return clib_error_return (0, "unsupported op (is the interface up?)", rv);
+  if (mode == VNET_HW_IF_RX_MODE_POLLING)
+    rv = rte_eth_dev_rx_intr_disable (xd->port_id, qid);
+  else
+    rv = rte_eth_dev_rx_intr_enable (xd->port_id, qid);
+  if (rv)
+    return clib_error_return (0, "dpdk_interface_rx_mode_change err %d", rv);
+  return 0;
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (dpdk_device_class) = {
   .name = "dpdk",
@@ -711,6 +730,7 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .format_flow = format_dpdk_flow,
   .flow_ops_function = dpdk_flow_ops_fn,
   .set_rss_queues_function = dpdk_interface_set_rss_queues,
+  .rx_mode_change_function = dpdk_interface_rx_mode_change,
 };
 /* *INDENT-ON* */
 
