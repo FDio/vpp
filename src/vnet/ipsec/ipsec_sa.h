@@ -223,6 +223,14 @@ typedef struct
 STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline1, CLIB_CACHE_LINE_BYTES);
 STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline2, 2 * CLIB_CACHE_LINE_BYTES);
 
+/*
+ * Ensure that the IPsec data does not overlap with the IP data in
+ * the buffer meta data
+ */
+STATIC_ASSERT (STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ipsec.sad_index) ==
+		 STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.save_protocol),
+	       "IPSec data is overlapping with IP data");
+
 #define _(a,v,s)                                                        \
   always_inline int                                                     \
   ipsec_sa_is_set_##v (const ipsec_sa_t *sa) {                          \

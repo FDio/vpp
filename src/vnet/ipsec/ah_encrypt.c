@@ -195,6 +195,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 
       if (PREDICT_TRUE (thread_index != sa0->thread_index))
 	{
+	  vnet_buffer (b[0])->ipsec.thread_index = sa0->thread_index;
 	  next[0] = AH_ENCRYPT_NEXT_HANDOFF;
 	  goto next;
 	}

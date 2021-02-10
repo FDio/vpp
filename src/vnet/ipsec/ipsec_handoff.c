@@ -60,9 +60,7 @@ ipsec_handoff (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 thread_indices[VLIB_FRAME_SIZE], *ti;
   u32 n_enq, n_left_from, *from;
-  ipsec_main_t *im;
 
-  im = &ipsec_main;
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   vlib_get_buffers (vm, from, bufs, n_left_from);
@@ -72,9 +70,6 @@ ipsec_handoff (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 
   while (n_left_from >= 4)
     {
-      ipsec_sa_t *sa0, *sa1, *sa2, *sa3;
-      u32 sai0, sai1, sai2, sai3;
-
       /* Prefetch next iteration. */
       if (n_left_from >= 12)
 	{
@@ -82,28 +77,14 @@ ipsec_handoff (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	  vlib_prefetch_buffer_header (b[9], LOAD);
 	  vlib_prefetch_buffer_header (b[10], LOAD);
 	  vlib_prefetch_buffer_header (b[11], LOAD);
-
-	  vlib_prefetch_buffer_data (b[4], LOAD);
-	  vlib_prefetch_buffer_data (b[5], LOAD);
-	  vlib_prefetch_buffer_data (b[6], LOAD);
-	  vlib_prefetch_buffer_data (b[7], LOAD);
 	}
 
-      sai0 = vnet_buffer (b[0])->ipsec.sad_index;
-      sai1 = vnet_buffer (b[1])->ipsec.sad_index;
-      sai2 = vnet_buffer (b[2])->ipsec.sad_index;
-      sai3 = vnet_buffer (b[3])->ipsec.sad_index;
-      sa0 = pool_elt_at_index (im->sad, sai0);
-      sa1 = pool_elt_at_index (im->sad, sai1);
-      sa2 = pool_elt_at_index (im->sad, sai2);
-      sa3 = pool_elt_at_index (im->sad, sai3);
+      ti[0] = vnet_buffer (b[0])->ipsec.thread_index;
+      ti[1] = vnet_buffer (b[1])->ipsec.thread_index;
+      ti[2] = vnet_buffer (b[2])->ipsec.thread_index;
+      ti[3] = vnet_buffer (b[3])->ipsec.thread_index;
 
-      ti[0] = sa0->thread_index;
-      ti[1] = sa1->thread_index;
-      ti[2] = sa2->thread_index;
-      ti[3] = sa3->thread_index;
-
-      if (node->flags & VLIB_NODE_FLAG_TRACE)
+      if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
 	{
 	  if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -137,13 +118,7 @@ ipsec_handoff (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
     }
   while (n_left_from > 0)
     {
-      ipsec_sa_t *sa0;
-      u32 sai0;
-
-      sai0 = vnet_buffer (b[0])->ipsec.sad_index;
-      sa0 = pool_elt_at_index (im->sad, sai0);
-
-      ti[0] = sa0->thread_index;
+      ti[0] = vnet_buffer (b[0])->ipsec.thread_index;
 
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{
