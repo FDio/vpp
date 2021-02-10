@@ -170,12 +170,6 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
     }
-  if ((flags & IPSEC_SA_FLAG_IS_INBOUND)
-      && !(flags & IPSEC_SA_FLAG_IS_TUNNEL))
-    {
-      error = clib_error_return (0, "inbound specified on non-tunnel SA");
-      goto done;
-    }
 
   if (!(m_args & 1))
     {
