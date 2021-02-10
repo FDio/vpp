@@ -510,21 +510,64 @@ typedef enum vnet_hw_interface_flags_t_
   VNET_HW_INTERFACE_FLAG_HALF_DUPLEX = (1 << 1),
   VNET_HW_INTERFACE_FLAG_FULL_DUPLEX = (1 << 2),
 
-  /* rx mode flags */
-  VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE = (1 << 16),
-
-  /* tx checksum offload */
-  VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD = (1 << 17),
-
-  /* gso */
-  VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO = (1 << 18),
-
   /* non-broadcast multiple access */
   VNET_HW_INTERFACE_FLAG_NBMA = (1 << 19),
-
-  /* hw/driver can switch between l2-promisc and l3-dmac-filter modes */
-  VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER = (1 << 20),
 } vnet_hw_interface_flags_t;
+
+typedef enum vnet_hw_interface_capabilities_t_
+{
+  VNET_HW_INTERFACE_CAP_NONE,
+
+  /* tx checksum offload */
+  VNET_HW_INTERFACE_CAP_SUPPORTS_TX_IP4_CKSUM = (1 << 0),
+  VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM = (1 << 1),
+  VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM = (1 << 2),
+  VNET_HW_INTERFACE_CAP_SUPPORTS_TX_IP4_OUTER_CKSUM = (1 << 3),
+  VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_OUTER_CKSUM = (1 << 4),
+
+  /* rx checksum offload */
+  VNET_HW_INTERFACE_CAP_SUPPORTS_RX_IP4_CKSUM = (1 << 5),
+  VNET_HW_INTERFACE_CAP_SUPPORTS_RX_UDP_CKSUM = (1 << 6),
+  VNET_HW_INTERFACE_CAP_SUPPORTS_RX_TCP_CKSUM = (1 << 7),
+  VNET_HW_INTERFACE_CAP_SUPPORTS_RX_IP4_OUTER_CKSUM = (1 << 8),
+  VNET_HW_INTERFACE_CAP_SUPPORTS_RX_UDP_OUTER_CKSUM = (1 << 9),
+
+  /* gso */
+  VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO = (1 << 10),
+  VNET_HW_INTERFACE_CAP_SUPPORTS_UDP_GSO = (1 << 11),
+  VNET_HW_INTERFACE_CAP_SUPPORTS_VXLAN_TNL_GSO = (1 << 12),
+  VNET_HW_INTERFACE_CAP_SUPPORTS_IPIP_TNL_GSO = (1 << 13),
+  VNET_HW_INTERFACE_CAP_SUPPORTS_GENEVE_TNL_GSO = (1 << 14),
+  VNET_HW_INTERFACE_CAP_SUPPORTS_GRE_TNL_GSO = (1 << 15),
+  VNET_HW_INTERFACE_CAP_SUPPORTS_UDP_TNL_GSO = (1 << 16),
+  VNET_HW_INTERFACE_CAP_SUPPORTS_IP_TNL_GSO = (1 << 17),
+
+  /* lro */
+  VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_LRO = (1 << 18),
+
+  /* rx mode */
+  VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE = (1 << 30),
+  /* hw/driver can switch between l2-promisc and l3-dmac-filter modes */
+  VNET_HW_INTERFACE_CAP_SUPPORTS_MAC_FILTER = (1 << 31),
+} vnet_hw_interface_capabilities_t;
+
+#define VNET_HW_INTERFACE_CAP_SUPPORTS_L4_TX_CKSUM                            \
+  (VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |                              \
+   VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM)
+
+#define VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM                               \
+  (VNET_HW_INTERFACE_CAP_SUPPORTS_TX_IP4_CKSUM |                              \
+   VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |                              \
+   VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM)
+
+#define VNET_HW_INTERFACE_CAP_SUPPORTS_L4_RX_CKSUM                            \
+  (VNET_HW_INTERFACE_CAP_SUPPORTS_RX_TCP_CKSUM |                              \
+   VNET_HW_INTERFACE_CAP_SUPPORTS_RX_UDP_CKSUM)
+
+#define VNET_HW_INTERFACE_CAP_SUPPORTS_RX_CKSUM                               \
+  (VNET_HW_INTERFACE_CAP_SUPPORTS_RX_IP4_CKSUM |                              \
+   VNET_HW_INTERFACE_CAP_SUPPORTS_RX_TCP_CKSUM |                              \
+   VNET_HW_INTERFACE_CAP_SUPPORTS_RX_UDP_CKSUM)
 
 #define VNET_HW_INTERFACE_FLAG_DUPLEX_SHIFT 1
 #define VNET_HW_INTERFACE_FLAG_SPEED_SHIFT  3
@@ -566,6 +609,8 @@ typedef struct vnet_hw_interface_t
   /* flags */
   vnet_hw_interface_flags_t flags;
 
+  /* capabilities flags */
+  vnet_hw_interface_capabilities_t caps;
 
   /* link speed in kbps */
   u32 link_speed;

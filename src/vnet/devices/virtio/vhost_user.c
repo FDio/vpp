@@ -515,12 +515,16 @@ vhost_user_socket_read (clib_file_t * uf)
       if (vui->enable_gso &&
 	  ((vui->features & FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS)
 	   == FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS))
-	hw->flags |=
-	  (VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
-	   VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
+	{
+	  hw->caps |= (VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
+		       VNET_HW_INTERFACE_CAP_SUPPORTS_TX_TCP_CKSUM |
+		       VNET_HW_INTERFACE_CAP_SUPPORTS_TX_UDP_CKSUM);
+	}
       else
-	hw->flags &= ~(VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO |
-		       VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD);
+	{
+	  hw->caps &= ~(VNET_HW_INTERFACE_CAP_SUPPORTS_TCP_GSO |
+			VNET_HW_INTERFACE_CAP_SUPPORTS_L4_TX_CKSUM);
+	}
       vnet_hw_interface_set_flags (vnm, vui->hw_if_index, 0);
       vui->is_ready = 0;
       vhost_user_update_iface_state (vui);
@@ -1619,7 +1623,7 @@ vhost_user_vui_init (vnet_main_t * vnm, vhost_user_intf_t * vui,
   for (q = 0; q < vec_len (vui->vrings); q++)
     vhost_user_vring_init (vui, q);
 
-  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
+  hw->caps |= VNET_HW_INTERFACE_CAP_SUPPORTS_INT_MODE;
   vnet_hw_interface_set_flags (vnm, vui->hw_if_index, 0);
 
   if (sw_if_index)
