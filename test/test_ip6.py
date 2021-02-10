@@ -2377,6 +2377,50 @@ class TestIP6PuntHandoff(IP6PuntSetup, VppTestCase):
         self.assertEqual(stats1['exceed_packets'], 0)
         self.assertEqual(stats1['violate_packets'], 0)
 
+        # Bind the policer to worker 1 and repeat
+        policer.bind_vpp_config(1, True)
+        for worker in [0, 1]:
+            self.send_and_expect(self.pg0, pkts, self.pg1, worker=worker)
+            self.logger.debug(self.vapi.cli("show trace max 100"))
+
+        # The 2 workers should now have policed the same amount
+        stats = policer.get_stats()
+        stats0 = policer.get_stats(worker=0)
+        stats1 = policer.get_stats(worker=1)
+
+        self.assertGreater(stats0['conform_packets'], 0)
+        self.assertEqual(stats0['exceed_packets'], 0)
+        self.assertGreater(stats0['violate_packets'], 0)
+
+        self.assertGreater(stats1['conform_packets'], 0)
+        self.assertEqual(stats1['exceed_packets'], 0)
+        self.assertGreater(stats1['violate_packets'], 0)
+
+        self.assertEqual(stats0['conform_packets'] + stats1['conform_packets'],
+                         stats['conform_packets'])
+
+        self.assertEqual(stats0['violate_packets'] + stats1['violate_packets'],
+                         stats['violate_packets'])
+
+        # Unbind the policer and repeat
+        policer.bind_vpp_config(1, False)
+        for worker in [0, 1]:
+            self.send_and_expect(self.pg0, pkts, self.pg1, worker=worker)
+            self.logger.debug(self.vapi.cli("show trace max 100"))
+
+        # The policer should auto-bind to worker 0 when packets arrive
+        stats = policer.get_stats()
+        stats0new = policer.get_stats(worker=0)
+        stats1new = policer.get_stats(worker=1)
+
+        self.assertGreater(stats0new['conform_packets'],
+                           stats0['conform_packets'])
+        self.assertEqual(stats0new['exceed_packets'], 0)
+        self.assertGreater(stats0new['violate_packets'],
+                           stats0['violate_packets'])
+
+        self.assertEqual(stats1, stats1new)
+
         #
         # Clean up
         #
