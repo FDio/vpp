@@ -22,21 +22,14 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 
-#include <vnet/policer/xlate.h>
-#include <vnet/policer/police.h>
-
-#define INTERNAL_SS 1
+#include <vnet/policer/policer.h>
 
 /* debugs */
-#define QOS_DEBUG_ERROR(msg, args...) fformat (stderr, msg "\n", ##args);
+#define QOS_DEBUG_ERROR(msg, args...)                                         \
+  vlib_log_err (vnet_policer_main.log_class, msg, ##args);
 
-#define QOS_DEBUG_INFO(msg, args...) fformat (stderr, msg "\n", ##args);
-
-#define QOS_TR_ERR(TpParms...)
-// {
-// }
-
-#define QOS_TR_INFO(TpParms...)
+#define QOS_DEBUG_INFO(msg, args...)                                          \
+  vlib_log_info (vnet_policer_main.log_class, msg, ##args);
 
 #ifndef MIN
 #define MIN(x,y)            (((x)<(y))?(x):(y))
@@ -116,7 +109,6 @@
 /* Misc Policer specific definitions */
 #define QOS_POLICER_FIXED_PKT_SIZE 256
 
-// TODO check what can be provided by hw macro based on ASIC
 #define QOS_POL_TICKS_PER_SEC 1000LL /* 1 tick = 1 ms */
 
 /*
@@ -127,7 +119,6 @@
 /*
  * Minimum burst needs to be such that the largest packet size is accommodated
  */
-// Do we need to get it from some lib?
 #define QOS_POL_MIN_BURST_BYTE 9 * 1024
 
 /*
@@ -136,7 +127,7 @@
  */
 #define QOS_POL_ALLOW_NEGATIVE 1
 
-// Various Macros to take care of policer calculations
+/* Various Macros to take care of policer calculations */
 
 #define QOS_POL_COMM_BKT_MAX (1 << IPE_POLICER_FULL_WRITE_REQUEST_CB_MASK)
 #define QOS_POL_EXTD_BKT_MAX (1 << IPE_POLICER_FULL_WRITE_REQUEST_EB_MASK)
@@ -203,7 +194,6 @@ qos_pol_round (u64 numerator, u64 denominator, u64 *rounded_value,
   if (denominator == 0)
     {
       QOS_DEBUG_ERROR ("Illegal denominator");
-      QOS_TR_ERR (QOSRM_TP_ERR_59);
       return (EINVAL);
     }
 
@@ -228,7 +218,6 @@ qos_pol_round (u64 numerator, u64 denominator, u64 *rounded_value,
     case QOS_ROUND_INVALID:
     default:
       QOS_DEBUG_ERROR ("Illegal round type");
-      QOS_TR_ERR (QOS_TP_ERR_60, round_type);
       rc = EINVAL;
       break;
     }
@@ -247,7 +236,6 @@ pol_validate_cfg_params (qos_pol_cfg_params_st *cfg)
     {
       QOS_DEBUG_ERROR ("CIR (%u kbps) is greater than PIR (%u kbps)",
 		       cfg->rb.kbps.cir_kbps, cfg->rb.kbps.eir_kbps);
-      QOS_TR_ERR (QOS_TP_ERR_39, cfg->rb.kbps.cir_kbps, cfg->rb.kbps.eir_kbps);
       return (EINVAL);
     }
 
@@ -260,7 +248,6 @@ pol_validate_cfg_params (qos_pol_cfg_params_st *cfg)
   if (rc != 0)
     {
       QOS_DEBUG_ERROR ("Unable to convert CIR to bytes/tick format");
-      // Error traced
       return (rc);
     }
   cir_hw = (u32) rnd_value;
@@ -270,7 +257,6 @@ pol_validate_cfg_params (qos_pol_cfg_params_st *cfg)
   if (rc != 0)
     {
       QOS_DEBUG_ERROR ("Unable to convert EIR to bytes/tick format");
-      // Error traced
       return (rc);
     }
   eir_hw = (u32) rnd_value;
@@ -280,7 +266,6 @@ pol_validate_cfg_params (qos_pol_cfg_params_st *cfg)
       QOS_DEBUG_ERROR ("hw cir (%u bytes/tick) is greater than the "
 		       "max supported value (%u)",
 		       cir_hw, QOS_POL_AVG_RATE_MAX);
-      QOS_TR_ERR (QOS_TP_ERR_84, cir_hw, QOS_POL_AVG_RATE_MAX);
       return (EINVAL);
     }
 
@@ -290,7 +275,6 @@ pol_validate_cfg_params (qos_pol_cfg_params_st *cfg)
 		       "max supported value (%u). Capping it to the max. "
 		       "supported value",
 		       eir_hw, QOS_POL_PEAK_RATE_MAX);
-      QOS_TR_ERR (QOS_TP_ERR_85, eir_hw, QOS_POL_PEAK_RATE_MAX);
       return (EINVAL);
     }
   /*
@@ -299,7 +283,6 @@ pol_validate_cfg_params (qos_pol_cfg_params_st *cfg)
   if ((cfg->rb.kbps.cir_kbps == 0) && cfg->rb.kbps.cb_bytes)
     {
       QOS_DEBUG_ERROR ("CIR = 0 with bc != 0");
-      QOS_TR_ERR (QOS_TP_ERR_55);
       return (EINVAL);
     }
 
@@ -307,7 +290,6 @@ pol_validate_cfg_params (qos_pol_cfg_params_st *cfg)
       (cfg->rfc > QOS_POLICER_TYPE_1R3C_RFC_2697))
     {
       QOS_DEBUG_ERROR ("EIR = 0 for a 2R3C policer (rfc: %u)", cfg->rfc);
-      QOS_TR_ERR (QOS_TP_ERR_23, cfg->rb.kbps.eir_kbps, cfg->rfc);
       return (EINVAL);
     }
 
@@ -315,14 +297,12 @@ pol_validate_cfg_params (qos_pol_cfg_params_st *cfg)
     {
       QOS_DEBUG_ERROR ("EIR: %u kbps for a 1-rate policer (rfc: %u)",
 		       cfg->rb.kbps.eir_kbps, cfg->rfc);
-      QOS_TR_ERR (QOS_TP_ERR_23, cfg->rb.kbps.eir_kbps, cfg->rfc);
       return (EINVAL);
     }
 
   if ((cfg->rfc == QOS_POLICER_TYPE_1R2C) && cfg->rb.kbps.eb_bytes)
     {
       QOS_DEBUG_ERROR ("For a 1R1B policer, EB burst cannot be > 0");
-      QOS_TR_ERR (QOS_TP_ERR_56);
       return (EINVAL);
     }
 
@@ -393,7 +373,6 @@ pol_convert_cfg_rates_to_hw (qos_pol_cfg_params_st *cfg,
     {
       QOS_DEBUG_ERROR ("Rounding error, rate: %d kbps, rounding_type: %d",
 		       cfg->rb.kbps.cir_kbps, cfg->rnd_type);
-      // Error is traced
       return (rc);
     }
   cir_hw = (u32) rnd_value;
@@ -429,7 +408,6 @@ pol_convert_cfg_rates_to_hw (qos_pol_cfg_params_st *cfg,
     {
       QOS_DEBUG_ERROR ("Rounding error, rate: %d kbps, rounding_type: %d",
 		       eir_kbps, cfg->rnd_type);
-      // Error is traced
       return (rc);
     }
   eir_hw = (u32) rnd_value;
@@ -488,7 +466,6 @@ pol_convert_cfg_rates_to_hw (qos_pol_cfg_params_st *cfg,
   if (rc != 0)
     {
       QOS_DEBUG_ERROR ("Rounding error");
-      // Error is traced
       return (rc);
     }
   hw->rate_exp = exp;
@@ -636,7 +613,6 @@ pol_rnd_burst_byte_fmt (u64 cfg_burst, u16 max_exp_value, u16 max_mant_value,
 		       "supported value 0x%llx bytes. Capping it to the "
 		       "max",
 		       cfg_burst, bkt_max);
-      QOS_TR_INFO (QOS_TP_INFO_38, (uint) cfg_burst, (uint) bkt_max);
       cfg_burst = bkt_max;
     }
 
@@ -650,7 +626,6 @@ pol_rnd_burst_byte_fmt (u64 cfg_burst, u16 max_exp_value, u16 max_mant_value,
 		      "supported value %u bytes. Rounding it up to "
 		      "the min",
 		      cfg_burst, QOS_POL_MIN_BURST_BYTE);
-      QOS_TR_INFO (QOS_TP_INFO_39, (uint) cfg_burst, QOS_POL_MIN_BURST_BYTE);
       cfg_burst = QOS_POL_MIN_BURST_BYTE;
     }
 
@@ -709,8 +684,6 @@ pol_convert_cfg_burst_to_hw (qos_pol_cfg_params_st *cfg,
 	"exp: %u, rnded: 0x%llx bytes",
 	cfg->rb.kbps.eb_bytes, hw->extd_bkt_limit_man, hw->extd_bkt_limit_exp,
 	((u64) hw->extd_bkt_limit_man << (u64) hw->extd_bkt_limit_exp));
-      QOS_TR_INFO (QOS_TP_INFO_20, (uint) cfg->rb.kbps.eb_bytes,
-		   hw->extd_bkt_limit_man, hw->extd_bkt_limit_exp);
       return (0);
     }
 
@@ -784,7 +757,6 @@ pol_convert_cfg_to_hw_params (qos_pol_cfg_params_st *cfg,
   else
     {
       QOS_DEBUG_ERROR ("Invalid RFC type %d\n", cfg->rfc);
-      QOS_TR_ERR (QOS_TP_ERR_61, cfg->rfc);
       return (EINVAL);
     }
 
@@ -792,7 +764,6 @@ pol_convert_cfg_to_hw_params (qos_pol_cfg_params_st *cfg,
   if (rc != 0)
     {
       QOS_DEBUG_ERROR ("Unable to convert config rates to hw. Error: %d", rc);
-      // Error is traced
       return (rc);
     }
 
@@ -800,7 +771,6 @@ pol_convert_cfg_to_hw_params (qos_pol_cfg_params_st *cfg,
   if (rc != 0)
     {
       QOS_DEBUG_ERROR ("Unable to convert config burst to hw. Error: %d", rc);
-      // Error is traced
       return (rc);
     }
 
@@ -810,9 +780,6 @@ pol_convert_cfg_to_hw_params (qos_pol_cfg_params_st *cfg,
 u32
 qos_convert_pps_to_kbps (u32 rate_pps)
 {
-  // qos_ship_inc_counter(QOS_SHIP_COUNTER_TYPE_API_CNT,
-  //                            QOS_SHIP_CNT_POL_CONV_PPS_TO_KBPS);
-
   u64 numer, rnd_value = 0;
 
   numer = (u64) ((u64) rate_pps * (u64) QOS_POLICER_FIXED_PKT_SIZE * 8LL);
@@ -825,9 +792,6 @@ u32
 qos_convert_burst_ms_to_bytes (u32 burst_ms, u32 rate_kbps)
 {
   u64 numer, rnd_value = 0;
-
-  // qos_ship_inc_counter(QOS_SHIP_COUNTER_TYPE_API_CNT,
-  //                          QOS_SHIP_CNT_POL_CONV_BURST_MS_TO_BYTES);
 
   numer = (u64) ((u64) burst_ms * (u64) rate_kbps);
 
@@ -860,7 +824,6 @@ pol_compute_hw_params (qos_pol_cfg_params_st *cfg, qos_pol_hw_params_st *hw)
   if (rc != 0)
     {
       QOS_DEBUG_ERROR ("Config parameter validation failed. Error: %d", rc);
-      // Error is traced
       return (-1);
     }
 
@@ -874,17 +837,11 @@ pol_compute_hw_params (qos_pol_cfg_params_st *cfg, qos_pol_hw_params_st *hw)
       QOS_DEBUG_ERROR ("Unable to convert config params to hw params. "
 		       "Error: %d",
 		       rc);
-      QOS_TR_ERR (QOS_TP_ERR_53, rc);
       return (-1);
     }
 
   return 0;
 }
-
-
-#if defined (INTERNAL_SS) || defined (X86)
-
-// For initializing the x86 policer format
 
 /*
  * Return the number of hardware TSC timer ticks per second for the dataplane.
@@ -904,13 +861,17 @@ get_tsc_hz (void)
  * Return 0 if ok or 1 if error.
  */
 static int
-compute_policer_params (u64 hz,	// CPU speed in clocks per second
-			u64 cir_rate,	// in bytes per second
-			u64 pir_rate,	// in bytes per second
-			u32 * current_limit,	// in bytes, output may scale the input
-			u32 * extended_limit,	// in bytes, output may scale the input
-			u32 * cir_bytes_per_period,
-			u32 * pir_bytes_per_period, u32 * scale)
+compute_policer_params (u64 hz,	      /* CPU speed in clocks per second */
+			u64 cir_rate, /* in bytes per second */
+			u64 pir_rate, /* in bytes per second */
+			u32 *current_limit,  /* in bytes, output may scale
+					      * the input
+					      */
+			u32 *extended_limit, /* in bytes, output may scale
+					      * the input
+					      */
+			u32 *cir_bytes_per_period, u32 *pir_bytes_per_period,
+			u32 *scale)
 {
   double period;
   double internal_cir_bytes_per_period;
@@ -920,22 +881,26 @@ compute_policer_params (u64 hz,	// CPU speed in clocks per second
   u32 scale_amount;
   u32 __attribute__ ((unused)) orig_current_limit = *current_limit;
 
-  // Compute period. For 1Ghz-to-8Ghz CPUs, the period will be in
-  // the range of 16 to 116 usec.
+  /*
+   * Compute period. For 1Ghz-to-8Ghz CPUs, the period will be in
+   * the range of 16 to 116 usec.
+   */
   period = ((double) hz) / ((double) POLICER_TICKS_PER_PERIOD);
 
-  // Determine bytes per period for each rate
+  /* Determine bytes per period for each rate */
   internal_cir_bytes_per_period = (double) cir_rate / period;
   internal_pir_bytes_per_period = (double) pir_rate / period;
 
-  // Scale if possible. Scaling helps rate accuracy, but is constrained
-  // by the scaled rates and limits fitting in 32-bits.
-  // In addition, we need to insure the scaled rate is no larger than
-  // 2^22 tokens per period. This allows the dataplane to ignore overflow
-  // in the tokens-per-period multiplication since it could only
-  // happen if the policer were idle for more than a year.
-  // This is not really a constraint because 100Gbps at 1Ghz is only
-  // 1.6M tokens per period.
+  /*
+   * Scale if possible. Scaling helps rate accuracy, but is constrained
+   * by the scaled rates and limits fitting in 32-bits.
+   * In addition, we need to insure the scaled rate is no larger than
+   * 2^22 tokens per period. This allows the dataplane to ignore overflow
+   * in the tokens-per-period multiplication since it could only
+   * happen if the policer were idle for more than a year.
+   * This is not really a constraint because 100Gbps at 1Ghz is only
+   * 1.6M tokens per period.
+   */
 #define MAX_RATE_SHIFT 10
   max = MAX (*current_limit, *extended_limit);
   max = MAX (max, (u32) internal_cir_bytes_per_period << MAX_RATE_SHIFT);
@@ -945,18 +910,20 @@ compute_policer_params (u64 hz,	// CPU speed in clocks per second
   scale_amount = 1 << scale_shift;
   *scale = scale_shift;
 
-  // Scale the limits
+  /* Scale the limits */
   *current_limit = *current_limit << scale_shift;
   *extended_limit = *extended_limit << scale_shift;
 
-  // Scale the rates
+  /* Scale the rates */
   internal_cir_bytes_per_period =
     internal_cir_bytes_per_period * ((double) scale_amount);
   internal_pir_bytes_per_period =
     internal_pir_bytes_per_period * ((double) scale_amount);
 
-  // Make sure the new rates are reasonable
-  // Only needed for very low rates with large bursts
+  /*
+   * Make sure the new rates are reasonable
+   * Only needed for very low rates with large bursts
+   */
   if (internal_cir_bytes_per_period < 1.0)
     {
       internal_cir_bytes_per_period = 1.0;
@@ -969,35 +936,7 @@ compute_policer_params (u64 hz,	// CPU speed in clocks per second
   *cir_bytes_per_period = (u32) internal_cir_bytes_per_period;
   *pir_bytes_per_period = (u32) internal_pir_bytes_per_period;
 
-// #define PRINT_X86_POLICE_PARAMS
-#ifdef PRINT_X86_POLICE_PARAMS
-  {
-    u64 effective_BPS;
-
-    // This value actually slightly conservative because it doesn't take into account
-    // the partial period at the end of a second. This really matters only for very low
-    // rates.
-    effective_BPS =
-      (((u64) (*cir_bytes_per_period * (u64) period)) >> *scale);
-
-    printf ("hz=%llu, cir_rate=%llu, limit=%u => "
-	    "periods-per-sec=%d usec-per-period=%d => "
-	    "scale=%d cir_BPP=%u, scaled_limit=%u => "
-	    "effective BPS=%llu, accuracy=%f\n",
-	    // input values
-	    (unsigned long long) hz,
-	    (unsigned long long) cir_rate, orig_current_limit,
-	    // computed values
-	    (u32) (period),	// periods per second
-	    (u32) (1000.0 * 1000.0 / period),	// in usec
-	    *scale, *cir_bytes_per_period, *current_limit,
-	    // accuracy
-	    (unsigned long long) effective_BPS,
-	    (double) cir_rate / (double) effective_BPS);
-  }
-#endif
-
-  return 0;			// ok
+  return 0;
 }
 
 
@@ -1023,8 +962,10 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg,
   hz = get_tsc_hz ();
   hw->last_update_time = 0;
 
-  // Cap the bursts to 32-bits. This allows up to almost one second of
-  // burst on a 40GE interface, which should be fine for x86.
+  /*
+   * Cap the bursts to 32-bits. This allows up to almost one second of
+   * burst on a 40GE interface, which should be fine for x86.
+   */
   cap =
     (cfg->rb.kbps.cb_bytes > 0xFFFFFFFF) ? 0xFFFFFFFF : cfg->rb.kbps.cb_bytes;
   hw->current_limit = cap;
@@ -1035,7 +976,7 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg,
   if ((cfg->rb.kbps.cir_kbps == 0) && (cfg->rb.kbps.cb_bytes == 0)
       && (cfg->rb.kbps.eb_bytes == 0))
     {
-      // This is a uninitialized, always-violate policer
+      /* This is a uninitialized, always-violate policer */
       hw->single_rate = 1;
       hw->cir_tokens_per_period = 0;
       return 0;
@@ -1044,8 +985,7 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg,
   if ((cfg->rfc == QOS_POLICER_TYPE_1R2C) ||
       (cfg->rfc == QOS_POLICER_TYPE_1R3C_RFC_2697))
     {
-      // Single-rate policer
-
+      /* Single-rate policer */
       hw->single_rate = 1;
 
       if ((cfg->rfc == QOS_POLICER_TYPE_1R2C) && cfg->rb.kbps.eb_bytes)
@@ -1077,8 +1017,7 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg,
   else if ((cfg->rfc == QOS_POLICER_TYPE_2R3C_RFC_2698) ||
 	   (cfg->rfc == QOS_POLICER_TYPE_2R3C_RFC_4115))
     {
-      // Two-rate policer
-
+      /* Two-rate policer */
       if ((cfg->rb.kbps.cir_kbps == 0) || (cfg->rb.kbps.eir_kbps == 0)
 	  || (cfg->rb.kbps.eir_kbps < cfg->rb.kbps.cir_kbps)
 	  || (cfg->rb.kbps.cb_bytes == 0) || (cfg->rb.kbps.eb_bytes == 0))
@@ -1113,8 +1052,6 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg,
 
   return 0;
 }
-#endif
-
 
 /*
  * Input: configured parameters in 'cfg'.
@@ -1175,36 +1112,7 @@ pol_logical_2_physical (qos_pol_cfg_params_st *cfg,
 
   phys->color_aware = cfg->color_aware;
 
-#if !defined (INTERNAL_SS) && !defined (X86)
-  // convert logical into hw params which involves qos calculations
-  rc = pol_compute_hw_params (&kbps_cfg, &pol_hw);
-  if (rc == -1)
-    {
-      QOS_DEBUG_ERROR ("Unable to compute hw param. Error: %d", rc);
-      return (rc);
-    }
-
-  // convert hw params into the physical
-  phys->rfc = pol_hw.rfc;
-  phys->an = pol_hw.allow_negative;
-  phys->rexp = pol_hw.rate_exp;
-  phys->arm = pol_hw.avg_rate_man;
-  phys->prm = pol_hw.peak_rate_man;
-  phys->cble = pol_hw.comm_bkt_limit_exp;
-  phys->cblm = pol_hw.comm_bkt_limit_man;
-  phys->eble = pol_hw.extd_bkt_limit_exp;
-  phys->eblm = pol_hw.extd_bkt_limit_man;
-  phys->cb = pol_hw.comm_bkt;
-  phys->eb = pol_hw.extd_bkt;
-
-  /* for debugging purposes, the bucket token values can be overwritten */
-  if (cfg->overwrite_bucket)
-    {
-      phys->cb = cfg->current_bucket;
-      phys->eb = cfg->extended_bucket;
-    }
-#else
-  // convert logical into hw params which involves qos calculations
+  /* convert logical into hw params which involves qos calculations */
   rc = x86_pol_compute_hw_params (&kbps_cfg, phys);
   if (rc == -1)
     {
@@ -1219,8 +1127,6 @@ pol_logical_2_physical (qos_pol_cfg_params_st *cfg,
       phys->extended_bucket = cfg->extended_bucket;
     }
 
-#endif // if !defined (INTERNAL_SS) && !defined (X86)
-
   return 0;
 }
 
@@ -1229,19 +1135,6 @@ qos_convert_pol_bucket_to_hw_fmt (policer_read_response_type_st *bkt,
 				  qos_pol_hw_params_st *hw_fmt)
 {
   clib_memset (hw_fmt, 0, sizeof (qos_pol_hw_params_st));
-#if !defined (INTERNAL_SS) && !defined (X86)
-  hw_fmt->rfc = (u8) bkt->rfc;
-  hw_fmt->allow_negative = (u8) bkt->an;
-  hw_fmt->rate_exp = (u8) bkt->rexp;
-  hw_fmt->avg_rate_man = (u16) bkt->arm;
-  hw_fmt->peak_rate_man = (u16) bkt->prm;
-  hw_fmt->comm_bkt_limit_man = (u8) bkt->cblm;
-  hw_fmt->comm_bkt_limit_exp = (u8) bkt->cble;
-  hw_fmt->extd_bkt_limit_man = (u8) bkt->eblm;
-  hw_fmt->extd_bkt_limit_exp = (u8) bkt->eble;
-  hw_fmt->extd_bkt = bkt->eb;
-  hw_fmt->comm_bkt = bkt->cb;
-#endif // if !defined (INTERNAL_SS) && !defined (X86)
 }
 
 /*
@@ -1332,8 +1225,6 @@ pol_convert_hw_to_cfg_params (qos_pol_hw_params_st *hw,
 		  "burst: 0x%llx bytes, eb burst: 0x%llx bytes",
 		  cfg->rb.kbps.cir_kbps, cfg->rb.kbps.eir_kbps,
 		  cfg->rb.kbps.cb_bytes, cfg->rb.kbps.eb_bytes);
-  QOS_TR_INFO (QOS_TP_INFO_22, cfg->rb.kbps.cir_kbps, cfg->rb.kbps.eir_kbps,
-	       (uint) cfg->rb.kbps.cb_bytes, (uint) cfg->rb.kbps.eb_bytes);
 
   return 0;
 }
@@ -1342,9 +1233,6 @@ u32
 qos_convert_kbps_to_pps (u32 rate_kbps)
 {
   u64 numer, denom, rnd_value = 0;
-
-  // sse_qosrm_ship_inc_counter(QOS_SHIP_COUNTER_TYPE_API_CNT,
-  //                            QOS_SHIP_CNT_POL_CONV_KBPS_TO_PPS);
 
   numer = (u64) ((u64) rate_kbps * 1000LL);
   denom = (u64) ((u64) QOS_POLICER_FIXED_PKT_SIZE * 8LL);
@@ -1358,9 +1246,6 @@ u32
 qos_convert_burst_bytes_to_ms (u64 burst_bytes, u32 rate_kbps)
 {
   u64 numer, denom, rnd_value = 0;
-
-  // sse_qosrm_ship_inc_counter(QOS_SHIP_COUNTER_TYPE_API_CNT,
-  //                         QOS_SHIP_CNT_POL_CONV_BYTES_TO_BURST_MS);
 
   numer = burst_bytes * 8LL;
   denom = (u64) rate_kbps;
