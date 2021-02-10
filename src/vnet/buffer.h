@@ -309,8 +309,11 @@ typedef struct
     /* interface output features */
     struct
     {
+      /* don't overlap the adjcencies nor flow-hash */
+      u32 __pad[3];
       u32 sad_index;
       u32 protect_index;
+      u16 thread_index;
     } ipsec;
 
     /* MAP */

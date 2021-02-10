@@ -1123,6 +1123,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 
       if (PREDICT_FALSE (thread_index != sa0->thread_index))
 	{
+	  vnet_buffer (b[0])->ipsec.thread_index = sa0->thread_index;
 	  esp_set_next_index (is_async, from, nexts, from[b - bufs],
 			      &n_async_drop, ESP_DECRYPT_NEXT_HANDOFF, next);
 	  next[0] = ESP_DECRYPT_NEXT_HANDOFF;
