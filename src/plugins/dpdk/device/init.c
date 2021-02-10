@@ -469,6 +469,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
 		}
 
+	      xd->port_conf.intr_conf.rxq = 1;
 
 	      break;
 	    case VNET_DPDK_PMD_CXGBE:
