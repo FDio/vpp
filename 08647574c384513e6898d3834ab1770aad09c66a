@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "0936970a_2f8a298a",
+        "filename": "src/vlib/punt.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-02-11T12:40:21Z",
+      "side": 1,
+      "message": "Addressed with a \"more subtle\" bitfield",
+      "parentUuid": "6754c74e_15dd0d3c",
+      "revId": "08647574c384513e6898d3834ab1770aad09c66a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bf1e0a7a_73dcfe6a",
         "filename": "src/vlib/punt.h",
         "patchSetId": 3
@@ -51,6 +69,24 @@
       "revId": "08647574c384513e6898d3834ab1770aad09c66a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "80f12d87_ea76e172",
+        "filename": "src/vlib/punt.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-02-11T12:40:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bf1e0a7a_73dcfe6a",
+      "revId": "08647574c384513e6898d3834ab1770aad09c66a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
