@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "be4a69ab_160d6263",
+        "filename": "src/vlib/punt.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-02-11T14:56:47Z",
+      "side": 1,
+      "message": "networking concepts should be in vlib.",
+      "revId": "9470f1f48056317092f645780aa5a22651cf30da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
