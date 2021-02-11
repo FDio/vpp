@@ -292,6 +292,7 @@ fifo_segment_init (fifo_segment_t * fs)
 
   seg_start = round_pow2_u64 (pointer_to_uword (seg_data), align);
   fsh = uword_to_pointer (seg_start, void *);
+  CLIB_MEM_UNPOISON (fsh, seg_sz);
   memset (fsh, 0, sizeof (*fsh) + slices_sz);
 
   fsh->byte_index = sizeof (*fsh) + slices_sz;
