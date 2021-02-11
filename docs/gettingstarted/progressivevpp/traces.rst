@@ -13,7 +13,7 @@ Skills to be Learned
 #. Clear a 'trace'
 #. Verify using ping from host
 #. Ping from vpp
-#. Examine Arp Table
+#. Examine ARP table (neighbors)
 #. Examine ip fib
 
 Basic Trace Commands
@@ -462,12 +462,12 @@ The output will demonstrate FD.io VPP's trace of ping for all packets.
 
 After examining the trace, clear it again using vpp# clear trace.
 
-Examine arp tables
--------------------
+Examine ARP table (neighbors)
+-----------------------------
 
 .. code-block:: console 
 
-  vpp# show ip arp
+  vpp# show ip neighbors
   Time           IP4       Flags      Ethernet              Interface
   1101.5636    10.10.1.1      D    e2:0f:1e:59:ec:f7 host-vpp1out        
 

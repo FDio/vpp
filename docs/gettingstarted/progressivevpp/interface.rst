@@ -25,7 +25,7 @@ VPP commands learned in this exercise
 #. `trace add <https://docs.fd.io/vpp/17.04/clicmd_src_vlib.html#clicmd_trace_add>`_
 #. `clear trace <https://docs.fd.io/vpp/17.04/clicmd_src_vlib.html#clicmd_clear_trace>`_
 #. `ping <https://docs.fd.io/vpp/17.04/clicmd_src_vnet_ip.html#clicmd_ping>`_
-#. `show ip arp <https://docs.fd.io/vpp/17.04/clicmd_src_vnet_ethernet.html#clicmd_show_ip_arp>`_
+#. `show ip neighbors <https://docs.fd.io/vpp/21.06/db/dba/clicmd_src_vnet_ip-neighbor.html#clicmd_show_ip_neighbors>`_
 #. `show ip fib <https://docs.fd.io/vpp/17.04/clicmd_src_vnet_fib.html#clicmd_show_ip_fib>`_
 
 Topology
