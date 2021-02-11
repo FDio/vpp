@@ -60,6 +60,7 @@ clib_mem_bulk_init (u32 elt_sz, u32 align, u32 min_elts_per_chunk)
   if (min_elts_per_chunk == 0)
     min_elts_per_chunk = CLIB_MEM_BULK_DEFAULT_MIN_ELTS_PER_CHUNK;
 
+  CLIB_MEM_UNPOISON (b, sizeof (clib_mem_bulk_t));
   clib_memset (b, 0, sizeof (clib_mem_bulk_t));
   b->mspace = heap->mspace;
   b->align = align;
@@ -138,6 +139,7 @@ clib_mem_bulk_alloc (clib_mem_bulk_handle_t h)
     {
       u32 i, sz = b->chunk_hdr_sz + b->elts_per_chunk * b->elt_sz;
       c = mspace_memalign (b->mspace, b->chunk_align, sz);
+      CLIB_MEM_UNPOISON (c, sz);
       clib_memset (c, 0, sizeof (clib_mem_bulk_chunk_hdr_t));
       b->avail_chunks = c;
       c->n_free = b->elts_per_chunk;
