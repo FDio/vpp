@@ -539,18 +539,15 @@ ip_table_bind (fib_protocol_t fproto,
 		      fib_index,
 		      ip6_main.fib_index_by_sw_if_index[sw_if_index]);
 
-      if (0 == table_id)
-	{
-	  /* reset back to default */
-	  if (0 != ip6_main.fib_index_by_sw_if_index[sw_if_index])
-	    fib_table_unlock (ip6_main.fib_index_by_sw_if_index[sw_if_index],
-			      FIB_PROTOCOL_IP6, src);
-	  if (0 != ip6_main.mfib_index_by_sw_if_index[sw_if_index])
-	    mfib_table_unlock (ip6_main.mfib_index_by_sw_if_index
-			       [sw_if_index], FIB_PROTOCOL_IP6, msrc);
+      /* unlock currently assigned tables */
+      if (0 != ip6_main.fib_index_by_sw_if_index[sw_if_index])
+	fib_table_unlock (ip6_main.fib_index_by_sw_if_index[sw_if_index],
+			  FIB_PROTOCOL_IP6, src);
+      if (0 != ip6_main.mfib_index_by_sw_if_index[sw_if_index])
+	mfib_table_unlock (ip6_main.mfib_index_by_sw_if_index[sw_if_index],
+			   FIB_PROTOCOL_IP6, msrc);
 
-	}
-      else
+      if (0 != table_id)
 	{
 	  /* we need to lock the table now it's inuse */
 	  fib_table_lock (fib_index, FIB_PROTOCOL_IP6, src);
@@ -590,18 +587,15 @@ ip_table_bind (fib_protocol_t fproto,
 		      fib_index,
 		      ip4_main.fib_index_by_sw_if_index[sw_if_index]);
 
-      if (0 == table_id)
-	{
-	  /* reset back to default */
-	  if (0 != ip4_main.fib_index_by_sw_if_index[sw_if_index])
-	    fib_table_unlock (ip4_main.fib_index_by_sw_if_index[sw_if_index],
-			      FIB_PROTOCOL_IP4, src);
-	  if (0 != ip4_main.mfib_index_by_sw_if_index[sw_if_index])
-	    mfib_table_unlock (ip4_main.mfib_index_by_sw_if_index
-			       [sw_if_index], FIB_PROTOCOL_IP4, msrc);
+      /* unlock currently assigned tables */
+      if (0 != ip4_main.fib_index_by_sw_if_index[sw_if_index])
+	fib_table_unlock (ip4_main.fib_index_by_sw_if_index[sw_if_index],
+			  FIB_PROTOCOL_IP4, src);
+      if (0 != ip4_main.mfib_index_by_sw_if_index[sw_if_index])
+	mfib_table_unlock (ip4_main.mfib_index_by_sw_if_index[sw_if_index],
+			   FIB_PROTOCOL_IP4, msrc);
 
-	}
-      else
+      if (0 != table_id)
 	{
 	  /* we need to lock the table now it's inuse */
 	  fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
