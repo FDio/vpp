@@ -8,6 +8,67 @@
 
 #define AF_XDP_TX_RETRIES 5
 
+
+
+static_always_inline void
+af_xdp_add(u32 * lst, u32 len, vlib_buffer_t *bufs[VLIB_FRAME_SIZE], u64 start)
+{
+  af_xdp_main_t *rm = &af_xdp_main;
+  clib_bihash_kv_8_8_t bkey, rkey;
+  clib_bihash_kv_8_16_t bkey2;
+  u32 th = vlib_get_thread_index();
+  u64 offset, addr;
+  int rv, dbs = 0;
+  for (int i = 0; i < len; i++)
+    {
+      bkey.key = lst[i];
+      rv = clib_bihash_search_8_8 (&rm->bhash, &bkey, &rkey);
+      if (rv == 0)
+	dbs++;
+      bkey.key = lst[i];
+      bkey.value = th;
+      clib_bihash_add_del_8_8 (&rm->bhash, &bkey, 1 /* add */);
+      offset =
+	(sizeof (vlib_buffer_t) +
+	 bufs[i]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      addr = pointer_to_uword (bufs[i]) - start;
+
+      bkey2.key = lst[i];
+      bkey2.value[0] = (offset | addr) >> CLIB_LOG2_CACHE_LINE_BYTES;
+      bkey2.value[1] = bufs[i]->current_data;
+      clib_bihash_add_del_8_16 (&rm->bhashlog, &bkey2, 1 /* add */);
+    }
+  if (dbs)
+    clib_warning("Got dubs (add) : %d", dbs);
+}
+
+static_always_inline void
+af_xdp_del(vlib_main_t *vm, u32 * lst, u32 len)
+{
+  af_xdp_main_t *rm = &af_xdp_main;
+  clib_bihash_kv_8_8_t bkey, rkey;
+  clib_bihash_kv_8_16_t bkey2, rkey2;
+  u32 i, th = vlib_get_thread_index();
+  int rv;
+  for (i = 0; i < len; i++)
+    {
+      bkey.key = lst[i];
+      rv = clib_bihash_search_8_8 (&rm->bhash, &bkey, &rkey);
+      if (rv != 0)
+	{
+	  bkey2.key = lst[i];
+	  // vlib_buffer_t * buf = vlib_get_buffer(vm, lst[i]);
+	  rv = clib_bihash_search_8_16 (&rm->bhashlog, &bkey2, &rkey2);
+	  clib_warning("Got dubs (del) %u [id:%u/%u]"
+		       "(th:%u) log:%d [%lu %d]",
+		       lst[i], i, len,
+		       th, rv, rkey2.value[0], (int) rkey2.value[1]);
+	}
+      bkey.key = lst[i];
+      clib_bihash_add_del_8_8 (&rm->bhash, &bkey, 0 /* delete */);
+    }
+}
+
 static_always_inline void
 af_xdp_device_output_free (vlib_main_t * vm, const vlib_node_runtime_t * node,
 			   af_xdp_txq_t * txq)
@@ -18,7 +79,9 @@ af_xdp_device_output_free (vlib_main_t * vm, const vlib_node_runtime_t * node,
   u32 bis[VLIB_FRAME_SIZE], *bi = bis;
   u32 n_wrap, idx;
   u32 n = xsk_ring_cons__peek (&txq->cq, ARRAY_LEN (bis), &idx);
-  const u32 n_free = n;
+  if (n > 256)
+    clib_panic ("af_xdp_device_output_free n %d > 256", n);
+  u32 n_free = n;
 
   /* we rely on on casting addr (u64) -> bi (u32) to discard XSK offset below */
   STATIC_ASSERT (BITS (bi[0]) + CLIB_LOG2_CACHE_LINE_BYTES <=
@@ -57,6 +120,14 @@ wrap_around:
       bi[6] = compl[6] >> CLIB_LOG2_CACHE_LINE_BYTES;
       bi[7] = compl[7] >> CLIB_LOG2_CACHE_LINE_BYTES;
 #endif
+      // if (compl[0] & 0xffff000000000000) clib_panic("AAA %p", compl[0]);
+      // if (compl[1] & 0xffff000000000000) clib_panic("AAA %p", compl[1]);
+      // if (compl[2] & 0xffff000000000000) clib_panic("AAA %p", compl[2]);
+      // if (compl[3] & 0xffff000000000000) clib_panic("AAA %p", compl[3]);
+      // if (compl[4] & 0xffff000000000000) clib_panic("AAA %p", compl[4]);
+      // if (compl[5] & 0xffff000000000000) clib_panic("AAA %p", compl[5]);
+      // if (compl[6] & 0xffff000000000000) clib_panic("AAA %p", compl[6]);
+      // if (compl[7] & 0xffff000000000000) clib_panic("AAA %p", compl[7]);
       compl += 8;
       bi += 8;
       n -= 8;
@@ -65,6 +136,7 @@ wrap_around:
   while (n >= 1)
     {
       bi[0] = compl[0] >> CLIB_LOG2_CACHE_LINE_BYTES;
+      // if (compl[0] & 0xffff000000000000) clib_panic("AAA %p", compl[0]);
       ASSERT (vlib_buffer_is_known (vm, bi[0]) ==
 	      VLIB_BUFFER_KNOWN_ALLOCATED);
       compl += 1;
@@ -81,8 +153,12 @@ wrap_around:
     }
 
   xsk_ring_cons__release (&txq->cq, n_free);
-  vlib_buffer_free (vm, bis, n_free);
+  af_xdp_del (vm, bis, n_free);
+
+  vlib_buffer_free (vm, bis,  n_free);
 }
+
+
 
 static_always_inline void
 af_xdp_device_output_tx_db (vlib_main_t * vm,
@@ -145,6 +221,11 @@ af_xdp_device_output_tx_try (vlib_main_t * vm,
   n = clib_min (n_tx, size - (idx & mask));
   n_wrap = n_tx - n;
 
+  if (n > 256)
+    clib_panic ("af_xdp_device_output_free n %d > 256", n);
+  if (n > 256)
+    clib_panic ("af_xdp_device_output_free n_tx %d > 256", n_tx);
+
 wrap_around:
 
   while (n >= 8)
@@ -206,6 +287,7 @@ wrap_around:
       n_wrap = 0;
       goto wrap_around;
     }
+  af_xdp_add(bi, n_tx, bufs, start);
 
   return n_tx;
 }

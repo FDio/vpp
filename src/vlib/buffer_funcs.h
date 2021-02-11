@@ -596,7 +596,7 @@ vlib_buffer_alloc_from_pool (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
       vlib_buffer_copy_indices (dst, src, n_buffers);
       bpt->n_cached -= n_buffers;
 
-      if (CLIB_DEBUG > 0)
+      // if (CLIB_DEBUG > 0)
 	vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
 					 VLIB_BUFFER_KNOWN_FREE);
       return n_buffers;
@@ -608,7 +608,7 @@ vlib_buffer_alloc_from_pool (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
       n_buffers = vlib_buffer_pool_get (vm, buffer_pool_index, buffers,
 					n_buffers);
 
-      if (CLIB_DEBUG > 0)
+      // if (CLIB_DEBUG > 0)
 	vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
 					 VLIB_BUFFER_KNOWN_FREE);
       return n_buffers;
@@ -640,7 +640,7 @@ vlib_buffer_alloc_from_pool (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
   n_buffers -= n_left;
 
   /* Verify that buffers are known free. */
-  if (CLIB_DEBUG > 0)
+  // if (CLIB_DEBUG > 0)
     vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
 				     VLIB_BUFFER_KNOWN_FREE);
 
@@ -750,7 +750,7 @@ vlib_buffer_pool_put (vlib_main_t * vm, u8 buffer_pool_index,
 						     vm->thread_index);
   u32 n_cached, n_empty;
 
-  if (CLIB_DEBUG > 0)
+  // if (CLIB_DEBUG > 0)
     vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
 				     VLIB_BUFFER_KNOWN_ALLOCATED);
 

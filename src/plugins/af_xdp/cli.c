@@ -23,6 +23,7 @@
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vppinfra/bihash_8_8.h>
 
 #include <af_xdp/af_xdp.h>
 
@@ -107,6 +108,9 @@ VLIB_CLI_COMMAND (af_xdp_delete_command, static) = {
 clib_error_t *
 af_xdp_cli_init (vlib_main_t * vm)
 {
+  af_xdp_main_t *rm = &af_xdp_main;
+  clib_bihash_init_8_8 (&rm->bhash, "XDP bhash", 1024, 2 << 20);
+  clib_bihash_init_8_16 (&rm->bhashlog, "XDP bhash log", 1024, 256 << 20);
   return 0;
 }
 

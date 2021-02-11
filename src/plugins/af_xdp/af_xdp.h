@@ -21,6 +21,8 @@
 #include <vlib/log.h>
 #include <vnet/interface.h>
 #include <bpf/xsk.h>
+#include <vppinfra/bihash_8_8.h>
+#include <vppinfra/bihash_8_16.h>
 
 #define AF_XDP_NUM_RX_QUEUES_ALL        ((u16)-1)
 
@@ -116,6 +118,8 @@ typedef struct
   af_xdp_device_t *devices;
   vlib_log_class_t log_class;
   u16 msg_id_base;
+  clib_bihash_8_8_t bhash;
+  clib_bihash_8_16_t bhashlog;
 } af_xdp_main_t;
 
 extern af_xdp_main_t af_xdp_main;

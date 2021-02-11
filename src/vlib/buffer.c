@@ -344,8 +344,8 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
   u32 *b;
   uword i, bi, is_free;
 
-  if (CLIB_DEBUG == 0)
-    return;
+  // if (CLIB_DEBUG == 0)
+    // return;
 
   is_free = expected_state == VLIB_BUFFER_KNOWN_ALLOCATED;
   b = buffers;
