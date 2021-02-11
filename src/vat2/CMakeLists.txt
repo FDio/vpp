@@ -54,6 +54,43 @@ add_vpp_executable(test_vat2 ENABLE_EXPORTS NO_INSTALL
   rt m dl crypto
 )
 #target_link_options(test_vat2 PUBLIC "LINKER:-fsanitize=address")
+
+if("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.13" AND "${CMAKE_C_COMPILER_ID}" MATCHES "(Apple)?[Cc]lang")
+  set(TARGET_NAME test_vat2)
+  set(COV_SOURCES ${CMAKE_SOURCE_DIR}/vat2/jsonconvert.c)
+
+  message("Building with llvm Code Coverage Tools ${TARGET_NAME}")
+  target_compile_options(${TARGET_NAME} PRIVATE -fprofile-instr-generate -fcoverage-mapping)
+  target_link_options(${TARGET_NAME} PRIVATE -fprofile-instr-generate -fcoverage-mapping)
+  target_compile_options(${TARGET_NAME} PRIVATE -fsanitize=address)
+  target_link_options(${TARGET_NAME} PRIVATE -fsanitize=address)
+
+  # llvm-cov
+  add_custom_target(${TARGET_NAME}-ccov-preprocessing
+    COMMAND LLVM_PROFILE_FILE=${TARGET_NAME}.profraw $<TARGET_FILE:${TARGET_NAME}>
+    COMMAND llvm-profdata merge -sparse ${TARGET_NAME}.profraw -o ${TARGET_NAME}.profdata
+    DEPENDS ${TARGET_NAME})
+
+  add_custom_target(${TARGET_NAME}-ccov-show
+    COMMAND llvm-cov show $<TARGET_FILE:${TARGET_NAME}> -instr-profile=${TARGET_NAME}.profdata -show-line-counts-or-regions ${COV_SOURCES}
+    DEPENDS ${TARGET_NAME}-ccov-preprocessing)
+
+  add_custom_target(${TARGET_NAME}-ccov-report
+    COMMAND llvm-cov report -show-functions $<TARGET_FILE:${TARGET_NAME}> -instr-profile=${TARGET_NAME}.profdata ${COV_SOURCES}
+    DEPENDS ${TARGET_NAME}-ccov-preprocessing)
+
+  add_custom_target(${TARGET_NAME}-ccov
+    COMMAND llvm-cov show $<TARGET_FILE:${TARGET_NAME}> -instr-profile=${TARGET_NAME}.profdata -show-line-counts-or-regions -output-dir=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${TARGET_NAME}-llvm-cov -format="html" ${COV_SOURCES}
+    DEPENDS ${TARGET_NAME}-ccov-preprocessing)
+
+  add_custom_command(TARGET ${TARGET_NAME}-ccov POST_BUILD
+    COMMAND ;
+    COMMENT "Open ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${TARGET_NAME}-llvm-cov/index.html in your browser to view the coverage report."
+)
+endif()
+
+
+
 ##############################################################################
 # vat2 headers
 ##############################################################################

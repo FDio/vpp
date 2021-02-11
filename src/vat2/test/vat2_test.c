@@ -96,24 +96,38 @@ runtest (char *s, bool should_fail)
 }
 
 struct msgs msgs[] = {
-{
-  .name = "test_prefix",
-  .tojson = (tojson_fn_t)vl_api_test_prefix_t_tojson,
-  .fromjson = (fromjson_fn_t)vl_api_test_prefix_t_fromjson,
-},
-{
-  .name = "test_enum",
-  .tojson = (tojson_fn_t)vl_api_test_enum_t_tojson,
-  .fromjson = (fromjson_fn_t)vl_api_test_enum_t_fromjson,
-},
+  {
+    .name = "test_prefix",
+    .tojson = (tojson_fn_t) vl_api_test_prefix_t_tojson,
+    .fromjson = (fromjson_fn_t) vl_api_test_prefix_t_fromjson,
+  },
+  {
+    .name = "test_enum",
+    .tojson = (tojson_fn_t) vl_api_test_enum_t_tojson,
+    .fromjson = (fromjson_fn_t) vl_api_test_enum_t_fromjson,
+  },
+  {
+    .name = "test_string",
+    .tojson = (tojson_fn_t) vl_api_test_string_t_tojson,
+    .fromjson = (fromjson_fn_t) vl_api_test_string_t_fromjson,
+  },
+  {
+    .name = "test_string2",
+    .tojson = (tojson_fn_t) vl_api_test_string2_t_tojson,
+    .fromjson = (fromjson_fn_t) vl_api_test_string2_t_fromjson,
+  },
 };
 
 struct tests tests[] = {
-  {.s = "{\"_msgname\": \"test_prefix\", \"pref\": \"2001:db8::/64\"}"},
-  {.s = "{\"_msgname\": \"test_prefix\", \"pref\": \"192.168.10.0/24\"}"},
-  {.s = "{\"_msgname\": \"test_enum\", \"flags\": [\"RED\", \"BLUE\"]}"},
-  {.s = "{\"_msgname\": \"test_enum\", \"flags\": [\"BLACK\", \"BLUE\"]}",
-   .should_fail = 1},
+  { .s = "{\"_msgname\": \"test_prefix\", \"pref\": \"2001:db8::/64\"}" },
+  { .s = "{\"_msgname\": \"test_prefix\", \"pref\": \"192.168.10.0/24\"}" },
+  { .s = "{\"_msgname\": \"test_enum\", \"flags\": [\"RED\", \"BLUE\"]}" },
+  { .s = "{\"_msgname\": \"test_enum\", \"flags\": [\"BLACK\", \"BLUE\"]}",
+    .should_fail = 1 },
+  { .s = "{\"_msgname\": \"test_string\", \"str\": {\"str\": \"Test string "
+	 "type\"}}" },
+  { .s =
+      "{\"_msgname\": \"test_string2\", \"str\": \"Test string toplevel\"}" },
 };
 
 int main (int argc, char **argv)
