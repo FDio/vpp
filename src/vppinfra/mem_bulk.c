@@ -44,6 +44,12 @@ typedef struct
   clib_mem_bulk_chunk_hdr_t *full_chunks, *avail_chunks;
 } clib_mem_bulk_t;
 
+static inline uword
+bulk_chunk_size (clib_mem_bulk_t *b)
+{
+  return (uword) b->elts_per_chunk * b->elt_sz + b->chunk_hdr_sz;
+}
+
 __clib_export clib_mem_bulk_handle_t
 clib_mem_bulk_init (u32 elt_sz, u32 align, u32 min_elts_per_chunk)
 {
@@ -60,13 +66,14 @@ clib_mem_bulk_init (u32 elt_sz, u32 align, u32 min_elts_per_chunk)
   if (min_elts_per_chunk == 0)
     min_elts_per_chunk = CLIB_MEM_BULK_DEFAULT_MIN_ELTS_PER_CHUNK;
 
+  CLIB_MEM_UNPOISON (b, sizeof (clib_mem_bulk_t));
   clib_memset (b, 0, sizeof (clib_mem_bulk_t));
   b->mspace = heap->mspace;
   b->align = align;
   b->elt_sz = round_pow2 (elt_sz, align);
   b->chunk_hdr_sz = round_pow2 (sizeof (clib_mem_bulk_chunk_hdr_t), align);
   b->elts_per_chunk = min_elts_per_chunk;
-  sz = (uword) b->elts_per_chunk * b->elt_sz + b->chunk_hdr_sz;
+  sz = bulk_chunk_size (b);
   b->chunk_align = max_pow2 (sz);
   b->elts_per_chunk += (b->chunk_align - sz) / b->elt_sz;
   return b;
@@ -77,6 +84,7 @@ clib_mem_bulk_destroy (clib_mem_bulk_handle_t h)
 {
   clib_mem_bulk_t *b = h;
   clib_mem_bulk_chunk_hdr_t *c, *next;
+  void *ms = b->mspace;
 
   c = b->full_chunks;
 
@@ -84,7 +92,8 @@ again:
   while (c)
     {
       next = c->next;
-      mspace_free (b->mspace, c);
+      CLIB_MEM_POISON (c, bulk_chunk_size (b));
+      mspace_free (ms, c);
       c = next;
     }
 
@@ -95,7 +104,8 @@ again:
       goto again;
     }
 
-  mspace_free (b->mspace, b);
+  CLIB_MEM_POISON (b, sizeof (clib_mem_bulk_t));
+  mspace_free (ms, b);
 }
 
 static inline void *
@@ -136,8 +146,9 @@ clib_mem_bulk_alloc (clib_mem_bulk_handle_t h)
 
   if (b->avail_chunks == 0)
     {
-      u32 i, sz = b->chunk_hdr_sz + b->elts_per_chunk * b->elt_sz;
+      u32 i, sz = bulk_chunk_size (b);
       c = mspace_memalign (b->mspace, b->chunk_align, sz);
+      CLIB_MEM_UNPOISON (c, sz);
       clib_memset (c, 0, sizeof (clib_mem_bulk_chunk_hdr_t));
       b->avail_chunks = c;
       c->n_free = b->elts_per_chunk;
@@ -181,6 +192,7 @@ clib_mem_bulk_free (clib_mem_bulk_handle_t h, void *p)
     {
       /* chunk is empty - give it back */
       remove_from_chunk_list (&b->avail_chunks, c);
+      CLIB_MEM_POISON (c, bulk_chunk_size (b));
       mspace_free (b->mspace, c);
       return;
     }
