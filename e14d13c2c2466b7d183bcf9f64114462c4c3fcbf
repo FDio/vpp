@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "53295daa_304b9053",
+        "filename": "src/plugins/mss_clamp/mss_clamp_node.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 286,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-02-11T16:07:11Z",
+      "side": 1,
+      "message": "Could these branches be replaced by a single call to vlib_node_increment_counter() which passes in node-\u003enode_index? It seems like the node index is the only thing that is varying between the different branches based on the values of fproto and dir.",
+      "revId": "e14d13c2c2466b7d183bcf9f64114462c4c3fcbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
