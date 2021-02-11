@@ -188,7 +188,7 @@ clib_mov256 (u8 * dst, const u8 * src)
 })
 
 static inline void *
-clib_memcpy_fast (void *dst, const void *src, size_t n)
+clib_memcpy_fast_sse3 (void *dst, const void *src, size_t n)
 {
   __m128i xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7, xmm8;
   uword dstu = (uword) dst;

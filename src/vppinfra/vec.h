@@ -665,13 +665,19 @@ do {										\
     @param A alignment (may be zero)
     @return V (value-result macro parameter)
 */
-#define vec_add_ha(V,E,N,H,A)							\
-do {										\
-  word _v(n) = (N);								\
-  word _v(l) = vec_len (V);							\
-  V = _vec_resize ((V), _v(n), (_v(l) + _v(n)) * sizeof ((V)[0]), (H), (A));	\
-  clib_memcpy_fast ((V) + _v(l), (E), _v(n) * sizeof ((V)[0]));			\
-} while (0)
+#define vec_add_ha(V, E, N, H, A)                                             \
+  do                                                                          \
+    {                                                                         \
+      word _v (n) = (N);                                                      \
+      if (PREDICT_TRUE (_v (n) > 0))                                          \
+	{                                                                     \
+	  word _v (l) = vec_len (V);                                          \
+	  V = _vec_resize ((V), _v (n), (_v (l) + _v (n)) * sizeof ((V)[0]),  \
+			   (H), (A));                                         \
+	  clib_memcpy_fast ((V) + _v (l), (E), _v (n) * sizeof ((V)[0]));     \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 /** \brief Add N elements to end of vector V (no header, unspecified alignment)
 
@@ -819,22 +825,23 @@ do {							\
     @return V (value-result macro parameter)
 */
 
-#define vec_insert_elts_ha(V,E,N,M,H,A)			\
-do {							\
-  word _v(l) = vec_len (V);				\
-  word _v(n) = (N);					\
-  word _v(m) = (M);					\
-  V = _vec_resize ((V),					\
-		   _v(n),				\
-		   (_v(l) + _v(n))*sizeof((V)[0]),	\
-		   (H), (A));				\
-  ASSERT (_v(m) <= _v(l));				\
-  memmove ((V) + _v(m) + _v(n),				\
-	   (V) + _v(m),					\
-	   (_v(l) - _v(m)) * sizeof ((V)[0]));		\
-  clib_memcpy_fast ((V) + _v(m), (E),			\
-	       _v(n) * sizeof ((V)[0]));		\
-} while (0)
+#define vec_insert_elts_ha(V, E, N, M, H, A)                                  \
+  do                                                                          \
+    {                                                                         \
+      word _v (n) = (N);                                                      \
+      if (PREDICT_TRUE (_v (n) > 0))                                          \
+	{                                                                     \
+	  word _v (l) = vec_len (V);                                          \
+	  word _v (m) = (M);                                                  \
+	  V = _vec_resize ((V), _v (n), (_v (l) + _v (n)) * sizeof ((V)[0]),  \
+			   (H), (A));                                         \
+	  ASSERT (_v (m) <= _v (l));                                          \
+	  memmove ((V) + _v (m) + _v (n), (V) + _v (m),                       \
+		   (_v (l) - _v (m)) * sizeof ((V)[0]));                      \
+	  clib_memcpy_fast ((V) + _v (m), (E), _v (n) * sizeof ((V)[0]));     \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 /** \brief Insert N vector elements starting at element M,
     insert given elements (no header, unspecified alignment)
@@ -902,15 +909,21 @@ do {						\
     @param V2 vector to append
 */
 
-#define vec_append(v1,v2)						\
-do {									\
-  uword _v(l1) = vec_len (v1);						\
-  uword _v(l2) = vec_len (v2);						\
-									\
-  v1 = _vec_resize ((v1), _v(l2),					\
-		    (_v(l1) + _v(l2)) * sizeof ((v1)[0]), 0, 0);	\
-  clib_memcpy_fast ((v1) + _v(l1), (v2), _v(l2) * sizeof ((v2)[0]));		\
-} while (0)
+#define vec_append(v1, v2)                                                    \
+  do                                                                          \
+    {                                                                         \
+      uword _v (l1) = vec_len (v1);                                           \
+      uword _v (l2) = vec_len (v2);                                           \
+                                                                              \
+      if (PREDICT_TRUE (_v (l2) > 0))                                         \
+	{                                                                     \
+	  v1 = _vec_resize ((v1), _v (l2),                                    \
+			    (_v (l1) + _v (l2)) * sizeof ((v1)[0]), 0, 0);    \
+	  clib_memcpy_fast ((v1) + _v (l1), (v2),                             \
+			    _v (l2) * sizeof ((v2)[0]));                      \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 /** \brief Append v2 after v1. Result in v1. Specified alignment.
     @param V1 target vector
@@ -918,31 +931,42 @@ do {									\
     @param align required alignment
 */
 
-#define vec_append_aligned(v1,v2,align)					\
-do {									\
-  uword _v(l1) = vec_len (v1);						\
-  uword _v(l2) = vec_len (v2);						\
-									\
-  v1 = _vec_resize ((v1), _v(l2),					\
-		    (_v(l1) + _v(l2)) * sizeof ((v1)[0]), 0, align);	\
-  clib_memcpy_fast ((v1) + _v(l1), (v2), _v(l2) * sizeof ((v2)[0]));		\
-} while (0)
+#define vec_append_aligned(v1, v2, align)                                     \
+  do                                                                          \
+    {                                                                         \
+      uword _v (l1) = vec_len (v1);                                           \
+      uword _v (l2) = vec_len (v2);                                           \
+                                                                              \
+      if (PREDICT_TRUE (_v (l2) > 0))                                         \
+	{                                                                     \
+	  v1 = _vec_resize (                                                  \
+	    (v1), _v (l2), (_v (l1) + _v (l2)) * sizeof ((v1)[0]), 0, align); \
+	  clib_memcpy_fast ((v1) + _v (l1), (v2),                             \
+			    _v (l2) * sizeof ((v2)[0]));                      \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 /** \brief Prepend v2 before v1. Result in v1.
     @param V1 target vector
     @param V2 vector to prepend
 */
 
-#define vec_prepend(v1,v2)                                              \
-do {                                                                    \
-  uword _v(l1) = vec_len (v1);                                          \
-  uword _v(l2) = vec_len (v2);                                          \
-                                                                        \
-  v1 = _vec_resize ((v1), _v(l2),                                       \
-		    (_v(l1) + _v(l2)) * sizeof ((v1)[0]), 0, 0);	\
-  memmove ((v1) + _v(l2), (v1), _v(l1) * sizeof ((v1)[0]));             \
-  clib_memcpy_fast ((v1), (v2), _v(l2) * sizeof ((v2)[0]));                  \
-} while (0)
+#define vec_prepend(v1, v2)                                                   \
+  do                                                                          \
+    {                                                                         \
+      uword _v (l1) = vec_len (v1);                                           \
+      uword _v (l2) = vec_len (v2);                                           \
+                                                                              \
+      if (PREDICT_TRUE (_v (l2) > 0))                                         \
+	{                                                                     \
+	  v1 = _vec_resize ((v1), _v (l2),                                    \
+			    (_v (l1) + _v (l2)) * sizeof ((v1)[0]), 0, 0);    \
+	  memmove ((v1) + _v (l2), (v1), _v (l1) * sizeof ((v1)[0]));         \
+	  clib_memcpy_fast ((v1), (v2), _v (l2) * sizeof ((v2)[0]));          \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 /** \brief Prepend v2 before v1. Result in v1. Specified alignment
     @param V1 target vector
@@ -950,17 +974,21 @@ do {                                                                    \
     @param align required alignment
 */
 
-#define vec_prepend_aligned(v1,v2,align)                                \
-do {                                                                    \
-  uword _v(l1) = vec_len (v1);                                          \
-  uword _v(l2) = vec_len (v2);                                          \
-                                                                        \
-  v1 = _vec_resize ((v1), _v(l2),                                       \
-		    (_v(l1) + _v(l2)) * sizeof ((v1)[0]), 0, align);	\
-  memmove ((v1) + _v(l2), (v1), _v(l1) * sizeof ((v1)[0]));             \
-  clib_memcpy_fast ((v1), (v2), _v(l2) * sizeof ((v2)[0]));                  \
-} while (0)
-
+#define vec_prepend_aligned(v1, v2, align)                                    \
+  do                                                                          \
+    {                                                                         \
+      uword _v (l1) = vec_len (v1);                                           \
+      uword _v (l2) = vec_len (v2);                                           \
+                                                                              \
+      if (PREDICT_TRUE (_v (l2) > 0))                                         \
+	{                                                                     \
+	  v1 = _vec_resize (                                                  \
+	    (v1), _v (l2), (_v (l1) + _v (l2)) * sizeof ((v1)[0]), 0, align); \
+	  memmove ((v1) + _v (l2), (v1), _v (l1) * sizeof ((v1)[0]));         \
+	  clib_memcpy_fast ((v1), (v2), _v (l2) * sizeof ((v2)[0]));          \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 /** \brief Zero all vector elements. Null-pointer tolerant.
     @param var Vector to zero
