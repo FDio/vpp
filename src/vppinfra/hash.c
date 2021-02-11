@@ -548,6 +548,7 @@ lookup (void *v, uword key, enum lookup_opcode op,
   hash_t *h = hash_header (v);
   hash_pair_union_t *p = 0;
   uword found_key = 0;
+  uword value_bytes;
   uword i;
 
   if (!v)
@@ -555,6 +556,7 @@ lookup (void *v, uword key, enum lookup_opcode op,
 
   i = key_sum (h, key) & (_vec_len (v) - 1);
   p = get_pair (v, i);
+  value_bytes = hash_value_bytes (h);
 
   if (hash_is_user (v, i))
     {
@@ -564,9 +566,8 @@ lookup (void *v, uword key, enum lookup_opcode op,
 	  if (op == UNSET)
 	    {
 	      set_is_user (v, i, 0);
-	      if (old_value)
-		clib_memcpy_fast (old_value, p->direct.value,
-				  hash_value_bytes (h));
+	      if (old_value && value_bytes)
+		clib_memcpy_fast (old_value, p->direct.value, value_bytes);
 	      zero_pair (h, &p->direct);
 	    }
 	}
@@ -598,9 +599,8 @@ lookup (void *v, uword key, enum lookup_opcode op,
 	  found_key = p != 0;
 	  if (found_key && op == UNSET)
 	    {
-	      if (old_value)
-		clib_memcpy_fast (old_value, &p->direct.value,
-				  hash_value_bytes (h));
+	      if (old_value && value_bytes)
+		clib_memcpy_fast (old_value, &p->direct.value, value_bytes);
 
 	      unset_indirect (v, i, &p->direct);
 
@@ -611,12 +611,12 @@ lookup (void *v, uword key, enum lookup_opcode op,
 	}
     }
 
-  if (op == SET && p != 0)
+  if (op == SET && p != 0 && value_bytes)
     {
       /* Save away old value for caller. */
       if (old_value && found_key)
-	clib_memcpy_fast (old_value, &p->direct.value, hash_value_bytes (h));
-      clib_memcpy_fast (&p->direct.value, new_value, hash_value_bytes (h));
+	clib_memcpy_fast (old_value, &p->direct.value, value_bytes);
+      clib_memcpy_fast (&p->direct.value, new_value, value_bytes);
     }
 
   if (op == SET)
