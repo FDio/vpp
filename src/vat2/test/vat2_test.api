@@ -28,3 +28,14 @@ enumflag test_enumflags {
 autoreply define test_enum {
   vl_api_test_enumflags_t flags;
 };
+
+typedef test_stringtype {
+  string str[];
+};
+
+autoreply define test_string {
+  vl_api_test_stringtype_t str;
+};
+autoreply define test_string2 {
+  string str[];
+};

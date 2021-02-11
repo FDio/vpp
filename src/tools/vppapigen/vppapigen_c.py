@@ -313,6 +313,7 @@ class FromJSON():
         write('#define included_{}_api_fromjson_h\n'.format(self.module))
         write('#include <vppinfra/cJSON.h>\n\n')
         write('#include <vat2/jsonconvert.h>\n\n')
+        write('#pragma GCC diagnostic ignored "-Wunused-label"\n')
 
     def is_base_type(self, t):
         '''Check if a type is one of the VPP API base types'''
@@ -331,7 +332,7 @@ class FromJSON():
         '''Convert JSON string to vl_api_string_t'''
         write = self.stream.write
 
-        msgvar = "a" if toplevel else "mp"
+        msgvar = "a" if toplevel else "*mp"
         msgsize = "l" if toplevel else "*len"
 
         if o.modern_vla:
@@ -339,6 +340,7 @@ class FromJSON():
             write('    size_t plen = strlen(p);\n')
             write('    {msgvar} = realloc({msgvar}, {msgsize} + plen);\n'
                   .format(msgvar=msgvar, msgsize=msgsize))
+            write('    if ({msgvar} == 0) goto error;\n'.format(msgvar=msgvar))
             write('    vl_api_c_string_to_api_string(p, (void *){msgvar} + '
                   '{msgsize} - sizeof(vl_api_string_t));\n'
                   .format(msgvar=msgvar, msgsize=msgsize))
@@ -351,25 +353,21 @@ class FromJSON():
     def print_field(self, o, toplevel=False):
         '''Called for every field in a typedef or define.'''
         write = self.stream.write
-        write('    // start field {}\n'.format(o.fieldname))
         if o.fieldname in self.noprint_fields:
             return
         is_bt = self.is_base_type(o.fieldtype)
         t = 'vl_api_{}'.format(o.fieldtype) if is_bt else o.fieldtype
 
-        msgvar = "a" if toplevel else "mp"
+        msgvar = "(void **)&a" if toplevel else "mp"
         msgsize = "&l" if toplevel else "len"
 
         if is_bt:
             write('    vl_api_{t}_fromjson(item, &a->{n});\n'
                   .format(t=o.fieldtype, n=o.fieldname))
         else:
-            write('    {msgvar} = {t}_fromjson({msgvar}, '
-                  '{msgsize}, item, &a->{n});\n'
+            write('    if ({t}_fromjson({msgvar}, '
+                  '{msgsize}, item, &a->{n}) < 0) goto error;\n'
                   .format(t=t, n=o.fieldname, msgvar=msgvar, msgsize=msgsize))
-            write('    if (!{msgvar}) {{ free(a); return 0;}} \n'.format(msgvar=msgvar))
-
-        write('    // end field {}\n'.format(o.fieldname))
 
     _dispatch['Field'] = print_field
 
@@ -395,7 +393,7 @@ class FromJSON():
         cJSON *array = cJSON_GetObjectItem(o, "{n}");
         int size = cJSON_GetArraySize(array);
         {lfield} = size;
-        {msgvar} = realloc({msgvar}, {msgsize} + sizeof({t}) * size);
+        *{msgvar} = realloc({msgvar}, {msgsize} + sizeof({t}) * size);
         {t} *d = (void *){msgvar} + {msgsize};
         {msgsize} += sizeof({t}) * size;
         for (i = 0; i < size; i++) {{
@@ -410,7 +408,7 @@ class FromJSON():
             return
 
         lfield = 'a->' + o.lengthfield if o.lengthfield else o.length
-        msgvar = "a" if toplevel else "mp"
+        msgvar = "(void **)&a" if toplevel else "mp"
         msgsize = "l" if toplevel else "*len"
 
         if o.fieldtype == 'u8':
@@ -420,7 +418,7 @@ class FromJSON():
                 write('    if (!s) return 0;\n')
                 write('    {} = vec_len(s);\n'.format(lfield))
 
-                write('    {msgvar} = realloc({msgvar}, {msgsize} + '
+                write('    *{msgvar} = realloc({msgvar}, {msgsize} + '
                       'vec_len(s));\n'.format(msgvar=msgvar, msgsize=msgsize))
                 write('    memcpy((void *){msgvar} + {msgsize}, s, '
                       'vec_len(s));\n'.format(msgvar=msgvar, msgsize=msgsize))
@@ -452,7 +450,7 @@ class FromJSON():
                 call = ('vl_api_{t}_fromjson(e, &a->{n}[i]);'
                         .format(t=t, n=o.fieldname))
             else:
-                call = ('a = {}_fromjson({}, len, e, &a->{}[i]);'
+                call = ('if ({}_fromjson({}, len, e, &a->{}[i]) < 0) goto error;'
                         .format(t, msgvar, o.fieldname))
             write(forloop.format(lfield=lfield,
                                  t=t,
@@ -466,14 +464,15 @@ class FromJSON():
     def print_enum(self, o):
         '''Convert to JSON enum(string) to VPP API enum (int)'''
         write = self.stream.write
-        write('static inline void *vl_api_{n}_t_fromjson '
-              '(void *mp, int *len, cJSON *o, vl_api_{n}_t *a) {{\n'
+        write('static inline int vl_api_{n}_t_fromjson'
+              '(void **mp, int *len, cJSON *o, vl_api_{n}_t *a) {{\n'
               .format(n=o.name))
         write('    char *p = cJSON_GetStringValue(o);\n')
         for b in o.block:
-            write('    if (strcmp(p, "{}") == 0) {{*a = {}; return mp;}}\n'
+            write('    if (strcmp(p, "{}") == 0) {{*a = {}; return 0;}}\n'
                   .format(b[0], b[1]))
-        write('   return 0;\n')
+        write('    *a = 0;\n')
+        write('    return -1;\n')
         write('}\n')
 
     _dispatch['Enum'] = print_enum
@@ -503,7 +502,7 @@ class FromJSON():
         '''Convert from JSON object to VPP API binary representation'''
         write = self.stream.write
 
-        write('static inline void *vl_api_{name}_t_fromjson (void *mp, '
+        write('static inline int vl_api_{name}_t_fromjson (void **mp, '
               'int *len, cJSON *o, vl_api_{name}_t *a) {{\n'
               .format(name=o.name))
         write('    cJSON *item __attribute__ ((unused));\n')
@@ -511,20 +510,22 @@ class FromJSON():
         for t in o.block:
             if t.type == 'Field' and t.is_lengthfield:
                 continue
-            write('    item = cJSON_GetObjectItem(o, "{}");\n'
+            write('\n    item = cJSON_GetObjectItem(o, "{}");\n'
                   .format(t.fieldname))
-            write('    if (!item) return 0;\n')
+            write('    if (!item) goto error;\n')
 
             self._dispatch[t.type](self, t)
 
-        write('    return mp;\n')
+        write('\n    return 0;\n')
+        write('\n  error:\n')
+        write('    return -1;\n')
         write('}\n')
 
     def print_union(self, o):
         '''Convert JSON object to VPP API binary union'''
         write = self.stream.write
 
-        write('static inline void *vl_api_{name}_t_fromjson (void *mp, '
+        write('static inline int vl_api_{name}_t_fromjson (void **mp, '
               'int *len, cJSON *o, vl_api_{name}_t *a) {{\n'
               .format(name=o.name))
         write('    cJSON *item __attribute__ ((unused));\n')
@@ -537,7 +538,9 @@ class FromJSON():
             write('    if (item) {\n')
             self._dispatch[t.type](self, t)
             write('    };\n')
-        write('    return mp;\n')
+        write('\n    return 0;\n')
+        write('\n  error:\n')
+        write('    return -1;\n')
         write('}\n')
 
     def print_define(self, o):
@@ -549,24 +552,24 @@ class FromJSON():
         write('    u8 *s __attribute__ ((unused));\n')
         write('    int l = sizeof(vl_api_{}_t);\n'.format(o.name))
         write('    vl_api_{}_t *a = malloc(l);\n'.format(o.name))
+        write('\n')
 
         for t in o.block:
             if t.fieldname in self.noprint_fields:
                 continue
             if t.type == 'Field' and t.is_lengthfield:
                 continue
-            write('    // processing {}: {} {}\n'
-                  .format(o.name, t.fieldtype, t.fieldname))
-
             write('    item = cJSON_GetObjectItem(o, "{}");\n'
                   .format(t.fieldname))
-            write('    if (!item) { free(a); return 0; }\n')
+            write('    if (!item) goto error;\n')
             self._dispatch[t.type](self, t, toplevel=True)
             write('\n')
 
-        write('\n')
         write('    *len = l;\n')
         write('    return a;\n')
+        write('\n  error:\n')
+        write('    free(a);\n')
+        write('    return 0;\n')
         write('}\n')
 
     def print_using(self, o):
