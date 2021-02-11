@@ -197,9 +197,11 @@ clib_memcpy_fast (void *dst, const void *src, size_t n)
   size_t dstofss;
   size_t srcofs;
 
-	/**
-	 * Copy less than 16 bytes
-	 */
+  ASSERT (dst && src && "undefined behaviour");
+
+  /**
+   * Copy less than 16 bytes
+   */
   if (n < 16)
     {
       if (n & 0x01)

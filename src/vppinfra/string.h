@@ -46,6 +46,7 @@
 
 #include <vppinfra/clib.h>	/* for CLIB_LINUX_KERNEL */
 #include <vppinfra/vector.h>
+#include <vppinfra/error_bootstrap.h>
 
 #ifdef CLIB_LINUX_KERNEL
 #include <linux/string.h>
@@ -66,6 +67,14 @@
 /* Exchanges source and destination. */
 void clib_memswap (void *_a, void *_b, uword bytes);
 
+static_always_inline void *
+clib_memcpy_fast_default (void *restrict dst, const void *restrict src,
+			  size_t n)
+{
+  ASSERT (dst && src && "undefined behaviour");
+  return memcpy (dst, src, n);
+}
+
 /*
  * the vector unit memcpy variants confuse coverity
  * so don't let it anywhere near them.
@@ -78,10 +87,10 @@ void clib_memswap (void *_a, void *_b, uword bytes);
 #elif __SSSE3__
 #include <vppinfra/memcpy_sse3.h>
 #else
-#define clib_memcpy_fast(a,b,c) memcpy(a,b,c)
+#define clib_memcpy_fast(a, b, c) clib_memcpy_fast_default (a, b, c)
 #endif
 #else /* __COVERITY__ */
-#define clib_memcpy_fast(a,b,c) memcpy(a,b,c)
+#define clib_memcpy_fast(a, b, c) clib_memcpy_fast_default (a, b, c)
 #endif
 
 /* c-11 string manipulation variants */
