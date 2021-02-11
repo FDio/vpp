@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# TODO: Add a header with copyright and license.
+
 function usage() {
  echo "$0" 1>&2
  echo "" 1>&2

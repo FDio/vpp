@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# TODO: Add a header with copyright and license.
+
 if [ "$(ls -A ${FAILED_DIR})" ]
 then
     if [ "${COMPRESS_FAILED_TEST_LOGS}" == "yes" ]
