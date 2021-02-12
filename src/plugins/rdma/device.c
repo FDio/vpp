@@ -46,10 +46,11 @@ static u8 rdma_rss_hash_key[] = {
 
 rdma_main_t rdma_main;
 
+/* (dev) is of type (rdma_device_t *) */
 #define rdma_log__(lvl, dev, f, ...) \
   do { \
       vlib_log((lvl), rdma_main.log_class, "%s: " f, \
-               &(dev)->name, ##__VA_ARGS__); \
+               (dev)->name, ##__VA_ARGS__); \
   } while (0)
 
 #define rdma_log(lvl, dev, f, ...) \
@@ -888,10 +889,12 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   rd->per_interface_next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   rd->linux_ifname = format (0, "%s", args->ifname);
 
+  /* The null termination can be removed
+     when we are sure nobody uses rd->name as a null-terminated string. */
   if (!args->name || 0 == args->name[0])
-    rd->name = format (0, "%s/%d", args->ifname, rd->dev_instance);
+    rd->name = format (0, "%s/%d%c", args->ifname, rd->dev_instance, 0);
   else
-    rd->name = format (0, "%s", args->name);
+    rd->name = format (0, "%s%c", args->name, 0);
 
   rd->pci = vlib_pci_get_device_info (vm, &pci_addr, &args->error);
   if (!rd->pci)
