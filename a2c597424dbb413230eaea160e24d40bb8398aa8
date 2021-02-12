@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "cddde530_3fc08848",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1423,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-12T15:05:27Z",
+      "side": 1,
+      "message": "it looks like this should be\n  if (sa-\u003eis_initiator)\n    {\n      if (!proposal || proposal !\u003d IKEV2_PROTOCOL_ESP)\n          goto cleanup_and_exit;\n      ...\n    }\n  else if (rekeying)\n    {\n      ...",
+      "revId": "a2c597424dbb413230eaea160e24d40bb8398aa8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "343c9e9e_87d6d50e",
         "filename": "src/plugins/ikev2/ikev2.c",
         "patchSetId": 2
@@ -31,6 +48,24 @@
       "side": 1,
       "message": "this is responder responding to rekey request. Technically it\u0027s possible to initiate rekey from responder too, but we don\u0027t support that currently",
       "parentUuid": "343c9e9e_87d6d50e",
+      "revId": "a2c597424dbb413230eaea160e24d40bb8398aa8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "64b7d2b2_b0a16e49",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1472,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-12T15:05:27Z",
+      "side": 1,
+      "message": "ok then I think the initial test is wrong (see other comment) because if for example we are initiator but proposal is not ESP we can end up there too. Same for rekeying branch above\n\nI propose to add ASSERT(sa-\u003eis_initiator) / ASSERT(!sa-\u003eis_initiator) in the various branches to catch errors and make it clear",
+      "parentUuid": "08acd02f_6b8cab0f",
       "revId": "a2c597424dbb413230eaea160e24d40bb8398aa8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
