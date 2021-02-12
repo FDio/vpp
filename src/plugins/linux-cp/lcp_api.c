@@ -120,9 +120,8 @@ send_lcp_itf_pair_details (index_t lipi, vl_api_registration_t *rp,
       rmp->vif_index = lcp_pair->lip_vif_index;
       rmp->host_if_type = api_encode_host_type (lcp_pair->lip_host_type);
 
-      clib_strncpy ((char *) rmp->host_if_name,
-		    (char *) lcp_pair->lip_host_name,
-		    vec_len (lcp_pair->lip_host_name) - 1);
+      memcpy_s (rmp->host_if_name, sizeof (rmp->host_if_name),
+		lcp_pair->lip_host_name, vec_len (lcp_pair->lip_host_name));
 
       clib_strncpy ((char *) rmp->namespace, (char *) lcp_pair->lip_namespace,
 		    vec_len (lcp_pair->lip_namespace));
