@@ -16,6 +16,24 @@
       "revId": "796daae52af45f592a146e0063c847fe6c2a77a0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b55a44c5_841452d0",
+        "filename": "src/vnet/api_errno.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-02-12T19:11:43Z",
+      "side": 1,
+      "message": "Hi Ole.\nPlease look at patch 1: https://logs.fd.io/production/vex-yul-rot-jenkins-1/vpp-checkstyle-verify-master-ubuntu1804-x86_64/1559/console.log.gz\n\nI originally did, but the clang-indent change won\u0027t allow it past the gate.\n\nDo you want to approve this, or do you want me to roll back to patch 1 and override the -1 and make this the issue for the next submitter?",
+      "parentUuid": "4b4ee43d_2033e750",
+      "revId": "796daae52af45f592a146e0063c847fe6c2a77a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
