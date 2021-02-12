@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "343c9e9e_87d6d50e",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1472,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-12T14:04:05Z",
+      "side": 1,
+      "message": "is this branch only valid if we are responder, or is it valid if we are initiator too?",
+      "revId": "a2c597424dbb413230eaea160e24d40bb8398aa8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
