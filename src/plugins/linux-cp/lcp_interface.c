@@ -88,7 +88,7 @@ format_lcp_itf_pair (u8 *s, va_list *args)
   else
     s = format (s, " %U", format_vnet_sw_interface_name, vnm, swif_host);
 
-  s = format (s, " %s %d type %s", lip->lip_host_name, lip->lip_vif_index,
+  s = format (s, " %v %d type %s", lip->lip_host_name, lip->lip_vif_index,
 	      (lip->lip_host_type == LCP_ITF_HOST_TAP) ? "tap" : "tun");
 
   if (lip->lip_namespace)
