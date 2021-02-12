@@ -48,7 +48,7 @@ rdma_main_t rdma_main;
 
 #define rdma_log__(lvl, dev, f, ...) \
   do { \
-      vlib_log((lvl), rdma_main.log_class, "%s: " f, \
+      vlib_log((lvl), rdma_main.log_class, "%v: " f, \
                &(dev)->name, ##__VA_ARGS__); \
   } while (0)
 
@@ -279,7 +279,7 @@ rdma_async_event_error_ready (clib_file_t * f)
 {
   rdma_main_t *rm = &rdma_main;
   rdma_device_t *rd = vec_elt_at_index (rm->devices, f->private_data);
-  return clib_error_return (0, "RDMA: %s: async event error", rd->name);
+  return clib_error_return (0, "RDMA: %v: async event error", rd->name);
 }
 
 static clib_error_t *
@@ -305,7 +305,7 @@ rdma_async_event_read_ready (clib_file_t * f)
     case IBV_EVENT_DEVICE_FATAL:
       rd->flags &= ~RDMA_DEVICE_F_LINK_UP;
       vnet_hw_interface_set_flags (vnm, rd->hw_if_index, 0);
-      vlib_log_emerg (rm->log_class, "%s: fatal error", rd->name);
+      vlib_log_emerg (rm->log_class, "%v: fatal error", rd->name);
       break;
     default:
       rdma_log__ (VLIB_LOG_LEVEL_ERR, rd, "unhandeld RDMA async event %i",
