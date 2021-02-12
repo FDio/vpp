@@ -889,9 +889,9 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
   rd->linux_ifname = format (0, "%s", args->ifname);
 
   if (!args->name || 0 == args->name[0])
-    rd->name = format (0, "%s/%d", args->ifname, rd->dev_instance);
+    rd->name = format (0, "%s/%d%c", args->ifname, rd->dev_instance, 0);
   else
-    rd->name = format (0, "%s", args->name);
+    rd->name = format (0, "%s%c", args->name, 0);
 
   rd->pci = vlib_pci_get_device_info (vm, &pci_addr, &args->error);
   if (!rd->pci)
