@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "6c6706f1_27414185",
+        "filename": "test/test_ip_api.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-02-12T19:35:07Z",
+      "side": 1,
+      "message": "Because we are trying to use python as a dsl, which it is not.  I want to have the info logged before it is executed.  If we have an entry in the logs, indicating the point we are in the test, it is much faster to troubleshoot.",
+      "parentUuid": "cca15986_325375ea",
+      "revId": "225f0d2b34600ffe10f80ffd3e40de76d107f7fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "8507817c_426aedc7",
         "filename": "test/test_ip_api.py",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2021-02-07T10:36:20Z",
       "side": 1,
       "message": "The debug CLI is unsupported. You can argue if it should be used in tests.",
+      "revId": "225f0d2b34600ffe10f80ffd3e40de76d107f7fd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "85b8608c_9b3448d4",
+        "filename": "test/test_ip_api.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-02-12T19:35:07Z",
+      "side": 1,
+      "message": "I am ok with that stance as a policy for all.  See `test_ip4.py`, `test_ip_mcast.py`, `test_ipsec_ah.py` and `test_punt.py`.  \n\nI am of the opinion that the use of cli in a test is an indication that the author did not implement required functionality.\n\nI lost that battle a long time ago.",
+      "parentUuid": "8507817c_426aedc7",
       "revId": "225f0d2b34600ffe10f80ffd3e40de76d107f7fd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
