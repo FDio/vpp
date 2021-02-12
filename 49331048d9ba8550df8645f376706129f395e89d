@@ -72,6 +72,24 @@
     },
     {
       "key": {
+        "uuid": "1a5921bd_0dfb9d64",
+        "filename": "src/vnet/interface_format.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 753,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-12T14:10:22Z",
+      "side": 1,
+      "message": "ok, then it should be \u0027if (0);\u0027 instead of calling unformat(), eg. see src/vat/api_format.c:unformat_ipsec_policy_action():383",
+      "parentUuid": "217a9ae1_3751a0c8",
+      "revId": "49331048d9ba8550df8645f376706129f395e89d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "1ec8e21f_e9c079da",
         "filename": "src/vnet/ipsec/ipsec_output.c",
         "patchSetId": 7
@@ -171,6 +189,24 @@
       "side": 1,
       "message": "Done",
       "parentUuid": "11f086cf_75dee506",
+      "revId": "49331048d9ba8550df8645f376706129f395e89d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "32337708_8fea5f80",
+        "filename": "src/vnet/pg/cli.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 382,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-12T14:10:22Z",
+      "side": 1,
+      "message": "I do not see the call to vnet_buffer_offload_set_flags() - did I miss something?",
+      "parentUuid": "a2557742_8d916f54",
       "revId": "49331048d9ba8550df8645f376706129f395e89d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
