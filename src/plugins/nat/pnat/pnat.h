@@ -24,7 +24,8 @@
 
 /* Definitions from pnat.api */
 #include <pnat/pnat.api_types.h>
-typedef vl_api_pnat_5tuple_t pnat_5tuple_t;
+typedef vl_api_pnat_match_tuple_t pnat_match_tuple_t;
+typedef vl_api_pnat_rewrite_tuple_t pnat_rewrite_tuple_t;
 typedef vl_api_pnat_mask_t pnat_mask_t;
 typedef vl_api_pnat_attachment_point_t pnat_attachment_point_t;
 
@@ -35,6 +36,8 @@ typedef enum {
     PNAT_INSTR_SOURCE_PORT = 1 << 2,
     PNAT_INSTR_DESTINATION_ADDRESS = 1 << 3,
     PNAT_INSTR_DESTINATION_PORT = 1 << 4,
+    PNAT_INSTR_COPY_BYTE = 1 << 5,
+    PNAT_INSTR_CLEAR_BYTE = 1 << 6,
 } pnat_instructions_t;
 
 typedef struct {
@@ -52,9 +55,15 @@ typedef struct {
     u16 post_sp;
     u16 post_dp;
 
+    /* Byte copy inside of packet */
+    u8 from_offset;
+    u8 to_offset;
+
+    u8 clear_offset; /* Clear byte */
+
     /* Used for trace/show commands */
-    pnat_5tuple_t match;
-    pnat_5tuple_t rewrite;
+    pnat_match_tuple_t match;
+    pnat_rewrite_tuple_t rewrite;
 } pnat_translation_t;
 
 /* Interface object */
@@ -91,11 +100,11 @@ pnat_interface_t *pnat_interface_by_sw_if_index(u32 sw_if_index);
 /* Packet trace information */
 typedef struct {
     u32 pool_index;
-    pnat_5tuple_t match;
-    pnat_5tuple_t rewrite;
+    pnat_match_tuple_t match;
+    pnat_rewrite_tuple_t rewrite;
 } pnat_trace_t;
 
-int pnat_binding_add(pnat_5tuple_t *match, pnat_5tuple_t *rewrite,
+int pnat_binding_add(pnat_match_tuple_t *match, pnat_rewrite_tuple_t *rewrite,
                      u32 *binding_index);
 int pnat_binding_del(u32 binding_index);
 int pnat_binding_attach(u32 sw_if_index, pnat_attachment_point_t attachment,
@@ -103,7 +112,7 @@ int pnat_binding_attach(u32 sw_if_index, pnat_attachment_point_t attachment,
 int pnat_binding_detach(u32 sw_if_index, pnat_attachment_point_t attachment,
                         u32 binding_index);
 u32 pnat_flow_lookup(u32 sw_if_index, pnat_attachment_point_t attachment,
-                     pnat_5tuple_t *match);
+                     pnat_match_tuple_t *match);
 
 static inline void
 pnat_calc_key(u32 sw_if_index, pnat_attachment_point_t attachment,
