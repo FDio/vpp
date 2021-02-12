@@ -93,6 +93,7 @@ else ifeq ($(OS_VERSION_ID),20.10)
         DEB_DEPENDS += clang-format-10
         LIBFFI=libffi8ubuntu1
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-10)
+	DEB_DEPENDS += python3-virtualenv virtualenv
 	DEB_DEPENDS += libssl-dev
 	DEB_DEPENDS += libelf-dev # for libbpf (af_xdp)
 else
