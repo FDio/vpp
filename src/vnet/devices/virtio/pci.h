@@ -74,6 +74,10 @@ typedef enum
 #define VIRTIO_NET_CTRL_GUEST_OFFLOADS 5
 #define VIRTIO_NET_CTRL_GUEST_OFFLOADS_SET 0
 
+/* send the gratuitous packets and acknowledge it to backend. */
+#define VIRTIO_NET_CTRL_ANNOUNCE     3
+#define VIRTIO_NET_CTRL_ANNOUNCE_ACK 0
+
 /* Common configuration */
 #define VIRTIO_PCI_CAP_COMMON_CFG       1
 /* Notifications */

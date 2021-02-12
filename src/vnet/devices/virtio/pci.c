@@ -22,6 +22,9 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/ip-neighbor/ip_neighbor.h>
+#include <vnet/ip-neighbor/ip4_neighbor.h>
+#include <vnet/ip-neighbor/ip6_neighbor.h>
 #include <vnet/devices/virtio/virtio.h>
 #include <vnet/devices/virtio/pci.h>
 #include <vnet/interface/rx_queue_funcs.h>
@@ -46,6 +49,9 @@ static pci_device_id_t virtio_pci_device_ids[] = {
    .device_id = PCI_DEVICE_ID_VIRTIO_NIC_MODERN},
   {0},
 };
+
+// forward declaration
+static int virtio_pci_ctrl_announce_ack (vlib_main_t *vm, virtio_if_t *vif);
 
 static u32
 virtio_pci_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw,
@@ -105,6 +111,15 @@ virtio_pci_is_link_up (vlib_main_t * vm, virtio_if_t * vif)
   return status;
 }
 
+static u16
+virtio_pci_is_announce (vlib_main_t *vm, virtio_if_t *vif)
+{
+  u16 status = 0;
+  if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_ANNOUNCE))
+    status = vif->virtio_pci_func->get_device_status (vm, vif);
+  return status;
+}
+
 static void
 virtio_pci_irq_queue_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 			      u16 line)
@@ -139,6 +154,14 @@ virtio_pci_irq_config_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h,
     {
       vif->flags &= ~VIRTIO_IF_FLAG_ADMIN_UP;
       vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
+    }
+
+  if (virtio_pci_is_announce (vm, vif) & VIRTIO_NET_S_ANNOUNCE)
+    {
+      // send the gratuitous packets (i.e. ARP)
+      ip4_neighbor_advertise (vm, vnet_get_main (), vif->sw_if_index, NULL);
+      ip6_neighbor_advertise (vm, vnet_get_main (), vif->sw_if_index, NULL);
+      virtio_pci_ctrl_announce_ack (vm, vif);
     }
 }
 
@@ -500,6 +523,21 @@ virtio_pci_enable_gso (vlib_main_t * vm, virtio_if_t * vif)
   virtio_log_debug (vif, "enable gso");
   vif->remote_features = vif->virtio_pci_func->get_device_features (vm, vif);
   vif->virtio_pci_func->get_driver_features (vm, vif);
+  return status;
+}
+
+static int
+virtio_pci_ctrl_announce_ack (vlib_main_t *vm, virtio_if_t *vif)
+{
+  virtio_ctrl_msg_t announce_ack_hdr;
+  virtio_net_ctrl_ack_t status = VIRTIO_NET_ERR;
+
+  announce_ack_hdr.ctrl.class = VIRTIO_NET_CTRL_ANNOUNCE;
+  announce_ack_hdr.ctrl.cmd = VIRTIO_NET_CTRL_ANNOUNCE_ACK;
+  announce_ack_hdr.status = VIRTIO_NET_ERR;
+
+  status = virtio_pci_send_ctrl_msg (vm, vif, &announce_ack_hdr,
+				     sizeof (announce_ack_hdr));
   return status;
 }
 
@@ -910,25 +948,26 @@ virtio_negotiate_features (vlib_main_t * vm, virtio_if_t * vif,
    * if features are not requested
    * default: all supported features
    */
-  u64 supported_features = VIRTIO_FEATURE (VIRTIO_NET_F_CSUM)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_CSUM)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_GUEST_OFFLOADS)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_MTU)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_MAC)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_GSO)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO4)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO6)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_UFO)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO4)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO6)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_HOST_UFO)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_STATUS)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ)
-    | VIRTIO_FEATURE (VIRTIO_NET_F_MQ)
-    | VIRTIO_FEATURE (VIRTIO_F_NOTIFY_ON_EMPTY)
-    | VIRTIO_FEATURE (VIRTIO_F_ANY_LAYOUT)
-    | VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC);
+  u64 supported_features = VIRTIO_FEATURE (VIRTIO_NET_F_CSUM) |
+			   VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_CSUM) |
+			   VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_GUEST_OFFLOADS) |
+			   VIRTIO_FEATURE (VIRTIO_NET_F_MTU) |
+			   VIRTIO_FEATURE (VIRTIO_NET_F_MAC) |
+			   VIRTIO_FEATURE (VIRTIO_NET_F_GSO) |
+			   VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO4) |
+			   VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO6) |
+			   VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_UFO) |
+			   VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO4) |
+			   VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO6) |
+			   VIRTIO_FEATURE (VIRTIO_NET_F_HOST_UFO) |
+			   VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF) |
+			   VIRTIO_FEATURE (VIRTIO_NET_F_STATUS) |
+			   VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ) |
+			   VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_ANNOUNCE) |
+			   VIRTIO_FEATURE (VIRTIO_NET_F_MQ) |
+			   VIRTIO_FEATURE (VIRTIO_F_NOTIFY_ON_EMPTY) |
+			   VIRTIO_FEATURE (VIRTIO_F_ANY_LAYOUT) |
+			   VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC);
 
   if (vif->is_modern)
     supported_features |= VIRTIO_FEATURE (VIRTIO_F_VERSION_1);
@@ -1300,6 +1339,8 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
     {
       virtio_log_debug (vif, "control queue is not available");
       vif->cxq_vring = NULL;
+      if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_ANNOUNCE))
+	vif->features &= ~VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_ANNOUNCE);
     }
 
   /*
