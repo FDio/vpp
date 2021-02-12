@@ -393,8 +393,8 @@ class FromJSON():
         cJSON *array = cJSON_GetObjectItem(o, "{n}");
         int size = cJSON_GetArraySize(array);
         {lfield} = size;
-        *{msgvar} = realloc({msgvar}, {msgsize} + sizeof({t}) * size);
-        {t} *d = (void *){msgvar} + {msgsize};
+        {realloc} = realloc({realloc}, {msgsize} + sizeof({t}) * size);
+        {t} *d = (void *){realloc} + {msgsize};
         {msgsize} += sizeof({t}) * size;
         for (i = 0; i < size; i++) {{
             cJSON *e = cJSON_GetArrayItem(array, i);
@@ -409,6 +409,7 @@ class FromJSON():
 
         lfield = 'a->' + o.lengthfield if o.lengthfield else o.length
         msgvar = "(void **)&a" if toplevel else "mp"
+        realloc = "a" if toplevel else "*mp"
         msgsize = "l" if toplevel else "*len"
 
         if o.fieldtype == 'u8':
@@ -418,10 +419,10 @@ class FromJSON():
                 write('    if (!s) return 0;\n')
                 write('    {} = vec_len(s);\n'.format(lfield))
 
-                write('    *{msgvar} = realloc({msgvar}, {msgsize} + '
-                      'vec_len(s));\n'.format(msgvar=msgvar, msgsize=msgsize))
-                write('    memcpy((void *){msgvar} + {msgsize}, s, '
-                      'vec_len(s));\n'.format(msgvar=msgvar, msgsize=msgsize))
+                write('    {realloc} = realloc({realloc}, {msgsize} + '
+                      'vec_len(s));\n'.format(msgvar=msgvar, msgsize=msgsize, realloc=realloc))
+                write('    memcpy((void *){realloc} + {msgsize}, s, '
+                      'vec_len(s));\n'.format(realloc=realloc, msgsize=msgsize))
                 write('    {msgsize} += vec_len(s);\n'.format(msgsize=msgsize))
 
                 write('    vec_free(s);\n')
@@ -443,7 +444,7 @@ class FromJSON():
                                      t=o.fieldtype,
                                      n=o.fieldname,
                                      call=call,
-                                     msgvar=msgvar,
+                                     realloc=realloc,
                                      msgsize=msgsize))
         else:
             if is_bt:
@@ -457,6 +458,7 @@ class FromJSON():
                                  n=o.fieldname,
                                  call=call,
                                  msgvar=msgvar,
+                                 realloc=realloc,
                                  msgsize=msgsize))
 
     _dispatch['Array'] = print_array
@@ -480,20 +482,20 @@ class FromJSON():
     def print_enum_flag(self, o):
         '''Convert to JSON enum(string) to VPP API enum (int)'''
         write = self.stream.write
-        write('static inline void *vl_api_{n}_t_fromjson '
-              '(void *mp, int *len, cJSON *o, vl_api_{n}_t *a) {{\n'
+        write('static inline int vl_api_{n}_t_fromjson '
+              '(void **mp, int *len, cJSON *o, vl_api_{n}_t *a) {{\n'
               .format(n=o.name))
         write('   int i;\n')
         write('   *a = 0;\n')
         write('   for (i = 0; i < cJSON_GetArraySize(o); i++) {\n')
         write('       cJSON *e = cJSON_GetArrayItem(o, i);\n')
         write('       char *p = cJSON_GetStringValue(e);\n')
-        write('       if (!p) return 0;\n')
+        write('       if (!p) return -1;\n')
         for b in o.block:
             write('       if (strcmp(p, "{}") == 0) *a |= {};\n'
                   .format(b[0], b[1]))
         write('    }\n')
-        write('   return mp;\n')
+        write('   return 0;\n')
         write('}\n')
 
     _dispatch['EnumFlag'] = print_enum_flag
@@ -513,7 +515,6 @@ class FromJSON():
             write('\n    item = cJSON_GetObjectItem(o, "{}");\n'
                   .format(t.fieldname))
             write('    if (!item) goto error;\n')
-
             self._dispatch[t.type](self, t)
 
         write('\n    return 0;\n')
@@ -580,7 +581,7 @@ class FromJSON():
             return
 
         t = o.using
-        write('static inline void *vl_api_{name}_t_fromjson (void *mp, '
+        write('static inline int vl_api_{name}_t_fromjson (void **mp, '
               'int *len, cJSON *o, vl_api_{name}_t *a) {{\n'
               .format(name=o.name))
         if 'length' in o.alias:
@@ -593,7 +594,7 @@ class FromJSON():
             write('    vl_api_{t}_fromjson(o, ({t} *)a);\n'
                   .format(t=t.fieldtype))
 
-        write('    return mp;\n')
+        write('    return 0;\n')
         write('}\n')
 
     _dispatch['Typedef'] = print_typedef
