@@ -46,11 +46,14 @@ static u8 rdma_rss_hash_key[] = {
 
 rdma_main_t rdma_main;
 
-#define rdma_log__(lvl, dev, f, ...) \
-  do { \
-      vlib_log((lvl), rdma_main.log_class, "%s: " f, \
-               &(dev)->name, ##__VA_ARGS__); \
-  } while (0)
+/* (dev) is of type (rdma_device_t *) */
+#define rdma_log__(lvl, dev, f, ...)                                          \
+  do                                                                          \
+    {                                                                         \
+      vlib_log ((lvl), rdma_main.log_class, "%s: " f, (dev)->name,            \
+		##__VA_ARGS__);                                               \
+    }                                                                         \
+  while (0)
 
 #define rdma_log(lvl, dev, f, ...) \
    rdma_log__((lvl), (dev), "%s (%d): " f, strerror(errno), errno, ##__VA_ARGS__)
