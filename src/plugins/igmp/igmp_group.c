@@ -19,31 +19,27 @@
 #include <igmp/igmp.h>
 
 void
-igmp_group_free_all_srcs (igmp_group_t * group)
+igmp_group_free_all_srcs (igmp_group_t *group)
 {
   igmp_src_t *src;
 
-  /* *INDENT-OFF* */
   FOR_EACH_SRC (src, group, IGMP_FILTER_MODE_INCLUDE,
-    ({
-      igmp_src_free(src);
-    }));
-  /* *INDENT-ON* */
+		({ igmp_src_free (src); }));
 
   hash_free (group->igmp_src_by_key[IGMP_FILTER_MODE_INCLUDE]);
   hash_free (group->igmp_src_by_key[IGMP_FILTER_MODE_EXCLUDE]);
 }
 
 void
-igmp_group_src_remove (igmp_group_t * group, igmp_src_t * src)
+igmp_group_src_remove (igmp_group_t *group, igmp_src_t *src)
 {
   hash_unset_mem (group->igmp_src_by_key[IGMP_FILTER_MODE_INCLUDE], src->key);
   hash_unset_mem (group->igmp_src_by_key[IGMP_FILTER_MODE_EXCLUDE], src->key);
 }
 
 igmp_src_t *
-igmp_group_src_update (igmp_group_t * group,
-		       const igmp_key_t * skey, igmp_mode_t mode)
+igmp_group_src_update (igmp_group_t *group, const igmp_key_t *skey,
+		       igmp_mode_t mode)
 {
   igmp_src_t *src;
 
@@ -53,8 +49,8 @@ igmp_group_src_update (igmp_group_t * group,
     {
       src = igmp_src_alloc (igmp_group_index (group), skey, mode);
 
-      hash_set_mem (group->igmp_src_by_key[IGMP_FILTER_MODE_INCLUDE],
-		    src->key, igmp_src_index (src));
+      hash_set_mem (group->igmp_src_by_key[IGMP_FILTER_MODE_INCLUDE], src->key,
+		    igmp_src_index (src));
     }
   else
     {
@@ -65,7 +61,7 @@ igmp_group_src_update (igmp_group_t * group,
 }
 
 void
-igmp_group_clear (igmp_group_t ** group)
+igmp_group_clear (igmp_group_t **group)
 {
   igmp_config_t *config;
   u32 ii;
@@ -82,10 +78,9 @@ igmp_group_clear (igmp_group_t ** group)
       igmp_proxy_device_mfib_path_add_del (*group, /* add */ 0);
     }
 
-  IGMP_DBG ("clear-group: %U %U",
-	    format_igmp_key, (*group)->key,
-	    format_vnet_sw_if_index_name,
-	    vnet_get_main (), config->sw_if_index);
+  IGMP_DBG ("clear-group: %U %U", format_igmp_key, (*group)->key,
+	    format_vnet_sw_if_index_name, vnet_get_main (),
+	    config->sw_if_index);
 
   igmp_group_free_all_srcs (*group);
 
@@ -101,8 +96,8 @@ igmp_group_clear (igmp_group_t ** group)
 }
 
 igmp_group_t *
-igmp_group_alloc (igmp_config_t * config,
-		  const igmp_key_t * gkey, igmp_filter_mode_t mode)
+igmp_group_alloc (igmp_config_t *config, const igmp_key_t *gkey,
+		  igmp_filter_mode_t mode)
 {
   igmp_main_t *im = &igmp_main;
   igmp_group_t *group;
@@ -141,9 +136,8 @@ igmp_group_alloc (igmp_config_t * config,
  * the set of present sources minus the new set
  */
 ip46_address_t *
-igmp_group_present_minus_new (igmp_group_t * group,
-			      igmp_filter_mode_t mode,
-			      const ip46_address_t * saddrs)
+igmp_group_present_minus_new (igmp_group_t *group, igmp_filter_mode_t mode,
+			      const ip46_address_t *saddrs)
 {
   const ip46_address_t *s1;
   ip46_address_t *pmn;
@@ -152,33 +146,27 @@ igmp_group_present_minus_new (igmp_group_t * group,
 
   pmn = NULL;
 
-  /* *INDENT-OFF* */
-  if (0 == vec_len(saddrs))
+  if (0 == vec_len (saddrs))
     {
-      FOR_EACH_SRC(src, group, mode,
-        ({
-          vec_add1(pmn, *src->key);
-        }));
+      FOR_EACH_SRC (src, group, mode, ({ vec_add1 (pmn, *src->key); }));
     }
   else
     {
-      FOR_EACH_SRC(src, group, mode,
-        ({
-          found = 0;
-          vec_foreach(s1, saddrs)
-            {
-              if (ip46_address_is_equal(s1, src->key))
-                {
-                  found = 1;
-                  break;
-                }
-            }
+      FOR_EACH_SRC (src, group, mode, ({
+		      found = 0;
+		      vec_foreach (s1, saddrs)
+			{
+			  if (ip46_address_is_equal (s1, src->key))
+			    {
+			      found = 1;
+			      break;
+			    }
+			}
 
-          if (!found)
-            vec_add1(pmn, *src->key);
-        }));
+		      if (!found)
+			vec_add1 (pmn, *src->key);
+		    }));
     }
-  /* *INDENT-ON* */
 
   return (pmn);
 }
@@ -187,9 +175,8 @@ igmp_group_present_minus_new (igmp_group_t * group,
  * the set of new sources minus the present set
  */
 ip46_address_t *
-igmp_group_new_minus_present (igmp_group_t * group,
-			      igmp_filter_mode_t mode,
-			      const ip46_address_t * saddrs)
+igmp_group_new_minus_present (igmp_group_t *group, igmp_filter_mode_t mode,
+			      const ip46_address_t *saddrs)
 {
   const ip46_address_t *s1;
   ip46_address_t *npm;
@@ -198,31 +185,27 @@ igmp_group_new_minus_present (igmp_group_t * group,
 
   npm = NULL;
 
-  /* *INDENT-OFF* */
-  vec_foreach(s1, saddrs)
+  vec_foreach (s1, saddrs)
     {
       found = 0;
-      FOR_EACH_SRC(src, group, mode,
-        ({
-          if (ip46_address_is_equal(s1, src->key))
-            {
-              found = 1;
-              break;
-            }
-        }));
+      FOR_EACH_SRC (src, group, mode, ({
+		      if (ip46_address_is_equal (s1, src->key))
+			{
+			  found = 1;
+			  break;
+			}
+		    }));
 
       if (!found)
-        vec_add1(npm, *s1);
+	vec_add1 (npm, *s1);
     }
-  /* *INDENT-ON* */
 
   return (npm);
 }
 
 ip46_address_t *
-igmp_group_new_intersect_present (igmp_group_t * group,
-				  igmp_filter_mode_t mode,
-				  const ip46_address_t * saddrs)
+igmp_group_new_intersect_present (igmp_group_t *group, igmp_filter_mode_t mode,
+				  const ip46_address_t *saddrs)
 {
   ip46_address_t *intersect;
   const ip46_address_t *s1;
@@ -230,7 +213,6 @@ igmp_group_new_intersect_present (igmp_group_t * group,
 
   intersect = NULL;
 
-  /* *INDENT-OFF* */
   FOR_EACH_SRC(src, group, mode,
     ({
       vec_foreach(s1, saddrs)
@@ -239,23 +221,21 @@ igmp_group_new_intersect_present (igmp_group_t * group,
             {
               vec_add1(intersect, *s1);
               break;
-            }
-        }
-    }));
-  /* *INDENT-ON* */
+}
+}
+}));
 
-  return (intersect);
+return (intersect);
 }
 
 u32
-igmp_group_n_srcs (const igmp_group_t * group, igmp_filter_mode_t mode)
+igmp_group_n_srcs (const igmp_group_t *group, igmp_filter_mode_t mode)
 {
   return (hash_elts (group->igmp_src_by_key[mode]));
 }
 
-
 igmp_src_t *
-igmp_src_lookup (igmp_group_t * group, const igmp_key_t * key)
+igmp_src_lookup (igmp_group_t *group, const igmp_key_t *key)
 {
   uword *p;
   igmp_src_t *src = NULL;
@@ -270,7 +250,7 @@ igmp_src_lookup (igmp_group_t * group, const igmp_key_t * key)
 }
 
 u32
-igmp_group_index (const igmp_group_t * g)
+igmp_group_index (const igmp_group_t *g)
 {
   return (g - igmp_main.groups);
 }
@@ -282,13 +262,15 @@ igmp_group_get (u32 index)
 }
 
 u8 *
-format_igmp_group_timer_type (u8 * s, va_list * args)
+format_igmp_group_timer_type (u8 *s, va_list *args)
 {
   igmp_group_timer_type_t type = va_arg (*args, igmp_group_timer_type_t);
 
   switch (type)
     {
-#define _(v,t) case IGMP_GROUP_TIMER_##v: return (format (s, "%s", t));
+#define _(v, t)                                                               \
+  case IGMP_GROUP_TIMER_##v:                                                  \
+    return (format (s, "%s", t));
       foreach_igmp_group_timer
 #undef _
     }
@@ -296,27 +278,24 @@ format_igmp_group_timer_type (u8 * s, va_list * args)
 }
 
 u8 *
-format_igmp_group (u8 * s, va_list * args)
+format_igmp_group (u8 *s, va_list *args)
 {
   igmp_group_t *group = va_arg (*args, igmp_group_t *);
   u32 indent = va_arg (*args, u32);
   igmp_src_t *src;
   u32 ii;
 
-  s = format (s, "%U%U",
-	      format_white_space, indent, format_igmp_key, group->key);
+  s = format (s, "%U%U", format_white_space, indent, format_igmp_key,
+	      group->key);
 
   for (ii = 0; ii < IGMP_GROUP_N_TIMERS; ii++)
     s = format (s, "\n%U  %U:%U", format_white_space, indent,
-		format_igmp_group_timer_type, ii,
-		format_igmp_timer_id, group->timers[ii]);
+		format_igmp_group_timer_type, ii, format_igmp_timer_id,
+		group->timers[ii]);
 
-  /* *INDENT-OFF* */
-  FOR_EACH_SRC (src, group, IGMP_FILTER_MODE_INCLUDE,
-  ({
-    s = format (s, "\n%U", format_igmp_src, src, indent+4);
-  }));
-  /* *INDENT-ON* */
+  FOR_EACH_SRC (src, group, IGMP_FILTER_MODE_INCLUDE, ({
+		  s = format (s, "\n%U", format_igmp_src, src, indent + 4);
+		}));
 
   return (s);
 }

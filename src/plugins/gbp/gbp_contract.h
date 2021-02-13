@@ -19,21 +19,21 @@
 #include <plugins/gbp/gbp.h>
 #include <plugins/gbp/gbp_types.h>
 
-#define foreach_gbp_contract_error                         \
-  _(ALLOW_NO_SCLASS,    "allow-no-sclass")                 \
-  _(ALLOW_INTRA,        "allow-intra-sclass")              \
-  _(ALLOW_A_BIT,        "allow-a-bit-set")                 \
-  _(ALLOW_SCLASS_1,     "allow-sclass-1")                  \
-  _(ALLOW_CONTRACT,     "allow-contract")                  \
-  _(DROP_CONTRACT,      "drop-contract")                   \
-  _(DROP_ETHER_TYPE,    "drop-ether-type")                 \
-  _(DROP_NO_CONTRACT,   "drop-no-contract")                \
-  _(DROP_NO_DCLASS,     "drop-no-dclass")                  \
-  _(DROP_NO_RULE,       "drop-no-rule")
+#define foreach_gbp_contract_error                                            \
+  _ (ALLOW_NO_SCLASS, "allow-no-sclass")                                      \
+  _ (ALLOW_INTRA, "allow-intra-sclass")                                       \
+  _ (ALLOW_A_BIT, "allow-a-bit-set")                                          \
+  _ (ALLOW_SCLASS_1, "allow-sclass-1")                                        \
+  _ (ALLOW_CONTRACT, "allow-contract")                                        \
+  _ (DROP_CONTRACT, "drop-contract")                                          \
+  _ (DROP_ETHER_TYPE, "drop-ether-type")                                      \
+  _ (DROP_NO_CONTRACT, "drop-no-contract")                                    \
+  _ (DROP_NO_DCLASS, "drop-no-dclass")                                        \
+  _ (DROP_NO_RULE, "drop-no-rule")
 
 typedef enum
 {
-#define _(sym,str) GBP_CONTRACT_ERROR_##sym,
+#define _(sym, str) GBP_CONTRACT_ERROR_##sym,
   foreach_gbp_contract_error
 #undef _
     GBP_CONTRACT_N_ERROR,
@@ -75,44 +75,44 @@ typedef struct gbp_next_hop_t_
   index_t gnh_ai[FIB_PROTOCOL_IP_MAX];
 } gbp_next_hop_t;
 
-#define foreach_gbp_hash_mode	\
-  _(SRC_IP, "src-ip")		\
-  _(DST_IP, "dst-ip")		\
-  _(SYMMETRIC, "symmetric")
+#define foreach_gbp_hash_mode                                                 \
+  _ (SRC_IP, "src-ip")                                                        \
+  _ (DST_IP, "dst-ip")                                                        \
+  _ (SYMMETRIC, "symmetric")
 
 typedef enum gbp_hash_mode_t_
 {
-#define _(v,s) GBP_HASH_MODE_##v,
+#define _(v, s) GBP_HASH_MODE_##v,
   foreach_gbp_hash_mode
 #undef _
 } gbp_hash_mode_t;
 
-#define foreach_gbp_rule_action   \
-  _(PERMIT,   "permit")           \
-  _(DENY,     "deny")             \
-  _(REDIRECT, "redirect")
+#define foreach_gbp_rule_action                                               \
+  _ (PERMIT, "permit")                                                        \
+  _ (DENY, "deny")                                                            \
+  _ (REDIRECT, "redirect")
 
 typedef enum gbp_rule_action_t_
 {
-#define _(v,s) GBP_RULE_##v,
+#define _(v, s) GBP_RULE_##v,
   foreach_gbp_rule_action
 #undef _
 } gbp_rule_action_t;
 
-#define foreach_gbp_policy_node   \
-  _(L2, "L2")                     \
-  _(IP4, "ip4")                   \
-  _(IP6, "ip6")
+#define foreach_gbp_policy_node                                               \
+  _ (L2, "L2")                                                                \
+  _ (IP4, "ip4")                                                              \
+  _ (IP6, "ip6")
 
 typedef enum gbp_policy_node_t_
 {
-#define _(v,s) GBP_POLICY_NODE_##v,
+#define _(v, s) GBP_POLICY_NODE_##v,
   foreach_gbp_policy_node
 #undef _
 } gbp_policy_node_t;
-#define GBP_POLICY_N_NODES (GBP_POLICY_NODE_IP6+1)
+#define GBP_POLICY_N_NODES (GBP_POLICY_NODE_IP6 + 1)
 
-#define FOR_EACH_GBP_POLICY_NODE(pnode)         \
+#define FOR_EACH_GBP_POLICY_NODE(pnode)                                       \
   for (pnode = GBP_POLICY_NODE_L2; pnode < GBP_POLICY_N_NODES; pnode++)
 
 typedef struct gbp_rule_t_
@@ -163,27 +163,23 @@ typedef struct gbp_contract_db_t_
   uword *gc_hash;
 } gbp_contract_db_t;
 
-extern int gbp_contract_update (gbp_scope_t scope,
-				sclass_t sclass,
-				sclass_t dclass,
-				u32 acl_index,
-				index_t * rules,
-				u16 * allowed_ethertypes, u32 * stats_index);
+extern int gbp_contract_update (gbp_scope_t scope, sclass_t sclass,
+				sclass_t dclass, u32 acl_index, index_t *rules,
+				u16 *allowed_ethertypes, u32 *stats_index);
 extern int gbp_contract_delete (gbp_scope_t scope, sclass_t sclass,
 				sclass_t dclass);
 
 extern index_t gbp_rule_alloc (gbp_rule_action_t action,
-			       gbp_hash_mode_t hash_mode, index_t * nhs);
+			       gbp_hash_mode_t hash_mode, index_t *nhs);
 extern void gbp_rule_free (index_t gui);
-extern index_t gbp_next_hop_alloc (const ip46_address_t * ip,
-				   index_t grd,
-				   const mac_address_t * mac, index_t gbd);
+extern index_t gbp_next_hop_alloc (const ip46_address_t *ip, index_t grd,
+				   const mac_address_t *mac, index_t gbd);
 
-typedef int (*gbp_contract_cb_t) (gbp_contract_t * gbpe, void *ctx);
+typedef int (*gbp_contract_cb_t) (gbp_contract_t *gbpe, void *ctx);
 extern void gbp_contract_walk (gbp_contract_cb_t bgpe, void *ctx);
 
-extern u8 *format_gbp_rule_action (u8 * s, va_list * args);
-extern u8 *format_gbp_contract (u8 * s, va_list * args);
+extern u8 *format_gbp_rule_action (u8 *s, va_list *args);
+extern u8 *format_gbp_contract (u8 *s, va_list *args);
 
 /**
  * DP functions and databases
@@ -191,7 +187,7 @@ extern u8 *format_gbp_contract (u8 * s, va_list * args);
 extern gbp_contract_db_t gbp_contract_db;
 
 always_inline index_t
-gbp_contract_find (gbp_contract_key_t * key)
+gbp_contract_find (gbp_contract_key_t *key)
 {
   uword *p;
 
@@ -230,12 +226,10 @@ typedef enum
 } gbp_contract_apply_type_t;
 
 static_always_inline gbp_rule_action_t
-gbp_contract_apply (vlib_main_t * vm, gbp_main_t * gm,
-		    gbp_contract_key_t * key, vlib_buffer_t * b,
-		    gbp_rule_t ** rule, u32 * intra, u32 * sclass1,
-		    u32 * acl_match, u32 * rule_match,
-		    gbp_contract_error_t * err,
-		    gbp_contract_apply_type_t type)
+gbp_contract_apply (vlib_main_t *vm, gbp_main_t *gm, gbp_contract_key_t *key,
+		    vlib_buffer_t *b, gbp_rule_t **rule, u32 *intra,
+		    u32 *sclass1, u32 *acl_match, u32 *rule_match,
+		    gbp_contract_error_t *err, gbp_contract_apply_type_t type)
 {
   fa_5tuple_opaque_t fa_5tuple;
   const gbp_contract_t *contract;
@@ -286,9 +280,8 @@ gbp_contract_apply (vlib_main_t * vm, gbp_main_t * gm,
     case GBP_CONTRACT_APPLY_L2:
       {
 	/* check ethertype */
-	etype =
-	  ((u16 *) (vlib_buffer_get_current (b) +
-		    vnet_buffer (b)->l2.l2_len))[-1];
+	etype = ((u16 *) (vlib_buffer_get_current (b) +
+			  vnet_buffer (b)->l2.l2_len))[-1];
 
 	if (~0 == vec_search (contract->gc_allowed_ethertypes, etype))
 	  {
@@ -313,15 +306,13 @@ gbp_contract_apply (vlib_main_t * vm, gbp_main_t * gm,
 
   /* check ACL */
   action = 0;
-  acl_plugin_fill_5tuple_inline (gm->acl_plugin.p_acl_main,
-				 contract->gc_lc_index, b, ip6,
-				 GBP_CONTRACT_APPLY_L2 != type /* input */ ,
-				 GBP_CONTRACT_APPLY_L2 == type /* l2_path */ ,
-				 &fa_5tuple);
-  acl_plugin_match_5tuple_inline (gm->acl_plugin.p_acl_main,
-				  contract->gc_lc_index, &fa_5tuple, ip6,
-				  &action, &acl_pos, acl_match, rule_match,
-				  &trace_bitmap);
+  acl_plugin_fill_5tuple_inline (
+    gm->acl_plugin.p_acl_main, contract->gc_lc_index, b, ip6,
+    GBP_CONTRACT_APPLY_L2 != type /* input */,
+    GBP_CONTRACT_APPLY_L2 == type /* l2_path */, &fa_5tuple);
+  acl_plugin_match_5tuple_inline (
+    gm->acl_plugin.p_acl_main, contract->gc_lc_index, &fa_5tuple, ip6, &action,
+    &acl_pos, acl_match, rule_match, &trace_bitmap);
   if (action <= 0)
     goto contract_deny;
 

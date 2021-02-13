@@ -17,7 +17,6 @@
 
 #include <vnet/fib/fib_table.h>
 
-/* *INDENT-OFF* */
 static const char *urpf_feat_arcs[N_AF][VLIB_N_DIR] =
 {
   [AF_IP4] = {
@@ -53,7 +52,6 @@ static const char *urpf_feats[N_AF][VLIB_N_DIR][URPF_N_MODES] =
     },
   },
 };
-/* *INDENT-ON* */
 
 /**
  * Per-af, per-direction, per-interface uRPF configs
@@ -61,15 +59,15 @@ static const char *urpf_feats[N_AF][VLIB_N_DIR][URPF_N_MODES] =
 static urpf_mode_t *urpf_cfgs[N_AF][VLIB_N_DIR];
 
 u8 *
-format_urpf_mode (u8 * s, va_list * a)
+format_urpf_mode (u8 *s, va_list *a)
 {
   urpf_mode_t mode = va_arg (*a, int);
 
   switch (mode)
     {
-#define _(a,b)                                  \
-    case URPF_MODE_##a:                         \
-      return (format (s, "%s", b));
+#define _(a, b)                                                               \
+  case URPF_MODE_##a:                                                         \
+    return (format (s, "%s", b));
       foreach_urpf_mode
 #undef _
     }
@@ -78,26 +76,26 @@ format_urpf_mode (u8 * s, va_list * a)
 }
 
 static uword
-unformat_urpf_mode (unformat_input_t * input, va_list * args)
+unformat_urpf_mode (unformat_input_t *input, va_list *args)
 {
   urpf_mode_t *mode = va_arg (*args, urpf_mode_t *);
 
   if (0)
     ;
-#define _(a,b)                                                  \
-  else if (unformat (input, b))                                 \
-    {                                                           \
-    *mode = URPF_MODE_##a;                                      \
-    return (1);                                                 \
-    }
+#define _(a, b)                                                               \
+  else if (unformat (input, b))                                               \
+  {                                                                           \
+    *mode = URPF_MODE_##a;                                                    \
+    return (1);                                                               \
+  }
   foreach_urpf_mode
 #undef _
     return 0;
 }
 
 void
-urpf_update (urpf_mode_t mode,
-	     u32 sw_if_index, ip_address_family_t af, vlib_dir_t dir)
+urpf_update (urpf_mode_t mode, u32 sw_if_index, ip_address_family_t af,
+	     vlib_dir_t dir)
 {
   urpf_mode_t old;
 
@@ -109,14 +107,14 @@ urpf_update (urpf_mode_t mode,
       if (URPF_MODE_OFF != old)
 	/* disable what we have */
 	vnet_feature_enable_disable (urpf_feat_arcs[af][dir],
-				     urpf_feats[af][dir][old],
-				     sw_if_index, 0, 0, 0);
+				     urpf_feats[af][dir][old], sw_if_index, 0,
+				     0, 0);
 
       if (URPF_MODE_OFF != mode)
 	/* enable what's new */
 	vnet_feature_enable_disable (urpf_feat_arcs[af][dir],
-				     urpf_feats[af][dir][mode],
-				     sw_if_index, 1, 0, 0);
+				     urpf_feats[af][dir][mode], sw_if_index, 1,
+				     0, 0);
     }
   /* else - no change to existing config */
 
@@ -124,8 +122,8 @@ urpf_update (urpf_mode_t mode,
 }
 
 static clib_error_t *
-urpf_cli_update (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+urpf_cli_update (vlib_main_t *vm, unformat_input_t *input,
+		 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
@@ -145,8 +143,8 @@ urpf_cli_update (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%U",
-		    unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (line_input, "%U", unformat_urpf_mode, &mode))
 	;
@@ -197,7 +195,7 @@ done:
  * Example of graph node after range checking is enabled:
  * @cliexstart{show vlib graph ip4-rx-urpf-loose}
  *            Name                      Next                    Previous
- * ip4-rx-urpf-loose                ip4-drop [0]           ip4-input-no-checksum
+ * ip4-rx-urpf-loose                ip4-drop [0] ip4-input-no-checksum
  *                           ip4-source-and-port-range-         ip4-input
  * @cliexend
  *
@@ -229,17 +227,16 @@ done:
  * @cliexcmd{set urpf ip4 off GigabitEthernet2/0/0}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (set_interface_ip_source_check_command, static) = {
   .path = "set urpf",
   .function = urpf_cli_update,
   .short_help = "set urpf [ip4|ip6] [rx|tx] [off|strict|loose] <INTERFACE>",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-urpf_cli_accept (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+urpf_cli_accept (vlib_main_t *vm, unformat_input_t *input,
+		 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = NULL;
@@ -282,9 +279,8 @@ urpf_cli_accept (vlib_main_t * vm,
     }
 
   if (is_add)
-    fib_table_entry_special_add (fib_index,
-				 &fpfx,
-				 FIB_SOURCE_URPF_EXEMPT, FIB_ENTRY_FLAG_DROP);
+    fib_table_entry_special_add (fib_index, &fpfx, FIB_SOURCE_URPF_EXEMPT,
+				 FIB_ENTRY_FLAG_DROP);
   else
     fib_table_entry_special_remove (fib_index, &fpfx, FIB_SOURCE_URPF_EXEMPT);
 
@@ -306,13 +302,12 @@ done:
  * loose RPF tests:
  * @cliexcmd{set urpf-accept table 7 10.0.0.0/8 add}
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (urpf_accept_command, static) = {
   .path = "set urpf-accept",
   .function = urpf_cli_accept,
   .short_help = "urpf-accept [table <table-id>] [add|del] <PREFIX>",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

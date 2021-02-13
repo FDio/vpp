@@ -43,14 +43,15 @@ geneve_test_main_t geneve_test_main;
 
 /* Macro to finish up custom dump fns */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define FINISH                                  \
-    vec_add1 (s, 0);                            \
-    vl_print (handle, (char *)s);               \
-    vec_free (s);                               \
-    return handle;
+#define FINISH                                                                \
+  vec_add1 (s, 0);                                                            \
+  vl_print (handle, (char *) s);                                              \
+  vec_free (s);                                                               \
+  return handle;
 
-static void vl_api_geneve_add_del_tunnel_reply_t_handler
-  (vl_api_geneve_add_del_tunnel_reply_t * mp)
+static void
+vl_api_geneve_add_del_tunnel_reply_t_handler (
+  vl_api_geneve_add_del_tunnel_reply_t *mp)
 {
   vat_main_t *vam = &vat_main;
   i32 retval = ntohl (mp->retval);
@@ -66,8 +67,9 @@ static void vl_api_geneve_add_del_tunnel_reply_t_handler
     }
 }
 
-static void vl_api_geneve_add_del_tunnel2_reply_t_handler
-  (vl_api_geneve_add_del_tunnel2_reply_t * mp)
+static void
+vl_api_geneve_add_del_tunnel2_reply_t_handler (
+  vl_api_geneve_add_del_tunnel2_reply_t *mp)
 {
   vat_main_t *vam = &vat_main;
   i32 retval = ntohl (mp->retval);
@@ -84,7 +86,7 @@ static void vl_api_geneve_add_del_tunnel2_reply_t_handler
 }
 
 static int
-api_sw_interface_set_geneve_bypass (vat_main_t * vam)
+api_sw_interface_set_geneve_bypass (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_geneve_bypass_t *mp;
@@ -134,8 +136,8 @@ api_sw_interface_set_geneve_bypass (vat_main_t * vam)
   return ret;
 }
 
-static uword unformat_geneve_decap_next
-  (unformat_input_t * input, va_list * args)
+static uword
+unformat_geneve_decap_next (unformat_input_t *input, va_list *args)
 {
   u32 *result = va_arg (*args, u32 *);
   u32 tmp;
@@ -150,7 +152,7 @@ static uword unformat_geneve_decap_next
 }
 
 static int
-api_geneve_add_del_tunnel (vat_main_t * vam)
+api_geneve_add_del_tunnel (vat_main_t *vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_geneve_add_del_tunnel_t *mp;
@@ -174,58 +176,54 @@ api_geneve_add_del_tunnel (vat_main_t * vam)
     {
       if (unformat (line_input, "del"))
 	is_add = 0;
-      else
-	if (unformat (line_input, "src %U", unformat_ip4_address, &src.ip4))
+      else if (unformat (line_input, "src %U", unformat_ip4_address, &src.ip4))
 	{
 	  ipv4_set = 1;
 	  src_set = 1;
 	}
-      else
-	if (unformat (line_input, "dst %U", unformat_ip4_address, &dst.ip4))
+      else if (unformat (line_input, "dst %U", unformat_ip4_address, &dst.ip4))
 	{
 	  ipv4_set = 1;
 	  dst_set = 1;
 	}
-      else
-	if (unformat (line_input, "src %U", unformat_ip6_address, &src.ip6))
+      else if (unformat (line_input, "src %U", unformat_ip6_address, &src.ip6))
 	{
 	  ipv6_set = 1;
 	  src_set = 1;
 	}
-      else
-	if (unformat (line_input, "dst %U", unformat_ip6_address, &dst.ip6))
+      else if (unformat (line_input, "dst %U", unformat_ip6_address, &dst.ip6))
 	{
 	  ipv6_set = 1;
 	  dst_set = 1;
 	}
-      else if (unformat (line_input, "group %U %U",
-			 unformat_ip4_address, &dst.ip4,
-			 unformat_sw_if_index, vam, &mcast_sw_if_index))
+      else if (unformat (line_input, "group %U %U", unformat_ip4_address,
+			 &dst.ip4, unformat_sw_if_index, vam,
+			 &mcast_sw_if_index))
 	{
 	  grp_set = dst_set = 1;
 	  ipv4_set = 1;
 	}
-      else if (unformat (line_input, "group %U",
-			 unformat_ip4_address, &dst.ip4))
+      else if (unformat (line_input, "group %U", unformat_ip4_address,
+			 &dst.ip4))
 	{
 	  grp_set = dst_set = 1;
 	  ipv4_set = 1;
 	}
-      else if (unformat (line_input, "group %U %U",
-			 unformat_ip6_address, &dst.ip6,
-			 unformat_sw_if_index, vam, &mcast_sw_if_index))
+      else if (unformat (line_input, "group %U %U", unformat_ip6_address,
+			 &dst.ip6, unformat_sw_if_index, vam,
+			 &mcast_sw_if_index))
 	{
 	  grp_set = dst_set = 1;
 	  ipv6_set = 1;
 	}
-      else if (unformat (line_input, "group %U",
-			 unformat_ip6_address, &dst.ip6))
+      else if (unformat (line_input, "group %U", unformat_ip6_address,
+			 &dst.ip6))
 	{
 	  grp_set = dst_set = 1;
 	  ipv6_set = 1;
 	}
-      else
-	if (unformat (line_input, "mcast_sw_if_index %u", &mcast_sw_if_index))
+      else if (unformat (line_input, "mcast_sw_if_index %u",
+			 &mcast_sw_if_index))
 	;
       else if (unformat (line_input, "encap-vrf-id %d", &encap_vrf_id))
 	;
@@ -268,7 +266,6 @@ api_geneve_add_del_tunnel (vat_main_t * vam)
       return -99;
     }
 
-
   if (ipv4_set && ipv6_set)
     {
       errmsg ("both IPv4 and IPv6 addresses specified");
@@ -305,17 +302,17 @@ api_geneve_add_del_tunnel (vat_main_t * vam)
 }
 
 static int
-api_geneve_add_del_tunnel2 (vat_main_t * vam)
+api_geneve_add_del_tunnel2 (vat_main_t *vam)
 {
   return api_geneve_add_del_tunnel (vam);
 }
 
-static void vl_api_geneve_tunnel_details_t_handler
-  (vl_api_geneve_tunnel_details_t * mp)
+static void
+vl_api_geneve_tunnel_details_t_handler (vl_api_geneve_tunnel_details_t *mp)
 {
   vat_main_t *vam = &vat_main;
-  ip46_address_t src = {.as_u64[0] = 0,.as_u64[1] = 0 };
-  ip46_address_t dst = {.as_u64[0] = 0,.as_u64[1] = 0 };
+  ip46_address_t src = { .as_u64[0] = 0, .as_u64[1] = 0 };
+  ip46_address_t dst = { .as_u64[0] = 0, .as_u64[1] = 0 };
 
   if (mp->src_address.af == ADDRESS_IP6)
     {
@@ -328,17 +325,14 @@ static void vl_api_geneve_tunnel_details_t_handler
       clib_memcpy (&dst.ip4, &mp->dst_address.un.ip4, sizeof (ip4_address_t));
     }
 
-  print (vam->ofp, "%11d%24U%24U%14d%18d%13d%19d",
-	 ntohl (mp->sw_if_index),
-	 format_ip46_address, &src, IP46_TYPE_ANY,
-	 format_ip46_address, &dst, IP46_TYPE_ANY,
-	 ntohl (mp->encap_vrf_id),
-	 ntohl (mp->decap_next_index), ntohl (mp->vni),
-	 ntohl (mp->mcast_sw_if_index));
+  print (vam->ofp, "%11d%24U%24U%14d%18d%13d%19d", ntohl (mp->sw_if_index),
+	 format_ip46_address, &src, IP46_TYPE_ANY, format_ip46_address, &dst,
+	 IP46_TYPE_ANY, ntohl (mp->encap_vrf_id), ntohl (mp->decap_next_index),
+	 ntohl (mp->vni), ntohl (mp->mcast_sw_if_index));
 }
 
 static int
-api_geneve_tunnel_dump (vat_main_t * vam)
+api_geneve_tunnel_dump (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_geneve_tunnel_dump_t *mp;
@@ -363,9 +357,9 @@ api_geneve_tunnel_dump (vat_main_t * vam)
 
   if (!vam->json_output)
     {
-      print (vam->ofp, "%11s%24s%24s%14s%18s%13s%19s",
-	     "sw_if_index", "local_address", "remote_address",
-	     "encap_vrf_id", "decap_next_index", "vni", "mcast_sw_if_index");
+      print (vam->ofp, "%11s%24s%24s%14s%18s%13s%19s", "sw_if_index",
+	     "local_address", "remote_address", "encap_vrf_id",
+	     "decap_next_index", "vni", "mcast_sw_if_index");
     }
 
   /* Get list of geneve-tunnel interfaces */
@@ -399,7 +393,6 @@ api_geneve_tunnel_dump (vat_main_t * vam)
 /*   "{ <intfc> | mcast_sw_if_index <nn> } }\n"                             */
 /*   "vni <vni> [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]")            */
 /* _(geneve_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                    */
-
 
 #include <geneve/geneve.api_test.c>
 

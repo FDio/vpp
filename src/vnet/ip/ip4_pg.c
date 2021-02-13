@@ -41,12 +41,10 @@
 #include <vnet/pg/pg.h>
 
 #define IP4_PG_EDIT_CHECKSUM (1 << 0)
-#define IP4_PG_EDIT_LENGTH (1 << 1)
+#define IP4_PG_EDIT_LENGTH   (1 << 1)
 
 static_always_inline void
-compute_length_and_or_checksum (vlib_main_t * vm,
-				u32 * packets,
-				u32 n_packets,
+compute_length_and_or_checksum (vlib_main_t *vm, u32 *packets, u32 n_packets,
 				u32 ip_header_offset, u32 flags)
 {
   ASSERT (flags != 0);
@@ -70,12 +68,10 @@ compute_length_and_or_checksum (vlib_main_t * vm,
 
       if (flags & IP4_PG_EDIT_LENGTH)
 	{
-	  ip0->length =
-	    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, p0) -
-				  ip_header_offset);
-	  ip1->length =
-	    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, p1) -
-				  ip_header_offset);
+	  ip0->length = clib_host_to_net_u16 (
+	    vlib_buffer_length_in_chain (vm, p0) - ip_header_offset);
+	  ip1->length = clib_host_to_net_u16 (
+	    vlib_buffer_length_in_chain (vm, p1) - ip_header_offset);
 	}
 
       if (flags & IP4_PG_EDIT_CHECKSUM)
@@ -110,9 +106,8 @@ compute_length_and_or_checksum (vlib_main_t * vm,
       ip0 = (void *) (p0->data + ip_header_offset);
 
       if (flags & IP4_PG_EDIT_LENGTH)
-	ip0->length =
-	  clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, p0) -
-				ip_header_offset);
+	ip0->length = clib_host_to_net_u16 (
+	  vlib_buffer_length_in_chain (vm, p0) - ip_header_offset);
 
       if (flags & IP4_PG_EDIT_CHECKSUM)
 	{
@@ -129,9 +124,8 @@ compute_length_and_or_checksum (vlib_main_t * vm,
 }
 
 static void
-ip4_pg_edit_function (pg_main_t * pg,
-		      pg_stream_t * s,
-		      pg_edit_group_t * g, u32 * packets, u32 n_packets)
+ip4_pg_edit_function (pg_main_t *pg, pg_stream_t *s, pg_edit_group_t *g,
+		      u32 *packets, u32 n_packets)
 {
   vlib_main_t *vm = vlib_get_main ();
   u32 ip_offset;
@@ -152,8 +146,8 @@ ip4_pg_edit_function (pg_main_t * pg,
 
     case IP4_PG_EDIT_LENGTH | IP4_PG_EDIT_CHECKSUM:
       compute_length_and_or_checksum (vm, packets, n_packets, ip_offset,
-				      IP4_PG_EDIT_LENGTH
-				      | IP4_PG_EDIT_CHECKSUM);
+				      IP4_PG_EDIT_LENGTH |
+					IP4_PG_EDIT_CHECKSUM);
       break;
 
     default:
@@ -183,18 +177,18 @@ typedef struct
 } pg_ip4_header_t;
 
 static inline void
-pg_ip4_header_init (pg_ip4_header_t * p)
+pg_ip4_header_init (pg_ip4_header_t *p)
 {
   /* Initialize fields that are not bit fields in the IP header. */
 #define _(f) pg_edit_init (&p->f, ip4_header_t, f);
-  _(tos);
-  _(length);
-  _(fragment_id);
-  _(ttl);
-  _(protocol);
-  _(checksum);
-  _(src_address);
-  _(dst_address);
+  _ (tos);
+  _ (length);
+  _ (fragment_id);
+  _ (ttl);
+  _ (protocol);
+  _ (checksum);
+  _ (src_address);
+  _ (dst_address);
 #undef _
 
   /* Initialize bit fields. */
@@ -205,16 +199,16 @@ pg_ip4_header_init (pg_ip4_header_t * p)
 
   pg_edit_init_bitfield (&p->fragment_offset, ip4_header_t,
 			 flags_and_fragment_offset, 0, 13);
-  pg_edit_init_bitfield (&p->mf_flag, ip4_header_t,
-			 flags_and_fragment_offset, 13, 1);
-  pg_edit_init_bitfield (&p->df_flag, ip4_header_t,
-			 flags_and_fragment_offset, 14, 1);
-  pg_edit_init_bitfield (&p->ce_flag, ip4_header_t,
-			 flags_and_fragment_offset, 15, 1);
+  pg_edit_init_bitfield (&p->mf_flag, ip4_header_t, flags_and_fragment_offset,
+			 13, 1);
+  pg_edit_init_bitfield (&p->df_flag, ip4_header_t, flags_and_fragment_offset,
+			 14, 1);
+  pg_edit_init_bitfield (&p->ce_flag, ip4_header_t, flags_and_fragment_offset,
+			 15, 1);
 }
 
 uword
-unformat_pg_ip4_header (unformat_input_t * input, va_list * args)
+unformat_pg_ip4_header (unformat_input_t *input, va_list *args)
 {
   pg_stream_t *s = va_arg (*args, pg_stream_t *);
   pg_ip4_header_t *p;
@@ -240,59 +234,52 @@ unformat_pg_ip4_header (unformat_input_t * input, va_list * args)
   p->length.type = PG_EDIT_UNSPECIFIED;
   p->checksum.type = PG_EDIT_UNSPECIFIED;
 
-  if (unformat (input, "%U: %U -> %U",
-		unformat_pg_edit,
-		unformat_ip_protocol, &p->protocol,
-		unformat_pg_edit,
-		unformat_ip4_address, &p->src_address,
-		unformat_pg_edit, unformat_ip4_address, &p->dst_address))
+  if (unformat (input, "%U: %U -> %U", unformat_pg_edit, unformat_ip_protocol,
+		&p->protocol, unformat_pg_edit, unformat_ip4_address,
+		&p->src_address, unformat_pg_edit, unformat_ip4_address,
+		&p->dst_address))
     goto found;
 
-  if (!unformat (input, "%U:",
-		 unformat_pg_edit, unformat_ip_protocol, &p->protocol))
+  if (!unformat (input, "%U:", unformat_pg_edit, unformat_ip_protocol,
+		 &p->protocol))
     goto error;
 
 found:
   /* Parse options. */
   while (1)
     {
-      if (unformat (input, "version %U",
-		    unformat_pg_edit, unformat_pg_number, &p->ip_version))
+      if (unformat (input, "version %U", unformat_pg_edit, unformat_pg_number,
+		    &p->ip_version))
 	;
 
-      else if (unformat (input, "header-length %U",
-			 unformat_pg_edit,
+      else if (unformat (input, "header-length %U", unformat_pg_edit,
 			 unformat_pg_number, &p->header_length))
 	;
 
-      else if (unformat (input, "tos %U",
-			 unformat_pg_edit, unformat_pg_number, &p->tos))
+      else if (unformat (input, "tos %U", unformat_pg_edit, unformat_pg_number,
+			 &p->tos))
 	;
 
-      else if (unformat (input, "length %U",
-			 unformat_pg_edit, unformat_pg_number, &p->length))
+      else if (unformat (input, "length %U", unformat_pg_edit,
+			 unformat_pg_number, &p->length))
 	;
 
-      else if (unformat (input, "checksum %U",
-			 unformat_pg_edit, unformat_pg_number, &p->checksum))
+      else if (unformat (input, "checksum %U", unformat_pg_edit,
+			 unformat_pg_number, &p->checksum))
 	;
 
-      else if (unformat (input, "ttl %U",
-			 unformat_pg_edit, unformat_pg_number, &p->ttl))
+      else if (unformat (input, "ttl %U", unformat_pg_edit, unformat_pg_number,
+			 &p->ttl))
 	;
 
-      else if (unformat (input, "fragment id %U offset %U",
-			 unformat_pg_edit,
-			 unformat_pg_number, &p->fragment_id,
-			 unformat_pg_edit,
+      else if (unformat (input, "fragment id %U offset %U", unformat_pg_edit,
+			 unformat_pg_number, &p->fragment_id, unformat_pg_edit,
 			 unformat_pg_number, &p->fragment_offset))
 	{
 	  int i;
 	  for (i = 0; i < ARRAY_LEN (p->fragment_offset.values); i++)
 	    pg_edit_set_value (&p->fragment_offset, i,
-			       pg_edit_get_value (&p->fragment_offset,
-						  i) / 8);
-
+			       pg_edit_get_value (&p->fragment_offset, i) / 8);
 	}
 
       /* Flags. */
@@ -322,19 +309,18 @@ found:
 	pi = ip_get_protocol_info (im, protocol);
       }
 
-    if (pi && pi->unformat_pg_edit
-	&& unformat_user (input, pi->unformat_pg_edit, s))
+    if (pi && pi->unformat_pg_edit &&
+	unformat_user (input, pi->unformat_pg_edit, s))
       ;
 
     else if (!unformat_user (input, unformat_pg_payload, s))
       goto error;
 
-    if (p->length.type == PG_EDIT_UNSPECIFIED
-	&& s->min_packet_bytes == s->max_packet_bytes
-	&& group_index + 1 < vec_len (s->edit_groups))
+    if (p->length.type == PG_EDIT_UNSPECIFIED &&
+	s->min_packet_bytes == s->max_packet_bytes &&
+	group_index + 1 < vec_len (s->edit_groups))
       {
-	pg_edit_set_fixed (&p->length,
-			   pg_edit_group_n_bytes (s, group_index));
+	pg_edit_set_fixed (&p->length, pg_edit_group_n_bytes (s, group_index));
       }
 
     /* Compute IP header checksum if all edits are fixed. */
@@ -347,17 +333,17 @@ found:
 	clib_memset (&cmp_mask, ~0, sizeof (cmp_mask));
 	cmp_mask.checksum = 0;
 
-	pg_edit_group_get_fixed_packet_data (s, group_index,
-					     &fixed_header, &fixed_mask);
+	pg_edit_group_get_fixed_packet_data (s, group_index, &fixed_header,
+					     &fixed_mask);
 	if (!memcmp (&fixed_mask, &cmp_mask, sizeof (cmp_mask)))
-	  pg_edit_set_fixed (&p->checksum,
-			     clib_net_to_host_u16 (ip4_header_checksum
-						   (&fixed_header)));
+	  pg_edit_set_fixed (
+	    &p->checksum,
+	    clib_net_to_host_u16 (ip4_header_checksum (&fixed_header)));
       }
 
     p = pg_get_edit_group (s, group_index);
-    if (p->length.type == PG_EDIT_UNSPECIFIED
-	|| p->checksum.type == PG_EDIT_UNSPECIFIED)
+    if (p->length.type == PG_EDIT_UNSPECIFIED ||
+	p->checksum.type == PG_EDIT_UNSPECIFIED)
       {
 	pg_edit_group_t *g = pg_stream_get_group (s, group_index);
 	g->edit_function = ip4_pg_edit_function;
@@ -376,7 +362,6 @@ error:
   pg_free_edit_group (s);
   return 0;
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

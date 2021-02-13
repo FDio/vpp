@@ -39,13 +39,13 @@
 
 #include <vlib/vlib.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/ip/ip.h>		// for feature registration
+#include <vnet/ip/ip.h> // for feature registration
 
 /* Global main structure. */
 ethernet_main_t ethernet_main;
 
 static void
-add_type (ethernet_main_t * em, ethernet_type_t type, char *type_name)
+add_type (ethernet_main_t *em, ethernet_type_t type, char *type_name)
 {
   ethernet_type_info_t *ti;
   u32 i;
@@ -62,25 +62,22 @@ add_type (ethernet_main_t * em, ethernet_type_t type, char *type_name)
 }
 
 /* Built-in ip4 tx feature path definition */
-/* *INDENT-OFF* */
-VNET_FEATURE_ARC_INIT (ethernet_output, static) =
-{
-  .arc_name  = "ethernet-output",
+
+VNET_FEATURE_ARC_INIT (ethernet_output, static) = {
+  .arc_name = "ethernet-output",
   .last_in_arc = "error-drop",
   .start_nodes = VNET_FEATURES ("adj-l2-midchain"),
   .arc_index_ptr = &ethernet_main.output_feature_arc_index,
 };
 
-VNET_FEATURE_INIT (ethernet_tx_drop, static) =
-{
+VNET_FEATURE_INIT (ethernet_tx_drop, static) = {
   .arc_name = "ethernet-output",
   .node_name = "error-drop",
-  .runs_before = 0,	/* not before any other features */
+  .runs_before = 0, /* not before any other features */
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-ethernet_init (vlib_main_t * vm)
+ethernet_init (vlib_main_t *vm)
 {
   ethernet_main_t *em = &ethernet_main;
 
@@ -94,7 +91,7 @@ ethernet_init (vlib_main_t * vm)
    */
   em->default_mtu = 9000;
 
-#define ethernet_type(n,s) add_type (em, ETHERNET_TYPE_##s, #s);
+#define ethernet_type(n, s) add_type (em, ETHERNET_TYPE_##s, #s);
 #include "types.def"
 #undef ethernet_type
 
@@ -107,22 +104,17 @@ ethernet_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (ethernet_init) =
-{
+VLIB_INIT_FUNCTION (ethernet_init) = {
   /*
    * Set up the L2 path before ethernet_init, or we'll wipe out the L2 ARP
    * registration set up by ethernet_arp_init.
    */
-  .init_order = VLIB_INITS("l2_init",
-                           "ethernet_init",
-                           "llc_init",
-                           "vnet_feature_init"),
+  .init_order = VLIB_INITS ("l2_init", "ethernet_init", "llc_init",
+			    "vnet_feature_init"),
 };
-/* *INDENT-ON* */
 
 ethernet_main_t *
-ethernet_get_main (vlib_main_t * vm)
+ethernet_get_main (vlib_main_t *vm)
 {
   return &ethernet_main;
 }

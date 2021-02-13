@@ -18,7 +18,7 @@
 #ifndef __crypto_native_h__
 #define __crypto_native_h__
 
-typedef void *(crypto_native_key_fn_t) (vnet_crypto_key_t * key);
+typedef void *(crypto_native_key_fn_t) (vnet_crypto_key_t *key);
 
 typedef struct
 {
@@ -36,11 +36,12 @@ typedef struct
 
 extern crypto_native_main_t crypto_native_main;
 
-#define foreach_crypto_native_march_variant _(slm) _(hsw) _(skx) _(icl) _(neon)
+#define foreach_crypto_native_march_variant                                   \
+  _ (slm) _ (hsw) _ (skx) _ (icl) _ (neon)
 
-#define _(v) \
-clib_error_t __clib_weak *crypto_native_aes_cbc_init_##v (vlib_main_t * vm); \
-clib_error_t __clib_weak *crypto_native_aes_gcm_init_##v (vlib_main_t * vm); \
+#define _(v)                                                                  \
+  clib_error_t __clib_weak *crypto_native_aes_cbc_init_##v (vlib_main_t *vm); \
+  clib_error_t __clib_weak *crypto_native_aes_gcm_init_##v (vlib_main_t *vm);
 
 foreach_crypto_native_march_variant;
 #undef _

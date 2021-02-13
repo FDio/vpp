@@ -30,30 +30,29 @@
 
 #include <vnet/devices/af_packet/af_packet.h>
 
-#define foreach_af_packet_tx_func_error               \
-_(FRAME_NOT_READY, "tx frame not ready")              \
-_(TXRING_EAGAIN,   "tx sendto temporary failure")     \
-_(TXRING_FATAL,    "tx sendto fatal failure")         \
-_(TXRING_OVERRUN,  "tx ring overrun")
+#define foreach_af_packet_tx_func_error                                       \
+  _ (FRAME_NOT_READY, "tx frame not ready")                                   \
+  _ (TXRING_EAGAIN, "tx sendto temporary failure")                            \
+  _ (TXRING_FATAL, "tx sendto fatal failure")                                 \
+  _ (TXRING_OVERRUN, "tx ring overrun")
 
 typedef enum
 {
-#define _(f,s) AF_PACKET_TX_ERROR_##f,
+#define _(f, s) AF_PACKET_TX_ERROR_##f,
   foreach_af_packet_tx_func_error
 #undef _
     AF_PACKET_TX_N_ERROR,
 } af_packet_tx_func_error_t;
 
 static char *af_packet_tx_func_error_strings[] = {
-#define _(n,s) s,
+#define _(n, s) s,
   foreach_af_packet_tx_func_error
 #undef _
 };
 
-
 #ifndef CLIB_MARCH_VARIANT
 u8 *
-format_af_packet_device_name (u8 * s, va_list * args)
+format_af_packet_device_name (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
   af_packet_main_t *apm = &af_packet_main;
@@ -65,7 +64,7 @@ format_af_packet_device_name (u8 * s, va_list * args)
 #endif /* CLIB_MARCH_VARIANT */
 
 static u8 *
-format_af_packet_device (u8 * s, va_list * args)
+format_af_packet_device (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   u32 indent = format_get_indent (s);
@@ -113,23 +112,21 @@ format_af_packet_device (u8 * s, va_list * args)
 }
 
 static u8 *
-format_af_packet_tx_trace (u8 * s, va_list * args)
+format_af_packet_tx_trace (u8 *s, va_list *args)
 {
   s = format (s, "Unimplemented...");
   return s;
 }
 
-VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
-						  vlib_node_runtime_t * node,
-						  vlib_frame_t * frame)
+VNET_DEVICE_CLASS_TX_FN (af_packet_device_class)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   af_packet_main_t *apm = &af_packet_main;
   u32 *buffers = vlib_frame_vector_args (frame);
   u32 n_left = frame->n_vectors;
   u32 n_sent = 0;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
-  af_packet_if_t *apif =
-    pool_elt_at_index (apm->interfaces, rd->dev_instance);
+  af_packet_if_t *apif = pool_elt_at_index (apm->interfaces, rd->dev_instance);
   clib_spinlock_lock_if_init (&apif->lockp);
   int block = 0;
   u32 block_size = apif->tx_req->tp_block_size;
@@ -166,13 +163,13 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 	{
 	  b0 = vlib_get_buffer (vm, bi);
 	  len = b0->current_length;
-	  clib_memcpy_fast ((u8 *) tph +
-			    TPACKET_ALIGN (sizeof (struct tpacket2_hdr)) +
-			    offset, vlib_buffer_get_current (b0), len);
+	  clib_memcpy_fast (
+	    (u8 *) tph + TPACKET_ALIGN (sizeof (struct tpacket2_hdr)) + offset,
+	    vlib_buffer_get_current (b0), len);
 	  offset += len;
 	}
-      while ((bi =
-	      (b0->flags & VLIB_BUFFER_NEXT_PRESENT) ? b0->next_buffer : 0));
+      while (
+	(bi = (b0->flags & VLIB_BUFFER_NEXT_PRESENT) ? b0->next_buffer : 0));
 
       tph->tp_len = tph->tp_snaplen = offset;
       tph->tp_status = TP_STATUS_SEND_REQUEST;
@@ -207,8 +204,8 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
   clib_spinlock_unlock_if_init (&apif->lockp);
 
   if (PREDICT_FALSE (frame_not_ready))
-    vlib_error_count (vm, node->node_index,
-		      AF_PACKET_TX_ERROR_FRAME_NOT_READY, frame_not_ready);
+    vlib_error_count (vm, node->node_index, AF_PACKET_TX_ERROR_FRAME_NOT_READY,
+		      frame_not_ready);
 
   if (PREDICT_FALSE (frame_not_ready + n_sent == frame_num))
     vlib_error_count (vm, node->node_index, AF_PACKET_TX_ERROR_TXRING_OVERRUN,
@@ -219,13 +216,12 @@ VNET_DEVICE_CLASS_TX_FN (af_packet_device_class) (vlib_main_t * vm,
 }
 
 static void
-af_packet_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
+af_packet_set_interface_next_node (vnet_main_t *vnm, u32 hw_if_index,
 				   u32 node_index)
 {
   af_packet_main_t *apm = &af_packet_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
-  af_packet_if_t *apif =
-    pool_elt_at_index (apm->interfaces, hw->dev_instance);
+  af_packet_if_t *apif = pool_elt_at_index (apm->interfaces, hw->dev_instance);
 
   /* Shut off redirection */
   if (node_index == ~0)
@@ -234,9 +230,8 @@ af_packet_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
       return;
     }
 
-  apif->per_interface_next_index =
-    vlib_node_add_next (vlib_get_main (), af_packet_input_node.index,
-			node_index);
+  apif->per_interface_next_index = vlib_node_add_next (
+    vlib_get_main (), af_packet_input_node.index, node_index);
 }
 
 static void
@@ -246,13 +241,12 @@ af_packet_clear_hw_interface_counters (u32 instance)
 }
 
 static clib_error_t *
-af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
+af_packet_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index,
 				   u32 flags)
 {
   af_packet_main_t *apm = &af_packet_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
-  af_packet_if_t *apif =
-    pool_elt_at_index (apm->interfaces, hw->dev_instance);
+  af_packet_if_t *apif = pool_elt_at_index (apm->interfaces, hw->dev_instance);
   u32 hw_flags;
   int rv, fd = socket (AF_UNIX, SOCK_DGRAM, 0);
   struct ifreq ifr;
@@ -266,7 +260,7 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
 
   /* if interface is a bridge ignore */
   if (apif->host_if_index < 0)
-    goto error;			/* no error */
+    goto error; /* no error */
 
   /* use host_if_index in case host name has changed */
   ifr.ifr_ifindex = apif->host_if_index;
@@ -311,24 +305,23 @@ error:
   if (0 <= fd)
     close (fd);
 
-  return 0;			/* no error */
+  return 0; /* no error */
 }
 
 static clib_error_t *
-af_packet_subif_add_del_function (vnet_main_t * vnm,
-				  u32 hw_if_index,
+af_packet_subif_add_del_function (vnet_main_t *vnm, u32 hw_if_index,
 				  struct vnet_sw_interface_t *st, int is_add)
 {
   /* Nothing for now */
   return 0;
 }
 
-static clib_error_t *af_packet_set_mac_address_function
-  (struct vnet_hw_interface_t *hi, const u8 * old_address, const u8 * address)
+static clib_error_t *
+af_packet_set_mac_address_function (struct vnet_hw_interface_t *hi,
+				    const u8 *old_address, const u8 *address)
 {
   af_packet_main_t *apm = &af_packet_main;
-  af_packet_if_t *apif =
-    pool_elt_at_index (apm->interfaces, hi->dev_instance);
+  af_packet_if_t *apif = pool_elt_at_index (apm->interfaces, hi->dev_instance);
   int rv, fd = socket (AF_UNIX, SOCK_DGRAM, 0);
   struct ifreq ifr;
 
@@ -341,16 +334,16 @@ static clib_error_t *af_packet_set_mac_address_function
 
   /* if interface is a bridge ignore */
   if (apif->host_if_index < 0)
-    goto error;			/* no error */
+    goto error; /* no error */
 
   /* use host_if_index in case host name has changed */
   ifr.ifr_ifindex = apif->host_if_index;
   if ((rv = ioctl (fd, SIOCGIFNAME, &ifr)) < 0)
     {
-      vlib_log_warn
-	(apm->log_class,
-	 "af_packet_%s ioctl could not retrieve eth name, error: %d",
-	 apif->host_if_name, rv);
+      vlib_log_warn (
+	apm->log_class,
+	"af_packet_%s ioctl could not retrieve eth name, error: %d",
+	apif->host_if_name, rv);
       goto error;
     }
 
@@ -370,10 +363,9 @@ error:
   if (0 <= fd)
     close (fd);
 
-  return 0;			/* no error */
+  return 0; /* no error */
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (af_packet_device_class) = {
   .name = "af-packet",
   .format_device_name = format_af_packet_device_name,
@@ -387,7 +379,6 @@ VNET_DEVICE_CLASS (af_packet_device_class) = {
   .subif_add_del_function = af_packet_subif_add_del_function,
   .mac_addr_change_function = af_packet_set_mac_address_function,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

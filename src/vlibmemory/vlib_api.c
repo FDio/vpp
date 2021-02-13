@@ -40,9 +40,9 @@
 
 #define TRACE_VLIB_MEMORY_QUEUE 0
 
-#include <vlibmemory/vl_memory_msg_enum.h>	/* enumerate all vlib messages */
+#include <vlibmemory/vl_memory_msg_enum.h> /* enumerate all vlib messages */
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_typedefs
 
@@ -53,12 +53,11 @@
 #undef vl_printfun
 
 static inline void *
-vl_api_trace_plugin_msg_ids_t_print (vl_api_trace_plugin_msg_ids_t * a,
+vl_api_trace_plugin_msg_ids_t_print (vl_api_trace_plugin_msg_ids_t *a,
 				     void *handle)
 {
   vl_print (handle, "vl_api_trace_plugin_msg_ids: %s first %u last %u\n",
-	    a->plugin_name,
-	    clib_host_to_net_u16 (a->first_msg_id),
+	    a->plugin_name, clib_host_to_net_u16 (a->first_msg_id),
 	    clib_host_to_net_u16 (a->last_msg_id));
   return handle;
 }
@@ -69,7 +68,7 @@ vl_api_trace_plugin_msg_ids_t_print (vl_api_trace_plugin_msg_ids_t * a,
 #undef vl_endianfun
 
 static void
-vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t * mp)
+vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t *mp)
 {
   vl_api_get_first_msg_id_reply_t *rmp;
   vl_api_registration_t *regp;
@@ -78,7 +77,7 @@ vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t * mp)
   vl_api_msg_range_t *rp;
   u8 name[64];
   u16 first_msg_id = ~0;
-  int rv = -7;			/* VNET_API_ERROR_INVALID_VALUE */
+  int rv = -7; /* VNET_API_ERROR_INVALID_VALUE */
 
   regp = vl_api_client_index_to_registration (mp->client_index);
   if (!regp)
@@ -106,7 +105,7 @@ out:
 }
 
 void
-vl_api_api_versions_t_handler (vl_api_api_versions_t * mp)
+vl_api_api_versions_t_handler (vl_api_api_versions_t *mp)
 {
   api_main_t *am = vlibapi_get_main ();
   vl_api_api_versions_reply_t *rmp;
@@ -142,9 +141,9 @@ vl_api_api_versions_t_handler (vl_api_api_versions_t * mp)
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
-#define foreach_vlib_api_msg				\
-_(GET_FIRST_MSG_ID, get_first_msg_id)			\
-_(API_VERSIONS, api_versions)
+#define foreach_vlib_api_msg                                                  \
+  _ (GET_FIRST_MSG_ID, get_first_msg_id)                                      \
+  _ (API_VERSIONS, api_versions)
 
 /*
  * vl_api_init
@@ -157,18 +156,22 @@ vlib_api_init (void)
 
   clib_memset (c, 0, sizeof (*c));
 
-#define _(N,n) do {                                             \
-    c->id = VL_API_##N;                                         \
-    c->name = #n;                                               \
-    c->handler = vl_api_##n##_t_handler;                        \
-    c->cleanup = vl_noop_handler;                               \
-    c->endian = vl_api_##n##_t_endian;                          \
-    c->print = vl_api_##n##_t_print;                            \
-    c->size = sizeof(vl_api_##n##_t);                           \
-    c->traced = 1; /* trace, so these msgs print */             \
-    c->replay = 0; /* don't replay client create/delete msgs */ \
-    c->message_bounce = 0; /* don't bounce this message */	\
-    vl_msg_api_config(c);} while (0);
+#define _(N, n)                                                               \
+  do                                                                          \
+    {                                                                         \
+      c->id = VL_API_##N;                                                     \
+      c->name = #n;                                                           \
+      c->handler = vl_api_##n##_t_handler;                                    \
+      c->cleanup = vl_noop_handler;                                           \
+      c->endian = vl_api_##n##_t_endian;                                      \
+      c->print = vl_api_##n##_t_print;                                        \
+      c->size = sizeof (vl_api_##n##_t);                                      \
+      c->traced = 1;	     /* trace, so these msgs print */                 \
+      c->replay = 0;	     /* don't replay client create/delete msgs */     \
+      c->message_bounce = 0; /* don't bounce this message */                  \
+      vl_msg_api_config (c);                                                  \
+    }                                                                         \
+  while (0);
 
   foreach_vlib_api_msg;
 #undef _
@@ -182,7 +185,7 @@ u64 vector_rate_histogram[SLEEP_N_BUCKETS];
  * Callback to send ourselves a plugin numbering-space trace msg
  */
 static void
-send_one_plugin_msg_ids_msg (u8 * name, u16 first_msg_id, u16 last_msg_id)
+send_one_plugin_msg_ids_msg (u8 *name, u16 first_msg_id, u16 last_msg_id)
 {
   vl_api_trace_plugin_msg_ids_t *mp;
   api_main_t *am = vlibapi_get_main ();
@@ -200,7 +203,7 @@ send_one_plugin_msg_ids_msg (u8 * name, u16 first_msg_id, u16 last_msg_id)
 
   q = shmem_hdr->vl_input_queue;
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_msg_api_send_shmem (q, (u8 *) &mp);
 }
 
 void
@@ -214,8 +217,8 @@ vl_api_save_msg_table (void)
   /*
    * Snapshoot the api message table.
    */
-  if (strstr ((char *) am->save_msg_table_filename, "..")
-      || index ((char *) am->save_msg_table_filename, '/'))
+  if (strstr ((char *) am->save_msg_table_filename, "..") ||
+      index ((char *) am->save_msg_table_filename, '/'))
     {
       clib_warning ("illegal save-message-table filename '%s'",
 		    am->save_msg_table_filename);
@@ -234,8 +237,8 @@ vl_api_save_msg_table (void)
 
   serialized_message_table = vl_api_serialize_message_table (am, 0);
 
-  rv = write (fd, serialized_message_table,
-	      vec_len (serialized_message_table));
+  rv =
+    write (fd, serialized_message_table, vec_len (serialized_message_table));
 
   if (rv != vec_len (serialized_message_table))
     clib_unix_warning ("write");
@@ -248,16 +251,16 @@ vl_api_save_msg_table (void)
   vec_free (serialized_message_table);
 }
 
-clib_error_t *vat_builtin_main_init (vlib_main_t * vm) __attribute__ ((weak));
+clib_error_t *vat_builtin_main_init (vlib_main_t *vm) __attribute__ ((weak));
 clib_error_t *
-vat_builtin_main_init (vlib_main_t * vm)
+vat_builtin_main_init (vlib_main_t *vm)
 {
   return 0;
 }
 
 static uword
-vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
-		     vlib_frame_t * f)
+vl_api_clnt_process (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     vlib_frame_t *f)
 {
   int private_segment_rotor = 0, i, rv;
   vl_socket_args_for_process_t *a;
@@ -289,8 +292,8 @@ vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
   shm = am->shmem_hdr;
   q = shm->vl_input_queue;
 
-  e = vlib_call_init_exit_functions
-    (vm, &vm->api_init_function_registrations, 1 /* call_once */ );
+  e = vlib_call_init_exit_functions (vm, &vm->api_init_function_registrations,
+				     1 /* call_once */);
   if (e)
     clib_error_report (e);
 
@@ -334,8 +337,8 @@ vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
       start_time = vlib_time_now (vm);
       while (1)
 	{
-	  if (vl_mem_api_handle_rpc (vm, node)
-	      || vl_mem_api_handle_msg_main (vm, node))
+	  if (vl_mem_api_handle_rpc (vm, node) ||
+	      vl_mem_api_handle_msg_main (vm, node))
 	    {
 	      vm->api_queue_nonempty = 0;
 	      VL_MEM_API_LOG_Q_LEN ("q-underflow: len %d", 0);
@@ -429,29 +432,26 @@ vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   return 0;
 }
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (vl_api_clnt_node) =
-{
+
+VLIB_REGISTER_NODE (vl_api_clnt_node) = {
   .function = vl_api_clnt_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "api-rx-from-ring",
   .state = VLIB_NODE_STATE_DISABLED,
   .process_log2_n_stack_bytes = 18,
 };
-/* *INDENT-ON* */
 
 void
-vl_mem_api_enable_disable (vlib_main_t * vm, int enable)
+vl_mem_api_enable_disable (vlib_main_t *vm, int enable)
 {
-  vlib_node_set_state (vm, vl_api_clnt_node.index,
-		       (enable
-			? VLIB_NODE_STATE_POLLING
-			: VLIB_NODE_STATE_DISABLED));
+  vlib_node_set_state (
+    vm, vl_api_clnt_node.index,
+    (enable ? VLIB_NODE_STATE_POLLING : VLIB_NODE_STATE_DISABLED));
 }
 
 static uword
-api_rx_from_node (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * frame)
+api_rx_from_node (vlib_main_t *vm, vlib_node_runtime_t *node,
+		  vlib_frame_t *frame)
 {
   uword n_packets = frame->n_vectors;
   uword n_left_from;
@@ -499,17 +499,15 @@ api_rx_from_node (vlib_main_t * vm,
   return n_packets;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (api_rx_from_node_node,static) = {
-    .function = api_rx_from_node,
-    .type = VLIB_NODE_TYPE_INTERNAL,
-    .vector_size = 4,
-    .name = "api-rx-from-node",
+VLIB_REGISTER_NODE (api_rx_from_node_node, static) = {
+  .function = api_rx_from_node,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .vector_size = 4,
+  .name = "api-rx-from-node",
 };
-/* *INDENT-ON* */
 
 static void
-vl_api_rpc_call_t_handler (vl_api_rpc_call_t * mp)
+vl_api_rpc_call_t_handler (vl_api_rpc_call_t *mp)
 {
   vl_api_rpc_call_reply_t *rmp;
   int (*fp) (void *);
@@ -527,7 +525,7 @@ vl_api_rpc_call_t_handler (vl_api_rpc_call_t * mp)
       if (mp->need_barrier_sync)
 	vlib_worker_thread_barrier_sync (vm);
 
-      fp = uword_to_pointer (mp->function, int (*)(void *));
+      fp = uword_to_pointer (mp->function, int (*) (void *));
       rv = fp (mp->data);
 
       if (mp->need_barrier_sync)
@@ -543,7 +541,7 @@ vl_api_rpc_call_t_handler (vl_api_rpc_call_t * mp)
 	  rmp->_vl_msg_id = ntohs (VL_API_RPC_CALL_REPLY);
 	  rmp->context = mp->context;
 	  rmp->retval = rv;
-	  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+	  vl_msg_api_send_shmem (q, (u8 *) &rmp);
 	}
     }
   if (mp->multicast)
@@ -553,13 +551,13 @@ vl_api_rpc_call_t_handler (vl_api_rpc_call_t * mp)
 }
 
 static void
-vl_api_rpc_call_reply_t_handler (vl_api_rpc_call_reply_t * mp)
+vl_api_rpc_call_reply_t_handler (vl_api_rpc_call_reply_t *mp)
 {
   clib_warning ("unimplemented");
 }
 
 void
-vl_api_send_pending_rpc_requests (vlib_main_t * vm)
+vl_api_send_pending_rpc_requests (vlib_main_t *vm)
 {
   vlib_main_t *vm_global = &vlib_global_main;
 
@@ -572,7 +570,7 @@ vl_api_send_pending_rpc_requests (vlib_main_t * vm)
 }
 
 always_inline void
-vl_api_rpc_call_main_thread_inline (void *fp, u8 * data, u32 data_length,
+vl_api_rpc_call_main_thread_inline (void *fp, u8 *data, u32 data_length,
 				    u8 force_rpc)
 {
   vl_api_rpc_call_t *mp;
@@ -616,9 +614,9 @@ vl_api_rpc_call_main_thread_inline (void *fp, u8 * data, u32 data_length,
  * Otherwise, call fp directly
  */
 void
-vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
+vl_api_rpc_call_main_thread (void *fp, u8 *data, u32 data_length)
 {
-  vl_api_rpc_call_main_thread_inline (fp, data, data_length,	/*force_rpc */
+  vl_api_rpc_call_main_thread_inline (fp, data, data_length, /*force_rpc */
 				      0);
 }
 
@@ -627,14 +625,14 @@ vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
  * not setup as worker threads, such as DPDK callback thread
  */
 void
-vl_api_force_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
+vl_api_force_rpc_call_main_thread (void *fp, u8 *data, u32 data_length)
 {
-  vl_api_rpc_call_main_thread_inline (fp, data, data_length,	/*force_rpc */
+  vl_api_rpc_call_main_thread_inline (fp, data, data_length, /*force_rpc */
 				      1);
 }
 
 static void
-vl_api_trace_plugin_msg_ids_t_handler (vl_api_trace_plugin_msg_ids_t * mp)
+vl_api_trace_plugin_msg_ids_t_handler (vl_api_trace_plugin_msg_ids_t *mp)
 {
   api_main_t *am = vlibapi_get_main ();
   vl_api_msg_range_t *rp;
@@ -668,12 +666,11 @@ vl_api_trace_plugin_msg_ids_t_handler (vl_api_trace_plugin_msg_ids_t * mp)
     }
 }
 
-#define foreach_rpc_api_msg                     \
-_(RPC_CALL,rpc_call)                            \
-_(RPC_CALL_REPLY,rpc_call_reply)
+#define foreach_rpc_api_msg                                                   \
+  _ (RPC_CALL, rpc_call)                                                      \
+  _ (RPC_CALL_REPLY, rpc_call_reply)
 
-#define foreach_plugin_trace_msg		\
-_(TRACE_PLUGIN_MSG_IDS,trace_plugin_msg_ids)
+#define foreach_plugin_trace_msg _ (TRACE_PLUGIN_MSG_IDS, trace_plugin_msg_ids)
 
 /*
  * Set the rpc callback at our earliest possible convenience.
@@ -687,26 +684,20 @@ _(TRACE_PLUGIN_MSG_IDS,trace_plugin_msg_ids)
 extern void *rpc_call_main_thread_cb_fn;
 
 static clib_error_t *
-rpc_api_hookup (vlib_main_t * vm)
+rpc_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_noop_handler,			\
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 0 /* do not trace */);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (                                                   \
+    VL_API_##N, #n, vl_api_##n##_t_handler, vl_noop_handler, vl_noop_handler, \
+    vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 0 /* do not trace */);
   foreach_rpc_api_msg;
 #undef _
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_noop_handler,			\
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1 /* do trace */);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (                                                   \
+    VL_API_##N, #n, vl_api_##n##_t_handler, vl_noop_handler, vl_noop_handler, \
+    vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1 /* do trace */);
   foreach_plugin_trace_msg;
 #undef _
 

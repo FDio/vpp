@@ -109,7 +109,7 @@ vlib_vmbus_get_addr (vlib_vmbus_dev_handle_t h)
 /* Call to allocate/initialize the vmbus subsystem.
    This is not an init function so that users can explicitly enable
    vmbus only when it's needed. */
-clib_error_t *vmbus_bus_init (vlib_main_t * vm);
+clib_error_t *vmbus_bus_init (vlib_main_t *vm);
 
 linux_vmbus_main_t linux_vmbus_main;
 
@@ -181,18 +181,18 @@ vlib_vmbus_raise_lower (int fd, const char *upper_name)
   closedir (dir);
 
   if (!e)
-    goto done;			/* no lower device */
+    goto done; /* no lower device */
 
   if (ioctl (fd, SIOCGIFFLAGS, &ifr) < 0)
-    error = clib_error_return_unix (0, "ioctl fetch intf %s flags",
-				    ifr.ifr_name);
+    error =
+      clib_error_return_unix (0, "ioctl fetch intf %s flags", ifr.ifr_name);
   else if (!(ifr.ifr_flags & IFF_UP))
     {
       ifr.ifr_flags |= IFF_UP;
 
       if (ioctl (fd, SIOCSIFFLAGS, &ifr) < 0)
-	error = clib_error_return_unix (0, "ioctl set intf %s flags",
-					ifr.ifr_name);
+	error =
+	  clib_error_return_unix (0, "ioctl set intf %s flags", ifr.ifr_name);
     }
 done:
   vec_free (dev_net_dir);
@@ -210,7 +210,7 @@ directory_exists (char *path)
 }
 
 clib_error_t *
-vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
+vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t *addr)
 {
   clib_error_t *error = 0;
   u8 *dev_dir_name;
@@ -222,8 +222,8 @@ vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
   DIR *dir;
   int fd;
 
-  dev_dir_name = format (0, "%s/%U", sysfs_vmbus_dev_path,
-			 format_vlib_vmbus_addr, addr);
+  dev_dir_name =
+    format (0, "%s/%U", sysfs_vmbus_dev_path, format_vlib_vmbus_addr, addr);
   s = format (0, "%v/driver%c", dev_dir_name, 0);
 
   driver_name = clib_sysfs_link_to_name ((char *) s);
@@ -246,7 +246,7 @@ vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
 
   while ((e = readdir (dir)))
     {
-      if (e->d_name[0] == '.')	/* skip . and .. */
+      if (e->d_name[0] == '.') /* skip . and .. */
 	continue;
 
       ifname = strdup (e->d_name);
@@ -256,12 +256,10 @@ vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
 
   if (!ifname)
     {
-      error = clib_error_return (0,
-				 "VMBUS device %U eth not found",
+      error = clib_error_return (0, "VMBUS device %U eth not found",
 				 format_vlib_vmbus_addr, addr);
       goto done;
     }
-
 
   clib_memset (&ifr, 0, sizeof (ifr));
   strncpy (ifr.ifr_name, ifname, IFNAMSIZ - 1);
@@ -276,17 +274,17 @@ vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
 
   if (ioctl (fd, SIOCGIFFLAGS, &ifr) < 0)
     {
-      error = clib_error_return_unix (0, "ioctl fetch intf %s flags",
-				      ifr.ifr_name);
+      error =
+	clib_error_return_unix (0, "ioctl fetch intf %s flags", ifr.ifr_name);
       close (fd);
       goto done;
     }
 
   if (ifr.ifr_flags & IFF_UP)
     {
-      error = clib_error_return (0,
-				 "Skipping VMBUS device %U as host interface %s is up",
-				 format_vlib_vmbus_addr, addr, e->d_name);
+      error = clib_error_return (
+	0, "Skipping VMBUS device %U as host interface %s is up",
+	format_vlib_vmbus_addr, addr, e->d_name);
       close (fd);
       goto done;
     }
@@ -355,17 +353,16 @@ done:
 }
 
 static clib_error_t *
-scan_vmbus_addr (void *arg, u8 * dev_dir_name, u8 * ignored)
+scan_vmbus_addr (void *arg, u8 *dev_dir_name, u8 *ignored)
 {
   vlib_vmbus_addr_t addr, **addrv = arg;
   unformat_input_t input;
   clib_error_t *err = 0;
 
-  unformat_init_string (&input, (char *) dev_dir_name,
-			vec_len (dev_dir_name));
+  unformat_init_string (&input, (char *) dev_dir_name, vec_len (dev_dir_name));
 
-  if (!unformat (&input, "/sys/bus/vmbus/devices/%U",
-		 unformat_vlib_vmbus_addr, &addr))
+  if (!unformat (&input, "/sys/bus/vmbus/devices/%U", unformat_vlib_vmbus_addr,
+		 &addr))
     err = clib_error_return (0, "unformat error `%v`", dev_dir_name);
 
   unformat_free (&input);
@@ -392,9 +389,8 @@ vlib_vmbus_get_all_dev_addrs ()
   vlib_vmbus_addr_t *addrs = 0;
   clib_error_t *err;
 
-  err =
-    foreach_directory_file ((char *) sysfs_vmbus_dev_path, scan_vmbus_addr,
-			    &addrs, /* scan_dirs */ 0);
+  err = foreach_directory_file ((char *) sysfs_vmbus_dev_path, scan_vmbus_addr,
+				&addrs, /* scan_dirs */ 0);
   if (err)
     {
       vec_free (addrs);
@@ -407,7 +403,7 @@ vlib_vmbus_get_all_dev_addrs ()
 }
 
 clib_error_t *
-linux_vmbus_init (vlib_main_t * vm)
+linux_vmbus_init (vlib_main_t *vm)
 {
   linux_vmbus_main_t *pm = &linux_vmbus_main;
 
@@ -416,12 +412,9 @@ linux_vmbus_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (linux_vmbus_init) =
-{
-  .runs_before = VLIB_INITS("unix_input_init"),
+VLIB_INIT_FUNCTION (linux_vmbus_init) = {
+  .runs_before = VLIB_INITS ("unix_input_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

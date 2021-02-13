@@ -46,15 +46,15 @@ typedef struct
   u16 src_port, dst_port;
 } tcp_udp_header_t;
 
-#define foreach_nat64_tcp_ses_state            \
-  _(0, CLOSED, "closed")                       \
-  _(1, V4_INIT, "v4-init")                     \
-  _(2, V6_INIT, "v6-init")                     \
-  _(3, ESTABLISHED, "established")             \
-  _(4, V4_FIN_RCV, "v4-fin-rcv")               \
-  _(5, V6_FIN_RCV, "v6-fin-rcv")               \
-  _(6, V6_FIN_V4_FIN_RCV, "v6-fin-v4-fin-rcv") \
-  _(7, TRANS, "trans")
+#define foreach_nat64_tcp_ses_state                                           \
+  _ (0, CLOSED, "closed")                                                     \
+  _ (1, V4_INIT, "v4-init")                                                   \
+  _ (2, V6_INIT, "v6-init")                                                   \
+  _ (3, ESTABLISHED, "established")                                           \
+  _ (4, V4_FIN_RCV, "v4-fin-rcv")                                             \
+  _ (5, V6_FIN_RCV, "v6-fin-rcv")                                             \
+  _ (6, V6_FIN_V4_FIN_RCV, "v6-fin-v4-fin-rcv")                               \
+  _ (7, TRANS, "trans")
 
 typedef enum
 {
@@ -93,14 +93,14 @@ typedef struct
 {
   ip4_address_t addr;
   u32 fib_index;
-/* *INDENT-OFF* */
-#define _(N, i, n, s) \
-  u16 busy_##n##_ports; \
-  u16 * busy_##n##_ports_per_thread; \
+
+#define _(N, i, n, s)                                                         \
+  u16 busy_##n##_ports;                                                       \
+  u16 *busy_##n##_ports_per_thread;                                           \
   u32 busy_##n##_port_refcounts[65535];
   foreach_nat_protocol
 #undef _
-/* *INDENT-ON* */
+
 } nat64_address_t;
 
 typedef struct
@@ -221,21 +221,22 @@ extern vlib_node_registration_t nat64_out2in_node;
 /**
  * @brief Add/delete address to NAT64 pool.
  *
- * @param thread_index Thread index used by ipfix nat logging (not address per thread).
+ * @param thread_index Thread index used by ipfix nat logging (not address per
+ * thread).
  * @param addr   IPv4 address.
  * @param vrf_id VRF id of tenant, ~0 means independent of VRF.
  * @param is_add 1 if add, 0 if delete.
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat64_add_del_pool_addr (u32 thread_index,
-			     ip4_address_t * addr, u32 vrf_id, u8 is_add);
+int nat64_add_del_pool_addr (u32 thread_index, ip4_address_t *addr, u32 vrf_id,
+			     u8 is_add);
 
 /**
  * @brief Call back function when walking addresses in NAT64 pool, non-zero
  * return value stop walk.
  */
-typedef int (*nat64_pool_addr_walk_fn_t) (nat64_address_t * addr, void *ctx);
+typedef int (*nat64_pool_addr_walk_fn_t) (nat64_address_t *addr, void *ctx);
 
 /**
  * @brief Walk NAT64 pool.
@@ -270,7 +271,7 @@ int nat64_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add);
  * @brief Call back function when walking interfaces with NAT64 feature,
  * non-zero return value stop walk.
  */
-typedef int (*nat64_interface_walk_fn_t) (nat64_interface_t * i, void *ctx);
+typedef int (*nat64_interface_walk_fn_t) (nat64_interface_t *i, void *ctx);
 
 /**
  * @brief Walk NAT64 interfaces.
@@ -287,7 +288,7 @@ void nat64_interfaces_walk (nat64_interface_walk_fn_t fn, void *ctx);
  *
  * @return error code.
  */
-clib_error_t *nat64_init (vlib_main_t * vm);
+clib_error_t *nat64_init (vlib_main_t *vm);
 
 /**
  * @brief Add/delete static NAT64 BIB entry.
@@ -302,8 +303,8 @@ clib_error_t *nat64_init (vlib_main_t * vm);
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
-				    ip4_address_t * out_addr, u16 in_port,
+int nat64_add_del_static_bib_entry (ip6_address_t *in_addr,
+				    ip4_address_t *out_addr, u16 in_port,
 				    u16 out_port, u8 proto, u32 vrf_id,
 				    u8 is_add);
 
@@ -319,13 +320,14 @@ int nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
  * @returns 0 on success, non-zero value otherwise.
  */
 int nat64_alloc_out_addr_and_port (u32 fib_index, nat_protocol_t proto,
-				   ip4_address_t * addr, u16 * port,
+				   ip4_address_t *addr, u16 *port,
 				   u32 thread_index);
 
 /**
  * @brief Set UDP session timeout.
  *
- * @param timeout Timeout value in seconds (if 0 reset to default value 300sec).
+ * @param timeout Timeout value in seconds (if 0 reset to default value
+ * 300sec).
  *
  * @returns 0 on success, non-zero value otherwise.
  */
@@ -357,8 +359,10 @@ u32 nat64_get_icmp_timeout (void);
 /**
  * @brief Set TCP session timeouts.
  *
- * @param trans Transitory timeout in seconds (if 0 reset to default value 240sec).
- * @param est Established timeout in seconds (if 0 reset to default value 7440sec).
+ * @param trans Transitory timeout in seconds (if 0 reset to default value
+ * 240sec).
+ * @param est Established timeout in seconds (if 0 reset to default value
+ * 7440sec).
  *
  * @returns 0 on success, non-zero value otherwise.
  */
@@ -384,8 +388,7 @@ u32 nat64_get_tcp_est_timeout (void);
  * @param ste Session table entry.
  * @param vm VLIB main.
  **/
-void nat64_session_reset_timeout (nat64_db_st_entry_t * ste,
-				  vlib_main_t * vm);
+void nat64_session_reset_timeout (nat64_db_st_entry_t *ste, vlib_main_t *vm);
 
 /**
  * @brief Set NAT64 TCP session state.
@@ -394,8 +397,8 @@ void nat64_session_reset_timeout (nat64_db_st_entry_t * ste,
  * @param tcp TCP header.
  * @param is_ip6 1 if IPv6 packet, 0 if IPv4.
  */
-void nat64_tcp_session_set_state (nat64_db_st_entry_t * ste,
-				  tcp_header_t * tcp, u8 is_ip6);
+void nat64_tcp_session_set_state (nat64_db_st_entry_t *ste, tcp_header_t *tcp,
+				  u8 is_ip6);
 
 /**
  * @brief Add/delete NAT64 prefix.
@@ -407,14 +410,14 @@ void nat64_tcp_session_set_state (nat64_db_st_entry_t * ste,
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat64_add_del_prefix (ip6_address_t * prefix, u8 plen, u32 vrf_id,
+int nat64_add_del_prefix (ip6_address_t *prefix, u8 plen, u32 vrf_id,
 			  u8 is_add);
 
 /**
  * @brief Call back function when walking addresses in NAT64 prefixes, non-zero
  * return value stop walk.
  */
-typedef int (*nat64_prefix_walk_fn_t) (nat64_prefix_t * pref64, void *ctx);
+typedef int (*nat64_prefix_walk_fn_t) (nat64_prefix_t *pref64, void *ctx);
 
 /**
  * @brief Walk NAT64 prefixes.
@@ -430,8 +433,7 @@ void nat64_prefix_walk (nat64_prefix_walk_fn_t fn, void *ctx);
  * @param ip4 IPv4 address.
  * @param fib_index Tenant FIB index.
  */
-void nat64_compose_ip6 (ip6_address_t * ip6, ip4_address_t * ip4,
-			u32 fib_index);
+void nat64_compose_ip6 (ip6_address_t *ip6, ip4_address_t *ip4, u32 fib_index);
 
 /**
  * Extract IPv4 address from the IPv4-embedded IPv6 addresses.
@@ -440,8 +442,7 @@ void nat64_compose_ip6 (ip6_address_t * ip6, ip4_address_t * ip4,
  * @param ip4 IPv4 address.
  * @param fib_index Tenant FIB index.
  */
-void nat64_extract_ip4 (ip6_address_t * ip6, ip4_address_t * ip4,
-			u32 fib_index);
+void nat64_extract_ip4 (ip6_address_t *ip6, ip4_address_t *ip4, u32 fib_index);
 
 /**
  * @brief Set NAT64 hash tables configuration.
@@ -461,7 +462,7 @@ void nat64_set_hash (u32 bib_buckets, uword bib_memory_size, u32 st_buckets,
  *
  * @returns worker thread index.
  */
-u32 nat64_get_worker_in2out (ip6_address_t * addr);
+u32 nat64_get_worker_in2out (ip6_address_t *addr);
 
 /**
  * @brief Get worker thread index for NAT64 out2in.
@@ -470,23 +471,23 @@ u32 nat64_get_worker_in2out (ip6_address_t * addr);
  *
  * @returns worker thread index.
  */
-u32 nat64_get_worker_out2in (vlib_buffer_t * b, ip4_header_t * ip);
+u32 nat64_get_worker_out2in (vlib_buffer_t *b, ip4_header_t *ip);
 
 /* NAT64 interface flags */
-#define NAT64_INTERFACE_FLAG_IS_INSIDE 1
+#define NAT64_INTERFACE_FLAG_IS_INSIDE	1
 #define NAT64_INTERFACE_FLAG_IS_OUTSIDE 2
 
 /** \brief Check if NAT64 interface is inside.
     @param i NAT64 interface
     @return 1 if inside interface
 */
-#define nat64_interface_is_inside(i) i->flags & NAT64_INTERFACE_FLAG_IS_INSIDE
+#define nat64_interface_is_inside(i) i->flags &NAT64_INTERFACE_FLAG_IS_INSIDE
 
 /** \brief Check if NAT64 interface is outside.
     @param i NAT64 interface
     @return 1 if outside interface
 */
-#define nat64_interface_is_outside(i) i->flags & NAT64_INTERFACE_FLAG_IS_OUTSIDE
+#define nat64_interface_is_outside(i) i->flags &NAT64_INTERFACE_FLAG_IS_OUTSIDE
 
 static_always_inline u8
 plugin_enabled ()
@@ -495,9 +496,8 @@ plugin_enabled ()
   return nm->enabled;
 }
 
-void
-nat64_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
-			   int is_add);
+void nat64_add_del_addr_to_fib (ip4_address_t *addr, u8 p_len, u32 sw_if_index,
+				int is_add);
 
 int nat64_plugin_enable (nat64_config_t c);
 int nat64_plugin_disable ();
@@ -507,18 +507,18 @@ format_function_t format_nat_protocol;
 unformat_function_t unformat_nat_protocol;
 
 /* logging */
-#define nat64_log_err(...) \
-  vlib_log(VLIB_LOG_LEVEL_ERR, nat64_main.log_class, __VA_ARGS__)
-#define nat64_log_warn(...) \
-  vlib_log(VLIB_LOG_LEVEL_WARNING, nat64_main.log_class, __VA_ARGS__)
-#define nat64_log_notice(...) \
-  vlib_log(VLIB_LOG_LEVEL_NOTICE, nat64_main.log_class, __VA_ARGS__)
-#define nat64_log_info(...) \
-  vlib_log(VLIB_LOG_LEVEL_INFO, nat64_main.log_class, __VA_ARGS__)
-#define nat64_log_debug(...)\
-  vlib_log(VLIB_LOG_LEVEL_DEBUG, nat64_main.log_class, __VA_ARGS__)
+#define nat64_log_err(...)                                                    \
+  vlib_log (VLIB_LOG_LEVEL_ERR, nat64_main.log_class, __VA_ARGS__)
+#define nat64_log_warn(...)                                                   \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, nat64_main.log_class, __VA_ARGS__)
+#define nat64_log_notice(...)                                                 \
+  vlib_log (VLIB_LOG_LEVEL_NOTICE, nat64_main.log_class, __VA_ARGS__)
+#define nat64_log_info(...)                                                   \
+  vlib_log (VLIB_LOG_LEVEL_INFO, nat64_main.log_class, __VA_ARGS__)
+#define nat64_log_debug(...)                                                  \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, nat64_main.log_class, __VA_ARGS__)
 
-clib_error_t *nat64_api_hookup (vlib_main_t * vm);
+clib_error_t *nat64_api_hookup (vlib_main_t *vm);
 
 #endif /* __included_nat64_h__ */
 

@@ -65,7 +65,7 @@ typedef struct
 gmon_main_t gmon_main;
 
 static u64
-get_significant_errors (gmon_main_t * gm)
+get_significant_errors (gmon_main_t *gm)
 {
   vlib_main_t *this_vlib_main;
   vlib_error_main_t *em;
@@ -73,25 +73,24 @@ get_significant_errors (gmon_main_t * gm)
   int vm_index;
   u64 significant_errors = 0;
 
-  /* *INDENT-OFF* */
   clib_bitmap_foreach (code, gm->sig_error_bitmap)
-   {
-    for (vm_index = 0; vm_index < vec_len (gm->my_vlib_mains); vm_index++)
-      {
-        this_vlib_main = gm->my_vlib_mains[vm_index];
-        em = &this_vlib_main->error_main;
-        significant_errors += em->counters[code] -
-          ((vec_len(em->counters_last_clear) > code) ?
-           em->counters_last_clear[code] : 0);
-      }
-  }
-  /* *INDENT-ON* */
+    {
+      for (vm_index = 0; vm_index < vec_len (gm->my_vlib_mains); vm_index++)
+	{
+	  this_vlib_main = gm->my_vlib_mains[vm_index];
+	  em = &this_vlib_main->error_main;
+	  significant_errors +=
+	    em->counters[code] - ((vec_len (em->counters_last_clear) > code) ?
+				    em->counters_last_clear[code] :
+				    0);
+	}
+    }
 
   return (significant_errors);
 }
 
 static clib_error_t *
-publish_pid (vlib_main_t * vm)
+publish_pid (vlib_main_t *vm)
 {
   gmon_main_t *gm = &gmon_main;
 
@@ -102,9 +101,8 @@ publish_pid (vlib_main_t * vm)
 
 VLIB_API_INIT_FUNCTION (publish_pid);
 
-
 static uword
-gmon_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
+gmon_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   f64 vector_rate;
   u64 input_packets, last_input_packets, new_sig_errors;
@@ -142,19 +140,17 @@ gmon_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       gm->last_sig_errors = new_sig_errors;
     }
 
-  return 0;			/* not so much */
+  return 0; /* not so much */
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (gmon_process_node,static) = {
+VLIB_REGISTER_NODE (gmon_process_node, static) = {
   .function = gmon_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "gmon-process",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-gmon_init (vlib_main_t * vm)
+gmon_init (vlib_main_t *vm)
 {
   gmon_main_t *gm = &gmon_main;
   api_main_t *am = vlibapi_get_main ();
@@ -180,47 +176,39 @@ gmon_init (vlib_main_t * vm)
 
   /* Find or create, set to zero */
   vec_add1 (v, 0.0);
-  svmdb_local_set_vec_variable (gm->svmdb_client,
-				"vpp_vector_rate", (char *) v, sizeof (*v));
+  svmdb_local_set_vec_variable (gm->svmdb_client, "vpp_vector_rate",
+				(char *) v, sizeof (*v));
   vec_free (v);
   vec_add1 (v, 0.0);
-  svmdb_local_set_vec_variable (gm->svmdb_client,
-				"vpp_input_rate", (char *) v, sizeof (*v));
+  svmdb_local_set_vec_variable (gm->svmdb_client, "vpp_input_rate", (char *) v,
+				sizeof (*v));
   vec_free (v);
   vec_add1 (v, 0.0);
-  svmdb_local_set_vec_variable (gm->svmdb_client,
-				"vpp_sig_error_rate",
+  svmdb_local_set_vec_variable (gm->svmdb_client, "vpp_sig_error_rate",
 				(char *) v, sizeof (*v));
   vec_free (v);
 
   vec_add1 (swp, 0.0);
-  svmdb_local_set_vec_variable (gm->svmdb_client,
-				"vpp_pid", (char *) swp, sizeof (*swp));
+  svmdb_local_set_vec_variable (gm->svmdb_client, "vpp_pid", (char *) swp,
+				sizeof (*swp));
   vec_free (swp);
 
   /* the value cells will never move, so acquire references to them */
-  gm->vector_rate_ptr =
-    svmdb_local_get_variable_reference (gm->svmdb_client,
-					SVMDB_NAMESPACE_VEC,
-					"vpp_vector_rate");
-  gm->input_rate_ptr =
-    svmdb_local_get_variable_reference (gm->svmdb_client,
-					SVMDB_NAMESPACE_VEC,
-					"vpp_input_rate");
-  gm->sig_error_rate_ptr =
-    svmdb_local_get_variable_reference (gm->svmdb_client,
-					SVMDB_NAMESPACE_VEC,
-					"vpp_sig_error_rate");
-  gm->vpef_pid_ptr =
-    svmdb_local_get_variable_reference (gm->svmdb_client,
-					SVMDB_NAMESPACE_VEC, "vpp_pid");
+  gm->vector_rate_ptr = svmdb_local_get_variable_reference (
+    gm->svmdb_client, SVMDB_NAMESPACE_VEC, "vpp_vector_rate");
+  gm->input_rate_ptr = svmdb_local_get_variable_reference (
+    gm->svmdb_client, SVMDB_NAMESPACE_VEC, "vpp_input_rate");
+  gm->sig_error_rate_ptr = svmdb_local_get_variable_reference (
+    gm->svmdb_client, SVMDB_NAMESPACE_VEC, "vpp_sig_error_rate");
+  gm->vpef_pid_ptr = svmdb_local_get_variable_reference (
+    gm->svmdb_client, SVMDB_NAMESPACE_VEC, "vpp_pid");
   return 0;
 }
 
 VLIB_INIT_FUNCTION (gmon_init);
 
 static clib_error_t *
-gmon_exit (vlib_main_t * vm)
+gmon_exit (vlib_main_t *vm)
 {
   gmon_main_t *gm = &gmon_main;
 
@@ -239,7 +227,7 @@ gmon_exit (vlib_main_t * vm)
 VLIB_MAIN_LOOP_EXIT_FUNCTION (gmon_exit);
 
 static int
-significant_error_enable_disable (gmon_main_t * gm, u32 index, int enable)
+significant_error_enable_disable (gmon_main_t *gm, u32 index, int enable)
 {
   vlib_main_t *vm = gm->vlib_main;
   vlib_error_main_t *em = &vm->error_main;
@@ -247,15 +235,13 @@ significant_error_enable_disable (gmon_main_t * gm, u32 index, int enable)
   if (index >= vec_len (em->counters))
     return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-  gm->sig_error_bitmap =
-    clib_bitmap_set (gm->sig_error_bitmap, index, enable);
+  gm->sig_error_bitmap = clib_bitmap_set (gm->sig_error_bitmap, index, enable);
   return 0;
 }
 
 static clib_error_t *
-set_significant_error_command_fn (vlib_main_t * vm,
-				  unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
+set_significant_error_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				  vlib_cli_command_t *cmd)
 {
   u32 index;
   int enable = 1;
@@ -281,20 +267,18 @@ set_significant_error_command_fn (vlib_main_t * vm,
       break;
 
     default:
-      return clib_error_return
-	(0, "significant_error_enable_disable returned %d", rv);
+      return clib_error_return (
+	0, "significant_error_enable_disable returned %d", rv);
     }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_significant_error_command, static) = {
   .path = "set significant error",
   .short_help = "set significant error <counter-index-nnn> [disable]",
   .function = set_significant_error_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

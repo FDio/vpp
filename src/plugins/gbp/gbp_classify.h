@@ -51,9 +51,9 @@ enum gbp_classify_get_ip_way
 };
 
 static_always_inline dpo_proto_t
-gbp_classify_get_ip_address (const ethernet_header_t * eh0,
-			     const ip4_address_t ** ip4,
-			     const ip6_address_t ** ip6,
+gbp_classify_get_ip_address (const ethernet_header_t *eh0,
+			     const ip4_address_t **ip4,
+			     const ip6_address_t **ip6,
 			     const enum gbp_classify_get_ip_way way)
 {
   u16 etype = clib_net_to_host_u16 (eh0->type);
@@ -61,8 +61,7 @@ gbp_classify_get_ip_address (const ethernet_header_t * eh0,
 
   if (ETHERNET_TYPE_VLAN == etype)
     {
-      const ethernet_vlan_header_t *vh0 =
-	(ethernet_vlan_header_t *) (eh0 + 1);
+      const ethernet_vlan_header_t *vh0 = (ethernet_vlan_header_t *) (eh0 + 1);
       etype = clib_net_to_host_u16 (vh0->type);
       l3h0 = vh0 + 1;
     }

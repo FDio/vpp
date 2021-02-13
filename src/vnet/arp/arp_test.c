@@ -38,7 +38,7 @@ arp_test_main_t arp_test_main;
 
 #define __plugin_msg_base arp_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
-uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
+uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
 
 /* Declare message IDs */
 #include <vnet/arp/arp.api_enum.h>
@@ -46,30 +46,29 @@ uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 #include <vpp/api/vpe.api_types.h>
 
 static int
-api_proxy_arp_dump (vat_main_t * vam)
+api_proxy_arp_dump (vat_main_t *vam)
 {
   return -1;
 }
 
 static int
-api_proxy_arp_intfc_dump (vat_main_t * vam)
+api_proxy_arp_intfc_dump (vat_main_t *vam)
 {
   return -1;
 }
 
 static void
-vl_api_proxy_arp_details_t_handler (vl_api_proxy_arp_details_t * mp)
+vl_api_proxy_arp_details_t_handler (vl_api_proxy_arp_details_t *mp)
 {
 }
 
 static void
-vl_api_proxy_arp_intfc_details_t_handler (vl_api_proxy_arp_intfc_details_t *
-					  mp)
+vl_api_proxy_arp_intfc_details_t_handler (vl_api_proxy_arp_intfc_details_t *mp)
 {
 }
 
 static int
-api_proxy_arp_add_del (vat_main_t * vam)
+api_proxy_arp_add_del (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_proxy_arp_add_del_t *mp;
@@ -114,7 +113,7 @@ api_proxy_arp_add_del (vat_main_t * vam)
 }
 
 static int
-api_proxy_arp_intfc_enable_disable (vat_main_t * vam)
+api_proxy_arp_intfc_enable_disable (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_proxy_arp_intfc_enable_disable_t *mp;

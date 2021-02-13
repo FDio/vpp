@@ -19,20 +19,20 @@
 #include <ioam/ipfixcollector/ipfixcollector.h>
 #include <vnet/ipfix-export/ipfix_packet.h>
 
-#define foreach_ipfix_collector_error \
-_(PROCESSED, "Number of IP-Fix packets processed") \
-_(NO_LISTENER, "Number of IP-Fix packets with no listener")
+#define foreach_ipfix_collector_error                                         \
+  _ (PROCESSED, "Number of IP-Fix packets processed")                         \
+  _ (NO_LISTENER, "Number of IP-Fix packets with no listener")
 
 typedef enum
 {
-#define _(sym,str) IPFIX_COLLECTOR_ERROR_##sym,
+#define _(sym, str) IPFIX_COLLECTOR_ERROR_##sym,
   foreach_ipfix_collector_error
 #undef _
     IPFIX_COLLECTOR_N_ERROR,
 } flowperpkt_error_t;
 
 static char *ipfix_collector_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ipfix_collector_error
 #undef _
 };
@@ -54,14 +54,13 @@ vlib_node_registration_t ipfix_collector_node;
 
 /* packet trace format function */
 static u8 *
-format_ipfix_collector_trace (u8 * s, va_list * args)
+format_ipfix_collector_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ipfix_collector_trace_t *t = va_arg (*args, ipfix_collector_trace_t *);
 
-  s = format (s,
-	      "IPFIX_COLLECTOR: set_id %u, next_node %u", t->set_id,
+  s = format (s, "IPFIX_COLLECTOR: set_id %u, next_node %u", t->set_id,
 	      t->next_node);
   return s;
 }
@@ -89,9 +88,8 @@ format_ipfix_collector_trace (u8 * s, va_list * args)
  *   for the IP-Fix SetId using API ipfix_collector_reg_setid().
  */
 uword
-ipfix_collector_node_fn (vlib_main_t * vm,
-			 vlib_node_runtime_t * node,
-			 vlib_frame_t * from_frame)
+ipfix_collector_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+			 vlib_frame_t *from_frame)
 {
   u32 n_left_from, next_index, *from, *to_next;
   word n_no_listener = 0;
@@ -128,12 +126,14 @@ ipfix_collector_node_fn (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data,
-			   (sizeof (ipfix_message_header_t) +
-			    sizeof (ipfix_set_header_t)), LOAD);
-	    CLIB_PREFETCH (p3->data,
-			   (sizeof (ipfix_message_header_t) +
-			    sizeof (ipfix_set_header_t)), LOAD);
+	    CLIB_PREFETCH (
+	      p2->data,
+	      (sizeof (ipfix_message_header_t) + sizeof (ipfix_set_header_t)),
+	      LOAD);
+	    CLIB_PREFETCH (
+	      p3->data,
+	      (sizeof (ipfix_message_header_t) + sizeof (ipfix_set_header_t)),
+	      LOAD);
 	  }
 
 	  bi0 = from[0];
@@ -182,31 +182,29 @@ ipfix_collector_node_fn (vlib_main_t * vm,
 	      n_no_listener++;
 	    }
 
-	  vlib_buffer_advance (b0,
-			       (sizeof (ipfix_message_header_t)
-				+ sizeof (ipfix_set_header_t)));
-	  vlib_buffer_advance (b1,
-			       (sizeof (ipfix_message_header_t)
-				+ sizeof (ipfix_set_header_t)));
+	  vlib_buffer_advance (b0, (sizeof (ipfix_message_header_t) +
+				    sizeof (ipfix_set_header_t)));
+	  vlib_buffer_advance (b1, (sizeof (ipfix_message_header_t) +
+				    sizeof (ipfix_set_header_t)));
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      ipfix_collector_trace_t *tr = vlib_add_trace (vm, node,
-							    b0, sizeof (*tr));
+	      ipfix_collector_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->next_node = (client0 ? client0->client_node : 0xFFFFFFFF);
 	      tr->set_id = set_id0;
 	    }
 	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      ipfix_collector_trace_t *tr = vlib_add_trace (vm, node,
-							    b1, sizeof (*tr));
+	      ipfix_collector_trace_t *tr =
+		vlib_add_trace (vm, node, b1, sizeof (*tr));
 	      tr->next_node = (client1 ? client1->client_node : 0xFFFFFFFF);
 	      tr->set_id = set_id1;
 	    }
 
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -246,32 +244,29 @@ ipfix_collector_node_fn (vlib_main_t * vm,
 	      n_no_listener++;
 	    }
 
-	  vlib_buffer_advance (b0,
-			       (sizeof (ipfix_message_header_t)
-				+ sizeof (ipfix_set_header_t)));
+	  vlib_buffer_advance (b0, (sizeof (ipfix_message_header_t) +
+				    sizeof (ipfix_set_header_t)));
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      ipfix_collector_trace_t *tr = vlib_add_trace (vm, node,
-							    b0, sizeof (*tr));
+	      ipfix_collector_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->next_node = (client0 ? client0->client_node : 0xFFFFFFFF);
 	      tr->set_id = set_id0;
 	    }
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_error_count (vm, node->node_index,
-		    IPFIX_COLLECTOR_ERROR_NO_LISTENER, n_no_listener);
-  vlib_error_count (vm, node->node_index,
-		    IPFIX_COLLECTOR_ERROR_PROCESSED, n_listener);
+  vlib_error_count (vm, node->node_index, IPFIX_COLLECTOR_ERROR_NO_LISTENER,
+		    n_no_listener);
+  vlib_error_count (vm, node->node_index, IPFIX_COLLECTOR_ERROR_PROCESSED,
+		    n_listener);
   return from_frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipfix_collector_node) = {
   .function = ipfix_collector_node_fn,
   .name = "ipfix-collector",
@@ -289,7 +284,6 @@ VLIB_REGISTER_NODE (ipfix_collector_node) = {
     [IPFIX_COLLECTOR_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

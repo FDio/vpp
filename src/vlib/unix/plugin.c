@@ -22,12 +22,24 @@
 
 plugin_main_t vlib_plugin_main;
 
-#define PLUGIN_LOG_DBG(...) \
-  do {vlib_log_debug (vlib_plugin_main.logger, __VA_ARGS__);} while(0)
-#define PLUGIN_LOG_ERR(...) \
-  do {vlib_log_err (vlib_plugin_main.logger, __VA_ARGS__);} while(0)
-#define PLUGIN_LOG_NOTICE(...) \
-  do {vlib_log_notice (vlib_plugin_main.logger, __VA_ARGS__);} while(0)
+#define PLUGIN_LOG_DBG(...)                                                   \
+  do                                                                          \
+    {                                                                         \
+      vlib_log_debug (vlib_plugin_main.logger, __VA_ARGS__);                  \
+    }                                                                         \
+  while (0)
+#define PLUGIN_LOG_ERR(...)                                                   \
+  do                                                                          \
+    {                                                                         \
+      vlib_log_err (vlib_plugin_main.logger, __VA_ARGS__);                    \
+    }                                                                         \
+  while (0)
+#define PLUGIN_LOG_NOTICE(...)                                                \
+  do                                                                          \
+    {                                                                         \
+      vlib_log_notice (vlib_plugin_main.logger, __VA_ARGS__);                 \
+    }                                                                         \
+  while (0)
 
 char *vlib_plugin_path __attribute__ ((weak));
 char *vlib_plugin_path = "";
@@ -68,7 +80,7 @@ str_array_to_vec (char *array, int len)
 }
 
 static u8 *
-extract (u8 * sp, u8 * ep)
+extract (u8 *sp, u8 *ep)
 {
   u8 *rv = 0;
 
@@ -88,8 +100,8 @@ extract (u8 * sp, u8 * ep)
  */
 
 static clib_error_t *
-r2_to_reg (elf_main_t * em, vlib_plugin_r2_t * r2,
-	   vlib_plugin_registration_t * reg)
+r2_to_reg (elf_main_t *em, vlib_plugin_r2_t *r2,
+	   vlib_plugin_registration_t *reg)
 {
   clib_error_t *error;
   elf_section_t *section;
@@ -154,9 +166,8 @@ r2_to_reg (elf_main_t * em, vlib_plugin_r2_t * r2,
   return 0;
 }
 
-
 static int
-load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
+load_one_plugin (plugin_main_t *pm, plugin_info_t *pi, int from_early_init)
 {
   void *handle;
   int reread_reg = 1;
@@ -195,8 +206,7 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
       goto process_reg;
     }
 
-  error = elf_get_section_by_name (&em, ".vlib_plugin_registration",
-				   &section);
+  error = elf_get_section_by_name (&em, ".vlib_plugin_registration", &section);
   if (error)
     {
       PLUGIN_LOG_ERR ("Not a plugin: %s\n", (char *) pi->name);
@@ -245,9 +255,8 @@ process_reg:
       (strncmp (vlib_plugin_app_version, version_required,
 		strlen (version_required))))
     {
-      PLUGIN_LOG_ERR ("Plugin %s version mismatch: %s != %s",
-		      pi->name, vlib_plugin_app_version,
-		      reg->version_required);
+      PLUGIN_LOG_ERR ("Plugin %s version mismatch: %s != %s", pi->name,
+		      vlib_plugin_app_version, reg->version_required);
       if (!(pc && pc->skip_version_check == 1))
 	{
 	  vec_free (version_required);
@@ -270,8 +279,8 @@ process_reg:
 
       while (1)
 	{
-	  if (*sp == 0
-	      || (sp >= (u8 *) overrides + ARRAY_LEN (reg->overrides)))
+	  if (*sp == 0 ||
+	      (sp >= (u8 *) overrides + ARRAY_LEN (reg->overrides)))
 	    break;
 	  if (*sp == ' ' || *sp == ',')
 	    {
@@ -286,7 +295,6 @@ process_reg:
 	    ep--;
 
 	  override_name_copy = extract (sp, ep);
-
 
 	  p = hash_get_mem (pm->plugin_overrides_by_name_hash,
 			    override_name_copy);
@@ -319,8 +327,8 @@ process_reg:
     reg = dlsym (pi->handle, "vlib_plugin_registration");
 
   pi->reg = reg;
-  pi->version = str_array_to_vec ((char *) &reg->version,
-				  sizeof (reg->version));
+  pi->version =
+    str_array_to_vec ((char *) &reg->version, sizeof (reg->version));
 
   if (reg->early_init)
     {
@@ -334,8 +342,8 @@ process_reg:
 	  error = (*ei) (pm->vlib_main);
 	  if (error)
 	    {
-	      u8 *err = format (0, "%s: %U%c", pi->name,
-				format_clib_error, error, 0);
+	      u8 *err =
+		format (0, "%s: %U%c", pi->name, format_clib_error, error, 0);
 	      PLUGIN_LOG_ERR ((char *) err);
 	      clib_error_free (error);
 	      dlclose (pi->handle);
@@ -364,7 +372,7 @@ error:
 }
 
 static u8 **
-split_plugin_path (plugin_main_t * pm)
+split_plugin_path (plugin_main_t *pm)
 {
   int i;
   u8 **rv = 0;
@@ -413,7 +421,7 @@ index_cmp (void *a1, void *a2)
 }
 
 int
-vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
+vlib_load_new_plugins (plugin_main_t *pm, int from_early_init)
 {
   DIR *dp;
   struct dirent *entry;
@@ -477,14 +485,12 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
 	      hash_set_mem (pm->plugin_by_name_hash, plugin_name,
 			    pi - pm->plugin_info);
 	    }
-	next:
-	  ;
+	next:;
 	}
       closedir (dp);
       vec_free (plugin_path[i]);
     }
   vec_free (plugin_path);
-
 
   /*
    * Sort the plugins by name. This is important.
@@ -522,8 +528,7 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
       /* Plugin overridden? */
       if (p)
 	{
-	  PLUGIN_LOG_NOTICE ("Plugin '%s' overridden by '%s'", pi->name,
-			     p[0]);
+	  PLUGIN_LOG_NOTICE ("Plugin '%s' overridden by '%s'", pi->name, p[0]);
 	  vec_add1 (not_loaded_indices, i);
 	}
     }
@@ -584,13 +589,12 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
 }
 
 int
-vlib_plugin_early_init (vlib_main_t * vm)
+vlib_plugin_early_init (vlib_main_t *vm)
 {
   plugin_main_t *pm = &vlib_plugin_main;
 
-  pm->logger =
-    vlib_log_register_class_rate_limit ("plugin", "load",
-					0x7FFFFFFF /* aka no rate limit */ );
+  pm->logger = vlib_log_register_class_rate_limit (
+    "plugin", "load", 0x7FFFFFFF /* aka no rate limit */);
 
   if (pm->plugin_path == 0)
     pm->plugin_path = format (0, "%s%c", vlib_plugin_path, 0);
@@ -601,7 +605,7 @@ vlib_plugin_early_init (vlib_main_t * vm)
   pm->plugin_overrides_by_name_hash = hash_create_string (0, sizeof (uword));
   pm->vlib_main = vm;
 
-  return vlib_load_new_plugins (pm, 1 /* from_early_init */ );
+  return vlib_load_new_plugins (pm, 1 /* from_early_init */);
 }
 
 u8 *
@@ -619,8 +623,8 @@ vlib_get_vat_plugin_name_filter (void)
 }
 
 static clib_error_t *
-vlib_plugins_show_cmd_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+vlib_plugins_show_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   plugin_main_t *pm = &vlib_plugin_main;
   u8 *s = 0;
@@ -632,36 +636,30 @@ vlib_plugins_show_cmd_fn (vlib_main_t * vm,
   s = format (s, " Plugin path is: %s\n\n", pm->plugin_path);
   s = format (s, "     %-41s%-33s%s\n", "Plugin", "Version", "Description");
 
-  /* *INDENT-OFF* */
-  hash_foreach_mem (key, value, pm->plugin_by_name_hash,
-    {
-      if (key != 0)
-        {
-          pi = vec_elt_at_index (pm->plugin_info, value);
-          s = format (s, "%3d. %-40s %-32s %s\n", index, key, pi->version,
-		      (pi->reg && pi->reg->description) ?
-                      pi->reg->description : "");
-	  index++;
-        }
-    });
-  /* *INDENT-ON* */
+  hash_foreach_mem (key, value, pm->plugin_by_name_hash, {
+    if (key != 0)
+      {
+	pi = vec_elt_at_index (pm->plugin_info, value);
+	s = format (s, "%3d. %-40s %-32s %s\n", index, key, pi->version,
+		    (pi->reg && pi->reg->description) ? pi->reg->description :
+							"");
+	index++;
+      }
+  });
 
   vlib_cli_output (vm, "%v", s);
   vec_free (s);
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (plugins_show_cmd, static) =
-{
+VLIB_CLI_COMMAND (plugins_show_cmd, static) = {
   .path = "show plugins",
   .short_help = "show loaded plugins",
   .function = vlib_plugins_show_cmd_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-config_one_plugin (vlib_main_t * vm, char *name, unformat_input_t * input)
+config_one_plugin (vlib_main_t *vm, char *name, unformat_input_t *input)
 {
   plugin_main_t *pm = &vlib_plugin_main;
   plugin_config_t *pc;
@@ -700,8 +698,10 @@ config_one_plugin (vlib_main_t * vm, char *name, unformat_input_t * input)
 
   if (is_enable && is_disable)
     {
-      error = clib_error_return (0, "please specify either enable or disable"
-				 " for plugin '%s'", name);
+      error = clib_error_return (0,
+				 "please specify either enable or disable"
+				 " for plugin '%s'",
+				 name);
       goto done;
     }
 
@@ -717,7 +717,7 @@ done:
 }
 
 clib_error_t *
-vlib_plugin_config (vlib_main_t * vm, unformat_input_t * input)
+vlib_plugin_config (vlib_main_t *vm, unformat_input_t *input)
 {
   plugin_main_t *pm = &vlib_plugin_main;
   clib_error_t *error = 0;
@@ -795,7 +795,7 @@ done2:
 /* discard whole 'plugins' section, as it is already consumed prior to
    plugin load */
 static clib_error_t *
-plugins_config (vlib_main_t * vm, unformat_input_t * input)
+plugins_config (vlib_main_t *vm, unformat_input_t *input)
 {
   u8 *junk;
 

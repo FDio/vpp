@@ -33,12 +33,12 @@ typedef struct throttle_t_
   f64 *last_seed_change_time;
 } throttle_t;
 
-#define THROTTLE_BITS	(512)
+#define THROTTLE_BITS (512)
 
-extern void throttle_init (throttle_t * t, u32 n_threads, f64 time);
+extern void throttle_init (throttle_t *t, u32 n_threads, f64 time);
 
 always_inline u64
-throttle_seed (throttle_t * t, u32 thread_index, f64 time_now)
+throttle_seed (throttle_t *t, u32 thread_index, f64 time_now)
 {
   if (time_now - t->last_seed_change_time[thread_index] > t->time)
     {
@@ -51,7 +51,7 @@ throttle_seed (throttle_t * t, u32 thread_index, f64 time_now)
 }
 
 always_inline int
-throttle_check (throttle_t * t, u32 thread_index, u64 hash, u64 seed)
+throttle_check (throttle_t *t, u32 thread_index, u64 hash, u64 seed)
 {
   int drop;
   uword m;

@@ -40,8 +40,7 @@ static u32 l3xc_base_msg_id;
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_l3xc_plugin_get_version_t_handler (vl_api_l3xc_plugin_get_version_t *
-					  mp)
+vl_api_l3xc_plugin_get_version_t_handler (vl_api_l3xc_plugin_get_version_t *mp)
 {
   vl_api_l3xc_plugin_get_version_reply_t *rmp;
   vl_api_registration_t *rp;
@@ -61,7 +60,7 @@ vl_api_l3xc_plugin_get_version_t_handler (vl_api_l3xc_plugin_get_version_t *
 }
 
 static void
-vl_api_l3xc_update_t_handler (vl_api_l3xc_update_t * mp)
+vl_api_l3xc_update_t_handler (vl_api_l3xc_update_t *mp)
 {
   vl_api_l3xc_update_reply_t *rmp;
   fib_route_path_t *paths = NULL, *path;
@@ -96,16 +95,12 @@ done:
 
   BAD_SW_IF_INDEX_LABEL;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_L3XC_UPDATE_REPLY + l3xc_base_msg_id,
-  ({
-    rmp->stats_index = 0;
-  }))
-  /* *INDENT-ON* */
+		({ rmp->stats_index = 0; }))
 }
 
 static void
-vl_api_l3xc_del_t_handler (vl_api_l3xc_del_t * mp)
+vl_api_l3xc_del_t_handler (vl_api_l3xc_del_t *mp)
 {
   vl_api_l3xc_del_reply_t *rmp;
   int rv = 0;
@@ -157,10 +152,10 @@ l3xc_send_details (u32 l3xci, void *args)
 
   fp = mp->l3xc.paths;
   vec_foreach (rpath, path_ctx.rpaths)
-  {
-    fib_api_path_encode (rpath, fp);
-    fp++;
-  }
+    {
+      fib_api_path_encode (rpath, fp);
+      fp++;
+    }
 
   vl_api_send_msg (ctx->rp, (u8 *) mp);
 
@@ -168,7 +163,7 @@ l3xc_send_details (u32 l3xci, void *args)
 }
 
 static void
-vl_api_l3xc_dump_t_handler (vl_api_l3xc_dump_t * mp)
+vl_api_l3xc_dump_t_handler (vl_api_l3xc_dump_t *mp)
 {
   vl_api_registration_t *rp;
   u32 sw_if_index;
@@ -203,7 +198,7 @@ vl_api_l3xc_dump_t_handler (vl_api_l3xc_dump_t * mp)
 
 #include <l3xc/l3xc.api.c>
 static clib_error_t *
-l3xc_api_init (vlib_main_t * vm)
+l3xc_api_init (vlib_main_t *vm)
 {
   /* Ask for a correctly-sized block of API message decode slots */
   l3xc_base_msg_id = setup_message_id_table ();
@@ -213,12 +208,10 @@ l3xc_api_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (l3xc_api_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "L3 Cross-Connect (L3XC)",
+  .version = VPP_BUILD_VER,
+  .description = "L3 Cross-Connect (L3XC)",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

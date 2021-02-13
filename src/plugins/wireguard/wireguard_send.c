@@ -22,7 +22,7 @@
 #include <wireguard/wireguard_send.h>
 
 static int
-ip46_enqueue_packet (vlib_main_t * vm, u32 bi0, int is_ip6)
+ip46_enqueue_packet (vlib_main_t *vm, u32 bi0, int is_ip6)
 {
   vlib_frame_t *f = 0;
   u32 lookup_node_index =
@@ -41,7 +41,7 @@ ip46_enqueue_packet (vlib_main_t * vm, u32 bi0, int is_ip6)
 }
 
 static void
-wg_buffer_prepend_rewrite (vlib_buffer_t * b0, const wg_peer_t * peer)
+wg_buffer_prepend_rewrite (vlib_buffer_t *b0, const wg_peer_t *peer)
 {
   ip4_udp_header_t *hdr;
 
@@ -57,9 +57,8 @@ wg_buffer_prepend_rewrite (vlib_buffer_t * b0, const wg_peer_t * peer)
 }
 
 static bool
-wg_create_buffer (vlib_main_t * vm,
-		  const wg_peer_t * peer,
-		  const u8 * packet, u32 packet_len, u32 * bi)
+wg_create_buffer (vlib_main_t *vm, const wg_peer_t *peer, const u8 *packet,
+		  u32 packet_len, u32 *bi)
 {
   u32 n_buf0 = 0;
   vlib_buffer_t *b0;
@@ -81,7 +80,7 @@ wg_create_buffer (vlib_main_t * vm,
 }
 
 bool
-wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry)
+wg_send_handshake (vlib_main_t *vm, wg_peer_t *peer, bool is_retry)
 {
   ASSERT (vm->thread_index == 0);
 
@@ -90,16 +89,13 @@ wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry)
   if (!is_retry)
     peer->timer_handshake_attempts = 0;
 
-  if (!wg_birthdate_has_expired (peer->last_sent_handshake,
-				 REKEY_TIMEOUT) || peer->is_dead)
+  if (!wg_birthdate_has_expired (peer->last_sent_handshake, REKEY_TIMEOUT) ||
+      peer->is_dead)
     return true;
 
-  if (noise_create_initiation (vm,
-			       &peer->remote,
-			       &packet.sender_index,
-			       packet.unencrypted_ephemeral,
-			       packet.encrypted_static,
-			       packet.encrypted_timestamp))
+  if (noise_create_initiation (
+	vm, &peer->remote, &packet.sender_index, packet.unencrypted_ephemeral,
+	packet.encrypted_static, packet.encrypted_timestamp))
     {
       packet.header.type = MESSAGE_HANDSHAKE_INITIATION;
       cookie_maker_mac (&peer->cookie_maker, &packet.macs, &packet,
@@ -114,7 +110,7 @@ wg_send_handshake (vlib_main_t * vm, wg_peer_t * peer, bool is_retry)
     return false;
 
   u32 bi0 = 0;
-  if (!wg_create_buffer (vm, peer, (u8 *) & packet, sizeof (packet), &bi0))
+  if (!wg_create_buffer (vm, peer, (u8 *) &packet, sizeof (packet), &bi0))
     return false;
 
   ip46_enqueue_packet (vm, bi0, false);
@@ -147,12 +143,12 @@ wg_send_handshake_from_mt (u32 peer_idx, bool is_retry)
     .is_retry = is_retry,
   };
 
-  vl_api_rpc_call_main_thread (wg_send_handshake_thread_fn,
-			       (u8 *) & a, sizeof (a));
+  vl_api_rpc_call_main_thread (wg_send_handshake_thread_fn, (u8 *) &a,
+			       sizeof (a));
 }
 
 bool
-wg_send_keepalive (vlib_main_t * vm, wg_peer_t * peer)
+wg_send_keepalive (vlib_main_t *vm, wg_peer_t *peer)
 {
   ASSERT (vm->thread_index == 0);
 
@@ -170,9 +166,7 @@ wg_send_keepalive (vlib_main_t * vm, wg_peer_t * peer)
     }
 
   state =
-    noise_remote_encrypt (vm,
-			  &peer->remote,
-			  &packet->receiver_index,
+    noise_remote_encrypt (vm, &peer->remote, &packet->receiver_index,
 			  &packet->counter, NULL, 0, packet->encrypted_data);
 
   if (PREDICT_FALSE (state == SC_KEEP_KEY_FRESH))
@@ -203,16 +197,13 @@ out:
 }
 
 bool
-wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer)
+wg_send_handshake_response (vlib_main_t *vm, wg_peer_t *peer)
 {
   message_handshake_response_t packet;
 
-  if (noise_create_response (vm,
-			     &peer->remote,
-			     &packet.sender_index,
-			     &packet.receiver_index,
-			     packet.unencrypted_ephemeral,
-			     packet.encrypted_nothing))
+  if (noise_create_response (
+	vm, &peer->remote, &packet.sender_index, &packet.receiver_index,
+	packet.unencrypted_ephemeral, packet.encrypted_nothing))
     {
       packet.header.type = MESSAGE_HANDSHAKE_RESPONSE;
       cookie_maker_mac (&peer->cookie_maker, &packet.macs, &packet,
@@ -226,8 +217,8 @@ wg_send_handshake_response (vlib_main_t * vm, wg_peer_t * peer)
 	  peer->last_sent_handshake = vlib_time_now (vm);
 
 	  u32 bi0 = 0;
-	  if (!wg_create_buffer (vm, peer, (u8 *) & packet,
-				 sizeof (packet), &bi0))
+	  if (!wg_create_buffer (vm, peer, (u8 *) &packet, sizeof (packet),
+				 &bi0))
 	    return false;
 
 	  ip46_enqueue_packet (vm, bi0, false);

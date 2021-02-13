@@ -44,23 +44,20 @@ typedef enum qos_source_t_
  */
 #define QOS_N_SOURCES (QOS_SOURCE_IP + 1)
 
-#define QOS_SOURCE_NAMES {                   \
-    [QOS_SOURCE_EXT] = "ext",                \
-    [QOS_SOURCE_IP] = "IP",                  \
-    [QOS_SOURCE_MPLS] = "MPLS",              \
-    [QOS_SOURCE_VLAN] = "VLAN",              \
-}
+#define QOS_SOURCE_NAMES                                                      \
+  {                                                                           \
+    [QOS_SOURCE_EXT] = "ext", [QOS_SOURCE_IP] = "IP",                         \
+    [QOS_SOURCE_MPLS] = "MPLS", [QOS_SOURCE_VLAN] = "VLAN",                   \
+  }
 
-#define FOR_EACH_QOS_SOURCE(_src)    \
-    for (_src = QOS_SOURCE_EXT;      \
-         _src <= QOS_SOURCE_IP;      \
-         _src++)
+#define FOR_EACH_QOS_SOURCE(_src)                                             \
+  for (_src = QOS_SOURCE_EXT; _src <= QOS_SOURCE_IP; _src++)
 
 /**
  * format/unformat QoS source types
  */
-extern u8 *format_qos_source (u8 * s, va_list * args);
-extern uword unformat_qos_source (unformat_input_t * input, va_list * args);
+extern u8 *format_qos_source (u8 *s, va_list *args);
+extern uword unformat_qos_source (unformat_input_t *input, va_list *args);
 
 /**
  * Type, er, safety for us water based entities

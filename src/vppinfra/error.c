@@ -38,21 +38,21 @@
 /* Error reporting. */
 #include <stdarg.h>
 
-#include <vppinfra/clib.h>	/* for HAVE_ERRNO */
+#include <vppinfra/clib.h> /* for HAVE_ERRNO */
 
 #ifdef CLIB_LINUX_KERNEL
-#include <linux/unistd.h>	/* for write */
-#include <linux/kernel.h>	/* for printk */
+#include <linux/unistd.h> /* for write */
+#include <linux/kernel.h> /* for printk */
 #endif
 
 #ifdef CLIB_UNIX
-#include <unistd.h>		/* for write */
-#include <stdio.h>		/* for printf */
+#include <unistd.h> /* for write */
+#include <stdio.h>  /* for printf */
 #define HAVE_ERRNO
 #endif
 
 #ifdef CLIB_STANDALONE
-#include <vppinfra/standalone_stdio.h>	/* for printf */
+#include <vppinfra/standalone_stdio.h> /* for printf */
 #endif
 
 #include <vppinfra/string.h>
@@ -61,7 +61,7 @@
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
-#include <vppinfra/os.h>	/* for os_panic/os_exit/os_puts */
+#include <vppinfra/os.h> /* for os_panic/os_exit/os_puts */
 
 typedef struct
 {
@@ -74,7 +74,10 @@ static clib_error_handler_t *handlers = 0;
 __clib_export void
 clib_error_register_handler (clib_error_handler_func_t func, void *arg)
 {
-  clib_error_handler_t h = {.func = func,.arg = arg, };
+  clib_error_handler_t h = {
+    .func = func,
+    .arg = arg,
+  };
   vec_add1 (handlers, h);
 }
 
@@ -91,7 +94,7 @@ error_exit (int code)
 }
 
 static u8 *
-dispatch_message (u8 * msg)
+dispatch_message (u8 *msg)
 {
   word i;
 
@@ -109,8 +112,8 @@ dispatch_message (u8 * msg)
 }
 
 __clib_export void
-_clib_error (int how_to_die,
-	     char *function_name, uword line_number, char *fmt, ...)
+_clib_error (int how_to_die, char *function_name, uword line_number, char *fmt,
+	     ...)
 {
   u8 *msg = 0;
   va_list va;
@@ -146,8 +149,8 @@ _clib_error (int how_to_die,
 }
 
 __clib_export clib_error_t *
-_clib_error_return (clib_error_t * errors,
-		    any code, uword flags, char *where, char *fmt, ...)
+_clib_error_return (clib_error_t *errors, any code, uword flags, char *where,
+		    char *fmt, ...)
 {
   clib_error_t *e;
   va_list va;
@@ -179,47 +182,48 @@ _clib_error_return (clib_error_t * errors,
 }
 
 __clib_export void *
-clib_error_free_vector (clib_error_t * errors)
+clib_error_free_vector (clib_error_t *errors)
 {
   clib_error_t *e;
-  vec_foreach (e, errors) vec_free (e->what);
+  vec_foreach (e, errors)
+    vec_free (e->what);
   vec_free (errors);
   return 0;
 }
 
 __clib_export u8 *
-format_clib_error (u8 * s, va_list * va)
+format_clib_error (u8 *s, va_list *va)
 {
   clib_error_t *errors = va_arg (*va, clib_error_t *);
   clib_error_t *e;
 
   vec_foreach (e, errors)
-  {
-    if (!e->what)
-      continue;
+    {
+      if (!e->what)
+	continue;
 
-    if (e->where)
-      {
-	u8 *where = 0;
+      if (e->where)
+	{
+	  u8 *where = 0;
 
-	if (e > errors)
-	  where = format (where, "from ");
-	where = format (where, "%s", e->where);
+	  if (e > errors)
+	    where = format (where, "from ");
+	  where = format (where, "%s", e->where);
 
-	s = format (s, "%v: ", where);
-	vec_free (where);
-      }
+	  s = format (s, "%v: ", where);
+	  vec_free (where);
+	}
 
-    s = format (s, "%v", e->what);
-    if ((vec_end (errors) - 1) != e)
-      s = format (s, "\n");
-  }
+      s = format (s, "%v", e->what);
+      if ((vec_end (errors) - 1) != e)
+	s = format (s, "\n");
+    }
 
   return s;
 }
 
 __clib_export clib_error_t *
-_clib_error_report (clib_error_t * errors)
+_clib_error_report (clib_error_t *errors)
 {
   if (errors)
     {

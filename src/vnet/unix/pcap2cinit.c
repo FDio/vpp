@@ -35,7 +35,7 @@ pcap_main_t pcap_main;
  *
  */
 int
-pcap2cinit (pcap_main_t * pm, FILE * ofp)
+pcap2cinit (pcap_main_t *pm, FILE *ofp)
 {
   int i, j;
   u8 *pkt;
@@ -83,11 +83,11 @@ main (int argc, char **argv)
 
   while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (&input, "-i %s", &input_file)
-	  || unformat (&input, "input %s", &input_file))
+      if (unformat (&input, "-i %s", &input_file) ||
+	  unformat (&input, "input %s", &input_file))
 	;
-      else if (unformat (&input, "-o %s", &output_file)
-	       || unformat (&input, "output %s", &output_file))
+      else if (unformat (&input, "-o %s", &output_file) ||
+	       unformat (&input, "output %s", &output_file))
 	;
       else
 	{

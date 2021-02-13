@@ -55,14 +55,13 @@ typedef enum
  * Expect 1 packet / frame
  */
 static uword
-lldp_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-	      vlib_frame_t * frame)
+lldp_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from;
   lldp_input_trace_t *t0;
 
-  from = vlib_frame_vector_args (frame);	/* array of buffer indices */
-  n_left_from = frame->n_vectors;	/* number of buffer indices */
+  from = vlib_frame_vector_args (frame); /* array of buffer indices */
+  n_left_from = frame->n_vectors;	 /* number of buffer indices */
 
   while (n_left_from > 0)
     {
@@ -84,8 +83,8 @@ lldp_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  int len;
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	  len = (b0->current_length < sizeof (t0->data)) ? b0->current_length
-	    : sizeof (t0->data);
+	  len = (b0->current_length < sizeof (t0->data)) ? b0->current_length :
+							   sizeof (t0->data);
 	  t0->len = len;
 	  clib_memcpy_fast (t0->data, vlib_buffer_get_current (b0), len);
 	}
@@ -102,7 +101,7 @@ lldp_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 /*
  * lldp input graph node declaration
  */
-/* *INDENT-OFF* */
+
 VLIB_REGISTER_NODE(lldp_input_node, static) = {
   .function = lldp_node_fn,
   .name = "lldp-input",
@@ -120,13 +119,12 @@ VLIB_REGISTER_NODE(lldp_input_node, static) = {
               [LLDP_INPUT_NEXT_NORMAL] = "error-drop",
       },
 };
-/* *INDENT-ON* */
 
 /*
  * lldp process node function
  */
 static uword
-lldp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
+lldp_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   lldp_main_t *lm = &lldp_main;
   f64 timeout = 0;
@@ -136,7 +134,7 @@ lldp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   lm->lldp_process_node_index = lldp_process_node.index;
 
   /* with ethernet input */
-  ethernet_register_input_type (vm, ETHERNET_TYPE_802_1_LLDP /* LLDP */ ,
+  ethernet_register_input_type (vm, ETHERNET_TYPE_802_1_LLDP /* LLDP */,
 				lldp_input_node.index);
 
   while (1)
@@ -158,7 +156,7 @@ lldp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       event_type = vlib_process_get_events (vm, &event_data);
       switch (event_type)
 	{
-	case ~0:		/* no events => timeout */
+	case ~0: /* no events => timeout */
 	  /* nothing to do here */
 	  break;
 	case LLDP_EVENT_RESCHEDULE:
@@ -177,9 +175,8 @@ lldp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       const f64 now = vlib_time_now (lm->vlib_main);
       while (1)
 	{
-	  lldp_intf_t *n = pool_elt_at_index (lm->intfs,
-					      lm->intfs_timeouts
-					      [lm->intfs_timeouts_idx]);
+	  lldp_intf_t *n = pool_elt_at_index (
+	    lm->intfs, lm->intfs_timeouts[lm->intfs_timeouts_idx]);
 	  if (n->last_sent < 0.01 || now > n->last_sent + lm->msg_tx_interval)
 	    {
 #if LLDP_DEBUG
@@ -205,16 +202,16 @@ lldp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       u8 *s = NULL;
       u32 i;
       vec_foreach_index (i, lm->intfs_timeouts)
-      {
-	if (i == lm->intfs_timeouts_idx)
-	  {
-	    s = format (s, " [%d]", lm->intfs_timeouts[i]);
-	  }
-	else
-	  {
-	    s = format (s, " %d", lm->intfs_timeouts[i]);
-	  }
-      }
+	{
+	  if (i == lm->intfs_timeouts_idx)
+	    {
+	      s = format (s, " [%d]", lm->intfs_timeouts[i]);
+	    }
+	  else
+	    {
+	      s = format (s, " %d", lm->intfs_timeouts[i]);
+	    }
+	}
       clib_warning ("DEBUG: timeout schedule: %s", s);
       vec_free (s);
 #endif
@@ -230,28 +227,27 @@ lldp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 /*
  * lldp process node declaration
  */
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE(lldp_process_node, static) = {
+
+VLIB_REGISTER_NODE (lldp_process_node, static) = {
   .function = lldp_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "lldp-process",
 };
-/* *INDENT-ON* */
 
 void
-lldp_schedule_intf (lldp_main_t * lm, lldp_intf_t * n)
+lldp_schedule_intf (lldp_main_t *lm, lldp_intf_t *n)
 {
   const int idx = n - lm->intfs;
   u32 v;
   vec_foreach_index (v, lm->intfs_timeouts)
-  {
-    if (lm->intfs_timeouts[v] == idx)
-      {
-	/* already scheduled */
-	return;
-      }
-  }
-  n->last_sent = 0;		/* ensure that a packet is sent out immediately */
+    {
+      if (lm->intfs_timeouts[v] == idx)
+	{
+	  /* already scheduled */
+	  return;
+	}
+    }
+  n->last_sent = 0; /* ensure that a packet is sent out immediately */
   /* put the interface at the current position in the timeouts - it
    * will timeout immediately */
   vec_insert (lm->intfs_timeouts, 1, lm->intfs_timeouts_idx);
@@ -264,7 +260,7 @@ lldp_schedule_intf (lldp_main_t * lm, lldp_intf_t * n)
 }
 
 void
-lldp_unschedule_intf (lldp_main_t * lm, lldp_intf_t * n)
+lldp_unschedule_intf (lldp_main_t *lm, lldp_intf_t *n)
 {
   if (!n)
     {
@@ -278,13 +274,13 @@ lldp_unschedule_intf (lldp_main_t * lm, lldp_intf_t * n)
   u32 v;
   /* remove intf index from timeouts vector */
   vec_foreach_index (v, lm->intfs_timeouts)
-  {
-    if (lm->intfs_timeouts[v] == idx)
-      {
-	vec_delete (lm->intfs_timeouts, 1, v);
-	break;
-      }
-  }
+    {
+      if (lm->intfs_timeouts[v] == idx)
+	{
+	  vec_delete (lm->intfs_timeouts, 1, v);
+	  break;
+	}
+    }
   /* wrap current timeout index to first element if needed */
   if (lm->intfs_timeouts_idx >= vec_len (lm->intfs_timeouts))
     {
@@ -295,7 +291,7 @@ lldp_unschedule_intf (lldp_main_t * lm, lldp_intf_t * n)
 }
 
 static clib_error_t *
-lldp_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
+lldp_sw_interface_up_down (vnet_main_t *vnm, u32 sw_if_index, u32 flags)
 {
   lldp_main_t *lm = &lldp_main;
   vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
@@ -316,7 +312,7 @@ lldp_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (lldp_sw_interface_up_down);
 
 static clib_error_t *
-lldp_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+lldp_hw_interface_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 {
   lldp_main_t *lm = &lldp_main;
   lldp_intf_t *n = lldp_get_intf (lm, hw_if_index);

@@ -59,13 +59,12 @@ map_main_t map_main;
  *
  */
 
-
 /*
  * Save user-assigned MAP domain names ("tags") in a vector of
  * extra domain information.
  */
 static void
-map_save_extras (u32 map_domain_index, u8 * tag)
+map_save_extras (u32 map_domain_index, u8 *tag)
 {
   map_main_t *mm = &map_main;
   map_domain_extra_t *de;
@@ -83,7 +82,6 @@ map_save_extras (u32 map_domain_index, u8 * tag)
   vec_validate_init_c_string (de->tag, tag, strlen ((char *) tag));
 }
 
-
 static void
 map_free_extras (u32 map_domain_index)
 {
@@ -100,18 +98,12 @@ map_free_extras (u32 map_domain_index)
   vec_free (de->tag);
 }
 
-
 int
-map_create_domain (ip4_address_t * ip4_prefix,
-		   u8 ip4_prefix_len,
-		   ip6_address_t * ip6_prefix,
-		   u8 ip6_prefix_len,
-		   ip6_address_t * ip6_src,
-		   u8 ip6_src_len,
-		   u8 ea_bits_len,
-		   u8 psid_offset,
-		   u8 psid_length,
-		   u32 * map_domain_index, u16 mtu, u8 flags, u8 * tag)
+map_create_domain (ip4_address_t *ip4_prefix, u8 ip4_prefix_len,
+		   ip6_address_t *ip6_prefix, u8 ip6_prefix_len,
+		   ip6_address_t *ip6_src, u8 ip6_src_len, u8 ea_bits_len,
+		   u8 psid_offset, u8 psid_length, u32 *map_domain_index,
+		   u16 mtu, u8 flags, u8 *tag)
 {
   u8 suffix_len, suffix_shift;
   map_main_t *mm = &map_main;
@@ -134,9 +126,9 @@ map_create_domain (ip4_address_t * ip4_prefix,
   if (ea_bits_len > 0 && ((ip6_prefix_len + ea_bits_len) > 64 ||
 			  ip6_prefix_len + suffix_len + psid_length > 64))
     {
-      clib_warning
-	("Embedded Address bits must be within the first 64 bits of "
-	 "the IPv6 prefix");
+      clib_warning (
+	"Embedded Address bits must be within the first 64 bits of "
+	"the IPv6 prefix");
       return -1;
     }
 
@@ -232,7 +224,7 @@ map_delete_domain (u32 map_domain_index)
 }
 
 int
-map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
+map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t *tep,
 		  bool is_add)
 {
   map_domain_t *d;
@@ -283,14 +275,14 @@ map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
 map_main_pre_resolved_t pre_resolved[FIB_PROTOCOL_MAX];
 
 static void
-map_pre_resolve_init (map_main_pre_resolved_t * pr)
+map_pre_resolve_init (map_main_pre_resolved_t *pr)
 {
   pr->fei = FIB_NODE_INDEX_INVALID;
   fib_node_init (&pr->node, FIB_NODE_TYPE_MAP_E);
 }
 
 static u8 *
-format_map_pre_resolve (u8 * s, va_list * ap)
+format_map_pre_resolve (u8 *s, va_list *ap)
 {
   map_main_pre_resolved_t *pr = va_arg (*ap, map_main_pre_resolved_t *);
 
@@ -300,9 +292,8 @@ format_map_pre_resolve (u8 * s, va_list * ap)
 
       pfx = fib_entry_get_prefix (pr->fei);
 
-      return (format (s, "%U (%u)",
-		      format_ip46_address, &pfx->fp_addr, IP46_TYPE_ANY,
-		      pr->dpo.dpoi_index));
+      return (format (s, "%U (%u)", format_ip46_address, &pfx->fp_addr,
+		      IP46_TYPE_ANY, pr->dpo.dpoi_index));
     }
   else
     {
@@ -310,12 +301,11 @@ format_map_pre_resolve (u8 * s, va_list * ap)
     }
 }
 
-
 /**
  * Function definition to inform the FIB node that its last lock has gone.
  */
 static void
-map_last_lock_gone (fib_node_t * node)
+map_last_lock_gone (fib_node_t *node)
 {
   /*
    * The MAP is a root of the graph. As such
@@ -325,16 +315,16 @@ map_last_lock_gone (fib_node_t * node)
 }
 
 static map_main_pre_resolved_t *
-map_from_fib_node (fib_node_t * node)
+map_from_fib_node (fib_node_t *node)
 {
   ASSERT (FIB_NODE_TYPE_MAP_E == node->fn_type);
-  return ((map_main_pre_resolved_t *)
-	  (((char *) node) -
-	   STRUCT_OFFSET_OF (map_main_pre_resolved_t, node)));
+  return ((map_main_pre_resolved_t *) (((char *) node) -
+				       STRUCT_OFFSET_OF (
+					 map_main_pre_resolved_t, node)));
 }
 
 static void
-map_stack (map_main_pre_resolved_t * pr)
+map_stack (map_main_pre_resolved_t *pr)
 {
   const dpo_id_t *dpo;
 
@@ -347,7 +337,7 @@ map_stack (map_main_pre_resolved_t * pr)
  * Function definition to backwalk a FIB node
  */
 static fib_node_back_walk_rc_t
-map_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+map_back_walk (fib_node_t *node, fib_node_back_walk_ctx_t *ctx)
 {
   map_stack (map_from_fib_node (node));
 
@@ -374,8 +364,8 @@ const static fib_node_vft_t map_vft = {
 };
 
 static void
-map_fib_resolve (map_main_pre_resolved_t * pr,
-		 fib_protocol_t proto, u8 len, const ip46_address_t * addr)
+map_fib_resolve (map_main_pre_resolved_t *pr, fib_protocol_t proto, u8 len,
+		 const ip46_address_t *addr)
 {
   fib_prefix_t pfx = {
     .fp_proto = proto,
@@ -383,14 +373,14 @@ map_fib_resolve (map_main_pre_resolved_t * pr,
     .fp_addr = *addr,
   };
 
-  pr->fei = fib_entry_track (0,	// default fib
+  pr->fei = fib_entry_track (0, // default fib
 			     &pfx, FIB_NODE_TYPE_MAP_E, proto, &pr->sibling);
   map_stack (pr);
 }
 
 static void
-map_fib_unresolve (map_main_pre_resolved_t * pr,
-		   fib_protocol_t proto, u8 len, const ip46_address_t * addr)
+map_fib_unresolve (map_main_pre_resolved_t *pr, fib_protocol_t proto, u8 len,
+		   const ip46_address_t *addr)
 {
   if (pr->fei != FIB_NODE_INDEX_INVALID)
     {
@@ -404,7 +394,7 @@ map_fib_unresolve (map_main_pre_resolved_t * pr,
 }
 
 void
-map_pre_resolve (ip4_address_t * ip4, ip6_address_t * ip6, bool is_del)
+map_pre_resolve (ip4_address_t *ip4, ip6_address_t *ip6, bool is_del)
 {
   if (ip6 && (ip6->as_u64[0] != 0 || ip6->as_u64[1] != 0))
     {
@@ -412,11 +402,11 @@ map_pre_resolve (ip4_address_t * ip4, ip6_address_t * ip6, bool is_del)
 	.ip6 = *ip6,
       };
       if (is_del)
-	map_fib_unresolve (&pre_resolved[FIB_PROTOCOL_IP6],
-			   FIB_PROTOCOL_IP6, 128, &addr);
+	map_fib_unresolve (&pre_resolved[FIB_PROTOCOL_IP6], FIB_PROTOCOL_IP6,
+			   128, &addr);
       else
-	map_fib_resolve (&pre_resolved[FIB_PROTOCOL_IP6],
-			 FIB_PROTOCOL_IP6, 128, &addr);
+	map_fib_resolve (&pre_resolved[FIB_PROTOCOL_IP6], FIB_PROTOCOL_IP6,
+			 128, &addr);
     }
   if (ip4 && (ip4->as_u32 != 0))
     {
@@ -424,19 +414,18 @@ map_pre_resolve (ip4_address_t * ip4, ip6_address_t * ip6, bool is_del)
 	.ip4 = *ip4,
       };
       if (is_del)
-	map_fib_unresolve (&pre_resolved[FIB_PROTOCOL_IP4],
-			   FIB_PROTOCOL_IP4, 32, &addr);
+	map_fib_unresolve (&pre_resolved[FIB_PROTOCOL_IP4], FIB_PROTOCOL_IP4,
+			   32, &addr);
       else
-	map_fib_resolve (&pre_resolved[FIB_PROTOCOL_IP4],
-			 FIB_PROTOCOL_IP4, 32, &addr);
+	map_fib_resolve (&pre_resolved[FIB_PROTOCOL_IP4], FIB_PROTOCOL_IP4, 32,
+			 &addr);
     }
 }
 #endif
 
 static clib_error_t *
-map_security_check_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+map_security_check_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = NULL;
@@ -481,8 +470,8 @@ map_security_check_command_fn (vlib_main_t * vm,
 
   if (!saw_enable)
     {
-      error = clib_error_return (0,
-				 "Must specify enable 'enable' or 'disable'");
+      error =
+	clib_error_return (0, "Must specify enable 'enable' or 'disable'");
       goto done;
     }
 
@@ -500,10 +489,9 @@ done:
   return error;
 }
 
-
 static clib_error_t *
-map_add_domain_command_fn (vlib_main_t * vm,
-			   unformat_input_t * input, vlib_cli_command_t * cmd)
+map_add_domain_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t ip4_prefix;
@@ -525,23 +513,17 @@ map_add_domain_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "ip4-pfx %U/%d", unformat_ip4_address, &ip4_prefix,
-	   &ip4_prefix_len))
+      if (unformat (line_input, "ip4-pfx %U/%d", unformat_ip4_address,
+		    &ip4_prefix, &ip4_prefix_len))
 	num_m_args++;
-      else
-	if (unformat
-	    (line_input, "ip6-pfx %U/%d", unformat_ip6_address, &ip6_prefix,
-	     &ip6_prefix_len))
+      else if (unformat (line_input, "ip6-pfx %U/%d", unformat_ip6_address,
+			 &ip6_prefix, &ip6_prefix_len))
 	num_m_args++;
-      else
-	if (unformat
-	    (line_input, "ip6-src %U/%d", unformat_ip6_address, &ip6_src,
-	     &ip6_src_len))
+      else if (unformat (line_input, "ip6-src %U/%d", unformat_ip6_address,
+			 &ip6_src, &ip6_src_len))
 	num_m_args++;
-      else
-	if (unformat
-	    (line_input, "ip6-src %U", unformat_ip6_address, &ip6_src))
+      else if (unformat (line_input, "ip6-src %U", unformat_ip6_address,
+			 &ip6_src))
 	num_m_args++;
       else if (unformat (line_input, "ea-bits-len %d", &ea_bits_len))
 	num_m_args++;
@@ -567,10 +549,9 @@ map_add_domain_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  map_create_domain (&ip4_prefix, ip4_prefix_len,
-		     &ip6_prefix, ip6_prefix_len, &ip6_src, ip6_src_len,
-		     ea_bits_len, psid_offset, psid_length, &map_domain_index,
-		     mtu, flags, tag);
+  map_create_domain (&ip4_prefix, ip4_prefix_len, &ip6_prefix, ip6_prefix_len,
+		     &ip6_src, ip6_src_len, ea_bits_len, psid_offset,
+		     psid_length, &map_domain_index, mtu, flags, tag);
 
 done:
   vec_free (tag);
@@ -580,8 +561,8 @@ done:
 }
 
 static clib_error_t *
-map_del_domain_command_fn (vlib_main_t * vm,
-			   unformat_input_t * input, vlib_cli_command_t * cmd)
+map_del_domain_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 num_m_args = 0;
@@ -619,8 +600,8 @@ done:
 }
 
 static clib_error_t *
-map_add_rule_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+map_add_rule_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ip6_address_t tep;
@@ -638,8 +619,7 @@ map_add_rule_command_fn (vlib_main_t * vm,
 	num_m_args++;
       else if (unformat (line_input, "psid %d", &psid))
 	num_m_args++;
-      else
-	if (unformat (line_input, "ip6-dst %U", unformat_ip6_address, &tep))
+      else if (unformat (line_input, "ip6-dst %U", unformat_ip6_address, &tep))
 	num_m_args++;
       else
 	{
@@ -669,9 +649,8 @@ done:
 
 #if MAP_SKIP_IP6_LOOKUP
 static clib_error_t *
-map_pre_resolve_command_fn (vlib_main_t * vm,
-			    unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+map_pre_resolve_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t ip4nh, *p_v4 = NULL;
@@ -690,8 +669,8 @@ map_pre_resolve_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "ip4-nh %U", unformat_ip4_address, &ip4nh))
 	p_v4 = &ip4nh;
-      else
-	if (unformat (line_input, "ip6-nh %U", unformat_ip6_address, &ip6nh))
+      else if (unformat (line_input, "ip6-nh %U", unformat_ip6_address,
+			 &ip6nh))
 	p_v6 = &ip6nh;
       else if (unformat (line_input, "del"))
 	is_del = true;
@@ -713,9 +692,9 @@ done:
 #endif
 
 static clib_error_t *
-map_icmp_relay_source_address_command_fn (vlib_main_t * vm,
-					  unformat_input_t * input,
-					  vlib_cli_command_t * cmd)
+map_icmp_relay_source_address_command_fn (vlib_main_t *vm,
+					  unformat_input_t *input,
+					  vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t icmp_src_address;
@@ -731,8 +710,7 @@ map_icmp_relay_source_address_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "%U", unformat_ip4_address, &icmp_src_address))
+      if (unformat (line_input, "%U", unformat_ip4_address, &icmp_src_address))
 	{
 	  mm->icmp4_src_address = icmp_src_address;
 	  p_icmp_addr = &icmp_src_address;
@@ -754,9 +732,8 @@ done:
 }
 
 static clib_error_t *
-map_icmp_unreachables_command_fn (vlib_main_t * vm,
-				  unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
+map_icmp_unreachables_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				  vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   int num_m_args = 0;
@@ -782,10 +759,8 @@ map_icmp_unreachables_command_fn (vlib_main_t * vm,
 	}
     }
 
-
   if (num_m_args != 1)
     error = clib_error_return (0, "mandatory argument(s) missing");
-
 
   map_param_set_icmp6 (enabled);
 
@@ -795,10 +770,9 @@ done:
   return error;
 }
 
-
 static clib_error_t *
-map_fragment_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+map_fragment_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = NULL;
@@ -862,15 +836,13 @@ done:
 }
 
 static clib_error_t *
-map_traffic_class_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+map_traffic_class_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 tc = 0;
   clib_error_t *error = NULL;
   bool tc_copy = false;
-
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -907,7 +879,7 @@ map_flags_to_string (u32 flags)
 }
 
 static u8 *
-format_map_domain (u8 * s, va_list * args)
+format_map_domain (u8 *s, va_list *args)
 {
   map_domain_t *d = va_arg (*args, map_domain_t *);
   bool counters = va_arg (*args, int);
@@ -930,8 +902,8 @@ format_map_domain (u8 * s, va_list * args)
 	      map_domain_index, (de && de->tag) ? de->tag : (u8 *) "[no-tag]",
 	      format_ip4_address, &d->ip4_prefix, d->ip4_prefix_len,
 	      format_ip6_address, &ip6_prefix, d->ip6_prefix_len,
-	      format_ip6_address, &d->ip6_src, d->ip6_src_len,
-	      d->ea_bits_len, d->psid_offset, d->psid_length, d->mtu,
+	      format_ip6_address, &d->ip6_src, d->ip6_src_len, d->ea_bits_len,
+	      d->psid_offset, d->psid_length, d->mtu,
 	      map_flags_to_string (d->flags));
 
   if (counters)
@@ -957,8 +929,7 @@ format_map_domain (u8 * s, va_list * args)
 	  dst = d->rules[i];
 	  if (dst.as_u64[0] == 0 && dst.as_u64[1] == 0)
 	    continue;
-	  s = format (s,
-		      " rule psid: %d ip6-dst %U\n", i, format_ip6_address,
+	  s = format (s, " rule psid: %d ip6-dst %U\n", i, format_ip6_address,
 		      &dst);
 	}
     }
@@ -966,8 +937,8 @@ format_map_domain (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-show_map_domain_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+show_map_domain_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   map_main_t *mm = &map_main;
@@ -981,7 +952,9 @@ show_map_domain_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       /* *INDENT-OFF* */
       pool_foreach (d, mm->domains)
-	 {vlib_cli_output(vm, "%U", format_map_domain, d, counters);}
+	{
+	  vlib_cli_output (vm, "%U", format_map_domain, d, counters);
+	}
       /* *INDENT-ON* */
       return 0;
     }
@@ -1010,7 +983,9 @@ show_map_domain_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       /* *INDENT-OFF* */
       pool_foreach (d, mm->domains)
-	 {vlib_cli_output(vm, "%U", format_map_domain, d, counters);}
+	{
+	  vlib_cli_output (vm, "%U", format_map_domain, d, counters);
+	}
       /* *INDENT-ON* */
     }
   else
@@ -1050,8 +1025,8 @@ map_error_counter_get (u32 node_index, map_error_t map_error)
 }
 
 static clib_error_t *
-show_map_stats_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			   vlib_cli_command_t * cmd)
+show_map_stats_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   map_main_t *mm = &map_main;
   map_domain_t *d;
@@ -1063,14 +1038,16 @@ show_map_stats_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (d, mm->domains)  {
-    if (d->rules) {
-      rulecount+= 0x1 << d->psid_length;
-      rules += sizeof(ip6_address_t) * 0x1 << d->psid_length;
+  pool_foreach (d, mm->domains)
+    {
+      if (d->rules)
+	{
+	  rulecount += 0x1 << d->psid_length;
+	  rules += sizeof (ip6_address_t) * 0x1 << d->psid_length;
+	}
+      domains += sizeof (*d);
+      domaincount++;
     }
-    domains += sizeof(*d);
-    domaincount++;
-  }
   /* *INDENT-ON* */
 
   vlib_cli_output (vm, "MAP domains structure: %d\n", sizeof (map_domain_t));
@@ -1079,8 +1056,7 @@ show_map_stats_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "Total: %d bytes)\n", rules + domains);
 
 #if MAP_SKIP_IP6_LOOKUP
-  vlib_cli_output (vm,
-		   "MAP pre-resolve: IP6 next-hop: %U, IP4 next-hop: %U\n",
+  vlib_cli_output (vm, "MAP pre-resolve: IP6 next-hop: %U, IP4 next-hop: %U\n",
 		   format_map_pre_resolve, &pre_resolved[FIB_PROTOCOL_IP6],
 		   format_map_pre_resolve, &pre_resolved[FIB_PROTOCOL_IP4]);
 
@@ -1095,7 +1071,8 @@ show_map_stats_command_fn (vlib_main_t * vm, unformat_input_t * input,
     vlib_cli_output (vm, "MAP TCP MSS clamping: %u", mm->tcp_mss);
 
   vlib_cli_output (vm,
-		   "MAP IPv6 inbound security check: %s, fragmented packet security check: %s",
+		   "MAP IPv6 inbound security check: %s, fragmented packet "
+		   "security check: %s",
 		   mm->sec_check ? "enabled" : "disabled",
 		   mm->sec_check_frag ? "enabled" : "disabled");
 
@@ -1122,16 +1099,16 @@ show_map_stats_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   map_domain_counter_lock (mm);
   vec_foreach (cm, mm->domain_counters)
-  {
-    which = cm - mm->domain_counters;
+    {
+      which = cm - mm->domain_counters;
 
-    for (i = 0; i < vlib_combined_counter_n_counters (cm); i++)
-      {
-	vlib_get_combined_counter (cm, i, &v);
-	total_pkts[which] += v.packets;
-	total_bytes[which] += v.bytes;
-      }
-  }
+      for (i = 0; i < vlib_combined_counter_n_counters (cm); i++)
+	{
+	  vlib_get_combined_counter (cm, i, &v);
+	  total_pkts[which] += v.packets;
+	  total_bytes[which] += v.bytes;
+	}
+    }
   map_domain_counter_unlock (mm);
 
   vlib_cli_output (vm, "Encapsulated packets: %lld bytes: %lld\n",
@@ -1148,8 +1125,8 @@ show_map_stats_command_fn (vlib_main_t * vm, unformat_input_t * input,
 }
 
 static clib_error_t *
-map_if_command_fn (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+map_if_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = NULL;
@@ -1163,8 +1140,8 @@ map_if_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (line_input, "del"))
 	is_enable = false;
@@ -1196,12 +1173,11 @@ done:
   return error;
 }
 
-
 /*
  * packet trace format function
  */
 u8 *
-format_map_trace (u8 * s, va_list * args)
+format_map_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -1209,16 +1185,15 @@ format_map_trace (u8 * s, va_list * args)
   u32 map_domain_index = t->map_domain_index;
   u16 port = t->port;
 
-  s =
-    format (s, "MAP domain index: %d L4 port: %u", map_domain_index,
-	    clib_net_to_host_u16 (port));
+  s = format (s, "MAP domain index: %d L4 port: %u", map_domain_index,
+	      clib_net_to_host_u16 (port));
 
   return s;
 }
 
 static clib_error_t *
-map_tcp_mss_command_fn (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+map_tcp_mss_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = NULL;
@@ -1254,7 +1229,6 @@ done:
   return error;
 }
 
-
 /* *INDENT-OFF* */
 
 /*?
@@ -1269,7 +1243,7 @@ done:
  * translated / encapsulating header.
  * @cliexend
  ?*/
-VLIB_CLI_COMMAND(map_traffic_class_command, static) = {
+VLIB_CLI_COMMAND (map_traffic_class_command, static) = {
   .path = "map params traffic-class",
   .short_help = "map params traffic-class {0x0-0xff | copy}",
   .function = map_traffic_class_command_fn,
@@ -1285,7 +1259,7 @@ VLIB_CLI_COMMAND(map_traffic_class_command, static) = {
  * or encapsulated packets.
  * @cliexend
  ?*/
-VLIB_CLI_COMMAND(map_tcp_mss_command, static) = {
+VLIB_CLI_COMMAND (map_tcp_mss_command, static) = {
   .path = "map params tcp-mss",
   .short_help = "map params tcp-mss <value>",
   .function = map_tcp_mss_command_fn,
@@ -1303,10 +1277,10 @@ VLIB_CLI_COMMAND(map_tcp_mss_command, static) = {
  * performance.
  * @cliexend
  ?*/
-VLIB_CLI_COMMAND(map_pre_resolve_command, static) = {
+VLIB_CLI_COMMAND (map_pre_resolve_command, static) = {
   .path = "map params pre-resolve",
   .short_help = " map params pre-resolve {ip4-nh <address>} "
-                "| {ip6-nh <address>}",
+		"| {ip6-nh <address>}",
   .function = map_pre_resolve_command_fn,
 };
 
@@ -1327,12 +1301,11 @@ VLIB_CLI_COMMAND(map_pre_resolve_command, static) = {
  * it has a cost. State must be created on the first fragment.
  * @cliexend
  ?*/
-VLIB_CLI_COMMAND(map_security_check_command, static) = {
+VLIB_CLI_COMMAND (map_security_check_command, static) = {
   .path = "map params security-check",
   .short_help = "map params security-check enable|disable fragments on|off",
   .function = map_security_check_command_fn,
 };
-
 
 /*?
  * Specifiy the IPv4 source address used for relayed ICMP error messages
@@ -1345,7 +1318,7 @@ VLIB_CLI_COMMAND(map_security_check_command, static) = {
  * messages.
  * @cliexend
  ?*/
-VLIB_CLI_COMMAND(map_icmp_relay_source_address_command, static) = {
+VLIB_CLI_COMMAND (map_icmp_relay_source_address_command, static) = {
   .path = "map params icmp source-address",
   .short_help = "map params icmp source-address <ip4-address>",
   .function = map_icmp_relay_source_address_command_fn,
@@ -1361,7 +1334,7 @@ VLIB_CLI_COMMAND(map_icmp_relay_source_address_command, static) = {
  * no MAP domain exists.
  * @cliexend
  ?*/
-VLIB_CLI_COMMAND(map_icmp_unreachables_command, static) = {
+VLIB_CLI_COMMAND (map_icmp_unreachables_command, static) = {
   .path = "map params icmp6 unreachables",
   .short_help = "map params icmp6 unreachables {on|off}",
   .function = map_icmp_unreachables_command_fn,
@@ -1380,12 +1353,11 @@ VLIB_CLI_COMMAND(map_icmp_unreachables_command, static) = {
  * endpoint.
  * @cliexend
  ?*/
-VLIB_CLI_COMMAND(map_fragment_command, static) = {
+VLIB_CLI_COMMAND (map_fragment_command, static) = {
   .path = "map params fragment",
   .short_help = "map params fragment inner|outer ignore-df|honor-df",
   .function = map_fragment_command_fn,
 };
-
 
 /*?
  * Add MAP domain
@@ -1394,12 +1366,13 @@ VLIB_CLI_COMMAND(map_fragment_command, static) = {
  * @cliexstart{map add domain}
  * @cliexend
  ?*/
-VLIB_CLI_COMMAND(map_add_domain_command, static) = {
+VLIB_CLI_COMMAND (map_add_domain_command, static) = {
   .path = "map add domain",
-  .short_help = "map add domain [tag <tag>] ip4-pfx <ip4-pfx> "
-      "ip6-pfx <ip6-pfx> "
-      "ip6-src <ip6-pfx> ea-bits-len <n> psid-offset <n> psid-len <n> "
-      "[map-t] [mtu <mtu>]",
+  .short_help =
+    "map add domain [tag <tag>] ip4-pfx <ip4-pfx> "
+    "ip6-pfx <ip6-pfx> "
+    "ip6-src <ip6-pfx> ea-bits-len <n> psid-offset <n> psid-len <n> "
+    "[map-t] [mtu <mtu>]",
   .function = map_add_domain_command_fn,
 };
 
@@ -1410,7 +1383,7 @@ VLIB_CLI_COMMAND(map_add_domain_command, static) = {
  * @cliexstart{map add rule}
  * @cliexend
  ?*/
-VLIB_CLI_COMMAND(map_add_rule_command, static) = {
+VLIB_CLI_COMMAND (map_add_rule_command, static) = {
   .path = "map add rule",
   .short_help = "map add rule index <domain> psid <psid> ip6-dst <ip6-addr>",
   .function = map_add_rule_command_fn,
@@ -1423,7 +1396,7 @@ VLIB_CLI_COMMAND(map_add_rule_command, static) = {
  * @cliexstart{map del domain}
  * @cliexend
  ?*/
-VLIB_CLI_COMMAND(map_del_command, static) = {
+VLIB_CLI_COMMAND (map_del_command, static) = {
   .path = "map del domain",
   .short_help = "map del domain index <domain>",
   .function = map_del_domain_command_fn,
@@ -1436,7 +1409,7 @@ VLIB_CLI_COMMAND(map_del_command, static) = {
  * @cliexstart{show map domain}
  * @cliexend
  ?*/
-VLIB_CLI_COMMAND(show_map_domain_command, static) = {
+VLIB_CLI_COMMAND (show_map_domain_command, static) = {
   .path = "show map domain",
   .short_help = "show map domain index <n> [counters]",
   .function = show_map_domain_command_fn,
@@ -1449,7 +1422,7 @@ VLIB_CLI_COMMAND(show_map_domain_command, static) = {
  * @cliexstart{show map stats}
  * @cliexend
  ?*/
-VLIB_CLI_COMMAND(show_map_stats_command, static) = {
+VLIB_CLI_COMMAND (show_map_stats_command, static) = {
   .path = "show map stats",
   .short_help = "show map stats",
   .function = show_map_stats_command_fn,
@@ -1459,13 +1432,13 @@ VLIB_CLI_COMMAND(show_map_stats_command, static) = {
  * Enable MAP processing on interface (input feature)
  *
  ?*/
-VLIB_CLI_COMMAND(map_if_command, static) = {
+VLIB_CLI_COMMAND (map_if_command, static) = {
   .path = "map interface",
   .short_help = "map interface <interface-name> [map-t] [del]",
   .function = map_if_command_fn,
 };
 
-VLIB_PLUGIN_REGISTER() = {
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Mapping of Address and Port (MAP)",
 };
@@ -1476,7 +1449,7 @@ VLIB_PLUGIN_REGISTER() = {
  * map_init
  */
 clib_error_t *
-map_init (vlib_main_t * vm)
+map_init (vlib_main_t *vm)
 {
   map_main_t *mm = &map_main;
   clib_error_t *error = 0;
@@ -1532,17 +1505,4 @@ map_init (vlib_main_t * vm)
   mm->bm_trans_enabled_by_sw_if = 0;
   mm->bm_encap_enabled_by_sw_if = 0;
 
-  error = map_plugin_api_hookup (vm);
-
-  return error;
-}
-
-VLIB_INIT_FUNCTION (map_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+  error = map_plugin_api_hookup (v

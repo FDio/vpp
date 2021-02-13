@@ -30,30 +30,29 @@ uint8_t ready_called;
 #define error_call (1 << 2)
 
 int
-read_fn (memif_connection_t * c)
+read_fn (memif_connection_t *c)
 {
   ready_called |= read_call;
   return 0;
 }
 
 int
-write_fn (memif_connection_t * c)
+write_fn (memif_connection_t *c)
 {
   ready_called |= write_call;
   return 0;
 }
 
 int
-error_fn (memif_connection_t * c)
+error_fn (memif_connection_t *c)
 {
   ready_called |= error_call;
   return 0;
 }
 
 static void
-register_fd_ready_fn (memif_connection_t * c,
-		      memif_fn * read_fn, memif_fn * write_fn,
-		      memif_fn * error_fn)
+register_fd_ready_fn (memif_connection_t *c, memif_fn *read_fn,
+		      memif_fn *write_fn, memif_fn *error_fn)
 {
   c->read_fn = read_fn;
   c->write_fn = write_fn;
@@ -64,9 +63,8 @@ START_TEST (test_init)
 {
   int err;
 
-  if ((err =
-       memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_init (control_fd_update, TEST_APP_NAME, NULL, NULL,
+			 NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   libmemif_main_t *lm = &libmemif_main;
@@ -85,8 +83,8 @@ START_TEST (test_init_epoll)
 {
   int err;
 
-  if ((err =
-       memif_init (NULL, TEST_APP_NAME, NULL, NULL, NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_init (NULL, TEST_APP_NAME, NULL, NULL, NULL)) !=
+      MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   libmemif_main_t *lm = &libmemif_main;
@@ -111,16 +109,14 @@ START_TEST (test_create)
 
   libmemif_main_t *lm = &libmemif_main;
 
-  if ((err =
-       memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_init (control_fd_update, TEST_APP_NAME, NULL, NULL,
+			 NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
 
-  if ((err = memif_create (&conn, &args, on_connect,
-			   on_disconnect, on_interrupt,
-			   NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_create (&conn, &args, on_connect, on_disconnect,
+			   on_interrupt, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   memif_connection_t *c = (memif_connection_t *) conn;
@@ -147,7 +143,8 @@ START_TEST (test_create)
   ck_assert_ptr_ne (c->on_disconnect, NULL);
   ck_assert_ptr_ne (c->on_interrupt, NULL);
 
-  ck_assert_str_eq ((char *)c->args.interface_name, (char *)args.interface_name);
+  ck_assert_str_eq ((char *) c->args.interface_name,
+		    (char *) args.interface_name);
 
   struct itimerspec timer;
   timerfd_gettime (lm->timerfd, &timer);
@@ -172,16 +169,14 @@ START_TEST (test_create_master)
   memset (&args, 0, sizeof (args));
   args.is_master = 1;
 
-  if ((err =
-       memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_init (control_fd_update, TEST_APP_NAME, NULL, NULL,
+			 NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
 
-  if ((err = memif_create (&conn, &args, on_connect,
-			   on_disconnect, on_interrupt,
-			   NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_create (&conn, &args, on_connect, on_disconnect,
+			   on_interrupt, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   memif_connection_t *c = (memif_connection_t *) conn;
@@ -208,7 +203,8 @@ START_TEST (test_create_master)
   ck_assert_ptr_ne (c->on_disconnect, NULL);
   ck_assert_ptr_ne (c->on_interrupt, NULL);
 
-  ck_assert_str_eq ((char *)c->args.interface_name, (char *)args.interface_name);
+  ck_assert_str_eq ((char *) c->args.interface_name,
+		    (char *) args.interface_name);
 
   struct stat file_stat;
 
@@ -232,23 +228,20 @@ START_TEST (test_create_mult)
 
   libmemif_main_t *lm = &libmemif_main;
 
-  if ((err =
-       memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_init (control_fd_update, TEST_APP_NAME, NULL, NULL,
+			 NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
 
-  if ((err = memif_create (&conn, &args, on_connect,
-			   on_disconnect, on_interrupt,
-			   NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_create (&conn, &args, on_connect, on_disconnect,
+			   on_interrupt, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   args.interface_id = 1;
 
-  if ((err = memif_create (&conn1, &args, on_connect,
-			   on_disconnect, on_interrupt,
-			   NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_create (&conn1, &args, on_connect, on_disconnect,
+			   on_interrupt, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   memif_connection_t *c = (memif_connection_t *) conn;
@@ -292,8 +285,10 @@ START_TEST (test_create_mult)
   ck_assert_ptr_ne (c1->on_disconnect, NULL);
   ck_assert_ptr_ne (c1->on_interrupt, NULL);
 
-  ck_assert_str_eq ((char *)c->args.interface_name, (char *)args.interface_name);
-  ck_assert_str_eq ((char *)c1->args.interface_name, (char *)args.interface_name);
+  ck_assert_str_eq ((char *) c->args.interface_name,
+		    (char *) args.interface_name);
+  ck_assert_str_eq ((char *) c1->args.interface_name,
+		    (char *) args.interface_name);
 
   struct itimerspec timer;
   timerfd_gettime (lm->timerfd, &timer);
@@ -322,23 +317,20 @@ START_TEST (test_control_fd_handler)
 
   libmemif_main_t *lm = &libmemif_main;
 
-  if ((err =
-       memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_init (control_fd_update, TEST_APP_NAME, NULL, NULL,
+			 NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
 
-  if ((err = memif_create (&conn, &args, on_connect,
-			   on_disconnect, on_interrupt,
-			   NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_create (&conn, &args, on_connect, on_disconnect,
+			   on_interrupt, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   memif_connection_t *c = (memif_connection_t *) conn;
 
-  if ((err =
-       memif_control_fd_handler (lm->timerfd,
-				 MEMIF_FD_EVENT_READ)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_control_fd_handler (lm->timerfd, MEMIF_FD_EVENT_READ)) !=
+      MEMIF_ERR_SUCCESS)
     ck_assert_msg (err == MEMIF_ERR_NO_FILE, "err code: %u, err msg: %s", err,
 		   memif_strerror (err));
 
@@ -347,23 +339,20 @@ START_TEST (test_control_fd_handler)
   lm->control_list[0].key = c->fd;
   lm->control_list[0].data_struct = c;
 
-  if ((err =
-       memif_control_fd_handler (c->fd,
-				 MEMIF_FD_EVENT_READ)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_control_fd_handler (c->fd, MEMIF_FD_EVENT_READ)) !=
+      MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   ck_assert (ready_called & read_call);
 
-  if ((err =
-       memif_control_fd_handler (c->fd,
-				 MEMIF_FD_EVENT_WRITE)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_control_fd_handler (c->fd, MEMIF_FD_EVENT_WRITE)) !=
+      MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   ck_assert (ready_called & write_call);
 
-  if ((err =
-       memif_control_fd_handler (c->fd,
-				 MEMIF_FD_EVENT_ERROR)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_control_fd_handler (c->fd, MEMIF_FD_EVENT_ERROR)) !=
+      MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   ck_assert (ready_called & error_call);
@@ -393,16 +382,14 @@ START_TEST (test_buffer_alloc)
 
   libmemif_main_t *lm = &libmemif_main;
 
-  if ((err =
-       memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_init (control_fd_update, TEST_APP_NAME, NULL, NULL,
+			 NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
 
-  if ((err = memif_create (&conn, &args, on_connect,
-			   on_disconnect, on_interrupt,
-			   NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_create (&conn, &args, on_connect, on_disconnect,
+			   on_interrupt, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   memif_connection_t *c = (memif_connection_t *) conn;
@@ -422,10 +409,9 @@ START_TEST (test_buffer_alloc)
   bufs = malloc (sizeof (memif_buffer_t) * max_buf);
 
   qid = 0;
-  if ((err =
-       memif_buffer_alloc (conn, qid, bufs, max_buf,
-			   &buf,
-			   MEMIF_DEFAULT_BUFFER_SIZE)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_buffer_alloc (conn, qid, bufs, max_buf, &buf,
+				 MEMIF_DEFAULT_BUFFER_SIZE)) !=
+      MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   ck_assert_uint_eq (buf, max_buf);
@@ -437,10 +423,9 @@ START_TEST (test_buffer_alloc)
   bufs = malloc (sizeof (memif_buffer_t) * max_buf);
 
   qid = 1;
-  if ((err =
-       memif_buffer_alloc (conn, qid, bufs, max_buf,
-			   &buf,
-			   MEMIF_DEFAULT_BUFFER_SIZE)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_buffer_alloc (conn, qid, bufs, max_buf, &buf,
+				 MEMIF_DEFAULT_BUFFER_SIZE)) !=
+      MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   ck_assert_uint_eq (buf, max_buf);
@@ -453,10 +438,9 @@ START_TEST (test_buffer_alloc)
   bufs = malloc (sizeof (memif_buffer_t) * max_buf);
 
   qid = 2;
-  if ((err =
-       memif_buffer_alloc (conn, qid, bufs, max_buf,
-			   &buf,
-			   MEMIF_DEFAULT_BUFFER_SIZE)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_buffer_alloc (conn, qid, bufs, max_buf, &buf,
+				 MEMIF_DEFAULT_BUFFER_SIZE)) !=
+      MEMIF_ERR_SUCCESS)
     ck_assert_msg (err == MEMIF_ERR_QID, "err code: %u, err msg: %s", err,
 		   memif_strerror (err));
 
@@ -487,16 +471,14 @@ START_TEST (test_tx_burst)
 
   libmemif_main_t *lm = &libmemif_main;
 
-  if ((err =
-       memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_init (control_fd_update, TEST_APP_NAME, NULL, NULL,
+			 NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
 
-  if ((err = memif_create (&conn, &args, on_connect,
-			   on_disconnect, on_interrupt,
-			   NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_create (&conn, &args, on_connect, on_disconnect,
+			   on_interrupt, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   memif_connection_t *c = (memif_connection_t *) conn;
@@ -515,18 +497,17 @@ START_TEST (test_tx_burst)
 
   bufs = malloc (sizeof (memif_buffer_t) * max_buf);
   qid = 0;
-  if ((err =
-       memif_buffer_alloc (conn, qid, bufs, max_buf,
-			   &buf,
-			   MEMIF_DEFAULT_BUFFER_SIZE)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_buffer_alloc (conn, qid, bufs, max_buf, &buf,
+				 MEMIF_DEFAULT_BUFFER_SIZE)) !=
+      MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   ck_assert_uint_eq (buf, max_buf);
   for (i = 0; i < max_buf; i++)
     ck_assert_uint_eq (bufs[i].len, MEMIF_DEFAULT_BUFFER_SIZE);
 
-  if ((err =
-       memif_tx_burst (conn, qid, bufs, max_buf, &tx)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_tx_burst (conn, qid, bufs, max_buf, &tx)) !=
+      MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   ck_assert_uint_eq (tx, max_buf);
@@ -537,18 +518,17 @@ START_TEST (test_tx_burst)
   free (bufs);
   bufs = malloc (sizeof (memif_buffer_t) * max_buf);
   qid = 1;
-  if ((err =
-       memif_buffer_alloc (conn, qid, bufs, max_buf,
-			   &buf,
-			   MEMIF_DEFAULT_BUFFER_SIZE)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_buffer_alloc (conn, qid, bufs, max_buf, &buf,
+				 MEMIF_DEFAULT_BUFFER_SIZE)) !=
+      MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   ck_assert_uint_eq (buf, max_buf);
   for (i = 0; i < max_buf; i++)
     ck_assert_uint_eq (bufs[i].len, MEMIF_DEFAULT_BUFFER_SIZE);
 
-  if ((err =
-       memif_tx_burst (conn, qid, bufs, max_buf, &tx)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_tx_burst (conn, qid, bufs, max_buf, &tx)) !=
+      MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   ck_assert_uint_eq (tx, max_buf);
@@ -559,8 +539,8 @@ START_TEST (test_tx_burst)
   free (bufs);
   bufs = malloc (sizeof (memif_buffer_t) * max_buf);
   qid = 2;
-  if ((err =
-       memif_tx_burst (conn, qid, bufs, max_buf, &tx)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_tx_burst (conn, qid, bufs, max_buf, &tx)) !=
+      MEMIF_ERR_SUCCESS)
     ck_assert_msg (err == MEMIF_ERR_QID, "err code: %u, err msg: %s", err,
 		   memif_strerror (err));
 
@@ -592,16 +572,14 @@ START_TEST (test_rx_burst)
 
   libmemif_main_t *lm = &libmemif_main;
 
-  if ((err =
-       memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_init (control_fd_update, TEST_APP_NAME, NULL, NULL,
+			 NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
 
-  if ((err = memif_create (&conn, &args, on_connect,
-			   on_disconnect, on_interrupt,
-			   NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_create (&conn, &args, on_connect, on_disconnect,
+			   on_interrupt, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   memif_connection_t *c = (memif_connection_t *) conn;
@@ -624,8 +602,8 @@ START_TEST (test_rx_burst)
 
   bufs = malloc (sizeof (memif_buffer_t) * max_buf);
 
-  if ((err =
-       memif_rx_burst (conn, qid, bufs, max_buf, &rx)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_rx_burst (conn, qid, bufs, max_buf, &rx)) !=
+      MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   ck_assert_uint_eq (rx, max_buf);
@@ -641,8 +619,8 @@ START_TEST (test_rx_burst)
   free (bufs);
   bufs = malloc (sizeof (memif_buffer_t) * max_buf);
 
-  if ((err =
-       memif_rx_burst (conn, qid, bufs, max_buf, &rx)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_rx_burst (conn, qid, bufs, max_buf, &rx)) !=
+      MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   ck_assert_uint_eq (rx, max_buf);
@@ -653,8 +631,8 @@ START_TEST (test_rx_burst)
   free (bufs);
   bufs = malloc (sizeof (memif_buffer_t) * max_buf);
 
-  if ((err =
-       memif_rx_burst (conn, qid, bufs, max_buf, &rx)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_rx_burst (conn, qid, bufs, max_buf, &rx)) !=
+      MEMIF_ERR_SUCCESS)
     ck_assert_msg (err == MEMIF_ERR_QID, "err code: %u, err msg: %s", err,
 		   memif_strerror (err));
 
@@ -681,16 +659,14 @@ START_TEST (test_get_details)
 
   libmemif_main_t *lm = &libmemif_main;
 
-  if ((err =
-       memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_init (control_fd_update, TEST_APP_NAME, NULL, NULL,
+			 NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
 
-  if ((err = memif_create (&conn, &args, on_connect,
-			   on_disconnect, on_interrupt,
-			   NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_create (&conn, &args, on_connect, on_disconnect,
+			   on_interrupt, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   memif_connection_t *c = (memif_connection_t *) conn;
@@ -712,10 +688,10 @@ START_TEST (test_get_details)
   if ((err = memif_get_details (conn, &md, buf, buflen)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
-  ck_assert_str_eq ((char *)md.if_name, (char *)c->args.interface_name);
-  ck_assert_str_eq ((char *)md.remote_if_name, (char *)c->remote_if_name);
-  ck_assert_str_eq ((char *)md.remote_inst_name, (char *)c->remote_name);
-  ck_assert_str_eq ((char *)md.secret, (char *)c->args.secret);
+  ck_assert_str_eq ((char *) md.if_name, (char *) c->args.interface_name);
+  ck_assert_str_eq ((char *) md.remote_if_name, (char *) c->remote_if_name);
+  ck_assert_str_eq ((char *) md.remote_inst_name, (char *) c->remote_name);
+  ck_assert_str_eq ((char *) md.secret, (char *) c->args.secret);
 
   ck_assert_uint_eq (md.id, c->args.interface_id);
   ck_assert_uint_ne (md.role, c->args.is_master);
@@ -757,16 +733,14 @@ START_TEST (test_init_regions_and_queues)
 
   libmemif_main_t *lm = &libmemif_main;
 
-  if ((err =
-       memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_init (control_fd_update, TEST_APP_NAME, NULL, NULL,
+			 NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
 
-  if ((err = memif_create (&conn, &args, on_connect,
-			   on_disconnect, on_interrupt,
-			   NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_create (&conn, &args, on_connect, on_disconnect,
+			   on_interrupt, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   memif_connection_t *c = (memif_connection_t *) conn;
@@ -812,16 +786,14 @@ START_TEST (test_connect1)
 
   libmemif_main_t *lm = &libmemif_main;
 
-  if ((err =
-       memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_init (control_fd_update, TEST_APP_NAME, NULL, NULL,
+			 NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
 
-  if ((err = memif_create (&conn, &args, on_connect,
-			   on_disconnect, on_interrupt,
-			   NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_create (&conn, &args, on_connect, on_disconnect,
+			   on_interrupt, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   memif_connection_t *c = (memif_connection_t *) conn;
@@ -858,16 +830,14 @@ START_TEST (test_disconnect_internal)
 
   libmemif_main_t *lm = &libmemif_main;
 
-  if ((err =
-       memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_init (control_fd_update, TEST_APP_NAME, NULL, NULL,
+			 NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
 
-  if ((err = memif_create (&conn, &args, on_connect,
-			   on_disconnect, on_interrupt,
-			   NULL)) != MEMIF_ERR_SUCCESS)
+  if ((err = memif_create (&conn, &args, on_connect, on_disconnect,
+			   on_interrupt, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   memif_connection_t *c = (memif_connection_t *) conn;

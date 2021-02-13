@@ -49,9 +49,8 @@ punt_client_l4_db_add (ip_address_family_t af, u16 port, u32 index)
 {
   punt_main_t *pm = &punt_main;
 
-  pm->db.clients_by_l4_port = hash_set (pm->db.clients_by_l4_port,
-					punt_client_l4_mk_key (af, port),
-					index);
+  pm->db.clients_by_l4_port = hash_set (
+    pm->db.clients_by_l4_port, punt_client_l4_mk_key (af, port), index);
 }
 
 static u32
@@ -73,15 +72,14 @@ punt_client_l4_db_remove (ip_address_family_t af, u16 port)
 }
 
 static void
-punt_client_ip_proto_db_add (ip_address_family_t af,
-			     ip_protocol_t proto, u32 index)
+punt_client_ip_proto_db_add (ip_address_family_t af, ip_protocol_t proto,
+			     u32 index)
 {
   punt_main_t *pm = &punt_main;
 
-  pm->db.clients_by_ip_proto = hash_set (pm->db.clients_by_ip_proto,
-					 punt_client_ip_proto_mk_key (af,
-								      proto),
-					 index);
+  pm->db.clients_by_ip_proto =
+    hash_set (pm->db.clients_by_ip_proto,
+	      punt_client_ip_proto_mk_key (af, proto), index);
 }
 
 static u32
@@ -128,7 +126,7 @@ punt_client_exception_db_remove (vlib_punt_reason_t reason)
 }
 
 static clib_error_t *
-punt_socket_read_ready (clib_file_t * uf)
+punt_socket_read_ready (clib_file_t *uf)
 {
   vlib_main_t *vm = vlib_get_main ();
   punt_main_t *pm = &punt_main;
@@ -141,20 +139,18 @@ punt_socket_read_ready (clib_file_t * uf)
 }
 
 static clib_error_t *
-punt_socket_register_l4 (vlib_main_t * vm,
-			 ip_address_family_t af,
-			 u8 protocol, u16 port, char *client_pathname)
+punt_socket_register_l4 (vlib_main_t *vm, ip_address_family_t af, u8 protocol,
+			 u16 port, char *client_pathname)
 {
   punt_main_t *pm = &punt_main;
   punt_client_t *c;
 
   /* For now we only support UDP punt */
   if (protocol != IP_PROTOCOL_UDP)
-    return clib_error_return (0,
-			      "only UDP protocol (%d) is supported, got %d",
+    return clib_error_return (0, "only UDP protocol (%d) is supported, got %d",
 			      IP_PROTOCOL_UDP, protocol);
 
-  if (port == (u16) ~ 0)
+  if (port == (u16) ~0)
     return clib_error_return (0, "UDP port number required");
 
   c = punt_client_l4_get (af, port);
@@ -172,9 +168,8 @@ punt_socket_register_l4 (vlib_main_t * vm,
   c->reg.punt.l4.protocol = protocol;
   c->reg.punt.l4.af = af;
 
-  u32 node_index = (af == AF_IP4 ?
-		    udp4_punt_socket_node.index :
-		    udp6_punt_socket_node.index);
+  u32 node_index =
+    (af == AF_IP4 ? udp4_punt_socket_node.index : udp6_punt_socket_node.index);
 
   udp_register_dst_port (vm, port, node_index, af == AF_IP4);
 
@@ -182,8 +177,7 @@ punt_socket_register_l4 (vlib_main_t * vm,
 }
 
 static clib_error_t *
-punt_socket_register_ip_proto (vlib_main_t * vm,
-			       ip_address_family_t af,
+punt_socket_register_ip_proto (vlib_main_t *vm, ip_address_family_t af,
 			       ip_protocol_t proto, char *client_pathname)
 {
   punt_main_t *pm = &punt_main;
@@ -212,8 +206,7 @@ punt_socket_register_ip_proto (vlib_main_t * vm,
 }
 
 static clib_error_t *
-punt_socket_register_exception (vlib_main_t * vm,
-				vlib_punt_reason_t reason,
+punt_socket_register_exception (vlib_main_t *vm, vlib_punt_reason_t reason,
 				char *client_pathname)
 {
   punt_main_t *pm = &punt_main;
@@ -232,15 +225,15 @@ punt_socket_register_exception (vlib_main_t * vm,
   pc->reg.type = PUNT_TYPE_EXCEPTION;
   pc->reg.punt.exception.reason = reason;
 
-  vlib_punt_register (pm->hdl,
-		      pc->reg.punt.exception.reason, "exception-punt-socket");
+  vlib_punt_register (pm->hdl, pc->reg.punt.exception.reason,
+		      "exception-punt-socket");
 
   return (NULL);
 }
 
 static clib_error_t *
-punt_socket_unregister_l4 (ip_address_family_t af,
-			   ip_protocol_t protocol, u16 port)
+punt_socket_unregister_l4 (ip_address_family_t af, ip_protocol_t protocol,
+			   u16 port)
 {
   u32 pci;
 
@@ -286,8 +279,8 @@ punt_socket_unregister_exception (vlib_punt_reason_t reason)
 }
 
 clib_error_t *
-vnet_punt_socket_add (vlib_main_t * vm, u32 header_version,
-		      const punt_reg_t * pr, char *client_pathname)
+vnet_punt_socket_add (vlib_main_t *vm, u32 header_version,
+		      const punt_reg_t *pr, char *client_pathname)
 {
   punt_main_t *pm = &punt_main;
 
@@ -299,26 +292,22 @@ vnet_punt_socket_add (vlib_main_t * vm, u32 header_version,
 
   if (strncmp (client_pathname, vnet_punt_get_server_pathname (),
 	       UNIX_PATH_MAX) == 0)
-    return clib_error_return (0,
-			      "Punt socket: Invalid client path: %s",
+    return clib_error_return (0, "Punt socket: Invalid client path: %s",
 			      client_pathname);
 
   /* Register client */
   switch (pr->type)
     {
     case PUNT_TYPE_L4:
-      return (punt_socket_register_l4 (vm,
-				       pr->punt.l4.af,
-				       pr->punt.l4.protocol,
-				       pr->punt.l4.port, client_pathname));
+      return (punt_socket_register_l4 (vm, pr->punt.l4.af,
+				       pr->punt.l4.protocol, pr->punt.l4.port,
+				       client_pathname));
     case PUNT_TYPE_IP_PROTO:
-      return (punt_socket_register_ip_proto (vm,
-					     pr->punt.ip_proto.af,
+      return (punt_socket_register_ip_proto (vm, pr->punt.ip_proto.af,
 					     pr->punt.ip_proto.protocol,
 					     client_pathname));
     case PUNT_TYPE_EXCEPTION:
-      return (punt_socket_register_exception (vm,
-					      pr->punt.exception.reason,
+      return (punt_socket_register_exception (vm, pr->punt.exception.reason,
 					      client_pathname));
     }
 
@@ -326,7 +315,7 @@ vnet_punt_socket_add (vlib_main_t * vm, u32 header_version,
 }
 
 clib_error_t *
-vnet_punt_socket_del (vlib_main_t * vm, const punt_reg_t * pr)
+vnet_punt_socket_del (vlib_main_t *vm, const punt_reg_t *pr)
 {
   punt_main_t *pm = &punt_main;
 
@@ -336,8 +325,7 @@ vnet_punt_socket_del (vlib_main_t * vm, const punt_reg_t * pr)
   switch (pr->type)
     {
     case PUNT_TYPE_L4:
-      return (punt_socket_unregister_l4 (pr->punt.l4.af,
-					 pr->punt.l4.protocol,
+      return (punt_socket_unregister_l4 (pr->punt.l4.af, pr->punt.l4.protocol,
 					 pr->punt.l4.port));
     case PUNT_TYPE_IP_PROTO:
       return (punt_socket_unregister_ip_proto (pr->punt.ip_proto.af,
@@ -365,17 +353,16 @@ vnet_punt_socket_del (vlib_main_t * vm, const punt_reg_t * pr)
  * @returns 0 on success, non-zero value otherwise
  */
 static clib_error_t *
-punt_l4_add_del (vlib_main_t * vm,
-		 ip_address_family_t af,
+punt_l4_add_del (vlib_main_t *vm, ip_address_family_t af,
 		 ip_protocol_t protocol, u16 port, bool is_add)
 {
   /* For now we only support TCP and UDP punt */
   if (protocol != IP_PROTOCOL_UDP && protocol != IP_PROTOCOL_TCP)
-    return clib_error_return (0,
-			      "only UDP (%d) and TCP (%d) protocols are supported, got %d",
-			      IP_PROTOCOL_UDP, IP_PROTOCOL_TCP, protocol);
+    return clib_error_return (
+      0, "only UDP (%d) and TCP (%d) protocols are supported, got %d",
+      IP_PROTOCOL_UDP, IP_PROTOCOL_TCP, protocol);
 
-  if (port == (u16) ~ 0)
+  if (port == (u16) ~0)
     {
       if (protocol == IP_PROTOCOL_UDP)
 	udp_punt_unknown (vm, af == AF_IP4, is_add);
@@ -406,7 +393,7 @@ punt_l4_add_del (vlib_main_t * vm,
 }
 
 clib_error_t *
-vnet_punt_add_del (vlib_main_t * vm, const punt_reg_t * pr, bool is_add)
+vnet_punt_add_del (vlib_main_t *vm, const punt_reg_t *pr, bool is_add)
 {
   switch (pr->type)
     {
@@ -422,13 +409,12 @@ vnet_punt_add_del (vlib_main_t * vm, const punt_reg_t * pr, bool is_add)
 }
 
 static clib_error_t *
-punt_cli (vlib_main_t * vm,
-	  unformat_input_t * input__, vlib_cli_command_t * cmd)
+punt_cli (vlib_main_t *vm, unformat_input_t *input__, vlib_cli_command_t *cmd)
 {
   unformat_input_t line_input, *input = &line_input;
   clib_error_t *error = NULL;
   bool is_add = true;
-  /* *INDENT-OFF* */
+
   punt_reg_t pr = {
     .punt = {
       .l4 = {
@@ -440,7 +426,6 @@ punt_cli (vlib_main_t * vm,
     .type = PUNT_TYPE_L4,
   };
   u32 port;
-  /* *INDENT-ON* */
 
   if (!unformat_user (input__, unformat_line_input, input))
     return 0;
@@ -503,23 +488,21 @@ done:
  * @cliexcmd{set punt udp del all}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (punt_command, static) = {
   .path = "set punt",
   .short_help = "set punt [IPV4|ip6|ipv6] [UDP|tcp] [del] [ALL|<port-num>]",
   .function = punt_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-punt_socket_register_cmd (vlib_main_t * vm,
-			  unformat_input_t * input__,
-			  vlib_cli_command_t * cmd)
+punt_socket_register_cmd (vlib_main_t *vm, unformat_input_t *input__,
+			  vlib_cli_command_t *cmd)
 {
   unformat_input_t line_input, *input = &line_input;
   u8 *socket_name = 0;
   clib_error_t *error = NULL;
-  /* *INDENT-OFF* */
+
   punt_reg_t pr = {
     .punt = {
       .l4 = {
@@ -530,7 +513,6 @@ punt_socket_register_cmd (vlib_main_t * vm,
     },
     .type = PUNT_TYPE_L4,
   };
-  /* *INDENT-ON* */
 
   if (!unformat_user (input__, unformat_line_input, input))
     return 0;
@@ -575,24 +557,22 @@ done:
  * @cliexcmd{punt socket register socket punt_l4_foo.sock}
 
  ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (punt_socket_register_command, static) =
-{
+
+VLIB_CLI_COMMAND (punt_socket_register_command, static) = {
   .path = "punt socket register",
   .function = punt_socket_register_cmd,
-  .short_help = "punt socket register [IPV4|ipv6] [UDP|tcp] [ALL|<port-num>] socket <socket>",
+  .short_help = "punt socket register [IPV4|ipv6] [UDP|tcp] [ALL|<port-num>] "
+		"socket <socket>",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-punt_socket_deregister_cmd (vlib_main_t * vm,
-			    unformat_input_t * input__,
-			    vlib_cli_command_t * cmd)
+punt_socket_deregister_cmd (vlib_main_t *vm, unformat_input_t *input__,
+			    vlib_cli_command_t *cmd)
 {
   unformat_input_t line_input, *input = &line_input;
   clib_error_t *error = NULL;
-  /* *INDENT-OFF* */
+
   punt_reg_t pr = {
     .punt = {
       .l4 = {
@@ -603,7 +583,6 @@ punt_socket_deregister_cmd (vlib_main_t * vm,
     },
     .type = PUNT_TYPE_L4,
   };
-  /* *INDENT-ON* */
 
   if (!unformat_user (input__, unformat_line_input, input))
     return 0;
@@ -641,15 +620,14 @@ done:
  * @cliexpar
  * @cliexcmd{punt socket register}
  ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (punt_socket_deregister_command, static) =
-{
+
+VLIB_CLI_COMMAND (punt_socket_deregister_command, static) = {
   .path = "punt socket deregister",
   .function = punt_socket_deregister_cmd,
-  .short_help = "punt socket deregister [IPV4|ipv6] [UDP|tcp] [ALL|<port-num>]",
+  .short_help =
+    "punt socket deregister [IPV4|ipv6] [UDP|tcp] [ALL|<port-num>]",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 void
 punt_client_walk (punt_type_t pt, punt_client_walk_cb_t cb, void *ctx)
@@ -662,24 +640,20 @@ punt_client_walk (punt_type_t pt, punt_client_walk_cb_t cb, void *ctx)
       {
 	u32 pci, key;
 
-        /* *INDENT-OFF* */
-        hash_foreach(key, pci, pm->db.clients_by_l4_port,
-        ({
-          cb (pool_elt_at_index(pm->punt_client_pool, pci), ctx);
-        }));
-        /* *INDENT-ON* */
+	hash_foreach (
+	  key, pci, pm->db.clients_by_l4_port,
+	  ({ cb (pool_elt_at_index (pm->punt_client_pool, pci), ctx); }));
+
 	break;
       }
     case PUNT_TYPE_IP_PROTO:
       {
 	u32 pci, key;
 
-        /* *INDENT-OFF* */
-        hash_foreach(key, pci, pm->db.clients_by_ip_proto,
-        ({
-          cb (pool_elt_at_index(pm->punt_client_pool, pci), ctx);
-        }));
-        /* *INDENT-ON* */
+	hash_foreach (
+	  key, pci, pm->db.clients_by_ip_proto,
+	  ({ cb (pool_elt_at_index (pm->punt_client_pool, pci), ctx); }));
+
 	break;
       }
     case PUNT_TYPE_EXCEPTION:
@@ -687,10 +661,10 @@ punt_client_walk (punt_type_t pt, punt_client_walk_cb_t cb, void *ctx)
 	u32 *pci;
 
 	vec_foreach (pci, pm->db.clients_by_exception)
-	{
-	  if (~0 != *pci)
-	    cb (pool_elt_at_index (pm->punt_client_pool, *pci), ctx);
-	}
+	  {
+	    if (~0 != *pci)
+	      cb (pool_elt_at_index (pm->punt_client_pool, *pci), ctx);
+	  }
 
 	break;
       }
@@ -698,7 +672,7 @@ punt_client_walk (punt_type_t pt, punt_client_walk_cb_t cb, void *ctx)
 }
 
 static u8 *
-format_punt_client (u8 * s, va_list * args)
+format_punt_client (u8 *s, va_list *args)
 {
   punt_client_t *pc = va_arg (*args, punt_client_t *);
 
@@ -707,15 +681,14 @@ format_punt_client (u8 * s, va_list * args)
   switch (pc->reg.type)
     {
     case PUNT_TYPE_L4:
-      s = format (s, "%U %U port %d",
-		  format_ip_address_family, pc->reg.punt.l4.af,
-		  format_ip_protocol, pc->reg.punt.l4.protocol,
-		  pc->reg.punt.l4.port);
+      s = format (s, "%U %U port %d", format_ip_address_family,
+		  pc->reg.punt.l4.af, format_ip_protocol,
+		  pc->reg.punt.l4.protocol, pc->reg.punt.l4.port);
       break;
     case PUNT_TYPE_IP_PROTO:
-      s = format (s, "%U %U",
-		  format_ip_address_family, pc->reg.punt.ip_proto.af,
-		  format_ip_protocol, pc->reg.punt.ip_proto.protocol);
+      s =
+	format (s, "%U %U", format_ip_address_family, pc->reg.punt.ip_proto.af,
+		format_ip_protocol, pc->reg.punt.ip_proto.protocol);
       break;
     case PUNT_TYPE_EXCEPTION:
       s = format (s, " %U", format_vlib_punt_reason,
@@ -729,7 +702,7 @@ format_punt_client (u8 * s, va_list * args)
 }
 
 static walk_rc_t
-punt_client_show_one (const punt_client_t * pc, void *ctx)
+punt_client_show_one (const punt_client_t *pc, void *ctx)
 {
   vlib_cli_output (ctx, "%U", format_punt_client, pc);
 
@@ -737,8 +710,8 @@ punt_client_show_one (const punt_client_t * pc, void *ctx)
 }
 
 static clib_error_t *
-punt_socket_show_cmd (vlib_main_t * vm,
-		      unformat_input_t * input__, vlib_cli_command_t * cmd)
+punt_socket_show_cmd (vlib_main_t *vm, unformat_input_t *input__,
+		      vlib_cli_command_t *cmd)
 {
   unformat_input_t line_input, *input = &line_input;
   clib_error_t *error = NULL;
@@ -777,18 +750,16 @@ done:
  * @cliexpar
  * @cliexcmd{show punt socket ipv4}
  ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_punt_socket_registration_command, static) =
-{
+
+VLIB_CLI_COMMAND (show_punt_socket_registration_command, static) = {
   .path = "show punt socket registrations",
   .function = punt_socket_show_cmd,
   .short_help = "show punt socket registrations [l4|exception]",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-ip_punt_init (vlib_main_t * vm)
+ip_punt_init (vlib_main_t *vm)
 {
   clib_error_t *error = NULL;
   punt_main_t *pm = &punt_main;
@@ -812,7 +783,7 @@ ip_punt_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (ip_punt_init);
 
 static clib_error_t *
-punt_config (vlib_main_t * vm, unformat_input_t * input)
+punt_config (vlib_main_t *vm, unformat_input_t *input)
 {
   punt_main_t *pm = &punt_main;
   char *socket_path = 0;
@@ -841,8 +812,7 @@ punt_config (vlib_main_t * vm, unformat_input_t * input)
   if (*socket_path == '\0')
     {
       *addr.sun_path = '\0';
-      strncpy (addr.sun_path + 1, socket_path + 1,
-	       sizeof (addr.sun_path) - 2);
+      strncpy (addr.sun_path + 1, socket_path + 1, sizeof (addr.sun_path) - 2);
     }
   else
     {
@@ -857,9 +827,8 @@ punt_config (vlib_main_t * vm, unformat_input_t * input)
 
   int n_bytes = 0x10000;
 
-  if (setsockopt
-      (pm->socket_fd, SOL_SOCKET, SO_SNDBUF, &n_bytes,
-       sizeof (n_bytes)) == -1)
+  if (setsockopt (pm->socket_fd, SOL_SOCKET, SO_SNDBUF, &n_bytes,
+		  sizeof (n_bytes)) == -1)
     {
       return clib_error_return (0, "setsockopt error");
     }

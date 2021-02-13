@@ -32,7 +32,7 @@
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_avf_create_t_handler (vl_api_avf_create_t * mp)
+vl_api_avf_create_t_handler (vl_api_avf_create_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   avf_main_t *am = &avf_main;
@@ -51,16 +51,12 @@ vl_api_avf_create_t_handler (vl_api_avf_create_t * mp)
   avf_create_if (vm, &args);
   rv = args.rv;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_AVF_CREATE_REPLY + am->msg_id_base,
-    ({
-      rmp->sw_if_index = ntohl (args.sw_if_index);
-    }));
-  /* *INDENT-ON* */
+		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
 }
 
 static void
-vl_api_avf_delete_t_handler (vl_api_avf_delete_t * mp)
+vl_api_avf_delete_t_handler (vl_api_avf_delete_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
@@ -69,9 +65,8 @@ vl_api_avf_delete_t_handler (vl_api_avf_delete_t * mp)
   vnet_hw_interface_t *hw;
   int rv = 0;
 
-  hw =
-    vnet_get_sup_hw_interface_api_visible_or_null (vnm,
-						   htonl (mp->sw_if_index));
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm,
+						      htonl (mp->sw_if_index));
   if (hw == NULL || avf_device_class.index != hw->dev_class_index)
     {
       rv = VNET_API_ERROR_INVALID_INTERFACE;
@@ -88,7 +83,7 @@ reply:
 /* set tup the API message handling tables */
 #include <avf/avf.api.c>
 static clib_error_t *
-avf_plugin_api_hookup (vlib_main_t * vm)
+avf_plugin_api_hookup (vlib_main_t *vm)
 {
   avf_main_t *avm = &avf_main;
   api_main_t *am = vlibapi_get_main ();

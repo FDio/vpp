@@ -45,7 +45,7 @@ rdma_api_mode (vl_api_rdma_mode_t mode)
 }
 
 static void
-vl_api_rdma_create_v2_t_handler (vl_api_rdma_create_v2_t * mp)
+vl_api_rdma_create_v2_t_handler (vl_api_rdma_create_v2_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   rdma_main_t *rm = &rdma_main;
@@ -67,16 +67,12 @@ vl_api_rdma_create_v2_t_handler (vl_api_rdma_create_v2_t * mp)
   rdma_create_if (vm, &args);
   rv = args.rv;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_RDMA_CREATE_V2_REPLY + rm->msg_id_base,
-    ({
-      rmp->sw_if_index = ntohl (args.sw_if_index);
-    }));
-  /* *INDENT-ON* */
+		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
 }
 
 static void
-vl_api_rdma_create_t_handler (vl_api_rdma_create_t * mp)
+vl_api_rdma_create_t_handler (vl_api_rdma_create_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   rdma_main_t *rm = &rdma_main;
@@ -99,16 +95,12 @@ vl_api_rdma_create_t_handler (vl_api_rdma_create_t * mp)
   rdma_create_if (vm, &args);
   rv = args.rv;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_RDMA_CREATE_REPLY + rm->msg_id_base,
-    ({
-      rmp->sw_if_index = ntohl (args.sw_if_index);
-    }));
-  /* *INDENT-ON* */
+		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
 }
 
 static void
-vl_api_rdma_delete_t_handler (vl_api_rdma_delete_t * mp)
+vl_api_rdma_delete_t_handler (vl_api_rdma_delete_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
@@ -118,9 +110,8 @@ vl_api_rdma_delete_t_handler (vl_api_rdma_delete_t * mp)
   vnet_hw_interface_t *hw;
   int rv = 0;
 
-  hw =
-    vnet_get_sup_hw_interface_api_visible_or_null (vnm,
-						   htonl (mp->sw_if_index));
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm,
+						      htonl (mp->sw_if_index));
   if (hw == NULL || rdma_device_class.index != hw->dev_class_index)
     {
       rv = VNET_API_ERROR_INVALID_INTERFACE;
@@ -138,7 +129,7 @@ reply:
 /* set tup the API message handling tables */
 #include <rdma/rdma.api.c>
 static clib_error_t *
-rdma_plugin_api_hookup (vlib_main_t * vm)
+rdma_plugin_api_hookup (vlib_main_t *vm)
 {
   rdma_main_t *rm = &rdma_main;
 

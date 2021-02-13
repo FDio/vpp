@@ -25,7 +25,7 @@
 
 typedef enum
 {
-#define mpls_error(n,s) MPLS_ERROR_##n,
+#define mpls_error(n, s) MPLS_ERROR_##n,
 #include <vnet/mpls/error.def>
 #undef mpls_error
   MPLS_N_ERROR,
@@ -64,7 +64,7 @@ typedef struct
 
 extern mpls_main_t mpls_main;
 
-extern clib_error_t *mpls_feature_init (vlib_main_t * vm);
+extern clib_error_t *mpls_feature_init (vlib_main_t *vm);
 
 format_function_t format_mpls_eos_bit;
 format_function_t format_mpls_unicast_header_net_byte_order;
@@ -84,8 +84,7 @@ unformat_function_t unformat_mpls_unicast_label;
 unformat_function_t unformat_mpls_header;
 unformat_function_t unformat_pg_mpls_header;
 
-int mpls_sw_interface_enable_disable (mpls_main_t * mm,
-				      u32 sw_if_index,
+int mpls_sw_interface_enable_disable (mpls_main_t *mm, u32 sw_if_index,
 				      u8 is_enable, u8 is_api);
 
 u8 mpls_sw_interface_is_enabled (u32 sw_if_index);
@@ -96,7 +95,7 @@ int mpls_fib_index_cmp (void *a1, void *a2);
 
 int mpls_label_cmp (void *a1, void *a2);
 
-void mpls_table_create (u32 table_id, u8 is_api, const u8 * name);
+void mpls_table_create (u32 table_id, u8 is_api, const u8 *name);
 void mpls_table_delete (u32 table_id, u8 is_api);
 
 #endif /* included_vnet_mpls_h */

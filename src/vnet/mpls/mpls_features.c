@@ -18,7 +18,7 @@
 #include <vnet/mpls/mpls.h>
 
 static u8 *
-format_mpls_drop_trace (u8 * s, va_list * args)
+format_mpls_drop_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -28,9 +28,8 @@ format_mpls_drop_trace (u8 * s, va_list * args)
 }
 
 static void
-mpls_drop_trace (vlib_main_t * vm,
-                 vlib_node_runtime_t * node,
-                 vlib_frame_t * frame)
+mpls_drop_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
+		 vlib_frame_t *frame)
 {
   u32 *from, n_left;
 
@@ -47,42 +46,35 @@ mpls_drop_trace (vlib_main_t * vm,
       b0 = vlib_get_buffer (vm, bi0);
 
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
-      {
-          vlib_add_trace (vm, node, b0, 0);
-      }
+	{
+	  vlib_add_trace (vm, node, b0, 0);
+	}
       from += 1;
       n_left -= 1;
     }
 }
 
 always_inline uword
-mpls_terminate (vlib_main_t * vm,
-                vlib_node_runtime_t * node,
-                vlib_frame_t * frame,
-                int error_code)
+mpls_terminate (vlib_main_t *vm, vlib_node_runtime_t *node,
+		vlib_frame_t *frame, int error_code)
 {
-  u32 * buffers = vlib_frame_vector_args (frame);
+  u32 *buffers = vlib_frame_vector_args (frame);
   uword n_packets = frame->n_vectors;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-      mpls_drop_trace (vm, node, frame);
+    mpls_drop_trace (vm, node, frame);
 
-  vlib_error_drop_buffers (vm, node,
-                           buffers,
-                           /* stride */ 1,
-                           n_packets,
-                           /* next */ 0,
-                           mpls_input_node.index,
-                           error_code);
+  vlib_error_drop_buffers (vm, node, buffers,
+			   /* stride */ 1, n_packets,
+			   /* next */ 0, mpls_input_node.index, error_code);
 
   return n_packets;
 }
 
-VLIB_NODE_FN (mpls_punt_node) (vlib_main_t * vm,
-           vlib_node_runtime_t * node,
-           vlib_frame_t * frame)
+VLIB_NODE_FN (mpls_punt_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-    return (mpls_terminate(vm, node, frame, MPLS_ERROR_PUNT));
+  return (mpls_terminate (vm, node, frame, MPLS_ERROR_PUNT));
 }
 
 VLIB_REGISTER_NODE (mpls_punt_node) = {
@@ -96,11 +88,10 @@ VLIB_REGISTER_NODE (mpls_punt_node) = {
   },
 };
 
-VLIB_NODE_FN (mpls_drop_node) (vlib_main_t * vm,
-           vlib_node_runtime_t * node,
-           vlib_frame_t * frame)
+VLIB_NODE_FN (mpls_drop_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-    return (mpls_terminate(vm, node, frame, MPLS_ERROR_DROP));
+  return (mpls_terminate (vm, node, frame, MPLS_ERROR_DROP));
 }
 
 VLIB_REGISTER_NODE (mpls_drop_node) = {
@@ -114,11 +105,10 @@ VLIB_REGISTER_NODE (mpls_drop_node) = {
   },
 };
 
-VLIB_NODE_FN (mpls_not_enabled_node) (vlib_main_t * vm,
-                  vlib_node_runtime_t * node,
-                  vlib_frame_t * frame)
+VLIB_NODE_FN (mpls_not_enabled_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-    return (mpls_terminate(vm, node, frame, MPLS_ERROR_NOT_ENABLED));
+  return (mpls_terminate (vm, node, frame, MPLS_ERROR_NOT_ENABLED));
 }
 
 VLIB_REGISTER_NODE (mpls_not_enabled_node) = {
@@ -132,9 +122,8 @@ VLIB_REGISTER_NODE (mpls_not_enabled_node) = {
   },
 };
 
-VNET_FEATURE_ARC_INIT (mpls_input, static) =
-{
-  .arc_name  = "mpls-input",
+VNET_FEATURE_ARC_INIT (mpls_input, static) = {
+  .arc_name = "mpls-input",
   .start_nodes = VNET_FEATURES ("mpls-input"),
   .last_in_arc = "mpls-lookup",
   .arc_index_ptr = &mpls_main.input_feature_arc_index,
@@ -152,9 +141,8 @@ VNET_FEATURE_INIT (mpls_lookup, static) = {
   .runs_before = VNET_FEATURES (0), /* not before any other features */
 };
 
-VNET_FEATURE_ARC_INIT (mpls_output, static) =
-{
-  .arc_name  = "mpls-output",
+VNET_FEATURE_ARC_INIT (mpls_output, static) = {
+  .arc_name = "mpls-output",
   .start_nodes = VNET_FEATURES ("mpls-output", "mpls-midchain"),
   .last_in_arc = "interface-output",
   .arc_index_ptr = &mpls_main.output_feature_arc_index,
@@ -168,11 +156,9 @@ VNET_FEATURE_INIT (mpls_interface_output, static) = {
 };
 
 static clib_error_t *
-mpls_sw_interface_add_del (vnet_main_t * vnm,
-                           u32 sw_if_index,
-                           u32 is_add)
+mpls_sw_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
 {
-  mpls_main_t * mm = &mpls_main;
+  mpls_main_t *mm = &mpls_main;
 
   vec_validate_init_empty (mm->mpls_enabled_by_sw_if_index, sw_if_index, 0);
   vec_validate_init_empty (mm->fib_index_by_sw_if_index, sw_if_index, 0);
@@ -184,5 +170,3 @@ mpls_sw_interface_add_del (vnet_main_t * vnm,
 }
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (mpls_sw_interface_add_del);
-
-

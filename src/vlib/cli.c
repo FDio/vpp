@@ -87,7 +87,7 @@ VLIB_CLI_COMMAND (vlib_cli_test_command, static) = {
 
 /* Returns bitmap of commands which match key. */
 static uword *
-vlib_cli_sub_command_match (vlib_cli_command_t * c, unformat_input_t * input)
+vlib_cli_sub_command_match (vlib_cli_command_t *c, unformat_input_t *input)
 {
   int i, n;
   uword *match = 0;
@@ -116,8 +116,8 @@ vlib_cli_sub_command_match (vlib_cli_command_t * c, unformat_input_t * input)
 	case UNFORMAT_END_OF_INPUT:
 	  /* White space or end of input removes any non-white
 	     matches that were before possible. */
-	  if (i < vec_len (c->sub_command_positions)
-	      && clib_bitmap_count_set_bits (match) > 1)
+	  if (i < vec_len (c->sub_command_positions) &&
+	      clib_bitmap_count_set_bits (match) > 1)
 	    {
 	      p = vec_elt_at_index (c->sub_command_positions, i);
 	      for (n = 0; n < vec_len (p->bitmaps); n++)
@@ -160,7 +160,7 @@ done:
 
 /* Looks for string based sub-input formatted { SUB-INPUT }. */
 uword
-unformat_vlib_cli_sub_input (unformat_input_t * i, va_list * args)
+unformat_vlib_cli_sub_input (unformat_input_t *i, va_list *args)
 {
   unformat_input_t *sub_input = va_arg (*args, unformat_input_t *);
   u8 *s;
@@ -196,14 +196,14 @@ unformat_vlib_cli_sub_input (unformat_input_t * i, va_list * args)
 }
 
 static vlib_cli_command_t *
-get_sub_command (vlib_cli_main_t * cm, vlib_cli_command_t * parent, u32 si)
+get_sub_command (vlib_cli_main_t *cm, vlib_cli_command_t *parent, u32 si)
 {
   vlib_cli_sub_command_t *s = vec_elt_at_index (parent->sub_commands, si);
   return vec_elt_at_index (cm->commands, s->index);
 }
 
 static uword
-unformat_vlib_cli_sub_command (unformat_input_t * i, va_list * args)
+unformat_vlib_cli_sub_command (unformat_input_t *i, va_list *args)
 {
   vlib_main_t *vm = va_arg (*args, vlib_main_t *);
   vlib_cli_command_t *c = va_arg (*args, vlib_cli_command_t *);
@@ -234,7 +234,7 @@ vlib_cli_cmp_strings (void *a1, void *a2)
 }
 
 u8 **
-vlib_cli_get_possible_completions (u8 * str)
+vlib_cli_get_possible_completions (u8 *str)
 {
   vlib_cli_command_t *c;
   vlib_cli_sub_command_t *sc;
@@ -260,9 +260,9 @@ vlib_cli_get_possible_completions (u8 * str)
       (vec_len (input.buffer) == 1 && isspace (input.buffer[0])))
     {
       vec_foreach (sc, c->sub_commands)
-      {
-	vec_add1 (result, (u8 *) sc->name);
-      }
+	{
+	  vec_add1 (result, (u8 *) sc->name);
+	}
       goto done;
     }
 
@@ -304,17 +304,20 @@ vlib_cli_get_possible_completions (u8 * str)
    * autocomplete the next level of subcommands */
   help_next_level = (vec_len (str) == 0) || isspace (str[vec_len (str) - 1]);
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (index, match_bitmap) {
-    if (help_next_level && is_unique) {
-	c = get_sub_command (vcm, c, index);
-	vec_foreach (sc, c->sub_commands) {
-	  vec_add1 (result, (u8*) sc->name);
+  clib_bitmap_foreach (index, match_bitmap)
+    {
+      if (help_next_level && is_unique)
+	{
+	  c = get_sub_command (vcm, c, index);
+	  vec_foreach (sc, c->sub_commands)
+	    {
+	      vec_add1 (result, (u8 *) sc->name);
+	    }
+	  goto done; /* break doesn't work in this macro-loop */
 	}
-	goto done; /* break doesn't work in this macro-loop */
+      sc = &c->sub_commands[index];
+      vec_add1 (result, (u8 *) sc->name);
     }
-    sc = &c->sub_commands[index];
-    vec_add1(result, (u8*) sc->name);
-  }
   /* *INDENT-ON* */
 
 done:
@@ -327,7 +330,7 @@ done:
 }
 
 static u8 *
-format_vlib_cli_command_help (u8 * s, va_list * args)
+format_vlib_cli_command_help (u8 *s, va_list *args)
 {
   vlib_cli_command_t *c = va_arg (*args, vlib_cli_command_t *);
   int is_long = va_arg (*args, int);
@@ -341,7 +344,7 @@ format_vlib_cli_command_help (u8 * s, va_list * args)
 }
 
 static u8 *
-format_vlib_cli_path (u8 * s, va_list * args)
+format_vlib_cli_path (u8 *s, va_list *args)
 {
   u8 *path = va_arg (*args, u8 *);
 
@@ -351,7 +354,7 @@ format_vlib_cli_path (u8 * s, va_list * args)
 }
 
 static vlib_cli_command_t *
-all_subs (vlib_cli_main_t * cm, vlib_cli_command_t * subs, u32 command_index)
+all_subs (vlib_cli_main_t *cm, vlib_cli_command_t *subs, u32 command_index)
 {
   vlib_cli_command_t *c = vec_elt_at_index (cm->commands, command_index);
   vlib_cli_sub_command_t *sc;
@@ -359,7 +362,8 @@ all_subs (vlib_cli_main_t * cm, vlib_cli_command_t * subs, u32 command_index)
   if (c->function)
     vec_add1 (subs, c[0]);
 
-  vec_foreach (sc, c->sub_commands) subs = all_subs (cm, subs, sc->index);
+  vec_foreach (sc, c->sub_commands)
+    subs = all_subs (cm, subs, sc->index);
 
   return subs;
 }
@@ -383,9 +387,8 @@ vlib_cli_cmp_command (void *a1, void *a2)
 }
 
 static clib_error_t *
-vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
-				vlib_cli_main_t * cm,
-				unformat_input_t * input,
+vlib_cli_dispatch_sub_commands (vlib_main_t *vm, vlib_cli_main_t *cm,
+				unformat_input_t *input,
 				uword parent_command_index)
 {
   vlib_cli_command_t *parent, *c;
@@ -404,8 +407,8 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
       while (1)
 	{
 	  c = parent;
-	  if (unformat_user
-	      (input, unformat_vlib_cli_sub_command, vm, c, &parent))
+	  if (unformat_user (input, unformat_vlib_cli_sub_command, vm, c,
+			     &parent))
 	    ;
 
 	  else if (!(unformat_check_input (input) == UNFORMAT_END_OF_INPUT))
@@ -416,7 +419,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	}
 
       /* help SUB-COMMAND => long format help.
-         "help" at end of line: show all commands. */
+	 "help" at end of line: show all commands. */
       if (!help_at_end_of_line)
 	vlib_cli_output (vm, "%U", format_vlib_cli_command_help, c,
 			 /* is_long */ 1);
@@ -430,12 +433,12 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	  vlib_cli_sub_command_t *sc;
 
 	  vec_foreach (sc, c->sub_commands)
-	  {
-	    vec_add2 (subs, sr, 1);
-	    sr->name = sc->name;
-	    sr->command_index = sc->index;
-	    sr->rule_index = ~0;
-	  }
+	    {
+	      vec_add2 (subs, sr, 1);
+	      sr->name = sc->name;
+	      sr->command_index = sc->index;
+	      sr->rule_index = ~0;
+	    }
 
 	  vec_sort_with_function (subs, vlib_cli_cmp_rule);
 
@@ -444,25 +447,24 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	      vlib_cli_command_t *d;
 
 	      d = vec_elt_at_index (cm->commands, subs[i].command_index);
-	      vlib_cli_output
-		(vm, "  %-30v %U", subs[i].name,
-		 format_vlib_cli_command_help, d, /* is_long */ 0);
+	      vlib_cli_output (vm, "  %-30v %U", subs[i].name,
+			       format_vlib_cli_command_help, d,
+			       /* is_long */ 0);
 	    }
 
 	  vec_free (subs);
 	}
     }
 
-  else if (is_main_dispatch
-	   && (unformat (input, "choices") || unformat (input, "?")))
+  else if (is_main_dispatch &&
+	   (unformat (input, "choices") || unformat (input, "?")))
     {
       vlib_cli_command_t *sub, *subs;
 
       subs = all_subs (cm, 0, parent_command_index);
       vec_sort_with_function (subs, vlib_cli_cmp_command);
       vec_foreach (sub, subs)
-	vlib_cli_output (vm, "  %-40U %U",
-			 format_vlib_cli_path, sub->path,
+	vlib_cli_output (vm, "  %-40U %U", format_vlib_cli_path, sub->path,
 			 format_vlib_cli_command_help, sub, /* is_long */ 0);
       vec_free (subs);
     }
@@ -472,16 +474,15 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
       vec_free (string);
     }
 
-  else if (unformat (input, "uncomment %U",
-		     unformat_vlib_cli_sub_input, &sub_input))
+  else if (unformat (input, "uncomment %U", unformat_vlib_cli_sub_input,
+		     &sub_input))
     {
-      error =
-	vlib_cli_dispatch_sub_commands (vm, cm, &sub_input,
-					parent_command_index);
+      error = vlib_cli_dispatch_sub_commands (vm, cm, &sub_input,
+					      parent_command_index);
       unformat_free (&sub_input);
     }
-  else if (unformat (input, "leak-check %U",
-		     unformat_vlib_cli_sub_input, &sub_input))
+  else if (unformat (input, "leak-check %U", unformat_vlib_cli_sub_input,
+		     &sub_input))
     {
       u8 *leak_report;
       if (current_traced_heap)
@@ -493,9 +494,8 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	  current_traced_heap = 0;
 	}
       clib_mem_trace (1);
-      error =
-	vlib_cli_dispatch_sub_commands (vm, cm, &sub_input,
-					parent_command_index);
+      error = vlib_cli_dispatch_sub_commands (vm, cm, &sub_input,
+					      parent_command_index);
       unformat_free (&sub_input);
 
       /* Otherwise, the clib_error_t shows up as a leak... */
@@ -508,14 +508,14 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 
       (void) clib_mem_trace_enable_disable (0);
       leak_report = format (0, "%U", format_clib_mem_heap, 0,
-			    1 /* verbose, i.e. print leaks */ );
+			    1 /* verbose, i.e. print leaks */);
       clib_mem_trace (0);
       vlib_cli_output (vm, "%v", leak_report);
       vec_free (leak_report);
     }
 
-  else
-    if (unformat_user (input, unformat_vlib_cli_sub_command, vm, parent, &c))
+  else if (unformat_user (input, unformat_vlib_cli_sub_command, vm, parent,
+			  &c))
     {
       unformat_input_t *si;
       uword has_sub_commands =
@@ -529,7 +529,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	error = vlib_cli_dispatch_sub_commands (vm, cm, si, c - cm->commands);
 
       if (has_sub_commands && !error)
-	/* Found valid sub-command. */ ;
+	/* Found valid sub-command. */;
 
       else if (c->function)
 	{
@@ -540,24 +540,24 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 
 	  if (unformat (si, "?"))
 	    {
-	      vlib_cli_output (vm, "  %-40U %U", format_vlib_cli_path, c->path, format_vlib_cli_command_help, c,	/* is_long */
+	      vlib_cli_output (vm, "  %-40U %U", format_vlib_cli_path, c->path,
+			       format_vlib_cli_command_help, c, /* is_long */
 			       0);
 	    }
 	  else
 	    {
 	      if (PREDICT_FALSE (vm->elog_trace_cli_commands))
 		{
-                  /* *INDENT-OFF* */
-                  ELOG_TYPE_DECLARE (e) =
-                    {
-                      .format = "cli-cmd: %s",
-                      .format_args = "T4",
-                    };
-                  /* *INDENT-ON* */
+		  /* *INDENT-OFF* */
+		  ELOG_TYPE_DECLARE (e) = {
+		    .format = "cli-cmd: %s",
+		    .format_args = "T4",
+		  };
+		  /* *INDENT-ON* */
 		  struct
 		  {
 		    u32 c;
-		  } *ed;
+		  } * ed;
 		  ed = ELOG_DATA (&vm->elog_main, e);
 		  ed->c = elog_string (&vm->elog_main, "%v", c->path);
 		}
@@ -566,30 +566,29 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 		vlib_worker_thread_barrier_sync (vm);
 	      if (PREDICT_FALSE (vec_len (cm->perf_counter_cbs) != 0))
 		clib_call_callbacks (cm->perf_counter_cbs, cm,
-				     c - cm->commands, 0 /* before */ );
+				     c - cm->commands, 0 /* before */);
 
 	      c->hit_counter++;
 	      c_error = c->function (vm, si, c);
 
 	      if (PREDICT_FALSE (vec_len (cm->perf_counter_cbs) != 0))
 		clib_call_callbacks (cm->perf_counter_cbs, cm,
-				     c - cm->commands, 1 /* after */ );
+				     c - cm->commands, 1 /* after */);
 	      if (!c->is_mp_safe)
 		vlib_worker_thread_barrier_release (vm);
 
 	      if (PREDICT_FALSE (vm->elog_trace_cli_commands))
 		{
-                  /* *INDENT-OFF* */
-                  ELOG_TYPE_DECLARE (e) =
-                    {
-                      .format = "cli-cmd: %s %s",
-                      .format_args = "T4T4",
-                    };
-                  /* *INDENT-ON* */
+		  /* *INDENT-OFF* */
+		  ELOG_TYPE_DECLARE (e) = {
+		    .format = "cli-cmd: %s %s",
+		    .format_args = "T4T4",
+		  };
+		  /* *INDENT-ON* */
 		  struct
 		  {
 		    u32 c, err;
-		  } *ed;
+		  } * ed;
 		  ed = ELOG_DATA (&vm->elog_main, e);
 		  ed->c = elog_string (&vm->elog_main, "%v", c->path);
 		  if (c_error)
@@ -642,20 +641,18 @@ unknown:
 			      input);
 }
 
-
 void vlib_unix_error_report (vlib_main_t *, clib_error_t *)
   __attribute__ ((weak));
 
 void
-vlib_unix_error_report (vlib_main_t * vm, clib_error_t * error)
+vlib_unix_error_report (vlib_main_t *vm, clib_error_t *error)
 {
 }
 
 /* Process CLI input. */
 int
-vlib_cli_input (vlib_main_t * vm,
-		unformat_input_t * input,
-		vlib_cli_output_function_t * function, uword function_arg)
+vlib_cli_input (vlib_main_t *vm, unformat_input_t *input,
+		vlib_cli_output_function_t *function, uword function_arg)
 {
   vlib_process_t *cp = vlib_get_current_process (vm);
   clib_error_t *error;
@@ -681,7 +678,7 @@ vlib_cli_input (vlib_main_t * vm,
       vlib_cli_output (vm, "%v", error->what);
       vlib_unix_error_report (vm, error);
       /* clib_error_return is unfortunately often called with a '0'
-         return code */
+	 return code */
       rv = error->code != 0 ? error->code : -1;
       clib_error_free (error);
     }
@@ -693,7 +690,7 @@ vlib_cli_input (vlib_main_t * vm,
 
 /* Output to current CLI connection. */
 void
-vlib_cli_output (vlib_main_t * vm, char *fmt, ...)
+vlib_cli_output (vlib_main_t *vm, char *fmt, ...)
 {
   vlib_process_t *cp = vlib_get_current_process (vm);
   va_list va;
@@ -741,8 +738,8 @@ vlib_stats_push_heap (void *notused)
 }
 
 static clib_error_t *
-show_memory_usage (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+show_memory_usage (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   clib_mem_main_t *mm = &clib_mem_main;
   int verbose __attribute__ ((unused)) = 0;
@@ -753,7 +750,6 @@ show_memory_usage (vlib_main_t * vm,
   int i;
   uword clib_mem_trace_enable_disable (uword enable);
   uword was_enabled;
-
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -778,9 +774,9 @@ show_memory_usage (vlib_main_t * vm,
     }
 
   if ((api_segment + stats_segment + main_heap + numa_heaps + map) == 0)
-    return clib_error_return
-      (0, "Need one of api-segment, stats-segment, main-heap, numa-heaps "
-       "or map");
+    return clib_error_return (
+      0, "Need one of api-segment, stats-segment, main-heap, numa-heaps "
+	 "or map");
 
   if (api_segment)
     {
@@ -819,7 +815,6 @@ show_memory_usage (vlib_main_t * vm,
       vec_free (s);
     }
 
-
   {
     if (main_heap)
       {
@@ -829,17 +824,15 @@ show_memory_usage (vlib_main_t * vm,
 	 */
 	was_enabled = clib_mem_trace_enable_disable (0);
 
-        /* *INDENT-OFF* */
-        foreach_vlib_main (
-        ({
-          vlib_cli_output (vm, "%sThread %d %s\n", index ? "\n":"", index,
-                           vlib_worker_threads[index].name);
-          vlib_cli_output (vm, "  %U\n", format_clib_mem_heap,
-                           mm->per_cpu_mheaps[index],
-                           verbose);
-          index++;
-        }));
-        /* *INDENT-ON* */
+	/* *INDENT-OFF* */
+	foreach_vlib_main (({
+	  vlib_cli_output (vm, "%sThread %d %s\n", index ? "\n" : "", index,
+			   vlib_worker_threads[index].name);
+	  vlib_cli_output (vm, "  %U\n", format_clib_mem_heap,
+			   mm->per_cpu_mheaps[index], verbose);
+	  index++;
+	}));
+	/* *INDENT-ON* */
 
 	/* Restore the trace flag */
 	clib_mem_trace_enable_disable (was_enabled);
@@ -864,13 +857,13 @@ show_memory_usage (vlib_main_t * vm,
       }
     if (map)
       {
-	clib_mem_page_stats_t stats = { };
+	clib_mem_page_stats_t stats = {};
 	clib_mem_vm_map_hdr_t *hdr = 0;
 	u8 *s = 0;
 	int numa = -1;
 
-	s = format (s, "\n%-16s%7s%5s%7s%7s",
-		    "StartAddr", "size", "FD", "PageSz", "Pages");
+	s = format (s, "\n%-16s%7s%5s%7s%7s", "StartAddr", "size", "FD",
+		    "PageSz", "Pages");
 	while ((numa = vlib_mem_get_next_numa_node (numa)) != -1)
 	  s = format (s, " Numa%u", numa);
 	s = format (s, " NotMap");
@@ -883,8 +876,7 @@ show_memory_usage (vlib_main_t * vm,
 	    clib_mem_get_page_stats ((void *) hdr->base_addr,
 				     hdr->log2_page_sz, hdr->num_pages,
 				     &stats);
-	    s = format (s, "%016lx%7U",
-			hdr->base_addr, format_memory_size,
+	    s = format (s, "%016lx%7U", hdr->base_addr, format_memory_size,
 			hdr->num_pages << hdr->log2_page_sz);
 
 	    if (hdr->fd != -1)
@@ -892,8 +884,7 @@ show_memory_usage (vlib_main_t * vm,
 	    else
 	      s = format (s, "%5s", " ");
 
-	    s = format (s, "%7U%7lu",
-			format_log2_page_size, hdr->log2_page_sz,
+	    s = format (s, "%7U%7lu", format_log2_page_size, hdr->log2_page_sz,
 			hdr->num_pages);
 	    while ((numa = vlib_mem_get_next_numa_node (numa)) != -1)
 	      s = format (s, "%6lu", stats.per_numa[numa]);
@@ -912,21 +903,20 @@ show_memory_usage (vlib_main_t * vm,
 VLIB_CLI_COMMAND (show_memory_usage_command, static) = {
   .path = "show memory",
   .short_help = "show memory [api-segment][stats-segment][verbose]\n"
-  "            [numa-heaps][map]",
+		"            [numa-heaps][map]",
   .function = show_memory_usage,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-show_cpu (vlib_main_t * vm, unformat_input_t * input,
-	  vlib_cli_command_t * cmd)
+show_cpu (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
-#define _(a,b,c) vlib_cli_output (vm, "%-25s " b, a ":", c);
-  _("Model name", "%U", format_cpu_model_name);
-  _("Microarch model (family)", "%U", format_cpu_uarch);
-  _("Flags", "%U", format_cpu_flags);
-  _("Base frequency", "%.2f GHz",
-    ((f64) vm->clib_time.clocks_per_second) * 1e-9);
+#define _(a, b, c) vlib_cli_output (vm, "%-25s " b, a ":", c);
+  _ ("Model name", "%U", format_cpu_model_name);
+  _ ("Microarch model (family)", "%U", format_cpu_uarch);
+  _ ("Flags", "%U", format_cpu_flags);
+  _ ("Base frequency", "%.2f GHz",
+     ((f64) vm->clib_time.clocks_per_second) * 1e-9);
 #undef _
   return 0;
 }
@@ -951,9 +941,8 @@ VLIB_CLI_COMMAND (show_cpu_command, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
-enable_disable_memory_trace (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+enable_disable_memory_trace (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   clib_mem_main_t *mm = &clib_mem_main;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -987,12 +976,12 @@ enable_disable_memory_trace (vlib_main_t * vm,
     }
   unformat_free (line_input);
 
-  if ((api_segment + stats_segment + main_heap + (enable == 0)
-       + (numa_id != ~0)) == 0)
+  if ((api_segment + stats_segment + main_heap + (enable == 0) +
+       (numa_id != ~0)) == 0)
     {
-      return clib_error_return
-	(0, "Need one of main-heap, stats-segment, api-segment,\n"
-	 "numa-heap <nn> or disable");
+      return clib_error_return (
+	0, "Need one of main-heap, stats-segment, api-segment,\n"
+	   "numa-heap <nn> or disable");
     }
 
   /* Turn off current trace, if any */
@@ -1015,7 +1004,6 @@ enable_disable_memory_trace (vlib_main_t * vm,
       current_traced_heap = clib_mem_get_heap ();
       clib_mem_trace (1);
       vl_msg_pop_heap (oldheap);
-
     }
 
   /* Stats segment */
@@ -1044,14 +1032,12 @@ enable_disable_memory_trace (vlib_main_t * vm,
 	return clib_error_return (0, "Numa %d heap not active", numa_id);
 
       if (mm->per_numa_mheaps[numa_id] == clib_mem_get_heap ())
-	return clib_error_return (0, "Numa %d uses the main heap...",
-				  numa_id);
+	return clib_error_return (0, "Numa %d uses the main heap...", numa_id);
       current_traced_heap = mm->per_numa_mheaps[numa_id];
       oldheap = clib_mem_set_heap (current_traced_heap);
       clib_mem_trace (1);
       clib_mem_set_heap (oldheap);
     }
-
 
   return 0;
 }
@@ -1060,14 +1046,14 @@ enable_disable_memory_trace (vlib_main_t * vm,
 VLIB_CLI_COMMAND (enable_disable_memory_trace_command, static) = {
   .path = "memory-trace",
   .short_help = "memory-trace on|off [api-segment][stats-segment][main-heap]\n"
-  "                   [numa-heap <numa-id>]\n",
+		"                   [numa-heap <numa-id>]\n",
   .function = enable_disable_memory_trace,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-restart_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
-		vlib_cli_command_t * cmd)
+restart_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+		vlib_cli_command_t *cmd)
 {
   clib_file_main_t *fm = &file_main;
   clib_file_t *f;
@@ -1078,9 +1064,9 @@ restart_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
   /* Close all known open files */
   /* *INDENT-OFF* */
   pool_foreach (f, fm->file_pool)
-     {
+    {
       if (f->file_descriptor > 2)
-        close(f->file_descriptor);
+	close (f->file_descriptor);
     }
   /* *INDENT-ON* */
 
@@ -1091,10 +1077,10 @@ restart_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (restart_cmd,static) = {
-    .path = "restart",
-    .short_help = "restart process",
-    .function = restart_cmd_fn,
+VLIB_CLI_COMMAND (restart_cmd, static) = {
+  .path = "restart",
+  .short_help = "restart process",
+  .function = restart_cmd_fn,
 };
 /* *INDENT-ON* */
 
@@ -1105,8 +1091,8 @@ VLIB_CLI_COMMAND (restart_cmd,static) = {
  */
 
 static clib_error_t *
-sleep_ten_seconds (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+sleep_ten_seconds (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   u16 i;
   u16 my_id = rand ();
@@ -1186,7 +1172,7 @@ parent_path_len (char *path)
 }
 
 static void
-add_sub_command (vlib_cli_main_t * cm, uword parent_index, uword child_index)
+add_sub_command (vlib_cli_main_t *cm, uword parent_index, uword child_index)
 {
   vlib_cli_command_t *p, *c;
   vlib_cli_sub_command_t *sub_c;
@@ -1215,9 +1201,8 @@ add_sub_command (vlib_cli_main_t * cm, uword parent_index, uword child_index)
       vec_delete (sub_name, 1, 0);
 
       if (!p->sub_rule_index_by_name)
-	p->sub_rule_index_by_name = hash_create_vec ( /* initial length */ 32,
-						     sizeof (sub_name[0]),
-						     sizeof (uword));
+	p->sub_rule_index_by_name = hash_create_vec (
+	  /* initial length */ 32, sizeof (sub_name[0]), sizeof (uword));
       q = hash_get_mem (p->sub_rule_index_by_name, sub_name);
       if (q)
 	{
@@ -1236,9 +1221,8 @@ add_sub_command (vlib_cli_main_t * cm, uword parent_index, uword child_index)
     }
 
   if (!p->sub_command_index_by_name)
-    p->sub_command_index_by_name = hash_create_vec ( /* initial length */ 32,
-						    sizeof (c->path[0]),
-						    sizeof (uword));
+    p->sub_command_index_by_name = hash_create_vec (
+      /* initial length */ 32, sizeof (c->path[0]), sizeof (uword));
 
   /* Check if sub-command has already been created. */
   if (hash_get_mem (p->sub_command_index_by_name, sub_name))
@@ -1279,7 +1263,7 @@ add_sub_command (vlib_cli_main_t * cm, uword parent_index, uword child_index)
 }
 
 static void
-vlib_cli_make_parent (vlib_cli_main_t * cm, uword ci)
+vlib_cli_make_parent (vlib_cli_main_t *cm, uword ci)
 {
   uword p_len, pi, *p;
   char *p_path;
@@ -1327,13 +1311,13 @@ vlib_cli_make_parent (vlib_cli_main_t * cm, uword ci)
 }
 
 always_inline uword
-vlib_cli_command_is_empty (vlib_cli_command_t * c)
+vlib_cli_command_is_empty (vlib_cli_command_t *c)
 {
   return (c->long_help == 0 && c->short_help == 0 && c->function == 0);
 }
 
 clib_error_t *
-vlib_cli_register (vlib_main_t * vm, vlib_cli_command_t * c)
+vlib_cli_register (vlib_main_t *vm, vlib_cli_command_t *c)
 {
   vlib_cli_main_t *cm = &vm->cli_main;
   clib_error_t *error = 0;
@@ -1346,9 +1330,8 @@ vlib_cli_register (vlib_main_t * vm, vlib_cli_command_t * c)
   (void) vlib_cli_normalize_path (c->path, &normalized_path);
 
   if (!cm->command_index_by_path)
-    cm->command_index_by_path = hash_create_vec ( /* initial length */ 32,
-						 sizeof (c->path[0]),
-						 sizeof (uword));
+    cm->command_index_by_path = hash_create_vec (
+      /* initial length */ 32, sizeof (c->path[0]), sizeof (uword));
 
   /* See if command already exists with given path. */
   p = hash_get_mem (cm->command_index_by_path, normalized_path);
@@ -1360,7 +1343,7 @@ vlib_cli_register (vlib_main_t * vm, vlib_cli_command_t * c)
       d = vec_elt_at_index (cm->commands, ci);
 
       /* If existing command was created via vlib_cli_make_parent
-         replaced it with callers data. */
+	 replaced it with callers data. */
       if (vlib_cli_command_is_empty (d))
 	{
 	  vlib_cli_command_t save = d[0];
@@ -1378,9 +1361,8 @@ vlib_cli_register (vlib_main_t * vm, vlib_cli_command_t * c)
 	  d->sub_rules = save.sub_rules;
 	}
       else
-	error =
-	  clib_error_return (0, "duplicate command name with path %v",
-			     normalized_path);
+	error = clib_error_return (0, "duplicate command name with path %v",
+				   normalized_path);
 
       vec_free (normalized_path);
       if (error)
@@ -1477,9 +1459,8 @@ done:
 #endif
 
 static clib_error_t *
-event_logger_trace_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+event_logger_trace_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   int enable = 1;
@@ -1495,8 +1476,8 @@ event_logger_trace_command_fn (vlib_main_t * vm,
 	api = 1;
       else if (unformat (line_input, "dispatch"))
 	dispatch = 1;
-      else if (unformat (line_input, "circuit-node %U",
-			 unformat_vlib_node, vm, &circuit_node_index))
+      else if (unformat (line_input, "circuit-node %U", unformat_vlib_node, vm,
+			 &circuit_node_index))
 	circuit = 1;
       else if (unformat (line_input, "cli"))
 	cli = 1;
@@ -1511,13 +1492,13 @@ event_logger_trace_command_fn (vlib_main_t * vm,
     }
   unformat_free (line_input);
 
-  vl_api_set_elog_trace_api_messages
-    (api ? enable : vl_api_get_elog_trace_api_messages ());
+  vl_api_set_elog_trace_api_messages (
+    api ? enable : vl_api_get_elog_trace_api_messages ());
   vm->elog_trace_cli_commands = cli ? enable : vm->elog_trace_cli_commands;
-  vm->elog_trace_graph_dispatch = dispatch ?
-    enable : vm->elog_trace_graph_dispatch;
-  vm->elog_trace_graph_circuit = circuit ?
-    enable : vm->elog_trace_graph_circuit;
+  vm->elog_trace_graph_dispatch =
+    dispatch ? enable : vm->elog_trace_graph_dispatch;
+  vm->elog_trace_graph_circuit =
+    circuit ? enable : vm->elog_trace_graph_circuit;
   vlib_worker_threads->barrier_elog_enabled =
     barrier ? enable : vlib_worker_threads->barrier_elog_enabled;
   vm->elog_trace_graph_circuit_node_index = circuit_node_index;
@@ -1536,27 +1517,22 @@ event_logger_trace_command_fn (vlib_main_t * vm,
 	em->n_total_events + vec_len (em->event_ring);
     }
 
-
 print_status:
   vlib_cli_output (vm, "Current status:");
 
-  vlib_cli_output
-    (vm, "    Event log API message trace: %s\n    CLI command trace: %s",
-     vl_api_get_elog_trace_api_messages ()? "on" : "off",
-     vm->elog_trace_cli_commands ? "on" : "off");
-  vlib_cli_output
-    (vm, "    Barrier sync trace: %s",
-     vlib_worker_threads->barrier_elog_enabled ? "on" : "off");
-  vlib_cli_output
-    (vm, "    Graph Dispatch: %s",
-     vm->elog_trace_graph_dispatch ? "on" : "off");
-  vlib_cli_output
-    (vm, "    Graph Circuit: %s",
-     vm->elog_trace_graph_circuit ? "on" : "off");
+  vlib_cli_output (
+    vm, "    Event log API message trace: %s\n    CLI command trace: %s",
+    vl_api_get_elog_trace_api_messages () ? "on" : "off",
+    vm->elog_trace_cli_commands ? "on" : "off");
+  vlib_cli_output (vm, "    Barrier sync trace: %s",
+		   vlib_worker_threads->barrier_elog_enabled ? "on" : "off");
+  vlib_cli_output (vm, "    Graph Dispatch: %s",
+		   vm->elog_trace_graph_dispatch ? "on" : "off");
+  vlib_cli_output (vm, "    Graph Circuit: %s",
+		   vm->elog_trace_graph_circuit ? "on" : "off");
   if (vm->elog_trace_graph_circuit)
-    vlib_cli_output
-      (vm, "                   node %U",
-       format_vlib_node_name, vm, vm->elog_trace_graph_circuit_node_index);
+    vlib_cli_output (vm, "                   node %U", format_vlib_node_name,
+		     vm, vm->elog_trace_graph_circuit_node_index);
 
   return 0;
 }
@@ -1576,33 +1552,30 @@ print_status:
  * @cliexcmd{event-logger trace [api][cli][barrier][disable]}
 ?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (event_logger_trace_command, static) =
-{
+VLIB_CLI_COMMAND (event_logger_trace_command, static) = {
   .path = "event-logger trace",
   .short_help = "event-logger trace [api][cli][barrier][dispatch]\n"
-  "[circuit-node <name> e.g. ethernet-input][disable]",
+		"[circuit-node <name> e.g. ethernet-input][disable]",
   .function = event_logger_trace_command_fn,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-suspend_command_fn (vlib_main_t * vm,
-		    unformat_input_t * input, vlib_cli_command_t * cmd)
+suspend_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		    vlib_cli_command_t *cmd)
 {
   vlib_process_suspend (vm, 30e-3);
   return 0;
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (suspend_command, static) =
-{
+VLIB_CLI_COMMAND (suspend_command, static) = {
   .path = "suspend",
   .short_help = "suspend debug CLI for 30ms",
   .function = suspend_command_fn,
   .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
-
 
 static int
 sort_cmds_by_path (void *a1, void *a2)
@@ -1642,7 +1615,7 @@ typedef struct
 } vlib_cli_walk_args_t;
 
 static void
-cli_recursive_walk (vlib_cli_walk_args_t * aa)
+cli_recursive_walk (vlib_cli_walk_args_t *aa)
 {
   vlib_cli_command_t *parent;
   vlib_cli_sub_command_t *sub;
@@ -1658,9 +1631,9 @@ cli_recursive_walk (vlib_cli_walk_args_t * aa)
 
   if (parent->function)
     {
-      if (((a->show_mp_safe && parent->is_mp_safe)
-	   || (a->show_not_mp_safe && !parent->is_mp_safe))
-	  && (a->show_hit == 0 || parent->hit_counter))
+      if (((a->show_mp_safe && parent->is_mp_safe) ||
+	   (a->show_not_mp_safe && !parent->is_mp_safe)) &&
+	  (a->show_hit == 0 || parent->hit_counter))
 	{
 	  vec_add1 (cm->sort_vector, a->parent_command_index);
 	}
@@ -1678,7 +1651,7 @@ cli_recursive_walk (vlib_cli_walk_args_t * aa)
 }
 
 static u8 *
-format_mp_safe (u8 * s, va_list * args)
+format_mp_safe (u8 *s, va_list *args)
 {
   vlib_cli_main_t *cm = va_arg (*args, vlib_cli_main_t *);
   int show_mp_safe = va_arg (*args, int);
@@ -1715,10 +1688,9 @@ format_mp_safe (u8 * s, va_list * args)
   return s;
 }
 
-
 static clib_error_t *
-show_cli_command_fn (vlib_main_t * vm,
-		     unformat_input_t * input, vlib_cli_command_t * cmd)
+show_cli_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
 {
   int show_mp_safe = 0;
   int show_not_mp_safe = 0;
@@ -1743,8 +1715,8 @@ show_cli_command_fn (vlib_main_t * vm,
   if (clear_hit == 0 && (show_mp_safe + show_not_mp_safe) == 0)
     show_mp_safe = show_not_mp_safe = 1;
 
-  vlib_cli_output (vm, "%U", format_mp_safe, &vm->cli_main,
-		   show_mp_safe, show_not_mp_safe, show_hit, clear_hit);
+  vlib_cli_output (vm, "%U", format_mp_safe, &vm->cli_main, show_mp_safe,
+		   show_not_mp_safe, show_hit, clear_hit);
   if (clear_hit)
     vlib_cli_output (vm, "hit counters cleared...");
 
@@ -1792,40 +1764,5 @@ show_cli_command_fn (vlib_main_t * vm,
 ?*/
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_cli_command, static) =
-{
-  .path = "show cli",
-  .short_help = "show cli [mp-safe][not-mp-safe][hit][clear-hit]",
-  .function = show_cli_command_fn,
-  .is_mp_safe = 1,
-};
-/* *INDENT-ON* */
-
-static clib_error_t *
-vlib_cli_init (vlib_main_t * vm)
-{
-  vlib_cli_main_t *cm = &vm->cli_main;
-  clib_error_t *error = 0;
-  vlib_cli_command_t *cmd;
-
-  cmd = cm->cli_command_registrations;
-
-  while (cmd)
-    {
-      error = vlib_cli_register (vm, cmd);
-      if (error)
-	return error;
-      cmd = cmd->next_cli_command;
-    }
-  return error;
-}
-
-VLIB_INIT_FUNCTION (vlib_cli_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+VLIB_CLI_COMMAND (show_cli_command, static) = { .path = "show cli",
+						.short_help =

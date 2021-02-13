@@ -28,21 +28,21 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_dns46_reply_trace (u8 * s, va_list * args)
+format_dns46_reply_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   dns46_reply_trace_t *t = va_arg (*args, dns46_reply_trace_t *);
 
-  s = format (s, "DNS46_REPLY: pool index %d, disposition  %d",
-	      t->pool_index, t->disposition);
+  s = format (s, "DNS46_REPLY: pool index %d, disposition  %d", t->pool_index,
+	      t->disposition);
   return s;
 }
 
 vlib_node_registration_t dns46_reply_node;
 
 static char *dns46_reply_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_dns46_reply_error
 #undef _
 };
@@ -55,8 +55,8 @@ typedef enum
 } dns46_reply_next_t;
 
 static uword
-dns46_reply_node_fn (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+dns46_reply_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   dns46_reply_next_t next_index;
@@ -179,8 +179,8 @@ dns46_reply_node_fn (vlib_main_t * vm,
 	done0:
 	  b0->error = node->errors[error0];
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      dns46_reply_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -189,9 +189,8 @@ dns46_reply_node_fn (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -200,7 +199,6 @@ dns46_reply_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dns46_reply_node) =
 {
   .function = dns46_reply_node_fn,
@@ -216,7 +214,6 @@ VLIB_REGISTER_NODE (dns46_reply_node) =
     [DNS46_REPLY_NEXT_PUNT] = "error-punt",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

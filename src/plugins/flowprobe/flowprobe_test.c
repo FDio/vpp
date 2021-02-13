@@ -27,7 +27,7 @@
  * @file vpp_api_test plugin
  */
 
-uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
+uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
 
 /* Declare message IDs */
 #include <flowprobe/flowprobe.api_enum.h>
@@ -35,16 +35,16 @@ uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 
 typedef struct
 {
-    /** API message ID base */
+  /** API message ID base */
   u16 msg_id_base;
-    /** vat_main_t pointer */
+  /** vat_main_t pointer */
   vat_main_t *vat_main;
 } flowprobe_test_main_t;
 
 flowprobe_test_main_t flowprobe_test_main;
 
 static int
-api_flowprobe_tx_interface_add_del (vat_main_t * vam)
+api_flowprobe_tx_interface_add_del (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   int enable_disable = 1;
@@ -93,7 +93,7 @@ api_flowprobe_tx_interface_add_del (vat_main_t * vam)
 }
 
 static int
-api_flowprobe_params (vat_main_t * vam)
+api_flowprobe_params (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   u32 active_timer = ~0;

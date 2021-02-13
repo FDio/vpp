@@ -24,17 +24,17 @@
 srv6_end_main_v4_t srv6_end_main_v4;
 
 static void
-clb_dpo_lock_srv6_end_m_gtp4_e (dpo_id_t * dpo)
+clb_dpo_lock_srv6_end_m_gtp4_e (dpo_id_t *dpo)
 {
 }
 
 static void
-clb_dpo_unlock_srv6_end_m_gtp4_e (dpo_id_t * dpo)
+clb_dpo_unlock_srv6_end_m_gtp4_e (dpo_id_t *dpo)
 {
 }
 
 static u8 *
-clb_dpo_format_srv6_end_m_gtp4_e (u8 * s, va_list * args)
+clb_dpo_format_srv6_end_m_gtp4_e (u8 *s, va_list *args)
 {
   index_t index = va_arg (*args, index_t);
   CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
@@ -64,7 +64,7 @@ static u8 def_str[] =
 static u8 param_str[] = "";
 
 static u8 *
-clb_format_srv6_end_m_gtp4_e (u8 * s, va_list * args)
+clb_format_srv6_end_m_gtp4_e (u8 *s, va_list *args)
 {
   srv6_end_gtp4_param_t *ls_mem = va_arg (*args, void *);
 
@@ -76,7 +76,7 @@ clb_format_srv6_end_m_gtp4_e (u8 * s, va_list * args)
 }
 
 static uword
-clb_unformat_srv6_end_m_gtp4_e (unformat_input_t * input, va_list * args)
+clb_unformat_srv6_end_m_gtp4_e (unformat_input_t *input, va_list *args)
 {
   void **plugin_mem_p = va_arg (*args, void **);
   srv6_end_gtp4_param_t *ls_mem;
@@ -95,13 +95,13 @@ clb_unformat_srv6_end_m_gtp4_e (unformat_input_t * input, va_list * args)
 }
 
 static int
-clb_creation_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
+clb_creation_srv6_end_m_gtp4_e (ip6_sr_localsid_t *localsid)
 {
   return 0;
 }
 
 static int
-clb_removal_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
+clb_removal_srv6_end_m_gtp4_e (ip6_sr_localsid_t *localsid)
 {
   srv6_end_gtp4_param_t *ls_mem;
 
@@ -113,7 +113,7 @@ clb_removal_srv6_end_m_gtp4_e (ip6_sr_localsid_t * localsid)
 }
 
 static clib_error_t *
-srv6_end_m_gtp4_e_init (vlib_main_t * vm)
+srv6_end_m_gtp4_e_init (vlib_main_t *vm)
 {
   srv6_end_main_v4_t *sm = &srv6_end_main_v4;
   ip4_header_t *ip4 = &sm->cache_hdr.ip4;
@@ -151,21 +151,17 @@ srv6_end_m_gtp4_e_init (vlib_main_t * vm)
 
   dpo_type = dpo_register_new_type (&dpo_vft, dpo_nodes);
 
-  rc = sr_localsid_register_function (vm, fn_name, keyword_str, def_str, param_str, 32,	//prefix len
-				      &dpo_type,
-				      clb_format_srv6_end_m_gtp4_e,
-				      clb_unformat_srv6_end_m_gtp4_e,
-				      clb_creation_srv6_end_m_gtp4_e,
-				      clb_removal_srv6_end_m_gtp4_e);
+  rc = sr_localsid_register_function (
+    vm, fn_name, keyword_str, def_str, param_str, 32, // prefix len
+    &dpo_type, clb_format_srv6_end_m_gtp4_e, clb_unformat_srv6_end_m_gtp4_e,
+    clb_creation_srv6_end_m_gtp4_e, clb_removal_srv6_end_m_gtp4_e);
   if (rc < 0)
     clib_error_return (0, "SRv6 Endpoint GTP4.E LocalSID function"
-		       "couldn't be registered");
+			  "couldn't be registered");
   return 0;
 }
 
-/* *INDENT-OFF* */
-VNET_FEATURE_INIT (srv6_end_m_gtp4_e, static) =
-{
+VNET_FEATURE_INIT (srv6_end_m_gtp4_e, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "srv6-end-m-gtp4-e",
   .runs_before = 0,
@@ -177,7 +173,6 @@ VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "SRv6 GTP Endpoint Functions",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

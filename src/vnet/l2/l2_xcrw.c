@@ -46,14 +46,14 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_l2_xcrw_trace (u8 * s, va_list * args)
+format_l2_xcrw_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   l2_xcrw_trace_t *t = va_arg (*args, l2_xcrw_trace_t *);
 
-  s = format (s, "L2_XCRW: next index %d tx_fib_index %d",
-	      t->next_index, t->tx_fib_index);
+  s = format (s, "L2_XCRW: next index %d tx_fib_index %d", t->next_index,
+	      t->tx_fib_index);
   return s;
 }
 
@@ -64,13 +64,13 @@ l2_xcrw_main_t l2_xcrw_main;
 #endif /* CLIB_MARCH_VARIANT */
 
 static char *l2_xcrw_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_l2_xcrw_error
 #undef _
 };
 
-VLIB_NODE_FN (l2_xcrw_node) (vlib_main_t * vm,
-			     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_xcrw_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   l2_xcrw_next_t next_index;
@@ -156,19 +156,18 @@ VLIB_NODE_FN (l2_xcrw_node) (vlib_main_t * vm,
 	      em->counters[node_counter_base_index + L2_XCRW_ERROR_FWD]++;
 	    }
 
-
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
-	      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-				 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+				 (b0->flags & VLIB_BUFFER_IS_TRACED)))
 		{
 		  l2_xcrw_trace_t *t =
 		    vlib_add_trace (vm, node, b0, sizeof (*t));
 		  t->next_index = next0;
 		  t->tx_fib_index = adj0->rewrite_header.sw_if_index;
 		}
-	      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-				 && (b1->flags & VLIB_BUFFER_IS_TRACED)))
+	      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+				 (b1->flags & VLIB_BUFFER_IS_TRACED)))
 		{
 		  l2_xcrw_trace_t *t =
 		    vlib_add_trace (vm, node, b1, sizeof (*t));
@@ -178,9 +177,9 @@ VLIB_NODE_FN (l2_xcrw_node) (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueues, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -218,8 +217,8 @@ VLIB_NODE_FN (l2_xcrw_node) (vlib_main_t * vm,
 	      em->counters[node_counter_base_index + L2_XCRW_ERROR_FWD]++;
 	    }
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      l2_xcrw_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->next_index = next0;
@@ -227,9 +226,8 @@ VLIB_NODE_FN (l2_xcrw_node) (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -238,7 +236,6 @@ VLIB_NODE_FN (l2_xcrw_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_xcrw_node) = {
   .name = "l2-xcrw",
   .vector_size = sizeof (u32),
@@ -255,11 +252,10 @@ VLIB_REGISTER_NODE (l2_xcrw_node) = {
         [L2_XCRW_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 clib_error_t *
-l2_xcrw_init (vlib_main_t * vm)
+l2_xcrw_init (vlib_main_t *vm)
 {
   l2_xcrw_main_t *mp = &l2_xcrw_main;
 
@@ -273,22 +269,20 @@ l2_xcrw_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (l2_xcrw_init);
 
 static u8 *
-format_xcrw_name (u8 * s, va_list * args)
+format_xcrw_name (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   return format (s, "xcrw%d", dev_instance);
 }
 
-/* *INDENT-OFF* */
-VNET_DEVICE_CLASS (xcrw_device_class,static) = {
+VNET_DEVICE_CLASS (xcrw_device_class, static) = {
   .name = "Xcrw",
   .format_device_name = format_xcrw_name,
 };
-/* *INDENT-ON* */
 
 /* Create a sham tunnel interface and return its sw_if_index */
 static u32
-create_xcrw_interface (vlib_main_t * vm)
+create_xcrw_interface (vlib_main_t *vm)
 {
   vnet_main_t *vnm = vnet_get_main ();
   static u32 instance;
@@ -302,9 +296,9 @@ create_xcrw_interface (vlib_main_t * vm)
   address[2] = 0x12;
 
   /* can returns error iff phy != 0 */
-  (void) ethernet_register_interface
-    (vnm, xcrw_device_class.index, instance++, address, &hw_if_index,
-     /* flag change */ 0);
+  (void) ethernet_register_interface (vnm, xcrw_device_class.index, instance++,
+				      address, &hw_if_index,
+				      /* flag change */ 0);
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
   sw_if_index = hi->sw_if_index;
@@ -318,9 +312,9 @@ create_xcrw_interface (vlib_main_t * vm)
 }
 
 int
-vnet_configure_l2_xcrw (vlib_main_t * vm, vnet_main_t * vnm,
-			u32 l2_sw_if_index, u32 tx_fib_index,
-			u8 * rewrite, u32 next_node_index, int is_add)
+vnet_configure_l2_xcrw (vlib_main_t *vm, vnet_main_t *vnm, u32 l2_sw_if_index,
+			u32 tx_fib_index, u8 *rewrite, u32 next_node_index,
+			int is_add)
 {
   l2_xcrw_main_t *xcm = &l2_xcrw_main;
   l2_xcrw_adjacency_t *a;
@@ -360,8 +354,8 @@ vnet_configure_l2_xcrw (vlib_main_t * vm, vnet_main_t * vnm,
 
       set_int_l2_mode (vm, vnm, MODE_L2_XC, t->l2_sw_if_index, 0,
 		       L2_BD_PORT_TYPE_NORMAL, 0, t->tunnel_sw_if_index);
-      hash_set (xcm->tunnel_index_by_l2_sw_if_index,
-		t->l2_sw_if_index, t - xcm->tunnels);
+      hash_set (xcm->tunnel_index_by_l2_sw_if_index, t->l2_sw_if_index,
+		t - xcm->tunnels);
       return 0;
     }
   else
@@ -379,7 +373,7 @@ vnet_configure_l2_xcrw (vlib_main_t * vm, vnet_main_t * vnm,
       set_int_l2_mode (vm, vnm, MODE_L3, t->l2_sw_if_index, 0,
 		       L2_BD_PORT_TYPE_NORMAL, 0, 0);
 
-      vnet_sw_interface_set_flags (vnm, t->tunnel_sw_if_index, 0 /* down */ );
+      vnet_sw_interface_set_flags (vnm, t->tunnel_sw_if_index, 0 /* down */);
 
       hash_unset (xcm->tunnel_index_by_l2_sw_if_index, l2_sw_if_index);
       pool_put (xcm->tunnels, t);
@@ -387,14 +381,13 @@ vnet_configure_l2_xcrw (vlib_main_t * vm, vnet_main_t * vnm,
   return 0;
 }
 
-
 static clib_error_t *
-set_l2_xcrw_command_fn (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+set_l2_xcrw_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   int is_add = 1;
-  int is_ipv6 = 0;		/* for fib id -> fib index mapping */
+  int is_ipv6 = 0; /* for fib id -> fib index mapping */
   u32 tx_fib_id = ~0;
   u32 tx_fib_index = ~0;
   u32 next_node_index = ~0;
@@ -404,12 +397,11 @@ set_l2_xcrw_command_fn (vlib_main_t * vm,
   int rv;
   clib_error_t *error = NULL;
 
-
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  if (!unformat (line_input, "%U",
-		 unformat_vnet_sw_interface, vnm, &l2_sw_if_index))
+  if (!unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+		 &l2_sw_if_index))
     {
       error = clib_error_return (0, "unknown input '%U'",
 				 format_unformat_error, line_input);
@@ -418,8 +410,8 @@ set_l2_xcrw_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "next %U",
-		    unformat_vlib_node, vm, &next_node_index))
+      if (unformat (line_input, "next %U", unformat_vlib_node, vm,
+		    &next_node_index))
 	;
       else if (unformat (line_input, "tx-fib-id %d", &tx_fib_id))
 	;
@@ -427,7 +419,8 @@ set_l2_xcrw_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else if (unformat (line_input, "ipv6"))
 	is_ipv6 = 1;
-      else if (unformat (line_input, "rw %U", unformat_hex_string, &rw));
+      else if (unformat (line_input, "rw %U", unformat_hex_string, &rw))
+	;
       else
 	break;
     }
@@ -449,16 +442,15 @@ set_l2_xcrw_command_fn (vlib_main_t * vm,
 
       if (p == 0)
 	{
-	  error =
-	    clib_error_return (0, "nonexistent tx_fib_id %d", tx_fib_id);
+	  error = clib_error_return (0, "nonexistent tx_fib_id %d", tx_fib_id);
 	  goto done;
 	}
 
       tx_fib_index = p[0];
     }
 
-  rv = vnet_configure_l2_xcrw (vm, vnm, l2_sw_if_index, tx_fib_index,
-			       rw, next_node_index, is_add);
+  rv = vnet_configure_l2_xcrw (vm, vnm, l2_sw_if_index, tx_fib_index, rw,
+			       next_node_index, is_add);
 
   switch (rv)
     {
@@ -467,9 +459,9 @@ set_l2_xcrw_command_fn (vlib_main_t * vm,
       break;
 
     case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-      error = clib_error_return (0, "%U not cross-connected",
-				 format_vnet_sw_if_index_name,
-				 vnm, l2_sw_if_index);
+      error =
+	clib_error_return (0, "%U not cross-connected",
+			   format_vnet_sw_if_index_name, vnm, l2_sw_if_index);
       goto done;
 
     default:
@@ -496,20 +488,18 @@ done:
  * @todo This is incomplete. This needs a detailed description and a
  * practical example.
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (set_l2_xcrw_command, static) = {
   .path = "set interface l2 xcrw",
-  .short_help =
-  "set interface l2 xcrw <interface> next <node-name>\n"
-  "    [del] [tx-fib-id <id>] [ipv6] rw <hex-bytes>",
+  .short_help = "set interface l2 xcrw <interface> next <node-name>\n"
+		"    [del] [tx-fib-id <id>] [ipv6] rw <hex-bytes>",
   .function = set_l2_xcrw_command_fn,
 };
-/* *INDENT-ON* */
 
 #endif /* CLIB_MARCH_VARIANT */
 
 static u8 *
-format_l2xcrw (u8 * s, va_list * args)
+format_l2xcrw (u8 *s, va_list *args)
 {
   vnet_main_t *vnm = va_arg (*args, vnet_main_t *);
   l2_xcrw_tunnel_t *t = va_arg (*args, l2_xcrw_tunnel_t *);
@@ -524,15 +514,14 @@ format_l2xcrw (u8 * s, va_list * args)
       return s;
     }
 
-  s = format (s, "%-25U %U ",
-	      format_vnet_sw_if_index_name, vnm, t->l2_sw_if_index,
-	      format_vnet_sw_if_index_name, vnm, t->tunnel_sw_if_index);
+  s = format (s, "%-25U %U ", format_vnet_sw_if_index_name, vnm,
+	      t->l2_sw_if_index, format_vnet_sw_if_index_name, vnm,
+	      t->tunnel_sw_if_index);
 
   a = vec_elt_at_index (xcm->adj_by_sw_if_index, t->l2_sw_if_index);
 
-  s = format (s, "next %U ",
-	      format_vlib_next_node_name, vm, l2_xcrw_node.index,
-	      a->rewrite_header.next_index);
+  s = format (s, "next %U ", format_vlib_next_node_name, vm,
+	      l2_xcrw_node.index, a->rewrite_header.next_index);
 
   if (a->rewrite_header.sw_if_index != ~0)
     s = format (s, "tx fib index %d ", a->rewrite_header.sw_if_index);
@@ -541,8 +530,7 @@ format_l2xcrw (u8 * s, va_list * args)
     {
       rewrite_string = (u8 *) (a + 1);
       rewrite_string -= a->rewrite_header.data_bytes;
-      s = format (s, "rewrite data: %U ",
-		  format_hex_bytes, rewrite_string,
+      s = format (s, "rewrite data: %U ", format_hex_bytes, rewrite_string,
 		  a->rewrite_header.data_bytes);
     }
 
@@ -551,10 +539,9 @@ format_l2xcrw (u8 * s, va_list * args)
   return s;
 }
 
-
 static clib_error_t *
-show_l2xcrw_command_fn (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+show_l2xcrw_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   l2_xcrw_main_t *xcm = &l2_xcrw_main;
@@ -568,12 +555,10 @@ show_l2xcrw_command_fn (vlib_main_t * vm,
 
   vlib_cli_output (vm, "%U", format_l2xcrw, 0, 0);
 
-  /* *INDENT-OFF* */
   pool_foreach (t, xcm->tunnels)
-   {
-    vlib_cli_output (vm, "%U", format_l2xcrw, vnm, t);
-  }
-  /* *INDENT-ON* */
+    {
+      vlib_cli_output (vm, "%U", format_l2xcrw, vnm, t);
+    }
 
   return 0;
 }
@@ -585,13 +570,12 @@ show_l2xcrw_command_fn (vlib_main_t * vm,
  * @todo This is incomplete. This needs a detailed description and a
  * practical example.
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (show_l2xcrw_command, static) = {
   .path = "show l2xcrw",
   .short_help = "show l2xcrw",
   .function = show_l2xcrw_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

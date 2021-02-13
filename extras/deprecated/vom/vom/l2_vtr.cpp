@@ -33,8 +33,7 @@ const option_t option_t::TRANSLATE_2_2(5, "translate-2-2");
 
 option_t::option_t(int v, const std::string s)
   : enum_base<option_t>(v, s)
-{
-}
+{}
 
 }; // namespace l2_vtr
 }; // namespace VOM

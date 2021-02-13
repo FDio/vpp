@@ -25,27 +25,27 @@ typedef enum
 } error_disposition_t;
 
 static u8 *
-validate_error (vlib_main_t * vm, vlib_error_t * e, u32 index)
+validate_error (vlib_main_t *vm, vlib_error_t *e, u32 index)
 {
   uword node_index = vlib_error_get_node (&vm->node_main, e[0]);
   uword code = vlib_error_get_code (&vm->node_main, e[0]);
   vlib_node_t *n;
 
   if (node_index >= vec_len (vm->node_main.nodes))
-    return format (0, "[%d], node index out of range 0x%x, error 0x%x",
-		   index, node_index, e[0]);
+    return format (0, "[%d], node index out of range 0x%x, error 0x%x", index,
+		   node_index, e[0]);
 
   n = vlib_get_node (vm, node_index);
   if (code >= n->n_errors)
-    return format (0, "[%d], code %d out of range for node %v",
-		   index, code, n->name);
+    return format (0, "[%d], code %d out of range for node %v", index, code,
+		   n->name);
 
   return 0;
 }
 
 static u8 *
-validate_error_frame (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * f)
+validate_error_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vlib_frame_t *f)
 {
   u32 *buffers = vlib_frame_vector_args (f);
   vlib_buffer_t *b;
@@ -64,7 +64,7 @@ validate_error_frame (vlib_main_t * vm,
 }
 
 always_inline u32
-counter_index (vlib_main_t * vm, vlib_error_t e)
+counter_index (vlib_main_t *vm, vlib_error_t e)
 {
   vlib_node_t *n;
   u32 ci, ni;
@@ -81,7 +81,7 @@ counter_index (vlib_main_t * vm, vlib_error_t e)
 }
 
 static u8 *
-format_error_trace (u8 * s, va_list * va)
+format_error_trace (u8 *s, va_list *va)
 {
   vlib_main_t *vm = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
@@ -92,15 +92,14 @@ format_error_trace (u8 * s, va_list * va)
 
   error_node = vlib_get_node (vm, vlib_error_get_node (&vm->node_main, e[0]));
   i = counter_index (vm, vlib_error_get_code (&vm->node_main, e[0])) +
-    error_node->error_heap_index;
+      error_node->error_heap_index;
   s = format (s, "%v: %s", error_node->name, em->counters_heap[i].name);
 
   return s;
 }
 
 static void
-trace_errors (vlib_main_t * vm,
-	      vlib_node_runtime_t * node, vlib_frame_t * frame)
+trace_errors (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left, *buffers;
 
@@ -158,9 +157,8 @@ trace_errors (vlib_main_t * vm,
 }
 
 static_always_inline uword
-process_drop_punt (vlib_main_t * vm,
-		   vlib_node_runtime_t * node,
-		   vlib_frame_t * frame, error_disposition_t disposition)
+process_drop_punt (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame, error_disposition_t disposition)
 {
   u32 errors[VLIB_FRAME_SIZE], *error, *from, n_left;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
@@ -240,21 +238,18 @@ process_drop_punt (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (error_drop_node) (vlib_main_t * vm,
-				vlib_node_runtime_t * node,
-				vlib_frame_t * frame)
+VLIB_NODE_FN (error_drop_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return process_drop_punt (vm, node, frame, ERROR_DISPOSITION_DROP);
 }
 
-VLIB_NODE_FN (error_punt_node) (vlib_main_t * vm,
-				vlib_node_runtime_t * node,
-				vlib_frame_t * frame)
+VLIB_NODE_FN (error_punt_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return process_drop_punt (vm, node, frame, ERROR_DISPOSITION_PUNT);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (error_drop_node) = {
   .name = "drop",
   .flags = VLIB_NODE_FLAG_IS_DROP,
@@ -262,18 +257,15 @@ VLIB_REGISTER_NODE (error_drop_node) = {
   .format_trace = format_error_trace,
   .validate_frame = validate_error_frame,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (error_punt_node) = {
   .name = "punt",
-  .flags = (VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH
-	    | VLIB_NODE_FLAG_IS_PUNT),
+  .flags = (VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH |
+	    VLIB_NODE_FLAG_IS_PUNT),
   .vector_size = sizeof (u32),
   .format_trace = format_error_trace,
   .validate_frame = validate_error_frame,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

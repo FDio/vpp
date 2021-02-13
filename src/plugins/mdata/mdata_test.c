@@ -37,7 +37,7 @@ typedef struct
 mdata_test_main_t mdata_test_main;
 
 static int
-api_mdata_enable_disable (vat_main_t * vam)
+api_mdata_enable_disable (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   int enable_disable = 1;

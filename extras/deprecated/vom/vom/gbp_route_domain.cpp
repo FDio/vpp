@@ -37,8 +37,7 @@ gbp_route_domain::gbp_route_domain(const gbp_route_domain& rd)
   , m_scope(rd.m_scope)
   , m_ip4_uu_fwd(rd.m_ip4_uu_fwd)
   , m_ip6_uu_fwd(rd.m_ip6_uu_fwd)
-{
-}
+{}
 
 gbp_route_domain::gbp_route_domain(const route_domain& rd,
                                    scope_t scope,
@@ -49,8 +48,7 @@ gbp_route_domain::gbp_route_domain(const route_domain& rd,
   , m_scope(scope)
   , m_ip4_uu_fwd(ip4_uu_fwd.singular())
   , m_ip6_uu_fwd(ip6_uu_fwd.singular())
-{
-}
+{}
 
 gbp_route_domain::gbp_route_domain(const route_domain& rd,
                                    scope_t scope,
@@ -74,8 +72,7 @@ gbp_route_domain::gbp_route_domain(const route_domain& rd, scope_t scope)
   , m_scope(scope)
   , m_ip4_uu_fwd()
   , m_ip6_uu_fwd()
-{
-}
+{}
 
 const gbp_route_domain::key_t
 gbp_route_domain::key() const
@@ -233,8 +230,8 @@ gbp_route_domain::event_handler::handle_populate(const client_db::key_t& key)
       interface::find(payload.rd.ip4_uu_sw_if_index);
 
     if (ip6_uu_fwd && ip4_uu_fwd) {
-      gbp_route_domain rd(payload.rd.rd_id, payload.rd.scope, *ip4_uu_fwd,
-                          *ip6_uu_fwd);
+      gbp_route_domain rd(
+        payload.rd.rd_id, payload.rd.scope, *ip4_uu_fwd, *ip6_uu_fwd);
       OM::commit(key, rd);
       VOM_LOG(log_level_t::DEBUG) << "dump: " << rd.to_string();
     } else {

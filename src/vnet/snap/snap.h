@@ -43,40 +43,40 @@
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 
-#define foreach_ieee_oui			\
-  _ (0x000000, ethernet)			\
+#define foreach_ieee_oui                                                      \
+  _ (0x000000, ethernet)                                                      \
   _ (0x00000c, cisco)
 
 typedef enum
 {
-#define _(n,f) IEEE_OUI_##f = n,
+#define _(n, f) IEEE_OUI_##f = n,
   foreach_ieee_oui
 #undef _
 } ieee_oui_t;
 
-#define foreach_snap_cisco_protocol		\
-  _ (0x0102, drip)				\
-  _ (0x0104, port_aggregation_protocol)		\
-  _ (0x0105, mls_hello)				\
-  _ (0x010b, per_vlan_spanning_tree)		\
-  _ (0x010c, vlan_bridge)			\
-  _ (0x0111, unidirectional_link_detection)	\
-  _ (0x2000, cdp)				\
-  _ (0x2001, cgmp)				\
-  _ (0x2003, vtp)				\
-  _ (0x2004, dtp)				\
+#define foreach_snap_cisco_protocol                                           \
+  _ (0x0102, drip)                                                            \
+  _ (0x0104, port_aggregation_protocol)                                       \
+  _ (0x0105, mls_hello)                                                       \
+  _ (0x010b, per_vlan_spanning_tree)                                          \
+  _ (0x010c, vlan_bridge)                                                     \
+  _ (0x0111, unidirectional_link_detection)                                   \
+  _ (0x2000, cdp)                                                             \
+  _ (0x2001, cgmp)                                                            \
+  _ (0x2003, vtp)                                                             \
+  _ (0x2004, dtp)                                                             \
   _ (0x200a, stp_uplink_fast)
 
 typedef enum
 {
-#define _(n,f) SNAP_cisco_##f = n,
+#define _(n, f) SNAP_cisco_##f = n,
   foreach_snap_cisco_protocol
 #undef _
 } snap_cisco_protocol_t;
 
 typedef union
 {
-  /* *INDENT-OFF* */
+
   CLIB_PACKED (struct {
     /* OUI: organization unique identifier. */
     u8 oui[3];
@@ -84,7 +84,6 @@ typedef union
     /* Per-OUI protocol. */
     u16 protocol;
   });
-  /* *INDENT-ON* */
 
   u8 as_u8[5];
 } snap_header_t;
@@ -110,7 +109,7 @@ typedef struct
 } snap_protocol_info_t;
 
 always_inline void
-snap_header_set_protocol (snap_header_t * h, snap_oui_and_protocol_t * p)
+snap_header_set_protocol (snap_header_t *h, snap_oui_and_protocol_t *p)
 {
   u16 protocol = p->protocol;
   u32 oui = p->oui;
@@ -120,13 +119,13 @@ snap_header_set_protocol (snap_header_t * h, snap_oui_and_protocol_t * p)
   h->oui[2] = (oui >> 0) & 0xff;
 }
 
-#define foreach_snap_error			\
-  _ (NONE, "no error")				\
+#define foreach_snap_error                                                    \
+  _ (NONE, "no error")                                                        \
   _ (UNKNOWN_PROTOCOL, "unknown oui/snap protocol")
 
 typedef enum
 {
-#define _(f,s) SNAP_ERROR_##f,
+#define _(f, s) SNAP_ERROR_##f,
   foreach_snap_error
 #undef _
     SNAP_N_ERROR,
@@ -147,13 +146,13 @@ typedef struct
 } snap_main_t;
 
 always_inline u32
-snap_header_get_oui (snap_header_t * h)
+snap_header_get_oui (snap_header_t *h)
 {
   return (h->oui[0] << 16) | (h->oui[1] << 8) | h->oui[2];
 }
 
 always_inline snap_protocol_info_t *
-snap_get_protocol_info (snap_main_t * sm, snap_header_t * h)
+snap_get_protocol_info (snap_main_t *sm, snap_header_t *h)
 {
   snap_oui_and_protocol_t key;
   uword *p;
@@ -168,10 +167,8 @@ snap_get_protocol_info (snap_main_t * sm, snap_header_t * h)
 extern snap_main_t snap_main;
 
 /* Register given node index to take input for given snap type. */
-void
-snap_register_input_protocol (vlib_main_t * vm,
-			      char *name,
-			      u32 ieee_oui, u16 protocol, u32 node_index);
+void snap_register_input_protocol (vlib_main_t *vm, char *name, u32 ieee_oui,
+				   u16 protocol, u32 node_index);
 
 format_function_t format_snap_protocol;
 format_function_t format_snap_header;
@@ -185,7 +182,7 @@ unformat_function_t unformat_snap_header;
 unformat_function_t unformat_pg_snap_header;
 
 always_inline void
-snap_setup_node (vlib_main_t * vm, u32 node_index)
+snap_setup_node (vlib_main_t *vm, u32 node_index)
 {
   vlib_node_t *n = vlib_get_node (vm, node_index);
   pg_node_t *pn = pg_get_node (node_index);

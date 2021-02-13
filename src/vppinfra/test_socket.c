@@ -39,11 +39,14 @@
 #include <vppinfra/socket.h>
 
 static int verbose;
-#define if_verbose(format,args...) \
-  if (verbose) { clib_warning(format, ## args); }
+#define if_verbose(format, args...)                                           \
+  if (verbose)                                                                \
+    {                                                                         \
+      clib_warning (format, ##args);                                          \
+    }
 
 int
-test_socket_main (unformat_input_t * input)
+test_socket_main (unformat_input_t *input)
 {
   clib_socket_t _s = { 0 }, *s = &_s;
   char *config;
@@ -54,11 +57,11 @@ test_socket_main (unformat_input_t * input)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "server %s %=", &config,
-		    &s->flags, CLIB_SOCKET_F_IS_SERVER))
+      if (unformat (input, "server %s %=", &config, &s->flags,
+		    CLIB_SOCKET_F_IS_SERVER))
 	;
-      else if (unformat (input, "client %s %=", &config,
-			 &s->flags, CLIB_SOCKET_F_IS_CLIENT))
+      else if (unformat (input, "client %s %=", &config, &s->flags,
+			 CLIB_SOCKET_F_IS_CLIENT))
 	;
       else
 	{
@@ -77,7 +80,7 @@ test_socket_main (unformat_input_t * input)
       struct
       {
 	int a, b;
-      } *msg;
+      } * msg;
       msg = clib_socket_tx_add (s, sizeof (msg[0]));
       msg->a = 99;
       msg->b = 100;

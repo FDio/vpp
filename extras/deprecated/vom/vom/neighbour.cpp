@@ -28,8 +28,7 @@ const neighbour::flags_t neighbour::flags_t::NO_FIB_ENTRY(2, "no-fib-entry");
 
 neighbour::flags_t::flags_t(int v, const std::string s)
   : enum_base(v, s)
-{
-}
+{}
 
 neighbour::neighbour(const interface& itf,
                      const boost::asio::ip::address& ip_addr,
@@ -40,8 +39,7 @@ neighbour::neighbour(const interface& itf,
   , m_ip_addr(ip_addr)
   , m_mac(mac)
   , m_flags(flags)
-{
-}
+{}
 
 neighbour::neighbour(const neighbour& n)
   : m_hw(n.m_hw)
@@ -49,8 +47,7 @@ neighbour::neighbour(const neighbour& n)
   , m_ip_addr(n.m_ip_addr)
   , m_mac(n.m_mac)
   , m_flags(n.m_flags)
-{
-}
+{}
 
 neighbour::~neighbour()
 {
@@ -76,8 +73,8 @@ void
 neighbour::sweep()
 {
   if (m_hw) {
-    HW::enqueue(new neighbour_cmds::delete_cmd(m_hw, m_itf->handle(), m_mac,
-                                               m_ip_addr, m_flags));
+    HW::enqueue(new neighbour_cmds::delete_cmd(
+      m_hw, m_itf->handle(), m_mac, m_ip_addr, m_flags));
   }
   HW::write();
 }
@@ -86,8 +83,8 @@ void
 neighbour::replay()
 {
   if (m_hw) {
-    HW::enqueue(new neighbour_cmds::create_cmd(m_hw, m_itf->handle(), m_mac,
-                                               m_ip_addr, m_flags));
+    HW::enqueue(new neighbour_cmds::create_cmd(
+      m_hw, m_itf->handle(), m_mac, m_ip_addr, m_flags));
   }
 }
 
@@ -105,11 +102,11 @@ void
 neighbour::update(const neighbour& r)
 {
   /*
- * create the table if it is not yet created
- */
+   * create the table if it is not yet created
+   */
   if (rc_t::OK != m_hw.rc()) {
-    HW::enqueue(new neighbour_cmds::create_cmd(m_hw, m_itf->handle(), m_mac,
-                                               m_ip_addr, m_flags));
+    HW::enqueue(new neighbour_cmds::create_cmd(
+      m_hw, m_itf->handle(), m_mac, m_ip_addr, m_flags));
   }
 }
 
@@ -184,9 +181,9 @@ neighbour::populate_i(const client_db::key_t& key,
     neighbour n(*itf, ip_addr, mac, f);
     ;
 
-    VOM_LOG(log_level_t::DEBUG) << "neighbour-dump: " << itf->to_string() << " "
-                                << mac.to_string() << " " << ip_addr.to_string()
-                                << " " << f.to_string();
+    VOM_LOG(log_level_t::DEBUG)
+      << "neighbour-dump: " << itf->to_string() << " " << mac.to_string() << " "
+      << ip_addr.to_string() << " " << f.to_string();
 
     /*
      * Write each of the discovered interfaces into the OM,

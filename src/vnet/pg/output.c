@@ -45,7 +45,7 @@
 #include <vnet/gso/gro_func.h>
 
 uword
-pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+pg_output (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   pg_main_t *pg = &pg_main;
   u32 *buffers = vlib_frame_vector_args (frame);
@@ -89,9 +89,8 @@ pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
     }
   if (pif->pcap_file_name != 0)
     pcap_write (&pif->pcap_main);
-  if ((pif->pcap_main.flags & PCAP_MAIN_INIT_DONE)
-      && pif->pcap_main.n_packets_captured >=
-      pif->pcap_main.n_packets_to_capture)
+  if ((pif->pcap_main.flags & PCAP_MAIN_INIT_DONE) &&
+      pif->pcap_main.n_packets_captured >= pif->pcap_main.n_packets_to_capture)
     pcap_close (&pif->pcap_main);
 
   if (PREDICT_FALSE (pif->coalesce_enabled))

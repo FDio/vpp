@@ -67,7 +67,7 @@ rte_delay_us_override (unsigned us)
 	  return 1;
 	}
     }
-  return 0;			// no override
+  return 0; // no override
 }
 
 static void
@@ -77,10 +77,11 @@ rte_delay_us_override_cb (unsigned us)
     rte_delay_us_block (us);
 }
 
-static clib_error_t * dpdk_main_init (vlib_main_t * vm)
+static clib_error_t *
+dpdk_main_init (vlib_main_t *vm)
 {
-  dpdk_main_t * dm = &dpdk_main;
-  clib_error_t * error = 0;
+  dpdk_main_t *dm = &dpdk_main;
+  clib_error_t *error = 0;
 
   dm->vlib_main = vm;
   dm->vnet_main = vnet_get_main ();
@@ -91,14 +92,11 @@ static clib_error_t * dpdk_main_init (vlib_main_t * vm)
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (dpdk_main_init) =
-{
-    .runs_after = VLIB_INITS("dpdk_init"),
+VLIB_INIT_FUNCTION (dpdk_main_init) = {
+  .runs_after = VLIB_INITS ("dpdk_init"),
 };
 
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Data Plane Development Kit (DPDK)",
+  .version = VPP_BUILD_VER,
+  .description = "Data Plane Development Kit (DPDK)",
 };
-/* *INDENT-ON* */

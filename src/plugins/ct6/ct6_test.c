@@ -19,7 +19,7 @@
 #include <vlibmemory/api.h>
 #include <vppinfra/error.h>
 
-uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
+uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
 
 /* Declare message IDs */
 #include <ct6/ct6.api_enum.h>
@@ -38,7 +38,7 @@ ct6_test_main_t ct6_test_main;
 #include <vlibapi/vat_helper_macros.h>
 
 static int
-api_ct6_enable_disable (vat_main_t * vam)
+api_ct6_enable_disable (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   int enable_disable = 1;

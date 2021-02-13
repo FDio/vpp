@@ -28,8 +28,7 @@ const l3_proto_t l3_proto_t::MPLS(2, "mpls");
 
 l3_proto_t::l3_proto_t(int v, const std::string& s)
   : enum_base<l3_proto_t>(v, s)
-{
-}
+{}
 
 bool
 l3_proto_t::is_ipv6() const
@@ -83,8 +82,7 @@ const nh_proto_t nh_proto_t::ETHERNET(3, "ethernet");
 
 nh_proto_t::nh_proto_t(int v, const std::string& s)
   : enum_base<nh_proto_t>(v, s)
-{
-}
+{}
 
 const nh_proto_t&
 nh_proto_t::from_address(const boost::asio::ip::address& addr)
@@ -120,12 +118,10 @@ const ip_dscp_t ip_dscp_t::DSCP_EF(46, "EF");
 
 ip_dscp_t::ip_dscp_t(int v, const std::string& s)
   : enum_base<ip_dscp_t>(v, s)
-{
-}
+{}
 ip_dscp_t::ip_dscp_t(int v)
   : enum_base<ip_dscp_t>(v, std::to_string(v))
-{
-}
+{}
 
 /**
  * The all Zeros prefix
@@ -136,36 +132,29 @@ const route::prefix_t route::prefix_t::ZEROv6("::", 0);
 route::prefix_t::prefix_t(const boost::asio::ip::address& addr, uint8_t len)
   : m_addr(addr)
   , m_len(len)
-{
-}
+{}
 
 route::prefix_t::prefix_t(const boost::asio::ip::address& addr)
   : m_addr(addr)
   , m_len(VOM::mask_width(addr))
-{
-}
+{}
 
 route::prefix_t::prefix_t(const std::string& s, uint8_t len)
   : m_addr(boost::asio::ip::address::from_string(s))
   , m_len(len)
-{
-}
+{}
 
 route::prefix_t::prefix_t(const prefix_t& o)
   : m_addr(o.m_addr)
   , m_len(o.m_len)
-{
-}
+{}
 
 route::prefix_t::prefix_t()
   : m_addr()
   , m_len(0)
-{
-}
+{}
 
-route::prefix_t::~prefix_t()
-{
-}
+route::prefix_t::~prefix_t() {}
 
 route::prefix_t&
 route::prefix_t::operator=(const route::prefix_t& o)
@@ -243,8 +232,7 @@ from_bytes(uint8_t is_ip6, const uint8_t* bytes)
 route::prefix_t::prefix_t(uint8_t is_ip6, uint8_t* addr, uint8_t len)
   : m_addr(from_bytes(is_ip6, addr))
   , m_len(len)
-{
-}
+{}
 void
 to_bytes(const boost::asio::ip::address_v6& addr, uint8_t* array)
 {
@@ -315,8 +303,9 @@ operator|(const boost::asio::ip::address_v4& addr1,
   return (addr);
 }
 
-boost::asio::ip::address_v4 operator&(const boost::asio::ip::address_v4& addr1,
-                                      const boost::asio::ip::address_v4& addr2)
+boost::asio::ip::address_v4
+operator&(const boost::asio::ip::address_v4& addr1,
+          const boost::asio::ip::address_v4& addr2)
 {
   uint32_t a;
   a = addr1.to_ulong() & addr2.to_ulong();
@@ -324,7 +313,8 @@ boost::asio::ip::address_v4 operator&(const boost::asio::ip::address_v4& addr1,
   return (addr);
 }
 
-boost::asio::ip::address_v4 operator~(const boost::asio::ip::address_v4& addr1)
+boost::asio::ip::address_v4
+operator~(const boost::asio::ip::address_v4& addr1)
 {
   uint32_t a;
   a = ~addr1.to_ulong();
@@ -340,7 +330,8 @@ operator|(const boost::asio::ip::address_v6& addr1,
   boost::asio::ip::address_v6::bytes_type b2 = addr2.to_bytes();
 
   for (boost::asio::ip::address_v6::bytes_type::size_type ii = 0;
-       ii < b1.max_size(); ii++) {
+       ii < b1.max_size();
+       ii++) {
     b1[ii] |= b2[ii];
   }
 
@@ -348,14 +339,16 @@ operator|(const boost::asio::ip::address_v6& addr1,
   return (addr);
 }
 
-boost::asio::ip::address_v6 operator&(const boost::asio::ip::address_v6& addr1,
-                                      const boost::asio::ip::address_v6& addr2)
+boost::asio::ip::address_v6
+operator&(const boost::asio::ip::address_v6& addr1,
+          const boost::asio::ip::address_v6& addr2)
 {
   boost::asio::ip::address_v6::bytes_type b1 = addr1.to_bytes();
   boost::asio::ip::address_v6::bytes_type b2 = addr2.to_bytes();
 
   for (boost::asio::ip::address_v6::bytes_type::size_type ii = 0;
-       ii < b1.max_size(); ii++) {
+       ii < b1.max_size();
+       ii++) {
     b1[ii] &= b2[ii];
   }
 
@@ -363,12 +356,14 @@ boost::asio::ip::address_v6 operator&(const boost::asio::ip::address_v6& addr1,
   return (addr);
 }
 
-boost::asio::ip::address_v6 operator~(const boost::asio::ip::address_v6& addr1)
+boost::asio::ip::address_v6
+operator~(const boost::asio::ip::address_v6& addr1)
 {
   boost::asio::ip::address_v6::bytes_type b1 = addr1.to_bytes();
 
   for (boost::asio::ip::address_v6::bytes_type::size_type ii = 0;
-       ii < b1.max_size(); ii++) {
+       ii < b1.max_size();
+       ii++) {
     b1[ii] = ~b1[ii];
   }
 
@@ -385,8 +380,9 @@ operator|(const boost::asio::ip::address& addr1,
     return (addr1.to_v4() | addr2.to_v4());
 }
 
-boost::asio::ip::address operator&(const boost::asio::ip::address& addr1,
-                                   const boost::asio::ip::address& addr2)
+boost::asio::ip::address
+operator&(const boost::asio::ip::address& addr1,
+          const boost::asio::ip::address& addr2)
 {
   if (addr1.is_v6())
     return (addr1.to_v6() & addr2.to_v6());
@@ -394,7 +390,8 @@ boost::asio::ip::address operator&(const boost::asio::ip::address& addr1,
     return (addr1.to_v4() & addr2.to_v4());
 }
 
-boost::asio::ip::address operator~(const boost::asio::ip::address& addr1)
+boost::asio::ip::address
+operator~(const boost::asio::ip::address& addr1)
 {
   if (addr1.is_v6())
     return ~(addr1.to_v6());
@@ -412,7 +409,8 @@ route::prefix_t::mask() const
     uint8_t n_bits = mask_width();
 
     for (boost::asio::ip::address_v6::bytes_type::size_type ii = 0;
-         ii < b.max_size(); ii++) {
+         ii < b.max_size();
+         ii++) {
       for (int8_t bit = 7; bit >= 0 && n_bits; bit--) {
         b[ii] |= (1 << bit);
         n_bits--;
@@ -461,23 +459,20 @@ route::mprefix_t::mprefix_t(const boost::asio::ip::address& gaddr, uint8_t len)
   : m_gaddr(gaddr)
   , m_saddr()
   , m_len(len)
-{
-}
+{}
 
 route::mprefix_t::mprefix_t(const boost::asio::ip::address& gaddr)
   : m_gaddr(gaddr)
   , m_saddr()
   , m_len(VOM::mask_width(gaddr))
-{
-}
+{}
 
 route::mprefix_t::mprefix_t(const boost::asio::ip::address& saddr,
                             const boost::asio::ip::address& gaddr)
   : m_gaddr(gaddr)
   , m_saddr(saddr)
   , m_len(2 * VOM::mask_width(gaddr))
-{
-}
+{}
 
 route::mprefix_t::mprefix_t(const boost::asio::ip::address& saddr,
                             const boost::asio::ip::address& gaddr,
@@ -485,25 +480,20 @@ route::mprefix_t::mprefix_t(const boost::asio::ip::address& saddr,
   : m_gaddr(gaddr)
   , m_saddr(saddr)
   , m_len(len)
-{
-}
+{}
 
 route::mprefix_t::mprefix_t(const mprefix_t& o)
   : m_gaddr(o.m_gaddr)
   , m_saddr(o.m_saddr)
   , m_len(o.m_len)
-{
-}
+{}
 route::mprefix_t::mprefix_t()
   : m_gaddr()
   , m_saddr()
   , m_len(0)
-{
-}
+{}
 
-route::mprefix_t::~mprefix_t()
-{
-}
+route::mprefix_t::~mprefix_t() {}
 
 const boost::asio::ip::address&
 route::mprefix_t::grp_address() const

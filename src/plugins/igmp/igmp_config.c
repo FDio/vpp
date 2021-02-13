@@ -19,21 +19,15 @@
 #include <igmp/igmp.h>
 
 void
-igmp_clear_config (igmp_config_t * config)
+igmp_clear_config (igmp_config_t *config)
 {
   igmp_group_t *group;
   u32 ii;
 
-  IGMP_DBG ("clear-config: %U",
-	    format_vnet_sw_if_index_name,
-	    vnet_get_main (), config->sw_if_index);
+  IGMP_DBG ("clear-config: %U", format_vnet_sw_if_index_name, vnet_get_main (),
+	    config->sw_if_index);
 
-  /* *INDENT-OFF* */
-  FOR_EACH_GROUP (group, config,
-    ({
-      igmp_group_clear (&group);
-    }));
-  /* *INDENT-ON* */
+  FOR_EACH_GROUP (group, config, ({ igmp_group_clear (&group); }));
 
   for (ii = 0; ii < IGMP_CONFIG_N_TIMERS; ii++)
     {
@@ -61,7 +55,7 @@ igmp_config_lookup (u32 sw_if_index)
 }
 
 u32
-igmp_config_index (const igmp_config_t * c)
+igmp_config_index (const igmp_config_t *c)
 {
   return (c - igmp_main.configs);
 }
@@ -73,7 +67,7 @@ igmp_config_get (u32 index)
 }
 
 igmp_group_t *
-igmp_group_lookup (igmp_config_t * config, const igmp_key_t * key)
+igmp_group_lookup (igmp_config_t *config, const igmp_key_t *key)
 {
   uword *p;
   igmp_group_t *group = NULL;
@@ -88,22 +82,23 @@ igmp_group_lookup (igmp_config_t * config, const igmp_key_t * key)
 }
 
 u8 *
-format_igmp_config_timer_type (u8 * s, va_list * args)
+format_igmp_config_timer_type (u8 *s, va_list *args)
 {
   igmp_config_timer_type_t type = va_arg (*args, igmp_config_timer_type_t);
 
   switch (type)
     {
-#define _(v,t) case IGMP_CONFIG_TIMER_##v: return (format (s, "%s", t));
+#define _(v, t)                                                               \
+  case IGMP_CONFIG_TIMER_##v:                                                 \
+    return (format (s, "%s", t));
       foreach_igmp_config_timer_type
 #undef _
     }
   return (s);
 }
 
-
 u8 *
-format_igmp_config (u8 * s, va_list * args)
+format_igmp_config (u8 *s, va_list *args)
 {
   igmp_config_t *config;
   igmp_group_t *group;
@@ -113,24 +108,18 @@ format_igmp_config (u8 * s, va_list * args)
   config = va_arg (*args, igmp_config_t *);
   vnm = vnet_get_main ();
 
-  s = format (s, "interface: %U mode: %U %U",
-	      format_vnet_sw_if_index_name, vnm, config->sw_if_index,
-	      format_igmp_mode, config->mode,
+  s = format (s, "interface: %U mode: %U %U", format_vnet_sw_if_index_name,
+	      vnm, config->sw_if_index, format_igmp_mode, config->mode,
 	      format_igmp_proxy_device_id, config->proxy_device_id);
 
   for (ii = 0; ii < IGMP_CONFIG_N_TIMERS; ii++)
     {
-      s = format (s, "\n  %U:%U",
-		  format_igmp_config_timer_type, ii,
+      s = format (s, "\n  %U:%U", format_igmp_config_timer_type, ii,
 		  format_igmp_timer_id, config->timers[ii]);
     }
 
-  /* *INDENT-OFF* */
   FOR_EACH_GROUP (group, config,
-    ({
-      s = format (s, "\n%U", format_igmp_group, group, 4);
-    }));
-  /* *INDENT-ON* */
+		  ({ s = format (s, "\n%U", format_igmp_group, group, 4); }));
 
   return (s);
 }

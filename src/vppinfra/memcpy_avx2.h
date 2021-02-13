@@ -52,12 +52,10 @@
 #include <x86intrin.h>
 #include <vppinfra/warnings.h>
 
-/* *INDENT-OFF* */
-WARN_OFF (stringop-overflow)
-/* *INDENT-ON* */
+WARN_OFF (stringop - overflow)
 
 static inline void
-clib_mov16 (u8 * dst, const u8 * src)
+clib_mov16 (u8 *dst, const u8 *src)
 {
   __m128i xmm0;
 
@@ -66,7 +64,7 @@ clib_mov16 (u8 * dst, const u8 * src)
 }
 
 static inline void
-clib_mov32 (u8 * dst, const u8 * src)
+clib_mov32 (u8 *dst, const u8 *src)
 {
   __m256i ymm0;
 
@@ -75,21 +73,21 @@ clib_mov32 (u8 * dst, const u8 * src)
 }
 
 static inline void
-clib_mov64 (u8 * dst, const u8 * src)
+clib_mov64 (u8 *dst, const u8 *src)
 {
   clib_mov32 ((u8 *) dst + 0 * 32, (const u8 *) src + 0 * 32);
   clib_mov32 ((u8 *) dst + 1 * 32, (const u8 *) src + 1 * 32);
 }
 
 static inline void
-clib_mov128 (u8 * dst, const u8 * src)
+clib_mov128 (u8 *dst, const u8 *src)
 {
   clib_mov64 ((u8 *) dst + 0 * 64, (const u8 *) src + 0 * 64);
   clib_mov64 ((u8 *) dst + 1 * 64, (const u8 *) src + 1 * 64);
 }
 
 static inline void
-clib_mov128blocks (u8 * dst, const u8 * src, size_t n)
+clib_mov128blocks (u8 *dst, const u8 *src, size_t n)
 {
   __m256i ymm0, ymm1, ymm2, ymm3;
 
@@ -153,8 +151,8 @@ clib_memcpy_fast_avx2 (void *dst, const void *src, size_t n)
     }
 
   /**
-    * Fast way when copy size doesn't exceed 512 bytes
-    */
+   * Fast way when copy size doesn't exceed 512 bytes
+   */
   if (n <= 32)
     {
       clib_mov16 ((u8 *) dst, (const u8 *) src);
@@ -204,9 +202,9 @@ clib_memcpy_fast_avx2 (void *dst, const void *src, size_t n)
       return ret;
     }
 
-    /**
-      * Make store aligned when copy size exceeds 256 bytes
-      */
+  /**
+   * Make store aligned when copy size exceeds 256 bytes
+   */
   dstofss = (uword) dst & 0x1F;
   if (dstofss > 0)
     {
@@ -218,8 +216,8 @@ clib_memcpy_fast_avx2 (void *dst, const void *src, size_t n)
     }
 
   /**
-    * Copy 128-byte blocks.
-    */
+   * Copy 128-byte blocks.
+   */
   clib_mov128blocks ((u8 *) dst, (const u8 *) src, n);
   bits = n;
   n = n & 127;
@@ -233,12 +231,9 @@ clib_memcpy_fast_avx2 (void *dst, const void *src, size_t n)
   goto COPY_BLOCK_128_BACK31;
 }
 
-/* *INDENT-OFF* */
-WARN_ON (stringop-overflow)
-/* *INDENT-ON* */
+WARN_ON (stringop - overflow)
 
 #endif /* included_clib_memcpy_avx2_h */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

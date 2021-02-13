@@ -55,14 +55,13 @@ typedef struct _socket_t
   char *config;
 
   u32 flags;
-#define CLIB_SOCKET_F_IS_SERVER (1 << 0)
-#define CLIB_SOCKET_F_IS_CLIENT (0 << 0)
-#define CLIB_SOCKET_F_RX_END_OF_FILE (1 << 2)
+#define CLIB_SOCKET_F_IS_SERVER		   (1 << 0)
+#define CLIB_SOCKET_F_IS_CLIENT		   (0 << 0)
+#define CLIB_SOCKET_F_RX_END_OF_FILE	   (1 << 2)
 #define CLIB_SOCKET_F_NON_BLOCKING_CONNECT (1 << 3)
-#define CLIB_SOCKET_F_ALLOW_GROUP_WRITE (1 << 4)
-#define CLIB_SOCKET_F_SEQPACKET (1 << 5)
-#define CLIB_SOCKET_F_PASSCRED  (1 << 6)
-
+#define CLIB_SOCKET_F_ALLOW_GROUP_WRITE	   (1 << 4)
+#define CLIB_SOCKET_F_SEQPACKET		   (1 << 5)
+#define CLIB_SOCKET_F_PASSCRED		   (1 << 6)
 
   /* Transmit buffer.  Holds data waiting to be written. */
   u8 *tx_buffer;
@@ -78,12 +77,12 @@ typedef struct _socket_t
   uid_t uid;
   gid_t gid;
 
-  clib_error_t *(*write_func) (struct _socket_t * sock);
-  clib_error_t *(*read_func) (struct _socket_t * sock, int min_bytes);
-  clib_error_t *(*close_func) (struct _socket_t * sock);
-  clib_error_t *(*recvmsg_func) (struct _socket_t * s, void *msg, int msglen,
+  clib_error_t *(*write_func) (struct _socket_t *sock);
+  clib_error_t *(*read_func) (struct _socket_t *sock, int min_bytes);
+  clib_error_t *(*close_func) (struct _socket_t *sock);
+  clib_error_t *(*recvmsg_func) (struct _socket_t *s, void *msg, int msglen,
 				 int fds[], int num_fds);
-  clib_error_t *(*sendmsg_func) (struct _socket_t * s, void *msg, int msglen,
+  clib_error_t *(*sendmsg_func) (struct _socket_t *s, void *msg, int msglen,
 				 int fds[], int num_fds);
   uword private_data;
 } clib_socket_t;
@@ -91,38 +90,37 @@ typedef struct _socket_t
 /* socket config format is host:port.
    Unspecified port causes a free one to be chosen starting
    from IPPORT_USERRESERVED (5000). */
-clib_error_t *clib_socket_init (clib_socket_t * socket);
+clib_error_t *clib_socket_init (clib_socket_t *socket);
 
-clib_error_t *clib_socket_accept (clib_socket_t * server,
-				  clib_socket_t * client);
+clib_error_t *clib_socket_accept (clib_socket_t *server,
+				  clib_socket_t *client);
 
 always_inline uword
-clib_socket_is_server (clib_socket_t * sock)
+clib_socket_is_server (clib_socket_t *sock)
 {
   return (sock->flags & CLIB_SOCKET_F_IS_SERVER) != 0;
 }
 
 always_inline uword
-clib_socket_is_client (clib_socket_t * s)
+clib_socket_is_client (clib_socket_t *s)
 {
   return !clib_socket_is_server (s);
 }
 
 always_inline uword
-clib_socket_is_connected (clib_socket_t * sock)
+clib_socket_is_connected (clib_socket_t *sock)
 {
   return sock->fd > 0;
 }
 
-
 always_inline int
-clib_socket_rx_end_of_file (clib_socket_t * s)
+clib_socket_rx_end_of_file (clib_socket_t *s)
 {
   return s->flags & CLIB_SOCKET_F_RX_END_OF_FILE;
 }
 
 always_inline void *
-clib_socket_tx_add (clib_socket_t * s, int n_bytes)
+clib_socket_tx_add (clib_socket_t *s, int n_bytes)
 {
   u8 *result;
   vec_add2 (s->tx_buffer, result, n_bytes);
@@ -130,39 +128,39 @@ clib_socket_tx_add (clib_socket_t * s, int n_bytes)
 }
 
 always_inline void
-clib_socket_tx_add_va_formatted (clib_socket_t * s, char *fmt, va_list * va)
+clib_socket_tx_add_va_formatted (clib_socket_t *s, char *fmt, va_list *va)
 {
   s->tx_buffer = va_format (s->tx_buffer, fmt, va);
 }
 
 always_inline clib_error_t *
-clib_socket_tx (clib_socket_t * s)
+clib_socket_tx (clib_socket_t *s)
 {
   return s->write_func (s);
 }
 
 always_inline clib_error_t *
-clib_socket_rx (clib_socket_t * s, int n_bytes)
+clib_socket_rx (clib_socket_t *s, int n_bytes)
 {
   return s->read_func (s, n_bytes);
 }
 
 always_inline clib_error_t *
-clib_socket_sendmsg (clib_socket_t * s, void *msg, int msglen,
-		     int fds[], int num_fds)
+clib_socket_sendmsg (clib_socket_t *s, void *msg, int msglen, int fds[],
+		     int num_fds)
 {
   return s->sendmsg_func (s, msg, msglen, fds, num_fds);
 }
 
 always_inline clib_error_t *
-clib_socket_recvmsg (clib_socket_t * s, void *msg, int msglen,
-		     int fds[], int num_fds)
+clib_socket_recvmsg (clib_socket_t *s, void *msg, int msglen, int fds[],
+		     int num_fds)
 {
   return s->recvmsg_func (s, msg, msglen, fds, num_fds);
 }
 
 always_inline void
-clib_socket_free (clib_socket_t * s)
+clib_socket_free (clib_socket_t *s)
 {
   vec_free (s->tx_buffer);
   vec_free (s->rx_buffer);
@@ -172,14 +170,14 @@ clib_socket_free (clib_socket_t * s)
 }
 
 always_inline clib_error_t *
-clib_socket_close (clib_socket_t * sock)
+clib_socket_close (clib_socket_t *sock)
 {
   clib_error_t *err;
   err = (*sock->close_func) (sock);
   return err;
 }
 
-void clib_socket_tx_add_formatted (clib_socket_t * s, char *fmt, ...);
+void clib_socket_tx_add_formatted (clib_socket_t *s, char *fmt, ...);
 
 #endif /* _clib_included_socket_h */
 

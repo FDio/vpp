@@ -34,10 +34,12 @@ typedef struct gbp_policy_trace_t_
 } gbp_policy_trace_t;
 
 /* packet trace format function */
-u8 * format_gbp_policy_trace (u8 * s, va_list * args);
+u8 *format_gbp_policy_trace (u8 *s, va_list *args);
 
 static_always_inline void
-gbp_policy_trace(vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t *b, const gbp_contract_key_t *key, gbp_rule_action_t action, u32 acl_match, u32 rule_match)
+gbp_policy_trace (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
+		  const gbp_contract_key_t *key, gbp_rule_action_t action,
+		  u32 acl_match, u32 rule_match)
 {
   gbp_policy_trace_t *t;
 

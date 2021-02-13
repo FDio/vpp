@@ -49,7 +49,7 @@ svmdb_client_t *c;
 volatile int signal_received;
 
 static void
-unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
+unix_signal_handler (int signum, siginfo_t *si, ucontext_t *uc)
 {
   static int once;
 
@@ -186,15 +186,12 @@ main (int argc, char **argv)
 
   vpp_pidp =
     svmdb_local_get_variable_reference (c, SVMDB_NAMESPACE_VEC, "vpp_pid");
-  vector_ratep =
-    svmdb_local_get_variable_reference (c, SVMDB_NAMESPACE_VEC,
-					"vpp_vector_rate");
-  rx_ratep =
-    svmdb_local_get_variable_reference (c, SVMDB_NAMESPACE_VEC,
-					"vpp_input_rate");
-  sig_error_ratep =
-    svmdb_local_get_variable_reference (c, SVMDB_NAMESPACE_VEC,
-					"vpp_sig_error_rate");
+  vector_ratep = svmdb_local_get_variable_reference (c, SVMDB_NAMESPACE_VEC,
+						     "vpp_vector_rate");
+  rx_ratep = svmdb_local_get_variable_reference (c, SVMDB_NAMESPACE_VEC,
+						 "vpp_input_rate");
+  sig_error_ratep = svmdb_local_get_variable_reference (c, SVMDB_NAMESPACE_VEC,
+							"vpp_sig_error_rate");
 
   /*
    * Make sure vpp is actually running. Otherwise, there's every
@@ -202,8 +199,8 @@ main (int argc, char **argv)
    * process monitor script
    */
 
-  if (vpp_pidp == 0 || vector_ratep == 0 || rx_ratep == 0
-      || sig_error_ratep == 0)
+  if (vpp_pidp == 0 || vector_ratep == 0 || rx_ratep == 0 ||
+      sig_error_ratep == 0)
     {
       fformat (stdout, "vpp not running\n");
       exit (1);
@@ -221,9 +218,10 @@ main (int argc, char **argv)
 	  fformat (stdout, "vpp not running\n");
 	  exit (1);
 	}
-      fformat (stdout,
-	       "%d: vpp_vector_rate=%.2f, vpp_input_rate=%f, vpp_sig_error_rate=%f\n",
-	       *vpp_pidp, *vector_ratep, *rx_ratep, *sig_error_ratep);
+      fformat (
+	stdout,
+	"%d: vpp_vector_rate=%.2f, vpp_input_rate=%f, vpp_sig_error_rate=%f\n",
+	*vpp_pidp, *vector_ratep, *rx_ratep, *sig_error_ratep);
 
       if (interval)
 	sleep (interval);

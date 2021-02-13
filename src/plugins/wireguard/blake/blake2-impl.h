@@ -29,8 +29,9 @@
 #define NATIVE_LITTLE_ENDIAN
 #endif
 
-#if !defined(__cplusplus) && (!defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901L)
-#if   defined(_MSC_VER)
+#if !defined(__cplusplus) &&                                                  \
+  (!defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901L)
+#if defined(_MSC_VER)
 #define BLAKE2_INLINE __inline
 #elif defined(__GNUC__)
 #define BLAKE2_INLINE __inline__
@@ -50,9 +51,8 @@ load32 (const void *src)
   return w;
 #else
   const uint8_t *p = (const uint8_t *) src;
-  return ((uint32_t) (p[0]) << 0) |
-    ((uint32_t) (p[1]) << 8) |
-    ((uint32_t) (p[2]) << 16) | ((uint32_t) (p[3]) << 24);
+  return ((uint32_t) (p[0]) << 0) | ((uint32_t) (p[1]) << 8) |
+	 ((uint32_t) (p[2]) << 16) | ((uint32_t) (p[3]) << 24);
 #endif
 }
 
@@ -65,13 +65,10 @@ load64 (const void *src)
   return w;
 #else
   const uint8_t *p = (const uint8_t *) src;
-  return ((uint64_t) (p[0]) << 0) |
-    ((uint64_t) (p[1]) << 8) |
-    ((uint64_t) (p[2]) << 16) |
-    ((uint64_t) (p[3]) << 24) |
-    ((uint64_t) (p[4]) << 32) |
-    ((uint64_t) (p[5]) << 40) |
-    ((uint64_t) (p[6]) << 48) | ((uint64_t) (p[7]) << 56);
+  return ((uint64_t) (p[0]) << 0) | ((uint64_t) (p[1]) << 8) |
+	 ((uint64_t) (p[2]) << 16) | ((uint64_t) (p[3]) << 24) |
+	 ((uint64_t) (p[4]) << 32) | ((uint64_t) (p[5]) << 40) |
+	 ((uint64_t) (p[6]) << 48) | ((uint64_t) (p[7]) << 56);
 #endif
 }
 
@@ -137,11 +134,9 @@ static BLAKE2_INLINE uint64_t
 load48 (const void *src)
 {
   const uint8_t *p = (const uint8_t *) src;
-  return ((uint64_t) (p[0]) << 0) |
-    ((uint64_t) (p[1]) << 8) |
-    ((uint64_t) (p[2]) << 16) |
-    ((uint64_t) (p[3]) << 24) |
-    ((uint64_t) (p[4]) << 32) | ((uint64_t) (p[5]) << 40);
+  return ((uint64_t) (p[0]) << 0) | ((uint64_t) (p[1]) << 8) |
+	 ((uint64_t) (p[2]) << 16) | ((uint64_t) (p[3]) << 24) |
+	 ((uint64_t) (p[4]) << 32) | ((uint64_t) (p[5]) << 40);
 }
 
 static BLAKE2_INLINE void

@@ -20,7 +20,7 @@
 #include <vnet/ip/ip4_packet.h>
 
 static inline void
-increment_v4_address (ip4_address_t * a)
+increment_v4_address (ip4_address_t *a)
 {
   u32 v;
 
@@ -29,7 +29,7 @@ increment_v4_address (ip4_address_t * a)
 }
 
 always_inline void
-mss_clamping (u16 mss_clamping, tcp_header_t * tcp, ip_csum_t * sum)
+mss_clamping (u16 mss_clamping, tcp_header_t *tcp, ip_csum_t *sum)
 {
   u8 *data;
   u8 opt_len, opts_len, kind;
@@ -67,9 +67,8 @@ mss_clamping (u16 mss_clamping, tcp_header_t * tcp, ip_csum_t * sum)
 	  if (clib_net_to_host_u16 (mss) > mss_clamping)
 	    {
 	      u16 mss_value_net = clib_host_to_net_u16 (mss_clamping);
-	      *sum =
-		ip_csum_update (*sum, mss, mss_value_net, ip4_header_t,
-				length);
+	      *sum = ip_csum_update (*sum, mss, mss_value_net, ip4_header_t,
+				     length);
 	      clib_memcpy_fast (data + 2, &mss_value_net, 2);
 	    }
 	  return;

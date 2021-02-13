@@ -29,7 +29,7 @@ get_IP_ID()
 } */
 
 u16
-udp_ip4_checksum (const void *b, u32 len, u8 * src, u8 * dst)
+udp_ip4_checksum (const void *b, u32 len, u8 *src, u8 *dst)
 {
   const u16 *buf = b;
   u16 *ip_src = (u16 *) src;
@@ -68,7 +68,7 @@ udp_ip4_checksum (const void *b, u32 len, u8 * src, u8 * dst)
 }
 
 u16
-udp_ip6_checksum (ip6_header_t * ip6, udp_header_t * up, u32 len)
+udp_ip6_checksum (ip6_header_t *ip6, udp_header_t *up, u32 len)
 {
   size_t i;
   register const u16 *sp;
@@ -113,7 +113,7 @@ udp_ip6_checksum (ip6_header_t * ip6, udp_header_t * up, u32 len)
 }
 
 u16
-udp_checksum (udp_header_t * uh, u32 udp_len, void *ih, u8 version)
+udp_checksum (udp_header_t *uh, u32 udp_len, void *ih, u8 version)
 {
   switch (version)
     {
@@ -129,7 +129,7 @@ udp_checksum (udp_header_t * uh, u32 udp_len, void *ih, u8 version)
 }
 
 void *
-pkt_push_udp (vlib_main_t * vm, vlib_buffer_t * b, u16 sp, u16 dp)
+pkt_push_udp (vlib_main_t *vm, vlib_buffer_t *b, u16 sp, u16 dp)
 {
   udp_header_t *uh;
   u16 udp_len = sizeof (udp_header_t) + vlib_buffer_length_in_chain (vm, b);
@@ -144,8 +144,8 @@ pkt_push_udp (vlib_main_t * vm, vlib_buffer_t * b, u16 sp, u16 dp)
 }
 
 void *
-pkt_push_ip (vlib_main_t * vm, vlib_buffer_t * b, ip_address_t * src,
-	     ip_address_t * dst, u32 proto, u8 csum_offload)
+pkt_push_ip (vlib_main_t *vm, vlib_buffer_t *b, ip_address_t *src,
+	     ip_address_t *dst, u32 proto, u8 csum_offload)
 {
   if (ip_addr_version (src) != ip_addr_version (dst))
     {
@@ -157,12 +157,12 @@ pkt_push_ip (vlib_main_t * vm, vlib_buffer_t * b, ip_address_t * src,
   switch (ip_addr_version (src))
     {
     case AF_IP4:
-      return vlib_buffer_push_ip4 (vm, b, &ip_addr_v4 (src),
-				   &ip_addr_v4 (dst), proto, csum_offload);
+      return vlib_buffer_push_ip4 (vm, b, &ip_addr_v4 (src), &ip_addr_v4 (dst),
+				   proto, csum_offload);
       break;
     case AF_IP6:
-      return vlib_buffer_push_ip6 (vm, b, &ip_addr_v6 (src),
-				   &ip_addr_v6 (dst), proto);
+      return vlib_buffer_push_ip6 (vm, b, &ip_addr_v6 (src), &ip_addr_v6 (dst),
+				   proto);
       break;
     }
 
@@ -170,8 +170,8 @@ pkt_push_ip (vlib_main_t * vm, vlib_buffer_t * b, ip_address_t * src,
 }
 
 void *
-pkt_push_udp_and_ip (vlib_main_t * vm, vlib_buffer_t * b, u16 sp, u16 dp,
-		     ip_address_t * sip, ip_address_t * dip, u8 csum_offload)
+pkt_push_udp_and_ip (vlib_main_t *vm, vlib_buffer_t *b, u16 sp, u16 dp,
+		     ip_address_t *sip, ip_address_t *dip, u8 csum_offload)
 {
   u16 udpsum;
   udp_header_t *uh;
@@ -192,7 +192,7 @@ pkt_push_udp_and_ip (vlib_main_t * vm, vlib_buffer_t * b, u16 sp, u16 dp,
       ih = pkt_push_ip (vm, b, sip, dip, IP_PROTOCOL_UDP, 0);
       udpsum = udp_checksum (uh, clib_net_to_host_u16 (uh->length), ih,
 			     ip_addr_version (sip));
-      if (udpsum == (u16) ~ 0)
+      if (udpsum == (u16) ~0)
 	{
 	  clib_warning ("Failed UDP checksum! Discarding");
 	  return 0;
@@ -205,7 +205,7 @@ pkt_push_udp_and_ip (vlib_main_t * vm, vlib_buffer_t * b, u16 sp, u16 dp,
 }
 
 void *
-pkt_push_ecm_hdr (vlib_buffer_t * b)
+pkt_push_ecm_hdr (vlib_buffer_t *b)
 {
   ecm_hdr_t *h;
   h = vlib_buffer_push_uninit (b, sizeof (h[0]));
@@ -216,8 +216,6 @@ pkt_push_ecm_hdr (vlib_buffer_t * b)
 
   return h;
 }
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

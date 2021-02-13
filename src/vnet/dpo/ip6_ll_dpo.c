@@ -37,7 +37,7 @@ ip6_ll_dpo_get (void)
 }
 
 static void
-ip6_ll_dpo_lock (dpo_id_t * dpo)
+ip6_ll_dpo_lock (dpo_id_t *dpo)
 {
   /*
    * not maintaining a lock count on the ip6_ll, they are const global and
@@ -46,12 +46,12 @@ ip6_ll_dpo_lock (dpo_id_t * dpo)
 }
 
 static void
-ip6_ll_dpo_unlock (dpo_id_t * dpo)
+ip6_ll_dpo_unlock (dpo_id_t *dpo)
 {
 }
 
 static u8 *
-format_ip6_ll_dpo (u8 * s, va_list * ap)
+format_ip6_ll_dpo (u8 *s, va_list *ap)
 {
   CLIB_UNUSED (index_t index) = va_arg (*ap, index_t);
   CLIB_UNUSED (u32 indent) = va_arg (*ap, u32);
@@ -98,8 +98,8 @@ typedef enum ip6_ll_next_t_
 } ip6_ll_next_t;
 
 always_inline uword
-ip6_ll_dpo_inline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+ip6_ll_dpo_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame)
 {
   u32 n_left_from, next_index, *from, *to_next;
 
@@ -129,16 +129,15 @@ ip6_ll_dpo_inline (vlib_main_t * vm,
 	  p0 = vlib_get_buffer (vm, bi0);
 
 	  /* use the packet's RX interface to pick the link-local FIB */
-	  fib_index0 =
-	    ip6_ll_fib_get (vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+	  fib_index0 = ip6_ll_fib_get (vnet_buffer (p0)->sw_if_index[VLIB_RX]);
 	  /* write that fib index into the packet so it's used in the
 	   * lookup node next */
 	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index0;
 
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      ip6_ll_dpo_trace_t *tr = vlib_add_trace (vm, node, p0,
-						       sizeof (*tr));
+	      ip6_ll_dpo_trace_t *tr =
+		vlib_add_trace (vm, node, p0, sizeof (*tr));
 	      tr->sw_if_index = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	      tr->fib_index = fib_index0;
 	    }
@@ -153,7 +152,7 @@ ip6_ll_dpo_inline (vlib_main_t * vm,
 }
 
 static u8 *
-format_ip6_ll_dpo_trace (u8 * s, va_list * args)
+format_ip6_ll_dpo_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -164,8 +163,8 @@ format_ip6_ll_dpo_trace (u8 * s, va_list * args)
 }
 
 static uword
-ip6_ll_dpo_switch (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+ip6_ll_dpo_switch (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame)
 {
   return (ip6_ll_dpo_inline (vm, node, frame));
 }
@@ -173,7 +172,7 @@ ip6_ll_dpo_switch (vlib_main_t * vm,
 /**
  * @brief
  */
-/* *INDENT-OFF* */
+
 VLIB_REGISTER_NODE (ip6_ll_dpo_node) =
 {
   .function = ip6_ll_dpo_switch,
@@ -186,7 +185,6 @@ VLIB_REGISTER_NODE (ip6_ll_dpo_node) =
     [IP6_LL_NEXT_LOOKUP] = "ip6-lookup",
   },
 };
-/* *INDENT-ON* */
 
 void
 ip6_ll_dpo_module_init (void)

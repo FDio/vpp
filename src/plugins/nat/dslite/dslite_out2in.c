@@ -23,14 +23,14 @@ typedef enum
 } dslite_out2in_next_t;
 
 static char *dslite_out2in_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_dslite_error
 #undef _
 };
 
 static inline u32
-dslite_icmp_out2in (dslite_main_t * dm, ip4_header_t * ip4,
-		    dslite_session_t ** sp, u32 next, u8 * error,
+dslite_icmp_out2in (dslite_main_t *dm, ip4_header_t *ip4,
+		    dslite_session_t **sp, u32 next, u8 *error,
 		    u32 thread_index)
 {
   dslite_session_t *s = 0;
@@ -45,8 +45,8 @@ dslite_icmp_out2in (dslite_main_t * dm, ip4_header_t * ip4,
 
   echo = (echo_header_t *) (icmp + 1);
 
-  if (icmp_type_is_error_message (icmp->type)
-      || (icmp->type != ICMP4_echo_reply))
+  if (icmp_type_is_error_message (icmp->type) ||
+      (icmp->type != ICMP4_echo_reply))
     {
       n = DSLITE_OUT2IN_NEXT_DROP;
       *error = DSLITE_ERROR_BAD_ICMP_TYPE;
@@ -59,8 +59,8 @@ dslite_icmp_out2in (dslite_main_t * dm, ip4_header_t * ip4,
   key.fib_index = 0;
   kv.key = key.as_u64;
 
-  if (clib_bihash_search_8_8
-      (&dm->per_thread_data[thread_index].out2in, &kv, &value))
+  if (clib_bihash_search_8_8 (&dm->per_thread_data[thread_index].out2in, &kv,
+			      &value))
     {
       next = DSLITE_OUT2IN_NEXT_DROP;
       *error = DSLITE_ERROR_NO_TRANSLATION;
@@ -68,9 +68,8 @@ dslite_icmp_out2in (dslite_main_t * dm, ip4_header_t * ip4,
     }
   else
     {
-      s =
-	pool_elt_at_index (dm->per_thread_data[thread_index].sessions,
-			   value.value);
+      s = pool_elt_at_index (dm->per_thread_data[thread_index].sessions,
+			     value.value);
     }
 
   old_id = echo->identifier;
@@ -92,9 +91,8 @@ done:
   return n;
 }
 
-VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
+VLIB_NODE_FN (dslite_out2in_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   dslite_out2in_next_t next_index;
@@ -108,7 +106,6 @@ VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
-
 
   while (n_left_from > 0)
     {
@@ -155,9 +152,8 @@ VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
 	    {
-	      next0 =
-		dslite_icmp_out2in (dm, ip40, &s0, next0, &error0,
-				    thread_index);
+	      next0 = dslite_icmp_out2in (dm, ip40, &s0, next0, &error0,
+					  thread_index);
 	      if (PREDICT_FALSE (next0 == DSLITE_OUT2IN_NEXT_DROP))
 		goto trace0;
 
@@ -173,8 +169,8 @@ VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
 	  key0.fib_index = 0;
 	  kv0.key = key0.as_u64;
 
-	  if (clib_bihash_search_8_8
-	      (&dm->per_thread_data[thread_index].out2in, &kv0, &value0))
+	  if (clib_bihash_search_8_8 (
+		&dm->per_thread_data[thread_index].out2in, &kv0, &value0))
 	    {
 	      next0 = DSLITE_OUT2IN_NEXT_DROP;
 	      error0 = DSLITE_ERROR_NO_TRANSLATION;
@@ -182,9 +178,8 @@ VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      s0 =
-		pool_elt_at_index (dm->per_thread_data[thread_index].sessions,
-				   value0.value);
+	      s0 = pool_elt_at_index (
+		dm->per_thread_data[thread_index].sessions, value0.value);
 	    }
 
 	  old_addr0 = ip40->dst_address.as_u32;
@@ -192,9 +187,8 @@ VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
 	  new_addr0 = ip40->dst_address.as_u32;
 
 	  sum0 = ip40->checksum;
-	  sum0 =
-	    ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
-			    dst_address);
+	  sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+				 dst_address);
 	  ip40->checksum = ip_csum_fold (sum0);
 
 	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
@@ -204,12 +198,10 @@ VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
 	      new_port0 = tcp0->dst_port;
 
 	      sum0 = tcp0->checksum;
-	      sum0 =
-		ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
-				dst_address);
-	      sum0 =
-		ip_csum_update (sum0, old_port0, new_port0, ip4_header_t,
-				length);
+	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+				     dst_address);
+	      sum0 = ip_csum_update (sum0, old_port0, new_port0, ip4_header_t,
+				     length);
 	      tcp0->checksum = ip_csum_fold (sum0);
 	    }
 	  else
@@ -243,8 +235,8 @@ VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
 	  clib_dlist_addtail (dm->per_thread_data[thread_index].list_pool,
 			      s0->per_b4_list_head_index, s0->per_b4_index);
 	trace0:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      dslite_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->next_index = next0;
@@ -266,7 +258,6 @@ VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dslite_out2in_node) = {
   .name = "dslite-out2in",
   .vector_size = sizeof (u32),
@@ -282,7 +273,6 @@ VLIB_REGISTER_NODE (dslite_out2in_node) = {
     [DSLITE_OUT2IN_NEXT_IP6_LOOKUP] = "ip6-lookup",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

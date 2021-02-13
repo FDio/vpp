@@ -65,11 +65,11 @@ typedef struct
 static linux_epoll_main_t *linux_epoll_mains = 0;
 
 static void
-linux_epoll_file_update (clib_file_t * f, clib_file_update_type_t update_type)
+linux_epoll_file_update (clib_file_t *f, clib_file_update_type_t update_type)
 {
   clib_file_main_t *fm = &file_main;
-  linux_epoll_main_t *em = vec_elt_at_index (linux_epoll_mains,
-					     f->polling_thread_index);
+  linux_epoll_main_t *em =
+    vec_elt_at_index (linux_epoll_mains, f->polling_thread_index);
   struct epoll_event e = { 0 };
   int op, add_del = 0;
 
@@ -131,8 +131,8 @@ linux_epoll_file_update (clib_file_t * f, clib_file_update_type_t update_type)
 }
 
 static_always_inline uword
-linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * frame, u32 thread_index)
+linux_epoll_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			  vlib_frame_t *frame, u32 thread_index)
 {
   unix_main_t *um = &unix_main;
   clib_file_main_t *fm = &file_main;
@@ -171,11 +171,11 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  }
       }
     /* If we're not working very hard, decide how long to sleep */
-    else if (is_main && vector_rate < 2 && vm->api_queue_nonempty == 0
-	     && nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
+    else if (is_main && vector_rate < 2 && vm->api_queue_nonempty == 0 &&
+	     nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
       {
-	ticks_until_expiration = TW (tw_timer_first_expires_in_ticks)
-	  ((TWT (tw_timer_wheel) *) nm->timing_wheel);
+	ticks_until_expiration = TW (tw_timer_first_expires_in_ticks) (
+	  (TWT (tw_timer_wheel) *) nm->timing_wheel);
 
 	/* Nothing on the fast wheel, sleep 10ms */
 	if (ticks_until_expiration == TW_SLOTS_PER_RING)
@@ -185,7 +185,7 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  }
 	else
 	  {
-	    timeout = (f64) ticks_until_expiration *1e-5;
+	    timeout = (f64) ticks_until_expiration * 1e-5;
 	    if (timeout < 1e-3)
 	      timeout_ms = 0;
 	    else
@@ -198,15 +198,15 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  }
 	node->input_main_loops_per_call = 0;
       }
-    else if (is_main == 0 && vector_rate < 2
-	     && (vlib_global_main.time_last_barrier_release + 0.5 < now)
-	     && nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
+    else if (is_main == 0 && vector_rate < 2 &&
+	     (vlib_global_main.time_last_barrier_release + 0.5 < now) &&
+	     nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
       {
 	timeout = 10e-3;
 	timeout_ms = max_timeout_ms;
 	node->input_main_loops_per_call = 0;
       }
-    else			/* busy */
+    else /* busy */
       {
 	/* Don't come back for a respectable number of dispatch cycles */
 	node->input_main_loops_per_call = 1024;
@@ -216,19 +216,16 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     if (is_main || em->epoll_fd != -1)
       {
 	static sigset_t unblock_all_signals;
-	n_fds_ready = epoll_pwait (em->epoll_fd,
-				   em->epoll_events,
-				   vec_len (em->epoll_events),
-				   timeout_ms, &unblock_all_signals);
+	n_fds_ready = epoll_pwait (em->epoll_fd, em->epoll_events,
+				   vec_len (em->epoll_events), timeout_ms,
+				   &unblock_all_signals);
 
 	/* This kludge is necessary to run over absurdly old kernels */
 	if (n_fds_ready < 0 && errno == ENOSYS)
 	  {
-	    n_fds_ready = epoll_wait (em->epoll_fd,
-				      em->epoll_events,
+	    n_fds_ready = epoll_wait (em->epoll_fd, em->epoll_events,
 				      vec_len (em->epoll_events), timeout_ms);
 	  }
-
       }
     else
       {
@@ -288,22 +285,28 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (e->events & EPOLLIN)
 	    {
 	      errors[n_errors] =
-		clib_error_return (0, "epoll event EPOLLIN dropped due "
-				   "to free index %u", i);
+		clib_error_return (0,
+				   "epoll event EPOLLIN dropped due "
+				   "to free index %u",
+				   i);
 	      n_errors++;
 	    }
 	  if (e->events & EPOLLOUT)
 	    {
 	      errors[n_errors] =
-		clib_error_return (0, "epoll event EPOLLOUT dropped due "
-				   "to free index %u", i);
+		clib_error_return (0,
+				   "epoll event EPOLLOUT dropped due "
+				   "to free index %u",
+				   i);
 	      n_errors++;
 	    }
 	  if (e->events & EPOLLERR)
 	    {
 	      errors[n_errors] =
-		clib_error_return (0, "epoll event EPOLLERR dropped due "
-				   "to free index %u", i);
+		clib_error_return (0,
+				   "epoll event EPOLLERR dropped due "
+				   "to free index %u",
+				   i);
 	      n_errors++;
 	    }
 	}
@@ -356,8 +359,8 @@ done:
 }
 
 static uword
-linux_epoll_input (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+linux_epoll_input (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame)
 {
   u32 thread_index = vlib_get_thread_index ();
 
@@ -367,39 +370,36 @@ linux_epoll_input (vlib_main_t * vm,
     return linux_epoll_input_inline (vm, node, frame, thread_index);
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (linux_epoll_input_node,static) = {
+VLIB_REGISTER_NODE (linux_epoll_input_node, static) = {
   .function = linux_epoll_input,
   .type = VLIB_NODE_TYPE_PRE_INPUT,
   .name = "unix-epoll-input",
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-linux_epoll_input_init (vlib_main_t * vm)
+linux_epoll_input_init (vlib_main_t *vm)
 {
   linux_epoll_main_t *em;
   clib_file_main_t *fm = &file_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
-
   vec_validate_aligned (linux_epoll_mains, tm->n_vlib_mains,
 			CLIB_CACHE_LINE_BYTES);
 
   vec_foreach (em, linux_epoll_mains)
-  {
-    /* Allocate some events. */
-    vec_resize (em->epoll_events, VLIB_FRAME_SIZE);
+    {
+      /* Allocate some events. */
+      vec_resize (em->epoll_events, VLIB_FRAME_SIZE);
 
-    if (linux_epoll_mains == em)
-      {
-	em->epoll_fd = epoll_create (1);
-	if (em->epoll_fd < 0)
-	  return clib_error_return_unix (0, "epoll_create");
-      }
-    else
-      em->epoll_fd = -1;
-  }
+      if (linux_epoll_mains == em)
+	{
+	  em->epoll_fd = epoll_create (1);
+	  if (em->epoll_fd < 0)
+	    return clib_error_return_unix (0, "epoll_create");
+	}
+      else
+	em->epoll_fd = -1;
+    }
 
   fm->file_update = linux_epoll_file_update;
 
@@ -411,17 +411,14 @@ VLIB_INIT_FUNCTION (linux_epoll_input_init);
 #endif /* HAVE_LINUX_EPOLL */
 
 static clib_error_t *
-unix_input_init (vlib_main_t * vm)
+unix_input_init (vlib_main_t *vm)
 {
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (unix_input_init) =
-{
+VLIB_INIT_FUNCTION (unix_input_init) = {
   .runs_before = VLIB_INITS ("linux_epoll_input_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

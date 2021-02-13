@@ -41,7 +41,7 @@ volatile int window_resized = 0;
 struct termios orig_tio;
 
 static void
-send_ttype (clib_socket_t * s, int is_interactive)
+send_ttype (clib_socket_t *s, int is_interactive)
 {
   char *term;
 
@@ -49,13 +49,16 @@ send_ttype (clib_socket_t * s, int is_interactive)
   if (term == NULL)
     term = "dumb";
 
-  clib_socket_tx_add_formatted (s, "%c%c%c" "%c%s" "%c%c",
+  clib_socket_tx_add_formatted (s,
+				"%c%c%c"
+				"%c%s"
+				"%c%c",
 				IAC, SB, TELOPT_TTYPE, 0, term, IAC, SE);
   clib_socket_tx (s);
 }
 
 static void
-send_naws (clib_socket_t * s)
+send_naws (clib_socket_t *s)
 {
   struct winsize ws;
 
@@ -65,10 +68,13 @@ send_naws (clib_socket_t * s)
       return;
     }
 
-  clib_socket_tx_add_formatted (s, "%c%c%c" "%c%c%c%c" "%c%c",
-				IAC, SB, TELOPT_NAWS,
-				ws.ws_col >> 8, ws.ws_col & 0xff,
-				ws.ws_row >> 8, ws.ws_row & 0xff, IAC, SE);
+  clib_socket_tx_add_formatted (s,
+				"%c%c%c"
+				"%c%c%c%c"
+				"%c%c",
+				IAC, SB, TELOPT_NAWS, ws.ws_col >> 8,
+				ws.ws_col & 0xff, ws.ws_row >> 8,
+				ws.ws_row & 0xff, IAC, SE);
   clib_socket_tx (s);
 }
 
@@ -85,8 +91,7 @@ signal_handler_term (int signum)
 }
 
 static u8 *
-process_input (u8 * str, clib_socket_t * s, int is_interactive,
-	       int *sent_ttype)
+process_input (u8 *str, clib_socket_t *s, int is_interactive, int *sent_ttype)
 {
   int i = 0;
 
@@ -103,8 +108,8 @@ process_input (u8 * str, clib_socket_t * s, int is_interactive,
 		vec_add1 (sb, s->rx_buffer[i++]);
 
 #if DEBUG
-	      clib_warning ("SB %s\n  %U", TELOPT (opt),
-			    format_hexdump, sb, vec_len (sb));
+	      clib_warning ("SB %s\n  %U", TELOPT (opt), format_hexdump, sb,
+			    vec_len (sb));
 #endif
 	      vec_free (sb);
 	      i += 2;
@@ -133,7 +138,6 @@ process_input (u8 * str, clib_socket_t * s, int is_interactive,
   return str;
 }
 
-
 int
 main (int argc, char *argv[])
 {
@@ -147,9 +151,8 @@ main (int argc, char *argv[])
   u8 *cmd = 0;
   int do_quit = 0;
   int is_interactive = 0;
-  int acked = 1;		/* counts messages from VPP; starts at 1 */
+  int acked = 1; /* counts messages from VPP; starts at 1 */
   int sent_ttype = 0;
-
 
   clib_mem_init (0, 64ULL << 10);
 
@@ -207,8 +210,8 @@ main (int argc, char *argv[])
       tio = orig_tio;
       /* echo off, canonical mode off, ext'd input processing off */
       tio.c_lflag &= ~(ECHO | ICANON | IEXTEN);
-      tio.c_cc[VMIN] = 1;	/* 1 byte at a time */
-      tio.c_cc[VTIME] = 0;	/* no timer */
+      tio.c_cc[VMIN] = 1;  /* 1 byte at a time */
+      tio.c_cc[VTIME] = 0; /* no timer */
 
       if (tcsetattr (STDIN_FILENO, TCSAFLUSH, &tio) < 0)
 	{
@@ -270,7 +273,7 @@ main (int argc, char *argv[])
 	  char c[100];
 
 	  if (!sent_ttype)
-	    continue;		/* not ready for this yet */
+	    continue; /* not ready for this yet */
 
 	  n = read (STDIN_FILENO, c, sizeof (c));
 	  if (n > 0)
@@ -282,7 +285,7 @@ main (int argc, char *argv[])
 	    }
 	  else if (n < 0)
 	    clib_warning ("read rv=%d", n);
-	  else			/* EOF */
+	  else /* EOF */
 	    do_quit = 1;
 	}
       else if (event.data.fd == s->fd)
@@ -317,7 +320,7 @@ main (int argc, char *argv[])
 		  while (q < (p + len) && !*q)
 		    {
 		      q++;
-		      acked++;	/* every NUL is an acknowledgement */
+		      acked++; /* every NUL is an acknowledgement */
 		    }
 		  len -= q - p;
 		  p = q;
@@ -338,12 +341,13 @@ main (int argc, char *argv[])
 	      /* We wait until after the TELNET TTYPE option has been sent.
 	       * That is to make sure the session at the VPP end has switched
 	       * to line-by-line mode, and thus avoid prompts and echoing.
-	       * Note that it does also disable further TELNET option processing.
+	       * Note that it does also disable further TELNET option
+	       * processing.
 	       */
 	      clib_socket_tx_add_formatted (s, "%s\n", cmd);
 	      clib_socket_tx (s);
 	      vec_free (cmd);
-	      do_quit = acked;	/* quit after the next response */
+	      do_quit = acked; /* quit after the next response */
 	    }
 	}
       else
@@ -372,8 +376,6 @@ done:
 
   return 0;
 }
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

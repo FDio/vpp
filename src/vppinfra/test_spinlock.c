@@ -49,7 +49,8 @@ inc_shared_counter (void *arg)
   spinlock_test_main_t *stm = arg;
 
   /* Wait for all threads to be created */
-  while (!clib_atomic_load_acq_n (&all_threads_online));
+  while (!clib_atomic_load_acq_n (&all_threads_online))
+    ;
 
   f64 start = clib_cpu_time_now ();
   for (uword i = 0; i < stm->increment_per_thread; i++)
@@ -63,7 +64,7 @@ inc_shared_counter (void *arg)
 }
 
 unsigned
-test_spinlock (spinlock_test_main_t * stm, f64 * elapse_time)
+test_spinlock (spinlock_test_main_t *stm, f64 *elapse_time)
 {
   int error;
   uword num_threads = stm->num_cores * stm->threads_per_core;
@@ -90,8 +91,7 @@ test_spinlock (spinlock_test_main_t * stm, f64 * elapse_time)
 
 	  if ((error = pthread_setaffinity_np (pthread[t_index],
 					       sizeof (cpu_set_t), &cpuset)))
-	    clib_unix_warning ("pthread_setaffinity_np failed with %d",
-			       error);
+	    clib_unix_warning ("pthread_setaffinity_np failed with %d", error);
 	}
       cores_set++;
       cpu_id++;
@@ -123,17 +123,17 @@ num_cores_in_cpu_mask (uword mask)
 }
 
 int
-test_spinlock_main (unformat_input_t * i)
+test_spinlock_main (unformat_input_t *i)
 {
   spinlock_test_main_t _stm, *stm = &_stm;
   clib_memset (stm, 0, sizeof (spinlock_test_main_t));
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (0 == unformat (i, "threads/core %d", &stm->threads_per_core)
-	  && 0 == unformat (i, "cpu_mask %x", &stm->cpu_mask)
-	  && 0 == unformat (i, "increment %d", &stm->increment_per_thread)
-	  && 0 == unformat (i, "iterations %d", &stm->iterations))
+      if (0 == unformat (i, "threads/core %d", &stm->threads_per_core) &&
+	  0 == unformat (i, "cpu_mask %x", &stm->cpu_mask) &&
+	  0 == unformat (i, "increment %d", &stm->increment_per_thread) &&
+	  0 == unformat (i, "iterations %d", &stm->iterations))
 	{
 	  clib_unix_warning ("unknown input '%U'", format_unformat_error, i);
 	  return 1;
@@ -142,8 +142,8 @@ test_spinlock_main (unformat_input_t * i)
 
   stm->num_cores = num_cores_in_cpu_mask (stm->cpu_mask);
 
-  uword total_increment = stm->threads_per_core * stm->num_cores *
-    stm->increment_per_thread;
+  uword total_increment =
+    stm->threads_per_core * stm->num_cores * stm->increment_per_thread;
 
   clib_spinlock_init (&stm->slock);
 
@@ -160,8 +160,8 @@ test_spinlock_main (unformat_input_t * i)
 	  return 1;
 	}
 
-      fformat (stdout, "Trial %d SUCCESS: %d = %d\n",
-	       trial, stm->shared_count, total_increment);
+      fformat (stdout, "Trial %d SUCCESS: %d = %d\n", trial, stm->shared_count,
+	       total_increment);
       average_time = (average_time * trial + elapse_time) / (trial + 1);
       fformat (stdout, "Average lock/unlock cycles %.4e\n", average_time);
     }

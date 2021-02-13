@@ -17,13 +17,13 @@
 #include <vlibmemory/api.h>
 #include <vpp/api/vpe_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_typedefs
 
 /* declare message handlers for each api */
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_endianfun
 
@@ -34,7 +34,7 @@
 #undef vl_printfun
 
 static u8 *
-format_api_error (u8 * s, va_list * args)
+format_api_error (u8 *s, va_list *args)
 {
   i32 error = va_arg (*args, u32);
   uword *p;
@@ -49,8 +49,8 @@ format_api_error (u8 * s, va_list * args)
 }
 
 static void
-  vl_api_session_enable_disable_reply_t_handler
-  (vl_api_session_enable_disable_reply_t * mp)
+vl_api_session_enable_disable_reply_t_handler (
+  vl_api_session_enable_disable_reply_t *mp)
 {
   vcl_worker_t *wrk = vcl_worker_get (0);
 
@@ -64,7 +64,7 @@ static void
 }
 
 static void
-vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
+vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t *mp)
 {
   vcl_worker_t *wrk = vcl_worker_get (0);
   u64 segment_handle;
@@ -103,9 +103,8 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
 	{
 	  segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
-	  rv =
-	    vcl_segment_attach (segment_handle, segment_name,
-				SSVM_SEGMENT_MEMFD, fds[n_fds++]);
+	  rv = vcl_segment_attach (segment_handle, segment_name,
+				   SSVM_SEGMENT_MEMFD, fds[n_fds++]);
 	  vec_free (segment_name);
 	  if (rv != 0)
 	    goto failed;
@@ -133,9 +132,8 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
   else
     {
       segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
-      rv =
-	vcl_segment_attach (segment_handle, segment_name, SSVM_SEGMENT_SHM,
-			    -1);
+      rv = vcl_segment_attach (segment_handle, segment_name, SSVM_SEGMENT_SHM,
+			       -1);
       vec_free (segment_name);
       if (rv != 0)
 	goto failed;
@@ -153,8 +151,8 @@ failed:
 }
 
 static void
-vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
-					   mp)
+vl_api_app_worker_add_del_reply_t_handler (
+  vl_api_app_worker_add_del_reply_t *mp)
 {
   int n_fds = 0, *fds = 0, i, rv;
   u64 segment_handle;
@@ -204,9 +202,8 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
 	{
 	  segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
-	  rv =
-	    vcl_segment_attach (segment_handle, segment_name,
-				SSVM_SEGMENT_MEMFD, fds[n_fds++]);
+	  rv = vcl_segment_attach (segment_handle, segment_name,
+				   SSVM_SEGMENT_MEMFD, fds[n_fds++]);
 	  vec_free (segment_name);
 	  if (rv != 0)
 	    goto failed;
@@ -227,9 +224,8 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
   else
     {
       segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
-      rv =
-	vcl_segment_attach (segment_handle, segment_name, SSVM_SEGMENT_SHM,
-			    -1);
+      rv = vcl_segment_attach (segment_handle, segment_name, SSVM_SEGMENT_SHM,
+			       -1);
       vec_free (segment_name);
       if (rv != 0)
 	goto failed;
@@ -283,13 +279,10 @@ vl_api_app_del_cert_key_pair_reply_t_handler (
 static void
 vcl_bapi_hookup (void)
 {
-#define _(N, n)                                                	\
-    vl_msg_api_set_handlers(VL_API_##N, #n,                    	\
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_sock_msg;
 #undef _
 }
@@ -309,7 +302,7 @@ vcl_bapi_send_session_enable_disable (u8 is_enable)
   bmp->client_index = wrk->api_client_handle;
   bmp->context = htonl (0xfeedface);
   bmp->is_enable = is_enable;
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) &bmp);
 }
 
 void
@@ -319,8 +312,8 @@ vcl_bapi_send_attach (void)
   u8 tls_engine = CRYPTO_ENGINE_OPENSSL;
   vl_api_app_attach_t *bmp;
   u8 nsid_len = vec_len (vcm->cfg.namespace_id);
-  u8 app_is_proxy = (vcm->cfg.app_proxy_transport_tcp ||
-		     vcm->cfg.app_proxy_transport_udp);
+  u8 app_is_proxy =
+    (vcm->cfg.app_proxy_transport_tcp || vcm->cfg.app_proxy_transport_udp);
 
   tls_engine = vcm->cfg.tls_engine ? vcm->cfg.tls_engine : tls_engine;
 
@@ -352,7 +345,7 @@ vcl_bapi_send_attach (void)
       vl_api_vec_to_api_string (vcm->cfg.namespace_id, &bmp->namespace_id);
       bmp->options[APP_OPTIONS_NAMESPACE_SECRET] = vcm->cfg.namespace_secret;
     }
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) &bmp);
 }
 
 void
@@ -366,7 +359,7 @@ vcl_bapi_send_detach (void)
   bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_DETACH);
   bmp->client_index = wrk->api_client_handle;
   bmp->context = htonl (0xfeedface);
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) &bmp);
 }
 
 static void
@@ -386,11 +379,11 @@ vcl_bapi_send_app_worker_add_del (u8 is_add)
   if (!is_add)
     mp->wrk_index = clib_host_to_net_u32 (wrk->vpp_wrk_index);
 
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) &mp);
 }
 
 static void
-vcl_bapi_send_child_worker_del (vcl_worker_t * child_wrk)
+vcl_bapi_send_child_worker_del (vcl_worker_t *child_wrk)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_app_worker_add_del_t *mp;
@@ -405,7 +398,7 @@ vcl_bapi_send_child_worker_del (vcl_worker_t * child_wrk)
   mp->is_add = 0;
   mp->wrk_index = clib_host_to_net_u32 (child_wrk->vpp_wrk_index);
 
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) &mp);
 }
 
 static void
@@ -503,10 +496,9 @@ vcl_bapi_connect_to_vpp (void)
       goto error;
     }
 
-  if (vl_socket_client_connect2 (&wrk->bapi_sock_ctx,
-				 (char *) vcl_cfg->vpp_bapi_socket_name,
-				 (char *) wrk_name,
-				 0 /* default rx/tx buffer */ ))
+  if (vl_socket_client_connect2 (
+	&wrk->bapi_sock_ctx, (char *) vcl_cfg->vpp_bapi_socket_name,
+	(char *) wrk_name, 0 /* default rx/tx buffer */))
     {
       VERR ("app (%s) socket connect failed!", wrk_name);
       rv = VPPCOM_ECONNREFUSED;
@@ -514,7 +506,7 @@ vcl_bapi_connect_to_vpp (void)
     }
 
   if (vl_socket_client_init_shm2 (&wrk->bapi_sock_ctx, 0,
-				  1 /* want_pthread */ ))
+				  1 /* want_pthread */))
     {
       VERR ("app (%s) init shm failed!", wrk_name);
       rv = VPPCOM_ECONNREFUSED;
@@ -604,7 +596,7 @@ vcl_bapi_session_enable (void)
 
   if (wrk->bapi_app_state != STATE_APP_ENABLED)
     {
-      vcl_bapi_send_session_enable_disable (1 /* is_enabled == TRUE */ );
+      vcl_bapi_send_session_enable_disable (1 /* is_enabled == TRUE */);
       rv = vcl_bapi_wait_for_wrk_state_change (STATE_APP_ENABLED);
       if (PREDICT_FALSE (rv))
 	{
@@ -671,18 +663,18 @@ vcl_bapi_app_worker_add (void)
     return -1;
 
   wrk->bapi_app_state = STATE_APP_ADDING_WORKER;
-  vcl_bapi_send_app_worker_add_del (1 /* is_add */ );
+  vcl_bapi_send_app_worker_add_del (1 /* is_add */);
   if (vcl_bapi_wait_for_wrk_state_change (STATE_APP_READY))
     return -1;
   return 0;
 }
 
 void
-vcl_bapi_app_worker_del (vcl_worker_t * wrk)
+vcl_bapi_app_worker_del (vcl_worker_t *wrk)
 {
   /* Notify vpp that the worker is going away */
   if (wrk->wrk_index == vcl_get_worker_index ())
-    vcl_bapi_send_app_worker_add_del (0 /* is_add */ );
+    vcl_bapi_send_app_worker_add_del (0 /* is_add */);
   else
     vcl_bapi_send_child_worker_del (wrk);
 
@@ -690,16 +682,16 @@ vcl_bapi_app_worker_del (vcl_worker_t * wrk)
   if (vec_len (vcm->workers) == 1)
     vcl_bapi_disconnect_from_vpp ();
   else
-    vl_client_send_disconnect (1 /* vpp should cleanup */ );
+    vl_client_send_disconnect (1 /* vpp should cleanup */);
 }
 
 int
-vcl_bapi_recv_fds (vcl_worker_t * wrk, int *fds, int n_fds)
+vcl_bapi_recv_fds (vcl_worker_t *wrk, int *fds, int n_fds)
 {
   clib_error_t *err;
 
-  if ((err = vl_socket_client_recv_fd_msg2 (&wrk->bapi_sock_ctx, fds, n_fds,
-					    5)))
+  if ((err =
+	 vl_socket_client_recv_fd_msg2 (&wrk->bapi_sock_ctx, fds, n_fds, 5)))
     {
       clib_error_report (err);
       return -1;

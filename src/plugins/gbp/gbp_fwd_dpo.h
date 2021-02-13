@@ -36,7 +36,7 @@ typedef struct gbp_fwd_dpo_t_
   u16 gfd_locks;
 } gbp_fwd_dpo_t;
 
-extern void gbp_fwd_dpo_add_or_lock (dpo_proto_t dproto, dpo_id_t * dpo);
+extern void gbp_fwd_dpo_add_or_lock (dpo_proto_t dproto, dpo_id_t *dpo);
 
 extern dpo_type_t gbp_fwd_dpo_get_type (void);
 

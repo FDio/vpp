@@ -19,18 +19,15 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/arp_packet.h>
 
-extern void ip4_neighbor_probe_dst (u32 sw_if_index,
-				    const ip4_address_t * dst);
-extern void ip4_neighbor_advertise (vlib_main_t * vm,
-				    vnet_main_t * vnm,
+extern void ip4_neighbor_probe_dst (u32 sw_if_index, const ip4_address_t *dst);
+extern void ip4_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm,
 				    u32 sw_if_index,
-				    const ip4_address_t * addr);
+				    const ip4_address_t *addr);
 
 always_inline vlib_buffer_t *
-ip4_neighbor_probe (vlib_main_t * vm,
-		    vnet_main_t * vnm,
-		    const ip_adjacency_t * adj0,
-		    const ip4_address_t * src, const ip4_address_t * dst)
+ip4_neighbor_probe (vlib_main_t *vm, vnet_main_t *vnm,
+		    const ip_adjacency_t *adj0, const ip4_address_t *src,
+		    const ip4_address_t *dst)
 {
   vnet_hw_interface_t *hw_if0;
   ethernet_arp_header_t *h0;
@@ -38,9 +35,8 @@ ip4_neighbor_probe (vlib_main_t * vm,
   u32 bi0;
 
   /* Send ARP request. */
-  h0 = vlib_packet_template_get_packet (vm,
-					&ip4_main.ip4_arp_request_packet_template,
-					&bi0);
+  h0 = vlib_packet_template_get_packet (
+    vm, &ip4_main.ip4_arp_request_packet_template, &bi0);
   /* Seems we're out of buffers */
   if (PREDICT_FALSE (!h0))
     return (NULL);

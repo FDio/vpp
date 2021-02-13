@@ -19,7 +19,6 @@
 
 #include <vnet/crypto/crypto.h>
 
-clib_error_t *
-dpdk_cryptodev_init (vlib_main_t * vm);
+clib_error_t *dpdk_cryptodev_init (vlib_main_t *vm);
 
 #endif

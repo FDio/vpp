@@ -21,37 +21,37 @@
 #define VNET_CRYPTO_FRAME_SIZE 64
 
 /* CRYPTO_ID, PRETTY_NAME, KEY_LENGTH_IN_BYTES */
-#define foreach_crypto_cipher_alg \
-  _(DES_CBC,     "des-cbc", 7) \
-  _(3DES_CBC,    "3des-cbc", 24) \
-  _(AES_128_CBC, "aes-128-cbc", 16) \
-  _(AES_192_CBC, "aes-192-cbc", 24) \
-  _(AES_256_CBC, "aes-256-cbc", 32) \
-  _(AES_128_CTR, "aes-128-ctr", 16) \
-  _(AES_192_CTR, "aes-192-ctr", 24) \
-  _(AES_256_CTR, "aes-256-ctr", 32)
+#define foreach_crypto_cipher_alg                                             \
+  _ (DES_CBC, "des-cbc", 7)                                                   \
+  _ (3DES_CBC, "3des-cbc", 24)                                                \
+  _ (AES_128_CBC, "aes-128-cbc", 16)                                          \
+  _ (AES_192_CBC, "aes-192-cbc", 24)                                          \
+  _ (AES_256_CBC, "aes-256-cbc", 32)                                          \
+  _ (AES_128_CTR, "aes-128-ctr", 16)                                          \
+  _ (AES_192_CTR, "aes-192-ctr", 24)                                          \
+  _ (AES_256_CTR, "aes-256-ctr", 32)
 
 /* CRYPTO_ID, PRETTY_NAME, KEY_LENGTH_IN_BYTES */
-#define foreach_crypto_aead_alg \
-  _(AES_128_GCM, "aes-128-gcm", 16) \
-  _(AES_192_GCM, "aes-192-gcm", 24) \
-  _(AES_256_GCM, "aes-256-gcm", 32) \
-  _(CHACHA20_POLY1305, "chacha20-poly1305", 32)
+#define foreach_crypto_aead_alg                                               \
+  _ (AES_128_GCM, "aes-128-gcm", 16)                                          \
+  _ (AES_192_GCM, "aes-192-gcm", 24)                                          \
+  _ (AES_256_GCM, "aes-256-gcm", 32)                                          \
+  _ (CHACHA20_POLY1305, "chacha20-poly1305", 32)
 
-#define foreach_crypto_hmac_alg \
-  _(MD5, "md5") \
-  _(SHA1, "sha-1") \
-  _(SHA224, "sha-224")  \
-  _(SHA256, "sha-256")  \
-  _(SHA384, "sha-384")  \
-  _(SHA512, "sha-512")
+#define foreach_crypto_hmac_alg                                               \
+  _ (MD5, "md5")                                                              \
+  _ (SHA1, "sha-1")                                                           \
+  _ (SHA224, "sha-224")                                                       \
+  _ (SHA256, "sha-256")                                                       \
+  _ (SHA384, "sha-384")                                                       \
+  _ (SHA512, "sha-512")
 
-#define foreach_crypto_op_type \
-  _(ENCRYPT, "encrypt") \
-  _(DECRYPT, "decrypt") \
-  _(AEAD_ENCRYPT, "aead-encrypt") \
-  _(AEAD_DECRYPT, "aead-decrypt") \
-  _(HMAC, "hmac")
+#define foreach_crypto_op_type                                                \
+  _ (ENCRYPT, "encrypt")                                                      \
+  _ (DECRYPT, "decrypt")                                                      \
+  _ (AEAD_ENCRYPT, "aead-encrypt")                                            \
+  _ (AEAD_DECRYPT, "aead-decrypt")                                            \
+  _ (HMAC, "hmac")
 
 typedef enum
 {
@@ -61,49 +61,49 @@ typedef enum
     VNET_CRYPTO_OP_N_TYPES,
 } vnet_crypto_op_type_t;
 
-#define foreach_crypto_op_status \
-  _(IDLE, "idle") \
-  _(PENDING, "pending") \
-  _(WORK_IN_PROGRESS, "work-in-progress") \
-  _(COMPLETED, "completed") \
-  _(FAIL_NO_HANDLER, "no-handler") \
-  _(FAIL_BAD_HMAC, "bad-hmac") \
-  _(FAIL_ENGINE_ERR, "engine-error")
+#define foreach_crypto_op_status                                              \
+  _ (IDLE, "idle")                                                            \
+  _ (PENDING, "pending")                                                      \
+  _ (WORK_IN_PROGRESS, "work-in-progress")                                    \
+  _ (COMPLETED, "completed")                                                  \
+  _ (FAIL_NO_HANDLER, "no-handler")                                           \
+  _ (FAIL_BAD_HMAC, "bad-hmac")                                               \
+  _ (FAIL_ENGINE_ERR, "engine-error")
 
 /** async crypto **/
 
 /* CRYPTO_ID, PRETTY_NAME, KEY_LENGTH_IN_BYTES, TAG_LEN, AAD_LEN */
-#define foreach_crypto_aead_async_alg \
-  _(AES_128_GCM, "aes-128-gcm-aad8", 16, 16, 8) \
-  _(AES_128_GCM, "aes-128-gcm-aad12", 16, 16, 12) \
-  _(AES_192_GCM, "aes-192-gcm-aad8", 24, 16, 8) \
-  _(AES_192_GCM, "aes-192-gcm-aad12", 24, 16, 12) \
-  _(AES_256_GCM, "aes-256-gcm-aad8", 32, 16, 8) \
-  _(AES_256_GCM, "aes-256-gcm-aad12", 32, 16, 12) \
-  _(CHACHA20_POLY1305, "chacha20-poly1305-aad8", 32, 16, 8) \
-  _(CHACHA20_POLY1305, "chacha20-poly1305-aad12", 32, 16, 12)
+#define foreach_crypto_aead_async_alg                                         \
+  _ (AES_128_GCM, "aes-128-gcm-aad8", 16, 16, 8)                              \
+  _ (AES_128_GCM, "aes-128-gcm-aad12", 16, 16, 12)                            \
+  _ (AES_192_GCM, "aes-192-gcm-aad8", 24, 16, 8)                              \
+  _ (AES_192_GCM, "aes-192-gcm-aad12", 24, 16, 12)                            \
+  _ (AES_256_GCM, "aes-256-gcm-aad8", 32, 16, 8)                              \
+  _ (AES_256_GCM, "aes-256-gcm-aad12", 32, 16, 12)                            \
+  _ (CHACHA20_POLY1305, "chacha20-poly1305-aad8", 32, 16, 8)                  \
+  _ (CHACHA20_POLY1305, "chacha20-poly1305-aad12", 32, 16, 12)
 
 /* CRYPTO_ID, INTEG_ID, PRETTY_NAME, KEY_LENGTH_IN_BYTES, DIGEST_LEN */
-#define foreach_crypto_link_async_alg \
-  _ (AES_128_CBC, SHA1, "aes-128-cbc-hmac-sha-1", 16, 12) \
-  _ (AES_192_CBC, SHA1, "aes-192-cbc-hmac-sha-1", 24, 12) \
-  _ (AES_256_CBC, SHA1, "aes-256-cbc-hmac-sha-1", 32, 12) \
-  _ (AES_128_CBC, SHA224, "aes-128-cbc-hmac-sha-224", 16, 14) \
-  _ (AES_192_CBC, SHA224, "aes-192-cbc-hmac-sha-224", 24, 14) \
-  _ (AES_256_CBC, SHA224, "aes-256-cbc-hmac-sha-224", 32, 14) \
-  _ (AES_128_CBC, SHA256, "aes-128-cbc-hmac-sha-256", 16, 16) \
-  _ (AES_192_CBC, SHA256, "aes-192-cbc-hmac-sha-256", 24, 16) \
-  _ (AES_256_CBC, SHA256, "aes-256-cbc-hmac-sha-256", 32, 16) \
-  _ (AES_128_CBC, SHA384, "aes-128-cbc-hmac-sha-384", 16, 24) \
-  _ (AES_192_CBC, SHA384, "aes-192-cbc-hmac-sha-384", 24, 24) \
-  _ (AES_256_CBC, SHA384, "aes-256-cbc-hmac-sha-384", 32, 24) \
-  _ (AES_128_CBC, SHA512, "aes-128-cbc-hmac-sha-512", 16, 32) \
-  _ (AES_192_CBC, SHA512, "aes-192-cbc-hmac-sha-512", 24, 32) \
+#define foreach_crypto_link_async_alg                                         \
+  _ (AES_128_CBC, SHA1, "aes-128-cbc-hmac-sha-1", 16, 12)                     \
+  _ (AES_192_CBC, SHA1, "aes-192-cbc-hmac-sha-1", 24, 12)                     \
+  _ (AES_256_CBC, SHA1, "aes-256-cbc-hmac-sha-1", 32, 12)                     \
+  _ (AES_128_CBC, SHA224, "aes-128-cbc-hmac-sha-224", 16, 14)                 \
+  _ (AES_192_CBC, SHA224, "aes-192-cbc-hmac-sha-224", 24, 14)                 \
+  _ (AES_256_CBC, SHA224, "aes-256-cbc-hmac-sha-224", 32, 14)                 \
+  _ (AES_128_CBC, SHA256, "aes-128-cbc-hmac-sha-256", 16, 16)                 \
+  _ (AES_192_CBC, SHA256, "aes-192-cbc-hmac-sha-256", 24, 16)                 \
+  _ (AES_256_CBC, SHA256, "aes-256-cbc-hmac-sha-256", 32, 16)                 \
+  _ (AES_128_CBC, SHA384, "aes-128-cbc-hmac-sha-384", 16, 24)                 \
+  _ (AES_192_CBC, SHA384, "aes-192-cbc-hmac-sha-384", 24, 24)                 \
+  _ (AES_256_CBC, SHA384, "aes-256-cbc-hmac-sha-384", 32, 24)                 \
+  _ (AES_128_CBC, SHA512, "aes-128-cbc-hmac-sha-512", 16, 32)                 \
+  _ (AES_192_CBC, SHA512, "aes-192-cbc-hmac-sha-512", 24, 32)                 \
   _ (AES_256_CBC, SHA512, "aes-256-cbc-hmac-sha-512", 32, 32)
 
-#define foreach_crypto_async_op_type \
-  _(ENCRYPT, "async-encrypt") \
-  _(DECRYPT, "async-decrypt")
+#define foreach_crypto_async_op_type                                          \
+  _ (ENCRYPT, "async-encrypt")                                                \
+  _ (DECRYPT, "async-decrypt")
 
 typedef enum
 {
@@ -120,18 +120,16 @@ typedef enum
     VNET_CRYPTO_OP_N_STATUS,
 } vnet_crypto_op_status_t;
 
-/* *INDENT-OFF* */
 typedef enum
 {
   VNET_CRYPTO_ALG_NONE = 0,
 #define _(n, s, l) VNET_CRYPTO_ALG_##n,
-  foreach_crypto_cipher_alg
-  foreach_crypto_aead_alg
+  foreach_crypto_cipher_alg foreach_crypto_aead_alg
 #undef _
 #define _(n, s) VNET_CRYPTO_ALG_HMAC_##n,
-  foreach_crypto_hmac_alg
+    foreach_crypto_hmac_alg
 #undef _
-  VNET_CRYPTO_N_ALGS,
+      VNET_CRYPTO_N_ALGS,
 } vnet_crypto_alg_t;
 
 typedef enum
@@ -145,31 +143,29 @@ typedef enum
 typedef enum
 {
   VNET_CRYPTO_ASYNC_ALG_NONE = 0,
-#define _(n, s, k, t, a) \
-  VNET_CRYPTO_ALG_##n##_TAG##t##_AAD##a,
+#define _(n, s, k, t, a) VNET_CRYPTO_ALG_##n##_TAG##t##_AAD##a,
   foreach_crypto_aead_async_alg
 #undef _
-#define _(c, h, s, k ,d) \
-  VNET_CRYPTO_ALG_##c##_##h##_TAG##d,
-  foreach_crypto_link_async_alg
+#define _(c, h, s, k, d) VNET_CRYPTO_ALG_##c##_##h##_TAG##d,
+    foreach_crypto_link_async_alg
 #undef _
-  VNET_CRYPTO_N_ASYNC_ALGS,
+      VNET_CRYPTO_N_ASYNC_ALGS,
 } vnet_crypto_async_alg_t;
 
 typedef enum
 {
   VNET_CRYPTO_ASYNC_OP_NONE = 0,
-#define _(n, s, k, t, a) \
-  VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_ENC, \
-  VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_DEC,
+#define _(n, s, k, t, a)                                                      \
+  VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_ENC,                                 \
+    VNET_CRYPTO_OP_##n##_TAG##t##_AAD##a##_DEC,
   foreach_crypto_aead_async_alg
 #undef _
-#define _(c, h, s, k ,d) \
-  VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC, \
-  VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC,
-  foreach_crypto_link_async_alg
+#define _(c, h, s, k, d)                                                      \
+  VNET_CRYPTO_OP_##c##_##h##_TAG##d##_ENC,                                    \
+    VNET_CRYPTO_OP_##c##_##h##_TAG##d##_DEC,
+    foreach_crypto_link_async_alg
 #undef _
-  VNET_CRYPTO_ASYNC_OP_N_IDS,
+      VNET_CRYPTO_ASYNC_OP_N_IDS,
 } vnet_crypto_async_op_id_t;
 
 typedef struct
@@ -179,13 +175,13 @@ typedef struct
     struct
     {
       u8 *data;
-      vnet_crypto_alg_t alg:8;
+      vnet_crypto_alg_t alg : 8;
     };
     struct
     {
       u32 index_crypto;
       u32 index_integ;
-      vnet_crypto_async_alg_t async_alg:8;
+      vnet_crypto_async_alg_t async_alg : 8;
     };
   };
 #define VNET_CRYPTO_KEY_TYPE_DATA 0
@@ -197,15 +193,13 @@ typedef enum
 {
   VNET_CRYPTO_OP_NONE = 0,
 #define _(n, s, l) VNET_CRYPTO_OP_##n##_ENC, VNET_CRYPTO_OP_##n##_DEC,
-  foreach_crypto_cipher_alg
-  foreach_crypto_aead_alg
+  foreach_crypto_cipher_alg foreach_crypto_aead_alg
 #undef _
 #define _(n, s) VNET_CRYPTO_OP_##n##_HMAC,
- foreach_crypto_hmac_alg
+    foreach_crypto_hmac_alg
 #undef _
-    VNET_CRYPTO_N_OP_IDS,
+      VNET_CRYPTO_N_OP_IDS,
 } vnet_crypto_op_id_t;
-/* *INDENT-ON* */
 
 typedef enum
 {
@@ -231,11 +225,11 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   uword user_data;
-  vnet_crypto_op_id_t op:16;
-  vnet_crypto_op_status_t status:8;
+  vnet_crypto_op_id_t op : 16;
+  vnet_crypto_op_status_t status : 8;
   u8 flags;
-#define VNET_CRYPTO_OP_FLAG_INIT_IV (1 << 0)
-#define VNET_CRYPTO_OP_FLAG_HMAC_CHECK (1 << 1)
+#define VNET_CRYPTO_OP_FLAG_INIT_IV	    (1 << 0)
+#define VNET_CRYPTO_OP_FLAG_HMAC_CHECK	    (1 << 1)
 #define VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS (1 << 2)
 
   union
@@ -300,9 +294,9 @@ typedef struct
 
 typedef struct
 {
-  vnet_crypto_op_status_t status:8;
+  vnet_crypto_op_status_t status : 8;
   u32 key_index;
-  i16 crypto_start_offset;	/* first buffer offset */
+  i16 crypto_start_offset; /* first buffer offset */
   i16 integ_start_offset;
   u32 crypto_total_length;
   /* adj total_length for integ, e.g.4 bytes for IPSec ESN */
@@ -320,13 +314,13 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-#define VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED 0
-#define VNET_CRYPTO_FRAME_STATE_PENDING 1	/* frame waiting to be processed */
+#define VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED	 0
+#define VNET_CRYPTO_FRAME_STATE_PENDING		 1 /* frame waiting to be processed */
 #define VNET_CRYPTO_FRAME_STATE_WORK_IN_PROGRESS 2
-#define VNET_CRYPTO_FRAME_STATE_SUCCESS 3
-#define VNET_CRYPTO_FRAME_STATE_ELT_ERROR 4
+#define VNET_CRYPTO_FRAME_STATE_SUCCESS		 3
+#define VNET_CRYPTO_FRAME_STATE_ELT_ERROR	 4
   u8 state;
-  vnet_crypto_async_op_id_t op:8;
+  vnet_crypto_async_op_id_t op : 8;
   u16 n_elts;
   vnet_crypto_async_frame_elt_t elts[VNET_CRYPTO_FRAME_SIZE];
   u32 buffer_indices[VNET_CRYPTO_FRAME_SIZE];
@@ -345,57 +339,47 @@ typedef struct
 
 typedef u32 vnet_crypto_key_index_t;
 
-typedef u32 (vnet_crypto_chained_ops_handler_t) (vlib_main_t * vm,
-						 vnet_crypto_op_t * ops[],
-						 vnet_crypto_op_chunk_t *
-						 chunks, u32 n_ops);
+typedef u32 (vnet_crypto_chained_ops_handler_t) (
+  vlib_main_t *vm, vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks,
+  u32 n_ops);
 
-typedef u32 (vnet_crypto_ops_handler_t) (vlib_main_t * vm,
-					 vnet_crypto_op_t * ops[], u32 n_ops);
+typedef u32 (vnet_crypto_ops_handler_t) (vlib_main_t *vm,
+					 vnet_crypto_op_t *ops[], u32 n_ops);
 
-typedef void (vnet_crypto_key_handler_t) (vlib_main_t * vm,
+typedef void (vnet_crypto_key_handler_t) (vlib_main_t *vm,
 					  vnet_crypto_key_op_t kop,
 					  vnet_crypto_key_index_t idx);
 
 /** async crypto function handlers **/
-typedef int
-  (vnet_crypto_frame_enqueue_t) (vlib_main_t * vm,
-				 vnet_crypto_async_frame_t * frame);
-typedef vnet_crypto_async_frame_t *
-  (vnet_crypto_frame_dequeue_t) (vlib_main_t * vm, u32 * nb_elts_processed,
-				 u32 * enqueue_thread_idx);
+typedef int (vnet_crypto_frame_enqueue_t) (vlib_main_t *vm,
+					   vnet_crypto_async_frame_t *frame);
+typedef vnet_crypto_async_frame_t *(vnet_crypto_frame_dequeue_t) (
+  vlib_main_t *vm, u32 *nb_elts_processed, u32 *enqueue_thread_idx);
 
-u32
-vnet_crypto_register_engine (vlib_main_t * vm, char *name, int prio,
-			     char *desc);
+u32 vnet_crypto_register_engine (vlib_main_t *vm, char *name, int prio,
+				 char *desc);
 
-void vnet_crypto_register_ops_handler (vlib_main_t * vm, u32 engine_index,
+void vnet_crypto_register_ops_handler (vlib_main_t *vm, u32 engine_index,
 				       vnet_crypto_op_id_t opt,
-				       vnet_crypto_ops_handler_t * oph);
+				       vnet_crypto_ops_handler_t *oph);
 
-void vnet_crypto_register_chained_ops_handler (vlib_main_t * vm,
-					       u32 engine_index,
-					       vnet_crypto_op_id_t opt,
-					       vnet_crypto_chained_ops_handler_t
-					       * oph);
+void vnet_crypto_register_chained_ops_handler (
+  vlib_main_t *vm, u32 engine_index, vnet_crypto_op_id_t opt,
+  vnet_crypto_chained_ops_handler_t *oph);
 
-void vnet_crypto_register_ops_handlers (vlib_main_t * vm, u32 engine_index,
-					vnet_crypto_op_id_t opt,
-					vnet_crypto_ops_handler_t * fn,
-					vnet_crypto_chained_ops_handler_t *
-					cfn);
+void vnet_crypto_register_ops_handlers (
+  vlib_main_t *vm, u32 engine_index, vnet_crypto_op_id_t opt,
+  vnet_crypto_ops_handler_t *fn, vnet_crypto_chained_ops_handler_t *cfn);
 
-void vnet_crypto_register_key_handler (vlib_main_t * vm, u32 engine_index,
-				       vnet_crypto_key_handler_t * keyh);
+void vnet_crypto_register_key_handler (vlib_main_t *vm, u32 engine_index,
+				       vnet_crypto_key_handler_t *keyh);
 
 /** async crypto register functions */
-u32 vnet_crypto_register_post_node (vlib_main_t * vm, char *post_node_name);
-void vnet_crypto_register_async_handler (vlib_main_t * vm,
-					 u32 engine_index,
+u32 vnet_crypto_register_post_node (vlib_main_t *vm, char *post_node_name);
+void vnet_crypto_register_async_handler (vlib_main_t *vm, u32 engine_index,
 					 vnet_crypto_async_op_id_t opt,
-					 vnet_crypto_frame_enqueue_t * enq_fn,
-					 vnet_crypto_frame_dequeue_t *
-					 deq_fn);
+					 vnet_crypto_frame_enqueue_t *enq_fn,
+					 vnet_crypto_frame_dequeue_t *deq_fn);
 
 typedef struct
 {
@@ -404,8 +388,8 @@ typedef struct
   int priority;
   vnet_crypto_key_handler_t *key_op_handler;
   vnet_crypto_ops_handler_t *ops_handlers[VNET_CRYPTO_N_OP_IDS];
-    vnet_crypto_chained_ops_handler_t
-    * chained_ops_handlers[VNET_CRYPTO_N_OP_IDS];
+  vnet_crypto_chained_ops_handler_t
+    *chained_ops_handlers[VNET_CRYPTO_N_OP_IDS];
   vnet_crypto_frame_enqueue_t *enqueue_handlers[VNET_CRYPTO_ASYNC_OP_N_IDS];
   vnet_crypto_frame_dequeue_t *dequeue_handlers[VNET_CRYPTO_ASYNC_OP_N_IDS];
 } vnet_crypto_engine_t;
@@ -436,33 +420,32 @@ typedef struct
   u32 async_refcnt;
   vnet_crypto_async_next_node_t *next_nodes;
   u32 crypto_node_index;
-#define VNET_CRYPTO_ASYNC_DISPATCH_POLLING 0
+#define VNET_CRYPTO_ASYNC_DISPATCH_POLLING   0
 #define VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT 1
   u8 dispatch_mode;
 } vnet_crypto_main_t;
 
 extern vnet_crypto_main_t crypto_main;
 
-u32 vnet_crypto_process_chained_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
-				     vnet_crypto_op_chunk_t * chunks,
+u32 vnet_crypto_process_chained_ops (vlib_main_t *vm, vnet_crypto_op_t ops[],
+				     vnet_crypto_op_chunk_t *chunks,
 				     u32 n_ops);
-u32 vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
+u32 vnet_crypto_process_ops (vlib_main_t *vm, vnet_crypto_op_t ops[],
 			     u32 n_ops);
-
 
 int vnet_crypto_set_handler2 (char *ops_handler_name, char *engine,
 			      crypto_op_class_type_t oct);
 int vnet_crypto_is_set_handler (vnet_crypto_alg_t alg);
 
-u32 vnet_crypto_key_add (vlib_main_t * vm, vnet_crypto_alg_t alg,
-			 u8 * data, u16 length);
-void vnet_crypto_key_del (vlib_main_t * vm, vnet_crypto_key_index_t index);
+u32 vnet_crypto_key_add (vlib_main_t *vm, vnet_crypto_alg_t alg, u8 *data,
+			 u16 length);
+void vnet_crypto_key_del (vlib_main_t *vm, vnet_crypto_key_index_t index);
 
 /**
  * Use 2 created keys to generate new key for linked algs (cipher + integ)
  * The returned key index is to be used for linked alg only.
  **/
-u32 vnet_crypto_key_add_linked (vlib_main_t * vm,
+u32 vnet_crypto_key_add_linked (vlib_main_t *vm,
 				vnet_crypto_key_index_t index_crypto,
 				vnet_crypto_key_index_t index_integ);
 
@@ -493,7 +476,7 @@ format_function_t format_vnet_crypto_async_alg;
 format_function_t format_vnet_crypto_async_op_type;
 
 static_always_inline void
-vnet_crypto_op_init (vnet_crypto_op_t * op, vnet_crypto_op_id_t type)
+vnet_crypto_op_init (vnet_crypto_op_t *op, vnet_crypto_op_id_t type)
 {
   if (CLIB_DEBUG > 0)
     clib_memset (op, 0xfe, sizeof (*op));
@@ -528,7 +511,7 @@ vnet_crypto_set_handler (char *alg_name, char *engine)
 /** async crypto inline functions **/
 
 static_always_inline vnet_crypto_async_frame_t *
-vnet_crypto_async_get_frame (vlib_main_t * vm, vnet_crypto_async_op_id_t opt)
+vnet_crypto_async_get_frame (vlib_main_t *vm, vnet_crypto_async_op_id_t opt)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_thread_t *ct = cm->threads + vm->thread_index;
@@ -548,8 +531,8 @@ vnet_crypto_async_get_frame (vlib_main_t * vm, vnet_crypto_async_op_id_t opt)
 }
 
 static_always_inline void
-vnet_crypto_async_free_frame (vlib_main_t * vm,
-			      vnet_crypto_async_frame_t * frame)
+vnet_crypto_async_free_frame (vlib_main_t *vm,
+			      vnet_crypto_async_frame_t *frame)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_thread_t *ct = cm->threads + vm->thread_index;
@@ -557,8 +540,8 @@ vnet_crypto_async_free_frame (vlib_main_t * vm,
 }
 
 static_always_inline int
-vnet_crypto_async_submit_open_frame (vlib_main_t * vm,
-				     vnet_crypto_async_frame_t * frame)
+vnet_crypto_async_submit_open_frame (vlib_main_t *vm,
+				     vnet_crypto_async_frame_t *frame)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -600,15 +583,13 @@ vnet_crypto_async_submit_open_frame (vlib_main_t * vm,
 }
 
 static_always_inline int
-vnet_crypto_async_add_to_frame (vlib_main_t * vm,
-				vnet_crypto_async_frame_t ** frame,
-				u32 key_index,
-				u32 crypto_len, i16 integ_len_adj,
-				i16 crypto_start_offset,
-				u16 integ_start_offset,
-				u32 buffer_index,
-				u16 next_node,
-				u8 * iv, u8 * tag, u8 * aad, u8 flags)
+vnet_crypto_async_add_to_frame (vlib_main_t *vm,
+				vnet_crypto_async_frame_t **frame,
+				u32 key_index, u32 crypto_len,
+				i16 integ_len_adj, i16 crypto_start_offset,
+				u16 integ_start_offset, u32 buffer_index,
+				u16 next_node, u8 *iv, u8 *tag, u8 *aad,
+				u8 flags)
 {
   vnet_crypto_async_frame_t *f = *frame;
   vnet_crypto_async_frame_elt_t *fe;
@@ -644,12 +625,12 @@ vnet_crypto_async_add_to_frame (vlib_main_t * vm,
 }
 
 static_always_inline void
-vnet_crypto_async_reset_frame (vnet_crypto_async_frame_t * f)
+vnet_crypto_async_reset_frame (vnet_crypto_async_frame_t *f)
 {
   vnet_crypto_async_op_id_t opt;
   ASSERT (f != 0);
-  ASSERT ((f->state == VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED
-	   || f->state == VNET_CRYPTO_FRAME_STATE_ELT_ERROR));
+  ASSERT ((f->state == VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED ||
+	   f->state == VNET_CRYPTO_FRAME_STATE_ELT_ERROR));
   opt = f->op;
   if (CLIB_DEBUG > 0)
     clib_memset (f, 0xfe, sizeof (*f));

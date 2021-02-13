@@ -26,11 +26,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -42,14 +42,14 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                                          \
-_(AF_PACKET_CREATE, af_packet_create)                                \
-_(AF_PACKET_DELETE, af_packet_delete)                                \
-_(AF_PACKET_SET_L4_CKSUM_OFFLOAD, af_packet_set_l4_cksum_offload)    \
-_(AF_PACKET_DUMP, af_packet_dump)
+#define foreach_vpe_api_msg                                                   \
+  _ (AF_PACKET_CREATE, af_packet_create)                                      \
+  _ (AF_PACKET_DELETE, af_packet_delete)                                      \
+  _ (AF_PACKET_SET_L4_CKSUM_OFFLOAD, af_packet_set_l4_cksum_offload)          \
+  _ (AF_PACKET_DUMP, af_packet_dump)
 
 static void
-vl_api_af_packet_create_t_handler (vl_api_af_packet_create_t * mp)
+vl_api_af_packet_create_t_handler (vl_api_af_packet_create_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_af_packet_create_reply_t *rmp;
@@ -60,22 +60,17 @@ vl_api_af_packet_create_t_handler (vl_api_af_packet_create_t * mp)
   host_if_name = format (0, "%s", mp->host_if_name);
   vec_add1 (host_if_name, 0);
 
-  rv = af_packet_create_if (vm, host_if_name,
-			    mp->use_random_hw_addr ? 0 : mp->hw_addr,
-			    &sw_if_index);
+  rv = af_packet_create_if (
+    vm, host_if_name, mp->use_random_hw_addr ? 0 : mp->hw_addr, &sw_if_index);
 
   vec_free (host_if_name);
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_AF_PACKET_CREATE_REPLY,
-  ({
-    rmp->sw_if_index = clib_host_to_net_u32(sw_if_index);
-  }));
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_AF_PACKET_CREATE_REPLY,
+		({ rmp->sw_if_index = clib_host_to_net_u32 (sw_if_index); }));
 }
 
 static void
-vl_api_af_packet_delete_t_handler (vl_api_af_packet_delete_t * mp)
+vl_api_af_packet_delete_t_handler (vl_api_af_packet_delete_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_af_packet_delete_reply_t *rmp;
@@ -93,8 +88,8 @@ vl_api_af_packet_delete_t_handler (vl_api_af_packet_delete_t * mp)
 }
 
 static void
-  vl_api_af_packet_set_l4_cksum_offload_t_handler
-  (vl_api_af_packet_set_l4_cksum_offload_t * mp)
+vl_api_af_packet_set_l4_cksum_offload_t_handler (
+  vl_api_af_packet_set_l4_cksum_offload_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_af_packet_delete_reply_t *rmp;
@@ -105,9 +100,8 @@ static void
 }
 
 static void
-af_packet_send_details (vpe_api_main_t * am,
-			vl_api_registration_t * reg,
-			af_packet_if_detail_t * af_packet_if, u32 context)
+af_packet_send_details (vpe_api_main_t *am, vl_api_registration_t *reg,
+			af_packet_if_detail_t *af_packet_if, u32 context)
 {
   vl_api_af_packet_details_t *mp;
   mp = vl_msg_api_alloc (sizeof (*mp));
@@ -122,9 +116,8 @@ af_packet_send_details (vpe_api_main_t * am,
   vl_api_send_msg (reg, (u8 *) mp);
 }
 
-
 static void
-vl_api_af_packet_dump_t_handler (vl_api_af_packet_dump_t * mp)
+vl_api_af_packet_dump_t_handler (vl_api_af_packet_dump_t *mp)
 {
   int rv;
   vpe_api_main_t *am = &vpe_api_main;
@@ -141,9 +134,9 @@ vl_api_af_packet_dump_t_handler (vl_api_af_packet_dump_t * mp)
     return;
 
   vec_foreach (af_packet_if, out_af_packet_ifs)
-  {
-    af_packet_send_details (am, reg, af_packet_if, mp->context);
-  }
+    {
+      af_packet_send_details (am, reg, af_packet_if, mp->context);
+    }
 
   vec_free (out_af_packet_ifs);
 }
@@ -160,25 +153,22 @@ vl_api_af_packet_dump_t_handler (vl_api_af_packet_dump_t * mp)
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_af_packet;
 #undef _
 }
 
 static clib_error_t *
-af_packet_api_hookup (vlib_main_t * vm)
+af_packet_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_vpe_api_msg;
 #undef _
 

@@ -22,29 +22,29 @@
 #include <vlibapi/api.h>
 
 /* NAT API Configuration flags */
-#define foreach_nat_config_flag \
-  _(0x01, IS_TWICE_NAT)         \
-  _(0x02, IS_SELF_TWICE_NAT)    \
-  _(0x04, IS_OUT2IN_ONLY)       \
-  _(0x08, IS_ADDR_ONLY)         \
-  _(0x10, IS_OUTSIDE)           \
-  _(0x20, IS_INSIDE)            \
-  _(0x40, IS_STATIC)            \
-  _(0x80, IS_EXT_HOST_VALID)
+#define foreach_nat_config_flag                                               \
+  _ (0x01, IS_TWICE_NAT)                                                      \
+  _ (0x02, IS_SELF_TWICE_NAT)                                                 \
+  _ (0x04, IS_OUT2IN_ONLY)                                                    \
+  _ (0x08, IS_ADDR_ONLY)                                                      \
+  _ (0x10, IS_OUTSIDE)                                                        \
+  _ (0x20, IS_INSIDE)                                                         \
+  _ (0x40, IS_STATIC)                                                         \
+  _ (0x80, IS_EXT_HOST_VALID)
 
 typedef enum nat_config_flags_t_
 {
-#define _(n,f) NAT_API_##f = n,
+#define _(n, f) NAT_API_##f = n,
   foreach_nat_config_flag
 #undef _
 } nat_config_flags_t;
 
 #define foreach_nat_counter _ (tcp) _ (udp) _ (icmp) _ (other) _ (drops)
 
-#define foreach_nat_error                      \
-  _ (VALUE_EXIST, -1, "Value already exists")  \
-  _ (NO_SUCH_ENTRY, -2, "No such entry")       \
-  _ (UNKNOWN_PROTOCOL, -3, "Unknown protocol") \
+#define foreach_nat_error                                                     \
+  _ (VALUE_EXIST, -1, "Value already exists")                                 \
+  _ (NO_SUCH_ENTRY, -2, "No such entry")                                      \
+  _ (UNKNOWN_PROTOCOL, -3, "Unknown protocol")                                \
   _ (OUT_OF_TRANSLATIONS, -4, "Out of translations")
 
 typedef enum
@@ -54,10 +54,10 @@ typedef enum
 #undef _
 } nat_error_t;
 
-#define foreach_nat_protocol   \
-  _ (OTHER, 0, other, "other") \
-  _ (UDP, 1, udp, "udp")       \
-  _ (TCP, 2, tcp, "tcp")       \
+#define foreach_nat_protocol                                                  \
+  _ (OTHER, 0, other, "other")                                                \
+  _ (UDP, 1, udp, "udp")                                                      \
+  _ (TCP, 2, tcp, "tcp")                                                      \
   _ (ICMP, 3, icmp, "icmp")
 
 typedef enum
@@ -68,10 +68,10 @@ typedef enum
 } nat_protocol_t;
 
 /* default protocol timeouts */
-#define NAT_UDP_TIMEOUT 300
-#define NAT_TCP_TRANSITORY_TIMEOUT 240
+#define NAT_UDP_TIMEOUT		    300
+#define NAT_TCP_TRANSITORY_TIMEOUT  240
 #define NAT_TCP_ESTABLISHED_TIMEOUT 7440
-#define NAT_ICMP_TIMEOUT 60
+#define NAT_ICMP_TIMEOUT	    60
 
 typedef struct
 {
@@ -87,7 +87,7 @@ typedef struct
 } nat_timeouts_t;
 
 static_always_inline void
-nat_reset_timeouts (nat_timeouts_t * timeouts)
+nat_reset_timeouts (nat_timeouts_t *timeouts)
 {
   timeouts->udp = NAT_UDP_TIMEOUT;
   timeouts->tcp.established = NAT_TCP_ESTABLISHED_TIMEOUT;

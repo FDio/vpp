@@ -16,7 +16,8 @@
 #define included_clib_fheap_h
 
 /* Fibonacci Heaps Fredman, M. L.; Tarjan (1987).
-   "Fibonacci heaps and their uses in improved network optimization algorithms" */
+   "Fibonacci heaps and their uses in improved network optimization algorithms"
+ */
 
 #include <vppinfra/vec.h>
 
@@ -44,29 +45,30 @@ typedef struct
   u32 is_valid;
 } fheap_node_t;
 
-#define foreach_fheap_node_sibling(f,ni,first_ni,body)			\
-do {									\
-  u32 __fheap_foreach_first_ni = (first_ni);				\
-  u32 __fheap_foreach_ni = __fheap_foreach_first_ni;			\
-  u32 __fheap_foreach_next_ni;						\
-  fheap_node_t * __fheap_foreach_n;					\
-  if (__fheap_foreach_ni != ~0)						\
-    while (1)								\
-      {									\
-	__fheap_foreach_n = fheap_get_node ((f), __fheap_foreach_ni);	\
-	__fheap_foreach_next_ni = __fheap_foreach_n -> next_sibling;	\
-	(ni) = __fheap_foreach_ni;					\
-									\
-	body;								\
-									\
-	/* End of circular list? */					\
-	if (__fheap_foreach_next_ni == __fheap_foreach_first_ni)	\
-	  break;							\
-									\
-	__fheap_foreach_ni = __fheap_foreach_next_ni;			\
-									\
-      }									\
-} while (0)
+#define foreach_fheap_node_sibling(f, ni, first_ni, body)                     \
+  do                                                                          \
+    {                                                                         \
+      u32 __fheap_foreach_first_ni = (first_ni);                              \
+      u32 __fheap_foreach_ni = __fheap_foreach_first_ni;                      \
+      u32 __fheap_foreach_next_ni;                                            \
+      fheap_node_t *__fheap_foreach_n;                                        \
+      if (__fheap_foreach_ni != ~0)                                           \
+	while (1)                                                             \
+	  {                                                                   \
+	    __fheap_foreach_n = fheap_get_node ((f), __fheap_foreach_ni);     \
+	    __fheap_foreach_next_ni = __fheap_foreach_n->next_sibling;        \
+	    (ni) = __fheap_foreach_ni;                                        \
+                                                                              \
+	    body;                                                             \
+                                                                              \
+	    /* End of circular list? */                                       \
+	    if (__fheap_foreach_next_ni == __fheap_foreach_first_ni)          \
+	      break;                                                          \
+                                                                              \
+	    __fheap_foreach_ni = __fheap_foreach_next_ni;                     \
+	  }                                                                   \
+    }                                                                         \
+  while (0)
 
 typedef struct
 {
@@ -84,7 +86,7 @@ typedef struct
 
 /* Initialize empty heap. */
 always_inline void
-fheap_init (fheap_t * f, u32 n_nodes)
+fheap_init (fheap_t *f, u32 n_nodes)
 {
   fheap_node_t *save_nodes = f->nodes;
   u32 *save_root_list = f->root_list_by_rank;
@@ -101,33 +103,33 @@ fheap_init (fheap_t * f, u32 n_nodes)
 }
 
 always_inline void
-fheap_free (fheap_t * f)
+fheap_free (fheap_t *f)
 {
   vec_free (f->nodes);
   vec_free (f->root_list_by_rank);
 }
 
 always_inline u32
-fheap_find_min (fheap_t * f)
+fheap_find_min (fheap_t *f)
 {
   return f->min_root;
 }
 
 always_inline u32
-fheap_is_empty (fheap_t * f)
+fheap_is_empty (fheap_t *f)
 {
   return f->min_root == ~0;
 }
 
 /* Add/delete nodes. */
-void fheap_add (fheap_t * f, u32 ni, u32 key);
-void fheap_del (fheap_t * f, u32 ni);
+void fheap_add (fheap_t *f, u32 ni, u32 key);
+void fheap_del (fheap_t *f, u32 ni);
 
 /* Delete and return minimum. */
-u32 fheap_del_min (fheap_t * f, u32 * min_key);
+u32 fheap_del_min (fheap_t *f, u32 *min_key);
 
 /* Change key value. */
-void fheap_decrease_key (fheap_t * f, u32 ni, u32 new_key);
+void fheap_decrease_key (fheap_t *f, u32 ni, u32 new_key);
 
 #endif /* included_clib_fheap_h */
 

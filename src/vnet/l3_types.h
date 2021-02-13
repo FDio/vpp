@@ -43,7 +43,7 @@
 /* Inherit generic L3 packet types from ethernet. */
 typedef enum
 {
-#define ethernet_type(n,f) VNET_L3_PACKET_TYPE_##f,
+#define ethernet_type(n, f) VNET_L3_PACKET_TYPE_##f,
 #include <vnet/ethernet/types.def>
 #undef ethernet_type
 } vnet_l3_packet_type_t;

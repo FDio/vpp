@@ -29,11 +29,9 @@ typedef enum
 } arp_reply_next_t;
 
 static_always_inline u32
-arp_mk_reply (vnet_main_t * vnm,
-	      vlib_buffer_t * p0,
-	      u32 sw_if_index0,
-	      const ip4_address_t * if_addr0,
-	      ethernet_arp_header_t * arp0, ethernet_header_t * eth_rx)
+arp_mk_reply (vnet_main_t *vnm, vlib_buffer_t *p0, u32 sw_if_index0,
+	      const ip4_address_t *if_addr0, ethernet_arp_header_t *arp0,
+	      ethernet_header_t *eth_rx)
 {
   vnet_hw_interface_t *hw_if0;
   u8 *rewrite0, rewrite0_len;
@@ -44,8 +42,8 @@ arp_mk_reply (vnet_main_t * vnm,
      An adjacency to the sender is not always present,
      so we use the interface to build us a rewrite string
      which will contain all the necessary tags. */
-  rewrite0 = ethernet_build_rewrite (vnm, sw_if_index0,
-				     VNET_LINK_ARP, eth_rx->src_address);
+  rewrite0 = ethernet_build_rewrite (vnm, sw_if_index0, VNET_LINK_ARP,
+				     eth_rx->src_address);
   rewrite0_len = vec_len (rewrite0);
 
   /* Figure out how much to rewind current data from adjacency. */
@@ -63,8 +61,7 @@ arp_mk_reply (vnet_main_t * vnm,
 
   arp0->ip4_over_ethernet[1] = arp0->ip4_over_ethernet[0];
 
-  mac_address_from_bytes (&arp0->ip4_over_ethernet[0].mac,
-			  hw_if0->hw_address);
+  mac_address_from_bytes (&arp0->ip4_over_ethernet[0].mac, hw_if0->hw_address);
   clib_mem_unaligned (&arp0->ip4_over_ethernet[0].ip4.data_u32, u32) =
     if_addr0->data_u32;
 

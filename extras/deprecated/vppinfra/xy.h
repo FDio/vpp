@@ -38,8 +38,8 @@ typedef __complex__ short i16xy_t;
 typedef __complex__ int i32xy_t;
 
 /* X/Y components of a point: can be used as either rvalue/lvalue. */
-#define xy_x(x) __real__ (x)
-#define xy_y(x) __imag__ (x)
+#define xy_x(x) __real__(x)
+#define xy_y(x) __imag__(x)
 
 /* Unit vectors in x/y directions. */
 #define xy_x_unit_vector (1)

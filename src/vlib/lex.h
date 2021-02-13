@@ -20,21 +20,21 @@
 #include <vppinfra/error.h>
 #include <vppinfra/pool.h>
 
-#define foreach_vlib_lex_global_token           \
-  _ (invalid)                                   \
-  _ (eof)                                       \
-  _ (word)                                      \
-  _ (number)                                    \
-  _ (lt)                                        \
-  _ (gt)                                        \
-  _ (dot)                                       \
-  _ (slash)                                     \
-  _ (qmark)                                     \
-  _ (equals)                                    \
-  _ (plus)                                      \
-  _ (minus)                                     \
-  _ (star)                                      \
-  _ (lpar)                                      \
+#define foreach_vlib_lex_global_token                                         \
+  _ (invalid)                                                                 \
+  _ (eof)                                                                     \
+  _ (word)                                                                    \
+  _ (number)                                                                  \
+  _ (lt)                                                                      \
+  _ (gt)                                                                      \
+  _ (dot)                                                                     \
+  _ (slash)                                                                   \
+  _ (qmark)                                                                   \
+  _ (equals)                                                                  \
+  _ (plus)                                                                    \
+  _ (minus)                                                                   \
+  _ (star)                                                                    \
+  _ (lpar)                                                                    \
   _ (rpar)
 
 typedef enum
@@ -117,7 +117,7 @@ typedef struct
 extern vlib_lex_main_t vlib_lex_main;
 
 always_inline void
-vlib_lex_cleanup_token (vlib_lex_token_t * t)
+vlib_lex_cleanup_token (vlib_lex_token_t *t)
 {
   if (t->token == VLIB_LEX_word)
     {
@@ -127,11 +127,11 @@ vlib_lex_cleanup_token (vlib_lex_token_t * t)
 }
 
 u16 vlib_lex_add_table (char *name);
-void vlib_lex_get_token (vlib_lex_main_t * lm, vlib_lex_token_t * result);
-u16 vlib_lex_add_token (vlib_lex_main_t * lm, char *token_name);
+void vlib_lex_get_token (vlib_lex_main_t *lm, vlib_lex_token_t *result);
+u16 vlib_lex_add_token (vlib_lex_main_t *lm, char *token_name);
 void vlib_lex_set_action_range (u32 table_index, u8 lo, u8 hi, u16 action,
 				u16 token, u32 next_table_index);
-void vlib_lex_reset (vlib_lex_main_t * lm, u8 * input_vector);
+void vlib_lex_reset (vlib_lex_main_t *lm, u8 *input_vector);
 format_function_t format_vlib_lex_token;
 
 #endif /* included_vlib_lex_h */

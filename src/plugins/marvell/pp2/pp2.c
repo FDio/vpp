@@ -28,11 +28,11 @@
 #include <vnet/interface/rx_queue_funcs.h>
 
 /* size of DMA memory used by musdk (not used for buffers) */
-#define MV_SYS_DMA_MEM_SZ		(2 << 20)
+#define MV_SYS_DMA_MEM_SZ (2 << 20)
 /* number of HIFs reserved (first X) */
-#define NUM_HIFS_RSVD			4
+#define NUM_HIFS_RSVD 4
 /* number of buffer pools reserved (first X) */
-#define NUM_BPOOLS_RSVD			7
+#define NUM_BPOOLS_RSVD 7
 
 mrvl_pp2_main_t mrvl_pp2_main;
 extern vnet_device_class_t ppa2_device_class;
@@ -43,13 +43,13 @@ mrvl_pp2_main_deinit ()
   mrvl_pp2_main_t *ppm = &mrvl_pp2_main;
   int i;
   vec_foreach_index (i, ppm->per_thread_data)
-  {
-    mrvl_pp2_per_thread_data_t *ptd = vec_elt_at_index (ppm->per_thread_data,
-							i);
-    if (ptd->hif)
-      pp2_hif_deinit (ptd->hif);
-    vec_free (ptd->descs);
-  }
+    {
+      mrvl_pp2_per_thread_data_t *ptd =
+	vec_elt_at_index (ppm->per_thread_data, i);
+      if (ptd->hif)
+	pp2_hif_deinit (ptd->hif);
+      vec_free (ptd->descs);
+    }
   vec_free (ppm->per_thread_data);
   pp2_deinit ();
   mv_sys_dma_mem_destroy ();
@@ -82,20 +82,20 @@ mrvl_pp2_main_init ()
 			CLIB_CACHE_LINE_BYTES);
 
   vec_foreach_index (i, ppm->per_thread_data)
-  {
-    mrvl_pp2_per_thread_data_t *ptd = vec_elt_at_index (ppm->per_thread_data,
-							i);
-    struct pp2_hif_params hif_params = { 0 };
-    vec_reset_length (s);
-    s = format (s, "hif-%d%c", NUM_HIFS_RSVD + i, 0);
-    hif_params.match = (char *) s;
-    hif_params.out_size = 2048;	/* FIXME */
-    if (pp2_hif_init (&hif_params, &ptd->hif))
-      {
-	err = clib_error_return (0, "hif '%s' init failed", s);
-	goto done;
-      }
-  }
+    {
+      mrvl_pp2_per_thread_data_t *ptd =
+	vec_elt_at_index (ppm->per_thread_data, i);
+      struct pp2_hif_params hif_params = { 0 };
+      vec_reset_length (s);
+      s = format (s, "hif-%d%c", NUM_HIFS_RSVD + i, 0);
+      hif_params.match = (char *) s;
+      hif_params.out_size = 2048; /* FIXME */
+      if (pp2_hif_init (&hif_params, &ptd->hif))
+	{
+	  err = clib_error_return (0, "hif '%s' init failed", s);
+	  goto done;
+	}
+    }
 
 done:
   if (err)
@@ -105,15 +105,14 @@ done:
 }
 
 static u32
-mrvl_pp2_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
-			  u32 flags)
+mrvl_pp2_eth_flag_change (vnet_main_t *vnm, vnet_hw_interface_t *hi, u32 flags)
 {
   /* nothing for now */
   return 0;
 }
 
 void
-mrvl_pp2_delete_if (mrvl_pp2_if_t * ppif)
+mrvl_pp2_delete_if (mrvl_pp2_if_t *ppif)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
@@ -123,7 +122,7 @@ mrvl_pp2_delete_if (mrvl_pp2_if_t * ppif)
   int i;
 
   if (ppif->hw_if_index != ~0)
-      ethernet_delete_interface (vnm, ppif->hw_if_index);
+    ethernet_delete_interface (vnm, ppif->hw_if_index);
 
   if (ppif->ppio)
     {
@@ -131,7 +130,6 @@ mrvl_pp2_delete_if (mrvl_pp2_if_t * ppif)
       pp2_ppio_deinit (ppif->ppio);
     }
 
-  /* *INDENT-OFF* */
   /* free buffers hanging in the tx ring */
   vec_foreach (outq, ppif->outqs)
     {
@@ -157,14 +155,13 @@ mrvl_pp2_delete_if (mrvl_pp2_if_t * ppif)
 	    if (pp2_bpool_get_buff (ppm->per_thread_data[0].hif, inq->bpool,
 				    &binf) == 0)
 	      {
-	         u32 bi = binf.cookie;
-	         vlib_buffer_free (vm, &bi, 1);
+		u32 bi = binf.cookie;
+		vlib_buffer_free (vm, &bi, 1);
 	      }
 	  }
 	pp2_bpool_deinit (inq->bpool);
       }
   vec_free (ppif->inqs);
-  /* *INDENT-ON* */
 
 
   pool_put (ppm->interfaces, ppif);
@@ -174,7 +171,7 @@ mrvl_pp2_delete_if (mrvl_pp2_if_t * ppif)
 }
 
 void
-mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args)
+mrvl_pp2_create_if (mrvl_pp2_create_if_args_t *args)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
@@ -193,9 +190,11 @@ mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args)
   if (tm->n_vlib_mains > PP2_PPIO_MAX_NUM_OUTQS)
     {
       args->rv = VNET_API_ERROR_INIT_FAILED;
-      args->error = clib_error_return (0, "number of threads (main + workers)"
+      args->error = clib_error_return (0,
+				       "number of threads (main + workers)"
 				       " is bigger than number of output "
-				       "queues (%u)", PP2_PPIO_MAX_NUM_OUTQS);
+				       "queues (%u)",
+				       PP2_PPIO_MAX_NUM_OUTQS);
       return;
     }
   n_outqs = tm->n_vlib_mains;
@@ -234,8 +233,8 @@ mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args)
   if (pp2_netdev_get_ppio_info ((char *) args->name, &pp2_id, &port_id))
     {
       args->rv = VNET_API_ERROR_INVALID_INTERFACE;
-      args->error = clib_error_return (0, "Invalid interface '%s'",
-				       args->name);
+      args->error =
+	clib_error_return (0, "Invalid interface '%s'", args->name);
       goto error;
     }
 
@@ -283,11 +282,9 @@ mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args)
       goto error;
     }
 
-  args->error = ethernet_register_interface (vnm, mrvl_pp2_device_class.index,
-					     ppif->dev_instance,
-					     mac_addr,
-					     &ppif->hw_if_index,
-					     mrvl_pp2_eth_flag_change);
+  args->error = ethernet_register_interface (
+    vnm, mrvl_pp2_device_class.index, ppif->dev_instance, mac_addr,
+    &ppif->hw_if_index, mrvl_pp2_eth_flag_change);
   if (args->error)
     {
       args->rv = VNET_API_ERROR_INVALID_REGISTRATION;
@@ -318,8 +315,7 @@ done:
 }
 
 static clib_error_t *
-mrvl_pp2_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
-				  u32 flags)
+mrvl_pp2_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 {
   mrvl_pp2_main_t *ppm = &mrvl_pp2_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
@@ -356,7 +352,7 @@ mrvl_pp2_clear_interface_counters (u32 instance)
 }
 
 static void
-mrvl_pp2_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
+mrvl_pp2_set_interface_next_node (vnet_main_t *vnm, u32 hw_if_index,
 				  u32 node_index)
 {
   mrvl_pp2_main_t *ppm = &mrvl_pp2_main;
@@ -370,20 +366,17 @@ mrvl_pp2_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
       return;
     }
 
-  ppif->per_interface_next_index =
-    vlib_node_add_next (vlib_get_main (), mrvl_pp2_input_node.index,
-			node_index);
+  ppif->per_interface_next_index = vlib_node_add_next (
+    vlib_get_main (), mrvl_pp2_input_node.index, node_index);
 }
 
 static char *mrvl_pp2_tx_func_error_strings[] = {
-#define _(n,s) s,
+#define _(n, s) s,
   foreach_mrvl_pp2_tx_func_error
 #undef _
 };
 
-/* *INDENT-OFF* */
-VNET_DEVICE_CLASS (mrvl_pp2_device_class,) =
-{
+VNET_DEVICE_CLASS (mrvl_pp2_device_class, ) = {
   .name = "Marvell PPv2 interface",
   .format_device_name = format_mrvl_pp2_interface_name,
   .format_device = format_mrvl_pp2_interface,
@@ -394,10 +387,9 @@ VNET_DEVICE_CLASS (mrvl_pp2_device_class,) =
   .clear_counters = mrvl_pp2_clear_interface_counters,
   .rx_redirect_to_node = mrvl_pp2_set_interface_next_node,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-mrvl_pp2_init (vlib_main_t * vm)
+mrvl_pp2_init (vlib_main_t *vm)
 {
   return 0;
 }

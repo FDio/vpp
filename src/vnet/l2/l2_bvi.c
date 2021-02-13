@@ -26,51 +26,50 @@ static uword *l2_bvi_instances;
 
 /* Call the L2 nodes that need the ethertype mapping */
 void
-l2bvi_register_input_type (vlib_main_t * vm,
-			   ethernet_type_t type, u32 node_index)
+l2bvi_register_input_type (vlib_main_t *vm, ethernet_type_t type,
+			   u32 node_index)
 {
   l2fwd_register_input_type (vm, type, node_index);
   l2flood_register_input_type (vm, type, node_index);
 }
 
 static u8 *
-format_bvi_name (u8 * s, va_list * args)
+format_bvi_name (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   return format (s, "bvi%d", dev_instance);
 }
 
 static clib_error_t *
-bvi_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+bvi_admin_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 {
   u32 hw_flags = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ?
-    VNET_HW_INTERFACE_FLAG_LINK_UP : 0;
+		   VNET_HW_INTERFACE_FLAG_LINK_UP :
+		   0;
   vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
   return 0;
 }
 
 static clib_error_t *
-bvi_mac_change (vnet_hw_interface_t * hi,
-		const u8 * old_address, const u8 * mac_address)
+bvi_mac_change (vnet_hw_interface_t *hi, const u8 *old_address,
+		const u8 *mac_address)
 {
   l2input_interface_mac_change (hi->sw_if_index, old_address, mac_address);
 
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (bvi_device_class) = {
   .name = "BVI",
   .format_device_name = format_bvi_name,
   .admin_up_down_function = bvi_admin_up_down,
   .mac_addr_change_function = bvi_mac_change,
 };
-/* *INDENT-ON* */
 
 /*
  * Maintain a bitmap of allocated bvi instance numbers.
  */
-#define BVI_MAX_INSTANCE		(16 * 1024)
+#define BVI_MAX_INSTANCE (16 * 1024)
 
 static u32
 bvi_instance_alloc (u32 want)
@@ -133,8 +132,8 @@ bvi_instance_free (u32 instance)
 }
 
 int
-l2_bvi_create (u32 user_instance,
-	       const mac_address_t * mac_in, u32 * sw_if_indexp)
+l2_bvi_create (u32 user_instance, const mac_address_t *mac_in,
+	       u32 *sw_if_indexp)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
@@ -147,7 +146,7 @@ l2_bvi_create (u32 user_instance,
 
   ASSERT (sw_if_indexp);
 
-  *sw_if_indexp = (u32) ~ 0;
+  *sw_if_indexp = (u32) ~0;
 
   /*
    * Allocate a bvi instance.  Either select on dynamically
@@ -178,9 +177,8 @@ l2_bvi_create (u32 user_instance,
       mac_address_copy (&mac, mac_in);
     }
 
-  error = ethernet_register_interface (vnm,
-				       bvi_device_class.index,
-				       instance, mac.bytes, &hw_if_index,
+  error = ethernet_register_interface (vnm, bvi_device_class.index, instance,
+				       mac.bytes, &hw_if_index,
 				       /* flag change */ 0);
 
   if (error)
@@ -227,8 +225,8 @@ l2_bvi_delete (u32 sw_if_index)
 }
 
 static clib_error_t *
-l2_bvi_create_cli (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+l2_bvi_create_cli (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 instance, sw_if_index;
@@ -282,17 +280,16 @@ l2_bvi_create_cli (vlib_main_t * vm,
  * Example of how to create a bvi interface:
  * @cliexcmd{bvi create}
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (l2_bvi_create_command, static) = {
   .path = "bvi create",
   .short_help = "bvi create [mac <mac-addr>] [instance <instance>]",
   .function = l2_bvi_create_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-l2_bvi_delete_cli (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+l2_bvi_delete_cli (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm;
   u32 sw_if_index;
@@ -303,8 +300,8 @@ l2_bvi_delete_cli (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else
 	break;
@@ -333,13 +330,12 @@ l2_bvi_delete_cli (vlib_main_t * vm,
  * Example of how to create a bvi interface:
  * @cliexcmd{bvi delete bvi0}
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (l2_bvi_delete_command, static) = {
   .path = "bvi delete",
   .short_help = "bvi delete <interface>",
   .function = l2_bvi_delete_cli,
 };
-/* *INDENT-ON* */
 
 
 /*

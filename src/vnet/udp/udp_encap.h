@@ -35,7 +35,8 @@ typedef enum udp_encap_fixup_flags_t_
 {
   UDP_ENCAP_FIXUP_NONE = 0,
   /**
-   * UDP source port contains an entropy/hash value for load-balancing by downstream peers.
+   * UDP source port contains an entropy/hash value for load-balancing by
+   * downstream peers.
    */
   UDP_ENCAP_FIXUP_UDP_SRC_PORT_ENTROPY = (1 << 0),
 } udp_encap_fixup_flags_t;
@@ -85,7 +86,7 @@ typedef struct udp_encap_t_
   /**
    * The second cacheline contains control-plane data
    */
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   /**
    * linkage into the FIB graph
@@ -104,22 +105,19 @@ typedef struct udp_encap_t_
   index_t ue_fib_index;
 } udp_encap_t;
 
-extern index_t udp_encap_add_and_lock (fib_protocol_t proto,
-				       index_t fib_index,
-				       const ip46_address_t * src_ip,
-				       const ip46_address_t * dst_ip,
-				       u16 src_port,
-				       u16 dst_port,
+extern index_t udp_encap_add_and_lock (fib_protocol_t proto, index_t fib_index,
+				       const ip46_address_t *src_ip,
+				       const ip46_address_t *dst_ip,
+				       u16 src_port, u16 dst_port,
 				       udp_encap_fixup_flags_t flags);
 
 extern void udp_encap_lock (index_t uei);
 extern void udp_encap_unlock (index_t uei);
-extern u8 *format_udp_encap (u8 * s, va_list * args);
-extern void udp_encap_contribute_forwarding (index_t uei,
-					     dpo_proto_t proto,
-					     dpo_id_t * dpo);
+extern u8 *format_udp_encap (u8 *s, va_list *args);
+extern void udp_encap_contribute_forwarding (index_t uei, dpo_proto_t proto,
+					     dpo_id_t *dpo);
 
-extern void udp_encap_get_stats (index_t uei, u64 * packets, u64 * bytes);
+extern void udp_encap_get_stats (index_t uei, u64 *packets, u64 *bytes);
 
 /**
  * Callback function invoked when walking all encap objects.

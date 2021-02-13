@@ -52,12 +52,10 @@
 #include <x86intrin.h>
 #include <vppinfra/warnings.h>
 
-/* *INDENT-OFF* */
-WARN_OFF (stringop-overflow)
-/* *INDENT-ON* */
+WARN_OFF (stringop - overflow)
 
 static inline void
-clib_mov16 (u8 * dst, const u8 * src)
+clib_mov16 (u8 *dst, const u8 *src)
 {
   __m128i xmm0;
 
@@ -66,126 +64,184 @@ clib_mov16 (u8 * dst, const u8 * src)
 }
 
 static inline void
-clib_mov32 (u8 * dst, const u8 * src)
+clib_mov32 (u8 *dst, const u8 *src)
 {
   clib_mov16 ((u8 *) dst + 0 * 16, (const u8 *) src + 0 * 16);
   clib_mov16 ((u8 *) dst + 1 * 16, (const u8 *) src + 1 * 16);
 }
 
 static inline void
-clib_mov64 (u8 * dst, const u8 * src)
+clib_mov64 (u8 *dst, const u8 *src)
 {
   clib_mov32 ((u8 *) dst + 0 * 32, (const u8 *) src + 0 * 32);
   clib_mov32 ((u8 *) dst + 1 * 32, (const u8 *) src + 1 * 32);
 }
 
 static inline void
-clib_mov128 (u8 * dst, const u8 * src)
+clib_mov128 (u8 *dst, const u8 *src)
 {
   clib_mov64 ((u8 *) dst + 0 * 64, (const u8 *) src + 0 * 64);
   clib_mov64 ((u8 *) dst + 1 * 64, (const u8 *) src + 1 * 64);
 }
 
 static inline void
-clib_mov256 (u8 * dst, const u8 * src)
+clib_mov256 (u8 *dst, const u8 *src)
 {
   clib_mov128 ((u8 *) dst + 0 * 128, (const u8 *) src + 0 * 128);
   clib_mov128 ((u8 *) dst + 1 * 128, (const u8 *) src + 1 * 128);
 }
 
 /**
- * Macro for copying unaligned block from one location to another with constant load offset,
- * 47 bytes leftover maximum,
- * locations should not overlap.
+ * Macro for copying unaligned block from one location to another with constant
+ * load offset, 47 bytes leftover maximum, locations should not overlap.
  * Requirements:
  * - Store is aligned
  * - Load offset is <offset>, which must be immediate value within [1, 15]
- * - For <src>, make sure <offset> bit backwards & <16 - offset> bit forwards are available for loading
+ * - For <src>, make sure <offset> bit backwards & <16 - offset> bit forwards
+ * are available for loading
  * - <dst>, <src>, <len> must be variables
  * - __m128i <xmm0> ~ <xmm8> must be pre-defined
  */
-#define CLIB_MVUNALIGN_LEFT47_IMM(dst, src, len, offset)                                                    \
-({                                                                                                          \
-    int tmp;                                                                                                \
-    while (len >= 128 + 16 - offset) {                                                                      \
-        xmm0 = _mm_loadu_si128((const __m128i *)((const u8 *)src - offset + 0 * 16));                       \
-        len -= 128;                                                                                         \
-        xmm1 = _mm_loadu_si128((const __m128i *)((const u8 *)src - offset + 1 * 16));                       \
-        xmm2 = _mm_loadu_si128((const __m128i *)((const u8 *)src - offset + 2 * 16));                       \
-        xmm3 = _mm_loadu_si128((const __m128i *)((const u8 *)src - offset + 3 * 16));                       \
-        xmm4 = _mm_loadu_si128((const __m128i *)((const u8 *)src - offset + 4 * 16));                       \
-        xmm5 = _mm_loadu_si128((const __m128i *)((const u8 *)src - offset + 5 * 16));                       \
-        xmm6 = _mm_loadu_si128((const __m128i *)((const u8 *)src - offset + 6 * 16));                       \
-        xmm7 = _mm_loadu_si128((const __m128i *)((const u8 *)src - offset + 7 * 16));                       \
-        xmm8 = _mm_loadu_si128((const __m128i *)((const u8 *)src - offset + 8 * 16));                       \
-        src = (const u8 *)src + 128;                                                                        \
-        _mm_storeu_si128((__m128i *)((u8 *)dst + 0 * 16), _mm_alignr_epi8(xmm1, xmm0, offset));             \
-        _mm_storeu_si128((__m128i *)((u8 *)dst + 1 * 16), _mm_alignr_epi8(xmm2, xmm1, offset));             \
-        _mm_storeu_si128((__m128i *)((u8 *)dst + 2 * 16), _mm_alignr_epi8(xmm3, xmm2, offset));             \
-        _mm_storeu_si128((__m128i *)((u8 *)dst + 3 * 16), _mm_alignr_epi8(xmm4, xmm3, offset));             \
-        _mm_storeu_si128((__m128i *)((u8 *)dst + 4 * 16), _mm_alignr_epi8(xmm5, xmm4, offset));             \
-        _mm_storeu_si128((__m128i *)((u8 *)dst + 5 * 16), _mm_alignr_epi8(xmm6, xmm5, offset));             \
-        _mm_storeu_si128((__m128i *)((u8 *)dst + 6 * 16), _mm_alignr_epi8(xmm7, xmm6, offset));             \
-        _mm_storeu_si128((__m128i *)((u8 *)dst + 7 * 16), _mm_alignr_epi8(xmm8, xmm7, offset));             \
-        dst = (u8 *)dst + 128;                                                                              \
-    }                                                                                                       \
-    tmp = len;                                                                                              \
-    len = ((len - 16 + offset) & 127) + 16 - offset;                                                        \
-    tmp -= len;                                                                                             \
-    src = (const u8 *)src + tmp;                                                                            \
-    dst = (u8 *)dst + tmp;                                                                                  \
-    if (len >= 32 + 16 - offset) {                                                                          \
-        while (len >= 32 + 16 - offset) {                                                                   \
-            xmm0 = _mm_loadu_si128((const __m128i *)((const u8 *)src - offset + 0 * 16));                   \
-            len -= 32;                                                                                      \
-            xmm1 = _mm_loadu_si128((const __m128i *)((const u8 *)src - offset + 1 * 16));                   \
-            xmm2 = _mm_loadu_si128((const __m128i *)((const u8 *)src - offset + 2 * 16));                   \
-            src = (const u8 *)src + 32;                                                                     \
-            _mm_storeu_si128((__m128i *)((u8 *)dst + 0 * 16), _mm_alignr_epi8(xmm1, xmm0, offset));         \
-            _mm_storeu_si128((__m128i *)((u8 *)dst + 1 * 16), _mm_alignr_epi8(xmm2, xmm1, offset));         \
-            dst = (u8 *)dst + 32;                                                                           \
-        }                                                                                                   \
-        tmp = len;                                                                                          \
-        len = ((len - 16 + offset) & 31) + 16 - offset;                                                     \
-        tmp -= len;                                                                                         \
-        src = (const u8 *)src + tmp;                                                                        \
-        dst = (u8 *)dst + tmp;                                                                              \
-    }                                                                                                       \
-})
+#define CLIB_MVUNALIGN_LEFT47_IMM(dst, src, len, offset)                      \
+  ({                                                                          \
+    int tmp;                                                                  \
+    while (len >= 128 + 16 - offset)                                          \
+      {                                                                       \
+	xmm0 = _mm_loadu_si128 (                                              \
+	  (const __m128i *) ((const u8 *) src - offset + 0 * 16));            \
+	len -= 128;                                                           \
+	xmm1 = _mm_loadu_si128 (                                              \
+	  (const __m128i *) ((const u8 *) src - offset + 1 * 16));            \
+	xmm2 = _mm_loadu_si128 (                                              \
+	  (const __m128i *) ((const u8 *) src - offset + 2 * 16));            \
+	xmm3 = _mm_loadu_si128 (                                              \
+	  (const __m128i *) ((const u8 *) src - offset + 3 * 16));            \
+	xmm4 = _mm_loadu_si128 (                                              \
+	  (const __m128i *) ((const u8 *) src - offset + 4 * 16));            \
+	xmm5 = _mm_loadu_si128 (                                              \
+	  (const __m128i *) ((const u8 *) src - offset + 5 * 16));            \
+	xmm6 = _mm_loadu_si128 (                                              \
+	  (const __m128i *) ((const u8 *) src - offset + 6 * 16));            \
+	xmm7 = _mm_loadu_si128 (                                              \
+	  (const __m128i *) ((const u8 *) src - offset + 7 * 16));            \
+	xmm8 = _mm_loadu_si128 (                                              \
+	  (const __m128i *) ((const u8 *) src - offset + 8 * 16));            \
+	src = (const u8 *) src + 128;                                         \
+	_mm_storeu_si128 ((__m128i *) ((u8 *) dst + 0 * 16),                  \
+			  _mm_alignr_epi8 (xmm1, xmm0, offset));              \
+	_mm_storeu_si128 ((__m128i *) ((u8 *) dst + 1 * 16),                  \
+			  _mm_alignr_epi8 (xmm2, xmm1, offset));              \
+	_mm_storeu_si128 ((__m128i *) ((u8 *) dst + 2 * 16),                  \
+			  _mm_alignr_epi8 (xmm3, xmm2, offset));              \
+	_mm_storeu_si128 ((__m128i *) ((u8 *) dst + 3 * 16),                  \
+			  _mm_alignr_epi8 (xmm4, xmm3, offset));              \
+	_mm_storeu_si128 ((__m128i *) ((u8 *) dst + 4 * 16),                  \
+			  _mm_alignr_epi8 (xmm5, xmm4, offset));              \
+	_mm_storeu_si128 ((__m128i *) ((u8 *) dst + 5 * 16),                  \
+			  _mm_alignr_epi8 (xmm6, xmm5, offset));              \
+	_mm_storeu_si128 ((__m128i *) ((u8 *) dst + 6 * 16),                  \
+			  _mm_alignr_epi8 (xmm7, xmm6, offset));              \
+	_mm_storeu_si128 ((__m128i *) ((u8 *) dst + 7 * 16),                  \
+			  _mm_alignr_epi8 (xmm8, xmm7, offset));              \
+	dst = (u8 *) dst + 128;                                               \
+      }                                                                       \
+    tmp = len;                                                                \
+    len = ((len - 16 + offset) & 127) + 16 - offset;                          \
+    tmp -= len;                                                               \
+    src = (const u8 *) src + tmp;                                             \
+    dst = (u8 *) dst + tmp;                                                   \
+    if (len >= 32 + 16 - offset)                                              \
+      {                                                                       \
+	while (len >= 32 + 16 - offset)                                       \
+	  {                                                                   \
+	    xmm0 = _mm_loadu_si128 (                                          \
+	      (const __m128i *) ((const u8 *) src - offset + 0 * 16));        \
+	    len -= 32;                                                        \
+	    xmm1 = _mm_loadu_si128 (                                          \
+	      (const __m128i *) ((const u8 *) src - offset + 1 * 16));        \
+	    xmm2 = _mm_loadu_si128 (                                          \
+	      (const __m128i *) ((const u8 *) src - offset + 2 * 16));        \
+	    src = (const u8 *) src + 32;                                      \
+	    _mm_storeu_si128 ((__m128i *) ((u8 *) dst + 0 * 16),              \
+			      _mm_alignr_epi8 (xmm1, xmm0, offset));          \
+	    _mm_storeu_si128 ((__m128i *) ((u8 *) dst + 1 * 16),              \
+			      _mm_alignr_epi8 (xmm2, xmm1, offset));          \
+	    dst = (u8 *) dst + 32;                                            \
+	  }                                                                   \
+	tmp = len;                                                            \
+	len = ((len - 16 + offset) & 31) + 16 - offset;                       \
+	tmp -= len;                                                           \
+	src = (const u8 *) src + tmp;                                         \
+	dst = (u8 *) dst + tmp;                                               \
+      }                                                                       \
+  })
 
 /**
  * Macro for copying unaligned block from one location to another,
  * 47 bytes leftover maximum,
  * locations should not overlap.
- * Use switch here because the aligning instruction requires immediate value for shift count.
- * Requirements:
+ * Use switch here because the aligning instruction requires immediate value
+ * for shift count. Requirements:
  * - Store is aligned
  * - Load offset is <offset>, which must be within [1, 15]
- * - For <src>, make sure <offset> bit backwards & <16 - offset> bit forwards are available for loading
+ * - For <src>, make sure <offset> bit backwards & <16 - offset> bit forwards
+ * are available for loading
  * - <dst>, <src>, <len> must be variables
- * - __m128i <xmm0> ~ <xmm8> used in CLIB_MVUNALIGN_LEFT47_IMM must be pre-defined
+ * - __m128i <xmm0> ~ <xmm8> used in CLIB_MVUNALIGN_LEFT47_IMM must be
+ * pre-defined
  */
-#define CLIB_MVUNALIGN_LEFT47(dst, src, len, offset)                  \
-({                                                                    \
-    switch (offset) {                                                 \
-    case 0x01: CLIB_MVUNALIGN_LEFT47_IMM(dst, src, n, 0x01); break;   \
-    case 0x02: CLIB_MVUNALIGN_LEFT47_IMM(dst, src, n, 0x02); break;   \
-    case 0x03: CLIB_MVUNALIGN_LEFT47_IMM(dst, src, n, 0x03); break;   \
-    case 0x04: CLIB_MVUNALIGN_LEFT47_IMM(dst, src, n, 0x04); break;   \
-    case 0x05: CLIB_MVUNALIGN_LEFT47_IMM(dst, src, n, 0x05); break;   \
-    case 0x06: CLIB_MVUNALIGN_LEFT47_IMM(dst, src, n, 0x06); break;   \
-    case 0x07: CLIB_MVUNALIGN_LEFT47_IMM(dst, src, n, 0x07); break;   \
-    case 0x08: CLIB_MVUNALIGN_LEFT47_IMM(dst, src, n, 0x08); break;   \
-    case 0x09: CLIB_MVUNALIGN_LEFT47_IMM(dst, src, n, 0x09); break;   \
-    case 0x0A: CLIB_MVUNALIGN_LEFT47_IMM(dst, src, n, 0x0A); break;   \
-    case 0x0B: CLIB_MVUNALIGN_LEFT47_IMM(dst, src, n, 0x0B); break;   \
-    case 0x0C: CLIB_MVUNALIGN_LEFT47_IMM(dst, src, n, 0x0C); break;   \
-    case 0x0D: CLIB_MVUNALIGN_LEFT47_IMM(dst, src, n, 0x0D); break;   \
-    case 0x0E: CLIB_MVUNALIGN_LEFT47_IMM(dst, src, n, 0x0E); break;   \
-    case 0x0F: CLIB_MVUNALIGN_LEFT47_IMM(dst, src, n, 0x0F); break;   \
-    default:;                                                         \
-    }                                                                 \
-})
+#define CLIB_MVUNALIGN_LEFT47(dst, src, len, offset)                          \
+  ({                                                                          \
+    switch (offset)                                                           \
+      {                                                                       \
+      case 0x01:                                                              \
+	CLIB_MVUNALIGN_LEFT47_IMM (dst, src, n, 0x01);                        \
+	break;                                                                \
+      case 0x02:                                                              \
+	CLIB_MVUNALIGN_LEFT47_IMM (dst, src, n, 0x02);                        \
+	break;                                                                \
+      case 0x03:                                                              \
+	CLIB_MVUNALIGN_LEFT47_IMM (dst, src, n, 0x03);                        \
+	break;                                                                \
+      case 0x04:                                                              \
+	CLIB_MVUNALIGN_LEFT47_IMM (dst, src, n, 0x04);                        \
+	break;                                                                \
+      case 0x05:                                                              \
+	CLIB_MVUNALIGN_LEFT47_IMM (dst, src, n, 0x05);                        \
+	break;                                                                \
+      case 0x06:                                                              \
+	CLIB_MVUNALIGN_LEFT47_IMM (dst, src, n, 0x06);                        \
+	break;                                                                \
+      case 0x07:                                                              \
+	CLIB_MVUNALIGN_LEFT47_IMM (dst, src, n, 0x07);                        \
+	break;                                                                \
+      case 0x08:                                                              \
+	CLIB_MVUNALIGN_LEFT47_IMM (dst, src, n, 0x08);                        \
+	break;                                                                \
+      case 0x09:                                                              \
+	CLIB_MVUNALIGN_LEFT47_IMM (dst, src, n, 0x09);                        \
+	break;                                                                \
+      case 0x0A:                                                              \
+	CLIB_MVUNALIGN_LEFT47_IMM (dst, src, n, 0x0A);                        \
+	break;                                                                \
+      case 0x0B:                                                              \
+	CLIB_MVUNALIGN_LEFT47_IMM (dst, src, n, 0x0B);                        \
+	break;                                                                \
+      case 0x0C:                                                              \
+	CLIB_MVUNALIGN_LEFT47_IMM (dst, src, n, 0x0C);                        \
+	break;                                                                \
+      case 0x0D:                                                              \
+	CLIB_MVUNALIGN_LEFT47_IMM (dst, src, n, 0x0D);                        \
+	break;                                                                \
+      case 0x0E:                                                              \
+	CLIB_MVUNALIGN_LEFT47_IMM (dst, src, n, 0x0E);                        \
+	break;                                                                \
+      case 0x0F:                                                              \
+	CLIB_MVUNALIGN_LEFT47_IMM (dst, src, n, 0x0F);                        \
+	break;                                                                \
+      default:;                                                               \
+      }                                                                       \
+  })
 
 static inline void *
 clib_memcpy_fast_sse3 (void *dst, const void *src, size_t n)
@@ -197,9 +253,9 @@ clib_memcpy_fast_sse3 (void *dst, const void *src, size_t n)
   size_t dstofss;
   size_t srcofs;
 
-	/**
-	 * Copy less than 16 bytes
-	 */
+  /**
+   * Copy less than 16 bytes
+   */
   if (n < 16)
     {
       if (n & 0x01)
@@ -349,15 +405,12 @@ clib_memcpy_fast_sse3 (void *dst, const void *src, size_t n)
   goto COPY_BLOCK_64_BACK15;
 }
 
-/* *INDENT-OFF* */
-WARN_ON (stringop-overflow)
-/* *INDENT-ON* */
+WARN_ON (stringop - overflow)
 
 #undef CLIB_MVUNALIGN_LEFT47_IMM
 #undef CLIB_MVUNALIGN_LEFT47
 
 #endif /* included_clib_memcpy_sse3_h */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

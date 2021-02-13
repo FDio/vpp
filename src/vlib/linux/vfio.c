@@ -35,7 +35,7 @@
 linux_vfio_main_t vfio_main;
 
 clib_error_t *
-vfio_map_physmem_page (vlib_main_t * vm, void *addr)
+vfio_map_physmem_page (vlib_main_t *vm, void *addr)
 {
   vlib_physmem_main_t *vpm = &vm->physmem_main;
   linux_vfio_main_t *lvm = &vfio_main;
@@ -50,8 +50,10 @@ vfio_map_physmem_page (vlib_main_t * vm, void *addr)
 
   if (clib_bitmap_get (lvm->physmem_pages_mapped, page_index))
     {
-      vlib_log_debug (lvm->log_default, "map DMA va:%p page:%u already "
-		      "mapped", addr, page_index);
+      vlib_log_debug (lvm->log_default,
+		      "map DMA va:%p page:%u already "
+		      "mapped",
+		      addr, page_index);
       return 0;
     }
 
@@ -60,19 +62,23 @@ vfio_map_physmem_page (vlib_main_t * vm, void *addr)
   dm.vaddr = physmem_start + (page_index << log2_page_size);
   dm.size = 1ULL << log2_page_size;
   dm.iova = dm.vaddr;
-  vlib_log_debug (lvm->log_default, "map DMA page:%u va:0x%lx iova:%lx "
-		  "size:0x%lx", page_index, dm.vaddr, dm.iova, dm.size);
+  vlib_log_debug (lvm->log_default,
+		  "map DMA page:%u va:0x%lx iova:%lx "
+		  "size:0x%lx",
+		  page_index, dm.vaddr, dm.iova, dm.size);
 
   if (ioctl (lvm->container_fd, VFIO_IOMMU_MAP_DMA, &dm) == -1)
     {
-      vlib_log_err (lvm->log_default, "map DMA page:%u va:0x%lx iova:%lx "
-		    "size:0x%lx failed, error %s (errno %d)", page_index,
-		    dm.vaddr, dm.iova, dm.size, strerror (errno), errno);
+      vlib_log_err (lvm->log_default,
+		    "map DMA page:%u va:0x%lx iova:%lx "
+		    "size:0x%lx failed, error %s (errno %d)",
+		    page_index, dm.vaddr, dm.iova, dm.size, strerror (errno),
+		    errno);
       return clib_error_return_unix (0, "physmem DMA map failed");
     }
 
-  lvm->physmem_pages_mapped = clib_bitmap_set (lvm->physmem_pages_mapped,
-					       page_index, 1);
+  lvm->physmem_pages_mapped =
+    clib_bitmap_set (lvm->physmem_pages_mapped, page_index, 1);
   return 0;
 }
 
@@ -126,14 +132,14 @@ open_vfio_iommu_group (int group, int is_noiommu)
   group_status.argsz = sizeof (group_status);
   if (ioctl (fd, VFIO_GROUP_GET_STATUS, &group_status) < 0)
     {
-      err = clib_error_return_unix (0, "ioctl(VFIO_GROUP_GET_STATUS) '%s'",
-				    s);
+      err = clib_error_return_unix (0, "ioctl(VFIO_GROUP_GET_STATUS) '%s'", s);
       goto error;
     }
 
   if (!(group_status.flags & VFIO_GROUP_FLAGS_VIABLE))
     {
-      err = clib_error_return (0, "iommu group %d is not viable (not all "
+      err = clib_error_return (0,
+			       "iommu group %d is not viable (not all "
 			       "devices in this group bound to vfio-pci)",
 			       group);
       goto error;
@@ -141,8 +147,8 @@ open_vfio_iommu_group (int group, int is_noiommu)
 
   if (ioctl (fd, VFIO_GROUP_SET_CONTAINER, &lvm->container_fd) < 0)
     {
-      err = clib_error_return_unix (0, "ioctl(VFIO_GROUP_SET_CONTAINER) '%s'",
-				    s);
+      err =
+	clib_error_return_unix (0, "ioctl(VFIO_GROUP_SET_CONTAINER) '%s'", s);
       goto error;
     }
 
@@ -156,11 +162,10 @@ open_vfio_iommu_group (int group, int is_noiommu)
       if (ioctl (lvm->container_fd, VFIO_SET_IOMMU, lvm->iommu_mode) < 0)
 	{
 	  err = clib_error_return_unix (0, "ioctl(VFIO_SET_IOMMU) "
-					"'/dev/vfio/vfio'");
+					   "'/dev/vfio/vfio'");
 	  goto error;
 	}
     }
-
 
   pool_get (lvm->iommu_groups, g);
   g->fd = fd;
@@ -174,7 +179,7 @@ error:
 }
 
 clib_error_t *
-linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp,
+linux_vfio_group_get_device_fd (vlib_pci_addr_t *addr, int *fdp,
 				int *is_noiommu)
 {
   clib_error_t *err = 0;
@@ -185,9 +190,8 @@ linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp,
   int fd;
 
   *is_noiommu = 0;
-  s =
-    format (s, "/sys/bus/pci/devices/%U/iommu_group%c", format_vlib_pci_addr,
-	    addr, 0);
+  s = format (s, "/sys/bus/pci/devices/%U/iommu_group%c", format_vlib_pci_addr,
+	      addr, 0);
   tmpstr = clib_sysfs_link_to_name ((char *) s);
   if (tmpstr)
     {
@@ -237,7 +241,7 @@ error:
 }
 
 clib_error_t *
-linux_vfio_init (vlib_main_t * vm)
+linux_vfio_init (vlib_main_t *vm)
 {
   linux_vfio_main_t *lvm = &vfio_main;
 
@@ -248,12 +252,13 @@ linux_vfio_init (vlib_main_t * vm)
 }
 
 u8 *
-format_vfio_region_info (u8 * s, va_list * args)
+format_vfio_region_info (u8 *s, va_list *args)
 {
   struct vfio_region_info *r = va_arg (*args, struct vfio_region_info *);
 
-  s = format (s, "region_info index:%u size:0x%lx offset:0x%lx flags:",
-	      r->index, r->size, r->offset);
+  s =
+    format (s, "region_info index:%u size:0x%lx offset:0x%lx flags:", r->index,
+	    r->size, r->offset);
 
   if (r->flags & VFIO_REGION_INFO_FLAG_READ)
     s = format (s, " rd");

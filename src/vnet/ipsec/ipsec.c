@@ -30,7 +30,7 @@ esp_async_post_next_t esp_encrypt_async_next;
 esp_async_post_next_t esp_decrypt_async_next;
 
 static clib_error_t *
-ipsec_check_ah_support (ipsec_sa_t * sa)
+ipsec_check_ah_support (ipsec_sa_t *sa)
 {
   ipsec_main_t *im = &ipsec_main;
 
@@ -45,7 +45,7 @@ ipsec_check_ah_support (ipsec_sa_t * sa)
 }
 
 static clib_error_t *
-ipsec_check_esp_support (ipsec_sa_t * sa)
+ipsec_check_esp_support (ipsec_sa_t *sa)
 {
   ipsec_main_t *im = &ipsec_main;
 
@@ -66,7 +66,7 @@ ipsec_check_esp_support (ipsec_sa_t * sa)
 }
 
 clib_error_t *
-ipsec_add_del_sa_sess_cb (ipsec_main_t * im, u32 sa_index, u8 is_add)
+ipsec_add_del_sa_sess_cb (ipsec_main_t *im, u32 sa_index, u8 is_add)
 {
   ipsec_ah_backend_t *ah =
     pool_elt_at_index (im->ah_backends, im->ah_current_backend);
@@ -88,7 +88,7 @@ ipsec_add_del_sa_sess_cb (ipsec_main_t * im, u32 sa_index, u8 is_add)
 }
 
 clib_error_t *
-ipsec_check_support_cb (ipsec_main_t * im, ipsec_sa_t * sa)
+ipsec_check_support_cb (ipsec_main_t *im, ipsec_sa_t *sa)
 {
   clib_error_t *error = 0;
 
@@ -109,11 +109,10 @@ ipsec_check_support_cb (ipsec_main_t * im, ipsec_sa_t * sa)
   return error;
 }
 
-
 static void
-ipsec_add_node (vlib_main_t * vm, const char *node_name,
-		const char *prev_node_name, u32 * out_node_index,
-		u32 * out_next_index)
+ipsec_add_node (vlib_main_t *vm, const char *node_name,
+		const char *prev_node_name, u32 *out_node_index,
+		u32 *out_next_index)
 {
   vlib_node_t *prev_node, *node;
   prev_node = vlib_get_node_by_name (vm, (u8 *) prev_node_name);
@@ -125,13 +124,13 @@ ipsec_add_node (vlib_main_t * vm, const char *node_name,
 }
 
 void
-ipsec_add_feature (const char *arc_name,
-		   const char *node_name, u32 * out_feature_index)
+ipsec_add_feature (const char *arc_name, const char *node_name,
+		   u32 *out_feature_index)
 {
   u8 arc;
 
   arc = vnet_get_feature_arc_index (arc_name);
-  ASSERT (arc != (u8) ~ 0);
+  ASSERT (arc != (u8) ~0);
   *out_feature_index = vnet_get_feature_index (arc, node_name);
 }
 
@@ -172,16 +171,15 @@ ipsec_register_udp_port (u16 port)
   n_regs = (p ? p[0] : 0);
 
   if (0 == n_regs++)
-    udp_register_dst_port (vlib_get_main (), port,
-			   ipsec4_tun_input_node.index, 1);
+    udp_register_dst_port (vlib_get_main (), port, ipsec4_tun_input_node.index,
+			   1);
 
   hash_unset (im->udp_port_registrations, port);
   hash_set (im->udp_port_registrations, port, n_regs);
 }
 
 u32
-ipsec_register_ah_backend (vlib_main_t * vm, ipsec_main_t * im,
-			   const char *name,
+ipsec_register_ah_backend (vlib_main_t *vm, ipsec_main_t *im, const char *name,
 			   const char *ah4_encrypt_node_name,
 			   const char *ah4_decrypt_node_name,
 			   const char *ah6_encrypt_node_name,
@@ -254,19 +252,18 @@ ipsec_register_esp_backend (
 }
 
 clib_error_t *
-ipsec_rsc_in_use (ipsec_main_t * im)
+ipsec_rsc_in_use (ipsec_main_t *im)
 {
   /* return an error is crypto resource are in use */
   if (pool_elts (im->sad) > 0)
-    return clib_error_return (0,
-			      "%d SA entries configured",
+    return clib_error_return (0, "%d SA entries configured",
 			      pool_elts (im->sad));
 
   return (NULL);
 }
 
 int
-ipsec_select_ah_backend (ipsec_main_t * im, u32 backend_idx)
+ipsec_select_ah_backend (ipsec_main_t *im, u32 backend_idx)
 {
   if (ipsec_rsc_in_use (im))
     return VNET_API_ERROR_RSRC_IN_USE;
@@ -289,7 +286,7 @@ ipsec_select_ah_backend (ipsec_main_t * im, u32 backend_idx)
 }
 
 int
-ipsec_select_esp_backend (ipsec_main_t * im, u32 backend_idx)
+ipsec_select_esp_backend (ipsec_main_t *im, u32 backend_idx)
 {
   if (ipsec_rsc_in_use (im))
     return VNET_API_ERROR_RSRC_IN_USE;
@@ -300,8 +297,8 @@ ipsec_select_esp_backend (ipsec_main_t * im, u32 backend_idx)
   /* disable current backend */
   if (im->esp_current_backend != ~0)
     {
-      ipsec_esp_backend_t *cb = pool_elt_at_index (im->esp_backends,
-						   im->esp_current_backend);
+      ipsec_esp_backend_t *cb =
+	pool_elt_at_index (im->esp_backends, im->esp_current_backend);
       if (cb->enable_disable_cb)
 	{
 	  if ((cb->enable_disable_cb) (0) != 0)
@@ -343,23 +340,23 @@ ipsec_set_async_mode (u32 is_enabled)
 
   /* lock all SAs before change im->async_mode */
   pool_foreach (sa, im->sad)
-  {
-    fib_node_lock (&sa->node);
-  }
+    {
+      fib_node_lock (&sa->node);
+    }
 
   im->async_mode = is_enabled;
 
   /* change SA crypto op data before unlock them */
   pool_foreach (sa, im->sad)
-  {
-    sa->crypto_op_data = is_enabled ?
-      sa->async_op_data.data : sa->sync_op_data.data;
-    fib_node_unlock (&sa->node);
-  }
+    {
+      sa->crypto_op_data =
+	is_enabled ? sa->async_op_data.data : sa->sync_op_data.data;
+      fib_node_unlock (&sa->node);
+    }
 }
 
 static void
-crypto_engine_backend_register_post_node (vlib_main_t * vm)
+crypto_engine_backend_register_post_node (vlib_main_t *vm)
 {
   esp_async_post_next_t *eit;
   esp_async_post_next_t *dit;
@@ -388,7 +385,7 @@ crypto_engine_backend_register_post_node (vlib_main_t * vm)
 }
 
 static clib_error_t *
-ipsec_init (vlib_main_t * vm)
+ipsec_init (vlib_main_t *vm)
 {
   clib_error_t *error;
   ipsec_main_t *im = &ipsec_main;
@@ -412,18 +409,14 @@ ipsec_init (vlib_main_t * vm)
   im->ah_current_backend = ~0;
   im->esp_current_backend = ~0;
 
-  u32 idx = ipsec_register_ah_backend (vm, im, "crypto engine backend",
-				       "ah4-encrypt",
-				       "ah4-decrypt",
-				       "ah6-encrypt",
-				       "ah6-decrypt",
-				       ipsec_check_ah_support,
-				       NULL);
+  u32 idx = ipsec_register_ah_backend (
+    vm, im, "crypto engine backend", "ah4-encrypt", "ah4-decrypt",
+    "ah6-encrypt", "ah6-decrypt", ipsec_check_ah_support, NULL);
 
   im->ah_default_backend = idx;
   int rv = ipsec_select_ah_backend (im, idx);
   ASSERT (0 == rv);
-  (void) (rv);			// avoid warning
+  (void) (rv); // avoid warning
 
   idx = ipsec_register_esp_backend (
     vm, im, "crypto engine backend", "esp4-encrypt", "esp4-encrypt-tun",
@@ -434,7 +427,7 @@ ipsec_init (vlib_main_t * vm)
 
   rv = ipsec_select_esp_backend (im, idx);
   ASSERT (0 == rv);
-  (void) (rv);			// avoid warning
+  (void) (rv); // avoid warning
 
   if ((error = vlib_call_init_function (vm, ipsec_cli_init)))
     return error;

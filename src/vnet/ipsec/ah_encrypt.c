@@ -24,11 +24,10 @@
 #include <vnet/ipsec/ah.h>
 #include <vnet/tunnel/tunnel_dp.h>
 
-#define foreach_ah_encrypt_next \
-  _ (DROP, "error-drop")                           \
-  _ (HANDOFF, "handoff")                           \
+#define foreach_ah_encrypt_next                                               \
+  _ (DROP, "error-drop")                                                      \
+  _ (HANDOFF, "handoff")                                                      \
   _ (INTERFACE_OUTPUT, "interface-output")
-
 
 #define _(v, s) AH_ENCRYPT_NEXT_##v,
 typedef enum
@@ -38,22 +37,21 @@ typedef enum
     AH_ENCRYPT_N_NEXT,
 } ah_encrypt_next_t;
 
-#define foreach_ah_encrypt_error                                \
- _(RX_PKTS, "AH pkts received")                                 \
- _(CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)") \
- _(SEQ_CYCLED, "sequence number cycled")
-
+#define foreach_ah_encrypt_error                                              \
+  _ (RX_PKTS, "AH pkts received")                                             \
+  _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")             \
+  _ (SEQ_CYCLED, "sequence number cycled")
 
 typedef enum
 {
-#define _(sym,str) AH_ENCRYPT_ERROR_##sym,
+#define _(sym, str) AH_ENCRYPT_ERROR_##sym,
   foreach_ah_encrypt_error
 #undef _
     AH_ENCRYPT_N_ERROR,
 } ah_encrypt_error_t;
 
 static char *ah_encrypt_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ah_encrypt_error
 #undef _
 };
@@ -69,7 +67,7 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_ah_encrypt_trace (u8 * s, va_list * args)
+format_ah_encrypt_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -82,8 +80,8 @@ format_ah_encrypt_trace (u8 * s, va_list * args)
 }
 
 static_always_inline void
-ah_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
-		vnet_crypto_op_t * ops, vlib_buffer_t * b[], u16 * nexts)
+ah_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
+		vnet_crypto_op_t *ops, vlib_buffer_t *b[], u16 *nexts)
 {
   u32 n_fail, n_ops = vec_len (ops);
   vnet_crypto_op_t *op = ops;
@@ -131,9 +129,8 @@ typedef struct
 } ah_encrypt_packet_data_t;
 
 always_inline uword
-ah_encrypt_inline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame,
-		   int is_ip6)
+ah_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame, int is_ip6)
 {
   u32 n_left, *from, thread_index;
   int icv_size = 0;
@@ -172,8 +169,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	{
 	  if (current_sa_index != ~0)
 	    vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
-					     current_sa_index,
-					     current_sa_pkts,
+					     current_sa_index, current_sa_pkts,
 					     current_sa_bytes);
 	  current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
 	  sa0 = pool_elt_at_index (im->sad, current_sa_index);
@@ -276,9 +272,8 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  oh6_0->ah.nexthdr = next_hdr_type;
 	  oh6_0->ah.spi = clib_net_to_host_u32 (sa0->spi);
 	  oh6_0->ah.seq_no = clib_net_to_host_u32 (sa0->seq);
-	  oh6_0->ip6.payload_length =
-	    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[0]) -
-				  sizeof (ip6_header_t));
+	  oh6_0->ip6.payload_length = clib_host_to_net_u16 (
+	    vlib_buffer_length_in_chain (vm, b[0]) - sizeof (ip6_header_t));
 	  oh6_0->ah.hdrlen =
 	    (sizeof (ah_header_t) + icv_size + padding_len) / 4 - 2;
 	}
@@ -324,7 +319,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 
 	  clib_memcpy_fast (&oh0->ip4, &ip4_hdr_template,
 			    sizeof (ip4_header_t) -
-			    sizeof (ip4_address_pair_t));
+			      sizeof (ip4_address_pair_t));
 
 	  oh0->ip4.length =
 	    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[0]));
@@ -338,8 +333,7 @@ ah_encrypt_inline (vlib_main_t * vm,
       if (PREDICT_TRUE (!is_ip6 && ipsec_sa_is_set_IS_TUNNEL (sa0) &&
 			!ipsec_sa_is_set_IS_TUNNEL_V6 (sa0)))
 	{
-	  clib_memcpy_fast (&oh0->ip4.address_pair,
-			    &sa0->ip4_hdr.address_pair,
+	  clib_memcpy_fast (&oh0->ip4.address_pair, &sa0->ip4_hdr.address_pair,
 			    sizeof (ip4_address_pair_t));
 
 	  next[0] = sa0->dpo.dpoi_next_node;
@@ -348,8 +342,7 @@ ah_encrypt_inline (vlib_main_t * vm,
       else if (is_ip6 && ipsec_sa_is_set_IS_TUNNEL (sa0) &&
 	       ipsec_sa_is_set_IS_TUNNEL_V6 (sa0))
 	{
-	  clib_memcpy_fast (&oh6_0->ip6.src_address,
-			    &sa0->ip6_hdr.src_address,
+	  clib_memcpy_fast (&oh6_0->ip6.src_address, &sa0->ip6_hdr.src_address,
 			    sizeof (ip6_address_t) * 2);
 	  next[0] = sa0->dpo.dpoi_next_node;
 	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = sa0->dpo.dpoi_index;
@@ -363,7 +356,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	  op->src = vlib_buffer_get_current (b[0]);
 	  op->len = b[0]->current_length;
 	  op->digest = vlib_buffer_get_current (b[0]) + ip_hdr_size +
-	    sizeof (ah_header_t);
+		       sizeof (ah_header_t);
 	  clib_memset (op->digest, 0, icv_size);
 	  op->digest_len = icv_size;
 	  op->key_index = sa0->integ_key_index;
@@ -408,8 +401,8 @@ ah_encrypt_inline (vlib_main_t * vm,
   pd = pkt_data;
   b = bufs;
 
-  vlib_node_increment_counter (vm, node->node_index,
-			       AH_ENCRYPT_ERROR_RX_PKTS, n_left);
+  vlib_node_increment_counter (vm, node->node_index, AH_ENCRYPT_ERROR_RX_PKTS,
+			       n_left);
   vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
 				   current_sa_index, current_sa_pkts,
 				   current_sa_bytes);
@@ -449,14 +442,12 @@ ah_encrypt_inline (vlib_main_t * vm,
   return n_left;
 }
 
-VLIB_NODE_FN (ah4_encrypt_node) (vlib_main_t * vm,
-				 vlib_node_runtime_t * node,
-				 vlib_frame_t * from_frame)
+VLIB_NODE_FN (ah4_encrypt_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return ah_encrypt_inline (vm, node, from_frame, 0 /* is_ip6 */ );
+  return ah_encrypt_inline (vm, node, from_frame, 0 /* is_ip6 */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ah4_encrypt_node) = {
   .name = "ah4-encrypt",
   .vector_size = sizeof (u32),
@@ -473,16 +464,13 @@ VLIB_REGISTER_NODE (ah4_encrypt_node) = {
     [AH_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "interface-output",
   },
 };
-/* *INDENT-ON* */
 
-VLIB_NODE_FN (ah6_encrypt_node) (vlib_main_t * vm,
-				 vlib_node_runtime_t * node,
-				 vlib_frame_t * from_frame)
+VLIB_NODE_FN (ah6_encrypt_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return ah_encrypt_inline (vm, node, from_frame, 1 /* is_ip6 */ );
+  return ah_encrypt_inline (vm, node, from_frame, 1 /* is_ip6 */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ah6_encrypt_node) = {
   .name = "ah6-encrypt",
   .vector_size = sizeof (u32),
@@ -499,7 +487,6 @@ VLIB_REGISTER_NODE (ah6_encrypt_node) = {
     [AH_ENCRYPT_NEXT_INTERFACE_OUTPUT] = "interface-output",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

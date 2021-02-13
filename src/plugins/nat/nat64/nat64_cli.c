@@ -17,9 +17,9 @@
 #include <nat/nat64/nat64.h>
 
 static clib_error_t *
-nat64_plugin_enable_disable_command_fn (vlib_main_t * vm,
-					unformat_input_t * input,
-					vlib_cli_command_t * cmd)
+nat64_plugin_enable_disable_command_fn (vlib_main_t *vm,
+					unformat_input_t *input,
+					vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 enable = 0, is_set = 0;
@@ -39,7 +39,8 @@ nat64_plugin_enable_disable_command_fn (vlib_main_t * vm,
 	  unformat (line_input, "st-memory %u", &c.st_memory_size);
 	  enable = 1;
 	}
-      else if (!is_set && unformat (line_input, "disable"));
+      else if (!is_set && unformat (line_input, "disable"))
+	;
       else
 	{
 	  error = clib_error_return (0, "unknown input '%U'",
@@ -65,9 +66,8 @@ done:
 }
 
 static clib_error_t *
-nat64_add_del_pool_addr_command_fn (vlib_main_t * vm,
-				    unformat_input_t * input,
-				    vlib_cli_command_t * cmd)
+nat64_add_del_pool_addr_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t start_addr, end_addr, this_addr;
@@ -83,8 +83,7 @@ nat64_add_del_pool_addr_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%U - %U",
-		    unformat_ip4_address, &start_addr,
+      if (unformat (line_input, "%U - %U", unformat_ip4_address, &start_addr,
 		    unformat_ip4_address, &end_addr))
 	;
       else if (unformat (line_input, "tenant-vrf %u", &vrf_id))
@@ -120,18 +119,15 @@ nat64_add_del_pool_addr_command_fn (vlib_main_t * vm,
       switch (rv)
 	{
 	case VNET_API_ERROR_NO_SUCH_ENTRY:
-	  error =
-	    clib_error_return (0, "NAT64 pool address %U not exist.",
-			       format_ip4_address, &this_addr);
+	  error = clib_error_return (0, "NAT64 pool address %U not exist.",
+				     format_ip4_address, &this_addr);
 	  goto done;
 	case VNET_API_ERROR_VALUE_EXIST:
-	  error =
-	    clib_error_return (0, "NAT64 pool address %U exist.",
-			       format_ip4_address, &this_addr);
+	  error = clib_error_return (0, "NAT64 pool address %U exist.",
+				     format_ip4_address, &this_addr);
 	  goto done;
 	default:
 	  break;
-
 	}
       increment_v4_address (&this_addr);
     }
@@ -143,7 +139,7 @@ done:
 }
 
 static int
-nat64_cli_pool_walk (nat64_address_t * ap, void *ctx)
+nat64_cli_pool_walk (nat64_address_t *ap, void *ctx)
 {
   vlib_main_t *vm = ctx;
 
@@ -153,13 +149,13 @@ nat64_cli_pool_walk (nat64_address_t * ap, void *ctx)
       fib = fib_table_get (ap->fib_index, FIB_PROTOCOL_IP6);
       if (!fib)
 	return -1;
-      vlib_cli_output (vm, " %U tenant VRF: %u", format_ip4_address,
-		       &ap->addr, fib->ft_table_id);
+      vlib_cli_output (vm, " %U tenant VRF: %u", format_ip4_address, &ap->addr,
+		       fib->ft_table_id);
     }
   else
     vlib_cli_output (vm, " %U", format_ip4_address, &ap->addr);
 
-#define _(N, i, n, s) \
+#define _(N, i, n, s)                                                         \
   vlib_cli_output (vm, "  %d busy %s ports", ap->busy_##n##_ports, s);
   foreach_nat_protocol
 #undef _
@@ -167,9 +163,8 @@ nat64_cli_pool_walk (nat64_address_t * ap, void *ctx)
 }
 
 static clib_error_t *
-nat64_show_pool_command_fn (vlib_main_t * vm,
-			    unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+nat64_show_pool_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   vlib_cli_output (vm, "NAT64 pool:");
   nat64_pool_addr_walk (nat64_cli_pool_walk, vm);
@@ -178,9 +173,8 @@ nat64_show_pool_command_fn (vlib_main_t * vm,
 }
 
 static clib_error_t *
-nat64_interface_feature_command_fn (vlib_main_t * vm,
-				    unformat_input_t *
-				    input, vlib_cli_command_t * cmd)
+nat64_interface_feature_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
@@ -197,11 +191,11 @@ nat64_interface_feature_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "in %U", unformat_vnet_sw_interface,
-		    vnm, &sw_if_index))
+      if (unformat (line_input, "in %U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	vec_add1 (inside_sw_if_indices, sw_if_index);
-      else if (unformat (line_input, "out %U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
+      else if (unformat (line_input, "out %U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	vec_add1 (outside_sw_if_indices, sw_if_index);
       else if (unformat (line_input, "del"))
 	is_add = 0;
@@ -222,28 +216,23 @@ nat64_interface_feature_command_fn (vlib_main_t * vm,
 	  switch (rv)
 	    {
 	    case VNET_API_ERROR_NO_SUCH_ENTRY:
-	      error =
-		clib_error_return (0, "%U NAT64 feature not enabled.",
-				   format_vnet_sw_if_index_name, vnm,
-				   sw_if_index);
+	      error = clib_error_return (0, "%U NAT64 feature not enabled.",
+					 format_vnet_sw_if_index_name, vnm,
+					 sw_if_index);
 	      goto done;
 	    case VNET_API_ERROR_VALUE_EXIST:
-	      error =
-		clib_error_return (0, "%U NAT64 feature already enabled.",
-				   format_vnet_sw_if_index_name, vnm,
-				   vnm, sw_if_index);
+	      error = clib_error_return (
+		0, "%U NAT64 feature already enabled.",
+		format_vnet_sw_if_index_name, vnm, vnm, sw_if_index);
 	      goto done;
 	    case VNET_API_ERROR_INVALID_VALUE:
 	    case VNET_API_ERROR_INVALID_VALUE_2:
-	      error =
-		clib_error_return (0,
-				   "%U NAT64 feature enable/disable failed.",
-				   format_vnet_sw_if_index_name, vnm,
-				   sw_if_index);
+	      error = clib_error_return (
+		0, "%U NAT64 feature enable/disable failed.",
+		format_vnet_sw_if_index_name, vnm, sw_if_index);
 	      goto done;
 	    default:
 	      break;
-
 	    }
 	}
     }
@@ -257,28 +246,23 @@ nat64_interface_feature_command_fn (vlib_main_t * vm,
 	  switch (rv)
 	    {
 	    case VNET_API_ERROR_NO_SUCH_ENTRY:
-	      error =
-		clib_error_return (0, "%U NAT64 feature not enabled.",
-				   format_vnet_sw_if_index_name, vnm,
-				   sw_if_index);
+	      error = clib_error_return (0, "%U NAT64 feature not enabled.",
+					 format_vnet_sw_if_index_name, vnm,
+					 sw_if_index);
 	      goto done;
 	    case VNET_API_ERROR_VALUE_EXIST:
-	      error =
-		clib_error_return (0, "%U NAT64 feature already enabled.",
-				   format_vnet_sw_if_index_name, vnm,
-				   sw_if_index);
+	      error = clib_error_return (
+		0, "%U NAT64 feature already enabled.",
+		format_vnet_sw_if_index_name, vnm, sw_if_index);
 	      goto done;
 	    case VNET_API_ERROR_INVALID_VALUE:
 	    case VNET_API_ERROR_INVALID_VALUE_2:
-	      error =
-		clib_error_return (0,
-				   "%U NAT64 feature enable/disable failed.",
-				   format_vnet_sw_if_index_name, vnm,
-				   sw_if_index);
+	      error = clib_error_return (
+		0, "%U NAT64 feature enable/disable failed.",
+		format_vnet_sw_if_index_name, vnm, sw_if_index);
 	      goto done;
 	    default:
 	      break;
-
 	    }
 	}
     }
@@ -292,23 +276,22 @@ done:
 }
 
 static int
-nat64_cli_interface_walk (nat64_interface_t * i, void *ctx)
+nat64_cli_interface_walk (nat64_interface_t *i, void *ctx)
 {
   vlib_main_t *vm = ctx;
   vnet_main_t *vnm = vnet_get_main ();
 
-  vlib_cli_output (vm, " %U %s", format_vnet_sw_if_index_name, vnm,
-		   i->sw_if_index,
-		   (nat64_interface_is_inside (i)
-		    && nat64_interface_is_outside (i)) ? "in out" :
-		   nat64_interface_is_inside (i) ? "in" : "out");
+  vlib_cli_output (
+    vm, " %U %s", format_vnet_sw_if_index_name, vnm, i->sw_if_index,
+    (nat64_interface_is_inside (i) && nat64_interface_is_outside (i)) ?
+      "in out" :
+      nat64_interface_is_inside (i) ? "in" : "out");
   return 0;
 }
 
 static clib_error_t *
-nat64_show_interfaces_command_fn (vlib_main_t * vm,
-				  unformat_input_t *
-				  input, vlib_cli_command_t * cmd)
+nat64_show_interfaces_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				  vlib_cli_command_t *cmd)
 {
   vlib_cli_output (vm, "NAT64 interfaces:");
   nat64_interfaces_walk (nat64_cli_interface_walk, vm);
@@ -317,10 +300,8 @@ nat64_show_interfaces_command_fn (vlib_main_t * vm,
 }
 
 static clib_error_t *
-nat64_add_del_static_bib_command_fn (vlib_main_t *
-				     vm,
-				     unformat_input_t
-				     * input, vlib_cli_command_t * cmd)
+nat64_add_del_static_bib_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				     vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
@@ -339,20 +320,18 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%U %u", unformat_ip6_address,
-		    &in_addr, &in_port))
+      if (unformat (line_input, "%U %u", unformat_ip6_address, &in_addr,
+		    &in_port))
 	;
-      else if (unformat (line_input, "%U %u", unformat_ip4_address,
-			 &out_addr, &out_port))
+      else if (unformat (line_input, "%U %u", unformat_ip4_address, &out_addr,
+			 &out_port))
 	;
       else if (unformat (line_input, "vrf %u", &vrf_id))
 	;
       else if (unformat (line_input, "%U", unformat_nat_protocol, &proto))
 	;
-      else
-	if (unformat
-	    (line_input, "%U %U %u", unformat_ip6_address, &in_addr,
-	     unformat_ip4_address, &out_addr, &protocol))
+      else if (unformat (line_input, "%U %U %u", unformat_ip6_address,
+			 &in_addr, unformat_ip4_address, &out_addr, &protocol))
 	p = (u8) protocol;
       else if (unformat (line_input, "del"))
 	is_add = 0;
@@ -383,9 +362,8 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
       p = nat_proto_to_ip_proto (proto);
     }
 
-  rv =
-    nat64_add_del_static_bib_entry (&in_addr, &out_addr, (u16) in_port,
-				    (u16) out_port, p, vrf_id, is_add);
+  rv = nat64_add_del_static_bib_entry (&in_addr, &out_addr, (u16) in_port,
+				       (u16) out_port, p, vrf_id, is_add);
 
   switch (rv)
     {
@@ -400,8 +378,7 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
       goto done;
     case VNET_API_ERROR_INVALID_VALUE:
       error =
-	clib_error_return (0,
-			   "Outside address %U and port %u already in use.",
+	clib_error_return (0, "Outside address %U and port %u already in use.",
 			   format_ip4_address, &out_addr, out_port);
       goto done;
     case VNET_API_ERROR_INVALID_VALUE_2:
@@ -417,7 +394,7 @@ done:
 }
 
 static int
-nat64_cli_bib_walk (nat64_db_bib_entry_t * bibe, void *ctx)
+nat64_cli_bib_walk (nat64_db_bib_entry_t *bibe, void *ctx)
 {
   vlib_main_t *vm = ctx;
   fib_table_t *fib;
@@ -442,17 +419,16 @@ nat64_cli_bib_walk (nat64_db_bib_entry_t * bibe, void *ctx)
       break;
     default:
       vlib_cli_output (vm, " %U %U protocol %u vrf %u %s %u sessions",
-		       format_ip6_address, &bibe->in_addr,
-		       format_ip4_address, &bibe->out_addr,
-		       bibe->proto, fib->ft_table_id,
+		       format_ip6_address, &bibe->in_addr, format_ip4_address,
+		       &bibe->out_addr, bibe->proto, fib->ft_table_id,
 		       bibe->is_static ? "static" : "dynamic", bibe->ses_num);
     }
   return 0;
 }
 
 static clib_error_t *
-nat64_show_bib_command_fn (vlib_main_t * vm,
-			   unformat_input_t * input, vlib_cli_command_t * cmd)
+nat64_show_bib_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   nat64_main_t *nm = &nat64_main;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -482,10 +458,8 @@ nat64_show_bib_command_fn (vlib_main_t * vm,
   else
     vlib_cli_output (vm, "NAT64 %U BIB entries:", format_nat_protocol, proto);
 
-  /* *INDENT-OFF* */
   vec_foreach (db, nm->db)
     nat64_db_bib_walk (db, p, nat64_cli_bib_walk, vm);
-  /* *INDENT-ON* */
 
 done:
   unformat_free (line_input);
@@ -500,7 +474,7 @@ typedef struct nat64_cli_st_walk_ctx_t_
 } nat64_cli_st_walk_ctx_t;
 
 static int
-nat64_cli_st_walk (nat64_db_st_entry_t * ste, void *arg)
+nat64_cli_st_walk (nat64_db_st_entry_t *ste, void *arg)
 {
   nat64_cli_st_walk_ctx_t *ctx = arg;
   vlib_main_t *vm = ctx->vm;
@@ -519,40 +493,32 @@ nat64_cli_st_walk (nat64_db_st_entry_t * ste, void *arg)
 
   if (ste->proto == IP_PROTOCOL_ICMP)
     vlib_cli_output (vm, " %U %U %u %U %U %u protocol %U vrf %u",
-		     format_ip6_address, &bibe->in_addr,
-		     format_ip6_address, &ste->in_r_addr,
-		     clib_net_to_host_u16 (bibe->in_port),
-		     format_ip4_address, &bibe->out_addr,
-		     format_ip4_address, &ste->out_r_addr,
-		     clib_net_to_host_u16 (bibe->out_port),
-		     format_nat_protocol,
-		     ip_proto_to_nat_proto (bibe->proto), vrf_id);
+		     format_ip6_address, &bibe->in_addr, format_ip6_address,
+		     &ste->in_r_addr, clib_net_to_host_u16 (bibe->in_port),
+		     format_ip4_address, &bibe->out_addr, format_ip4_address,
+		     &ste->out_r_addr, clib_net_to_host_u16 (bibe->out_port),
+		     format_nat_protocol, ip_proto_to_nat_proto (bibe->proto),
+		     vrf_id);
   else if (ste->proto == IP_PROTOCOL_TCP || ste->proto == IP_PROTOCOL_UDP)
-    vlib_cli_output (vm, " %U %u %U %u %U %u %U %u protcol %U vrf %u",
-		     format_ip6_address, &bibe->in_addr,
-		     clib_net_to_host_u16 (bibe->in_port),
-		     format_ip6_address, &ste->in_r_addr,
-		     clib_net_to_host_u16 (ste->r_port),
-		     format_ip4_address, &bibe->out_addr,
-		     clib_net_to_host_u16 (bibe->out_port),
-		     format_ip4_address, &ste->out_r_addr,
-		     clib_net_to_host_u16 (ste->r_port),
-		     format_nat_protocol,
-		     ip_proto_to_nat_proto (bibe->proto), vrf_id);
+    vlib_cli_output (
+      vm, " %U %u %U %u %U %u %U %u protcol %U vrf %u", format_ip6_address,
+      &bibe->in_addr, clib_net_to_host_u16 (bibe->in_port), format_ip6_address,
+      &ste->in_r_addr, clib_net_to_host_u16 (ste->r_port), format_ip4_address,
+      &bibe->out_addr, clib_net_to_host_u16 (bibe->out_port),
+      format_ip4_address, &ste->out_r_addr, clib_net_to_host_u16 (ste->r_port),
+      format_nat_protocol, ip_proto_to_nat_proto (bibe->proto), vrf_id);
   else
-    vlib_cli_output (vm, " %U %U %U %U protocol %u vrf %u",
-		     format_ip6_address, &bibe->in_addr,
-		     format_ip6_address, &ste->in_r_addr,
-		     format_ip4_address, &bibe->out_addr,
-		     format_ip4_address, &ste->out_r_addr,
-		     bibe->proto, vrf_id);
+    vlib_cli_output (vm, " %U %U %U %U protocol %u vrf %u", format_ip6_address,
+		     &bibe->in_addr, format_ip6_address, &ste->in_r_addr,
+		     format_ip4_address, &bibe->out_addr, format_ip4_address,
+		     &ste->out_r_addr, bibe->proto, vrf_id);
 
   return 0;
 }
 
 static clib_error_t *
-nat64_show_st_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+nat64_show_st_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   nat64_main_t *nm = &nat64_main;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -584,13 +550,12 @@ nat64_show_st_command_fn (vlib_main_t * vm,
     vlib_cli_output (vm, "NAT64 sessions:");
   else
     vlib_cli_output (vm, "NAT64 %U sessions:", format_nat_protocol, proto);
-  /* *INDENT-OFF* */
+
   vec_foreach (db, nm->db)
     {
       ctx.db = db;
       nat64_db_st_walk (db, p, nat64_cli_st_walk, &ctx);
     }
-  /* *INDENT-ON* */
 
 done:
   unformat_free (line_input);
@@ -599,8 +564,8 @@ done:
 }
 
 static clib_error_t *
-nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
-				 vlib_cli_command_t * cmd)
+nat64_add_del_prefix_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				 vlib_cli_command_t *cmd)
 {
   nat64_main_t *nm = &nat64_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -617,17 +582,14 @@ nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "%U/%u", unformat_ip6_address, &prefix, &plen))
+      if (unformat (line_input, "%U/%u", unformat_ip6_address, &prefix, &plen))
 	;
       else if (unformat (line_input, "tenant-vrf %u", &vrf_id))
 	;
       else if (unformat (line_input, "del"))
 	is_add = 0;
-      else
-	if (unformat
-	    (line_input, "interface %U", unformat_vnet_sw_interface, vnm,
-	     &sw_if_index))
+      else if (unformat (line_input, "interface %U",
+			 unformat_vnet_sw_interface, vnm, &sw_if_index))
 	;
       else
 	{
@@ -664,32 +626,24 @@ nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (sw_if_index != ~0)
     {
       u32 fib_index;
-      fib_prefix_t fibpfx = {
-	.fp_len = plen,
-	.fp_proto = FIB_PROTOCOL_IP6,
-	.fp_addr = {
-		    .ip6 = prefix}
-      };
+      fib_prefix_t fibpfx = { .fp_len = plen,
+			      .fp_proto = FIB_PROTOCOL_IP6,
+			      .fp_addr = { .ip6 = prefix } };
 
       if (is_add)
 	{
-	  fib_index =
-	    fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
-					       vrf_id, nm->fib_src_hi);
-	  fib_table_entry_update_one_path (fib_index, &fibpfx,
-					   nm->fib_src_hi,
-					   FIB_ENTRY_FLAG_NONE,
-					   DPO_PROTO_IP6, NULL,
-					   sw_if_index, ~0, 0,
-					   NULL, FIB_ROUTE_PATH_INTF_RX);
+	  fib_index = fib_table_find_or_create_and_lock (
+	    FIB_PROTOCOL_IP6, vrf_id, nm->fib_src_hi);
+	  fib_table_entry_update_one_path (fib_index, &fibpfx, nm->fib_src_hi,
+					   FIB_ENTRY_FLAG_NONE, DPO_PROTO_IP6,
+					   NULL, sw_if_index, ~0, 0, NULL,
+					   FIB_ROUTE_PATH_INTF_RX);
 	}
       else
 	{
 	  fib_index = fib_table_find (FIB_PROTOCOL_IP6, vrf_id);
-	  fib_table_entry_path_remove (fib_index, &fibpfx,
-				       nm->fib_src_hi,
-				       DPO_PROTO_IP6, NULL,
-				       sw_if_index, ~0, 1,
+	  fib_table_entry_path_remove (fib_index, &fibpfx, nm->fib_src_hi,
+				       DPO_PROTO_IP6, NULL, sw_if_index, ~0, 1,
 				       FIB_ROUTE_PATH_INTF_RX);
 	  fib_table_unlock (fib_index, FIB_PROTOCOL_IP6, nm->fib_src_hi);
 	}
@@ -702,20 +656,19 @@ done:
 }
 
 static int
-nat64_cli_prefix_walk (nat64_prefix_t * p, void *ctx)
+nat64_cli_prefix_walk (nat64_prefix_t *p, void *ctx)
 {
   vlib_main_t *vm = ctx;
 
-  vlib_cli_output (vm, " %U/%u tenant-vrf %u",
-		   format_ip6_address, &p->prefix, p->plen, p->vrf_id);
+  vlib_cli_output (vm, " %U/%u tenant-vrf %u", format_ip6_address, &p->prefix,
+		   p->plen, p->vrf_id);
 
   return 0;
 }
 
 static clib_error_t *
-nat64_show_prefix_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+nat64_show_prefix_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   vlib_cli_output (vm, "NAT64 prefix:");
   nat64_prefix_walk (nat64_cli_prefix_walk, vm);
@@ -724,9 +677,9 @@ nat64_show_prefix_command_fn (vlib_main_t * vm,
 }
 
 static clib_error_t *
-nat64_add_interface_address_command_fn (vlib_main_t * vm,
-					unformat_input_t * input,
-					vlib_cli_command_t * cmd)
+nat64_add_interface_address_command_fn (vlib_main_t *vm,
+					unformat_input_t *input,
+					vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -741,8 +694,9 @@ nat64_add_interface_address_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index));
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
+	;
       else if (unformat (line_input, "del"))
 	is_add = 0;
       else
@@ -773,7 +727,6 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 /*?
  * @cliexpar
  * @cliexstart{nat64 plugin}
@@ -787,12 +740,11 @@ done:
  *  vpp# nat64 plugin disable
  * @cliexend
 ?*/
-VLIB_CLI_COMMAND (nat64_plugin_enable_disable_command, static) =
-{
+VLIB_CLI_COMMAND (nat64_plugin_enable_disable_command, static) = {
   .path = "nat64 plugin",
   .short_help = "nat64 plugin <enable "
-                "[bib-buckets <count>] [bib-memory <size>] "
-                "[st-buckets <count>] [st-memory <size>] | disable>",
+		"[bib-buckets <count>] [bib-memory <size>] "
+		"[st-buckets <count>] [st-memory <size>] | disable>",
   .function = nat64_plugin_enable_disable_command_fn,
 };
 
@@ -811,7 +763,7 @@ VLIB_CLI_COMMAND (nat64_plugin_enable_disable_command, static) =
 VLIB_CLI_COMMAND (nat64_add_pool_address_command, static) = {
   .path = "nat64 add pool address",
   .short_help = "nat64 add pool address <ip4-range-start> [- <ip4-range-end>] "
-                "[tenant-vrf <vrf-id>] [del]",
+		"[tenant-vrf <vrf-id>] [del]",
   .function = nat64_add_del_pool_addr_command_fn,
 };
 
@@ -876,7 +828,7 @@ VLIB_CLI_COMMAND (show_nat64_interfaces_command, static) = {
 VLIB_CLI_COMMAND (nat64_add_del_static_bib_command, static) = {
   .path = "nat64 add static bib",
   .short_help = "nat64 add static bib <ip6-addr> <port> <ip4-addr> <port> "
-                "tcp|udp|icmp [vfr <table-id>] [del]",
+		"tcp|udp|icmp [vfr <table-id>] [del]",
   .function = nat64_add_del_static_bib_command_fn,
 };
 
@@ -914,12 +866,14 @@ VLIB_CLI_COMMAND (show_nat64_bib_command, static) = {
  *  vpp# show nat64 session table tcp
  *  NAT64 tcp session table:
  *   fd01:1::2 6303 64:ff9b::ac10:202 20 10.0.0.3 62303 172.16.2.2 20 tcp vrf 0
- *   fd01:3::2 6303 64:ff9b::ac10:202 20 10.0.10.3 21300 172.16.2.2 20 tcp vrf 10
+ *   fd01:3::2 6303 64:ff9b::ac10:202 20 10.0.10.3 21300 172.16.2.2 20 tcp vrf
+10
  * To show NAT64 UDP session table use:
  * #vpp show nat64 session table udp
  * NAT64 udp session table:
  *  fd01:1::2 6304 64:ff9b::ac10:202 20 10.0.0.3 10546 172.16.2.2 20 udp vrf 0
- *  fd01:3::2 6304 64:ff9b::ac10:202 20 10.0.10.3 58627 172.16.2.2 20 udp vrf 10
+ *  fd01:3::2 6304 64:ff9b::ac10:202 20 10.0.10.3 58627 172.16.2.2 20 udp vrf
+10
  *  fd01:1::2 1235 64:ff9b::a00:3 4023 10.0.0.3 24488 10.0.0.3 4023 udp vrf 0
  *  fd01:1::3 23 64:ff9b::a00:3 24488 10.0.0.3 4023 10.0.0.3 24488 udp vrf 0
  * To show NAT64 ICMP session table use:
@@ -947,7 +901,7 @@ VLIB_CLI_COMMAND (show_nat64_st_command, static) = {
 VLIB_CLI_COMMAND (nat64_add_del_prefix_command, static) = {
   .path = "nat64 add prefix",
   .short_help = "nat64 add prefix <ip6-prefix>/<plen> [tenant-vrf <vrf-id>] "
-                "[del] [interface <interface]",
+		"[del] [interface <interface]",
   .function = nat64_add_del_prefix_command_fn,
 };
 
@@ -977,11 +931,10 @@ VLIB_CLI_COMMAND (show_nat64_prefix_command, static) = {
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (nat64_add_interface_address_command, static) = {
-    .path = "nat64 add interface address",
-    .short_help = "nat64 add interface address <interface> [del]",
-    .function = nat64_add_interface_address_command_fn,
+  .path = "nat64 add interface address",
+  .short_help = "nat64 add interface address <interface> [del]",
+  .function = nat64_add_interface_address_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

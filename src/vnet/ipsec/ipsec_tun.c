@@ -78,19 +78,16 @@ const static ipsec_tun_protect_itf_db_t IPSEC_TUN_PROTECT_DEFAULT_DB_ENTRY = {
   .id_itp = INDEX_INVALID,
 };
 
-#define ITP_DBG(_itp, _fmt, _args...)                   \
-{   		          				\
-  vlib_log_debug(ipsec_tun_protect_logger,              \
-                 "[%U]: " _fmt,                         \
-                 format_ipsec_tun_protect,              \
-                 _itp, ##_args);                        \
-}
+#define ITP_DBG(_itp, _fmt, _args...)                                         \
+  {                                                                           \
+    vlib_log_debug (ipsec_tun_protect_logger, "[%U]: " _fmt,                  \
+		    format_ipsec_tun_protect, _itp, ##_args);                 \
+  }
 
-#define ITP_DBG2(_fmt, _args...)                        \
-{   		          				\
-  vlib_log_debug(ipsec_tun_protect_logger,              \
-                 _fmt, ##_args);                        \
-}
+#define ITP_DBG2(_fmt, _args...)                                              \
+  {                                                                           \
+    vlib_log_debug (ipsec_tun_protect_logger, _fmt, ##_args);                 \
+  }
 
 static u32 ipsec_tun_node_regs[N_AF];
 
@@ -128,7 +125,7 @@ ipsec_tun_unregister_nodes (ip_address_family_t af)
 }
 
 static inline const ipsec_tun_protect_t *
-ipsec_tun_protect_from_const_base (const adj_delegate_t * ad)
+ipsec_tun_protect_from_const_base (const adj_delegate_t *ad)
 {
   if (ad == NULL)
     return (NULL);
@@ -137,7 +134,7 @@ ipsec_tun_protect_from_const_base (const adj_delegate_t * ad)
 
 static u32
 ipsec_tun_protect_get_adj_next (vnet_link_t linkt,
-				const ipsec_tun_protect_t * itp)
+				const ipsec_tun_protect_t *itp)
 {
   ipsec_main_t *im;
   ipsec_sa_t *sa;
@@ -187,7 +184,7 @@ ipsec_tun_protect_get_adj_next (vnet_link_t linkt,
 }
 
 static void
-ipsec_tun_protect_add_adj (adj_index_t ai, const ipsec_tun_protect_t * itp)
+ipsec_tun_protect_add_adj (adj_index_t ai, const ipsec_tun_protect_t *itp)
 {
   vec_validate_init_empty (ipsec_tun_protect_sa_by_adj_index, ai,
 			   INDEX_INVALID);
@@ -200,13 +197,13 @@ ipsec_tun_protect_add_adj (adj_index_t ai, const ipsec_tun_protect_t * itp)
   else
     {
       ipsec_tun_protect_sa_by_adj_index[ai] = itp->itp_out_sa;
-      adj_nbr_midchain_update_next_node
-	(ai, ipsec_tun_protect_get_adj_next (adj_get_link_type (ai), itp));
+      adj_nbr_midchain_update_next_node (
+	ai, ipsec_tun_protect_get_adj_next (adj_get_link_type (ai), itp));
     }
 }
 
 static index_t
-ipsec_tun_protect_find (u32 sw_if_index, const ip_address_t * nh)
+ipsec_tun_protect_find (u32 sw_if_index, const ip_address_t *nh)
 {
   ipsec_tun_protect_itf_db_t *idi;
   uword *p;
@@ -228,8 +225,7 @@ ipsec_tun_protect_find (u32 sw_if_index, const ip_address_t * nh)
 }
 
 static void
-ipsec_tun_protect_rx_db_add (ipsec_main_t * im,
-			     const ipsec_tun_protect_t * itp)
+ipsec_tun_protect_rx_db_add (ipsec_main_t *im, const ipsec_tun_protect_t *itp)
 {
   const ipsec_sa_t *sa;
   u32 sai;
@@ -237,16 +233,15 @@ ipsec_tun_protect_rx_db_add (ipsec_main_t * im,
   if (ip46_address_is_zero (&itp->itp_crypto.dst))
     return;
 
-  /* *INDENT-OFF* */
-  FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
-  ({
+  FOR_EACH_IPSEC_PROTECT_INPUT_SAI (
+    itp, sai, ({
       sa = ipsec_sa_get (sai);
 
       ipsec_tun_lkup_result_t res = {
-        .tun_index = itp - ipsec_tun_protect_pool,
-        .sa_index = sai,
-        .flags = itp->itp_flags,
-        .sw_if_index = itp->itp_sw_if_index,
+	.tun_index = itp - ipsec_tun_protect_pool,
+	.sa_index = sai,
+	.flags = itp->itp_flags,
+	.sw_if_index = itp->itp_sw_if_index,
       };
 
       /*
@@ -254,14 +249,14 @@ ipsec_tun_protect_rx_db_add (ipsec_main_t * im,
        * as the packet lookup is done from the packet's source
        */
       if (ip46_address_is_ip4 (&itp->itp_crypto.dst))
-        {
-          ipsec4_tunnel_kv_t key = {
-            .value = res,
-          };
-          clib_bihash_kv_8_16_t *bkey = (clib_bihash_kv_8_16_t*)&key;
+	{
+	  ipsec4_tunnel_kv_t key = {
+	    .value = res,
+	  };
+	  clib_bihash_kv_8_16_t *bkey = (clib_bihash_kv_8_16_t *) &key;
 
-          ipsec4_tunnel_mk_key(&key, &itp->itp_crypto.dst.ip4,
-                               clib_host_to_net_u32 (sa->spi));
+	  ipsec4_tunnel_mk_key (&key, &itp->itp_crypto.dst.ip4,
+				clib_host_to_net_u32 (sa->spi));
 
 	  if (!clib_bihash_is_initialised_8_16 (&im->tun4_protect_by_key))
 	    clib_bihash_init_8_16 (&im->tun4_protect_by_key,
@@ -273,15 +268,15 @@ ipsec_tun_protect_rx_db_add (ipsec_main_t * im,
 	  ipsec_tun_register_nodes (AF_IP4);
 	}
       else
-        {
-          ipsec6_tunnel_kv_t key = {
+	{
+	  ipsec6_tunnel_kv_t key = {
             .key = {
               .remote_ip = itp->itp_crypto.dst.ip6,
               .spi = clib_host_to_net_u32 (sa->spi),
             },
             .value = res,
           };
-          clib_bihash_kv_24_16_t *bkey = (clib_bihash_kv_24_16_t*)&key;
+	  clib_bihash_kv_24_16_t *bkey = (clib_bihash_kv_24_16_t *) &key;
 
 	  if (!clib_bihash_is_initialised_24_16 (&im->tun6_protect_by_key))
 	    clib_bihash_init_24_16 (&im->tun6_protect_by_key,
@@ -291,8 +286,7 @@ ipsec_tun_protect_rx_db_add (ipsec_main_t * im,
 	  clib_bihash_add_del_24_16 (&im->tun6_protect_by_key, bkey, 1);
 	  ipsec_tun_register_nodes (AF_IP6);
 	}
-  }))
-  /* *INDENT-ON* */
+    }))
 }
 
 static adj_walk_rc_t
@@ -310,7 +304,7 @@ ipsec_tun_protect_adj_add (adj_index_t ai, void *arg)
 }
 
 static void
-ipsec_tun_protect_tx_db_add (ipsec_tun_protect_t * itp)
+ipsec_tun_protect_tx_db_add (ipsec_tun_protect_t *itp)
 {
   /*
    * add the delegate to the adj
@@ -319,8 +313,7 @@ ipsec_tun_protect_tx_db_add (ipsec_tun_protect_t * itp)
   fib_protocol_t nh_proto;
   ip46_address_t nh;
 
-  vec_validate_init_empty (itp_db.id_itf,
-			   itp->itp_sw_if_index,
+  vec_validate_init_empty (itp_db.id_itf, itp->itp_sw_if_index,
 			   IPSEC_TUN_PROTECT_DEFAULT_DB_ENTRY);
 
   idi = &itp_db.id_itf[itp->itp_sw_if_index];
@@ -334,8 +327,8 @@ ipsec_tun_protect_tx_db_add (ipsec_tun_protect_t * itp)
       idi->id_itp = itp - ipsec_tun_protect_pool;
 
       FOR_EACH_FIB_IP_PROTOCOL (nh_proto)
-	adj_nbr_walk (itp->itp_sw_if_index,
-		      nh_proto, ipsec_tun_protect_adj_add, itp);
+      adj_nbr_walk (itp->itp_sw_if_index, nh_proto, ipsec_tun_protect_adj_add,
+		    itp);
     }
   else
     {
@@ -344,8 +337,8 @@ ipsec_tun_protect_tx_db_add (ipsec_tun_protect_t * itp)
 	  idi->id_hash =
 	    hash_create_mem (0, sizeof (ip_address_t), sizeof (uword));
 	  /*
-	   * enable the encrypt feature for egress if this is the first addition
-	   * on this interface
+	   * enable the encrypt feature for egress if this is the first
+	   * addition on this interface
 	   */
 	  // ipsec_tun_protect_feature_set (itp, 1);
 	}
@@ -358,55 +351,53 @@ ipsec_tun_protect_tx_db_add (ipsec_tun_protect_t * itp)
        */
       nh_proto = ip_address_to_46 (itp->itp_key, &nh);
 
-      adj_nbr_walk_nh (itp->itp_sw_if_index,
-		       nh_proto, &nh, ipsec_tun_protect_adj_add, itp);
+      adj_nbr_walk_nh (itp->itp_sw_if_index, nh_proto, &nh,
+		       ipsec_tun_protect_adj_add, itp);
 
-      ipsec_tun_register_nodes (FIB_PROTOCOL_IP6 == nh_proto ?
-				AF_IP6 : AF_IP4);
+      ipsec_tun_register_nodes (FIB_PROTOCOL_IP6 == nh_proto ? AF_IP6 :
+							       AF_IP4);
     }
 }
 
 static void
-ipsec_tun_protect_rx_db_remove (ipsec_main_t * im,
-				const ipsec_tun_protect_t * itp)
+ipsec_tun_protect_rx_db_remove (ipsec_main_t *im,
+				const ipsec_tun_protect_t *itp)
 {
   const ipsec_sa_t *sa;
 
-  /* *INDENT-OFF* */
-  FOR_EACH_IPSEC_PROTECT_INPUT_SA(itp, sa,
-  ({
-    if (ip46_address_is_ip4 (&itp->itp_crypto.dst))
-      {
-          ipsec4_tunnel_kv_t key;
-          clib_bihash_kv_8_16_t res, *bkey = (clib_bihash_kv_8_16_t*)&key;
+  FOR_EACH_IPSEC_PROTECT_INPUT_SA (
+    itp, sa, ({
+      if (ip46_address_is_ip4 (&itp->itp_crypto.dst))
+	{
+	  ipsec4_tunnel_kv_t key;
+	  clib_bihash_kv_8_16_t res, *bkey = (clib_bihash_kv_8_16_t *) &key;
 
-          ipsec4_tunnel_mk_key(&key, &itp->itp_crypto.dst.ip4,
-                               clib_host_to_net_u32 (sa->spi));
+	  ipsec4_tunnel_mk_key (&key, &itp->itp_crypto.dst.ip4,
+				clib_host_to_net_u32 (sa->spi));
 
-          if (!clib_bihash_search_8_16 (&im->tun4_protect_by_key, bkey, &res))
-            {
-              clib_bihash_add_del_8_16 (&im->tun4_protect_by_key, bkey, 0);
-              ipsec_tun_unregister_nodes(AF_IP4);
-            }
-      }
-    else
-      {
-        ipsec6_tunnel_kv_t key = {
+	  if (!clib_bihash_search_8_16 (&im->tun4_protect_by_key, bkey, &res))
+	    {
+	      clib_bihash_add_del_8_16 (&im->tun4_protect_by_key, bkey, 0);
+	      ipsec_tun_unregister_nodes (AF_IP4);
+	    }
+	}
+      else
+	{
+	  ipsec6_tunnel_kv_t key = {
           .key = {
             .remote_ip = itp->itp_crypto.dst.ip6,
             .spi = clib_host_to_net_u32 (sa->spi),
           },
         };
-        clib_bihash_kv_24_16_t res, *bkey = (clib_bihash_kv_24_16_t*)&key;
+	  clib_bihash_kv_24_16_t res, *bkey = (clib_bihash_kv_24_16_t *) &key;
 
-        if (!clib_bihash_search_24_16 (&im->tun6_protect_by_key, bkey, &res))
-          {
-            clib_bihash_add_del_24_16 (&im->tun6_protect_by_key, bkey, 0);
-            ipsec_tun_unregister_nodes(AF_IP6);
-          }
-      }
-  }));
-  /* *INDENT-ON* */
+	  if (!clib_bihash_search_24_16 (&im->tun6_protect_by_key, bkey, &res))
+	    {
+	      clib_bihash_add_del_24_16 (&im->tun6_protect_by_key, bkey, 0);
+	      ipsec_tun_unregister_nodes (AF_IP6);
+	    }
+	}
+    }));
 }
 
 static adj_walk_rc_t
@@ -424,7 +415,7 @@ ipsec_tun_protect_adj_remove (adj_index_t ai, void *arg)
 }
 
 static void
-ipsec_tun_protect_tx_db_remove (ipsec_tun_protect_t * itp)
+ipsec_tun_protect_tx_db_remove (ipsec_tun_protect_t *itp)
 {
   ipsec_tun_protect_itf_db_t *idi;
   fib_protocol_t nh_proto;
@@ -439,13 +430,13 @@ ipsec_tun_protect_tx_db_remove (ipsec_tun_protect_t * itp)
       idi->id_itp = INDEX_INVALID;
 
       FOR_EACH_FIB_IP_PROTOCOL (nh_proto)
-	adj_nbr_walk (itp->itp_sw_if_index,
-		      nh_proto, ipsec_tun_protect_adj_remove, itp);
+      adj_nbr_walk (itp->itp_sw_if_index, nh_proto,
+		    ipsec_tun_protect_adj_remove, itp);
     }
   else
     {
-      adj_nbr_walk_nh (itp->itp_sw_if_index,
-		       nh_proto, &nh, ipsec_tun_protect_adj_remove, itp);
+      adj_nbr_walk_nh (itp->itp_sw_if_index, nh_proto, &nh,
+		       ipsec_tun_protect_adj_remove, itp);
 
       hash_unset_mem (idi->id_hash, itp->itp_key);
 
@@ -455,42 +446,40 @@ ipsec_tun_protect_tx_db_remove (ipsec_tun_protect_t * itp)
 	  hash_free (idi->id_hash);
 	  idi->id_hash = NULL;
 	}
-      ipsec_tun_unregister_nodes (FIB_PROTOCOL_IP6 == nh_proto ?
-				  AF_IP6 : AF_IP4);
+      ipsec_tun_unregister_nodes (FIB_PROTOCOL_IP6 == nh_proto ? AF_IP6 :
+								 AF_IP4);
     }
 }
 
 static void
-ipsec_tun_protect_set_crypto_addr (ipsec_tun_protect_t * itp)
+ipsec_tun_protect_set_crypto_addr (ipsec_tun_protect_t *itp)
 {
   ipsec_sa_t *sa;
 
-  /* *INDENT-OFF* */
-  FOR_EACH_IPSEC_PROTECT_INPUT_SA(itp, sa,
-  ({
-    if (ipsec_sa_is_set_IS_TUNNEL (sa))
-      {
-	itp->itp_crypto.src = ip_addr_46 (&sa->tunnel.t_dst);
-	itp->itp_crypto.dst = ip_addr_46 (&sa->tunnel.t_src);
-	if (!(itp->itp_flags & IPSEC_PROTECT_ITF))
-	  {
-	    ipsec_sa_set_IS_PROTECT (sa);
-	    itp->itp_flags |= IPSEC_PROTECT_ENCAPED;
-	  }
-      }
-    else
-      {
-        itp->itp_crypto.src = itp->itp_tun.src;
-        itp->itp_crypto.dst = itp->itp_tun.dst;
-        itp->itp_flags &= ~IPSEC_PROTECT_ENCAPED;
-      }
-  }));
-  /* *INDENT-ON* */
+  FOR_EACH_IPSEC_PROTECT_INPUT_SA (
+    itp, sa, ({
+      if (ipsec_sa_is_set_IS_TUNNEL (sa))
+	{
+	  itp->itp_crypto.src = ip_addr_46 (&sa->tunnel.t_dst);
+	  itp->itp_crypto.dst = ip_addr_46 (&sa->tunnel.t_src);
+	  if (!(itp->itp_flags & IPSEC_PROTECT_ITF))
+	    {
+	      ipsec_sa_set_IS_PROTECT (sa);
+	      itp->itp_flags |= IPSEC_PROTECT_ENCAPED;
+	    }
+	}
+      else
+	{
+	  itp->itp_crypto.src = itp->itp_tun.src;
+	  itp->itp_crypto.dst = itp->itp_tun.dst;
+	  itp->itp_flags &= ~IPSEC_PROTECT_ENCAPED;
+	}
+    }));
 }
 
 static void
-ipsec_tun_protect_config (ipsec_main_t * im,
-			  ipsec_tun_protect_t * itp, u32 sa_out, u32 * sas_in)
+ipsec_tun_protect_config (ipsec_main_t *im, ipsec_tun_protect_t *itp,
+			  u32 sa_out, u32 *sas_in)
 {
   index_t sai;
   u32 ii;
@@ -502,13 +491,8 @@ ipsec_tun_protect_config (ipsec_main_t * im,
 
   ipsec_sa_lock (itp->itp_out_sa);
 
-  /* *INDENT-OFF* */
-  FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
-  ({
-    ipsec_sa_lock(sai);
-  }));
-  ipsec_tun_protect_set_crypto_addr(itp);
-  /* *INDENT-ON* */
+  FOR_EACH_IPSEC_PROTECT_INPUT_SAI (itp, sai, ({ ipsec_sa_lock (sai); }));
+  ipsec_tun_protect_set_crypto_addr (itp);
 
   /*
    * add to the DB against each SA
@@ -520,33 +504,27 @@ ipsec_tun_protect_config (ipsec_main_t * im,
 }
 
 static void
-ipsec_tun_protect_unconfig (ipsec_main_t * im, ipsec_tun_protect_t * itp)
+ipsec_tun_protect_unconfig (ipsec_main_t *im, ipsec_tun_protect_t *itp)
 {
   ipsec_sa_t *sa;
   index_t sai;
 
-  /* *INDENT-OFF* */
-  FOR_EACH_IPSEC_PROTECT_INPUT_SA(itp, sa,
-  ({
-    ipsec_sa_unset_IS_PROTECT (sa);
-  }));
+  FOR_EACH_IPSEC_PROTECT_INPUT_SA (itp, sa,
+				   ({ ipsec_sa_unset_IS_PROTECT (sa); }));
 
   ipsec_tun_protect_rx_db_remove (im, itp);
   ipsec_tun_protect_tx_db_remove (itp);
 
-  ipsec_sa_unlock(itp->itp_out_sa);
+  ipsec_sa_unlock (itp->itp_out_sa);
 
-  FOR_EACH_IPSEC_PROTECT_INPUT_SAI(itp, sai,
-  ({
-    ipsec_sa_unlock(sai);
-  }));
-  /* *INDENT-ON* */
+  FOR_EACH_IPSEC_PROTECT_INPUT_SAI (itp, sai, ({ ipsec_sa_unlock (sai); }));
+
   ITP_DBG (itp, "unconfigured");
 }
 
 static void
-ipsec_tun_protect_update_from_teib (ipsec_tun_protect_t * itp,
-				    const teib_entry_t * ne)
+ipsec_tun_protect_update_from_teib (ipsec_tun_protect_t *itp,
+				    const teib_entry_t *ne)
 {
   if (NULL != ne)
     {
@@ -561,17 +539,16 @@ ipsec_tun_protect_update_from_teib (ipsec_tun_protect_t * itp,
 }
 
 int
-ipsec_tun_protect_update (u32 sw_if_index,
-			  const ip_address_t * nh, u32 sa_out, u32 * sas_in)
+ipsec_tun_protect_update (u32 sw_if_index, const ip_address_t *nh, u32 sa_out,
+			  u32 *sas_in)
 {
   ipsec_tun_protect_t *itp;
   u32 itpi, ii, *saip;
   ipsec_main_t *im;
   int rv;
 
-  ITP_DBG2 ("update: %U/%U",
-	    format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index,
-	    format_ip_address, nh);
+  ITP_DBG2 ("update: %U/%U", format_vnet_sw_if_index_name, vnet_get_main (),
+	    sw_if_index, format_ip_address, nh);
 
   if (vec_len (sas_in) > ITP_MAX_N_SA_IN)
     {
@@ -586,14 +563,14 @@ ipsec_tun_protect_update (u32 sw_if_index,
   itpi = ipsec_tun_protect_find (sw_if_index, nh);
 
   vec_foreach_index (ii, sas_in)
-  {
-    sas_in[ii] = ipsec_sa_find_and_lock (sas_in[ii]);
-    if (~0 == sas_in[ii])
-      {
-	rv = VNET_API_ERROR_INVALID_VALUE;
-	goto out;
-      }
-  }
+    {
+      sas_in[ii] = ipsec_sa_find_and_lock (sas_in[ii]);
+      if (~0 == sas_in[ii])
+	{
+	  rv = VNET_API_ERROR_INVALID_VALUE;
+	  goto out;
+	}
+    }
 
   sa_out = ipsec_sa_find_and_lock (sa_out);
 
@@ -633,8 +610,7 @@ ipsec_tun_protect_update (u32 sw_if_index,
       itp->itp_key = clib_mem_alloc (sizeof (*itp->itp_key));
       ip_address_copy (itp->itp_key, nh);
 
-      rv = dev_class->ip_tun_desc (sw_if_index,
-				   &itp->itp_tun.src,
+      rv = dev_class->ip_tun_desc (sw_if_index, &itp->itp_tun.src,
 				   &itp->itp_tun.dst, &is_l2);
 
       if (rv)
@@ -662,8 +638,8 @@ ipsec_tun_protect_update (u32 sw_if_index,
 	{
 	  /* tunnel has no destination address, presumably because it's p2mp
 	     in which case we use the nh that this is protection for */
-	  ipsec_tun_protect_update_from_teib
-	    (itp, teib_entry_find (sw_if_index, nh));
+	  ipsec_tun_protect_update_from_teib (
+	    itp, teib_entry_find (sw_if_index, nh));
 	}
 
       if (is_l2)
@@ -703,7 +679,8 @@ ipsec_tun_protect_update (u32 sw_if_index,
     }
 
   ipsec_sa_unlock (sa_out);
-  vec_foreach (saip, sas_in) ipsec_sa_unlock (*saip);
+  vec_foreach (saip, sas_in)
+    ipsec_sa_unlock (*saip);
   vec_free (sas_in);
 
 out:
@@ -711,15 +688,14 @@ out:
 }
 
 int
-ipsec_tun_protect_del (u32 sw_if_index, const ip_address_t * nh)
+ipsec_tun_protect_del (u32 sw_if_index, const ip_address_t *nh)
 {
   ipsec_tun_protect_t *itp;
   ipsec_main_t *im;
   index_t itpi;
 
-  ITP_DBG2 ("delete: %U/%U",
-	    format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index,
-	    format_ip_address, nh);
+  ITP_DBG2 ("delete: %U/%U", format_vnet_sw_if_index_name, vnet_get_main (),
+	    sw_if_index, format_ip_address, nh);
 
   im = &ipsec_main;
   if (NULL == nh)
@@ -747,17 +723,15 @@ ipsec_tun_protect_walk (ipsec_tun_protect_walk_cb_t fn, void *ctx)
 {
   index_t itpi;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (itpi, ipsec_tun_protect_pool)
-   {
-    fn (itpi, ctx);
-  }
-  /* *INDENT-ON* */
+    {
+      fn (itpi, ctx);
+    }
 }
 
 void
-ipsec_tun_protect_walk_itf (u32 sw_if_index,
-			    ipsec_tun_protect_walk_cb_t fn, void *ctx)
+ipsec_tun_protect_walk_itf (u32 sw_if_index, ipsec_tun_protect_walk_cb_t fn,
+			    void *ctx)
 {
   ipsec_tun_protect_itf_db_t *idi;
   ip_address_t *key;
@@ -768,18 +742,14 @@ ipsec_tun_protect_walk_itf (u32 sw_if_index,
 
   idi = &itp_db.id_itf[sw_if_index];
 
-  /* *INDENT-OFF* */
-  hash_foreach(key, itpi, idi->id_hash,
-  ({
-    fn (itpi, ctx);
-  }));
-  /* *INDENT-ON* */
+  hash_foreach (key, itpi, idi->id_hash, ({ fn (itpi, ctx); }));
+
   if (INDEX_INVALID != idi->id_itp)
     fn (idi->id_itp, ctx);
 }
 
 static void
-ipsec_tun_protect_adj_delegate_adj_deleted (adj_delegate_t * ad)
+ipsec_tun_protect_adj_delegate_adj_deleted (adj_delegate_t *ad)
 {
   /* remove our delegate */
   ipsec_tun_protect_add_adj (ad->ad_adj_index, NULL);
@@ -787,7 +757,7 @@ ipsec_tun_protect_adj_delegate_adj_deleted (adj_delegate_t * ad)
 }
 
 static void
-ipsec_tun_protect_adj_delegate_adj_modified (adj_delegate_t * ad)
+ipsec_tun_protect_adj_delegate_adj_modified (adj_delegate_t *ad)
 {
   ipsec_tun_protect_add_adj (ad->ad_adj_index,
 			     ipsec_tun_protect_get (ad->ad_index));
@@ -806,8 +776,7 @@ ipsec_tun_protect_adj_delegate_adj_created (adj_index_t ai)
 
   adj = adj_get (ai);
 
-  ip_address_from_46 (&adj->sub_type.midchain.next_hop,
-		      adj->ia_nh_proto, &ip);
+  ip_address_from_46 (&adj->sub_type.midchain.next_hop, adj->ia_nh_proto, &ip);
 
   itpi = ipsec_tun_protect_find (adj->rewrite_header.sw_if_index, &ip);
 
@@ -816,7 +785,7 @@ ipsec_tun_protect_adj_delegate_adj_created (adj_index_t ai)
 }
 
 static u8 *
-ipsec_tun_protect_adj_delegate_format (const adj_delegate_t * aed, u8 * s)
+ipsec_tun_protect_adj_delegate_format (const adj_delegate_t *aed, u8 *s)
 {
   const ipsec_tun_protect_t *itp;
 
@@ -827,7 +796,7 @@ ipsec_tun_protect_adj_delegate_format (const adj_delegate_t * aed, u8 * s)
 }
 
 static void
-ipsec_tun_teib_entry_added (const teib_entry_t * ne)
+ipsec_tun_teib_entry_added (const teib_entry_t *ne)
 {
   ipsec_tun_protect_t *itp;
   index_t itpi;
@@ -848,7 +817,7 @@ ipsec_tun_teib_entry_added (const teib_entry_t * ne)
 }
 
 static void
-ipsec_tun_teib_entry_deleted (const teib_entry_t * ne)
+ipsec_tun_teib_entry_deleted (const teib_entry_t *ne)
 {
   ipsec_tun_protect_t *itp;
   index_t itpi;
@@ -890,11 +859,11 @@ ipsec_tun_table_init (ip_address_family_t af, uword table_size, u32 n_buckets)
   im = &ipsec_main;
 
   if (AF_IP4 == af)
-    clib_bihash_init_8_16 (&im->tun4_protect_by_key,
-			   "IPSec IPv4 tunnels", n_buckets, table_size);
+    clib_bihash_init_8_16 (&im->tun4_protect_by_key, "IPSec IPv4 tunnels",
+			   n_buckets, table_size);
   else
-    clib_bihash_init_24_16 (&im->tun6_protect_by_key,
-			    "IPSec IPv6 tunnels", n_buckets, table_size);
+    clib_bihash_init_24_16 (&im->tun6_protect_by_key, "IPSec IPv6 tunnels",
+			    n_buckets, table_size);
 }
 
 static clib_error_t *
@@ -903,12 +872,10 @@ ipsec_tunnel_protect_init (vlib_main_t *vm)
   ipsec_main_t *im;
 
   im = &ipsec_main;
-  clib_bihash_init_24_16 (&im->tun6_protect_by_key,
-			  "IPSec IPv6 tunnels",
+  clib_bihash_init_24_16 (&im->tun6_protect_by_key, "IPSec IPv6 tunnels",
 			  IPSEC_TUN_DEFAULT_HASH_NUM_BUCKETS,
 			  IPSEC_TUN_DEFAULT_HASH_MEMORY_SIZE);
-  clib_bihash_init_8_16 (&im->tun4_protect_by_key,
-			 "IPSec IPv4 tunnels",
+  clib_bihash_init_8_16 (&im->tun4_protect_by_key, "IPSec IPv4 tunnels",
 			 IPSEC_TUN_DEFAULT_HASH_NUM_BUCKETS,
 			 IPSEC_TUN_DEFAULT_HASH_MEMORY_SIZE);
 
@@ -935,7 +902,7 @@ ipsec_tunnel_protect_init (vlib_main_t *vm)
 VLIB_INIT_FUNCTION (ipsec_tunnel_protect_init);
 
 static clib_error_t *
-ipsec_config (vlib_main_t * vm, unformat_input_t * input)
+ipsec_config (vlib_main_t *vm, unformat_input_t *input)
 {
   unformat_input_t sub_input;
 

@@ -24,43 +24,36 @@
 #include <vnet/vnet.h>
 #include <vnet/vxlan/vxlan_packet.h>
 
-#define foreach_gho_flag        \
-  _( 0, IP4)                    \
-  _( 1, IP6)                    \
-  _( 2, TCP)                    \
-  _( 3, UDP)                    \
-  _( 4, OUTER_IP4)              \
-  _( 5, OUTER_IP6)              \
-  _( 6, OUTER_TCP)              \
-  _( 7, OUTER_UDP)              \
-  _( 8, VXLAN_TUNNEL)           \
-  _( 9, GRE_TUNNEL)             \
-  _( 10, IPIP_TUNNEL)           \
-  _( 11, IPIP6_TUNNEL)          \
-  _( 12, GENEVE_TUNNEL)
+#define foreach_gho_flag                                                      \
+  _ (0, IP4)                                                                  \
+  _ (1, IP6)                                                                  \
+  _ (2, TCP)                                                                  \
+  _ (3, UDP)                                                                  \
+  _ (4, OUTER_IP4)                                                            \
+  _ (5, OUTER_IP6)                                                            \
+  _ (6, OUTER_TCP)                                                            \
+  _ (7, OUTER_UDP)                                                            \
+  _ (8, VXLAN_TUNNEL)                                                         \
+  _ (9, GRE_TUNNEL)                                                           \
+  _ (10, IPIP_TUNNEL)                                                         \
+  _ (11, IPIP6_TUNNEL)                                                        \
+  _ (12, GENEVE_TUNNEL)
 
 typedef enum gho_flag_t_
 {
-#define _(bit, name) GHO_F_##name  = (1 << bit),
+#define _(bit, name) GHO_F_##name = (1 << bit),
   foreach_gho_flag
 #undef _
 } gho_flag_t;
 
-#define GHO_F_TUNNEL (GHO_F_VXLAN_TUNNEL  |  \
-                      GHO_F_GENEVE_TUNNEL |  \
-                      GHO_F_IPIP_TUNNEL   |  \
-                      GHO_F_IPIP6_TUNNEL  |  \
-                      GHO_F_GRE_TUNNEL)
+#define GHO_F_TUNNEL                                                          \
+  (GHO_F_VXLAN_TUNNEL | GHO_F_GENEVE_TUNNEL | GHO_F_IPIP_TUNNEL |             \
+   GHO_F_IPIP6_TUNNEL | GHO_F_GRE_TUNNEL)
 
-#define GHO_F_OUTER_HDR (GHO_F_OUTER_IP4 | \
-                         GHO_F_OUTER_IP6 | \
-                         GHO_F_OUTER_TCP | \
-                         GHO_F_OUTER_UDP)
+#define GHO_F_OUTER_HDR                                                       \
+  (GHO_F_OUTER_IP4 | GHO_F_OUTER_IP6 | GHO_F_OUTER_TCP | GHO_F_OUTER_UDP)
 
-#define GHO_F_INNER_HDR (GHO_F_IP4 | \
-                         GHO_F_IP6 | \
-                         GHO_F_UDP | \
-                         GHO_F_TCP)
+#define GHO_F_INNER_HDR (GHO_F_IP4 | GHO_F_IP6 | GHO_F_UDP | GHO_F_TCP)
 
 typedef struct
 {
@@ -78,7 +71,7 @@ typedef struct
 } generic_header_offset_t;
 
 static_always_inline u8 *
-format_generic_header_offset (u8 * s, va_list * args)
+format_generic_header_offset (u8 *s, va_list *args)
 {
   generic_header_offset_t *gho = va_arg (*args, generic_header_offset_t *);
 
@@ -103,7 +96,8 @@ format_generic_header_offset (u8 * s, va_list * args)
       else if (gho->gho_flags & GHO_F_OUTER_TCP)
 	s = format (s, "outer-tcp ");
 
-      s = format (s, "outer-hdr-sz %u outer-l2-hdr-offset %d "
+      s = format (s,
+		  "outer-hdr-sz %u outer-l2-hdr-offset %d "
 		  "outer-l3-hdr-offset %d outer-l4-hdr-offset %d "
 		  "outer-l4-hdr-sz %u\n\t",
 		  gho->outer_hdr_sz, gho->outer_l2_hdr_offset,
@@ -121,7 +115,8 @@ format_generic_header_offset (u8 * s, va_list * args)
   else if (gho->gho_flags & GHO_F_UDP)
     s = format (s, "udp ");
 
-  s = format (s, "hdr-sz %u l2-hdr-offset %d "
+  s = format (s,
+	      "hdr-sz %u l2-hdr-offset %d "
 	      "l3-hdr-offset %d l4-hdr-offset %d "
 	      "l4-hdr-sz %u",
 	      gho->hdr_sz, gho->l2_hdr_offset, gho->l3_hdr_offset,
@@ -131,26 +126,24 @@ format_generic_header_offset (u8 * s, va_list * args)
 }
 
 static_always_inline void
-vnet_get_inner_header (vlib_buffer_t * b0, generic_header_offset_t * gho)
+vnet_get_inner_header (vlib_buffer_t *b0, generic_header_offset_t *gho)
 {
-  if ((gho->gho_flags & GHO_F_TUNNEL)
-      && (gho->gho_flags & GHO_F_OUTER_HDR)
-      && (b0->current_data == gho->outer_l2_hdr_offset))
+  if ((gho->gho_flags & GHO_F_TUNNEL) && (gho->gho_flags & GHO_F_OUTER_HDR) &&
+      (b0->current_data == gho->outer_l2_hdr_offset))
     vlib_buffer_advance (b0, gho->outer_hdr_sz);
 }
 
 static_always_inline void
-vnet_get_outer_header (vlib_buffer_t * b0, generic_header_offset_t * gho)
+vnet_get_outer_header (vlib_buffer_t *b0, generic_header_offset_t *gho)
 {
-  if ((gho->gho_flags & GHO_F_TUNNEL)
-      && (gho->gho_flags & GHO_F_OUTER_HDR)
-      && (b0->current_data == gho->l2_hdr_offset))
+  if ((gho->gho_flags & GHO_F_TUNNEL) && (gho->gho_flags & GHO_F_OUTER_HDR) &&
+      (b0->current_data == gho->l2_hdr_offset))
     vlib_buffer_advance (b0, -gho->outer_hdr_sz);
 }
 
 static_always_inline void
-vnet_geneve_inner_header_parser_inline (vlib_buffer_t * b0,
-					generic_header_offset_t * gho)
+vnet_geneve_inner_header_parser_inline (vlib_buffer_t *b0,
+					generic_header_offset_t *gho)
 {
   /* not supported yet */
   if ((gho->gho_flags & GHO_F_GENEVE_TUNNEL) == 0)
@@ -160,8 +153,8 @@ vnet_geneve_inner_header_parser_inline (vlib_buffer_t * b0,
 }
 
 static_always_inline void
-vnet_gre_inner_header_parser_inline (vlib_buffer_t * b0,
-				     generic_header_offset_t * gho)
+vnet_gre_inner_header_parser_inline (vlib_buffer_t *b0,
+				     generic_header_offset_t *gho)
 {
   /* not supported yet */
   if ((gho->gho_flags & GHO_F_GRE_TUNNEL) == 0)
@@ -171,8 +164,8 @@ vnet_gre_inner_header_parser_inline (vlib_buffer_t * b0,
 }
 
 static_always_inline void
-vnet_ipip_inner_header_parser_inline (vlib_buffer_t * b0,
-				      generic_header_offset_t * gho)
+vnet_ipip_inner_header_parser_inline (vlib_buffer_t *b0,
+				      generic_header_offset_t *gho)
 {
   if ((gho->gho_flags & (GHO_F_IPIP_TUNNEL | GHO_F_IPIP6_TUNNEL)) == 0)
     return;
@@ -225,17 +218,16 @@ vnet_ipip_inner_header_parser_inline (vlib_buffer_t * b0,
     }
   if (l4_proto == IP_PROTOCOL_TCP)
     {
-      tcp_header_t *tcp = (tcp_header_t *) (vlib_buffer_get_current (b0) +
-					    gho->l4_hdr_offset);
+      tcp_header_t *tcp =
+	(tcp_header_t *) (vlib_buffer_get_current (b0) + gho->l4_hdr_offset);
       l4_hdr_sz = tcp_header_bytes (tcp);
 
       gho->gho_flags |= GHO_F_TCP;
-
     }
   else if (l4_proto == IP_PROTOCOL_UDP)
     {
-      udp_header_t *udp = (udp_header_t *) (vlib_buffer_get_current (b0) +
-					    gho->l4_hdr_offset);
+      udp_header_t *udp =
+	(udp_header_t *) (vlib_buffer_get_current (b0) + gho->l4_hdr_offset);
       l4_hdr_sz = sizeof (*udp);
 
       gho->gho_flags |= GHO_F_UDP;
@@ -248,8 +240,8 @@ vnet_ipip_inner_header_parser_inline (vlib_buffer_t * b0,
 }
 
 static_always_inline void
-vnet_vxlan_inner_header_parser_inline (vlib_buffer_t * b0,
-				       generic_header_offset_t * gho)
+vnet_vxlan_inner_header_parser_inline (vlib_buffer_t *b0,
+				       generic_header_offset_t *gho)
 {
   u8 l4_proto = 0;
   u8 l4_hdr_sz = 0;
@@ -328,17 +320,16 @@ vnet_vxlan_inner_header_parser_inline (vlib_buffer_t * b0,
     }
   if (l4_proto == IP_PROTOCOL_TCP)
     {
-      tcp_header_t *tcp = (tcp_header_t *) (vlib_buffer_get_current (b0) +
-					    gho->l4_hdr_offset);
+      tcp_header_t *tcp =
+	(tcp_header_t *) (vlib_buffer_get_current (b0) + gho->l4_hdr_offset);
       l4_hdr_sz = tcp_header_bytes (tcp);
 
       gho->gho_flags |= GHO_F_TCP;
-
     }
   else if (l4_proto == IP_PROTOCOL_UDP)
     {
-      udp_header_t *udp = (udp_header_t *) (vlib_buffer_get_current (b0) +
-					    gho->l4_hdr_offset);
+      udp_header_t *udp =
+	(udp_header_t *) (vlib_buffer_get_current (b0) + gho->l4_hdr_offset);
       l4_hdr_sz = sizeof (*udp);
 
       gho->gho_flags |= GHO_F_UDP;
@@ -351,8 +342,8 @@ vnet_vxlan_inner_header_parser_inline (vlib_buffer_t * b0,
 }
 
 static_always_inline void
-vnet_generic_inner_header_parser_inline (vlib_buffer_t * b0,
-					 generic_header_offset_t * gho)
+vnet_generic_inner_header_parser_inline (vlib_buffer_t *b0,
+					 generic_header_offset_t *gho)
 {
 
   if (gho->gho_flags & GHO_F_VXLAN_TUNNEL)
@@ -366,8 +357,8 @@ vnet_generic_inner_header_parser_inline (vlib_buffer_t * b0,
 }
 
 static_always_inline void
-vnet_generic_outer_header_parser_inline (vlib_buffer_t * b0,
-					 generic_header_offset_t * gho,
+vnet_generic_outer_header_parser_inline (vlib_buffer_t *b0,
+					 generic_header_offset_t *gho,
 					 int is_l2, int is_ip4, int is_ip6)
 {
   u8 l4_proto = 0;
@@ -423,16 +414,16 @@ vnet_generic_outer_header_parser_inline (vlib_buffer_t * b0,
     }
   if (l4_proto == IP_PROTOCOL_TCP)
     {
-      tcp_header_t *tcp = (tcp_header_t *) (vlib_buffer_get_current (b0) +
-					    gho->l4_hdr_offset);
+      tcp_header_t *tcp =
+	(tcp_header_t *) (vlib_buffer_get_current (b0) + gho->l4_hdr_offset);
       l4_hdr_sz = tcp_header_bytes (tcp);
 
       gho->gho_flags |= GHO_F_TCP;
     }
   else if (l4_proto == IP_PROTOCOL_UDP)
     {
-      udp_header_t *udp = (udp_header_t *) (vlib_buffer_get_current (b0) +
-					    gho->l4_hdr_offset);
+      udp_header_t *udp =
+	(udp_header_t *) (vlib_buffer_get_current (b0) + gho->l4_hdr_offset);
       l4_hdr_sz = sizeof (*udp);
 
       gho->gho_flags |= GHO_F_UDP;
@@ -468,8 +459,8 @@ vnet_generic_outer_header_parser_inline (vlib_buffer_t * b0,
 }
 
 static_always_inline void
-vnet_generic_header_offset_parser (vlib_buffer_t * b0,
-				   generic_header_offset_t * gho, int is_l2,
+vnet_generic_header_offset_parser (vlib_buffer_t *b0,
+				   generic_header_offset_t *gho, int is_l2,
 				   int is_ip4, int is_ip6)
 {
   vnet_generic_outer_header_parser_inline (b0, gho, is_l2, is_ip4, is_ip6);

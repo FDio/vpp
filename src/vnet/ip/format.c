@@ -41,9 +41,9 @@
 
 /* Format IP protocol. */
 u8 *
-format_ip_protocol (u8 * s, va_list * args)
+format_ip_protocol (u8 *s, va_list *args)
 {
-  ip_protocol_t protocol = va_arg (*args, int);	// int promo of ip_protocol_t);
+  ip_protocol_t protocol = va_arg (*args, int); // int promo of ip_protocol_t);
   ip_main_t *im = &ip_main;
   ip_protocol_info_t *pi = ip_get_protocol_info (im, protocol);
 
@@ -54,7 +54,7 @@ format_ip_protocol (u8 * s, va_list * args)
 }
 
 uword
-unformat_ip_protocol (unformat_input_t * input, va_list * args)
+unformat_ip_protocol (unformat_input_t *input, va_list *args)
 {
   u8 *result = va_arg (*args, u8 *);
   ip_main_t *im = &ip_main;
@@ -71,7 +71,7 @@ unformat_ip_protocol (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_tcp_udp_port (u8 * s, va_list * args)
+format_tcp_udp_port (u8 *s, va_list *args)
 {
   int port = va_arg (*args, int);
   ip_main_t *im = &ip_main;
@@ -87,13 +87,12 @@ format_tcp_udp_port (u8 * s, va_list * args)
 }
 
 uword
-unformat_tcp_udp_port (unformat_input_t * input, va_list * args)
+unformat_tcp_udp_port (unformat_input_t *input, va_list *args)
 {
   u16 *result = va_arg (*args, u16 *);
   ip_main_t *im = &ip_main;
   tcp_udp_port_info_t *pi;
   u32 i, port;
-
 
   if (unformat_user (input, unformat_vlib_number_by_name,
 		     im->port_info_by_name, &i))
@@ -101,8 +100,8 @@ unformat_tcp_udp_port (unformat_input_t * input, va_list * args)
       pi = vec_elt_at_index (im->port_infos, i);
       port = pi->port;
     }
-  else if (unformat_user (input, unformat_vlib_number, &port)
-	   && port < (1 << 16))
+  else if (unformat_user (input, unformat_vlib_number, &port) &&
+	   port < (1 << 16))
     port = clib_host_to_net_u16 (port);
 
   else

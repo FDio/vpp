@@ -27,7 +27,7 @@
 #include <vnet/session/session.h>
 
 static char *udp_error_strings[] = {
-#define udp_error(n,s) s,
+#define udp_error(n, s) s,
 #include "udp_error.def"
 #undef udp_error
 };
@@ -41,7 +41,7 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_udp_input_trace (u8 * s, va_list * args)
+format_udp_input_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -52,8 +52,7 @@ format_udp_input_trace (u8 * s, va_list * args)
   return s;
 }
 
-#define foreach_udp_input_next			\
-  _ (DROP, "error-drop")
+#define foreach_udp_input_next _ (DROP, "error-drop")
 
 typedef enum
 {
@@ -64,7 +63,7 @@ typedef enum
 } udp_input_next_t;
 
 always_inline void
-udp_input_inc_counter (vlib_main_t * vm, u8 is_ip4, u8 evt, u8 val)
+udp_input_inc_counter (vlib_main_t *vm, u8 is_ip4, u8 evt, u8 val)
 {
   if (is_ip4)
     vlib_node_increment_counter (vm, udp4_input_node.index, evt, val);
@@ -72,22 +71,22 @@ udp_input_inc_counter (vlib_main_t * vm, u8 is_ip4, u8 evt, u8 val)
     vlib_node_increment_counter (vm, udp6_input_node.index, evt, val);
 }
 
-#define udp_store_err_counters(vm, is_ip4, cnts)			\
-{									\
-  int i;								\
-  for (i = 0; i < UDP_N_ERROR; i++)					\
-    if (cnts[i])							\
-      udp_input_inc_counter(vm, is_ip4, i, cnts[i]);			\
-}
+#define udp_store_err_counters(vm, is_ip4, cnts)                              \
+  {                                                                           \
+    int i;                                                                    \
+    for (i = 0; i < UDP_N_ERROR; i++)                                         \
+      if (cnts[i])                                                            \
+	udp_input_inc_counter (vm, is_ip4, i, cnts[i]);                       \
+  }
 
-#define udp_inc_err_counter(cnts, err, val)				\
-{									\
-  cnts[err] += val;							\
-}
+#define udp_inc_err_counter(cnts, err, val)                                   \
+  {                                                                           \
+    cnts[err] += val;                                                         \
+  }
 
 static void
-udp_trace_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
-		  vlib_buffer_t * b, session_t * s, u16 error0)
+udp_trace_buffer (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
+		  session_t *s, u16 error0)
 {
   udp_input_trace_t *t;
 
@@ -101,7 +100,7 @@ udp_trace_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static udp_connection_t *
-udp_connection_accept (udp_connection_t * listener, session_dgram_hdr_t * hdr,
+udp_connection_accept (udp_connection_t *listener, session_dgram_hdr_t *hdr,
 		       u32 thread_index)
 {
   udp_connection_t *uc;
@@ -122,22 +121,22 @@ udp_connection_accept (udp_connection_t * listener, session_dgram_hdr_t * hdr,
       udp_connection_free (uc);
       return 0;
     }
-  udp_connection_share_port (clib_net_to_host_u16
-			     (uc->c_lcl_port), uc->c_is_ip4);
+  udp_connection_share_port (clib_net_to_host_u16 (uc->c_lcl_port),
+			     uc->c_is_ip4);
   return uc;
 }
 
 static void
-udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
-			session_dgram_hdr_t * hdr0, u32 thread_index,
-			vlib_buffer_t * b, u8 queue_event, u32 * error0)
+udp_connection_enqueue (udp_connection_t *uc0, session_t *s0,
+			session_dgram_hdr_t *hdr0, u32 thread_index,
+			vlib_buffer_t *b, u8 queue_event, u32 *error0)
 {
   int wrote0;
 
   clib_spinlock_lock (&uc0->rx_lock);
 
-  if (svm_fifo_max_enqueue_prod (s0->rx_fifo)
-      < hdr0->data_length + sizeof (session_dgram_hdr_t))
+  if (svm_fifo_max_enqueue_prod (s0->rx_fifo) <
+      hdr0->data_length + sizeof (session_dgram_hdr_t))
     {
       *error0 = UDP_ERROR_FIFO_FULL;
       goto unlock_rx_lock;
@@ -147,17 +146,16 @@ udp_connection_enqueue (udp_connection_t * uc0, session_t * s0,
    * enqueue event now while we still have the peeker lock */
   if (s0->thread_index != thread_index)
     {
-      wrote0 = session_enqueue_dgram_connection (s0, hdr0, b,
-						 TRANSPORT_PROTO_UDP,
-						 /* queue event */ 0);
+      wrote0 =
+	session_enqueue_dgram_connection (s0, hdr0, b, TRANSPORT_PROTO_UDP,
+					  /* queue event */ 0);
       if (queue_event && !svm_fifo_has_event (s0->rx_fifo))
 	session_enqueue_notify (s0);
     }
   else
     {
-      wrote0 = session_enqueue_dgram_connection (s0, hdr0, b,
-						 TRANSPORT_PROTO_UDP,
-						 queue_event);
+      wrote0 = session_enqueue_dgram_connection (
+	s0, hdr0, b, TRANSPORT_PROTO_UDP, queue_event);
     }
   ASSERT (wrote0 > 0);
 
@@ -167,7 +165,7 @@ unlock_rx_lock:
 }
 
 always_inline session_t *
-udp_parse_and_lookup_buffer (vlib_buffer_t * b, session_dgram_hdr_t * hdr,
+udp_parse_and_lookup_buffer (vlib_buffer_t *b, session_dgram_hdr_t *hdr,
 			     u8 is_ip4)
 {
   udp_header_t *udp;
@@ -214,15 +212,15 @@ udp_parse_and_lookup_buffer (vlib_buffer_t * b, session_dgram_hdr_t * hdr,
   if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
     b->current_length = hdr->data_length;
   else
-    b->total_length_not_including_first_buffer = hdr->data_length
-      - b->current_length;
+    b->total_length_not_including_first_buffer =
+      hdr->data_length - b->current_length;
 
   return s;
 }
 
 always_inline uword
-udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		    vlib_frame_t * frame, u8 is_ip4)
+udp46_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *frame, u8 is_ip4)
 {
   u32 n_left_from, *from, errors, *first_buffer;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
@@ -326,21 +324,19 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   vlib_buffer_free (vm, first_buffer, frame->n_vectors);
-  errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_UDP,
-					      thread_index);
+  errors =
+    session_main_flush_enqueue_events (TRANSPORT_PROTO_UDP, thread_index);
   err_counters[UDP_ERROR_MQ_FULL] = errors;
   udp_store_err_counters (vm, is_ip4, err_counters);
   return frame->n_vectors;
 }
 
 static uword
-udp4_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-	    vlib_frame_t * frame)
+udp4_input (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return udp46_input_inline (vm, node, frame, 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp4_input_node) =
 {
   .function = udp4_input,
@@ -357,16 +353,13 @@ VLIB_REGISTER_NODE (udp4_input_node) =
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 static uword
-udp6_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-	    vlib_frame_t * frame)
+udp6_input (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return udp46_input_inline (vm, node, frame, 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp6_input_node) =
 {
   .function = udp6_input,
@@ -383,7 +376,6 @@ VLIB_REGISTER_NODE (udp6_input_node) =
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

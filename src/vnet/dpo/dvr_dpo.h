@@ -23,8 +23,8 @@
  */
 typedef enum dvr_dpo_reinject_t_
 {
-    DVR_REINJECT_L2,
-    DVR_REINJECT_L3,
+  DVR_REINJECT_L2,
+  DVR_REINJECT_L3,
 } __clib_packed dvr_dpo_reinject_t;
 
 /**
@@ -38,35 +38,34 @@ typedef enum dvr_dpo_reinject_t_
  */
 typedef struct dvr_dpo_t_
 {
-    /**
-     * The Software interface index that the packets will output on
-     */
-    u32 dd_sw_if_index;
+  /**
+   * The Software interface index that the packets will output on
+   */
+  u32 dd_sw_if_index;
 
-    /**
-     * The protocol of packets using this DPO
-     */
-    dpo_proto_t dd_proto;
+  /**
+   * The protocol of packets using this DPO
+   */
+  dpo_proto_t dd_proto;
 
-    /**
-     * Control for how the re-inject is performed
-     */
-    dvr_dpo_reinject_t dd_reinject;
+  /**
+   * Control for how the re-inject is performed
+   */
+  dvr_dpo_reinject_t dd_reinject;
 
-    /**
-     * number of locks.
-     */
-    u16 dd_locks;
+  /**
+   * number of locks.
+   */
+  u16 dd_locks;
 } dvr_dpo_t;
 
 /* 8 bytes is a factor of cache line size so this struct will never span */
-STATIC_ASSERT_SIZEOF(dvr_dpo_t, 8);
+STATIC_ASSERT_SIZEOF (dvr_dpo_t, 8);
 
-extern void dvr_dpo_add_or_lock (u32 sw_if_index,
-                                 dpo_proto_t dproto,
-                                 dpo_id_t *dpo);
+extern void dvr_dpo_add_or_lock (u32 sw_if_index, dpo_proto_t dproto,
+				 dpo_id_t *dpo);
 
-extern void dvr_dpo_module_init(void);
+extern void dvr_dpo_module_init (void);
 
 /**
  * @brief pool of all interface DPOs
@@ -76,7 +75,7 @@ extern dvr_dpo_t *dvr_dpo_pool;
 static inline dvr_dpo_t *
 dvr_dpo_get (index_t index)
 {
-    return (pool_elt_at_index(dvr_dpo_pool, index));
+  return (pool_elt_at_index (dvr_dpo_pool, index));
 }
 
 #endif

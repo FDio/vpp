@@ -48,14 +48,15 @@ typedef enum gbp_endpoint_flags_t_
   GBP_ENDPOINT_FLAG_EXTERNAL = (1 << GBP_ENDPOINT_ATTR_EXTERNAL),
 } gbp_endpoint_flags_t;
 
-#define GBP_ENDPOINT_ATTR_NAMES {                 \
-    [GBP_ENDPOINT_ATTR_BOUNCE] = "bounce",        \
-    [GBP_ENDPOINT_ATTR_REMOTE] = "remote",        \
-    [GBP_ENDPOINT_ATTR_LEARNT] = "learnt",        \
-    [GBP_ENDPOINT_ATTR_EXTERNAL] = "external",    \
-}
+#define GBP_ENDPOINT_ATTR_NAMES                                               \
+  {                                                                           \
+    [GBP_ENDPOINT_ATTR_BOUNCE] = "bounce",                                    \
+    [GBP_ENDPOINT_ATTR_REMOTE] = "remote",                                    \
+    [GBP_ENDPOINT_ATTR_LEARNT] = "learnt",                                    \
+    [GBP_ENDPOINT_ATTR_EXTERNAL] = "external",                                \
+  }
 
-extern u8 *format_gbp_endpoint_flags (u8 * s, va_list * args);
+extern u8 *format_gbp_endpoint_flags (u8 *s, va_list *args);
 
 /**
  * Sources of Endpoints in priority order. The best (lowest value) source
@@ -63,21 +64,21 @@ extern u8 *format_gbp_endpoint_flags (u8 * s, va_list * args);
  * Data-plane takes preference because the CP data is not always complete,
  * it may not have the sclass.
  */
-#define foreach_gbp_endpoint_src    \
-  _(DP, "data-plane")               \
-  _(CP, "control-plane")            \
-  _(RR, "recursive-resolution")
+#define foreach_gbp_endpoint_src                                              \
+  _ (DP, "data-plane")                                                        \
+  _ (CP, "control-plane")                                                     \
+  _ (RR, "recursive-resolution")
 
 typedef enum gbp_endpoint_src_t_
 {
-#define _(v,s) GBP_ENDPOINT_SRC_##v,
+#define _(v, s) GBP_ENDPOINT_SRC_##v,
   foreach_gbp_endpoint_src
 #undef _
 } gbp_endpoint_src_t;
 
-#define GBP_ENDPOINT_SRC_MAX (GBP_ENDPOINT_SRC_RR+1)
+#define GBP_ENDPOINT_SRC_MAX (GBP_ENDPOINT_SRC_RR + 1)
 
-extern u8 *format_gbp_endpoint_src (u8 * s, va_list * args);
+extern u8 *format_gbp_endpoint_src (u8 *s, va_list *args);
 
 /**
  * This is the identity of an endpoint, as such it is information
@@ -213,7 +214,7 @@ typedef struct gbp_endpoint_t_
   f64 ge_last_time;
 } gbp_endpoint_t;
 
-extern u8 *format_gbp_endpoint (u8 * s, va_list * args);
+extern u8 *format_gbp_endpoint (u8 *s, va_list *args);
 
 /**
  * GBP Endpoint Databases
@@ -225,30 +226,23 @@ typedef struct gbp_ep_by_ip_itf_db_t_
   clib_bihash_16_8_t ged_by_mac_bd;
 } gbp_ep_db_t;
 
-extern int gbp_endpoint_update_and_lock (gbp_endpoint_src_t src,
-					 u32 sw_if_index,
-					 const ip46_address_t * ip,
-					 const mac_address_t * mac,
-					 index_t gbd, index_t grd,
-					 sclass_t sclass,
-					 gbp_endpoint_flags_t flags,
-					 const ip46_address_t * tun_src,
-					 const ip46_address_t * tun_dst,
-					 u32 * handle);
+extern int gbp_endpoint_update_and_lock (
+  gbp_endpoint_src_t src, u32 sw_if_index, const ip46_address_t *ip,
+  const mac_address_t *mac, index_t gbd, index_t grd, sclass_t sclass,
+  gbp_endpoint_flags_t flags, const ip46_address_t *tun_src,
+  const ip46_address_t *tun_dst, u32 *handle);
 extern void gbp_endpoint_unlock (gbp_endpoint_src_t src, index_t gbpei);
-extern u32 gbp_endpoint_child_add (index_t gei,
-				   fib_node_type_t type,
+extern u32 gbp_endpoint_child_add (index_t gei, fib_node_type_t type,
 				   fib_node_index_t index);
 extern void gbp_endpoint_child_remove (index_t gei, u32 sibling);
 
 typedef walk_rc_t (*gbp_endpoint_cb_t) (index_t gbpei, void *ctx);
 extern void gbp_endpoint_walk (gbp_endpoint_cb_t cb, void *ctx);
-extern void gbp_endpoint_scan (vlib_main_t * vm);
-extern int gbp_endpoint_is_remote (const gbp_endpoint_t * ge);
-extern int gbp_endpoint_is_local (const gbp_endpoint_t * ge);
-extern int gbp_endpoint_is_external (const gbp_endpoint_t * ge);
-extern int gbp_endpoint_is_learnt (const gbp_endpoint_t * ge);
-
+extern void gbp_endpoint_scan (vlib_main_t *vm);
+extern int gbp_endpoint_is_remote (const gbp_endpoint_t *ge);
+extern int gbp_endpoint_is_local (const gbp_endpoint_t *ge);
+extern int gbp_endpoint_is_external (const gbp_endpoint_t *ge);
+extern int gbp_endpoint_is_learnt (const gbp_endpoint_t *ge);
 
 extern void gbp_endpoint_flush (gbp_endpoint_src_t src, u32 sw_if_index);
 
@@ -268,15 +262,15 @@ gbp_endpoint_get (index_t gbpei)
 }
 
 static_always_inline void
-gbp_endpoint_mk_key_mac (const u8 * mac,
-			 u32 bd_index, clib_bihash_kv_16_8_t * key)
+gbp_endpoint_mk_key_mac (const u8 *mac, u32 bd_index,
+			 clib_bihash_kv_16_8_t *key)
 {
   key->key[0] = ethernet_mac_address_u64 (mac);
   key->key[1] = bd_index;
 }
 
 static_always_inline gbp_endpoint_t *
-gbp_endpoint_find_mac (const u8 * mac, u32 bd_index)
+gbp_endpoint_find_mac (const u8 *mac, u32 bd_index)
 {
   clib_bihash_kv_16_8_t key, value;
   int rv;
@@ -292,8 +286,8 @@ gbp_endpoint_find_mac (const u8 * mac, u32 bd_index)
 }
 
 static_always_inline void
-gbp_endpoint_mk_key_ip (const ip46_address_t * ip,
-			u32 fib_index, clib_bihash_kv_24_8_t * key)
+gbp_endpoint_mk_key_ip (const ip46_address_t *ip, u32 fib_index,
+			clib_bihash_kv_24_8_t *key)
 {
   key->key[0] = ip->as_u64[0];
   key->key[1] = ip->as_u64[1];
@@ -301,8 +295,8 @@ gbp_endpoint_mk_key_ip (const ip46_address_t * ip,
 }
 
 static_always_inline void
-gbp_endpoint_mk_key_ip4 (const ip4_address_t * ip,
-			 u32 fib_index, clib_bihash_kv_24_8_t * key)
+gbp_endpoint_mk_key_ip4 (const ip4_address_t *ip, u32 fib_index,
+			 clib_bihash_kv_24_8_t *key)
 {
   const ip46_address_t a = {
     .ip4 = *ip,
@@ -311,7 +305,7 @@ gbp_endpoint_mk_key_ip4 (const ip4_address_t * ip,
 }
 
 static_always_inline gbp_endpoint_t *
-gbp_endpoint_find_ip4 (const ip4_address_t * ip, u32 fib_index)
+gbp_endpoint_find_ip4 (const ip4_address_t *ip, u32 fib_index)
 {
   clib_bihash_kv_24_8_t key, value;
   int rv;
@@ -327,8 +321,8 @@ gbp_endpoint_find_ip4 (const ip4_address_t * ip, u32 fib_index)
 }
 
 static_always_inline void
-gbp_endpoint_mk_key_ip6 (const ip6_address_t * ip,
-			 u32 fib_index, clib_bihash_kv_24_8_t * key)
+gbp_endpoint_mk_key_ip6 (const ip6_address_t *ip, u32 fib_index,
+			 clib_bihash_kv_24_8_t *key)
 {
   key->key[0] = ip->as_u64[0];
   key->key[1] = ip->as_u64[1];
@@ -336,7 +330,7 @@ gbp_endpoint_mk_key_ip6 (const ip6_address_t * ip,
 }
 
 static_always_inline gbp_endpoint_t *
-gbp_endpoint_find_ip6 (const ip6_address_t * ip, u32 fib_index)
+gbp_endpoint_find_ip6 (const ip6_address_t *ip, u32 fib_index)
 {
   clib_bihash_kv_24_8_t key, value;
   int rv;
@@ -363,7 +357,6 @@ gbp_endpoint_find_itf (u32 sw_if_index)
 
   return (NULL);
 }
-
 
 #endif
 

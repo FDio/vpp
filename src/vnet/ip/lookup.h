@@ -126,8 +126,8 @@ typedef struct ip_lookup_main_t
   /** Hash table mapping address to index in interface address pool. */
   mhash_t address_to_if_address_index;
 
-  /** Head of doubly linked list of interface addresses for each software interface.
-     ~0 means this interface has no address. */
+  /** Head of doubly linked list of interface addresses for each software
+     interface. ~0 means this interface has no address. */
   u32 *if_address_pool_index_by_sw_if_index;
 
   /** Pool of prefixes containing addresses assigned to interfaces */
@@ -161,24 +161,22 @@ typedef struct ip_lookup_main_t
   u8 builtin_protocol_by_ip_protocol[256];
 } ip_lookup_main_t;
 
-u8 *format_ip_flow_hash_config (u8 * s, va_list * args);
-
+u8 *format_ip_flow_hash_config (u8 *s, va_list *args);
 
 always_inline void
-ip_lookup_set_buffer_fib_index (u32 * fib_index_by_sw_if_index,
-				vlib_buffer_t * b)
+ip_lookup_set_buffer_fib_index (u32 *fib_index_by_sw_if_index,
+				vlib_buffer_t *b)
 {
-  /* *INDENT-OFF* */
+
   vnet_buffer (b)->ip.fib_index =
     vec_elt (fib_index_by_sw_if_index, vnet_buffer (b)->sw_if_index[VLIB_RX]);
   vnet_buffer (b)->ip.fib_index =
-    ((vnet_buffer (b)->sw_if_index[VLIB_TX] ==  (u32) ~ 0) ?
-     vnet_buffer (b)->ip.fib_index :
-     vnet_buffer (b)->sw_if_index[VLIB_TX]);
-  /* *INDENT-ON* */
+    ((vnet_buffer (b)->sw_if_index[VLIB_TX] == (u32) ~0) ?
+       vnet_buffer (b)->ip.fib_index :
+       vnet_buffer (b)->sw_if_index[VLIB_TX]);
 }
 
-void ip_lookup_init (ip_lookup_main_t * lm, u32 ip_lookup_node_index);
+void ip_lookup_init (ip_lookup_main_t *lm, u32 ip_lookup_node_index);
 
 #endif /* included_ip_lookup_h */
 /*

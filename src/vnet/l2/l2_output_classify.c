@@ -46,16 +46,15 @@ typedef struct
 
 /** Packet trace format function. */
 static u8 *
-format_l2_output_classify_trace (u8 * s, va_list * args)
+format_l2_output_classify_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  l2_output_classify_trace_t *t =
-    va_arg (*args, l2_output_classify_trace_t *);
+  l2_output_classify_trace_t *t = va_arg (*args, l2_output_classify_trace_t *);
 
-  s = format (s, "l2-classify: sw_if_index %d, table %d, offset %x, next %d",
-	      t->sw_if_index, t->table_index, t->session_offset,
-	      t->next_index);
+  s =
+    format (s, "l2-classify: sw_if_index %d, table %d, offset %x, next %d",
+	    t->sw_if_index, t->table_index, t->session_offset, t->next_index);
   return s;
 }
 
@@ -66,22 +65,22 @@ extern l2_output_classify_main_t l2_output_classify_main;
 l2_output_classify_main_t l2_output_classify_main;
 #endif /* CLIB_MARCH_VARIANT */
 
-#define foreach_l2_output_classify_error               \
-_(MISS, "Classify misses")                      \
-_(HIT, "Classify hits")                         \
-_(CHAIN_HIT, "Classify hits after chain walk")  \
-_(DROP, "L2 Classify Drops")
+#define foreach_l2_output_classify_error                                      \
+  _ (MISS, "Classify misses")                                                 \
+  _ (HIT, "Classify hits")                                                    \
+  _ (CHAIN_HIT, "Classify hits after chain walk")                             \
+  _ (DROP, "L2 Classify Drops")
 
 typedef enum
 {
-#define _(sym,str) L2_OUTPUT_CLASSIFY_ERROR_##sym,
+#define _(sym, str) L2_OUTPUT_CLASSIFY_ERROR_##sym,
   foreach_l2_output_classify_error
 #undef _
     L2_OUTPUT_CLASSIFY_N_ERROR,
 } l2_output_classify_error_t;
 
 static char *l2_output_classify_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_l2_output_classify_error
 #undef _
 };
@@ -136,9 +135,8 @@ static char *l2_output_classify_error_strings[] = {
  *   Classifier hits in other than the first table
  */
 
-VLIB_NODE_FN (l2_output_classify_node) (vlib_main_t * vm,
-					vlib_node_runtime_t * node,
-					vlib_frame_t * frame)
+VLIB_NODE_FN (l2_output_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   l2_output_classify_next_t next_index;
@@ -174,7 +172,6 @@ VLIB_NODE_FN (l2_output_classify_node) (vlib_main_t * vm,
       u32 table_index0, table_index1;
       u64 hash0, hash1;
 
-
       /* prefetch next iteration */
       {
 	vlib_buffer_t *p2, *p3;
@@ -206,20 +203,23 @@ VLIB_NODE_FN (l2_output_classify_node) (vlib_main_t * vm,
       type0 = clib_net_to_host_u16 (h0->type);
       type1 = clib_net_to_host_u16 (h1->type);
 
-      type_index0 = (type0 == ETHERNET_TYPE_IP4)
-	? L2_OUTPUT_CLASSIFY_TABLE_IP4 : L2_OUTPUT_CLASSIFY_TABLE_OTHER;
-      type_index0 = (type0 == ETHERNET_TYPE_IP6)
-	? L2_OUTPUT_CLASSIFY_TABLE_IP6 : type_index0;
+      type_index0 = (type0 == ETHERNET_TYPE_IP4) ?
+		      L2_OUTPUT_CLASSIFY_TABLE_IP4 :
+		      L2_OUTPUT_CLASSIFY_TABLE_OTHER;
+      type_index0 = (type0 == ETHERNET_TYPE_IP6) ?
+		      L2_OUTPUT_CLASSIFY_TABLE_IP6 :
+		      type_index0;
 
-      type_index1 = (type1 == ETHERNET_TYPE_IP4)
-	? L2_OUTPUT_CLASSIFY_TABLE_IP4 : L2_OUTPUT_CLASSIFY_TABLE_OTHER;
-      type_index1 = (type1 == ETHERNET_TYPE_IP6)
-	? L2_OUTPUT_CLASSIFY_TABLE_IP6 : type_index1;
+      type_index1 = (type1 == ETHERNET_TYPE_IP4) ?
+		      L2_OUTPUT_CLASSIFY_TABLE_IP4 :
+		      L2_OUTPUT_CLASSIFY_TABLE_OTHER;
+      type_index1 = (type1 == ETHERNET_TYPE_IP6) ?
+		      L2_OUTPUT_CLASSIFY_TABLE_IP6 :
+		      type_index1;
 
-      vnet_buffer (b0)->l2_classify.table_index =
-	table_index0 =
-	rt->l2cm->classify_table_index_by_sw_if_index
-	[type_index0][sw_if_index0];
+      vnet_buffer (b0)->l2_classify.table_index = table_index0 =
+	rt->l2cm
+	  ->classify_table_index_by_sw_if_index[type_index0][sw_if_index0];
 
       if (table_index0 != ~0)
 	{
@@ -230,10 +230,9 @@ VLIB_NODE_FN (l2_output_classify_node) (vlib_main_t * vm,
 	  vnet_classify_prefetch_bucket (t0, hash0);
 	}
 
-      vnet_buffer (b1)->l2_classify.table_index =
-	table_index1 =
-	rt->l2cm->classify_table_index_by_sw_if_index
-	[type_index1][sw_if_index1];
+      vnet_buffer (b1)->l2_classify.table_index = table_index1 =
+	rt->l2cm
+	  ->classify_table_index_by_sw_if_index[type_index1][sw_if_index1];
 
       if (table_index1 != ~0)
 	{
@@ -269,14 +268,16 @@ VLIB_NODE_FN (l2_output_classify_node) (vlib_main_t * vm,
       /* Select classifier table based on ethertype */
       type0 = clib_net_to_host_u16 (h0->type);
 
-      type_index0 = (type0 == ETHERNET_TYPE_IP4)
-	? L2_OUTPUT_CLASSIFY_TABLE_IP4 : L2_OUTPUT_CLASSIFY_TABLE_OTHER;
-      type_index0 = (type0 == ETHERNET_TYPE_IP6)
-	? L2_OUTPUT_CLASSIFY_TABLE_IP6 : type_index0;
+      type_index0 = (type0 == ETHERNET_TYPE_IP4) ?
+		      L2_OUTPUT_CLASSIFY_TABLE_IP4 :
+		      L2_OUTPUT_CLASSIFY_TABLE_OTHER;
+      type_index0 = (type0 == ETHERNET_TYPE_IP6) ?
+		      L2_OUTPUT_CLASSIFY_TABLE_IP6 :
+		      type_index0;
 
-      vnet_buffer (b0)->l2_classify.table_index =
-	table_index0 = rt->l2cm->classify_table_index_by_sw_if_index
-	[type_index0][sw_if_index0];
+      vnet_buffer (b0)->l2_classify.table_index = table_index0 =
+	rt->l2cm
+	  ->classify_table_index_by_sw_if_index[type_index0][sw_if_index0];
 
       if (table_index0 != ~0)
 	{
@@ -355,11 +356,11 @@ VLIB_NODE_FN (l2_output_classify_node) (vlib_main_t * vm,
 	      e0 = vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
 	      if (e0)
 		{
-		  vnet_buffer (b0)->l2_classify.opaque_index
-		    = e0->opaque_index;
+		  vnet_buffer (b0)->l2_classify.opaque_index =
+		    e0->opaque_index;
 		  vlib_buffer_advance (b0, e0->advance);
-		  next0 = (e0->next_index < n_next_nodes) ?
-		    e0->next_index : next0;
+		  next0 =
+		    (e0->next_index < n_next_nodes) ? e0->next_index : next0;
 		  hits++;
 		}
 	      else
@@ -372,7 +373,8 @@ VLIB_NODE_FN (l2_output_classify_node) (vlib_main_t * vm,
 		      else
 			{
 			  next0 = (t0->miss_next_index < n_next_nodes) ?
-			    t0->miss_next_index : next0;
+				    t0->miss_next_index :
+				    next0;
 			  misses++;
 			  break;
 			}
@@ -382,11 +384,12 @@ VLIB_NODE_FN (l2_output_classify_node) (vlib_main_t * vm,
 			vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
 		      if (e0)
 			{
-			  vnet_buffer (b0)->l2_classify.opaque_index
-			    = e0->opaque_index;
+			  vnet_buffer (b0)->l2_classify.opaque_index =
+			    e0->opaque_index;
 			  vlib_buffer_advance (b0, e0->advance);
 			  next0 = (e0->next_index < n_next_nodes) ?
-			    e0->next_index : next0;
+				    e0->next_index :
+				    next0;
 			  hits++;
 			  chain_hits++;
 			  break;
@@ -406,8 +409,8 @@ VLIB_NODE_FN (l2_output_classify_node) (vlib_main_t * vm,
 	    vnet_buffer (b0)->l2.feature_bitmap &=
 	      ~L2OUTPUT_FEAT_OUTPUT_CLASSIFY;
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      l2_output_classify_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -418,9 +421,8 @@ VLIB_NODE_FN (l2_output_classify_node) (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -431,12 +433,10 @@ VLIB_NODE_FN (l2_output_classify_node) (vlib_main_t * vm,
   vlib_node_increment_counter (vm, node->node_index,
 			       L2_OUTPUT_CLASSIFY_ERROR_HIT, hits);
   vlib_node_increment_counter (vm, node->node_index,
-			       L2_OUTPUT_CLASSIFY_ERROR_CHAIN_HIT,
-			       chain_hits);
+			       L2_OUTPUT_CLASSIFY_ERROR_CHAIN_HIT, chain_hits);
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_output_classify_node) = {
   .name = "l2-output-classify",
   .vector_size = sizeof (u32),
@@ -455,12 +455,11 @@ VLIB_REGISTER_NODE (l2_output_classify_node) = {
     [L2_OUTPUT_CLASSIFY_NEXT_DROP]  = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 /** l2 output classsifier feature initialization. */
 clib_error_t *
-l2_output_classify_init (vlib_main_t * vm)
+l2_output_classify_init (vlib_main_t *vm)
 {
   l2_output_classify_main_t *cm = &l2_output_classify_main;
   l2_output_classify_runtime_t *rt;
@@ -472,10 +471,8 @@ l2_output_classify_init (vlib_main_t * vm)
   cm->vnet_classify_main = &vnet_classify_main;
 
   /* Initialize the feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2_output_classify_node.index,
-			       L2OUTPUT_N_FEAT,
-			       l2output_get_feat_names (),
+  feat_bitmap_init_next_nodes (vm, l2_output_classify_node.index,
+			       L2OUTPUT_N_FEAT, l2output_get_feat_names (),
 			       cm->l2_out_feat_next);
   rt->l2cm = cm;
   rt->vcm = cm->vnet_classify_main;
@@ -486,7 +483,7 @@ l2_output_classify_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (l2_output_classify_init);
 
 clib_error_t *
-l2_output_classify_worker_init (vlib_main_t * vm)
+l2_output_classify_worker_init (vlib_main_t *vm)
 {
   l2_output_classify_main_t *cm = &l2_output_classify_main;
   l2_output_classify_runtime_t *rt;
@@ -522,10 +519,8 @@ vnet_l2_output_classify_enable_disable (u32 sw_if_index, int enable_disable)
  */
 
 int
-vnet_l2_output_classify_set_tables (u32 sw_if_index,
-				    u32 ip4_table_index,
-				    u32 ip6_table_index,
-				    u32 other_table_index)
+vnet_l2_output_classify_set_tables (u32 sw_if_index, u32 ip4_table_index,
+				    u32 ip6_table_index, u32 other_table_index)
 {
   l2_output_classify_main_t *cm = &l2_output_classify_main;
   vnet_classify_main_t *vcm = cm->vnet_classify_main;
@@ -544,35 +539,34 @@ vnet_l2_output_classify_set_tables (u32 sw_if_index,
       pool_is_free_index (vcm->tables, other_table_index))
     return VNET_API_ERROR_NO_SUCH_TABLE3;
 
-  vec_validate
-    (cm->classify_table_index_by_sw_if_index[L2_OUTPUT_CLASSIFY_TABLE_IP4],
-     sw_if_index);
+  vec_validate (
+    cm->classify_table_index_by_sw_if_index[L2_OUTPUT_CLASSIFY_TABLE_IP4],
+    sw_if_index);
 
-  vec_validate
-    (cm->classify_table_index_by_sw_if_index[L2_OUTPUT_CLASSIFY_TABLE_IP6],
-     sw_if_index);
+  vec_validate (
+    cm->classify_table_index_by_sw_if_index[L2_OUTPUT_CLASSIFY_TABLE_IP6],
+    sw_if_index);
 
-  vec_validate
-    (cm->classify_table_index_by_sw_if_index[L2_OUTPUT_CLASSIFY_TABLE_OTHER],
-     sw_if_index);
+  vec_validate (
+    cm->classify_table_index_by_sw_if_index[L2_OUTPUT_CLASSIFY_TABLE_OTHER],
+    sw_if_index);
 
   cm->classify_table_index_by_sw_if_index[L2_OUTPUT_CLASSIFY_TABLE_IP4]
-    [sw_if_index] = ip4_table_index;
+					 [sw_if_index] = ip4_table_index;
 
   cm->classify_table_index_by_sw_if_index[L2_OUTPUT_CLASSIFY_TABLE_IP6]
-    [sw_if_index] = ip6_table_index;
+					 [sw_if_index] = ip6_table_index;
 
   cm->classify_table_index_by_sw_if_index[L2_OUTPUT_CLASSIFY_TABLE_OTHER]
-    [sw_if_index] = other_table_index;
+					 [sw_if_index] = other_table_index;
 
   return 0;
 }
 #endif /* CLIB_MARCH_VARIANT */
 
 static clib_error_t *
-int_l2_output_classify_command_fn (vlib_main_t * vm,
-				   unformat_input_t * input,
-				   vlib_cli_command_t * cmd)
+int_l2_output_classify_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index = ~0;
@@ -583,8 +577,8 @@ int_l2_output_classify_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "intfc %U", unformat_vnet_sw_interface,
-		    vnm, &sw_if_index))
+      if (unformat (input, "intfc %U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (input, "ip4-table %d", &ip4_table_index))
 	;
@@ -599,22 +593,20 @@ int_l2_output_classify_command_fn (vlib_main_t * vm,
   if (sw_if_index == ~0)
     return clib_error_return (0, "interface must be specified");
 
-
-  if (ip4_table_index == ~0 && ip6_table_index == ~0
-      && other_table_index == ~0)
+  if (ip4_table_index == ~0 && ip6_table_index == ~0 &&
+      other_table_index == ~0)
     {
       vlib_cli_output (vm, "L2 classification disabled");
-      vnet_l2_output_classify_enable_disable (sw_if_index, 0 /* enable */ );
+      vnet_l2_output_classify_enable_disable (sw_if_index, 0 /* enable */);
       return 0;
     }
 
   rv = vnet_l2_output_classify_set_tables (sw_if_index, ip4_table_index,
-					   ip6_table_index,
-					   other_table_index);
+					   ip6_table_index, other_table_index);
   switch (rv)
     {
     case 0:
-      vnet_l2_output_classify_enable_disable (sw_if_index, 1 /* enable */ );
+      vnet_l2_output_classify_enable_disable (sw_if_index, 1 /* enable */);
       break;
 
     default:
@@ -630,20 +622,20 @@ int_l2_output_classify_command_fn (vlib_main_t * vm,
  * Configure Layer 2 output classification.
  *
  * @cliexpar
- * @cliexstart{set interface l2 output classify intfc <interface-name> [ip4-table <index>] [ip6-table <index>] [other-table <index>]}
+ * @cliexstart{set interface l2 output classify intfc <interface-name>
+[ip4-table <index>] [ip6-table <index>] [other-table <index>]}
  * @cliexend
  * @todo This is incomplete. This needs a detailed description and a
  * practical example.
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (int_l2_output_classify_cli, static) = {
   .path = "set interface l2 output classify",
-  .short_help =
-  "set interface l2 output classify intfc <<interface-name>> [ip4-table <n>]\n"
-  "  [ip6-table <n>] [other-table <n>]",
+  .short_help = "set interface l2 output classify intfc <<interface-name>> "
+		"[ip4-table <n>]\n"
+		"  [ip6-table <n>] [other-table <n>]",
   .function = int_l2_output_classify_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

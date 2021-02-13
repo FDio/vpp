@@ -41,20 +41,19 @@
 #include <vnet/pg/pg.h>
 
 /* TCP flags bit 0 first. */
-#define foreach_tcp_flag			\
-  _ (FIN)					\
-  _ (SYN)					\
-  _ (RST)					\
-  _ (PSH)					\
-  _ (ACK)					\
-  _ (URG)					\
-  _ (ECE)					\
+#define foreach_tcp_flag                                                      \
+  _ (FIN)                                                                     \
+  _ (SYN)                                                                     \
+  _ (RST)                                                                     \
+  _ (PSH)                                                                     \
+  _ (ACK)                                                                     \
+  _ (URG)                                                                     \
+  _ (ECE)                                                                     \
   _ (CWR)
 
 static void
-tcp_pg_edit_function (pg_main_t * pg,
-		      pg_stream_t * s,
-		      pg_edit_group_t * g, u32 * packets, u32 n_packets)
+tcp_pg_edit_function (pg_main_t *pg, pg_stream_t *s, pg_edit_group_t *g,
+		      u32 *packets, u32 n_packets)
 {
   vlib_main_t *vm = vlib_get_main ();
   u32 ip_offset, tcp_offset;
@@ -77,7 +76,8 @@ tcp_pg_edit_function (pg_main_t * pg,
       ASSERT (p0->current_data == 0);
       ip0 = (void *) (p0->data + ip_offset);
       tcp0 = (void *) (p0->data + tcp_offset);
-      /* if IP length has been specified, then calculate the length based on buffer */
+      /* if IP length has been specified, then calculate the length based on
+       * buffer */
       if (ip0->length == 0)
 	tcp_len0 = vlib_buffer_length_in_chain (vm, p0) - tcp_offset;
       else
@@ -87,15 +87,14 @@ tcp_pg_edit_function (pg_main_t * pg,
       if (BITS (sum0) == 32)
 	{
 	  sum0 = clib_mem_unaligned (&ip0->src_address, u32);
-	  sum0 =
-	    ip_csum_with_carry (sum0,
-				clib_mem_unaligned (&ip0->dst_address, u32));
+	  sum0 = ip_csum_with_carry (
+	    sum0, clib_mem_unaligned (&ip0->dst_address, u32));
 	}
       else
 	sum0 = clib_mem_unaligned (&ip0->src_address, u64);
 
-      sum0 = ip_csum_with_carry
-	(sum0, clib_host_to_net_u32 (tcp_len0 + (ip0->protocol << 16)));
+      sum0 = ip_csum_with_carry (
+	sum0, clib_host_to_net_u32 (tcp_len0 + (ip0->protocol << 16)));
 
       /* Invalidate possibly old checksum. */
       tcp0->checksum = 0;
@@ -113,7 +112,7 @@ typedef struct
   pg_edit_t seq_number, ack_number;
   pg_edit_t data_offset_and_reserved;
 #define _(f) pg_edit_t f##_flag;
-    foreach_tcp_flag
+  foreach_tcp_flag
 #undef _
     pg_edit_t window;
   pg_edit_t checksum;
@@ -121,24 +120,23 @@ typedef struct
 } pg_tcp_header_t;
 
 static inline void
-pg_tcp_header_init (pg_tcp_header_t * p)
+pg_tcp_header_init (pg_tcp_header_t *p)
 {
   /* Initialize fields that are not bit fields in the IP header. */
 #define _(f) pg_edit_init (&p->f, tcp_header_t, f);
-  _(src);
-  _(dst);
-  _(seq_number);
-  _(ack_number);
-  _(window);
-  _(checksum);
-  _(urgent_pointer);
+  _ (src);
+  _ (dst);
+  _ (seq_number);
+  _ (ack_number);
+  _ (window);
+  _ (checksum);
+  _ (urgent_pointer);
 #undef _
 
   /* Initialize bit fields. */
-#define _(f)						\
-  pg_edit_init_bitfield (&p->f##_flag, tcp_header_t,	\
-			 flags,				\
-			 TCP_FLAG_BIT_##f, 1);
+#define _(f)                                                                  \
+  pg_edit_init_bitfield (&p->f##_flag, tcp_header_t, flags, TCP_FLAG_BIT_##f, \
+			 1);
 
   foreach_tcp_flag
 #undef _
@@ -147,7 +145,7 @@ pg_tcp_header_init (pg_tcp_header_t * p)
 }
 
 uword
-unformat_pg_tcp_header (unformat_input_t * input, va_list * args)
+unformat_pg_tcp_header (unformat_input_t *input, va_list *args)
 {
   pg_stream_t *s = va_arg (*args, pg_stream_t *);
   pg_tcp_header_t *p;
@@ -172,21 +170,20 @@ unformat_pg_tcp_header (unformat_input_t * input, va_list * args)
 #undef _
     p->checksum.type = PG_EDIT_UNSPECIFIED;
 
-  if (!unformat (input, "TCP: %U -> %U",
-		 unformat_pg_edit,
-		 unformat_tcp_udp_port, &p->src,
-		 unformat_pg_edit, unformat_tcp_udp_port, &p->dst))
+  if (!unformat (input, "TCP: %U -> %U", unformat_pg_edit,
+		 unformat_tcp_udp_port, &p->src, unformat_pg_edit,
+		 unformat_tcp_udp_port, &p->dst))
     goto error;
 
   /* Parse options. */
   while (1)
     {
-      if (unformat (input, "window %U",
-		    unformat_pg_edit, unformat_pg_number, &p->window))
+      if (unformat (input, "window %U", unformat_pg_edit, unformat_pg_number,
+		    &p->window))
 	;
 
-      else if (unformat (input, "checksum %U",
-			 unformat_pg_edit, unformat_pg_number, &p->checksum))
+      else if (unformat (input, "checksum %U", unformat_pg_edit,
+			 unformat_pg_number, &p->checksum))
 	;
 
       else if (unformat (input, "seqnum %U", unformat_pg_edit,
@@ -195,13 +192,13 @@ unformat_pg_tcp_header (unformat_input_t * input, va_list * args)
       else if (unformat (input, "acknum %U", unformat_pg_edit,
 			 unformat_pg_number, &p->ack_number))
 	;
-      /* Flags. */
-#define _(f) else if (unformat (input, #f)) pg_edit_set_fixed (&p->f##_flag, 1);
+	/* Flags. */
+#define _(f)                                                                  \
+  else if (unformat (input, #f)) pg_edit_set_fixed (&p->f##_flag, 1);
       foreach_tcp_flag
 #undef _
 	/* Can't parse input: try next protocol level. */
-	else
-	break;
+	else break;
     }
 
   {
@@ -216,8 +213,8 @@ unformat_pg_tcp_header (unformat_input_t * input, va_list * args)
 	pi = ip_get_tcp_udp_port_info (im, dst_port);
       }
 
-    if (pi && pi->unformat_pg_edit
-	&& unformat_user (input, pi->unformat_pg_edit, s))
+    if (pi && pi->unformat_pg_edit &&
+	unformat_user (input, pi->unformat_pg_edit, s))
       ;
 
     else if (!unformat_user (input, unformat_pg_payload, s))

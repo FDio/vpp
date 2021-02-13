@@ -19,7 +19,7 @@
 #include <af_xdp/af_xdp.h>
 
 uword
-unformat_af_xdp_create_if_args (unformat_input_t * input, va_list * vargs)
+unformat_af_xdp_create_if_args (unformat_input_t *input, va_list *vargs)
 {
   af_xdp_create_if_args_t *args = va_arg (*vargs, af_xdp_create_if_args_t *);
   unformat_input_t _line_input, *line_input = &_line_input;

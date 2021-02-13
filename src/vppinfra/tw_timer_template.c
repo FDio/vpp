@@ -23,7 +23,7 @@
 void TW (tw_timer_trace) (TWT (tw_timer_wheel) * tw, u32 timer_id,
 			  u32 pool_index, u32 handle)
 {
-  TWT (trace) * t = &tw->traces[tw->trace_index];
+  TWT (trace) *t = &tw->traces[tw->trace_index];
 
   t->timer_id = timer_id;
   t->pool_index = pool_index;
@@ -68,8 +68,8 @@ void TW (tw_search_trace) (TWT (tw_timer_wheel) * tw, u32 handle)
 	      s = "started";
 	      break;
 	    }
-	  fformat (stderr, "handle 0x%x (%d) %s at trace %d\n",
-		   handle, handle, s, i);
+	  fformat (stderr, "handle 0x%x (%d) %s at trace %d\n", handle, handle,
+		   s, i);
 	}
     }
   if (tw->trace_wrapped > 0)
@@ -91,16 +91,16 @@ void TW (tw_search_trace) (TWT (tw_timer_wheel) * tw, u32 handle)
 		  s = "started";
 		  break;
 		}
-	      fformat (stderr, "handle 0x%x (%d) %s at trace %d\n",
-		       handle, handle, s, i);
+	      fformat (stderr, "handle 0x%x (%d) %s at trace %d\n", handle,
+		       handle, s, i);
 	    }
 	}
     }
 }
 #endif /* TW_START_STOP_TRACE_SIZE > 0 */
 
-static inline u32
-TW (make_internal_timer_handle) (u32 pool_index, u32 timer_id)
+static inline u32 TW (make_internal_timer_handle) (u32 pool_index,
+						   u32 timer_id)
 {
   u32 handle;
 
@@ -118,7 +118,7 @@ TW (make_internal_timer_handle) (u32 pool_index, u32 timer_id)
 static inline void
 timer_addhead (TWT (tw_timer) * pool, u32 head_index, u32 new_index)
 {
-  TWT (tw_timer) * head = pool_elt_at_index (pool, head_index);
+  TWT (tw_timer) *head = pool_elt_at_index (pool, head_index);
   TWT (tw_timer) * old_first;
   u32 old_first_index;
   TWT (tw_timer) * new;
@@ -141,8 +141,7 @@ timer_addhead (TWT (tw_timer) * pool, u32 head_index, u32 new_index)
   head->next = new_index;
 }
 
-static inline void
-timer_remove (TWT (tw_timer) * pool, TWT (tw_timer) * elt)
+static inline void timer_remove (TWT (tw_timer) * pool, TWT (tw_timer) * elt)
 {
   TWT (tw_timer) * next_elt, *prev_elt;
 
@@ -220,8 +219,8 @@ timer_add (TWT (tw_timer_wheel) * tw, TWT (tw_timer) * t, u64 interval)
 #if TW_TIMER_WHEELS > 1
   carry = fast_ring_offset >= TW_SLOTS_PER_RING ? 1 : 0;
   fast_ring_offset %= TW_SLOTS_PER_RING;
-  slow_ring_offset += (tw->current_index[TW_TIMER_RING_SLOW] & TW_RING_MASK)
-    + carry;
+  slow_ring_offset +=
+    (tw->current_index[TW_TIMER_RING_SLOW] & TW_RING_MASK) + carry;
   carry = slow_ring_offset >= TW_SLOTS_PER_RING ? 1 : 0;
   slow_ring_offset %= TW_SLOTS_PER_RING;
 #endif
@@ -276,8 +275,8 @@ timer_add (TWT (tw_timer_wheel) * tw, TWT (tw_timer) * t, u64 interval)
   timer_addhead (tw->timers, ts->head_index, t - tw->timers);
 
 #if TW_FAST_WHEEL_BITMAP
-  tw->fast_slot_bitmap = clib_bitmap_set (tw->fast_slot_bitmap,
-					  fast_ring_offset, 1);
+  tw->fast_slot_bitmap =
+    clib_bitmap_set (tw->fast_slot_bitmap, fast_ring_offset, 1);
 #endif
 #if TW_START_STOP_TRACE_SIZE > 0
   TW (tw_timer_trace) (tw, timer_id, user_id, t - tw->timers);
@@ -292,9 +291,8 @@ timer_add (TWT (tw_timer_wheel) * tw, TWT (tw_timer) * t, u64 interval)
  * @param u64 interval timer interval in ticks
  * @returns handle needed to cancel the timer
  */
-__clib_export u32
-TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 user_id, u32 timer_id,
-		     u64 interval)
+__clib_export u32 TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 user_id,
+				       u32 timer_id, u64 interval)
 {
   TWT (tw_timer) * t;
 
@@ -331,8 +329,8 @@ int TW (scan_for_handle) (TWT (tw_timer_wheel) * tw, u32 handle)
 	      t = pool_elt_at_index (tw->timers, next_index);
 	      if (next_index == handle)
 		{
-		  clib_warning ("handle %d found in ring %d slot %d",
-				handle, i, j);
+		  clib_warning ("handle %d found in ring %d slot %d", handle,
+				i, j);
 		  clib_warning ("user handle 0x%x", t->user_handle);
 		  rv = 1;
 		}
@@ -376,8 +374,8 @@ __clib_export void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle)
   pool_put_index (tw->timers, handle);
 }
 
-__clib_export int
-TW (tw_timer_handle_is_free) (TWT (tw_timer_wheel) * tw, u32 handle)
+__clib_export int TW (tw_timer_handle_is_free) (TWT (tw_timer_wheel) * tw,
+						u32 handle)
 {
   return pool_is_free_index (tw->timers, handle);
 }
@@ -388,8 +386,8 @@ TW (tw_timer_handle_is_free) (TWT (tw_timer_wheel) * tw, u32 handle)
  * @param u32 handle timer returned by tw_timer_start
  * @param u32 interval timer interval in ticks
  */
-__clib_export void
-TW (tw_timer_update) (TWT (tw_timer_wheel) * tw, u32 handle, u64 interval)
+__clib_export void TW (tw_timer_update) (TWT (tw_timer_wheel) * tw, u32 handle,
+					 u64 interval)
 {
   TWT (tw_timer) * t;
   t = pool_elt_at_index (tw->timers, handle);
@@ -404,10 +402,10 @@ TW (tw_timer_update) (TWT (tw_timer_wheel) * tw, u32 handle, u64 interval)
  *   expired timer handles. The callback is optional.
  * @param f64 timer_interval_in_seconds
  */
-__clib_export void
-TW (tw_timer_wheel_init) (TWT (tw_timer_wheel) * tw,
-			  void *expired_timer_callback,
-			  f64 timer_interval_in_seconds, u32 max_expirations)
+__clib_export void TW (tw_timer_wheel_init) (TWT (tw_timer_wheel) * tw,
+					     void *expired_timer_callback,
+					     f64 timer_interval_in_seconds,
+					     u32 max_expirations)
 {
   int ring, slot;
   tw_timer_wheel_slot_t *ts;
@@ -500,10 +498,9 @@ __clib_export void TW (tw_timer_wheel_free) (TWT (tw_timer_wheel) * tw)
  * @param f64 now the current time, e.g. from vlib_time_now(vm)
  * @returns u32 * vector of expired user handles
  */
-static inline
-  u32 * TW (tw_timer_expire_timers_internal) (TWT (tw_timer_wheel) * tw,
-					      f64 now,
-					      u32 * callback_vector_arg)
+static inline u32 *
+  TW (tw_timer_expire_timers_internal) (TWT (tw_timer_wheel) * tw, f64 now,
+					u32 *callback_vector_arg)
 {
   u32 nticks, i;
   tw_timer_wheel_slot_t *ts;
@@ -527,8 +524,7 @@ static inline
   tw->next_run_time = (now + tw->timer_interval);
 
   /* First call, or time jumped backwards? */
-  if (PREDICT_FALSE
-      ((tw->last_run_time == 0.0) || (now <= tw->last_run_time)))
+  if (PREDICT_FALSE ((tw->last_run_time == 0.0) || (now <= tw->last_run_time)))
     {
       tw->last_run_time = now;
       return callback_vector_arg;
@@ -552,9 +548,9 @@ static inline
 
 #if TW_OVERFLOW_VECTOR > 0
       /* Triple odometer-click? Process the overflow vector... */
-      if (PREDICT_FALSE (fast_wheel_index == TW_SLOTS_PER_RING
-			 && slow_wheel_index == TW_SLOTS_PER_RING
-			 && glacier_wheel_index == TW_SLOTS_PER_RING))
+      if (PREDICT_FALSE (fast_wheel_index == TW_SLOTS_PER_RING &&
+			 slow_wheel_index == TW_SLOTS_PER_RING &&
+			 glacier_wheel_index == TW_SLOTS_PER_RING))
 	{
 	  u64 interval;
 	  u32 new_glacier_ring_offset, new_slow_ring_offset;
@@ -606,8 +602,8 @@ static inline
 		{
 		  vec_add1 (callback_vector, t->user_handle);
 #if TW_START_STOP_TRACE_SIZE > 0
-		  TW (tw_timer_trace) (tw, 0xfe, t->user_handle,
-				       t - tw->timers);
+		  TW (tw_timer_trace)
+		  (tw, 0xfe, t->user_handle, t - tw->timers);
 #endif
 		  pool_put (tw->timers, t);
 		}
@@ -630,9 +626,8 @@ static inline
 		  ts = &tw->w[TW_TIMER_RING_FAST][t->fast_ring_offset];
 		  timer_addhead (tw->timers, ts->head_index, t - tw->timers);
 #if TW_FAST_WHEEL_BITMAP
-		  tw->fast_slot_bitmap =
-		    clib_bitmap_set (tw->fast_slot_bitmap,
-				     t->fast_ring_offset, 1);
+		  tw->fast_slot_bitmap = clib_bitmap_set (
+		    tw->fast_slot_bitmap, t->fast_ring_offset, 1);
 #endif
 		}
 	    }
@@ -643,8 +638,8 @@ static inline
       /*
        * Double odometer-click? Process one slot in the glacier ring...
        */
-      if (PREDICT_FALSE (fast_wheel_index == TW_SLOTS_PER_RING
-			 && slow_wheel_index == TW_SLOTS_PER_RING))
+      if (PREDICT_FALSE (fast_wheel_index == TW_SLOTS_PER_RING &&
+			 slow_wheel_index == TW_SLOTS_PER_RING))
 	{
 	  glacier_wheel_index %= TW_SLOTS_PER_RING;
 	  ts = &tw->w[TW_TIMER_RING_GLACIER][glacier_wheel_index];
@@ -670,8 +665,8 @@ static inline
 		{
 		  vec_add1 (callback_vector, t->user_handle);
 #if TW_START_STOP_TRACE_SIZE > 0
-		  TW (tw_timer_trace) (tw, 0xfe, t->user_handle,
-				       t - tw->timers);
+		  TW (tw_timer_trace)
+		  (tw, 0xfe, t->user_handle, t - tw->timers);
 #endif
 		  pool_put (tw->timers, t);
 		}
@@ -681,12 +676,11 @@ static inline
 		  ts = &tw->w[TW_TIMER_RING_FAST][t->fast_ring_offset];
 		  timer_addhead (tw->timers, ts->head_index, t - tw->timers);
 #if TW_FAST_WHEEL_BITMAP
-		  tw->fast_slot_bitmap =
-		    clib_bitmap_set (tw->fast_slot_bitmap,
-				     t->fast_ring_offset, 1);
+		  tw->fast_slot_bitmap = clib_bitmap_set (
+		    tw->fast_slot_bitmap, t->fast_ring_offset, 1);
 #endif
 		}
-	      else		/* typical case */
+	      else /* typical case */
 		{
 		  /* Add to slow ring */
 		  ts = &tw->w[TW_TIMER_RING_SLOW][t->slow_ring_offset];
@@ -725,20 +719,19 @@ static inline
 		{
 		  vec_add1 (callback_vector, t->user_handle);
 #if TW_START_STOP_TRACE_SIZE > 0
-		  TW (tw_timer_trace) (tw, 0xfe, t->user_handle,
-				       t - tw->timers);
+		  TW (tw_timer_trace)
+		  (tw, 0xfe, t->user_handle, t - tw->timers);
 #endif
 		  pool_put (tw->timers, t);
 		}
-	      else		/* typical case */
+	      else /* typical case */
 		{
 		  /* Add to fast ring */
 		  ts = &tw->w[TW_TIMER_RING_FAST][t->fast_ring_offset];
 		  timer_addhead (tw->timers, ts->head_index, t - tw->timers);
 #if TW_FAST_WHEEL_BITMAP
-		  tw->fast_slot_bitmap =
-		    clib_bitmap_set (tw->fast_slot_bitmap,
-				     t->fast_ring_offset, 1);
+		  tw->fast_slot_bitmap = clib_bitmap_set (
+		    tw->fast_slot_bitmap, t->fast_ring_offset, 1);
 #endif
 		}
 	    }
@@ -780,8 +773,8 @@ static inline
 	}
 
 #if TW_FAST_WHEEL_BITMAP
-      tw->fast_slot_bitmap = clib_bitmap_set (tw->fast_slot_bitmap,
-					      fast_wheel_index, 0);
+      tw->fast_slot_bitmap =
+	clib_bitmap_set (tw->fast_slot_bitmap, fast_wheel_index, 0);
 #endif
 
       tw->current_tick++;
@@ -814,11 +807,11 @@ static inline
 __clib_export u32 *TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw,
 						f64 now)
 {
-  return TW (tw_timer_expire_timers_internal) (tw, now, 0 /* no vector */ );
+  return TW (tw_timer_expire_timers_internal) (tw, now, 0 /* no vector */);
 }
 
 __clib_export u32 *TW (tw_timer_expire_timers_vec) (TWT (tw_timer_wheel) * tw,
-						    f64 now, u32 * vec)
+						    f64 now, u32 *vec)
 {
   return TW (tw_timer_expire_timers_internal) (tw, now, vec);
 }
@@ -831,8 +824,8 @@ __clib_export u32 *TW (tw_timer_expire_timers_vec) (TWT (tw_timer_wheel) * tw,
  * when timers are removed from fast wheel slots.
  */
 
-__clib_export u32
-TW (tw_timer_first_expires_in_ticks) (TWT (tw_timer_wheel) * tw)
+__clib_export u32 TW (tw_timer_first_expires_in_ticks) (TWT (tw_timer_wheel) *
+							tw)
 {
   u32 first_expiring_index, fast_ring_index;
   i32 delta;
@@ -842,8 +835,8 @@ TW (tw_timer_first_expires_in_ticks) (TWT (tw_timer_wheel) * tw)
   if (fast_ring_index == TW_SLOTS_PER_RING)
     return 1;
 
-  first_expiring_index = clib_bitmap_next_set (tw->fast_slot_bitmap,
-					       fast_ring_index);
+  first_expiring_index =
+    clib_bitmap_next_set (tw->fast_slot_bitmap, fast_ring_index);
   if (first_expiring_index == ~0)
     first_expiring_index = TW_SLOTS_PER_RING;
 
@@ -856,8 +849,8 @@ TW (tw_timer_first_expires_in_ticks) (TWT (tw_timer_wheel) * tw)
   if (fast_ring_index == TW_SLOTS_PER_RING)
     fast_ring_index = 0;
 
-  first_expiring_index = clib_bitmap_next_set (tw->fast_slot_bitmap,
-					       fast_ring_index);
+  first_expiring_index =
+    clib_bitmap_next_set (tw->fast_slot_bitmap, fast_ring_index);
   if (first_expiring_index == ~0 && fast_ring_index != 0)
     first_expiring_index = clib_bitmap_first_set (tw->fast_slot_bitmap);
 #endif

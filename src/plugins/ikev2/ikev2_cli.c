@@ -20,7 +20,7 @@
 #include <plugins/ikev2/ikev2_priv.h>
 
 u8 *
-format_ikev2_id_type_and_data (u8 * s, va_list * args)
+format_ikev2_id_type_and_data (u8 *s, va_list *args)
 {
   ikev2_id_t *id = va_arg (*args, ikev2_id_t *);
 
@@ -37,7 +37,7 @@ format_ikev2_id_type_and_data (u8 * s, va_list * args)
     case IKEV2_ID_TYPE_ID_IPV6_ADDR:
       s = format (s, "%U", format_ip6_address, id->data);
       break;
-    case IKEV2_ID_TYPE_ID_FQDN:	/* fallthrough */
+    case IKEV2_ID_TYPE_ID_FQDN: /* fallthrough */
     case IKEV2_ID_TYPE_ID_RFC822_ADDR:
       s = format (s, "%v", id->data);
       break;
@@ -51,23 +51,23 @@ format_ikev2_id_type_and_data (u8 * s, va_list * args)
 }
 
 static u8 *
-format_ikev2_traffic_selector (u8 * s, va_list * va)
+format_ikev2_traffic_selector (u8 *s, va_list *va)
 {
   ikev2_ts_t *ts = va_arg (*va, ikev2_ts_t *);
   u32 index = va_arg (*va, u32);
 
-  s = format (s, "%u type %u protocol_id %u addr "
+  s = format (s,
+	      "%u type %u protocol_id %u addr "
 	      "%U - %U port %u - %u\n",
-	      index, ts->ts_type, ts->protocol_id,
-	      format_ip_address, &ts->start_addr,
-	      format_ip_address, &ts->end_addr,
+	      index, ts->ts_type, ts->protocol_id, format_ip_address,
+	      &ts->start_addr, format_ip_address, &ts->end_addr,
 	      clib_net_to_host_u16 (ts->start_port),
 	      clib_net_to_host_u16 (ts->end_port));
   return s;
 }
 
 static u8 *
-format_ikev2_child_sa (u8 * s, va_list * va)
+format_ikev2_child_sa (u8 *s, va_list *va)
 {
   ikev2_child_sa_t *child = va_arg (*va, ikev2_child_sa_t *);
   u32 index = va_arg (*va, u32);
@@ -80,16 +80,15 @@ format_ikev2_child_sa (u8 * s, va_list * va)
 
   s = format (s, "child sa %u:", index);
 
-  tr = ikev2_sa_get_td_for_type (child->r_proposals,
-				 IKEV2_TRANSFORM_TYPE_ENCR);
+  tr =
+    ikev2_sa_get_td_for_type (child->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
   c = format (c, "%U ", format_ikev2_sa_transform, tr);
 
-  tr = ikev2_sa_get_td_for_type (child->r_proposals,
-				 IKEV2_TRANSFORM_TYPE_INTEG);
+  tr =
+    ikev2_sa_get_td_for_type (child->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
   c = format (c, "%U ", format_ikev2_sa_transform, tr);
 
-  tr = ikev2_sa_get_td_for_type (child->r_proposals,
-				 IKEV2_TRANSFORM_TYPE_ESN);
+  tr = ikev2_sa_get_td_for_type (child->r_proposals, IKEV2_TRANSFORM_TYPE_ESN);
   c = format (c, "%U ", format_ikev2_sa_transform, tr);
 
   s = format (s, "%v\n", c);
@@ -99,18 +98,16 @@ format_ikev2_child_sa (u8 * s, va_list * va)
 	      child->i_proposals ? child->i_proposals[0].spi : 0,
 	      child->r_proposals ? child->r_proposals[0].spi : 0);
 
-  s = format (s, "%USK_e  i:%U\n%Ur:%U\n",
-	      format_white_space, indent,
+  s = format (s, "%USK_e  i:%U\n%Ur:%U\n", format_white_space, indent,
 	      format_hex_bytes, child->sk_ei, vec_len (child->sk_ei),
-	      format_white_space, indent + 6,
-	      format_hex_bytes, child->sk_er, vec_len (child->sk_er));
+	      format_white_space, indent + 6, format_hex_bytes, child->sk_er,
+	      vec_len (child->sk_er));
   if (child->sk_ai)
     {
-      s = format (s, "%USK_a  i:%U\n%Ur:%U\n",
-		  format_white_space, indent,
+      s = format (s, "%USK_a  i:%U\n%Ur:%U\n", format_white_space, indent,
 		  format_hex_bytes, child->sk_ai, vec_len (child->sk_ai),
-		  format_white_space, indent + 6,
-		  format_hex_bytes, child->sk_ar, vec_len (child->sk_ar));
+		  format_white_space, indent + 6, format_hex_bytes,
+		  child->sk_ar, vec_len (child->sk_ar));
     }
   s = format (s, "%Utraffic selectors (i):", format_white_space, indent);
   vec_foreach (ts, child->tsi)
@@ -122,7 +119,7 @@ format_ikev2_child_sa (u8 * s, va_list * va)
 }
 
 static u8 *
-format_ikev2_sa (u8 * s, va_list * va)
+format_ikev2_sa (u8 *s, va_list *va)
 {
   ikev2_sa_t *sa = va_arg (*va, ikev2_sa_t *);
   int details = va_arg (*va, int);
@@ -130,9 +127,8 @@ format_ikev2_sa (u8 * s, va_list * va)
   ikev2_child_sa_t *child;
   u32 indent = 1;
 
-  s = format (s, "iip %U ispi %lx rip %U rspi %lx",
-	      format_ip_address, &sa->iaddr, sa->ispi,
-	      format_ip_address, &sa->raddr, sa->rspi);
+  s = format (s, "iip %U ispi %lx rip %U rspi %lx", format_ip_address,
+	      &sa->iaddr, sa->ispi, format_ip_address, &sa->raddr, sa->rspi);
   if (!details)
     return s;
 
@@ -152,44 +148,38 @@ format_ikev2_sa (u8 * s, va_list * va)
 
   s = format (s, "\n%U", format_white_space, indent);
 
-  s = format (s, "nonce i:%U\n%Ur:%U\n",
-	      format_hex_bytes, sa->i_nonce, vec_len (sa->i_nonce),
-	      format_white_space, indent + 6,
+  s = format (s, "nonce i:%U\n%Ur:%U\n", format_hex_bytes, sa->i_nonce,
+	      vec_len (sa->i_nonce), format_white_space, indent + 6,
 	      format_hex_bytes, sa->r_nonce, vec_len (sa->r_nonce));
 
   s = format (s, "%USK_d    %U\n", format_white_space, indent,
 	      format_hex_bytes, sa->sk_d, vec_len (sa->sk_d));
   if (sa->sk_ai)
     {
-      s = format (s, "%USK_a  i:%U\n%Ur:%U\n",
-		  format_white_space, indent,
+      s = format (s, "%USK_a  i:%U\n%Ur:%U\n", format_white_space, indent,
 		  format_hex_bytes, sa->sk_ai, vec_len (sa->sk_ai),
-		  format_white_space, indent + 6,
-		  format_hex_bytes, sa->sk_ar, vec_len (sa->sk_ar));
+		  format_white_space, indent + 6, format_hex_bytes, sa->sk_ar,
+		  vec_len (sa->sk_ar));
     }
-  s = format (s, "%USK_e  i:%U\n%Ur:%U\n",
-	      format_white_space, indent,
+  s = format (s, "%USK_e  i:%U\n%Ur:%U\n", format_white_space, indent,
 	      format_hex_bytes, sa->sk_ei, vec_len (sa->sk_ei),
-	      format_white_space, indent + 6,
-	      format_hex_bytes, sa->sk_er, vec_len (sa->sk_er));
-  s = format (s, "%USK_p  i:%U\n%Ur:%U\n",
-	      format_white_space, indent,
+	      format_white_space, indent + 6, format_hex_bytes, sa->sk_er,
+	      vec_len (sa->sk_er));
+  s = format (s, "%USK_p  i:%U\n%Ur:%U\n", format_white_space, indent,
 	      format_hex_bytes, sa->sk_pi, vec_len (sa->sk_pi),
-	      format_white_space, indent + 6,
-	      format_hex_bytes, sa->sk_pr, vec_len (sa->sk_pr));
+	      format_white_space, indent + 6, format_hex_bytes, sa->sk_pr,
+	      vec_len (sa->sk_pr));
 
-  s = format (s, "%Uidentifier (i) %U\n",
-	      format_white_space, indent,
+  s = format (s, "%Uidentifier (i) %U\n", format_white_space, indent,
 	      format_ikev2_id_type_and_data, &sa->i_id);
-  s = format (s, "%Uidentifier (r) %U\n",
-	      format_white_space, indent,
+  s = format (s, "%Uidentifier (r) %U\n", format_white_space, indent,
 	      format_ikev2_id_type_and_data, &sa->r_id);
 
   vec_foreach (child, sa->childs)
-  {
-    s = format (s, "%U%U", format_white_space, indent + 2,
-		format_ikev2_child_sa, child, child - sa->childs);
-  }
+    {
+      s = format (s, "%U%U", format_white_space, indent + 2,
+		  format_ikev2_child_sa, child, child - sa->childs);
+    }
 
   s = format (s, "Stats:\n");
   s = format (s, " keepalives :%u\n", sa->stats.n_keepalives);
@@ -203,8 +193,8 @@ format_ikev2_sa (u8 * s, va_list * va)
 }
 
 static clib_error_t *
-show_ikev2_sa_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+show_ikev2_sa_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ikev2_main_t *km = &ikev2_main;
@@ -231,55 +221,50 @@ show_ikev2_sa_command_fn (vlib_main_t * vm,
     }
 
   vec_foreach (tkm, km->per_thread_data)
-  {
-    /* *INDENT-OFF* */
-    pool_foreach (sa, tkm->sas)  {
-      if (show_one)
-        {
-          if (sa->rspi == rspi)
-            {
-              s = format (s, "%U\n", format_ikev2_sa, sa, 1);
-              break;
-            }
-        }
-      else
-        s = format (s, "%U\n", format_ikev2_sa, sa, details);
+    {
+
+      pool_foreach (sa, tkm->sas)
+	{
+	  if (show_one)
+	    {
+	      if (sa->rspi == rspi)
+		{
+		  s = format (s, "%U\n", format_ikev2_sa, sa, 1);
+		  break;
+		}
+	    }
+	  else
+	    s = format (s, "%U\n", format_ikev2_sa, sa, details);
+	}
     }
-    /* *INDENT-ON* */
-  }
 
   vlib_cli_output (vm, "%v", s);
   vec_free (s);
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ikev2_sa_command, static) = {
-    .path = "show ikev2 sa",
-    .short_help = "show ikev2 sa [rspi <rspi>] [details]",
-    .function = show_ikev2_sa_command_fn,
+  .path = "show ikev2 sa",
+  .short_help = "show ikev2 sa [rspi <rspi>] [details]",
+  .function = show_ikev2_sa_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-ikev2_disable_dpd_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+ikev2_disable_dpd_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   ikev2_disable_dpd ();
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ikev2_cli_disable_dpd_command, static) = {
   .path = "ikev2 dpd disable",
   .short_help = "ikev2 dpd disable",
   .function = ikev2_disable_dpd_command_fn,
 };
-/* *INDENT-ON* */
 
 static uword
-unformat_ikev2_token (unformat_input_t * input, va_list * va)
+unformat_ikev2_token (unformat_input_t *input, va_list *va)
 {
   u8 **string_return = va_arg (*va, u8 **);
   const char *token_chars = "a-zA-Z0-9_";
@@ -296,9 +281,8 @@ unformat_ikev2_token (unformat_input_t * input, va_list * va)
 }
 
 static clib_error_t *
-ikev2_profile_add_del_command_fn (vlib_main_t * vm,
-				  unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
+ikev2_profile_add_del_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				  vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -309,8 +293,8 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
   u32 tmp1, tmp2, tmp3;
   u64 tmp4, tmp5;
   ip_address_t ip, end_addr;
-  u32 responder_sw_if_index = (u32) ~ 0;
-  u32 tun_sw_if_index = (u32) ~ 0;
+  u32 responder_sw_if_index = (u32) ~0;
+  u32 tun_sw_if_index = (u32) ~0;
   ikev2_transform_encr_type_t crypto_alg;
   ikev2_transform_integ_type_t integ_alg;
   ikev2_transform_dh_type_t dh_type;
@@ -333,34 +317,28 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "set %U auth shared-key-mic string %v",
 			 unformat_ikev2_token, &name, &data))
 	{
-	  r =
-	    ikev2_set_profile_auth (vm, name,
-				    IKEV2_AUTH_METHOD_SHARED_KEY_MIC, data,
-				    0);
+	  r = ikev2_set_profile_auth (
+	    vm, name, IKEV2_AUTH_METHOD_SHARED_KEY_MIC, data, 0);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U auth shared-key-mic hex %U",
-			 unformat_ikev2_token, &name,
-			 unformat_hex_string, &data))
+			 unformat_ikev2_token, &name, unformat_hex_string,
+			 &data))
 	{
-	  r =
-	    ikev2_set_profile_auth (vm, name,
-				    IKEV2_AUTH_METHOD_SHARED_KEY_MIC, data,
-				    1);
+	  r = ikev2_set_profile_auth (
+	    vm, name, IKEV2_AUTH_METHOD_SHARED_KEY_MIC, data, 1);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U auth rsa-sig cert-file %v",
 			 unformat_ikev2_token, &name, &data))
 	{
-	  r =
-	    ikev2_set_profile_auth (vm, name, IKEV2_AUTH_METHOD_RSA_SIG, data,
-				    0);
+	  r = ikev2_set_profile_auth (vm, name, IKEV2_AUTH_METHOD_RSA_SIG,
+				      data, 0);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U id local %U %U",
-			 unformat_ikev2_token, &name,
-			 unformat_ikev2_id_type, &id_type,
-			 unformat_ip_address, &ip))
+			 unformat_ikev2_token, &name, unformat_ikev2_id_type,
+			 &id_type, unformat_ip_address, &ip))
 	{
 	  data = vec_new (u8, ip_address_size (&ip));
 	  clib_memcpy (data, ip_addr_bytes (&ip), ip_address_size (&ip));
@@ -369,70 +347,65 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
       else if (unformat (line_input, "set %U id local %U 0x%U",
-			 unformat_ikev2_token, &name,
-			 unformat_ikev2_id_type, &id_type,
-			 unformat_hex_string, &data))
+			 unformat_ikev2_token, &name, unformat_ikev2_id_type,
+			 &id_type, unformat_hex_string, &data))
 	{
 	  r =
 	    ikev2_set_profile_id (vm, name, (u8) id_type, data, /*local */ 1);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U id local %U %v",
-			 unformat_ikev2_token, &name,
-			 unformat_ikev2_id_type, &id_type, &data))
+			 unformat_ikev2_token, &name, unformat_ikev2_id_type,
+			 &id_type, &data))
 	{
 	  r =
 	    ikev2_set_profile_id (vm, name, (u8) id_type, data, /*local */ 1);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U id remote %U %U",
-			 unformat_ikev2_token, &name,
-			 unformat_ikev2_id_type, &id_type,
-			 unformat_ip_address, &ip))
+			 unformat_ikev2_token, &name, unformat_ikev2_id_type,
+			 &id_type, unformat_ip_address, &ip))
 	{
 	  data = vec_new (u8, ip_address_size (&ip));
 	  clib_memcpy (data, ip_addr_bytes (&ip), ip_address_size (&ip));
-	  r = ikev2_set_profile_id (vm, name, (u8) id_type, data,	/*remote */
+	  r = ikev2_set_profile_id (vm, name, (u8) id_type, data, /*remote */
 				    0);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U id remote %U 0x%U",
-			 unformat_ikev2_token, &name,
-			 unformat_ikev2_id_type, &id_type,
-			 unformat_hex_string, &data))
+			 unformat_ikev2_token, &name, unformat_ikev2_id_type,
+			 &id_type, unformat_hex_string, &data))
 	{
-	  r = ikev2_set_profile_id (vm, name, (u8) id_type, data,	/*remote */
+	  r = ikev2_set_profile_id (vm, name, (u8) id_type, data, /*remote */
 				    0);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U id remote %U %v",
-			 unformat_ikev2_token, &name,
-			 unformat_ikev2_id_type, &id_type, &data))
+			 unformat_ikev2_token, &name, unformat_ikev2_id_type,
+			 &id_type, &data))
 	{
-	  r = ikev2_set_profile_id (vm, name, (u8) id_type, data,	/*remote */
+	  r = ikev2_set_profile_id (vm, name, (u8) id_type, data, /*remote */
 				    0);
 	  goto done;
 	}
-      else if (unformat (line_input, "set %U traffic-selector local "
+      else if (unformat (line_input,
+			 "set %U traffic-selector local "
 			 "ip-range %U - %U port-range %u - %u protocol %u",
-			 unformat_ikev2_token, &name,
-			 unformat_ip_address, &ip,
+			 unformat_ikev2_token, &name, unformat_ip_address, &ip,
 			 unformat_ip_address, &end_addr, &tmp1, &tmp2, &tmp3))
 	{
-	  r =
-	    ikev2_set_profile_ts (vm, name, (u8) tmp3, (u16) tmp1, (u16) tmp2,
-				  ip, end_addr, /*local */ 1);
+	  r = ikev2_set_profile_ts (vm, name, (u8) tmp3, (u16) tmp1,
+				    (u16) tmp2, ip, end_addr, /*local */ 1);
 	  goto done;
 	}
-      else if (unformat (line_input, "set %U traffic-selector remote "
+      else if (unformat (line_input,
+			 "set %U traffic-selector remote "
 			 "ip-range %U - %U port-range %u - %u protocol %u",
-			 unformat_ikev2_token, &name,
-			 unformat_ip_address, &ip,
+			 unformat_ikev2_token, &name, unformat_ip_address, &ip,
 			 unformat_ip_address, &end_addr, &tmp1, &tmp2, &tmp3))
 	{
-	  r =
-	    ikev2_set_profile_ts (vm, name, (u8) tmp3, (u16) tmp1, (u16) tmp2,
-				  ip, end_addr, /*remote */ 0);
+	  r = ikev2_set_profile_ts (vm, name, (u8) tmp3, (u16) tmp1,
+				    (u16) tmp2, ip, end_addr, /*remote */ 0);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U responder %U %U",
@@ -444,74 +417,62 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	    ikev2_set_profile_responder (vm, name, responder_sw_if_index, ip);
 	  goto done;
 	}
-      else if (unformat (line_input, "set %U tunnel %U",
-			 unformat_ikev2_token, &name,
-			 unformat_vnet_sw_interface, vnm, &tun_sw_if_index))
+      else if (unformat (line_input, "set %U tunnel %U", unformat_ikev2_token,
+			 &name, unformat_vnet_sw_interface, vnm,
+			 &tun_sw_if_index))
 	{
 	  r = ikev2_set_profile_tunnel_interface (vm, name, tun_sw_if_index);
 	  goto done;
 	}
-      else
-	if (unformat
-	    (line_input,
-	     "set %U ike-crypto-alg %U %u ike-integ-alg %U ike-dh %U",
-	     unformat_ikev2_token, &name,
-	     unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1,
-	     unformat_ikev2_transform_integ_type, &integ_alg,
-	     unformat_ikev2_transform_dh_type, &dh_type))
+      else if (unformat (
+		 line_input,
+		 "set %U ike-crypto-alg %U %u ike-integ-alg %U ike-dh %U",
+		 unformat_ikev2_token, &name,
+		 unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1,
+		 unformat_ikev2_transform_integ_type, &integ_alg,
+		 unformat_ikev2_transform_dh_type, &dh_type))
 	{
-	  r =
-	    ikev2_set_profile_ike_transforms (vm, name, crypto_alg, integ_alg,
-					      dh_type, tmp1);
+	  r = ikev2_set_profile_ike_transforms (vm, name, crypto_alg,
+						integ_alg, dh_type, tmp1);
 	  goto done;
 	}
-      else
-	if (unformat
-	    (line_input,
-	     "set %U ike-crypto-alg %U %u ike-dh %U",
-	     unformat_ikev2_token, &name,
-	     unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1,
-	     unformat_ikev2_transform_dh_type, &dh_type))
+      else if (unformat (line_input, "set %U ike-crypto-alg %U %u ike-dh %U",
+			 unformat_ikev2_token, &name,
+			 unformat_ikev2_transform_encr_type, &crypto_alg,
+			 &tmp1, unformat_ikev2_transform_dh_type, &dh_type))
 	{
-	  r =
-	    ikev2_set_profile_ike_transforms (vm, name, crypto_alg,
-					      IKEV2_TRANSFORM_INTEG_TYPE_NONE,
-					      dh_type, tmp1);
+	  r = ikev2_set_profile_ike_transforms (
+	    vm, name, crypto_alg, IKEV2_TRANSFORM_INTEG_TYPE_NONE, dh_type,
+	    tmp1);
 	  goto done;
 	}
-      else
-	if (unformat
-	    (line_input,
-	     "set %U esp-crypto-alg %U %u esp-integ-alg %U",
-	     unformat_ikev2_token, &name,
-	     unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1,
-	     unformat_ikev2_transform_integ_type, &integ_alg))
+      else if (unformat (
+		 line_input, "set %U esp-crypto-alg %U %u esp-integ-alg %U",
+		 unformat_ikev2_token, &name,
+		 unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1,
+		 unformat_ikev2_transform_integ_type, &integ_alg))
 	{
-	  r =
-	    ikev2_set_profile_esp_transforms (vm, name, crypto_alg, integ_alg,
-					      tmp1);
+	  r = ikev2_set_profile_esp_transforms (vm, name, crypto_alg,
+						integ_alg, tmp1);
 	  goto done;
 	}
-      else if (unformat
-	       (line_input,
-		"set %U esp-crypto-alg %U %u",
-		unformat_ikev2_token, &name,
-		unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1))
+      else if (unformat (line_input, "set %U esp-crypto-alg %U %u",
+			 unformat_ikev2_token, &name,
+			 unformat_ikev2_transform_encr_type, &crypto_alg,
+			 &tmp1))
 	{
-	  r =
-	    ikev2_set_profile_esp_transforms (vm, name, crypto_alg, 0, tmp1);
+	  r = ikev2_set_profile_esp_transforms (vm, name, crypto_alg, 0, tmp1);
 	  goto done;
 	}
       else if (unformat (line_input, "set %U sa-lifetime %lu %u %u %lu",
-			 unformat_ikev2_token, &name,
-			 &tmp4, &tmp1, &tmp2, &tmp5))
+			 unformat_ikev2_token, &name, &tmp4, &tmp1, &tmp2,
+			 &tmp5))
 	{
-	  r =
-	    ikev2_set_profile_sa_lifetime (vm, name, tmp4, tmp1, tmp2, tmp5);
+	  r = ikev2_set_profile_sa_lifetime (vm, name, tmp4, tmp1, tmp2, tmp5);
 	  goto done;
 	}
-      else if (unformat (line_input, "set %U udp-encap",
-			 unformat_ikev2_token, &name))
+      else if (unformat (line_input, "set %U udp-encap", unformat_ikev2_token,
+			 &name))
 	{
 	  r = ikev2_set_profile_udp_encap (vm, name);
 	  goto done;
@@ -534,8 +495,8 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	break;
     }
 
-  r = clib_error_return (0, "parse error: '%U'",
-			 format_unformat_error, line_input);
+  r = clib_error_return (0, "parse error: '%U'", format_unformat_error,
+			 line_input);
 
 done:
   vec_free (name);
@@ -544,12 +505,12 @@ done:
   return r;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ikev2_profile_add_del_command, static) = {
-    .path = "ikev2 profile",
-    .short_help =
+  .path = "ikev2 profile",
+  .short_help =
     "ikev2 profile [add|del] <id>\n"
-    "ikev2 profile set <id> auth [rsa-sig|shared-key-mic] [cert-file|string|hex]"
+    "ikev2 profile set <id> auth [rsa-sig|shared-key-mic] "
+    "[cert-file|string|hex]"
     " <data>\n"
     "ikev2 profile set <id> id <local|remote> <type> <data>\n"
     "ikev2 profile set <id> tunnel <interface>\n"
@@ -558,106 +519,116 @@ VLIB_CLI_COMMAND (ikev2_profile_add_del_command, static) = {
     "<start-addr> - <end-addr> port-range <start-port> - <end-port> "
     "protocol <protocol-number>\n"
     "ikev2 profile set <id> responder <interface> <addr>\n"
-    "ikev2 profile set <id> ike-crypto-alg <crypto alg> <key size> ike-integ-alg <integ alg> ike-dh <dh type>\n"
+    "ikev2 profile set <id> ike-crypto-alg <crypto alg> <key size> "
+    "ike-integ-alg <integ alg> ike-dh <dh type>\n"
     "ikev2 profile set <id> esp-crypto-alg <crypto alg> <key size> "
-      "[esp-integ-alg <integ alg>]\n"
-    "ikev2 profile set <id> sa-lifetime <seconds> <jitter> <handover> <max bytes>"
+    "[esp-integ-alg <integ alg>]\n"
+    "ikev2 profile set <id> sa-lifetime <seconds> <jitter> <handover> <max "
+    "bytes>"
     "ikev2 profile set <id> disable natt\n",
-    .function = ikev2_profile_add_del_command_fn,
+  .function = ikev2_profile_add_del_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_ikev2_profile_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+show_ikev2_profile_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   ikev2_main_t *km = &ikev2_main;
   ikev2_profile_t *p;
 
-  /* *INDENT-OFF* */
-  pool_foreach (p, km->profiles)  {
-    vlib_cli_output(vm, "profile %v", p->name);
+  pool_foreach (p, km->profiles)
+    {
+      vlib_cli_output (vm, "profile %v", p->name);
 
-    if (p->auth.data)
-      {
-        if (p->auth.hex)
-          vlib_cli_output(vm, "  auth-method %U auth data 0x%U",
-                          format_ikev2_auth_method, p->auth.method,
-                          format_hex_bytes, p->auth.data, vec_len(p->auth.data));
-        else
-          vlib_cli_output(vm, "  auth-method %U auth data %v",
-                   format_ikev2_auth_method, p->auth.method, p->auth.data);
-      }
+      if (p->auth.data)
+	{
+	  if (p->auth.hex)
+	    vlib_cli_output (vm, "  auth-method %U auth data 0x%U",
+			     format_ikev2_auth_method, p->auth.method,
+			     format_hex_bytes, p->auth.data,
+			     vec_len (p->auth.data));
+	  else
+	    vlib_cli_output (vm, "  auth-method %U auth data %v",
+			     format_ikev2_auth_method, p->auth.method,
+			     p->auth.data);
+	}
 
-    if (p->loc_id.data)
-      vlib_cli_output(vm, "  local %U", format_ikev2_id_type_and_data, &p->loc_id);
+      if (p->loc_id.data)
+	vlib_cli_output (vm, "  local %U", format_ikev2_id_type_and_data,
+			 &p->loc_id);
 
-    if (p->rem_id.data)
-      vlib_cli_output(vm, "  remote %U", format_ikev2_id_type_and_data, &p->rem_id);
+      if (p->rem_id.data)
+	vlib_cli_output (vm, "  remote %U", format_ikev2_id_type_and_data,
+			 &p->rem_id);
 
-    if (!ip_address_is_zero (&p->loc_ts.start_addr))
-      vlib_cli_output(vm, "  local traffic-selector addr %U - %U port %u - %u"
-                      " protocol %u",
-                      format_ip_address, &p->loc_ts.start_addr,
-                      format_ip_address, &p->loc_ts.end_addr,
-                      p->loc_ts.start_port, p->loc_ts.end_port,
-                      p->loc_ts.protocol_id);
+      if (!ip_address_is_zero (&p->loc_ts.start_addr))
+	vlib_cli_output (vm,
+			 "  local traffic-selector addr %U - %U port %u - %u"
+			 " protocol %u",
+			 format_ip_address, &p->loc_ts.start_addr,
+			 format_ip_address, &p->loc_ts.end_addr,
+			 p->loc_ts.start_port, p->loc_ts.end_port,
+			 p->loc_ts.protocol_id);
 
-    if (!ip_address_is_zero (&p->rem_ts.start_addr))
-      vlib_cli_output(vm, "  remote traffic-selector addr %U - %U port %u - %u"
-                      " protocol %u",
-                      format_ip_address, &p->rem_ts.start_addr,
-                      format_ip_address, &p->rem_ts.end_addr,
-                      p->rem_ts.start_port, p->rem_ts.end_port,
-                      p->rem_ts.protocol_id);
-    if (~0 != p->tun_itf)
-      vlib_cli_output(vm, "  protected tunnel %U",
-                      format_vnet_sw_if_index_name, vnet_get_main(), p->tun_itf);
-    if (~0 != p->responder.sw_if_index)
-      vlib_cli_output(vm, "  responder %U %U",
-                      format_vnet_sw_if_index_name, vnet_get_main(), p->responder.sw_if_index,
-                      format_ip_address, &p->responder.addr);
-    if (p->udp_encap)
-      vlib_cli_output(vm, "  udp-encap");
+      if (!ip_address_is_zero (&p->rem_ts.start_addr))
+	vlib_cli_output (vm,
+			 "  remote traffic-selector addr %U - %U port %u - %u"
+			 " protocol %u",
+			 format_ip_address, &p->rem_ts.start_addr,
+			 format_ip_address, &p->rem_ts.end_addr,
+			 p->rem_ts.start_port, p->rem_ts.end_port,
+			 p->rem_ts.protocol_id);
+      if (~0 != p->tun_itf)
+	vlib_cli_output (vm, "  protected tunnel %U",
+			 format_vnet_sw_if_index_name, vnet_get_main (),
+			 p->tun_itf);
+      if (~0 != p->responder.sw_if_index)
+	vlib_cli_output (vm, "  responder %U %U", format_vnet_sw_if_index_name,
+			 vnet_get_main (), p->responder.sw_if_index,
+			 format_ip_address, &p->responder.addr);
+      if (p->udp_encap)
+	vlib_cli_output (vm, "  udp-encap");
 
-    if (p->natt_disabled)
-      vlib_cli_output(vm, "  NAT-T disabled");
+      if (p->natt_disabled)
+	vlib_cli_output (vm, "  NAT-T disabled");
 
-    if (p->ipsec_over_udp_port != IPSEC_UDP_PORT_NONE)
-      vlib_cli_output(vm, "  ipsec-over-udp port %d", p->ipsec_over_udp_port);
+      if (p->ipsec_over_udp_port != IPSEC_UDP_PORT_NONE)
+	vlib_cli_output (vm, "  ipsec-over-udp port %d",
+			 p->ipsec_over_udp_port);
 
-    if (p->ike_ts.crypto_alg || p->ike_ts.integ_alg || p->ike_ts.dh_type || p->ike_ts.crypto_key_size)
-      vlib_cli_output(vm, "  ike-crypto-alg %U %u ike-integ-alg %U ike-dh %U",
-                    format_ikev2_transform_encr_type, p->ike_ts.crypto_alg, p->ike_ts.crypto_key_size,
-                    format_ikev2_transform_integ_type, p->ike_ts.integ_alg,
-                    format_ikev2_transform_dh_type, p->ike_ts.dh_type);
+      if (p->ike_ts.crypto_alg || p->ike_ts.integ_alg || p->ike_ts.dh_type ||
+	  p->ike_ts.crypto_key_size)
+	vlib_cli_output (
+	  vm, "  ike-crypto-alg %U %u ike-integ-alg %U ike-dh %U",
+	  format_ikev2_transform_encr_type, p->ike_ts.crypto_alg,
+	  p->ike_ts.crypto_key_size, format_ikev2_transform_integ_type,
+	  p->ike_ts.integ_alg, format_ikev2_transform_dh_type,
+	  p->ike_ts.dh_type);
 
-    if (p->esp_ts.crypto_alg || p->esp_ts.integ_alg || p->esp_ts.dh_type)
-      vlib_cli_output(vm, "  esp-crypto-alg %U %u esp-integ-alg %U",
-                    format_ikev2_transform_encr_type, p->esp_ts.crypto_alg, p->esp_ts.crypto_key_size,
-                    format_ikev2_transform_integ_type, p->esp_ts.integ_alg);
+      if (p->esp_ts.crypto_alg || p->esp_ts.integ_alg || p->esp_ts.dh_type)
+	vlib_cli_output (vm, "  esp-crypto-alg %U %u esp-integ-alg %U",
+			 format_ikev2_transform_encr_type,
+			 p->esp_ts.crypto_alg, p->esp_ts.crypto_key_size,
+			 format_ikev2_transform_integ_type,
+			 p->esp_ts.integ_alg);
 
-    vlib_cli_output(vm, "  lifetime %d jitter %d handover %d maxdata %d",
-                    p->lifetime, p->lifetime_jitter, p->handover, p->lifetime_maxdata);
-  }
-  /* *INDENT-ON* */
+      vlib_cli_output (vm, "  lifetime %d jitter %d handover %d maxdata %d",
+		       p->lifetime, p->lifetime_jitter, p->handover,
+		       p->lifetime_maxdata);
+    }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ikev2_profile_command, static) = {
-    .path = "show ikev2 profile",
-    .short_help = "show ikev2 profile",
-    .function = show_ikev2_profile_command_fn,
+  .path = "show ikev2 profile",
+  .short_help = "show ikev2 profile",
+  .function = show_ikev2_profile_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-set_ikev2_liveness_period_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+set_ikev2_liveness_period_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *r = 0;
@@ -677,26 +648,23 @@ set_ikev2_liveness_period_fn (vlib_main_t * vm,
 	break;
     }
 
-  r = clib_error_return (0, "parse error: '%U'",
-			 format_unformat_error, line_input);
+  r = clib_error_return (0, "parse error: '%U'", format_unformat_error,
+			 line_input);
 
 done:
   unformat_free (line_input);
   return r;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ikev2_liveness_command, static) = {
   .path = "ikev2 set liveness",
   .short_help = "ikev2 set liveness <period> <max-retires>",
   .function = set_ikev2_liveness_period_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-set_ikev2_local_key_command_fn (vlib_main_t * vm,
-				unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+set_ikev2_local_key_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *r = 0;
@@ -716,8 +684,8 @@ set_ikev2_local_key_command_fn (vlib_main_t * vm,
 	break;
     }
 
-  r = clib_error_return (0, "parse error: '%U'",
-			 format_unformat_error, line_input);
+  r = clib_error_return (0, "parse error: '%U'", format_unformat_error,
+			 line_input);
 
 done:
   vec_free (data);
@@ -725,19 +693,15 @@ done:
   return r;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ikev2_local_key_command, static) = {
-    .path = "set ikev2 local key",
-    .short_help =
-    "set ikev2 local key <file>",
-    .function = set_ikev2_local_key_command_fn,
+  .path = "set ikev2 local key",
+  .short_help = "set ikev2 local key <file>",
+  .function = set_ikev2_local_key_command_fn,
 };
-/* *INDENT-ON* */
-
 
 static clib_error_t *
-ikev2_initiate_command_fn (vlib_main_t * vm,
-			   unformat_input_t * input, vlib_cli_command_t * cmd)
+ikev2_initiate_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *r = 0;
@@ -774,8 +738,8 @@ ikev2_initiate_command_fn (vlib_main_t * vm,
 	break;
     }
 
-  r = clib_error_return (0, "parse error: '%U'",
-			 format_unformat_error, line_input);
+  r = clib_error_return (0, "parse error: '%U'", format_unformat_error,
+			 line_input);
 
 done:
   vec_free (name);
@@ -783,17 +747,14 @@ done:
   return r;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ikev2_initiate_command, static) = {
-    .path = "ikev2 initiate",
-    .short_help =
-        "ikev2 initiate sa-init <profile id>\n"
-        "ikev2 initiate del-child-sa <child sa ispi>\n"
-        "ikev2 initiate del-sa <sa ispi>\n"
-        "ikev2 initiate rekey-child-sa <child sa ispi>\n",
-    .function = ikev2_initiate_command_fn,
+  .path = "ikev2 initiate",
+  .short_help = "ikev2 initiate sa-init <profile id>\n"
+		"ikev2 initiate del-child-sa <child sa ispi>\n"
+		"ikev2 initiate del-sa <sa ispi>\n"
+		"ikev2 initiate rekey-child-sa <child sa ispi>\n",
+  .function = ikev2_initiate_command_fn,
 };
-/* *INDENT-ON* */
 
 void
 ikev2_cli_reference (void)
@@ -801,9 +762,8 @@ ikev2_cli_reference (void)
 }
 
 static clib_error_t *
-ikev2_set_log_level_command_fn (vlib_main_t * vm,
-				unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+ikev2_set_log_level_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 log_level = IKEV2_LOG_NONE;
@@ -828,13 +788,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ikev2_set_log_level_command, static) = {
   .path = "ikev2 set logging level",
   .function = ikev2_set_log_level_command_fn,
   .short_help = "ikev2 set logging level <0-5>",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

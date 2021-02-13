@@ -19,68 +19,81 @@
 #include <vppinfra/clib.h>
 #include <x86intrin.h>
 
-/* *INDENT-OFF* */
-#define foreach_avx512_vec512i \
-  _(i,8,64,epi8) _(i,16,32,epi16) _(i,32,16,epi32)  _(i,64,8,epi64)
-#define foreach_avx512_vec512u \
-  _(u,8,64,epi8) _(u,16,32,epi16) _(u,32,16,epi32)  _(u,64,8,epi64)
-#define foreach_avx512_vec512f \
-  _(f,32,8,ps) _(f,64,4,pd)
+#define foreach_avx512_vec512i                                                \
+  _ (i, 8, 64, epi8)                                                          \
+  _ (i, 16, 32, epi16) _ (i, 32, 16, epi32) _ (i, 64, 8, epi64)
+#define foreach_avx512_vec512u                                                \
+  _ (u, 8, 64, epi8)                                                          \
+  _ (u, 16, 32, epi16) _ (u, 32, 16, epi32) _ (u, 64, 8, epi64)
+#define foreach_avx512_vec512f _ (f, 32, 8, ps) _ (f, 64, 4, pd)
 
 /* splat, load_unaligned, store_unaligned, is_all_zero, is_equal,
    is_all_equal, is_zero_mask */
-#define _(t, s, c, i) \
-static_always_inline t##s##x##c						\
-t##s##x##c##_splat (t##s x)						\
-{ return (t##s##x##c) _mm512_set1_##i (x); }				\
-\
-static_always_inline t##s##x##c						\
-t##s##x##c##_load_aligned (void *p)					\
-{ return (t##s##x##c) _mm512_load_si512 (p); }				\
-\
-static_always_inline void						\
-t##s##x##c##_store_aligned (t##s##x##c v, void *p)			\
-{ _mm512_store_si512 ((__m512i *) p, (__m512i) v); }			\
-\
-static_always_inline t##s##x##c						\
-t##s##x##c##_load_unaligned (void *p)					\
-{ return (t##s##x##c) _mm512_loadu_si512 (p); }				\
-\
-static_always_inline void						\
-t##s##x##c##_store_unaligned (t##s##x##c v, void *p)			\
-{ _mm512_storeu_si512 ((__m512i *) p, (__m512i) v); }			\
-\
-static_always_inline int						\
-t##s##x##c##_is_all_zero (t##s##x##c v)					\
-{ return (_mm512_test_epi64_mask ((__m512i) v, (__m512i) v) == 0); }	\
-\
-static_always_inline int						\
-t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b)			\
-{ return t##s##x##c##_is_all_zero (a ^ b); }				\
-\
-static_always_inline int						\
-t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
-{ return t##s##x##c##_is_equal (v, t##s##x##c##_splat (x)); }		\
-\
-static_always_inline u##c						\
-t##s##x##c##_is_zero_mask (t##s##x##c v)				\
-{ return _mm512_test_##i##_mask ((__m512i) v, (__m512i) v); }		\
-\
-static_always_inline t##s##x##c                                         \
-t##s##x##c##_interleave_lo (t##s##x##c a, t##s##x##c b)                 \
-{ return (t##s##x##c) _mm512_unpacklo_##i ((__m512i) a, (__m512i) b); } \
-\
-static_always_inline t##s##x##c                                         \
-t##s##x##c##_interleave_hi (t##s##x##c a, t##s##x##c b)                 \
-{ return (t##s##x##c) _mm512_unpackhi_##i ((__m512i) a, (__m512i) b); } \
-
+#define _(t, s, c, i)                                                         \
+  static_always_inline t##s##x##c t##s##x##c##_splat (t##s x)                 \
+  {                                                                           \
+    return (t##s##x##c) _mm512_set1_##i (x);                                  \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s##x##c t##s##x##c##_load_aligned (void *p)         \
+  {                                                                           \
+    return (t##s##x##c) _mm512_load_si512 (p);                                \
+  }                                                                           \
+                                                                              \
+  static_always_inline void t##s##x##c##_store_aligned (t##s##x##c v,         \
+							void *p)              \
+  {                                                                           \
+    _mm512_store_si512 ((__m512i *) p, (__m512i) v);                          \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s##x##c t##s##x##c##_load_unaligned (void *p)       \
+  {                                                                           \
+    return (t##s##x##c) _mm512_loadu_si512 (p);                               \
+  }                                                                           \
+                                                                              \
+  static_always_inline void t##s##x##c##_store_unaligned (t##s##x##c v,       \
+							  void *p)            \
+  {                                                                           \
+    _mm512_storeu_si512 ((__m512i *) p, (__m512i) v);                         \
+  }                                                                           \
+                                                                              \
+  static_always_inline int t##s##x##c##_is_all_zero (t##s##x##c v)            \
+  {                                                                           \
+    return (_mm512_test_epi64_mask ((__m512i) v, (__m512i) v) == 0);          \
+  }                                                                           \
+                                                                              \
+  static_always_inline int t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b) \
+  {                                                                           \
+    return t##s##x##c##_is_all_zero (a ^ b);                                  \
+  }                                                                           \
+                                                                              \
+  static_always_inline int t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)   \
+  {                                                                           \
+    return t##s##x##c##_is_equal (v, t##s##x##c##_splat (x));                 \
+  }                                                                           \
+                                                                              \
+  static_always_inline u##c t##s##x##c##_is_zero_mask (t##s##x##c v)          \
+  {                                                                           \
+    return _mm512_test_##i##_mask ((__m512i) v, (__m512i) v);                 \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s##x##c t##s##x##c##_interleave_lo (t##s##x##c a,   \
+							      t##s##x##c b)   \
+  {                                                                           \
+    return (t##s##x##c) _mm512_unpacklo_##i ((__m512i) a, (__m512i) b);       \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s##x##c t##s##x##c##_interleave_hi (t##s##x##c a,   \
+							      t##s##x##c b)   \
+  {                                                                           \
+    return (t##s##x##c) _mm512_unpackhi_##i ((__m512i) a, (__m512i) b);       \
+  }
 
 foreach_avx512_vec512i foreach_avx512_vec512u
 #undef _
-/* *INDENT-ON* */
 
-static_always_inline u32
-u16x32_msb_mask (u16x32 v)
+  static_always_inline u32
+  u16x32_msb_mask (u16x32 v)
 {
   return (u32) _mm512_movepi16_mask ((__m512i) v);
 }
@@ -88,24 +101,20 @@ u16x32_msb_mask (u16x32 v)
 static_always_inline u32x16
 u32x16_byte_swap (u32x16 v)
 {
-  u8x64 swap = {
-    3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12,
-    3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12,
-    3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12,
-    3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12
-  };
+  u8x64 swap = { 3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12,
+		 3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12,
+		 3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12,
+		 3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12 };
   return (u32x16) _mm512_shuffle_epi8 ((__m512i) v, (__m512i) swap);
 }
 
 static_always_inline u16x32
 u16x32_byte_swap (u16x32 v)
 {
-  u8x64 swap = {
-    1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14,
-    1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14,
-    1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14,
-    1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14
-  };
+  u8x64 swap = { 1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14,
+		 1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14,
+		 1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14,
+		 1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14 };
   return (u16x32) _mm512_shuffle_epi8 ((__m512i) v, (__m512i) swap);
 }
 
@@ -136,8 +145,8 @@ u8x64_extract_hi (u8x64 v)
 static_always_inline u32
 u32x16_min_scalar (u32x16 v)
 {
-  return u32x8_min_scalar (u32x8_min (u32x16_extract_lo (v),
-				      u32x16_extract_hi (v)));
+  return u32x8_min_scalar (
+    u32x8_min (u32x16_extract_lo (v), u32x16_extract_hi (v)));
 }
 
 static_always_inline u32x16
@@ -159,18 +168,19 @@ u64x8_permute (u64x8 a, u64x8 b, u64x8 mask)
 					    (__m512i) b);
 }
 
-
-#define u32x16_ternary_logic(a, b, c, d) \
+#define u32x16_ternary_logic(a, b, c, d)                                      \
   (u32x16) _mm512_ternarylogic_epi32 ((__m512i) a, (__m512i) b, (__m512i) c, d)
 
-#define u8x64_insert_u8x16(a, b, n) \
+#define u8x64_insert_u8x16(a, b, n)                                           \
   (u8x64) _mm512_inserti64x2 ((__m512i) (a), (__m128i) (b), n)
 
-#define u8x64_extract_u8x16(a, n) \
+#define u8x64_extract_u8x16(a, n)                                             \
   (u8x16) _mm512_extracti64x2_epi64 ((__m512i) (a), n)
 
-#define u8x64_word_shift_left(a,n)  (u8x64) _mm512_bslli_epi128((__m512i) a, n)
-#define u8x64_word_shift_right(a,n) (u8x64) _mm512_bsrli_epi128((__m512i) a, n)
+#define u8x64_word_shift_left(a, n)                                           \
+  (u8x64) _mm512_bslli_epi128 ((__m512i) a, n)
+#define u8x64_word_shift_right(a, n)                                          \
+  (u8x64) _mm512_bsrli_epi128 ((__m512i) a, n)
 
 static_always_inline u8x64
 u8x64_xor3 (u8x64 a, u8x64 b, u8x64 c)
@@ -197,7 +207,7 @@ u8x64_shuffle (u8x64 v, u8x64 m)
   return (u8x64) _mm512_shuffle_epi8 ((__m512i) v, (__m512i) m);
 }
 
-#define u8x64_align_right(a, b, imm) \
+#define u8x64_align_right(a, b, imm)                                          \
   (u8x64) _mm512_alignr_epi8 ((__m512i) a, (__m512i) b, imm)
 
 static_always_inline u32
@@ -257,12 +267,10 @@ u32x16_transpose (u32x16 m[16])
 {
   __m512i r[16], a, b, c, d, x, y;
 
-  /* *INDENT-OFF* */
-  __m512i pm1 = (__m512i) (u64x8) { 0, 1, 8, 9, 4, 5, 12, 13};
-  __m512i pm2 = (__m512i) (u64x8) { 2, 3, 10, 11, 6, 7, 14, 15};
-  __m512i pm3 = (__m512i) (u64x8) { 0, 1, 2, 3, 8, 9, 10, 11};
-  __m512i pm4 = (__m512i) (u64x8) { 4, 5, 6, 7, 12, 13, 14, 15};
-  /* *INDENT-ON* */
+  __m512i pm1 = (__m512i) (u64x8){ 0, 1, 8, 9, 4, 5, 12, 13 };
+  __m512i pm2 = (__m512i) (u64x8){ 2, 3, 10, 11, 6, 7, 14, 15 };
+  __m512i pm3 = (__m512i) (u64x8){ 0, 1, 2, 3, 8, 9, 10, 11 };
+  __m512i pm4 = (__m512i) (u64x8){ 4, 5, 6, 7, 12, 13, 14, 15 };
 
   r[0] = _mm512_unpacklo_epi32 ((__m512i) m[0], (__m512i) m[1]);
   r[1] = _mm512_unpacklo_epi32 ((__m512i) m[2], (__m512i) m[3]);
@@ -335,19 +343,15 @@ u32x16_transpose (u32x16 m[16])
   m[15] = (u32x16) _mm512_permutex2var_epi64 (x, pm4, y);
 }
 
-
-
 static_always_inline void
 u64x8_transpose (u64x8 m[8])
 {
   __m512i r[8], x, y;
 
-  /* *INDENT-OFF* */
-  __m512i pm1 = (__m512i) (u64x8) { 0, 1, 8, 9, 4, 5, 12, 13};
-  __m512i pm2 = (__m512i) (u64x8) { 2, 3, 10, 11, 6, 7, 14, 15};
-  __m512i pm3 = (__m512i) (u64x8) { 0, 1, 2, 3, 8, 9, 10, 11};
-  __m512i pm4 = (__m512i) (u64x8) { 4, 5, 6, 7, 12, 13, 14, 15};
-  /* *INDENT-ON* */
+  __m512i pm1 = (__m512i) (u64x8){ 0, 1, 8, 9, 4, 5, 12, 13 };
+  __m512i pm2 = (__m512i) (u64x8){ 2, 3, 10, 11, 6, 7, 14, 15 };
+  __m512i pm3 = (__m512i) (u64x8){ 0, 1, 2, 3, 8, 9, 10, 11 };
+  __m512i pm4 = (__m512i) (u64x8){ 4, 5, 6, 7, 12, 13, 14, 15 };
 
   r[0] = _mm512_unpacklo_epi64 ((__m512i) m[0], (__m512i) m[1]);
   r[1] = _mm512_unpacklo_epi64 ((__m512i) m[2], (__m512i) m[3]);

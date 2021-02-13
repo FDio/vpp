@@ -31,7 +31,7 @@
 #include <vppinfra/bihash_24_16.h>
 
 typedef clib_error_t *(*add_del_sa_sess_cb_t) (u32 sa_index, u8 is_add);
-typedef clib_error_t *(*check_support_cb_t) (ipsec_sa_t * sa);
+typedef clib_error_t *(*check_support_cb_t) (ipsec_sa_t *sa);
 typedef clib_error_t *(*enable_disable_cb_t) (int is_enable);
 
 typedef struct
@@ -219,10 +219,10 @@ typedef enum ipsec_format_flags_t_
 
 extern ipsec_main_t ipsec_main;
 
-clib_error_t *ipsec_add_del_sa_sess_cb (ipsec_main_t * im, u32 sa_index,
+clib_error_t *ipsec_add_del_sa_sess_cb (ipsec_main_t *im, u32 sa_index,
 					u8 is_add);
 
-clib_error_t *ipsec_check_support_cb (ipsec_main_t * im, ipsec_sa_t * sa);
+clib_error_t *ipsec_check_support_cb (ipsec_main_t *im, ipsec_sa_t *sa);
 
 extern vlib_node_registration_t ah4_encrypt_node;
 extern vlib_node_registration_t ah4_decrypt_node;
@@ -243,15 +243,14 @@ extern vlib_node_registration_t ipsec6_tun_input_node;
 /*
  * functions
  */
-u8 *format_ipsec_replay_window (u8 * s, va_list * args);
+u8 *format_ipsec_replay_window (u8 *s, va_list *args);
 
 /*
  *  inline functions
  */
 
 static_always_inline u32
-get_next_output_feature_node_index (vlib_buffer_t * b,
-				    vlib_node_runtime_t * nr)
+get_next_output_feature_node_index (vlib_buffer_t *b, vlib_node_runtime_t *nr)
 {
   u32 next;
   vlib_main_t *vm = vlib_get_main ();
@@ -261,7 +260,7 @@ get_next_output_feature_node_index (vlib_buffer_t * b,
   return node->next_nodes[next];
 }
 
-u32 ipsec_register_ah_backend (vlib_main_t * vm, ipsec_main_t * im,
+u32 ipsec_register_ah_backend (vlib_main_t *vm, ipsec_main_t *im,
 			       const char *name,
 			       const char *ah4_encrypt_node_name,
 			       const char *ah4_decrypt_node_name,
@@ -281,10 +280,10 @@ u32 ipsec_register_esp_backend (
   add_del_sa_sess_cb_t esp_add_del_sa_sess_cb,
   enable_disable_cb_t enable_disable_cb);
 
-int ipsec_select_ah_backend (ipsec_main_t * im, u32 ah_backend_idx);
-int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);
+int ipsec_select_ah_backend (ipsec_main_t *im, u32 ah_backend_idx);
+int ipsec_select_esp_backend (ipsec_main_t *im, u32 esp_backend_idx);
 
-clib_error_t *ipsec_rsc_in_use (ipsec_main_t * im);
+clib_error_t *ipsec_rsc_in_use (ipsec_main_t *im);
 void ipsec_set_async_mode (u32 is_enabled);
 
 always_inline ipsec_sa_t *
@@ -294,7 +293,7 @@ ipsec_sa_get (u32 sa_index)
 }
 
 void ipsec_add_feature (const char *arc_name, const char *node_name,
-			u32 * out_feature_index);
+			u32 *out_feature_index);
 
 void ipsec_set_async_mode (u32 is_enabled);
 extern void ipsec_register_udp_port (u16 udp_port);

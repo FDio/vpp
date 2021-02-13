@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_VNET_SESSION_APPLICATION_LOCAL_H_
 #define SRC_VNET_SESSION_APPLICATION_LOCAL_H_
 
@@ -35,10 +34,10 @@ typedef struct ct_connection_
   u8 is_client;
 } ct_connection_t;
 
-session_t *ct_session_get_peer (session_t * s);
-void ct_session_endpoint (session_t * ll, session_endpoint_t * sep);
-int ct_session_connect_notify (session_t * ls);
-int ct_session_tx (session_t * s);
+session_t *ct_session_get_peer (session_t *s);
+void ct_session_endpoint (session_t *ll, session_endpoint_t *sep);
+int ct_session_connect_notify (session_t *ls);
+int ct_session_tx (session_t *s);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_LOCAL_H_ */
 

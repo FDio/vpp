@@ -33,10 +33,9 @@
 /**
  * RFC 3376 Section 8.1
  */
-#define IGMP_DEFAULT_ROBUSTNESS_VARIABLE	(2)
+#define IGMP_DEFAULT_ROBUSTNESS_VARIABLE (2)
 
-#define IGMP_DBG(...) \
-    vlib_log_debug (igmp_main.logger, __VA_ARGS__);
+#define IGMP_DBG(...) vlib_log_debug (igmp_main.logger, __VA_ARGS__);
 
 /**
  * General Query address - 224.0.0.1
@@ -44,18 +43,19 @@
  * SSM default range 232/8
  */
 #if CLIB_ARCH_IS_BIG_ENDIAN
-#define IGMP_GENERAL_QUERY_ADDRESS	(0xE0000001)
-#define IGMP_MEMBERSHIP_REPORT_ADDRESS	(0xE0000016)
-#define IGMP_SSM_DEFAULT        	(0xE8000000)
+#define IGMP_GENERAL_QUERY_ADDRESS     (0xE0000001)
+#define IGMP_MEMBERSHIP_REPORT_ADDRESS (0xE0000016)
+#define IGMP_SSM_DEFAULT	       (0xE8000000)
 #else
-#define IGMP_GENERAL_QUERY_ADDRESS	(0x010000E0)
-#define IGMP_MEMBERSHIP_REPORT_ADDRESS	(0x160000E0)
-#define IGMP_SSM_DEFAULT        	(0x000000E8)
+#define IGMP_GENERAL_QUERY_ADDRESS     (0x010000E0)
+#define IGMP_MEMBERSHIP_REPORT_ADDRESS (0x160000E0)
+#define IGMP_SSM_DEFAULT	       (0x000000E8)
 #endif
 
 /** helper macro to get igmp membership group from pointer plus offset */
-#define group_ptr(p, l) ((igmp_membership_group_v3_t *)((u8*)(p) + (l)))
-#define group_cptr(p, l) ((const igmp_membership_group_v3_t *)((u8*)(p) + (l)))
+#define group_ptr(p, l) ((igmp_membership_group_v3_t *) ((u8 *) (p) + (l)))
+#define group_cptr(p, l)                                                      \
+  ((const igmp_membership_group_v3_t *) ((u8 *) (p) + (l)))
 
 /**
  * collection of data related to IGMP
@@ -136,10 +136,8 @@ int igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode);
  *    Add/del (S,G) on an interface.
  *   send a status change report from the interface.
  */
-int igmp_listen (vlib_main_t * vm,
-		 igmp_filter_mode_t filter,
-		 u32 sw_if_index,
-		 const ip46_address_t * saddr, const ip46_address_t * gaddr);
+int igmp_listen (vlib_main_t *vm, igmp_filter_mode_t filter, u32 sw_if_index,
+		 const ip46_address_t *saddr, const ip46_address_t *gaddr);
 
 /**
  * @brief Send an IGMP event to listening parties
@@ -148,9 +146,8 @@ int igmp_listen (vlib_main_t * vm,
  * @param saddr
  * @param gaddr
  */
-void igmp_event (igmp_filter_mode_t filter,
-		 u32 sw_if_index,
-		 const ip46_address_t * saddr, const ip46_address_t * gaddr);
+void igmp_event (igmp_filter_mode_t filter, u32 sw_if_index,
+		 const ip46_address_t *saddr, const ip46_address_t *gaddr);
 
 #endif /* _IGMP_H_ */
 

@@ -27,7 +27,6 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/cache.h>
 
-
 /*
  * Drop node for feature bitmaps
  * For features that just do a drop, or are not yet implemented.
@@ -38,20 +37,20 @@
 
 static vlib_node_registration_t feat_bitmap_drop_node;
 
-#define foreach_feat_bitmap_drop_error		\
-_(NO_FWD,     "L2 feature forwarding disabled")	\
-_(NYI,        "L2 feature not implemented")
+#define foreach_feat_bitmap_drop_error                                        \
+  _ (NO_FWD, "L2 feature forwarding disabled")                                \
+  _ (NYI, "L2 feature not implemented")
 
 typedef enum
 {
-#define _(sym,str) FEAT_BITMAP_DROP_ERROR_##sym,
+#define _(sym, str) FEAT_BITMAP_DROP_ERROR_##sym,
   foreach_feat_bitmap_drop_error
 #undef _
     FEAT_BITMAP_DROP_N_ERROR,
 } feat_bitmap_drop_error_t;
 
 static char *feat_bitmap_drop_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_feat_bitmap_drop_error
 #undef _
 };
@@ -69,26 +68,25 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_feat_bitmap_drop_trace (u8 * s, va_list * args)
+format_feat_bitmap_drop_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   feat_bitmap_drop_trace_t *t = va_arg (*args, feat_bitmap_drop_trace_t *);
 
-  s =
-    format (s, "feat_bitmap_drop: feature bitmap 0x%08x", t->feature_bitmap);
+  s = format (s, "feat_bitmap_drop: feature bitmap 0x%08x", t->feature_bitmap);
   return s;
 }
 
 static uword
-feat_bitmap_drop_node_fn (vlib_main_t * vm,
-			  vlib_node_runtime_t * node, vlib_frame_t * frame)
+feat_bitmap_drop_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+			  vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   feat_bitmap_drop_next_t next_index;
 
   from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;	/* number of packets to process */
+  n_left_from = frame->n_vectors; /* number of packets to process */
   next_index = node->cached_next_index;
 
   while (n_left_from > 0)
@@ -114,8 +112,8 @@ feat_bitmap_drop_node_fn (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      feat_bitmap_drop_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -137,9 +135,8 @@ feat_bitmap_drop_node_fn (vlib_main_t * vm,
 	  next0 = FEAT_BITMAP_DROP_NEXT_DROP;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -148,14 +145,13 @@ feat_bitmap_drop_node_fn (vlib_main_t * vm,
 }
 
 clib_error_t *
-feat_bitmap_drop_init (vlib_main_t * vm)
+feat_bitmap_drop_init (vlib_main_t *vm)
 {
   return 0;
 }
 
 VLIB_INIT_FUNCTION (feat_bitmap_drop_init);
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (feat_bitmap_drop_node,static) = {
   .function = feat_bitmap_drop_node_fn,
   .name = "feature-bitmap-drop",
@@ -173,7 +169,6 @@ VLIB_REGISTER_NODE (feat_bitmap_drop_node,static) = {
     [FEAT_BITMAP_DROP_NEXT_DROP]  = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

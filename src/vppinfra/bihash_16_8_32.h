@@ -20,10 +20,10 @@
 #undef BIHASH_LAZY_INSTANTIATE
 #undef BIHASH_BUCKET_PREFETCH_CACHE_LINES
 
-#define BIHASH_TYPE _16_8_32
-#define BIHASH_KVP_PER_PAGE 4
-#define BIHASH_KVP_AT_BUCKET_LEVEL 0
-#define BIHASH_LAZY_INSTANTIATE 1
+#define BIHASH_TYPE			   _16_8_32
+#define BIHASH_KVP_PER_PAGE		   4
+#define BIHASH_KVP_AT_BUCKET_LEVEL	   0
+#define BIHASH_LAZY_INSTANTIATE		   1
 #define BIHASH_BUCKET_PREFETCH_CACHE_LINES 1
 
 #define BIHASH_32_64_SVM 1
@@ -44,7 +44,7 @@ typedef struct
 } clib_bihash_kv_16_8_32_t;
 
 static inline int
-clib_bihash_is_free_16_8_32 (clib_bihash_kv_16_8_32_t * v)
+clib_bihash_is_free_16_8_32 (clib_bihash_kv_16_8_32_t *v)
 {
   /* Free values are clib_memset to 0xff, check a bit... */
   if (v->key[0] == ~0ULL && v->value == ~0ULL)
@@ -53,7 +53,7 @@ clib_bihash_is_free_16_8_32 (clib_bihash_kv_16_8_32_t * v)
 }
 
 static inline u64
-clib_bihash_hash_16_8_32 (clib_bihash_kv_16_8_32_t * v)
+clib_bihash_hash_16_8_32 (clib_bihash_kv_16_8_32_t *v)
 {
 #ifdef clib_crc32c_uses_intrinsics
   return clib_crc32c ((u8 *) v->key, 16);
@@ -64,7 +64,7 @@ clib_bihash_hash_16_8_32 (clib_bihash_kv_16_8_32_t * v)
 }
 
 static inline u8 *
-format_bihash_kvp_16_8_32 (u8 * s, va_list * args)
+format_bihash_kvp_16_8_32 (u8 *s, va_list *args)
 {
   clib_bihash_kv_16_8_32_t *v = va_arg (*args, clib_bihash_kv_16_8_32_t *);
 
@@ -73,7 +73,7 @@ format_bihash_kvp_16_8_32 (u8 * s, va_list * args)
 }
 
 static inline int
-clib_bihash_key_compare_16_8_32 (u64 * a, u64 * b)
+clib_bihash_key_compare_16_8_32 (u64 *a, u64 *b)
 {
 #if defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE)
   u64x2 v;

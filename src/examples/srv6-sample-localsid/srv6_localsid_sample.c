@@ -27,7 +27,8 @@
 
 unsigned char srv6_localsid_name[32] = "Sample-SRv6-LocalSID-plugin";
 unsigned char keyword_str[32] = "new_srv6_localsid";
-unsigned char def_str[64] = "This is a definition of a sample new_srv6_localsid";
+unsigned char def_str[64] =
+  "This is a definition of a sample new_srv6_localsid";
 unsigned char params_str[32] = "<fib_table>";
 
 /*****************************************/
@@ -35,7 +36,7 @@ unsigned char params_str[32] = "<fib_table>";
 static int
 srv6_localsid_creation_fn (ip6_sr_localsid_t *localsid)
 {
-  /* 
+  /*
    * Do you want to do anything fancy upon localsid instantiation?
    * You can do it here
    * (If return != 0 the localsid creation will be cancelled.)
@@ -53,12 +54,13 @@ srv6_localsid_removal_fn (ip6_sr_localsid_t *localsid)
    * You can do it here
    * (If return != 0 the localsid removal will be cancelled.)
    */
-  /* 
-   * BTW if you stored something in localsid->plugin_mem you should clean it now
+  /*
+   * BTW if you stored something in localsid->plugin_mem you should clean it
+   * now
    */
 
-  //In this example we are only cleaning the memory allocated per localsid
-  clib_mem_free(localsid->plugin_mem);
+  // In this example we are only cleaning the memory allocated per localsid
+  clib_mem_free (localsid->plugin_mem);
   return 0;
 }
 
@@ -69,7 +71,7 @@ srv6_localsid_removal_fn (ip6_sr_localsid_t *localsid)
  * Example: print "Table 5"
  */
 u8 *
-format_srv6_localsid_sample (u8 * s, va_list * args)
+format_srv6_localsid_sample (u8 *s, va_list *args)
 {
   srv6_localsid_sample_per_sid_memory_t *ls_mem = va_arg (*args, void *);
   return (format (s, "Table: %u", ls_mem->fib_table));
@@ -83,7 +85,7 @@ format_srv6_localsid_sample (u8 * s, va_list * args)
  * Notice that it MUST match the keyword_str and params_str defined above.
  */
 uword
-unformat_srv6_localsid_sample (unformat_input_t * input, va_list * args)
+unformat_srv6_localsid_sample (unformat_input_t *input, va_list *args)
 {
   void **plugin_mem = va_arg (*args, void **);
   srv6_localsid_sample_per_sid_memory_t *ls_mem;
@@ -92,10 +94,10 @@ unformat_srv6_localsid_sample (unformat_input_t * input, va_list * args)
     {
       /* Allocate a portion of memory */
       ls_mem = clib_mem_alloc_aligned_at_offset (
-        sizeof(srv6_localsid_sample_per_sid_memory_t), 0, 0, 1);
+	sizeof (srv6_localsid_sample_per_sid_memory_t), 0, 0, 1);
 
       /* Set to zero the memory */
-      clib_memset (ls_mem, 0, sizeof(srv6_localsid_sample_per_sid_memory_t));
+      clib_memset (ls_mem, 0, sizeof (srv6_localsid_sample_per_sid_memory_t));
 
       /* Our brand-new car is ready */
       ls_mem->fib_table = table_id;
@@ -110,7 +112,7 @@ unformat_srv6_localsid_sample (unformat_input_t * input, va_list * args)
 /*************************/
 /* SRv6 LocalSID FIB DPO */
 static u8 *
-format_srv6_localsid_sample_dpo (u8 * s, va_list * args)
+format_srv6_localsid_sample_dpo (u8 *s, va_list *args)
 {
   index_t index = va_arg (*args, index_t);
   CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
@@ -119,12 +121,12 @@ format_srv6_localsid_sample_dpo (u8 * s, va_list * args)
 }
 
 void
-srv6_localsid_sample_dpo_lock (dpo_id_t * dpo)
+srv6_localsid_sample_dpo_lock (dpo_id_t *dpo)
 {
 }
 
 void
-srv6_localsid_sample_dpo_unlock (dpo_id_t * dpo)
+srv6_localsid_sample_dpo_unlock (dpo_id_t *dpo)
 {
 }
 
@@ -144,25 +146,21 @@ const static char *const *const srv6_localsid_sample_nodes[DPO_PROTO_NUM] = {
 };
 
 /**********************/
-static clib_error_t * srv6_localsid_sample_init (vlib_main_t * vm)
+static clib_error_t *
+srv6_localsid_sample_init (vlib_main_t *vm)
 {
-  srv6_localsid_sample_main_t * sm = &srv6_localsid_sample_main;
+  srv6_localsid_sample_main_t *sm = &srv6_localsid_sample_main;
   int rv = 0;
   /* Create DPO */
   sm->srv6_localsid_sample_dpo_type = dpo_register_new_type (
     &srv6_localsid_sample_vft, srv6_localsid_sample_nodes);
 
   /* Register SRv6 LocalSID */
-  rv = sr_localsid_register_function (vm, 
-                                  srv6_localsid_name,
-                                  keyword_str,
-                                  def_str,
-                                  params_str,
-                                  &sm->srv6_localsid_sample_dpo_type,
-                                  format_srv6_localsid_sample, 
-                                  unformat_srv6_localsid_sample, 
-                                  srv6_localsid_creation_fn, 
-                                  srv6_localsid_removal_fn);
+  rv = sr_localsid_register_function (
+    vm, srv6_localsid_name, keyword_str, def_str, params_str,
+    &sm->srv6_localsid_sample_dpo_type, format_srv6_localsid_sample,
+    unformat_srv6_localsid_sample, srv6_localsid_creation_fn,
+    srv6_localsid_removal_fn);
   if (rv < 0)
     clib_error_return (0, "SRv6 LocalSID function could not be registered.");
   else

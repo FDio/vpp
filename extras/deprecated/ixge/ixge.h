@@ -51,7 +51,7 @@ typedef volatile struct
   u32 rx_split_control;
 
   u32 tail_index;
-    CLIB_PAD_FROM_TO (0x1c, 0x28);
+  CLIB_PAD_FROM_TO (0x1c, 0x28);
 
   /* [7:0] rx/tx prefetch threshold
      [15:8] rx/tx host threshold
@@ -99,29 +99,30 @@ typedef struct
 
 #define IXGE_RX_DESCRIPTOR_STATUS0_IS_LAYER2 (1 << (4 + 11))
 /* Valid if not layer2. */
-#define IXGE_RX_DESCRIPTOR_STATUS0_IS_IP4 (1 << (4 + 0))
-#define IXGE_RX_DESCRIPTOR_STATUS0_IS_IP4_EXT (1 << (4 + 1))
-#define IXGE_RX_DESCRIPTOR_STATUS0_IS_IP6 (1 << (4 + 2))
-#define IXGE_RX_DESCRIPTOR_STATUS0_IS_IP6_EXT (1 << (4 + 3))
-#define IXGE_RX_DESCRIPTOR_STATUS0_IS_TCP (1 << (4 + 4))
-#define IXGE_RX_DESCRIPTOR_STATUS0_IS_UDP (1 << (4 + 5))
+#define IXGE_RX_DESCRIPTOR_STATUS0_IS_IP4	(1 << (4 + 0))
+#define IXGE_RX_DESCRIPTOR_STATUS0_IS_IP4_EXT	(1 << (4 + 1))
+#define IXGE_RX_DESCRIPTOR_STATUS0_IS_IP6	(1 << (4 + 2))
+#define IXGE_RX_DESCRIPTOR_STATUS0_IS_IP6_EXT	(1 << (4 + 3))
+#define IXGE_RX_DESCRIPTOR_STATUS0_IS_TCP	(1 << (4 + 4))
+#define IXGE_RX_DESCRIPTOR_STATUS0_IS_UDP	(1 << (4 + 5))
 #define IXGE_RX_DESCRIPTOR_STATUS0_L3_OFFSET(s) (((s) >> 21) & 0x3ff)
 
 #define IXGE_RX_DESCRIPTOR_STATUS2_IS_OWNED_BY_SOFTWARE (1 << (0 + 0))
-#define IXGE_RX_DESCRIPTOR_STATUS2_IS_END_OF_PACKET (1 << (0 + 1))
-#define IXGE_RX_DESCRIPTOR_STATUS2_IS_VLAN (1 << (0 + 3))
-#define IXGE_RX_DESCRIPTOR_STATUS2_IS_UDP_CHECKSUMMED (1 << (0 + 4))
-#define IXGE_RX_DESCRIPTOR_STATUS2_IS_TCP_CHECKSUMMED (1 << (0 + 5))
-#define IXGE_RX_DESCRIPTOR_STATUS2_IS_IP4_CHECKSUMMED (1 << (0 + 6))
-#define IXGE_RX_DESCRIPTOR_STATUS2_NOT_UNICAST (1 << (0 + 7))
-#define IXGE_RX_DESCRIPTOR_STATUS2_IS_DOUBLE_VLAN (1 << (0 + 9))
-#define IXGE_RX_DESCRIPTOR_STATUS2_UDP_CHECKSUM_ERROR (1 << (0 + 10))
-#define IXGE_RX_DESCRIPTOR_STATUS2_ETHERNET_ERROR (1 << (20 + 9))
-#define IXGE_RX_DESCRIPTOR_STATUS2_TCP_CHECKSUM_ERROR (1 << (20 + 10))
-#define IXGE_RX_DESCRIPTOR_STATUS2_IP4_CHECKSUM_ERROR (1 << (20 + 11))
+#define IXGE_RX_DESCRIPTOR_STATUS2_IS_END_OF_PACKET	(1 << (0 + 1))
+#define IXGE_RX_DESCRIPTOR_STATUS2_IS_VLAN		(1 << (0 + 3))
+#define IXGE_RX_DESCRIPTOR_STATUS2_IS_UDP_CHECKSUMMED	(1 << (0 + 4))
+#define IXGE_RX_DESCRIPTOR_STATUS2_IS_TCP_CHECKSUMMED	(1 << (0 + 5))
+#define IXGE_RX_DESCRIPTOR_STATUS2_IS_IP4_CHECKSUMMED	(1 << (0 + 6))
+#define IXGE_RX_DESCRIPTOR_STATUS2_NOT_UNICAST		(1 << (0 + 7))
+#define IXGE_RX_DESCRIPTOR_STATUS2_IS_DOUBLE_VLAN	(1 << (0 + 9))
+#define IXGE_RX_DESCRIPTOR_STATUS2_UDP_CHECKSUM_ERROR	(1 << (0 + 10))
+#define IXGE_RX_DESCRIPTOR_STATUS2_ETHERNET_ERROR	(1 << (20 + 9))
+#define IXGE_RX_DESCRIPTOR_STATUS2_TCP_CHECKSUM_ERROR	(1 << (20 + 10))
+#define IXGE_RX_DESCRIPTOR_STATUS2_IP4_CHECKSUM_ERROR	(1 << (20 + 11))
 
-/* For layer2 packets stats0 bottom 3 bits give ether type index from filter. */
-#define IXGE_RX_DESCRIPTOR_STATUS0_LAYER2_ETHERNET_TYPE(s) ((s) & 7)
+/* For layer2 packets stats0 bottom 3 bits give ether type index from filter.
+ */
+#define IXGE_RX_DESCRIPTOR_STATUS0_LAYER2_ETHERNET_TYPE(s) ((s) &7)
 
 typedef struct
 {
@@ -129,20 +130,23 @@ typedef struct
   u16 n_bytes_this_buffer;
   u16 status0;
   u32 status1;
-#define IXGE_TX_DESCRIPTOR_STATUS0_ADVANCED (3 << 4)
-#define IXGE_TX_DESCRIPTOR_STATUS0_IS_ADVANCED (1 << (8 + 5))
+#define IXGE_TX_DESCRIPTOR_STATUS0_ADVANCED	      (3 << 4)
+#define IXGE_TX_DESCRIPTOR_STATUS0_IS_ADVANCED	      (1 << (8 + 5))
 #define IXGE_TX_DESCRIPTOR_STATUS0_LOG2_REPORT_STATUS (8 + 3)
-#define IXGE_TX_DESCRIPTOR_STATUS0_REPORT_STATUS (1 << IXGE_TX_DESCRIPTOR_STATUS0_LOG2_REPORT_STATUS)
-#define IXGE_TX_DESCRIPTOR_STATUS0_INSERT_FCS (1 << (8 + 1))
+#define IXGE_TX_DESCRIPTOR_STATUS0_REPORT_STATUS                              \
+  (1 << IXGE_TX_DESCRIPTOR_STATUS0_LOG2_REPORT_STATUS)
+#define IXGE_TX_DESCRIPTOR_STATUS0_INSERT_FCS		 (1 << (8 + 1))
 #define IXGE_TX_DESCRIPTOR_STATUS0_LOG2_IS_END_OF_PACKET (8 + 0)
-#define IXGE_TX_DESCRIPTOR_STATUS0_IS_END_OF_PACKET (1 << IXGE_TX_DESCRIPTOR_STATUS0_LOG2_IS_END_OF_PACKET)
+#define IXGE_TX_DESCRIPTOR_STATUS0_IS_END_OF_PACKET                           \
+  (1 << IXGE_TX_DESCRIPTOR_STATUS0_LOG2_IS_END_OF_PACKET)
 #define IXGE_TX_DESCRIPTOR_STATUS1_DONE (1 << 0)
-#define IXGE_TX_DESCRIPTOR_STATUS1_CONTEXT(i) (/* valid */ (1 << 7) | ((i) << 4))
-#define IXGE_TX_DESCRIPTOR_STATUS1_IPSEC_OFFLOAD (1 << (8 + 2))
+#define IXGE_TX_DESCRIPTOR_STATUS1_CONTEXT(i)                                 \
+  (/* valid */ (1 << 7) | ((i) << 4))
+#define IXGE_TX_DESCRIPTOR_STATUS1_IPSEC_OFFLOAD	   (1 << (8 + 2))
 #define IXGE_TX_DESCRIPTOR_STATUS1_INSERT_TCP_UDP_CHECKSUM (1 << (8 + 1))
-#define IXGE_TX_DESCRIPTOR_STATUS1_INSERT_IP4_CHECKSUM (1 << (8 + 0))
-#define IXGE_TX_DESCRIPTOR_STATUS0_N_BYTES_THIS_BUFFER(l) ((l) << 0)
-#define IXGE_TX_DESCRIPTOR_STATUS1_N_BYTES_IN_PACKET(l) ((l) << 14)
+#define IXGE_TX_DESCRIPTOR_STATUS1_INSERT_IP4_CHECKSUM	   (1 << (8 + 0))
+#define IXGE_TX_DESCRIPTOR_STATUS0_N_BYTES_THIS_BUFFER(l)  ((l) << 0)
+#define IXGE_TX_DESCRIPTOR_STATUS1_N_BYTES_IN_PACKET(l)	   ((l) << 14)
 } ixge_tx_descriptor_t;
 
 typedef struct
@@ -184,13 +188,13 @@ typedef volatile struct
      [18] io active
      [19] pcie master enable status */
   u32 status_read_only;
-    CLIB_PAD_FROM_TO (0xc, 0x18);
+  CLIB_PAD_FROM_TO (0xc, 0x18);
   /* [14] pf reset done
      [17] relaxed ordering disable
      [26] extended vlan enable
      [28] driver loaded */
   u32 extended_control;
-    CLIB_PAD_FROM_TO (0x1c, 0x20);
+  CLIB_PAD_FROM_TO (0x1c, 0x20);
 
   /* software definable pins.
      sdp_data [7:0]
@@ -199,40 +203,40 @@ typedef volatile struct
      sdp_function [31:24].
    */
   u32 sdp_control;
-    CLIB_PAD_FROM_TO (0x24, 0x28);
+  CLIB_PAD_FROM_TO (0x24, 0x28);
 
   /* [0] i2c clock in
      [1] i2c clock out
      [2] i2c data in
      [3] i2c data out */
   u32 i2c_control;
-    CLIB_PAD_FROM_TO (0x2c, 0x4c);
+  CLIB_PAD_FROM_TO (0x2c, 0x4c);
   u32 tcp_timer;
 
-    CLIB_PAD_FROM_TO (0x50, 0x200);
+  CLIB_PAD_FROM_TO (0x50, 0x200);
 
   u32 led_control;
 
-    CLIB_PAD_FROM_TO (0x204, 0x600);
+  CLIB_PAD_FROM_TO (0x204, 0x600);
   u32 core_spare;
-    CLIB_PAD_FROM_TO (0x604, 0x700);
+  CLIB_PAD_FROM_TO (0x604, 0x700);
 
   struct
   {
     u32 vflr_events_clear[4];
     u32 mailbox_interrupt_status[4];
     u32 mailbox_interrupt_enable[4];
-      CLIB_PAD_FROM_TO (0x730, 0x800);
+    CLIB_PAD_FROM_TO (0x730, 0x800);
   } pf_foo;
 
   struct
   {
     u32 status_write_1_to_clear;
-      CLIB_PAD_FROM_TO (0x804, 0x808);
+    CLIB_PAD_FROM_TO (0x804, 0x808);
     u32 status_write_1_to_set;
-      CLIB_PAD_FROM_TO (0x80c, 0x810);
+    CLIB_PAD_FROM_TO (0x80c, 0x810);
     u32 status_auto_clear_enable;
-      CLIB_PAD_FROM_TO (0x814, 0x820);
+    CLIB_PAD_FROM_TO (0x814, 0x820);
 
     /* [11:3] minimum inter-interrupt interval
        (2e-6 units; 20e-6 units for fast ethernet).
@@ -243,9 +247,9 @@ typedef volatile struct
     u32 throttle0[24];
 
     u32 enable_write_1_to_set;
-      CLIB_PAD_FROM_TO (0x884, 0x888);
+    CLIB_PAD_FROM_TO (0x884, 0x888);
     u32 enable_write_1_to_clear;
-      CLIB_PAD_FROM_TO (0x88c, 0x890);
+    CLIB_PAD_FROM_TO (0x88c, 0x890);
     u32 enable_auto_clear;
     u32 msi_to_eitr_select;
     /* [3:0] spd 0-3 interrupt detection enable
@@ -253,7 +257,7 @@ typedef volatile struct
        [5] other clear disable (makes other bits in status not clear on read)
        etc. */
     u32 control;
-      CLIB_PAD_FROM_TO (0x89c, 0x900);
+    CLIB_PAD_FROM_TO (0x89c, 0x900);
 
     /* Defines interrupt mapping for 128 rx + 128 tx queues.
        64 x 4 8 bit entries.
@@ -267,75 +271,75 @@ typedef volatile struct
 
     /* tcp timer [7:0] and other interrupts [15:8] */
     u32 misc_mapping;
-      CLIB_PAD_FROM_TO (0xa04, 0xa90);
+    CLIB_PAD_FROM_TO (0xa04, 0xa90);
 
     /* 64 interrupts determined by mappings. */
     u32 status1_write_1_to_clear[4];
     u32 enable1_write_1_to_set[4];
     u32 enable1_write_1_to_clear[4];
-      CLIB_PAD_FROM_TO (0xac0, 0xad0);
+    CLIB_PAD_FROM_TO (0xac0, 0xad0);
     u32 status1_enable_auto_clear[4];
-      CLIB_PAD_FROM_TO (0xae0, 0x1000);
+    CLIB_PAD_FROM_TO (0xae0, 0x1000);
   } interrupt;
 
   ixge_dma_regs_t rx_dma0[64];
 
-    CLIB_PAD_FROM_TO (0x2000, 0x2140);
+  CLIB_PAD_FROM_TO (0x2000, 0x2140);
   u32 dcb_rx_packet_plane_t4_config[8];
   u32 dcb_rx_packet_plane_t4_status[8];
-    CLIB_PAD_FROM_TO (0x2180, 0x2300);
+  CLIB_PAD_FROM_TO (0x2180, 0x2300);
 
   /* reg i defines mapping for 4 rx queues starting at 4*i + 0. */
   u32 rx_queue_stats_mapping[32];
   u32 rx_queue_stats_control;
 
-    CLIB_PAD_FROM_TO (0x2384, 0x2410);
+  CLIB_PAD_FROM_TO (0x2384, 0x2410);
   u32 fc_user_descriptor_ptr[2];
   u32 fc_buffer_control;
-    CLIB_PAD_FROM_TO (0x241c, 0x2420);
+  CLIB_PAD_FROM_TO (0x241c, 0x2420);
   u32 fc_rx_dma;
-    CLIB_PAD_FROM_TO (0x2424, 0x2430);
+  CLIB_PAD_FROM_TO (0x2424, 0x2430);
   u32 dcb_packet_plane_control;
-    CLIB_PAD_FROM_TO (0x2434, 0x2f00);
+  CLIB_PAD_FROM_TO (0x2434, 0x2f00);
 
   u32 rx_dma_control;
   u32 pf_queue_drop_enable;
-    CLIB_PAD_FROM_TO (0x2f08, 0x2f20);
+  CLIB_PAD_FROM_TO (0x2f08, 0x2f20);
   u32 rx_dma_descriptor_cache_config;
-    CLIB_PAD_FROM_TO (0x2f24, 0x3000);
+  CLIB_PAD_FROM_TO (0x2f24, 0x3000);
 
   /* 1 bit. */
   u32 rx_enable;
-    CLIB_PAD_FROM_TO (0x3004, 0x3008);
+  CLIB_PAD_FROM_TO (0x3004, 0x3008);
   /* [15:0] ether type (little endian)
      [31:16] opcode (big endian) */
   u32 flow_control_control;
-    CLIB_PAD_FROM_TO (0x300c, 0x3020);
+  CLIB_PAD_FROM_TO (0x300c, 0x3020);
   /* 3 bit traffic class for each of 8 priorities. */
   u32 rx_priority_to_traffic_class;
-    CLIB_PAD_FROM_TO (0x3024, 0x3028);
+  CLIB_PAD_FROM_TO (0x3024, 0x3028);
   u32 rx_coallesce_data_buffer_control;
-    CLIB_PAD_FROM_TO (0x302c, 0x3190);
+  CLIB_PAD_FROM_TO (0x302c, 0x3190);
   u32 rx_packet_buffer_flush_detect;
-    CLIB_PAD_FROM_TO (0x3194, 0x3200);
-  u32 flow_control_tx_timers[4];	/* 2 timer values */
-    CLIB_PAD_FROM_TO (0x3210, 0x3220);
+  CLIB_PAD_FROM_TO (0x3194, 0x3200);
+  u32 flow_control_tx_timers[4]; /* 2 timer values */
+  CLIB_PAD_FROM_TO (0x3210, 0x3220);
   u32 flow_control_rx_threshold_lo[8];
-    CLIB_PAD_FROM_TO (0x3240, 0x3260);
+  CLIB_PAD_FROM_TO (0x3240, 0x3260);
   u32 flow_control_rx_threshold_hi[8];
-    CLIB_PAD_FROM_TO (0x3280, 0x32a0);
+  CLIB_PAD_FROM_TO (0x3280, 0x32a0);
   u32 flow_control_refresh_threshold;
-    CLIB_PAD_FROM_TO (0x32a4, 0x3c00);
+  CLIB_PAD_FROM_TO (0x32a4, 0x3c00);
   /* For each of 8 traffic classes (units of bytes). */
   u32 rx_packet_buffer_size[8];
-    CLIB_PAD_FROM_TO (0x3c20, 0x3d00);
+  CLIB_PAD_FROM_TO (0x3c20, 0x3d00);
   u32 flow_control_config;
-    CLIB_PAD_FROM_TO (0x3d04, 0x4200);
+  CLIB_PAD_FROM_TO (0x3d04, 0x4200);
 
   struct
   {
     u32 pcs_config;
-      CLIB_PAD_FROM_TO (0x4204, 0x4208);
+    CLIB_PAD_FROM_TO (0x4204, 0x4208);
     u32 link_control;
     u32 link_status;
     u32 pcs_debug[2];
@@ -343,7 +347,7 @@ typedef volatile struct
     u32 link_partner_ability;
     u32 auto_negotiation_tx_next_page;
     u32 auto_negotiation_link_partner_next_page;
-      CLIB_PAD_FROM_TO (0x4228, 0x4240);
+    CLIB_PAD_FROM_TO (0x4228, 0x4240);
   } gige_mac;
 
   struct
@@ -364,14 +368,14 @@ typedef volatile struct
     u32 status;
 
     u32 pause_and_pace_control;
-      CLIB_PAD_FROM_TO (0x424c, 0x425c);
+    CLIB_PAD_FROM_TO (0x424c, 0x425c);
     u32 phy_command;
     u32 phy_data;
-      CLIB_PAD_FROM_TO (0x4264, 0x4268);
+    CLIB_PAD_FROM_TO (0x4264, 0x4268);
 
     /* [31:16] max frame size in bytes. */
     u32 rx_max_frame_size;
-      CLIB_PAD_FROM_TO (0x426c, 0x4288);
+    CLIB_PAD_FROM_TO (0x426c, 0x4288);
 
     /* [0]
        [2] pcs receive link up? (latch lo)
@@ -464,31 +468,31 @@ typedef volatile struct
        [18] disable dme pages */
     u32 auto_negotiation_control2;
 
-      CLIB_PAD_FROM_TO (0x42ac, 0x42b0);
+    CLIB_PAD_FROM_TO (0x42ac, 0x42b0);
     u32 link_partner_ability[2];
-      CLIB_PAD_FROM_TO (0x42b8, 0x42d0);
+    CLIB_PAD_FROM_TO (0x42b8, 0x42d0);
     u32 manageability_control;
     u32 link_partner_next_page[2];
-      CLIB_PAD_FROM_TO (0x42dc, 0x42e0);
+    CLIB_PAD_FROM_TO (0x42dc, 0x42e0);
     u32 kr_pcs_control;
     u32 kr_pcs_status;
     u32 fec_status[2];
-      CLIB_PAD_FROM_TO (0x42f0, 0x4314);
+    CLIB_PAD_FROM_TO (0x42f0, 0x4314);
     u32 sgmii_control;
-      CLIB_PAD_FROM_TO (0x4318, 0x4324);
+    CLIB_PAD_FROM_TO (0x4318, 0x4324);
     u32 link_status2;
-      CLIB_PAD_FROM_TO (0x4328, 0x4900);
+    CLIB_PAD_FROM_TO (0x4328, 0x4900);
   } xge_mac;
 
   u32 tx_dcb_control;
   u32 tx_dcb_descriptor_plane_queue_select;
   u32 tx_dcb_descriptor_plane_t1_config;
   u32 tx_dcb_descriptor_plane_t1_status;
-    CLIB_PAD_FROM_TO (0x4910, 0x4950);
+  CLIB_PAD_FROM_TO (0x4910, 0x4950);
 
   /* For each TC in units of 1k bytes. */
   u32 tx_packet_buffer_thresholds[8];
-    CLIB_PAD_FROM_TO (0x4970, 0x4980);
+  CLIB_PAD_FROM_TO (0x4970, 0x4980);
   struct
   {
     u32 mmw;
@@ -496,51 +500,51 @@ typedef volatile struct
     u32 status;
     u32 rate_drift;
   } dcb_tx_rate_scheduler;
-    CLIB_PAD_FROM_TO (0x4990, 0x4a80);
+  CLIB_PAD_FROM_TO (0x4990, 0x4a80);
   u32 tx_dma_control;
-    CLIB_PAD_FROM_TO (0x4a84, 0x4a88);
+  CLIB_PAD_FROM_TO (0x4a84, 0x4a88);
   u32 tx_dma_tcp_flags_control[2];
-    CLIB_PAD_FROM_TO (0x4a90, 0x4b00);
+  CLIB_PAD_FROM_TO (0x4a90, 0x4b00);
   u32 pf_mailbox[64];
-    CLIB_PAD_FROM_TO (0x4c00, 0x5000);
+  CLIB_PAD_FROM_TO (0x4c00, 0x5000);
 
   /* RX */
   u32 checksum_control;
-    CLIB_PAD_FROM_TO (0x5004, 0x5008);
+  CLIB_PAD_FROM_TO (0x5004, 0x5008);
   u32 rx_filter_control;
-    CLIB_PAD_FROM_TO (0x500c, 0x5010);
+  CLIB_PAD_FROM_TO (0x500c, 0x5010);
   u32 management_vlan_tag[8];
   u32 management_udp_tcp_ports[8];
-    CLIB_PAD_FROM_TO (0x5050, 0x5078);
+  CLIB_PAD_FROM_TO (0x5050, 0x5078);
   /* little endian. */
   u32 extended_vlan_ether_type;
-    CLIB_PAD_FROM_TO (0x507c, 0x5080);
+  CLIB_PAD_FROM_TO (0x507c, 0x5080);
   /* [1] store/dma bad packets
      [8] accept all multicast
      [9] accept all unicast
      [10] accept all broadcast. */
   u32 filter_control;
-    CLIB_PAD_FROM_TO (0x5084, 0x5088);
+  CLIB_PAD_FROM_TO (0x5084, 0x5088);
   /* [15:0] vlan ethernet type (0x8100) little endian
      [28] cfi bit expected
      [29] drop packets with unexpected cfi bit
      [30] vlan filter enable. */
   u32 vlan_control;
-    CLIB_PAD_FROM_TO (0x508c, 0x5090);
+  CLIB_PAD_FROM_TO (0x508c, 0x5090);
   /* [1:0] hi bit of ethernet address for 12 bit index into multicast table
      0 => 47, 1 => 46, 2 => 45, 3 => 43.
      [2] enable multicast filter
    */
   u32 multicast_control;
-    CLIB_PAD_FROM_TO (0x5094, 0x5100);
+  CLIB_PAD_FROM_TO (0x5094, 0x5100);
   u32 fcoe_rx_control;
-    CLIB_PAD_FROM_TO (0x5104, 0x5108);
+  CLIB_PAD_FROM_TO (0x5104, 0x5108);
   u32 fc_flt_context;
-    CLIB_PAD_FROM_TO (0x510c, 0x5110);
+  CLIB_PAD_FROM_TO (0x510c, 0x5110);
   u32 fc_filter_control;
-    CLIB_PAD_FROM_TO (0x5114, 0x5120);
+  CLIB_PAD_FROM_TO (0x5114, 0x5120);
   u32 rx_message_type_lo;
-    CLIB_PAD_FROM_TO (0x5124, 0x5128);
+  CLIB_PAD_FROM_TO (0x5124, 0x5128);
   /* [15:0] ethernet type (little endian)
      [18:16] matche pri in vlan tag
      [19] priority match enable
@@ -551,25 +555,25 @@ typedef volatile struct
      [31] filter enable.
      (See ethernet_type_queue_select.) */
   u32 ethernet_type_queue_filter[8];
-    CLIB_PAD_FROM_TO (0x5148, 0x5160);
+  CLIB_PAD_FROM_TO (0x5148, 0x5160);
   /* [7:0] l2 ethernet type and
      [15:8] l2 ethernet type or */
   u32 management_decision_filters1[8];
   u32 vf_vm_tx_switch_loopback_enable[2];
   u32 rx_time_sync_control;
-    CLIB_PAD_FROM_TO (0x518c, 0x5190);
+  CLIB_PAD_FROM_TO (0x518c, 0x5190);
   u32 management_ethernet_type_filters[4];
   u32 rx_timestamp_attributes_lo;
   u32 rx_timestamp_hi;
   u32 rx_timestamp_attributes_hi;
-    CLIB_PAD_FROM_TO (0x51ac, 0x51b0);
+  CLIB_PAD_FROM_TO (0x51ac, 0x51b0);
   u32 pf_virtual_control;
-    CLIB_PAD_FROM_TO (0x51b4, 0x51d8);
+  CLIB_PAD_FROM_TO (0x51b4, 0x51d8);
   u32 fc_offset_parameter;
-    CLIB_PAD_FROM_TO (0x51dc, 0x51e0);
+  CLIB_PAD_FROM_TO (0x51dc, 0x51e0);
   u32 vf_rx_enable[2];
   u32 rx_timestamp_lo;
-    CLIB_PAD_FROM_TO (0x51ec, 0x5200);
+  CLIB_PAD_FROM_TO (0x51ec, 0x5200);
   /* 12 bits determined by multicast_control
      lookup bits in this vector. */
   u32 multicast_enable[128];
@@ -580,21 +584,21 @@ typedef volatile struct
      Index 0 is read from eeprom after reset. */
   u32 rx_ethernet_address0[16][2];
 
-    CLIB_PAD_FROM_TO (0x5480, 0x5800);
+  CLIB_PAD_FROM_TO (0x5480, 0x5800);
   u32 wake_up_control;
-    CLIB_PAD_FROM_TO (0x5804, 0x5808);
+  CLIB_PAD_FROM_TO (0x5804, 0x5808);
   u32 wake_up_filter_control;
-    CLIB_PAD_FROM_TO (0x580c, 0x5818);
+  CLIB_PAD_FROM_TO (0x580c, 0x5818);
   u32 multiple_rx_queue_command_82598;
-    CLIB_PAD_FROM_TO (0x581c, 0x5820);
+  CLIB_PAD_FROM_TO (0x581c, 0x5820);
   u32 management_control;
   u32 management_filter_control;
-    CLIB_PAD_FROM_TO (0x5828, 0x5838);
+  CLIB_PAD_FROM_TO (0x5828, 0x5838);
   u32 wake_up_ip4_address_valid;
-    CLIB_PAD_FROM_TO (0x583c, 0x5840);
+  CLIB_PAD_FROM_TO (0x583c, 0x5840);
   u32 wake_up_ip4_address_table[4];
   u32 management_control_to_host;
-    CLIB_PAD_FROM_TO (0x5854, 0x5880);
+  CLIB_PAD_FROM_TO (0x5854, 0x5880);
   u32 wake_up_ip6_address_table[4];
 
   /* unicast_and broadcast_and vlan_and ip_address_and
@@ -602,34 +606,34 @@ typedef volatile struct
   u32 management_decision_filters[8];
 
   u32 management_ip4_or_ip6_address_filters[4][4];
-    CLIB_PAD_FROM_TO (0x58f0, 0x5900);
+  CLIB_PAD_FROM_TO (0x58f0, 0x5900);
   u32 wake_up_packet_length;
-    CLIB_PAD_FROM_TO (0x5904, 0x5910);
+  CLIB_PAD_FROM_TO (0x5904, 0x5910);
   u32 management_ethernet_address_filters[4][2];
-    CLIB_PAD_FROM_TO (0x5930, 0x5a00);
+  CLIB_PAD_FROM_TO (0x5930, 0x5a00);
   u32 wake_up_packet_memory[32];
-    CLIB_PAD_FROM_TO (0x5a80, 0x5c00);
+  CLIB_PAD_FROM_TO (0x5a80, 0x5c00);
   u32 redirection_table_82598[32];
   u32 rss_random_keys_82598[10];
-    CLIB_PAD_FROM_TO (0x5ca8, 0x6000);
+  CLIB_PAD_FROM_TO (0x5ca8, 0x6000);
 
   ixge_dma_regs_t tx_dma[128];
 
   u32 pf_vm_vlan_insert[64];
   u32 tx_dma_tcp_max_alloc_size_requests;
-    CLIB_PAD_FROM_TO (0x8104, 0x8110);
+  CLIB_PAD_FROM_TO (0x8104, 0x8110);
   u32 vf_tx_enable[2];
-    CLIB_PAD_FROM_TO (0x8118, 0x8120);
+  CLIB_PAD_FROM_TO (0x8118, 0x8120);
   /* [0] dcb mode enable
      [1] virtualization mode enable
      [3:2] number of tcs/qs per pool. */
   u32 multiple_tx_queues_command;
-    CLIB_PAD_FROM_TO (0x8124, 0x8200);
+  CLIB_PAD_FROM_TO (0x8124, 0x8200);
   u32 pf_vf_anti_spoof[8];
   u32 pf_dma_tx_switch_control;
-    CLIB_PAD_FROM_TO (0x8224, 0x82e0);
+  CLIB_PAD_FROM_TO (0x8224, 0x82e0);
   u32 tx_strict_low_latency_queues[4];
-    CLIB_PAD_FROM_TO (0x82f0, 0x8600);
+  CLIB_PAD_FROM_TO (0x82f0, 0x8600);
   u32 tx_queue_stats_mapping_82599[32];
   u32 tx_queue_packet_counts[32];
   u32 tx_queue_byte_counts[32][2];
@@ -639,9 +643,9 @@ typedef volatile struct
     u32 control;
     u32 status;
     u32 buffer_almost_full;
-      CLIB_PAD_FROM_TO (0x880c, 0x8810);
+    CLIB_PAD_FROM_TO (0x880c, 0x8810);
     u32 buffer_min_ifg;
-      CLIB_PAD_FROM_TO (0x8814, 0x8900);
+    CLIB_PAD_FROM_TO (0x8814, 0x8900);
   } tx_security;
 
   struct
@@ -649,7 +653,7 @@ typedef volatile struct
     u32 index;
     u32 salt;
     u32 key[4];
-      CLIB_PAD_FROM_TO (0x8918, 0x8a00);
+    CLIB_PAD_FROM_TO (0x8918, 0x8a00);
   } tx_ipsec;
 
   struct
@@ -663,7 +667,7 @@ typedef volatile struct
     /* untagged packets, encrypted packets, protected packets,
        encrypted bytes, protected bytes */
     u32 stats[5];
-      CLIB_PAD_FROM_TO (0x8a50, 0x8c00);
+    CLIB_PAD_FROM_TO (0x8a50, 0x8c00);
   } tx_link_security;
 
   struct
@@ -675,16 +679,16 @@ typedef volatile struct
     u32 time_adjustment_offset[2];
     u32 aux_control;
     u32 target_time[2][2];
-      CLIB_PAD_FROM_TO (0x8c34, 0x8c3c);
+    CLIB_PAD_FROM_TO (0x8c34, 0x8c3c);
     u32 aux_time_stamp[2][2];
-      CLIB_PAD_FROM_TO (0x8c4c, 0x8d00);
+    CLIB_PAD_FROM_TO (0x8c4c, 0x8d00);
   } tx_timesync;
 
   struct
   {
     u32 control;
     u32 status;
-      CLIB_PAD_FROM_TO (0x8d08, 0x8e00);
+    CLIB_PAD_FROM_TO (0x8d08, 0x8e00);
   } rx_security;
 
   struct
@@ -696,7 +700,7 @@ typedef volatile struct
     u32 key[4];
     u32 salt;
     u32 mode;
-      CLIB_PAD_FROM_TO (0x8e34, 0x8f00);
+    CLIB_PAD_FROM_TO (0x8e34, 0x8f00);
   } rx_ipsec;
 
   struct
@@ -709,12 +713,12 @@ typedef volatile struct
     u32 key[2][4];
     /* see datasheet */
     u32 stats[17];
-      CLIB_PAD_FROM_TO (0x8f84, 0x9000);
+    CLIB_PAD_FROM_TO (0x8f84, 0x9000);
   } rx_link_security;
 
   /* 4 wake up, 2 management, 2 wake up. */
   u32 flexible_filters[8][16][4];
-    CLIB_PAD_FROM_TO (0x9800, 0xa000);
+  CLIB_PAD_FROM_TO (0x9800, 0xa000);
 
   /* 4096 bits. */
   u32 vlan_filter[128];
@@ -727,22 +731,22 @@ typedef volatile struct
 
   /* select one of 64 pools for each rx address. */
   u32 rx_ethernet_address_pool_select[128][2];
-    CLIB_PAD_FROM_TO (0xaa00, 0xc800);
+  CLIB_PAD_FROM_TO (0xaa00, 0xc800);
   u32 tx_priority_to_traffic_class;
-    CLIB_PAD_FROM_TO (0xc804, 0xcc00);
+  CLIB_PAD_FROM_TO (0xc804, 0xcc00);
 
   /* In bytes units of 1k.  Total packet buffer is 160k. */
   u32 tx_packet_buffer_size[8];
 
-    CLIB_PAD_FROM_TO (0xcc20, 0xcd10);
+  CLIB_PAD_FROM_TO (0xcc20, 0xcd10);
   u32 tx_manageability_tc_mapping;
-    CLIB_PAD_FROM_TO (0xcd14, 0xcd20);
+  CLIB_PAD_FROM_TO (0xcd14, 0xcd20);
   u32 dcb_tx_packet_plane_t2_config[8];
   u32 dcb_tx_packet_plane_t2_status[8];
-    CLIB_PAD_FROM_TO (0xcd60, 0xce00);
+  CLIB_PAD_FROM_TO (0xcd60, 0xce00);
 
   u32 tx_flow_control_status;
-    CLIB_PAD_FROM_TO (0xce04, 0xd000);
+  CLIB_PAD_FROM_TO (0xce04, 0xd000);
 
   ixge_dma_regs_t rx_dma1[64];
 
@@ -774,34 +778,34 @@ typedef volatile struct
     u32 interrupt[128];
   } ip4_filters;
 
-    CLIB_PAD_FROM_TO (0xea00, 0xeb00);
+  CLIB_PAD_FROM_TO (0xea00, 0xeb00);
   /* 4 bit rss output index indexed by 7 bit hash.
      128 8 bit fields = 32 registers. */
   u32 redirection_table_82599[32];
 
   u32 rss_random_key_82599[10];
-    CLIB_PAD_FROM_TO (0xeba8, 0xec00);
+  CLIB_PAD_FROM_TO (0xeba8, 0xec00);
   /* [15:0] reserved
      [22:16] rx queue index
      [29] low-latency interrupt on match
      [31] enable */
   u32 ethernet_type_queue_select[8];
-    CLIB_PAD_FROM_TO (0xec20, 0xec30);
+  CLIB_PAD_FROM_TO (0xec20, 0xec30);
   u32 syn_packet_queue_filter;
-    CLIB_PAD_FROM_TO (0xec34, 0xec60);
+  CLIB_PAD_FROM_TO (0xec34, 0xec60);
   u32 immediate_interrupt_rx_vlan_priority;
-    CLIB_PAD_FROM_TO (0xec64, 0xec70);
+  CLIB_PAD_FROM_TO (0xec64, 0xec70);
   u32 rss_queues_per_traffic_class;
-    CLIB_PAD_FROM_TO (0xec74, 0xec90);
+  CLIB_PAD_FROM_TO (0xec74, 0xec90);
   u32 lli_size_threshold;
-    CLIB_PAD_FROM_TO (0xec94, 0xed00);
+  CLIB_PAD_FROM_TO (0xec94, 0xed00);
 
   struct
   {
     u32 control;
-      CLIB_PAD_FROM_TO (0xed04, 0xed10);
+    CLIB_PAD_FROM_TO (0xed04, 0xed10);
     u32 table[8];
-      CLIB_PAD_FROM_TO (0xed30, 0xee00);
+    CLIB_PAD_FROM_TO (0xed30, 0xee00);
   } fcoe_redirection;
 
   struct
@@ -816,7 +820,7 @@ typedef volatile struct
        [27:24] max linked list length
        [31:28] full threshold. */
     u32 control;
-      CLIB_PAD_FROM_TO (0xee04, 0xee0c);
+    CLIB_PAD_FROM_TO (0xee04, 0xee0c);
 
     u32 data[8];
 
@@ -836,7 +840,7 @@ typedef volatile struct
        [29:24] pool. */
     u32 command;
 
-      CLIB_PAD_FROM_TO (0xee30, 0xee3c);
+    CLIB_PAD_FROM_TO (0xee30, 0xee3c);
     /* ip4 dst/src address, tcp ports, udp ports.
        set bits mean bit is ignored. */
     u32 ip4_masks[4];
@@ -845,7 +849,7 @@ typedef volatile struct
     u32 failed_usage_stats;
     u32 filters_match_stats;
     u32 filters_miss_stats;
-      CLIB_PAD_FROM_TO (0xee60, 0xee68);
+    CLIB_PAD_FROM_TO (0xee60, 0xee68);
     /* Lookup, signature. */
     u32 hash_keys[2];
     /* [15:0] ip6 src address 1 bit per byte
@@ -858,7 +862,7 @@ typedef volatile struct
        [4] flex
        [5] dst ip6. */
     u32 other_mask;
-      CLIB_PAD_FROM_TO (0xee78, 0xf000);
+    CLIB_PAD_FROM_TO (0xee78, 0xf000);
   } flow_director;
 
   struct
@@ -870,7 +874,7 @@ typedef volatile struct
     u32 mirror_rule[4];
     u32 mirror_rule_vlan[8];
     u32 mirror_rule_pool[8];
-      CLIB_PAD_FROM_TO (0xf650, 0x10010);
+    CLIB_PAD_FROM_TO (0xf650, 0x10010);
   } pf_bar;
 
   u32 eeprom_flash_control;
@@ -879,27 +883,27 @@ typedef volatile struct
      [15:2] address
      [31:16] read data. */
   u32 eeprom_read;
-    CLIB_PAD_FROM_TO (0x10018, 0x1001c);
+  CLIB_PAD_FROM_TO (0x10018, 0x1001c);
   u32 flash_access;
-    CLIB_PAD_FROM_TO (0x10020, 0x10114);
+  CLIB_PAD_FROM_TO (0x10020, 0x10114);
   u32 flash_data;
   u32 flash_control;
   u32 flash_read_data;
-    CLIB_PAD_FROM_TO (0x10120, 0x1013c);
+  CLIB_PAD_FROM_TO (0x10120, 0x1013c);
   u32 flash_opcode;
   u32 software_semaphore;
-    CLIB_PAD_FROM_TO (0x10144, 0x10148);
+  CLIB_PAD_FROM_TO (0x10144, 0x10148);
   u32 firmware_semaphore;
-    CLIB_PAD_FROM_TO (0x1014c, 0x10160);
+  CLIB_PAD_FROM_TO (0x1014c, 0x10160);
   u32 software_firmware_sync;
-    CLIB_PAD_FROM_TO (0x10164, 0x10200);
+  CLIB_PAD_FROM_TO (0x10164, 0x10200);
   u32 general_rx_control;
-    CLIB_PAD_FROM_TO (0x10204, 0x11000);
+  CLIB_PAD_FROM_TO (0x10204, 0x11000);
 
   struct
   {
     u32 control;
-      CLIB_PAD_FROM_TO (0x11004, 0x11010);
+    CLIB_PAD_FROM_TO (0x11004, 0x11010);
     /* [3:0] enable counters
        [7:4] leaky bucket counter mode
        [29] reset
@@ -912,7 +916,7 @@ typedef volatile struct
        0x10 reqs that reached timeout
        etc. */
     u32 counter_event;
-      CLIB_PAD_FROM_TO (0x11018, 0x11020);
+    CLIB_PAD_FROM_TO (0x11018, 0x11020);
     u32 counters_clear_on_read[4];
     u32 counter_config[4];
     struct
@@ -920,36 +924,36 @@ typedef volatile struct
       u32 address;
       u32 data;
     } indirect_access;
-      CLIB_PAD_FROM_TO (0x11048, 0x11050);
+    CLIB_PAD_FROM_TO (0x11048, 0x11050);
     u32 extended_control;
-      CLIB_PAD_FROM_TO (0x11054, 0x11064);
+    CLIB_PAD_FROM_TO (0x11054, 0x11064);
     u32 mirrored_revision_id;
-      CLIB_PAD_FROM_TO (0x11068, 0x11070);
+    CLIB_PAD_FROM_TO (0x11068, 0x11070);
     u32 dca_requester_id_information;
 
     /* [0] global disable
        [4:1] mode: 0 => legacy, 1 => dca 1.0. */
     u32 dca_control;
-      CLIB_PAD_FROM_TO (0x11078, 0x110b0);
+    CLIB_PAD_FROM_TO (0x11078, 0x110b0);
     /* [0] pci completion abort
        [1] unsupported i/o address
        [2] wrong byte enable
        [3] pci timeout */
     u32 pcie_interrupt_status;
-      CLIB_PAD_FROM_TO (0x110b4, 0x110b8);
+    CLIB_PAD_FROM_TO (0x110b4, 0x110b8);
     u32 pcie_interrupt_enable;
-      CLIB_PAD_FROM_TO (0x110bc, 0x110c0);
+    CLIB_PAD_FROM_TO (0x110bc, 0x110c0);
     u32 msi_x_pba_clear[8];
-      CLIB_PAD_FROM_TO (0x110e0, 0x12300);
+    CLIB_PAD_FROM_TO (0x110e0, 0x12300);
   } pcie;
 
   u32 interrupt_throttle1[128 - 24];
-    CLIB_PAD_FROM_TO (0x124a0, 0x14f00);
+  CLIB_PAD_FROM_TO (0x124a0, 0x14f00);
 
   u32 core_analog_config;
-    CLIB_PAD_FROM_TO (0x14f04, 0x14f10);
+  CLIB_PAD_FROM_TO (0x14f04, 0x14f10);
   u32 core_common_config;
-    CLIB_PAD_FROM_TO (0x14f14, 0x15f14);
+  CLIB_PAD_FROM_TO (0x14f14, 0x15f14);
 
   u32 link_sec_software_firmware_interface;
 } ixge_regs_t;
@@ -991,14 +995,13 @@ typedef union
 } ixge_flow_director_key_t;
 
 always_inline void
-ixge_throttle_queue_interrupt (ixge_regs_t * r,
-			       u32 queue_interrupt_index,
+ixge_throttle_queue_interrupt (ixge_regs_t *r, u32 queue_interrupt_index,
 			       f64 inter_interrupt_interval_in_secs)
 {
   volatile u32 *tr =
-    (queue_interrupt_index < ARRAY_LEN (r->interrupt.throttle0)
-     ? &r->interrupt.throttle0[queue_interrupt_index]
-     : &r->interrupt_throttle1[queue_interrupt_index]);
+    (queue_interrupt_index < ARRAY_LEN (r->interrupt.throttle0) ?
+       &r->interrupt.throttle0[queue_interrupt_index] :
+       &r->interrupt_throttle1[queue_interrupt_index]);
   ASSERT (queue_interrupt_index < 128);
   u32 v;
   i32 i, mask = (1 << 9) - 1;
@@ -1013,95 +1016,92 @@ ixge_throttle_queue_interrupt (ixge_regs_t * r,
   tr[0] = v;
 }
 
-#define foreach_ixge_counter				\
-  _ (0x40d0, rx_total_packets)				\
-  _64 (0x40c0, rx_total_bytes)				\
-  _ (0x41b0, rx_good_packets_before_filtering)		\
-  _64 (0x41b4, rx_good_bytes_before_filtering)		\
-  _ (0x2f50, rx_dma_good_packets)			\
-  _64 (0x2f54, rx_dma_good_bytes)			\
-  _ (0x2f5c, rx_dma_duplicated_good_packets)		\
-  _64 (0x2f60, rx_dma_duplicated_good_bytes)		\
-  _ (0x2f68, rx_dma_good_loopback_packets)		\
-  _64 (0x2f6c, rx_dma_good_loopback_bytes)		\
-  _ (0x2f74, rx_dma_good_duplicated_loopback_packets)	\
-  _64 (0x2f78, rx_dma_good_duplicated_loopback_bytes)	\
-  _ (0x4074, rx_good_packets)				\
-  _64 (0x4088, rx_good_bytes)				\
-  _ (0x407c, rx_multicast_packets)			\
-  _ (0x4078, rx_broadcast_packets)			\
-  _ (0x405c, rx_64_byte_packets)			\
-  _ (0x4060, rx_65_127_byte_packets)			\
-  _ (0x4064, rx_128_255_byte_packets)			\
-  _ (0x4068, rx_256_511_byte_packets)			\
-  _ (0x406c, rx_512_1023_byte_packets)			\
-  _ (0x4070, rx_gt_1023_byte_packets)			\
-  _ (0x4000, rx_crc_errors)				\
-  _ (0x4120, rx_ip_checksum_errors)			\
-  _ (0x4004, rx_illegal_symbol_errors)			\
-  _ (0x4008, rx_error_symbol_errors)			\
-  _ (0x4034, rx_mac_local_faults)			\
-  _ (0x4038, rx_mac_remote_faults)			\
-  _ (0x4040, rx_length_errors)				\
-  _ (0x41a4, rx_xons)					\
-  _ (0x41a8, rx_xoffs)					\
-  _ (0x40a4, rx_undersize_packets)			\
-  _ (0x40a8, rx_fragments)				\
-  _ (0x40ac, rx_oversize_packets)			\
-  _ (0x40b0, rx_jabbers)				\
-  _ (0x40b4, rx_management_packets)			\
-  _ (0x40b8, rx_management_drops)			\
-  _ (0x3fa0, rx_missed_packets_pool_0)			\
-  _ (0x40d4, tx_total_packets)				\
-  _ (0x4080, tx_good_packets)				\
-  _64 (0x4090, tx_good_bytes)				\
-  _ (0x40f0, tx_multicast_packets)			\
-  _ (0x40f4, tx_broadcast_packets)			\
-  _ (0x87a0, tx_dma_good_packets)			\
-  _64 (0x87a4, tx_dma_good_bytes)			\
-  _ (0x40d8, tx_64_byte_packets)			\
-  _ (0x40dc, tx_65_127_byte_packets)			\
-  _ (0x40e0, tx_128_255_byte_packets)			\
-  _ (0x40e4, tx_256_511_byte_packets)			\
-  _ (0x40e8, tx_512_1023_byte_packets)			\
-  _ (0x40ec, tx_gt_1023_byte_packets)			\
-  _ (0x4010, tx_undersize_drops)			\
-  _ (0x8780, switch_security_violation_packets)		\
-  _ (0x5118, fc_crc_errors)				\
-  _ (0x241c, fc_rx_drops)				\
-  _ (0x2424, fc_last_error_count)			\
-  _ (0x2428, fcoe_rx_packets)				\
-  _ (0x242c, fcoe_rx_dwords)				\
-  _ (0x8784, fcoe_tx_packets)				\
-  _ (0x8788, fcoe_tx_dwords)				\
-  _ (0x1030, queue_0_rx_count)				\
-  _ (0x1430, queue_0_drop_count)			\
-  _ (0x1070, queue_1_rx_count)				\
-  _ (0x1470, queue_1_drop_count)			\
-  _ (0x10b0, queue_2_rx_count)				\
-  _ (0x14b0, queue_2_drop_count)			\
-  _ (0x10f0, queue_3_rx_count)				\
-  _ (0x14f0, queue_3_drop_count)			\
-  _ (0x1130, queue_4_rx_count)				\
-  _ (0x1530, queue_4_drop_count)			\
-  _ (0x1170, queue_5_rx_count)				\
-  _ (0x1570, queue_5_drop_count)			\
-  _ (0x11b0, queue_6_rx_count)				\
-  _ (0x15b0, queue_6_drop_count)			\
-  _ (0x11f0, queue_7_rx_count)				\
-  _ (0x15f0, queue_7_drop_count)			\
-  _ (0x1230, queue_8_rx_count)				\
-  _ (0x1630, queue_8_drop_count)			\
-  _ (0x1270, queue_9_rx_count)				\
+#define foreach_ixge_counter                                                  \
+  _ (0x40d0, rx_total_packets)                                                \
+  _64 (0x40c0, rx_total_bytes)                                                \
+  _ (0x41b0, rx_good_packets_before_filtering)                                \
+  _64 (0x41b4, rx_good_bytes_before_filtering)                                \
+  _ (0x2f50, rx_dma_good_packets)                                             \
+  _64 (0x2f54, rx_dma_good_bytes)                                             \
+  _ (0x2f5c, rx_dma_duplicated_good_packets)                                  \
+  _64 (0x2f60, rx_dma_duplicated_good_bytes)                                  \
+  _ (0x2f68, rx_dma_good_loopback_packets)                                    \
+  _64 (0x2f6c, rx_dma_good_loopback_bytes)                                    \
+  _ (0x2f74, rx_dma_good_duplicated_loopback_packets)                         \
+  _64 (0x2f78, rx_dma_good_duplicated_loopback_bytes)                         \
+  _ (0x4074, rx_good_packets)                                                 \
+  _64 (0x4088, rx_good_bytes)                                                 \
+  _ (0x407c, rx_multicast_packets)                                            \
+  _ (0x4078, rx_broadcast_packets)                                            \
+  _ (0x405c, rx_64_byte_packets)                                              \
+  _ (0x4060, rx_65_127_byte_packets)                                          \
+  _ (0x4064, rx_128_255_byte_packets)                                         \
+  _ (0x4068, rx_256_511_byte_packets)                                         \
+  _ (0x406c, rx_512_1023_byte_packets)                                        \
+  _ (0x4070, rx_gt_1023_byte_packets)                                         \
+  _ (0x4000, rx_crc_errors)                                                   \
+  _ (0x4120, rx_ip_checksum_errors)                                           \
+  _ (0x4004, rx_illegal_symbol_errors)                                        \
+  _ (0x4008, rx_error_symbol_errors)                                          \
+  _ (0x4034, rx_mac_local_faults)                                             \
+  _ (0x4038, rx_mac_remote_faults)                                            \
+  _ (0x4040, rx_length_errors)                                                \
+  _ (0x41a4, rx_xons)                                                         \
+  _ (0x41a8, rx_xoffs)                                                        \
+  _ (0x40a4, rx_undersize_packets)                                            \
+  _ (0x40a8, rx_fragments)                                                    \
+  _ (0x40ac, rx_oversize_packets)                                             \
+  _ (0x40b0, rx_jabbers)                                                      \
+  _ (0x40b4, rx_management_packets)                                           \
+  _ (0x40b8, rx_management_drops)                                             \
+  _ (0x3fa0, rx_missed_packets_pool_0)                                        \
+  _ (0x40d4, tx_total_packets)                                                \
+  _ (0x4080, tx_good_packets)                                                 \
+  _64 (0x4090, tx_good_bytes)                                                 \
+  _ (0x40f0, tx_multicast_packets)                                            \
+  _ (0x40f4, tx_broadcast_packets)                                            \
+  _ (0x87a0, tx_dma_good_packets)                                             \
+  _64 (0x87a4, tx_dma_good_bytes)                                             \
+  _ (0x40d8, tx_64_byte_packets)                                              \
+  _ (0x40dc, tx_65_127_byte_packets)                                          \
+  _ (0x40e0, tx_128_255_byte_packets)                                         \
+  _ (0x40e4, tx_256_511_byte_packets)                                         \
+  _ (0x40e8, tx_512_1023_byte_packets)                                        \
+  _ (0x40ec, tx_gt_1023_byte_packets)                                         \
+  _ (0x4010, tx_undersize_drops)                                              \
+  _ (0x8780, switch_security_violation_packets)                               \
+  _ (0x5118, fc_crc_errors)                                                   \
+  _ (0x241c, fc_rx_drops)                                                     \
+  _ (0x2424, fc_last_error_count)                                             \
+  _ (0x2428, fcoe_rx_packets)                                                 \
+  _ (0x242c, fcoe_rx_dwords)                                                  \
+  _ (0x8784, fcoe_tx_packets)                                                 \
+  _ (0x8788, fcoe_tx_dwords)                                                  \
+  _ (0x1030, queue_0_rx_count)                                                \
+  _ (0x1430, queue_0_drop_count)                                              \
+  _ (0x1070, queue_1_rx_count)                                                \
+  _ (0x1470, queue_1_drop_count)                                              \
+  _ (0x10b0, queue_2_rx_count)                                                \
+  _ (0x14b0, queue_2_drop_count)                                              \
+  _ (0x10f0, queue_3_rx_count)                                                \
+  _ (0x14f0, queue_3_drop_count)                                              \
+  _ (0x1130, queue_4_rx_count)                                                \
+  _ (0x1530, queue_4_drop_count)                                              \
+  _ (0x1170, queue_5_rx_count)                                                \
+  _ (0x1570, queue_5_drop_count)                                              \
+  _ (0x11b0, queue_6_rx_count)                                                \
+  _ (0x15b0, queue_6_drop_count)                                              \
+  _ (0x11f0, queue_7_rx_count)                                                \
+  _ (0x15f0, queue_7_drop_count)                                              \
+  _ (0x1230, queue_8_rx_count)                                                \
+  _ (0x1630, queue_8_drop_count)                                              \
+  _ (0x1270, queue_9_rx_count)                                                \
   _ (0x1270, queue_9_drop_count)
-
-
-
 
 typedef enum
 {
-#define _(a,f) IXGE_COUNTER_##f,
-#define _64(a,f) _(a,f)
+#define _(a, f)	  IXGE_COUNTER_##f,
+#define _64(a, f) _ (a, f)
   foreach_ixge_counter
 #undef _
 #undef _64
@@ -1166,35 +1166,35 @@ typedef struct
   };
 } ixge_dma_queue_t;
 
-#define foreach_ixge_pci_device_id		\
-  _ (82598, 0x10b6)				\
-  _ (82598_bx, 0x1508)				\
-  _ (82598af_dual_port, 0x10c6)			\
-  _ (82598af_single_port, 0x10c7)		\
-  _ (82598at, 0x10c8)				\
-  _ (82598at2, 0x150b)				\
-  _ (82598eb_sfp_lom, 0x10db)			\
-  _ (82598eb_cx4, 0x10dd)			\
-  _ (82598_cx4_dual_port, 0x10ec)		\
-  _ (82598_da_dual_port, 0x10f1)		\
-  _ (82598_sr_dual_port_em, 0x10e1)		\
-  _ (82598eb_xf_lr, 0x10f4)			\
-  _ (82599_kx4, 0x10f7)				\
-  _ (82599_kx4_mezz, 0x1514)			\
-  _ (82599_kr, 0x1517)				\
-  _ (82599_combo_backplane, 0x10f8)		\
-  _ (82599_cx4, 0x10f9)				\
-  _ (82599_sfp, 0x10fb)				\
-  _ (82599_backplane_fcoe, 0x152a)		\
-  _ (82599_sfp_fcoe, 0x1529)			\
-  _ (82599_sfp_em, 0x1507)			\
-  _ (82599_xaui_lom, 0x10fc)			\
-  _ (82599_t3_lom, 0x151c)			\
+#define foreach_ixge_pci_device_id                                            \
+  _ (82598, 0x10b6)                                                           \
+  _ (82598_bx, 0x1508)                                                        \
+  _ (82598af_dual_port, 0x10c6)                                               \
+  _ (82598af_single_port, 0x10c7)                                             \
+  _ (82598at, 0x10c8)                                                         \
+  _ (82598at2, 0x150b)                                                        \
+  _ (82598eb_sfp_lom, 0x10db)                                                 \
+  _ (82598eb_cx4, 0x10dd)                                                     \
+  _ (82598_cx4_dual_port, 0x10ec)                                             \
+  _ (82598_da_dual_port, 0x10f1)                                              \
+  _ (82598_sr_dual_port_em, 0x10e1)                                           \
+  _ (82598eb_xf_lr, 0x10f4)                                                   \
+  _ (82599_kx4, 0x10f7)                                                       \
+  _ (82599_kx4_mezz, 0x1514)                                                  \
+  _ (82599_kr, 0x1517)                                                        \
+  _ (82599_combo_backplane, 0x10f8)                                           \
+  _ (82599_cx4, 0x10f9)                                                       \
+  _ (82599_sfp, 0x10fb)                                                       \
+  _ (82599_backplane_fcoe, 0x152a)                                            \
+  _ (82599_sfp_fcoe, 0x1529)                                                  \
+  _ (82599_sfp_em, 0x1507)                                                    \
+  _ (82599_xaui_lom, 0x10fc)                                                  \
+  _ (82599_t3_lom, 0x151c)                                                    \
   _ (x540t, 0x1528)
 
 typedef enum
 {
-#define _(f,n) IXGE_##f = n,
+#define _(f, n) IXGE_##f = n,
   foreach_ixge_pci_device_id
 #undef _
 } ixge_pci_device_id_t;

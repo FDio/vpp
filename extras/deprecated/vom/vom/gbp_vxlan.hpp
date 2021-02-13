@@ -58,8 +58,8 @@ public:
   bool operator==(const gbp_vxlan& vt) const;
 
   /**
-     * Return the matching 'singular instance'
-     */
+   * Return the matching 'singular instance'
+   */
   std::shared_ptr<gbp_vxlan> singular() const;
 
   /**
@@ -91,7 +91,9 @@ private:
   /**
    * Class definition for listeners to OM events
    */
-  class event_handler : public OM::listener, public inspect::command_handler
+  class event_handler
+    : public OM::listener
+    , public inspect::command_handler
   {
   public:
     event_handler();

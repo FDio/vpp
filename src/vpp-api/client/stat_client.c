@@ -44,7 +44,7 @@ stat_client_get (void)
 }
 
 void
-stat_client_free (stat_client_main_t * sm)
+stat_client_free (stat_client_main_t *sm)
 {
   free (sm);
 }
@@ -56,7 +56,7 @@ recv_fd (int sock)
   struct cmsghdr *cmsg;
   int fd = -1;
   char iobuf[1];
-  struct iovec io = {.iov_base = iobuf,.iov_len = sizeof (iobuf) };
+  struct iovec io = { .iov_base = iobuf, .iov_len = sizeof (iobuf) };
   union
   {
     char buf[CMSG_SPACE (sizeof (fd))];
@@ -82,7 +82,7 @@ recv_fd (int sock)
 }
 
 static stat_segment_directory_entry_t *
-get_stat_vector_r (stat_client_main_t * sm)
+get_stat_vector_r (stat_client_main_t *sm)
 {
   ASSERT (sm->shared_header);
   return stat_segment_adjust (sm,
@@ -90,7 +90,7 @@ get_stat_vector_r (stat_client_main_t * sm)
 }
 
 int
-stat_segment_connect_r (const char *socket_name, stat_client_main_t * sm)
+stat_segment_connect_r (const char *socket_name, stat_client_main_t *sm)
 {
   int mfd = -1;
   int sock;
@@ -105,8 +105,7 @@ stat_segment_connect_r (const char *socket_name, stat_client_main_t * sm)
   struct sockaddr_un un = { 0 };
   un.sun_family = AF_UNIX;
   strncpy ((char *) un.sun_path, socket_name, sizeof (un.sun_path) - 1);
-  if (connect (sock, (struct sockaddr *) &un, sizeof (struct sockaddr_un)) <
-      0)
+  if (connect (sock, (struct sockaddr *) &un, sizeof (struct sockaddr_un)) < 0)
     {
       close (sock);
       return -2;
@@ -130,8 +129,8 @@ stat_segment_connect_r (const char *socket_name, stat_client_main_t * sm)
       perror ("mmap fstat failed");
       return -4;
     }
-  if ((memaddr =
-       mmap (NULL, st.st_size, PROT_READ, MAP_SHARED, mfd, 0)) == MAP_FAILED)
+  if ((memaddr = mmap (NULL, st.st_size, PROT_READ, MAP_SHARED, mfd, 0)) ==
+      MAP_FAILED)
     {
       close (mfd);
       perror ("mmap map failed");
@@ -155,7 +154,7 @@ stat_segment_connect (const char *socket_name)
 }
 
 void
-stat_segment_disconnect_r (stat_client_main_t * sm)
+stat_segment_disconnect_r (stat_client_main_t *sm)
 {
   munmap (sm->shared_header, sm->memory_size);
   return;
@@ -169,7 +168,7 @@ stat_segment_disconnect (void)
 }
 
 double
-stat_segment_heartbeat_r (stat_client_main_t * sm)
+stat_segment_heartbeat_r (stat_client_main_t *sm)
 {
   stat_segment_access_t sa;
   stat_segment_directory_entry_t *ep;
@@ -192,23 +191,23 @@ stat_segment_heartbeat (void)
   return stat_segment_heartbeat_r (sm);
 }
 
-#define stat_vec_dup(S,V)                             \
-  ({                                                  \
-  __typeof__ ((V)[0]) * _v(v) = 0;                    \
-  if (V && ((void *)V > (void *)S->shared_header) &&  \
-      (((void*)V + vec_bytes(V)) <                    \
-       ((void *)S->shared_header + S->memory_size)))  \
-    _v(v) = vec_dup(V);                               \
-   _v(v);                                             \
-})
+#define stat_vec_dup(S, V)                                                    \
+  ({                                                                          \
+    __typeof__ ((V)[0]) *_v (v) = 0;                                          \
+    if (V && ((void *) V > (void *) S->shared_header) &&                      \
+	(((void *) V + vec_bytes (V)) <                                       \
+	 ((void *) S->shared_header + S->memory_size)))                       \
+      _v (v) = vec_dup (V);                                                   \
+    _v (v);                                                                   \
+  })
 
 static stat_segment_data_t
-copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
+copy_data (stat_segment_directory_entry_t *ep, stat_client_main_t *sm)
 {
   stat_segment_data_t result = { 0 };
   int i;
-  vlib_counter_t **combined_c;	/* Combined counter */
-  counter_t **simple_c;		/* Simple counter */
+  vlib_counter_t **combined_c; /* Combined counter */
+  counter_t **simple_c;	       /* Simple counter */
   uint64_t *error_vector;
 
   assert (sm->shared_header);
@@ -275,7 +274,7 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
 }
 
 void
-stat_segment_data_free (stat_segment_data_t * res)
+stat_segment_data_free (stat_segment_data_t *res)
 {
   int i, j;
   for (i = 0; i < vec_len (res); i++)
@@ -311,7 +310,7 @@ stat_segment_data_free (stat_segment_data_t * res)
 }
 
 uint32_t *
-stat_segment_ls_r (uint8_t ** patterns, stat_client_main_t * sm)
+stat_segment_ls_r (uint8_t **patterns, stat_client_main_t *sm)
 {
   stat_segment_access_t sa;
 
@@ -356,7 +355,6 @@ stat_segment_ls_r (uint8_t ** patterns, stat_client_main_t * sm)
       /* Failed, clean up */
       vec_free (dir);
       return 0;
-
     }
 
   /* Update last version */
@@ -365,14 +363,14 @@ stat_segment_ls_r (uint8_t ** patterns, stat_client_main_t * sm)
 }
 
 uint32_t *
-stat_segment_ls (uint8_t ** patterns)
+stat_segment_ls (uint8_t **patterns)
 {
   stat_client_main_t *sm = &stat_client_main;
   return stat_segment_ls_r ((uint8_t **) patterns, sm);
 }
 
 stat_segment_data_t *
-stat_segment_dump_r (uint32_t * stats, stat_client_main_t * sm)
+stat_segment_dump_r (uint32_t *stats, stat_client_main_t *sm)
 {
   int i;
   stat_segment_directory_entry_t *ep;
@@ -402,7 +400,7 @@ stat_segment_dump_r (uint32_t * stats, stat_client_main_t * sm)
 }
 
 stat_segment_data_t *
-stat_segment_dump (uint32_t * stats)
+stat_segment_dump (uint32_t *stats)
 {
   stat_client_main_t *sm = &stat_client_main;
   return stat_segment_dump_r (stats, sm);
@@ -423,7 +421,7 @@ stat_segment_vec_free (void *vec)
 
 /* Create a vector from a string (or add to existing) */
 uint8_t **
-stat_segment_string_vector (uint8_t ** string_vector, const char *string)
+stat_segment_string_vector (uint8_t **string_vector, const char *string)
 {
   uint8_t *name = 0;
   size_t len = strlen (string);
@@ -434,7 +432,7 @@ stat_segment_string_vector (uint8_t ** string_vector, const char *string)
 }
 
 stat_segment_data_t *
-stat_segment_dump_entry_r (uint32_t index, stat_client_main_t * sm)
+stat_segment_dump_entry_r (uint32_t index, stat_client_main_t *sm)
 {
   stat_segment_directory_entry_t *ep;
   stat_segment_data_t *res = 0;
@@ -460,7 +458,7 @@ stat_segment_dump_entry (uint32_t index)
 }
 
 char *
-stat_segment_index_to_name_r (uint32_t index, stat_client_main_t * sm)
+stat_segment_index_to_name_r (uint32_t index, stat_client_main_t *sm)
 {
   stat_segment_directory_entry_t *ep;
   stat_segment_access_t sa;
@@ -486,7 +484,7 @@ stat_segment_index_to_name (uint32_t index)
 }
 
 uint64_t
-stat_segment_version_r (stat_client_main_t * sm)
+stat_segment_version_r (stat_client_main_t *sm)
 {
   ASSERT (sm->shared_header);
   return sm->shared_header->version;

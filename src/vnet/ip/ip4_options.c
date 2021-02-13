@@ -31,9 +31,8 @@ typedef struct ip4_options_trace_t_
   u8 option[4];
 } ip4_options_trace_t;
 
-VLIB_NODE_FN (ip4_options_node) (vlib_main_t * vm,
-				 vlib_node_runtime_t * node,
-				 vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_options_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   uword n_left_from, n_left_to_next, next_index;
   u32 *from, *to_next;
@@ -98,7 +97,6 @@ VLIB_NODE_FN (ip4_options_node) (vlib_main_t * vm,
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi, next);
-
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -107,20 +105,18 @@ VLIB_NODE_FN (ip4_options_node) (vlib_main_t * vm,
 }
 
 u8 *
-format_ip4_options_trace (u8 * s, va_list * args)
+format_ip4_options_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip4_options_trace_t *t = va_arg (*args, ip4_options_trace_t *);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "%Uoption:[0x%x,0x%x,0x%x,0x%x]",
-	      format_white_space, indent,
+  s = format (s, "%Uoption:[0x%x,0x%x,0x%x,0x%x]", format_white_space, indent,
 	      t->option[0], t->option[1], t->option[2], t->option[3]);
   return s;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_options_node) = {
   .name = "ip4-options",
   .vector_size = sizeof (u32),
@@ -133,7 +129,6 @@ VLIB_REGISTER_NODE (ip4_options_node) = {
   .format_buffer = format_ip4_header,
   .format_trace = format_ip4_options_trace,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

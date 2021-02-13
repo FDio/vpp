@@ -23,12 +23,13 @@
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
 
-typedef struct {
-    /* API message ID base */
-    u16 msg_id_base;
+typedef struct
+{
+  /* API message ID base */
+  u16 msg_id_base;
 
-    /* convenience */
-    vnet_main_t * vnet_main;
+  /* convenience */
+  vnet_main_t *vnet_main;
 } sample_main_t;
 
 extern sample_main_t sample_main;

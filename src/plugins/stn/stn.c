@@ -25,29 +25,32 @@ stn_main_t stn_main;
 static vlib_node_registration_t stn_ip4_punt;
 static vlib_node_registration_t stn_ip6_punt;
 
-static u8 stn_hw_addr_local[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
-static u8 stn_hw_addr_dst[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x02};
+static u8 stn_hw_addr_local[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 };
+static u8 stn_hw_addr_dst[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x02 };
 
 static ethernet_header_t stn_ip4_ethernet_header = {};
 static ethernet_header_t stn_ip6_ethernet_header = {};
 
-typedef struct {
+typedef struct
+{
   clib_bihash_kv_16_8_t kv;
 } stn_ip46_punt_trace_t;
 
 static u8 *
-format_stn_rule (u8 * s, va_list * args)
+format_stn_rule (u8 *s, va_list *args)
 {
   stn_rule_t *r = va_arg (*args, stn_rule_t *);
   stn_main_t *stn = &stn_main;
   u32 indent = format_get_indent (s);
-  u32 node_index = ip46_address_is_ip4(&r->address)?stn_ip4_punt.index:stn_ip6_punt.index;
-  vlib_node_t *next_node = vlib_get_next_node(vlib_get_main(), node_index, r->next_node_index);
+  u32 node_index = ip46_address_is_ip4 (&r->address) ? stn_ip4_punt.index :
+						       stn_ip6_punt.index;
+  vlib_node_t *next_node =
+    vlib_get_next_node (vlib_get_main (), node_index, r->next_node_index);
   s = format (s, "rule_index: %d\n", r - stn->rules);
   s = format (s, "%Uaddress: %U\n", format_white_space, indent,
 	      format_ip46_address, &r->address, IP46_TYPE_ANY);
   s = format (s, "%Uiface: %U (%d)\n", format_white_space, indent,
-  	      format_vnet_sw_if_index_name, vnet_get_main(), r->sw_if_index,
+	      format_vnet_sw_if_index_name, vnet_get_main (), r->sw_if_index,
 	      r->sw_if_index);
   s = format (s, "%Unext_node: %s (%d)", format_white_space, indent,
 	      next_node->name, next_node->index);
@@ -55,7 +58,7 @@ format_stn_rule (u8 * s, va_list * args)
 }
 
 static_always_inline u8 *
-format_stn_ip46_punt_trace (u8 * s, va_list * args, u8 is_ipv4)
+format_stn_ip46_punt_trace (u8 *s, va_list *args, u8 is_ipv4)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -63,7 +66,7 @@ format_stn_ip46_punt_trace (u8 * s, va_list * args, u8 is_ipv4)
   u32 indent = format_get_indent (s);
 
   s = format (s, "dst_address: %U\n", format_ip46_address,
-	  (ip46_address_t *)t->kv.key, IP46_TYPE_ANY);
+	      (ip46_address_t *) t->kv.key, IP46_TYPE_ANY);
 
   if (t->kv.value == ~(0L))
     {
@@ -72,8 +75,8 @@ format_stn_ip46_punt_trace (u8 * s, va_list * args, u8 is_ipv4)
   else
     {
       s = format (s, "%Urule:\n%U%U", format_white_space, indent,
-		     format_white_space, indent + 2,
-		     format_stn_rule, &stn_main.rules[t->kv.value]);
+		  format_white_space, indent + 2, format_stn_rule,
+		  &stn_main.rules[t->kv.value]);
     }
   return s;
 }
@@ -85,10 +88,8 @@ typedef enum
 } stn_ip_punt_next_t;
 
 static_always_inline uword
-stn_ip46_punt_fn (vlib_main_t * vm,
-                  vlib_node_runtime_t * node,
-                  vlib_frame_t * frame,
-                  u8 is_ipv4)
+stn_ip46_punt_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		  vlib_frame_t *frame, u8 is_ipv4)
 {
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
   stn_main_t *stn = &stn_main;
@@ -119,12 +120,15 @@ stn_ip46_punt_fn (vlib_main_t * vm,
 
 	  if (is_ipv4)
 	    {
-	      ip4_header_t *hdr = (ip4_header_t *) vlib_buffer_get_current(p0);
-	      ip46_address_set_ip4((ip46_address_t *)kv.key, &hdr->dst_address);
+	      ip4_header_t *hdr =
+		(ip4_header_t *) vlib_buffer_get_current (p0);
+	      ip46_address_set_ip4 ((ip46_address_t *) kv.key,
+				    &hdr->dst_address);
 	    }
 	  else
 	    {
-	      ip6_header_t *hdr = (ip6_header_t *) vlib_buffer_get_current(p0);
+	      ip6_header_t *hdr =
+		(ip6_header_t *) vlib_buffer_get_current (p0);
 	      kv.key[0] = hdr->dst_address.as_u64[0];
 	      kv.key[1] = hdr->dst_address.as_u64[1];
 	    }
@@ -135,24 +139,26 @@ stn_ip46_punt_fn (vlib_main_t * vm,
 	    {
 	      ethernet_header_t *eth;
 	      stn_rule_t *r = &stn->rules[kv.value];
-	      vnet_buffer(p0)->sw_if_index[VLIB_TX] = r->sw_if_index;
+	      vnet_buffer (p0)->sw_if_index[VLIB_TX] = r->sw_if_index;
 	      next0 = r->next_node_index;
-	      vlib_buffer_advance(p0, -sizeof(*eth));
-	      eth = (ethernet_header_t *) vlib_buffer_get_current(p0);
+	      vlib_buffer_advance (p0, -sizeof (*eth));
+	      eth = (ethernet_header_t *) vlib_buffer_get_current (p0);
 	      if (is_ipv4)
-		clib_memcpy_fast(eth, &stn_ip4_ethernet_header, sizeof(*eth));
+		clib_memcpy_fast (eth, &stn_ip4_ethernet_header,
+				  sizeof (*eth));
 	      else
-		clib_memcpy_fast(eth, &stn_ip6_ethernet_header, sizeof(*eth));
+		clib_memcpy_fast (eth, &stn_ip6_ethernet_header,
+				  sizeof (*eth));
 	    }
-          else
-          {
-              vnet_feature_next (&next0, p0);
-          }
+	  else
+	    {
+	      vnet_feature_next (&next0, p0);
+	    }
 
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      stn_ip46_punt_trace_t *tr =
-		  vlib_add_trace (vm, node, p0, sizeof (*tr));
+		vlib_add_trace (vm, node, p0, sizeof (*tr));
 	      tr->kv = kv;
 	    }
 
@@ -165,39 +171,36 @@ stn_ip46_punt_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+#define foreach_stn_ip_punt_error _ (NONE, "no error")
 
-#define foreach_stn_ip_punt_error \
- _(NONE, "no error")
-
-typedef enum {
-#define _(sym,str) STN_IP_punt_ERROR_##sym,
+typedef enum
+{
+#define _(sym, str) STN_IP_punt_ERROR_##sym,
   foreach_stn_ip_punt_error
 #undef _
-  STN_IP_PUNT_N_ERROR,
+    STN_IP_PUNT_N_ERROR,
 } ila_error_t;
 
 static char *stn_ip_punt_error_strings[] = {
-#define _(sym,string) string,
-    foreach_stn_ip_punt_error
+#define _(sym, string) string,
+  foreach_stn_ip_punt_error
 #undef _
 };
 
 u8 *
-format_stn_ip6_punt_trace (u8 * s, va_list * args)
+format_stn_ip6_punt_trace (u8 *s, va_list *args)
 {
   return format_stn_ip46_punt_trace (s, args, 0);
 }
 
 static uword
-stn_ip6_punt_fn (vlib_main_t * vm,
-	           vlib_node_runtime_t * node, vlib_frame_t * frame)
+stn_ip6_punt_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		 vlib_frame_t *frame)
 {
-  return stn_ip46_punt_fn(vm, node, frame, 0);
+  return stn_ip46_punt_fn (vm, node, frame, 0);
 }
 
-/** *INDENT-OFF* */
-VLIB_REGISTER_NODE (stn_ip6_punt, static) =
-{
+VLIB_REGISTER_NODE (stn_ip6_punt, static) = {
   .function = stn_ip6_punt_fn,
   .name = "stn-ip6-punt",
   .vector_size = sizeof (u32),
@@ -205,32 +208,27 @@ VLIB_REGISTER_NODE (stn_ip6_punt, static) =
   .n_errors = STN_IP_PUNT_N_ERROR,
   .error_strings = stn_ip_punt_error_strings,
   .n_next_nodes = STN_IP_PUNT_N_NEXT,
-  .next_nodes =
-  {
-      [STN_IP_PUNT_DROP] = "error-drop"
-  },
+  .next_nodes = { [STN_IP_PUNT_DROP] = "error-drop" },
 };
 VNET_FEATURE_INIT (stn_ip6_punt_feat_node, static) = {
   .arc_name = "ip6-punt",
   .node_name = "stn-ip6-punt",
-  .runs_before = VNET_FEATURES("ip6-punt-redirect"),
+  .runs_before = VNET_FEATURES ("ip6-punt-redirect"),
 };
-/** *INDENT-ON* */
 
 u8 *
-format_stn_ip4_punt_trace (u8 * s, va_list * args)
+format_stn_ip4_punt_trace (u8 *s, va_list *args)
 {
   return format_stn_ip46_punt_trace (s, args, 1);
 }
 
 static uword
-stn_ip4_punt_fn (vlib_main_t * vm,
-	           vlib_node_runtime_t * node, vlib_frame_t * frame)
+stn_ip4_punt_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		 vlib_frame_t *frame)
 {
-  return stn_ip46_punt_fn(vm, node, frame, 1);
+  return stn_ip46_punt_fn (vm, node, frame, 1);
 }
 
-/** *INDENT-OFF* */
 VLIB_REGISTER_NODE (stn_ip4_punt, static) =
 {
   .function = stn_ip4_punt_fn,
@@ -248,25 +246,24 @@ VLIB_REGISTER_NODE (stn_ip4_punt, static) =
 VNET_FEATURE_INIT (stn_ip4_punt_feat_node, static) = {
   .arc_name = "ip4-punt",
   .node_name = "stn-ip4-punt",
-  .runs_before = VNET_FEATURES("ip4-punt-redirect"),
+  .runs_before = VNET_FEATURES ("ip4-punt-redirect"),
 };
-/** *INDENT-ON* */
 
 clib_error_t *
-stn_init (vlib_main_t * vm)
+stn_init (vlib_main_t *vm)
 {
   stn_main_t *stn = &stn_main;
   stn->rules = 0;
-  clib_bihash_init_16_8(&stn->rule_by_address_table, "stn addresses",
-			1024, 1<<20);
+  clib_bihash_init_16_8 (&stn->rule_by_address_table, "stn addresses", 1024,
+			 1 << 20);
 
-  clib_memcpy_fast(stn_ip4_ethernet_header.dst_address, stn_hw_addr_dst, 6);
-  clib_memcpy_fast(stn_ip4_ethernet_header.src_address, stn_hw_addr_local, 6);
-  stn_ip4_ethernet_header.type = clib_host_to_net_u16(ETHERNET_TYPE_IP4);
+  clib_memcpy_fast (stn_ip4_ethernet_header.dst_address, stn_hw_addr_dst, 6);
+  clib_memcpy_fast (stn_ip4_ethernet_header.src_address, stn_hw_addr_local, 6);
+  stn_ip4_ethernet_header.type = clib_host_to_net_u16 (ETHERNET_TYPE_IP4);
 
-  clib_memcpy_fast(stn_ip6_ethernet_header.dst_address, stn_hw_addr_dst, 6);
-  clib_memcpy_fast(stn_ip6_ethernet_header.src_address, stn_hw_addr_local, 6);
-  stn_ip6_ethernet_header.type = clib_host_to_net_u16(ETHERNET_TYPE_IP6);
+  clib_memcpy_fast (stn_ip6_ethernet_header.dst_address, stn_hw_addr_dst, 6);
+  clib_memcpy_fast (stn_ip6_ethernet_header.src_address, stn_hw_addr_local, 6);
+  stn_ip6_ethernet_header.type = clib_host_to_net_u16 (ETHERNET_TYPE_IP6);
 
   return stn_api_init (vm, stn);
 
@@ -275,17 +272,16 @@ stn_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (stn_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "VPP Steals the NIC (STN) for Container Integration",
+  .version = VPP_BUILD_VER,
+  .description = "VPP Steals the NIC (STN) for Container Integration",
 };
-/* *INDENT-ON* */
 
-int stn_rule_add_del (stn_rule_add_del_args_t *args)
+int
+stn_rule_add_del (stn_rule_add_del_args_t *args)
 {
-  vnet_main_t *vnm = vnet_get_main();
-  vlib_main_t *vm = vlib_get_main();
+  vnet_main_t *vnm = vnet_get_main ();
+  vlib_main_t *vm = vlib_get_main ();
   stn_main_t *stn = &stn_main;
 
   stn_rule_t *r = NULL;
@@ -299,20 +295,18 @@ int stn_rule_add_del (stn_rule_add_del_args_t *args)
     }
   else if (!args->del)
     {
-      pool_get(stn->rules, r);
+      pool_get (stn->rules, r);
       kv.value = r - stn->rules;
-      clib_bihash_add_del_16_8(&stn->rule_by_address_table, &kv, 1);
+      clib_bihash_add_del_16_8 (&stn->rule_by_address_table, &kv, 1);
       r->address = args->address;
 
       stn->n_rules++;
       if (stn->n_rules == 1)
 	{
-            vnet_feature_enable_disable("ip6-punt", "stn-ip6-punt",
-                                        0, 1, 0, 0);
-            vnet_feature_enable_disable("ip4-punt", "stn-ip4-punt",
-                                        0, 1, 0, 0);
+	  vnet_feature_enable_disable ("ip6-punt", "stn-ip6-punt", 0, 1, 0, 0);
+	  vnet_feature_enable_disable ("ip4-punt", "stn-ip4-punt", 0, 1, 0, 0);
 
-            punt_reg_t pr = {
+	  punt_reg_t pr = {
               .punt = {
                 .l4 = {
                   .af = AF_IP4,
@@ -322,13 +316,13 @@ int stn_rule_add_del (stn_rule_add_del_args_t *args)
               },
               .type = PUNT_TYPE_L4,
             };
-            vnet_punt_add_del (vm, &pr, 1 /* is_add */);
-            pr.punt.l4.af = AF_IP6;
-            vnet_punt_add_del (vm, &pr, 1 /* is_add */);
-            pr.punt.l4.protocol = IP_PROTOCOL_TCP;
-            vnet_punt_add_del (vm, &pr, 1 /* is_add */);
-            pr.punt.l4.af = AF_IP4;
-            vnet_punt_add_del (vm, &pr, 1 /* is_add */);
+	  vnet_punt_add_del (vm, &pr, 1 /* is_add */);
+	  pr.punt.l4.af = AF_IP6;
+	  vnet_punt_add_del (vm, &pr, 1 /* is_add */);
+	  pr.punt.l4.protocol = IP_PROTOCOL_TCP;
+	  vnet_punt_add_del (vm, &pr, 1 /* is_add */);
+	  pr.punt.l4.af = AF_IP4;
+	  vnet_punt_add_del (vm, &pr, 1 /* is_add */);
 	}
     }
 
@@ -336,31 +330,30 @@ int stn_rule_add_del (stn_rule_add_del_args_t *args)
     {
       /* Getting output node and adding it as next */
       u32 output_node_index =
-          vnet_tx_node_index_for_sw_interface(vnm, args->sw_if_index);
-      u32 node_index = ip46_address_is_ip4(&args->address)?
-          stn_ip4_punt.index : stn_ip6_punt.index;
+	vnet_tx_node_index_for_sw_interface (vnm, args->sw_if_index);
+      u32 node_index = ip46_address_is_ip4 (&args->address) ?
+			 stn_ip4_punt.index :
+			 stn_ip6_punt.index;
 
       r->sw_if_index = args->sw_if_index;
       r->next_node_index =
-	  vlib_node_add_next(vm, node_index, output_node_index);
+	vlib_node_add_next (vm, node_index, output_node_index);
 
       /* enabling forwarding on the output node (might not be done since
        * it is unnumbered) */
-      ip4_sw_interface_enable_disable(args->sw_if_index, 1);
-      ip6_sw_interface_enable_disable(args->sw_if_index, 1);
+      ip4_sw_interface_enable_disable (args->sw_if_index, 1);
+      ip6_sw_interface_enable_disable (args->sw_if_index, 1);
     }
   else if (r)
     {
-      clib_bihash_add_del_16_8(&stn->rule_by_address_table, &kv, 0);
-      pool_put(stn->rules, r);
+      clib_bihash_add_del_16_8 (&stn->rule_by_address_table, &kv, 0);
+      pool_put (stn->rules, r);
 
       stn->n_rules--;
       if (stn->n_rules == 0)
 	{
-            vnet_feature_enable_disable("ip6-punt", "stn-ip6-punt",
-                                        0, 0, 0, 0);
-            vnet_feature_enable_disable("ip4-punt", "stn-ip4-punt",
-                                        0, 0, 0, 0);
+	  vnet_feature_enable_disable ("ip6-punt", "stn-ip6-punt", 0, 0, 0, 0);
+	  vnet_feature_enable_disable ("ip4-punt", "stn-ip4-punt", 0, 0, 0, 0);
 	}
     }
   else
@@ -372,32 +365,31 @@ int stn_rule_add_del (stn_rule_add_del_args_t *args)
 }
 
 static clib_error_t *
-show_stn_rules_fn (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+show_stn_rules_fn (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   stn_main_t *stn = &stn_main;
   u8 *s = 0;
   stn_rule_t *rule;
-  pool_foreach (rule, stn->rules) {
+  pool_foreach (rule, stn->rules)
+    {
       s = format (s, "- %U\n", format_stn_rule, rule);
-  }
+    }
 
-  vlib_cli_output(vm, "%v", s);
+  vlib_cli_output (vm, "%v", s);
 
-  vec_free(s);
+  vec_free (s);
   return NULL;
 }
 
-VLIB_CLI_COMMAND (show_stn_rules_command, static) =
-{
+VLIB_CLI_COMMAND (show_stn_rules_command, static) = {
   .path = "show stn rules",
   .short_help = "",
   .function = show_stn_rules_fn,
 };
 
 static clib_error_t *
-stn_rule_fn (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+stn_rule_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
@@ -414,9 +406,9 @@ stn_rule_fn (vlib_main_t * vm,
       if (unformat (line_input, "address %U", unformat_ip46_address,
 		    &args.address, IP46_TYPE_ANY))
 	got_addr = 1;
-      else if (unformat
-	       (line_input, "interface %U", unformat_vnet_sw_interface,
-		vnet_get_main(), &args.sw_if_index))
+      else if (unformat (line_input, "interface %U",
+			 unformat_vnet_sw_interface, vnet_get_main (),
+			 &args.sw_if_index))
 	got_iface = 1;
       else if (unformat (line_input, "del"))
 	args.del = 1;
@@ -451,8 +443,7 @@ done:
   return error;
 }
 
-VLIB_CLI_COMMAND (stn_rule_command, static) =
-{
+VLIB_CLI_COMMAND (stn_rule_command, static) = {
   .path = "stn rule",
   .short_help = "address <addr> interface <iface> [del]",
   .function = stn_rule_fn,

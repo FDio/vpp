@@ -23,11 +23,11 @@
 #include <vpp/app/version.h>
 #include <vnet/tls/tls.h>
 
-#define TLS_USE_OUR_MEM_FUNCS	0
+#define TLS_USE_OUR_MEM_FUNCS 0
 
 typedef struct tls_ctx_mbedtls_
 {
-  tls_ctx_t ctx;			/**< First */
+  tls_ctx_t ctx; /**< First */
   u32 mbedtls_ctx_index;
   mbedtls_ssl_context ssl;
   mbedtls_ssl_config conf;
@@ -86,7 +86,7 @@ mbedtls_ctx_alloc (void)
 }
 
 static void
-mbedtls_ctx_free (tls_ctx_t * ctx)
+mbedtls_ctx_free (tls_ctx_t *ctx)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
 
@@ -133,11 +133,10 @@ tls_init_ctr_seed_drbgs (void)
 
   mbedtls_entropy_init (&tm->entropy_pools[thread_index]);
   mbedtls_ctr_drbg_init (&mbedtls_main.ctr_drbgs[thread_index]);
-  if ((rv = mbedtls_ctr_drbg_seed (&tm->ctr_drbgs[thread_index],
-				   mbedtls_entropy_func,
-				   &tm->entropy_pools[thread_index],
-				   (const unsigned char *) pers,
-				   vec_len (pers))) != 0)
+  if ((rv = mbedtls_ctr_drbg_seed (
+	 &tm->ctr_drbgs[thread_index], mbedtls_entropy_func,
+	 &tm->entropy_pools[thread_index], (const unsigned char *) pers,
+	 vec_len (pers))) != 0)
     {
       vec_free (pers);
       TLS_DBG (1, " failed\n  ! mbedtls_ctr_drbg_seed returned %d\n", rv);
@@ -199,7 +198,7 @@ mbedtls_debug (void *ctx, int level, const char *file, int line,
 }
 
 static int
-mbedtls_ctx_init_client (tls_ctx_t * ctx)
+mbedtls_ctx_init_client (tls_ctx_t *ctx)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
   mbedtls_main_t *mm = &mbedtls_main;
@@ -260,19 +259,19 @@ mbedtls_ctx_init_client (tls_ctx_t * ctx)
 }
 
 static int
-mbedtls_start_listen (tls_ctx_t * lctx)
+mbedtls_start_listen (tls_ctx_t *lctx)
 {
   return 0;
 }
 
 static int
-mbedtls_stop_listen (tls_ctx_t * lctx)
+mbedtls_stop_listen (tls_ctx_t *lctx)
 {
   return 0;
 }
 
 static int
-mbedtls_ctx_init_server (tls_ctx_t * ctx)
+mbedtls_ctx_init_server (tls_ctx_t *ctx)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
   mbedtls_main_t *mm = &mbedtls_main;
@@ -299,17 +298,16 @@ mbedtls_ctx_init_server (tls_ctx_t * ctx)
       return -1;
     }
 
-  rv = mbedtls_x509_crt_parse (&mc->srvcert,
-			       (const unsigned char *) ckpair->cert,
-			       vec_len (ckpair->cert));
+  rv =
+    mbedtls_x509_crt_parse (&mc->srvcert, (const unsigned char *) ckpair->cert,
+			    vec_len (ckpair->cert));
   if (rv != 0)
     {
       TLS_DBG (1, " failed\n  !  mbedtls_x509_crt_parse returned %d", rv);
       goto exit;
     }
 
-  rv = mbedtls_pk_parse_key (&mc->pkey,
-			     (const unsigned char *) ckpair->key,
+  rv = mbedtls_pk_parse_key (&mc->pkey, (const unsigned char *) ckpair->key,
 			     vec_len (ckpair->key), NULL, 0);
   if (rv != 0)
     {
@@ -339,8 +337,8 @@ mbedtls_ctx_init_server (tls_ctx_t * ctx)
    */
 
   mbedtls_ssl_conf_ca_chain (&mc->conf, &mm->cacert, NULL);
-  if ((rv = mbedtls_ssl_conf_own_cert (&mc->conf, &mc->srvcert, &mc->pkey))
-      != 0)
+  if ((rv = mbedtls_ssl_conf_own_cert (&mc->conf, &mc->srvcert, &mc->pkey)) !=
+      0)
     {
       TLS_DBG (1, " failed\n  ! mbedtls_ssl_conf_own_cert returned %d", rv);
       goto exit;
@@ -378,7 +376,7 @@ exit:
 }
 
 static int
-mbedtls_ctx_handshake_rx (tls_ctx_t * ctx)
+mbedtls_ctx_handshake_rx (tls_ctx_t *ctx)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
   u32 flags;
@@ -431,8 +429,8 @@ mbedtls_ctx_handshake_rx (tls_ctx_t * ctx)
 }
 
 static int
-mbedtls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
-		   transport_send_params_t * sp)
+mbedtls_ctx_write (tls_ctx_t *ctx, session_t *app_session,
+		   transport_send_params_t *sp)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
   u8 thread_index = ctx->c_thread_index;
@@ -479,7 +477,7 @@ mbedtls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
 }
 
 static int
-mbedtls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
+mbedtls_ctx_read (tls_ctx_t *ctx, session_t *tls_session)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
   mbedtls_main_t *mm = &mbedtls_main;
@@ -516,8 +514,8 @@ mbedtls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
       return 0;
     }
 
-  enq = svm_fifo_enqueue (app_session->rx_fifo, read,
-			  mm->rx_bufs[thread_index]);
+  enq =
+    svm_fifo_enqueue (app_session->rx_fifo, read, mm->rx_bufs[thread_index]);
   ASSERT (enq == read);
   vec_reset_length (mm->rx_bufs[thread_index]);
 
@@ -531,14 +529,14 @@ mbedtls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 }
 
 static u8
-mbedtls_handshake_is_over (tls_ctx_t * ctx)
+mbedtls_handshake_is_over (tls_ctx_t *ctx)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
   return (mc->ssl.state == MBEDTLS_SSL_HANDSHAKE_OVER);
 }
 
 static int
-mbedtls_transport_close (tls_ctx_t * ctx)
+mbedtls_transport_close (tls_ctx_t *ctx)
 {
   if (!mbedtls_handshake_is_over (ctx))
     {
@@ -550,7 +548,7 @@ mbedtls_transport_close (tls_ctx_t * ctx)
 }
 
 static int
-mbedtls_app_close (tls_ctx_t * ctx)
+mbedtls_app_close (tls_ctx_t *ctx)
 {
   tls_disconnect_transport (ctx);
   session_transport_delete_notify (&ctx->connection);
@@ -631,13 +629,13 @@ tls_init_ca_chain (void)
 }
 
 static clib_error_t *
-tls_mbedtls_init (vlib_main_t * vm)
+tls_mbedtls_init (vlib_main_t *vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   mbedtls_main_t *mm = &mbedtls_main;
   u32 num_threads;
 
-  num_threads = 1 /* main thread */  + vtm->n_threads;
+  num_threads = 1 /* main thread */ + vtm->n_threads;
 
   if (tls_init_ca_chain ())
     {
@@ -663,19 +661,14 @@ tls_mbedtls_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (tls_mbedtls_init) =
-{
-  .runs_after = VLIB_INITS("tls_init"),
+VLIB_INIT_FUNCTION (tls_mbedtls_init) = {
+  .runs_after = VLIB_INITS ("tls_init"),
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Transport Layer Security (TLS) Engine, Mbedtls Based",
+  .version = VPP_BUILD_VER,
+  .description = "Transport Layer Security (TLS) Engine, Mbedtls Based",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

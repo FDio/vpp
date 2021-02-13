@@ -33,7 +33,8 @@
  *
  * @param fixup
  *  The function that will be invoked at paket switch time to 'fixup'
- *  the rewrite applied with necessary per-packet info (i.e. length, checksums).
+ *  the rewrite applied with necessary per-packet info (i.e. length,
+ * checksums).
  * @param fixup_data
  *  Context data set by the caller that is provided as an argument in the
  *  fixup function.
@@ -44,11 +45,10 @@
  * @param rewrite
  *  The rewrite.
  */
-extern void adj_nbr_midchain_update_rewrite(adj_index_t adj_index,
-					    adj_midchain_fixup_t fixup,
-                                            const void *fixup_data,
-					    adj_flags_t flags,
-					    u8 *rewrite);
+extern void adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
+					     adj_midchain_fixup_t fixup,
+					     const void *fixup_data,
+					     adj_flags_t flags, u8 *rewrite);
 
 /**
  * @brief
@@ -57,7 +57,7 @@ extern void adj_nbr_midchain_update_rewrite(adj_index_t adj_index,
  * @param adj_index
  *  The index of the neighbour adjacency.
  */
-extern void adj_nbr_midchain_reset_next_node(adj_index_t adj_index);
+extern void adj_nbr_midchain_reset_next_node (adj_index_t adj_index);
 
 /**
  * @brief
@@ -68,8 +68,8 @@ extern void adj_nbr_midchain_reset_next_node(adj_index_t adj_index);
  *
  * @param node node-index to send to
  */
-extern void adj_nbr_midchain_update_next_node(adj_index_t adj_index,
-                                              u32 node_index);
+extern void adj_nbr_midchain_update_next_node (adj_index_t adj_index,
+					       u32 node_index);
 
 /**
  * @brief
@@ -83,8 +83,8 @@ extern void adj_nbr_midchain_update_next_node(adj_index_t adj_index,
  * @param dpo
  *  The parent DPO to stack onto (i.e. become a child of).
  */
-extern void adj_nbr_midchain_stack(adj_index_t adj_index,
-				   const dpo_id_t *dpo);
+extern void adj_nbr_midchain_stack (adj_index_t adj_index,
+				    const dpo_id_t *dpo);
 
 /**
  * @brief
@@ -101,9 +101,9 @@ extern void adj_nbr_midchain_stack(adj_index_t adj_index,
  * @param fct
  *  The chain type to use from the fib entry fowarding
  */
-extern void adj_nbr_midchain_stack_on_fib_entry(adj_index_t adj_index,
-                                                fib_node_index_t fei,
-                                                fib_forward_chain_type_t fct);
+extern void adj_nbr_midchain_stack_on_fib_entry (adj_index_t adj_index,
+						 fib_node_index_t fei,
+						 fib_forward_chain_type_t fct);
 
 /**
  * @brief
@@ -113,7 +113,7 @@ extern void adj_nbr_midchain_stack_on_fib_entry(adj_index_t adj_index,
  * @param adj_index
  *  The index of the midchain to stack
  */
-extern void adj_nbr_midchain_unstack(adj_index_t adj_index);
+extern void adj_nbr_midchain_unstack (adj_index_t adj_index);
 
 /**
  * @brief descend the FIB graph looking for loops
@@ -124,20 +124,21 @@ extern void adj_nbr_midchain_unstack(adj_index_t adj_index);
  * @param entry_indicies)
  *  A pointer to a vector of FIB entries already visited.
  */
-extern int adj_ndr_midchain_recursive_loop_detect(adj_index_t ai,
-                                                  fib_node_index_t **entry_indicies);
+extern int
+adj_ndr_midchain_recursive_loop_detect (adj_index_t ai,
+					fib_node_index_t **entry_indicies);
 
 /**
  * @brief
  *  Module initialisation
  */
-extern void adj_midchain_module_init(void);
+extern void adj_midchain_module_init (void);
 
 /**
  * @brief
  * Format a midchain adjacency
  */
-extern u8* format_adj_midchain(u8* s, va_list *ap);
+extern u8 *format_adj_midchain (u8 *s, va_list *ap);
 
 /**
  * @brief
@@ -146,19 +147,18 @@ extern u8* format_adj_midchain(u8* s, va_list *ap);
  * @param fib_index - The FIB index of the prefix on which to stack
  * @param pfx - The prefix on which to stack
  */
-extern void adj_midchain_delegate_stack(adj_index_t ai,
-                                        u32 fib_index,
-                                        const fib_prefix_t *pfx);
+extern void adj_midchain_delegate_stack (adj_index_t ai, u32 fib_index,
+					 const fib_prefix_t *pfx);
 
 /**
  * @brief restack a midchain delegate
  */
-extern void adj_midchain_delegate_restack(adj_index_t ai);
+extern void adj_midchain_delegate_restack (adj_index_t ai);
 
 /**
  * @brief unstack a midchain delegate (this stacks it on a drop)
  */
-extern void adj_midchain_delegate_unstack(adj_index_t ai);
+extern void adj_midchain_delegate_unstack (adj_index_t ai);
 
 extern u8 adj_is_midchain (adj_index_t ai);
 

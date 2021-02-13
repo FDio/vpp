@@ -16,7 +16,6 @@
 #ifndef included_ip_ip_source_and_port_range_check_h
 #define included_ip_ip_source_and_port_range_check_h
 
-
 typedef struct
 {
   /* convenience */
@@ -40,7 +39,8 @@ typedef struct
   u32 fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_N_PROTOCOLS];
 } ip_source_and_port_range_check_config_t;
 
-#define IP_SOURCE_AND_PORT_RANGE_CHECK_RANGE_LIMIT VLIB_BUFFER_PRE_DATA_SIZE/(2*sizeof(u16x8));
+#define IP_SOURCE_AND_PORT_RANGE_CHECK_RANGE_LIMIT                            \
+  VLIB_BUFFER_PRE_DATA_SIZE / (2 * sizeof (u16x8));
 
 typedef struct
 {
@@ -61,9 +61,9 @@ typedef struct
  * @brief The number of supported ranges per-data path object.
  * If more ranges are required, bump this number.
  */
-#define N_PORT_RANGES_PER_DPO  64
-#define N_RANGES_PER_BLOCK (sizeof(u16x8vec_t)/2)
-#define N_BLOCKS_PER_DPO (N_PORT_RANGES_PER_DPO/N_RANGES_PER_BLOCK)
+#define N_PORT_RANGES_PER_DPO 64
+#define N_RANGES_PER_BLOCK    (sizeof (u16x8vec_t) / 2)
+#define N_BLOCKS_PER_DPO      (N_PORT_RANGES_PER_DPO / N_RANGES_PER_BLOCK)
 
 /**
  * @brief
@@ -125,21 +125,18 @@ typedef struct protocol_port_range_dpo_t_
   protocol_port_range_t blocks[N_BLOCKS_PER_DPO];
 } protocol_port_range_dpo_t;
 
-int ip4_source_and_port_range_check_add_del (ip4_address_t * address,
-					     u32 length,
-					     u32 vrf_id,
-					     u16 * low_ports,
-					     u16 * hi_ports, int is_add);
+int ip4_source_and_port_range_check_add_del (ip4_address_t *address,
+					     u32 length, u32 vrf_id,
+					     u16 *low_ports, u16 *hi_ports,
+					     int is_add);
 
 // This will be moved to another file in another patch -- for API freeze
-int ip6_source_and_port_range_check_add_del (ip6_address_t * address,
-					     u32 length,
-					     u32 vrf_id,
-					     u16 * low_ports,
-					     u16 * hi_ports, int is_add);
+int ip6_source_and_port_range_check_add_del (ip6_address_t *address,
+					     u32 length, u32 vrf_id,
+					     u16 *low_ports, u16 *hi_ports,
+					     int is_add);
 
-int set_ip_source_and_port_range_check (vlib_main_t * vm,
-					u32 * fib_index,
+int set_ip_source_and_port_range_check (vlib_main_t *vm, u32 *fib_index,
 					u32 sw_if_index, u32 is_add);
 
 #endif /* included ip_source_and_port_range_check_h */

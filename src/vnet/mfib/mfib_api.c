@@ -22,11 +22,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -39,99 +39,95 @@
 static vl_api_mfib_itf_flags_t
 mfib_api_path_itf_flags_encode (mfib_itf_flags_t flags)
 {
-    vl_api_mfib_itf_flags_t out = MFIB_API_ITF_FLAG_NONE;
+  vl_api_mfib_itf_flags_t out = MFIB_API_ITF_FLAG_NONE;
 
-    switch (flags)
+  switch (flags)
     {
     case MFIB_ITF_FLAG_NONE:
-        out = MFIB_API_ITF_FLAG_NONE;
-        break;
+      out = MFIB_API_ITF_FLAG_NONE;
+      break;
     case MFIB_ITF_FLAG_NEGATE_SIGNAL:
-        out = MFIB_API_ITF_FLAG_NEGATE_SIGNAL;
-        break;
+      out = MFIB_API_ITF_FLAG_NEGATE_SIGNAL;
+      break;
     case MFIB_ITF_FLAG_ACCEPT:
-        out = MFIB_API_ITF_FLAG_ACCEPT;
-        break;
+      out = MFIB_API_ITF_FLAG_ACCEPT;
+      break;
     case MFIB_ITF_FLAG_FORWARD:
-        out = MFIB_API_ITF_FLAG_FORWARD;
-        break;
+      out = MFIB_API_ITF_FLAG_FORWARD;
+      break;
     case MFIB_ITF_FLAG_SIGNAL_PRESENT:
-        out = MFIB_API_ITF_FLAG_SIGNAL_PRESENT;
-        break;
+      out = MFIB_API_ITF_FLAG_SIGNAL_PRESENT;
+      break;
     case MFIB_ITF_FLAG_DONT_PRESERVE:
-        out = MFIB_API_ITF_FLAG_DONT_PRESERVE;
-        break;
+      out = MFIB_API_ITF_FLAG_DONT_PRESERVE;
+      break;
     }
-    return (ntohl(out));
+  return (ntohl (out));
 }
 
 void
-mfib_api_path_encode (const fib_route_path_t *in,
-                      vl_api_mfib_path_t *out)
+mfib_api_path_encode (const fib_route_path_t *in, vl_api_mfib_path_t *out)
 {
-    out->itf_flags = mfib_api_path_itf_flags_encode(in->frp_mitf_flags);
+  out->itf_flags = mfib_api_path_itf_flags_encode (in->frp_mitf_flags);
 
-    fib_api_path_encode(in, &out->path);
+  fib_api_path_encode (in, &out->path);
 }
 
 static void
 mfib_api_path_itf_flags_decode (vl_api_mfib_itf_flags_t in,
-                                mfib_itf_flags_t *out)
+				mfib_itf_flags_t *out)
 {
-    in = clib_net_to_host_u32(in);
+  in = clib_net_to_host_u32 (in);
 
-    if (in & MFIB_API_ITF_FLAG_NEGATE_SIGNAL)
-        *out |= MFIB_ITF_FLAG_NEGATE_SIGNAL;
-    if (in & MFIB_API_ITF_FLAG_ACCEPT)
-        *out |= MFIB_ITF_FLAG_ACCEPT;
-    if (in & MFIB_API_ITF_FLAG_FORWARD)
-        *out |= MFIB_ITF_FLAG_FORWARD;
-    if (in & MFIB_API_ITF_FLAG_SIGNAL_PRESENT)
-        *out |= MFIB_ITF_FLAG_SIGNAL_PRESENT;
-    if (in & MFIB_API_ITF_FLAG_DONT_PRESERVE)
-        *out |= MFIB_ITF_FLAG_DONT_PRESERVE;
+  if (in & MFIB_API_ITF_FLAG_NEGATE_SIGNAL)
+    *out |= MFIB_ITF_FLAG_NEGATE_SIGNAL;
+  if (in & MFIB_API_ITF_FLAG_ACCEPT)
+    *out |= MFIB_ITF_FLAG_ACCEPT;
+  if (in & MFIB_API_ITF_FLAG_FORWARD)
+    *out |= MFIB_ITF_FLAG_FORWARD;
+  if (in & MFIB_API_ITF_FLAG_SIGNAL_PRESENT)
+    *out |= MFIB_ITF_FLAG_SIGNAL_PRESENT;
+  if (in & MFIB_API_ITF_FLAG_DONT_PRESERVE)
+    *out |= MFIB_ITF_FLAG_DONT_PRESERVE;
 }
 
 mfib_entry_flags_t
 mfib_api_path_entry_flags_decode (vl_api_mfib_entry_flags_t in)
 {
-    mfib_entry_flags_t out;
+  mfib_entry_flags_t out;
 
-    out = MFIB_ENTRY_FLAG_NONE;
-    in = clib_net_to_host_u32(in);
+  out = MFIB_ENTRY_FLAG_NONE;
+  in = clib_net_to_host_u32 (in);
 
-    if (in & MFIB_API_ENTRY_FLAG_SIGNAL)
-        out |= MFIB_ENTRY_FLAG_SIGNAL;
-    if (in & MFIB_API_ENTRY_FLAG_DROP)
-        out |= MFIB_ENTRY_FLAG_DROP;
-    if (in & MFIB_API_ENTRY_FLAG_CONNECTED)
-        out |= MFIB_ENTRY_FLAG_CONNECTED;
-    if (in & MFIB_API_ENTRY_FLAG_ACCEPT_ALL_ITF)
-        out |= MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF;
+  if (in & MFIB_API_ENTRY_FLAG_SIGNAL)
+    out |= MFIB_ENTRY_FLAG_SIGNAL;
+  if (in & MFIB_API_ENTRY_FLAG_DROP)
+    out |= MFIB_ENTRY_FLAG_DROP;
+  if (in & MFIB_API_ENTRY_FLAG_CONNECTED)
+    out |= MFIB_ENTRY_FLAG_CONNECTED;
+  if (in & MFIB_API_ENTRY_FLAG_ACCEPT_ALL_ITF)
+    out |= MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF;
 
-    return (out);
+  return (out);
 }
 
 int
-mfib_api_path_decode (vl_api_mfib_path_t *in,
-                      fib_route_path_t *out)
+mfib_api_path_decode (vl_api_mfib_path_t *in, fib_route_path_t *out)
 {
-    mfib_api_path_itf_flags_decode(in->itf_flags, &out->frp_mitf_flags);
+  mfib_api_path_itf_flags_decode (in->itf_flags, &out->frp_mitf_flags);
 
-    return (fib_api_path_decode(&in->path, out));
+  return (fib_api_path_decode (&in->path, out));
 }
 
 int
-mfib_api_table_id_decode (fib_protocol_t fproto,
-                          u32 table_id,
-                          u32 *fib_index)
+mfib_api_table_id_decode (fib_protocol_t fproto, u32 table_id, u32 *fib_index)
 {
-    *fib_index = mfib_table_find(fproto, table_id);
+  *fib_index = mfib_table_find (fproto, table_id);
 
-    if (INDEX_INVALID == *fib_index)
+  if (INDEX_INVALID == *fib_index)
     {
-        return VNET_API_ERROR_NO_SUCH_FIB;
+      return VNET_API_ERROR_NO_SUCH_FIB;
     }
 
-    return (0);
+  return (0);
 }

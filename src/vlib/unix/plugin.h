@@ -56,8 +56,7 @@
  * vlib_load_new_plugins().
  */
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED(struct {
+typedef CLIB_PACKED (struct {
   u8 default_disabled;
   const char version[32];
   const char version_required[32];
@@ -65,7 +64,6 @@ typedef CLIB_PACKED(struct {
   const char *early_init;
   const char *description;
 }) vlib_plugin_registration_t;
-/* *INDENT-ON* */
 
 /*
  * Plugins may also use this registration format, which is
@@ -87,12 +85,12 @@ typedef struct
   vlib_r2_string_t description;
 } vlib_plugin_r2_t;
 
-#define foreach_r2_string_field                 \
-_(version)                                      \
-_(version_required)                             \
-_(overrides)                                    \
-_(early_init)                                   \
-_(description)
+#define foreach_r2_string_field                                               \
+  _ (version)                                                                 \
+  _ (version_required)                                                        \
+  _ (overrides)                                                               \
+  _ (early_init)                                                              \
+  _ (description)
 
 typedef struct
 {
@@ -141,42 +139,42 @@ typedef struct
 
 extern plugin_main_t vlib_plugin_main;
 
-clib_error_t *vlib_plugin_config (vlib_main_t * vm, unformat_input_t * input);
-int vlib_plugin_early_init (vlib_main_t * vm);
-int vlib_load_new_plugins (plugin_main_t * pm, int from_early_init);
+clib_error_t *vlib_plugin_config (vlib_main_t *vm, unformat_input_t *input);
+int vlib_plugin_early_init (vlib_main_t *vm);
+int vlib_load_new_plugins (plugin_main_t *pm, int from_early_init);
 void *vlib_get_plugin_symbol (char *plugin_name, char *symbol_name);
 u8 *vlib_get_vat_plugin_path (void);
 
-#define VLIB_PLUGIN_REGISTER() \
-  vlib_plugin_registration_t vlib_plugin_registration \
-  CLIB_NOSANITIZE_PLUGIN_REG_SECTION \
-  __clib_export __clib_section(".vlib_plugin_registration")
+#define VLIB_PLUGIN_REGISTER()                                                \
+  vlib_plugin_registration_t vlib_plugin_registration                         \
+    CLIB_NOSANITIZE_PLUGIN_REG_SECTION __clib_export __clib_section (         \
+      ".vlib_plugin_registration")
 
 /* Call a plugin init function: used for init function dependencies. */
-#define vlib_call_plugin_init_function(vm,p,x)                  \
-({                                                              \
-  clib_error_t *(*_f)(vlib_main_t *);                           \
-  uword *_fptr = 0;                                             \
-  clib_error_t * _error = 0;                                    \
-  _fptr= vlib_get_plugin_symbol                                 \
-    (p, CLIB_STRING_MACRO(_vlib_init_function_##x));            \
-  if (_fptr == 0)                                               \
-    {                                                           \
-      _error = clib_error_return                                \
-        (0, "Plugin %s and/or symbol %s not found.",            \
-         p, CLIB_STRING_MACRO(_vlib_init_function_##x));        \
-    }                                                           \
-  else                                                          \
-    {                                                           \
-      _f = (void *)(_fptr[0]);                                  \
-    }                                                           \
-  if (_fptr && ! hash_get (vm->init_functions_called, _f))      \
-    {                                                           \
-      hash_set1 (vm->init_functions_called, _f);                \
-      _error = _f (vm);                                         \
-    }                                                           \
-  _error;                                                       \
- })
+#define vlib_call_plugin_init_function(vm, p, x)                              \
+  ({                                                                          \
+    clib_error_t *(*_f) (vlib_main_t *);                                      \
+    uword *_fptr = 0;                                                         \
+    clib_error_t *_error = 0;                                                 \
+    _fptr = vlib_get_plugin_symbol (                                          \
+      p, CLIB_STRING_MACRO (_vlib_init_function_##x));                        \
+    if (_fptr == 0)                                                           \
+      {                                                                       \
+	_error =                                                              \
+	  clib_error_return (0, "Plugin %s and/or symbol %s not found.", p,   \
+			     CLIB_STRING_MACRO (_vlib_init_function_##x));    \
+      }                                                                       \
+    else                                                                      \
+      {                                                                       \
+	_f = (void *) (_fptr[0]);                                             \
+      }                                                                       \
+    if (_fptr && !hash_get (vm->init_functions_called, _f))                   \
+      {                                                                       \
+	hash_set1 (vm->init_functions_called, _f);                            \
+	_error = _f (vm);                                                     \
+      }                                                                       \
+    _error;                                                                   \
+  })
 
 #endif /* __included_plugin_h__ */
 

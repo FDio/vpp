@@ -26,8 +26,7 @@ config_cmd::config_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_itf(itf)
   , m_l3_itf(l3_itf)
-{
-}
+{}
 
 bool
 config_cmd::operator==(const config_cmd& o) const
@@ -66,8 +65,7 @@ unconfig_cmd::unconfig_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_itf(itf)
   , m_l3_itf(l3_itf)
-{
-}
+{}
 
 bool
 unconfig_cmd::operator==(const unconfig_cmd& o) const

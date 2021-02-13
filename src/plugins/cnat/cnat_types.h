@@ -34,17 +34,17 @@
 #define CNAT_DEFAULT_TCP_RST_TIMEOUT 5
 #define CNAT_DEFAULT_SCANNER_TIMEOUT (1.0)
 
-#define CNAT_DEFAULT_SESSION_BUCKETS     1024
+#define CNAT_DEFAULT_SESSION_BUCKETS	 1024
 #define CNAT_DEFAULT_TRANSLATION_BUCKETS 1024
-#define CNAT_DEFAULT_SNAT_BUCKETS        1024
+#define CNAT_DEFAULT_SNAT_BUCKETS	 1024
 
-#define CNAT_DEFAULT_SESSION_MEMORY      (1 << 20)
-#define CNAT_DEFAULT_TRANSLATION_MEMORY  (256 << 10)
-#define CNAT_DEFAULT_SNAT_MEMORY         (64 << 20)
+#define CNAT_DEFAULT_SESSION_MEMORY	(1 << 20)
+#define CNAT_DEFAULT_TRANSLATION_MEMORY (256 << 10)
+#define CNAT_DEFAULT_SNAT_MEMORY	(64 << 20)
 
 /* This should be strictly lower than FIB_SOURCE_INTERFACE
  * from fib_source.h */
-#define CNAT_FIB_SOURCE_PRIORITY  0x02
+#define CNAT_FIB_SOURCE_PRIORITY 0x02
 
 /* Initial refcnt for timestamps (2 : session & rsession) */
 #define CNAT_TIMESTAMP_INIT_REFCNT 2
@@ -165,10 +165,9 @@ typedef struct cnat_node_ctx_
 } cnat_node_ctx_t;
 
 cnat_main_t *cnat_get_main ();
-extern u8 *format_cnat_endpoint (u8 * s, va_list * args);
-extern uword unformat_cnat_ep_tuple (unformat_input_t * input,
-				     va_list * args);
-extern uword unformat_cnat_ep (unformat_input_t * input, va_list * args);
+extern u8 *format_cnat_endpoint (u8 *s, va_list *args);
+extern uword unformat_cnat_ep_tuple (unformat_input_t *input, va_list *args);
+extern uword unformat_cnat_ep (unformat_input_t *input, va_list *args);
 extern cnat_timestamp_t *cnat_timestamps;
 extern fib_source_t cnat_fib_source;
 extern cnat_main_t cnat_main;
@@ -177,7 +176,7 @@ extern char *cnat_error_strings[];
 
 typedef enum
 {
-#define cnat_error(n,s) CNAT_ERROR_##n,
+#define cnat_error(n, s) CNAT_ERROR_##n,
 #include <cnat/cnat_error.def>
 #undef cnat_error
   CNAT_N_ERROR,
@@ -203,10 +202,9 @@ extern void cnat_enable_disable_scanner (cnat_scanner_cmd_t event_type);
 /**
  * Resolve endpoint address
  */
-extern u8 cnat_resolve_ep (cnat_endpoint_t * ep);
+extern u8 cnat_resolve_ep (cnat_endpoint_t *ep);
 extern u8 cnat_resolve_addr (u32 sw_if_index, ip_address_family_t af,
-			     ip_address_t * addr);
-
+			     ip_address_t *addr);
 
 /*
  * fd.io coding-style-patch-verification: ON

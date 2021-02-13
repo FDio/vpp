@@ -22,17 +22,17 @@
 #include <vnet/ethernet/mac_address.h>
 #include <vnet/fib/fib_types.h>
 
-#define foreach_ip_neighbor_flag                 \
-  _(STATIC, 1 << 0, "static", "S")               \
-  _(DYNAMIC, 1 << 1, "dynamic", "D")             \
-  _(NO_FIB_ENTRY, 1 << 2, "no-fib-entry", "N")   \
-  _(PENDING, 1 << 3, "pending", "P")             \
-  _(STALE, 1 << 4, "stale", "A")                 \
+#define foreach_ip_neighbor_flag                                              \
+  _ (STATIC, 1 << 0, "static", "S")                                           \
+  _ (DYNAMIC, 1 << 1, "dynamic", "D")                                         \
+  _ (NO_FIB_ENTRY, 1 << 2, "no-fib-entry", "N")                               \
+  _ (PENDING, 1 << 3, "pending", "P")                                         \
+  _ (STALE, 1 << 4, "stale", "A")
 
 typedef enum ip_neighbor_flags_t_
 {
   IP_NEIGHBOR_FLAG_NONE = 0,
-#define _(a,b,c,d) IP_NEIGHBOR_FLAG_##a = b,
+#define _(a, b, c, d) IP_NEIGHBOR_FLAG_##a = b,
   foreach_ip_neighbor_flag
 #undef _
 } __clib_packed ip_neighbor_flags_t;
@@ -44,7 +44,7 @@ typedef struct ip_neighbor_watcher_t_
   int ipw_api_version;
 } ip_neighbor_watcher_t;
 
-extern u8 *format_ip_neighbor_watcher (u8 * s, va_list * args);
+extern u8 *format_ip_neighbor_watcher (u8 *s, va_list *args);
 
 typedef struct ip_neighbor_key_t_
 {
@@ -88,9 +88,9 @@ typedef struct ip_neighbor_t_
   fib_node_index_t ipn_fib_entry_index;
 } ip_neighbor_t;
 
-extern u8 *format_ip_neighbor_flags (u8 * s, va_list * args);
-extern u8 *format_ip_neighbor_key (u8 * s, va_list * args);
-extern u8 *format_ip_neighbor (u8 * s, va_list * args);
+extern u8 *format_ip_neighbor_flags (u8 *s, va_list *args);
+extern u8 *format_ip_neighbor_key (u8 *s, va_list *args);
+extern u8 *format_ip_neighbor (u8 *s, va_list *args);
 
 extern ip_neighbor_t *ip_neighbor_get (index_t ipni);
 
@@ -100,7 +100,6 @@ typedef struct ip_neighbor_learn_t_
   mac_address_t mac;
   u32 sw_if_index;
 } ip_neighbor_learn_t;
-
 
 typedef enum ip_neighbor_event_flags_t_
 {
@@ -115,12 +114,9 @@ typedef struct ip_neighbor_event_t_
   ip_neighbor_t ipne_nbr;
 } ip_neighbor_event_t;
 
-extern void ip_neighbor_clone (const ip_neighbor_t * ipn,
-			       ip_neighbor_t * clone);
+extern void ip_neighbor_clone (const ip_neighbor_t *ipn, ip_neighbor_t *clone);
 
-extern void ip_neighbor_free (ip_neighbor_t * ipn);
-
-
+extern void ip_neighbor_free (ip_neighbor_t *ipn);
 
 #endif /* __INCLUDE_IP_NEIGHBOR_H__ */
 

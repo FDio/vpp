@@ -40,24 +40,23 @@ typedef struct wg_if_t_
   uword *peers;
 } wg_if_t;
 
-
 int wg_if_create (u32 user_instance,
-		  const u8 private_key_64[NOISE_PUBLIC_KEY_LEN],
-		  u16 port, const ip_address_t * src_ip, u32 * sw_if_indexp);
+		  const u8 private_key_64[NOISE_PUBLIC_KEY_LEN], u16 port,
+		  const ip_address_t *src_ip, u32 *sw_if_indexp);
 int wg_if_delete (u32 sw_if_index);
 index_t wg_if_find_by_sw_if_index (u32 sw_if_index);
 
-u8 *format_wg_if (u8 * s, va_list * va);
+u8 *format_wg_if (u8 *s, va_list *va);
 
 typedef walk_rc_t (*wg_if_walk_cb_t) (index_t wgi, void *data);
 void wg_if_walk (wg_if_walk_cb_t fn, void *data);
 
-typedef walk_rc_t (*wg_if_peer_walk_cb_t) (wg_if_t * wgi, index_t peeri,
+typedef walk_rc_t (*wg_if_peer_walk_cb_t) (wg_if_t *wgi, index_t peeri,
 					   void *data);
-index_t wg_if_peer_walk (wg_if_t * wgi, wg_if_peer_walk_cb_t fn, void *data);
+index_t wg_if_peer_walk (wg_if_t *wgi, wg_if_peer_walk_cb_t fn, void *data);
 
-void wg_if_peer_add (wg_if_t * wgi, index_t peeri);
-void wg_if_peer_remove (wg_if_t * wgi, index_t peeri);
+void wg_if_peer_add (wg_if_t *wgi, index_t peeri);
+void wg_if_peer_remove (wg_if_t *wgi, index_t peeri);
 
 /**
  * Data-plane exposed functions
@@ -83,7 +82,6 @@ wg_if_get_by_port (u16 port)
     return (NULL);
   return (wg_if_get (wg_if_index_by_port[port]));
 }
-
 
 #endif
 

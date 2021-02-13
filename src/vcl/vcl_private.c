@@ -18,7 +18,7 @@
 static pthread_key_t vcl_worker_stop_key;
 
 vcl_mq_evt_conn_t *
-vcl_mq_evt_conn_alloc (vcl_worker_t * wrk)
+vcl_mq_evt_conn_alloc (vcl_worker_t *wrk)
 {
   vcl_mq_evt_conn_t *mqc;
   pool_get (wrk->mq_evt_conns, mqc);
@@ -27,19 +27,19 @@ vcl_mq_evt_conn_alloc (vcl_worker_t * wrk)
 }
 
 u32
-vcl_mq_evt_conn_index (vcl_worker_t * wrk, vcl_mq_evt_conn_t * mqc)
+vcl_mq_evt_conn_index (vcl_worker_t *wrk, vcl_mq_evt_conn_t *mqc)
 {
   return (mqc - wrk->mq_evt_conns);
 }
 
 vcl_mq_evt_conn_t *
-vcl_mq_evt_conn_get (vcl_worker_t * wrk, u32 mq_conn_idx)
+vcl_mq_evt_conn_get (vcl_worker_t *wrk, u32 mq_conn_idx)
 {
   return pool_elt_at_index (wrk->mq_evt_conns, mq_conn_idx);
 }
 
 int
-vcl_mq_epoll_add_evfd (vcl_worker_t * wrk, svm_msg_q_t * mq)
+vcl_mq_epoll_add_evfd (vcl_worker_t *wrk, svm_msg_q_t *mq)
 {
   struct epoll_event e = { 0 };
   vcl_mq_evt_conn_t *mqc;
@@ -68,7 +68,7 @@ vcl_mq_epoll_add_evfd (vcl_worker_t * wrk, svm_msg_q_t * mq)
 }
 
 int
-vcl_mq_epoll_del_evfd (vcl_worker_t * wrk, u32 mqc_index)
+vcl_mq_epoll_del_evfd (vcl_worker_t *wrk, u32 mqc_index)
 {
   vcl_mq_evt_conn_t *mqc;
 
@@ -96,7 +96,7 @@ vcl_worker_alloc (void)
 }
 
 static void
-vcl_worker_free (vcl_worker_t * wrk)
+vcl_worker_free (vcl_worker_t *wrk)
 {
   pool_put (vcm->workers, wrk);
 }
@@ -111,7 +111,7 @@ vcl_api_app_worker_add (void)
 }
 
 void
-vcl_api_app_worker_del (vcl_worker_t * wrk)
+vcl_api_app_worker_del (vcl_worker_t *wrk)
 {
   if (vcm->cfg.vpp_app_socket_api)
     return vcl_sapi_app_worker_del (wrk);
@@ -120,7 +120,7 @@ vcl_api_app_worker_del (vcl_worker_t * wrk)
 }
 
 void
-vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp)
+vcl_worker_cleanup (vcl_worker_t *wrk, u8 notify_vpp)
 {
   clib_spinlock_lock (&vcm->workers_lock);
   if (notify_vpp)
@@ -140,7 +140,7 @@ vcl_worker_cleanup_cb (void *arg)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   u32 wrk_index = wrk->wrk_index;
-  vcl_worker_cleanup (wrk, 1 /* notify vpp */ );
+  vcl_worker_cleanup (wrk, 1 /* notify vpp */);
   vcl_set_worker_index (~0);
   VDBG (0, "cleaned up worker %u", wrk_index);
 }
@@ -220,13 +220,13 @@ vcl_worker_register_with_vpp (void)
 }
 
 svm_msg_q_t *
-vcl_worker_ctrl_mq (vcl_worker_t * wrk)
+vcl_worker_ctrl_mq (vcl_worker_t *wrk)
 {
   return wrk->ctrl_mq;
 }
 
 int
-vcl_session_read_ready (vcl_session_t * s)
+vcl_session_read_ready (vcl_session_t *s)
 {
   if (PREDICT_FALSE (s->flags & VCL_SESSION_F_IS_VEP))
     {
@@ -248,7 +248,7 @@ vcl_session_read_ready (vcl_session_t * s)
 	  max_deq = svm_fifo_max_dequeue_cons (s->rx_fifo);
 	  if (max_deq <= SESSION_CONN_HDR_LEN)
 	    return 0;
-	  if (svm_fifo_peek (s->rx_fifo, 0, sizeof (ph), (u8 *) & ph) < 0)
+	  if (svm_fifo_peek (s->rx_fifo, 0, sizeof (ph), (u8 *) &ph) < 0)
 	    return 0;
 	  if (ph.data_length + SESSION_CONN_HDR_LEN > max_deq)
 	    return 0;
@@ -264,13 +264,13 @@ vcl_session_read_ready (vcl_session_t * s)
     }
   else
     {
-      return (s->session_state == VCL_STATE_DISCONNECT) ?
-	VPPCOM_ECONNRESET : VPPCOM_ENOTCONN;
+      return (s->session_state == VCL_STATE_DISCONNECT) ? VPPCOM_ECONNRESET :
+							  VPPCOM_ENOTCONN;
     }
 }
 
 int
-vcl_session_write_ready (vcl_session_t * s)
+vcl_session_write_ready (vcl_session_t *s)
 {
   if (PREDICT_FALSE (s->flags & VCL_SESSION_F_IS_VEP))
     {
@@ -304,8 +304,8 @@ vcl_session_write_ready (vcl_session_t * s)
     }
   else
     {
-      return (s->session_state == VCL_STATE_DISCONNECT) ?
-	VPPCOM_ECONNRESET : VPPCOM_ENOTCONN;
+      return (s->session_state == VCL_STATE_DISCONNECT) ? VPPCOM_ECONNRESET :
+							  VPPCOM_ENOTCONN;
     }
 }
 
@@ -349,7 +349,7 @@ vcl_segment_table_lookup (u64 segment_handle)
 
   if (!seg_indexp)
     return VCL_INVALID_SEGMENT_INDEX;
-  return ((u32) * seg_indexp);
+  return ((u32) *seg_indexp);
 }
 
 void
@@ -360,7 +360,7 @@ vcl_segment_detach (u64 segment_handle)
   u32 segment_index;
 
   segment_index = vcl_segment_table_lookup (segment_handle);
-  if (segment_index == (u32) ~ 0)
+  if (segment_index == (u32) ~0)
     return;
 
   clib_rwlock_writer_lock (&vcm->segment_table_lock);

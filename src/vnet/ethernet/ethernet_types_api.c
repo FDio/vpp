@@ -16,11 +16,11 @@
 #include <vlibapi/api_types.h>
 #include <vnet/ethernet/ethernet_types_api.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -31,13 +31,13 @@
 #undef vl_printfun
 
 void
-mac_address_decode (const u8 * in, mac_address_t * out)
+mac_address_decode (const u8 *in, mac_address_t *out)
 {
   mac_address_from_bytes (out, in);
 }
 
 void
-mac_address_encode (const mac_address_t * in, u8 * out)
+mac_address_encode (const mac_address_t *in, u8 *out)
 {
   clib_memcpy_fast (out, in->bytes, 6);
 }

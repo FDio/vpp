@@ -16,38 +16,35 @@
 #ifndef PLUGINS_IOAM_PLUGIN_IOAM_UDP_PING_UDP_PING_UTIL_H_
 #define PLUGINS_IOAM_PLUGIN_IOAM_UDP_PING_UDP_PING_UTIL_H_
 
-int udp_ping_create_ip6_pak (u8 * buf,	/*u16 len, */
+int udp_ping_create_ip6_pak (u8 *buf, /*u16 len, */
 			     ip6_address_t src, ip6_address_t dst,
-			     u16 src_port, u16 dst_port,
-			     u8 msg_type, u16 ctx);
+			     u16 src_port, u16 dst_port, u8 msg_type, u16 ctx);
 
-int
-udp_ping_compare_flow (ip46_address_t src, ip46_address_t dst,
-		       u16 start_src_port, u16 end_src_port,
-		       u16 start_dst_port, u16 end_dst_port,
-		       ip46_udp_ping_flow * flow);
+int udp_ping_compare_flow (ip46_address_t src, ip46_address_t dst,
+			   u16 start_src_port, u16 end_src_port,
+			   u16 start_dst_port, u16 end_dst_port,
+			   ip46_udp_ping_flow *flow);
 
-void
-udp_ping_populate_flow (ip46_address_t src, ip46_address_t dst,
-			u16 start_src_port, u16 end_src_port,
-			u16 start_dst_port, u16 end_dst_port,
-			u16 interval, u8 fault_det,
-			ip46_udp_ping_flow * flow);
+void udp_ping_populate_flow (ip46_address_t src, ip46_address_t dst,
+			     u16 start_src_port, u16 end_src_port,
+			     u16 start_dst_port, u16 end_dst_port,
+			     u16 interval, u8 fault_det,
+			     ip46_udp_ping_flow *flow);
 
-void udp_ping_free_flow_data (ip46_udp_ping_flow * flow);
+void udp_ping_free_flow_data (ip46_udp_ping_flow *flow);
 
-void udp_ping_create_rewrite (ip46_udp_ping_flow * flow, u16 ctx);
+void udp_ping_create_rewrite (ip46_udp_ping_flow *flow, u16 ctx);
 
-void udp_ping_send_ip6_pak (vlib_main_t * vm, ip46_udp_ping_flow * flow);
+void udp_ping_send_ip6_pak (vlib_main_t *vm, ip46_udp_ping_flow *flow);
 
 /**
  * @brief Create and send ipv6 udp-ping response packet.
  *
  */
 always_inline void
-udp_ping_create_reply_from_probe_ip6 (ip6_header_t * ip,
-				      ip6_hop_by_hop_header_t * hbh,
-				      udp_ping_t * udp)
+udp_ping_create_reply_from_probe_ip6 (ip6_header_t *ip,
+				      ip6_hop_by_hop_header_t *hbh,
+				      udp_ping_t *udp)
 {
   ip6_address_t src;
   u16 src_port;
@@ -58,8 +55,8 @@ udp_ping_create_reply_from_probe_ip6 (ip6_header_t * ip,
   ip->src_address = ip->dst_address;
   ip->dst_address = src;
 
-  trace = (ioam_trace_option_t *)
-    ip6_hbh_get_option (hbh, HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST);
+  trace = (ioam_trace_option_t *) ip6_hbh_get_option (
+    hbh, HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST);
   ip6_hbh_ioam_trace_reset_bit (trace, BIT_LOOPBACK);
 
   /* No need of endian transform */
@@ -67,7 +64,7 @@ udp_ping_create_reply_from_probe_ip6 (ip6_header_t * ip,
 
   udp->udp.src_port = udp->udp.dst_port;
   udp->udp.dst_port = src_port;
-  udp->udp.checksum = 0;	//FIXME
+  udp->udp.checksum = 0; // FIXME
 
   udp->ping_data.msg_type = UDP_PING_REPLY;
 }

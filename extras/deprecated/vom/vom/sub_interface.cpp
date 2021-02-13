@@ -26,8 +26,7 @@ sub_interface::sub_interface(const interface& parent,
   : interface(mk_name(parent, vlan), parent.type(), state)
   , m_parent(parent.singular())
   , m_vlan(vlan)
-{
-}
+{}
 
 /**
  * Construct a new object matching the desried state
@@ -39,8 +38,7 @@ sub_interface::sub_interface(const interface& parent,
   : interface(mk_name(parent, vlan), parent.type(), state, rd)
   , m_parent(parent.singular())
   , m_vlan(vlan)
-{
-}
+{}
 
 sub_interface::~sub_interface()
 {
@@ -52,8 +50,7 @@ sub_interface::sub_interface(const sub_interface& o)
   : interface(o)
   , m_parent(o.m_parent)
   , m_vlan(o.m_vlan)
-{
-}
+{}
 
 bool
 sub_interface::operator==(const sub_interface& s) const
@@ -71,8 +68,8 @@ sub_interface::mk_name(const interface& parent, vlan_id_t vlan)
 std::queue<cmd*>&
 sub_interface::mk_create_cmd(std::queue<cmd*>& q)
 {
-  q.push(new sub_interface_cmds::create_cmd(m_hdl, name(), m_parent->handle(),
-                                            m_vlan));
+  q.push(new sub_interface_cmds::create_cmd(
+    m_hdl, name(), m_parent->handle(), m_vlan));
 
   return (q);
 }

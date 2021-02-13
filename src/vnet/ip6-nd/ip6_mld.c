@@ -33,25 +33,21 @@
  * adjacency tables and neighbor discovery logic.
  */
 
-/* *INDENT-OFF*/
 /* multicast listener report packet format for ethernet. */
-typedef CLIB_PACKED (struct
-{
-    ip6_hop_by_hop_ext_t ext_hdr;
-    ip6_router_alert_option_t alert;
-    ip6_padN_option_t pad;
-    icmp46_header_t icmp;
-    u16 rsvd;
-    u16 num_addr_records;
-    icmp6_multicast_address_record_t records[0];
+typedef CLIB_PACKED (struct {
+  ip6_hop_by_hop_ext_t ext_hdr;
+  ip6_router_alert_option_t alert;
+  ip6_padN_option_t pad;
+  icmp46_header_t icmp;
+  u16 rsvd;
+  u16 num_addr_records;
+  icmp6_multicast_address_record_t records[0];
 }) icmp6_multicast_listener_report_header_t;
 
-typedef CLIB_PACKED (struct
-{
+typedef CLIB_PACKED (struct {
   ip6_header_t ip;
   icmp6_multicast_listener_report_header_t report_hdr;
 }) icmp6_multicast_listener_report_packet_t;
-/* *INDENT-ON*/
 
 typedef struct
 {
@@ -76,7 +72,6 @@ typedef struct ip6_nd_t_
 
 } ip6_mld_t;
 
-
 static ip6_link_delegate_id_t ip6_mld_delegate_id;
 static ip6_mld_t *ip6_mld_pool;
 
@@ -99,7 +94,7 @@ ip6_mld_get_itf (u32 sw_if_index)
  * @brief Add a multicast Address to the advertised MLD set
  */
 static void
-ip6_neighbor_add_mld_prefix (ip6_mld_t * imd, ip6_address_t * addr)
+ip6_neighbor_add_mld_prefix (ip6_mld_t *imd, ip6_address_t *addr)
 {
   ip6_mldp_group_t *mcast_group_info;
   uword *p;
@@ -116,7 +111,7 @@ ip6_neighbor_add_mld_prefix (ip6_mld_t * imd, ip6_address_t * addr)
       pool_get_zero (imd->mldp_group_pool, mcast_group_info);
 
       mi = mcast_group_info - imd->mldp_group_pool;
-      mhash_set (&imd->address_to_mldp_index, addr, mi,	/* old_value */
+      mhash_set (&imd->address_to_mldp_index, addr, mi, /* old_value */
 		 0);
 
       mcast_group_info->type = 4;
@@ -131,7 +126,7 @@ ip6_neighbor_add_mld_prefix (ip6_mld_t * imd, ip6_address_t * addr)
  * @brief Delete a multicast Address from the advertised MLD set
  */
 static void
-ip6_neighbor_del_mld_prefix (ip6_mld_t * imd, ip6_address_t * addr)
+ip6_neighbor_del_mld_prefix (ip6_mld_t *imd, ip6_address_t *addr)
 {
   ip6_mldp_group_t *mcast_group_info;
   uword *p;
@@ -151,8 +146,7 @@ ip6_neighbor_del_mld_prefix (ip6_mld_t * imd, ip6_address_t * addr)
  * @brief Add a multicast Address to the advertised MLD set
  */
 static void
-ip6_neighbor_add_mld_grp (ip6_mld_t * a,
-			  ip6_multicast_address_scope_t scope,
+ip6_neighbor_add_mld_grp (ip6_mld_t *a, ip6_multicast_address_scope_t scope,
 			  ip6_multicast_link_local_group_id_t group)
 {
   ip6_address_t addr;
@@ -190,8 +184,8 @@ ip6_mld_link_enable (u32 sw_if_index)
   if (NULL == eth)
     return;
 
-  ASSERT (INDEX_INVALID == ip6_link_delegate_get (sw_if_index,
-						  ip6_mld_delegate_id));
+  ASSERT (INDEX_INVALID ==
+	  ip6_link_delegate_get (sw_if_index, ip6_mld_delegate_id));
 
   pool_get_zero (ip6_mld_pool, imd);
 
@@ -201,14 +195,11 @@ ip6_mld_link_enable (u32 sw_if_index)
 	      sizeof (ip6_address_t));
 
   /* add multicast groups we will always be reporting  */
-  ip6_neighbor_add_mld_grp (imd,
-			    IP6_MULTICAST_SCOPE_link_local,
+  ip6_neighbor_add_mld_grp (imd, IP6_MULTICAST_SCOPE_link_local,
 			    IP6_MULTICAST_GROUP_ID_all_hosts);
-  ip6_neighbor_add_mld_grp (imd,
-			    IP6_MULTICAST_SCOPE_link_local,
+  ip6_neighbor_add_mld_grp (imd, IP6_MULTICAST_SCOPE_link_local,
 			    IP6_MULTICAST_GROUP_ID_all_routers);
-  ip6_neighbor_add_mld_grp (imd,
-			    IP6_MULTICAST_SCOPE_link_local,
+  ip6_neighbor_add_mld_grp (imd, IP6_MULTICAST_SCOPE_link_local,
 			    IP6_MULTICAST_GROUP_ID_mldv2_routers);
 
   ip6_link_delegate_update (sw_if_index, ip6_mld_delegate_id,
@@ -224,12 +215,10 @@ ip6_mld_delegate_disable (index_t imdi)
   imd = pool_elt_at_index (ip6_mld_pool, imdi);
 
   /* clean MLD pools */
-  /* *INDENT-OFF* */
-  pool_flush (m, imd->mldp_group_pool,
-  ({
-    mhash_unset (&imd->address_to_mldp_index, &m->mcast_address, 0);
-  }));
-  /* *INDENT-ON* */
+
+  pool_flush (
+    m, imd->mldp_group_pool,
+    ({ mhash_unset (&imd->address_to_mldp_index, &m->mcast_address, 0); }));
 
   pool_free (imd->mldp_group_pool);
 
@@ -284,8 +273,8 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
   b0->error = ICMP6_ERROR_NONE;
 
   rp0 = vlib_buffer_get_current (b0);
-  ip0 = (ip6_header_t *) & rp0->ip;
-  rh0 = (icmp6_multicast_listener_report_header_t *) & rp0->report_hdr;
+  ip0 = (ip6_header_t *) &rp0->ip;
+  rh0 = (icmp6_multicast_listener_report_header_t *) &rp0->report_hdr;
 
   clib_memset (rp0, 0x0, sizeof (icmp6_multicast_listener_report_packet_t));
 
@@ -326,26 +315,24 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
 
   rh0->icmp.checksum = 0;
 
-  /* *INDENT-OFF* */
   pool_foreach (m, imd->mldp_group_pool)
-   {
-    rr.type = m->type;
-    rr.aux_data_len_u32s = 0;
-    rr.num_sources = clib_host_to_net_u16 (m->num_sources);
-    clib_memcpy(&rr.mcast_addr, &m->mcast_address, sizeof(ip6_address_t));
+    {
+      rr.type = m->type;
+      rr.aux_data_len_u32s = 0;
+      rr.num_sources = clib_host_to_net_u16 (m->num_sources);
+      clib_memcpy (&rr.mcast_addr, &m->mcast_address, sizeof (ip6_address_t));
 
-    num_addr_records++;
+      num_addr_records++;
 
-    if(vlib_buffer_add_data (vm, &bo0, (void *)&rr,
-			     sizeof(icmp6_multicast_address_record_t)))
-      {
-        vlib_buffer_free (vm, &bo0, 1);
-        goto alloc_fail;
-      }
+      if (vlib_buffer_add_data (vm, &bo0, (void *) &rr,
+				sizeof (icmp6_multicast_address_record_t)))
+	{
+	  vlib_buffer_free (vm, &bo0, 1);
+	  goto alloc_fail;
+	}
 
-    payload_length += sizeof( icmp6_multicast_address_record_t);
-  }
-  /* *INDENT-ON* */
+      payload_length += sizeof (icmp6_multicast_address_record_t);
+    }
 
   rh0->rsvd = 0;
   rh0->num_addr_records = clib_host_to_net_u16 (num_addr_records);
@@ -353,8 +340,8 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
   /* update lengths */
   ip0->payload_length = clib_host_to_net_u16 (payload_length);
 
-  rh0->icmp.checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip0,
-							  &bogus_length);
+  rh0->icmp.checksum =
+    ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip0, &bogus_length);
   ASSERT (bogus_length == 0);
 
   /*
@@ -381,38 +368,37 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
 
 /* send a RA or update the timer info etc.. */
 static uword
-ip6_mld_timer_event (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+ip6_mld_timer_event (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     vlib_frame_t *frame)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip6_mld_t *imd;
 
   /* Interface ip6 radv info list */
-  /* *INDENT-OFF* */
-  pool_foreach (imd, ip6_mld_pool)
-   {
-    if (!vnet_sw_interface_is_admin_up (vnm, imd->sw_if_index))
-      {
-        imd->all_routers_mcast = 0;
-        continue;
-      }
 
-    /* Make sure that we've joined the all-routers multicast group */
-    if (!imd->all_routers_mcast)
-      {
-        /* send MDLP_REPORT_EVENT message */
-        ip6_neighbor_send_mldpv2_report(imd->sw_if_index);
-        imd->all_routers_mcast = 1;
-      }
-  }
-  /* *INDENT-ON* */
+  pool_foreach (imd, ip6_mld_pool)
+    {
+      if (!vnet_sw_interface_is_admin_up (vnm, imd->sw_if_index))
+	{
+	  imd->all_routers_mcast = 0;
+	  continue;
+	}
+
+      /* Make sure that we've joined the all-routers multicast group */
+      if (!imd->all_routers_mcast)
+	{
+	  /* send MDLP_REPORT_EVENT message */
+	  ip6_neighbor_send_mldpv2_report (imd->sw_if_index);
+	  imd->all_routers_mcast = 1;
+	}
+    }
 
   return 0;
 }
 
 static uword
-ip6_mld_event_process (vlib_main_t * vm,
-		       vlib_node_runtime_t * node, vlib_frame_t * frame)
+ip6_mld_event_process (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_frame_t *frame)
 {
   uword event_type;
 
@@ -420,12 +406,13 @@ ip6_mld_event_process (vlib_main_t * vm,
 
   while (1)
     {
-      vlib_process_wait_for_event_or_clock (vm, 1. /* seconds */ );
+      vlib_process_wait_for_event_or_clock (vm, 1. /* seconds */);
 
       if (!vlib_process_get_event_data (vm, &event_type))
 	{
 	  /* No events found: timer expired. */
-	  /* process interface list and send RAs as appropriate, update timer info */
+	  /* process interface list and send RAs as appropriate, update timer
+	   * info */
 	  ip6_mld_timer_event (vm, node, frame);
 	}
       /* else; no events */
@@ -433,16 +420,14 @@ ip6_mld_event_process (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_mld_event_process_node) = {
   .function = ip6_mld_event_process,
   .name = "ip6-mld-process",
   .type = VLIB_NODE_TYPE_PROCESS,
 };
-/* *INDENT-ON* */
 
 static u8 *
-format_ip6_mld (u8 * s, va_list * args)
+format_ip6_mld (u8 *s, va_list *args)
 {
   index_t imi = va_arg (*args, index_t);
   u32 indent = va_arg (*args, u32);
@@ -453,15 +438,11 @@ format_ip6_mld (u8 * s, va_list * args)
 
   s = format (s, "%UJoined group address(es):\n", format_white_space, indent);
 
-  /* *INDENT-OFF* */
   pool_foreach (m, imd->mldp_group_pool)
-   {
-    s = format (s, "%U%U\n",
-                format_white_space, indent+2,
-                format_ip6_address,
-                &m->mcast_address);
-  }
-  /* *INDENT-ON* */
+    {
+      s = format (s, "%U%U\n", format_white_space, indent + 2,
+		  format_ip6_address, &m->mcast_address);
+    }
 
   return (s);
 }
@@ -470,8 +451,7 @@ format_ip6_mld (u8 * s, va_list * args)
  * @brief callback when an interface address is added or deleted
  */
 static void
-ip6_mld_address_add (u32 imi,
-		     const ip6_address_t * address, u8 address_oength)
+ip6_mld_address_add (u32 imi, const ip6_address_t *address, u8 address_oength)
 {
   ip6_mld_t *imd;
   ip6_address_t a;
@@ -489,8 +469,7 @@ ip6_mld_address_add (u32 imi,
 }
 
 static void
-ip6_mld_address_del (u32 imi,
-		     const ip6_address_t * address, u8 address_oength)
+ip6_mld_address_del (u32 imi, const ip6_address_t *address, u8 address_oength)
 {
   ip6_mld_t *imd;
   ip6_address_t a;
@@ -519,19 +498,16 @@ const static ip6_link_delegate_vft_t ip6_mld_delegate_vft = {
 };
 
 static clib_error_t *
-ip6_mld_init (vlib_main_t * vm)
+ip6_mld_init (vlib_main_t *vm)
 {
   ip6_mld_delegate_id = ip6_link_delegate_register (&ip6_mld_delegate_vft);
 
   return (NULL);
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (ip6_mld_init) =
-{
-  .runs_after = VLIB_INITS("icmp6_init"),
+VLIB_INIT_FUNCTION (ip6_mld_init) = {
+  .runs_after = VLIB_INITS ("icmp6_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

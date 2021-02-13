@@ -30,8 +30,7 @@ bridge_domain_entry::bridge_domain_entry(const bridge_domain& bd,
   , m_mac(mac)
   , m_bd(bd.singular())
   , m_tx_itf(tx_itf.singular())
-{
-}
+{}
 
 bridge_domain_entry::bridge_domain_entry(const mac_address_t& mac,
                                          const interface& tx_itf)
@@ -53,8 +52,7 @@ bridge_domain_entry::bridge_domain_entry(const bridge_domain_entry& bde)
   , m_mac(bde.m_mac)
   , m_bd(bde.m_bd)
   , m_tx_itf(bde.m_tx_itf)
-{
-}
+{}
 
 const bridge_domain_entry::key_t
 bridge_domain_entry::key() const
@@ -91,7 +89,10 @@ bridge_domain_entry::replay()
 {
   if (m_hw) {
     HW::enqueue(new bridge_domain_entry_cmds::create_cmd(
-      m_hw, m_mac, m_bd->id(), m_tx_itf->handle(),
+      m_hw,
+      m_mac,
+      m_bd->id(),
+      m_tx_itf->handle(),
       interface::type_t::BVI == m_tx_itf->type()));
   }
 }
@@ -113,7 +114,10 @@ bridge_domain_entry::update(const bridge_domain_entry& r)
    */
   if (rc_t::OK != m_hw.rc()) {
     HW::enqueue(new bridge_domain_entry_cmds::create_cmd(
-      m_hw, m_mac, m_bd->id(), m_tx_itf->handle(),
+      m_hw,
+      m_mac,
+      m_bd->id(),
+      m_tx_itf->handle(),
       interface::type_t::BVI == m_tx_itf->type()));
   }
 }
@@ -145,8 +149,8 @@ bridge_domain_entry::dump(std::ostream& os)
 bridge_domain_entry::event_handler::event_handler()
 {
   OM::register_listener(this);
-  inspect::register_handler({ "bd-entry" },
-                            "bridge domain entry configurations", this);
+  inspect::register_handler(
+    { "bd-entry" }, "bridge domain entry configurations", this);
 }
 
 void
@@ -171,19 +175,19 @@ bridge_domain_entry::event_handler::handle_populate(const client_db::key_t& key)
     std::shared_ptr<bridge_domain> bd = bridge_domain::find(payload.bd_id);
 
     if (!bd || !itf) {
-      VOM_LOG(log_level_t::ERROR) << "bridge-domain-entry dump:"
-                                  << " itf:" << payload.sw_if_index
-                                  << " bd:" << payload.bd_id;
+      VOM_LOG(log_level_t::ERROR)
+        << "bridge-domain-entry dump:"
+        << " itf:" << payload.sw_if_index << " bd:" << payload.bd_id;
       continue;
     }
 
     mac_address_t mac(payload.mac);
     bridge_domain_entry bd_e(*bd, mac, *itf);
 
-    VOM_LOG(log_level_t::DEBUG) << "bridge-domain-entry dump:"
-                                << " " << bd->to_string() << " "
-                                << itf->to_string() << " mac:["
-                                << mac.to_string() << "]";
+    VOM_LOG(log_level_t::DEBUG)
+      << "bridge-domain-entry dump:"
+      << " " << bd->to_string() << " " << itf->to_string() << " mac:["
+      << mac.to_string() << "]";
 
     /*
      * Write each of the discovered interfaces into the OM,

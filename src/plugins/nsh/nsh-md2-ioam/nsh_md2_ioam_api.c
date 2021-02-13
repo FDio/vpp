@@ -45,7 +45,7 @@
 
 u8 *nsh_trace_main = NULL;
 static clib_error_t *
-nsh_md2_ioam_init (vlib_main_t * vm)
+nsh_md2_ioam_init (vlib_main_t *vm)
 {
   nsh_md2_ioam_main_t *sm = &nsh_md2_ioam_main;
   clib_error_t *error = 0;

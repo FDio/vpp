@@ -42,7 +42,6 @@ static u32 outcome_frequencies[] = {
   8, 5, 9, 2, 7, 5,
 };
 
-
 int
 test_chisquare (void)
 {
@@ -75,14 +74,12 @@ test_chisquare (void)
 }
 
 static u32 known_random_sequence[] = {
-  0x00000000, 0x3c6ef35f, 0x47502932, 0xd1ccf6e9,
-  0xaaf95334, 0x6252e503, 0x9f2ec686, 0x57fe6c2d,
-  0xa3d95fa8, 0x81fdbee7, 0x94f0af1a, 0xcbf633b1,
+  0x00000000, 0x3c6ef35f, 0x47502932, 0xd1ccf6e9, 0xaaf95334, 0x6252e503,
+  0x9f2ec686, 0x57fe6c2d, 0xa3d95fa8, 0x81fdbee7, 0x94f0af1a, 0xcbf633b1,
 };
 
-
 int
-test_random_main (unformat_input_t * input)
+test_random_main (unformat_input_t *input)
 {
   uword n_iterations;
   uword i, repeat_count;
@@ -115,9 +112,9 @@ test_random_main (unformat_input_t * input)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (0 == unformat (input, "iter %d", &n_iterations)
-	  && 0 == unformat (input, "print %d", &print)
-	  && 0 == unformat (input, "seed %d", &seed))
+      if (0 == unformat (input, "iter %d", &n_iterations) &&
+	  0 == unformat (input, "print %d", &print) &&
+	  0 == unformat (input, "seed %d", &seed))
 	clib_error ("unknown input `%U'", format_unformat_error, input);
     }
 
@@ -197,7 +194,6 @@ main (int argc, char *argv[])
   return ret;
 }
 #endif /* CLIB_UNIX */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

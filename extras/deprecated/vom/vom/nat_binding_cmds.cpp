@@ -23,8 +23,7 @@ bind_44_input_cmd::bind_44_input_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_itf(itf)
   , m_zone(zone)
-{
-}
+{}
 
 bool
 bind_44_input_cmd::operator==(const bind_44_input_cmd& other) const
@@ -64,8 +63,7 @@ unbind_44_input_cmd::unbind_44_input_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_itf(itf)
   , m_zone(zone)
-{
-}
+{}
 
 bool
 unbind_44_input_cmd::operator==(const unbind_44_input_cmd& other) const
@@ -105,8 +103,7 @@ bind_44_output_cmd::bind_44_output_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_itf(itf)
   , m_zone(zone)
-{
-}
+{}
 
 bool
 bind_44_output_cmd::operator==(const bind_44_output_cmd& other) const
@@ -146,8 +143,7 @@ unbind_44_output_cmd::unbind_44_output_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_itf(itf)
   , m_zone(zone)
-{
-}
+{}
 
 bool
 unbind_44_output_cmd::operator==(const unbind_44_output_cmd& other) const
@@ -181,13 +177,9 @@ unbind_44_output_cmd::to_string() const
   return (s.str());
 }
 
-dump_input_44_cmd::dump_input_44_cmd()
-{
-}
+dump_input_44_cmd::dump_input_44_cmd() {}
 
-dump_input_44_cmd::dump_input_44_cmd(const dump_input_44_cmd& d)
-{
-}
+dump_input_44_cmd::dump_input_44_cmd(const dump_input_44_cmd& d) {}
 
 bool
 dump_input_44_cmd::operator==(const dump_input_44_cmd& other) const
@@ -213,13 +205,9 @@ dump_input_44_cmd::to_string() const
   return ("nat-44-input-binding-dump");
 }
 
-dump_output_44_cmd::dump_output_44_cmd()
-{
-}
+dump_output_44_cmd::dump_output_44_cmd() {}
 
-dump_output_44_cmd::dump_output_44_cmd(const dump_output_44_cmd& d)
-{
-}
+dump_output_44_cmd::dump_output_44_cmd(const dump_output_44_cmd& d) {}
 
 bool
 dump_output_44_cmd::operator==(const dump_output_44_cmd& other) const
@@ -251,8 +239,7 @@ bind_66_input_cmd::bind_66_input_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_itf(itf)
   , m_zone(zone)
-{
-}
+{}
 
 bool
 bind_66_input_cmd::operator==(const bind_66_input_cmd& other) const
@@ -294,8 +281,7 @@ unbind_66_input_cmd::unbind_66_input_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_itf(itf)
   , m_zone(zone)
-{
-}
+{}
 
 bool
 unbind_66_input_cmd::operator==(const unbind_66_input_cmd& other) const
@@ -331,13 +317,9 @@ unbind_66_input_cmd::to_string() const
   return (s.str());
 }
 
-dump_input_66_cmd::dump_input_66_cmd()
-{
-}
+dump_input_66_cmd::dump_input_66_cmd() {}
 
-dump_input_66_cmd::dump_input_66_cmd(const dump_input_66_cmd& d)
-{
-}
+dump_input_66_cmd::dump_input_66_cmd(const dump_input_66_cmd& d) {}
 
 bool
 dump_input_66_cmd::operator==(const dump_input_66_cmd& other) const

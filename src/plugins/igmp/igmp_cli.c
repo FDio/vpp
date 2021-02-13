@@ -29,8 +29,8 @@
 #include <igmp/igmp.h>
 
 static clib_error_t *
-igmp_clear_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
-				 vlib_cli_command_t * cmd)
+igmp_clear_interface_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = NULL;
@@ -48,14 +48,13 @@ igmp_clear_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "int %U", unformat_vnet_sw_interface, vnm,
-	   &sw_if_index));
+      if (unformat (line_input, "int %U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
+	;
       else
 	{
-	  error =
-	    clib_error_return (0, "unknown input '%U'", format_unformat_error,
-			       line_input);
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -69,17 +68,15 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (igmp_clear_interface_command, static) = {
   .path = "clear igmp",
   .short_help = "clear igmp int <interface>",
   .function = igmp_clear_interface_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-igmp_listen_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			vlib_cli_command_t * cmd)
+igmp_listen_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = NULL;
@@ -91,9 +88,8 @@ igmp_listen_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (!unformat_user (input, unformat_line_input, line_input))
     {
-      error =
-	clib_error_return (0,
-			   "'help igmp listen' or 'igmp listen ?' for help");
+      error = clib_error_return (
+	0, "'help igmp listen' or 'igmp listen ?' for help");
       return error;
     }
 
@@ -103,26 +99,25 @@ igmp_listen_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	enable = 1;
       else if (unformat (line_input, "disable"))
 	enable = 0;
-      else
-	if (unformat
-	    (line_input, "int %U", unformat_vnet_sw_interface, vnm,
-	     &sw_if_index));
-      else
-	if (unformat (line_input, "saddr %U", unformat_ip46_address, &saddr))
+      else if (unformat (line_input, "int %U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
+	;
+      else if (unformat (line_input, "saddr %U", unformat_ip46_address,
+			 &saddr))
 	vec_add1 (saddrs, saddr);
-      else
-	if (unformat (line_input, "gaddr %U", unformat_ip46_address, &gaddr));
+      else if (unformat (line_input, "gaddr %U", unformat_ip46_address,
+			 &gaddr))
+	;
       else
 	{
-	  error =
-	    clib_error_return (0, "unknown input '%U'", format_unformat_error,
-			       line_input);
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
 	  goto done;
 	}
     }
 
-  if ((vnet_sw_interface_get_flags (vnm, sw_if_index)
-       && VNET_SW_INTERFACE_FLAG_ADMIN_UP) == 0)
+  if ((vnet_sw_interface_get_flags (vnm, sw_if_index) &&
+       VNET_SW_INTERFACE_FLAG_ADMIN_UP) == 0)
     {
       error = clib_error_return (0, "Interface is down");
       goto done;
@@ -140,9 +135,8 @@ igmp_listen_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  clib_error_return (0, "This igmp configuration does not exist");
     }
   else if (rv == -2)
-    error =
-      clib_error_return (0,
-			 "Failed to add configuration, interface is in router mode");
+    error = clib_error_return (
+      0, "Failed to add configuration, interface is in router mode");
 
 done:
   unformat_free (line_input);
@@ -150,18 +144,16 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (igmp_listen_command, static) = {
   .path = "igmp listen",
   .short_help = "igmp listen [<enable|disable>] "
-                "int <interface> saddr <ip4-address> gaddr <ip4-address>",
+		"int <interface> saddr <ip4-address> gaddr <ip4-address>",
   .function = igmp_listen_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-igmp_enable_cli (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+igmp_enable_cli (vlib_main_t *vm, unformat_input_t *input,
+		 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   igmp_mode_t mode = IGMP_MODE_ROUTER;
@@ -184,13 +176,13 @@ igmp_enable_cli (vlib_main_t * vm,
 	mode = IGMP_MODE_HOST;
       else if (unformat (line_input, "router"))
 	mode = IGMP_MODE_ROUTER;
-      else if (unformat (line_input, "%U",
-			 unformat_vnet_sw_interface, vnm, &sw_if_index));
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
+	;
       else
 	{
-	  error =
-	    clib_error_return (0, "unknown input '%U'", format_unformat_error,
-			       line_input);
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -211,18 +203,15 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (igmp_enable_command, static) = {
   .path = "igmp",
   .short_help = "igmp <enable|disable> <host|router> <interface>",
   .function = igmp_enable_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-igmp_proxy_device_add_del_command_fn (vlib_main_t * vm,
-				      unformat_input_t * input,
-				      vlib_cli_command_t * cmd)
+igmp_proxy_device_add_del_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
@@ -243,13 +232,13 @@ igmp_proxy_device_add_del_command_fn (vlib_main_t * vm,
 	add = 0;
       else if (unformat (line_input, "vrf-id %u", &vrf_id))
 	;
-      else if (unformat (line_input, "%U",
-			 unformat_vnet_sw_interface, vnm, &sw_if_index));
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
+	;
       else
 	{
-	  error =
-	    clib_error_return (0, "unknown input '%U'", format_unformat_error,
-			       line_input);
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -275,18 +264,17 @@ done:
   unformat_free (line_input);
   return error;
 }
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (igmp_proxy_device_add_del_command, static) = {
   .path = "igmp proxy-dev",
   .short_help = "igmp proxy-dev <add|del> vrf-id <table-id> <interface>",
   .function = igmp_proxy_device_add_del_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-igmp_proxy_device_add_del_interface_command_fn (vlib_main_t * vm,
-						unformat_input_t * input,
-						vlib_cli_command_t * cmd)
+igmp_proxy_device_add_del_interface_command_fn (vlib_main_t *vm,
+						unformat_input_t *input,
+						vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
@@ -307,13 +295,13 @@ igmp_proxy_device_add_del_interface_command_fn (vlib_main_t * vm,
 	add = 0;
       else if (unformat (line_input, "vrf-id %u", &vrf_id))
 	;
-      else if (unformat (line_input, "%U",
-			 unformat_vnet_sw_interface, vnm, &sw_if_index));
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
+	;
       else
 	{
-	  error =
-	    clib_error_return (0, "unknown input '%U'", format_unformat_error,
-			       line_input);
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -339,62 +327,54 @@ done:
   unformat_free (line_input);
   return error;
 }
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (igmp_proxy_device_add_del_interface_command, static) = {
   .path = "igmp proxy-dev itf",
   .short_help = "igmp proxy-dev itf <add|del> vrf-id <table-id> <interface>",
   .function = igmp_proxy_device_add_del_interface_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-igmp_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
-		      vlib_cli_command_t * cmd)
+igmp_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
 {
   clib_error_t *error = NULL;
   igmp_main_t *im = &igmp_main;
   igmp_config_t *config;
 
-  /* *INDENT-OFF* */
   pool_foreach (config, im->configs)
-     {
+    {
       vlib_cli_output (vm, "%U", format_igmp_config, config);
     }
-  /* *INDENT-ON* */
 
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (igmp_show_command, static) = {
   .path = "show igmp config",
   .short_help = "show igmp config",
   .function = igmp_show_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-igmp_show_timers_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+igmp_show_timers_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
-#define _(n,f) vlib_cli_output (vm, "%s: %d", #f, igmp_timer_type_get(n));
+#define _(n, f) vlib_cli_output (vm, "%s: %d", #f, igmp_timer_type_get (n));
   foreach_igmp_timer_type
 #undef _
     return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (igmp_show_timers_command, static) = {
   .path = "show igmp timers",
   .short_help = "show igmp timers",
   .function = igmp_show_timers_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-test_igmp_command_fn (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+test_igmp_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
 {
   clib_error_t *error = NULL;
   u32 value;
@@ -414,17 +394,15 @@ test_igmp_command_fn (vlib_main_t * vm,
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_igmp_command, static) = {
   .path = "test igmp timers",
-  .short_help = "Change the default values for IGMP timers - only sensible during unit tests",
+  .short_help = "Change the default values for IGMP timers - only sensible "
+		"during unit tests",
   .function = test_igmp_command_fn,
 };
-/* *INDENT-ON* */
-
 
 clib_error_t *
-igmp_cli_init (vlib_main_t * vm)
+igmp_cli_init (vlib_main_t *vm)
 {
   return 0;
 }

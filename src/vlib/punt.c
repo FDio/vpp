@@ -145,7 +145,7 @@ static punt_client_t *punt_client_pool;
 static uword *punt_client_db;
 
 u8 *
-format_vlib_punt_reason (u8 * s, va_list * args)
+format_vlib_punt_reason (u8 *s, va_list *args)
 {
   vlib_punt_reason_t pr = va_arg (*args, int);
 
@@ -208,18 +208,16 @@ punt_reg_find (vlib_punt_reason_t reason, u32 node_index)
 }
 
 static void
-punt_reg_add (const punt_reg_t * pr)
+punt_reg_add (const punt_reg_t *pr)
 {
-  hash_set (punt_reg_db, punt_reg_mk_key (pr->pr_reason,
-					  pr->pr_node_index),
+  hash_set (punt_reg_db, punt_reg_mk_key (pr->pr_reason, pr->pr_node_index),
 	    pr - punt_reg_pool);
 }
 
 static void
-punt_reg_remove (const punt_reg_t * pr)
+punt_reg_remove (const punt_reg_t *pr)
 {
-  hash_unset (punt_reg_db, punt_reg_mk_key (pr->pr_reason,
-					    pr->pr_node_index));
+  hash_unset (punt_reg_db, punt_reg_mk_key (pr->pr_reason, pr->pr_node_index));
 }
 
 /**
@@ -239,24 +237,19 @@ punt_reg_mk_dp (vlib_punt_reason_t reason)
 
   old = punt_dp_db[reason];
 
-  /* *INDENT-OFF* */
-  hash_foreach (key, pri, punt_reg_db,
-    ({
-      vec_add1(pris, pri);
-    }));
-  /* *INDENT-ON* */
+  hash_foreach (key, pri, punt_reg_db, ({ vec_add1 (pris, pri); }));
 
   /*
    * A check for an empty vector is done in the DP, so the a zero
    * length vector here is ok
    */
   vec_foreach (prip, pris)
-  {
-    pr = pool_elt_at_index (punt_reg_pool, *prip);
+    {
+      pr = pool_elt_at_index (punt_reg_pool, *prip);
 
-    if (pr->pr_reason == reason)
-      vec_add1 (edges, pr->pr_edge);
-  }
+      if (pr->pr_reason == reason)
+	vec_add1 (edges, pr->pr_edge);
+    }
 
   /* atomic update of the DP */
   punt_dp_db[reason] = edges;
@@ -265,8 +258,8 @@ punt_reg_mk_dp (vlib_punt_reason_t reason)
 }
 
 int
-vlib_punt_register (vlib_punt_hdl_t client,
-		    vlib_punt_reason_t reason, const char *node_name)
+vlib_punt_register (vlib_punt_hdl_t client, vlib_punt_reason_t reason,
+		    const char *node_name)
 {
   vlib_node_t *punt_to, *punt_from;
   punt_client_t *pc;
@@ -309,8 +302,8 @@ vlib_punt_register (vlib_punt_hdl_t client,
 
       pr->pr_reason = reason;
       pr->pr_node_index = punt_to->index;
-      pr->pr_edge = vlib_node_add_next (vm,
-					punt_from->index, pr->pr_node_index);
+      pr->pr_edge =
+	vlib_node_add_next (vm, punt_from->index, pr->pr_node_index);
 
       pri = pr - punt_reg_pool;
 
@@ -334,8 +327,8 @@ vlib_punt_register (vlib_punt_hdl_t client,
 }
 
 int
-vlib_punt_unregister (vlib_punt_hdl_t client,
-		      vlib_punt_reason_t reason, const char *node_name)
+vlib_punt_unregister (vlib_punt_hdl_t client, vlib_punt_reason_t reason,
+		      const char *node_name)
 {
   vlib_node_t *punt_to;
   punt_client_t *pc;
@@ -401,10 +394,9 @@ vlib_punt_reason_validate (vlib_punt_reason_t reason)
 }
 
 int
-vlib_punt_reason_alloc (vlib_punt_hdl_t client,
-			const char *reason_name,
-			punt_interested_listener_t fn,
-			void *data, vlib_punt_reason_t * reason)
+vlib_punt_reason_alloc (vlib_punt_hdl_t client, const char *reason_name,
+			punt_interested_listener_t fn, void *data,
+			vlib_punt_reason_t *reason)
 {
   vlib_punt_reason_t new;
 
@@ -443,31 +435,30 @@ punt_reason_walk (punt_reason_walk_cb_t cb, void *ctx)
 
 /* Parse node name -> node index. */
 uword
-unformat_punt_client (unformat_input_t * input, va_list * args)
+unformat_punt_client (unformat_input_t *input, va_list *args)
 {
   u32 *result = va_arg (*args, u32 *);
 
-  return unformat_user (input, unformat_hash_vec_string,
-			punt_client_db, result);
+  return unformat_user (input, unformat_hash_vec_string, punt_client_db,
+			result);
 }
 
 u8 *
-format_punt_reg (u8 * s, va_list * args)
+format_punt_reg (u8 *s, va_list *args)
 {
   u32 pri = va_arg (*args, u32);
   punt_reg_t *pr;
 
   pr = pool_elt_at_index (punt_reg_pool, pri);
 
-  s = format (s, "%U -> %U",
-	      format_vlib_punt_reason, pr->pr_reason,
+  s = format (s, "%U -> %U", format_vlib_punt_reason, pr->pr_reason,
 	      format_vlib_node_name, vlib_get_main (), pr->pr_node_index);
 
   return (s);
 }
 
 u8 *
-format_punt_reason_data (u8 * s, va_list * args)
+format_punt_reason_data (u8 *s, va_list *args)
 {
   punt_reason_data_t *pd = va_arg (*args, punt_reason_data_t *);
   punt_client_t *pc;
@@ -475,17 +466,17 @@ format_punt_reason_data (u8 * s, va_list * args)
 
   s = format (s, "[%d] %v from:[", pd->pd_reason, pd->pd_name);
   vec_foreach (pci, pd->pd_owners)
-  {
-    pc = pool_elt_at_index (punt_client_pool, *pci);
-    s = format (s, "%v ", pc->pc_name);
-  }
+    {
+      pc = pool_elt_at_index (punt_client_pool, *pci);
+      s = format (s, "%v ", pc->pc_name);
+    }
   s = format (s, "]");
 
   return (s);
 }
 
 u8 *
-format_punt_client (u8 * s, va_list * args)
+format_punt_client (u8 *s, va_list *args)
 {
   u32 pci = va_arg (*args, u32);
   punt_format_flags_t flags = va_arg (*args, punt_format_flags_t);
@@ -502,29 +493,29 @@ format_punt_client (u8 * s, va_list * args)
 
       s = format (s, "\n registrations:");
       vec_foreach (pri, pc->pc_regs)
-      {
-	s = format (s, "\n  [%U]", format_punt_reg, *pri);
-      }
+	{
+	  s = format (s, "\n  [%U]", format_punt_reg, *pri);
+	}
 
       s = format (s, "\n reasons:");
 
       vec_foreach (pd, punt_reason_data)
-      {
-	u32 *tmp;
-
-	vec_foreach (tmp, pd->pd_owners)
 	{
-	  if (*tmp == pci)
-	    s = format (s, "\n  %U", format_punt_reason_data, pd);
+	  u32 *tmp;
+
+	  vec_foreach (tmp, pd->pd_owners)
+	    {
+	      if (*tmp == pci)
+		s = format (s, "\n  %U", format_punt_reason_data, pd);
+	    }
 	}
-      }
     }
   return (s);
 }
 
 static clib_error_t *
-punt_client_show (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+punt_client_show (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd)
 {
   u32 pci = ~0;
 
@@ -545,96 +536,80 @@ punt_client_show (vlib_main_t * vm,
     {
       u8 *name;
 
-      /* *INDENT-OFF* */
-      hash_foreach(name, pci, punt_client_db,
-        ({
-          vlib_cli_output (vm, "%U", format_punt_client, pci,
-                           PUNT_FORMAT_FLAG_NONE);
-        }));
-      /* *INDENT-ON* */
+      hash_foreach (name, pci, punt_client_db, ({
+		      vlib_cli_output (vm, "%U", format_punt_client, pci,
+				       PUNT_FORMAT_FLAG_NONE);
+		    }));
     }
 
   return (NULL);
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (punt_client_show_command, static) =
-{
+VLIB_CLI_COMMAND (punt_client_show_command, static) = {
   .path = "show punt client",
   .short_help = "show client[s] registered with the punt infra",
   .function = punt_client_show,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-punt_reason_show (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+punt_reason_show (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd)
 {
   const punt_reason_data_t *pd;
 
   vec_foreach (pd, punt_reason_data)
-  {
-    vlib_cli_output (vm, "%U", format_punt_reason_data, pd);
-  }
+    {
+      vlib_cli_output (vm, "%U", format_punt_reason_data, pd);
+    }
 
   return (NULL);
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (punt_reason_show_command, static) =
-{
+VLIB_CLI_COMMAND (punt_reason_show_command, static) = {
   .path = "show punt reasons",
   .short_help = "show all punt reasons",
   .function = punt_reason_show,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-punt_db_show (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+punt_db_show (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd)
 {
   u32 pri, ii, jj;
   u64 key;
 
-  /* *INDENT-OFF* */
   hash_foreach (key, pri, punt_reg_db,
-    ({
-      vlib_cli_output (vm, " %U", format_punt_reg, pri);
-    }));
-  /* *INDENT-ON* */
+		({ vlib_cli_output (vm, " %U", format_punt_reg, pri); }));
 
   vlib_cli_output (vm, "\nDerived data-plane data-base:");
   vlib_cli_output (vm,
 		   "  (for each punt-reason the edge[s] from punt-dispatch)");
 
   vec_foreach_index (ii, punt_dp_db)
-  {
-    u8 *s = NULL;
-    vlib_cli_output (vm, " %U", format_vlib_punt_reason, ii);
-
-    vec_foreach_index (jj, punt_dp_db[ii])
     {
-      s = format (s, "%d ", punt_dp_db[ii][jj]);
+      u8 *s = NULL;
+      vlib_cli_output (vm, " %U", format_vlib_punt_reason, ii);
+
+      vec_foreach_index (jj, punt_dp_db[ii])
+	{
+	  s = format (s, "%d ", punt_dp_db[ii][jj]);
+	}
+      vlib_cli_output (vm, "   [%v]", s);
+      vec_free (s);
     }
-    vlib_cli_output (vm, "   [%v]", s);
-    vec_free (s);
-  }
 
   return (NULL);
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (punt_db_show_command, static) =
-{
+VLIB_CLI_COMMAND (punt_db_show_command, static) = {
   .path = "show punt db",
   .short_help = "show the punt DB",
   .function = punt_db_show,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-punt_stats_show (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+punt_stats_show (vlib_main_t *vm, unformat_input_t *input,
+		 vlib_cli_command_t *cmd)
 {
   vlib_combined_counter_main_t *cm = &punt_counters;
   vlib_counter_t c;
@@ -650,17 +625,14 @@ punt_stats_show (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (punt_stats_show_command, static) =
-{
+VLIB_CLI_COMMAND (punt_stats_show_command, static) = {
   .path = "show punt stats",
   .short_help = "show the punt stats",
   .function = punt_stats_show,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-punt_init (vlib_main_t * vm)
+punt_init (vlib_main_t *vm)
 {
   punt_client_db = hash_create_vec (0, sizeof (u8), sizeof (u32));
 

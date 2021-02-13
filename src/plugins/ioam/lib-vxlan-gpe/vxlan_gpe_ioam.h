@@ -20,7 +20,6 @@
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam_packet.h>
 #include <vnet/ip/ip.h>
 
-
 typedef struct vxlan_gpe_sw_interface_
 {
   u32 sw_if_index;
@@ -46,7 +45,6 @@ typedef struct vxlan_gpe_ioam_main_
   u32 unix_time_0;
   f64 vlib_time_0;
 
-
   /* Trace option */
   u8 has_trace_option;
 
@@ -58,20 +56,21 @@ typedef struct vxlan_gpe_ioam_main_
 #define PPC_DECAP 2
   u8 has_ppc_option;
 
-#define TSP_SECONDS              0
-#define TSP_MILLISECONDS         1
-#define TSP_MICROSECONDS         2
-#define TSP_NANOSECONDS          3
+#define TSP_SECONDS	 0
+#define TSP_MILLISECONDS 1
+#define TSP_MICROSECONDS 2
+#define TSP_NANOSECONDS	 3
 
-  /* Array of function pointers to ADD and POP VxLAN-GPE iOAM option handling routines */
+  /* Array of function pointers to ADD and POP VxLAN-GPE iOAM option handling
+   * routines */
   u8 options_size[256];
-  int (*add_options[256]) (u8 * rewrite_string, u8 * rewrite_size);
-  int (*pop_options[256]) (ip4_header_t * ip, vxlan_gpe_ioam_option_t * opt);
+  int (*add_options[256]) (u8 *rewrite_string, u8 *rewrite_size);
+  int (*pop_options[256]) (ip4_header_t *ip, vxlan_gpe_ioam_option_t *opt);
 
   /* Array of function pointers to iOAM option handling routines */
-  int (*options[256]) (vlib_buffer_t * b, vxlan_gpe_ioam_option_t * opt,
+  int (*options[256]) (vlib_buffer_t *b, vxlan_gpe_ioam_option_t *opt,
 		       u8 is_ipv4, u8 use_adj);
-  u8 *(*trace[256]) (u8 * s, vxlan_gpe_ioam_option_t * opt);
+  u8 *(*trace[256]) (u8 *s, vxlan_gpe_ioam_option_t *opt);
 
   /* API message ID base */
   u16 msg_id_base;
@@ -101,7 +100,6 @@ typedef struct vxlan_gpe_ioam_main_
   /** State convenience vnet_main_t */
   vnet_main_t *vnet_main;
 
-
 } vxlan_gpe_ioam_main_t;
 extern vxlan_gpe_ioam_main_t vxlan_gpe_ioam_main;
 
@@ -115,7 +113,6 @@ typedef struct
   u8 option_data[256];
 } ioam_trace_t;
 
-
 extern vlib_node_registration_t vxlan_gpe_encap_ioam_v4_node;
 extern vlib_node_registration_t vxlan_gpe_decap_ioam_v4_node;
 extern vlib_node_registration_t vxlan_gpe_transit_ioam_v4_node;
@@ -123,47 +120,40 @@ extern vlib_node_registration_t vxlan_gpe_transit_ioam_v4_node;
 clib_error_t *vxlan_gpe_ioam_enable (int has_trace_option, int has_pot_option,
 				     int has_ppc_option);
 
-clib_error_t *vxlan_gpe_ioam_disable (int has_trace_option,
-				      int has_pot_option, int has_ppc_option);
+clib_error_t *vxlan_gpe_ioam_disable (int has_trace_option, int has_pot_option,
+				      int has_ppc_option);
 
-clib_error_t *vxlan_gpe_ioam_set (vxlan_gpe_tunnel_t * t,
-				  int has_trace_option,
-				  int has_pot_option,
-				  int has_ppc_option, u8 ipv6_set);
-clib_error_t *vxlan_gpe_ioam_clear (vxlan_gpe_tunnel_t * t,
+clib_error_t *vxlan_gpe_ioam_set (vxlan_gpe_tunnel_t *t, int has_trace_option,
+				  int has_pot_option, int has_ppc_option,
+				  u8 ipv6_set);
+clib_error_t *vxlan_gpe_ioam_clear (vxlan_gpe_tunnel_t *t,
 				    int has_trace_option, int has_pot_option,
 				    int has_ppc_option, u8 ipv6_set);
 
-int vxlan_gpe_ioam_add_register_option (u8 option,
-					u8 size,
-					int rewrite_options (u8 *
-							     rewrite_string,
-							     u8 *
-							     rewrite_size));
+int vxlan_gpe_ioam_add_register_option (
+  u8 option, u8 size,
+  int rewrite_options (u8 *rewrite_string, u8 *rewrite_size));
 
 int vxlan_gpe_add_unregister_option (u8 option);
 
 int vxlan_gpe_ioam_register_option (u8 option,
-				    int options (vlib_buffer_t * b,
-						 vxlan_gpe_ioam_option_t *
-						 opt, u8 is_ipv4, u8 use_adj),
-				    u8 * trace (u8 * s,
-						vxlan_gpe_ioam_option_t *
-						opt));
+				    int options (vlib_buffer_t *b,
+						 vxlan_gpe_ioam_option_t *opt,
+						 u8 is_ipv4, u8 use_adj),
+				    u8 *trace (u8 *s,
+					       vxlan_gpe_ioam_option_t *opt));
 int vxlan_gpe_ioam_unregister_option (u8 option);
 
 int vxlan_gpe_trace_profile_setup (void);
 
 int vxlan_gpe_trace_profile_cleanup (void);
 extern void vxlan_gpe_ioam_interface_init (void);
-int
-vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t * vm,
-					ip46_address_t dst_addr,
-					u32 outer_fib_index,
-					u8 is_ipv4, u8 is_add);
-int vxlan_gpe_ioam_disable_for_dest
-  (vlib_main_t * vm, ip46_address_t dst_addr, u32 outer_fib_index,
-   u8 ipv4_set);
+int vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t *vm,
+					    ip46_address_t dst_addr,
+					    u32 outer_fib_index, u8 is_ipv4,
+					    u8 is_add);
+int vxlan_gpe_ioam_disable_for_dest (vlib_main_t *vm, ip46_address_t dst_addr,
+				     u32 outer_fib_index, u8 ipv4_set);
 
 typedef enum
 {

@@ -19,7 +19,7 @@
 #include <vlib/pci/pci_types.api_types.h>
 
 void
-pci_address_decode (const vl_api_pci_address_t * in, vlib_pci_addr_t * out)
+pci_address_decode (const vl_api_pci_address_t *in, vlib_pci_addr_t *out)
 {
   out->domain = in->domain;
   out->bus = in->bus;
@@ -28,7 +28,7 @@ pci_address_decode (const vl_api_pci_address_t * in, vlib_pci_addr_t * out)
 }
 
 void
-pci_address_encode (const vlib_pci_addr_t * in, vl_api_pci_address_t * out)
+pci_address_encode (const vlib_pci_addr_t *in, vl_api_pci_address_t *out)
 {
   out->domain = in->domain;
   out->bus = in->bus;

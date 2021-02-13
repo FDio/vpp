@@ -41,14 +41,14 @@
  */
 static uword l2_arc_to_lb;
 
-#define foreach_lisp_gpe_tx_next        \
-  _(DROP, "error-drop")                 \
-  _(IP4_LOOKUP, "ip4-lookup")           \
-  _(IP6_LOOKUP, "ip6-lookup")
+#define foreach_lisp_gpe_tx_next                                              \
+  _ (DROP, "error-drop")                                                      \
+  _ (IP4_LOOKUP, "ip4-lookup")                                                \
+  _ (IP6_LOOKUP, "ip6-lookup")
 
 typedef enum
 {
-#define _(sym,str) LISP_GPE_TX_NEXT_##sym,
+#define _(sym, str) LISP_GPE_TX_NEXT_##sym,
   foreach_lisp_gpe_tx_next
 #undef _
     LISP_GPE_TX_N_NEXT,
@@ -60,7 +60,7 @@ typedef struct
 } lisp_gpe_tx_trace_t;
 
 u8 *
-format_lisp_gpe_tx_trace (u8 * s, va_list * args)
+format_lisp_gpe_tx_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -70,7 +70,7 @@ format_lisp_gpe_tx_trace (u8 * s, va_list * args)
   return s;
 }
 
-#define is_v4_packet(_h) ((*(u8*) _h) & 0xF0) == 0x40
+#define is_v4_packet(_h) ((*(u8 *) _h) & 0xF0) == 0x40
 
 /**
  * @brief LISP-GPE interface TX (encap) function.
@@ -89,8 +89,8 @@ format_lisp_gpe_tx_trace (u8 * s, va_list * args)
  * @return number of vectors in frame.
  */
 static uword
-lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_frame_t * from_frame)
+lisp_gpe_interface_tx (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_frame_t *from_frame)
 {
   u32 n_left_from, next_index, *from, *to_next;
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
@@ -137,8 +137,8 @@ lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      lisp_gpe_tx_trace_t *tr = vlib_add_trace (vm, node, b0,
-							sizeof (*tr));
+	      lisp_gpe_tx_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->tunnel_index = adj_index0;
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -152,23 +152,21 @@ lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static u8 *
-format_lisp_gpe_name (u8 * s, va_list * args)
+format_lisp_gpe_name (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   return format (s, "lisp_gpe%d", dev_instance);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (lisp_gpe_device_class) = {
   .name = "LISP_GPE",
   .format_device_name = format_lisp_gpe_name,
   .format_tx_trace = format_lisp_gpe_tx_trace,
   .tx_function = lisp_gpe_interface_tx,
 };
-/* *INDENT-ON* */
 
 u8 *
-format_lisp_gpe_header_with_length (u8 * s, va_list * args)
+format_lisp_gpe_header_with_length (u8 *s, va_list *args)
 {
   lisp_gpe_header_t *h = va_arg (*args, lisp_gpe_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
@@ -179,25 +177,25 @@ format_lisp_gpe_header_with_length (u8 * s, va_list * args)
     return format (s, "lisp-gpe header truncated");
 
   s = format (s, "flags: ");
-#define _(n,v) if (h->flags & v) s = format (s, "%s ", #n);
+#define _(n, v)                                                               \
+  if (h->flags & v)                                                           \
+    s = format (s, "%s ", #n);
   foreach_lisp_gpe_flag_bit;
 #undef _
 
-  s = format (s, "\n  ver_res %d res %d next_protocol %d iid %d(%x)",
-	      h->ver_res, h->res, h->next_protocol,
-	      clib_net_to_host_u32 (h->iid << 8),
-	      clib_net_to_host_u32 (h->iid << 8));
+  s =
+    format (s, "\n  ver_res %d res %d next_protocol %d iid %d(%x)", h->ver_res,
+	    h->res, h->next_protocol, clib_net_to_host_u32 (h->iid << 8),
+	    clib_net_to_host_u32 (h->iid << 8));
   return s;
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (lisp_gpe_hw_class) = {
   .name = "LISP_GPE",
   .format_header = format_lisp_gpe_header_with_length,
   .build_rewrite = lisp_gpe_build_rewrite,
   .update_adjacency = lisp_gpe_update_adjacency,
 };
-/* *INDENT-ON* */
 
 
 typedef struct
@@ -206,7 +204,7 @@ typedef struct
 } l2_lisp_gpe_tx_trace_t;
 
 static u8 *
-format_l2_lisp_gpe_tx_trace (u8 * s, va_list * args)
+format_l2_lisp_gpe_tx_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -234,8 +232,8 @@ format_l2_lisp_gpe_tx_trace (u8 * s, va_list * args)
  * @return number of vectors in frame.
  */
 static uword
-l2_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * from_frame)
+l2_lisp_gpe_interface_tx (vlib_main_t *vm, vlib_node_runtime_t *node,
+			  vlib_frame_t *from_frame)
 {
   u32 n_left_from, next_index, *from, *to_next;
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
@@ -276,13 +274,12 @@ l2_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 				     e0->src_address, e0->dst_address);
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = lbi0;
 
-	  vlib_increment_combined_counter (cm, thread_index, lbi0, 1,
-					   vlib_buffer_length_in_chain (vm,
-									b0));
+	  vlib_increment_combined_counter (
+	    cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, b0));
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      l2_lisp_gpe_tx_trace_t *tr = vlib_add_trace (vm, node, b0,
-							   sizeof (*tr));
+	      l2_lisp_gpe_tx_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->dpo_index = lbi0;
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -296,20 +293,18 @@ l2_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static u8 *
-format_l2_lisp_gpe_name (u8 * s, va_list * args)
+format_l2_lisp_gpe_name (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   return format (s, "l2_lisp_gpe%d", dev_instance);
 }
 
-/* *INDENT-OFF* */
-VNET_DEVICE_CLASS (l2_lisp_gpe_device_class,static) = {
+VNET_DEVICE_CLASS (l2_lisp_gpe_device_class, static) = {
   .name = "L2_LISP_GPE",
   .format_device_name = format_l2_lisp_gpe_name,
   .format_tx_trace = format_l2_lisp_gpe_tx_trace,
   .tx_function = l2_lisp_gpe_interface_tx,
 };
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -317,7 +312,7 @@ typedef struct
 } nsh_lisp_gpe_tx_trace_t;
 
 u8 *
-format_nsh_lisp_gpe_tx_trace (u8 * s, va_list * args)
+format_nsh_lisp_gpe_tx_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -340,8 +335,8 @@ format_nsh_lisp_gpe_tx_trace (u8 * s, va_list * args)
  * @return number of vectors in frame.
  */
 static uword
-nsh_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
-			   vlib_frame_t * from_frame)
+nsh_lisp_gpe_interface_tx (vlib_main_t *vm, vlib_node_runtime_t *node,
+			   vlib_frame_t *from_frame)
 {
   u32 n_left_from, next_index, *from, *to_next;
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
@@ -385,8 +380,8 @@ nsh_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      nsh_lisp_gpe_tx_trace_t *tr = vlib_add_trace (vm, node, b0,
-							    sizeof (*tr));
+	      nsh_lisp_gpe_tx_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->dpo_index = dpo0->dpoi_index;
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -400,25 +395,22 @@ nsh_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static u8 *
-format_nsh_lisp_gpe_name (u8 * s, va_list * args)
+format_nsh_lisp_gpe_name (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   return format (s, "nsh_lisp_gpe%d", dev_instance);
 }
 
-/* *INDENT-OFF* */
-VNET_DEVICE_CLASS (nsh_lisp_gpe_device_class,static) = {
+VNET_DEVICE_CLASS (nsh_lisp_gpe_device_class, static) = {
   .name = "NSH_LISP_GPE",
   .format_device_name = format_nsh_lisp_gpe_name,
   .format_tx_trace = format_nsh_lisp_gpe_tx_trace,
   .tx_function = nsh_lisp_gpe_interface_tx,
 };
-/* *INDENT-ON* */
 
 static vnet_hw_interface_t *
-lisp_gpe_create_iface (lisp_gpe_main_t * lgm, u32 vni, u32 dp_table,
-		       vnet_device_class_t * dev_class,
-		       tunnel_lookup_t * tuns)
+lisp_gpe_create_iface (lisp_gpe_main_t *lgm, u32 vni, u32 dp_table,
+		       vnet_device_class_t *dev_class, tunnel_lookup_t *tuns)
 {
   u32 flen;
   u32 hw_if_index = ~0;
@@ -445,15 +437,14 @@ lisp_gpe_create_iface (lisp_gpe_main_t * lgm, u32 vni, u32 dp_table,
       /* clear old stats of freed interface before reuse */
       vnet_interface_main_t *im = &vnm->interface_main;
       vnet_interface_counter_lock (im);
-      vlib_zero_combined_counter (&im->combined_sw_if_counters
-				  [VNET_INTERFACE_COUNTER_TX],
-				  hi->sw_if_index);
-      vlib_zero_combined_counter (&im->combined_sw_if_counters
-				  [VNET_INTERFACE_COUNTER_RX],
-				  hi->sw_if_index);
-      vlib_zero_simple_counter (&im->sw_if_counters
-				[VNET_INTERFACE_COUNTER_DROP],
-				hi->sw_if_index);
+      vlib_zero_combined_counter (
+	&im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX],
+	hi->sw_if_index);
+      vlib_zero_combined_counter (
+	&im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX],
+	hi->sw_if_index);
+      vlib_zero_simple_counter (
+	&im->sw_if_counters[VNET_INTERFACE_COUNTER_DROP], hi->sw_if_index);
       vnet_interface_counter_unlock (im);
     }
   else
@@ -474,8 +465,8 @@ lisp_gpe_create_iface (lisp_gpe_main_t * lgm, u32 vni, u32 dp_table,
 }
 
 static void
-lisp_gpe_remove_iface (lisp_gpe_main_t * lgm, u32 hi_index, u32 dp_table,
-		       tunnel_lookup_t * tuns)
+lisp_gpe_remove_iface (lisp_gpe_main_t *lgm, u32 hi_index, u32 dp_table,
+		       tunnel_lookup_t *tuns)
 {
   vnet_main_t *vnm = lgm->vnet_main;
   vnet_hw_interface_t *hi;
@@ -484,8 +475,8 @@ lisp_gpe_remove_iface (lisp_gpe_main_t * lgm, u32 hi_index, u32 dp_table,
   hi = vnet_get_hw_interface (vnm, hi_index);
 
   /* disable interface */
-  vnet_sw_interface_set_flags (vnm, hi->sw_if_index, 0 /* down */ );
-  vnet_hw_interface_set_flags (vnm, hi->hw_if_index, 0 /* down */ );
+  vnet_sw_interface_set_flags (vnm, hi->sw_if_index, 0 /* down */);
+  vnet_hw_interface_set_flags (vnm, hi->hw_if_index, 0 /* down */);
   hash_unset (tuns->hw_if_index_by_dp_table, dp_table);
   vec_add1 (lgm->free_tunnel_hw_if_indices, hi->hw_if_index);
 
@@ -553,13 +544,11 @@ lisp_gpe_tenant_add_default_routes (u32 table_id)
      */
     fib_index = fib_table_find_or_create_and_lock (prefix.fp_proto, table_id,
 						   FIB_SOURCE_LISP);
-    fib_table_entry_special_dpo_add (fib_index, &prefix, FIB_SOURCE_LISP,
-				     FIB_ENTRY_FLAG_EXCLUSIVE,
-				     lisp_cp_dpo_get (fib_proto_to_dpo
-						      (proto)));
+    fib_table_entry_special_dpo_add (
+      fib_index, &prefix, FIB_SOURCE_LISP, FIB_ENTRY_FLAG_EXCLUSIVE,
+      lisp_cp_dpo_get (fib_proto_to_dpo (proto)));
   }
 }
-
 
 /**
  * @brief Add/del LISP-GPE L3 interface.
@@ -575,7 +564,7 @@ lisp_gpe_tenant_add_default_routes (u32 table_id)
  * @return number of vectors in frame.
  */
 u32
-lisp_gpe_add_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 table_id,
+lisp_gpe_add_l3_iface (lisp_gpe_main_t *lgm, u32 vni, u32 table_id,
 		       u8 with_default_routes)
 {
   vnet_main_t *vnm = lgm->vnet_main;
@@ -599,8 +588,8 @@ lisp_gpe_add_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 table_id,
     }
 
   /* create lisp iface and populate tunnel tables */
-  hi = lisp_gpe_create_iface (lgm, vni, table_id,
-			      &lisp_gpe_device_class, l3_ifaces);
+  hi = lisp_gpe_create_iface (lgm, vni, table_id, &lisp_gpe_device_class,
+			      l3_ifaces);
 
   /* insert default routes that point to lisp-cp lookup */
   lisp_gpe_iface_set_table (hi->sw_if_index, table_id);
@@ -617,7 +606,7 @@ lisp_gpe_add_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 table_id,
 }
 
 void
-lisp_gpe_del_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 table_id)
+lisp_gpe_del_l3_iface (lisp_gpe_main_t *lgm, u32 vni, u32 table_id)
 {
   vnet_main_t *vnm = lgm->vnet_main;
   tunnel_lookup_t *l3_ifaces = &lgm->l3_ifaces;
@@ -654,7 +643,7 @@ lisp_gpe_del_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 table_id)
  * @return number of vectors in frame.
  */
 u32
-lisp_gpe_add_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id)
+lisp_gpe_add_l2_iface (lisp_gpe_main_t *lgm, u32 vni, u32 bd_id)
 {
   vnet_main_t *vnm = lgm->vnet_main;
   tunnel_lookup_t *l2_ifaces = &lgm->l2_ifaces;
@@ -685,8 +674,8 @@ lisp_gpe_add_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id)
     }
 
   /* create lisp iface and populate tunnel tables */
-  hi = lisp_gpe_create_iface (lgm, vni, bd_index,
-			      &l2_lisp_gpe_device_class, &lgm->l2_ifaces);
+  hi = lisp_gpe_create_iface (lgm, vni, bd_index, &l2_lisp_gpe_device_class,
+			      &lgm->l2_ifaces);
 
   /* enable interface */
   vnet_sw_interface_set_flags (vnm, hi->sw_if_index,
@@ -694,8 +683,7 @@ lisp_gpe_add_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id)
   vnet_hw_interface_set_flags (vnm, hi->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
 
-  l2_arc_to_lb = vlib_node_add_named_next (vlib_get_main (),
-					   hi->tx_node_index,
+  l2_arc_to_lb = vlib_node_add_named_next (vlib_get_main (), hi->tx_node_index,
 					   "l2-load-balance");
 
   /* we're ready. add iface to l2 bridge domain */
@@ -717,7 +705,7 @@ lisp_gpe_add_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id)
  * @return number of vectors in frame.
  */
 void
-lisp_gpe_del_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id)
+lisp_gpe_del_l2_iface (lisp_gpe_main_t *lgm, u32 vni, u32 bd_id)
 {
   tunnel_lookup_t *l2_ifaces = &lgm->l2_ifaces;
   vnet_hw_interface_t *hi;
@@ -728,15 +716,14 @@ lisp_gpe_del_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id)
 
   if (hip == 0)
     {
-      clib_warning ("The interface for bridge domain %d doesn't exist",
-		    bd_id);
+      clib_warning ("The interface for bridge domain %d doesn't exist", bd_id);
       return;
     }
 
   /* Remove interface from bridge .. by enabling L3 mode */
   hi = vnet_get_hw_interface (lgm->vnet_main, hip[0]);
-  set_int_l2_mode (lgm->vlib_main, lgm->vnet_main, MODE_L3, hi->sw_if_index,
-		   0, L2_BD_PORT_TYPE_NORMAL, 0, 0);
+  set_int_l2_mode (lgm->vlib_main, lgm->vnet_main, MODE_L3, hi->sw_if_index, 0,
+		   L2_BD_PORT_TYPE_NORMAL, 0, 0);
   lisp_gpe_remove_iface (lgm, hip[0], bd_index, &lgm->l2_ifaces);
 }
 
@@ -751,7 +738,7 @@ lisp_gpe_del_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id)
  * @return sw_if_index.
  */
 u32
-vnet_lisp_gpe_add_nsh_iface (lisp_gpe_main_t * lgm)
+vnet_lisp_gpe_add_nsh_iface (lisp_gpe_main_t *lgm)
 {
   vnet_main_t *vnm = lgm->vnet_main;
   tunnel_lookup_t *nsh_ifaces = &lgm->nsh_ifaces;
@@ -774,8 +761,8 @@ vnet_lisp_gpe_add_nsh_iface (lisp_gpe_main_t * lgm)
     }
 
   /* create lisp iface and populate tunnel tables */
-  hi = lisp_gpe_create_iface (lgm, 0, 0,
-			      &nsh_lisp_gpe_device_class, &lgm->nsh_ifaces);
+  hi = lisp_gpe_create_iface (lgm, 0, 0, &nsh_lisp_gpe_device_class,
+			      &lgm->nsh_ifaces);
 
   /* enable interface */
   vnet_sw_interface_set_flags (vnm, hi->sw_if_index,
@@ -791,7 +778,7 @@ vnet_lisp_gpe_add_nsh_iface (lisp_gpe_main_t * lgm)
  *
  */
 void
-vnet_lisp_gpe_del_nsh_iface (lisp_gpe_main_t * lgm)
+vnet_lisp_gpe_del_nsh_iface (lisp_gpe_main_t *lgm)
 {
   tunnel_lookup_t *nsh_ifaces = &lgm->nsh_ifaces;
   uword *hip;
@@ -807,8 +794,8 @@ vnet_lisp_gpe_del_nsh_iface (lisp_gpe_main_t * lgm)
 }
 
 static clib_error_t *
-lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
-				   vlib_cli_command_t * cmd)
+lisp_gpe_add_del_iface_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_add = 1;
@@ -875,8 +862,8 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (vrf_is_set && bd_index_is_set)
     {
-      error = clib_error_return
-	(0, "Cannot set both vrf and brdige domain index!");
+      error =
+	clib_error_return (0, "Cannot set both vrf and brdige domain index!");
       goto done;
     }
 
@@ -888,8 +875,7 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (!vrf_is_set && !bd_index_is_set)
     {
-      error =
-	clib_error_return (0, "vrf or bridge domain index must be set!");
+      error = clib_error_return (0, "vrf or bridge domain index must be set!");
       goto done;
     }
 
@@ -910,9 +896,10 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (is_add)
 	{
-	  if (~0 == lisp_gpe_tenant_l3_iface_add_or_lock (vni, table_id, 1
-							  /* with_default_route */
-	      ))
+	  if (~0 ==
+	      lisp_gpe_tenant_l3_iface_add_or_lock (vni, table_id, 1
+						    /* with_default_route */
+						    ))
 	    {
 	      error = clib_error_return (0, "L3 interface not created");
 	      goto done;
@@ -928,13 +915,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (add_del_lisp_gpe_iface_command, static) = {
   .path = "gpe iface",
   .short_help = "gpe iface add/del vni <vni> vrf <vrf>",
   .function = lisp_gpe_add_del_iface_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

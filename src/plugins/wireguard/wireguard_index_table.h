@@ -23,10 +23,10 @@ typedef struct
   uword *hash;
 } wg_index_table_t;
 
-u32 wg_index_table_add (wg_index_table_t * table, u32 peer_pool_idx,
+u32 wg_index_table_add (wg_index_table_t *table, u32 peer_pool_idx,
 			u32 rnd_seed);
-void wg_index_table_del (wg_index_table_t * table, u32 key);
-u32 *wg_index_table_lookup (const wg_index_table_t * table, u32 key);
+void wg_index_table_del (wg_index_table_t *table, u32 key);
+u32 *wg_index_table_lookup (const wg_index_table_t *table, u32 key);
 
 #endif //__included_wg_index_table_h__
 

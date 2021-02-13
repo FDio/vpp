@@ -16,7 +16,7 @@
 #include <vppinfra/string.h>
 
 static int
-test_memset_s (vlib_main_t * vm, unformat_input_t * input)
+test_memset_s (vlib_main_t *vm, unformat_input_t *input)
 {
   u8 dst[64];
   int i;
@@ -42,7 +42,7 @@ test_memset_s (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_clib_memset (vlib_main_t * vm, unformat_input_t * input)
+test_clib_memset (vlib_main_t *vm, unformat_input_t *input)
 {
   u8 dst[64];
   int i;
@@ -63,7 +63,7 @@ test_clib_memset (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_memcpy_s (vlib_main_t * vm, unformat_input_t * input)
+test_memcpy_s (vlib_main_t *vm, unformat_input_t *input)
 {
   char src[64], dst[64];
   int i;
@@ -117,7 +117,7 @@ test_memcpy_s (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_clib_memcpy (vlib_main_t * vm, unformat_input_t * input)
+test_clib_memcpy (vlib_main_t *vm, unformat_input_t *input)
 {
   char src[64], dst[64];
   int i;
@@ -157,7 +157,7 @@ test_clib_memcpy (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_memcmp_s (vlib_main_t * vm, unformat_input_t * input)
+test_memcmp_s (vlib_main_t *vm, unformat_input_t *input)
 {
   char src[64], dst[64];
   errno_t err;
@@ -213,7 +213,7 @@ test_memcmp_s (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_clib_memcmp (vlib_main_t * vm, unformat_input_t * input)
+test_clib_memcmp (vlib_main_t *vm, unformat_input_t *input)
 {
   char src[64], dst[64];
   errno_t err;
@@ -267,10 +267,10 @@ test_clib_memcmp (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_strcmp_s (vlib_main_t * vm, unformat_input_t * input)
+test_strcmp_s (vlib_main_t *vm, unformat_input_t *input)
 {
   char s1[] = "Simplicity is the ultimate sophistication";
-  uword s1len = sizeof (s1) - 1;	// excluding null
+  uword s1len = sizeof (s1) - 1; // excluding null
   errno_t err;
   int indicator = 0;
 
@@ -318,7 +318,7 @@ test_strcmp_s (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_clib_strcmp (vlib_main_t * vm, unformat_input_t * input)
+test_clib_strcmp (vlib_main_t *vm, unformat_input_t *input)
 {
   char s1[] = "Simplicity is the ultimate sophistication";
   int indicator;
@@ -366,10 +366,10 @@ test_clib_strcmp (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_strncmp_s (vlib_main_t * vm, unformat_input_t * input)
+test_strncmp_s (vlib_main_t *vm, unformat_input_t *input)
 {
   char s1[] = "Every moment is a fresh beginning";
-  uword s1len = sizeof (s1) - 1;	// excluding null
+  uword s1len = sizeof (s1) - 1; // excluding null
   errno_t err;
   int indicator = 0;
 
@@ -393,8 +393,7 @@ test_strncmp_s (vlib_main_t * vm, unformat_input_t * input)
 
   /* s1 < s2, < 0 is expected */
   err = strncmp_s (s1, s1len, "Every moment is fresh beginning",
-		   sizeof ("Every moment is fresh beginning") - 1,
-		   &indicator);
+		   sizeof ("Every moment is fresh beginning") - 1, &indicator);
   if (err != EOK)
     return -1;
   if (!(indicator < 0))
@@ -402,8 +401,8 @@ test_strncmp_s (vlib_main_t * vm, unformat_input_t * input)
 
   /* s1 > s2, > 0 is expected */
   err = strncmp_s ("Every moment is fresh beginning. ",
-		   sizeof ("Every moment is fresh beginning. ") - 1, s1,
-		   s1len, &indicator);
+		   sizeof ("Every moment is fresh beginning. ") - 1, s1, s1len,
+		   &indicator);
   if (err != EOK)
     return -1;
   if (!(indicator > 0))
@@ -424,9 +423,9 @@ test_strncmp_s (vlib_main_t * vm, unformat_input_t * input)
 
   /* unterminated s1 */
   s1[s1len] = 0x1;
-  err = strncmp_s (s1, s1len, "Every moment is a fresh beginning",
-		   sizeof ("Every moment is a fresh beginning") - 1,
-		   &indicator);
+  err =
+    strncmp_s (s1, s1len, "Every moment is a fresh beginning",
+	       sizeof ("Every moment is a fresh beginning") - 1, &indicator);
   if (err != EINVAL)
     return -1;
 
@@ -435,10 +434,10 @@ test_strncmp_s (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_clib_strncmp (vlib_main_t * vm, unformat_input_t * input)
+test_clib_strncmp (vlib_main_t *vm, unformat_input_t *input)
 {
   char s1[] = "Every moment is a fresh beginning";
-  uword s1len = sizeof (s1) - 1;	// excluding null
+  uword s1len = sizeof (s1) - 1; // excluding null
   int indicator, v_indicator;
 
   vlib_cli_output (vm, "Test clib_strncmp...");
@@ -524,12 +523,12 @@ test_clib_strncmp (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_strcpy_s (vlib_main_t * vm, unformat_input_t * input)
+test_strcpy_s (vlib_main_t *vm, unformat_input_t *input)
 {
   char src[] = "To err is human.";
   char dst[64];
   int indicator;
-  size_t s1size = sizeof (dst);	// including null
+  size_t s1size = sizeof (dst); // including null
   errno_t err;
 
   vlib_cli_output (vm, "Test strcpy_s...");
@@ -539,8 +538,7 @@ test_strcpy_s (vlib_main_t * vm, unformat_input_t * input)
     return -1;
 
   /* This better not fail but check anyhow */
-  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) !=
-      EOK)
+  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
@@ -556,7 +554,7 @@ test_strcpy_s (vlib_main_t * vm, unformat_input_t * input)
   if (err == EOK)
     return -1;
 
-  /* overlap fail */
+    /* overlap fail */
 #if __GNUC__ < 8
   /* GCC 8 flunks this one at compile time... */
   err = strcpy_s (dst, s1size, dst);
@@ -574,7 +572,7 @@ test_strcpy_s (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_clib_strcpy (vlib_main_t * vm, unformat_input_t * input)
+test_clib_strcpy (vlib_main_t *vm, unformat_input_t *input)
 {
   char src[] = "The journey of a one thousand miles begins with one step.";
   char dst[100];
@@ -588,18 +586,16 @@ test_clib_strcpy (vlib_main_t * vm, unformat_input_t * input)
     return -1;
 
   /* This better not fail but check anyhow */
-  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) !=
-      EOK)
+  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
 
   /* verify it against strcpy */
-  strcpy (dst, src);		//NOSONAR
+  strcpy (dst, src); // NOSONAR
 
   /* This better not fail but check anyhow */
-  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) !=
-      EOK)
+  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
@@ -610,7 +606,7 @@ test_clib_strcpy (vlib_main_t * vm, unformat_input_t * input)
   if (err == EOK)
     return -1;
 
-  /* overlap fail */
+    /* overlap fail */
 #if __GNUC__ < 8
   /* GCC 8 flunks this one at compile time... */
   err = clib_strcpy (dst, dst);
@@ -628,12 +624,12 @@ test_clib_strcpy (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_strncpy_s (vlib_main_t * vm, unformat_input_t * input)
+test_strncpy_s (vlib_main_t *vm, unformat_input_t *input)
 {
   char src[] = "Those who dare to fail miserably can achieve greatly.";
   char dst[100], old_dst[100];
   int indicator, i;
-  size_t s1size = sizeof (dst);	// including null
+  size_t s1size = sizeof (dst); // including null
   errno_t err;
 
   vlib_cli_output (vm, "Test strncpy_s...");
@@ -644,15 +640,14 @@ test_strncpy_s (vlib_main_t * vm, unformat_input_t * input)
   err = strncpy_s (dst, s1size, src, clib_strnlen (src, sizeof (src)));
   if (err != EOK)
     return -1;
-  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) !=
-      EOK)
+  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
 
   /* limited copy -- strlen src > n, copy up to n */
-  err = strncpy_s (dst, s1size, "The price of greatness is responsibility.",
-		   10);
+  err =
+    strncpy_s (dst, s1size, "The price of greatness is responsibility.", 10);
   if (err != EOK)
     return -1;
   if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), "The price ",
@@ -669,8 +664,7 @@ test_strncpy_s (vlib_main_t * vm, unformat_input_t * input)
   err = strncpy_s (dst, s1size, src, clib_strnlen (src, sizeof (src)) + 10);
   if (err != EOK)
     return -1;
-  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) !=
-      EOK)
+  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
@@ -718,7 +712,7 @@ test_strncpy_s (vlib_main_t * vm, unformat_input_t * input)
   if (err == EOK)
     return -1;
 
-  /* overlap fail */
+    /* overlap fail */
 #if __GNUC__ < 8
   /* GCC 8 flunks this one at compile time... */
   err = strncpy_s (dst, s1size, dst, s1size);
@@ -731,12 +725,12 @@ test_strncpy_s (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_clib_strncpy (vlib_main_t * vm, unformat_input_t * input)
+test_clib_strncpy (vlib_main_t *vm, unformat_input_t *input)
 {
   char src[] = "Those who dare to fail miserably can achieve greatly.";
   char dst[100], old_dst[100];
   int indicator;
-  size_t s1size = sizeof (dst);	// including null
+  size_t s1size = sizeof (dst); // including null
   errno_t err;
 
   vlib_cli_output (vm, "Test clib_strncpy...");
@@ -747,20 +741,18 @@ test_clib_strncpy (vlib_main_t * vm, unformat_input_t * input)
     return -1;
 
   /* This better not fail but check anyhow */
-  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) !=
-      EOK)
+  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
 
-  /* Verify it against strncpy */
+    /* Verify it against strncpy */
 #if __GNUC__ < 8
   /* GCC 8 debian flunks this one at compile time */
   strncpy (dst, src, strlen (src));
 
   /* This better not fail but check anyhow */
-  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) !=
-      EOK)
+  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
@@ -792,17 +784,15 @@ test_clib_strncpy (vlib_main_t * vm, unformat_input_t * input)
   err = clib_strncpy (dst, src, clib_strnlen (src, sizeof (src)) + 10);
   if (err != EOK)
     return -1;
-  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) !=
-      EOK)
+  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
-  /* Verify it against strncpy */
+    /* Verify it against strncpy */
 #if __GNUC__ < 8
   /* GCC 8 debian flunks this one at compile time */
   strncpy (dst, src, strlen (src));
-  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) !=
-      EOK)
+  if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), src, &indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
@@ -831,7 +821,7 @@ test_clib_strncpy (vlib_main_t * vm, unformat_input_t * input)
   if (err == EOK)
     return -1;
 
-  /* overlap fail */
+    /* overlap fail */
 #if __GNUC__ < 8
   /* GCC 8 flunks this one at compile time... */
   err = clib_strncpy (dst, dst, s1size);
@@ -844,10 +834,10 @@ test_clib_strncpy (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_strcat_s (vlib_main_t * vm, unformat_input_t * input)
+test_strcat_s (vlib_main_t *vm, unformat_input_t *input)
 {
   char src[100], dst[100], old_dst[100];
-  size_t s1size = sizeof (dst);	// including null
+  size_t s1size = sizeof (dst); // including null
   errno_t err;
   int indicator;
 
@@ -858,8 +848,7 @@ test_strcat_s (vlib_main_t * vm, unformat_input_t * input)
   err = strcat_s (dst, s1size, src);
   if (err != EOK)
     return -1;
-  if (strcmp_s (dst, s1size - 1,
-		"Tough time never last but tough people do",
+  if (strcmp_s (dst, s1size - 1, "Tough time never last but tough people do",
 		&indicator) != EOK)
     return -1;
   if (indicator != 0)
@@ -886,7 +875,7 @@ test_strcat_s (vlib_main_t * vm, unformat_input_t * input)
   if (err != EINVAL)
     return -1;
 
-  /* overlap fail */
+    /* overlap fail */
 #if __GNUC__ < 8
   /* GCC 8 flunks this one at compile time... */
   err = strcat_s (dst, s1size, dst);
@@ -904,10 +893,10 @@ test_strcat_s (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_clib_strcat (vlib_main_t * vm, unformat_input_t * input)
+test_clib_strcat (vlib_main_t *vm, unformat_input_t *input)
 {
   char src[100], dst[100], old_dst[100];
-  size_t s1size = sizeof (dst);	// including null
+  size_t s1size = sizeof (dst); // including null
   errno_t err;
   int indicator;
 
@@ -918,8 +907,7 @@ test_clib_strcat (vlib_main_t * vm, unformat_input_t * input)
   err = clib_strcat (dst, src);
   if (err != EOK)
     return -1;
-  if (strcmp_s (dst, s1size - 1,
-		"Tough time never last but tough people do",
+  if (strcmp_s (dst, s1size - 1, "Tough time never last but tough people do",
 		&indicator) != EOK)
     return -1;
   if (indicator != 0)
@@ -928,8 +916,7 @@ test_clib_strcat (vlib_main_t * vm, unformat_input_t * input)
   strcpy_s (dst, sizeof (dst), "Tough time never last ");
   strcpy_s (src, sizeof (src), "but tough people do");
   strcat (dst, src);
-  if (strcmp_s (dst, s1size - 1,
-		"Tough time never last but tough people do",
+  if (strcmp_s (dst, s1size - 1, "Tough time never last but tough people do",
 		&indicator) != EOK)
     return -1;
   if (indicator != 0)
@@ -956,7 +943,7 @@ test_clib_strcat (vlib_main_t * vm, unformat_input_t * input)
   if (err != EINVAL)
     return -1;
 
-  /* overlap fail */
+    /* overlap fail */
 #if __GNUC__ < 8
   /* GCC 8 flunks this one at compile time... */
   err = clib_strcat (dst, dst);
@@ -969,10 +956,10 @@ test_clib_strcat (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_strncat_s (vlib_main_t * vm, unformat_input_t * input)
+test_strncat_s (vlib_main_t *vm, unformat_input_t *input)
 {
   char src[100], dst[100], old_dst[100];
-  size_t s1size = sizeof (dst);	// including null
+  size_t s1size = sizeof (dst); // including null
   errno_t err;
   char s1[] = "Two things are infinite: ";
   char s2[] = "the universe and human stupidity; ";
@@ -994,9 +981,9 @@ test_strncat_s (vlib_main_t * vm, unformat_input_t * input)
     return -1;
 
   /* truncation, n >= dmax - strnlen_s (dst, dmax) */
-  err = strncat_s (dst, clib_strnlen (dst, sizeof (dst)) +
-		   clib_strnlen (s3, sizeof (s3)), s3,
-		   clib_strnlen (s3, sizeof (s3)));
+  err = strncat_s (
+    dst, clib_strnlen (dst, sizeof (dst)) + clib_strnlen (s3, sizeof (s3)), s3,
+    clib_strnlen (s3, sizeof (s3)));
   if (err != EOVERFLOW)
     return -1;
   /*
@@ -1007,7 +994,8 @@ test_strncat_s (vlib_main_t * vm, unformat_input_t * input)
    */
   if (strcmp_s (dst, s1size - 1,
 		"Two things are infinite: the universe and human stupidity; "
-		"I am not sure about the universe", &indicator) != EOK)
+		"I am not sure about the universe",
+		&indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
@@ -1055,7 +1043,7 @@ test_strncat_s (vlib_main_t * vm, unformat_input_t * input)
     return -1;
   if (indicator != 0)
     return -1;
-  /* verify it against strncat */
+    /* verify it against strncat */
 #if __GNUC__ < 8
   /* GCC 8 debian flunks this one at compile time */
   strcpy_s (dst, sizeof (dst), s1);
@@ -1083,7 +1071,7 @@ test_strncat_s (vlib_main_t * vm, unformat_input_t * input)
   if (err != EINVAL)
     return -1;
 
-  /* overlap fail */
+    /* overlap fail */
 #if __GNUC__ < 8
   /* GCC 8 flunks this one at compile time... */
   err = strncat_s (dst, s1size, dst, clib_strnlen (dst, sizeof (dst)));
@@ -1096,10 +1084,10 @@ test_strncat_s (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_clib_strncat (vlib_main_t * vm, unformat_input_t * input)
+test_clib_strncat (vlib_main_t *vm, unformat_input_t *input)
 {
   char src[100], dst[100], old_dst[100];
-  size_t s1size = sizeof (dst);	// including null
+  size_t s1size = sizeof (dst); // including null
   errno_t err;
   char s1[] = "Two things are infinite: ";
   char s2[] = "the universe and human stupidity; ";
@@ -1181,7 +1169,7 @@ test_clib_strncat (vlib_main_t * vm, unformat_input_t * input)
     return -1;
   if (indicator != 0)
     return -1;
-  /* verify it against strncat */
+    /* verify it against strncat */
 #if __GNUC__ < 8
   /* GCC 8 debian flunks this one at compile time */
   strcpy_s (dst, sizeof (dst), s1);
@@ -1203,7 +1191,7 @@ test_clib_strncat (vlib_main_t * vm, unformat_input_t * input)
   if (err != EINVAL)
     return -1;
 
-  /* overlap fail */
+    /* overlap fail */
 #if __GNUC__ < 8
   /* GCC 8 flunks this one at compile time... */
   err = clib_strncat (dst, dst, clib_strnlen (dst, sizeof (dst)));
@@ -1216,7 +1204,7 @@ test_clib_strncat (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_strtok_s (vlib_main_t * vm, unformat_input_t * input)
+test_strtok_s (vlib_main_t *vm, unformat_input_t *input)
 {
   int indicator;
   char *tok, *ptr;
@@ -1249,8 +1237,7 @@ test_strtok_s (vlib_main_t * vm, unformat_input_t * input)
     return -1;
   if (indicator != 0)
     return -1;
-  if ((tok4 == 0)
-      || strcmp_s (tok4, strlen (tok4), "soul", &indicator) != EOK)
+  if ((tok4 == 0) || strcmp_s (tok4, strlen (tok4), "soul", &indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
@@ -1310,7 +1297,7 @@ test_strtok_s (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_clib_strtok (vlib_main_t * vm, unformat_input_t * input)
+test_clib_strtok (vlib_main_t *vm, unformat_input_t *input)
 {
   int indicator;
   char *s1 __attribute__ ((unused));
@@ -1343,8 +1330,7 @@ test_clib_strtok (vlib_main_t * vm, unformat_input_t * input)
     return -1;
   if (indicator != 0)
     return -1;
-  if ((tok4 == 0)
-      || strcmp_s (tok4, strlen (tok4), "soul", &indicator) != EOK)
+  if ((tok4 == 0) || strcmp_s (tok4, strlen (tok4), "soul", &indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
@@ -1381,8 +1367,7 @@ test_clib_strtok (vlib_main_t * vm, unformat_input_t * input)
     return -1;
   if (indicator != 0)
     return -1;
-  if ((tok4 == 0)
-      || strcmp_s (tok4, strlen (tok4), "soul", &indicator) != EOK)
+  if ((tok4 == 0) || strcmp_s (tok4, strlen (tok4), "soul", &indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
@@ -1445,7 +1430,7 @@ test_clib_strtok (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_strnlen_s (vlib_main_t * vm, unformat_input_t * input)
+test_strnlen_s (vlib_main_t *vm, unformat_input_t *input)
 {
   const char s1[] = "Truth is incontrovertible";
   size_t len;
@@ -1470,7 +1455,7 @@ test_strnlen_s (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_clib_strnlen (vlib_main_t * vm, unformat_input_t * input)
+test_clib_strnlen (vlib_main_t *vm, unformat_input_t *input)
 {
   const char s1[] = "Truth is incontrovertible";
   size_t len;
@@ -1495,19 +1480,20 @@ test_clib_strnlen (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_strstr_s (vlib_main_t * vm, unformat_input_t * input)
+test_strstr_s (vlib_main_t *vm, unformat_input_t *input)
 {
   errno_t err;
   char *sub = 0;
   char s1[64];
-  size_t s1len = sizeof (s1) - 1;	// excluding null
+  size_t s1len = sizeof (s1) - 1; // excluding null
   int indicator;
 
   vlib_cli_output (vm, "Test strstr_s...");
 
   /* substring not present */
   strcpy_s (s1, s1len, "success is not final, failure is not fatal.");
-  err = strstr_s (s1, s1len, "failures", sizeof ("failures"), &sub);;
+  err = strstr_s (s1, s1len, "failures", sizeof ("failures"), &sub);
+  ;
   if (err != ESRCH)
     return -1;
 
@@ -1517,8 +1503,7 @@ test_strstr_s (vlib_main_t * vm, unformat_input_t * input)
     return -1;
 
   if ((sub == 0) ||
-      strcmp_s (sub, strlen (sub), "failure is not fatal.", &indicator)
-      != EOK)
+      strcmp_s (sub, strlen (sub), "failure is not fatal.", &indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
@@ -1541,11 +1526,11 @@ test_strstr_s (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_clib_strstr (vlib_main_t * vm, unformat_input_t * input)
+test_clib_strstr (vlib_main_t *vm, unformat_input_t *input)
 {
   char *sub, *s;
   char s1[64];
-  size_t s1len = sizeof (s1) - 1;	// excluding null
+  size_t s1len = sizeof (s1) - 1; // excluding null
   int indicator;
 
   vlib_cli_output (vm, "Test clib_strstr...");
@@ -1564,8 +1549,7 @@ test_clib_strstr (vlib_main_t * vm, unformat_input_t * input)
   sub = clib_strstr (s1, "failure");
   if (sub == 0)
     return -1;
-  if (strcmp_s (sub, strlen (sub), "failure is not fatal.", &indicator) !=
-      EOK)
+  if (strcmp_s (sub, strlen (sub), "failure is not fatal.", &indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
@@ -1573,8 +1557,7 @@ test_clib_strstr (vlib_main_t * vm, unformat_input_t * input)
   sub = strstr (s1, "failure");
   if (sub == 0)
     return -1;
-  if (strcmp_s (sub, strlen (sub), "failure is not fatal.", &indicator) !=
-      EOK)
+  if (strcmp_s (sub, strlen (sub), "failure is not fatal.", &indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
@@ -1607,7 +1590,7 @@ test_clib_strstr (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-test_clib_count_equal (vlib_main_t * vm, unformat_input_t * input)
+test_clib_count_equal (vlib_main_t *vm, unformat_input_t *input)
 {
   u64 s64[15];
   u32 s32[31];
@@ -1698,60 +1681,58 @@ test_clib_count_equal (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
-
-#define foreach_string_test                               \
-  _ (0, MEMCPY_S, "memcpy_s", memcpy_s)                   \
-  _ (1, CLIB_MEMCPY, "clib_memcpy", clib_memcpy)          \
-  _ (2, MEMSET_S , "memset_s", memset_s)                  \
-  _ (3, CLIB_MEMSET , "clib_memset", clib_memset)         \
-  _ (4, MEMCMP_S, "memcmp_s", memcmp_s)			  \
-  _ (5, CLIB_MEMCMP, "clib_memcmp", clib_memcmp)          \
-  _ (6, STRCMP_S, "strcmp_s", strcmp_s)			  \
-  _ (7, CLIB_STRCMP, "clib_strcmp", clib_strcmp)	  \
-  _ (8, STRNCMP_S, "strncmp_s", strncmp_s)		  \
-  _ (9, CLIB_STRNCMP, "clib_strncmp", clib_strncmp)	  \
-  _ (10, STRCPY_S, "strcpy_s", strcpy_s)		  \
-  _ (11, CLIB_STRCPY, "clib_strcpy", clib_strcpy)	  \
-  _ (12, STRNCPY_S, "strncpy_s", strncpy_s)		  \
-  _ (13, CLIB_STRNCPY, "clib_strncpy", clib_strncpy)	  \
-  _ (14, STRCAT_S, "strcat_s", strcat_s)		  \
-  _ (15, CLIB_STRCAT, "clib_strcat", clib_strcat)	  \
-  _ (16, STRNCAT_S, "strncat_s", strncat_s)		  \
-  _ (17, CLIB_STRNCAT, "clib_strncat", clib_strncat)	  \
-  _ (18, STRTOK_S, "strtok_s", strtok_s)		  \
-  _ (19, CLIB_STRTOK, "clib_strtok", clib_strtok)	  \
-  _ (20, STRNLEN_S, "strnlen_s", strnlen_s)		  \
-  _ (21, CLIB_STRNLEN, "clib_strnlen", clib_strnlen)	  \
-  _ (22, STRSTR_S, "strstr_s", strstr_s)		  \
-  _ (23, CLIB_STRSTR, "clib_strstr", clib_strstr)         \
+#define foreach_string_test                                                   \
+  _ (0, MEMCPY_S, "memcpy_s", memcpy_s)                                       \
+  _ (1, CLIB_MEMCPY, "clib_memcpy", clib_memcpy)                              \
+  _ (2, MEMSET_S, "memset_s", memset_s)                                       \
+  _ (3, CLIB_MEMSET, "clib_memset", clib_memset)                              \
+  _ (4, MEMCMP_S, "memcmp_s", memcmp_s)                                       \
+  _ (5, CLIB_MEMCMP, "clib_memcmp", clib_memcmp)                              \
+  _ (6, STRCMP_S, "strcmp_s", strcmp_s)                                       \
+  _ (7, CLIB_STRCMP, "clib_strcmp", clib_strcmp)                              \
+  _ (8, STRNCMP_S, "strncmp_s", strncmp_s)                                    \
+  _ (9, CLIB_STRNCMP, "clib_strncmp", clib_strncmp)                           \
+  _ (10, STRCPY_S, "strcpy_s", strcpy_s)                                      \
+  _ (11, CLIB_STRCPY, "clib_strcpy", clib_strcpy)                             \
+  _ (12, STRNCPY_S, "strncpy_s", strncpy_s)                                   \
+  _ (13, CLIB_STRNCPY, "clib_strncpy", clib_strncpy)                          \
+  _ (14, STRCAT_S, "strcat_s", strcat_s)                                      \
+  _ (15, CLIB_STRCAT, "clib_strcat", clib_strcat)                             \
+  _ (16, STRNCAT_S, "strncat_s", strncat_s)                                   \
+  _ (17, CLIB_STRNCAT, "clib_strncat", clib_strncat)                          \
+  _ (18, STRTOK_S, "strtok_s", strtok_s)                                      \
+  _ (19, CLIB_STRTOK, "clib_strtok", clib_strtok)                             \
+  _ (20, STRNLEN_S, "strnlen_s", strnlen_s)                                   \
+  _ (21, CLIB_STRNLEN, "clib_strnlen", clib_strnlen)                          \
+  _ (22, STRSTR_S, "strstr_s", strstr_s)                                      \
+  _ (23, CLIB_STRSTR, "clib_strstr", clib_strstr)                             \
   _ (24, CLIB_COUNT_EQUAL, "clib_count_equal", clib_count_equal)
 
 typedef enum
 {
-#define _(v,f,s,p) STRING_TEST_##f = v,
+#define _(v, f, s, p) STRING_TEST_##f = v,
   foreach_string_test
 #undef _
-#define STRING_TEST_FIRST       STRING_TEST_MEMCPY_S
-#define STRING_TEST_LAST        STRING_TEST_CLIB_COUNT_EQUAL
+#define STRING_TEST_FIRST STRING_TEST_MEMCPY_S
+#define STRING_TEST_LAST  STRING_TEST_CLIB_COUNT_EQUAL
 } string_test_t;
 
 static uword
-unformat_string_test (unformat_input_t * input, va_list * args)
+unformat_string_test (unformat_input_t *input, va_list *args)
 {
   u8 *r = va_arg (*args, u8 *);
 
   if (0)
     ;
-#define _(v,f,s,p) else if (unformat (input, s)) *r = STRING_TEST_##f;
+#define _(v, f, s, p) else if (unformat (input, s)) *r = STRING_TEST_##f;
   foreach_string_test
 #undef _
-    else
-    return 0;
+    else return 0;
 
   return 1;
 }
 
-typedef int (*string_test_func) (vlib_main_t * vm, unformat_input_t * input);
+typedef int (*string_test_func) (vlib_main_t *vm, unformat_input_t *input);
 
 typedef struct
 {
@@ -1759,17 +1740,16 @@ typedef struct
 } string_test_func_t;
 
 static clib_error_t *
-string_test_command_fn (vlib_main_t * vm,
-			unformat_input_t * input,
-			vlib_cli_command_t * cmd_arg)
+string_test_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd_arg)
 {
   string_test_func_t string_func[] = {
-#define _(v,f,s,p) { test_##p },
+#define _(v, f, s, p) { test_##p },
     foreach_string_test
 #undef _
   };
   const char *string_table[] = {
-#define _(v,f,s,p) s,
+#define _(v, f, s, p) s,
     foreach_string_test
 #undef _
   };
@@ -1807,15 +1787,15 @@ string_test_command_fn (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (string_test_command, static) =
-{
+VLIB_CLI_COMMAND (string_test_command, static) = {
   .path = "test string",
-  .short_help = "test string [memcpy_s | clib_memcpy | memset_s | "
-  "clib_memset | memcmp_s | clib_memcmp | strcmp_s | clib_strcmp | "
-  "strncmp_s | clib_strncmp | strcpy_s | clib_strcpy | strncpy_s | "
-  "clib_strncpy | strcat_s | clib_strcat | strncat_s | clib_strncat | "
-  "strtok_s |  clib_strtok | strnlen_s | clib_strnlen | strstr_s | "
-  "clib_strstr | clib_count_equal ]",
+  .short_help =
+    "test string [memcpy_s | clib_memcpy | memset_s | "
+    "clib_memset | memcmp_s | clib_memcmp | strcmp_s | clib_strcmp | "
+    "strncmp_s | clib_strncmp | strcpy_s | clib_strcpy | strncpy_s | "
+    "clib_strncpy | strcat_s | clib_strcat | strncat_s | clib_strncat | "
+    "strtok_s |  clib_strtok | strnlen_s | clib_strnlen | strstr_s | "
+    "clib_strstr | clib_count_equal ]",
   .function = string_test_command_fn,
 };
 /* *INDENT-ON* */
@@ -1824,6 +1804,4 @@ VLIB_CLI_COMMAND (string_test_command, static) =
  * fd.io coding-style-patch-verification: ON
  *
  * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+ * eva

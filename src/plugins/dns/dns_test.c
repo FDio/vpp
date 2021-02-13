@@ -21,7 +21,7 @@
 #include <stdbool.h>
 #include <vnet/ip/ip.h>
 
-uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
+uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
 
 /* Declare message IDs */
 #include <dns/dns.api_enum.h>
@@ -39,8 +39,8 @@ dns_test_main_t dns_test_main;
 #define __plugin_msg_base dns_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
 
-static void vl_api_dns_resolve_name_reply_t_handler
-  (vl_api_dns_resolve_name_reply_t * mp)
+static void
+vl_api_dns_resolve_name_reply_t_handler (vl_api_dns_resolve_name_reply_t *mp)
 {
   vat_main_t *vam = dns_test_main.vat_main;
   i32 retval = (i32) clib_net_to_host_u32 (mp->retval);
@@ -60,8 +60,8 @@ static void vl_api_dns_resolve_name_reply_t_handler
     }
 }
 
-static void vl_api_dns_resolve_ip_reply_t_handler
-  (vl_api_dns_resolve_ip_reply_t * mp)
+static void
+vl_api_dns_resolve_ip_reply_t_handler (vl_api_dns_resolve_ip_reply_t *mp)
 {
   vat_main_t *vam = dns_test_main.vat_main;
   i32 retval = (i32) clib_net_to_host_u32 (mp->retval);
@@ -77,7 +77,7 @@ static void vl_api_dns_resolve_ip_reply_t_handler
 }
 
 static int
-api_dns_enable_disable (vat_main_t * vam)
+api_dns_enable_disable (vat_main_t *vam)
 {
   vl_api_dns_enable_disable_t *mp;
   unformat_input_t *i = vam->input;
@@ -108,7 +108,7 @@ api_dns_enable_disable (vat_main_t * vam)
 }
 
 static int
-api_dns_resolve_name (vat_main_t * vam)
+api_dns_resolve_name (vat_main_t *vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_dns_resolve_name_t *mp;
@@ -148,7 +148,7 @@ api_dns_resolve_name (vat_main_t * vam)
 }
 
 static int
-api_dns_resolve_ip (vat_main_t * vam)
+api_dns_resolve_ip (vat_main_t *vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_dns_resolve_ip_t *mp;
@@ -189,7 +189,7 @@ api_dns_resolve_ip (vat_main_t * vam)
 }
 
 static int
-api_dns_name_server_add_del (vat_main_t * vam)
+api_dns_name_server_add_del (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_dns_name_server_add_del_t *mp;

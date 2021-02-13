@@ -46,7 +46,7 @@
 static throttle_t arp_throttle;
 
 void
-ip4_neighbor_probe_dst (u32 sw_if_index, const ip4_address_t * dst)
+ip4_neighbor_probe_dst (u32 sw_if_index, const ip4_address_t *dst)
 {
   ip4_address_t src;
   adj_index_t ai;
@@ -55,14 +55,13 @@ ip4_neighbor_probe_dst (u32 sw_if_index, const ip4_address_t * dst)
   ai = adj_glean_get (FIB_PROTOCOL_IP4, sw_if_index, NULL);
 
   if (ADJ_INDEX_INVALID != ai && fib_sas4_get (sw_if_index, dst, &src))
-    ip4_neighbor_probe (vlib_get_main (),
-			vnet_get_main (), adj_get (ai), &src, dst);
+    ip4_neighbor_probe (vlib_get_main (), vnet_get_main (), adj_get (ai), &src,
+			dst);
 }
 
 void
-ip4_neighbor_advertise (vlib_main_t * vm,
-			vnet_main_t * vnm,
-			u32 sw_if_index, const ip4_address_t * addr)
+ip4_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
+			const ip4_address_t *addr)
 {
   vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
   ip4_main_t *i4m = &ip4_main;
@@ -81,11 +80,11 @@ ip4_neighbor_advertise (vlib_main_t * vm,
 		    format_ip4_address, addr, sw_if_index);
 
       /* Form GARP packet for output - Gratuitous ARP is an ARP request packet
-         where the interface IP/MAC pair is used for both source and request
-         MAC/IP pairs in the request */
+	 where the interface IP/MAC pair is used for both source and request
+	 MAC/IP pairs in the request */
       u32 bi = 0;
-      ethernet_arp_header_t *h = vlib_packet_template_get_packet
-	(vm, &i4m->ip4_arp_request_packet_template, &bi);
+      ethernet_arp_header_t *h = vlib_packet_template_get_packet (
+	vm, &i4m->ip4_arp_request_packet_template, &bi);
 
       if (!h)
 	return;
@@ -97,9 +96,9 @@ ip4_neighbor_advertise (vlib_main_t * vm,
 
       /* Setup MAC header with ARP Etype and broadcast DMAC */
       vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-      rewrite =
-	ethernet_build_rewrite (vnm, sw_if_index, VNET_LINK_ARP,
-				VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST);
+      rewrite = ethernet_build_rewrite (
+	vnm, sw_if_index, VNET_LINK_ARP,
+	VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST);
       rewrite_len = vec_len (rewrite);
       vlib_buffer_advance (b, -rewrite_len);
       ethernet_header_t *e = vlib_buffer_get_current (b);
@@ -118,9 +117,8 @@ ip4_neighbor_advertise (vlib_main_t * vm,
 }
 
 always_inline uword
-ip4_arp_inline (vlib_main_t * vm,
-		vlib_node_runtime_t * node,
-		vlib_frame_t * frame, int is_glean)
+ip4_arp_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		vlib_frame_t *frame, int is_glean)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 *from, *to_next_drop;
@@ -137,12 +135,12 @@ ip4_arp_inline (vlib_main_t * vm,
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
   if (next_index == IP4_ARP_NEXT_DROP)
-    next_index = IP4_ARP_N_NEXT;	/* point to first interface */
+    next_index = IP4_ARP_N_NEXT; /* point to first interface */
 
   while (n_left_from > 0)
     {
-      vlib_get_next_frame (vm, node, IP4_ARP_NEXT_DROP,
-			   to_next_drop, n_left_to_next_drop);
+      vlib_get_next_frame (vm, node, IP4_ARP_NEXT_DROP, to_next_drop,
+			   n_left_to_next_drop);
 
       while (n_left_from > 0 && n_left_to_next_drop > 0)
 	{
@@ -196,8 +194,8 @@ ip4_arp_inline (vlib_main_t * vm,
 	    }
 
 	  /*
-	   * the adj has been updated to a rewrite but the node the DPO that got
-	   * us here hasn't - yet. no big deal. we'll drop while we wait.
+	   * the adj has been updated to a rewrite but the node the DPO that
+	   * got us here hasn't - yet. no big deal. we'll drop while we wait.
 	   */
 	  if (IP_LOOKUP_NEXT_REWRITE == adj0->lookup_next_index)
 	    {
@@ -209,8 +207,8 @@ ip4_arp_inline (vlib_main_t * vm,
 	   * Can happen if the control-plane is programming tables
 	   * with traffic flowing; at least that's today's lame excuse.
 	   */
-	  if ((is_glean && adj0->lookup_next_index != IP_LOOKUP_NEXT_GLEAN)
-	      || (!is_glean && adj0->lookup_next_index != IP_LOOKUP_NEXT_ARP))
+	  if ((is_glean && adj0->lookup_next_index != IP_LOOKUP_NEXT_GLEAN) ||
+	      (!is_glean && adj0->lookup_next_index != IP_LOOKUP_NEXT_ARP))
 	    {
 	      p0->error = node->errors[IP4_ARP_ERROR_NON_ARP_ADJ];
 	      continue;
@@ -239,14 +237,14 @@ ip4_arp_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (ip4_arp_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			     vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_arp_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (ip4_arp_inline (vm, node, frame, 0));
 }
 
-VLIB_NODE_FN (ip4_glean_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			       vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_glean_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (ip4_arp_inline (vm, node, frame, 1));
 }
@@ -260,7 +258,6 @@ static char *ip4_arp_error_strings[] = {
   [IP4_ARP_ERROR_NO_SOURCE_ADDRESS] = "no source address for ARP request",
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_arp_node) =
 {
   .name = "ip4-arp",
@@ -286,26 +283,24 @@ VLIB_REGISTER_NODE (ip4_glean_node) =
     [IP4_ARP_NEXT_DROP] = "ip4-drop",
   },
 };
-/* *INDENT-ON* */
 
-#define foreach_notrace_ip4_arp_error           \
-_(THROTTLED)                                    \
-_(RESOLVED)                                     \
-_(NO_BUFFERS)                                   \
-_(REQUEST_SENT)                                 \
-_(NON_ARP_ADJ)                                  \
-_(NO_SOURCE_ADDRESS)
+#define foreach_notrace_ip4_arp_error                                         \
+  _ (THROTTLED)                                                               \
+  _ (RESOLVED)                                                                \
+  _ (NO_BUFFERS)                                                              \
+  _ (REQUEST_SENT)                                                            \
+  _ (NON_ARP_ADJ)                                                             \
+  _ (NO_SOURCE_ADDRESS)
 
 static clib_error_t *
-arp_notrace_init (vlib_main_t * vm)
+arp_notrace_init (vlib_main_t *vm)
 {
   vlib_node_runtime_t *rt = vlib_node_get_runtime (vm, ip4_arp_node.index);
 
   /* don't trace ARP request packets */
-#define _(a)                                    \
-    vnet_pcap_drop_trace_filter_add_del         \
-        (rt->errors[IP4_ARP_ERROR_##a],         \
-         1 /* is_add */);
+#define _(a)                                                                  \
+  vnet_pcap_drop_trace_filter_add_del (rt->errors[IP4_ARP_ERROR_##a],         \
+				       1 /* is_add */);
   foreach_notrace_ip4_arp_error;
 #undef _
   return 0;
@@ -314,7 +309,7 @@ arp_notrace_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (arp_notrace_init);
 
 static clib_error_t *
-ip4_neighbor_main_loop_enter (vlib_main_t * vm)
+ip4_neighbor_main_loop_enter (vlib_main_t *vm)
 {
   vlib_thread_main_t *tm = &vlib_thread_main;
   u32 n_vlib_mains = tm->n_vlib_mains;
@@ -325,7 +320,6 @@ ip4_neighbor_main_loop_enter (vlib_main_t * vm)
 }
 
 VLIB_MAIN_LOOP_ENTER_FUNCTION (ip4_neighbor_main_loop_enter);
-
 
 /*
  * fd.io coding-style-patch-verification: ON

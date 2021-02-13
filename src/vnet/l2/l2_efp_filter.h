@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-
 #ifndef included_vnet_l2_efp_filter_h
 #define included_vnet_l2_efp_filter_h
 

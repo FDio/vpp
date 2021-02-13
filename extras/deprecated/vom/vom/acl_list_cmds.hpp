@@ -29,7 +29,7 @@ namespace list_cmds {
 /**
  * A command class that Create the list
  */
-template <typename LIST, typename UPDATE>
+template<typename LIST, typename UPDATE>
 class update_cmd : public rpc_cmd<HW::item<handle_t>, UPDATE>
 {
 public:
@@ -45,8 +45,7 @@ public:
     : rpc_cmd<HW::item<handle_t>, UPDATE>(item)
     , m_key(key)
     , m_rules(rules)
-  {
-  }
+  {}
 
   /**
    * Issue the command to VPP/HW
@@ -123,7 +122,7 @@ private:
 /**
  * A cmd class that Deletes an ACL
  */
-template <typename LIST, typename DELETE>
+template<typename LIST, typename DELETE>
 class delete_cmd : public rpc_cmd<HW::item<handle_t>, DELETE>
 {
 public:
@@ -132,8 +131,7 @@ public:
    */
   delete_cmd(HW::item<handle_t>& item)
     : rpc_cmd<HW::item<handle_t>, DELETE>(item)
-  {
-  }
+  {}
 
   /**
    * Issue the command to VPP/HW
@@ -169,7 +167,7 @@ private:
 /**
  * A cmd class that Dumps all the ACLs
  */
-template <typename DUMP>
+template<typename DUMP>
 class dump_cmd : public VOM::dump_cmd<DUMP>
 {
 public:

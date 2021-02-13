@@ -48,7 +48,6 @@ l2learn_main_t l2learn_main;
  * and forwarding into separate nodes.
  */
 
-
 typedef struct
 {
   u8 src[6];
@@ -57,43 +56,41 @@ typedef struct
   u16 bd_index;
 } l2learn_trace_t;
 
-
 /* packet trace format function */
 static u8 *
-format_l2learn_trace (u8 * s, va_list * args)
+format_l2learn_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   l2learn_trace_t *t = va_arg (*args, l2learn_trace_t *);
 
   s = format (s, "l2-learn: sw_if_index %d dst %U src %U bd_index %d",
-	      t->sw_if_index,
-	      format_ethernet_address, t->dst,
+	      t->sw_if_index, format_ethernet_address, t->dst,
 	      format_ethernet_address, t->src, t->bd_index);
   return s;
 }
 
 extern vlib_node_registration_t l2learn_node;
 
-#define foreach_l2learn_error				\
-_(L2LEARN,           "L2 learn packets")		\
-_(MISS,              "L2 learn misses")			\
-_(MAC_MOVE,          "L2 mac moves")			\
-_(MAC_MOVE_VIOLATE,  "L2 mac move violations")		\
-_(LIMIT,             "L2 not learned due to limit")	\
-_(HIT_UPDATE,        "L2 learn hit updates")		\
-_(FILTER_DROP,       "L2 filter mac drops")
+#define foreach_l2learn_error                                                 \
+  _ (L2LEARN, "L2 learn packets")                                             \
+  _ (MISS, "L2 learn misses")                                                 \
+  _ (MAC_MOVE, "L2 mac moves")                                                \
+  _ (MAC_MOVE_VIOLATE, "L2 mac move violations")                              \
+  _ (LIMIT, "L2 not learned due to limit")                                    \
+  _ (HIT_UPDATE, "L2 learn hit updates")                                      \
+  _ (FILTER_DROP, "L2 filter mac drops")
 
 typedef enum
 {
-#define _(sym,str) L2LEARN_ERROR_##sym,
+#define _(sym, str) L2LEARN_ERROR_##sym,
   foreach_l2learn_error
 #undef _
     L2LEARN_N_ERROR,
 } l2learn_error_t;
 
 static char *l2learn_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_l2learn_error
 #undef _
 };
@@ -105,25 +102,20 @@ typedef enum
   L2LEARN_N_NEXT,
 } l2learn_next_t;
 
-
 /** Perform learning on one packet based on the mac table lookup result. */
 
 static_always_inline void
-l2learn_process (vlib_node_runtime_t * node,
-		 l2learn_main_t * msm,
-		 u64 * counter_base,
-		 vlib_buffer_t * b0,
-		 u32 sw_if_index0,
-		 l2fib_entry_key_t * key0,
-		 l2fib_entry_key_t * cached_key,
-		 u32 * count,
-		 l2fib_entry_result_t * result0, u16 * next0, u8 timestamp)
+l2learn_process (vlib_node_runtime_t *node, l2learn_main_t *msm,
+		 u64 *counter_base, vlib_buffer_t *b0, u32 sw_if_index0,
+		 l2fib_entry_key_t *key0, l2fib_entry_key_t *cached_key,
+		 u32 *count, l2fib_entry_result_t *result0, u16 *next0,
+		 u8 timestamp)
 {
   l2_bridge_domain_t *bd_config =
     vec_elt_at_index (l2input_main.bd_configs, vnet_buffer (b0)->l2.bd_index);
   /* Set up the default next node (typically L2FWD) */
-  *next0 = vnet_l2_feature_next (b0, msm->feat_next_node_index,
-				 L2INPUT_FEAT_LEARN);
+  *next0 =
+    vnet_l2_feature_next (b0, msm->feat_next_node_index, L2INPUT_FEAT_LEARN);
 
   /* Check mac table lookup result */
   if (PREDICT_TRUE (result0->fields.sw_if_index == sw_if_index0))
@@ -134,11 +126,11 @@ l2learn_process (vlib_node_runtime_t * node,
       u32 check = (dtime && vnet_buffer (b0)->l2.bd_age) || dsn;
 
       if (PREDICT_TRUE (check == 0))
-	return;			/* MAC entry up to date */
+	return; /* MAC entry up to date */
       if (l2fib_entry_result_is_set_AGE_NOT (result0))
-	return;			/* Static MAC always age_not */
+	return; /* Static MAC always age_not */
       if (msm->global_learn_count > msm->global_learn_limit)
-	return;			/* Above learn limit - do not update */
+	return; /* Above learn limit - do not update */
       if (bd_config->learn_count > bd_config->learn_limit)
 	return; /* Above bridge domain learn limit - do not update */
 
@@ -161,7 +153,8 @@ l2learn_process (vlib_node_runtime_t * node,
 	{
 	  /*
 	   * Global limit reached. Do not learn the mac but forward the packet.
-	   * In the future, limits could also be per-interface or bridge-domain.
+	   * In the future, limits could also be per-interface or
+	   * bridge-domain.
 	   */
 	  counter_base[L2LEARN_ERROR_LIMIT] += 1;
 	  return;
@@ -179,7 +172,7 @@ l2learn_process (vlib_node_runtime_t * node,
       /* l2fib_scan is call every 2sec fixing potential inaccuracy */
       msm->global_learn_count++;
       bd_config->learn_count++;
-      result0->raw = 0;		/* clear all fields */
+      result0->raw = 0; /* clear all fields */
       result0->fields.sw_if_index = sw_if_index0;
       if (msm->client_pid != 0)
 	l2fib_entry_result_set_LRN_EVT (result0);
@@ -226,13 +219,13 @@ l2learn_process (vlib_node_runtime_t * node,
 	  l2fib_entry_result_clear_AGE_NOT (result0);
 	}
       if (msm->client_pid != 0)
-	l2fib_entry_result_set_bits (result0,
-				     (L2FIB_ENTRY_RESULT_FLAG_LRN_EVT |
-				      L2FIB_ENTRY_RESULT_FLAG_LRN_MOV));
+	l2fib_entry_result_set_bits (
+	  result0,
+	  (L2FIB_ENTRY_RESULT_FLAG_LRN_EVT | L2FIB_ENTRY_RESULT_FLAG_LRN_MOV));
       else
-	l2fib_entry_result_clear_bits (result0,
-				       (L2FIB_ENTRY_RESULT_FLAG_LRN_EVT |
-					L2FIB_ENTRY_RESULT_FLAG_LRN_MOV));
+	l2fib_entry_result_clear_bits (
+	  result0,
+	  (L2FIB_ENTRY_RESULT_FLAG_LRN_EVT | L2FIB_ENTRY_RESULT_FLAG_LRN_MOV));
       counter_base[L2LEARN_ERROR_MAC_MOVE] += 1;
     }
 
@@ -243,16 +236,15 @@ l2learn_process (vlib_node_runtime_t * node,
   BVT (clib_bihash_kv) kv;
   kv.key = key0->raw;
   kv.value = result0->raw;
-  BV (clib_bihash_add_del) (msm->mac_table, &kv, 1 /* is_add */ );
+  BV (clib_bihash_add_del) (msm->mac_table, &kv, 1 /* is_add */);
 
   /* Invalidate the cache */
   cached_key->raw = ~0;
 }
 
-
 static_always_inline uword
-l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		     vlib_frame_t * frame, int do_trace)
+l2learn_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     vlib_frame_t *frame, int do_trace)
 {
   u32 n_left, *from;
   l2learn_main_t *msm = &l2learn_main;
@@ -267,14 +259,14 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 nexts[VLIB_FRAME_SIZE], *next;
 
   from = vlib_frame_vector_args (frame);
-  n_left = frame->n_vectors;	/* number of packets to process */
+  n_left = frame->n_vectors; /* number of packets to process */
   vlib_get_buffers (vm, from, bufs, n_left);
   next = nexts;
   b = bufs;
 
   /* Clear the one-entry cache in case mac table was updated */
   cached_key.raw = ~0;
-  cached_result.raw = ~0;	/* warning be gone */
+  cached_result.raw = ~0; /* warning be gone */
 
   while (n_left > 8)
     {
@@ -355,33 +347,28 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_node_increment_counter (vm, l2learn_node.index,
 				   L2LEARN_ERROR_L2LEARN, 4);
 
-      l2fib_lookup_4 (msm->mac_table, &cached_key, &cached_result,
-		      h0->src_address,
-		      h1->src_address,
-		      h2->src_address,
-		      h3->src_address,
-		      vnet_buffer (b[0])->l2.bd_index,
-		      vnet_buffer (b[1])->l2.bd_index,
-		      vnet_buffer (b[2])->l2.bd_index,
-		      vnet_buffer (b[3])->l2.bd_index,
-		      &key0, &key1, &key2, &key3,
-		      &result0, &result1, &result2, &result3);
+      l2fib_lookup_4 (
+	msm->mac_table, &cached_key, &cached_result, h0->src_address,
+	h1->src_address, h2->src_address, h3->src_address,
+	vnet_buffer (b[0])->l2.bd_index, vnet_buffer (b[1])->l2.bd_index,
+	vnet_buffer (b[2])->l2.bd_index, vnet_buffer (b[3])->l2.bd_index,
+	&key0, &key1, &key2, &key3, &result0, &result1, &result2, &result3);
 
-      l2learn_process (node, msm, &em->counters[node_counter_base_index],
-		       b[0], sw_if_index0, &key0, &cached_key,
-		       &count, &result0, next, timestamp);
+      l2learn_process (node, msm, &em->counters[node_counter_base_index], b[0],
+		       sw_if_index0, &key0, &cached_key, &count, &result0,
+		       next, timestamp);
 
-      l2learn_process (node, msm, &em->counters[node_counter_base_index],
-		       b[1], sw_if_index1, &key1, &cached_key,
-		       &count, &result1, next + 1, timestamp);
+      l2learn_process (node, msm, &em->counters[node_counter_base_index], b[1],
+		       sw_if_index1, &key1, &cached_key, &count, &result1,
+		       next + 1, timestamp);
 
-      l2learn_process (node, msm, &em->counters[node_counter_base_index],
-		       b[2], sw_if_index2, &key2, &cached_key,
-		       &count, &result2, next + 2, timestamp);
+      l2learn_process (node, msm, &em->counters[node_counter_base_index], b[2],
+		       sw_if_index2, &key2, &cached_key, &count, &result2,
+		       next + 2, timestamp);
 
-      l2learn_process (node, msm, &em->counters[node_counter_base_index],
-		       b[3], sw_if_index3, &key3, &cached_key,
-		       &count, &result3, next + 3, timestamp);
+      l2learn_process (node, msm, &em->counters[node_counter_base_index], b[3],
+		       sw_if_index3, &key3, &cached_key, &count, &result3,
+		       next + 3, timestamp);
 
       next += 4;
       b += 4;
@@ -412,14 +399,13 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_node_increment_counter (vm, l2learn_node.index,
 				   L2LEARN_ERROR_L2LEARN, 1);
 
-
       l2fib_lookup_1 (msm->mac_table, &cached_key, &cached_result,
-		      h0->src_address, vnet_buffer (b[0])->l2.bd_index,
-		      &key0, &result0);
+		      h0->src_address, vnet_buffer (b[0])->l2.bd_index, &key0,
+		      &result0);
 
-      l2learn_process (node, msm, &em->counters[node_counter_base_index],
-		       b[0], sw_if_index0, &key0, &cached_key,
-		       &count, &result0, next, timestamp);
+      l2learn_process (node, msm, &em->counters[node_counter_base_index], b[0],
+		       sw_if_index0, &key0, &cached_key, &count, &result0,
+		       next, timestamp);
 
       next += 1;
       b += 1;
@@ -431,15 +417,14 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (l2learn_node) (vlib_main_t * vm,
-			     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2learn_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
-    return l2learn_node_inline (vm, node, frame, 1 /* do_trace */ );
-  return l2learn_node_inline (vm, node, frame, 0 /* do_trace */ );
+    return l2learn_node_inline (vm, node, frame, 1 /* do_trace */);
+  return l2learn_node_inline (vm, node, frame, 0 /* do_trace */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2learn_node) = {
   .name = "l2-learn",
   .vector_size = sizeof (u32),
@@ -457,11 +442,10 @@ VLIB_REGISTER_NODE (l2learn_node) = {
         [L2LEARN_NEXT_L2FWD] = "l2-fwd",
   },
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 clib_error_t *
-l2learn_init (vlib_main_t * vm)
+l2learn_init (vlib_main_t *vm)
 {
   l2learn_main_t *mp = &l2learn_main;
 
@@ -469,9 +453,7 @@ l2learn_init (vlib_main_t * vm)
   mp->vnet_main = vnet_get_main ();
 
   /* Initialize the feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2learn_node.index,
-			       L2INPUT_N_FEAT,
+  feat_bitmap_init_next_nodes (vm, l2learn_node.index, L2INPUT_N_FEAT,
 			       l2input_get_feat_names (),
 			       mp->feat_next_node_index);
 
@@ -494,15 +476,13 @@ l2learn_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (l2learn_init);
 
-
 /**
  * Set subinterface learn enable/disable.
  * The CLI format is:
  *    set interface l2 learn <interface> [disable]
  */
 static clib_error_t *
-int_learn (vlib_main_t * vm,
-	   unformat_input_t * input, vlib_cli_command_t * cmd)
+int_learn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
@@ -540,17 +520,15 @@ done:
  * Example of how to disable learning:
  * @cliexcmd{set interface l2 learn GigabitEthernet0/8/0 disable}
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (int_learn_cli, static) = {
   .path = "set interface l2 learn",
   .short_help = "set interface l2 learn <interface> [disable]",
   .function = int_learn,
 };
-/* *INDENT-ON* */
-
 
 static clib_error_t *
-l2learn_config (vlib_main_t * vm, unformat_input_t * input)
+l2learn_config (vlib_main_t *vm, unformat_input_t *input)
 {
   l2learn_main_t *mp = &l2learn_main;
 
@@ -570,7 +548,6 @@ l2learn_config (vlib_main_t * vm, unformat_input_t * input)
 VLIB_CONFIG_FUNCTION (l2learn_config, "l2learn");
 
 #endif
-
 
 /*
  * fd.io coding-style-patch-verification: ON

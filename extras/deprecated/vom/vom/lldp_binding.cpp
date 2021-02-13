@@ -29,15 +29,13 @@ lldp_binding::lldp_binding(const interface& itf, const std::string& port_desc)
   : m_itf(itf.singular())
   , m_port_desc(port_desc)
   , m_binding(0)
-{
-}
+{}
 
 lldp_binding::lldp_binding(const lldp_binding& o)
   : m_itf(o.m_itf)
   , m_port_desc(o.m_port_desc)
   , m_binding(0)
-{
-}
+{}
 
 lldp_binding::~lldp_binding()
 {
@@ -97,8 +95,8 @@ void
 lldp_binding::update(const lldp_binding& desired)
 {
   /*
- * the desired state is always that the interface should be created
- */
+   * the desired state is always that the interface should be created
+   */
   if (!m_binding) {
     HW::enqueue(
       new lldp_binding_cmds::bind_cmd(m_binding, m_itf->handle(), m_port_desc));

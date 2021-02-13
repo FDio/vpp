@@ -23,13 +23,13 @@
 
 #include <vppinfra/types.h>
 
-#define CLIB_CUCKOO_OPTIMIZE_PREFETCH 1
-#define CLIB_CUCKOO_OPTIMIZE_UNROLL 1
+#define CLIB_CUCKOO_OPTIMIZE_PREFETCH		     1
+#define CLIB_CUCKOO_OPTIMIZE_UNROLL		     1
 #define CLIB_CUCKOO_OPTIMIZE_USE_COUNT_LIMITS_SEARCH 1
 
-#define foreach_clib_cuckoo_error(F)                \
-  F (CLIB_CUCKOO_ERROR_SUCCESS, 0, "success")             \
-  F (CLIB_CUCKOO_ERROR_NOT_FOUND, -1, "object not found") \
+#define foreach_clib_cuckoo_error(F)                                          \
+  F (CLIB_CUCKOO_ERROR_SUCCESS, 0, "success")                                 \
+  F (CLIB_CUCKOO_ERROR_NOT_FOUND, -1, "object not found")                     \
   F (CLIB_CUCKOO_ERROR_AGAIN, -2, "object busy")
 
 typedef enum

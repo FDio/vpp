@@ -31,7 +31,7 @@
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_mrvl_pp2_create_t_handler (vl_api_mrvl_pp2_create_t * mp)
+vl_api_mrvl_pp2_create_t_handler (vl_api_mrvl_pp2_create_t *mp)
 {
   mrvl_pp2_main_t *pp2 = &mrvl_pp2_main;
   mrvl_pp2_create_if_args_t args = { 0 };
@@ -48,16 +48,13 @@ vl_api_mrvl_pp2_create_t_handler (vl_api_mrvl_pp2_create_t * mp)
     {
       clib_error_free (args.error);
     }
-  /* *INDENT-OFF* */
+
   REPLY_MACRO2 (VL_API_MRVL_PP2_CREATE_REPLY + pp2->msg_id_base,
-    ({
-      rmp->sw_if_index = ntohl (args.sw_if_index);
-    }));
-  /* *INDENT-ON* */
+		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
 }
 
 static void
-vl_api_mrvl_pp2_delete_t_handler (vl_api_mrvl_pp2_delete_t * mp)
+vl_api_mrvl_pp2_delete_t_handler (vl_api_mrvl_pp2_delete_t *mp)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hw;
@@ -84,7 +81,7 @@ reply:
 #include <marvell/pp2/pp2.api.c>
 /* set up the API message handling tables */
 clib_error_t *
-mrvl_pp2_plugin_api_hookup (vlib_main_t * vm)
+mrvl_pp2_plugin_api_hookup (vlib_main_t *vm)
 {
   mrvl_pp2_main_t *pp2 = &mrvl_pp2_main;
 

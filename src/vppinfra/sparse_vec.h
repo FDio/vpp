@@ -51,7 +51,7 @@ typedef struct
   /* member_counts[i] = total number of members with j < i. */
   u16 *member_counts;
 
-#define SPARSE_VEC_IS_RANGE (1 << 0)
+#define SPARSE_VEC_IS_RANGE	  (1 << 0)
 #define SPARSE_VEC_IS_VALID_RANGE (1 << 1)
   u8 *range_flags;
 } sparse_vec_header_t;
@@ -98,9 +98,8 @@ sparse_vec_new (uword elt_bytes, uword sparse_index_bits)
 }
 
 always_inline uword
-sparse_vec_index_internal (void *v,
-			   uword sparse_index,
-			   uword maybe_range, u32 * insert)
+sparse_vec_index_internal (void *v, uword sparse_index, uword maybe_range,
+			   u32 *insert)
 {
   sparse_vec_header_t *h;
   uword i, b, d, w;
@@ -166,8 +165,7 @@ sparse_vec_index (void *v, uword sparse_index)
 }
 
 always_inline void
-sparse_vec_index2 (void *v,
-		   u32 si0, u32 si1, u32 * i0_return, u32 * i1_return)
+sparse_vec_index2 (void *v, u32 si0, u32 si1, u32 *i0_return, u32 *i1_return)
 {
   sparse_vec_header_t *h;
   uword b0, b1, w0, w1, v0, v1;
@@ -192,7 +190,8 @@ sparse_vec_index2 (void *v,
   w1 = h->is_member_bitmap[i1];
 
   if (PREDICT_TRUE ((count_trailing_zeros (w0) == b0) +
-		    (count_trailing_zeros (w1) == b1) == 2))
+		      (count_trailing_zeros (w1) == b1) ==
+		    2))
     {
       *i0_return = h->member_counts[i0] + 1;
       *i1_return = h->member_counts[i1] + 1;
@@ -223,32 +222,31 @@ sparse_vec_index2 (void *v,
   *i1_return = is_member1 + d1;
 }
 
-#define sparse_vec_free(v) vec_free(v)
+#define sparse_vec_free(v) vec_free (v)
 
-#define sparse_vec_elt_at_index(v,i) \
+#define sparse_vec_elt_at_index(v, i)                                         \
   vec_elt_at_index ((v), sparse_vec_index ((v), (i)))
 
-#define sparse_vec_validate(v,i)					\
-({									\
-  uword _i;								\
-  u32 _insert;								\
-									\
-  if (! (v))								\
-    (v) = sparse_vec_new (sizeof ((v)[0]), BITS (u16));			\
-									\
-  _i = sparse_vec_index_internal ((v), (i),				\
-				  /* maybe range */ 0,			\
-				  /* insert? */ &_insert);		\
-  if (_insert)								\
-    vec_insert_ha ((v), 1, _i,						\
-		   /* header size */ sizeof (sparse_vec_header_t),	\
-		   /* align */ 0);					\
-									\
-  /* Invalid index is 0. */						\
-  ASSERT (_i > 0);							\
-									\
-  (v) + _i;								\
-})
+#define sparse_vec_validate(v, i)                                             \
+  ({                                                                          \
+    uword _i;                                                                 \
+    u32 _insert;                                                              \
+                                                                              \
+    if (!(v))                                                                 \
+      (v) = sparse_vec_new (sizeof ((v)[0]), BITS (u16));                     \
+                                                                              \
+    _i = sparse_vec_index_internal ((v), (i), /* maybe range */ 0,            \
+				    /* insert? */ &_insert);                  \
+    if (_insert)                                                              \
+      vec_insert_ha ((v), 1, _i,                                              \
+		     /* header size */ sizeof (sparse_vec_header_t),          \
+		     /* align */ 0);                                          \
+                                                                              \
+    /* Invalid index is 0. */                                                 \
+    ASSERT (_i > 0);                                                          \
+                                                                              \
+    (v) + _i;                                                                 \
+  })
 
 #endif /* included_sparse_vec_h */
 

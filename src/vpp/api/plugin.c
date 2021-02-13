@@ -25,15 +25,27 @@ plugin_main_t vat_plugin_main;
 
 static vlib_log_class_t vat_builtin_logger;
 
-#define PLUGIN_LOG_DBG(...) \
-  do {vlib_log_debug (vat_builtin_logger, __VA_ARGS__);} while(0)
-#define PLUGIN_LOG_ERR(...) \
-  do {vlib_log_err (vat_builtin_logger, __VA_ARGS__);} while(0)
-#define PLUGIN_LOG_NOTICE(...) \
-  do {vlib_log_notice (vat_builtin_logger, __VA_ARGS__);} while(0)
+#define PLUGIN_LOG_DBG(...)                                                   \
+  do                                                                          \
+    {                                                                         \
+      vlib_log_debug (vat_builtin_logger, __VA_ARGS__);                       \
+    }                                                                         \
+  while (0)
+#define PLUGIN_LOG_ERR(...)                                                   \
+  do                                                                          \
+    {                                                                         \
+      vlib_log_err (vat_builtin_logger, __VA_ARGS__);                         \
+    }                                                                         \
+  while (0)
+#define PLUGIN_LOG_NOTICE(...)                                                \
+  do                                                                          \
+    {                                                                         \
+      vlib_log_notice (vat_builtin_logger, __VA_ARGS__);                      \
+    }                                                                         \
+  while (0)
 
 static int
-load_one_vat_plugin (plugin_main_t * pm, plugin_info_t * pi)
+load_one_vat_plugin (plugin_main_t *pm, plugin_info_t *pi)
 {
   void *handle, *register_handle;
   clib_error_t *(*fp) (vat_main_t *);
@@ -82,7 +94,7 @@ load_one_vat_plugin (plugin_main_t * pm, plugin_info_t * pi)
 }
 
 static u8 **
-split_plugin_path (plugin_main_t * pm)
+split_plugin_path (plugin_main_t *pm)
 {
   int i;
   u8 **rv = 0;
@@ -109,7 +121,7 @@ split_plugin_path (plugin_main_t * pm)
 }
 
 int
-vat_load_new_plugins (plugin_main_t * pm)
+vat_load_new_plugins (plugin_main_t *pm)
 {
   DIR *dp;
   struct dirent *entry;
@@ -176,8 +188,7 @@ vat_load_new_plugins (plugin_main_t * pm)
 	      hash_set_mem (pm->plugin_by_name_hash, plugin_name,
 			    pi - pm->plugin_info);
 	    }
-	next:
-	  ;
+	next:;
 	}
       closedir (dp);
       vec_free (plugin_path[i]);
@@ -187,14 +198,14 @@ vat_load_new_plugins (plugin_main_t * pm)
 }
 
 #define QUOTE_(x) #x
-#define QUOTE(x) QUOTE_(x)
+#define QUOTE(x)  QUOTE_ (x)
 
 extern char *vat_plugin_path;
 
 char *vat_plugin_name_filter = 0;
 
 int
-vat_plugin_init (vat_main_t * vam)
+vat_plugin_init (vat_main_t *vam)
 {
   plugin_main_t *pm = &vat_plugin_main;
   u8 *vlib_get_vat_plugin_path (void);
@@ -202,9 +213,8 @@ vat_plugin_init (vat_main_t * vam)
   u8 *plugin_path;
   u8 *plugin_name_filter;
 
-  vat_builtin_logger =
-    vlib_log_register_class_rate_limit ("vat-plug", "load",
-					0x7FFFFFFF /* aka no rate limit */ );
+  vat_builtin_logger = vlib_log_register_class_rate_limit (
+    "vat-plug", "load", 0x7FFFFFFF /* aka no rate limit */);
 
   plugin_path = vlib_get_vat_plugin_path ();
   plugin_name_filter = vlib_get_vat_plugin_name_filter ();

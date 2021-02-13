@@ -23,43 +23,47 @@
 #include <vppinfra/bihash_24_8.h>
 #include <vppinfra/bihash_template.h>
 
-#define ila_foreach_type		\
-  _(IID, 0, "iid")			\
-  _(LUID, 1, "luid")			\
-  _(VNID4, 2, "vnid-ip4")		\
-  _(VNID6, 3, "vnid-ip6")		\
-  _(VNIDM, 4, "vnid-multicast")
+#define ila_foreach_type                                                      \
+  _ (IID, 0, "iid")                                                           \
+  _ (LUID, 1, "luid")                                                         \
+  _ (VNID4, 2, "vnid-ip4")                                                    \
+  _ (VNID6, 3, "vnid-ip6")                                                    \
+  _ (VNIDM, 4, "vnid-multicast")
 
-typedef enum {
-#define _(i,n,s) ILA_TYPE_##i = n,
+typedef enum
+{
+#define _(i, n, s) ILA_TYPE_##i = n,
   ila_foreach_type
 #undef _
 } ila_type_t;
 
-#define ila_csum_foreach_type \
-_(NO_ACTION, 0, "no-action") \
-_(NEUTRAL_MAP, 1, "neutral-map") \
-_(ADJUST_TRANSPORT, 2, "adjust-transport")
+#define ila_csum_foreach_type                                                 \
+  _ (NO_ACTION, 0, "no-action")                                               \
+  _ (NEUTRAL_MAP, 1, "neutral-map")                                           \
+  _ (ADJUST_TRANSPORT, 2, "adjust-transport")
 
-typedef enum {
-#define _(i,n,s) ILA_CSUM_MODE_##i = n,
+typedef enum
+{
+#define _(i, n, s) ILA_CSUM_MODE_##i = n,
   ila_csum_foreach_type
 #undef _
-  ILA_CSUM_N_TYPES
+    ILA_CSUM_N_TYPES
 } ila_csum_mode_t;
 
-#define ila_foreach_direction \
-_(BIDIR, 0, "bidir") \
-_(SIR2ILA, 1, "sir2ila") \
-_(ILA2SIR, 2, "ila2sir")
+#define ila_foreach_direction                                                 \
+  _ (BIDIR, 0, "bidir")                                                       \
+  _ (SIR2ILA, 1, "sir2ila")                                                   \
+  _ (ILA2SIR, 2, "ila2sir")
 
-typedef enum {
-#define _(i,n,s) ILA_DIR_##i = n,
+typedef enum
+{
+#define _(i, n, s) ILA_DIR_##i = n,
   ila_foreach_direction
 #undef _
 } ila_direction_t;
 
-typedef struct {
+typedef struct
+{
   /**
    * Fib Node base class
    */
@@ -87,8 +91,9 @@ typedef struct {
   dpo_id_t ila_dpo;
 } ila_entry_t;
 
-typedef struct {
-  ila_entry_t *entries;		//Pool of ILA entries
+typedef struct
+{
+  ila_entry_t *entries; // Pool of ILA entries
 
   u64 lookup_table_nbuckets;
   u64 lookup_table_size;
@@ -97,8 +102,8 @@ typedef struct {
   u32 ip6_lookup_next_index;
 } ila_main_t;
 
-
-typedef struct {
+typedef struct
+{
   ila_type_t type;
   ip6_address_t sir_address;
   ip6_address_t next_hop_address;
@@ -110,7 +115,7 @@ typedef struct {
   u8 is_del;
 } ila_add_del_entry_args_t;
 
-int ila_add_del_entry (ila_add_del_entry_args_t * args);
+int ila_add_del_entry (ila_add_del_entry_args_t *args);
 int ila_interface (u32 sw_if_index, u8 disable);
 
-#endif //ILA_H
+#endif // ILA_H

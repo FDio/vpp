@@ -17,7 +17,7 @@
 #include <vppinfra/tw_timer_template.c>
 
 void
-tcp_timer_initialize_wheel (tcp_timer_wheel_t * tw,
+tcp_timer_initialize_wheel (tcp_timer_wheel_t *tw,
 			    void (*expired_timer_cb) (u32 *), f64 now)
 {
   tw_timer_wheel_init_tcp_twsl (tw, expired_timer_cb, TCP_TIMER_TICK, ~0);

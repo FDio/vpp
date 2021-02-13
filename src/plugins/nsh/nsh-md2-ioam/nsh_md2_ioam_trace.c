@@ -37,9 +37,7 @@ typedef union
   u32 as_u32[2];
 } time_u64_t;
 
-
-/* *INDENT-OFF* */
-typedef CLIB_PACKED(struct {
+typedef CLIB_PACKED (struct {
   u16 class;
   u8 type;
   u8 length;
@@ -48,27 +46,24 @@ typedef CLIB_PACKED(struct {
   u8 reserve;
   u32 elts[0]; /* Variable type. So keep it generic */
 }) nsh_md2_ioam_trace_option_t;
-/* *INDENT-ON* */
 
-
-#define foreach_nsh_md2_ioam_trace_stats				\
-  _(SUCCESS, "Pkts updated with TRACE records")					\
-  _(FAILED, "Errors in TRACE due to lack of TRACE records")
+#define foreach_nsh_md2_ioam_trace_stats                                      \
+  _ (SUCCESS, "Pkts updated with TRACE records")                              \
+  _ (FAILED, "Errors in TRACE due to lack of TRACE records")
 
 static char *nsh_md2_ioam_trace_stats_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_nsh_md2_ioam_trace_stats
 #undef _
 };
 
 typedef enum
 {
-#define _(sym,str) NSH_MD2_IOAM_TRACE_##sym,
+#define _(sym, str) NSH_MD2_IOAM_TRACE_##sym,
   foreach_nsh_md2_ioam_trace_stats
 #undef _
     NSH_MD2_IOAM_TRACE_N_STATS,
 } nsh_md2_ioam_trace_stats_t;
-
 
 typedef struct
 {
@@ -95,7 +90,6 @@ nsh_trace_profile_find (void)
   return (&(sm->profile));
 }
 
-
 always_inline void
 nsh_md2_ioam_trace_stats_increment_counter (u32 counter_index, u64 increment)
 {
@@ -104,21 +98,19 @@ nsh_md2_ioam_trace_stats_increment_counter (u32 counter_index, u64 increment)
   hm->counters[counter_index] += increment;
 }
 
-
 static u8 *
-format_ioam_data_list_element (u8 * s, va_list * args)
+format_ioam_data_list_element (u8 *s, va_list *args)
 {
   u32 *elt = va_arg (*args, u32 *);
   u8 *trace_type_p = va_arg (*args, u8 *);
   u8 trace_type = *trace_type_p;
 
-
   if (trace_type & BIT_TTL_NODEID)
     {
       u32 ttl_node_id_host_byte_order = clib_net_to_host_u32 (*elt);
-      s = format (s, "ttl 0x%x node id 0x%x ",
-		  ttl_node_id_host_byte_order >> 24,
-		  ttl_node_id_host_byte_order & 0x00FFFFFF);
+      s =
+	format (s, "ttl 0x%x node id 0x%x ", ttl_node_id_host_byte_order >> 24,
+		ttl_node_id_host_byte_order & 0x00FFFFFF);
 
       elt++;
     }
@@ -126,9 +118,9 @@ format_ioam_data_list_element (u8 * s, va_list * args)
   if (trace_type & BIT_ING_INTERFACE && trace_type & BIT_ING_INTERFACE)
     {
       u32 ingress_host_byte_order = clib_net_to_host_u32 (*elt);
-      s = format (s, "ingress 0x%x egress 0x%x ",
-		  ingress_host_byte_order >> 16,
-		  ingress_host_byte_order & 0xFFFF);
+      s =
+	format (s, "ingress 0x%x egress 0x%x ", ingress_host_byte_order >> 16,
+		ingress_host_byte_order & 0xFFFF);
       elt++;
     }
 
@@ -149,10 +141,8 @@ format_ioam_data_list_element (u8 * s, va_list * args)
   return s;
 }
 
-
-
 int
-nsh_md2_ioam_trace_rewrite_handler (u8 * rewrite_string, u8 * rewrite_size)
+nsh_md2_ioam_trace_rewrite_handler (u8 *rewrite_string, u8 *rewrite_size)
 {
   nsh_md2_ioam_trace_option_t *trace_option = NULL;
   u8 trace_data_size = 0;
@@ -180,17 +170,14 @@ nsh_md2_ioam_trace_rewrite_handler (u8 * rewrite_string, u8 * rewrite_size)
   trace_option->ioam_trace_type =
     clib_host_to_net_u16 (profile->trace_type & TRACE_TYPE_MASK);
 
-  *rewrite_size =
-    sizeof (nsh_md2_ioam_trace_option_t) +
-    (trace_option_elts * trace_data_size);
+  *rewrite_size = sizeof (nsh_md2_ioam_trace_option_t) +
+		  (trace_option_elts * trace_data_size);
 
   return 0;
 }
 
-
 int
-nsh_md2_ioam_trace_data_list_handler (vlib_buffer_t * b,
-				      nsh_tlv_header_t * opt)
+nsh_md2_ioam_trace_data_list_handler (vlib_buffer_t *b, nsh_tlv_header_t *opt)
 {
   u8 elt_index = 0;
   nsh_md2_ioam_trace_option_t *trace =
@@ -210,7 +197,6 @@ nsh_md2_ioam_trace_data_list_handler (vlib_buffer_t * b,
       return (-1);
     }
 
-
   ioam_trace_type = profile->trace_type & TRACE_TYPE_MASK;
   time_u64.as_u64 = 0;
 
@@ -220,15 +206,14 @@ nsh_md2_ioam_trace_data_list_handler (vlib_buffer_t * b,
       /* fetch_trace_data_size returns in bytes. Convert it to 4-bytes
        * to skip to this node's location.
        */
-      elt_index =
-	trace->data_list_elts_left *
-	fetch_trace_data_size (ioam_trace_type) / 4;
+      elt_index = trace->data_list_elts_left *
+		  fetch_trace_data_size (ioam_trace_type) / 4;
       elt = &trace->elts[elt_index];
       if (ioam_trace_type & BIT_TTL_NODEID)
 	{
 	  ip4_header_t *ip0 = vlib_buffer_get_current (b);
-	  *elt = clib_host_to_net_u32 (((ip0->ttl - 1) << 24) |
-				       profile->node_id);
+	  *elt =
+	    clib_host_to_net_u32 (((ip0->ttl - 1) << 24) | profile->node_id);
 	  elt++;
 	}
 
@@ -241,7 +226,6 @@ nsh_md2_ioam_trace_data_list_handler (vlib_buffer_t * b,
 	  *elt = clib_host_to_net_u32 (*elt);
 	  elt++;
 	}
-
 
       if (ioam_trace_type & BIT_TIMESTAMP)
 	{
@@ -261,21 +245,19 @@ nsh_md2_ioam_trace_data_list_handler (vlib_buffer_t * b,
 	  *elt = clib_host_to_net_u32 (profile->app_data);
 	  elt++;
 	}
-      nsh_md2_ioam_trace_stats_increment_counter
-	(NSH_MD2_IOAM_TRACE_SUCCESS, 1);
+      nsh_md2_ioam_trace_stats_increment_counter (NSH_MD2_IOAM_TRACE_SUCCESS,
+						  1);
     }
   else
     {
-      nsh_md2_ioam_trace_stats_increment_counter
-	(NSH_MD2_IOAM_TRACE_FAILED, 1);
+      nsh_md2_ioam_trace_stats_increment_counter (NSH_MD2_IOAM_TRACE_FAILED,
+						  1);
     }
   return (rv);
 }
 
-
-
 u8 *
-nsh_md2_ioam_trace_data_list_trace_handler (u8 * s, nsh_tlv_header_t * opt)
+nsh_md2_ioam_trace_data_list_trace_handler (u8 *s, nsh_tlv_header_t *opt)
 {
   nsh_md2_ioam_trace_option_t *trace;
   u8 trace_data_size_in_words = 0;
@@ -287,14 +269,13 @@ nsh_md2_ioam_trace_data_list_trace_handler (u8 * s, nsh_tlv_header_t * opt)
   ioam_trace_type = clib_net_to_host_u16 (trace->ioam_trace_type);
   trace_data_size_in_words = fetch_trace_data_size (ioam_trace_type) / 4;
   elt = &trace->elts[0];
-  s =
-    format (s, "  Trace Type 0x%x , %d elts left\n", ioam_trace_type,
-	    trace->data_list_elts_left);
+  s = format (s, "  Trace Type 0x%x , %d elts left\n", ioam_trace_type,
+	      trace->data_list_elts_left);
   while ((u8 *) elt < ((u8 *) (&trace->elts[0]) + trace->length - 4
-		       /* -2 accounts for ioam_trace_type,elts_left */ ))
+		       /* -2 accounts for ioam_trace_type,elts_left */))
     {
-      s = format (s, "    [%d] %U\n", elt_index,
-		  format_ioam_data_list_element, elt, &ioam_trace_type);
+      s = format (s, "    [%d] %U\n", elt_index, format_ioam_data_list_element,
+		  elt, &ioam_trace_type);
       elt_index++;
       elt += trace_data_size_in_words;
     }
@@ -302,9 +283,8 @@ nsh_md2_ioam_trace_data_list_trace_handler (u8 * s, nsh_tlv_header_t * opt)
 }
 
 int
-nsh_md2_ioam_trace_swap_handler (vlib_buffer_t * b,
-				 nsh_tlv_header_t * old_opt,
-				 nsh_tlv_header_t * new_opt)
+nsh_md2_ioam_trace_swap_handler (vlib_buffer_t *b, nsh_tlv_header_t *old_opt,
+				 nsh_tlv_header_t *new_opt)
 {
 
   clib_memcpy_fast (new_opt, old_opt,
@@ -313,9 +293,8 @@ nsh_md2_ioam_trace_swap_handler (vlib_buffer_t * b,
 }
 
 static clib_error_t *
-nsh_md2_ioam_show_ioam_trace_cmd_fn (vlib_main_t * vm,
-				     unformat_input_t * input,
-				     vlib_cli_command_t * cmd)
+nsh_md2_ioam_show_ioam_trace_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+				     vlib_cli_command_t *cmd)
 {
   nsh_md2_ioam_trace_main_t *hm = &nsh_md2_ioam_trace_main;
   u8 *s = 0;
@@ -333,55 +312,46 @@ nsh_md2_ioam_show_ioam_trace_cmd_fn (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (nsh_md2_ioam_show_ioam_trace_cmd, static) = {
   .path = "show ioam nsh-lisp-gpe trace",
   .short_help = "iOAM trace statistics",
   .function = nsh_md2_ioam_show_ioam_trace_cmd_fn,
 };
-/* *INDENT-ON* */
-
 
 int
-nsh_md2_ioam_trace_pop_handler (vlib_buffer_t * b, nsh_tlv_header_t * opt)
+nsh_md2_ioam_trace_pop_handler (vlib_buffer_t *b, nsh_tlv_header_t *opt)
 {
   return nsh_md2_ioam_trace_data_list_handler (b, opt);
 }
 
 static clib_error_t *
-nsh_md2_ioam_trace_init (vlib_main_t * vm)
+nsh_md2_ioam_trace_init (vlib_main_t *vm)
 {
   nsh_md2_ioam_trace_main_t *hm = &nsh_md2_ioam_trace_main;
   nsh_md2_ioam_main_t *gm = &nsh_md2_ioam_main;
 
   hm->vlib_main = vm;
   hm->vnet_main = vnet_get_main ();
-  gm->unix_time_0 = (u32) time (0);	/* Store starting time */
+  gm->unix_time_0 = (u32) time (0); /* Store starting time */
   gm->vlib_time_0 = vlib_time_now (vm);
 
   clib_memset (hm->counters, 0, sizeof (hm->counters));
 
-  if (nsh_md2_register_option
-      (clib_host_to_net_u16 (0x9),
-       NSH_MD2_IOAM_OPTION_TYPE_TRACE,
-       NSH_MD2_IOAM_TRACE_SIZE_DUMMY,
-       nsh_md2_ioam_trace_rewrite_handler,
-       nsh_md2_ioam_trace_data_list_handler,
-       nsh_md2_ioam_trace_swap_handler,
-       nsh_md2_ioam_trace_pop_handler,
-       nsh_md2_ioam_trace_data_list_trace_handler) < 0)
-    return (clib_error_create
-	    ("registration of NSH_MD2_IOAM_OPTION_TYPE_TRACE failed"));
+  if (nsh_md2_register_option (
+	clib_host_to_net_u16 (0x9), NSH_MD2_IOAM_OPTION_TYPE_TRACE,
+	NSH_MD2_IOAM_TRACE_SIZE_DUMMY, nsh_md2_ioam_trace_rewrite_handler,
+	nsh_md2_ioam_trace_data_list_handler, nsh_md2_ioam_trace_swap_handler,
+	nsh_md2_ioam_trace_pop_handler,
+	nsh_md2_ioam_trace_data_list_trace_handler) < 0)
+    return (clib_error_create (
+      "registration of NSH_MD2_IOAM_OPTION_TYPE_TRACE failed"));
 
   return (0);
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (nsh_md2_ioam_trace_init) =
-{
+VLIB_INIT_FUNCTION (nsh_md2_ioam_trace_init) = {
   .runs_after = VLIB_INITS ("nsh_init", "nsh_md2_ioam_init"),
 };
-/* *INDENT-ON* */
 
 int
 nsh_md2_ioam_trace_profile_cleanup (void)
@@ -391,11 +361,10 @@ nsh_md2_ioam_trace_profile_cleanup (void)
   hm->options_size[NSH_MD2_IOAM_OPTION_TYPE_TRACE] = 0;
 
   return 0;
-
 }
 
 static int
-nsh_md2_ioam_trace_get_sizeof_handler (u32 * result)
+nsh_md2_ioam_trace_get_sizeof_handler (u32 *result)
 {
   u16 size = 0;
   u8 trace_data_size = 0;
@@ -418,13 +387,11 @@ nsh_md2_ioam_trace_get_sizeof_handler (u32 * result)
     return VNET_API_ERROR_INVALID_VALUE;
 
   size +=
-    sizeof (nsh_md2_ioam_trace_option_t) +
-    profile->num_elts * trace_data_size;
+    sizeof (nsh_md2_ioam_trace_option_t) + profile->num_elts * trace_data_size;
   *result = size;
 
   return 0;
 }
-
 
 int
 nsh_md2_ioam_trace_profile_setup (void)
@@ -434,14 +401,12 @@ nsh_md2_ioam_trace_profile_setup (void)
 
   trace_profile *profile = NULL;
 
-
   profile = nsh_trace_profile_find ();
 
   if (PREDICT_FALSE (!profile))
     {
       return (-1);
     }
-
 
   if (nsh_md2_ioam_trace_get_sizeof_handler (&trace_size) < 0)
     return (-1);
@@ -450,8 +415,6 @@ nsh_md2_ioam_trace_profile_setup (void)
 
   return (0);
 }
-
-
 
 /*
  * fd.io coding-style-patch-verification: ON

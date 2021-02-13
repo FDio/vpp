@@ -26,70 +26,73 @@
 /**
  * BIER header encapulsation types
  */
-typedef enum bier_hdr_type_t_ {
-    /**
-     * BIER Header in MPLS networks
-     */
-    BIER_HDR_O_MPLS,
+typedef enum bier_hdr_type_t_
+{
+  /**
+   * BIER Header in MPLS networks
+   */
+  BIER_HDR_O_MPLS,
 
-    /**
-     * BIER header in non-MPLS networks
-     */
-    BIER_HDR_O_OTHER,
-} __attribute__((packed)) bier_hdr_type_t;
+  /**
+   * BIER header in non-MPLS networks
+   */
+  BIER_HDR_O_OTHER,
+} __attribute__ ((packed)) bier_hdr_type_t;
 
 /**
  * BIER next-hop type
  */
-typedef enum bier_nh_type_t_ {
-    /**
-     * BIER Header in MPLS networks
-     */
-    BIER_NH_IP,
+typedef enum bier_nh_type_t_
+{
+  /**
+   * BIER Header in MPLS networks
+   */
+  BIER_NH_IP,
 
-    /**
-     * BIER header in non-MPLS networks
-     */
-    BIER_NH_UDP,
-} __attribute__((packed)) bier_nh_type_t;
+  /**
+   * BIER header in non-MPLS networks
+   */
+  BIER_NH_UDP,
+} __attribute__ ((packed)) bier_nh_type_t;
 
 /**
  * A key/ID for a BIER forwarding Mas (FMask).
  * This is a simplified version of a fib_route_path_t.
  */
-typedef struct bier_fmask_id_t_ {
-    union {
-        /**
-         * next-hop of the peer
-         */
-        ip46_address_t bfmi_nh;
-
-        /**
-         * ID of the next-hop object, e.g. a UDP-encap
-         */
-        u32 bfmi_id;
-    };
+typedef struct bier_fmask_id_t_
+{
+  union
+  {
     /**
-     * The BIER table this fmask is in
+     * next-hop of the peer
      */
-    index_t bfmi_bti;
+    ip46_address_t bfmi_nh;
 
     /**
-     * Type of BIER header this fmask supports
+     * ID of the next-hop object, e.g. a UDP-encap
      */
-    bier_hdr_type_t bfmi_hdr_type;
+    u32 bfmi_id;
+  };
+  /**
+   * The BIER table this fmask is in
+   */
+  index_t bfmi_bti;
 
-    /**
-     * Union discriminator
-     */
-    bier_nh_type_t bfmi_nh_type;
-} __attribute__((packed)) bier_fmask_id_t;
+  /**
+   * Type of BIER header this fmask supports
+   */
+  bier_hdr_type_t bfmi_hdr_type;
+
+  /**
+   * Union discriminator
+   */
+  bier_nh_type_t bfmi_nh_type;
+} __attribute__ ((packed)) bier_fmask_id_t;
 
 extern index_t
-bier_fmask_db_find_or_create_and_lock(index_t bti,
-                                      const fib_route_path_t *rpath);
-extern index_t bier_fmask_db_find (index_t bti,
-                                   const fib_route_path_t *rpath);
+bier_fmask_db_find_or_create_and_lock (index_t bti,
+				       const fib_route_path_t *rpath);
+extern index_t bier_fmask_db_find (index_t bti, const fib_route_path_t *rpath);
 
 extern void bier_fmask_db_remove (const bier_fmask_id_t *fmid);
 
@@ -98,6 +101,6 @@ extern void bier_fmask_db_remove (const bier_fmask_id_t *fmid);
  */
 typedef walk_rc_t (*bier_fmask_walk_fn_t) (index_t bfmi, void *ctx);
 
-extern void bier_fmask_db_walk(bier_fmask_walk_fn_t fn, void *ctx);
+extern void bier_fmask_db_walk (bier_fmask_walk_fn_t fn, void *ctx);
 
 #endif

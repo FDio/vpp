@@ -56,11 +56,9 @@ _qhash_resize (void *v, uword length, uword elt_bytes)
   h = qhash_header (v);
   h->n_elts = 0;
   h->log2_hash_size = l;
-  h->hash_keys =
-    clib_mem_alloc_aligned_no_fail (sizeof (h->hash_keys[0]) << l,
-				    CLIB_CACHE_LINE_BYTES);
-  vec_resize (h->hash_key_valid_bitmap,
-	      1 << (l - QHASH_LOG2_KEYS_PER_BUCKET));
+  h->hash_keys = clib_mem_alloc_aligned_no_fail (sizeof (h->hash_keys[0]) << l,
+						 CLIB_CACHE_LINE_BYTES);
+  vec_resize (h->hash_key_valid_bitmap, 1 << (l - QHASH_LOG2_KEYS_PER_BUCKET));
   clib_memset (v, ~0, elt_bytes << l);
 
   return v;
@@ -85,36 +83,35 @@ qhash_min_log2_init ()
 }
 
 always_inline uword
-qhash_get_valid_elt_mask (qhash_t * h, uword i)
+qhash_get_valid_elt_mask (qhash_t *h, uword i)
 {
   return h->hash_key_valid_bitmap[i / QHASH_KEYS_PER_BUCKET];
 }
 
 always_inline void
-qhash_set_valid_elt_mask (qhash_t * h, uword i, uword mask)
+qhash_set_valid_elt_mask (qhash_t *h, uword i, uword mask)
 {
   h->hash_key_valid_bitmap[i / QHASH_KEYS_PER_BUCKET] = mask;
 }
 
 always_inline uword
-qhash_search_bucket (uword * hash_keys, uword search_key, uword m)
+qhash_search_bucket (uword *hash_keys, uword search_key, uword m)
 {
   uword t;
 #define _(i) ((hash_keys[i] == search_key) << i)
-  t = (_(0) | _(1) | _(2) | _(3));
+  t = (_ (0) | _ (1) | _ (2) | _ (3));
   if (QHASH_KEYS_PER_BUCKET > 4)
-    t |= (_(4) | _(5) | _(6) | _(7));
+    t |= (_ (4) | _ (5) | _ (6) | _ (7));
   if (QHASH_KEYS_PER_BUCKET > 8)
-    t |= (_(8) | _(9) | _(10) | _(11) | _(12) | _(13) | _(14) | _(15));
+    t |= (_ (8) | _ (9) | _ (10) | _ (11) | _ (12) | _ (13) | _ (14) | _ (15));
 #undef _
   return m & t;
 }
 
 /* Lookup multiple keys in the same hash table. */
 void
-qhash_get_multiple (void *v,
-		    uword * search_keys,
-		    uword n_search_keys, u32 * result_indices)
+qhash_get_multiple (void *v, uword *search_keys, uword n_search_keys,
+		    u32 *result_indices)
 {
   qhash_t *h = qhash_header (v);
   uword *k, *hash_keys;
@@ -242,9 +239,8 @@ qhash_get_multiple (void *v,
 /* Lookup multiple keys in the same hash table.
    Returns index of first matching key. */
 u32
-qhash_get_first_match (void *v,
-		       uword * search_keys,
-		       uword n_search_keys, uword * matching_key)
+qhash_get_first_match (void *v, uword *search_keys, uword n_search_keys,
+		       uword *matching_key)
 {
   qhash_t *h = qhash_header (v);
   uword *k, *hash_keys;
@@ -297,8 +293,8 @@ qhash_get_first_match (void *v,
       valid0 = qhash_get_valid_elt_mask (h, bi0);
       valid1 = qhash_get_valid_elt_mask (h, bi1);
       match_mask = qhash_search_bucket (h0, k0, valid0);
-      match_mask |= (qhash_search_bucket (h1, k1, valid1)
-		     << QHASH_KEYS_PER_BUCKET);
+      match_mask |=
+	(qhash_search_bucket (h1, k1, valid1) << QHASH_KEYS_PER_BUCKET);
       if (match_mask)
 	{
 	  uword bi, is_match1;
@@ -306,15 +302,15 @@ qhash_get_first_match (void *v,
 	  bi = qhash_min_log2 (match_mask);
 	  is_match1 = bi >= QHASH_KEYS_PER_BUCKET;
 
-	  bi += ((is_match1 ? bi1 : bi0)
-		 - (is_match1 << QHASH_LOG2_KEYS_PER_BUCKET));
+	  bi += ((is_match1 ? bi1 : bi0) -
+		 (is_match1 << QHASH_LOG2_KEYS_PER_BUCKET));
 	  *matching_key = (k - 2 - search_keys) + is_match1;
 	  return bi;
 	}
 
       /* Full buckets trigger search of overflow hash. */
-      if (PREDICT_FALSE (valid0 == QHASH_ALL_VALID
-			 || valid1 == QHASH_ALL_VALID))
+      if (PREDICT_FALSE (valid0 == QHASH_ALL_VALID ||
+			 valid1 == QHASH_ALL_VALID))
 	{
 	  uword *p = 0;
 	  uword ki = k - 2 - search_keys;
@@ -386,8 +382,8 @@ qhash_get_first_match (void *v,
 }
 
 static void *
-qhash_set_overflow (void *v, uword elt_bytes,
-		    uword key, uword bi, uword * n_elts, u32 * result)
+qhash_set_overflow (void *v, uword elt_bytes, uword key, uword bi,
+		    uword *n_elts, u32 *result)
 {
   qhash_t *h = qhash_header (v);
   uword *p = hash_get (h->overflow_hash, key);
@@ -428,7 +424,7 @@ qhash_set_overflow (void *v, uword elt_bytes,
 }
 
 static uword
-qhash_unset_overflow (void *v, uword key, uword bi, uword * n_elts)
+qhash_unset_overflow (void *v, uword key, uword bi, uword *n_elts)
 {
   qhash_t *h = qhash_header (v);
   uword *p = hash_get (h->overflow_hash, key);
@@ -460,10 +456,8 @@ qhash_find_free (uword i, uword valid_mask)
 }
 
 void *
-_qhash_set_multiple (void *v,
-		     uword elt_bytes,
-		     uword * search_keys,
-		     uword n_search_keys, u32 * result_indices)
+_qhash_set_multiple (void *v, uword elt_bytes, uword *search_keys,
+		     uword n_search_keys, u32 *result_indices)
 {
   qhash_t *h = qhash_header (v);
   uword *k, *hash_keys;
@@ -650,9 +644,8 @@ _qhash_set_multiple (void *v,
 }
 
 static uword
-unset_slow_path (void *v, uword elt_bytes,
-		 uword k0, uword bi0, uword valid0, uword match0,
-		 uword * n_elts)
+unset_slow_path (void *v, uword elt_bytes, uword k0, uword bi0, uword valid0,
+		 uword match0, uword *n_elts)
 {
   qhash_t *h = qhash_header (v);
   uword i, j = 0, k, l, t = ~0;
@@ -668,20 +661,21 @@ unset_slow_path (void *v, uword elt_bytes,
   i = bi0 / QHASH_KEYS_PER_BUCKET;
   t = bi0 + qhash_min_log2 (match0);
 
-  if (valid0 == QHASH_ALL_VALID
-      && i < vec_len (h->overflow_counts) && h->overflow_counts[i] > 0)
+  if (valid0 == QHASH_ALL_VALID && i < vec_len (h->overflow_counts) &&
+      h->overflow_counts[i] > 0)
     {
       found = 0;
-      /* *INDENT-OFF* */
+
       hash_foreach_pair (p, h->overflow_hash, ({
-	j = qhash_hash_mix (h, p->key) / QHASH_KEYS_PER_BUCKET;
-	if (j == i)
-	  {
-	    found = p;
-	    break;
-	  }
-      }));
-      /* *INDENT-ON* */
+			   j = qhash_hash_mix (h, p->key) /
+			       QHASH_KEYS_PER_BUCKET;
+			   if (j == i)
+			     {
+			       found = p;
+			       break;
+			     }
+			 }));
+
       ASSERT (found != 0);
       ASSERT (j == i);
 
@@ -704,10 +698,8 @@ unset_slow_path (void *v, uword elt_bytes,
 }
 
 void
-_qhash_unset_multiple (void *v,
-		       uword elt_bytes,
-		       uword * search_keys,
-		       uword n_search_keys, u32 * result_indices)
+_qhash_unset_multiple (void *v, uword elt_bytes, uword *search_keys,
+		       uword n_search_keys, u32 *result_indices)
 {
   qhash_t *h = qhash_header (v);
   uword *k, *hash_keys;
@@ -777,8 +769,8 @@ _qhash_unset_multiple (void *v,
 
       n_elts -= (match0 != 0) + (match1 != 0);
 
-      if (PREDICT_FALSE (valid0 == QHASH_ALL_VALID
-			 || valid1 == QHASH_ALL_VALID))
+      if (PREDICT_FALSE (valid0 == QHASH_ALL_VALID ||
+			 valid1 == QHASH_ALL_VALID))
 	goto slow_path2;
 
       valid0 ^= match0;
@@ -843,8 +835,8 @@ _qhash_unset_multiple (void *v,
       r += 1;
 
       if (PREDICT_FALSE (valid0 == QHASH_ALL_VALID))
-	r[-1] = unset_slow_path (v, elt_bytes, k0, bi0, valid0, match0,
-				 &n_elts);
+	r[-1] =
+	  unset_slow_path (v, elt_bytes, k0, bi0, valid0, match0, &n_elts);
     }
 
   h->n_elts = n_elts;

@@ -21,7 +21,6 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 
-
 typedef struct nsh_md2_ioam_sw_interface_
 {
   u32 sw_if_index;
@@ -47,7 +46,6 @@ typedef struct nsh_md2_ioam_main_
   u32 unix_time_0;
   f64 vlib_time_0;
 
-
   /* Trace option */
   u8 has_trace_option;
 
@@ -59,11 +57,10 @@ typedef struct nsh_md2_ioam_main_
 #define PPC_DECAP 2
   u8 has_ppc_option;
 
-#define TSP_SECONDS              0
-#define TSP_MILLISECONDS         1
-#define TSP_MICROSECONDS         2
-#define TSP_NANOSECONDS          3
-
+#define TSP_SECONDS	 0
+#define TSP_MILLISECONDS 1
+#define TSP_MICROSECONDS 2
+#define TSP_NANOSECONDS	 3
 
   /* API message ID base */
   u16 msg_id_base;
@@ -88,7 +85,6 @@ typedef struct nsh_md2_ioam_main_
   u8 *bool_ref_by_sw_if_index;
   fib_node_type_t fib_entry_type;
 
-
 } nsh_md2_ioam_main_t;
 extern nsh_md2_ioam_main_t nsh_md2_ioam_main;
 
@@ -102,18 +98,13 @@ typedef struct
   u8 option_data[256];
 } ioam_trace_t;
 
-
 clib_error_t *nsh_md2_ioam_enable_disable (int has_trace_option,
-						int has_pot_option,
-						int has_ppc_option);
-
-
+					   int has_pot_option,
+					   int has_ppc_option);
 
 int nsh_md2_ioam_trace_profile_setup (void);
 
 int nsh_md2_ioam_trace_profile_cleanup (void);
 extern void nsh_md2_ioam_interface_init (void);
-
-
 
 #endif

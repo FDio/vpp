@@ -25,8 +25,8 @@ namespace VOM {
 namespace gbp_recirc_cmds {
 
 /**
-* A command class that creates or updates the GBP recirc
-*/
+ * A command class that creates or updates the GBP recirc
+ */
 class create_cmd : public rpc_cmd<HW::item<bool>, vapi::Gbp_recirc_add_del>
 {
 public:

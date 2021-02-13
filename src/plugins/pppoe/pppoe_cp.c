@@ -27,8 +27,8 @@ pppoe_add_del_cp (u32 cp_if_index, u8 is_add)
       return ~0;
     }
 
-  vnet_feature_enable_disable ("device-input", "pppoe-input",
-			       cp_if_index, is_add, 0, 0);
+  vnet_feature_enable_disable ("device-input", "pppoe-input", cp_if_index,
+			       is_add, 0, 0);
 
   if (is_add)
     {
@@ -42,9 +42,8 @@ pppoe_add_del_cp (u32 cp_if_index, u8 is_add)
 }
 
 static clib_error_t *
-pppoe_add_del_cp_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+pppoe_add_del_cp_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   pppoe_main_t *pem = &pppoe_main;
@@ -79,8 +78,8 @@ pppoe_add_del_cp_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  vnet_feature_enable_disable ("device-input", "pppoe-input",
-			       cp_if_index, is_add, 0, 0);
+  vnet_feature_enable_disable ("device-input", "pppoe-input", cp_if_index,
+			       is_add, 0, 0);
 
   if (is_add)
     {
@@ -97,14 +96,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (create_pppoe_cp_cmd, static) =
-{
-    .path = "create pppoe cp",
-    .short_help = "create pppoe cp-if-index <intfc> [del]",
-    .function = pppoe_add_del_cp_command_fn,
+VLIB_CLI_COMMAND (create_pppoe_cp_cmd, static) = {
+  .path = "create pppoe cp",
+  .short_help = "create pppoe cp-if-index <intfc> [del]",
+  .function = pppoe_add_del_cp_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

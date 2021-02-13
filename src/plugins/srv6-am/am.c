@@ -34,7 +34,7 @@ srv6_am_main_t srv6_am_main;
 /*****************************************/
 /* SRv6 LocalSID instantiation and removal functions */
 static int
-srv6_am_localsid_creation_fn (ip6_sr_localsid_t * localsid)
+srv6_am_localsid_creation_fn (ip6_sr_localsid_t *localsid)
 {
   srv6_am_main_t *sm = &srv6_am_main;
   srv6_am_localsid_t *ls_mem = localsid->plugin_mem;
@@ -43,14 +43,13 @@ srv6_am_localsid_creation_fn (ip6_sr_localsid_t * localsid)
   /* Step 1: Prepare xconnect adjacency for sending packets to the VNF */
 
   /* Retrieve the adjacency corresponding to the (OIF, next_hop) */
-  nh_adj_index = adj_nbr_add_or_lock (FIB_PROTOCOL_IP6,
-				      VNET_LINK_IP6, &ls_mem->nh_addr,
-				      ls_mem->sw_if_index_out);
+  nh_adj_index =
+    adj_nbr_add_or_lock (FIB_PROTOCOL_IP6, VNET_LINK_IP6, &ls_mem->nh_addr,
+			 ls_mem->sw_if_index_out);
   if (nh_adj_index == ADJ_INDEX_INVALID)
     return -5;
 
   localsid->nh_adj = nh_adj_index;
-
 
   /* Step 2: Prepare inbound policy for packets returning from the VNF */
 
@@ -59,8 +58,8 @@ srv6_am_localsid_creation_fn (ip6_sr_localsid_t * localsid)
 			  ls_mem->sw_if_index_in))
     return -3;
 
-  vnet_sw_interface_t *sw = vnet_get_sw_interface (sm->vnet_main,
-						   ls_mem->sw_if_index_in);
+  vnet_sw_interface_t *sw =
+    vnet_get_sw_interface (sm->vnet_main, ls_mem->sw_if_index_in);
   if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
     return -3;
 
@@ -73,7 +72,7 @@ srv6_am_localsid_creation_fn (ip6_sr_localsid_t * localsid)
 }
 
 static int
-srv6_am_localsid_removal_fn (ip6_sr_localsid_t * localsid)
+srv6_am_localsid_removal_fn (ip6_sr_localsid_t *localsid)
 {
   srv6_am_localsid_t *ls_mem = localsid->plugin_mem;
 
@@ -99,7 +98,7 @@ srv6_am_localsid_removal_fn (ip6_sr_localsid_t * localsid)
  * Example: print "Table 5"
  */
 u8 *
-format_srv6_am_localsid (u8 * s, va_list * args)
+format_srv6_am_localsid (u8 *s, va_list *args)
 {
   srv6_am_localsid_t *ls_mem = va_arg (*args, void *);
 
@@ -122,7 +121,7 @@ format_srv6_am_localsid (u8 * s, va_list * args)
  * Notice that it MUST match the keyword_str and params_str defined above.
  */
 uword
-unformat_srv6_am_localsid (unformat_input_t * input, va_list * args)
+unformat_srv6_am_localsid (unformat_input_t *input, va_list *args)
 {
   void **plugin_mem_p = va_arg (*args, void **);
   srv6_am_localsid_t *ls_mem;
@@ -133,10 +132,10 @@ unformat_srv6_am_localsid (unformat_input_t * input, va_list * args)
   u32 sw_if_index_out;
   u32 sw_if_index_in;
 
-  if (unformat (input, "end.am nh %U oif %U iif %U",
-		unformat_ip6_address, &nh_addr.ip6,
-		unformat_vnet_sw_interface, vnm, &sw_if_index_out,
-		unformat_vnet_sw_interface, vnm, &sw_if_index_in))
+  if (unformat (input, "end.am nh %U oif %U iif %U", unformat_ip6_address,
+		&nh_addr.ip6, unformat_vnet_sw_interface, vnm,
+		&sw_if_index_out, unformat_vnet_sw_interface, vnm,
+		&sw_if_index_in))
     {
       /* Allocate a portion of memory */
       ls_mem = clib_mem_alloc_aligned_at_offset (sizeof *ls_mem, 0, 0, 1);
@@ -145,8 +144,7 @@ unformat_srv6_am_localsid (unformat_input_t * input, va_list * args)
       clib_memset (ls_mem, 0, sizeof *ls_mem);
 
       /* Our brand-new car is ready */
-      clib_memcpy (&ls_mem->nh_addr.ip6, &nh_addr.ip6,
-		   sizeof (ip6_address_t));
+      clib_memcpy (&ls_mem->nh_addr.ip6, &nh_addr.ip6, sizeof (ip6_address_t));
       ls_mem->sw_if_index_out = sw_if_index_out;
       ls_mem->sw_if_index_in = sw_if_index_in;
 
@@ -160,7 +158,7 @@ unformat_srv6_am_localsid (unformat_input_t * input, va_list * args)
 /*************************/
 /* SRv6 LocalSID FIB DPO */
 static u8 *
-format_srv6_am_dpo (u8 * s, va_list * args)
+format_srv6_am_dpo (u8 *s, va_list *args)
 {
   index_t index = va_arg (*args, index_t);
   CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
@@ -169,12 +167,12 @@ format_srv6_am_dpo (u8 * s, va_list * args)
 }
 
 void
-srv6_am_dpo_lock (dpo_id_t * dpo)
+srv6_am_dpo_lock (dpo_id_t *dpo)
 {
 }
 
 void
-srv6_am_dpo_unlock (dpo_id_t * dpo)
+srv6_am_dpo_unlock (dpo_id_t *dpo)
 {
 }
 
@@ -195,7 +193,7 @@ const static char *const *const srv6_am_nodes[DPO_PROTO_NUM] = {
 
 /**********************/
 static clib_error_t *
-srv6_am_init (vlib_main_t * vm)
+srv6_am_init (vlib_main_t *vm)
 {
   srv6_am_main_t *sm = &srv6_am_main;
   int rv = 0;
@@ -207,17 +205,10 @@ srv6_am_init (vlib_main_t * vm)
   sm->srv6_am_dpo_type = dpo_register_new_type (&srv6_am_vft, srv6_am_nodes);
 
   /* Register SRv6 LocalSID */
-  rv = sr_localsid_register_function (vm,
-				      function_name,
-				      keyword_str,
-				      def_str,
-				      params_str,
-				      128,
-				      &sm->srv6_am_dpo_type,
-				      format_srv6_am_localsid,
-				      unformat_srv6_am_localsid,
-				      srv6_am_localsid_creation_fn,
-				      srv6_am_localsid_removal_fn);
+  rv = sr_localsid_register_function (
+    vm, function_name, keyword_str, def_str, params_str, 128,
+    &sm->srv6_am_dpo_type, format_srv6_am_localsid, unformat_srv6_am_localsid,
+    srv6_am_localsid_creation_fn, srv6_am_localsid_removal_fn);
   if (rv < 0)
     clib_error_return (0, "SRv6 LocalSID function could not be registered.");
   else
@@ -226,9 +217,7 @@ srv6_am_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
-VNET_FEATURE_INIT (srv6_am_rewrite, static) =
-{
+VNET_FEATURE_INIT (srv6_am_rewrite, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "srv6-am-rewrite",
   .runs_before = 0,
@@ -240,12 +229,11 @@ VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Masquerading Segment Routing for IPv6 (SRv6) Proxy",
 };
-/* *INDENT-ON* */
 
 /*
-* fd.io coding-style-patch-verification: ON
-*
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*/
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -30,8 +30,7 @@ create_cmd::create_cmd(HW::item<uint32_t>& item,
   , m_uu_fwd(uu_fwd)
   , m_bm_flood(bm_flood)
   , m_flags(flags)
-{
-}
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
@@ -88,8 +87,7 @@ create_cmd::to_string() const
 
 delete_cmd::delete_cmd(HW::item<uint32_t>& item)
   : rpc_cmd(item)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const

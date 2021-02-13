@@ -37,8 +37,8 @@
 http_static_main_t http_static_main;
 
 /* API message handler */
-static void vl_api_http_static_enable_t_handler
-  (vl_api_http_static_enable_t * mp)
+static void
+vl_api_http_static_enable_t_handler (vl_api_http_static_enable_t *mp)
 {
   vl_api_http_static_enable_reply_t *rmp;
   http_static_main_t *hmp = &http_static_main;
@@ -47,18 +47,17 @@ static void vl_api_http_static_enable_t_handler
   mp->uri[ARRAY_LEN (mp->uri) - 1] = 0;
   mp->www_root[ARRAY_LEN (mp->www_root) - 1] = 0;
 
-  rv = http_static_server_enable_api
-    (ntohl (mp->fifo_size),
-     ntohl (mp->cache_size_limit),
-     ntohl (mp->prealloc_fifos),
-     ntohl (mp->private_segment_size), mp->www_root, mp->uri);
+  rv = http_static_server_enable_api (
+    ntohl (mp->fifo_size), ntohl (mp->cache_size_limit),
+    ntohl (mp->prealloc_fifos), ntohl (mp->private_segment_size), mp->www_root,
+    mp->uri);
 
   REPLY_MACRO (VL_API_HTTP_STATIC_ENABLE_REPLY);
 }
 
 #include <http_static/http_static.api.c>
 static clib_error_t *
-http_static_init (vlib_main_t * vm)
+http_static_init (vlib_main_t *vm)
 {
   http_static_main_t *hmp = &http_static_main;
 
@@ -73,13 +72,8 @@ http_static_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (http_static_init);
 
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () =
-{
-  .version = VPP_BUILD_VER,
-  .description = "HTTP Static Server"
-};
-/* *INDENT-ON* */
+VLIB_PLUGIN_REGISTER () = { .version = VPP_BUILD_VER,
+			    .description = "HTTP Static Server" };
 
 /*
  * fd.io coding-style-patch-verification: ON

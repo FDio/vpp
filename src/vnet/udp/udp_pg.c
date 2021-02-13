@@ -38,17 +38,15 @@
  */
 
 #include <vnet/pg/pg.h>
-#include <vnet/ip/ip.h>		/* for unformat_udp_udp_port */
+#include <vnet/ip/ip.h> /* for unformat_udp_udp_port */
 #include <vnet/udp/udp.h>
 
-#define UDP_PG_EDIT_LENGTH (1 << 0)
+#define UDP_PG_EDIT_LENGTH   (1 << 0)
 #define UDP_PG_EDIT_CHECKSUM (1 << 1)
 
 always_inline void
-udp_pg_edit_function_inline (pg_main_t * pg,
-			     pg_stream_t * s,
-			     pg_edit_group_t * g,
-			     u32 * packets, u32 n_packets, u32 flags)
+udp_pg_edit_function_inline (pg_main_t *pg, pg_stream_t *s, pg_edit_group_t *g,
+			     u32 *packets, u32 n_packets, u32 flags)
 {
   vlib_main_t *vm = vlib_get_main ();
   u32 ip_offset, udp_offset;
@@ -83,15 +81,14 @@ udp_pg_edit_function_inline (pg_main_t * pg,
 
 	  sum0 = clib_mem_unaligned (&ip0->src_address, u64);
 
-	  sum0 = ip_csum_with_carry
-	    (sum0, clib_host_to_net_u32 (udp_len0 + (ip0->protocol << 16)));
+	  sum0 = ip_csum_with_carry (
+	    sum0, clib_host_to_net_u32 (udp_len0 + (ip0->protocol << 16)));
 
 	  /* Invalidate possibly old checksum. */
 	  udp0->checksum = 0;
 
-	  sum0 =
-	    ip_incremental_checksum_buffer (vm, p0, udp_offset, udp_len0,
-					    sum0);
+	  sum0 = ip_incremental_checksum_buffer (vm, p0, udp_offset, udp_len0,
+						 sum0);
 
 	  sum0 = ~ip_csum_fold (sum0);
 
@@ -104,9 +101,8 @@ udp_pg_edit_function_inline (pg_main_t * pg,
 }
 
 static void
-udp_pg_edit_function (pg_main_t * pg,
-		      pg_stream_t * s,
-		      pg_edit_group_t * g, u32 * packets, u32 n_packets)
+udp_pg_edit_function (pg_main_t *pg, pg_stream_t *s, pg_edit_group_t *g,
+		      u32 *packets, u32 n_packets)
 {
   switch (g->edit_function_opaque)
     {
@@ -139,19 +135,19 @@ typedef struct
 } pg_udp_header_t;
 
 static inline void
-pg_udp_header_init (pg_udp_header_t * p)
+pg_udp_header_init (pg_udp_header_t *p)
 {
   /* Initialize fields that are not bit fields in the IP header. */
 #define _(f) pg_edit_init (&p->f, udp_header_t, f);
-  _(src_port);
-  _(dst_port);
-  _(length);
-  _(checksum);
+  _ (src_port);
+  _ (dst_port);
+  _ (length);
+  _ (checksum);
 #undef _
 }
 
 uword
-unformat_pg_udp_header (unformat_input_t * input, va_list * args)
+unformat_pg_udp_header (unformat_input_t *input, va_list *args)
 {
   pg_stream_t *s = va_arg (*args, pg_stream_t *);
   pg_udp_header_t *p;
@@ -165,21 +161,20 @@ unformat_pg_udp_header (unformat_input_t * input, va_list * args)
   p->checksum.type = PG_EDIT_UNSPECIFIED;
   p->length.type = PG_EDIT_UNSPECIFIED;
 
-  if (!unformat (input, "UDP: %U -> %U",
-		 unformat_pg_edit,
-		 unformat_tcp_udp_port, &p->src_port,
-		 unformat_pg_edit, unformat_tcp_udp_port, &p->dst_port))
+  if (!unformat (input, "UDP: %U -> %U", unformat_pg_edit,
+		 unformat_tcp_udp_port, &p->src_port, unformat_pg_edit,
+		 unformat_tcp_udp_port, &p->dst_port))
     goto error;
 
   /* Parse options. */
   while (1)
     {
-      if (unformat (input, "length %U",
-		    unformat_pg_edit, unformat_pg_number, &p->length))
+      if (unformat (input, "length %U", unformat_pg_edit, unformat_pg_number,
+		    &p->length))
 	;
 
-      else if (unformat (input, "checksum %U",
-			 unformat_pg_edit, unformat_pg_number, &p->checksum))
+      else if (unformat (input, "checksum %U", unformat_pg_edit,
+			 unformat_pg_number, &p->checksum))
 	;
 
       /* Can't parse input: try next protocol level. */
@@ -205,18 +200,18 @@ unformat_pg_udp_header (unformat_input_t * input, va_list * args)
 	  pi2 = udp_get_dst_port_info (&udp_main, dst_port, UDP_IP6);
       }
 
-    if (pi && pi->unformat_pg_edit
-	&& unformat_user (input, pi->unformat_pg_edit, s))
+    if (pi && pi->unformat_pg_edit &&
+	unformat_user (input, pi->unformat_pg_edit, s))
       ;
-    else if (pi2 && pi2->unformat_pg_edit
-	     && unformat_user (input, pi2->unformat_pg_edit, s))
+    else if (pi2 && pi2->unformat_pg_edit &&
+	     unformat_user (input, pi2->unformat_pg_edit, s))
       ;
     else if (!unformat_user (input, unformat_pg_payload, s))
       goto error;
 
     p = pg_get_edit_group (s, group_index);
-    if (p->checksum.type == PG_EDIT_UNSPECIFIED
-	|| p->length.type == PG_EDIT_UNSPECIFIED)
+    if (p->checksum.type == PG_EDIT_UNSPECIFIED ||
+	p->length.type == PG_EDIT_UNSPECIFIED)
       {
 	pg_edit_group_t *g = pg_stream_get_group (s, group_index);
 	g->edit_function = udp_pg_edit_function;
@@ -235,7 +230,6 @@ error:
   pg_free_edit_group (s);
   return 0;
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

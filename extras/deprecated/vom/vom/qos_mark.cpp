@@ -31,16 +31,14 @@ mark::mark(const interface& itf, const map& m, const source_t& src)
   , m_itf(itf.singular())
   , m_map(m.singular())
   , m_src(src)
-{
-}
+{}
 
 mark::mark(const mark& m)
   : m_config(m.m_config)
   , m_itf(m.m_itf)
   , m_map(m.m_map)
   , m_src(m.m_src)
-{
-}
+{}
 
 mark::~mark()
 {

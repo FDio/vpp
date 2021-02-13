@@ -41,7 +41,7 @@
 #include <vnet/pg/pg.h>
 
 static void
-pg_edit_set_value_helper (pg_edit_t * e, u64 value, u8 * result)
+pg_edit_set_value_helper (pg_edit_t *e, u64 value, u8 *result)
 {
   int i, j, n_bits_left;
   u8 *v, tmp[8];
@@ -74,7 +74,7 @@ pg_edit_set_value_helper (pg_edit_t * e, u64 value, u8 * result)
 }
 
 void
-pg_edit_set_value (pg_edit_t * e, int hi_or_lo, u64 value)
+pg_edit_set_value (pg_edit_t *e, int hi_or_lo, u64 value)
 {
   pg_edit_alloc_value (e, hi_or_lo);
   pg_edit_set_value_helper (e, value, e->values[hi_or_lo]);
@@ -82,7 +82,7 @@ pg_edit_set_value (pg_edit_t * e, int hi_or_lo, u64 value)
 
 /* Parse an int either %d or 0x%x into network byte order. */
 uword
-unformat_pg_number (unformat_input_t * input, va_list * args)
+unformat_pg_number (unformat_input_t *input, va_list *args)
 {
   u8 *result = va_arg (*args, u8 *);
   pg_edit_t *e = va_arg (*args, pg_edit_t *);
@@ -90,8 +90,8 @@ unformat_pg_number (unformat_input_t * input, va_list * args)
 
   ASSERT (BITS (value) >= e->n_bits);
 
-  if (!unformat (input, "0x%X", sizeof (value), &value)
-      && !unformat (input, "%D", sizeof (value), &value))
+  if (!unformat (input, "0x%X", sizeof (value), &value) &&
+      !unformat (input, "%D", sizeof (value), &value))
     return 0;
 
   /* Number given does not fit into bit field. */
@@ -103,7 +103,7 @@ unformat_pg_number (unformat_input_t * input, va_list * args)
 }
 
 uword
-unformat_pg_edit (unformat_input_t * input, va_list * args)
+unformat_pg_edit (unformat_input_t *input, va_list *args)
 {
   unformat_function_t *f = va_arg (*args, unformat_function_t *);
   pg_edit_t *e = va_arg (*args, pg_edit_t *);
@@ -124,7 +124,7 @@ unformat_pg_edit (unformat_input_t * input, va_list * args)
 }
 
 uword
-unformat_pg_payload (unformat_input_t * input, va_list * args)
+unformat_pg_payload (unformat_input_t *input, va_list *args)
 {
   pg_stream_t *s = va_arg (*args, pg_stream_t *);
   vlib_main_t *vm = vlib_get_main ();
@@ -174,7 +174,8 @@ unformat_pg_payload (unformat_input_t * input, va_list * args)
   e->type = PG_EDIT_FIXED;
   e->n_bits = len * BITS (v[0]);
 
-  /* Least significant bit is at end of bitstream, since everything is always bigendian. */
+  /* Least significant bit is at end of bitstream, since everything is always
+   * bigendian. */
   e->lsb_bit_offset = len > 0 ? e->n_bits - BITS (v[0]) : 0;
 
   e->values[PG_EDIT_LO] = v;

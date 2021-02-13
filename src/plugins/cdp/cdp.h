@@ -70,11 +70,11 @@ typedef struct
   u8 *last_rx_pkt;
 } cdp_neighbor_t;
 
-#define foreach_neighbor_string_field           \
-_(device_name)                                  \
-_(version)                                      \
-_(port_id)                                      \
-_(platform)
+#define foreach_neighbor_string_field                                         \
+  _ (device_name)                                                             \
+  _ (version)                                                                 \
+  _ (port_id)                                                                 \
+  _ (platform)
 
 typedef struct
 {
@@ -109,17 +109,17 @@ extern cdp_main_t cdp_main;
 extern vlib_node_registration_t cdp_process_node;
 
 /* Packet counters */
-#define foreach_cdp_error                                       \
-_ (NONE, "good cdp packets (processed)")	                \
-_ (CACHE_HIT, "good cdp packets (cache hit)")			\
-_ (BAD_TLV, "cdp packets with bad TLVs")                        \
-_ (PROTOCOL_VERSION, "cdp packets with bad protocol versions")  \
-_ (CHECKSUM, "cdp packets with bad checksums")                  \
-_ (DISABLED, "cdp packets received on disabled interfaces")
+#define foreach_cdp_error                                                     \
+  _ (NONE, "good cdp packets (processed)")                                    \
+  _ (CACHE_HIT, "good cdp packets (cache hit)")                               \
+  _ (BAD_TLV, "cdp packets with bad TLVs")                                    \
+  _ (PROTOCOL_VERSION, "cdp packets with bad protocol versions")              \
+  _ (CHECKSUM, "cdp packets with bad checksums")                              \
+  _ (DISABLED, "cdp packets received on disabled interfaces")
 
 typedef enum
 {
-#define _(sym,str) CDP_ERROR_##sym,
+#define _(sym, str) CDP_ERROR_##sym,
   foreach_cdp_error
 #undef _
     CDP_N_ERROR,
@@ -138,12 +138,12 @@ typedef enum
   CDP_EVENT_DISABLE,
 } cdp_process_event_t;
 
-cdp_error_t cdp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0);
-void cdp_periodic (vlib_main_t * vm);
-void cdp_keepalive (cdp_main_t * cm, cdp_neighbor_t * n);
+cdp_error_t cdp_input (vlib_main_t *vm, vlib_buffer_t *b0, u32 bi0);
+void cdp_periodic (vlib_main_t *vm);
+void cdp_keepalive (cdp_main_t *cm, cdp_neighbor_t *n);
 u16 cdp_checksum (void *p, int count);
-u8 *cdp_input_format_trace (u8 * s, va_list * args);
-void vnet_cdp_create_periodic_process (cdp_main_t * cmp);
+u8 *cdp_input_format_trace (u8 *s, va_list *args);
+void vnet_cdp_create_periodic_process (cdp_main_t *cmp);
 
 #endif /* __included_cdp_h__ */
 

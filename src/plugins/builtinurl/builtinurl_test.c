@@ -20,7 +20,7 @@
 #include <vppinfra/error.h>
 #include <stdbool.h>
 
-uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
+uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
 
 /* Declare message IDs */
 #include <builtinurl/builtinurl.api_enum.h>
@@ -39,7 +39,7 @@ builtinurl_test_main_t builtinurl_test_main;
 #include <vlibapi/vat_helper_macros.h>
 
 static int
-api_builtinurl_enable (vat_main_t * vam)
+api_builtinurl_enable (vat_main_t *vam)
 {
   vl_api_builtinurl_enable_t *mp;
   int ret;

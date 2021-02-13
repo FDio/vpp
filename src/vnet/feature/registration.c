@@ -63,7 +63,7 @@
 
     sw_if_index = <interface-handle>
     vnet_feature_enable_disable ("ip4-unicast", "my-ip4-unicast-feature",
-                                 sw_if_index, 1 );
+				 sw_if_index, 1 );
     </PRE></CODE>
 
     Here's how to obtain the correct next node index in packet
@@ -79,9 +79,8 @@
     vnet_feature_next.
 */
 
-
 static int
-comma_split (u8 * s, u8 ** a, u8 ** b)
+comma_split (u8 *s, u8 **a, u8 **b)
 {
   *a = s;
 
@@ -118,14 +117,12 @@ comma_split (u8 * s, u8 ** a, u8 ** b)
  *        genuinely missing node-names
  */
 clib_error_t *
-vnet_feature_arc_init (vlib_main_t * vm,
-		       vnet_config_main_t * vcm,
-		       char **feature_start_nodes,
-		       int num_feature_start_nodes,
+vnet_feature_arc_init (vlib_main_t *vm, vnet_config_main_t *vcm,
+		       char **feature_start_nodes, int num_feature_start_nodes,
 		       char *last_in_arc,
-		       vnet_feature_registration_t * first_reg,
-		       vnet_feature_constraint_registration_t *
-		       first_const_set, char ***in_feature_nodes)
+		       vnet_feature_registration_t *first_reg,
+		       vnet_feature_constraint_registration_t *first_const_set,
+		       char ***in_feature_nodes)
 {
   uword *index_by_name;
   uword *reg_by_index;
@@ -167,8 +164,8 @@ vnet_feature_arc_init (vlib_main_t * vm,
 	       * Add an explicit constraint so this feature will run
 	       * before the last node in the arc
 	       */
-	      constraint_tuple = format (0, "%s,%s%c", this_reg->node_name,
-					 last_in_arc, 0);
+	      constraint_tuple =
+		format (0, "%s,%s%c", this_reg->node_name, last_in_arc, 0);
 	      vec_add1 (constraints, constraint_tuple);
 	    }
 	  this_reg = this_reg->next_in_arc;
@@ -191,8 +188,8 @@ vnet_feature_arc_init (vlib_main_t * vm,
 	{
 	  this_constraint_c = these_constraints[0];
 
-	  constraint_tuple = format (0, "%s,%s%c", node_name,
-				     this_constraint_c, 0);
+	  constraint_tuple =
+	    format (0, "%s,%s%c", node_name, this_constraint_c, 0);
 	  vec_add1 (constraints, constraint_tuple);
 	  these_constraints++;
 	}
@@ -202,8 +199,8 @@ vnet_feature_arc_init (vlib_main_t * vm,
 	{
 	  this_constraint_c = these_constraints[0];
 
-	  constraint_tuple = format (0, "%s,%s%c",
-				     this_constraint_c, node_name, 0);
+	  constraint_tuple =
+	    format (0, "%s,%s%c", this_constraint_c, node_name, 0);
 	  vec_add1 (constraints, constraint_tuple);
 	  these_constraints++;
 	}
@@ -225,9 +222,9 @@ vnet_feature_arc_init (vlib_main_t * vm,
 	  p = hash_get_mem (index_by_name, this_constraint_c);
 	  if (p == 0)
 	    {
-	      clib_warning
-		("bulk constraint feature node '%s' not found for arc '%s'",
-		 this_constraint_c);
+	      clib_warning (
+		"bulk constraint feature node '%s' not found for arc '%s'",
+		this_constraint_c);
 	      these_constraints++;
 	      continue;
 	    }
@@ -239,8 +236,8 @@ vnet_feature_arc_init (vlib_main_t * vm,
 	      continue;
 	    }
 
-	  constraint_tuple = format (0, "%s,%s%c", prev_name,
-				     this_constraint_c, 0);
+	  constraint_tuple =
+	    format (0, "%s,%s%c", prev_name, this_constraint_c, 0);
 	  vec_add1 (constraints, constraint_tuple);
 	  prev_name = this_constraint_c;
 	  these_constraints++;
@@ -312,15 +309,14 @@ again:
 	closure[i][i] = 1;
 	goto again;
       }
-    item_constrained:
-      ;
+    item_constrained:;
     }
 
   /* see if we got a partial order... */
   if (vec_len (result) != n_features)
-    return clib_error_return
-      (0, "Arc '%s': failed to find a suitable feature order!",
-       first_reg->arc_name);
+    return clib_error_return (
+      0, "Arc '%s': failed to find a suitable feature order!",
+      first_reg->arc_name);
 
   /*
    * We win.
@@ -342,21 +338,17 @@ again:
     }
 
   /* Set up the config infrastructure */
-  vnet_config_init (vm, vcm,
-		    feature_start_nodes,
-		    num_feature_start_nodes,
+  vnet_config_init (vm, vcm, feature_start_nodes, num_feature_start_nodes,
 		    feature_nodes, vec_len (feature_nodes));
 
   /* Save a copy for show command */
   *in_feature_nodes = feature_nodes;
 
   /* Finally, clean up all the shit we allocated */
-  /* *INDENT-OFF* */
+
   hash_foreach_pair (hp, index_by_name,
-  ({
-    vec_add1 (keys_to_delete, (u8 *)hp->key);
-  }));
-  /* *INDENT-ON* */
+		     ({ vec_add1 (keys_to_delete, (u8 *) hp->key); }));
+
   hash_free (index_by_name);
   for (i = 0; i < vec_len (keys_to_delete); i++)
     vec_free (keys_to_delete[i]);

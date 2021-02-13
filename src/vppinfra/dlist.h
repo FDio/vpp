@@ -12,7 +12,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #ifndef included_dlist_h
 #define included_dlist_h
@@ -33,14 +33,14 @@ typedef struct
 } dlist_elt_t;
 
 static inline void
-clib_dlist_init (dlist_elt_t * pool, u32 index)
+clib_dlist_init (dlist_elt_t *pool, u32 index)
 {
   dlist_elt_t *head = pool_elt_at_index (pool, index);
   clib_memset (head, 0xFF, sizeof (*head));
 }
 
 static inline void
-clib_dlist_addtail (dlist_elt_t * pool, u32 head_index, u32 new_index)
+clib_dlist_addtail (dlist_elt_t *pool, u32 head_index, u32 new_index)
 {
   dlist_elt_t *head = pool_elt_at_index (pool, head_index);
   u32 old_last_index;
@@ -68,7 +68,7 @@ clib_dlist_addtail (dlist_elt_t * pool, u32 head_index, u32 new_index)
 }
 
 static inline void
-clib_dlist_addhead (dlist_elt_t * pool, u32 head_index, u32 new_index)
+clib_dlist_addhead (dlist_elt_t *pool, u32 head_index, u32 new_index)
 {
   dlist_elt_t *head = pool_elt_at_index (pool, head_index);
   dlist_elt_t *old_first;
@@ -96,7 +96,7 @@ clib_dlist_addhead (dlist_elt_t * pool, u32 head_index, u32 new_index)
 }
 
 static inline void
-clib_dlist_remove (dlist_elt_t * pool, u32 index)
+clib_dlist_remove (dlist_elt_t *pool, u32 index)
 {
   dlist_elt_t *elt = pool_elt_at_index (pool, index);
   dlist_elt_t *next_elt, *prev_elt;
@@ -114,7 +114,7 @@ clib_dlist_remove (dlist_elt_t * pool, u32 index)
 }
 
 static inline u32
-clib_dlist_remove_head (dlist_elt_t * pool, u32 head_index)
+clib_dlist_remove_head (dlist_elt_t *pool, u32 head_index)
 {
   dlist_elt_t *head = pool_elt_at_index (pool, head_index);
   u32 rv;
@@ -130,7 +130,7 @@ clib_dlist_remove_head (dlist_elt_t * pool, u32 head_index)
 }
 
 static inline u32
-clib_dlist_remove_tail (dlist_elt_t * pool, u32 head_index)
+clib_dlist_remove_tail (dlist_elt_t *pool, u32 head_index)
 {
   dlist_elt_t *head = pool_elt_at_index (pool, head_index);
   u32 rv;

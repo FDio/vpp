@@ -21,9 +21,8 @@
 #include <vnet/fib/fib_table.h>
 
 static clib_error_t *
-nat66_interface_feature_command_fn (vlib_main_t * vm,
-				    unformat_input_t * input,
-				    vlib_cli_command_t * cmd)
+nat66_interface_feature_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
@@ -40,11 +39,11 @@ nat66_interface_feature_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "in %U", unformat_vnet_sw_interface,
-		    vnm, &sw_if_index))
+      if (unformat (line_input, "in %U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	vec_add1 (inside_sw_if_indices, sw_if_index);
-      else if (unformat (line_input, "out %U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
+      else if (unformat (line_input, "out %U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	vec_add1 (outside_sw_if_indices, sw_if_index);
       else if (unformat (line_input, "del"))
 	is_add = 0;
@@ -78,15 +77,13 @@ nat66_interface_feature_command_fn (vlib_main_t * vm,
 	      goto done;
 	    case VNET_API_ERROR_INVALID_VALUE:
 	    case VNET_API_ERROR_INVALID_VALUE_2:
-	      error =
-		clib_error_return (0,
-				   "%U NAT66 feature enable/disable failed.",
-				   format_vnet_sw_interface_name, vnm,
-				   vnet_get_sw_interface (vnm, sw_if_index));
+	      error = clib_error_return (
+		0, "%U NAT66 feature enable/disable failed.",
+		format_vnet_sw_interface_name, vnm,
+		vnet_get_sw_interface (vnm, sw_if_index));
 	      goto done;
 	    default:
 	      break;
-
 	    }
 	}
     }
@@ -113,15 +110,13 @@ nat66_interface_feature_command_fn (vlib_main_t * vm,
 	      goto done;
 	    case VNET_API_ERROR_INVALID_VALUE:
 	    case VNET_API_ERROR_INVALID_VALUE_2:
-	      error =
-		clib_error_return (0,
-				   "%U NAT66 feature enable/disable failed.",
-				   format_vnet_sw_interface_name, vnm,
-				   vnet_get_sw_interface (vnm, sw_if_index));
+	      error = clib_error_return (
+		0, "%U NAT66 feature enable/disable failed.",
+		format_vnet_sw_interface_name, vnm,
+		vnet_get_sw_interface (vnm, sw_if_index));
 	      goto done;
 	    default:
 	      break;
-
 	    }
 	}
     }
@@ -135,7 +130,7 @@ done:
 }
 
 static int
-nat66_cli_interface_walk (nat66_interface_t * i, void *ctx)
+nat66_cli_interface_walk (nat66_interface_t *i, void *ctx)
 {
   vlib_main_t *vm = ctx;
   vnet_main_t *vnm = vnet_get_main ();
@@ -147,8 +142,8 @@ nat66_cli_interface_walk (nat66_interface_t * i, void *ctx)
 }
 
 static clib_error_t *
-nat66_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
+nat66_show_interfaces_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				  vlib_cli_command_t *cmd)
 {
   vlib_cli_output (vm, "NAT66 interfaces:");
   nat66_interfaces_walk (nat66_cli_interface_walk, vm);
@@ -157,9 +152,9 @@ nat66_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
 }
 
 static clib_error_t *
-nat66_add_del_static_mapping_command_fn (vlib_main_t * vm,
-					 unformat_input_t * input,
-					 vlib_cli_command_t * cmd)
+nat66_add_del_static_mapping_command_fn (vlib_main_t *vm,
+					 unformat_input_t *input,
+					 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
@@ -174,9 +169,8 @@ nat66_add_del_static_mapping_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "local %U external %U",
-		    unformat_ip6_address, &l_addr,
-		    unformat_ip6_address, &e_addr))
+      if (unformat (line_input, "local %U external %U", unformat_ip6_address,
+		    &l_addr, unformat_ip6_address, &e_addr))
 	;
       else if (unformat (line_input, "vrf %u", &vrf_id))
 	;
@@ -211,7 +205,7 @@ done:
 }
 
 static int
-nat66_cli_static_mapping_walk (nat66_static_mapping_t * sm, void *ctx)
+nat66_cli_static_mapping_walk (nat66_static_mapping_t *sm, void *ctx)
 {
   nat66_main_t *nm = &nat66_main;
   vlib_main_t *vm = ctx;
@@ -224,9 +218,9 @@ nat66_cli_static_mapping_walk (nat66_static_mapping_t * sm, void *ctx)
 
   vlib_get_combined_counter (&nm->session_counters, sm - nm->sm, &vc);
 
-  vlib_cli_output (vm, " local %U external %U vrf %d",
-		   format_ip6_address, &sm->l_addr,
-		   format_ip6_address, &sm->e_addr, fib->ft_table_id);
+  vlib_cli_output (vm, " local %U external %U vrf %d", format_ip6_address,
+		   &sm->l_addr, format_ip6_address, &sm->e_addr,
+		   fib->ft_table_id);
   vlib_cli_output (vm, "  total pkts %lld, total bytes %lld", vc.packets,
 		   vc.bytes);
 
@@ -234,16 +228,15 @@ nat66_cli_static_mapping_walk (nat66_static_mapping_t * sm, void *ctx)
 }
 
 static clib_error_t *
-nat66_show_static_mappings_command_fn (vlib_main_t * vm,
-				       unformat_input_t * input,
-				       vlib_cli_command_t * cmd)
+nat66_show_static_mappings_command_fn (vlib_main_t *vm,
+				       unformat_input_t *input,
+				       vlib_cli_command_t *cmd)
 {
   vlib_cli_output (vm, "NAT66 static mappings:");
   nat66_static_mappings_walk (nat66_cli_static_mapping_walk, vm);
   return 0;
 }
 
-/* *INDENT-OFF* */
 /*?
  * @cliexpar
  * @cliexstart{set interface nat66}
@@ -283,13 +276,14 @@ VLIB_CLI_COMMAND (show_nat66_interfaces_command, static) = {
  * Add/delete NAT66 static mapping entry.
  * To add NAT66 static mapping entry use:
  *  vpp# nat66 add static mapping local fd01:1::4 external 2001:db8:c000:223::
- *  vpp# nat66 add static mapping local fd01:1::2 external 2001:db8:c000:221:: vrf 10
+ *  vpp# nat66 add static mapping local fd01:1::2 external 2001:db8:c000:221::
+vrf 10
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (show_nat66_add_del_static_mapping_command, static) = {
   .path = "nat66 add static mapping",
   .short_help = "nat66 add static mapping local <ip6-addr> external <ip6-addr>"
-                " [vfr <table-id>] [del]",
+		" [vfr <table-id>] [del]",
   .function = nat66_add_del_static_mapping_command_fn,
 };
 

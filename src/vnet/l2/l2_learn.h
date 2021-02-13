@@ -22,7 +22,6 @@
 #include <vppinfra/bihash_8_8.h>
 #include <vnet/ethernet/ethernet.h>
 
-
 typedef struct
 {
 

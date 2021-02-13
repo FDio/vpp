@@ -37,14 +37,14 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_l2_patch_trace (u8 * s, va_list * args)
+format_l2_patch_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   l2_patch_trace_t *t = va_arg (*args, l2_patch_trace_t *);
 
-  s = format (s, "L2_PATCH: rx %d tx %d", t->rx_sw_if_index,
-	      t->tx_sw_if_index);
+  s =
+    format (s, "L2_PATCH: rx %d tx %d", t->rx_sw_if_index, t->tx_sw_if_index);
   return s;
 }
 
@@ -56,20 +56,20 @@ extern l2_patch_main_t l2_patch_main;
 
 extern vlib_node_registration_t l2_patch_node;
 
-#define foreach_l2_patch_error			\
-_(PATCHED, "L2 patch packets")			\
-_(DROPPED, "L2 patch misconfigured drops")
+#define foreach_l2_patch_error                                                \
+  _ (PATCHED, "L2 patch packets")                                             \
+  _ (DROPPED, "L2 patch misconfigured drops")
 
 typedef enum
 {
-#define _(sym,str) L2_PATCH_ERROR_##sym,
+#define _(sym, str) L2_PATCH_ERROR_##sym,
   foreach_l2_patch_error
 #undef _
     L2_PATCH_N_ERROR,
 } l2_patch_error_t;
 
 static char *l2_patch_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_l2_patch_error
 #undef _
 };
@@ -81,8 +81,8 @@ typedef enum
 } l2_patch_next_t;
 
 static_always_inline void
-l2_patch_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
-		l2_patch_main_t * l2pm, vlib_buffer_t * b, u32 sw_if_index)
+l2_patch_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
+		l2_patch_main_t *l2pm, vlib_buffer_t *b, u32 sw_if_index)
 {
   l2_patch_trace_t *t;
 
@@ -95,8 +95,8 @@ l2_patch_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline void
-l2_patch_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		 l2_patch_main_t * l2pm, vlib_buffer_t ** b, u16 * next,
+l2_patch_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		 l2_patch_main_t *l2pm, vlib_buffer_t **b, u16 *next,
 		 u32 n_left, int do_trace)
 {
   u32 sw_if_index[4];
@@ -177,9 +177,8 @@ l2_patch_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 }
 
-VLIB_NODE_FN (l2_patch_node) (vlib_main_t * vm,
-			      vlib_node_runtime_t * node,
-			      vlib_frame_t * frame)
+VLIB_NODE_FN (l2_patch_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 *from;
   l2_patch_main_t *l2pm = &l2_patch_main;
@@ -206,7 +205,6 @@ VLIB_NODE_FN (l2_patch_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_patch_node) = {
   .name = "l2-patch",
   .vector_size = sizeof (u32),
@@ -223,10 +221,9 @@ VLIB_REGISTER_NODE (l2_patch_node) = {
         [L2_PATCH_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
-extern int
-vnet_l2_patch_add_del (u32 rx_sw_if_index, u32 tx_sw_if_index, int is_add);
+extern int vnet_l2_patch_add_del (u32 rx_sw_if_index, u32 tx_sw_if_index,
+				  int is_add);
 #ifndef CLIB_MARCH_VARIANT
 int
 vnet_l2_patch_add_del (u32 rx_sw_if_index, u32 tx_sw_if_index, int is_add)
@@ -252,18 +249,17 @@ vnet_l2_patch_add_del (u32 rx_sw_if_index, u32 tx_sw_if_index, int is_add)
 
   if (is_add)
     {
-      tx_next_index = vlib_node_add_next (l2pm->vlib_main,
-					  l2_patch_node.index,
+      tx_next_index = vlib_node_add_next (l2pm->vlib_main, l2_patch_node.index,
 					  txhi->output_node_index);
 
-      vec_validate_init_empty (l2pm->tx_next_by_rx_sw_if_index,
-			       rx_sw_if_index, ~0);
+      vec_validate_init_empty (l2pm->tx_next_by_rx_sw_if_index, rx_sw_if_index,
+			       ~0);
 
       l2pm->tx_next_by_rx_sw_if_index[rx_sw_if_index] = tx_next_index;
       vec_validate_init_empty (l2pm->tx_sw_if_index_by_rx_sw_if_index,
 			       rx_sw_if_index, ~0);
-      l2pm->tx_sw_if_index_by_rx_sw_if_index[rx_sw_if_index]
-	= txhi->sw_if_index;
+      l2pm->tx_sw_if_index_by_rx_sw_if_index[rx_sw_if_index] =
+	txhi->sw_if_index;
 
       ethernet_set_flags (l2pm->vnet_main, rxhi->hw_if_index,
 			  ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
@@ -290,8 +286,8 @@ vnet_l2_patch_add_del (u32 rx_sw_if_index, u32 tx_sw_if_index, int is_add)
 #endif
 
 static clib_error_t *
-test_patch_command_fn (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+test_patch_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   l2_patch_main_t *l2pm = &l2_patch_main;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -348,11 +344,10 @@ test_patch_command_fn (vlib_main_t * vm,
       goto done;
 
     default:
-      error = clib_error_return
-	(0, "WARNING: vnet_l2_patch_add_del returned %d", rv);
+      error = clib_error_return (
+	0, "WARNING: vnet_l2_patch_add_del returned %d", rv);
       goto done;
     }
-
 
 done:
   unformat_free (line_input);
@@ -369,18 +364,17 @@ done:
  * @todo This is incomplete. This needs a detailed description and a
  * practical example.
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (test_patch_command, static) = {
-    .path = "test l2patch",
-    .short_help = "test l2patch rx <intfc> tx <intfc> [del]",
-    .function = test_patch_command_fn,
+  .path = "test l2patch",
+  .short_help = "test l2patch rx <intfc> tx <intfc> [del]",
+  .function = test_patch_command_fn,
 };
-/* *INDENT-ON* */
 
 /** Display the contents of the l2patch table. */
 static clib_error_t *
-show_l2patch (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+show_l2patch (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd)
 {
   l2_patch_main_t *l2pm = &l2_patch_main;
   u32 rx_sw_if_index;
@@ -398,11 +392,10 @@ show_l2patch (vlib_main_t * vm,
       if (tx_sw_if_index != ~0)
 	{
 	  no_entries = 0;
-	  vlib_cli_output (vm, "%26U -> %U",
-			   format_vnet_sw_if_index_name,
+	  vlib_cli_output (vm, "%26U -> %U", format_vnet_sw_if_index_name,
 			   l2pm->vnet_main, rx_sw_if_index,
-			   format_vnet_sw_if_index_name,
-			   l2pm->vnet_main, tx_sw_if_index);
+			   format_vnet_sw_if_index_name, l2pm->vnet_main,
+			   tx_sw_if_index);
 	}
     }
 
@@ -421,16 +414,15 @@ show_l2patch (vlib_main_t * vm,
  * @todo This is incomplete. This needs a detailed description and a
  * practical example.
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (show_l2patch_cli, static) = {
   .path = "show l2patch",
   .short_help = "Show l2 interface cross-connect entries",
   .function = show_l2patch,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-l2_patch_init (vlib_main_t * vm)
+l2_patch_init (vlib_main_t *vm)
 {
   l2_patch_main_t *mp = &l2_patch_main;
 

@@ -16,7 +16,7 @@
 
 cdp_main_t cdp_main;
 
-#define DEBUG_TLV_DUMP 0	/* 1=> dump TLV's to stdout while processing them */
+#define DEBUG_TLV_DUMP 0 /* 1=> dump TLV's to stdout while processing them */
 
 /*
  * ported from an unspecified Cisco cdp implementation.
@@ -62,19 +62,19 @@ static tlv_handler_t tlv_handlers[];
 
 /* Display a generic TLV as a set of hex bytes */
 static u8 *
-format_generic_tlv (u8 * s, va_list * va)
+format_generic_tlv (u8 *s, va_list *va)
 {
   cdp_tlv_t *t = va_arg (*va, cdp_tlv_t *);
   tlv_handler_t *h = &tlv_handlers[t->t];
 
-  s = format (s, "%s(%d): %U\n", h->name,
-	      t->t, format_hex_bytes, t->v, t->l - sizeof (*t));
+  s = format (s, "%s(%d): %U\n", h->name, t->t, format_hex_bytes, t->v,
+	      t->l - sizeof (*t));
   return s;
 }
 
 /* Ignore / skip a TLV we don't support */
 static cdp_error_t
-process_generic_tlv (cdp_main_t * cm, cdp_neighbor_t * n, cdp_tlv_t * t)
+process_generic_tlv (cdp_main_t *cm, cdp_neighbor_t *n, cdp_tlv_t *t)
 {
 #if DEBUG_TLV_DUMP > 0
   fformat (stdout, "%U", format_generic_tlv, t);
@@ -85,7 +85,7 @@ process_generic_tlv (cdp_main_t * cm, cdp_neighbor_t * n, cdp_tlv_t * t)
 
 /* print a text tlv */
 static u8 *
-format_text_tlv (u8 * s, va_list * va)
+format_text_tlv (u8 *s, va_list *va)
 {
   cdp_tlv_t *t = va_arg (*va, cdp_tlv_t *);
   tlv_handler_t *h = &tlv_handlers[t->t];
@@ -105,14 +105,14 @@ format_text_tlv (u8 * s, va_list * va)
 
 #if DEBUG_TLV_DUMP == 0
 /* gcc warning be gone */
-CLIB_UNUSED (static cdp_error_t
-	     process_text_tlv (cdp_main_t * cm, cdp_neighbor_t * n,
-			       cdp_tlv_t * t));
+CLIB_UNUSED (static cdp_error_t process_text_tlv (cdp_main_t *cm,
+						  cdp_neighbor_t *n,
+						  cdp_tlv_t *t));
 #endif
 
 /* process / skip a generic text TLV that we don't support */
 static cdp_error_t
-process_text_tlv (cdp_main_t * cm, cdp_neighbor_t * n, cdp_tlv_t * t)
+process_text_tlv (cdp_main_t *cm, cdp_neighbor_t *n, cdp_tlv_t *t)
 {
 #if DEBUG_TLV_DUMP > 0
   fformat (stdout, "%U\n", format_text_tlv, t);
@@ -122,120 +122,119 @@ process_text_tlv (cdp_main_t * cm, cdp_neighbor_t * n, cdp_tlv_t * t)
 }
 
 /* per-TLV format function definitions */
-#define format_unused_tlv format_generic_tlv
-#define format_device_name_tlv format_text_tlv
-#define format_address_tlv format_generic_tlv
-#define format_port_id_tlv format_text_tlv
-#define format_capabilities_tlv format_generic_tlv
-#define format_version_tlv format_text_tlv
-#define format_platform_tlv format_text_tlv
-#define format_ipprefix_tlv format_generic_tlv
-#define format_hello_tlv format_generic_tlv
-#define format_vtp_domain_tlv format_generic_tlv
-#define format_native_vlan_tlv format_generic_tlv
-#define format_duplex_tlv format_generic_tlv
-#define format_appl_vlan_tlv format_generic_tlv
-#define format_trigger_tlv format_generic_tlv
-#define format_power_tlv format_generic_tlv
-#define format_mtu_tlv format_generic_tlv
-#define format_trust_tlv format_generic_tlv
-#define format_cos_tlv format_generic_tlv
-#define format_sysname_tlv format_generic_tlv
-#define format_sysobject_tlv format_generic_tlv
-#define format_mgmt_addr_tlv format_generic_tlv
-#define format_physical_loc_tlv format_generic_tlv
-#define format_mgmt_addr2_tlv format_generic_tlv
-#define format_power_requested_tlv format_generic_tlv
-#define format_power_available_tlv format_generic_tlv
+#define format_unused_tlv	       format_generic_tlv
+#define format_device_name_tlv	       format_text_tlv
+#define format_address_tlv	       format_generic_tlv
+#define format_port_id_tlv	       format_text_tlv
+#define format_capabilities_tlv	       format_generic_tlv
+#define format_version_tlv	       format_text_tlv
+#define format_platform_tlv	       format_text_tlv
+#define format_ipprefix_tlv	       format_generic_tlv
+#define format_hello_tlv	       format_generic_tlv
+#define format_vtp_domain_tlv	       format_generic_tlv
+#define format_native_vlan_tlv	       format_generic_tlv
+#define format_duplex_tlv	       format_generic_tlv
+#define format_appl_vlan_tlv	       format_generic_tlv
+#define format_trigger_tlv	       format_generic_tlv
+#define format_power_tlv	       format_generic_tlv
+#define format_mtu_tlv		       format_generic_tlv
+#define format_trust_tlv	       format_generic_tlv
+#define format_cos_tlv		       format_generic_tlv
+#define format_sysname_tlv	       format_generic_tlv
+#define format_sysobject_tlv	       format_generic_tlv
+#define format_mgmt_addr_tlv	       format_generic_tlv
+#define format_physical_loc_tlv	       format_generic_tlv
+#define format_mgmt_addr2_tlv	       format_generic_tlv
+#define format_power_requested_tlv     format_generic_tlv
+#define format_power_available_tlv     format_generic_tlv
 #define format_port_unidirectional_tlv format_generic_tlv
-#define format_unknown_28_tlv format_generic_tlv
-#define format_energywise_tlv format_generic_tlv
-#define format_unknown_30_tlv format_generic_tlv
-#define format_spare_poe_tlv format_generic_tlv
+#define format_unknown_28_tlv	       format_generic_tlv
+#define format_energywise_tlv	       format_generic_tlv
+#define format_unknown_30_tlv	       format_generic_tlv
+#define format_spare_poe_tlv	       format_generic_tlv
 
 /* tlv ID=0 is a mistake */
 static cdp_error_t
-process_unused_tlv (cdp_main_t * cm, cdp_neighbor_t * n, cdp_tlv_t * t)
+process_unused_tlv (cdp_main_t *cm, cdp_neighbor_t *n, cdp_tlv_t *t)
 {
   return CDP_ERROR_BAD_TLV;
 }
 
 /* list of text TLV's that we snapshoot */
-#define foreach_text_to_struct_tlv              \
-_(device_name,DEBUG_TLV_DUMP)                   \
-_(version,DEBUG_TLV_DUMP)                       \
-_(platform,DEBUG_TLV_DUMP)                      \
-_(port_id,DEBUG_TLV_DUMP)
+#define foreach_text_to_struct_tlv                                            \
+  _ (device_name, DEBUG_TLV_DUMP)                                             \
+  _ (version, DEBUG_TLV_DUMP)                                                 \
+  _ (platform, DEBUG_TLV_DUMP)                                                \
+  _ (port_id, DEBUG_TLV_DUMP)
 
-#define _(z,dbg)                                                        \
-static                                                                  \
-cdp_error_t process_##z##_tlv (cdp_main_t *cm, cdp_neighbor_t *n,       \
-                                  cdp_tlv_t *t)                         \
-{                                                                       \
-    int i;                                                              \
-    if (dbg)                                                            \
-       fformat(stdout, "%U\n", format_text_tlv, t);                     \
-                                                                        \
-    if (n->z)                                                           \
-        _vec_len(n->z) = 0;                                             \
-                                                                        \
-    for (i = 0; i < (t->l - sizeof (*t)); i++)                          \
-        vec_add1(n->z, t->v[i]);                                        \
-                                                                        \
-    vec_add1(n->z, 0);                                                  \
-                                                                        \
-    return CDP_ERROR_NONE;                                              \
-}
+#define _(z, dbg)                                                             \
+  static cdp_error_t process_##z##_tlv (cdp_main_t *cm, cdp_neighbor_t *n,    \
+					cdp_tlv_t *t)                         \
+  {                                                                           \
+    int i;                                                                    \
+    if (dbg)                                                                  \
+      fformat (stdout, "%U\n", format_text_tlv, t);                           \
+                                                                              \
+    if (n->z)                                                                 \
+      _vec_len (n->z) = 0;                                                    \
+                                                                              \
+    for (i = 0; i < (t->l - sizeof (*t)); i++)                                \
+      vec_add1 (n->z, t->v[i]);                                               \
+                                                                              \
+    vec_add1 (n->z, 0);                                                       \
+                                                                              \
+    return CDP_ERROR_NONE;                                                    \
+  }
 
 foreach_text_to_struct_tlv
 #undef _
-#define process_address_tlv process_generic_tlv
-#define process_capabilities_tlv process_generic_tlv
-#define process_ipprefix_tlv process_generic_tlv
-#define process_hello_tlv process_generic_tlv
-#define process_vtp_domain_tlv process_generic_tlv
-#define process_native_vlan_tlv process_generic_tlv
-#define process_duplex_tlv process_generic_tlv
-#define process_appl_vlan_tlv process_generic_tlv
-#define process_trigger_tlv process_generic_tlv
-#define process_power_tlv process_generic_tlv
-#define process_mtu_tlv process_generic_tlv
-#define process_trust_tlv process_generic_tlv
-#define process_cos_tlv process_generic_tlv
-#define process_sysname_tlv process_generic_tlv
-#define process_sysobject_tlv process_generic_tlv
-#define process_mgmt_addr_tlv process_generic_tlv
-#define process_physical_loc_tlv process_generic_tlv
-#define process_mgmt_addr2_tlv process_generic_tlv
-#define process_power_requested_tlv process_generic_tlv
-#define process_power_available_tlv process_generic_tlv
+#define process_address_tlv		process_generic_tlv
+#define process_capabilities_tlv	process_generic_tlv
+#define process_ipprefix_tlv		process_generic_tlv
+#define process_hello_tlv		process_generic_tlv
+#define process_vtp_domain_tlv		process_generic_tlv
+#define process_native_vlan_tlv		process_generic_tlv
+#define process_duplex_tlv		process_generic_tlv
+#define process_appl_vlan_tlv		process_generic_tlv
+#define process_trigger_tlv		process_generic_tlv
+#define process_power_tlv		process_generic_tlv
+#define process_mtu_tlv			process_generic_tlv
+#define process_trust_tlv		process_generic_tlv
+#define process_cos_tlv			process_generic_tlv
+#define process_sysname_tlv		process_generic_tlv
+#define process_sysobject_tlv		process_generic_tlv
+#define process_mgmt_addr_tlv		process_generic_tlv
+#define process_physical_loc_tlv	process_generic_tlv
+#define process_mgmt_addr2_tlv		process_generic_tlv
+#define process_power_requested_tlv	process_generic_tlv
+#define process_power_available_tlv	process_generic_tlv
 #define process_port_unidirectional_tlv process_generic_tlv
-#define process_unknown_28_tlv process_generic_tlv
-#define process_energywise_tlv process_generic_tlv
-#define process_unknown_30_tlv process_generic_tlv
-#define process_spare_poe_tlv process_generic_tlv
-static tlv_handler_t tlv_handlers[] = {
-#define _(a) {#a, CDP_TLV_##a, format_##a##_tlv, process_##a##_tlv},
-  foreach_cdp_tlv_type
+#define process_unknown_28_tlv		process_generic_tlv
+#define process_energywise_tlv		process_generic_tlv
+#define process_unknown_30_tlv		process_generic_tlv
+#define process_spare_poe_tlv		process_generic_tlv
+  static tlv_handler_t tlv_handlers[] = {
+#define _(a) { #a, CDP_TLV_##a, format_##a##_tlv, process_##a##_tlv },
+    foreach_cdp_tlv_type
 #undef _
-};
+  };
 
 #if DEBUG_TLV_DUMP == 0
-CLIB_UNUSED (static u8 * format_cdp_hdr (u8 * s, va_list * va));
+CLIB_UNUSED (static u8 *format_cdp_hdr (u8 *s, va_list *va));
 #endif
 
 static u8 *
-format_cdp_hdr (u8 * s, va_list * va)
+format_cdp_hdr (u8 *s, va_list *va)
 {
   cdp_hdr_t *h = va_arg (*va, cdp_hdr_t *);
 
-  s = format (s, "version %d, ttl %d(secs), cksum 0x%04x\n",
-	      h->version, h->ttl, h->checksum);
+  s = format (s, "version %d, ttl %d(secs), cksum 0x%04x\n", h->version,
+	      h->ttl, h->checksum);
   return s;
 }
 
 static cdp_error_t
-process_cdp_hdr (cdp_main_t * cm, cdp_neighbor_t * n, cdp_hdr_t * h)
+process_cdp_hdr (cdp_main_t *cm, cdp_neighbor_t *n, cdp_hdr_t *h)
 {
 #if DEBUG_TLV_DUMP > 0
   fformat (stdout, "%U", format_cdp_hdr, h);
@@ -251,7 +250,7 @@ process_cdp_hdr (cdp_main_t * cm, cdp_neighbor_t * n, cdp_hdr_t * h)
 
 /* scan a cdp packet; header, then tlv's */
 static int
-cdp_packet_scan (cdp_main_t * cm, cdp_neighbor_t * n)
+cdp_packet_scan (cdp_main_t *cm, cdp_neighbor_t *n)
 {
   u8 *end, *cur = n->last_rx_pkt;
   cdp_hdr_t *h;
@@ -320,7 +319,7 @@ cdp_packet_scan (cdp_main_t * cm, cdp_neighbor_t * n)
  * cdp input routine
  */
 cdp_error_t
-cdp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
+cdp_input (vlib_main_t *vm, vlib_buffer_t *b0, u32 bi0)
 {
   cdp_main_t *cm = &cdp_main;
   cdp_neighbor_t *n;
@@ -338,7 +337,7 @@ cdp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
       pool_get (cm->neighbors, n);
       clib_memset (n, 0, sizeof (*n));
       n->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-      n->packet_template_index = (u8) ~ 0;
+      n->packet_template_index = (u8) ~0;
       hash_set (cm->neighbor_by_sw_if_index, n->sw_if_index,
 		n - cm->neighbors);
     }
@@ -406,7 +405,7 @@ cdp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
  * setup neighbor hash table
  */
 static clib_error_t *
-cdp_input_init (vlib_main_t * vm)
+cdp_input_init (vlib_main_t *vm)
 {
   cdp_main_t *cm = &cdp_main;
 
@@ -417,16 +416,12 @@ cdp_input_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (cdp_input_init) =
-{
-  .runs_after = VLIB_INITS("cdp_periodic_init"),
+VLIB_INIT_FUNCTION (cdp_input_init) = {
+  .runs_after = VLIB_INITS ("cdp_periodic_init"),
 };
-/* *INDENT-ON* */
-
 
 static u8 *
-format_cdp_neighbors (u8 * s, va_list * va)
+format_cdp_neighbors (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   cdp_main_t *cm = va_arg (*va, cdp_main_t *);
@@ -434,27 +429,23 @@ format_cdp_neighbors (u8 * s, va_list * va)
   cdp_neighbor_t *n;
   vnet_hw_interface_t *hw;
 
-  s = format (s,
-	      "%=25s %=25s %=25s %=10s\n",
-	      "Our Port", "Peer System", "Peer Port", "Last Heard");
+  s = format (s, "%=25s %=25s %=25s %=10s\n", "Our Port", "Peer System",
+	      "Peer Port", "Last Heard");
 
-  /* *INDENT-OFF* */
   pool_foreach (n, cm->neighbors)
-   {
-    hw = vnet_get_sup_hw_interface (vnm, n->sw_if_index);
+    {
+      hw = vnet_get_sup_hw_interface (vnm, n->sw_if_index);
 
-    if (n->disabled == 0)
-      s = format (s, "%=25v %=25s %=25s %=10.1f\n",
-                  hw->name, n->device_name, n->port_id,
-                  n->last_heard);
-  }
-  /* *INDENT-ON* */
+      if (n->disabled == 0)
+	s = format (s, "%=25v %=25s %=25s %=10.1f\n", hw->name, n->device_name,
+		    n->port_id, n->last_heard);
+    }
+
   return s;
 }
 
 static clib_error_t *
-show_cdp (vlib_main_t * vm,
-	  unformat_input_t * input, vlib_cli_command_t * cmd)
+show_cdp (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   cdp_main_t *cm = &cdp_main;
 
@@ -466,13 +457,11 @@ show_cdp (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_cdp_command, static) = {
   .path = "show cdp",
   .short_help = "Show cdp command",
   .function = show_cdp,
 };
-/* *INDENT-ON* */
 
 
 /*
@@ -481,7 +470,7 @@ VLIB_CLI_COMMAND (show_cdp_command, static) = {
  * functions instead of the per TLV processing functions
  */
 u8 *
-cdp_input_format_trace (u8 * s, va_list * args)
+cdp_input_format_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);

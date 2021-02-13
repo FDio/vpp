@@ -36,7 +36,7 @@ builtinurl_main_t builtinurl_main;
 /* Action function shared between message handler and debug CLI */
 
 int
-builtinurl_enable (builtinurl_main_t * bmp)
+builtinurl_enable (builtinurl_main_t *bmp)
 {
   void (*fp) (void *, char *, int);
 
@@ -44,8 +44,8 @@ builtinurl_enable (builtinurl_main_t * bmp)
     return 0;
 
   /* Look up the builtin URL registration handler */
-  fp = vlib_get_plugin_symbol
-    ("http_static_plugin.so", "http_static_server_register_builtin_handler");
+  fp = vlib_get_plugin_symbol ("http_static_plugin.so",
+			       "http_static_server_register_builtin_handler");
 
   /* Most likely, the http_static plugin isn't loaded. Done. */
   if (fp == 0)
@@ -59,9 +59,8 @@ builtinurl_enable (builtinurl_main_t * bmp)
 }
 
 static clib_error_t *
-builtinurl_enable_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+builtinurl_enable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   builtinurl_main_t *bmp = &builtinurl_main;
 
@@ -75,8 +74,8 @@ builtinurl_enable_command_fn (vlib_main_t * vm,
       break;
 
     case VNET_API_ERROR_NO_SUCH_TABLE:
-      return clib_error_return
-	(0, "http_static_server_register_builtin_handler undefined");
+      return clib_error_return (
+	0, "http_static_server_register_builtin_handler undefined");
       break;
 
     default:
@@ -85,18 +84,15 @@ builtinurl_enable_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (builtinurl_enable_command, static) =
-{
+VLIB_CLI_COMMAND (builtinurl_enable_command, static) = {
   .path = "builtinurl enable",
   .short_help = "Turn on builtin http/https GET and POST urls",
   .function = builtinurl_enable_command_fn,
 };
-/* *INDENT-ON* */
 
 /* API message handler */
-static void vl_api_builtinurl_enable_t_handler
-  (vl_api_builtinurl_enable_t * mp)
+static void
+vl_api_builtinurl_enable_t_handler (vl_api_builtinurl_enable_t *mp)
 {
   vl_api_builtinurl_enable_reply_t *rmp;
   builtinurl_main_t *bmp = &builtinurl_main;
@@ -109,7 +105,7 @@ static void vl_api_builtinurl_enable_t_handler
 
 #include <builtinurl/builtinurl.api.c>
 static clib_error_t *
-builtinurl_init (vlib_main_t * vm)
+builtinurl_init (vlib_main_t *vm)
 {
   builtinurl_main_t *bmp = &builtinurl_main;
 
@@ -124,13 +120,10 @@ builtinurl_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (builtinurl_init);
 
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () =
-{
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "vpp built-in URL support",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

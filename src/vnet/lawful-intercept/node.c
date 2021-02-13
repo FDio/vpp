@@ -31,7 +31,7 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_li_hit_trace (u8 * s, va_list * args)
+format_li_hit_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -42,21 +42,21 @@ format_li_hit_trace (u8 * s, va_list * args)
   return s;
 }
 
-#define foreach_li_hit_error                                    \
-_(HITS, "LI packets processed")                                 \
-_(NO_COLLECTOR, "No collector configured")                      \
-_(BUFFER_ALLOCATION_FAILURE, "Buffer allocation failure")
+#define foreach_li_hit_error                                                  \
+  _ (HITS, "LI packets processed")                                            \
+  _ (NO_COLLECTOR, "No collector configured")                                 \
+  _ (BUFFER_ALLOCATION_FAILURE, "Buffer allocation failure")
 
 typedef enum
 {
-#define _(sym,str) LI_HIT_ERROR_##sym,
+#define _(sym, str) LI_HIT_ERROR_##sym,
   foreach_li_hit_error
 #undef _
     LI_HIT_N_ERROR,
 } li_hit_error_t;
 
 static char *li_hit_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_li_hit_error
 #undef _
 };
@@ -67,8 +67,8 @@ typedef enum
   LI_HIT_N_NEXT,
 } li_hit_next_t;
 
-VLIB_NODE_FN (li_hit_node) (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (li_hit_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   li_hit_next_t next_index;
@@ -201,9 +201,9 @@ VLIB_NODE_FN (li_hit_node) (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE (c0 == 0))
 		{
-		  vlib_node_increment_counter
-		    (vm, node->node_index,
-		     LI_HIT_ERROR_BUFFER_ALLOCATION_FAILURE, 1);
+		  vlib_node_increment_counter (
+		    vm, node->node_index,
+		    LI_HIT_ERROR_BUFFER_ALLOCATION_FAILURE, 1);
 		  goto skip;
 		}
 
@@ -233,17 +233,16 @@ VLIB_NODE_FN (li_hit_node) (vlib_main_t * vm,
 	    }
 
 	skip:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      li_hit_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->next_index = next0;
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -255,12 +254,11 @@ VLIB_NODE_FN (li_hit_node) (vlib_main_t * vm,
       vlib_put_frame_to_node (vm, ip4_lookup_node.index, int_frame);
     }
 
-  vlib_node_increment_counter (vm, li_hit_node.index,
-			       LI_HIT_ERROR_HITS, frame->n_vectors);
+  vlib_node_increment_counter (vm, li_hit_node.index, LI_HIT_ERROR_HITS,
+			       frame->n_vectors);
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (li_hit_node) = {
   .name = "li-hit",
   .vector_size = sizeof (u32),
@@ -277,7 +275,6 @@ VLIB_REGISTER_NODE (li_hit_node) = {
         [LI_HIT_NEXT_ETHERNET] = "ethernet-input-not-l2",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -210,8 +210,8 @@ public:
   const static prefix_t ZEROv6;
 
   /**
-  * Convert the prefix into VPP API parameters
-  */
+   * Convert the prefix into VPP API parameters
+   */
   void to_vpp(uint8_t* is_ip6, uint8_t* addr, uint8_t* len) const;
 
   /**
@@ -247,8 +247,8 @@ private:
 };
 
 /**
-* A prefix defintion. Address + length
-*/
+ * A prefix defintion. Address + length
+ */
 class mprefix_t
 {
 public:

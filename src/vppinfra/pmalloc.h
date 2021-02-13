@@ -18,16 +18,16 @@
 #include <vppinfra/format.h>
 #include <vppinfra/pool.h>
 
-#define PMALLOC_LOG2_BLOCK_SZ          CLIB_LOG2_CACHE_LINE_BYTES
-#define PMALLOC_BLOCK_SZ               (1 << 6)
+#define PMALLOC_LOG2_BLOCK_SZ CLIB_LOG2_CACHE_LINE_BYTES
+#define PMALLOC_BLOCK_SZ      (1 << 6)
 
 #define CLIB_PMALLOC_NUMA_LOCAL 0xffffffff
 
 typedef struct
 {
   u32 start, prev, next;
-  u32 size:31;
-  u32 used:1;
+  u32 size : 31;
+  u32 used : 1;
 } clib_pmalloc_chunk_t;
 
 STATIC_ASSERT_SIZEOF (clib_pmalloc_chunk_t, 16);
@@ -99,36 +99,34 @@ typedef struct
   clib_error_t *error;
 } clib_pmalloc_main_t;
 
-
-int clib_pmalloc_init (clib_pmalloc_main_t * pm, uword base_addr, uword size);
-void *clib_pmalloc_alloc_aligned_on_numa (clib_pmalloc_main_t * pm,
-					  uword size, uword align,
-					  u32 numa_node);
-void *clib_pmalloc_alloc_aligned (clib_pmalloc_main_t * pm, uword size,
+int clib_pmalloc_init (clib_pmalloc_main_t *pm, uword base_addr, uword size);
+void *clib_pmalloc_alloc_aligned_on_numa (clib_pmalloc_main_t *pm, uword size,
+					  uword align, u32 numa_node);
+void *clib_pmalloc_alloc_aligned (clib_pmalloc_main_t *pm, uword size,
 				  uword align);
-void clib_pmalloc_free (clib_pmalloc_main_t * pm, void *va);
+void clib_pmalloc_free (clib_pmalloc_main_t *pm, void *va);
 
-void *clib_pmalloc_create_shared_arena (clib_pmalloc_main_t * pm, char *name,
+void *clib_pmalloc_create_shared_arena (clib_pmalloc_main_t *pm, char *name,
 					uword size, u32 log2_page_sz,
 					u32 numa_node);
 
-void *clib_pmalloc_alloc_from_arena (clib_pmalloc_main_t * pm, void *arena_va,
+void *clib_pmalloc_alloc_from_arena (clib_pmalloc_main_t *pm, void *arena_va,
 				     uword size, uword align);
 
 format_function_t format_pmalloc;
 format_function_t format_pmalloc_map;
 
 always_inline clib_error_t *
-clib_pmalloc_last_error (clib_pmalloc_main_t * pm)
+clib_pmalloc_last_error (clib_pmalloc_main_t *pm)
 {
   return pm->error;
 }
 
 always_inline u32
-clib_pmalloc_get_page_index (clib_pmalloc_main_t * pm, void *va)
+clib_pmalloc_get_page_index (clib_pmalloc_main_t *pm, void *va)
 {
   uword index = (pointer_to_uword (va) - pointer_to_uword (pm->base)) >>
-    pm->def_log2_page_sz;
+		pm->def_log2_page_sz;
 
   ASSERT (index < vec_len (pm->pages));
 
@@ -136,20 +134,19 @@ clib_pmalloc_get_page_index (clib_pmalloc_main_t * pm, void *va)
 }
 
 always_inline clib_pmalloc_arena_t *
-clib_pmalloc_get_arena (clib_pmalloc_main_t * pm, void *va)
+clib_pmalloc_get_arena (clib_pmalloc_main_t *pm, void *va)
 {
   u32 index = clib_pmalloc_get_page_index (pm, va);
   return pm->arenas + pm->pages[index].arena_index;
 }
 
 always_inline uword
-clib_pmalloc_get_pa (clib_pmalloc_main_t * pm, void *va)
+clib_pmalloc_get_pa (clib_pmalloc_main_t *pm, void *va)
 {
   uword index = (pointer_to_uword (va) - pointer_to_uword (pm->base)) >>
-    pm->lookup_log2_page_sz;
+		pm->lookup_log2_page_sz;
   return pointer_to_uword (va) - pm->lookup_table[index];
 }
-
 
 #endif /* included_palloc_h */
 

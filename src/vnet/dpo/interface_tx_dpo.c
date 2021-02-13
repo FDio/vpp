@@ -36,24 +36,21 @@ interface_tx_dpo_unlock (dpo_id_t *dpo)
  * construct DPO object wrappers around a sw_if_index
  */
 void
-interface_tx_dpo_add_or_lock (dpo_proto_t proto,
-                              u32 sw_if_index,
-                              dpo_id_t *dpo)
+interface_tx_dpo_add_or_lock (dpo_proto_t proto, u32 sw_if_index,
+			      dpo_id_t *dpo)
 {
-    dpo_set(dpo, DPO_INTERFACE_TX, proto, sw_if_index);
+  dpo_set (dpo, DPO_INTERFACE_TX, proto, sw_if_index);
 }
 
-u8*
-format_interface_tx_dpo (u8* s, va_list *ap)
+u8 *
+format_interface_tx_dpo (u8 *s, va_list *ap)
 {
-    index_t index = va_arg(*ap, index_t);
-    CLIB_UNUSED(u32 indent) = va_arg(*ap, u32);
-    vnet_main_t * vnm = vnet_get_main();
+  index_t index = va_arg (*ap, index_t);
+  CLIB_UNUSED (u32 indent) = va_arg (*ap, u32);
+  vnet_main_t *vnm = vnet_get_main ();
 
-    return (format(s, "%U-tx-dpo:",
-                   format_vnet_sw_interface_name,
-                   vnm,
-                   vnet_get_sw_interface(vnm, index)));
+  return (format (s, "%U-tx-dpo:", format_vnet_sw_interface_name, vnm,
+		  vnet_get_sw_interface (vnm, index)));
 }
 
 static void
@@ -61,32 +58,30 @@ interface_tx_dpo_mem_show (void)
 {
 }
 
-u32*
+u32 *
 interface_tx_dpo_get_next_node (const dpo_id_t *dpo)
 {
-    u32 *node_indices = NULL;
+  u32 *node_indices = NULL;
 
-    /*
-     * return the interface's TX node for the wrapped sw_if_index
-     */
-    vec_add1(node_indices,
-             vnet_tx_node_index_for_sw_interface(vnet_get_main(),
-                                                 dpo->dpoi_index));
+  /*
+   * return the interface's TX node for the wrapped sw_if_index
+   */
+  vec_add1 (node_indices, vnet_tx_node_index_for_sw_interface (
+			    vnet_get_main (), dpo->dpoi_index));
 
-    return (node_indices);
+  return (node_indices);
 }
 
 const static dpo_vft_t interface_tx_dpo_vft = {
-    .dv_lock = interface_tx_dpo_lock,
-    .dv_unlock = interface_tx_dpo_unlock,
-    .dv_format = format_interface_tx_dpo,
-    .dv_mem_show = interface_tx_dpo_mem_show,
-    .dv_get_next_node = interface_tx_dpo_get_next_node,
+  .dv_lock = interface_tx_dpo_lock,
+  .dv_unlock = interface_tx_dpo_unlock,
+  .dv_format = format_interface_tx_dpo,
+  .dv_mem_show = interface_tx_dpo_mem_show,
+  .dv_get_next_node = interface_tx_dpo_get_next_node,
 };
 
 void
 interface_tx_dpo_module_init (void)
 {
-    dpo_register(DPO_INTERFACE_TX, &interface_tx_dpo_vft, NULL);
+  dpo_register (DPO_INTERFACE_TX, &interface_tx_dpo_vft, NULL);
 }
-

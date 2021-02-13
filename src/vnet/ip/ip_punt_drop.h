@@ -43,18 +43,17 @@ typedef struct ip_punt_policer_trace_t_
   u32 next;
 } ip_punt_policer_trace_t;
 
-#define foreach_ip_punt_policer_error          \
-_(DROP, "ip punt policer drop")
+#define foreach_ip_punt_policer_error _ (DROP, "ip punt policer drop")
 
 typedef enum
 {
-#define _(sym,str) IP_PUNT_POLICER_ERROR_##sym,
+#define _(sym, str) IP_PUNT_POLICER_ERROR_##sym,
   foreach_ip_punt_policer_error
 #undef _
     IP4_PUNT_POLICER_N_ERROR,
 } ip_punt_policer_error_t;
 
-extern u8 *format_ip_punt_policer_trace (u8 * s, va_list * args);
+extern u8 *format_ip_punt_policer_trace (u8 *s, va_list *args);
 extern vlib_node_registration_t ip4_punt_policer_node;
 extern ip_punt_policer_t ip4_punt_policer_cfg;
 extern vlib_node_registration_t ip6_punt_policer_node;
@@ -64,9 +63,8 @@ extern ip_punt_policer_t ip6_punt_policer_cfg;
  * IP punt policing node function
  */
 always_inline uword
-ip_punt_policer (vlib_main_t * vm,
-		 vlib_node_runtime_t * node,
-		 vlib_frame_t * frame, u8 arc_index, u32 policer_index)
+ip_punt_policer (vlib_main_t *vm, vlib_node_runtime_t *node,
+		 vlib_frame_t *frame, u8 arc_index, u32 policer_index)
 {
   u32 *from, *to_next, n_left_from, n_left_to_next, next_index;
   u64 time_in_policer_periods;
@@ -168,8 +166,8 @@ ip_punt_policer (vlib_main_t * vm,
 	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
-					   n_left_to_next,
-					   bi0, bi1, next0, next1);
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
@@ -285,21 +283,19 @@ typedef struct ip4_punt_redirect_trace_t_
 /**
  * Add a punt redirect entry
  */
-extern void ip_punt_redirect_add (fib_protocol_t fproto,
-				  u32 rx_sw_if_index,
+extern void ip_punt_redirect_add (fib_protocol_t fproto, u32 rx_sw_if_index,
 				  fib_forward_chain_type_t ct,
-				  fib_route_path_t * rpaths);
+				  fib_route_path_t *rpaths);
 
 extern void ip_punt_redirect_del (fib_protocol_t fproto, u32 rx_sw_if_index);
 extern index_t ip_punt_redirect_find (fib_protocol_t fproto,
 				      u32 rx_sw_if_index);
-extern u8 *format_ip_punt_redirect (u8 * s, va_list * args);
+extern u8 *format_ip_punt_redirect (u8 *s, va_list *args);
 
-extern u8 *format_ip_punt_redirect_trace (u8 * s, va_list * args);
+extern u8 *format_ip_punt_redirect_trace (u8 *s, va_list *args);
 
-typedef walk_rc_t (*ip_punt_redirect_walk_cb_t) (u32 rx_sw_if_index,
-						 const ip_punt_redirect_rx_t *
-						 redirect, void *arg);
+typedef walk_rc_t (*ip_punt_redirect_walk_cb_t) (
+  u32 rx_sw_if_index, const ip_punt_redirect_rx_t *redirect, void *arg);
 extern void ip_punt_redirect_walk (fib_protocol_t fproto,
 				   ip_punt_redirect_walk_cb_t cb, void *ctx);
 
@@ -310,9 +306,8 @@ ip_punt_redirect_get (index_t rrxi)
 }
 
 always_inline uword
-ip_punt_redirect (vlib_main_t * vm,
-		  vlib_node_runtime_t * node,
-		  vlib_frame_t * frame, u8 arc_index, fib_protocol_t fproto)
+ip_punt_redirect (vlib_main_t *vm, vlib_node_runtime_t *node,
+		  vlib_frame_t *frame, u8 arc_index, fib_protocol_t fproto)
 {
   u32 *from, *to_next, n_left_from, n_left_to_next, next_index;
   vnet_feature_main_t *fm = &feature_main;
@@ -347,8 +342,8 @@ ip_punt_redirect (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  vnet_get_config_data (&cm->config_main,
-				&b0->current_config_index, &next0, 0);
+	  vnet_get_config_data (&cm->config_main, &b0->current_config_index,
+				&next0, 0);
 
 	  rx_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
@@ -391,9 +386,8 @@ ip_punt_redirect (vlib_main_t * vm,
 }
 
 always_inline uword
-ip_drop_or_punt (vlib_main_t * vm,
-		 vlib_node_runtime_t * node,
-		 vlib_frame_t * frame, u8 arc_index)
+ip_drop_or_punt (vlib_main_t *vm, vlib_node_runtime_t *node,
+		 vlib_frame_t *frame, u8 arc_index)
 {
   u32 *from, *to_next, n_left_from, n_left_to_next, next_index;
 
@@ -450,9 +444,8 @@ ip_drop_or_punt (vlib_main_t * vm,
 	  vnet_feature_arc_start (arc_index, 0, &next2, b2);
 	  vnet_feature_arc_start (arc_index, 0, &next3, b3);
 
-	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, bi2, bi3,
+	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, bi2, bi3,
 					   next0, next1, next2, next3);
 	}
 

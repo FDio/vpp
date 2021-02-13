@@ -27,8 +27,8 @@ typedef struct
 {
   /** Array of function pointer to analyse each hop-by-hop option. */
   int (*analyse_hbh_handler[MAX_IP6_HBH_OPTION]) (u32 flow_id,
-						  ip6_hop_by_hop_option_t *
-						  opt, u16 len);
+						  ip6_hop_by_hop_option_t *opt,
+						  u16 len);
 
   /** This contains the aggregated data from the time VPP started analysing. */
   ioam_analyser_data_t *aggregated_data;
@@ -44,7 +44,7 @@ void ip6_ioam_analyse_register_handlers (void);
 
 void ip6_ioam_analyse_unregister_handlers (void);
 
-clib_error_t *ip6_ioam_analyse_init (vlib_main_t * vm);
+clib_error_t *ip6_ioam_analyse_init (vlib_main_t *vm);
 
 inline static ioam_analyser_data_t *
 ioam_analyse_get_data_from_flow_id (u32 flow_id)
@@ -59,7 +59,7 @@ ioam_analyse_get_data_from_flow_id (u32 flow_id)
 }
 
 always_inline void *
-ip6_ioam_find_hbh_option (ip6_hop_by_hop_header_t * hbh0, u8 option)
+ip6_ioam_find_hbh_option (ip6_hop_by_hop_header_t *hbh0, u8 option)
 {
   ip6_hop_by_hop_option_t *opt0, *limit0;
   u8 type0;
@@ -79,16 +79,16 @@ ip6_ioam_find_hbh_option (ip6_hop_by_hop_header_t * hbh0, u8 option)
 	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0) + 1;
 	  continue;
 	}
-      opt0 = (ip6_hop_by_hop_option_t *)
-	(((u8 *) opt0) + opt0->length + sizeof (ip6_hop_by_hop_option_t));
+      opt0 = (ip6_hop_by_hop_option_t *) (((u8 *) opt0) + opt0->length +
+					  sizeof (ip6_hop_by_hop_option_t));
     }
 
   return NULL;
 }
 
 always_inline int
-ip6_ioam_analyse_compare_path_delay (ip6_hop_by_hop_header_t * hbh0,
-				     ip6_hop_by_hop_header_t * hbh1,
+ip6_ioam_analyse_compare_path_delay (ip6_hop_by_hop_header_t *hbh0,
+				     ip6_hop_by_hop_header_t *hbh1,
 				     bool oneway)
 {
   ioam_trace_option_t *trace0 = NULL, *trace1 = NULL;

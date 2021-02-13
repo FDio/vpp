@@ -20,7 +20,7 @@ DEFINE_VAPI_MSG_IDS_ACL_API_JSON;
 namespace VOM {
 namespace ACL {
 namespace binding_cmds {
-template <>
+template<>
 rc_t
 l3_bind_cmd::issue(connection& con)
 {
@@ -37,7 +37,7 @@ l3_bind_cmd::issue(connection& con)
   return (wait());
 }
 
-template <>
+template<>
 std::string
 l3_bind_cmd::to_string() const
 {
@@ -48,7 +48,7 @@ l3_bind_cmd::to_string() const
   return (s.str());
 }
 
-template <>
+template<>
 rc_t
 l3_unbind_cmd::issue(connection& con)
 {
@@ -65,7 +65,7 @@ l3_unbind_cmd::issue(connection& con)
   return (wait());
 }
 
-template <>
+template<>
 std::string
 l3_unbind_cmd::to_string() const
 {
@@ -76,7 +76,7 @@ l3_unbind_cmd::to_string() const
   return (s.str());
 }
 
-template <>
+template<>
 rc_t
 l3_dump_cmd::issue(connection& con)
 {
@@ -92,14 +92,14 @@ l3_dump_cmd::issue(connection& con)
   return rc_t::OK;
 }
 
-template <>
+template<>
 std::string
 l3_dump_cmd::to_string() const
 {
   return ("l3-acl-bind-dump");
 }
 
-template <>
+template<>
 rc_t
 l2_bind_cmd::issue(connection& con)
 {
@@ -115,7 +115,7 @@ l2_bind_cmd::issue(connection& con)
   return (wait());
 }
 
-template <>
+template<>
 std::string
 l2_bind_cmd::to_string() const
 {
@@ -126,7 +126,7 @@ l2_bind_cmd::to_string() const
   return (s.str());
 }
 
-template <>
+template<>
 rc_t
 l2_unbind_cmd::issue(connection& con)
 {
@@ -142,7 +142,7 @@ l2_unbind_cmd::issue(connection& con)
   return (wait());
 }
 
-template <>
+template<>
 std::string
 l2_unbind_cmd::to_string() const
 {
@@ -153,7 +153,7 @@ l2_unbind_cmd::to_string() const
   return (s.str());
 }
 
-template <>
+template<>
 rc_t
 l2_dump_cmd::issue(connection& con)
 {
@@ -169,7 +169,7 @@ l2_dump_cmd::issue(connection& con)
   return rc_t::OK;
 }
 
-template <>
+template<>
 std::string
 l2_dump_cmd::to_string() const
 {

@@ -30,11 +30,11 @@
 #include <vnet/ip/ip_types_api.h>
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -46,45 +46,45 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg         \
-_(FLOW_ADD, flow_add)               \
-_(FLOW_DEL, flow_del)               \
-_(FLOW_ENABLE, flow_enable)         \
-_(FLOW_DISABLE, flow_disable)
+#define foreach_vpe_api_msg                                                   \
+  _ (FLOW_ADD, flow_add)                                                      \
+  _ (FLOW_DEL, flow_del)                                                      \
+  _ (FLOW_ENABLE, flow_enable)                                                \
+  _ (FLOW_DISABLE, flow_disable)
 
 static inline void
-ipv4_addr_and_mask_convert (vl_api_ip4_address_and_mask_t * vl_api_addr,
-			    ip4_address_and_mask_t * vnet_addr)
+ipv4_addr_and_mask_convert (vl_api_ip4_address_and_mask_t *vl_api_addr,
+			    ip4_address_and_mask_t *vnet_addr)
 {
   clib_memcpy (vnet_addr, vl_api_addr, sizeof (*vnet_addr));
 }
 
 static inline void
-ipv6_addr_and_mask_convert (vl_api_ip6_address_and_mask_t * vl_api_addr,
-			    ip6_address_and_mask_t * vnet_addr)
+ipv6_addr_and_mask_convert (vl_api_ip6_address_and_mask_t *vl_api_addr,
+			    ip6_address_and_mask_t *vnet_addr)
 {
   clib_memcpy (vnet_addr, vl_api_addr, sizeof (*vnet_addr));
 }
 
 static inline void
-protocol_and_mask_convert (vl_api_ip_prot_and_mask_t * vl_api_protocol,
-			   ip_prot_and_mask_t * vnet_protocol)
+protocol_and_mask_convert (vl_api_ip_prot_and_mask_t *vl_api_protocol,
+			   ip_prot_and_mask_t *vnet_protocol)
 {
   vnet_protocol->prot = (ip_protocol_t) vl_api_protocol->prot;
   vnet_protocol->mask = vl_api_protocol->mask;
 }
 
 static inline void
-port_and_mask_convert (vl_api_ip_port_and_mask_t * vl_api_port,
-		       ip_port_and_mask_t * vnet_port)
+port_and_mask_convert (vl_api_ip_port_and_mask_t *vl_api_port,
+		       ip_port_and_mask_t *vnet_port)
 {
   vnet_port->port = ntohs (vl_api_port->port);
   vnet_port->mask = ntohs (vl_api_port->mask);
 }
 
 static inline void
-ipv4_n_tuple_flow_convert (vl_api_flow_ip4_n_tuple_t * vl_api_flow,
-			   vnet_flow_ip4_n_tuple_t * f)
+ipv4_n_tuple_flow_convert (vl_api_flow_ip4_n_tuple_t *vl_api_flow,
+			   vnet_flow_ip4_n_tuple_t *f)
 {
   ipv4_addr_and_mask_convert (&vl_api_flow->src_addr, &f->src_addr);
   ipv4_addr_and_mask_convert (&vl_api_flow->dst_addr, &f->dst_addr);
@@ -95,8 +95,8 @@ ipv4_n_tuple_flow_convert (vl_api_flow_ip4_n_tuple_t * vl_api_flow,
 }
 
 static void
-ipv6_n_tuple_flow_convert (vl_api_flow_ip6_n_tuple_t * vl_api_flow,
-			   vnet_flow_ip6_n_tuple_t * f)
+ipv6_n_tuple_flow_convert (vl_api_flow_ip6_n_tuple_t *vl_api_flow,
+			   vnet_flow_ip6_n_tuple_t *f)
 {
   ipv6_addr_and_mask_convert (&vl_api_flow->src_addr, &f->src_addr);
   ipv6_addr_and_mask_convert (&vl_api_flow->dst_addr, &f->dst_addr);
@@ -107,26 +107,26 @@ ipv6_n_tuple_flow_convert (vl_api_flow_ip6_n_tuple_t * vl_api_flow,
 }
 
 static inline void
-ipv4_n_tuple_tagged_flow_convert (vl_api_flow_ip4_n_tuple_tagged_t *
-				  vl_api_flow,
-				  vnet_flow_ip4_n_tuple_tagged_t * f)
+ipv4_n_tuple_tagged_flow_convert (
+  vl_api_flow_ip4_n_tuple_tagged_t *vl_api_flow,
+  vnet_flow_ip4_n_tuple_tagged_t *f)
 {
   return ipv4_n_tuple_flow_convert ((vl_api_flow_ip4_n_tuple_t *) vl_api_flow,
 				    (vnet_flow_ip4_n_tuple_t *) f);
 }
 
 static inline void
-ipv6_n_tuple_tagged_flow_convert (vl_api_flow_ip6_n_tuple_tagged_t *
-				  vl_api_flow,
-				  vnet_flow_ip6_n_tuple_tagged_t * f)
+ipv6_n_tuple_tagged_flow_convert (
+  vl_api_flow_ip6_n_tuple_tagged_t *vl_api_flow,
+  vnet_flow_ip6_n_tuple_tagged_t *f)
 {
   return ipv6_n_tuple_flow_convert ((vl_api_flow_ip6_n_tuple_t *) vl_api_flow,
 				    (vnet_flow_ip6_n_tuple_t *) f);
 }
 
 static inline void
-ipv4_l2tpv3oip_flow_convert (vl_api_flow_ip4_l2tpv3oip_t * vl_api_flow,
-			     vnet_flow_ip4_l2tpv3oip_t * f)
+ipv4_l2tpv3oip_flow_convert (vl_api_flow_ip4_l2tpv3oip_t *vl_api_flow,
+			     vnet_flow_ip4_l2tpv3oip_t *f)
 {
   ipv4_addr_and_mask_convert (&vl_api_flow->src_addr, &f->src_addr);
   ipv4_addr_and_mask_convert (&vl_api_flow->dst_addr, &f->dst_addr);
@@ -136,8 +136,8 @@ ipv4_l2tpv3oip_flow_convert (vl_api_flow_ip4_l2tpv3oip_t * vl_api_flow,
 }
 
 static inline void
-ipv4_ipsec_esp_flow_convert (vl_api_flow_ip4_ipsec_esp_t * vl_api_flow,
-			     vnet_flow_ip4_ipsec_esp_t * f)
+ipv4_ipsec_esp_flow_convert (vl_api_flow_ip4_ipsec_esp_t *vl_api_flow,
+			     vnet_flow_ip4_ipsec_esp_t *f)
 {
   ipv4_addr_and_mask_convert (&vl_api_flow->src_addr, &f->src_addr);
   ipv4_addr_and_mask_convert (&vl_api_flow->dst_addr, &f->dst_addr);
@@ -147,8 +147,8 @@ ipv4_ipsec_esp_flow_convert (vl_api_flow_ip4_ipsec_esp_t * vl_api_flow,
 }
 
 static inline void
-ipv4_ipsec_ah_flow_convert (vl_api_flow_ip4_ipsec_ah_t * vl_api_flow,
-			    vnet_flow_ip4_ipsec_ah_t * f)
+ipv4_ipsec_ah_flow_convert (vl_api_flow_ip4_ipsec_ah_t *vl_api_flow,
+			    vnet_flow_ip4_ipsec_ah_t *f)
 {
   ipv4_addr_and_mask_convert (&vl_api_flow->src_addr, &f->src_addr);
   ipv4_addr_and_mask_convert (&vl_api_flow->dst_addr, &f->dst_addr);
@@ -158,8 +158,8 @@ ipv4_ipsec_ah_flow_convert (vl_api_flow_ip4_ipsec_ah_t * vl_api_flow,
 }
 
 static inline void
-ipv4_gtpu_flow_convert (vl_api_flow_ip4_gtpu_t * vl_api_flow,
-			vnet_flow_ip4_gtpu_t * f)
+ipv4_gtpu_flow_convert (vl_api_flow_ip4_gtpu_t *vl_api_flow,
+			vnet_flow_ip4_gtpu_t *f)
 {
   ipv4_addr_and_mask_convert (&vl_api_flow->src_addr, &f->src_addr);
   ipv4_addr_and_mask_convert (&vl_api_flow->dst_addr, &f->dst_addr);
@@ -172,8 +172,8 @@ ipv4_gtpu_flow_convert (vl_api_flow_ip4_gtpu_t * vl_api_flow,
 }
 
 static inline void
-ipv4_gtpc_flow_convert (vl_api_flow_ip4_gtpc_t * vl_api_flow,
-			vnet_flow_ip4_gtpc_t * f)
+ipv4_gtpc_flow_convert (vl_api_flow_ip4_gtpc_t *vl_api_flow,
+			vnet_flow_ip4_gtpc_t *f)
 {
   ipv4_addr_and_mask_convert (&vl_api_flow->src_addr, &f->src_addr);
   ipv4_addr_and_mask_convert (&vl_api_flow->dst_addr, &f->dst_addr);
@@ -186,7 +186,7 @@ ipv4_gtpc_flow_convert (vl_api_flow_ip4_gtpc_t * vl_api_flow,
 }
 
 static void
-vl_api_flow_add_t_handler (vl_api_flow_add_t * mp)
+vl_api_flow_add_t_handler (vl_api_flow_add_t *mp)
 {
   vl_api_flow_add_reply_t *rmp;
   int rv = 0;
@@ -247,16 +247,13 @@ vl_api_flow_add_t_handler (vl_api_flow_add_t * mp)
   rv = vnet_flow_add (vnm, &flow, &flow_index);
 
 out:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_FLOW_ADD_REPLY,
-  ({
-    rmp->flow_index = ntohl (flow_index);
-  }));
-  /* *INDENT-ON* */
+
+  REPLY_MACRO2 (VL_API_FLOW_ADD_REPLY,
+		({ rmp->flow_index = ntohl (flow_index); }));
 }
 
 static void
-vl_api_flow_del_t_handler (vl_api_flow_del_t * mp)
+vl_api_flow_del_t_handler (vl_api_flow_del_t *mp)
 {
   vl_api_flow_add_reply_t *rmp;
   int rv = 0;
@@ -268,20 +265,19 @@ vl_api_flow_del_t_handler (vl_api_flow_del_t * mp)
 }
 
 static void
-vl_api_flow_enable_t_handler (vl_api_flow_enable_t * mp)
+vl_api_flow_enable_t_handler (vl_api_flow_enable_t *mp)
 {
   vl_api_flow_add_reply_t *rmp;
   int rv = 0;
 
   vnet_main_t *vnm = vnet_get_main ();
-  rv =
-    vnet_flow_enable (vnm, ntohl (mp->flow_index), ntohl (mp->hw_if_index));
+  rv = vnet_flow_enable (vnm, ntohl (mp->flow_index), ntohl (mp->hw_if_index));
 
   REPLY_MACRO (VL_API_FLOW_ENABLE_REPLY);
 }
 
 static void
-vl_api_flow_disable_t_handler (vl_api_flow_disable_t * mp)
+vl_api_flow_disable_t_handler (vl_api_flow_disable_t *mp)
 {
   vl_api_flow_add_reply_t *rmp;
   int rv = 0;
@@ -305,27 +301,23 @@ vl_api_flow_disable_t_handler (vl_api_flow_disable_t * mp)
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */
 
-
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_flow;
 #undef _
 }
 
 static clib_error_t *
-hw_flow_api_hookup (vlib_main_t * vm)
+hw_flow_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_vpe_api_msg;
 #undef _
 

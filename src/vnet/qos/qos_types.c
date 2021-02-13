@@ -24,7 +24,7 @@
 static const char *qos_source_names[] = QOS_SOURCE_NAMES;
 
 u8 *
-format_qos_source (u8 * s, va_list * args)
+format_qos_source (u8 *s, va_list *args)
 {
   int qs = va_arg (*args, int);
 
@@ -32,7 +32,7 @@ format_qos_source (u8 * s, va_list * args)
 }
 
 uword
-unformat_qos_source (unformat_input_t * input, va_list * args)
+unformat_qos_source (unformat_input_t *input, va_list *args)
 {
   int *qs = va_arg (*args, int *);
 

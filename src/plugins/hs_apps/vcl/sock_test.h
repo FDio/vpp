@@ -26,33 +26,30 @@
 #define SOCK_TEST_MIXED_EPOLL_DATA    "Hello, world! (over an AF_UNIX socket)"
 #define SOCK_TEST_AF_UNIX_ACCEPT_DATA 0xaf0000af
 #define SOCK_TEST_AF_UNIX_FD_MASK     0x00af0000
-#define SOCK_TEST_BANNER_STRING \
+#define SOCK_TEST_BANNER_STRING                                               \
   "============================================\n"
 
-#define stinf(_fmt, _args...)						\
-  printf ("st: " _fmt "\n", ##_args)
-#define stwrn(_fmt, _args...)						\
-  printf ("WARNING: " _fmt "\n", ##_args)
-#define sterr(_fn, _rv)							\
-{									\
-  errno = -_rv;								\
-  printf ("\nERROR: " _fn " failed (errno = %d)!\n", -_rv);		\
-}
-#define stabrt(_fmt, _args...)						\
-{									\
-  printf ("\nERROR: " _fmt "\n", ##_args);				\
-  exit (1);								\
-}
-#define stfail(_fn)							\
-{									\
-  perror ("ERROR when calling " _fn);					\
-  printf ("\nERROR: " _fn " failed (errno = %d)!\n", errno);		\
-  exit (1);								\
-}
+#define stinf(_fmt, _args...) printf ("st: " _fmt "\n", ##_args)
+#define stwrn(_fmt, _args...) printf ("WARNING: " _fmt "\n", ##_args)
+#define sterr(_fn, _rv)                                                       \
+  {                                                                           \
+    errno = -_rv;                                                             \
+    printf ("\nERROR: " _fn " failed (errno = %d)!\n", -_rv);                 \
+  }
+#define stabrt(_fmt, _args...)                                                \
+  {                                                                           \
+    printf ("\nERROR: " _fmt "\n", ##_args);                                  \
+    exit (1);                                                                 \
+  }
+#define stfail(_fn)                                                           \
+  {                                                                           \
+    perror ("ERROR when calling " _fn);                                       \
+    printf ("\nERROR: " _fn " failed (errno = %d)!\n", errno);                \
+    exit (1);                                                                 \
+  }
 
 static inline int
-sock_test_read (int fd, uint8_t * buf, uint32_t nbytes,
-		vcl_test_stats_t * stats)
+sock_test_read (int fd, uint8_t *buf, uint32_t nbytes, vcl_test_stats_t *stats)
 {
   int rx_bytes;
 
@@ -63,9 +60,8 @@ sock_test_read (int fd, uint8_t * buf, uint32_t nbytes,
       rx_bytes = read (fd, buf, nbytes);
       if (stats)
 	{
-	  if ((rx_bytes == 0) ||
-	      ((rx_bytes < 0)
-	       && ((errno == EAGAIN) || (errno == EWOULDBLOCK))))
+	  if ((rx_bytes == 0) || ((rx_bytes < 0) && ((errno == EAGAIN) ||
+						     (errno == EWOULDBLOCK))))
 	    stats->rx_eagain++;
 	  else if (rx_bytes < nbytes)
 	    stats->rx_incomp++;
@@ -84,8 +80,8 @@ sock_test_read (int fd, uint8_t * buf, uint32_t nbytes,
 }
 
 static inline int
-sock_test_write (int fd, uint8_t * buf, uint32_t nbytes,
-		 vcl_test_stats_t * stats, uint32_t verbose)
+sock_test_write (int fd, uint8_t *buf, uint32_t nbytes,
+		 vcl_test_stats_t *stats, uint32_t verbose)
 {
   int tx_bytes = 0, nbytes_left = nbytes, rv;
 
@@ -118,7 +114,6 @@ sock_test_write (int fd, uint8_t * buf, uint32_t nbytes,
 		     nbytes);
 	    }
 	}
-
     }
   while (tx_bytes != nbytes);
 

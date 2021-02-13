@@ -45,10 +45,10 @@ proxy_arp_walk (proxy_arp_walk_t cb, void *data)
   ethernet_proxy_arp_t *pa;
 
   vec_foreach (pa, am->proxy_arps)
-  {
-    if (!cb (&pa->lo_addr, &pa->hi_addr, pa->fib_index, data))
-      break;
-  }
+    {
+      if (!cb (&pa->lo_addr, &pa->hi_addr, pa->fib_index, data))
+	break;
+    }
 }
 
 int
@@ -60,8 +60,8 @@ arp_proxy_disable (u32 sw_if_index)
 
   if (am->enabled_by_sw_if_index[sw_if_index])
     {
-      vnet_feature_enable_disable ("arp", "arp-proxy",
-				   sw_if_index, 0, NULL, 0);
+      vnet_feature_enable_disable ("arp", "arp-proxy", sw_if_index, 0, NULL,
+				   0);
     }
   am->enabled_by_sw_if_index[sw_if_index] = false;
 
@@ -77,8 +77,8 @@ arp_proxy_enable (u32 sw_if_index)
 
   if (!am->enabled_by_sw_if_index[sw_if_index])
     {
-      vnet_feature_enable_disable ("arp", "arp-proxy",
-				   sw_if_index, 1, NULL, 0);
+      vnet_feature_enable_disable ("arp", "arp-proxy", sw_if_index, 1, NULL,
+				   0);
     }
   am->enabled_by_sw_if_index[sw_if_index] = true;
 
@@ -86,23 +86,23 @@ arp_proxy_enable (u32 sw_if_index)
 }
 
 static int
-vnet_proxy_arp_add_del (const ip4_address_t * lo_addr,
-			const ip4_address_t * hi_addr,
-			u32 fib_index, int is_del)
+vnet_proxy_arp_add_del (const ip4_address_t *lo_addr,
+			const ip4_address_t *hi_addr, u32 fib_index,
+			int is_del)
 {
   arp_proxy_main_t *am = &arp_proxy_main;
   ethernet_proxy_arp_t *pa;
   u32 found_at_index = ~0;
 
   vec_foreach (pa, am->proxy_arps)
-  {
-    if (pa->lo_addr.as_u32 == lo_addr->as_u32 &&
-	pa->hi_addr.as_u32 == hi_addr->as_u32 && pa->fib_index == fib_index)
-      {
-	found_at_index = pa - am->proxy_arps;
-	break;
-      }
-  }
+    {
+      if (pa->lo_addr.as_u32 == lo_addr->as_u32 &&
+	  pa->hi_addr.as_u32 == hi_addr->as_u32 && pa->fib_index == fib_index)
+	{
+	  found_at_index = pa - am->proxy_arps;
+	  break;
+	}
+    }
 
   if (found_at_index != ~0)
     {
@@ -124,15 +124,13 @@ vnet_proxy_arp_add_del (const ip4_address_t * lo_addr,
 }
 
 int
-arp_proxy_add (u32 fib_index,
-	       const ip4_address_t * lo, const ip4_address_t * hi)
+arp_proxy_add (u32 fib_index, const ip4_address_t *lo, const ip4_address_t *hi)
 {
   return (vnet_proxy_arp_add_del (lo, hi, fib_index, 0));
 }
 
 int
-arp_proxy_del (u32 fib_index,
-	       const ip4_address_t * lo, const ip4_address_t * hi)
+arp_proxy_del (u32 fib_index, const ip4_address_t *lo, const ip4_address_t *hi)
 {
   return (vnet_proxy_arp_add_del (lo, hi, fib_index, 1));
 }
@@ -144,16 +142,15 @@ proxy_arp_intfc_walk (proxy_arp_intf_walk_t cb, void *data)
   bool *enabled;
 
   vec_foreach (enabled, am->enabled_by_sw_if_index)
-  {
-    if (*enabled)
-      cb (enabled - am->enabled_by_sw_if_index, data);
-  }
+    {
+      if (*enabled)
+	cb (enabled - am->enabled_by_sw_if_index, data);
+    }
 }
 
 static clib_error_t *
-set_int_proxy_arp_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+set_int_proxy_arp_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index;
@@ -163,8 +160,8 @@ set_int_proxy_arp_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_vnet_sw_interface,
-		    vnm, &sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (input, "enable") || unformat (input, "on"))
 	enable = 1;
@@ -175,8 +172,8 @@ set_int_proxy_arp_command_fn (vlib_main_t * vm,
     }
 
   if (~0 == sw_if_index)
-    return clib_error_return (0, "unknown input '%U'",
-			      format_unformat_error, input);
+    return clib_error_return (0, "unknown input '%U'", format_unformat_error,
+			      input);
 
   if (enable)
     arp_proxy_enable (sw_if_index);
@@ -187,12 +184,10 @@ set_int_proxy_arp_command_fn (vlib_main_t * vm,
 }
 
 static clib_error_t *
-set_arp_proxy (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+set_arp_proxy (vlib_main_t *vm, unformat_input_t *input,
+	       vlib_cli_command_t *cmd)
 {
-  ip4_address_t start = {.as_u32 = ~0 }, end =
-  {
-  .as_u32 = ~0};
+  ip4_address_t start = { .as_u32 = ~0 }, end = { .as_u32 = ~0 };
   u32 fib_index, table_id = 0;
   int add = 1;
 
@@ -223,7 +218,6 @@ set_arp_proxy (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 /*?
  * Enable proxy-arp on an interface. The vpp stack will answer ARP
  * requests for the indicated address range. Multiple proxy-arp
@@ -245,19 +239,16 @@ set_arp_proxy (vlib_main_t * vm,
  ?*/
 VLIB_CLI_COMMAND (set_int_proxy_enable_command, static) = {
   .path = "set interface proxy-arp",
-  .short_help =
-  "set interface proxy-arp <intfc> [enable|disable]",
+  .short_help = "set interface proxy-arp <intfc> [enable|disable]",
   .function = set_int_proxy_arp_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_arp_proxy_command, static) = {
   .path = "set arp proxy",
-  .short_help = "set arp proxy [del] table-ID <table-ID> start <start-address> end <end-addres>",
+  .short_help = "set arp proxy [del] table-ID <table-ID> start "
+		"<start-address> end <end-addres>",
   .function = set_arp_proxy,
 };
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -265,21 +256,20 @@ typedef struct
 } ethernet_arp_input_trace_t;
 
 static u8 *
-format_ethernet_arp_input_trace (u8 * s, va_list * va)
+format_ethernet_arp_input_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
   ethernet_arp_input_trace_t *t = va_arg (*va, ethernet_arp_input_trace_t *);
 
-  s = format (s, "%U",
-	      format_ethernet_arp_header,
-	      t->packet_data, sizeof (t->packet_data));
+  s = format (s, "%U", format_ethernet_arp_header, t->packet_data,
+	      sizeof (t->packet_data));
 
   return s;
 }
 
 static uword
-arp_proxy (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+arp_proxy (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   arp_proxy_main_t *am = &arp_proxy_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -323,8 +313,8 @@ arp_proxy (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  /* Fill in ethernet header. */
 	  eth_rx = ethernet_buffer_get_header (p0);
 
-	  is_request0 = arp0->opcode
-	    == clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_request);
+	  is_request0 =
+	    arp0->opcode == clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_request);
 
 	  error0 = ETHERNET_ARP_ERROR_replies_sent;
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
@@ -338,31 +328,30 @@ arp_proxy (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  if (0 == error0 && is_request0)
 	    {
-	      u32 this_addr = clib_net_to_host_u32
-		(arp0->ip4_over_ethernet[1].ip4.as_u32);
+	      u32 this_addr =
+		clib_net_to_host_u32 (arp0->ip4_over_ethernet[1].ip4.as_u32);
 
 	      vec_foreach (pa, am->proxy_arps)
-	      {
-		u32 lo_addr = clib_net_to_host_u32 (pa->lo_addr.as_u32);
-		u32 hi_addr = clib_net_to_host_u32 (pa->hi_addr.as_u32);
+		{
+		  u32 lo_addr = clib_net_to_host_u32 (pa->lo_addr.as_u32);
+		  u32 hi_addr = clib_net_to_host_u32 (pa->hi_addr.as_u32);
 
-		/* an ARP request hit in the proxy-arp table? */
-		if ((this_addr >= lo_addr && this_addr <= hi_addr) &&
-		    (fib_index0 == pa->fib_index))
-		  {
-		    proxy_src.as_u32 =
-		      arp0->ip4_over_ethernet[1].ip4.data_u32;
+		  /* an ARP request hit in the proxy-arp table? */
+		  if ((this_addr >= lo_addr && this_addr <= hi_addr) &&
+		      (fib_index0 == pa->fib_index))
+		    {
+		      proxy_src.as_u32 =
+			arp0->ip4_over_ethernet[1].ip4.data_u32;
 
-		    /*
-		     * change the interface address to the proxied
-		     */
-		    n_arp_replies_sent++;
+		      /*
+		       * change the interface address to the proxied
+		       */
+		      n_arp_replies_sent++;
 
-		    next0 =
-		      arp_mk_reply (vnm, p0, sw_if_index0, &proxy_src, arp0,
-				    eth_rx);
-		  }
-	      }
+		      next0 = arp_mk_reply (vnm, p0, sw_if_index0, &proxy_src,
+					    arp0, eth_rx);
+		    }
+		}
 	    }
 	  else
 	    {
@@ -376,14 +365,14 @@ arp_proxy (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_error_count (vm, node->node_index,
-		    ETHERNET_ARP_ERROR_replies_sent, n_arp_replies_sent);
+  vlib_error_count (vm, node->node_index, ETHERNET_ARP_ERROR_replies_sent,
+		    n_arp_replies_sent);
 
   return frame->n_vectors;
 }
 
 static char *ethernet_arp_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ethernet_arp_error
 #undef _
 };
@@ -400,8 +389,8 @@ VLIB_REGISTER_NODE (arp_proxy_node, static) =
     format_ethernet_arp_input_trace,};
 
 static clib_error_t *
-show_ip4_arp (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+show_ip4_arp (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd)
 {
   arp_proxy_main_t *am = &arp_proxy_main;
   ethernet_proxy_arp_t *pa;
@@ -410,12 +399,11 @@ show_ip4_arp (vlib_main_t * vm,
     {
       vlib_cli_output (vm, "Proxy arps enabled for:");
       vec_foreach (pa, am->proxy_arps)
-      {
-	vlib_cli_output (vm, "Fib_index %d   %U - %U ",
-			 pa->fib_index,
-			 format_ip4_address, &pa->lo_addr,
-			 format_ip4_address, &pa->hi_addr);
-      }
+	{
+	  vlib_cli_output (vm, "Fib_index %d   %U - %U ", pa->fib_index,
+			   format_ip4_address, &pa->lo_addr,
+			   format_ip4_address, &pa->hi_addr);
+	}
     }
 
   return (NULL);
@@ -428,20 +416,22 @@ show_ip4_arp (vlib_main_t * vm,
  * Example of how to display the IPv4 ARP table:
  * @cliexstart{show ip arp}
  *    Time      FIB        IP4       Flags      Ethernet              Interface
- *    346.3028   0       6.1.1.3            de:ad:be:ef:ba:be   GigabitEthernet2/0/0
- *   3077.4271   0       6.1.1.4       S    de:ad:be:ef:ff:ff   GigabitEthernet2/0/0
- *   2998.6409   1       6.2.2.3            de:ad:be:ef:00:01   GigabitEthernet2/0/0
+ *    346.3028   0       6.1.1.3            de:ad:be:ef:ba:be
+ GigabitEthernet2/0/0
+ *   3077.4271   0       6.1.1.4       S    de:ad:be:ef:ff:ff
+ GigabitEthernet2/0/0
+ *   2998.6409   1       6.2.2.3            de:ad:be:ef:00:01
+ GigabitEthernet2/0/0
  * Proxy arps enabled for:
  * Fib_index 0   6.0.0.1 - 6.0.0.11
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (show_ip4_arp_command, static) = {
   .path = "show arp proxy",
   .function = show_ip4_arp,
   .short_help = "show ip arp",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

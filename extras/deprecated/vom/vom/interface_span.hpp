@@ -114,7 +114,9 @@ private:
   /**
    * Class definition for listeners to OM events
    */
-  class event_handler : public OM::listener, public inspect::command_handler
+  class event_handler
+    : public OM::listener
+    , public inspect::command_handler
   {
   public:
     event_handler();
@@ -184,7 +186,7 @@ private:
   /**
    * A reference counting pointer the interface where the traffic is
    * mirrored
- */
+   */
   const std::shared_ptr<interface> m_itf_to;
 
   /**
@@ -195,13 +197,13 @@ private:
   /**
    * HW configuration for the binding. The bool representing the
    * do/don't bind.
- */
+   */
   HW::item<bool> m_config;
 
   /**
    * A map of all interface span keyed against the interface to be
    * mirrored.
- */
+   */
   static singular_db<key_t, interface_span> m_db;
 };
 

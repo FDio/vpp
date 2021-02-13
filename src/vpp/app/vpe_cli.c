@@ -23,9 +23,8 @@ typedef struct
 } mac_addr_t;
 
 static clib_error_t *
-virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+virtual_ip_cmd_fn_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
@@ -47,9 +46,9 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  if (!unformat (line_input, "%U %U",
-		 unformat_ip4_address, &prefix.fp_addr.ip4,
-		 unformat_vnet_sw_interface, vnm, &sw_if_index))
+  if (!unformat (line_input, "%U %U", unformat_ip4_address,
+		 &prefix.fp_addr.ip4, unformat_vnet_sw_interface, vnm,
+		 &sw_if_index))
     {
       error = clib_error_return (0, "unknown input `%U'",
 				 format_unformat_error, line_input);
@@ -58,15 +57,15 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "mac %U",
-		    unformat_ethernet_address, &mac_addr))
+      if (unformat (line_input, "mac %U", unformat_ethernet_address,
+		    &mac_addr))
 	{
 	  mac_addr_t *ma;
 	  vec_add2 (mac_addrs, ma, 1);
 	  clib_memcpy (ma, mac_addr, sizeof (mac_addr));
 	}
-      else if (unformat (line_input, "next-hop %U",
-			 unformat_ip4_address, &next_hop.ip4))
+      else if (unformat (line_input, "next-hop %U", unformat_ip4_address,
+			 &next_hop.ip4))
 	{
 	  vec_add1 (next_hops, next_hop);
 	}
@@ -91,10 +90,9 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
     {
       fib_route_path_t *rpath;
 
-      adj_nbr_add_or_lock_w_rewrite (FIB_PROTOCOL_IP4,
-				     VNET_LINK_IP4,
-				     &next_hops[i],
-				     sw_if_index, mac_addrs[i].mac_addr);
+      adj_nbr_add_or_lock_w_rewrite (FIB_PROTOCOL_IP4, VNET_LINK_IP4,
+				     &next_hops[i], sw_if_index,
+				     mac_addrs[i].mac_addr);
 
       vec_add2 (rpaths, rpath, 1);
 
@@ -106,9 +104,9 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
       rpath->frp_label_stack = NULL;
     }
 
-  fib_table_entry_path_add2 (0,	// default FIB table
-			     &prefix,
-			     FIB_SOURCE_CLI, FIB_ENTRY_FLAG_NONE, rpaths);
+  fib_table_entry_path_add2 (0, // default FIB table
+			     &prefix, FIB_SOURCE_CLI, FIB_ENTRY_FLAG_NONE,
+			     rpaths);
 
 done:
   vec_free (mac_addrs);
@@ -119,13 +117,12 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (virtual_ip_cmd_fn_command, static) = {
   .path = "ip virtual",
-  .short_help = "ip virtual <addr> <interface> [mac <Mi>]+ [next-hop <ip4_address>]+",
+  .short_help =
+    "ip virtual <addr> <interface> [mac <Mi>]+ [next-hop <ip4_address>]+",
   .function = virtual_ip_cmd_fn_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

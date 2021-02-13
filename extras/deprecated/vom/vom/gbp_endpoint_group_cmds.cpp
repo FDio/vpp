@@ -32,8 +32,7 @@ create_cmd::create_cmd(HW::item<bool>& item,
   , m_rd_id(rd_id)
   , m_itf(itf)
   , m_retention(retention)
-{
-}
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
@@ -75,8 +74,7 @@ create_cmd::to_string() const
 delete_cmd::delete_cmd(HW::item<bool>& item, sclass_t sclass)
   : rpc_cmd(item)
   , m_sclass(sclass)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
@@ -107,9 +105,7 @@ delete_cmd::to_string() const
   return (s.str());
 }
 
-dump_cmd::dump_cmd()
-{
-}
+dump_cmd::dump_cmd() {}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const

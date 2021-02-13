@@ -41,14 +41,12 @@
 
 #include "svm.h"
 
-
-
 /*
  * format_all_svm_regions
  * Maps / unmaps regions. Do NOT call from client code!
  */
 u8 *
-format_all_svm_regions (u8 * s, va_list * args)
+format_all_svm_regions (u8 *s, va_list *args)
 {
   int verbose = va_arg (*args, int);
   svm_region_t *root_rp = svm_get_root_rp ();
@@ -72,12 +70,12 @@ format_all_svm_regions (u8 * s, va_list * args)
    * Snapshoot names, can't hold root rp mutex across
    * find_or_create.
    */
-  /* *INDENT-OFF* */
-  pool_foreach (subp, mp->subregions)  {
-        name = vec_dup (subp->subregion_name);
-        vec_add1(svm_names, name);
-      }
-  /* *INDENT-ON* */
+
+  pool_foreach (subp, mp->subregions)
+    {
+      name = vec_dup (subp->subregion_name);
+      vec_add1 (svm_names, name);
+    }
 
   pthread_mutex_unlock (&root_rp->mutex);
 
@@ -118,9 +116,8 @@ show (char *chroot_path, int verbose)
   vec_free (a);
 }
 
-
 static void *
-svm_map_region_nolock (svm_map_region_args_t * a)
+svm_map_region_nolock (svm_map_region_args_t *a)
 {
   int svm_fd;
   svm_region_t *rp;
@@ -171,9 +168,9 @@ svm_map_region_nolock (svm_map_region_args_t * a)
   a->size = rp->virtual_size;
   munmap (rp, MMAP_PAGESIZE);
 
-  rp = (void *) mmap (uword_to_pointer (a->baseva, void *), a->size,
-		      PROT_READ | PROT_WRITE,
-		      MAP_SHARED | MAP_FIXED, svm_fd, 0);
+  rp =
+    (void *) mmap (uword_to_pointer (a->baseva, void *), a->size,
+		   PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, svm_fd, 0);
   if ((uword) rp == (uword) MAP_FAILED)
     {
       clib_unix_warning ("mmap");
@@ -190,7 +187,6 @@ svm_map_region_nolock (svm_map_region_args_t * a)
       clib_warning ("rp->mutex LOCKED by pid %d, tag %d, cleared...",
 		    rp->mutex_owner_pid, rp->mutex_owner_tag);
       clib_memset (&rp->mutex, 0, sizeof (rp->mutex));
-
     }
   else
     {
@@ -217,7 +213,7 @@ rnd_pagesize (u64 size)
 #define MUTEX_DEBUG
 
 always_inline void
-region_lock (svm_region_t * rp, int tag)
+region_lock (svm_region_t *rp, int tag)
 {
   pthread_mutex_lock (&rp->mutex);
 #ifdef MUTEX_DEBUG
@@ -227,7 +223,7 @@ region_lock (svm_region_t * rp, int tag)
 }
 
 always_inline void
-region_unlock (svm_region_t * rp)
+region_unlock (svm_region_t *rp)
 {
 #ifdef MUTEX_DEBUG
   rp->mutex_owner_pid = 0;
@@ -236,9 +232,8 @@ region_unlock (svm_region_t * rp)
   pthread_mutex_unlock (&rp->mutex);
 }
 
-
 static void *
-svm_existing_region_map_nolock (void *root_arg, svm_map_region_args_t * a)
+svm_existing_region_map_nolock (void *root_arg, svm_map_region_args_t *a)
 {
   svm_region_t *root_rp = root_arg;
   svm_main_region_t *mp;
@@ -246,8 +241,8 @@ svm_existing_region_map_nolock (void *root_arg, svm_map_region_args_t * a)
   void *oldheap;
   uword *p;
 
-  a->size += MMAP_PAGESIZE +
-    (a->pvt_heap_size ? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE);
+  a->size +=
+    MMAP_PAGESIZE + (a->pvt_heap_size ? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE);
   a->size = rnd_pagesize (a->size);
 
   region_lock (root_rp, 4);
@@ -266,7 +261,6 @@ svm_existing_region_map_nolock (void *root_arg, svm_map_region_args_t * a)
       return rp;
     }
   return 0;
-
 }
 
 static void
@@ -302,8 +296,6 @@ trace (char *chroot_path, char *name, int enable_disable)
   vec_free (a);
 }
 
-
-
 static void
 subregion_repair (char *chroot_path)
 {
@@ -327,12 +319,12 @@ subregion_repair (char *chroot_path)
    * Snapshoot names, can't hold root rp mutex across
    * find_or_create.
    */
-  /* *INDENT-OFF* */
-  pool_foreach (subp, mp->subregions)  {
-        name = vec_dup (subp->subregion_name);
-        vec_add1(svm_names, name);
-      }
-  /* *INDENT-ON* */
+
+  pool_foreach (subp, mp->subregions)
+    {
+      name = vec_dup (subp->subregion_name);
+      vec_add1 (svm_names, name);
+    }
 
   pthread_mutex_unlock (&root_rp->mutex);
 
@@ -383,8 +375,8 @@ repair (char *chroot_path, int crash_root_region)
 
   vec_free (shm_name);
 
-  root_rp = mmap (0, MMAP_PAGESIZE,
-		  PROT_READ | PROT_WRITE, MAP_SHARED, svm_fd, 0);
+  root_rp =
+    mmap (0, MMAP_PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, svm_fd, 0);
 
   if (root_rp == (svm_region_t *) MAP_FAILED)
     {
@@ -400,9 +392,9 @@ repair (char *chroot_path, int crash_root_region)
   a->size = root_rp->virtual_size;
   munmap (root_rp, MMAP_PAGESIZE);
 
-  root_rp = (void *) mmap (uword_to_pointer (a->baseva, void *), a->size,
-			   PROT_READ | PROT_WRITE,
-			   MAP_SHARED | MAP_FIXED, svm_fd, 0);
+  root_rp =
+    (void *) mmap (uword_to_pointer (a->baseva, void *), a->size,
+		   PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, svm_fd, 0);
   if ((uword) root_rp == (uword) MAP_FAILED)
     {
       clib_unix_warning ("mmap");
@@ -480,12 +472,12 @@ main (int argc, char **argv)
 	}
       else if (unformat (&input, "repair"))
 	{
-	  repair (chroot_path, 0 /* fix it */ );
+	  repair (chroot_path, 0 /* fix it */);
 	  parsed++;
 	}
       else if (unformat (&input, "crash"))
 	{
-	  repair (chroot_path, 1 /* crash it */ );
+	  repair (chroot_path, 1 /* crash it */);
 	  parsed++;
 	}
       else if (unformat (&input, "trace-on %s", &name))
@@ -512,9 +504,10 @@ main (int argc, char **argv)
 
   if (!parsed)
     {
-      fformat (stdout,
-	       "%s: show | show-verbose | client-scan | trace-on <region-name>\n",
-	       argv[0]);
+      fformat (
+	stdout,
+	"%s: show | show-verbose | client-scan | trace-on <region-name>\n",
+	argv[0]);
       fformat (stdout, "      trace-off <region-name>\n");
     }
   exit (0);

@@ -23,8 +23,8 @@
 #include <nat/nat.h>
 
 static_always_inline u8
-nat44_ed_maximum_sessions_exceeded (snat_main_t * sm,
-				    u32 fib_index, u32 thread_index)
+nat44_ed_maximum_sessions_exceeded (snat_main_t *sm, u32 fib_index,
+				    u32 thread_index)
 {
   u32 translations;
   translations = pool_elts (sm->per_thread_data[thread_index].sessions);

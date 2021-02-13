@@ -36,33 +36,31 @@
 #include <vppinfra/bihash_template.h>
 
 /** IP4-UDP-LISP encap header */
-/* *INDENT-OFF* */
+
 typedef CLIB_PACKED (struct {
-  ip4_header_t ip4;             /* 20 bytes */
-  udp_header_t udp;             /* 8 bytes */
-  lisp_gpe_header_t lisp;       /* 8 bytes */
+  ip4_header_t ip4;	  /* 20 bytes */
+  udp_header_t udp;	  /* 8 bytes */
+  lisp_gpe_header_t lisp; /* 8 bytes */
 }) ip4_udp_lisp_gpe_header_t;
-/* *INDENT-ON* */
 
 /** IP6-UDP-LISP encap header */
-/* *INDENT-OFF* */
-typedef CLIB_PACKED (struct {
-  ip6_header_t ip6;             /* 40 bytes */
-  udp_header_t udp;             /* 8 bytes */
-  lisp_gpe_header_t lisp;       /* 8 bytes */
-}) ip6_udp_lisp_gpe_header_t;
-/* *INDENT-ON* */
 
-#define foreach_lisp_gpe_ip_input_next          \
-_(DROP, "error-drop")                           \
-_(IP4_INPUT, "ip4-input")                       \
-_(IP6_INPUT, "ip6-input")                       \
-_(L2_INPUT, "l2-input")
+typedef CLIB_PACKED (struct {
+  ip6_header_t ip6;	  /* 40 bytes */
+  udp_header_t udp;	  /* 8 bytes */
+  lisp_gpe_header_t lisp; /* 8 bytes */
+}) ip6_udp_lisp_gpe_header_t;
+
+#define foreach_lisp_gpe_ip_input_next                                        \
+  _ (DROP, "error-drop")                                                      \
+  _ (IP4_INPUT, "ip4-input")                                                  \
+  _ (IP6_INPUT, "ip6-input")                                                  \
+  _ (L2_INPUT, "l2-input")
 
 /** Enum of possible next nodes post LISP-GPE decap */
 typedef enum
 {
-#define _(s,n) LISP_GPE_INPUT_NEXT_##s,
+#define _(s, n) LISP_GPE_INPUT_NEXT_##s,
   foreach_lisp_gpe_ip_input_next
 #undef _
     LISP_GPE_INPUT_N_NEXT,
@@ -73,7 +71,7 @@ typedef enum
 
 typedef enum
 {
-#define lisp_gpe_error(n,s) LISP_GPE_ERROR_##n,
+#define lisp_gpe_error(n, s) LISP_GPE_ERROR_##n,
 #include <lisp/lisp-gpe/lisp_gpe_error.def>
 #undef lisp_gpe_error
   LISP_GPE_N_ERROR,
@@ -142,7 +140,7 @@ typedef struct lisp_gpe_main
    * ================== */
 
   /** L2 LISP FIB */
-    BVT (clib_bihash) l2_fib;
+  BVT (clib_bihash) l2_fib;
 
   tunnel_lookup_t l2_ifaces;
 
@@ -152,7 +150,7 @@ typedef struct lisp_gpe_main
   /* NSH data structures
    * ================== */
 
-    BVT (clib_bihash) nsh_fib;
+  BVT (clib_bihash) nsh_fib;
 
   tunnel_lookup_t nsh_ifaces;
 
@@ -186,35 +184,32 @@ vnet_lisp_gpe_get_main ()
   return &lisp_gpe_main;
 }
 
-
 extern vlib_node_registration_t lisp_gpe_ip4_input_node;
 extern vlib_node_registration_t lisp_gpe_ip6_input_node;
 extern vnet_hw_interface_class_t lisp_gpe_hw_class;
 
-u8 *format_lisp_gpe_header_with_length (u8 * s, va_list * args);
+u8 *format_lisp_gpe_header_with_length (u8 *s, va_list *args);
 
 /** Read LISP-GPE status */
 u8 vnet_lisp_gpe_enable_disable_status (void);
 
-u32
-lisp_gpe_l3_iface_find_or_create (lisp_gpe_main_t * lgm,
-				  u32 overlay_table_id, u32 vni);
+u32 lisp_gpe_l3_iface_find_or_create (lisp_gpe_main_t *lgm,
+				      u32 overlay_table_id, u32 vni);
 
 /** Add/del LISP-GPE interface. */
-extern void lisp_gpe_del_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id);
-extern u32 lisp_gpe_add_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id);
-extern void lisp_gpe_del_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id);
-extern u32 lisp_gpe_add_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id,
+extern void lisp_gpe_del_l2_iface (lisp_gpe_main_t *lgm, u32 vni, u32 bd_id);
+extern u32 lisp_gpe_add_l2_iface (lisp_gpe_main_t *lgm, u32 vni, u32 bd_id);
+extern void lisp_gpe_del_l3_iface (lisp_gpe_main_t *lgm, u32 vni, u32 bd_id);
+extern u32 lisp_gpe_add_l3_iface (lisp_gpe_main_t *lgm, u32 vni, u32 bd_id,
 				  u8 with_default_route);
-
 
 typedef struct
 {
   u8 is_en;
 } vnet_lisp_gpe_enable_disable_args_t;
 
-clib_error_t
-  * vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a);
+clib_error_t *
+vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t *a);
 
 typedef enum
 {
@@ -291,31 +286,31 @@ typedef struct
   dp_address_t reid;
 } lisp_api_gpe_fwd_entry_t;
 
-#define foreach_lgpe_ip4_lookup_next    \
-  _(DROP, "error-drop")                 \
-  _(LISP_CP_LOOKUP, "lisp-cp-lookup")
+#define foreach_lgpe_ip4_lookup_next                                          \
+  _ (DROP, "error-drop")                                                      \
+  _ (LISP_CP_LOOKUP, "lisp-cp-lookup")
 
 typedef enum lgpe_ip4_lookup_next
 {
-#define _(sym,str) LGPE_IP4_LOOKUP_NEXT_##sym,
+#define _(sym, str) LGPE_IP4_LOOKUP_NEXT_##sym,
   foreach_lgpe_ip4_lookup_next
 #undef _
     LGPE_IP4_LOOKUP_N_NEXT,
 } lgpe_ip4_lookup_next_t;
 
-#define foreach_lgpe_ip6_lookup_next    \
-  _(DROP, "error-drop")                 \
-  _(LISP_CP_LOOKUP, "lisp-cp-lookup")
+#define foreach_lgpe_ip6_lookup_next                                          \
+  _ (DROP, "error-drop")                                                      \
+  _ (LISP_CP_LOOKUP, "lisp-cp-lookup")
 
 typedef enum lgpe_ip6_lookup_next
 {
-#define _(sym,str) LGPE_IP6_LOOKUP_NEXT_##sym,
+#define _(sym, str) LGPE_IP6_LOOKUP_NEXT_##sym,
   foreach_lgpe_ip6_lookup_next
 #undef _
     LGPE_IP6_LOOKUP_N_NEXT,
 } lgpe_ip6_lookup_next_t;
 
-u8 *format_vnet_lisp_gpe_status (u8 * s, va_list * args);
+u8 *format_vnet_lisp_gpe_status (u8 *s, va_list *args);
 
 lisp_api_gpe_fwd_entry_t *vnet_lisp_gpe_fwd_entries_get_by_vni (u32 vni);
 gpe_encap_mode_t vnet_gpe_get_encap_mode (void);
@@ -325,9 +320,9 @@ u8 vnet_lisp_stats_enable_disable_state (void);
 vnet_api_error_t vnet_lisp_stats_enable_disable (u8 enable);
 lisp_api_stats_t *vnet_lisp_get_stats (void);
 int vnet_lisp_flush_stats (void);
-int vnet_gpe_add_del_native_fwd_rpath (vnet_gpe_native_fwd_rpath_args_t * a);
-u32 vnet_lisp_gpe_add_nsh_iface (lisp_gpe_main_t * lgm);
-void vnet_lisp_gpe_del_nsh_iface (lisp_gpe_main_t * lgm);
+int vnet_gpe_add_del_native_fwd_rpath (vnet_gpe_native_fwd_rpath_args_t *a);
+u32 vnet_lisp_gpe_add_nsh_iface (lisp_gpe_main_t *lgm);
+void vnet_lisp_gpe_del_nsh_iface (lisp_gpe_main_t *lgm);
 
 #endif /* included_vnet_lisp_gpe_h */
 

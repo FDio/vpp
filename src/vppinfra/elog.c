@@ -44,7 +44,7 @@
 #include <vppinfra/lock.h>
 
 static inline void
-elog_lock (elog_main_t * em)
+elog_lock (elog_main_t *em)
 {
   if (PREDICT_FALSE (em->lock != 0))
     while (clib_atomic_test_and_set (em->lock))
@@ -52,7 +52,7 @@ elog_lock (elog_main_t * em)
 }
 
 static inline void
-elog_unlock (elog_main_t * em)
+elog_unlock (elog_main_t *em)
 {
   if (PREDICT_FALSE (em->lock != 0))
     {
@@ -62,27 +62,27 @@ elog_unlock (elog_main_t * em)
 
 /* Non-inline version. */
 __clib_export void *
-elog_event_data (elog_main_t * em,
-		 elog_event_type_t * type, elog_track_t * track, u64 cpu_time)
+elog_event_data (elog_main_t *em, elog_event_type_t *type, elog_track_t *track,
+		 u64 cpu_time)
 {
   return elog_event_data_inline (em, type, track, cpu_time);
 }
 
 static void
-new_event_type (elog_main_t * em, uword i)
+new_event_type (elog_main_t *em, uword i)
 {
   elog_event_type_t *t = vec_elt_at_index (em->event_types, i);
 
   if (!em->event_type_by_format)
     em->event_type_by_format =
-      hash_create_vec ( /* size */ 0, sizeof (u8), sizeof (uword));
+      hash_create_vec (/* size */ 0, sizeof (u8), sizeof (uword));
 
   t->type_index_plus_one = i + 1;
   hash_set_mem (em->event_type_by_format, t->format, i);
 }
 
 static uword
-find_or_create_type (elog_main_t * em, elog_event_type_t * t)
+find_or_create_type (elog_main_t *em, elog_event_type_t *t)
 {
   uword *p = hash_get_mem (em->event_type_by_format, t->format);
   uword i;
@@ -101,7 +101,7 @@ find_or_create_type (elog_main_t * em, elog_event_type_t * t)
 
 /* External function to register types. */
 word
-elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
+elog_event_type_register (elog_main_t *em, elog_event_type_t *t)
 {
   elog_event_type_t *static_type = t;
   word l;
@@ -135,7 +135,7 @@ elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
 	    continue;
 	  if (i + 1 >= l)
 	    continue;
-	  if (t->format[i + 1] == '%')	/* %% */
+	  if (t->format[i + 1] == '%') /* %% */
 	    continue;
 
 	  switch (t->format[i + 1])
@@ -144,13 +144,13 @@ elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
 	    case 'd':
 	    case 'x':
 	    case 'u':
-	      this_arg = "i4";	/* size of u32 */
+	      this_arg = "i4"; /* size of u32 */
 	      break;
 	    case 'f':
-	      this_arg = "f8";	/* defaults to f64 */
+	      this_arg = "f8"; /* defaults to f64 */
 	      break;
 	    case 's':
-	      this_arg = "s0";	/* defaults to null terminated string. */
+	      this_arg = "s0"; /* defaults to null terminated string. */
 	      break;
 	    }
 
@@ -182,9 +182,9 @@ elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
       {
 	if (!static_type->enum_strings[i])
 	  static_type->enum_strings[i] = "MISSING";
-	vec_add1 (t->enum_strings_vector,
-		  (char *) format (0, "%s%c", static_type->enum_strings[i],
-				   0));
+	vec_add1 (
+	  t->enum_strings_vector,
+	  (char *) format (0, "%s%c", static_type->enum_strings[i], 0));
       }
   }
 
@@ -195,7 +195,7 @@ elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
 }
 
 __clib_export word
-elog_track_register (elog_main_t * em, elog_track_t * t)
+elog_track_register (elog_main_t *em, elog_track_t *t)
 {
   word l;
 
@@ -219,7 +219,7 @@ elog_track_register (elog_main_t * em, elog_track_t * t)
 }
 
 static uword
-parse_2digit_decimal (char *p, uword * number)
+parse_2digit_decimal (char *p, uword *number)
 {
   uword i = 0;
   u8 digits[2];
@@ -246,7 +246,7 @@ parse_2digit_decimal (char *p, uword * number)
 }
 
 static u8 *
-fixed_format (u8 * s, char *fmt, char *result, uword * result_len)
+fixed_format (u8 *s, char *fmt, char *result, uword *result_len)
 {
   char *f = fmt;
   char *percent;
@@ -293,7 +293,7 @@ done:
 }
 
 __clib_export u8 *
-format_elog_event (u8 * s, va_list * va)
+format_elog_event (u8 *s, va_list *va)
 {
   elog_main_t *em = va_arg (*va, elog_main_t *);
   elog_event_t *e = va_arg (*va, elog_event_t *);
@@ -396,7 +396,7 @@ format_elog_event (u8 * s, va_list * va)
 }
 
 u8 *
-format_elog_track_name (u8 * s, va_list * va)
+format_elog_track_name (u8 *s, va_list *va)
 {
   elog_main_t *em = va_arg (*va, elog_main_t *);
   elog_event_t *e = va_arg (*va, elog_event_t *);
@@ -405,7 +405,7 @@ format_elog_track_name (u8 * s, va_list * va)
 }
 
 __clib_export u8 *
-format_elog_track (u8 * s, va_list * args)
+format_elog_track (u8 *s, va_list *args)
 {
   elog_main_t *em = va_arg (*args, elog_main_t *);
   f64 dt = va_arg (*args, f64);
@@ -417,12 +417,12 @@ format_elog_track (u8 * s, va_list * args)
 
   es = elog_peek_events (em);
   vec_foreach (e, es)
-  {
-    if (e->track != track_index)
-      continue;
-    s = format (s, "%U%18.9f: %U\n", format_white_space, indent,
-		e->time + dt, format_elog_event, em, e);
-  }
+    {
+      if (e->track != track_index)
+	continue;
+      s = format (s, "%U%18.9f: %U\n", format_white_space, indent,
+		  e->time + dt, format_elog_event, em, e);
+    }
   vec_free (es);
   return s;
 }
@@ -437,7 +437,7 @@ format_one_elog_event (void *em_arg, void *ep_arg)
 }
 
 void
-elog_time_now (elog_time_stamp_t * et)
+elog_time_now (elog_time_stamp_t *et)
 {
   u64 cpu_time_now, os_time_now_nsec;
   struct timespec ts;
@@ -464,28 +464,27 @@ elog_time_now (elog_time_stamp_t * et)
 }
 
 always_inline i64
-elog_time_stamp_diff_os_nsec (elog_time_stamp_t * t1, elog_time_stamp_t * t2)
+elog_time_stamp_diff_os_nsec (elog_time_stamp_t *t1, elog_time_stamp_t *t2)
 {
   return (i64) t1->os_nsec - (i64) t2->os_nsec;
 }
 
 always_inline i64
-elog_time_stamp_diff_cpu (elog_time_stamp_t * t1, elog_time_stamp_t * t2)
+elog_time_stamp_diff_cpu (elog_time_stamp_t *t1, elog_time_stamp_t *t2)
 {
   return (i64) t1->cpu - (i64) t2->cpu;
 }
 
 always_inline f64
-elog_nsec_per_clock (elog_main_t * em)
+elog_nsec_per_clock (elog_main_t *em)
 {
-  return ((f64) elog_time_stamp_diff_os_nsec (&em->serialize_time,
-					      &em->init_time)
-	  / (f64) elog_time_stamp_diff_cpu (&em->serialize_time,
-					    &em->init_time));
+  return (
+    (f64) elog_time_stamp_diff_os_nsec (&em->serialize_time, &em->init_time) /
+    (f64) elog_time_stamp_diff_cpu (&em->serialize_time, &em->init_time));
 }
 
 static void
-elog_alloc_internal (elog_main_t * em, u32 n_events, int free_ring)
+elog_alloc_internal (elog_main_t *em, u32 n_events, int free_ring)
 {
   if (free_ring && em->event_ring)
     vec_free (em->event_ring);
@@ -498,19 +497,19 @@ elog_alloc_internal (elog_main_t * em, u32 n_events, int free_ring)
 }
 
 __clib_export void
-elog_alloc (elog_main_t * em, u32 n_events)
+elog_alloc (elog_main_t *em, u32 n_events)
 {
-  elog_alloc_internal (em, n_events, 1 /* free ring */ );
+  elog_alloc_internal (em, n_events, 1 /* free ring */);
 }
 
 __clib_export void
-elog_resize (elog_main_t * em, u32 n_events)
+elog_resize (elog_main_t *em, u32 n_events)
 {
-  elog_alloc_internal (em, n_events, 0 /* do not free ring */ );
+  elog_alloc_internal (em, n_events, 0 /* do not free ring */);
 }
 
 __clib_export void
-elog_init (elog_main_t * em, u32 n_events)
+elog_init (elog_main_t *em, u32 n_events)
 {
   clib_memset (em, 0, sizeof (em[0]));
 
@@ -533,7 +532,7 @@ elog_init (elog_main_t * em, u32 n_events)
 
 /* Returns number of events in ring and start index. */
 static uword
-elog_event_range (elog_main_t * em, uword * lo)
+elog_event_range (elog_main_t *em, uword *lo)
 {
   uword l = em->event_ring_size;
   u64 i = em->n_total_events;
@@ -554,7 +553,7 @@ elog_event_range (elog_main_t * em, uword * lo)
 }
 
 __clib_export elog_event_t *
-elog_peek_events (elog_main_t * em)
+elog_peek_events (elog_main_t *em)
 {
   elog_event_t *e, *f, *es = 0;
   uword i, j, n;
@@ -568,8 +567,7 @@ elog_peek_events (elog_main_t * em)
 
       /* Convert absolute time from cycles to seconds from start. */
       e->time =
-	(e->time_cycles -
-	 em->init_time.cpu) * em->cpu_timer.seconds_per_clock;
+	(e->time_cycles - em->init_time.cpu) * em->cpu_timer.seconds_per_clock;
 
       j = (j + 1) & (em->event_ring_size - 1);
     }
@@ -579,7 +577,7 @@ elog_peek_events (elog_main_t * em)
 
 /* Add a formatted string to the string table. */
 __clib_export u32
-elog_string (elog_main_t * em, char *fmt, ...)
+elog_string (elog_main_t *em, char *fmt, ...)
 {
   u32 offset;
   uword *p;
@@ -623,7 +621,7 @@ elog_string (elog_main_t * em, char *fmt, ...)
 }
 
 __clib_export elog_event_t *
-elog_get_events (elog_main_t * em)
+elog_get_events (elog_main_t *em)
 {
   vec_free (em->events);
   em->events = elog_peek_events (em);
@@ -631,8 +629,8 @@ elog_get_events (elog_main_t * em)
 }
 
 static void
-maybe_fix_string_table_offset (elog_event_t * e,
-			       elog_event_type_t * t, u32 offset)
+maybe_fix_string_table_offset (elog_event_t *e, elog_event_type_t *t,
+			       u32 offset)
 {
   void *d = (u8 *) e->data;
   char *a;
@@ -696,7 +694,7 @@ elog_cmp (void *a1, void *a2)
  * merge two event logs. Complicated and cranky.
  */
 void
-elog_merge (elog_main_t * dst, u8 * dst_tag, elog_main_t * src, u8 * src_tag,
+elog_merge (elog_main_t *dst, u8 *dst_tag, elog_main_t *src, u8 *src_tag,
 	    f64 align_tweak)
 {
   elog_event_t *e;
@@ -759,8 +757,7 @@ elog_merge (elog_main_t * dst, u8 * dst_tag, elog_main_t * src, u8 * src_tag,
       e->event_type = find_or_create_type (dst, t);
 
       /* Remap string table offsets for 'T' format args */
-      maybe_fix_string_table_offset (e, t,
-				     string_table_offset_for_src_events);
+      maybe_fix_string_table_offset (e, t, string_table_offset_for_src_events);
 
       /* Remap track */
       e->track += track_offset_for_src_tracks;
@@ -798,8 +795,8 @@ elog_merge (elog_main_t * dst, u8 * dst_tag, elog_main_t * src, u8 * src_tag,
      * to occur in a specific order - and with a reasonably-estimated
      * interval - supply a non-zero "align_tweak" parameter
      */
-    if (fabs (src->nsec_per_cpu_clock - dst->nsec_per_cpu_clock) < 1e-2
-	&& fabs (dt_os_nsec - dt_clock_nsec) < 100)
+    if (fabs (src->nsec_per_cpu_clock - dst->nsec_per_cpu_clock) < 1e-2 &&
+	fabs (dt_os_nsec - dt_clock_nsec) < 100)
       dt_event = dt_clock_nsec;
 
     /* Convert to seconds. */
@@ -864,7 +861,7 @@ elog_merge (elog_main_t * dst, u8 * dst_tag, elog_main_t * src, u8 * src_tag,
 }
 
 static void
-serialize_elog_event (serialize_main_t * m, va_list * va)
+serialize_elog_event (serialize_main_t *m, va_list *va)
 {
   elog_main_t *em = va_arg (*va, elog_main_t *);
   elog_event_t *e = va_arg (*va, elog_event_t *);
@@ -925,7 +922,7 @@ serialize_elog_event (serialize_main_t * m, va_list * va)
 }
 
 static void
-unserialize_elog_event (serialize_main_t * m, va_list * va)
+unserialize_elog_event (serialize_main_t *m, va_list *va)
 {
   elog_main_t *em = va_arg (*va, elog_main_t *);
   elog_event_t *e = va_arg (*va, elog_event_t *);
@@ -1029,7 +1026,7 @@ unserialize_elog_event (serialize_main_t * m, va_list * va)
 }
 
 static void
-serialize_elog_event_type (serialize_main_t * m, va_list * va)
+serialize_elog_event_type (serialize_main_t *m, va_list *va)
 {
   elog_event_type_t *t = va_arg (*va, elog_event_type_t *);
   int n = va_arg (*va, int);
@@ -1040,15 +1037,14 @@ serialize_elog_event_type (serialize_main_t * m, va_list * va)
       serialize_cstring (m, t[i].format_args);
       serialize_integer (m, t[i].type_index_plus_one,
 			 sizeof (t->type_index_plus_one));
-      serialize_integer (m, t[i].n_enum_strings,
-			 sizeof (t[i].n_enum_strings));
+      serialize_integer (m, t[i].n_enum_strings, sizeof (t[i].n_enum_strings));
       for (j = 0; j < t[i].n_enum_strings; j++)
 	serialize_cstring (m, t[i].enum_strings_vector[j]);
     }
 }
 
 static void
-unserialize_elog_event_type (serialize_main_t * m, va_list * va)
+unserialize_elog_event_type (serialize_main_t *m, va_list *va)
 {
   elog_event_type_t *t = va_arg (*va, elog_event_type_t *);
   int n = va_arg (*va, int);
@@ -1068,7 +1064,7 @@ unserialize_elog_event_type (serialize_main_t * m, va_list * va)
 }
 
 static void
-serialize_elog_track (serialize_main_t * m, va_list * va)
+serialize_elog_track (serialize_main_t *m, va_list *va)
 {
   elog_track_t *t = va_arg (*va, elog_track_t *);
   int n = va_arg (*va, int);
@@ -1080,7 +1076,7 @@ serialize_elog_track (serialize_main_t * m, va_list * va)
 }
 
 static void
-unserialize_elog_track (serialize_main_t * m, va_list * va)
+unserialize_elog_track (serialize_main_t *m, va_list *va)
 {
   elog_track_t *t = va_arg (*va, elog_track_t *);
   int n = va_arg (*va, int);
@@ -1092,7 +1088,7 @@ unserialize_elog_track (serialize_main_t * m, va_list * va)
 }
 
 static void
-serialize_elog_time_stamp (serialize_main_t * m, va_list * va)
+serialize_elog_time_stamp (serialize_main_t *m, va_list *va)
 {
   elog_time_stamp_t *st = va_arg (*va, elog_time_stamp_t *);
   serialize (m, serialize_64, st->os_nsec);
@@ -1100,7 +1096,7 @@ serialize_elog_time_stamp (serialize_main_t * m, va_list * va)
 }
 
 static void
-unserialize_elog_time_stamp (serialize_main_t * m, va_list * va)
+unserialize_elog_time_stamp (serialize_main_t *m, va_list *va)
 {
   elog_time_stamp_t *st = va_arg (*va, elog_time_stamp_t *);
   unserialize (m, unserialize_64, &st->os_nsec);
@@ -1110,7 +1106,7 @@ unserialize_elog_time_stamp (serialize_main_t * m, va_list * va)
 static char *elog_serialize_magic = "elog v0";
 
 __clib_export void
-serialize_elog_main (serialize_main_t * m, va_list * va)
+serialize_elog_main (serialize_main_t *m, va_list *va)
 {
   elog_main_t *em = va_arg (*va, elog_main_t *);
   int flush_ring = va_arg (*va, int);
@@ -1140,11 +1136,12 @@ serialize_elog_main (serialize_main_t * m, va_list * va)
   /* SMP logs can easily have local time paradoxes... */
   vec_sort_with_function (em->events, elog_cmp);
 
-  vec_foreach (e, em->events) serialize (m, serialize_elog_event, em, e);
+  vec_foreach (e, em->events)
+    serialize (m, serialize_elog_event, em, e);
 }
 
 void
-unserialize_elog_main (serialize_main_t * m, va_list * va)
+unserialize_elog_main (serialize_main_t *m, va_list *va)
 {
   elog_main_t *em = va_arg (*va, elog_main_t *);
   uword i;
@@ -1181,7 +1178,7 @@ unserialize_elog_main (serialize_main_t * m, va_list * va)
 
 #ifdef CLIB_UNIX
 clib_error_t *
-elog_write_file_not_inline (elog_main_t * em, char *clib_file, int flush_ring)
+elog_write_file_not_inline (elog_main_t *em, char *clib_file, int flush_ring)
 {
   serialize_main_t m;
   clib_error_t *error;
@@ -1196,7 +1193,7 @@ elog_write_file_not_inline (elog_main_t * em, char *clib_file, int flush_ring)
 }
 
 __clib_export clib_error_t *
-elog_read_file_not_inline (elog_main_t * em, char *clib_file)
+elog_read_file_not_inline (elog_main_t *em, char *clib_file)
 {
   serialize_main_t m;
   clib_error_t *error;
@@ -1210,7 +1207,6 @@ elog_read_file_not_inline (elog_main_t * em, char *clib_file)
   return error;
 }
 #endif /* CLIB_UNIX */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

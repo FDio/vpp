@@ -69,8 +69,8 @@ typedef struct l3xc_t_
  * @param rpaths The set of paths to add to the forwarding set
  * @return error code
  */
-extern int l3xc_update (u32 sw_if_index,
-			u8 is_ip6, const fib_route_path_t * rpaths);
+extern int l3xc_update (u32 sw_if_index, u8 is_ip6,
+			const fib_route_path_t *rpaths);
 
 /**
  * Delete an L3XC.

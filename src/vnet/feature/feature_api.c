@@ -23,11 +23,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -39,11 +39,11 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_feature_api_msg                                              \
-_(FEATURE_ENABLE_DISABLE, feature_enable_disable)
+#define foreach_feature_api_msg                                               \
+  _ (FEATURE_ENABLE_DISABLE, feature_enable_disable)
 
 static void
-vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
+vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t *mp)
 {
   vl_api_feature_enable_disable_reply_t *rmp;
   int rv = 0;
@@ -56,9 +56,8 @@ vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
   vec_terminate_c_string (arc_name);
   vec_terminate_c_string (feature_name);
 
-  vnet_feature_registration_t *reg =
-    vnet_get_feature_reg ((const char *) arc_name,
-			  (const char *) feature_name);
+  vnet_feature_registration_t *reg = vnet_get_feature_reg (
+    (const char *) arc_name, (const char *) feature_name);
   if (reg == 0)
     rv = VNET_API_ERROR_INVALID_VALUE;
   else
@@ -70,8 +69,8 @@ vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
 	error = reg->enable_disable_cb (sw_if_index, mp->enable);
       if (!error)
 	vnet_feature_enable_disable ((const char *) arc_name,
-				     (const char *) feature_name,
-				     sw_if_index, mp->enable, 0, 0);
+				     (const char *) feature_name, sw_if_index,
+				     mp->enable, 0, 0);
       else
 	{
 	  clib_error_report (error);
@@ -92,25 +91,22 @@ vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_feature;
 #undef _
 }
 
 static clib_error_t *
-feature_api_hookup (vlib_main_t * vm)
+feature_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_feature_api_msg;
 #undef _
 

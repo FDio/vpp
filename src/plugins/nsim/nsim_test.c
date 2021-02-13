@@ -19,7 +19,7 @@
 #include <vlibmemory/api.h>
 #include <vppinfra/error.h>
 
-uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
+uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
 
 /* Declare message IDs */
 #include <nsim/nsim.api_enum.h>
@@ -38,7 +38,7 @@ nsim_test_main_t nsim_test_main;
 #include <vlibapi/vat_helper_macros.h>
 
 static int
-api_nsim_cross_connect_enable_disable (vat_main_t * vam)
+api_nsim_cross_connect_enable_disable (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   int enable_disable = 1;
@@ -92,7 +92,7 @@ api_nsim_cross_connect_enable_disable (vat_main_t * vam)
 }
 
 static int
-api_nsim_output_feature_enable_disable (vat_main_t * vam)
+api_nsim_output_feature_enable_disable (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   int enable_disable = 1;
@@ -133,7 +133,7 @@ api_nsim_output_feature_enable_disable (vat_main_t * vam)
 }
 
 static uword
-unformat_delay (unformat_input_t * input, va_list * args)
+unformat_delay (unformat_input_t *input, va_list *args)
 {
   f64 *result = va_arg (*args, f64 *);
   f64 tmp;
@@ -151,7 +151,7 @@ unformat_delay (unformat_input_t * input, va_list * args)
 }
 
 static uword
-unformat_bandwidth (unformat_input_t * input, va_list * args)
+unformat_bandwidth (unformat_input_t *input, va_list *args)
 {
   f64 *result = va_arg (*args, f64 *);
   f64 tmp;
@@ -166,7 +166,7 @@ unformat_bandwidth (unformat_input_t * input, va_list * args)
 }
 
 static int
-api_nsim_configure (vat_main_t * vam)
+api_nsim_configure (vat_main_t *vam)
 {
   vl_api_nsim_configure_t *mp;
   unformat_input_t *i = vam->input;
@@ -215,7 +215,7 @@ api_nsim_configure (vat_main_t * vam)
 }
 
 static int
-api_nsim_configure2 (vat_main_t * vam)
+api_nsim_configure2 (vat_main_t *vam)
 {
   vl_api_nsim_configure2_t *mp;
   unformat_input_t *i = vam->input;

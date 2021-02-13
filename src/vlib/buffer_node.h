@@ -67,48 +67,50 @@
  @return @c n_left_to_next -- number of slots left in speculative frame
 */
 
-#define vlib_validate_buffer_enqueue_x2(vm,node,next_index,to_next,n_left_to_next,bi0,bi1,next0,next1) \
-do {									\
-  ASSERT (bi0 != 0);							\
-  ASSERT (bi1 != 0);							\
-  int enqueue_code = (next0 != next_index) + 2*(next1 != next_index);	\
-									\
-  if (PREDICT_FALSE (enqueue_code != 0))				\
-    {									\
-      switch (enqueue_code)						\
-	{								\
-	case 1:								\
-	  /* A B A */							\
-	  to_next[-2] = bi1;						\
-	  to_next -= 1;							\
-	  n_left_to_next += 1;						\
-	  vlib_set_next_frame_buffer (vm, node, next0, bi0);		\
-	  break;							\
-									\
-	case 2:								\
-	  /* A A B */							\
-	  to_next -= 1;							\
-	  n_left_to_next += 1;						\
-	  vlib_set_next_frame_buffer (vm, node, next1, bi1);		\
-	  break;							\
-									\
-	case 3:								\
-	  /* A B B or A B C */						\
-	  to_next -= 2;							\
-	  n_left_to_next += 2;						\
-	  vlib_set_next_frame_buffer (vm, node, next0, bi0);		\
-	  vlib_set_next_frame_buffer (vm, node, next1, bi1);		\
-	  if (next0 == next1)						\
-	    {								\
-	      vlib_put_next_frame (vm, node, next_index,		\
-				   n_left_to_next);			\
-	      next_index = next1;					\
-	      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next); \
-	    }								\
-	}								\
-    }									\
-} while (0)
-
+#define vlib_validate_buffer_enqueue_x2(                                      \
+  vm, node, next_index, to_next, n_left_to_next, bi0, bi1, next0, next1)      \
+  do                                                                          \
+    {                                                                         \
+      ASSERT (bi0 != 0);                                                      \
+      ASSERT (bi1 != 0);                                                      \
+      int enqueue_code = (next0 != next_index) + 2 * (next1 != next_index);   \
+                                                                              \
+      if (PREDICT_FALSE (enqueue_code != 0))                                  \
+	{                                                                     \
+	  switch (enqueue_code)                                               \
+	    {                                                                 \
+	    case 1:                                                           \
+	      /* A B A */                                                     \
+	      to_next[-2] = bi1;                                              \
+	      to_next -= 1;                                                   \
+	      n_left_to_next += 1;                                            \
+	      vlib_set_next_frame_buffer (vm, node, next0, bi0);              \
+	      break;                                                          \
+                                                                              \
+	    case 2:                                                           \
+	      /* A A B */                                                     \
+	      to_next -= 1;                                                   \
+	      n_left_to_next += 1;                                            \
+	      vlib_set_next_frame_buffer (vm, node, next1, bi1);              \
+	      break;                                                          \
+                                                                              \
+	    case 3:                                                           \
+	      /* A B B or A B C */                                            \
+	      to_next -= 2;                                                   \
+	      n_left_to_next += 2;                                            \
+	      vlib_set_next_frame_buffer (vm, node, next0, bi0);              \
+	      vlib_set_next_frame_buffer (vm, node, next1, bi1);              \
+	      if (next0 == next1)                                             \
+		{                                                             \
+		  vlib_put_next_frame (vm, node, next_index, n_left_to_next); \
+		  next_index = next1;                                         \
+		  vlib_get_next_frame (vm, node, next_index, to_next,         \
+				       n_left_to_next);                       \
+		}                                                             \
+	    }                                                                 \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 /** \brief Finish enqueueing four buffers forward in the graph.
  Standard quad loop boilerplate element. This is a MACRO,
@@ -137,69 +139,74 @@ do {									\
  @return @c n_left_to_next -- number of slots left in speculative frame
 */
 
-#define vlib_validate_buffer_enqueue_x4(vm,node,next_index,to_next,n_left_to_next,bi0,bi1,bi2,bi3,next0,next1,next2,next3) \
-do {                                                                    \
-  ASSERT (bi0 != 0);							\
-  ASSERT (bi1 != 0);							\
-  ASSERT (bi2 != 0);							\
-  ASSERT (bi3 != 0);							\
-  /* After the fact: check the [speculative] enqueue to "next" */       \
-  u32 fix_speculation = (next_index ^ next0) | (next_index ^ next1)     \
-    | (next_index ^ next2) | (next_index ^ next3);                      \
-  if (PREDICT_FALSE(fix_speculation))                                   \
-    {                                                                   \
-      /* rewind... */                                                   \
-      to_next -= 4;                                                     \
-      n_left_to_next += 4;                                              \
-                                                                        \
-      /* If bi0 belongs to "next", send it there */                     \
-      if (next_index == next0)                                          \
-        {                                                               \
-          to_next[0] = bi0;                                             \
-          to_next++;                                                    \
-          n_left_to_next --;                                            \
-        }                                                               \
-      else              /* send it where it needs to go */              \
-        vlib_set_next_frame_buffer (vm, node, next0, bi0);              \
-                                                                        \
-      if (next_index == next1)                                          \
-        {                                                               \
-          to_next[0] = bi1;                                             \
-          to_next++;                                                    \
-          n_left_to_next --;                                            \
-        }                                                               \
-      else                                                              \
-        vlib_set_next_frame_buffer (vm, node, next1, bi1);              \
-                                                                        \
-      if (next_index == next2)                                          \
-        {                                                               \
-          to_next[0] = bi2;                                             \
-          to_next++;                                                    \
-          n_left_to_next --;                                            \
-        }                                                               \
-      else                                                              \
-        vlib_set_next_frame_buffer (vm, node, next2, bi2);              \
-                                                                        \
-      if (next_index == next3)                                          \
-        {                                                               \
-          to_next[0] = bi3;                                             \
-          to_next++;                                                    \
-          n_left_to_next --;                                            \
-        }                                                               \
-      else                                                              \
-        {                                                               \
-          vlib_set_next_frame_buffer (vm, node, next3, bi3);            \
-                                                                        \
-          /* Change speculation: last 2 packets went to the same node*/ \
-          if (next2 == next3)                                           \
-            {                                                           \
-              vlib_put_next_frame (vm, node, next_index, n_left_to_next); \
-              next_index = next3;                                       \
-              vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next); \
-            }                                                           \
-	}                                                               \
-    }                                                                   \
- } while(0);
+#define vlib_validate_buffer_enqueue_x4(vm, node, next_index, to_next,        \
+					n_left_to_next, bi0, bi1, bi2, bi3,   \
+					next0, next1, next2, next3)           \
+  do                                                                          \
+    {                                                                         \
+      ASSERT (bi0 != 0);                                                      \
+      ASSERT (bi1 != 0);                                                      \
+      ASSERT (bi2 != 0);                                                      \
+      ASSERT (bi3 != 0);                                                      \
+      /* After the fact: check the [speculative] enqueue to "next" */         \
+      u32 fix_speculation = (next_index ^ next0) | (next_index ^ next1) |     \
+			    (next_index ^ next2) | (next_index ^ next3);      \
+      if (PREDICT_FALSE (fix_speculation))                                    \
+	{                                                                     \
+	  /* rewind... */                                                     \
+	  to_next -= 4;                                                       \
+	  n_left_to_next += 4;                                                \
+                                                                              \
+	  /* If bi0 belongs to "next", send it there */                       \
+	  if (next_index == next0)                                            \
+	    {                                                                 \
+	      to_next[0] = bi0;                                               \
+	      to_next++;                                                      \
+	      n_left_to_next--;                                               \
+	    }                                                                 \
+	  else /* send it where it needs to go */                             \
+	    vlib_set_next_frame_buffer (vm, node, next0, bi0);                \
+                                                                              \
+	  if (next_index == next1)                                            \
+	    {                                                                 \
+	      to_next[0] = bi1;                                               \
+	      to_next++;                                                      \
+	      n_left_to_next--;                                               \
+	    }                                                                 \
+	  else                                                                \
+	    vlib_set_next_frame_buffer (vm, node, next1, bi1);                \
+                                                                              \
+	  if (next_index == next2)                                            \
+	    {                                                                 \
+	      to_next[0] = bi2;                                               \
+	      to_next++;                                                      \
+	      n_left_to_next--;                                               \
+	    }                                                                 \
+	  else                                                                \
+	    vlib_set_next_frame_buffer (vm, node, next2, bi2);                \
+                                                                              \
+	  if (next_index == next3)                                            \
+	    {                                                                 \
+	      to_next[0] = bi3;                                               \
+	      to_next++;                                                      \
+	      n_left_to_next--;                                               \
+	    }                                                                 \
+	  else                                                                \
+	    {                                                                 \
+	      vlib_set_next_frame_buffer (vm, node, next3, bi3);              \
+                                                                              \
+	      /* Change speculation: last 2 packets went to the same node*/   \
+	      if (next2 == next3)                                             \
+		{                                                             \
+		  vlib_put_next_frame (vm, node, next_index, n_left_to_next); \
+		  next_index = next3;                                         \
+		  vlib_get_next_frame (vm, node, next_index, to_next,         \
+				       n_left_to_next);                       \
+		}                                                             \
+	    }                                                                 \
+	}                                                                     \
+    }                                                                         \
+  while (0);
 
 /** \brief Finish enqueueing one buffer forward in the graph.
  Standard single loop boilerplate element. This is a MACRO,
@@ -221,38 +228,34 @@ do {                                                                    \
  @return @c to_next -- speculative frame to be used for future packets
  @return @c n_left_to_next -- number of slots left in speculative frame
 */
-#define vlib_validate_buffer_enqueue_x1(vm,node,next_index,to_next,n_left_to_next,bi0,next0) \
-do {									\
-  ASSERT (bi0 != 0);							\
-  if (PREDICT_FALSE (next0 != next_index))				\
-    {									\
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next + 1);	\
-      next_index = next0;						\
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next); \
-									\
-      to_next[0] = bi0;							\
-      to_next += 1;							\
-      n_left_to_next -= 1;						\
-    }									\
-} while (0)
+#define vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,        \
+					n_left_to_next, bi0, next0)           \
+  do                                                                          \
+    {                                                                         \
+      ASSERT (bi0 != 0);                                                      \
+      if (PREDICT_FALSE (next0 != next_index))                                \
+	{                                                                     \
+	  vlib_put_next_frame (vm, node, next_index, n_left_to_next + 1);     \
+	  next_index = next0;                                                 \
+	  vlib_get_next_frame (vm, node, next_index, to_next,                 \
+			       n_left_to_next);                               \
+                                                                              \
+	  to_next[0] = bi0;                                                   \
+	  to_next += 1;                                                       \
+	  n_left_to_next -= 1;                                                \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 always_inline uword
-generic_buffer_node_inline (vlib_main_t * vm,
-			    vlib_node_runtime_t * node,
-			    vlib_frame_t * frame,
-			    uword sizeof_trace,
-			    void *opaque1,
-			    uword opaque2,
-			    void (*two_buffers) (vlib_main_t * vm,
-						 void *opaque1,
-						 uword opaque2,
-						 vlib_buffer_t * b0,
-						 vlib_buffer_t * b1,
-						 u32 * next0, u32 * next1),
-			    void (*one_buffer) (vlib_main_t * vm,
-						void *opaque1, uword opaque2,
-						vlib_buffer_t * b0,
-						u32 * next0))
+generic_buffer_node_inline (
+  vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+  uword sizeof_trace, void *opaque1, uword opaque2,
+  void (*two_buffers) (vlib_main_t *vm, void *opaque1, uword opaque2,
+		       vlib_buffer_t *b0, vlib_buffer_t *b1, u32 *next0,
+		       u32 *next1),
+  void (*one_buffer) (vlib_main_t *vm, void *opaque1, uword opaque2,
+		      vlib_buffer_t *b0, u32 *next0))
 {
   u32 n_left_from, *from, *to_next;
   u32 next_index;
@@ -303,9 +306,9 @@ generic_buffer_node_inline (vlib_main_t * vm,
 
 	  two_buffers (vm, opaque1, opaque2, p0, p1, &next0, &next1);
 
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   pi0, pi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, pi0, pi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -324,9 +327,8 @@ generic_buffer_node_inline (vlib_main_t * vm,
 
 	  one_buffer (vm, opaque1, opaque2, p0, &next0);
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   pi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, pi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -336,8 +338,8 @@ generic_buffer_node_inline (vlib_main_t * vm,
 }
 
 static_always_inline void
-vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
-			     u32 * buffers, u16 * nexts, uword count)
+vlib_buffer_enqueue_to_next (vlib_main_t *vm, vlib_node_runtime_t *node,
+			     u32 *buffers, u16 *nexts, uword count)
 {
   u32 *to_next, n_left_to_next, max;
   u16 next_index;
@@ -456,9 +458,8 @@ vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline void
-vlib_buffer_enqueue_to_single_next (vlib_main_t * vm,
-				    vlib_node_runtime_t * node, u32 * buffers,
-				    u16 next_index, u32 count)
+vlib_buffer_enqueue_to_single_next (vlib_main_t *vm, vlib_node_runtime_t *node,
+				    u32 *buffers, u16 next_index, u32 count)
 {
   u32 *to_next, n_left_to_next, n_enq;
 
@@ -491,8 +492,8 @@ next:
 }
 
 static_always_inline u32
-vlib_buffer_enqueue_to_thread (vlib_main_t * vm, u32 frame_queue_index,
-			       u32 * buffer_indices, u16 * thread_indices,
+vlib_buffer_enqueue_to_thread (vlib_main_t *vm, u32 frame_queue_index,
+			       u32 *buffer_indices, u16 *thread_indices,
 			       u32 n_packets, int drop_on_congestion)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -515,9 +516,9 @@ vlib_buffer_enqueue_to_thread (vlib_main_t * vm, u32 frame_queue_index,
       if (next_thread_index != current_thread_index)
 	{
 	  if (drop_on_congestion &&
-	      is_vlib_frame_queue_congested
-	      (frame_queue_index, next_thread_index, fqm->queue_hi_thresh,
-	       ptd->congested_handoff_queue_by_thread_index))
+	      is_vlib_frame_queue_congested (
+		frame_queue_index, next_thread_index, fqm->queue_hi_thresh,
+		ptd->congested_handoff_queue_by_thread_index))
 	    {
 	      dbi[0] = buffer_indices[0];
 	      dbi++;
@@ -528,9 +529,9 @@ vlib_buffer_enqueue_to_thread (vlib_main_t * vm, u32 frame_queue_index,
 	  if (hf)
 	    hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_thread;
 
-	  hf = vlib_get_worker_handoff_queue_elt (frame_queue_index,
-						  next_thread_index,
-						  ptd->handoff_queue_elt_by_thread_index);
+	  hf = vlib_get_worker_handoff_queue_elt (
+	    frame_queue_index, next_thread_index,
+	    ptd->handoff_queue_elt_by_thread_index);
 
 	  n_left_to_next_thread = VLIB_FRAME_SIZE - hf->n_vectors;
 	  to_next_thread = &hf->buffer_index[hf->n_vectors];

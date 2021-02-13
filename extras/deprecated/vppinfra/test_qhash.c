@@ -48,7 +48,7 @@ typedef struct
 } test_qhash_main_t;
 
 clib_error_t *
-test_qhash_main (unformat_input_t * input)
+test_qhash_main (unformat_input_t *input)
 {
   clib_error_t *error = 0;
   test_qhash_main_t _tm, *tm = &_tm;
@@ -87,8 +87,8 @@ test_qhash_main (unformat_input_t * input)
 
   clib_time_init (&tm->time);
 
-  clib_warning ("iter %d, seed %u, keys %d, max vector %d, ",
-		tm->n_iter, tm->seed, tm->n_keys, tm->max_vector);
+  clib_warning ("iter %d, seed %u, keys %d, max vector %d, ", tm->n_iter,
+		tm->seed, tm->n_keys, tm->max_vector);
 
   vec_resize (tm->keys, tm->n_keys);
   vec_resize (tm->get_multiple_results, tm->n_keys);
@@ -143,8 +143,8 @@ test_qhash_main (unformat_input_t * input)
 		tm->hash_set_time += t[1] - t[0];
 	      else
 		tm->hash_unset_time += t[1] - t[0];
-	      tm->keys_in_hash_bitmap
-		= clib_bitmap_set (tm->keys_in_hash_bitmap, i, is_set);
+	      tm->keys_in_hash_bitmap =
+		clib_bitmap_set (tm->keys_in_hash_bitmap, i, is_set);
 	      j++;
 	    }
 	}
@@ -155,10 +155,8 @@ test_qhash_main (unformat_input_t * input)
 	if (is_set)
 	  {
 	    t[0] = clib_time_now (&tm->time);
-	    qhash_set_multiple (tm->qhash,
-				tm->lookup_keys,
-				vec_len (tm->lookup_keys),
-				tm->lookup_results);
+	    qhash_set_multiple (tm->qhash, tm->lookup_keys,
+				vec_len (tm->lookup_keys), tm->lookup_results);
 	    t[1] = clib_time_now (&tm->time);
 	    tm->set_time += t[1] - t[0];
 	    tm->set_count += vec_len (tm->lookup_keys);
@@ -171,8 +169,7 @@ test_qhash_main (unformat_input_t * input)
 	else
 	  {
 	    t[0] = clib_time_now (&tm->time);
-	    qhash_unset_multiple (tm->qhash,
-				  tm->lookup_keys,
+	    qhash_unset_multiple (tm->qhash, tm->lookup_keys,
 				  vec_len (tm->lookup_keys),
 				  tm->lookup_results);
 	    t[1] = clib_time_now (&tm->time);
@@ -212,13 +209,11 @@ test_qhash_main (unformat_input_t * input)
 	{
 	  u32 *tmp = 0;
 
-	  /* *INDENT-OFF* */
 	  hash_foreach (k, l, h->overflow_hash, ({
-	    j = qhash_hash_mix (h, k) / QHASH_KEYS_PER_BUCKET;
-	    vec_validate (tmp, j);
-	    tmp[j] += 1;
-	  }));
-	  /* *INDENT-ON* */
+			  j = qhash_hash_mix (h, k) / QHASH_KEYS_PER_BUCKET;
+			  vec_validate (tmp, j);
+			  tmp[j] += 1;
+			}));
 
 	  for (k = 0; k < vec_len (tmp); k++)
 	    {
@@ -276,8 +271,7 @@ test_qhash_main (unformat_input_t * input)
       tm->ave_elts += qhash_elts (tm->qhash);
     }
 
-  fformat (stderr, "%d iter %.6e overflow, %.4f ave. elts\n",
-	   tm->n_iter,
+  fformat (stderr, "%d iter %.6e overflow, %.4f ave. elts\n", tm->n_iter,
 	   tm->overflow_fraction / tm->n_iter, tm->ave_elts / tm->n_iter);
 
   tm->get_time /= tm->n_iter * vec_len (tm->keys);
@@ -289,7 +283,8 @@ test_qhash_main (unformat_input_t * input)
   tm->hash_unset_time /= tm->unset_count;
 
   fformat (stderr,
-	   "get/set/unset clocks %.2e %.2e %.2e clib %.2e %.2e %.2e ratio %.2f %.2f %.2f\n",
+	   "get/set/unset clocks %.2e %.2e %.2e clib %.2e %.2e %.2e ratio "
+	   "%.2f %.2f %.2f\n",
 	   tm->get_time * tm->time.clocks_per_second,
 	   tm->set_time * tm->time.clocks_per_second,
 	   tm->unset_time * tm->time.clocks_per_second,
@@ -298,7 +293,6 @@ test_qhash_main (unformat_input_t * input)
 	   tm->hash_unset_time * tm->time.clocks_per_second,
 	   tm->hash_get_time / tm->get_time, tm->hash_set_time / tm->set_time,
 	   tm->hash_unset_time / tm->unset_time);
-
 
 done:
   return error;

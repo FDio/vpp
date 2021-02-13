@@ -31,8 +31,8 @@
 #include <ioam/lib-trace/trace.api_enum.h>
 #include <ioam/lib-trace/trace.api_types.h>
 
-static void vl_api_trace_profile_add_t_handler
-  (vl_api_trace_profile_add_t * mp)
+static void
+vl_api_trace_profile_add_t_handler (vl_api_trace_profile_add_t *mp)
 {
   int rv = 0;
   vl_api_trace_profile_add_reply_t *rmp;
@@ -41,10 +41,9 @@ static void vl_api_trace_profile_add_t_handler
   profile = trace_profile_find ();
   if (profile)
     {
-      rv =
-	trace_profile_create (profile, mp->trace_type, mp->num_elts,
-			      mp->trace_tsp, ntohl (mp->node_id),
-			      ntohl (mp->app_data));
+      rv = trace_profile_create (profile, mp->trace_type, mp->num_elts,
+				 mp->trace_tsp, ntohl (mp->node_id),
+				 ntohl (mp->app_data));
       if (rv != 0)
 	goto ERROROUT;
     }
@@ -56,9 +55,8 @@ ERROROUT:
   REPLY_MACRO (VL_API_TRACE_PROFILE_ADD_REPLY);
 }
 
-
-static void vl_api_trace_profile_del_t_handler
-  (vl_api_trace_profile_del_t * mp)
+static void
+vl_api_trace_profile_del_t_handler (vl_api_trace_profile_del_t *mp)
 {
   int rv = 0;
   vl_api_trace_profile_del_reply_t *rmp;
@@ -68,8 +66,9 @@ static void vl_api_trace_profile_del_t_handler
   REPLY_MACRO (VL_API_TRACE_PROFILE_DEL_REPLY);
 }
 
-static void vl_api_trace_profile_show_config_t_handler
-  (vl_api_trace_profile_show_config_t * mp)
+static void
+vl_api_trace_profile_show_config_t_handler (
+  vl_api_trace_profile_show_config_t *mp)
 {
   vl_api_trace_profile_show_config_reply_t *rmp;
   int rv = 0;
@@ -81,22 +80,20 @@ static void vl_api_trace_profile_show_config_t_handler
 		    rmp->num_elts = profile->num_elts;
 		    rmp->trace_tsp = profile->trace_tsp;
 		    rmp->node_id = htonl (profile->node_id);
-		    rmp->app_data = htonl (profile->app_data);
-	);
+		    rmp->app_data = htonl (profile->app_data););
     }
   else
     {
       REPLY_MACRO2 (VL_API_TRACE_PROFILE_SHOW_CONFIG_REPLY,
 		    rmp->trace_type = 0;
-		    rmp->num_elts = 0; rmp->trace_tsp = 0;
-		    rmp->node_id = 0; rmp->app_data = 0;
-	);
+		    rmp->num_elts = 0; rmp->trace_tsp = 0; rmp->node_id = 0;
+		    rmp->app_data = 0;);
     }
 }
 
 #include <ioam/lib-trace/trace.api.c>
 static clib_error_t *
-trace_init (vlib_main_t * vm)
+trace_init (vlib_main_t *vm)
 {
   trace_main_t *sm = &trace_main;
 

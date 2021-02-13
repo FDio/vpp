@@ -48,8 +48,8 @@ vnet_sw_interface_stats_collect_enable_disable (u32 sw_if_index, u8 enable)
       return (VNET_API_ERROR_FEATURE_DISABLED);
     }
 
-  vnet_feature_enable_disable ("device-input", "stats-collect-rx",
-			       sw_if_index, enable, 0, 0);
+  vnet_feature_enable_disable ("device-input", "stats-collect-rx", sw_if_index,
+			       enable, 0, 0);
   vnet_feature_enable_disable ("interface-output", "stats-collect-tx",
 			       sw_if_index, enable, 0, 0);
 
@@ -58,7 +58,7 @@ vnet_sw_interface_stats_collect_enable_disable (u32 sw_if_index, u8 enable)
 #endif /* CLIB_MARCH_VARIANT */
 
 static u8 *
-format_stats_collect_trace (u8 * s, va_list * args)
+format_stats_collect_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -66,14 +66,13 @@ format_stats_collect_trace (u8 * s, va_list * args)
   return s;
 }
 
-#define inc_counter(ctype, rx_tx)                               \
-{                                                               \
-}
+#define inc_counter(ctype, rx_tx)                                             \
+  {                                                                           \
+  }
 
 static_always_inline uword
-stats_collect_inline (vlib_main_t * vm,
-		      vlib_node_runtime_t * node,
-		      vlib_frame_t * frame, vlib_rx_or_tx_t rxtx)
+stats_collect_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vlib_frame_t *frame, vlib_rx_or_tx_t rxtx)
 {
   vnet_interface_counter_type_t ct;
   u32 n_left_from, *from, *to_next;
@@ -133,20 +132,20 @@ stats_collect_inline (vlib_main_t * vm,
 	{
 	  foreach_rx_combined_interface_counter (ct)
 	  {
-	    vlib_increment_combined_counter
-	      (vnet_main.interface_main.combined_sw_if_counters + ct,
-	       vlib_get_thread_index (),
-	       sw_if_index, stats_n_packets[ct], stats_n_bytes[ct]);
+	    vlib_increment_combined_counter (
+	      vnet_main.interface_main.combined_sw_if_counters + ct,
+	      vlib_get_thread_index (), sw_if_index, stats_n_packets[ct],
+	      stats_n_bytes[ct]);
 	  }
 	}
       else
 	{
 	  foreach_tx_combined_interface_counter (ct)
 	  {
-	    vlib_increment_combined_counter
-	      (vnet_main.interface_main.combined_sw_if_counters + ct,
-	       vlib_get_thread_index (),
-	       sw_if_index, stats_n_packets[ct], stats_n_bytes[ct]);
+	    vlib_increment_combined_counter (
+	      vnet_main.interface_main.combined_sw_if_counters + ct,
+	      vlib_get_thread_index (), sw_if_index, stats_n_packets[ct],
+	      stats_n_bytes[ct]);
 	  }
 	}
 
@@ -156,21 +155,18 @@ stats_collect_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (stats_collect_rx_node) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * frame)
+VLIB_NODE_FN (stats_collect_rx_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return stats_collect_inline (vm, node, frame, VLIB_RX);
 }
 
-VLIB_NODE_FN (stats_collect_tx_node) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * frame)
+VLIB_NODE_FN (stats_collect_tx_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return stats_collect_inline (vm, node, frame, VLIB_TX);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (stats_collect_rx_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_stats_collect_trace,
@@ -201,16 +197,13 @@ VNET_FEATURE_INIT (stats_collect_tx_node, static) = {
   .runs_before = VNET_FEATURES ("interface-tx"),
 };
 
-/* *INDENT-ON* */
-
 static clib_error_t *
-stats_collect_init (vlib_main_t * vm)
+stats_collect_init (vlib_main_t *vm)
 {
   return 0;
 }
 
 VLIB_INIT_FUNCTION (stats_collect_init);
-
 
 /*
  * fd.io coding-style-patch-verification: ON

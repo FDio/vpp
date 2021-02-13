@@ -43,7 +43,7 @@ typedef struct
 
   u8 l2tp_hdr_size;
   u8 l2_sublayer_present;
-  u8 cookie_flags;		/* in host byte order */
+  u8 cookie_flags; /* in host byte order */
 
   u8 admin_up;
 } l2t_session_t;
@@ -110,32 +110,28 @@ session_index_to_counter_index (u32 session_index, u32 counter_id)
   return ((session_index << 1) + counter_id);
 }
 
-u8 *format_l2t_trace (u8 * s, va_list * args);
+u8 *format_l2t_trace (u8 *s, va_list *args);
 
 typedef struct
 {
   /* Any per-interface config would go here */
 } ip6_l2tpv3_config_t;
 
-uword unformat_pg_l2tp_header (unformat_input_t * input, va_list * args);
+uword unformat_pg_l2tp_header (unformat_input_t *input, va_list *args);
 
-void l2tp_encap_init (vlib_main_t * vm);
-int create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
-			       ip6_address_t * client_address,
-			       ip6_address_t * our_address,
-			       u32 local_session_id,
-			       u32 remote_session_id,
-			       u64 local_cookie,
-			       u64 remote_cookie,
-			       int l2_sublayer_present,
-			       u32 encap_fib_index, u32 * sw_if_index);
+void l2tp_encap_init (vlib_main_t *vm);
+int create_l2tpv3_ipv6_tunnel (l2t_main_t *lm, ip6_address_t *client_address,
+			       ip6_address_t *our_address,
+			       u32 local_session_id, u32 remote_session_id,
+			       u64 local_cookie, u64 remote_cookie,
+			       int l2_sublayer_present, u32 encap_fib_index,
+			       u32 *sw_if_index);
 
-int l2tpv3_set_tunnel_cookies (l2t_main_t * lm,
-			       u32 sw_if_index,
+int l2tpv3_set_tunnel_cookies (l2t_main_t *lm, u32 sw_if_index,
 			       u64 new_local_cookie, u64 new_remote_cookie);
 
-int l2tpv3_interface_enable_disable (vnet_main_t * vnm,
-				     u32 sw_if_index, int enable_disable);
+int l2tpv3_interface_enable_disable (vnet_main_t *vnm, u32 sw_if_index,
+				     int enable_disable);
 
 #endif /* __included_l2tp_h__ */
 

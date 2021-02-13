@@ -26,8 +26,7 @@ namespace VOM {
 
 rc_t::rc_t(int v, const std::string s)
   : enum_base<rc_t>(v, s)
-{
-}
+{}
 
 const rc_t&
 rc_t::from_vpp_retval(int32_t rv)
@@ -57,13 +56,11 @@ const handle_t handle_t::INVALID(~0);
 
 handle_t::handle_t(int value)
   : m_value(value)
-{
-}
+{}
 
 handle_t::handle_t()
   : m_value(~0)
-{
-}
+{}
 
 std::string
 handle_t::to_string() const
@@ -190,8 +187,7 @@ l2_address_t::l2_address_t(const uint8_t b[8], uint8_t n_bytes)
 
 l2_address_t::l2_address_t(std::initializer_list<uint8_t> i)
   : bytes(i)
-{
-}
+{}
 
 l2_address_t::l2_address_t(const mac_address_t& mac)
   : bytes(6)
@@ -199,8 +195,8 @@ l2_address_t::l2_address_t(const mac_address_t& mac)
   std::copy(begin(mac.bytes), std::end(mac.bytes), std::begin(bytes));
 }
 
-const l2_address_t l2_address_t::ONE({ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-                                       0xff });
+const l2_address_t l2_address_t::ONE(
+  { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff });
 
 const l2_address_t l2_address_t::ZERO({ 0x0 });
 
@@ -266,8 +262,7 @@ const direction_t direction_t::OUTPUT(0, "output");
 
 direction_t::direction_t(int v, const std::string s)
   : enum_base(v, s)
-{
-}
+{}
 std::ostream&
 operator<<(std::ostream& os, const direction_t& dir)
 {
@@ -286,8 +281,7 @@ const ethertype_t ethertype_t::UNSPECIFIED(0x0, "unspecified");
 
 ethertype_t::ethertype_t(int v, const std::string s)
   : enum_base(v, s)
-{
-}
+{}
 
 std::ostream&
 operator<<(std::ostream& os, const ethertype_t& ether)

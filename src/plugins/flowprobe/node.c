@@ -23,7 +23,7 @@
 #include <vnet/udp/udp_local.h>
 #include <vlibmemory/api.h>
 
-static void flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e);
+static void flowprobe_export_entry (vlib_main_t *vm, flowprobe_entry_t *e);
 
 /**
  * @file node.c
@@ -60,16 +60,14 @@ typedef struct
 } flowprobe_trace_t;
 
 static char *flowprobe_variant_strings[] = {
-  [FLOW_VARIANT_IP4] = "IP4",
-  [FLOW_VARIANT_IP6] = "IP6",
-  [FLOW_VARIANT_L2] = "L2",
-  [FLOW_VARIANT_L2_IP4] = "L2-IP4",
+  [FLOW_VARIANT_IP4] = "IP4",	    [FLOW_VARIANT_IP6] = "IP6",
+  [FLOW_VARIANT_L2] = "L2",	    [FLOW_VARIANT_L2_IP4] = "L2-IP4",
   [FLOW_VARIANT_L2_IP6] = "L2-IP6",
 };
 
 /* packet trace format function */
 static u8 *
-format_flowprobe_trace (u8 * s, va_list * args)
+format_flowprobe_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -78,23 +76,22 @@ format_flowprobe_trace (u8 * s, va_list * args)
 
   s = format (s,
 	      "FLOWPROBE[%s]: rx_sw_if_index %d, tx_sw_if_index %d, "
-	      "timestamp %lld, size %d", flowprobe_variant_strings[t->which],
-	      t->rx_sw_if_index, t->tx_sw_if_index,
-	      t->timestamp, t->buffer_size);
+	      "timestamp %lld, size %d",
+	      flowprobe_variant_strings[t->which], t->rx_sw_if_index,
+	      t->tx_sw_if_index, t->timestamp, t->buffer_size);
 
   if (t->which == FLOW_VARIANT_L2)
     s = format (s, "\n%U -> %U", format_white_space, indent,
-		format_ethernet_address, &t->src_mac,
-		format_ethernet_address, &t->dst_mac);
+		format_ethernet_address, &t->src_mac, format_ethernet_address,
+		&t->dst_mac);
 
-  if (t->protocol > 0
-      && (t->which == FLOW_VARIANT_L2_IP4 || t->which == FLOW_VARIANT_IP4
-	  || t->which == FLOW_VARIANT_L2_IP6 || t->which == FLOW_VARIANT_IP6))
-    s =
-      format (s, "\n%U%U: %U -> %U", format_white_space, indent,
-	      format_ip_protocol, t->protocol, format_ip46_address,
-	      &t->src_address, IP46_TYPE_ANY, format_ip46_address,
-	      &t->dst_address, IP46_TYPE_ANY);
+  if (t->protocol > 0 &&
+      (t->which == FLOW_VARIANT_L2_IP4 || t->which == FLOW_VARIANT_IP4 ||
+       t->which == FLOW_VARIANT_L2_IP6 || t->which == FLOW_VARIANT_IP6))
+    s = format (s, "\n%U%U: %U -> %U", format_white_space, indent,
+		format_ip_protocol, t->protocol, format_ip46_address,
+		&t->src_address, IP46_TYPE_ANY, format_ip46_address,
+		&t->dst_address, IP46_TYPE_ANY);
   return s;
 }
 
@@ -103,22 +100,22 @@ vlib_node_registration_t flowprobe_ip6_node;
 vlib_node_registration_t flowprobe_l2_node;
 
 /* No counters at the moment */
-#define foreach_flowprobe_error			\
-_(COLLISION, "Hash table collisions")		\
-_(BUFFER, "Buffer allocation error")		\
-_(EXPORTED_PACKETS, "Exported packets")		\
-_(INPATH, "Exported packets in path")
+#define foreach_flowprobe_error                                               \
+  _ (COLLISION, "Hash table collisions")                                      \
+  _ (BUFFER, "Buffer allocation error")                                       \
+  _ (EXPORTED_PACKETS, "Exported packets")                                    \
+  _ (INPATH, "Exported packets in path")
 
 typedef enum
 {
-#define _(sym,str) FLOWPROBE_ERROR_##sym,
+#define _(sym, str) FLOWPROBE_ERROR_##sym,
   foreach_flowprobe_error
 #undef _
     FLOWPROBE_N_ERROR,
 } flowprobe_error_t;
 
 static char *flowprobe_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_flowprobe_error
 #undef _
 };
@@ -130,19 +127,22 @@ typedef enum
   FLOWPROBE_N_NEXT,
 } flowprobe_next_t;
 
-#define FLOWPROBE_NEXT_NODES {					\
-    [FLOWPROBE_NEXT_DROP] = "error-drop",			\
-    [FLOWPROBE_NEXT_IP4_LOOKUP] = "ip4-lookup",		\
-}
+#define FLOWPROBE_NEXT_NODES                                                  \
+  {                                                                           \
+    [FLOWPROBE_NEXT_DROP] = "error-drop",                                     \
+    [FLOWPROBE_NEXT_IP4_LOOKUP] = "ip4-lookup",                               \
+  }
 
 static inline flowprobe_variant_t
-flowprobe_get_variant (flowprobe_variant_t which,
-		       flowprobe_record_t flags, u16 ethertype)
+flowprobe_get_variant (flowprobe_variant_t which, flowprobe_record_t flags,
+		       u16 ethertype)
 {
-  if (which == FLOW_VARIANT_L2
-      && (flags & FLOW_RECORD_L3 || flags & FLOW_RECORD_L4))
-    return ethertype == ETHERNET_TYPE_IP6 ? FLOW_VARIANT_L2_IP6 : ethertype ==
-      ETHERNET_TYPE_IP4 ? FLOW_VARIANT_L2_IP4 : FLOW_VARIANT_L2;
+  if (which == FLOW_VARIANT_L2 &&
+      (flags & FLOW_RECORD_L3 || flags & FLOW_RECORD_L4))
+    return ethertype == ETHERNET_TYPE_IP6 ?
+	     FLOW_VARIANT_L2_IP6 :
+	     ethertype == ETHERNET_TYPE_IP4 ? FLOW_VARIANT_L2_IP4 :
+					      FLOW_VARIANT_L2;
   return which;
 }
 
@@ -152,7 +152,7 @@ flowprobe_get_variant (flowprobe_variant_t which,
 #define NTP_TIMESTAMP 2208988800LU
 
 static inline u32
-flowprobe_common_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
+flowprobe_common_add (vlib_buffer_t *to_b, flowprobe_entry_t *e, u16 offset)
 {
   u16 start = offset;
 
@@ -191,7 +191,7 @@ flowprobe_common_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
 }
 
 static inline u32
-flowprobe_l2_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
+flowprobe_l2_add (vlib_buffer_t *to_b, flowprobe_entry_t *e, u16 offset)
 {
   u16 start = offset;
 
@@ -211,7 +211,7 @@ flowprobe_l2_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
 }
 
 static inline u32
-flowprobe_l3_ip6_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
+flowprobe_l3_ip6_add (vlib_buffer_t *to_b, flowprobe_entry_t *e, u16 offset)
 {
   u16 start = offset;
 
@@ -237,7 +237,7 @@ flowprobe_l3_ip6_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
 }
 
 static inline u32
-flowprobe_l3_ip4_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
+flowprobe_l3_ip4_add (vlib_buffer_t *to_b, flowprobe_entry_t *e, u16 offset)
 {
   u16 start = offset;
 
@@ -263,7 +263,7 @@ flowprobe_l3_ip4_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
 }
 
 static inline u32
-flowprobe_l4_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
+flowprobe_l4_add (vlib_buffer_t *to_b, flowprobe_entry_t *e, u16 offset)
 {
   u16 start = offset;
 
@@ -284,7 +284,7 @@ flowprobe_l4_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
 }
 
 static inline u32
-flowprobe_hash (flowprobe_key_t * k)
+flowprobe_hash (flowprobe_key_t *k)
 {
   flowprobe_main_t *fm = &flowprobe_main;
   u32 h = 0;
@@ -304,8 +304,8 @@ flowprobe_hash (flowprobe_key_t * k)
 }
 
 flowprobe_entry_t *
-flowprobe_lookup (u32 my_cpu_number, flowprobe_key_t * k, u32 * poolindex,
-		  bool * collision)
+flowprobe_lookup (u32 my_cpu_number, flowprobe_key_t *k, u32 *poolindex,
+		  bool *collision)
 {
   flowprobe_main_t *fm = &flowprobe_main;
   flowprobe_entry_t *e;
@@ -331,7 +331,7 @@ flowprobe_lookup (u32 my_cpu_number, flowprobe_key_t * k, u32 * poolindex,
 }
 
 flowprobe_entry_t *
-flowprobe_create (u32 my_cpu_number, flowprobe_key_t * k, u32 * poolindex)
+flowprobe_create (u32 my_cpu_number, flowprobe_key_t *k, u32 *poolindex)
 {
   flowprobe_main_t *fm = &flowprobe_main;
   u32 h;
@@ -349,18 +349,18 @@ flowprobe_create (u32 my_cpu_number, flowprobe_key_t * k, u32 * poolindex)
 
   if (fm->passive_timer > 0)
     {
-      e->passive_timer_handle = tw_timer_start_2t_1w_2048sl
-	(fm->timers_per_worker[my_cpu_number], *poolindex, 0,
-	 fm->passive_timer);
+      e->passive_timer_handle =
+	tw_timer_start_2t_1w_2048sl (fm->timers_per_worker[my_cpu_number],
+				     *poolindex, 0, fm->passive_timer);
     }
   return e;
 }
 
 static inline void
-add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  flowprobe_main_t * fm, vlib_buffer_t * b,
+add_to_flow_record_state (vlib_main_t *vm, vlib_node_runtime_t *node,
+			  flowprobe_main_t *fm, vlib_buffer_t *b,
 			  timestamp_nsec_t timestamp, u16 length,
-			  flowprobe_variant_t which, flowprobe_trace_t * t)
+			  flowprobe_variant_t which, flowprobe_trace_t *t)
 {
   if (fm->disabled)
     return;
@@ -373,9 +373,9 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
   ASSERT (b);
   ethernet_header_t *eth = vlib_buffer_get_current (b);
   u16 ethertype = clib_net_to_host_u16 (eth->type);
-  /* *INDENT-OFF* */
+
   flowprobe_key_t k = {};
-  /* *INDENT-ON* */
+
   ip4_header_t *ip4 = 0;
   ip6_header_t *ip6 = 0;
   udp_header_t *udp = 0;
@@ -415,8 +415,8 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
       else if (k.protocol == IP_PROTOCOL_TCP)
 	tcp = (tcp_header_t *) (ip6 + 1);
 
-      octets = clib_net_to_host_u16 (ip6->payload_length)
-	+ sizeof (ip6_header_t);
+      octets =
+	clib_net_to_host_u16 (ip6->payload_length) + sizeof (ip6_header_t);
     }
   if (collect_ip4 && ethertype == ETHERNET_TYPE_IP4)
     {
@@ -480,7 +480,7 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_node_increment_counter (vm, node->node_index,
 				       FLOWPROBE_ERROR_COLLISION, 1);
 	}
-      if (!e)			/* Create new entry */
+      if (!e) /* Create new entry */
 	{
 	  e = flowprobe_create (my_cpu_number, &k, &poolindex);
 	  e->last_exported = now;
@@ -501,8 +501,7 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
       e->last_updated = now;
       e->flow_end = timestamp;
       e->prot.tcp.flags |= tcp_flags;
-      if (fm->active_timer == 0
-	  || (now > e->last_exported + fm->active_timer))
+      if (fm->active_timer == 0 || (now > e->last_exported + fm->active_timer))
 	flowprobe_export_entry (vm, e);
     }
 }
@@ -511,11 +510,11 @@ static u16
 flowprobe_get_headersize (void)
 {
   return sizeof (ip4_header_t) + sizeof (udp_header_t) +
-    sizeof (ipfix_message_header_t) + sizeof (ipfix_set_header_t);
+	 sizeof (ipfix_message_header_t) + sizeof (ipfix_set_header_t);
 }
 
 static void
-flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
+flowprobe_export_send (vlib_main_t *vm, vlib_buffer_t *b0,
 		       flowprobe_variant_t which)
 {
   flowprobe_main_t *fm = &flowprobe_main;
@@ -552,7 +551,7 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
   stream = &frm->streams[index];
 
   tp = vlib_buffer_get_current (b0);
-  ip = (ip4_header_t *) & tp->ip4;
+  ip = (ip4_header_t *) &tp->ip4;
   udp = (udp_header_t *) (ip + 1);
   h = (ipfix_message_header_t *) (udp + 1);
   s = (ipfix_set_header_t *) (h + 1);
@@ -568,9 +567,8 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
   udp->checksum = 0;
 
   /* FIXUP: message header export_time */
-  h->export_time = (u32)
-    (((f64) frm->unix_time_0) +
-     (vlib_time_now (frm->vlib_main) - frm->vlib_time_0));
+  h->export_time = (u32) (((f64) frm->unix_time_0) +
+			  (vlib_time_now (frm->vlib_main) - frm->vlib_time_0));
   h->export_time = clib_host_to_net_u32 (h->export_time);
   h->domain_id = clib_host_to_net_u32 (stream->domain_id);
 
@@ -578,12 +576,11 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
   h->sequence_number = stream->sequence_number++;
   h->sequence_number = clib_host_to_net_u32 (h->sequence_number);
 
-  s->set_id_length = ipfix_set_id_length (fm->template_reports[flags],
-					  b0->current_length -
-					  (sizeof (*ip) + sizeof (*udp) +
-					   sizeof (*h)));
-  h->version_length = version_length (b0->current_length -
-				      (sizeof (*ip) + sizeof (*udp)));
+  s->set_id_length = ipfix_set_id_length (
+    fm->template_reports[flags],
+    b0->current_length - (sizeof (*ip) + sizeof (*udp) + sizeof (*h)));
+  h->version_length =
+    version_length (b0->current_length - (sizeof (*ip) + sizeof (*udp)));
 
   ip->length = clib_host_to_net_u16 (b0->current_length);
 
@@ -626,7 +623,7 @@ flowprobe_export_send (vlib_main_t * vm, vlib_buffer_t * b0,
 }
 
 static vlib_buffer_t *
-flowprobe_get_buffer (vlib_main_t * vm, flowprobe_variant_t which)
+flowprobe_get_buffer (vlib_main_t *vm, flowprobe_variant_t which)
 {
   flowprobe_main_t *fm = &flowprobe_main;
   flow_report_main_t *frm = &flow_report_main;
@@ -666,7 +663,7 @@ flowprobe_get_buffer (vlib_main_t * vm, flowprobe_variant_t which)
 }
 
 static void
-flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e)
+flowprobe_export_entry (vlib_main_t *vm, flowprobe_entry_t *e)
 {
   u32 my_cpu_number = vm->thread_index;
   flowprobe_main_t *fm = &flowprobe_main;
@@ -675,8 +672,7 @@ flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e)
   bool collect_ip4 = false, collect_ip6 = false;
   flowprobe_variant_t which = e->key.which;
   flowprobe_record_t flags = fm->context[which].flags;
-  u16 offset =
-    fm->context[which].next_record_offset_per_worker[my_cpu_number];
+  u16 offset = fm->context[which].next_record_offset_per_worker[my_cpu_number];
 
   if (offset < flowprobe_get_headersize ())
     offset = flowprobe_get_headersize ();
@@ -717,9 +713,8 @@ flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e)
 }
 
 uword
-flowprobe_node_fn (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame,
-		   flowprobe_variant_t which)
+flowprobe_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame, flowprobe_variant_t which)
 {
   u32 n_left_from, *from, *to_next;
   flowprobe_next_t next_index;
@@ -779,25 +774,27 @@ flowprobe_node_fn (vlib_main_t * vm,
 	  u16 ethertype0 = clib_net_to_host_u16 (eh0->type);
 
 	  if (PREDICT_TRUE ((b0->flags & VNET_BUFFER_F_FLOW_REPORT) == 0))
-	    add_to_flow_record_state (vm, node, fm, b0, timestamp, len0,
-				      flowprobe_get_variant
-				      (which, fm->context[which].flags,
-				       ethertype0), 0);
+	    add_to_flow_record_state (
+	      vm, node, fm, b0, timestamp, len0,
+	      flowprobe_get_variant (which, fm->context[which].flags,
+				     ethertype0),
+	      0);
 
 	  len1 = vlib_buffer_length_in_chain (vm, b1);
 	  ethernet_header_t *eh1 = vlib_buffer_get_current (b1);
 	  u16 ethertype1 = clib_net_to_host_u16 (eh1->type);
 
 	  if (PREDICT_TRUE ((b1->flags & VNET_BUFFER_F_FLOW_REPORT) == 0))
-	    add_to_flow_record_state (vm, node, fm, b1, timestamp, len1,
-				      flowprobe_get_variant
-				      (which, fm->context[which].flags,
-				       ethertype1), 0);
+	    add_to_flow_record_state (
+	      vm, node, fm, b1, timestamp, len1,
+	      flowprobe_get_variant (which, fm->context[which].flags,
+				     ethertype1),
+	      0);
 
 	  /* verify speculative enqueues, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -826,20 +823,20 @@ flowprobe_node_fn (vlib_main_t * vm,
 	  if (PREDICT_TRUE ((b0->flags & VNET_BUFFER_F_FLOW_REPORT) == 0))
 	    {
 	      flowprobe_trace_t *t = 0;
-	      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-				 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+				 (b0->flags & VLIB_BUFFER_IS_TRACED)))
 		t = vlib_add_trace (vm, node, b0, sizeof (*t));
 
-	      add_to_flow_record_state (vm, node, fm, b0, timestamp, len0,
-					flowprobe_get_variant
-					(which, fm->context[which].flags,
-					 ethertype0), t);
+	      add_to_flow_record_state (
+		vm, node, fm, b0, timestamp, len0,
+		flowprobe_get_variant (which, fm->context[which].flags,
+				       ethertype0),
+		t);
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -848,22 +845,22 @@ flowprobe_node_fn (vlib_main_t * vm,
 }
 
 static uword
-flowprobe_ip4_node_fn (vlib_main_t * vm,
-		       vlib_node_runtime_t * node, vlib_frame_t * frame)
+flowprobe_ip4_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_frame_t *frame)
 {
   return flowprobe_node_fn (vm, node, frame, FLOW_VARIANT_IP4);
 }
 
 static uword
-flowprobe_ip6_node_fn (vlib_main_t * vm,
-		       vlib_node_runtime_t * node, vlib_frame_t * frame)
+flowprobe_ip6_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_frame_t *frame)
 {
   return flowprobe_node_fn (vm, node, frame, FLOW_VARIANT_IP6);
 }
 
 static uword
-flowprobe_l2_node_fn (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+flowprobe_l2_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vlib_frame_t *frame)
 {
   return flowprobe_node_fn (vm, node, frame, FLOW_VARIANT_L2);
 }
@@ -897,7 +894,6 @@ flowprobe_flush_callback_l2 (void)
   flush_record (FLOW_VARIANT_L2_IP6);
 }
 
-
 static void
 flowprobe_delete_by_index (u32 my_cpu_number, u32 poolindex)
 {
@@ -916,11 +912,10 @@ flowprobe_delete_by_index (u32 my_cpu_number, u32 poolindex)
   pool_put_index (fm->pool_per_worker[my_cpu_number], poolindex);
 }
 
-
 /* Per worker process processing the active/passive expired entries */
 static uword
-flowprobe_walker_process (vlib_main_t * vm,
-			  vlib_node_runtime_t * rt, vlib_frame_t * f)
+flowprobe_walker_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
+			  vlib_frame_t *f)
 {
   flowprobe_main_t *fm = &flowprobe_main;
   flow_report_main_t *frm = &flow_report_main;
@@ -951,60 +946,60 @@ flowprobe_walker_process (vlib_main_t * vm,
 				       start_time);
 
   vec_foreach (i, fm->expired_passive_per_worker[cpu_index])
-  {
-    u32 exported = 0;
-    f64 now = vlib_time_now (vm);
-    if (now > start_time + 100e-6
-	|| exported > FLOW_MAXIMUM_EXPORT_ENTRIES - 1)
-      break;
+    {
+      u32 exported = 0;
+      f64 now = vlib_time_now (vm);
+      if (now > start_time + 100e-6 ||
+	  exported > FLOW_MAXIMUM_EXPORT_ENTRIES - 1)
+	break;
 
-    if (pool_is_free_index (fm->pool_per_worker[cpu_index], *i))
-      {
-	clib_warning ("Element is %d is freed already\n", *i);
-	continue;
-      }
-    else
-      e = pool_elt_at_index (fm->pool_per_worker[cpu_index], *i);
+      if (pool_is_free_index (fm->pool_per_worker[cpu_index], *i))
+	{
+	  clib_warning ("Element is %d is freed already\n", *i);
+	  continue;
+	}
+      else
+	e = pool_elt_at_index (fm->pool_per_worker[cpu_index], *i);
 
-    /* Check last update timestamp. If it is longer than passive time nuke
-     * entry. Otherwise restart timer with what's left
-     * Premature passive timer by more than 10%
-     */
-    if ((now - e->last_updated) < (u64) (fm->passive_timer * 0.9))
-      {
-	u64 delta = fm->passive_timer - (now - e->last_updated);
-	e->passive_timer_handle = tw_timer_start_2t_1w_2048sl
-	  (fm->timers_per_worker[cpu_index], *i, 0, delta);
-      }
-    else			/* Nuke entry */
-      {
-	vec_add1 (to_be_removed, *i);
-      }
-    /* If anything to report send it to the exporter */
-    if (e->packetcount && now > e->last_exported + fm->active_timer)
-      {
-	exported++;
-	flowprobe_export_entry (vm, e);
-      }
-    count++;
-  }
+      /* Check last update timestamp. If it is longer than passive time nuke
+       * entry. Otherwise restart timer with what's left
+       * Premature passive timer by more than 10%
+       */
+      if ((now - e->last_updated) < (u64) (fm->passive_timer * 0.9))
+	{
+	  u64 delta = fm->passive_timer - (now - e->last_updated);
+	  e->passive_timer_handle = tw_timer_start_2t_1w_2048sl (
+	    fm->timers_per_worker[cpu_index], *i, 0, delta);
+	}
+      else /* Nuke entry */
+	{
+	  vec_add1 (to_be_removed, *i);
+	}
+      /* If anything to report send it to the exporter */
+      if (e->packetcount && now > e->last_exported + fm->active_timer)
+	{
+	  exported++;
+	  flowprobe_export_entry (vm, e);
+	}
+      count++;
+    }
   if (count)
     vec_delete (fm->expired_passive_per_worker[cpu_index], count, 0);
 
-  vec_foreach (i, to_be_removed) flowprobe_delete_by_index (cpu_index, *i);
+  vec_foreach (i, to_be_removed)
+    flowprobe_delete_by_index (cpu_index, *i);
   vec_free (to_be_removed);
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (flowprobe_ip4_node) = {
   .function = flowprobe_ip4_node_fn,
   .name = "flowprobe-ip4",
   .vector_size = sizeof (u32),
   .format_trace = format_flowprobe_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(flowprobe_error_strings),
+  .n_errors = ARRAY_LEN (flowprobe_error_strings),
   .error_strings = flowprobe_error_strings,
   .n_next_nodes = FLOWPROBE_N_NEXT,
   .next_nodes = FLOWPROBE_NEXT_NODES,
@@ -1015,7 +1010,7 @@ VLIB_REGISTER_NODE (flowprobe_ip6_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_flowprobe_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(flowprobe_error_strings),
+  .n_errors = ARRAY_LEN (flowprobe_error_strings),
   .error_strings = flowprobe_error_strings,
   .n_next_nodes = FLOWPROBE_N_NEXT,
   .next_nodes = FLOWPROBE_NEXT_NODES,
@@ -1026,7 +1021,7 @@ VLIB_REGISTER_NODE (flowprobe_l2_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_flowprobe_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(flowprobe_error_strings),
+  .n_errors = ARRAY_LEN (flowprobe_error_strings),
   .error_strings = flowprobe_error_strings,
   .n_next_nodes = FLOWPROBE_N_NEXT,
   .next_nodes = FLOWPROBE_NEXT_NODES,
@@ -1037,7 +1032,6 @@ VLIB_REGISTER_NODE (flowprobe_walker_node) = {
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_INTERRUPT,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

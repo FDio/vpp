@@ -24,8 +24,7 @@ bind_cmd::bind_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_bond_itf(bond_itf)
   , m_itf(itf)
-{
-}
+{}
 
 bool
 bind_cmd::operator==(const bind_cmd& other) const
@@ -62,8 +61,7 @@ bind_cmd::to_string() const
 unbind_cmd::unbind_cmd(HW::item<bool>& item, const handle_t& itf)
   : rpc_cmd(item)
   , m_itf(itf)
-{
-}
+{}
 
 bool
 unbind_cmd::operator==(const unbind_cmd& other) const
@@ -99,13 +97,11 @@ unbind_cmd::to_string() const
 
 dump_cmd::dump_cmd(const handle_t& hdl)
   : m_itf(hdl)
-{
-}
+{}
 
 dump_cmd::dump_cmd(const dump_cmd& d)
   : m_itf(d.m_itf)
-{
-}
+{}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const

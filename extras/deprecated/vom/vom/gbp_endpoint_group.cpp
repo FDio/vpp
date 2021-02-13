@@ -26,12 +26,10 @@ gbp_endpoint_group::event_handler gbp_endpoint_group::m_evh;
 
 gbp_endpoint_group::retention_t::retention_t()
   : remote_ep_timeout(0xffffffff)
-{
-}
+{}
 gbp_endpoint_group::retention_t::retention_t(uint32_t remote_ep_timeout_)
   : remote_ep_timeout(remote_ep_timeout_)
-{
-}
+{}
 
 bool
 gbp_endpoint_group::retention_t::operator==(const retention_t& o) const
@@ -57,8 +55,7 @@ gbp_endpoint_group::gbp_endpoint_group(vnid_t vnid,
   , m_rd(rd.singular())
   , m_bd(bd.singular())
   , m_retention()
-{
-}
+{}
 
 gbp_endpoint_group::gbp_endpoint_group(vnid_t vnid,
                                        sclass_t sclass,
@@ -71,8 +68,7 @@ gbp_endpoint_group::gbp_endpoint_group(vnid_t vnid,
   , m_rd(rd.singular())
   , m_bd(bd.singular())
   , m_retention()
-{
-}
+{}
 
 gbp_endpoint_group::gbp_endpoint_group(sclass_t sclass,
                                        const gbp_route_domain& rd,
@@ -84,8 +80,7 @@ gbp_endpoint_group::gbp_endpoint_group(sclass_t sclass,
   , m_rd(rd.singular())
   , m_bd(bd.singular())
   , m_retention()
-{
-}
+{}
 
 gbp_endpoint_group::gbp_endpoint_group(const gbp_endpoint_group& epg)
   : m_hw(epg.m_hw)
@@ -95,8 +90,7 @@ gbp_endpoint_group::gbp_endpoint_group(const gbp_endpoint_group& epg)
   , m_rd(epg.m_rd)
   , m_bd(epg.m_bd)
   , m_retention(epg.m_retention)
-{
-}
+{}
 
 gbp_endpoint_group::~gbp_endpoint_group()
 {
@@ -150,7 +144,12 @@ gbp_endpoint_group::replay()
 {
   if (m_hw) {
     HW::enqueue(new gbp_endpoint_group_cmds::create_cmd(
-      m_hw, m_vnid, m_sclass, m_bd->id(), m_rd->id(), m_retention,
+      m_hw,
+      m_vnid,
+      m_sclass,
+      m_bd->id(),
+      m_rd->id(),
+      m_retention,
       (m_itf ? m_itf->handle() : handle_t::INVALID)));
   }
 }
@@ -173,7 +172,12 @@ gbp_endpoint_group::update(const gbp_endpoint_group& r)
 {
   if (rc_t::OK != m_hw.rc()) {
     HW::enqueue(new gbp_endpoint_group_cmds::create_cmd(
-      m_hw, m_vnid, m_sclass, m_bd->id(), m_rd->id(), m_retention,
+      m_hw,
+      m_vnid,
+      m_sclass,
+      m_bd->id(),
+      m_rd->id(),
+      m_retention,
       (m_itf ? m_itf->handle() : handle_t::INVALID)));
   }
 }
@@ -217,8 +221,8 @@ gbp_endpoint_group::get_bridge_domain() const
 gbp_endpoint_group::event_handler::event_handler()
 {
   OM::register_listener(this);
-  inspect::register_handler({ "gbp-endpoint-group" }, "GBP Endpoint_Groups",
-                            this);
+  inspect::register_handler(
+    { "gbp-endpoint-group" }, "GBP Endpoint_Groups", this);
 }
 
 void
@@ -246,13 +250,13 @@ gbp_endpoint_group::event_handler::handle_populate(const client_db::key_t& key)
     std::shared_ptr<gbp_bridge_domain> bd =
       gbp_bridge_domain::find(payload.epg.bd_id);
 
-    VOM_LOG(log_level_t::DEBUG) << "data: [" << payload.epg.uplink_sw_if_index
-                                << ", " << payload.epg.rd_id << ", "
-                                << payload.epg.bd_id << "]";
+    VOM_LOG(log_level_t::DEBUG)
+      << "data: [" << payload.epg.uplink_sw_if_index << ", "
+      << payload.epg.rd_id << ", " << payload.epg.bd_id << "]";
 
     if (itf && bd && rd) {
-      gbp_endpoint_group gbpe(payload.epg.vnid, payload.epg.sclass, *itf, *rd,
-                              *bd);
+      gbp_endpoint_group gbpe(
+        payload.epg.vnid, payload.epg.sclass, *itf, *rd, *bd);
       OM::commit(key, gbpe);
 
       VOM_LOG(log_level_t::DEBUG) << "read: " << gbpe.to_string();
@@ -262,9 +266,9 @@ gbp_endpoint_group::event_handler::handle_populate(const client_db::key_t& key)
 
       VOM_LOG(log_level_t::DEBUG) << "read: " << gbpe.to_string();
     } else {
-      VOM_LOG(log_level_t::ERROR) << "no itf:" << payload.epg.uplink_sw_if_index
-                                  << " or BD:" << payload.epg.bd_id
-                                  << " or RD:" << payload.epg.rd_id;
+      VOM_LOG(log_level_t::ERROR)
+        << "no itf:" << payload.epg.uplink_sw_if_index
+        << " or BD:" << payload.epg.bd_id << " or RD:" << payload.epg.rd_id;
     }
   }
 }

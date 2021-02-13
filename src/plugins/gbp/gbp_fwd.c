@@ -30,15 +30,13 @@ typedef struct gbp_fwd_main_t_
 gbp_fwd_main_t gbp_fwd_main;
 
 static clib_error_t *
-gbp_fwd_init (vlib_main_t * vm)
+gbp_fwd_init (vlib_main_t *vm)
 {
   gbp_fwd_main_t *gpm = &gbp_fwd_main;
   vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "gbp-fwd");
 
   /* Initialize the feature next-node indices */
-  feat_bitmap_init_next_nodes (vm,
-			       node->index,
-			       L2INPUT_N_FEAT,
+  feat_bitmap_init_next_nodes (vm, node->index, L2INPUT_N_FEAT,
 			       l2input_get_feat_names (),
 			       gpm->l2_input_feat_next);
 

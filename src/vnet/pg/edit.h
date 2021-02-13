@@ -88,36 +88,38 @@ typedef struct
 } pg_edit_t;
 
 always_inline void
-pg_edit_free (pg_edit_t * e)
+pg_edit_free (pg_edit_t *e)
 {
   int i;
   for (i = 0; i < ARRAY_LEN (e->values); i++)
     vec_free (e->values[i]);
 }
 
-#define pg_edit_init_bitfield(e,type,field,field_offset,field_n_bits)	\
-do {									\
-  u32 _bo;								\
-									\
-  ASSERT ((field_offset) < STRUCT_BITS_OF (type, field));		\
-									\
-  /* Start byte offset. */						\
-  _bo = STRUCT_OFFSET_OF (type, field);					\
-									\
-  /* Adjust for big endian byte order. */				\
-  _bo += ((STRUCT_BITS_OF (type, field)					\
-	   - (field_offset) - 1) / BITS (u8));				\
-									\
-  (e)->lsb_bit_offset = _bo * BITS (u8) + ((field_offset) % BITS (u8));	\
-  (e)->n_bits = (field_n_bits);						\
-} while (0)
+#define pg_edit_init_bitfield(e, type, field, field_offset, field_n_bits)     \
+  do                                                                          \
+    {                                                                         \
+      u32 _bo;                                                                \
+                                                                              \
+      ASSERT ((field_offset) < STRUCT_BITS_OF (type, field));                 \
+                                                                              \
+      /* Start byte offset. */                                                \
+      _bo = STRUCT_OFFSET_OF (type, field);                                   \
+                                                                              \
+      /* Adjust for big endian byte order. */                                 \
+      _bo +=                                                                  \
+	((STRUCT_BITS_OF (type, field) - (field_offset) -1) / BITS (u8));     \
+                                                                              \
+      (e)->lsb_bit_offset = _bo * BITS (u8) + ((field_offset) % BITS (u8));   \
+      (e)->n_bits = (field_n_bits);                                           \
+    }                                                                         \
+  while (0)
 
 /* Initialize edit for byte aligned fields. */
-#define pg_edit_init(e,type,field) \
-   pg_edit_init_bitfield(e,type,field,0,STRUCT_BITS_OF(type,field))
+#define pg_edit_init(e, type, field)                                          \
+  pg_edit_init_bitfield (e, type, field, 0, STRUCT_BITS_OF (type, field))
 
 static inline uword
-pg_edit_n_alloc_bytes (pg_edit_t * e)
+pg_edit_n_alloc_bytes (pg_edit_t *e)
 {
   int i0, i1, n_bytes, n_bits_left;
 
@@ -142,22 +144,22 @@ pg_edit_n_alloc_bytes (pg_edit_t * e)
 }
 
 static inline void
-pg_edit_alloc_value (pg_edit_t * e, int i)
+pg_edit_alloc_value (pg_edit_t *e, int i)
 {
   vec_validate (e->values[i], e->lsb_bit_offset / BITS (u8));
 }
 
-extern void pg_edit_set_value (pg_edit_t * e, int hi_or_lo, u64 value);
+extern void pg_edit_set_value (pg_edit_t *e, int hi_or_lo, u64 value);
 
 static inline void
-pg_edit_set_fixed (pg_edit_t * e, u64 value)
+pg_edit_set_fixed (pg_edit_t *e, u64 value)
 {
   e->type = PG_EDIT_FIXED;
   pg_edit_set_value (e, PG_EDIT_LO, value);
 }
 
 static inline void
-pg_edit_copy_type_and_values (pg_edit_t * dst, pg_edit_t * src)
+pg_edit_copy_type_and_values (pg_edit_t *dst, pg_edit_t *src)
 {
   int i;
   dst->type = src->type;
@@ -170,7 +172,7 @@ pg_edit_copy_type_and_values (pg_edit_t * dst, pg_edit_t * src)
 }
 
 static inline u64
-pg_edit_get_value (pg_edit_t * e, int hi_or_lo)
+pg_edit_get_value (pg_edit_t *e, int hi_or_lo)
 {
   u64 r = 0;
   int i, n;
@@ -188,16 +190,16 @@ pg_edit_get_value (pg_edit_t * e, int hi_or_lo)
 }
 
 static inline uword
-pg_edit_is_fixed_with_value (pg_edit_t * e, u64 value)
+pg_edit_is_fixed_with_value (pg_edit_t *e, u64 value)
 {
-  return (e->type == PG_EDIT_FIXED
-	  && value == pg_edit_get_value (e, PG_EDIT_LO));
+  return (e->type == PG_EDIT_FIXED &&
+	  value == pg_edit_get_value (e, PG_EDIT_LO));
 }
 
-uword unformat_pg_edit (unformat_input_t * input, va_list * args);
-uword unformat_pg_payload (unformat_input_t * input, va_list * args);
-uword unformat_pg_number (unformat_input_t * input, va_list * args);
-uword unformat_pg_interface (unformat_input_t * input, va_list * args);
+uword unformat_pg_edit (unformat_input_t *input, va_list *args);
+uword unformat_pg_payload (unformat_input_t *input, va_list *args);
+uword unformat_pg_number (unformat_input_t *input, va_list *args);
+uword unformat_pg_interface (unformat_input_t *input, va_list *args);
 
 #endif /* included_packet_generator_pg_edit_h */
 

@@ -45,8 +45,8 @@ nat_proto_to_ip_proto (nat_protocol_t nat_proto)
     [NAT_PROTOCOL_ICMP] = IP_PROTOCOL_ICMP,
   };
 
-  ASSERT (NAT_PROTOCOL_OTHER == nat_proto || NAT_PROTOCOL_TCP == nat_proto
-	  || NAT_PROTOCOL_UDP == nat_proto || NAT_PROTOCOL_ICMP == nat_proto);
+  ASSERT (NAT_PROTOCOL_OTHER == nat_proto || NAT_PROTOCOL_TCP == nat_proto ||
+	  NAT_PROTOCOL_UDP == nat_proto || NAT_PROTOCOL_ICMP == nat_proto);
 
   return lookup_table[nat_proto];
 }

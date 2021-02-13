@@ -22,7 +22,7 @@
 #define QUICLY_EPOCH_1RTT 3
 
 extern quic_main_t quic_main;
-extern quic_ctx_t *quic_get_conn_ctx (quicly_conn_t * conn);
+extern quic_ctx_t *quic_get_conn_ctx (quicly_conn_t *conn);
 vnet_crypto_main_t *cm = &crypto_main;
 
 struct cipher_context_t
@@ -142,7 +142,7 @@ quic_crypto_aead_decrypt (quic_ctx_t *qctx, ptls_aead_context_t *_ctx,
 }
 
 void
-quic_crypto_decrypt_packet (quic_ctx_t * qctx, quic_rx_packet_ctx_t * pctx)
+quic_crypto_decrypt_packet (quic_ctx_t *qctx, quic_rx_packet_ctx_t *pctx)
 {
   ptls_cipher_context_t *header_protection = NULL;
   ptls_aead_context_t *aead = NULL;
@@ -171,28 +171,26 @@ quic_crypto_decrypt_packet (quic_ctx_t * qctx, quic_rx_packet_ctx_t * pctx)
   /* decipher the header protection, as well as obtaining pnbits, pnlen */
   if (encrypted_len < header_protection->algo->iv_size + QUICLY_MAX_PN_SIZE)
     return;
-  ptls_cipher_init (header_protection,
-		    pctx->packet.octets.base + pctx->packet.encrypted_off +
-		    QUICLY_MAX_PN_SIZE);
+  ptls_cipher_init (header_protection, pctx->packet.octets.base +
+					 pctx->packet.encrypted_off +
+					 QUICLY_MAX_PN_SIZE);
   ptls_cipher_encrypt (header_protection, hpmask, hpmask, sizeof (hpmask));
   pctx->packet.octets.base[0] ^=
-    hpmask[0] & (QUICLY_PACKET_IS_LONG_HEADER (pctx->packet.octets.base[0]) ?
-		 0xf : 0x1f);
+    hpmask[0] &
+    (QUICLY_PACKET_IS_LONG_HEADER (pctx->packet.octets.base[0]) ? 0xf : 0x1f);
   pnlen = (pctx->packet.octets.base[0] & 0x3) + 1;
   for (i = 0; i != pnlen; ++i)
     {
       pctx->packet.octets.base[pctx->packet.encrypted_off + i] ^=
 	hpmask[i + 1];
-      pnbits =
-	(pnbits << 8) | pctx->packet.octets.base[pctx->packet.encrypted_off +
-						 i];
+      pnbits = (pnbits << 8) |
+	       pctx->packet.octets.base[pctx->packet.encrypted_off + i];
     }
 
   size_t aead_off = pctx->packet.encrypted_off + pnlen;
 
-  pn =
-    quicly_determine_packet_number (pnbits, pnlen * 8,
-				    next_expected_packet_number);
+  pn = quicly_determine_packet_number (pnbits, pnlen * 8,
+				       next_expected_packet_number);
 
   int key_phase_bit =
     (pctx->packet.octets.base[0] & QUICLY_KEY_PHASE_BIT) != 0;
@@ -202,7 +200,7 @@ quic_crypto_decrypt_packet (quic_ctx_t * qctx, quic_rx_packet_ctx_t * pctx)
       pctx->packet.octets.base[0] ^=
 	hpmask[0] &
 	(QUICLY_PACKET_IS_LONG_HEADER (pctx->packet.octets.base[0]) ? 0xf :
-	 0x1f);
+								      0x1f);
       for (i = 0; i != pnlen; ++i)
 	{
 	  pctx->packet.octets.base[pctx->packet.encrypted_off + i] ^=
@@ -217,8 +215,8 @@ quic_crypto_decrypt_packet (quic_ctx_t * qctx, quic_rx_packet_ctx_t * pctx)
 	 pctx->packet.octets.len - aead_off, pn, pctx->packet.octets.base,
 	 aead_off)) == SIZE_MAX)
     {
-      fprintf (stderr,
-	       "%s: aead decryption failure (pn: %d)\n", __FUNCTION__, pn);
+      fprintf (stderr, "%s: aead decryption failure (pn: %d)\n", __FUNCTION__,
+	       pn);
       return;
     }
 
@@ -335,14 +333,14 @@ quic_crypto_cipher_setup_crypto (ptls_cipher_context_t *_ctx, int is_enc,
 }
 
 static int
-quic_crypto_aes128ctr_setup_crypto (ptls_cipher_context_t * ctx, int is_enc,
+quic_crypto_aes128ctr_setup_crypto (ptls_cipher_context_t *ctx, int is_enc,
 				    const void *key)
 {
   return quic_crypto_cipher_setup_crypto (ctx, 1, key, EVP_aes_128_ctr ());
 }
 
 static int
-quic_crypto_aes256ctr_setup_crypto (ptls_cipher_context_t * ctx, int is_enc,
+quic_crypto_aes256ctr_setup_crypto (ptls_cipher_context_t *ctx, int is_enc,
 				    const void *key)
 {
   return quic_crypto_cipher_setup_crypto (ctx, 1, key, EVP_aes_256_ctr ());
@@ -383,8 +381,8 @@ quic_crypto_aead_setup_crypto (ptls_aead_context_t *_ctx, int is_enc,
       clib_memcpy (ctx->static_iv, iv, ctx->super.algo->iv_size);
 
       clib_rwlock_writer_lock (&quic_main.crypto_keys_quic_rw_lock);
-      ctx->key_index = vnet_crypto_key_add (vm, algo,
-					    (u8 *) key, _ctx->algo->key_size);
+      ctx->key_index =
+	vnet_crypto_key_add (vm, algo, (u8 *) key, _ctx->algo->key_size);
       clib_rwlock_writer_unlock (&quic_main.crypto_keys_quic_rw_lock);
     }
 
@@ -491,13 +489,13 @@ ptls_aead_algorithm_t quic_crypto_aes256gcm = {
 };
 
 ptls_cipher_suite_t quic_crypto_aes128gcmsha256 = {
-  PTLS_CIPHER_SUITE_AES_128_GCM_SHA256,
-  &quic_crypto_aes128gcm, &ptls_openssl_sha256
+  PTLS_CIPHER_SUITE_AES_128_GCM_SHA256, &quic_crypto_aes128gcm,
+  &ptls_openssl_sha256
 };
 
 ptls_cipher_suite_t quic_crypto_aes256gcmsha384 = {
-  PTLS_CIPHER_SUITE_AES_256_GCM_SHA384,
-  &quic_crypto_aes256gcm, &ptls_openssl_sha384
+  PTLS_CIPHER_SUITE_AES_256_GCM_SHA384, &quic_crypto_aes256gcm,
+  &ptls_openssl_sha384
 };
 
 ptls_cipher_suite_t *quic_crypto_cipher_suites[] = {

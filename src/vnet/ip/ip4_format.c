@@ -41,7 +41,7 @@
 
 /* Format an IP4 address. */
 u8 *
-format_ip4_address (u8 * s, va_list * args)
+format_ip4_address (u8 *s, va_list *args)
 {
   u8 *a = va_arg (*args, u8 *);
   return format (s, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
@@ -49,7 +49,7 @@ format_ip4_address (u8 * s, va_list * args)
 
 /* Format an IP4 route destination and length. */
 u8 *
-format_ip4_address_and_length (u8 * s, va_list * args)
+format_ip4_address_and_length (u8 *s, va_list *args)
 {
   u8 *a = va_arg (*args, u8 *);
   u8 l = va_arg (*args, u32);
@@ -57,7 +57,7 @@ format_ip4_address_and_length (u8 * s, va_list * args)
 }
 
 u8 *
-format_ip4_address_and_mask (u8 * s, va_list * args)
+format_ip4_address_and_mask (u8 *s, va_list *args)
 {
   ip4_address_and_mask_t *am = va_arg (*args, ip4_address_and_mask_t *);
 
@@ -67,13 +67,13 @@ format_ip4_address_and_mask (u8 * s, va_list * args)
   if (am->mask.as_u32 == ~0)
     return format (s, "%U", format_ip4_address, &am->addr);
 
-  return format (s, "%U/%U", format_ip4_address, &am->addr,
-		 format_ip4_address, &am->mask);
+  return format (s, "%U/%U", format_ip4_address, &am->addr, format_ip4_address,
+		 &am->mask);
 }
 
 /* Parse an IP4 address %d.%d.%d.%d. */
 uword
-unformat_ip4_address (unformat_input_t * input, va_list * args)
+unformat_ip4_address (unformat_input_t *input, va_list *args)
 {
   u8 *result = va_arg (*args, u8 *);
   unsigned a[4];
@@ -93,7 +93,7 @@ unformat_ip4_address (unformat_input_t * input, va_list * args)
 }
 
 uword
-unformat_ip4_address_and_mask (unformat_input_t * input, va_list * args)
+unformat_ip4_address_and_mask (unformat_input_t *input, va_list *args)
 {
   ip4_address_and_mask_t *am = va_arg (*args, ip4_address_and_mask_t *);
   u32 addr = 0, mask = 0;
@@ -115,7 +115,7 @@ unformat_ip4_address_and_mask (unformat_input_t * input, va_list * args)
 
 /* Format an IP4 header. */
 u8 *
-format_ip4_header (u8 * s, va_list * args)
+format_ip4_header (u8 *s, va_list *args)
 {
   ip4_header_t *ip = va_arg (*args, ip4_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
@@ -132,40 +132,35 @@ format_ip4_header (u8 * s, va_list * args)
   ip_version = (ip->ip_version_and_header_length >> 4);
   header_bytes = (ip->ip_version_and_header_length & 0xf) * sizeof (u32);
 
-  s = format (s, "%U: %U -> %U",
-	      format_ip_protocol, ip->protocol,
-	      format_ip4_address, ip->src_address.data,
-	      format_ip4_address, ip->dst_address.data);
+  s = format (s, "%U: %U -> %U", format_ip_protocol, ip->protocol,
+	      format_ip4_address, ip->src_address.data, format_ip4_address,
+	      ip->dst_address.data);
 
   /* Show IP version and header length only with unexpected values. */
   if (ip_version != 4 || header_bytes != sizeof (ip4_header_t))
-    s = format (s, "\n%Uversion %d, header length %d",
-		format_white_space, indent, ip_version, header_bytes);
+    s = format (s, "\n%Uversion %d, header length %d", format_white_space,
+		indent, ip_version, header_bytes);
 
   s = format (s, "\n%Utos 0x%02x, ttl %d, length %d, checksum 0x%04x",
-	      format_white_space, indent,
-	      ip->tos, ip->ttl,
+	      format_white_space, indent, ip->tos, ip->ttl,
 	      clib_net_to_host_u16 (ip->length),
 	      clib_net_to_host_u16 (ip->checksum));
 
   /* Check and report invalid checksums. */
   {
     if (!ip4_header_checksum_is_valid (ip))
-      s =
-	format (s, " (should be 0x%04x)",
-		clib_net_to_host_u16 (ip4_header_checksum (ip)));
+      s = format (s, " (should be 0x%04x)",
+		  clib_net_to_host_u16 (ip4_header_checksum (ip)));
   }
 
-  s = format (s, " dscp %U ecn %U",
-	      format_ip_dscp, ip4_header_get_dscp (ip),
+  s = format (s, " dscp %U ecn %U", format_ip_dscp, ip4_header_get_dscp (ip),
 	      format_ip_ecn, ip4_header_get_ecn (ip));
 
   {
     u32 f = clib_net_to_host_u16 (ip->flags_and_fragment_offset);
     u32 o;
 
-    s = format (s, "\n%Ufragment id 0x%04x",
-		format_white_space, indent,
+    s = format (s, "\n%Ufragment id 0x%04x", format_white_space, indent,
 		clib_net_to_host_u16 (ip->fragment_id));
 
     /* Fragment offset. */
@@ -177,10 +172,12 @@ format_ip4_header (u8 * s, va_list * args)
     if (f != 0)
       {
 	s = format (s, ", flags ");
-#define _(l) if (f & IP4_HEADER_FLAG_##l) s = format (s, #l);
-	_(MORE_FRAGMENTS);
-	_(DONT_FRAGMENT);
-	_(CONGESTION);
+#define _(l)                                                                  \
+  if (f & IP4_HEADER_FLAG_##l)                                                \
+    s = format (s, #l);
+	_ (MORE_FRAGMENTS);
+	_ (DONT_FRAGMENT);
+	_ (CONGESTION);
 #undef _
       }
     /* Fragment packet but not the first. */
@@ -195,8 +192,8 @@ format_ip4_header (u8 * s, va_list * args)
       ip_protocol_info_t *pi = ip_get_protocol_info (im, ip->protocol);
 
       if (pi && pi->format_header)
-	s = format (s, "\n%U%U",
-		    format_white_space, indent - 2, pi->format_header,
+	s = format (s, "\n%U%U", format_white_space, indent - 2,
+		    pi->format_header,
 		    /* next protocol header */ (void *) ip + header_bytes,
 		    max_header_bytes - header_bytes);
     }
@@ -206,7 +203,7 @@ format_ip4_header (u8 * s, va_list * args)
 
 /* Parse an IP4 header. */
 uword
-unformat_ip4_header (unformat_input_t * input, va_list * args)
+unformat_ip4_header (unformat_input_t *input, va_list *args)
 {
   u8 **result = va_arg (*args, u8 **);
   ip4_header_t *ip;
@@ -224,10 +221,9 @@ unformat_ip4_header (unformat_input_t * input, va_list * args)
   clib_memset (ip, 0, sizeof (ip[0]));
   ip->ip_version_and_header_length = IP4_VERSION_AND_HEADER_LENGTH_NO_OPTIONS;
 
-  if (!unformat (input, "%U: %U -> %U",
-		 unformat_ip_protocol, &ip->protocol,
-		 unformat_ip4_address, &ip->src_address,
-		 unformat_ip4_address, &ip->dst_address))
+  if (!unformat (input, "%U: %U -> %U", unformat_ip_protocol, &ip->protocol,
+		 unformat_ip4_address, &ip->src_address, unformat_ip4_address,
+		 &ip->dst_address))
     return 0;
 
   /* Parse options. */

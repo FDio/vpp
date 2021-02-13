@@ -41,7 +41,7 @@ typedef struct
 static ioam_export_test_main_t ioam_export_test_main;
 
 static int
-api_ioam_export_ip6_enable_disable (vat_main_t * vam)
+api_ioam_export_ip6_enable_disable (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   int is_disable = 0;
@@ -58,11 +58,11 @@ api_ioam_export_ip6_enable_disable (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M(IOAM_EXPORT_IP6_ENABLE_DISABLE, mp);
+  M (IOAM_EXPORT_IP6_ENABLE_DISABLE, mp);
   mp->is_disable = is_disable;
 
   /* send it... */
-  S(mp);
+  S (mp);
 
   /* Wait for a reply... */
   W (ret);

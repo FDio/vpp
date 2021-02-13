@@ -40,17 +40,17 @@
 
 #include <vppinfra/clib.h>
 
-#if (__BYTE_ORDER__)==( __ORDER_LITTLE_ENDIAN__)
-#define CLIB_ARCH_IS_BIG_ENDIAN (0)
+#if (__BYTE_ORDER__) == (__ORDER_LITTLE_ENDIAN__)
+#define CLIB_ARCH_IS_BIG_ENDIAN	   (0)
 #define CLIB_ARCH_IS_LITTLE_ENDIAN (1)
 #else
 /* Default is big endian. */
-#define CLIB_ARCH_IS_BIG_ENDIAN (1)
+#define CLIB_ARCH_IS_BIG_ENDIAN	   (1)
 #define CLIB_ARCH_IS_LITTLE_ENDIAN (0)
 #endif
 
 /* Big/little endian. */
-#define clib_arch_is_big_endian    CLIB_ARCH_IS_BIG_ENDIAN
+#define clib_arch_is_big_endian	   CLIB_ARCH_IS_BIG_ENDIAN
 #define clib_arch_is_little_endian CLIB_ARCH_IS_LITTLE_ENDIAN
 
 always_inline u16
@@ -89,96 +89,122 @@ clib_byte_swap_i64 (i64 x)
   return clib_byte_swap_u64 (x);
 }
 
-#define _(sex,type)						\
-/* HOST -> SEX */						\
-always_inline type						\
-clib_host_to_##sex##_##type (type x)				\
-{								\
-  if (! clib_arch_is_##sex##_endian)				\
-    x = clib_byte_swap_##type (x);				\
-  return x;							\
-}								\
-								\
-always_inline type						\
-clib_host_to_##sex##_mem_##type (type * x)			\
-{								\
-  type v = x[0];						\
-  return clib_host_to_##sex##_##type (v);			\
-}								\
-								\
-always_inline type						\
-clib_host_to_##sex##_unaligned_mem_##type (type * x)		\
-{								\
-  type v = clib_mem_unaligned (x, type);			\
-  return clib_host_to_##sex##_##type (v);			\
-}								\
-								\
-/* SEX -> HOST */						\
-always_inline type						\
-clib_##sex##_to_host_##type (type x)				\
-{ return clib_host_to_##sex##_##type (x); }			\
-								\
-always_inline type						\
-clib_##sex##_to_host_mem_##type (type * x)			\
-{ return clib_host_to_##sex##_mem_##type (x); }			\
-								\
-always_inline type						\
-clib_##sex##_to_host_unaligned_mem_##type (type * x)		\
-{ return clib_host_to_##sex##_unaligned_mem_##type (x); }
+#define _(sex, type)                                                          \
+  /* HOST -> SEX */                                                           \
+  always_inline type clib_host_to_##sex##_##type (type x)                     \
+  {                                                                           \
+    if (!clib_arch_is_##sex##_endian)                                         \
+      x = clib_byte_swap_##type (x);                                          \
+    return x;                                                                 \
+  }                                                                           \
+                                                                              \
+  always_inline type clib_host_to_##sex##_mem_##type (type *x)                \
+  {                                                                           \
+    type v = x[0];                                                            \
+    return clib_host_to_##sex##_##type (v);                                   \
+  }                                                                           \
+                                                                              \
+  always_inline type clib_host_to_##sex##_unaligned_mem_##type (type *x)      \
+  {                                                                           \
+    type v = clib_mem_unaligned (x, type);                                    \
+    return clib_host_to_##sex##_##type (v);                                   \
+  }                                                                           \
+                                                                              \
+  /* SEX -> HOST */                                                           \
+  always_inline type clib_##sex##_to_host_##type (type x)                     \
+  {                                                                           \
+    return clib_host_to_##sex##_##type (x);                                   \
+  }                                                                           \
+                                                                              \
+  always_inline type clib_##sex##_to_host_mem_##type (type *x)                \
+  {                                                                           \
+    return clib_host_to_##sex##_mem_##type (x);                               \
+  }                                                                           \
+                                                                              \
+  always_inline type clib_##sex##_to_host_unaligned_mem_##type (type *x)      \
+  {                                                                           \
+    return clib_host_to_##sex##_unaligned_mem_##type (x);                     \
+  }
 
 #ifndef __cplusplus
-_(little, u16)
-_(little, u32)
-_(little, u64)
-_(little, i16)
-_(little, i32)
-_(little, i64)
-_(big, u16) _(big, u32) _(big, u64) _(big, i16) _(big, i32) _(big, i64)
+_ (little, u16)
+_ (little, u32)
+_ (little, u64)
+_ (little, i16)
+_ (little, i32)
+_ (little, i64)
+_ (big, u16)
+_ (big, u32)
+_ (big, u64)
+_ (big, i16)
+_ (big, i32)
+_ (big, i64)
 #endif
 #undef _
 /* Network "net" alias for "big". */
-#define _(type)						\
-always_inline type					\
-clib_net_to_host_##type (type x)			\
-{ return clib_big_to_host_##type (x); }			\
-							\
-always_inline type					\
-clib_net_to_host_mem_##type (type * x)			\
-{ return clib_big_to_host_mem_##type (x); }		\
-							\
-always_inline type					\
-clib_net_to_host_unaligned_mem_##type (type * x)	\
-{ return clib_big_to_host_unaligned_mem_##type (x); }	\
-							\
-always_inline type					\
-clib_host_to_net_##type (type x)			\
-{ return clib_host_to_big_##type (x); }			\
-							\
-always_inline type					\
-clib_host_to_net_mem_##type (type * x)			\
-{ return clib_host_to_big_mem_##type (x); }		\
-							\
-always_inline type					\
-clib_host_to_net_unaligned_mem_##type (type * x)	\
-{ return clib_host_to_big_unaligned_mem_##type (x); }
+#define _(type)                                                               \
+  always_inline type clib_net_to_host_##type (type x)                         \
+  {                                                                           \
+    return clib_big_to_host_##type (x);                                       \
+  }                                                                           \
+                                                                              \
+  always_inline type clib_net_to_host_mem_##type (type *x)                    \
+  {                                                                           \
+    return clib_big_to_host_mem_##type (x);                                   \
+  }                                                                           \
+                                                                              \
+  always_inline type clib_net_to_host_unaligned_mem_##type (type *x)          \
+  {                                                                           \
+    return clib_big_to_host_unaligned_mem_##type (x);                         \
+  }                                                                           \
+                                                                              \
+  always_inline type clib_host_to_net_##type (type x)                         \
+  {                                                                           \
+    return clib_host_to_big_##type (x);                                       \
+  }                                                                           \
+                                                                              \
+  always_inline type clib_host_to_net_mem_##type (type *x)                    \
+  {                                                                           \
+    return clib_host_to_big_mem_##type (x);                                   \
+  }                                                                           \
+                                                                              \
+  always_inline type clib_host_to_net_unaligned_mem_##type (type *x)          \
+  {                                                                           \
+    return clib_host_to_big_unaligned_mem_##type (x);                         \
+  }
 #ifndef __cplusplus
-  _(u16);
-_(i16);
-_(u32);
-_(i32);
-_(u64);
-_(i64);
+_ (u16);
+_ (i16);
+_ (u32);
+_ (i32);
+_ (u64);
+_ (i64);
 #endif
 
 #undef _
 
 /* Dummy endian swap functions for IEEE floating-point numbers */
-/* *INDENT-OFF* */
-always_inline f64 clib_net_to_host_f64 (f64 x) { return x; }
-always_inline f64 clib_host_to_net_f64 (f64 x) { return x; }
-always_inline f32 clib_net_to_host_f32 (f32 x) { return x; }
-always_inline f32 clib_host_to_net_f32 (f32 x) { return x; }
-/* *INDENT-ON* */
+
+always_inline f64
+clib_net_to_host_f64 (f64 x)
+{
+  return x;
+}
+always_inline f64
+clib_host_to_net_f64 (f64 x)
+{
+  return x;
+}
+always_inline f32
+clib_net_to_host_f32 (f32 x)
+{
+  return x;
+}
+always_inline f32
+clib_host_to_net_f32 (f32 x)
+{
+  return x;
+}
 
 #endif /* included_clib_byte_order_h */
 

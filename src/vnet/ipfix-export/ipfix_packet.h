@@ -35,7 +35,6 @@ version_length (u16 length)
   return clib_host_to_net_u32 (0x000a0000 | length);
 }
 
-
 /*
  *   The Field Specifier format is shown in Figure G.
  *

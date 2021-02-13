@@ -23,18 +23,20 @@
 #include <vppinfra/byte_order.h>
 #include <vppinfra/asm_x86.h>
 
-#define foreach_x86_gp_register			\
-  _  (AX)  _ (CX)  _ (DX)  _ (BX)		\
-  _  (SP)  _ (BP)  _ (SI)  _ (DI)
+#define foreach_x86_gp_register                                               \
+  _ (AX) _ (CX) _ (DX) _ (BX) _ (SP) _ (BP) _ (SI) _ (DI)
 
-typedef enum {
+typedef enum
+{
 #define _(r) X86_INSN_GP_REG_##r,
   foreach_x86_gp_register
 #undef _
 } x86_insn_gp_register_t;
 
-typedef union {
-  struct {
+typedef union
+{
+  struct
+  {
     u8 rm : 3;
     u8 reg : 3;
     u8 mode : 2;
@@ -42,8 +44,10 @@ typedef union {
   u8 byte;
 } x86_insn_modrm_byte_t;
 
-typedef union {
-  struct {
+typedef union
+{
+  struct
+  {
     u8 base : 3;
     u8 index : 3;
     u8 log2_scale : 2;
@@ -52,20 +56,23 @@ typedef union {
 } x86_insn_sib_byte_t;
 
 always_inline uword
-x86_insn_has_modrm_byte (x86_insn_t * insn)
+x86_insn_has_modrm_byte (x86_insn_t *insn)
 {
   int i;
   for (i = 0; i < ARRAY_LEN (insn->operands); i++)
     switch (insn->operands[i].code)
       {
-      case 'G': case 'E': case 'M': case 'R':
+      case 'G':
+      case 'E':
+      case 'M':
+      case 'R':
 	return 1;
       }
   return 0;
 }
 
 always_inline uword
-x86_insn_immediate_type (x86_insn_t * insn)
+x86_insn_immediate_type (x86_insn_t *insn)
 {
   int i;
   for (i = 0; i < ARRAY_LEN (insn->operands); i++)
@@ -80,75 +87,79 @@ x86_insn_immediate_type (x86_insn_t * insn)
 }
 
 /* Opcode extension in modrm byte reg field. */
-#define foreach_x86_insn_modrm_reg_group		\
-  _ (1) _ (1a) _ (2) _ (3) _ (4) _ (5) _ (6) _ (7)	\
-  _ (8) _ (9) _ (10) _ (11) _ (12) _ (13) _ (14)	\
-  _ (15) _ (16) _ (p)
+#define foreach_x86_insn_modrm_reg_group                                      \
+  _ (1)                                                                       \
+  _ (1a)                                                                      \
+  _ (2)                                                                       \
+  _ (3)                                                                       \
+  _ (4)                                                                       \
+  _ (5)                                                                       \
+  _ (6)                                                                       \
+  _ (7) _ (8) _ (9) _ (10) _ (11) _ (12) _ (13) _ (14) _ (15) _ (16) _ (p)
 
-#define foreach_x86_insn_sse_group				\
-  _ (10) _ (28) _ (50) _ (58) _ (60) _ (68) _ (70) _ (78)	\
-  _ (c0) _ (d0) _ (d8) _ (e0) _ (e8) _ (f0) _ (f8)
+#define foreach_x86_insn_sse_group                                            \
+  _ (10)                                                                      \
+  _ (28)                                                                      \
+  _ (50)                                                                      \
+  _ (58)                                                                      \
+  _ (60) _ (68) _ (70) _ (78) _ (c0) _ (d0) _ (d8) _ (e0) _ (e8) _ (f0) _ (f8)
 
-enum {
+enum
+{
 #define _(x) X86_INSN_MODRM_REG_GROUP_##x,
   foreach_x86_insn_modrm_reg_group
 #undef _
 #define _(x) X86_INSN_SSE_GROUP_##x,
-  foreach_x86_insn_sse_group
+    foreach_x86_insn_sse_group
 #undef _
 };
 
-enum {
-#define _(x)								\
-  X86_INSN_FLAG_MODRM_REG_GROUP_##x					\
-  = X86_INSN_FLAG_SET_MODRM_REG_GROUP (1 + X86_INSN_MODRM_REG_GROUP_##x),
+enum
+{
+#define _(x)                                                                  \
+  X86_INSN_FLAG_MODRM_REG_GROUP_##x =                                         \
+    X86_INSN_FLAG_SET_MODRM_REG_GROUP (1 + X86_INSN_MODRM_REG_GROUP_##x),
   foreach_x86_insn_modrm_reg_group
 #undef _
 
-#define _(x)							\
-  X86_INSN_FLAG_SSE_GROUP_##x					\
-  = X86_INSN_FLAG_SET_SSE_GROUP (1 + X86_INSN_SSE_GROUP_##x),
-  foreach_x86_insn_sse_group
+#define _(x)                                                                  \
+  X86_INSN_FLAG_SSE_GROUP_##x =                                               \
+    X86_INSN_FLAG_SET_SSE_GROUP (1 + X86_INSN_SSE_GROUP_##x),
+    foreach_x86_insn_sse_group
 #undef _
 };
 
-#define foreach_x86_gp_reg			\
-  _ (AX) _ (CX) _ (DX) _ (BX)			\
-  _ (SP) _ (BP) _ (SI) _ (DI)
+#define foreach_x86_gp_reg                                                    \
+  _ (AX) _ (CX) _ (DX) _ (BX) _ (SP) _ (BP) _ (SI) _ (DI)
 
-#define foreach_x86_condition			\
-  _ (o) _ (no)  _ (b) _ (nb)			\
-  _ (z) _ (nz) _ (be) _ (nbe)			\
-  _ (s) _ (ns)  _ (p) _ (np)			\
-  _ (l) _ (nl) _ (le) _ (nle)
+#define foreach_x86_condition                                                 \
+  _ (o)                                                                       \
+  _ (no)                                                                      \
+  _ (b)                                                                       \
+  _ (nb)                                                                      \
+  _ (z)                                                                       \
+  _ (nz) _ (be) _ (nbe) _ (s) _ (ns) _ (p) _ (np) _ (l) _ (nl) _ (le) _ (nle)
 
-#define _3f(x,f,o0,o1,o2)			\
-{						\
-  .name = #x,					\
-  .flags = (f),					\
-  .operands[0] = { .data = #o0 },		\
-  .operands[1] = { .data = #o1 },		\
-  .operands[2] = { .data = #o2 },		\
-}
+#define _3f(x, f, o0, o1, o2)                                                 \
+  {                                                                           \
+    .name = #x, .flags = (f), .operands[0] = { .data = #o0 },                 \
+    .operands[1] = { .data = #o1 }, .operands[2] = { .data = #o2 },           \
+  }
 
-#define _2f(x,f,o0,o1)	_3f(x,f,o0,o1,__)
-#define _1f(x,f,o0)	_2f(x,f,o0,__)
-#define _0f(x,f)	_1f(x,f,__)
+#define _2f(x, f, o0, o1) _3f (x, f, o0, o1, __)
+#define _1f(x, f, o0)	  _2f (x, f, o0, __)
+#define _0f(x, f)	  _1f (x, f, __)
 
-#define _3(x,o0,o1,o2)	_3f(x,0,o0,o1,o2)
-#define _2(x,o0,o1)	_2f(x,0,o0,o1)
-#define _1(x,o0)	_1f(x,0,o0)
-#define _0(x)		_0f(x,0)
+#define _3(x, o0, o1, o2) _3f (x, 0, o0, o1, o2)
+#define _2(x, o0, o1)	  _2f (x, 0, o0, o1)
+#define _1(x, o0)	  _1f (x, 0, o0)
+#define _0(x)		  _0f (x, 0)
 
 static x86_insn_t x86_insns_one_byte[256] = {
 
-#define _(x)					\
-  _2 (x, Eb, Gb),				\
-  _2 (x, Ev, Gv),				\
-  _2 (x, Gb, Eb),				\
-  _2 (x, Gv, Ev),				\
-  _2 (x, AL, Ib),				\
-  _2 (x, AX, Iz)
+#define _(x)                                                                  \
+  _2 (x, Eb, Gb), _2 (x, Ev, Gv), _2 (x, Gb, Eb), _2 (x, Gv, Ev),             \
+    _2 (x, AL, Ib), _2 (x, AX, Iz)
 
   /* 0x00 */
   _ (add),
@@ -184,24 +195,24 @@ static x86_insn_t x86_insns_one_byte[256] = {
 
 #undef _
 
-  /* 0x40 */
+/* 0x40 */
 #define _(r) _1 (inc, r),
   foreach_x86_gp_reg
 #undef _
 #define _(r) _1 (dec, r),
-  foreach_x86_gp_reg
+    foreach_x86_gp_reg
 #undef _
 
-  /* 0x50 */
+/* 0x50 */
 #define _(r) _1f (push, X86_INSN_FLAG_DEFAULT_64_BIT, r),
-  foreach_x86_gp_reg
+      foreach_x86_gp_reg
 #undef _
 #define _(r) _1f (pop, X86_INSN_FLAG_DEFAULT_64_BIT, r),
-  foreach_x86_gp_reg
+	foreach_x86_gp_reg
 #undef _
 
-  /* 0x60 */
-  _0 (pusha),
+	  /* 0x60 */
+	  _0 (pusha),
   _0 (popa),
   _2 (bound, Gv, Ma),
   _2 (movsxd, Gv, Ed),
@@ -218,13 +229,13 @@ static x86_insn_t x86_insns_one_byte[256] = {
   _1 (outsb, DX),
   _1 (outsw, DX),
 
-  /* 0x70 */
+/* 0x70 */
 #define _(x) _1 (j##x, Jb),
   foreach_x86_condition
 #undef _
 
-  /* 0x80 */
-  _2f (modrm_group_1, X86_INSN_FLAG_MODRM_REG_GROUP_1, Eb, Ib),
+    /* 0x80 */
+    _2f (modrm_group_1, X86_INSN_FLAG_MODRM_REG_GROUP_1, Eb, Ib),
   _2f (modrm_group_1, X86_INSN_FLAG_MODRM_REG_GROUP_1, Ev, Iz),
   _2f (modrm_group_1, X86_INSN_FLAG_MODRM_REG_GROUP_1, Eb, Ib),
   _2f (modrm_group_1, X86_INSN_FLAG_MODRM_REG_GROUP_1, Ev, Ib),
@@ -290,8 +301,8 @@ static x86_insn_t x86_insns_one_byte[256] = {
   foreach_x86_gp_reg
 #undef _
 
-  /* 0xc0 */
-  _2f (modrm_group_2, X86_INSN_FLAG_MODRM_REG_GROUP_2, Eb, Ib),
+    /* 0xc0 */
+    _2f (modrm_group_2, X86_INSN_FLAG_MODRM_REG_GROUP_2, Eb, Ib),
   _2f (modrm_group_2, X86_INSN_FLAG_MODRM_REG_GROUP_2, Ev, Ib),
   _1 (ret, Iw),
   _0 (ret),
@@ -337,7 +348,7 @@ static x86_insn_t x86_insns_one_byte[256] = {
   _2 (out, Ib, AL),
   _2 (out, Ib, AX),
   _1f (call, X86_INSN_FLAG_DEFAULT_64_BIT, Jz),
-  _1f ( jmp, X86_INSN_FLAG_DEFAULT_64_BIT, Jz),
+  _1f (jmp, X86_INSN_FLAG_DEFAULT_64_BIT, Jz),
   _1 (jmp, Ap),
   _1 (jmp, Jb),
   _2 (in, AL, DX),
@@ -437,13 +448,13 @@ static x86_insn_t x86_insns_two_byte[256] = {
   _0 (bad),
   _0 (bad),
 
-  /* 0x40 */
+/* 0x40 */
 #define _(x) _2 (cmov##x, Gv, Ev),
   foreach_x86_condition
 #undef _
 
-  /* 0x50 */
-  _2f (movmskps, X86_INSN_FLAG_SSE_GROUP_50, Gd, Rx),
+    /* 0x50 */
+    _2f (movmskps, X86_INSN_FLAG_SSE_GROUP_50, Gd, Rx),
   _2f (sqrtps, X86_INSN_FLAG_SSE_GROUP_50, Gx, Ex),
   _2f (rsqrtps, X86_INSN_FLAG_SSE_GROUP_50, Gx, Ex),
   _2f (rcpps, X86_INSN_FLAG_SSE_GROUP_50, Gx, Ex),
@@ -496,18 +507,18 @@ static x86_insn_t x86_insns_two_byte[256] = {
   _2f (movd, X86_INSN_FLAG_SSE_GROUP_78, Em, Gm),
   _2f (movq, X86_INSN_FLAG_SSE_GROUP_78, Em, Gm),
 
-  /* 0x80 */
+/* 0x80 */
 #define _(x) _1 (jmp##x, Jz),
   foreach_x86_condition
 #undef _
 
-  /* 0x90 */
+/* 0x90 */
 #define _(x) _1 (set##x, Eb),
-  foreach_x86_condition
+    foreach_x86_condition
 #undef _
 
-  /* 0xa0 */
-  _0 (push_fs),
+      /* 0xa0 */
+      _0 (push_fs),
   _0 (pop_fs),
   _0 (cpuid),
   _2 (bt, Ev, Gv),
@@ -555,8 +566,8 @@ static x86_insn_t x86_insns_two_byte[256] = {
   foreach_x86_gp_reg
 #undef _
 
-  /* 0xd0 */
-  _0f (bad, X86_INSN_FLAG_SSE_GROUP_d0),
+    /* 0xd0 */
+    _0f (bad, X86_INSN_FLAG_SSE_GROUP_d0),
   _2f (psrlw, X86_INSN_FLAG_SSE_GROUP_d0, Gm, Em),
   _2f (psrld, X86_INSN_FLAG_SSE_GROUP_d0, Gm, Em),
   _2f (psrlq, X86_INSN_FLAG_SSE_GROUP_d0, Gm, Em),
@@ -610,7 +621,8 @@ static x86_insn_t x86_insns_two_byte[256] = {
   _0f (bad, X86_INSN_FLAG_SSE_GROUP_f8),
 };
 
-typedef struct {
+typedef struct
+{
   x86_insn_t insns[8];
 } x86_insn_group8_t;
 
@@ -1278,9 +1290,8 @@ static x86_insn_group8_t x86_insn_sse_groups_repnz[] = {
 #undef _
 
 /* Parses memory displacements and immediates. */
-static u8 * x86_insn_parse_number (u32 log2_n_bytes,
-				   u8 * code, u8 * code_end,
-				   i64 * result)
+static u8 *
+x86_insn_parse_number (u32 log2_n_bytes, u8 *code, u8 *code_end, i64 *result)
 {
   i64 x = 0;
 
@@ -1314,19 +1325,28 @@ static u8 * x86_insn_parse_number (u32 log2_n_bytes,
 }
 
 static u32
-x86_insn_log2_immediate_bytes (x86_insn_parse_t * p, x86_insn_t * insn)
+x86_insn_log2_immediate_bytes (x86_insn_parse_t *p, x86_insn_t *insn)
 {
   u32 i = ~0;
   switch (x86_insn_immediate_type (insn))
     {
-    case 'b': i = 0; break;
-    case 'w': i = 1; break;
-    case 'd': i = 2; break;
-    case 'q': i = 3; break;
+    case 'b':
+      i = 0;
+      break;
+    case 'w':
+      i = 1;
+      break;
+    case 'd':
+      i = 2;
+      break;
+    case 'q':
+      i = 3;
+      break;
 
     case 'z':
       i = p->log2_effective_operand_bytes;
-      if (i > 2) i = 2;
+      if (i > 2)
+	i = 2;
       break;
 
     case 'v':
@@ -1342,11 +1362,8 @@ x86_insn_log2_immediate_bytes (x86_insn_parse_t * p, x86_insn_t * insn)
 }
 
 static u8 *
-x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
-			   x86_insn_modrm_byte_t modrm,
-			   u32 parse_flags,
-			   u8 * code,
-			   u8 * code_end)
+x86_insn_parse_modrm_byte (x86_insn_parse_t *x, x86_insn_modrm_byte_t modrm,
+			   u32 parse_flags, u8 *code, u8 *code_end)
 {
   u8 effective_address_bits;
 
@@ -1383,8 +1400,8 @@ x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
 		  log2_disp_bytes = x->log2_effective_address_bytes;
 		  break;
 		}
-	      else if (modrm.rm == X86_INSN_GP_REG_SP
-		       && effective_address_bits != 16)
+	      else if (modrm.rm == X86_INSN_GP_REG_SP &&
+		       effective_address_bits != 16)
 		{
 		  has_sib_byte = 1;
 		  break;
@@ -1396,9 +1413,8 @@ x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
 	      x->flags |= X86_INSN_HAS_BASE;
 	      if (modrm.mode != 0)
 		{
-		  log2_disp_bytes = (modrm.mode == 1
-				     ? 0
-				     : x->log2_effective_address_bytes);
+		  log2_disp_bytes =
+		    (modrm.mode == 1 ? 0 : x->log2_effective_address_bytes);
 		  if (log2_disp_bytes > 2)
 		    log2_disp_bytes = 2;
 		}
@@ -1441,32 +1457,32 @@ x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
 	    case 2:
 	      switch (modrm.rm)
 		{
-		case 0:		/* [bx + si/di] */
+		case 0: /* [bx + si/di] */
 		case 1:
 		  x->regs[1] = X86_INSN_GP_REG_BX;
 		  x->regs[2] = X86_INSN_GP_REG_SI + (modrm.rm & 1);
 		  x->flags |= X86_INSN_HAS_BASE | X86_INSN_HAS_INDEX;
 		  break;
 
-		case 2:		/* [bp + si/di] */
+		case 2: /* [bp + si/di] */
 		case 3:
 		  x->regs[1] = X86_INSN_GP_REG_BP;
 		  x->regs[2] = X86_INSN_GP_REG_SI + (modrm.rm & 1);
 		  x->flags |= X86_INSN_HAS_BASE | X86_INSN_HAS_INDEX;
 		  break;
 
-		case 4:		/* [si/di] */
+		case 4: /* [si/di] */
 		case 5:
 		  x->regs[1] = X86_INSN_GP_REG_SI + (modrm.rm & 1);
 		  x->flags |= X86_INSN_HAS_BASE;
 		  break;
 
-		case 6:		/* [bp + disp] */
+		case 6: /* [bp + disp] */
 		  x->regs[1] = X86_INSN_GP_REG_BP;
 		  x->flags |= X86_INSN_HAS_BASE;
 		  break;
 
-		case 7:		/* [bx + disp] */
+		case 7: /* [bx + disp] */
 		  x->regs[1] = X86_INSN_GP_REG_BX;
 		  x->flags |= X86_INSN_HAS_BASE;
 		  break;
@@ -1477,12 +1493,12 @@ x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
 	      break;
 	    }
 	}
-      
+
       if (log2_disp_bytes != ~0)
 	{
 	  i64 disp;
-	  code = x86_insn_parse_number (log2_disp_bytes, code, code_end,
-					&disp);
+	  code =
+	    x86_insn_parse_number (log2_disp_bytes, code, code_end, &disp);
 	  if (code)
 	    x->displacement = disp;
 	}
@@ -1491,10 +1507,11 @@ x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
   return code;
 }
 
-u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
+u8 *
+x86_insn_parse (x86_insn_parse_t *p, u8 *code_start)
 {
-  u8 i, * code, * code_end;
-  x86_insn_t * insn, * group_insn;
+  u8 i, *code, *code_end;
+  x86_insn_t *insn, *group_insn;
   u8 default_operand_bits, effective_operand_bits;
   u32 opcode, parse_flags;
 
@@ -1520,24 +1537,30 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
       code++;
       switch (i)
 	{
-	default: goto prefix_done;
+	default:
+	  goto prefix_done;
 
 	  /* Set flags based on prefix. */
-#define _(x,o) case o: p->flags |= X86_INSN_##x; break;
+#define _(x, o)                                                               \
+  case o:                                                                     \
+    p->flags |= X86_INSN_##x;                                                 \
+    break;
 	  foreach_x86_legacy_prefix;
 #undef _
 	}
     }
- prefix_done:
+prefix_done:
 
   /* REX prefix. */
   if ((parse_flags & X86_INSN_PARSE_64_BIT) && i >= 0x40 && i <= 0x4f)
     {
-      p->regs[0] |= ((i & (1 << 2)) != 0) << 3;	/* r bit */
-      p->regs[1] |= ((i & (1 << 0)) != 0) << 3;	/* b bit */
-      p->regs[2] |= ((i & (1 << 1)) != 0) << 3;	/* x bit */
+      p->regs[0] |= ((i & (1 << 2)) != 0) << 3; /* r bit */
+      p->regs[1] |= ((i & (1 << 0)) != 0) << 3; /* b bit */
+      p->regs[2] |= ((i & (1 << 1)) != 0) << 3; /* x bit */
       p->flags |= ((i & (1 << 3))		/* w bit */
-		   ? X86_INSN_OPERAND_SIZE_64 : 0);
+		     ?
+		     X86_INSN_OPERAND_SIZE_64 :
+		     0);
       if (code >= code_end)
 	goto insn_too_long;
       i = *code++;
@@ -1561,8 +1584,7 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
 	.operands[1].data = "Gw",
       };
 
-      if (PREDICT_FALSE (i == 0x63
-			 && ! (parse_flags & X86_INSN_PARSE_64_BIT)))
+      if (PREDICT_FALSE (i == 0x63 && !(parse_flags & X86_INSN_PARSE_64_BIT)))
 	insn = &arpl;
       else
 	insn = x86_insns_one_byte + i;
@@ -1570,7 +1592,7 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
 
   if ((i = X86_INSN_FLAG_GET_SSE_GROUP (insn->flags)) != 0)
     {
-      x86_insn_group8_t * g8;
+      x86_insn_group8_t *g8;
 
       if (p->flags & X86_INSN_OPERAND_SIZE)
 	g8 = x86_insn_sse_groups_operand_size;
@@ -1597,17 +1619,16 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
       modrm.byte = *code++;
 
       /* Handle special 0x0f01 and 0x0fae encodings. */
-      if (PREDICT_FALSE (modrm.mode == 3
-			 && (opcode == 0x0f01
-			     || opcode == 0x0fae)))
+      if (PREDICT_FALSE (modrm.mode == 3 &&
+			 (opcode == 0x0f01 || opcode == 0x0fae)))
 	{
 	  static x86_insn_t x86_insns_0f01_special[] = {
 	    _0 (swapgs), _0 (rdtscp), _0 (bad), _0 (bad),
-	    _0 (bad), _0 (bad), _0 (bad), _0 (bad),
+	    _0 (bad),	 _0 (bad),    _0 (bad), _0 (bad),
 	  };
 	  static x86_insn_t x86_insns_0fae_special[] = {
 	    _0 (vmrun), _0 (vmmcall), _0 (vmload), _0 (vmsave),
-	    _0 (stgi), _0 (clgi), _0 (skinit), _0 (invlpga),
+	    _0 (stgi),	_0 (clgi),    _0 (skinit), _0 (invlpga),
 	  };
 
 	  if (opcode == 0x0f01)
@@ -1619,9 +1640,9 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
 	}
       else
 	{
-	  code = x86_insn_parse_modrm_byte (p, modrm, parse_flags,
-					    code, code_end);
-	  if (! code)
+	  code =
+	    x86_insn_parse_modrm_byte (p, modrm, parse_flags, code, code_end);
+	  if (!code)
 	    goto insn_too_long;
 	}
     }
@@ -1645,13 +1666,13 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
 	  p->insn.operands[k] = group_insn->operands[k];
     }
 
-  default_operand_bits
-    = ((((parse_flags & X86_INSN_PARSE_32_BIT) != 0)
-	^ ((p->flags & X86_INSN_OPERAND_SIZE) != 0))
-       ? BITS (u32) : BITS (u16));
+  default_operand_bits = ((((parse_flags & X86_INSN_PARSE_32_BIT) != 0) ^
+			   ((p->flags & X86_INSN_OPERAND_SIZE) != 0)) ?
+			    BITS (u32) :
+			    BITS (u16));
 
-  if ((parse_flags & X86_INSN_PARSE_64_BIT)
-      && (p->insn.flags & X86_INSN_FLAG_DEFAULT_64_BIT))
+  if ((parse_flags & X86_INSN_PARSE_64_BIT) &&
+      (p->insn.flags & X86_INSN_FLAG_DEFAULT_64_BIT))
     default_operand_bits = BITS (u64);
 
   effective_operand_bits = default_operand_bits;
@@ -1668,18 +1689,19 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
     if (l <= 3)
       {
 	code = x86_insn_parse_number (l, code, code_end, &p->immediate);
-	if (! code)
+	if (!code)
 	  goto insn_too_long;
       }
   }
 
   return code;
 
- insn_too_long:
+insn_too_long:
   return 0;
 }
 
-static u8 * format_x86_gp_reg_operand (u8 * s, va_list * va)
+static u8 *
+format_x86_gp_reg_operand (u8 *s, va_list *va)
 {
   u32 r = va_arg (*va, u32);
   u32 log2_n_bytes = va_arg (*va, u32);
@@ -1703,21 +1725,21 @@ static u8 * format_x86_gp_reg_operand (u8 * s, va_list * va)
 	  s = format (s, "r%db", r);
       }
       break;
-      
-      case 2:
-      case 3:
-	s = format (s, "%c", log2_n_bytes == 2 ? 'e' : 'r');
-	/* fall through */
-      case 1:
-	if (r < 8)
-	  s = format (s, "%c%c", names8[r], names16[r]);
-	else
-	  {
-	    s = format (s, "%d", r);
-	    if (log2_n_bytes != 3)
-	      s = format (s, "%c", log2_n_bytes == 1 ? 'w' : 'd');
-	  }
-	break;
+
+    case 2:
+    case 3:
+      s = format (s, "%c", log2_n_bytes == 2 ? 'e' : 'r');
+      /* fall through */
+    case 1:
+      if (r < 8)
+	s = format (s, "%c%c", names8[r], names16[r]);
+      else
+	{
+	  s = format (s, "%d", r);
+	  if (log2_n_bytes != 3)
+	    s = format (s, "%c", log2_n_bytes == 1 ? 'w' : 'd');
+	}
+      break;
 
     default:
       ASSERT (0);
@@ -1726,7 +1748,8 @@ static u8 * format_x86_gp_reg_operand (u8 * s, va_list * va)
   return s;
 }
 
-static u8 * format_x86_reg_operand (u8 * s, va_list * va)
+static u8 *
+format_x86_reg_operand (u8 *s, va_list *va)
 {
   u32 reg = va_arg (*va, u32);
   u32 log2_n_bytes = va_arg (*va, u32);
@@ -1747,13 +1770,22 @@ static u8 * format_x86_reg_operand (u8 * s, va_list * va)
       return format (s, "%%mm%d", reg);
 
       /* Explicit byte/word/double-word/quad-word */
-    case 'b': log2_n_bytes = 0; break;
-    case 'w': log2_n_bytes = 1; break;
-    case 'd': log2_n_bytes = 2; break;
-    case 'q': log2_n_bytes = 3; break;
+    case 'b':
+      log2_n_bytes = 0;
+      break;
+    case 'w':
+      log2_n_bytes = 1;
+      break;
+    case 'd':
+      log2_n_bytes = 2;
+      break;
+    case 'q':
+      log2_n_bytes = 3;
+      break;
 
       /* Use effective operand size. */
-    case 'v': break;
+    case 'v':
+      break;
 
       /* word or double-word depending on effective operand size. */
     case 'z':
@@ -1765,23 +1797,22 @@ static u8 * format_x86_reg_operand (u8 * s, va_list * va)
   return s;
 }
 
-static u8 * format_x86_mem_operand (u8 * s, va_list * va)
+static u8 *
+format_x86_mem_operand (u8 *s, va_list *va)
 {
-  x86_insn_parse_t * p = va_arg (*va, x86_insn_parse_t *);
+  x86_insn_parse_t *p = va_arg (*va, x86_insn_parse_t *);
 
   if (p->displacement != 0)
     s = format (s, "0x%x", p->displacement);
 
   if (p->flags & X86_INSN_HAS_BASE)
     {
-      s = format (s, "(%U",
-		  format_x86_gp_reg_operand, p->regs[1],
-		    p->log2_effective_address_bytes);
+      s = format (s, "(%U", format_x86_gp_reg_operand, p->regs[1],
+		  p->log2_effective_address_bytes);
       if (p->flags & X86_INSN_HAS_INDEX)
 	{
-	  s = format (s, ",%U",
-		      format_x86_gp_reg_operand, p->regs[2],
-		        p->log2_effective_address_bytes);
+	  s = format (s, ",%U", format_x86_gp_reg_operand, p->regs[2],
+		      p->log2_effective_address_bytes);
 	  if (p->log2_index_scale != 0)
 	    s = format (s, ",%d", 1 << p->log2_index_scale);
 	}
@@ -1795,10 +1826,11 @@ static u8 * format_x86_mem_operand (u8 * s, va_list * va)
   return s;
 }
 
-static u8 * format_x86_insn_operand (u8 * s, va_list * va)
+static u8 *
+format_x86_insn_operand (u8 *s, va_list *va)
 {
-  x86_insn_parse_t * p = va_arg (*va, x86_insn_parse_t *);
-  x86_insn_t * insn = &p->insn;
+  x86_insn_parse_t *p = va_arg (*va, x86_insn_parse_t *);
+  x86_insn_t *insn = &p->insn;
   u32 o = va_arg (*va, u32);
   u8 c, t;
 
@@ -1808,8 +1840,7 @@ static u8 * format_x86_insn_operand (u8 * s, va_list * va)
 
   /* Register encoded in instruction. */
   if (c < 8)
-    return format (s, "%U",
-		   format_x86_gp_reg_operand, c,
+    return format (s, "%U", format_x86_gp_reg_operand, c,
 		   p->log2_effective_operand_bytes);
 
   switch (c)
@@ -1822,16 +1853,14 @@ static u8 * format_x86_insn_operand (u8 * s, va_list * va)
       if (p->flags & X86_INSN_IS_ADDRESS)
 	s = format (s, "%U", format_x86_mem_operand, p);
       else
-	s = format (s, "%U",
-		    format_x86_reg_operand, p->regs[1],
+	s = format (s, "%U", format_x86_reg_operand, p->regs[1],
 		    p->log2_effective_operand_bytes, t);
       break;
 
     /* reg field from modrm byte. */
     case 'R':
     case 'G':
-      s = format (s, "%U",
-		  format_x86_reg_operand, p->regs[0],
+      s = format (s, "%U", format_x86_reg_operand, p->regs[0],
 		  p->log2_effective_operand_bytes, t);
       break;
 
@@ -1856,38 +1885,33 @@ static u8 * format_x86_insn_operand (u8 * s, va_list * va)
 
     case 'A':
       /* AX/AL */
-      s = format (s, "%U",
-		  format_x86_gp_reg_operand, X86_INSN_GP_REG_AX,
+      s = format (s, "%U", format_x86_gp_reg_operand, X86_INSN_GP_REG_AX,
 		  t == 'L' ? 0 : p->log2_effective_operand_bytes);
       break;
 
     case 'B':
       /* BX/BL/BP */
-      s = format (s, "%U",
-		  format_x86_gp_reg_operand,
+      s = format (s, "%U", format_x86_gp_reg_operand,
 		  t == 'P' ? X86_INSN_GP_REG_BP : X86_INSN_GP_REG_BX,
 		  t == 'L' ? 0 : p->log2_effective_operand_bytes);
       break;
 
     case 'C':
       /* CX/CL */
-      s = format (s, "%U",
-		  format_x86_gp_reg_operand, X86_INSN_GP_REG_CX,
+      s = format (s, "%U", format_x86_gp_reg_operand, X86_INSN_GP_REG_CX,
 		  t == 'L' ? 0 : p->log2_effective_operand_bytes);
       break;
 
     case 'D':
       /* DX/DL/DI */
-      s = format (s, "%U",
-		  format_x86_gp_reg_operand,
+      s = format (s, "%U", format_x86_gp_reg_operand,
 		  t == 'I' ? X86_INSN_GP_REG_DI : X86_INSN_GP_REG_DX,
 		  t == 'L' ? 0 : p->log2_effective_operand_bytes);
       break;
 
     case 'S':
       /* SI/SP */
-      s = format (s, "%U",
-		  format_x86_gp_reg_operand,
+      s = format (s, "%U", format_x86_gp_reg_operand,
 		  t == 'I' ? X86_INSN_GP_REG_SI : X86_INSN_GP_REG_SP,
 		  p->log2_effective_operand_bytes);
       break;
@@ -1903,15 +1927,16 @@ static u8 * format_x86_insn_operand (u8 * s, va_list * va)
   return s;
 }
 
-u8 * format_x86_insn_parse (u8 * s, va_list * va)
+u8 *
+format_x86_insn_parse (u8 *s, va_list *va)
 {
-  x86_insn_parse_t * p = va_arg (*va, x86_insn_parse_t *);
-  x86_insn_t * insn = &p->insn;
+  x86_insn_parse_t *p = va_arg (*va, x86_insn_parse_t *);
+  x86_insn_t *insn = &p->insn;
   u32 o, i, is_src_dst;
 
   s = format (s, "%s", insn->name);
 
-  if (! x86_insn_operand_is_valid (insn, 0))
+  if (!x86_insn_operand_is_valid (insn, 0))
     goto done;
 
   is_src_dst = x86_insn_operand_is_valid (insn, 1);
@@ -1923,25 +1948,23 @@ u8 * format_x86_insn_parse (u8 * s, va_list * va)
       u32 b;
 
       b = x86_insn_log2_immediate_bytes (p, insn);
-      if (b < p->log2_effective_operand_bytes
-	  && (p->flags & X86_INSN_IS_ADDRESS))
+      if (b < p->log2_effective_operand_bytes &&
+	  (p->flags & X86_INSN_IS_ADDRESS))
 	s = format (s, "%c", "bwlq"[b]);
     }
 
   for (i = 0; i < ARRAY_LEN (insn->operands); i++)
     {
       o = is_src_dst + i;
-      if (! x86_insn_operand_is_valid (insn, o))
+      if (!x86_insn_operand_is_valid (insn, o))
 	break;
-      s = format (s, "%s%U",
-		  i == 0 ? " " : ", ",
-		  format_x86_insn_operand, p, o);
+      s =
+	format (s, "%s%U", i == 0 ? " " : ", ", format_x86_insn_operand, p, o);
     }
 
   if (is_src_dst)
-    s = format (s, ", %U",
-		format_x86_insn_operand, p, 0);
+    s = format (s, ", %U", format_x86_insn_operand, p, 0);
 
- done:
+done:
   return s;
 }

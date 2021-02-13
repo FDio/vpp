@@ -41,10 +41,10 @@
 #define F_ADD_SEALS (F_LINUX_SPECIFIC_BASE + 9)
 #define F_GET_SEALS (F_LINUX_SPECIFIC_BASE + 10)
 
-#define F_SEAL_SEAL     0x0001	/* prevent further seals from being set */
-#define F_SEAL_SHRINK   0x0002	/* prevent file from shrinking */
-#define F_SEAL_GROW     0x0004	/* prevent file from growing */
-#define F_SEAL_WRITE    0x0008	/* prevent writes */
+#define F_SEAL_SEAL   0x0001 /* prevent further seals from being set */
+#define F_SEAL_SHRINK 0x0002 /* prevent file from shrinking */
+#define F_SEAL_GROW   0x0004 /* prevent file from growing */
+#define F_SEAL_WRITE  0x0008 /* prevent writes */
 #endif
 
 #ifndef MFD_HUGETLB
@@ -115,7 +115,7 @@ legacy_get_log2_default_hugepage_size (void)
 {
   clib_mem_page_sz_t log2_page_size = CLIB_MEM_PAGE_SZ_UNKNOWN;
   FILE *fp;
-  char tmp[33] = { };
+  char tmp[33] = {};
 
   if ((fp = fopen ("/proc/meminfo", "r")) == NULL)
     return CLIB_MEM_PAGE_SZ_UNKNOWN;
@@ -154,12 +154,12 @@ clib_mem_main_init ()
       mm->log2_default_hugepage_sz = clib_mem_get_fd_log2_page_size (fd);
       close (fd);
     }
-  else				/* likely kernel older than 4.14 */
+  else /* likely kernel older than 4.14 */
     mm->log2_default_hugepage_sz = legacy_get_log2_default_hugepage_size ();
 
   /* numa nodes */
-  va = mmap (0, page_size, PROT_READ | PROT_WRITE, MAP_PRIVATE |
-	     MAP_ANONYMOUS, -1, 0);
+  va = mmap (0, page_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS,
+	     -1, 0);
   if (va == MAP_FAILED)
     return;
 
@@ -194,7 +194,7 @@ clib_mem_get_fd_log2_page_size (int fd)
 }
 
 __clib_export void
-clib_mem_vm_randomize_va (uword * requested_va,
+clib_mem_vm_randomize_va (uword *requested_va,
 			  clib_mem_page_sz_t log2_page_size)
 {
   u8 bit_mask = 15;
@@ -211,7 +211,7 @@ clib_mem_vm_randomize_va (uword * requested_va,
 }
 
 static int
-legacy_memfd_create (u8 * name)
+legacy_memfd_create (u8 *name)
 {
   clib_mem_main_t *mm = &clib_mem_main;
   int fd = -1;
@@ -358,8 +358,8 @@ clib_mem_vm_reserve (uword start, uword size, clib_mem_page_sz_t log2_page_sz)
   /* to make sure that we get reservation aligned to page_size we need to
    * request one additional page as mmap will return us address which is
    * aligned only to system page size */
-  base = mmap (0, size + pagesize, PROT_NONE,
-	       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  base =
+    mmap (0, size + pagesize, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
   if (base == MAP_FAILED)
     return ~0;
@@ -385,7 +385,7 @@ clib_mem_vm_reserve (uword start, uword size, clib_mem_page_sz_t log2_page_sz)
 }
 
 __clib_export clib_mem_vm_map_hdr_t *
-clib_mem_vm_get_next_map_hdr (clib_mem_vm_map_hdr_t * hdr)
+clib_mem_vm_get_next_map_hdr (clib_mem_vm_map_hdr_t *hdr)
 {
   clib_mem_main_t *mm = &clib_mem_main;
   uword sys_page_sz = 1ULL << mm->log2_page_sz;
@@ -512,7 +512,8 @@ clib_mem_vm_unmap (void *base)
 {
   clib_mem_main_t *mm = &clib_mem_main;
   uword size, sys_page_sz = 1ULL << mm->log2_page_sz;
-  clib_mem_vm_map_hdr_t *hdr = base - sys_page_sz;;
+  clib_mem_vm_map_hdr_t *hdr = base - sys_page_sz;
+  ;
 
   if (mprotect (hdr, sys_page_sz, PROT_READ | PROT_WRITE) != 0)
     return CLIB_MEM_ERROR;
@@ -551,7 +552,7 @@ clib_mem_vm_unmap (void *base)
 
 __clib_export void
 clib_mem_get_page_stats (void *start, clib_mem_page_sz_t log2_page_size,
-			 uword n_pages, clib_mem_page_stats_t * stats)
+			 uword n_pages, clib_mem_page_stats_t *stats)
 {
   int i, *status = 0;
   void **ptr = 0;
@@ -587,7 +588,6 @@ clib_mem_get_page_stats (void *start, clib_mem_page_sz_t log2_page_size,
 	stats->unknown++;
     }
 }
-
 
 __clib_export u64 *
 clib_mem_vm_get_paddr (void *mem, clib_mem_page_sz_t log2_page_size,

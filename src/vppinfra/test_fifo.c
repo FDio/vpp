@@ -44,7 +44,7 @@ typedef struct
 } A;
 
 always_inline void
-A_set (A * a, int k)
+A_set (A *a, int k)
 {
   a->a = 1 * k;
   a->b = 2 * k;
@@ -52,13 +52,13 @@ A_set (A * a, int k)
 }
 
 always_inline int
-A_is_valid (A * a, int k)
+A_is_valid (A *a, int k)
 {
   return a->a == 1 * k && a->b == 2 * k && a->c == 3 * k;
 }
 
 int
-test_fifo_main (unformat_input_t * input)
+test_fifo_main (unformat_input_t *input)
 {
   u32 n_added, n_removed, i, j, n_iter, seed, verbose;
   A *as = 0, *a;
@@ -105,12 +105,11 @@ test_fifo_main (unformat_input_t * input)
       ASSERT (clib_fifo_elts (as) == n_added - n_removed);
 
       j = 0;
-      /* *INDENT-OFF* */
+
       clib_fifo_foreach (a, as, {
 	ASSERT (A_is_valid (a, n_removed + j));
 	j++;
       });
-      /* *INDENT-ON* */
 
       ASSERT (j == clib_fifo_elts (as));
     }

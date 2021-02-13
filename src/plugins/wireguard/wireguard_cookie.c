@@ -22,20 +22,19 @@
 #include <wireguard/wireguard_cookie.h>
 #include <wireguard/wireguard.h>
 
-static void cookie_precompute_key (uint8_t *,
-				   const uint8_t[COOKIE_INPUT_SIZE],
+static void cookie_precompute_key (uint8_t *, const uint8_t[COOKIE_INPUT_SIZE],
 				   const char *);
 static void cookie_macs_mac1 (message_macs_t *, const void *, size_t,
 			      const uint8_t[COOKIE_KEY_SIZE]);
 static void cookie_macs_mac2 (message_macs_t *, const void *, size_t,
 			      const uint8_t[COOKIE_COOKIE_SIZE]);
-static void cookie_checker_make_cookie (vlib_main_t * vm, cookie_checker_t *,
+static void cookie_checker_make_cookie (vlib_main_t *vm, cookie_checker_t *,
 					uint8_t[COOKIE_COOKIE_SIZE],
 					ip4_address_t ip4, u16 udp_port);
 
 /* Public Functions */
 void
-cookie_maker_init (cookie_maker_t * cp, const uint8_t key[COOKIE_INPUT_SIZE])
+cookie_maker_init (cookie_maker_t *cp, const uint8_t key[COOKIE_INPUT_SIZE])
 {
   clib_memset (cp, 0, sizeof (*cp));
   cookie_precompute_key (cp->cp_mac1_key, key, COOKIE_MAC1_KEY_LABEL);
@@ -43,7 +42,7 @@ cookie_maker_init (cookie_maker_t * cp, const uint8_t key[COOKIE_INPUT_SIZE])
 }
 
 void
-cookie_checker_update (cookie_checker_t * cc, uint8_t key[COOKIE_INPUT_SIZE])
+cookie_checker_update (cookie_checker_t *cc, uint8_t key[COOKIE_INPUT_SIZE])
 {
   if (key)
     {
@@ -58,7 +57,7 @@ cookie_checker_update (cookie_checker_t * cc, uint8_t key[COOKIE_INPUT_SIZE])
 }
 
 void
-cookie_maker_mac (cookie_maker_t * cp, message_macs_t * cm, void *buf,
+cookie_maker_mac (cookie_maker_t *cp, message_macs_t *cm, void *buf,
 		  size_t len)
 {
   len = len - sizeof (message_macs_t);
@@ -67,17 +66,16 @@ cookie_maker_mac (cookie_maker_t * cp, message_macs_t * cm, void *buf,
   clib_memcpy (cp->cp_mac1_last, cm->mac1, COOKIE_MAC_SIZE);
   cp->cp_mac1_valid = 1;
 
-  if (!wg_birthdate_has_expired (cp->cp_birthdate,
-				 COOKIE_SECRET_MAX_AGE -
-				 COOKIE_SECRET_LATENCY))
+  if (!wg_birthdate_has_expired (cp->cp_birthdate, COOKIE_SECRET_MAX_AGE -
+						     COOKIE_SECRET_LATENCY))
     cookie_macs_mac2 (cm, buf, len, cp->cp_cookie);
   else
     clib_memset (cm->mac2, 0, COOKIE_MAC_SIZE);
 }
 
 enum cookie_mac_state
-cookie_checker_validate_macs (vlib_main_t * vm, cookie_checker_t * cc,
-			      message_macs_t * cm, void *buf, size_t len,
+cookie_checker_validate_macs (vlib_main_t *vm, cookie_checker_t *cc,
+			      message_macs_t *cm, void *buf, size_t len,
 			      bool busy, ip4_address_t ip4, u16 udp_port)
 {
   message_macs_t our_cm;
@@ -105,7 +103,7 @@ cookie_checker_validate_macs (vlib_main_t * vm, cookie_checker_t * cc,
 
 /* Private functions */
 static void
-cookie_precompute_key (uint8_t * key, const uint8_t input[COOKIE_INPUT_SIZE],
+cookie_precompute_key (uint8_t *key, const uint8_t input[COOKIE_INPUT_SIZE],
 		       const char *label)
 {
   blake2s_state_t blake;
@@ -117,18 +115,17 @@ cookie_precompute_key (uint8_t * key, const uint8_t input[COOKIE_INPUT_SIZE],
 }
 
 static void
-cookie_macs_mac1 (message_macs_t * cm, const void *buf, size_t len,
+cookie_macs_mac1 (message_macs_t *cm, const void *buf, size_t len,
 		  const uint8_t key[COOKIE_KEY_SIZE])
 {
   blake2s_state_t state;
   blake2s_init_key (&state, COOKIE_MAC_SIZE, key, COOKIE_KEY_SIZE);
   blake2s_update (&state, buf, len);
   blake2s_final (&state, cm->mac1, COOKIE_MAC_SIZE);
-
 }
 
 static void
-cookie_macs_mac2 (message_macs_t * cm, const void *buf, size_t len,
+cookie_macs_mac2 (message_macs_t *cm, const void *buf, size_t len,
 		  const uint8_t key[COOKIE_COOKIE_SIZE])
 {
   blake2s_state_t state;
@@ -139,7 +136,7 @@ cookie_macs_mac2 (message_macs_t * cm, const void *buf, size_t len,
 }
 
 static void
-cookie_checker_make_cookie (vlib_main_t * vm, cookie_checker_t * cc,
+cookie_checker_make_cookie (vlib_main_t *vm, cookie_checker_t *cc,
 			    uint8_t cookie[COOKIE_COOKIE_SIZE],
 			    ip4_address_t ip4, u16 udp_port)
 {
@@ -155,8 +152,8 @@ cookie_checker_make_cookie (vlib_main_t * vm, cookie_checker_t * cc,
   blake2s_init_key (&state, COOKIE_COOKIE_SIZE, cc->cc_secret,
 		    COOKIE_SECRET_SIZE);
 
-  blake2s_update (&state, ip4.as_u8, sizeof (ip4_address_t));	//TODO: IP6
-  blake2s_update (&state, (u8 *) & udp_port, sizeof (u16));
+  blake2s_update (&state, ip4.as_u8, sizeof (ip4_address_t)); // TODO: IP6
+  blake2s_update (&state, (u8 *) &udp_port, sizeof (u16));
   blake2s_final (&state, cookie, COOKIE_COOKIE_SIZE);
 }
 

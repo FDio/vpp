@@ -24,8 +24,8 @@
 #define UDP_PING_REWRITE_LEN 1000
 
 u16
-udp_ping_fill_udp_data (udp_ping_t * udp_ping,
-			u16 src_port, u16 dst_port, u8 msg_type, u16 ctx)
+udp_ping_fill_udp_data (udp_ping_t *udp_ping, u16 src_port, u16 dst_port,
+			u8 msg_type, u16 ctx)
 {
   /* Populate udp ping header */
   udp_ping->udp.src_port = clib_host_to_net_u16 (src_port);
@@ -43,8 +43,8 @@ udp_ping_fill_udp_data (udp_ping_t * udp_ping,
   udp_ping->ping_data.hop_limit = 254;
   udp_ping->ping_data.hop_count = 0;
   udp_ping->ping_data.reserve = clib_host_to_net_u16 (0);
-  udp_ping->ping_data.max_len =
-    udp_ping->ping_data.cur_len = clib_host_to_net_u16 (0);
+  udp_ping->ping_data.max_len = udp_ping->ping_data.cur_len =
+    clib_host_to_net_u16 (0);
   udp_ping->ping_data.sender_handle = clib_host_to_net_u16 (ctx);
   udp_ping->ping_data.seq_no = clib_host_to_net_u16 (0);
 
@@ -58,13 +58,13 @@ udp_ping_fill_udp_data (udp_ping_t * udp_ping,
  *
  */
 int
-udp_ping_create_ip6_pak (u8 * buf,	/*u16 len, */
-			 ip6_address_t src, ip6_address_t dst,
-			 u16 src_port, u16 dst_port, u8 msg_type, u16 ctx)
+udp_ping_create_ip6_pak (u8 *buf, /*u16 len, */
+			 ip6_address_t src, ip6_address_t dst, u16 src_port,
+			 u16 dst_port, u8 msg_type, u16 ctx)
 {
   ip6_header_t *ip0;
   ip6_hop_by_hop_header_t *hbh0;
-  //trace_profile *profile = NULL;
+  // trace_profile *profile = NULL;
   u16 hbh_len = 0, rnd_size = 0, ip0_len = 0, udp_len = 0;
   u16 trace_len = 0, trace_data_size = 0;
   u16 e2e_len = sizeof (ioam_e2e_option_t) - sizeof (ip6_hop_by_hop_option_t);
@@ -86,11 +86,11 @@ udp_ping_create_ip6_pak (u8 * buf,	/*u16 len, */
   hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
 
   /* Calculate hbh header len */
-  //profile = trace_profile_find();
+  // profile = trace_profile_find();
   trace_data_size = fetch_trace_data_size (TRACE_TYPE_IF_TS_APP);
   /* We need 2 times data for trace as packet traverse back to source */
-  trace_len = sizeof (ioam_trace_option_t) +
-    (5 * trace_data_size * 2) - sizeof (ip6_hop_by_hop_option_t);
+  trace_len = sizeof (ioam_trace_option_t) + (5 * trace_data_size * 2) -
+	      sizeof (ip6_hop_by_hop_option_t);
   //(profile->num_elts * trace_data_size * 2);
   hbh_len = e2e_len + trace_len + sizeof (ip6_hop_by_hop_header_t);
   rnd_size = (hbh_len + 7) & ~7;
@@ -104,14 +104,14 @@ udp_ping_create_ip6_pak (u8 * buf,	/*u16 len, */
 
   /* Populate trace */
   trace_option = (ioam_trace_option_t *) current;
-  trace_option->hdr.type = HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST |
-    HBH_OPTION_TYPE_DATA_CHANGE_ENROUTE;
+  trace_option->hdr.type =
+    HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST | HBH_OPTION_TYPE_DATA_CHANGE_ENROUTE;
   trace_option->hdr.length = trace_len;
   trace_option->trace_hdr.ioam_trace_type =
     TRACE_TYPE_IF_TS_APP & TRACE_TYPE_MASK;
 
   trace_option->trace_hdr.data_list_elts_left = 5 * 2;
-  //profile->num_elts * 2;
+  // profile->num_elts * 2;
 
   current += trace_option->hdr.length + sizeof (ip6_hop_by_hop_option_t);
 
@@ -124,12 +124,12 @@ udp_ping_create_ip6_pak (u8 * buf,	/*u16 len, */
   current = ((u8 *) hbh0) + ((hbh0->length + 1) << 3);
 
   /* Populate udp ping header */
-  udp_len = udp_ping_fill_udp_data ((udp_ping_t *) current,
-				    src_port, dst_port, msg_type, ctx);
+  udp_len = udp_ping_fill_udp_data ((udp_ping_t *) current, src_port, dst_port,
+				    msg_type, ctx);
 
   /* Calculate total length and set it in ip6 header */
   ip0_len = ((hbh0->length + 1) << 3) + udp_len;
-  //ip0_len = (len > ip0_len) ? len : ip0_len;
+  // ip0_len = (len > ip0_len) ? len : ip0_len;
   ip0->payload_length = clib_host_to_net_u16 (ip0_len);
 
   return (ip0_len + sizeof (ip6_header_t));
@@ -139,7 +139,7 @@ int
 udp_ping_compare_flow (ip46_address_t src, ip46_address_t dst,
 		       u16 start_src_port, u16 end_src_port,
 		       u16 start_dst_port, u16 end_dst_port,
-		       ip46_udp_ping_flow * flow)
+		       ip46_udp_ping_flow *flow)
 {
   if ((0 == ip46_address_cmp (&flow->src, &src)) &&
       (0 == ip46_address_cmp (&flow->dst, &dst)) &&
@@ -157,8 +157,8 @@ udp_ping_compare_flow (ip46_address_t src, ip46_address_t dst,
 void
 udp_ping_populate_flow (ip46_address_t src, ip46_address_t dst,
 			u16 start_src_port, u16 end_src_port,
-			u16 start_dst_port, u16 end_dst_port,
-			u16 interval, u8 fault_det, ip46_udp_ping_flow * flow)
+			u16 start_dst_port, u16 end_dst_port, u16 interval,
+			u8 fault_det, ip46_udp_ping_flow *flow)
 {
   flow->src = src;
   flow->dst = dst;
@@ -172,7 +172,7 @@ udp_ping_populate_flow (ip46_address_t src, ip46_address_t dst,
 }
 
 void
-udp_ping_create_rewrite (ip46_udp_ping_flow * flow, u16 ctx)
+udp_ping_create_rewrite (ip46_udp_ping_flow *flow, u16 ctx)
 {
   u16 src_port;
   u16 dst_port;
@@ -180,13 +180,12 @@ udp_ping_create_rewrite (ip46_udp_ping_flow * flow, u16 ctx)
   int i;
   udp_ping_flow_data *stats;
 
-  no_flows =
-    (flow->udp_data.end_dst_port - flow->udp_data.start_dst_port) + 1;
+  no_flows = (flow->udp_data.end_dst_port - flow->udp_data.start_dst_port) + 1;
   no_flows *=
     ((flow->udp_data.end_src_port - flow->udp_data.start_src_port) + 1);
 
-  vec_validate_aligned (flow->udp_data.stats,
-			no_flows - 1, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (flow->udp_data.stats, no_flows - 1,
+			CLIB_CACHE_LINE_BYTES);
 
   i = 0;
   for (src_port = flow->udp_data.start_src_port;
@@ -204,18 +203,17 @@ udp_ping_create_rewrite (ip46_udp_ping_flow * flow, u16 ctx)
 	  vec_validate (rewrite, UDP_PING_REWRITE_LEN - 1);
 	  stats->ping_rewrite = rewrite;
 	  stats->rewrite_len =
-	    udp_ping_create_ip6_pak (rewrite,
-				     flow->src.ip6, flow->dst.ip6,
+	    udp_ping_create_ip6_pak (rewrite, flow->src.ip6, flow->dst.ip6,
 				     src_port, dst_port, UDP_PING_PROBE, ctx);
 	  /* For each flow we need to create ioam e2e flow */
-	  stats->flow_ctx = ioam_flow_add (1, (u8 *) "udp_ping");	//FIXME
+	  stats->flow_ctx = ioam_flow_add (1, (u8 *) "udp_ping"); // FIXME
 	  i++;
 	}
     }
 }
 
 void
-udp_ping_free_flow_data (ip46_udp_ping_flow * flow)
+udp_ping_free_flow_data (ip46_udp_ping_flow *flow)
 {
   int i;
   udp_ping_flow_data *stats;
@@ -237,7 +235,7 @@ udp_ping_free_flow_data (ip46_udp_ping_flow * flow)
  *
  */
 void
-udp_ping_send_ip6_pak (vlib_main_t * vm, ip46_udp_ping_flow * flow)
+udp_ping_send_ip6_pak (vlib_main_t *vm, ip46_udp_ping_flow *flow)
 {
   u16 no_pak;
   u32 *buffers = NULL;
@@ -257,7 +255,7 @@ udp_ping_send_ip6_pak (vlib_main_t * vm, ip46_udp_ping_flow * flow)
   vec_validate (buffers, (no_pak - 1));
   if (vlib_buffer_alloc (vm, buffers, vec_len (buffers)) != no_pak)
     {
-      //Error
+      // Error
       return;
     }
 
@@ -291,8 +289,9 @@ udp_ping_send_ip6_pak (vlib_main_t * vm, ip46_udp_ping_flow * flow)
        */
       if (flow->fault_det && (stats->retry > MAX_PING_RETRIES))
 	{
-	  ioam_trace_option_t *opt = (ioam_trace_option_t *)
-	    ip6_hbh_get_option (hbh, HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST);
+	  ioam_trace_option_t *opt =
+	    (ioam_trace_option_t *) ip6_hbh_get_option (
+	      hbh, HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST);
 	  ip6_hbh_ioam_trace_set_bit (opt, BIT_LOOPBACK);
 	}
 
@@ -317,8 +316,7 @@ udp_ping_send_ip6_pak (vlib_main_t * vm, ip46_udp_ping_flow * flow)
     }
   vlib_put_frame_to_node (vm, next_node->index, nf);
 
-  flow->udp_data.next_send_time =
-    vlib_time_now (vm) + flow->udp_data.interval;
+  flow->udp_data.next_send_time = vlib_time_now (vm) + flow->udp_data.interval;
 }
 
 /*

@@ -34,11 +34,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -84,7 +84,7 @@
      bridge_domain_set_default_learn_limit)
 
 static void
-send_l2_xconnect_details (vl_api_registration_t * reg, u32 context,
+send_l2_xconnect_details (vl_api_registration_t *reg, u32 context,
 			  u32 rx_sw_if_index, u32 tx_sw_if_index)
 {
   vl_api_l2_xconnect_details_t *mp;
@@ -100,7 +100,7 @@ send_l2_xconnect_details (vl_api_registration_t * reg, u32 context,
 }
 
 static void
-vl_api_l2_xconnect_dump_t_handler (vl_api_l2_xconnect_dump_t * mp)
+vl_api_l2_xconnect_dump_t_handler (vl_api_l2_xconnect_dump_t *mp)
 {
   vl_api_registration_t *reg;
   l2input_main_t *l2im = &l2input_main;
@@ -123,7 +123,7 @@ vl_api_l2_xconnect_dump_t_handler (vl_api_l2_xconnect_dump_t * mp)
 }
 
 static void
-vl_api_l2_fib_clear_table_t_handler (vl_api_l2_fib_clear_table_t * mp)
+vl_api_l2_fib_clear_table_t_handler (vl_api_l2_fib_clear_table_t *mp)
 {
   int rv = 0;
   vl_api_l2_fib_clear_table_reply_t *rmp;
@@ -135,10 +135,9 @@ vl_api_l2_fib_clear_table_t_handler (vl_api_l2_fib_clear_table_t * mp)
 }
 
 static void
-send_l2fib_table_entry (vpe_api_main_t * am,
-			vl_api_registration_t * reg,
-			l2fib_entry_key_t * l2fe_key,
-			l2fib_entry_result_t * l2fe_res, u32 context)
+send_l2fib_table_entry (vpe_api_main_t *am, vl_api_registration_t *reg,
+			l2fib_entry_key_t *l2fe_key,
+			l2fib_entry_result_t *l2fe_res, u32 context)
 {
   vl_api_l2_fib_table_details_t *mp;
 
@@ -146,8 +145,7 @@ send_l2fib_table_entry (vpe_api_main_t * am,
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_L2_FIB_TABLE_DETAILS);
 
-  mp->bd_id =
-    ntohl (l2input_main.bd_configs[l2fe_key->fields.bd_index].bd_id);
+  mp->bd_id = ntohl (l2input_main.bd_configs[l2fe_key->fields.bd_index].bd_id);
 
   mac_address_encode ((mac_address_t *) l2fe_key->fields.mac, mp->mac);
   mp->sw_if_index = ntohl (l2fe_res->fields.sw_if_index);
@@ -160,7 +158,7 @@ send_l2fib_table_entry (vpe_api_main_t * am,
 }
 
 static void
-vl_api_l2_fib_table_dump_t_handler (vl_api_l2_fib_table_dump_t * mp)
+vl_api_l2_fib_table_dump_t_handler (vl_api_l2_fib_table_dump_t *mp)
 {
   vpe_api_main_t *am = &vpe_api_main;
   bd_main_t *bdm = &bd_main;
@@ -190,16 +188,16 @@ vl_api_l2_fib_table_dump_t_handler (vl_api_l2_fib_table_dump_t * mp)
   l2fib_table_dump (bd_index, &l2fe_key, &l2fe_res);
 
   vec_foreach_index (ni, l2fe_key)
-  {
-    send_l2fib_table_entry (am, reg, vec_elt_at_index (l2fe_key, ni),
-			    vec_elt_at_index (l2fe_res, ni), mp->context);
-  }
+    {
+      send_l2fib_table_entry (am, reg, vec_elt_at_index (l2fe_key, ni),
+			      vec_elt_at_index (l2fe_res, ni), mp->context);
+    }
   vec_free (l2fe_key);
   vec_free (l2fe_res);
 }
 
 static void
-vl_api_l2fib_add_del_t_handler (vl_api_l2fib_add_del_t * mp)
+vl_api_l2fib_add_del_t_handler (vl_api_l2fib_add_del_t *mp)
 {
   bd_main_t *bdm = &bd_main;
   l2input_main_t *l2im = &l2input_main;
@@ -357,7 +355,7 @@ exit:
 }
 
 static void
-vl_api_l2fib_flush_int_t_handler (vl_api_l2fib_flush_int_t * mp)
+vl_api_l2fib_flush_int_t_handler (vl_api_l2fib_flush_int_t *mp)
 {
   int rv = 0;
   vlib_main_t *vm = vlib_get_main ();
@@ -373,7 +371,7 @@ vl_api_l2fib_flush_int_t_handler (vl_api_l2fib_flush_int_t * mp)
 }
 
 static void
-vl_api_l2fib_flush_all_t_handler (vl_api_l2fib_flush_all_t * mp)
+vl_api_l2fib_flush_all_t_handler (vl_api_l2fib_flush_all_t *mp)
 {
   int rv = 0;
   vl_api_l2fib_flush_all_reply_t *rmp;
@@ -383,7 +381,7 @@ vl_api_l2fib_flush_all_t_handler (vl_api_l2fib_flush_all_t * mp)
 }
 
 static void
-vl_api_l2fib_flush_bd_t_handler (vl_api_l2fib_flush_bd_t * mp)
+vl_api_l2fib_flush_bd_t_handler (vl_api_l2fib_flush_bd_t *mp)
 {
   int rv = 0;
   vlib_main_t *vm = vlib_get_main ();
@@ -426,7 +424,7 @@ exit:
 }
 
 static void
-vl_api_l2_flags_t_handler (vl_api_l2_flags_t * mp)
+vl_api_l2_flags_t_handler (vl_api_l2_flags_t *mp)
 {
   vl_api_l2_flags_reply_t *rmp;
   int rv = 0;
@@ -458,10 +456,8 @@ vl_api_l2_flags_t_handler (vl_api_l2_flags_t * mp)
   BAD_SW_IF_INDEX_LABEL;
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_L2_FLAGS_REPLY,
-  ({
-    rmp->resulting_feature_bitmap = ntohl(rbm);
-  }));
+  REPLY_MACRO2 (VL_API_L2_FLAGS_REPLY,
+		({ rmp->resulting_feature_bitmap = ntohl (rbm); }));
   /* *INDENT-ON* */
 }
 
@@ -505,8 +501,8 @@ out:
 }
 
 static void
-vl_api_bridge_domain_set_mac_age_t_handler (vl_api_bridge_domain_set_mac_age_t
-					    * mp)
+vl_api_bridge_domain_set_mac_age_t_handler (
+  vl_api_bridge_domain_set_mac_age_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   bd_main_t *bdm = &bd_main;
@@ -533,20 +529,18 @@ out:
 }
 
 static void
-vl_api_bridge_domain_add_del_t_handler (vl_api_bridge_domain_add_del_t * mp)
+vl_api_bridge_domain_add_del_t_handler (vl_api_bridge_domain_add_del_t *mp)
 {
-  l2_bridge_domain_add_del_args_t a = {
-    .is_add = mp->is_add,
-    .flood = mp->flood,
-    .uu_flood = mp->uu_flood,
-    .forward = mp->forward,
-    .learn = mp->learn,
-    .arp_term = mp->arp_term,
-    .arp_ufwd = mp->arp_ufwd,
-    .mac_age = mp->mac_age,
-    .bd_id = ntohl (mp->bd_id),
-    .bd_tag = mp->bd_tag
-  };
+  l2_bridge_domain_add_del_args_t a = { .is_add = mp->is_add,
+					.flood = mp->flood,
+					.uu_flood = mp->uu_flood,
+					.forward = mp->forward,
+					.learn = mp->learn,
+					.arp_term = mp->arp_term,
+					.arp_ufwd = mp->arp_ufwd,
+					.mac_age = mp->mac_age,
+					.bd_id = ntohl (mp->bd_id),
+					.bd_tag = mp->bd_tag };
 
   int rv = bd_add_del (&a);
 
@@ -555,10 +549,9 @@ vl_api_bridge_domain_add_del_t_handler (vl_api_bridge_domain_add_del_t * mp)
 }
 
 static void
-send_bridge_domain_details (l2input_main_t * l2im,
-			    vl_api_registration_t * reg,
-			    l2_bridge_domain_t * bd_config,
-			    u32 n_sw_ifs, u32 context)
+send_bridge_domain_details (l2input_main_t *l2im, vl_api_registration_t *reg,
+			    l2_bridge_domain_t *bd_config, u32 n_sw_ifs,
+			    u32 context)
 {
   vl_api_bridge_domain_details_t *mp;
   l2_flood_member_t *m;
@@ -590,20 +583,20 @@ send_bridge_domain_details (l2input_main_t * l2im,
 
   sw_ifs = (vl_api_bridge_domain_sw_if_t *) mp->sw_if_details;
   vec_foreach (m, bd_config->members)
-  {
-    sw_ifs->sw_if_index = ntohl (m->sw_if_index);
-    input_cfg = vec_elt_at_index (l2im->configs, m->sw_if_index);
-    sw_ifs->shg = input_cfg->shg;
-    sw_ifs++;
-    mp->n_sw_ifs++;
-  }
+    {
+      sw_ifs->sw_if_index = ntohl (m->sw_if_index);
+      input_cfg = vec_elt_at_index (l2im->configs, m->sw_if_index);
+      sw_ifs->shg = input_cfg->shg;
+      sw_ifs++;
+      mp->n_sw_ifs++;
+    }
   mp->n_sw_ifs = htonl (mp->n_sw_ifs);
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
-vl_api_bridge_domain_dump_t_handler (vl_api_bridge_domain_dump_t * mp)
+vl_api_bridge_domain_dump_t_handler (vl_api_bridge_domain_dump_t *mp)
 {
   bd_main_t *bdm = &bd_main;
   l2input_main_t *l2im = &l2input_main;
@@ -616,7 +609,7 @@ vl_api_bridge_domain_dump_t_handler (vl_api_bridge_domain_dump_t * mp)
 
   filter_sw_if_index = ntohl (mp->sw_if_index);
   if (filter_sw_if_index != ~0)
-    return;			/* UNIMPLEMENTED */
+    return; /* UNIMPLEMENTED */
 
   bd_id = ntohl (mp->bd_id);
   if (bd_id == 0)
@@ -640,8 +633,7 @@ vl_api_bridge_domain_dump_t_handler (vl_api_bridge_domain_dump_t * mp)
       /* skip placeholder bd_id 0 */
       if (bd_config && (bd_config->bd_id > 0))
 	send_bridge_domain_details (l2im, reg, bd_config,
-				    vec_len (bd_config->members),
-				    mp->context);
+				    vec_len (bd_config->members), mp->context);
     }
 }
 
@@ -669,7 +661,7 @@ bd_flags_decode (vl_api_bd_flags_t v)
 }
 
 static void
-vl_api_bridge_flags_t_handler (vl_api_bridge_flags_t * mp)
+vl_api_bridge_flags_t_handler (vl_api_bridge_flags_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   bd_main_t *bdm = &bd_main;
@@ -696,16 +688,14 @@ vl_api_bridge_flags_t_handler (vl_api_bridge_flags_t * mp)
 
 out:
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_BRIDGE_FLAGS_REPLY,
-  ({
-    rmp->resulting_feature_bitmap = ntohl(bitmap);
-  }));
+  REPLY_MACRO2 (VL_API_BRIDGE_FLAGS_REPLY,
+		({ rmp->resulting_feature_bitmap = ntohl (bitmap); }));
   /* *INDENT-ON* */
 }
 
 static void
-  vl_api_l2_interface_vlan_tag_rewrite_t_handler
-  (vl_api_l2_interface_vlan_tag_rewrite_t * mp)
+vl_api_l2_interface_vlan_tag_rewrite_t_handler (
+  vl_api_l2_interface_vlan_tag_rewrite_t *mp)
 {
   int rv = 0;
   vl_api_l2_interface_vlan_tag_rewrite_reply_t *rmp;
@@ -746,8 +736,8 @@ static void
 }
 
 static void
-  vl_api_l2_interface_pbb_tag_rewrite_t_handler
-  (vl_api_l2_interface_pbb_tag_rewrite_t * mp)
+vl_api_l2_interface_pbb_tag_rewrite_t_handler (
+  vl_api_l2_interface_pbb_tag_rewrite_t *mp)
 {
   vl_api_l2_interface_pbb_tag_rewrite_reply_t *rmp;
   vnet_main_t *vnm = vnet_get_main ();
@@ -776,9 +766,9 @@ static void
   mac_address_decode (mp->b_dmac, &b_dmac);
   mac_address_decode (mp->b_smac, &b_smac);
 
-  rv = l2pbb_configure (vm, vnm, ntohl (mp->sw_if_index), vtr_op,
-			b_dmac.bytes, b_smac.bytes, ntohs (mp->b_vlanid),
-			ntohl (mp->i_sid), ntohs (mp->outer_tag));
+  rv = l2pbb_configure (vm, vnm, ntohl (mp->sw_if_index), vtr_op, b_dmac.bytes,
+			b_smac.bytes, ntohs (mp->b_vlanid), ntohl (mp->i_sid),
+			ntohs (mp->outer_tag));
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -786,8 +776,8 @@ static void
 }
 
 static void
-  vl_api_sw_interface_set_l2_xconnect_t_handler
-  (vl_api_sw_interface_set_l2_xconnect_t * mp)
+vl_api_sw_interface_set_l2_xconnect_t_handler (
+  vl_api_sw_interface_set_l2_xconnect_t *mp)
 {
   vl_api_sw_interface_set_l2_xconnect_reply_t *rmp;
   int rv = 0;
@@ -801,8 +791,7 @@ static void
   if (mp->enable)
     {
       VALIDATE_TX_SW_IF_INDEX (mp);
-      rv = set_int_l2_mode (vm, vnm, MODE_L2_XC,
-			    rx_sw_if_index, 0,
+      rv = set_int_l2_mode (vm, vnm, MODE_L2_XC, rx_sw_if_index, 0,
 			    L2_BD_PORT_TYPE_NORMAL, 0, tx_sw_if_index);
     }
   else
@@ -828,7 +817,7 @@ static void
 }
 
 static int
-l2_bd_port_type_decode (vl_api_l2_port_type_t v, l2_bd_port_type_t * l)
+l2_bd_port_type_decode (vl_api_l2_port_type_t v, l2_bd_port_type_t *l)
 {
   v = clib_net_to_host_u32 (v);
 
@@ -849,8 +838,8 @@ l2_bd_port_type_decode (vl_api_l2_port_type_t v, l2_bd_port_type_t * l)
 }
 
 static void
-  vl_api_sw_interface_set_l2_bridge_t_handler
-  (vl_api_sw_interface_set_l2_bridge_t * mp)
+vl_api_sw_interface_set_l2_bridge_t_handler (
+  vl_api_sw_interface_set_l2_bridge_t *mp)
 {
   bd_main_t *bdm = &bd_main;
   vl_api_sw_interface_set_l2_bridge_reply_t *rmp;
@@ -871,8 +860,8 @@ static void
       u32 bd_id = ntohl (mp->bd_id);
       u32 bd_index = bd_find_or_add_bd_index (bdm, bd_id);
 
-      rv = set_int_l2_mode (vm, vnm, MODE_L2_BRIDGE,
-			    rx_sw_if_index, bd_index, pt, mp->shg, 0);
+      rv = set_int_l2_mode (vm, vnm, MODE_L2_BRIDGE, rx_sw_if_index, bd_index,
+			    pt, mp->shg, 0);
     }
   else
     {
@@ -896,12 +885,9 @@ out:
 }
 
 static void
-send_bd_ip_mac_entry (vpe_api_main_t * am,
-		      vl_api_registration_t * reg,
-		      u32 bd_id,
-		      const ip46_address_t * ip,
-		      ip46_type_t itype,
-		      const mac_address_t * mac, u32 context)
+send_bd_ip_mac_entry (vpe_api_main_t *am, vl_api_registration_t *reg,
+		      u32 bd_id, const ip46_address_t *ip, ip46_type_t itype,
+		      const mac_address_t *mac, u32 context)
 {
   vl_api_bd_ip_mac_details_t *mp;
 
@@ -919,7 +905,7 @@ send_bd_ip_mac_entry (vpe_api_main_t * am,
 }
 
 static void
-vl_api_bd_ip_mac_dump_t_handler (vl_api_bd_ip_mac_dump_t * mp)
+vl_api_bd_ip_mac_dump_t_handler (vl_api_bd_ip_mac_dump_t *mp)
 {
   vpe_api_main_t *am = &vpe_api_main;
   bd_main_t *bdm = &bd_main;
@@ -962,35 +948,35 @@ vl_api_bd_ip_mac_dump_t_handler (vl_api_bd_ip_mac_dump_t * mp)
 	  u64 mac64;
 	  bd_id = bd_config->bd_id;
 
-         /* *INDENT-OFF* */
-         hash_foreach (ip4_addr.as_u32, mac64, bd_config->mac_by_ip4,
-         ({
-           ip46_address_t ip = {
-             .ip4 = ip4_addr,
-           };
-           mac_address_from_u64(&mac, mac64);
+	  /* *INDENT-OFF* */
+	  hash_foreach (ip4_addr.as_u32, mac64, bd_config->mac_by_ip4, ({
+			  ip46_address_t ip = {
+			    .ip4 = ip4_addr,
+			  };
+			  mac_address_from_u64 (&mac, mac64);
 
-           send_bd_ip_mac_entry (am, reg, bd_id, &ip, IP46_TYPE_IP4,
-                                 &mac, mp->context);
-         }));
+			  send_bd_ip_mac_entry (am, reg, bd_id, &ip,
+						IP46_TYPE_IP4, &mac,
+						mp->context);
+			}));
 
-         hash_foreach_mem (ip6_addr, mac64, bd_config->mac_by_ip6,
-         ({
-           ip46_address_t ip = {
-             .ip6 = *ip6_addr,
-           };
-           mac_address_from_u64(&mac, mac64);
+	  hash_foreach_mem (ip6_addr, mac64, bd_config->mac_by_ip6, ({
+			      ip46_address_t ip = {
+				.ip6 = *ip6_addr,
+			      };
+			      mac_address_from_u64 (&mac, mac64);
 
-           send_bd_ip_mac_entry (am, reg, bd_id, &ip, IP46_TYPE_IP6,
-                                 &mac, mp->context);
-         }));
-         /* *INDENT-ON* */
+			      send_bd_ip_mac_entry (am, reg, bd_id, &ip,
+						    IP46_TYPE_IP6, &mac,
+						    mp->context);
+			    }));
+	  /* *INDENT-ON* */
 	}
     }
 }
 
 static void
-vl_api_bd_ip_mac_add_del_t_handler (vl_api_bd_ip_mac_add_del_t * mp)
+vl_api_bd_ip_mac_add_del_t_handler (vl_api_bd_ip_mac_add_del_t *mp)
 {
   ip46_address_t ip_addr = ip46_address_initializer;
   vl_api_bd_ip_mac_add_del_reply_t *rmp;
@@ -1028,7 +1014,7 @@ out:
 }
 
 static void
-vl_api_bd_ip_mac_flush_t_handler (vl_api_bd_ip_mac_flush_t * mp)
+vl_api_bd_ip_mac_flush_t_handler (vl_api_bd_ip_mac_flush_t *mp)
 {
   vl_api_bd_ip_mac_flush_reply_t *rmp;
   bd_main_t *bdm = &bd_main;
@@ -1058,12 +1044,11 @@ out:
   REPLY_MACRO (VL_API_BD_IP_MAC_FLUSH_REPLY);
 }
 
-extern void l2_efp_filter_configure (vnet_main_t * vnet_main,
-				     u32 sw_if_index, u8 enable);
+extern void l2_efp_filter_configure (vnet_main_t *vnet_main, u32 sw_if_index,
+				     u8 enable);
 
 static void
-vl_api_l2_interface_efp_filter_t_handler (vl_api_l2_interface_efp_filter_t *
-					  mp)
+vl_api_l2_interface_efp_filter_t_handler (vl_api_l2_interface_efp_filter_t *mp)
 {
   int rv;
   vl_api_l2_interface_efp_filter_reply_t *rmp;
@@ -1080,7 +1065,7 @@ vl_api_l2_interface_efp_filter_t_handler (vl_api_l2_interface_efp_filter_t *
 }
 
 static void
-vl_api_l2_patch_add_del_t_handler (vl_api_l2_patch_add_del_t * mp)
+vl_api_l2_patch_add_del_t_handler (vl_api_l2_patch_add_del_t *mp)
 {
   extern int vnet_l2_patch_add_del (u32 rx_sw_if_index, u32 tx_sw_if_index,
 				    int is_add);
@@ -1103,7 +1088,7 @@ vl_api_l2_patch_add_del_t_handler (vl_api_l2_patch_add_del_t * mp)
 }
 
 static void
-vl_api_sw_interface_set_vpath_t_handler (vl_api_sw_interface_set_vpath_t * mp)
+vl_api_sw_interface_set_vpath_t_handler (vl_api_sw_interface_set_vpath_t *mp)
 {
   vl_api_sw_interface_set_vpath_reply_t *rmp;
   int rv = 0;
@@ -1112,14 +1097,14 @@ vl_api_sw_interface_set_vpath_t_handler (vl_api_sw_interface_set_vpath_t * mp)
   VALIDATE_SW_IF_INDEX (mp);
 
   l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_VPATH, mp->enable);
-  vnet_feature_enable_disable ("ip4-unicast", "vpath-input-ip4",
-			       sw_if_index, mp->enable, 0, 0);
-  vnet_feature_enable_disable ("ip4-multicast", "vpath-input-ip4",
-			       sw_if_index, mp->enable, 0, 0);
-  vnet_feature_enable_disable ("ip6-unicast", "vpath-input-ip6",
-			       sw_if_index, mp->enable, 0, 0);
-  vnet_feature_enable_disable ("ip6-multicast", "vpath-input-ip6",
-			       sw_if_index, mp->enable, 0, 0);
+  vnet_feature_enable_disable ("ip4-unicast", "vpath-input-ip4", sw_if_index,
+			       mp->enable, 0, 0);
+  vnet_feature_enable_disable ("ip4-multicast", "vpath-input-ip4", sw_if_index,
+			       mp->enable, 0, 0);
+  vnet_feature_enable_disable ("ip6-unicast", "vpath-input-ip6", sw_if_index,
+			       mp->enable, 0, 0);
+  vnet_feature_enable_disable ("ip6-multicast", "vpath-input-ip6", sw_if_index,
+			       mp->enable, 0, 0);
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -1127,7 +1112,7 @@ vl_api_sw_interface_set_vpath_t_handler (vl_api_sw_interface_set_vpath_t * mp)
 }
 
 static void
-vl_api_bvi_create_t_handler (vl_api_bvi_create_t * mp)
+vl_api_bvi_create_t_handler (vl_api_bvi_create_t *mp)
 {
   vl_api_bvi_create_reply_t *rmp;
   mac_address_t mac;
@@ -1139,15 +1124,13 @@ vl_api_bvi_create_t_handler (vl_api_bvi_create_t * mp)
   rv = l2_bvi_create (ntohl (mp->user_instance), &mac, &sw_if_index);
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_BVI_CREATE_REPLY,
-  ({
-    rmp->sw_if_index = ntohl (sw_if_index);
-  }));
+  REPLY_MACRO2 (VL_API_BVI_CREATE_REPLY,
+		({ rmp->sw_if_index = ntohl (sw_if_index); }));
   /* *INDENT-ON* */
 }
 
 static void
-vl_api_bvi_delete_t_handler (vl_api_bvi_delete_t * mp)
+vl_api_bvi_delete_t_handler (vl_api_bvi_delete_t *mp)
 {
   vl_api_bvi_delete_reply_t *rmp;
   int rv;
@@ -1158,8 +1141,8 @@ vl_api_bvi_delete_t_handler (vl_api_bvi_delete_t * mp)
 }
 
 static bool
-l2_arp_term_publish_event_is_equal (const l2_arp_term_publish_event_t * e1,
-				    const l2_arp_term_publish_event_t * e2)
+l2_arp_term_publish_event_is_equal (const l2_arp_term_publish_event_t *e1,
+				    const l2_arp_term_publish_event_t *e2)
 {
   if (e1 == NULL || e2 == NULL)
     return false;
@@ -1169,14 +1152,13 @@ l2_arp_term_publish_event_is_equal (const l2_arp_term_publish_event_t * e1,
 }
 
 static uword
-l2_arp_term_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
-		     vlib_frame_t * f)
+l2_arp_term_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   /* These cross the longjmp boundary (vlib_process_wait_for_event)
    * and need to be volatile - to prevent them from being optimized into
    * a register - which could change during suspension */
   volatile f64 last = vlib_time_now (vm);
-  volatile l2_arp_term_publish_event_t last_event = { };
+  volatile l2_arp_term_publish_event_t last_event = {};
 
   l2_arp_term_main_t *l2am = &l2_arp_term_main;
 
@@ -1196,42 +1178,41 @@ l2_arp_term_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  l2_arp_term_publish_event_t *event;
 
 	  vec_foreach (event, l2am->publish_events)
-	  {
-	    /* dampen duplicate events - cast away volatile */
-	    if (l2_arp_term_publish_event_is_equal
-		(event, (l2_arp_term_publish_event_t *) & last_event) &&
-		(now - last) < 10.0)
-	      {
-		continue;
-	      }
-	    last_event = *event;
-	    last = now;
+	    {
+	      /* dampen duplicate events - cast away volatile */
+	      if (l2_arp_term_publish_event_is_equal (
+		    event, (l2_arp_term_publish_event_t *) &last_event) &&
+		  (now - last) < 10.0)
+		{
+		  continue;
+		}
+	      last_event = *event;
+	      last = now;
 
-            /* *INDENT-OFF* */
-            pool_foreach (reg, vpe_api_main.l2_arp_term_events_registrations)
-             {
-              vl_api_registration_t *vl_reg;
-              vl_reg = vl_api_client_index_to_registration (reg->client_index);
-              ALWAYS_ASSERT (vl_reg != NULL);
+	      /* *INDENT-OFF* */
+	      pool_foreach (reg, vpe_api_main.l2_arp_term_events_registrations)
+		{
+		  vl_api_registration_t *vl_reg;
+		  vl_reg =
+		    vl_api_client_index_to_registration (reg->client_index);
+		  ALWAYS_ASSERT (vl_reg != NULL);
 
-              if (reg && vl_api_can_send_msg (vl_reg))
-                {
-                  vl_api_l2_arp_term_event_t * vevent;
-                  vevent = vl_msg_api_alloc (sizeof *vevent);
-                  clib_memset (vevent, 0, sizeof *vevent);
-                  vevent->_vl_msg_id = htons (VL_API_L2_ARP_TERM_EVENT);
-                  vevent->client_index = reg->client_index;
-                  vevent->pid = reg->client_pid;
-                  ip_address_encode(&event->ip,
-                                    event->type,
-                                    &vevent->ip);
-                  vevent->sw_if_index = htonl(event->sw_if_index);
-                  mac_address_encode(&event->mac, vevent->mac);
-                  vl_api_send_msg (vl_reg, (u8 *) vevent);
-                }
-            }
-            /* *INDENT-ON* */
-	  }
+		  if (reg && vl_api_can_send_msg (vl_reg))
+		    {
+		      vl_api_l2_arp_term_event_t *vevent;
+		      vevent = vl_msg_api_alloc (sizeof *vevent);
+		      clib_memset (vevent, 0, sizeof *vevent);
+		      vevent->_vl_msg_id = htons (VL_API_L2_ARP_TERM_EVENT);
+		      vevent->client_index = reg->client_index;
+		      vevent->pid = reg->client_pid;
+		      ip_address_encode (&event->ip, event->type, &vevent->ip);
+		      vevent->sw_if_index = htonl (event->sw_if_index);
+		      mac_address_encode (&event->mac, vevent->mac);
+		      vl_api_send_msg (vl_reg, (u8 *) vevent);
+		    }
+		}
+	      /* *INDENT-ON* */
+	    }
 	  vec_reset_length (l2am->publish_events);
 	}
     }
@@ -1248,8 +1229,7 @@ VLIB_REGISTER_NODE (l2_arp_term_process_node) = {
 /* *INDENT-ON* */
 
 static void
-vl_api_want_l2_arp_term_events_t_handler (vl_api_want_l2_arp_term_events_t *
-					  mp)
+vl_api_want_l2_arp_term_events_t_handler (vl_api_want_l2_arp_term_events_t *mp)
 {
   vl_api_want_l2_arp_term_events_reply_t *rmp;
   vpe_api_main_t *am = &vpe_api_main;
@@ -1332,45 +1312,24 @@ VL_MSG_API_REAPER_FUNCTION (want_l2_arp_term_events_reaper);
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_l2;
 #undef _
 }
 
 static clib_error_t *
-l2_api_hookup (vlib_main_t * vm)
+l2_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_vpe_api_msg;
 #undef _
 
   /* Mark VL_API_BRIDGE_DOMAIN_DUMP as mp safe */
-  am->is_mp_safe[VL_API_BRIDGE_DOMAIN_DUMP] = 1;
-
-  /*
-   * Set up the (msg_name, crc, message-id) table
-   */
-  setup_message_id_table (am);
-
-  return 0;
-}
-
-VLIB_API_INIT_FUNCTION (l2_api_hookup);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+  am->is_mp_safe[VL_API_BRIDGE

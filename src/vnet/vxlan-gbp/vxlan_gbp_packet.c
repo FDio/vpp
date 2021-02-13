@@ -16,7 +16,7 @@
 #include <vnet/vxlan-gbp/vxlan_gbp_packet.h>
 
 u8 *
-format_vxlan_gbp_header_flags (u8 * s, va_list * args)
+format_vxlan_gbp_header_flags (u8 *s, va_list *args)
 {
   vxlan_gbp_flags_t flags = va_arg (*args, int);
 
@@ -24,9 +24,10 @@ format_vxlan_gbp_header_flags (u8 * s, va_list * args)
     {
       s = format (s, "None");
     }
-#define _(n,f) {                          \
-    if (VXLAN_GBP_FLAGS_##f & flags)      \
-      s = format (s, #f);                 \
+#define _(n, f)                                                               \
+  {                                                                           \
+    if (VXLAN_GBP_FLAGS_##f & flags)                                          \
+      s = format (s, #f);                                                     \
   }
   foreach_vxlan_gbp_flags
 #undef _
@@ -34,7 +35,7 @@ format_vxlan_gbp_header_flags (u8 * s, va_list * args)
 }
 
 u8 *
-format_vxlan_gbp_header_gpflags (u8 * s, va_list * args)
+format_vxlan_gbp_header_gpflags (u8 *s, va_list *args)
 {
   vxlan_gbp_gpflags_t flags = va_arg (*args, int);
 
@@ -42,9 +43,10 @@ format_vxlan_gbp_header_gpflags (u8 * s, va_list * args)
     {
       s = format (s, "None");
     }
-#define _(n,f) {                          \
-    if (VXLAN_GBP_GPFLAGS_##f & flags)    \
-      s = format (s, #f);                 \
+#define _(n, f)                                                               \
+  {                                                                           \
+    if (VXLAN_GBP_GPFLAGS_##f & flags)                                        \
+      s = format (s, #f);                                                     \
   }
   foreach_vxlan_gbp_gpflags
 #undef _

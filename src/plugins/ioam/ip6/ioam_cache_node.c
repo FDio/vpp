@@ -30,13 +30,15 @@
  *
  * set ioam ip6 cache
  *
- * Apply this classifier on interface where requests for anycast service are received:
- * classify session acl-hit-next ip6-node ip6-lookup table-index 0 match l3 ip6 dst db06::06
- *    ioam-decap anycast <<< ioam-decap is hooked to cache when set ioam ip6 cache is enabled
+ * Apply this classifier on interface where requests for anycast service are
+ * received: classify session acl-hit-next ip6-node ip6-lookup table-index 0
+ * match l3 ip6 dst db06::06 ioam-decap anycast <<< ioam-decap is hooked to
+ * cache when set ioam ip6 cache is enabled
  *
- * Apply this classifier on interface where responses from anycast service are received:
- * classify session acl-hit-next ip6-node ip6-add-from-cache-hop-by-hop table-index 0 match l3
- *    ip6 src db06::06 ioam-encap anycast-response
+ * Apply this classifier on interface where responses from anycast service are
+ * received: classify session acl-hit-next ip6-node
+ * ip6-add-from-cache-hop-by-hop table-index 0 match l3 ip6 src db06::06
+ * ioam-encap anycast-response
  *
  */
 #include <vlib/vlib.h>
@@ -56,30 +58,29 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_cache_trace (u8 * s, va_list * args)
+format_cache_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   cache_trace_t *t = va_arg (*args, cache_trace_t *);
 
-  s = format (s, "CACHE: flow_label %d, next index %d",
-	      t->flow_label, t->next_index);
+  s = format (s, "CACHE: flow_label %d, next index %d", t->flow_label,
+	      t->next_index);
   return s;
 }
 
-#define foreach_cache_error \
-_(RECORDED, "ip6 iOAM headers cached")
+#define foreach_cache_error _ (RECORDED, "ip6 iOAM headers cached")
 
 typedef enum
 {
-#define _(sym,str) CACHE_ERROR_##sym,
+#define _(sym, str) CACHE_ERROR_##sym,
   foreach_cache_error
 #undef _
     CACHE_N_ERROR,
 } cache_error_t;
 
 static char *cache_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_cache_error
 #undef _
 };
@@ -91,8 +92,8 @@ typedef enum
 } cache_next_t;
 
 static uword
-ip6_ioam_cache_node_fn (vlib_main_t * vm,
-			vlib_node_runtime_t * node, vlib_frame_t * frame)
+ip6_ioam_cache_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+			vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   cache_next_t next_index;
@@ -137,14 +138,10 @@ ip6_ioam_cache_node_fn (vlib_main_t * vm,
 		{
 		  /* Cache the ioam hbh header */
 		  hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
-		  if (0 == ioam_cache_add (p0,
-					   ip0,
-					   clib_net_to_host_u16
-					   (tcp0->src_port),
-					   clib_net_to_host_u16
-					   (tcp0->dst_port), hbh0,
-					   clib_net_to_host_u32
-					   (tcp0->seq_number) + 1))
+		  if (0 == ioam_cache_add (
+			     p0, ip0, clib_net_to_host_u16 (tcp0->src_port),
+			     clib_net_to_host_u16 (tcp0->dst_port), hbh0,
+			     clib_net_to_host_u32 (tcp0->seq_number) + 1))
 		    {
 		      recorded++;
 		    }
@@ -156,32 +153,29 @@ ip6_ioam_cache_node_fn (vlib_main_t * vm,
 		{
 		  cache_trace_t *t =
 		    vlib_add_trace (vm, node, p0, sizeof (*t));
-		  t->flow_label =
-		    clib_net_to_host_u32
-		    (ip0->ip_version_traffic_class_and_flow_label);
+		  t->flow_label = clib_net_to_host_u32 (
+		    ip0->ip_version_traffic_class_and_flow_label);
 		  t->next_index = next0;
 		}
 	    }
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, ioam_cache_node.index,
-			       CACHE_ERROR_RECORDED, recorded);
+  vlib_node_increment_counter (vm, ioam_cache_node.index, CACHE_ERROR_RECORDED,
+			       recorded);
   return frame->n_vectors;
 }
 
 /*
  * Node for IP6 iOAM header cache
  */
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ioam_cache_node) =
-{
+
+VLIB_REGISTER_NODE (ioam_cache_node) = {
   .function = ip6_ioam_cache_node_fn,
   .name = "ip6-ioam-cache",
   .vector_size = sizeof (u32),
@@ -191,12 +185,8 @@ VLIB_REGISTER_NODE (ioam_cache_node) =
   .error_strings = cache_error_strings,
   .n_next_nodes = IOAM_CACHE_N_NEXT,
   /* edit / add dispositions here */
-  .next_nodes =
-  {
-    [IOAM_CACHE_NEXT_POP_HBYH] = "ip6-pop-hop-by-hop"
-  },
+  .next_nodes = { [IOAM_CACHE_NEXT_POP_HBYH] = "ip6-pop-hop-by-hop" },
 };
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -205,51 +195,48 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_ip6_add_from_cache_hbh_trace (u8 * s, va_list * args)
+format_ip6_add_from_cache_hbh_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  ip6_add_from_cache_hbh_trace_t *t = va_arg (*args,
-					      ip6_add_from_cache_hbh_trace_t
-					      *);
+  ip6_add_from_cache_hbh_trace_t *t =
+    va_arg (*args, ip6_add_from_cache_hbh_trace_t *);
 
   s = format (s, "IP6_ADD_FROM_CACHE_HBH: next index %d", t->next_index);
   return s;
 }
 
-#define foreach_ip6_add_from_cache_hbh_error \
-_(PROCESSED, "Pkts w/ added ip6 hop-by-hop options")
+#define foreach_ip6_add_from_cache_hbh_error                                  \
+  _ (PROCESSED, "Pkts w/ added ip6 hop-by-hop options")
 
 typedef enum
 {
-#define _(sym,str) IP6_ADD_FROM_CACHE_HBH_ERROR_##sym,
+#define _(sym, str) IP6_ADD_FROM_CACHE_HBH_ERROR_##sym,
   foreach_ip6_add_from_cache_hbh_error
 #undef _
     IP6_ADD_FROM_CACHE_HBH_N_ERROR,
 } ip6_add_from_cache_hbh_error_t;
 
 static char *ip6_add_from_cache_hbh_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ip6_add_from_cache_hbh_error
 #undef _
 };
 
-#define foreach_ip6_ioam_cache_input_next        \
-  _(IP6_LOOKUP, "ip6-lookup")                   \
-  _(DROP, "error-drop")
+#define foreach_ip6_ioam_cache_input_next                                     \
+  _ (IP6_LOOKUP, "ip6-lookup")                                                \
+  _ (DROP, "error-drop")
 
 typedef enum
 {
-#define _(s,n) IP6_IOAM_CACHE_INPUT_NEXT_##s,
+#define _(s, n) IP6_IOAM_CACHE_INPUT_NEXT_##s,
   foreach_ip6_ioam_cache_input_next
 #undef _
     IP6_IOAM_CACHE_INPUT_N_NEXT,
 } ip6_ioam_cache_input_next_t;
 
-
-VLIB_NODE_FN (ip6_add_from_cache_hbh_node) (vlib_main_t * vm,
-					    vlib_node_runtime_t * node,
-					    vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_add_from_cache_hbh_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   ioam_cache_main_t *cm = &ioam_cache_main;
   u32 n_left_from, *from, *to_next;
@@ -305,13 +292,10 @@ VLIB_NODE_FN (ip6_add_from_cache_hbh_node) (vlib_main_t * vm,
 	       (tcp0->flags & TCP_FLAG_ACK) == TCP_FLAG_ACK) ||
 	      (tcp0->flags & TCP_FLAG_RST) == TCP_FLAG_RST)
 	    {
-	      if (0 != (entry = ioam_cache_lookup (ip0,
-						   clib_net_to_host_u16
-						   (tcp0->src_port),
-						   clib_net_to_host_u16
-						   (tcp0->dst_port),
-						   clib_net_to_host_u32
-						   (tcp0->ack_number))))
+	      if (0 != (entry = ioam_cache_lookup (
+			  ip0, clib_net_to_host_u16 (tcp0->src_port),
+			  clib_net_to_host_u16 (tcp0->dst_port),
+			  clib_net_to_host_u32 (tcp0->ack_number))))
 		{
 		  rewrite = entry->ioam_rewrite_string;
 		  rewrite_len = vec_len (rewrite);
@@ -324,7 +308,6 @@ VLIB_NODE_FN (ip6_add_from_cache_hbh_node) (vlib_main_t * vm,
 	    }
 	  else
 	    goto TRACE0;
-
 
 	  /* Copy the ip header left by the required amount */
 	  copy_dst0 = (u64 *) (((u8 *) ip0) - (rewrite_len + sr_rewrite_len));
@@ -358,14 +341,13 @@ VLIB_NODE_FN (ip6_add_from_cache_hbh_node) (vlib_main_t * vm,
 	  srh0->protocol = ip0->protocol;
 	  hbh0->protocol = IPPROTO_IPV6_ROUTE;
 	  ip0->protocol = 0;
-	  new_l0 =
-	    clib_net_to_host_u16 (ip0->payload_length) + rewrite_len +
-	    sr_rewrite_len;
+	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) + rewrite_len +
+		   sr_rewrite_len;
 	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
 	  processed++;
 	TRACE0:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      ip6_add_from_cache_hbh_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -373,9 +355,8 @@ VLIB_NODE_FN (ip6_add_from_cache_hbh_node) (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -386,7 +367,7 @@ VLIB_NODE_FN (ip6_add_from_cache_hbh_node) (vlib_main_t * vm,
 			       processed);
   return frame->n_vectors;
 }
-/* *INDENT-OFF* */
+
 VLIB_REGISTER_NODE (ip6_add_from_cache_hbh_node) =
 {
   .name = "ip6-add-from-cache-hop-by-hop",
@@ -399,12 +380,11 @@ VLIB_REGISTER_NODE (ip6_add_from_cache_hbh_node) =
   .n_next_nodes = IP6_IOAM_CACHE_INPUT_N_NEXT,
   .next_nodes =
   {
-#define _(s,n) [IP6_IOAM_CACHE_INPUT_NEXT_##s] = n,
+#define _(s, n) [IP6_IOAM_CACHE_INPUT_NEXT_##s] = n,
     foreach_ip6_ioam_cache_input_next
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

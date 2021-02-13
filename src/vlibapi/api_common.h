@@ -36,7 +36,7 @@
 typedef enum
 {
   REGISTRATION_TYPE_FREE = 0,
-  REGISTRATION_TYPE_SHMEM,	/**< Shared memory connection */
+  REGISTRATION_TYPE_SHMEM,	   /**< Shared memory connection */
   REGISTRATION_TYPE_SOCKET_LISTEN, /**< Socket listener  */
   REGISTRATION_TYPE_SOCKET_SERVER, /**< Socket server */
   REGISTRATION_TYPE_SOCKET_CLIENT, /**< Socket client */
@@ -51,7 +51,7 @@ typedef struct vl_api_registration_
   /** Index in VLIB's brain (not shared memory). */
   u32 vl_api_registration_pool_index;
 
-  u8 *name;			/**< Client name */
+  u8 *name; /**< Client name */
 
   /* Zombie apocalypse checking */
   f64 last_heard;
@@ -64,25 +64,25 @@ typedef struct vl_api_registration_
   void *shmem_hdr;
 
   /* socket server and client */
-  u32 clib_file_index;		/**< Socket only: file index */
-  i8 *unprocessed_input;	/**< Socket only: pending input */
-  u32 unprocessed_msg_length;	/**< Socket only: unprocssed length */
-  u8 *output_vector;		/**< Socket only: output vector */
+  u32 clib_file_index;	      /**< Socket only: file index */
+  i8 *unprocessed_input;      /**< Socket only: pending input */
+  u32 unprocessed_msg_length; /**< Socket only: unprocssed length */
+  u8 *output_vector;	      /**< Socket only: output vector */
   int *additional_fds_to_close;
 
   /* socket client only */
-  u32 server_handle;		/**< Socket client only: server handle */
-  u32 server_index;		/**< Socket client only: server index */
+  u32 server_handle; /**< Socket client only: server handle */
+  u32 server_index;  /**< Socket client only: server index */
 } vl_api_registration_t;
 
-#define VL_API_INVALID_FI ((u32)~0)
+#define VL_API_INVALID_FI ((u32) ~0)
 
 /** Trace configuration for a single message */
 typedef struct
 {
-  int size;			/**< for sanity checking */
-  int trace_enable;		/**< trace this message  */
-  int replay_enable;		/**< This message can be replayed  */
+  int size;	     /**< for sanity checking */
+  int trace_enable;  /**< trace this message  */
+  int replay_enable; /**< This message can be replayed  */
 } trace_cfg_t;
 
 /**
@@ -90,13 +90,13 @@ typedef struct
  */
 typedef struct
 {
-  u8 endian;			/**< trace endianness */
-  u8 enabled;			/**< trace is enabled  */
-  u8 wrapped;			/**< trace has wrapped */
+  u8 endian;  /**< trace endianness */
+  u8 enabled; /**< trace is enabled  */
+  u8 wrapped; /**< trace has wrapped */
   u8 pad;
-  u32 nitems;			/**< Number of trace records */
-  u32 curindex;			/**< Current index in circular buffer  */
-  u8 **traces;			/**< Trace ring */
+  u32 nitems;	/**< Number of trace records */
+  u32 curindex; /**< Current index in circular buffer  */
+  u8 **traces;	/**< Trace ring */
 } vl_api_trace_t;
 
 /** Trace RX / TX enum */
@@ -107,41 +107,41 @@ typedef enum
 } vl_api_trace_which_t;
 
 #define VL_API_LITTLE_ENDIAN 0x00
-#define VL_API_BIG_ENDIAN 0x01
+#define VL_API_BIG_ENDIAN    0x01
 
 /** Message range (belonging to a plugin) */
 typedef struct
 {
-  u8 *name;			/**< name of the plugin  */
-  u16 first_msg_id;		/**< first assigned message ID */
-  u16 last_msg_id;		/**< last assigned message ID */
+  u8 *name;	    /**< name of the plugin  */
+  u16 first_msg_id; /**< first assigned message ID */
+  u16 last_msg_id;  /**< last assigned message ID */
 } vl_api_msg_range_t;
 
 /** Message configuration definition */
 typedef struct
 {
-  int id;			/**< the message ID */
-  char *name;			/**< the message name */
-  u32 crc;			/**< message definition CRC  */
-  void *handler;		/**< the message handler  */
-  void *cleanup;		/**< non-default message cleanup handler */
-  void *endian;			/**< message endian function  */
-  void *print;			/**< message print function  */
-  int size;			/**< message size  */
-  int traced;			/**< is this message to be traced?  */
-  int replay;			/**< is this message to be replayed?  */
-  int message_bounce;		/**< do not free message after processing */
-  int is_mp_safe;		/**< worker thread barrier required?  */
-  int is_autoendian;		/**< endian conversion required?  */
+  int id;	      /**< the message ID */
+  char *name;	      /**< the message name */
+  u32 crc;	      /**< message definition CRC  */
+  void *handler;      /**< the message handler  */
+  void *cleanup;      /**< non-default message cleanup handler */
+  void *endian;	      /**< message endian function  */
+  void *print;	      /**< message print function  */
+  int size;	      /**< message size  */
+  int traced;	      /**< is this message to be traced?  */
+  int replay;	      /**< is this message to be replayed?  */
+  int message_bounce; /**< do not free message after processing */
+  int is_mp_safe;     /**< worker thread barrier required?  */
+  int is_autoendian;  /**< endian conversion required?  */
 } vl_msg_api_msg_config_t;
 
 /** Message header structure */
 typedef struct msgbuf_
 {
-  svm_queue_t *q; /**< message allocated in this shmem ring  */
-  u32 data_len;			 /**< message length not including header  */
-  u32 gc_mark_timestamp;	 /**< message garbage collector mark TS  */
-  u8 data[0];			 /**< actual message begins here  */
+  svm_queue_t *q;	 /**< message allocated in this shmem ring  */
+  u32 data_len;		 /**< message length not including header  */
+  u32 gc_mark_timestamp; /**< message garbage collector mark TS  */
+  u8 data[0];		 /**< actual message begins here  */
 } msgbuf_t;
 
 CLIB_NOSANITIZE_ADDR static inline void
@@ -152,7 +152,7 @@ VL_MSG_API_UNPOISON (const void *a)
 }
 
 CLIB_NOSANITIZE_ADDR static inline void
-VL_MSG_API_SVM_QUEUE_UNPOISON (const svm_queue_t * q)
+VL_MSG_API_SVM_QUEUE_UNPOISON (const svm_queue_t *q)
 {
   CLIB_MEM_UNPOISON (q, sizeof (*q) + q->elsize * q->maxsize);
 }
@@ -172,15 +172,13 @@ void vl_msg_api_trace_only (void *the_msg);
 void vl_msg_api_cleanup_handler (void *the_msg);
 void vl_msg_api_replay_handler (void *the_msg);
 void vl_msg_api_socket_handler (void *the_msg);
-void vl_msg_api_set_handlers (int msg_id, char *msg_name,
-			      void *handler,
-			      void *cleanup,
-			      void *endian,
-			      void *print, int msg_size, int traced);
+void vl_msg_api_set_handlers (int msg_id, char *msg_name, void *handler,
+			      void *cleanup, void *endian, void *print,
+			      int msg_size, int traced);
 void vl_msg_api_clean_handlers (int msg_id);
 void vl_msg_api_config (vl_msg_api_msg_config_t *);
 void vl_msg_api_set_cleanup_handler (int msg_id, void *fp);
-void vl_msg_api_queue_handler (svm_queue_t * q);
+void vl_msg_api_queue_handler (svm_queue_t *q);
 
 void vl_msg_api_barrier_sync (void) __attribute__ ((weak));
 void vl_msg_api_barrier_release (void) __attribute__ ((weak));
@@ -201,11 +199,11 @@ int vl_msg_api_pd_handler (void *mp, int rv);
 
 void vl_msg_api_set_first_available_msg_id (u16 first_avail);
 u16 vl_msg_api_get_msg_ids (const char *name, int n);
-u32 vl_msg_api_get_msg_index (u8 * name_and_crc);
+u32 vl_msg_api_get_msg_index (u8 *name_and_crc);
 void *vl_msg_push_heap (void);
-void *vl_msg_push_heap_w_region (svm_region_t * vlib_rp);
+void *vl_msg_push_heap_w_region (svm_region_t *vlib_rp);
 void vl_msg_pop_heap (void *oldheap);
-void vl_msg_pop_heap_w_region (svm_region_t * vlib_rp, void *oldheap);
+void vl_msg_pop_heap_w_region (svm_region_t *vlib_rp, void *oldheap);
 
 typedef clib_error_t *(vl_msg_api_init_function_t) (u32 client_index);
 
@@ -375,10 +373,9 @@ typedef struct api_main_t
   int elog_trace_api_messages;
 
   /** performance counter callback **/
-  void (**perf_counter_cbs)
-    (struct api_main_t *, u32 id, int before_or_after);
-  void (**perf_counter_cbs_tmp)
-    (struct api_main_t *, u32 id, int before_or_after);
+  void (**perf_counter_cbs) (struct api_main_t *, u32 id, int before_or_after);
+  void (**perf_counter_cbs_tmp) (struct api_main_t *, u32 id,
+				 int before_or_after);
 
 } api_main_t;
 
@@ -392,7 +389,7 @@ vlibapi_get_main (void)
 }
 
 always_inline void
-vlibapi_set_main (api_main_t * am)
+vlibapi_set_main (api_main_t *am)
 {
   my_api_main = am;
 }

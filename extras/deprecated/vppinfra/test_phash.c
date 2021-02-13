@@ -40,11 +40,14 @@
 #include <vppinfra/random.h>
 
 static int verbose;
-#define if_verbose(format,args...) \
-  if (verbose) { clib_warning(format, ## args); }
+#define if_verbose(format, args...)                                           \
+  if (verbose)                                                                \
+    {                                                                         \
+      clib_warning (format, ##args);                                          \
+    }
 
 int
-test_phash_main (unformat_input_t * input)
+test_phash_main (unformat_input_t *input)
 {
   phash_main_t _pm = { 0 }, *pm = &_pm;
   int n_keys, random_keys;
@@ -55,32 +58,30 @@ test_phash_main (unformat_input_t * input)
   n_keys = 1000;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (0 == unformat (input, "keys %d", &n_keys)
-	  && 0 == unformat (input, "verbose %=", &verbose, 1)
-	  && 0 == unformat (input, "random-keys %=", &random_keys, 1)
-	  && 0 == unformat (input, "sequential-keys %=", &random_keys, 0)
-	  && 0 == unformat (input, "seed %d", &pm->random_seed)
-	  && 0 == unformat (input, "64-bit %|", &pm->flags, PHASH_FLAG_MIX64)
-	  && 0 == unformat (input, "32-bit %|", &pm->flags, PHASH_FLAG_MIX32)
-	  && 0 == unformat (input, "fast %|", &pm->flags,
-			    PHASH_FLAG_FAST_MODE)
-	  && 0 == unformat (input, "slow %|", &pm->flags,
-			    PHASH_FLAG_SLOW_MODE)
-	  && 0 == unformat (input, "minimal %|", &pm->flags,
-			    PHASH_FLAG_MINIMAL)
-	  && 0 == unformat (input, "non-minimal %|", &pm->flags,
-			    PHASH_FLAG_NON_MINIMAL))
+      if (0 == unformat (input, "keys %d", &n_keys) &&
+	  0 == unformat (input, "verbose %=", &verbose, 1) &&
+	  0 == unformat (input, "random-keys %=", &random_keys, 1) &&
+	  0 == unformat (input, "sequential-keys %=", &random_keys, 0) &&
+	  0 == unformat (input, "seed %d", &pm->random_seed) &&
+	  0 == unformat (input, "64-bit %|", &pm->flags, PHASH_FLAG_MIX64) &&
+	  0 == unformat (input, "32-bit %|", &pm->flags, PHASH_FLAG_MIX32) &&
+	  0 == unformat (input, "fast %|", &pm->flags, PHASH_FLAG_FAST_MODE) &&
+	  0 == unformat (input, "slow %|", &pm->flags, PHASH_FLAG_SLOW_MODE) &&
+	  0 ==
+	    unformat (input, "minimal %|", &pm->flags, PHASH_FLAG_MINIMAL) &&
+	  0 == unformat (input, "non-minimal %|", &pm->flags,
+			 PHASH_FLAG_NON_MINIMAL))
 	clib_error ("unknown input `%U'", format_unformat_error, input);
     }
 
   if (!pm->random_seed)
     pm->random_seed = random_default_seed ();
 
-  if_verbose
-    ("%d %d-bit keys, random seed %d, %s mode, looking for %sminimal hash",
-     n_keys, (pm->flags & PHASH_FLAG_MIX64) ? 64 : 32, pm->random_seed,
-     (pm->flags & PHASH_FLAG_FAST_MODE) ? "fast" : "slow",
-     (pm->flags & PHASH_FLAG_MINIMAL) ? "" : "non-");
+  if_verbose (
+    "%d %d-bit keys, random seed %d, %s mode, looking for %sminimal hash",
+    n_keys, (pm->flags & PHASH_FLAG_MIX64) ? 64 : 32, pm->random_seed,
+    (pm->flags & PHASH_FLAG_FAST_MODE) ? "fast" : "slow",
+    (pm->flags & PHASH_FLAG_MINIMAL) ? "" : "non-");
 
   seed = pm->random_seed;
 
@@ -90,16 +91,16 @@ test_phash_main (unformat_input_t * input)
 
     vec_resize (pm->keys, n_keys);
     vec_foreach (k, pm->keys)
-    {
-      k->key = k - pm->keys;
-      if (random_keys)
-	{
-	  if (pm->flags & PHASH_FLAG_MIX64)
-	    k->key = random_u64 (&seed);
-	  else
-	    k->key = random_u32 (&seed);
-	}
-    }
+      {
+	k->key = k - pm->keys;
+	if (random_keys)
+	  {
+	    if (pm->flags & PHASH_FLAG_MIX64)
+	      k->key = random_u64 (&seed);
+	    else
+	      k->key = random_u32 (&seed);
+	  }
+      }
   }
 
   error = phash_find_perfect_hash (pm);
@@ -111,8 +112,8 @@ test_phash_main (unformat_input_t * input)
   else
     {
       if_verbose ("(%d,%d) (a,b) bits, %d seeds tried, %d tree walks",
-		  pm->a_bits, pm->b_bits,
-		  pm->n_seed_trials, pm->n_perfect_calls);
+		  pm->a_bits, pm->b_bits, pm->n_seed_trials,
+		  pm->n_perfect_calls);
 
       error = phash_validate (pm);
       if (error)

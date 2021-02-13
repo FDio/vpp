@@ -24,9 +24,9 @@
 #include <ioam/lib-trace/trace_config.h>
 #include <vppinfra/lock.h>
 
-#define IOAM_FLOW_TEMPLATE_ID    260
-#define IOAM_TRACE_MAX_NODES      10
-#define IOAM_MAX_PATHS_PER_FLOW   10
+#define IOAM_FLOW_TEMPLATE_ID	260
+#define IOAM_TRACE_MAX_NODES	10
+#define IOAM_MAX_PATHS_PER_FLOW 10
 
 typedef struct
 {
@@ -44,7 +44,8 @@ typedef struct
   /** No of nodes in path. */
   u8 num_nodes;
 
-  /** Data contained in trace - NodeId, TTL, Ingress & Egress Link, Timestamp. */
+  /** Data contained in trace - NodeId, TTL, Ingress & Egress Link, Timestamp.
+   */
   u8 trace_type;
 
   /** Flag to indicate whether node is allocated. */
@@ -128,13 +129,13 @@ typedef struct ioam_analyser_data_t_
 } ioam_analyser_data_t;
 
 always_inline f64
-ip6_ioam_analyse_calc_delay (ioam_trace_hdr_t * trace, u16 trace_len,
-			     u8 oneway)
+ip6_ioam_analyse_calc_delay (ioam_trace_hdr_t *trace, u16 trace_len, u8 oneway)
 {
   u16 size_of_all_traceopts;
   u8 size_of_traceopt_per_node;
   u8 num_nodes;
-  u32 *start_elt, *end_elt, *uturn_elt;;
+  u32 *start_elt, *end_elt, *uturn_elt;
+  ;
   u32 start_time, end_time;
   u8 done = 0;
 
@@ -142,7 +143,7 @@ ip6_ioam_analyse_calc_delay (ioam_trace_hdr_t * trace, u16 trace_len,
   // Unknown trace type
   if (size_of_traceopt_per_node == 0)
     return 0;
-  size_of_all_traceopts = trace_len;	/*ioam_trace_type,data_list_elts_left */
+  size_of_all_traceopts = trace_len; /*ioam_trace_type,data_list_elts_left */
 
   num_nodes = (u8) (size_of_all_traceopts / size_of_traceopt_per_node);
   if ((num_nodes == 0) || (num_nodes <= trace->data_list_elts_left))
@@ -151,9 +152,8 @@ ip6_ioam_analyse_calc_delay (ioam_trace_hdr_t * trace, u16 trace_len,
   num_nodes -= trace->data_list_elts_left;
 
   start_elt = trace->elts;
-  end_elt =
-    trace->elts +
-    (u32) ((size_of_traceopt_per_node / sizeof (u32)) * (num_nodes - 1));
+  end_elt = trace->elts + (u32) ((size_of_traceopt_per_node / sizeof (u32)) *
+				 (num_nodes - 1));
 
   if (oneway && (trace->ioam_trace_type & BIT_TTL_NODEID))
     {
@@ -185,7 +185,7 @@ ip6_ioam_analyse_calc_delay (ioam_trace_hdr_t * trace, u16 trace_len,
 }
 
 always_inline void
-ip6_ioam_analyse_set_paths_down (ioam_analyser_data_t * data)
+ip6_ioam_analyse_set_paths_down (ioam_analyser_data_t *data)
 {
   ioam_analyse_trace_data *trace_data;
   ioam_analyse_trace_record *trace_record;
@@ -212,8 +212,8 @@ ip6_ioam_analyse_set_paths_down (ioam_analyser_data_t * data)
 }
 
 always_inline void
-ip6_ioam_analyse_hbh_trace_loopback (ioam_analyser_data_t * data,
-				     ioam_trace_hdr_t * trace, u16 trace_len)
+ip6_ioam_analyse_hbh_trace_loopback (ioam_analyser_data_t *data,
+				     ioam_trace_hdr_t *trace, u16 trace_len)
 {
   ioam_analyse_trace_data *trace_data;
   ioam_analyse_trace_record *trace_record;
@@ -249,9 +249,8 @@ ip6_ioam_analyse_hbh_trace_loopback (ioam_analyser_data_t * data,
 
       for (j = max_nodes, k = 0; k < num_nodes; j--, k++)
 	{
-	  ptr =
-	    (u8 *) ((u8 *) trace->elts +
-		    (size_of_traceopt_per_node * (j - 1)));
+	  ptr = (u8 *) ((u8 *) trace->elts +
+			(size_of_traceopt_per_node * (j - 1)));
 
 	  nodeid = clib_net_to_host_u32 (*((u32 *) ptr)) & 0x00ffffff;
 	  ptr += 4;
@@ -280,8 +279,8 @@ end:
 }
 
 always_inline int
-ip6_ioam_analyse_hbh_trace (ioam_analyser_data_t * data,
-			    ioam_trace_hdr_t * trace, u16 pak_len,
+ip6_ioam_analyse_hbh_trace (ioam_analyser_data_t *data,
+			    ioam_trace_hdr_t *trace, u16 pak_len,
 			    u16 trace_len)
 {
   ioam_analyse_trace_data *trace_data;
@@ -312,8 +311,7 @@ ip6_ioam_analyse_hbh_trace (ioam_analyser_data_t * data,
     {
       trace_record = trace_data->path_data + i;
 
-      if (trace_record->is_free ||
-	  (num_nodes != trace_record->num_nodes) ||
+      if (trace_record->is_free || (num_nodes != trace_record->num_nodes) ||
 	  (trace->ioam_trace_type != trace_record->trace_type))
 	continue;
 
@@ -321,9 +319,8 @@ ip6_ioam_analyse_hbh_trace (ioam_analyser_data_t * data,
 
       for (j = max_nodes, k = 0; k < num_nodes; j--, k++)
 	{
-	  ptr =
-	    (u8 *) ((u8 *) trace->elts +
-		    (size_of_traceopt_per_node * (j - 1)));
+	  ptr = (u8 *) ((u8 *) trace->elts +
+			(size_of_traceopt_per_node * (j - 1)));
 
 	  nodeid = clib_net_to_host_u32 (*((u32 *) ptr)) & 0x00ffffff;
 	  ptr += 4;
@@ -412,8 +409,8 @@ DONE:
 }
 
 always_inline int
-ip6_ioam_analyse_hbh_e2e (ioam_analyser_data_t * data,
-			  ioam_e2e_packet_t * e2e, u16 len)
+ip6_ioam_analyse_hbh_e2e (ioam_analyser_data_t *data, ioam_e2e_packet_t *e2e,
+			  u16 len)
 {
   clib_spinlock_lock (&data->writer_lock);
 
@@ -426,7 +423,7 @@ ip6_ioam_analyse_hbh_e2e (ioam_analyser_data_t * data,
 }
 
 always_inline u8 *
-format_path_map (u8 * s, va_list * args)
+format_path_map (u8 *s, va_list *args)
 {
   ioam_path_map_t *pm = va_arg (*args, ioam_path_map_t *);
   u32 num_of_elts = va_arg (*args, u32);
@@ -434,11 +431,10 @@ format_path_map (u8 * s, va_list * args)
 
   for (i = 0; i < num_of_elts; i++)
     {
-      s =
-	format (s,
-		"node_id: 0x%x, ingress_if: 0x%x, egress_if:0x%x, state:%s\n",
-		pm->node_id, pm->ingress_if, pm->egress_if,
-		pm->state_up ? "UP" : "DOWN");
+      s = format (
+	s, "node_id: 0x%x, ingress_if: 0x%x, egress_if:0x%x, state:%s\n",
+	pm->node_id, pm->ingress_if, pm->egress_if,
+	pm->state_up ? "UP" : "DOWN");
       pm++;
     }
 
@@ -446,7 +442,7 @@ format_path_map (u8 * s, va_list * args)
 }
 
 always_inline u8 *
-print_analyse_flow (u8 * s, ioam_analyser_data_t * record)
+print_analyse_flow (u8 *s, ioam_analyser_data_t *record)
 {
   int j;
   ioam_analyse_trace_record *trace_record;
@@ -463,8 +459,8 @@ print_analyse_flow (u8 * s, ioam_analyser_data_t * record)
       if (trace_record->is_free)
 	continue;
 
-      s = format (s, "path_map:\n%U", format_path_map,
-		  trace_record->path, trace_record->num_nodes);
+      s = format (s, "path_map:\n%U", format_path_map, trace_record->path,
+		  trace_record->num_nodes);
       s = format (s, "pkt_counter: %u\n", trace_record->pkt_counter);
       s = format (s, "bytes_counter: %u\n", trace_record->bytes_counter);
 
@@ -485,8 +481,7 @@ print_analyse_flow (u8 * s, ioam_analyser_data_t * record)
 	      "Lost Packets      : %lu\n"
 	      "Duplicate Packets : %lu\n"
 	      "Reordered Packets : %lu\n",
-	      record->seqno_data.rx_packets,
-	      record->seqno_data.lost_packets,
+	      record->seqno_data.rx_packets, record->seqno_data.lost_packets,
 	      record->seqno_data.dup_packets,
 	      record->seqno_data.reordered_packets);
 
@@ -495,7 +490,7 @@ print_analyse_flow (u8 * s, ioam_analyser_data_t * record)
 }
 
 always_inline void
-ioam_analyse_init_data (ioam_analyser_data_t * data)
+ioam_analyse_init_data (ioam_analyser_data_t *data)
 {
   u16 j;
   ioam_analyse_trace_data *trace_data;

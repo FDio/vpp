@@ -28,8 +28,6 @@ trace_profile_find (void)
   return (&(sm->profile));
 }
 
-
-
 #endif
 
 /*

@@ -22,18 +22,18 @@
 #include <svm/message_queue.h>
 #include <svm/fifo_segment.h>
 
-#define foreach_session_input_error                                    	\
-_(NO_SESSION, "No session drops")                                       \
-_(NO_LISTENER, "No listener for dst port drops")                        \
-_(ENQUEUED, "Packets pushed into rx fifo")                              \
-_(NOT_READY, "Session not ready packets")                               \
-_(FIFO_FULL, "Packets dropped for lack of rx fifo space")               \
-_(EVENT_FIFO_FULL, "Events not sent for lack of event fifo space")      \
-_(API_QUEUE_FULL, "Sessions not created for lack of API queue space")   \
+#define foreach_session_input_error                                           \
+  _ (NO_SESSION, "No session drops")                                          \
+  _ (NO_LISTENER, "No listener for dst port drops")                           \
+  _ (ENQUEUED, "Packets pushed into rx fifo")                                 \
+  _ (NOT_READY, "Session not ready packets")                                  \
+  _ (FIFO_FULL, "Packets dropped for lack of rx fifo space")                  \
+  _ (EVENT_FIFO_FULL, "Events not sent for lack of event fifo space")         \
+  _ (API_QUEUE_FULL, "Sessions not created for lack of API queue space")
 
 typedef enum
 {
-#define _(sym,str) SESSION_ERROR_##sym,
+#define _(sym, str) SESSION_ERROR_##sym,
   foreach_session_input_error
 #undef _
     SESSION_N_ERROR,
@@ -54,7 +54,7 @@ typedef struct session_tx_context_
   u16 n_segs_per_evt;
   u16 n_bufs_needed;
   u8 n_bufs_per_seg;
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   session_dgram_hdr_t hdr;
 } session_tx_context_t;
 
@@ -127,15 +127,15 @@ typedef struct session_worker_
 #endif
 } session_worker_t;
 
-typedef int (session_fifo_rx_fn) (session_worker_t * wrk,
-				  vlib_node_runtime_t * node,
-				  session_evt_elt_t * e, int *n_tx_packets);
+typedef int (session_fifo_rx_fn) (session_worker_t *wrk,
+				  vlib_node_runtime_t *node,
+				  session_evt_elt_t *e, int *n_tx_packets);
 
 extern session_fifo_rx_fn session_tx_fifo_peek_and_snd;
 extern session_fifo_rx_fn session_tx_fifo_dequeue_and_snd;
 extern session_fifo_rx_fn session_tx_fifo_dequeue_internal;
 
-u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e);
+u8 session_node_lookup_fifo_event (svm_fifo_t *f, session_event_t *e);
 
 typedef struct session_main_
 {
@@ -213,10 +213,10 @@ typedef enum session_q_process_evt_
 } session_q_process_evt_t;
 
 #define TRANSPORT_PROTO_INVALID (session_main.last_transport_proto_type + 1)
-#define TRANSPORT_N_PROTOS (session_main.last_transport_proto_type + 1)
+#define TRANSPORT_N_PROTOS	(session_main.last_transport_proto_type + 1)
 
 static inline session_evt_elt_t *
-session_evt_elt_alloc (session_worker_t * wrk)
+session_evt_elt_alloc (session_worker_t *wrk)
 {
   session_evt_elt_t *elt;
   pool_get (wrk->event_elts, elt);
@@ -224,28 +224,27 @@ session_evt_elt_alloc (session_worker_t * wrk)
 }
 
 static inline void
-session_evt_elt_free (session_worker_t * wrk, session_evt_elt_t * elt)
+session_evt_elt_free (session_worker_t *wrk, session_evt_elt_t *elt)
 {
   pool_put (wrk->event_elts, elt);
 }
 
 static inline void
-session_evt_add_old (session_worker_t * wrk, session_evt_elt_t * elt)
+session_evt_add_old (session_worker_t *wrk, session_evt_elt_t *elt)
 {
   clib_llist_add_tail (wrk->event_elts, evt_list, elt,
 		       pool_elt_at_index (wrk->event_elts, wrk->old_head));
 }
 
 static inline void
-session_evt_add_head_old (session_worker_t * wrk, session_evt_elt_t * elt)
+session_evt_add_head_old (session_worker_t *wrk, session_evt_elt_t *elt)
 {
   clib_llist_add (wrk->event_elts, evt_list, elt,
 		  pool_elt_at_index (wrk->event_elts, wrk->old_head));
 }
 
-
 static inline u32
-session_evt_ctrl_data_alloc (session_worker_t * wrk)
+session_evt_ctrl_data_alloc (session_worker_t *wrk)
 {
   session_evt_ctrl_data_t *data;
   pool_get (wrk->ctrl_evts_data, data);
@@ -253,7 +252,7 @@ session_evt_ctrl_data_alloc (session_worker_t * wrk)
 }
 
 static inline session_evt_elt_t *
-session_evt_alloc_ctrl (session_worker_t * wrk)
+session_evt_alloc_ctrl (session_worker_t *wrk)
 {
   session_evt_elt_t *elt;
   elt = session_evt_elt_alloc (wrk);
@@ -263,21 +262,21 @@ session_evt_alloc_ctrl (session_worker_t * wrk)
 }
 
 static inline void *
-session_evt_ctrl_data (session_worker_t * wrk, session_evt_elt_t * elt)
+session_evt_ctrl_data (session_worker_t *wrk, session_evt_elt_t *elt)
 {
   return (void *) (pool_elt_at_index (wrk->ctrl_evts_data,
 				      elt->evt.ctrl_data_index));
 }
 
 static inline void
-session_evt_ctrl_data_free (session_worker_t * wrk, session_evt_elt_t * elt)
+session_evt_ctrl_data_free (session_worker_t *wrk, session_evt_elt_t *elt)
 {
   ASSERT (elt->evt.event_type > SESSION_IO_EVT_BUILTIN_TX);
   pool_put_index (wrk->ctrl_evts_data, elt->evt.ctrl_data_index);
 }
 
 static inline session_evt_elt_t *
-session_evt_alloc_new (session_worker_t * wrk)
+session_evt_alloc_new (session_worker_t *wrk)
 {
   session_evt_elt_t *elt;
   elt = session_evt_elt_alloc (wrk);
@@ -287,7 +286,7 @@ session_evt_alloc_new (session_worker_t * wrk)
 }
 
 static inline session_evt_elt_t *
-session_evt_alloc_old (session_worker_t * wrk)
+session_evt_alloc_old (session_worker_t *wrk)
 {
   session_evt_elt_t *elt;
   elt = session_evt_elt_alloc (wrk);
@@ -297,8 +296,8 @@ session_evt_alloc_old (session_worker_t * wrk)
 }
 
 session_t *session_alloc (u32 thread_index);
-void session_free (session_t * s);
-void session_free_w_fifos (session_t * s);
+void session_free (session_t *s);
+void session_free_w_fifos (session_t *s);
 void session_cleanup_half_open (transport_proto_t tp,
 				session_handle_t ho_handle);
 u8 session_is_valid (u32 si, u8 thread_index);
@@ -340,7 +339,7 @@ session_get_from_handle_if_valid (session_handle_t handle)
   return session_get_if_valid (session_index, thread_index);
 }
 
-u64 session_segment_handle (session_t * s);
+u64 session_segment_handle (session_t *s);
 
 /**
  * Acquires a lock that blocks a session pool from expanding.
@@ -395,7 +394,7 @@ session_get_from_handle_safe (u64 handle)
 }
 
 always_inline u32
-session_get_index (session_t * s)
+session_get_index (session_t *s)
 {
   return (s - session_main.wrk[s->thread_index].sessions);
 }
@@ -421,62 +420,57 @@ session_clone_safe (u32 session_index, u32 thread_index)
   return new_s;
 }
 
-int session_open (u32 app_index, session_endpoint_t * tep, u32 opaque);
-int session_listen (session_t * s, session_endpoint_cfg_t * sep);
-int session_stop_listen (session_t * s);
-void session_close (session_t * s);
-void session_reset (session_t * s);
-void session_transport_close (session_t * s);
-void session_transport_reset (session_t * s);
-void session_transport_cleanup (session_t * s);
-int session_send_io_evt_to_thread (svm_fifo_t * f,
-				   session_evt_type_t evt_type);
-int session_enqueue_notify (session_t * s);
-int session_dequeue_notify (session_t * s);
+int session_open (u32 app_index, session_endpoint_t *tep, u32 opaque);
+int session_listen (session_t *s, session_endpoint_cfg_t *sep);
+int session_stop_listen (session_t *s);
+void session_close (session_t *s);
+void session_reset (session_t *s);
+void session_transport_close (session_t *s);
+void session_transport_reset (session_t *s);
+void session_transport_cleanup (session_t *s);
+int session_send_io_evt_to_thread (svm_fifo_t *f, session_evt_type_t evt_type);
+int session_enqueue_notify (session_t *s);
+int session_dequeue_notify (session_t *s);
 int session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
 					  session_evt_type_t evt_type);
 void session_send_rpc_evt_to_thread (u32 thread_index, void *fp,
 				     void *rpc_args);
 void session_send_rpc_evt_to_thread_force (u32 thread_index, void *fp,
 					   void *rpc_args);
-void session_add_self_custom_tx_evt (transport_connection_t * tc,
-				     u8 has_prio);
-void sesssion_reschedule_tx (transport_connection_t * tc);
-transport_connection_t *session_get_transport (session_t * s);
-void session_get_endpoint (session_t * s, transport_endpoint_t * tep,
-			   u8 is_lcl);
+void session_add_self_custom_tx_evt (transport_connection_t *tc, u8 has_prio);
+void sesssion_reschedule_tx (transport_connection_t *tc);
+transport_connection_t *session_get_transport (session_t *s);
+void session_get_endpoint (session_t *s, transport_endpoint_t *tep, u8 is_lcl);
 
-u8 *format_session (u8 * s, va_list * args);
-uword unformat_session (unformat_input_t * input, va_list * args);
-uword unformat_transport_connection (unformat_input_t * input,
-				     va_list * args);
+u8 *format_session (u8 *s, va_list *args);
+uword unformat_session (unformat_input_t *input, va_list *args);
+uword unformat_transport_connection (unformat_input_t *input, va_list *args);
 
 /*
  * Interface to transport protos
  */
 
-int session_enqueue_stream_connection (transport_connection_t * tc,
-				       vlib_buffer_t * b, u32 offset,
+int session_enqueue_stream_connection (transport_connection_t *tc,
+				       vlib_buffer_t *b, u32 offset,
 				       u8 queue_event, u8 is_in_order);
-int session_enqueue_dgram_connection (session_t * s,
-				      session_dgram_hdr_t * hdr,
-				      vlib_buffer_t * b, u8 proto,
+int session_enqueue_dgram_connection (session_t *s, session_dgram_hdr_t *hdr,
+				      vlib_buffer_t *b, u8 proto,
 				      u8 queue_event);
-int session_stream_connect_notify (transport_connection_t * tc,
+int session_stream_connect_notify (transport_connection_t *tc,
 				   session_error_t err);
-int session_dgram_connect_notify (transport_connection_t * tc,
+int session_dgram_connect_notify (transport_connection_t *tc,
 				  u32 old_thread_index,
-				  session_t ** new_session);
-int session_stream_accept_notify (transport_connection_t * tc);
-void session_transport_closing_notify (transport_connection_t * tc);
-void session_transport_delete_notify (transport_connection_t * tc);
+				  session_t **new_session);
+int session_stream_accept_notify (transport_connection_t *tc);
+void session_transport_closing_notify (transport_connection_t *tc);
+void session_transport_delete_notify (transport_connection_t *tc);
 void session_half_open_delete_notify (transport_proto_t tp,
 				      session_handle_t ho_handle);
-void session_transport_closed_notify (transport_connection_t * tc);
-void session_transport_reset_notify (transport_connection_t * tc);
-int session_stream_accept (transport_connection_t * tc, u32 listener_index,
+void session_transport_closed_notify (transport_connection_t *tc);
+void session_transport_reset_notify (transport_connection_t *tc);
+int session_stream_accept (transport_connection_t *tc, u32 listener_index,
 			   u32 thread_index, u8 notify);
-int session_dgram_accept (transport_connection_t * tc, u32 listener_index,
+int session_dgram_accept (transport_connection_t *tc, u32 listener_index,
 			  u32 thread_index);
 /**
  * Initialize session layer for given transport proto and ip version
@@ -491,50 +485,50 @@ int session_dgram_accept (transport_connection_t * tc, u32 listener_index,
  * @param output_node		output node for transport
  */
 void session_register_transport (transport_proto_t transport_proto,
-				 const transport_proto_vft_t * vft, u8 is_ip4,
+				 const transport_proto_vft_t *vft, u8 is_ip4,
 				 u32 output_node);
 transport_proto_t session_add_transport_proto (void);
-int session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
+int session_tx_fifo_peek_bytes (transport_connection_t *tc, u8 *buffer,
 				u32 offset, u32 max_bytes);
-u32 session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
+u32 session_tx_fifo_dequeue_drop (transport_connection_t *tc, u32 max_bytes);
 
 always_inline u32
-transport_max_rx_enqueue (transport_connection_t * tc)
+transport_max_rx_enqueue (transport_connection_t *tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
   return svm_fifo_max_enqueue_prod (s->rx_fifo);
 }
 
 always_inline u32
-transport_max_tx_dequeue (transport_connection_t * tc)
+transport_max_tx_dequeue (transport_connection_t *tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
   return svm_fifo_max_dequeue_cons (s->tx_fifo);
 }
 
 always_inline u32
-transport_max_rx_dequeue (transport_connection_t * tc)
+transport_max_rx_dequeue (transport_connection_t *tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
   return svm_fifo_max_dequeue (s->rx_fifo);
 }
 
 always_inline u32
-transport_rx_fifo_size (transport_connection_t * tc)
+transport_rx_fifo_size (transport_connection_t *tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
   return svm_fifo_size (s->rx_fifo);
 }
 
 always_inline u32
-transport_tx_fifo_size (transport_connection_t * tc)
+transport_tx_fifo_size (transport_connection_t *tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
   return svm_fifo_size (s->tx_fifo);
 }
 
 always_inline u8
-transport_rx_fifo_has_ooo_data (transport_connection_t * tc)
+transport_rx_fifo_has_ooo_data (transport_connection_t *tc)
 {
   session_t *s = session_get (tc->c_index, tc->thread_index);
   return svm_fifo_has_ooo_data (s->rx_fifo);
@@ -559,7 +553,7 @@ transport_seconds_per_loop (u32 thread_index)
 }
 
 always_inline void
-transport_add_tx_event (transport_connection_t * tc)
+transport_add_tx_event (transport_connection_t *tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
   if (svm_fifo_has_event (s->tx_fifo))
@@ -572,7 +566,7 @@ transport_add_tx_event (transport_connection_t * tc)
  */
 
 always_inline u64
-listen_session_get_handle (session_t * s)
+listen_session_get_handle (session_t *s)
 {
   ASSERT (s->session_state == SESSION_STATE_LISTENING ||
 	  session_get_transport_proto (s) == TRANSPORT_PROTO_QUIC);
@@ -586,8 +580,8 @@ listen_session_get_from_handle (session_handle_t handle)
 }
 
 always_inline void
-listen_session_parse_handle (session_handle_t handle, u32 * index,
-			     u32 * thread_index)
+listen_session_parse_handle (session_handle_t handle, u32 *index,
+			     u32 *thread_index)
 {
   session_parse_handle (handle, index, thread_index);
 }
@@ -609,13 +603,13 @@ listen_session_get (u32 ls_index)
 }
 
 always_inline void
-listen_session_free (session_t * s)
+listen_session_free (session_t *s)
 {
   ASSERT (!s->rx_fifo);
   session_free (s);
 }
 
-transport_connection_t *listen_session_get_transport (session_t * s);
+transport_connection_t *listen_session_get_transport (session_t *s);
 
 /*
  * Session layer functions
@@ -653,15 +647,17 @@ session_main_is_enabled ()
   return session_main.is_enabled == 1;
 }
 
-#define session_cli_return_if_not_enabled()				\
-do {									\
-    if (!session_main.is_enabled)					\
-      return clib_error_return (0, "session layer is not enabled");	\
-} while (0)
+#define session_cli_return_if_not_enabled()                                   \
+  do                                                                          \
+    {                                                                         \
+      if (!session_main.is_enabled)                                           \
+	return clib_error_return (0, "session layer is not enabled");         \
+    }                                                                         \
+  while (0)
 
 int session_main_flush_enqueue_events (u8 proto, u32 thread_index);
 int session_main_flush_all_enqueue_events (u8 transport_proto);
-void session_queue_run_on_main_thread (vlib_main_t * vm);
+void session_queue_run_on_main_thread (vlib_main_t *vm);
 
 /**
  * Add session node pending buffer with custom node
@@ -681,9 +677,9 @@ session_add_pending_tx_buffer (u32 thread_index, u32 bi, u32 next_node)
 
 fifo_segment_t *session_main_get_evt_q_segment (void);
 void session_node_enable_disable (u8 is_en);
-clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
+clib_error_t *vnet_session_enable_disable (vlib_main_t *vm, u8 is_en);
 
-session_t *session_alloc_for_connection (transport_connection_t * tc);
+session_t *session_alloc_for_connection (transport_connection_t *tc);
 
 #endif /* __included_session_h__ */
 

@@ -41,9 +41,7 @@
 /* Vector resize operator.  Called as needed by various macros such as
    vec_add1() when we need to allocate memory. */
 __clib_export void *
-vec_resize_allocate_memory (void *v,
-			    word length_increment,
-			    uword data_bytes,
+vec_resize_allocate_memory (void *v, word length_increment, uword data_bytes,
 			    uword header_bytes, uword data_align,
 			    uword numa_id)
 {
@@ -64,7 +62,9 @@ vec_resize_allocate_memory (void *v,
 
   if (!v)
     {
-      new = clib_mem_alloc_aligned_at_offset (data_bytes, data_align, header_bytes, 1	/* yes, call os_out_of_memory */
+      new =
+	clib_mem_alloc_aligned_at_offset (data_bytes, data_align, header_bytes,
+					  1 /* yes, call os_out_of_memory */
 	);
       new_alloc_bytes = clib_mem_size (new);
       CLIB_MEM_UNPOISON (new + data_bytes, new_alloc_bytes - data_bytes);
@@ -103,16 +103,15 @@ vec_resize_allocate_memory (void *v,
     new_alloc_bytes = data_bytes;
 #endif
 
-  new =
-    clib_mem_alloc_aligned_at_offset (new_alloc_bytes, data_align,
-				      header_bytes,
-				      1 /* yes, call os_out_of_memory */ );
+  new = clib_mem_alloc_aligned_at_offset (new_alloc_bytes, data_align,
+					  header_bytes,
+					  1 /* yes, call os_out_of_memory */);
 
   /* FIXME fail gracefully. */
   if (!new)
-    clib_panic
-      ("vec_resize fails, length increment %d, data bytes %d, alignment %d",
-       length_increment, data_bytes, data_align);
+    clib_panic (
+      "vec_resize fails, length increment %d, data bytes %d, alignment %d",
+      length_increment, data_bytes, data_align);
 
   CLIB_MEM_UNPOISON (old, old_alloc_bytes);
   clib_memcpy_fast (new, old, old_alloc_bytes);

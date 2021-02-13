@@ -32,8 +32,8 @@
 #include <ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api_enum.h>
 #include <ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api_types.h>
 
-static void vl_api_vxlan_gpe_ioam_enable_t_handler
-  (vl_api_vxlan_gpe_ioam_enable_t * mp)
+static void
+vl_api_vxlan_gpe_ioam_enable_t_handler (vl_api_vxlan_gpe_ioam_enable_t *mp)
 {
   int rv = 0;
   vl_api_vxlan_gpe_ioam_enable_reply_t *rmp;
@@ -52,8 +52,8 @@ static void vl_api_vxlan_gpe_ioam_enable_t_handler
   REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_ENABLE_REPLY);
 }
 
-static void vl_api_vxlan_gpe_ioam_disable_t_handler
-  (vl_api_vxlan_gpe_ioam_disable_t * mp)
+static void
+vl_api_vxlan_gpe_ioam_disable_t_handler (vl_api_vxlan_gpe_ioam_disable_t *mp)
 {
   int rv = 0;
   vl_api_vxlan_gpe_ioam_disable_reply_t *rmp;
@@ -71,8 +71,9 @@ static void vl_api_vxlan_gpe_ioam_disable_t_handler
   REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_DISABLE_REPLY);
 }
 
-static void vl_api_vxlan_gpe_ioam_vni_enable_t_handler
-  (vl_api_vxlan_gpe_ioam_vni_enable_t * mp)
+static void
+vl_api_vxlan_gpe_ioam_vni_enable_t_handler (
+  vl_api_vxlan_gpe_ioam_vni_enable_t *mp)
 {
   int rv = 0;
   vl_api_vxlan_gpe_ioam_vni_enable_reply_t *rmp;
@@ -83,7 +84,6 @@ static void vl_api_vxlan_gpe_ioam_vni_enable_t_handler
   vxlan_gpe_tunnel_t *t = 0;
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
   u32 vni;
-
 
   if (clib_net_to_host_u32 (mp->local.af) == ADDRESS_IP4 &&
       clib_net_to_host_u32 (mp->remote.af) == ADDRESS_IP4)
@@ -106,10 +106,8 @@ static void vl_api_vxlan_gpe_ioam_vni_enable_t_handler
 
   t = pool_elt_at_index (gm->tunnels, p[0]);
 
-  error = vxlan_gpe_ioam_set (t, hm->has_trace_option,
-			      hm->has_pot_option,
-			      hm->has_ppc_option, 0 /* is_ipv6 */ );
-
+  error = vxlan_gpe_ioam_set (t, hm->has_trace_option, hm->has_pot_option,
+			      hm->has_ppc_option, 0 /* is_ipv6 */);
 
   if (error)
     {
@@ -120,9 +118,9 @@ static void vl_api_vxlan_gpe_ioam_vni_enable_t_handler
   REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_VNI_ENABLE_REPLY);
 }
 
-
-static void vl_api_vxlan_gpe_ioam_vni_disable_t_handler
-  (vl_api_vxlan_gpe_ioam_vni_disable_t * mp)
+static void
+vl_api_vxlan_gpe_ioam_vni_disable_t_handler (
+  vl_api_vxlan_gpe_ioam_vni_disable_t *mp)
 {
   int rv = 0;
   vl_api_vxlan_gpe_ioam_vni_enable_reply_t *rmp;
@@ -132,7 +130,6 @@ static void vl_api_vxlan_gpe_ioam_vni_disable_t_handler
   vxlan_gpe_main_t *gm = &vxlan_gpe_main;
   vxlan_gpe_tunnel_t *t = 0;
   u32 vni;
-
 
   if (clib_net_to_host_u32 (mp->local.af) == ADDRESS_IP4 &&
       clib_net_to_host_u32 (mp->remote.af) == ADDRESS_IP4)
@@ -157,19 +154,18 @@ static void vl_api_vxlan_gpe_ioam_vni_disable_t_handler
 
   error = vxlan_gpe_ioam_clear (t, 0, 0, 0, 0);
 
-
   if (error)
     {
       clib_error_report (error);
       rv = clib_error_get_code (error);
     }
 
-
   REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_VNI_DISABLE_REPLY);
 }
 
-static void vl_api_vxlan_gpe_ioam_transit_enable_t_handler
-  (vl_api_vxlan_gpe_ioam_transit_enable_t * mp)
+static void
+vl_api_vxlan_gpe_ioam_transit_enable_t_handler (
+  vl_api_vxlan_gpe_ioam_transit_enable_t *mp)
 {
   int rv = 0;
   vl_api_vxlan_gpe_ioam_transit_enable_reply_t *rmp;
@@ -178,16 +174,16 @@ static void vl_api_vxlan_gpe_ioam_transit_enable_t_handler
 
   ip_address_decode (&mp->dst_addr, &dst_addr);
   bool is_ip6 = clib_net_to_host_u32 (mp->dst_addr.af) == ADDRESS_IP6;
-  rv = vxlan_gpe_enable_disable_ioam_for_dest (sm->vlib_main,
-					       dst_addr,
+  rv = vxlan_gpe_enable_disable_ioam_for_dest (sm->vlib_main, dst_addr,
 					       ntohl (mp->outer_fib_index),
-					       is_ip6, 1 /* is_add */ );
+					       is_ip6, 1 /* is_add */);
 
   REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_TRANSIT_ENABLE_REPLY);
 }
 
-static void vl_api_vxlan_gpe_ioam_transit_disable_t_handler
-  (vl_api_vxlan_gpe_ioam_transit_disable_t * mp)
+static void
+vl_api_vxlan_gpe_ioam_transit_disable_t_handler (
+  vl_api_vxlan_gpe_ioam_transit_disable_t *mp)
 {
   int rv = 0;
   vl_api_vxlan_gpe_ioam_transit_disable_reply_t *rmp;
@@ -196,15 +192,14 @@ static void vl_api_vxlan_gpe_ioam_transit_disable_t_handler
 
   ip_address_decode (&mp->dst_addr, &dst_addr);
   bool is_ip6 = clib_net_to_host_u32 (mp->dst_addr.af) == ADDRESS_IP6;
-  rv = vxlan_gpe_ioam_disable_for_dest (sm->vlib_main,
-					dst_addr,
+  rv = vxlan_gpe_ioam_disable_for_dest (sm->vlib_main, dst_addr,
 					ntohl (mp->outer_fib_index), is_ip6);
   REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_TRANSIT_DISABLE_REPLY);
 }
 
 #include <ioam/lib-vxlan-gpe/ioam_vxlan_gpe.api.c>
 static clib_error_t *
-ioam_vxlan_gpe_init (vlib_main_t * vm)
+ioam_vxlan_gpe_init (vlib_main_t *vm)
 {
   vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
   u32 encap_node_index = vxlan_gpe_encap_ioam_v4_node.index;
@@ -215,7 +210,7 @@ ioam_vxlan_gpe_init (vlib_main_t * vm)
 
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main ();
-  sm->unix_time_0 = (u32) time (0);	/* Store starting time */
+  sm->unix_time_0 = (u32) time (0); /* Store starting time */
   sm->vlib_time_0 = vlib_time_now (vm);
 
   /* Ask for a correctly-sized block of API message decode slots */
@@ -226,8 +221,7 @@ ioam_vxlan_gpe_init (vlib_main_t * vm)
   sm->encap_v4_next_node =
     vlib_node_add_next (vm, vxlan_gpe_encap_node->index, encap_node_index);
 
-  vxlan_gpe_decap_node =
-    vlib_get_node_by_name (vm, (u8 *) "vxlan4-gpe-input");
+  vxlan_gpe_decap_node = vlib_get_node_by_name (vm, (u8 *) "vxlan4-gpe-input");
   next_node =
     vlib_node_add_next (vm, vxlan_gpe_decap_node->index, decap_node_index);
   vxlan_gpe_register_decap_protocol (VXLAN_GPE_PROTOCOL_IOAM, next_node);

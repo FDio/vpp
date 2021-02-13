@@ -130,14 +130,14 @@ typedef struct qos_pol_cfg_params_st_
       u64 cb_ms;
       u64 eb_ms;
     } pps;
-  } rb;				/* rate burst config */
+  } rb; /* rate burst config */
   qos_rate_type_en rate_type;
   qos_round_type_en rnd_type;
   qos_policer_type_en rfc;
   u8 color_aware;
-  u8 overwrite_bucket;		/* for debugging purposes */
-  u32 current_bucket;		/* for debugging purposes */
-  u32 extended_bucket;		/* for debugging purposes */
+  u8 overwrite_bucket; /* for debugging purposes */
+  u32 current_bucket;  /* for debugging purposes */
+  u32 extended_bucket; /* for debugging purposes */
   qos_pol_action_params_st conform_action;
   qos_pol_action_params_st exceed_action;
   qos_pol_action_params_st violate_action;

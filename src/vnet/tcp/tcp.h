@@ -26,7 +26,7 @@
 #include <vnet/tcp/tcp_bt.h>
 #include <vnet/tcp/tcp_cc.h>
 
-typedef void (timer_expiration_handler) (tcp_connection_t * tc);
+typedef void (timer_expiration_handler) (tcp_connection_t *tc);
 
 extern timer_expiration_handler tcp_timer_retransmit_handler;
 extern timer_expiration_handler tcp_timer_persist_handler;
@@ -34,7 +34,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 
 typedef enum _tcp_error
 {
-#define tcp_error(n,s) TCP_ERROR_##n,
+#define tcp_error(n, s) TCP_ERROR_##n,
 #include <vnet/tcp/tcp_error.def>
 #undef tcp_error
   TCP_N_ERROR,
@@ -45,19 +45,19 @@ typedef struct _tcp_lookup_dispatch
   u8 next, error;
 } tcp_lookup_dispatch_t;
 
-#define foreach_tcp_wrk_stat					\
-  _(timer_expirations, u64, "timer expirations")		\
-  _(rxt_segs, u64, "segments retransmitted")			\
-  _(tr_events, u32, "timer retransmit events")			\
-  _(to_closewait, u32, "timeout close-wait")			\
-  _(to_closewait2, u32, "timeout close-wait w/data")		\
-  _(to_finwait1, u32, "timeout fin-wait-1")			\
-  _(to_finwait2, u32, "timeout fin-wait-2")			\
-  _(to_lastack, u32, "timeout last-ack")			\
-  _(to_closing, u32, "timeout closing")				\
-  _(tr_abort, u32, "timer retransmit abort")			\
-  _(rst_unread, u32, "reset on close due to unread data")	\
-  _(no_buffer, u32, "out of buffers")				\
+#define foreach_tcp_wrk_stat                                                  \
+  _ (timer_expirations, u64, "timer expirations")                             \
+  _ (rxt_segs, u64, "segments retransmitted")                                 \
+  _ (tr_events, u32, "timer retransmit events")                               \
+  _ (to_closewait, u32, "timeout close-wait")                                 \
+  _ (to_closewait2, u32, "timeout close-wait w/data")                         \
+  _ (to_finwait1, u32, "timeout fin-wait-1")                                  \
+  _ (to_finwait2, u32, "timeout fin-wait-2")                                  \
+  _ (to_lastack, u32, "timeout last-ack")                                     \
+  _ (to_closing, u32, "timeout closing")                                      \
+  _ (tr_abort, u32, "timer retransmit abort")                                 \
+  _ (rst_unread, u32, "reset on close due to unread data")                    \
+  _ (no_buffer, u32, "out of buffers")
 
 typedef struct tcp_wrk_stats_
 {
@@ -103,7 +103,7 @@ typedef struct tcp_worker_ctx_
   /* Fifo of pending timer expirations */
   u32 *pending_timers;
 
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   /** cached 'on the wire' options for bursts */
   u8 cached_opts[40];
@@ -117,13 +117,12 @@ typedef struct tcp_worker_ctx_
   /** worker timer wheel */
   tcp_timer_wheel_t timer_wheel;
 
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
 
   tcp_wrk_stats_t stats;
 } tcp_worker_ctx_t;
 
-#define tcp_worker_stats_inc(_wrk,_stat,_val) 		\
-  _wrk->stats._stat += _val
+#define tcp_worker_stats_inc(_wrk, _stat, _val) _wrk->stats._stat += _val
 
 typedef struct tcp_iss_seed_
 {
@@ -269,7 +268,7 @@ extern vlib_node_registration_t tcp4_listen_node;
 extern vlib_node_registration_t tcp6_listen_node;
 
 #define tcp_cfg tcp_main.cfg
-#define tcp_node_index(node_id, is_ip4) 				\
+#define tcp_node_index(node_id, is_ip4)                                       \
   ((is_ip4) ? tcp4_##node_id##_node.index : tcp6_##node_id##_node.index)
 
 always_inline tcp_main_t *
@@ -286,63 +285,62 @@ tcp_get_worker (u32 thread_index)
 }
 
 #if (VLIB_BUFFER_TRACE_TRAJECTORY)
-#define tcp_trajectory_add_start(b, start)			\
-{								\
-    (*vlib_buffer_trace_trajectory_cb) (b, start);		\
-}
+#define tcp_trajectory_add_start(b, start)                                    \
+  {                                                                           \
+    (*vlib_buffer_trace_trajectory_cb) (b, start);                            \
+  }
 #else
 #define tcp_trajectory_add_start(b, start)
 #endif
 
 tcp_connection_t *tcp_connection_alloc (u8 thread_index);
 tcp_connection_t *tcp_connection_alloc_w_base (u8 thread_index,
-					       tcp_connection_t * base);
-void tcp_connection_free (tcp_connection_t * tc);
-void tcp_connection_close (tcp_connection_t * tc);
-void tcp_connection_cleanup (tcp_connection_t * tc);
-void tcp_connection_del (tcp_connection_t * tc);
-int tcp_half_open_connection_cleanup (tcp_connection_t * tc);
+					       tcp_connection_t *base);
+void tcp_connection_free (tcp_connection_t *tc);
+void tcp_connection_close (tcp_connection_t *tc);
+void tcp_connection_cleanup (tcp_connection_t *tc);
+void tcp_connection_del (tcp_connection_t *tc);
+int tcp_half_open_connection_cleanup (tcp_connection_t *tc);
 
-void tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
+void tcp_send_reset_w_pkt (tcp_connection_t *tc, vlib_buffer_t *pkt,
 			   u32 thread_index, u8 is_ip4);
-void tcp_send_reset (tcp_connection_t * tc);
-void tcp_send_syn (tcp_connection_t * tc);
-void tcp_send_synack (tcp_connection_t * tc);
-void tcp_send_fin (tcp_connection_t * tc);
-void tcp_send_ack (tcp_connection_t * tc);
-void tcp_send_window_update_ack (tcp_connection_t * tc);
+void tcp_send_reset (tcp_connection_t *tc);
+void tcp_send_syn (tcp_connection_t *tc);
+void tcp_send_synack (tcp_connection_t *tc);
+void tcp_send_fin (tcp_connection_t *tc);
+void tcp_send_ack (tcp_connection_t *tc);
+void tcp_send_window_update_ack (tcp_connection_t *tc);
 
-void tcp_program_ack (tcp_connection_t * tc);
-void tcp_program_dupack (tcp_connection_t * tc);
-void tcp_program_retransmit (tcp_connection_t * tc);
+void tcp_program_ack (tcp_connection_t *tc);
+void tcp_program_dupack (tcp_connection_t *tc);
+void tcp_program_retransmit (tcp_connection_t *tc);
 
-void tcp_update_burst_snd_vars (tcp_connection_t * tc);
-u32 tcp_snd_space (tcp_connection_t * tc);
-int tcp_fastrecovery_prr_snd_space (tcp_connection_t * tc);
-void tcp_reschedule (tcp_connection_t * tc);
-fib_node_index_t tcp_lookup_rmt_in_fib (tcp_connection_t * tc);
-u32 tcp_session_push_header (transport_connection_t * tconn,
-			     vlib_buffer_t * b);
-int tcp_session_custom_tx (void *conn, transport_send_params_t * sp);
+void tcp_update_burst_snd_vars (tcp_connection_t *tc);
+u32 tcp_snd_space (tcp_connection_t *tc);
+int tcp_fastrecovery_prr_snd_space (tcp_connection_t *tc);
+void tcp_reschedule (tcp_connection_t *tc);
+fib_node_index_t tcp_lookup_rmt_in_fib (tcp_connection_t *tc);
+u32 tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t *b);
+int tcp_session_custom_tx (void *conn, transport_send_params_t *sp);
 
-void tcp_connection_timers_init (tcp_connection_t * tc);
-void tcp_connection_timers_reset (tcp_connection_t * tc);
-void tcp_init_snd_vars (tcp_connection_t * tc);
-void tcp_connection_init_vars (tcp_connection_t * tc);
-void tcp_connection_tx_pacer_update (tcp_connection_t * tc);
-void tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
+void tcp_connection_timers_init (tcp_connection_t *tc);
+void tcp_connection_timers_reset (tcp_connection_t *tc);
+void tcp_init_snd_vars (tcp_connection_t *tc);
+void tcp_connection_init_vars (tcp_connection_t *tc);
+void tcp_connection_tx_pacer_update (tcp_connection_t *tc);
+void tcp_connection_tx_pacer_reset (tcp_connection_t *tc, u32 window,
 				    u32 start_bucket);
-void tcp_program_cleanup (tcp_worker_ctx_t * wrk, tcp_connection_t * tc);
+void tcp_program_cleanup (tcp_worker_ctx_t *wrk, tcp_connection_t *tc);
 
-void tcp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
-int tcp_configure_v4_source_address_range (vlib_main_t * vm,
-					   ip4_address_t * start,
-					   ip4_address_t * end, u32 table_id);
-int tcp_configure_v6_source_address_range (vlib_main_t * vm,
-					   ip6_address_t * start,
-					   ip6_address_t * end, u32 table_id);
+void tcp_punt_unknown (vlib_main_t *vm, u8 is_ip4, u8 is_add);
+int tcp_configure_v4_source_address_range (vlib_main_t *vm,
+					   ip4_address_t *start,
+					   ip4_address_t *end, u32 table_id);
+int tcp_configure_v6_source_address_range (vlib_main_t *vm,
+					   ip6_address_t *start,
+					   ip6_address_t *end, u32 table_id);
 
-clib_error_t *vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en);
+clib_error_t *vnet_tcp_enable_disable (vlib_main_t *vm, u8 is_en);
 
 format_function_t format_tcp_state;
 format_function_t format_tcp_flags;
@@ -351,9 +349,9 @@ format_function_t format_tcp_rcv_sacks;
 format_function_t format_tcp_connection;
 format_function_t format_tcp_connection_id;
 
-#define tcp_validate_txf_size(_tc, _a) 					\
-  ASSERT(_tc->state != TCP_STATE_ESTABLISHED 				\
-	 || transport_max_tx_dequeue (&_tc->connection) >= _a)
+#define tcp_validate_txf_size(_tc, _a)                                        \
+  ASSERT (_tc->state != TCP_STATE_ESTABLISHED ||                              \
+	  transport_max_tx_dequeue (&_tc->connection) >= _a)
 
 #endif /* _vnet_tcp_h_ */
 

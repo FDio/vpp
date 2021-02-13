@@ -33,8 +33,8 @@
 #include <vlibapi/api_helper_macros.h>
 
 static void
-  vl_api_wireguard_interface_create_t_handler
-  (vl_api_wireguard_interface_create_t * mp)
+vl_api_wireguard_interface_create_t_handler (
+  vl_api_wireguard_interface_create_t *mp)
 {
   vl_api_wireguard_interface_create_reply_t *rmp;
   wg_main_t *wmp = &wg_main;
@@ -61,17 +61,13 @@ static void
 			 ntohs (mp->interface.port), &src, &sw_if_index);
     }
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_WIREGUARD_INTERFACE_CREATE_REPLY,
-  {
-    rmp->sw_if_index = htonl(sw_if_index);
-  });
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_WIREGUARD_INTERFACE_CREATE_REPLY,
+		{ rmp->sw_if_index = htonl (sw_if_index); });
 }
 
 static void
-  vl_api_wireguard_interface_delete_t_handler
-  (vl_api_wireguard_interface_delete_t * mp)
+vl_api_wireguard_interface_delete_t_handler (
+  vl_api_wireguard_interface_delete_t *mp)
 {
   vl_api_wireguard_interface_delete_reply_t *rmp;
   wg_main_t *wmp = &wg_main;
@@ -85,9 +81,7 @@ static void
 
   BAD_SW_IF_INDEX_LABEL;
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO(VL_API_WIREGUARD_INTERFACE_DELETE_REPLY);
-  /* *INDENT-ON* */
+  REPLY_MACRO (VL_API_WIREGUARD_INTERFACE_DELETE_REPLY);
 }
 
 typedef struct wg_deatils_walk_t_
@@ -109,14 +103,14 @@ wireguard_if_send_details (index_t wgii, void *data)
   local = noise_local_get (wgi->local_idx);
 
   rmp = vl_msg_api_alloc_zero (sizeof (*rmp));
-  rmp->_vl_msg_id = htons (VL_API_WIREGUARD_INTERFACE_DETAILS +
-			   wg_main.msg_id_base);
+  rmp->_vl_msg_id =
+    htons (VL_API_WIREGUARD_INTERFACE_DETAILS + wg_main.msg_id_base);
 
   if (ctx->show_private_key)
-    clib_memcpy (rmp->interface.private_key,
-		 local->l_private, NOISE_PUBLIC_KEY_LEN);
-  clib_memcpy (rmp->interface.public_key,
-	       local->l_public, NOISE_PUBLIC_KEY_LEN);
+    clib_memcpy (rmp->interface.private_key, local->l_private,
+		 NOISE_PUBLIC_KEY_LEN);
+  clib_memcpy (rmp->interface.public_key, local->l_public,
+	       NOISE_PUBLIC_KEY_LEN);
   rmp->interface.sw_if_index = htonl (wgi->sw_if_index);
   rmp->interface.port = htons (wgi->port);
   ip_address_encode2 (&wgi->src_ip, &rmp->interface.src_ip);
@@ -129,8 +123,8 @@ wireguard_if_send_details (index_t wgii, void *data)
 }
 
 static void
-vl_api_wireguard_interface_dump_t_handler (vl_api_wireguard_interface_dump_t *
-					   mp)
+vl_api_wireguard_interface_dump_t_handler (
+  vl_api_wireguard_interface_dump_t *mp)
 {
   vl_api_registration_t *reg;
   wg_main_t *wmp = &wg_main;
@@ -151,7 +145,7 @@ vl_api_wireguard_interface_dump_t_handler (vl_api_wireguard_interface_dump_t *
 }
 
 static void
-vl_api_wireguard_peer_add_t_handler (vl_api_wireguard_peer_add_t * mp)
+vl_api_wireguard_peer_add_t_handler (vl_api_wireguard_peer_add_t *mp)
 {
   vl_api_wireguard_peer_add_reply_t *rmp;
   wg_main_t *wmp = &wg_main;
@@ -183,27 +177,21 @@ vl_api_wireguard_peer_add_t_handler (vl_api_wireguard_peer_add_t * mp)
      * else we'll need to change it later, and that's a PITA */
     rv = VNET_API_ERROR_INVALID_PROTOCOL;
   else
-    rv = wg_peer_add (ntohl (mp->peer.sw_if_index),
-		      mp->peer.public_key,
-		      ntohl (mp->peer.table_id),
-		      &ip_addr_46 (&endpoint),
-		      allowed_ips,
-		      ntohs (mp->peer.port),
+    rv = wg_peer_add (ntohl (mp->peer.sw_if_index), mp->peer.public_key,
+		      ntohl (mp->peer.table_id), &ip_addr_46 (&endpoint),
+		      allowed_ips, ntohs (mp->peer.port),
 		      ntohs (mp->peer.persistent_keepalive), &peeri);
 
   vec_free (allowed_ips);
 done:
   BAD_SW_IF_INDEX_LABEL;
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_WIREGUARD_PEER_ADD_REPLY,
-  {
-    rmp->peer_index = ntohl (peeri);
-  });
-  /* *INDENT-ON* */
+
+  REPLY_MACRO2 (VL_API_WIREGUARD_PEER_ADD_REPLY,
+		{ rmp->peer_index = ntohl (peeri); });
 }
 
 static void
-vl_api_wireguard_peer_remove_t_handler (vl_api_wireguard_peer_remove_t * mp)
+vl_api_wireguard_peer_remove_t_handler (vl_api_wireguard_peer_remove_t *mp)
 {
   vl_api_wireguard_peer_remove_reply_t *rmp;
   wg_main_t *wmp = &wg_main;
@@ -213,9 +201,7 @@ vl_api_wireguard_peer_remove_t_handler (vl_api_wireguard_peer_remove_t * mp)
 
   rv = wg_peer_remove (ntohl (mp->peer_index));
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO(VL_API_WIREGUARD_PEER_REMOVE_REPLY);
-  /* *INDENT-ON* */
+  REPLY_MACRO (VL_API_WIREGUARD_PEER_REMOVE_REPLY);
 }
 
 static walk_rc_t
@@ -234,13 +220,13 @@ send_wg_peers_details (index_t peeri, void *data)
 
   rmp = vl_msg_api_alloc_zero (ss);
 
-  rmp->_vl_msg_id = htons (VL_API_WIREGUARD_PEERS_DETAILS +
-			   wg_main.msg_id_base);
+  rmp->_vl_msg_id =
+    htons (VL_API_WIREGUARD_PEERS_DETAILS + wg_main.msg_id_base);
 
   if (peer->is_dead)
     rmp->peer.flags = WIREGUARD_PEER_STATUS_DEAD;
-  clib_memcpy (rmp->peer.public_key,
-	       peer->remote.r_public, NOISE_PUBLIC_KEY_LEN);
+  clib_memcpy (rmp->peer.public_key, peer->remote.r_public,
+	       NOISE_PUBLIC_KEY_LEN);
 
   ip_address_encode (&peer->dst.addr, IP46_TYPE_ANY, &rmp->peer.endpoint);
   rmp->peer.port = htons (peer->dst.port);
@@ -260,7 +246,7 @@ send_wg_peers_details (index_t peeri, void *data)
 }
 
 static void
-vl_api_wireguard_peers_dump_t_handler (vl_api_wireguard_peers_dump_t * mp)
+vl_api_wireguard_peers_dump_t_handler (vl_api_wireguard_peers_dump_t *mp)
 {
   vl_api_registration_t *reg;
   wg_main_t *wmp = &wg_main;
@@ -282,7 +268,7 @@ vl_api_wireguard_peers_dump_t_handler (vl_api_wireguard_peers_dump_t * mp)
 /* set tup the API message handling tables */
 #include <wireguard/wireguard.api.c>
 static clib_error_t *
-wg_api_hookup (vlib_main_t * vm)
+wg_api_hookup (vlib_main_t *vm)
 {
   wg_main_t *wmp = &wg_main;
   wmp->msg_id_base = setup_message_id_table ();

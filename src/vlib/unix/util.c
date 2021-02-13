@@ -47,9 +47,9 @@
 
 clib_error_t *
 foreach_directory_file (char *dir_name,
-			clib_error_t * (*f) (void *arg, u8 * path_name,
-					     u8 * file_name), void *arg,
-			int scan_dirs)
+			clib_error_t *(*f) (void *arg, u8 *path_name,
+					    u8 *file_name),
+			void *arg, int scan_dirs)
 {
   DIR *d;
   struct dirent *e;
@@ -72,9 +72,8 @@ foreach_directory_file (char *dir_name,
 	break;
       if (scan_dirs)
 	{
-	  if (e->d_type == DT_DIR
-	      && (!strncmp (e->d_name, ".", 1) ||
-		  !strncmp (e->d_name, "..", 2)))
+	  if (e->d_type == DT_DIR &&
+	      (!strncmp (e->d_name, ".", 1) || !strncmp (e->d_name, "..", 2)))
 	    continue;
 	}
       else
@@ -135,8 +134,8 @@ done:
 }
 
 clib_error_t *
-vlib_unix_validate_runtime_file (unix_main_t * um,
-				 const char *path, u8 ** full_path)
+vlib_unix_validate_runtime_file (unix_main_t *um, const char *path,
+				 u8 **full_path)
 {
   u8 *fp = 0;
   char *last_slash = 0;

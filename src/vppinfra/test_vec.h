@@ -38,18 +38,16 @@
 #ifndef included_test_vec_h
 #define included_test_vec_h
 
-
 #include <vppinfra/clib.h>
 #include <vppinfra/mem.h>
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
 
-
 extern uword g_verbose;
 extern u32 g_seed;
 
 always_inline u8 *
-format_u32_binary (u8 * s, va_list * va)
+format_u32_binary (u8 *s, va_list *va)
 {
   u32 val = va_arg (*va, u32);
   word i = 0;
@@ -65,37 +63,46 @@ format_u32_binary (u8 * s, va_list * va)
   return s;
 }
 
-#define VERBOSE1(fmt, args...)			\
-do {						\
-  if (g_verbose >= 1)				\
-    fformat (stdout, fmt, ## args);		\
-} while (0)
+#define VERBOSE1(fmt, args...)                                                \
+  do                                                                          \
+    {                                                                         \
+      if (g_verbose >= 1)                                                     \
+	fformat (stdout, fmt, ##args);                                        \
+    }                                                                         \
+  while (0)
 
-#define VERBOSE2(fmt, args...)			\
-do {						\
-  if (g_verbose >= 2)				\
-    fformat (stdout, fmt, ## args);		\
-} while (0)
+#define VERBOSE2(fmt, args...)                                                \
+  do                                                                          \
+    {                                                                         \
+      if (g_verbose >= 2)                                                     \
+	fformat (stdout, fmt, ##args);                                        \
+    }                                                                         \
+  while (0)
 
-#define VERBOSE3(fmt, args...)			\
-do {						\
-  if (g_verbose >= 3)				\
-    fformat (stdout, fmt, ## args);		\
-} while (0)
+#define VERBOSE3(fmt, args...)                                                \
+  do                                                                          \
+    {                                                                         \
+      if (g_verbose >= 3)                                                     \
+	fformat (stdout, fmt, ##args);                                        \
+    }                                                                         \
+  while (0)
 
-#define clib_mem_free_safe(p)			\
-do {						\
-  if (p)					\
-    {						\
-      clib_mem_free (p);			\
-      (p) = NULL;				\
-    }						\
-} while (0)
+#define clib_mem_free_safe(p)                                                 \
+  do                                                                          \
+    {                                                                         \
+      if (p)                                                                  \
+	{                                                                     \
+	  clib_mem_free (p);                                                  \
+	  (p) = NULL;                                                         \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
-/* XXX - I get undefined symbol trying to call random_u32() <vppinfra/random.h> */
+/* XXX - I get undefined symbol trying to call random_u32() <vppinfra/random.h>
+ */
 /* Simple random number generator with period 2^31 - 1. */
 static u32
-my_random_u32 (u32 * seed_return)
+my_random_u32 (u32 *seed_return)
 {
   /* Unlikely mask value to XOR into seed.
      Otherwise small seed values would give
@@ -121,7 +128,7 @@ my_random_u32 (u32 * seed_return)
 }
 
 static u32
-bounded_random_u32 (u32 * seed, uword lo, uword hi)
+bounded_random_u32 (u32 *seed, uword lo, uword hi)
 {
   if (lo == hi)
     return lo;
@@ -131,59 +138,60 @@ bounded_random_u32 (u32 * seed, uword lo, uword hi)
   return ((my_random_u32 (seed) % (hi - lo + ((hi != ~0) ? (1) : (0)))) + lo);
 }
 
-#define fill_with_random_data(ptr, bytes, seed)			\
-do {								\
-  u8 * _v(p) = (u8 *) (ptr);					\
-  uword _v(b) = (bytes);					\
-  uword _v(i);							\
-								\
-  for (_v(i) = 0; _v(i) < _v(b); _v(i)++)			\
-    _v(p)[_v(i)] = (u8) bounded_random_u32 (&(seed), 0, 255);	\
-								\
-} while (0)
+#define fill_with_random_data(ptr, bytes, seed)                               \
+  do                                                                          \
+    {                                                                         \
+      u8 *_v (p) = (u8 *) (ptr);                                              \
+      uword _v (b) = (bytes);                                                 \
+      uword _v (i);                                                           \
+                                                                              \
+      for (_v (i) = 0; _v (i) < _v (b); _v (i)++)                             \
+	_v (p)[_v (i)] = (u8) bounded_random_u32 (&(seed), 0, 255);           \
+    }                                                                         \
+  while (0)
 
-#define compute_mem_hash(hash, ptr, bytes)	\
-({						\
-  u8 * _v(p) = (u8 *) (ptr);			\
-  uword _v(b) = (uword) (bytes);		\
-  uword _v(i);					\
-  uword _v(h) = (u8) (hash);			\
-						\
-  if (_v(p) && _v(b) > 0)			\
-    {						\
-      for (_v(i) = 0; _v(i) < _v(b); _v(i)++)	\
-	_v(h) ^= _v(p)[_v(i)];			\
-    }						\
-						\
-  _v(h);					\
-})
+#define compute_mem_hash(hash, ptr, bytes)                                    \
+  ({                                                                          \
+    u8 *_v (p) = (u8 *) (ptr);                                                \
+    uword _v (b) = (uword) (bytes);                                           \
+    uword _v (i);                                                             \
+    uword _v (h) = (u8) (hash);                                               \
+                                                                              \
+    if (_v (p) && _v (b) > 0)                                                 \
+      {                                                                       \
+	for (_v (i) = 0; _v (i) < _v (b); _v (i)++)                           \
+	  _v (h) ^= _v (p)[_v (i)];                                           \
+      }                                                                       \
+                                                                              \
+    _v (h);                                                                   \
+  })
 
-#define log2_align_down(value, align)		\
-({						\
-  uword _v = (uword) (value);			\
-  uword _a = (uword) (align);			\
-  uword _m = (1 << _a) - 1;			\
-						\
-  _v = _v & ~_m;				\
-})
+#define log2_align_down(value, align)                                         \
+  ({                                                                          \
+    uword _v = (uword) (value);                                               \
+    uword _a = (uword) (align);                                               \
+    uword _m = (1 << _a) - 1;                                                 \
+                                                                              \
+    _v = _v & ~_m;                                                            \
+  })
 
-#define log2_align_up(value, align)		\
-({						\
-  uword _v = (uword) (value);			\
-  uword _a = (uword) (align);			\
-  uword _m = (1 << _a) - 1;			\
-						\
-  _v = (_v + _m) & ~_m;				\
-})
+#define log2_align_up(value, align)                                           \
+  ({                                                                          \
+    uword _v = (uword) (value);                                               \
+    uword _a = (uword) (align);                                               \
+    uword _m = (1 << _a) - 1;                                                 \
+                                                                              \
+    _v = (_v + _m) & ~_m;                                                     \
+  })
 
-#define log2_align_ptr_down(ptr, align) \
-uword_to_pointer (log2_align_down (pointer_to_uword (ptr), align), void *)
+#define log2_align_ptr_down(ptr, align)                                       \
+  uword_to_pointer (log2_align_down (pointer_to_uword (ptr), align), void *)
 
-#define log2_align_ptr_up(ptr, align) \
-uword_to_pointer (log2_align_up (pointer_to_uword (ptr), align), void *)
+#define log2_align_ptr_up(ptr, align)                                         \
+  uword_to_pointer (log2_align_up (pointer_to_uword (ptr), align), void *)
 
-#define MAX_LOG2_ALIGN		6
-#define MAX_UNALIGN_OFFSET	((1 << MAX_LOG2_ALIGN) - 1)
+#define MAX_LOG2_ALIGN	   6
+#define MAX_UNALIGN_OFFSET ((1 << MAX_LOG2_ALIGN) - 1)
 
 /* Allocates pointer to memory whose address is:
    addr = <log2_align>-aligned address */
@@ -224,13 +232,14 @@ alloc_unaligned (uword size, uword offset, void **ptr_to_free)
   return (void *) ((u8 *) p + (offset % MAX_UNALIGN_OFFSET));
 }
 
-#define memory_snap()						\
-do {								\
-  clib_mem_usage_t _usage = { 0 };				\
-  clib_mem_usage (&_usage);					\
-  fformat (stdout, "%U\n", format_clib_mem_usage, _usage, 0);	\
-} while (0)
-
+#define memory_snap()                                                         \
+  do                                                                          \
+    {                                                                         \
+      clib_mem_usage_t _usage = { 0 };                                        \
+      clib_mem_usage (&_usage);                                               \
+      fformat (stdout, "%U\n", format_clib_mem_usage, _usage, 0);             \
+    }                                                                         \
+  while (0)
 
 #endif /* included_test_vec_h */
 

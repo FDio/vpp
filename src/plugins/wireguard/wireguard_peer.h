@@ -31,7 +31,7 @@ typedef struct ip4_udp_header_t_
   udp_header_t udp;
 } __clib_packed ip4_udp_header_t;
 
-u8 *format_ip4_udp_header (u8 * s, va_list * va);
+u8 *format_ip4_udp_header (u8 *s, va_list *va);
 
 typedef struct wg_peer_allowed_ip_t_
 {
@@ -99,21 +99,20 @@ typedef struct wg_peer_table_bind_ctx_t_
 } wg_peer_table_bind_ctx_t;
 
 int wg_peer_add (u32 tun_sw_if_index,
-		 const u8 public_key_64[NOISE_PUBLIC_KEY_LEN],
-		 u32 table_id,
-		 const ip46_address_t * endpoint,
-		 const fib_prefix_t * allowed_ips,
-		 u16 port, u16 persistent_keepalive, index_t * peer_index);
+		 const u8 public_key_64[NOISE_PUBLIC_KEY_LEN], u32 table_id,
+		 const ip46_address_t *endpoint,
+		 const fib_prefix_t *allowed_ips, u16 port,
+		 u16 persistent_keepalive, index_t *peer_index);
 int wg_peer_remove (u32 peer_index);
 
 typedef walk_rc_t (*wg_peer_walk_cb_t) (index_t peeri, void *arg);
 index_t wg_peer_walk (wg_peer_walk_cb_t fn, void *data);
 
-u8 *format_wg_peer (u8 * s, va_list * va);
+u8 *format_wg_peer (u8 *s, va_list *va);
 
-walk_rc_t wg_peer_if_admin_state_change (wg_if_t * wgi, index_t peeri,
+walk_rc_t wg_peer_if_admin_state_change (wg_if_t *wgi, index_t peeri,
 					 void *data);
-walk_rc_t wg_peer_if_table_change (wg_if_t * wgi, index_t peeri, void *data);
+walk_rc_t wg_peer_if_table_change (wg_if_t *wgi, index_t peeri, void *data);
 
 /*
  * Expoed for the data-plane
@@ -135,14 +134,15 @@ wg_peer_get_by_adj_index (index_t ai)
 
 /*
  * Makes choice for thread_id should be assigned.
-*/
+ */
 static inline u32
 wg_peer_assign_thread (u32 thread_id)
 {
-  return ((thread_id) ? thread_id
-	  : (vlib_num_workers ()?
-	     ((unix_time_now_nsec () % vlib_num_workers ()) +
-	      1) : thread_id));
+  return ((thread_id) ?
+	    thread_id :
+	    (vlib_num_workers () ?
+	       ((unix_time_now_nsec () % vlib_num_workers ()) + 1) :
+	       thread_id));
 }
 
 #endif // __included_wg_peer_h__

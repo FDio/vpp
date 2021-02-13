@@ -40,130 +40,143 @@
 #ifndef included_clib_pipeline_h
 #define included_clib_pipeline_h
 
-#define clib_pipeline_stage(F,TYPE,ARG,I,BODY)		\
-  always_inline void F##_inline (void * _, u32 I)	\
-  { TYPE ARG = _; { BODY; } }				\
-  never_inline  void F##_no_inline (TYPE ARG, u32 I)	\
-  { F##_inline (ARG, I); }
+#define clib_pipeline_stage(F, TYPE, ARG, I, BODY)                            \
+  always_inline void F##_inline(void *_, u32 I)                               \
+  {                                                                           \
+    TYPE ARG = _;                                                             \
+    {                                                                         \
+      BODY;                                                                   \
+    }                                                                         \
+  }                                                                           \
+  never_inline void F##_no_inline (TYPE ARG, u32 I) { F##_inline(ARG, I); }
 
-#define clib_pipeline_stage_static(F,TYPE,ARG,I,BODY)		\
-  static_always_inline void F##_inline (void * _, u32 I)	\
-  { TYPE ARG = _; { BODY; } }					\
-  never_inline  void F##_no_inline (TYPE ARG, u32 I)		\
-  { F##_inline (ARG, I); }
+#define clib_pipeline_stage_static(F, TYPE, ARG, I, BODY)                     \
+  static_always_inline void F##_inline(void *_, u32 I)                        \
+  {                                                                           \
+    TYPE ARG = _;                                                             \
+    {                                                                         \
+      BODY;                                                                   \
+    }                                                                         \
+  }                                                                           \
+  never_inline void F##_no_inline (TYPE ARG, u32 I) { F##_inline(ARG, I); }
 
-#define clib_pipeline_stage_no_inline(F,TYPE,ARG,I,BODY)	\
-  never_inline void F##_no_inline (void * _, u32 I)		\
-  { TYPE ARG = _; { BODY; } }					\
-  never_inline  void F##_inline (TYPE ARG, u32 I)		\
-  { F##_no_inline (ARG, I); }
+#define clib_pipeline_stage_no_inline(F, TYPE, ARG, I, BODY)                  \
+  never_inline void F##_no_inline (void *_, u32 I)                            \
+  {                                                                           \
+    TYPE ARG = _;                                                             \
+    {                                                                         \
+      BODY;                                                                   \
+    }                                                                         \
+  }                                                                           \
+  never_inline void F##_inline(TYPE ARG, u32 I) { F##_no_inline (ARG, I); }
 
 #define _clib_pipeline_var(v) _clib_pipeline_##v
 
-#define clib_pipeline_stage_execute(F,A,I,S) \
-  F##_##S (A, _clib_pipeline_var(i) - (I))
+#define clib_pipeline_stage_execute(F, A, I, S)                               \
+  F##_##S (A, _clib_pipeline_var (i) - (I))
 
-#define clib_pipeline_main_stage(F,A,I) \
+#define clib_pipeline_main_stage(F, A, I)                                     \
   clib_pipeline_stage_execute (F, A, I, inline)
-#define clib_pipeline_init_stage(F,A,I) \
-  if (_clib_pipeline_var(i) >= (I)) clib_pipeline_stage_execute (F, A, I, no_inline)
-#define clib_pipeline_exit_stage(F,A,I)					\
-  if (_clib_pipeline_var(i) >= (I) && _clib_pipeline_var(i) - (I) < _clib_pipeline_var(n_vectors)) \
-    clib_pipeline_stage_execute (F, A, I, no_inline)
+#define clib_pipeline_init_stage(F, A, I)                                     \
+  if (_clib_pipeline_var (i) >= (I))                                          \
+  clib_pipeline_stage_execute (F, A, I, no_inline)
+#define clib_pipeline_exit_stage(F, A, I)                                     \
+  if (_clib_pipeline_var (i) >= (I) &&                                        \
+      _clib_pipeline_var (i) - (I) < _clib_pipeline_var (n_vectors))          \
+  clib_pipeline_stage_execute (F, A, I, no_inline)
 
-#define clib_pipeline_init_loop				\
-  for (_clib_pipeline_var(i) = 0;			\
-       _clib_pipeline_var(i) <				\
-	 clib_min (_clib_pipeline_var(n_stages) - 1,	\
-		   _clib_pipeline_var(n_vectors));	\
-       _clib_pipeline_var(i)++)
+#define clib_pipeline_init_loop                                               \
+  for (_clib_pipeline_var (i) = 0;                                            \
+       _clib_pipeline_var (i) < clib_min (_clib_pipeline_var (n_stages) - 1,  \
+					  _clib_pipeline_var (n_vectors));    \
+       _clib_pipeline_var (i)++)
 
-#define clib_pipeline_main_loop					\
-  for (; _clib_pipeline_var(i) < _clib_pipeline_var(n_vectors);	\
-       _clib_pipeline_var(i)++)
+#define clib_pipeline_main_loop                                               \
+  for (; _clib_pipeline_var (i) < _clib_pipeline_var (n_vectors);             \
+       _clib_pipeline_var (i)++)
 
-#define clib_pipeline_exit_loop						\
-  for (; _clib_pipeline_var(i) < (_clib_pipeline_var(n_vectors)		\
-				  + _clib_pipeline_var(n_stages) - 1);	\
-       _clib_pipeline_var(i)++)
+#define clib_pipeline_exit_loop                                               \
+  for (; _clib_pipeline_var (i) < (_clib_pipeline_var (n_vectors) +           \
+				   _clib_pipeline_var (n_stages) - 1);        \
+       _clib_pipeline_var (i)++)
 
-#define clib_pipeline_run_2_stage(N,ARG,STAGE0,STAGE1)	\
-do {							\
-  uword _clib_pipeline_var(n_vectors) = (N);		\
-  uword _clib_pipeline_var(n_stages) = 2;		\
-  uword _clib_pipeline_var(i);				\
-							\
-  clib_pipeline_init_loop				\
-    {							\
-      clib_pipeline_init_stage (STAGE0, ARG, 0);	\
-    }							\
-							\
-  clib_pipeline_main_loop				\
-    {							\
-      clib_pipeline_main_stage (STAGE0, ARG, 0);	\
-      clib_pipeline_main_stage (STAGE1, ARG, 1);	\
-    }							\
-							\
-  clib_pipeline_exit_loop				\
-    {							\
-      clib_pipeline_exit_stage (STAGE1, ARG, 1);	\
-    }							\
-} while (0)
+#define clib_pipeline_run_2_stage(N, ARG, STAGE0, STAGE1)                     \
+  do                                                                          \
+    {                                                                         \
+      uword _clib_pipeline_var (n_vectors) = (N);                             \
+      uword _clib_pipeline_var (n_stages) = 2;                                \
+      uword _clib_pipeline_var (i);                                           \
+                                                                              \
+      clib_pipeline_init_loop { clib_pipeline_init_stage (STAGE0, ARG, 0); }  \
+                                                                              \
+      clib_pipeline_main_loop                                                 \
+      {                                                                       \
+	clib_pipeline_main_stage (STAGE0, ARG, 0);                            \
+	clib_pipeline_main_stage (STAGE1, ARG, 1);                            \
+      }                                                                       \
+                                                                              \
+      clib_pipeline_exit_loop { clib_pipeline_exit_stage (STAGE1, ARG, 1); }  \
+    }                                                                         \
+  while (0)
 
-#define clib_pipeline_run_3_stage(N,ARG,STAGE0,STAGE1,STAGE2)	\
-do {								\
-  uword _clib_pipeline_var(n_vectors) = (N);			\
-  uword _clib_pipeline_var(n_stages) = 3;			\
-  uword _clib_pipeline_var(i);					\
-								\
-  clib_pipeline_init_loop					\
-    {								\
-      clib_pipeline_init_stage (STAGE0, ARG, 0);		\
-      clib_pipeline_init_stage (STAGE1, ARG, 1);		\
-    }								\
-								\
-  clib_pipeline_main_loop					\
-    {								\
-      clib_pipeline_main_stage (STAGE0, ARG, 0);		\
-      clib_pipeline_main_stage (STAGE1, ARG, 1);		\
-      clib_pipeline_main_stage (STAGE2, ARG, 2);		\
-    }								\
-								\
-  clib_pipeline_exit_loop					\
-    {								\
-      clib_pipeline_exit_stage (STAGE1, ARG, 1);		\
-      clib_pipeline_exit_stage (STAGE2, ARG, 2);		\
-    }								\
-} while (0)
+#define clib_pipeline_run_3_stage(N, ARG, STAGE0, STAGE1, STAGE2)             \
+  do                                                                          \
+    {                                                                         \
+      uword _clib_pipeline_var (n_vectors) = (N);                             \
+      uword _clib_pipeline_var (n_stages) = 3;                                \
+      uword _clib_pipeline_var (i);                                           \
+                                                                              \
+      clib_pipeline_init_loop                                                 \
+      {                                                                       \
+	clib_pipeline_init_stage (STAGE0, ARG, 0);                            \
+	clib_pipeline_init_stage (STAGE1, ARG, 1);                            \
+      }                                                                       \
+                                                                              \
+      clib_pipeline_main_loop                                                 \
+      {                                                                       \
+	clib_pipeline_main_stage (STAGE0, ARG, 0);                            \
+	clib_pipeline_main_stage (STAGE1, ARG, 1);                            \
+	clib_pipeline_main_stage (STAGE2, ARG, 2);                            \
+      }                                                                       \
+                                                                              \
+      clib_pipeline_exit_loop                                                 \
+      {                                                                       \
+	clib_pipeline_exit_stage (STAGE1, ARG, 1);                            \
+	clib_pipeline_exit_stage (STAGE2, ARG, 2);                            \
+      }                                                                       \
+    }                                                                         \
+  while (0)
 
-#define clib_pipeline_run_4_stage(N,ARG,STAGE0,STAGE1,STAGE2,STAGE3)	\
-do {									\
-  uword _clib_pipeline_var(n_vectors) = (N);				\
-  uword _clib_pipeline_var(n_stages) = 4;				\
-  uword _clib_pipeline_var(i);						\
-									\
-  clib_pipeline_init_loop						\
-    {									\
-      clib_pipeline_init_stage (STAGE0, ARG, 0);			\
-      clib_pipeline_init_stage (STAGE1, ARG, 1);			\
-      clib_pipeline_init_stage (STAGE2, ARG, 2);			\
-    }									\
-									\
-  clib_pipeline_main_loop						\
-    {									\
-      clib_pipeline_main_stage (STAGE0, ARG, 0);			\
-      clib_pipeline_main_stage (STAGE1, ARG, 1);			\
-      clib_pipeline_main_stage (STAGE2, ARG, 2);			\
-      clib_pipeline_main_stage (STAGE3, ARG, 3);			\
-    }									\
-									\
-  clib_pipeline_exit_loop						\
-    {									\
-      clib_pipeline_exit_stage (STAGE1, ARG, 1);			\
-      clib_pipeline_exit_stage (STAGE2, ARG, 2);			\
-      clib_pipeline_exit_stage (STAGE3, ARG, 3);			\
-    }									\
-} while (0)
+#define clib_pipeline_run_4_stage(N, ARG, STAGE0, STAGE1, STAGE2, STAGE3)     \
+  do                                                                          \
+    {                                                                         \
+      uword _clib_pipeline_var (n_vectors) = (N);                             \
+      uword _clib_pipeline_var (n_stages) = 4;                                \
+      uword _clib_pipeline_var (i);                                           \
+                                                                              \
+      clib_pipeline_init_loop                                                 \
+      {                                                                       \
+	clib_pipeline_init_stage (STAGE0, ARG, 0);                            \
+	clib_pipeline_init_stage (STAGE1, ARG, 1);                            \
+	clib_pipeline_init_stage (STAGE2, ARG, 2);                            \
+      }                                                                       \
+                                                                              \
+      clib_pipeline_main_loop                                                 \
+      {                                                                       \
+	clib_pipeline_main_stage (STAGE0, ARG, 0);                            \
+	clib_pipeline_main_stage (STAGE1, ARG, 1);                            \
+	clib_pipeline_main_stage (STAGE2, ARG, 2);                            \
+	clib_pipeline_main_stage (STAGE3, ARG, 3);                            \
+      }                                                                       \
+                                                                              \
+      clib_pipeline_exit_loop                                                 \
+      {                                                                       \
+	clib_pipeline_exit_stage (STAGE1, ARG, 1);                            \
+	clib_pipeline_exit_stage (STAGE2, ARG, 2);                            \
+	clib_pipeline_exit_stage (STAGE3, ARG, 3);                            \
+      }                                                                       \
+    }                                                                         \
+  while (0)
 
 #endif /* included_clib_pipeline_h */
 

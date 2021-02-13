@@ -44,7 +44,7 @@ typedef struct
 udp_ping_test_main_t udp_ping_test_main;
 
 static int
-api_udp_ping_add_del (vat_main_t * vam)
+api_udp_ping_add_del (vat_main_t *vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_udp_ping_add_del_t *mp;
@@ -95,7 +95,7 @@ api_udp_ping_add_del (vat_main_t * vam)
 }
 
 static int
-api_udp_ping_export (vat_main_t * vam)
+api_udp_ping_export (vat_main_t *vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_udp_ping_export_t *mp;

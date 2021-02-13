@@ -44,14 +44,14 @@ gdb_af_xdp_get_prod (const struct xsk_ring_prod *prod)
 }
 
 gdb_af_xdp_pair_t
-gdb_af_xdp_get_cons (const struct xsk_ring_cons * cons)
+gdb_af_xdp_get_cons (const struct xsk_ring_cons *cons)
 {
   gdb_af_xdp_pair_t pair = { *cons->producer, *cons->consumer };
   return pair;
 }
 
 static clib_error_t *
-af_xdp_mac_change (vnet_hw_interface_t * hw, const u8 * old, const u8 * new)
+af_xdp_mac_change (vnet_hw_interface_t *hw, const u8 *old, const u8 *new)
 {
   af_xdp_main_t *am = &af_xdp_main;
   af_xdp_device_t *ad = vec_elt_at_index (am->devices, hw->dev_instance);
@@ -63,7 +63,7 @@ af_xdp_mac_change (vnet_hw_interface_t * hw, const u8 * old, const u8 * new)
 }
 
 static u32
-af_xdp_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
+af_xdp_flag_change (vnet_main_t *vnm, vnet_hw_interface_t *hw, u32 flags)
 {
   af_xdp_main_t *am = &af_xdp_main;
   af_xdp_device_t *ad = vec_elt_at_index (am->devices, hw->dev_instance);
@@ -74,8 +74,7 @@ af_xdp_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
       af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "set unicast not supported yet");
       return ~0;
     case ETHERNET_INTERFACE_FLAG_ACCEPT_ALL:
-      af_xdp_log (VLIB_LOG_LEVEL_ERR, ad,
-		  "set promiscuous not supported yet");
+      af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "set promiscuous not supported yet");
       return ~0;
     case ETHERNET_INTERFACE_FLAG_MTU:
       af_xdp_log (VLIB_LOG_LEVEL_ERR, ad, "set mtu not supported yet");
@@ -87,7 +86,7 @@ af_xdp_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
 }
 
 void
-af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
+af_xdp_delete_if (vlib_main_t *vm, af_xdp_device_t *ad)
 {
   vnet_main_t *vnm = vnet_get_main ();
   af_xdp_main_t *axm = &af_xdp_main;
@@ -102,11 +101,14 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
       ethernet_delete_interface (vnm, ad->hw_if_index);
     }
 
-  vec_foreach (rxq, ad->rxqs) clib_file_del_by_index (&file_main,
-						      rxq->file_index);
-  vec_foreach (txq, ad->txqs) clib_spinlock_free (&txq->lock);
-  vec_foreach (xsk, ad->xsk) xsk_socket__delete (*xsk);
-  vec_foreach (umem, ad->umem) xsk_umem__delete (*umem);
+  vec_foreach (rxq, ad->rxqs)
+    clib_file_del_by_index (&file_main, rxq->file_index);
+  vec_foreach (txq, ad->txqs)
+    clib_spinlock_free (&txq->lock);
+  vec_foreach (xsk, ad->xsk)
+    xsk_socket__delete (*xsk);
+  vec_foreach (umem, ad->umem)
+    xsk_umem__delete (*umem);
 
   if (ad->bpf_obj)
     {
@@ -124,7 +126,7 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
 }
 
 static int
-af_xdp_load_program (af_xdp_create_if_args_t * args, af_xdp_device_t * ad)
+af_xdp_load_program (af_xdp_create_if_args_t *args, af_xdp_device_t *ad)
 {
   int fd;
 
@@ -132,9 +134,8 @@ af_xdp_load_program (af_xdp_create_if_args_t * args, af_xdp_device_t * ad)
   if (!ad->linux_ifindex)
     {
       args->rv = VNET_API_ERROR_INVALID_VALUE;
-      args->error =
-	clib_error_return_unix (0, "if_nametoindex(%s) failed",
-				ad->linux_ifname);
+      args->error = clib_error_return_unix (0, "if_nametoindex(%s) failed",
+					    ad->linux_ifname);
       goto err0;
     }
 
@@ -152,9 +153,8 @@ af_xdp_load_program (af_xdp_create_if_args_t * args, af_xdp_device_t * ad)
   if (bpf_set_link_xdp_fd (ad->linux_ifindex, fd, XDP_FLAGS_REPLACE))
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_6;
-      args->error =
-	clib_error_return_unix (0, "bpf_set_link_xdp_fd(%s) failed",
-				ad->linux_ifname);
+      args->error = clib_error_return_unix (
+	0, "bpf_set_link_xdp_fd(%s) failed", ad->linux_ifname);
       goto err1;
     }
 
@@ -169,8 +169,8 @@ err0:
 }
 
 static int
-af_xdp_create_queue (vlib_main_t * vm, af_xdp_create_if_args_t * args,
-		     af_xdp_device_t * ad, int qid, int rxq_num, int txq_num)
+af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
+		     af_xdp_device_t *ad, int qid, int rxq_num, int txq_num)
 {
   struct xsk_umem **umem;
   struct xsk_socket **xsk;
@@ -209,9 +209,9 @@ af_xdp_create_queue (vlib_main_t * vm, af_xdp_create_if_args_t * args,
   umem_config.frame_size =
     sizeof (vlib_buffer_t) + vlib_buffer_get_default_data_size (vm);
   umem_config.flags = XDP_UMEM_UNALIGNED_CHUNK_FLAG;
-  if (xsk_umem__create
-      (umem, uword_to_pointer (vm->buffer_main->buffer_mem_start, void *),
-       vm->buffer_main->buffer_mem_size, fq, cq, &umem_config))
+  if (xsk_umem__create (
+	umem, uword_to_pointer (vm->buffer_main->buffer_mem_start, void *),
+	vm->buffer_main->buffer_mem_size, fq, cq, &umem_config))
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_1;
       args->error = clib_error_return_unix (0, "xsk_umem__create() failed");
@@ -233,14 +233,13 @@ af_xdp_create_queue (vlib_main_t * vm, af_xdp_create_if_args_t * args,
       sock_config.bind_flags |= XDP_ZEROCOPY;
       break;
     }
-  if (xsk_socket__create
-      (xsk, ad->linux_ifname, qid, *umem, rx, tx, &sock_config))
+  if (xsk_socket__create (xsk, ad->linux_ifname, qid, *umem, rx, tx,
+			  &sock_config))
     {
       args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
-      args->error =
-	clib_error_return_unix (0,
-				"xsk_socket__create() failed (is linux netdev %s up?)",
-				ad->linux_ifname);
+      args->error = clib_error_return_unix (
+	0, "xsk_socket__create() failed (is linux netdev %s up?)",
+	ad->linux_ifname);
       goto err1;
     }
 
@@ -290,7 +289,7 @@ af_xdp_get_numa (const char *ifname)
 }
 
 static clib_error_t *
-af_xdp_device_rxq_read_ready (clib_file_t * f)
+af_xdp_device_rxq_read_ready (clib_file_t *f)
 {
   vnet_hw_if_rx_queue_set_int_pending (vnet_get_main (), f->private_data);
   return 0;
@@ -312,7 +311,7 @@ af_xdp_device_set_rxq_mode (af_xdp_rxq_t *rxq, int is_polling)
 }
 
 void
-af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
+af_xdp_create_if (vlib_main_t *vm, af_xdp_create_if_args_t *args)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -340,17 +339,18 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       !is_pow2 (args->rxq_size) || !is_pow2 (args->txq_size))
     {
       args->rv = VNET_API_ERROR_INVALID_VALUE;
-      args->error =
-	clib_error_return (0,
-			   "queue size must be a power of two between %i and 65535",
-			   VLIB_FRAME_SIZE);
+      args->error = clib_error_return (
+	0, "queue size must be a power of two between %i and 65535",
+	VLIB_FRAME_SIZE);
       goto err0;
     }
 
   pool_get_zero (am->devices, ad);
 
   ad->linux_ifname = (char *) format (0, "%s", args->linux_ifname);
-  vec_validate (ad->linux_ifname, IFNAMSIZ - 1);	/* libbpf expects ifname to be at least IFNAMSIZ */
+  vec_validate (ad->linux_ifname,
+		IFNAMSIZ -
+		  1); /* libbpf expects ifname to be at least IFNAMSIZ */
 
   if (args->prog && af_xdp_load_program (args, ad))
     goto err1;
@@ -376,14 +376,17 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 	  vec_set_len (ad->txqs, i);
 
 	  if (i < rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != rxq_num)
-	    goto err1;		/* failed creating requested rxq: fatal error, bailing out */
+	    goto err1; /* failed creating requested rxq: fatal error, bailing
+			  out */
 
 	  if (i < txq_num)
 	    {
-	      /* we created less txq than threads not an error but initialize lock for shared txq */
+	      /* we created less txq than threads not an error but initialize
+	       * lock for shared txq */
 	      af_xdp_txq_t *txq;
 	      ad->txq_num = i;
-	      vec_foreach (txq, ad->txqs) clib_spinlock_init (&txq->lock);
+	      vec_foreach (txq, ad->txqs)
+		clib_spinlock_init (&txq->lock);
 	    }
 
 	  args->rv = 0;
@@ -394,10 +397,8 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 
   ad->dev_instance = ad - am->devices;
   ad->per_interface_next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-  ad->pool =
-    vlib_buffer_pool_get_default_for_numa (vm,
-					   af_xdp_get_numa
-					   (ad->linux_ifname));
+  ad->pool = vlib_buffer_pool_get_default_for_numa (
+    vm, af_xdp_get_numa (ad->linux_ifname));
   if (!args->name)
     ad->name =
       (char *) format (0, "%s/%d", ad->linux_ifname, ad->dev_instance);
@@ -451,7 +452,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
   ad->buffer_template->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
   ad->buffer_template->ref_count = 1;
   vnet_buffer (ad->buffer_template)->sw_if_index[VLIB_RX] = ad->sw_if_index;
-  vnet_buffer (ad->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+  vnet_buffer (ad->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~0;
   ad->buffer_template->buffer_pool_index = ad->pool;
 
   return;
@@ -463,7 +464,7 @@ err0:
 }
 
 static clib_error_t *
-af_xdp_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+af_xdp_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 {
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
   af_xdp_main_t *am = &af_xdp_main;
@@ -519,7 +520,7 @@ af_xdp_interface_rx_mode_change (vnet_main_t *vnm, u32 hw_if_index, u32 qid,
 }
 
 static void
-af_xdp_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
+af_xdp_set_interface_next_node (vnet_main_t *vnm, u32 hw_if_index,
 				u32 node_index)
 {
   af_xdp_main_t *am = &af_xdp_main;
@@ -534,12 +535,11 @@ af_xdp_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
     }
 
   ad->per_interface_next_index =
-    vlib_node_add_next (vlib_get_main (), af_xdp_input_node.index,
-			node_index);
+    vlib_node_add_next (vlib_get_main (), af_xdp_input_node.index, node_index);
 }
 
 static char *af_xdp_tx_func_error_strings[] = {
-#define _(n,s) s,
+#define _(n, s) s,
   foreach_af_xdp_tx_func_error
 #undef _
 };
@@ -552,7 +552,6 @@ af_xdp_clear (u32 dev_instance)
   clib_error_free (ad->error);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (af_xdp_device_class) = {
   .name = "AF_XDP interface",
   .format_device = format_af_xdp_device,
@@ -565,10 +564,9 @@ VNET_DEVICE_CLASS (af_xdp_device_class) = {
   .mac_addr_change_function = af_xdp_mac_change,
   .clear_counters = af_xdp_clear,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-af_xdp_init (vlib_main_t * vm)
+af_xdp_init (vlib_main_t *vm)
 {
   af_xdp_main_t *am = &af_xdp_main;
 

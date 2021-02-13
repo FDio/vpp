@@ -25,7 +25,7 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 
-#define NSIM_MAX_TX_BURST 32	/**< max packets in a tx burst */
+#define NSIM_MAX_TX_BURST 32 /**< max packets in a tx burst */
 
 typedef struct
 {
@@ -34,7 +34,7 @@ typedef struct
   u32 tx_sw_if_index;
   u32 output_next_index;
   u32 buffer_index;
-  u32 pad;			/* pad to 32-bytes */
+  u32 pad; /* pad to 32-bytes */
 } nsim_wheel_entry_t;
 
 typedef struct
@@ -44,7 +44,7 @@ typedef struct
   u32 head;
   u32 tail;
   nsim_wheel_entry_t *entries;
-    CLIB_CACHE_LINE_ALIGN_MARK (pad);
+  CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } nsim_wheel_t;
 
 typedef struct nsim_node_ctx
@@ -59,9 +59,9 @@ typedef struct nsim_node_ctx
   u64 n_loss;
 } nsim_node_ctx_t;
 
-#define foreach_nsm_action			\
-  _(DROP, "Packet loss")			\
-  _(REORDER, "Packet reorder")
+#define foreach_nsm_action                                                    \
+  _ (DROP, "Packet loss")                                                     \
+  _ (REORDER, "Packet reorder")
 
 enum nsm_action_bit
 {

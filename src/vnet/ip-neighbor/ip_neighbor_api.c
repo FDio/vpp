@@ -51,7 +51,7 @@ ip_neighbor_flags_encode (ip_neighbor_flags_t f)
 }
 
 static void
-ip_neighbor_encode (vl_api_ip_neighbor_t * api, const ip_neighbor_t * ipn)
+ip_neighbor_encode (vl_api_ip_neighbor_t *api, const ip_neighbor_t *ipn)
 {
   api->sw_if_index = htonl (ipn->ipn_key->ipnk_sw_if_index);
   api->flags = ip_neighbor_flags_encode (ipn->ipn_flags);
@@ -61,7 +61,7 @@ ip_neighbor_encode (vl_api_ip_neighbor_t * api, const ip_neighbor_t * ipn)
 }
 
 void
-ip_neighbor_handle_event (ip_neighbor_event_t * ipne)
+ip_neighbor_handle_event (ip_neighbor_event_t *ipne)
 {
   vl_api_registration_t *reg;
   ip_neighbor_t *ipn;
@@ -148,9 +148,8 @@ send_ip_neighbor_details (index_t ipni, void *arg)
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IP_NEIGHBOR_DETAILS + REPLY_MSG_ID_BASE);
   mp->context = ctx->context;
-  mp->age =
-    clib_host_to_net_f64 ((vlib_time_now (vlib_get_main ()) -
-			   ipn->ipn_time_last_updated));
+  mp->age = clib_host_to_net_f64 (
+    (vlib_time_now (vlib_get_main ()) - ipn->ipn_time_last_updated));
   ip_neighbor_encode (&mp->neighbor, ipn);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
@@ -159,7 +158,7 @@ send_ip_neighbor_details (index_t ipni, void *arg)
 }
 
 static void
-vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t * mp)
+vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t *mp)
 {
   vl_api_registration_t *reg;
   ip_address_family_t af;
@@ -199,8 +198,8 @@ ip_neighbor_flags_decode (vl_api_ip_neighbor_flags_t v)
 }
 
 static void
-vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
-				      vlib_main_t * vm)
+vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t *mp,
+				      vlib_main_t *vm)
 {
   vl_api_ip_neighbor_add_del_reply_t *rmp;
   ip_neighbor_flags_t flags;
@@ -226,25 +225,19 @@ vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
    * will come of adding bogus entries.
    */
   if (mp->is_add)
-    rv = ip_neighbor_add (&ip, &mac,
-			  ntohl (mp->neighbor.sw_if_index),
-			  flags, &stats_index);
+    rv = ip_neighbor_add (&ip, &mac, ntohl (mp->neighbor.sw_if_index), flags,
+			  &stats_index);
   else
     rv = ip_neighbor_del (&ip, ntohl (mp->neighbor.sw_if_index));
 
   BAD_SW_IF_INDEX_LABEL;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_IP_NEIGHBOR_ADD_DEL_REPLY,
-  ({
-    rmp->stats_index = htonl (stats_index);
-  }));
-  /* *INDENT-ON* */
+		({ rmp->stats_index = htonl (stats_index); }));
 }
 
 static void
-vl_api_want_ip_neighbor_events_t_handler (vl_api_want_ip_neighbor_events_t *
-					  mp)
+vl_api_want_ip_neighbor_events_t_handler (vl_api_want_ip_neighbor_events_t *mp)
 {
   vl_api_want_ip_neighbor_events_reply_t *rmp;
   ip_address_t ip;
@@ -270,8 +263,8 @@ vl_api_want_ip_neighbor_events_t_handler (vl_api_want_ip_neighbor_events_t *
 }
 
 static void
-  vl_api_want_ip_neighbor_events_v2_t_handler
-  (vl_api_want_ip_neighbor_events_v2_t * mp)
+vl_api_want_ip_neighbor_events_v2_t_handler (
+  vl_api_want_ip_neighbor_events_v2_t *mp)
 {
   vl_api_want_ip_neighbor_events_reply_t *rmp;
   ip_address_t ip;
@@ -297,7 +290,7 @@ static void
 }
 
 static void
-vl_api_ip_neighbor_config_t_handler (vl_api_ip_neighbor_config_t * mp)
+vl_api_ip_neighbor_config_t_handler (vl_api_ip_neighbor_config_t *mp)
 {
   vl_api_ip_neighbor_config_reply_t *rmp;
   ip_address_family_t af;
@@ -306,16 +299,15 @@ vl_api_ip_neighbor_config_t_handler (vl_api_ip_neighbor_config_t * mp)
   rv = ip_address_family_decode (mp->af, &af);
 
   if (!rv)
-    rv = ip_neighbor_config (af,
-			     ntohl (mp->max_number),
-			     ntohl (mp->max_age), mp->recycle);
+    rv = ip_neighbor_config (af, ntohl (mp->max_number), ntohl (mp->max_age),
+			     mp->recycle);
 
   REPLY_MACRO (VL_API_IP_NEIGHBOR_CONFIG_REPLY);
 }
 
 static void
-vl_api_ip_neighbor_replace_begin_t_handler (vl_api_ip_neighbor_replace_begin_t
-					    * mp)
+vl_api_ip_neighbor_replace_begin_t_handler (
+  vl_api_ip_neighbor_replace_begin_t *mp)
 {
   vl_api_ip_neighbor_replace_begin_reply_t *rmp;
   int rv = 0;
@@ -327,8 +319,7 @@ vl_api_ip_neighbor_replace_begin_t_handler (vl_api_ip_neighbor_replace_begin_t
 }
 
 static void
-vl_api_ip_neighbor_replace_end_t_handler (vl_api_ip_neighbor_replace_end_t *
-					  mp)
+vl_api_ip_neighbor_replace_end_t_handler (vl_api_ip_neighbor_replace_end_t *mp)
 {
   vl_api_ip_neighbor_replace_end_reply_t *rmp;
   int rv = 0;
@@ -340,7 +331,7 @@ vl_api_ip_neighbor_replace_end_t_handler (vl_api_ip_neighbor_replace_end_t *
 }
 
 static void
-vl_api_ip_neighbor_flush_t_handler (vl_api_ip_neighbor_flush_t * mp)
+vl_api_ip_neighbor_flush_t_handler (vl_api_ip_neighbor_flush_t *mp)
 {
   vl_api_ip_neighbor_flush_reply_t *rmp;
   ip_address_family_t af;
@@ -365,7 +356,7 @@ vl_api_ip_neighbor_flush_t_handler (vl_api_ip_neighbor_flush_t * mp)
 #include <vnet/ip-neighbor/ip_neighbor.api.c>
 
 static clib_error_t *
-ip_neighbor_api_init (vlib_main_t * vm)
+ip_neighbor_api_init (vlib_main_t *vm)
 {
   /* Ask for a correctly-sized block of API message decode slots */
   msg_id_base = setup_message_id_table ();

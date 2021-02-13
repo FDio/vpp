@@ -25,7 +25,10 @@
 
 dpdk_crypto_main_t dpdk_crypto_main;
 
-#define EMPTY_STRUCT {0}
+#define EMPTY_STRUCT                                                          \
+  {                                                                           \
+    0                                                                         \
+  }
 #define NUM_CRYPTO_MBUFS 16384
 
 static void
@@ -37,8 +40,8 @@ algos_init (u32 n_mains)
   vec_validate_aligned (dcm->cipher_algs, IPSEC_CRYPTO_N_ALG - 1, 8);
 
   {
-#define _(v,f,str) \
-  dcm->cipher_algs[IPSEC_CRYPTO_ALG_##f].name = str; \
+#define _(v, f, str)                                                          \
+  dcm->cipher_algs[IPSEC_CRYPTO_ALG_##f].name = str;                          \
   dcm->cipher_algs[IPSEC_CRYPTO_ALG_##f].disabled = n_mains;
     foreach_ipsec_crypto_alg
 #undef _
@@ -48,7 +51,7 @@ algos_init (u32 n_mains)
   a = &dcm->cipher_algs[IPSEC_CRYPTO_ALG_NONE];
   a->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
   a->alg = RTE_CRYPTO_CIPHER_NULL;
-  a->boundary = 4;		/* 1 */
+  a->boundary = 4; /* 1 */
   a->key_len = 0;
   a->iv_len = 0;
 
@@ -76,31 +79,31 @@ algos_init (u32 n_mains)
   a = &dcm->cipher_algs[IPSEC_CRYPTO_ALG_AES_CTR_128];
   a->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
   a->alg = RTE_CRYPTO_CIPHER_AES_CTR;
-  a->boundary = 4;		/* 1 */
+  a->boundary = 4; /* 1 */
   a->key_len = 16;
   a->iv_len = 8;
 
   a = &dcm->cipher_algs[IPSEC_CRYPTO_ALG_AES_CTR_192];
   a->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
   a->alg = RTE_CRYPTO_CIPHER_AES_CTR;
-  a->boundary = 4;		/* 1 */
+  a->boundary = 4; /* 1 */
   a->key_len = 24;
   a->iv_len = 8;
 
   a = &dcm->cipher_algs[IPSEC_CRYPTO_ALG_AES_CTR_256];
   a->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
   a->alg = RTE_CRYPTO_CIPHER_AES_CTR;
-  a->boundary = 4;		/* 1 */
+  a->boundary = 4; /* 1 */
   a->key_len = 32;
   a->iv_len = 8;
 
 #define AES_GCM_TYPE RTE_CRYPTO_SYM_XFORM_AEAD
-#define AES_GCM_ALG RTE_CRYPTO_AEAD_AES_GCM
+#define AES_GCM_ALG  RTE_CRYPTO_AEAD_AES_GCM
 
   a = &dcm->cipher_algs[IPSEC_CRYPTO_ALG_AES_GCM_128];
   a->type = AES_GCM_TYPE;
   a->alg = AES_GCM_ALG;
-  a->boundary = 4;		/* 1 */
+  a->boundary = 4; /* 1 */
   a->key_len = 16;
   a->iv_len = 8;
   a->trunc_size = 16;
@@ -108,7 +111,7 @@ algos_init (u32 n_mains)
   a = &dcm->cipher_algs[IPSEC_CRYPTO_ALG_AES_GCM_192];
   a->type = AES_GCM_TYPE;
   a->alg = AES_GCM_ALG;
-  a->boundary = 4;		/* 1 */
+  a->boundary = 4; /* 1 */
   a->key_len = 24;
   a->iv_len = 8;
   a->trunc_size = 16;
@@ -116,7 +119,7 @@ algos_init (u32 n_mains)
   a = &dcm->cipher_algs[IPSEC_CRYPTO_ALG_AES_GCM_256];
   a->type = AES_GCM_TYPE;
   a->alg = AES_GCM_ALG;
-  a->boundary = 4;		/* 1 */
+  a->boundary = 4; /* 1 */
   a->key_len = 32;
   a->iv_len = 8;
   a->trunc_size = 16;
@@ -124,8 +127,8 @@ algos_init (u32 n_mains)
   vec_validate (dcm->auth_algs, IPSEC_INTEG_N_ALG - 1);
 
   {
-#define _(v,f,str) \
-  dcm->auth_algs[IPSEC_INTEG_ALG_##f].name = str; \
+#define _(v, f, str)                                                          \
+  dcm->auth_algs[IPSEC_INTEG_ALG_##f].name = str;                             \
   dcm->auth_algs[IPSEC_INTEG_ALG_##f].disabled = n_mains;
     foreach_ipsec_integ_alg
 #undef _
@@ -175,7 +178,7 @@ algos_init (u32 n_mains)
 }
 
 static u8
-cipher_alg_index (const crypto_alg_t * alg)
+cipher_alg_index (const crypto_alg_t *alg)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
 
@@ -183,7 +186,7 @@ cipher_alg_index (const crypto_alg_t * alg)
 }
 
 static u8
-auth_alg_index (const crypto_alg_t * alg)
+auth_alg_index (const crypto_alg_t *alg)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
 
@@ -199,21 +202,17 @@ cipher_cap_to_alg (const struct rte_cryptodev_capabilities *cap, u8 key_len)
   if (cap->op != RTE_CRYPTO_OP_TYPE_SYMMETRIC)
     return NULL;
 
-  /* *INDENT-OFF* */
   vec_foreach (alg, dcm->cipher_algs)
     {
       if ((cap->sym.xform_type == RTE_CRYPTO_SYM_XFORM_CIPHER) &&
 	  (alg->type == RTE_CRYPTO_SYM_XFORM_CIPHER) &&
-	  (cap->sym.cipher.algo == alg->alg) &&
-	  (alg->key_len == key_len))
+	  (cap->sym.cipher.algo == alg->alg) && (alg->key_len == key_len))
 	return alg;
       if ((cap->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AEAD) &&
 	  (alg->type == RTE_CRYPTO_SYM_XFORM_AEAD) &&
-	  (cap->sym.aead.algo == alg->alg) &&
-	  (alg->key_len == key_len))
+	  (cap->sym.aead.algo == alg->alg) && (alg->key_len == key_len))
 	return alg;
     }
-  /* *INDENT-ON* */
 
   return NULL;
 }
@@ -228,21 +227,18 @@ auth_cap_to_alg (const struct rte_cryptodev_capabilities *cap, u8 trunc_size)
       (cap->sym.xform_type != RTE_CRYPTO_SYM_XFORM_AUTH))
     return NULL;
 
-  /* *INDENT-OFF* */
   vec_foreach (alg, dcm->auth_algs)
     {
-      if ((cap->sym.auth.algo == alg->alg) &&
-	  (alg->trunc_size == trunc_size))
+      if ((cap->sym.auth.algo == alg->alg) && (alg->trunc_size == trunc_size))
 	return alg;
     }
-  /* *INDENT-ON* */
 
   return NULL;
 }
 
 static void
-crypto_set_aead_xform (struct rte_crypto_sym_xform *xform,
-		       ipsec_sa_t * sa, u8 is_outbound)
+crypto_set_aead_xform (struct rte_crypto_sym_xform *xform, ipsec_sa_t *sa,
+		       u8 is_outbound)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_alg_t *c;
@@ -269,8 +265,8 @@ crypto_set_aead_xform (struct rte_crypto_sym_xform *xform,
 }
 
 static void
-crypto_set_cipher_xform (struct rte_crypto_sym_xform *xform,
-			 ipsec_sa_t * sa, u8 is_outbound)
+crypto_set_cipher_xform (struct rte_crypto_sym_xform *xform, ipsec_sa_t *sa,
+			 u8 is_outbound)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_alg_t *c;
@@ -295,8 +291,8 @@ crypto_set_cipher_xform (struct rte_crypto_sym_xform *xform,
 }
 
 static void
-crypto_set_auth_xform (struct rte_crypto_sym_xform *xform,
-		       ipsec_sa_t * sa, u8 is_outbound)
+crypto_set_auth_xform (struct rte_crypto_sym_xform *xform, ipsec_sa_t *sa,
+		       u8 is_outbound)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_alg_t *a;
@@ -319,10 +315,9 @@ crypto_set_auth_xform (struct rte_crypto_sym_xform *xform,
 }
 
 clib_error_t *
-create_sym_session (struct rte_cryptodev_sym_session **session,
-		    u32 sa_idx,
-		    crypto_resource_t * res,
-		    crypto_worker_main_t * cwm, u8 is_outbound)
+create_sym_session (struct rte_cryptodev_sym_session **session, u32 sa_idx,
+		    crypto_resource_t *res, crypto_worker_main_t *cwm,
+		    u8 is_outbound)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   ipsec_main_t *im = &ipsec_main;
@@ -333,7 +328,6 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
   struct rte_crypto_sym_xform *xfs;
   struct rte_cryptodev_sym_session **s;
   clib_error_t *error = 0;
-
 
   sa = pool_elt_at_index (im->sad, sa_idx);
 
@@ -445,7 +439,7 @@ set_session_private_data (struct rte_cryptodev_sym_session *sess,
 }
 
 static clib_error_t *
-dpdk_crypto_session_disposal (crypto_session_disposal_t * v, u64 ts)
+dpdk_crypto_session_disposal (crypto_session_disposal_t *v, u64 ts)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_session_disposal_t *s;
@@ -453,7 +447,6 @@ dpdk_crypto_session_disposal (crypto_session_disposal_t * v, u64 ts)
   u32 drv_id;
   i32 ret;
 
-  /* *INDENT-OFF* */
   vec_foreach (s, v)
     {
       /* ordered vector by timestamp */
@@ -476,13 +469,12 @@ dpdk_crypto_session_disposal (crypto_session_disposal_t * v, u64 ts)
 	  set_session_private_data (s->session, drv_id, NULL);
 	}
 
-      if (rte_mempool_from_obj(s->session))
+      if (rte_mempool_from_obj (s->session))
 	{
 	  ret = rte_cryptodev_sym_session_free (s->session);
 	  ASSERT (!ret);
 	}
     }
-  /* *INDENT-ON* */
 
   if (s < vec_end (v))
     vec_delete (v, s - v, 0);
@@ -504,41 +496,40 @@ add_del_sa_session (u32 sa_index, u8 is_add)
   if (is_add)
     return 0;
 
-  /* *INDENT-OFF* */
   vec_foreach (data, dcm->data)
     {
       clib_spinlock_lock_if_init (&data->lockp);
       val = hash_get (data->session_by_sa_index, sa_index);
       if (val)
-        {
-          s = (struct rte_cryptodev_sym_session *) val[0];
-          vec_foreach_index (drv_id, dcm->drv)
-            {
-              val = (uword*) get_session_by_drv_and_sa_idx (data, drv_id, sa_index);
-              if (val)
-                add_session_by_drv_and_sa_idx(NULL, data, drv_id, sa_index);
-            }
+	{
+	  s = (struct rte_cryptodev_sym_session *) val[0];
+	  vec_foreach_index (drv_id, dcm->drv)
+	    {
+	      val = (uword *) get_session_by_drv_and_sa_idx (data, drv_id,
+							     sa_index);
+	      if (val)
+		add_session_by_drv_and_sa_idx (NULL, data, drv_id, sa_index);
+	    }
 
-          hash_unset (data->session_by_sa_index, sa_index);
+	  hash_unset (data->session_by_sa_index, sa_index);
 
-          u64 ts = unix_time_now_nsec ();
-          dpdk_crypto_session_disposal (data->session_disposal, ts);
+	  u64 ts = unix_time_now_nsec ();
+	  dpdk_crypto_session_disposal (data->session_disposal, ts);
 
-          crypto_session_disposal_t sd;
-          sd.ts = ts;
-          sd.session = s;
+	  crypto_session_disposal_t sd;
+	  sd.ts = ts;
+	  sd.session = s;
 
-          vec_add1 (data->session_disposal, sd);
-        }
+	  vec_add1 (data->session_disposal, sd);
+	}
       clib_spinlock_unlock_if_init (&data->lockp);
     }
-  /* *INDENT-ON* */
 
   return 0;
 }
 
 static clib_error_t *
-dpdk_ipsec_check_support (ipsec_sa_t * sa)
+dpdk_ipsec_check_support (ipsec_sa_t *sa)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
 
@@ -571,7 +562,7 @@ dpdk_ipsec_check_support (ipsec_sa_t * sa)
 }
 
 static void
-crypto_parse_capabilities (crypto_dev_t * dev,
+crypto_parse_capabilities (crypto_dev_t *dev,
 			   const struct rte_cryptodev_capabilities *cap,
 			   u32 n_mains)
 {
@@ -615,8 +606,7 @@ crypto_parse_capabilities (crypto_dev_t * dev,
 	      dcm->enabled |= (alg->resources >= n_mains);
 	    }
 	  break;
-	default:
-	  ;
+	default:;
 	}
     }
 }
@@ -720,7 +710,7 @@ crypto_scan_devs (u32 n_mains)
 	  res->drv_id = drv_id;
 	  res->qp_id = j;
 	  res->numa = dev->numa;
-	  res->thread_idx = (u16) ~ 0;
+	  res->thread_idx = (u16) ~0;
 	}
 
       crypto_parse_capabilities (dev, info.capabilities, n_mains);
@@ -741,7 +731,6 @@ crypto_auto_placement (void)
 
   skip_master = vlib_num_workers () > 0;
 
-  /* *INDENT-OFF* */
   vec_foreach (dev, dcm->dev)
     {
       vec_foreach_index (thread_idx, dcm->workers_main)
@@ -773,8 +762,7 @@ crypto_auto_placement (void)
 	      }
 
 	  for (i = 0; i < IPSEC_INTEG_N_ALG; i++)
-	    if (dev->auth_support[i] &&
-		cwm->auth_resource_idx[i] == (u16) ~0)
+	    if (dev->auth_support[i] && cwm->auth_resource_idx[i] == (u16) ~0)
 	      {
 		dcm->auth_algs[i].disabled--;
 		cwm->auth_resource_idx[i] = res_idx;
@@ -798,13 +786,12 @@ crypto_auto_placement (void)
 	  vec_add1 (cwm->resource_idx, res_idx);
 	}
     }
-  /* *INDENT-ON* */
 }
 
 static void
 crypto_op_init (struct rte_mempool *mempool,
-		void *_arg __attribute__ ((unused)),
-		void *_obj, unsigned i __attribute__ ((unused)))
+		void *_arg __attribute__ ((unused)), void *_obj,
+		unsigned i __attribute__ ((unused)))
 {
   struct rte_crypto_op *op = _obj;
 
@@ -816,7 +803,7 @@ crypto_op_init (struct rte_mempool *mempool,
 }
 
 static clib_error_t *
-crypto_create_crypto_op_pool (vlib_main_t * vm, u8 numa)
+crypto_create_crypto_op_pool (vlib_main_t *vm, u8 numa)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   dpdk_config_main_t *conf = &dpdk_config_main;
@@ -857,7 +844,7 @@ crypto_create_crypto_op_pool (vlib_main_t * vm, u8 numa)
 }
 
 static clib_error_t *
-crypto_create_session_h_pool (vlib_main_t * vm, u8 numa)
+crypto_create_session_h_pool (vlib_main_t *vm, u8 numa)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_data_t *data;
@@ -872,7 +859,6 @@ crypto_create_session_h_pool (vlib_main_t * vm, u8 numa)
 
   pool_name = format (0, "session_h_pool_numa%u%c", numa, 0);
 
-
   elt_size = rte_cryptodev_sym_get_header_session_size ();
 
 #if RTE_VERSION < RTE_VERSION_NUM(19, 2, 0, 0)
@@ -880,9 +866,8 @@ crypto_create_session_h_pool (vlib_main_t * vm, u8 numa)
 			   elt_size, 512, 0, NULL, NULL, NULL, NULL, numa, 0);
 #else
   /* XXX Experimental tag in DPDK 19.02 */
-  mp = rte_cryptodev_sym_session_pool_create ((char *) pool_name,
-					      DPDK_CRYPTO_NB_SESS_OBJS,
-					      elt_size, 512, 0, numa);
+  mp = rte_cryptodev_sym_session_pool_create (
+    (char *) pool_name, DPDK_CRYPTO_NB_SESS_OBJS, elt_size, 512, 0, numa);
 #endif
   vec_free (pool_name);
 
@@ -895,7 +880,7 @@ crypto_create_session_h_pool (vlib_main_t * vm, u8 numa)
 }
 
 static clib_error_t *
-crypto_create_session_drv_pool (vlib_main_t * vm, crypto_dev_t * dev)
+crypto_create_session_drv_pool (vlib_main_t *vm, crypto_dev_t *dev)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_data_t *data;
@@ -917,9 +902,8 @@ crypto_create_session_drv_pool (vlib_main_t * vm, crypto_dev_t * dev)
   pool_name = format (0, "session_drv%u_pool_numa%u%c", dev->drv_id, numa, 0);
 
   elt_size = rte_cryptodev_sym_get_private_session_size (dev->id);
-  mp =
-    rte_mempool_create ((char *) pool_name, DPDK_CRYPTO_NB_SESS_OBJS,
-			elt_size, 512, 0, NULL, NULL, NULL, NULL, numa, 0);
+  mp = rte_mempool_create ((char *) pool_name, DPDK_CRYPTO_NB_SESS_OBJS,
+			   elt_size, 512, 0, NULL, NULL, NULL, NULL, numa, 0);
 
   vec_free (pool_name);
 
@@ -933,13 +917,12 @@ crypto_create_session_drv_pool (vlib_main_t * vm, crypto_dev_t * dev)
 }
 
 static clib_error_t *
-crypto_create_pools (vlib_main_t * vm)
+crypto_create_pools (vlib_main_t *vm)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   clib_error_t *error = NULL;
   crypto_dev_t *dev;
 
-  /* *INDENT-OFF* */
   vec_foreach (dev, dcm->dev)
     {
       vec_validate_aligned (dcm->data, dev->numa, CLIB_CACHE_LINE_BYTES);
@@ -956,7 +939,6 @@ crypto_create_pools (vlib_main_t * vm)
       if (error)
 	return error;
     }
-  /* *INDENT-ON* */
 
   return NULL;
 }
@@ -970,7 +952,6 @@ crypto_disable (void)
 
   dcm->enabled = 0;
 
-  /* *INDENT-OFF* */
   vec_foreach (data, dcm->data)
     {
       rte_mempool_free (data->crypto_op);
@@ -982,7 +963,6 @@ crypto_disable (void)
       vec_free (data->session_drv);
       clib_spinlock_free (&data->lockp);
     }
-  /* *INDENT-ON* */
 
   vec_free (dcm->data);
   vec_free (dcm->workers_main);
@@ -1004,14 +984,15 @@ dpdk_ipsec_enable_disable (int is_enable)
 
   ASSERT (node);
   for (i = skip_master; i < n_mains; i++)
-    vlib_node_set_state (vlib_mains[i], node->index, is_enable != 0 ?
-			 VLIB_NODE_STATE_POLLING : VLIB_NODE_STATE_DISABLED);
+    vlib_node_set_state (vlib_mains[i], node->index,
+			 is_enable != 0 ? VLIB_NODE_STATE_POLLING :
+					  VLIB_NODE_STATE_DISABLED);
 
   return 0;
 }
 
 static clib_error_t *
-dpdk_ipsec_main_init (vlib_main_t * vm)
+dpdk_ipsec_main_init (vlib_main_t *vm)
 {
   ipsec_main_t *im = &ipsec_main;
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
@@ -1041,17 +1022,15 @@ dpdk_ipsec_main_init (vlib_main_t * vm)
 				   (crypto_worker_main_t) EMPTY_STRUCT,
 				   CLIB_CACHE_LINE_BYTES);
 
-  /* *INDENT-OFF* */
   vec_foreach (cwm, dcm->workers_main)
     {
       vec_validate_init_empty_aligned (cwm->ops, VLIB_FRAME_SIZE - 1, 0,
 				       CLIB_CACHE_LINE_BYTES);
       clib_memset (cwm->cipher_resource_idx, ~0,
-	      IPSEC_CRYPTO_N_ALG * sizeof(*cwm->cipher_resource_idx));
+		   IPSEC_CRYPTO_N_ALG * sizeof (*cwm->cipher_resource_idx));
       clib_memset (cwm->auth_resource_idx, ~0,
-	      IPSEC_INTEG_N_ALG * sizeof(*cwm->auth_resource_idx));
+		   IPSEC_INTEG_N_ALG * sizeof (*cwm->auth_resource_idx));
     }
-  /* *INDENT-ON* */
 
   crypto_auto_placement ();
 

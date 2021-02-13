@@ -18,35 +18,35 @@
 
 #include <vppinfra/format.h>
 
-#define foreach_sfp_id				\
-  _ (UNKNOWN, "unknown")			\
-  _ (GBIC, "GBIC")				\
-  _ (ON_MB, "on-motherboard")			\
-  _ (SFP, "SFP/SFP+/SFP28")			\
-  _ (300_PIN_XBI, "300-pin-XBI")		\
-  _ (XENPAK, "XENPAK")				\
-  _ (XFP, "XFP")				\
-  _ (XFF, "XFF")				\
-  _ (XFP_E, "XFP-E")				\
-  _ (XPAK, "XPAK")				\
-  _ (X2, "X2")					\
-  _ (DWDM_SFP, "DWDM-SFP")			\
-  _ (QSFP, "QSFP")				\
-  _ (QSFP_PLUS, "QSFP+")			\
-  _ (CXP, "CXP")				\
-  _ (SMM_HD_4X, "SMM-HD-4X")			\
-  _ (SMM_HD_8X, "SMM-HD-8X")			\
-  _ (QSFP28, "QSFP28")				\
-  _ (CXP2, "CXP2")				\
-  _ (SMM_HD_4X_FAN, "SMM-HD-4X-fanout")		\
-  _ (SMM_HD_8X_FAN, "SMM-HD-8X-fanout")		\
-  _ (CDFP, "CDFP")				\
-  _ (MQSFP, "microQSFP")			\
-  _ (QSFP_DD, "QSFP-DD")			\
+#define foreach_sfp_id                                                        \
+  _ (UNKNOWN, "unknown")                                                      \
+  _ (GBIC, "GBIC")                                                            \
+  _ (ON_MB, "on-motherboard")                                                 \
+  _ (SFP, "SFP/SFP+/SFP28")                                                   \
+  _ (300_PIN_XBI, "300-pin-XBI")                                              \
+  _ (XENPAK, "XENPAK")                                                        \
+  _ (XFP, "XFP")                                                              \
+  _ (XFF, "XFF")                                                              \
+  _ (XFP_E, "XFP-E")                                                          \
+  _ (XPAK, "XPAK")                                                            \
+  _ (X2, "X2")                                                                \
+  _ (DWDM_SFP, "DWDM-SFP")                                                    \
+  _ (QSFP, "QSFP")                                                            \
+  _ (QSFP_PLUS, "QSFP+")                                                      \
+  _ (CXP, "CXP")                                                              \
+  _ (SMM_HD_4X, "SMM-HD-4X")                                                  \
+  _ (SMM_HD_8X, "SMM-HD-8X")                                                  \
+  _ (QSFP28, "QSFP28")                                                        \
+  _ (CXP2, "CXP2")                                                            \
+  _ (SMM_HD_4X_FAN, "SMM-HD-4X-fanout")                                       \
+  _ (SMM_HD_8X_FAN, "SMM-HD-8X-fanout")                                       \
+  _ (CDFP, "CDFP")                                                            \
+  _ (MQSFP, "microQSFP")                                                      \
+  _ (QSFP_DD, "QSFP-DD")
 
 typedef enum
 {
-#define _(f,s) SFP_ID_##f,
+#define _(f, s) SFP_ID_##f,
   foreach_sfp_id
 #undef _
 } sfp_id_t;
@@ -87,7 +87,7 @@ typedef struct
 } sfp_eeprom_t;
 
 always_inline uword
-sfp_eeprom_is_valid (sfp_eeprom_t * e)
+sfp_eeprom_is_valid (sfp_eeprom_t *e)
 {
   int i;
   u8 sum = 0;
@@ -97,38 +97,38 @@ sfp_eeprom_is_valid (sfp_eeprom_t * e)
 }
 
 /* _ (byte_index, bit_index, name) */
-#define foreach_sfp_compatibility		\
-  _ (0, 0, 40g_active_cable)			\
-  _ (0, 1, 40g_base_lr4)			\
-  _ (0, 2, 40g_base_sr4)			\
-  _ (0, 3, 40g_base_cr4)			\
-  _ (0, 4, 10g_base_sr)				\
-  _ (0, 5, 10g_base_lr)				\
-  _ (0, 5, 10g_base_lrm)			\
-  _ (1, 3, 40g_otn)				\
-  _ (1, 2, oc48_long_reach)			\
-  _ (1, 1, oc48_intermediate_reach)		\
-  _ (1, 0, oc48_short_reach)			\
-  _ (2, 6, oc12_long_reach)			\
-  _ (2, 5, oc12_intermediate_reach)		\
-  _ (2, 4, oc12_short_reach)			\
-  _ (2, 2, oc3_long_reach)			\
-  _ (2, 1, oc3_intermediate_reach)		\
-  _ (2, 0, oc3_short_reach)			\
-  _ (3, 3, 1g_base_t)				\
-  _ (3, 2, 1g_base_cx)				\
-  _ (3, 1, 1g_base_lx)				\
+#define foreach_sfp_compatibility                                             \
+  _ (0, 0, 40g_active_cable)                                                  \
+  _ (0, 1, 40g_base_lr4)                                                      \
+  _ (0, 2, 40g_base_sr4)                                                      \
+  _ (0, 3, 40g_base_cr4)                                                      \
+  _ (0, 4, 10g_base_sr)                                                       \
+  _ (0, 5, 10g_base_lr)                                                       \
+  _ (0, 5, 10g_base_lrm)                                                      \
+  _ (1, 3, 40g_otn)                                                           \
+  _ (1, 2, oc48_long_reach)                                                   \
+  _ (1, 1, oc48_intermediate_reach)                                           \
+  _ (1, 0, oc48_short_reach)                                                  \
+  _ (2, 6, oc12_long_reach)                                                   \
+  _ (2, 5, oc12_intermediate_reach)                                           \
+  _ (2, 4, oc12_short_reach)                                                  \
+  _ (2, 2, oc3_long_reach)                                                    \
+  _ (2, 1, oc3_intermediate_reach)                                            \
+  _ (2, 0, oc3_short_reach)                                                   \
+  _ (3, 3, 1g_base_t)                                                         \
+  _ (3, 2, 1g_base_cx)                                                        \
+  _ (3, 1, 1g_base_lx)                                                        \
   _ (3, 0, 1g_base_sx)
 
 typedef enum
 {
-#define _(a,b,f) SFP_COMPATIBILITY_##f,
+#define _(a, b, f) SFP_COMPATIBILITY_##f,
   foreach_sfp_compatibility
 #undef _
     SFP_N_COMPATIBILITY,
 } sfp_compatibility_t;
 
-u32 sfp_is_comatible (sfp_eeprom_t * e, sfp_compatibility_t c);
+u32 sfp_is_comatible (sfp_eeprom_t *e, sfp_compatibility_t c);
 
 format_function_t format_sfp_eeprom;
 

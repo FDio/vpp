@@ -18,29 +18,30 @@
 #include <cnat/cnat_translation.h>
 
 static void
-cnat_compute_prefix_lengths_in_search_order (cnat_snat_pfx_table_t *
-					     table, ip_address_family_t af)
+cnat_compute_prefix_lengths_in_search_order (cnat_snat_pfx_table_t *table,
+					     ip_address_family_t af)
 {
   int i;
   vec_reset_length (table->meta[af].prefix_lengths_in_search_order);
   /* Note: bitmap reversed so this is in fact a longest prefix match */
-  /* *INDENT-OFF* */
+
   clib_bitmap_foreach (i, table->meta[af].non_empty_dst_address_length_bitmap)
-     {
+    {
       int dst_address_length = 128 - i;
-      vec_add1 (table->meta[af].prefix_lengths_in_search_order, dst_address_length);
+      vec_add1 (table->meta[af].prefix_lengths_in_search_order,
+		dst_address_length);
     }
-  /* *INDENT-ON* */
 }
 
 int
-cnat_add_snat_prefix (ip_prefix_t * pfx)
+cnat_add_snat_prefix (ip_prefix_t *pfx)
 {
   /* All packets destined to this prefix won't be source-NAT-ed */
   cnat_snat_pfx_table_t *table = &cnat_main.snat_pfx_table;
   clib_bihash_kv_24_8_t kv;
   ip6_address_t *mask;
-  u64 af = ip_prefix_version (pfx);;
+  u64 af = ip_prefix_version (pfx);
+  ;
 
   mask = &table->ip_masks[pfx->len];
   if (AF_IP4 == af)
@@ -54,23 +55,23 @@ cnat_add_snat_prefix (ip_prefix_t * pfx)
       kv.key[1] = ip_prefix_v6 (pfx).as_u64[1] & mask->as_u64[1];
     }
   kv.key[2] = ((u64) af << 32) | pfx->len;
-  clib_bihash_add_del_24_8 (&table->ip_hash, &kv, 1 /* is_add */ );
+  clib_bihash_add_del_24_8 (&table->ip_hash, &kv, 1 /* is_add */);
 
   table->meta[af].dst_address_length_refcounts[pfx->len]++;
-  table->meta[af].non_empty_dst_address_length_bitmap =
-    clib_bitmap_set (table->meta[af].non_empty_dst_address_length_bitmap,
-		     128 - pfx->len, 1);
+  table->meta[af].non_empty_dst_address_length_bitmap = clib_bitmap_set (
+    table->meta[af].non_empty_dst_address_length_bitmap, 128 - pfx->len, 1);
   cnat_compute_prefix_lengths_in_search_order (table, af);
   return 0;
 }
 
 int
-cnat_del_snat_prefix (ip_prefix_t * pfx)
+cnat_del_snat_prefix (ip_prefix_t *pfx)
 {
   cnat_snat_pfx_table_t *table = &cnat_main.snat_pfx_table;
   clib_bihash_kv_24_8_t kv, val;
   ip6_address_t *mask;
-  u64 af = ip_prefix_version (pfx);;
+  u64 af = ip_prefix_version (pfx);
+  ;
 
   mask = &table->ip_masks[pfx->len];
   if (AF_IP4 == af)
@@ -89,7 +90,7 @@ cnat_del_snat_prefix (ip_prefix_t * pfx)
     {
       return 1;
     }
-  clib_bihash_add_del_24_8 (&table->ip_hash, &kv, 0 /* is_add */ );
+  clib_bihash_add_del_24_8 (&table->ip_hash, &kv, 0 /* is_add */);
   /* refcount accounting */
   ASSERT (table->meta[af].dst_address_length_refcounts[pfx->len] > 0);
   if (--table->meta[af].dst_address_length_refcounts[pfx->len] == 0)
@@ -103,7 +104,7 @@ cnat_del_snat_prefix (ip_prefix_t * pfx)
 }
 
 int
-cnat_search_snat_prefix (ip46_address_t * addr, ip_address_family_t af)
+cnat_search_snat_prefix (ip46_address_t *addr, ip_address_family_t af)
 {
   /* Returns 0 if addr matches any of the listed prefixes */
   cnat_snat_pfx_table_t *table = &cnat_main.snat_pfx_table;
@@ -145,7 +146,7 @@ cnat_search_snat_prefix (ip46_address_t * addr, ip_address_family_t af)
 }
 
 u8 *
-format_cnat_snat_prefix (u8 * s, va_list * args)
+format_cnat_snat_prefix (u8 *s, va_list *args)
 {
   clib_bihash_kv_24_8_t *kv = va_arg (*args, clib_bihash_kv_24_8_t *);
   CLIB_UNUSED (int verbose) = va_arg (*args, int);
@@ -159,7 +160,7 @@ format_cnat_snat_prefix (u8 * s, va_list * args)
 }
 
 void
-cnat_set_snat (ip4_address_t * ip4, ip6_address_t * ip6, u32 sw_if_index)
+cnat_set_snat (ip4_address_t *ip4, ip6_address_t *ip6, u32 sw_if_index)
 {
   cnat_lazy_init ();
 
@@ -179,13 +180,13 @@ cnat_set_snat (ip4_address_t * ip4, ip6_address_t * ip6, u32 sw_if_index)
 }
 
 static clib_error_t *
-cnat_set_snat_cli (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+cnat_set_snat_cli (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
-  ip4_address_t ip4 = { {0} };
-  ip6_address_t ip6 = { {0} };
+  ip4_address_t ip4 = { { 0 } };
+  ip6_address_t ip6 = { { 0 } };
   clib_error_t *e = 0;
   u32 sw_if_index = INDEX_INVALID;
 
@@ -201,8 +202,8 @@ cnat_set_snat_cli (vlib_main_t * vm,
 	;
       else if (unformat_user (line_input, unformat_ip6_address, &ip6))
 	;
-      else if (unformat_user (line_input, unformat_vnet_sw_interface,
-			      vnm, &sw_if_index))
+      else if (unformat_user (line_input, unformat_vnet_sw_interface, vnm,
+			      &sw_if_index))
 	;
       else
 	{
@@ -220,18 +221,15 @@ done:
   return (e);
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cnat_set_snat_command, static) =
-{
+VLIB_CLI_COMMAND (cnat_set_snat_command, static) = {
   .path = "cnat snat with",
   .short_help = "cnat snat with [<ip4-address>][<ip6-address>][sw_if_index]",
   .function = cnat_set_snat_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-cnat_snat_exclude (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+cnat_snat_exclude (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   ip_prefix_t pfx;
   u8 is_add = 1;
@@ -261,39 +259,33 @@ cnat_snat_exclude (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cnat_snat_exclude_command, static) =
-{
+VLIB_CLI_COMMAND (cnat_snat_exclude_command, static) = {
   .path = "cnat snat exclude",
   .short_help = "cnat snat exclude [ip]",
   .function = cnat_snat_exclude,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-cnat_show_snat (vlib_main_t * vm,
-		unformat_input_t * input, vlib_cli_command_t * cmd)
+cnat_show_snat (vlib_main_t *vm, unformat_input_t *input,
+		vlib_cli_command_t *cmd)
 {
   cnat_snat_pfx_table_t *table = &cnat_main.snat_pfx_table;
-  vlib_cli_output (vm, "Source NAT\nip4: %U\nip6: %U\n",
-		   format_cnat_endpoint, &cnat_main.snat_ip4,
-		   format_cnat_endpoint, &cnat_main.snat_ip6);
-  vlib_cli_output (vm, "Prefixes:\n%U\n",
-		   format_bihash_24_8, &table->ip_hash, 1);
+  vlib_cli_output (vm, "Source NAT\nip4: %U\nip6: %U\n", format_cnat_endpoint,
+		   &cnat_main.snat_ip4, format_cnat_endpoint,
+		   &cnat_main.snat_ip6);
+  vlib_cli_output (vm, "Prefixes:\n%U\n", format_bihash_24_8, &table->ip_hash,
+		   1);
   return (NULL);
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cnat_show_snat_command, static) =
-{
+VLIB_CLI_COMMAND (cnat_show_snat_command, static) = {
   .path = "show cnat snat",
   .short_help = "show cnat snat",
   .function = cnat_show_snat,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-cnat_snat_init (vlib_main_t * vm)
+cnat_snat_init (vlib_main_t *vm)
 {
   cnat_snat_pfx_table_t *table = &cnat_main.snat_pfx_table;
   cnat_main_t *cm = &cnat_main;
@@ -321,7 +313,6 @@ cnat_snat_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (cnat_snat_init);
-
 
 /*
  * fd.io coding-style-patch-verification: ON

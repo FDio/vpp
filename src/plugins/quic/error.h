@@ -20,7 +20,7 @@
 
 #include <vppinfra/format.h>
 
-u8 *quic_format_err (u8 * s, va_list * args);
+u8 *quic_format_err (u8 *s, va_list *args);
 
 #endif /* __included_quic_error_h__ */
 

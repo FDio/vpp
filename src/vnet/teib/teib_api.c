@@ -36,7 +36,7 @@ static u32 teib_base_msg_id;
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_teib_entry_add_del_t_handler (vl_api_teib_entry_add_del_t * mp)
+vl_api_teib_entry_add_del_t_handler (vl_api_teib_entry_add_del_t *mp)
 {
   vl_api_teib_entry_add_del_reply_t *rmp;
   ip_address_t peer, nh;
@@ -48,8 +48,8 @@ vl_api_teib_entry_add_del_t_handler (vl_api_teib_entry_add_del_t * mp)
   ip_address_decode2 (&mp->entry.nh, &nh);
 
   if (mp->is_add)
-    rv = teib_entry_add (ntohl (mp->entry.sw_if_index),
-			 &peer, ntohl (mp->entry.nh_table_id), &nh);
+    rv = teib_entry_add (ntohl (mp->entry.sw_if_index), &peer,
+			 ntohl (mp->entry.nh_table_id), &nh);
   else
     rv = teib_entry_del (ntohl (mp->entry.sw_if_index), &peer);
 
@@ -81,9 +81,8 @@ vl_api_teib_send_one (index_t nei, void *arg)
 
   ip_address_encode2 (teib_entry_get_peer (ne), &mp->entry.peer);
   ip_address_encode (&pfx->fp_addr, IP46_TYPE_ANY, &mp->entry.nh);
-  mp->entry.nh_table_id =
-    htonl (fib_table_get_table_id
-	   (teib_entry_get_fib_index (ne), pfx->fp_proto));
+  mp->entry.nh_table_id = htonl (
+    fib_table_get_table_id (teib_entry_get_fib_index (ne), pfx->fp_proto));
   mp->entry.sw_if_index = htonl (teib_entry_get_sw_if_index (ne));
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
@@ -92,7 +91,7 @@ vl_api_teib_send_one (index_t nei, void *arg)
 }
 
 static void
-vl_api_teib_dump_t_handler (vl_api_teib_dump_t * mp)
+vl_api_teib_dump_t_handler (vl_api_teib_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -118,7 +117,7 @@ vl_api_teib_dump_t_handler (vl_api_teib_dump_t * mp)
 #include <vnet/teib/teib.api.c>
 
 static clib_error_t *
-teib_api_hookup (vlib_main_t * vm)
+teib_api_hookup (vlib_main_t *vm)
 {
   teib_base_msg_id = setup_message_id_table ();
 

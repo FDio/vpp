@@ -87,15 +87,17 @@ public:
   const key_t key() const;
 
   /**
- * Find an singular instance in the DB for the interface passed
- */
+   * Find an singular instance in the DB for the interface passed
+   */
   static std::shared_ptr<ip_punt_redirect> find(const interface& i);
 
 private:
   /**
    * Class definition for listeners to OM events
    */
-  class event_handler : public OM::listener, public inspect::command_handler
+  class event_handler
+    : public OM::listener
+    , public inspect::command_handler
   {
   public:
     event_handler();

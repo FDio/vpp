@@ -26,24 +26,24 @@
  * GENERAL_REPORT = On expiry send a general report
  * GENERAL_QUERY  = On expiry send a general query
  */
-#define foreach_igmp_config_timer_type  \
-  _(GENERAL_REPORT, "general-report")   \
-  _(GENERAL_QUERY, "general-query")
+#define foreach_igmp_config_timer_type                                        \
+  _ (GENERAL_REPORT, "general-report")                                        \
+  _ (GENERAL_QUERY, "general-query")
 
 typedef enum igmp_config_timer_type_t_
 {
-#define _(v,s) IGMP_CONFIG_TIMER_##v,
+#define _(v, s) IGMP_CONFIG_TIMER_##v,
   foreach_igmp_config_timer_type
 #undef _
 } igmp_config_timer_type_t;
 
 #define IGMP_CONFIG_N_TIMERS (IGMP_CONFIG_TIMER_GENERAL_QUERY + 1)
 
-extern u8 *format_igmp_config_timer_type (u8 * s, va_list * args);
+extern u8 *format_igmp_config_timer_type (u8 *s, va_list *args);
 
 /**
  * @brief IGMP interface configuration
-*/
+ */
 typedef struct igmp_config_t_
 {
   /**
@@ -82,16 +82,22 @@ typedef struct igmp_config_t_
   u32 proxy_device_id;
 } igmp_config_t;
 
-#define FOR_EACH_GROUP(_group, _config, _body)                          \
-do {                                                                    \
-  igmp_key_t *__key__;                                                  \
-  u32 __gid__;                                                          \
-  hash_foreach_mem(__key__, __gid__, _config->igmp_group_by_key,        \
-  ({                                                                    \
-    _group = pool_elt_at_index(igmp_main.groups, __gid__);              \
-    do { _body; } while (0);                                            \
-  }));                                                                  \
- } while (0);
+#define FOR_EACH_GROUP(_group, _config, _body)                                \
+  do                                                                          \
+    {                                                                         \
+      igmp_key_t *__key__;                                                    \
+      u32 __gid__;                                                            \
+      hash_foreach_mem (__key__, __gid__, _config->igmp_group_by_key, ({      \
+			  _group =                                            \
+			    pool_elt_at_index (igmp_main.groups, __gid__);    \
+			  do                                                  \
+			    {                                                 \
+			      _body;                                          \
+			    }                                                 \
+			  while (0);                                          \
+			}));                                                  \
+    }                                                                         \
+  while (0);
 
 /**
  * @brief igmp clear config
@@ -99,7 +105,7 @@ do {                                                                    \
  *
  *   Clear all (S,G)s on specified config and remove this config from pool.
  */
-extern void igmp_clear_config (igmp_config_t * config);
+extern void igmp_clear_config (igmp_config_t *config);
 
 /**
  * @brief igmp config lookup
@@ -110,7 +116,7 @@ extern igmp_config_t *igmp_config_lookup (u32 sw_if_index);
 /**
  * Get the pool index for a config
  */
-extern u32 igmp_config_index (const igmp_config_t * c);
+extern u32 igmp_config_index (const igmp_config_t *c);
 
 /**
  * Get the config from the pool index
@@ -121,11 +127,11 @@ extern igmp_config_t *igmp_config_get (u32 index);
  * @brief igmp group lookup
  *  @param config - igmp configuration
  *  @param key - igmp key
-*/
-extern igmp_group_t *igmp_group_lookup (igmp_config_t * config,
-					const igmp_key_t * key);
+ */
+extern igmp_group_t *igmp_group_lookup (igmp_config_t *config,
+					const igmp_key_t *key);
 
-extern u8 *format_igmp_config (u8 * s, va_list * args);
+extern u8 *format_igmp_config (u8 *s, va_list *args);
 
 #endif
 

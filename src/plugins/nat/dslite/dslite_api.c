@@ -28,7 +28,7 @@
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_dslite_set_aftr_addr_t_handler (vl_api_dslite_set_aftr_addr_t * mp)
+vl_api_dslite_set_aftr_addr_t_handler (vl_api_dslite_set_aftr_addr_t *mp)
 {
   vl_api_dslite_set_aftr_addr_reply_t *rmp;
   dslite_main_t *dm = &dslite_main;
@@ -47,23 +47,20 @@ vl_api_dslite_set_aftr_addr_t_handler (vl_api_dslite_set_aftr_addr_t * mp)
 }
 
 static void
-vl_api_dslite_get_aftr_addr_t_handler (vl_api_dslite_get_aftr_addr_t * mp)
+vl_api_dslite_get_aftr_addr_t_handler (vl_api_dslite_get_aftr_addr_t *mp)
 {
   vl_api_dslite_get_aftr_addr_reply_t *rmp;
   dslite_main_t *dm = &dslite_main;
   int rv = 0;
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_DSLITE_GET_AFTR_ADDR_REPLY,
-  ({
-    memcpy (rmp->ip4_addr, &dm->aftr_ip4_addr.as_u8, 4);
-    memcpy (rmp->ip6_addr, &dm->aftr_ip6_addr.as_u8, 16);
-  }))
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_DSLITE_GET_AFTR_ADDR_REPLY, ({
+		  memcpy (rmp->ip4_addr, &dm->aftr_ip4_addr.as_u8, 4);
+		  memcpy (rmp->ip6_addr, &dm->aftr_ip6_addr.as_u8, 16);
+		}))
 }
 
 static void
-vl_api_dslite_set_b4_addr_t_handler (vl_api_dslite_set_b4_addr_t * mp)
+vl_api_dslite_set_b4_addr_t_handler (vl_api_dslite_set_b4_addr_t *mp)
 {
   vl_api_dslite_set_b4_addr_reply_t *rmp;
   dslite_main_t *dm = &dslite_main;
@@ -82,24 +79,21 @@ vl_api_dslite_set_b4_addr_t_handler (vl_api_dslite_set_b4_addr_t * mp)
 }
 
 static void
-vl_api_dslite_get_b4_addr_t_handler (vl_api_dslite_get_b4_addr_t * mp)
+vl_api_dslite_get_b4_addr_t_handler (vl_api_dslite_get_b4_addr_t *mp)
 {
   vl_api_dslite_get_b4_addr_reply_t *rmp;
   dslite_main_t *dm = &dslite_main;
   int rv = 0;
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_DSLITE_GET_B4_ADDR_REPLY,
-  ({
-    memcpy (rmp->ip4_addr, &dm->b4_ip4_addr.as_u8, 4);
-    memcpy (rmp->ip6_addr, &dm->b4_ip6_addr.as_u8, 16);
-  }))
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_DSLITE_GET_B4_ADDR_REPLY, ({
+		  memcpy (rmp->ip4_addr, &dm->b4_ip4_addr.as_u8, 4);
+		  memcpy (rmp->ip6_addr, &dm->b4_ip6_addr.as_u8, 16);
+		}))
 }
 
 static void
-  vl_api_dslite_add_del_pool_addr_range_t_handler
-  (vl_api_dslite_add_del_pool_addr_range_t * mp)
+vl_api_dslite_add_del_pool_addr_range_t_handler (
+  vl_api_dslite_add_del_pool_addr_range_t *mp)
 {
   vl_api_dslite_add_del_pool_addr_range_reply_t *rmp;
   dslite_main_t *dm = &dslite_main;
@@ -126,8 +120,8 @@ static void
 }
 
 static void
-send_dslite_address_details (nat_ip4_pool_addr_t * a,
-			     vl_api_registration_t * reg, u32 context)
+send_dslite_address_details (nat_ip4_pool_addr_t *a,
+			     vl_api_registration_t *reg, u32 context)
 {
   dslite_main_t *dm = &dslite_main;
   vl_api_dslite_address_details_t *rmp;
@@ -144,7 +138,7 @@ send_dslite_address_details (nat_ip4_pool_addr_t * a,
 }
 
 static void
-vl_api_dslite_address_dump_t_handler (vl_api_dslite_address_dump_t * mp)
+vl_api_dslite_address_dump_t_handler (vl_api_dslite_address_dump_t *mp)
 {
   vl_api_registration_t *reg;
   dslite_main_t *dm = &dslite_main;
@@ -154,12 +148,10 @@ vl_api_dslite_address_dump_t_handler (vl_api_dslite_address_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   vec_foreach (a, dm->pool.pool_addr)
     {
       send_dslite_address_details (a, reg, mp->context);
     }
-  /* *INDENT-ON* */
 }
 
 /* API definitions */
@@ -168,7 +160,7 @@ vl_api_dslite_address_dump_t_handler (vl_api_dslite_address_dump_t * mp)
 
 /* Set up the API message handling tables */
 clib_error_t *
-dslite_api_hookup (vlib_main_t * vm)
+dslite_api_hookup (vlib_main_t *vm)
 {
   dslite_main_t *dm = &dslite_main;
 

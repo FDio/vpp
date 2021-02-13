@@ -21,7 +21,7 @@
 #include <vlib/vlib.h>
 
 static int
-stat_poll_loop (u8 ** patterns)
+stat_poll_loop (u8 **patterns)
 {
   struct timespec ts, tsrem;
   stat_segment_data_t *res;
@@ -33,7 +33,7 @@ stat_poll_loop (u8 ** patterns)
       return -1;
     }
 
-  printf ("\033[2J");		/*  clear the screen  */
+  printf ("\033[2J"); /*  clear the screen  */
   while (1)
     {
       heartbeat = stat_segment_heartbeat ();
@@ -52,7 +52,7 @@ stat_poll_loop (u8 ** patterns)
 	  return -1;
 	}
 
-      printf ("\033[H");	/* Cursor top left corner */
+      printf ("\033[H"); /* Cursor top left corner */
       res = stat_segment_dump (stats);
       if (!res)
 	{
@@ -66,15 +66,15 @@ stat_poll_loop (u8 ** patterns)
 	    case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
 	      for (k = 0; k < vec_len (res[i].simple_counter_vec); k++)
 		for (j = 0; j < vec_len (res[i].simple_counter_vec[k]); j++)
-		  fformat (stdout, "[%d]: %llu packets %s\n",
-			   j, res[i].simple_counter_vec[k][j], res[i].name);
+		  fformat (stdout, "[%d]: %llu packets %s\n", j,
+			   res[i].simple_counter_vec[k][j], res[i].name);
 	      break;
 
 	    case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
 	      for (k = 0; k < vec_len (res[i].simple_counter_vec); k++)
 		for (j = 0; j < vec_len (res[i].combined_counter_vec[k]); j++)
-		  fformat (stdout, "[%d]: %llu packets, %llu bytes %s\n",
-			   j, res[i].combined_counter_vec[k][j].packets,
+		  fformat (stdout, "[%d]: %llu packets, %llu bytes %s\n", j,
+			   res[i].combined_counter_vec[k][j].packets,
 			   res[i].combined_counter_vec[k][j].bytes,
 			   res[i].name);
 	      break;
@@ -103,7 +103,6 @@ stat_poll_loop (u8 ** patterns)
       ts.tv_nsec = 0;
       while (nanosleep (&ts, &tsrem) < 0)
 	ts = tsrem;
-
     }
 }
 
@@ -157,9 +156,10 @@ main (int argc, char **argv)
 	}
       else
 	{
-	  fformat (stderr,
-		   "%s: usage [socket-name <name>] [ls|dump|poll] <patterns> ...\n",
-		   argv[0]);
+	  fformat (
+	    stderr,
+	    "%s: usage [socket-name <name>] [ls|dump|poll] <patterns> ...\n",
+	    argv[0]);
 	  exit (1);
 	}
     }
@@ -201,9 +201,8 @@ reconnect:
 		continue;
 	      for (k = 0; k < vec_len (res[i].simple_counter_vec); k++)
 		for (j = 0; j < vec_len (res[i].simple_counter_vec[k]); j++)
-		  fformat (stdout, "[%d @ %d]: %llu packets %s\n",
-			   j, k, res[i].simple_counter_vec[k][j],
-			   res[i].name);
+		  fformat (stdout, "[%d @ %d]: %llu packets %s\n", j, k,
+			   res[i].simple_counter_vec[k][j], res[i].name);
 	      break;
 
 	    case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
@@ -239,8 +238,7 @@ reconnect:
 	    case STAT_DIR_TYPE_EMPTY:
 	      break;
 
-	    default:
-	      ;
+	    default:;
 	    }
 	}
       stat_segment_data_free (res);
@@ -269,9 +267,10 @@ reconnect:
       break;
 
     default:
-      fformat (stderr,
-	       "%s: usage [socket-name <name>] [ls|dump|poll] <patterns> ...\n",
-	       argv[0]);
+      fformat (
+	stderr,
+	"%s: usage [socket-name <name>] [ls|dump|poll] <patterns> ...\n",
+	argv[0]);
     }
 
   stat_segment_disconnect ();

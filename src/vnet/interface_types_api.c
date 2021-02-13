@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-
 #include <vnet/interface_types_api.h>
 
 STATIC_ASSERT_SIZEOF (vl_api_direction_t, 1);
 
 int
-direction_decode (vl_api_direction_t _dir, vlib_dir_t * out)
+direction_decode (vl_api_direction_t _dir, vlib_dir_t *out)
 {
   switch (_dir)
     {

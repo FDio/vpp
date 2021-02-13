@@ -21,13 +21,12 @@
 
 typedef struct bier_drop_trace_t_
 {
-    index_t dpi;
+  index_t dpi;
 } bier_drop_trace_t;
 
 static void
-bier_drop_trace (vlib_main_t * vm,
-                 vlib_node_runtime_t * node,
-                 vlib_frame_t * frame)
+bier_drop_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
+		 vlib_frame_t *frame)
 {
   u32 *from, n_left;
 
@@ -44,39 +43,36 @@ bier_drop_trace (vlib_main_t * vm,
       b0 = vlib_get_buffer (vm, bi0);
 
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
-      {
-          t0 = vlib_add_trace (vm, node, b0, sizeof(*t0));
+	{
+	  t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
 
-          t0->dpi = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-      }
+	  t0->dpi = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+	}
       from += 1;
       n_left -= 1;
     }
 }
 
 static uword
-bier_drop (vlib_main_t * vm,
-           vlib_node_runtime_t * node,
-           vlib_frame_t * frame)
+bier_drop (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-    u32 *buffers = vlib_frame_vector_args (frame);
-    uword n_packets = frame->n_vectors;
+  u32 *buffers = vlib_frame_vector_args (frame);
+  uword n_packets = frame->n_vectors;
 
-    if (node->flags & VLIB_NODE_FLAG_TRACE)
-        bier_drop_trace (vm, node, frame);
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+    bier_drop_trace (vm, node, frame);
 
-    vlib_error_drop_buffers (vm, node, buffers,
-                             /* stride */ 1,
-                             n_packets,
-                             /* next */ 0,
-                             0, // bier_input_node.index,
-                             0);
+  vlib_error_drop_buffers (vm, node, buffers,
+			   /* stride */ 1, n_packets,
+			   /* next */ 0,
+			   0, // bier_input_node.index,
+			   0);
 
-    return n_packets;
+  return n_packets;
 }
 
 static u8 *
-format_bier_drop_trace (u8 * s, va_list * args)
+format_bier_drop_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);

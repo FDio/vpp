@@ -41,7 +41,7 @@ nsim_main_t nsim_main;
 /* Action functions shared between message handlers and debug CLI */
 
 int
-nsim_cross_connect_enable_disable (nsim_main_t * nsm, u32 sw_if_index0,
+nsim_cross_connect_enable_disable (nsim_main_t *nsm, u32 sw_if_index0,
 				   u32 sw_if_index1, int enable_disable)
 {
   vnet_sw_interface_t *sw;
@@ -71,28 +71,26 @@ nsim_cross_connect_enable_disable (nsim_main_t * nsm, u32 sw_if_index0,
 
   /* Add graph arcs for the input / wheel scraper node */
   hw = vnet_get_hw_interface (nsm->vnet_main, sw_if_index0);
-  nsm->output_next_index0 =
-    vlib_node_add_next (nsm->vlib_main,
-			nsim_input_node.index, hw->output_node_index);
+  nsm->output_next_index0 = vlib_node_add_next (
+    nsm->vlib_main, nsim_input_node.index, hw->output_node_index);
 
   hw = vnet_get_hw_interface (nsm->vnet_main, sw_if_index1);
-  nsm->output_next_index1 =
-    vlib_node_add_next (nsm->vlib_main,
-			nsim_input_node.index, hw->output_node_index);
+  nsm->output_next_index1 = vlib_node_add_next (
+    nsm->vlib_main, nsim_input_node.index, hw->output_node_index);
 
   nsm->sw_if_index0 = sw_if_index0;
   nsm->sw_if_index1 = sw_if_index1;
 
-  vnet_feature_enable_disable ("device-input", "nsim",
-			       sw_if_index0, enable_disable, 0, 0);
-  vnet_feature_enable_disable ("device-input", "nsim",
-			       sw_if_index1, enable_disable, 0, 0);
+  vnet_feature_enable_disable ("device-input", "nsim", sw_if_index0,
+			       enable_disable, 0, 0);
+  vnet_feature_enable_disable ("device-input", "nsim", sw_if_index1,
+			       enable_disable, 0, 0);
 
   return rv;
 }
 
 int
-nsim_output_feature_enable_disable (nsim_main_t * nsm, u32 sw_if_index,
+nsim_output_feature_enable_disable (nsim_main_t *nsm, u32 sw_if_index,
 				    int enable_disable)
 {
   vnet_sw_interface_t *sw;
@@ -117,9 +115,8 @@ nsim_output_feature_enable_disable (nsim_main_t * nsm, u32 sw_if_index,
   vec_validate_init_empty (nsm->output_next_index_by_sw_if_index, sw_if_index,
 			   ~0);
   /* Note: use the tx node, this pkt has already visited the output node... */
-  nsm->output_next_index_by_sw_if_index[sw_if_index] =
-    vlib_node_add_next (nsm->vlib_main, nsim_input_node.index,
-			hw->tx_node_index);
+  nsm->output_next_index_by_sw_if_index[sw_if_index] = vlib_node_add_next (
+    nsm->vlib_main, nsim_input_node.index, hw->tx_node_index);
 
   vnet_feature_enable_disable ("interface-output", "nsim-output-feature",
 			       sw_if_index, enable_disable, 0, 0);
@@ -127,13 +124,13 @@ nsim_output_feature_enable_disable (nsim_main_t * nsm, u32 sw_if_index,
 }
 
 static nsim_wheel_t *
-nsim_wheel_alloc (nsim_main_t * nsm, u32 wheel_slots)
+nsim_wheel_alloc (nsim_main_t *nsm, u32 wheel_slots)
 {
   u32 pagesize = getpagesize ();
   nsim_wheel_t *wp;
 
-  nsm->mmap_size = sizeof (nsim_wheel_t)
-    + wheel_slots * sizeof (nsim_wheel_entry_t);
+  nsm->mmap_size =
+    sizeof (nsim_wheel_t) + wheel_slots * sizeof (nsim_wheel_entry_t);
 
   nsm->mmap_size += pagesize - 1;
   nsm->mmap_size &= ~(pagesize - 1);
@@ -150,7 +147,7 @@ nsim_wheel_alloc (nsim_main_t * nsm, u32 wheel_slots)
 }
 
 static int
-nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size,
+nsim_configure (nsim_main_t *nsm, f64 bandwidth, f64 delay, f64 packet_size,
 		f64 drop_fraction, f64 reorder_fraction)
 {
   u64 total_buffer_size_in_bytes, per_worker_buffer_size, wheel_slots_per_wrk;
@@ -231,9 +228,9 @@ nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size,
  * enable or disable the cross-connect
  */
 static clib_error_t *
-nsim_cross_connect_enable_disable_command_fn (vlib_main_t * vm,
-					      unformat_input_t * input,
-					      vlib_cli_command_t * cmd)
+nsim_cross_connect_enable_disable_command_fn (vlib_main_t *vm,
+					      unformat_input_t *input,
+					      vlib_cli_command_t *cmd)
 {
   nsim_main_t *nsm = &nsim_main;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -268,8 +265,8 @@ nsim_cross_connect_enable_disable_command_fn (vlib_main_t * vm,
   if (sw_if_index0 == ~0 || sw_if_index1 == ~0)
     return clib_error_return (0, "Please specify two interfaces...");
 
-  rv = nsim_cross_connect_enable_disable (nsm, sw_if_index0,
-					  sw_if_index1, enable_disable);
+  rv = nsim_cross_connect_enable_disable (nsm, sw_if_index0, sw_if_index1,
+					  enable_disable);
 
   switch (rv)
     {
@@ -280,8 +277,8 @@ nsim_cross_connect_enable_disable_command_fn (vlib_main_t * vm,
       return clib_error_return (0, "Not configured, please 'set nsim' first");
 
     case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-      return clib_error_return
-	(0, "Invalid interface, only works on physical ports");
+      return clib_error_return (
+	0, "Invalid interface, only works on physical ports");
       break;
 
     case VNET_API_ERROR_UNIMPLEMENTED:
@@ -296,7 +293,7 @@ nsim_cross_connect_enable_disable_command_fn (vlib_main_t * vm,
 }
 
 static clib_error_t *
-nsim_config (vlib_main_t * vm, unformat_input_t * input)
+nsim_config (vlib_main_t *vm, unformat_input_t *input)
 {
   nsim_main_t *nsm = &nsim_main;
 
@@ -328,25 +325,25 @@ VLIB_CONFIG_FUNCTION (nsim_config, "nsim");
  * @cliexpar
  * To enable or disable network simulation cross-connect
  * @clistart
- * nsim cross-connect enable-disable TenGigabitEthernet2/0/0 TenGigabitEthernet2/0
- * nsim cross-connect enable-disable TenGigabitEthernet2/0/0 TenGigabitEthernet2/0 disable
+ * nsim cross-connect enable-disable TenGigabitEthernet2/0/0
+TenGigabitEthernet2/0
+ * nsim cross-connect enable-disable TenGigabitEthernet2/0/0
+TenGigabitEthernet2/0 disable
  * @cliend
  * @cliexcmd{nsim enable-disable <intfc> <intfc> [disable]}
 ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (nsim_enable_disable_command, static) =
-{
+
+VLIB_CLI_COMMAND (nsim_enable_disable_command, static) = {
   .path = "nsim cross-connect enable-disable",
-  .short_help =
-  "nsim cross-connect enable-disable <interface-name-1> "
-  "<interface-name-2> [disable]",
+  .short_help = "nsim cross-connect enable-disable <interface-name-1> "
+		"<interface-name-2> [disable]",
   .function = nsim_cross_connect_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
 /* API message handler */
-static void vl_api_nsim_cross_connect_enable_disable_t_handler
-  (vl_api_nsim_cross_connect_enable_disable_t * mp)
+static void
+vl_api_nsim_cross_connect_enable_disable_t_handler (
+  vl_api_nsim_cross_connect_enable_disable_t *mp)
 {
   vl_api_nsim_cross_connect_enable_disable_reply_t *rmp;
   nsim_main_t *nsm = &nsim_main;
@@ -375,8 +372,9 @@ static void vl_api_nsim_cross_connect_enable_disable_t_handler
 }
 
 /* API message handler */
-static void vl_api_nsim_output_feature_enable_disable_t_handler
-  (vl_api_nsim_output_feature_enable_disable_t * mp)
+static void
+vl_api_nsim_output_feature_enable_disable_t_handler (
+  vl_api_nsim_output_feature_enable_disable_t *mp)
 {
   vl_api_nsim_output_feature_enable_disable_reply_t *rmp;
   nsim_main_t *nsm = &nsim_main;
@@ -392,7 +390,7 @@ static void vl_api_nsim_output_feature_enable_disable_t_handler
 
 /* API message handler */
 static void
-vl_api_nsim_configure_t_handler (vl_api_nsim_configure_t * mp)
+vl_api_nsim_configure_t_handler (vl_api_nsim_configure_t *mp)
 {
   vl_api_nsim_configure_reply_t *rmp;
   nsim_main_t *nsm = &nsim_main;
@@ -415,7 +413,7 @@ vl_api_nsim_configure_t_handler (vl_api_nsim_configure_t * mp)
 }
 
 static void
-vl_api_nsim_configure2_t_handler (vl_api_nsim_configure2_t * mp)
+vl_api_nsim_configure2_t_handler (vl_api_nsim_configure2_t *mp)
 {
   vl_api_nsim_configure_reply_t *rmp;
   nsim_main_t *nsm = &nsim_main;
@@ -441,14 +439,13 @@ vl_api_nsim_configure2_t_handler (vl_api_nsim_configure2_t * mp)
   REPLY_MACRO (VL_API_NSIM_CONFIGURE2_REPLY);
 }
 
-
 /*
  * enable or disable the output_feature
  */
 static clib_error_t *
-nsim_output_feature_enable_disable_command_fn (vlib_main_t * vm,
-					       unformat_input_t * input,
-					       vlib_cli_command_t * cmd)
+nsim_output_feature_enable_disable_command_fn (vlib_main_t *vm,
+					       unformat_input_t *input,
+					       vlib_cli_command_t *cmd)
 {
   nsim_main_t *nsm = &nsim_main;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -469,9 +466,8 @@ nsim_output_feature_enable_disable_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  clib_error_t *error = clib_error_return (0, "unknown input `%U'",
-						   format_unformat_error,
-						   line_input);
+	  clib_error_t *error = clib_error_return (
+	    0, "unknown input `%U'", format_unformat_error, line_input);
 	  unformat_free (line_input);
 	  return error;
 	}
@@ -493,8 +489,8 @@ nsim_output_feature_enable_disable_command_fn (vlib_main_t * vm,
       return clib_error_return (0, "Not configured, please 'set nsim' first");
 
     case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-      return clib_error_return
-	(0, "Invalid interface, only works on physical ports");
+      return clib_error_return (
+	0, "Invalid interface, only works on physical ports");
       break;
 
     case VNET_API_ERROR_UNIMPLEMENTED:
@@ -503,8 +499,8 @@ nsim_output_feature_enable_disable_command_fn (vlib_main_t * vm,
       break;
 
     default:
-      return clib_error_return
-	(0, "nsim_output_feature_enable_disable returned %d", rv);
+      return clib_error_return (
+	0, "nsim_output_feature_enable_disable returned %d", rv);
     }
   return 0;
 }
@@ -522,19 +518,17 @@ nsim_output_feature_enable_disable_command_fn (vlib_main_t * vm,
  * @cliend
  * @cliexcmd{nsim output-feature enable-disable <intfc> [disable]}
 ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (nsim_output_feature_enable_disable_command, static) =
-{
+
+VLIB_CLI_COMMAND (nsim_output_feature_enable_disable_command, static) = {
   .path = "nsim output-feature enable-disable",
   .short_help =
-  "nsim output-feature enable-disable <interface-name> [disable]",
+    "nsim output-feature enable-disable <interface-name> [disable]",
   .function = nsim_output_feature_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
 #include <nsim/nsim.api.c>
 static clib_error_t *
-nsim_init (vlib_main_t * vm)
+nsim_init (vlib_main_t *vm)
 {
   nsim_main_t *nsm = &nsim_main;
 
@@ -549,34 +543,25 @@ nsim_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (nsim_init);
 
-/* *INDENT-OFF* */
-VNET_FEATURE_INIT (nsim, static) =
-{
+VNET_FEATURE_INIT (nsim, static) = {
   .arc_name = "device-input",
   .node_name = "nsim",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
-/* *INDENT-ON */
 
-/* *INDENT-OFF* */
-VNET_FEATURE_INIT (nsim_feature, static) =
-{
+VNET_FEATURE_INIT (nsim_feature, static) = {
   .arc_name = "interface-output",
   .node_name = "nsim-output-feature",
   .runs_before = VNET_FEATURES ("interface-tx"),
 };
-/* *INDENT-ON */
 
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () =
-{
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Network Delay Simulator",
 };
-/* *INDENT-ON* */
 
 static uword
-unformat_delay (unformat_input_t * input, va_list * args)
+unformat_delay (unformat_input_t *input, va_list *args)
 {
   f64 *result = va_arg (*args, f64 *);
   f64 tmp;
@@ -594,7 +579,7 @@ unformat_delay (unformat_input_t * input, va_list * args)
 }
 
 static uword
-unformat_bandwidth (unformat_input_t * input, va_list * args)
+unformat_bandwidth (unformat_input_t *input, va_list *args)
 {
   f64 *result = va_arg (*args, f64 *);
   f64 tmp;
@@ -609,7 +594,7 @@ unformat_bandwidth (unformat_input_t * input, va_list * args)
 }
 
 static u8 *
-format_nsim_config (u8 * s, va_list * args)
+format_nsim_config (u8 *s, va_list *args)
 {
   int verbose = va_arg (*args, int);
   nsim_main_t *nsm = &nsim_main;
@@ -664,8 +649,8 @@ format_nsim_config (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-set_nsim_command_fn (vlib_main_t * vm,
-		     unformat_input_t * input, vlib_cli_command_t * cmd)
+set_nsim_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
 {
   f64 drop_fraction = 0.0, reorder_fraction = 0.0;
   f64 delay, bandwidth, packet_size = 1500.0;
@@ -696,14 +681,14 @@ set_nsim_command_fn (vlib_main_t * vm,
       else if (unformat (input, "drop-fraction %f", &drop_fraction))
 	{
 	  if (drop_fraction < 0.0 || drop_fraction > 1.0)
-	    return clib_error_return
-	      (0, "drop fraction must be between zero and 1");
+	    return clib_error_return (
+	      0, "drop fraction must be between zero and 1");
 	}
       else if (unformat (input, "reorder-fraction %f", &reorder_fraction))
 	{
 	  if (reorder_fraction < 0.0 || reorder_fraction > 1.0)
-	    return clib_error_return
-	      (0, "reorder fraction must be between zero and 1");
+	    return clib_error_return (
+	      0, "reorder fraction must be between zero and 1");
 	}
       else if (unformat (input, "poll-main-thread"))
 	nsm->poll_main_thread = 1;
@@ -726,8 +711,10 @@ set_nsim_command_fn (vlib_main_t * vm,
       return clib_error_return (0, "invalid packet size %.2f", packet_size);
 
     case VNET_API_ERROR_INVALID_VALUE_4:
-      return clib_error_return (0, "invalid reorder fraction %.3f for "
-				"delay %.2f", reorder_fraction, delay);
+      return clib_error_return (0,
+				"invalid reorder fraction %.3f for "
+				"delay %.2f",
+				reorder_fraction, delay);
 
     default:
       return clib_error_return (0, "error %d", rv);
@@ -757,20 +744,17 @@ set_nsim_command_fn (vlib_main_t * vm,
  * @cliend
  * @cliexcmd{set nsim delay <nn> bandwidth <bb> packet-size <nn>}
 ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_nsim_command, static) =
-{
+
+VLIB_CLI_COMMAND (set_nsim_command, static) = {
   .path = "set nsim",
   .short_help = "set nsim delay <time> bandwidth <bps> packet-size <nbytes>\n"
-  "    [packets-per-drop <nn>][drop-fraction <f64: 0.0 - 1.0>]",
+		"    [packets-per-drop <nn>][drop-fraction <f64: 0.0 - 1.0>]",
   .function = set_nsim_command_fn,
 };
-/* *INDENT-ON*/
-
 
 static clib_error_t *
-show_nsim_command_fn (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+show_nsim_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
 {
   nsim_main_t *nsm = &nsim_main;
   int verbose = 0;
@@ -793,7 +777,8 @@ show_nsim_command_fn (vlib_main_t * vm,
  * To display the state of the network simulator
  * @clistart
  * show nsim verbose
- * Network simulator cross-connects TenGigabitEthernet2/0/0 and TenGigabitEthernet2/0/1
+ * Network simulator cross-connects TenGigabitEthernet2/0/0 and
+TenGigabitEthernet2/0/1
  * ...inserting link delay of 10.00 ms, 20.00 ms round-trip
  *  Configured bandwidth: 10.10 gbit/sec
  *  Configured packet size: 128
@@ -802,14 +787,11 @@ show_nsim_command_fn (vlib_main_t * vm,
  * @cliexcmd{show nsim}
 ?*/
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_nsim_command, static) =
-{
+VLIB_CLI_COMMAND (show_nsim_command, static) = {
   .path = "show nsim",
   .short_help = "Display network delay simulator configuration",
   .function = show_nsim_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

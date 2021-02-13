@@ -579,12 +579,10 @@ Here's a bit of code which shows the required mechanics, in full:
       unformat_free (line_input);
       return error;
     }
-   /* *INDENT-OFF* */
    VLIB_CLI_COMMAND (my_command, static) = {
      .path = "my path",
      .function = my_command_fn",
    };
-   /* *INDENT-ON* */
 
 ```
 

@@ -60,7 +60,7 @@ api_rdma_mode (rdma_mode_t mode)
 
 /* rdma create API */
 static int
-api_rdma_create (vat_main_t * vam)
+api_rdma_create (vat_main_t *vam)
 {
   vl_api_rdma_create_t *mp;
   rdma_create_if_args_t args;
@@ -88,7 +88,7 @@ api_rdma_create (vat_main_t * vam)
 }
 
 static int
-api_rdma_create_v2 (vat_main_t * vam)
+api_rdma_create_v2 (vat_main_t *vam)
 {
   vl_api_rdma_create_v2_t *mp;
   rdma_create_if_args_t args;
@@ -119,7 +119,7 @@ api_rdma_create_v2 (vat_main_t * vam)
 
 /* rdma-create reply handler */
 static void
-vl_api_rdma_create_reply_t_handler (vl_api_rdma_create_reply_t * mp)
+vl_api_rdma_create_reply_t_handler (vl_api_rdma_create_reply_t *mp)
 {
   vat_main_t *vam = rdma_test_main.vat_main;
   i32 retval = ntohl (mp->retval);
@@ -137,7 +137,7 @@ vl_api_rdma_create_reply_t_handler (vl_api_rdma_create_reply_t * mp)
 
 /* rdma-create reply handler */
 static void
-vl_api_rdma_create_v2_reply_t_handler (vl_api_rdma_create_v2_reply_t * mp)
+vl_api_rdma_create_v2_reply_t_handler (vl_api_rdma_create_v2_reply_t *mp)
 {
   vat_main_t *vam = rdma_test_main.vat_main;
   i32 retval = ntohl (mp->retval);
@@ -155,7 +155,7 @@ vl_api_rdma_create_v2_reply_t_handler (vl_api_rdma_create_v2_reply_t * mp)
 
 /* rdma delete API */
 static int
-api_rdma_delete (vat_main_t * vam)
+api_rdma_delete (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_rdma_delete_t *mp;

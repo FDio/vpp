@@ -50,32 +50,33 @@ typedef struct _session_lookup_table
    * identical fib idices of v4 and v6 fib protos */
   u8 active_fib_proto;
   /* Required for pool_get_aligned(...) */
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 } session_table_t;
 
-#define SESSION_TABLE_INVALID_INDEX ((u32)~0)
-#define SESSION_LOCAL_TABLE_PREFIX ((u32)~0)
-#define SESSION_DROP_HANDLE (((u64)~0) - 1)
+#define SESSION_TABLE_INVALID_INDEX ((u32) ~0)
+#define SESSION_LOCAL_TABLE_PREFIX  ((u32) ~0)
+#define SESSION_DROP_HANDLE	    (((u64) ~0) - 1)
 
-typedef int (*ip4_session_table_walk_fn_t) (clib_bihash_kv_16_8_t * kvp,
+typedef int (*ip4_session_table_walk_fn_t) (clib_bihash_kv_16_8_t *kvp,
 					    void *ctx);
 
-void ip4_session_table_walk (clib_bihash_16_8_t * hash,
+void ip4_session_table_walk (clib_bihash_16_8_t *hash,
 			     ip4_session_table_walk_fn_t fn, void *arg);
 
 session_table_t *session_table_alloc (void);
 session_table_t *session_table_get (u32 table_index);
-u32 session_table_index (session_table_t * slt);
-void session_table_init (session_table_t * slt, u8 fib_proto);
+u32 session_table_index (session_table_t *slt);
+void session_table_init (session_table_t *slt, u8 fib_proto);
 
 /* Internal, try not to use it! */
 session_table_t *_get_session_tables ();
 
-#define session_table_foreach(VAR, BODY)		\
-  pool_foreach (VAR, _get_session_tables ()) BODY
+#define session_table_foreach(VAR, BODY)                                      \
+  pool_foreach (VAR, _get_session_tables ())                                  \
+  BODY
 
 #endif /* SRC_VNET_SESSION_SESSION_TABLE_H_ */
-/* *INDENT-ON* */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

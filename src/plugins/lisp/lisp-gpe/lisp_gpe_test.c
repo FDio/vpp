@@ -43,20 +43,21 @@ lisp_gpe_test_main_t lisp_gpe_test_main;
 
 /* Macro to finish up custom dump fns */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define FINISH                                  \
-    vec_add1 (s, 0);                            \
-    vl_print (handle, (char *)s);               \
-    vec_free (s);                               \
-    return handle;
+#define FINISH                                                                \
+  vec_add1 (s, 0);                                                            \
+  vl_print (handle, (char *) s);                                              \
+  vec_free (s);                                                               \
+  return handle;
 
-#define LISP_PING(_lm, mp_ping)                                         \
-  if (!(_lm)->ping_id)                                                  \
-    (_lm)->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC)); \
-  mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));          \
-  mp_ping->_vl_msg_id = htons ((_lm)->ping_id);                         \
-  mp_ping->client_index = vam->my_client_index;                         \
-  fformat (vam->ofp, "Sending ping id=%d\n", (_lm)->ping_id);           \
-  vam->result_ready = 0;                                                \
+#define LISP_PING(_lm, mp_ping)                                               \
+  if (!(_lm)->ping_id)                                                        \
+    (_lm)->ping_id =                                                          \
+      vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));            \
+  mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));                \
+  mp_ping->_vl_msg_id = htons ((_lm)->ping_id);                               \
+  mp_ping->client_index = vam->my_client_index;                               \
+  fformat (vam->ofp, "Sending ping id=%d\n", (_lm)->ping_id);                 \
+  vam->result_ready = 0;
 
 typedef struct
 {
@@ -65,21 +66,21 @@ typedef struct
 } __attribute__ ((__packed__)) lisp_nsh_api_t;
 
 static uword
-unformat_nsh_address (unformat_input_t * input, va_list * args)
+unformat_nsh_address (unformat_input_t *input, va_list *args)
 {
   lisp_nsh_api_t *nsh = va_arg (*args, lisp_nsh_api_t *);
   return unformat (input, "SPI:%d SI:%d", &nsh->spi, &nsh->si);
 }
 
 static u8 *
-format_nsh_address_vat (u8 * s, va_list * args)
+format_nsh_address_vat (u8 *s, va_list *args)
 {
   nsh_t *a = va_arg (*args, nsh_t *);
   return format (s, "SPI:%d SI:%d", clib_net_to_host_u32 (a->spi), a->si);
 }
 
 static u8 *
-format_lisp_flat_eid (u8 * s, va_list * args)
+format_lisp_flat_eid (u8 *s, va_list *args)
 {
   vl_api_eid_t *eid = va_arg (*args, vl_api_eid_t *);
 
@@ -101,8 +102,9 @@ format_lisp_flat_eid (u8 * s, va_list * args)
   return 0;
 }
 
-static void vl_api_gpe_add_del_fwd_entry_reply_t_handler
-  (vl_api_gpe_add_del_fwd_entry_reply_t * mp)
+static void
+vl_api_gpe_add_del_fwd_entry_reply_t_handler (
+  vl_api_gpe_add_del_fwd_entry_reply_t *mp)
 {
   vat_main_t *vam = &vat_main;
   i32 retval = ntohl (mp->retval);
@@ -118,7 +120,7 @@ static void vl_api_gpe_add_del_fwd_entry_reply_t_handler
 }
 
 static void
-api_gpe_fwd_entry_net_to_host (vl_api_gpe_fwd_entry_t * e)
+api_gpe_fwd_entry_net_to_host (vl_api_gpe_fwd_entry_t *e)
 {
   e->dp_table = clib_net_to_host_u32 (e->dp_table);
   e->fwd_entry_index = clib_net_to_host_u32 (e->fwd_entry_index);
@@ -126,8 +128,8 @@ api_gpe_fwd_entry_net_to_host (vl_api_gpe_fwd_entry_t * e)
 }
 
 static void
-  gpe_fwd_entries_get_reply_t_net_to_host
-  (vl_api_gpe_fwd_entries_get_reply_t * mp)
+gpe_fwd_entries_get_reply_t_net_to_host (
+  vl_api_gpe_fwd_entries_get_reply_t *mp)
 {
   u32 i;
 
@@ -139,7 +141,7 @@ static void
 }
 
 static u8 *
-format_gpe_encap_mode (u8 * s, va_list * args)
+format_gpe_encap_mode (u8 *s, va_list *args)
 {
   u32 mode = va_arg (*args, u32);
 
@@ -154,8 +156,8 @@ format_gpe_encap_mode (u8 * s, va_list * args)
 }
 
 static void
-  vl_api_gpe_get_encap_mode_reply_t_handler
-  (vl_api_gpe_get_encap_mode_reply_t * mp)
+vl_api_gpe_get_encap_mode_reply_t_handler (
+  vl_api_gpe_get_encap_mode_reply_t *mp)
 {
   vat_main_t *vam = &vat_main;
 
@@ -165,8 +167,8 @@ static void
 }
 
 static void
-  vl_api_gpe_fwd_entry_path_details_t_handler
-  (vl_api_gpe_fwd_entry_path_details_t * mp)
+vl_api_gpe_fwd_entry_path_details_t_handler (
+  vl_api_gpe_fwd_entry_path_details_t *mp)
 {
   vat_main_t *vam = &vat_main;
   u8 *(*format_ip_address_fcn) (u8 *, va_list *) = 0;
@@ -176,14 +178,13 @@ static void
   else
     format_ip_address_fcn = format_ip4_address;
 
-  print (vam->ofp, "w:%d %30U %30U", mp->rmt_loc.weight,
-	 format_ip_address_fcn, &mp->lcl_loc.addr.un,
-	 format_ip_address_fcn, &mp->rmt_loc.addr.un);
+  print (vam->ofp, "w:%d %30U %30U", mp->rmt_loc.weight, format_ip_address_fcn,
+	 &mp->lcl_loc.addr.un, format_ip_address_fcn, &mp->rmt_loc.addr.un);
 }
 
 static void
-  vl_api_gpe_fwd_entries_get_reply_t_handler
-  (vl_api_gpe_fwd_entries_get_reply_t * mp)
+vl_api_gpe_fwd_entries_get_reply_t_handler (
+  vl_api_gpe_fwd_entries_get_reply_t *mp)
 {
   vat_main_t *vam = &vat_main;
   u32 i;
@@ -208,8 +209,8 @@ end:
 }
 
 static void
-  vl_api_gpe_native_fwd_rpaths_get_reply_t_handler
-  (vl_api_gpe_native_fwd_rpaths_get_reply_t * mp)
+vl_api_gpe_native_fwd_rpaths_get_reply_t_handler (
+  vl_api_gpe_native_fwd_rpaths_get_reply_t *mp)
 {
   vat_main_t *vam = &vat_main;
   u32 i, n;
@@ -237,8 +238,8 @@ end:
 }
 
 static void
-  vl_api_gpe_fwd_entry_vnis_get_reply_t_handler
-  (vl_api_gpe_fwd_entry_vnis_get_reply_t * mp)
+vl_api_gpe_fwd_entry_vnis_get_reply_t_handler (
+  vl_api_gpe_fwd_entry_vnis_get_reply_t *mp)
 {
   vat_main_t *vam = &vat_main;
   u32 i, n;
@@ -258,21 +259,20 @@ end:
 }
 
 
-/* *INDENT-OFF* */
 /** Used for parsing LISP eids */
-typedef CLIB_PACKED(struct{
-  union {
-          ip46_address_t ip;
-          mac_address_t mac;
-          lisp_nsh_api_t nsh;
+typedef CLIB_PACKED (struct {
+  union
+  {
+    ip46_address_t ip;
+    mac_address_t mac;
+    lisp_nsh_api_t nsh;
   } addr;
-  u32 len;       /**< prefix length if IP */
-  u8 type;      /**< type of eid */
+  u32 len; /**< prefix length if IP */
+  u8 type; /**< type of eid */
 }) lisp_eid_vat_t;
-/* *INDENT-ON* */
 
 static uword
-unformat_lisp_eid_vat (unformat_input_t * input, va_list * args)
+unformat_lisp_eid_vat (unformat_input_t *input, va_list *args)
 {
   lisp_eid_vat_t *a = va_arg (*args, lisp_eid_vat_t *);
 
@@ -280,15 +280,15 @@ unformat_lisp_eid_vat (unformat_input_t * input, va_list * args)
 
   if (unformat (input, "%U/%d", unformat_ip46_address, a->addr.ip, &a->len))
     {
-      a->type = 0;		/* ip prefix type */
+      a->type = 0; /* ip prefix type */
     }
   else if (unformat (input, "%U", unformat_ethernet_address, &a->addr.mac))
     {
-      a->type = 1;		/* mac type */
+      a->type = 1; /* mac type */
     }
   else if (unformat (input, "%U", unformat_nsh_address, a->addr.nsh))
     {
-      a->type = 2;		/* NSH type */
+      a->type = 2; /* NSH type */
       a->addr.nsh.spi = clib_host_to_net_u32 (a->addr.nsh.spi);
     }
   else
@@ -308,7 +308,7 @@ unformat_lisp_eid_vat (unformat_input_t * input, va_list * args)
 }
 
 static void
-lisp_eid_put_vat (vl_api_eid_t * eid, const lisp_eid_vat_t * vat_eid)
+lisp_eid_put_vat (vl_api_eid_t *eid, const lisp_eid_vat_t *vat_eid)
 {
   eid->type = vat_eid->type;
   switch (eid->type)
@@ -344,9 +344,10 @@ lisp_eid_put_vat (vl_api_eid_t * eid, const lisp_eid_vat_t * vat_eid)
 }
 
 static int
-api_gpe_add_del_fwd_entry (vat_main_t * vam)
+api_gpe_add_del_fwd_entry (vat_main_t *vam)
 {
-  u32 dp_table = 0, vni = 0;;
+  u32 dp_table = 0, vni = 0;
+  ;
   unformat_input_t *input = vam->input;
   vl_api_gpe_add_del_fwd_entry_t *mp;
   u8 is_add = 1;
@@ -440,7 +441,7 @@ api_gpe_add_del_fwd_entry (vat_main_t * vam)
       return -99;
     }
 
-  if (0 == rmt_locs && (u32) ~ 0 == action)
+  if (0 == rmt_locs && (u32) ~0 == action)
     {
       errmsg ("action not set for negative mapping");
       return -99;
@@ -479,7 +480,7 @@ api_gpe_add_del_fwd_entry (vat_main_t * vam)
 }
 
 static int
-api_gpe_enable_disable (vat_main_t * vam)
+api_gpe_enable_disable (vat_main_t *vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_gpe_enable_disable_t *mp;
@@ -524,7 +525,7 @@ api_gpe_enable_disable (vat_main_t * vam)
 }
 
 uword
-unformat_gpe_encap_mode (unformat_input_t * input, va_list * args)
+unformat_gpe_encap_mode (unformat_input_t *input, va_list *args)
 {
   u32 *mode = va_arg (*args, u32 *);
 
@@ -539,7 +540,7 @@ unformat_gpe_encap_mode (unformat_input_t * input, va_list * args)
 }
 
 static int
-api_gpe_get_encap_mode (vat_main_t * vam)
+api_gpe_get_encap_mode (vat_main_t *vam)
 {
   vl_api_gpe_get_encap_mode_t *mp;
   int ret;
@@ -556,7 +557,7 @@ api_gpe_get_encap_mode (vat_main_t * vam)
 }
 
 static int
-api_gpe_set_encap_mode (vat_main_t * vam)
+api_gpe_set_encap_mode (vat_main_t *vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_gpe_set_encap_mode_t *mp;
@@ -586,7 +587,7 @@ api_gpe_set_encap_mode (vat_main_t * vam)
 }
 
 static int
-api_gpe_add_del_iface (vat_main_t * vam)
+api_gpe_add_del_iface (vat_main_t *vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_gpe_add_del_iface_t *mp;
@@ -652,7 +653,7 @@ api_gpe_add_del_iface (vat_main_t * vam)
 }
 
 static int
-api_gpe_fwd_entries_get (vat_main_t * vam)
+api_gpe_fwd_entries_get (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_gpe_fwd_entries_get_t *mp;
@@ -681,8 +682,8 @@ api_gpe_fwd_entries_get (vat_main_t * vam)
 
   if (!vam->json_output)
     {
-      print (vam->ofp, "%10s %10s %s %40s", "fwd_index", "dp_table",
-	     "leid", "reid");
+      print (vam->ofp, "%10s %10s %s %40s", "fwd_index", "dp_table", "leid",
+	     "reid");
     }
 
   M (GPE_FWD_ENTRIES_GET, mp);
@@ -697,7 +698,7 @@ api_gpe_fwd_entries_get (vat_main_t * vam)
 }
 
 static int
-api_gpe_native_fwd_rpaths_get (vat_main_t * vam)
+api_gpe_native_fwd_rpaths_get (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_gpe_native_fwd_rpaths_get_t *mp;
@@ -741,7 +742,7 @@ api_gpe_native_fwd_rpaths_get (vat_main_t * vam)
 }
 
 static int
-api_gpe_fwd_entry_vnis_get (vat_main_t * vam)
+api_gpe_fwd_entry_vnis_get (vat_main_t *vam)
 {
   vl_api_gpe_fwd_entry_vnis_get_t *mp;
   int ret;
@@ -762,7 +763,7 @@ api_gpe_fwd_entry_vnis_get (vat_main_t * vam)
 }
 
 static int
-api_gpe_add_del_native_fwd_rpath (vat_main_t * vam)
+api_gpe_add_del_native_fwd_rpath (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_gpe_add_del_native_fwd_rpath_t *mp;
@@ -837,7 +838,7 @@ api_gpe_add_del_native_fwd_rpath (vat_main_t * vam)
 }
 
 static int
-api_gpe_fwd_entry_path_dump (vat_main_t * vam)
+api_gpe_fwd_entry_path_dump (vat_main_t *vam)
 {
   vl_api_gpe_fwd_entry_path_dump_t *mp;
   vl_api_control_ping_t *mp_ping;

@@ -92,7 +92,7 @@ determined a perfect hash for the whole set of keys.
 #include <vppinfra/random.h>
 
 static void
-init_keys_direct_u32 (phash_main_t * pm)
+init_keys_direct_u32 (phash_main_t *pm)
 {
   int n_keys_left, b_mask, a_shift;
   u32 seed;
@@ -149,7 +149,7 @@ init_keys_direct_u32 (phash_main_t * pm)
 }
 
 static void
-init_keys_direct_u64 (phash_main_t * pm)
+init_keys_direct_u64 (phash_main_t *pm)
 {
   int n_keys_left, b_mask, a_shift;
   u64 seed;
@@ -206,7 +206,7 @@ init_keys_direct_u64 (phash_main_t * pm)
 }
 
 static void
-init_keys_indirect_u32 (phash_main_t * pm)
+init_keys_indirect_u32 (phash_main_t *pm)
 {
   int n_keys_left, b_mask, a_shift;
   u32 seed;
@@ -275,7 +275,7 @@ init_keys_indirect_u32 (phash_main_t * pm)
 }
 
 static void
-init_keys_indirect_u64 (phash_main_t * pm)
+init_keys_indirect_u64 (phash_main_t *pm)
 {
   int n_keys_left, b_mask, a_shift;
   u64 seed;
@@ -348,7 +348,7 @@ init_keys_indirect_u64 (phash_main_t * pm)
  * check if the initial hash might work
  */
 static int
-init_tabb (phash_main_t * pm)
+init_tabb (phash_main_t *pm)
 {
   int no_collisions;
   phash_tabb_t *tb;
@@ -372,32 +372,33 @@ init_tabb (phash_main_t * pm)
   if (!pm->tabb)
     vec_resize (pm->tabb, 1 << pm->b_bits);
   else
-    vec_foreach (tb, pm->tabb) phash_tabb_free (tb);
+    vec_foreach (tb, pm->tabb)
+      phash_tabb_free (tb);
 
   /* Two keys with the same (a,b) guarantees a collision */
   no_collisions = 1;
   vec_foreach (k, pm->keys)
-  {
-    u32 i, *ki;
+    {
+      u32 i, *ki;
 
-    tb = pm->tabb + k->b;
-    ki = tb->keys;
-    for (i = 0; i < vec_len (ki); i++)
-      {
-	l = pm->keys + ki[i];
-	if (k->a == l->a)
-	  {
-	    /* Given keys are supposed to be unique. */
-	    if (pm->key_is_equal
-		&& pm->key_is_equal (pm->private, l->key, k->key))
-	      clib_error ("duplicate keys");
-	    no_collisions = 0;
-	    goto done;
-	  }
-      }
+      tb = pm->tabb + k->b;
+      ki = tb->keys;
+      for (i = 0; i < vec_len (ki); i++)
+	{
+	  l = pm->keys + ki[i];
+	  if (k->a == l->a)
+	    {
+	      /* Given keys are supposed to be unique. */
+	      if (pm->key_is_equal &&
+		  pm->key_is_equal (pm->private, l->key, k->key))
+		clib_error ("duplicate keys");
+	      no_collisions = 0;
+	      goto done;
+	    }
+	}
 
-    vec_add1 (tb->keys, k - pm->keys);
-  }
+      vec_add1 (tb->keys, k - pm->keys);
+    }
 
 done:
   return no_collisions;
@@ -405,13 +406,13 @@ done:
 
 /* Try to apply an augmenting list */
 static int
-apply (phash_main_t * pm, u32 tail, u32 rollback)
+apply (phash_main_t *pm, u32 tail, u32 rollback)
 {
   phash_key_t *k;
   phash_tabb_t *pb;
   phash_tabq_t *q_child, *q_parent;
   u32 ki, i, hash, child, parent;
-  u32 stabb;			/* scramble[tab[b]] */
+  u32 stabb; /* scramble[tab[b]] */
   int no_collision;
 
   no_collision = 1;
@@ -440,7 +441,8 @@ apply (phash_main_t * pm, u32 tail, u32 rollback)
 	    pm->tabh[hash] = ~0;
 	}
 
-      /* change pb->val_b, which will change the hashes of all parent siblings */
+      /* change pb->val_b, which will change the hashes of all parent siblings
+       */
       pb->val_b = rollback ? q_child->oldval_q : q_child->newval_q;
 
       /* set new hash values */
@@ -454,7 +456,7 @@ apply (phash_main_t * pm, u32 tail, u32 rollback)
 	  if (rollback)
 	    {
 	      if (parent == 0)
-		continue;	/* root never had a hash */
+		continue; /* root never had a hash */
 	    }
 	  else if (pm->tabh[hash] != ~0)
 	    {
@@ -470,7 +472,6 @@ apply (phash_main_t * pm, u32 tail, u32 rollback)
 done:
   return no_collision;
 }
-
 
 /*
 -------------------------------------------------------------------------------
@@ -494,13 +495,13 @@ this approach to take about nlogn time to map all single-key b's.
 high_water: a value higher than any now in tabb[].water_b.
 */
 static int
-augment (phash_main_t * pm, u32 b_root, u32 high_water)
+augment (phash_main_t *pm, u32 b_root, u32 high_water)
 {
-  u32 q;			/* current position walking through the queue */
-  u32 tail;			/* tail of the queue.  0 is the head of the queue. */
+  u32 q;    /* current position walking through the queue */
+  u32 tail; /* tail of the queue.  0 is the head of the queue. */
   phash_tabb_t *tb_parent, *tb_child, *tb_hit;
   phash_key_t *k_parent, *k_child;
-  u32 v, v_limit;		/* possible value for myb->val_b */
+  u32 v, v_limit; /* possible value for myb->val_b */
   u32 i, ki, hash;
 
   v_limit =
@@ -513,11 +514,11 @@ augment (phash_main_t * pm, u32 b_root, u32 high_water)
   /* construct the spanning tree by walking the queue, add children to tail */
   for (q = 0; q < tail; q++)
     {
-      if ((pm->flags & PHASH_FLAG_FAST_MODE)
-	  && !(pm->flags & PHASH_FLAG_MINIMAL) && q == 1)
-	break;			/* don't do transitive closure */
+      if ((pm->flags & PHASH_FLAG_FAST_MODE) &&
+	  !(pm->flags & PHASH_FLAG_MINIMAL) && q == 1)
+	break; /* don't do transitive closure */
 
-      tb_parent = pm->tabb + pm->tabq[q].b_q;	/* the b for this node */
+      tb_parent = pm->tabb + pm->tabq[q].b_q; /* the b for this node */
 
       for (v = 0; v < v_limit; v++)
 	{
@@ -530,7 +531,8 @@ augment (phash_main_t * pm, u32 b_root, u32 high_water)
 
 	      hash = k_parent->a ^ pm->scramble[v];
 	      if (hash >= pm->hash_max)
-		goto try_next_v;	/* hash code out of bounds => we can't use this v */
+		goto try_next_v; /* hash code out of bounds => we can't use
+				    this v */
 
 	      ki = pm->tabh[hash];
 	      if (ki == ~0)
@@ -550,7 +552,7 @@ augment (phash_main_t * pm, u32 b_root, u32 high_water)
 		  /* Remember this as child b. */
 		  tb_child = tb_hit;
 		  if (tb_hit->water_b == high_water)
-		    goto try_next_v;	/* already explored */
+		    goto try_next_v; /* already explored */
 		}
 	    }
 
@@ -560,8 +562,10 @@ augment (phash_main_t * pm, u32 b_root, u32 high_water)
 	  if (tb_child)
 	    tb_child->water_b = high_water;
 	  pm->tabq[tail].b_q = tb_child ? tb_child - pm->tabb : ~0;
-	  pm->tabq[tail].newval_q = v;	/* how to make parent (myb) use this hash */
-	  pm->tabq[tail].oldval_q = tb_parent->val_b;	/* need this for rollback */
+	  pm->tabq[tail].newval_q =
+	    v; /* how to make parent (myb) use this hash */
+	  pm->tabq[tail].oldval_q =
+	    tb_parent->val_b; /* need this for rollback */
 	  pm->tabq[tail].parent_q = q;
 	  ++tail;
 
@@ -570,17 +574,15 @@ augment (phash_main_t * pm, u32 b_root, u32 high_water)
 	    {
 	      /* Try to apply the augmenting path. */
 	      if (apply (pm, tail, /* rollback */ 0))
-		return 1;	/* success, item was added to the perfect hash */
-	      --tail;		/* don't know how to handle such a child! */
+		return 1; /* success, item was added to the perfect hash */
+	      --tail;	  /* don't know how to handle such a child! */
 	    }
 
-	try_next_v:
-	  ;
+	try_next_v:;
 	}
     }
   return 0;
 }
-
 
 static phash_tabb_t *sort_tabb;
 
@@ -599,7 +601,7 @@ phash_tabb_compare (void *a1, void *a2)
 
 /* find a mapping that makes this a perfect hash */
 static int
-perfect (phash_main_t * pm)
+perfect (phash_main_t *pm)
 {
   u32 i;
 
@@ -625,7 +627,6 @@ perfect (phash_main_t * pm)
   /* Success!  We found a perfect hash of all keys into 0..nkeys-1. */
   return 1;
 }
-
 
 /*
  * Find initial a_bits = log2 (a_max), b_bits = log2 (b_max).
@@ -662,7 +663,7 @@ perfect (phash_main_t * pm)
  * cost of the hash per character hashed.
  */
 static void
-guess_initial_parameters (phash_main_t * pm)
+guess_initial_parameters (phash_main_t *pm)
 {
   u32 s_bits, s_max, a_max, b_max, n_keys;
   int is_minimal, is_fast_mode;
@@ -722,10 +723,11 @@ guess_initial_parameters (phash_main_t * pm)
 	    }
 	  else
 	    {
-	      a_max = ((n_keys <= s_max * (5.0 / 8.0)) ? s_max / 8 :
-		       (n_keys <=
-			s_max * (3.0 / 4.0)) ? s_max / 4 : s_max / 2);
-	      b_max = s_max / 4;	/* always give the small size a shot */
+	      a_max =
+		((n_keys <= s_max * (5.0 / 8.0)) ?
+		   s_max / 8 :
+		   (n_keys <= s_max * (3.0 / 4.0)) ? s_max / 4 : s_max / 2);
+	      b_max = s_max / 4; /* always give the small size a shot */
 	    }
 	  break;
 	case 18:
@@ -733,7 +735,7 @@ guess_initial_parameters (phash_main_t * pm)
 	    a_max = b_max = s_max / 2;
 	  else
 	    {
-	      a_max = s_max / 8;	/* never require the multiword hash */
+	      a_max = s_max / 8; /* never require the multiword hash */
 	      b_max = (n_keys <= s_max * (5.0 / 8.0)) ? s_max / 4 : s_max / 2;
 	    }
 	  break;
@@ -759,11 +761,13 @@ guess_initial_parameters (phash_main_t * pm)
 	}
 
       if (s_max / 4 <= (1 << 14))
-	b_max = ((n_keys <= s_max * 0.56) ? s_max / 32 :
-		 (n_keys <= s_max * 0.74) ? s_max / 16 : s_max / 8);
+	b_max = ((n_keys <= s_max * 0.56) ?
+		   s_max / 32 :
+		   (n_keys <= s_max * 0.74) ? s_max / 16 : s_max / 8);
       else
-	b_max = ((n_keys <= s_max * 0.6) ? s_max / 16 :
-		 (n_keys <= s_max * 0.8) ? s_max / 8 : s_max / 4);
+	b_max = ((n_keys <= s_max * 0.6) ?
+		   s_max / 16 :
+		   (n_keys <= s_max * 0.8) ? s_max / 8 : s_max / 4);
 
       if (is_fast_mode && b_max < s_max / 8)
 	b_max = s_max / 8;
@@ -807,7 +811,7 @@ scramble_permute (u32 x, u32 nbits)
 
 /* initialize scramble[] with distinct random values in 0..smax-1 */
 static void
-scramble_init (phash_main_t * pm)
+scramble_init (phash_main_t *pm)
 {
   u32 i;
 
@@ -819,7 +823,7 @@ scramble_init (phash_main_t * pm)
 
 /* Try to find a perfect hash function. */
 clib_error_t *
-phash_find_perfect_hash (phash_main_t * pm)
+phash_find_perfect_hash (phash_main_t *pm)
 {
   clib_error_t *error = 0;
   u32 max_a_bits, n_tries_this_a_b, want_minimal;
@@ -921,7 +925,7 @@ done:
 
 /* Slow hash computation for general keys. */
 uword
-phash_hash_slow (phash_main_t * pm, uword key)
+phash_hash_slow (phash_main_t *pm, uword key)
 {
   u32 a, b, v;
 
@@ -978,30 +982,30 @@ phash_hash_slow (phash_main_t * pm, uword key)
 
 /* Verify that perfect hash is perfect. */
 clib_error_t *
-phash_validate (phash_main_t * pm)
+phash_validate (phash_main_t *pm)
 {
   phash_key_t *k;
   uword *unique_bitmap = 0;
   clib_error_t *error = 0;
 
   vec_foreach (k, pm->keys)
-  {
-    uword h = phash_hash_slow (pm, k->key);
+    {
+      uword h = phash_hash_slow (pm, k->key);
 
-    if (h >= pm->hash_max)
-      {
-	error = clib_error_return (0, "hash out of range %wd", h);
-	goto done;
-      }
+      if (h >= pm->hash_max)
+	{
+	  error = clib_error_return (0, "hash out of range %wd", h);
+	  goto done;
+	}
 
-    if (clib_bitmap_get (unique_bitmap, h))
-      {
-	error = clib_error_return (0, "hash non-unique");
-	goto done;
-      }
+      if (clib_bitmap_get (unique_bitmap, h))
+	{
+	  error = clib_error_return (0, "hash non-unique");
+	  goto done;
+	}
 
-    unique_bitmap = clib_bitmap_ori (unique_bitmap, h);
-  }
+      unique_bitmap = clib_bitmap_ori (unique_bitmap, h);
+    }
 
 done:
   clib_bitmap_free (unique_bitmap);

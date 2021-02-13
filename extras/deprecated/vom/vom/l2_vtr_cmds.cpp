@@ -24,8 +24,7 @@ set_cmd::set_cmd(HW::item<l2_vtr::option_t>& item,
   : rpc_cmd(item)
   , m_itf(itf)
   , m_tag(tag)
-{
-}
+{}
 
 bool
 set_cmd::operator==(const set_cmd& other) const

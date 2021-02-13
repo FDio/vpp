@@ -24,24 +24,24 @@
 
 #if WITH_LIBSSL > 0
 
-#define foreach_ipsec_output_error                   \
- _(RX_PKTS, "IPSec pkts received")                   \
- _(POLICY_DISCARD, "IPSec policy discard")           \
- _(POLICY_NO_MATCH, "IPSec policy (no match)")       \
- _(POLICY_PROTECT, "IPSec policy protect")           \
- _(POLICY_BYPASS, "IPSec policy bypass")             \
- _(ENCAPS_FAILED, "IPSec encapsulation failed")
+#define foreach_ipsec_output_error                                            \
+  _ (RX_PKTS, "IPSec pkts received")                                          \
+  _ (POLICY_DISCARD, "IPSec policy discard")                                  \
+  _ (POLICY_NO_MATCH, "IPSec policy (no match)")                              \
+  _ (POLICY_PROTECT, "IPSec policy protect")                                  \
+  _ (POLICY_BYPASS, "IPSec policy bypass")                                    \
+  _ (ENCAPS_FAILED, "IPSec encapsulation failed")
 
 typedef enum
 {
-#define _(sym,str) IPSEC_OUTPUT_ERROR_##sym,
+#define _(sym, str) IPSEC_OUTPUT_ERROR_##sym,
   foreach_ipsec_output_error
 #undef _
     IPSEC_DECAP_N_ERROR,
 } ipsec_output_error_t;
 
 static char *ipsec_output_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ipsec_output_error
 #undef _
 };
@@ -54,7 +54,7 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_ipsec_output_trace (u8 * s, va_list * args)
+format_ipsec_output_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -66,7 +66,7 @@ format_ipsec_output_trace (u8 * s, va_list * args)
 }
 
 always_inline ipsec_policy_t *
-ipsec_output_policy_match (ipsec_spd_t * spd, u8 pr, u32 la, u32 ra, u16 lp,
+ipsec_output_policy_match (ipsec_spd_t *spd, u8 pr, u32 la, u32 ra, u16 lp,
 			   u16 rp)
 {
   ipsec_main_t *im = &ipsec_main;
@@ -77,48 +77,46 @@ ipsec_output_policy_match (ipsec_spd_t * spd, u8 pr, u32 la, u32 ra, u16 lp,
     return 0;
 
   vec_foreach (i, spd->policies[IPSEC_SPD_POLICY_IP4_OUTBOUND])
-  {
-    p = pool_elt_at_index (im->policies, *i);
-    if (PREDICT_FALSE (p->protocol && (p->protocol != pr)))
-      continue;
+    {
+      p = pool_elt_at_index (im->policies, *i);
+      if (PREDICT_FALSE (p->protocol && (p->protocol != pr)))
+	continue;
 
-    if (ra < clib_net_to_host_u32 (p->raddr.start.ip4.as_u32))
-      continue;
+      if (ra < clib_net_to_host_u32 (p->raddr.start.ip4.as_u32))
+	continue;
 
-    if (ra > clib_net_to_host_u32 (p->raddr.stop.ip4.as_u32))
-      continue;
+      if (ra > clib_net_to_host_u32 (p->raddr.stop.ip4.as_u32))
+	continue;
 
-    if (la < clib_net_to_host_u32 (p->laddr.start.ip4.as_u32))
-      continue;
+      if (la < clib_net_to_host_u32 (p->laddr.start.ip4.as_u32))
+	continue;
 
-    if (la > clib_net_to_host_u32 (p->laddr.stop.ip4.as_u32))
-      continue;
+      if (la > clib_net_to_host_u32 (p->laddr.stop.ip4.as_u32))
+	continue;
 
-    if (PREDICT_FALSE
-	((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP)
-	 && (pr != IP_PROTOCOL_SCTP)))
+      if (PREDICT_FALSE ((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP) &&
+			 (pr != IP_PROTOCOL_SCTP)))
+	return p;
+
+      if (lp < p->lport.start)
+	continue;
+
+      if (lp > p->lport.stop)
+	continue;
+
+      if (rp < p->rport.start)
+	continue;
+
+      if (rp > p->rport.stop)
+	continue;
+
       return p;
-
-    if (lp < p->lport.start)
-      continue;
-
-    if (lp > p->lport.stop)
-      continue;
-
-    if (rp < p->rport.start)
-      continue;
-
-    if (rp > p->rport.stop)
-      continue;
-
-    return p;
-  }
+    }
   return 0;
 }
 
 always_inline uword
-ip6_addr_match_range (ip6_address_t * a, ip6_address_t * la,
-		      ip6_address_t * ua)
+ip6_addr_match_range (ip6_address_t *a, ip6_address_t *la, ip6_address_t *ua)
 {
   if ((memcmp (a->as_u64, la->as_u64, 2 * sizeof (u64)) >= 0) &&
       (memcmp (a->as_u64, ua->as_u64, 2 * sizeof (u64)) <= 0))
@@ -127,9 +125,8 @@ ip6_addr_match_range (ip6_address_t * a, ip6_address_t * la,
 }
 
 always_inline ipsec_policy_t *
-ipsec6_output_policy_match (ipsec_spd_t * spd,
-			    ip6_address_t * la,
-			    ip6_address_t * ra, u16 lp, u16 rp, u8 pr)
+ipsec6_output_policy_match (ipsec_spd_t *spd, ip6_address_t *la,
+			    ip6_address_t *ra, u16 lp, u16 rp, u8 pr)
 {
   ipsec_main_t *im = &ipsec_main;
   ipsec_policy_t *p;
@@ -139,49 +136,48 @@ ipsec6_output_policy_match (ipsec_spd_t * spd,
     return 0;
 
   vec_foreach (i, spd->policies[IPSEC_SPD_POLICY_IP6_OUTBOUND])
-  {
-    p = pool_elt_at_index (im->policies, *i);
-    if (PREDICT_FALSE (p->protocol && (p->protocol != pr)))
-      continue;
+    {
+      p = pool_elt_at_index (im->policies, *i);
+      if (PREDICT_FALSE (p->protocol && (p->protocol != pr)))
+	continue;
 
-    if (!ip6_addr_match_range (ra, &p->raddr.start.ip6, &p->raddr.stop.ip6))
-      continue;
+      if (!ip6_addr_match_range (ra, &p->raddr.start.ip6, &p->raddr.stop.ip6))
+	continue;
 
-    if (!ip6_addr_match_range (la, &p->laddr.start.ip6, &p->laddr.stop.ip6))
-      continue;
+      if (!ip6_addr_match_range (la, &p->laddr.start.ip6, &p->laddr.stop.ip6))
+	continue;
 
-    if (PREDICT_FALSE
-	((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP)
-	 && (pr != IP_PROTOCOL_SCTP)))
+      if (PREDICT_FALSE ((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP) &&
+			 (pr != IP_PROTOCOL_SCTP)))
+	return p;
+
+      if (lp < p->lport.start)
+	continue;
+
+      if (lp > p->lport.stop)
+	continue;
+
+      if (rp < p->rport.start)
+	continue;
+
+      if (rp > p->rport.stop)
+	continue;
+
       return p;
-
-    if (lp < p->lport.start)
-      continue;
-
-    if (lp > p->lport.stop)
-      continue;
-
-    if (rp < p->rport.start)
-      continue;
-
-    if (rp > p->rport.stop)
-      continue;
-
-    return p;
-  }
+    }
 
   return 0;
 }
 
 static inline uword
-ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		     vlib_frame_t * from_frame, int is_ipv6)
+ipsec_output_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     vlib_frame_t *from_frame, int is_ipv6)
 {
   ipsec_main_t *im = &ipsec_main;
 
   u32 *from, *to_next = 0, thread_index;
-  u32 n_left_from, sw_if_index0, last_sw_if_index = (u32) ~ 0;
-  u32 next_node_index = (u32) ~ 0, last_next_node_index = (u32) ~ 0;
+  u32 n_left_from, sw_if_index0, last_sw_if_index = (u32) ~0;
+  u32 next_node_index = (u32) ~0, last_next_node_index = (u32) ~0;
   vlib_frame_t *f = 0;
   u32 spd_index0 = ~0;
   ipsec_spd_t *spd0 = 0;
@@ -215,8 +211,8 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
       iph_offset = vnet_buffer (b0)->ip.save_rewrite_length;
-      ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0)
-			      + iph_offset);
+      ip0 =
+	(ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) + iph_offset);
 
       /* lookup for SPD only if sw_if_index is changed */
       if (PREDICT_FALSE (last_sw_if_index != sw_if_index0))
@@ -230,8 +226,8 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (is_ipv6)
 	{
-	  ip6_0 = (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b0)
-				    + iph_offset);
+	  ip6_0 = (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
+				    iph_offset);
 
 	  udp0 = ip6_next_header (ip6_0);
 #if 0
@@ -243,13 +239,10 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	     spd0->id);
 #endif
 
-	  p0 = ipsec6_output_policy_match (spd0,
-					   &ip6_0->src_address,
-					   &ip6_0->dst_address,
-					   clib_net_to_host_u16
-					   (udp0->src_port),
-					   clib_net_to_host_u16
-					   (udp0->dst_port), ip6_0->protocol);
+	  p0 = ipsec6_output_policy_match (
+	    spd0, &ip6_0->src_address, &ip6_0->dst_address,
+	    clib_net_to_host_u16 (udp0->src_port),
+	    clib_net_to_host_u16 (udp0->dst_port), ip6_0->protocol);
 	}
       else
 	{
@@ -264,15 +257,12 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			sw_if_index0, spd_index0, spd0->id);
 #endif
 
-	  p0 = ipsec_output_policy_match (spd0, ip0->protocol,
-					  clib_net_to_host_u32
-					  (ip0->src_address.as_u32),
-					  clib_net_to_host_u32
-					  (ip0->dst_address.as_u32),
-					  clib_net_to_host_u16
-					  (udp0->src_port),
-					  clib_net_to_host_u16
-					  (udp0->dst_port));
+	  p0 = ipsec_output_policy_match (
+	    spd0, ip0->protocol,
+	    clib_net_to_host_u32 (ip0->src_address.as_u32),
+	    clib_net_to_host_u32 (ip0->dst_address.as_u32),
+	    clib_net_to_host_u16 (udp0->src_port),
+	    clib_net_to_host_u16 (udp0->dst_port));
 	}
       tcp0 = (void *) udp0;
 
@@ -311,20 +301,18 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      if (is_ipv6)
 		{
-		  if (PREDICT_FALSE
-		      (b0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM))
+		  if (PREDICT_FALSE (b0->flags &
+				     VNET_BUFFER_F_OFFLOAD_TCP_CKSUM))
 		    {
-		      tcp0->checksum =
-			ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip6_0,
-							   &bogus);
+		      tcp0->checksum = ip6_tcp_udp_icmp_compute_checksum (
+			vm, b0, ip6_0, &bogus);
 		      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
 		    }
-		  if (PREDICT_FALSE
-		      (b0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
+		  if (PREDICT_FALSE (b0->flags &
+				     VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
 		    {
-		      udp0->checksum =
-			ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip6_0,
-							   &bogus);
+		      udp0->checksum = ip6_tcp_udp_icmp_compute_checksum (
+			vm, b0, ip6_0, &bogus);
 		      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
 		    }
 		}
@@ -335,15 +323,15 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      ip0->checksum = ip4_header_checksum (ip0);
 		      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
 		    }
-		  if (PREDICT_FALSE
-		      (b0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM))
+		  if (PREDICT_FALSE (b0->flags &
+				     VNET_BUFFER_F_OFFLOAD_TCP_CKSUM))
 		    {
 		      tcp0->checksum =
 			ip4_tcp_udp_compute_checksum (vm, b0, ip0);
 		      b0->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
 		    }
-		  if (PREDICT_FALSE
-		      (b0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
+		  if (PREDICT_FALSE (b0->flags &
+				     VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
 		    {
 		      udp0->checksum =
 			ip4_tcp_udp_compute_checksum (vm, b0, ip0);
@@ -362,8 +350,8 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      nc_discard++;
 	      next_node_index = im->error_drop_node_index;
 	    }
-	  vlib_increment_combined_counter
-	    (&ipsec_spd_policy_counters, thread_index, pi0, 1, bytes0);
+	  vlib_increment_combined_counter (&ipsec_spd_policy_counters,
+					   thread_index, pi0, 1, bytes0);
 	}
       else
 	{
@@ -415,19 +403,16 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_node_increment_counter (vm, node->node_index,
 			       IPSEC_OUTPUT_ERROR_POLICY_DISCARD, nc_discard);
   vlib_node_increment_counter (vm, node->node_index,
-			       IPSEC_OUTPUT_ERROR_POLICY_NO_MATCH,
-			       nc_nomatch);
+			       IPSEC_OUTPUT_ERROR_POLICY_NO_MATCH, nc_nomatch);
   return from_frame->n_vectors;
 }
 
-VLIB_NODE_FN (ipsec4_output_node) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
+VLIB_NODE_FN (ipsec4_output_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return ipsec_output_inline (vm, node, frame, 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec4_output_node) = {
   .name = "ipsec4-output-feature",
   .vector_size = sizeof (u32),
@@ -439,21 +424,18 @@ VLIB_REGISTER_NODE (ipsec4_output_node) = {
 
   .n_next_nodes = IPSEC_OUTPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [IPSEC_OUTPUT_NEXT_##s] = n,
+#define _(s, n) [IPSEC_OUTPUT_NEXT_##s] = n,
     foreach_ipsec_output_next
 #undef _
   },
 };
-/* *INDENT-ON* */
 
-VLIB_NODE_FN (ipsec6_output_node) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
+VLIB_NODE_FN (ipsec6_output_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return ipsec_output_inline (vm, node, frame, 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec6_output_node) = {
   .name = "ipsec6-output-feature",
   .vector_size = sizeof (u32),
@@ -465,25 +447,23 @@ VLIB_REGISTER_NODE (ipsec6_output_node) = {
 
   .n_next_nodes = IPSEC_OUTPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [IPSEC_OUTPUT_NEXT_##s] = n,
+#define _(s, n) [IPSEC_OUTPUT_NEXT_##s] = n,
     foreach_ipsec_output_next
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 #else /* IPSEC > 1 */
 
 /* Dummy ipsec output node, in case when IPSec is disabled */
 
 static uword
-ipsec_output_node_fn (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+ipsec_output_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vlib_frame_t *frame)
 {
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec4_output_node) = {
   .vector_size = sizeof (u32),
   .function = ipsec_output_node_fn,
@@ -495,7 +475,7 @@ VLIB_REGISTER_NODE (ipsec6_output_node) = {
   .function = ipsec_output_node_fn,
   .name = "ipsec6-output-feature",
 };
-/* *INDENT-ON* */
+
 #endif
 
 /*

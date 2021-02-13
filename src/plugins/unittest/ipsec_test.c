@@ -17,8 +17,8 @@
 #include <vnet/ipsec/ipsec_sa.h>
 
 static clib_error_t *
-test_ipsec_command_fn (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+test_ipsec_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   u64 seq_num;
   u32 sa_id;
@@ -52,21 +52,18 @@ test_ipsec_command_fn (vlib_main_t * vm,
     }
   else
     {
-      return clib_error_return (0, "unknown SA `%U'",
-				format_unformat_error, input);
+      return clib_error_return (0, "unknown SA `%U'", format_unformat_error,
+				input);
     }
 
   return (NULL);
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_ipsec_command, static) =
-{
+VLIB_CLI_COMMAND (test_ipsec_command, static) = {
   .path = "test ipsec",
   .short_help = "test ipsec sa <ID> seq-num <VALUE>",
   .function = test_ipsec_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

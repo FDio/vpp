@@ -31,7 +31,7 @@
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_det44_add_del_map_t_handler (vl_api_det44_add_del_map_t * mp)
+vl_api_det44_add_del_map_t_handler (vl_api_det44_add_del_map_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_det44_add_del_map_reply_t *rmp;
@@ -39,13 +39,13 @@ vl_api_det44_add_del_map_t_handler (vl_api_det44_add_del_map_t * mp)
   ip4_address_t in_addr, out_addr;
   clib_memcpy (&in_addr, mp->in_addr, 4);
   clib_memcpy (&out_addr, mp->out_addr, 4);
-  rv = snat_det_add_map (&in_addr, mp->in_plen, &out_addr,
-			 mp->out_plen, mp->is_add);
+  rv = snat_det_add_map (&in_addr, mp->in_plen, &out_addr, mp->out_plen,
+			 mp->is_add);
   REPLY_MACRO (VL_API_DET44_ADD_DEL_MAP_REPLY);
 }
 
 static void
-vl_api_det44_forward_t_handler (vl_api_det44_forward_t * mp)
+vl_api_det44_forward_t_handler (vl_api_det44_forward_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_det44_forward_reply_t *rmp;
@@ -67,18 +67,16 @@ vl_api_det44_forward_t_handler (vl_api_det44_forward_t * mp)
   hi_port = lo_port + m->ports_per_host - 1;
 
 send_reply:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_DET44_FORWARD_REPLY,
-  ({
-    rmp->out_port_lo = ntohs (lo_port);
-    rmp->out_port_hi = ntohs (hi_port);
-    clib_memcpy (rmp->out_addr, &out_addr, 4);
-  }))
-  /* *INDENT-ON* */
+
+  REPLY_MACRO2 (VL_API_DET44_FORWARD_REPLY, ({
+		  rmp->out_port_lo = ntohs (lo_port);
+		  rmp->out_port_hi = ntohs (hi_port);
+		  clib_memcpy (rmp->out_addr, &out_addr, 4);
+		}))
 }
 
 static void
-vl_api_det44_reverse_t_handler (vl_api_det44_reverse_t * mp)
+vl_api_det44_reverse_t_handler (vl_api_det44_reverse_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_det44_reverse_reply_t *rmp;
@@ -98,16 +96,13 @@ vl_api_det44_reverse_t_handler (vl_api_det44_reverse_t * mp)
   snat_det_reverse (m, &out_addr, htons (mp->out_port), &in_addr);
 
 send_reply:
-  /* *INDENT-OFF* */
+
   REPLY_MACRO2 (VL_API_DET44_REVERSE_REPLY,
-  ({
-    clib_memcpy (rmp->in_addr, &in_addr, 4);
-  }))
-  /* *INDENT-ON* */
+		({ clib_memcpy (rmp->in_addr, &in_addr, 4); }))
 }
 
 static void
-sent_det44_map_details (snat_det_map_t * m, vl_api_registration_t * reg,
+sent_det44_map_details (snat_det_map_t *m, vl_api_registration_t *reg,
 			u32 context)
 {
   det44_main_t *dm = &det44_main;
@@ -129,7 +124,7 @@ sent_det44_map_details (snat_det_map_t * m, vl_api_registration_t * reg,
 }
 
 static void
-vl_api_det44_map_dump_t_handler (vl_api_det44_map_dump_t * mp)
+vl_api_det44_map_dump_t_handler (vl_api_det44_map_dump_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_registration_t *reg;
@@ -139,15 +134,12 @@ vl_api_det44_map_dump_t_handler (vl_api_det44_map_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
-  vec_foreach(m, dm->det_maps)
-    sent_det44_map_details(m, reg, mp->context);
-  /* *INDENT-ON* */
+  vec_foreach (m, dm->det_maps)
+    sent_det44_map_details (m, reg, mp->context);
 }
 
 static void
-vl_api_det44_close_session_out_t_handler (vl_api_det44_close_session_out_t
-					  * mp)
+vl_api_det44_close_session_out_t_handler (vl_api_det44_close_session_out_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_det44_close_session_out_reply_t *rmp;
@@ -183,7 +175,7 @@ send_reply:
 }
 
 static void
-vl_api_det44_close_session_in_t_handler (vl_api_det44_close_session_in_t * mp)
+vl_api_det44_close_session_in_t_handler (vl_api_det44_close_session_in_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_det44_close_session_in_reply_t *rmp;
@@ -217,8 +209,8 @@ send_reply:
 }
 
 static void
-send_det44_session_details (snat_det_session_t * s,
-			    vl_api_registration_t * reg, u32 context)
+send_det44_session_details (snat_det_session_t *s, vl_api_registration_t *reg,
+			    u32 context)
 {
   det44_main_t *dm = &det44_main;
   vl_api_det44_session_details_t *rmp;
@@ -238,7 +230,7 @@ send_det44_session_details (snat_det_session_t * s,
 }
 
 static void
-vl_api_det44_session_dump_t_handler (vl_api_det44_session_dump_t * mp)
+vl_api_det44_session_dump_t_handler (vl_api_det44_session_dump_t *mp)
 {
   vl_api_registration_t *reg;
   ip4_address_t user_addr;
@@ -266,8 +258,8 @@ vl_api_det44_session_dump_t_handler (vl_api_det44_session_dump_t * mp)
 }
 
 static void
-  vl_api_det44_plugin_enable_disable_t_handler
-  (vl_api_det44_plugin_enable_disable_t * mp)
+vl_api_det44_plugin_enable_disable_t_handler (
+  vl_api_det44_plugin_enable_disable_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_det44_plugin_enable_disable_reply_t *rmp;
@@ -287,8 +279,8 @@ static void
 }
 
 static void
-  vl_api_det44_interface_add_del_feature_t_handler
-  (vl_api_det44_interface_add_del_feature_t * mp)
+vl_api_det44_interface_add_del_feature_t_handler (
+  vl_api_det44_interface_add_del_feature_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_det44_interface_add_del_feature_reply_t *rmp;
@@ -301,8 +293,8 @@ static void
 }
 
 static void
-det44_send_interface_details (det44_interface_t * i,
-			      vl_api_registration_t * reg, u32 context)
+det44_send_interface_details (det44_interface_t *i, vl_api_registration_t *reg,
+			      u32 context)
 {
   det44_main_t *dm = &det44_main;
   vl_api_det44_interface_details_t *rmp;
@@ -318,7 +310,7 @@ det44_send_interface_details (det44_interface_t * i,
 }
 
 static void
-vl_api_det44_interface_dump_t_handler (vl_api_det44_interface_dump_t * mp)
+vl_api_det44_interface_dump_t_handler (vl_api_det44_interface_dump_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_registration_t *reg;
@@ -328,16 +320,14 @@ vl_api_det44_interface_dump_t_handler (vl_api_det44_interface_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (i, dm->interfaces)
-   {
-    det44_send_interface_details(i, reg, mp->context);
-  }
-  /* *INDENT-ON* */
+    {
+      det44_send_interface_details (i, reg, mp->context);
+    }
 }
 
 static void
-vl_api_det44_set_timeouts_t_handler (vl_api_det44_set_timeouts_t * mp)
+vl_api_det44_set_timeouts_t_handler (vl_api_det44_set_timeouts_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_det44_set_timeouts_reply_t *rmp;
@@ -352,22 +342,20 @@ vl_api_det44_set_timeouts_t_handler (vl_api_det44_set_timeouts_t * mp)
 }
 
 static void
-vl_api_det44_get_timeouts_t_handler (vl_api_det44_get_timeouts_t * mp)
+vl_api_det44_get_timeouts_t_handler (vl_api_det44_get_timeouts_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_det44_get_timeouts_reply_t *rmp;
   nat_timeouts_t timeouts;
   int rv = 0;
   timeouts = det44_get_timeouts ();
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_DET44_GET_TIMEOUTS_REPLY,
-  ({
-    rmp->udp = htonl (timeouts.udp);
-    rmp->tcp_established = htonl (timeouts.tcp.established);
-    rmp->tcp_transitory = htonl (timeouts.tcp.transitory);
-    rmp->icmp = htonl (timeouts.icmp);
-  }))
-  /* *INDENT-ON* */
+
+  REPLY_MACRO2 (VL_API_DET44_GET_TIMEOUTS_REPLY, ({
+		  rmp->udp = htonl (timeouts.udp);
+		  rmp->tcp_established = htonl (timeouts.tcp.established);
+		  rmp->tcp_transitory = htonl (timeouts.tcp.transitory);
+		  rmp->icmp = htonl (timeouts.icmp);
+		}))
 }
 
 /*
@@ -375,7 +363,7 @@ vl_api_det44_get_timeouts_t_handler (vl_api_det44_get_timeouts_t * mp)
  */
 
 static void
-vl_api_nat_det_add_del_map_t_handler (vl_api_nat_det_add_del_map_t * mp)
+vl_api_nat_det_add_del_map_t_handler (vl_api_nat_det_add_del_map_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_nat_det_add_del_map_reply_t *rmp;
@@ -384,13 +372,13 @@ vl_api_nat_det_add_del_map_t_handler (vl_api_nat_det_add_del_map_t * mp)
 
   clib_memcpy (&in_addr, mp->in_addr, 4);
   clib_memcpy (&out_addr, mp->out_addr, 4);
-  rv = snat_det_add_map (&in_addr, mp->in_plen, &out_addr,
-			 mp->out_plen, mp->is_add);
+  rv = snat_det_add_map (&in_addr, mp->in_plen, &out_addr, mp->out_plen,
+			 mp->is_add);
   REPLY_MACRO (VL_API_NAT_DET_ADD_DEL_MAP_REPLY);
 }
 
 static void
-vl_api_nat_det_forward_t_handler (vl_api_nat_det_forward_t * mp)
+vl_api_nat_det_forward_t_handler (vl_api_nat_det_forward_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_nat_det_forward_reply_t *rmp;
@@ -412,18 +400,16 @@ vl_api_nat_det_forward_t_handler (vl_api_nat_det_forward_t * mp)
   hi_port = lo_port + m->ports_per_host - 1;
 
 send_reply:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_NAT_DET_FORWARD_REPLY,
-  ({
-    rmp->out_port_lo = ntohs (lo_port);
-    rmp->out_port_hi = ntohs (hi_port);
-    clib_memcpy (rmp->out_addr, &out_addr, 4);
-  }))
-  /* *INDENT-ON* */
+
+  REPLY_MACRO2 (VL_API_NAT_DET_FORWARD_REPLY, ({
+		  rmp->out_port_lo = ntohs (lo_port);
+		  rmp->out_port_hi = ntohs (hi_port);
+		  clib_memcpy (rmp->out_addr, &out_addr, 4);
+		}))
 }
 
 static void
-vl_api_nat_det_reverse_t_handler (vl_api_nat_det_reverse_t * mp)
+vl_api_nat_det_reverse_t_handler (vl_api_nat_det_reverse_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_nat_det_reverse_reply_t *rmp;
@@ -443,16 +429,13 @@ vl_api_nat_det_reverse_t_handler (vl_api_nat_det_reverse_t * mp)
   snat_det_reverse (m, &out_addr, htons (mp->out_port), &in_addr);
 
 send_reply:
-  /* *INDENT-OFF* */
+
   REPLY_MACRO2 (VL_API_NAT_DET_REVERSE_REPLY,
-  ({
-    clib_memcpy (rmp->in_addr, &in_addr, 4);
-  }))
-  /* *INDENT-ON* */
+		({ clib_memcpy (rmp->in_addr, &in_addr, 4); }))
 }
 
 static void
-sent_nat_det_map_details (snat_det_map_t * m, vl_api_registration_t * reg,
+sent_nat_det_map_details (snat_det_map_t *m, vl_api_registration_t *reg,
 			  u32 context)
 {
   det44_main_t *dm = &det44_main;
@@ -474,7 +457,7 @@ sent_nat_det_map_details (snat_det_map_t * m, vl_api_registration_t * reg,
 }
 
 static void
-vl_api_nat_det_map_dump_t_handler (vl_api_nat_det_map_dump_t * mp)
+vl_api_nat_det_map_dump_t_handler (vl_api_nat_det_map_dump_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_registration_t *reg;
@@ -484,15 +467,13 @@ vl_api_nat_det_map_dump_t_handler (vl_api_nat_det_map_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
-  vec_foreach(m, dm->det_maps)
-    sent_nat_det_map_details(m, reg, mp->context);
-  /* *INDENT-ON* */
+  vec_foreach (m, dm->det_maps)
+    sent_nat_det_map_details (m, reg, mp->context);
 }
 
 static void
-vl_api_nat_det_close_session_out_t_handler (vl_api_nat_det_close_session_out_t
-					    * mp)
+vl_api_nat_det_close_session_out_t_handler (
+  vl_api_nat_det_close_session_out_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_nat_det_close_session_out_reply_t *rmp;
@@ -528,8 +509,8 @@ send_reply:
 }
 
 static void
-vl_api_nat_det_close_session_in_t_handler (vl_api_nat_det_close_session_in_t *
-					   mp)
+vl_api_nat_det_close_session_in_t_handler (
+  vl_api_nat_det_close_session_in_t *mp)
 {
   det44_main_t *dm = &det44_main;
   vl_api_nat_det_close_session_in_reply_t *rmp;
@@ -563,8 +544,8 @@ send_reply:
 }
 
 static void
-send_nat_det_session_details (snat_det_session_t * s,
-			      vl_api_registration_t * reg, u32 context)
+send_nat_det_session_details (snat_det_session_t *s,
+			      vl_api_registration_t *reg, u32 context)
 {
   det44_main_t *dm = &det44_main;
   vl_api_nat_det_session_details_t *rmp;
@@ -584,7 +565,7 @@ send_nat_det_session_details (snat_det_session_t * s,
 }
 
 static void
-vl_api_nat_det_session_dump_t_handler (vl_api_nat_det_session_dump_t * mp)
+vl_api_nat_det_session_dump_t_handler (vl_api_nat_det_session_dump_t *mp)
 {
   vl_api_registration_t *reg;
   ip4_address_t user_addr;
@@ -617,7 +598,7 @@ vl_api_nat_det_session_dump_t_handler (vl_api_nat_det_session_dump_t * mp)
 
 /* Set up the API message handling tables */
 clib_error_t *
-det44_api_hookup (vlib_main_t * vm)
+det44_api_hookup (vlib_main_t *vm)
 {
   det44_main_t *dm = &det44_main;
   dm->msg_id_base = setup_message_id_table ();

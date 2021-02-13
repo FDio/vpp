@@ -19,7 +19,7 @@
 #include <vppinfra/crc32.h>
 #include <vppinfra/xxhash.h>
 
-#if defined(clib_crc32c_uses_intrinsics) && !defined (__i386__)
+#if defined(clib_crc32c_uses_intrinsics) && !defined(__i386__)
 static_always_inline u32
 lb_hash_hash (u64 k0, u64 k1, u64 k2, u64 k3, u64 k4)
 {

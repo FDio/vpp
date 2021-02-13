@@ -29,19 +29,18 @@
 
 #include <vnet/devices/af_packet/af_packet.h>
 
-#define foreach_af_packet_input_error \
-  _(PARTIAL_PKT, "partial packet")
+#define foreach_af_packet_input_error _ (PARTIAL_PKT, "partial packet")
 
 typedef enum
 {
-#define _(f,s) AF_PACKET_INPUT_ERROR_##f,
+#define _(f, s) AF_PACKET_INPUT_ERROR_##f,
   foreach_af_packet_input_error
 #undef _
     AF_PACKET_INPUT_N_ERROR,
 } af_packet_input_error_t;
 
 static char *af_packet_input_error_strings[] = {
-#define _(n,s) s,
+#define _(n, s) s,
   foreach_af_packet_input_error
 #undef _
 };
@@ -55,15 +54,15 @@ typedef struct
 } af_packet_input_trace_t;
 
 static u8 *
-format_af_packet_input_trace (u8 * s, va_list * args)
+format_af_packet_input_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   af_packet_input_trace_t *t = va_arg (*args, af_packet_input_trace_t *);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "af_packet: hw_if_index %d next-index %d",
-	      t->hw_if_index, t->next_index);
+  s = format (s, "af_packet: hw_if_index %d next-index %d", t->hw_if_index,
+	      t->next_index);
 
   s =
     format (s,
@@ -73,25 +72,20 @@ format_af_packet_input_trace (u8 * s, va_list * args)
 	    " vlan_tpid %u"
 #endif
 	    ,
-	    format_white_space, indent + 2,
-	    format_white_space, indent + 4,
-	    t->tph.tp_status,
-	    t->tph.tp_len,
-	    t->tph.tp_snaplen,
-	    t->tph.tp_mac,
-	    t->tph.tp_net,
-	    format_white_space, indent + 4,
-	    t->tph.tp_sec,
+	    format_white_space, indent + 2, format_white_space, indent + 4,
+	    t->tph.tp_status, t->tph.tp_len, t->tph.tp_snaplen, t->tph.tp_mac,
+	    t->tph.tp_net, format_white_space, indent + 4, t->tph.tp_sec,
 	    t->tph.tp_nsec, format_ethernet_vlan_tci, t->tph.tp_vlan_tci
 #ifdef TP_STATUS_VLAN_TPID_VALID
-	    , t->tph.tp_vlan_tpid
+	    ,
+	    t->tph.tp_vlan_tpid
 #endif
     );
   return s;
 }
 
 always_inline void
-buffer_add_to_chain (vlib_main_t * vm, u32 bi, u32 first_bi, u32 prev_bi)
+buffer_add_to_chain (vlib_main_t *vm, u32 bi, u32 first_bi, u32 prev_bi)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   vlib_buffer_t *first_b = vlib_get_buffer (vm, first_bi);
@@ -188,8 +182,8 @@ mark_tcp_udp_cksum_calc (vlib_buffer_t *b, u8 *l4_hdr_sz)
 }
 
 always_inline uword
-af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			   vlib_frame_t * frame, af_packet_if_t * apif)
+af_packet_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+			   vlib_frame_t *frame, af_packet_if_t *apif)
 {
   af_packet_main_t *apm = &af_packet_main;
   struct tpacket2_hdr *tph;
@@ -214,9 +208,8 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       vec_validate (apm->rx_buffers[thread_index],
 		    VLIB_FRAME_SIZE + n_free_bufs - 1);
-      n_free_bufs +=
-	vlib_buffer_alloc (vm, &apm->rx_buffers[thread_index][n_free_bufs],
-			   VLIB_FRAME_SIZE);
+      n_free_bufs += vlib_buffer_alloc (
+	vm, &apm->rx_buffers[thread_index][n_free_bufs], VLIB_FRAME_SIZE);
       _vec_len (apm->rx_buffers[thread_index]) = n_free_bufs;
     }
 
@@ -274,9 +267,10 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    }
 		}
 	      clib_memcpy_fast (((u8 *) vlib_buffer_get_current (b0)) +
-				bytes_copied + vlan_len,
+				  bytes_copied + vlan_len,
 				(u8 *) tph + tph->tp_mac + offset +
-				bytes_copied, (bytes_to_copy - bytes_copied));
+				  bytes_copied,
+				(bytes_to_copy - bytes_copied));
 
 	      /* fill buffer header */
 	      b0->current_length = bytes_to_copy + vlan_len;
@@ -286,7 +280,7 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  b0->total_length_not_including_first_buffer = 0;
 		  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 		  vnet_buffer (b0)->sw_if_index[VLIB_RX] = apif->sw_if_index;
-		  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+		  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~0;
 		  first_bi0 = bi0;
 		  first_b0 = vlib_get_buffer (vm, first_bi0);
 		  if (tph->tp_status & TP_STATUS_CSUMNOTREADY)
@@ -328,9 +322,9 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* trace */
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (first_b0);
-	  if (PREDICT_FALSE
-	      (n_trace > 0 && vlib_trace_buffer (vm, node, next0, first_b0,
-						 /* follow_chain */ 0)))
+	  if (PREDICT_FALSE (n_trace > 0 &&
+			     vlib_trace_buffer (vm, node, next0, first_b0,
+						/* follow_chain */ 0)))
 	    {
 	      af_packet_input_trace_t *tr;
 	      vlib_set_trace_count (vm, node, --n_trace);
@@ -355,18 +349,17 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   apif->next_rx_frame = rx_frame;
 
-  vlib_increment_combined_counter
-    (vnet_get_main ()->interface_main.combined_sw_if_counters
-     + VNET_INTERFACE_COUNTER_RX,
-     vlib_get_thread_index (), apif->hw_if_index, n_rx_packets, n_rx_bytes);
+  vlib_increment_combined_counter (
+    vnet_get_main ()->interface_main.combined_sw_if_counters +
+      VNET_INTERFACE_COUNTER_RX,
+    vlib_get_thread_index (), apif->hw_if_index, n_rx_packets, n_rx_bytes);
 
   vnet_device_increment_rx_packets (thread_index, n_rx_packets);
   return n_rx_packets;
 }
 
-VLIB_NODE_FN (af_packet_input_node) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * frame)
+VLIB_NODE_FN (af_packet_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_rx_packets = 0;
   af_packet_main_t *apm = &af_packet_main;
@@ -383,7 +376,6 @@ VLIB_NODE_FN (af_packet_input_node) (vlib_main_t * vm,
   return n_rx_packets;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (af_packet_input_node) = {
   .name = "af-packet-input",
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
@@ -394,7 +386,6 @@ VLIB_REGISTER_NODE (af_packet_input_node) = {
   .n_errors = AF_PACKET_INPUT_N_ERROR,
   .error_strings = af_packet_input_error_strings,
 };
-/* *INDENT-ON* */
 
 
 /*

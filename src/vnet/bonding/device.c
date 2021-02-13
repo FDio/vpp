@@ -28,27 +28,27 @@
 #include <vnet/ip-neighbor/ip4_neighbor.h>
 #include <vnet/ip-neighbor/ip6_neighbor.h>
 
-#define foreach_bond_tx_error     \
-  _(NONE, "no error")             \
-  _(IF_DOWN, "interface down")    \
-  _(NO_MEMBER, "no member")
+#define foreach_bond_tx_error                                                 \
+  _ (NONE, "no error")                                                        \
+  _ (IF_DOWN, "interface down")                                               \
+  _ (NO_MEMBER, "no member")
 
 typedef enum
 {
-#define _(f,s) BOND_TX_ERROR_##f,
+#define _(f, s) BOND_TX_ERROR_##f,
   foreach_bond_tx_error
 #undef _
     BOND_TX_N_ERROR,
 } bond_tx_error_t;
 
 static char *bond_tx_error_strings[] = {
-#define _(n,s) s,
+#define _(n, s) s,
   foreach_bond_tx_error
 #undef _
 };
 
 static u8 *
-format_bond_tx_trace (u8 * s, va_list * args)
+format_bond_tx_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -58,17 +58,16 @@ format_bond_tx_trace (u8 * s, va_list * args)
 
   hw = vnet_get_sup_hw_interface (vnm, t->sw_if_index);
   hw1 = vnet_get_sup_hw_interface (vnm, t->bond_sw_if_index);
-  s = format (s, "src %U, dst %U, %s -> %s",
-	      format_ethernet_address, t->ethernet.src_address,
-	      format_ethernet_address, t->ethernet.dst_address,
-	      hw->name, hw1->name);
+  s = format (s, "src %U, dst %U, %s -> %s", format_ethernet_address,
+	      t->ethernet.src_address, format_ethernet_address,
+	      t->ethernet.dst_address, hw->name, hw1->name);
 
   return s;
 }
 
 #ifndef CLIB_MARCH_VARIANT
 u8 *
-format_bond_interface_name (u8 * s, va_list * args)
+format_bond_interface_name (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   bond_main_t *bm = &bond_main;
@@ -81,7 +80,7 @@ format_bond_interface_name (u8 * s, va_list * args)
 #endif
 
 static __clib_unused clib_error_t *
-bond_set_l2_mode_function (vnet_main_t * vnm,
+bond_set_l2_mode_function (vnet_main_t *vnm,
 			   struct vnet_hw_interface_t *bif_hw,
 			   i32 l2_if_adjust)
 {
@@ -97,28 +96,28 @@ bond_set_l2_mode_function (vnet_main_t * vnm,
     {
       /* Just added first L2 interface on this port */
       vec_foreach (sw_if_index, bif->members)
-      {
-	mif_hw = vnet_get_sup_hw_interface (vnm, *sw_if_index);
-	ethernet_set_flags (vnm, mif_hw->hw_if_index,
-			    ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
-      }
+	{
+	  mif_hw = vnet_get_sup_hw_interface (vnm, *sw_if_index);
+	  ethernet_set_flags (vnm, mif_hw->hw_if_index,
+			      ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
+	}
     }
   else if ((bif_hw->l2_if_count == 0) && (l2_if_adjust == -1))
     {
       /* Just removed last L2 subinterface on this port */
       vec_foreach (sw_if_index, bif->members)
-      {
-	mif_hw = vnet_get_sup_hw_interface (vnm, *sw_if_index);
-	ethernet_set_flags (vnm, mif_hw->hw_if_index,
-			    /*ETHERNET_INTERFACE_FLAG_DEFAULT_L3 */ 0);
-      }
+	{
+	  mif_hw = vnet_get_sup_hw_interface (vnm, *sw_if_index);
+	  ethernet_set_flags (vnm, mif_hw->hw_if_index,
+			      /*ETHERNET_INTERFACE_FLAG_DEFAULT_L3 */ 0);
+	}
     }
 
   return 0;
 }
 
 static __clib_unused clib_error_t *
-bond_subif_add_del_function (vnet_main_t * vnm, u32 hw_if_index,
+bond_subif_add_del_function (vnet_main_t *vnm, u32 hw_if_index,
 			     struct vnet_sw_interface_t *st, int is_add)
 {
   /* Nothing for now */
@@ -126,7 +125,7 @@ bond_subif_add_del_function (vnet_main_t * vnm, u32 hw_if_index,
 }
 
 static clib_error_t *
-bond_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+bond_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 {
   vnet_hw_interface_t *hif = vnet_get_hw_interface (vnm, hw_if_index);
   uword is_up = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) != 0;
@@ -141,7 +140,7 @@ bond_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 }
 
 static clib_error_t *
-bond_add_del_mac_address (vnet_hw_interface_t * hi, const u8 * address,
+bond_add_del_mac_address (vnet_hw_interface_t *hi, const u8 *address,
 			  u8 is_add)
 {
   vnet_main_t *vnm = vnet_get_main ();
@@ -150,59 +149,58 @@ bond_add_del_mac_address (vnet_hw_interface_t * hi, const u8 * address,
   vnet_hw_interface_t *s_hi;
   int i;
 
-
   bif = bond_get_bond_if_by_sw_if_index (hi->sw_if_index);
   if (!bif)
     {
-      return clib_error_return (0,
-				"No bond interface found for sw_if_index %u",
-				hi->sw_if_index);
+      return clib_error_return (
+	0, "No bond interface found for sw_if_index %u", hi->sw_if_index);
     }
 
   /* Add/del address on each member hw intf, they control the hardware */
   vec_foreach_index (i, bif->members)
-  {
-    s_hi = vnet_get_sup_hw_interface (vnm, vec_elt (bif->members, i));
-    error = vnet_hw_interface_add_del_mac_address (vnm, s_hi->hw_if_index,
-						   address, is_add);
+    {
+      s_hi = vnet_get_sup_hw_interface (vnm, vec_elt (bif->members, i));
+      error = vnet_hw_interface_add_del_mac_address (vnm, s_hi->hw_if_index,
+						     address, is_add);
 
-    if (error)
-      {
-	int j;
+      if (error)
+	{
+	  int j;
 
-	/* undo any that were completed before the failure */
-	for (j = i - 1; j > -1; j--)
-	  {
-	    s_hi = vnet_get_sup_hw_interface (vnm, vec_elt (bif->members, j));
-	    vnet_hw_interface_add_del_mac_address (vnm, s_hi->hw_if_index,
-						   address, !(is_add));
-	  }
+	  /* undo any that were completed before the failure */
+	  for (j = i - 1; j > -1; j--)
+	    {
+	      s_hi =
+		vnet_get_sup_hw_interface (vnm, vec_elt (bif->members, j));
+	      vnet_hw_interface_add_del_mac_address (vnm, s_hi->hw_if_index,
+						     address, !(is_add));
+	    }
 
-	return error;
-      }
-  }
+	  return error;
+	}
+    }
 
   return 0;
 }
 
 static_always_inline void
-bond_tx_add_to_queue (bond_per_thread_data_t * ptd, u32 port, u32 bi)
+bond_tx_add_to_queue (bond_per_thread_data_t *ptd, u32 port, u32 bi)
 {
   u32 idx = ptd->per_port_queue[port].n_buffers++;
   ptd->per_port_queue[port].buffers[idx] = bi;
 }
 
 static_always_inline u32
-bond_lb_broadcast (vlib_main_t * vm,
-		   bond_if_t * bif, vlib_buffer_t * b0, uword n_members)
+bond_lb_broadcast (vlib_main_t *vm, bond_if_t *bif, vlib_buffer_t *b0,
+		   uword n_members)
 {
   bond_main_t *bm = &bond_main;
   vlib_buffer_t *c0;
   int port;
   u32 sw_if_index;
   u16 thread_index = vm->thread_index;
-  bond_per_thread_data_t *ptd = vec_elt_at_index (bm->per_thread_data,
-						  thread_index);
+  bond_per_thread_data_t *ptd =
+    vec_elt_at_index (bm->per_thread_data, thread_index);
 
   for (port = 1; port < n_members; port++)
     {
@@ -219,19 +217,19 @@ bond_lb_broadcast (vlib_main_t * vm,
 }
 
 static_always_inline u32
-bond_lb_l2 (vlib_buffer_t * b0)
+bond_lb_l2 (vlib_buffer_t *b0)
 {
   ethernet_header_t *eth = vlib_buffer_get_current (b0);
-  u64 *dst = (u64 *) & eth->dst_address[0];
+  u64 *dst = (u64 *) &eth->dst_address[0];
   u64 a = clib_mem_unaligned (dst, u64);
-  u32 *src = (u32 *) & eth->src_address[2];
+  u32 *src = (u32 *) &eth->src_address[2];
   u32 b = clib_mem_unaligned (src, u32);
 
   return lb_hash_hash_2_tuples (a, b);
 }
 
 static_always_inline u16 *
-bond_locate_ethertype (ethernet_header_t * eth)
+bond_locate_ethertype (ethernet_header_t *eth)
 {
   u16 *ethertype_p;
   ethernet_vlan_header_t *vlan;
@@ -254,7 +252,7 @@ bond_locate_ethertype (ethernet_header_t * eth)
 }
 
 static_always_inline u32
-bond_lb_l23 (vlib_buffer_t * b0)
+bond_lb_l23 (vlib_buffer_t *b0)
 {
   ethernet_header_t *eth = vlib_buffer_get_current (b0);
   u8 ip_version;
@@ -276,15 +274,14 @@ bond_lb_l23 (vlib_buffer_t * b0)
     {
       u32 a, c;
 
-      mac1 = (u32 *) & eth->dst_address[0];
-      mac2 = (u32 *) & eth->dst_address[4];
-      mac3 = (u32 *) & eth->src_address[2];
+      mac1 = (u32 *) &eth->dst_address[0];
+      mac2 = (u32 *) &eth->dst_address[4];
+      mac3 = (u32 *) &eth->src_address[2];
 
       a = clib_mem_unaligned (mac1, u32) ^ clib_mem_unaligned (mac2, u32) ^
-	clib_mem_unaligned (mac3, u32);
-      c =
-	lb_hash_hash_2_tuples (clib_mem_unaligned (&ip4->address_pair, u64),
-			       a);
+	  clib_mem_unaligned (mac3, u32);
+      c = lb_hash_hash_2_tuples (clib_mem_unaligned (&ip4->address_pair, u64),
+				 a);
       return c;
     }
   else if (ip_version == 0x6)
@@ -293,28 +290,24 @@ bond_lb_l23 (vlib_buffer_t * b0)
       u32 c;
       ip6_header_t *ip6 = (ip6_header_t *) (eth + 1);
 
-      mac1 = (u32 *) & eth->dst_address[0];
-      mac2 = (u32 *) & eth->dst_address[4];
-      mac3 = (u32 *) & eth->src_address[2];
+      mac1 = (u32 *) &eth->dst_address[0];
+      mac2 = (u32 *) &eth->dst_address[4];
+      mac3 = (u32 *) &eth->src_address[2];
 
       a = clib_mem_unaligned (mac1, u32) ^ clib_mem_unaligned (mac2, u32) ^
-	clib_mem_unaligned (mac3, u32);
-      c =
-	lb_hash_hash (clib_mem_unaligned
-		      (&ip6->src_address.as_uword[0], uword),
-		      clib_mem_unaligned (&ip6->src_address.as_uword[1],
-					  uword),
-		      clib_mem_unaligned (&ip6->dst_address.as_uword[0],
-					  uword),
-		      clib_mem_unaligned (&ip6->dst_address.as_uword[1],
-					  uword), a);
+	  clib_mem_unaligned (mac3, u32);
+      c = lb_hash_hash (
+	clib_mem_unaligned (&ip6->src_address.as_uword[0], uword),
+	clib_mem_unaligned (&ip6->src_address.as_uword[1], uword),
+	clib_mem_unaligned (&ip6->dst_address.as_uword[0], uword),
+	clib_mem_unaligned (&ip6->dst_address.as_uword[1], uword), a);
       return c;
     }
   return bond_lb_l2 (b0);
 }
 
 static_always_inline u32
-bond_lb_l34 (vlib_buffer_t * b0)
+bond_lb_l34 (vlib_buffer_t *b0)
 {
   ethernet_header_t *eth = vlib_buffer_get_current (b0);
   u8 ip_version;
@@ -338,13 +331,12 @@ bond_lb_l34 (vlib_buffer_t * b0)
       tcp_header_t *tcp = (void *) (ip4 + 1);
 
       is_tcp_udp = (ip4->protocol == IP_PROTOCOL_TCP) ||
-	(ip4->protocol == IP_PROTOCOL_UDP);
+		   (ip4->protocol == IP_PROTOCOL_UDP);
       t1 = is_tcp_udp ? clib_mem_unaligned (&tcp->src, u16) : 0;
       t2 = is_tcp_udp ? clib_mem_unaligned (&tcp->dst, u16) : 0;
       a = t1 ^ t2;
-      return
-	lb_hash_hash_2_tuples (clib_mem_unaligned (&ip4->address_pair, u64),
-			       a);
+      return lb_hash_hash_2_tuples (
+	clib_mem_unaligned (&ip4->address_pair, u64), a);
     }
   else if (ip_version == 0x6)
     {
@@ -362,10 +354,9 @@ bond_lb_l34 (vlib_buffer_t * b0)
 	}
       else if (ip6->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS)
 	{
-	  ip6_hop_by_hop_header_t *hbh =
-	    (ip6_hop_by_hop_header_t *) (ip6 + 1);
-	  if ((hbh->protocol == IP_PROTOCOL_TCP)
-	      || (hbh->protocol == IP_PROTOCOL_UDP))
+	  ip6_hop_by_hop_header_t *hbh = (ip6_hop_by_hop_header_t *) (ip6 + 1);
+	  if ((hbh->protocol == IP_PROTOCOL_TCP) ||
+	      (hbh->protocol == IP_PROTOCOL_UDP))
 	    {
 	      is_tcp_udp = 1;
 	      tcp = (tcp_header_t *) ((u8 *) hbh + ((hbh->length + 1) << 3));
@@ -374,15 +365,11 @@ bond_lb_l34 (vlib_buffer_t * b0)
       t1 = is_tcp_udp ? clib_mem_unaligned (&tcp->src, u16) : 0;
       t2 = is_tcp_udp ? clib_mem_unaligned (&tcp->dst, u16) : 0;
       a = t1 ^ t2;
-      c =
-	lb_hash_hash (clib_mem_unaligned
-		      (&ip6->src_address.as_uword[0], uword),
-		      clib_mem_unaligned (&ip6->src_address.as_uword[1],
-					  uword),
-		      clib_mem_unaligned (&ip6->dst_address.as_uword[0],
-					  uword),
-		      clib_mem_unaligned (&ip6->dst_address.as_uword[1],
-					  uword), a);
+      c = lb_hash_hash (
+	clib_mem_unaligned (&ip6->src_address.as_uword[0], uword),
+	clib_mem_unaligned (&ip6->src_address.as_uword[1], uword),
+	clib_mem_unaligned (&ip6->dst_address.as_uword[0], uword),
+	clib_mem_unaligned (&ip6->dst_address.as_uword[1], uword), a);
       return c;
     }
 
@@ -390,7 +377,7 @@ bond_lb_l34 (vlib_buffer_t * b0)
 }
 
 static_always_inline u32
-bond_lb_round_robin (bond_if_t * bif, vlib_buffer_t * b0, uword n_members)
+bond_lb_round_robin (bond_if_t *bif, vlib_buffer_t *b0, uword n_members)
 {
   bif->lb_rr_last_index++;
   if (bif->lb_rr_last_index >= n_members)
@@ -400,8 +387,8 @@ bond_lb_round_robin (bond_if_t * bif, vlib_buffer_t * b0, uword n_members)
 }
 
 static_always_inline void
-bond_tx_inline (vlib_main_t * vm, bond_if_t * bif, vlib_buffer_t ** b,
-		u32 * h, u32 n_left, uword n_members, u32 lb_alg)
+bond_tx_inline (vlib_main_t *vm, bond_if_t *bif, vlib_buffer_t **b, u32 *h,
+		u32 n_left, uword n_members, u32 lb_alg)
 {
   while (n_left >= 4)
     {
@@ -497,8 +484,7 @@ bond_tx_inline (vlib_main_t * vm, bond_if_t * bif, vlib_buffer_t ** b,
 }
 
 static_always_inline void
-bond_hash_to_port (u32 * h, u32 n_left, u32 n_members,
-		   int use_modulo_shortcut)
+bond_hash_to_port (u32 *h, u32 n_left, u32 n_members, int use_modulo_shortcut)
 {
   u32 mask = n_members - 1;
 
@@ -567,8 +553,8 @@ bond_hash_to_port (u32 * h, u32 n_left, u32 n_members,
 }
 
 static_always_inline void
-bond_update_sw_if_index (bond_per_thread_data_t * ptd, bond_if_t * bif,
-			 u32 * bi, vlib_buffer_t ** b, u32 * data, u32 n_left,
+bond_update_sw_if_index (bond_per_thread_data_t *ptd, bond_if_t *bif, u32 *bi,
+			 vlib_buffer_t **b, u32 *data, u32 n_left,
 			 int single_sw_if_index)
 {
   u32 sw_if_index = data[0];
@@ -646,15 +632,15 @@ bond_update_sw_if_index (bond_per_thread_data_t * ptd, bond_if_t * bif,
 }
 
 static_always_inline void
-bond_tx_trace (vlib_main_t * vm, vlib_node_runtime_t * node, bond_if_t * bif,
-	       vlib_buffer_t ** b, u32 n_left, u32 * h)
+bond_tx_trace (vlib_main_t *vm, vlib_node_runtime_t *node, bond_if_t *bif,
+	       vlib_buffer_t **b, u32 n_left, u32 *h)
 {
   uword n_trace = vlib_get_trace_count (vm, node);
 
   while (n_trace > 0 && n_left > 0)
     {
-      if (PREDICT_TRUE
-	  (vlib_trace_buffer (vm, node, 0, b[0], 0 /* follow_chain */ )))
+      if (PREDICT_TRUE (
+	    vlib_trace_buffer (vm, node, 0, b[0], 0 /* follow_chain */)))
 	{
 	  bond_packet_trace_t *t0;
 	  ethernet_header_t *eth;
@@ -681,9 +667,8 @@ bond_tx_trace (vlib_main_t * vm, vlib_node_runtime_t * node, bond_if_t * bif,
     }
 }
 
-VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
-					  vlib_node_runtime_t * node,
-					  vlib_frame_t * frame)
+VNET_DEVICE_CLASS_TX_FN (bond_dev_class)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
   bond_main_t *bm = &bond_main;
@@ -695,17 +680,16 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
   u32 n_left = frame->n_vectors;
   u32 hashes[VLIB_FRAME_SIZE], *h;
   vnet_main_t *vnm = vnet_get_main ();
-  bond_per_thread_data_t *ptd = vec_elt_at_index (bm->per_thread_data,
-						  thread_index);
+  bond_per_thread_data_t *ptd =
+    vec_elt_at_index (bm->per_thread_data, thread_index);
   u32 p, sw_if_index;
 
   if (PREDICT_FALSE (bif->admin_up == 0))
     {
       vlib_buffer_free (vm, vlib_frame_vector_args (frame), frame->n_vectors);
-      vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters +
-				     VNET_INTERFACE_COUNTER_DROP,
-				     thread_index, bif->sw_if_index,
-				     frame->n_vectors);
+      vlib_increment_simple_counter (
+	vnet_main.interface_main.sw_if_counters + VNET_INTERFACE_COUNTER_DROP,
+	thread_index, bif->sw_if_index, frame->n_vectors);
       vlib_error_count (vm, node->node_index, BOND_TX_ERROR_IF_DOWN,
 			frame->n_vectors);
       return frame->n_vectors;
@@ -715,10 +699,9 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
   if (PREDICT_FALSE (n_members == 0))
     {
       vlib_buffer_free (vm, vlib_frame_vector_args (frame), frame->n_vectors);
-      vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters +
-				     VNET_INTERFACE_COUNTER_DROP,
-				     thread_index, bif->sw_if_index,
-				     frame->n_vectors);
+      vlib_increment_simple_counter (
+	vnet_main.interface_main.sw_if_counters + VNET_INTERFACE_COUNTER_DROP,
+	thread_index, bif->sw_if_index, frame->n_vectors);
       vlib_error_count (vm, node->node_index, BOND_TX_ERROR_NO_MEMBER,
 			frame->n_vectors);
       return frame->n_vectors;
@@ -798,8 +781,7 @@ done:
 }
 
 static walk_rc_t
-bond_active_interface_switch_cb (vnet_main_t * vnm, u32 sw_if_index,
-				 void *arg)
+bond_active_interface_switch_cb (vnet_main_t *vnm, u32 sw_if_index, void *arg)
 {
   bond_main_t *bm = &bond_main;
 
@@ -810,7 +792,7 @@ bond_active_interface_switch_cb (vnet_main_t * vnm, u32 sw_if_index,
 }
 
 static uword
-bond_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
+bond_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   vnet_main_t *vnm = vnet_get_main ();
   uword event_type, *event_data = 0;
@@ -836,16 +818,13 @@ bond_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (bond_process_node) = {
   .function = bond_process,
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "bond-process",
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (bond_dev_class) = {
   .name = "bond",
   .tx_function_n_errors = BOND_TX_N_ERROR,
@@ -858,10 +837,8 @@ VNET_DEVICE_CLASS (bond_dev_class) = {
   .mac_addr_add_del_function = bond_add_del_mac_address,
 };
 
-/* *INDENT-ON* */
-
 static clib_error_t *
-bond_member_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
+bond_member_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
 {
   bond_main_t *bm = &bond_main;
   member_if_t *mif;

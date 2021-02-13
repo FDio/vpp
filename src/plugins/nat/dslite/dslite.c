@@ -21,13 +21,12 @@
 dslite_main_t dslite_main;
 fib_source_t nat_fib_src_hi;
 
-clib_error_t *dslite_api_hookup (vlib_main_t * vm);
+clib_error_t *dslite_api_hookup (vlib_main_t *vm);
 
-void
-add_del_dslite_pool_addr_cb (ip4_address_t addr, u8 is_add, void *opaque);
+void add_del_dslite_pool_addr_cb (ip4_address_t addr, u8 is_add, void *opaque);
 
 static clib_error_t *
-dslite_init (vlib_main_t * vm)
+dslite_init (vlib_main_t *vm)
 {
   dslite_main_t *dm = &dslite_main;
   vlib_thread_registration_t *tr;
@@ -84,8 +83,7 @@ dslite_init (vlib_main_t * vm)
 
   dslite_dpo_module_init ();
 
-  nat_fib_src_hi = fib_source_allocate ("dslite-hi",
-					FIB_SOURCE_PRIORITY_HI,
+  nat_fib_src_hi = fib_source_allocate ("dslite-hi", FIB_SOURCE_PRIORITY_HI,
 					FIB_SOURCE_BH_SIMPLE);
 
   return dslite_api_hookup (vm);
@@ -101,29 +99,29 @@ dslite_init_datastructures (void)
   u32 b4_buckets = 128;
   u32 b4_memory_size = 64 << 20;
 
-  /* *INDENT-OFF* */
   vec_foreach (td, dm->per_thread_data)
     {
       clib_bihash_init_24_8 (&td->in2out, "dslite in2out", translation_buckets,
-                             translation_memory_size);
+			     translation_memory_size);
 
       clib_bihash_init_8_8 (&td->out2in, "dslite out2in", translation_buckets,
-                            translation_memory_size);
+			    translation_memory_size);
 
-      clib_bihash_init_16_8 (&td->b4_hash, "dslite b4s", b4_buckets, b4_memory_size);
+      clib_bihash_init_16_8 (&td->b4_hash, "dslite b4s", b4_buckets,
+			     b4_memory_size);
     }
-  /* *INDENT-ON* */
+
   dm->is_enabled = 1;
 }
 
 void
-dslite_set_ce (dslite_main_t * dm, u8 set)
+dslite_set_ce (dslite_main_t *dm, u8 set)
 {
   dm->is_ce = (set != 0);
 }
 
 static clib_error_t *
-dslite_config (vlib_main_t * vm, unformat_input_t * input)
+dslite_config (vlib_main_t *vm, unformat_input_t *input)
 {
   dslite_main_t *dm = &dslite_main;
 
@@ -138,7 +136,7 @@ dslite_config (vlib_main_t * vm, unformat_input_t * input)
 VLIB_CONFIG_FUNCTION (dslite_config, "dslite");
 
 int
-dslite_set_aftr_ip6_addr (dslite_main_t * dm, ip6_address_t * addr)
+dslite_set_aftr_ip6_addr (dslite_main_t *dm, ip6_address_t *addr)
 {
   dpo_id_t dpo = DPO_INVALID;
 
@@ -177,14 +175,14 @@ dslite_set_aftr_ip6_addr (dslite_main_t * dm, ip6_address_t * addr)
 }
 
 int
-dslite_set_aftr_ip4_addr (dslite_main_t * dm, ip4_address_t * addr)
+dslite_set_aftr_ip4_addr (dslite_main_t *dm, ip4_address_t *addr)
 {
   dm->aftr_ip4_addr.as_u32 = addr->as_u32;
   return 0;
 }
 
 int
-dslite_set_b4_ip6_addr (dslite_main_t * dm, ip6_address_t * addr)
+dslite_set_b4_ip6_addr (dslite_main_t *dm, ip6_address_t *addr)
 {
   if (!dm->is_enabled)
     dslite_init_datastructures ();
@@ -217,7 +215,7 @@ dslite_set_b4_ip6_addr (dslite_main_t * dm, ip6_address_t * addr)
 }
 
 int
-dslite_set_b4_ip4_addr (dslite_main_t * dm, ip4_address_t * addr)
+dslite_set_b4_ip4_addr (dslite_main_t *dm, ip4_address_t *addr)
 {
   if (dm->is_ce)
     {
@@ -255,20 +253,19 @@ add_del_dslite_pool_addr_cb (ip4_address_t addr, u8 is_add, void *opaque)
 }
 
 u8 *
-format_dslite_trace (u8 * s, va_list * args)
+format_dslite_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   dslite_trace_t *t = va_arg (*args, dslite_trace_t *);
 
-  s =
-    format (s, "next index %d, session %d", t->next_index, t->session_index);
+  s = format (s, "next index %d, session %d", t->next_index, t->session_index);
 
   return s;
 }
 
 u8 *
-format_dslite_ce_trace (u8 * s, va_list * args)
+format_dslite_ce_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -281,13 +278,10 @@ format_dslite_ce_trace (u8 * s, va_list * args)
 
 VLIB_INIT_FUNCTION (dslite_init);
 
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () =
-{
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Dual-Stack Lite",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

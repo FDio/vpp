@@ -21,7 +21,7 @@
 vnet_flow_main_t flow_main;
 
 int
-vnet_flow_get_range (vnet_main_t * vnm, char *owner, u32 count, u32 * start)
+vnet_flow_get_range (vnet_main_t *vnm, char *owner, u32 count, u32 *start)
 {
   vnet_flow_main_t *fm = &flow_main;
   vnet_flow_range_t *r;
@@ -40,7 +40,7 @@ vnet_flow_get_range (vnet_main_t * vnm, char *owner, u32 count, u32 * start)
 }
 
 int
-vnet_flow_add (vnet_main_t * vnm, vnet_flow_t * flow, u32 * flow_index)
+vnet_flow_add (vnet_main_t *vnm, vnet_flow_t *flow, u32 *flow_index)
 {
   vnet_flow_main_t *fm = &flow_main;
   vnet_flow_t *f;
@@ -64,7 +64,7 @@ vnet_get_flow (u32 flow_index)
 }
 
 int
-vnet_flow_del (vnet_main_t * vnm, u32 flow_index)
+vnet_flow_del (vnet_main_t *vnm, u32 flow_index)
 {
   vnet_flow_main_t *fm = &flow_main;
   vnet_flow_t *f = vnet_get_flow (flow_index);
@@ -74,12 +74,8 @@ vnet_flow_del (vnet_main_t * vnm, u32 flow_index)
   if (f == 0)
     return VNET_FLOW_ERROR_NO_SUCH_ENTRY;
 
-  /* *INDENT-OFF* */
   hash_foreach (hw_if_index, private_data, f->private_data,
-    ({
-     vnet_flow_disable (vnm, flow_index, hw_if_index);
-    }));
-  /* *INDENT-ON* */
+		({ vnet_flow_disable (vnm, flow_index, hw_if_index); }));
 
   hash_free (f->private_data);
   clib_memset (f, 0, sizeof (*f));
@@ -88,7 +84,7 @@ vnet_flow_del (vnet_main_t * vnm, u32 flow_index)
 }
 
 int
-vnet_flow_enable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
+vnet_flow_enable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index)
 {
   vnet_flow_t *f = vnet_get_flow (flow_index);
   vnet_hw_interface_t *hi;
@@ -115,14 +111,13 @@ vnet_flow_enable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
   if (f->actions & VNET_FLOW_ACTION_REDIRECT_TO_NODE)
     {
       vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
-      f->redirect_device_input_next_index =
-	vlib_node_add_next (vnm->vlib_main, hw->input_node_index,
-			    f->redirect_node_index);
+      f->redirect_device_input_next_index = vlib_node_add_next (
+	vnm->vlib_main, hw->input_node_index, f->redirect_node_index);
     }
 
-  rv = dev_class->flow_ops_function (vnm, VNET_FLOW_DEV_OP_ADD_FLOW,
-				     hi->dev_instance, flow_index,
-				     &private_data);
+  rv =
+    dev_class->flow_ops_function (vnm, VNET_FLOW_DEV_OP_ADD_FLOW,
+				  hi->dev_instance, flow_index, &private_data);
 
   if (rv)
     return rv;
@@ -132,7 +127,7 @@ vnet_flow_enable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
 }
 
 int
-vnet_flow_disable (vnet_main_t * vnm, u32 flow_index, u32 hw_if_index)
+vnet_flow_disable (vnet_main_t *vnm, u32 flow_index, u32 hw_if_index)
 {
   vnet_flow_t *f = vnet_get_flow (flow_index);
   vnet_hw_interface_t *hi;

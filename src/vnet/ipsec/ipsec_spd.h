@@ -17,28 +17,28 @@
 
 #include <vlib/vlib.h>
 
-#define foreach_ipsec_spd_policy_type                 \
-  _(IP4_OUTBOUND, "ip4-outbound")                     \
-  _(IP6_OUTBOUND, "ip6-outbound")                     \
-  _(IP4_INBOUND_PROTECT, "ip4-inbound-protect")       \
-  _(IP6_INBOUND_PROTECT, "ip6-inbound-protect")       \
-  _(IP4_INBOUND_BYPASS,  "ip4-inbound-bypass")        \
-  _(IP6_INBOUND_BYPASS,  "ip6-inbound-bypass")	      \
-  _(IP4_INBOUND_DISCARD,  "ip4-inbound-discard")      \
-  _(IP6_INBOUND_DISCARD,  "ip6-inbound-discard")
+#define foreach_ipsec_spd_policy_type                                         \
+  _ (IP4_OUTBOUND, "ip4-outbound")                                            \
+  _ (IP6_OUTBOUND, "ip6-outbound")                                            \
+  _ (IP4_INBOUND_PROTECT, "ip4-inbound-protect")                              \
+  _ (IP6_INBOUND_PROTECT, "ip6-inbound-protect")                              \
+  _ (IP4_INBOUND_BYPASS, "ip4-inbound-bypass")                                \
+  _ (IP6_INBOUND_BYPASS, "ip6-inbound-bypass")                                \
+  _ (IP4_INBOUND_DISCARD, "ip4-inbound-discard")                              \
+  _ (IP6_INBOUND_DISCARD, "ip6-inbound-discard")
 
 typedef enum ipsec_spd_policy_t_
 {
-#define _(s,v) IPSEC_SPD_POLICY_##s,
+#define _(s, v) IPSEC_SPD_POLICY_##s,
   foreach_ipsec_spd_policy_type
 #undef _
     IPSEC_SPD_POLICY_N_TYPES,
 } ipsec_spd_policy_type_t;
 
-#define FOR_EACH_IPSEC_SPD_POLICY_TYPE(_t)      \
+#define FOR_EACH_IPSEC_SPD_POLICY_TYPE(_t)                                    \
   for (_t = 0; _t < IPSEC_SPD_POLICY_N_TYPES; _t++)
 
-extern u8 *format_ipsec_policy_type (u8 * s, va_list * args);
+extern u8 *format_ipsec_policy_type (u8 *s, va_list *args);
 
 /**
  * @brief A Secruity Policy Database
@@ -54,15 +54,15 @@ typedef struct
 /**
  * @brief Add/Delete a SPD
  */
-extern int ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add);
+extern int ipsec_add_del_spd (vlib_main_t *vm, u32 spd_id, int is_add);
 
 /**
  * @brief Bind/attach a SPD to an interface
  */
-extern int ipsec_set_interface_spd (vlib_main_t * vm,
-				    u32 sw_if_index, u32 spd_id, int is_add);
+extern int ipsec_set_interface_spd (vlib_main_t *vm, u32 sw_if_index,
+				    u32 spd_id, int is_add);
 
-extern u8 *format_ipsec_spd (u8 * s, va_list * args);
+extern u8 *format_ipsec_spd (u8 *s, va_list *args);
 
 #endif /* __IPSEC_SPD_H__ */
 

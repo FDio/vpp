@@ -114,14 +114,13 @@ mheap_get_trace (uword offset, uword size)
 	    {
 	      hash_pair_t *p;
 	      mheap_trace_t *q;
-            /* *INDENT-OFF* */
-	    hash_foreach_pair (p, tm->trace_by_callers,
-            ({
-              q = uword_to_pointer (p->key, mheap_trace_t *);
-              ASSERT (q >= old_start && q < old_end);
-	      p->key = pointer_to_uword (tm->traces + (q - old_start));
-	    }));
-            /* *INDENT-ON* */
+
+	      hash_foreach_pair (
+		p, tm->trace_by_callers, ({
+		  q = uword_to_pointer (p->key, mheap_trace_t *);
+		  ASSERT (q >= old_start && q < old_end);
+		  p->key = pointer_to_uword (tm->traces + (q - old_start));
+		}));
 	    }
 	  trace_index = t - tm->traces;
 	}
@@ -135,7 +134,7 @@ mheap_get_trace (uword offset, uword size)
 
   t->n_allocations += 1;
   t->n_bytes += size;
-  t->offset = offset;		/* keep a sample to autopsy */
+  t->offset = offset; /* keep a sample to autopsy */
   hash_set (tm->trace_index_by_offset, offset, t - tm->traces);
 
 out:
@@ -188,7 +187,7 @@ mheap_put_trace (uword offset, uword size)
 }
 
 always_inline void
-mheap_trace_main_free (mheap_trace_main_t * tm)
+mheap_trace_main_free (mheap_trace_main_t *tm)
 {
   vec_free (tm->traces);
   vec_free (tm->trace_free_list);
@@ -209,8 +208,8 @@ clib_mem_create_heap_internal (void *base, uword size,
     {
       log2_page_sz = clib_mem_log2_page_size_validate (log2_page_sz);
       size = round_pow2 (size, clib_mem_page_bytes (log2_page_sz));
-      base = clib_mem_vm_map_internal (0, log2_page_sz, size, -1, 0,
-				       "main heap");
+      base =
+	clib_mem_vm_map_internal (0, log2_page_sz, size, -1, 0, "main heap");
 
       if (base == CLIB_MEM_VM_MAP_FAILED)
 	return 0;
@@ -252,7 +251,7 @@ clib_mem_init_internal (void *base, uword size,
   clib_mem_main_init ();
 
   h = clib_mem_create_heap_internal (base, size, log2_page_sz,
-				     1 /*is_locked */ , "main heap");
+				     1 /*is_locked */, "main heap");
 
   clib_mem_set_heap (h);
 
@@ -298,7 +297,7 @@ clib_mem_destroy (void)
 }
 
 u8 *
-format_clib_mem_usage (u8 * s, va_list * va)
+format_clib_mem_usage (u8 *s, va_list *va)
 {
   int verbose = va_arg (*va, int);
   return format (s, "$$$$ heap at %llx verbose %d", clib_mem_get_heap (),
@@ -322,7 +321,7 @@ format_clib_mem_usage (u8 * s, va_list * va)
  */
 
 u8 *
-format_msize (u8 * s, va_list * va)
+format_msize (u8 *s, va_list *va)
 {
   uword a = va_arg (*va, uword);
 
@@ -351,7 +350,7 @@ mheap_trace_sort (const void *_t1, const void *_t2)
 }
 
 u8 *
-format_mheap_trace (u8 * s, va_list * va)
+format_mheap_trace (u8 *s, va_list *va)
 {
   mheap_trace_main_t *tm = va_arg (*va, mheap_trace_main_t *);
   int verbose = va_arg (*va, int);
@@ -376,36 +375,35 @@ format_mheap_trace (u8 * s, va_list * va)
       total_objects_traced = 0;
       s = format (s, "\n");
       vec_foreach (t, traces_copy)
-      {
-	/* Skip over free elements. */
-	if (t->n_allocations == 0)
-	  continue;
+	{
+	  /* Skip over free elements. */
+	  if (t->n_allocations == 0)
+	    continue;
 
-	total_objects_traced += t->n_allocations;
+	  total_objects_traced += t->n_allocations;
 
-	/* When not verbose only report allocations of more than 1k. */
-	if (!verbose && t->n_bytes < 1024)
-	  continue;
+	  /* When not verbose only report allocations of more than 1k. */
+	  if (!verbose && t->n_bytes < 1024)
+	    continue;
 
-	if (t == traces_copy)
-	  s = format (s, "%=9s%=9s %=10s Traceback\n", "Bytes", "Count",
-		      "Sample");
-	s = format (s, "%9d%9d %p", t->n_bytes, t->n_allocations, t->offset);
-	indent = format_get_indent (s);
-	for (i = 0; i < ARRAY_LEN (t->callers) && t->callers[i]; i++)
-	  {
-	    if (i > 0)
-	      s = format (s, "%U", format_white_space, indent);
+	  if (t == traces_copy)
+	    s = format (s, "%=9s%=9s %=10s Traceback\n", "Bytes", "Count",
+			"Sample");
+	  s = format (s, "%9d%9d %p", t->n_bytes, t->n_allocations, t->offset);
+	  indent = format_get_indent (s);
+	  for (i = 0; i < ARRAY_LEN (t->callers) && t->callers[i]; i++)
+	    {
+	      if (i > 0)
+		s = format (s, "%U", format_white_space, indent);
 #if defined(CLIB_UNIX) && !defined(__APPLE__)
-	    /* $$$$ does this actually work? */
-	    s =
-	      format (s, " %U\n", format_clib_elf_symbol_with_address,
-		      t->callers[i]);
+	      /* $$$$ does this actually work? */
+	      s = format (s, " %U\n", format_clib_elf_symbol_with_address,
+			  t->callers[i]);
 #else
-	    s = format (s, " %p\n", t->callers[i]);
+	      s = format (s, " %p\n", t->callers[i]);
 #endif
-	  }
-      }
+	    }
+	}
 
       s = format (s, "%d total traced objects\n", total_objects_traced);
 
@@ -419,7 +417,7 @@ format_mheap_trace (u8 * s, va_list * va)
 }
 
 __clib_export u8 *
-format_clib_mem_heap (u8 * s, va_list * va)
+format_clib_mem_heap (u8 *s, va_list *va)
 {
   clib_mem_heap_t *heap = va_arg (*va, clib_mem_heap_t *);
   int verbose = va_arg (*va, int);
@@ -432,11 +430,12 @@ format_clib_mem_heap (u8 * s, va_list * va)
 
   mi = mspace_mallinfo (heap->mspace);
 
-  s = format (s, "base %p, size %U",
-	      heap->base, format_memory_size, heap->size);
+  s =
+    format (s, "base %p, size %U", heap->base, format_memory_size, heap->size);
 
-#define _(i,v,str) \
-  if (heap->flags & CLIB_MEM_HEAP_F_##v) s = format (s, ", %s", str);
+#define _(i, v, str)                                                          \
+  if (heap->flags & CLIB_MEM_HEAP_F_##v)                                      \
+    s = format (s, ", %s", str);
   foreach_clib_mem_heap_flag;
 #undef _
 
@@ -451,17 +450,16 @@ format_clib_mem_heap (u8 * s, va_list * va)
 		  format_clib_mem_page_stats, &stats);
     }
 
-  s = format (s, "\n%Utotal: %U, used: %U, free: %U, trimmable: %U",
-	      format_white_space, indent,
-	      format_msize, mi.arena,
-	      format_msize, mi.uordblks,
-	      format_msize, mi.fordblks, format_msize, mi.keepcost);
+  s =
+    format (s, "\n%Utotal: %U, used: %U, free: %U, trimmable: %U",
+	    format_white_space, indent, format_msize, mi.arena, format_msize,
+	    mi.uordblks, format_msize, mi.fordblks, format_msize, mi.keepcost);
   if (verbose > 0)
     {
       s = format (s, "\n%Ufree chunks %llu free fastbin blks %llu",
 		  format_white_space, indent + 2, mi.ordblks, mi.smblks);
-      s = format (s, "\n%Umax total allocated %U",
-		  format_white_space, indent + 2, format_msize, mi.usmblks);
+      s = format (s, "\n%Umax total allocated %U", format_white_space,
+		  indent + 2, format_msize, mi.usmblks);
     }
 
   if (mspace_is_traced (heap->mspace))
@@ -470,7 +468,7 @@ format_clib_mem_heap (u8 * s, va_list * va)
 }
 
 __clib_export void
-clib_mem_get_heap_usage (clib_mem_heap_t * heap, clib_mem_usage_t * usage)
+clib_mem_get_heap_usage (clib_mem_heap_t *heap, clib_mem_usage_t *usage)
 {
   struct dlmallinfo mi = mspace_mallinfo (heap->mspace);
 
@@ -488,7 +486,7 @@ clib_mem_get_heap_usage (clib_mem_heap_t * heap, clib_mem_usage_t * usage)
 uword clib_mem_validate_serial = 0;
 
 __clib_export void
-mheap_trace (clib_mem_heap_t * h, int enable)
+mheap_trace (clib_mem_heap_t *h, int enable)
 {
   (void) mspace_enable_disable_trace (h->mspace, enable);
 
@@ -553,14 +551,14 @@ clib_mem_create_heap (void *base, uword size, int is_locked, char *fmt, ...)
   else
     name = fmt;
 
-  h = clib_mem_create_heap_internal (base, size, log2_page_sz, is_locked,
-				     name);
+  h =
+    clib_mem_create_heap_internal (base, size, log2_page_sz, is_locked, name);
   vec_free (s);
   return h;
 }
 
 __clib_export void
-clib_mem_destroy_heap (clib_mem_heap_t * h)
+clib_mem_destroy_heap (clib_mem_heap_t *h)
 {
   mheap_trace_main_t *tm = &mheap_trace_main;
 
@@ -573,20 +571,20 @@ clib_mem_destroy_heap (clib_mem_heap_t * h)
 }
 
 __clib_export uword
-clib_mem_get_heap_free_space (clib_mem_heap_t * h)
+clib_mem_get_heap_free_space (clib_mem_heap_t *h)
 {
   struct dlmallinfo dlminfo = mspace_mallinfo (h->mspace);
   return dlminfo.fordblks;
 }
 
 __clib_export void *
-clib_mem_get_heap_base (clib_mem_heap_t * h)
+clib_mem_get_heap_base (clib_mem_heap_t *h)
 {
   return h->base;
 }
 
 __clib_export uword
-clib_mem_get_heap_size (clib_mem_heap_t * heap)
+clib_mem_get_heap_size (clib_mem_heap_t *heap)
 {
   return heap->size;
 }

@@ -20,8 +20,8 @@
 #include <nsh/nsh.h>
 
 always_inline void
-nsh_md2_encap (vlib_buffer_t * b, nsh_base_header_t * hdr,
-	       nsh_entry_t * nsh_entry)
+nsh_md2_encap (vlib_buffer_t *b, nsh_base_header_t *hdr,
+	       nsh_entry_t *nsh_entry)
 {
   nsh_main_t *nm = &nsh_main;
   nsh_base_header_t *nsh_base;
@@ -36,7 +36,7 @@ nsh_md2_encap (vlib_buffer_t * b, nsh_base_header_t * hdr,
   opt0 = (nsh_tlv_header_t *) (nsh_entry->tlvs_data);
   limit0 = (nsh_tlv_header_t *) (nsh_entry->tlvs_data + nsh_entry->tlvs_len);
 
-  nsh_md2 = (nsh_tlv_header_t *) ((u8 *) hdr /*nsh_entry->rewrite */  +
+  nsh_md2 = (nsh_tlv_header_t *) ((u8 *) hdr /*nsh_entry->rewrite */ +
 				  sizeof (nsh_base_header_t));
   nsh_entry->rewrite_size = sizeof (nsh_base_header_t);
 
@@ -68,7 +68,6 @@ nsh_md2_encap (vlib_buffer_t * b, nsh_base_header_t * hdr,
 
 	  nsh_md2 = (nsh_tlv_header_t *) (((u8 *) nsh_md2) + new_option_size);
 	  opt0 = (nsh_tlv_header_t *) (((u8 *) opt0) + old_option_size);
-
 	}
       else
 	{
@@ -80,15 +79,13 @@ nsh_md2_encap (vlib_buffer_t * b, nsh_base_header_t * hdr,
   /* update nsh header's length */
   nsh_base = (nsh_base_header_t *) nsh_entry->rewrite;
   nsh_base->length = (nsh_base->length & NSH_TTL_L2_MASK) |
-    ((nsh_entry->rewrite_size >> 2) & NSH_LEN_MASK);
+		     ((nsh_entry->rewrite_size >> 2) & NSH_LEN_MASK);
   return;
 }
 
 always_inline void
-nsh_md2_swap (vlib_buffer_t * b,
-	      nsh_base_header_t * hdr,
-	      u32 header_len,
-	      nsh_entry_t * nsh_entry, u32 * next, u32 drop_node_val)
+nsh_md2_swap (vlib_buffer_t *b, nsh_base_header_t *hdr, u32 header_len,
+	      nsh_entry_t *nsh_entry, u32 *next, u32 drop_node_val)
 {
   nsh_main_t *nm = &nsh_main;
   nsh_base_header_t *nsh_base;
@@ -135,7 +132,6 @@ nsh_md2_swap (vlib_buffer_t * b,
 	  nsh_md2 = (nsh_tlv_header_t *) (((u8 *) nsh_md2) + new_option_size);
 
 	  opt0 = (nsh_tlv_header_t *) (((u8 *) opt0) + old_option_size);
-
 	}
       else
 	{
@@ -147,14 +143,13 @@ nsh_md2_swap (vlib_buffer_t * b,
   /* update nsh header's length */
   nsh_base = (nsh_base_header_t *) nsh_entry->rewrite;
   nsh_base->length = (nsh_base->length & NSH_TTL_L2_MASK) |
-    ((nsh_entry->rewrite_size >> 2) & NSH_LEN_MASK);
+		     ((nsh_entry->rewrite_size >> 2) & NSH_LEN_MASK);
   return;
 }
 
 always_inline void
-nsh_md2_decap (vlib_buffer_t * b,
-	       nsh_base_header_t * hdr,
-	       u32 * header_len, u32 * next, u32 drop_node_val)
+nsh_md2_decap (vlib_buffer_t *b, nsh_base_header_t *hdr, u32 *header_len,
+	       u32 *next, u32 drop_node_val)
 {
   nsh_main_t *nm = &nsh_main;
   nsh_md2_data_t *opt0;
@@ -186,9 +181,8 @@ nsh_md2_decap (vlib_buffer_t * b,
 	}
       /* round to 4-byte */
       option_len = ((opt0->length + 3) >> 2) << 2;
-      opt0 =
-	(nsh_md2_data_t *) (((u8 *) opt0) + sizeof (nsh_md2_data_t) +
-			    option_len);
+      opt0 = (nsh_md2_data_t *) (((u8 *) opt0) + sizeof (nsh_md2_data_t) +
+				 option_len);
       *next =
 	(nm->decap_v4_next_override) ? (nm->decap_v4_next_override) : (*next);
       *header_len = (nm->decap_v4_next_override) ? 0 : (*header_len);
@@ -198,9 +192,8 @@ nsh_md2_decap (vlib_buffer_t * b,
 }
 
 static uword
-nsh_input_map (vlib_main_t * vm,
-	       vlib_node_runtime_t * node,
-	       vlib_frame_t * from_frame, u32 node_type)
+nsh_input_map (vlib_main_t *vm, vlib_node_runtime_t *node,
+	       vlib_frame_t *from_frame, u32 node_type)
 {
   u32 n_left_from, next_index, *from, *to_next;
   nsh_main_t *nm = &nsh_main;
@@ -274,7 +267,7 @@ nsh_input_map (vlib_main_t * vm,
 	      nsp_nsi0 = hdr0->nsp_nsi;
 	      header_len0 = (hdr0->length & NSH_LEN_MASK) * 4;
 	      ttl0 = (hdr0->ver_o_c & NSH_TTL_H4_MASK) << 2 |
-		(hdr0->length & NSH_TTL_L2_MASK) >> 6;
+		     (hdr0->length & NSH_TTL_L2_MASK) >> 6;
 	      ttl0 = ttl0 - 1;
 	      if (PREDICT_FALSE (ttl0 == 0))
 		{
@@ -284,17 +277,16 @@ nsh_input_map (vlib_main_t * vm,
 	    }
 	  else if (node_type == NSH_CLASSIFIER_TYPE)
 	    {
-	      nsp_nsi0 =
-		clib_host_to_net_u32 (vnet_buffer (b0)->
-				      l2_classify.opaque_index);
+	      nsp_nsi0 = clib_host_to_net_u32 (
+		vnet_buffer (b0)->l2_classify.opaque_index);
 	    }
 	  else if (node_type == NSH_AWARE_VNF_PROXY_TYPE)
 	    {
 	      /* Push placeholder Eth header */
-	      char placeholder_dst_address[6] =
-		{ 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 };
-	      char placeholder_src_address[6] =
-		{ 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc };
+	      char placeholder_dst_address[6] = { 0x11, 0x22, 0x33,
+						  0x44, 0x55, 0x66 };
+	      char placeholder_src_address[6] = { 0x77, 0x88, 0x99,
+						  0xaa, 0xbb, 0xcc };
 	      clib_memcpy_fast (placeholder_eth0.dst_address,
 				placeholder_dst_address, 6);
 	      clib_memcpy_fast (placeholder_eth0.src_address,
@@ -345,7 +337,8 @@ nsh_input_map (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
-	  /* set up things for next node to transmit ie which node to handle it and where */
+	  /* set up things for next node to transmit ie which node to handle it
+	   * and where */
 	  next0 = map0->next_node;
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = map0->sw_if_index;
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = map0->adj_index;
@@ -389,8 +382,8 @@ nsh_input_map (vlib_main_t * vm,
 	      /* Manipulate MD2 */
 	      if (PREDICT_FALSE (hdr0->md_type == 2))
 		{
-		  nsh_md2_swap (b0, hdr0, header_len0, nsh_entry0,
-				&next0, NSH_NODE_NEXT_DROP);
+		  nsh_md2_swap (b0, hdr0, header_len0, nsh_entry0, &next0,
+				NSH_NODE_NEXT_DROP);
 		  if (PREDICT_FALSE (next0 == NSH_NODE_NEXT_DROP))
 		    {
 		      error0 = NSH_NODE_ERROR_INVALID_OPTIONS;
@@ -425,7 +418,6 @@ nsh_input_map (vlib_main_t * vm,
 		{
 		  nsh_md2_encap (b0, hdr0, nsh_entry0);
 		}
-
 	    }
 
 	trace0:
@@ -445,7 +437,7 @@ nsh_input_map (vlib_main_t * vm,
 	      nsp_nsi1 = hdr1->nsp_nsi;
 	      header_len1 = (hdr1->length & NSH_LEN_MASK) * 4;
 	      ttl1 = (hdr1->ver_o_c & NSH_TTL_H4_MASK) << 2 |
-		(hdr1->length & NSH_TTL_L2_MASK) >> 6;
+		     (hdr1->length & NSH_TTL_L2_MASK) >> 6;
 	      ttl1 = ttl1 - 1;
 	      if (PREDICT_FALSE (ttl1 == 0))
 		{
@@ -455,17 +447,16 @@ nsh_input_map (vlib_main_t * vm,
 	    }
 	  else if (node_type == NSH_CLASSIFIER_TYPE)
 	    {
-	      nsp_nsi1 =
-		clib_host_to_net_u32 (vnet_buffer (b1)->
-				      l2_classify.opaque_index);
+	      nsp_nsi1 = clib_host_to_net_u32 (
+		vnet_buffer (b1)->l2_classify.opaque_index);
 	    }
 	  else if (node_type == NSH_AWARE_VNF_PROXY_TYPE)
 	    {
 	      /* Push placeholder Eth header */
-	      char placeholder_dst_address[6] =
-		{ 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 };
-	      char placeholder_src_address[6] =
-		{ 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc };
+	      char placeholder_dst_address[6] = { 0x11, 0x22, 0x33,
+						  0x44, 0x55, 0x66 };
+	      char placeholder_src_address[6] = { 0x77, 0x88, 0x99,
+						  0xaa, 0xbb, 0xcc };
 	      clib_memcpy_fast (placeholder_eth1.dst_address,
 				placeholder_dst_address, 6);
 	      clib_memcpy_fast (placeholder_eth1.src_address,
@@ -516,7 +507,8 @@ nsh_input_map (vlib_main_t * vm,
 	      goto trace1;
 	    }
 
-	  /* set up things for next node to transmit ie which node to handle it and where */
+	  /* set up things for next node to transmit ie which node to handle it
+	   * and where */
 	  next1 = map1->next_node;
 	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = map1->sw_if_index;
 	  vnet_buffer (b1)->ip.adj_index[VLIB_TX] = map1->adj_index;
@@ -560,8 +552,8 @@ nsh_input_map (vlib_main_t * vm,
 	      /* Manipulate MD2 */
 	      if (PREDICT_FALSE (hdr1->md_type == 2))
 		{
-		  nsh_md2_swap (b1, hdr1, header_len1, nsh_entry1,
-				&next1, NSH_NODE_NEXT_DROP);
+		  nsh_md2_swap (b1, hdr1, header_len1, nsh_entry1, &next1,
+				NSH_NODE_NEXT_DROP);
 		  if (PREDICT_FALSE (next1 == NSH_NODE_NEXT_DROP))
 		    {
 		      error1 = NSH_NODE_ERROR_INVALID_OPTIONS;
@@ -596,7 +588,6 @@ nsh_input_map (vlib_main_t * vm,
 		{
 		  nsh_md2_encap (b1, hdr1, nsh_entry1);
 		}
-
 	    }
 
 	trace1:
@@ -613,7 +604,6 @@ nsh_input_map (vlib_main_t * vm,
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, bi1, next0,
 					   next1);
-
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -653,7 +643,7 @@ nsh_input_map (vlib_main_t * vm,
 	      nsp_nsi0 = hdr0->nsp_nsi;
 	      header_len0 = (hdr0->length & NSH_LEN_MASK) * 4;
 	      ttl0 = (hdr0->ver_o_c & NSH_TTL_H4_MASK) << 2 |
-		(hdr0->length & NSH_TTL_L2_MASK) >> 6;
+		     (hdr0->length & NSH_TTL_L2_MASK) >> 6;
 	      ttl0 = ttl0 - 1;
 	      if (PREDICT_FALSE (ttl0 == 0))
 		{
@@ -663,17 +653,16 @@ nsh_input_map (vlib_main_t * vm,
 	    }
 	  else if (node_type == NSH_CLASSIFIER_TYPE)
 	    {
-	      nsp_nsi0 =
-		clib_host_to_net_u32 (vnet_buffer (b0)->
-				      l2_classify.opaque_index);
+	      nsp_nsi0 = clib_host_to_net_u32 (
+		vnet_buffer (b0)->l2_classify.opaque_index);
 	    }
 	  else if (node_type == NSH_AWARE_VNF_PROXY_TYPE)
 	    {
 	      /* Push placeholder Eth header */
-	      char placeholder_dst_address[6] =
-		{ 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 };
-	      char placeholder_src_address[6] =
-		{ 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc };
+	      char placeholder_dst_address[6] = { 0x11, 0x22, 0x33,
+						  0x44, 0x55, 0x66 };
+	      char placeholder_src_address[6] = { 0x77, 0x88, 0x99,
+						  0xaa, 0xbb, 0xcc };
 	      clib_memcpy_fast (placeholder_eth0.dst_address,
 				placeholder_dst_address, 6);
 	      clib_memcpy_fast (placeholder_eth0.src_address,
@@ -726,7 +715,8 @@ nsh_input_map (vlib_main_t * vm,
 	      goto trace00;
 	    }
 
-	  /* set up things for next node to transmit ie which node to handle it and where */
+	  /* set up things for next node to transmit ie which node to handle it
+	   * and where */
 	  next0 = map0->next_node;
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = map0->sw_if_index;
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = map0->adj_index;
@@ -771,8 +761,8 @@ nsh_input_map (vlib_main_t * vm,
 	      /* Manipulate MD2 */
 	      if (PREDICT_FALSE (hdr0->md_type == 2))
 		{
-		  nsh_md2_swap (b0, hdr0, header_len0, nsh_entry0,
-				&next0, NSH_NODE_NEXT_DROP);
+		  nsh_md2_swap (b0, hdr0, header_len0, nsh_entry0, &next0,
+				NSH_NODE_NEXT_DROP);
 		  if (PREDICT_FALSE (next0 == NSH_NODE_NEXT_DROP))
 		    {
 		      error0 = NSH_NODE_ERROR_INVALID_OPTIONS;
@@ -806,10 +796,10 @@ nsh_input_map (vlib_main_t * vm,
 		{
 		  nsh_md2_encap (b0, hdr0, nsh_entry0);
 		}
-
 	    }
 
-	trace00:b0->error = error0 ? node->errors[error0] : 0;
+	trace00:
+	  b0->error = error0 ? node->errors[error0] : 0;
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -824,7 +814,6 @@ nsh_input_map (vlib_main_t * vm,
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-
     }
 
   return from_frame->n_vectors;
@@ -841,8 +830,8 @@ nsh_input_map (vlib_main_t * vm,
  * @return from_frame->n_vectors
  *
  */
-VLIB_NODE_FN (nsh_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			       vlib_frame_t * from_frame)
+VLIB_NODE_FN (nsh_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return nsh_input_map (vm, node, from_frame, NSH_INPUT_TYPE);
 }
@@ -858,8 +847,8 @@ VLIB_NODE_FN (nsh_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
  * @return from_frame->n_vectors
  *
  */
-VLIB_NODE_FN (nsh_proxy_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			       vlib_frame_t * from_frame)
+VLIB_NODE_FN (nsh_proxy_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return nsh_input_map (vm, node, from_frame, NSH_PROXY_TYPE);
 }
@@ -875,9 +864,8 @@ VLIB_NODE_FN (nsh_proxy_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
  * @return from_frame->n_vectors
  *
  */
-VLIB_NODE_FN (nsh_classifier_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * from_frame)
+VLIB_NODE_FN (nsh_classifier_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return nsh_input_map (vm, node, from_frame, NSH_CLASSIFIER_TYPE);
 }
@@ -893,20 +881,17 @@ VLIB_NODE_FN (nsh_classifier_node) (vlib_main_t * vm,
  * @return from_frame->n_vectors
  *
  */
-VLIB_NODE_FN (nsh_aware_vnf_proxy_node) (vlib_main_t * vm,
-					 vlib_node_runtime_t * node,
-					 vlib_frame_t * from_frame)
+VLIB_NODE_FN (nsh_aware_vnf_proxy_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return nsh_input_map (vm, node, from_frame, NSH_AWARE_VNF_PROXY_TYPE);
 }
 
 static char *nsh_node_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_nsh_node_error
 #undef _
 };
-
-/* *INDENT-OFF* */
 
 /* register nsh-input node */
 VLIB_REGISTER_NODE (nsh_input_node) = {
@@ -919,7 +904,7 @@ VLIB_REGISTER_NODE (nsh_input_node) = {
   .error_strings = nsh_node_error_strings,
   .n_next_nodes = NSH_NODE_N_NEXT,
   .next_nodes = {
-#define _(s,n) [NSH_NODE_NEXT_##s] = n,
+#define _(s, n) [NSH_NODE_NEXT_##s] = n,
     foreach_nsh_node_next
 #undef _
   },
@@ -937,7 +922,7 @@ VLIB_REGISTER_NODE (nsh_proxy_node) =
   .error_strings = nsh_node_error_strings,
   .n_next_nodes = NSH_NODE_N_NEXT,
   .next_nodes = {
-#define _(s,n) [NSH_NODE_NEXT_##s] = n,
+#define _(s, n) [NSH_NODE_NEXT_##s] = n,
     foreach_nsh_node_next
 #undef _
   },
@@ -955,7 +940,7 @@ VLIB_REGISTER_NODE (nsh_classifier_node) =
   .error_strings = nsh_node_error_strings,
   .n_next_nodes = NSH_NODE_N_NEXT,
   .next_nodes = {
-#define _(s,n) [NSH_NODE_NEXT_##s] = n,
+#define _(s, n) [NSH_NODE_NEXT_##s] = n,
     foreach_nsh_node_next
 #undef _
   },
@@ -973,12 +958,11 @@ VLIB_REGISTER_NODE (nsh_aware_vnf_proxy_node) =
   .error_strings = nsh_node_error_strings,
   .n_next_nodes = NSH_NODE_N_NEXT,
   .next_nodes = {
-#define _(s,n) [NSH_NODE_NEXT_##s] = n,
+#define _(s, n) [NSH_NODE_NEXT_##s] = n,
     foreach_nsh_node_next
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

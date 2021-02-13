@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-#ifndef	__LACP_MACHINE_H__
-#define	__LACP_MACHINE_H__
+#ifndef __LACP_MACHINE_H__
+#define __LACP_MACHINE_H__
 
 #include <stdint.h>
 
-#define LACP_NOACTION	((int (*)(void *, void *))0)
-#define LACP_ACTION_ROUTINE(rtn) ((int(*)(void *, void *))rtn)
+#define LACP_NOACTION		 ((int (*) (void *, void *)) 0)
+#define LACP_ACTION_ROUTINE(rtn) ((int (*) (void *, void *)) rtn)
 
 typedef int (*action_func) (void *, void *);
 
@@ -29,8 +29,8 @@ typedef struct
   int next_state;
 } lacp_fsm_state_t;
 
-typedef void (*debug_func) (member_if_t * mif, int event, int state,
-			    lacp_fsm_state_t * transition);
+typedef void (*debug_func) (member_if_t *mif, int event, int state,
+			    lacp_fsm_state_t *transition);
 
 typedef struct
 {
@@ -43,8 +43,8 @@ typedef struct
   debug_func debug;
 } lacp_machine_t;
 
-extern int lacp_machine_dispatch (lacp_machine_t * machine, vlib_main_t * vm,
-				  member_if_t * mif, int event, int *state);
+extern int lacp_machine_dispatch (lacp_machine_t *machine, vlib_main_t *vm,
+				  member_if_t *mif, int event, int *state);
 
 #endif /* __LACP_MACHINE_H__ */
 

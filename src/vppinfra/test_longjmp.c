@@ -39,30 +39,33 @@
 #include <vppinfra/longjmp.h>
 #include <vppinfra/format.h>
 
-static void test_calljmp (unformat_input_t * input);
+static void test_calljmp (unformat_input_t *input);
 
 static int i;
 
 static int verbose;
-#define if_verbose(format,args...) \
-  if (verbose) { clib_warning(format, ## args); }
+#define if_verbose(format, args...)                                           \
+  if (verbose)                                                                \
+    {                                                                         \
+      clib_warning (format, ##args);                                          \
+    }
 
 static never_inline void
-f2 (clib_longjmp_t * env)
+f2 (clib_longjmp_t *env)
 {
   i++;
   clib_longjmp (env, 1);
 }
 
 static never_inline void
-f1 (clib_longjmp_t * env)
+f1 (clib_longjmp_t *env)
 {
   i++;
   f2 (env);
 }
 
 int
-test_longjmp_main (unformat_input_t * input)
+test_longjmp_main (unformat_input_t *input)
 {
   clib_longjmp_t env;
 
@@ -95,7 +98,7 @@ f3 (uword arg)
 }
 
 static void
-test_calljmp (unformat_input_t * input)
+test_calljmp (unformat_input_t *input)
 {
   static u8 stack[32 * 1024] __attribute__ ((aligned (16)));
   uword v;

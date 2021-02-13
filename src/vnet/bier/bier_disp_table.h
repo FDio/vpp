@@ -29,65 +29,61 @@
  */
 typedef struct bier_disp_table_t_
 {
-    /**
-     * Required for pool_get_aligned
-     */
-    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+  /**
+   * Required for pool_get_aligned
+   */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
-    /**
-     * number of locks on the table
-     */
-    u16 bdt_locks;
+  /**
+   * number of locks on the table
+   */
+  u16 bdt_locks;
 
-    /**
-     * Table ID (hash key) for this FIB.
-     */
-    u32 bdt_table_id;
+  /**
+   * Table ID (hash key) for this FIB.
+   */
+  u32 bdt_table_id;
 
-    /**
-     * The lookup DB based on sender BP. Value is the index of the
-     * BIER disp object.
-     */
-    index_t bdt_db[BIER_BP_MAX];
+  /**
+   * The lookup DB based on sender BP. Value is the index of the
+   * BIER disp object.
+   */
+  index_t bdt_db[BIER_BP_MAX];
 } bier_disp_table_t;
 
 /**
  * @brief
  *  Format the description/name of the table
  */
-extern u8* format_bier_disp_table(u8* s, va_list *ap);
+extern u8 *format_bier_disp_table (u8 *s, va_list *ap);
 
-extern void bier_disp_table_entry_path_add(u32 table_id,
-                                           bier_bp_t src,
-                                           bier_hdr_proto_id_t payload_proto,
-                                           const fib_route_path_t *rpath);
+extern void bier_disp_table_entry_path_add (u32 table_id, bier_bp_t src,
+					    bier_hdr_proto_id_t payload_proto,
+					    const fib_route_path_t *rpath);
 
-extern void bier_disp_table_entry_path_remove(u32 table_id,
-                                              bier_bp_t src,
-                                              bier_hdr_proto_id_t payload_proto,
-                                              const fib_route_path_t *paths);
+extern void
+bier_disp_table_entry_path_remove (u32 table_id, bier_bp_t src,
+				   bier_hdr_proto_id_t payload_proto,
+				   const fib_route_path_t *paths);
 
-extern index_t bier_disp_table_find(u32 table_id);
+extern index_t bier_disp_table_find (u32 table_id);
 
+extern index_t bier_disp_table_add_or_lock (u32 table_id);
+extern void bier_disp_table_unlock_w_table_id (u32 table_id);
 
-extern index_t bier_disp_table_add_or_lock(u32 table_id);
-extern void bier_disp_table_unlock_w_table_id(u32 table_id);
-
-extern void bier_disp_table_unlock(index_t bdti);
-extern void bier_disp_table_lock(index_t bdti);
-extern void bier_disp_table_contribute_forwarding(index_t bdti,
-                                                  dpo_id_t *dpo);
+extern void bier_disp_table_unlock (index_t bdti);
+extern void bier_disp_table_lock (index_t bdti);
+extern void bier_disp_table_contribute_forwarding (index_t bdti,
+						   dpo_id_t *dpo);
 
 /**
  * Types and functions to walk all the entries in one BIER Table
  */
-typedef void (*bier_disp_table_walk_fn_t)(const bier_disp_table_t *bdt,
-                                          const bier_disp_entry_t *bde,
-                                          u16 bp,
-                                          void *ctx);
-extern void bier_disp_table_walk(u32 table_id,
-                                 bier_disp_table_walk_fn_t fn,
-                                 void *ctx);
+typedef void (*bier_disp_table_walk_fn_t) (const bier_disp_table_t *bdt,
+					   const bier_disp_entry_t *bde,
+					   u16 bp, void *ctx);
+extern void bier_disp_table_walk (u32 table_id, bier_disp_table_walk_fn_t fn,
+				  void *ctx);
 
 /**
  * @brief
@@ -98,18 +94,17 @@ extern bier_disp_table_t *bier_disp_table_pool;
 static inline bier_disp_table_t *
 bier_disp_table_get (index_t bdti)
 {
-    return (pool_elt_at_index(bier_disp_table_pool, bdti));
+  return (pool_elt_at_index (bier_disp_table_pool, bdti));
 }
 
 static inline index_t
-bier_disp_table_lookup (index_t bdti,
-                        bier_hdr_src_id_t src)
+bier_disp_table_lookup (index_t bdti, bier_hdr_src_id_t src)
 {
-    bier_disp_table_t *bdt;
+  bier_disp_table_t *bdt;
 
-    bdt = bier_disp_table_get(bdti);
+  bdt = bier_disp_table_get (bdti);
 
-    return (bdt->bdt_db[src]);
+  return (bdt->bdt_db[src]);
 }
 
 #endif

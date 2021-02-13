@@ -102,39 +102,38 @@ extern netmap_main_t netmap_main;
 extern vnet_device_class_t netmap_device_class;
 extern vlib_node_registration_t netmap_input_node;
 
-int netmap_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
-		      u8 is_pipe, u8 is_master, u32 * sw_if_index);
-int netmap_delete_if (vlib_main_t * vm, u8 * host_if_name);
-
+int netmap_create_if (vlib_main_t *vm, u8 *host_if_name, u8 *hw_addr_set,
+		      u8 is_pipe, u8 is_master, u32 *sw_if_index);
+int netmap_delete_if (vlib_main_t *vm, u8 *host_if_name);
 
 /* Macros and helper functions from sys/net/netmap_user.h */
 
 #ifdef _NET_NETMAP_H_
 
-#define _NETMAP_OFFSET(type, ptr, offset) \
-	((type)(void *)((char *)(ptr) + (offset)))
+#define _NETMAP_OFFSET(type, ptr, offset)                                     \
+  ((type) (void *) ((char *) (ptr) + (offset)))
 
-#define NETMAP_IF(_base, _ofs)	_NETMAP_OFFSET(struct netmap_if *, _base, _ofs)
+#define NETMAP_IF(_base, _ofs) _NETMAP_OFFSET (struct netmap_if *, _base, _ofs)
 
-#define NETMAP_TXRING(nifp, index) _NETMAP_OFFSET(struct netmap_ring *, \
-	nifp, (nifp)->ring_ofs[index] )
+#define NETMAP_TXRING(nifp, index)                                            \
+  _NETMAP_OFFSET (struct netmap_ring *, nifp, (nifp)->ring_ofs[index])
 
-#define NETMAP_RXRING(nifp, index) _NETMAP_OFFSET(struct netmap_ring *,	\
-	nifp, (nifp)->ring_ofs[index + (nifp)->ni_tx_rings + 1] )
+#define NETMAP_RXRING(nifp, index)                                            \
+  _NETMAP_OFFSET (struct netmap_ring *, nifp,                                 \
+		  (nifp)->ring_ofs[index + (nifp)->ni_tx_rings + 1])
 
-#define NETMAP_BUF(ring, index)				\
-	((char *)(ring) + (ring)->buf_ofs + ((index)*(ring)->nr_buf_size))
+#define NETMAP_BUF(ring, index)                                               \
+  ((char *) (ring) + (ring)->buf_ofs + ((index) * (ring)->nr_buf_size))
 
-#define NETMAP_BUF_IDX(ring, buf)			\
-	( ((char *)(buf) - ((char *)(ring) + (ring)->buf_ofs) ) / \
-		(ring)->nr_buf_size )
+#define NETMAP_BUF_IDX(ring, buf)                                             \
+  (((char *) (buf) - ((char *) (ring) + (ring)->buf_ofs)) /                   \
+   (ring)->nr_buf_size)
 
 static inline uint32_t
 nm_ring_next (struct netmap_ring *ring, uint32_t i)
 {
   return (PREDICT_FALSE (i + 1 == ring->num_slots) ? 0 : i + 1);
 }
-
 
 /*
  * Return 1 if we have pending transmissions in the tx ring.
@@ -155,7 +154,6 @@ nm_ring_space (struct netmap_ring *ring)
   return ret;
 }
 #endif
-
 
 /*
  * fd.io coding-style-patch-verification: ON

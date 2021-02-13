@@ -18,19 +18,18 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_sa.h>
 
-#define foreach_ipsec_handoff_error  \
-_(CONGESTION_DROP, "congestion drop")
+#define foreach_ipsec_handoff_error _ (CONGESTION_DROP, "congestion drop")
 
 typedef enum
 {
-#define _(sym,str) IPSEC_HANDOFF_ERROR_##sym,
+#define _(sym, str) IPSEC_HANDOFF_ERROR_##sym,
   foreach_ipsec_handoff_error
 #undef _
     NAT44_HANDOFF_N_ERROR,
 } ipsec_handoff_error_t;
 
 static char *ipsec_handoff_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ipsec_handoff_error
 #undef _
 };
@@ -41,7 +40,7 @@ typedef struct ipsec_handoff_trace_t_
 } ipsec_handoff_trace_t;
 
 static u8 *
-format_ipsec_handoff_trace (u8 * s, va_list * args)
+format_ipsec_handoff_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -132,8 +131,8 @@ ipsec_handoff (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
       b += 1;
     }
 
-  n_enq = vlib_buffer_enqueue_to_thread (vm, fq_index, from,
-					 thread_indices, frame->n_vectors, 1);
+  n_enq = vlib_buffer_enqueue_to_thread (vm, fq_index, from, thread_indices,
+					 frame->n_vectors, 1);
 
   if (n_enq < frame->n_vectors)
     vlib_node_increment_counter (vm, node->node_index,
@@ -143,36 +142,32 @@ ipsec_handoff (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
   return n_enq;
 }
 
-VLIB_NODE_FN (esp4_encrypt_handoff) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * from_frame)
+VLIB_NODE_FN (esp4_encrypt_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   ipsec_main_t *im = &ipsec_main;
 
   return ipsec_handoff (vm, node, from_frame, im->esp4_enc_fq_index);
 }
 
-VLIB_NODE_FN (esp6_encrypt_handoff) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * from_frame)
+VLIB_NODE_FN (esp6_encrypt_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   ipsec_main_t *im = &ipsec_main;
 
   return ipsec_handoff (vm, node, from_frame, im->esp6_enc_fq_index);
 }
 
-VLIB_NODE_FN (esp4_encrypt_tun_handoff) (vlib_main_t * vm,
-					 vlib_node_runtime_t * node,
-					 vlib_frame_t * from_frame)
+VLIB_NODE_FN (esp4_encrypt_tun_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   ipsec_main_t *im = &ipsec_main;
 
   return ipsec_handoff (vm, node, from_frame, im->esp4_enc_tun_fq_index);
 }
 
-VLIB_NODE_FN (esp6_encrypt_tun_handoff) (vlib_main_t * vm,
-					 vlib_node_runtime_t * node,
-					 vlib_frame_t * from_frame)
+VLIB_NODE_FN (esp6_encrypt_tun_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   ipsec_main_t *im = &ipsec_main;
 
@@ -187,79 +182,70 @@ VLIB_NODE_FN (esp_mpls_encrypt_tun_handoff)
   return ipsec_handoff (vm, node, from_frame, im->esp_mpls_enc_tun_fq_index);
 }
 
-VLIB_NODE_FN (esp4_decrypt_handoff) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * from_frame)
+VLIB_NODE_FN (esp4_decrypt_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   ipsec_main_t *im = &ipsec_main;
 
   return ipsec_handoff (vm, node, from_frame, im->esp4_dec_fq_index);
 }
 
-VLIB_NODE_FN (esp6_decrypt_handoff) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * from_frame)
+VLIB_NODE_FN (esp6_decrypt_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   ipsec_main_t *im = &ipsec_main;
 
   return ipsec_handoff (vm, node, from_frame, im->esp6_dec_fq_index);
 }
 
-VLIB_NODE_FN (esp4_decrypt_tun_handoff) (vlib_main_t * vm,
-					 vlib_node_runtime_t * node,
-					 vlib_frame_t * from_frame)
+VLIB_NODE_FN (esp4_decrypt_tun_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   ipsec_main_t *im = &ipsec_main;
 
   return ipsec_handoff (vm, node, from_frame, im->esp4_dec_tun_fq_index);
 }
 
-VLIB_NODE_FN (esp6_decrypt_tun_handoff) (vlib_main_t * vm,
-					 vlib_node_runtime_t * node,
-					 vlib_frame_t * from_frame)
+VLIB_NODE_FN (esp6_decrypt_tun_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   ipsec_main_t *im = &ipsec_main;
 
   return ipsec_handoff (vm, node, from_frame, im->esp6_dec_tun_fq_index);
 }
 
-VLIB_NODE_FN (ah4_encrypt_handoff) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * from_frame)
+VLIB_NODE_FN (ah4_encrypt_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   ipsec_main_t *im = &ipsec_main;
 
   return ipsec_handoff (vm, node, from_frame, im->ah4_enc_fq_index);
 }
 
-VLIB_NODE_FN (ah6_encrypt_handoff) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * from_frame)
+VLIB_NODE_FN (ah6_encrypt_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   ipsec_main_t *im = &ipsec_main;
 
   return ipsec_handoff (vm, node, from_frame, im->ah6_enc_fq_index);
 }
 
-VLIB_NODE_FN (ah4_decrypt_handoff) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * from_frame)
+VLIB_NODE_FN (ah4_decrypt_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   ipsec_main_t *im = &ipsec_main;
 
   return ipsec_handoff (vm, node, from_frame, im->ah4_dec_fq_index);
 }
 
-VLIB_NODE_FN (ah6_decrypt_handoff) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * from_frame)
+VLIB_NODE_FN (ah6_decrypt_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   ipsec_main_t *im = &ipsec_main;
 
   return ipsec_handoff (vm, node, from_frame, im->ah6_dec_fq_index);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (esp4_encrypt_handoff) = {
   .name = "esp4-encrypt-handoff",
   .vector_size = sizeof (u32),
@@ -416,7 +402,6 @@ VLIB_REGISTER_NODE (ah6_decrypt_handoff) = {
     [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
