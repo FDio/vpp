@@ -71,19 +71,19 @@ typedef struct _vnet_app_namespace_add_del_args
   u8 is_add;
 } vnet_app_namespace_add_del_args_t;
 
-#define APP_NAMESPACE_INVALID_INDEX ((u32)~0)
+#define APP_NAMESPACE_INVALID_INDEX ((u32) ~0)
 
-app_namespace_t *app_namespace_alloc (u8 * ns_id);
+app_namespace_t *app_namespace_alloc (u8 *ns_id);
 app_namespace_t *app_namespace_get (u32 index);
-app_namespace_t *app_namespace_get_from_id (const u8 * ns_id);
-u32 app_namespace_index (app_namespace_t * app_ns);
-const u8 *app_namespace_id (app_namespace_t * app_ns);
+app_namespace_t *app_namespace_get_from_id (const u8 *ns_id);
+u32 app_namespace_index (app_namespace_t *app_ns);
+const u8 *app_namespace_id (app_namespace_t *app_ns);
 const u8 *app_namespace_id_from_index (u32 index);
-u32 app_namespace_index_from_id (const u8 * ns_id);
+u32 app_namespace_index_from_id (const u8 *ns_id);
 void app_namespaces_init (void);
-int vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a);
-u32 app_namespace_get_fib_index (app_namespace_t * app_ns, u8 fib_proto);
-session_table_t *app_namespace_get_local_table (app_namespace_t * app_ns);
+int vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t *a);
+u32 app_namespace_get_fib_index (app_namespace_t *app_ns, u8 fib_proto);
+session_table_t *app_namespace_get_local_table (app_namespace_t *app_ns);
 
 always_inline app_namespace_t *
 app_namespace_get_default (void)
@@ -104,16 +104,16 @@ typedef struct app_ns_api_handle_
     };
     u64 as_u64;
   };
-#define aah_app_ns_index l_index
+#define aah_app_ns_index  l_index
 #define aah_app_wrk_index l_index
-#define aah_sock_index u_index
-#define aah_file_index u_index
+#define aah_sock_index	  u_index
+#define aah_file_index	  u_index
 } __attribute__ ((aligned (sizeof (u64)))) app_ns_api_handle_t;
 
 STATIC_ASSERT (sizeof (app_ns_api_handle_t) == sizeof (u64), "not u64");
 
 static inline clib_socket_t *
-appns_sapi_alloc_socket (app_namespace_t * app_ns)
+appns_sapi_alloc_socket (app_namespace_t *app_ns)
 {
   clib_socket_t *cs;
   pool_get_zero (app_ns->app_sockets, cs);
@@ -121,7 +121,7 @@ appns_sapi_alloc_socket (app_namespace_t * app_ns)
 }
 
 static inline clib_socket_t *
-appns_sapi_get_socket (app_namespace_t * app_ns, u32 sock_index)
+appns_sapi_get_socket (app_namespace_t *app_ns, u32 sock_index)
 {
   if (pool_is_free_index (app_ns->app_sockets, sock_index))
     return 0;
@@ -129,19 +129,19 @@ appns_sapi_get_socket (app_namespace_t * app_ns, u32 sock_index)
 }
 
 static inline void
-appns_sapi_free_socket (app_namespace_t * app_ns, clib_socket_t * cs)
+appns_sapi_free_socket (app_namespace_t *app_ns, clib_socket_t *cs)
 {
   pool_put (app_ns->app_sockets, cs);
 }
 
 static inline u32
-appns_sapi_socket_index (app_namespace_t * app_ns, clib_socket_t * cs)
+appns_sapi_socket_index (app_namespace_t *app_ns, clib_socket_t *cs)
 {
   return (cs - app_ns->app_sockets);
 }
 
 static inline u32
-appns_sapi_socket_handle (app_namespace_t * app_ns, clib_socket_t * cs)
+appns_sapi_socket_handle (app_namespace_t *app_ns, clib_socket_t *cs)
 {
   return app_namespace_index (app_ns) << 16 | (cs - app_ns->app_sockets);
 }
@@ -152,7 +152,7 @@ appns_sapi_handle_sock_index (u32 sapi_sock_handle)
   return sapi_sock_handle & 0xffff;
 }
 
-int appns_sapi_add_ns_socket (app_namespace_t * app_ns);
+int appns_sapi_add_ns_socket (app_namespace_t *app_ns);
 u8 appns_sapi_enabled (void);
 void appns_sapi_enable (void);
 

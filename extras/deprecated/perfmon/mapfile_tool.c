@@ -38,18 +38,19 @@ static char *top_boilerplate =
   "  char *filename;\n"
   "} file_by_model_and_stepping_t;\n\n"
   "static const file_by_model_and_stepping_t fms_table [] =\n"
-  "{\n" " /* model, stepping, stepping valid, file */\n";
+  "{\n"
+  " /* model, stepping, stepping valid, file */\n";
 
 static char *bottom_boilerplate = "};\n";
 
 static void
-print_chunk (mapfile_tool_main_t * mtm, char *chunk)
+print_chunk (mapfile_tool_main_t *mtm, char *chunk)
 {
   fformat (mtm->ofp, "%s", chunk);
 }
 
 static int
-parse_mapfile (mapfile_tool_main_t * mtm)
+parse_mapfile (mapfile_tool_main_t *mtm)
 {
   u8 *cp = mtm->mapfile;
   int i;
@@ -146,9 +147,8 @@ parse_mapfile (mapfile_tool_main_t * mtm)
 
       for (i = 0; i < vec_len (stepping); i++)
 	{
-	  mtm->table =
-	    format (mtm->table, "  { 0x%s, 0x%c, %d, \"%v\" },\n",
-		    model, stepping[i], has_stepping, filename);
+	  mtm->table = format (mtm->table, "  { 0x%s, 0x%c, %d, \"%v\" },\n",
+			       model, stepping[i], has_stepping, filename);
 	}
     }
 
@@ -157,7 +157,7 @@ parse_mapfile (mapfile_tool_main_t * mtm)
 }
 
 static int
-mapfile_main (unformat_input_t * input, mapfile_tool_main_t * mtm)
+mapfile_main (unformat_input_t *input, mapfile_tool_main_t *mtm)
 {
   u8 *mapfile;
   int rv;
@@ -230,7 +230,6 @@ main (int argc, char *argv[])
   unformat_free (&input);
   return r;
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

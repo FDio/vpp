@@ -29,11 +29,10 @@ vlib_log_class_t gs_logger;
  */
 static bool gs_enabled;
 
-#define GBP_SCANNER_DBG(...)                                      \
-    vlib_log_debug (gs_logger, __VA_ARGS__);
+#define GBP_SCANNER_DBG(...) vlib_log_debug (gs_logger, __VA_ARGS__);
 
 static uword
-gbp_scanner (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
+gbp_scanner (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   uword event_type, *event_data = 0;
   bool do_scan = 0;
@@ -85,17 +84,15 @@ gbp_scanner (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gbp_scanner_node) = {
-    .function = gbp_scanner,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "gbp-scanner",
+  .function = gbp_scanner,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "gbp-scanner",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-gbp_scanner_cli (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+gbp_scanner_cli (vlib_main_t *vm, unformat_input_t *input,
+		 vlib_cli_command_t *cmd)
 {
   vlib_cli_output (vm, "GBP-scanner: enabled:%d interval:2", gs_enabled);
 
@@ -109,16 +106,15 @@ gbp_scanner_cli (vlib_main_t * vm,
  * @cliexstart{show gbp scanner}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (gbp_scanner_cli_node, static) = {
   .path = "show gbp scanner",
   .short_help = "show gbp scanner",
   .function = gbp_scanner_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-gbp_scanner_init (vlib_main_t * vm)
+gbp_scanner_init (vlib_main_t *vm)
 {
   gs_logger = vlib_log_register_class ("gbp", "scan");
 

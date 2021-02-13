@@ -25,7 +25,7 @@
  * called from the DP when the protocol has resolved a neighbor
  */
 
-extern void ip_neighbor_learn_dp (const ip_neighbor_learn_t * l);
+extern void ip_neighbor_learn_dp (const ip_neighbor_learn_t *l);
 
 #endif /* __INCLUDE_IP_NEIGHBOR_H__ */
 

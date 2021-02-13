@@ -37,17 +37,15 @@ STATIC_ASSERT ((sizeof (mac_address_t) == 6),
 extern const mac_address_t ZERO_MAC_ADDRESS;
 
 always_inline u64
-ethernet_mac_address_u64 (const u8 * a)
+ethernet_mac_address_u64 (const u8 *a)
 {
-  return (((u64) a[0] << (u64) (5 * 8))
-	  | ((u64) a[1] << (u64) (4 * 8))
-	  | ((u64) a[2] << (u64) (3 * 8))
-	  | ((u64) a[3] << (u64) (2 * 8))
-	  | ((u64) a[4] << (u64) (1 * 8)) | ((u64) a[5] << (u64) (0 * 8)));
+  return (((u64) a[0] << (u64) (5 * 8)) | ((u64) a[1] << (u64) (4 * 8)) |
+	  ((u64) a[2] << (u64) (3 * 8)) | ((u64) a[3] << (u64) (2 * 8)) |
+	  ((u64) a[4] << (u64) (1 * 8)) | ((u64) a[5] << (u64) (0 * 8)));
 }
 
 always_inline void
-ethernet_mac_address_from_u64 (u64 u, u8 * a)
+ethernet_mac_address_from_u64 (u64 u, u8 *a)
 {
   i8 ii;
 
@@ -65,13 +63,13 @@ ethernet_mac_address_is_multicast_u64 (u64 a)
 }
 
 static inline int
-ethernet_mac_address_is_zero (const u8 * mac)
+ethernet_mac_address_is_zero (const u8 *mac)
 {
   return ((*((u32 *) mac) == 0) && (*((u16 *) (mac + 4)) == 0));
 }
 
 static inline void
-ethernet_mac_address_generate (u8 * mac)
+ethernet_mac_address_generate (u8 *mac)
 {
   u32 rnd = clib_cpu_time_now ();
   rnd = random_u32 (&rnd);
@@ -82,34 +80,34 @@ ethernet_mac_address_generate (u8 * mac)
 }
 
 static inline int
-ethernet_mac_address_equal (const u8 * a, const u8 * b)
+ethernet_mac_address_equal (const u8 *a, const u8 *b)
 {
   return ((*((u32 *) a) == (*((u32 *) b))) &&
 	  (*((u16 *) (a + 4)) == (*((u16 *) (b + 4)))));
 }
 
 static_always_inline void
-mac_address_from_bytes (mac_address_t * mac, const u8 * bytes)
+mac_address_from_bytes (mac_address_t *mac, const u8 *bytes)
 {
   /* zero out the last 2 bytes, then copy over only 6 */
   clib_memcpy_fast (mac->bytes, bytes, 6);
 }
 
 static_always_inline void
-mac_address_to_bytes (const mac_address_t * mac, u8 * bytes)
+mac_address_to_bytes (const mac_address_t *mac, u8 *bytes)
 {
   /* zero out the last 2 bytes, then copy over only 6 */
   clib_memcpy_fast (bytes, mac->bytes, 6);
 }
 
 static_always_inline int
-mac_address_is_zero (const mac_address_t * mac)
+mac_address_is_zero (const mac_address_t *mac)
 {
   return (0 == mac->u.first_4 && 0 == mac->u.last_2);
 }
 
 static_always_inline u64
-mac_address_as_u64 (const mac_address_t * mac)
+mac_address_as_u64 (const mac_address_t *mac)
 {
   volatile u64 as_u64 = 0;
 
@@ -119,46 +117,45 @@ mac_address_as_u64 (const mac_address_t * mac)
 }
 
 static_always_inline void
-mac_address_from_u64 (mac_address_t * mac, u64 u)
+mac_address_from_u64 (mac_address_t *mac, u64 u)
 {
   clib_memcpy (mac->bytes, &u, 6);
 }
 
 static_always_inline void
-mac_address_copy (mac_address_t * dst, const mac_address_t * src)
+mac_address_copy (mac_address_t *dst, const mac_address_t *src)
 {
   mac_address_from_bytes (dst, src->bytes);
 }
 
 static_always_inline int
-mac_address_cmp (const mac_address_t * a, const mac_address_t * b)
+mac_address_cmp (const mac_address_t *a, const mac_address_t *b)
 {
   return (memcmp (a->bytes, b->bytes, 6));
 }
 
 static_always_inline int
-mac_address_equal (const mac_address_t * a, const mac_address_t * b)
+mac_address_equal (const mac_address_t *a, const mac_address_t *b)
 {
   return (a->u.last_2 == b->u.last_2 && a->u.first_4 == b->u.first_4);
 }
 
 static_always_inline void
-mac_address_set_zero (mac_address_t * mac)
+mac_address_set_zero (mac_address_t *mac)
 {
   mac->u.first_4 = 0;
   mac->u.last_2 = 0;
 }
 
 static_always_inline int
-mac_address_n_bits_set (const mac_address_t * a)
+mac_address_n_bits_set (const mac_address_t *a)
 {
   return (count_set_bits (mac_address_as_u64 (a)));
 }
 
-extern void mac_address_increment (mac_address_t * mac);
-extern uword unformat_mac_address_t (unformat_input_t * input,
-				     va_list * args);
-extern u8 *format_mac_address_t (u8 * s, va_list * args);
+extern void mac_address_increment (mac_address_t *mac);
+extern uword unformat_mac_address_t (unformat_input_t *input, va_list *args);
+extern u8 *format_mac_address_t (u8 *s, va_list *args);
 
 #endif
 

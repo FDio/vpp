@@ -43,18 +43,17 @@
 extern u8 *vnet_trace_placeholder;
 
 always_inline void
-vlib_validate_trace (vlib_trace_main_t * tm, vlib_buffer_t * b)
+vlib_validate_trace (vlib_trace_main_t *tm, vlib_buffer_t *b)
 {
   ASSERT (!pool_is_free_index (tm->trace_buffer_pool,
 			       vlib_buffer_get_trace_index (b)));
 }
 
-int vlib_add_handoff_trace (vlib_main_t * vm, vlib_buffer_t * b);
+int vlib_add_handoff_trace (vlib_main_t *vm, vlib_buffer_t *b);
 
 always_inline void *
-vlib_add_trace_inline (vlib_main_t * vm,
-		       vlib_node_runtime_t * r, vlib_buffer_t * b,
-		       u32 n_data_bytes)
+vlib_add_trace_inline (vlib_main_t *vm, vlib_node_runtime_t *r,
+		       vlib_buffer_t *b, u32 n_data_bytes)
 {
   vlib_trace_main_t *tm = &vm->trace_main;
   vlib_trace_header_t *h;
@@ -69,8 +68,7 @@ vlib_add_trace_inline (vlib_main_t * vm,
     {
       return tm->add_trace_callback ((struct vlib_main_t *) vm,
 				     (struct vlib_node_runtime_t *) r,
-				     (struct vlib_buffer_t *) b,
-				     n_data_bytes);
+				     (struct vlib_buffer_t *) b, n_data_bytes);
     }
   else if (PREDICT_FALSE (tm->trace_enable == 0))
     {
@@ -98,18 +96,17 @@ vlib_add_trace_inline (vlib_main_t * vm,
 }
 
 /* Non-inline (typical use-case) version of the above */
-void *vlib_add_trace (vlib_main_t * vm,
-		      vlib_node_runtime_t * r, vlib_buffer_t * b,
-		      u32 n_data_bytes);
+void *vlib_add_trace (vlib_main_t *vm, vlib_node_runtime_t *r,
+		      vlib_buffer_t *b, u32 n_data_bytes);
 
 always_inline vlib_trace_header_t *
-vlib_trace_header_next (vlib_trace_header_t * h)
+vlib_trace_header_next (vlib_trace_header_t *h)
 {
   return h + 1 + h->n_data;
 }
 
 always_inline void
-vlib_free_trace (vlib_main_t * vm, vlib_buffer_t * b)
+vlib_free_trace (vlib_main_t *vm, vlib_buffer_t *b)
 {
   vlib_trace_main_t *tm = &vm->trace_main;
   u32 trace_index = vlib_buffer_get_trace_index (b);
@@ -119,18 +116,16 @@ vlib_free_trace (vlib_main_t * vm, vlib_buffer_t * b)
 }
 
 always_inline void
-vlib_trace_next_frame (vlib_main_t * vm,
-		       vlib_node_runtime_t * r, u32 next_index)
+vlib_trace_next_frame (vlib_main_t *vm, vlib_node_runtime_t *r, u32 next_index)
 {
   vlib_next_frame_t *nf;
   nf = vlib_node_runtime_get_next_frame (vm, r, next_index);
   nf->flags |= VLIB_FRAME_TRACE;
 }
 
-void trace_apply_filter (vlib_main_t * vm);
-int vnet_is_packet_traced (vlib_buffer_t * b,
-			   u32 classify_table_index, int func);
-
+void trace_apply_filter (vlib_main_t *vm);
+int vnet_is_packet_traced (vlib_buffer_t *b, u32 classify_table_index,
+			   int func);
 
 /*
  * Mark buffer as traced and allocate trace buffer.
@@ -139,9 +134,8 @@ int vnet_is_packet_traced (vlib_buffer_t * b,
  * match the filter.
  */
 always_inline __clib_warn_unused_result int
-vlib_trace_buffer (vlib_main_t * vm,
-		   vlib_node_runtime_t * r,
-		   u32 next_index, vlib_buffer_t * b, int follow_chain)
+vlib_trace_buffer (vlib_main_t *vm, vlib_node_runtime_t *r, u32 next_index,
+		   vlib_buffer_t *b, int follow_chain)
 {
   vlib_trace_main_t *tm = &vm->trace_main;
   vlib_trace_header_t **h;
@@ -153,9 +147,9 @@ vlib_trace_buffer (vlib_main_t * vm,
   if (PREDICT_FALSE (vlib_global_main.trace_filter.trace_filter_enable))
     {
       /* See if we're supposed to trace this packet... */
-      if (vnet_is_packet_traced
-	  (b, vlib_global_main.trace_filter.classify_table_index,
-	   0 /* full classify */ ) != 1)
+      if (vnet_is_packet_traced (
+	    b, vlib_global_main.trace_filter.classify_table_index,
+	    0 /* full classify */) != 1)
 	return 0;
     }
 
@@ -180,8 +174,8 @@ vlib_trace_buffer (vlib_main_t * vm,
   do
     {
       b->flags |= VLIB_BUFFER_IS_TRACED;
-      b->trace_handle = vlib_buffer_make_trace_handle
-	(vm->thread_index, h - tm->trace_buffer_pool);
+      b->trace_handle = vlib_buffer_make_trace_handle (
+	vm->thread_index, h - tm->trace_buffer_pool);
     }
   while (follow_chain && (b = vlib_get_next_buffer (vm, b)));
 
@@ -189,8 +183,7 @@ vlib_trace_buffer (vlib_main_t * vm,
 }
 
 always_inline void
-vlib_buffer_copy_trace_flag (vlib_main_t * vm, vlib_buffer_t * b,
-			     u32 bi_target)
+vlib_buffer_copy_trace_flag (vlib_main_t *vm, vlib_buffer_t *b, u32 bi_target)
 {
   vlib_buffer_t *b_target = vlib_get_buffer (vm, bi_target);
   b_target->flags |= b->flags & VLIB_BUFFER_IS_TRACED;
@@ -198,7 +191,7 @@ vlib_buffer_copy_trace_flag (vlib_main_t * vm, vlib_buffer_t * b,
 }
 
 always_inline u32
-vlib_get_trace_count (vlib_main_t * vm, vlib_node_runtime_t * rt)
+vlib_get_trace_count (vlib_main_t *vm, vlib_node_runtime_t *rt)
 {
   vlib_trace_main_t *tm = &vm->trace_main;
   vlib_trace_node_t *tn;
@@ -212,7 +205,7 @@ vlib_get_trace_count (vlib_main_t * vm, vlib_node_runtime_t * rt)
 }
 
 always_inline void
-vlib_set_trace_count (vlib_main_t * vm, vlib_node_runtime_t * rt, u32 count)
+vlib_set_trace_count (vlib_main_t *vm, vlib_node_runtime_t *rt, u32 count)
 {
   vlib_trace_main_t *tm = &vm->trace_main;
   vlib_trace_node_t *tn = vec_elt_at_index (tm->nodes, rt->node_index);
@@ -222,13 +215,10 @@ vlib_set_trace_count (vlib_main_t * vm, vlib_node_runtime_t * rt, u32 count)
 }
 
 /* Helper function for nodes which only trace buffer data. */
-void
-vlib_trace_frame_buffers_only (vlib_main_t * vm,
-			       vlib_node_runtime_t * node,
-			       u32 * buffers,
-			       uword n_buffers,
-			       uword next_buffer_stride,
-			       uword n_buffer_data_bytes_in_trace);
+void vlib_trace_frame_buffers_only (vlib_main_t *vm, vlib_node_runtime_t *node,
+				    u32 *buffers, uword n_buffers,
+				    uword next_buffer_stride,
+				    uword n_buffer_data_bytes_in_trace);
 
 #endif /* included_vlib_trace_funcs_h */
 

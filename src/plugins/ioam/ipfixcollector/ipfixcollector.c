@@ -29,14 +29,14 @@ ipfix_collector_main_t ipfix_collector_main;
  * @param vm Vlib main of the graph node which is interested in
  *                    getting IP-Fix packet.
  * @param info Structure describing the client node which
- *                               is interested in getting the IP-Fix packets for
- *                               a SetID.
+ *                               is interested in getting the IP-Fix packets
+ * for a SetID.
  *
  * @returns 0 on success.
  * @returns Error codes(<0) otherwise.
  */
 int
-ipfix_collector_reg_setid (vlib_main_t * vm, ipfix_client_add_del_t * info)
+ipfix_collector_reg_setid (vlib_main_t *vm, ipfix_client_add_del_t *info)
 {
   ipfix_collector_main_t *cm = &ipfix_collector_main;
   uword *p = NULL;
@@ -52,7 +52,7 @@ ipfix_collector_reg_setid (vlib_main_t * vm, ipfix_client_add_del_t * info)
   if (info->del)
     {
       if (!client)
-	return 0;		//There is no registered handler, so send success
+	return 0; // There is no registered handler, so send success
 
       hash_unset (cm->client_reg_table, info->ipfix_setid);
       vec_free (client->client_name);
@@ -67,22 +67,21 @@ ipfix_collector_reg_setid (vlib_main_t * vm, ipfix_client_add_del_t * info)
   i = client - cm->client_reg_pool;
   client->client_name = vec_dup (info->client_name);
   client->client_node = info->client_node;
-  client->client_next_node = vlib_node_add_next (vm,
-						 ipfix_collector_node.index,
-						 client->client_node);
+  client->client_next_node =
+    vlib_node_add_next (vm, ipfix_collector_node.index, client->client_node);
   client->set_id = info->ipfix_setid;
 
   hash_set (cm->client_reg_table, info->ipfix_setid, i);
 
   if (!udp_is_valid_dst_port (UDP_DST_PORT_ipfix, 1))
-    udp_register_dst_port (vm, UDP_DST_PORT_ipfix,
-			   ipfix_collector_node.index, 1);
+    udp_register_dst_port (vm, UDP_DST_PORT_ipfix, ipfix_collector_node.index,
+			   1);
 
   return 0;
 }
 
 static clib_error_t *
-ipfix_collector_init (vlib_main_t * vm)
+ipfix_collector_init (vlib_main_t *vm)
 {
   clib_error_t *error = 0;
   ipfix_collector_main_t *cm = &ipfix_collector_main;

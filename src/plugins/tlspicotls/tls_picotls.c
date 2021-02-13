@@ -6,7 +6,7 @@
 
 picotls_main_t picotls_main;
 
-#define MAX_QUEUE 12000
+#define MAX_QUEUE		       12000
 #define PTLS_MAX_PLAINTEXT_RECORD_SIZE 16384
 
 static ptls_key_exchange_algorithm_t *default_key_exchange[] = {
@@ -44,7 +44,7 @@ picotls_ctx_alloc (void)
 }
 
 static void
-picotls_ctx_free (tls_ctx_t * ctx)
+picotls_ctx_free (tls_ctx_t *ctx)
 {
   picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
   vec_free (ptls_ctx->rx_content);
@@ -67,7 +67,7 @@ picotls_listen_ctx_alloc (void)
 }
 
 static void
-picotls_listen_ctx_free (picotls_listen_ctx_t * lctx)
+picotls_listen_ctx_free (picotls_listen_ctx_t *lctx)
 {
   pool_put_index (picotls_main.lctx_pool, lctx->ptls_lctx_index);
 }
@@ -76,9 +76,8 @@ tls_ctx_t *
 picotls_ctx_get (u32 ctx_index)
 {
   picotls_ctx_t **ctx;
-  ctx =
-    pool_elt_at_index (picotls_main.ctx_pool[vlib_get_thread_index ()],
-		       ctx_index);
+  ctx = pool_elt_at_index (picotls_main.ctx_pool[vlib_get_thread_index ()],
+			   ctx_index);
   return &(*ctx)->ctx;
 }
 
@@ -89,7 +88,7 @@ picotls_lctx_get (u32 lctx_index)
 }
 
 static u8
-picotls_handshake_is_over (tls_ctx_t * ctx)
+picotls_handshake_is_over (tls_ctx_t *ctx)
 {
   picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
   assert (ptls_ctx->tls);
@@ -97,8 +96,8 @@ picotls_handshake_is_over (tls_ctx_t * ctx)
 }
 
 static int
-picotls_try_handshake_write (picotls_ctx_t * ptls_ctx,
-			     session_t * tls_session, ptls_buffer_t * buf)
+picotls_try_handshake_write (picotls_ctx_t *ptls_ctx, session_t *tls_session,
+			     ptls_buffer_t *buf)
 {
   u32 enq_max, enq_now;
   svm_fifo_t *f;
@@ -122,7 +121,7 @@ picotls_try_handshake_write (picotls_ctx_t * ptls_ctx,
 }
 
 static int
-picotls_start_listen (tls_ctx_t * lctx)
+picotls_start_listen (tls_ctx_t *lctx)
 {
   picotls_listen_ctx_t *ptls_lctx;
   ptls_context_t *ptls_ctx;
@@ -163,7 +162,7 @@ picotls_start_listen (tls_ctx_t * lctx)
 }
 
 static int
-picotls_stop_listen (tls_ctx_t * lctx)
+picotls_stop_listen (tls_ctx_t *lctx)
 {
   u32 ptls_lctx_index;
   picotls_listen_ctx_t *ptls_lctx;
@@ -177,7 +176,7 @@ picotls_stop_listen (tls_ctx_t * lctx)
 }
 
 static void
-picotls_handle_handshake_failure (tls_ctx_t * ctx)
+picotls_handle_handshake_failure (tls_ctx_t *ctx)
 {
   session_free (session_get (ctx->c_s_index, ctx->c_thread_index));
   ctx->no_app_session = 1;
@@ -186,14 +185,14 @@ picotls_handle_handshake_failure (tls_ctx_t * ctx)
 }
 
 static void
-picotls_confirm_app_close (tls_ctx_t * ctx)
+picotls_confirm_app_close (tls_ctx_t *ctx)
 {
   tls_disconnect_transport (ctx);
   session_transport_closed_notify (&ctx->connection);
 }
 
 static int
-picotls_transport_close (tls_ctx_t * ctx)
+picotls_transport_close (tls_ctx_t *ctx)
 {
   if (!picotls_handshake_is_over (ctx))
     {
@@ -207,7 +206,7 @@ picotls_transport_close (tls_ctx_t * ctx)
 }
 
 static int
-picotls_app_close (tls_ctx_t * ctx)
+picotls_app_close (tls_ctx_t *ctx)
 {
   session_t *app_session;
 
@@ -221,8 +220,8 @@ picotls_app_close (tls_ctx_t * ctx)
 }
 
 static inline int
-picotls_do_handshake (picotls_ctx_t * ptls_ctx, session_t * tls_session,
-		      u8 * input, int input_len)
+picotls_do_handshake (picotls_ctx_t *ptls_ctx, session_t *tls_session,
+		      u8 *input, int input_len)
 {
   ptls_t *tls = ptls_ctx->tls;
   ptls_buffer_t buf;
@@ -241,8 +240,8 @@ picotls_do_handshake (picotls_ctx_t * ptls_ctx, session_t * tls_session,
 	  ptls_ctx->rx_offset += consumed;
 	  if ((rv == 0 || rv == PTLS_ERROR_IN_PROGRESS) && buf.off != 0)
 	    {
-	      write = picotls_try_handshake_write (ptls_ctx, tls_session,
-						   &buf);
+	      write =
+		picotls_try_handshake_write (ptls_ctx, tls_session, &buf);
 	    }
 	  ptls_buffer_dispose (&buf);
 	}
@@ -254,7 +253,7 @@ picotls_do_handshake (picotls_ctx_t * ptls_ctx, session_t * tls_session,
 }
 
 static inline int
-picotls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
+picotls_ctx_read (tls_ctx_t *ctx, session_t *tls_session)
 {
   picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
   int from_tls_len = 0, off, crypto_len, ret;
@@ -311,16 +310,14 @@ picotls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 
       if (PREDICT_FALSE (deq_now < deq_max))
 	{
-	  off =
-	    svm_fifo_dequeue (tls_rx_fifo, deq_max, TLS_RX_LEN (ptls_ctx));
+	  off = svm_fifo_dequeue (tls_rx_fifo, deq_max, TLS_RX_LEN (ptls_ctx));
 	  from_tls_len += off;
 	  ptls_ctx->rx_len += off;
 	}
       else
 	{
-	  ret =
-	    ptls_receive (ptls_ctx->tls, buf, svm_fifo_head (tls_rx_fifo),
-			  (size_t *) & deq_now);
+	  ret = ptls_receive (ptls_ctx->tls, buf, svm_fifo_head (tls_rx_fifo),
+			      (size_t *) &deq_now);
 	  svm_fifo_dequeue_drop (tls_rx_fifo, deq_now);
 	  goto enq_buf;
 	}
@@ -339,8 +336,7 @@ app_fifo:
     {
       size_t consumed = crypto_len - off;
       ret =
-	ptls_receive (ptls_ctx->tls, buf,
-		      TLS_RX_OFFSET (ptls_ctx), &consumed);
+	ptls_receive (ptls_ctx->tls, buf, TLS_RX_OFFSET (ptls_ctx), &consumed);
       off += consumed;
       ptls_ctx->rx_offset += off;
     }
@@ -348,9 +344,8 @@ app_fifo:
 
 enq_buf:
 
-  off =
-    svm_fifo_enqueue (app_rx_fifo, TLS_READ_LEFT_LEN (ptls_ctx),
-		      TLS_READ_OFFSET (ptls_ctx));
+  off = svm_fifo_enqueue (app_rx_fifo, TLS_READ_LEFT_LEN (ptls_ctx),
+			  TLS_READ_OFFSET (ptls_ctx));
   if (off < 0)
     {
       tls_add_vpp_q_builtin_rx_evt (tls_session);
@@ -370,16 +365,16 @@ final:
   if (app_session->session_state >= SESSION_STATE_READY)
     tls_notify_app_enqueue (ctx, app_session);
 
-  if (TLS_RX_IS_LEFT (ptls_ctx) || TLS_READ_IS_LEFT (ptls_ctx)
-      || svm_fifo_max_dequeue (tls_rx_fifo))
+  if (TLS_RX_IS_LEFT (ptls_ctx) || TLS_READ_IS_LEFT (ptls_ctx) ||
+      svm_fifo_max_dequeue (tls_rx_fifo))
     tls_add_vpp_q_builtin_rx_evt (tls_session);
 
   return from_tls_len;
 }
 
 static inline int
-picotls_content_process (picotls_ctx_t * ptls_ctx, svm_fifo_t * src_fifo,
-			 svm_fifo_t * dst_fifo, int content_len,
+picotls_content_process (picotls_ctx_t *ptls_ctx, svm_fifo_t *src_fifo,
+			 svm_fifo_t *dst_fifo, int content_len,
 			 int total_record_overhead, int is_no_copy)
 {
   ptls_buffer_t *buf = &ptls_ctx->write_buffer;
@@ -413,8 +408,8 @@ picotls_content_process (picotls_ctx_t * ptls_ctx, svm_fifo_t * src_fifo,
 }
 
 static inline int
-picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
-		   transport_send_params_t * sp)
+picotls_ctx_write (tls_ctx_t *ctx, session_t *app_session,
+		   transport_send_params_t *sp)
 {
   picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
   u32 deq_max, deq_now;
@@ -433,9 +428,8 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
   if (PREDICT_FALSE (TLS_WRITE_IS_LEFT (ptls_ctx)))
     {
       enq_max = svm_fifo_max_enqueue_prod (tls_tx_fifo);
-      int to_write = clib_min (enq_max,
-			       ptls_ctx->write_buffer.off -
-			       ptls_ctx->write_buffer_offset);
+      int to_write = clib_min (enq_max, ptls_ctx->write_buffer.off -
+					  ptls_ctx->write_buffer_offset);
       to_tls_len =
 	svm_fifo_enqueue (tls_tx_fifo, to_write, TLS_WRITE_OFFSET (ptls_ctx));
       if (to_tls_len < 0)
@@ -455,7 +449,6 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
 	  ptls_buffer_init (&ptls_ctx->write_buffer, "", 0);
 	  ptls_ctx->write_buffer_offset = 0;
 	}
-
     }
 
   deq_max = svm_fifo_max_dequeue_cons (app_tx_fifo);
@@ -466,7 +459,7 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
   deq_now = clib_min (deq_now, svm_fifo_max_read_chunk (app_tx_fifo));
 
   enq_max = svm_fifo_max_enqueue_prod (tls_tx_fifo);
-    /** There is no engough enqueue space for one record **/
+  /** There is no engough enqueue space for one record **/
   if (enq_max <= record_overhead)
     {
       app_session->flags |= SESSION_F_CUSTOM_TX;
@@ -475,13 +468,12 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
 
   enq_now = clib_min (enq_max, svm_fifo_max_write_chunk (tls_tx_fifo));
 
-    /** Allowed to execute no-copy crypto operation **/
+  /** Allowed to execute no-copy crypto operation **/
   if (enq_now > record_overhead)
     {
       is_nocopy = 1;
       from_app_len = clib_min (deq_now, enq_now);
-      num_records =
-	ceil ((f64) from_app_len / PTLS_MAX_PLAINTEXT_RECORD_SIZE);
+      num_records = ceil ((f64) from_app_len / PTLS_MAX_PLAINTEXT_RECORD_SIZE);
       total_overhead = num_records * record_overhead;
       if (from_app_len + total_overhead > enq_now)
 	from_app_len = enq_now - total_overhead;
@@ -489,16 +481,15 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
   else
     {
       from_app_len = clib_min (deq_now, enq_max);
-      num_records =
-	ceil ((f64) from_app_len / PTLS_MAX_PLAINTEXT_RECORD_SIZE);
+      num_records = ceil ((f64) from_app_len / PTLS_MAX_PLAINTEXT_RECORD_SIZE);
       total_overhead = num_records * record_overhead;
       if (from_app_len + total_overhead > enq_max)
 	from_app_len = enq_max - total_overhead;
     }
 
   to_tls_len =
-    picotls_content_process (ptls_ctx, app_tx_fifo, tls_tx_fifo,
-			     from_app_len, total_overhead, is_nocopy);
+    picotls_content_process (ptls_ctx, app_tx_fifo, tls_tx_fifo, from_app_len,
+			     total_overhead, is_nocopy);
   if (!TLS_WRITE_IS_LEFT (ptls_ctx))
     {
       ptls_ctx->write_buffer_offset = 0;
@@ -521,7 +512,7 @@ picotls_ctx_write (tls_ctx_t * ctx, session_t * app_session,
 }
 
 static int
-picotls_ctx_init_server (tls_ctx_t * ctx)
+picotls_ctx_init_server (tls_ctx_t *ctx)
 {
   picotls_ctx_t *ptls_ctx = (picotls_ctx_t *) ctx;
   u32 ptls_lctx_idx = ctx->tls_ssl_ctx;
@@ -618,7 +609,7 @@ const static tls_engine_vft_t picotls_engine = {
 };
 
 static clib_error_t *
-tls_picotls_init (vlib_main_t * vm)
+tls_picotls_init (vlib_main_t *vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   picotls_main_t *pm = &picotls_main;
@@ -638,18 +629,14 @@ tls_picotls_init (vlib_main_t * vm)
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (tls_picotls_init) = {
   .runs_after = VLIB_INITS ("tls_init"),
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Transport Layer Security (TLS) Engine, Picotls Based",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

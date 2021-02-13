@@ -13,14 +13,13 @@
 
 #include <vnet/ip/ip.h>
 
-uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
+uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
 
 /* Declare message IDs */
 #include <vnet/format_fns.h>
 #include <vrrp/vrrp.api_enum.h>
 #include <vrrp/vrrp.api_types.h>
 #include <vpp/api/vpe.api_types.h>
-
 
 typedef struct
 {
@@ -36,7 +35,7 @@ vrrp_test_main_t vrrp_test_main;
 #include <vlibapi/vat_helper_macros.h>
 
 static int
-api_vrrp_vr_add_del (vat_main_t * vam)
+api_vrrp_vr_add_del (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   u32 sw_if_index = ~0;
@@ -124,7 +123,7 @@ api_vrrp_vr_add_del (vat_main_t * vam)
   mp->vr_id = vr_id;
   mp->priority = priority;
   mp->interval = htons (interval);
-  mp->flags = VRRP_API_VR_PREEMPT;	/* preempt by default */
+  mp->flags = VRRP_API_VR_PREEMPT; /* preempt by default */
 
   if (no_preempt)
     mp->flags &= ~VRRP_API_VR_PREEMPT;
@@ -144,27 +143,27 @@ api_vrrp_vr_add_del (vat_main_t * vam)
   api_addr = mp->addrs;
 
   vec_foreach (ip_addr, ip_addrs)
-  {
-    void *src, *dst;
-    int len;
+    {
+      void *src, *dst;
+      int len;
 
-    if (is_ipv6)
-      {
-	api_addr->af = ADDRESS_IP6;
-	src = &ip_addr->ip6;
-	dst = &api_addr->un.ip6;
-	len = sizeof (api_addr->un.ip6);
-      }
-    else
-      {
-	api_addr->af = ADDRESS_IP4;
-	src = &ip_addr->ip4;
-	dst = &api_addr->un.ip4;
-	len = sizeof (api_addr->un.ip4);
-      }
-    clib_memcpy (dst, src, len);
-    api_addr++;
-  }
+      if (is_ipv6)
+	{
+	  api_addr->af = ADDRESS_IP6;
+	  src = &ip_addr->ip6;
+	  dst = &api_addr->un.ip6;
+	  len = sizeof (api_addr->un.ip6);
+	}
+      else
+	{
+	  api_addr->af = ADDRESS_IP4;
+	  src = &ip_addr->ip4;
+	  dst = &api_addr->un.ip4;
+	  len = sizeof (api_addr->un.ip4);
+	}
+      clib_memcpy (dst, src, len);
+      api_addr++;
+    }
 
   /* send it... */
   S (mp);
@@ -179,7 +178,7 @@ done:
 }
 
 static int
-api_vrrp_vr_dump (vat_main_t * vam)
+api_vrrp_vr_dump (vat_main_t *vam)
 {
   vrrp_test_main_t *vtm = &vrrp_test_main;
   unformat_input_t *i = vam->input;
@@ -222,7 +221,7 @@ api_vrrp_vr_dump (vat_main_t * vam)
 }
 
 static void
-vl_api_vrrp_vr_details_t_handler (vl_api_vrrp_vr_details_t * mp)
+vl_api_vrrp_vr_details_t_handler (vl_api_vrrp_vr_details_t *mp)
 {
   vat_main_t *vam = vrrp_test_main.vat_main;
   u32 api_flags = ntohl (mp->config.flags);
@@ -240,20 +239,20 @@ vl_api_vrrp_vr_details_t_handler (vl_api_vrrp_vr_details_t * mp)
   if (state > ARRAY_LEN (states) - 2)
     state = ARRAY_LEN (states) - 1;
 
-  fformat (vam->ofp, "sw_if_index %u vr_id %u IPv%d: "
+  fformat (vam->ofp,
+	   "sw_if_index %u vr_id %u IPv%d: "
 	   "priority %u interval %u preempt %s accept %s unicast %s "
 	   "state %s master_adv_interval %u skew %u master_down_interval %u "
 	   "mac %U ",
 	   ntohl (mp->config.sw_if_index), mp->config.vr_id,
-	   (mp->config.flags & VRRP_API_VR_IPV6) ? 6 : 4,
-	   mp->config.priority, htons (mp->config.interval),
+	   (mp->config.flags & VRRP_API_VR_IPV6) ? 6 : 4, mp->config.priority,
+	   htons (mp->config.interval),
 	   (api_flags & VRRP_API_VR_PREEMPT) ? "yes" : "no",
 	   (api_flags & VRRP_API_VR_ACCEPT) ? "yes" : "no",
-	   (api_flags & VRRP_API_VR_UNICAST) ? "yes" : "no",
-	   states[state],
+	   (api_flags & VRRP_API_VR_UNICAST) ? "yes" : "no", states[state],
 	   ntohs (mp->runtime.master_adv_int), ntohs (mp->runtime.skew),
-	   ntohs (mp->runtime.master_down_int),
-	   format_ethernet_address, &mp->runtime.mac);
+	   ntohs (mp->runtime.master_down_int), format_ethernet_address,
+	   &mp->runtime.mac);
 
   fformat (vam->ofp, "addresses: ");
 
@@ -263,14 +262,14 @@ vl_api_vrrp_vr_details_t_handler (vl_api_vrrp_vr_details_t * mp)
 
       fformat (vam->ofp, "%U ",
 	       (addr->af) ? format_ip6_address : format_ip4_address,
-	       (u8 *) & addr->un);
+	       (u8 *) &addr->un);
     }
 
   fformat (vam->ofp, "\n");
 }
 
 static int
-api_vrrp_vr_start_stop (vat_main_t * vam)
+api_vrrp_vr_start_stop (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_vrrp_vr_start_stop_t *mp;
@@ -328,7 +327,7 @@ api_vrrp_vr_start_stop (vat_main_t * vam)
 }
 
 static int
-api_vrrp_vr_track_if_add_del (vat_main_t * vam)
+api_vrrp_vr_track_if_add_del (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_vrrp_vr_track_if_add_del_t *mp;
@@ -387,15 +386,14 @@ api_vrrp_vr_track_if_add_del (vat_main_t * vam)
     }
 
   vec_foreach (track_if, track_ifs)
-  {
-    if (!track_if->priority)
-      {
-	errmsg ("Priority must be nonzero");
-	vec_free (track_ifs);
-	return -99;
-      }
-  }
-
+    {
+      if (!track_if->priority)
+	{
+	  errmsg ("Priority must be nonzero");
+	  vec_free (track_ifs);
+	  return -99;
+	}
+    }
 
   M2 (VRRP_VR_TRACK_IF_ADD_DEL, mp, vec_len (track_ifs) * sizeof (*track_if));
 
@@ -413,7 +411,7 @@ api_vrrp_vr_track_if_add_del (vat_main_t * vam)
 }
 
 static int
-api_vrrp_vr_track_if_dump (vat_main_t * vam)
+api_vrrp_vr_track_if_dump (vat_main_t *vam)
 {
   vrrp_test_main_t *vtm = &vrrp_test_main;
   unformat_input_t *i = vam->input;
@@ -483,15 +481,16 @@ api_vrrp_vr_track_if_dump (vat_main_t * vam)
 }
 
 static void
-  vl_api_vrrp_vr_track_if_details_t_handler
-  (vl_api_vrrp_vr_track_if_details_t * mp)
+vl_api_vrrp_vr_track_if_details_t_handler (
+  vl_api_vrrp_vr_track_if_details_t *mp)
 {
   vat_main_t *vam = vrrp_test_main.vat_main;
   int i;
 
   for (i = 0; i < mp->n_ifs; i++)
     {
-      fformat (vam->ofp, "VR sw_if_index %u vr_id %u IPv%d - "
+      fformat (vam->ofp,
+	       "VR sw_if_index %u vr_id %u IPv%d - "
 	       "track sw_if_index %u priority %u\n",
 	       ntohl (mp->sw_if_index), mp->vr_id, (mp->is_ipv6) ? 6 : 4,
 	       ntohl (mp->ifs[i].sw_if_index), mp->ifs[i].priority);
@@ -501,7 +500,7 @@ static void
 }
 
 static int
-api_vrrp_vr_set_peers (vat_main_t * vam)
+api_vrrp_vr_set_peers (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   u32 sw_if_index = ~0;
@@ -571,27 +570,27 @@ api_vrrp_vr_set_peers (vat_main_t * vam)
   api_addr = mp->addrs;
 
   vec_foreach (ip_addr, ip_addrs)
-  {
-    void *src, *dst;
-    int len;
+    {
+      void *src, *dst;
+      int len;
 
-    if (is_ipv6)
-      {
-	api_addr->af = ADDRESS_IP6;
-	src = &ip_addr->ip6;
-	dst = &api_addr->un.ip6;
-	len = sizeof (api_addr->un.ip6);
-      }
-    else
-      {
-	api_addr->af = ADDRESS_IP4;
-	src = &ip_addr->ip4;
-	dst = &api_addr->un.ip4;
-	len = sizeof (api_addr->un.ip4);
-      }
-    clib_memcpy (dst, src, len);
-    api_addr++;
-  }
+      if (is_ipv6)
+	{
+	  api_addr->af = ADDRESS_IP6;
+	  src = &ip_addr->ip6;
+	  dst = &api_addr->un.ip6;
+	  len = sizeof (api_addr->un.ip6);
+	}
+      else
+	{
+	  api_addr->af = ADDRESS_IP4;
+	  src = &ip_addr->ip4;
+	  dst = &api_addr->un.ip4;
+	  len = sizeof (api_addr->un.ip4);
+	}
+      clib_memcpy (dst, src, len);
+      api_addr++;
+    }
 
   /* send it... */
   S (mp);
@@ -606,7 +605,7 @@ done:
 }
 
 static int
-api_vrrp_vr_peer_dump (vat_main_t * vam)
+api_vrrp_vr_peer_dump (vat_main_t *vam)
 {
   vrrp_test_main_t *vtm = &vrrp_test_main;
   unformat_input_t *i = vam->input;
@@ -668,13 +667,13 @@ api_vrrp_vr_peer_dump (vat_main_t * vam)
 }
 
 static void
-vl_api_vrrp_vr_peer_details_t_handler (vl_api_vrrp_vr_peer_details_t * mp)
+vl_api_vrrp_vr_peer_details_t_handler (vl_api_vrrp_vr_peer_details_t *mp)
 {
   vat_main_t *vam = vrrp_test_main.vat_main;
   int i;
 
-  fformat (vam->ofp, "sw_if_index %u vr_id %u IPv%d ",
-	   ntohl (mp->sw_if_index), mp->vr_id, (mp->is_ipv6) ? 6 : 4);
+  fformat (vam->ofp, "sw_if_index %u vr_id %u IPv%d ", ntohl (mp->sw_if_index),
+	   mp->vr_id, (mp->is_ipv6) ? 6 : 4);
 
   fformat (vam->ofp, "peer addresses: ");
 
@@ -684,14 +683,14 @@ vl_api_vrrp_vr_peer_details_t_handler (vl_api_vrrp_vr_peer_details_t * mp)
 
       fformat (vam->ofp, "%U ",
 	       (addr->af) ? format_ip6_address : format_ip4_address,
-	       (u8 *) & addr->un);
+	       (u8 *) &addr->un);
     }
 
   fformat (vam->ofp, "\n");
 }
 
 static int
-api_want_vrrp_vr_events (vat_main_t * vam)
+api_want_vrrp_vr_events (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_want_vrrp_vr_events_t *mp;

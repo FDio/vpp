@@ -23,8 +23,7 @@ bind_cmd::bind_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_east_itf(east_itf)
   , m_west_itf(west_itf)
-{
-}
+{}
 
 bool
 bind_cmd::operator==(const bind_cmd& other) const
@@ -66,8 +65,7 @@ unbind_cmd::unbind_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_east_itf(east_itf)
   , m_west_itf(west_itf)
-{
-}
+{}
 
 bool
 unbind_cmd::operator==(const unbind_cmd& other) const
@@ -104,9 +102,7 @@ unbind_cmd::to_string() const
   return (s.str());
 }
 
-dump_cmd::dump_cmd()
-{
-}
+dump_cmd::dump_cmd() {}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const

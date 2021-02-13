@@ -57,8 +57,8 @@
  * @return 0 if correct, else error
  */
 int
-sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
-		    u32 table_id, ip46_address_t * prefix, u32 mask_width,
+sr_steering_policy (int is_del, ip6_address_t *bsid, u32 sr_policy_index,
+		    u32 table_id, ip46_address_t *prefix, u32 mask_width,
 		    u32 sw_if_index, u8 traffic_type)
 {
   ip6_sr_main_t *sm = &sr_main;
@@ -77,7 +77,7 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
       key.l3.prefix.as_u64[0] = prefix->as_u64[0];
       key.l3.prefix.as_u64[1] = prefix->as_u64[1];
       key.l3.mask_width = mask_width;
-      key.l3.fib_table = (table_id != (u32) ~ 0 ? table_id : 0);
+      key.l3.fib_table = (table_id != (u32) ~0 ? table_id : 0);
     }
   else if (traffic_type == SR_STEER_L2)
     {
@@ -115,10 +115,10 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 	      pfx.fp_len = steer_pl->classify.l3.mask_width;
 	      pfx.fp_addr.ip6 = steer_pl->classify.l3.prefix.ip6;
 
-	      fib_table_entry_delete (fib_table_find
-				      (FIB_PROTOCOL_IP6,
-				       steer_pl->classify.l3.fib_table),
-				      &pfx, FIB_SOURCE_SR);
+	      fib_table_entry_delete (
+		fib_table_find (FIB_PROTOCOL_IP6,
+				steer_pl->classify.l3.fib_table),
+		&pfx, FIB_SOURCE_SR);
 	    }
 	  else if (steer_pl->classify.traffic_type == SR_STEER_IPV4)
 	    {
@@ -127,10 +127,10 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 	      pfx.fp_len = steer_pl->classify.l3.mask_width;
 	      pfx.fp_addr.ip4 = steer_pl->classify.l3.prefix.ip4;
 
-	      fib_table_entry_delete (fib_table_find
-				      (FIB_PROTOCOL_IP4,
-				       steer_pl->classify.l3.fib_table), &pfx,
-				      FIB_SOURCE_SR);
+	      fib_table_entry_delete (
+		fib_table_find (FIB_PROTOCOL_IP4,
+				steer_pl->classify.l3.fib_table),
+		&pfx, FIB_SOURCE_SR);
 	    }
 	  else if (steer_pl->classify.traffic_type == SR_STEER_L2)
 	    {
@@ -160,17 +160,18 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 	  /* If no more SR policies or steering policies */
 	  if (!pool_elts (sm->sr_policies) && !pool_elts (sm->steer_policies))
 	    {
-	      fib_table_unlock (sm->fib_table_ip6,
-				FIB_PROTOCOL_IP6, FIB_SOURCE_SR);
-	      fib_table_unlock (sm->fib_table_ip4,
-				FIB_PROTOCOL_IP6, FIB_SOURCE_SR);
-	      sm->fib_table_ip6 = (u32) ~ 0;
-	      sm->fib_table_ip4 = (u32) ~ 0;
+	      fib_table_unlock (sm->fib_table_ip6, FIB_PROTOCOL_IP6,
+				FIB_SOURCE_SR);
+	      fib_table_unlock (sm->fib_table_ip4, FIB_PROTOCOL_IP6,
+				FIB_SOURCE_SR);
+	      sm->fib_table_ip6 = (u32) ~0;
+	      sm->fib_table_ip4 = (u32) ~0;
 	    }
 
 	  return 0;
 	}
-      else			/* It means user requested to update an existing SR steering policy */
+      else /* It means user requested to update an existing SR steering policy
+	    */
 	{
 	  /* Retrieve SR steering policy */
 	  if (bsid)
@@ -197,10 +198,10 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 	      pfx.fp_len = steer_pl->classify.l3.mask_width;
 	      pfx.fp_addr.ip6 = steer_pl->classify.l3.prefix.ip6;
 
-	      fib_table_entry_delete (fib_table_find
-				      (FIB_PROTOCOL_IP6,
-				       steer_pl->classify.l3.fib_table),
-				      &pfx, FIB_SOURCE_SR);
+	      fib_table_entry_delete (
+		fib_table_find (FIB_PROTOCOL_IP6,
+				steer_pl->classify.l3.fib_table),
+		&pfx, FIB_SOURCE_SR);
 
 	      /* Create a new one */
 	      goto update_fib;
@@ -212,10 +213,10 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 	      pfx.fp_len = steer_pl->classify.l3.mask_width;
 	      pfx.fp_addr.ip4 = steer_pl->classify.l3.prefix.ip4;
 
-	      fib_table_entry_delete (fib_table_find
-				      (FIB_PROTOCOL_IP4,
-				       steer_pl->classify.l3.fib_table),
-				      &pfx, FIB_SOURCE_SR);
+	      fib_table_entry_delete (
+		fib_table_find (FIB_PROTOCOL_IP4,
+				steer_pl->classify.l3.fib_table),
+		&pfx, FIB_SOURCE_SR);
 
 	      /* Create a new one */
 	      goto update_fib;
@@ -229,7 +230,7 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
     }
   else
     /* delete; steering policy does not exist; complain */
-  if (is_del)
+    if (is_del)
     return -4;
 
   /* Retrieve SR policy */
@@ -253,8 +254,7 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
       clib_memcpy_fast (&steer_pl->classify.l3.prefix, prefix,
 			sizeof (ip46_address_t));
       steer_pl->classify.l3.mask_width = mask_width;
-      steer_pl->classify.l3.fib_table =
-	(table_id != (u32) ~ 0 ? table_id : 0);
+      steer_pl->classify.l3.fib_table = (table_id != (u32) ~0 ? table_id : 0);
       steer_pl->classify.traffic_type = traffic_type;
     }
   else if (traffic_type == SR_STEER_L2)
@@ -280,8 +280,8 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
       if (!sr_policy->is_encap)
 	goto cleanup_error_encap;
 
-      if (vnet_feature_enable_disable
-	  ("device-input", "sr-pl-rewrite-encaps-l2", sw_if_index, 1, 0, 0))
+      if (vnet_feature_enable_disable (
+	    "device-input", "sr-pl-rewrite-encaps-l2", sw_if_index, 1, 0, 0))
 	goto cleanup_error_redirection;
 
       /* Set promiscous mode on interface */
@@ -304,16 +304,12 @@ update_fib:
       pfx.fp_len = steer_pl->classify.l3.mask_width;
       pfx.fp_addr.ip6 = steer_pl->classify.l3.prefix.ip6;
 
-      fib_table_entry_path_add (fib_table_find (FIB_PROTOCOL_IP6,
-						(table_id !=
-						 (u32) ~ 0 ?
-						 table_id : 0)),
-				&pfx, FIB_SOURCE_SR,
-				FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT,
-				DPO_PROTO_IP6,
-				(ip46_address_t *) & sr_policy->bsid, ~0,
-				sm->fib_table_ip6, 1, NULL,
-				FIB_ROUTE_PATH_FLAG_NONE);
+      fib_table_entry_path_add (
+	fib_table_find (FIB_PROTOCOL_IP6,
+			(table_id != (u32) ~0 ? table_id : 0)),
+	&pfx, FIB_SOURCE_SR, FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT, DPO_PROTO_IP6,
+	(ip46_address_t *) &sr_policy->bsid, ~0, sm->fib_table_ip6, 1, NULL,
+	FIB_ROUTE_PATH_FLAG_NONE);
     }
   else if (traffic_type == SR_STEER_IPV4)
     {
@@ -321,16 +317,12 @@ update_fib:
       pfx.fp_len = steer_pl->classify.l3.mask_width;
       pfx.fp_addr.ip4 = steer_pl->classify.l3.prefix.ip4;
 
-      fib_table_entry_path_add (fib_table_find (FIB_PROTOCOL_IP4,
-						(table_id !=
-						 (u32) ~ 0 ?
-						 table_id : 0)),
-				&pfx, FIB_SOURCE_SR,
-				FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT,
-				DPO_PROTO_IP6,
-				(ip46_address_t *) & sr_policy->bsid, ~0,
-				sm->fib_table_ip4, 1, NULL,
-				FIB_ROUTE_PATH_FLAG_NONE);
+      fib_table_entry_path_add (
+	fib_table_find (FIB_PROTOCOL_IP4,
+			(table_id != (u32) ~0 ? table_id : 0)),
+	&pfx, FIB_SOURCE_SR, FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT, DPO_PROTO_IP6,
+	(ip46_address_t *) &sr_policy->bsid, ~0, sm->fib_table_ip4, 1, NULL,
+	FIB_ROUTE_PATH_FLAG_NONE);
     }
   else if (traffic_type == SR_STEER_L2)
     {
@@ -339,8 +331,8 @@ update_fib:
       else
 	{
 	  vec_resize (sm->sw_iface_sr_policies,
-		      (pool_len (sm->vnet_main->interface_main.sw_interfaces)
-		       - vec_len (sm->sw_iface_sr_policies)));
+		      (pool_len (sm->vnet_main->interface_main.sw_interfaces) -
+		       vec_len (sm->sw_iface_sr_policies)));
 	  sm->sw_iface_sr_policies[sw_if_index] = steer_pl->sr_policy;
 	}
     }
@@ -359,8 +351,8 @@ cleanup_error_redirection:
 }
 
 static clib_error_t *
-sr_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+sr_steer_policy_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
 
@@ -368,12 +360,12 @@ sr_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   ip46_address_t prefix;
   u32 dst_mask_width = 0;
-  u32 sw_if_index = (u32) ~ 0;
+  u32 sw_if_index = (u32) ~0;
   u8 traffic_type = 0;
-  u32 fib_table = (u32) ~ 0;
+  u32 fib_table = (u32) ~0;
 
   ip6_address_t bsid;
-  u32 sr_policy_index = (u32) ~ 0;
+  u32 sr_policy_index = (u32) ~0;
 
   u8 sr_policy_set = 0;
 
@@ -384,27 +376,27 @@ sr_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (input, "del"))
 	is_del = 1;
-      else if (!traffic_type
-	       && unformat (input, "l3 %U/%d", unformat_ip6_address,
-			    &prefix.ip6, &dst_mask_width))
+      else if (!traffic_type &&
+	       unformat (input, "l3 %U/%d", unformat_ip6_address, &prefix.ip6,
+			 &dst_mask_width))
 	traffic_type = SR_STEER_IPV6;
-      else if (!traffic_type
-	       && unformat (input, "l3 %U/%d", unformat_ip4_address,
-			    &prefix.ip4, &dst_mask_width))
+      else if (!traffic_type &&
+	       unformat (input, "l3 %U/%d", unformat_ip4_address, &prefix.ip4,
+			 &dst_mask_width))
 	traffic_type = SR_STEER_IPV4;
-      else if (!traffic_type
-	       && unformat (input, "l2 %U", unformat_vnet_sw_interface, vnm,
-			    &sw_if_index))
+      else if (!traffic_type &&
+	       unformat (input, "l2 %U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	traffic_type = SR_STEER_L2;
-      else if (!sr_policy_set
-	       && unformat (input, "via index %d", &sr_policy_index))
+      else if (!sr_policy_set &&
+	       unformat (input, "via index %d", &sr_policy_index))
 	sr_policy_set = 1;
-      else if (!sr_policy_set
-	       && unformat (input, "via bsid %U",
-			    unformat_ip6_address, &bsid))
+      else if (!sr_policy_set &&
+	       unformat (input, "via bsid %U", unformat_ip6_address, &bsid))
 	sr_policy_set = 1;
-      else if (fib_table == (u32) ~ 0
-	       && unformat (input, "fib-table %d", &fib_table));
+      else if (fib_table == (u32) ~0 &&
+	       unformat (input, "fib-table %d", &fib_table))
+	;
       else
 	break;
     }
@@ -417,8 +409,7 @@ sr_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   /* Make sure that the prefixes are clean */
   if (traffic_type == SR_STEER_IPV4)
     {
-      u32 mask =
-	(dst_mask_width ? (0xFFFFFFFFu >> (32 - dst_mask_width)) : 0);
+      u32 mask = (dst_mask_width ? (0xFFFFFFFFu >> (32 - dst_mask_width)) : 0);
       prefix.ip4.as_u32 &= mask;
     }
   else if (traffic_type == SR_STEER_IPV6)
@@ -428,10 +419,9 @@ sr_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
       ip6_address_mask (&prefix.ip6, &mask);
     }
 
-  rv =
-    sr_steering_policy (is_del, (sr_policy_index == ~(u32) 0 ? &bsid : NULL),
-			sr_policy_index, fib_table, &prefix, dst_mask_width,
-			sw_if_index, traffic_type);
+  rv = sr_steering_policy (
+    is_del, (sr_policy_index == ~(u32) 0 ? &bsid : NULL), sr_policy_index,
+    fib_table, &prefix, dst_mask_width, sw_if_index, traffic_type);
 
   switch (rv)
     {
@@ -442,14 +432,14 @@ sr_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
     case -1:
       return clib_error_return (0, "Incorrect API usage.");
     case -2:
-      return clib_error_return (0,
-				"The requested SR policy could not be located. Review the BSID/index.");
+      return clib_error_return (0, "The requested SR policy could not be "
+				   "located. Review the BSID/index.");
     case -3:
-      return clib_error_return (0,
-				"Unable to do SW redirect. Incorrect interface.");
+      return clib_error_return (
+	0, "Unable to do SW redirect. Incorrect interface.");
     case -4:
-      return clib_error_return (0,
-				"The requested SR steering policy could not be deleted.");
+      return clib_error_return (
+	0, "The requested SR steering policy could not be deleted.");
     case -5:
       return clib_error_return (0,
 				"The SR policy is not an encapsulation one.");
@@ -459,27 +449,23 @@ sr_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (sr_steer_policy_command, static) = {
   .path = "sr steer",
   .short_help = "sr steer (del) [l3 <ip_addr/mask>|l2 <sf_if>] "
-    "via [index <sr_policy_index>|bsid <bsid_ip6_addr>] "
-    "(fib-table <fib_table_index>)",
-  .long_help =
-    "\tSteer a L2 or L3 traffic through an existing SR policy.\n"
-    "\tExamples:\n"
-    "\t\tsr steer l3 2001::/64 via sr_policy index 5\n"
-    "\t\tsr steer l3 2001::/64 via sr_policy bsid 2010::9999:1\n"
-    "\t\tsr steer l2 GigabitEthernet0/5/0 via sr_policy index 5\n"
-    "\t\tsr steer del l3 2001::/64 via sr_policy index 5\n",
+		"via [index <sr_policy_index>|bsid <bsid_ip6_addr>] "
+		"(fib-table <fib_table_index>)",
+  .long_help = "\tSteer a L2 or L3 traffic through an existing SR policy.\n"
+	       "\tExamples:\n"
+	       "\t\tsr steer l3 2001::/64 via sr_policy index 5\n"
+	       "\t\tsr steer l3 2001::/64 via sr_policy bsid 2010::9999:1\n"
+	       "\t\tsr steer l2 GigabitEthernet0/5/0 via sr_policy index 5\n"
+	       "\t\tsr steer del l3 2001::/64 via sr_policy index 5\n",
   .function = sr_steer_policy_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_sr_steering_policies_command_fn (vlib_main_t * vm,
-				      unformat_input_t * input,
-				      vlib_cli_command_t * cmd)
+show_sr_steering_policies_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_steering_policy_t **steer_policies = 0;
@@ -491,9 +477,12 @@ show_sr_steering_policies_command_fn (vlib_main_t * vm,
   int i;
 
   vlib_cli_output (vm, "SR steering policies:");
-  /* *INDENT-OFF* */
-  pool_foreach (steer_pl, sm->steer_policies) {vec_add1(steer_policies, steer_pl);}
-  /* *INDENT-ON* */
+
+  pool_foreach (steer_pl, sm->steer_policies)
+    {
+      vec_add1 (steer_policies, steer_pl);
+    }
+
   vlib_cli_output (vm, "Traffic\t\tSR policy BSID");
   for (i = 0; i < vec_len (steer_policies); i++)
     {
@@ -501,23 +490,20 @@ show_sr_steering_policies_command_fn (vlib_main_t * vm,
       pl = pool_elt_at_index (sm->sr_policies, steer_pl->sr_policy);
       if (steer_pl->classify.traffic_type == SR_STEER_L2)
 	{
-	  vlib_cli_output (vm, "L2 %U\t%U",
-			   format_vnet_sw_if_index_name, vnm,
+	  vlib_cli_output (vm, "L2 %U\t%U", format_vnet_sw_if_index_name, vnm,
 			   steer_pl->classify.l2.sw_if_index,
 			   format_ip6_address, &pl->bsid);
 	}
       else if (steer_pl->classify.traffic_type == SR_STEER_IPV4)
 	{
-	  vlib_cli_output (vm, "L3 %U/%d\t%U",
-			   format_ip4_address,
+	  vlib_cli_output (vm, "L3 %U/%d\t%U", format_ip4_address,
 			   &steer_pl->classify.l3.prefix.ip4,
 			   steer_pl->classify.l3.mask_width,
 			   format_ip6_address, &pl->bsid);
 	}
       else if (steer_pl->classify.traffic_type == SR_STEER_IPV6)
 	{
-	  vlib_cli_output (vm, "L3 %U/%d\t%U",
-			   format_ip6_address,
+	  vlib_cli_output (vm, "L3 %U/%d\t%U", format_ip6_address,
 			   &steer_pl->classify.l3.prefix.ip6,
 			   steer_pl->classify.l3.mask_width,
 			   format_ip6_address, &pl->bsid);
@@ -526,16 +512,14 @@ show_sr_steering_policies_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_sr_steering_policies_command, static) = {
   .path = "show sr steering-policies",
   .short_help = "show sr steering-policies",
   .function = show_sr_steering_policies_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-sr_steering_init (vlib_main_t * vm)
+sr_steering_init (vlib_main_t *vm)
 {
   ip6_sr_main_t *sm = &sr_main;
 
@@ -550,23 +534,18 @@ sr_steering_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (sr_steering_init);
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
-VNET_FEATURE_INIT (sr_pl_rewrite_encaps_l2, static) =
-{
+VNET_FEATURE_INIT (sr_pl_rewrite_encaps_l2, static) = {
   .arc_name = "device-input",
   .node_name = "sr-pl-rewrite-encaps-l2",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
-/* *INDENT-ON* */
 
 /*
-* fd.io coding-style-patch-verification: ON
-*
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*/
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

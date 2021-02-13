@@ -41,9 +41,8 @@ typedef struct qos_mark_trace_t_
 } qos_mark_trace_t;
 
 static inline uword
-qos_mark_inline (vlib_main_t * vm,
-		 vlib_node_runtime_t * node,
-		 vlib_frame_t * frame, qos_source_t output_source, int is_ip6)
+qos_mark_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		 vlib_frame_t *frame, qos_source_t output_source, int is_ip6)
 {
   u32 n_left_from, *from, *to_next, next_index;
 
@@ -137,17 +136,15 @@ qos_mark_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      qos_mark_trace_t *t =
-		vlib_add_trace (vm, node, b0, sizeof (*t));
+	      qos_mark_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->bits = qos0;
 	      t->input = input_source0;
 	      t->used = (b0->flags & VNET_BUFFER_F_QOS_DATA_VALID);
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -158,61 +155,54 @@ qos_mark_inline (vlib_main_t * vm,
 
 /* packet trace format function */
 static u8 *
-format_qos_mark_trace (u8 * s, va_list * args)
+format_qos_mark_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   qos_mark_trace_t *t = va_arg (*args, qos_mark_trace_t *);
 
-  s = format (s, "source:%U qos:%d used:%s",
-	      format_qos_source, t->input, t->bits, (t->used ? "yes" : "no"));
+  s = format (s, "source:%U qos:%d used:%s", format_qos_source, t->input,
+	      t->bits, (t->used ? "yes" : "no"));
 
   return s;
 }
 
-VLIB_NODE_FN (ip4_qos_mark_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_qos_mark_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (qos_mark_inline (vm, node, frame, QOS_SOURCE_IP, 0));
 }
 
-VLIB_NODE_FN (ip6_qos_mark_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_qos_mark_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (qos_mark_inline (vm, node, frame, QOS_SOURCE_IP, 1));
 }
 
-VLIB_NODE_FN (mpls_qos_mark_node) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
+VLIB_NODE_FN (mpls_qos_mark_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (qos_mark_inline (vm, node, frame, QOS_SOURCE_MPLS, 0));
 }
 
-VLIB_NODE_FN (vlan_mpls_qos_mark_node) (vlib_main_t * vm,
-					vlib_node_runtime_t * node,
-					vlib_frame_t * frame)
+VLIB_NODE_FN (vlan_mpls_qos_mark_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (qos_mark_inline (vm, node, frame, QOS_SOURCE_VLAN, 0));
 }
 
-VLIB_NODE_FN (vlan_ip4_qos_mark_node) (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * frame)
+VLIB_NODE_FN (vlan_ip4_qos_mark_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (qos_mark_inline (vm, node, frame, QOS_SOURCE_VLAN, 0));
 }
 
-VLIB_NODE_FN (vlan_ip6_qos_mark_node) (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * frame)
+VLIB_NODE_FN (vlan_ip6_qos_mark_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (qos_mark_inline (vm, node, frame, QOS_SOURCE_VLAN, 0));
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_qos_mark_node) = {
   .name = "ip4-qos-mark",
   .vector_size = sizeof (u32),
@@ -228,8 +218,8 @@ VLIB_REGISTER_NODE (ip4_qos_mark_node) = {
 };
 
 VNET_FEATURE_INIT (ip4_qos_mark_node, static) = {
-    .arc_name = "ip4-output",
-    .node_name = "ip4-qos-mark",
+  .arc_name = "ip4-output",
+  .node_name = "ip4-qos-mark",
 };
 
 VLIB_REGISTER_NODE (ip6_qos_mark_node) = {
@@ -247,8 +237,8 @@ VLIB_REGISTER_NODE (ip6_qos_mark_node) = {
 };
 
 VNET_FEATURE_INIT (ip6_qos_mark_node, static) = {
-    .arc_name = "ip6-output",
-    .node_name = "ip6-qos-mark",
+  .arc_name = "ip6-output",
+  .node_name = "ip6-qos-mark",
 };
 
 VLIB_REGISTER_NODE (mpls_qos_mark_node) = {
@@ -266,8 +256,8 @@ VLIB_REGISTER_NODE (mpls_qos_mark_node) = {
 };
 
 VNET_FEATURE_INIT (mpls_qos_mark_node, static) = {
-    .arc_name = "mpls-output",
-    .node_name = "mpls-qos-mark",
+  .arc_name = "mpls-output",
+  .node_name = "mpls-qos-mark",
 };
 
 VLIB_REGISTER_NODE (vlan_ip4_qos_mark_node) = {
@@ -285,9 +275,9 @@ VLIB_REGISTER_NODE (vlan_ip4_qos_mark_node) = {
 };
 
 VNET_FEATURE_INIT (vlan_ip4_qos_mark_node, static) = {
-    .arc_name = "ip4-output",
-    .node_name = "vlan-ip4-qos-mark",
-    .runs_after = VNET_FEATURES ("ip4-qos-mark"),
+  .arc_name = "ip4-output",
+  .node_name = "vlan-ip4-qos-mark",
+  .runs_after = VNET_FEATURES ("ip4-qos-mark"),
 };
 
 VLIB_REGISTER_NODE (vlan_ip6_qos_mark_node) = {
@@ -305,9 +295,9 @@ VLIB_REGISTER_NODE (vlan_ip6_qos_mark_node) = {
 };
 
 VNET_FEATURE_INIT (vlan_ip6_qos_mark_node, static) = {
-    .arc_name = "ip6-output",
-    .node_name = "vlan-ip6-qos-mark",
-    .runs_after = VNET_FEATURES ("ip6-qos-mark"),
+  .arc_name = "ip6-output",
+  .node_name = "vlan-ip6-qos-mark",
+  .runs_after = VNET_FEATURES ("ip6-qos-mark"),
 };
 
 VLIB_REGISTER_NODE (vlan_mpls_qos_mark_node) = {
@@ -325,12 +315,10 @@ VLIB_REGISTER_NODE (vlan_mpls_qos_mark_node) = {
 };
 
 VNET_FEATURE_INIT (vlan_mpls_qos_mark_node, static) = {
-    .arc_name = "mpls-output",
-    .node_name = "vlan-mpls-qos-mark",
-    .runs_after = VNET_FEATURES ("mpls-qos-mark"),
+  .arc_name = "mpls-output",
+  .node_name = "vlan-mpls-qos-mark",
+  .runs_after = VNET_FEATURES ("mpls-qos-mark"),
 };
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

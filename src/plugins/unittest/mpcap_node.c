@@ -37,14 +37,14 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_mpcap_trace (u8 * s, va_list * args)
+format_mpcap_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   mpcap_trace_t *t = va_arg (*args, mpcap_trace_t *);
 
-  s = format (s, "MPCAP: sw_if_index %d, next index %d\n",
-	      t->sw_if_index, t->next_index);
+  s = format (s, "MPCAP: sw_if_index %d, next index %d\n", t->sw_if_index,
+	      t->next_index);
   return s;
 }
 
@@ -52,12 +52,11 @@ vlib_node_registration_t mpcap_node;
 
 #endif /* CLIB_MARCH_VARIANT */
 
-#define foreach_mpcap_error \
-_(PROCESSED, "Mapped pcap packets processed")
+#define foreach_mpcap_error _ (PROCESSED, "Mapped pcap packets processed")
 
 typedef enum
 {
-#define _(sym,str) MPCAP_ERROR_##sym,
+#define _(sym, str) MPCAP_ERROR_##sym,
   foreach_mpcap_error
 #undef _
     MPCAP_N_ERROR,
@@ -65,7 +64,7 @@ typedef enum
 
 #ifndef CLIB_MARCH_VARIANT
 static char *mpcap_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_mpcap_error
 #undef _
 };
@@ -78,8 +77,7 @@ typedef enum
 } mpcap_next_t;
 
 always_inline uword
-mpcap_inline (vlib_main_t * vm,
-	      vlib_node_runtime_t * node, vlib_frame_t * frame,
+mpcap_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	      int is_ip4, int is_trace)
 {
   u32 n_left_from, *from;
@@ -204,18 +202,15 @@ mpcap_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (mpcap_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			   vlib_frame_t * frame)
+VLIB_NODE_FN (mpcap_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-    return mpcap_inline (vm, node, frame, 1 /* is_ip4 */ ,
-			 1 /* is_trace */ );
+    return mpcap_inline (vm, node, frame, 1 /* is_ip4 */, 1 /* is_trace */);
   else
-    return mpcap_inline (vm, node, frame, 1 /* is_ip4 */ ,
-			 0 /* is_trace */ );
+    return mpcap_inline (vm, node, frame, 1 /* is_ip4 */, 0 /* is_trace */);
 }
 
-/* *INDENT-OFF* */
 #ifndef CLIB_MARCH_VARIANT
 VLIB_REGISTER_NODE (mpcap_node) =
 {
@@ -249,7 +244,6 @@ mpcap_node_init (vlib_main_t *vm)
 VLIB_INIT_FUNCTION (mpcap_node_init);
 
 #endif /* CLIB_MARCH_VARIANT */
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

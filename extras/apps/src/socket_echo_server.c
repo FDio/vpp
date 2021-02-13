@@ -27,7 +27,7 @@
 volatile int signal_received;
 
 static void
-unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
+unix_signal_handler (int signum, siginfo_t *si, ucontext_t *uc)
 {
   signal_received = 1;
 }
@@ -69,7 +69,6 @@ setup_signal_handler (void)
 	clib_unix_warning ("sigaction %U", format_signal, i);
     }
 }
-
 
 int
 main (int argc, char *argv[])
@@ -113,7 +112,6 @@ main (int argc, char *argv[])
 	}
     }
 
-
   setup_signal_handler ();
 
   sockfd = socket (AF_INET, SOCK_STREAM, 0);
@@ -133,8 +131,8 @@ main (int argc, char *argv[])
 
   bzero ((char *) &serv_addr, sizeof (serv_addr));
   serv_addr.sin_family = AF_INET;
-  bcopy ((char *) server->h_addr,
-	 (char *) &serv_addr.sin_addr.s_addr, server->h_length);
+  bcopy ((char *) server->h_addr, (char *) &serv_addr.sin_addr.s_addr,
+	 server->h_length);
   serv_addr.sin_port = htons (portno);
   if (bind (sockfd, (const void *) &serv_addr, sizeof (serv_addr)) < 0)
     {
@@ -144,7 +142,7 @@ main (int argc, char *argv[])
 
   vec_validate (rx_buffer, 128 << 10);
 
-  if (listen (sockfd, 5 /* backlog */ ) < 0)
+  if (listen (sockfd, 5 /* backlog */) < 0)
     {
       clib_unix_warning ("listen");
       close (sockfd);
@@ -169,7 +167,7 @@ main (int argc, char *argv[])
 
       while (1)
 	{
-	  n = recv (accfd, rx_buffer, vec_len (rx_buffer), 0 /* flags */ );
+	  n = recv (accfd, rx_buffer, vec_len (rx_buffer), 0 /* flags */);
 	  if (n == 0)
 	    {
 	      /* Graceful exit */
@@ -198,7 +196,7 @@ main (int argc, char *argv[])
 	  if (no_echo)
 	    continue;
 
-	  sent = send (accfd, rx_buffer, n, 0 /* flags */ );
+	  sent = send (accfd, rx_buffer, n, 0 /* flags */);
 	  if (n < 0)
 	    {
 	      clib_unix_warning ("send");
@@ -220,7 +218,6 @@ main (int argc, char *argv[])
 
   return 0;
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

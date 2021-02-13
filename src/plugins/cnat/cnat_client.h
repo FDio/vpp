@@ -79,13 +79,13 @@ typedef struct cnat_client_t_
   u8 flags;
 } cnat_client_t;
 
-extern u8 *format_cnat_client (u8 * s, va_list * args);
-extern void cnat_client_free_by_ip (ip46_address_t * addr, u8 af);
+extern u8 *format_cnat_client (u8 *s, va_list *args);
+extern void cnat_client_free_by_ip (ip46_address_t *addr, u8 af);
 
 extern cnat_client_t *cnat_client_pool;
 extern dpo_type_t cnat_client_dpo;
 
-#define CC_INDEX_INVALID ((u32)(~0))
+#define CC_INDEX_INVALID ((u32) (~0))
 
 static_always_inline cnat_client_t *
 cnat_client_get (index_t i)
@@ -108,7 +108,7 @@ extern void cnat_client_translation_added (index_t cci);
  */
 extern void cnat_client_learn (const ip_address_t *addr);
 
-extern index_t cnat_client_add (const ip_address_t * ip, u8 flags);
+extern index_t cnat_client_add (const ip_address_t *ip, u8 flags);
 
 /**
  * Check all the clients were purged by translation & session purge
@@ -123,7 +123,6 @@ typedef enum
   /* IP already present in the FIB, need to interpose dpo */
   CNAT_FLAG_EXCLUSIVE = (1 << 1),
 } cnat_entry_flag_t;
-
 
 extern void cnat_client_throttle_pool_process ();
 
@@ -147,7 +146,7 @@ extern cnat_client_db_t cnat_client_db;
  * Find a client from an IP4 address
  */
 static_always_inline cnat_client_t *
-cnat_client_ip4_find (const ip4_address_t * ip)
+cnat_client_ip4_find (const ip4_address_t *ip)
 {
   uword *p;
 
@@ -160,7 +159,7 @@ cnat_client_ip4_find (const ip4_address_t * ip)
 }
 
 static_always_inline u32
-cnat_client_ip4_find_index (const ip4_address_t * ip)
+cnat_client_ip4_find_index (const ip4_address_t *ip)
 {
   uword *p;
 
@@ -176,7 +175,7 @@ cnat_client_ip4_find_index (const ip4_address_t * ip)
  * Find a client from an IP6 address
  */
 static_always_inline cnat_client_t *
-cnat_client_ip6_find (const ip6_address_t * ip)
+cnat_client_ip6_find (const ip6_address_t *ip)
 {
   uword *p;
 
@@ -192,7 +191,7 @@ cnat_client_ip6_find (const ip6_address_t * ip)
  * Add a session refcnt to this client
  */
 static_always_inline u32
-cnat_client_cnt_session (cnat_client_t * cc)
+cnat_client_cnt_session (cnat_client_t *cc)
 {
   cnat_client_t *ccp = cnat_client_get (cc->parent_cci);
   return clib_atomic_add_fetch (&ccp->session_refcnt, 1);
@@ -202,7 +201,7 @@ cnat_client_cnt_session (cnat_client_t * cc)
  * Del a session refcnt to this client
  */
 static_always_inline u32
-cnat_client_uncnt_session (cnat_client_t * cc)
+cnat_client_uncnt_session (cnat_client_t *cc)
 {
   cnat_client_t *ccp = cnat_client_get (cc->parent_cci);
   return clib_atomic_sub_fetch (&ccp->session_refcnt, 1);

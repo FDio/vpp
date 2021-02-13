@@ -30,15 +30,14 @@
 netmap_main_t netmap_main;
 
 static u32
-netmap_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
-			u32 flags)
+netmap_eth_flag_change (vnet_main_t *vnm, vnet_hw_interface_t *hi, u32 flags)
 {
   /* nothing for now */
   return 0;
 }
 
 static clib_error_t *
-netmap_fd_read_ready (clib_file_t * uf)
+netmap_fd_read_ready (clib_file_t *uf)
 {
   vlib_main_t *vm = vlib_get_main ();
   netmap_main_t *nm = &netmap_main;
@@ -54,7 +53,7 @@ netmap_fd_read_ready (clib_file_t * uf)
 }
 
 static void
-close_netmap_if (netmap_main_t * nm, netmap_if_t * nif)
+close_netmap_if (netmap_main_t *nm, netmap_if_t *nif)
 {
   if (nif->clib_file_index != ~0)
     {
@@ -74,7 +73,6 @@ close_netmap_if (netmap_main_t * nm, netmap_if_t * nif)
 	}
     }
 
-
   mhash_unset (&nm->if_index_by_host_if_name, nif->host_if_name,
 	       &nif->if_index);
   vec_free (nif->host_if_name);
@@ -88,12 +86,10 @@ int
 netmap_worker_thread_enable ()
 {
   /* if worker threads are enabled, switch to polling mode */
-  foreach_vlib_main ((
-		       {
-		       vlib_node_set_state (this_vlib_main,
-					    netmap_input_node.index,
-					    VLIB_NODE_STATE_POLLING);
-		       }));
+  foreach_vlib_main (({
+    vlib_node_set_state (this_vlib_main, netmap_input_node.index,
+			 VLIB_NODE_STATE_POLLING);
+  }));
 
   return 0;
 }
@@ -101,19 +97,17 @@ netmap_worker_thread_enable ()
 int
 netmap_worker_thread_disable ()
 {
-  foreach_vlib_main ((
-		       {
-		       vlib_node_set_state (this_vlib_main,
-					    netmap_input_node.index,
-					    VLIB_NODE_STATE_INTERRUPT);
-		       }));
+  foreach_vlib_main (({
+    vlib_node_set_state (this_vlib_main, netmap_input_node.index,
+			 VLIB_NODE_STATE_INTERRUPT);
+  }));
 
   return 0;
 }
 
 int
-netmap_create_if (vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
-		  u8 is_pipe, u8 is_master, u32 * sw_if_index)
+netmap_create_if (vlib_main_t *vm, u8 *if_name, u8 *hw_addr_set, u8 is_pipe,
+		  u8 is_master, u32 *sw_if_index)
 {
   netmap_main_t *nm = &netmap_main;
   int ret = 0;
@@ -213,10 +207,9 @@ netmap_create_if (vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
       hw_addr[1] = 0xfe;
     }
 
-  error = ethernet_register_interface (vnm, netmap_device_class.index,
-				       nif->if_index, hw_addr,
-				       &nif->hw_if_index,
-				       netmap_eth_flag_change);
+  error = ethernet_register_interface (
+    vnm, netmap_device_class.index, nif->if_index, hw_addr, &nif->hw_if_index,
+    netmap_eth_flag_change);
 
   if (error)
     {
@@ -244,7 +237,7 @@ error:
 }
 
 int
-netmap_delete_if (vlib_main_t * vm, u8 * host_if_name)
+netmap_delete_if (vlib_main_t *vm, u8 *host_if_name)
 {
   vnet_main_t *vnm = vnet_get_main ();
   netmap_main_t *nm = &netmap_main;
@@ -274,7 +267,7 @@ netmap_delete_if (vlib_main_t * vm, u8 * host_if_name)
 }
 
 static clib_error_t *
-netmap_init (vlib_main_t * vm)
+netmap_init (vlib_main_t *vm)
 {
   netmap_main_t *nm = &netmap_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();

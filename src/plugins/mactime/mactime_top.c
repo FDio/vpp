@@ -52,12 +52,12 @@ vl (void *x)
   return vec_len (x);
 }
 
-#define foreach_mactime_api_msg                 \
-_(MACTIME_DUMP_REPLY, mactime_dump_reply)       \
-_(MACTIME_DETAILS, mactime_details)
+#define foreach_mactime_api_msg                                               \
+  _ (MACTIME_DUMP_REPLY, mactime_dump_reply)                                  \
+  _ (MACTIME_DETAILS, mactime_details)
 
-static void vl_api_mactime_dump_reply_t_handler
-  (vl_api_mactime_dump_reply_t * mp)
+static void
+vl_api_mactime_dump_reply_t_handler (vl_api_mactime_dump_reply_t *mp)
 {
   mt_main_t *mm = &mt_main;
   i32 retval = clib_net_to_host_u32 (mp->retval);
@@ -67,7 +67,7 @@ static void vl_api_mactime_dump_reply_t_handler
 }
 
 static void
-vl_api_mactime_details_t_handler (vl_api_mactime_details_t * mp)
+vl_api_mactime_details_t_handler (vl_api_mactime_details_t *mp)
 {
   mt_main_t *mm = &mt_main;
   mactime_device_t *dev;
@@ -106,8 +106,8 @@ vl_api_mactime_details_t_handler (vl_api_mactime_details_t * mp)
     }
 }
 
-#define vl_print(handle, ...) fformat(handle, __VA_ARGS__)
-#define vl_endianfun		/* define message structures */
+#define vl_print(handle, ...) fformat (handle, __VA_ARGS__)
+#define vl_endianfun	      /* define message structures */
 #include <mactime/mactime.api.h>
 #undef vl_endianfun
 
@@ -116,7 +116,7 @@ vl_api_mactime_details_t_handler (vl_api_mactime_details_t * mp)
 #include <mactime/mactime.api.h>
 #undef vl_printfun
 
-#define vl_api_version(n,v) static u32 api_version = v;
+#define vl_api_version(n, v) static u32 api_version = v;
 #include <mactime/mactime.api.h>
 #undef vl_api_version
 
@@ -135,22 +135,19 @@ connect_to_vpp (char *name)
 
   msg_base_lookup_name = format (0, "mactime_%08x%c", api_version, 0);
 
-  mm->msg_id_base = vl_client_get_first_plugin_msg_id
-    ((char *) msg_base_lookup_name);
+  mm->msg_id_base =
+    vl_client_get_first_plugin_msg_id ((char *) msg_base_lookup_name);
 
   vec_free (msg_base_lookup_name);
 
-  if (mm->msg_id_base == (u16) ~ 0)
+  if (mm->msg_id_base == (u16) ~0)
     return -1;
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + mm->msg_id_base),     \
-                           #n,					\
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers ((VL_API_##N + mm->msg_id_base), #n,                \
+			   vl_api_##n##_t_handler, vl_noop_handler,           \
+			   vl_api_##n##_t_endian, vl_api_##n##_t_print,       \
+			   sizeof (vl_api_##n##_t), 1);
   foreach_mactime_api_msg;
 #undef _
 
@@ -158,7 +155,7 @@ connect_to_vpp (char *name)
 }
 
 static void
-dump_mactime_table (mt_main_t * mm)
+dump_mactime_table (mt_main_t *mm)
 {
   vl_api_mactime_dump_t *mp;
   u32 deadman_counter = 1000;
@@ -170,7 +167,7 @@ dump_mactime_table (mt_main_t * mm)
     clib_host_to_net_u16 (VL_API_MACTIME_DUMP + mm->msg_id_base);
   mp->client_index = mm->my_client_index;
   mp->my_table_epoch = mm->my_table_epoch;
-  vl_msg_api_send_shmem (mm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (mm->vl_input_queue, (u8 *) &mp);
 
   /* Wait up to 1 second for vpp to reply */
   while (deadman_counter-- && mm->result_ready == 0)
@@ -178,11 +175,10 @@ dump_mactime_table (mt_main_t * mm)
 
   if (mm->retval && (mm->retval != VNET_API_ERROR_NO_CHANGE))
     clib_warning ("dump reply %d", mm->retval);
-
 }
 
 static void
-scrape_stats_segment (mt_main_t * mm)
+scrape_stats_segment (mt_main_t *mm)
 {
   vlib_counter_t **counters_by_thread;
   vlib_counter_t *counters;
@@ -195,12 +191,11 @@ scrape_stats_segment (mt_main_t * mm)
   int i, j;
 
   vec_reset_length (pool_indices);
-  /* *INDENT-OFF* */
+
   pool_foreach (dev, mm->devices)
-   {
-    vec_add1 (pool_indices, dev->pool_index);
-  }
-  /* *INDENT-ON* */
+    {
+      vec_add1 (pool_indices, dev->pool_index);
+    }
 
   /* Nothing to do... */
   if (vec_len (pool_indices) == 0)
@@ -275,16 +270,16 @@ again2:
 }
 
 static u8 *
-format_mac_address (u8 * s, va_list * args)
+format_mac_address (u8 *s, va_list *args)
 {
   u8 *a = va_arg (*args, u8 *);
 
-  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
-		 a[0], a[1], a[2], a[3], a[4], a[5]);
+  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x", a[0], a[1], a[2], a[3],
+		 a[4], a[5]);
 }
 
 static u8 *
-format_bytes_with_width (u8 * s, va_list * va)
+format_bytes_with_width (u8 *s, va_list *va)
 {
   uword nbytes = va_arg (*va, u64);
   int width = va_arg (*va, int);
@@ -324,7 +319,7 @@ format_bytes_with_width (u8 * s, va_list * va)
 }
 
 static u8 *
-format_device (u8 * s, va_list * args)
+format_device (u8 *s, va_list *args)
 {
   mactime_device_t *dp = va_arg (*args, mactime_device_t *);
   mt_main_t *mm = &mt_main;
@@ -337,9 +332,9 @@ format_device (u8 * s, va_list * args)
 
   if (dp == 0)
     {
-      s = format (s, "%-15s %5s %18s %14s %10s %11s %13s",
-		  "Device Name", "Index", "Addresses", "Status",
-		  "AllowPkt", "AllowByte", "DropPkt");
+      s = format (s, "%-15s %5s %18s %14s %10s %11s %13s", "Device Name",
+		  "Index", "Addresses", "Status", "AllowPkt", "AllowByte",
+		  "DropPkt");
       vec_add1 (s, '\n');
       return s;
     }
@@ -358,9 +353,8 @@ format_device (u8 * s, va_list * args)
       start0 = r->start + mm->sunday_midnight;
       end0 = r->end + mm->sunday_midnight;
       if (verbose)
-	s = format (s, "  Range %d: %U - %U\n", j,
-		    format_clib_timebase_time, start0,
-		    format_clib_timebase_time, end0);
+	s = format (s, "  Range %d: %U - %U\n", j, format_clib_timebase_time,
+		    start0, format_clib_timebase_time, end0);
 
       if (now >= start0 && now <= end0)
 	{
@@ -373,9 +367,8 @@ format_device (u8 * s, va_list * args)
 	  if (verbose)
 	    {
 	      s = format (s, "  Time in range %d:", j);
-	      s = format (s, "     %U - %U\n",
-			  format_clib_timebase_time, start0,
-			  format_clib_timebase_time, end0);
+	      s = format (s, "     %U - %U\n", format_clib_timebase_time,
+			  start0, format_clib_timebase_time, end0);
 	    }
 	  goto print;
 	}
@@ -420,36 +413,35 @@ print:
       break;
     }
 
-  s = format (s, "%-15s %5d %18s %14s %10lld %U %13lld\n",
-	      dp->device_name, dp->pool_index, macstring, status_string,
-	      mm->allow_counters[dp->pool_index].packets,
-	      format_bytes_with_width,
-	      mm->allow_counters[dp->pool_index].bytes, 10,
-	      mm->drop_counters[dp->pool_index].packets);
+  s =
+    format (s, "%-15s %5d %18s %14s %10lld %U %13lld\n", dp->device_name,
+	    dp->pool_index, macstring, status_string,
+	    mm->allow_counters[dp->pool_index].packets,
+	    format_bytes_with_width, mm->allow_counters[dp->pool_index].bytes,
+	    10, mm->drop_counters[dp->pool_index].packets);
   vec_free (macstring);
 
   if (dp->data_quota > 0)
     {
-      s = format (s, "%-59s %s%U %s%U", " ", "Quota ",
-		  format_bytes_with_width, dp->data_quota, 10,
-		  "Use ", format_bytes_with_width, dp->data_used_in_range, 8);
+      s = format (s, "%-59s %s%U %s%U", " ", "Quota ", format_bytes_with_width,
+		  dp->data_quota, 10, "Use ", format_bytes_with_width,
+		  dp->data_used_in_range, 8);
       vec_add1 (s, '\n');
     }
   return s;
 }
 
 static void
-print_device_table (mt_main_t * mm)
+print_device_table (mt_main_t *mm)
 {
   mactime_device_t *dev;
 
-  fformat (stdout, "%U", format_device, 0 /* header */ , 0 /* verbose */ );
-  /* *INDENT-OFF* */
+  fformat (stdout, "%U", format_device, 0 /* header */, 0 /* verbose */);
+
   pool_foreach (dev, mm->devices)
-   {
-    fformat (stdout, "%U", format_device, dev, 0 /* verbose */);
-  }
-  /* *INDENT-ON* */
+    {
+      fformat (stdout, "%U", format_device, dev, 0 /* verbose */);
+    }
 }
 
 int
@@ -472,14 +464,14 @@ main (int argc, char **argv)
       exit (1);
     }
 
-  mm->stat_client_main = (stat_client_main_t *) & stat_client_main;
+  mm->stat_client_main = (stat_client_main_t *) &stat_client_main;
 
   /* US EDT - $$$ FIXME */
   clib_time_init (&mm->clib_time);
   mm->timezone_offset = -5.0;
   clib_timebase_init (&mm->timebase, mm->timezone_offset,
 		      CLIB_TIMEBASE_DAYLIGHT_USA,
-		      0 /* allocate a clib_time_t */ );
+		      0 /* allocate a clib_time_t */);
 
   vec_add1 (mm->pattern1, (u8 *) "^/mactime/allow");
   vec_add1 (mm->pattern2, (u8 *) "^/mactime/drop");
@@ -493,7 +485,6 @@ main (int argc, char **argv)
     }
   return 0;
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

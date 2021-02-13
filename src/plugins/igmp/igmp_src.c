@@ -20,7 +20,7 @@
 #include <igmp/igmp.h>
 
 void
-igmp_src_free (igmp_src_t * src)
+igmp_src_free (igmp_src_t *src)
 {
   igmp_main_t *im = &igmp_main;
 
@@ -56,8 +56,8 @@ igmp_src_exp (u32 obj, void *dat)
       group = igmp_group_get (src->group);
       config = igmp_config_get (group->config);
 
-      igmp_event (IGMP_FILTER_MODE_EXCLUDE,
-		  config->sw_if_index, src->key, group->key);
+      igmp_event (IGMP_FILTER_MODE_EXCLUDE, config->sw_if_index, src->key,
+		  group->key);
 
       igmp_proxy_device_block_src (config, group, src);
     }
@@ -70,7 +70,7 @@ igmp_src_exp (u32 obj, void *dat)
 }
 
 igmp_src_t *
-igmp_src_alloc (u32 group_index, const igmp_key_t * skey, igmp_mode_t mode)
+igmp_src_alloc (u32 group_index, const igmp_key_t *skey, igmp_mode_t mode)
 {
   igmp_main_t *im = &igmp_main;
   igmp_src_t *src;
@@ -102,8 +102,8 @@ igmp_src_alloc (u32 group_index, const igmp_key_t * skey, igmp_mode_t mode)
       group = igmp_group_get (src->group);
       config = igmp_config_get (group->config);
 
-      igmp_event (IGMP_FILTER_MODE_INCLUDE,
-		  config->sw_if_index, src->key, group->key);
+      igmp_event (IGMP_FILTER_MODE_INCLUDE, config->sw_if_index, src->key,
+		  group->key);
     }
   else
     {
@@ -114,7 +114,7 @@ igmp_src_alloc (u32 group_index, const igmp_key_t * skey, igmp_mode_t mode)
 }
 
 void
-igmp_src_refresh (igmp_src_t * src)
+igmp_src_refresh (igmp_src_t *src)
 {
   IGMP_DBG ("refresh-src: (%U)", format_igmp_key, src->key);
 
@@ -126,7 +126,7 @@ igmp_src_refresh (igmp_src_t * src)
 }
 
 void
-igmp_src_blocked (igmp_src_t * src)
+igmp_src_blocked (igmp_src_t *src)
 {
   IGMP_DBG ("block-src: (%U)", format_igmp_key, src->key);
 
@@ -138,21 +138,19 @@ igmp_src_blocked (igmp_src_t * src)
 }
 
 u32
-igmp_src_index (igmp_src_t * src)
+igmp_src_index (igmp_src_t *src)
 {
   return (src - igmp_main.srcs);
 }
 
 u8 *
-format_igmp_src (u8 * s, va_list * args)
+format_igmp_src (u8 *s, va_list *args)
 {
   igmp_src_t *src = va_arg (*args, igmp_src_t *);
   u32 indent = va_arg (*args, u32);
 
-  s = format (s, "%U%U %U",
-	      format_white_space, indent,
-	      format_igmp_key, src->key,
-	      format_igmp_timer_id, src->timers[IGMP_SRC_TIMER_EXP]);
+  s = format (s, "%U%U %U", format_white_space, indent, format_igmp_key,
+	      src->key, format_igmp_timer_id, src->timers[IGMP_SRC_TIMER_EXP]);
 
   return (s);
 }

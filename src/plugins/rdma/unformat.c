@@ -19,7 +19,7 @@
 #include <rdma/rdma.h>
 
 uword
-unformat_rdma_create_if_args (unformat_input_t * input, va_list * vargs)
+unformat_rdma_create_if_args (unformat_input_t *input, va_list *vargs)
 {
   rdma_create_if_args_t *args = va_arg (*vargs, rdma_create_if_args_t *);
   unformat_input_t _line_input, *line_input = &_line_input;

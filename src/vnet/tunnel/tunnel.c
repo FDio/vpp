@@ -33,15 +33,16 @@ const u8 TUNNEL_FLAG_MASK = (
   0);
 
 u8 *
-format_tunnel_mode (u8 * s, va_list * args)
+format_tunnel_mode (u8 *s, va_list *args)
 {
   tunnel_mode_t mode = va_arg (*args, int);
 
   switch (mode)
     {
-#define _(n, v) case TUNNEL_MODE_##n:       \
-        s = format (s, "%s", v);            \
-        break;
+#define _(n, v)                                                               \
+  case TUNNEL_MODE_##n:                                                       \
+    s = format (s, "%s", v);                                                  \
+    break;
       foreach_tunnel_mode
 #undef _
     }
@@ -50,7 +51,7 @@ format_tunnel_mode (u8 * s, va_list * args)
 }
 
 uword
-unformat_tunnel_mode (unformat_input_t * input, va_list * args)
+unformat_tunnel_mode (unformat_input_t *input, va_list *args)
 {
   tunnel_mode_t *m = va_arg (*args, tunnel_mode_t *);
 
@@ -64,7 +65,7 @@ unformat_tunnel_mode (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_tunnel_encap_decap_flags (u8 * s, va_list * args)
+format_tunnel_encap_decap_flags (u8 *s, va_list *args)
 {
   tunnel_encap_decap_flags_t f = va_arg (*args, int);
 
@@ -79,14 +80,15 @@ format_tunnel_encap_decap_flags (u8 * s, va_list * args)
 }
 
 uword
-unformat_tunnel_encap_decap_flags (unformat_input_t * input, va_list * args)
+unformat_tunnel_encap_decap_flags (unformat_input_t *input, va_list *args)
 {
-  tunnel_encap_decap_flags_t *f =
-    va_arg (*args, tunnel_encap_decap_flags_t *);
-#define _(a,b,c) if (unformat(input, b)) {\
-  *f |= TUNNEL_ENCAP_DECAP_FLAG_##a;\
-  return 1;\
-  }
+  tunnel_encap_decap_flags_t *f = va_arg (*args, tunnel_encap_decap_flags_t *);
+#define _(a, b, c)                                                            \
+  if (unformat (input, b))                                                    \
+    {                                                                         \
+      *f |= TUNNEL_ENCAP_DECAP_FLAG_##a;                                      \
+      return 1;                                                               \
+    }
   foreach_tunnel_encap_decap_flag;
 #undef _
   return 0;

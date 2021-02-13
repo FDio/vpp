@@ -25,7 +25,7 @@
  */
 
 void
-echo_send_attach (echo_main_t * em)
+echo_send_attach (echo_main_t *em)
 {
   vl_api_app_attach_t *bmp;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
@@ -48,11 +48,11 @@ echo_send_attach (echo_main_t * em)
       bmp->options[APP_OPTIONS_FLAGS] |= em->appns_flags;
       bmp->options[APP_OPTIONS_NAMESPACE_SECRET] = em->appns_secret;
     }
-  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) &bmp);
 }
 
 void
-echo_send_detach (echo_main_t * em)
+echo_send_detach (echo_main_t *em)
 {
   vl_api_application_detach_t *bmp;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
@@ -62,11 +62,11 @@ echo_send_detach (echo_main_t * em)
   bmp->client_index = em->my_client_index;
   bmp->context = ntohl (0xfeedface);
 
-  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) &bmp);
 }
 
 void
-echo_send_add_cert_key (echo_main_t * em)
+echo_send_add_cert_key (echo_main_t *em)
 {
   u32 cert_len = test_srv_crt_rsa_len;
   u32 key_len = test_srv_key_rsa_len;
@@ -83,11 +83,11 @@ echo_send_add_cert_key (echo_main_t * em)
   clib_memcpy_fast (bmp->certkey, test_srv_crt_rsa, cert_len);
   clib_memcpy_fast (bmp->certkey + cert_len, test_srv_key_rsa, key_len);
 
-  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) &bmp);
 }
 
 void
-echo_send_del_cert_key (echo_main_t * em)
+echo_send_del_cert_key (echo_main_t *em)
 {
   vl_api_app_del_cert_key_pair_t *bmp;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
@@ -97,11 +97,11 @@ echo_send_del_cert_key (echo_main_t * em)
   bmp->client_index = em->my_client_index;
   bmp->context = ntohl (0xfeedface);
   bmp->index = clib_host_to_net_u32 (em->ckpair_index);
-  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) &bmp);
 }
 
 void
-echo_send_listen (echo_main_t * em, ip46_address_t * ip)
+echo_send_listen (echo_main_t *em, ip46_address_t *ip)
 {
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
   session_listen_msg_t *mp;
@@ -123,7 +123,7 @@ echo_send_listen (echo_main_t * em, ip46_address_t * ip)
 }
 
 void
-echo_send_unbind (echo_main_t * em, echo_session_t * s)
+echo_send_unbind (echo_main_t *em, echo_session_t *s)
 {
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
   session_unlisten_msg_t *mp;
@@ -140,7 +140,7 @@ echo_send_unbind (echo_main_t * em, echo_session_t * s)
 }
 
 void
-echo_send_connect (echo_main_t * em, void *args)
+echo_send_connect (echo_main_t *em, void *args)
 {
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
   session_connect_msg_t *mp;
@@ -170,7 +170,7 @@ echo_send_connect (echo_main_t * em, void *args)
 }
 
 void
-echo_send_disconnect_session (echo_main_t * em, void *args)
+echo_send_disconnect_session (echo_main_t *em, void *args)
 {
   echo_session_t *s;
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
@@ -337,8 +337,8 @@ echo_segment_attach_mq (uword segment_handle, uword mq_offset, u32 mq_index,
  */
 
 static void
-  vl_api_app_add_cert_key_pair_reply_t_handler
-  (vl_api_app_add_cert_key_pair_reply_t * mp)
+vl_api_app_add_cert_key_pair_reply_t_handler (
+  vl_api_app_add_cert_key_pair_reply_t *mp)
 {
   echo_main_t *em = &echo_main;
   if (mp->retval)
@@ -359,8 +359,8 @@ static void
 }
 
 static void
-  vl_api_app_del_cert_key_pair_reply_t_handler
-  (vl_api_app_del_cert_key_pair_reply_t * mp)
+vl_api_app_del_cert_key_pair_reply_t_handler (
+  vl_api_app_del_cert_key_pair_reply_t *mp)
 {
   echo_main_t *em = &echo_main;
   if (mp->retval)
@@ -374,7 +374,7 @@ static void
 }
 
 static void
-vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
+vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t *mp)
 {
   echo_main_t *em = &echo_main;
   int *fds = 0, i, rv;
@@ -428,7 +428,8 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 	    {
 	      ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
 			 "svm_fifo_segment_attach ('%s') "
-			 "failed on SSVM_SEGMENT_MEMFD", segment_name);
+			 "failed on SSVM_SEGMENT_MEMFD",
+			 segment_name);
 	      vec_free (segment_name);
 	      goto failed;
 	    }
@@ -450,7 +451,8 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 	{
 	  ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
 		     "svm_fifo_segment_attach ('%s') "
-		     "failed on SSVM_SEGMENT_SHM", segment_name);
+		     "failed on SSVM_SEGMENT_SHM",
+		     segment_name);
 	  vec_free (segment_name);
 	  goto failed;
 	}
@@ -467,8 +469,8 @@ failed:
 }
 
 static void
-vl_api_application_detach_reply_t_handler (vl_api_application_detach_reply_t *
-					   mp)
+vl_api_application_detach_reply_t_handler (
+  vl_api_application_detach_reply_t *mp)
 {
   if (mp->retval)
     {
@@ -479,22 +481,19 @@ vl_api_application_detach_reply_t_handler (vl_api_application_detach_reply_t *
   echo_main.state = STATE_DETACHED;
 }
 
-#define foreach_quic_echo_msg                                    \
-_(APP_ATTACH_REPLY, app_attach_reply)                            \
-_(APPLICATION_DETACH_REPLY, application_detach_reply)            \
-_(APP_ADD_CERT_KEY_PAIR_REPLY, app_add_cert_key_pair_reply)      \
-_(APP_DEL_CERT_KEY_PAIR_REPLY, app_del_cert_key_pair_reply)
+#define foreach_quic_echo_msg                                                 \
+  _ (APP_ATTACH_REPLY, app_attach_reply)                                      \
+  _ (APPLICATION_DETACH_REPLY, application_detach_reply)                      \
+  _ (APP_ADD_CERT_KEY_PAIR_REPLY, app_add_cert_key_pair_reply)                \
+  _ (APP_DEL_CERT_KEY_PAIR_REPLY, app_del_cert_key_pair_reply)
 
 void
-echo_api_hookup (echo_main_t * em)
+echo_api_hookup (echo_main_t *em)
 {
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_quic_echo_msg;
 #undef _
 }

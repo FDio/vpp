@@ -22,27 +22,27 @@
 #include <wireguard/wireguard_send.h>
 #include <wireguard/wireguard_if.h>
 
-#define foreach_wg_input_error                          \
-  _(NONE, "No error")                                   \
-  _(HANDSHAKE_MAC, "Invalid MAC handshake")             \
-  _(PEER, "Peer error")                                 \
-  _(INTERFACE, "Interface error")                       \
-  _(DECRYPTION, "Failed during decryption")             \
-  _(KEEPALIVE_SEND, "Failed while sending Keepalive")   \
-  _(HANDSHAKE_SEND, "Failed while sending Handshake")   \
-  _(TOO_BIG, "Packet too big")                          \
-  _(UNDEFINED, "Undefined error")
+#define foreach_wg_input_error                                                \
+  _ (NONE, "No error")                                                        \
+  _ (HANDSHAKE_MAC, "Invalid MAC handshake")                                  \
+  _ (PEER, "Peer error")                                                      \
+  _ (INTERFACE, "Interface error")                                            \
+  _ (DECRYPTION, "Failed during decryption")                                  \
+  _ (KEEPALIVE_SEND, "Failed while sending Keepalive")                        \
+  _ (HANDSHAKE_SEND, "Failed while sending Handshake")                        \
+  _ (TOO_BIG, "Packet too big")                                               \
+  _ (UNDEFINED, "Undefined error")
 
 typedef enum
 {
-#define _(sym,str) WG_INPUT_ERROR_##sym,
+#define _(sym, str) WG_INPUT_ERROR_##sym,
   foreach_wg_input_error
 #undef _
     WG_INPUT_N_ERROR,
 } wg_input_error_t;
 
 static char *wg_input_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_wg_input_error
 #undef _
 };
@@ -56,13 +56,15 @@ typedef struct
 } wg_input_trace_t;
 
 u8 *
-format_wg_message_type (u8 * s, va_list * args)
+format_wg_message_type (u8 *s, va_list *args)
 {
   message_type_t type = va_arg (*args, message_type_t);
 
   switch (type)
     {
-#define _(v,a) case MESSAGE_##v: return (format (s, "%s", a));
+#define _(v, a)                                                               \
+  case MESSAGE_##v:                                                           \
+    return (format (s, "%s", a));
       foreach_wg_message_type
 #undef _
     }
@@ -71,7 +73,7 @@ format_wg_message_type (u8 * s, va_list * args)
 
 /* packet trace format function */
 static u8 *
-format_wg_input_trace (u8 * s, va_list * args)
+format_wg_input_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -108,7 +110,7 @@ typedef enum
 /* } */
 
 static wg_input_error_t
-wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
+wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b)
 {
   ASSERT (vm->thread_index == 0);
 
@@ -124,8 +126,10 @@ wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
   ip4_header_t *iph =
     current_b_data - sizeof (udp_header_t) - sizeof (ip4_header_t);
   ip4_address_t ip4_src = iph->src_address;
-  u16 udp_src_port = clib_host_to_net_u16 (uhd->src_port);;
-  u16 udp_dst_port = clib_host_to_net_u16 (uhd->dst_port);;
+  u16 udp_src_port = clib_host_to_net_u16 (uhd->src_port);
+  ;
+  u16 udp_dst_port = clib_host_to_net_u16 (uhd->dst_port);
+  ;
 
   message_header_t *header = current_b_data;
   under_load = false;
@@ -152,19 +156,18 @@ wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
     }
 
   u32 len = (header->type == MESSAGE_HANDSHAKE_INITIATION ?
-	     sizeof (message_handshake_initiation_t) :
-	     sizeof (message_handshake_response_t));
+	       sizeof (message_handshake_initiation_t) :
+	       sizeof (message_handshake_response_t));
 
-  message_macs_t *macs = (message_macs_t *)
-    ((u8 *) current_b_data + len - sizeof (*macs));
+  message_macs_t *macs =
+    (message_macs_t *) ((u8 *) current_b_data + len - sizeof (*macs));
 
-  mac_state =
-    cookie_checker_validate_macs (vm, &wg_if->cookie_checker, macs,
-				  current_b_data, len, under_load, ip4_src,
-				  udp_src_port);
+  mac_state = cookie_checker_validate_macs (vm, &wg_if->cookie_checker, macs,
+					    current_b_data, len, under_load,
+					    ip4_src, udp_src_port);
 
-  if ((under_load && mac_state == VALID_MAC_WITH_COOKIE)
-      || (!under_load && mac_state == VALID_MAC_BUT_NO_COOKIE))
+  if ((under_load && mac_state == VALID_MAC_WITH_COOKIE) ||
+      (!under_load && mac_state == VALID_MAC_BUT_NO_COOKIE))
     packet_needs_cookie = false;
   else if (under_load && mac_state == VALID_MAC_BUT_NO_COOKIE)
     packet_needs_cookie = true;
@@ -182,10 +185,10 @@ wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
 	    // TODO: Add processing
 	  }
 	noise_remote_t *rp;
-	if (noise_consume_initiation
-	    (vm, noise_local_get (wg_if->local_idx), &rp,
-	     message->sender_index, message->unencrypted_ephemeral,
-	     message->encrypted_static, message->encrypted_timestamp))
+	if (noise_consume_initiation (
+	      vm, noise_local_get (wg_if->local_idx), &rp,
+	      message->sender_index, message->unencrypted_ephemeral,
+	      message->encrypted_static, message->encrypted_timestamp))
 	  {
 	    peer = wg_peer_get (rp->r_peer_idx);
 	  }
@@ -217,10 +220,9 @@ wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
 	else
 	  return WG_INPUT_ERROR_PEER;
 
-	if (!noise_consume_response
-	    (vm, &peer->remote, resp->sender_index,
-	     resp->receiver_index, resp->unencrypted_ephemeral,
-	     resp->encrypted_nothing))
+	if (!noise_consume_response (
+	      vm, &peer->remote, resp->sender_index, resp->receiver_index,
+	      resp->unencrypted_ephemeral, resp->encrypted_nothing))
 	  {
 	    return WG_INPUT_ERROR_PEER;
 	  }
@@ -238,8 +240,7 @@ wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
 	    if (PREDICT_FALSE (!wg_send_keepalive (vm, peer)))
 	      {
 		vlib_node_increment_counter (vm, wg_input_node.index,
-					     WG_INPUT_ERROR_KEEPALIVE_SEND,
-					     1);
+					     WG_INPUT_ERROR_KEEPALIVE_SEND, 1);
 	      }
 	  }
 	break;
@@ -254,15 +255,13 @@ wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
 }
 
 static_always_inline bool
-fib_prefix_is_cover_addr_4 (const fib_prefix_t * p1,
-			    const ip4_address_t * ip4)
+fib_prefix_is_cover_addr_4 (const fib_prefix_t *p1, const ip4_address_t *ip4)
 {
   switch (p1->fp_proto)
     {
     case FIB_PROTOCOL_IP4:
-      return (ip4_destination_matches_route (&ip4_main,
-					     &p1->fp_addr.ip4,
-					     ip4, p1->fp_len) != 0);
+      return (ip4_destination_matches_route (&ip4_main, &p1->fp_addr.ip4, ip4,
+					     p1->fp_len) != 0);
     case FIB_PROTOCOL_IP6:
       return (false);
     case FIB_PROTOCOL_MPLS:
@@ -271,9 +270,8 @@ fib_prefix_is_cover_addr_4 (const fib_prefix_t * p1,
   return (false);
 }
 
-VLIB_NODE_FN (wg_input_node) (vlib_main_t * vm,
-			      vlib_node_runtime_t * node,
-			      vlib_frame_t * frame)
+VLIB_NODE_FN (wg_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   message_type_t header_type;
   u32 n_left_from;
@@ -304,8 +302,8 @@ VLIB_NODE_FN (wg_input_node) (vlib_main_t * vm,
 	{
 	  message_data_t *data = vlib_buffer_get_current (b[0]);
 
-	  peer_idx = wg_index_table_lookup (&wmp->index_table,
-					    data->receiver_index);
+	  peer_idx =
+	    wg_index_table_lookup (&wmp->index_table, data->receiver_index);
 
 	  if (peer_idx)
 	    {
@@ -343,13 +341,9 @@ VLIB_NODE_FN (wg_input_node) (vlib_main_t * vm,
 
 	  u8 *decr_data = wmp->per_thread_data[thread_index].data;
 
-	  enum noise_state_crypt state_cr = noise_remote_decrypt (vm,
-								  &peer->remote,
-								  data->receiver_index,
-								  data->counter,
-								  data->encrypted_data,
-								  encr_len,
-								  decr_data);
+	  enum noise_state_crypt state_cr = noise_remote_decrypt (
+	    vm, &peer->remote, data->receiver_index, data->counter,
+	    data->encrypted_data, encr_len, decr_data);
 
 	  if (PREDICT_FALSE (state_cr == SC_CONN_RESET))
 	    {
@@ -393,14 +387,14 @@ VLIB_NODE_FN (wg_input_node) (vlib_main_t * vm,
 	   * walk is fater than an ACL
 	   */
 	  vec_foreach (allowed_ip, peer->allowed_ips)
-	  {
-	    if (fib_prefix_is_cover_addr_4 (&allowed_ip->prefix,
-					    &iph->src_address))
-	      {
-		allowed = true;
-		break;
-	      }
-	  }
+	    {
+	      if (fib_prefix_is_cover_addr_4 (&allowed_ip->prefix,
+					      &iph->src_address))
+		{
+		  allowed = true;
+		  break;
+		}
+	    }
 	  if (allowed)
 	    {
 	      vnet_buffer (b[0])->sw_if_index[VLIB_RX] = peer->wg_sw_if_index;
@@ -427,8 +421,8 @@ VLIB_NODE_FN (wg_input_node) (vlib_main_t * vm,
 	}
 
     out:
-      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			 && (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			 (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
 	{
 	  wg_input_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
 	  t->type = header_type;
@@ -446,7 +440,6 @@ VLIB_NODE_FN (wg_input_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (wg_input_node) =
 {
   .name = "wg-input",
@@ -465,7 +458,6 @@ VLIB_REGISTER_NODE (wg_input_node) =
         [WG_INPUT_NEXT_ERROR] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

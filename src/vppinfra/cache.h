@@ -57,8 +57,10 @@
 #endif
 
 #define CLIB_CACHE_LINE_BYTES (1 << CLIB_LOG2_CACHE_LINE_BYTES)
-#define CLIB_CACHE_LINE_ALIGN_MARK(mark) u8 mark[0] __attribute__((aligned(CLIB_CACHE_LINE_BYTES)))
-#define CLIB_CACHE_LINE_ROUND(x) ((x + CLIB_CACHE_LINE_BYTES - 1) & ~(CLIB_CACHE_LINE_BYTES - 1))
+#define CLIB_CACHE_LINE_ALIGN_MARK(mark)                                      \
+  u8 mark[0] __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES)))
+#define CLIB_CACHE_LINE_ROUND(x)                                              \
+  ((x + CLIB_CACHE_LINE_BYTES - 1) & ~(CLIB_CACHE_LINE_BYTES - 1))
 
 /* Default cache line fill buffers. */
 #ifndef CLIB_N_PREFETCHES
@@ -66,27 +68,28 @@
 #endif
 
 /* Read/write arguments to __builtin_prefetch. */
-#define CLIB_PREFETCH_READ 0
-#define CLIB_PREFETCH_LOAD 0	/* alias for read */
+#define CLIB_PREFETCH_READ  0
+#define CLIB_PREFETCH_LOAD  0 /* alias for read */
 #define CLIB_PREFETCH_WRITE 1
-#define CLIB_PREFETCH_STORE 1	/* alias for write */
+#define CLIB_PREFETCH_STORE 1 /* alias for write */
 
-#define _CLIB_PREFETCH(n,size,type)				\
-  if ((size) > (n)*CLIB_CACHE_LINE_BYTES)			\
-    __builtin_prefetch (_addr + (n)*CLIB_CACHE_LINE_BYTES,	\
-			CLIB_PREFETCH_##type,			\
-			/* locality */ 3);
+#define _CLIB_PREFETCH(n, size, type)                                         \
+  if ((size) > (n) *CLIB_CACHE_LINE_BYTES)                                    \
+    __builtin_prefetch (_addr + (n) *CLIB_CACHE_LINE_BYTES,                   \
+			CLIB_PREFETCH_##type, /* locality */ 3);
 
-#define CLIB_PREFETCH(addr,size,type)		\
-do {						\
-  void * _addr = (addr);			\
-						\
-  ASSERT ((size) <= 4*CLIB_CACHE_LINE_BYTES);	\
-  _CLIB_PREFETCH (0, size, type);		\
-  _CLIB_PREFETCH (1, size, type);		\
-  _CLIB_PREFETCH (2, size, type);		\
-  _CLIB_PREFETCH (3, size, type);		\
-} while (0)
+#define CLIB_PREFETCH(addr, size, type)                                       \
+  do                                                                          \
+    {                                                                         \
+      void *_addr = (addr);                                                   \
+                                                                              \
+      ASSERT ((size) <= 4 * CLIB_CACHE_LINE_BYTES);                           \
+      _CLIB_PREFETCH (0, size, type);                                         \
+      _CLIB_PREFETCH (1, size, type);                                         \
+      _CLIB_PREFETCH (2, size, type);                                         \
+      _CLIB_PREFETCH (3, size, type);                                         \
+    }                                                                         \
+  while (0)
 
 #undef _
 
@@ -103,7 +106,6 @@ clib_prefetch_store (void *p)
 }
 
 #endif /* included_clib_cache_h */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

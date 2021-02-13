@@ -21,12 +21,9 @@ namespace VOM {
 connection::connection()
   : m_vapi_conn(new vapi::Connection())
   , m_app_name("VOM")
-{
-}
+{}
 
-connection::~connection()
-{
-}
+connection::~connection() {}
 
 void
 connection::disconnect()
@@ -41,7 +38,8 @@ connection::connect()
 
   rv = m_vapi_conn->connect(m_app_name.c_str(),
                             NULL, // m_api_prefix.c_str(),
-                            128, 128);
+                            128,
+                            128);
   return rv;
 }
 

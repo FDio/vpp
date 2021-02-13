@@ -45,7 +45,7 @@
 #include <vppinfra/hash.h>
 
 int
-elog_merge_main (unformat_input_t * input)
+elog_merge_main (unformat_input_t *input)
 {
   clib_error_t *error = 0;
   elog_main_t _em, *em = &_em;
@@ -109,8 +109,7 @@ elog_merge_main (unformat_input_t * input)
 
   if (dump_file)
     {
-      if ((error =
-	   elog_write_file (em, dump_file, 0 /* do not flush ring */ )))
+      if ((error = elog_write_file (em, dump_file, 0 /* do not flush ring */)))
 	goto done;
     }
 
@@ -119,11 +118,10 @@ elog_merge_main (unformat_input_t * input)
       elog_event_t *e, *es;
       es = elog_get_events (em);
       vec_foreach (e, es)
-      {
-	clib_warning ("%18.9f: %12U %U\n", e->time,
-		      format_elog_track_name, em, e, format_elog_event, em,
-		      e);
-      }
+	{
+	  clib_warning ("%18.9f: %12U %U\n", e->time, format_elog_track_name,
+			em, e, format_elog_event, em, e);
+	}
     }
 
 done:

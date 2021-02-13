@@ -36,23 +36,23 @@ static u32 urpf_base_msg_id;
 #include <vlibapi/api_helper_macros.h>
 
 static int
-urpf_mode_decode (vl_api_urpf_mode_t in, urpf_mode_t * out)
+urpf_mode_decode (vl_api_urpf_mode_t in, urpf_mode_t *out)
 {
   if (0)
     ;
-#define _(a,b)                                  \
-  else if (URPF_API_MODE_##a == in)             \
-    {                                           \
-      *out = URPF_MODE_##a;                     \
-      return (0);                               \
-    }
+#define _(a, b)                                                               \
+  else if (URPF_API_MODE_##a == in)                                           \
+  {                                                                           \
+    *out = URPF_MODE_##a;                                                     \
+    return (0);                                                               \
+  }
   foreach_urpf_mode
 #undef _
     return (VNET_API_ERROR_INVALID_VALUE);
 }
 
 static void
-vl_api_urpf_update_t_handler (vl_api_urpf_update_t * mp)
+vl_api_urpf_update_t_handler (vl_api_urpf_update_t *mp)
 {
   vl_api_urpf_update_reply_t *rmp;
   ip_address_family_t af;
@@ -82,7 +82,7 @@ done:
 #include <urpf/urpf.api.c>
 
 static clib_error_t *
-urpf_api_init (vlib_main_t * vm)
+urpf_api_init (vlib_main_t *vm)
 {
   /* Ask for a correctly-sized block of API message decode slots */
   urpf_base_msg_id = setup_message_id_table ();
@@ -92,12 +92,10 @@ urpf_api_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (urpf_api_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Unicast Reverse Path Forwarding (uRPF)",
+  .version = VPP_BUILD_VER,
+  .description = "Unicast Reverse Path Forwarding (uRPF)",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

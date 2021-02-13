@@ -40,7 +40,7 @@
 #include <vlib/vlib.h>
 
 u8 *
-format_vlib_node_graph (u8 * s, va_list * va)
+format_vlib_node_graph (u8 *s, va_list *va)
 {
   vlib_node_main_t *nm = va_arg (*va, vlib_node_main_t *);
   vlib_node_t *n = va_arg (*va, vlib_node_t *);
@@ -53,7 +53,7 @@ format_vlib_node_graph (u8 * s, va_list * va)
     u32 prev_node;
   } tmp_t;
   tmp_t *tmps = 0;
-  tmp_t empty = {.next_node = ~0,.prev_node = ~0 };
+  tmp_t empty = { .next_node = ~0, .prev_node = ~0 };
 
   if (!n)
     return format (s, "%=26s%=26s%=26s", "Name", "Next", "Previous");
@@ -73,13 +73,13 @@ format_vlib_node_graph (u8 * s, va_list * va)
     }
 
   j = 0;
-  /* *INDENT-OFF* */
-  clib_bitmap_foreach (i, n->prev_node_bitmap)  {
-	vec_validate_init_empty (tmps, j, empty);
-	tmps[j].prev_node = i;
-	j++;
-      }
-  /* *INDENT-ON* */
+
+  clib_bitmap_foreach (i, n->prev_node_bitmap)
+    {
+      vec_validate_init_empty (tmps, j, empty);
+      tmps[j].prev_node = i;
+      j++;
+    }
 
   for (i = 0; i < vec_len (tmps); i++)
     {
@@ -113,7 +113,7 @@ format_vlib_node_graph (u8 * s, va_list * va)
 }
 
 u8 *
-format_vlib_node_and_next (u8 * s, va_list * va)
+format_vlib_node_and_next (u8 *s, va_list *va)
 {
   vlib_main_t *vm = va_arg (*va, vlib_main_t *);
   vlib_node_t *n = va_arg (*va, vlib_node_t *);
@@ -127,7 +127,7 @@ format_vlib_node_and_next (u8 * s, va_list * va)
 }
 
 u8 *
-format_vlib_node_name (u8 * s, va_list * va)
+format_vlib_node_name (u8 *s, va_list *va)
 {
   vlib_main_t *vm = va_arg (*va, vlib_main_t *);
   u32 node_index = va_arg (*va, u32);
@@ -137,7 +137,7 @@ format_vlib_node_name (u8 * s, va_list * va)
 }
 
 u8 *
-format_vlib_next_node_name (u8 * s, va_list * va)
+format_vlib_next_node_name (u8 *s, va_list *va)
 {
   vlib_main_t *vm = va_arg (*va, vlib_main_t *);
   u32 node_index = va_arg (*va, u32);
@@ -148,7 +148,7 @@ format_vlib_next_node_name (u8 * s, va_list * va)
 
 /* Parse node name -> node index. */
 uword
-unformat_vlib_node (unformat_input_t * input, va_list * args)
+unformat_vlib_node (unformat_input_t *input, va_list *args)
 {
   vlib_main_t *vm = va_arg (*args, vlib_main_t *);
   u32 *result = va_arg (*args, u32 *);
@@ -158,7 +158,7 @@ unformat_vlib_node (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_vlib_time (u8 * s, va_list * va)
+format_vlib_time (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   f64 time = va_arg (*va, f64);
@@ -166,15 +166,14 @@ format_vlib_time (u8 * s, va_list * va)
 }
 
 u8 *
-format_vlib_cpu_time (u8 * s, va_list * va)
+format_vlib_cpu_time (u8 *s, va_list *va)
 {
   vlib_main_t *vm = va_arg (*va, vlib_main_t *);
   u64 cpu_time = va_arg (*va, u64);
   f64 dt;
 
   dt =
-    (cpu_time -
-     vm->clib_time.init_cpu_time) * vm->clib_time.seconds_per_clock;
+    (cpu_time - vm->clib_time.init_cpu_time) * vm->clib_time.seconds_per_clock;
   return format (s, "%U", format_vlib_time, vm, dt);
 }
 

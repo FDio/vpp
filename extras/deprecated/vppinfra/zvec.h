@@ -39,7 +39,7 @@
 #define included_zvec_h
 
 #include <vppinfra/clib.h>
-#include <vppinfra/error.h>	/* for ASSERT */
+#include <vppinfra/error.h> /* for ASSERT */
 #include <vppinfra/format.h>
 
 /* zvec: compressed vectors.
@@ -80,59 +80,52 @@ typedef struct
 } zvec_coding_info_t;
 
 /* Encode/decode data. */
-uword zvec_encode (uword coding, uword data, uword * n_result_bits);
-uword zvec_decode (uword coding, uword zdata, uword * n_zdata_bits);
+uword zvec_encode (uword coding, uword data, uword *n_result_bits);
+uword zvec_decode (uword coding, uword zdata, uword *n_zdata_bits);
 
 format_function_t format_zvec_coding;
 
 typedef u32 zvec_histogram_count_t;
 
-#define zvec_coding_from_histogram(h,count_field,len,max_value_to_encode,zc) \
-  _zvec_coding_from_histogram ((h), (len),				\
-			       STRUCT_OFFSET_OF_VAR (h, count_field),	\
-			       sizeof (h[0]),				\
-			       max_value_to_encode,			\
-			       (zc))
+#define zvec_coding_from_histogram(h, count_field, len, max_value_to_encode,  \
+				   zc)                                        \
+  _zvec_coding_from_histogram ((h), (len),                                    \
+			       STRUCT_OFFSET_OF_VAR (h, count_field),         \
+			       sizeof (h[0]), max_value_to_encode, (zc))
 
-uword
-_zvec_coding_from_histogram (void *_histogram,
-			     uword histogram_len,
-			     uword histogram_elt_count_offset,
-			     uword histogram_elt_bytes,
-			     uword max_value_to_encode,
-			     zvec_coding_info_t * coding_info_return);
+uword _zvec_coding_from_histogram (void *_histogram, uword histogram_len,
+				   uword histogram_elt_count_offset,
+				   uword histogram_elt_bytes,
+				   uword max_value_to_encode,
+				   zvec_coding_info_t *coding_info_return);
 
-#define _(TYPE,IS_SIGNED)						\
-  uword * zvec_encode_##TYPE (uword * zvec, uword * zvec_n_bits, uword coding, \
-			   void * data, uword data_stride, uword n_data);
+#define _(TYPE, IS_SIGNED)                                                    \
+  uword *zvec_encode_##TYPE (uword *zvec, uword *zvec_n_bits, uword coding,   \
+			     void *data, uword data_stride, uword n_data);
 
-_(u8, /* is_signed */ 0);
-_(u16, /* is_signed */ 0);
-_(u32, /* is_signed */ 0);
-_(u64, /* is_signed */ 0);
-_(i8, /* is_signed */ 1);
-_(i16, /* is_signed */ 1);
-_(i32, /* is_signed */ 1);
-_(i64, /* is_signed */ 1);
+_ (u8, /* is_signed */ 0);
+_ (u16, /* is_signed */ 0);
+_ (u32, /* is_signed */ 0);
+_ (u64, /* is_signed */ 0);
+_ (i8, /* is_signed */ 1);
+_ (i16, /* is_signed */ 1);
+_ (i32, /* is_signed */ 1);
+_ (i64, /* is_signed */ 1);
 
 #undef _
 
-#define _(TYPE,IS_SIGNED)			\
-  void zvec_decode_##TYPE (uword * zvec,	\
-			   uword * zvec_n_bits,	\
-			   uword coding,	\
-			   void * data,		\
-			   uword data_stride,	\
-			   uword n_data)
+#define _(TYPE, IS_SIGNED)                                                    \
+  void zvec_decode_##TYPE (uword *zvec, uword *zvec_n_bits, uword coding,     \
+			   void *data, uword data_stride, uword n_data)
 
-_(u8, /* is_signed */ 0);
-_(u16, /* is_signed */ 0);
-_(u32, /* is_signed */ 0);
-_(u64, /* is_signed */ 0);
-_(i8, /* is_signed */ 1);
-_(i16, /* is_signed */ 1);
-_(i32, /* is_signed */ 1);
-_(i64, /* is_signed */ 1);
+_ (u8, /* is_signed */ 0);
+_ (u16, /* is_signed */ 0);
+_ (u32, /* is_signed */ 0);
+_ (u64, /* is_signed */ 0);
+_ (i8, /* is_signed */ 1);
+_ (i16, /* is_signed */ 1);
+_ (i32, /* is_signed */ 1);
+_ (i64, /* is_signed */ 1);
 
 #undef _
 

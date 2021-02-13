@@ -30,7 +30,7 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_ct6_in2out_trace (u8 * s, va_list * args)
+format_ct6_in2out_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -45,14 +45,14 @@ vlib_node_registration_t ct6_in2out_node;
 
 #endif /* CLIB_MARCH_VARIANT */
 
-#define foreach_ct6_in2out_error                \
-_(PROCESSED, "ct6 packets processed")           \
-_(CREATED, "ct6 sessions created")              \
-_(RECYCLED, "ct6 sessions recycled")
+#define foreach_ct6_in2out_error                                              \
+  _ (PROCESSED, "ct6 packets processed")                                      \
+  _ (CREATED, "ct6 sessions created")                                         \
+  _ (RECYCLED, "ct6 sessions recycled")
 
 typedef enum
 {
-#define _(sym,str) CT6_IN2OUT_ERROR_##sym,
+#define _(sym, str) CT6_IN2OUT_ERROR_##sym,
   foreach_ct6_in2out_error
 #undef _
     CT6_IN2OUT_N_ERROR,
@@ -60,7 +60,7 @@ typedef enum
 
 #ifndef CLIB_MARCH_VARIANT
 static char *ct6_in2out_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ct6_in2out_error
 #undef _
 };
@@ -74,10 +74,9 @@ typedef enum
 
 #ifndef CLIB_MARCH_VARIANT
 ct6_session_t *
-ct6_create_or_recycle_session (ct6_main_t * cmp,
-			       clib_bihash_kv_48_8_t * kvpp, f64 now,
-			       u32 my_thread_index, u32 * recyclep,
-			       u32 * createp)
+ct6_create_or_recycle_session (ct6_main_t *cmp, clib_bihash_kv_48_8_t *kvpp,
+			       f64 now, u32 my_thread_index, u32 *recyclep,
+			       u32 *createp)
 {
   ct6_session_t *s0;
 
@@ -94,20 +93,20 @@ ct6_create_or_recycle_session (ct6_main_t * cmp,
 		  s0 - cmp->sessions[my_thread_index], s0->expires, now);
 
   if (CLIB_DEBUG > 0 && pool_elts (cmp->sessions[my_thread_index]) >=
-      cmp->max_sessions_per_worker)
+			  cmp->max_sessions_per_worker)
     clib_warning ("recycle session %d have %d max %d",
 		  s0 - cmp->sessions[my_thread_index],
 		  pool_elts (cmp->sessions[my_thread_index]),
 		  cmp->max_sessions_per_worker);
 
   /* Session expired, or we have as many sessions as is allowed by law? */
-  if ((s0->expires < now) || (pool_elts (cmp->sessions[my_thread_index])
-			      >= cmp->max_sessions_per_worker))
+  if ((s0->expires < now) || (pool_elts (cmp->sessions[my_thread_index]) >=
+			      cmp->max_sessions_per_worker))
     {
       /* recycle the session */
       if (clib_bihash_add_del_48_8 (&cmp->session_hash,
 				    (clib_bihash_kv_48_8_t *) s0,
-				    0 /* is_add */ ) < 0)
+				    0 /* is_add */) < 0)
 	clib_warning ("session %d not found in hash?",
 		      s0 - cmp->sessions[my_thread_index]);
 
@@ -128,16 +127,15 @@ ct6_create_or_recycle_session (ct6_main_t * cmp,
   s0->thread_index = my_thread_index;
   s0->expires = now + cmp->session_timeout_interval;
   kvpp->value = s0 - cmp->sessions[my_thread_index];
-  clib_bihash_add_del_48_8 (&cmp->session_hash, kvpp, 1 /* is_add */ );
+  clib_bihash_add_del_48_8 (&cmp->session_hash, kvpp, 1 /* is_add */);
   ct6_lru_add (cmp, s0, now);
   return s0;
 }
 #endif /* CLIB_MARCH_VARIANT */
 
 always_inline uword
-ct6_in2out_inline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame,
-		   int is_trace)
+ct6_in2out_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame, int is_trace)
 {
   u32 n_left_from, *from;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
@@ -242,10 +240,10 @@ ct6_in2out_inline (vlib_main_t * vm,
 
       e0 = vlib_buffer_get_current (b[0]);
       delta0 = sizeof (*e0);
-      delta0 += (e0->type == clib_net_to_host_u16 (ETHERNET_TYPE_VLAN))
-	? 4 : 0;
-      delta0 += (e0->type == clib_net_to_host_u16 (ETHERNET_TYPE_DOT1AD))
-	? 8 : 0;
+      delta0 +=
+	(e0->type == clib_net_to_host_u16 (ETHERNET_TYPE_VLAN)) ? 4 : 0;
+      delta0 +=
+	(e0->type == clib_net_to_host_u16 (ETHERNET_TYPE_DOT1AD)) ? 8 : 0;
 
       if (PREDICT_TRUE (delta0 == sizeof (*e0)))
 	{
@@ -264,8 +262,7 @@ ct6_in2out_inline (vlib_main_t * vm,
       /*
        * Pass non-global unicast traffic
        */
-      if (PREDICT_FALSE (!ip6_address_is_global_unicast (&ip0->src_address)
-			 ||
+      if (PREDICT_FALSE (!ip6_address_is_global_unicast (&ip0->src_address) ||
 			 !ip6_address_is_global_unicast (&ip0->dst_address)))
 	goto trace0;
       /* Pass non-udp, non-tcp traffic */
@@ -279,11 +276,9 @@ ct6_in2out_inline (vlib_main_t * vm,
        * See if we know about this flow.
        * Key set up for the out2in path, the performant case
        */
-      key0 = (ct6_session_key_t *) & kvp0;
-      clib_memcpy_fast (&key0->src, &ip0->dst_address,
-			sizeof (ip6_address_t));
-      clib_memcpy_fast (&key0->dst, &ip0->src_address,
-			sizeof (ip6_address_t));
+      key0 = (ct6_session_key_t *) &kvp0;
+      clib_memcpy_fast (&key0->src, &ip0->dst_address, sizeof (ip6_address_t));
+      clib_memcpy_fast (&key0->dst, &ip0->src_address, sizeof (ip6_address_t));
       key0->as_u64[4] = 0;
       key0->as_u64[5] = 0;
       key0->sport = udp0->dst_port;
@@ -293,9 +288,8 @@ ct6_in2out_inline (vlib_main_t * vm,
       /* Need to create a new session? */
       if (clib_bihash_search_48_8 (&cmp->session_hash, &kvp0, &kvp0) < 0)
 	{
-	  s0 =
-	    ct6_create_or_recycle_session (cmp, &kvp0, now, my_thread_index,
-					   &recycled, &created);
+	  s0 = ct6_create_or_recycle_session (cmp, &kvp0, now, my_thread_index,
+					      &recycled, &created);
 	  session_index0 = kvp0.value;
 	}
       else
@@ -327,24 +321,23 @@ ct6_in2out_inline (vlib_main_t * vm,
 
   vlib_node_increment_counter (vm, node->node_index,
 			       CT6_IN2OUT_ERROR_PROCESSED, frame->n_vectors);
-  vlib_node_increment_counter (vm, node->node_index,
-			       CT6_IN2OUT_ERROR_CREATED, created);
-  vlib_node_increment_counter (vm, node->node_index,
-			       CT6_IN2OUT_ERROR_RECYCLED, recycled);
+  vlib_node_increment_counter (vm, node->node_index, CT6_IN2OUT_ERROR_CREATED,
+			       created);
+  vlib_node_increment_counter (vm, node->node_index, CT6_IN2OUT_ERROR_RECYCLED,
+			       recycled);
 
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (ct6_in2out_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-				vlib_frame_t * frame)
+VLIB_NODE_FN (ct6_in2out_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-    return ct6_in2out_inline (vm, node, frame, 1 /* is_trace */ );
+    return ct6_in2out_inline (vm, node, frame, 1 /* is_trace */);
   else
-    return ct6_in2out_inline (vm, node, frame, 0 /* is_trace */ );
+    return ct6_in2out_inline (vm, node, frame, 0 /* is_trace */);
 }
 
-/* *INDENT-OFF* */
 #ifndef CLIB_MARCH_VARIANT
 VLIB_REGISTER_NODE (ct6_in2out_node) =
 {
@@ -365,7 +358,6 @@ VLIB_REGISTER_NODE (ct6_in2out_node) =
   .unformat_buffer = unformat_ethernet_header,
 };
 #endif /* CLIB_MARCH_VARIANT */
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -27,39 +27,36 @@ typedef struct
   u8 new_dst_mac[6];
 } sample_trace_t;
 
-
 /* packet trace format function */
 static u8 *
-format_sample_trace (u8 * s, va_list * args)
+format_sample_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   sample_trace_t *t = va_arg (*args, sample_trace_t *);
 
-  s = format (s, "SAMPLE: sw_if_index %d, next index %d\n",
-	      t->sw_if_index, t->next_index);
-  s = format (s, "  new src %U -> new dst %U",
-	      format_mac_address, t->new_src_mac,
-	      format_mac_address, t->new_dst_mac);
+  s = format (s, "SAMPLE: sw_if_index %d, next index %d\n", t->sw_if_index,
+	      t->next_index);
+  s = format (s, "  new src %U -> new dst %U", format_mac_address,
+	      t->new_src_mac, format_mac_address, t->new_dst_mac);
 
   return s;
 }
 
 extern vlib_node_registration_t sample_node;
 
-#define foreach_sample_error \
-_(SWAPPED, "Mac swap packets processed")
+#define foreach_sample_error _ (SWAPPED, "Mac swap packets processed")
 
 typedef enum
 {
-#define _(sym,str) SAMPLE_ERROR_##sym,
+#define _(sym, str) SAMPLE_ERROR_##sym,
   foreach_sample_error
 #undef _
     SAMPLE_N_ERROR,
 } sample_error_t;
 
 static char *sample_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_sample_error
 #undef _
 };
@@ -79,16 +76,16 @@ typedef enum
 
 #define VERSION_1 1
 #ifdef VERSION_1
-#define foreach_mac_address_offset              \
-_(0)                                            \
-_(1)                                            \
-_(2)                                            \
-_(3)                                            \
-_(4)                                            \
-_(5)
+#define foreach_mac_address_offset                                            \
+  _ (0)                                                                       \
+  _ (1)                                                                       \
+  _ (2)                                                                       \
+  _ (3)                                                                       \
+  _ (4)                                                                       \
+  _ (5)
 
-VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    vlib_frame_t * frame)
+VLIB_NODE_FN (sample_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   sample_next_t next_index;
@@ -187,7 +184,6 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 				    sizeof (t->new_src_mac));
 		  clib_memcpy_fast (t->new_dst_mac, en0->dst_address,
 				    sizeof (t->new_dst_mac));
-
 		}
 	      if (b1->flags & VLIB_BUFFER_IS_TRACED)
 		{
@@ -203,9 +199,9 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* verify speculative enqueues, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -250,8 +246,8 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* Send pkt back out the RX interface */
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index0;
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      sample_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->sw_if_index = sw_if_index0;
@@ -265,16 +261,15 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  pkts_swapped += 1;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, sample_node.index,
-			       SAMPLE_ERROR_SWAPPED, pkts_swapped);
+  vlib_node_increment_counter (vm, sample_node.index, SAMPLE_ERROR_SWAPPED,
+			       pkts_swapped);
   return frame->n_vectors;
 }
 #endif
@@ -284,8 +279,8 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
  * Node costs about 17 clocks/pkt at a vector size of 26
  */
 #ifdef VERSION_2
-VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    vlib_frame_t * frame)
+VLIB_NODE_FN (sample_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   sample_next_t next_index;
@@ -371,7 +366,6 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 				    sizeof (t->new_src_mac));
 		  clib_memcpy_fast (t->new_dst_mac, en0->dst_address,
 				    sizeof (t->new_dst_mac));
-
 		}
 	      if (b1->flags & VLIB_BUFFER_IS_TRACED)
 		{
@@ -387,9 +381,9 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* verify speculative enqueues, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -426,8 +420,8 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* Send pkt back out the RX interface */
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index0;
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      sample_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->sw_if_index = sw_if_index0;
@@ -441,20 +435,18 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  pkts_swapped += 1;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, sample_node.index,
-			       SAMPLE_ERROR_SWAPPED, pkts_swapped);
+  vlib_node_increment_counter (vm, sample_node.index, SAMPLE_ERROR_SWAPPED,
+			       pkts_swapped);
   return frame->n_vectors;
 }
 #endif
-
 
 /*
  * This version computes all of the buffer pointers in
@@ -473,8 +465,8 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 /* This would normally be a stack local, but since it's a constant... */
 static const u16 nexts[VLIB_FRAME_SIZE] = { 0 };
 
-VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    vlib_frame_t * frame)
+VLIB_NODE_FN (sample_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from;
   u32 pkts_swapped = 0;
@@ -562,13 +554,12 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
       // next += 1;
       n_left_from -= 1;
       pkts_swapped += 1;
-
     }
   vlib_buffer_enqueue_to_next (vm, node, from, (u16 *) nexts,
 			       frame->n_vectors);
 
-  vlib_node_increment_counter (vm, sample_node.index,
-			       SAMPLE_ERROR_SWAPPED, pkts_swapped);
+  vlib_node_increment_counter (vm, sample_node.index, SAMPLE_ERROR_SWAPPED,
+			       pkts_swapped);
 
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     {
@@ -580,8 +571,7 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
 	      ethernet_header_t *en;
-	      sample_trace_t *t =
-		vlib_add_trace (vm, node, b[0], sizeof (*t));
+	      sample_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
 	      t->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
 	      t->next_index = SAMPLE_NEXT_INTERFACE_OUTPUT;
 	      en = vlib_buffer_get_current (b[0]);
@@ -608,17 +598,17 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
  * and it's the simplest way to write performant vpp code
  */
 
-
 #ifdef VERSION_4
 
 #define u8x16_shuffle __builtin_shuffle
 
-static u8x16 swapmac =
-  { 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 12, 13, 14, 15 };
+static u8x16 swapmac = {
+  6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 12, 13, 14, 15
+};
 
 /* Final stage in the pipeline, do the mac swap */
 static inline u32
-last_stage (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
+last_stage (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b)
 {
   u8x16 src_dst0;
   src_dst0 = ((u8x16 *) vlib_buffer_get_current (b))[0];
@@ -635,29 +625,29 @@ last_stage (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
  * For any specific platform, the optimal prefetch stride may differ.
  */
 static inline void
-stage1 (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
+stage1 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b)
 {
 }
 
 static inline void
-stage2 (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
+stage2 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b)
 {
 }
 
-#define NSTAGES 4
-#define STAGE_INLINE inline __attribute__((__always_inline__))
+#define NSTAGES	     4
+#define STAGE_INLINE inline __attribute__ ((__always_inline__))
 
 #define stage0 generic_stage0
 
 #include <vnet/pipeline.h>
 
-VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    vlib_frame_t * frame)
+VLIB_NODE_FN (sample_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   dispatch_pipeline (vm, node, frame);
 
-  vlib_node_increment_counter (vm, sample_node.index,
-			       SAMPLE_ERROR_SWAPPED, frame->n_vectors);
+  vlib_node_increment_counter (vm, sample_node.index, SAMPLE_ERROR_SWAPPED,
+			       frame->n_vectors);
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     {
       int i;
@@ -668,8 +658,7 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
 	      ethernet_header_t *en;
-	      sample_trace_t *t =
-		vlib_add_trace (vm, node, b[0], sizeof (*t));
+	      sample_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
 	      t->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
 	      t->next_index = SAMPLE_NEXT_INTERFACE_OUTPUT;
 	      en = vlib_buffer_get_current (b[0]);
@@ -687,7 +676,6 @@ VLIB_NODE_FN (sample_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 #endif
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (sample_node) =
 {
   .name = "sample",
@@ -705,7 +693,6 @@ VLIB_REGISTER_NODE (sample_node) =
     [SAMPLE_NEXT_INTERFACE_OUTPUT] = "interface-output",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

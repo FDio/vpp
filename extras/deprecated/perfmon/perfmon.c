@@ -27,8 +27,8 @@
 perfmon_main_t perfmon_main;
 
 void
-perfmon_register_intel_pmc (perfmon_intel_pmc_cpu_model_t * m, int n_models,
-			    perfmon_intel_pmc_event_t * e, int n_events)
+perfmon_register_intel_pmc (perfmon_intel_pmc_cpu_model_t *m, int n_models,
+			    perfmon_intel_pmc_event_t *e, int n_events)
 {
   perfmon_main_t *pm = &perfmon_main;
   perfmon_intel_pmc_registration_t r;
@@ -46,8 +46,8 @@ get_cpuid (void)
 {
 #if defined(__x86_64__)
   u32 cpuid;
-  asm volatile ("mov $1, %%eax; cpuid; mov %%eax, %0":"=r" (cpuid)::"%eax",
-		"%edx", "%ecx", "%rbx");
+  asm volatile("mov $1, %%eax; cpuid; mov %%eax, %0"
+	       : "=r"(cpuid)::"%eax", "%edx", "%ecx", "%rbx");
   return cpuid;
 #else
   return 0;
@@ -55,8 +55,8 @@ get_cpuid (void)
 }
 
 static int
-perfmon_cpu_model_matches (perfmon_intel_pmc_cpu_model_t * mt,
-			   u32 n_models, u8 model, u8 stepping)
+perfmon_cpu_model_matches (perfmon_intel_pmc_cpu_model_t *mt, u32 n_models,
+			   u8 model, u8 stepping)
 {
   u32 i;
   for (i = 0; i < n_models; i++)
@@ -76,21 +76,22 @@ perfmon_cpu_model_matches (perfmon_intel_pmc_cpu_model_t * mt,
 }
 
 static perfmon_intel_pmc_event_t *
-perfmon_find_table_by_model_stepping (perfmon_main_t * pm,
-				      u8 model, u8 stepping)
+perfmon_find_table_by_model_stepping (perfmon_main_t *pm, u8 model,
+				      u8 stepping)
 {
   perfmon_intel_pmc_registration_t *rt;
 
   vec_foreach (rt, pm->perfmon_tables)
-  {
-    if (perfmon_cpu_model_matches (rt->models, rt->n_models, model, stepping))
-      return rt->events;
-  }
+    {
+      if (perfmon_cpu_model_matches (rt->models, rt->n_models, model,
+				     stepping))
+	return rt->events;
+    }
   return 0;
 }
 
 static clib_error_t *
-perfmon_init (vlib_main_t * vm)
+perfmon_init (vlib_main_t *vm)
 {
   perfmon_main_t *pm = &perfmon_main;
   clib_error_t *error = 0;
@@ -102,19 +103,18 @@ perfmon_init (vlib_main_t * vm)
   pm->vlib_main = vm;
   pm->vnet_main = vnet_get_main ();
 
-  pm->capture_by_thread_and_node_name =
-    hash_create_string (0, sizeof (uword));
+  pm->capture_by_thread_and_node_name = hash_create_string (0, sizeof (uword));
 
   pm->log_class = vlib_log_register_class ("perfmon", 0);
 
   /* Default data collection interval */
-  pm->timeout_interval = 2.0;	/* seconds */
+  pm->timeout_interval = 2.0; /* seconds */
 
   vec_validate (pm->threads, vlib_get_thread_main ()->n_vlib_mains - 1);
   for (i = 0; i < vec_len (pm->threads); i++)
     {
-      perfmon_thread_t *pt = clib_mem_alloc_aligned
-	(sizeof (perfmon_thread_t), CLIB_CACHE_LINE_BYTES);
+      perfmon_thread_t *pt = clib_mem_alloc_aligned (sizeof (perfmon_thread_t),
+						     CLIB_CACHE_LINE_BYTES);
       clib_memset (pt, 0, sizeof (*pt));
       pm->threads[i] = pt;
       pt->pm_fds[0] = -1;
@@ -129,14 +129,13 @@ perfmon_init (vlib_main_t * vm)
   model = ((cpuid >> 12) & 0xf0) | ((cpuid >> 4) & 0xf);
   stepping = cpuid & 0xf;
 
-  pm->perfmon_table = perfmon_find_table_by_model_stepping (pm,
-							    model, stepping);
+  pm->perfmon_table =
+    perfmon_find_table_by_model_stepping (pm, model, stepping);
 
   if (pm->perfmon_table == 0)
     {
       vlib_log_err (pm->log_class, "No table for cpuid %x", cpuid);
-      vlib_log_err (pm->log_class, "  model %x, stepping %x",
-		    model, stepping);
+      vlib_log_err (pm->log_class, "  model %x, stepping %x", model, stepping);
     }
   else
     {
@@ -156,7 +155,7 @@ perfmon_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (perfmon_init);
 
 uword
-unformat_processor_event (unformat_input_t * input, va_list * args)
+unformat_processor_event (unformat_input_t *input, va_list *args)
 {
   perfmon_main_t *pm = va_arg (*args, perfmon_main_t *);
   perfmon_event_config_t *ep = va_arg (*args, perfmon_event_config_t *);
@@ -194,8 +193,8 @@ unformat_processor_event (unformat_input_t * input, va_list * args)
 }
 
 static clib_error_t *
-set_pmc_command_fn (vlib_main_t * vm,
-		    unformat_input_t * input, vlib_cli_command_t * cmd)
+set_pmc_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		    vlib_cli_command_t *cmd)
 {
   perfmon_main_t *pm = &perfmon_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
@@ -246,33 +245,33 @@ set_pmc_command_fn (vlib_main_t * vm,
 	  ec.pe_config = PERF_COUNT_HW_BRANCH_INSTRUCTIONS;
 	  vec_add1 (pm->paired_events_to_collect, ec);
 	}
-      else if (unformat (line_input, "threads %U",
-			 unformat_bitmap_list, &pm->thread_bitmap))
+      else if (unformat (line_input, "threads %U", unformat_bitmap_list,
+			 &pm->thread_bitmap))
 	;
-      else if (unformat (line_input, "thread %U",
-			 unformat_bitmap_list, &pm->thread_bitmap))
+      else if (unformat (line_input, "thread %U", unformat_bitmap_list,
+			 &pm->thread_bitmap))
 	;
       else if (unformat (line_input, "%U", unformat_processor_event, pm, &ec))
 	{
 	  vec_add1 (pm->single_events_to_collect, ec);
 	}
-#define _(type,event,str)                       \
-      else if (unformat (line_input, str))      \
-        {                                       \
-          ec.name = str;                        \
-          ec.pe_type = type;                    \
-          ec.pe_config = event;                 \
-          vec_add1 (pm->single_events_to_collect, ec); \
-        }
+#define _(type, event, str)                                                   \
+  else if (unformat (line_input, str))                                        \
+  {                                                                           \
+    ec.name = str;                                                            \
+    ec.pe_type = type;                                                        \
+    ec.pe_config = event;                                                     \
+    vec_add1 (pm->single_events_to_collect, ec);                              \
+  }
       foreach_perfmon_event
 #undef _
 	else
-	{
-	  error = clib_error_return (0, "unknown input '%U'",
-				     format_unformat_error, line_input);
-	  unformat_free (line_input);
-	  return error;
-	}
+      {
+	error = clib_error_return (0, "unknown input '%U'",
+				   format_unformat_error, line_input);
+	unformat_free (line_input);
+	return error;
+      }
     }
 
   unformat_free (line_input);
@@ -298,7 +297,7 @@ set_pmc_command_fn (vlib_main_t * vm,
   /* Figure out how long data collection will take */
   delay =
     ((f64) vec_len (pm->single_events_to_collect)) * pm->timeout_interval;
-  delay /= 2.0;			/* collect 2 stats at once */
+  delay /= 2.0; /* collect 2 stats at once */
 
   vlib_cli_output (vm, "Start collection for %d events, wait %.2f seconds",
 		   vec_len (pm->single_events_to_collect), delay);
@@ -325,15 +324,12 @@ set_pmc_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_pmc_command, static) =
-{
+VLIB_CLI_COMMAND (set_pmc_command, static) = {
   .path = "set pmc",
   .short_help = "set pmc [threads n,n1-n2] c1... [see \"show pmc events\"]",
   .function = set_pmc_command_fn,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static int
 capture_name_sort (void *a1, void *a2)
@@ -346,7 +342,7 @@ capture_name_sort (void *a1, void *a2)
 }
 
 static u8 *
-format_capture (u8 * s, va_list * args)
+format_capture (u8 *s, va_list *args)
 {
   perfmon_main_t *pm = va_arg (*args, perfmon_main_t *);
   perfmon_capture_t *c = va_arg (*args, perfmon_capture_t *);
@@ -356,8 +352,8 @@ format_capture (u8 * s, va_list * args)
 
   if (c == 0)
     {
-      s = format (s, "%=40s%=20s%=16s%=16s%=16s",
-		  "Name", "Counter", "Count", "Pkts", "Counts/Pkt");
+      s = format (s, "%=40s%=20s%=16s%=16s%=16s", "Name", "Counter", "Count",
+		  "Pkts", "Counts/Pkt");
       return s;
     }
 
@@ -380,14 +376,13 @@ format_capture (u8 * s, va_list * args)
 	  ASSERT ((i + 1) < vec_len (c->counter_names));
 
 	  if (c->counter_values[i + 1] > 0)
-	    ipc_rate = (f64) c->counter_values[i]
-	      / (f64) c->counter_values[i + 1];
+	    ipc_rate =
+	      (f64) c->counter_values[i] / (f64) c->counter_values[i + 1];
 	  else
 	    ipc_rate = 0.0;
 
-	  s = format (s, "%-40s%+20s%+16llu%+16llu%+16.2e\n",
-		      name, "instructions-per-clock",
-		      c->counter_values[i],
+	  s = format (s, "%-40s%+20s%+16llu%+16llu%+16.2e\n", name,
+		      "instructions-per-clock", c->counter_values[i],
 		      c->counter_values[i + 1], ipc_rate);
 	  name = (u8 *) "";
 	}
@@ -398,14 +393,13 @@ format_capture (u8 * s, va_list * args)
 	  ASSERT (i + 1 < vec_len (c->counter_names));
 
 	  if (c->counter_values[i + 1] > 0)
-	    mispredict_rate = (f64) c->counter_values[i]
-	      / (f64) c->counter_values[i + 1];
+	    mispredict_rate =
+	      (f64) c->counter_values[i] / (f64) c->counter_values[i + 1];
 	  else
 	    mispredict_rate = 0.0;
 
-	  s = format (s, "%-40s%+20s%+16llu%+16llu%+16.2e\n",
-		      name, "branch-mispredict-rate",
-		      c->counter_values[i],
+	  s = format (s, "%-40s%+20s%+16llu%+16llu%+16.2e\n", name,
+		      "branch-mispredict-rate", c->counter_values[i],
 		      c->counter_values[i + 1], mispredict_rate);
 	  name = (u8 *) "";
 	}
@@ -416,23 +410,22 @@ format_capture (u8 * s, va_list * args)
       else
 	ticks_per_pkt = 0.0;
 
-      s = format (s, "%-40s%+20s%+16llu%+16llu%+16.2e",
-		  name, c->counter_names[i],
-		  c->counter_values[i],
+      s = format (s, "%-40s%+20s%+16llu%+16llu%+16.2e", name,
+		  c->counter_names[i], c->counter_values[i],
 		  c->vectors_this_counter[i], ticks_per_pkt);
     }
   return s;
 }
 
 static u8 *
-format_generic_events (u8 * s, va_list * args)
+format_generic_events (u8 *s, va_list *args)
 {
   int verbose = va_arg (*args, int);
 
-#define _(type,config,name)                             \
-  if (verbose == 0)                                     \
-    s = format (s, "\n  %s", name);                     \
-  else                                                  \
+#define _(type, config, name)                                                 \
+  if (verbose == 0)                                                           \
+    s = format (s, "\n  %s", name);                                           \
+  else                                                                        \
     s = format (s, "\n  %s (%d, %d)", name, type, config);
   foreach_perfmon_event;
 #undef _
@@ -455,7 +448,7 @@ sort_nvps_by_name (void *a1, void *a2)
 }
 
 static u8 *
-format_pmc_event (u8 * s, va_list * args)
+format_pmc_event (u8 *s, va_list *args)
 {
   perfmon_intel_pmc_event_t *ev = va_arg (*args, perfmon_intel_pmc_event_t *);
 
@@ -472,7 +465,7 @@ format_pmc_event (u8 * s, va_list * args)
 }
 
 static u8 *
-format_processor_events (u8 * s, va_list * args)
+format_processor_events (u8 *s, va_list *args)
 {
   perfmon_main_t *pm = va_arg (*args, perfmon_main_t *);
   int verbose = va_arg (*args, int);
@@ -481,34 +474,31 @@ format_processor_events (u8 * s, va_list * args)
   u8 *key;
   u32 value;
 
-  /* *INDENT-OFF* */
-  hash_foreach_mem (key, value, pm->pmc_event_by_name,
-  ({
-    vec_add2 (sort_nvps, sn, 1);
-    sn->name = key;
-    sn->index = value;
-  }));
+  hash_foreach_mem (key, value, pm->pmc_event_by_name, ({
+		      vec_add2 (sort_nvps, sn, 1);
+		      sn->name = key;
+		      sn->index = value;
+		    }));
 
   vec_sort_with_function (sort_nvps, sort_nvps_by_name);
 
   if (verbose == 0)
     {
       vec_foreach (sn, sort_nvps)
-        s = format (s, "\n  %s ", sn->name);
+	s = format (s, "\n  %s ", sn->name);
     }
   else
     {
       vec_foreach (sn, sort_nvps)
-        s = format(s, "%U", format_pmc_event, &pm->perfmon_table[sn->index]);
+	s = format (s, "%U", format_pmc_event, &pm->perfmon_table[sn->index]);
     }
   vec_free (sort_nvps);
   return s;
 }
 
-
 static clib_error_t *
-show_pmc_command_fn (vlib_main_t * vm,
-		     unformat_input_t * input, vlib_cli_command_t * cmd)
+show_pmc_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
 {
   perfmon_main_t *pm = &perfmon_main;
   int verbose = 0;
@@ -520,23 +510,23 @@ show_pmc_command_fn (vlib_main_t * vm,
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "events"))
-        events = 1;
+	events = 1;
       else if (unformat (input, "verbose"))
-        verbose = 1;
+	verbose = 1;
       else
 	break;
     }
 
   if (events)
     {
-      vlib_cli_output (vm, "Generic Events %U",
-                       format_generic_events, verbose);
+      vlib_cli_output (vm, "Generic Events %U", format_generic_events,
+		       verbose);
       vlib_cli_output (vm, "Synthetic Events");
       vlib_cli_output (vm, "  instructions-per-clock");
       vlib_cli_output (vm, "  branch-mispredict-rate");
       if (pm->perfmon_table)
-        vlib_cli_output (vm, "Processor Events %U",
-                         format_processor_events, pm, verbose);
+	vlib_cli_output (vm, "Processor Events %U", format_processor_events,
+			 pm, verbose);
       return 0;
     }
 
@@ -552,17 +542,15 @@ show_pmc_command_fn (vlib_main_t * vm,
       return 0;
     }
 
-  /* *INDENT-OFF* */
   pool_foreach (c, pm->capture_pool)
-   {
-    vec_add1 (captures, *c);
-  }
-  /* *INDENT-ON* */
+    {
+      vec_add1 (captures, *c);
+    }
 
   vec_sort_with_function (captures, capture_name_sort);
 
-  vlib_cli_output (vm, "%U", format_capture, pm, 0 /* header */ ,
-		   0 /* verbose */ );
+  vlib_cli_output (vm, "%U", format_capture, pm, 0 /* header */,
+		   0 /* verbose */);
 
   for (i = 0; i < vec_len (captures); i++)
     {
@@ -576,19 +564,16 @@ show_pmc_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_pmc_command, static) =
-{
+VLIB_CLI_COMMAND (show_pmc_command, static) = {
   .path = "show pmc",
   .short_help = "show pmc [verbose]",
   .function = show_pmc_command_fn,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-clear_pmc_command_fn (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+clear_pmc_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
 {
   perfmon_main_t *pm = &perfmon_main;
   u8 *key;
@@ -602,27 +587,18 @@ clear_pmc_command_fn (vlib_main_t * vm,
 
   pool_free (pm->capture_pool);
 
-  /* *INDENT-OFF* */
   hash_foreach_mem (key, value, pm->capture_by_thread_and_node_name,
-  ({
-    vec_free (key);
-  }));
-  /* *INDENT-ON* */
+		    ({ vec_free (key); }));
   hash_free (pm->capture_by_thread_and_node_name);
-  pm->capture_by_thread_and_node_name =
-    hash_create_string (0, sizeof (uword));
+  pm->capture_by_thread_and_node_name = hash_create_string (0, sizeof (uword));
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (clear_pmc_command, static) =
-{
+VLIB_CLI_COMMAND (clear_pmc_command, static) = {
   .path = "clear pmc",
   .short_help = "clear the performance monitor counters",
   .function = clear_pmc_command_fn,
 };
-/* *INDENT-ON* */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

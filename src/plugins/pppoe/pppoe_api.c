@@ -25,7 +25,6 @@
 #include <vppinfra/byte_order.h>
 #include <vlibmemory/api.h>
 
-
 #include <pppoe/pppoe.h>
 
 #include <vnet/format_fns.h>
@@ -35,8 +34,8 @@
 #define REPLY_MSG_ID_BASE pem->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-static void vl_api_pppoe_add_del_session_t_handler
-  (vl_api_pppoe_add_del_session_t * mp)
+static void
+vl_api_pppoe_add_del_session_t_handler (vl_api_pppoe_add_del_session_t *mp)
 {
   vl_api_pppoe_add_del_session_reply_t *rmp;
   int rv = 0;
@@ -64,16 +63,14 @@ static void vl_api_pppoe_add_del_session_t_handler
   rv = vnet_pppoe_add_del_session (&a, &sw_if_index);
 
 out:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_PPPOE_ADD_DEL_SESSION_REPLY,
-  ({
-    rmp->sw_if_index = ntohl (sw_if_index);
-  }));
-  /* *INDENT-ON* */
+
+  REPLY_MACRO2 (VL_API_PPPOE_ADD_DEL_SESSION_REPLY,
+		({ rmp->sw_if_index = ntohl (sw_if_index); }));
 }
 
-static void send_pppoe_session_details
-  (pppoe_session_t * t, vl_api_registration_t * reg, u32 context)
+static void
+send_pppoe_session_details (pppoe_session_t *t, vl_api_registration_t *reg,
+			    u32 context)
 {
   vl_api_pppoe_session_details_t *rmp;
   ip4_main_t *im4 = &ip4_main;
@@ -105,7 +102,7 @@ static void send_pppoe_session_details
 }
 
 static void
-vl_api_pppoe_session_dump_t_handler (vl_api_pppoe_session_dump_t * mp)
+vl_api_pppoe_session_dump_t_handler (vl_api_pppoe_session_dump_t *mp)
 {
   vl_api_registration_t *reg;
   pppoe_main_t *pem = &pppoe_main;
@@ -120,12 +117,11 @@ vl_api_pppoe_session_dump_t_handler (vl_api_pppoe_session_dump_t * mp)
 
   if (~0 == sw_if_index)
     {
-      /* *INDENT-OFF* */
+
       pool_foreach (t, pem->sessions)
-       {
-        send_pppoe_session_details(t, reg, mp->context);
-      }
-      /* *INDENT-ON* */
+	{
+	  send_pppoe_session_details (t, reg, mp->context);
+	}
     }
   else
     {
@@ -140,7 +136,7 @@ vl_api_pppoe_session_dump_t_handler (vl_api_pppoe_session_dump_t * mp)
 }
 
 static void
-vl_api_pppoe_add_del_cp_t_handler (vl_api_pppoe_add_del_cp_t * mp)
+vl_api_pppoe_add_del_cp_t_handler (vl_api_pppoe_add_del_cp_t *mp)
 {
   vl_api_pppoe_add_del_cp_reply_t *rmp;
   i32 rv = 0;
@@ -148,14 +144,12 @@ vl_api_pppoe_add_del_cp_t_handler (vl_api_pppoe_add_del_cp_t * mp)
 
   rv = pppoe_add_del_cp (ntohl (mp->sw_if_index), mp->is_add);
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO(VL_API_PPPOE_ADD_DEL_CP_REPLY);
-  /* *INDENT-ON* */
+  REPLY_MACRO (VL_API_PPPOE_ADD_DEL_CP_REPLY);
 }
 
 #include <pppoe/pppoe.api.c>
 static clib_error_t *
-pppoe_api_hookup (vlib_main_t * vm)
+pppoe_api_hookup (vlib_main_t *vm)
 {
   pppoe_main_t *pem = &pppoe_main;
 

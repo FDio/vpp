@@ -53,11 +53,11 @@ fabs (f64 x)
 }
 
 #ifndef isnan
-#define isnan(x) __builtin_isnan(x)
+#define isnan(x) __builtin_isnan (x)
 #endif
 
 #ifndef isinf
-#define isinf(x) __builtin_isinf(x)
+#define isinf(x) __builtin_isinf (x)
 #endif
 
 #endif /* included_math_h */

@@ -42,19 +42,22 @@
 #include <vnet/pg/pg.h>
 
 static char *icmp_error_strings[] = {
-#define _(f,s) s,
+#define _(f, s) s,
   foreach_icmp4_error
 #undef _
 };
 
 static u8 *
-format_ip4_icmp_type_and_code (u8 * s, va_list * args)
+format_ip4_icmp_type_and_code (u8 *s, va_list *args)
 {
   icmp4_type_t type = va_arg (*args, int);
   u8 code = va_arg (*args, int);
   char *t = 0;
 
-#define _(n,f) case n: t = #f; break;
+#define _(n, f)                                                               \
+  case n:                                                                     \
+    t = #f;                                                                   \
+    break;
 
   switch (type)
     {
@@ -74,7 +77,10 @@ format_ip4_icmp_type_and_code (u8 * s, va_list * args)
   t = 0;
   switch ((type << 8) | code)
     {
-#define _(a,n,f) case (ICMP4_##a << 8) | (n): t = #f; break;
+#define _(a, n, f)                                                            \
+  case (ICMP4_##a << 8) | (n):                                                \
+    t = #f;                                                                   \
+    break;
 
       foreach_icmp4_code;
 
@@ -88,7 +94,7 @@ format_ip4_icmp_type_and_code (u8 * s, va_list * args)
 }
 
 static u8 *
-format_ip4_icmp_header (u8 * s, va_list * args)
+format_ip4_icmp_header (u8 *s, va_list *args)
 {
   icmp46_header_t *icmp = va_arg (*args, icmp46_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
@@ -97,12 +103,11 @@ format_ip4_icmp_header (u8 * s, va_list * args)
   if (max_header_bytes < sizeof (icmp[0]))
     return format (s, "ICMP header truncated");
 
-  s = format (s, "ICMP %U checksum 0x%x",
-	      format_ip4_icmp_type_and_code, icmp->type, icmp->code,
-	      clib_net_to_host_u16 (icmp->checksum));
+  s = format (s, "ICMP %U checksum 0x%x", format_ip4_icmp_type_and_code,
+	      icmp->type, icmp->code, clib_net_to_host_u16 (icmp->checksum));
 
-  if ((ICMP4_echo_request == icmp->type || ICMP4_echo_reply == icmp->type)
-      && sizeof (icmp[0]) + sizeof (u16) < max_header_bytes)
+  if ((ICMP4_echo_request == icmp->type || ICMP4_echo_reply == icmp->type) &&
+      sizeof (icmp[0]) + sizeof (u16) < max_header_bytes)
     {
       s = format (s, " id %u", clib_net_to_host_u16 (*(u16 *) (icmp + 1)));
     }
@@ -111,14 +116,14 @@ format_ip4_icmp_header (u8 * s, va_list * args)
 }
 
 static u8 *
-format_icmp_input_trace (u8 * s, va_list * va)
+format_icmp_input_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
   icmp_input_trace_t *t = va_arg (*va, icmp_input_trace_t *);
 
-  s = format (s, "%U",
-	      format_ip4_header, t->packet_data, sizeof (t->packet_data));
+  s = format (s, "%U", format_ip4_header, t->packet_data,
+	      sizeof (t->packet_data));
 
   return s;
 }
@@ -142,8 +147,8 @@ typedef struct
 icmp4_main_t icmp4_main;
 
 static uword
-ip4_icmp_input (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * frame)
+ip4_icmp_input (vlib_main_t *vm, vlib_node_runtime_t *node,
+		vlib_frame_t *frame)
 {
   icmp4_main_t *im = &icmp4_main;
   uword n_packets = frame->n_vectors;
@@ -205,7 +210,6 @@ ip4_icmp_input (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_icmp_input_node) = {
   .function = ip4_icmp_input,
   .name = "ip4-icmp-input",
@@ -222,7 +226,6 @@ VLIB_REGISTER_NODE (ip4_icmp_input_node) = {
     [ICMP_INPUT_NEXT_ERROR] = "ip4-punt",
   },
 };
-/* *INDENT-ON* */
 
 typedef enum
 {
@@ -248,8 +251,8 @@ icmp4_icmp_type_to_error (u8 type)
 }
 
 static uword
-ip4_icmp_error (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * frame)
+ip4_icmp_error (vlib_main_t *vm, vlib_node_runtime_t *node,
+		vlib_frame_t *frame)
 {
   u32 *from, *to_next;
   uword n_left_from, n_left_to_next;
@@ -291,7 +294,7 @@ ip4_icmp_error (vlib_main_t * vm,
 
 	  org_p0 = vlib_get_buffer (vm, org_pi0);
 	  p0 = vlib_buffer_copy_no_chain (vm, org_p0, &pi0);
-	  if (!p0 || pi0 == ~0)	/* Out of buffers */
+	  if (!p0 || pi0 == ~0) /* Out of buffers */
 	    continue;
 
 	  /* Speculatively enqueue p0 to the current next frame */
@@ -305,14 +308,13 @@ ip4_icmp_error (vlib_main_t * vm,
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 
 	  /* Add IP header and ICMPv4 header including a 4 byte data field */
-	  vlib_buffer_advance (p0,
-			       -sizeof (ip4_header_t) -
-			       sizeof (icmp46_header_t) - 4);
+	  vlib_buffer_advance (p0, -sizeof (ip4_header_t) -
+				     sizeof (icmp46_header_t) - 4);
 
 	  p0->current_length =
 	    p0->current_length > 576 ? 576 : p0->current_length;
 	  out_ip0 = vlib_buffer_get_current (p0);
-	  icmp0 = (icmp46_header_t *) & out_ip0[1];
+	  icmp0 = (icmp46_header_t *) &out_ip0[1];
 
 	  /* Fill ip header fields */
 	  out_ip0->ip_version_and_header_length = 0x45;
@@ -324,8 +326,9 @@ ip4_icmp_error (vlib_main_t * vm,
 	  out_ip0->protocol = IP_PROTOCOL_ICMP;
 	  out_ip0->dst_address = ip0->src_address;
 	  if_add_index0 = ~0;
-	  if (PREDICT_TRUE (vec_len (lm->if_address_pool_index_by_sw_if_index)
-			    > sw_if_index0))
+	  if (PREDICT_TRUE (
+		vec_len (lm->if_address_pool_index_by_sw_if_index) >
+		sw_if_index0))
 	    if_add_index0 =
 	      lm->if_address_pool_index_by_sw_if_index[sw_if_index0];
 	  if (PREDICT_TRUE (if_add_index0 != ~0))
@@ -350,10 +353,8 @@ ip4_icmp_error (vlib_main_t * vm,
 	  *((u32 *) (icmp0 + 1)) =
 	    clib_host_to_net_u32 (vnet_buffer (p0)->ip.icmp.data);
 	  icmp0->checksum = 0;
-	  sum =
-	    ip_incremental_checksum (0, icmp0,
-				     p0->current_length -
-				     sizeof (ip4_header_t));
+	  sum = ip_incremental_checksum (
+	    0, icmp0, p0->current_length - sizeof (ip4_header_t));
 	  icmp0->checksum = ~ip_csum_fold (sum);
 
 	  /* Update error status */
@@ -363,9 +364,8 @@ ip4_icmp_error (vlib_main_t * vm,
 	  vlib_error_count (vm, node->node_index, error0, 1);
 
 	  /* Verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   pi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, pi0, next0);
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
@@ -374,15 +374,13 @@ ip4_icmp_error (vlib_main_t * vm,
    * push the original buffers to error-drop, so that
    * they can get the error counters handled, then freed
    */
-  vlib_buffer_enqueue_to_single_next (vm, node,
-				      vlib_frame_vector_args (frame),
+  vlib_buffer_enqueue_to_single_next (vm, node, vlib_frame_vector_args (frame),
 				      IP4_ICMP_ERROR_NEXT_DROP,
 				      frame->n_vectors);
 
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_icmp_error_node) = {
   .function = ip4_icmp_error,
   .name = "ip4-icmp-error",
@@ -399,11 +397,9 @@ VLIB_REGISTER_NODE (ip4_icmp_error_node) = {
 
   .format_trace = format_icmp_input_trace,
 };
-/* *INDENT-ON* */
-
 
 static uword
-unformat_icmp_type_and_code (unformat_input_t * input, va_list * args)
+unformat_icmp_type_and_code (unformat_input_t *input, va_list *args)
 {
   icmp46_header_t *h = va_arg (*args, icmp46_header_t *);
   icmp4_main_t *cm = &icmp4_main;
@@ -428,9 +424,8 @@ unformat_icmp_type_and_code (unformat_input_t * input, va_list * args)
 }
 
 static void
-icmp4_pg_edit_function (pg_main_t * pg,
-			pg_stream_t * s,
-			pg_edit_group_t * g, u32 * packets, u32 n_packets)
+icmp4_pg_edit_function (pg_main_t *pg, pg_stream_t *s, pg_edit_group_t *g,
+			u32 *packets, u32 n_packets)
 {
   vlib_main_t *vm = vlib_get_main ();
   u32 ip_offset, icmp_offset;
@@ -453,7 +448,8 @@ icmp4_pg_edit_function (pg_main_t * pg,
       ip0 = (void *) (p0->data + ip_offset);
       icmp0 = (void *) (p0->data + icmp_offset);
 
-      /* if IP length has been specified, then calculate the length based on buffer */
+      /* if IP length has been specified, then calculate the length based on
+       * buffer */
       if (ip0->length == 0)
 	len0 = vlib_buffer_length_in_chain (vm, p0) - icmp_offset;
       else
@@ -471,18 +467,18 @@ typedef struct
 } pg_icmp46_header_t;
 
 always_inline void
-pg_icmp_header_init (pg_icmp46_header_t * p)
+pg_icmp_header_init (pg_icmp46_header_t *p)
 {
   /* Initialize fields that are not bit fields in the IP header. */
 #define _(f) pg_edit_init (&p->f, icmp46_header_t, f);
-  _(type);
-  _(code);
-  _(checksum);
+  _ (type);
+  _ (code);
+  _ (checksum);
 #undef _
 }
 
 static uword
-unformat_pg_icmp_header (unformat_input_t * input, va_list * args)
+unformat_pg_icmp_header (unformat_input_t *input, va_list *args)
 {
   pg_stream_t *s = va_arg (*args, pg_stream_t *);
   pg_icmp46_header_t *p;
@@ -507,8 +503,8 @@ unformat_pg_icmp_header (unformat_input_t * input, va_list * args)
   /* Parse options. */
   while (1)
     {
-      if (unformat (input, "checksum %U",
-		    unformat_pg_edit, unformat_pg_number, &p->checksum))
+      if (unformat (input, "checksum %U", unformat_pg_edit, unformat_pg_number,
+		    &p->checksum))
 	;
 
       /* Can't parse input: try next protocol level. */
@@ -535,7 +531,7 @@ error:
 }
 
 void
-ip4_icmp_register_type (vlib_main_t * vm, icmp4_type_t type, u32 node_index)
+ip4_icmp_register_type (vlib_main_t *vm, icmp4_type_t type, u32 node_index)
 {
   icmp4_main_t *im = &icmp4_main;
   u32 old_next_index;
@@ -543,8 +539,8 @@ ip4_icmp_register_type (vlib_main_t * vm, icmp4_type_t type, u32 node_index)
   ASSERT ((int) type < ARRAY_LEN (im->ip4_input_next_index_by_type));
   old_next_index = im->ip4_input_next_index_by_type[type];
 
-  im->ip4_input_next_index_by_type[type]
-    = vlib_node_add_next (vm, ip4_icmp_input_node.index, node_index);
+  im->ip4_input_next_index_by_type[type] =
+    vlib_node_add_next (vm, ip4_icmp_input_node.index, node_index);
 
   if (old_next_index &&
       (old_next_index != im->ip4_input_next_index_by_type[type]))
@@ -552,7 +548,7 @@ ip4_icmp_register_type (vlib_main_t * vm, icmp4_type_t type, u32 node_index)
 }
 
 static clib_error_t *
-icmp4_init (vlib_main_t * vm)
+icmp4_init (vlib_main_t *vm)
 {
   ip_main_t *im = &ip_main;
   ip_protocol_info_t *pi;
@@ -569,17 +565,16 @@ icmp4_init (vlib_main_t * vm)
   pi->unformat_pg_edit = unformat_pg_icmp_header;
 
   cm->type_by_name = hash_create_string (0, sizeof (uword));
-#define _(n,t) hash_set_mem (cm->type_by_name, #t, (n));
+#define _(n, t) hash_set_mem (cm->type_by_name, #t, (n));
   foreach_icmp4_type;
 #undef _
 
   cm->type_and_code_by_name = hash_create_string (0, sizeof (uword));
-#define _(a,n,t) hash_set_mem (cm->type_by_name, #t, (n) | (ICMP4_##a << 8));
+#define _(a, n, t) hash_set_mem (cm->type_by_name, #t, (n) | (ICMP4_##a << 8));
   foreach_icmp4_code;
 #undef _
 
-  clib_memset (cm->ip4_input_next_index_by_type,
-	       ICMP_INPUT_NEXT_ERROR,
+  clib_memset (cm->ip4_input_next_index_by_type, ICMP_INPUT_NEXT_ERROR,
 	       sizeof (cm->ip4_input_next_index_by_type));
 
   return 0;

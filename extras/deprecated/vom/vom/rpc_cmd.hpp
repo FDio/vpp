@@ -36,7 +36,7 @@ namespace VOM {
  * The command is templatised on the type of the HW::item to be set by
  * the command, and the data returned in the promise,
  */
-template <typename HWITEM, typename MSG>
+template<typename HWITEM, typename MSG>
 class rpc_cmd : public cmd
 {
 public:
@@ -52,8 +52,7 @@ public:
     : cmd()
     , m_hw_item(item)
     , m_promise()
-  {
-  }
+  {}
 
   /**
    * Desructor

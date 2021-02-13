@@ -25,7 +25,7 @@
  * @return    0 => success, <0 => failure
  */
 int
-clib_maplog_init (clib_maplog_init_args_t * a)
+clib_maplog_init (clib_maplog_init_args_t *a)
 {
   int i, fd, limit;
   int rv = 0;
@@ -45,17 +45,17 @@ clib_maplog_init (clib_maplog_init_args_t * a)
   clib_memset (mm, 0, sizeof (*mm));
 
   record_size_in_cache_lines =
-    (a->record_size_in_bytes + CLIB_CACHE_LINE_BYTES -
-     1) / CLIB_CACHE_LINE_BYTES;
+    (a->record_size_in_bytes + CLIB_CACHE_LINE_BYTES - 1) /
+    CLIB_CACHE_LINE_BYTES;
 
-  file_size_in_records = a->file_size_in_bytes
-    / (record_size_in_cache_lines * CLIB_CACHE_LINE_BYTES);
+  file_size_in_records = a->file_size_in_bytes /
+			 (record_size_in_cache_lines * CLIB_CACHE_LINE_BYTES);
 
   /* Round up file size in records to a power of 2, for speed... */
   mm->log2_file_size_in_records = max_log2 (file_size_in_records);
   file_size_in_records = 1ULL << (mm->log2_file_size_in_records);
-  a->file_size_in_bytes = file_size_in_records * record_size_in_cache_lines
-    * CLIB_CACHE_LINE_BYTES;
+  a->file_size_in_bytes =
+    file_size_in_records * record_size_in_cache_lines * CLIB_CACHE_LINE_BYTES;
 
   mm->file_basename = format (0, "%s", a->file_basename);
   if (vec_len (mm->file_basename) > ARRAY_LEN (h->file_basename))
@@ -81,8 +81,8 @@ clib_maplog_init (clib_maplog_init_args_t * a)
    */
   for (i = 0; i < limit; i++)
     {
-      mm->filenames[i] = format (0, "%v_%d", mm->file_basename,
-				 mm->current_file_index++);
+      mm->filenames[i] =
+	format (0, "%v_%d", mm->file_basename, mm->current_file_index++);
       vec_add1 (mm->filenames[i], 0);
 
       fd = open ((char *) mm->filenames[i], O_CREAT | O_RDWR | O_TRUNC, 0600);
@@ -92,7 +92,7 @@ clib_maplog_init (clib_maplog_init_args_t * a)
 	  goto fail;
 	}
 
-      if (lseek (fd, a->file_size_in_bytes - 1, SEEK_SET) == (off_t) - 1)
+      if (lseek (fd, a->file_size_in_bytes - 1, SEEK_SET) == (off_t) -1)
 	{
 	  rv = -4;
 	  goto fail;
@@ -172,14 +172,15 @@ fail:
 /* slow path: unmap a full log segment, and replace it */
 
 u8 *
-_clib_maplog_get_entry_slowpath (clib_maplog_main_t * mm, u64 my_record_index)
+_clib_maplog_get_entry_slowpath (clib_maplog_main_t *mm, u64 my_record_index)
 {
   int fd;
   u8 *rv;
   u8 zero = 0;
   u32 unmap_index = (mm->current_file_index) & 1;
-  u64 file_size_in_bytes = mm->file_size_in_records
-    * mm->record_size_in_cachelines * CLIB_CACHE_LINE_BYTES;
+  u64 file_size_in_bytes = mm->file_size_in_records *
+			   mm->record_size_in_cachelines *
+			   CLIB_CACHE_LINE_BYTES;
 
   /* This should never happen */
   ASSERT ((mm->flags & CLIB_MAPLOG_FLAG_CIRCULAR) == 0);
@@ -190,16 +191,16 @@ _clib_maplog_get_entry_slowpath (clib_maplog_main_t * mm, u64 my_record_index)
    * wait 100ms, and then fill in the log entry.
    */
   vec_reset_length (mm->filenames[unmap_index]);
-  mm->filenames[unmap_index] = format (mm->filenames[unmap_index],
-				       "%v_%d", mm->file_basename,
-				       mm->current_file_index++);
+  mm->filenames[unmap_index] =
+    format (mm->filenames[unmap_index], "%v_%d", mm->file_basename,
+	    mm->current_file_index++);
 
   /* Unmap the previous (full) segment */
   (void) munmap ((u8 *) mm->file_baseva[unmap_index], file_size_in_bytes);
 
   /* Create a new segment */
-  fd = open ((char *) mm->filenames[unmap_index],
-	     O_CREAT | O_RDWR | O_TRUNC, 0600);
+  fd = open ((char *) mm->filenames[unmap_index], O_CREAT | O_RDWR | O_TRUNC,
+	     0600);
 
   /* This is not real error recovery... */
   if (fd < 0)
@@ -208,7 +209,7 @@ _clib_maplog_get_entry_slowpath (clib_maplog_main_t * mm, u64 my_record_index)
       abort ();
     }
 
-  if (lseek (fd, file_size_in_bytes - 1, SEEK_SET) == (off_t) - 1)
+  if (lseek (fd, file_size_in_bytes - 1, SEEK_SET) == (off_t) -1)
     {
       clib_unix_warning ("lseek");
       abort ();
@@ -228,10 +229,11 @@ _clib_maplog_get_entry_slowpath (clib_maplog_main_t * mm, u64 my_record_index)
     }
   (void) close (fd);
 
-  rv = (u8 *)
-    mm->file_baseva[(my_record_index >> mm->log2_file_size_in_records) & 1] +
-    (my_record_index & (mm->file_size_in_records - 1))
-    * mm->record_size_in_cachelines * CLIB_CACHE_LINE_BYTES;
+  rv =
+    (u8 *)
+      mm->file_baseva[(my_record_index >> mm->log2_file_size_in_records) & 1] +
+    (my_record_index & (mm->file_size_in_records - 1)) *
+      mm->record_size_in_cachelines * CLIB_CACHE_LINE_BYTES;
 
   return rv;
 }
@@ -243,7 +245,7 @@ _clib_maplog_get_entry_slowpath (clib_maplog_main_t * mm, u64 my_record_index)
  * @param[in/out] mm	mapped log object
  */
 void
-clib_maplog_update_header (clib_maplog_main_t * mm)
+clib_maplog_update_header (clib_maplog_main_t *mm)
 {
   int fd, rv;
   clib_maplog_header_t _h, *h = &_h;
@@ -296,7 +298,7 @@ out:
  * @param[in/out] mm	mapped log object
  */
 void
-clib_maplog_close (clib_maplog_main_t * mm)
+clib_maplog_close (clib_maplog_main_t *mm)
 {
   int i, limit;
   u64 file_size_in_bytes;
@@ -306,9 +308,8 @@ clib_maplog_close (clib_maplog_main_t * mm)
 
   clib_maplog_update_header (mm);
 
-  file_size_in_bytes =
-    mm->file_size_in_records * mm->record_size_in_cachelines *
-    CLIB_CACHE_LINE_BYTES;
+  file_size_in_bytes = mm->file_size_in_records *
+		       mm->record_size_in_cachelines * CLIB_CACHE_LINE_BYTES;
 
   limit = (mm->flags & CLIB_MAPLOG_FLAG_CIRCULAR) ? 1 : 2;
 
@@ -332,7 +333,7 @@ clib_maplog_close (clib_maplog_main_t * mm)
  * @param [in] verbose self-explanatory
  */
 u8 *
-format_maplog_header (u8 * s, va_list * args)
+format_maplog_header (u8 *s, va_list *args)
 {
   clib_maplog_header_t *h = va_arg (*args, clib_maplog_header_t *);
   int verbose = va_arg (*args, int);
@@ -341,12 +342,10 @@ format_maplog_header (u8 * s, va_list * args)
     goto brief;
   s = format (s, "basename %s ", h->file_basename);
   s = format (s, "log ver %d.%d.%d app id %u ver %d.%d.%d %s %s\n",
-	      h->maplog_major_version,
-	      h->maplog_minor_version,
-	      h->maplog_patch_version,
-	      h->application_id,
-	      h->application_major_version,
-	      h->application_minor_version, h->application_patch_version,
+	      h->maplog_major_version, h->maplog_minor_version,
+	      h->maplog_patch_version, h->application_id,
+	      h->application_major_version, h->application_minor_version,
+	      h->application_patch_version,
 	      h->maplog_flag_circular ? "circular" : "linear",
 	      h->maplog_flag_wrapped ? "wrapped" : "not wrapped");
   s = format (s, "  records are %d %d-byte cachelines\n",
@@ -414,16 +413,16 @@ clib_maplog_process (char *file_basename, void *fp_arg)
   (void) close (fd);
   fd = -1;
 
-  file_size_in_bytes = h->file_size_in_records
-    * h->record_size_in_cachelines * CLIB_CACHE_LINE_BYTES;
+  file_size_in_bytes = h->file_size_in_records * h->record_size_in_cachelines *
+		       CLIB_CACHE_LINE_BYTES;
 
   records_left = h->number_of_records;
 
   for (file_index = 0; file_index < h->number_of_files; file_index++)
     {
       vec_reset_length (this_filename);
-      this_filename = format (this_filename, "%s_%llu%c", file_basename,
-			      file_index, 0);
+      this_filename =
+	format (this_filename, "%s_%llu%c", file_basename, file_index, 0);
       fd = open ((char *) this_filename, O_RDONLY, 0600);
       if (fd < 0)
 	{
@@ -431,8 +430,7 @@ clib_maplog_process (char *file_basename, void *fp_arg)
 	  goto out;
 	}
 
-      file_baseva =
-	mmap (0, file_size_in_bytes, PROT_READ, MAP_SHARED, fd, 0);
+      file_baseva = mmap (0, file_size_in_bytes, PROT_READ, MAP_SHARED, fd, 0);
       (void) close (fd);
       fd = -1;
       if (file_baseva == (u8 *) MAP_FAILED)
@@ -443,7 +441,8 @@ clib_maplog_process (char *file_basename, void *fp_arg)
 	}
 
       records_this_file = (records_left > h->file_size_in_records) ?
-	h->file_size_in_records : records_left;
+			    h->file_size_in_records :
+			    records_left;
 
       /*
        * Normal log, or a circular non-wrapped log, or a circular
@@ -455,13 +454,13 @@ clib_maplog_process (char *file_basename, void *fp_arg)
       else
 	{
 	  /* "Normal" wrapped circular log */
-	  u64 first_chunk_record_index = h->number_of_records &
-	    (h->file_size_in_records - 1);
-	  u64 first_chunk_number_of_records = records_this_file -
-	    first_chunk_record_index;
-	  u8 *chunk_baseva = file_baseva +
-	    first_chunk_record_index * h->record_size_in_cachelines *
-	    h->cacheline_size;
+	  u64 first_chunk_record_index =
+	    h->number_of_records & (h->file_size_in_records - 1);
+	  u64 first_chunk_number_of_records =
+	    records_this_file - first_chunk_record_index;
+	  u8 *chunk_baseva = file_baseva + first_chunk_record_index *
+					     h->record_size_in_cachelines *
+					     h->cacheline_size;
 	  (*fp) (h, chunk_baseva, first_chunk_number_of_records);
 	  (*fp) (h, file_baseva,
 		 records_this_file - first_chunk_number_of_records);
@@ -486,7 +485,6 @@ out:
   vec_free (header_filename);
   return rv;
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

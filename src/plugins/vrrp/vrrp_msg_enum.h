@@ -12,11 +12,12 @@
 
 #include <vppinfra/byte_order.h>
 
-#define vl_msg_id(n,h) n,
-typedef enum {
+#define vl_msg_id(n, h) n,
+typedef enum
+{
 #include <vrrp/vrrp_all_api_h.h>
-    /* We'll want to know how many messages IDs we need... */
-    VL_MSG_FIRST_AVAILABLE,
+  /* We'll want to know how many messages IDs we need... */
+  VL_MSG_FIRST_AVAILABLE,
 } vl_msg_id_t;
 #undef vl_msg_id
 

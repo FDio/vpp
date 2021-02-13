@@ -26,8 +26,8 @@ namespace VOM {
 namespace bridge_domain_arp_entry_cmds {
 
 /**
-* A command class that creates or updates the bridge domain ARP Entry
-*/
+ * A command class that creates or updates the bridge domain ARP Entry
+ */
 class create_cmd : public rpc_cmd<HW::item<bool>, vapi::Bd_ip_mac_add_del>
 {
 public:

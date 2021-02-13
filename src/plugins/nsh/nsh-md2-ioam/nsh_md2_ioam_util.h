@@ -21,9 +21,7 @@
 #include <nsh/nsh-md2-ioam/nsh_md2_ioam.h>
 #include <nsh/nsh_packet.h>
 
-
 extern nsh_option_map_t *nsh_md2_lookup_option (u16 class, u8 type);
-
 
 typedef struct
 {
@@ -31,11 +29,10 @@ typedef struct
 } nsh_transit_trace_t;
 
 always_inline void
-nsh_md2_ioam_encap_decap_ioam_v4_one_inline (vlib_main_t * vm,
-					     vlib_node_runtime_t * node,
-					     vlib_buffer_t * b0,
-					     u32 * next0, u32 drop_node_val,
-					     u8 use_adj)
+nsh_md2_ioam_encap_decap_ioam_v4_one_inline (vlib_main_t *vm,
+					     vlib_node_runtime_t *node,
+					     vlib_buffer_t *b0, u32 *next0,
+					     u32 drop_node_val, u8 use_adj)
 {
   ip4_header_t *ip0;
   udp_header_t *udp_hdr0;
@@ -52,9 +49,8 @@ nsh_md2_ioam_encap_decap_ioam_v4_one_inline (vlib_main_t * vm,
   lisp_gpe_hdr0 = (lisp_gpe_header_t *) (udp_hdr0 + 1);
   nsh_hdr = (nsh_base_header_t *) (lisp_gpe_hdr0 + 1);
   opt0 = (nsh_tlv_header_t *) (nsh_hdr + 1);
-  limit0 =
-    (nsh_tlv_header_t *) ((u8 *) opt0 + (nsh_hdr->length * 4) -
-			  sizeof (nsh_base_header_t));
+  limit0 = (nsh_tlv_header_t *) ((u8 *) opt0 + (nsh_hdr->length * 4) -
+				 sizeof (nsh_base_header_t));
 
   /*
    * Basic validity checks
@@ -78,10 +74,10 @@ nsh_md2_ioam_encap_decap_ioam_v4_one_inline (vlib_main_t * vm,
       type0 = opt0->type;
       switch (type0)
 	{
-	case 0:		/* Pad1 */
+	case 0: /* Pad1 */
 	  opt0 = (nsh_tlv_header_t *) ((u8 *) opt0) + 1;
 	  continue;
-	case 1:		/* PadN */
+	case 1: /* PadN */
 	  break;
 	default:
 	  nsh_option = nsh_md2_lookup_option (opt0->class, opt0->type);
@@ -95,11 +91,9 @@ nsh_md2_ioam_encap_decap_ioam_v4_one_inline (vlib_main_t * vm,
 	    }
 	  break;
 	}
-      opt0 =
-	(nsh_tlv_header_t *) (((u8 *) opt0) + opt0->length +
-			      sizeof (nsh_tlv_header_t));
+      opt0 = (nsh_tlv_header_t *) (((u8 *) opt0) + opt0->length +
+				   sizeof (nsh_tlv_header_t));
     }
-
 
   if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
     {
@@ -108,7 +102,6 @@ nsh_md2_ioam_encap_decap_ioam_v4_one_inline (vlib_main_t * vm,
     }
   return;
 }
-
 
 #endif
 

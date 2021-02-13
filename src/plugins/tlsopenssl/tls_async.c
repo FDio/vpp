@@ -18,10 +18,10 @@
 #include <openssl/engine.h>
 #include <tlsopenssl/tls_openssl.h>
 
-#define SSL_ASYNC_INFLIGHT    1
-#define SSL_ASYNC_READY       2
-#define SSL_ASYNC_REENTER     3
-#define MAX_VECTOR_ASYNC    256
+#define SSL_ASYNC_INFLIGHT 1
+#define SSL_ASYNC_READY	   2
+#define SSL_ASYNC_REENTER  3
+#define MAX_VECTOR_ASYNC   256
 
 typedef struct openssl_tls_callback_arg_
 {
@@ -38,7 +38,7 @@ typedef struct openssl_event_
   openssl_resume_handler *handler;
   openssl_tls_callback_arg_t cb_args;
 #define thread_idx cb_args.thread_index
-#define event_idx cb_args.event_index
+#define event_idx  cb_args.event_index
   int next;
 } openssl_evt_t;
 
@@ -74,8 +74,8 @@ struct engine_polling
 void qat_init_thread (void *arg);
 
 struct engine_polling engine_list[] = {
-  {"qat", qat_polling, qat_pre_init, qat_init_thread},
-  {"dasync", dasync_polling, NULL, NULL}
+  { "qat", qat_polling, qat_pre_init, qat_init_thread },
+  { "dasync", dasync_polling, NULL, NULL }
 };
 
 openssl_async_t openssl_async_main;
@@ -86,13 +86,13 @@ void session_send_rpc_evt_to_thread (u32 thread_index, void *fp,
 				     void *rpc_args);
 
 void
-evt_pool_init (vlib_main_t * vm)
+evt_pool_init (vlib_main_t *vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   openssl_async_t *om = &openssl_async_main;
   int i, num_threads;
 
-  num_threads = 1 /* main thread */  + vtm->n_threads;
+  num_threads = 1 /* main thread */ + vtm->n_threads;
 
   TLS_DBG (2, "Totally there is %d thread\n", num_threads);
 
@@ -154,8 +154,8 @@ openssl_engine_register (char *engine_name, char *algorithm, int async)
     {
       if (!ENGINE_set_default_string (engine, algorithm))
 	{
-	  clib_warning ("Failed to set engine %s algorithm %s\n",
-			engine_name, algorithm);
+	  clib_warning ("Failed to set engine %s algorithm %s\n", engine_name,
+			algorithm);
 	  return -1;
 	}
     }
@@ -185,16 +185,14 @@ openssl_engine_register (char *engine_name, char *algorithm, int async)
   om->start_polling = 1;
 
   return 0;
-
 }
 
 static openssl_evt_t *
 openssl_evt_get (u32 evt_index)
 {
   openssl_evt_t **evt;
-  evt =
-    pool_elt_at_index (openssl_async_main.evt_pool[vlib_get_thread_index ()],
-		       evt_index);
+  evt = pool_elt_at_index (
+    openssl_async_main.evt_pool[vlib_get_thread_index ()], evt_index);
   return *evt;
 }
 
@@ -235,12 +233,11 @@ openssl_evt_alloc (void)
   return ((*evt)->event_idx);
 }
 
-
-/* In most cases, tls_async_openssl_callback is called by HW to make event active
- * When EAGAIN received, VPP will call this callback to retry
+/* In most cases, tls_async_openssl_callback is called by HW to make event
+ * active When EAGAIN received, VPP will call this callback to retry
  */
 int
-tls_async_openssl_callback (SSL * s, void *cb_arg)
+tls_async_openssl_callback (SSL *s, void *cb_arg)
 {
   openssl_evt_t *event, *event_tail;
   openssl_async_t *om = &openssl_async_main;
@@ -277,9 +274,8 @@ tls_async_openssl_callback (SSL * s, void *cb_arg)
 }
 
 int
-vpp_tls_async_init_event (tls_ctx_t * ctx,
-			  openssl_resume_handler * handler,
-			  session_t * session)
+vpp_tls_async_init_event (tls_ctx_t *ctx, openssl_resume_handler *handler,
+			  session_t *session)
 {
   u32 eidx;
   openssl_evt_t *event;
@@ -303,7 +299,7 @@ vpp_tls_async_init_event (tls_ctx_t * ctx,
 }
 
 int
-vpp_openssl_is_inflight (tls_ctx_t * ctx)
+vpp_openssl_is_inflight (tls_ctx_t *ctx)
 {
   u32 eidx;
   openssl_evt_t *event;
@@ -316,7 +312,7 @@ vpp_openssl_is_inflight (tls_ctx_t * ctx)
 }
 
 int
-vpp_tls_async_update_event (tls_ctx_t * ctx, int eagain)
+vpp_tls_async_update_event (tls_ctx_t *ctx, int eagain)
 {
   u32 eidx;
   openssl_evt_t *event;
@@ -353,14 +349,14 @@ event_handler (void *tls_async)
   return;
 }
 
- /* engine specific code to polling the response ring */
+/* engine specific code to polling the response ring */
 void
 dasync_polling ()
 {
-/* dasync is a fake async device, and could not be polled.
- * We have added code in the dasync engine to triggered the callback already,
- * so nothing can be done here
- */
+  /* dasync is a fake async device, and could not be polled.
+   * We have added code in the dasync engine to triggered the callback already,
+   * so nothing can be done here
+   */
 }
 
 void
@@ -371,19 +367,19 @@ qat_pre_init ()
   ENGINE_ctrl_cmd (om->engine, "ENABLE_EXTERNAL_POLLING", 0, NULL, NULL, 0);
 }
 
-/* Below code is spefic to QAT engine, and other vendors can refer to this code to enable a new engine */
+/* Below code is spefic to QAT engine, and other vendors can refer to this code
+ * to enable a new engine */
 void
 qat_init_thread (void *arg)
 {
   openssl_async_t *om = &openssl_async_main;
   int thread_index = pointer_to_uword (arg);
 
-  ENGINE_ctrl_cmd (om->engine, "SET_INSTANCE_FOR_THREAD", thread_index,
-		   NULL, NULL, 0);
+  ENGINE_ctrl_cmd (om->engine, "SET_INSTANCE_FOR_THREAD", thread_index, NULL,
+		   NULL, 0);
 
   TLS_DBG (2, "set thread %d and instance %d mapping\n", thread_index,
 	   thread_index);
-
 }
 
 void
@@ -415,15 +411,13 @@ openssl_async_node_enable_disable (u8 is_en)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u8 have_workers = vtm->n_threads != 0;
 
-  /* *INDENT-OFF* */
   foreach_vlib_main (({
     if (have_workers && ii != 0)
       {
-        vlib_node_set_state (this_vlib_main, tls_async_process_node.index,
-                         state);
+	vlib_node_set_state (this_vlib_main, tls_async_process_node.index,
+			     state);
       }
   }));
-  /* *INDENT-ON* */
 }
 
 int
@@ -482,19 +476,17 @@ tls_resume_from_crypto (int thread_index)
     }
 
   return 0;
-
 }
 
 static clib_error_t *
-tls_async_init (vlib_main_t * vm)
+tls_async_init (vlib_main_t *vm)
 {
   evt_pool_init (vm);
   return 0;
 }
 
 static uword
-tls_async_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
-		   vlib_frame_t * f)
+tls_async_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   u8 thread_index;
   openssl_async_t *om = &openssl_async_main;
@@ -511,15 +503,12 @@ tls_async_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
 VLIB_INIT_FUNCTION (tls_async_init);
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (tls_async_process_node,static) = {
-    .function = tls_async_process,
-    .type = VLIB_NODE_TYPE_INPUT,
-    .name = "tls-async-process",
-    .state = VLIB_NODE_STATE_DISABLED,
+VLIB_REGISTER_NODE (tls_async_process_node, static) = {
+  .function = tls_async_process,
+  .type = VLIB_NODE_TYPE_INPUT,
+  .name = "tls-async-process",
+  .state = VLIB_NODE_STATE_DISABLED,
 };
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

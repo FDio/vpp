@@ -37,8 +37,7 @@ const gbp_bridge_domain::flags_t gbp_bridge_domain::flags_t::UCAST_ARP(
 
 gbp_bridge_domain::flags_t::flags_t(int v, const std::string& s)
   : enum_base<gbp_bridge_domain::flags_t>(v, s)
-{
-}
+{}
 
 /**
  * A DB of al the interfaces, key on the name
@@ -61,8 +60,7 @@ gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
   , m_uu_fwd()
   , m_bm_flood()
   , m_flags(flags)
-{
-}
+{}
 
 gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
                                      const gbp_route_domain& rd,
@@ -77,8 +75,7 @@ gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
   , m_uu_fwd(uu_fwd.singular())
   , m_bm_flood(bm_flood.singular())
   , m_flags(flags)
-{
-}
+{}
 
 gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
                                      const gbp_route_domain& rd,
@@ -130,8 +127,7 @@ gbp_bridge_domain::gbp_bridge_domain(const gbp_bridge_domain& bd)
   , m_uu_fwd(bd.m_uu_fwd)
   , m_bm_flood(bd.m_bm_flood)
   , m_flags(bd.m_flags)
-{
-}
+{}
 
 const gbp_bridge_domain::key_t
 gbp_bridge_domain::key() const
@@ -200,9 +196,12 @@ gbp_bridge_domain::replay()
 {
   if (rc_t::OK == m_id.rc()) {
     HW::enqueue(new gbp_bridge_domain_cmds::create_cmd(
-      m_id, m_rd->id(), (m_bvi ? m_bvi->handle() : handle_t::INVALID),
+      m_id,
+      m_rd->id(),
+      (m_bvi ? m_bvi->handle() : handle_t::INVALID),
       (m_uu_fwd ? m_uu_fwd->handle() : handle_t::INVALID),
-      (m_bm_flood ? m_bm_flood->handle() : handle_t::INVALID), m_flags));
+      (m_bm_flood ? m_bm_flood->handle() : handle_t::INVALID),
+      m_flags));
   }
 }
 
@@ -245,9 +244,12 @@ gbp_bridge_domain::update(const gbp_bridge_domain& desired)
    */
   if (rc_t::OK != m_id.rc()) {
     HW::enqueue(new gbp_bridge_domain_cmds::create_cmd(
-      m_id, m_rd->id(), (m_bvi ? m_bvi->handle() : handle_t::INVALID),
+      m_id,
+      m_rd->id(),
+      (m_bvi ? m_bvi->handle() : handle_t::INVALID),
       (m_uu_fwd ? m_uu_fwd->handle() : handle_t::INVALID),
-      (m_bm_flood ? m_bm_flood->handle() : handle_t::INVALID), m_flags));
+      (m_bm_flood ? m_bm_flood->handle() : handle_t::INVALID),
+      m_flags));
   }
 }
 
@@ -304,8 +306,8 @@ gbp_bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
       flags |= gbp_bridge_domain::flags_t::UCAST_ARP;
 
     if (uu_fwd && bm_flood && bvi && grd) {
-      gbp_bridge_domain bd(payload.bd.bd_id, *grd, bvi, uu_fwd, bm_flood,
-                           flags);
+      gbp_bridge_domain bd(
+        payload.bd.bd_id, *grd, bvi, uu_fwd, bm_flood, flags);
       OM::commit(key, bd);
       VOM_LOG(log_level_t::DEBUG) << "dump: " << bd.to_string();
     } else if (bvi) {

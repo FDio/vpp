@@ -48,7 +48,6 @@ typedef struct ip6_nd_t_
 static ip6_link_delegate_id_t ip6_nd_delegate_id;
 static ip6_nd_t *ip6_nd_pool;
 
-
 typedef enum
 {
   ICMP6_NEIGHBOR_SOLICITATION_NEXT_DROP,
@@ -57,9 +56,9 @@ typedef enum
 } icmp6_neighbor_solicitation_or_advertisement_next_t;
 
 static_always_inline uword
-icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
-					      vlib_node_runtime_t * node,
-					      vlib_frame_t * frame,
+icmp6_neighbor_solicitation_or_advertisement (vlib_main_t *vm,
+					      vlib_node_runtime_t *node,
+					      vlib_frame_t *frame,
 					      uword is_solicitation)
 {
   vnet_main_t *vnm = vnet_get_main ();
@@ -81,10 +80,9 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 				   /* stride */ 1,
 				   sizeof (icmp6_input_trace_t));
 
-  option_type =
-    (is_solicitation
-     ? ICMP6_NEIGHBOR_DISCOVERY_OPTION_source_link_layer_address
-     : ICMP6_NEIGHBOR_DISCOVERY_OPTION_target_link_layer_address);
+  option_type = (is_solicitation ?
+		   ICMP6_NEIGHBOR_DISCOVERY_OPTION_source_link_layer_address :
+		   ICMP6_NEIGHBOR_DISCOVERY_OPTION_target_link_layer_address);
   n_advertisements_sent = 0;
 
   while (n_left_from > 0)
@@ -122,7 +120,8 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	  ip6_sadd_unspecified =
 	    ip6_address_is_unspecified (&ip0->src_address);
 
-	  /* Check that source address is unspecified, link-local or else on-link. */
+	  /* Check that source address is unspecified, link-local or else
+	   * on-link. */
 	  if (!ip6_sadd_unspecified && !ip6_sadd_link_local)
 	    {
 	      u32 src_adj_index0 = ip6_src_lookup_for_packet (im, p0, ip0);
@@ -133,14 +132,14 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 
 		  /* Allow all realistic-looking rewrite adjacencies to pass */
 		  ni0 = adj0->lookup_next_index;
-		  is_rewrite0 = (ni0 >= IP_LOOKUP_NEXT_ARP) &&
-		    (ni0 < IP6_LOOKUP_N_NEXT);
+		  is_rewrite0 =
+		    (ni0 >= IP_LOOKUP_NEXT_ARP) && (ni0 < IP6_LOOKUP_N_NEXT);
 
-		  error0 = ((adj0->rewrite_header.sw_if_index != sw_if_index0
-			     || !is_rewrite0)
-			    ?
-			    ICMP6_ERROR_NEIGHBOR_SOLICITATION_SOURCE_NOT_ON_LINK
-			    : error0);
+		  error0 =
+		    ((adj0->rewrite_header.sw_if_index != sw_if_index0 ||
+		      !is_rewrite0) ?
+		       ICMP6_ERROR_NEIGHBOR_SOLICITATION_SOURCE_NOT_ON_LINK :
+		       error0);
 		}
 	      else
 		{
@@ -150,24 +149,25 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	    }
 
 	  o0 = (void *) (h0 + 1);
-	  o0 = ((options_len0 == 8 && o0->header.type == option_type
-		 && o0->header.n_data_u64s == 1) ? o0 : 0);
+	  o0 = ((options_len0 == 8 && o0->header.type == option_type &&
+		 o0->header.n_data_u64s == 1) ?
+		  o0 :
+		  0);
 
-	  /* If src address unspecified or link local, donot learn neighbor MAC */
+	  /* If src address unspecified or link local, donot learn neighbor MAC
+	   */
 	  if (PREDICT_TRUE (error0 == ICMP6_ERROR_NONE && o0 != 0 &&
 			    !ip6_sadd_unspecified))
 	    {
-              /* *INDENT-OFF* */
-	      ip_neighbor_learn_t learn = {
-		.sw_if_index = sw_if_index0,
-		.ip = {
-                  .version = AF_IP6,
-                  .ip.ip6 = (is_solicitation ?
-                             ip0->src_address :
-                             h0->target_address),
-                }
-	      };
-              /* *INDENT-ON* */
+
+	      ip_neighbor_learn_t learn = { .sw_if_index = sw_if_index0,
+					    .ip = {
+					      .version = AF_IP6,
+					      .ip.ip6 = (is_solicitation ?
+							   ip0->src_address :
+							   h0->target_address),
+					    } };
+
 	      memcpy (&learn.mac, o0->ethernet_address, sizeof (learn.mac));
 	      ip_neighbor_learn_dp (&learn);
 	    }
@@ -189,15 +189,14 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 		{
 		  if (ip6_address_is_link_local_unicast (&h0->target_address))
 		    {
-		      fei = ip6_fib_table_lookup_exact_match
-			(ip6_ll_fib_get (sw_if_index0),
-			 &h0->target_address, 128);
+		      fei = ip6_fib_table_lookup_exact_match (
+			ip6_ll_fib_get (sw_if_index0), &h0->target_address,
+			128);
 		    }
 		  else
 		    {
-		      fei = ip6_fib_table_lookup_exact_match (fib_index,
-							      &h0->target_address,
-							      128);
+		      fei = ip6_fib_table_lookup_exact_match (
+			fib_index, &h0->target_address, 128);
 		    }
 
 		  if (FIB_NODE_INDEX_INVALID == fei)
@@ -209,20 +208,19 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 		  else
 		    {
 		      if (FIB_ENTRY_FLAG_LOCAL &
-			  fib_entry_get_flags_for_source (fei,
-							  FIB_SOURCE_INTERFACE))
+			  fib_entry_get_flags_for_source (
+			    fei, FIB_SOURCE_INTERFACE))
 			{
-			  /* It's an address that belongs to one of our interfaces
-			   * that's good. */
+			  /* It's an address that belongs to one of our
+			   * interfaces that's good. */
 			}
-		      else
-			if (fib_entry_is_sourced
-			    (fei, FIB_SOURCE_IP6_ND_PROXY) ||
-			    fib_entry_is_sourced (fei, FIB_SOURCE_IP6_ND))
+		      else if (fib_entry_is_sourced (
+				 fei, FIB_SOURCE_IP6_ND_PROXY) ||
+			       fib_entry_is_sourced (fei, FIB_SOURCE_IP6_ND))
 			{
 			  /* The address was added by IPv6 Proxy ND config.
-			   * We should only respond to these if the NS arrived on
-			   * the link that has a matching covering prefix */
+			   * We should only respond to these if the NS arrived
+			   * on the link that has a matching covering prefix */
 			}
 		      else
 			{
@@ -234,14 +232,15 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	    }
 
 	  if (is_solicitation)
-	    next0 = (error0 != ICMP6_ERROR_NONE
-		     ? ICMP6_NEIGHBOR_SOLICITATION_NEXT_DROP
-		     : ICMP6_NEIGHBOR_SOLICITATION_NEXT_REPLY);
+	    next0 = (error0 != ICMP6_ERROR_NONE ?
+		       ICMP6_NEIGHBOR_SOLICITATION_NEXT_DROP :
+		       ICMP6_NEIGHBOR_SOLICITATION_NEXT_REPLY);
 	  else
 	    {
 	      next0 = 0;
 	      error0 = error0 == ICMP6_ERROR_NONE ?
-		ICMP6_ERROR_NEIGHBOR_ADVERTISEMENTS_RX : error0;
+			 ICMP6_ERROR_NEIGHBOR_ADVERTISEMENTS_RX :
+			 error0;
 	    }
 
 	  if (is_solicitation && error0 == ICMP6_ERROR_NONE)
@@ -250,13 +249,14 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	      ethernet_interface_t *eth_if0;
 	      ethernet_header_t *eth0;
 
-	      /* dst address is either source address or the all-nodes mcast addr */
+	      /* dst address is either source address or the all-nodes mcast
+	       * addr */
 	      if (!ip6_sadd_unspecified)
 		ip0->dst_address = ip0->src_address;
 	      else
-		ip6_set_reserved_multicast_address (&ip0->dst_address,
-						    IP6_MULTICAST_SCOPE_link_local,
-						    IP6_MULTICAST_GROUP_ID_all_hosts);
+		ip6_set_reserved_multicast_address (
+		  &ip0->dst_address, IP6_MULTICAST_SCOPE_link_local,
+		  IP6_MULTICAST_GROUP_ID_all_hosts);
 
 	      ip0->src_address = h0->target_address;
 	      ip0->hop_limit = 255;
@@ -273,14 +273,13 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 		    ICMP6_NEIGHBOR_DISCOVERY_OPTION_target_link_layer_address;
 		}
 
-	      h0->advertisement_flags = clib_host_to_net_u32
-		(ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_SOLICITED
-		 | ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE);
+	      h0->advertisement_flags = clib_host_to_net_u32 (
+		ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_SOLICITED |
+		ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE);
 
 	      h0->icmp.checksum = 0;
 	      h0->icmp.checksum =
-		ip6_tcp_udp_icmp_compute_checksum (vm, p0, ip0,
-						   &bogus_length);
+		ip6_tcp_udp_icmp_compute_checksum (vm, p0, ip0, &bogus_length);
 	      ASSERT (bogus_length == 0);
 
 	      /* Reuse current MAC header, copy SMAC to DMAC and
@@ -302,9 +301,8 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 
 	  p0->error = error_node->errors[error0];
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -347,8 +345,8 @@ ip6_nd_link_enable (u32 sw_if_index)
   if (NULL == eth)
     return;
 
-  ASSERT (INDEX_INVALID == ip6_link_delegate_get (sw_if_index,
-						  ip6_nd_delegate_id));
+  ASSERT (INDEX_INVALID ==
+	  ip6_link_delegate_get (sw_if_index, ip6_nd_delegate_id));
 
   pool_get_zero (ip6_nd_pool, ind);
 
@@ -369,8 +367,8 @@ ip6_nd_delegate_disable (index_t indi)
 }
 
 static uword
-icmp6_neighbor_solicitation (vlib_main_t * vm,
-			     vlib_node_runtime_t * node, vlib_frame_t * frame)
+icmp6_neighbor_solicitation (vlib_main_t *vm, vlib_node_runtime_t *node,
+			     vlib_frame_t *frame)
 {
   return icmp6_neighbor_solicitation_or_advertisement (vm, node, frame,
 						       /* is_solicitation */
@@ -378,16 +376,14 @@ icmp6_neighbor_solicitation (vlib_main_t * vm,
 }
 
 static uword
-icmp6_neighbor_advertisement (vlib_main_t * vm,
-			      vlib_node_runtime_t * node,
-			      vlib_frame_t * frame)
+icmp6_neighbor_advertisement (vlib_main_t *vm, vlib_node_runtime_t *node,
+			      vlib_frame_t *frame)
 {
   return icmp6_neighbor_solicitation_or_advertisement (vm, node, frame,
 						       /* is_solicitation */
 						       0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_icmp_neighbor_solicitation_node,static) =
 {
   .function = icmp6_neighbor_solicitation,
@@ -418,23 +414,22 @@ VLIB_REGISTER_NODE (ip6_icmp_neighbor_advertisement_node,static) =
     [0] = "ip6-punt",
   },
 };
-/* *INDENT-ON* */
 
 static u8 *
-format_ip6_nd (u8 * s, va_list * args)
+format_ip6_nd (u8 *s, va_list *args)
 {
   CLIB_UNUSED (index_t indi) = va_arg (*args, index_t);
   u32 indent = va_arg (*args, u32);
 
-  s = format (s, "%UNeighbor Discovery: enabled\n",
-	      format_white_space, indent);
+  s =
+    format (s, "%UNeighbor Discovery: enabled\n", format_white_space, indent);
 
-  s = format (s, "%UICMP redirects are disabled\n",
-	      format_white_space, indent + 2);
-  s = format (s, "%UICMP unreachables are not sent\n",
-	      format_white_space, indent + 2);
+  s = format (s, "%UICMP redirects are disabled\n", format_white_space,
+	      indent + 2);
+  s = format (s, "%UICMP unreachables are not sent\n", format_white_space,
+	      indent + 2);
   s = format (s, "%UND DAD is disabled\n", format_white_space, indent + 2);
-  //s = format (s, "%UND reachable time is %d milliseconds\n",);
+  // s = format (s, "%UND reachable time is %d milliseconds\n",);
 
   return (s);
 }
@@ -457,7 +452,7 @@ const static ip6_link_delegate_vft_t ip6_nd_delegate_vft = {
 };
 
 static clib_error_t *
-ip6_nd_init (vlib_main_t * vm)
+ip6_nd_init (vlib_main_t *vm)
 {
   icmp6_register_type (vm, ICMP6_neighbor_solicitation,
 		       ip6_icmp_neighbor_solicitation_node.index);
@@ -471,12 +466,9 @@ ip6_nd_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (ip6_nd_init) =
-{
-  .runs_after = VLIB_INITS("icmp6_init"),
+VLIB_INIT_FUNCTION (ip6_nd_init) = {
+  .runs_after = VLIB_INITS ("icmp6_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

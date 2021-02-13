@@ -43,7 +43,7 @@ typedef struct
   uword *key_hash;
   u64 *keys;
   uword hash_memory_size;
-    BVT (clib_bihash) hash;
+  BVT (clib_bihash) hash;
   clib_time_t clib_time;
   void *global_heap;
 
@@ -60,7 +60,7 @@ vl (void *v)
 }
 
 static clib_error_t *
-test_bihash_vec64 (test_main_t * tm)
+test_bihash_vec64 (test_main_t *tm)
 {
   u32 user_buckets = 1228800;
   u32 user_memory_size = 209715200;
@@ -73,9 +73,8 @@ test_bihash_vec64 (test_main_t * tm)
   h = &tm->hash;
 
 #if BIHASH_32_64_SVM
-  BV (clib_bihash_initiator_init_svm) (h, "test", user_buckets,
-				       0x30000000 /* base_addr */ ,
-				       user_memory_size);
+  BV (clib_bihash_initiator_init_svm)
+  (h, "test", user_buckets, 0x30000000 /* base_addr */, user_memory_size);
 #else
   BV (clib_bihash_init) (h, "test", user_buckets, user_memory_size);
 #endif
@@ -89,7 +88,7 @@ test_bihash_vec64 (test_main_t * tm)
 	  kv.key = i;
 	  kv.value = 1;
 
-	  BV (clib_bihash_add_del) (h, &kv, 1 /* is_add */ );
+	  BV (clib_bihash_add_del) (h, &kv, 1 /* is_add */);
 	}
 
       vec_add1 (cum_times, clib_time_now (&tm->clib_time) - before);
@@ -113,7 +112,7 @@ stale_cb (BVT (clib_bihash_kv) * kv, void *ctx)
 }
 
 static clib_error_t *
-test_bihash_stale_overwrite (test_main_t * tm)
+test_bihash_stale_overwrite (test_main_t *tm)
 {
   BVT (clib_bihash) * h;
   BVT (clib_bihash_kv) kv;
@@ -123,9 +122,8 @@ test_bihash_stale_overwrite (test_main_t * tm)
   h = &tm->hash;
 
 #if BIHASH_32_64_SVM
-  BV (clib_bihash_initiator_init_svm) (h, "test", tm->nbuckets,
-				       0x30000000 /* base_addr */ ,
-				       tm->hash_memory_size);
+  BV (clib_bihash_initiator_init_svm)
+  (h, "test", tm->nbuckets, 0x30000000 /* base_addr */, tm->hash_memory_size);
 #else
   BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
 #endif
@@ -172,7 +170,7 @@ test_bihash_thread_fn (void *arg)
 	  kv.value = ((u64) my_thread_index << 32) | (u64) j;
 	  (void) __atomic_add_fetch (&tm->sequence_number, 1,
 				     __ATOMIC_ACQUIRE);
-	  BV (clib_bihash_add_del) (h, &kv, 1 /* is_add */ );
+	  BV (clib_bihash_add_del) (h, &kv, 1 /* is_add */);
 	}
       for (j = 0; j < tm->nitems; j++)
 	{
@@ -180,7 +178,7 @@ test_bihash_thread_fn (void *arg)
 	  kv.value = ((u64) my_thread_index << 32) | (u64) j;
 	  (void) __atomic_add_fetch (&tm->sequence_number, 1,
 				     __ATOMIC_ACQUIRE);
-	  BV (clib_bihash_add_del) (h, &kv, 0 /* is_add */ );
+	  BV (clib_bihash_add_del) (h, &kv, 0 /* is_add */);
 	}
     }
 
@@ -194,11 +192,11 @@ test_bihash_thread_fn (void *arg)
       while (nanosleep (&ts, &tsrem) < 0)
 	ts = tsrem;
     }
-  return (0);			/* not so much */
+  return (0); /* not so much */
 }
 
 static clib_error_t *
-test_bihash_threads (test_main_t * tm)
+test_bihash_threads (test_main_t *tm)
 {
   int i;
   pthread_t handle;
@@ -208,9 +206,8 @@ test_bihash_threads (test_main_t * tm)
   h = &tm->hash;
 
 #if BIHASH_32_64_SVM
-  BV (clib_bihash_initiator_init_svm) (h, "test", tm->nbuckets,
-				       0x30000000 /* base_addr */ ,
-				       tm->hash_memory_size);
+  BV (clib_bihash_initiator_init_svm)
+  (h, "test", tm->nbuckets, 0x30000000 /* base_addr */, tm->hash_memory_size);
 #else
   BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
 #endif
@@ -238,7 +235,7 @@ test_bihash_threads (test_main_t * tm)
     {
       struct timespec ts, tsrem;
       ts.tv_sec = 0;
-      ts.tv_nsec = 20 * 1000 * 1000;	/* sleep for 20ms at a time */
+      ts.tv_nsec = 20 * 1000 * 1000; /* sleep for 20ms at a time */
 
       while (nanosleep (&ts, &tsrem) < 0)
 	ts = tsrem;
@@ -247,9 +244,8 @@ test_bihash_threads (test_main_t * tm)
   return 0;
 }
 
-
 static clib_error_t *
-test_bihash (test_main_t * tm)
+test_bihash (test_main_t *tm)
 {
   int i, j;
   uword *p;
@@ -262,9 +258,8 @@ test_bihash (test_main_t * tm)
   h = &tm->hash;
 
 #if BIHASH_32_64_SVM
-  BV (clib_bihash_initiator_init_svm) (h, "test", tm->nbuckets,
-				       0x30000000 /* base_addr */ ,
-				       tm->hash_memory_size);
+  BV (clib_bihash_initiator_init_svm)
+  (h, "test", tm->nbuckets, 0x30000000 /* base_addr */, tm->hash_memory_size);
 #else
   BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
 #endif
@@ -273,11 +268,10 @@ test_bihash (test_main_t * tm)
     {
       if ((acycle % tm->report_every_n) == 0)
 	{
-	  fformat (stdout, "Cycle %lld out of %lld...\n",
-		   acycle, tm->ncycles);
+	  fformat (stdout, "Cycle %lld out of %lld...\n", acycle, tm->ncycles);
 
-	  fformat (stdout, "Pick %lld unique %s keys...\n",
-		   tm->nitems, tm->non_random_keys ? "non-random" : "random");
+	  fformat (stdout, "Pick %lld unique %s keys...\n", tm->nitems,
+		   tm->non_random_keys ? "non-random" : "random");
 	}
 
       for (i = 0; i < tm->nitems; i++)
@@ -302,7 +296,6 @@ test_bihash (test_main_t * tm)
 	  vec_add1 (tm->keys, rndkey);
 	}
 
-
       if ((acycle % tm->report_every_n) == 0)
 	fformat (stdout, "Add items...\n");
 
@@ -311,7 +304,7 @@ test_bihash (test_main_t * tm)
 	  kv.key = tm->keys[i];
 	  kv.value = i + 1;
 
-	  BV (clib_bihash_add_del) (h, &kv, 1 /* is_add */ );
+	  BV (clib_bihash_add_del) (h, &kv, 1 /* is_add */);
 
 	  if (tm->verbose > 1)
 	    {
@@ -319,14 +312,13 @@ test_bihash (test_main_t * tm)
 	      fformat (stdout, "After adding key %llu value %lld...\n",
 		       tm->keys[i], (u64) (i + 1));
 	      fformat (stdout, "%U", BV (format_bihash), h,
-		       2 /* very verbose */ );
+		       2 /* very verbose */);
 	    }
 	}
 
       if ((acycle % tm->report_every_n) == 0)
 	{
-	  fformat (stdout, "%U", BV (format_bihash), h,
-		   0 /* very verbose */ );
+	  fformat (stdout, "%U", BV (format_bihash), h, 0 /* very verbose */);
 
 	  fformat (stdout, "Search for items %d times...\n", tm->search_iter);
 	}
@@ -350,13 +342,13 @@ test_bihash (test_main_t * tm)
 	      kv.key = tm->keys[i];
 	      if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
 		if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
-		  clib_warning
-		    ("[%d] search for key %lld failed unexpectedly\n", i,
-		     tm->keys[i]);
+		  clib_warning (
+		    "[%d] search for key %lld failed unexpectedly\n", i,
+		    tm->keys[i]);
 	      if (kv.value != (u64) (i + 1))
-		clib_warning
-		  ("[%d] search for key %lld returned %lld, not %lld\n", i,
-		   tm->keys, kv.value, (u64) (i + 1));
+		clib_warning (
+		  "[%d] search for key %lld returned %lld, not %lld\n", i,
+		  tm->keys, kv.value, (u64) (i + 1));
 	    }
 	}
 
@@ -366,8 +358,7 @@ test_bihash (test_main_t * tm)
 	  total_searches = (uword) tm->search_iter * (uword) tm->nitems;
 
 	  if (delta > 0)
-	    fformat (stdout,
-		     "%.f searches per second, %.2f nsec per search\n",
+	    fformat (stdout, "%.f searches per second, %.2f nsec per search\n",
 		     ((f64) total_searches) / delta,
 		     1e9 * (delta / ((f64) total_searches)));
 
@@ -395,8 +386,8 @@ test_bihash (test_main_t * tm)
 
       if ((acycle % tm->report_every_n) == 0)
 	{
-	  fformat (stdout, "%lld searches in %.6f seconds\n",
-		   total_searches, delta);
+	  fformat (stdout, "%lld searches in %.6f seconds\n", total_searches,
+		   delta);
 
 	  if (delta > 0)
 	    fformat (stdout, "%.f searches per second\n",
@@ -411,11 +402,10 @@ test_bihash (test_main_t * tm)
 
 	  kv.key = tm->keys[i];
 	  kv.value = (u64) (i + 1);
-	  rv = BV (clib_bihash_add_del) (h, &kv, 0 /* is_add */ );
+	  rv = BV (clib_bihash_add_del) (h, &kv, 0 /* is_add */);
 
 	  if (rv < 0)
-	    clib_warning ("delete key %lld not ok but should be",
-			  tm->keys[i]);
+	    clib_warning ("delete key %lld not ok but should be", tm->keys[i]);
 
 	  if (tm->careful_delete_tests)
 	    {
@@ -435,14 +425,14 @@ test_bihash (test_main_t * tm)
 		  rv = BV (clib_bihash_search) (h, &kv, &kv);
 		  if (j <= i && rv >= 0)
 		    {
-		      clib_warning
-			("i %d j %d search ok but should not be, value %lld",
-			 i, j, kv.value);
+		      clib_warning (
+			"i %d j %d search ok but should not be, value %lld", i,
+			j, kv.value);
 		    }
 		  if (j > i && rv < 0)
 		    {
-		      clib_warning ("i %d j %d search not ok but should be",
-				    i, j);
+		      clib_warning ("i %d j %d search not ok but should be", i,
+				    j);
 		    }
 		}
 	    }
@@ -452,7 +442,7 @@ test_bihash (test_main_t * tm)
 	  struct rusage r_usage;
 	  getrusage (RUSAGE_SELF, &r_usage);
 	  fformat (stdout, "Kernel RSS: %ld bytes\n", r_usage.ru_maxrss);
-	  fformat (stdout, "%U\n", BV (format_bihash), h, 0 /* verbose */ );
+	  fformat (stdout, "%U\n", BV (format_bihash), h, 0 /* verbose */);
 	}
 
       /* Clean up side-bet hash table and random key vector */
@@ -465,7 +455,7 @@ test_bihash (test_main_t * tm)
 
   fformat (stdout, "End of run, should be empty...\n");
 
-  fformat (stdout, "%U", BV (format_bihash), h, 0 /* very verbose */ );
+  fformat (stdout, "%U", BV (format_bihash), h, 0 /* very verbose */);
 
   BV (clib_bihash_free) (h);
 
@@ -473,7 +463,7 @@ test_bihash (test_main_t * tm)
 }
 
 clib_error_t *
-test_bihash_main (test_main_t * tm)
+test_bihash_main (test_main_t *tm)
 {
   unformat_input_t *i = tm->input;
   clib_error_t *error;
@@ -503,8 +493,8 @@ test_bihash_main (test_main_t * tm)
 	;
       else if (unformat (i, "report-every %d", &tm->report_every_n))
 	;
-      else if (unformat (i, "memory-size %U",
-			 unformat_memory_size, &tm->hash_memory_size))
+      else if (unformat (i, "memory-size %U", unformat_memory_size,
+			 &tm->hash_memory_size))
 	;
       else if (unformat (i, "vec64"))
 	which = 1;
@@ -523,7 +513,6 @@ test_bihash_main (test_main_t * tm)
   tm->key_hash = hash_create (tm->nitems, sizeof (uword));
   vec_validate (tm->keys, tm->nitems - 1);
   _vec_len (tm->keys) = 0;
-
 
   switch (which)
     {

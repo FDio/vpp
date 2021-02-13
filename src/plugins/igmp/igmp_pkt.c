@@ -19,14 +19,14 @@
 #include <vnet/fib/fib_sas.h>
 
 static void
-vlib_buffer_append (vlib_buffer_t * b, uword l)
+vlib_buffer_append (vlib_buffer_t *b, uword l)
 {
   b->current_data += l;
   b->current_length += l;
 }
 
 static vlib_buffer_t *
-igmp_pkt_get_buffer (igmp_pkt_build_t * bk)
+igmp_pkt_get_buffer (igmp_pkt_build_t *bk)
 {
   vlib_main_t *vm;
   vlib_buffer_t *b;
@@ -50,16 +50,15 @@ igmp_pkt_get_buffer (igmp_pkt_build_t * bk)
    * save progress in the builder
    */
   vec_add1 (bk->buffers, bi);
-  bk->n_avail = vnet_sw_interface_get_mtu (vnet_get_main (),
-					   bk->sw_if_index, VNET_MTU_IP4);
+  bk->n_avail = vnet_sw_interface_get_mtu (vnet_get_main (), bk->sw_if_index,
+					   VNET_MTU_IP4);
 
   return (b);
 }
 
 static vlib_buffer_t *
-igmp_pkt_build_ip_header (igmp_pkt_build_t * bk,
-			  igmp_msg_type_t msg_type,
-			  const igmp_group_t * group)
+igmp_pkt_build_ip_header (igmp_pkt_build_t *bk, igmp_msg_type_t msg_type,
+			  const igmp_group_t *group)
 {
   ip4_header_t *ip4;
   vlib_buffer_t *b;
@@ -98,8 +97,8 @@ igmp_pkt_build_ip_header (igmp_pkt_build_t * bk,
 
   /* add the router alert options */
   option = vlib_buffer_get_current (b);
-  option[0] = 0x80 | 20;	// IP4_ROUTER_ALERT_OPTION;
-  option[1] = 4;		// length
+  option[0] = 0x80 | 20; // IP4_ROUTER_ALERT_OPTION;
+  option[1] = 4;	 // length
   option[2] = option[3] = 0;
 
   vlib_buffer_append (b, 4);
@@ -109,8 +108,8 @@ igmp_pkt_build_ip_header (igmp_pkt_build_t * bk,
 }
 
 static vlib_buffer_t *
-igmp_pkt_build_report_v3 (igmp_pkt_build_report_t * br,
-			  const igmp_group_t * group)
+igmp_pkt_build_report_v3 (igmp_pkt_build_report_t *br,
+			  const igmp_group_t *group)
 {
   igmp_membership_report_v3_t *report;
   vlib_buffer_t *b;
@@ -134,7 +133,7 @@ igmp_pkt_build_report_v3 (igmp_pkt_build_report_t * br,
 }
 
 static void
-igmp_pkt_tx (igmp_pkt_build_t * bk)
+igmp_pkt_tx (igmp_pkt_build_t *bk)
 {
   const igmp_config_t *config;
   vlib_buffer_t *b;
@@ -153,24 +152,24 @@ igmp_pkt_tx (igmp_pkt_build_t * bk)
   to_next = vlib_frame_vector_args (f);
 
   vec_foreach_index (ii, bk->buffers)
-  {
-    b = vlib_get_buffer (vm, bk->buffers[ii]);
-    vnet_buffer (b)->ip.adj_index[VLIB_TX] = config->adj_index;
-    to_next[ii] = bk->buffers[ii];
-    f->n_vectors++;
-  }
+    {
+      b = vlib_get_buffer (vm, bk->buffers[ii]);
+      vnet_buffer (b)->ip.adj_index[VLIB_TX] = config->adj_index;
+      to_next[ii] = bk->buffers[ii];
+      f->n_vectors++;
+    }
 
   vlib_put_frame_to_node (vm, ip4_rewrite_mcast_node.index, f);
 
-  IGMP_DBG ("  ..tx: %U", format_vnet_sw_if_index_name,
-	    vnet_get_main (), bk->sw_if_index);
+  IGMP_DBG ("  ..tx: %U", format_vnet_sw_if_index_name, vnet_get_main (),
+	    bk->sw_if_index);
 
   vec_free (bk->buffers);
   bk->buffers = 0;
 }
 
 static vlib_buffer_t *
-igmp_pkt_build_report_get_active (igmp_pkt_build_report_t * br)
+igmp_pkt_build_report_get_active (igmp_pkt_build_report_t *br)
 {
   if (NULL == br->base.buffers)
     return (NULL);
@@ -180,7 +179,7 @@ igmp_pkt_build_report_get_active (igmp_pkt_build_report_t * br)
 }
 
 static void
-igmp_pkt_build_report_bake (igmp_pkt_build_report_t * br)
+igmp_pkt_build_report_bake (igmp_pkt_build_report_t *br)
 {
   igmp_membership_report_v3_t *igmp;
   ip4_header_t *ip4;
@@ -205,7 +204,7 @@ igmp_pkt_build_report_bake (igmp_pkt_build_report_t * br)
 }
 
 void
-igmp_pkt_report_v3_send (igmp_pkt_build_report_t * br)
+igmp_pkt_report_v3_send (igmp_pkt_build_report_t *br)
 {
   if (NULL == br->base.buffers)
     return;
@@ -215,17 +214,18 @@ igmp_pkt_report_v3_send (igmp_pkt_build_report_t * br)
 }
 
 static u32
-igmp_pkt_report_v3_get_size (const igmp_group_t * group)
+igmp_pkt_report_v3_get_size (const igmp_group_t *group)
 {
   ASSERT (IGMP_FILTER_MODE_INCLUDE == group->router_filter_mode);
 
   return ((hash_elts (group->igmp_src_by_key[IGMP_FILTER_MODE_INCLUDE]) *
-	   sizeof (ip4_address_t)) + sizeof (igmp_membership_group_v3_t));
+	   sizeof (ip4_address_t)) +
+	  sizeof (igmp_membership_group_v3_t));
 }
 
 static igmp_membership_group_v3_t *
-igmp_pkt_report_v3_append_group (igmp_pkt_build_report_t * br,
-				 const ip46_address_t * grp,
+igmp_pkt_report_v3_append_group (igmp_pkt_build_report_t *br,
+				 const ip46_address_t *grp,
 				 igmp_membership_group_v3_type_t type)
 {
   igmp_membership_group_v3_t *igmp_group;
@@ -276,11 +276,11 @@ igmp_pkt_report_v3_append_group (igmp_pkt_build_report_t * br,
  *  different sources each time."
   */
 static igmp_membership_group_v3_t *
-igmp_pkt_report_v3_append_src (igmp_pkt_build_report_t * br,
-			       igmp_membership_group_v3_t * igmp_group,
-			       const ip46_address_t * grp,
+igmp_pkt_report_v3_append_src (igmp_pkt_build_report_t *br,
+			       igmp_membership_group_v3_t *igmp_group,
+			       const ip46_address_t *grp,
 			       igmp_membership_group_v3_type_t type,
-			       const ip46_address_t * src)
+			       const ip46_address_t *src)
 {
   vlib_buffer_t *b;
 
@@ -306,9 +306,9 @@ igmp_pkt_report_v3_append_src (igmp_pkt_build_report_t * br,
 }
 
 void
-igmp_pkt_report_v3_add_report (igmp_pkt_build_report_t * br,
-			       const ip46_address_t * grp,
-			       const ip46_address_t * srcs,
+igmp_pkt_report_v3_add_report (igmp_pkt_build_report_t *br,
+			       const ip46_address_t *grp,
+			       const ip46_address_t *srcs,
 			       igmp_membership_group_v3_type_t type)
 {
   igmp_membership_group_v3_t *igmp_group;
@@ -330,15 +330,13 @@ igmp_pkt_report_v3_add_report (igmp_pkt_build_report_t * br,
   if (NULL == igmp_group)
     return;
 
-  /* *INDENT-OFF* */
-  vec_foreach(s, srcs)
+  vec_foreach (s, srcs)
     {
-      igmp_group = igmp_pkt_report_v3_append_src(br, igmp_group,
-                                                 grp, type, s);
+      igmp_group =
+	igmp_pkt_report_v3_append_src (br, igmp_group, grp, type, s);
       if (NULL == igmp_group)
-        return;
+	return;
     };
-  /* *INDENT-ON* */
 
   igmp_group->n_src_addresses = clib_host_to_net_u16 (br->n_srcs);
 
@@ -346,8 +344,8 @@ igmp_pkt_report_v3_add_report (igmp_pkt_build_report_t * br,
 }
 
 void
-igmp_pkt_report_v3_add_group (igmp_pkt_build_report_t * br,
-			      const igmp_group_t * group,
+igmp_pkt_report_v3_add_group (igmp_pkt_build_report_t *br,
+			      const igmp_group_t *group,
 			      igmp_membership_group_v3_type_t type)
 {
   igmp_membership_group_v3_t *igmp_group;
@@ -379,32 +377,28 @@ igmp_pkt_report_v3_add_group (igmp_pkt_build_report_t * br,
 
   igmp_group = igmp_pkt_report_v3_append_group (br, group->key, type);
 
-  /* *INDENT-OFF* */
-  FOR_EACH_SRC (src, group, IGMP_FILTER_MODE_INCLUDE,
-    ({
-      igmp_group = igmp_pkt_report_v3_append_src(br, igmp_group,
-                                                 group->key, type,
-                                                 src->key);
-      if (NULL == igmp_group)
-        return;
-    }));
-  /* *INDENT-ON* */
+  FOR_EACH_SRC (src, group, IGMP_FILTER_MODE_INCLUDE, ({
+		  igmp_group = igmp_pkt_report_v3_append_src (
+		    br, igmp_group, group->key, type, src->key);
+		  if (NULL == igmp_group)
+		    return;
+		}));
+
   igmp_group->n_src_addresses = clib_host_to_net_u16 (br->n_srcs);
 
-  IGMP_DBG ("  ..add-group: %U srcs:%d",
-	    format_igmp_key, group->key,
+  IGMP_DBG ("  ..add-group: %U srcs:%d", format_igmp_key, group->key,
 	    hash_elts (group->igmp_src_by_key[IGMP_FILTER_MODE_INCLUDE]));
 }
 
 void
-igmp_pkt_build_report_init (igmp_pkt_build_report_t * br, u32 sw_if_index)
+igmp_pkt_build_report_init (igmp_pkt_build_report_t *br, u32 sw_if_index)
 {
   clib_memset (br, 0, sizeof (*br));
   br->base.sw_if_index = sw_if_index;
 }
 
 static vlib_buffer_t *
-igmp_pkt_build_query_get_active (igmp_pkt_build_query_t * bq)
+igmp_pkt_build_query_get_active (igmp_pkt_build_query_t *bq)
 {
   if (NULL == bq->base.buffers)
     return (NULL);
@@ -414,8 +408,7 @@ igmp_pkt_build_query_get_active (igmp_pkt_build_query_t * bq)
 }
 
 static vlib_buffer_t *
-igmp_pkt_build_query_v3 (igmp_pkt_build_query_t * bq,
-			 const igmp_group_t * group)
+igmp_pkt_build_query_v3 (igmp_pkt_build_query_t *bq, const igmp_group_t *group)
 {
   igmp_membership_query_v3_t *query;
   vlib_buffer_t *b;
@@ -445,9 +438,9 @@ igmp_pkt_build_query_v3 (igmp_pkt_build_query_t * bq,
 }
 
 void
-igmp_pkt_query_v3_add_group (igmp_pkt_build_query_t * bq,
-			     const igmp_group_t * group,
-			     const ip46_address_t * srcs)
+igmp_pkt_query_v3_add_group (igmp_pkt_build_query_t *bq,
+			     const igmp_group_t *group,
+			     const ip46_address_t *srcs)
 {
   vlib_buffer_t *b;
 
@@ -469,13 +462,13 @@ igmp_pkt_query_v3_add_group (igmp_pkt_build_query_t * bq,
       query = vlib_buffer_get_current (b);
 
       vec_foreach (src, srcs)
-      {
-	query->src_addresses[bq->n_srcs++].as_u32 = src->ip4.as_u32;
+	{
+	  query->src_addresses[bq->n_srcs++].as_u32 = src->ip4.as_u32;
 
-	vlib_buffer_append (b, sizeof (ip4_address_t));
-	bq->base.n_bytes += sizeof (ip4_address_t);
-	bq->base.n_avail += sizeof (ip4_address_t);
-      }
+	  vlib_buffer_append (b, sizeof (ip4_address_t));
+	  bq->base.n_bytes += sizeof (ip4_address_t);
+	  bq->base.n_avail += sizeof (ip4_address_t);
+	}
     }
   /*
    * else
@@ -484,7 +477,7 @@ igmp_pkt_query_v3_add_group (igmp_pkt_build_query_t * bq,
 }
 
 static void
-igmp_pkt_build_query_bake (igmp_pkt_build_query_t * bq)
+igmp_pkt_build_query_bake (igmp_pkt_build_query_t *bq)
 {
   igmp_membership_query_v3_t *igmp;
   ip4_header_t *ip4;
@@ -510,7 +503,7 @@ igmp_pkt_build_query_bake (igmp_pkt_build_query_t * bq)
 }
 
 void
-igmp_pkt_query_v3_send (igmp_pkt_build_query_t * bq)
+igmp_pkt_query_v3_send (igmp_pkt_build_query_t *bq)
 {
   if (NULL == bq->base.buffers)
     return;
@@ -520,7 +513,7 @@ igmp_pkt_query_v3_send (igmp_pkt_build_query_t * bq)
 }
 
 void
-igmp_pkt_build_query_init (igmp_pkt_build_query_t * bq, u32 sw_if_index)
+igmp_pkt_build_query_init (igmp_pkt_build_query_t *bq, u32 sw_if_index)
 {
   clib_memset (bq, 0, sizeof (*bq));
   bq->base.sw_if_index = sw_if_index;

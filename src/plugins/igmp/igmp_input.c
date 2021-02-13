@@ -52,7 +52,7 @@ typedef enum
 } igmp_parse_report_next_t;
 
 char *igmp_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_igmp_error
 #undef _
 };
@@ -66,52 +66,51 @@ typedef struct
 } igmp_input_trace_t;
 
 static u8 *
-format_igmp_input_trace (u8 * s, va_list * va)
+format_igmp_input_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
   igmp_input_trace_t *t = va_arg (*va, igmp_input_trace_t *);
 
-  s = format (s, "sw_if_index %u next-index %u",
-	      t->sw_if_index, t->next_index);
+  s =
+    format (s, "sw_if_index %u next-index %u", t->sw_if_index, t->next_index);
   s = format (s, "\n%U", format_igmp_header, t->packet_data,
 	      sizeof (t->packet_data));
   return s;
 }
 
 static u8 *
-format_igmp_parse_report_trace (u8 * s, va_list * va)
+format_igmp_parse_report_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
   igmp_input_trace_t *t = va_arg (*va, igmp_input_trace_t *);
 
-  s = format (s, "sw_if_index %u next-index %u",
-	      t->sw_if_index, t->next_index);
+  s =
+    format (s, "sw_if_index %u next-index %u", t->sw_if_index, t->next_index);
   s = format (s, "\n%U", format_igmp_report_v3, t->packet_data,
 	      sizeof (t->packet_data));
   return s;
 }
 
 static u8 *
-format_igmp_parse_query_trace (u8 * s, va_list * va)
+format_igmp_parse_query_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
   igmp_input_trace_t *t = va_arg (*va, igmp_input_trace_t *);
 
-  s = format (s, "sw_if_index %u next-input %u len %u",
-	      t->sw_if_index, t->next_index, t->len);
+  s = format (s, "sw_if_index %u next-input %u len %u", t->sw_if_index,
+	      t->next_index, t->len);
   s = format (s, "\n%U", format_igmp_query_v3, t->packet_data,
 	      sizeof (t->packet_data));
-  s = format (s, "\n%U", format_hex_bytes,
-	      t->packet_data, sizeof (t->packet_data));
+  s = format (s, "\n%U", format_hex_bytes, t->packet_data,
+	      sizeof (t->packet_data));
   return s;
 }
 
 static uword
-igmp_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-	    vlib_frame_t * frame)
+igmp_input (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   igmp_parse_query_next_t next_index;
   u32 n_left_from, *from, *to_next;
@@ -166,7 +165,7 @@ igmp_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  igmp->checksum = 0;
 	  sum = ip_incremental_checksum (0, igmp,
 					 clib_net_to_host_u16 (ip->length) -
-					 ip4_header_bytes (ip));
+					   ip4_header_bytes (ip));
 	  igmp->checksum = checksum;
 	  csum = ~ip_csum_fold (sum);
 	  if (checksum != csum)
@@ -219,31 +218,27 @@ igmp_input (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (igmp_input_node) =
-{
-  .function = igmp_input,
-  .name = "igmp-input",
-  .vector_size = sizeof (u32),
+VLIB_REGISTER_NODE (
+  igmp_input_node) = { .function = igmp_input,
+		       .name = "igmp-input",
+		       .vector_size = sizeof (u32),
 
-  .format_buffer = format_igmp_header,
-  .format_trace = format_igmp_input_trace,
+		       .format_buffer = format_igmp_header,
+		       .format_trace = format_igmp_input_trace,
 
-  .n_errors = IGMP_N_ERROR,
-  .error_strings = igmp_error_strings,
+		       .n_errors = IGMP_N_ERROR,
+		       .error_strings = igmp_error_strings,
 
-  .n_next_nodes = IGMP_INPUT_N_NEXT,
-  .next_nodes = {
-      [IGMP_INPUT_NEXT_DROP] = "error-drop",
-      [IGMP_INPUT_NEXT_PARSE_QUERY] = "igmp-parse-query",
-      [IGMP_INPUT_NEXT_PARSE_REPORT] = "igmp-parse-report",
-  }
-};
-/* *INDENT-ON* */
+		       .n_next_nodes = IGMP_INPUT_N_NEXT,
+		       .next_nodes = {
+			 [IGMP_INPUT_NEXT_DROP] = "error-drop",
+			 [IGMP_INPUT_NEXT_PARSE_QUERY] = "igmp-parse-query",
+			 [IGMP_INPUT_NEXT_PARSE_REPORT] = "igmp-parse-report",
+		       } };
 
 static uword
-igmp_parse_query (vlib_main_t * vm, vlib_node_runtime_t * node,
-		  vlib_frame_t * frame)
+igmp_parse_query (vlib_main_t *vm, vlib_node_runtime_t *node,
+		  vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   igmp_parse_query_next_t next_index;
@@ -304,8 +299,8 @@ igmp_parse_query (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      args = vlib_buffer_get_current (b);
 	      args->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
 
-	      vl_api_rpc_call_main_thread (igmp_handle_query,
-					   (u8 *) args, sizeof (*args) + len);
+	      vl_api_rpc_call_main_thread (igmp_handle_query, (u8 *) args,
+					   sizeof (*args) + len);
 	    }
 	  else
 	    {
@@ -325,29 +320,25 @@ igmp_parse_query (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (igmp_parse_query_node) =
-{
-  .function = igmp_parse_query,
-  .name = "igmp-parse-query",
-  .vector_size = sizeof (u32),
+VLIB_REGISTER_NODE (
+  igmp_parse_query_node) = { .function = igmp_parse_query,
+			     .name = "igmp-parse-query",
+			     .vector_size = sizeof (u32),
 
-  .format_buffer = format_igmp_query_v3,
-  .format_trace = format_igmp_parse_query_trace,
+			     .format_buffer = format_igmp_query_v3,
+			     .format_trace = format_igmp_parse_query_trace,
 
-  .n_errors = IGMP_N_ERROR,
-  .error_strings = igmp_error_strings,
+			     .n_errors = IGMP_N_ERROR,
+			     .error_strings = igmp_error_strings,
 
-  .n_next_nodes = IGMP_PARSE_QUERY_N_NEXT,
-  .next_nodes = {
-    [IGMP_PARSE_QUERY_NEXT_DROP] = "error-drop",
-  }
-};
-/* *INDENT-ON* */
+			     .n_next_nodes = IGMP_PARSE_QUERY_N_NEXT,
+			     .next_nodes = {
+			       [IGMP_PARSE_QUERY_NEXT_DROP] = "error-drop",
+			     } };
 
 static uword
-igmp_parse_report (vlib_main_t * vm, vlib_node_runtime_t * node,
-		   vlib_frame_t * frame)
+igmp_parse_report (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   igmp_input_next_t next_index;
@@ -415,8 +406,8 @@ igmp_parse_report (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      args = vlib_buffer_get_current (b);
 	      args->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
 
-	      vl_api_rpc_call_main_thread (igmp_handle_report,
-					   (u8 *) args, sizeof (*args) + len);
+	      vl_api_rpc_call_main_thread (igmp_handle_report, (u8 *) args,
+					   sizeof (*args) + len);
 	    }
 	  else
 	    {
@@ -436,28 +427,24 @@ igmp_parse_report (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (igmp_parse_report_node) =
-{
-  .function = igmp_parse_report,
-  .name = "igmp-parse-report",
-  .vector_size = sizeof (u32),
+VLIB_REGISTER_NODE (
+  igmp_parse_report_node) = { .function = igmp_parse_report,
+			      .name = "igmp-parse-report",
+			      .vector_size = sizeof (u32),
 
-  .format_buffer = format_igmp_report_v3,
-  .format_trace = format_igmp_parse_report_trace,
+			      .format_buffer = format_igmp_report_v3,
+			      .format_trace = format_igmp_parse_report_trace,
 
-  .n_errors = IGMP_N_ERROR,
-  .error_strings = igmp_error_strings,
+			      .n_errors = IGMP_N_ERROR,
+			      .error_strings = igmp_error_strings,
 
-  .n_next_nodes = IGMP_PARSE_REPORT_N_NEXT,
-  .next_nodes = {
-    [IGMP_PARSE_REPORT_NEXT_DROP] = "error-drop",
-  }
-};
-/* *INDENT-ON* */
+			      .n_next_nodes = IGMP_PARSE_REPORT_N_NEXT,
+			      .next_nodes = {
+				[IGMP_PARSE_REPORT_NEXT_DROP] = "error-drop",
+			      } };
 
 static clib_error_t *
-igmp_input_init (vlib_main_t * vm)
+igmp_input_init (vlib_main_t *vm)
 {
   ip4_register_protocol (IP_PROTOCOL_IGMP, igmp_input_node.index);
 
@@ -466,12 +453,9 @@ igmp_input_init (vlib_main_t * vm)
   return (0);
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (igmp_input_init) =
-{
-  .runs_after = VLIB_INITS("igmp_init"),
+VLIB_INIT_FUNCTION (igmp_input_init) = {
+  .runs_after = VLIB_INITS ("igmp_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

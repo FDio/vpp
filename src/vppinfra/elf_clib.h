@@ -47,16 +47,15 @@
 
 /* Attribute used is so that static registrations work even if
    variable is not referenced. */
-#define CLIB_ELF_SECTION(SECTION)					\
-   __attribute__ ((used,						\
-		   aligned (CLIB_ELF_SECTION_DATA_ALIGN),		\
-		   section (CLIB_ELF_SECTION_ADD_PREFIX (SECTION))))
+#define CLIB_ELF_SECTION(SECTION)                                             \
+  __attribute__ ((used, aligned (CLIB_ELF_SECTION_DATA_ALIGN),                \
+		  section (CLIB_ELF_SECTION_ADD_PREFIX (SECTION))))
 
 /* Given pointer to previous data A get next pointer.  EXTRA gives extra
    space beyond A + 1 used in object. */
-#define clib_elf_section_data_next(a,extra)				\
-  uword_to_pointer (round_pow2 (pointer_to_uword (a + 1) + (extra),	\
-				CLIB_ELF_SECTION_DATA_ALIGN),		\
+#define clib_elf_section_data_next(a, extra)                                  \
+  uword_to_pointer (round_pow2 (pointer_to_uword (a + 1) + (extra),           \
+				CLIB_ELF_SECTION_DATA_ALIGN),                 \
 		    void *)
 
 typedef struct
@@ -66,8 +65,8 @@ typedef struct
 
 typedef struct
 {
-  /* Vector of bounds for this section.  Multiple shared objects may have instances
-     of the same sections. */
+  /* Vector of bounds for this section.  Multiple shared objects may have
+     instances of the same sections. */
   clib_elf_section_bounds_t *bounds;
 
   /* Name of ELF section (e.g. .text). */
@@ -89,23 +88,23 @@ typedef struct
 } clib_elf_main_t;
 
 always_inline void
-clib_elf_main_free (clib_elf_main_t * m)
+clib_elf_main_free (clib_elf_main_t *m)
 {
   clib_elf_section_t *s;
   vec_foreach (s, m->sections)
-  {
-    vec_free (s->bounds);
-    vec_free (s->name);
-  }
+    {
+      vec_free (s->bounds);
+      vec_free (s->name);
+    }
   vec_free (m->sections);
   hash_free (m->section_by_name);
 
   {
     elf_main_t *em;
     vec_foreach (em, m->elf_mains)
-    {
-      elf_main_free (em);
-    }
+      {
+	elf_main_free (em);
+      }
     vec_free (m->elf_mains);
   }
 }
@@ -128,8 +127,8 @@ typedef struct
 } clib_elf_symbol_t;
 
 /* Returns 1 if found; otherwise zero. */
-uword clib_elf_symbol_by_name (char *name, clib_elf_symbol_t * result);
-uword clib_elf_symbol_by_address (uword address, clib_elf_symbol_t * result);
+uword clib_elf_symbol_by_name (char *name, clib_elf_symbol_t *result);
+uword clib_elf_symbol_by_address (uword address, clib_elf_symbol_t *result);
 
 format_function_t format_clib_elf_symbol, format_clib_elf_symbol_with_address;
 

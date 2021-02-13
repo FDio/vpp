@@ -29,14 +29,14 @@
 #undef TW_TIMER_ALLOW_DUPLICATE_STOP
 #undef TW_START_STOP_TRACE_SIZE
 
-#define TW_TIMER_WHEELS 3
-#define TW_SLOTS_PER_RING 256
-#define TW_RING_SHIFT 8
-#define TW_RING_MASK (TW_SLOTS_PER_RING -1)
-#define TW_TIMERS_PER_OBJECT 4
-#define LOG2_TW_TIMERS_PER_OBJECT 2
-#define TW_SUFFIX _4t_3w_256sl
-#define TW_FAST_WHEEL_BITMAP 0
+#define TW_TIMER_WHEELS		      3
+#define TW_SLOTS_PER_RING	      256
+#define TW_RING_SHIFT		      8
+#define TW_RING_MASK		      (TW_SLOTS_PER_RING - 1)
+#define TW_TIMERS_PER_OBJECT	      4
+#define LOG2_TW_TIMERS_PER_OBJECT     2
+#define TW_SUFFIX		      _4t_3w_256sl
+#define TW_FAST_WHEEL_BITMAP	      0
 #define TW_TIMER_ALLOW_DUPLICATE_STOP 0
 
 #include <vppinfra/tw_timer_template.h>

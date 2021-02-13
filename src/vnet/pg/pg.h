@@ -40,9 +40,9 @@
 #ifndef included_vlib_pg_h
 #define included_vlib_pg_h
 
-#include <vlib/vlib.h>		/* for VLIB_N_RX_TX */
+#include <vlib/vlib.h> /* for VLIB_N_RX_TX */
 #include <vnet/pg/edit.h>
-#include <vppinfra/fifo.h>	/* for buffer_fifo */
+#include <vppinfra/fifo.h> /* for buffer_fifo */
 #include <vppinfra/pcap.h>
 #include <vnet/interface.h>
 #include <vnet/ethernet/mac_address.h>
@@ -72,10 +72,9 @@ typedef struct pg_edit_group_t
   u32 n_packet_bytes;
 
   /* Function to perform miscellaneous edits (e.g. set IP checksum, ...). */
-  void (*edit_function) (struct pg_main_t * pg,
-			 struct pg_stream_t * s,
-			 struct pg_edit_group_t * g,
-			 u32 * buffers, u32 n_buffers);
+  void (*edit_function) (struct pg_main_t *pg, struct pg_stream_t *s,
+			 struct pg_edit_group_t *g, u32 *buffers,
+			 u32 n_buffers);
 
   /* Opaque data for edit function's use. */
   uword edit_function_opaque;
@@ -179,31 +178,34 @@ typedef struct pg_stream_t
 } pg_stream_t;
 
 always_inline void
-pg_buffer_index_free (pg_buffer_index_t * bi)
+pg_buffer_index_free (pg_buffer_index_t *bi)
 {
   vec_free (bi->edits);
   clib_fifo_free (bi->buffer_fifo);
 }
 
 always_inline void
-pg_edit_group_free (pg_edit_group_t * g)
+pg_edit_group_free (pg_edit_group_t *g)
 {
   pg_edit_t *e;
-  vec_foreach (e, g->edits) pg_edit_free (e);
+  vec_foreach (e, g->edits)
+    pg_edit_free (e);
   vec_free (g->edits);
   vec_free (g->fixed_packet_data);
   vec_free (g->fixed_packet_data_mask);
 }
 
 always_inline void
-pg_stream_free (pg_stream_t * s)
+pg_stream_free (pg_stream_t *s)
 {
   int i;
   pg_edit_group_t *g;
   pg_edit_t *e;
-  vec_foreach (e, s->non_fixed_edits) pg_edit_free (e);
+  vec_foreach (e, s->non_fixed_edits)
+    pg_edit_free (e);
   vec_free (s->non_fixed_edits);
-  vec_foreach (g, s->edit_groups) pg_edit_group_free (g);
+  vec_foreach (g, s->edit_groups)
+    pg_edit_group_free (g);
   vec_free (s->edit_groups);
   vec_free (s->fixed_packet_data);
   vec_free (s->fixed_packet_data_mask);
@@ -215,26 +217,27 @@ pg_stream_free (pg_stream_t * s)
 
   {
     pg_buffer_index_t *bi;
-    vec_foreach (bi, s->buffer_indices) pg_buffer_index_free (bi);
+    vec_foreach (bi, s->buffer_indices)
+      pg_buffer_index_free (bi);
     vec_free (s->buffer_indices);
   }
 }
 
 always_inline int
-pg_stream_is_enabled (pg_stream_t * s)
+pg_stream_is_enabled (pg_stream_t *s)
 {
   return (s->flags & PG_STREAM_FLAGS_IS_ENABLED) != 0;
 }
 
 always_inline pg_edit_group_t *
-pg_stream_get_group (pg_stream_t * s, u32 group_index)
+pg_stream_get_group (pg_stream_t *s, u32 group_index)
 {
   return vec_elt_at_index (s->edit_groups, group_index);
 }
 
 always_inline void *
-pg_create_edit_group (pg_stream_t * s,
-		      int n_edit_bytes, int n_packet_bytes, u32 * group_index)
+pg_create_edit_group (pg_stream_t *s, int n_edit_bytes, int n_packet_bytes,
+		      u32 *group_index)
 {
   pg_edit_group_t *g;
   int n_edits;
@@ -253,7 +256,7 @@ pg_create_edit_group (pg_stream_t * s,
 }
 
 always_inline void *
-pg_add_edits (pg_stream_t * s, int n_edit_bytes, int n_packet_bytes,
+pg_add_edits (pg_stream_t *s, int n_edit_bytes, int n_packet_bytes,
 	      u32 group_index)
 {
   pg_edit_group_t *g = pg_stream_get_group (s, group_index);
@@ -267,7 +270,7 @@ pg_add_edits (pg_stream_t * s, int n_edit_bytes, int n_packet_bytes,
 }
 
 always_inline void *
-pg_get_edit_group (pg_stream_t * s, u32 group_index)
+pg_get_edit_group (pg_stream_t *s, u32 group_index)
 {
   pg_edit_group_t *g = pg_stream_get_group (s, group_index);
   return g->edits;
@@ -275,7 +278,7 @@ pg_get_edit_group (pg_stream_t * s, u32 group_index)
 
 /* Number of bytes for all groups >= given group. */
 always_inline uword
-pg_edit_group_n_bytes (pg_stream_t * s, u32 group_index)
+pg_edit_group_n_bytes (pg_stream_t *s, u32 group_index)
 {
   pg_edit_group_t *g;
   uword n_bytes = 0;
@@ -286,7 +289,7 @@ pg_edit_group_n_bytes (pg_stream_t * s, u32 group_index)
 }
 
 always_inline void
-pg_free_edit_group (pg_stream_t * s)
+pg_free_edit_group (pg_stream_t *s)
 {
   uword i = vec_len (s->edit_groups) - 1;
   pg_edit_group_t *g = pg_stream_get_group (s, i);
@@ -357,22 +360,20 @@ extern vlib_node_registration_t pg_input_node;
 vlib_node_function_t pg_input, pg_output;
 
 /* Stream add/delete. */
-void pg_stream_del (pg_main_t * pg, uword index);
-void pg_stream_add (pg_main_t * pg, pg_stream_t * s_init);
-void pg_stream_change (pg_main_t * pg, pg_stream_t * s);
+void pg_stream_del (pg_main_t *pg, uword index);
+void pg_stream_add (pg_main_t *pg, pg_stream_t *s_init);
+void pg_stream_change (pg_main_t *pg, pg_stream_t *s);
 
 /* Enable/disable stream. */
-void pg_stream_enable_disable (pg_main_t * pg, pg_stream_t * s,
-			       int is_enable);
+void pg_stream_enable_disable (pg_main_t *pg, pg_stream_t *s, int is_enable);
 
 /* Enable/disable packet coalesce on given interface */
-void pg_interface_enable_disable_coalesce (pg_interface_t * pi, u8 enable,
+void pg_interface_enable_disable_coalesce (pg_interface_t *pi, u8 enable,
 					   u32 tx_node_index);
 
 /* Find/create free packet-generator interface index. */
-u32 pg_interface_add_or_get (pg_main_t * pg, uword stream_index,
-			     u8 gso_enabled, u32 gso_size,
-			     u8 coalesce_enabled);
+u32 pg_interface_add_or_get (pg_main_t *pg, uword stream_index, u8 gso_enabled,
+			     u32 gso_size, u8 coalesce_enabled);
 
 always_inline pg_node_t *
 pg_get_node (uword node_index)
@@ -382,8 +383,7 @@ pg_get_node (uword node_index)
   return pg->nodes + node_index;
 }
 
-void pg_edit_group_get_fixed_packet_data (pg_stream_t * s,
-					  u32 group_index,
+void pg_edit_group_get_fixed_packet_data (pg_stream_t *s, u32 group_index,
 					  void *fixed_packet_data,
 					  void *fixed_packet_data_mask);
 
@@ -398,14 +398,13 @@ typedef struct
   u32 count;
 } pg_capture_args_t;
 
-clib_error_t *pg_capture (pg_capture_args_t * a);
+clib_error_t *pg_capture (pg_capture_args_t *a);
 
 typedef struct
 {
   u32 buffer_index;
   vlib_buffer_t buffer;
-}
-pg_output_trace_t;
+} pg_output_trace_t;
 
 #endif /* included_vlib_pg_h */
 

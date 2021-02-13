@@ -40,7 +40,7 @@
 
 /* Format vectors. */
 u8 *
-format_vec32 (u8 * s, va_list * va)
+format_vec32 (u8 *s, va_list *va)
 {
   u32 *v = va_arg (*va, u32 *);
   char *fmt = va_arg (*va, char *);
@@ -55,7 +55,7 @@ format_vec32 (u8 * s, va_list * va)
 }
 
 u8 *
-format_vec_uword (u8 * s, va_list * va)
+format_vec_uword (u8 *s, va_list *va)
 {
   uword *v = va_arg (*va, uword *);
   char *fmt = va_arg (*va, char *);
@@ -71,7 +71,7 @@ format_vec_uword (u8 * s, va_list * va)
 
 /* Ascii buffer and length. */
 u8 *
-format_ascii_bytes (u8 * s, va_list * va)
+format_ascii_bytes (u8 *s, va_list *va)
 {
   u8 *v = va_arg (*va, u8 *);
   uword n_bytes = va_arg (*va, uword);
@@ -81,7 +81,7 @@ format_ascii_bytes (u8 * s, va_list * va)
 
 /* Format hex dump. */
 u8 *
-format_hex_bytes (u8 * s, va_list * va)
+format_hex_bytes (u8 *s, va_list *va)
 {
   u8 *bytes = va_arg (*va, u8 *);
   int n_bytes = va_arg (*va, int);
@@ -109,7 +109,7 @@ format_hex_bytes (u8 * s, va_list * va)
 }
 
 u8 *
-format_hex_bytes_no_wrap (u8 * s, va_list * va)
+format_hex_bytes_no_wrap (u8 *s, va_list *va)
 {
   u8 *bytes = va_arg (*va, u8 *);
   int n_bytes = va_arg (*va, int);
@@ -126,7 +126,7 @@ format_hex_bytes_no_wrap (u8 * s, va_list * va)
 
 /* Add variable number of spaces. */
 u8 *
-format_white_space (u8 * s, va_list * va)
+format_white_space (u8 *s, va_list *va)
 {
   u32 n = va_arg (*va, u32);
   while (n-- > 0)
@@ -135,7 +135,7 @@ format_white_space (u8 * s, va_list * va)
 }
 
 u8 *
-format_time_interval (u8 * s, va_list * args)
+format_time_interval (u8 *s, va_list *args)
 {
   u8 *fmt = va_arg (*args, u8 *);
   f64 t = va_arg (*args, f64);
@@ -206,7 +206,7 @@ format_time_interval (u8 * s, va_list * args)
 
 /* Unparse memory size e.g. 100, 100k, 100m, 100g. */
 __clib_export u8 *
-format_memory_size (u8 * s, va_list * va)
+format_memory_size (u8 *s, va_list *va)
 {
   uword size = va_arg (*va, uword);
   uword l, u, log_u;
@@ -235,7 +235,7 @@ format_memory_size (u8 * s, va_list * va)
 
 /* Parse memory size e.g. 100, 100k, 100m, 100g. */
 __clib_export uword
-unformat_memory_size (unformat_input_t * input, va_list * va)
+unformat_memory_size (unformat_input_t *input, va_list *va)
 {
   uword amount, shift, c;
   uword *result = va_arg (*va, uword *);
@@ -270,7 +270,7 @@ unformat_memory_size (unformat_input_t * input, va_list * va)
 
 /* Unparse memory page size e.g. 4K, 2M */
 __clib_export u8 *
-format_log2_page_size (u8 * s, va_list * va)
+format_log2_page_size (u8 *s, va_list *va)
 {
   clib_mem_page_sz_t log2_page_sz = va_arg (*va, clib_mem_page_sz_t);
 
@@ -297,7 +297,7 @@ format_log2_page_size (u8 * s, va_list * va)
 
 /* Parse memory page size e.g. 4K, 2M */
 __clib_export uword
-unformat_log2_page_size (unformat_input_t * input, va_list * va)
+unformat_log2_page_size (unformat_input_t *input, va_list *va)
 {
   uword amount;
   clib_mem_page_sz_t *result = va_arg (*va, clib_mem_page_sz_t *);
@@ -326,7 +326,7 @@ unformat_log2_page_size (unformat_input_t * input, va_list * va)
 /* Format c identifier: e.g. a_name -> "a name".
    Works for both vector names and null terminated c strings. */
 __clib_export u8 *
-format_c_identifier (u8 * s, va_list * va)
+format_c_identifier (u8 *s, va_list *va)
 {
   u8 *id = va_arg (*va, u8 *);
   uword i, l;
@@ -349,7 +349,7 @@ format_c_identifier (u8 * s, va_list * va)
 }
 
 __clib_export u8 *
-format_hexdump (u8 * s, va_list * args)
+format_hexdump (u8 *s, va_list *args)
 {
   u8 *data = va_arg (*args, u8 *);
   uword len = va_arg (*args, uword);
@@ -368,9 +368,8 @@ format_hexdump (u8 * s, va_list * args)
       line_str = format (line_str, "%c", isprint (data[i]) ? data[i] : '.');
       if (!((i + 1) % line_len))
 	{
-	  s = format (s, "%U%05x: %v[%v]",
-		      format_white_space, index ? indent : 0,
-		      index, line_hex, line_str);
+	  s = format (s, "%U%05x: %v[%v]", format_white_space,
+		      index ? indent : 0, index, line_hex, line_str);
 	  if (i < len - 1)
 	    s = format (s, "\n");
 	  index = i + 1;
@@ -383,8 +382,7 @@ format_hexdump (u8 * s, va_list * args)
     line_hex = format (line_hex, "   ");
 
   if (vec_len (line_hex))
-    s = format (s, "%U%05x: %v[%v]",
-		format_white_space, index ? indent : 0,
+    s = format (s, "%U%05x: %v[%v]", format_white_space, index ? indent : 0,
 		index, line_hex, line_str);
 
   vec_free (line_hex);

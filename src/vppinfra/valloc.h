@@ -27,37 +27,36 @@
 
 typedef struct
 {
-  u32 next;			/**< next chunk pool index */
-  u32 prev;			/**< previous chunk pool index */
-  uword baseva;			/**< base VA for this chunk */
-  uword size;			/**< size in bytes of this chunk */
-  uword flags;			/**< flags (free/busy)  */
+  u32 next;	/**< next chunk pool index */
+  u32 prev;	/**< previous chunk pool index */
+  uword baseva; /**< base VA for this chunk */
+  uword size;	/**< size in bytes of this chunk */
+  uword flags;	/**< flags (free/busy)  */
 } clib_valloc_chunk_t;
 
-#define CLIB_VALLOC_BUSY	(1<<0) /**< chunk is in use */
+#define CLIB_VALLOC_BUSY (1 << 0) /**< chunk is in use */
 
 typedef struct
 {
   clib_valloc_chunk_t *chunks;	/**< pool of virtual chunks  */
-  uword *chunk_index_by_baseva;	/**< chunk by baseva hash */
+  uword *chunk_index_by_baseva; /**< chunk by baseva hash */
   clib_spinlock_t lock;		/**< spinlock */
   uword flags;			/**< flags */
   u32 first_index;		/**< pool index of first chunk in list */
 } clib_valloc_main_t;
 
-#define CLIB_VALLOC_INITIALIZED	(1<<0) /**< object has been initialized */
+#define CLIB_VALLOC_INITIALIZED (1 << 0) /**< object has been initialized */
 
 /* doxygen tags in valloc.c */
-void clib_valloc_init (clib_valloc_main_t * vam,
-		       clib_valloc_chunk_t * template, int need_lock);
-void
-clib_valloc_add_chunk (clib_valloc_main_t * vam,
-		       clib_valloc_chunk_t * template);
+void clib_valloc_init (clib_valloc_main_t *vam, clib_valloc_chunk_t *template,
+		       int need_lock);
+void clib_valloc_add_chunk (clib_valloc_main_t *vam,
+			    clib_valloc_chunk_t *template);
 
 format_function_t format_valloc;
 
-uword clib_valloc_free (clib_valloc_main_t * vam, uword baseva);
-uword clib_valloc_alloc (clib_valloc_main_t * vam, uword size,
+uword clib_valloc_free (clib_valloc_main_t *vam, uword baseva);
+uword clib_valloc_alloc (clib_valloc_main_t *vam, uword size,
 			 int os_out_of_memory_on_failure);
 
 #endif /* included_valloc_h */

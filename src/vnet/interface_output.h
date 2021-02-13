@@ -44,9 +44,8 @@
 #include <vnet/gso/hdr_offset_parser.h>
 
 static_always_inline void
-vnet_calc_ip4_checksums (vlib_main_t * vm, vlib_buffer_t * b,
-			 ip4_header_t * ip4, tcp_header_t * th,
-			 udp_header_t * uh)
+vnet_calc_ip4_checksums (vlib_main_t *vm, vlib_buffer_t *b, ip4_header_t *ip4,
+			 tcp_header_t *th, udp_header_t *uh)
 {
   if (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM)
     ip4->checksum = ip4_header_checksum (ip4);
@@ -63,9 +62,8 @@ vnet_calc_ip4_checksums (vlib_main_t * vm, vlib_buffer_t * b,
 }
 
 static_always_inline void
-vnet_calc_ip6_checksums (vlib_main_t * vm, vlib_buffer_t * b,
-			 ip6_header_t * ip6, tcp_header_t * th,
-			 udp_header_t * uh)
+vnet_calc_ip6_checksums (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip6,
+			 tcp_header_t *th, udp_header_t *uh)
 {
   int bogus;
   if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
@@ -81,8 +79,8 @@ vnet_calc_ip6_checksums (vlib_main_t * vm, vlib_buffer_t * b,
 }
 
 static_always_inline void
-vnet_calc_checksums_inline (vlib_main_t * vm, vlib_buffer_t * b,
-			    int is_ip4, int is_ip6)
+vnet_calc_checksums_inline (vlib_main_t *vm, vlib_buffer_t *b, int is_ip4,
+			    int is_ip6)
 {
   ip4_header_t *ip4;
   ip6_header_t *ip6;

@@ -19,7 +19,7 @@
 #include <vlibmemory/api.h>
 #include <vppinfra/error.h>
 
-uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
+uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
 
 /* Declare message IDs */
 #include <http_static/http_static.api_enum.h>
@@ -38,7 +38,7 @@ http_static_test_main_t http_static_test_main;
 #include <vlibapi/vat_helper_macros.h>
 
 static int
-api_http_static_enable (vat_main_t * vam)
+api_http_static_enable (vat_main_t *vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_http_static_enable_t *mp;
@@ -106,8 +106,6 @@ api_http_static_enable (vat_main_t * vam)
 
   if (uri == 0)
     uri = format (0, "tcp://0.0.0.0/80%c", 0);
-
-
 
   /* Construct the API message */
   M (HTTP_STATIC_ENABLE, mp);

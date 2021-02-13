@@ -74,9 +74,9 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 lock;			// for exclusive access to the struct
 
-  u32 single_rate;		// 1 = single rate policer, 0 = two rate policer
-  u32 color_aware;		// for hierarchical policing
-  u32 scale;			// power-of-2 shift amount for lower rates
+  u32 single_rate; // 1 = single rate policer, 0 = two rate policer
+  u32 color_aware; // for hierarchical policing
+  u32 scale;	   // power-of-2 shift amount for lower rates
   qos_action_type_en action[3];
   ip_dscp_t mark_dscp[3];
   u8 pad[2];
@@ -85,16 +85,16 @@ typedef struct
   // and MOD if they are modified as part of the update operation.
   // 1 token = 1 byte.
 
-  u32 cir_tokens_per_period;	// # of tokens for each period
-  u32 pir_tokens_per_period;	// 2R
+  u32 cir_tokens_per_period; // # of tokens for each period
+  u32 pir_tokens_per_period; // 2R
 
   u32 current_limit;
-  u32 current_bucket;		// MOD
+  u32 current_bucket; // MOD
   u32 extended_limit;
-  u32 extended_bucket;		// MOD
+  u32 extended_bucket; // MOD
 
-  u64 last_update_time;		// MOD
-  u32 thread_index;		// Tie policer to a thread, rather than lock
+  u64 last_update_time; // MOD
+  u32 thread_index;	// Tie policer to a thread, rather than lock
   u32 pad32;
 
 } policer_t;
@@ -151,15 +151,15 @@ vnet_police_packet (policer_t *policer, u32 packet_length,
 
       // Determine color
 
-      if ((!policer->color_aware || (packet_color == POLICE_CONFORM))
-	  && (current_tokens >= packet_length))
+      if ((!policer->color_aware || (packet_color == POLICE_CONFORM)) &&
+	  (current_tokens >= packet_length))
 	{
 	  policer->current_bucket = current_tokens - packet_length;
 	  policer->extended_bucket = extended_tokens - packet_length;
 	  result = POLICE_CONFORM;
 	}
-      else if ((!policer->color_aware || (packet_color != POLICE_VIOLATE))
-	       && (extended_tokens >= packet_length))
+      else if ((!policer->color_aware || (packet_color != POLICE_VIOLATE)) &&
+	       (extended_tokens >= packet_length))
 	{
 	  policer->current_bucket = current_tokens;
 	  policer->extended_bucket = extended_tokens - packet_length;
@@ -171,7 +171,6 @@ vnet_police_packet (policer_t *policer, u32 packet_length,
 	  policer->extended_bucket = extended_tokens;
 	  result = POLICE_VIOLATE;
 	}
-
     }
   else
     {
@@ -193,15 +192,15 @@ vnet_police_packet (policer_t *policer, u32 packet_length,
 
       // Determine color
 
-      if ((policer->color_aware && (packet_color == POLICE_VIOLATE))
-	  || (extended_tokens < packet_length))
+      if ((policer->color_aware && (packet_color == POLICE_VIOLATE)) ||
+	  (extended_tokens < packet_length))
 	{
 	  policer->current_bucket = current_tokens;
 	  policer->extended_bucket = extended_tokens;
 	  result = POLICE_VIOLATE;
 	}
-      else if ((policer->color_aware && (packet_color == POLICE_EXCEED))
-	       || (current_tokens < packet_length))
+      else if ((policer->color_aware && (packet_color == POLICE_EXCEED)) ||
+	       (current_tokens < packet_length))
 	{
 	  policer->current_bucket = current_tokens;
 	  policer->extended_bucket = extended_tokens - packet_length;

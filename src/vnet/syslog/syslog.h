@@ -24,29 +24,29 @@
 #include <vnet/ip/ip4_packet.h>
 
 /* syslog message facilities */
-#define foreach_syslog_facility                 \
-  _(0, KERNEL, "kernel")                        \
-  _(1, USER_LEVEL, "user-level")                \
-  _(2, MAIL_SYSTEM, "mail-system")              \
-  _(3, SYSTEM_DAEMONS, "system-daemons")        \
-  _(4, SEC_AUTH, "security-authorization")      \
-  _(5, SYSLOGD, "syslogd")                      \
-  _(6, LINE_PRINTER, "line-printer")            \
-  _(7, NETWORK_NEWS, "network-news")            \
-  _(8, UUCP, "uucp")                            \
-  _(9, CLOCK, "clock-daemon")                   \
-  _(11, FTP, "ftp-daemon")                      \
-  _(12, NTP, "ntp-subsystem")                   \
-  _(13, LOG_AUDIT, "log-audit")                 \
-  _(14, LOG_ALERT, "log-alert")                 \
-  _(16, LOCAL0, "local0")                       \
-  _(17, LOCAL1, "local1")                       \
-  _(18, LOCAL2, "local2")                       \
-  _(19, LOCAL3, "local3")                       \
-  _(20, LOCAL4, "local4")                       \
-  _(21, LOCAL5, "local5")                       \
-  _(22, LOCAL6, "local6")                       \
-  _(23, LOCAL7, "local7")
+#define foreach_syslog_facility                                               \
+  _ (0, KERNEL, "kernel")                                                     \
+  _ (1, USER_LEVEL, "user-level")                                             \
+  _ (2, MAIL_SYSTEM, "mail-system")                                           \
+  _ (3, SYSTEM_DAEMONS, "system-daemons")                                     \
+  _ (4, SEC_AUTH, "security-authorization")                                   \
+  _ (5, SYSLOGD, "syslogd")                                                   \
+  _ (6, LINE_PRINTER, "line-printer")                                         \
+  _ (7, NETWORK_NEWS, "network-news")                                         \
+  _ (8, UUCP, "uucp")                                                         \
+  _ (9, CLOCK, "clock-daemon")                                                \
+  _ (11, FTP, "ftp-daemon")                                                   \
+  _ (12, NTP, "ntp-subsystem")                                                \
+  _ (13, LOG_AUDIT, "log-audit")                                              \
+  _ (14, LOG_ALERT, "log-alert")                                              \
+  _ (16, LOCAL0, "local0")                                                    \
+  _ (17, LOCAL1, "local1")                                                    \
+  _ (18, LOCAL2, "local2")                                                    \
+  _ (19, LOCAL3, "local3")                                                    \
+  _ (20, LOCAL4, "local4")                                                    \
+  _ (21, LOCAL5, "local5")                                                    \
+  _ (22, LOCAL6, "local6")                                                    \
+  _ (23, LOCAL7, "local7")
 
 typedef enum
 {
@@ -56,15 +56,15 @@ typedef enum
 } syslog_facility_t;
 
 /* syslog message severities */
-#define foreach_syslog_severity        \
-  _(0, EMERGENCY, "emergency")         \
-  _(1, ALERT, "alert")                 \
-  _(2, CRITICAL, "critical")           \
-  _(3, ERROR, "error")                 \
-  _(4, WARNING, "warning")             \
-  _(5, NOTICE, "notice")               \
-  _(6, INFORMATIONAL, "informational") \
-  _(7, DEBUG, "debug")
+#define foreach_syslog_severity                                               \
+  _ (0, EMERGENCY, "emergency")                                               \
+  _ (1, ALERT, "alert")                                                       \
+  _ (2, CRITICAL, "critical")                                                 \
+  _ (3, ERROR, "error")                                                       \
+  _ (4, WARNING, "warning")                                                   \
+  _ (5, NOTICE, "notice")                                                     \
+  _ (6, INFORMATIONAL, "informational")                                       \
+  _ (7, DEBUG, "debug")
 
 typedef enum
 {
@@ -149,31 +149,30 @@ extern syslog_main_t syslog_main;
  * @param app_name application that originated message RFC424 6.2.5. (optional)
  * @param msgid identify the type of message RFC5424 6.2.7. (optional)
  */
-void syslog_msg_init (syslog_msg_t * syslog_msg, syslog_facility_t facility,
-		      syslog_severity_t severity, char *app_name,
-		      char *msgid);
+void syslog_msg_init (syslog_msg_t *syslog_msg, syslog_facility_t facility,
+		      syslog_severity_t severity, char *app_name, char *msgid);
 /**
  * @brief Initialize structured data element
  *
  * @param sd_id structured data element name RFC5424 6.3.2.
  */
-void syslog_msg_sd_init (syslog_msg_t * syslog_msg, char *sd_id);
+void syslog_msg_sd_init (syslog_msg_t *syslog_msg, char *sd_id);
 
 /**
  * @brief Add structured data elemnt parameter name-value pair RFC5424 6.3.3.
  */
-void syslog_msg_add_sd_param (syslog_msg_t * syslog_msg, char *name,
-			      char *fmt, ...);
+void syslog_msg_add_sd_param (syslog_msg_t *syslog_msg, char *name, char *fmt,
+			      ...);
 
 /**
  * @brief Add free-form message RFC5424 6.4.
  */
-void syslog_msg_add_msg (syslog_msg_t * syslog_msg, char *fmt, ...);
+void syslog_msg_add_msg (syslog_msg_t *syslog_msg, char *fmt, ...);
 
 /**
  * @brief Send syslog message
  */
-int syslog_msg_send (syslog_msg_t * syslog_msg);
+int syslog_msg_send (syslog_msg_t *syslog_msg);
 
 /**
  * @brief Set syslog sender configuration
@@ -184,8 +183,8 @@ int syslog_msg_send (syslog_msg_t * syslog_msg);
  * @param vrf_id VRF/FIB table ID
  * @param max_msg_size maximum message length
  */
-vnet_api_error_t set_syslog_sender (ip4_address_t * collector,
-				    u16 collector_port, ip4_address_t * src,
+vnet_api_error_t set_syslog_sender (ip4_address_t *collector,
+				    u16 collector_port, ip4_address_t *src,
 				    u32 vrf_id, u32 max_msg_size);
 
 /**

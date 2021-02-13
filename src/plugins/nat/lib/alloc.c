@@ -21,7 +21,7 @@
 #include <nat/lib/alloc.h>
 
 static_always_inline void
-nat_ip4_addr_increment (ip4_address_t * addr)
+nat_ip4_addr_increment (ip4_address_t *addr)
 {
   u32 v;
   v = clib_net_to_host_u32 (addr->as_u32) + 1;
@@ -29,8 +29,7 @@ nat_ip4_addr_increment (ip4_address_t * addr)
 }
 
 int
-nat_add_del_ip4_pool_addr (nat_ip4_pool_t * pool, ip4_address_t addr,
-			   u8 is_add)
+nat_add_del_ip4_pool_addr (nat_ip4_pool_t *pool, ip4_address_t addr, u8 is_add)
 {
   int i;
   nat_ip4_pool_addr_t *a = 0;
@@ -51,10 +50,11 @@ nat_add_del_ip4_pool_addr (nat_ip4_pool_t * pool, ip4_address_t addr,
 	return NAT_ERROR_VALUE_EXIST;
       vec_add2 (pool->pool_addr, a, 1);
       a->addr = addr;
-#define _(N, i, n, s) \
-      clib_bitmap_alloc (a->busy_##n##_port_bitmap, 65535); \
-      a->busy_##n##_ports = 0; \
-      vec_validate_init_empty (a->busy_##n##_ports_per_thread, tm->n_vlib_mains - 1, 0);
+#define _(N, i, n, s)                                                         \
+  clib_bitmap_alloc (a->busy_##n##_port_bitmap, 65535);                       \
+  a->busy_##n##_ports = 0;                                                    \
+  vec_validate_init_empty (a->busy_##n##_ports_per_thread,                    \
+			   tm->n_vlib_mains - 1, 0);
       foreach_nat_protocol
 #undef _
     }
@@ -62,9 +62,9 @@ nat_add_del_ip4_pool_addr (nat_ip4_pool_t * pool, ip4_address_t addr,
     {
       if (!a)
 	return NAT_ERROR_NO_SUCH_ENTRY;
-#define _(N, id, n, s) \
-      clib_bitmap_free (a->busy_##n##_port_bitmap); \
-      vec_free (a->busy_##n##_ports_per_thread);
+#define _(N, id, n, s)                                                        \
+  clib_bitmap_free (a->busy_##n##_port_bitmap);                               \
+  vec_free (a->busy_##n##_ports_per_thread);
       foreach_nat_protocol
 #undef _
 	vec_del1 (pool->pool_addr, i);
@@ -73,9 +73,8 @@ nat_add_del_ip4_pool_addr (nat_ip4_pool_t * pool, ip4_address_t addr,
 }
 
 int
-nat_add_del_ip4_pool_addrs (nat_ip4_pool_t * pool,
-			    ip4_address_t addr, u32 count, u8 is_add,
-			    void *opaque)
+nat_add_del_ip4_pool_addrs (nat_ip4_pool_t *pool, ip4_address_t addr,
+			    u32 count, u8 is_add, void *opaque)
 {
   int i, rv;
 
@@ -102,20 +101,17 @@ nat_add_del_ip4_pool_addrs (nat_ip4_pool_t * pool,
 }
 
 static_always_inline u16
-nat_random_port (u32 * random_seed, u16 min, u16 max)
+nat_random_port (u32 *random_seed, u16 min, u16 max)
 {
-  return min + random_u32 (random_seed) /
-    (random_u32_max () / (max - min + 1) + 1);
+  return min +
+	 random_u32 (random_seed) / (random_u32_max () / (max - min + 1) + 1);
 }
 
 int
-nat_alloc_ip4_addr_and_port_cb_default (nat_ip4_pool_t * pool,
-					u32 fib_index,
-					u32 thread_index,
-					u32 nat_thread_index,
-					u16 port_per_thread,
-					u16 protocol,
-					nat_ip4_addr_port_t * out)
+nat_alloc_ip4_addr_and_port_cb_default (nat_ip4_pool_t *pool, u32 fib_index,
+					u32 thread_index, u32 nat_thread_index,
+					u16 port_per_thread, u16 protocol,
+					nat_ip4_addr_port_t *out)
 {
   nat_ip4_pool_addr_t *a, *ga = 0;
   u32 i;
@@ -126,91 +122,86 @@ nat_alloc_ip4_addr_and_port_cb_default (nat_ip4_pool_t * pool,
       a = pool->pool_addr + i;
       switch (protocol)
 	{
-#define _(N, j, n, s) \
-        case NAT_PROTOCOL_##N: \
-          if (a->busy_##n##_ports_per_thread[thread_index] < port_per_thread) \
-            { \
-              if (a->fib_index == fib_index) \
-                { \
-                  while (1) \
-                    { \
-                      portnum = (port_per_thread * \
-                        nat_thread_index) + \
-                        nat_random_port(&pool->random_seed, 1, port_per_thread) + 1024; \
-                      if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
-                        continue; \
-                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
-                      a->busy_##n##_ports_per_thread[thread_index]++; \
-                      a->busy_##n##_ports++; \
-                      out->addr = a->addr; \
-                      out->port = clib_host_to_net_u16(portnum); \
-                      return 0; \
-                    } \
-                } \
-              else if (a->fib_index == ~0) \
-                { \
-                  ga = a; \
-                } \
-            } \
-          break;
+#define _(N, j, n, s)                                                         \
+  case NAT_PROTOCOL_##N:                                                      \
+    if (a->busy_##n##_ports_per_thread[thread_index] < port_per_thread)       \
+      {                                                                       \
+	if (a->fib_index == fib_index)                                        \
+	  {                                                                   \
+	    while (1)                                                         \
+	      {                                                               \
+		portnum =                                                     \
+		  (port_per_thread * nat_thread_index) +                      \
+		  nat_random_port (&pool->random_seed, 1, port_per_thread) +  \
+		  1024;                                                       \
+		if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap,      \
+					      portnum))                       \
+		  continue;                                                   \
+		clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, \
+					  1);                                 \
+		a->busy_##n##_ports_per_thread[thread_index]++;               \
+		a->busy_##n##_ports++;                                        \
+		out->addr = a->addr;                                          \
+		out->port = clib_host_to_net_u16 (portnum);                   \
+		return 0;                                                     \
+	      }                                                               \
+	  }                                                                   \
+	else if (a->fib_index == ~0)                                          \
+	  {                                                                   \
+	    ga = a;                                                           \
+	  }                                                                   \
+      }                                                                       \
+    break;
 	  foreach_nat_protocol
 #undef _
-	default:
-	  return NAT_ERROR_UNKNOWN_PROTOCOL;
+	    default : return NAT_ERROR_UNKNOWN_PROTOCOL;
 	}
-
     }
   if (ga)
     {
       a = ga;
       switch (protocol)
 	{
-#define _(N, j, n, s) \
-        case NAT_PROTOCOL_##N: \
-          while (1) \
-            { \
-              portnum = (port_per_thread * \
-                nat_thread_index) + \
-                nat_random_port(&pool->random_seed, 1, port_per_thread) + 1024; \
-              if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
-                continue; \
-              clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
-              a->busy_##n##_ports_per_thread[thread_index]++; \
-              a->busy_##n##_ports++; \
-              out->addr = a->addr; \
-              out->port = clib_host_to_net_u16(portnum); \
-              return 0; \
-            }
+#define _(N, j, n, s)                                                         \
+  case NAT_PROTOCOL_##N:                                                      \
+    while (1)                                                                 \
+      {                                                                       \
+	portnum = (port_per_thread * nat_thread_index) +                      \
+		  nat_random_port (&pool->random_seed, 1, port_per_thread) +  \
+		  1024;                                                       \
+	if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum))    \
+	  continue;                                                           \
+	clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1);     \
+	a->busy_##n##_ports_per_thread[thread_index]++;                       \
+	a->busy_##n##_ports++;                                                \
+	out->addr = a->addr;                                                  \
+	out->port = clib_host_to_net_u16 (portnum);                           \
+	return 0;                                                             \
+      }
 	  break;
 	  foreach_nat_protocol
 #undef _
-	default:
-	  return NAT_ERROR_UNKNOWN_PROTOCOL;
+	    default : return NAT_ERROR_UNKNOWN_PROTOCOL;
 	}
     }
   return NAT_ERROR_OUT_OF_TRANSLATIONS;
 }
 
 int
-nat_alloc_ip4_addr_and_port (nat_ip4_pool_t * pool,
-			     u32 fib_index,
-			     u32 thread_index,
-			     u32 nat_thread_index,
-			     u16 port_per_thread,
-			     u16 protocol, nat_ip4_addr_port_t * out)
+nat_alloc_ip4_addr_and_port (nat_ip4_pool_t *pool, u32 fib_index,
+			     u32 thread_index, u32 nat_thread_index,
+			     u16 port_per_thread, u16 protocol,
+			     nat_ip4_addr_port_t *out)
 {
-  return pool->alloc_addr_and_port_cb (pool,
-				       fib_index,
-				       thread_index,
-				       nat_thread_index,
-				       port_per_thread, protocol, out);
+  return pool->alloc_addr_and_port_cb (pool, fib_index, thread_index,
+				       nat_thread_index, port_per_thread,
+				       protocol, out);
 }
 
 // TODO: consider using standard u16 port and ip4_address_t as input ?
 int
-nat_free_ip4_addr_and_port (nat_ip4_pool_t * pool,
-			    u32 thread_index,
-			    u16 protocol, nat_ip4_addr_port_t * addr_port)
+nat_free_ip4_addr_and_port (nat_ip4_pool_t *pool, u32 thread_index,
+			    u16 protocol, nat_ip4_addr_port_t *addr_port)
 {
   nat_ip4_pool_addr_t *a = 0;
   u32 i;
@@ -232,19 +223,16 @@ nat_free_ip4_addr_and_port (nat_ip4_pool_t * pool,
 
   switch (protocol)
     {
-#define _(N, i, n, s) \
-    case NAT_PROTOCOL_##N: \
-      ASSERT (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, \
-        port) == 1); \
-      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, \
-        port, 0); \
-      a->busy_##n##_ports--; \
-      a->busy_##n##_ports_per_thread[thread_index]--; \
-      break;
+#define _(N, i, n, s)                                                         \
+  case NAT_PROTOCOL_##N:                                                      \
+    ASSERT (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, port) == 1); \
+    clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, port, 0);            \
+    a->busy_##n##_ports--;                                                    \
+    a->busy_##n##_ports_per_thread[thread_index]--;                           \
+    break;
       foreach_nat_protocol
 #undef _
-    default:
-      return NAT_ERROR_UNKNOWN_PROTOCOL;
+	default : return NAT_ERROR_UNKNOWN_PROTOCOL;
     }
   return 0;
 }

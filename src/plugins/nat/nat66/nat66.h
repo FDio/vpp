@@ -48,10 +48,10 @@ typedef struct
   u32 sw_if_index;
   u8 flags;
 } nat66_interface_t;
-#define NAT66_INTERFACE_FLAG_IS_INSIDE 1
+#define NAT66_INTERFACE_FLAG_IS_INSIDE	1
 #define NAT66_INTERFACE_FLAG_IS_OUTSIDE 2
-#define nat66_interface_is_inside(i) i->flags & NAT66_INTERFACE_FLAG_IS_INSIDE
-#define nat66_interface_is_outside(i) i->flags & NAT66_INTERFACE_FLAG_IS_OUTSIDE
+#define nat66_interface_is_inside(i)	i->flags &NAT66_INTERFACE_FLAG_IS_INSIDE
+#define nat66_interface_is_outside(i)	i->flags &NAT66_INTERFACE_FLAG_IS_OUTSIDE
 
 typedef struct
 {
@@ -76,44 +76,42 @@ typedef struct
   u8 log_level;
 
   vlib_simple_counter_main_t in2out_packets;
-  vlib_simple_counter_main_t out2in_packets;;
+  vlib_simple_counter_main_t out2in_packets;
+  ;
 } nat66_main_t;
 
-#define nat66_elog(_level, _str)                         \
-do                                                       \
-  {                                                      \
-    nat66_main_t *nm = &nat66_main;                      \
-    if (PREDICT_FALSE (nm->log_level >= _level))         \
-      {                                                  \
-        ELOG_TYPE_DECLARE (e) =                          \
-          {                                              \
-            .format = "nat66-msg " _str,                 \
-            .format_args = "",                           \
-          };                                             \
-        ELOG_DATA (&vlib_global_main.elog_main, e);      \
-      }                                                  \
-  } while (0);
+#define nat66_elog(_level, _str)                                              \
+  do                                                                          \
+    {                                                                         \
+      nat66_main_t *nm = &nat66_main;                                         \
+      if (PREDICT_FALSE (nm->log_level >= _level))                            \
+	{                                                                     \
+	  ELOG_TYPE_DECLARE (e) = {                                           \
+	    .format = "nat66-msg " _str,                                      \
+	    .format_args = "",                                                \
+	  };                                                                  \
+	  ELOG_DATA (&vlib_global_main.elog_main, e);                         \
+	}                                                                     \
+    }                                                                         \
+  while (0);
 
-#define nat66_elog_warn(nat_elog_str) \
-  nat66_elog(0x02, "[warning] " nat_elog_str)
-
+#define nat66_elog_warn(nat_elog_str)                                         \
+  nat66_elog (0x02, "[warning] " nat_elog_str)
 
 extern nat66_main_t nat66_main;
 extern vlib_node_registration_t nat66_in2out_node;
 extern vlib_node_registration_t nat66_out2in_node;
 
-typedef int (*nat66_interface_walk_fn_t) (nat66_interface_t * i, void *ctx);
+typedef int (*nat66_interface_walk_fn_t) (nat66_interface_t *i, void *ctx);
 void nat66_interfaces_walk (nat66_interface_walk_fn_t fn, void *ctx);
 int nat66_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add);
-typedef int (*nat66_static_mapping_walk_fn_t) (nat66_static_mapping_t * sm,
+typedef int (*nat66_static_mapping_walk_fn_t) (nat66_static_mapping_t *sm,
 					       void *ctx);
-void nat66_static_mappings_walk (nat66_static_mapping_walk_fn_t fn,
-				 void *ctx);
-nat66_static_mapping_t *nat66_static_mapping_get (ip6_address_t * addr,
+void nat66_static_mappings_walk (nat66_static_mapping_walk_fn_t fn, void *ctx);
+nat66_static_mapping_t *nat66_static_mapping_get (ip6_address_t *addr,
 						  u32 fib_index, u8 is_local);
-int nat66_static_mapping_add_del (ip6_address_t * l_addr,
-				  ip6_address_t * e_addr, u32 vrf_id,
-				  u8 is_add);
+int nat66_static_mapping_add_del (ip6_address_t *l_addr, ip6_address_t *e_addr,
+				  u32 vrf_id, u8 is_add);
 
 #endif /* __included_nat66_h__ */
 

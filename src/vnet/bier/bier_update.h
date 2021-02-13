@@ -20,5 +20,4 @@
 #include <vnet/bier/bier_types.h>
 #include <vnet/ip/ip.h>
 
-
 #endif

@@ -51,7 +51,6 @@
 
 #include <pthread.h>
 
-
 /* By default turn off node/error event logging.
    Override with -DVLIB_ELOG_MAIN_LOOP */
 #ifndef VLIB_ELOG_MAIN_LOOP
@@ -98,9 +97,9 @@ typedef struct
 
 struct vlib_node_runtime_perf_callback_data_t;
 
-typedef void (*vlib_node_runtime_perf_callback_fp_t)
-  (struct vlib_node_runtime_perf_callback_data_t * data,
-   vlib_node_runtime_perf_callback_args_t * args);
+typedef void (*vlib_node_runtime_perf_callback_fp_t) (
+  struct vlib_node_runtime_perf_callback_data_t *data,
+  vlib_node_runtime_perf_callback_args_t *args);
 
 typedef struct vlib_node_runtime_perf_callback_data_t
 {
@@ -160,7 +159,7 @@ typedef struct vlib_main_t
   /* Set e.g. in the SIGTERM signal handler, checked in a safe place... */
   volatile u32 main_loop_exit_now;
   clib_longjmp_t main_loop_exit;
-#define VLIB_MAIN_LOOP_EXIT_NONE 0
+#define VLIB_MAIN_LOOP_EXIT_NONE  0
 #define VLIB_MAIN_LOOP_EXIT_PANIC 1
   /* Exit via CLI. */
 #define VLIB_MAIN_LOOP_EXIT_CLI 2
@@ -213,9 +212,9 @@ typedef struct vlib_main_t
 
   /* Punt packets to underlying operating system for when fast switching
      code does not know what to do. */
-  void (*os_punt_frame) (struct vlib_main_t * vm,
-			 struct vlib_node_runtime_t * node,
-			 vlib_frame_t * frame);
+  void (*os_punt_frame) (struct vlib_main_t *vm,
+			 struct vlib_node_runtime_t *node,
+			 vlib_frame_t *frame);
 
   /* Stream index to use for distribution when MC is enabled. */
   u32 mc_stream_index;
@@ -268,10 +267,10 @@ typedef struct vlib_main_t
   u8 **argv;
 
   /* Top of (worker) dispatch loop callback */
-  void (**volatile worker_thread_main_loop_callbacks)
-    (struct vlib_main_t *, u64 t);
-  void (**volatile worker_thread_main_loop_callback_tmp)
-    (struct vlib_main_t *, u64 t);
+  void (**volatile worker_thread_main_loop_callbacks) (struct vlib_main_t *,
+						       u64 t);
+  void (**volatile worker_thread_main_loop_callback_tmp) (struct vlib_main_t *,
+							  u64 t);
   clib_spinlock_t worker_thread_main_loop_callback_lock;
 
   /* debugging */
@@ -304,10 +303,10 @@ typedef struct vlib_main_t
   f64 barrier_no_close_before;
 
   /* Barrier counter callback */
-  void (**volatile barrier_perf_callbacks)
-    (struct vlib_main_t *, u64 t, int leave);
-  void (**volatile barrier_perf_callbacks_tmp)
-    (struct vlib_main_t *, u64 t, int leave);
+  void (**volatile barrier_perf_callbacks) (struct vlib_main_t *, u64 t,
+					    int leave);
+  void (**volatile barrier_perf_callbacks_tmp) (struct vlib_main_t *, u64 t,
+						int leave);
 
   /* Need to check the frame queues */
   volatile uword check_frame_queues;
@@ -330,10 +329,10 @@ typedef struct vlib_main_t
 /* Global main structure. */
 extern vlib_main_t vlib_global_main;
 
-void vlib_worker_loop (vlib_main_t * vm);
+void vlib_worker_loop (vlib_main_t *vm);
 
 always_inline f64
-vlib_time_now (vlib_main_t * vm)
+vlib_time_now (vlib_main_t *vm)
 {
 #if CLIB_DEBUG > 0
   extern __thread uword __os_thread_index;
@@ -346,14 +345,14 @@ vlib_time_now (vlib_main_t * vm)
 }
 
 always_inline f64
-vlib_time_now_ticks (vlib_main_t * vm, u64 n)
+vlib_time_now_ticks (vlib_main_t *vm, u64 n)
 {
   return clib_time_now_internal (&vm->clib_time, n);
 }
 
 /* Busy wait for specified time. */
 always_inline void
-vlib_time_wait (vlib_main_t * vm, f64 wait)
+vlib_time_wait (vlib_main_t *vm, f64 wait)
 {
   f64 t = vlib_time_now (vm);
   f64 limit = t + wait;
@@ -362,47 +361,52 @@ vlib_time_wait (vlib_main_t * vm, f64 wait)
 }
 
 /* Time a piece of code. */
-#define vlib_time_code(vm,body)			\
-do {						\
-    f64 _t[2];					\
-    _t[0] = vlib_time_now (vm);			\
-    do { body; } while (0);			\
-    _t[1] = vlib_time_now (vm);			\
-    clib_warning ("%.7e", _t[1] - _t[0]);	\
-} while (0)
+#define vlib_time_code(vm, body)                                              \
+  do                                                                          \
+    {                                                                         \
+      f64 _t[2];                                                              \
+      _t[0] = vlib_time_now (vm);                                             \
+      do                                                                      \
+	{                                                                     \
+	  body;                                                               \
+	}                                                                     \
+      while (0);                                                              \
+      _t[1] = vlib_time_now (vm);                                             \
+      clib_warning ("%.7e", _t[1] - _t[0]);                                   \
+    }                                                                         \
+  while (0)
 
-#define vlib_wait_with_timeout(vm,suspend_time,timeout_time,test)	\
-({									\
-    uword __vlib_wait_with_timeout = 0;					\
-    f64 __vlib_wait_time = 0;						\
-    while (! (__vlib_wait_with_timeout = (test))			\
-	   && __vlib_wait_time < (timeout_time))			\
-      {									\
-	vlib_process_suspend (vm, suspend_time);			\
-	__vlib_wait_time += suspend_time;				\
-      }									\
-    __vlib_wait_with_timeout;						\
-})
+#define vlib_wait_with_timeout(vm, suspend_time, timeout_time, test)          \
+  ({                                                                          \
+    uword __vlib_wait_with_timeout = 0;                                       \
+    f64 __vlib_wait_time = 0;                                                 \
+    while (!(__vlib_wait_with_timeout = (test)) &&                            \
+	   __vlib_wait_time < (timeout_time))                                 \
+      {                                                                       \
+	vlib_process_suspend (vm, suspend_time);                              \
+	__vlib_wait_time += suspend_time;                                     \
+      }                                                                       \
+    __vlib_wait_with_timeout;                                                 \
+  })
 
 always_inline void
-vlib_panic_with_error (vlib_main_t * vm, clib_error_t * error)
+vlib_panic_with_error (vlib_main_t *vm, clib_error_t *error)
 {
   vm->main_loop_error = error;
   clib_longjmp (&vm->main_loop_exit, VLIB_MAIN_LOOP_EXIT_PANIC);
 }
 
-#define vlib_panic_with_msg(vm,args...) \
+#define vlib_panic_with_msg(vm, args...)                                      \
   vlib_panic_with_error (vm, clib_error_return (0, args))
 
 always_inline void
-vlib_panic (vlib_main_t * vm)
+vlib_panic (vlib_main_t *vm)
 {
   vlib_panic_with_error (vm, 0);
 }
 
-
 always_inline f64
-vlib_internal_node_vector_rate (vlib_main_t * vm)
+vlib_internal_node_vector_rate (vlib_main_t *vm)
 {
   u64 vectors;
   u64 calls;
@@ -418,14 +422,14 @@ vlib_internal_node_vector_rate (vlib_main_t * vm)
 }
 
 always_inline void
-vlib_clear_internal_node_vector_rate (vlib_main_t * vm)
+vlib_clear_internal_node_vector_rate (vlib_main_t *vm)
 {
   vm->internal_node_calls_last_clear = vm->internal_node_calls;
   vm->internal_node_vectors_last_clear = vm->internal_node_vectors;
 }
 
 always_inline void
-vlib_increment_main_loop_counter (vlib_main_t * vm)
+vlib_increment_main_loop_counter (vlib_main_t *vm)
 {
   vm->main_loop_count++;
   vm->internal_node_last_vectors_per_main_loop = 0;
@@ -435,14 +439,14 @@ vlib_increment_main_loop_counter (vlib_main_t * vm)
 }
 
 always_inline u32
-vlib_last_vectors_per_main_loop (vlib_main_t * vm)
+vlib_last_vectors_per_main_loop (vlib_main_t *vm)
 {
   return vm->internal_node_last_vectors_per_main_loop;
 }
 
 always_inline void
-vlib_node_runtime_perf_counter (vlib_main_t * vm, vlib_node_runtime_t * node,
-				vlib_frame_t * frame, uword n, u64 t,
+vlib_node_runtime_perf_counter (vlib_main_t *vm, vlib_node_runtime_t *node,
+				vlib_frame_t *frame, uword n, u64 t,
 				vlib_node_runtime_perf_call_type_t call_type)
 {
   vlib_node_runtime_perf_callback_data_t *v =
@@ -461,14 +465,14 @@ vlib_node_runtime_perf_counter (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 }
 
-always_inline void vlib_set_queue_signal_callback
-  (vlib_main_t * vm, void (*fp) (vlib_main_t *))
+always_inline void
+vlib_set_queue_signal_callback (vlib_main_t *vm, void (*fp) (vlib_main_t *))
 {
   vm->queue_signal_callback = fp;
 }
 
 /* Main routine. */
-int vlib_main (vlib_main_t * vm, unformat_input_t * input);
+int vlib_main (vlib_main_t *vm, unformat_input_t *input);
 
 /* Thread stacks, for os_get_thread_index */
 extern u8 **vlib_thread_stacks;
@@ -476,7 +480,7 @@ extern u8 **vlib_thread_stacks;
 /* Number of thread stacks that the application needs */
 u32 vlib_app_num_thread_stacks_needed (void) __attribute__ ((weak));
 
-extern void vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n);
+extern void vlib_node_sync_stats (vlib_main_t *vm, vlib_node_t *n);
 
 #define VLIB_PCAP_MAJOR_VERSION 1
 #define VLIB_PCAP_MINOR_VERSION 0

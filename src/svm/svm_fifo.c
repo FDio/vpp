@@ -29,8 +29,8 @@ CLIB_MARCH_FN (svm_fifo_copy_to_chunk, void, svm_fifo_t *f,
 {
   u32 n_chunk;
 
-  ASSERT (f_pos_geq (tail_idx, c->start_byte)
-	  && f_pos_lt (tail_idx, c->start_byte + c->length));
+  ASSERT (f_pos_geq (tail_idx, c->start_byte) &&
+	  f_pos_lt (tail_idx, c->start_byte + c->length));
 
   tail_idx -= c->start_byte;
   n_chunk = c->length - tail_idx;
@@ -60,8 +60,8 @@ CLIB_MARCH_FN (svm_fifo_copy_from_chunk, void, svm_fifo_t *f,
 {
   u32 n_chunk;
 
-  ASSERT (f_pos_geq (head_idx, c->start_byte)
-	  && f_pos_lt (head_idx, c->start_byte + c->length));
+  ASSERT (f_pos_geq (head_idx, c->start_byte) &&
+	  f_pos_lt (head_idx, c->start_byte + c->length));
 
   head_idx -= c->start_byte;
   n_chunk = c->length - head_idx;
@@ -93,32 +93,32 @@ static inline void
 svm_fifo_copy_to_chunk (svm_fifo_t *f, svm_fifo_chunk_t *c, u32 tail_idx,
 			const u8 *src, u32 len, fs_sptr_t *last)
 {
-  CLIB_MARCH_FN_SELECT (svm_fifo_copy_to_chunk) (f, c, tail_idx, src, len,
-						 last);
+  CLIB_MARCH_FN_SELECT (svm_fifo_copy_to_chunk)
+  (f, c, tail_idx, src, len, last);
 }
 
 static inline void
 svm_fifo_copy_from_chunk (svm_fifo_t *f, svm_fifo_chunk_t *c, u32 head_idx,
 			  u8 *dst, u32 len, fs_sptr_t *last)
 {
-  CLIB_MARCH_FN_SELECT (svm_fifo_copy_from_chunk) (f, c, head_idx, dst, len,
-						   last);
+  CLIB_MARCH_FN_SELECT (svm_fifo_copy_from_chunk)
+  (f, c, head_idx, dst, len, last);
 }
 
 static inline u32
-ooo_segment_end_pos (ooo_segment_t * s)
+ooo_segment_end_pos (ooo_segment_t *s)
 {
   return (s->start + s->length);
 }
 
 void
-svm_fifo_free_ooo_data (svm_fifo_t * f)
+svm_fifo_free_ooo_data (svm_fifo_t *f)
 {
   pool_free (f->ooo_segments);
 }
 
 static inline ooo_segment_t *
-ooo_segment_prev (svm_fifo_t * f, ooo_segment_t * s)
+ooo_segment_prev (svm_fifo_t *f, ooo_segment_t *s)
 {
   if (s->prev == OOO_SEGMENT_INVALID_INDEX)
     return 0;
@@ -126,7 +126,7 @@ ooo_segment_prev (svm_fifo_t * f, ooo_segment_t * s)
 }
 
 static inline ooo_segment_t *
-ooo_segment_next (svm_fifo_t * f, ooo_segment_t * s)
+ooo_segment_next (svm_fifo_t *f, ooo_segment_t *s)
 {
   if (s->next == OOO_SEGMENT_INVALID_INDEX)
     return 0;
@@ -134,7 +134,7 @@ ooo_segment_next (svm_fifo_t * f, ooo_segment_t * s)
 }
 
 static inline ooo_segment_t *
-ooo_segment_alloc (svm_fifo_t * f, u32 start, u32 length)
+ooo_segment_alloc (svm_fifo_t *f, u32 start, u32 length)
 {
   ooo_segment_t *s;
 
@@ -148,7 +148,7 @@ ooo_segment_alloc (svm_fifo_t * f, u32 start, u32 length)
 }
 
 static inline void
-ooo_segment_free (svm_fifo_t * f, u32 index)
+ooo_segment_free (svm_fifo_t *f, u32 index)
 {
   ooo_segment_t *cur, *prev = 0, *next = 0;
   cur = pool_elt_at_index (f->ooo_segments, index);
@@ -177,7 +177,7 @@ ooo_segment_free (svm_fifo_t * f, u32 index)
  * adjacent segments and removing overlapping ones.
  */
 static void
-ooo_segment_add (svm_fifo_t * f, u32 offset, u32 head, u32 tail, u32 length)
+ooo_segment_add (svm_fifo_t *f, u32 offset, u32 head, u32 tail, u32 length)
 {
   ooo_segment_t *s, *new_s, *prev, *next, *it;
   u32 new_index, s_end_pos, s_index;
@@ -200,8 +200,8 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 head, u32 tail, u32 length)
 
   /* Find first segment that starts after new segment */
   s = pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
-  while (s->next != OOO_SEGMENT_INVALID_INDEX
-	 && f_pos_lt (s->start, offset_pos))
+  while (s->next != OOO_SEGMENT_INVALID_INDEX &&
+	 f_pos_lt (s->start, offset_pos))
     s = pool_elt_at_index (f->ooo_segments, s->next);
 
   /* If we have a previous and we overlap it, use it as starting point */
@@ -307,7 +307,7 @@ check_tail:
  * advanced. Returns the number of bytes added to tail.
  */
 static int
-ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued, u32 * tail)
+ooo_segment_try_collect (svm_fifo_t *f, u32 n_bytes_enqueued, u32 *tail)
 {
   u32 s_index, bytes = 0;
   ooo_segment_t *s;
@@ -355,7 +355,7 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued, u32 * tail)
 }
 
 __clib_unused static ooo_segment_t *
-ooo_segment_last (svm_fifo_t * f)
+ooo_segment_last (svm_fifo_t *f)
 {
   ooo_segment_t *s;
 
@@ -369,7 +369,7 @@ ooo_segment_last (svm_fifo_t * f)
 }
 
 void
-svm_fifo_init (svm_fifo_t * f, u32 size)
+svm_fifo_init (svm_fifo_t *f, u32 size)
 {
   svm_fifo_chunk_t *c, *prev;
   u32 min_alloc;
@@ -405,7 +405,7 @@ svm_fifo_init (svm_fifo_t * f, u32 size)
 }
 
 void
-svm_fifo_init_ooo_lookup (svm_fifo_t * f, u8 ooo_type)
+svm_fifo_init_ooo_lookup (svm_fifo_t *f, u8 ooo_type)
 {
   if (ooo_type == 0)
     {
@@ -485,7 +485,7 @@ svm_fifo_chunk_alloc (u32 size)
  * @return chunk that includes given position or 0
  */
 static svm_fifo_chunk_t *
-svm_fifo_find_chunk (svm_fifo_t * f, u32 pos)
+svm_fifo_find_chunk (svm_fifo_t *f, u32 pos)
 {
   svm_fifo_chunk_t *c;
 
@@ -497,7 +497,7 @@ svm_fifo_find_chunk (svm_fifo_t * f, u32 pos)
 }
 
 static svm_fifo_chunk_t *
-svm_fifo_find_next_chunk (svm_fifo_t * f, svm_fifo_chunk_t * start, u32 pos)
+svm_fifo_find_next_chunk (svm_fifo_t *f, svm_fifo_chunk_t *start, u32 pos)
 {
   svm_fifo_chunk_t *c;
 
@@ -511,7 +511,7 @@ svm_fifo_find_next_chunk (svm_fifo_t * f, svm_fifo_chunk_t * start, u32 pos)
 }
 
 u32
-svm_fifo_max_read_chunk (svm_fifo_t * f)
+svm_fifo_max_read_chunk (svm_fifo_t *f)
 {
   u32 head, tail, end_chunk;
 
@@ -531,7 +531,7 @@ svm_fifo_max_read_chunk (svm_fifo_t * f)
 }
 
 u32
-svm_fifo_max_write_chunk (svm_fifo_t * f)
+svm_fifo_max_write_chunk (svm_fifo_t *f)
 {
   svm_fifo_chunk_t *tail_chunk;
   u32 head, tail;
@@ -545,7 +545,7 @@ svm_fifo_max_write_chunk (svm_fifo_t * f)
 }
 
 static rb_node_t *
-f_find_node_rbtree (rb_tree_t * rt, u32 pos)
+f_find_node_rbtree (rb_tree_t *rt, u32 pos)
 {
   rb_node_t *cur, *prev;
 
@@ -583,7 +583,7 @@ f_find_node_rbtree (rb_tree_t * rt, u32 pos)
 }
 
 static svm_fifo_chunk_t *
-f_find_chunk_rbtree (rb_tree_t * rt, u32 pos)
+f_find_chunk_rbtree (rb_tree_t *rt, u32 pos)
 {
   svm_fifo_chunk_t *c;
   rb_node_t *n;
@@ -602,7 +602,7 @@ f_find_chunk_rbtree (rb_tree_t * rt, u32 pos)
 }
 
 static void
-f_update_ooo_enq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
+f_update_ooo_enq (svm_fifo_t *f, u32 start_pos, u32 end_pos)
 {
   rb_tree_t *rt = &f->ooo_enq_lookup;
   svm_fifo_chunk_t *c;
@@ -619,8 +619,8 @@ f_update_ooo_enq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
     {
       c = f_tail_cptr (f);
       ASSERT (c->enq_rb_index == RBTREE_TNIL_INDEX);
-      c->enq_rb_index = rb_tree_add_custom (rt, c->start_byte,
-					    pointer_to_uword (c), f_pos_lt);
+      c->enq_rb_index =
+	rb_tree_add_custom (rt, c->start_byte, pointer_to_uword (c), f_pos_lt);
     }
   else
     {
@@ -641,8 +641,8 @@ f_update_ooo_enq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
       if (!c || c->enq_rb_index != RBTREE_TNIL_INDEX)
 	break;
 
-      c->enq_rb_index = rb_tree_add_custom (rt, c->start_byte,
-					    pointer_to_uword (c), f_pos_lt);
+      c->enq_rb_index =
+	rb_tree_add_custom (rt, c->start_byte, pointer_to_uword (c), f_pos_lt);
 
       if (f_chunk_includes_pos (c, start_pos))
 	f->ooo_enq = c;
@@ -651,7 +651,7 @@ f_update_ooo_enq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
 }
 
 static void
-f_update_ooo_deq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
+f_update_ooo_deq (svm_fifo_t *f, u32 start_pos, u32 end_pos)
 {
   rb_tree_t *rt = &f->ooo_deq_lookup;
   rb_node_t *cur;
@@ -668,8 +668,8 @@ f_update_ooo_deq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
     {
       c = f_start_cptr (f);
       ASSERT (c->deq_rb_index == RBTREE_TNIL_INDEX);
-      c->deq_rb_index = rb_tree_add_custom (rt, c->start_byte,
-					    pointer_to_uword (c), f_pos_lt);
+      c->deq_rb_index =
+	rb_tree_add_custom (rt, c->start_byte, pointer_to_uword (c), f_pos_lt);
     }
   else
     {
@@ -690,8 +690,8 @@ f_update_ooo_deq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
       if (!c || c->deq_rb_index != RBTREE_TNIL_INDEX)
 	break;
 
-      c->deq_rb_index = rb_tree_add_custom (rt, c->start_byte,
-					    pointer_to_uword (c), f_pos_lt);
+      c->deq_rb_index =
+	rb_tree_add_custom (rt, c->start_byte, pointer_to_uword (c), f_pos_lt);
 
       if (f_chunk_includes_pos (c, start_pos))
 	f->ooo_deq = c;
@@ -700,8 +700,7 @@ f_update_ooo_deq (svm_fifo_t * f, u32 start_pos, u32 end_pos)
 }
 
 static svm_fifo_chunk_t *
-f_lookup_clear_enq_chunks (svm_fifo_t * f, svm_fifo_chunk_t * start,
-			   u32 end_pos)
+f_lookup_clear_enq_chunks (svm_fifo_t *f, svm_fifo_chunk_t *start, u32 end_pos)
 {
   rb_tree_t *rt = &f->ooo_enq_lookup;
   svm_fifo_chunk_t *c;
@@ -722,8 +721,8 @@ f_lookup_clear_enq_chunks (svm_fifo_t * f, svm_fifo_chunk_t * start,
 
   /* No ooo segments left, so make sure the current chunk
    * is not tracked in the enq rbtree */
-  if (f->ooos_list_head == OOO_SEGMENT_INVALID_INDEX
-      && c && c->enq_rb_index != RBTREE_TNIL_INDEX)
+  if (f->ooos_list_head == OOO_SEGMENT_INVALID_INDEX && c &&
+      c->enq_rb_index != RBTREE_TNIL_INDEX)
     {
       n = rb_node (rt, c->enq_rb_index);
       rb_tree_del_node (rt, n);
@@ -734,8 +733,7 @@ f_lookup_clear_enq_chunks (svm_fifo_t * f, svm_fifo_chunk_t * start,
 }
 
 static svm_fifo_chunk_t *
-f_lookup_clear_deq_chunks (svm_fifo_t * f, svm_fifo_chunk_t * start,
-			   u32 end_pos)
+f_lookup_clear_deq_chunks (svm_fifo_t *f, svm_fifo_chunk_t *start, u32 end_pos)
 {
   rb_tree_t *rt = &f->ooo_deq_lookup;
   svm_fifo_chunk_t *c;
@@ -758,14 +756,14 @@ f_lookup_clear_deq_chunks (svm_fifo_t * f, svm_fifo_chunk_t * start,
 }
 
 void
-svm_fifo_free_chunk_lookup (svm_fifo_t * f)
+svm_fifo_free_chunk_lookup (svm_fifo_t *f)
 {
   rb_tree_free_nodes (&f->ooo_enq_lookup);
   rb_tree_free_nodes (&f->ooo_deq_lookup);
 }
 
 void
-svm_fifo_free (svm_fifo_t * f)
+svm_fifo_free (svm_fifo_t *f)
 {
   ASSERT (f->refcnt > 0);
 
@@ -778,7 +776,7 @@ svm_fifo_free (svm_fifo_t * f)
 }
 
 void
-svm_fifo_overwrite_head (svm_fifo_t * f, u8 * src, u32 len)
+svm_fifo_overwrite_head (svm_fifo_t *f, u8 *src, u32 len)
 {
   u32 n_chunk;
   u32 head, tail, head_idx;
@@ -806,7 +804,7 @@ svm_fifo_overwrite_head (svm_fifo_t * f, u8 * src, u32 len)
 }
 
 static int
-f_try_chunk_alloc (svm_fifo_t * f, u32 head, u32 tail, u32 len)
+f_try_chunk_alloc (svm_fifo_t *f, u32 head, u32 tail, u32 len)
 {
   svm_fifo_chunk_t *c, *cur, *prev;
   u32 alloc_size, free_alloced;
@@ -844,7 +842,7 @@ f_try_chunk_alloc (svm_fifo_t * f, u32 head, u32 tail, u32 len)
 }
 
 int
-svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
+svm_fifo_enqueue (svm_fifo_t *f, u32 len, const u8 *src)
 {
   u32 tail, head, free_count;
   svm_fifo_chunk_t *old_tail_c;
@@ -903,7 +901,7 @@ svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src)
  * Returns -1 if none of the segment was copied due to lack of space
  */
 int
-svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
+svm_fifo_enqueue_with_offset (svm_fifo_t *f, u32 offset, u32 len, u8 *src)
 {
   u32 tail, head, free_count, enq_pos;
   fs_sptr_t last = F_INVALID_CPTR;
@@ -943,7 +941,7 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len, u8 * src)
  * Advance tail
  */
 void
-svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len)
+svm_fifo_enqueue_nocopy (svm_fifo_t *f, u32 len)
 {
   u32 tail;
 
@@ -969,7 +967,7 @@ svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len)
 }
 
 int
-svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
+svm_fifo_enqueue_segments (svm_fifo_t *f, const svm_fifo_seg_t segs[],
 			   u32 n_segs, u8 allow_partial)
 {
   u32 tail, head, free_count, len = 0, i;
@@ -1051,7 +1049,7 @@ svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
 }
 
 always_inline svm_fifo_chunk_t *
-f_unlink_chunks (svm_fifo_t * f, u32 end_pos, u8 maybe_ooo)
+f_unlink_chunks (svm_fifo_t *f, u32 end_pos, u8 maybe_ooo)
 {
   svm_fifo_chunk_t *start, *prev = 0, *c;
   rb_tree_t *rt;
@@ -1102,7 +1100,7 @@ f_unlink_chunks (svm_fifo_t * f, u32 end_pos, u8 maybe_ooo)
 }
 
 int
-svm_fifo_dequeue (svm_fifo_t * f, u32 len, u8 * dst)
+svm_fifo_dequeue (svm_fifo_t *f, u32 len, u8 *dst)
 {
   u32 tail, head, cursize;
 
@@ -1138,7 +1136,7 @@ svm_fifo_dequeue (svm_fifo_t * f, u32 len, u8 * dst)
 }
 
 int
-svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 len, u8 * dst)
+svm_fifo_peek (svm_fifo_t *f, u32 offset, u32 len, u8 *dst)
 {
   u32 tail, head, cursize, head_idx;
   fs_sptr_t last = F_INVALID_CPTR;
@@ -1165,7 +1163,7 @@ svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 len, u8 * dst)
 }
 
 int
-svm_fifo_dequeue_drop (svm_fifo_t * f, u32 len)
+svm_fifo_dequeue_drop (svm_fifo_t *f, u32 len)
 {
   u32 total_drop_bytes, tail, head, cursize;
 
@@ -1204,7 +1202,7 @@ svm_fifo_dequeue_drop (svm_fifo_t * f, u32 len)
  *
  */
 void
-svm_fifo_dequeue_drop_all (svm_fifo_t * f)
+svm_fifo_dequeue_drop_all (svm_fifo_t *f)
 {
   u32 head, tail;
 
@@ -1225,7 +1223,7 @@ svm_fifo_dequeue_drop_all (svm_fifo_t * f)
 }
 
 int
-svm_fifo_fill_chunk_list (svm_fifo_t * f)
+svm_fifo_fill_chunk_list (svm_fifo_t *f)
 {
   u32 head, tail;
 
@@ -1277,8 +1275,8 @@ svm_fifo_provision_chunks (svm_fifo_t *f, svm_fifo_seg_t *fs, u32 n_segs,
 }
 
 int
-svm_fifo_segments (svm_fifo_t * f, u32 offset, svm_fifo_seg_t * fs,
-		   u32 n_segs, u32 max_bytes)
+svm_fifo_segments (svm_fifo_t *f, u32 offset, svm_fifo_seg_t *fs, u32 n_segs,
+		   u32 max_bytes)
 {
   u32 cursize, to_read, head, tail, fs_index = 1;
   u32 n_bytes, head_pos, len, start;
@@ -1332,7 +1330,7 @@ svm_fifo_segments (svm_fifo_t * f, u32 offset, svm_fifo_seg_t * fs,
  * - fifo is not multi chunk
  */
 void
-svm_fifo_clone (svm_fifo_t * df, svm_fifo_t * sf)
+svm_fifo_clone (svm_fifo_t *df, svm_fifo_t *sf)
 {
   u32 head, tail;
 
@@ -1348,13 +1346,13 @@ svm_fifo_clone (svm_fifo_t * df, svm_fifo_t * sf)
 }
 
 u32
-svm_fifo_n_ooo_segments (svm_fifo_t * f)
+svm_fifo_n_ooo_segments (svm_fifo_t *f)
 {
   return pool_elts (f->ooo_segments);
 }
 
 ooo_segment_t *
-svm_fifo_first_ooo_segment (svm_fifo_t * f)
+svm_fifo_first_ooo_segment (svm_fifo_t *f)
 {
   return pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
 }
@@ -1363,7 +1361,7 @@ svm_fifo_first_ooo_segment (svm_fifo_t * f)
  * Set fifo pointers to requested offset
  */
 void
-svm_fifo_init_pointers (svm_fifo_t * f, u32 head, u32 tail)
+svm_fifo_init_pointers (svm_fifo_t *f, u32 head, u32 tail)
 {
   svm_fifo_chunk_t *c;
 
@@ -1381,7 +1379,7 @@ svm_fifo_init_pointers (svm_fifo_t * f, u32 head, u32 tail)
 }
 
 void
-svm_fifo_add_subscriber (svm_fifo_t * f, u8 subscriber)
+svm_fifo_add_subscriber (svm_fifo_t *f, u8 subscriber)
 {
   if (f->shr->n_subscribers >= SVM_FIFO_MAX_EVT_SUBSCRIBERS)
     return;
@@ -1389,7 +1387,7 @@ svm_fifo_add_subscriber (svm_fifo_t * f, u8 subscriber)
 }
 
 void
-svm_fifo_del_subscriber (svm_fifo_t * f, u8 subscriber)
+svm_fifo_del_subscriber (svm_fifo_t *f, u8 subscriber)
 {
   int i;
 
@@ -1404,7 +1402,7 @@ svm_fifo_del_subscriber (svm_fifo_t * f, u8 subscriber)
 }
 
 u8
-svm_fifo_is_sane (svm_fifo_t * f)
+svm_fifo_is_sane (svm_fifo_t *f)
 {
   svm_fifo_chunk_t *tmp;
 
@@ -1423,8 +1421,8 @@ svm_fifo_is_sane (svm_fifo_t * f)
 	      f_pos_gt (f->ooo_deq->start_byte, f_chunk_end (f_end_cptr (f))))
 	    return 0;
 
-	  tmp = f_find_chunk_rbtree (&f->ooo_deq_lookup,
-				     f->ooo_deq->start_byte);
+	  tmp =
+	    f_find_chunk_rbtree (&f->ooo_deq_lookup, f->ooo_deq->start_byte);
 	}
       else
 	tmp = svm_fifo_find_chunk (f, f->ooo_deq->start_byte);
@@ -1440,8 +1438,8 @@ svm_fifo_is_sane (svm_fifo_t * f)
 	      f_pos_gt (f->ooo_enq->start_byte, f_chunk_end (f_end_cptr (f))))
 	    return 0;
 
-	  tmp = f_find_chunk_rbtree (&f->ooo_enq_lookup,
-				     f->ooo_enq->start_byte);
+	  tmp =
+	    f_find_chunk_rbtree (&f->ooo_enq_lookup, f->ooo_enq->start_byte);
 	}
       else
 	{
@@ -1499,7 +1497,7 @@ svm_fifo_is_sane (svm_fifo_t * f)
 }
 
 u32
-svm_fifo_n_chunks (svm_fifo_t * f)
+svm_fifo_n_chunks (svm_fifo_t *f)
 {
   svm_fifo_chunk_t *c;
   int n_chunks = 0;
@@ -1515,7 +1513,7 @@ svm_fifo_n_chunks (svm_fifo_t * f)
 }
 
 u8 *
-format_ooo_segment (u8 * s, va_list * args)
+format_ooo_segment (u8 *s, va_list *args)
 {
   svm_fifo_t __clib_unused *f = va_arg (*args, svm_fifo_t *);
   ooo_segment_t *seg = va_arg (*args, ooo_segment_t *);
@@ -1525,7 +1523,7 @@ format_ooo_segment (u8 * s, va_list * args)
 }
 
 u8 *
-svm_fifo_dump_trace (u8 * s, svm_fifo_t * f)
+svm_fifo_dump_trace (u8 *s, svm_fifo_t *f)
 {
 #if SVM_FIFO_TRACE
   svm_fifo_trace_elem_t *seg = 0;
@@ -1534,12 +1532,12 @@ svm_fifo_dump_trace (u8 * s, svm_fifo_t * f)
   if (f->trace)
     {
       vec_foreach (seg, f->trace)
-      {
-	s = format (s, "{%u, %u, %u}, ", seg->offset, seg->len, seg->action);
-	i++;
-	if (i % 5 == 0)
-	  s = format (s, "\n");
-      }
+	{
+	  s = format (s, "{%u, %u, %u}, ", seg->offset, seg->len, seg->action);
+	  i++;
+	  if (i % 5 == 0)
+	    s = format (s, "\n");
+	}
       s = format (s, "\n");
     }
   return s;
@@ -1549,7 +1547,7 @@ svm_fifo_dump_trace (u8 * s, svm_fifo_t * f)
 }
 
 u8 *
-svm_fifo_replay (u8 * s, svm_fifo_t * f, u8 no_read, u8 verbose)
+svm_fifo_replay (u8 *s, svm_fifo_t *f, u8 no_read, u8 verbose)
 {
   int i, trace_len;
   u8 *data = 0;
@@ -1608,7 +1606,7 @@ svm_fifo_replay (u8 * s, svm_fifo_t * f, u8 no_read, u8 verbose)
 }
 
 u8 *
-format_ooo_list (u8 * s, va_list * args)
+format_ooo_list (u8 *s, va_list *args)
 {
   svm_fifo_t *f = va_arg (*args, svm_fifo_t *);
   u32 indent = va_arg (*args, u32);
@@ -1627,7 +1625,7 @@ format_ooo_list (u8 * s, va_list * args)
 }
 
 u8 *
-format_svm_fifo (u8 * s, va_list * args)
+format_svm_fifo (u8 *s, va_list *args)
 {
   svm_fifo_t *f = va_arg (*args, svm_fifo_t *);
   int verbose = va_arg (*args, int);
@@ -1651,9 +1649,9 @@ format_svm_fifo (u8 * s, va_list * args)
 
   if (verbose)
     {
-      s = format (s, "%Uooo pool %d active elts newest %u\n",
-		  format_white_space, indent, pool_elts (f->ooo_segments),
-		  f->ooos_newest);
+      s =
+	format (s, "%Uooo pool %d active elts newest %u\n", format_white_space,
+		indent, pool_elts (f->ooo_segments), f->ooos_newest);
       if (svm_fifo_has_ooo_data (f))
 	s = format (s, " %U", format_ooo_list, f, indent, verbose);
     }

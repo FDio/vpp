@@ -33,8 +33,7 @@ create_cmd::create_cmd(HW::item<uint32_t>& item,
   , m_acl(acl)
   , m_gbp_rules(gbp_rules)
   , m_allowed_ethertypes(allowed_ethertypes)
-{
-}
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
@@ -128,8 +127,7 @@ delete_cmd::delete_cmd(HW::item<uint32_t>& item,
   , m_scope(scope)
   , m_sclass(sclass)
   , m_dclass(dclass)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const

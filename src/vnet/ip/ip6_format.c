@@ -41,7 +41,7 @@
 
 /* Format an IP6 address. */
 u8 *
-format_ip6_address (u8 * s, va_list * args)
+format_ip6_address (u8 *s, va_list *args)
 {
   ip6_address_t *a = va_arg (*args, ip6_address_t *);
   u32 max_zero_run = 0, this_zero_run = 0;
@@ -98,8 +98,7 @@ format_ip6_address (u8 * s, va_list * args)
 	}
       else
 	{
-	  s = format (s, "%s%x",
-		      (last_double_colon || i == 0) ? "" : ":",
+	  s = format (s, "%s%x", (last_double_colon || i == 0) ? "" : ":",
 		      clib_net_to_host_u16 (a->as_u16[i]));
 	  last_double_colon = 0;
 	}
@@ -110,7 +109,7 @@ format_ip6_address (u8 * s, va_list * args)
 
 /* Format an IP6 route destination and length. */
 u8 *
-format_ip6_address_and_length (u8 * s, va_list * args)
+format_ip6_address_and_length (u8 *s, va_list *args)
 {
   ip6_address_t *a = va_arg (*args, ip6_address_t *);
   u8 l = va_arg (*args, u32);
@@ -118,7 +117,7 @@ format_ip6_address_and_length (u8 * s, va_list * args)
 }
 
 u8 *
-format_ip6_address_and_mask (u8 * s, va_list * args)
+format_ip6_address_and_mask (u8 *s, va_list *args)
 {
   ip6_address_and_mask_t *am = va_arg (*args, ip6_address_and_mask_t *);
 
@@ -129,13 +128,13 @@ format_ip6_address_and_mask (u8 * s, va_list * args)
   if (am->mask.as_u64[0] == ~0 && am->mask.as_u64[1] == ~0)
     return format (s, "%U", format_ip6_address, &am->addr);
 
-  return format (s, "%U/%U", format_ip6_address, &am->addr,
-		 format_ip6_address, &am->mask);
+  return format (s, "%U/%U", format_ip6_address, &am->addr, format_ip6_address,
+		 &am->mask);
 }
 
 /* Parse an IP6 address. */
 uword
-unformat_ip6_address (unformat_input_t * input, va_list * args)
+unformat_ip6_address (unformat_input_t *input, va_list *args)
 {
   ip6_address_t *result = va_arg (*args, ip6_address_t *);
   u16 hex_quads[8];
@@ -229,7 +228,7 @@ unformat_ip6_address (unformat_input_t * input, va_list * args)
 }
 
 uword
-unformat_ip6_address_and_mask (unformat_input_t * input, va_list * args)
+unformat_ip6_address_and_mask (unformat_input_t *input, va_list *args)
 {
   ip6_address_and_mask_t *am = va_arg (*args, ip6_address_and_mask_t *);
   ip6_address_t addr, mask;
@@ -256,7 +255,7 @@ unformat_ip6_address_and_mask (unformat_input_t * input, va_list * args)
 
 /* Format an IP6 header. */
 u8 *
-format_ip6_header (u8 * s, va_list * args)
+format_ip6_header (u8 *s, va_list *args)
 {
   ip6_header_t *ip = va_arg (*args, ip6_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
@@ -270,10 +269,9 @@ format_ip6_header (u8 * s, va_list * args)
   indent = format_get_indent (s);
   indent += 2;
 
-  s = format (s, "%U: %U -> %U",
-	      format_ip_protocol, ip->protocol,
-	      format_ip6_address, &ip->src_address,
-	      format_ip6_address, &ip->dst_address);
+  s = format (s, "%U: %U -> %U", format_ip_protocol, ip->protocol,
+	      format_ip6_address, &ip->src_address, format_ip6_address,
+	      &ip->dst_address);
 
   i = clib_net_to_host_u32 (ip->ip_version_traffic_class_and_flow_label);
   ip_version = (i >> 28);
@@ -283,11 +281,10 @@ format_ip6_header (u8 * s, va_list * args)
   if (ip_version != 6)
     s = format (s, "\n%Uversion %d", format_white_space, indent, ip_version);
 
-  s =
-    format (s,
-	    "\n%Utos 0x%02x, flow label 0x%x, hop limit %d, payload length %d",
-	    format_white_space, indent, traffic_class, flow_label,
-	    ip->hop_limit, clib_net_to_host_u16 (ip->payload_length));
+  s = format (
+    s, "\n%Utos 0x%02x, flow label 0x%x, hop limit %d, payload length %d",
+    format_white_space, indent, traffic_class, flow_label, ip->hop_limit,
+    clib_net_to_host_u16 (ip->payload_length));
 
   /* Recurse into next protocol layer. */
   if (max_header_bytes != 0 && sizeof (ip[0]) < max_header_bytes)
@@ -296,8 +293,8 @@ format_ip6_header (u8 * s, va_list * args)
       ip_protocol_info_t *pi = ip_get_protocol_info (im, ip->protocol);
 
       if (pi && pi->format_header)
-	s = format (s, "\n%U%U",
-		    format_white_space, indent - 2, pi->format_header,
+	s = format (s, "\n%U%U", format_white_space, indent - 2,
+		    pi->format_header,
 		    /* next protocol header */ (void *) (ip + 1),
 		    max_header_bytes - sizeof (ip[0]));
     }
@@ -307,7 +304,7 @@ format_ip6_header (u8 * s, va_list * args)
 
 /* Parse an IP6 header. */
 uword
-unformat_ip6_header (unformat_input_t * input, va_list * args)
+unformat_ip6_header (unformat_input_t *input, va_list *args)
 {
   u8 **result = va_arg (*args, u8 **);
   ip6_header_t *ip;
@@ -323,13 +320,11 @@ unformat_ip6_header (unformat_input_t * input, va_list * args)
   }
 
   clib_memset (ip, 0, sizeof (ip[0]));
-  ip->ip_version_traffic_class_and_flow_label =
-    clib_host_to_net_u32 (6 << 28);
+  ip->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (6 << 28);
 
-  if (!unformat (input, "%U: %U -> %U",
-		 unformat_ip_protocol, &ip->protocol,
-		 unformat_ip6_address, &ip->src_address,
-		 unformat_ip6_address, &ip->dst_address))
+  if (!unformat (input, "%U: %U -> %U", unformat_ip_protocol, &ip->protocol,
+		 unformat_ip6_address, &ip->src_address, unformat_ip6_address,
+		 &ip->dst_address))
     return 0;
 
   /* Parse options. */
@@ -372,7 +367,7 @@ unformat_ip6_header (unformat_input_t * input, va_list * args)
 
 /* Parse an IP46 address. */
 uword
-unformat_ip46_address (unformat_input_t * input, va_list * args)
+unformat_ip46_address (unformat_input_t *input, va_list *args)
 {
   ip46_address_t *ip46 = va_arg (*args, ip46_address_t *);
   ip46_type_t type = va_arg (*args, ip46_type_t);
@@ -392,7 +387,7 @@ unformat_ip46_address (unformat_input_t * input, va_list * args)
 
 /* Format an IP46 address. */
 u8 *
-format_ip46_address (u8 * s, va_list * args)
+format_ip46_address (u8 *s, va_list *args)
 {
   ip46_address_t *ip46 = va_arg (*args, ip46_address_t *);
   ip46_type_t type = va_arg (*args, ip46_type_t);
@@ -411,13 +406,12 @@ format_ip46_address (u8 * s, va_list * args)
       break;
     }
 
-  return is_ip4 ?
-    format (s, "%U", format_ip4_address, &ip46->ip4) :
-    format (s, "%U", format_ip6_address, &ip46->ip6);
+  return is_ip4 ? format (s, "%U", format_ip4_address, &ip46->ip4) :
+		  format (s, "%U", format_ip6_address, &ip46->ip6);
 }
 
 u8 *
-format_ip6_frag_hdr (u8 * s, va_list * args)
+format_ip6_frag_hdr (u8 *s, va_list *args)
 {
   ip6_frag_hdr_t *h = va_arg (*args, ip6_frag_hdr_t *);
   u32 max_header_bytes = va_arg (*args, u32);
@@ -427,11 +421,11 @@ format_ip6_frag_hdr (u8 * s, va_list * args)
   if (max_header_bytes != 0 && header_bytes > max_header_bytes)
     return format (s, "ipv6 frag header truncated");
 
-  s =
-    format (s,
-	    "IPV6_FRAG_HDR: next_hdr: %u, rsv: %u, frag_offset_and_more: %u, id: %u",
-	    h->next_hdr, h->rsv, h->fragment_offset_and_more,
-	    clib_net_to_host_u32 (h->identification));
+  s = format (
+    s,
+    "IPV6_FRAG_HDR: next_hdr: %u, rsv: %u, frag_offset_and_more: %u, id: %u",
+    h->next_hdr, h->rsv, h->fragment_offset_and_more,
+    clib_net_to_host_u32 (h->identification));
   return s;
 }
 

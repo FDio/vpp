@@ -35,7 +35,6 @@
 
 igmp_main_t igmp_main;
 
-/* *INDENT-OFF* */
 /* General Query address */
 const static mfib_prefix_t mpfx_general_query = {
   .fp_proto = FIB_PROTOCOL_IP4,
@@ -57,7 +56,6 @@ const static mfib_prefix_t mpfx_report = {
     },
   },
 };
-/* *INDENT-ON* */
 
 /**
  * @brief igmp send query (igmp_timer_function_t)
@@ -74,9 +72,8 @@ igmp_send_general_query (u32 obj, void *dat)
 
   config = igmp_config_get (obj);
 
-  IGMP_DBG ("send-general-query: %U",
-	    format_vnet_sw_if_index_name, vnet_get_main (),
-	    config->sw_if_index);
+  IGMP_DBG ("send-general-query: %U", format_vnet_sw_if_index_name,
+	    vnet_get_main (), config->sw_if_index);
 
   igmp_timer_retire (&config->timers[IGMP_CONFIG_TIMER_GENERAL_QUERY]);
 
@@ -87,23 +84,21 @@ igmp_send_general_query (u32 obj, void *dat)
   /*
    * re-schedule
    */
-  config->timers[IGMP_CONFIG_TIMER_GENERAL_QUERY] =
-    igmp_timer_schedule (igmp_timer_type_get (IGMP_TIMER_QUERY),
-			 igmp_config_index (config),
-			 igmp_send_general_query, NULL);
+  config->timers[IGMP_CONFIG_TIMER_GENERAL_QUERY] = igmp_timer_schedule (
+    igmp_timer_type_get (IGMP_TIMER_QUERY), igmp_config_index (config),
+    igmp_send_general_query, NULL);
 }
 
 static void
 igmp_send_state_change_group_report_v3 (u32 sw_if_index,
-					const igmp_group_t * group)
+					const igmp_group_t *group)
 {
   igmp_pkt_build_report_t br;
 
   IGMP_DBG ("state-change-group: %U", format_igmp_key, group->key);
 
   igmp_pkt_build_report_init (&br, sw_if_index);
-  igmp_pkt_report_v3_add_group (&br,
-				group,
+  igmp_pkt_report_v3_add_group (&br, group,
 				IGMP_MEMBERSHIP_GROUP_allow_new_sources);
   igmp_pkt_report_v3_send (&br);
 }
@@ -130,10 +125,8 @@ igmp_resend_state_change_group_report_v3 (u32 gi, void *data)
 }
 
 int
-igmp_listen (vlib_main_t * vm,
-	     igmp_filter_mode_t mode,
-	     u32 sw_if_index,
-	     const ip46_address_t * saddrs, const ip46_address_t * gaddr)
+igmp_listen (vlib_main_t *vm, igmp_filter_mode_t mode, u32 sw_if_index,
+	     const ip46_address_t *saddrs, const ip46_address_t *gaddr)
 {
   const ip46_address_t *saddr;
   igmp_config_t *config;
@@ -150,11 +143,9 @@ igmp_listen (vlib_main_t * vm,
    * interface and multicast address."
    */
   int rv = 0;
-  IGMP_DBG ("listen: (%U, %U) %U %U",
-	    format_igmp_src_addr_list, saddrs,
-	    format_igmp_key, gaddr,
-	    format_vnet_sw_if_index_name, vnet_get_main (),
-	    sw_if_index, format_igmp_filter_mode, mode);
+  IGMP_DBG ("listen: (%U, %U) %U %U", format_igmp_src_addr_list, saddrs,
+	    format_igmp_key, gaddr, format_vnet_sw_if_index_name,
+	    vnet_get_main (), sw_if_index, format_igmp_filter_mode, mode);
   /*
    * find configuration, if it doesn't exist, then this interface is
    * not IGMP enabled
@@ -181,9 +172,9 @@ igmp_listen (vlib_main_t * vm,
 
       /* new group implies create all sources */
       vec_foreach (saddr, saddrs)
-      {
-	igmp_group_src_update (group, saddr, IGMP_MODE_HOST);
-      }
+	{
+	  igmp_group_src_update (group, saddr, IGMP_MODE_HOST);
+	}
 
       /*
        * Send state changed event report for the group.
@@ -206,11 +197,9 @@ igmp_listen (vlib_main_t * vm,
     }
   else
     {
-      IGMP_DBG ("... update (%U, %U) %U %U",
-		format_igmp_src_addr_list, saddrs,
-		format_igmp_key, gaddr,
-		format_vnet_sw_if_index_name, vnet_get_main (),
-		sw_if_index, format_igmp_filter_mode, mode);
+      IGMP_DBG ("... update (%U, %U) %U %U", format_igmp_src_addr_list, saddrs,
+		format_igmp_key, gaddr, format_vnet_sw_if_index_name,
+		vnet_get_main (), sw_if_index, format_igmp_filter_mode, mode);
 
       /*
        * RFC 3367 Section 5.1
@@ -236,12 +225,10 @@ igmp_listen (vlib_main_t * vm,
 	   * find the list of sources that have been added and removed from
 	   * the include set
 	   */
-	  removed =
-	    igmp_group_present_minus_new (group, IGMP_FILTER_MODE_INCLUDE,
-					  saddrs);
-	  added =
-	    igmp_group_new_minus_present (group, IGMP_FILTER_MODE_INCLUDE,
-					  saddrs);
+	  removed = igmp_group_present_minus_new (
+	    group, IGMP_FILTER_MODE_INCLUDE, saddrs);
+	  added = igmp_group_new_minus_present (
+	    group, IGMP_FILTER_MODE_INCLUDE, saddrs);
 
 	  if (!(vec_len (added) || vec_len (removed)))
 	    /* no change => done */
@@ -251,18 +238,16 @@ igmp_listen (vlib_main_t * vm,
 
 	  if (vec_len (added))
 	    {
-	      igmp_pkt_report_v3_add_report (&br,
-					     group->key,
-					     added,
-					     IGMP_MEMBERSHIP_GROUP_allow_new_sources);
+	      igmp_pkt_report_v3_add_report (
+		&br, group->key, added,
+		IGMP_MEMBERSHIP_GROUP_allow_new_sources);
 	    }
 
 	  if (vec_len (removed))
 	    {
-	      igmp_pkt_report_v3_add_report (&br,
-					     group->key,
-					     removed,
-					     IGMP_MEMBERSHIP_GROUP_block_old_sources);
+	      igmp_pkt_report_v3_add_report (
+		&br, group->key, removed,
+		IGMP_MEMBERSHIP_GROUP_block_old_sources);
 	    }
 
 	  IGMP_DBG ("... added %U", format_igmp_src_addr_list, added);
@@ -277,9 +262,9 @@ igmp_listen (vlib_main_t * vm,
 	  igmp_group_free_all_srcs (group);
 
 	  vec_foreach (saddr, saddrs)
-	  {
-	    igmp_group_src_update (group, saddr, IGMP_MODE_HOST);
-	  }
+	    {
+	      igmp_group_src_update (group, saddr, IGMP_MODE_HOST);
+	    }
 
 	  if (0 == igmp_group_n_srcs (group, mode))
 	    igmp_group_clear (&group);
@@ -304,12 +289,12 @@ error:
 }
 
 static walk_rc_t
-igmp_sw_if_down (vnet_main_t * vnm, u32 sw_if_index, void *ctx)
+igmp_sw_if_down (vnet_main_t *vnm, u32 sw_if_index, void *ctx)
 {
   igmp_config_t *config;
   config = igmp_config_lookup (sw_if_index);
-  IGMP_DBG ("down: %U",
-	    format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index);
+  IGMP_DBG ("down: %U", format_vnet_sw_if_index_name, vnet_get_main (),
+	    sw_if_index);
   if (NULL != config)
     {
       igmp_clear_config (config);
@@ -326,7 +311,7 @@ igmp_sw_if_down (vnet_main_t * vnm, u32 sw_if_index, void *ctx)
     If an interface goes down, remove its (S,G)s.
 */
 static clib_error_t *
-igmp_hw_interface_link_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+igmp_hw_interface_link_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 {
   clib_error_t *error = NULL;
   /* remove igmp state from down interfaces */
@@ -345,16 +330,14 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
   IGMP_DBG ("%s:  %U", (enable ? "Enabled" : "Disabled"),
 	    format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index);
 
-  /* *INDENT-OFF* */
-  fib_route_path_t via_itf_path =
-    {
-      .frp_proto = fib_proto_to_dpo (FIB_PROTOCOL_IP4),
-      .frp_addr = zero_addr,
-      .frp_sw_if_index = sw_if_index,
-      .frp_fib_index = 0,
-      .frp_weight = 1,
+  fib_route_path_t via_itf_path = {
+    .frp_proto = fib_proto_to_dpo (FIB_PROTOCOL_IP4),
+    .frp_addr = zero_addr,
+    .frp_sw_if_index = sw_if_index,
+    .frp_fib_index = 0,
+    .frp_weight = 1,
     .frp_mitf_flags = MFIB_ITF_FLAG_ACCEPT,
-    };
+  };
   fib_route_path_t for_us_path = {
     .frp_proto = fib_proto_to_dpo (FIB_PROTOCOL_IP4),
     .frp_addr = zero_addr,
@@ -365,17 +348,16 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
     .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
   };
 
-  /* *INDENT-ON* */
   /* find configuration, if it doesn't exist, create new */
   config = igmp_config_lookup (sw_if_index);
-  mfib_index = mfib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
-						     sw_if_index);
+  mfib_index =
+    mfib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index);
   if (!config && enable)
     {
       u32 ii;
 
-      vec_validate_init_empty (im->igmp_config_by_sw_if_index,
-			       sw_if_index, ~0);
+      vec_validate_init_empty (im->igmp_config_by_sw_if_index, sw_if_index,
+			       ~0);
       pool_get (im->configs, config);
       clib_memset (config, 0, sizeof (igmp_config_t));
       config->sw_if_index = sw_if_index;
@@ -396,9 +378,8 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
 				 igmp_send_general_query, NULL);
 	}
 
-      config->adj_index =
-	adj_mcast_add_or_lock (FIB_PROTOCOL_IP4, VNET_LINK_IP4,
-			       config->sw_if_index);
+      config->adj_index = adj_mcast_add_or_lock (
+	FIB_PROTOCOL_IP4, VNET_LINK_IP4, config->sw_if_index);
       im->igmp_config_by_sw_if_index[config->sw_if_index] =
 	(config - im->configs);
       {
@@ -408,15 +389,12 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
 	  {
 	    /* first config in this FIB */
 	    mfib_table_lock (mfib_index, FIB_PROTOCOL_IP4, MFIB_SOURCE_IGMP);
-	    mfib_table_entry_path_update (mfib_index,
-					  &mpfx_general_query,
+	    mfib_table_entry_path_update (mfib_index, &mpfx_general_query,
 					  MFIB_SOURCE_IGMP, &for_us_path);
-	    mfib_table_entry_path_update (mfib_index,
-					  &mpfx_report,
+	    mfib_table_entry_path_update (mfib_index, &mpfx_report,
 					  MFIB_SOURCE_IGMP, &for_us_path);
 	  }
-	mfib_table_entry_path_update (mfib_index,
-				      &mpfx_general_query,
+	mfib_table_entry_path_update (mfib_index, &mpfx_general_query,
 				      MFIB_SOURCE_IGMP, &via_itf_path);
 	mfib_table_entry_path_update (mfib_index, &mpfx_report,
 				      MFIB_SOURCE_IGMP, &via_itf_path);
@@ -429,21 +407,17 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
       if (0 == im->n_configs_per_mfib_index[mfib_index])
 	{
 	  /* last config in this FIB */
-	  mfib_table_entry_path_remove (mfib_index,
-					&mpfx_general_query,
+	  mfib_table_entry_path_remove (mfib_index, &mpfx_general_query,
 					MFIB_SOURCE_IGMP, &for_us_path);
-	  mfib_table_entry_path_remove (mfib_index,
-					&mpfx_report,
+	  mfib_table_entry_path_remove (mfib_index, &mpfx_report,
 					MFIB_SOURCE_IGMP, &for_us_path);
 	  mfib_table_unlock (mfib_index, FIB_PROTOCOL_IP4, MFIB_SOURCE_IGMP);
 	}
 
-      mfib_table_entry_path_remove (mfib_index,
-				    &mpfx_general_query,
+      mfib_table_entry_path_remove (mfib_index, &mpfx_general_query,
 				    MFIB_SOURCE_IGMP, &via_itf_path);
-      mfib_table_entry_path_remove (mfib_index,
-				    &mpfx_report,
-				    MFIB_SOURCE_IGMP, &via_itf_path);
+      mfib_table_entry_path_remove (mfib_index, &mpfx_report, MFIB_SOURCE_IGMP,
+				    &via_itf_path);
 
       /*
        * remove interface from proxy device
@@ -472,10 +446,11 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
 /** \brief igmp initialization
     @param vm - vlib main
 
-    initialize igmp plugin. Initialize igmp_main, set mfib to allow igmp traffic.
+    initialize igmp plugin. Initialize igmp_main, set mfib to allow igmp
+   traffic.
 */
 static clib_error_t *
-igmp_init (vlib_main_t * vm)
+igmp_init (vlib_main_t *vm)
 {
   igmp_main_t *im = &igmp_main;
 
@@ -487,17 +462,13 @@ igmp_init (vlib_main_t * vm)
   return (0);
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (igmp_init) =
-{
-  .runs_after = VLIB_INITS("ip4_lookup_init"),
+VLIB_INIT_FUNCTION (igmp_init) = {
+  .runs_after = VLIB_INITS ("ip4_lookup_init"),
 };
-VLIB_PLUGIN_REGISTER () =
-{
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Internet Group Management Protocol (IGMP)",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

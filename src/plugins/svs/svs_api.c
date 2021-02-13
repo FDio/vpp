@@ -38,7 +38,7 @@ static u32 svs_base_msg_id;
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_svs_plugin_get_version_t_handler (vl_api_svs_plugin_get_version_t * mp)
+vl_api_svs_plugin_get_version_t_handler (vl_api_svs_plugin_get_version_t *mp)
 {
   vl_api_svs_plugin_get_version_reply_t *rmp;
   int msg_size = sizeof (*rmp);
@@ -60,7 +60,7 @@ vl_api_svs_plugin_get_version_t_handler (vl_api_svs_plugin_get_version_t * mp)
 }
 
 static void
-vl_api_svs_table_add_del_t_handler (vl_api_svs_table_add_del_t * mp)
+vl_api_svs_table_add_del_t_handler (vl_api_svs_table_add_del_t *mp)
 {
   vl_api_svs_table_add_del_reply_t *rmp;
   fib_protocol_t fproto;
@@ -84,7 +84,7 @@ error:
 }
 
 static void
-vl_api_svs_route_add_del_t_handler (vl_api_svs_route_add_del_t * mp)
+vl_api_svs_route_add_del_t_handler (vl_api_svs_route_add_del_t *mp)
 {
   vl_api_svs_route_add_del_reply_t *rmp;
   fib_prefix_t pfx;
@@ -106,7 +106,7 @@ vl_api_svs_route_add_del_t_handler (vl_api_svs_route_add_del_t * mp)
 }
 
 static void
-vl_api_svs_enable_disable_t_handler (vl_api_svs_enable_disable_t * mp)
+vl_api_svs_enable_disable_t_handler (vl_api_svs_enable_disable_t *mp)
 {
   vl_api_svs_enable_disable_reply_t *rmp;
   fib_protocol_t fproto;
@@ -124,8 +124,7 @@ vl_api_svs_enable_disable_t_handler (vl_api_svs_enable_disable_t * mp)
     }
   else
     {
-      rv =
-	svs_disable (fproto, ntohl (mp->table_id), ntohl (mp->sw_if_index));
+      rv = svs_disable (fproto, ntohl (mp->table_id), ntohl (mp->sw_if_index));
     }
 
   BAD_SW_IF_INDEX_LABEL;
@@ -139,10 +138,9 @@ typedef struct svs_dump_walk_ctx_t_
   u32 context;
 } svs_dump_walk_ctx_t;
 
-
 static walk_rc_t
-svs_send_details (fib_protocol_t fproto,
-		  u32 table_id, u32 sw_if_index, void *args)
+svs_send_details (fib_protocol_t fproto, u32 table_id, u32 sw_if_index,
+		  void *args)
 {
   vl_api_svs_details_t *mp;
   svs_dump_walk_ctx_t *ctx;
@@ -163,7 +161,7 @@ svs_send_details (fib_protocol_t fproto,
 }
 
 static void
-vl_api_svs_dump_t_handler (vl_api_svs_dump_t * mp)
+vl_api_svs_dump_t_handler (vl_api_svs_dump_t *mp)
 {
   vl_api_registration_t *rp;
 
@@ -181,7 +179,7 @@ vl_api_svs_dump_t_handler (vl_api_svs_dump_t * mp)
 
 #include <svs/svs.api.c>
 static clib_error_t *
-svs_api_init (vlib_main_t * vm)
+svs_api_init (vlib_main_t *vm)
 {
   /* Ask for a correctly-sized block of API message decode slots */
   svs_base_msg_id = setup_message_id_table ();
@@ -191,12 +189,10 @@ svs_api_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (svs_api_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Source Virtual Routing and Fowarding (VRF) Select",
+  .version = VPP_BUILD_VER,
+  .description = "Source Virtual Routing and Fowarding (VRF) Select",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

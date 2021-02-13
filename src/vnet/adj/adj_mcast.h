@@ -16,10 +16,10 @@
 /**
  * @brief Mcast Adjacency
  *
- * The multicast adjacency forwards IP traffic on an interface toward a multicast
- * group address. This is a different type of adjacency to a unicast adjacency
- * since the application of the MAC header is different, and so the VLIB node
- * visited is also different. DPO types have different VLIB nodes.
+ * The multicast adjacency forwards IP traffic on an interface toward a
+ * multicast group address. This is a different type of adjacency to a unicast
+ * adjacency since the application of the MAC header is different, and so the
+ * VLIB node visited is also different. DPO types have different VLIB nodes.
  */
 
 #ifndef __ADJ_MCAST_H__
@@ -43,9 +43,9 @@
  * @param sw_if_index
  *  The interface on which to mcast
  */
-extern adj_index_t adj_mcast_add_or_lock(fib_protocol_t proto,
-                                         vnet_link_t link_type,
-					 u32 sw_if_index);
+extern adj_index_t adj_mcast_add_or_lock (fib_protocol_t proto,
+					  vnet_link_t link_type,
+					  u32 sw_if_index);
 
 /**
  * @brief
@@ -61,9 +61,8 @@ extern adj_index_t adj_mcast_add_or_lock(fib_protocol_t proto,
  *  The offset in the rewrite a which to write in packet's
  *  IP Address
  */
-extern void adj_mcast_update_rewrite(adj_index_t adj_index,
-                                     u8 *rewrite,
-                                     u8 offset);
+extern void adj_mcast_update_rewrite (adj_index_t adj_index, u8 *rewrite,
+				      u8 offset);
 
 /**
  * @brief
@@ -75,7 +74,8 @@ extern void adj_mcast_update_rewrite(adj_index_t adj_index,
  *
  * @param fixup
  *  The function that will be invoked at paket switch time to 'fixup'
- *  the rewrite applied with necessary per-packet info (i.e. length, checksums).
+ *  the rewrite applied with necessary per-packet info (i.e. length,
+ * checksums).
  * @param fixup_data
  *  Context data set by the caller that is provided as an argument in the
  *  fixup function.
@@ -86,36 +86,32 @@ extern void adj_mcast_update_rewrite(adj_index_t adj_index,
  * @param
  *  The new rewrite
  */
-extern void adj_mcast_midchain_update_rewrite(adj_index_t adj_index,
-                                              adj_midchain_fixup_t fixup,
-                                              const void *fixup_data,
-                                              adj_flags_t flags,
-                                              u8 *rewrite,
-                                              u8 offset,
-                                              u32 mask);
+extern void adj_mcast_midchain_update_rewrite (adj_index_t adj_index,
+					       adj_midchain_fixup_t fixup,
+					       const void *fixup_data,
+					       adj_flags_t flags, u8 *rewrite,
+					       u8 offset, u32 mask);
 /**
  * @brief Walk the multicast Adjacencies on a given interface
  */
-extern void adj_mcast_walk (u32 sw_if_index,
-                            fib_protocol_t adj_nh_proto,
-                            adj_walk_cb_t cb,
-                            void *ctx);
+extern void adj_mcast_walk (u32 sw_if_index, fib_protocol_t adj_nh_proto,
+			    adj_walk_cb_t cb, void *ctx);
 
 /**
  * @brief Format/display a mcast adjacency.
  */
-extern u8* format_adj_mcast(u8* s, va_list *ap);
-extern u8* format_adj_mcast_midchain(u8* s, va_list *ap);
+extern u8 *format_adj_mcast (u8 *s, va_list *ap);
+extern u8 *format_adj_mcast_midchain (u8 *s, va_list *ap);
 
 /**
  * @brief Get the sze of the mcast adj DB. Test purposes only.
  */
-extern u32 adj_mcast_db_size(void);
+extern u32 adj_mcast_db_size (void);
 
 /**
  * @brief
  *  Module initialisation
  */
-extern void adj_mcast_module_init(void);
+extern void adj_mcast_module_init (void);
 
 #endif

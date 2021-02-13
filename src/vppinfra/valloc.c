@@ -30,8 +30,7 @@
  */
 
 void
-clib_valloc_add_chunk (clib_valloc_main_t * vam,
-		       clib_valloc_chunk_t * template)
+clib_valloc_add_chunk (clib_valloc_main_t *vam, clib_valloc_chunk_t *template)
 {
   clib_valloc_chunk_t *ch, *new_ch;
   u32 index;
@@ -52,11 +51,11 @@ clib_valloc_add_chunk (clib_valloc_main_t * vam,
       while (index != ~0)
 	{
 	  ch = pool_elt_at_index (vam->chunks, index);
-	  ASSERT (template->baseva < ch->baseva || template->baseva >=
-		  (ch->baseva + ch->size));
+	  ASSERT (template->baseva < ch->baseva ||
+		  template->baseva >= (ch->baseva + ch->size));
 	  ASSERT (template->baseva + template->size < ch->baseva ||
 		  template->baseva + template->size >=
-		  (ch->baseva + ch->size));
+		    (ch->baseva + ch->size));
 	  index = ch->next;
 	}
       index = vam->first_index;
@@ -126,7 +125,7 @@ clib_valloc_add_chunk (clib_valloc_main_t * vam,
     describes the initial virtual address range
 */
 __clib_export void
-clib_valloc_init (clib_valloc_main_t * vam, clib_valloc_chunk_t * template,
+clib_valloc_init (clib_valloc_main_t *vam, clib_valloc_chunk_t *template,
 		  int need_lock)
 {
   ASSERT (template && template->baseva && template->size);
@@ -148,7 +147,7 @@ clib_valloc_init (clib_valloc_main_t * vam, clib_valloc_chunk_t * template,
     @return uword allocated space, 0=> failure
 */
 __clib_export uword
-clib_valloc_alloc (clib_valloc_main_t * vam, uword size,
+clib_valloc_alloc (clib_valloc_main_t *vam, uword size,
 		   int os_out_of_memory_on_failure)
 {
   clib_valloc_chunk_t *ch, *new_ch, *next_ch;
@@ -216,7 +215,6 @@ clib_valloc_alloc (clib_valloc_main_t * vam, uword size,
   return 0;
 }
 
-
 /** Free virtual space
     @param vam - clib_valloc_main_t * pointer to the allocation arena
     @param baseva - uword base virtual address of the returned space
@@ -225,7 +223,7 @@ clib_valloc_alloc (clib_valloc_main_t * vam, uword size,
     doesn't memorize chunk sizes
 */
 __clib_export uword
-clib_valloc_free (clib_valloc_main_t * vam, uword baseva)
+clib_valloc_free (clib_valloc_main_t *vam, uword baseva)
 {
   clib_valloc_chunk_t *ch, *prev_ch, *next_ch, *n2_ch;
   u32 index;
@@ -259,8 +257,8 @@ clib_valloc_free (clib_valloc_main_t * vam, uword baseva)
        * Previous item must be free as well, and
        * tangent to this block.
        */
-      if ((prev_ch->flags & CLIB_VALLOC_BUSY) == 0
-	  && ((prev_ch->baseva + prev_ch->size) == ch->baseva))
+      if ((prev_ch->flags & CLIB_VALLOC_BUSY) == 0 &&
+	  ((prev_ch->baseva + prev_ch->size) == ch->baseva))
 	{
 	  hash_unset (vam->chunk_index_by_baseva, baseva);
 	  prev_ch->size += ch->size;
@@ -283,8 +281,8 @@ clib_valloc_free (clib_valloc_main_t * vam, uword baseva)
     {
       next_ch = pool_elt_at_index (vam->chunks, ch->next);
 
-      if ((next_ch->flags & CLIB_VALLOC_BUSY) == 0
-	  && ((ch->baseva + ch->size) == next_ch->baseva))
+      if ((next_ch->flags & CLIB_VALLOC_BUSY) == 0 &&
+	  ((ch->baseva + ch->size) == next_ch->baseva))
 	{
 	  hash_unset (vam->chunk_index_by_baseva, next_ch->baseva);
 	  ch->size += next_ch->size;
@@ -310,7 +308,7 @@ clib_valloc_free (clib_valloc_main_t * vam, uword baseva)
     @return u8 vector
 */
 u8 *
-format_valloc (u8 * s, va_list * va)
+format_valloc (u8 *s, va_list *va)
 {
   clib_valloc_main_t *vam = va_arg (*va, clib_valloc_main_t *);
   int verbose = va_arg (*va, int);
@@ -320,8 +318,8 @@ format_valloc (u8 * s, va_list * va)
 
   clib_spinlock_lock_if_init (&vam->lock);
 
-  s = format (s, "%d chunks, first index %d\n",
-	      pool_elts (vam->chunks), vam->first_index);
+  s = format (s, "%d chunks, first index %d\n", pool_elts (vam->chunks),
+	      vam->first_index);
 
   if (verbose)
     {
@@ -330,8 +328,8 @@ format_valloc (u8 * s, va_list * va)
 	{
 	  ch = pool_elt_at_index (vam->chunks, index);
 
-	  s = format (s, "[%d] base %llx size %llx (%lld) prev %d %s\n",
-		      index, ch->baseva, ch->size, ch->size, ch->prev,
+	  s = format (s, "[%d] base %llx size %llx (%lld) prev %d %s\n", index,
+		      ch->baseva, ch->size, ch->size, ch->prev,
 		      (ch->flags & CLIB_VALLOC_BUSY) ? "busy" : "free");
 
 	  p = hash_get (vam->chunk_index_by_baseva, ch->baseva);
@@ -341,8 +339,8 @@ format_valloc (u8 * s, va_list * va)
 	    }
 	  else if (p[0] != index)
 	    {
-	      s = format (s, "   BUG: baseva in hash table %d not %d!\n",
-			  p[0], index);
+	      s = format (s, "   BUG: baseva in hash table %d not %d!\n", p[0],
+			  index);
 	    }
 	  index = ch->next;
 	}

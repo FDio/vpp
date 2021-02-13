@@ -17,25 +17,27 @@
 #include <svm/svm_common.h>
 #include <svm/fifo_segment.h>
 
-#define SFIFO_TEST_I(_cond, _comment, _args...)			\
-({								\
-  int _evald = (_cond);						\
-  if (!(_evald)) {						\
-    fformat(stderr, "FAIL:%d: " _comment "\n",			\
-	    __LINE__, ##_args);					\
-  } else {							\
-    fformat(stderr, "PASS:%d: " _comment "\n",			\
-	    __LINE__, ##_args);					\
-  }								\
-  _evald;							\
-})
+#define SFIFO_TEST_I(_cond, _comment, _args...)                               \
+  ({                                                                          \
+    int _evald = (_cond);                                                     \
+    if (!(_evald))                                                            \
+      {                                                                       \
+	fformat (stderr, "FAIL:%d: " _comment "\n", __LINE__, ##_args);       \
+      }                                                                       \
+    else                                                                      \
+      {                                                                       \
+	fformat (stderr, "PASS:%d: " _comment "\n", __LINE__, ##_args);       \
+      }                                                                       \
+    _evald;                                                                   \
+  })
 
-#define SFIFO_TEST(_cond, _comment, _args...)			\
-{								\
-    if (!SFIFO_TEST_I(_cond, _comment, ##_args)) {		\
-	return 1;                                               \
-    }								\
-}
+#define SFIFO_TEST(_cond, _comment, _args...)                                 \
+  {                                                                           \
+    if (!SFIFO_TEST_I (_cond, _comment, ##_args))                             \
+      {                                                                       \
+	return 1;                                                             \
+      }                                                                       \
+  }
 
 typedef struct
 {
@@ -45,62 +47,385 @@ typedef struct
 
 /* *INDENT-OFF* */
 test_pattern_t test_pattern[] = {
-  {380, 8}, {768, 8}, {1156, 8}, {1544, 8}, {1932, 8}, {2320, 8}, {2708, 8},
-  {2992, 8}, {372, 8}, {760, 8}, {1148, 8}, {1536, 8}, {1924, 8}, {2312, 8},
-  {2700, 8}, {2984, 8}, {364, 8}, {752, 8}, {1140, 8}, {1528, 8}, {1916, 8},
-  {2304, 8}, {2692, 8}, {2976, 8}, {356, 8}, {744, 8}, {1132, 8}, {1520, 8},
-  {1908, 8}, {2296, 8}, {2684, 8}, {2968, 8}, {348, 8}, {736, 8}, {1124, 8},
-  {1512, 8}, {1900, 8}, {2288, 8}, {2676, 8}, {2960, 8}, {340, 8}, {728, 8},
-  {1116, 8}, {1504, 8}, {1892, 8}, {2280, 8}, {2668, 8}, {2952, 8}, {332, 8},
-  {720, 8}, {1108, 8}, {1496, 8}, {1884, 8}, {2272, 8}, {2660, 8}, {2944, 8},
-  {324, 8}, {712, 8}, {1100, 8}, {1488, 8}, {1876, 8}, {2264, 8}, {2652, 8},
-  {2936, 8}, {316, 8}, {704, 8}, {1092, 8}, {1480, 8}, {1868, 8}, {2256, 8},
-  {2644, 8}, {2928, 8}, {308, 8}, {696, 8}, {1084, 8}, {1472, 8}, {1860, 8},
-  {2248, 8}, {2636, 8}, {2920, 8}, {300, 8}, {688, 8}, {1076, 8}, {1464, 8},
-  {1852, 8}, {2240, 8}, {2628, 8}, {2912, 8}, {292, 8}, {680, 8}, {1068, 8},
-  {1456, 8}, {1844, 8}, {2232, 8}, {2620, 8}, {2904, 8}, {284, 8}, {672, 8},
-  {1060, 8}, {1448, 8}, {1836, 8}, {2224, 8}, {2612, 8}, {2896, 8}, {276, 8},
-  {664, 8}, {1052, 8}, {1440, 8}, {1828, 8},  {2216, 8}, {2604, 8}, {2888, 8},
-  {268, 8}, {656, 8}, {1044, 8}, {1432, 8}, {1820, 8}, {2208, 8}, {2596, 8},
-  {2880, 8}, {260, 8}, {648, 8}, {1036, 8}, {1424, 8}, {1812, 8}, {2200, 8},
-  {2588, 8}, {2872, 8}, {252, 8}, {640, 8}, {1028, 8}, {1416, 8}, {1804, 8},
-  {2192, 8}, {2580, 8}, {2864, 8}, {244, 8}, {632, 8}, {1020, 8}, {1408, 8},
-  {1796, 8}, {2184, 8}, {2572, 8}, {2856, 8}, {236, 8}, {624, 8}, {1012, 8},
-  {1400, 8}, {1788, 8}, {2176, 8}, {2564, 8}, {2848, 8}, {228, 8}, {616, 8},
-  {1004, 8}, {1392, 8}, {1780, 8}, {2168, 8}, {2556, 8}, {2840, 8}, {220, 8},
-  {608, 8}, {996, 8}, {1384, 8}, {1772, 8}, {2160, 8}, {2548, 8}, {2832, 8},
-  {212, 8}, {600, 8}, {988, 8}, {1376, 8}, {1764, 8}, {2152, 8}, {2540, 8},
-  {2824, 8}, {204, 8}, {592, 8}, {980, 8}, {1368, 8}, {1756, 8}, {2144, 8},
-  {2532, 8}, {2816, 8}, {196, 8}, {584, 8}, {972, 8}, {1360, 8}, {1748, 8},
-  {2136, 8}, {2524, 8}, {2808, 8}, {188, 8}, {576, 8}, {964, 8}, {1352, 8},
-  {1740, 8}, {2128, 8}, {2516, 8}, {2800, 8}, {180, 8}, {568, 8}, {956, 8},
-  {1344, 8}, {1732, 8}, {2120, 8}, {2508, 8}, {2792, 8}, {172, 8}, {560, 8},
-  {948, 8}, {1336, 8}, {1724, 8}, {2112, 8}, {2500, 8}, {2784, 8}, {164, 8},
-  {552, 8}, {940, 8}, {1328, 8}, {1716, 8}, {2104, 8}, {2492, 8}, {2776, 8},
-  {156, 8}, {544, 8}, {932, 8}, {1320, 8}, {1708, 8}, {2096, 8}, {2484, 8},
-  {2768, 8}, {148, 8}, {536, 8}, {924, 8}, {1312, 8}, {1700, 8}, {2088, 8},
-  {2476, 8}, {2760, 8}, {140, 8}, {528, 8}, {916, 8}, {1304, 8}, {1692, 8},
-  {2080, 8}, {2468, 8}, {2752, 8}, {132, 8}, {520, 8}, {908, 8}, {1296, 8},
-  {1684, 8}, {2072, 8}, {2460, 8}, {2744, 8}, {124, 8}, {512, 8}, {900, 8},
-  {1288, 8}, {1676, 8}, {2064, 8}, {2452, 8}, {2736, 8}, {116, 8}, {504, 8},
-  {892, 8}, {1280, 8}, {1668, 8}, {2056, 8}, {2444, 8}, {2728, 8}, {108, 8},
-  {496, 8}, {884, 8}, {1272, 8}, {1660, 8}, {2048, 8}, {2436, 8}, {2720, 8},
-  {100, 8}, {488, 8}, {876, 8}, {1264, 8}, {1652, 8}, {2040, 8}, {2428, 8},
-  {2716, 4}, {92, 8}, {480, 8}, {868, 8}, {1256, 8}, {1644, 8}, {2032, 8},
-  {2420, 8}, {84, 8}, {472, 8}, {860, 8}, {1248, 8}, {1636, 8}, {2024, 8},
-  {2412, 8}, {76, 8}, {464, 8}, {852, 8}, {1240, 8}, {1628, 8}, {2016, 8},
-  {2404, 8}, {68, 8}, {456, 8}, {844, 8}, {1232, 8}, {1620, 8}, {2008, 8},
-  {2396, 8}, {60, 8}, {448, 8}, {836, 8}, {1224, 8}, {1612, 8}, {2000, 8},
-  {2388, 8}, {52, 8}, {440, 8}, {828, 8}, {1216, 8}, {1604, 8}, {1992, 8},
-  {2380, 8}, {44, 8}, {432, 8}, {820, 8}, {1208, 8}, {1596, 8}, {1984, 8},
-  {2372, 8}, {36, 8}, {424, 8}, {812, 8}, {1200, 8}, {1588, 8}, {1976, 8},
-  {2364, 8}, {28, 8}, {416, 8}, {804, 8}, {1192, 8}, {1580, 8}, {1968, 8},
-  {2356, 8}, {20, 8}, {408, 8}, {796, 8}, {1184, 8}, {1572, 8}, {1960, 8},
-  {2348, 8}, {12, 8}, {400, 8}, {788, 8}, {1176, 8}, {1564, 8}, {1952, 8},
-  {2340, 8}, {4, 8}, {392, 8}, {780, 8}, {1168, 8}, {1556, 8}, {1944, 8},
-  {2332, 8},
+  { 380, 8 },
+  { 768, 8 },
+  { 1156, 8 },
+  { 1544, 8 },
+  { 1932, 8 },
+  { 2320, 8 },
+  { 2708, 8 },
+  { 2992, 8 },
+  { 372, 8 },
+  { 760, 8 },
+  { 1148, 8 },
+  { 1536, 8 },
+  { 1924, 8 },
+  { 2312, 8 },
+  { 2700, 8 },
+  { 2984, 8 },
+  { 364, 8 },
+  { 752, 8 },
+  { 1140, 8 },
+  { 1528, 8 },
+  { 1916, 8 },
+  { 2304, 8 },
+  { 2692, 8 },
+  { 2976, 8 },
+  { 356, 8 },
+  { 744, 8 },
+  { 1132, 8 },
+  { 1520, 8 },
+  { 1908, 8 },
+  { 2296, 8 },
+  { 2684, 8 },
+  { 2968, 8 },
+  { 348, 8 },
+  { 736, 8 },
+  { 1124, 8 },
+  { 1512, 8 },
+  { 1900, 8 },
+  { 2288, 8 },
+  { 2676, 8 },
+  { 2960, 8 },
+  { 340, 8 },
+  { 728, 8 },
+  { 1116, 8 },
+  { 1504, 8 },
+  { 1892, 8 },
+  { 2280, 8 },
+  { 2668, 8 },
+  { 2952, 8 },
+  { 332, 8 },
+  { 720, 8 },
+  { 1108, 8 },
+  { 1496, 8 },
+  { 1884, 8 },
+  { 2272, 8 },
+  { 2660, 8 },
+  { 2944, 8 },
+  { 324, 8 },
+  { 712, 8 },
+  { 1100, 8 },
+  { 1488, 8 },
+  { 1876, 8 },
+  { 2264, 8 },
+  { 2652, 8 },
+  { 2936, 8 },
+  { 316, 8 },
+  { 704, 8 },
+  { 1092, 8 },
+  { 1480, 8 },
+  { 1868, 8 },
+  { 2256, 8 },
+  { 2644, 8 },
+  { 2928, 8 },
+  { 308, 8 },
+  { 696, 8 },
+  { 1084, 8 },
+  { 1472, 8 },
+  { 1860, 8 },
+  { 2248, 8 },
+  { 2636, 8 },
+  { 2920, 8 },
+  { 300, 8 },
+  { 688, 8 },
+  { 1076, 8 },
+  { 1464, 8 },
+  { 1852, 8 },
+  { 2240, 8 },
+  { 2628, 8 },
+  { 2912, 8 },
+  { 292, 8 },
+  { 680, 8 },
+  { 1068, 8 },
+  { 1456, 8 },
+  { 1844, 8 },
+  { 2232, 8 },
+  { 2620, 8 },
+  { 2904, 8 },
+  { 284, 8 },
+  { 672, 8 },
+  { 1060, 8 },
+  { 1448, 8 },
+  { 1836, 8 },
+  { 2224, 8 },
+  { 2612, 8 },
+  { 2896, 8 },
+  { 276, 8 },
+  { 664, 8 },
+  { 1052, 8 },
+  { 1440, 8 },
+  { 1828, 8 },
+  { 2216, 8 },
+  { 2604, 8 },
+  { 2888, 8 },
+  { 268, 8 },
+  { 656, 8 },
+  { 1044, 8 },
+  { 1432, 8 },
+  { 1820, 8 },
+  { 2208, 8 },
+  { 2596, 8 },
+  { 2880, 8 },
+  { 260, 8 },
+  { 648, 8 },
+  { 1036, 8 },
+  { 1424, 8 },
+  { 1812, 8 },
+  { 2200, 8 },
+  { 2588, 8 },
+  { 2872, 8 },
+  { 252, 8 },
+  { 640, 8 },
+  { 1028, 8 },
+  { 1416, 8 },
+  { 1804, 8 },
+  { 2192, 8 },
+  { 2580, 8 },
+  { 2864, 8 },
+  { 244, 8 },
+  { 632, 8 },
+  { 1020, 8 },
+  { 1408, 8 },
+  { 1796, 8 },
+  { 2184, 8 },
+  { 2572, 8 },
+  { 2856, 8 },
+  { 236, 8 },
+  { 624, 8 },
+  { 1012, 8 },
+  { 1400, 8 },
+  { 1788, 8 },
+  { 2176, 8 },
+  { 2564, 8 },
+  { 2848, 8 },
+  { 228, 8 },
+  { 616, 8 },
+  { 1004, 8 },
+  { 1392, 8 },
+  { 1780, 8 },
+  { 2168, 8 },
+  { 2556, 8 },
+  { 2840, 8 },
+  { 220, 8 },
+  { 608, 8 },
+  { 996, 8 },
+  { 1384, 8 },
+  { 1772, 8 },
+  { 2160, 8 },
+  { 2548, 8 },
+  { 2832, 8 },
+  { 212, 8 },
+  { 600, 8 },
+  { 988, 8 },
+  { 1376, 8 },
+  { 1764, 8 },
+  { 2152, 8 },
+  { 2540, 8 },
+  { 2824, 8 },
+  { 204, 8 },
+  { 592, 8 },
+  { 980, 8 },
+  { 1368, 8 },
+  { 1756, 8 },
+  { 2144, 8 },
+  { 2532, 8 },
+  { 2816, 8 },
+  { 196, 8 },
+  { 584, 8 },
+  { 972, 8 },
+  { 1360, 8 },
+  { 1748, 8 },
+  { 2136, 8 },
+  { 2524, 8 },
+  { 2808, 8 },
+  { 188, 8 },
+  { 576, 8 },
+  { 964, 8 },
+  { 1352, 8 },
+  { 1740, 8 },
+  { 2128, 8 },
+  { 2516, 8 },
+  { 2800, 8 },
+  { 180, 8 },
+  { 568, 8 },
+  { 956, 8 },
+  { 1344, 8 },
+  { 1732, 8 },
+  { 2120, 8 },
+  { 2508, 8 },
+  { 2792, 8 },
+  { 172, 8 },
+  { 560, 8 },
+  { 948, 8 },
+  { 1336, 8 },
+  { 1724, 8 },
+  { 2112, 8 },
+  { 2500, 8 },
+  { 2784, 8 },
+  { 164, 8 },
+  { 552, 8 },
+  { 940, 8 },
+  { 1328, 8 },
+  { 1716, 8 },
+  { 2104, 8 },
+  { 2492, 8 },
+  { 2776, 8 },
+  { 156, 8 },
+  { 544, 8 },
+  { 932, 8 },
+  { 1320, 8 },
+  { 1708, 8 },
+  { 2096, 8 },
+  { 2484, 8 },
+  { 2768, 8 },
+  { 148, 8 },
+  { 536, 8 },
+  { 924, 8 },
+  { 1312, 8 },
+  { 1700, 8 },
+  { 2088, 8 },
+  { 2476, 8 },
+  { 2760, 8 },
+  { 140, 8 },
+  { 528, 8 },
+  { 916, 8 },
+  { 1304, 8 },
+  { 1692, 8 },
+  { 2080, 8 },
+  { 2468, 8 },
+  { 2752, 8 },
+  { 132, 8 },
+  { 520, 8 },
+  { 908, 8 },
+  { 1296, 8 },
+  { 1684, 8 },
+  { 2072, 8 },
+  { 2460, 8 },
+  { 2744, 8 },
+  { 124, 8 },
+  { 512, 8 },
+  { 900, 8 },
+  { 1288, 8 },
+  { 1676, 8 },
+  { 2064, 8 },
+  { 2452, 8 },
+  { 2736, 8 },
+  { 116, 8 },
+  { 504, 8 },
+  { 892, 8 },
+  { 1280, 8 },
+  { 1668, 8 },
+  { 2056, 8 },
+  { 2444, 8 },
+  { 2728, 8 },
+  { 108, 8 },
+  { 496, 8 },
+  { 884, 8 },
+  { 1272, 8 },
+  { 1660, 8 },
+  { 2048, 8 },
+  { 2436, 8 },
+  { 2720, 8 },
+  { 100, 8 },
+  { 488, 8 },
+  { 876, 8 },
+  { 1264, 8 },
+  { 1652, 8 },
+  { 2040, 8 },
+  { 2428, 8 },
+  { 2716, 4 },
+  { 92, 8 },
+  { 480, 8 },
+  { 868, 8 },
+  { 1256, 8 },
+  { 1644, 8 },
+  { 2032, 8 },
+  { 2420, 8 },
+  { 84, 8 },
+  { 472, 8 },
+  { 860, 8 },
+  { 1248, 8 },
+  { 1636, 8 },
+  { 2024, 8 },
+  { 2412, 8 },
+  { 76, 8 },
+  { 464, 8 },
+  { 852, 8 },
+  { 1240, 8 },
+  { 1628, 8 },
+  { 2016, 8 },
+  { 2404, 8 },
+  { 68, 8 },
+  { 456, 8 },
+  { 844, 8 },
+  { 1232, 8 },
+  { 1620, 8 },
+  { 2008, 8 },
+  { 2396, 8 },
+  { 60, 8 },
+  { 448, 8 },
+  { 836, 8 },
+  { 1224, 8 },
+  { 1612, 8 },
+  { 2000, 8 },
+  { 2388, 8 },
+  { 52, 8 },
+  { 440, 8 },
+  { 828, 8 },
+  { 1216, 8 },
+  { 1604, 8 },
+  { 1992, 8 },
+  { 2380, 8 },
+  { 44, 8 },
+  { 432, 8 },
+  { 820, 8 },
+  { 1208, 8 },
+  { 1596, 8 },
+  { 1984, 8 },
+  { 2372, 8 },
+  { 36, 8 },
+  { 424, 8 },
+  { 812, 8 },
+  { 1200, 8 },
+  { 1588, 8 },
+  { 1976, 8 },
+  { 2364, 8 },
+  { 28, 8 },
+  { 416, 8 },
+  { 804, 8 },
+  { 1192, 8 },
+  { 1580, 8 },
+  { 1968, 8 },
+  { 2356, 8 },
+  { 20, 8 },
+  { 408, 8 },
+  { 796, 8 },
+  { 1184, 8 },
+  { 1572, 8 },
+  { 1960, 8 },
+  { 2348, 8 },
+  { 12, 8 },
+  { 400, 8 },
+  { 788, 8 },
+  { 1176, 8 },
+  { 1564, 8 },
+  { 1952, 8 },
+  { 2340, 8 },
+  { 4, 8 },
+  { 392, 8 },
+  { 780, 8 },
+  { 1168, 8 },
+  { 1556, 8 },
+  { 1944, 8 },
+  { 2332, 8 },
   /* missing from original data set */
-  {388, 4}, {776, 4}, {1164, 4}, {1552, 4}, {1940, 4}, {2328, 4},
+  { 388, 4 },
+  { 776, 4 },
+  { 1164, 4 },
+  { 1552, 4 },
+  { 1940, 4 },
+  { 2328, 4 },
 };
 /* *INDENT-ON* */
 
@@ -118,7 +443,7 @@ pattern_cmp (const void *arg1, const void *arg2)
 }
 
 static u8
-fifo_validate_pattern (vlib_main_t * vm, test_pattern_t * pattern,
+fifo_validate_pattern (vlib_main_t *vm, test_pattern_t *pattern,
 		       u32 pattern_length)
 {
   test_pattern_t *tp = pattern;
@@ -140,7 +465,7 @@ fifo_validate_pattern (vlib_main_t * vm, test_pattern_t * pattern,
 }
 
 static test_pattern_t *
-fifo_get_validate_pattern (vlib_main_t * vm, test_pattern_t * test_data,
+fifo_get_validate_pattern (vlib_main_t *vm, test_pattern_t *test_data,
 			   u32 test_data_len)
 {
   test_pattern_t *validate_pattern = 0;
@@ -159,7 +484,7 @@ fifo_get_validate_pattern (vlib_main_t * vm, test_pattern_t * test_data,
 }
 
 static fifo_segment_t *
-fifo_segment_prepare (fifo_segment_main_t * sm, char *seg_name, u32 seg_size)
+fifo_segment_prepare (fifo_segment_main_t *sm, char *seg_name, u32 seg_size)
 {
   fifo_segment_create_args_t _a, *a = &_a;
 
@@ -174,20 +499,20 @@ fifo_segment_prepare (fifo_segment_main_t * sm, char *seg_name, u32 seg_size)
 }
 
 static void
-ft_fifo_segment_free (fifo_segment_main_t * sm, fifo_segment_t * fs)
+ft_fifo_segment_free (fifo_segment_main_t *sm, fifo_segment_t *fs)
 {
   fifo_segment_delete (sm, fs);
 }
 
 static svm_fifo_t *
-fifo_segment_alloc_fifo (fifo_segment_t * fs, u32 data_bytes,
+fifo_segment_alloc_fifo (fifo_segment_t *fs, u32 data_bytes,
 			 fifo_segment_ftype_t ftype)
 {
   return fifo_segment_alloc_fifo_w_slice (fs, 0, data_bytes, ftype);
 }
 
 static svm_fifo_t *
-fifo_prepare (fifo_segment_t * fs, u32 fifo_size)
+fifo_prepare (fifo_segment_t *fs, u32 fifo_size)
 {
   svm_fifo_t *f;
   svm_fifo_chunk_t *c;
@@ -198,18 +523,18 @@ fifo_prepare (fifo_segment_t * fs, u32 fifo_size)
   c = svm_fifo_head_chunk (f);
   clib_memset (c->data, 0xFF, c->length);
 
-  svm_fifo_init_ooo_lookup (f, 1 /* deq ooo */ );
+  svm_fifo_init_ooo_lookup (f, 1 /* deq ooo */);
   return f;
 }
 
 static void
-ft_fifo_free (fifo_segment_t * fs, svm_fifo_t * f)
+ft_fifo_free (fifo_segment_t *fs, svm_fifo_t *f)
 {
   fifo_segment_free_fifo (fs, f);
 }
 
 static int
-compare_data (u8 * data1, u8 * data2, u32 start, u32 len, u32 * index)
+compare_data (u8 *data1, u8 *data2, u32 start, u32 len, u32 *index)
 {
   int i;
 
@@ -225,7 +550,7 @@ compare_data (u8 * data1, u8 * data2, u32 start, u32 len, u32 * index)
 }
 
 int
-sfifo_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo1 (vlib_main_t *vm, unformat_input_t *input)
 {
   u32 fifo_size = 1 << 20, *test_data = 0, offset, data_word, test_data_len;
   fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
@@ -287,8 +612,8 @@ sfifo_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "fifo after odd segs: %U", format_svm_fifo, f, 1);
 
   SFIFO_TEST ((f->shr->tail == 8), "fifo tail %u", f->shr->tail);
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 2),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 2), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
 
   /*
    * Try adding a completely overlapped segment
@@ -305,8 +630,8 @@ sfifo_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "fifo after overlap seg: %U", format_svm_fifo, f, 1);
 
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 2),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 2), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
 
   /*
    * Make sure format functions are not buggy
@@ -335,31 +660,30 @@ sfifo_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "fifo before missing link: %U", format_svm_fifo, f,
 		     1);
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 1),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 1), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
   ooo_seg = svm_fifo_first_ooo_segment (f);
-  SFIFO_TEST ((ooo_seg->start == 12),
-	      "first ooo seg position %u", ooo_seg->start);
-  SFIFO_TEST ((ooo_seg->length == 16),
-	      "first ooo seg length %u", ooo_seg->length);
+  SFIFO_TEST ((ooo_seg->start == 12), "first ooo seg position %u",
+	      ooo_seg->start);
+  SFIFO_TEST ((ooo_seg->length == 16), "first ooo seg length %u",
+	      ooo_seg->length);
 
   /*
    * Enqueue the missing u32
    */
   rv = svm_fifo_enqueue (f, sizeof (u32), (u8 *) (test_data + 2));
   if (verbose)
-    vlib_cli_output (vm, "fifo after missing link: %U", format_svm_fifo, f,
-		     1);
+    vlib_cli_output (vm, "fifo after missing link: %U", format_svm_fifo, f, 1);
   SFIFO_TEST ((rv == 20), "bytes to be enqueued %u", rv);
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 0),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 0), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
 
   /*
    * Collect results
    */
   for (i = 0; i < 7; i++)
     {
-      rv = svm_fifo_dequeue (f, sizeof (u32), (u8 *) & data_word);
+      rv = svm_fifo_dequeue (f, sizeof (u32), (u8 *) &data_word);
       if (rv != sizeof (u32))
 	{
 	  clib_warning ("bytes dequeues %u", rv);
@@ -396,14 +720,14 @@ sfifo_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
 
   rv = svm_fifo_enqueue_with_offset (f, 8 - f->shr->tail, 21, data);
   SFIFO_TEST ((rv == 0), "ooo enqueued %u", rv);
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 1),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 1), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
 
   /* add missing data to be able to dequeue something */
   rv = svm_fifo_enqueue (f, 4, data);
   SFIFO_TEST ((rv == 32), "enqueued %u", rv);
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 0),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 0), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
 
   vec_validate (data_buf, vec_len (test_data));
   svm_fifo_peek (f, 0, 4, data_buf);
@@ -443,8 +767,8 @@ sfifo_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "fifo after enqueueing 29: %U", format_svm_fifo, f,
 		     1);
   SFIFO_TEST ((rv == 32), "ooo enqueued %u", rv);
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 0),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 0), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
 
   vec_validate (data_buf, vec_len (data));
   svm_fifo_peek (f, 0, vec_len (data), data_buf);
@@ -473,7 +797,7 @@ err:
 }
 
 static int
-sfifo_test_fifo2 (vlib_main_t * vm)
+sfifo_test_fifo2 (vlib_main_t *vm)
 {
   fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
   test_pattern_t *tp, *vp, *test_data;
@@ -505,16 +829,16 @@ sfifo_test_fifo2 (vlib_main_t * vm)
     }
 
   /* Expected result: one big fat chunk at offset 4 */
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 1),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 1), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
   ooo_seg = svm_fifo_first_ooo_segment (f);
-  SFIFO_TEST ((ooo_seg->start == 4),
-	      "first ooo seg position %u", ooo_seg->start);
-  SFIFO_TEST ((ooo_seg->length == 2996),
-	      "first ooo seg length %u", ooo_seg->length);
+  SFIFO_TEST ((ooo_seg->start == 4), "first ooo seg position %u",
+	      ooo_seg->start);
+  SFIFO_TEST ((ooo_seg->length == 2996), "first ooo seg length %u",
+	      ooo_seg->length);
 
   data64 = 0;
-  rv = svm_fifo_enqueue (f, sizeof (u32), (u8 *) & data64);
+  rv = svm_fifo_enqueue (f, sizeof (u32), (u8 *) &data64);
   SFIFO_TEST ((rv == 3000), "bytes to be enqueued %u", rv);
 
   ft_fifo_free (fs, f);
@@ -539,16 +863,16 @@ sfifo_test_fifo2 (vlib_main_t * vm)
     }
 
   /* Expecting the same result: one big fat chunk at offset 4 */
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 1),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 1), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
   ooo_seg = svm_fifo_first_ooo_segment (f);
-  SFIFO_TEST ((ooo_seg->start == 4),
-	      "first ooo seg position %u", ooo_seg->start);
-  SFIFO_TEST ((ooo_seg->length == 2996),
-	      "first ooo seg length %u", ooo_seg->length);
+  SFIFO_TEST ((ooo_seg->start == 4), "first ooo seg position %u",
+	      ooo_seg->start);
+  SFIFO_TEST ((ooo_seg->length == 2996), "first ooo seg length %u",
+	      ooo_seg->length);
 
   data64 = 0;
-  rv = svm_fifo_enqueue (f, sizeof (u32), (u8 *) & data64);
+  rv = svm_fifo_enqueue (f, sizeof (u32), (u8 *) &data64);
 
   SFIFO_TEST ((rv == 3000), "bytes to be enqueued %u", rv);
 
@@ -559,7 +883,7 @@ sfifo_test_fifo2 (vlib_main_t * vm)
 }
 
 static int
-sfifo_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo3 (vlib_main_t *vm, unformat_input_t *input)
 {
   u32 nsegs = 2, seg_size, length_so_far, current_offset, offset_increment;
   int overlap = 0, verbose = 0, randomize = 1, drop = 0, in_seq_all = 0;
@@ -596,8 +920,8 @@ sfifo_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
 	drop = 1;
       else
 	{
-	  clib_error_t *e = clib_error_return
-	    (0, "unknown input `%U'", format_unformat_error, input);
+	  clib_error_t *e = clib_error_return (0, "unknown input `%U'",
+					       format_unformat_error, input);
 	  clib_error_report (e);
 	  return -1;
 	}
@@ -638,8 +962,8 @@ sfifo_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
       if (overlap && (len_this_chunk == seg_size))
 	do
 	  {
-	    offset_increment = len_this_chunk
-	      % (1 + (random_u32 (&seed) % len_this_chunk));
+	    offset_increment =
+	      len_this_chunk % (1 + (random_u32 (&seed) % len_this_chunk));
 	  }
 	while (offset_increment == 0);
       else
@@ -660,8 +984,8 @@ sfifo_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
       vlib_cli_output (vm, "raw data pattern:");
       for (i = 0; i < vec_len (generate); i++)
 	{
-	  vlib_cli_output (vm, "[%d] offset %u len %u", i,
-			   generate[i].offset, generate[i].len);
+	  vlib_cli_output (vm, "[%d] offset %u len %u", i, generate[i].offset,
+			   generate[i].len);
 	}
     }
 
@@ -718,8 +1042,8 @@ sfifo_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
    */
 
   if (verbose)
-    vlib_cli_output (vm, "fifo before missing link: %U",
-		     format_svm_fifo, f, 1 /* verbose */ );
+    vlib_cli_output (vm, "fifo before missing link: %U", format_svm_fifo, f,
+		     1 /* verbose */);
 
   /*
    * Add the missing byte if segments were randomized
@@ -736,7 +1060,6 @@ sfifo_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
 
       SFIFO_TEST ((rv == total_size), "enqueued %u expected %u", rv,
 		  total_size);
-
     }
 
   SFIFO_TEST ((svm_fifo_has_ooo_data (f) == 0), "number of ooo segments %u",
@@ -764,8 +1087,7 @@ sfifo_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
     {
       memset (data_buf, 0, vec_len (data_pattern));
       svm_fifo_dequeue (f, vec_len (data_pattern), data_buf);
-      if (compare_data
-	  (data_buf, data_pattern, 0, vec_len (data_pattern), &j))
+      if (compare_data (data_buf, data_pattern, 0, vec_len (data_pattern), &j))
 	{
 	  SFIFO_TEST (0, "[%d] dequeued %u expected %u", j, data_buf[j],
 		      data_pattern[j]);
@@ -784,7 +1106,7 @@ sfifo_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-sfifo_test_fifo4 (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo4 (vlib_main_t *vm, unformat_input_t *input)
 {
   u32 fifo_size = 6 << 10, fifo_initial_offset = 1e9, test_n_bytes = 5000, j;
   fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
@@ -799,8 +1121,8 @@ sfifo_test_fifo4 (vlib_main_t * vm, unformat_input_t * input)
 	verbose = 1;
       else
 	{
-	  clib_error_t *e = clib_error_return
-	    (0, "unknown input `%U'", format_unformat_error, input);
+	  clib_error_t *e = clib_error_return (0, "unknown input `%U'",
+					       format_unformat_error, input);
 	  clib_error_report (e);
 	  return -1;
 	}
@@ -848,14 +1170,14 @@ sfifo_test_fifo4 (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static u32
-fifo_pos (svm_fifo_t * f, u32 pos)
+fifo_pos (svm_fifo_t *f, u32 pos)
 {
   return pos;
 }
 
 /* Avoids exposing svm_fifo.c internal function */
 static ooo_segment_t *
-ooo_seg_next (svm_fifo_t * f, ooo_segment_t * s)
+ooo_seg_next (svm_fifo_t *f, ooo_segment_t *s)
 {
   if (pool_is_free_index (f->ooo_segments, s->next))
     return 0;
@@ -863,7 +1185,7 @@ ooo_seg_next (svm_fifo_t * f, ooo_segment_t * s)
 }
 
 static int
-sfifo_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo5 (vlib_main_t *vm, unformat_input_t *input)
 {
   fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
   u32 fifo_size = 401, j = 0, offset = 200;
@@ -900,12 +1222,12 @@ sfifo_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_enqueue_with_offset (f, 100, 100, &test_data[100]);
   svm_fifo_enqueue_with_offset (f, 300, 100, &test_data[300]);
 
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 2),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 2), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
   SFIFO_TEST ((f->ooos_newest == 1), "newest %u", f->ooos_newest);
   if (verbose)
     vlib_cli_output (vm, "fifo after [100, 200] and [300, 400] : %U",
-		     format_svm_fifo, f, 2 /* verbose */ );
+		     format_svm_fifo, f, 2 /* verbose */);
 
   /*
    * Add [225, 275]
@@ -913,10 +1235,10 @@ sfifo_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
 
   rv = svm_fifo_enqueue_with_offset (f, 225, 50, &test_data[225]);
   if (verbose)
-    vlib_cli_output (vm, "fifo after [225, 275] : %U",
-		     format_svm_fifo, f, 2 /* verbose */ );
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 3),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+    vlib_cli_output (vm, "fifo after [225, 275] : %U", format_svm_fifo, f,
+		     2 /* verbose */);
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 3), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
   ooo_seg = svm_fifo_first_ooo_segment (f);
   SFIFO_TEST ((ooo_seg->start == fifo_pos (f, 100 + offset)),
 	      "first seg start %u expected %u", ooo_seg->start,
@@ -925,14 +1247,14 @@ sfifo_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
 	      ooo_seg->length, 100);
   ooo_seg = ooo_seg_next (f, ooo_seg);
   SFIFO_TEST ((ooo_seg->start == fifo_pos (f, 225 + offset)),
-	      "second seg start %u expected %u",
-	      ooo_seg->start, fifo_pos (f, 225 + offset));
+	      "second seg start %u expected %u", ooo_seg->start,
+	      fifo_pos (f, 225 + offset));
   SFIFO_TEST ((ooo_seg->length == 50), "second seg length %u expected %u",
 	      ooo_seg->length, 50);
   ooo_seg = ooo_seg_next (f, ooo_seg);
   SFIFO_TEST ((ooo_seg->start == fifo_pos (f, 300 + offset)),
-	      "third seg start %u expected %u",
-	      ooo_seg->start, fifo_pos (f, 300 + offset));
+	      "third seg start %u expected %u", ooo_seg->start,
+	      fifo_pos (f, 300 + offset));
   SFIFO_TEST ((ooo_seg->length == 100), "third seg length %u expected %u",
 	      ooo_seg->length, 100);
   SFIFO_TEST ((f->ooos_newest == 2), "newest %u", f->ooos_newest);
@@ -941,14 +1263,14 @@ sfifo_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
    */
   rv = svm_fifo_enqueue_with_offset (f, 190, 120, &test_data[190]);
   if (verbose)
-    vlib_cli_output (vm, "fifo after [190, 310] : %U",
-		     format_svm_fifo, f, 1 /* verbose */ );
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 1),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+    vlib_cli_output (vm, "fifo after [190, 310] : %U", format_svm_fifo, f,
+		     1 /* verbose */);
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 1), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
   ooo_seg = svm_fifo_first_ooo_segment (f);
   SFIFO_TEST ((ooo_seg->start == fifo_pos (f, offset + 100)),
-	      "first seg start %u expected %u",
-	      ooo_seg->start, fifo_pos (f, offset + 100));
+	      "first seg start %u expected %u", ooo_seg->start,
+	      fifo_pos (f, offset + 100));
   SFIFO_TEST ((ooo_seg->length == 300), "first seg length %u expected %u",
 	      ooo_seg->length, 300);
 
@@ -959,11 +1281,11 @@ sfifo_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
 
   if (verbose)
     vlib_cli_output (vm, "fifo after [0 150] : %U", format_svm_fifo, f,
-		     2 /* verbose */ );
+		     2 /* verbose */);
 
   SFIFO_TEST ((rv == 400), "managed to enqueue %u expected %u", rv, 400);
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 0),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 0), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
 
   vec_validate (data_buf, 399);
   svm_fifo_peek (f, 0, 400, data_buf);
@@ -981,8 +1303,8 @@ sfifo_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
 
   svm_fifo_enqueue_with_offset (f, 100, 100, &test_data[100]);
   svm_fifo_enqueue_with_offset (f, 50, 200, &test_data[50]);
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 1),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 1), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
   ooo_seg = svm_fifo_first_ooo_segment (f);
   SFIFO_TEST ((ooo_seg->start == 50), "first seg start %u expected %u",
 	      ooo_seg->start, 50);
@@ -999,7 +1321,7 @@ sfifo_test_fifo5 (vlib_main_t * vm, unformat_input_t * input)
  * Test ooo head/tail u32 wrapping
  */
 static int
-sfifo_test_fifo6 (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo6 (vlib_main_t *vm, unformat_input_t *input)
 {
   fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
   u32 fifo_size = 101, n_test_bytes = 100;
@@ -1034,25 +1356,25 @@ sfifo_test_fifo6 (vlib_main_t * vm, unformat_input_t * input)
    */
   svm_fifo_init_pointers (f, ~0 % fifo_size, ~0 % fifo_size);
   svm_fifo_enqueue_with_offset (f, 10, 10, &test_data[10]);
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 1),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 1), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
   ooo_seg = svm_fifo_first_ooo_segment (f);
   rv = ooo_segment_offset_prod (f, ooo_seg);
   SFIFO_TEST (rv == 10, "offset should be %u is %u", 10, rv);
 
   svm_fifo_enqueue (f, 10, test_data);
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 0),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 0), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
   SFIFO_TEST (f->ooos_list_head == OOO_SEGMENT_INVALID_INDEX,
 	      "there should be no ooo seg");
 
   svm_fifo_peek (f, 5, 10, &data_buf[5]);
-  if (compare_data (data_buf, test_data, 5, 10, (u32 *) & j))
+  if (compare_data (data_buf, test_data, 5, 10, (u32 *) &j))
     SFIFO_TEST (0, "[%d] dequeued %u expected %u", j, data_buf[j],
 		test_data[j]);
 
   svm_fifo_dequeue (f, 20, data_buf);
-  if (compare_data (data_buf, test_data, 0, 20, (u32 *) & j))
+  if (compare_data (data_buf, test_data, 0, 20, (u32 *) &j))
     SFIFO_TEST (0, "[%d] dequeued %u expected %u", j, data_buf[j],
 		test_data[j]);
 
@@ -1063,13 +1385,13 @@ sfifo_test_fifo6 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_enqueue_with_offset (f, 5, 15, &test_data[5]);
   svm_fifo_enqueue (f, 12, test_data);
 
-  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 0),
-	      "number of ooo segments %u", svm_fifo_n_ooo_segments (f));
+  SFIFO_TEST ((svm_fifo_n_ooo_segments (f) == 0), "number of ooo segments %u",
+	      svm_fifo_n_ooo_segments (f));
   SFIFO_TEST (f->ooos_list_head == OOO_SEGMENT_INVALID_INDEX,
 	      "there should be no ooo seg");
 
   svm_fifo_dequeue (f, 20, data_buf);
-  if (compare_data (data_buf, test_data, 0, 20, (u32 *) & j))
+  if (compare_data (data_buf, test_data, 0, 20, (u32 *) &j))
     SFIFO_TEST (0, "[%d] dequeued %u expected %u", j, data_buf[j],
 		test_data[j]);
 
@@ -1087,7 +1409,7 @@ sfifo_test_fifo6 (vlib_main_t * vm, unformat_input_t * input)
  * Multiple ooo enqueues and dequeues that force fifo tail/head wrap
  */
 static int
-sfifo_test_fifo7 (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo7 (vlib_main_t *vm, unformat_input_t *input)
 {
   fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
   u32 fifo_size = 101, n_iterations = 100;
@@ -1146,7 +1468,7 @@ sfifo_test_fifo7 (vlib_main_t * vm, unformat_input_t * input)
 	SFIFO_TEST (0, "number of ooo segments %u", rv);
 
       svm_fifo_dequeue (f, n_test_bytes, data_buf);
-      if (compare_data (data_buf, test_data, 0, n_test_bytes, (u32 *) & j))
+      if (compare_data (data_buf, test_data, 0, n_test_bytes, (u32 *) &j))
 	SFIFO_TEST (0, "[%d] dequeued %u expected %u", j, data_buf[j],
 		    test_data[j]);
       svm_fifo_init_pointers (f, (~0 - i) % f->shr->size,
@@ -1168,7 +1490,7 @@ sfifo_test_fifo7 (vlib_main_t * vm, unformat_input_t * input)
  * Enqueue more than 4GB
  */
 static int
-sfifo_test_fifo_large (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo_large (vlib_main_t *vm, unformat_input_t *input)
 {
   u32 n_iterations = 100, n_bytes_per_iter, half, fifo_size;
   fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
@@ -1213,8 +1535,7 @@ sfifo_test_fifo_large (vlib_main_t * vm, unformat_input_t * input)
       if (rv != 0)
 	SFIFO_TEST (0, "number of ooo segments %u", rv);
       svm_fifo_dequeue (f, n_bytes_per_iter, data_buf);
-      if (compare_data (data_buf, test_data, 0, n_bytes_per_iter,
-			(u32 *) & j))
+      if (compare_data (data_buf, test_data, 0, n_bytes_per_iter, (u32 *) &j))
 	SFIFO_TEST (0, "[%d][%d] dequeued %u expected %u", i, j, data_buf[j],
 		    test_data[j]);
     }
@@ -1227,7 +1548,7 @@ sfifo_test_fifo_large (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static void
-validate_test_and_buf_vecs (u8 ** test_data, u8 ** data_buf, u32 len)
+validate_test_and_buf_vecs (u8 **test_data, u8 **data_buf, u32 len)
 {
   int i, cur_len;
 
@@ -1240,7 +1561,7 @@ validate_test_and_buf_vecs (u8 ** test_data, u8 ** data_buf, u32 len)
 }
 
 static int
-enqueue_ooo (svm_fifo_t * f, u8 * test_data, u32 len, u32 iterations)
+enqueue_ooo (svm_fifo_t *f, u8 *test_data, u32 len, u32 iterations)
 {
   u32 offset, enq_now, ooo_chunk;
   int i, rv;
@@ -1252,8 +1573,8 @@ enqueue_ooo (svm_fifo_t * f, u8 * test_data, u32 len, u32 iterations)
       enq_now = clib_min (ooo_chunk, len - offset);
       if (!enq_now)
 	continue;
-      rv = svm_fifo_enqueue_with_offset (f, offset, enq_now,
-					 test_data + offset);
+      rv =
+	svm_fifo_enqueue_with_offset (f, offset, enq_now, test_data + offset);
       if (rv)
 	return rv;
     }
@@ -1262,7 +1583,7 @@ enqueue_ooo (svm_fifo_t * f, u8 * test_data, u32 len, u32 iterations)
 }
 
 static int
-enqueue_ooo_packets (svm_fifo_t * f, u32 len, u32 enq_chunk, u8 * test_data)
+enqueue_ooo_packets (svm_fifo_t *f, u32 len, u32 enq_chunk, u8 *test_data)
 {
   u32 offset, enq_now;
   int i, rv;
@@ -1273,8 +1594,8 @@ enqueue_ooo_packets (svm_fifo_t * f, u32 len, u32 enq_chunk, u8 * test_data)
       enq_now = clib_min (enq_chunk, len - offset);
       if (!enq_now)
 	continue;
-      rv = svm_fifo_enqueue_with_offset (f, offset, enq_now,
-					 test_data + offset);
+      rv =
+	svm_fifo_enqueue_with_offset (f, offset, enq_now, test_data + offset);
       if (rv)
 	return rv;
 
@@ -1288,7 +1609,7 @@ enqueue_ooo_packets (svm_fifo_t * f, u32 len, u32 enq_chunk, u8 * test_data)
 }
 
 static int
-enqueue_packets_inc (svm_fifo_t * f, u32 len, u32 enq_chunk, u8 * test_data)
+enqueue_packets_inc (svm_fifo_t *f, u32 len, u32 enq_chunk, u8 *test_data)
 {
   u32 enq_now, offset;
   int i, rv;
@@ -1309,7 +1630,7 @@ enqueue_packets_inc (svm_fifo_t * f, u32 len, u32 enq_chunk, u8 * test_data)
 }
 
 static int
-dequeue_ooo (svm_fifo_t * f, u8 * data_buf, u32 len, u32 iterations)
+dequeue_ooo (svm_fifo_t *f, u8 *data_buf, u32 len, u32 iterations)
 {
   u32 offset, ooo_chunk, deq_now;
   int i, rv;
@@ -1329,7 +1650,7 @@ dequeue_ooo (svm_fifo_t * f, u8 * data_buf, u32 len, u32 iterations)
 }
 
 static int
-dequeue_ooo_inc (svm_fifo_t * f, u8 * data_buf, u32 len, u32 iterations)
+dequeue_ooo_inc (svm_fifo_t *f, u8 *data_buf, u32 len, u32 iterations)
 {
   u32 offset, ooo_chunk, deq_now;
   int i, rv;
@@ -1349,7 +1670,7 @@ dequeue_ooo_inc (svm_fifo_t * f, u8 * data_buf, u32 len, u32 iterations)
 }
 
 static int
-dequeue_packets (svm_fifo_t * f, u32 len, u32 deq_chunk, u8 * data_buf)
+dequeue_packets (svm_fifo_t *f, u32 len, u32 deq_chunk, u8 *data_buf)
 {
   u32 offset, deq_now;
   int i, rv;
@@ -1368,7 +1689,7 @@ dequeue_packets (svm_fifo_t * f, u32 len, u32 deq_chunk, u8 * data_buf)
 }
 
 static int
-sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo_grow (vlib_main_t *vm, unformat_input_t *input)
 {
   int __clib_unused verbose = 0, fifo_size = 4096, fifo_inc = 4096, rv, i;
   u32 enq_chunk, offset, deq_now, last_start_byte;
@@ -1419,8 +1740,10 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->ooo_enq == 0, "should have no ooo enq chunk");
   SFIFO_TEST (f->ooo_deq == 0, "should have no ooo deq chunk");
   c = f_end_cptr (f);
-  SFIFO_TEST (c->start_byte == last_start_byte, "end chunk start byte should"
-	      " be %u", last_start_byte);
+  SFIFO_TEST (c->start_byte == last_start_byte,
+	      "end chunk start byte should"
+	      " be %u",
+	      last_start_byte);
   SFIFO_TEST (c->length == 4096, "end chunk length should be %u", 4096);
 
   /*
@@ -1429,10 +1752,9 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 
   rv = svm_fifo_dequeue (f, fifo_size, data_buf);
   SFIFO_TEST (rv == fifo_size, "should dequeue all data");
-  last_start_byte += 4096;	/* size of last segment */
+  last_start_byte += 4096; /* size of last segment */
 
-  rv = compare_data (data_buf, test_data, 0, vec_len (test_data),
-		     (u32 *) & i);
+  rv = compare_data (data_buf, test_data, 0, vec_len (test_data), (u32 *) &i);
 
   if (rv)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", i, data_buf[i],
@@ -1467,8 +1789,8 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->ooo_enq != 0, "should have an ooo enq chunk");
 
   c = f_end_cptr (f);
-  SFIFO_TEST (c->start_byte == last_start_byte,
-	      "end chunk should start at %u", last_start_byte);
+  SFIFO_TEST (c->start_byte == last_start_byte, "end chunk should start at %u",
+	      last_start_byte);
   SFIFO_TEST (c->length == 8192, "end chunk length should be %u", 8192);
   SFIFO_TEST (f->ooo_enq == c, "ooo enq chunk should be end chunk");
 
@@ -1497,8 +1819,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   rv = dequeue_ooo_inc (f, data_buf, fifo_size, 10);
   SFIFO_TEST (!rv, "ooo deq should work %d", rv);
 
-  rv = compare_data (data_buf, test_data, 0, vec_len (test_data),
-		     (u32 *) & i);
+  rv = compare_data (data_buf, test_data, 0, vec_len (test_data), (u32 *) &i);
   if (rv)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", i, data_buf[i],
 		     test_data[i]);
@@ -1523,8 +1844,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 	SFIFO_TEST (0, "failed to peek");
     }
 
-  rv = compare_data (data_buf, test_data, 0, vec_len (test_data),
-		     (u32 *) & i);
+  rv = compare_data (data_buf, test_data, 0, vec_len (test_data), (u32 *) &i);
 
   if (rv)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", i, data_buf[i],
@@ -1581,8 +1901,8 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (f->ooo_enq != 0, "should have an ooo enq chunk");
 
   c = f_end_cptr (f);
-  SFIFO_TEST (c->start_byte == last_start_byte,
-	      "end chunk should start at %u", last_start_byte);
+  SFIFO_TEST (c->start_byte == last_start_byte, "end chunk should start at %u",
+	      last_start_byte);
   SFIFO_TEST (c->length == 16384, "end chunk length should be %u", 16384);
   SFIFO_TEST (f->ooo_enq == c, "ooo enq chunk should be end chunk");
 
@@ -1624,8 +1944,8 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 
   last_start_byte += 16384;
   c = f_end_cptr (f);
-  SFIFO_TEST (c->start_byte == last_start_byte,
-	      "end chunk should start at %u", last_start_byte);
+  SFIFO_TEST (c->start_byte == last_start_byte, "end chunk should start at %u",
+	      last_start_byte);
   SFIFO_TEST (c->length == 4096, "end chunk length should be %u", 4096);
 
   /*
@@ -1635,8 +1955,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (rv == fifo_size, "should dequeue all data");
   SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
-  rv = compare_data (data_buf, test_data, 0, vec_len (test_data),
-		     (u32 *) & i);
+  rv = compare_data (data_buf, test_data, 0, vec_len (test_data), (u32 *) &i);
   if (rv)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", i, data_buf[i],
 		     test_data[i]);
@@ -1665,7 +1984,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   rv = dequeue_ooo (f, data_buf, fifo_size, fifo_size);
   SFIFO_TEST (!rv, "ooo deq should work %d", rv);
 
-  rv = compare_data (data_buf, test_data, 0, fifo_size, (u32 *) & i);
+  rv = compare_data (data_buf, test_data, 0, fifo_size, (u32 *) &i);
   if (rv)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", i, data_buf[i],
 		     test_data[i]);
@@ -1674,8 +1993,8 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 
   last_start_byte += 4096;
   c = f_end_cptr (f);
-  SFIFO_TEST (c->start_byte == last_start_byte,
-	      "end chunk should start at %u", last_start_byte);
+  SFIFO_TEST (c->start_byte == last_start_byte, "end chunk should start at %u",
+	      last_start_byte);
   SFIFO_TEST (c->length == 16384, "end chunk length should be %u", 16384);
 
   rv = svm_fifo_n_chunks (f);
@@ -1717,7 +2036,6 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (rv == (fifo_size / 4096) + 1, "should have %u chunks has %u",
 	      (fifo_size / 4096) + 1, rv);
 
-
   /*
    * Dequeue all
    */
@@ -1727,14 +2045,12 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
   rv = svm_fifo_peek (f, 0, fifo_size, data_buf);
   SFIFO_TEST (rv == fifo_size, "should dequeue all data");
 
-  rv = compare_data (data_buf, test_data, 0, vec_len (test_data),
-		     (u32 *) & i);
+  rv = compare_data (data_buf, test_data, 0, vec_len (test_data), (u32 *) &i);
   if (rv)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", i, data_buf[i],
 		     test_data[i]);
   SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
   SFIFO_TEST ((rv == 0), "dequeued compared to original returned %d", rv);
-
 
   rv = svm_fifo_dequeue_drop (f, fifo_size);
   SFIFO_TEST ((rv == fifo_size), "all bytes should be dropped %u", rv);
@@ -1755,7 +2071,7 @@ sfifo_test_fifo_grow (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo_shrink (vlib_main_t *vm, unformat_input_t *input)
 {
   int __clib_unused verbose = 0, fifo_size = 4096, deq_chunk;
   fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
@@ -1822,7 +2138,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
 		    fifo_size - deq_chunk);
   SFIFO_TEST (!rv, "ooo deq should work %d", rv);
 
-  rv = compare_data (data_buf, test_data, 0, fifo_size, (u32 *) & i);
+  rv = compare_data (data_buf, test_data, 0, fifo_size, (u32 *) &i);
   if (rv)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", i, data_buf[i],
 		     test_data[i]);
@@ -1842,7 +2158,6 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   SFIFO_TEST (rv == 1, "should have %u chunks has %u", 1, rv);
   rv = svm_fifo_max_enqueue (f);
   SFIFO_TEST (rv == fifo_size, "enqueue space %u", rv);
-
 
   /*
    * Reset size and enqueue ooo all data
@@ -1877,7 +2192,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
   rv = dequeue_packets (f, fifo_size, deq_chunk, data_buf);
   SFIFO_TEST (!rv, "deq pkts should work %d", rv);
 
-  rv = compare_data (data_buf, test_data, 0, fifo_size, (u32 *) & i);
+  rv = compare_data (data_buf, test_data, 0, fifo_size, (u32 *) &i);
   if (rv)
     vlib_cli_output (vm, "[%d] dequeued %u expected %u", i, data_buf[i],
 		     test_data[i]);
@@ -1909,7 +2224,7 @@ sfifo_test_fifo_shrink (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-sfifo_test_fifo_indirect (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo_indirect (vlib_main_t *vm, unformat_input_t *input)
 {
   int __clib_unused verbose = 0, fifo_size = 4096, deq_chunk;
   fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
@@ -1998,7 +2313,7 @@ svm_fifo_trace_elem_t fifo_trace[] = {};
 /* *INDENT-ON* */
 
 static int
-sfifo_test_fifo_replay (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo_replay (vlib_main_t *vm, unformat_input_t *input)
 {
   svm_fifo_t f;
   int verbose = 0;
@@ -2012,8 +2327,8 @@ sfifo_test_fifo_replay (vlib_main_t * vm, unformat_input_t * input)
 	no_read = 1;
       else
 	{
-	  clib_error_t *e = clib_error_return
-	    (0, "unknown input `%U'", format_unformat_error, input);
+	  clib_error_t *e = clib_error_return (0, "unknown input `%U'",
+					       format_unformat_error, input);
 	  clib_error_report (e);
 	  return -1;
 	}
@@ -2029,7 +2344,7 @@ sfifo_test_fifo_replay (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-sfifo_test_fifo_make_rcv_wnd_zero (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo_make_rcv_wnd_zero (vlib_main_t *vm, unformat_input_t *input)
 {
   int __clib_unused verbose = 0, fifo_size = 4096, deq_chunk;
   fifo_segment_main_t _fsm = { 0 }, *fsm = &_fsm;
@@ -2087,7 +2402,6 @@ sfifo_test_fifo_make_rcv_wnd_zero (vlib_main_t * vm, unformat_input_t * input)
 
   return 0;
 }
-
 
 static fifo_segment_main_t segment_main;
 
@@ -2176,11 +2490,15 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
   SFIFO_TEST (f != 0, "svm_fifo_segment_alloc_fifo");
 
   n_chunks = fifo_segment_num_free_chunks (fs, fifo_size);
-  SFIFO_TEST (n_chunks == n_batch - 1, "free 2^10B chunks "
-	      "should be %u is %u", n_batch - 1, n_chunks);
+  SFIFO_TEST (n_chunks == n_batch - 1,
+	      "free 2^10B chunks "
+	      "should be %u is %u",
+	      n_batch - 1, n_chunks);
   rv = fifo_segment_fl_chunk_bytes (fs);
-  SFIFO_TEST (rv == (n_batch - 1) * fifo_size, "free chunk bytes %u "
-	      "expected %u", rv, (n_batch - 1) * fifo_size);
+  SFIFO_TEST (rv == (n_batch - 1) * fifo_size,
+	      "free chunk bytes %u "
+	      "expected %u",
+	      rv, (n_batch - 1) * fifo_size);
 
   /*
    * Grow fifo by preallocated fifo_size chunk
@@ -2193,11 +2511,15 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
   SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   n_chunks = fifo_segment_num_free_chunks (fs, fifo_size);
-  SFIFO_TEST (n_chunks == n_batch - 2, "free 2^10B chunks "
-	      "should be %u is %u", n_batch - 2, n_chunks);
+  SFIFO_TEST (n_chunks == n_batch - 2,
+	      "free 2^10B chunks "
+	      "should be %u is %u",
+	      n_batch - 2, n_chunks);
   rv = fifo_segment_fl_chunk_bytes (fs);
-  SFIFO_TEST (rv == (n_batch - 2) * fifo_size, "free chunk bytes %u "
-	      "expected %u", rv, (n_batch - 2) * fifo_size);
+  SFIFO_TEST (rv == (n_batch - 2) * fifo_size,
+	      "free chunk bytes %u "
+	      "expected %u",
+	      rv, (n_batch - 2) * fifo_size);
 
   /* Grow by a size not preallocated but first make sure there's space */
   rv = fifo_segment_free_bytes (fs);
@@ -2209,12 +2531,16 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
   validate_test_and_buf_vecs (&test_data, &data_buf, svm_fifo_size (f));
   rv = svm_fifo_enqueue (f, vec_len (test_data), test_data);
 
-  SFIFO_TEST (svm_fifo_size (f) == 18 * fifo_size, "fifo size should be %u "
-	      "is %u", 18 * fifo_size, svm_fifo_size (f));
+  SFIFO_TEST (svm_fifo_size (f) == 18 * fifo_size,
+	      "fifo size should be %u "
+	      "is %u",
+	      18 * fifo_size, svm_fifo_size (f));
 
   rv = fifo_segment_fl_chunk_bytes (fs);
-  SFIFO_TEST (rv == (n_batch - 2) * fifo_size, "free chunk bytes %u "
-	      "expected %u", rv, (n_batch - 2) * fifo_size);
+  SFIFO_TEST (rv == (n_batch - 2) * fifo_size,
+	      "free chunk bytes %u "
+	      "expected %u",
+	      rv, (n_batch - 2) * fifo_size);
 
   /*
    * Free and test free list size
@@ -2222,11 +2548,15 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
   fifo_segment_free_fifo (fs, f);
 
   rv = fifo_segment_fl_chunk_bytes (fs);
-  SFIFO_TEST (rv == (16 + n_batch) * fifo_size, "free chunk bytes expected %u"
-	      " is %u", (16 + n_batch) * fifo_size, rv);
+  SFIFO_TEST (rv == (16 + n_batch) * fifo_size,
+	      "free chunk bytes expected %u"
+	      " is %u",
+	      (16 + n_batch) * fifo_size, rv);
   n_chunks = fifo_segment_num_free_chunks (fs, fifo_size);
-  SFIFO_TEST (n_chunks == n_batch, "free 2^10B chunks "
-	      "should be %u is %u", n_batch, n_chunks);
+  SFIFO_TEST (n_chunks == n_batch,
+	      "free 2^10B chunks "
+	      "should be %u is %u",
+	      n_batch, n_chunks);
   n_chunks = fifo_segment_num_free_chunks (fs, 16 * fifo_size);
   SFIFO_TEST (n_chunks == 1, "free 2^14B chunks should be %u is %u", 1,
 	      n_chunks);
@@ -2270,8 +2600,10 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
 	      1 + n_batch, n_chunks);
 
   rv = fifo_segment_fl_chunk_bytes (fs);
-  SFIFO_TEST (rv == (16 + n_batch) * fifo_size, "free chunk bytes expected %u"
-	      " is %u", (16 + n_batch) * fifo_size, rv);
+  SFIFO_TEST (rv == (16 + n_batch) * fifo_size,
+	      "free chunk bytes expected %u"
+	      " is %u",
+	      (16 + n_batch) * fifo_size, rv);
 
   n_free_chunk_bytes = rv;
 
@@ -2283,8 +2615,10 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
   f = fifo_segment_alloc_fifo (fs, 16 * fifo_size - 1, FIFO_SEGMENT_RX_FIFO);
   rv = fifo_segment_fl_chunk_bytes (fs);
 
-  SFIFO_TEST (n_free_chunk_bytes - 16 * fifo_size == rv, "free chunk bytes "
-	      "expected %u is %u", n_free_chunk_bytes - 16 * fifo_size, rv);
+  SFIFO_TEST (n_free_chunk_bytes - 16 * fifo_size == rv,
+	      "free chunk bytes "
+	      "expected %u is %u",
+	      n_free_chunk_bytes - 16 * fifo_size, rv);
   SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
   fifo_segment_free_fifo (fs, f);
@@ -2311,8 +2645,10 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
   /* Make sure that the non-power of two chunk freed above is correctly
    * accounted for in the chunk free bytes reduction due to chunk allocation
    * for the fifo, i.e., it's rounded up by 1 */
-  SFIFO_TEST (n_free_chunk_bytes - 17 * fifo_size == rv, "free chunk bytes "
-	      "expected %u is %u", n_free_chunk_bytes - 17 * fifo_size, rv);
+  SFIFO_TEST (n_free_chunk_bytes - 17 * fifo_size == rv,
+	      "free chunk bytes "
+	      "expected %u is %u",
+	      n_free_chunk_bytes - 17 * fifo_size, rv);
 
   fifo_segment_free_fifo (fs, f);
 
@@ -2324,13 +2660,13 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
    * Allocate fifo that has all chunks. Because we have a chunk size limit of
    * segment_size / 2, allocate 2 fifos.
    */
-  tf = fifo_segment_alloc_fifo (fs, n_free_chunk_bytes / 2,
-				FIFO_SEGMENT_RX_FIFO);
+  tf =
+    fifo_segment_alloc_fifo (fs, n_free_chunk_bytes / 2, FIFO_SEGMENT_RX_FIFO);
   SFIFO_TEST (tf != 0, "allocation should work");
   SFIFO_TEST (svm_fifo_is_sane (tf), "fifo should be sane");
 
-  f = fifo_segment_alloc_fifo (fs, n_free_chunk_bytes / 2,
-			       FIFO_SEGMENT_RX_FIFO);
+  f =
+    fifo_segment_alloc_fifo (fs, n_free_chunk_bytes / 2, FIFO_SEGMENT_RX_FIFO);
   SFIFO_TEST (f != 0, "allocation should work");
   SFIFO_TEST (svm_fifo_is_sane (f), "fifo should be sane");
 
@@ -2361,8 +2697,8 @@ sfifo_test_fifo_segment_fifo_grow (int verbose)
   validate_test_and_buf_vecs (&test_data, &data_buf, new_size);
   rv = svm_fifo_enqueue (f, new_size, test_data);
 
-  SFIFO_TEST (rv != new_size, "grow should fail size %u wrote %d",
-	      new_size, rv);
+  SFIFO_TEST (rv != new_size, "grow should fail size %u wrote %d", new_size,
+	      rv);
 
   fifo_segment_free_fifo (fs, f);
 
@@ -2529,8 +2865,7 @@ sfifo_test_fifo_segment_mempig (int verbose)
       vec_add1 (flist, f);
     }
 
-  SFIFO_TEST (vec_len (flist), "second try created %d fifos",
-	      vec_len (flist));
+  SFIFO_TEST (vec_len (flist), "second try created %d fifos", vec_len (flist));
   for (i = 0; i < vec_len (flist); i++)
     {
       f = flist[i];
@@ -2590,8 +2925,8 @@ sfifo_test_fifo_segment_prealloc (int verbose)
 	      free_space, rv);
   free_space = rv;
   rv = fifo_segment_fl_chunk_bytes (fs);
-  SFIFO_TEST (rv == 4096 * 50, "chunk free space expected %u is %u",
-	      4096 * 50, rv);
+  SFIFO_TEST (rv == 4096 * 50, "chunk free space expected %u is %u", 4096 * 50,
+	      rv);
 
   rv = fifo_segment_prealloc_fifo_hdrs (fs, 0, 50);
   SFIFO_TEST (rv == 0, "fifo hdr prealloc should work");
@@ -2622,7 +2957,6 @@ sfifo_test_fifo_segment_prealloc (int verbose)
   rv = fifo_segment_fl_chunk_bytes (fs);
   SFIFO_TEST (rv == 0, "chunk free space expected %u is %u", 0, rv);
 
-
   /*
    * Multiple preallocs that consume the remaining space
    */
@@ -2646,8 +2980,10 @@ sfifo_test_fifo_segment_prealloc (int verbose)
     alloc++;
   SFIFO_TEST (alloc, "chunk prealloc should work %u", alloc);
   rv = fifo_segment_num_free_chunks (fs, 4096);
-  SFIFO_TEST (rv == max_pairs * 2 + alloc, "prealloc chunks expected %u "
-	      "is %u", max_pairs * 2 + alloc, rv);
+  SFIFO_TEST (rv == max_pairs * 2 + alloc,
+	      "prealloc chunks expected %u "
+	      "is %u",
+	      max_pairs * 2 + alloc, rv);
 
   rv = fifo_segment_free_bytes (fs);
   SFIFO_TEST (rv < pair_mem, "free bytes expected less than %u is %u",
@@ -2680,7 +3016,7 @@ sfifo_test_fifo_segment_prealloc (int verbose)
 }
 
 static int
-sfifo_test_fifo_segment (vlib_main_t * vm, unformat_input_t * input)
+sfifo_test_fifo_segment (vlib_main_t *vm, unformat_input_t *input)
 {
   int rv, verbose = 0;
 
@@ -2739,8 +3075,8 @@ sfifo_test_fifo_segment (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static clib_error_t *
-svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
-	       vlib_cli_command_t * cmd_arg)
+svm_fifo_test (vlib_main_t *vm, unformat_input_t *input,
+	       vlib_cli_command_t *cmd_arg)
 {
   int res = 0;
   char *str;
@@ -2854,7 +3190,6 @@ svm_fifo_test (vlib_main_t * vm, unformat_input_t * input,
 	  res = -1;
 	  goto done;
 	}
-
     }
 
 done:
@@ -2864,8 +3199,7 @@ done:
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (svm_fifo_test_command, static) =
-{
+VLIB_CLI_COMMAND (svm_fifo_test_command, static) = {
   .path = "test svm fifo",
   .short_help = "internal svm fifo unit tests",
   .function = svm_fifo_test,
@@ -2873,9 +3207,4 @@ VLIB_CLI_COMMAND (svm_fifo_test_command, static) =
 /* *INDENT-ON* */
 
 /*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+ * f

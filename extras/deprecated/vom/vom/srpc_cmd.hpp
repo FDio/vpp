@@ -20,7 +20,7 @@
 #include "vom/rpc_cmd.hpp"
 
 namespace VOM {
-template <typename MSG>
+template<typename MSG>
 class srpc_cmd : public rpc_cmd<HW::item<handle_t>, MSG>
 {
 public:
@@ -34,8 +34,7 @@ public:
    */
   srpc_cmd(HW::item<handle_t>& item)
     : rpc_cmd<HW::item<handle_t>, MSG>(item)
-  {
-  }
+  {}
 
   /**
    * Desructor

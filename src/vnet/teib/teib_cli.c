@@ -16,8 +16,7 @@
 #include <vnet/teib/teib.h>
 
 static clib_error_t *
-teib_add (vlib_main_t * vm,
-	  unformat_input_t * input, vlib_cli_command_t * cmd)
+teib_add (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ip_address_t peer = ip_address_initializer;
@@ -60,8 +59,8 @@ teib_add (vlib_main_t * vm,
     }
   if (ip_address_is_zero (&peer))
     {
-      error = clib_error_return (0, "peer required'",
-				 format_unformat_error, line_input);
+      error = clib_error_return (0, "peer required'", format_unformat_error,
+				 line_input);
       goto done;
     }
   if (ip_address_is_zero (&nh))
@@ -85,17 +84,15 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (teib_create_command, static) = {
   .path = "create teib",
-  .short_help = "create teib <interface> peer <addr> nh <addr> [nh-table-id <ID>]",
+  .short_help =
+    "create teib <interface> peer <addr> nh <addr> [nh-table-id <ID>]",
   .function = teib_add,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-teib_del (vlib_main_t * vm,
-	  unformat_input_t * input, vlib_cli_command_t * cmd)
+teib_del (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ip_address_t peer = ip_address_initializer;
@@ -131,8 +128,8 @@ teib_del (vlib_main_t * vm,
     }
   if (ip_address_is_zero (&peer))
     {
-      error = clib_error_return (0, "peer required'",
-				 format_unformat_error, line_input);
+      error = clib_error_return (0, "peer required'", format_unformat_error,
+				 line_input);
       goto done;
     }
 
@@ -150,13 +147,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (teib_delete_command, static) = {
   .path = "delete teib",
   .short_help = "delete teib <interface> peer <addr>",
   .function = teib_del,
 };
-/* *INDENT-ON* */
 
 static walk_rc_t
 teib_show_one (index_t nei, void *ctx)
@@ -166,22 +161,18 @@ teib_show_one (index_t nei, void *ctx)
   return (WALK_CONTINUE);
 }
 
-
 static clib_error_t *
-teib_show (vlib_main_t * vm,
-	   unformat_input_t * input, vlib_cli_command_t * cmd)
+teib_show (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   teib_walk (teib_show_one, vm);
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (teib_show_command, static) = {
   .path = "show teib",
   .short_help = "show teib",
   .function = teib_show,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

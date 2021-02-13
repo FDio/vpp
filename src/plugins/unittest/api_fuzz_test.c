@@ -60,16 +60,16 @@ fuzz_hook (u16 id, void *the_msg)
 static void
 default_fuzz_config (void)
 {
-  fuzz_first = vl_msg_api_get_msg_index
-    ((u8 *) "memclnt_keepalive_reply_e8d4e804");
+  fuzz_first =
+    vl_msg_api_get_msg_index ((u8 *) "memclnt_keepalive_reply_e8d4e804");
   fuzz_cli_first = vl_msg_api_get_msg_index ((u8 *) "cli_23bfbfff");
-  fuzz_cli_last = vl_msg_api_get_msg_index
-    ((u8 *) "cli_inband_reply_05879051");
+  fuzz_cli_last =
+    vl_msg_api_get_msg_index ((u8 *) "cli_inband_reply_05879051");
 }
 
 static clib_error_t *
-test_api_fuzz_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+test_api_fuzz_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   u32 tmp;
 
@@ -78,22 +78,22 @@ test_api_fuzz_command_fn (vlib_main_t * vm,
   if (fuzz_first == 0xFFFF)
     {
       vlib_cli_output (vm, "Couldn't find 'memclnt_keepalive_reply' ID");
-      vlib_cli_output
-	(vm, "Manual setting required, use 'show api message table'");
+      vlib_cli_output (
+	vm, "Manual setting required, use 'show api message table'");
     }
 
   if (fuzz_cli_first == 0xFFFF)
     {
       vlib_cli_output (vm, "Couldn't find 'cli' ID");
-      vlib_cli_output
-	(vm, "Manual setting required, use 'show api message table'");
+      vlib_cli_output (
+	vm, "Manual setting required, use 'show api message table'");
     }
 
   if (fuzz_cli_last == 0xFFFF)
     {
       vlib_cli_output (vm, "Couldn't find 'cli_inband_reply' ID");
-      vlib_cli_output
-	(vm, "Manual setting required, use 'show api message table'");
+      vlib_cli_output (
+	vm, "Manual setting required, use 'show api message table'");
     }
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -126,27 +126,26 @@ test_api_fuzz_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_api_fuzz, static) = {
-   .path = "test api fuzz",
-   .short_help = "test api fuzz [disable][seed nnn]\n"
-   "           [fuzz-first nn][fuzz-cli-first nn][fuzz-cli-last nn]",
-   .function = test_api_fuzz_command_fn,
-  };
-/* *INDENT-ON* */
+  .path = "test api fuzz",
+  .short_help =
+    "test api fuzz [disable][seed nnn]\n"
+    "           [fuzz-first nn][fuzz-cli-first nn][fuzz-cli-last nn]",
+  .function = test_api_fuzz_command_fn,
+};
 
 static u8 main_loop_enter_enable_api_fuzz;
 
 static clib_error_t *
-api_fuzz_config (vlib_main_t * vm, unformat_input_t * input)
+api_fuzz_config (vlib_main_t *vm, unformat_input_t *input)
 {
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "off")
-	  || unformat (input, "disable") || unformat (input, "no"))
-	;			/* ok, no action */
-      else if (unformat (input, "on")
-	       || unformat (input, "enable") || unformat (input, "yes"))
+      if (unformat (input, "off") || unformat (input, "disable") ||
+	  unformat (input, "no"))
+	; /* ok, no action */
+      else if (unformat (input, "on") || unformat (input, "enable") ||
+	       unformat (input, "yes"))
 	main_loop_enter_enable_api_fuzz = 1;
       else
 	return clib_error_return (0, "unknown input '%U'",
@@ -158,7 +157,7 @@ api_fuzz_config (vlib_main_t * vm, unformat_input_t * input)
 VLIB_CONFIG_FUNCTION (api_fuzz_config, "api-fuzz");
 
 static clib_error_t *
-api_fuzz_api_init (vlib_main_t * vm)
+api_fuzz_api_init (vlib_main_t *vm)
 {
   /* Are we supposed to fuzz API messages? */
   if (main_loop_enter_enable_api_fuzz == 0)
@@ -168,8 +167,8 @@ api_fuzz_api_init (vlib_main_t * vm)
 
   if (fuzz_first == 0xFFFF)
     {
-      return clib_error_return
-	(0, "Couldn't find 'memclnt_keepalive_reply' ID");
+      return clib_error_return (0,
+				"Couldn't find 'memclnt_keepalive_reply' ID");
     }
   /* Turn on fuzzing */
   vl_msg_api_fuzz_hook = fuzz_hook;

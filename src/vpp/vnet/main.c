@@ -60,19 +60,23 @@ vpp_find_plugin_path ()
     return;
   *p = 0;
 
-  s = format (0, "%s/lib/" CLIB_TARGET_TRIPLET "/vpp_plugins:"
-	      "%s/lib/vpp_plugins", path, path);
+  s = format (0,
+	      "%s/lib/" CLIB_TARGET_TRIPLET "/vpp_plugins:"
+	      "%s/lib/vpp_plugins",
+	      path, path);
   vec_add1 (s, 0);
   vlib_plugin_path = (char *) s;
 
-  s = format (0, "%s/lib/" CLIB_TARGET_TRIPLET "/vpp_api_test_plugins:"
-	      "%s/lib/vpp_api_test_plugins", path, path);
+  s = format (0,
+	      "%s/lib/" CLIB_TARGET_TRIPLET "/vpp_api_test_plugins:"
+	      "%s/lib/vpp_api_test_plugins",
+	      path, path);
   vec_add1 (s, 0);
   vat_plugin_path = (char *) s;
 }
 
 static void
-vpe_main_init (vlib_main_t * vm)
+vpe_main_init (vlib_main_t *vm)
 {
 #if VPP_API_TEST_BUILTIN > 0
   void vat_plugin_hash_create (void);
@@ -119,40 +123,40 @@ main (int argc, char *argv[])
   void *main_heap;
 
 #if __x86_64__
-  CLIB_UNUSED (const char *msg)
-    = "ERROR: This binary requires CPU with %s extensions.\n";
-#define _(a,b)                                  \
-    if (!clib_cpu_supports_ ## a ())            \
-      {                                         \
-	fprintf(stderr, msg, b);                \
-	exit(1);                                \
-      }
+  CLIB_UNUSED (const char *msg) =
+    "ERROR: This binary requires CPU with %s extensions.\n";
+#define _(a, b)                                                               \
+  if (!clib_cpu_supports_##a ())                                              \
+    {                                                                         \
+      fprintf (stderr, msg, b);                                               \
+      exit (1);                                                               \
+    }
 
 #if __AVX2__
-  _(avx2, "AVX2")
+  _ (avx2, "AVX2")
 #endif
 #if __AVX__
-    _(avx, "AVX")
+  _ (avx, "AVX")
 #endif
 #if __SSE4_2__
-    _(sse42, "SSE4.2")
+  _ (sse42, "SSE4.2")
 #endif
 #if __SSE4_1__
-    _(sse41, "SSE4.1")
+  _ (sse41, "SSE4.1")
 #endif
 #if __SSSE3__
-    _(ssse3, "SSSE3")
+  _ (ssse3, "SSSE3")
 #endif
 #if __SSE3__
-    _(sse3, "SSE3")
+  _ (sse3, "SSE3")
 #endif
 #undef _
 #endif
-    /*
-     * Load startup config from file.
-     * usage: vpp -c /etc/vpp/startup.conf
-     */
-    if ((argc == 3) && !strncmp (argv[1], "-c", 2))
+  /*
+   * Load startup config from file.
+   * usage: vpp -c /etc/vpp/startup.conf
+   */
+  if ((argc == 3) && !strncmp (argv[1], "-c", 2))
     {
       FILE *fp;
       char inbuf[4096];
@@ -246,10 +250,10 @@ main (int argc, char *argv[])
 	    }
 	  if (size == 0)
 	    {
-	      fprintf
-		(stderr,
-		 "warning: heapsize parse error '%s', use default %lld\n",
-		 argv[i], (long long int) main_heap_size);
+	      fprintf (
+		stderr,
+		"warning: heapsize parse error '%s', use default %lld\n",
+		argv[i], (long long int) main_heap_size);
 	      goto defaulted;
 	    }
 
@@ -298,7 +302,6 @@ defaulted:
 			   format_unformat_error, &sub_input);
 		  exit (1);
 		}
-
 	    }
 	  unformat_free (&sub_input);
 	}
@@ -348,7 +351,7 @@ defaulted:
 }
 
 static clib_error_t *
-memory_config (vlib_main_t * vm, unformat_input_t * input)
+memory_config (vlib_main_t *vm, unformat_input_t *input)
 {
   return 0;
 }
@@ -356,7 +359,7 @@ memory_config (vlib_main_t * vm, unformat_input_t * input)
 VLIB_CONFIG_FUNCTION (memory_config, "memory");
 
 static clib_error_t *
-heapsize_config (vlib_main_t * vm, unformat_input_t * input)
+heapsize_config (vlib_main_t *vm, unformat_input_t *input)
 {
   return 0;
 }
@@ -364,7 +367,7 @@ heapsize_config (vlib_main_t * vm, unformat_input_t * input)
 VLIB_CONFIG_FUNCTION (heapsize_config, "heapsize");
 
 static clib_error_t *
-placeholder_path_config (vlib_main_t * vm, unformat_input_t * input)
+placeholder_path_config (vlib_main_t *vm, unformat_input_t *input)
 {
   u8 *junk;
 
@@ -383,7 +386,7 @@ placeholder_path_config (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static clib_error_t *
-plugin_path_config (vlib_main_t * vm, unformat_input_t * input)
+plugin_path_config (vlib_main_t *vm, unformat_input_t *input)
 {
   return placeholder_path_config (vm, input);
 }
@@ -391,7 +394,7 @@ plugin_path_config (vlib_main_t * vm, unformat_input_t * input)
 VLIB_CONFIG_FUNCTION (plugin_path_config, "plugin_path");
 
 static clib_error_t *
-test_plugin_path_config (vlib_main_t * vm, unformat_input_t * input)
+test_plugin_path_config (vlib_main_t *vm, unformat_input_t *input)
 {
   return placeholder_path_config (vm, input);
 }
@@ -472,8 +475,8 @@ vlib_app_num_thread_stacks_needed (void)
 #include <vppinfra/bihash_8_8.h>
 
 static clib_error_t *
-show_bihash_command_fn (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+show_bihash_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   int i;
   clib_bihash_8_8_t *h;
@@ -491,14 +494,11 @@ show_bihash_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_bihash_command, static) =
-{
+VLIB_CLI_COMMAND (show_bihash_command, static) = {
   .path = "show bihash",
   .short_help = "show bihash",
   .function = show_bihash_command_fn,
 };
-/* *INDENT-ON* */
 
 #ifdef CLIB_SANITIZE_ADDR
 /* default options for Address Sanitizer */

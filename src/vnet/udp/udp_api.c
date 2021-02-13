@@ -22,11 +22,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -38,14 +38,13 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-
-#define foreach_udp_api_msg            \
-_(UDP_ENCAP_DEL, udp_encap_del)        \
-_(UDP_ENCAP_ADD, udp_encap_add)        \
-_(UDP_ENCAP_DUMP, udp_encap_dump)
+#define foreach_udp_api_msg                                                   \
+  _ (UDP_ENCAP_DEL, udp_encap_del)                                            \
+  _ (UDP_ENCAP_ADD, udp_encap_add)                                            \
+  _ (UDP_ENCAP_DUMP, udp_encap_dump)
 
 static void
-send_udp_encap_details (const udp_encap_t * ue, vl_api_registration_t * reg,
+send_udp_encap_details (const udp_encap_t *ue, vl_api_registration_t *reg,
 			u32 context)
 {
   vl_api_udp_encap_details_t *mp;
@@ -92,8 +91,7 @@ send_udp_encap_details (const udp_encap_t * ue, vl_api_registration_t * reg,
 }
 
 static void
-vl_api_udp_encap_dump_t_handler (vl_api_udp_encap_dump_t * mp,
-				 vlib_main_t * vm)
+vl_api_udp_encap_dump_t_handler (vl_api_udp_encap_dump_t *mp, vlib_main_t *vm)
 {
   vl_api_registration_t *reg;
   udp_encap_t *ue;
@@ -102,16 +100,14 @@ vl_api_udp_encap_dump_t_handler (vl_api_udp_encap_dump_t * mp,
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (ue, udp_encap_pool)
-   {
-    send_udp_encap_details(ue, reg, mp->context);
-  }
-  /* *INDENT-ON* */
+    {
+      send_udp_encap_details (ue, reg, mp->context);
+    }
 }
 
 static void
-vl_api_udp_encap_add_t_handler (vl_api_udp_encap_add_t * mp, vlib_main_t * vm)
+vl_api_udp_encap_add_t_handler (vl_api_udp_encap_add_t *mp, vlib_main_t *vm)
 {
   vl_api_udp_encap_add_reply_t *rmp;
   ip46_address_t src_ip, dst_ip;
@@ -135,24 +131,17 @@ vl_api_udp_encap_add_t_handler (vl_api_udp_encap_add_t * mp, vlib_main_t * vm)
       goto done;
     }
 
-  uei = udp_encap_add_and_lock (fproto, fib_index,
-				&src_ip, &dst_ip,
-				ntohs (mp->udp_encap.src_port),
-				ntohs (mp->udp_encap.dst_port),
-				UDP_ENCAP_FIXUP_NONE);
+  uei = udp_encap_add_and_lock (
+    fproto, fib_index, &src_ip, &dst_ip, ntohs (mp->udp_encap.src_port),
+    ntohs (mp->udp_encap.dst_port), UDP_ENCAP_FIXUP_NONE);
 
 done:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_UDP_ENCAP_ADD_REPLY,
-  ({
-    rmp->id = ntohl (uei);
-  }));
-  /* *INDENT-ON* */
 
+  REPLY_MACRO2 (VL_API_UDP_ENCAP_ADD_REPLY, ({ rmp->id = ntohl (uei); }));
 }
 
 static void
-vl_api_udp_encap_del_t_handler (vl_api_udp_encap_del_t * mp, vlib_main_t * vm)
+vl_api_udp_encap_del_t_handler (vl_api_udp_encap_del_t *mp, vlib_main_t *vm)
 {
   vl_api_udp_encap_del_reply_t *rmp;
   int rv = 0;
@@ -167,25 +156,22 @@ vl_api_udp_encap_del_t_handler (vl_api_udp_encap_del_t * mp, vlib_main_t * vm)
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_udp;
 #undef _
 }
 
 static clib_error_t *
-udp_api_hookup (vlib_main_t * vm)
+udp_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_udp_api_msg;
 #undef _
 

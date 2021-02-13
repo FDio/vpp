@@ -63,20 +63,19 @@ typedef struct lisp_gpe_tunnel_t_
   fib_node_index_t fib_entry_index;
 } lisp_gpe_tunnel_t;
 
-extern index_t lisp_gpe_tunnel_find_or_create_and_lock (const locator_pair_t *
-							pair,
-							u32 rloc_fib_index);
+extern index_t
+lisp_gpe_tunnel_find_or_create_and_lock (const locator_pair_t *pair,
+					 u32 rloc_fib_index);
 
 extern void lisp_gpe_tunnel_unlock (index_t lgti);
 
 extern const lisp_gpe_tunnel_t *lisp_gpe_tunnel_get (index_t lgti);
 
-extern u8 *lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
-					  const struct lisp_gpe_adjacency_t_
-					  *ladj,
-					  lisp_gpe_next_protocol_e
-					  payload_proto);
-extern u8 *format_lisp_gpe_tunnel (u8 * s, va_list * args);
+extern u8 *
+lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t *lgt,
+			       const struct lisp_gpe_adjacency_t_ *ladj,
+			       lisp_gpe_next_protocol_e payload_proto);
+extern u8 *format_lisp_gpe_tunnel (u8 *s, va_list *args);
 
 #endif
 

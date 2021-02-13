@@ -33,7 +33,7 @@ typedef struct
 } vxlan_rx_trace_t;
 
 static u8 *
-format_vxlan_rx_trace (u8 * s, va_list * args)
+format_vxlan_rx_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -54,16 +54,16 @@ static const vxlan_decap_info_t decap_not_found = {
   .error = VXLAN_ERROR_NO_SUCH_TUNNEL
 };
 
-static const vxlan_decap_info_t decap_bad_flags = {
-  .sw_if_index = ~0,
-  .next_index = VXLAN_INPUT_NEXT_DROP,
-  .error = VXLAN_ERROR_BAD_FLAGS
-};
+static const vxlan_decap_info_t decap_bad_flags = { .sw_if_index = ~0,
+						    .next_index =
+						      VXLAN_INPUT_NEXT_DROP,
+						    .error =
+						      VXLAN_ERROR_BAD_FLAGS };
 
 always_inline vxlan_decap_info_t
-vxlan4_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache4 * cache,
-		    u32 fib_index, ip4_header_t * ip4_0,
-		    vxlan_header_t * vxlan0, u32 * stats_sw_if_index)
+vxlan4_find_tunnel (vxlan_main_t *vxm, last_tunnel_cache4 *cache,
+		    u32 fib_index, ip4_header_t *ip4_0, vxlan_header_t *vxlan0,
+		    u32 *stats_sw_if_index)
 {
   if (PREDICT_FALSE (vxlan0->flags != VXLAN_FLAGS_I))
     return decap_bad_flags;
@@ -79,11 +79,11 @@ vxlan4_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache4 * cache,
 	      vxlan0->vni_reserved,
   };
 
-  if (PREDICT_TRUE
-      (key4.key[0] == cache->key[0] && key4.key[1] == cache->key[1]))
+  if (PREDICT_TRUE (key4.key[0] == cache->key[0] &&
+		    key4.key[1] == cache->key[1]))
     {
       /* cache hit */
-      vxlan_decap_info_t di = {.as_u64 = cache->value };
+      vxlan_decap_info_t di = { .as_u64 = cache->value };
       *stats_sw_if_index = di.sw_if_index;
       return di;
     }
@@ -92,7 +92,7 @@ vxlan4_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache4 * cache,
   if (PREDICT_TRUE (rv == 0))
     {
       *cache = key4;
-      vxlan_decap_info_t di = {.as_u64 = key4.value };
+      vxlan_decap_info_t di = { .as_u64 = key4.value };
       *stats_sw_if_index = di.sw_if_index;
       return di;
     }
@@ -108,7 +108,7 @@ vxlan4_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache4 * cache,
     return decap_not_found;
 
   /* search for unicast tunnel using the mcast tunnel local(src) ip */
-  vxlan_decap_info_t mdi = {.as_u64 = key4.value };
+  vxlan_decap_info_t mdi = { .as_u64 = key4.value };
   key4.key[0] = ((u64) mdi.local_ip.as_u32 << 32) | src;
   rv = clib_bihash_search_inline_16_8 (&vxm->vxlan4_tunnel_by_key, &key4);
   if (PREDICT_FALSE (rv != 0))
@@ -116,16 +116,16 @@ vxlan4_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache4 * cache,
 
   /* mcast traffic does not update the cache */
   *stats_sw_if_index = mdi.sw_if_index;
-  vxlan_decap_info_t di = {.as_u64 = key4.value };
+  vxlan_decap_info_t di = { .as_u64 = key4.value };
   return di;
 }
 
 typedef vxlan6_tunnel_key_t last_tunnel_cache6;
 
 always_inline vxlan_decap_info_t
-vxlan6_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache6 * cache,
-		    u32 fib_index, ip6_header_t * ip6_0,
-		    vxlan_header_t * vxlan0, u32 * stats_sw_if_index)
+vxlan6_find_tunnel (vxlan_main_t *vxm, last_tunnel_cache6 *cache,
+		    u32 fib_index, ip6_header_t *ip6_0, vxlan_header_t *vxlan0,
+		    u32 *stats_sw_if_index)
 {
   if (PREDICT_FALSE (vxlan0->flags != VXLAN_FLAGS_I))
     return decap_bad_flags;
@@ -140,8 +140,7 @@ vxlan6_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache6 * cache,
 	      vxlan0->vni_reserved,
   };
 
-  if (PREDICT_FALSE
-      (clib_bihash_key_compare_24_8 (key6.key, cache->key) == 0))
+  if (PREDICT_FALSE (clib_bihash_key_compare_24_8 (key6.key, cache->key) == 0))
     {
       int rv =
 	clib_bihash_search_inline_24_8 (&vxm->vxlan6_tunnel_by_key, &key6);
@@ -181,9 +180,8 @@ vxlan6_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache6 * cache,
 }
 
 always_inline uword
-vxlan_input (vlib_main_t * vm,
-	     vlib_node_runtime_t * node,
-	     vlib_frame_t * from_frame, u32 is_ip4)
+vxlan_input (vlib_main_t *vm, vlib_node_runtime_t *node,
+	     vlib_frame_t *from_frame, u32 is_ip4)
 {
   vxlan_main_t *vxm = &vxlan_main;
   vnet_main_t *vnm = vxm->vnet_main;
@@ -220,7 +218,6 @@ vxlan_input (vlib_main_t * vm,
       vxlan_header_t *vxlan0 = cur0;
       vxlan_header_t *vxlan1 = cur1;
 
-
       ip4_header_t *ip4_0, *ip4_1;
       ip6_header_t *ip6_0, *ip6_1;
       if (is_ip4)
@@ -241,12 +238,14 @@ vxlan_input (vlib_main_t * vm,
       u32 fi0 = vlib_buffer_get_ip_fib_index (b[0], is_ip4);
       u32 fi1 = vlib_buffer_get_ip_fib_index (b[1], is_ip4);
 
-      vxlan_decap_info_t di0 = is_ip4 ?
-	vxlan4_find_tunnel (vxm, &last4, fi0, ip4_0, vxlan0, &stats_if0) :
-	vxlan6_find_tunnel (vxm, &last6, fi0, ip6_0, vxlan0, &stats_if0);
-      vxlan_decap_info_t di1 = is_ip4 ?
-	vxlan4_find_tunnel (vxm, &last4, fi1, ip4_1, vxlan1, &stats_if1) :
-	vxlan6_find_tunnel (vxm, &last6, fi1, ip6_1, vxlan1, &stats_if1);
+      vxlan_decap_info_t di0 =
+	is_ip4 ?
+	  vxlan4_find_tunnel (vxm, &last4, fi0, ip4_0, vxlan0, &stats_if0) :
+	  vxlan6_find_tunnel (vxm, &last6, fi0, ip6_0, vxlan0, &stats_if0);
+      vxlan_decap_info_t di1 =
+	is_ip4 ?
+	  vxlan4_find_tunnel (vxm, &last4, fi1, ip4_1, vxlan1, &stats_if1) :
+	  vxlan6_find_tunnel (vxm, &last6, fi1, ip6_1, vxlan1, &stats_if1);
 
       /* Prefetch next iteration. */
       CLIB_PREFETCH (b[2]->data, CLIB_CACHE_LINE_BYTES, LOAD);
@@ -264,13 +263,14 @@ vxlan_input (vlib_main_t * vm,
 	  /* Required to make the l2 tag push / pop code work on l2 subifs */
 	  vnet_update_l2_len (b[0]);
 	  vnet_update_l2_len (b[1]);
-	  /* Set packet input sw_if_index to unicast VXLAN tunnel for learning */
+	  /* Set packet input sw_if_index to unicast VXLAN tunnel for learning
+	   */
 	  vnet_buffer (b[0])->sw_if_index[VLIB_RX] = di0.sw_if_index;
 	  vnet_buffer (b[1])->sw_if_index[VLIB_RX] = di1.sw_if_index;
-	  vlib_increment_combined_counter (rx_counter, thread_index,
-					   stats_if0, 1, len0);
-	  vlib_increment_combined_counter (rx_counter, thread_index,
-					   stats_if1, 1, len1);
+	  vlib_increment_combined_counter (rx_counter, thread_index, stats_if0,
+					   1, len0);
+	  vlib_increment_combined_counter (rx_counter, thread_index, stats_if1,
+					   1, len1);
 	}
       else
 	{
@@ -303,22 +303,24 @@ vxlan_input (vlib_main_t * vm,
 
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  vxlan_rx_trace_t *tr =
-	    vlib_add_trace (vm, node, b[0], sizeof (*tr));
+	  vxlan_rx_trace_t *tr = vlib_add_trace (vm, node, b[0], sizeof (*tr));
 	  tr->next_index = next[0];
 	  tr->error = di0.error;
-	  tr->tunnel_index = di0.sw_if_index == ~0 ?
-	    ~0 : vxm->tunnel_index_by_sw_if_index[di0.sw_if_index];
+	  tr->tunnel_index =
+	    di0.sw_if_index == ~0 ?
+	      ~0 :
+	      vxm->tunnel_index_by_sw_if_index[di0.sw_if_index];
 	  tr->vni = vnet_get_vni (vxlan0);
 	}
       if (PREDICT_FALSE (b[1]->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  vxlan_rx_trace_t *tr =
-	    vlib_add_trace (vm, node, b[1], sizeof (*tr));
+	  vxlan_rx_trace_t *tr = vlib_add_trace (vm, node, b[1], sizeof (*tr));
 	  tr->next_index = next[1];
 	  tr->error = di1.error;
-	  tr->tunnel_index = di1.sw_if_index == ~0 ?
-	    ~0 : vxm->tunnel_index_by_sw_if_index[di1.sw_if_index];
+	  tr->tunnel_index =
+	    di1.sw_if_index == ~0 ?
+	      ~0 :
+	      vxm->tunnel_index_by_sw_if_index[di1.sw_if_index];
 	  tr->vni = vnet_get_vni (vxlan1);
 	}
       b += 2;
@@ -343,9 +345,10 @@ vxlan_input (vlib_main_t * vm,
 
       u32 fi0 = vlib_buffer_get_ip_fib_index (b[0], is_ip4);
 
-      vxlan_decap_info_t di0 = is_ip4 ?
-	vxlan4_find_tunnel (vxm, &last4, fi0, ip4_0, vxlan0, &stats_if0) :
-	vxlan6_find_tunnel (vxm, &last6, fi0, ip6_0, vxlan0, &stats_if0);
+      vxlan_decap_info_t di0 =
+	is_ip4 ?
+	  vxlan4_find_tunnel (vxm, &last4, fi0, ip4_0, vxlan0, &stats_if0) :
+	  vxlan6_find_tunnel (vxm, &last6, fi0, ip6_0, vxlan0, &stats_if0);
 
       uword len0 = vlib_buffer_length_in_chain (vm, b[0]);
 
@@ -357,11 +360,12 @@ vxlan_input (vlib_main_t * vm,
 	  /* Required to make the l2 tag push / pop code work on l2 subifs */
 	  vnet_update_l2_len (b[0]);
 
-	  /* Set packet input sw_if_index to unicast VXLAN tunnel for learning */
+	  /* Set packet input sw_if_index to unicast VXLAN tunnel for learning
+	   */
 	  vnet_buffer (b[0])->sw_if_index[VLIB_RX] = di0.sw_if_index;
 
-	  vlib_increment_combined_counter (rx_counter, thread_index,
-					   stats_if0, 1, len0);
+	  vlib_increment_combined_counter (rx_counter, thread_index, stats_if0,
+					   1, len0);
 	}
       else
 	{
@@ -371,12 +375,13 @@ vxlan_input (vlib_main_t * vm,
 
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  vxlan_rx_trace_t *tr
-	    = vlib_add_trace (vm, node, b[0], sizeof (*tr));
+	  vxlan_rx_trace_t *tr = vlib_add_trace (vm, node, b[0], sizeof (*tr));
 	  tr->next_index = next[0];
 	  tr->error = di0.error;
-	  tr->tunnel_index = di0.sw_if_index == ~0 ?
-	    ~0 : vxm->tunnel_index_by_sw_if_index[di0.sw_if_index];
+	  tr->tunnel_index =
+	    di0.sw_if_index == ~0 ?
+	      ~0 :
+	      vxm->tunnel_index_by_sw_if_index[di0.sw_if_index];
 	  tr->vni = vnet_get_vni (vxlan0);
 	}
       b += 1;
@@ -392,22 +397,20 @@ vxlan_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-VLIB_NODE_FN (vxlan4_input_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * from_frame)
+VLIB_NODE_FN (vxlan4_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return vxlan_input (vm, node, from_frame, /* is_ip4 */ 1);
 }
 
-VLIB_NODE_FN (vxlan6_input_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * from_frame)
+VLIB_NODE_FN (vxlan6_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return vxlan_input (vm, node, from_frame, /* is_ip4 */ 0);
 }
 
 static char *vxlan_error_strings[] = {
-#define vxlan_error(n,s) s,
+#define vxlan_error(n, s) s,
 #include <vnet/vxlan/vxlan_error.def>
 #undef vxlan_error
 };
@@ -422,7 +425,7 @@ VLIB_REGISTER_NODE (vxlan4_input_node) =
   .n_next_nodes = VXLAN_INPUT_N_NEXT,
   .format_trace = format_vxlan_rx_trace,
   .next_nodes = {
-#define _(s,n) [VXLAN_INPUT_NEXT_##s] = n,
+#define _(s, n) [VXLAN_INPUT_NEXT_##s] = n,
     foreach_vxlan_input_next
 #undef _
   },
@@ -436,7 +439,7 @@ VLIB_REGISTER_NODE (vxlan6_input_node) =
   .error_strings = vxlan_error_strings,
   .n_next_nodes = VXLAN_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [VXLAN_INPUT_NEXT_##s] = n,
+#define _(s, n) [VXLAN_INPUT_NEXT_##s] = n,
     foreach_vxlan_input_next
 #undef _
   },
@@ -452,18 +455,17 @@ typedef enum
 } ip_vxlan_bypass_next_t;
 
 always_inline uword
-ip_vxlan_bypass_inline (vlib_main_t * vm,
-			vlib_node_runtime_t * node,
-			vlib_frame_t * frame, u32 is_ip4)
+ip_vxlan_bypass_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			vlib_frame_t *frame, u32 is_ip4)
 {
   vxlan_main_t *vxm = &vxlan_main;
   u32 *from, *to_next, n_left_from, n_left_to_next, next_index;
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip4_input_node.index);
-  vtep4_key_t last_vtep4;	/* last IPv4 address / fib index
-				   matching a local VTEP address */
-  vtep6_key_t last_vtep6;	/* last IPv6 address / fib index
-				   matching a local VTEP address */
+  vtep4_key_t last_vtep4; /* last IPv4 address / fib index
+			     matching a local VTEP address */
+  vtep6_key_t last_vtep6; /* last IPv6 address / fib index
+			     matching a local VTEP address */
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
 
   last_tunnel_cache4 last4;
@@ -549,7 +551,7 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	  if (is_ip4)
 	    {
 	      /* Treat IP frag packets as "experimental" protocol for now
-	         until support of IP frag reassembly is implemented */
+		 until support of IP frag reassembly is implemented */
 	      proto0 = ip4_is_fragment (ip40) ? 0xfe : ip40->protocol;
 	      proto1 = ip4_is_fragment (ip41) ? 0xfe : ip41->protocol;
 	    }
@@ -561,7 +563,7 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 
 	  /* Process packet 0 */
 	  if (proto0 != IP_PROTOCOL_UDP)
-	    goto exit0;		/* not UDP packet */
+	    goto exit0; /* not UDP packet */
 
 	  if (is_ip4)
 	    udp0 = ip4_next_header (ip40);
@@ -584,23 +586,24 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	  if (is_ip4)
 	    {
 #ifdef CLIB_HAVE_VEC512
-	      if (!vtep4_check_vector
-		  (&vxm->vtep_table, b0, ip40, &last_vtep4, &vtep4_u512))
+	      if (!vtep4_check_vector (&vxm->vtep_table, b0, ip40, &last_vtep4,
+				       &vtep4_u512))
 #else
 	      if (!vtep4_check (&vxm->vtep_table, b0, ip40, &last_vtep4))
 #endif
-		goto exit0;	/* no local VTEP for VXLAN packet */
+		goto exit0; /* no local VTEP for VXLAN packet */
 	    }
 	  else
 	    {
 	      if (!vtep6_check (&vxm->vtep_table, b0, ip60, &last_vtep6))
-		goto exit0;	/* no local VTEP for VXLAN packet */
+		goto exit0; /* no local VTEP for VXLAN packet */
 	    }
 
 	  flags0 = b0->flags;
 	  good_udp0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 
-	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
+	  /* Don't verify UDP checksum for packets with explicit zero checksum.
+	   */
 	  good_udp0 |= udp0->checksum == 0;
 
 	  /* Verify UDP length */
@@ -632,24 +635,22 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	      error0 = (len_diff0 >= 0) ? error0 : IP6_ERROR_UDP_LENGTH;
 	    }
 
-	  next0 = error0 ?
-	    IP_VXLAN_BYPASS_NEXT_DROP : IP_VXLAN_BYPASS_NEXT_VXLAN;
+	  next0 =
+	    error0 ? IP_VXLAN_BYPASS_NEXT_DROP : IP_VXLAN_BYPASS_NEXT_VXLAN;
 	  b0->error = error0 ? error_node->errors[error0] : 0;
 
 	  /* vxlan-input node expect current at VXLAN header */
 	  if (is_ip4)
-	    vlib_buffer_advance (b0,
-				 sizeof (ip4_header_t) +
-				 sizeof (udp_header_t));
+	    vlib_buffer_advance (b0, sizeof (ip4_header_t) +
+				       sizeof (udp_header_t));
 	  else
-	    vlib_buffer_advance (b0,
-				 sizeof (ip6_header_t) +
-				 sizeof (udp_header_t));
+	    vlib_buffer_advance (b0, sizeof (ip6_header_t) +
+				       sizeof (udp_header_t));
 
 	exit0:
 	  /* Process packet 1 */
 	  if (proto1 != IP_PROTOCOL_UDP)
-	    goto exit1;		/* not UDP packet */
+	    goto exit1; /* not UDP packet */
 
 	  if (is_ip4)
 	    udp1 = ip4_next_header (ip41);
@@ -672,23 +673,24 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	  if (is_ip4)
 	    {
 #ifdef CLIB_HAVE_VEC512
-	      if (!vtep4_check_vector
-		  (&vxm->vtep_table, b1, ip41, &last_vtep4, &vtep4_u512))
+	      if (!vtep4_check_vector (&vxm->vtep_table, b1, ip41, &last_vtep4,
+				       &vtep4_u512))
 #else
 	      if (!vtep4_check (&vxm->vtep_table, b1, ip41, &last_vtep4))
 #endif
-		goto exit1;	/* no local VTEP for VXLAN packet */
+		goto exit1; /* no local VTEP for VXLAN packet */
 	    }
 	  else
 	    {
 	      if (!vtep6_check (&vxm->vtep_table, b1, ip61, &last_vtep6))
-		goto exit1;	/* no local VTEP for VXLAN packet */
+		goto exit1; /* no local VTEP for VXLAN packet */
 	    }
 
 	  flags1 = b1->flags;
 	  good_udp1 = (flags1 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 
-	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
+	  /* Don't verify UDP checksum for packets with explicit zero checksum.
+	   */
 	  good_udp1 |= udp1->checksum == 0;
 
 	  /* Verify UDP length */
@@ -720,24 +722,22 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	      error1 = (len_diff1 >= 0) ? error1 : IP6_ERROR_UDP_LENGTH;
 	    }
 
-	  next1 = error1 ?
-	    IP_VXLAN_BYPASS_NEXT_DROP : IP_VXLAN_BYPASS_NEXT_VXLAN;
+	  next1 =
+	    error1 ? IP_VXLAN_BYPASS_NEXT_DROP : IP_VXLAN_BYPASS_NEXT_VXLAN;
 	  b1->error = error1 ? error_node->errors[error1] : 0;
 
 	  /* vxlan-input node expect current at VXLAN header */
 	  if (is_ip4)
-	    vlib_buffer_advance (b1,
-				 sizeof (ip4_header_t) +
-				 sizeof (udp_header_t));
+	    vlib_buffer_advance (b1, sizeof (ip4_header_t) +
+				       sizeof (udp_header_t));
 	  else
-	    vlib_buffer_advance (b1,
-				 sizeof (ip6_header_t) +
-				 sizeof (udp_header_t));
+	    vlib_buffer_advance (b1, sizeof (ip6_header_t) +
+				       sizeof (udp_header_t));
 
 	exit1:
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -776,7 +776,7 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	    proto0 = ip60->protocol;
 
 	  if (proto0 != IP_PROTOCOL_UDP)
-	    goto exit;		/* not UDP packet */
+	    goto exit; /* not UDP packet */
 
 	  if (is_ip4)
 	    udp0 = ip4_next_header (ip40);
@@ -799,23 +799,24 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	  if (is_ip4)
 	    {
 #ifdef CLIB_HAVE_VEC512
-	      if (!vtep4_check_vector
-		  (&vxm->vtep_table, b0, ip40, &last_vtep4, &vtep4_u512))
+	      if (!vtep4_check_vector (&vxm->vtep_table, b0, ip40, &last_vtep4,
+				       &vtep4_u512))
 #else
 	      if (!vtep4_check (&vxm->vtep_table, b0, ip40, &last_vtep4))
 #endif
-		goto exit;	/* no local VTEP for VXLAN packet */
+		goto exit; /* no local VTEP for VXLAN packet */
 	    }
 	  else
 	    {
 	      if (!vtep6_check (&vxm->vtep_table, b0, ip60, &last_vtep6))
-		goto exit;	/* no local VTEP for VXLAN packet */
+		goto exit; /* no local VTEP for VXLAN packet */
 	    }
 
 	  flags0 = b0->flags;
 	  good_udp0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 
-	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
+	  /* Don't verify UDP checksum for packets with explicit zero checksum.
+	   */
 	  good_udp0 |= udp0->checksum == 0;
 
 	  /* Verify UDP length */
@@ -847,24 +848,21 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	      error0 = (len_diff0 >= 0) ? error0 : IP6_ERROR_UDP_LENGTH;
 	    }
 
-	  next0 = error0 ?
-	    IP_VXLAN_BYPASS_NEXT_DROP : IP_VXLAN_BYPASS_NEXT_VXLAN;
+	  next0 =
+	    error0 ? IP_VXLAN_BYPASS_NEXT_DROP : IP_VXLAN_BYPASS_NEXT_VXLAN;
 	  b0->error = error0 ? error_node->errors[error0] : 0;
 
 	  /* vxlan-input node expect current at VXLAN header */
 	  if (is_ip4)
-	    vlib_buffer_advance (b0,
-				 sizeof (ip4_header_t) +
-				 sizeof (udp_header_t));
+	    vlib_buffer_advance (b0, sizeof (ip4_header_t) +
+				       sizeof (udp_header_t));
 	  else
-	    vlib_buffer_advance (b0,
-				 sizeof (ip6_header_t) +
-				 sizeof (udp_header_t));
+	    vlib_buffer_advance (b0, sizeof (ip6_header_t) +
+				       sizeof (udp_header_t));
 
 	exit:
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -873,9 +871,8 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (ip4_vxlan_bypass_node) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_vxlan_bypass_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return ip_vxlan_bypass_inline (vm, node, frame, /* is_ip4 */ 1);
 }
@@ -898,16 +895,15 @@ VLIB_REGISTER_NODE (ip4_vxlan_bypass_node) =
 
 /* Dummy init function to get us linked in. */
 static clib_error_t *
-ip4_vxlan_bypass_init (vlib_main_t * vm)
+ip4_vxlan_bypass_init (vlib_main_t *vm)
 {
   return 0;
 }
 
 VLIB_INIT_FUNCTION (ip4_vxlan_bypass_init);
 
-VLIB_NODE_FN (ip6_vxlan_bypass_node) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_vxlan_bypass_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return ip_vxlan_bypass_inline (vm, node, frame, /* is_ip4 */ 0);
 }
@@ -930,53 +926,53 @@ VLIB_REGISTER_NODE (ip6_vxlan_bypass_node) =
 
 /* Dummy init function to get us linked in. */
 static clib_error_t *
-ip6_vxlan_bypass_init (vlib_main_t * vm)
+ip6_vxlan_bypass_init (vlib_main_t *vm)
 {
   return 0;
 }
 
 VLIB_INIT_FUNCTION (ip6_vxlan_bypass_init);
 
-#define foreach_vxlan_flow_input_next        \
-_(DROP, "error-drop")                           \
-_(L2_INPUT, "l2-input")
+#define foreach_vxlan_flow_input_next                                         \
+  _ (DROP, "error-drop")                                                      \
+  _ (L2_INPUT, "l2-input")
 
 typedef enum
 {
-#define _(s,n) VXLAN_FLOW_NEXT_##s,
+#define _(s, n) VXLAN_FLOW_NEXT_##s,
   foreach_vxlan_flow_input_next
 #undef _
     VXLAN_FLOW_N_NEXT,
 } vxlan_flow_input_next_t;
 
-#define foreach_vxlan_flow_error					\
-  _(NONE, "no error")							\
-  _(IP_CHECKSUM_ERROR, "Rx ip checksum errors")				\
-  _(IP_HEADER_ERROR, "Rx ip header errors")				\
-  _(UDP_CHECKSUM_ERROR, "Rx udp checksum errors")				\
-  _(UDP_LENGTH_ERROR, "Rx udp length errors")
+#define foreach_vxlan_flow_error                                              \
+  _ (NONE, "no error")                                                        \
+  _ (IP_CHECKSUM_ERROR, "Rx ip checksum errors")                              \
+  _ (IP_HEADER_ERROR, "Rx ip header errors")                                  \
+  _ (UDP_CHECKSUM_ERROR, "Rx udp checksum errors")                            \
+  _ (UDP_LENGTH_ERROR, "Rx udp length errors")
 
 typedef enum
 {
-#define _(f,s) VXLAN_FLOW_ERROR_##f,
+#define _(f, s) VXLAN_FLOW_ERROR_##f,
   foreach_vxlan_flow_error
 #undef _
     VXLAN_FLOW_N_ERROR,
 } vxlan_flow_error_t;
 
 static char *vxlan_flow_error_strings[] = {
-#define _(n,s) s,
+#define _(n, s) s,
   foreach_vxlan_flow_error
 #undef _
 };
 
-
 static_always_inline u8
-vxlan_validate_udp_csum (vlib_main_t * vm, vlib_buffer_t * b)
+vxlan_validate_udp_csum (vlib_main_t *vm, vlib_buffer_t *b)
 {
   u32 flags = b->flags;
   enum
-  { offset =
+  {
+    offset =
       sizeof (ip4_header_t) + sizeof (udp_header_t) + sizeof (vxlan_header_t),
   };
 
@@ -992,29 +988,29 @@ vxlan_validate_udp_csum (vlib_main_t * vm, vlib_buffer_t * b)
 }
 
 static_always_inline u8
-vxlan_check_udp_csum (vlib_main_t * vm, vlib_buffer_t * b)
+vxlan_check_udp_csum (vlib_main_t *vm, vlib_buffer_t *b)
 {
   ip4_vxlan_header_t *hdr = vlib_buffer_get_current (b) - sizeof *hdr;
   udp_header_t *udp = &hdr->udp;
   /* Don't verify UDP checksum for packets with explicit zero checksum. */
-  u8 good_csum = (b->flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0 ||
-    udp->checksum == 0;
+  u8 good_csum =
+    (b->flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0 || udp->checksum == 0;
 
   return !good_csum;
 }
 
 static_always_inline u8
-vxlan_check_ip (vlib_buffer_t * b, u16 payload_len)
+vxlan_check_ip (vlib_buffer_t *b, u16 payload_len)
 {
   ip4_vxlan_header_t *hdr = vlib_buffer_get_current (b) - sizeof *hdr;
   u16 ip_len = clib_net_to_host_u16 (hdr->ip4.length);
   u16 expected = payload_len + sizeof *hdr;
-  return ip_len > expected || hdr->ip4.ttl == 0
-    || hdr->ip4.ip_version_and_header_length != 0x45;
+  return ip_len > expected || hdr->ip4.ttl == 0 ||
+	 hdr->ip4.ip_version_and_header_length != 0x45;
 }
 
 static_always_inline u8
-vxlan_check_ip_udp_len (vlib_buffer_t * b)
+vxlan_check_ip_udp_len (vlib_buffer_t *b)
 {
   ip4_vxlan_header_t *hdr = vlib_buffer_get_current (b) - sizeof *hdr;
   u16 ip_len = clib_net_to_host_u16 (hdr->ip4.length);
@@ -1035,12 +1031,13 @@ vxlan_err_code (u8 ip_err0, u8 udp_err0, u8 csum_err0)
   return error0;
 }
 
-VLIB_NODE_FN (vxlan4_flow_input_node) (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * f)
+VLIB_NODE_FN (vxlan4_flow_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f)
 {
   enum
-  { payload_offset = sizeof (ip4_vxlan_header_t) };
+  {
+    payload_offset = sizeof (ip4_vxlan_header_t)
+  };
 
   vxlan_main_t *vxm = &vxlan_main;
   vnet_interface_main_t *im = &vnet_main.interface_main;
@@ -1088,9 +1085,10 @@ VLIB_NODE_FN (vxlan4_flow_input_node) (vlib_main_t * vm,
 	  u16 len2 = vlib_buffer_length_in_chain (vm, b2);
 	  u16 len3 = vlib_buffer_length_in_chain (vm, b3);
 
-	  u32 next0 = VXLAN_FLOW_NEXT_L2_INPUT, next1 =
-	    VXLAN_FLOW_NEXT_L2_INPUT, next2 =
-	    VXLAN_FLOW_NEXT_L2_INPUT, next3 = VXLAN_FLOW_NEXT_L2_INPUT;
+	  u32 next0 = VXLAN_FLOW_NEXT_L2_INPUT,
+	      next1 = VXLAN_FLOW_NEXT_L2_INPUT,
+	      next2 = VXLAN_FLOW_NEXT_L2_INPUT,
+	      next3 = VXLAN_FLOW_NEXT_L2_INPUT;
 
 	  u8 ip_err0 = vxlan_check_ip (b0, len0);
 	  u8 ip_err1 = vxlan_check_ip (b1, len1);
@@ -1240,9 +1238,9 @@ VLIB_NODE_FN (vxlan4_flow_input_node) (vlib_main_t * vm,
 		  tr->vni = t3->vni;
 		}
 	    }
-	  vlib_validate_buffer_enqueue_x4
-	    (vm, node, next_index, to_next, n_left_to_next,
-	     bi0, bi1, bi2, bi3, next0, next1, next2, next3);
+	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, bi2, bi3,
+					   next0, next1, next2, next3);
 	}
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
@@ -1285,17 +1283,15 @@ VLIB_NODE_FN (vxlan4_flow_input_node) (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      vxlan_rx_trace_t *tr =
-		vlib_add_trace (vm, node, b0, sizeof *tr);
+	      vxlan_rx_trace_t *tr = vlib_add_trace (vm, node, b0, sizeof *tr);
 	      u8 error0 = vxlan_err_code (ip_err0, udp_err0, csum_err0);
 	      tr->next_index = next0;
 	      tr->error = error0;
 	      tr->tunnel_index = t_index0;
 	      tr->vni = t0->vni;
 	    }
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -1318,18 +1314,8 @@ VLIB_REGISTER_NODE (vxlan4_flow_input_node) = {
 
   .n_next_nodes = VXLAN_FLOW_N_NEXT,
   .next_nodes = {
-#define _(s,n) [VXLAN_FLOW_NEXT_##s] = n,
+#define _(s, n) [VXLAN_FLOW_NEXT_##s] = n,
     foreach_vxlan_flow_input_next
 #undef _
   },
-};
-#endif
-/* *INDENT-ON* */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+}

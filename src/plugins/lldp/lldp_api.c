@@ -42,7 +42,7 @@ static u32 lldp_base_msg_id;
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_lldp_config_t_handler (vl_api_lldp_config_t * mp)
+vl_api_lldp_config_t_handler (vl_api_lldp_config_t *mp)
 {
   vl_api_lldp_config_reply_t *rmp;
   int rv = 0;
@@ -50,8 +50,8 @@ vl_api_lldp_config_t_handler (vl_api_lldp_config_t * mp)
 
   sys_name = vl_api_from_api_to_new_vec (mp, &mp->system_name);
 
-  if (lldp_cfg_set (&sys_name, ntohl (mp->tx_hold), ntohl (mp->tx_interval))
-      != lldp_ok)
+  if (lldp_cfg_set (&sys_name, ntohl (mp->tx_hold), ntohl (mp->tx_interval)) !=
+      lldp_ok)
     {
       vec_free (sys_name);
       rv = VNET_API_ERROR_INVALID_VALUE;
@@ -61,7 +61,7 @@ vl_api_lldp_config_t_handler (vl_api_lldp_config_t * mp)
 }
 
 static void
-vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t * mp)
+vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t *mp)
 {
   vl_api_sw_interface_set_lldp_reply_t *rmp;
   int rv = 0;
@@ -100,7 +100,7 @@ vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t * mp)
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  if (lldp_cfg_intf_set (ntohl (mp->sw_if_index), (u8 **) & port_desc,
+  if (lldp_cfg_intf_set (ntohl (mp->sw_if_index), (u8 **) &port_desc,
 			 &mgmt_ip4, &mgmt_ip6, &mgmt_oid,
 			 mp->enable) != lldp_ok)
     {
@@ -116,7 +116,6 @@ vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t * mp)
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_LLDP_REPLY);
 }
 
-
 /*
  *  * lldp_api_hookup
  *   * Add vpe's API message handlers to the table.
@@ -127,7 +126,7 @@ vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t * mp)
 #include <lldp/lldp.api.c>
 
 static clib_error_t *
-lldp_api_hookup (vlib_main_t * vm)
+lldp_api_hookup (vlib_main_t *vm)
 {
   /*
    * Set up the (msg_name, crc, message-id) table
@@ -142,13 +141,10 @@ VLIB_API_INIT_FUNCTION (lldp_api_hookup);
 #include <vlib/unix/plugin.h>
 #include <vpp/app/version.h>
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Link Layer Discovery Protocol (LLDP)",
+  .version = VPP_BUILD_VER,
+  .description = "Link Layer Discovery Protocol (LLDP)",
 };
-/* *INDENT-ON* */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

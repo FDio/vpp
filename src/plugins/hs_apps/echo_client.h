@@ -44,37 +44,37 @@ typedef struct
   /*
    * Application setup parameters
    */
-  svm_queue_t *vl_input_queue;		/**< vpe input queue */
+  svm_queue_t *vl_input_queue; /**< vpe input queue */
   svm_msg_q_t **vpp_event_queue;
 
-  u32 cli_node_index;			/**< cli process node index */
-  u32 my_client_index;			/**< loopback API client handle */
-  u32 app_index;			/**< app index after attach */
+  u32 cli_node_index;  /**< cli process node index */
+  u32 my_client_index; /**< loopback API client handle */
+  u32 app_index;       /**< app index after attach */
 
   /*
    * Configuration params
    */
-  u8 *connect_uri;			/**< URI for slave's connect */
-  u64 bytes_to_send;			/**< Bytes to send */
+  u8 *connect_uri;   /**< URI for slave's connect */
+  u64 bytes_to_send; /**< Bytes to send */
   u32 configured_segment_size;
   u32 fifo_size;
-  u32 expected_connections;		/**< Number of clients/connections */
-  u32 connections_per_batch;		/**< Connections to rx/tx at once */
-  u32 private_segment_count;		/**< Number of private fifo segs */
-  u32 private_segment_size;		/**< size of private fifo segs */
-  u32 tls_engine;			/**< TLS engine mbedtls/openssl */
+  u32 expected_connections;  /**< Number of clients/connections */
+  u32 connections_per_batch; /**< Connections to rx/tx at once */
+  u32 private_segment_count; /**< Number of private fifo segs */
+  u32 private_segment_size;  /**< size of private fifo segs */
+  u32 tls_engine;	     /**< TLS engine mbedtls/openssl */
   u8 is_dgram;
-  u32 no_copy;				/**< Don't memcpy data to tx fifo */
-  u32 quic_streams;			/**< QUIC streams per connection */
-  u32 ckpair_index;			/**< Cert key pair for tls/quic */
+  u32 no_copy;	    /**< Don't memcpy data to tx fifo */
+  u32 quic_streams; /**< QUIC streams per connection */
+  u32 ckpair_index; /**< Cert key pair for tls/quic */
 
   /*
    * Test state variables
    */
-  eclient_session_t *sessions;		/**< Session pool, shared */
+  eclient_session_t *sessions; /**< Session pool, shared */
   clib_spinlock_t sessions_lock;
-  u8 **rx_buf;				/**< intermediate rx buffers */
-  u8 *connect_test_data;		/**< Pre-computed test data */
+  u8 **rx_buf;		 /**< intermediate rx buffers */
+  u8 *connect_test_data; /**< Pre-computed test data */
   u32 **quic_session_index_by_thread;
   u32 **connection_index_by_thread;
   u32 **connections_this_batch_by_thread; /**< active connection batch */
@@ -84,7 +84,7 @@ typedef struct
   volatile u32 finished_connections;
   volatile u64 rx_total;
   volatile u64 tx_total;
-  volatile int run_test;		/**< Signal start of test */
+  volatile int run_test; /**< Signal start of test */
 
   f64 test_start_time;
   f64 test_end_time;
@@ -98,8 +98,8 @@ typedef struct
   u8 no_return;
   u8 test_return_packets;
   int i_am_master;
-  int drop_packets;		/**< drop all packets */
-  u8 prealloc_fifos;		/**< Request fifo preallocation */
+  int drop_packets;  /**< drop all packets */
+  u8 prealloc_fifos; /**< Request fifo preallocation */
   u8 no_output;
   u8 test_bytes;
   u8 test_failed;

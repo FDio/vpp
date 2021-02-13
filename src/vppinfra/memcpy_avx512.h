@@ -52,12 +52,10 @@
 #include <x86intrin.h>
 #include <vppinfra/warnings.h>
 
-/* *INDENT-OFF* */
-WARN_OFF (stringop-overflow)
-/* *INDENT-ON* */
+WARN_OFF (stringop - overflow)
 
 static inline void
-clib_mov16 (u8 * dst, const u8 * src)
+clib_mov16 (u8 *dst, const u8 *src)
 {
   __m128i xmm0;
 
@@ -66,7 +64,7 @@ clib_mov16 (u8 * dst, const u8 * src)
 }
 
 static inline void
-clib_mov32 (u8 * dst, const u8 * src)
+clib_mov32 (u8 *dst, const u8 *src)
 {
   __m256i ymm0;
 
@@ -75,7 +73,7 @@ clib_mov32 (u8 * dst, const u8 * src)
 }
 
 static inline void
-clib_mov64 (u8 * dst, const u8 * src)
+clib_mov64 (u8 *dst, const u8 *src)
 {
   __m512i zmm0;
 
@@ -84,21 +82,21 @@ clib_mov64 (u8 * dst, const u8 * src)
 }
 
 static inline void
-clib_mov128 (u8 * dst, const u8 * src)
+clib_mov128 (u8 *dst, const u8 *src)
 {
   clib_mov64 (dst + 0 * 64, src + 0 * 64);
   clib_mov64 (dst + 1 * 64, src + 1 * 64);
 }
 
 static inline void
-clib_mov256 (u8 * dst, const u8 * src)
+clib_mov256 (u8 *dst, const u8 *src)
 {
   clib_mov128 (dst + 0 * 128, src + 0 * 128);
   clib_mov128 (dst + 1 * 128, src + 1 * 128);
 }
 
 static inline void
-clib_mov128blocks (u8 * dst, const u8 * src, size_t n)
+clib_mov128blocks (u8 *dst, const u8 *src, size_t n)
 {
   __m512i zmm0, zmm1;
 
@@ -115,7 +113,7 @@ clib_mov128blocks (u8 * dst, const u8 * src, size_t n)
 }
 
 static inline void
-clib_mov512blocks (u8 * dst, const u8 * src, size_t n)
+clib_mov512blocks (u8 *dst, const u8 *src, size_t n)
 {
   __m512i zmm0, zmm1, zmm2, zmm3, zmm4, zmm5, zmm6, zmm7;
 
@@ -152,9 +150,9 @@ clib_memcpy_fast_avx512 (void *dst, const void *src, size_t n)
   size_t dstofss;
   size_t bits;
 
-	/**
-         * Copy less than 16 bytes
-         */
+  /**
+   * Copy less than 16 bytes
+   */
   if (n < 16)
     {
       if (n & 0x01)
@@ -180,9 +178,9 @@ clib_memcpy_fast_avx512 (void *dst, const void *src, size_t n)
       return ret;
     }
 
-	/**
-         * Fast way when copy size doesn't exceed 512 bytes
-         */
+  /**
+   * Fast way when copy size doesn't exceed 512 bytes
+   */
   if (n <= 32)
     {
       clib_mov16 ((u8 *) dst, (const u8 *) src);
@@ -223,9 +221,9 @@ clib_memcpy_fast_avx512 (void *dst, const void *src, size_t n)
       return ret;
     }
 
-	/**
-         * Make store aligned when copy size exceeds 512 bytes
-         */
+  /**
+   * Make store aligned when copy size exceeds 512 bytes
+   */
   dstofss = (uword) dst & 0x3F;
   if (dstofss > 0)
     {
@@ -236,11 +234,11 @@ clib_memcpy_fast_avx512 (void *dst, const void *src, size_t n)
       dst = (u8 *) dst + dstofss;
     }
 
-	/**
-         * Copy 512-byte blocks.
-         * Use copy block function for better instruction order control,
-         * which is important when load is unaligned.
-         */
+  /**
+   * Copy 512-byte blocks.
+   * Use copy block function for better instruction order control,
+   * which is important when load is unaligned.
+   */
   clib_mov512blocks ((u8 *) dst, (const u8 *) src, n);
   bits = n;
   n = n & 511;
@@ -248,11 +246,11 @@ clib_memcpy_fast_avx512 (void *dst, const void *src, size_t n)
   src = (const u8 *) src + bits;
   dst = (u8 *) dst + bits;
 
-	/**
-         * Copy 128-byte blocks.
-         * Use copy block function for better instruction order control,
-         * which is important when load is unaligned.
-         */
+  /**
+   * Copy 128-byte blocks.
+   * Use copy block function for better instruction order control,
+   * which is important when load is unaligned.
+   */
   if (n >= 128)
     {
       clib_mov128blocks ((u8 *) dst, (const u8 *) src, n);
@@ -263,18 +261,15 @@ clib_memcpy_fast_avx512 (void *dst, const void *src, size_t n)
       dst = (u8 *) dst + bits;
     }
 
-	/**
-         * Copy whatever left
-         */
+  /**
+   * Copy whatever left
+   */
   goto COPY_BLOCK_128_BACK63;
 }
 
-/* *INDENT-OFF* */
-WARN_ON (stringop-overflow)
-/* *INDENT-ON* */
+WARN_ON (stringop - overflow)
 
 #endif /* included_clib_memcpy_avx512_h */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

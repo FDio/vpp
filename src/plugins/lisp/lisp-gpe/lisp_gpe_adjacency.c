@@ -41,18 +41,17 @@ static lisp_gpe_adjacency_t *lisp_adj_pool;
  * therefore there is no ambiguity between a v4 and v6 next-hop, so we don't
  * need to add the protocol to the key.
  */
-static
-BVT (clib_bihash)
-  lisp_adj_db;
+static BVT (clib_bihash) lisp_adj_db;
 
-#define LISP_ADJ_SET_KEY(_key, _itf, _nh)       \
-{						\
-  _key.key[0] = ip_addr_v6((_nh)).as_u64[0];    \
-  _key.key[1] = ip_addr_v6((_nh)).as_u64[1];    \
-  _key.key[2] = (_itf);				\
-}
+#define LISP_ADJ_SET_KEY(_key, _itf, _nh)                                     \
+  {                                                                           \
+    _key.key[0] = ip_addr_v6 ((_nh)).as_u64[0];                               \
+    _key.key[1] = ip_addr_v6 ((_nh)).as_u64[1];                               \
+    _key.key[2] = (_itf);                                                     \
+  }
 
-     static index_t lisp_adj_find (const ip_address_t * addr, u32 sw_if_index)
+static index_t
+lisp_adj_find (const ip_address_t *addr, u32 sw_if_index)
 {
   BVT (clib_bihash_kv) kv;
 
@@ -69,7 +68,7 @@ BVT (clib_bihash)
 }
 
 static void
-lisp_adj_insert (const ip_address_t * addr, u32 sw_if_index, index_t ai)
+lisp_adj_insert (const ip_address_t *addr, u32 sw_if_index, index_t ai)
 {
   BVT (clib_bihash_kv) kv;
 
@@ -80,7 +79,7 @@ lisp_adj_insert (const ip_address_t * addr, u32 sw_if_index, index_t ai)
 }
 
 static void
-lisp_adj_remove (const ip_address_t * addr, u32 sw_if_index)
+lisp_adj_remove (const ip_address_t *addr, u32 sw_if_index)
 {
   BVT (clib_bihash_kv) kv;
 
@@ -96,7 +95,7 @@ lisp_gpe_adjacency_get_i (index_t lai)
 }
 
 fib_forward_chain_type_t
-lisp_gpe_adj_get_fib_chain_type (const lisp_gpe_adjacency_t * ladj)
+lisp_gpe_adj_get_fib_chain_type (const lisp_gpe_adjacency_t *ladj)
 {
   switch (ip_addr_version (&ladj->remote_rloc))
     {
@@ -112,7 +111,7 @@ lisp_gpe_adj_get_fib_chain_type (const lisp_gpe_adjacency_t * ladj)
 }
 
 static void
-ip46_address_to_ip_address (const ip46_address_t * a, ip_address_t * b)
+ip46_address_to_ip_address (const ip46_address_t *a, ip_address_t *b)
 {
   if (ip46_address_is_ip4 (a))
     {
@@ -129,16 +128,14 @@ ip46_address_to_ip_address (const ip46_address_t * a, ip_address_t * b)
  * @brief Stack the tunnel's midchain on the IP forwarding chain of the via
  */
 static void
-lisp_gpe_adj_stack_one (lisp_gpe_adjacency_t * ladj, adj_index_t ai)
+lisp_gpe_adj_stack_one (lisp_gpe_adjacency_t *ladj, adj_index_t ai)
 {
   const lisp_gpe_tunnel_t *lgt;
 
   lgt = lisp_gpe_tunnel_get (ladj->tunnel_index);
 
-  adj_nbr_midchain_stack_on_fib_entry (ai,
-				       lgt->fib_entry_index,
-				       lisp_gpe_adj_get_fib_chain_type
-				       (ladj));
+  adj_nbr_midchain_stack_on_fib_entry (ai, lgt->fib_entry_index,
+				       lisp_gpe_adj_get_fib_chain_type (ladj));
 }
 
 /**
@@ -155,7 +152,7 @@ lisp_gpe_adj_walk_cb (adj_index_t ai, void *ctx)
 }
 
 static void
-lisp_gpe_adj_stack (lisp_gpe_adjacency_t * ladj)
+lisp_gpe_adj_stack (lisp_gpe_adjacency_t *ladj)
 {
   fib_protocol_t nh_proto;
   ip46_address_t nh;
@@ -165,8 +162,8 @@ lisp_gpe_adj_stack (lisp_gpe_adjacency_t * ladj)
   /*
    * walk all the adjacencies on th lisp interface and restack them
    */
-  adj_nbr_walk_nh (ladj->sw_if_index,
-		   nh_proto, &nh, lisp_gpe_adj_walk_cb, ladj);
+  adj_nbr_walk_nh (ladj->sw_if_index, nh_proto, &nh, lisp_gpe_adj_walk_cb,
+		   ladj);
 }
 
 static lisp_gpe_next_protocol_e
@@ -188,7 +185,7 @@ lisp_gpe_adj_proto_from_vnet_link_type (vnet_link_t linkt)
   return (LISP_GPE_NEXT_PROTO_IP4);
 }
 
-#define is_v4_packet(_h) ((*(u8*) _h) & 0xF0) == 0x40
+#define is_v4_packet(_h) ((*(u8 *) _h) & 0xF0) == 0x40
 
 static lisp_afi_e
 lisp_afi_from_vnet_link_type (vnet_link_t link)
@@ -207,9 +204,8 @@ lisp_afi_from_vnet_link_type (vnet_link_t link)
 }
 
 static void
-lisp_gpe_increment_stats_counters (lisp_cp_main_t * lcm,
-				   const ip_adjacency_t * adj,
-				   vlib_buffer_t * b)
+lisp_gpe_increment_stats_counters (lisp_cp_main_t *lcm,
+				   const ip_adjacency_t *adj, vlib_buffer_t *b)
 {
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
   lisp_gpe_adjacency_t *ladj;
@@ -250,8 +246,8 @@ lisp_gpe_increment_stats_counters (lisp_cp_main_t * lcm,
   di = gid_dictionary_sd_lookup (&lcm->mapping_index_by_gid, &dst, &src);
   if (PREDICT_FALSE (~0 == di))
     {
-      clib_warning ("dst mapping not found (%U, %U)", format_gid_address,
-		    &src, format_gid_address, &dst);
+      clib_warning ("dst mapping not found (%U, %U)", format_gid_address, &src,
+		    format_gid_address, &dst);
       return;
     }
 
@@ -274,9 +270,8 @@ lisp_gpe_increment_stats_counters (lisp_cp_main_t * lcm,
 }
 
 static void
-lisp_gpe_fixup (vlib_main_t * vm,
-		const ip_adjacency_t * adj,
-		vlib_buffer_t * b, const void *data)
+lisp_gpe_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b,
+		const void *data)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
 
@@ -293,7 +288,7 @@ lisp_gpe_fixup (vlib_main_t * vm,
  * provide an rewrite string for, an adjacency.
  */
 void
-lisp_gpe_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
+lisp_gpe_update_adjacency (vnet_main_t *vnm, u32 sw_if_index, adj_index_t ai)
 {
   const lisp_gpe_tunnel_t *lgt;
   lisp_gpe_adjacency_t *ladj;
@@ -320,18 +315,16 @@ lisp_gpe_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   if (VNET_LINK_ETHERNET == linkt)
     af |= ADJ_FLAG_MIDCHAIN_NO_COUNT;
 
-  adj_nbr_midchain_update_rewrite
-    (ai, lisp_gpe_fixup, NULL, af,
-     lisp_gpe_tunnel_build_rewrite (lgt, ladj,
-				    lisp_gpe_adj_proto_from_vnet_link_type
-				    (linkt)));
+  adj_nbr_midchain_update_rewrite (
+    ai, lisp_gpe_fixup, NULL, af,
+    lisp_gpe_tunnel_build_rewrite (
+      lgt, ladj, lisp_gpe_adj_proto_from_vnet_link_type (linkt)));
 
   lisp_gpe_adj_stack_one (ladj, ai);
 }
 
 u8 *
-lisp_gpe_build_rewrite (vnet_main_t * vnm,
-			u32 sw_if_index,
+lisp_gpe_build_rewrite (vnet_main_t *vnm, u32 sw_if_index,
 			vnet_link_t link_type, const void *dst_address)
 {
   ASSERT (0);
@@ -339,7 +332,7 @@ lisp_gpe_build_rewrite (vnet_main_t * vnm,
 }
 
 index_t
-lisp_gpe_adjacency_find_or_create_and_lock (const locator_pair_t * pair,
+lisp_gpe_adjacency_find_or_create_and_lock (const locator_pair_t *pair,
 					    u32 overlay_table_id, u32 vni)
 {
   const lisp_gpe_sub_interface_t *l3s;
@@ -350,9 +343,8 @@ lisp_gpe_adjacency_find_or_create_and_lock (const locator_pair_t * pair,
   /*
    * first find the L3 sub-interface that corresponds to the loacl-rloc and vni
    */
-  l3si = lisp_gpe_sub_interface_find_or_create_and_lock (&pair->lcl_loc,
-							 overlay_table_id,
-							 vni);
+  l3si = lisp_gpe_sub_interface_find_or_create_and_lock (
+    &pair->lcl_loc, overlay_table_id, vni);
   l3s = lisp_gpe_sub_interface_get (l3si);
 
   /*
@@ -393,9 +385,8 @@ lisp_gpe_adjacency_find_or_create_and_lock (const locator_pair_t * pair,
        * become of child of the RLOC FIB entry so we are updated when
        * its reachability changes, allowing us to re-stack the midcahins
        */
-      ladj->fib_entry_child_index = fib_entry_child_add (lgt->fib_entry_index,
-							 FIB_NODE_TYPE_LISP_ADJ,
-							 lai);
+      ladj->fib_entry_child_index = fib_entry_child_add (
+	lgt->fib_entry_index, FIB_NODE_TYPE_LISP_ADJ, lai);
 
       lisp_adj_insert (&ladj->remote_rloc, ladj->sw_if_index, lai);
     }
@@ -415,15 +406,15 @@ lisp_gpe_adjacency_find_or_create_and_lock (const locator_pair_t * pair,
  * @brief Get a pointer to a tunnel from a pointer to a FIB node
  */
 static lisp_gpe_adjacency_t *
-lisp_gpe_adjacency_from_fib_node (const fib_node_t * node)
+lisp_gpe_adjacency_from_fib_node (const fib_node_t *node)
 {
-  return ((lisp_gpe_adjacency_t *)
-	  ((char *) node -
-	   STRUCT_OFFSET_OF (lisp_gpe_adjacency_t, fib_node)));
+  return ((lisp_gpe_adjacency_t *) ((char *) node -
+				    STRUCT_OFFSET_OF (lisp_gpe_adjacency_t,
+						      fib_node)));
 }
 
 static void
-lisp_gpe_adjacency_last_lock_gone (lisp_gpe_adjacency_t * ladj)
+lisp_gpe_adjacency_last_lock_gone (lisp_gpe_adjacency_t *ladj)
 {
   const lisp_gpe_tunnel_t *lgt;
 
@@ -467,7 +458,6 @@ lisp_gpe_adjacency_get (index_t lai)
   return (lisp_gpe_adjacency_get_i (lai));
 }
 
-
 /**
  * @brief LISP GPE tunnel back walk
  *
@@ -475,8 +465,7 @@ lisp_gpe_adjacency_get (index_t lai)
  * re-stack the midchain on the new forwarding.
  */
 static fib_node_back_walk_rc_t
-lisp_gpe_adjacency_back_walk (fib_node_t * node,
-			      fib_node_back_walk_ctx_t * ctx)
+lisp_gpe_adjacency_back_walk (fib_node_t *node, fib_node_back_walk_ctx_t *ctx)
 {
   lisp_gpe_adj_stack (lisp_gpe_adjacency_from_fib_node (node));
 
@@ -493,7 +482,7 @@ lisp_gpe_adjacency_get_fib_node (fib_node_index_t index)
 }
 
 static void
-lisp_gpe_adjacency_last_fib_lock_gone (fib_node_t * node)
+lisp_gpe_adjacency_last_fib_lock_gone (fib_node_t *node)
 {
   lisp_gpe_adjacency_last_lock_gone (lisp_gpe_adjacency_from_fib_node (node));
 }
@@ -505,7 +494,7 @@ const static fib_node_vft_t lisp_gpe_tuennel_vft = {
 };
 
 u8 *
-format_lisp_gpe_adjacency (u8 * s, va_list * args)
+format_lisp_gpe_adjacency (u8 *s, va_list *args)
 {
   lisp_gpe_adjacency_t *ladj = va_arg (*args, lisp_gpe_adjacency_t *);
   lisp_gpe_adjacency_format_flags_t flags =
@@ -513,8 +502,7 @@ format_lisp_gpe_adjacency (u8 * s, va_list * args)
 
   if (flags & LISP_GPE_ADJ_FORMAT_FLAG_DETAIL)
     {
-      s =
-	format (s, "index %d locks:%d\n", ladj - lisp_adj_pool, ladj->locks);
+      s = format (s, "index %d locks:%d\n", ladj - lisp_adj_pool, ladj->locks);
     }
 
   s = format (s, " vni: %d,", ladj->vni);
@@ -522,11 +510,9 @@ format_lisp_gpe_adjacency (u8 * s, va_list * args)
 
   if (flags & LISP_GPE_ADJ_FORMAT_FLAG_DETAIL)
     {
-      s = format (s, " %U\n",
-		  format_lisp_gpe_sub_interface,
+      s = format (s, " %U\n", format_lisp_gpe_sub_interface,
 		  lisp_gpe_sub_interface_get (ladj->lisp_l3_sub_index));
-      s = format (s, " %U\n",
-		  format_lisp_gpe_tunnel,
+      s = format (s, " %U\n", format_lisp_gpe_tunnel,
 		  lisp_gpe_tunnel_get (ladj->tunnel_index));
     }
   else
@@ -536,13 +522,12 @@ format_lisp_gpe_adjacency (u8 * s, va_list * args)
       s = format (s, " LISP tunnel index: %d", ladj->tunnel_index);
     }
 
-
   return (s);
 }
 
 static clib_error_t *
-lisp_gpe_adjacency_show (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+lisp_gpe_adjacency_show (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   lisp_gpe_adjacency_t *ladj;
   index_t index;
@@ -558,38 +543,33 @@ lisp_gpe_adjacency_show (vlib_main_t * vm,
     }
   else
     {
-      /* *INDENT-OFF* */
+
       pool_foreach (ladj, lisp_adj_pool)
-       {
-	vlib_cli_output (vm, "[%d] %U\n",
-			 ladj - lisp_adj_pool,
-			 format_lisp_gpe_adjacency, ladj,
-			 LISP_GPE_ADJ_FORMAT_FLAG_NONE);
-      }
-      /* *INDENT-ON* */
+	{
+	  vlib_cli_output (vm, "[%d] %U\n", ladj - lisp_adj_pool,
+			   format_lisp_gpe_adjacency, ladj,
+			   LISP_GPE_ADJ_FORMAT_FLAG_NONE);
+	}
     }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_lisp_gpe_tunnel_command, static) =
-{
+VLIB_CLI_COMMAND (show_lisp_gpe_tunnel_command, static) = {
   .path = "show gpe adjacency",
   .function = lisp_gpe_adjacency_show,
 };
-/* *INDENT-ON* */
 
 #define LISP_ADJ_NBR_DEFAULT_HASH_NUM_BUCKETS (256)
-#define LISP_ADJ_NBR_DEFAULT_HASH_MEMORY_SIZE (1<<20)
+#define LISP_ADJ_NBR_DEFAULT_HASH_MEMORY_SIZE (1 << 20)
 
 static clib_error_t *
-lisp_gpe_adj_module_init (vlib_main_t * vm)
+lisp_gpe_adj_module_init (vlib_main_t *vm)
 {
-  BV (clib_bihash_init) (&lisp_adj_db,
-			 "Adjacency Neighbour table",
-			 LISP_ADJ_NBR_DEFAULT_HASH_NUM_BUCKETS,
-			 LISP_ADJ_NBR_DEFAULT_HASH_MEMORY_SIZE);
+  BV (clib_bihash_init)
+  (&lisp_adj_db, "Adjacency Neighbour table",
+   LISP_ADJ_NBR_DEFAULT_HASH_NUM_BUCKETS,
+   LISP_ADJ_NBR_DEFAULT_HASH_MEMORY_SIZE);
 
   fib_node_register_type (FIB_NODE_TYPE_LISP_ADJ, &lisp_gpe_tuennel_vft);
   return (NULL);

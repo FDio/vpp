@@ -48,23 +48,28 @@
 #include <icmp_proto.h>
 
 #define APP_NAME "ICMP_Responder"
-#define IF_NAME  "memif_connection"
-
+#define IF_NAME	 "memif_connection"
 
 #ifdef ICMP_DBG
-#define DBG(...) do {                                               \
-                    printf (APP_NAME":%s:%d: ", __func__, __LINE__);         \
-                    printf (__VA_ARGS__);                           \
-                    printf ("\n");                                  \
-                } while (0)
+#define DBG(...)                                                              \
+  do                                                                          \
+    {                                                                         \
+      printf (APP_NAME ":%s:%d: ", __func__, __LINE__);                       \
+      printf (__VA_ARGS__);                                                   \
+      printf ("\n");                                                          \
+    }                                                                         \
+  while (0)
 #else
 #define DBG(...)
 #endif
 
-#define INFO(...) do {                                              \
-                    printf ("INFO: "__VA_ARGS__);                   \
-                    printf ("\n");                                  \
-                } while (0)
+#define INFO(...)                                                             \
+  do                                                                          \
+    {                                                                         \
+      printf ("INFO: " __VA_ARGS__);                                          \
+      printf ("\n");                                                          \
+    }                                                                         \
+  while (0)
 
 /* maximum tx/rx memif buffers */
 #define MAX_MEMIF_BUFS 256
@@ -99,7 +104,6 @@ print_memif_details ()
   memif_connection_t *c = &memif_connection;
   printf ("MEMIF DETAILS\n");
   printf ("==============================\n");
-
 
   memif_details_t md;
   memset (&md, 0, sizeof (md));
@@ -171,8 +175,8 @@ print_memif_details ()
   free (buf);
 }
 
-/* informs user about connected status. private_ctx is used by user to identify connection
-    (multiple connections WIP) */
+/* informs user about connected status. private_ctx is used by user to identify
+   connection (multiple connections WIP) */
 int
 on_connect (memif_conn_handle_t conn, void *private_ctx)
 {
@@ -180,8 +184,8 @@ on_connect (memif_conn_handle_t conn, void *private_ctx)
   return 0;
 }
 
-/* informs user about disconnected status. private_ctx is used by user to identify connection
-    (multiple connections WIP) */
+/* informs user about disconnected status. private_ctx is used by user to
+   identify connection (multiple connections WIP) */
 int
 on_disconnect (memif_conn_handle_t conn, void *private_ctx)
 {
@@ -224,7 +228,8 @@ icmpr_buffer_alloc (long n, uint16_t qid)
   memif_connection_t *c = &memif_connection;
   int err;
   uint16_t r;
-  /* set data pointer to shared memory and set buffer_len to shared memory buffer len */
+  /* set data pointer to shared memory and set buffer_len to shared memory
+   * buffer len */
   err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, n, &r, 0);
   if (err != MEMIF_ERR_SUCCESS)
     {
@@ -294,8 +299,8 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
   err = memif_rx_burst (c->conn, qid, c->rx_bufs, MAX_MEMIF_BUFS, &rx);
   c->rx_buf_num += rx;
 
-  DBG ("received %d buffers. %u/%u alloc/free buffers",
-       rx, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
+  DBG ("received %d buffers. %u/%u alloc/free buffers", rx, c->rx_buf_num,
+       MAX_MEMIF_BUFS - c->rx_buf_num);
 
   if (icmpr_buffer_alloc (rx, c->tx_qid) < 0)
     {
@@ -305,10 +310,9 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
   int i;
   for (i = 0; i < rx; i++)
     {
-      resolve_packet ((void *) (c->rx_bufs + i)->data,
-		      (c->rx_bufs + i)->len,
-		      (void *) (c->tx_bufs + i)->data,
-		      &(c->tx_bufs + i)->len, c->ip_addr);
+      resolve_packet ((void *) (c->rx_bufs + i)->data, (c->rx_bufs + i)->len,
+		      (void *) (c->tx_bufs + i)->data, &(c->tx_bufs + i)->len,
+		      c->ip_addr);
     }
 
   /* mark memif buffers and shared memory buffers as free */
@@ -319,8 +323,8 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
    */
   c->rx_buf_num -= rx;
 
-  DBG ("freed %d buffers. %u/%u alloc/free buffers",
-       rx, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
+  DBG ("freed %d buffers. %u/%u alloc/free buffers", rx, c->rx_buf_num,
+       MAX_MEMIF_BUFS - c->rx_buf_num);
 
   icmpr_tx_burst (c->tx_qid);
 
@@ -331,8 +335,8 @@ error:
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_buffer_free: %s", memif_strerror (err));
   c->rx_buf_num -= rx;
-  DBG ("freed %d buffers. %u/%u alloc/free buffers",
-       rx, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
+  DBG ("freed %d buffers. %u/%u alloc/free buffers", rx, c->rx_buf_num,
+       MAX_MEMIF_BUFS - c->rx_buf_num);
   return 0;
 }
 
@@ -356,9 +360,8 @@ icmpr_memif_create (int is_master)
   args.interface_id = 0;
   /* last argument for memif_create (void * private_ctx) is used by user
      to identify connection. this context is returned with callbacks */
-  int err = memif_create (&(&memif_connection)->conn,
-			  &args, on_connect, on_disconnect, on_interrupt,
-			  NULL);
+  int err = memif_create (&(&memif_connection)->conn, &args, on_connect,
+			  on_disconnect, on_interrupt, NULL);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_create: %s", memif_strerror (err));
   return 0;
@@ -394,8 +397,9 @@ main (int argc, char *argv[])
   c->ip_addr[3] = 2;
   /* initialize memory interface */
   int err;
-  /* if valid callback is passed as argument, fd event polling will be done by user
-     all file descriptors and events will be passed to user in this callback */
+  /* if valid callback is passed as argument, fd event polling will be done by
+     user all file descriptors and events will be passed to user in this
+     callback */
   /* if callback is set to NULL libmemif will handle fd event polling */
   err = memif_init (NULL, APP_NAME, NULL, NULL, NULL);
   if (err != MEMIF_ERR_SUCCESS)

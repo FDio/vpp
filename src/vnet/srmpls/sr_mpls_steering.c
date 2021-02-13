@@ -45,7 +45,7 @@
  * @brief function to sort the colors in descending order
  */
 int
-sort_color_descent (const u32 * x, u32 * y)
+sort_color_descent (const u32 *x, u32 *y)
 {
   return *y - *x;
 }
@@ -73,14 +73,14 @@ find_or_create_internal_label (ip46_address_t endpoint, u32 color)
       clib_memset (&color_t, 0, sizeof (mhash_t));
       mhash_init (&color_t, sizeof (u32), sizeof (ip46_address_t));
       mhash_set_mem (&sm->sr_policies_c2e2eclabel_hash, &color,
-		     (uword *) & color_t, NULL);
+		     (uword *) &color_t, NULL);
       color_table = mhash_get (&sm->sr_policies_c2e2eclabel_hash, &color);
     }
 
   result_label = mhash_get ((mhash_t *) color_table, &endpoint);
 
   if (result_label)
-    return (u32) * result_label;
+    return (u32) *result_label;
 
   /* Create and set a new internal label */
   u32 *new_internal_label = 0;
@@ -97,7 +97,7 @@ internal_label_lock_co (ip46_address_t endpoint, u32 color, char co_bits)
 {
   ip46_address_t zero, any;
   ip46_address_reset (&zero);
-  any.as_u64[0] = any.as_u64[1] = (u64) ~ 0;
+  any.as_u64[0] = any.as_u64[1] = (u64) ~0;
   switch (co_bits)
     {
     case SR_TE_CO_BITS_10:
@@ -145,13 +145,12 @@ internal_label_lock (ip46_address_t endpoint, u32 color)
   (*label_lock)++;
 }
 
-
 always_inline void
 internal_label_unlock_co (ip46_address_t endpoint, u32 color, char co_bits)
 {
   ip46_address_t zero, any;
   ip46_address_reset (&zero);
-  any.as_u64[0] = any.as_u64[1] = (u64) ~ 0;
+  any.as_u64[0] = any.as_u64[1] = (u64) ~0;
   switch (co_bits)
     {
     case SR_TE_CO_BITS_10:
@@ -211,7 +210,7 @@ internal_label_unlock (ip46_address_t endpoint, u32 color)
 	      sm->sr_policies_c2e2eclabel_hash.hash = NULL;
 	      fib_table_unlock (sm->fib_table_EC, FIB_PROTOCOL_MPLS,
 				FIB_SOURCE_SR);
-	      sm->fib_table_EC = (u32) ~ 0;
+	      sm->fib_table_EC = (u32) ~0;
 	    }
 	}
     }
@@ -222,8 +221,8 @@ internal_label_unlock (ip46_address_t endpoint, u32 color)
  * @brief function to update the FIB
  */
 void
-compute_sr_te_automated_steering_fib_entry (mpls_sr_steering_policy_t *
-					    steer_pl)
+compute_sr_te_automated_steering_fib_entry (
+  mpls_sr_steering_policy_t *steer_pl)
 {
   mpls_sr_main_t *sm = &sr_mpls_main;
   fib_prefix_t pfx = { 0 };
@@ -231,59 +230,54 @@ compute_sr_te_automated_steering_fib_entry (mpls_sr_steering_policy_t *
   u32 *internal_labels = 0;
   ip46_address_t zero, any;
   ip46_address_reset (&zero);
-  any.as_u64[0] = any.as_u64[1] = (u64) ~ 0;
+  any.as_u64[0] = any.as_u64[1] = (u64) ~0;
 
   u32 *color_i = NULL;
   vec_foreach (color_i, steer_pl->color)
-  {
-    switch (steer_pl->co_bits)
-      {
-      case SR_TE_CO_BITS_10:
-	vec_add1 (internal_labels,
-		  find_or_create_internal_label (steer_pl->next_hop,
-						 *color_i));
-	vec_add1 (internal_labels,
-		  find_or_create_internal_label (zero, *color_i));
-	vec_add1 (internal_labels,
-		  find_or_create_internal_label (any, *color_i));
-	break;
-      case SR_TE_CO_BITS_01:
-	vec_add1 (internal_labels,
-		  find_or_create_internal_label (steer_pl->next_hop,
-						 *color_i));
-	vec_add1 (internal_labels,
-		  find_or_create_internal_label (zero, *color_i));
-	break;
-      case SR_TE_CO_BITS_00:
-      case SR_TE_CO_BITS_11:
-	vec_add1 (internal_labels,
-		  find_or_create_internal_label (steer_pl->next_hop,
-						 *color_i));
-	break;
-      }
-  }
+    {
+      switch (steer_pl->co_bits)
+	{
+	case SR_TE_CO_BITS_10:
+	  vec_add1 (internal_labels, find_or_create_internal_label (
+				       steer_pl->next_hop, *color_i));
+	  vec_add1 (internal_labels,
+		    find_or_create_internal_label (zero, *color_i));
+	  vec_add1 (internal_labels,
+		    find_or_create_internal_label (any, *color_i));
+	  break;
+	case SR_TE_CO_BITS_01:
+	  vec_add1 (internal_labels, find_or_create_internal_label (
+				       steer_pl->next_hop, *color_i));
+	  vec_add1 (internal_labels,
+		    find_or_create_internal_label (zero, *color_i));
+	  break;
+	case SR_TE_CO_BITS_00:
+	case SR_TE_CO_BITS_11:
+	  vec_add1 (internal_labels, find_or_create_internal_label (
+				       steer_pl->next_hop, *color_i));
+	  break;
+	}
+    }
 
   /* Does hidden FIB already exist? */
-  if (sm->fib_table_EC == (u32) ~ 0)
+  if (sm->fib_table_EC == (u32) ~0)
     {
-      sm->fib_table_EC = fib_table_create_and_lock (FIB_PROTOCOL_MPLS,
-						    FIB_SOURCE_SR,
-						    "SR-MPLS Traffic Engineering (NextHop,Color)");
+      sm->fib_table_EC = fib_table_create_and_lock (
+	FIB_PROTOCOL_MPLS, FIB_SOURCE_SR,
+	"SR-MPLS Traffic Engineering (NextHop,Color)");
 
       fib_table_flush (sm->fib_table_EC, FIB_PROTOCOL_MPLS,
 		       FIB_SOURCE_SPECIAL);
     }
 
   /* Add the corresponding FIB entries */
-  fib_route_path_t path = {
-    .frp_proto = DPO_PROTO_MPLS,
-    .frp_eos = MPLS_EOS,
-    .frp_sw_if_index = ~0,
-    .frp_fib_index = sm->fib_table_EC,
-    .frp_weight = 1,
-    .frp_flags = FIB_ROUTE_PATH_FLAG_NONE,
-    .frp_label_stack = 0
-  };
+  fib_route_path_t path = { .frp_proto = DPO_PROTO_MPLS,
+			    .frp_eos = MPLS_EOS,
+			    .frp_sw_if_index = ~0,
+			    .frp_fib_index = sm->fib_table_EC,
+			    .frp_weight = 1,
+			    .frp_flags = FIB_ROUTE_PATH_FLAG_NONE,
+			    .frp_label_stack = 0 };
   fib_route_path_t *paths = NULL;
 
   if (steer_pl->classify.traffic_type == SR_STEER_IPV6)
@@ -299,7 +293,7 @@ compute_sr_te_automated_steering_fib_entry (mpls_sr_steering_policy_t *
       pfx.fp_addr.ip4 = steer_pl->classify.prefix.ip4;
     }
 
-  if (steer_pl->vpn_label != (u32) ~ 0)
+  if (steer_pl->vpn_label != (u32) ~0)
     {
       fib_mpls_label_t fml = {
 	.fml_value = steer_pl->vpn_label,
@@ -310,11 +304,11 @@ compute_sr_te_automated_steering_fib_entry (mpls_sr_steering_policy_t *
 
   u32 label_i;
   vec_foreach_index (label_i, internal_labels)
-  {
-    path.frp_local_label = internal_labels[label_i];
-    path.frp_preference = label_i;
-    vec_add1 (paths, path);
-  }
+    {
+      path.frp_local_label = internal_labels[label_i];
+      path.frp_preference = label_i;
+      vec_add1 (paths, path);
+    }
 
   /* Finally we must add to FIB IGP to N */
   clib_memcpy (&path.frp_addr, &steer_pl->next_hop,
@@ -325,35 +319,35 @@ compute_sr_te_automated_steering_fib_entry (mpls_sr_steering_policy_t *
   if (steer_pl->nh_type == SR_STEER_IPV6)
     {
       path.frp_proto = DPO_PROTO_IP6;
-      path.frp_fib_index =
-	fib_table_find (FIB_PROTOCOL_IP6,
-			(steer_pl->classify.fib_table !=
-			 (u32) ~ 0 ? steer_pl->classify.fib_table : 0));
+      path.frp_fib_index = fib_table_find (
+	FIB_PROTOCOL_IP6, (steer_pl->classify.fib_table != (u32) ~0 ?
+			     steer_pl->classify.fib_table :
+			     0));
     }
   else if (steer_pl->nh_type == SR_STEER_IPV4)
     {
       path.frp_proto = DPO_PROTO_IP4;
-      path.frp_fib_index =
-	fib_table_find (FIB_PROTOCOL_IP4,
-			(steer_pl->classify.fib_table !=
-			 (u32) ~ 0 ? steer_pl->classify.fib_table : 0));
+      path.frp_fib_index = fib_table_find (
+	FIB_PROTOCOL_IP4, (steer_pl->classify.fib_table != (u32) ~0 ?
+			     steer_pl->classify.fib_table :
+			     0));
     }
 
   vec_add1 (paths, path);
   if (steer_pl->classify.traffic_type == SR_STEER_IPV6)
-    fib_table_entry_update (fib_table_find
-			    (FIB_PROTOCOL_IP6,
-			     (steer_pl->classify.fib_table !=
-			      (u32) ~ 0 ? steer_pl->classify.fib_table : 0)),
-			    &pfx, FIB_SOURCE_SR,
-			    FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT, paths);
+    fib_table_entry_update (
+      fib_table_find (FIB_PROTOCOL_IP6,
+		      (steer_pl->classify.fib_table != (u32) ~0 ?
+			 steer_pl->classify.fib_table :
+			 0)),
+      &pfx, FIB_SOURCE_SR, FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT, paths);
   else if (steer_pl->classify.traffic_type == SR_STEER_IPV4)
-    fib_table_entry_update (fib_table_find
-			    (FIB_PROTOCOL_IP4,
-			     (steer_pl->classify.fib_table !=
-			      (u32) ~ 0 ? steer_pl->classify.fib_table : 0)),
-			    &pfx, FIB_SOURCE_SR,
-			    FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT, paths);
+    fib_table_entry_update (
+      fib_table_find (FIB_PROTOCOL_IP4,
+		      (steer_pl->classify.fib_table != (u32) ~0 ?
+			 steer_pl->classify.fib_table :
+			 0)),
+      &pfx, FIB_SOURCE_SR, FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT, paths);
 
   vec_free (paths);
   paths = NULL;
@@ -378,8 +372,8 @@ compute_sr_te_automated_steering_fib_entry (mpls_sr_steering_policy_t *
  */
 int
 sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
-			     ip46_address_t * prefix, u32 mask_width,
-			     u8 traffic_type, ip46_address_t * next_hop,
+			     ip46_address_t *prefix, u32 mask_width,
+			     u8 traffic_type, ip46_address_t *next_hop,
 			     u8 nh_type, u32 color, char co_bits,
 			     mpls_label_t vpn_label)
 {
@@ -400,7 +394,7 @@ sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
   key.prefix.as_u64[0] = prefix->as_u64[0];
   key.prefix.as_u64[1] = prefix->as_u64[1];
   key.mask_width = mask_width;
-  key.fib_table = (table_id != (u32) ~ 0 ? table_id : 0);
+  key.fib_table = (table_id != (u32) ~0 ? table_id : 0);
   key.traffic_type = traffic_type;
 
   /*
@@ -415,8 +409,8 @@ sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
   if (p)
     {
       steer_pl = pool_elt_at_index (sm->steer_policies, p[0]);
-      if (steer_pl->bsid != (u32) ~ 0)
-	return -1;		//Means we are rewritting the steering. Not allowed.
+      if (steer_pl->bsid != (u32) ~0)
+	return -1; // Means we are rewritting the steering. Not allowed.
 
       /* Means we are adding a color. Check that NH match. */
       if (ip46_address_cmp (&steer_pl->next_hop, next_hop))
@@ -424,9 +418,9 @@ sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
       if (vec_search (steer_pl->color, color) != ~0)
 	return -3;
       if (steer_pl->co_bits != co_bits)
-	return -4;		/* CO colors should be the same */
+	return -4; /* CO colors should be the same */
       if (steer_pl->vpn_label != vpn_label)
-	return -5;		/* VPN label should be the same */
+	return -5; /* VPN label should be the same */
 
       /* Remove the steering and ReDo it */
       vec_add1 (steer_pl->color, color);
@@ -444,7 +438,7 @@ sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
   steer_pl->nh_type = nh_type;
   steer_pl->co_bits = co_bits;
   steer_pl->classify.mask_width = mask_width;
-  steer_pl->classify.fib_table = (table_id != (u32) ~ 0 ? table_id : 0);
+  steer_pl->classify.fib_table = (table_id != (u32) ~0 ? table_id : 0);
   steer_pl->classify.traffic_type = traffic_type;
   steer_pl->color = NULL;
   steer_pl->vpn_label = vpn_label;
@@ -454,7 +448,7 @@ sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
 	     NULL);
 
   /* Local steering */
-  if (bsid != (u32) ~ 0)
+  if (bsid != (u32) ~0)
     {
       if (!sm->sr_policies_index_hash)
 	sm->sr_policies_index_hash = hash_create (0, sizeof (mpls_label_t));
@@ -464,19 +458,17 @@ sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
 	return -1;
       sr_policy = pool_elt_at_index (sm->sr_policies, p[0]);
 
-      fib_route_path_t path = {
-	.frp_proto = DPO_PROTO_MPLS,
-	.frp_local_label = sr_policy->bsid,
-	.frp_eos = MPLS_EOS,
-	.frp_sw_if_index = ~0,
-	.frp_fib_index = 0,
-	.frp_weight = 1,
-	.frp_flags = FIB_ROUTE_PATH_FLAG_NONE,
-	.frp_label_stack = 0
-      };
+      fib_route_path_t path = { .frp_proto = DPO_PROTO_MPLS,
+				.frp_local_label = sr_policy->bsid,
+				.frp_eos = MPLS_EOS,
+				.frp_sw_if_index = ~0,
+				.frp_fib_index = 0,
+				.frp_weight = 1,
+				.frp_flags = FIB_ROUTE_PATH_FLAG_NONE,
+				.frp_label_stack = 0 };
       fib_route_path_t *paths = NULL;
 
-      if (steer_pl->vpn_label != (u32) ~ 0)
+      if (steer_pl->vpn_label != (u32) ~0)
 	{
 	  fib_mpls_label_t fml = {
 	    .fml_value = steer_pl->vpn_label,
@@ -493,11 +485,10 @@ sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
 	  path.frp_fib_index = 0;
 	  path.frp_preference = 0;
 	  vec_add1 (paths, path);
-	  fib_table_entry_path_add2 (fib_table_find
-				     (FIB_PROTOCOL_IP6,
-				      (table_id != (u32) ~ 0 ? table_id : 0)),
-				     &pfx, FIB_SOURCE_SR,
-				     FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT, paths);
+	  fib_table_entry_path_add2 (
+	    fib_table_find (FIB_PROTOCOL_IP6,
+			    (table_id != (u32) ~0 ? table_id : 0)),
+	    &pfx, FIB_SOURCE_SR, FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT, paths);
 	  vec_free (paths);
 	}
       else if (traffic_type == SR_STEER_IPV4)
@@ -508,18 +499,17 @@ sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
 	  path.frp_fib_index = 0;
 	  path.frp_preference = 0;
 	  vec_add1 (paths, path);
-	  fib_table_entry_path_add2 (fib_table_find
-				     (FIB_PROTOCOL_IP4,
-				      (table_id != (u32) ~ 0 ? table_id : 0)),
-				     &pfx, FIB_SOURCE_SR,
-				     FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT, paths);
+	  fib_table_entry_path_add2 (
+	    fib_table_find (FIB_PROTOCOL_IP4,
+			    (table_id != (u32) ~0 ? table_id : 0)),
+	    &pfx, FIB_SOURCE_SR, FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT, paths);
 	  vec_free (paths);
 	}
     }
   /* Automated steering */
   else
     {
-      steer_pl->bsid = (u32) ~ 0;
+      steer_pl->bsid = (u32) ~0;
       vec_add1 (steer_pl->color, color);
       compute_sr_te_automated_steering_fib_entry (steer_pl);
       internal_label_lock_co (steer_pl->next_hop, color, steer_pl->co_bits);
@@ -544,7 +534,7 @@ sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
  * @return 0 if correct, else error
  */
 int
-sr_mpls_steering_policy_del (ip46_address_t * prefix, u32 mask_width,
+sr_mpls_steering_policy_del (ip46_address_t *prefix, u32 mask_width,
 			     u8 traffic_type, u32 table_id, u32 color)
 {
   mpls_sr_main_t *sm = &sr_mpls_main;
@@ -562,7 +552,7 @@ sr_mpls_steering_policy_del (ip46_address_t * prefix, u32 mask_width,
   key.prefix.as_u64[0] = prefix->as_u64[0];
   key.prefix.as_u64[1] = prefix->as_u64[1];
   key.mask_width = mask_width;
-  key.fib_table = (table_id != (u32) ~ 0 ? table_id : 0);
+  key.fib_table = (table_id != (u32) ~0 ? table_id : 0);
   key.traffic_type = traffic_type;
 
   if (!sm->sr_steer_policies_hash.hash)
@@ -578,7 +568,7 @@ sr_mpls_steering_policy_del (ip46_address_t * prefix, u32 mask_width,
   /* Retrieve Steer Policy function */
   steer_pl = pool_elt_at_index (sm->steer_policies, p[0]);
 
-  if (steer_pl->bsid == (u32) ~ 0)
+  if (steer_pl->bsid == (u32) ~0)
     {
       /* Remove the color from the color vector */
       vec_del1 (steer_pl->color, vec_search (steer_pl->color, color));
@@ -602,47 +592,45 @@ sr_mpls_steering_policy_del (ip46_address_t * prefix, u32 mask_width,
 	      pfx.fp_proto = FIB_PROTOCOL_IP6;
 	      pfx.fp_len = steer_pl->classify.mask_width;
 	      pfx.fp_addr.ip6 = steer_pl->classify.prefix.ip6;
-	      fib_table_entry_delete (fib_table_find
-				      (FIB_PROTOCOL_IP6,
-				       steer_pl->classify.fib_table), &pfx,
-				      FIB_SOURCE_SR);
+	      fib_table_entry_delete (
+		fib_table_find (FIB_PROTOCOL_IP6,
+				steer_pl->classify.fib_table),
+		&pfx, FIB_SOURCE_SR);
 	    }
 	  else if (steer_pl->classify.traffic_type == SR_STEER_IPV4)
 	    {
 	      pfx.fp_proto = FIB_PROTOCOL_IP4;
 	      pfx.fp_len = steer_pl->classify.mask_width;
 	      pfx.fp_addr.ip4 = steer_pl->classify.prefix.ip4;
-	      fib_table_entry_delete (fib_table_find
-				      (FIB_PROTOCOL_IP4,
-				       steer_pl->classify.fib_table), &pfx,
-				      FIB_SOURCE_SR);
+	      fib_table_entry_delete (
+		fib_table_find (FIB_PROTOCOL_IP4,
+				steer_pl->classify.fib_table),
+		&pfx, FIB_SOURCE_SR);
 	    }
 	  /* Remove all the locks for this ones... */
 	  internal_label_unlock_co (steer_pl->next_hop, color,
 				    steer_pl->co_bits);
 	}
     }
-  else				//Remove by BSID
+  else // Remove by BSID
     {
       if (steer_pl->classify.traffic_type == SR_STEER_IPV6)
 	{
 	  pfx.fp_proto = FIB_PROTOCOL_IP6;
 	  pfx.fp_len = steer_pl->classify.mask_width;
 	  pfx.fp_addr.ip6 = steer_pl->classify.prefix.ip6;
-	  fib_table_entry_delete (fib_table_find
-				  (FIB_PROTOCOL_IP6,
-				   steer_pl->classify.fib_table), &pfx,
-				  FIB_SOURCE_SR);
+	  fib_table_entry_delete (
+	    fib_table_find (FIB_PROTOCOL_IP6, steer_pl->classify.fib_table),
+	    &pfx, FIB_SOURCE_SR);
 	}
       else if (steer_pl->classify.traffic_type == SR_STEER_IPV4)
 	{
 	  pfx.fp_proto = FIB_PROTOCOL_IP4;
 	  pfx.fp_len = steer_pl->classify.mask_width;
 	  pfx.fp_addr.ip4 = steer_pl->classify.prefix.ip4;
-	  fib_table_entry_delete (fib_table_find
-				  (FIB_PROTOCOL_IP4,
-				   steer_pl->classify.fib_table), &pfx,
-				  FIB_SOURCE_SR);
+	  fib_table_entry_delete (
+	    fib_table_find (FIB_PROTOCOL_IP4, steer_pl->classify.fib_table),
+	    &pfx, FIB_SOURCE_SR);
 	}
     }
   /* Delete SR steering policy entry */
@@ -657,8 +645,8 @@ sr_mpls_steering_policy_del (ip46_address_t * prefix, u32 mask_width,
 }
 
 static clib_error_t *
-sr_mpls_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
-				 vlib_cli_command_t * cmd)
+sr_mpls_steer_policy_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				 vlib_cli_command_t *cmd)
 {
   int is_del = 0;
 
@@ -666,10 +654,10 @@ sr_mpls_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u32 dst_mask_width = 0;
   u8 traffic_type = 0;
   u8 nh_type = 0;
-  u32 fib_table = (u32) ~ 0, color = (u32) ~ 0;
+  u32 fib_table = (u32) ~0, color = (u32) ~0;
   u32 co_bits = 0;
 
-  mpls_label_t bsid, vpn_label = (u32) ~ 0;
+  mpls_label_t bsid, vpn_label = (u32) ~0;
 
   u8 sr_policy_set = 0;
 
@@ -681,36 +669,37 @@ sr_mpls_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (input, "del"))
 	is_del = 1;
-      else if (!traffic_type
-	       && unformat (input, "l3 %U/%d", unformat_ip6_address,
-			    &prefix.ip6, &dst_mask_width))
+      else if (!traffic_type &&
+	       unformat (input, "l3 %U/%d", unformat_ip6_address, &prefix.ip6,
+			 &dst_mask_width))
 	traffic_type = SR_STEER_IPV6;
-      else if (!traffic_type
-	       && unformat (input, "l3 %U/%d", unformat_ip4_address,
-			    &prefix.ip4, &dst_mask_width))
+      else if (!traffic_type &&
+	       unformat (input, "l3 %U/%d", unformat_ip4_address, &prefix.ip4,
+			 &dst_mask_width))
 	traffic_type = SR_STEER_IPV4;
-      else if (!sr_policy_set
-	       && unformat (input, "via sr policy bsid %U",
-			    unformat_mpls_unicast_label, &bsid))
+      else if (!sr_policy_set && unformat (input, "via sr policy bsid %U",
+					   unformat_mpls_unicast_label, &bsid))
 	sr_policy_set = 1;
-      else if (!sr_policy_set
-	       && unformat (input, "via next-hop %U color %d co %d",
-			    unformat_ip4_address, &nh.ip4, &color, &co_bits))
+      else if (!sr_policy_set &&
+	       unformat (input, "via next-hop %U color %d co %d",
+			 unformat_ip4_address, &nh.ip4, &color, &co_bits))
 	{
 	  sr_policy_set = 1;
 	  nh_type = SR_STEER_IPV4;
 	}
-      else if (!sr_policy_set
-	       && unformat (input, "via next-hop %U color %d co %d",
-			    unformat_ip6_address, &nh.ip6, &color, &co_bits))
+      else if (!sr_policy_set &&
+	       unformat (input, "via next-hop %U color %d co %d",
+			 unformat_ip6_address, &nh.ip6, &color, &co_bits))
 	{
 	  sr_policy_set = 1;
 	  nh_type = SR_STEER_IPV6;
 	}
-      else if (fib_table == (u32) ~ 0
-	       && unformat (input, "fib-table %d", &fib_table));
-      else if (unformat (input, "vpn-label %U",
-			 unformat_mpls_unicast_label, &vpn_label));
+      else if (fib_table == (u32) ~0 &&
+	       unformat (input, "fib-table %d", &fib_table))
+	;
+      else if (unformat (input, "vpn-label %U", unformat_mpls_unicast_label,
+			 &vpn_label))
+	;
       else
 	break;
     }
@@ -723,8 +712,7 @@ sr_mpls_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   /* Make sure that the prefixes are clean */
   if (traffic_type == SR_STEER_IPV4)
     {
-      u32 mask =
-	(dst_mask_width ? (0xFFFFFFFFu >> (32 - dst_mask_width)) : 0);
+      u32 mask = (dst_mask_width ? (0xFFFFFFFFu >> (32 - dst_mask_width)) : 0);
       prefix.ip4.as_u32 &= mask;
     }
   else if (traffic_type == SR_STEER_IPV6)
@@ -735,18 +723,16 @@ sr_mpls_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   if (nh_type)
-    bsid = (u32) ~ 0;
+    bsid = (u32) ~0;
 
   if (is_del)
-    rv =
-      sr_mpls_steering_policy_del (&prefix, dst_mask_width,
-				   traffic_type, fib_table, color);
+    rv = sr_mpls_steering_policy_del (&prefix, dst_mask_width, traffic_type,
+				      fib_table, color);
 
   else
-    rv =
-      sr_mpls_steering_policy_add (bsid, fib_table, &prefix, dst_mask_width,
-				   traffic_type, &nh, nh_type, color, co_bits,
-				   vpn_label);
+    rv = sr_mpls_steering_policy_add (bsid, fib_table, &prefix, dst_mask_width,
+				      traffic_type, &nh, nh_type, color,
+				      co_bits, vpn_label);
 
   switch (rv)
     {
@@ -770,27 +756,27 @@ sr_mpls_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND(sr_mpls_steer_policy_command, static)=
-{
+VLIB_CLI_COMMAND (sr_mpls_steer_policy_command, static) = {
   .path = "sr mpls steer",
-    .short_help = "sr mpls steer (del) l3 <ip_addr/mask> "
-    "via [sr policy bsid <mpls_label> || next-hop <ip46_addr> color <u32> co <0|1|2|3> ](fib-table <fib_table_index>)(vpn-label 500)",
-    .long_help =
+  .short_help =
+    "sr mpls steer (del) l3 <ip_addr/mask> "
+    "via [sr policy bsid <mpls_label> || next-hop <ip46_addr> color <u32> co "
+    "<0|1|2|3> ](fib-table <fib_table_index>)(vpn-label 500)",
+  .long_help =
     "\tSteer L3 traffic through an existing SR policy.\n"
     "\tExamples:\n"
     "\t\tsr steer l3 2001::/64 via sr_policy bsid 29999\n"
     "\t\tsr steer del l3 2001::/64 via sr_policy bsid 29999\n"
     "\t\tsr steer l3 2001::/64 via next-hop 1.1.1.1 color 1234 co 0\n"
-    "\t\tsr steer l3 2001::/64 via next-hop 2001::1 color 1234 co 2 vpn-label 500\n",
-    .function = sr_mpls_steer_policy_command_fn,
+    "\t\tsr steer l3 2001::/64 via next-hop 2001::1 color 1234 co 2 vpn-label "
+    "500\n",
+  .function = sr_mpls_steer_policy_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_sr_mpls_steering_policies_command_fn (vlib_main_t * vm,
-					   unformat_input_t * input,
-					   vlib_cli_command_t * cmd)
+show_sr_mpls_steering_policies_command_fn (vlib_main_t *vm,
+					   unformat_input_t *input,
+					   vlib_cli_command_t *cmd)
 {
   mpls_sr_main_t *sm = &sr_mpls_main;
   mpls_sr_steering_policy_t **steer_policies = 0;
@@ -799,55 +785,54 @@ show_sr_mpls_steering_policies_command_fn (vlib_main_t * vm,
   int i;
 
   vlib_cli_output (vm, "SR MPLS steering policies:");
-  /* *INDENT-OFF* */
-  pool_foreach (steer_pl, sm->steer_policies)  {
-    vec_add1(steer_policies, steer_pl);
-  }
-  /* *INDENT-ON* */
+
+  pool_foreach (steer_pl, sm->steer_policies)
+    {
+      vec_add1 (steer_policies, steer_pl);
+    }
+
   for (i = 0; i < vec_len (steer_policies); i++)
     {
       vlib_cli_output (vm, "==========================");
       steer_pl = steer_policies[i];
       if (steer_pl->classify.traffic_type == SR_STEER_IPV4)
 	{
-	  vlib_cli_output (vm, "Prefix: %U/%d via:",
-			   format_ip4_address,
+	  vlib_cli_output (vm, "Prefix: %U/%d via:", format_ip4_address,
 			   &steer_pl->classify.prefix.ip4,
 			   steer_pl->classify.mask_width);
 	}
       else if (steer_pl->classify.traffic_type == SR_STEER_IPV6)
 	{
-	  vlib_cli_output (vm, "Prefix: %U/%d via:",
-			   format_ip6_address,
+	  vlib_cli_output (vm, "Prefix: %U/%d via:", format_ip6_address,
 			   &steer_pl->classify.prefix.ip6,
 			   steer_pl->classify.mask_width);
 	}
 
-      if (steer_pl->bsid != (u32) ~ 0)
+      if (steer_pl->bsid != (u32) ~0)
 	{
-	  vlib_cli_output (vm, "· BSID %U",
-			   format_mpls_unicast_label, steer_pl->bsid);
+	  vlib_cli_output (vm, "· BSID %U", format_mpls_unicast_label,
+			   steer_pl->bsid);
 	}
       else
 	{
 	  if (steer_pl->nh_type == SR_STEER_IPV4)
 	    {
-	      vlib_cli_output (vm, "· Next-hop %U",
-			       format_ip4_address, &steer_pl->next_hop.ip4);
+	      vlib_cli_output (vm, "· Next-hop %U", format_ip4_address,
+			       &steer_pl->next_hop.ip4);
 	    }
 	  else if (steer_pl->nh_type == SR_STEER_IPV6)
 	    {
-	      vlib_cli_output (vm, "· Next-hop %U",
-			       format_ip6_address, &steer_pl->next_hop.ip6);
+	      vlib_cli_output (vm, "· Next-hop %U", format_ip6_address,
+			       &steer_pl->next_hop.ip6);
 	    }
 
 	  u32 *color_i = 0;
 	  u8 *s = NULL;
 	  s = format (s, "[ ");
 	  vec_foreach (color_i, steer_pl->color)
-	  {
-	    s = format (s, "%d, ", *color_i);
-	  }
+	    {
+	      s = format (s, "%d, ", *color_i);
+	    }
 	  s = format (s, "\b\b ]");
 	  vlib_cli_output (vm, "· Color %s", s);
 
@@ -871,32 +856,27 @@ show_sr_mpls_steering_policies_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND(show_sr_mpls_steering_policies_command, static)=
-{
+VLIB_CLI_COMMAND (show_sr_mpls_steering_policies_command, static) = {
   .path = "show sr mpls steering policies",
-    .short_help = "show sr mpls steering policies",
-    .function = show_sr_mpls_steering_policies_command_fn,
+  .short_help = "show sr mpls steering policies",
+  .function = show_sr_mpls_steering_policies_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-sr_mpls_steering_init (vlib_main_t * vm)
+sr_mpls_steering_init (vlib_main_t *vm)
 {
   mpls_sr_main_t *sm = &sr_mpls_main;
 
   /* Init memory for function keys */
   sm->sr_steer_policies_hash.hash = NULL;
 
-  sm->fib_table_EC = (u32) ~ 0;
+  sm->fib_table_EC = (u32) ~0;
   sm->ec_labels = 0;
 
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION(sr_mpls_steering_init);
-/* *INDENT-ON* */
+VLIB_INIT_FUNCTION (sr_mpls_steering_init);
 
 /*
  * fd.io coding-style-patch-verification: ON

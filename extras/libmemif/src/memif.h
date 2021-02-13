@@ -24,10 +24,10 @@
 #define MEMIF_CACHELINE_SIZE 64
 #endif
 
-#define MEMIF_COOKIE		0x3E31F20
-#define MEMIF_VERSION_MAJOR	2
-#define MEMIF_VERSION_MINOR	0
-#define MEMIF_VERSION		((MEMIF_VERSION_MAJOR << 8) | MEMIF_VERSION_MINOR)
+#define MEMIF_COOKIE	    0x3E31F20
+#define MEMIF_VERSION_MAJOR 2
+#define MEMIF_VERSION_MINOR 0
+#define MEMIF_VERSION	    ((MEMIF_VERSION_MAJOR << 8) | MEMIF_VERSION_MINOR)
 
 /*
  *  Type definitions
@@ -86,7 +86,7 @@ typedef struct __attribute__ ((packed))
 {
   memif_version_t version;
   memif_interface_id_t id;
-  memif_interface_mode_t mode:8;
+  memif_interface_mode_t mode : 8;
   uint8_t secret[24];
   uint8_t name[32];
 } memif_msg_init_t;
@@ -100,12 +100,12 @@ typedef struct __attribute__ ((packed))
 typedef struct __attribute__ ((packed))
 {
   uint16_t flags;
-#define MEMIF_MSG_ADD_RING_FLAG_S2M	(1 << 0)
+#define MEMIF_MSG_ADD_RING_FLAG_S2M (1 << 0)
   memif_ring_index_t index;
   memif_region_index_t region;
   memif_region_offset_t offset;
   memif_log2_ring_size_t log2_ring_size;
-  uint16_t private_hdr_size;	/* used for private metadata */
+  uint16_t private_hdr_size; /* used for private metadata */
 } memif_msg_add_ring_t;
 
 typedef struct __attribute__ ((packed))
@@ -126,7 +126,7 @@ typedef struct __attribute__ ((packed))
 
 typedef struct __attribute__ ((packed, aligned (128)))
 {
-  memif_msg_type_t type:16;
+  memif_msg_type_t type : 16;
   union
   {
     memif_msg_hello_t hello;
@@ -139,8 +139,7 @@ typedef struct __attribute__ ((packed, aligned (128)))
   };
 } memif_msg_t;
 
-_Static_assert (sizeof (memif_msg_t) == 128,
-		"Size of memif_msg_t must be 128");
+_Static_assert(sizeof (memif_msg_t) == 128, "Size of memif_msg_t must be 128");
 
 /*
  *  Ring and Descriptor Layout
@@ -156,11 +155,11 @@ typedef struct __attribute__ ((packed))
   uint32_t metadata;
 } memif_desc_t;
 
-_Static_assert (sizeof (memif_desc_t) == 16,
-		"Size of memif_dsct_t must be 16 bytes");
+_Static_assert(sizeof (memif_desc_t) == 16,
+	       "Size of memif_dsct_t must be 16 bytes");
 
-#define MEMIF_CACHELINE_ALIGN_MARK(mark) \
-  uint8_t mark[0] __attribute__((aligned(MEMIF_CACHELINE_SIZE)))
+#define MEMIF_CACHELINE_ALIGN_MARK(mark)                                      \
+  uint8_t mark[0] __attribute__ ((aligned (MEMIF_CACHELINE_SIZE)))
 
 typedef struct
 {
@@ -169,9 +168,9 @@ typedef struct
   uint16_t flags;
 #define MEMIF_RING_FLAG_MASK_INT 1
   volatile uint16_t head;
-    MEMIF_CACHELINE_ALIGN_MARK (cacheline1);
+  MEMIF_CACHELINE_ALIGN_MARK (cacheline1);
   volatile uint16_t tail;
-    MEMIF_CACHELINE_ALIGN_MARK (cacheline2);
+  MEMIF_CACHELINE_ALIGN_MARK (cacheline2);
   memif_desc_t desc[0];
 } memif_ring_t;
 

@@ -26,7 +26,7 @@ typedef struct igmp_report_args_t_
   igmp_membership_report_v3_t report[0];
 } igmp_report_args_t;
 
-extern void igmp_handle_report (const igmp_report_args_t * args);
+extern void igmp_handle_report (const igmp_report_args_t *args);
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -26,9 +26,7 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED (struct
-{
+typedef CLIB_PACKED (struct {
   union
   {
     struct
@@ -43,7 +41,6 @@ typedef CLIB_PACKED (struct
     u64 as_u64[6];
   };
 }) ct6_session_key_t;
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -88,13 +85,13 @@ extern vlib_node_registration_t ct6_in2out_node;
 
 format_function_t format_ct6_session;
 
-ct6_session_t *ct6_create_or_recycle_session (ct6_main_t * cmp,
-					      clib_bihash_kv_48_8_t * kvpp,
+ct6_session_t *ct6_create_or_recycle_session (ct6_main_t *cmp,
+					      clib_bihash_kv_48_8_t *kvpp,
 					      f64 now, u32 my_thread_index,
-					      u32 * recyclep, u32 * createp);
+					      u32 *recyclep, u32 *createp);
 
 static inline void
-ct6_lru_remove (ct6_main_t * cmp, ct6_session_t * s0)
+ct6_lru_remove (ct6_main_t *cmp, ct6_session_t *s0)
 {
   ct6_session_t *next_sess, *prev_sess;
   u32 thread_index;
@@ -113,21 +110,21 @@ ct6_lru_remove (ct6_main_t * cmp, ct6_session_t * s0)
   /* Fix next->prev */
   if (s0->next_index != ~0)
     {
-      next_sess = pool_elt_at_index (cmp->sessions[thread_index],
-				     s0->next_index);
+      next_sess =
+	pool_elt_at_index (cmp->sessions[thread_index], s0->next_index);
       next_sess->prev_index = s0->prev_index;
     }
   /* Fix prev->next */
   if (s0->prev_index != ~0)
     {
-      prev_sess = pool_elt_at_index (cmp->sessions[thread_index],
-				     s0->prev_index);
+      prev_sess =
+	pool_elt_at_index (cmp->sessions[thread_index], s0->prev_index);
       prev_sess->next_index = s0->next_index;
     }
 }
 
 static inline void
-ct6_lru_add (ct6_main_t * cmp, ct6_session_t * s0, f64 now)
+ct6_lru_add (ct6_main_t *cmp, ct6_session_t *s0, f64 now)
 {
   ct6_session_t *next_sess;
   u32 thread_index;
@@ -162,7 +159,7 @@ ct6_lru_add (ct6_main_t * cmp, ct6_session_t * s0, f64 now)
 }
 
 static inline void
-ct6_update_session_hit (ct6_main_t * cmp, ct6_session_t * s0, f64 now)
+ct6_update_session_hit (ct6_main_t *cmp, ct6_session_t *s0, f64 now)
 {
   ct6_lru_remove (cmp, s0);
   ct6_lru_add (cmp, s0, now);

@@ -55,7 +55,8 @@ int igmp_proxy_device_add_del_interface (u32 vrf_id, u32 sw_if_index, u8 add);
 
 void igmp_proxy_device_merge_config (igmp_config_t *config, u8 block);
 
-void igmp_proxy_device_block_src (igmp_config_t *config, igmp_group_t *group, igmp_src_t *src);
+void igmp_proxy_device_block_src (igmp_config_t *config, igmp_group_t *group,
+				  igmp_src_t *src);
 
 void igmp_proxy_device_mfib_path_add_del (igmp_group_t *group, u8 add);
 

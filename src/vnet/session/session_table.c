@@ -37,7 +37,7 @@ session_table_alloc (void)
 }
 
 u32
-session_table_index (session_table_t * slt)
+session_table_index (session_table_t *slt)
 {
   return (slt - lookup_tables);
 }
@@ -50,15 +50,15 @@ session_table_get (u32 table_index)
   return pool_elt_at_index (lookup_tables, table_index);
 }
 
-#define foreach_hash_table_parameter            \
-  _(v4,session,buckets,20000)                   \
-  _(v4,session,memory,(64<<20))                 \
-  _(v6,session,buckets,20000)                   \
-  _(v6,session,memory,(64<<20))                 \
-  _(v4,halfopen,buckets,20000)                  \
-  _(v4,halfopen,memory,(64<<20))                \
-  _(v6,halfopen,buckets,20000)                  \
-  _(v6,halfopen,memory,(64<<20))
+#define foreach_hash_table_parameter                                          \
+  _ (v4, session, buckets, 20000)                                             \
+  _ (v4, session, memory, (64 << 20))                                         \
+  _ (v6, session, buckets, 20000)                                             \
+  _ (v6, session, memory, (64 << 20))                                         \
+  _ (v4, halfopen, buckets, 20000)                                            \
+  _ (v4, halfopen, memory, (64 << 20))                                        \
+  _ (v6, halfopen, buckets, 20000)                                            \
+  _ (v6, halfopen, memory, (64 << 20))
 
 /**
  * Initialize session table hash tables
@@ -67,19 +67,19 @@ session_table_get (u32 table_index)
  * otherwise it uses defaults above.
  */
 void
-session_table_init (session_table_t * slt, u8 fib_proto)
+session_table_init (session_table_t *slt, u8 fib_proto)
 {
   u8 all = fib_proto > FIB_PROTOCOL_IP6 ? 1 : 0;
   int i;
 
-#define _(af,table,parm,value) 						\
+#define _(af, table, parm, value)                                             \
   u32 configured_##af##_##table##_table_##parm = value;
   foreach_hash_table_parameter;
 #undef _
 
-#define _(af,table,parm,value)                                          \
-  if (session_main.configured_##af##_##table##_table_##parm)    \
-    configured_##af##_##table##_table_##parm =                          \
+#define _(af, table, parm, value)                                             \
+  if (session_main.configured_##af##_##table##_table_##parm)                  \
+    configured_##af##_##table##_table_##parm =                                \
       session_main.configured_##af##_##table##_table_##parm;
   foreach_hash_table_parameter;
 #undef _
@@ -141,7 +141,7 @@ typedef struct _ip4_session_table_walk_ctx_t
 } ip4_session_table_walk_ctx_t;
 
 static int
-ip4_session_table_walk_cb (clib_bihash_kv_16_8_t * kvp, void *arg)
+ip4_session_table_walk_cb (clib_bihash_kv_16_8_t *kvp, void *arg)
 {
   ip4_session_table_walk_ctx_t *ctx = arg;
   ctx->fn (kvp, ctx->ctx);
@@ -149,7 +149,7 @@ ip4_session_table_walk_cb (clib_bihash_kv_16_8_t * kvp, void *arg)
 }
 
 void
-ip4_session_table_walk (clib_bihash_16_8_t * hash,
+ip4_session_table_walk (clib_bihash_16_8_t *hash,
 			ip4_session_table_walk_fn_t fn, void *arg)
 {
   ip4_session_table_walk_ctx_t ctx = {
@@ -160,7 +160,6 @@ ip4_session_table_walk (clib_bihash_16_8_t * hash,
 					   &ctx);
 }
 
-/* *INDENT-ON* */
 /*
  * fd.io coding-style-patch-verification: ON
  *

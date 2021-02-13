@@ -23,9 +23,9 @@
 #include <vnet/syslog/syslog.h>
 #include <vnet/syslog/syslog_udp.h>
 
-#define SYSLOG_VERSION "1"
-#define NILVALUE "-"
-#define DEFAULT_UDP_PORT 514
+#define SYSLOG_VERSION	     "1"
+#define NILVALUE	     "-"
+#define DEFAULT_UDP_PORT     514
 #define DEFAULT_MAX_MSG_SIZE 480
 
 #define encode_priority(f, p) ((f << 3) | p)
@@ -34,7 +34,7 @@ syslog_main_t syslog_main;
 
 /* format timestamp RFC5424 6.2.3. */
 static u8 *
-format_syslog_timestamp (u8 * s, va_list * args)
+format_syslog_timestamp (u8 *s, va_list *args)
 {
   f64 timestamp = va_arg (*args, f64);
   struct tm *tm;
@@ -50,7 +50,7 @@ format_syslog_timestamp (u8 * s, va_list * args)
 
 /* format header RFC5424 6.2. */
 static u8 *
-format_syslog_header (u8 * s, va_list * args)
+format_syslog_header (u8 *s, va_list *args)
 {
   syslog_main_t *sm = &syslog_main;
   syslog_header_t *h = va_arg (*args, syslog_header_t *);
@@ -65,7 +65,7 @@ format_syslog_header (u8 * s, va_list * args)
 
 /* format strucured data elements RFC5424 6.3. */
 static u8 *
-format_syslog_structured_data (u8 * s, va_list * args)
+format_syslog_structured_data (u8 *s, va_list *args)
 {
   u8 **sds = va_arg (*args, u8 **);
   int i;
@@ -83,13 +83,12 @@ format_syslog_structured_data (u8 * s, va_list * args)
 }
 
 static u8 *
-format_syslog_msg (u8 * s, va_list * args)
+format_syslog_msg (u8 *s, va_list *args)
 {
   syslog_msg_t *m = va_arg (*args, syslog_msg_t *);
 
-  s =
-    format (s, "%U %U", format_syslog_header, &m->header,
-	    format_syslog_structured_data, m->structured_data);
+  s = format (s, "%U %U", format_syslog_header, &m->header,
+	      format_syslog_structured_data, m->structured_data);
   /* free-form message is optional */
   if (m->msg)
     s = format (s, " %s", m->msg);
@@ -98,7 +97,7 @@ format_syslog_msg (u8 * s, va_list * args)
 }
 
 void
-syslog_msg_sd_init (syslog_msg_t * syslog_msg, char *sd_id)
+syslog_msg_sd_init (syslog_msg_t *syslog_msg, char *sd_id)
 {
   u8 *sd;
 
@@ -108,8 +107,7 @@ syslog_msg_sd_init (syslog_msg_t * syslog_msg, char *sd_id)
 }
 
 void
-syslog_msg_add_sd_param (syslog_msg_t * syslog_msg, char *name, char *fmt,
-			 ...)
+syslog_msg_add_sd_param (syslog_msg_t *syslog_msg, char *name, char *fmt, ...)
 {
   va_list va;
   u8 *value;
@@ -126,7 +124,7 @@ syslog_msg_add_sd_param (syslog_msg_t * syslog_msg, char *name, char *fmt,
 }
 
 void
-syslog_msg_add_msg (syslog_msg_t * syslog_msg, char *fmt, ...)
+syslog_msg_add_msg (syslog_msg_t *syslog_msg, char *fmt, ...)
 {
   va_list va;
   u8 *msg;
@@ -140,7 +138,7 @@ syslog_msg_add_msg (syslog_msg_t * syslog_msg, char *fmt, ...)
 }
 
 void
-syslog_msg_init (syslog_msg_t * syslog_msg, syslog_facility_t facility,
+syslog_msg_init (syslog_msg_t *syslog_msg, syslog_facility_t facility,
 		 syslog_severity_t severity, char *app_name, char *msgid)
 {
   vlib_main_t *vm = vlib_get_main ();
@@ -156,7 +154,7 @@ syslog_msg_init (syslog_msg_t * syslog_msg, syslog_facility_t facility,
 }
 
 int
-syslog_msg_send (syslog_msg_t * syslog_msg)
+syslog_msg_send (syslog_msg_t *syslog_msg)
 {
   syslog_main_t *sm = &syslog_main;
   vlib_main_t *vm = vlib_get_main ();
@@ -197,56 +195,58 @@ syslog_msg_send (syslog_msg_t * syslog_msg)
 }
 
 static uword
-unformat_syslog_facility (unformat_input_t * input, va_list * args)
+unformat_syslog_facility (unformat_input_t *input, va_list *args)
 {
   u32 *r = va_arg (*args, u32 *);
 
-  if (0);
-#define _(v,f,s) else if (unformat (input, s)) *r = SYSLOG_FACILITY_##f;
+  if (0)
+    ;
+#define _(v, f, s) else if (unformat (input, s)) *r = SYSLOG_FACILITY_##f;
   foreach_syslog_facility
 #undef _
-    else
-    return 0;
+    else return 0;
 
   return 1;
 }
 
 static uword
-unformat_syslog_severity (unformat_input_t * input, va_list * args)
+unformat_syslog_severity (unformat_input_t *input, va_list *args)
 {
   u32 *r = va_arg (*args, u32 *);
 
-  if (0);
-#define _(v,f,s) else if (unformat (input, s)) *r = SYSLOG_SEVERITY_##f;
+  if (0)
+    ;
+#define _(v, f, s) else if (unformat (input, s)) *r = SYSLOG_SEVERITY_##f;
   foreach_syslog_severity
 #undef _
-    else
-    return 0;
+    else return 0;
 
   return 1;
 }
 
 static u8 *
-format_syslog_severity (u8 * s, va_list * args)
+format_syslog_severity (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
   u8 *t = 0;
 
   switch (i)
     {
-#define _(v,f,str) case SYSLOG_SEVERITY_##f: t = (u8 *) str; break;
+#define _(v, f, str)                                                          \
+  case SYSLOG_SEVERITY_##f:                                                   \
+    t = (u8 *) str;                                                           \
+    break;
       foreach_syslog_severity
 #undef _
-    default:
-      return format (s, "unknown");
+	default : return format (s, "unknown");
     }
 
   return format (s, "%s", t);
 }
 
 vnet_api_error_t
-set_syslog_sender (ip4_address_t * collector, u16 collector_port,
-		   ip4_address_t * src, u32 vrf_id, u32 max_msg_size)
+set_syslog_sender (ip4_address_t *collector, u16 collector_port,
+		   ip4_address_t *src, u32 vrf_id, u32 max_msg_size)
 {
   syslog_main_t *sm = &syslog_main;
   u32 fib_index;
@@ -279,8 +279,8 @@ set_syslog_sender (ip4_address_t * collector, u16 collector_port,
 }
 
 static clib_error_t *
-set_syslog_sender_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+set_syslog_sender_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t collector, src;
@@ -298,8 +298,8 @@ set_syslog_sender_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "collector %U", unformat_ip4_address, &collector))
+      if (unformat (line_input, "collector %U", unformat_ip4_address,
+		    &collector))
 	;
       else if (unformat (line_input, "port %u", &collector_port))
 	;
@@ -338,13 +338,11 @@ set_syslog_sender_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   vnet_api_error_t rv =
-    set_syslog_sender (&collector, collector_port, &src, vrf_id,
-		       max_msg_size);
+    set_syslog_sender (&collector, collector_port, &src, vrf_id, max_msg_size);
 
   if (rv)
-    ret =
-      clib_error_return (0, "set syslog sender failed rv=%d:%U", (int) rv,
-			 format_vnet_api_errno, rv);
+    ret = clib_error_return (0, "set syslog sender failed rv=%d:%U", (int) rv,
+			     format_vnet_api_errno, rv);
 
 done:
   unformat_free (line_input);
@@ -352,8 +350,8 @@ done:
 }
 
 static clib_error_t *
-show_syslog_sender_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+show_syslog_sender_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   syslog_main_t *sm = &syslog_main;
   u32 vrf_id = ~0;
@@ -362,11 +360,12 @@ show_syslog_sender_command_fn (vlib_main_t * vm, unformat_input_t * input,
     vrf_id = fib_table_get_table_id (sm->fib_index, FIB_PROTOCOL_IP4);
 
   if (syslog_is_enabled ())
-    vlib_cli_output (vm, "collector %U:%u, src address %U, VRF ID %d, "
+    vlib_cli_output (vm,
+		     "collector %U:%u, src address %U, VRF ID %d, "
 		     "max-msg-size %u",
 		     format_ip4_address, &sm->collector, sm->collector_port,
-		     format_ip4_address, &sm->src_address,
-		     vrf_id, sm->max_msg_size);
+		     format_ip4_address, &sm->src_address, vrf_id,
+		     sm->max_msg_size);
   else
     vlib_cli_output (vm, "syslog sender is disabled");
 
@@ -374,8 +373,8 @@ show_syslog_sender_command_fn (vlib_main_t * vm, unformat_input_t * input,
 }
 
 static clib_error_t *
-test_syslog_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			vlib_cli_command_t * cmd)
+test_syslog_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   syslog_msg_t syslog_msg;
@@ -407,9 +406,8 @@ test_syslog_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		  while (unformat (line_input, "sd-id %s", &sd_id))
 		    {
 		      syslog_msg_sd_init (&syslog_msg, (char *) sd_id);
-		      while (unformat
-			     (line_input, "sd-param %s %s", &param_name,
-			      &param_value))
+		      while (unformat (line_input, "sd-param %s %s",
+				       &param_name, &param_value))
 			{
 			  syslog_msg_add_sd_param (&syslog_msg,
 						   (char *) param_name,
@@ -427,33 +425,29 @@ test_syslog_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		}
 	      else
 		{
-		  ret =
-		    clib_error_return (0, "Unknown input `%U'",
-				       format_unformat_error, line_input);
+		  ret = clib_error_return (0, "Unknown input `%U'",
+					   format_unformat_error, line_input);
 		  goto done;
 		}
 	    }
 	  else
 	    {
-	      ret =
-		clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
+	      ret = clib_error_return (0, "Unknown input `%U'",
+				       format_unformat_error, line_input);
 	      goto done;
 	    }
 	}
       else
 	{
-	  ret =
-	    clib_error_return (0, "Unknown input `%U'", format_unformat_error,
-			       line_input);
+	  ret = clib_error_return (0, "Unknown input `%U'",
+				   format_unformat_error, line_input);
 	  goto done;
 	}
     }
   else
     {
-      ret =
-	clib_error_return (0, "Unknown input `%U'", format_unformat_error,
-			   line_input);
+      ret = clib_error_return (0, "Unknown input `%U'", format_unformat_error,
+			       line_input);
       goto done;
     }
 
@@ -465,8 +459,8 @@ done:
 }
 
 static clib_error_t *
-set_syslog_filter_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+set_syslog_filter_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   syslog_main_t *sm = &syslog_main;
@@ -478,9 +472,8 @@ set_syslog_filter_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "severity %U", unformat_syslog_severity,
-	   &sm->severity_filter))
+      if (unformat (line_input, "severity %U", unformat_syslog_severity,
+		    &sm->severity_filter))
 	;
       else
 	{
@@ -496,8 +489,8 @@ done:
 }
 
 static clib_error_t *
-show_syslog_filter_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+show_syslog_filter_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   syslog_main_t *sm = &syslog_main;
 
@@ -507,7 +500,6 @@ show_syslog_filter_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 /*?
  * Set syslog sender configuration.
  *
@@ -519,12 +511,12 @@ show_syslog_filter_command_fn (vlib_main_t * vm, unformat_input_t * input,
  * @endparblock
 ?*/
 VLIB_CLI_COMMAND (set_syslog_sender_command, static) = {
-    .path = "set syslog sender",
-    .short_help = "set syslog sender "
-                  "collector <ip4-address> [port <port>] "
-                  "src <ip4-address> [vrf-id <vrf-id>] "
-                  "[max-msg-size <max-msg-size>]",
-    .function = set_syslog_sender_command_fn,
+  .path = "set syslog sender",
+  .short_help = "set syslog sender "
+		"collector <ip4-address> [port <port>] "
+		"src <ip4-address> [vrf-id <vrf-id>] "
+		"[max-msg-size <max-msg-size>]",
+  .function = set_syslog_sender_command_fn,
 };
 
 /*?
@@ -535,14 +527,15 @@ VLIB_CLI_COMMAND (set_syslog_sender_command, static) = {
  *
  * Example of how to display syslog sender configuration:
  * @cliexstart{show syslog sender}
- * collector 10.10.10.10:514, src address 172.16.2.2, VRF ID 0, max-msg-size 480
+ * collector 10.10.10.10:514, src address 172.16.2.2, VRF ID 0, max-msg-size
+480
  * @cliexend
  * @endparblock
 ?*/
 VLIB_CLI_COMMAND (show_syslog_sender_command, static) = {
-    .path = "show syslog sender",
-    .short_help = "show syslog sender",
-    .function = show_syslog_sender_command_fn,
+  .path = "show syslog sender",
+  .short_help = "show syslog sender",
+  .function = show_syslog_sender_command_fn,
 };
 
 /*?
@@ -561,10 +554,10 @@ VLIB_CLI_COMMAND (show_syslog_sender_command, static) = {
  * @endparblock
 ?*/
 VLIB_CLI_COMMAND (test_syslog_command, static) = {
-    .path = "test syslog",
-    .short_help = "test syslog <facility> <severity> <app-name> <msgid> "
-                  "[sd-id <sd-id> sd-param <name> <value>] [<message]",
-    .function = test_syslog_command_fn,
+  .path = "test syslog",
+  .short_help = "test syslog <facility> <severity> <app-name> <msgid> "
+		"[sd-id <sd-id> sd-param <name> <value>] [<message]",
+  .function = test_syslog_command_fn,
 };
 
 /*?
@@ -578,9 +571,9 @@ VLIB_CLI_COMMAND (test_syslog_command, static) = {
  * @endparblock
 ?*/
 VLIB_CLI_COMMAND (set_syslog_filter_command, static) = {
-    .path = "set syslog filter",
-    .short_help = "set syslog filter severity <severity>",
-    .function = set_syslog_filter_command_fn,
+  .path = "set syslog filter",
+  .short_help = "set syslog filter severity <severity>",
+  .function = set_syslog_filter_command_fn,
 };
 
 /*?
@@ -596,14 +589,13 @@ VLIB_CLI_COMMAND (set_syslog_filter_command, static) = {
  * @endparblock
 ?*/
 VLIB_CLI_COMMAND (show_syslog_filter_command, static) = {
-    .path = "show syslog filter",
-    .short_help = "show syslog filter",
-    .function = show_syslog_filter_command_fn,
+  .path = "show syslog filter",
+  .short_help = "show syslog filter",
+  .function = show_syslog_filter_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-syslog_init (vlib_main_t * vm)
+syslog_init (vlib_main_t *vm)
 {
   syslog_main_t *sm = &syslog_main;
   f64 vlib_time_0 = vlib_time_now (vm);

@@ -23,8 +23,8 @@
 
 extern ioam_export_main_t ioam_export_main;
 static clib_error_t *
-ioam_analyse_enable_disable (vlib_main_t * vm,
-			     int is_add, int is_export, int remote_listen)
+ioam_analyse_enable_disable (vlib_main_t *vm, int is_add, int is_export,
+			     int remote_listen)
 {
   ipfix_client_add_del_t ipfix_reg;
   clib_error_t *rv = 0;
@@ -72,8 +72,8 @@ ret:
 }
 
 static clib_error_t *
-set_ioam_analyse_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+set_ioam_analyse_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   int is_export = 0;
   int is_add = 1;
@@ -94,17 +94,16 @@ set_ioam_analyse_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return (ioam_analyse_enable_disable (vm, is_add, is_export, remote_listen));
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ioam_analyse_command, static) = {
   .path = "set ioam analyse",
-  .short_help = "set ioam analyse [export-ipfix-collector] [disable] [listen-ipfix]",
+  .short_help =
+    "set ioam analyse [export-ipfix-collector] [disable] [listen-ipfix]",
   .function = set_ioam_analyse_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_ioam_analyse_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
-			  vlib_cli_command_t * cmd)
+show_ioam_analyse_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   ip6_ioam_analyser_main_t *am = &ioam_analyser_main;
   ioam_analyser_data_t *record = NULL;
@@ -114,15 +113,15 @@ show_ioam_analyse_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
   vec_reset_length (s);
   s = format (0, "iOAM Analyse Information: \n");
   vec_foreach_index (i, am->aggregated_data)
-  {
-    record = am->aggregated_data + i;
-    if (record->is_free)
-      continue;
+    {
+      record = am->aggregated_data + i;
+      if (record->is_free)
+	continue;
 
-    s = format (s, "Flow Number: %u\n", i);
-    s = print_analyse_flow (s, record);
-    s = format (s, "\n");
-  }
+      s = format (s, "Flow Number: %u\n", i);
+      s = print_analyse_flow (s, record);
+      s = format (s, "\n");
+    }
   vlib_cli_output (vm, "%v", s);
 
   vec_free (s);
@@ -130,25 +129,23 @@ show_ioam_analyse_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip6_show_ioam_ipfix_cmd, static) = {
   .path = "show ioam analyse ",
   .short_help = "show ioam analyser information",
   .function = show_ioam_analyse_cmd_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-ioam_analyse_init (vlib_main_t * vm)
+ioam_analyse_init (vlib_main_t *vm)
 {
   ip6_ioam_analyser_main_t *am = &ioam_analyser_main;
   u16 i;
 
   vec_validate_aligned (am->aggregated_data, 50, CLIB_CACHE_LINE_BYTES);
   vec_foreach_index (i, am->aggregated_data)
-  {
-    ioam_analyse_init_data (am->aggregated_data + i);
-  }
+    {
+      ioam_analyse_init_data (am->aggregated_data + i);
+    }
 
   return 0;
 }

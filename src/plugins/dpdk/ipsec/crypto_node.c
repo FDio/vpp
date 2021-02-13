@@ -27,14 +27,14 @@
 #include <dpdk/device/dpdk_priv.h>
 #include <dpdk/ipsec/ipsec.h>
 
-#define foreach_dpdk_crypto_input_error		\
-  _(DQ_COPS, "Crypto ops dequeued")		\
-  _(AUTH_FAILED, "Crypto verification failed")	      \
-  _(STATUS, "Crypto operation failed")
+#define foreach_dpdk_crypto_input_error                                       \
+  _ (DQ_COPS, "Crypto ops dequeued")                                          \
+  _ (AUTH_FAILED, "Crypto verification failed")                               \
+  _ (STATUS, "Crypto operation failed")
 
 typedef enum
 {
-#define _(f,s) DPDK_CRYPTO_INPUT_ERROR_##f,
+#define _(f, s) DPDK_CRYPTO_INPUT_ERROR_##f,
   foreach_dpdk_crypto_input_error
 #undef _
     DPDK_CRYPTO_INPUT_N_ERROR,
@@ -56,7 +56,7 @@ typedef struct
 } dpdk_crypto_input_trace_t;
 
 static u8 *
-format_dpdk_crypto_input_trace (u8 * s, va_list * args)
+format_dpdk_crypto_input_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -68,26 +68,24 @@ format_dpdk_crypto_input_trace (u8 * s, va_list * args)
 }
 
 static_always_inline void
-dpdk_crypto_input_check_op (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    struct rte_crypto_op *op0, u16 * next)
+dpdk_crypto_input_check_op (vlib_main_t *vm, vlib_node_runtime_t *node,
+			    struct rte_crypto_op *op0, u16 *next)
 {
   if (PREDICT_FALSE (op0->status != RTE_CRYPTO_OP_STATUS_SUCCESS))
     {
       next[0] = DPDK_CRYPTO_INPUT_NEXT_DROP;
-      vlib_node_increment_counter (vm,
-				   node->node_index,
+      vlib_node_increment_counter (vm, node->node_index,
 				   DPDK_CRYPTO_INPUT_ERROR_STATUS, 1);
       /* if auth failed */
       if (op0->status == RTE_CRYPTO_OP_STATUS_AUTH_FAILED)
-	vlib_node_increment_counter (vm,
-				     node->node_index,
+	vlib_node_increment_counter (vm, node->node_index,
 				     DPDK_CRYPTO_INPUT_ERROR_AUTH_FAILED, 1);
     }
 }
 
 always_inline void
-dpdk_crypto_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 u8 dev_id, u32 * bis, u16 * nexts, u32 n_deq)
+dpdk_crypto_input_trace (vlib_main_t *vm, vlib_node_runtime_t *node, u8 dev_id,
+			 u32 *bis, u16 *nexts, u32 n_deq)
 {
   u32 n_left, n_trace;
 
@@ -106,8 +104,8 @@ dpdk_crypto_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  b0 = vlib_get_buffer (vm, bi);
 
-	  if (PREDICT_TRUE
-	      (vlib_trace_buffer (vm, node, next, b0, /* follow_chain */ 0)))
+	  if (PREDICT_TRUE (
+		vlib_trace_buffer (vm, node, next, b0, /* follow_chain */ 0)))
 	    {
 	      dpdk_crypto_input_trace_t *tr =
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
@@ -125,8 +123,8 @@ dpdk_crypto_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline u32
-dpdk_crypto_dequeue (vlib_main_t * vm, crypto_worker_main_t * cwm,
-		     vlib_node_runtime_t * node, crypto_resource_t * res)
+dpdk_crypto_dequeue (vlib_main_t *vm, crypto_worker_main_t *cwm,
+		     vlib_node_runtime_t *node, crypto_resource_t *res)
 {
   u8 numa = rte_socket_id ();
   u32 n_ops, total_n_deq, n_deq[2];
@@ -140,8 +138,7 @@ dpdk_crypto_dequeue (vlib_main_t * vm, crypto_worker_main_t * cwm,
   next = nexts;
   ops = cwm->ops;
 
-  n_ops = total_n_deq = rte_cryptodev_dequeue_burst (res->dev_id,
-						     res->qp_id,
+  n_ops = total_n_deq = rte_cryptodev_dequeue_burst (res->dev_id, res->qp_id,
 						     ops, VLIB_FRAME_SIZE);
   /* no op dequeued, do not proceed */
   if (n_ops == 0)
@@ -159,14 +156,14 @@ dpdk_crypto_dequeue (vlib_main_t * vm, crypto_worker_main_t * cwm,
 	  CLIB_PREFETCH (ops[6], CLIB_CACHE_LINE_BYTES, LOAD);
 	  CLIB_PREFETCH (ops[7], CLIB_CACHE_LINE_BYTES, LOAD);
 
-	  CLIB_PREFETCH (crypto_op_get_priv (ops[4]),
-			 CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (crypto_op_get_priv (ops[5]),
-			 CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (crypto_op_get_priv (ops[6]),
-			 CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (crypto_op_get_priv (ops[7]),
-			 CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (crypto_op_get_priv (ops[4]), CLIB_CACHE_LINE_BYTES,
+			 LOAD);
+	  CLIB_PREFETCH (crypto_op_get_priv (ops[5]), CLIB_CACHE_LINE_BYTES,
+			 LOAD);
+	  CLIB_PREFETCH (crypto_op_get_priv (ops[6]), CLIB_CACHE_LINE_BYTES,
+			 LOAD);
+	  CLIB_PREFETCH (crypto_op_get_priv (ops[7]), CLIB_CACHE_LINE_BYTES,
+			 LOAD);
 	}
 
       op0 = ops[0];
@@ -243,8 +240,8 @@ dpdk_crypto_dequeue (vlib_main_t * vm, crypto_worker_main_t * cwm,
 }
 
 static_always_inline uword
-dpdk_crypto_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * frame)
+dpdk_crypto_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			  vlib_frame_t *frame)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_worker_main_t *cwm = &dcm->workers_main[vm->thread_index];
@@ -253,7 +250,6 @@ dpdk_crypto_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 *remove = NULL, *res_idx;
   word i;
 
-  /* *INDENT-OFF* */
   vec_foreach (res_idx, cwm->resource_idx)
     {
       res = vec_elt_at_index (dcm->resource, res_idx[0]);
@@ -266,12 +262,11 @@ dpdk_crypto_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (PREDICT_FALSE (res->remove && !(inflights)))
 	vec_add1 (remove, res_idx[0]);
     }
-  /* *INDENT-ON* */
 
   /* TODO removal on master thread? */
   if (PREDICT_FALSE (remove != NULL))
     {
-      /* *INDENT-OFF* */
+
       vec_foreach (res_idx, remove)
 	{
 	  i = vec_search (cwm->resource_idx, res_idx[0]);
@@ -286,7 +281,6 @@ dpdk_crypto_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vec_del1 (dcm->dev[res->dev_id].used_resources, i);
 	  vec_add1 (dcm->dev[res->dev_id].free_resources, res_idx[0]);
 	}
-      /* *INDENT-ON* */
 
       vec_free (remove);
     }
@@ -294,14 +288,12 @@ dpdk_crypto_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_deq;
 }
 
-VLIB_NODE_FN (dpdk_crypto_input_node) (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * from_frame)
+VLIB_NODE_FN (dpdk_crypto_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return dpdk_crypto_input_inline (vm, node, from_frame);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_crypto_input_node) =
 {
   .name = "dpdk-crypto-input",
@@ -314,12 +306,11 @@ VLIB_REGISTER_NODE (dpdk_crypto_input_node) =
   .n_next_nodes = DPDK_CRYPTO_INPUT_N_NEXT,
   .next_nodes =
   {
-#define _(s,n) [DPDK_CRYPTO_INPUT_NEXT_##s] = n,
+#define _(s, n) [DPDK_CRYPTO_INPUT_NEXT_##s] = n,
     foreach_dpdk_crypto_input_next
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

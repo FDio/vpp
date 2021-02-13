@@ -28,12 +28,10 @@ cnat_register_vip_src_policy (cnat_vip_source_policy_t fp)
 }
 
 cnat_source_policy_errors_t
-cnat_vip_default_source_policy (vlib_main_t * vm,
-				vlib_buffer_t * b,
-				cnat_session_t * session,
-				u32 * rsession_flags,
-				const cnat_translation_t * ct,
-				cnat_node_ctx_t * ctx)
+cnat_vip_default_source_policy (vlib_main_t *vm, vlib_buffer_t *b,
+				cnat_session_t *session, u32 *rsession_flags,
+				const cnat_translation_t *ct,
+				cnat_node_ctx_t *ctx)
 {
   ip_protocol_t iproto;
   udp_header_t *udp0;
@@ -59,10 +57,10 @@ cnat_vip_default_source_policy (vlib_main_t * vm,
       u16 sport;
       sport = udp0->src_port;
       /* Allocate a port only if asked and if we actually sNATed */
-      if ((ct->flags & CNAT_TRANSLATION_FLAG_ALLOCATE_PORT)
-	  && (*rsession_flags & CNAT_SESSION_FLAG_HAS_SNAT))
+      if ((ct->flags & CNAT_TRANSLATION_FLAG_ALLOCATE_PORT) &&
+	  (*rsession_flags & CNAT_SESSION_FLAG_HAS_SNAT))
 	{
-	  sport = 0;		/* force allocation */
+	  sport = 0; /* force allocation */
 	  session->value.flags |= CNAT_SESSION_FLAG_ALLOC_PORT;
 	  rv = cnat_allocate_port (&sport, iproto);
 	  if (rv)
@@ -106,7 +104,7 @@ cnat_free_port (u16 port, ip_protocol_t iproto)
 }
 
 int
-cnat_allocate_port (u16 * port, ip_protocol_t iproto)
+cnat_allocate_port (u16 *port, ip_protocol_t iproto)
 {
   *port = clib_net_to_host_u16 (*port);
   if (*port == 0)
@@ -131,7 +129,7 @@ cnat_allocate_port (u16 * port, ip_protocol_t iproto)
 }
 
 static clib_error_t *
-cnat_src_policy_init (vlib_main_t * vm)
+cnat_src_policy_init (vlib_main_t *vm)
 {
   cnat_src_policy_main_t *cspm = &cnat_src_policy_main;
   cspm->vip_policy = cnat_vip_default_source_policy;

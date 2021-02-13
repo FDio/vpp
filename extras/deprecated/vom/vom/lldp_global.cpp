@@ -31,15 +31,13 @@ lldp_global::lldp_global(const std::string& system_name,
   : m_system_name(system_name)
   , m_tx_hold(tx_hold)
   , m_tx_interval(tx_interval)
-{
-}
+{}
 
 lldp_global::lldp_global(const lldp_global& o)
   : m_system_name(o.m_system_name)
   , m_tx_hold(o.m_tx_hold)
   , m_tx_interval(o.m_tx_interval)
-{
-}
+{}
 
 lldp_global::~lldp_global()
 {
@@ -78,8 +76,8 @@ void
 lldp_global::replay()
 {
   if (m_binding) {
-    HW::enqueue(new lldp_global_cmds::config_cmd(m_binding, m_system_name,
-                                                 m_tx_hold, m_tx_interval));
+    HW::enqueue(new lldp_global_cmds::config_cmd(
+      m_binding, m_system_name, m_tx_hold, m_tx_interval));
   }
 }
 
@@ -98,8 +96,8 @@ void
 lldp_global::update(const lldp_global& desired)
 {
   if (!m_binding) {
-    HW::enqueue(new lldp_global_cmds::config_cmd(m_binding, m_system_name,
-                                                 m_tx_hold, m_tx_interval));
+    HW::enqueue(new lldp_global_cmds::config_cmd(
+      m_binding, m_system_name, m_tx_hold, m_tx_interval));
   }
 }
 
@@ -124,8 +122,8 @@ lldp_global::singular() const
 lldp_global::event_handler::event_handler()
 {
   OM::register_listener(this);
-  inspect::register_handler({ "lldp-global" }, "LLDP global configurations",
-                            this);
+  inspect::register_handler(
+    { "lldp-global" }, "LLDP global configurations", this);
 }
 
 void

@@ -17,8 +17,8 @@
 #include <vppinfra/error.h>
 #include <srv6-am/am.h>
 
-
-/******************************* Packet tracing *******************************/
+/******************************* Packet tracing
+ * *******************************/
 
 typedef struct
 {
@@ -31,7 +31,7 @@ typedef struct
 } srv6_am_rewrite_trace_t;
 
 static u8 *
-format_srv6_am_localsid_trace (u8 * s, va_list * args)
+format_srv6_am_localsid_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -41,44 +41,44 @@ format_srv6_am_localsid_trace (u8 * s, va_list * args)
 }
 
 static u8 *
-format_srv6_am_rewrite_trace (u8 * s, va_list * args)
+format_srv6_am_rewrite_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   srv6_am_rewrite_trace_t *t = va_arg (*args, srv6_am_rewrite_trace_t *);
 
-  return format (s, "SRv6-AM-rewrite: src %U dst %U",
-		 format_ip6_address, &t->src, format_ip6_address, &t->dst);
+  return format (s, "SRv6-AM-rewrite: src %U dst %U", format_ip6_address,
+		 &t->src, format_ip6_address, &t->dst);
 }
 
-
-/***************************** Node registration ******************************/
+/***************************** Node registration
+ * ******************************/
 
 vlib_node_registration_t srv6_am_rewrite_node;
 
+/****************************** Packet counters
+ * *******************************/
 
-/****************************** Packet counters *******************************/
-
-#define foreach_srv6_am_rewrite_counter \
-_(PROCESSED, "srv6-am rewritten packets") \
-_(NO_SRH, "(Error) No SRH.")
+#define foreach_srv6_am_rewrite_counter                                       \
+  _ (PROCESSED, "srv6-am rewritten packets")                                  \
+  _ (NO_SRH, "(Error) No SRH.")
 
 typedef enum
 {
-#define _(sym,str) SRV6_AM_REWRITE_COUNTER_##sym,
+#define _(sym, str) SRV6_AM_REWRITE_COUNTER_##sym,
   foreach_srv6_am_rewrite_counter
 #undef _
     SRV6_AM_REWRITE_N_COUNTERS,
 } srv6_am_rewrite_counters;
 
 static char *srv6_am_rewrite_counter_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_srv6_am_rewrite_counter
 #undef _
 };
 
-
-/********************************* Next nodes *********************************/
+/********************************* Next nodes
+ * *********************************/
 
 typedef enum
 {
@@ -94,17 +94,15 @@ typedef enum
   SRV6_AM_REWRITE_N_NEXT,
 } srv6_am_rewrite_next_t;
 
-
-/******************************* Local SID node *******************************/
+/******************************* Local SID node
+ * *******************************/
 
 /**
  * @brief SRv6 masquerading.
  */
 static_always_inline void
-end_am_processing (vlib_buffer_t * b0,
-		   ip6_header_t * ip0,
-		   ip6_sr_header_t * sr0,
-		   ip6_sr_localsid_t * ls0, u32 * next0)
+end_am_processing (vlib_buffer_t *b0, ip6_header_t *ip0, ip6_sr_header_t *sr0,
+		   ip6_sr_localsid_t *ls0, u32 *next0)
 {
   ip6_address_t *new_dst0;
 
@@ -137,8 +135,8 @@ end_am_processing (vlib_buffer_t * b0,
  * @brief Graph node for applying SRv6 masquerading.
  */
 static uword
-srv6_am_localsid_fn (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+srv6_am_localsid_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     vlib_frame_t *frame)
 {
   ip6_sr_main_t *sm = &sr_main;
   u32 n_left_from, next_index, *from, *to_next;
@@ -193,13 +191,12 @@ srv6_am_localsid_fn (vlib_main_t * vm,
 	    }
 
 	  /* This increments the SRv6 per LocalSID counters. */
-	  vlib_increment_combined_counter (((next0 ==
-					     SRV6_AM_LOCALSID_NEXT_ERROR) ?
-					    &(sm->sr_ls_invalid_counters) :
-					    &(sm->sr_ls_valid_counters)),
-					   thread_index, ls0 - sm->localsids,
-					   1, vlib_buffer_length_in_chain (vm,
-									   b0));
+	  vlib_increment_combined_counter (
+	    ((next0 == SRV6_AM_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    thread_index, ls0 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b0));
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -213,7 +210,6 @@ srv6_am_localsid_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (srv6_am_localsid_node) = {
   .function = srv6_am_localsid_fn,
   .name = "srv6-am-localsid",
@@ -226,18 +222,16 @@ VLIB_REGISTER_NODE (srv6_am_localsid_node) = {
     [SRV6_AM_LOCALSID_NEXT_ERROR] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
-
-/******************************* Rewriting node *******************************/
+/******************************* Rewriting node
+ * *******************************/
 
 /**
  * @brief SRv6 de-masquerading.
  */
 static_always_inline void
-end_am_rewriting (vlib_node_runtime_t * node,
-		  vlib_buffer_t * b0,
-		  ip6_header_t * ip0, ip6_sr_header_t * sr0, u32 * next0)
+end_am_rewriting (vlib_node_runtime_t *node, vlib_buffer_t *b0,
+		  ip6_header_t *ip0, ip6_sr_header_t *sr0, u32 *next0)
 {
   if (PREDICT_FALSE (ip0->protocol != IP_PROTOCOL_IPV6_ROUTE ||
 		     sr0->type != ROUTING_HEADER_TYPE_SR))
@@ -261,8 +255,8 @@ end_am_rewriting (vlib_node_runtime_t * node,
  * @brief Graph node for applying SRv6 de-masquerading.
  */
 static uword
-srv6_am_rewrite_fn (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
+srv6_am_rewrite_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *frame)
 {
   u32 n_left_from, next_index, *from, *to_next;
   u32 cnt_packets = 0;
@@ -323,13 +317,11 @@ srv6_am_rewrite_fn (vlib_main_t * vm,
 
   /* Update counters */
   vlib_node_increment_counter (vm, srv6_am_rewrite_node.index,
-			       SRV6_AM_REWRITE_COUNTER_PROCESSED,
-			       cnt_packets);
+			       SRV6_AM_REWRITE_COUNTER_PROCESSED, cnt_packets);
 
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (srv6_am_rewrite_node) = {
   .function = srv6_am_rewrite_fn,
   .name = "srv6-am-rewrite",
@@ -344,12 +336,11 @@ VLIB_REGISTER_NODE (srv6_am_rewrite_node) = {
       [SRV6_AM_REWRITE_NEXT_ERROR] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
-* fd.io coding-style-patch-verification: ON
-*
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*/
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

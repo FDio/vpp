@@ -27,15 +27,15 @@
 
 svm_queue_t *vl_api_client_index_to_input_queue (u32 index);
 int vl_mem_api_init (const char *region_name);
-void vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm,
+void vl_mem_api_dead_client_scan (api_main_t *am, vl_shmem_hdr_t *shm,
 				  f64 now);
-int vl_mem_api_handle_msg_main (vlib_main_t * vm, vlib_node_runtime_t * node);
-int vl_mem_api_handle_msg_private (vlib_main_t * vm,
-				   vlib_node_runtime_t * node, u32 reg_index);
-int vl_mem_api_handle_rpc (vlib_main_t * vm, vlib_node_runtime_t * node);
+int vl_mem_api_handle_msg_main (vlib_main_t *vm, vlib_node_runtime_t *node);
+int vl_mem_api_handle_msg_private (vlib_main_t *vm, vlib_node_runtime_t *node,
+				   u32 reg_index);
+int vl_mem_api_handle_rpc (vlib_main_t *vm, vlib_node_runtime_t *node);
 
 vl_api_registration_t *vl_mem_api_client_index_to_registration (u32 handle);
-void vl_mem_api_enable_disable (vlib_main_t * vm, int yesno);
+void vl_mem_api_enable_disable (vlib_main_t *vm, int yesno);
 u32 vl_api_memclnt_create_internal (char *, svm_queue_t *);
 
 static inline u32
@@ -67,17 +67,22 @@ vl_msg_api_handle_is_valid (u32 handle, u32 restarts)
   return ((restarts & VL_API_EPOCH_MASK) == epoch);
 }
 
-#define VL_MEM_API_LOG_Q_LEN(fmt,qlen)			\
-if (TRACE_VLIB_MEMORY_QUEUE)				\
-  do {							\
-      ELOG_TYPE_DECLARE (e) = {				\
-        .format = fmt,					\
-        .format_args = "i4",				\
-      };							\
-      struct { u32 len; } *ed;				\
-      ed = ELOG_DATA (&vm->elog_main, e);		\
-      ed->len = qlen;					\
-  } while (0)
+#define VL_MEM_API_LOG_Q_LEN(fmt, qlen)                                       \
+  if (TRACE_VLIB_MEMORY_QUEUE)                                                \
+    do                                                                        \
+      {                                                                       \
+	ELOG_TYPE_DECLARE (e) = {                                             \
+	  .format = fmt,                                                      \
+	  .format_args = "i4",                                                \
+	};                                                                    \
+	struct                                                                \
+	{                                                                     \
+	  u32 len;                                                            \
+	} * ed;                                                               \
+	ed = ELOG_DATA (&vm->elog_main, e);                                   \
+	ed->len = qlen;                                                       \
+      }                                                                       \
+  while (0)
 
 #endif /* SRC_VLIBMEMORY_MEMORY_API_H_ */
 

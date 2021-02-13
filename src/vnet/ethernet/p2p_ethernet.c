@@ -23,7 +23,7 @@
 p2p_ethernet_main_t p2p_main;
 
 static void
-create_p2pe_key (p2p_key_t * p2pe_key, u32 parent_if_index, u8 * client_mac)
+create_p2pe_key (p2p_key_t *p2pe_key, u32 parent_if_index, u8 *client_mac)
 {
   clib_memcpy (p2pe_key->mac, client_mac, 6);
   p2pe_key->pad1 = 0;
@@ -32,7 +32,7 @@ create_p2pe_key (p2p_key_t * p2pe_key, u32 parent_if_index, u8 * client_mac)
 }
 
 u32
-p2p_ethernet_lookup (u32 parent_if_index, u8 * client_mac)
+p2p_ethernet_lookup (u32 parent_if_index, u8 *client_mac)
 {
   p2p_ethernet_main_t *p2pm = &p2p_main;
   p2p_key_t p2pe_key;
@@ -47,9 +47,8 @@ p2p_ethernet_lookup (u32 parent_if_index, u8 * client_mac)
 }
 
 int
-p2p_ethernet_add_del (vlib_main_t * vm, u32 parent_if_index,
-		      u8 * client_mac, u32 p2pe_subif_id, int is_add,
-		      u32 * p2pe_if_index)
+p2p_ethernet_add_del (vlib_main_t *vm, u32 parent_if_index, u8 *client_mac,
+		      u32 p2pe_subif_id, int is_add, u32 *p2pe_if_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
   p2p_ethernet_main_t *p2pm = &p2p_main;
@@ -78,17 +77,16 @@ p2p_ethernet_add_del (vlib_main_t * vm, u32 parent_if_index,
 	  if (p)
 	    {
 	      if (CLIB_DEBUG > 0)
-		clib_warning
-		  ("p2p ethernet sub-interface on sw_if_index %d with sub id %d already exists\n",
-		   hi->sw_if_index, p2pe_subif_id);
+		clib_warning ("p2p ethernet sub-interface on sw_if_index %d "
+			      "with sub id %d already exists\n",
+			      hi->sw_if_index, p2pe_subif_id);
 	      return VNET_API_ERROR_SUBIF_ALREADY_EXISTS;
 	    }
-	  vnet_sw_interface_t template = {
-	    .type = VNET_SW_INTERFACE_TYPE_P2P,
-	    .flood_class = VNET_FLOOD_CLASS_NORMAL,
-	    .sup_sw_if_index = hi->sw_if_index,
-	    .sub.id = p2pe_subif_id
-	  };
+	  vnet_sw_interface_t template = { .type = VNET_SW_INTERFACE_TYPE_P2P,
+					   .flood_class =
+					     VNET_FLOOD_CLASS_NORMAL,
+					   .sup_sw_if_index = hi->sw_if_index,
+					   .sub.id = p2pe_subif_id };
 
 	  clib_memcpy (template.p2p.client_mac, client_mac,
 		       sizeof (template.p2p.client_mac));
@@ -112,8 +110,8 @@ p2p_ethernet_add_del (vlib_main_t * vm, u32 parent_if_index,
 
 	    for (i = 0; i < vec_len (im->combined_sw_if_counters); i++)
 	      {
-		vlib_validate_combined_counter (&im->combined_sw_if_counters
-						[i], p2pe_sw_if_index);
+		vlib_validate_combined_counter (
+		  &im->combined_sw_if_counters[i], p2pe_sw_if_index);
 		vlib_zero_combined_counter (&im->combined_sw_if_counters[i],
 					    p2pe_sw_if_index);
 	      }
@@ -149,7 +147,6 @@ p2p_ethernet_add_del (vlib_main_t * vm, u32 parent_if_index,
 	      /* Set promiscuous mode on the l2 interface */
 	      ethernet_set_flags (vnm, parent_if_index,
 				  ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
-
 	    }
 	  p2pm->p2p_ethernet_by_sw_if_index[parent_if_index]++;
 	  /* set the interface mode */
@@ -193,8 +190,8 @@ p2p_ethernet_add_del (vlib_main_t * vm, u32 parent_if_index,
 }
 
 static clib_error_t *
-vnet_p2p_ethernet_add_del (vlib_main_t * vm, unformat_input_t * input,
-			   vlib_cli_command_t * cmd)
+vnet_p2p_ethernet_add_del (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
 
@@ -206,8 +203,8 @@ vnet_p2p_ethernet_add_del (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+      if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
+		    &hw_if_index))
 	;
       else if (unformat (input, "%U", unformat_ethernet_address, &client_mac))
 	remote_mac = 1;
@@ -231,30 +228,32 @@ vnet_p2p_ethernet_add_del (vlib_main_t * vm, unformat_input_t * input,
   switch (rv)
     {
     case VNET_API_ERROR_BOND_SLAVE_NOT_ALLOWED:
-      return clib_error_return (0,
-				"not allowed as parent interface belongs to a BondEthernet interface");
+      return clib_error_return (
+	0,
+	"not allowed as parent interface belongs to a BondEthernet interface");
     case -1:
-      return clib_error_return (0,
-				"p2p ethernet for given parent interface and client mac already exists");
+      return clib_error_return (0, "p2p ethernet for given parent interface "
+				   "and client mac already exists");
     case -2:
       return clib_error_return (0,
 				"couldn't create p2p ethernet subinterface");
     case -3:
-      return clib_error_return (0,
-				"p2p ethernet for given parent interface and client mac doesn't exist");
+      return clib_error_return (0, "p2p ethernet for given parent interface "
+				   "and client mac doesn't exist");
     default:
       break;
     }
   return 0;
 }
 
-VLIB_CLI_COMMAND (p2p_ethernet_add_del_command, static) =
-{
-.path = "p2p_ethernet ",.function = vnet_p2p_ethernet_add_del,.short_help =
-    "p2p_ethernet <intfc> <mac-address> [sub-id <id> | del]",};
+VLIB_CLI_COMMAND (p2p_ethernet_add_del_command, static) = {
+  .path = "p2p_ethernet ",
+  .function = vnet_p2p_ethernet_add_del,
+  .short_help = "p2p_ethernet <intfc> <mac-address> [sub-id <id> | del]",
+};
 
 static clib_error_t *
-p2p_ethernet_init (vlib_main_t * vm)
+p2p_ethernet_init (vlib_main_t *vm)
 {
   p2p_ethernet_main_t *p2pm = &p2p_main;
 

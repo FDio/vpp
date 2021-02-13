@@ -41,7 +41,7 @@
 #include <vlib/stat_weak_inlines.h>
 
 void
-vlib_clear_simple_counters (vlib_simple_counter_main_t * cm)
+vlib_clear_simple_counters (vlib_simple_counter_main_t *cm)
 {
   counter_t *my_counters;
   uword i, j;
@@ -58,7 +58,7 @@ vlib_clear_simple_counters (vlib_simple_counter_main_t * cm)
 }
 
 void
-vlib_clear_combined_counters (vlib_combined_counter_main_t * cm)
+vlib_clear_combined_counters (vlib_combined_counter_main_t *cm)
 {
   vlib_counter_t *my_counters;
   uword i, j;
@@ -76,7 +76,7 @@ vlib_clear_combined_counters (vlib_combined_counter_main_t * cm)
 }
 
 void
-vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
+vlib_validate_simple_counter (vlib_simple_counter_main_t *cm, u32 index)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i, resized = 0;
@@ -102,7 +102,7 @@ vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
 }
 
 void
-vlib_free_simple_counter (vlib_simple_counter_main_t * cm)
+vlib_free_simple_counter (vlib_simple_counter_main_t *cm)
 {
   int i;
 
@@ -116,7 +116,7 @@ vlib_free_simple_counter (vlib_simple_counter_main_t * cm)
 }
 
 void
-vlib_validate_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
+vlib_validate_combined_counter (vlib_combined_counter_main_t *cm, u32 index)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i, resized = 0;
@@ -142,8 +142,8 @@ vlib_validate_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
 }
 
 int
-  vlib_validate_combined_counter_will_expand
-  (vlib_combined_counter_main_t * cm, u32 index)
+vlib_validate_combined_counter_will_expand (vlib_combined_counter_main_t *cm,
+					    u32 index)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i;
@@ -174,7 +174,7 @@ int
 }
 
 void
-vlib_free_combined_counter (vlib_combined_counter_main_t * cm)
+vlib_free_combined_counter (vlib_combined_counter_main_t *cm)
 {
   int i;
 
@@ -188,14 +188,14 @@ vlib_free_combined_counter (vlib_combined_counter_main_t * cm)
 }
 
 u32
-vlib_combined_counter_n_counters (const vlib_combined_counter_main_t * cm)
+vlib_combined_counter_n_counters (const vlib_combined_counter_main_t *cm)
 {
   ASSERT (cm->counters);
   return (vec_len (cm->counters[0]));
 }
 
 u32
-vlib_simple_counter_n_counters (const vlib_simple_counter_main_t * cm)
+vlib_simple_counter_n_counters (const vlib_simple_counter_main_t *cm)
 {
   ASSERT (cm->counters);
   return (vec_len (cm->counters[0]));

@@ -33,7 +33,7 @@
 /* Action function shared between message handler and debug CLI */
 
 int
-cdp_enable_disable (cdp_main_t * cm, int enable_disable)
+cdp_enable_disable (cdp_main_t *cm, int enable_disable)
 {
   int rv = 0;
 
@@ -55,8 +55,8 @@ cdp_enable_disable (cdp_main_t * cm, int enable_disable)
 }
 
 static clib_error_t *
-cdp_command_fn (vlib_main_t * vm,
-		unformat_input_t * input, vlib_cli_command_t * cmd)
+cdp_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		vlib_cli_command_t *cmd)
 {
   cdp_main_t *cm = &cdp_main;
   int enable_disable = 1;
@@ -86,18 +86,15 @@ cdp_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cdp_command, static) =
-{
+VLIB_CLI_COMMAND (cdp_command, static) = {
   .path = "cdp",
   .short_help = "cdp enable | disable",
   .function = cdp_command_fn,
 };
-/* *INDENT-ON* */
 
 /* API message handler */
-static void vl_api_cdp_enable_disable_t_handler
-  (vl_api_cdp_enable_disable_t * mp)
+static void
+vl_api_cdp_enable_disable_t_handler (vl_api_cdp_enable_disable_t *mp)
 {
   vl_api_cdp_enable_disable_reply_t *rmp;
   cdp_main_t *cm = &cdp_main;
@@ -110,7 +107,7 @@ static void vl_api_cdp_enable_disable_t_handler
 
 #include <cdp/cdp.api.c>
 static clib_error_t *
-cdp_init (vlib_main_t * vm)
+cdp_init (vlib_main_t *vm)
 {
   cdp_main_t *cm = &cdp_main;
 
@@ -124,13 +121,10 @@ cdp_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (cdp_init);
 
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () =
-{
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Cisco Discovery Protocol (CDP)",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

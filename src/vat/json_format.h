@@ -65,32 +65,32 @@ struct vat_json_pair_s
   vat_json_node_t value;
 };
 
-void vat_json_print (FILE * ofp, vat_json_node_t * node);
-void vat_json_free (vat_json_node_t * node);
+void vat_json_print (FILE *ofp, vat_json_node_t *node);
+void vat_json_free (vat_json_node_t *node);
 
 static_always_inline void
-vat_json_init_object (vat_json_node_t * json)
+vat_json_init_object (vat_json_node_t *json)
 {
   json->type = VAT_JSON_OBJECT;
   json->pairs = NULL;
 }
 
 static_always_inline void
-vat_json_init_array (vat_json_node_t * json)
+vat_json_init_array (vat_json_node_t *json)
 {
   json->type = VAT_JSON_ARRAY;
   json->array = NULL;
 }
 
 static_always_inline void
-vat_json_set_string (vat_json_node_t * json, u8 * str)
+vat_json_set_string (vat_json_node_t *json, u8 *str)
 {
   json->type = VAT_JSON_STRING;
   json->string = str;
 }
 
 static_always_inline void
-vat_json_set_string_copy (vat_json_node_t * json, const u8 * str)
+vat_json_set_string_copy (vat_json_node_t *json, const u8 *str)
 {
   u8 *ns = NULL;
   int len = strlen ((const char *) str);
@@ -99,42 +99,42 @@ vat_json_set_string_copy (vat_json_node_t * json, const u8 * str)
 }
 
 static_always_inline void
-vat_json_set_int (vat_json_node_t * json, i64 num)
+vat_json_set_int (vat_json_node_t *json, i64 num)
 {
   json->type = VAT_JSON_INT;
   json->sint = num;
 }
 
 static_always_inline void
-vat_json_set_uint (vat_json_node_t * json, u64 num)
+vat_json_set_uint (vat_json_node_t *json, u64 num)
 {
   json->type = VAT_JSON_UINT;
   json->uint = num;
 }
 
 static_always_inline void
-vat_json_set_real (vat_json_node_t * json, f64 real)
+vat_json_set_real (vat_json_node_t *json, f64 real)
 {
   json->type = VAT_JSON_REAL;
   json->real = real;
 }
 
 static_always_inline void
-vat_json_set_ip4 (vat_json_node_t * json, struct in_addr ip4)
+vat_json_set_ip4 (vat_json_node_t *json, struct in_addr ip4)
 {
   json->type = VAT_JSON_IPV4;
   json->ip4 = ip4;
 }
 
 static_always_inline void
-vat_json_set_ip6 (vat_json_node_t * json, struct in6_addr ip6)
+vat_json_set_ip6 (vat_json_node_t *json, struct in6_addr ip6)
 {
   json->type = VAT_JSON_IPV6;
   json->ip6 = ip6;
 }
 
 static_always_inline vat_json_node_t *
-vat_json_object_add (vat_json_node_t * json, const char *name)
+vat_json_object_add (vat_json_node_t *json, const char *name)
 {
   ASSERT (VAT_JSON_OBJECT == json->type);
   uword pos = vec_len (json->pairs);
@@ -144,7 +144,7 @@ vat_json_object_add (vat_json_node_t * json, const char *name)
 }
 
 static_always_inline vat_json_node_t *
-vat_json_array_add (vat_json_node_t * json)
+vat_json_array_add (vat_json_node_t *json)
 {
   ASSERT (VAT_JSON_ARRAY == json->type);
   uword pos = vec_len (json->array);
@@ -153,7 +153,7 @@ vat_json_array_add (vat_json_node_t * json)
 }
 
 static_always_inline vat_json_node_t *
-vat_json_object_add_list (vat_json_node_t * json, const char *name)
+vat_json_object_add_list (vat_json_node_t *json, const char *name)
 {
   vat_json_node_t *array_node = vat_json_object_add (json, name);
   vat_json_init_array (array_node);
@@ -161,60 +161,59 @@ vat_json_object_add_list (vat_json_node_t * json, const char *name)
 }
 
 static_always_inline void
-vat_json_object_add_string_copy (vat_json_node_t * json,
-				 const char *name, u8 * str)
+vat_json_object_add_string_copy (vat_json_node_t *json, const char *name,
+				 u8 *str)
 {
   vat_json_set_string_copy (vat_json_object_add (json, name), str);
 }
 
 static_always_inline void
-vat_json_object_add_uint (vat_json_node_t * json,
-			  const char *name, u64 number)
+vat_json_object_add_uint (vat_json_node_t *json, const char *name, u64 number)
 {
   vat_json_set_uint (vat_json_object_add (json, name), number);
 }
 
 static_always_inline void
-vat_json_object_add_int (vat_json_node_t * json, const char *name, i64 number)
+vat_json_object_add_int (vat_json_node_t *json, const char *name, i64 number)
 {
   vat_json_set_int (vat_json_object_add (json, name), number);
 }
 
 static_always_inline void
-vat_json_object_add_real (vat_json_node_t * json, const char *name, f64 real)
+vat_json_object_add_real (vat_json_node_t *json, const char *name, f64 real)
 {
   vat_json_set_real (vat_json_object_add (json, name), real);
 }
 
 static_always_inline void
-vat_json_object_add_ip4 (vat_json_node_t * json,
-			 const char *name, struct in_addr ip4)
+vat_json_object_add_ip4 (vat_json_node_t *json, const char *name,
+			 struct in_addr ip4)
 {
   vat_json_set_ip4 (vat_json_object_add (json, name), ip4);
 }
 
 static_always_inline void
-vat_json_object_add_ip6 (vat_json_node_t * json,
-			 const char *name, struct in6_addr ip6)
+vat_json_object_add_ip6 (vat_json_node_t *json, const char *name,
+			 struct in6_addr ip6)
 {
   vat_json_set_ip6 (vat_json_object_add (json, name), ip6);
 }
 
 static_always_inline void
-vat_json_array_add_int (vat_json_node_t * json, i64 number)
+vat_json_array_add_int (vat_json_node_t *json, i64 number)
 {
   vat_json_set_int (vat_json_array_add (json), number);
 }
 
 static_always_inline void
-vat_json_array_add_uint (vat_json_node_t * json, u64 number)
+vat_json_array_add_uint (vat_json_node_t *json, u64 number)
 {
   vat_json_set_uint (vat_json_array_add (json), number);
 }
 
 static_always_inline void
-vat_json_object_add_bytes (vat_json_node_t * json,
-			   const char *name, u8 * array, uword size)
+vat_json_object_add_bytes (vat_json_node_t *json, const char *name, u8 *array,
+			   uword size)
 {
   ASSERT (VAT_JSON_OBJECT == json->type);
   vat_json_node_t *json_array = vat_json_object_add (json, name);
@@ -227,7 +226,7 @@ vat_json_object_add_bytes (vat_json_node_t * json,
 }
 
 static_always_inline vat_json_node_t *
-vat_json_object_get_element (vat_json_node_t * json, const char *name)
+vat_json_object_get_element (vat_json_node_t *json, const char *name)
 {
   int i = 0;
 

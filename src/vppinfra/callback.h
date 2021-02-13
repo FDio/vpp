@@ -35,48 +35,52 @@
  * Swaps the head of the callback vector and a tmp vector in one
  * motion, after a write barrier to ensure that the write is atomic.
  */
-#define clib_callback_enable_disable(h,tmp,l,f,enable)  \
-do {                                                    \
-  void *tmp2;                                           \
-  clib_spinlock_lock_if_init(&l);                       \
-  vec_reset_length(tmp);                                \
-  vec_append(tmp, h);                                   \
-  if (enable)                                           \
-    vec_add1 (tmp,(void *)f);                           \
-  else                                                  \
-    {                                                   \
-      int i;                                            \
-      for (i = 0; i < vec_len (tmp); i++)               \
-        if (((void *)tmp[i]) == (void *)f)              \
-          {                                             \
-            vec_delete (tmp, 1, i);                     \
-            break;                                      \
-          }                                             \
-    }                                                   \
-  tmp2 = h;                                             \
-  CLIB_MEMORY_STORE_BARRIER();                          \
-  h = tmp;                                              \
-  tmp = tmp2;                                           \
-  clib_spinlock_unlock_if_init(&l);                     \
-} while(0);
+#define clib_callback_enable_disable(h, tmp, l, f, enable)                    \
+  do                                                                          \
+    {                                                                         \
+      void *tmp2;                                                             \
+      clib_spinlock_lock_if_init (&l);                                        \
+      vec_reset_length (tmp);                                                 \
+      vec_append (tmp, h);                                                    \
+      if (enable)                                                             \
+	vec_add1 (tmp, (void *) f);                                           \
+      else                                                                    \
+	{                                                                     \
+	  int i;                                                              \
+	  for (i = 0; i < vec_len (tmp); i++)                                 \
+	    if (((void *) tmp[i]) == (void *) f)                              \
+	      {                                                               \
+		vec_delete (tmp, 1, i);                                       \
+		break;                                                        \
+	      }                                                               \
+	}                                                                     \
+      tmp2 = h;                                                               \
+      CLIB_MEMORY_STORE_BARRIER ();                                           \
+      h = tmp;                                                                \
+      tmp = tmp2;                                                             \
+      clib_spinlock_unlock_if_init (&l);                                      \
+    }                                                                         \
+  while (0);
 
 /** @brief call the specified callback set
  * @param h the callback set
  * @param varargs additional callback parameters
  */
-#define clib_call_callbacks(h, ... )                    \
-do {                                                    \
-  /*                                                    \
-   * Note: fp exists to shut up gcc-6, which            \
-   * produces a warning not seen with gcc-7 or 8        \
-   */                                                   \
-  typeof (h) h_ = (h);                                  \
-  int i;                                                \
-  for (i = 0; i < vec_len (h_); i++)                    \
-    {                                                   \
-      (h_[i]) (__VA_ARGS__);                            \
-    }                                                   \
- } while (0);
+#define clib_call_callbacks(h, ...)                                           \
+  do                                                                          \
+    {                                                                         \
+      /*                                                                      \
+       * Note: fp exists to shut up gcc-6, which                              \
+       * produces a warning not seen with gcc-7 or 8                          \
+       */                                                                     \
+      typeof (h) h_ = (h);                                                    \
+      int i;                                                                  \
+      for (i = 0; i < vec_len (h_); i++)                                      \
+	{                                                                     \
+	  (h_[i]) (__VA_ARGS__);                                              \
+	}                                                                     \
+    }                                                                         \
+  while (0);
 
 /** @brief predicate function says whether the specified function is enabled
  * @param h the callback set
@@ -84,20 +88,20 @@ do {                                                    \
  * @param f the function to search for
  * @return 1 if the function is enabled, 0 if not
  */
-#define clib_callback_is_set(h,l,f)             \
-({                                              \
-  int _i;                                       \
-  int _found = 0;                               \
-  clib_spinlock_lock_if_init(&l);               \
-  for (_i = 0; _i < vec_len (h); _i++)          \
-    if (((void *)h[_i]) == (void *) f)          \
-      {                                         \
-        _found=1;                               \
-        break;                                  \
-      }                                         \
-  clib_spinlock_unlock_if_init(&l);             \
-  _found;                                       \
- })
+#define clib_callback_is_set(h, l, f)                                         \
+  ({                                                                          \
+    int _i;                                                                   \
+    int _found = 0;                                                           \
+    clib_spinlock_lock_if_init (&l);                                          \
+    for (_i = 0; _i < vec_len (h); _i++)                                      \
+      if (((void *) h[_i]) == (void *) f)                                     \
+	{                                                                     \
+	  _found = 1;                                                         \
+	  break;                                                              \
+	}                                                                     \
+    clib_spinlock_unlock_if_init (&l);                                        \
+    _found;                                                                   \
+  })
 
 #endif /* included_callback_h */
 

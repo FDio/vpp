@@ -50,7 +50,7 @@
  */
 
 void
-clib_anneal (clib_anneal_param_t * p)
+clib_anneal (clib_anneal_param_t *p)
 {
   f64 t;
   f64 cost, prev_cost, delta_cost, initial_cost, best_cost;
@@ -108,8 +108,8 @@ clib_anneal (clib_anneal_param_t * p)
 	    }
 
 	  /* cost function worse, keep stats to suggest t0 */
-	  total_increase += (p->flags & CLIB_ANNEAL_MINIMIZE) ?
-	    delta_cost : -delta_cost;
+	  total_increase +=
+	    (p->flags & CLIB_ANNEAL_MINIMIZE) ? delta_cost : -delta_cost;
 
 	  number_of_increases++;
 
@@ -149,7 +149,8 @@ clib_anneal (clib_anneal_param_t * p)
    * at the initial temperature to be about 0.8.
    */
   average_increase = total_increase / (f64) number_of_increases;
-  p->suggested_initial_temperature = average_increase / 0.22;	/* 0.22 = -ln (0.8) */
+  p->suggested_initial_temperature =
+    average_increase / 0.22; /* 0.22 = -ln (0.8) */
 
   p->final_temperature = t;
   p->final_metric = p->anneal_metric (p->opaque);

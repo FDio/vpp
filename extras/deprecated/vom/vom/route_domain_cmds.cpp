@@ -24,8 +24,7 @@ create_cmd::create_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_id(id)
   , m_proto(proto)
-{
-}
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
@@ -64,8 +63,7 @@ delete_cmd::delete_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_id(id)
   , m_proto(proto)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
@@ -101,9 +99,7 @@ delete_cmd::to_string() const
   return (s.str());
 }
 
-dump_cmd::dump_cmd()
-{
-}
+dump_cmd::dump_cmd() {}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const
@@ -131,10 +127,10 @@ dump_cmd::to_string() const
 
 } // namespace route_domain_cmds
 } // namespace VOM
-  /*
-   * fd.io coding-style-patch-verification: OFF
-   *
-   * Local Variables:
-   * eval: (c-set-style "mozilla")
-   * End:
-   */
+/*
+ * fd.io coding-style-patch-verification: OFF
+ *
+ * Local Variables:
+ * eval: (c-set-style "mozilla")
+ * End:
+ */

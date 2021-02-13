@@ -41,8 +41,7 @@ l3_rule::l3_rule(uint32_t priority,
   , m_dstport_or_icmpcode_last(dstport_or_icmpcode_last)
   , m_tcp_flags_mask(tcp_flags_mask)
   , m_tcp_flags_value(tcp_flags_value)
-{
-}
+{}
 
 bool
 l3_rule::operator<(const l3_rule& other) const

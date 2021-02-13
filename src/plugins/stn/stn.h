@@ -21,13 +21,15 @@
 #include <vnet/ip/ip6.h>
 #include <vppinfra/bihash_16_8.h>
 
-typedef struct {
+typedef struct
+{
   ip46_address_t address;
   u32 next_node_index;
   u32 sw_if_index;
 } stn_rule_t;
 
-typedef struct {
+typedef struct
+{
   /* pool of stn rules */
   stn_rule_t *rules;
 
@@ -43,7 +45,8 @@ typedef struct {
   u16 msg_id_base;
 } stn_main_t;
 
-typedef struct {
+typedef struct
+{
   /** Destination address of intercepted packets */
   ip46_address_t address;
   /** TX interface to send packets to */
@@ -59,7 +62,6 @@ int stn_rule_add_del (stn_rule_add_del_args_t *args);
 
 extern stn_main_t stn_main;
 
-clib_error_t *
-stn_api_init (vlib_main_t * vm, stn_main_t * sm);
+clib_error_t *stn_api_init (vlib_main_t *vm, stn_main_t *sm);
 
 #endif /* SRC_PLUGINS_STN_STN_H_ */

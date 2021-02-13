@@ -29,84 +29,80 @@
 
 #include <vnet/interface.h>
 
-#define AVF_QUEUE_SZ_MAX                4096
-#define AVF_QUEUE_SZ_MIN                64
+#define AVF_QUEUE_SZ_MAX 4096
+#define AVF_QUEUE_SZ_MIN 64
 
-#define AVF_AQ_ENQ_SUSPEND_TIME		50e-6
-#define AVF_AQ_ENQ_MAX_WAIT_TIME	250e-3
+#define AVF_AQ_ENQ_SUSPEND_TIME	 50e-6
+#define AVF_AQ_ENQ_MAX_WAIT_TIME 250e-3
 
-#define AVF_RESET_SUSPEND_TIME		20e-3
-#define AVF_RESET_MAX_WAIT_TIME		1
+#define AVF_RESET_SUSPEND_TIME	20e-3
+#define AVF_RESET_MAX_WAIT_TIME 1
 
-#define AVF_SEND_TO_PF_SUSPEND_TIME	10e-3
-#define AVF_SEND_TO_PF_MAX_WAIT_TIME	1
+#define AVF_SEND_TO_PF_SUSPEND_TIME  10e-3
+#define AVF_SEND_TO_PF_MAX_WAIT_TIME 1
 
-#define AVF_RXD_STATUS(x)		(1ULL << x)
-#define AVF_RXD_STATUS_DD		AVF_RXD_STATUS(0)
-#define AVF_RXD_STATUS_EOP		AVF_RXD_STATUS(1)
-#define AVF_RXD_ERROR_SHIFT		19
-#define AVF_RXD_PTYPE_SHIFT		30
-#define AVF_RXD_LEN_SHIFT		38
-#define AVF_RX_MAX_DESC_IN_CHAIN	5
+#define AVF_RXD_STATUS(x)	 (1ULL << x)
+#define AVF_RXD_STATUS_DD	 AVF_RXD_STATUS (0)
+#define AVF_RXD_STATUS_EOP	 AVF_RXD_STATUS (1)
+#define AVF_RXD_ERROR_SHIFT	 19
+#define AVF_RXD_PTYPE_SHIFT	 30
+#define AVF_RXD_LEN_SHIFT	 38
+#define AVF_RX_MAX_DESC_IN_CHAIN 5
 
-#define AVF_RXD_ERROR_IPE		(1ULL << (AVF_RXD_ERROR_SHIFT + 3))
-#define AVF_RXD_ERROR_L4E		(1ULL << (AVF_RXD_ERROR_SHIFT + 4))
+#define AVF_RXD_ERROR_IPE (1ULL << (AVF_RXD_ERROR_SHIFT + 3))
+#define AVF_RXD_ERROR_L4E (1ULL << (AVF_RXD_ERROR_SHIFT + 4))
 
-#define AVF_TXD_CMD(x)			(1 << (x + 4))
-#define AVF_TXD_CMD_EXT(x, val)         ((u64)val << (x + 4))
-#define AVF_TXD_CMD_EOP			AVF_TXD_CMD(0)
-#define AVF_TXD_CMD_RS			AVF_TXD_CMD(1)
-#define AVF_TXD_CMD_RSV			AVF_TXD_CMD(2)
+#define AVF_TXD_CMD(x)		(1 << (x + 4))
+#define AVF_TXD_CMD_EXT(x, val) ((u64) val << (x + 4))
+#define AVF_TXD_CMD_EOP		AVF_TXD_CMD (0)
+#define AVF_TXD_CMD_RS		AVF_TXD_CMD (1)
+#define AVF_TXD_CMD_RSV		AVF_TXD_CMD (2)
 
-#define AVF_TXD_CMD_IIPT_NONE           AVF_TXD_CMD_EXT(5, 0)
-#define AVF_TXD_CMD_IIPT_IPV6           AVF_TXD_CMD_EXT(5, 1)
-#define AVF_TXD_CMD_IIPT_IPV4_NO_CSUM   AVF_TXD_CMD_EXT(5, 2)
-#define AVF_TXD_CMD_IIPT_IPV4           AVF_TXD_CMD_EXT(5, 3)
+#define AVF_TXD_CMD_IIPT_NONE	      AVF_TXD_CMD_EXT (5, 0)
+#define AVF_TXD_CMD_IIPT_IPV6	      AVF_TXD_CMD_EXT (5, 1)
+#define AVF_TXD_CMD_IIPT_IPV4_NO_CSUM AVF_TXD_CMD_EXT (5, 2)
+#define AVF_TXD_CMD_IIPT_IPV4	      AVF_TXD_CMD_EXT (5, 3)
 
-#define AVF_TXD_CMD_L4T_UNKNOWN         AVF_TXD_CMD_EXT(8, 0)
-#define AVF_TXD_CMD_L4T_TCP             AVF_TXD_CMD_EXT(8, 1)
-#define AVF_TXD_CMD_L4T_SCTP            AVF_TXD_CMD_EXT(8, 2)
-#define AVF_TXD_CMD_L4T_UDP             AVF_TXD_CMD_EXT(8, 3)
+#define AVF_TXD_CMD_L4T_UNKNOWN AVF_TXD_CMD_EXT (8, 0)
+#define AVF_TXD_CMD_L4T_TCP	AVF_TXD_CMD_EXT (8, 1)
+#define AVF_TXD_CMD_L4T_SCTP	AVF_TXD_CMD_EXT (8, 2)
+#define AVF_TXD_CMD_L4T_UDP	AVF_TXD_CMD_EXT (8, 3)
 
-#define AVF_TXD_OFFSET(x,factor,val)    (((u64)val/(u64)factor) << (16 + x))
-#define AVF_TXD_OFFSET_MACLEN(val)      AVF_TXD_OFFSET( 0, 2, val)
-#define AVF_TXD_OFFSET_IPLEN(val)       AVF_TXD_OFFSET( 7, 4, val)
-#define AVF_TXD_OFFSET_L4LEN(val)       AVF_TXD_OFFSET(14, 4, val)
+#define AVF_TXD_OFFSET(x, factor, val) (((u64) val / (u64) factor) << (16 + x))
+#define AVF_TXD_OFFSET_MACLEN(val)     AVF_TXD_OFFSET (0, 2, val)
+#define AVF_TXD_OFFSET_IPLEN(val)      AVF_TXD_OFFSET (7, 4, val)
+#define AVF_TXD_OFFSET_L4LEN(val)      AVF_TXD_OFFSET (14, 4, val)
 
-#define AVF_TXD_DTYP_CTX                0x1ULL
-#define AVF_TXD_CTX_CMD_TSO             AVF_TXD_CMD(0)
-#define AVF_TXD_CTX_SEG(val,x)          (((u64)val) << (30 + x))
-#define AVF_TXD_CTX_SEG_TLEN(val)       AVF_TXD_CTX_SEG(val,0)
-#define AVF_TXD_CTX_SEG_MSS(val)        AVF_TXD_CTX_SEG(val,20)
-
+#define AVF_TXD_DTYP_CTX	  0x1ULL
+#define AVF_TXD_CTX_CMD_TSO	  AVF_TXD_CMD (0)
+#define AVF_TXD_CTX_SEG(val, x)	  (((u64) val) << (30 + x))
+#define AVF_TXD_CTX_SEG_TLEN(val) AVF_TXD_CTX_SEG (val, 0)
+#define AVF_TXD_CTX_SEG_MSS(val)  AVF_TXD_CTX_SEG (val, 20)
 
 extern vlib_log_class_registration_t avf_log;
 
-#define avf_log_err(dev, f, ...)                        \
-  vlib_log (VLIB_LOG_LEVEL_ERR, avf_log.class, "%U: " f, \
-            format_vlib_pci_addr, &dev->pci_addr, \
-            ## __VA_ARGS__)
+#define avf_log_err(dev, f, ...)                                              \
+  vlib_log (VLIB_LOG_LEVEL_ERR, avf_log.class, "%U: " f,                      \
+	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
 
-#define avf_log_warn(dev, f, ...)                        \
-  vlib_log (VLIB_LOG_LEVEL_WARNING, avf_log.class, "%U: " f, \
-            format_vlib_pci_addr, &dev->pci_addr, \
-            ## __VA_ARGS__)
+#define avf_log_warn(dev, f, ...)                                             \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, avf_log.class, "%U: " f,                  \
+	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
 
-#define avf_log_debug(dev, f, ...)                        \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, avf_log.class, "%U: " f, \
-            format_vlib_pci_addr, &dev->pci_addr, \
-            ## __VA_ARGS__)
+#define avf_log_debug(dev, f, ...)                                            \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, avf_log.class, "%U: " f,                    \
+	    format_vlib_pci_addr, &dev->pci_addr, ##__VA_ARGS__)
 
-#define foreach_avf_device_flags \
-  _(0, INITIALIZED, "initialized") \
-  _(1, ERROR, "error") \
-  _(2, ADMIN_UP, "admin-up") \
-  _(3, VA_DMA, "vaddr-dma") \
-  _(4, LINK_UP, "link-up") \
-  _(5, SHARED_TXQ_LOCK, "shared-txq-lock") \
-  _(6, ELOG, "elog") \
-  _(7, PROMISC, "promisc") \
-  _(8, RX_INT, "rx-interrupts")
+#define foreach_avf_device_flags                                              \
+  _ (0, INITIALIZED, "initialized")                                           \
+  _ (1, ERROR, "error")                                                       \
+  _ (2, ADMIN_UP, "admin-up")                                                 \
+  _ (3, VA_DMA, "vaddr-dma")                                                  \
+  _ (4, LINK_UP, "link-up")                                                   \
+  _ (5, SHARED_TXQ_LOCK, "shared-txq-lock")                                   \
+  _ (6, ELOG, "elog")                                                         \
+  _ (7, PROMISC, "promisc")                                                   \
+  _ (8, RX_INT, "rx-interrupts")
 
 enum
 {
@@ -121,15 +117,15 @@ typedef volatile struct
   {
     struct
     {
-      u64 mirr:13;
-      u64 rsv1:3;
-      u64 l2tag1:16;
-      u64 filter_status:32;
-      u64 status:19;
-      u64 error:8;
-      u64 rsv2:3;
-      u64 ptype:8;
-      u64 length:26;
+      u64 mirr : 13;
+      u64 rsv1 : 3;
+      u64 l2tag1 : 16;
+      u64 filter_status : 32;
+      u64 status : 19;
+      u64 error : 8;
+      u64 rsv2 : 3;
+      u64 ptype : 8;
+      u64 length : 26;
     };
     u64 qword[4];
 #ifdef CLIB_HAVE_VEC256
@@ -297,7 +293,7 @@ typedef struct
   clib_error_t *error;
 } avf_create_if_args_t;
 
-void avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args);
+void avf_create_if (vlib_main_t *vm, avf_create_if_args_t *args);
 
 extern vlib_node_registration_t avf_input_node;
 extern vlib_node_registration_t avf_process_node;
@@ -355,22 +351,22 @@ avf_set_u32 (void *start, int offset, u32 value)
 }
 
 static inline void
-avf_reg_write (avf_device_t * ad, u32 addr, u32 val)
+avf_reg_write (avf_device_t *ad, u32 addr, u32 val)
 {
   *(volatile u32 *) ((u8 *) ad->bar0 + addr) = val;
 }
 
 static inline u32
-avf_reg_read (avf_device_t * ad, u32 addr)
+avf_reg_read (avf_device_t *ad, u32 addr)
 {
   return *(volatile u32 *) (ad->bar0 + addr);
 }
 
 static inline void
-avf_reg_flush (avf_device_t * ad)
+avf_reg_flush (avf_device_t *ad)
 {
   avf_reg_read (ad, AVFGEN_RSTAT);
-  asm volatile ("":::"memory");
+  asm volatile("" ::: "memory");
 }
 
 static inline void
@@ -385,13 +381,13 @@ avf_tail_write (volatile u32 *addr, u32 val)
 }
 
 static_always_inline int
-avf_rxd_is_not_eop (avf_rx_desc_t * d)
+avf_rxd_is_not_eop (avf_rx_desc_t *d)
 {
   return (d->qword[1] & AVF_RXD_STATUS_EOP) == 0;
 }
 
 static_always_inline int
-avf_rxd_is_not_dd (avf_rx_desc_t * d)
+avf_rxd_is_not_dd (avf_rx_desc_t *d)
 {
   return (d->qword[1] & AVF_RXD_STATUS_DD) == 0;
 }
@@ -404,13 +400,13 @@ typedef struct
   u64 qw1s[AVF_RX_MAX_DESC_IN_CHAIN];
 } avf_input_trace_t;
 
-#define foreach_avf_tx_func_error	       \
-  _(SEGMENT_SIZE_EXCEEDED, "segment size exceeded")	\
-  _(NO_FREE_SLOTS, "no free tx slots")
+#define foreach_avf_tx_func_error                                             \
+  _ (SEGMENT_SIZE_EXCEEDED, "segment size exceeded")                          \
+  _ (NO_FREE_SLOTS, "no free tx slots")
 
 typedef enum
 {
-#define _(f,s) AVF_TX_ERROR_##f,
+#define _(f, s) AVF_TX_ERROR_##f,
   foreach_avf_tx_func_error
 #undef _
     AVF_TX_N_ERROR,

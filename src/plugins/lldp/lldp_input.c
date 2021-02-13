@@ -28,12 +28,12 @@ typedef struct
   u8 portid_len;
   u8 portid_subtype;
   u16 ttl;
-  u8 data[0];			/* this contains both chassis id (chassis_id_len bytes) and port
-				   id (portid_len bytes) */
+  u8 data[0]; /* this contains both chassis id (chassis_id_len bytes) and port
+		 id (portid_len bytes) */
 } lldp_intf_update_t;
 
 static void
-lldp_rpc_update_peer_cb (const lldp_intf_update_t * a)
+lldp_rpc_update_peer_cb (const lldp_intf_update_t *a)
 {
   ASSERT (vlib_get_thread_index () == 0);
 
@@ -63,12 +63,11 @@ lldp_rpc_update_peer_cb (const lldp_intf_update_t * a)
 }
 
 static void
-lldp_rpc_update_peer (u32 hw_if_index, const u8 * chid, u8 chid_len,
-		      u8 chid_subtype, const u8 * portid,
-		      u8 portid_len, u8 portid_subtype, u16 ttl)
+lldp_rpc_update_peer (u32 hw_if_index, const u8 *chid, u8 chid_len,
+		      u8 chid_subtype, const u8 *portid, u8 portid_len,
+		      u8 portid_subtype, u16 ttl)
 {
-  const size_t data_size =
-    sizeof (lldp_intf_update_t) + chid_len + portid_len;
+  const size_t data_size = sizeof (lldp_intf_update_t) + chid_len + portid_len;
   u8 data[data_size];
   lldp_intf_update_t *u = (lldp_intf_update_t *) data;
   u->hw_if_index = hw_if_index;
@@ -83,25 +82,25 @@ lldp_rpc_update_peer (u32 hw_if_index, const u8 * chid, u8 chid_len,
 }
 
 lldp_tlv_code_t
-lldp_tlv_get_code (const lldp_tlv_t * tlv)
+lldp_tlv_get_code (const lldp_tlv_t *tlv)
 {
   return tlv->head.byte1 >> 1;
 }
 
 void
-lldp_tlv_set_code (lldp_tlv_t * tlv, lldp_tlv_code_t code)
+lldp_tlv_set_code (lldp_tlv_t *tlv, lldp_tlv_code_t code)
 {
   tlv->head.byte1 = (tlv->head.byte1 & 1) + (code << 1);
 }
 
 u16
-lldp_tlv_get_length (const lldp_tlv_t * tlv)
+lldp_tlv_get_length (const lldp_tlv_t *tlv)
 {
   return (((u16) (tlv->head.byte1 & 1)) << 8) + tlv->head.byte2;
 }
 
 void
-lldp_tlv_set_length (lldp_tlv_t * tlv, u16 length)
+lldp_tlv_set_length (lldp_tlv_t *tlv, u16 length)
 {
   tlv->head.byte2 = length & ((1 << 8) - 1);
   if (length > (1 << 8) - 1)
@@ -117,13 +116,14 @@ lldp_tlv_set_length (lldp_tlv_t * tlv, u16 length)
 lldp_main_t lldp_main;
 
 static int
-lldp_packet_scan (u32 hw_if_index, const lldp_tlv_t * pkt)
+lldp_packet_scan (u32 hw_if_index, const lldp_tlv_t *pkt)
 {
   const lldp_tlv_t *tlv = pkt;
 
-#define TLV_VIOLATES_PKT_BOUNDARY(pkt, tlv)                               \
-  (((((u8 *)tlv) + sizeof (lldp_tlv_t)) > ((u8 *)pkt + vec_len (pkt))) || \
-   ((((u8 *)tlv) + lldp_tlv_get_length (tlv)) > ((u8 *)pkt + vec_len (pkt))))
+#define TLV_VIOLATES_PKT_BOUNDARY(pkt, tlv)                                   \
+  (((((u8 *) tlv) + sizeof (lldp_tlv_t)) > ((u8 *) pkt + vec_len (pkt))) ||   \
+   ((((u8 *) tlv) + lldp_tlv_get_length (tlv)) >                              \
+    ((u8 *) pkt + vec_len (pkt))))
 
   /* first tlv is always chassis id, followed by port id and ttl tlvs */
   if (TLV_VIOLATES_PKT_BOUNDARY (pkt, tlv) ||
@@ -134,9 +134,9 @@ lldp_packet_scan (u32 hw_if_index, const lldp_tlv_t * pkt)
 
   u16 l = lldp_tlv_get_length (tlv);
   if (l < STRUCT_SIZE_OF (lldp_chassis_id_tlv_t, subtype) +
-      LLDP_MIN_CHASS_ID_LEN ||
+	    LLDP_MIN_CHASS_ID_LEN ||
       l > STRUCT_SIZE_OF (lldp_chassis_id_tlv_t, subtype) +
-      LLDP_MAX_CHASS_ID_LEN)
+	    LLDP_MAX_CHASS_ID_LEN)
     {
       return LLDP_ERROR_BAD_TLV;
     }
@@ -153,10 +153,10 @@ lldp_packet_scan (u32 hw_if_index, const lldp_tlv_t * pkt)
       return LLDP_ERROR_BAD_TLV;
     }
   l = lldp_tlv_get_length (tlv);
-  if (l < STRUCT_SIZE_OF (lldp_port_id_tlv_t, subtype) +
-      LLDP_MIN_PORT_ID_LEN ||
-      l > STRUCT_SIZE_OF (lldp_chassis_id_tlv_t, subtype) +
-      LLDP_MAX_PORT_ID_LEN)
+  if (l <
+	STRUCT_SIZE_OF (lldp_port_id_tlv_t, subtype) + LLDP_MIN_PORT_ID_LEN ||
+      l >
+	STRUCT_SIZE_OF (lldp_chassis_id_tlv_t, subtype) + LLDP_MAX_PORT_ID_LEN)
     {
       return LLDP_ERROR_BAD_TLV;
     }
@@ -184,9 +184,9 @@ lldp_packet_scan (u32 hw_if_index, const lldp_tlv_t * pkt)
     {
       switch (lldp_tlv_get_code (tlv))
 	{
-#define F(num, type, str)     \
-  case LLDP_TLV_NAME (type):  \
-    /* ignore optional TLV */ \
+#define F(num, type, str)                                                     \
+  case LLDP_TLV_NAME (type):                                                  \
+    /* ignore optional TLV */                                                 \
     break;
 	  foreach_lldp_optional_tlv_type (F);
 #undef F
@@ -209,7 +209,7 @@ lldp_packet_scan (u32 hw_if_index, const lldp_tlv_t * pkt)
 }
 
 lldp_intf_t *
-lldp_get_intf (lldp_main_t * lm, u32 hw_if_index)
+lldp_get_intf (lldp_main_t *lm, u32 hw_if_index)
 {
   uword *p = hash_get (lm->intf_by_hw_if_index, hw_if_index);
 
@@ -221,7 +221,7 @@ lldp_get_intf (lldp_main_t * lm, u32 hw_if_index)
 }
 
 lldp_intf_t *
-lldp_create_intf (lldp_main_t * lm, u32 hw_if_index)
+lldp_create_intf (lldp_main_t *lm, u32 hw_if_index)
 {
 
   uword *p;
@@ -246,16 +246,14 @@ lldp_create_intf (lldp_main_t * lm, u32 hw_if_index)
  * lldp input routine
  */
 lldp_error_t
-lldp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
+lldp_input (vlib_main_t *vm, vlib_buffer_t *b0, u32 bi0)
 {
   lldp_main_t *lm = &lldp_main;
   lldp_error_t e;
 
   /* find our interface */
-  vnet_sw_interface_t *sw_interface = vnet_get_sw_interface (lm->vnet_main,
-							     vnet_buffer
-							     (b0)->sw_if_index
-							     [VLIB_RX]);
+  vnet_sw_interface_t *sw_interface = vnet_get_sw_interface (
+    lm->vnet_main, vnet_buffer (b0)->sw_if_index[VLIB_RX]);
   lldp_intf_t *n = lldp_get_intf (lm, sw_interface->hw_if_index);
 
   if (!n)
@@ -265,8 +263,8 @@ lldp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
     }
 
   /* Actually scan the packet */
-  e = lldp_packet_scan (sw_interface->hw_if_index,
-			vlib_buffer_get_current (b0));
+  e =
+    lldp_packet_scan (sw_interface->hw_if_index, vlib_buffer_get_current (b0));
 
   return e;
 }
@@ -275,7 +273,7 @@ lldp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
  * setup function
  */
 static clib_error_t *
-lldp_init (vlib_main_t * vm)
+lldp_init (vlib_main_t *vm)
 {
   clib_error_t *error;
   lldp_main_t *lm = &lldp_main;
@@ -285,8 +283,8 @@ lldp_init (vlib_main_t * vm)
 
   lm->vlib_main = vm;
   lm->vnet_main = vnet_get_main ();
-  lm->msg_tx_hold = 4;		/* default value per IEEE 802.1AB-2009 */
-  lm->msg_tx_interval = 30;	/* default value per IEEE 802.1AB-2009 */
+  lm->msg_tx_hold = 4;	    /* default value per IEEE 802.1AB-2009 */
+  lm->msg_tx_interval = 30; /* default value per IEEE 802.1AB-2009 */
 
   return 0;
 }

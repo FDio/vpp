@@ -57,8 +57,8 @@ public:
   rc_t issue(connection& con);
 
   /**
- * convert to string format for debug purposes
- */
+   * convert to string format for debug purposes
+   */
   std::string to_string() const;
 };
 
@@ -81,8 +81,8 @@ public:
   rc_t issue(connection& con);
 
   /**
- * convert to string format for debug purposes
- */
+   * convert to string format for debug purposes
+   */
   std::string to_string() const;
 };
 
@@ -254,8 +254,9 @@ private:
 /**
  * A cmd class that changes the admin state
  */
-class state_change_cmd : public rpc_cmd<HW::item<interface::admin_state_t>,
-                                        vapi::Sw_interface_set_flags>
+class state_change_cmd
+  : public rpc_cmd<HW::item<interface::admin_state_t>,
+                   vapi::Sw_interface_set_flags>
 {
 public:
   /**

@@ -32,8 +32,7 @@ const gbp_endpoint::flags_t gbp_endpoint::flags_t::EXTERNAL(8, "external");
 
 gbp_endpoint::flags_t::flags_t(int v, const std::string& s)
   : enum_base<gbp_endpoint::flags_t>(v, s)
-{
-}
+{}
 
 gbp_endpoint::gbp_endpoint(
   const interface& itf,
@@ -47,8 +46,7 @@ gbp_endpoint::gbp_endpoint(
   , m_mac(mac)
   , m_epg(epg.singular())
   , m_flags(flags)
-{
-}
+{}
 
 gbp_endpoint::gbp_endpoint(const gbp_endpoint& gbpe)
   : m_hdl(gbpe.m_hdl)
@@ -57,8 +55,7 @@ gbp_endpoint::gbp_endpoint(const gbp_endpoint& gbpe)
   , m_mac(gbpe.m_mac)
   , m_epg(gbpe.m_epg)
   , m_flags(gbpe.m_flags)
-{
-}
+{}
 
 gbp_endpoint::~gbp_endpoint()
 {

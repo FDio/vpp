@@ -59,8 +59,8 @@ typedef struct
   int search_iter;
   uword *key_hash;
   u64 *keys;
-    CVT (clib_cuckoo) ch;
-    BVT (clib_bihash) bh;
+  CVT (clib_cuckoo) ch;
+  BVT (clib_bihash) bh;
   clib_time_t clib_time;
   u64 *key_add_del_sequence;
   u8 *key_op_sequence;
@@ -84,196 +84,188 @@ vl (void *v)
   return vec_len (v);
 }
 
-#define w_thread(x, guts)                                               \
-  void *x##writer_thread (void *v)                                      \
-  {                                                                     \
-    test_main_t *tm = v;                                                \
-    uword counter = 0;                                                  \
-    u64 nadds = 0;                                                      \
-    u64 ndels = 0;                                                      \
-    u64 deadline = tm->deadline;                                        \
-    do                                                                  \
-      {                                                                 \
-        for (counter = 0; counter < vec_len (tm->key_add_del_sequence); \
-             ++counter)                                                 \
-          {                                                             \
-            u64 idx = tm->key_add_del_sequence[counter];                \
-            u8 op = tm->key_op_sequence[counter];                       \
-            if (op)                                                     \
-              {                                                         \
-                ++nadds;                                                \
-              }                                                         \
-            else                                                        \
-              {                                                         \
-                ++ndels;                                                \
-              }                                                         \
-            guts;                                                       \
-            if (clib_cpu_time_now () > deadline)                        \
-              {                                                         \
-                break;                                                  \
-              }                                                         \
-          }                                                             \
-      }                                                                 \
-    while (clib_cpu_time_now () < deadline);                            \
-    tm->nadds = nadds;                                                  \
-    tm->ndels = ndels;                                                  \
-    return NULL;                                                        \
+#define w_thread(x, guts)                                                     \
+  void *x##writer_thread (void *v)                                            \
+  {                                                                           \
+    test_main_t *tm = v;                                                      \
+    uword counter = 0;                                                        \
+    u64 nadds = 0;                                                            \
+    u64 ndels = 0;                                                            \
+    u64 deadline = tm->deadline;                                              \
+    do                                                                        \
+      {                                                                       \
+	for (counter = 0; counter < vec_len (tm->key_add_del_sequence);       \
+	     ++counter)                                                       \
+	  {                                                                   \
+	    u64 idx = tm->key_add_del_sequence[counter];                      \
+	    u8 op = tm->key_op_sequence[counter];                             \
+	    if (op)                                                           \
+	      {                                                               \
+		++nadds;                                                      \
+	      }                                                               \
+	    else                                                              \
+	      {                                                               \
+		++ndels;                                                      \
+	      }                                                               \
+	    guts;                                                             \
+	    if (clib_cpu_time_now () > deadline)                              \
+	      {                                                               \
+		break;                                                        \
+	      }                                                               \
+	  }                                                                   \
+      }                                                                       \
+    while (clib_cpu_time_now () < deadline);                                  \
+    tm->nadds = nadds;                                                        \
+    tm->ndels = ndels;                                                        \
+    return NULL;                                                              \
   }
 
-/* *INDENT-OFF* */
 w_thread (b, {
   BVT (clib_bihash_kv) kv;
   kv.key = tm->keys[idx];
   kv.value = *hash_get (tm->key_hash, kv.key);
   BV (clib_bihash_add_del) (&tm->bh, &kv, op);
 });
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 w_thread (c, {
   CVT (clib_cuckoo_kv) kv;
   kv.key = tm->keys[idx];
   kv.value = *hash_get (tm->key_hash, kv.key);
   CV (clib_cuckoo_add_del) (&tm->ch, &kv, op, 0);
 });
-/* *INDENT-ON* */
 
-#define r_thread(x, guts)                                      \
-  void *x##reader_thread (void *v)                             \
-  {                                                            \
-    thread_data_t *data = v;                                   \
-    thread_id = data->thread_idx;                              \
-    test_main_t *tm = data->tm;                                \
-    uword thread_idx = data->thread_idx;                       \
-    u64 *idx;                                                  \
-    uword nlookups = 0;                                        \
-    u64 deadline = tm->deadline;                               \
-    do                                                         \
-      {                                                        \
-        vec_foreach (idx, tm->key_search_sequence[thread_idx]) \
-        {                                                      \
-          guts;                                                \
-          ++nlookups;                                          \
-          if (clib_cpu_time_now () > deadline)                 \
-            {                                                  \
-              break;                                           \
-            }                                                  \
-        }                                                      \
-      }                                                        \
-    while (clib_cpu_time_now () < deadline);                   \
-    data->nlookups = nlookups;                                 \
-    return NULL;                                               \
+#define r_thread(x, guts)                                                     \
+  void *x##reader_thread (void *v)                                            \
+  {                                                                           \
+    thread_data_t *data = v;                                                  \
+    thread_id = data->thread_idx;                                             \
+    test_main_t *tm = data->tm;                                               \
+    uword thread_idx = data->thread_idx;                                      \
+    u64 *idx;                                                                 \
+    uword nlookups = 0;                                                       \
+    u64 deadline = tm->deadline;                                              \
+    do                                                                        \
+      {                                                                       \
+	vec_foreach (idx, tm->key_search_sequence[thread_idx])                \
+	  {                                                                   \
+	    guts;                                                             \
+	    ++nlookups;                                                       \
+	    if (clib_cpu_time_now () > deadline)                              \
+	      {                                                               \
+		break;                                                        \
+	      }                                                               \
+	  }                                                                   \
+      }                                                                       \
+    while (clib_cpu_time_now () < deadline);                                  \
+    data->nlookups = nlookups;                                                \
+    return NULL;                                                              \
   }
 
-/* *INDENT-OFF* */
 r_thread (c, {
   CVT (clib_cuckoo_kv) kv;
   kv.key = tm->keys[*idx];
   kv.value = *hash_get (tm->key_hash, kv.key);
   CV (clib_cuckoo_search) (&tm->ch, &kv, &kv);
 });
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 r_thread (b, {
   BVT (clib_bihash_kv) kv;
   kv.key = tm->keys[*idx];
   kv.value = *hash_get (tm->key_hash, kv.key);
   BV (clib_bihash_search) (&tm->bh, &kv, &kv);
 });
-/* *INDENT-ON* */
 
-#define run_threads(x)                                                        \
-  do                                                                          \
-    {                                                                         \
-                                                                              \
-      before = clib_time_now (&tm->clib_time);                                \
-      tm->deadline = clib_cpu_time_now () +                                   \
-                     tm->runtime * tm->clib_time.clocks_per_second;           \
-      fformat (stdout, #x "-> Start threads..., runtime is %llu second(s)\n", \
-               (long long unsigned)tm->runtime);                              \
-                                                                              \
-      /*                                                                      \
-      fformat (stdout, #x "-> Writer thread only...\n");                      \
-      if (0 !=                                                                \
-          pthread_create (&tm->x##writer_thread, NULL, x##writer_thread, tm)) \
-        {                                                                     \
-          perror ("pthread_create()");                                        \
-          abort ();                                                           \
-        }                                                                     \
-                                                                              \
-      if (0 != pthread_join (tm->x##writer_thread, NULL))                     \
-        {                                                                     \
-          perror ("pthread_join()");                                          \
-          abort ();                                                           \
-        }                                                                     \
-                                                                              \
-      delta = clib_time_now (&tm->clib_time) - before;                        \
-      fformat (stdout, #x "-> %wu adds, %wu dels in %.6f seconds\n",          \
-               tm->nadds, tm->ndels, delta);                                  \
-      tm->nadds = 0;                                                          \
-      tm->ndels = 0;                                                          \
-      */                                                                      \
-                                                                              \
-      fformat (stdout, #x "-> Writer + %d readers\n", tm->nthreads);          \
-      before = clib_time_now (&tm->clib_time);                                \
-      tm->deadline = clib_cpu_time_now () +                                   \
-                     tm->runtime * tm->clib_time.clocks_per_second;           \
-      if (0 !=                                                                \
-          pthread_create (&tm->x##writer_thread, NULL, x##writer_thread, tm)) \
-        {                                                                     \
-          perror ("pthread_create()");                                        \
-          abort ();                                                           \
-        }                                                                     \
-                                                                              \
-      for (i = 0; i < tm->nthreads; i++)                                      \
-        {                                                                     \
-          tm->rthread_data[i].nlookups = 0;                                   \
-          if (0 != pthread_create (&tm->x##reader_threads[i], NULL,           \
-                                   x##reader_thread, &tm->rthread_data[i]))   \
-            {                                                                 \
-              perror ("pthread_create()");                                    \
-              abort ();                                                       \
-            }                                                                 \
-        }                                                                     \
-                                                                              \
-      if (0 != pthread_join (tm->x##writer_thread, NULL))                     \
-        {                                                                     \
-          perror ("pthread_join()");                                          \
-          abort ();                                                           \
-        }                                                                     \
-                                                                              \
-      for (i = 0; i < tm->nthreads; i++)                                      \
-        {                                                                     \
-          if (0 != pthread_join (tm->x##reader_threads[i], NULL))             \
-            {                                                                 \
-              perror ("pthread_join()");                                      \
-              abort ();                                                       \
-            }                                                                 \
-        }                                                                     \
-                                                                              \
-      delta = clib_time_now (&tm->clib_time) - before;                        \
-                                                                              \
-      total_searches = 0;                                                     \
-      for (i = 0; i < tm->nthreads; ++i)                                      \
-        {                                                                     \
-          u64 nlookups = tm->rthread_data[i].nlookups;                        \
-          fformat (stdout, #x "-> Thread #%d: %u searches\n", i, nlookups);   \
-          total_searches += nlookups;                                         \
-        }                                                                     \
-                                                                              \
-      if (delta > 0)                                                          \
-        {                                                                     \
-          ops = (tm->nadds + tm->ndels) / (f64)delta;                         \
-          fformat (stdout, #x "-> %.f add/dels per second\n", ops);           \
-          sps = ((f64)total_searches) / delta;                                \
-          fformat (stdout, #x "-> %.f searches per second\n", sps);           \
-        }                                                                     \
-                                                                              \
-      fformat (stdout,                                                        \
-               #x "-> %wu adds, %wu dels, %lld searches in %.6f seconds\n",   \
-               tm->nadds, tm->ndels, total_searches, delta);                  \
-    }                                                                         \
+#define run_threads(x)                                                          \
+  do                                                                            \
+    {                                                                           \
+                                                                                \
+      before = clib_time_now (&tm->clib_time);                                  \
+      tm->deadline =                                                            \
+	clib_cpu_time_now () + tm->runtime * tm->clib_time.clocks_per_second;   \
+      fformat (stdout, #x "-> Start threads..., runtime is %llu second(s)\n",   \
+	       (long long unsigned) tm->runtime);                               \
+                                                                                \
+      /*                                                                        \
+      fformat (stdout, #x "-> Writer thread only...\n");                        \
+      if (0 !=                                                                  \
+	  pthread_create (&tm->x##writer_thread, NULL, x##writer_thread, tm))   \
+	{                                                                       \
+	  perror ("pthread_create()");                                          \
+	  abort ();                                                             \
+	}                                                                       \
+									      \ \
+      if (0 != pthread_join (tm->x##writer_thread, NULL))                       \
+	{                                                                       \
+	  perror ("pthread_join()");                                            \
+	  abort ();                                                             \
+	}                                                                       \
+									      \ \
+      delta = clib_time_now (&tm->clib_time) - before;                          \
+      fformat (stdout, #x "-> %wu adds, %wu dels in %.6f seconds\n",            \
+	       tm->nadds, tm->ndels, delta);                                    \
+      tm->nadds = 0;                                                            \
+      tm->ndels = 0;                                                            \
+      */                                                                        \
+                                                                                \
+      fformat (stdout, #x "-> Writer + %d readers\n", tm->nthreads);            \
+      before = clib_time_now (&tm->clib_time);                                  \
+      tm->deadline =                                                            \
+	clib_cpu_time_now () + tm->runtime * tm->clib_time.clocks_per_second;   \
+      if (0 !=                                                                  \
+	  pthread_create (&tm->x##writer_thread, NULL, x##writer_thread, tm))   \
+	{                                                                       \
+	  perror ("pthread_create()");                                          \
+	  abort ();                                                             \
+	}                                                                       \
+                                                                                \
+      for (i = 0; i < tm->nthreads; i++)                                        \
+	{                                                                       \
+	  tm->rthread_data[i].nlookups = 0;                                     \
+	  if (0 != pthread_create (&tm->x##reader_threads[i], NULL,             \
+				   x##reader_thread, &tm->rthread_data[i]))     \
+	    {                                                                   \
+	      perror ("pthread_create()");                                      \
+	      abort ();                                                         \
+	    }                                                                   \
+	}                                                                       \
+                                                                                \
+      if (0 != pthread_join (tm->x##writer_thread, NULL))                       \
+	{                                                                       \
+	  perror ("pthread_join()");                                            \
+	  abort ();                                                             \
+	}                                                                       \
+                                                                                \
+      for (i = 0; i < tm->nthreads; i++)                                        \
+	{                                                                       \
+	  if (0 != pthread_join (tm->x##reader_threads[i], NULL))               \
+	    {                                                                   \
+	      perror ("pthread_join()");                                        \
+	      abort ();                                                         \
+	    }                                                                   \
+	}                                                                       \
+                                                                                \
+      delta = clib_time_now (&tm->clib_time) - before;                          \
+                                                                                \
+      total_searches = 0;                                                       \
+      for (i = 0; i < tm->nthreads; ++i)                                        \
+	{                                                                       \
+	  u64 nlookups = tm->rthread_data[i].nlookups;                          \
+	  fformat (stdout, #x "-> Thread #%d: %u searches\n", i, nlookups);     \
+	  total_searches += nlookups;                                           \
+	}                                                                       \
+                                                                                \
+      if (delta > 0)                                                            \
+	{                                                                       \
+	  ops = (tm->nadds + tm->ndels) / (f64) delta;                          \
+	  fformat (stdout, #x "-> %.f add/dels per second\n", ops);             \
+	  sps = ((f64) total_searches) / delta;                                 \
+	  fformat (stdout, #x "-> %.f searches per second\n", sps);             \
+	}                                                                       \
+                                                                                \
+      fformat (stdout,                                                          \
+	       #x "-> %wu adds, %wu dels, %lld searches in %.6f seconds\n",     \
+	       tm->nadds, tm->ndels, total_searches, delta);                    \
+    }                                                                           \
   while (0);
 
 static void
@@ -283,7 +275,7 @@ cb (CVT (clib_cuckoo) * h, void *ctx)
 }
 
 static clib_error_t *
-test_cuckoo_bihash (test_main_t * tm)
+test_cuckoo_bihash (test_main_t *tm)
 {
   int i;
   uword *p;
@@ -331,8 +323,7 @@ test_cuckoo_bihash (test_main_t * tm)
 	  vec_add1 (x, random_u64 (&tm->seed) % tm->nitems);
 	  tm->key_search_sequence[j] = x;
 	}
-      vec_add1 (tm->key_add_del_sequence,
-		random_u64 (&tm->seed) % tm->nitems);
+      vec_add1 (tm->key_add_del_sequence, random_u64 (&tm->seed) % tm->nitems);
       vec_add1 (tm->key_op_sequence, (rndkey % 10 < 8) ? 1 : 0);
     }
 
@@ -371,7 +362,7 @@ test_cuckoo_bihash (test_main_t * tm)
 }
 
 clib_error_t *
-test_cuckoo_bihash_main (test_main_t * tm)
+test_cuckoo_bihash_main (test_main_t *tm)
 {
   unformat_input_t *i = tm->input;
   clib_error_t *error;

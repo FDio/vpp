@@ -30,8 +30,7 @@ bond_interface::bond_interface(const std::string& name,
   , m_l2_address(l2_address_t::ZERO)
   , m_mode(mode)
   , m_lb(lb)
-{
-}
+{}
 
 bond_interface::bond_interface(const std::string& name,
                                admin_state_t state,
@@ -42,8 +41,7 @@ bond_interface::bond_interface(const std::string& name,
   , m_l2_address(l2_address)
   , m_mode(mode)
   , m_lb(lb)
-{
-}
+{}
 
 bond_interface::~bond_interface()
 {
@@ -56,8 +54,7 @@ bond_interface::bond_interface(const bond_interface& o)
   , m_l2_address(o.m_l2_address)
   , m_mode(o.m_mode)
   , m_lb(o.m_lb)
-{
-}
+{}
 
 std::shared_ptr<bond_interface>
 bond_interface::find(const handle_t& hdl)
@@ -91,8 +88,8 @@ bond_interface::to_string() const
 std::queue<cmd*>&
 bond_interface::mk_create_cmd(std::queue<cmd*>& q)
 {
-  q.push(new bond_interface_cmds::create_cmd(m_hdl, name(), m_mode, m_lb,
-                                             m_l2_address));
+  q.push(new bond_interface_cmds::create_cmd(
+    m_hdl, name(), m_mode, m_lb, m_l2_address));
 
   return (q);
 }
@@ -158,8 +155,7 @@ bond_interface::mode_t::from_numeric_val(uint8_t numeric)
 
 bond_interface::mode_t::mode_t(int v, const std::string& s)
   : enum_base<bond_interface::mode_t>(v, s)
-{
-}
+{}
 
 const bond_interface::lb_t bond_interface::lb_t::L2(0, "l2");
 const bond_interface::lb_t bond_interface::lb_t::L34(1, "l34");
@@ -184,8 +180,7 @@ bond_interface::lb_t::from_numeric_val(uint8_t numeric)
 
 bond_interface::lb_t::lb_t(int v, const std::string& s)
   : enum_base<bond_interface::lb_t>(v, s)
-{
-}
+{}
 }; // namespace VOM
 
 /*

@@ -20,7 +20,7 @@ vlib_lex_main_t vlib_lex_main;
 #define LEX_DEBUG 0
 
 u8 *
-format_vlib_lex_token (u8 * s, va_list * args)
+format_vlib_lex_token (u8 *s, va_list *args)
 {
   vlib_lex_main_t *lm = va_arg (*args, vlib_lex_main_t *);
   vlib_lex_token_t *t = va_arg (*args, vlib_lex_token_t *);
@@ -33,7 +33,7 @@ format_vlib_lex_token (u8 * s, va_list * args)
 }
 
 void
-vlib_lex_get_token (vlib_lex_main_t * lm, vlib_lex_token_t * rv)
+vlib_lex_get_token (vlib_lex_main_t *lm, vlib_lex_token_t *rv)
 {
   u8 c;
   vlib_lex_table_t *t;
@@ -99,8 +99,7 @@ vlib_lex_get_token (vlib_lex_main_t * lm, vlib_lex_token_t * rv)
 	      {
 		rv->token = p[0];
 		if (LEX_DEBUG > 0)
-		  clib_warning ("keyword '%s' token %s",
-				lm->token_buffer,
+		  clib_warning ("keyword '%s' token %s", lm->token_buffer,
 				lm->lex_token_names[rv->token]);
 	      }
 	    else
@@ -131,10 +130,10 @@ vlib_lex_get_token (vlib_lex_main_t * lm, vlib_lex_token_t * rv)
 	  lm->current_token_value = ~0;
 	  if (LEX_DEBUG > 0)
 	    {
-	      clib_warning
-		("table %s char '%c'(0x%02x) next table %s return %s",
-		 t->name, c, c, lm->lex_tables[e->next_table_index].name,
-		 lm->lex_token_names[e->token]);
+	      clib_warning (
+		"table %s char '%c'(0x%02x) next table %s return %s", t->name,
+		c, c, lm->lex_tables[e->next_table_index].name,
+		lm->lex_token_names[e->token]);
 	      if (rv->token == VLIB_LEX_number)
 		clib_warning ("  numeric value 0x%x (%d)", rv->value,
 			      rv->value);
@@ -145,7 +144,7 @@ vlib_lex_get_token (vlib_lex_main_t * lm, vlib_lex_token_t * rv)
 }
 
 u16
-vlib_lex_add_token (vlib_lex_main_t * lm, char *token_name)
+vlib_lex_add_token (vlib_lex_main_t *lm, char *token_name)
 {
   uword *p;
   u16 rv;
@@ -163,7 +162,7 @@ vlib_lex_add_token (vlib_lex_main_t * lm, char *token_name)
 }
 
 static u16
-add_keyword (vlib_lex_main_t * lm, char *keyword, char *token_name)
+add_keyword (vlib_lex_main_t *lm, char *keyword, char *token_name)
 {
   uword *p;
   u16 token;
@@ -179,7 +178,7 @@ add_keyword (vlib_lex_main_t * lm, char *keyword, char *token_name)
 }
 
 u16
-vlib_lex_find_or_add_keyword (vlib_lex_main_t * lm, char *keyword,
+vlib_lex_find_or_add_keyword (vlib_lex_main_t *lm, char *keyword,
 			      char *token_name)
 {
   uword *p = hash_get_mem (lm->lex_keywords, keyword);
@@ -230,7 +229,7 @@ vlib_lex_add_table (char *name)
 }
 
 void
-vlib_lex_reset (vlib_lex_main_t * lm, u8 * input_vector)
+vlib_lex_reset (vlib_lex_main_t *lm, u8 *input_vector)
 {
   if (lm->pushback_vector)
     _vec_len (lm->pushback_vector) = 0;
@@ -241,7 +240,7 @@ vlib_lex_reset (vlib_lex_main_t * lm, u8 * input_vector)
 }
 
 static clib_error_t *
-lex_onetime_init (vlib_main_t * vm)
+lex_onetime_init (vlib_main_t *vm)
 {
   vlib_lex_main_t *lm = &vlib_lex_main;
 
@@ -250,7 +249,11 @@ lex_onetime_init (vlib_main_t * vm)
   lm->lex_keywords = hash_create_string (0, sizeof (uword));
   lm->pushback_sp = -1;
 
-#define _(f) { u16 tmp = vlib_lex_add_token (lm, #f); ASSERT (tmp == VLIB_LEX_##f); }
+#define _(f)                                                                  \
+  {                                                                           \
+    u16 tmp = vlib_lex_add_token (lm, #f);                                    \
+    ASSERT (tmp == VLIB_LEX_##f);                                             \
+  }
   foreach_vlib_lex_global_token;
 #undef _
 

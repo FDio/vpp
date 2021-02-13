@@ -20,7 +20,7 @@
 #include <vnet/session/session_types.h>
 #include <vnet/session/application_namespace.h>
 
-#define HALF_OPEN_LOOKUP_INVALID_VALUE ((u64)~0)
+#define HALF_OPEN_LOOKUP_INVALID_VALUE ((u64) ~0)
 
 typedef enum session_lookup_result_
 {
@@ -29,72 +29,63 @@ typedef enum session_lookup_result_
   SESSION_LOOKUP_RESULT_FILTERED
 } session_lookup_result_t;
 
-session_t *session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl,
-				 ip4_address_t * rmt, u16 lcl_port,
+session_t *session_lookup_safe4 (u32 fib_index, ip4_address_t *lcl,
+				 ip4_address_t *rmt, u16 lcl_port,
 				 u16 rmt_port, u8 proto);
-session_t *session_lookup_safe6 (u32 fib_index, ip6_address_t * lcl,
-				 ip6_address_t * rmt, u16 lcl_port,
+session_t *session_lookup_safe6 (u32 fib_index, ip6_address_t *lcl,
+				 ip6_address_t *rmt, u16 lcl_port,
 				 u16 rmt_port, u8 proto);
-transport_connection_t *session_lookup_connection_wt4 (u32 fib_index,
-						       ip4_address_t * lcl,
-						       ip4_address_t * rmt,
-						       u16 lcl_port,
-						       u16 rmt_port, u8 proto,
-						       u32 thread_index,
-						       u8 * is_filtered);
+transport_connection_t *
+session_lookup_connection_wt4 (u32 fib_index, ip4_address_t *lcl,
+			       ip4_address_t *rmt, u16 lcl_port, u16 rmt_port,
+			       u8 proto, u32 thread_index, u8 *is_filtered);
 transport_connection_t *session_lookup_connection4 (u32 fib_index,
-						    ip4_address_t * lcl,
-						    ip4_address_t * rmt,
-						    u16 lcl_port,
-						    u16 rmt_port, u8 proto);
-transport_connection_t *session_lookup_connection_wt6 (u32 fib_index,
-						       ip6_address_t * lcl,
-						       ip6_address_t * rmt,
-						       u16 lcl_port,
-						       u16 rmt_port, u8 proto,
-						       u32 thread_index,
-						       u8 * is_filtered);
+						    ip4_address_t *lcl,
+						    ip4_address_t *rmt,
+						    u16 lcl_port, u16 rmt_port,
+						    u8 proto);
+transport_connection_t *
+session_lookup_connection_wt6 (u32 fib_index, ip6_address_t *lcl,
+			       ip6_address_t *rmt, u16 lcl_port, u16 rmt_port,
+			       u8 proto, u32 thread_index, u8 *is_filtered);
 transport_connection_t *session_lookup_connection6 (u32 fib_index,
-						    ip6_address_t * lcl,
-						    ip6_address_t * rmt,
-						    u16 lcl_port,
-						    u16 rmt_port, u8 proto);
+						    ip6_address_t *lcl,
+						    ip6_address_t *rmt,
+						    u16 lcl_port, u16 rmt_port,
+						    u8 proto);
 transport_connection_t *session_lookup_connection (u32 fib_index,
-						   ip46_address_t * lcl,
-						   ip46_address_t * rmt,
+						   ip46_address_t *lcl,
+						   ip46_address_t *rmt,
 						   u16 lcl_port, u16 rmt_port,
 						   u8 proto, u8 is_ip4);
-session_t *session_lookup_listener4 (u32 fib_index, ip4_address_t * lcl,
+session_t *session_lookup_listener4 (u32 fib_index, ip4_address_t *lcl,
 				     u16 lcl_port, u8 proto, u8 use_wildcard);
-session_t *session_lookup_listener6 (u32 fib_index, ip6_address_t * lcl,
+session_t *session_lookup_listener6 (u32 fib_index, ip6_address_t *lcl,
 				     u16 lcl_port, u8 proto, u8 use_wildcard);
-session_t *session_lookup_listener (u32 table_index,
-				    session_endpoint_t * sep);
+session_t *session_lookup_listener (u32 table_index, session_endpoint_t *sep);
 session_t *session_lookup_listener_wildcard (u32 table_index,
-					     session_endpoint_t * sep);
-int session_lookup_add_connection (transport_connection_t * tc, u64 value);
-int session_lookup_del_connection (transport_connection_t * tc);
+					     session_endpoint_t *sep);
+int session_lookup_add_connection (transport_connection_t *tc, u64 value);
+int session_lookup_del_connection (transport_connection_t *tc);
 u64 session_lookup_endpoint_listener (u32 table_index,
-				      session_endpoint_t * sepi,
-				      u8 use_rules);
-u64 session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep);
+				      session_endpoint_t *sepi, u8 use_rules);
+u64 session_lookup_local_endpoint (u32 table_index, session_endpoint_t *sep);
 session_t *session_lookup_global_session_endpoint (session_endpoint_t *);
 int session_lookup_add_session_endpoint (u32 table_index,
-					 session_endpoint_t * sep, u64 value);
+					 session_endpoint_t *sep, u64 value);
 int session_lookup_del_session_endpoint (u32 table_index,
-					 session_endpoint_t * sep);
-int session_lookup_del_session_endpoint2 (session_endpoint_t * sep);
-int session_lookup_del_session (session_t * s);
-int session_lookup_del_half_open (transport_connection_t * tc);
-int session_lookup_add_half_open (transport_connection_t * tc, u64 value);
-u64 session_lookup_half_open_handle (transport_connection_t * tc);
-transport_connection_t *session_lookup_half_open_connection (u64 handle,
-							     u8 proto,
-							     u8 is_ip4);
+					 session_endpoint_t *sep);
+int session_lookup_del_session_endpoint2 (session_endpoint_t *sep);
+int session_lookup_del_session (session_t *s);
+int session_lookup_del_half_open (transport_connection_t *tc);
+int session_lookup_add_half_open (transport_connection_t *tc, u64 value);
+u64 session_lookup_half_open_handle (transport_connection_t *tc);
+transport_connection_t *
+session_lookup_half_open_connection (u64 handle, u8 proto, u8 is_ip4);
 u32 session_lookup_get_index_for_fib (u32 fib_proto, u32 fib_index);
 
-void session_lookup_show_table_entries (vlib_main_t * vm,
-					session_table_t * table, u8 type,
+void session_lookup_show_table_entries (vlib_main_t *vm,
+					session_table_t *table, u8 type,
 					u8 is_local);
 
 void session_lookup_dump_rules_table (u32 fib_index, u8 fib_proto,
@@ -129,8 +120,8 @@ typedef struct _session_rule_add_del_args
   u8 transport_proto;
 } session_rule_add_del_args_t;
 
-int vnet_session_rule_add_del (session_rule_add_del_args_t * args);
-void session_lookup_set_tables_appns (app_namespace_t * app_ns);
+int vnet_session_rule_add_del (session_rule_add_del_args_t *args);
+void session_lookup_set_tables_appns (app_namespace_t *app_ns);
 
 void session_lookup_init (void);
 

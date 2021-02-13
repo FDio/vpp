@@ -47,7 +47,7 @@ typedef struct
 memif_test_main_t memif_test_main;
 
 static uword
-unformat_memif_queues (unformat_input_t * input, va_list * args)
+unformat_memif_queues (unformat_input_t *input, va_list *args)
 {
   u32 *rx_queues = va_arg (*args, u32 *);
   u32 *tx_queues = va_arg (*args, u32 *);
@@ -62,7 +62,7 @@ unformat_memif_queues (unformat_input_t * input, va_list * args)
 
 /* memif_socket_filename_add_del API */
 static int
-api_memif_socket_filename_add_del (vat_main_t * vam)
+api_memif_socket_filename_add_del (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_memif_socket_filename_add_del_t *mp;
@@ -124,8 +124,9 @@ api_memif_socket_filename_add_del (vat_main_t * vam)
 
 /* memif_socket_filename_add_del reply handler */
 #define VL_API_MEMIF_SOCKET_FILENAME_ADD_DEL_REPLY_T_HANDLER
-static void vl_api_memif_socket_filename_add_del_reply_t_handler
-  (vl_api_memif_socket_filename_add_del_reply_t * mp)
+static void
+vl_api_memif_socket_filename_add_del_reply_t_handler (
+  vl_api_memif_socket_filename_add_del_reply_t *mp)
 {
   vat_main_t *vam = memif_test_main.vat_main;
   i32 retval = ntohl (mp->retval);
@@ -137,7 +138,7 @@ static void vl_api_memif_socket_filename_add_del_reply_t_handler
 
 /* memif-create API */
 static int
-api_memif_create (vat_main_t * vam)
+api_memif_create (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_memif_create_t *mp;
@@ -167,8 +168,8 @@ api_memif_create (vat_main_t * vam)
 	;
       else if (unformat (i, "master"))
 	role = 0;
-      else if (unformat (i, "slave %U",
-			 unformat_memif_queues, &rx_queues, &tx_queues))
+      else if (unformat (i, "slave %U", unformat_memif_queues, &rx_queues,
+			 &tx_queues))
 	role = 1;
       else if (unformat (i, "mode ip"))
 	mode = MEMIF_INTERFACE_MODE_IP;
@@ -229,8 +230,8 @@ api_memif_create (vat_main_t * vam)
 }
 
 /* memif-create reply handler */
-static void vl_api_memif_create_reply_t_handler
-  (vl_api_memif_create_reply_t * mp)
+static void
+vl_api_memif_create_reply_t_handler (vl_api_memif_create_reply_t *mp)
 {
   vat_main_t *vam = memif_test_main.vat_main;
   i32 retval = ntohl (mp->retval);
@@ -248,7 +249,7 @@ static void vl_api_memif_create_reply_t_handler
 
 /* memif-delete API */
 static int
-api_memif_delete (vat_main_t * vam)
+api_memif_delete (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_memif_delete_t *mp;
@@ -284,7 +285,7 @@ api_memif_delete (vat_main_t * vam)
 
 /* memif-dump API */
 static int
-api_memif_dump (vat_main_t * vam)
+api_memif_dump (vat_main_t *vam)
 {
   memif_test_main_t *mm = &memif_test_main;
   vl_api_memif_dump_t *mp;
@@ -318,18 +319,18 @@ api_memif_dump (vat_main_t * vam)
 
 /* memif-details message handler */
 static void
-vl_api_memif_details_t_handler (vl_api_memif_details_t * mp)
+vl_api_memif_details_t_handler (vl_api_memif_details_t *mp)
 {
   vat_main_t *vam = memif_test_main.vat_main;
 
-  fformat (vam->ofp, "%s: sw_if_index %u mac %U\n"
+  fformat (vam->ofp,
+	   "%s: sw_if_index %u mac %U\n"
 	   "   id %u socket-id %u role %s\n"
 	   "   ring_size %u buffer_size %u\n"
 	   "   state %s link %s\n",
 	   mp->if_name, ntohl (mp->sw_if_index), format_ethernet_address,
 	   mp->hw_addr, clib_net_to_host_u32 (mp->id),
-	   clib_net_to_host_u32 (mp->socket_id),
-	   mp->role ? "slave" : "master",
+	   clib_net_to_host_u32 (mp->socket_id), mp->role ? "slave" : "master",
 	   ntohl (mp->ring_size), ntohs (mp->buffer_size),
 	   (mp->flags & IF_STATUS_API_FLAG_ADMIN_UP) ? "up" : "down",
 	   (mp->flags & IF_STATUS_API_FLAG_LINK_UP) ? "up" : "down");
@@ -337,7 +338,7 @@ vl_api_memif_details_t_handler (vl_api_memif_details_t * mp)
 
 /* memif_socket_filename_dump API */
 static int
-api_memif_socket_filename_dump (vat_main_t * vam)
+api_memif_socket_filename_dump (vat_main_t *vam)
 {
   memif_test_main_t *mm = &memif_test_main;
   vl_api_memif_socket_filename_dump_t *mp;
@@ -346,8 +347,8 @@ api_memif_socket_filename_dump (vat_main_t * vam)
 
   if (vam->json_output)
     {
-      clib_warning
-	("JSON output not supported for memif_socket_filename_dump");
+      clib_warning (
+	"JSON output not supported for memif_socket_filename_dump");
       return -99;
     }
 
@@ -371,14 +372,14 @@ api_memif_socket_filename_dump (vat_main_t * vam)
 }
 
 /* memif_socket_format_details message handler */
-static void vl_api_memif_socket_filename_details_t_handler
-  (vl_api_memif_socket_filename_details_t * mp)
+static void
+vl_api_memif_socket_filename_details_t_handler (
+  vl_api_memif_socket_filename_details_t *mp)
 {
   vat_main_t *vam = memif_test_main.vat_main;
 
-  fformat (vam->ofp,
-	   "id %u : filename %s\n",
-	   ntohl (mp->socket_id), mp->socket_filename);
+  fformat (vam->ofp, "id %u : filename %s\n", ntohl (mp->socket_id),
+	   mp->socket_filename);
 }
 
 #include <memif/memif.api_test.c>

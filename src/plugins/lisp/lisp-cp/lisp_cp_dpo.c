@@ -33,7 +33,7 @@ lisp_cp_dpo_get (dpo_proto_t proto)
 }
 
 static u8 *
-format_lisp_cp_dpo (u8 * s, va_list * args)
+format_lisp_cp_dpo (u8 *s, va_list *args)
 {
   index_t index = va_arg (*args, index_t);
   CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
@@ -42,12 +42,12 @@ format_lisp_cp_dpo (u8 * s, va_list * args)
 }
 
 static void
-lisp_cp_dpo_lock (dpo_id_t * dpo)
+lisp_cp_dpo_lock (dpo_id_t *dpo)
 {
 }
 
 static void
-lisp_cp_dpo_unlock (dpo_id_t * dpo)
+lisp_cp_dpo_unlock (dpo_id_t *dpo)
 {
 }
 
@@ -93,7 +93,7 @@ const static char *const *const lisp_cp_nodes[DPO_PROTO_NUM] = {
 };
 
 clib_error_t *
-lisp_cp_dpo_module_init (vlib_main_t * vm)
+lisp_cp_dpo_module_init (vlib_main_t *vm)
 {
   dpo_proto_t dproto;
 

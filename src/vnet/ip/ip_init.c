@@ -42,7 +42,7 @@
 ip_main_t ip_main;
 
 clib_error_t *
-ip_main_init (vlib_main_t * vm)
+ip_main_init (vlib_main_t *vm)
 {
   ip_main_t *im = &ip_main;
   clib_error_t *error = 0;
@@ -53,12 +53,14 @@ ip_main_init (vlib_main_t * vm)
     ip_protocol_info_t *pi;
     u32 i;
 
-#define ip_protocol(n,s)			\
-do {						\
-  vec_add2 (im->protocol_infos, pi, 1);		\
-  pi->protocol = n;				\
-  pi->name = (u8 *) #s;				\
-} while (0);
+#define ip_protocol(n, s)                                                     \
+  do                                                                          \
+    {                                                                         \
+      vec_add2 (im->protocol_infos, pi, 1);                                   \
+      pi->protocol = n;                                                       \
+      pi->name = (u8 *) #s;                                                   \
+    }                                                                         \
+  while (0);
 
 #include "protocols.def"
 
@@ -78,12 +80,12 @@ do {						\
     tcp_udp_port_info_t *pi;
     u32 i;
     static char *port_names[] = {
-#define ip_port(s,n) #s,
+#define ip_port(s, n) #s,
 #include "ports.def"
 #undef ip_port
     };
     static u16 ports[] = {
-#define ip_port(s,n) n,
+#define ip_port(s, n) n,
 #include "ports.def"
 #undef ip_port
     };
@@ -104,25 +106,13 @@ do {						\
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (ip_main_init) =
-{
-  .init_order =
-  VLIB_INITS ("vnet_main_init",
-              "ip4_init",
-              "ip6_init",
-              "icmp4_init",
-              "icmp6_init",
-              "ip6_hop_by_hop_init",
-              "udp_local_init",
-              "udp_init",
-              "ip_classify_init",
-              "in_out_acl_init",
-              "policer_classify_init",
-              "flow_classify_init",
-              "dns_init"),
+VLIB_INIT_FUNCTION (ip_main_init) = {
+  .init_order = VLIB_INITS ("vnet_main_init", "ip4_init", "ip6_init",
+			    "icmp4_init", "icmp6_init", "ip6_hop_by_hop_init",
+			    "udp_local_init", "udp_init", "ip_classify_init",
+			    "in_out_acl_init", "policer_classify_init",
+			    "flow_classify_init", "dns_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

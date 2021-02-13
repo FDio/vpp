@@ -43,31 +43,31 @@
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 
-#define foreach_osi_protocol			\
-  _ (null, 0x0)					\
-  _ (x_29, 0x01)				\
-  _ (x_633, 0x03)				\
-  _ (q_931, 0x08)				\
-  _ (q_933, 0x08)				\
-  _ (q_2931, 0x09)				\
-  _ (q_2119, 0x0c)				\
-  _ (snap, 0x80)				\
-  _ (clnp, 0x81)				\
-  _ (esis, 0x82)				\
-  _ (isis, 0x83)				\
-  _ (idrp, 0x85)				\
-  _ (x25_esis, 0x8a)				\
-  _ (iso10030, 0x8c)				\
-  _ (iso11577, 0x8d)				\
-  _ (ip6, 0x8e)					\
-  _ (compressed, 0xb0)				\
-  _ (sndcf, 0xc1)				\
-  _ (ip4, 0xcc)					\
+#define foreach_osi_protocol                                                  \
+  _ (null, 0x0)                                                               \
+  _ (x_29, 0x01)                                                              \
+  _ (x_633, 0x03)                                                             \
+  _ (q_931, 0x08)                                                             \
+  _ (q_933, 0x08)                                                             \
+  _ (q_2931, 0x09)                                                            \
+  _ (q_2119, 0x0c)                                                            \
+  _ (snap, 0x80)                                                              \
+  _ (clnp, 0x81)                                                              \
+  _ (esis, 0x82)                                                              \
+  _ (isis, 0x83)                                                              \
+  _ (idrp, 0x85)                                                              \
+  _ (x25_esis, 0x8a)                                                          \
+  _ (iso10030, 0x8c)                                                          \
+  _ (iso11577, 0x8d)                                                          \
+  _ (ip6, 0x8e)                                                               \
+  _ (compressed, 0xb0)                                                        \
+  _ (sndcf, 0xc1)                                                             \
+  _ (ip4, 0xcc)                                                               \
   _ (ppp, 0xcf)
 
 typedef enum
 {
-#define _(f,n) OSI_PROTOCOL_##f = n,
+#define _(f, n) OSI_PROTOCOL_##f = n,
   foreach_osi_protocol
 #undef _
 } osi_protocol_t;
@@ -94,13 +94,13 @@ typedef struct
   u32 next_index;
 } osi_protocol_info_t;
 
-#define foreach_osi_error			\
-  _ (NONE, "no error")				\
+#define foreach_osi_error                                                     \
+  _ (NONE, "no error")                                                        \
   _ (UNKNOWN_PROTOCOL, "unknown osi protocol")
 
 typedef enum
 {
-#define _(f,s) OSI_ERROR_##f,
+#define _(f, s) OSI_ERROR_##f,
   foreach_osi_error
 #undef _
     OSI_N_ERROR,
@@ -120,7 +120,7 @@ typedef struct
 } osi_main_t;
 
 always_inline osi_protocol_info_t *
-osi_get_protocol_info (osi_main_t * m, osi_protocol_t protocol)
+osi_get_protocol_info (osi_main_t *m, osi_protocol_t protocol)
 {
   uword *p = hash_get (m->protocol_info_by_protocol, protocol);
   return p ? vec_elt_at_index (m->protocol_infos, p[0]) : 0;
@@ -143,7 +143,7 @@ unformat_function_t unformat_osi_header;
 unformat_function_t unformat_pg_osi_header;
 
 always_inline void
-osi_setup_node (vlib_main_t * vm, u32 node_index)
+osi_setup_node (vlib_main_t *vm, u32 node_index)
 {
   vlib_node_t *n = vlib_get_node (vm, node_index);
   pg_node_t *pn = pg_get_node (node_index);

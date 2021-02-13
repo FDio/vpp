@@ -28,21 +28,21 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_dns46_request_trace (u8 * s, va_list * args)
+format_dns46_request_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   dns46_request_trace_t *t = va_arg (*args, dns46_request_trace_t *);
 
-  s = format (s, "DNS46_REPLY: pool index %d, disposition  %d",
-	      t->pool_index, t->disposition);
+  s = format (s, "DNS46_REPLY: pool index %d, disposition  %d", t->pool_index,
+	      t->disposition);
   return s;
 }
 
 vlib_node_registration_t dns46_request_node;
 
 static char *dns46_request_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_dns46_request_error
 #undef _
 };
@@ -56,9 +56,8 @@ typedef enum
 } dns46_request_next_t;
 
 static uword
-dns46_request_inline (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame,
-		      int is_ip6)
+dns46_request_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vlib_frame_t *frame, int is_ip6)
 {
   u32 n_left_from, *from, *to_next;
   dns46_request_next_t next_index;
@@ -212,7 +211,7 @@ dns46_request_inline (vlib_main_t * vm,
 	   * vnet_dns_labels_to_name produces a non NULL terminated vector
 	   * vnet_dns_resolve_name expects a C-string.
 	   */
-	  name0 = vnet_dns_labels_to_name (label0, (u8 *) d0, (u8 **) & q0);
+	  name0 = vnet_dns_labels_to_name (label0, (u8 *) d0, (u8 **) &q0);
 	  vec_add1 (name0, 0);
 	  _vec_len (name0) -= 1;
 
@@ -260,8 +259,8 @@ dns46_request_inline (vlib_main_t * vm,
 	done0:
 	  b0->error = node->errors[error0];
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      dns46_request_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -270,9 +269,8 @@ dns46_request_inline (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -282,14 +280,13 @@ dns46_request_inline (vlib_main_t * vm,
 }
 
 static uword
-dns4_request_node_fn (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+dns4_request_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vlib_frame_t *frame)
 {
 
-  return dns46_request_inline (vm, node, frame, 0 /* is_ip6 */ );
+  return dns46_request_inline (vm, node, frame, 0 /* is_ip6 */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dns4_request_node) =
 {
   .function = dns4_request_node_fn,
@@ -306,17 +303,15 @@ VLIB_REGISTER_NODE (dns4_request_node) =
     [DNS46_REQUEST_NEXT_IP_LOOKUP] = "ip4-lookup",
   },
 };
-/* *INDENT-ON* */
 
 static uword
-dns6_request_node_fn (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+dns6_request_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vlib_frame_t *frame)
 {
 
-  return dns46_request_inline (vm, node, frame, 1 /* is_ip6 */ );
+  return dns46_request_inline (vm, node, frame, 1 /* is_ip6 */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dns6_request_node) =
 {
   .function = dns6_request_node_fn,
@@ -333,7 +328,6 @@ VLIB_REGISTER_NODE (dns6_request_node) =
     [DNS46_REQUEST_NEXT_IP_LOOKUP] = "ip6-lookup",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -78,15 +78,14 @@ typedef struct
   dns_pending_request_t *pending_requests;
 } dns_cache_entry_t;
 
-#define DNS_CACHE_ENTRY_FLAG_VALID	(1<<0) /**< we have Actual Data */
-#define DNS_CACHE_ENTRY_FLAG_STATIC	(1<<1) /**< static entry */
-#define DNS_CACHE_ENTRY_FLAG_CNAME	(1<<2) /**< CNAME (indirect) entry */
+#define DNS_CACHE_ENTRY_FLAG_VALID  (1 << 0) /**< we have Actual Data */
+#define DNS_CACHE_ENTRY_FLAG_STATIC (1 << 1) /**< static entry */
+#define DNS_CACHE_ENTRY_FLAG_CNAME  (1 << 2) /**< CNAME (indirect) entry */
 
 #define DNS_RETRIES_PER_SERVER 3
 
-#define DNS_RESOLVER_EVENT_RESOLVED	1
-#define DNS_RESOLVER_EVENT_PENDING	2
-
+#define DNS_RESOLVER_EVENT_RESOLVED 1
+#define DNS_RESOLVER_EVENT_PENDING  2
 
 typedef struct
 {
@@ -133,75 +132,71 @@ extern vlib_node_registration_t dns46_reply_node;
 extern vlib_node_registration_t dns4_request_node;
 extern vlib_node_registration_t dns6_request_node;
 
-#define foreach_dns46_request_error                                     \
-_(NONE, "No error")							\
-_(UNIMPLEMENTED, "Unimplemented")                                       \
-_(PROCESSED, "DNS request pkts processed")                              \
-_(IP_OPTIONS, "DNS pkts with ip options (dropped)")                     \
-_(BAD_REQUEST, "DNS pkts with serious discrepancies (dropped)")         \
-_(TOO_MANY_REQUESTS, "DNS pkts asking too many questions")              \
-_(RESOLUTION_REQUIRED, "DNS pkts pending upstream name resolution")
+#define foreach_dns46_request_error                                           \
+  _ (NONE, "No error")                                                        \
+  _ (UNIMPLEMENTED, "Unimplemented")                                          \
+  _ (PROCESSED, "DNS request pkts processed")                                 \
+  _ (IP_OPTIONS, "DNS pkts with ip options (dropped)")                        \
+  _ (BAD_REQUEST, "DNS pkts with serious discrepancies (dropped)")            \
+  _ (TOO_MANY_REQUESTS, "DNS pkts asking too many questions")                 \
+  _ (RESOLUTION_REQUIRED, "DNS pkts pending upstream name resolution")
 
 typedef enum
 {
-#define _(sym,str) DNS46_REQUEST_ERROR_##sym,
+#define _(sym, str) DNS46_REQUEST_ERROR_##sym,
   foreach_dns46_request_error
 #undef _
     DNS46_REQUEST_N_ERROR,
 } dns46_request_error_t;
 
-#define foreach_dns46_reply_error                       \
-_(DISABLED, "DNS pkts punted (feature disabled)")       \
-_(PROCESSED, "DNS reply pkts processed")                \
-_(NO_ELT, "No DNS pool element")                        \
-_(FORMAT_ERROR, "DNS format errors")                    \
-_(TEST_DROP, "DNS reply pkt dropped for test purposes") \
-_(MULTIPLE_REPLY, "DNS multiple reply packets")	        \
-_(NO_UNRESOLVED_ENTRY, "No unresolved entry for pkt")
+#define foreach_dns46_reply_error                                             \
+  _ (DISABLED, "DNS pkts punted (feature disabled)")                          \
+  _ (PROCESSED, "DNS reply pkts processed")                                   \
+  _ (NO_ELT, "No DNS pool element")                                           \
+  _ (FORMAT_ERROR, "DNS format errors")                                       \
+  _ (TEST_DROP, "DNS reply pkt dropped for test purposes")                    \
+  _ (MULTIPLE_REPLY, "DNS multiple reply packets")                            \
+  _ (NO_UNRESOLVED_ENTRY, "No unresolved entry for pkt")
 
 typedef enum
 {
-#define _(sym,str) DNS46_REPLY_ERROR_##sym,
+#define _(sym, str) DNS46_REPLY_ERROR_##sym,
   foreach_dns46_reply_error
 #undef _
     DNS46_REPLY_N_ERROR,
 } dns46_reply_error_t;
 
-void vnet_send_dns_request (vlib_main_t * vm, dns_main_t * dm,
-			    dns_cache_entry_t * ep);
-int vnet_dns_cname_indirection_nolock (vlib_main_t * vm, dns_main_t * dm,
-				       u32 ep_index, u8 * reply);
+void vnet_send_dns_request (vlib_main_t *vm, dns_main_t *dm,
+			    dns_cache_entry_t *ep);
+int vnet_dns_cname_indirection_nolock (vlib_main_t *vm, dns_main_t *dm,
+				       u32 ep_index, u8 *reply);
 
-int vnet_dns_delete_entry_by_index_nolock (dns_main_t * dm, u32 index);
+int vnet_dns_delete_entry_by_index_nolock (dns_main_t *dm, u32 index);
 
-int
-vnet_dns_resolve_name (vlib_main_t * vm, dns_main_t * dm, u8 * name,
-		       dns_pending_request_t * t, dns_cache_entry_t ** retp);
+int vnet_dns_resolve_name (vlib_main_t *vm, dns_main_t *dm, u8 *name,
+			   dns_pending_request_t *t, dns_cache_entry_t **retp);
 
-void
-vnet_dns_send_dns6_request (vlib_main_t * vm, dns_main_t * dm,
-			    dns_cache_entry_t * ep, ip6_address_t * server);
-void
-vnet_dns_send_dns4_request (vlib_main_t * vm, dns_main_t * dm,
-			    dns_cache_entry_t * ep, ip4_address_t * server);
+void vnet_dns_send_dns6_request (vlib_main_t *vm, dns_main_t *dm,
+				 dns_cache_entry_t *ep, ip6_address_t *server);
+void vnet_dns_send_dns4_request (vlib_main_t *vm, dns_main_t *dm,
+				 dns_cache_entry_t *ep, ip4_address_t *server);
 
-void vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
-			   dns_pending_request_t * t, dns_cache_entry_t * ep,
-			   vlib_buffer_t * b0);
+void vnet_send_dns4_reply (vlib_main_t *vm, dns_main_t *dm,
+			   dns_pending_request_t *t, dns_cache_entry_t *ep,
+			   vlib_buffer_t *b0);
 
-void vnet_send_dns6_reply (vlib_main_t * vm, dns_main_t * dm,
-			   dns_pending_request_t * t, dns_cache_entry_t * ep,
-			   vlib_buffer_t * b0);
+void vnet_send_dns6_reply (vlib_main_t *vm, dns_main_t *dm,
+			   dns_pending_request_t *t, dns_cache_entry_t *ep,
+			   vlib_buffer_t *b0);
 
-u8 *vnet_dns_labels_to_name (u8 * label, u8 * full_text,
-			     u8 ** parse_from_here);
+u8 *vnet_dns_labels_to_name (u8 *label, u8 *full_text, u8 **parse_from_here);
 
-void vnet_dns_create_resolver_process (vlib_main_t * vm, dns_main_t * dm);
+void vnet_dns_create_resolver_process (vlib_main_t *vm, dns_main_t *dm);
 
 format_function_t format_dns_reply;
 
 static inline void
-dns_cache_lock (dns_main_t * dm, int tag)
+dns_cache_lock (dns_main_t *dm, int tag)
 {
   if (dm->cache_lock)
     {
@@ -213,7 +208,7 @@ dns_cache_lock (dns_main_t * dm, int tag)
 }
 
 static inline void
-dns_cache_unlock (dns_main_t * dm)
+dns_cache_unlock (dns_main_t *dm)
 {
   if (dm->cache_lock)
     {

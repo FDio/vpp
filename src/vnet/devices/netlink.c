@@ -33,7 +33,7 @@ typedef struct
 } vnet_netlink_msg_t;
 
 static void
-vnet_netlink_msg_init (vnet_netlink_msg_t * m, u16 type, u16 flags,
+vnet_netlink_msg_init (vnet_netlink_msg_t *m, u16 type, u16 flags,
 		       void *msg_data, int msg_len)
 {
   struct nlmsghdr *nh;
@@ -49,7 +49,7 @@ vnet_netlink_msg_init (vnet_netlink_msg_t * m, u16 type, u16 flags,
 }
 
 static void
-vnet_netlink_msg_add_rtattr (vnet_netlink_msg_t * m, u16 rta_type,
+vnet_netlink_msg_add_rtattr (vnet_netlink_msg_t *m, u16 rta_type,
 			     void *rta_data, int rta_data_len)
 {
   struct rtattr *rta;
@@ -63,7 +63,7 @@ vnet_netlink_msg_add_rtattr (vnet_netlink_msg_t * m, u16 rta_type,
 }
 
 static clib_error_t *
-vnet_netlink_msg_send (vnet_netlink_msg_t * m)
+vnet_netlink_msg_send (vnet_netlink_msg_t *m)
 {
   clib_error_t *err = 0;
   struct sockaddr_nl ra = { 0 };
@@ -119,8 +119,8 @@ vnet_netlink_set_link_name (int ifindex, char *new_ifname)
   clib_error_t *err = 0;
 
   ifmsg.ifi_index = ifindex;
-  vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST,
-			 &ifmsg, sizeof (struct ifinfomsg));
+  vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST, &ifmsg,
+			 sizeof (struct ifinfomsg));
 
   vnet_netlink_msg_add_rtattr (&m, IFLA_IFNAME, new_ifname,
 			       strlen (new_ifname) + 1);
@@ -139,8 +139,8 @@ vnet_netlink_set_link_netns (int ifindex, int netns_fd, char *new_ifname)
   clib_error_t *err = 0;
 
   ifmsg.ifi_index = ifindex;
-  vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST,
-			 &ifmsg, sizeof (struct ifinfomsg));
+  vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST, &ifmsg,
+			 sizeof (struct ifinfomsg));
 
   vnet_netlink_msg_add_rtattr (&m, IFLA_NET_NS_FD, &netns_fd, sizeof (int));
   if (new_ifname)
@@ -164,11 +164,10 @@ vnet_netlink_set_link_master (int ifindex, char *master_ifname)
   ifmsg.ifi_index = ifindex;
 
   if ((i = if_nametoindex (master_ifname)) == 0)
-    clib_error_return_unix (0, "unknown master interface '%s'",
-			    master_ifname);
+    clib_error_return_unix (0, "unknown master interface '%s'", master_ifname);
 
-  vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST,
-			 &ifmsg, sizeof (struct ifinfomsg));
+  vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST, &ifmsg,
+			 sizeof (struct ifinfomsg));
   vnet_netlink_msg_add_rtattr (&m, IFLA_MASTER, &i, sizeof (int));
   err = vnet_netlink_msg_send (&m);
   if (err)
@@ -177,7 +176,7 @@ vnet_netlink_set_link_master (int ifindex, char *master_ifname)
 }
 
 clib_error_t *
-vnet_netlink_set_link_addr (int ifindex, u8 * mac)
+vnet_netlink_set_link_addr (int ifindex, u8 *mac)
 {
   vnet_netlink_msg_t m;
   struct ifinfomsg ifmsg = { 0 };
@@ -185,8 +184,8 @@ vnet_netlink_set_link_addr (int ifindex, u8 * mac)
 
   ifmsg.ifi_index = ifindex;
 
-  vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST,
-			 &ifmsg, sizeof (struct ifinfomsg));
+  vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST, &ifmsg,
+			 sizeof (struct ifinfomsg));
   vnet_netlink_msg_add_rtattr (&m, IFLA_ADDRESS, mac, 6);
   err = vnet_netlink_msg_send (&m);
   if (err)
@@ -205,8 +204,8 @@ vnet_netlink_set_link_state (int ifindex, int up)
   ifmsg.ifi_change = IFF_UP;
   ifmsg.ifi_index = ifindex;
 
-  vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST,
-			 &ifmsg, sizeof (struct ifinfomsg));
+  vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST, &ifmsg,
+			 sizeof (struct ifinfomsg));
   err = vnet_netlink_msg_send (&m);
   if (err)
     err = clib_error_return (0, "set link state %U", format_clib_error, err);
@@ -222,8 +221,8 @@ vnet_netlink_set_link_mtu (int ifindex, int mtu)
 
   ifmsg.ifi_index = ifindex;
 
-  vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST,
-			 &ifmsg, sizeof (struct ifinfomsg));
+  vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST, &ifmsg,
+			 sizeof (struct ifinfomsg));
   vnet_netlink_msg_add_rtattr (&m, IFLA_MTU, &mtu, sizeof (int));
   err = vnet_netlink_msg_send (&m);
   if (err)
@@ -243,8 +242,8 @@ vnet_netlink_add_ip4_addr (int ifindex, void *addr, int pfx_len)
   ifa.ifa_index = ifindex;
 
   vnet_netlink_msg_init (&m, RTM_NEWADDR,
-			 NLM_F_REQUEST | NLM_F_CREATE | NLM_F_REPLACE,
-			 &ifa, sizeof (struct ifaddrmsg));
+			 NLM_F_REQUEST | NLM_F_CREATE | NLM_F_REPLACE, &ifa,
+			 sizeof (struct ifaddrmsg));
 
   vnet_netlink_msg_add_rtattr (&m, IFA_LOCAL, addr, 4);
   vnet_netlink_msg_add_rtattr (&m, IFA_ADDRESS, addr, 4);
@@ -266,8 +265,8 @@ vnet_netlink_add_ip6_addr (int ifindex, void *addr, int pfx_len)
   ifa.ifa_index = ifindex;
 
   vnet_netlink_msg_init (&m, RTM_NEWADDR,
-			 NLM_F_REQUEST | NLM_F_CREATE | NLM_F_REPLACE,
-			 &ifa, sizeof (struct ifaddrmsg));
+			 NLM_F_REQUEST | NLM_F_CREATE | NLM_F_REPLACE, &ifa,
+			 sizeof (struct ifaddrmsg));
 
   vnet_netlink_msg_add_rtattr (&m, IFA_LOCAL, addr, 16);
   vnet_netlink_msg_add_rtattr (&m, IFA_ADDRESS, addr, 16);
@@ -291,8 +290,8 @@ vnet_netlink_add_ip4_route (void *dst, u8 dst_len, void *gw)
   rtm.rtm_dst_len = dst_len;
 
   vnet_netlink_msg_init (&m, RTM_NEWROUTE,
-			 NLM_F_REQUEST | NLM_F_CREATE | NLM_F_REPLACE,
-			 &rtm, sizeof (struct rtmsg));
+			 NLM_F_REQUEST | NLM_F_CREATE | NLM_F_REPLACE, &rtm,
+			 sizeof (struct rtmsg));
 
   vnet_netlink_msg_add_rtattr (&m, RTA_GATEWAY, gw, 4);
   vnet_netlink_msg_add_rtattr (&m, RTA_DST, dst ? dst : dflt, 4);
@@ -316,8 +315,8 @@ vnet_netlink_add_ip6_route (void *dst, u8 dst_len, void *gw)
   rtm.rtm_dst_len = dst_len;
 
   vnet_netlink_msg_init (&m, RTM_NEWROUTE,
-			 NLM_F_REQUEST | NLM_F_CREATE | NLM_F_REPLACE,
-			 &rtm, sizeof (struct rtmsg));
+			 NLM_F_REQUEST | NLM_F_CREATE | NLM_F_REPLACE, &rtm,
+			 sizeof (struct rtmsg));
 
   vnet_netlink_msg_add_rtattr (&m, RTA_GATEWAY, gw, 16);
   vnet_netlink_msg_add_rtattr (&m, RTA_DST, dst ? dst : dflt, 16);

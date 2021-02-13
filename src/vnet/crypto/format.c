@@ -18,7 +18,7 @@
 #include <vnet/crypto/crypto.h>
 
 u8 *
-format_vnet_crypto_alg (u8 * s, va_list * args)
+format_vnet_crypto_alg (u8 *s, va_list *args)
 {
   vnet_crypto_alg_t alg = va_arg (*args, vnet_crypto_alg_t);
   vnet_crypto_main_t *cm = &crypto_main;
@@ -27,7 +27,7 @@ format_vnet_crypto_alg (u8 * s, va_list * args)
 }
 
 uword
-unformat_vnet_crypto_alg (unformat_input_t * input, va_list * args)
+unformat_vnet_crypto_alg (unformat_input_t *input, va_list *args)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_alg_t *alg = va_arg (*args, vnet_crypto_alg_t *);
@@ -48,10 +48,10 @@ unformat_vnet_crypto_alg (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_vnet_crypto_op (u8 * s, va_list * args)
+format_vnet_crypto_op (u8 *s, va_list *args)
 {
   vnet_crypto_main_t *cm = &crypto_main;
-  vnet_crypto_op_id_t op = va_arg (*args, int);	// vnet_crypto_op_id_t);
+  vnet_crypto_op_id_t op = va_arg (*args, int); // vnet_crypto_op_id_t);
   vnet_crypto_op_data_t *otd = cm->opt_data + op;
 
   return format (s, "%U-%U", format_vnet_crypto_op_type, otd->type,
@@ -59,7 +59,7 @@ format_vnet_crypto_op (u8 * s, va_list * args)
 }
 
 u8 *
-format_vnet_crypto_op_type (u8 * s, va_list * args)
+format_vnet_crypto_op_type (u8 *s, va_list *args)
 {
   vnet_crypto_op_type_t opt = va_arg (*args, vnet_crypto_op_type_t);
   char *strings[] = {
@@ -75,7 +75,7 @@ format_vnet_crypto_op_type (u8 * s, va_list * args)
 }
 
 u8 *
-format_vnet_crypto_op_status (u8 * s, va_list * args)
+format_vnet_crypto_op_status (u8 *s, va_list *args)
 {
   vnet_crypto_op_status_t st = va_arg (*args, vnet_crypto_op_status_t);
   char *strings[] = {
@@ -91,7 +91,7 @@ format_vnet_crypto_op_status (u8 * s, va_list * args)
 }
 
 u8 *
-format_vnet_crypto_engine (u8 * s, va_list * args)
+format_vnet_crypto_engine (u8 *s, va_list *args)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   u32 crypto_engine_index = va_arg (*args, u32);
@@ -106,7 +106,7 @@ format_vnet_crypto_engine (u8 * s, va_list * args)
 }
 
 u8 *
-format_vnet_crypto_async_op_type (u8 * s, va_list * args)
+format_vnet_crypto_async_op_type (u8 *s, va_list *args)
 {
   vnet_crypto_async_op_type_t opt =
     va_arg (*args, vnet_crypto_async_op_type_t);
@@ -123,7 +123,7 @@ format_vnet_crypto_async_op_type (u8 * s, va_list * args)
 }
 
 u8 *
-format_vnet_crypto_async_alg (u8 * s, va_list * args)
+format_vnet_crypto_async_alg (u8 *s, va_list *args)
 {
   vnet_crypto_async_alg_t alg = va_arg (*args, vnet_crypto_async_alg_t);
   vnet_crypto_main_t *cm = &crypto_main;
@@ -132,7 +132,7 @@ format_vnet_crypto_async_alg (u8 * s, va_list * args)
 }
 
 u8 *
-format_vnet_crypto_async_op (u8 * s, va_list * args)
+format_vnet_crypto_async_op (u8 *s, va_list *args)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_async_op_id_t op = va_arg (*args, vnet_crypto_async_op_id_t);

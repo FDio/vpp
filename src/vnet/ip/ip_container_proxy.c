@@ -44,7 +44,7 @@
 #include <vnet/dpo/load_balance.h>
 
 clib_error_t *
-vnet_ip_container_proxy_add_del (vnet_ip_container_proxy_args_t * args)
+vnet_ip_container_proxy_add_del (vnet_ip_container_proxy_args_t *args)
 {
   u32 fib_index;
 
@@ -59,8 +59,7 @@ vnet_ip_container_proxy_add_del (vnet_ip_container_proxy_args_t * args)
       dpo_id_t proxy_dpo = DPO_INVALID;
       l3_proxy_dpo_add_or_lock (fib_proto_to_dpo (args->prefix.fp_proto),
 				args->sw_if_index, &proxy_dpo);
-      fib_table_entry_special_dpo_add (fib_index,
-				       &args->prefix,
+      fib_table_entry_special_dpo_add (fib_index, &args->prefix,
 				       FIB_SOURCE_PROXY,
 				       FIB_ENTRY_FLAG_EXCLUSIVE, &proxy_dpo);
       dpo_reset (&proxy_dpo);
@@ -74,7 +73,7 @@ vnet_ip_container_proxy_add_del (vnet_ip_container_proxy_args_t * args)
 }
 
 u8
-ip_container_proxy_is_set (fib_prefix_t * pfx, u32 sw_if_index)
+ip_container_proxy_is_set (fib_prefix_t *pfx, u32 sw_if_index)
 {
   u32 fib_index;
   fib_node_index_t fei;
@@ -82,8 +81,8 @@ ip_container_proxy_is_set (fib_prefix_t * pfx, u32 sw_if_index)
   l3_proxy_dpo_t *l3p;
   load_balance_t *lb0;
 
-  fib_index = fib_table_get_table_id_for_sw_if_index (pfx->fp_proto,
-						      sw_if_index);
+  fib_index =
+    fib_table_get_table_id_for_sw_if_index (pfx->fp_proto, sw_if_index);
   if (fib_index == ~0)
     return 0;
 
@@ -138,27 +137,21 @@ ip_container_proxy_walk (ip_container_proxy_cb_t cb, void *ctx)
     .ctx = ctx,
   };
 
-  /* *INDENT-OFF* */
   pool_foreach (fib_table, ip4_main.fibs)
-   {
-    fib_table_walk(fib_table->ft_index,
-                   FIB_PROTOCOL_IP4,
-                   ip_container_proxy_fib_table_walk,
-                   &wctx);
-  }
+    {
+      fib_table_walk (fib_table->ft_index, FIB_PROTOCOL_IP4,
+		      ip_container_proxy_fib_table_walk, &wctx);
+    }
   pool_foreach (fib_table, ip6_main.fibs)
-   {
-    fib_table_walk(fib_table->ft_index,
-                   FIB_PROTOCOL_IP6,
-                   ip_container_proxy_fib_table_walk,
-                   &wctx);
-  }
-  /* *INDENT-ON* */
+    {
+      fib_table_walk (fib_table->ft_index, FIB_PROTOCOL_IP6,
+		      ip_container_proxy_fib_table_walk, &wctx);
+    }
 }
 
 clib_error_t *
-ip_container_cmd (vlib_main_t * vm,
-		  unformat_input_t * main_input, vlib_cli_command_t * cmd)
+ip_container_cmd (vlib_main_t *vm, unformat_input_t *main_input,
+		  vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   fib_prefix_t pfx;
@@ -183,15 +176,15 @@ ip_container_cmd (vlib_main_t * vm,
 	  pfx.fp_len = 32;
 	  addr_set = 1;
 	}
-      else if (unformat (line_input, "%U",
-			 unformat_ip6_address, &pfx.fp_addr.ip6))
+      else if (unformat (line_input, "%U", unformat_ip6_address,
+			 &pfx.fp_addr.ip6))
 	{
 	  pfx.fp_proto = FIB_PROTOCOL_IP6;
 	  pfx.fp_len = 128;
 	  addr_set = 1;
 	}
-      else if (unformat (line_input, "%U",
-			 unformat_vnet_sw_interface, vnm, &sw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else if (unformat (line_input, "del"))
 	is_del = 1;
@@ -220,18 +213,16 @@ ip_container_cmd (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip_container_command_node, static) = {
   .path = "ip container",
   .function = ip_container_cmd,
   .short_help = "ip container <address> <interface>",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-show_ip_container_cmd_fn (vlib_main_t * vm, unformat_input_t * main_input,
-			  vlib_cli_command_t * cmd)
+show_ip_container_cmd_fn (vlib_main_t *vm, unformat_input_t *main_input,
+			  vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
@@ -248,14 +239,14 @@ show_ip_container_cmd_fn (vlib_main_t * vm, unformat_input_t * main_input,
 	  pfx.fp_proto = FIB_PROTOCOL_IP4;
 	  pfx.fp_len = 32;
 	}
-      else if (unformat (line_input, "%U",
-			 unformat_ip6_address, &pfx.fp_addr.ip6))
+      else if (unformat (line_input, "%U", unformat_ip6_address,
+			 &pfx.fp_addr.ip6))
 	{
 	  pfx.fp_proto = FIB_PROTOCOL_IP6;
 	  pfx.fp_len = 128;
 	}
-      else if (unformat (line_input, "%U",
-			 unformat_vnet_sw_interface, vnm, &sw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else
 	{
@@ -279,14 +270,12 @@ show_ip_container_cmd_fn (vlib_main_t * vm, unformat_input_t * main_input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip_container_command, static) = {
   .path = "show ip container",
   .function = show_ip_container_cmd_fn,
   .short_help = "show ip container <address> <interface>",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

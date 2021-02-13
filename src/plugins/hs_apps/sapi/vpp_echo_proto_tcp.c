@@ -19,7 +19,7 @@
 #include <hs_apps/sapi/vpp_echo_common.h>
 
 static void
-tcp_echo_cleanup_cb (echo_session_t * s, u8 parent_died)
+tcp_echo_cleanup_cb (echo_session_t *s, u8 parent_died)
 {
   echo_main_t *em = &echo_main;
   echo_session_t *ls;
@@ -32,7 +32,6 @@ tcp_echo_cleanup_cb (echo_session_t * s, u8 parent_died)
       clib_atomic_sub_fetch (&ls->accepted_session_count, 1);
     }
 
-
   clib_atomic_sub_fetch (&em->n_clients_connected, 1);
   s->session_state = ECHO_SESSION_STATE_CLOSED;
   if (!em->n_clients_connected)
@@ -40,8 +39,8 @@ tcp_echo_cleanup_cb (echo_session_t * s, u8 parent_died)
 }
 
 static void
-tcp_echo_connected_cb (session_connected_bundled_msg_t * mp,
-		       u32 session_index, u8 is_failed)
+tcp_echo_connected_cb (session_connected_bundled_msg_t *mp, u32 session_index,
+		       u8 is_failed)
 {
   static u32 client_index = 0;
   echo_main_t *em = &echo_main;
@@ -50,7 +49,7 @@ tcp_echo_connected_cb (session_connected_bundled_msg_t * mp,
     {
       ECHO_FAIL (ECHO_FAIL_TCP_BAPI_CONNECT,
 		 "Bapi connect errored on session %u", session_index);
-      return;			/* Dont handle bapi connect errors for now */
+      return; /* Dont handle bapi connect errors for now */
     }
 
   ECHO_LOG (2, "Connected session 0x%lx -> URI",
@@ -71,7 +70,7 @@ tcp_echo_connected_cb (session_connected_bundled_msg_t * mp,
 }
 
 static void
-tcp_echo_accepted_cb (session_accepted_msg_t * mp, echo_session_t * session)
+tcp_echo_accepted_cb (session_accepted_msg_t *mp, echo_session_t *session)
 {
   static u32 client_index = 0;
   echo_main_t *em = &echo_main;
@@ -97,13 +96,13 @@ tcp_echo_accepted_cb (session_accepted_msg_t * mp, echo_session_t * session)
 }
 
 static void
-tcp_echo_sent_disconnect_cb (echo_session_t * s)
+tcp_echo_sent_disconnect_cb (echo_session_t *s)
 {
   s->session_state = ECHO_SESSION_STATE_CLOSING;
 }
 
 static void
-tcp_echo_disconnected_cb (session_disconnected_msg_t * mp, echo_session_t * s)
+tcp_echo_disconnected_cb (session_disconnected_msg_t *mp, echo_session_t *s)
 {
   echo_main_t *em = &echo_main;
   echo_session_print_stats (em, s);
@@ -115,7 +114,7 @@ tcp_echo_disconnected_cb (session_disconnected_msg_t * mp, echo_session_t * s)
 }
 
 static void
-tcp_echo_reset_cb (session_reset_msg_t * mp, echo_session_t * s)
+tcp_echo_reset_cb (session_reset_msg_t *mp, echo_session_t *s)
 {
   echo_main_t *em = &echo_main;
   clib_atomic_fetch_add (&em->stats.reset_count.s, 1);

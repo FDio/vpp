@@ -31,8 +31,8 @@
  */
 
 static inline int
-vnet_is_packet_traced_inline (vlib_buffer_t * b,
-			      u32 classify_table_index, int func)
+vnet_is_packet_traced_inline (vlib_buffer_t *b, u32 classify_table_index,
+			      int func)
 {
   vnet_classify_main_t *vcm = &vnet_classify_main;
   vnet_classify_table_t *t;
@@ -55,7 +55,7 @@ vnet_is_packet_traced_inline (vlib_buffer_t * b,
 
   /* See if there's a matching entry */
   e = vnet_classify_find_entry (t, vlib_buffer_get_current (b), hash,
-				0 /* time = 0, disables hit-counter */ );
+				0 /* time = 0, disables hit-counter */);
   /* Hit means trace the packet... */
   if (e)
     {
@@ -80,7 +80,7 @@ vnet_is_packet_traced_inline (vlib_buffer_t * b,
 
       /* See if there's a matching entry */
       e = vnet_classify_find_entry (t, vlib_buffer_get_current (b), hash,
-				    0 /* time = 0, disables hit-counter */ );
+				    0 /* time = 0, disables hit-counter */);
       if (e)
 	{
 	  /* Manual hit accounting */

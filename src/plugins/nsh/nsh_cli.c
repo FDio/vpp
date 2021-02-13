@@ -22,19 +22,19 @@
 
 /* format from network order */
 u8 *
-format_nsh_pop_header (u8 * s, va_list * args)
+format_nsh_pop_header (u8 *s, va_list *args)
 {
   return format_nsh_header (s, args);
 }
 
 u8 *
-format_nsh_pop_node_map_trace (u8 * s, va_list * args)
+format_nsh_pop_node_map_trace (u8 *s, va_list *args)
 {
   return format_nsh_node_map_trace (s, args);
 }
 
 static uword
-unformat_nsh_action (unformat_input_t * input, va_list * args)
+unformat_nsh_action (unformat_input_t *input, va_list *args)
 {
   u32 *result = va_arg (*args, u32 *);
   u32 tmp;
@@ -54,7 +54,7 @@ unformat_nsh_action (unformat_input_t * input, va_list * args)
 }
 
 static u8 *
-format_nsh_action (u8 * s, va_list * args)
+format_nsh_action (u8 *s, va_list *args)
 {
   u32 nsh_action = va_arg (*args, u32);
 
@@ -73,7 +73,7 @@ format_nsh_action (u8 * s, va_list * args)
 }
 
 u8 *
-format_nsh_map (u8 * s, va_list * args)
+format_nsh_map (u8 *s, va_list *args)
 {
   nsh_map_t *map = va_arg (*args, nsh_map_t *);
 
@@ -140,27 +140,23 @@ nsh_get_adj_by_sw_if_index (u32 sw_if_index)
 {
   adj_index_t ai = ~0;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (ai, adj_pool)
-   {
-      if (sw_if_index == adj_get_sw_if_index(ai))
-      {
-        return ai;
-      }
-  }
-  /* *INDENT-ON* */
+    {
+      if (sw_if_index == adj_get_sw_if_index (ai))
+	{
+	  return ai;
+	}
+    }
 
   return ~0;
 }
-
 
 /**
  * CLI command for NSH map
  */
 static clib_error_t *
-nsh_add_del_map_command_fn (vlib_main_t * vm,
-			    unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+nsh_add_del_map_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_add = 1;
@@ -169,8 +165,10 @@ nsh_add_del_map_command_fn (vlib_main_t * vm,
   int nsh_action_set = 0;
   u32 next_node = ~0;
   u32 adj_index = ~0;
-  u32 sw_if_index = ~0;		// temporary requirement to get this moved over to NSHSFC
-  u32 rx_sw_if_index = ~0;	// temporary requirement to get this moved over to NSHSFC
+  u32 sw_if_index =
+    ~0; // temporary requirement to get this moved over to NSHSFC
+  u32 rx_sw_if_index =
+    ~0; // temporary requirement to get this moved over to NSHSFC
   nsh_add_del_map_args_t _a, *a = &_a;
   u32 map_index;
   int rv;
@@ -211,9 +209,8 @@ nsh_add_del_map_command_fn (vlib_main_t * vm,
 	  next_node = NSH_NODE_NEXT_ENCAP_ETHERNET;
 	  adj_index = nsh_get_adj_by_sw_if_index (sw_if_index);
 	}
-      else
-	if (unformat
-	    (line_input, "encap-none %d %d", &sw_if_index, &rx_sw_if_index))
+      else if (unformat (line_input, "encap-none %d %d", &sw_if_index,
+			 &rx_sw_if_index))
 	next_node = NSH_NODE_NEXT_DECAP_ETH_INPUT;
       else
 	return clib_error_return (0, "parse error: '%U'",
@@ -226,15 +223,17 @@ nsh_add_del_map_command_fn (vlib_main_t * vm,
     return clib_error_return (0, "nsp nsi pair required. Key: for NSH entry");
 
   if (mapped_nsp_set == 0 || mapped_nsi_set == 0)
-    return clib_error_return (0,
-			      "mapped-nsp mapped-nsi pair required. Key: for NSH entry");
+    return clib_error_return (
+      0, "mapped-nsp mapped-nsi pair required. Key: for NSH entry");
 
   if (nsh_action_set == 0)
     return clib_error_return (0, "nsh_action required: swap|push|pop.");
 
   if (next_node == ~0)
-    return clib_error_return (0,
-			      "must specific action: [encap-gre-intf <nn> | encap-vxlan-gpe-intf <nn> | encap-lisp-gpe-intf <nn> | encap-none <tx_sw_if_index> <rx_sw_if_index>]");
+    return clib_error_return (
+      0, "must specific action: [encap-gre-intf <nn> | encap-vxlan-gpe-intf "
+	 "<nn> | encap-lisp-gpe-intf <nn> | encap-none <tx_sw_if_index> "
+	 "<rx_sw_if_index>]");
 
   clib_memset (a, 0, sizeof (*a));
 
@@ -254,19 +253,18 @@ nsh_add_del_map_command_fn (vlib_main_t * vm,
     {
     case 0:
       break;
-    case -1:			//TODO API_ERROR_INVALID_VALUE:
-      return clib_error_return (0,
-				"mapping already exists. Remove it first.");
+    case -1: // TODO API_ERROR_INVALID_VALUE:
+      return clib_error_return (0, "mapping already exists. Remove it first.");
 
-    case -2:			// TODO API_ERROR_NO_SUCH_ENTRY:
+    case -2: // TODO API_ERROR_NO_SUCH_ENTRY:
       return clib_error_return (0, "mapping does not exist.");
 
     default:
       return clib_error_return (0, "nsh_add_del_map returned %d", rv);
     }
 
-  if ((a->map.next_node == NSH_NODE_NEXT_ENCAP_VXLAN4)
-      | (a->map.next_node == NSH_NODE_NEXT_ENCAP_VXLAN6))
+  if ((a->map.next_node == NSH_NODE_NEXT_ENCAP_VXLAN4) |
+      (a->map.next_node == NSH_NODE_NEXT_ENCAP_VXLAN6))
     {
       rv = nsh_add_del_proxy_session (a);
 
@@ -274,39 +272,39 @@ nsh_add_del_map_command_fn (vlib_main_t * vm,
 	{
 	case 0:
 	  break;
-	case -1:		//TODO API_ERROR_INVALID_VALUE:
-	  return clib_error_return (0,
-				    "nsh-proxy-session already exists. Remove it first.");
+	case -1: // TODO API_ERROR_INVALID_VALUE:
+	  return clib_error_return (
+	    0, "nsh-proxy-session already exists. Remove it first.");
 
-	case -2:		// TODO API_ERROR_NO_SUCH_ENTRY:
+	case -2: // TODO API_ERROR_NO_SUCH_ENTRY:
 	  return clib_error_return (0, "nsh-proxy-session does not exist.");
 
 	default:
-	  return clib_error_return
-	    (0, "nsh_add_del_proxy_session() returned %d", rv);
+	  return clib_error_return (
+	    0, "nsh_add_del_proxy_session() returned %d", rv);
 	}
     }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_nsh_map_command, static) = {
   .path = "create nsh map",
-  .short_help =
-    "create nsh map nsp <nn> nsi <nn> [del] mapped-nsp <nn> mapped-nsi <nn> nsh_action [swap|push|pop] "
-    "[encap-gre4-intf <nn> | encap-gre4-intf <nn> | encap-vxlan-gpe-intf <nn> | encap-lisp-gpe-intf <nn> "
-    " encap-vxlan4-intf <nn> | encap-vxlan6-intf <nn>| encap-eth-intf <nn> | encap-none]\n",
+  .short_help = "create nsh map nsp <nn> nsi <nn> [del] mapped-nsp <nn> "
+		"mapped-nsi <nn> nsh_action [swap|push|pop] "
+		"[encap-gre4-intf <nn> | encap-gre4-intf <nn> | "
+		"encap-vxlan-gpe-intf <nn> | encap-lisp-gpe-intf <nn> "
+		" encap-vxlan4-intf <nn> | encap-vxlan6-intf <nn>| "
+		"encap-eth-intf <nn> | encap-none]\n",
   .function = nsh_add_del_map_command_fn,
 };
-/* *INDENT-ON* */
 
 /**
  * CLI command for showing the mapping between NSH entries
  */
 static clib_error_t *
-show_nsh_map_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+show_nsh_map_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   nsh_main_t *nm = &nsh_main;
   nsh_map_t *map;
@@ -315,27 +313,24 @@ show_nsh_map_command_fn (vlib_main_t * vm,
     vlib_cli_output (vm, "No nsh maps configured.");
 
   pool_foreach (map, nm->nsh_mappings)
-  {
-    vlib_cli_output (vm, "%U", format_nsh_map, map);
-  }
+    {
+      vlib_cli_output (vm, "%U", format_nsh_map, map);
+    }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_nsh_map_command, static) = {
   .path = "show nsh map",
   .function = show_nsh_map_command_fn,
 };
-/* *INDENT-ON* */
 
 /**
  * CLI command for adding NSH entry
  */
 static clib_error_t *
-nsh_add_del_entry_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+nsh_add_del_entry_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_add = 1;
@@ -343,7 +338,7 @@ nsh_add_del_entry_command_fn (vlib_main_t * vm,
   u8 ttl = 63;
   u8 length = 0;
   u8 md_type = 0;
-  u8 next_protocol = 1;		/* default: ip4 */
+  u8 next_protocol = 1; /* default: ip4 */
   u32 nsp;
   u8 nsp_set = 0;
   u32 nsi;
@@ -455,8 +450,8 @@ nsh_add_del_entry_command_fn (vlib_main_t * vm,
 
 	  if (nm->add_options[nsh_option->option_id] != NULL)
 	    {
-	      if (0 != nm->add_options[nsh_option->option_id] ((u8 *) current,
-							       &option_size))
+	      if (0 != nm->add_options[nsh_option->option_id]((u8 *) current,
+							      &option_size))
 		{
 		  return clib_error_return (0, "Invalid MD Type");
 		}
@@ -494,7 +489,6 @@ nsh_add_del_entry_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_nsh_entry_command, static) = {
   .path = "create nsh entry",
   .short_help =
@@ -502,11 +496,10 @@ VLIB_CLI_COMMAND (create_nsh_entry_command, static) = {
     "  [c1 <nn> c2 <nn> c3 <nn> c4 <nn>] [tlv-ioam-trace] [del]\n",
   .function = nsh_add_del_entry_command_fn,
 };
-/* *INDENT-ON* */
 
 /* format from network order */
 u8 *
-format_nsh_header (u8 * s, va_list * args)
+format_nsh_header (u8 *s, va_list *args)
 {
   nsh_main_t *nm = &nsh_main;
   nsh_md2_data_t *opt0;
@@ -520,8 +513,8 @@ format_nsh_header (u8 * s, va_list * args)
   nsh_md2_data_t *nsh_md2 = (nsh_md2_data_t *) (nsh_base + 1);
   opt0 = (nsh_md2_data_t *) nsh_md2;
   limit0 = (nsh_md2_data_t *) ((u8 *) nsh_md2 +
-			       ((nsh_base->length & NSH_LEN_MASK) * 4
-				- sizeof (nsh_base_header_t)));
+			       ((nsh_base->length & NSH_LEN_MASK) * 4 -
+				sizeof (nsh_base_header_t)));
 
   s = format (s, "nsh ver %d ", (nsh_base->ver_o_c >> 6));
   if (nsh_base->ver_o_c & NSH_O_BIT)
@@ -530,26 +523,26 @@ format_nsh_header (u8 * s, va_list * args)
   if (nsh_base->ver_o_c & NSH_C_BIT)
     s = format (s, "C-set ");
 
-  s = format (s, "ttl %d ", (nsh_base->ver_o_c & NSH_TTL_H4_MASK) << 2 |
-	      (nsh_base->length & NSH_TTL_L2_MASK) >> 6);
+  s = format (s, "ttl %d ",
+	      (nsh_base->ver_o_c & NSH_TTL_H4_MASK) << 2 |
+		(nsh_base->length & NSH_TTL_L2_MASK) >> 6);
 
   s = format (s, "len %d (%d bytes) md_type %d next_protocol %d\n",
 	      (nsh_base->length & NSH_LEN_MASK),
-	      (nsh_base->length & NSH_LEN_MASK) * 4,
-	      nsh_base->md_type, nsh_base->next_protocol);
+	      (nsh_base->length & NSH_LEN_MASK) * 4, nsh_base->md_type,
+	      nsh_base->next_protocol);
 
   s = format (s, "  service path %d service index %d\n",
 	      (clib_net_to_host_u32 (nsh_base->nsp_nsi) >> NSH_NSP_SHIFT) &
-	      NSH_NSP_MASK,
+		NSH_NSP_MASK,
 	      clib_net_to_host_u32 (nsh_base->nsp_nsi) & NSH_NSI_MASK);
 
   if (nsh_base->md_type == 1)
     {
-      s = format (s, "  c1 %d c2 %d c3 %d c4 %d\n",
-		  clib_net_to_host_u32 (nsh_md1->c1),
-		  clib_net_to_host_u32 (nsh_md1->c2),
-		  clib_net_to_host_u32 (nsh_md1->c3),
-		  clib_net_to_host_u32 (nsh_md1->c4));
+      s = format (
+	s, "  c1 %d c2 %d c3 %d c4 %d\n", clib_net_to_host_u32 (nsh_md1->c1),
+	clib_net_to_host_u32 (nsh_md1->c2), clib_net_to_host_u32 (nsh_md1->c3),
+	clib_net_to_host_u32 (nsh_md1->c4));
     }
   else if (nsh_base->md_type == 2)
     {
@@ -567,23 +560,20 @@ format_nsh_header (u8 * s, va_list * args)
 		}
 	      else
 		{
-		  s =
-		    format (s, "\n    untraced option %d length %d",
-			    opt0->type, opt0->length);
+		  s = format (s, "\n    untraced option %d length %d",
+			      opt0->type, opt0->length);
 		}
 	    }
 	  else
 	    {
-	      s =
-		format (s, "\n    unrecognized option %d length %d",
-			opt0->type, opt0->length);
+	      s = format (s, "\n    unrecognized option %d length %d",
+			  opt0->type, opt0->length);
 	    }
 
 	  /* round to 4-byte */
 	  option_len = ((opt0->length + 3) >> 2) << 2;
-	  opt0 =
-	    (nsh_md2_data_t *) (((u8 *) opt0) + sizeof (nsh_md2_data_t) +
-				option_len);
+	  opt0 = (nsh_md2_data_t *) (((u8 *) opt0) + sizeof (nsh_md2_data_t) +
+				     option_len);
 	}
     }
 
@@ -591,7 +581,7 @@ format_nsh_header (u8 * s, va_list * args)
 }
 
 u8 *
-format_nsh_node_map_trace (u8 * s, va_list * args)
+format_nsh_node_map_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -603,8 +593,8 @@ format_nsh_node_map_trace (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-show_nsh_entry_command_fn (vlib_main_t * vm,
-			   unformat_input_t * input, vlib_cli_command_t * cmd)
+show_nsh_entry_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   nsh_main_t *nm = &nsh_main;
   nsh_entry_t *nsh_entry;
@@ -613,20 +603,19 @@ show_nsh_entry_command_fn (vlib_main_t * vm,
     vlib_cli_output (vm, "No nsh entries configured.");
 
   pool_foreach (nsh_entry, nm->nsh_entries)
-  {
-    vlib_cli_output (vm, "%U", format_nsh_header, nsh_entry->rewrite);
-    vlib_cli_output (vm, "  rewrite_size: %d bytes", nsh_entry->rewrite_size);
-  }
+    {
+      vlib_cli_output (vm, "%U", format_nsh_header, nsh_entry->rewrite);
+      vlib_cli_output (vm, "  rewrite_size: %d bytes",
+		       nsh_entry->rewrite_size);
+    }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_nsh_entry_command, static) = {
   .path = "show nsh entry",
   .function = show_nsh_entry_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

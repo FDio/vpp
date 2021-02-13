@@ -19,11 +19,11 @@
 #include <vnet/tcp/tcp.h>
 
 always_inline tcp_header_t *
-tcp_buffer_hdr (vlib_buffer_t * b)
+tcp_buffer_hdr (vlib_buffer_t *b)
 {
   ASSERT ((signed) b->current_data >= (signed) -VLIB_BUFFER_PRE_DATA_SIZE);
-  return (tcp_header_t *) (b->data + b->current_data
-			   + vnet_buffer (b)->tcp.hdr_offset);
+  return (tcp_header_t *) (b->data + b->current_data +
+			   vnet_buffer (b)->tcp.hdr_offset);
 }
 
 always_inline tcp_connection_t *
@@ -48,7 +48,7 @@ tcp_connection_get_if_valid (u32 conn_index, u32 thread_index)
 }
 
 always_inline void
-tcp_connection_set_state (tcp_connection_t * tc, tcp_state_t state)
+tcp_connection_set_state (tcp_connection_t *tc, tcp_state_t state)
 {
   tc->state = state;
   TCP_EVT (TCP_EVT_STATE_CHANGE, tc);
@@ -78,25 +78,24 @@ tcp_half_open_connection_get (u32 conn_index)
  * Our estimate of the number of bytes that have left the network
  */
 always_inline u32
-tcp_bytes_out (const tcp_connection_t * tc)
+tcp_bytes_out (const tcp_connection_t *tc)
 {
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     return tc->sack_sb.sacked_bytes + tc->sack_sb.lost_bytes;
   else
-    return clib_min (tc->rcv_dupacks * tc->snd_mss,
-		     tc->snd_nxt - tc->snd_una);
+    return clib_min (tc->rcv_dupacks * tc->snd_mss, tc->snd_nxt - tc->snd_una);
 }
 
 /**
  * Our estimate of the number of bytes in flight (pipe size)
  */
 always_inline u32
-tcp_flight_size (const tcp_connection_t * tc)
+tcp_flight_size (const tcp_connection_t *tc)
 {
   int flight_size;
 
-  flight_size = (int) (tc->snd_nxt - tc->snd_una) - tcp_bytes_out (tc)
-    + tc->snd_rxt_bytes - tc->rxt_delivered;
+  flight_size = (int) (tc->snd_nxt - tc->snd_una) - tcp_bytes_out (tc) +
+		tc->snd_rxt_bytes - tc->rxt_delivered;
 
   ASSERT (flight_size >= 0);
 
@@ -107,7 +106,7 @@ tcp_flight_size (const tcp_connection_t * tc)
  * Initial cwnd as per RFC5681
  */
 always_inline u32
-tcp_initial_cwnd (const tcp_connection_t * tc)
+tcp_initial_cwnd (const tcp_connection_t *tc)
 {
   if (tcp_cfg.initial_cwnd_multiplier > 0)
     return tcp_cfg.initial_cwnd_multiplier * tc->snd_mss;
@@ -127,7 +126,7 @@ tcp_initial_cwnd (const tcp_connection_t * tc)
  * to the cwnd.
  */
 always_inline void
-tcp_cwnd_accumulate (tcp_connection_t * tc, u32 thresh, u32 bytes)
+tcp_cwnd_accumulate (tcp_connection_t *tc, u32 thresh, u32 bytes)
 {
   tc->cwnd_acc_bytes += bytes;
   if (tc->cwnd_acc_bytes >= thresh)
@@ -140,20 +139,20 @@ tcp_cwnd_accumulate (tcp_connection_t * tc, u32 thresh, u32 bytes)
 }
 
 always_inline u32
-tcp_loss_wnd (const tcp_connection_t * tc)
+tcp_loss_wnd (const tcp_connection_t *tc)
 {
   /* Whatever we have in flight + the packet we're about to send */
   return tcp_flight_size (tc) + tc->snd_mss;
 }
 
 always_inline u32
-tcp_available_snd_wnd (const tcp_connection_t * tc)
+tcp_available_snd_wnd (const tcp_connection_t *tc)
 {
   return clib_min (tc->cwnd, tc->snd_wnd);
 }
 
 always_inline u32
-tcp_available_output_snd_space (const tcp_connection_t * tc)
+tcp_available_output_snd_space (const tcp_connection_t *tc)
 {
   u32 available_wnd = tcp_available_snd_wnd (tc);
   int flight_size = (int) (tc->snd_nxt - tc->snd_una);
@@ -168,7 +167,7 @@ tcp_available_output_snd_space (const tcp_connection_t * tc)
  * Estimate of how many bytes we can still push into the network
  */
 always_inline u32
-tcp_available_cc_snd_space (const tcp_connection_t * tc)
+tcp_available_cc_snd_space (const tcp_connection_t *tc)
 {
   u32 available_wnd = tcp_available_snd_wnd (tc);
   u32 flight_size = tcp_flight_size (tc);
@@ -180,7 +179,7 @@ tcp_available_cc_snd_space (const tcp_connection_t * tc)
 }
 
 always_inline u8
-tcp_is_lost_fin (tcp_connection_t * tc)
+tcp_is_lost_fin (tcp_connection_t *tc)
 {
   if ((tc->flags & TCP_CONN_FINSNT) && (tc->snd_nxt - tc->snd_una == 1))
     return 1;
@@ -203,10 +202,9 @@ tcp_time_now_w_thread (u32 thread_index)
  * Generate timestamp for tcp connection
  */
 always_inline u32
-tcp_tstamp (tcp_connection_t * tc)
+tcp_tstamp (tcp_connection_t *tc)
 {
-  return (tcp_main.wrk_ctx[tc->c_thread_index].time_now -
-	  tc->timestamp_delta);
+  return (tcp_main.wrk_ctx[tc->c_thread_index].time_now - tc->timestamp_delta);
 }
 
 always_inline f64
@@ -216,13 +214,13 @@ tcp_time_now_us (u32 thread_index)
 }
 
 always_inline u32
-tcp_set_time_now (tcp_worker_ctx_t * wrk)
+tcp_set_time_now (tcp_worker_ctx_t *wrk)
 {
   return wrk->time_now = (u64) (vlib_time_now (wrk->vm) * TCP_TSTP_HZ);
 }
 
 always_inline tcp_connection_t *
-tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
+tcp_input_lookup_buffer (vlib_buffer_t *b, u8 thread_index, u32 *error,
 			 u8 is_ip4, u8 is_nolookup)
 {
   u32 fib_index = vnet_buffer (b)->ip.fib_index;
@@ -245,7 +243,8 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
       n_advance_bytes = (ip_hdr_bytes + tcp_header_bytes (tcp));
       n_data_bytes = clib_net_to_host_u16 (ip4->length) - n_advance_bytes;
 
-      /* Length check. Checksum computed by ipx_local no need to compute again */
+      /* Length check. Checksum computed by ipx_local no need to compute again
+       */
       if (PREDICT_FALSE (n_data_bytes < 0))
 	{
 	  *error = TCP_ERROR_LENGTH;
@@ -253,11 +252,9 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
 	}
 
       if (!is_nolookup)
-	tc = session_lookup_connection_wt4 (fib_index, &ip4->dst_address,
-					    &ip4->src_address, tcp->dst_port,
-					    tcp->src_port,
-					    TRANSPORT_PROTO_TCP, thread_index,
-					    &result);
+	tc = session_lookup_connection_wt4 (
+	  fib_index, &ip4->dst_address, &ip4->src_address, tcp->dst_port,
+	  tcp->src_port, TRANSPORT_PROTO_TCP, thread_index, &result);
     }
   else
     {
@@ -270,8 +267,8 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
       tcp = ip6_next_header (ip6);
       vnet_buffer (b)->tcp.hdr_offset = (u8 *) tcp - (u8 *) ip6;
       n_advance_bytes = tcp_header_bytes (tcp);
-      n_data_bytes = clib_net_to_host_u16 (ip6->payload_length)
-	- n_advance_bytes;
+      n_data_bytes =
+	clib_net_to_host_u16 (ip6->payload_length) - n_advance_bytes;
       n_advance_bytes += sizeof (ip6[0]);
 
       if (PREDICT_FALSE (n_data_bytes < 0))
@@ -282,34 +279,30 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
 
       if (!is_nolookup)
 	{
-	  if (PREDICT_FALSE
-	      (ip6_address_is_link_local_unicast (&ip6->dst_address)))
+	  if (PREDICT_FALSE (
+		ip6_address_is_link_local_unicast (&ip6->dst_address)))
 	    {
 	      ip6_main_t *im = &ip6_main;
 	      fib_index = vec_elt (im->fib_index_by_sw_if_index,
 				   vnet_buffer (b)->sw_if_index[VLIB_RX]);
 	    }
 
-	  tc = session_lookup_connection_wt6 (fib_index, &ip6->dst_address,
-					      &ip6->src_address,
-					      tcp->dst_port, tcp->src_port,
-					      TRANSPORT_PROTO_TCP,
-					      thread_index, &result);
+	  tc = session_lookup_connection_wt6 (
+	    fib_index, &ip6->dst_address, &ip6->src_address, tcp->dst_port,
+	    tcp->src_port, TRANSPORT_PROTO_TCP, thread_index, &result);
 	}
     }
 
   if (is_nolookup)
-    tc =
-      (transport_connection_t *) tcp_connection_get (vnet_buffer (b)->
-						     tcp.connection_index,
-						     thread_index);
+    tc = (transport_connection_t *) tcp_connection_get (
+      vnet_buffer (b)->tcp.connection_index, thread_index);
 
   vnet_buffer (b)->tcp.seq_number = clib_net_to_host_u32 (tcp->seq_number);
   vnet_buffer (b)->tcp.ack_number = clib_net_to_host_u32 (tcp->ack_number);
   vnet_buffer (b)->tcp.data_offset = n_advance_bytes;
   vnet_buffer (b)->tcp.data_len = n_data_bytes;
-  vnet_buffer (b)->tcp.seq_end = vnet_buffer (b)->tcp.seq_number
-    + n_data_bytes;
+  vnet_buffer (b)->tcp.seq_end =
+    vnet_buffer (b)->tcp.seq_number + n_data_bytes;
 
   *error = result ? TCP_ERROR_NONE + result : *error;
 
@@ -324,7 +317,7 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
  * @param is_ip4	flag set to 1 if using ip4
  */
 always_inline void
-tcp_init_w_buffer (tcp_connection_t * tc, vlib_buffer_t * b, u8 is_ip4)
+tcp_init_w_buffer (tcp_connection_t *tc, vlib_buffer_t *b, u8 is_ip4)
 {
   tcp_header_t *th = tcp_buffer_hdr (b);
 
@@ -369,14 +362,14 @@ tcp_init_w_buffer (tcp_connection_t * tc, vlib_buffer_t * b, u8 is_ip4)
 }
 
 always_inline void
-tcp_update_rto (tcp_connection_t * tc)
+tcp_update_rto (tcp_connection_t *tc)
 {
   tc->rto = clib_min (tc->srtt + (tc->rttvar << 2), TCP_RTO_MAX);
   tc->rto = clib_max (tc->rto, TCP_RTO_MIN);
 }
 
 always_inline u8
-tcp_is_descheduled (tcp_connection_t * tc)
+tcp_is_descheduled (tcp_connection_t *tc)
 {
   return (transport_connection_is_descheduled (&tc->connection) ? 1 : 0);
 }
@@ -397,7 +390,7 @@ tcp_is_descheduled (tcp_connection_t * tc)
  * @return - pointer to start of TCP header
  */
 always_inline void *
-vlib_buffer_push_tcp_net_order (vlib_buffer_t * b, u16 sp, u16 dp, u32 seq,
+vlib_buffer_push_tcp_net_order (vlib_buffer_t *b, u16 sp, u16 dp, u32 seq,
 				u32 ack, u8 tcp_hdr_opts_len, u8 flags,
 				u16 wnd)
 {
@@ -434,14 +427,12 @@ vlib_buffer_push_tcp_net_order (vlib_buffer_t * b, u16 sp, u16 dp, u32 seq,
  * @return - pointer to start of TCP header
  */
 always_inline void *
-vlib_buffer_push_tcp (vlib_buffer_t * b, u16 sp_net, u16 dp_net, u32 seq,
+vlib_buffer_push_tcp (vlib_buffer_t *b, u16 sp_net, u16 dp_net, u32 seq,
 		      u32 ack, u8 tcp_hdr_opts_len, u8 flags, u16 wnd)
 {
-  return vlib_buffer_push_tcp_net_order (b, sp_net, dp_net,
-					 clib_host_to_net_u32 (seq),
-					 clib_host_to_net_u32 (ack),
-					 tcp_hdr_opts_len, flags,
-					 clib_host_to_net_u16 (wnd));
+  return vlib_buffer_push_tcp_net_order (
+    b, sp_net, dp_net, clib_host_to_net_u32 (seq), clib_host_to_net_u32 (ack),
+    tcp_hdr_opts_len, flags, clib_host_to_net_u16 (wnd));
 }
 
 #endif /* SRC_VNET_TCP_TCP_INLINES_H_ */

@@ -35,6 +35,4 @@ typedef struct
   u8 tcp_flags_mask;
 } acl_rule_t;
 
-
 #endif // included_acl_types_h
-

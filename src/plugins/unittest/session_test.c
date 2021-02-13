@@ -21,31 +21,32 @@
 #include <vnet/tcp/tcp.h>
 #include <sys/epoll.h>
 
-#define SESSION_TEST_I(_cond, _comment, _args...)		\
-({								\
-  int _evald = (_cond);						\
-  if (!(_evald)) {						\
-    fformat(stderr, "FAIL:%d: " _comment "\n",			\
-	    __LINE__, ##_args);					\
-  } else {							\
-    fformat(stderr, "PASS:%d: " _comment "\n",			\
-	    __LINE__, ##_args);					\
-  }								\
-  _evald;							\
-})
+#define SESSION_TEST_I(_cond, _comment, _args...)                             \
+  ({                                                                          \
+    int _evald = (_cond);                                                     \
+    if (!(_evald))                                                            \
+      {                                                                       \
+	fformat (stderr, "FAIL:%d: " _comment "\n", __LINE__, ##_args);       \
+      }                                                                       \
+    else                                                                      \
+      {                                                                       \
+	fformat (stderr, "PASS:%d: " _comment "\n", __LINE__, ##_args);       \
+      }                                                                       \
+    _evald;                                                                   \
+  })
 
-#define SESSION_TEST(_cond, _comment, _args...)			\
-{								\
-    if (!SESSION_TEST_I(_cond, _comment, ##_args)) {		\
-	return 1;                                               \
-    }								\
-}
+#define SESSION_TEST(_cond, _comment, _args...)                               \
+  {                                                                           \
+    if (!SESSION_TEST_I (_cond, _comment, ##_args))                           \
+      {                                                                       \
+	return 1;                                                             \
+      }                                                                       \
+  }
 
-#define ST_DBG(_comment, _args...)				\
-    fformat(stderr,  _comment "\n",  ##_args);			\
+#define ST_DBG(_comment, _args...) fformat (stderr, _comment "\n", ##_args);
 
 void
-placeholder_session_reset_callback (session_t * s)
+placeholder_session_reset_callback (session_t *s)
 {
   clib_warning ("called...");
 }
@@ -54,7 +55,7 @@ volatile u32 connected_session_index = ~0;
 volatile u32 connected_session_thread = ~0;
 int
 placeholder_session_connected_callback (u32 app_index, u32 api_context,
-					session_t * s, session_error_t err)
+					session_t *s, session_error_t err)
 {
   if (s)
     {
@@ -81,7 +82,7 @@ placeholder_del_segment_callback (u32 client_index, u64 segment_handle)
 }
 
 void
-placeholder_session_disconnect_callback (session_t * s)
+placeholder_session_disconnect_callback (session_t *s)
 {
   clib_warning ("called...");
 }
@@ -91,7 +92,7 @@ volatile u32 accepted_session_index;
 volatile u32 accepted_session_thread;
 
 int
-placeholder_session_accept_callback (session_t * s)
+placeholder_session_accept_callback (session_t *s)
 {
   placeholder_accept = 1;
   accepted_session_index = s->session_index;
@@ -101,7 +102,7 @@ placeholder_session_accept_callback (session_t * s)
 }
 
 int
-placeholder_server_rx_callback (session_t * s)
+placeholder_server_rx_callback (session_t *s)
 {
   clib_warning ("called...");
   return -1;
@@ -120,8 +121,8 @@ static session_cb_vft_t placeholder_session_cbs = {
 /* *INDENT-ON* */
 
 static int
-session_create_lookpback (u32 table_id, u32 * sw_if_index,
-			  ip4_address_t * intf_addr)
+session_create_lookpback (u32 table_id, u32 *sw_if_index,
+			  ip4_address_t *intf_addr)
 {
   u8 intf_mac[6];
 
@@ -142,8 +143,8 @@ session_create_lookpback (u32 table_id, u32 * sw_if_index,
   vnet_sw_interface_set_flags (vnet_get_main (), *sw_if_index,
 			       VNET_SW_INTERFACE_FLAG_ADMIN_UP);
 
-  if (ip4_add_del_interface_address (vlib_get_main (), *sw_if_index,
-				     intf_addr, 24, 0))
+  if (ip4_add_del_interface_address (vlib_get_main (), *sw_if_index, intf_addr,
+				     24, 0))
     {
       clib_warning ("couldn't assign loopback ip %U", format_ip4_address,
 		    intf_addr);
@@ -163,7 +164,7 @@ session_delete_loopback (u32 sw_if_index)
 }
 
 static int
-session_test_basic (vlib_main_t * vm, unformat_input_t * input)
+session_test_basic (vlib_main_t *vm, unformat_input_t *input)
 {
   session_endpoint_cfg_t server_sep = SESSION_ENDPOINT_CFG_NULL;
   u64 options[APP_OPTIONS_N_OPTIONS], bind4_handle, bind6_handle;
@@ -231,7 +232,7 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
 
 static void
 session_add_del_route_via_lookup_in_table (u32 in_table_id, u32 via_table_id,
-					   ip4_address_t * ip, u8 mask,
+					   ip4_address_t *ip, u8 mask,
 					   u8 is_add)
 {
   fib_route_path_t *rpaths = 0, *rpath;
@@ -274,7 +275,7 @@ session_add_del_route_via_lookup_in_table (u32 in_table_id, u32 via_table_id,
 }
 
 static int
-session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
+session_test_endpoint_cfg (vlib_main_t *vm, unformat_input_t *input)
 {
   session_endpoint_cfg_t client_sep = SESSION_ENDPOINT_CFG_NULL;
   u32 server_index, client_index, sw_if_index[2], tries = 0;
@@ -291,27 +292,25 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
    * Create the loopbacks
    */
   intf_addr[0].as_u32 = clib_host_to_net_u32 (0x01010101),
-    session_create_lookpback (0, &sw_if_index[0], &intf_addr[0]);
+  session_create_lookpback (0, &sw_if_index[0], &intf_addr[0]);
 
   intf_addr[1].as_u32 = clib_host_to_net_u32 (0x02020202),
-    session_create_lookpback (1, &sw_if_index[1], &intf_addr[1]);
+  session_create_lookpback (1, &sw_if_index[1], &intf_addr[1]);
 
   session_add_del_route_via_lookup_in_table (0, 1, &intf_addr[1], 32,
-					     1 /* is_add */ );
+					     1 /* is_add */);
   session_add_del_route_via_lookup_in_table (1, 0, &intf_addr[0], 32,
-					     1 /* is_add */ );
+					     1 /* is_add */);
 
   /*
    * Insert namespace
    */
   appns_id = format (0, "appns1");
-  vnet_app_namespace_add_del_args_t ns_args = {
-    .ns_id = appns_id,
-    .secret = placeholder_secret,
-    .sw_if_index = sw_if_index[1],
-    .ip4_fib_id = 0,
-    .is_add = 1
-  };
+  vnet_app_namespace_add_del_args_t ns_args = { .ns_id = appns_id,
+						.secret = placeholder_secret,
+						.sw_if_index = sw_if_index[1],
+						.ip4_fib_id = 0,
+						.is_add = 1 };
   error = vnet_app_namespace_add_del (&ns_args);
   SESSION_TEST ((error == 0), "app ns insertion should succeed: %d", error);
 
@@ -396,8 +395,9 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   s = session_get (connected_session_index, connected_session_thread);
   tc = session_get_transport (s);
   SESSION_TEST ((tc != 0), "transport should exist");
-  SESSION_TEST ((memcmp (&tc->lcl_ip, &client_sep.peer.ip,
-			 sizeof (tc->lcl_ip)) == 0), "ips should be equal");
+  SESSION_TEST (
+    (memcmp (&tc->lcl_ip, &client_sep.peer.ip, sizeof (tc->lcl_ip)) == 0),
+    "ips should be equal");
   SESSION_TEST ((tc->lcl_port == placeholder_client_port),
 		"ports should be equal");
 
@@ -421,9 +421,9 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   vlib_process_suspend (vm, 10e-3);
 
   session_add_del_route_via_lookup_in_table (0, 1, &intf_addr[1], 32,
-					     0 /* is_add */ );
+					     0 /* is_add */);
   session_add_del_route_via_lookup_in_table (1, 0, &intf_addr[0], 32,
-					     0 /* is_add */ );
+					     0 /* is_add */);
 
   session_delete_loopback (sw_if_index[0]);
   session_delete_loopback (sw_if_index[1]);
@@ -431,7 +431,7 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
+session_test_namespace (vlib_main_t *vm, unformat_input_t *input)
 {
   u64 options[APP_OPTIONS_N_OPTIONS], placeholder_secret = 1234, tries;
   u32 server_index, server_st_index, server_local_st_index;
@@ -500,12 +500,11 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
    * Insert namespace and lookup
    */
 
-  vnet_app_namespace_add_del_args_t ns_args = {
-    .ns_id = ns_id,
-    .secret = placeholder_secret,
-    .sw_if_index = APP_NAMESPACE_INVALID_INDEX,
-    .is_add = 1
-  };
+  vnet_app_namespace_add_del_args_t ns_args = { .ns_id = ns_id,
+						.secret = placeholder_secret,
+						.sw_if_index =
+						  APP_NAMESPACE_INVALID_INDEX,
+						.is_add = 1 };
   error = vnet_app_namespace_add_del (&ns_args);
   SESSION_TEST ((error == 0), "app ns insertion should succeed: %d", error);
 
@@ -544,8 +543,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   server_index = attach_args.app_index;
   server = application_get (server_index);
   server_wrk_index = application_get_default_worker (server)->wrk_index;
-  SESSION_TEST ((server->ns_index == 0),
-		"server should be in the default ns");
+  SESSION_TEST ((server->ns_index == 0), "server should be in the default ns");
 
   bind_args.app_index = server_index;
   error = vnet_listen (&bind_args);
@@ -555,7 +553,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   s = session_lookup_listener (server_st_index, &server_sep);
   SESSION_TEST ((s != 0), "listener should exist in global table");
   SESSION_TEST ((s->app_wrk_index == server_wrk_index), "app_index should be"
-		" that of the server");
+							" that of the server");
   server_local_st_index = application_local_session_table (server);
   SESSION_TEST ((server_local_st_index == APP_INVALID_INDEX),
 		"server shouldn't have access to local table");
@@ -594,7 +592,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   s = session_lookup_listener (server_st_index, &server_sep);
   SESSION_TEST ((s != 0), "listener should exist in global table");
   SESSION_TEST ((s->app_wrk_index == server_wrk_index), "app_index should be"
-		" that of the server");
+							" that of the server");
   server_local_st_index = application_local_session_table (server);
   handle = session_lookup_local_endpoint (server_local_st_index, &server_sep);
   SESSION_TEST ((handle != SESSION_INVALID_HANDLE),
@@ -758,7 +756,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   s = session_lookup_listener (server_st_index, &intf_sep);
   SESSION_TEST ((s != 0), "intf listener should exist in global table");
   SESSION_TEST ((s->app_wrk_index == server_wrk_index), "app_index should be "
-		"that of the server");
+							"that of the server");
   server_local_st_index = application_local_session_table (server);
   handle = session_lookup_local_endpoint (server_local_st_index, &server_sep);
   SESSION_TEST ((handle != SESSION_INVALID_HANDLE),
@@ -777,7 +775,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
+session_test_rule_table (vlib_main_t *vm, unformat_input_t *input)
 {
   session_rules_table_t _srt, *srt = &_srt;
   u16 lcl_port = 1234, rmt_port = 4321;
@@ -844,7 +842,8 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
   res =
     session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
   SESSION_TEST ((res == 1),
-		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should " "be 1: %d",
+		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should "
+		"be 1: %d",
 		res);
 
   /*
@@ -888,8 +887,10 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
   args.rmt.fp_addr.ip4 = rmt_ip3;
   args.action_index = action_index++;
   error = session_rules_table_add_del (srt, &args);
-  SESSION_TEST ((error == 0), "overwrite 3.3.3.3/24 1234 7.7.7.7/16 4321 "
-		"action %d", action_index - 1);
+  SESSION_TEST ((error == 0),
+		"overwrite 3.3.3.3/24 1234 7.7.7.7/16 4321 "
+		"action %d",
+		action_index - 1);
 
   /*
    * Lookup 1.2.3.4/32 1234 5.6.7.8/32 4321, 1.2.2.4/32 1234 5.6.7.9/32 4321
@@ -898,23 +899,25 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
   res =
     session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
   SESSION_TEST ((res == 3),
-		"Lookup 1.2.3.4 1234 5.6.7.8 4321 action " "should be 3: %d",
+		"Lookup 1.2.3.4 1234 5.6.7.8 4321 action "
+		"should be 3: %d",
 		res);
 
   lcl_lkup.as_u32 = clib_host_to_net_u32 (0x01020204);
   rmt_lkup.as_u32 = clib_host_to_net_u32 (0x05060709);
-  res =
-    session_rules_table_lookup4 (srt, &lcl_lkup,
-				 &rmt_lkup, lcl_port, rmt_port);
+  res = session_rules_table_lookup4 (srt, &lcl_lkup, &rmt_lkup, lcl_port,
+				     rmt_port);
   SESSION_TEST ((res == 1),
-		"Lookup 1.2.2.4 1234 5.6.7.9 4321, action " "should be 1: %d",
+		"Lookup 1.2.2.4 1234 5.6.7.9 4321, action "
+		"should be 1: %d",
 		res);
 
   res =
     session_rules_table_lookup4 (srt, &lcl_ip3, &rmt_ip3, lcl_port, rmt_port);
   SESSION_TEST ((res == 6),
 		"Lookup 3.3.3.3 1234 7.7.7.7 4321, action "
-		"should be 6 (updated): %d", res);
+		"should be 6 (updated): %d",
+		res);
 
   /*
    * Add 1.2.3.4/24 * 5.6.7.8/24 *
@@ -934,12 +937,13 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
     session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
   SESSION_TEST ((res == 7),
 		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should"
-		" be 7 (lpm dst): %d", res);
-  res =
-    session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip,
-				 lcl_port + 1, rmt_port);
+		" be 7 (lpm dst): %d",
+		res);
+  res = session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port + 1,
+				     rmt_port);
   SESSION_TEST ((res == 7),
-		"Lookup 1.2.3.4 1235 5.6.7.8 4321, action should " "be 7: %d",
+		"Lookup 1.2.3.4 1235 5.6.7.8 4321, action should "
+		"be 7: %d",
 		res);
 
   /*
@@ -982,19 +986,20 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
   res =
     session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
   SESSION_TEST ((res == 3),
-		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should " "be 3: %d",
+		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should "
+		"be 3: %d",
 		res);
-  res =
-    session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip,
-				 lcl_port + 1, rmt_port);
+  res = session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port + 1,
+				     rmt_port);
   SESSION_TEST ((res == 9),
-		"Lookup 1.2.3.4 1235 5.6.7.8 4321, action should " "be 9: %d",
+		"Lookup 1.2.3.4 1235 5.6.7.8 4321, action should "
+		"be 9: %d",
 		res);
-  res =
-    session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip,
-				 lcl_port + 1, rmt_port + 1);
+  res = session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port + 1,
+				     rmt_port + 1);
   SESSION_TEST ((res == 8),
-		"Lookup 1.2.3.4 1235 5.6.7.8 4322, action should " "be 8: %d",
+		"Lookup 1.2.3.4 1235 5.6.7.8 4322, action should "
+		"be 8: %d",
 		res);
 
   /*
@@ -1011,7 +1016,8 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
   res =
     session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
   SESSION_TEST ((res == 3),
-		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should " "be 3: %d",
+		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should "
+		"be 3: %d",
 		res);
 
   args.lcl_port = 0;
@@ -1022,7 +1028,8 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
   res =
     session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
   SESSION_TEST ((res == 3),
-		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should " "be 3: %d",
+		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should "
+		"be 3: %d",
 		res);
 
   /*
@@ -1045,7 +1052,7 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-session_test_rules (vlib_main_t * vm, unformat_input_t * input)
+session_test_rules (vlib_main_t *vm, unformat_input_t *input)
 {
   session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
   u64 options[APP_OPTIONS_N_OPTIONS];
@@ -1128,10 +1135,9 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
     .fp_proto = FIB_PROTOCOL_IP4,
   };
 
-  tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
-				      &rmt_pref.fp_addr.ip4, lcl_port,
-				      rmt_port, TRANSPORT_PROTO_TCP, 0,
-				      &is_filtered);
+  tc = session_lookup_connection_wt4 (
+    0, &lcl_pref.fp_addr.ip4, &rmt_pref.fp_addr.ip4, lcl_port, rmt_port,
+    TRANSPORT_PROTO_TCP, 0, &is_filtered);
   SESSION_TEST ((tc == 0), "optimized lookup should not work (port)");
 
   /*
@@ -1155,10 +1161,9 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 				   TRANSPORT_PROTO_TCP);
   SESSION_TEST ((tc->c_index == listener->connection_index),
 		"optimized lookup should return the listener");
-  tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
-				      &rmt_pref.fp_addr.ip4, lcl_port,
-				      rmt_port, TRANSPORT_PROTO_TCP, 0,
-				      &is_filtered);
+  tc = session_lookup_connection_wt4 (
+    0, &lcl_pref.fp_addr.ip4, &rmt_pref.fp_addr.ip4, lcl_port, rmt_port,
+    TRANSPORT_PROTO_TCP, 0, &is_filtered);
   SESSION_TEST ((tc->c_index == listener->connection_index),
 		"lookup should return the listener");
   s = session_lookup_safe4 (0, &lcl_pref.fp_addr.ip4, &rmt_pref.fp_addr.ip4,
@@ -1173,12 +1178,11 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   };
   handle = session_lookup_local_endpoint (local_ns_index, &sep);
   SESSION_TEST ((handle != server_index), "local session endpoint lookup "
-		"should not work (global scope)");
+					  "should not work (global scope)");
 
-  tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
-				      &rmt_pref.fp_addr.ip4, lcl_port + 1,
-				      rmt_port, TRANSPORT_PROTO_TCP, 0,
-				      &is_filtered);
+  tc = session_lookup_connection_wt4 (
+    0, &lcl_pref.fp_addr.ip4, &rmt_pref.fp_addr.ip4, lcl_port + 1, rmt_port,
+    TRANSPORT_PROTO_TCP, 0, &is_filtered);
   SESSION_TEST ((tc == 0),
 		"optimized lookup for wrong lcl port + 1 should not work");
 
@@ -1190,15 +1194,14 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   error = vnet_session_rule_add_del (&args);
   SESSION_TEST ((error == 0), "Add 1.2.3.4/16 * 5.6.7.8/16 4321 action %d",
 		args.table_args.action_index);
-  tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
-				      &rmt_pref.fp_addr.ip4, lcl_port + 1,
-				      rmt_port, TRANSPORT_PROTO_TCP, 0,
-				      &is_filtered);
+  tc = session_lookup_connection_wt4 (
+    0, &lcl_pref.fp_addr.ip4, &rmt_pref.fp_addr.ip4, lcl_port + 1, rmt_port,
+    TRANSPORT_PROTO_TCP, 0, &is_filtered);
   SESSION_TEST ((tc->c_index == listener->connection_index),
 		"optimized lookup for lcl port + 1 should work");
   handle = session_lookup_local_endpoint (local_ns_index, &sep);
   SESSION_TEST ((handle == server_index), "local session endpoint lookup "
-		"should work (lcl ip was zeroed)");
+					  "should work (lcl ip was zeroed)");
 
   /*
    * Add deny rule 1.2.3.4/32 1234 5.6.7.8/32 4321 action -2 (drop)
@@ -1221,23 +1224,22 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 					     TRANSPORT_PROTO_TCP);
     }
 
-  tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
-				      &rmt_pref.fp_addr.ip4, lcl_port,
-				      rmt_port, TRANSPORT_PROTO_TCP, 0,
-				      &is_filtered);
+  tc = session_lookup_connection_wt4 (
+    0, &lcl_pref.fp_addr.ip4, &rmt_pref.fp_addr.ip4, lcl_port, rmt_port,
+    TRANSPORT_PROTO_TCP, 0, &is_filtered);
   SESSION_TEST ((tc == 0), "lookup for 1.2.3.4/32 1234 5.6.7.8/16 4321 "
-		"should fail (deny rule)");
+			   "should fail (deny rule)");
   SESSION_TEST ((is_filtered == SESSION_LOOKUP_RESULT_FILTERED),
 		"lookup should be filtered (deny)");
 
   handle = session_lookup_local_endpoint (local_ns_index, &sep);
-  SESSION_TEST ((handle == SESSION_DROP_HANDLE), "lookup for 1.2.3.4/32 1234 "
+  SESSION_TEST ((handle == SESSION_DROP_HANDLE),
+		"lookup for 1.2.3.4/32 1234 "
 		"5.6.7.8/16 4321 in local table should return deny");
 
-  tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
-				      &rmt_pref.fp_addr.ip4, lcl_port + 1,
-				      rmt_port, TRANSPORT_PROTO_TCP, 0,
-				      &is_filtered);
+  tc = session_lookup_connection_wt4 (
+    0, &lcl_pref.fp_addr.ip4, &rmt_pref.fp_addr.ip4, lcl_port + 1, rmt_port,
+    TRANSPORT_PROTO_TCP, 0, &is_filtered);
   SESSION_TEST ((tc->c_index == listener->connection_index),
 		"lookup 1.2.3.4/32 123*5* 5.6.7.8/16 4321 should work");
 
@@ -1253,20 +1255,22 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   args.table_args.rmt.fp_len = 32;
   args.table_args.action_index = SESSION_RULES_TABLE_ACTION_ALLOW;
   error = vnet_session_rule_add_del (&args);
-  SESSION_TEST ((error == 0), "Add masking rule 1.2.3.4/30 1234 5.6.7.8/32 "
-		"4321 action %d", args.table_args.action_index);
+  SESSION_TEST ((error == 0),
+		"Add masking rule 1.2.3.4/30 1234 5.6.7.8/32 "
+		"4321 action %d",
+		args.table_args.action_index);
 
   is_filtered = 0;
-  tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
-				      &rmt_pref.fp_addr.ip4, lcl_port,
-				      rmt_port, TRANSPORT_PROTO_TCP, 0,
-				      &is_filtered);
+  tc = session_lookup_connection_wt4 (
+    0, &lcl_pref.fp_addr.ip4, &rmt_pref.fp_addr.ip4, lcl_port, rmt_port,
+    TRANSPORT_PROTO_TCP, 0, &is_filtered);
   SESSION_TEST ((tc == 0), "lookup for 1.2.3.4/32 1234 5.6.7.8/16 4321 "
-		"should fail (allow without app)");
+			   "should fail (allow without app)");
   SESSION_TEST ((is_filtered == 0), "lookup should NOT be filtered");
 
   handle = session_lookup_local_endpoint (local_ns_index, &sep);
-  SESSION_TEST ((handle == SESSION_INVALID_HANDLE), "lookup for 1.2.3.4/32 "
+  SESSION_TEST ((handle == SESSION_INVALID_HANDLE),
+		"lookup for 1.2.3.4/32 "
 		"1234 5.6.7.8/32 4321 in local table should return invalid");
 
   if (verbose)
@@ -1278,7 +1282,8 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 
   sep.ip.ip4.as_u32 += 1 << 24;
   handle = session_lookup_local_endpoint (local_ns_index, &sep);
-  SESSION_TEST ((handle == SESSION_DROP_HANDLE), "lookup for 1.2.3.4/32 1234"
+  SESSION_TEST ((handle == SESSION_DROP_HANDLE),
+		"lookup for 1.2.3.4/32 1234"
 		" 5.6.7.9/32 4321 in local table should return deny");
 
   vnet_connect_args_t connect_args = {
@@ -1305,7 +1310,6 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   args.table_args.rmt.fp_len = 32;
   error = vnet_session_rule_add_del (&args);
   SESSION_TEST ((error == 0), "Del 1.2.3.4/32 1234 5.6.7.8/32 4321 allow");
-
 
   /*
    * Add local scope rule for 0/0 * 5.6.7.8/16 4321 action server_index
@@ -1362,7 +1366,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((error == 0), "Del 0/0 * 5.6.7.8/16 4321");
   handle = session_lookup_local_endpoint (local_ns_index, &sep);
   SESSION_TEST ((handle != server_index), "local session endpoint lookup "
-		"should not work (removed)");
+					  "should not work (removed)");
 
   args.table_args.is_add = 0;
   args.table_args.lcl = lcl_pref;
@@ -1376,10 +1380,9 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   args.table_args.rmt_port = 4321;
   error = vnet_session_rule_add_del (&args);
   SESSION_TEST ((error == 0), "Del 1.2.3.4/16 * 5.6.7.8/16 4321");
-  tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
-				      &rmt_pref.fp_addr.ip4, lcl_port + 1,
-				      rmt_port, TRANSPORT_PROTO_TCP, 0,
-				      &is_filtered);
+  tc = session_lookup_connection_wt4 (
+    0, &lcl_pref.fp_addr.ip4, &rmt_pref.fp_addr.ip4, lcl_port + 1, rmt_port,
+    TRANSPORT_PROTO_TCP, 0, &is_filtered);
   SESSION_TEST ((tc == 0),
 		"lookup 1.2.3.4/32 123*5* 5.6.7.8/16 4321 should not "
 		"work (del)");
@@ -1393,20 +1396,18 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   args.table_args.rmt_port = 4321;
   error = vnet_session_rule_add_del (&args);
   SESSION_TEST ((error == 0), "Del 1.2.3.4/16 1234 5.6.7.8/16 4321");
-  tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
-				      &rmt_pref.fp_addr.ip4, lcl_port,
-				      rmt_port, TRANSPORT_PROTO_TCP, 0,
-				      &is_filtered);
+  tc = session_lookup_connection_wt4 (
+    0, &lcl_pref.fp_addr.ip4, &rmt_pref.fp_addr.ip4, lcl_port, rmt_port,
+    TRANSPORT_PROTO_TCP, 0, &is_filtered);
   SESSION_TEST ((tc == 0), "lookup 1.2.3.4/32 1234 5.6.7.8/16 4321 should "
-		"not work (del + deny)");
+			   "not work (del + deny)");
 
   SESSION_TEST ((error == 0), "Del 1.2.3.4/32 1234 5.6.7.8/32 4321 deny");
-  tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
-				      &rmt_pref.fp_addr.ip4, lcl_port,
-				      rmt_port, TRANSPORT_PROTO_TCP, 0,
-				      &is_filtered);
+  tc = session_lookup_connection_wt4 (
+    0, &lcl_pref.fp_addr.ip4, &rmt_pref.fp_addr.ip4, lcl_port, rmt_port,
+    TRANSPORT_PROTO_TCP, 0, &is_filtered);
   SESSION_TEST ((tc == 0), "lookup 1.2.3.4/32 1234 5.6.7.8/16 4321 should"
-		" not work (no-rule)");
+			   " not work (no-rule)");
 
   /*
    * Test tags. Add/overwrite/del rule with tag
@@ -1422,7 +1423,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   args.table_args.action_index = server_index;
   error = vnet_session_rule_add_del (&args);
   SESSION_TEST ((error == 0), "Add 1.2.3.4/16 1234 5.6.7.8/16 4321 deny "
-		"tag test_rule");
+			      "tag test_rule");
   if (verbose)
     {
       session_lookup_dump_rules_table (0, FIB_PROTOCOL_IP4,
@@ -1430,10 +1431,9 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
       session_lookup_dump_local_rules_table (local_ns_index, FIB_PROTOCOL_IP4,
 					     TRANSPORT_PROTO_TCP);
     }
-  tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
-				      &rmt_pref.fp_addr.ip4, lcl_port,
-				      rmt_port, TRANSPORT_PROTO_TCP, 0,
-				      &is_filtered);
+  tc = session_lookup_connection_wt4 (
+    0, &lcl_pref.fp_addr.ip4, &rmt_pref.fp_addr.ip4, lcl_port, rmt_port,
+    TRANSPORT_PROTO_TCP, 0, &is_filtered);
   SESSION_TEST ((tc->c_index == listener->connection_index),
 		"lookup 1.2.3.4/32 1234 5.6.7.8/16 4321 should work");
 
@@ -1457,8 +1457,10 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   args.table_args.is_add = 0;
   args.table_args.lcl_port += 1;
   error = vnet_session_rule_add_del (&args);
-  SESSION_TEST ((error == 0), "Del 1.2.3.4/32 1234 5.6.7.8/32 4321 deny "
-		"tag %v", args.table_args.tag);
+  SESSION_TEST ((error == 0),
+		"Del 1.2.3.4/32 1234 5.6.7.8/32 4321 deny "
+		"tag %v",
+		args.table_args.tag);
   if (verbose)
     {
       session_lookup_dump_rules_table (0, FIB_PROTOCOL_IP4,
@@ -1466,13 +1468,11 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
       session_lookup_dump_local_rules_table (local_ns_index, FIB_PROTOCOL_IP4,
 					     TRANSPORT_PROTO_TCP);
     }
-  tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
-				      &rmt_pref.fp_addr.ip4, lcl_port,
-				      rmt_port, TRANSPORT_PROTO_TCP, 0,
-				      &is_filtered);
+  tc = session_lookup_connection_wt4 (
+    0, &lcl_pref.fp_addr.ip4, &rmt_pref.fp_addr.ip4, lcl_port, rmt_port,
+    TRANSPORT_PROTO_TCP, 0, &is_filtered);
   SESSION_TEST ((tc == 0), "lookup 1.2.3.4/32 1234 5.6.7.8/32 4321 should not"
-		" work (del)");
-
+			   " work (del)");
 
   /*
    * Test local rules with multiple namespaces
@@ -1513,12 +1513,11 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 					     TRANSPORT_PROTO_TCP);
     }
 
-  vnet_app_namespace_add_del_args_t ns_args = {
-    .ns_id = ns_id,
-    .secret = 0,
-    .sw_if_index = APP_NAMESPACE_INVALID_INDEX,
-    .is_add = 1
-  };
+  vnet_app_namespace_add_del_args_t ns_args = { .ns_id = ns_id,
+						.secret = 0,
+						.sw_if_index =
+						  APP_NAMESPACE_INVALID_INDEX,
+						.is_add = 1 };
   error = vnet_app_namespace_add_del (&ns_args);
   SESSION_TEST ((error == 0), "app ns insertion should succeed: %d", error);
   app_ns = app_namespace_get_from_id (ns_id);
@@ -1544,8 +1543,10 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   args.appns_index = app_namespace_index (app_ns);
 
   error = vnet_session_rule_add_del (&args);
-  SESSION_TEST ((error == 0), "Add 1.2.3.4/32 1234 5.6.7.8/32 4321 action %d "
-		"in test namespace", args.table_args.action_index);
+  SESSION_TEST ((error == 0),
+		"Add 1.2.3.4/32 1234 5.6.7.8/32 4321 action %d "
+		"in test namespace",
+		args.table_args.action_index);
   /*
    * Lookup default namespace
    */
@@ -1556,9 +1557,9 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 
   sep.port += 1;
   handle = session_lookup_local_endpoint (local_ns_index, &sep);
-  SESSION_TEST ((handle == SESSION_DROP_HANDLE), "lookup for 1.2.3.4/32 1234 "
+  SESSION_TEST ((handle == SESSION_DROP_HANDLE),
+		"lookup for 1.2.3.4/32 1234 "
 		"5.6.7.8/16 432*2* in local table should return deny");
-
 
   connect_args.app_index = server_index;
   clib_memcpy (&connect_args.sep, &sep, sizeof (sep));
@@ -1571,7 +1572,8 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
    * Lookup test namespace
    */
   handle = session_lookup_local_endpoint (app_ns->local_table_index, &sep);
-  SESSION_TEST ((handle == SESSION_DROP_HANDLE), "lookup for 1.2.3.4/32 1234 "
+  SESSION_TEST ((handle == SESSION_DROP_HANDLE),
+		"lookup for 1.2.3.4/32 1234 "
 		"5.6.7.8/16 4321 in local table should return deny");
 
   connect_args.app_index = server_index;
@@ -1607,7 +1609,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
+session_test_proxy (vlib_main_t *vm, unformat_input_t *input)
 {
   u64 options[APP_OPTIONS_N_OPTIONS];
   char *show_listeners = "sh session listeners tcp verbose";
@@ -1693,19 +1695,19 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   tc = session_lookup_connection_wt4 (0, &lcl_ip, &rmt_ip, lcl_port, rmt_port,
 				      TRANSPORT_PROTO_TCP, 0, &is_filtered);
   SESSION_TEST ((tc != 0), "lookup 1.2.3.4 1234 5.6.7.8 4321 should be "
-		"successful");
+			   "successful");
   s = listen_session_get (tc->s_index);
   SESSION_TEST ((s->app_index == server_index), "lookup should return"
-		" the server");
+						" the server");
 
   tc = session_lookup_connection_wt4 (0, &rmt_ip, &rmt_ip, lcl_port, rmt_port,
 				      TRANSPORT_PROTO_TCP, 0, &is_filtered);
   SESSION_TEST ((tc == 0), "lookup 5.6.7.8 1234 5.6.7.8 4321 should"
-		" not work");
+			   " not work");
 
   app_index = session_lookup_local_endpoint (app_ns->local_table_index, &sep);
   SESSION_TEST ((app_index == server_index), "local session endpoint lookup"
-		" should work");
+					     " should work");
 
   vnet_app_detach_args_t detach_args = {
     .app_index = server_index,
@@ -1734,7 +1736,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static inline void
-wait_for_event (svm_msg_q_t * mq, int fd, int epfd, u8 use_eventfd)
+wait_for_event (svm_msg_q_t *mq, int fd, int epfd, u8 use_eventfd)
 {
   if (!use_eventfd)
     {
@@ -1768,7 +1770,7 @@ wait_for_event (svm_msg_q_t * mq, int fd, int epfd, u8 use_eventfd)
 }
 
 static int
-session_test_mq_speed (vlib_main_t * vm, unformat_input_t * input)
+session_test_mq_speed (vlib_main_t *vm, unformat_input_t *input)
 {
   int error, __clib_unused verbose, use_eventfd = 0;
   u64 i, n_test_msgs = 1 << 10, *counter;
@@ -1886,8 +1888,8 @@ session_test_mq_speed (vlib_main_t * vm, unformat_input_t * input)
     }
 
   diff = vlib_time_now (vm) - start;
-  ST_DBG ("done %u events in %.2f sec: %f evts/s", *counter,
-	  diff, *counter / diff);
+  ST_DBG ("done %u events in %.2f sec: %f evts/s", *counter, diff,
+	  *counter / diff);
 
   vnet_app_detach_args_t detach_args = {
     .app_index = app_index,
@@ -1898,7 +1900,7 @@ session_test_mq_speed (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-session_test_mq_basic (vlib_main_t * vm, unformat_input_t * input)
+session_test_mq_basic (vlib_main_t *vm, unformat_input_t *input)
 {
   svm_msg_q_cfg_t _cfg, *cfg = &_cfg;
   svm_msg_q_msg_t msg1, msg2, msg[12];
@@ -1920,9 +1922,7 @@ session_test_mq_basic (vlib_main_t * vm, unformat_input_t * input)
 	}
     }
 
-  svm_msg_q_ring_cfg_t rc[2] = { {8, 8, 0}
-  , {8, 16, 0}
-  };
+  svm_msg_q_ring_cfg_t rc[2] = { { 8, 8, 0 }, { 8, 16, 0 } };
   cfg->consumer_pid = ~0;
   cfg->n_rings = 2;
   cfg->q_nitems = 16;
@@ -1934,11 +1934,11 @@ session_test_mq_basic (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST (vec_len (mq->rings) == 2, "ring allocation");
   rings_ptr = (u8 *) mq->rings[0].shr->data;
   vec_foreach (ring, mq->rings)
-  {
-    SESSION_TEST (ring->shr->data == rings_ptr, "ring data");
-    rings_ptr += (uword) ring->nitems * ring->elsize;
-    rings_ptr += sizeof (svm_msg_q_ring_shared_t);
-  }
+    {
+      SESSION_TEST (ring->shr->data == rings_ptr, "ring data");
+      rings_ptr += (uword) ring->nitems * ring->elsize;
+      rings_ptr += sizeof (svm_msg_q_ring_shared_t);
+    }
 
   msg1 = svm_msg_q_alloc_msg (mq, 8);
   rv = (mq->rings[0].shr->cursize != 1 || msg1.ring_index != 0 ||
@@ -2002,8 +2002,8 @@ session_test_mq_basic (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static clib_error_t *
-session_test (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd_arg)
+session_test (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd_arg)
 {
   int res = 0;
 
@@ -2057,8 +2057,7 @@ done:
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (tcp_test_command, static) =
-{
+VLIB_CLI_COMMAND (tcp_test_command, static) = {
   .path = "test session",
   .short_help = "internal session unit tests",
   .function = session_test,
@@ -2066,9 +2065,4 @@ VLIB_CLI_COMMAND (tcp_test_command, static) =
 /* *INDENT-ON* */
 
 /*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+ * fd.io coding-style-patch-verificatio

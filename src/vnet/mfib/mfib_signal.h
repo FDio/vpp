@@ -28,32 +28,28 @@
  */
 typedef struct mfib_signal_t_
 {
-    fib_node_index_t mfs_entry;
-    index_t mfs_itf;
+  fib_node_index_t mfs_entry;
+  index_t mfs_itf;
 
-    /**
-     * @brief A buffer copied from the DP plane that triggered the signal
-     */
-    u8 mfs_buffer[MFIB_SIGNAL_BUFFER_SIZE];
+  /**
+   * @brief A buffer copied from the DP plane that triggered the signal
+   */
+  u8 mfs_buffer[MFIB_SIGNAL_BUFFER_SIZE];
 
-    u8 mfs_buffer_len;
+  u8 mfs_buffer_len;
 } mfib_signal_t;
 
+extern void mfib_signal_push (const mfib_entry_t *mfe, mfib_itf_t *mfi,
+			      vlib_buffer_t *b0);
+extern void mfib_signal_remove_itf (const mfib_itf_t *mfi);
 
-extern void mfib_signal_push(const mfib_entry_t *mfe,
-                             mfib_itf_t *mfi,
-                             vlib_buffer_t *b0);
-extern void mfib_signal_remove_itf(const mfib_itf_t *mfi);
-
-extern void mfib_signal_module_init(void);
+extern void mfib_signal_module_init (void);
 
 struct vl_api_registration_;
 
-extern void vl_mfib_signal_send_one(struct vl_api_registration_ *q,
-                                    u32 context,
-                                    const mfib_signal_t *mfs);
-extern int mfib_signal_send_one(struct vl_api_registration_ *reg,
-                                u32 context);
+extern void vl_mfib_signal_send_one (struct vl_api_registration_ *q,
+				     u32 context, const mfib_signal_t *mfs);
+extern int mfib_signal_send_one (struct vl_api_registration_ *reg,
+				 u32 context);
 
 #endif
-

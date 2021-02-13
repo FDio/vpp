@@ -36,7 +36,7 @@
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_udp_ping_add_del_t_handler (vl_api_udp_ping_add_del_t * mp)
+vl_api_udp_ping_add_del_t_handler (vl_api_udp_ping_add_del_t *mp)
 {
   ip46_address_t dst, src;
   int rv = 0;
@@ -45,40 +45,38 @@ vl_api_udp_ping_add_del_t_handler (vl_api_udp_ping_add_del_t * mp)
 
   if (clib_net_to_host_u32 (mp->src_ip_address.af) == ADDRESS_IP4)
     {
-      rv = -1;			//Not supported
+      rv = -1; // Not supported
       goto ERROROUT;
     }
   ip_address_decode (&mp->src_ip_address, &src);
   ip_address_decode (&mp->dst_ip_address, &dst);
 
-  ip46_udp_ping_set_flow (src, dst,
-			  ntohs (mp->start_src_port),
-			  ntohs (mp->end_src_port),
-			  ntohs (mp->start_dst_port),
-			  ntohs (mp->end_dst_port),
-			  ntohs (mp->interval), mp->fault_det, mp->dis);
-  rv = 0;			//FIXME
+  ip46_udp_ping_set_flow (src, dst, ntohs (mp->start_src_port),
+			  ntohs (mp->end_src_port), ntohs (mp->start_dst_port),
+			  ntohs (mp->end_dst_port), ntohs (mp->interval),
+			  mp->fault_det, mp->dis);
+  rv = 0; // FIXME
 
 ERROROUT:
   REPLY_MACRO (VL_API_UDP_PING_ADD_DEL_REPLY);
 }
 
 static void
-vl_api_udp_ping_export_t_handler (vl_api_udp_ping_export_t * mp)
+vl_api_udp_ping_export_t_handler (vl_api_udp_ping_export_t *mp)
 {
   udp_ping_main_t *sm = &udp_ping_main;
   int rv = 0;
   vl_api_udp_ping_export_reply_t *rmp;
 
   (void) udp_ping_flow_create (!mp->enable);
-  rv = 0;			//FIXME
+  rv = 0; // FIXME
 
   REPLY_MACRO (VL_API_UDP_PING_EXPORT_REPLY);
 }
 
 #include <ioam/udp-ping/udp_ping.api.c>
 static clib_error_t *
-udp_ping_api_init (vlib_main_t * vm)
+udp_ping_api_init (vlib_main_t *vm)
 {
   udp_ping_main_t *sm = &udp_ping_main;
 

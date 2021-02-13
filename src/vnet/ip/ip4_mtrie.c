@@ -41,14 +41,13 @@
 #include <vnet/ip/ip4_mtrie.h>
 #include <vnet/fib/ip4_fib.h>
 
-
 /**
  * Global pool of IPv4 8bit PLYs
  */
 ip4_fib_mtrie_8_ply_t *ip4_ply_pool;
 
 always_inline u32
-ip4_fib_mtrie_leaf_is_non_empty (ip4_fib_mtrie_8_ply_t * p, u8 dst_byte)
+ip4_fib_mtrie_leaf_is_non_empty (ip4_fib_mtrie_8_ply_t *p, u8 dst_byte)
 {
   /*
    * It's 'non-empty' if the length of the leaf stored is greater than the
@@ -92,78 +91,76 @@ ip4_fib_mtrie_leaf_set_next_ply_index (u32 i)
 }
 
 #ifndef __ALTIVEC__
-#define PLY_X4_SPLAT_INIT(init_x4, init) \
-  init_x4 = u32x4_splat (init);
+#define PLY_X4_SPLAT_INIT(init_x4, init) init_x4 = u32x4_splat (init);
 #else
-#define PLY_X4_SPLAT_INIT(init_x4, init)                                \
-{                                                                       \
-  u32x4_union_t y;                                                      \
-  y.as_u32[0] = init;                                                   \
-  y.as_u32[1] = init;                                                   \
-  y.as_u32[2] = init;                                                   \
-  y.as_u32[3] = init;                                                   \
-  init_x4 = y.as_u32x4;                                                 \
-}
+#define PLY_X4_SPLAT_INIT(init_x4, init)                                      \
+  {                                                                           \
+    u32x4_union_t y;                                                          \
+    y.as_u32[0] = init;                                                       \
+    y.as_u32[1] = init;                                                       \
+    y.as_u32[2] = init;                                                       \
+    y.as_u32[3] = init;                                                       \
+    init_x4 = y.as_u32x4;                                                     \
+  }
 #endif
 
 #ifdef CLIB_HAVE_VEC128
-#define PLY_INIT_LEAVES(p)                                              \
-{                                                                       \
-    u32x4 *l, init_x4;                                                  \
-                                                                        \
-    PLY_X4_SPLAT_INIT(init_x4, init);                                   \
-    for (l = p->leaves_as_u32x4;                                        \
-	 l < p->leaves_as_u32x4 + ARRAY_LEN (p->leaves_as_u32x4);       \
-         l += 4)                                                        \
-      {                                                                 \
-	l[0] = init_x4;                                                 \
-	l[1] = init_x4;                                                 \
-	l[2] = init_x4;                                                 \
-	l[3] = init_x4;                                                 \
-      }                                                                 \
-}
+#define PLY_INIT_LEAVES(p)                                                    \
+  {                                                                           \
+    u32x4 *l, init_x4;                                                        \
+                                                                              \
+    PLY_X4_SPLAT_INIT (init_x4, init);                                        \
+    for (l = p->leaves_as_u32x4;                                              \
+	 l < p->leaves_as_u32x4 + ARRAY_LEN (p->leaves_as_u32x4); l += 4)     \
+      {                                                                       \
+	l[0] = init_x4;                                                       \
+	l[1] = init_x4;                                                       \
+	l[2] = init_x4;                                                       \
+	l[3] = init_x4;                                                       \
+      }                                                                       \
+  }
 #else
-#define PLY_INIT_LEAVES(p)                                              \
-{                                                                       \
-  u32 *l;                                                               \
-                                                                        \
-  for (l = p->leaves; l < p->leaves + ARRAY_LEN (p->leaves); l += 4)    \
-    {                                                                   \
-      l[0] = init;                                                      \
-      l[1] = init;                                                      \
-      l[2] = init;                                                      \
-      l[3] = init;                                                      \
-      }                                                                 \
-}
+#define PLY_INIT_LEAVES(p)                                                    \
+  {                                                                           \
+    u32 *l;                                                                   \
+                                                                              \
+    for (l = p->leaves; l < p->leaves + ARRAY_LEN (p->leaves); l += 4)        \
+      {                                                                       \
+	l[0] = init;                                                          \
+	l[1] = init;                                                          \
+	l[2] = init;                                                          \
+	l[3] = init;                                                          \
+      }                                                                       \
+  }
 #endif
 
-#define PLY_INIT(p, init, prefix_len, ply_base_len)                     \
-{                                                                       \
-  /*                                                                    \
-   * A leaf is 'empty' if it represents a leaf from the covering PLY    \
-   * i.e. if the prefix length of the leaf is less than or equal to     \
-   * the prefix length of the PLY                                       \
-   */                                                                   \
-  p->n_non_empty_leafs = (prefix_len > ply_base_len ?                   \
-			  ARRAY_LEN (p->leaves) : 0);                   \
-  clib_memset (p->dst_address_bits_of_leaves, prefix_len,                    \
-	  sizeof (p->dst_address_bits_of_leaves));                      \
-  p->dst_address_bits_base = ply_base_len;                              \
-                                                                        \
-  /* Initialize leaves. */                                              \
-  PLY_INIT_LEAVES(p);                                                   \
-}
+#define PLY_INIT(p, init, prefix_len, ply_base_len)                           \
+  {                                                                           \
+    /*                                                                        \
+     * A leaf is 'empty' if it represents a leaf from the covering PLY        \
+     * i.e. if the prefix length of the leaf is less than or equal to         \
+     * the prefix length of the PLY                                           \
+     */                                                                       \
+    p->n_non_empty_leafs =                                                    \
+      (prefix_len > ply_base_len ? ARRAY_LEN (p->leaves) : 0);                \
+    clib_memset (p->dst_address_bits_of_leaves, prefix_len,                   \
+		 sizeof (p->dst_address_bits_of_leaves));                     \
+    p->dst_address_bits_base = ply_base_len;                                  \
+                                                                              \
+    /* Initialize leaves. */                                                  \
+    PLY_INIT_LEAVES (p);                                                      \
+  }
 
 static void
-ply_8_init (ip4_fib_mtrie_8_ply_t * p,
-	    ip4_fib_mtrie_leaf_t init, uword prefix_len, u32 ply_base_len)
+ply_8_init (ip4_fib_mtrie_8_ply_t *p, ip4_fib_mtrie_leaf_t init,
+	    uword prefix_len, u32 ply_base_len)
 {
   PLY_INIT (p, init, prefix_len, ply_base_len);
 }
 
 static void
-ply_16_init (ip4_fib_mtrie_16_ply_t * p,
-	     ip4_fib_mtrie_leaf_t init, uword prefix_len)
+ply_16_init (ip4_fib_mtrie_16_ply_t *p, ip4_fib_mtrie_leaf_t init,
+	     uword prefix_len)
 {
   clib_memset (p->dst_address_bits_of_leaves, prefix_len,
 	       sizeof (p->dst_address_bits_of_leaves));
@@ -171,8 +168,7 @@ ply_16_init (ip4_fib_mtrie_16_ply_t * p,
 }
 
 static ip4_fib_mtrie_leaf_t
-ply_create (ip4_fib_mtrie_t * m,
-	    ip4_fib_mtrie_leaf_t init_leaf,
+ply_create (ip4_fib_mtrie_t *m, ip4_fib_mtrie_leaf_t init_leaf,
 	    u32 leaf_prefix_len, u32 ply_base_len)
 {
   ip4_fib_mtrie_8_ply_t *p;
@@ -185,7 +181,7 @@ ply_create (ip4_fib_mtrie_t * m,
 }
 
 always_inline ip4_fib_mtrie_8_ply_t *
-get_next_ply_for_leaf (ip4_fib_mtrie_t * m, ip4_fib_mtrie_leaf_t l)
+get_next_ply_for_leaf (ip4_fib_mtrie_t *m, ip4_fib_mtrie_leaf_t l)
 {
   uword n = ip4_fib_mtrie_leaf_get_next_ply_index (l);
 
@@ -193,7 +189,7 @@ get_next_ply_for_leaf (ip4_fib_mtrie_t * m, ip4_fib_mtrie_leaf_t l)
 }
 
 void
-ip4_mtrie_free (ip4_fib_mtrie_t * m)
+ip4_mtrie_free (ip4_fib_mtrie_t *m)
 {
   /* the root ply is embedded so there is nothing to do,
    * the assumption being that the IP4 FIB table has emptied the trie
@@ -209,7 +205,7 @@ ip4_mtrie_free (ip4_fib_mtrie_t * m)
 }
 
 void
-ip4_mtrie_init (ip4_fib_mtrie_t * m)
+ip4_mtrie_init (ip4_fib_mtrie_t *m)
 {
   ply_16_init (&m->root_ply, IP4_FIB_MTRIE_LEAF_EMPTY, 0);
 }
@@ -224,8 +220,8 @@ typedef struct
 } ip4_fib_mtrie_set_unset_leaf_args_t;
 
 static void
-set_ply_with_more_specific_leaf (ip4_fib_mtrie_t * m,
-				 ip4_fib_mtrie_8_ply_t * ply,
+set_ply_with_more_specific_leaf (ip4_fib_mtrie_t *m,
+				 ip4_fib_mtrie_8_ply_t *ply,
 				 ip4_fib_mtrie_leaf_t new_leaf,
 				 uword new_leaf_dst_address_bits)
 {
@@ -241,15 +237,13 @@ set_ply_with_more_specific_leaf (ip4_fib_mtrie_t * m,
       /* Recurse into sub plies. */
       if (!ip4_fib_mtrie_leaf_is_terminal (old_leaf))
 	{
-	  ip4_fib_mtrie_8_ply_t *sub_ply =
-	    get_next_ply_for_leaf (m, old_leaf);
+	  ip4_fib_mtrie_8_ply_t *sub_ply = get_next_ply_for_leaf (m, old_leaf);
 	  set_ply_with_more_specific_leaf (m, sub_ply, new_leaf,
 					   new_leaf_dst_address_bits);
 	}
 
       /* Replace less specific terminal leaves with new leaf. */
-      else if (new_leaf_dst_address_bits >=
-	       ply->dst_address_bits_of_leaves[i])
+      else if (new_leaf_dst_address_bits >= ply->dst_address_bits_of_leaves[i])
 	{
 	  clib_atomic_store_rel_n (&ply->leaves[i], new_leaf);
 	  ply->dst_address_bits_of_leaves[i] = new_leaf_dst_address_bits;
@@ -259,8 +253,7 @@ set_ply_with_more_specific_leaf (ip4_fib_mtrie_t * m,
 }
 
 static void
-set_leaf (ip4_fib_mtrie_t * m,
-	  const ip4_fib_mtrie_set_unset_leaf_args_t * a,
+set_leaf (ip4_fib_mtrie_t *m, const ip4_fib_mtrie_set_unset_leaf_args_t *a,
 	  u32 old_ply_index, u32 dst_address_byte_index)
 {
   ip4_fib_mtrie_leaf_t old_leaf, new_leaf;
@@ -302,8 +295,8 @@ set_leaf (ip4_fib_mtrie_t * m,
 
 	  if (a->dst_address_length >= old_ply->dst_address_bits_of_leaves[i])
 	    {
-	      /* The new leaf is more or equally specific than the one currently
-	       * occupying the slot */
+	      /* The new leaf is more or equally specific than the one
+	       * currently occupying the slot */
 	      new_leaf = ip4_fib_mtrie_leaf_set_adj_index (a->adj_index);
 
 	      if (old_leaf_is_terminal)
@@ -333,8 +326,8 @@ set_leaf (ip4_fib_mtrie_t * m,
 	    }
 	  else if (!old_leaf_is_terminal)
 	    {
-	      /* The current leaf is less specific and not termial (i.e. a ply),
-	       * recurse on down the trie */
+	      /* The current leaf is less specific and not termial (i.e. a
+	       * ply), recurse on down the trie */
 	      new_ply = get_next_ply_for_leaf (m, old_leaf);
 	      set_leaf (m, a, new_ply - ip4_ply_pool,
 			dst_address_byte_index + 1);
@@ -363,10 +356,9 @@ set_leaf (ip4_fib_mtrie_t * m,
 	  old_ply->n_non_empty_leafs -=
 	    ip4_fib_mtrie_leaf_is_non_empty (old_ply, dst_byte);
 
-	  new_leaf =
-	    ply_create (m, old_leaf,
-			old_ply->dst_address_bits_of_leaves[dst_byte],
-			ply_base_len);
+	  new_leaf = ply_create (m, old_leaf,
+				 old_ply->dst_address_bits_of_leaves[dst_byte],
+				 ply_base_len);
 	  new_ply = get_next_ply_for_leaf (m, new_leaf);
 
 	  /* Refetch since ply_create may move pool. */
@@ -387,8 +379,8 @@ set_leaf (ip4_fib_mtrie_t * m,
 }
 
 static void
-set_root_leaf (ip4_fib_mtrie_t * m,
-	       const ip4_fib_mtrie_set_unset_leaf_args_t * a)
+set_root_leaf (ip4_fib_mtrie_t *m,
+	       const ip4_fib_mtrie_set_unset_leaf_args_t *a)
 {
   ip4_fib_mtrie_leaf_t old_leaf, new_leaf;
   ip4_fib_mtrie_16_ply_t *old_ply;
@@ -433,8 +425,8 @@ set_root_leaf (ip4_fib_mtrie_t * m,
 	  if (a->dst_address_length >=
 	      old_ply->dst_address_bits_of_leaves[slot])
 	    {
-	      /* The new leaf is more or equally specific than the one currently
-	       * occupying the slot */
+	      /* The new leaf is more or equally specific than the one
+	       * currently occupying the slot */
 	      new_leaf = ip4_fib_mtrie_leaf_set_adj_index (a->adj_index);
 
 	      if (old_leaf_is_terminal)
@@ -456,8 +448,8 @@ set_root_leaf (ip4_fib_mtrie_t * m,
 	    }
 	  else if (!old_leaf_is_terminal)
 	    {
-	      /* The current leaf is less specific and not termial (i.e. a ply),
-	       * recurse on down the trie */
+	      /* The current leaf is less specific and not termial (i.e. a
+	       * ply), recurse on down the trie */
 	      new_ply = get_next_ply_for_leaf (m, old_leaf);
 	      set_leaf (m, a, new_ply - ip4_ply_pool, 2);
 	    }
@@ -482,10 +474,9 @@ set_root_leaf (ip4_fib_mtrie_t * m,
       if (ip4_fib_mtrie_leaf_is_terminal (old_leaf))
 	{
 	  /* There is a leaf occupying the slot. Replace it with a new ply */
-	  new_leaf =
-	    ply_create (m, old_leaf,
-			old_ply->dst_address_bits_of_leaves[dst_byte],
-			ply_base_len);
+	  new_leaf = ply_create (m, old_leaf,
+				 old_ply->dst_address_bits_of_leaves[dst_byte],
+				 ply_base_len);
 	  new_ply = get_next_ply_for_leaf (m, new_leaf);
 
 	  clib_atomic_store_rel_n (&old_ply->leaves[dst_byte], new_leaf);
@@ -499,9 +490,8 @@ set_root_leaf (ip4_fib_mtrie_t * m,
 }
 
 static uword
-unset_leaf (ip4_fib_mtrie_t * m,
-	    const ip4_fib_mtrie_set_unset_leaf_args_t * a,
-	    ip4_fib_mtrie_8_ply_t * old_ply, u32 dst_address_byte_index)
+unset_leaf (ip4_fib_mtrie_t *m, const ip4_fib_mtrie_set_unset_leaf_args_t *a,
+	    ip4_fib_mtrie_8_ply_t *old_ply, u32 dst_address_byte_index)
 {
   ip4_fib_mtrie_leaf_t old_leaf, del_leaf;
   i32 n_dst_bits_next_plies;
@@ -529,17 +519,17 @@ unset_leaf (ip4_fib_mtrie_t * m,
       old_leaf = old_ply->leaves[i];
       old_leaf_is_terminal = ip4_fib_mtrie_leaf_is_terminal (old_leaf);
 
-      if (old_leaf == del_leaf
-	  || (!old_leaf_is_terminal
-	      && unset_leaf (m, a, get_next_ply_for_leaf (m, old_leaf),
-			     dst_address_byte_index + 1)))
+      if (old_leaf == del_leaf ||
+	  (!old_leaf_is_terminal &&
+	   unset_leaf (m, a, get_next_ply_for_leaf (m, old_leaf),
+		       dst_address_byte_index + 1)))
 	{
 	  old_ply->n_non_empty_leafs -=
 	    ip4_fib_mtrie_leaf_is_non_empty (old_ply, i);
 
-	  clib_atomic_store_rel_n (&old_ply->leaves[i],
-				   ip4_fib_mtrie_leaf_set_adj_index
-				   (a->cover_adj_index));
+	  clib_atomic_store_rel_n (
+	    &old_ply->leaves[i],
+	    ip4_fib_mtrie_leaf_set_adj_index (a->cover_adj_index));
 	  old_ply->dst_address_bits_of_leaves[i] = a->cover_address_length;
 
 	  old_ply->n_non_empty_leafs +=
@@ -571,8 +561,8 @@ unset_leaf (ip4_fib_mtrie_t * m,
 }
 
 static void
-unset_root_leaf (ip4_fib_mtrie_t * m,
-		 const ip4_fib_mtrie_set_unset_leaf_args_t * a)
+unset_root_leaf (ip4_fib_mtrie_t *m,
+		 const ip4_fib_mtrie_set_unset_leaf_args_t *a)
 {
   ip4_fib_mtrie_leaf_t old_leaf, del_leaf;
   i32 n_dst_bits_next_plies;
@@ -587,8 +577,8 @@ unset_root_leaf (ip4_fib_mtrie_t * m,
 
   dst_byte = a->dst_address.as_u16[0];
 
-  n_dst_bits_this_ply = (n_dst_bits_next_plies <= 0 ?
-			 (16 - a->dst_address_length) : 0);
+  n_dst_bits_this_ply =
+    (n_dst_bits_next_plies <= 0 ? (16 - a->dst_address_length) : 0);
 
   del_leaf = ip4_fib_mtrie_leaf_set_adj_index (a->adj_index);
 
@@ -605,29 +595,28 @@ unset_root_leaf (ip4_fib_mtrie_t * m,
       old_leaf = old_ply->leaves[slot];
       old_leaf_is_terminal = ip4_fib_mtrie_leaf_is_terminal (old_leaf);
 
-      if (old_leaf == del_leaf
-	  || (!old_leaf_is_terminal
-	      && unset_leaf (m, a, get_next_ply_for_leaf (m, old_leaf), 2)))
+      if (old_leaf == del_leaf ||
+	  (!old_leaf_is_terminal &&
+	   unset_leaf (m, a, get_next_ply_for_leaf (m, old_leaf), 2)))
 	{
-	  clib_atomic_store_rel_n (&old_ply->leaves[slot],
-				   ip4_fib_mtrie_leaf_set_adj_index
-				   (a->cover_adj_index));
+	  clib_atomic_store_rel_n (
+	    &old_ply->leaves[slot],
+	    ip4_fib_mtrie_leaf_set_adj_index (a->cover_adj_index));
 	  old_ply->dst_address_bits_of_leaves[slot] = a->cover_address_length;
 	}
     }
 }
 
 void
-ip4_fib_mtrie_route_add (ip4_fib_mtrie_t * m,
-			 const ip4_address_t * dst_address,
+ip4_fib_mtrie_route_add (ip4_fib_mtrie_t *m, const ip4_address_t *dst_address,
 			 u32 dst_address_length, u32 adj_index)
 {
   ip4_fib_mtrie_set_unset_leaf_args_t a;
   ip4_main_t *im = &ip4_main;
 
   /* Honor dst_address_length. Fib masks are in network byte order */
-  a.dst_address.as_u32 = (dst_address->as_u32 &
-			  im->fib_masks[dst_address_length]);
+  a.dst_address.as_u32 =
+    (dst_address->as_u32 & im->fib_masks[dst_address_length]);
   a.dst_address_length = dst_address_length;
   a.adj_index = adj_index;
 
@@ -635,18 +624,16 @@ ip4_fib_mtrie_route_add (ip4_fib_mtrie_t * m,
 }
 
 void
-ip4_fib_mtrie_route_del (ip4_fib_mtrie_t * m,
-			 const ip4_address_t * dst_address,
-			 u32 dst_address_length,
-			 u32 adj_index,
+ip4_fib_mtrie_route_del (ip4_fib_mtrie_t *m, const ip4_address_t *dst_address,
+			 u32 dst_address_length, u32 adj_index,
 			 u32 cover_address_length, u32 cover_adj_index)
 {
   ip4_fib_mtrie_set_unset_leaf_args_t a;
   ip4_main_t *im = &ip4_main;
 
   /* Honor dst_address_length. Fib masks are in network byte order */
-  a.dst_address.as_u32 = (dst_address->as_u32 &
-			  im->fib_masks[dst_address_length]);
+  a.dst_address.as_u32 =
+    (dst_address->as_u32 & im->fib_masks[dst_address_length]);
   a.dst_address_length = dst_address_length;
   a.adj_index = adj_index;
   a.cover_adj_index = cover_adj_index;
@@ -658,7 +645,7 @@ ip4_fib_mtrie_route_del (ip4_fib_mtrie_t * m,
 
 /* Returns number of bytes of memory used by mtrie. */
 static uword
-mtrie_ply_memory_usage (ip4_fib_mtrie_t * m, ip4_fib_mtrie_8_ply_t * p)
+mtrie_ply_memory_usage (ip4_fib_mtrie_t *m, ip4_fib_mtrie_8_ply_t *p)
 {
   uword bytes, i;
 
@@ -675,7 +662,7 @@ mtrie_ply_memory_usage (ip4_fib_mtrie_t * m, ip4_fib_mtrie_8_ply_t * p)
 
 /* Returns number of bytes of memory used by mtrie. */
 uword
-ip4_fib_mtrie_memory_usage (ip4_fib_mtrie_t * m)
+ip4_fib_mtrie_memory_usage (ip4_fib_mtrie_t *m)
 {
   uword bytes, i;
 
@@ -691,7 +678,7 @@ ip4_fib_mtrie_memory_usage (ip4_fib_mtrie_t * m)
 }
 
 static u8 *
-format_ip4_fib_mtrie_leaf (u8 * s, va_list * va)
+format_ip4_fib_mtrie_leaf (u8 *s, va_list *va)
 {
   ip4_fib_mtrie_leaf_t l = va_arg (*va, ip4_fib_mtrie_leaf_t);
 
@@ -702,29 +689,27 @@ format_ip4_fib_mtrie_leaf (u8 * s, va_list * va)
   return s;
 }
 
-#define FORMAT_PLY(s, _p, _a, _i, _base_address, _ply_max_len, _indent) \
-({                                                                      \
-  u32 a, ia_length;                                                     \
-  ip4_address_t ia;                                                     \
-  ip4_fib_mtrie_leaf_t _l = p->leaves[(_i)];                            \
-                                                                        \
-  a = (_base_address) + ((_a) << (32 - (_ply_max_len)));                \
-  ia.as_u32 = clib_host_to_net_u32 (a);                                 \
-  ia_length = (_p)->dst_address_bits_of_leaves[(_i)];                   \
-  s = format (s, "\n%U%U %U",                                           \
-              format_white_space, (_indent) + 4,                        \
-              format_ip4_address_and_length, &ia, ia_length,            \
-              format_ip4_fib_mtrie_leaf, _l);                           \
-                                                                        \
-  if (ip4_fib_mtrie_leaf_is_next_ply (_l))                              \
-    s = format (s, "\n%U",                                              \
-                format_ip4_fib_mtrie_ply, m, a, (_indent) + 8,          \
-                ip4_fib_mtrie_leaf_get_next_ply_index (_l));            \
-  s;                                                                    \
-})
+#define FORMAT_PLY(s, _p, _a, _i, _base_address, _ply_max_len, _indent)       \
+  ({                                                                          \
+    u32 a, ia_length;                                                         \
+    ip4_address_t ia;                                                         \
+    ip4_fib_mtrie_leaf_t _l = p->leaves[(_i)];                                \
+                                                                              \
+    a = (_base_address) + ((_a) << (32 - (_ply_max_len)));                    \
+    ia.as_u32 = clib_host_to_net_u32 (a);                                     \
+    ia_length = (_p)->dst_address_bits_of_leaves[(_i)];                       \
+    s = format (s, "\n%U%U %U", format_white_space, (_indent) + 4,            \
+		format_ip4_address_and_length, &ia, ia_length,                \
+		format_ip4_fib_mtrie_leaf, _l);                               \
+                                                                              \
+    if (ip4_fib_mtrie_leaf_is_next_ply (_l))                                  \
+      s = format (s, "\n%U", format_ip4_fib_mtrie_ply, m, a, (_indent) + 8,   \
+		  ip4_fib_mtrie_leaf_get_next_ply_index (_l));                \
+    s;                                                                        \
+  })
 
 static u8 *
-format_ip4_fib_mtrie_ply (u8 * s, va_list * va)
+format_ip4_fib_mtrie_ply (u8 *s, va_list *va)
 {
   ip4_fib_mtrie_t *m = va_arg (*va, ip4_fib_mtrie_t *);
   u32 base_address = va_arg (*va, u32);
@@ -734,8 +719,8 @@ format_ip4_fib_mtrie_ply (u8 * s, va_list * va)
   int i;
 
   p = pool_elt_at_index (ip4_ply_pool, ply_index);
-  s = format (s, "%Uply index %d, %d non-empty leaves",
-	      format_white_space, indent, ply_index, p->n_non_empty_leafs);
+  s = format (s, "%Uply index %d, %d non-empty leaves", format_white_space,
+	      indent, ply_index, p->n_non_empty_leafs);
 
   for (i = 0; i < ARRAY_LEN (p->leaves); i++)
     {
@@ -750,7 +735,7 @@ format_ip4_fib_mtrie_ply (u8 * s, va_list * va)
 }
 
 u8 *
-format_ip4_fib_mtrie (u8 * s, va_list * va)
+format_ip4_fib_mtrie (u8 *s, va_list *va)
 {
   ip4_fib_mtrie_t *m = va_arg (*va, ip4_fib_mtrie_t *);
   int verbose = va_arg (*va, int);
@@ -758,8 +743,7 @@ format_ip4_fib_mtrie (u8 * s, va_list * va)
   u32 base_address = 0;
   int i;
 
-  s = format (s, "%d plies, memory usage %U\n",
-	      pool_elts (ip4_ply_pool),
+  s = format (s, "%d plies, memory usage %U\n", pool_elts (ip4_ply_pool),
 	      format_memory_size, ip4_fib_mtrie_memory_usage (m));
   s = format (s, "root-ply");
   p = &m->root_ply;
@@ -786,13 +770,13 @@ format_ip4_fib_mtrie (u8 * s, va_list * va)
 }
 
 /** Default heap size for the IPv4 mtries */
-#define IP4_FIB_DEFAULT_MTRIE_HEAP_SIZE (32<<20)
+#define IP4_FIB_DEFAULT_MTRIE_HEAP_SIZE (32 << 20)
 #ifndef MAP_HUGE_SHIFT
 #define MAP_HUGE_SHIFT 26
 #endif
 
 static clib_error_t *
-ip4_mtrie_module_init (vlib_main_t * vm)
+ip4_mtrie_module_init (vlib_main_t *vm)
 {
   CLIB_UNUSED (ip4_fib_mtrie_8_ply_t * p);
   clib_error_t *error = NULL;

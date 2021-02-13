@@ -21,10 +21,8 @@
 in_out_acl_main_t in_out_acl_main;
 
 static int
-vnet_in_out_acl_ip_feature_enable (vlib_main_t * vnm,
-				   in_out_acl_main_t * am,
-				   u32 sw_if_index,
-				   in_out_acl_table_id_t tid,
+vnet_in_out_acl_ip_feature_enable (vlib_main_t *vnm, in_out_acl_main_t *am,
+				   u32 sw_if_index, in_out_acl_table_id_t tid,
 				   int feature_enable, int is_output)
 {
 
@@ -38,7 +36,7 @@ vnet_in_out_acl_ip_feature_enable (vlib_main_t * vnm,
 				    feature_enable);
     }
   else
-    {				/* IP[46] */
+    { /* IP[46] */
       vnet_feature_config_main_t *fcm;
       u8 arc;
 
@@ -67,16 +65,14 @@ vnet_in_out_acl_ip_feature_enable (vlib_main_t * vnm,
 }
 
 int
-vnet_set_in_out_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
-			   u32 ip4_table_index,
-			   u32 ip6_table_index, u32 l2_table_index,
-			   u32 is_add, u32 is_output)
+vnet_set_in_out_acl_intfc (vlib_main_t *vm, u32 sw_if_index,
+			   u32 ip4_table_index, u32 ip6_table_index,
+			   u32 l2_table_index, u32 is_add, u32 is_output)
 {
   in_out_acl_main_t *am = &in_out_acl_main;
   vnet_classify_main_t *vcm = am->vnet_classify_main;
   u32 acl[IN_OUT_ACL_N_TABLES] = { ip4_table_index, ip6_table_index,
-    l2_table_index
-  };
+				   l2_table_index };
   u32 ti;
 
   /* Assume that we've validated sw_if_index in the API layer */
@@ -89,26 +85,24 @@ vnet_set_in_out_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
       if (pool_is_free_index (vcm->tables, acl[ti]))
 	return VNET_API_ERROR_NO_SUCH_TABLE;
 
-      vec_validate_init_empty
-	(am->classify_table_index_by_sw_if_index[is_output][ti], sw_if_index,
-	 ~0);
+      vec_validate_init_empty (
+	am->classify_table_index_by_sw_if_index[is_output][ti], sw_if_index,
+	~0);
 
       /* Reject any DEL operation with wrong sw_if_index */
       if (!is_add &&
-	  (acl[ti] !=
-	   am->classify_table_index_by_sw_if_index[is_output][ti]
-	   [sw_if_index]))
+	  (acl[ti] != am->classify_table_index_by_sw_if_index[is_output][ti]
+							     [sw_if_index]))
 	{
-	  clib_warning
-	    ("Non-existent intf_idx=%d with table_index=%d for delete",
-	     sw_if_index, acl[ti]);
+	  clib_warning (
+	    "Non-existent intf_idx=%d with table_index=%d for delete",
+	    sw_if_index, acl[ti]);
 	  return VNET_API_ERROR_NO_SUCH_TABLE;
 	}
 
       /* Return ok on ADD operaton if feature is already enabled */
-      if (is_add &&
-	  am->classify_table_index_by_sw_if_index[is_output][ti][sw_if_index]
-	  != ~0)
+      if (is_add && am->classify_table_index_by_sw_if_index[is_output][ti]
+							   [sw_if_index] != ~0)
 	return 0;
 
       vnet_in_out_acl_ip_feature_enable (vm, am, sw_if_index, ti, is_add,
@@ -126,9 +120,9 @@ vnet_set_in_out_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
 }
 
 int
-vnet_set_input_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
-			  u32 ip4_table_index,
-			  u32 ip6_table_index, u32 l2_table_index, u32 is_add)
+vnet_set_input_acl_intfc (vlib_main_t *vm, u32 sw_if_index,
+			  u32 ip4_table_index, u32 ip6_table_index,
+			  u32 l2_table_index, u32 is_add)
 {
   return vnet_set_in_out_acl_intfc (vm, sw_if_index, ip4_table_index,
 				    ip6_table_index, l2_table_index, is_add,
@@ -136,10 +130,9 @@ vnet_set_input_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
 }
 
 int
-vnet_set_output_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
-			   u32 ip4_table_index,
-			   u32 ip6_table_index, u32 l2_table_index,
-			   u32 is_add)
+vnet_set_output_acl_intfc (vlib_main_t *vm, u32 sw_if_index,
+			   u32 ip4_table_index, u32 ip6_table_index,
+			   u32 l2_table_index, u32 is_add)
 {
   return vnet_set_in_out_acl_intfc (vm, sw_if_index, ip4_table_index,
 				    ip6_table_index, l2_table_index, is_add,
@@ -147,9 +140,8 @@ vnet_set_output_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
 }
 
 static clib_error_t *
-set_in_out_acl_command_fn (vlib_main_t * vm,
-			   unformat_input_t * input, vlib_cli_command_t * cmd,
-			   u32 is_output)
+set_in_out_acl_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd, u32 is_output)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index = ~0;
@@ -162,8 +154,8 @@ set_in_out_acl_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "intfc %U", unformat_vnet_sw_interface,
-		    vnm, &sw_if_index))
+      if (unformat (input, "intfc %U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (input, "ip4-table %d", &ip4_table_index))
 	idx_cnt++;
@@ -205,16 +197,16 @@ set_in_out_acl_command_fn (vlib_main_t * vm,
 }
 
 static clib_error_t *
-set_input_acl_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+set_input_acl_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   return set_in_out_acl_command_fn (vm, input, cmd,
 				    IN_OUT_ACL_INPUT_TABLE_GROUP);
 }
 
 static clib_error_t *
-set_output_acl_command_fn (vlib_main_t * vm,
-			   unformat_input_t * input, vlib_cli_command_t * cmd)
+set_output_acl_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   return set_in_out_acl_command_fn (vm, input, cmd,
 				    IN_OUT_ACL_OUTPUT_TABLE_GROUP);
@@ -230,25 +222,22 @@ set_output_acl_command_fn (vlib_main_t * vm,
  * Note: Only one table index per API call is allowed.
  *
  */
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (set_input_acl_command, static) = {
-    .path = "set interface input acl",
-    .short_help =
-    "set interface input acl intfc <int> [ip4-table <index>]\n"
-    "  [ip6-table <index>] [l2-table <index>] [del]",
-    .function = set_input_acl_command_fn,
+  .path = "set interface input acl",
+  .short_help = "set interface input acl intfc <int> [ip4-table <index>]\n"
+		"  [ip6-table <index>] [l2-table <index>] [del]",
+  .function = set_input_acl_command_fn,
 };
 VLIB_CLI_COMMAND (set_output_acl_command, static) = {
-    .path = "set interface output acl",
-    .short_help =
-    "set interface output acl intfc <int> [ip4-table <index>]\n"
-    "  [ip6-table <index>] [l2-table <index>] [del]",
-    .function = set_output_acl_command_fn,
+  .path = "set interface output acl",
+  .short_help = "set interface output acl intfc <int> [ip4-table <index>]\n"
+		"  [ip6-table <index>] [l2-table <index>] [del]",
+  .function = set_output_acl_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-in_out_acl_init (vlib_main_t * vm)
+in_out_acl_init (vlib_main_t *vm)
 {
   in_out_acl_main_t *am = &in_out_acl_main;
 
@@ -258,15 +247,13 @@ in_out_acl_init (vlib_main_t * vm)
 
   return 0;
 }
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (in_out_acl_init) =
-{
-  .runs_after = VLIB_INITS("ip_in_out_acl_init"),
+
+VLIB_INIT_FUNCTION (in_out_acl_init) = {
+  .runs_after = VLIB_INITS ("ip_in_out_acl_init"),
 };
-/* *INDENT-ON* */
 
 uword
-unformat_acl_type (unformat_input_t * input, va_list * args)
+unformat_acl_type (unformat_input_t *input, va_list *args)
 {
   u32 *acl_type = va_arg (*args, u32 *);
   u32 tid = IN_OUT_ACL_N_TABLES;
@@ -288,7 +275,7 @@ unformat_acl_type (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_vnet_in_out_acl_info (u8 * s, va_list * va)
+format_vnet_in_out_acl_info (u8 *s, va_list *va)
 {
   in_out_acl_main_t *am = va_arg (*va, in_out_acl_main_t *);
   int sw_if_idx = va_arg (*va, int);
@@ -308,9 +295,8 @@ format_vnet_in_out_acl_info (u8 * s, va_list * va)
 }
 
 static clib_error_t *
-show_in_out_acl_command_fn (vlib_main_t * vm,
-			    unformat_input_t * input,
-			    vlib_cli_command_t * cmd, u32 is_output)
+show_in_out_acl_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd, u32 is_output)
 {
   in_out_acl_main_t *am = &in_out_acl_main;
   u32 type = IN_OUT_ACL_N_TABLES;
@@ -326,58 +312,56 @@ show_in_out_acl_command_fn (vlib_main_t * vm,
     }
 
   if (type == IN_OUT_ACL_N_TABLES)
-    return clib_error_return (0, is_output ? "Invalid output ACL table type."
-			      : "Invalid input ACL table type.");
+    return clib_error_return (0, is_output ? "Invalid output ACL table type." :
+					     "Invalid input ACL table type.");
 
   vec_tbl = am->classify_table_index_by_sw_if_index[is_output][type];
 
   if (vec_len (vec_tbl))
-    vlib_cli_output (vm, "%U", format_vnet_in_out_acl_info, am, ~0 /* hdr */ ,
+    vlib_cli_output (vm, "%U", format_vnet_in_out_acl_info, am, ~0 /* hdr */,
 		     ~0);
   else
-    vlib_cli_output (vm, is_output ? "No output ACL tables configured"
-		     : "No input ACL tables configured");
+    vlib_cli_output (vm, is_output ? "No output ACL tables configured" :
+				     "No input ACL tables configured");
 
   for (i = 0; i < vec_len (vec_tbl); i++)
     {
       if (vec_elt (vec_tbl, i) == ~0)
 	continue;
 
-      vlib_cli_output (vm, "%U", format_vnet_in_out_acl_info,
-		       am, i, vec_elt (vec_tbl, i));
+      vlib_cli_output (vm, "%U", format_vnet_in_out_acl_info, am, i,
+		       vec_elt (vec_tbl, i));
     }
 
   return 0;
 }
 
 static clib_error_t *
-show_inacl_command_fn (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+show_inacl_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   return show_in_out_acl_command_fn (vm, input, cmd,
 				     IN_OUT_ACL_INPUT_TABLE_GROUP);
 }
 
 static clib_error_t *
-show_outacl_command_fn (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+show_outacl_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   return show_in_out_acl_command_fn (vm, input, cmd,
 				     IN_OUT_ACL_OUTPUT_TABLE_GROUP);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_inacl_command, static) = {
-    .path = "show inacl",
-    .short_help = "show inacl type [ip4|ip6|l2]",
-    .function = show_inacl_command_fn,
+  .path = "show inacl",
+  .short_help = "show inacl type [ip4|ip6|l2]",
+  .function = show_inacl_command_fn,
 };
 VLIB_CLI_COMMAND (show_outacl_command, static) = {
-    .path = "show outacl",
-    .short_help = "show outacl type [ip4|ip6|l2]",
-    .function = show_outacl_command_fn,
+  .path = "show outacl",
+  .short_help = "show outacl type [ip4|ip6|l2]",
+  .function = show_outacl_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

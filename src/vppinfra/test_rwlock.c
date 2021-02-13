@@ -50,7 +50,8 @@ write_shared_counter (void *arg)
   rwlock_test_main_t *rtm = arg;
 
   /* Wait for all threads to be created */
-  while (!clib_atomic_load_acq_n (&all_threads_online));
+  while (!clib_atomic_load_acq_n (&all_threads_online))
+    ;
 
   f64 start = clib_cpu_time_now ();
   for (uword i = 0; i < rtm->increment_per_thread; i++)
@@ -70,10 +71,11 @@ read_shared_counter (void *arg)
   *time = 0;
   rwlock_test_main_t *rtm = arg;
   uword cnt_cpy = 0, exp = rtm->increment_per_thread * rtm->write_cores *
-    rtm->threads_per_core;
+			   rtm->threads_per_core;
 
   /* Wait for all threads to be created */
-  while (!clib_atomic_load_acq_n (&all_threads_online));
+  while (!clib_atomic_load_acq_n (&all_threads_online))
+    ;
 
   f64 start = clib_cpu_time_now ();
   while (cnt_cpy < exp)
@@ -87,10 +89,10 @@ read_shared_counter (void *arg)
 }
 
 unsigned
-test_rwlock (rwlock_test_main_t * rtm, f64 * elapse_time)
+test_rwlock (rwlock_test_main_t *rtm, f64 *elapse_time)
 {
-  int error = 0, total_threads = (rtm->read_cores + rtm->write_cores)
-    * rtm->threads_per_core;
+  int error = 0, total_threads = (rtm->read_cores + rtm->write_cores) *
+				 rtm->threads_per_core;
   pthread_t pthread[total_threads];
 
   cpu_set_t cpuset;
@@ -177,18 +179,18 @@ num_cores_in_cpu_mask (uword mask)
 }
 
 int
-test_rwlock_main (unformat_input_t * i)
+test_rwlock_main (unformat_input_t *i)
 {
   rwlock_test_main_t _rtm, *rtm = &_rtm;
   clib_memset (rtm, 0, sizeof (rwlock_test_main_t));
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (0 == unformat (i, "threads/core %d", &rtm->threads_per_core)
-	  && 0 == unformat (i, "cpu_mask_read %x", &rtm->cpu_mask_read)
-	  && 0 == unformat (i, "cpu_mask_write %x", &rtm->cpu_mask_write)
-	  && 0 == unformat (i, "increment %d", &rtm->increment_per_thread)
-	  && 0 == unformat (i, "iterations %d", &rtm->iterations))
+      if (0 == unformat (i, "threads/core %d", &rtm->threads_per_core) &&
+	  0 == unformat (i, "cpu_mask_read %x", &rtm->cpu_mask_read) &&
+	  0 == unformat (i, "cpu_mask_write %x", &rtm->cpu_mask_write) &&
+	  0 == unformat (i, "increment %d", &rtm->increment_per_thread) &&
+	  0 == unformat (i, "iterations %d", &rtm->iterations))
 	{
 	  clib_unix_warning ("unknown input '%U'", format_unformat_error, i);
 	  return 1;
@@ -198,8 +200,8 @@ test_rwlock_main (unformat_input_t * i)
   rtm->read_cores = num_cores_in_cpu_mask (rtm->cpu_mask_read);
   rtm->write_cores = num_cores_in_cpu_mask (rtm->cpu_mask_write);
 
-  uword total_increment = rtm->threads_per_core * rtm->write_cores *
-    rtm->increment_per_thread;
+  uword total_increment =
+    rtm->threads_per_core * rtm->write_cores * rtm->increment_per_thread;
 
   clib_rwlock_init (&rtm->rwlock);
 
@@ -215,8 +217,8 @@ test_rwlock_main (unformat_input_t * i)
 		   total_increment, rtm->shared_count);
 	  return 1;
 	}
-      fformat (stdout, "Trial %d SUCCESS: %d = %d\n",
-	       trial, rtm->shared_count, total_increment);
+      fformat (stdout, "Trial %d SUCCESS: %d = %d\n", trial, rtm->shared_count,
+	       total_increment);
       average_time = (average_time * trial + elapse_time) / (trial + 1);
       fformat (stdout, "Average lock/unlock cycles: %.4e\n", average_time);
     }
@@ -231,7 +233,7 @@ test_rwlock_main (unformat_input_t * i)
 
     @param "threads/core [# threads/core]" - number of threads per core
     @param "cpu_mask_read [cpu_mask]" - reader thread cpu string e.g. input
-            ff sets cpus 0 - 7
+	    ff sets cpus 0 - 7
     @param "cpu_mask_write [cpu_mask]" - writer thread cpu string
     @param "increment [# increments]" - number of increments per writer thread
     @param "iterations [# iterations]" - number of iterations

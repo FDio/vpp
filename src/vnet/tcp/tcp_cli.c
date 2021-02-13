@@ -25,7 +25,7 @@ const char *tcp_fsm_states[] = {
 };
 
 u8 *
-format_tcp_state (u8 * s, va_list * args)
+format_tcp_state (u8 *s, va_list *args)
 {
   u32 state = va_arg (*args, u32);
 
@@ -43,7 +43,7 @@ const char *tcp_cfg_flags_str[] = {
 };
 
 static u8 *
-format_tcp_cfg_flags (u8 * s, va_list * args)
+format_tcp_cfg_flags (u8 *s, va_list *args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   int i, last = -1;
@@ -68,7 +68,7 @@ const char *tcp_connection_flags_str[] = {
 };
 
 static u8 *
-format_tcp_connection_flags (u8 * s, va_list * args)
+format_tcp_connection_flags (u8 *s, va_list *args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   int i, last = -1;
@@ -93,7 +93,7 @@ const char *tcp_conn_timers[] = {
 };
 
 static u8 *
-format_tcp_timers (u8 * s, va_list * args)
+format_tcp_timers (u8 *s, va_list *args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   int i, last = -1;
@@ -115,7 +115,7 @@ format_tcp_timers (u8 * s, va_list * args)
 }
 
 static u8 *
-format_tcp_congestion_status (u8 * s, va_list * args)
+format_tcp_congestion_status (u8 *s, va_list *args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   if (tcp_in_recovery (tc))
@@ -128,13 +128,13 @@ format_tcp_congestion_status (u8 * s, va_list * args)
 }
 
 static i32
-tcp_rcv_wnd_available (tcp_connection_t * tc)
+tcp_rcv_wnd_available (tcp_connection_t *tc)
 {
   return (i32) tc->rcv_wnd - (tc->rcv_nxt - tc->rcv_las);
 }
 
 static u8 *
-format_tcp_congestion (u8 * s, va_list * args)
+format_tcp_congestion (u8 *s, va_list *args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   u32 indent = format_get_indent (s), prr_space = 0;
@@ -145,12 +145,12 @@ format_tcp_congestion (u8 * s, va_list * args)
   s = format (s, "%Ucc space %u prev_cwnd %u prev_ssthresh %u\n",
 	      format_white_space, indent, tcp_available_cc_snd_space (tc),
 	      tc->prev_cwnd, tc->prev_ssthresh);
-  s = format (s, "%Usnd_cong %u dupack %u limited_tx %u\n",
-	      format_white_space, indent, tc->snd_congestion - tc->iss,
-	      tc->rcv_dupacks, tc->limited_transmit - tc->iss);
+  s = format (s, "%Usnd_cong %u dupack %u limited_tx %u\n", format_white_space,
+	      indent, tc->snd_congestion - tc->iss, tc->rcv_dupacks,
+	      tc->limited_transmit - tc->iss);
   s = format (s, "%Urxt_bytes %u rxt_delivered %u rxt_head %u rxt_ts %u\n",
-	      format_white_space, indent, tc->snd_rxt_bytes,
-	      tc->rxt_delivered, tc->rxt_head - tc->iss,
+	      format_white_space, indent, tc->snd_rxt_bytes, tc->rxt_delivered,
+	      tc->rxt_head - tc->iss,
 	      tcp_time_now_w_thread (tc->c_thread_index) - tc->snd_rxt_ts);
   if (tcp_in_fastrecovery (tc))
     prr_space = tcp_fastrecovery_prr_snd_space (tc);
@@ -161,18 +161,18 @@ format_tcp_congestion (u8 * s, va_list * args)
 }
 
 static u8 *
-format_tcp_stats (u8 * s, va_list * args)
+format_tcp_stats (u8 *s, va_list *args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   u32 indent = format_get_indent (s);
-  s = format (s, "in segs %lu dsegs %lu bytes %lu dupacks %u\n",
-	      tc->segs_in, tc->data_segs_in, tc->bytes_in, tc->dupacks_in);
+  s = format (s, "in segs %lu dsegs %lu bytes %lu dupacks %u\n", tc->segs_in,
+	      tc->data_segs_in, tc->bytes_in, tc->dupacks_in);
   s = format (s, "%Uout segs %lu dsegs %lu bytes %lu dupacks %u\n",
-	      format_white_space, indent, tc->segs_out,
-	      tc->data_segs_out, tc->bytes_out, tc->dupacks_out);
+	      format_white_space, indent, tc->segs_out, tc->data_segs_out,
+	      tc->bytes_out, tc->dupacks_out);
   s = format (s, "%Ufr %u tr %u rxt segs %lu bytes %lu duration %.3f\n",
-	      format_white_space, indent, tc->fr_occurences,
-	      tc->tr_occurences, tc->segs_retrans, tc->bytes_retrans,
+	      format_white_space, indent, tc->fr_occurences, tc->tr_occurences,
+	      tc->segs_retrans, tc->bytes_retrans,
 	      tcp_time_now_us (tc->c_thread_index) - tc->start_ts);
   s = format (s, "%Uerr wnd data below %u above %u ack below %u above %u",
 	      format_white_space, indent, tc->errors.below_data_wnd,
@@ -182,7 +182,7 @@ format_tcp_stats (u8 * s, va_list * args)
 }
 
 static u8 *
-format_tcp_vars (u8 * s, va_list * args)
+format_tcp_vars (u8 *s, va_list *args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   s = format (s, " index: %u cfg: %U flags: %U timers: %U\n", tc->c_c_index,
@@ -190,10 +190,10 @@ format_tcp_vars (u8 * s, va_list * args)
 	      format_tcp_timers, tc);
   s = format (s, " snd_una %u snd_nxt %u", tc->snd_una - tc->iss,
 	      tc->snd_nxt - tc->iss);
-  s = format (s, " rcv_nxt %u rcv_las %u\n",
-	      tc->rcv_nxt - tc->irs, tc->rcv_las - tc->irs);
-  s = format (s, " snd_wnd %u rcv_wnd %u rcv_wscale %u ",
-	      tc->snd_wnd, tc->rcv_wnd, tc->rcv_wscale);
+  s = format (s, " rcv_nxt %u rcv_las %u\n", tc->rcv_nxt - tc->irs,
+	      tc->rcv_las - tc->irs);
+  s = format (s, " snd_wnd %u rcv_wnd %u rcv_wscale %u ", tc->snd_wnd,
+	      tc->rcv_wnd, tc->rcv_wscale);
   s = format (s, "snd_wl1 %u snd_wl2 %u\n", tc->snd_wl1 - tc->irs,
 	      tc->snd_wl2 - tc->iss);
   s = format (s, " flight size %u out space %u rcv_wnd_av %u",
@@ -207,16 +207,15 @@ format_tcp_vars (u8 * s, va_list * args)
   s = format (s, " rto %u rto_boff %u srtt %.1f us %.3f rttvar %.1f",
 	      tc->rto / 1000, tc->rto_boff, tc->srtt / 1000.0,
 	      tc->mrtt_us * 1e3, tc->rttvar / 1000.0);
-  s = format (s, " rtt_ts %.4f rtt_seq %u\n", tc->rtt_ts,
-	      tc->rtt_seq - tc->iss);
+  s =
+    format (s, " rtt_ts %.4f rtt_seq %u\n", tc->rtt_ts, tc->rtt_seq - tc->iss);
   s = format (s, " next_node %u opaque 0x%x fib_index %u\n",
 	      tc->next_node_index, tc->next_node_opaque, tc->c_fib_index);
   s = format (s, " cong:   %U", format_tcp_congestion, tc);
 
   if (tc->state >= TCP_STATE_ESTABLISHED)
     {
-      s = format (s, " sboard: %U\n", format_tcp_scoreboard, &tc->sack_sb,
-		  tc);
+      s = format (s, " sboard: %U\n", format_tcp_scoreboard, &tc->sack_sb, tc);
       s = format (s, " stats: %U\n", format_tcp_stats, tc);
     }
   if (vec_len (tc->snd_sacks))
@@ -226,7 +225,7 @@ format_tcp_vars (u8 * s, va_list * args)
 }
 
 u8 *
-format_tcp_connection_id (u8 * s, va_list * args)
+format_tcp_connection_id (u8 *s, va_list *args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   if (!tc)
@@ -250,7 +249,7 @@ format_tcp_connection_id (u8 * s, va_list * args)
 }
 
 u8 *
-format_tcp_connection (u8 * s, va_list * args)
+format_tcp_connection (u8 *s, va_list *args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   u32 verbose = va_arg (*args, u32);
@@ -270,7 +269,7 @@ format_tcp_connection (u8 * s, va_list * args)
 }
 
 u8 *
-format_tcp_sacks (u8 * s, va_list * args)
+format_tcp_sacks (u8 *s, va_list *args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   sack_block_t *sacks = tc->snd_sacks;
@@ -294,7 +293,7 @@ format_tcp_sacks (u8 * s, va_list * args)
 }
 
 u8 *
-format_tcp_rcv_sacks (u8 * s, va_list * args)
+format_tcp_rcv_sacks (u8 *s, va_list *args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   sack_block_t *sacks = tc->rcv_opts.sacks;
@@ -318,7 +317,7 @@ format_tcp_rcv_sacks (u8 * s, va_list * args)
 }
 
 static u8 *
-format_tcp_sack_hole (u8 * s, va_list * args)
+format_tcp_sack_hole (u8 *s, va_list *args)
 {
   sack_scoreboard_hole_t *hole = va_arg (*args, sack_scoreboard_hole_t *);
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
@@ -330,14 +329,15 @@ format_tcp_sack_hole (u8 * s, va_list * args)
 }
 
 u8 *
-format_tcp_scoreboard (u8 * s, va_list * args)
+format_tcp_scoreboard (u8 *s, va_list *args)
 {
   sack_scoreboard_t *sb = va_arg (*args, sack_scoreboard_t *);
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   sack_scoreboard_hole_t *hole;
   u32 indent = format_get_indent (s);
 
-  s = format (s, "sacked %u last_sacked %u lost %u last_lost %u"
+  s = format (s,
+	      "sacked %u last_sacked %u lost %u last_lost %u"
 	      " rxt_sacked %u\n",
 	      sb->sacked_bytes, sb->last_sacked_bytes, sb->lost_bytes,
 	      sb->last_lost_bytes, sb->rxt_sacked);
@@ -374,9 +374,8 @@ format_tcp_scoreboard (u8 * s, va_list * args)
  */
 
 int
-tcp_configure_v4_source_address_range (vlib_main_t * vm,
-				       ip4_address_t * start,
-				       ip4_address_t * end, u32 table_id)
+tcp_configure_v4_source_address_range (vlib_main_t *vm, ip4_address_t *start,
+				       ip4_address_t *end, u32 table_id)
 {
   u32 start_host_byte_order, end_host_byte_order;
   fib_prefix_t prefix;
@@ -431,15 +430,13 @@ tcp_configure_v4_source_address_range (vlib_main_t * vm,
 
       /* Add local adjacencies for the range */
 
-      receive_dpo_add_or_lock (DPO_PROTO_IP4, ~0 /* sw_if_index */ ,
-			       NULL, &dpo);
+      receive_dpo_add_or_lock (DPO_PROTO_IP4, ~0 /* sw_if_index */, NULL,
+			       &dpo);
       prefix.fp_len = 32;
       prefix.fp_proto = FIB_PROTOCOL_IP4;
       prefix.fp_addr.ip4.as_u32 = start->as_u32;
 
-      fib_table_entry_special_dpo_update (fib_index,
-					  &prefix,
-					  FIB_SOURCE_API,
+      fib_table_entry_special_dpo_update (fib_index, &prefix, FIB_SOURCE_API,
 					  FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
       dpo_reset (&dpo);
 
@@ -461,9 +458,8 @@ tcp_configure_v4_source_address_range (vlib_main_t * vm,
  */
 
 int
-tcp_configure_v6_source_address_range (vlib_main_t * vm,
-				       ip6_address_t * start,
-				       ip6_address_t * end, u32 table_id)
+tcp_configure_v6_source_address_range (vlib_main_t *vm, ip6_address_t *start,
+				       ip6_address_t *end, u32 table_id)
 {
   fib_prefix_t prefix;
   u32 fib_index = 0;
@@ -499,19 +495,17 @@ tcp_configure_v6_source_address_range (vlib_main_t * vm,
 
       sw_if_index = fib_entry_get_resolving_interface (fei);
 
-      if (sw_if_index == (u32) ~ 0)
+      if (sw_if_index == (u32) ~0)
 	return VNET_API_ERROR_NO_MATCHING_INTERFACE;
 
       /* Add a proxy neighbor discovery entry for this address */
       ip6_neighbor_proxy_add (sw_if_index, start);
 
       /* Add a receive adjacency for this address */
-      receive_dpo_add_or_lock (DPO_PROTO_IP6, ~0 /* sw_if_index */ ,
-			       NULL, &dpo);
+      receive_dpo_add_or_lock (DPO_PROTO_IP6, ~0 /* sw_if_index */, NULL,
+			       &dpo);
 
-      fib_table_entry_special_dpo_update (fib_index,
-					  &prefix,
-					  FIB_SOURCE_API,
+      fib_table_entry_special_dpo_update (fib_index, &prefix, FIB_SOURCE_API,
 					  FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
       dpo_reset (&dpo);
 
@@ -533,8 +527,8 @@ tcp_configure_v6_source_address_range (vlib_main_t * vm,
 }
 
 static clib_error_t *
-tcp_src_address_fn (vlib_main_t * vm,
-		    unformat_input_t * input, vlib_cli_command_t * cmd_arg)
+tcp_src_address_fn (vlib_main_t *vm, unformat_input_t *input,
+		    vlib_cli_command_t *cmd_arg)
 {
   ip4_address_t v4start, v4end;
   ip6_address_t v6start, v6end;
@@ -572,8 +566,8 @@ tcp_src_address_fn (vlib_main_t * vm,
 
   if (v4set)
     {
-      rv = tcp_configure_v4_source_address_range (vm, &v4start, &v4end,
-						  table_id);
+      rv =
+	tcp_configure_v4_source_address_range (vm, &v4start, &v4end, table_id);
       switch (rv)
 	{
 	case 0:
@@ -593,8 +587,8 @@ tcp_src_address_fn (vlib_main_t * vm,
     }
   if (v6set)
     {
-      rv = tcp_configure_v6_source_address_range (vm, &v6start, &v6end,
-						  table_id);
+      rv =
+	tcp_configure_v6_source_address_range (vm, &v6start, &v6end, table_id);
       switch (rv)
 	{
 	case 0:
@@ -611,17 +605,15 @@ tcp_src_address_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (tcp_src_address_command, static) =
-{
+VLIB_CLI_COMMAND (tcp_src_address_command, static) = {
   .path = "tcp src-address",
-  .short_help = "tcp src-address <ip-addr> [- <ip-addr>] add src address range",
+  .short_help =
+    "tcp src-address <ip-addr> [- <ip-addr>] add src address range",
   .function = tcp_src_address_fn,
 };
-/* *INDENT-ON* */
 
 static u8 *
-tcp_scoreboard_dump_trace (u8 * s, sack_scoreboard_t * sb)
+tcp_scoreboard_dump_trace (u8 *s, sack_scoreboard_t *sb)
 {
 #if TCP_SCOREBOARD_TRACE
 
@@ -633,12 +625,12 @@ tcp_scoreboard_dump_trace (u8 * s, sack_scoreboard_t * sb)
 
   s = format (s, "scoreboard trace:");
   vec_foreach (block, sb->trace)
-  {
-    s = format (s, "{%u, %u, %u, %u, %u}, ", block->start, block->end,
-		block->ack, block->snd_una_max, block->group);
-    if ((++i % 3) == 0)
-      s = format (s, "\n");
-  }
+    {
+      s = format (s, "{%u, %u, %u, %u, %u}, ", block->start, block->end,
+		  block->ack, block->snd_una_max, block->group);
+      if ((++i % 3) == 0)
+	s = format (s, "\n");
+    }
   return s;
 #else
   return 0;
@@ -646,8 +638,8 @@ tcp_scoreboard_dump_trace (u8 * s, sack_scoreboard_t * sb)
 }
 
 static clib_error_t *
-tcp_show_scoreboard_trace_fn (vlib_main_t * vm, unformat_input_t * input,
-			      vlib_cli_command_t * cmd_arg)
+tcp_show_scoreboard_trace_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd_arg)
 {
   transport_connection_t *tconn = 0;
   tcp_connection_t *tc;
@@ -674,17 +666,14 @@ tcp_show_scoreboard_trace_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (tcp_show_scoreboard_trace_command, static) =
-{
+VLIB_CLI_COMMAND (tcp_show_scoreboard_trace_command, static) = {
   .path = "show tcp scoreboard trace",
   .short_help = "show tcp scoreboard trace <connection>",
   .function = tcp_show_scoreboard_trace_fn,
 };
-/* *INDENT-ON* */
 
 u8 *
-tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
+tcp_scoreboard_replay (u8 *s, tcp_connection_t *tc, u8 verbose)
 {
   int i, trace_len;
   scoreboard_trace_elt_t *trace;
@@ -740,8 +729,8 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
 	  else
 	    {
 	      if (verbose)
-		s = format (s, "[%u, %u], ", trace[left].start,
-			    trace[left].end);
+		s =
+		  format (s, "[%u, %u], ", trace[left].start, trace[left].end);
 	      vec_add2 (placeholder_tc->rcv_opts.sacks, block, 1);
 	      block->start = trace[left].start;
 	      block->end = trace[left].end;
@@ -757,7 +746,6 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
       if (verbose)
 	s = format (s, "result: %U", format_tcp_scoreboard,
 		    &placeholder_tc->sack_sb);
-
     }
   s =
     format (s, "result: %U", format_tcp_scoreboard, &placeholder_tc->sack_sb);
@@ -766,8 +754,8 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
 }
 
 static clib_error_t *
-tcp_scoreboard_trace_fn (vlib_main_t * vm, unformat_input_t * input,
-			 vlib_cli_command_t * cmd_arg)
+tcp_scoreboard_trace_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd_arg)
 {
   transport_connection_t *tconn = 0;
   tcp_connection_t *tc = 0;
@@ -799,18 +787,15 @@ tcp_scoreboard_trace_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (tcp_replay_scoreboard_command, static) =
-{
+VLIB_CLI_COMMAND (tcp_replay_scoreboard_command, static) = {
   .path = "tcp replay scoreboard",
   .short_help = "tcp replay scoreboard <connection>",
   .function = tcp_scoreboard_trace_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_tcp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
-		  vlib_cli_command_t * cmd_arg)
+show_tcp_punt_fn (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd_arg)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -822,18 +807,16 @@ show_tcp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
 		   tm->punt_unknown6 ? "enabled" : "disabled");
   return 0;
 }
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_tcp_punt_command, static) =
-{
+
+VLIB_CLI_COMMAND (show_tcp_punt_command, static) = {
   .path = "show tcp punt",
   .short_help = "show tcp punt",
   .function = show_tcp_punt_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_tcp_stats_fn (vlib_main_t * vm, unformat_input_t * input,
-		   vlib_cli_command_t * cmd)
+show_tcp_stats_fn (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   tcp_worker_ctx_t *wrk;
@@ -851,8 +834,8 @@ show_tcp_stats_fn (vlib_main_t * vm, unformat_input_t * input,
 	vlib_cli_output (vm, " %lu pending timers",
 			 clib_fifo_elts (wrk->pending_timers));
 
-#define _(name,type,str)					\
-  if (wrk->stats.name)						\
+#define _(name, type, str)                                                    \
+  if (wrk->stats.name)                                                        \
     vlib_cli_output (vm, " %lu %s", wrk->stats.name, str);
       foreach_tcp_wrk_stat
 #undef _
@@ -861,18 +844,15 @@ show_tcp_stats_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_tcp_stats_command, static) =
-{
+VLIB_CLI_COMMAND (show_tcp_stats_command, static) = {
   .path = "show tcp stats",
   .short_help = "show tcp stats",
   .function = show_tcp_stats_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-clear_tcp_stats_fn (vlib_main_t * vm, unformat_input_t * input,
-		    vlib_cli_command_t * cmd)
+clear_tcp_stats_fn (vlib_main_t *vm, unformat_input_t *input,
+		    vlib_cli_command_t *cmd)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   tcp_worker_ctx_t *wrk;
@@ -891,17 +871,14 @@ clear_tcp_stats_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (clear_tcp_stats_command, static) =
-{
+VLIB_CLI_COMMAND (clear_tcp_stats_command, static) = {
   .path = "clear tcp stats",
   .short_help = "clear tcp stats",
   .function = clear_tcp_stats_fn,
 };
-/* *INDENT-ON* */
 
 static void
-tcp_show_half_open (vlib_main_t * vm, u32 start, u32 end, u8 verbose)
+tcp_show_half_open (vlib_main_t *vm, u32 start, u32 end, u8 verbose)
 {
   tcp_main_t *tm = &tcp_main;
   u8 output_suppressed = 0;
@@ -944,14 +921,15 @@ tcp_show_half_open (vlib_main_t * vm, u32 start, u32 end, u8 verbose)
   if (!output_suppressed)
     vlib_cli_output (vm, "%u tcp half-open connections", n_elts);
   else
-    vlib_cli_output (vm, "%u tcp half-open connections matched. Output "
-		     "suppressed. Use finer grained filter.", count);
-
+    vlib_cli_output (vm,
+		     "%u tcp half-open connections matched. Output "
+		     "suppressed. Use finer grained filter.",
+		     count);
 }
 
 static clib_error_t *
-show_tcp_half_open_fn (vlib_main_t * vm, unformat_input_t * input,
-		       vlib_cli_command_t * cmd)
+show_tcp_half_open_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 start, end = ~0, verbose = 0;
@@ -983,8 +961,8 @@ show_tcp_half_open_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (start > end)
     {
-      error = clib_error_return (0, "invalid range start: %u end: %u", start,
-				 end);
+      error =
+	clib_error_return (0, "invalid range start: %u end: %u", start, end);
       goto done;
     }
 
@@ -995,17 +973,14 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_tcp_half_open_command, static) =
-{
+VLIB_CLI_COMMAND (show_tcp_half_open_command, static) = {
   .path = "show tcp half-open",
   .short_help = "show tcp half-open [verbose <n>] [range <start> <end>]",
   .function = show_tcp_half_open_fn,
 };
-/* *INDENT-ON* */
 
 uword
-unformat_tcp_cc_algo (unformat_input_t * input, va_list * va)
+unformat_tcp_cc_algo (unformat_input_t *input, va_list *va)
 {
   tcp_cc_algorithm_type_e *result = va_arg (*va, tcp_cc_algorithm_type_e *);
   tcp_main_t *tm = &tcp_main;
@@ -1013,8 +988,8 @@ unformat_tcp_cc_algo (unformat_input_t * input, va_list * va)
   u8 found = 0;
   uword *p;
 
-  if (unformat (input, "%s", &cc_algo_name)
-      && ((p = hash_get_mem (tm->cc_algo_by_name, cc_algo_name))))
+  if (unformat (input, "%s", &cc_algo_name) &&
+      ((p = hash_get_mem (tm->cc_algo_by_name, cc_algo_name))))
     {
       *result = *p;
       found = 1;
@@ -1025,7 +1000,7 @@ unformat_tcp_cc_algo (unformat_input_t * input, va_list * va)
 }
 
 uword
-unformat_tcp_cc_algo_cfg (unformat_input_t * input, va_list * va)
+unformat_tcp_cc_algo_cfg (unformat_input_t *input, va_list *va)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   tcp_cc_algorithm_t *cc_alg;
@@ -1033,22 +1008,22 @@ unformat_tcp_cc_algo_cfg (unformat_input_t * input, va_list * va)
   int found = 0;
 
   vec_foreach (cc_alg, tm->cc_algos)
-  {
-    if (!unformat (input, cc_alg->name))
-      continue;
+    {
+      if (!unformat (input, cc_alg->name))
+	continue;
 
-    if (cc_alg->unformat_cfg
-	&& unformat (input, "%U", unformat_vlib_cli_sub_input, &sub_input))
-      {
-	if (cc_alg->unformat_cfg (&sub_input))
-	  found = 1;
-      }
-  }
+      if (cc_alg->unformat_cfg &&
+	  unformat (input, "%U", unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  if (cc_alg->unformat_cfg (&sub_input))
+	    found = 1;
+	}
+    }
   return found;
 }
 
 static clib_error_t *
-tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
+tcp_config_fn (vlib_main_t *vm, unformat_input_t *input)
 {
   u32 cwnd_multiplier, tmp_time, mtu, max_gso_size;
   uword memory_size;
@@ -1069,9 +1044,9 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  if (memory_size >= 0x100000000)
 	    {
-	      return clib_error_return
-		(0, "max-rx-fifo %llu (0x%llx) too large", memory_size,
-		 memory_size);
+	      return clib_error_return (0,
+					"max-rx-fifo %llu (0x%llx) too large",
+					memory_size, memory_size);
 	    }
 	  tcp_cfg.max_rx_fifo = memory_size;
 	}
@@ -1080,9 +1055,9 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  if (memory_size >= 0x100000000)
 	    {
-	      return clib_error_return
-		(0, "min-rx-fifo %llu (0x%llx) too large", memory_size,
-		 memory_size);
+	      return clib_error_return (0,
+					"min-rx-fifo %llu (0x%llx) too large",
+					memory_size, memory_size);
 	    }
 	  tcp_cfg.min_rx_fifo = memory_size;
 	}

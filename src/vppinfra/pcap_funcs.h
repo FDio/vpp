@@ -17,14 +17,14 @@
 #define included_vppinfra_pcap_funcs_h
 
 /** Write out data to output file. */
-clib_error_t *pcap_close (pcap_main_t * pm);
-clib_error_t *pcap_write (pcap_main_t * pm);
+clib_error_t *pcap_close (pcap_main_t *pm);
+clib_error_t *pcap_write (pcap_main_t *pm);
 
 /** Read data from file. */
-clib_error_t *pcap_read (pcap_main_t * pm);
+clib_error_t *pcap_read (pcap_main_t *pm);
 
 /** Close the file created by pcap_write function. */
-clib_error_t *pcap_close (pcap_main_t * pm);
+clib_error_t *pcap_close (pcap_main_t *pm);
 
 /**
  * @brief Add packet
@@ -38,8 +38,8 @@ clib_error_t *pcap_close (pcap_main_t * pm);
  *
  */
 static inline void *
-pcap_add_packet (pcap_main_t * pm,
-		 f64 time_now, u32 n_bytes_in_trace, u32 n_bytes_in_packet)
+pcap_add_packet (pcap_main_t *pm, f64 time_now, u32 n_bytes_in_trace,
+		 u32 n_bytes_in_packet)
 {
   pcap_packet_header_t *h;
   u8 *d;
@@ -64,8 +64,7 @@ pcap_add_packet (pcap_main_t * pm,
  *
  */
 static inline void
-pcap_add_buffer (pcap_main_t * pm,
-		 struct vlib_main_t *vm, u32 buffer_index,
+pcap_add_buffer (pcap_main_t *pm, struct vlib_main_t *vm, u32 buffer_index,
 		 u32 n_bytes_in_trace)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, buffer_index);

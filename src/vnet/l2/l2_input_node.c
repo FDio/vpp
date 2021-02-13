@@ -58,17 +58,16 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_l2input_trace (u8 * s, va_list * args)
+format_l2input_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   l2input_trace_t *t = va_arg (*args, l2input_trace_t *);
 
-  s = format (s, "l2-input: sw_if_index %d dst %U src %U [%U]",
-	      t->sw_if_index,
-	      format_ethernet_address, t->dst_and_src,
-	      format_ethernet_address, t->dst_and_src + 6,
-	      format_l2_input_feature_bitmap, t->feat_mask, 0);
+  s = format (s, "l2-input: sw_if_index %d dst %U src %U [%U]", t->sw_if_index,
+	      format_ethernet_address, t->dst_and_src, format_ethernet_address,
+	      t->dst_and_src + 6, format_l2_input_feature_bitmap, t->feat_mask,
+	      0);
   return s;
 }
 
@@ -78,26 +77,26 @@ extern l2input_main_t l2input_main;
 l2input_main_t l2input_main;
 #endif /* CLIB_MARCH_VARIANT */
 
-#define foreach_l2input_error			\
-_(L2INPUT,     "L2 input packets")		\
-_(DROP,        "L2 input drops")
+#define foreach_l2input_error                                                 \
+  _ (L2INPUT, "L2 input packets")                                             \
+  _ (DROP, "L2 input drops")
 
 typedef enum
 {
-#define _(sym,str) L2INPUT_ERROR_##sym,
+#define _(sym, str) L2INPUT_ERROR_##sym,
   foreach_l2input_error
 #undef _
     L2INPUT_N_ERROR,
 } l2input_error_t;
 
 static char *l2input_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_l2input_error
 #undef _
 };
 
 typedef enum
-{				/*  */
+{ /*  */
   L2INPUT_NEXT_LEARN,
   L2INPUT_NEXT_FWD,
   L2INPUT_NEXT_DROP,
@@ -105,7 +104,7 @@ typedef enum
 } l2input_next_t;
 
 static_always_inline void
-classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u16 * next0)
+classify_and_dispatch (l2input_main_t *msm, vlib_buffer_t *b0, u16 *next0)
 {
   /*
    * Load L2 input feature struct
@@ -136,13 +135,13 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u16 * next0)
     {
       u8 *l3h0 = (u8 *) h0 + vnet_buffer (b0)->l2.l2_len;
 
-#define get_u16(addr) ( *((u16 *)(addr)) )
+#define get_u16(addr) (*((u16 *) (addr)))
       u16 ethertype = clib_net_to_host_u16 (get_u16 (l3h0 - 2));
       u8 protocol = ((ip6_header_t *) l3h0)->protocol;
 
-      /* Disable bridge forwarding (flooding will execute instead if not xconnect) */
-      feat_mask &= ~(L2INPUT_FEAT_FWD |
-		     L2INPUT_FEAT_UU_FLOOD |
+      /* Disable bridge forwarding (flooding will execute instead if not
+       * xconnect) */
+      feat_mask &= ~(L2INPUT_FEAT_FWD | L2INPUT_FEAT_UU_FLOOD |
 		     L2INPUT_FEAT_UU_FWD | L2INPUT_FEAT_GBP_FWD);
 
       if (ethertype != ETHERNET_TYPE_ARP)
@@ -167,7 +166,7 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u16 * next0)
 		  clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_request))
 		vnet_buffer (b0)->l2.shg = 0;
 	    }
-	  else			/* must be ICMPv6 */
+	  else /* must be ICMPv6 */
 	    {
 	      ip6_header_t *iph0 = (ip6_header_t *) l3h0;
 	      icmp6_neighbor_solicitation_or_advertisement_header_t *ndh0;
@@ -189,7 +188,6 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u16 * next0)
 	vnet_buffer (b0)->l2.shg = 0;
     }
 
-
   if (l2_input_is_bridge (config))
     {
       /* Do bridge-domain processing */
@@ -197,8 +195,8 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u16 * next0)
       vnet_buffer (b0)->l2.bd_index = config->bd_index;
 
       /* Save bridge domain and interface seq_num */
-      vnet_buffer (b0)->l2.l2fib_sn = l2_fib_mk_seq_num
-	(config->bd_seq_num, config->seq_num);
+      vnet_buffer (b0)->l2.l2fib_sn =
+	l2_fib_mk_seq_num (config->bd_seq_num, config->seq_num);
       vnet_buffer (b0)->l2.bd_age = config->bd_mac_age;
 
       /*
@@ -230,9 +228,8 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u16 * next0)
 }
 
 static_always_inline uword
-l2input_node_inline (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame,
-		     int do_trace)
+l2input_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     vlib_frame_t *frame, int do_trace)
 {
   u32 n_left, *from;
   l2input_main_t *msm = &l2input_main;
@@ -240,7 +237,7 @@ l2input_node_inline (vlib_main_t * vm,
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
 
   from = vlib_frame_vector_args (frame);
-  n_left = frame->n_vectors;	/* number of packets to process */
+  n_left = frame->n_vectors; /* number of packets to process */
 
   vlib_get_buffers (vm, from, bufs, n_left);
 
@@ -252,7 +249,8 @@ l2input_node_inline (vlib_main_t * vm,
 
 	  /* Prefetch next iteration. */
 	  {
-	    /* Prefetch the buffer header and packet for the N+2 loop iteration */
+	    /* Prefetch the buffer header and packet for the N+2 loop iteration
+	     */
 	    vlib_prefetch_buffer_header (b[4], LOAD);
 	    vlib_prefetch_buffer_header (b[5], LOAD);
 	    vlib_prefetch_buffer_header (b[6], LOAD);
@@ -286,7 +284,7 @@ l2input_node_inline (vlib_main_t * vm,
 		  t->feat_mask = vnet_buffer (b[0])->l2.feature_bitmap;
 		  clib_memcpy_fast (t->dst_and_src, h0->dst_address,
 				    sizeof (h0->dst_address) +
-				    sizeof (h0->src_address));
+				      sizeof (h0->src_address));
 		}
 	      if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
 		{
@@ -297,7 +295,7 @@ l2input_node_inline (vlib_main_t * vm,
 		  t->feat_mask = vnet_buffer (b[1])->l2.feature_bitmap;
 		  clib_memcpy_fast (t->dst_and_src, h1->dst_address,
 				    sizeof (h1->dst_address) +
-				    sizeof (h1->src_address));
+				      sizeof (h1->src_address));
 		}
 	      if (b[2]->flags & VLIB_BUFFER_IS_TRACED)
 		{
@@ -308,7 +306,7 @@ l2input_node_inline (vlib_main_t * vm,
 		  t->feat_mask = vnet_buffer (b[2])->l2.feature_bitmap;
 		  clib_memcpy_fast (t->dst_and_src, h2->dst_address,
 				    sizeof (h2->dst_address) +
-				    sizeof (h2->src_address));
+				      sizeof (h2->src_address));
 		}
 	      if (b[3]->flags & VLIB_BUFFER_IS_TRACED)
 		{
@@ -319,7 +317,7 @@ l2input_node_inline (vlib_main_t * vm,
 		  t->feat_mask = vnet_buffer (b[3])->l2.feature_bitmap;
 		  clib_memcpy_fast (t->dst_and_src, h3->dst_address,
 				    sizeof (h3->dst_address) +
-				    sizeof (h3->src_address));
+				      sizeof (h3->src_address));
 		}
 	    }
 
@@ -341,7 +339,7 @@ l2input_node_inline (vlib_main_t * vm,
 	      t->feat_mask = vnet_buffer (b[0])->l2.feature_bitmap;
 	      clib_memcpy_fast (t->dst_and_src, h0->dst_address,
 				sizeof (h0->dst_address) +
-				sizeof (h0->src_address));
+				  sizeof (h0->src_address));
 	    }
 
 	  b += 1;
@@ -350,23 +348,22 @@ l2input_node_inline (vlib_main_t * vm,
 	}
     }
 
-  vlib_node_increment_counter (vm, l2input_node.index,
-			       L2INPUT_ERROR_L2INPUT, frame->n_vectors);
+  vlib_node_increment_counter (vm, l2input_node.index, L2INPUT_ERROR_L2INPUT,
+			       frame->n_vectors);
 
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (l2input_node) (vlib_main_t * vm,
-			     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
-    return l2input_node_inline (vm, node, frame, 1 /* do_trace */ );
-  return l2input_node_inline (vm, node, frame, 0 /* do_trace */ );
+    return l2input_node_inline (vm, node, frame, 1 /* do_trace */);
+  return l2input_node_inline (vm, node, frame, 0 /* do_trace */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2input_node) = {
   .name = "l2-input",
   .vector_size = sizeof (u32),
@@ -386,7 +383,6 @@ VLIB_REGISTER_NODE (l2input_node) = {
        [L2INPUT_NEXT_DROP]  = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

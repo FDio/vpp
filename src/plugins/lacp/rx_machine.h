@@ -13,20 +13,20 @@
  * limitations under the License.
  */
 
-#ifndef	__LACP_RX_MACHINE_H__
-#define	__LACP_RX_MACHINE_H__
+#ifndef __LACP_RX_MACHINE_H__
+#define __LACP_RX_MACHINE_H__
 
 #include <stdint.h>
 #include <lacp/machine.h>
 
-#define foreach_lacp_rx_event          \
-  _(0, BEGIN, "begin")                 \
-  _(1, PORT_DISABLED, "port disabled") \
-  _(2, PORT_MOVED, "port moved")       \
-  _(3, LACP_ENABLED, "lacp enabled")   \
-  _(4, LACP_DISABLED, "lacp disabled") \
-  _(5, PDU_RECEIVED, "pdu received")   \
-  _(6, TIMER_EXPIRED, "timer expired")
+#define foreach_lacp_rx_event                                                 \
+  _ (0, BEGIN, "begin")                                                       \
+  _ (1, PORT_DISABLED, "port disabled")                                       \
+  _ (2, PORT_MOVED, "port moved")                                             \
+  _ (3, LACP_ENABLED, "lacp enabled")                                         \
+  _ (4, LACP_DISABLED, "lacp disabled")                                       \
+  _ (5, PDU_RECEIVED, "pdu received")                                         \
+  _ (6, TIMER_EXPIRED, "timer expired")
 
 typedef enum
 {
@@ -35,13 +35,13 @@ typedef enum
 #undef _
 } lacp_rx_event_t;
 
-#define foreach_lacp_rx_sm_state       \
-  _(0, INITIALIZE, "initialize")       \
-  _(1, PORT_DISABLED, "port disabled") \
-  _(2, EXPIRED, "expired")             \
-  _(3, LACP_DISABLED, "lacp disabled") \
-  _(4, DEFAULTED, "defaulted")         \
-  _(5, CURRENT, "current")
+#define foreach_lacp_rx_sm_state                                              \
+  _ (0, INITIALIZE, "initialize")                                             \
+  _ (1, PORT_DISABLED, "port disabled")                                       \
+  _ (2, EXPIRED, "expired")                                                   \
+  _ (3, LACP_DISABLED, "lacp disabled")                                       \
+  _ (4, DEFAULTED, "defaulted")                                               \
+  _ (5, CURRENT, "current")
 
 typedef enum
 {
@@ -59,22 +59,20 @@ int lacp_rx_action_expired (void *, void *);
 int lacp_rx_action_lacp_disabled (void *, void *);
 int lacp_rx_action_defaulted (void *, void *);
 int lacp_rx_action_current (void *, void *);
-void lacp_rx_debug_func (member_if_t * mif, int event, int state,
-			 lacp_fsm_state_t * transition);
+void lacp_rx_debug_func (member_if_t *mif, int event, int state,
+			 lacp_fsm_state_t *transition);
 
-#define LACP_ACTION_INITIALIZE \
-  LACP_ACTION_ROUTINE(lacp_rx_action_initialize)
-#define LACP_ACTION_PORT_DISABLED \
-  LACP_ACTION_ROUTINE(lacp_rx_action_port_disabled)
-#define LACP_ACTION_EXPIRED \
-  LACP_ACTION_ROUTINE(lacp_rx_action_expired)
-#define LACP_ACTION_LACP_DISABLED \
-  LACP_ACTION_ROUTINE(lacp_rx_action_lacp_disabled)
-#define LACP_ACTION_DEFAULTED LACP_ACTION_ROUTINE(lacp_rx_action_defaulted)
-#define LACP_ACTION_CURRENT LACP_ACTION_ROUTINE(lacp_rx_action_current)
+#define LACP_ACTION_INITIALIZE LACP_ACTION_ROUTINE (lacp_rx_action_initialize)
+#define LACP_ACTION_PORT_DISABLED                                             \
+  LACP_ACTION_ROUTINE (lacp_rx_action_port_disabled)
+#define LACP_ACTION_EXPIRED LACP_ACTION_ROUTINE (lacp_rx_action_expired)
+#define LACP_ACTION_LACP_DISABLED                                             \
+  LACP_ACTION_ROUTINE (lacp_rx_action_lacp_disabled)
+#define LACP_ACTION_DEFAULTED LACP_ACTION_ROUTINE (lacp_rx_action_defaulted)
+#define LACP_ACTION_CURRENT   LACP_ACTION_ROUTINE (lacp_rx_action_current)
 
 static inline void
-lacp_start_current_while_timer (vlib_main_t * vm, member_if_t * mif,
+lacp_start_current_while_timer (vlib_main_t *vm, member_if_t *mif,
 				u8 expiration)
 {
   mif->current_while_timer = vlib_time_now (vm) + expiration;

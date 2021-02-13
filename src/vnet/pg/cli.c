@@ -45,14 +45,12 @@
 #include <strings.h>
 #include <vppinfra/pcap.h>
 
-
 /* Root of all packet generator cli commands. */
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (vlib_cli_pg_command, static) = {
   .path = "packet-generator",
   .short_help = "Packet generator commands",
 };
-/* *INDENT-ON* */
 
 void
 pg_enable_disable (u32 stream_index, int is_enable)
@@ -63,11 +61,11 @@ pg_enable_disable (u32 stream_index, int is_enable)
   if (stream_index == ~0)
     {
       /* No stream specified: enable/disable all streams. */
-      /* *INDENT-OFF* */
-        pool_foreach (s, pg->streams)  {
-            pg_stream_enable_disable (pg, s, is_enable);
-        }
-	/* *INDENT-ON* */
+
+      pool_foreach (s, pg->streams)
+	{
+	  pg_stream_enable_disable (pg, s, is_enable);
+	}
     }
   else
     {
@@ -78,7 +76,7 @@ pg_enable_disable (u32 stream_index, int is_enable)
 }
 
 clib_error_t *
-pg_capture (pg_capture_args_t * a)
+pg_capture (pg_capture_args_t *a)
 {
   pg_main_t *pg = &pg_main;
   pg_interface_t *pi;
@@ -110,8 +108,8 @@ pg_capture (pg_capture_args_t * a)
 }
 
 static clib_error_t *
-enable_disable_stream (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+enable_disable_stream (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   pg_main_t *pg = &pg_main;
@@ -127,8 +125,8 @@ enable_disable_stream (vlib_main_t * vm,
 		    pg->stream_index_by_name, &stream_index))
 	;
       else
-	return clib_error_create ("unknown input `%U'",
-				  format_unformat_error, line_input);
+	return clib_error_create ("unknown input `%U'", format_unformat_error,
+				  line_input);
     }
   unformat_free (line_input);
 
@@ -138,32 +136,27 @@ doit:
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (enable_streams_cli, static) = {
   .path = "packet-generator enable-stream",
   .short_help = "Enable packet generator streams",
   .function = enable_disable_stream,
-  .function_arg = 1,		/* is_enable */
+  .function_arg = 1, /* is_enable */
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (disable_streams_cli, static) = {
   .path = "packet-generator disable-stream",
   .short_help = "Disable packet generator streams",
   .function = enable_disable_stream,
-  .function_arg = 0,		/* is_enable */
+  .function_arg = 0, /* is_enable */
 };
-/* *INDENT-ON* */
 
 static u8 *
-format_pg_edit_group (u8 * s, va_list * va)
+format_pg_edit_group (u8 *s, va_list *va)
 {
   pg_edit_group_t *g = va_arg (*va, pg_edit_group_t *);
 
-  s =
-    format (s, "hdr-size %d, offset %d, ", g->n_packet_bytes,
-	    g->start_byte_offset);
+  s = format (s, "hdr-size %d, offset %d, ", g->n_packet_bytes,
+	      g->start_byte_offset);
   if (g->edit_function)
     {
       u8 *function_name;
@@ -182,26 +175,23 @@ format_pg_edit_group (u8 * s, va_list * va)
 }
 
 static u8 *
-format_pg_stream (u8 * s, va_list * va)
+format_pg_stream (u8 *s, va_list *va)
 {
   pg_stream_t *t = va_arg (*va, pg_stream_t *);
   int verbose = va_arg (*va, int);
 
   if (!t)
-    return format (s, "%-16s%=12s%=16s%s",
-		   "Name", "Enabled", "Count", "Parameters");
+    return format (s, "%-16s%=12s%=16s%s", "Name", "Enabled", "Count",
+		   "Parameters");
 
-  s = format (s, "%-16v%=12s%=16Ld",
-	      t->name,
-	      pg_stream_is_enabled (t) ? "Yes" : "No",
-	      t->n_packets_generated);
+  s = format (s, "%-16v%=12s%=16Ld", t->name,
+	      pg_stream_is_enabled (t) ? "Yes" : "No", t->n_packets_generated);
 
   int indent = format_get_indent (s);
 
   s = format (s, "limit %Ld, ", t->n_packets_limit);
   s = format (s, "rate %.2e pps, ", t->rate_packets_per_second);
-  s = format (s, "size %d%c%d, ",
-	      t->min_packet_bytes,
+  s = format (s, "size %d%c%d, ", t->min_packet_bytes,
 	      t->packet_size_edit_type == PG_EDIT_RANDOM ? '+' : '-',
 	      t->max_packet_bytes);
   s = format (s, "buffer-size %d, ", t->buffer_bytes);
@@ -210,20 +200,20 @@ format_pg_stream (u8 * s, va_list * va)
   if (verbose)
     {
       pg_edit_group_t *g;
-  /* *INDENT-OFF* */
-  vec_foreach (g, t->edit_groups)
-    {
-      s = format (s, "\n%U%U", format_white_space, indent, format_pg_edit_group, g);
-    }
-  /* *INDENT-ON* */
+
+      vec_foreach (g, t->edit_groups)
+	{
+	  s = format (s, "\n%U%U", format_white_space, indent,
+		      format_pg_edit_group, g);
+	}
     }
 
   return s;
 }
 
 static clib_error_t *
-show_streams (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+show_streams (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd)
 {
   pg_main_t *pg = &pg_main;
   pg_stream_t *s;
@@ -244,26 +234,24 @@ show_streams (vlib_main_t * vm,
     }
 
   vlib_cli_output (vm, "%U", format_pg_stream, 0, 0);
-  /* *INDENT-OFF* */
-  pool_foreach (s, pg->streams)  {
+
+  pool_foreach (s, pg->streams)
+    {
       vlib_cli_output (vm, "%U", format_pg_stream, s, verbose);
     }
-  /* *INDENT-ON* */
 
 done:
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_streams_cli, static) = {
   .path = "show packet-generator ",
   .short_help = "show packet-generator [verbose]",
   .function = show_streams,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-pg_pcap_read (pg_stream_t * s, char *file_name)
+pg_pcap_read (pg_stream_t *s, char *file_name)
 {
 #ifndef CLIB_UNIX
   return clib_error_return (0, "no pcap support");
@@ -287,7 +275,7 @@ pg_pcap_read (pg_stream_t * s, char *file_name)
 }
 
 static uword
-unformat_pg_stream_parameter (unformat_input_t * input, va_list * args)
+unformat_pg_stream_parameter (unformat_input_t *input, va_list *args)
 {
   pg_stream_t *s = va_arg (*args, pg_stream_t *);
   f64 x;
@@ -316,7 +304,7 @@ unformat_pg_stream_parameter (unformat_input_t * input, va_list * args)
 }
 
 static clib_error_t *
-validate_stream (pg_stream_t * s)
+validate_stream (pg_stream_t *s)
 {
   if (s->max_packet_bytes < s->min_packet_bytes)
     return clib_error_create ("max-size < min-size");
@@ -334,8 +322,7 @@ validate_stream (pg_stream_t * s)
 }
 
 static clib_error_t *
-new_stream (vlib_main_t * vm,
-	    unformat_input_t * input, vlib_cli_command_t * cmd)
+new_stream (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   clib_error_t *error = 0;
   u8 *tmp = 0;
@@ -364,8 +351,8 @@ new_stream (vlib_main_t * vm,
 	  s.name = tmp;
 	}
 
-      else if (unformat (input, "node %U",
-			 unformat_vnet_hw_interface, vnm, &hw_if_index))
+      else if (unformat (input, "node %U", unformat_vnet_hw_interface, vnm,
+			 &hw_if_index))
 	{
 	  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
 
@@ -376,32 +363,30 @@ new_stream (vlib_main_t * vm,
       else if (unformat (input, "source pg%u", &s.if_id))
 	;
 
-      else if (unformat (input, "buffer-flags %U",
-			 unformat_vnet_buffer_flags, &s.buffer_flags))
+      else if (unformat (input, "buffer-flags %U", unformat_vnet_buffer_flags,
+			 &s.buffer_flags))
 	;
 
-      else if (unformat (input, "node %U",
-			 unformat_vlib_node, vm, &s.node_index))
+      else if (unformat (input, "node %U", unformat_vlib_node, vm,
+			 &s.node_index))
 	;
       else if (unformat (input, "maxframe %u", &maxframe))
 	s.n_max_frame = s.n_max_frame < maxframe ? s.n_max_frame : maxframe;
       else if (unformat (input, "worker %u", &s.worker_index))
 	;
 
-      else if (unformat (input, "interface %U",
-			 unformat_vnet_sw_interface, vnm,
-			 &s.sw_if_index[VLIB_RX]))
+      else if (unformat (input, "interface %U", unformat_vnet_sw_interface,
+			 vnm, &s.sw_if_index[VLIB_RX]))
 	;
-      else if (unformat (input, "tx-interface %U",
-			 unformat_vnet_sw_interface, vnm,
-			 &s.sw_if_index[VLIB_TX]))
+      else if (unformat (input, "tx-interface %U", unformat_vnet_sw_interface,
+			 vnm, &s.sw_if_index[VLIB_TX]))
 	;
 
       else if (unformat (input, "pcap %s", &pcap_file_name))
 	;
 
-      else if (!sub_input_given
-	       && unformat (input, "data %U", unformat_input, &sub_input))
+      else if (!sub_input_given &&
+	       unformat (input, "data %U", unformat_input, &sub_input))
 	sub_input_given++;
 
       else if (unformat_user (input, unformat_pg_stream_parameter, &s))
@@ -425,8 +410,7 @@ new_stream (vlib_main_t * vm,
     {
       if (pcap_file_name != 0)
 	{
-	  vlib_node_t *n =
-	    vlib_get_node_by_name (vm, (u8 *) "ethernet-input");
+	  vlib_node_t *n = vlib_get_node_by_name (vm, (u8 *) "ethernet-input");
 	  s.node_index = n->index;
 	}
       else
@@ -455,15 +439,14 @@ new_stream (vlib_main_t * vm,
 	vec_free (pcap_file_name);
       }
 
-    else if (n && n->unformat_edit
-	     && unformat_user (&sub_input, n->unformat_edit, &s))
+    else if (n && n->unformat_edit &&
+	     unformat_user (&sub_input, n->unformat_edit, &s))
       ;
 
     else if (!unformat_user (&sub_input, unformat_pg_payload, &s))
       {
-	error = clib_error_create
-	  ("failed to parse packet data from `%U'",
-	   format_unformat_error, &sub_input);
+	error = clib_error_create ("failed to parse packet data from `%U'",
+				   format_unformat_error, &sub_input);
 	goto done;
       }
   }
@@ -481,35 +464,31 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (new_stream_cli, static) = {
   .path = "packet-generator new",
   .function = new_stream,
   .short_help = "Create packet generator stream",
-  .long_help =
-  "Create packet generator stream\n"
-  "\n"
-  "Arguments:\n"
-  "\n"
-  "name STRING          sets stream name\n"
-  "interface STRING     interface for stream output \n"
-  "node NODE-NAME       node for stream output\n"
-  "data STRING          specifies packet data\n"
-  "pcap FILENAME        read packet data from pcap file\n"
-  "rate PPS             rate to transfer packet data\n"
-  "maxframe NPKTS       maximum number of packets per frame\n",
+  .long_help = "Create packet generator stream\n"
+	       "\n"
+	       "Arguments:\n"
+	       "\n"
+	       "name STRING          sets stream name\n"
+	       "interface STRING     interface for stream output \n"
+	       "node NODE-NAME       node for stream output\n"
+	       "data STRING          specifies packet data\n"
+	       "pcap FILENAME        read packet data from pcap file\n"
+	       "rate PPS             rate to transfer packet data\n"
+	       "maxframe NPKTS       maximum number of packets per frame\n",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-del_stream (vlib_main_t * vm,
-	    unformat_input_t * input, vlib_cli_command_t * cmd)
+del_stream (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   pg_main_t *pg = &pg_main;
   u32 i;
 
-  if (!unformat (input, "%U",
-		 &unformat_hash_vec_string, pg->stream_index_by_name, &i))
+  if (!unformat (input, "%U", &unformat_hash_vec_string,
+		 pg->stream_index_by_name, &i))
     return clib_error_create ("expected stream name `%U'",
 			      format_unformat_error, input);
 
@@ -517,17 +496,15 @@ del_stream (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (del_stream_cli, static) = {
   .path = "packet-generator delete",
   .function = del_stream,
   .short_help = "Delete stream with given name",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-change_stream_parameters (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+change_stream_parameters (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   pg_main_t *pg = &pg_main;
   pg_stream_t *s, s_new;
@@ -550,8 +527,8 @@ change_stream_parameters (vlib_main_t * vm,
 	;
 
       else
-	return clib_error_create ("unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_create ("unknown input `%U'", format_unformat_error,
+				  input);
     }
 
   error = validate_stream (&s_new);
@@ -564,17 +541,15 @@ change_stream_parameters (vlib_main_t * vm,
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (change_stream_parameters_cli, static) = {
   .path = "packet-generator configure",
   .short_help = "Change packet generator stream parameters",
   .function = change_stream_parameters,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-pg_capture_cmd_fn (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+pg_capture_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   clib_error_t *error = 0;
   vnet_main_t *vnm = vnet_get_main ();
@@ -590,8 +565,8 @@ pg_capture_cmd_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%U",
-		    unformat_vnet_hw_interface, vnm, &hw_if_index))
+      if (unformat (line_input, "%U", unformat_vnet_hw_interface, vnm,
+		    &hw_if_index))
 	{
 	  hi = vnet_get_hw_interface (vnm, hw_if_index);
 	}
@@ -630,7 +605,6 @@ pg_capture_cmd_fn (vlib_main_t * vm,
       goto done;
     }
 
-
   pg_capture_args_t _a, *a = &_a;
 
   a->hw_if_index = hw_if_index;
@@ -647,17 +621,16 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (pg_capture_cmd, static) = {
   .path = "packet-generator capture",
-  .short_help = "packet-generator capture <interface name> pcap <filename> [count <n>]",
+  .short_help =
+    "packet-generator capture <interface name> pcap <filename> [count <n>]",
   .function = pg_capture_cmd_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-create_pg_if_cmd_fn (vlib_main_t * vm,
-		     unformat_input_t * input, vlib_cli_command_t * cmd)
+create_pg_if_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
 {
   pg_main_t *pg = &pg_main;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -692,8 +665,7 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 	}
     }
 
-  pg_interface_add_or_get (pg, if_id, gso_enabled, gso_size,
-			   coalesce_enabled);
+  pg_interface_add_or_get (pg, if_id, gso_enabled, gso_size, coalesce_enabled);
 
 done:
   unformat_free (line_input);
@@ -701,18 +673,16 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_pg_if_cmd, static) = {
   .path = "create packet-generator",
   .short_help = "create packet-generator interface <interface name>"
-                " [gso-enabled gso-size <size> [coalesce-enabled]]",
+		" [gso-enabled gso-size <size> [coalesce-enabled]]",
   .function = create_pg_if_cmd_fn,
 };
-/* *INDENT-ON* */
 
 /* Dummy init function so that we can be linked in. */
 static clib_error_t *
-pg_cli_init (vlib_main_t * vm)
+pg_cli_init (vlib_main_t *vm)
 {
   return 0;
 }

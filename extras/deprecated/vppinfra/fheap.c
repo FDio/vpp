@@ -16,19 +16,19 @@
 
 /* Fibonacci heaps. */
 always_inline fheap_node_t *
-fheap_get_node (fheap_t * f, u32 i)
+fheap_get_node (fheap_t *f, u32 i)
 {
   return i != ~0 ? vec_elt_at_index (f->nodes, i) : 0;
 }
 
 always_inline fheap_node_t *
-fheap_get_root (fheap_t * f)
+fheap_get_root (fheap_t *f)
 {
   return fheap_get_node (f, f->min_root);
 }
 
 static void
-fheap_validate (fheap_t * f)
+fheap_validate (fheap_t *f)
 {
   fheap_node_t *n, *m;
   uword ni, si;
@@ -37,91 +37,80 @@ fheap_validate (fheap_t * f)
     return;
 
   vec_foreach_index (ni, f->nodes)
-  {
-    n = vec_elt_at_index (f->nodes, ni);
+    {
+      n = vec_elt_at_index (f->nodes, ni);
 
-    if (!n->is_valid)
-      continue;
+      if (!n->is_valid)
+	continue;
 
-    /* Min root must have minimal key. */
-    m = vec_elt_at_index (f->nodes, f->min_root);
-    ASSERT (n->key >= m->key);
+      /* Min root must have minimal key. */
+      m = vec_elt_at_index (f->nodes, f->min_root);
+      ASSERT (n->key >= m->key);
 
-    /* Min root must have no parent. */
-    if (ni == f->min_root)
-      ASSERT (n->parent == ~0);
+      /* Min root must have no parent. */
+      if (ni == f->min_root)
+	ASSERT (n->parent == ~0);
 
-    /* Check sibling linkages. */
-    if (n->next_sibling == ~0)
-      ASSERT (n->prev_sibling == ~0);
-    else if (n->prev_sibling == ~0)
-      ASSERT (n->next_sibling == ~0);
-    else
+      /* Check sibling linkages. */
+      if (n->next_sibling == ~0)
+	ASSERT (n->prev_sibling == ~0);
+      else if (n->prev_sibling == ~0)
+	ASSERT (n->next_sibling == ~0);
+      else
+	{
+	  fheap_node_t *prev, *next;
+	  u32 si = n->next_sibling, si_start = si;
+	  do
+	    {
+	      m = vec_elt_at_index (f->nodes, si);
+	      prev = vec_elt_at_index (f->nodes, m->prev_sibling);
+	      next = vec_elt_at_index (f->nodes, m->next_sibling);
+	      ASSERT (prev->next_sibling == si);
+	      ASSERT (next->prev_sibling == si);
+	      si = m->next_sibling;
+	    }
+	  while (si != si_start);
+	}
+
+      /* Loop through all siblings. */
       {
-	fheap_node_t *prev, *next;
-	u32 si = n->next_sibling, si_start = si;
-	do
-	  {
-	    m = vec_elt_at_index (f->nodes, si);
-	    prev = vec_elt_at_index (f->nodes, m->prev_sibling);
-	    next = vec_elt_at_index (f->nodes, m->next_sibling);
-	    ASSERT (prev->next_sibling == si);
-	    ASSERT (next->prev_sibling == si);
-	    si = m->next_sibling;
-	  }
-	while (si != si_start);
+	u32 n_siblings = 0;
+
+	foreach_fheap_node_sibling (f, si, n->next_sibling, ({
+				      m = vec_elt_at_index (f->nodes, si);
+				      /* All siblings must have same parent. */
+				      ASSERT (m->parent == n->parent);
+				      n_siblings += 1;
+				    }));
+
+	/* Either parent is non-empty or there are siblings present. */
+	if (n->parent == ~0 && ni != f->min_root)
+	  ASSERT (n_siblings > 0);
       }
 
-    /* Loop through all siblings. */
-    {
-      u32 n_siblings = 0;
+      /* Loop through all children. */
+      {
+	u32 found_first_child = n->first_child == ~0;
+	u32 n_children = 0;
 
-      foreach_fheap_node_sibling (f, si, n->next_sibling, (
-							    {
-							    m =
-							    vec_elt_at_index
-							    (f->nodes, si);
-							    /* All siblings must have same parent. */
-							    ASSERT (m->parent
-								    ==
-								    n->
-								    parent);
-							    n_siblings += 1;}
-				  ));
+	foreach_fheap_node_sibling (f, si, n->first_child, ({
+				      m = vec_elt_at_index (f->nodes, si);
+				      /* Children must have larger keys than
+				       * their parent. */
+				      ASSERT (m->key >= n->key);
+				      if (!found_first_child)
+					found_first_child =
+					  si == n->first_child;
+				      n_children += 1;
+				    }));
 
-      /* Either parent is non-empty or there are siblings present. */
-      if (n->parent == ~0 && ni != f->min_root)
-	ASSERT (n_siblings > 0);
+	/* Check that first child is present on list. */
+	ASSERT (found_first_child);
+
+	/* Make sure rank is correct. */
+	ASSERT (n->rank == n_children);
+      }
     }
-
-    /* Loop through all children. */
-    {
-      u32 found_first_child = n->first_child == ~0;
-      u32 n_children = 0;
-
-      foreach_fheap_node_sibling (f, si, n->first_child, (
-							   {
-							   m =
-							   vec_elt_at_index
-							   (f->nodes, si);
-							   /* Children must have larger keys than their parent. */
-							   ASSERT (m->key >=
-								   n->key);
-							   if
-							   (!found_first_child)
-							   found_first_child =
-							   si ==
-							   n->first_child;
-							   n_children += 1;}
-				  ));
-
-      /* Check that first child is present on list. */
-      ASSERT (found_first_child);
-
-      /* Make sure rank is correct. */
-      ASSERT (n->rank == n_children);
-    }
-  }
 
   /* Increment serial number for each successful validate.
      Failure can be used as condition for gdb breakpoints. */
@@ -129,7 +118,7 @@ fheap_validate (fheap_t * f)
 }
 
 always_inline void
-fheap_node_add_sibling (fheap_t * f, u32 ni, u32 ni_to_add)
+fheap_node_add_sibling (fheap_t *f, u32 ni, u32 ni_to_add)
 {
   fheap_node_t *n = vec_elt_at_index (f->nodes, ni);
   fheap_node_t *n_to_add = vec_elt_at_index (f->nodes, ni_to_add);
@@ -160,7 +149,7 @@ fheap_node_add_sibling (fheap_t * f, u32 ni, u32 ni_to_add)
 }
 
 void
-fheap_add (fheap_t * f, u32 ni, u32 key)
+fheap_add (fheap_t *f, u32 ni, u32 key)
 {
   fheap_node_t *r, *n;
   u32 ri;
@@ -192,7 +181,7 @@ fheap_add (fheap_t * f, u32 ni, u32 key)
 }
 
 always_inline u32
-fheap_node_remove_internal (fheap_t * f, u32 ni, u32 invalidate)
+fheap_node_remove_internal (fheap_t *f, u32 ni, u32 invalidate)
 {
   fheap_node_t *n = vec_elt_at_index (f->nodes, ni);
   u32 prev_ni = n->prev_sibling;
@@ -228,19 +217,19 @@ fheap_node_remove_internal (fheap_t * f, u32 ni, u32 invalidate)
 }
 
 always_inline u32
-fheap_node_remove (fheap_t * f, u32 ni)
+fheap_node_remove (fheap_t *f, u32 ni)
 {
   return fheap_node_remove_internal (f, ni, /* invalidate */ 0);
 }
 
 always_inline u32
-fheap_node_remove_and_invalidate (fheap_t * f, u32 ni)
+fheap_node_remove_and_invalidate (fheap_t *f, u32 ni)
 {
   return fheap_node_remove_internal (f, ni, /* invalidate */ 1);
 }
 
 static void
-fheap_link_root (fheap_t * f, u32 ni)
+fheap_link_root (fheap_t *f, u32 ni)
 {
   fheap_node_t *n = vec_elt_at_index (f->nodes, ni);
   fheap_node_t *r, *lo, *hi;
@@ -285,8 +274,8 @@ fheap_link_root (fheap_t * f, u32 ni)
       else
 	fheap_node_add_sibling (f, lo->first_child, hi_i);
 
-      /* Following Fredman & Trajan: "When making a root node X a child of another node in a linking step,
-         we unmark X". */
+      /* Following Fredman & Trajan: "When making a root node X a child of
+	 another node in a linking step, we unmark X". */
       hi->is_marked = 0;
 
       ni = lo_i;
@@ -295,7 +284,7 @@ fheap_link_root (fheap_t * f, u32 ni)
 }
 
 u32
-fheap_del_min (fheap_t * f, u32 * min_key)
+fheap_del_min (fheap_t *f, u32 *min_key)
 {
   fheap_node_t *r = fheap_get_root (f);
   u32 to_delete_min_ri = f->min_root;
@@ -329,7 +318,8 @@ fheap_del_min (fheap_t * f, u32 * min_key)
   /* Remove min root. */
   ri = fheap_node_remove_and_invalidate (f, to_delete_min_ri);
 
-  /* Find new min root from among siblings including the ones we've just added. */
+  /* Find new min root from among siblings including the ones we've just added.
+   */
   f->min_root = ~0;
   if (ri != ~0)
     {
@@ -339,7 +329,8 @@ fheap_del_min (fheap_t * f, u32 * min_key)
       ri_last = r->prev_sibling;
       while (1)
 	{
-	  /* Step a above can put children (with r->parent != ~0) on root list. */
+	  /* Step a above can put children (with r->parent != ~0) on root list.
+	   */
 	  r->parent = ~0;
 
 	  ri_next = r->next_sibling;
@@ -352,19 +343,19 @@ fheap_del_min (fheap_t * f, u32 * min_key)
 
       min_ds = ~0;
       vec_foreach_index (i, f->root_list_by_rank)
-      {
-	ni = f->root_list_by_rank[i];
-	if (ni == ~0)
-	  continue;
-	f->root_list_by_rank[i] = ~0;
-	r = fheap_get_node (f, ni);
-	if (r->key < min_ds)
-	  {
-	    f->min_root = ni;
-	    min_ds = r->key;
-	    ASSERT (r->parent == ~0);
-	  }
-      }
+	{
+	  ni = f->root_list_by_rank[i];
+	  if (ni == ~0)
+	    continue;
+	  f->root_list_by_rank[i] = ~0;
+	  r = fheap_get_node (f, ni);
+	  if (r->key < min_ds)
+	    {
+	      f->min_root = ni;
+	      min_ds = r->key;
+	      ASSERT (r->parent == ~0);
+	    }
+	}
     }
 
   /* Return deleted min root. */
@@ -378,7 +369,7 @@ fheap_del_min (fheap_t * f, u32 * min_key)
 }
 
 static void
-fheap_mark_parent (fheap_t * f, u32 pi)
+fheap_mark_parent (fheap_t *f, u32 pi)
 {
   fheap_node_t *p = vec_elt_at_index (f->nodes, pi);
 
@@ -408,7 +399,7 @@ fheap_mark_parent (fheap_t * f, u32 pi)
 
 /* Set key to new smaller value. */
 void
-fheap_decrease_key (fheap_t * f, u32 ni, u32 new_key)
+fheap_decrease_key (fheap_t *f, u32 ni, u32 new_key)
 {
   fheap_node_t *n = vec_elt_at_index (f->nodes, ni);
   fheap_node_t *r = fheap_get_root (f);
@@ -431,7 +422,7 @@ fheap_decrease_key (fheap_t * f, u32 ni, u32 new_key)
 }
 
 void
-fheap_del (fheap_t * f, u32 ni)
+fheap_del (fheap_t *f, u32 ni)
 {
   fheap_node_t *n;
 
@@ -449,14 +440,11 @@ fheap_del (fheap_t * f, u32 ni)
       fheap_mark_parent (f, n->parent);
 
       /* Add children to root list. */
-      foreach_fheap_node_sibling (f, ci, n->first_child, (
-							   {
-							   fheap_node_remove
-							   (f, ci);
-							   fheap_node_add_sibling
-							   (f, f->min_root,
-							    ci);}
-				  ));
+      foreach_fheap_node_sibling (f, ci, n->first_child, ({
+				    fheap_node_remove (f, ci);
+				    fheap_node_add_sibling (f, f->min_root,
+							    ci);
+				  }));
 
       fheap_node_remove_and_invalidate (f, ni);
     }

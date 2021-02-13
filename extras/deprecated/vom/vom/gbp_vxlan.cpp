@@ -40,8 +40,7 @@ gbp_vxlan::gbp_vxlan(uint32_t vni,
   , m_gbd()
   , m_grd(grd.singular())
   , m_src(src)
-{
-}
+{}
 gbp_vxlan::gbp_vxlan(uint32_t vni,
                      const gbp_bridge_domain& gbd,
                      const boost::asio::ip::address_v4& src)
@@ -52,8 +51,7 @@ gbp_vxlan::gbp_vxlan(uint32_t vni,
   , m_gbd(gbd.singular())
   , m_grd()
   , m_src(src)
-{
-}
+{}
 
 gbp_vxlan::gbp_vxlan(const gbp_vxlan& vt)
   : interface(vt)
@@ -61,8 +59,7 @@ gbp_vxlan::gbp_vxlan(const gbp_vxlan& vt)
   , m_gbd(vt.m_gbd)
   , m_grd(vt.m_grd)
   , m_src(vt.m_src)
-{
-}
+{}
 
 std::string
 gbp_vxlan::mk_name(uint32_t vni)
@@ -100,11 +97,11 @@ gbp_vxlan::replay()
 {
   if (rc_t::OK == m_hdl) {
     if (m_grd)
-      HW::enqueue(new gbp_vxlan_cmds::create_cmd(m_hdl, name(), m_src, m_vni,
-                                                 false, m_grd->id()));
+      HW::enqueue(new gbp_vxlan_cmds::create_cmd(
+        m_hdl, name(), m_src, m_vni, false, m_grd->id()));
     else if (m_gbd)
-      HW::enqueue(new gbp_vxlan_cmds::create_cmd(m_hdl, name(), m_src, m_vni,
-                                                 true, m_gbd->id()));
+      HW::enqueue(new gbp_vxlan_cmds::create_cmd(
+        m_hdl, name(), m_src, m_vni, true, m_gbd->id()));
   }
 }
 
@@ -137,11 +134,11 @@ gbp_vxlan::update(const gbp_vxlan& desired)
    */
   if (rc_t::OK != m_hdl) {
     if (m_grd)
-      HW::enqueue(new gbp_vxlan_cmds::create_cmd(m_hdl, name(), m_src, m_vni,
-                                                 false, m_grd->id()));
+      HW::enqueue(new gbp_vxlan_cmds::create_cmd(
+        m_hdl, name(), m_src, m_vni, false, m_grd->id()));
     else if (m_gbd)
-      HW::enqueue(new gbp_vxlan_cmds::create_cmd(m_hdl, name(), m_src, m_vni,
-                                                 true, m_gbd->id()));
+      HW::enqueue(new gbp_vxlan_cmds::create_cmd(
+        m_hdl, name(), m_src, m_vni, true, m_gbd->id()));
   }
 }
 
@@ -209,8 +206,8 @@ gbp_vxlan::event_handler::handle_populate(const client_db::key_t& key)
 gbp_vxlan::event_handler::event_handler()
 {
   OM::register_listener(this);
-  inspect::register_handler({ "gvt", "gbp-vxlan-tunnel" }, "GBP VXLAN Tunnels",
-                            this);
+  inspect::register_handler(
+    { "gvt", "gbp-vxlan-tunnel" }, "GBP VXLAN Tunnels", this);
 }
 
 void

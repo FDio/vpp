@@ -74,23 +74,21 @@ unformat_gpe_loc_pairs (void *locs, u32 rloc_num)
 }
 
 static void
-  gpe_fwd_entry_path_dump_t_net_to_host
-  (vl_api_gpe_fwd_entry_path_dump_t * mp)
+gpe_fwd_entry_path_dump_t_net_to_host (vl_api_gpe_fwd_entry_path_dump_t *mp)
 {
   mp->fwd_entry_index = clib_net_to_host_u32 (mp->fwd_entry_index);
 }
 
 static void
-lisp_api_set_locator (vl_api_gpe_locator_t * loc,
-		      const ip_address_t * addr, u8 weight)
+lisp_api_set_locator (vl_api_gpe_locator_t *loc, const ip_address_t *addr,
+		      u8 weight)
 {
   loc->weight = weight;
   ip_address_encode2 (addr, &loc->addr);
 }
 
 static void
-  vl_api_gpe_fwd_entry_path_dump_t_handler
-  (vl_api_gpe_fwd_entry_path_dump_t * mp)
+vl_api_gpe_fwd_entry_path_dump_t_handler (vl_api_gpe_fwd_entry_path_dump_t *mp)
 {
   lisp_fwd_path_t *path;
   vl_api_gpe_fwd_entry_path_details_t *rmp = NULL;
@@ -113,73 +111,73 @@ static void
     return;
 
   vec_foreach (path, lfe->paths)
-  {
-    rmp = vl_msg_api_alloc (sizeof (*rmp));
-    clib_memset (rmp, 0, sizeof (*rmp));
-    const lisp_gpe_tunnel_t *lgt;
+    {
+      rmp = vl_msg_api_alloc (sizeof (*rmp));
+      clib_memset (rmp, 0, sizeof (*rmp));
+      const lisp_gpe_tunnel_t *lgt;
 
-    rmp->_vl_msg_id =
-      clib_host_to_net_u16 (VL_API_GPE_FWD_ENTRY_PATH_DETAILS);
+      rmp->_vl_msg_id =
+	clib_host_to_net_u16 (VL_API_GPE_FWD_ENTRY_PATH_DETAILS);
 
-    const lisp_gpe_adjacency_t *ladj =
-      lisp_gpe_adjacency_get (path->lisp_adj);
-    lisp_api_set_locator (&rmp->rmt_loc, &ladj->remote_rloc, path->weight);
-    lgt = lisp_gpe_tunnel_get (ladj->tunnel_index);
-    lisp_api_set_locator (&rmp->lcl_loc, &lgt->key->lcl, path->weight);
+      const lisp_gpe_adjacency_t *ladj =
+	lisp_gpe_adjacency_get (path->lisp_adj);
+      lisp_api_set_locator (&rmp->rmt_loc, &ladj->remote_rloc, path->weight);
+      lgt = lisp_gpe_tunnel_get (ladj->tunnel_index);
+      lisp_api_set_locator (&rmp->lcl_loc, &lgt->key->lcl, path->weight);
 
-    rmp->context = mp->context;
-    vl_api_send_msg (reg, (u8 *) rmp);
-  }
+      rmp->context = mp->context;
+      vl_api_send_msg (reg, (u8 *) rmp);
+    }
 }
 
 static void
-gpe_fwd_entries_copy (vl_api_gpe_fwd_entry_t * dst,
-		      lisp_api_gpe_fwd_entry_t * src)
+gpe_fwd_entries_copy (vl_api_gpe_fwd_entry_t *dst,
+		      lisp_api_gpe_fwd_entry_t *src)
 {
   lisp_api_gpe_fwd_entry_t *e;
   u32 i = 0;
 
   vec_foreach (e, src)
-  {
-    clib_memset (&dst[i], 0, sizeof (*dst));
-    dst[i].dp_table = e->dp_table;
-    dst[i].fwd_entry_index = e->fwd_entry_index;
-    dst[i].vni = e->vni;
-    dst[i].action = e->action;
-    switch (fid_addr_type (&e->leid))
-      {
-      case FID_ADDR_IP_PREF:
-	dst[i].leid.type = EID_TYPE_API_PREFIX;
-	dst[i].reid.type = EID_TYPE_API_PREFIX;
-	ip_prefix_encode2 (&fid_addr_ippref (&e->leid),
-			   &dst[i].leid.address.prefix);
-	ip_prefix_encode2 (&fid_addr_ippref (&e->reid),
-			   &dst[i].reid.address.prefix);
-	break;
-      case FID_ADDR_MAC:
-	mac_address_encode ((mac_address_t *) fid_addr_mac (&e->leid),
-			    dst[i].leid.address.mac);
-	mac_address_encode ((mac_address_t *) fid_addr_mac (&e->reid),
-			    dst[i].reid.address.mac);
-	dst[i].leid.type = EID_TYPE_API_MAC;
-	dst[i].reid.type = EID_TYPE_API_MAC;
-	break;
-      default:
-	clib_warning ("unknown fid type %d!", fid_addr_type (&e->leid));
-	break;
-      }
-    i++;
-  }
+    {
+      clib_memset (&dst[i], 0, sizeof (*dst));
+      dst[i].dp_table = e->dp_table;
+      dst[i].fwd_entry_index = e->fwd_entry_index;
+      dst[i].vni = e->vni;
+      dst[i].action = e->action;
+      switch (fid_addr_type (&e->leid))
+	{
+	case FID_ADDR_IP_PREF:
+	  dst[i].leid.type = EID_TYPE_API_PREFIX;
+	  dst[i].reid.type = EID_TYPE_API_PREFIX;
+	  ip_prefix_encode2 (&fid_addr_ippref (&e->leid),
+			     &dst[i].leid.address.prefix);
+	  ip_prefix_encode2 (&fid_addr_ippref (&e->reid),
+			     &dst[i].reid.address.prefix);
+	  break;
+	case FID_ADDR_MAC:
+	  mac_address_encode ((mac_address_t *) fid_addr_mac (&e->leid),
+			      dst[i].leid.address.mac);
+	  mac_address_encode ((mac_address_t *) fid_addr_mac (&e->reid),
+			      dst[i].reid.address.mac);
+	  dst[i].leid.type = EID_TYPE_API_MAC;
+	  dst[i].reid.type = EID_TYPE_API_MAC;
+	  break;
+	default:
+	  clib_warning ("unknown fid type %d!", fid_addr_type (&e->leid));
+	  break;
+	}
+      i++;
+    }
 }
 
 static void
-gpe_fwd_entries_get_t_net_to_host (vl_api_gpe_fwd_entries_get_t * mp)
+gpe_fwd_entries_get_t_net_to_host (vl_api_gpe_fwd_entries_get_t *mp)
 {
   mp->vni = clib_net_to_host_u32 (mp->vni);
 }
 
 static void
-gpe_entry_t_host_to_net (vl_api_gpe_fwd_entry_t * e)
+gpe_entry_t_host_to_net (vl_api_gpe_fwd_entry_t *e)
 {
   e->fwd_entry_index = clib_host_to_net_u32 (e->fwd_entry_index);
   e->dp_table = clib_host_to_net_u32 (e->dp_table);
@@ -187,8 +185,8 @@ gpe_entry_t_host_to_net (vl_api_gpe_fwd_entry_t * e)
 }
 
 static void
-  gpe_fwd_entries_get_reply_t_host_to_net
-  (vl_api_gpe_fwd_entries_get_reply_t * mp)
+gpe_fwd_entries_get_reply_t_host_to_net (
+  vl_api_gpe_fwd_entries_get_reply_t *mp)
 {
   u32 i;
   vl_api_gpe_fwd_entry_t *e;
@@ -202,7 +200,7 @@ static void
 }
 
 static void
-vl_api_gpe_fwd_entry_vnis_get_t_handler (vl_api_gpe_fwd_entry_vnis_get_t * mp)
+vl_api_gpe_fwd_entry_vnis_get_t_handler (vl_api_gpe_fwd_entry_vnis_get_t *mp)
 {
   vl_api_gpe_fwd_entry_vnis_get_reply_t *rmp = 0;
   hash_pair_t *p;
@@ -212,22 +210,17 @@ vl_api_gpe_fwd_entry_vnis_get_t_handler (vl_api_gpe_fwd_entry_vnis_get_t * mp)
   u32 *vnis = vnet_lisp_gpe_get_fwd_entry_vnis ();
   u32 size = hash_elts (vnis) * sizeof (u32);
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO4 (VL_API_GPE_FWD_ENTRY_VNIS_GET_REPLY, size,
-  {
+  REPLY_MACRO4 (VL_API_GPE_FWD_ENTRY_VNIS_GET_REPLY, size, {
     rmp->count = clib_host_to_net_u32 (hash_elts (vnis));
     hash_foreach_pair (p, vnis,
-    ({
-      rmp->vnis[i++] = clib_host_to_net_u32 (p->key);
-    }));
+		       ({ rmp->vnis[i++] = clib_host_to_net_u32 (p->key); }));
   });
-  /* *INDENT-ON* */
 
   hash_free (vnis);
 }
 
 static void
-vl_api_gpe_fwd_entries_get_t_handler (vl_api_gpe_fwd_entries_get_t * mp)
+vl_api_gpe_fwd_entries_get_t_handler (vl_api_gpe_fwd_entries_get_t *mp)
 {
   lisp_api_gpe_fwd_entry_t *e;
   vl_api_gpe_fwd_entries_get_reply_t *rmp = 0;
@@ -239,20 +232,17 @@ vl_api_gpe_fwd_entries_get_t_handler (vl_api_gpe_fwd_entries_get_t * mp)
   e = vnet_lisp_gpe_fwd_entries_get_by_vni (mp->vni);
   size = vec_len (e) * sizeof (vl_api_gpe_fwd_entry_t);
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO4 (VL_API_GPE_FWD_ENTRIES_GET_REPLY, size,
-  {
+  REPLY_MACRO4 (VL_API_GPE_FWD_ENTRIES_GET_REPLY, size, {
     rmp->count = vec_len (e);
     gpe_fwd_entries_copy (rmp->entries, e);
     gpe_fwd_entries_get_reply_t_host_to_net (rmp);
   });
-  /* *INDENT-ON* */
 
   vec_free (e);
 }
 
 static void
-gpe_add_del_fwd_entry_t_net_to_host (vl_api_gpe_add_del_fwd_entry_t * mp)
+gpe_add_del_fwd_entry_t_net_to_host (vl_api_gpe_add_del_fwd_entry_t *mp)
 {
   mp->vni = clib_net_to_host_u32 (mp->vni);
   mp->dp_table = clib_net_to_host_u32 (mp->dp_table);
@@ -260,7 +250,7 @@ gpe_add_del_fwd_entry_t_net_to_host (vl_api_gpe_add_del_fwd_entry_t * mp)
 }
 
 static void
-vl_api_gpe_add_del_fwd_entry_t_handler (vl_api_gpe_add_del_fwd_entry_t * mp)
+vl_api_gpe_add_del_fwd_entry_t_handler (vl_api_gpe_add_del_fwd_entry_t *mp)
 {
   vl_api_gpe_add_del_fwd_entry_reply_t *rmp;
   vnet_lisp_gpe_add_del_fwd_entry_args_t _a, *a = &_a;
@@ -294,16 +284,14 @@ vl_api_gpe_add_del_fwd_entry_t_handler (vl_api_gpe_add_del_fwd_entry_t * mp)
   rv = vnet_lisp_gpe_add_del_fwd_entry (a, 0);
   vec_free (pairs);
 send_reply:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_GPE_ADD_DEL_FWD_ENTRY_REPLY,
-  {
+
+  REPLY_MACRO2 (VL_API_GPE_ADD_DEL_FWD_ENTRY_REPLY, {
     rmp->fwd_entry_index = clib_host_to_net_u32 (a->fwd_entry_index);
   });
-  /* *INDENT-ON* */
 }
 
 static void
-vl_api_gpe_enable_disable_t_handler (vl_api_gpe_enable_disable_t * mp)
+vl_api_gpe_enable_disable_t_handler (vl_api_gpe_enable_disable_t *mp)
 {
   vl_api_gpe_enable_disable_reply_t *rmp;
   int rv = 0;
@@ -316,7 +304,7 @@ vl_api_gpe_enable_disable_t_handler (vl_api_gpe_enable_disable_t * mp)
 }
 
 static void
-vl_api_gpe_add_del_iface_t_handler (vl_api_gpe_add_del_iface_t * mp)
+vl_api_gpe_add_del_iface_t_handler (vl_api_gpe_add_del_iface_t *mp)
 {
   vl_api_gpe_add_del_iface_reply_t *rmp;
   int rv = 0;
@@ -350,7 +338,7 @@ vl_api_gpe_add_del_iface_t_handler (vl_api_gpe_add_del_iface_t * mp)
 }
 
 static void
-vl_api_gpe_set_encap_mode_t_handler (vl_api_gpe_set_encap_mode_t * mp)
+vl_api_gpe_set_encap_mode_t_handler (vl_api_gpe_set_encap_mode_t *mp)
 {
   vl_api_gpe_set_encap_mode_reply_t *rmp;
   int rv = 0;
@@ -360,22 +348,18 @@ vl_api_gpe_set_encap_mode_t_handler (vl_api_gpe_set_encap_mode_t * mp)
 }
 
 static void
-vl_api_gpe_get_encap_mode_t_handler (vl_api_gpe_get_encap_mode_t * mp)
+vl_api_gpe_get_encap_mode_t_handler (vl_api_gpe_get_encap_mode_t *mp)
 {
   vl_api_gpe_get_encap_mode_reply_t *rmp;
   int rv = 0;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_GPE_GET_ENCAP_MODE_REPLY,
-  ({
-    rmp->encap_mode = vnet_gpe_get_encap_mode ();
-  }));
-  /* *INDENT-ON* */
+		({ rmp->encap_mode = vnet_gpe_get_encap_mode (); }));
 }
 
 static void
-  vl_api_gpe_add_del_native_fwd_rpath_t_handler
-  (vl_api_gpe_add_del_native_fwd_rpath_t * mp)
+vl_api_gpe_add_del_native_fwd_rpath_t_handler (
+  vl_api_gpe_add_del_native_fwd_rpath_t *mp)
 {
   vl_api_gpe_add_del_native_fwd_rpath_reply_t *rmp;
   vnet_gpe_native_fwd_rpath_args_t _a, *a = &_a;
@@ -410,34 +394,35 @@ done:
 }
 
 static void
-gpe_native_fwd_rpaths_copy (vl_api_gpe_native_fwd_rpath_t * dst,
-			    fib_route_path_t * src)
+gpe_native_fwd_rpaths_copy (vl_api_gpe_native_fwd_rpath_t *dst,
+			    fib_route_path_t *src)
 {
   fib_route_path_t *e;
   fib_table_t *table;
   u32 i = 0;
 
   vec_foreach (e, src)
-  {
-    clib_memset (&dst[i], 0, sizeof (*dst));
-    table = fib_table_get (e->frp_fib_index, dpo_proto_to_fib (e->frp_proto));
-    dst[i].fib_index = table->ft_table_id;
-    dst[i].nh_sw_if_index = e->frp_sw_if_index;
-    ip_address_encode (&e->frp_addr, IP46_TYPE_ANY, &dst[i].nh_addr);
-    i++;
-  }
+    {
+      clib_memset (&dst[i], 0, sizeof (*dst));
+      table =
+	fib_table_get (e->frp_fib_index, dpo_proto_to_fib (e->frp_proto));
+      dst[i].fib_index = table->ft_table_id;
+      dst[i].nh_sw_if_index = e->frp_sw_if_index;
+      ip_address_encode (&e->frp_addr, IP46_TYPE_ANY, &dst[i].nh_addr);
+      i++;
+    }
 }
 
 static void
-gpe_native_fwd_rpath_t_host_to_net (vl_api_gpe_native_fwd_rpath_t * e)
+gpe_native_fwd_rpath_t_host_to_net (vl_api_gpe_native_fwd_rpath_t *e)
 {
   e->fib_index = clib_host_to_net_u32 (e->fib_index);
   e->nh_sw_if_index = clib_host_to_net_u32 (e->nh_sw_if_index);
 }
 
 static void
-  gpe_native_fwd_rpaths_get_reply_t_host_to_net
-  (vl_api_gpe_native_fwd_rpaths_get_reply_t * mp)
+gpe_native_fwd_rpaths_get_reply_t_host_to_net (
+  vl_api_gpe_native_fwd_rpaths_get_reply_t *mp)
 {
   u32 i;
   vl_api_gpe_native_fwd_rpath_t *e;
@@ -451,8 +436,8 @@ static void
 }
 
 static void
-vl_api_gpe_native_fwd_rpaths_get_t_handler (vl_api_gpe_native_fwd_rpaths_get_t
-					    * mp)
+vl_api_gpe_native_fwd_rpaths_get_t_handler (
+  vl_api_gpe_native_fwd_rpaths_get_t *mp)
 {
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
   vl_api_gpe_native_fwd_rpaths_get_reply_t *rmp;
@@ -461,18 +446,15 @@ vl_api_gpe_native_fwd_rpaths_get_t_handler (vl_api_gpe_native_fwd_rpaths_get_t
 
   u8 rpath_index = mp->is_ip4 ? 1 : 0;
 
-  size = vec_len (lgm->native_fwd_rpath[rpath_index])
-    * sizeof (vl_api_gpe_native_fwd_rpath_t);
+  size = vec_len (lgm->native_fwd_rpath[rpath_index]) *
+	 sizeof (vl_api_gpe_native_fwd_rpath_t);
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO4 (VL_API_GPE_NATIVE_FWD_RPATHS_GET_REPLY, size,
-  {
+  REPLY_MACRO4 (VL_API_GPE_NATIVE_FWD_RPATHS_GET_REPLY, size, {
     rmp->count = vec_len (lgm->native_fwd_rpath[rpath_index]);
     gpe_native_fwd_rpaths_copy (rmp->entries,
 				lgm->native_fwd_rpath[rpath_index]);
     gpe_native_fwd_rpaths_get_reply_t_host_to_net (rmp);
   });
-  /* *INDENT-ON* */
 }
 
 /*
@@ -485,7 +467,7 @@ vl_api_gpe_native_fwd_rpaths_get_t_handler (vl_api_gpe_native_fwd_rpaths_get_t
 #include <lisp/lisp-gpe/lisp_gpe.api.c>
 
 static clib_error_t *
-gpe_api_hookup (vlib_main_t * vm)
+gpe_api_hookup (vlib_main_t *vm)
 {
   /*
    * Set up the (msg_name, crc, message-id) table

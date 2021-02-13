@@ -49,17 +49,19 @@ typedef struct ip6_link_t_
   u32 il_locks;
 } ip6_link_t;
 
-#define FOREACH_IP6_LINK_DELEGATE(_ild, _il, body)      \
-{                                                       \
- if (NULL != _il) {                                     \
-   vec_foreach (_ild, _il->il_delegates) {              \
-     if (ip6_link_delegate_is_init(_ild))               \
-       body;                                            \
-   }                                                    \
- }                                                      \
-}
+#define FOREACH_IP6_LINK_DELEGATE(_ild, _il, body)                            \
+  {                                                                           \
+    if (NULL != _il)                                                          \
+      {                                                                       \
+	vec_foreach (_ild, _il->il_delegates)                                 \
+	  {                                                                   \
+	    if (ip6_link_delegate_is_init (_ild))                             \
+	      body;                                                           \
+	  }                                                                   \
+      }                                                                       \
+  }
 
-#define FOREACH_IP6_LINK_DELEGATE_ID(_id) \
+#define FOREACH_IP6_LINK_DELEGATE_ID(_id)                                     \
   for (_id = 0; _id < il_delegate_id; _id++)
 
 /** last used delegate ID */
@@ -77,26 +79,24 @@ static u64 il_randomizer;
 /** Logging */
 static vlib_log_class_t ip6_link_logger;
 
-#define IP6_LINK_DBG(...)                       \
-    vlib_log_debug (ip6_link_logger, __VA_ARGS__);
+#define IP6_LINK_DBG(...) vlib_log_debug (ip6_link_logger, __VA_ARGS__);
 
-#define IP6_LINK_INFO(...)                              \
-    vlib_log_notice (ip6_link_logger, __VA_ARGS__);
+#define IP6_LINK_INFO(...) vlib_log_notice (ip6_link_logger, __VA_ARGS__);
 
 static bool
-ip6_link_delegate_is_init (const ip6_link_delegate_t * ild)
+ip6_link_delegate_is_init (const ip6_link_delegate_t *ild)
 {
   return (~0 != ild->ild_sw_if_index);
 }
 
 static bool
-ip6_link_is_enabled_i (const ip6_link_t * il)
+ip6_link_is_enabled_i (const ip6_link_t *il)
 {
   return (!ip6_address_is_zero (&il->il_ll_addr));
 }
 
 static void
-ip6_link_local_address_from_mac (ip6_address_t * ip, const u8 * mac)
+ip6_link_local_address_from_mac (ip6_address_t *ip, const u8 *mac)
 {
   ip->as_u64[0] = clib_host_to_net_u64 (0xFE80000000000000ULL);
   /* Invert the "u" bit */
@@ -111,7 +111,7 @@ ip6_link_local_address_from_mac (ip6_address_t * ip, const u8 * mac)
 }
 
 static void
-ip6_mac_address_from_link_local (u8 * mac, const ip6_address_t * ip)
+ip6_mac_address_from_link_local (u8 *mac, const ip6_address_t *ip)
 {
   /* Invert the previously inverted "u" bit */
   mac[0] = ip->as_u8[8] ^ (1 << 1);
@@ -144,9 +144,8 @@ ip6_link_is_enabled (u32 sw_if_index)
   return (NULL != ip6_link_get (sw_if_index));
 }
 
-
 int
-ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
+ip6_link_enable (u32 sw_if_index, const ip6_address_t *link_local_addr)
 {
   ip6_link_t *il;
   int rv;
@@ -161,8 +160,8 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
 
       vnm = vnet_get_main ();
 
-      IP6_LINK_INFO ("enable: %U",
-		     format_vnet_sw_if_index_name, vnm, sw_if_index);
+      IP6_LINK_INFO ("enable: %U", format_vnet_sw_if_index_name, vnm,
+		     sw_if_index);
 
       sw_sup = vnet_get_sup_sw_interface (vnm, sw_if_index);
       if (sw_sup->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
@@ -221,8 +220,8 @@ ip6_link_enable (u32 sw_if_index, const ip6_address_t * link_local_addr)
       ip6_mfib_interface_enable_disable (sw_if_index, 1);
       ip6_sw_interface_enable_disable (sw_if_index, 1);
 
-      il->il_mcast_adj = adj_mcast_add_or_lock (FIB_PROTOCOL_IP6,
-						VNET_LINK_IP6, sw_if_index);
+      il->il_mcast_adj =
+	adj_mcast_add_or_lock (FIB_PROTOCOL_IP6, VNET_LINK_IP6, sw_if_index);
 
       /* inform all register clients */
       ip6_link_delegate_id_t id;
@@ -246,31 +245,27 @@ out:
 }
 
 static void
-ip6_link_delegate_flush (ip6_link_t * il)
+ip6_link_delegate_flush (ip6_link_t *il)
 {
   ip6_link_delegate_t *ild;
 
-  /* *INDENT-OFF* */
-  FOREACH_IP6_LINK_DELEGATE (ild, il,
-  ({
-    il_delegate_vfts[ild->ild_type].ildv_disable(ild->ild_index);
-  }));
-  /* *INDENT-ON* */
+  FOREACH_IP6_LINK_DELEGATE (
+    ild, il,
+    ({ il_delegate_vfts[ild->ild_type].ildv_disable (ild->ild_index); }));
 
   vec_free (il->il_delegates);
   il->il_delegates = NULL;
 }
 
 static void
-ip6_link_last_lock_gone (ip6_link_t * il)
+ip6_link_last_lock_gone (ip6_link_t *il)
 {
   ip6_ll_prefix_t ilp = {
     .ilp_addr = il->il_ll_addr,
     .ilp_sw_if_index = il->il_sw_if_index,
   };
 
-  IP6_LINK_INFO ("last-lock: %U",
-		 format_vnet_sw_if_index_name,
+  IP6_LINK_INFO ("last-lock: %U", format_vnet_sw_if_index_name,
 		 vnet_get_main (), il->il_sw_if_index);
 
   ip6_link_delegate_flush (il);
@@ -285,7 +280,7 @@ ip6_link_last_lock_gone (ip6_link_t * il)
 }
 
 static void
-ip6_link_unlock (ip6_link_t * il)
+ip6_link_unlock (ip6_link_t *il)
 {
   if (NULL == il)
     return;
@@ -306,8 +301,8 @@ ip6_link_disable (u32 sw_if_index)
   if (NULL == il)
     return (VNET_API_ERROR_IP6_NOT_ENABLED);
 
-  IP6_LINK_INFO ("disable: %U",
-		 format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index);
+  IP6_LINK_INFO ("disable: %U", format_vnet_sw_if_index_name, vnet_get_main (),
+		 sw_if_index);
 
   ip6_link_unlock (il);
 
@@ -341,7 +336,7 @@ ip6_link_get_mcast_adj (u32 sw_if_index)
 }
 
 int
-ip6_link_set_local_address (u32 sw_if_index, const ip6_address_t * address)
+ip6_link_set_local_address (u32 sw_if_index, const ip6_address_t *address)
 {
   ip6_link_delegate_t *ild;
   ip6_link_t *il;
@@ -356,29 +351,26 @@ ip6_link_set_local_address (u32 sw_if_index, const ip6_address_t * address)
     .ilp_sw_if_index = sw_if_index,
   };
 
-  IP6_LINK_INFO ("set-ll: %U -> %U",
-		 format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index,
-		 format_ip6_address, address);
+  IP6_LINK_INFO ("set-ll: %U -> %U", format_vnet_sw_if_index_name,
+		 vnet_get_main (), sw_if_index, format_ip6_address, address);
 
   ip6_ll_table_entry_delete (&ilp);
   ip6_address_copy (&il->il_ll_addr, address);
   ip6_address_copy (&ilp.ilp_addr, address);
   ip6_ll_table_entry_update (&ilp, FIB_ROUTE_PATH_LOCAL);
 
-  /* *INDENT-OFF* */
-  FOREACH_IP6_LINK_DELEGATE (ild, il,
-  ({
-    if (NULL != il_delegate_vfts[ild->ild_type].ildv_ll_change)
-      il_delegate_vfts[ild->ild_type].ildv_ll_change(ild->ild_index,
-                                                     &il->il_ll_addr);
-  }));
-  /* *INDENT-ON* */
+  FOREACH_IP6_LINK_DELEGATE (
+    ild, il, ({
+      if (NULL != il_delegate_vfts[ild->ild_type].ildv_ll_change)
+	il_delegate_vfts[ild->ild_type].ildv_ll_change (ild->ild_index,
+							&il->il_ll_addr);
+    }));
 
   return (0);
 }
 
 ip6_link_delegate_id_t
-ip6_link_delegate_register (const ip6_link_delegate_vft_t * vft)
+ip6_link_delegate_register (const ip6_link_delegate_vft_t *vft)
 {
   ip6_link_delegate_id_t rc = il_delegate_id++;
 
@@ -410,8 +402,8 @@ ip6_link_delegate_get (u32 sw_if_index, ip6_link_delegate_id_t id)
 }
 
 bool
-ip6_link_delegate_update (u32 sw_if_index,
-			  ip6_link_delegate_id_t id, index_t ii)
+ip6_link_delegate_update (u32 sw_if_index, ip6_link_delegate_id_t id,
+			  index_t ii)
 {
   ip6_link_t *il;
 
@@ -430,8 +422,8 @@ ip6_link_delegate_update (u32 sw_if_index,
 }
 
 void
-ip6_link_delegate_remove (u32 sw_if_index,
-			  ip6_link_delegate_id_t id, index_t ii)
+ip6_link_delegate_remove (u32 sw_if_index, ip6_link_delegate_id_t id,
+			  index_t ii)
 {
   ip6_link_t *il;
 
@@ -441,19 +433,15 @@ ip6_link_delegate_remove (u32 sw_if_index,
     {
       if (vec_len (il->il_delegates) > id)
 	{
-	  clib_memcpy (&il->il_delegates[id],
-		       &ip6_link_delegate_uninit,
+	  clib_memcpy (&il->il_delegates[id], &ip6_link_delegate_uninit,
 		       sizeof (il->il_delegates[0]));
 	}
     }
 }
 
 static void
-ip6_link_add_del_address (ip6_main_t * im,
-			  uword opaque,
-			  u32 sw_if_index,
-			  ip6_address_t * address,
-			  u32 address_length,
+ip6_link_add_del_address (ip6_main_t *im, uword opaque, u32 sw_if_index,
+			  ip6_address_t *address, u32 address_length,
 			  u32 if_address_index, u32 is_delete)
 {
   const ip6_link_delegate_t *ild;
@@ -463,8 +451,7 @@ ip6_link_add_del_address (ip6_main_t * im,
     // only interested in global addresses here
     return;
 
-  IP6_LINK_INFO ("addr-%s: %U -> %U",
-		 (is_delete ? "del" : "add"),
+  IP6_LINK_INFO ("addr-%s: %U -> %U", (is_delete ? "del" : "add"),
 		 format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index,
 		 format_ip6_address, address);
 
@@ -473,27 +460,25 @@ ip6_link_add_del_address (ip6_main_t * im,
   if (NULL == il)
     return;
 
-  /* *INDENT-OFF* */
-  FOREACH_IP6_LINK_DELEGATE (ild, il,
-  ({
+  FOREACH_IP6_LINK_DELEGATE (
+    ild, il, ({
       if (is_delete)
-        {
-          if (NULL != il_delegate_vfts[ild->ild_type].ildv_addr_del)
-            il_delegate_vfts[ild->ild_type].ildv_addr_del(ild->ild_index,
-                                                          address, address_length);
-        }
+	{
+	  if (NULL != il_delegate_vfts[ild->ild_type].ildv_addr_del)
+	    il_delegate_vfts[ild->ild_type].ildv_addr_del (
+	      ild->ild_index, address, address_length);
+	}
       else
-        {
-          if (NULL != il_delegate_vfts[ild->ild_type].ildv_addr_add)
-            il_delegate_vfts[ild->ild_type].ildv_addr_add(ild->ild_index,
-                                                          address, address_length);
-        }
-  }));
-  /* *INDENT-ON* */
+	{
+	  if (NULL != il_delegate_vfts[ild->ild_type].ildv_addr_add)
+	    il_delegate_vfts[ild->ild_type].ildv_addr_add (
+	      ild->ild_index, address, address_length);
+	}
+    }));
 }
 
 static clib_error_t *
-ip6_link_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
+ip6_link_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
 {
   if (!is_add)
     {
@@ -501,9 +486,8 @@ ip6_link_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 
       il = ip6_link_get (sw_if_index);
 
-      IP6_LINK_DBG ("link-del: %U",
-		    format_vnet_sw_if_index_name, vnet_get_main (),
-		    sw_if_index);
+      IP6_LINK_DBG ("link-del: %U", format_vnet_sw_if_index_name,
+		    vnet_get_main (), sw_if_index);
 
       if (NULL != il)
 	/* force cleanup */
@@ -516,7 +500,7 @@ ip6_link_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ip6_link_interface_add_del);
 
 static clib_error_t *
-ip6_link_init (vlib_main_t * vm)
+ip6_link_init (vlib_main_t *vm)
 {
   il_randomizer = clib_cpu_time_now ();
   ip6_link_logger = vlib_log_register_class ("ip6", "link");
@@ -532,10 +516,9 @@ ip6_link_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ip6_link_init);
 
-
 static clib_error_t *
-test_ip6_link_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+test_ip6_link_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   u8 mac[6];
   ip6_address_t _a, *a = &_a;
@@ -545,8 +528,8 @@ test_ip6_link_command_fn (vlib_main_t * vm,
       ip6_link_local_address_from_mac (a, mac);
       vlib_cli_output (vm, "Link local address: %U", format_ip6_address, a);
       ip6_mac_address_from_link_local (mac, a);
-      vlib_cli_output (vm, "Original MAC address: %U",
-		       format_ethernet_address, mac);
+      vlib_cli_output (vm, "Original MAC address: %U", format_ethernet_address,
+		       mac);
     }
 
   return 0;
@@ -563,17 +546,15 @@ test_ip6_link_command_fn (vlib_main_t * vm,
  * Original MAC address: 16:d9:e0:91:79:86
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_link_command, static) =
-{
+
+VLIB_CLI_COMMAND (test_link_command, static) = {
   .path = "test ip6 link",
   .function = test_ip6_link_command_fn,
   .short_help = "test ip6 link <mac-address>",
 };
-/* *INDENT-ON* */
 
 static u8 *
-ip6_print_addrs (u8 * s, u32 * addrs)
+ip6_print_addrs (u8 *s, u32 *addrs)
 {
   ip_lookup_main_t *lm = &ip6_main.lookup_main;
   u32 i;
@@ -584,16 +565,15 @@ ip6_print_addrs (u8 * s, u32 * addrs)
 	pool_elt_at_index (lm->if_address_pool, addrs[i]);
       ip6_address_t *address = ip_interface_address_get_address (lm, a);
 
-      s = format (s, "%U%U/%d\n",
-		  format_white_space, 4,
-		  format_ip6_address, address, a->address_length);
+      s = format (s, "%U%U/%d\n", format_white_space, 4, format_ip6_address,
+		  address, a->address_length);
     }
 
   return (s);
 }
 
 static u8 *
-format_ip6_link (u8 * s, va_list * arg)
+format_ip6_link (u8 *s, va_list *arg)
 {
   const ip6_link_t *il = va_arg (*arg, ip6_link_t *);
   ip_lookup_main_t *lm = &ip6_main.lookup_main;
@@ -602,11 +582,10 @@ format_ip6_link (u8 * s, va_list * arg)
   if (!ip6_link_is_enabled_i (il))
     return (s);
 
-  s = format (s, "%U is admin %s\n",
-	      format_vnet_sw_interface_name, vnm,
-	      vnet_get_sw_interface (vnm, il->il_sw_if_index),
-	      (vnet_sw_interface_is_admin_up (vnm, il->il_sw_if_index) ?
-	       "up" : "down"));
+  s = format (
+    s, "%U is admin %s\n", format_vnet_sw_interface_name, vnm,
+    vnet_get_sw_interface (vnm, il->il_sw_if_index),
+    (vnet_sw_interface_is_admin_up (vnm, il->il_sw_if_index) ? "up" : "down"));
 
   u32 ai;
   u32 *link_scope = 0, *global_scope = 0;
@@ -618,7 +597,7 @@ format_ip6_link (u8 * s, va_list * arg)
 			   il->il_sw_if_index, ~0);
   ai = lm->if_address_pool_index_by_sw_if_index[il->il_sw_if_index];
 
-  while (ai != (u32) ~ 0)
+  while (ai != (u32) ~0)
     {
       a = pool_elt_at_index (lm->if_address_pool, ai);
       ip6_address_t *address = ip_interface_address_get_address (lm, a);
@@ -651,8 +630,7 @@ format_ip6_link (u8 * s, va_list * arg)
 
   if (vec_len (global_scope))
     {
-      s = format (s, "%UGlobal unicast address(es):\n",
-		  format_white_space, 2);
+      s = format (s, "%UGlobal unicast address(es):\n", format_white_space, 2);
       s = ip6_print_addrs (s, global_scope);
       vec_free (global_scope);
     }
@@ -665,23 +643,21 @@ format_ip6_link (u8 * s, va_list * arg)
     }
 
   s = format (s, "%ULink-local address(es):\n", format_white_space, 2);
-  s = format (s, "%U%U\n",
-	      format_white_space, 4, format_ip6_address, &il->il_ll_addr);
+  s = format (s, "%U%U\n", format_white_space, 4, format_ip6_address,
+	      &il->il_ll_addr);
 
-  /* *INDENT-OFF* */
-  FOREACH_IP6_LINK_DELEGATE(ild, il,
-  ({
-    s = format (s, "%U", il_delegate_vfts[ild->ild_type].ildv_format,
-                     ild->ild_index, 2);
-  }));
-  /* *INDENT-ON* */
+  FOREACH_IP6_LINK_DELEGATE (
+    ild, il, ({
+      s = format (s, "%U", il_delegate_vfts[ild->ild_type].ildv_format,
+		  ild->ild_index, 2);
+    }));
 
   return (s);
 }
 
 static clib_error_t *
-ip6_link_show (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+ip6_link_show (vlib_main_t *vm, unformat_input_t *input,
+	       vlib_cli_command_t *cmd)
 {
   const ip6_link_t *il;
   vnet_main_t *vnm;
@@ -735,7 +711,8 @@ ip6_link_show (vlib_main_t * vm,
  *         ND DAD is disabled
  *         ND advertised reachable time is 0
  *         ND advertised retransmit interval is 0 (msec)
- *         ND router advertisements are sent every 200 seconds (min interval is 150)
+ *         ND router advertisements are sent every 200 seconds (min interval is
+150)
  *         ND router advertisements live for 600 seconds
  *         Hosts use stateless autoconfig for addresses
  *         ND router advertisements sent 19336
@@ -747,18 +724,16 @@ ip6_link_show (vlib_main_t * vm,
  * show ip6 interface: IPv6 not enabled on interface
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (ip6_link_show_command, static) =
-{
+
+VLIB_CLI_COMMAND (ip6_link_show_command, static) = {
   .path = "show ip6 interface",
   .function = ip6_link_show,
   .short_help = "show ip6 interface <interface>",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-enable_ip6_interface_cmd (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+enable_ip6_interface_cmd (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = NULL;
@@ -775,7 +750,6 @@ enable_ip6_interface_cmd (vlib_main_t * vm,
     {
       error = clib_error_return (0, "unknown interface\n'",
 				 format_unformat_error, input);
-
     }
   return error;
 }
@@ -787,18 +761,16 @@ enable_ip6_interface_cmd (vlib_main_t * vm,
  * Example of how enable IPv6 on a given interface:
  * @cliexcmd{enable ip6 interface GigabitEthernet2/0/0}
 ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (enable_ip6_interface_command, static) =
-{
+
+VLIB_CLI_COMMAND (enable_ip6_interface_command, static) = {
   .path = "enable ip6 interface",
   .function = enable_ip6_interface_cmd,
   .short_help = "enable ip6 interface <interface>",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-disable_ip6_interface_cmd (vlib_main_t * vm,
-			   unformat_input_t * input, vlib_cli_command_t * cmd)
+disable_ip6_interface_cmd (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = NULL;
@@ -815,7 +787,6 @@ disable_ip6_interface_cmd (vlib_main_t * vm,
     {
       error = clib_error_return (0, "unknown interface\n'",
 				 format_unformat_error, input);
-
     }
   return error;
 }
@@ -827,14 +798,12 @@ disable_ip6_interface_cmd (vlib_main_t * vm,
  * Example of how disable IPv6 on a given interface:
  * @cliexcmd{disable ip6 interface GigabitEthernet2/0/0}
 ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (disable_ip6_interface_command, static) =
-{
+
+VLIB_CLI_COMMAND (disable_ip6_interface_command, static) = {
   .path = "disable ip6 interface",
   .function = disable_ip6_interface_cmd,
   .short_help = "disable ip6 interface <interface>",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -23,19 +23,18 @@
 
 #include <avf/avf.h>
 
-#define foreach_avf_input_error \
-  _(BUFFER_ALLOC, "buffer alloc error")
+#define foreach_avf_input_error _ (BUFFER_ALLOC, "buffer alloc error")
 
 typedef enum
 {
-#define _(f,s) AVF_INPUT_ERROR_##f,
+#define _(f, s) AVF_INPUT_ERROR_##f,
   foreach_avf_input_error
 #undef _
     AVF_INPUT_N_ERROR,
 } avf_input_error_t;
 
 static __clib_unused char *avf_input_error_strings[] = {
-#define _(n,s) s,
+#define _(n, s) s,
   foreach_avf_input_error
 #undef _
 };
@@ -43,7 +42,7 @@ static __clib_unused char *avf_input_error_strings[] = {
 #define AVF_INPUT_REFILL_TRESHOLD 32
 
 static_always_inline void
-avf_rx_desc_write (avf_rx_desc_t * d, u64 addr)
+avf_rx_desc_write (avf_rx_desc_t *d, u64 addr)
 {
 #ifdef CLIB_HAVE_VEC256
   u64x4 v = { addr, 0, 0, 0 };
@@ -55,7 +54,7 @@ avf_rx_desc_write (avf_rx_desc_t * d, u64 addr)
 }
 
 static_always_inline void
-avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
+avf_rxq_refill (vlib_main_t *vm, vlib_node_runtime_t *node, avf_rxq_t *rxq,
 		int use_va_dma)
 {
   u16 n_refill, mask, n_alloc, slot, size;
@@ -71,15 +70,13 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
 
   slot = (rxq->next - n_refill - 1) & mask;
 
-  n_refill &= ~7;		/* round to 8 */
-  n_alloc =
-    vlib_buffer_alloc_to_ring_from_pool (vm, rxq->bufs, slot, size, n_refill,
-					 rxq->buffer_pool_index);
+  n_refill &= ~7; /* round to 8 */
+  n_alloc = vlib_buffer_alloc_to_ring_from_pool (
+    vm, rxq->bufs, slot, size, n_refill, rxq->buffer_pool_index);
 
   if (PREDICT_FALSE (n_alloc != n_refill))
     {
-      vlib_error_count (vm, node->node_index,
-			AVF_INPUT_ERROR_BUFFER_ALLOC, 1);
+      vlib_error_count (vm, node->node_index, AVF_INPUT_ERROR_BUFFER_ALLOC, 1);
       if (n_alloc)
 	vlib_buffer_free_from_ring (vm, rxq->bufs, slot, size, n_alloc);
       return;
@@ -128,10 +125,9 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
   avf_tail_write (rxq->qrx_tail, slot);
 }
 
-
 static_always_inline uword
-avf_rx_attach_tail (vlib_main_t * vm, vlib_buffer_t * bt, vlib_buffer_t * b,
-		    u64 qw1, avf_rx_tail_t * t)
+avf_rx_attach_tail (vlib_main_t *vm, vlib_buffer_t *bt, vlib_buffer_t *b,
+		    u64 qw1, avf_rx_tail_t *t)
 {
   vlib_buffer_t *hb = b;
   u32 tlnifb = 0, i = 0;
@@ -158,8 +154,8 @@ avf_rx_attach_tail (vlib_main_t * vm, vlib_buffer_t * bt, vlib_buffer_t * b,
 }
 
 static_always_inline uword
-avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      avf_per_thread_data_t * ptd, u32 n_left,
+avf_process_rx_burst (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      avf_per_thread_data_t *ptd, u32 n_left,
 		      int maybe_multiseg)
 {
   vlib_buffer_t bt;
@@ -231,14 +227,13 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline uword
-avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 vlib_frame_t * frame, avf_device_t * ad, u16 qid)
+avf_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			 vlib_frame_t *frame, avf_device_t *ad, u16 qid)
 {
   avf_main_t *am = &avf_main;
   vnet_main_t *vnm = vnet_get_main ();
   u32 thr_idx = vlib_get_thread_index ();
-  avf_per_thread_data_t *ptd =
-    vec_elt_at_index (am->per_thread_data, thr_idx);
+  avf_per_thread_data_t *ptd = vec_elt_at_index (am->per_thread_data, thr_idx);
   avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, qid);
   u32 n_trace, n_rx_packets = 0, n_rx_bytes = 0;
   u16 n_tail_desc = 0;
@@ -410,9 +405,8 @@ no_more_desc:
       while (n_trace && n_left)
 	{
 	  vlib_buffer_t *b = vlib_get_buffer (vm, bi[0]);
-	  if (PREDICT_TRUE
-	      (vlib_trace_buffer
-	       (vm, node, next_index, b, /* follow_chain */ 0)))
+	  if (PREDICT_TRUE (vlib_trace_buffer (vm, node, next_index, b,
+					       /* follow_chain */ 0)))
 	    {
 	      avf_input_trace_t *tr =
 		vlib_add_trace (vm, node, b, sizeof (*tr));
@@ -455,22 +449,22 @@ no_more_desc:
   n_left_to_next -= n_rx_packets;
   vlib_put_next_frame (vm, node, next_index, n_left_to_next);
 
-  vlib_increment_combined_counter (vnm->interface_main.combined_sw_if_counters
-				   + VNET_INTERFACE_COUNTER_RX, thr_idx,
-				   ad->hw_if_index, n_rx_packets, n_rx_bytes);
+  vlib_increment_combined_counter (
+    vnm->interface_main.combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
+    thr_idx, ad->hw_if_index, n_rx_packets, n_rx_bytes);
 
 done:
   /* refill rx ring */
   if (ad->flags & AVF_DEVICE_F_VA_DMA)
-    avf_rxq_refill (vm, node, rxq, 1 /* use_va_dma */ );
+    avf_rxq_refill (vm, node, rxq, 1 /* use_va_dma */);
   else
-    avf_rxq_refill (vm, node, rxq, 0 /* use_va_dma */ );
+    avf_rxq_refill (vm, node, rxq, 0 /* use_va_dma */);
 
   return n_rx_packets;
 }
 
-VLIB_NODE_FN (avf_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			       vlib_frame_t * frame)
+VLIB_NODE_FN (avf_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_rx = 0;
   vnet_hw_if_rxq_poll_vector_t *pv;
@@ -488,7 +482,6 @@ VLIB_NODE_FN (avf_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_rx;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (avf_input_node) = {
   .name = "avf-input",
   .sibling_of = "device-input",
@@ -500,7 +493,6 @@ VLIB_REGISTER_NODE (avf_input_node) = {
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
 };
 
-/* *INDENT-ON* */
 
 
 /*

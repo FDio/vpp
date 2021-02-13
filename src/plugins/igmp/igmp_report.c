@@ -19,7 +19,7 @@
 #include <igmp/igmp_pkt.h>
 
 static ip46_address_t *
-igmp_group_mk_source_list (const igmp_membership_group_v3_t * r)
+igmp_group_mk_source_list (const igmp_membership_group_v3_t *r)
 {
   ip46_address_t *srcs = NULL;
   const ip4_address_t *s;
@@ -53,8 +53,8 @@ igmp_group_mk_source_list (const igmp_membership_group_v3_t * r)
 }
 
 static void
-igmp_handle_group_exclude (igmp_config_t * config,
-			   const igmp_membership_group_v3_t * igmp_group)
+igmp_handle_group_exclude (igmp_config_t *config,
+			   const igmp_membership_group_v3_t *igmp_group)
 {
   ip46_address_t key = {
     .ip4 = igmp_group->group_address,
@@ -74,8 +74,7 @@ igmp_handle_group_exclude (igmp_config_t * config,
       group = igmp_group_lookup (config, &key);
       srcs = igmp_group_mk_source_list (igmp_group);
 
-      IGMP_DBG (" ..group-update: %U (*, %U)",
-		format_vnet_sw_if_index_name,
+      IGMP_DBG (" ..group-update: %U (*, %U)", format_vnet_sw_if_index_name,
 		vnet_get_main (), config->sw_if_index, format_igmp_key, &key);
 
       if (NULL == group)
@@ -83,23 +82,23 @@ igmp_handle_group_exclude (igmp_config_t * config,
 	  group = igmp_group_alloc (config, &key, IGMP_FILTER_MODE_INCLUDE);
 	}
       vec_foreach (src, srcs)
-      {
-	igmp_group_src_update (group, src, IGMP_MODE_ROUTER);
-      }
+	{
+	  igmp_group_src_update (group, src, IGMP_MODE_ROUTER);
+	}
 
       vec_free (srcs);
     }
   else
     {
       IGMP_DBG (" ..group-update: %U (*, %U) source exclude ignored",
-		format_vnet_sw_if_index_name,
-		vnet_get_main (), config->sw_if_index, format_igmp_key, &key);
+		format_vnet_sw_if_index_name, vnet_get_main (),
+		config->sw_if_index, format_igmp_key, &key);
     }
 }
 
 static void
-igmp_handle_group_block (igmp_config_t * config,
-			 const igmp_membership_group_v3_t * igmp_group)
+igmp_handle_group_block (igmp_config_t *config,
+			 const igmp_membership_group_v3_t *igmp_group)
 {
   ip46_address_t *s, *srcs;
   igmp_pkt_build_query_t bq;
@@ -111,10 +110,9 @@ igmp_handle_group_block (igmp_config_t * config,
   srcs = igmp_group_mk_source_list (igmp_group);
   group = igmp_group_lookup (config, &key);
 
-  IGMP_DBG (" ..group-block: %U (%U, %U)",
-	    format_vnet_sw_if_index_name,
-	    vnet_get_main (), config->sw_if_index,
-	    format_igmp_key, &key, format_igmp_src_addr_list, srcs);
+  IGMP_DBG (" ..group-block: %U (%U, %U)", format_vnet_sw_if_index_name,
+	    vnet_get_main (), config->sw_if_index, format_igmp_key, &key,
+	    format_igmp_src_addr_list, srcs);
 
   if (group)
     {
@@ -131,11 +129,11 @@ igmp_handle_group_block (igmp_config_t * config,
        * latency timer
        */
       vec_foreach (s, srcs)
-      {
-	src = igmp_src_lookup (group, s);
-	if (NULL != src)
-	  igmp_src_blocked (src);
-      }
+	{
+	  src = igmp_src_lookup (group, s);
+	  if (NULL != src)
+	    igmp_src_blocked (src);
+	}
     }
   /*
    * a block/leave from a group for which we have no state
@@ -145,8 +143,8 @@ igmp_handle_group_block (igmp_config_t * config,
 }
 
 static void
-igmp_handle_group_update (igmp_config_t * config,
-			  const igmp_membership_group_v3_t * igmp_group)
+igmp_handle_group_update (igmp_config_t *config,
+			  const igmp_membership_group_v3_t *igmp_group)
 {
   ip46_address_t *src, *srcs;
   igmp_group_t *group;
@@ -165,10 +163,9 @@ igmp_handle_group_update (igmp_config_t * config,
   srcs = igmp_group_mk_source_list (igmp_group);
   group = igmp_group_lookup (config, &key);
 
-  IGMP_DBG (" ..group-update: %U (%U, %U)",
-	    format_vnet_sw_if_index_name,
-	    vnet_get_main (), config->sw_if_index,
-	    format_igmp_key, &key, format_igmp_src_addr_list, srcs);
+  IGMP_DBG (" ..group-update: %U (%U, %U)", format_vnet_sw_if_index_name,
+	    vnet_get_main (), config->sw_if_index, format_igmp_key, &key,
+	    format_igmp_src_addr_list, srcs);
 
   if (NULL == group)
     {
@@ -177,19 +174,18 @@ igmp_handle_group_update (igmp_config_t * config,
 
   /* create or update all sources */
   vec_foreach (src, srcs)
-  {
-    igmp_group_src_update (group, src, IGMP_MODE_ROUTER);
-  }
+    {
+      igmp_group_src_update (group, src, IGMP_MODE_ROUTER);
+    }
 
   vec_free (srcs);
 }
 
 static void
-igmp_handle_group (igmp_config_t * config,
-		   const igmp_membership_group_v3_t * igmp_group)
+igmp_handle_group (igmp_config_t *config,
+		   const igmp_membership_group_v3_t *igmp_group)
 {
-  IGMP_DBG ("rx-group-report: %U",
-	    format_vnet_sw_if_index_name,
+  IGMP_DBG ("rx-group-report: %U", format_vnet_sw_if_index_name,
 	    vnet_get_main (), config->sw_if_index);
 
   switch (igmp_group->type)
@@ -213,7 +209,7 @@ igmp_handle_group (igmp_config_t * config,
 }
 
 void
-igmp_handle_report (const igmp_report_args_t * args)
+igmp_handle_report (const igmp_report_args_t *args)
 {
   const igmp_membership_group_v3_t *igmp_group;
   igmp_config_t *config;
@@ -247,8 +243,8 @@ igmp_handle_report (const igmp_report_args_t * args)
     {
       igmp_handle_group (config, igmp_group);
 
-      igmp_group = group_cptr (igmp_group,
-			       igmp_membership_group_v3_length (igmp_group));
+      igmp_group =
+	group_cptr (igmp_group, igmp_membership_group_v3_length (igmp_group));
     }
 
   igmp_proxy_device_merge_config (config, 0);

@@ -61,10 +61,9 @@ typedef struct gbp_policy_dpo_t_
   dpo_id_t gpd_dpo;
 } gbp_policy_dpo_t;
 
-extern void gbp_policy_dpo_add_or_lock (dpo_proto_t dproto,
-					gbp_scope_t scope,
-					sclass_t sclass,
-					u32 sw_if_index, dpo_id_t * dpo);
+extern void gbp_policy_dpo_add_or_lock (dpo_proto_t dproto, gbp_scope_t scope,
+					sclass_t sclass, u32 sw_if_index,
+					dpo_id_t *dpo);
 
 extern dpo_type_t gbp_policy_dpo_get_type (void);
 
@@ -85,7 +84,7 @@ gbp_policy_dpo_get (index_t index)
 }
 
 static_always_inline const gbp_policy_dpo_t *
-gbp_classify_get_gpd (const ip4_address_t * ip4, const ip6_address_t * ip6,
+gbp_classify_get_gpd (const ip4_address_t *ip4, const ip6_address_t *ip6,
 		      const u32 fib_index)
 {
   const gbp_policy_dpo_t *gpd;

@@ -50,13 +50,17 @@ clib_ring_new_inline (void **p, u32 elt_bytes, u32 size, u32 align)
   p[0] = v;
 }
 
-#define clib_ring_new_aligned(ring, size, align) \
-{ clib_ring_new_inline ((void **)&(ring), sizeof(ring[0]), size, align); }
+#define clib_ring_new_aligned(ring, size, align)                              \
+  {                                                                           \
+    clib_ring_new_inline ((void **) &(ring), sizeof (ring[0]), size, align);  \
+  }
 
-#define clib_ring_new(ring, size) \
-{ clib_ring_new_inline ((void **)&(ring), sizeof(ring[0]), size, 0);}
+#define clib_ring_new(ring, size)                                             \
+  {                                                                           \
+    clib_ring_new_inline ((void **) &(ring), sizeof (ring[0]), size, 0);      \
+  }
 
-#define clib_ring_free(f) vec_free_h((f), sizeof(clib_ring_header_t))
+#define clib_ring_free(f) vec_free_h ((f), sizeof (clib_ring_header_t))
 
 always_inline u32
 clib_ring_n_enq (void *v)
@@ -91,11 +95,11 @@ clib_ring_get_last_inline (void *v, u32 elt_bytes, int enqueue)
   return (void *) ((u8 *) v + elt_bytes * slot);
 }
 
-#define clib_ring_enq(ring) \
-clib_ring_get_last_inline (ring, sizeof(ring[0]), 1)
+#define clib_ring_enq(ring)                                                   \
+  clib_ring_get_last_inline (ring, sizeof (ring[0]), 1)
 
-#define clib_ring_get_last(ring) \
-clib_ring_get_last_inline (ring, sizeof(ring[0]), 0)
+#define clib_ring_get_last(ring)                                              \
+  clib_ring_get_last_inline (ring, sizeof (ring[0]), 0)
 
 always_inline void *
 clib_ring_get_first_inline (void *v, u32 elt_bytes, int dequeue)
@@ -117,11 +121,11 @@ clib_ring_get_first_inline (void *v, u32 elt_bytes, int dequeue)
   return (void *) ((u8 *) v + elt_bytes * slot);
 }
 
-#define clib_ring_deq(ring) \
-clib_ring_get_first_inline (ring, sizeof(ring[0]), 1)
+#define clib_ring_deq(ring)                                                   \
+  clib_ring_get_first_inline (ring, sizeof (ring[0]), 1)
 
-#define clib_ring_get_first(ring) \
-clib_ring_get_first_inline (ring, sizeof(ring[0]), 0)
+#define clib_ring_get_first(ring)                                             \
+  clib_ring_get_first_inline (ring, sizeof (ring[0]), 0)
 
 #endif /* included_ring_h */
 

@@ -63,15 +63,15 @@ STATIC_ASSERT (sizeof (vl_api_shm_elem_config_t) == 8,
  * Initializers for the (shared-memory) rings
  * _(size, n). Note: each msg has space for a header.
  */
-#define foreach_vl_aring_size                   \
-_(64+sizeof(ring_alloc_t), 1024)                \
-_(256+sizeof(ring_alloc_t), 128)                \
-_(1024+sizeof(ring_alloc_t), 64)
+#define foreach_vl_aring_size                                                 \
+  _ (64 + sizeof (ring_alloc_t), 1024)                                        \
+  _ (256 + sizeof (ring_alloc_t), 128)                                        \
+  _ (1024 + sizeof (ring_alloc_t), 64)
 
-#define foreach_clnt_aring_size                 \
- _(1024+sizeof(ring_alloc_t), 1024)             \
- _(2048+sizeof(ring_alloc_t), 128)              \
- _(4096+sizeof(ring_alloc_t), 8)
+#define foreach_clnt_aring_size                                               \
+  _ (1024 + sizeof (ring_alloc_t), 1024)                                      \
+  _ (2048 + sizeof (ring_alloc_t), 128)                                       \
+  _ (4096 + sizeof (ring_alloc_t), 8)
 
 typedef struct vl_shmem_hdr_
 {
@@ -104,8 +104,8 @@ typedef struct vl_shmem_hdr_
   u32 clib_file_index;
 } vl_shmem_hdr_t;
 
-#define VL_SHM_VERSION 2
-#define VL_API_EPOCH_MASK 0xFF
+#define VL_SHM_VERSION	   2
+#define VL_API_EPOCH_MASK  0xFF
 #define VL_API_EPOCH_SHIFT 8
 
 void *vl_msg_api_alloc (int nbytes);
@@ -114,16 +114,16 @@ void *vl_msg_api_alloc_or_null (int nbytes);
 void *vl_msg_api_alloc_as_if_client (int nbytes);
 void *vl_msg_api_alloc_zero_as_if_client (int nbytes);
 void *vl_msg_api_alloc_as_if_client_or_null (int nbytes);
-void *vl_mem_api_alloc_as_if_client_w_reg (vl_api_registration_t * reg,
+void *vl_mem_api_alloc_as_if_client_w_reg (vl_api_registration_t *reg,
 					   int nbytes);
 void vl_msg_api_free (void *a);
-void vl_msg_api_free_w_region (svm_region_t * vlib_rp, void *a);
+void vl_msg_api_free_w_region (svm_region_t *vlib_rp, void *a);
 int vl_map_shmem (const char *region_name, int is_vlib);
 void vl_unmap_shmem (void);
 void vl_unmap_shmem_client (void);
-void vl_register_mapped_shmem_region (svm_region_t * rp);
-void vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem);
-int vl_mem_api_can_send (svm_queue_t * q);
+void vl_register_mapped_shmem_region (svm_region_t *rp);
+void vl_msg_api_send_shmem (svm_queue_t *q, u8 *elem);
+int vl_mem_api_can_send (svm_queue_t *q);
 void vl_set_memory_region_name (const char *name);
 void vl_set_memory_root_path (const char *root_path);
 void vl_set_memory_uid (int uid);
@@ -133,7 +133,7 @@ void vl_set_global_memory_size (u64 size);
 void vl_set_api_memory_size (u64 size);
 void vl_set_global_pvt_heap_size (u64 size);
 void vl_set_api_pvt_heap_size (u64 size);
-void vl_init_shmem (svm_region_t * vlib_rp, vl_api_shm_elem_config_t * config,
+void vl_init_shmem (svm_region_t *vlib_rp, vl_api_shm_elem_config_t *config,
 		    int is_vlib, int is_private_region);
 
 #endif /* SRC_VLIBMEMORY_MEMORY_SHARED_H_ */

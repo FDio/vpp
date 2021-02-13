@@ -28,27 +28,27 @@
 #include <memif/memif.h>
 #include <memif/private.h>
 
-#define foreach_memif_tx_func_error	       \
-_(NO_FREE_SLOTS, "no free tx slots")           \
-_(ROLLBACK, "no enough space in tx buffers")
+#define foreach_memif_tx_func_error                                           \
+  _ (NO_FREE_SLOTS, "no free tx slots")                                       \
+  _ (ROLLBACK, "no enough space in tx buffers")
 
 typedef enum
 {
-#define _(f,s) MEMIF_TX_ERROR_##f,
+#define _(f, s) MEMIF_TX_ERROR_##f,
   foreach_memif_tx_func_error
 #undef _
     MEMIF_TX_N_ERROR,
 } memif_tx_func_error_t;
 
 static char *memif_tx_func_error_strings[] = {
-#define _(n,s) s,
+#define _(n, s) s,
   foreach_memif_tx_func_error
 #undef _
 };
 
 #ifndef CLIB_MARCH_VARIANT
 u8 *
-format_memif_device_name (u8 * s, va_list * args)
+format_memif_device_name (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   memif_main_t *mm = &memif_main;
@@ -62,7 +62,7 @@ format_memif_device_name (u8 * s, va_list * args)
 #endif
 
 static u8 *
-format_memif_device (u8 * s, va_list * args)
+format_memif_device (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   int verbose = va_arg (*args, int);
@@ -78,14 +78,14 @@ format_memif_device (u8 * s, va_list * args)
 }
 
 static u8 *
-format_memif_tx_trace (u8 * s, va_list * args)
+format_memif_tx_trace (u8 *s, va_list *args)
 {
   s = format (s, "Unimplemented...");
   return s;
 }
 
 static_always_inline void
-memif_add_copy_op (memif_per_thread_data_t * ptd, void *data, u32 len,
+memif_add_copy_op (memif_per_thread_data_t *ptd, void *data, u32 len,
 		   u16 buffer_offset, u16 buffer_vec_index)
 {
   memif_copy_op_t *co;
@@ -97,10 +97,10 @@ memif_add_copy_op (memif_per_thread_data_t * ptd, void *data, u32 len,
 }
 
 static_always_inline uword
-memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			   vlib_frame_t * frame, memif_if_t * mif,
-			   memif_ring_type_t type, memif_queue_t * mq,
-			   memif_per_thread_data_t * ptd)
+memif_interface_tx_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			   vlib_frame_t *frame, memif_if_t *mif,
+			   memif_ring_type_t type, memif_queue_t *mq,
+			   memif_per_thread_data_t *ptd)
 {
   memif_ring_t *ring;
   u32 *buffers = vlib_frame_vector_args (frame);
@@ -175,9 +175,8 @@ retry:
 		  d0->flags = MEMIF_DESC_FLAG_NEXT;
 		  d0 = &ring->desc[slot & mask];
 		  dst_off = 0;
-		  dst_left =
-		    (type ==
-		     MEMIF_RING_S2M) ? mif->run.buffer_size : d0->length;
+		  dst_left = (type == MEMIF_RING_S2M) ? mif->run.buffer_size :
+							d0->length;
 
 		  if (PREDICT_FALSE (last_region != d0->region))
 		    {
@@ -293,10 +292,9 @@ no_free_slots:
 }
 
 static_always_inline uword
-memif_interface_tx_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			      vlib_frame_t * frame, memif_if_t * mif,
-			      memif_queue_t * mq,
-			      memif_per_thread_data_t * ptd)
+memif_interface_tx_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			      vlib_frame_t *frame, memif_if_t *mif,
+			      memif_queue_t *mq, memif_per_thread_data_t *ptd)
 {
   memif_ring_t *ring = mq->ring;
   u32 *buffers = vlib_frame_vector_args (frame);
@@ -311,9 +309,8 @@ retry:
   n_free = ring->tail - mq->last_tail;
   if (n_free >= 16)
     {
-      vlib_buffer_free_from_ring_no_next (vm, mq->buffers,
-					  mq->last_tail & mask,
-					  ring_size, n_free);
+      vlib_buffer_free_from_ring_no_next (
+	vm, mq->buffers, mq->last_tail & mask, ring_size, n_free);
       mq->last_tail += n_free;
     }
 
@@ -342,8 +339,8 @@ retry:
       b0 = vlib_get_buffer (vm, bi0);
 
       d0->region = b0->buffer_pool_index + 1;
-      d0->offset = (void *) b0->data + b0->current_data -
-	mif->regions[d0->region].shm;
+      d0->offset =
+	(void *) b0->data + b0->current_data - mif->regions[d0->region].shm;
       d0->length = b0->current_length;
 
       free_slots--;
@@ -400,17 +397,16 @@ no_free_slots:
   return frame->n_vectors;
 }
 
-VNET_DEVICE_CLASS_TX_FN (memif_device_class) (vlib_main_t * vm,
-					      vlib_node_runtime_t * node,
-					      vlib_frame_t * frame)
+VNET_DEVICE_CLASS_TX_FN (memif_device_class)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   memif_main_t *nm = &memif_main;
   vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
   memif_if_t *mif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
   memif_queue_t *mq;
   u32 thread_index = vm->thread_index;
-  memif_per_thread_data_t *ptd = vec_elt_at_index (memif_main.per_thread_data,
-						   thread_index);
+  memif_per_thread_data_t *ptd =
+    vec_elt_at_index (memif_main.per_thread_data, thread_index);
   u8 tx_queues = vec_len (mif->tx_queues);
 
   if (tx_queues < vec_len (vlib_mains))
@@ -425,15 +421,15 @@ VNET_DEVICE_CLASS_TX_FN (memif_device_class) (vlib_main_t * vm,
   if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
     return memif_interface_tx_zc_inline (vm, node, frame, mif, mq, ptd);
   else if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
-    return memif_interface_tx_inline (vm, node, frame, mif, MEMIF_RING_S2M,
-				      mq, ptd);
+    return memif_interface_tx_inline (vm, node, frame, mif, MEMIF_RING_S2M, mq,
+				      ptd);
   else
-    return memif_interface_tx_inline (vm, node, frame, mif, MEMIF_RING_M2S,
-				      mq, ptd);
+    return memif_interface_tx_inline (vm, node, frame, mif, MEMIF_RING_M2S, mq,
+				      ptd);
 }
 
 static void
-memif_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
+memif_set_interface_next_node (vnet_main_t *vnm, u32 hw_if_index,
 			       u32 node_index)
 {
   memif_main_t *apm = &memif_main;
@@ -458,7 +454,7 @@ memif_clear_hw_interface_counters (u32 instance)
 }
 
 static clib_error_t *
-memif_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
+memif_interface_rx_mode_change (vnet_main_t *vnm, u32 hw_if_index, u32 qid,
 				vnet_hw_if_rx_mode mode)
 {
   memif_main_t *mm = &memif_main;
@@ -475,15 +471,13 @@ memif_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
 }
 
 static clib_error_t *
-memif_subif_add_del_function (vnet_main_t * vnm,
-			      u32 hw_if_index,
+memif_subif_add_del_function (vnet_main_t *vnm, u32 hw_if_index,
 			      struct vnet_sw_interface_t *st, int is_add)
 {
   /* Nothing for now */
   return 0;
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (memif_device_class) = {
   .name = "memif",
   .format_device_name = format_memif_device_name,
@@ -497,8 +491,6 @@ VNET_DEVICE_CLASS (memif_device_class) = {
   .subif_add_del_function = memif_subif_add_del_function,
   .rx_mode_change_function = memif_interface_rx_mode_change,
 };
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -32,7 +32,7 @@
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_vmxnet3_create_t_handler (vl_api_vmxnet3_create_t * mp)
+vl_api_vmxnet3_create_t_handler (vl_api_vmxnet3_create_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vmxnet3_main_t *vmxm = &vmxnet3_main;
@@ -54,16 +54,12 @@ vl_api_vmxnet3_create_t_handler (vl_api_vmxnet3_create_t * mp)
   vmxnet3_create_if (vm, &args);
   rv = args.rv;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_VMXNET3_CREATE_REPLY + vmxm->msg_id_base,
-    ({
-      rmp->sw_if_index = ntohl (args.sw_if_index);
-    }));
-  /* *INDENT-ON* */
+		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
 }
 
 static void
-vl_api_vmxnet3_delete_t_handler (vl_api_vmxnet3_delete_t * mp)
+vl_api_vmxnet3_delete_t_handler (vl_api_vmxnet3_delete_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
@@ -73,9 +69,8 @@ vl_api_vmxnet3_delete_t_handler (vl_api_vmxnet3_delete_t * mp)
   vnet_hw_interface_t *hw;
   int rv = 0;
 
-  hw =
-    vnet_get_sup_hw_interface_api_visible_or_null (vnm,
-						   htonl (mp->sw_if_index));
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm,
+						      htonl (mp->sw_if_index));
   if (hw == NULL || vmxnet3_device_class.index != hw->dev_class_index)
     {
       rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
@@ -91,8 +86,8 @@ reply:
 }
 
 static void
-send_vmxnet3_details (vl_api_registration_t * reg, vmxnet3_device_t * vd,
-		      vnet_sw_interface_t * swif, u8 * interface_name,
+send_vmxnet3_details (vl_api_registration_t *reg, vmxnet3_device_t *vd,
+		      vnet_sw_interface_t *swif, u8 *interface_name,
 		      u32 context)
 {
   vl_api_vmxnet3_details_t *mp;
@@ -111,8 +106,8 @@ send_vmxnet3_details (vl_api_registration_t * reg, vmxnet3_device_t * vd,
   mp->context = context;
 
   mp->sw_if_index = htonl (swif->sw_if_index);
-  strncpy ((char *) mp->if_name,
-	   (char *) interface_name, ARRAY_LEN (mp->if_name) - 1);
+  strncpy ((char *) mp->if_name, (char *) interface_name,
+	   ARRAY_LEN (mp->if_name) - 1);
 
   if (hwif->hw_address)
     memcpy (mp->hw_addr, hwif->hw_address, ARRAY_LEN (mp->hw_addr));
@@ -123,34 +118,34 @@ send_vmxnet3_details (vl_api_registration_t * reg, vmxnet3_device_t * vd,
 
   mp->rx_count = clib_min (vec_len (vd->rxqs), VMXNET3_RXQ_MAX);
   vec_foreach_index (qid, vd->rxqs)
-  {
-    vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, qid);
-    vl_api_vmxnet3_rx_list_t *rx_list = &mp->rx_list[qid];
+    {
+      vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, qid);
+      vl_api_vmxnet3_rx_list_t *rx_list = &mp->rx_list[qid];
 
-    ASSERT (qid < VMXNET3_RXQ_MAX);
-    rx_list->rx_qsize = htons (rxq->size);
-    rx_list->rx_next = htons (rxq->rx_comp_ring.next);
-    for (rid = 0; rid < VMXNET3_RX_RING_SIZE; rid++)
-      {
-	ring = &rxq->rx_ring[rid];
-	rx_list->rx_fill[rid] = htons (ring->fill);
-	rx_list->rx_produce[rid] = htons (ring->produce);
-	rx_list->rx_consume[rid] = htons (ring->consume);
-      }
-  }
+      ASSERT (qid < VMXNET3_RXQ_MAX);
+      rx_list->rx_qsize = htons (rxq->size);
+      rx_list->rx_next = htons (rxq->rx_comp_ring.next);
+      for (rid = 0; rid < VMXNET3_RX_RING_SIZE; rid++)
+	{
+	  ring = &rxq->rx_ring[rid];
+	  rx_list->rx_fill[rid] = htons (ring->fill);
+	  rx_list->rx_produce[rid] = htons (ring->produce);
+	  rx_list->rx_consume[rid] = htons (ring->consume);
+	}
+    }
 
   mp->tx_count = clib_min (vec_len (vd->txqs), VMXNET3_TXQ_MAX);
   vec_foreach_index (qid, vd->txqs)
-  {
-    vmxnet3_txq_t *txq = vec_elt_at_index (vd->txqs, qid);
-    vl_api_vmxnet3_tx_list_t *tx_list = &mp->tx_list[qid];
+    {
+      vmxnet3_txq_t *txq = vec_elt_at_index (vd->txqs, qid);
+      vl_api_vmxnet3_tx_list_t *tx_list = &mp->tx_list[qid];
 
-    ASSERT (qid < VMXNET3_TXQ_MAX);
-    tx_list->tx_qsize = htons (txq->size);
-    tx_list->tx_next = htons (txq->tx_comp_ring.next);
-    tx_list->tx_produce = htons (txq->tx_ring.produce);
-    tx_list->tx_consume = htons (txq->tx_ring.consume);
-  }
+      ASSERT (qid < VMXNET3_TXQ_MAX);
+      tx_list->tx_qsize = htons (txq->size);
+      tx_list->tx_next = htons (txq->tx_comp_ring.next);
+      tx_list->tx_produce = htons (txq->tx_ring.produce);
+      tx_list->tx_consume = htons (txq->tx_ring.consume);
+    }
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
@@ -160,7 +155,7 @@ send_vmxnet3_details (vl_api_registration_t * reg, vmxnet3_device_t * vd,
  * @param mp vl_api_vmxnet3_dump_t * mp the api message
  */
 static void
-vl_api_vmxnet3_dump_t_handler (vl_api_vmxnet3_dump_t * mp)
+vl_api_vmxnet3_dump_t_handler (vl_api_vmxnet3_dump_t *mp)
 {
   vmxnet3_main_t *vmxm = &vmxnet3_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -173,16 +168,14 @@ vl_api_vmxnet3_dump_t_handler (vl_api_vmxnet3_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (vd, vmxm->devices)
-     {
+    {
       swif = vnet_get_sw_interface (vnm, vd->sw_if_index);
-      if_name = format (if_name, "%U%c", format_vnet_sw_interface_name, vnm,
-			swif, 0);
+      if_name =
+	format (if_name, "%U%c", format_vnet_sw_interface_name, vnm, swif, 0);
       send_vmxnet3_details (reg, vd, swif, if_name, mp->context);
       _vec_len (if_name) = 0;
     }
-  /* *INDENT-ON* */
 
   vec_free (if_name);
 }
@@ -191,8 +184,9 @@ vl_api_vmxnet3_dump_t_handler (vl_api_vmxnet3_dump_t * mp)
  * @brief Message handler for vmxnet3_dump API.
  * @param mp vl_api_vmxnet3_dump_t * mp the api message
  */
-static void vl_api_sw_vmxnet3_interface_dump_t_handler
-  (vl_api_sw_vmxnet3_interface_dump_t * mp)
+static void
+vl_api_sw_vmxnet3_interface_dump_t_handler (
+  vl_api_sw_vmxnet3_interface_dump_t *mp)
 {
   vmxnet3_main_t *vmxm = &vmxnet3_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -211,20 +205,18 @@ static void vl_api_sw_vmxnet3_interface_dump_t_handler
       (vnet_sw_interface_is_api_valid (vnm, filter_sw_if_index) == 0))
     goto bad_sw_if_index;
 
-  /* *INDENT-OFF* */
   pool_foreach (vd, vmxm->devices)
-     {
+    {
       if ((filter_sw_if_index == ~0) ||
 	  (vd->sw_if_index == filter_sw_if_index))
 	{
 	  swif = vnet_get_sw_interface (vnm, vd->sw_if_index);
-	  if_name = format (if_name, "%U%c", format_vnet_sw_interface_name, vnm,
-			    swif, 0);
+	  if_name = format (if_name, "%U%c", format_vnet_sw_interface_name,
+			    vnm, swif, 0);
 	  send_vmxnet3_details (reg, vd, swif, if_name, mp->context);
 	  _vec_len (if_name) = 0;
 	}
     }
-  /* *INDENT-ON* */
 
   BAD_SW_IF_INDEX_LABEL;
   vec_free (if_name);
@@ -233,7 +225,7 @@ static void vl_api_sw_vmxnet3_interface_dump_t_handler
 /* set tup the API message handling tables */
 #include <vmxnet3/vmxnet3.api.c>
 clib_error_t *
-vmxnet3_plugin_api_hookup (vlib_main_t * vm)
+vmxnet3_plugin_api_hookup (vlib_main_t *vm)
 {
   vmxnet3_main_t *vmxm = &vmxnet3_main;
 

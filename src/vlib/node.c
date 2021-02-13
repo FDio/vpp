@@ -42,7 +42,7 @@
 
 /* Query node given name. */
 vlib_node_t *
-vlib_get_node_by_name (vlib_main_t * vm, u8 * name)
+vlib_get_node_by_name (vlib_main_t *vm, u8 *name)
 {
   vlib_node_main_t *nm = &vm->node_main;
   uword *p;
@@ -55,7 +55,7 @@ vlib_get_node_by_name (vlib_main_t * vm, u8 * name)
 }
 
 static void
-node_set_elog_name (vlib_main_t * vm, uword node_index)
+node_set_elog_name (vlib_main_t *vm, uword node_index)
 {
   vlib_node_t *n = vlib_get_node (vm, node_index);
   elog_event_type_t *t;
@@ -72,7 +72,7 @@ node_set_elog_name (vlib_main_t * vm, uword node_index)
 }
 
 void
-vlib_node_rename (vlib_main_t * vm, u32 node_index, char *fmt, ...)
+vlib_node_rename (vlib_main_t *vm, u32 node_index, char *fmt, ...)
 {
   va_list va;
   vlib_node_main_t *nm = &vm->node_main;
@@ -92,7 +92,7 @@ vlib_node_rename (vlib_main_t * vm, u32 node_index, char *fmt, ...)
 }
 
 static void
-vlib_node_runtime_update (vlib_main_t * vm, u32 node_index, u32 next_index)
+vlib_node_runtime_update (vlib_main_t *vm, u32 node_index, u32 next_index)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_runtime_t *r, *s;
@@ -124,17 +124,17 @@ vlib_node_runtime_update (vlib_main_t * vm, u32 node_index, u32 next_index)
 
       /* Pending frames may need to be relocated also. */
       vec_foreach (pf, nm->pending_frames)
-      {
-	if (pf->next_frame_index != VLIB_PENDING_FRAME_NO_NEXT_FRAME
-	    && pf->next_frame_index >= i)
-	  pf->next_frame_index += n_insert;
-      }
-      /* *INDENT-OFF* */
-      pool_foreach (pf, nm->suspended_process_frames)  {
+	{
+	  if (pf->next_frame_index != VLIB_PENDING_FRAME_NO_NEXT_FRAME &&
+	      pf->next_frame_index >= i)
+	    pf->next_frame_index += n_insert;
+	}
+
+      pool_foreach (pf, nm->suspended_process_frames)
+	{
 	  if (pf->next_frame_index != ~0 && pf->next_frame_index >= i)
 	    pf->next_frame_index += n_insert;
-      }
-      /* *INDENT-ON* */
+	}
 
       r->n_next_nodes = vec_len (node->next_nodes);
     }
@@ -148,7 +148,7 @@ vlib_node_runtime_update (vlib_main_t * vm, u32 node_index, u32 next_index)
 }
 
 uword
-vlib_node_get_next (vlib_main_t * vm, uword node_index, uword next_node_index)
+vlib_node_get_next (vlib_main_t *vm, uword node_index, uword next_node_index)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *node;
@@ -169,8 +169,7 @@ vlib_node_get_next (vlib_main_t * vm, uword node_index, uword next_node_index)
 
 /* Add next node to given node in given slot. */
 uword
-vlib_node_add_next_with_slot (vlib_main_t * vm,
-			      uword node_index,
+vlib_node_add_next_with_slot (vlib_main_t *vm, uword node_index,
 			      uword next_node_index, uword slot)
 {
   vlib_node_main_t *nm = &vm->node_main;
@@ -215,23 +214,24 @@ vlib_node_add_next_with_slot (vlib_main_t * vm,
 
   vlib_node_runtime_update (vm, node_index, slot);
 
-  next->prev_node_bitmap = clib_bitmap_ori (next->prev_node_bitmap,
-					    node_index);
+  next->prev_node_bitmap =
+    clib_bitmap_ori (next->prev_node_bitmap, node_index);
 
   /* Siblings all get same node structure. */
   {
     uword sib_node_index, sib_slot;
     vlib_node_t *sib_node;
-    /* *INDENT-OFF* */
-    clib_bitmap_foreach (sib_node_index, node->sibling_bitmap)  {
-      sib_node = vec_elt (nm->nodes, sib_node_index);
-      if (sib_node != node)
-	{
-	  sib_slot = vlib_node_add_next_with_slot (vm, sib_node_index, next_node_index, slot);
-	  ASSERT (sib_slot == slot);
-	}
-    }
-    /* *INDENT-ON* */
+
+    clib_bitmap_foreach (sib_node_index, node->sibling_bitmap)
+      {
+	sib_node = vec_elt (nm->nodes, sib_node_index);
+	if (sib_node != node)
+	  {
+	    sib_slot = vlib_node_add_next_with_slot (vm, sib_node_index,
+						     next_node_index, slot);
+	    ASSERT (sib_slot == slot);
+	  }
+      }
   }
 
   vlib_worker_thread_barrier_release (vm);
@@ -240,8 +240,8 @@ vlib_node_add_next_with_slot (vlib_main_t * vm,
 
 /* Add named next node to given node in given slot. */
 uword
-vlib_node_add_named_next_with_slot (vlib_main_t * vm,
-				    uword node, char *name, uword slot)
+vlib_node_add_named_next_with_slot (vlib_main_t *vm, uword node, char *name,
+				    uword slot)
 {
   vlib_node_main_t *nm;
   vlib_node_t *n, *n_next;
@@ -256,8 +256,8 @@ vlib_node_add_named_next_with_slot (vlib_main_t * vm,
 	return ~0;
 
       if (slot == ~0)
-	slot = clib_max (vec_len (n->next_node_names),
-			 vec_len (n->next_nodes));
+	slot =
+	  clib_max (vec_len (n->next_node_names), vec_len (n->next_nodes));
       vec_validate (n->next_node_names, slot);
       n->next_node_names[slot] = name;
       return slot;
@@ -267,7 +267,7 @@ vlib_node_add_named_next_with_slot (vlib_main_t * vm,
 }
 
 static void
-node_elog_init (vlib_main_t * vm, uword ni)
+node_elog_init (vlib_main_t *vm, uword ni)
 {
   elog_event_type_t t;
 
@@ -285,13 +285,13 @@ node_elog_init (vlib_main_t * vm, uword ni)
 }
 
 #ifdef CLIB_UNIX
-#define STACK_ALIGN (clib_mem_get_page_size())
+#define STACK_ALIGN (clib_mem_get_page_size ())
 #else
 #define STACK_ALIGN CLIB_CACHE_LINE_BYTES
 #endif
 
 static void
-register_node (vlib_main_t * vm, vlib_node_registration_t * r)
+register_node (vlib_main_t *vm, vlib_node_registration_t *r)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n;
@@ -310,7 +310,7 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
       int priority = -1;
 
       /* to avoid confusion, please remove ".function " statiement from
-         CLIB_NODE_REGISTRATION() if using function function candidates */
+	 CLIB_NODE_REGISTRATION() if using function function candidates */
       ASSERT (r->function == 0);
 
       while (fnr)
@@ -341,8 +341,8 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
     n->name = format (0, "%s", r->name);
 
   if (!nm->node_by_name)
-    nm->node_by_name = hash_create_vec ( /* size */ 32,
-					sizeof (n->name[0]), sizeof (uword));
+    nm->node_by_name =
+      hash_create_vec (/* size */ 32, sizeof (n->name[0]), sizeof (uword));
 
   /* Node names must be unique. */
   {
@@ -356,7 +356,7 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 
   hash_set (nm->node_by_name, n->name, n->index);
 
-  r->index = n->index;		/* save index in registration */
+  r->index = n->index; /* save index in registration */
   n->function = r->function;
 
   /* Node index of next sibling will be filled in by vlib_node_main_init. */
@@ -369,22 +369,22 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 
 #define _(f) n->f = r->f
 
-  _(type);
-  _(flags);
-  _(state);
-  _(scalar_size);
-  _(vector_size);
-  _(format_buffer);
-  _(unformat_buffer);
-  _(format_trace);
-  _(validate_frame);
+  _ (type);
+  _ (flags);
+  _ (state);
+  _ (scalar_size);
+  _ (vector_size);
+  _ (format_buffer);
+  _ (unformat_buffer);
+  _ (format_trace);
+  _ (validate_frame);
 
   /* Register error counters. */
   vlib_register_errors (vm, n->index, r->n_errors, r->error_strings,
 			r->error_counters);
   node_elog_init (vm, n->index);
 
-  _(runtime_data_bytes);
+  _ (runtime_data_bytes);
   if (r->runtime_data_bytes > 0)
     {
       vec_resize (n->runtime_data, r->runtime_data_bytes);
@@ -413,18 +413,16 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 
 	log2_n_stack_bytes = clib_max (r->process_log2_n_stack_bytes,
 				       VLIB_PROCESS_LOG2_STACK_SIZE);
-	log2_n_stack_bytes = clib_max (log2_n_stack_bytes,
-				       clib_mem_get_log2_page_size ());
+	log2_n_stack_bytes =
+	  clib_max (log2_n_stack_bytes, clib_mem_get_log2_page_size ());
 
 	p = clib_mem_alloc_aligned (sizeof (p[0]), CLIB_CACHE_LINE_BYTES);
 	clib_memset (p, 0, sizeof (p[0]));
 	p->log2_n_stack_bytes = log2_n_stack_bytes;
 
-	p->stack = clib_mem_vm_map_stack (1ULL << log2_n_stack_bytes,
-					  CLIB_MEM_PAGE_SZ_DEFAULT,
-					  "process stack: %U",
-					  format_vlib_node_name, vm,
-					  n->index);
+	p->stack = clib_mem_vm_map_stack (
+	  1ULL << log2_n_stack_bytes, CLIB_MEM_PAGE_SZ_DEFAULT,
+	  "process stack: %U", format_vlib_node_name, vm, n->index);
 
 	if (p->stack == CLIB_MEM_VM_MAP_FAILED)
 	  clib_panic ("failed to allocate process stack (%d bytes)",
@@ -487,15 +485,14 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 
 /* Register new packet processing node. */
 u32
-vlib_register_node (vlib_main_t * vm, vlib_node_registration_t * r)
+vlib_register_node (vlib_main_t *vm, vlib_node_registration_t *r)
 {
   register_node (vm, r);
   return r->index;
 }
 
 static uword
-null_node_fn (vlib_main_t * vm,
-	      vlib_node_runtime_t * node, vlib_frame_t * frame)
+null_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u16 n_vectors = frame->n_vectors;
 
@@ -507,7 +504,7 @@ null_node_fn (vlib_main_t * vm,
 }
 
 void
-vlib_register_all_static_nodes (vlib_main_t * vm)
+vlib_register_all_static_nodes (vlib_main_t *vm)
 {
   vlib_node_registration_t *r;
 
@@ -536,9 +533,9 @@ vlib_register_all_static_nodes (vlib_main_t * vm)
 }
 
 void
-vlib_node_get_nodes (vlib_main_t * vm, u32 max_threads, int include_stats,
-		     int barrier_sync, vlib_node_t **** node_dupsp,
-		     vlib_main_t *** stat_vmsp)
+vlib_node_get_nodes (vlib_main_t *vm, u32 max_threads, int include_stats,
+		     int barrier_sync, vlib_node_t ****node_dupsp,
+		     vlib_main_t ***stat_vmsp)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n;
@@ -598,7 +595,7 @@ vlib_node_get_nodes (vlib_main_t * vm, u32 max_threads, int include_stats,
 }
 
 clib_error_t *
-vlib_node_main_init (vlib_main_t * vm)
+vlib_node_main_init (vlib_main_t *vm)
 {
   vlib_node_main_t *nm = &vm->node_main;
   clib_error_t *error = 0;
@@ -631,17 +628,16 @@ vlib_node_main_init (vlib_main_t * vm)
 	    goto done;
 	  }
 
-        /* *INDENT-OFF* */
-	clib_bitmap_foreach (si, sib->sibling_bitmap)  {
-	      vlib_node_t * m = vec_elt (nm->nodes, si);
+	clib_bitmap_foreach (si, sib->sibling_bitmap)
+	  {
+	    vlib_node_t *m = vec_elt (nm->nodes, si);
 
-	      /* Connect all of sibling's siblings to us. */
-	      m->sibling_bitmap = clib_bitmap_ori (m->sibling_bitmap, n->index);
+	    /* Connect all of sibling's siblings to us. */
+	    m->sibling_bitmap = clib_bitmap_ori (m->sibling_bitmap, n->index);
 
-	      /* Connect us to all of sibling's siblings. */
-	      n->sibling_bitmap = clib_bitmap_ori (n->sibling_bitmap, si);
-	    }
-        /* *INDENT-ON* */
+	    /* Connect us to all of sibling's siblings. */
+	    n->sibling_bitmap = clib_bitmap_ori (n->sibling_bitmap, si);
+	  }
 
 	/* Connect sibling to us. */
 	sib->sibling_bitmap = clib_bitmap_ori (sib->sibling_bitmap, n->index);
@@ -667,8 +663,8 @@ vlib_node_main_init (vlib_main_t * vm)
 
 	  if (~0 == vlib_node_add_named_next_with_slot (vm, n->index, a, i))
 	    {
-	      error = clib_error_create
-		("node `%v' refers to unknown node `%s'", n->name, a);
+	      error = clib_error_create (
+		"node `%v' refers to unknown node `%s'", n->name, a);
 	      goto done;
 	    }
 	}
@@ -702,25 +698,25 @@ vlib_node_main_init (vlib_main_t * vm)
     uword i;
 
     vec_foreach (r, nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL])
-    {
-      if (r->n_next_nodes == 0)
-	continue;
+      {
+	if (r->n_next_nodes == 0)
+	  continue;
 
-      n = vlib_get_node (vm, r->node_index);
-      nf = vec_elt_at_index (nm->next_frames, r->next_frame_index);
+	n = vlib_get_node (vm, r->node_index);
+	nf = vec_elt_at_index (nm->next_frames, r->next_frame_index);
 
-      for (i = 0; i < vec_len (n->next_nodes); i++)
-	{
-	  next = vlib_get_node (vm, n->next_nodes[i]);
+	for (i = 0; i < vec_len (n->next_nodes); i++)
+	  {
+	    next = vlib_get_node (vm, n->next_nodes[i]);
 
-	  /* Validate node runtime indices are correctly initialized. */
-	  ASSERT (nf[i].node_runtime_index == next->runtime_index);
+	    /* Validate node runtime indices are correctly initialized. */
+	    ASSERT (nf[i].node_runtime_index == next->runtime_index);
 
-	  nf[i].flags = 0;
-	  if (next->flags & VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH)
-	    nf[i].flags |= VLIB_FRAME_NO_FREE_AFTER_DISPATCH;
-	}
-    }
+	    nf[i].flags = 0;
+	    if (next->flags & VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH)
+	      nf[i].flags |= VLIB_FRAME_NO_FREE_AFTER_DISPATCH;
+	  }
+      }
   }
 
 done:
@@ -728,8 +724,8 @@ done:
 }
 
 u32
-vlib_process_create (vlib_main_t * vm, char *name,
-		     vlib_node_function_t * f, u32 log2_n_stack_bytes)
+vlib_process_create (vlib_main_t *vm, char *name, vlib_node_function_t *f,
+		     u32 log2_n_stack_bytes)
 {
   vlib_node_registration_t r;
   vlib_node_t *n;

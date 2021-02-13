@@ -14,12 +14,13 @@
  */
 /**
  * @brief
- * The IP NULL DPO represents the rubbish bin for IP traffic. Without specifying an
- * action (i.e. send IMCP type X to sender) it is equivalent to using a drop DPO.
- * However, in contrast to the drop DPO any route that resovles via a NULL, is
- * considered to 'resolved' by FIB, i.e. a IP NULL is used when the control plane
- * is explicitly expressing the desire to drop packets. Drop DPOs are used
- * internally by FIB when resolution is not possible.
+ * The IP NULL DPO represents the rubbish bin for IP traffic. Without
+ * specifying an action (i.e. send IMCP type X to sender) it is equivalent to
+ * using a drop DPO. However, in contrast to the drop DPO any route that
+ * resovles via a NULL, is considered to 'resolved' by FIB, i.e. a IP NULL is
+ * used when the control plane is explicitly expressing the desire to drop
+ * packets. Drop DPOs are used internally by FIB when resolution is not
+ * possible.
  *
  * Any replies to sender are rate limited.
  */
@@ -34,25 +35,26 @@
  */
 typedef enum ip_null_dpo_action_t_
 {
-    IP_NULL_ACTION_NONE,
-    IP_NULL_ACTION_SEND_ICMP_UNREACH,
-    IP_NULL_ACTION_SEND_ICMP_PROHIBIT,
+  IP_NULL_ACTION_NONE,
+  IP_NULL_ACTION_SEND_ICMP_UNREACH,
+  IP_NULL_ACTION_SEND_ICMP_PROHIBIT,
 } ip_null_dpo_action_t;
 
-#define IP_NULL_ACTIONS {						\
-    [IP_NULL_ACTION_NONE] = "discard",					\
-    [IP_NULL_ACTION_SEND_ICMP_UNREACH] = "send-unreachable",		\
-    [IP_NULL_ACTION_SEND_ICMP_PROHIBIT] = "send-prohibited",		\
-}
+#define IP_NULL_ACTIONS                                                       \
+  {                                                                           \
+    [IP_NULL_ACTION_NONE] = "discard",                                        \
+    [IP_NULL_ACTION_SEND_ICMP_UNREACH] = "send-unreachable",                  \
+    [IP_NULL_ACTION_SEND_ICMP_PROHIBIT] = "send-prohibited",                  \
+  }
 
-#define IP_NULL_DPO_ACTION_NUM (IP_NULL_ACTION_SEND_ICMP_PROHIBIT+1)
+#define IP_NULL_DPO_ACTION_NUM (IP_NULL_ACTION_SEND_ICMP_PROHIBIT + 1)
 
 extern void ip_null_dpo_add_and_lock (dpo_proto_t proto,
 				      ip_null_dpo_action_t action,
 				      dpo_id_t *dpo);
 
-extern void ip_null_dpo_module_init(void);
+extern void ip_null_dpo_module_init (void);
 
-extern ip_null_dpo_action_t ip_null_dpo_get_action(index_t indi);
+extern ip_null_dpo_action_t ip_null_dpo_get_action (index_t indi);
 
 #endif

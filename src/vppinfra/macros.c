@@ -14,21 +14,21 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #include <vppinfra/macros.h>
 
 static inline int
 macro_isalnum (i8 c)
 {
-  if ((c >= 'A' && c <= 'Z')
-      || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || (c == '_'))
+  if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+      (c >= '0' && c <= '9') || (c == '_'))
     return 1;
   return 0;
 }
 
 static i8 *
-builtin_eval (clib_macro_main_t * mm, i8 * varname, i32 complain)
+builtin_eval (clib_macro_main_t *mm, i8 *varname, i32 complain)
 {
   uword *p;
   i8 *(*fp) (clib_macro_main_t *, i32);
@@ -41,7 +41,7 @@ builtin_eval (clib_macro_main_t * mm, i8 * varname, i32 complain)
 }
 
 __clib_export int
-clib_macro_unset (clib_macro_main_t * mm, char *name)
+clib_macro_unset (clib_macro_main_t *mm, char *name)
 {
   hash_pair_t *p;
   u8 *key, *value;
@@ -61,7 +61,7 @@ clib_macro_unset (clib_macro_main_t * mm, char *name)
 }
 
 __clib_export int
-clib_macro_set_value (clib_macro_main_t * mm, char *name, char *value)
+clib_macro_set_value (clib_macro_main_t *mm, char *name, char *value)
 {
   u8 *key_copy, *value_copy;
   int rv;
@@ -76,7 +76,7 @@ clib_macro_set_value (clib_macro_main_t * mm, char *name, char *value)
 }
 
 i8 *
-clib_macro_get_value (clib_macro_main_t * mm, char *name)
+clib_macro_get_value (clib_macro_main_t *mm, char *name)
 {
   uword *p;
 
@@ -92,7 +92,7 @@ clib_macro_get_value (clib_macro_main_t * mm, char *name)
  * looks up $foobar in the variable table.
  */
 __clib_export i8 *
-clib_macro_eval (clib_macro_main_t * mm, i8 * s, i32 complain, u16 level,
+clib_macro_eval (clib_macro_main_t *mm, i8 *s, i32 complain, u16 level,
 		 u16 max_level)
 {
   i8 *rv = 0;
@@ -131,14 +131,14 @@ clib_macro_eval (clib_macro_main_t * mm, i8 * s, i32 complain, u16 level,
 	      /* handle $(foo) */
 	      if (*s == '(')
 		{
-		  s++;		/* skip '(' */
+		  s++; /* skip '(' */
 		  while (*s && *s != ')')
 		    {
 		      vec_add1 (varname, *s);
 		      s++;
 		    }
 		  if (*s)
-		    s++;	/* skip ')' */
+		    s++; /* skip ')' */
 		  break;
 		}
 	      vec_add1 (varname, *s);
@@ -169,8 +169,8 @@ clib_macro_eval (clib_macro_main_t * mm, i8 * s, i32 complain, u16 level,
 	  if (varvalue)
 	    {
 	      /* recursively evaluate */
-	      ts = clib_macro_eval (mm, varvalue, complain, level + 1,
-				    max_level);
+	      ts =
+		clib_macro_eval (mm, varvalue, complain, level + 1, max_level);
 	      vec_free (varvalue);
 	      /* add results to answer */
 	      vec_append (rv, ts);
@@ -184,7 +184,6 @@ clib_macro_eval (clib_macro_main_t * mm, i8 * s, i32 complain, u16 level,
 		clib_warning ("Undefined Variable Reference: %s\n", varname);
 	      vec_append (rv, format (0, "UNSET "));
 	      _vec_len (rv) = vec_len (rv) - 1;
-
 	    }
 	  vec_free (varname);
 	}
@@ -198,26 +197,26 @@ clib_macro_eval (clib_macro_main_t * mm, i8 * s, i32 complain, u16 level,
  * looks up $foobar in the variable table.
  */
 i8 *
-clib_macro_eval_dollar (clib_macro_main_t * mm, i8 * s, i32 complain)
+clib_macro_eval_dollar (clib_macro_main_t *mm, i8 *s, i32 complain)
 {
   i8 *s2;
   i8 *rv;
 
   s2 = (i8 *) format (0, "$(%s)%c", s, 0);
-  rv = clib_macro_eval (mm, s2, complain, 0 /* level */ , 8 /* max_level */ );
+  rv = clib_macro_eval (mm, s2, complain, 0 /* level */, 8 /* max_level */);
   vec_free (s2);
   return (rv);
 }
 
 __clib_export void
-clib_macro_add_builtin (clib_macro_main_t * mm, char *name, void *eval_fn)
+clib_macro_add_builtin (clib_macro_main_t *mm, char *name, void *eval_fn)
 {
   hash_set_mem (mm->the_builtin_eval_hash, name, (uword) eval_fn);
 }
 
 #ifdef CLIB_UNIX
 static i8 *
-eval_hostname (clib_macro_main_t * mm, i32 complain)
+eval_hostname (clib_macro_main_t *mm, i32 complain)
 {
   char tmp[128];
   if (gethostname (tmp, sizeof (tmp)))
@@ -227,7 +226,7 @@ eval_hostname (clib_macro_main_t * mm, i32 complain)
 #endif
 
 __clib_export void
-clib_macro_init (clib_macro_main_t * mm)
+clib_macro_init (clib_macro_main_t *mm)
 {
   if (mm->the_builtin_eval_hash != 0)
     {
@@ -244,7 +243,7 @@ clib_macro_init (clib_macro_main_t * mm)
 }
 
 __clib_export void
-clib_macro_free (clib_macro_main_t * mm)
+clib_macro_free (clib_macro_main_t *mm)
 {
   hash_pair_t *p;
   u8 **strings_to_free = 0;
@@ -252,13 +251,10 @@ clib_macro_free (clib_macro_main_t * mm)
 
   hash_free (mm->the_builtin_eval_hash);
 
-  /* *INDENT-OFF* */
-  hash_foreach_pair (p, mm->the_value_table_hash,
-  ({
-    vec_add1 (strings_to_free, (u8 *) (p->key));
-    vec_add1 (strings_to_free, (u8 *) (p->value[0]));
-  }));
-  /* *INDENT-ON* */
+  hash_foreach_pair (p, mm->the_value_table_hash, ({
+		       vec_add1 (strings_to_free, (u8 *) (p->key));
+		       vec_add1 (strings_to_free, (u8 *) (p->value[0]));
+		     }));
 
   for (i = 0; i < vec_len (strings_to_free); i++)
     vec_free (strings_to_free[i]);
@@ -281,9 +277,8 @@ name_compare (void *a1, void *a2)
   return strcmp ((char *) ns1->name, (char *) ns2->name);
 }
 
-
 __clib_export u8 *
-format_clib_macro_main (u8 * s, va_list * args)
+format_clib_macro_main (u8 *s, va_list *args)
 {
   clib_macro_main_t *mm = va_arg (*args, clib_macro_main_t *);
   int evaluate = va_arg (*args, int);
@@ -291,14 +286,11 @@ format_clib_macro_main (u8 * s, va_list * args)
   name_sort_t *nses = 0, *ns;
   int i;
 
-  /* *INDENT-OFF* */
-  hash_foreach_pair (p, mm->the_value_table_hash,
-  ({
-    vec_add2 (nses, ns, 1);
-    ns->name = (u8 *)(p->key);
-    ns->value = (u8 *)(p->value[0]);
-  }));
-  /* *INDENT-ON* */
+  hash_foreach_pair (p, mm->the_value_table_hash, ({
+		       vec_add2 (nses, ns, 1);
+		       ns->name = (u8 *) (p->key);
+		       ns->value = (u8 *) (p->value[0]);
+		     }));
 
   if (vec_len (nses) == 0)
     return s;
@@ -313,14 +305,13 @@ format_clib_macro_main (u8 * s, va_list * args)
       else
 	{
 	  u8 *rv = (u8 *) clib_macro_eval_dollar (mm, (i8 *) nses[i].name,
-						  0 /* no complain */ );
+						  0 /* no complain */);
 	  s = format (s, "%s\n", rv);
 	  vec_free (rv);
 	}
     }
   return s;
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

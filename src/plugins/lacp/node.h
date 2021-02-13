@@ -43,32 +43,32 @@ typedef enum
   LACP_PROCESS_EVENT_STOP = 2,
 } lacp_process_event_t;
 
-#define LACP_DBG(n, args...)			\
-  {						\
-    lacp_main_t *_lm = &lacp_main;              \
-    if (_lm->debug || n->debug)			\
-      clib_warning (args);			\
+#define LACP_DBG(n, args...)                                                  \
+  {                                                                           \
+    lacp_main_t *_lm = &lacp_main;                                            \
+    if (_lm->debug || n->debug)                                               \
+      clib_warning (args);                                                    \
   }
 
-#define LACP_DBG2(n, e, s, m, t)   		  \
-  {						  \
-    lacp_main_t *_lm = &lacp_main;                \
-    if ((m)->debug && (_lm->debug || (n)->debug)) \
-      (*m->debug)(n, e, s, t);			  \
+#define LACP_DBG2(n, e, s, m, t)                                              \
+  {                                                                           \
+    lacp_main_t *_lm = &lacp_main;                                            \
+    if ((m)->debug && (_lm->debug || (n)->debug))                             \
+      (*m->debug) (n, e, s, t);                                               \
   }
 
 /* Packet counters */
-#define foreach_lacp_error                                               \
-_ (NONE, "good lacp packets -- consumed")	                         \
-_ (CACHE_HIT, "good lacp packets -- cache hit")                          \
-_ (UNSUPPORTED, "unsupported slow protocol packets")                     \
-_ (TOO_SMALL, "bad lacp packets -- packet too small")                    \
-_ (BAD_TLV, "bad lacp packets -- bad TLV length")                        \
-_ (DISABLED, "lacp packets received on disabled interfaces")
+#define foreach_lacp_error                                                    \
+  _ (NONE, "good lacp packets -- consumed")                                   \
+  _ (CACHE_HIT, "good lacp packets -- cache hit")                             \
+  _ (UNSUPPORTED, "unsupported slow protocol packets")                        \
+  _ (TOO_SMALL, "bad lacp packets -- packet too small")                       \
+  _ (BAD_TLV, "bad lacp packets -- bad TLV length")                           \
+  _ (DISABLED, "lacp packets received on disabled interfaces")
 
 typedef enum
 {
-#define _(sym,str) LACP_ERROR_##sym,
+#define _(sym, str) LACP_ERROR_##sym,
   foreach_lacp_error
 #undef _
     LACP_N_ERROR,
@@ -141,23 +141,23 @@ extern lacp_state_struct lacp_state_array[];
 extern lacp_main_t lacp_main;
 
 void lacp_create_periodic_process (void);
-clib_error_t *lacp_plugin_api_hookup (vlib_main_t * vm);
-int lacp_dump_ifs (lacp_interface_details_t ** out_bondids);
-lacp_error_t lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0);
-void lacp_periodic (vlib_main_t * vm);
-u8 *lacp_input_format_trace (u8 * s, va_list * args);
-void lacp_init_neighbor (member_if_t * mif, u8 * hw_address,
-			 u16 port_number, u32 group);
-void lacp_init_state_machines (vlib_main_t * vm, member_if_t * mif);
-void lacp_init_rx_machine (vlib_main_t * vm, member_if_t * mif);
-void lacp_init_tx_machine (vlib_main_t * vm, member_if_t * mif);
-void lacp_init_ptx_machine (vlib_main_t * vm, member_if_t * mif);
-void lacp_init_mux_machine (vlib_main_t * vm, member_if_t * mif);
-void lacp_selection_logic (vlib_main_t * vm, member_if_t * mif);
-void lacp_send_lacp_pdu (vlib_main_t * vm, member_if_t * mif);
+clib_error_t *lacp_plugin_api_hookup (vlib_main_t *vm);
+int lacp_dump_ifs (lacp_interface_details_t **out_bondids);
+lacp_error_t lacp_input (vlib_main_t *vm, vlib_buffer_t *b0, u32 bi0);
+void lacp_periodic (vlib_main_t *vm);
+u8 *lacp_input_format_trace (u8 *s, va_list *args);
+void lacp_init_neighbor (member_if_t *mif, u8 *hw_address, u16 port_number,
+			 u32 group);
+void lacp_init_state_machines (vlib_main_t *vm, member_if_t *mif);
+void lacp_init_rx_machine (vlib_main_t *vm, member_if_t *mif);
+void lacp_init_tx_machine (vlib_main_t *vm, member_if_t *mif);
+void lacp_init_ptx_machine (vlib_main_t *vm, member_if_t *mif);
+void lacp_init_mux_machine (vlib_main_t *vm, member_if_t *mif);
+void lacp_selection_logic (vlib_main_t *vm, member_if_t *mif);
+void lacp_send_lacp_pdu (vlib_main_t *vm, member_if_t *mif);
 
 static inline void
-lacp_stop_timer (f64 * timer)
+lacp_stop_timer (f64 *timer)
 {
   *timer = 0.0;
 }
@@ -169,7 +169,7 @@ lacp_timer_is_running (f64 timer)
 }
 
 static inline u8
-lacp_timer_is_expired (vlib_main_t * vm, f64 timer)
+lacp_timer_is_expired (vlib_main_t *vm, f64 timer)
 {
   f64 now = vlib_time_now (vm);
 
@@ -177,13 +177,17 @@ lacp_timer_is_expired (vlib_main_t * vm, f64 timer)
 }
 
 static inline u8 *
-format_rx_sm_state (u8 * s, va_list * args)
+format_rx_sm_state (u8 *s, va_list *args)
 {
   lacp_state_struct lacp_rx_sm_state_array[] = {
-#define _(b, s, n) {.bit = b, .str = #s, },
+#define _(b, s, n)                                                            \
+  {                                                                           \
+    .bit = b,                                                                 \
+    .str = #s,                                                                \
+  },
     foreach_lacp_rx_sm_state
 #undef _
-    {.str = NULL}
+    { .str = NULL }
   };
   int state = va_arg (*args, int);
   lacp_state_struct *state_entry = lacp_rx_sm_state_array;
@@ -197,13 +201,17 @@ format_rx_sm_state (u8 * s, va_list * args)
 }
 
 static inline u8 *
-format_tx_sm_state (u8 * s, va_list * args)
+format_tx_sm_state (u8 *s, va_list *args)
 {
   lacp_state_struct lacp_tx_sm_state_array[] = {
-#define _(b, s, n) {.bit = b, .str = #s, },
+#define _(b, s, n)                                                            \
+  {                                                                           \
+    .bit = b,                                                                 \
+    .str = #s,                                                                \
+  },
     foreach_lacp_tx_sm_state
 #undef _
-    {.str = NULL}
+    { .str = NULL }
   };
   int state = va_arg (*args, int);
   lacp_state_struct *state_entry = lacp_tx_sm_state_array;
@@ -217,13 +225,17 @@ format_tx_sm_state (u8 * s, va_list * args)
 }
 
 static inline u8 *
-format_mux_sm_state (u8 * s, va_list * args)
+format_mux_sm_state (u8 *s, va_list *args)
 {
   lacp_state_struct lacp_mux_sm_state_array[] = {
-#define _(b, s, n) {.bit = b, .str = #s, },
+#define _(b, s, n)                                                            \
+  {                                                                           \
+    .bit = b,                                                                 \
+    .str = #s,                                                                \
+  },
     foreach_lacp_mux_sm_state
 #undef _
-    {.str = NULL}
+    { .str = NULL }
   };
   int state = va_arg (*args, int);
   lacp_state_struct *state_entry = lacp_mux_sm_state_array;
@@ -237,13 +249,17 @@ format_mux_sm_state (u8 * s, va_list * args)
 }
 
 static inline u8 *
-format_ptx_sm_state (u8 * s, va_list * args)
+format_ptx_sm_state (u8 *s, va_list *args)
 {
   lacp_state_struct lacp_ptx_sm_state_array[] = {
-#define _(b, s, n) {.bit = b, .str = #s, },
+#define _(b, s, n)                                                            \
+  {                                                                           \
+    .bit = b,                                                                 \
+    .str = #s,                                                                \
+  },
     foreach_lacp_ptx_sm_state
 #undef _
-    {.str = NULL}
+    { .str = NULL }
   };
   int state = va_arg (*args, int);
   lacp_state_struct *state_entry = lacp_ptx_sm_state_array;

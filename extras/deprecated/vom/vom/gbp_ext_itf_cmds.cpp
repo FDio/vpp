@@ -26,8 +26,7 @@ create_cmd::create_cmd(HW::item<bool>& item,
   , m_itf(itf)
   , m_bd_id(bd_id)
   , m_rd_id(rd_id)
-{
-}
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
@@ -65,8 +64,7 @@ create_cmd::to_string() const
 delete_cmd::delete_cmd(HW::item<bool>& item, const handle_t& itf)
   : rpc_cmd(item)
   , m_itf(itf)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const

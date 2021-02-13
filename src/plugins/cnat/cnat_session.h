@@ -22,7 +22,6 @@
 #include <cnat/cnat_client.h>
 #include <cnat/bihash_40_48.h>
 
-
 /**
  * A session represents the memory of a translation.
  * In the tx direction (from behind to in front of the NAT), the
@@ -94,14 +93,14 @@ typedef struct cnat_session_t_
 
     union
     {
-	/**
-	 * session flags if cs_lbi == INDEX_INVALID
-	 */
+      /**
+       * session flags if cs_lbi == INDEX_INVALID
+       */
       u32 flags;
-	/**
-	 * Persist translation->ct_lb.dpoi_next_node
-	 * when cs_lbi != INDEX_INVALID
-	 */
+      /**
+       * Persist translation->ct_lb.dpoi_next_node
+       * when cs_lbi != INDEX_INVALID
+       */
       u32 dpoi_next_node;
     };
   } value;
@@ -124,16 +123,16 @@ typedef enum cnat_session_flag_t_
   CNAT_SESSION_FLAG_NO_CLIENT = (1 << 2),
 } cnat_session_flag_t;
 
-extern u8 *format_cnat_session (u8 * s, va_list * args);
+extern u8 *format_cnat_session (u8 *s, va_list *args);
 
 /**
  * Ensure the session object correctly overlays the bihash key/value pair
  */
 STATIC_ASSERT (STRUCT_OFFSET_OF (cnat_session_t, key) ==
-	       STRUCT_OFFSET_OF (clib_bihash_kv_40_48_t, key),
+		 STRUCT_OFFSET_OF (clib_bihash_kv_40_48_t, key),
 	       "key overlaps");
 STATIC_ASSERT (STRUCT_OFFSET_OF (cnat_session_t, value) ==
-	       STRUCT_OFFSET_OF (clib_bihash_kv_40_48_t, value),
+		 STRUCT_OFFSET_OF (clib_bihash_kv_40_48_t, value),
 	       "value overlaps");
 STATIC_ASSERT (sizeof (cnat_session_t) == sizeof (clib_bihash_kv_40_48_t),
 	       "session kvp");
@@ -146,8 +145,8 @@ extern clib_bihash_40_48_t cnat_session_db;
 /**
  * Callback function invoked during a walk of all translations
  */
-typedef walk_rc_t (*cnat_session_walk_cb_t) (const cnat_session_t *
-					     session, void *ctx);
+typedef walk_rc_t (*cnat_session_walk_cb_t) (const cnat_session_t *session,
+					     void *ctx);
 
 /**
  * Walk/visit each of the cnat session
@@ -157,7 +156,7 @@ extern void cnat_session_walk (cnat_session_walk_cb_t cb, void *ctx);
 /**
  * Scan the session DB for expired sessions
  */
-extern u64 cnat_session_scan (vlib_main_t * vm, f64 start_time, int i);
+extern u64 cnat_session_scan (vlib_main_t *vm, f64 start_time, int i);
 
 /**
  * Purge all the sessions
@@ -167,7 +166,7 @@ extern int cnat_session_purge (void);
 /**
  * Free a session & update refcounts
  */
-extern void cnat_session_free (cnat_session_t * session);
+extern void cnat_session_free (cnat_session_t *session);
 
 /**
  * Port cleanup callback

@@ -21,59 +21,68 @@
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
 
-uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
+uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
 
 /* Declare message IDs */
 #include <dpdk/api/dpdk.api_enum.h>
 #include <dpdk/api/dpdk.api_types.h>
 
-typedef struct {
-    /* API message ID base */
-    u16 msg_id_base;
-    vat_main_t *vat_main;
+typedef struct
+{
+  /* API message ID base */
+  u16 msg_id_base;
+  vat_main_t *vat_main;
 } dpdk_test_main_t;
 
 dpdk_test_main_t dpdk_test_main;
 
 /* M: construct, but don't yet send a message */
-#define M(T,t)                                                  \
-do {                                                            \
-    vam->result_ready = 0;                                      \
-    mp = vl_msg_api_alloc(sizeof(*mp));                         \
-    clib_memset (mp, 0, sizeof (*mp));                               \
-    mp->_vl_msg_id = ntohs (VL_API_##T + dm->msg_id_base);      \
-    mp->client_index = vam->my_client_index;                    \
-} while(0);
+#define M(T, t)                                                               \
+  do                                                                          \
+    {                                                                         \
+      vam->result_ready = 0;                                                  \
+      mp = vl_msg_api_alloc (sizeof (*mp));                                   \
+      clib_memset (mp, 0, sizeof (*mp));                                      \
+      mp->_vl_msg_id = ntohs (VL_API_##T + dm->msg_id_base);                  \
+      mp->client_index = vam->my_client_index;                                \
+    }                                                                         \
+  while (0);
 
-#define M2(T,t,n)                                               \
-do {                                                            \
-    vam->result_ready = 0;                                      \
-    mp = vl_msg_api_alloc(sizeof(*mp)+(n));                     \
-    clib_memset (mp, 0, sizeof (*mp));                               \
-    mp->_vl_msg_id = ntohs (VL_API_##T + dm->msg_id_base);      \
-    mp->client_index = vam->my_client_index;                    \
-} while(0);
+#define M2(T, t, n)                                                           \
+  do                                                                          \
+    {                                                                         \
+      vam->result_ready = 0;                                                  \
+      mp = vl_msg_api_alloc (sizeof (*mp) + (n));                             \
+      clib_memset (mp, 0, sizeof (*mp));                                      \
+      mp->_vl_msg_id = ntohs (VL_API_##T + dm->msg_id_base);                  \
+      mp->client_index = vam->my_client_index;                                \
+    }                                                                         \
+  while (0);
 
 /* S: send a message */
-#define S (vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *)&mp))
+#define S (vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *) &mp))
 
 /* W: wait for results, with timeout */
-#define W                                       \
-do {                                            \
-    timeout = vat_time_now (vam) + 1.0;         \
-                                                \
-    while (vat_time_now (vam) < timeout) {      \
-        if (vam->result_ready == 1) {           \
-            return (vam->retval);               \
-        }                                       \
-    }                                           \
-    return -99;                                 \
-} while(0);
+#define W                                                                     \
+  do                                                                          \
+    {                                                                         \
+      timeout = vat_time_now (vam) + 1.0;                                     \
+                                                                              \
+      while (vat_time_now (vam) < timeout)                                    \
+	{                                                                     \
+	  if (vam->result_ready == 1)                                         \
+	    {                                                                 \
+	      return (vam->retval);                                           \
+	    }                                                                 \
+	}                                                                     \
+      return -99;                                                             \
+    }                                                                         \
+  while (0);
 
 static int
-api_sw_interface_set_dpdk_hqos_pipe (vat_main_t * vam)
+api_sw_interface_set_dpdk_hqos_pipe (vat_main_t *vam)
 {
-  dpdk_test_main_t * dm = &dpdk_test_main;
+  dpdk_test_main_t *dm = &dpdk_test_main;
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_dpdk_hqos_pipe_t *mp;
   f64 timeout;
@@ -89,16 +98,16 @@ api_sw_interface_set_dpdk_hqos_pipe (vat_main_t * vam)
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-        if (unformat (i, "rx sw_if_index %u", &sw_if_index))
-  sw_if_index_set = 1;
+      if (unformat (i, "rx sw_if_index %u", &sw_if_index))
+	sw_if_index_set = 1;
       else if (unformat (i, "subport %u", &subport))
-  subport_set = 1;
+	subport_set = 1;
       else if (unformat (i, "pipe %u", &pipe))
-  pipe_set = 1;
+	pipe_set = 1;
       else if (unformat (i, "profile %u", &profile))
-  profile_set = 1;
+	profile_set = 1;
       else
-  break;
+	break;
     }
 
   if (sw_if_index_set == 0)
@@ -132,7 +141,6 @@ api_sw_interface_set_dpdk_hqos_pipe (vat_main_t * vam)
   mp->pipe = ntohl (pipe);
   mp->profile = ntohl (profile);
 
-
   S;
   W;
   /* NOTREACHED */
@@ -140,9 +148,9 @@ api_sw_interface_set_dpdk_hqos_pipe (vat_main_t * vam)
 }
 
 static int
-api_sw_interface_set_dpdk_hqos_subport (vat_main_t * vam)
+api_sw_interface_set_dpdk_hqos_subport (vat_main_t *vam)
 {
-  dpdk_test_main_t * dm = &dpdk_test_main;
+  dpdk_test_main_t *dm = &dpdk_test_main;
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_dpdk_hqos_subport_t *mp;
   f64 timeout;
@@ -159,31 +167,31 @@ api_sw_interface_set_dpdk_hqos_subport (vat_main_t * vam)
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (i, "rx sw_if_index %u", &sw_if_index))
-  sw_if_index_set = 1;
+	sw_if_index_set = 1;
       else if (unformat (i, "subport %u", &subport))
-  subport_set = 1;
+	subport_set = 1;
       else if (unformat (i, "rate %u", &tb_rate))
-  {
-    u32 tc_id;
+	{
+	  u32 tc_id;
 
-    for (tc_id = 0; tc_id < (sizeof (tc_rate) / sizeof (tc_rate[0]));
-         tc_id++)
-      tc_rate[tc_id] = tb_rate;
-  }
+	  for (tc_id = 0; tc_id < (sizeof (tc_rate) / sizeof (tc_rate[0]));
+	       tc_id++)
+	    tc_rate[tc_id] = tb_rate;
+	}
       else if (unformat (i, "bktsize %u", &tb_size))
-  ;
+	;
       else if (unformat (i, "tc0 %u", &tc_rate[0]))
-  ;
+	;
       else if (unformat (i, "tc1 %u", &tc_rate[1]))
-  ;
+	;
       else if (unformat (i, "tc2 %u", &tc_rate[2]))
-  ;
+	;
       else if (unformat (i, "tc3 %u", &tc_rate[3]))
-  ;
+	;
       else if (unformat (i, "period %u", &tc_period))
-  ;
+	;
       else
-  break;
+	break;
     }
 
   if (sw_if_index_set == 0)
@@ -217,9 +225,9 @@ api_sw_interface_set_dpdk_hqos_subport (vat_main_t * vam)
 }
 
 static int
-api_sw_interface_set_dpdk_hqos_tctbl (vat_main_t * vam)
+api_sw_interface_set_dpdk_hqos_tctbl (vat_main_t *vam)
 {
-  dpdk_test_main_t * dm = &dpdk_test_main;
+  dpdk_test_main_t *dm = &dpdk_test_main;
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_dpdk_hqos_tctbl_t *mp;
   f64 timeout;
@@ -234,15 +242,15 @@ api_sw_interface_set_dpdk_hqos_tctbl (vat_main_t * vam)
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (i, "rx sw_if_index %u", &sw_if_index))
-  sw_if_index_set = 1;
+	sw_if_index_set = 1;
       else if (unformat (i, "entry %d", &entry))
-  entry_set = 1;
+	entry_set = 1;
       else if (unformat (i, "tc %d", &tc))
-  tc_set = 1;
+	tc_set = 1;
       else if (unformat (i, "queue %d", &queue))
-  queue_set = 1;
+	queue_set = 1;
       else
-  break;
+	break;
     }
 
   if (sw_if_index_set == 0)

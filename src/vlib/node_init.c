@@ -47,20 +47,18 @@ typedef struct _vlib_node_march_variant
   char *name;
 } vlib_node_march_variant_t;
 
-#define VLIB_VARIANT_REGISTER()			\
-  static vlib_node_march_variant_t			\
-  CLIB_MARCH_VARIANT##variant;				\
-							\
-  static void __clib_constructor			\
-  CLIB_MARCH_VARIANT##_register (void)			\
-  {							\
-    extern vlib_node_march_variant_t *variants;	\
-    vlib_node_march_variant_t *v;			\
-    v = & CLIB_MARCH_VARIANT##variant;			\
-    v->name = CLIB_MARCH_VARIANT_STR;			\
-    v->next_variant = variants;			\
-    variants = v;					\
-  }							\
+#define VLIB_VARIANT_REGISTER()                                               \
+  static vlib_node_march_variant_t CLIB_MARCH_VARIANT##variant;               \
+                                                                              \
+  static void __clib_constructor CLIB_MARCH_VARIANT##_register (void)         \
+  {                                                                           \
+    extern vlib_node_march_variant_t *variants;                               \
+    vlib_node_march_variant_t *v;                                             \
+    v = &CLIB_MARCH_VARIANT##variant;                                         \
+    v->name = CLIB_MARCH_VARIANT_STR;                                         \
+    v->next_variant = variants;                                               \
+    variants = v;                                                             \
+  }
 
 VLIB_VARIANT_REGISTER ();
 
@@ -69,7 +67,7 @@ VLIB_VARIANT_REGISTER ();
 vlib_node_march_variant_t *variants = 0;
 
 uword
-unformat_vlib_node_variant (unformat_input_t * input, va_list * args)
+unformat_vlib_node_variant (unformat_input_t *input, va_list *args)
 {
   u8 **variant = va_arg (*args, u8 **);
   vlib_node_march_variant_t *v = variants;
@@ -119,11 +117,10 @@ vlib_update_nr_variant_default (vlib_node_registration_t *nr, u8 *variant)
   tmp = p_reg->priority;
   p_reg->priority = v_reg->priority;
   v_reg->priority = tmp;
-
 }
 
 static clib_error_t *
-vlib_early_node_config (vlib_main_t * vm, unformat_input_t * input)
+vlib_early_node_config (vlib_main_t *vm, unformat_input_t *input)
 {
   clib_error_t *error = 0;
   vlib_node_registration_t *nr, **all;
@@ -154,8 +151,8 @@ vlib_early_node_config (vlib_main_t * vm, unformat_input_t * input)
 	    {
 	      if (!unformat (&sub_input, "variant %U",
 			     unformat_vlib_node_variant, &variant))
-		return clib_error_return (0,
-					  "please specify a valid node variant");
+		return clib_error_return (
+		  0, "please specify a valid node variant");
 	      vec_add1 (variant, 0);
 
 	      nr = vm->node_main.node_registrations;
@@ -169,13 +166,12 @@ vlib_early_node_config (vlib_main_t * vm, unformat_input_t * input)
 	    }
 	}
       else /* specify prioritization for an individual graph node */
-      if (unformat (input, "%s", &s))
+	if (unformat (input, "%s", &s))
 	{
 	  if (!(p = hash_get_mem (hash, s)))
 	    {
-	      error = clib_error_return (0,
-					 "node variants: unknown graph node '%s'",
-					 s);
+	      error = clib_error_return (
+		0, "node variants: unknown graph node '%s'", s);
 	      break;
 	    }
 
@@ -188,8 +184,8 @@ vlib_early_node_config (vlib_main_t * vm, unformat_input_t * input)
 		{
 		  if (!unformat (&sub_input, "variant %U",
 				 unformat_vlib_node_variant, &variant))
-		    return clib_error_return (0,
-					      "please specify a valid node variant");
+		    return clib_error_return (
+		      0, "please specify a valid node variant");
 		  vec_add1 (variant, 0);
 
 		  vlib_update_nr_variant_default (nr, variant);

@@ -18,14 +18,14 @@
 
 namespace VOM {
 namespace ACL {
-template <>
+template<>
 dependency_t
 l2_binding::event_handler::order() const
 {
   return (dependency_t::BINDING);
 }
 
-template <>
+template<>
 l2_binding::event_handler::event_handler()
 {
   /* hack to get this function instantiated */
@@ -35,7 +35,7 @@ l2_binding::event_handler::event_handler()
   inspect::register_handler({ "l2-acl-binding" }, "L2 ACL bindings", this);
 }
 
-template <>
+template<>
 void
 l2_binding::event_handler::handle_populate(const client_db::key_t& key)
 {
@@ -73,14 +73,14 @@ l2_binding::event_handler::handle_populate(const client_db::key_t& key)
   }
 }
 
-template <>
+template<>
 dependency_t
 l3_binding::event_handler::order() const
 {
   return (dependency_t::BINDING);
 }
 
-template <>
+template<>
 l3_binding::event_handler::event_handler()
 {
   /* hack to get this function instantiated */
@@ -90,7 +90,7 @@ l3_binding::event_handler::event_handler()
   inspect::register_handler({ "l3-acl-binding" }, "L3 ACL bindings", this);
 }
 
-template <>
+template<>
 void
 l3_binding::event_handler::handle_populate(const client_db::key_t& key)
 {
@@ -132,7 +132,7 @@ l3_binding::event_handler::handle_populate(const client_db::key_t& key)
   }
 }
 
-template <>
+template<>
 void
 l3_binding::update(const binding& obj)
 {
@@ -143,7 +143,7 @@ l3_binding::update(const binding& obj)
   HW::write();
 }
 
-template <>
+template<>
 void
 l3_binding::sweep(void)
 {
@@ -154,7 +154,7 @@ l3_binding::sweep(void)
   HW::write();
 }
 
-template <>
+template<>
 void
 l3_binding::replay(void)
 {
@@ -164,7 +164,7 @@ l3_binding::replay(void)
   }
 }
 
-template <>
+template<>
 void
 l2_binding::update(const binding& obj)
 {
@@ -175,7 +175,7 @@ l2_binding::update(const binding& obj)
   HW::write();
 }
 
-template <>
+template<>
 void
 l2_binding::sweep(void)
 {
@@ -186,7 +186,7 @@ l2_binding::sweep(void)
   HW::write();
 }
 
-template <>
+template<>
 void
 l2_binding::replay(void)
 {

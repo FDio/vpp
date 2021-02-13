@@ -24,8 +24,8 @@
 #define __included_det44_inlines_h__
 
 static_always_inline int
-det44_is_interface_addr (vlib_node_runtime_t * node,
-			 u32 sw_if_index0, u32 ip4_addr)
+det44_is_interface_addr (vlib_node_runtime_t *node, u32 sw_if_index0,
+			 u32 ip4_addr)
 {
   det44_runtime_t *rt = (det44_runtime_t *) node->runtime_data;
   det44_main_t *dm = &det44_main;
@@ -33,8 +33,8 @@ det44_is_interface_addr (vlib_node_runtime_t * node,
 
   if (PREDICT_FALSE (rt->cached_sw_if_index != sw_if_index0))
     {
-      first_int_addr = ip4_interface_first_address (dm->ip4_main,
-						    sw_if_index0, 0);
+      first_int_addr =
+	ip4_interface_first_address (dm->ip4_main, sw_if_index0, 0);
       rt->cached_sw_if_index = sw_if_index0;
       if (first_int_addr)
 	rt->cached_ip4_address = first_int_addr->as_u32;
@@ -61,8 +61,8 @@ det44_is_interface_addr (vlib_node_runtime_t * node,
  * @returns 0 if packet should be translated otherwise 1
  */
 static_always_inline int
-det44_translate (vlib_node_runtime_t * node, u32 sw_if_index0,
-		 ip4_header_t * ip0, u32 proto0, u32 rx_fib_index0)
+det44_translate (vlib_node_runtime_t *node, u32 sw_if_index0,
+		 ip4_header_t *ip0, u32 proto0, u32 rx_fib_index0)
 {
   det44_main_t *dm = &det44_main;
   fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
@@ -91,29 +91,29 @@ det44_translate (vlib_node_runtime_t * node, u32 sw_if_index0,
       if (sw_if_index == ~0)
 	{
 	  // TODO: go over use cases
-          /* *INDENT-OFF* */
+
 	  vec_foreach (outside_fib, dm->outside_fibs)
 	    {
 	      fei = fib_table_lookup (outside_fib->fib_index, &pfx);
 	      if (FIB_NODE_INDEX_INVALID != fei)
-	        {
+		{
 		  sw_if_index = fib_entry_get_resolving_interface (fei);
 		  if (sw_if_index != ~0)
 		    break;
-	        }
+		}
 	    }
-          /* *INDENT-ON* */
 	}
       if (sw_if_index != ~0)
 	{
 	  det44_interface_t *i;
-          /* *INDENT-OFF* */
-          pool_foreach (i, dm->interfaces)  {
-            /* NAT packet aimed at outside interface */
-	    if ((det44_interface_is_outside (i)) && (sw_if_index == i->sw_if_index))
-              return 0;
-          }
-          /* *INDENT-ON* */
+
+	  pool_foreach (i, dm->interfaces)
+	    {
+	      /* NAT packet aimed at outside interface */
+	      if ((det44_interface_is_outside (i)) &&
+		  (sw_if_index == i->sw_if_index))
+		return 0;
+	    }
 	}
     }
   return 1;

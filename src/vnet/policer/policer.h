@@ -66,7 +66,7 @@ typedef enum
   VNET_POLICER_N_NEXT,
 } vnet_policer_next_t;
 
-u8 *format_policer_instance (u8 * s, va_list * va);
+u8 *format_policer_instance (u8 *s, va_list *va);
 clib_error_t *policer_add_del (vlib_main_t *vm, u8 *name,
 			       qos_pol_cfg_params_st *cfg, u32 *policer_index,
 			       u8 is_add);

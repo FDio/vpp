@@ -49,7 +49,7 @@ typedef struct
 } pg_hdlc_header_t;
 
 static inline void
-pg_hdlc_header_init (pg_hdlc_header_t * e)
+pg_hdlc_header_init (pg_hdlc_header_t *e)
 {
   pg_edit_init (&e->address, hdlc_header_t, address);
   pg_edit_init (&e->control, hdlc_header_t, control);
@@ -57,7 +57,7 @@ pg_hdlc_header_init (pg_hdlc_header_t * e)
 }
 
 uword
-unformat_pg_hdlc_header (unformat_input_t * input, va_list * args)
+unformat_pg_hdlc_header (unformat_input_t *input, va_list *args)
 {
   pg_stream_t *s = va_arg (*args, pg_stream_t *);
   pg_hdlc_header_t *h;
@@ -71,8 +71,7 @@ unformat_pg_hdlc_header (unformat_input_t * input, va_list * args)
   pg_edit_set_fixed (&h->control, 0x00);
 
   error = 1;
-  if (!unformat (input, "%U",
-		 unformat_pg_edit,
+  if (!unformat (input, "%U", unformat_pg_edit,
 		 unformat_hdlc_protocol_net_byte_order, &h->protocol))
     goto done;
 
@@ -89,8 +88,8 @@ unformat_pg_hdlc_header (unformat_input_t * input, va_list * args)
 	  pg_node = pg_get_node (pi->node_index);
       }
 
-    if (pg_node && pg_node->unformat_edit
-	&& unformat_user (input, pg_node->unformat_edit, s))
+    if (pg_node && pg_node->unformat_edit &&
+	unformat_user (input, pg_node->unformat_edit, s))
       ;
 
     else if (!unformat_user (input, unformat_pg_payload, s))
@@ -103,7 +102,6 @@ done:
     pg_free_edit_group (s);
   return error == 0;
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

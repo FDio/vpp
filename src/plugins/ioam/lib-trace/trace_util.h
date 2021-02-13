@@ -20,27 +20,24 @@
 
 #define debug_ioam debug_ioam_fn
 
-
 /**
  * Usage:
  *
  * On any node that participates in iOAM Trace.
  *
  * Step 1: Initialize this library by calling trace_init()
- * Step 2: Setup a trace  profile that contains all the parameters needed to compute cumulative:
- *         Call these functions:
- *         trace_profile_find
+ * Step 2: Setup a trace  profile that contains all the parameters needed to
+ * compute cumulative: Call these functions: trace_profile_find
  *         trace_profile_create
  * Step 2a: On initial node enable the profile to be used:
- *          trace_profile_set_active / trace_profile_get_active will return the profile
- * Step 4: TBD
- *         trace_validate
+ *          trace_profile_set_active / trace_profile_get_active will return the
+ * profile Step 4: TBD trace_validate
  *
  */
 
 typedef struct trace_profile_
 {
-  u8 valid:1;
+  u8 valid : 1;
   u8 trace_type;
   u8 num_elts;
   /* Configured node-id */
@@ -62,58 +59,51 @@ typedef struct
   vnet_main_t *vnet_main;
 } trace_main_t;
 
-
 /*
  * Initialize Trace profile
  */
 int trace_util_init (void);
 
-
 /* setup and clean up profile */
-int trace_profile_create (trace_profile * profile, u8 trace_type, u8 num_elts,
+int trace_profile_create (trace_profile *profile, u8 trace_type, u8 num_elts,
 			  u32 trace_tsp, u32 node_id, u32 app_data);
 
 void clear_trace_profiles (void);
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED (struct
-{
+typedef CLIB_PACKED (struct {
   u8 ioam_trace_type;
   u8 data_list_elts_left;
   u32 elts[0]; /* Variable type. So keep it generic */
 }) ioam_trace_hdr_t;
-/* *INDENT-ON* */
 
+#define BIT_TTL_NODEID	   (1 << 0)
+#define BIT_ING_INTERFACE  (1 << 1)
+#define BIT_EGR_INTERFACE  (1 << 2)
+#define BIT_TIMESTAMP	   (1 << 3)
+#define BIT_APPDATA	   (1 << 4)
+#define BIT_LOOPBACK	   (1 << 5)
+#define BIT_LOOPBACK_REPLY (1 << 6)
+#define TRACE_TYPE_MASK	   0x7F /* Mask of all above bits */
 
-
-#define    BIT_TTL_NODEID       (1<<0)
-#define    BIT_ING_INTERFACE    (1<<1)
-#define    BIT_EGR_INTERFACE    (1<<2)
-#define    BIT_TIMESTAMP        (1<<3)
-#define    BIT_APPDATA          (1<<4)
-#define    BIT_LOOPBACK         (1<<5)
-#define    BIT_LOOPBACK_REPLY   (1<<6)
-#define    TRACE_TYPE_MASK      0x7F	/* Mask of all above bits */
-
-#define    TRACE_TYPE_IF_TS_APP_LOOP    0x3F
+#define TRACE_TYPE_IF_TS_APP_LOOP 0x3F
 
 /*
      0x00011111  iOAM-trace-type is 0x00011111 then the format of node
-        data is:
+	data is:
 
-          0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         |   Hop_Lim     |              node_id                          |
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         |     ingress_if_id             |         egress_if_id          |
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         +                           timestamp                           +
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         |                            app_data                           |
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 |   Hop_Lim     |              node_id                          |
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 |     ingress_if_id             |         egress_if_id          |
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 +                           timestamp                           +
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 |                            app_data                           |
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 */
-#define   TRACE_TYPE_IF_TS_APP   0x1f
+#define TRACE_TYPE_IF_TS_APP 0x1f
 typedef struct
 {
   u32 ttl_node_id;
@@ -126,16 +116,16 @@ typedef struct
 /*
      0x00000111  iOAM-trace-type is 0x00000111 then the format is:
 
-          0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         |   Hop_Lim     |              node_id                          |
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         |     ingress_if_id             |         egress_if_id          |
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 |   Hop_Lim     |              node_id                          |
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 |     ingress_if_id             |         egress_if_id          |
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 */
 
-#define   TRACE_TYPE_IF   0x03
+#define TRACE_TYPE_IF 0x03
 typedef struct
 {
   u32 ttl_node_id;
@@ -146,16 +136,16 @@ typedef struct
 /*
      0x00001001  iOAM-trace-type is 0x00001001 then the format is:
 
-          0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         |   Hop_Lim     |              node_id                          |
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         +                           timestamp                           +
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 |   Hop_Lim     |              node_id                          |
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 +                           timestamp                           +
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 */
 
-#define   TRACE_TYPE_TS   0x09
+#define TRACE_TYPE_TS 0x09
 typedef struct
 {
   u32 ttl_node_id;
@@ -166,17 +156,16 @@ typedef struct
      0x00010001  iOAM-trace-type is 0x00010001 then the format is:
 
 
-          0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         |   Hop_Lim     |              node_id                          |
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         |                            app_data                           |
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 |   Hop_Lim     |              node_id                          |
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 |                            app_data                           |
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 */
 
-
-#define   TRACE_TYPE_APP   0x11
+#define TRACE_TYPE_APP 0x11
 typedef struct
 {
   u32 ttl_node_id;
@@ -187,17 +176,17 @@ typedef struct
 
      0x00011001  iOAM-trace-type is 0x00011001 then the format is:
 
-          0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         |   Hop_Lim     |              node_id                          |
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         +                           timestamp                           +
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-         |                            app_data                           |
-         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 |   Hop_Lim     |              node_id                          |
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 +                           timestamp                           +
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 |                            app_data                           |
+	 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 */
 
-#define   TRACE_TYPE_TS_APP   0x19
+#define TRACE_TYPE_TS_APP 0x19
 typedef struct
 {
   u32 ttl_node_id;
@@ -225,25 +214,25 @@ fetch_trace_data_size (u16 trace_type)
 }
 
 always_inline void
-ioam_trace_set_bit (ioam_trace_hdr_t * trace_hdr, u8 trace_bit)
+ioam_trace_set_bit (ioam_trace_hdr_t *trace_hdr, u8 trace_bit)
 {
   trace_hdr->ioam_trace_type |= trace_bit;
 }
 
 always_inline void
-ioam_trace_reset_bit (ioam_trace_hdr_t * trace_hdr, u8 trace_bit)
+ioam_trace_reset_bit (ioam_trace_hdr_t *trace_hdr, u8 trace_bit)
 {
   trace_hdr->ioam_trace_type &= (~trace_bit);
 }
 
-int ioam_trace_get_sizeof_handler (u32 * result);
+int ioam_trace_get_sizeof_handler (u32 *result);
 int ip6_trace_profile_setup (void);
 int ip6_trace_profile_cleanup (void);
 
-#define TSP_SECONDS              0
-#define TSP_MILLISECONDS         1
-#define TSP_MICROSECONDS         2
-#define TSP_NANOSECONDS          3
+#define TSP_SECONDS	 0
+#define TSP_MILLISECONDS 1
+#define TSP_MICROSECONDS 2
+#define TSP_NANOSECONDS	 3
 
 #endif
 

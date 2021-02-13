@@ -31,18 +31,18 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_nsim_trace (u8 * s, va_list * args)
+format_nsim_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   nsim_trace_t *t = va_arg (*args, nsim_trace_t *);
 
   if (t->is_drop)
-    s = format (s, "NSIM: dropped, %s", t->is_lost ?
-		"simulated network loss" : "no space in ring");
+    s = format (s, "NSIM: dropped, %s",
+		t->is_lost ? "simulated network loss" : "no space in ring");
   else
-    s = format (s, "NSIM: tx time %.6f sw_if_index %d",
-		t->expires, t->tx_sw_if_index);
+    s = format (s, "NSIM: tx time %.6f sw_if_index %d", t->expires,
+		t->tx_sw_if_index);
 
   return s;
 }
@@ -50,15 +50,15 @@ format_nsim_trace (u8 * s, va_list * args)
 vlib_node_registration_t nsim_node;
 #endif /* CLIB_MARCH_VARIANT */
 
-#define foreach_nsim_error                              \
-_(BUFFERED, "Packets buffered")                         \
-_(DROPPED, "Packets dropped due to lack of space")	\
-_(LOSS, "Network loss simulation drop packets")		\
-_(REORDERED, "Packets reordered")
+#define foreach_nsim_error                                                    \
+  _ (BUFFERED, "Packets buffered")                                            \
+  _ (DROPPED, "Packets dropped due to lack of space")                         \
+  _ (LOSS, "Network loss simulation drop packets")                            \
+  _ (REORDERED, "Packets reordered")
 
 typedef enum
 {
-#define _(sym,str) NSIM_ERROR_##sym,
+#define _(sym, str) NSIM_ERROR_##sym,
   foreach_nsim_error
 #undef _
     NSIM_N_ERROR,
@@ -66,7 +66,7 @@ typedef enum
 
 #ifndef CLIB_MARCH_VARIANT
 static char *nsim_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_nsim_error
 #undef _
 };
@@ -79,8 +79,8 @@ typedef enum
 } nsim_next_t;
 
 static void
-nsim_set_actions (nsim_main_t * nsm, vlib_buffer_t ** b,
-		  nsim_node_ctx_t * ctx, u32 n_actions)
+nsim_set_actions (nsim_main_t *nsm, vlib_buffer_t **b, nsim_node_ctx_t *ctx,
+		  u32 n_actions)
 {
   int i;
 
@@ -102,8 +102,8 @@ nsim_set_actions (nsim_main_t * nsm, vlib_buffer_t ** b,
 }
 
 static void
-nsim_trace_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
-		   vlib_buffer_t * b, nsim_node_ctx_t * ctx, u32 is_drop)
+nsim_trace_buffer (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_buffer_t *b, nsim_node_ctx_t *ctx, u32 is_drop)
 {
   if (b->flags & VLIB_BUFFER_IS_TRACED)
     {
@@ -116,19 +116,20 @@ nsim_trace_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 always_inline void
-nsim_buffer_fwd_lookup (nsim_main_t * nsm, vlib_buffer_t * b,
-			u32 * next, u8 is_cross_connect)
+nsim_buffer_fwd_lookup (nsim_main_t *nsm, vlib_buffer_t *b, u32 *next,
+			u8 is_cross_connect)
 {
   if (is_cross_connect)
     {
       vnet_buffer (b)->sw_if_index[VLIB_TX] =
 	(vnet_buffer (b)->sw_if_index[VLIB_RX] == nsm->sw_if_index0) ?
-	nsm->sw_if_index1 : nsm->sw_if_index0;
-      *next =
-	(vnet_buffer (b)->sw_if_index[VLIB_TX] == nsm->sw_if_index0) ?
-	nsm->output_next_index0 : nsm->output_next_index1;
+	  nsm->sw_if_index1 :
+	  nsm->sw_if_index0;
+      *next = (vnet_buffer (b)->sw_if_index[VLIB_TX] == nsm->sw_if_index0) ?
+		nsm->output_next_index0 :
+		nsm->output_next_index1;
     }
-  else				/* output feature, even easier... */
+  else /* output feature, even easier... */
     {
       u32 sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
       *next = nsm->output_next_index_by_sw_if_index[sw_if_index];
@@ -136,9 +137,9 @@ nsim_buffer_fwd_lookup (nsim_main_t * nsm, vlib_buffer_t * b,
 }
 
 always_inline void
-nsim_dispatch_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      nsim_main_t * nsm, nsim_wheel_t * wp, vlib_buffer_t * b,
-		      u32 bi, nsim_node_ctx_t * ctx, u8 is_cross_connect,
+nsim_dispatch_buffer (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      nsim_main_t *nsm, nsim_wheel_t *wp, vlib_buffer_t *b,
+		      u32 bi, nsim_node_ctx_t *ctx, u8 is_cross_connect,
 		      u8 is_trace)
 {
   if (PREDICT_TRUE (!(ctx->action[0] & NSIM_ACTION_DROP)))
@@ -185,9 +186,8 @@ trace:
 }
 
 always_inline uword
-nsim_inline (vlib_main_t * vm,
-	     vlib_node_runtime_t * node, vlib_frame_t * frame, int is_trace,
-	     int is_cross_connect)
+nsim_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+	     int is_trace, int is_cross_connect)
 {
   nsim_main_t *nsm = &nsim_main;
   u32 n_left_from, *from, drops[VLIB_FRAME_SIZE], reorders[VLIB_FRAME_SIZE];
@@ -245,9 +245,9 @@ slow_path:
   while (n_left_from > 0)
     {
       /* Drop if out of wheel space and not drop or reorder */
-      if (PREDICT_TRUE (wp->cursize < wp->wheel_size
-			|| (ctx.action[0] & NSIM_ACTION_DROP)
-			|| (ctx.action[0] & NSIM_ACTION_REORDER)))
+      if (PREDICT_TRUE (wp->cursize < wp->wheel_size ||
+			(ctx.action[0] & NSIM_ACTION_DROP) ||
+			(ctx.action[0] & NSIM_ACTION_REORDER)))
 	{
 	  nsim_dispatch_buffer (vm, node, nsm, wp, b[0], from[0], &ctx,
 				is_cross_connect, is_trace);
@@ -283,23 +283,22 @@ slow_path:
       vlib_node_increment_counter (vm, node->node_index, NSIM_ERROR_REORDERED,
 				   n_reordered);
     }
-  vlib_node_increment_counter (vm, node->node_index,
-			       NSIM_ERROR_BUFFERED, ctx.n_buffered);
+  vlib_node_increment_counter (vm, node->node_index, NSIM_ERROR_BUFFERED,
+			       ctx.n_buffered);
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (nsim_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * frame)
+VLIB_NODE_FN (nsim_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-    return nsim_inline (vm, node, frame,
-			1 /* is_trace */ , 1 /* is_cross_connect */ );
+    return nsim_inline (vm, node, frame, 1 /* is_trace */,
+			1 /* is_cross_connect */);
   else
-    return nsim_inline (vm, node, frame,
-			0 /* is_trace */ , 1 /* is_cross_connect */ );
+    return nsim_inline (vm, node, frame, 0 /* is_trace */,
+			1 /* is_cross_connect */);
 }
 
-/* *INDENT-OFF* */
 #ifndef CLIB_MARCH_VARIANT
 VLIB_REGISTER_NODE (nsim_node) =
 {
@@ -319,21 +318,18 @@ VLIB_REGISTER_NODE (nsim_node) =
   },
 };
 #endif /* CLIB_MARCH_VARIANT */
-/* *INDENT-ON* */
 
-VLIB_NODE_FN (nsim_feature_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * frame)
+VLIB_NODE_FN (nsim_feature_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-    return nsim_inline (vm, node, frame,
-			1 /* is_trace */ , 0 /* is_cross_connect */ );
+    return nsim_inline (vm, node, frame, 1 /* is_trace */,
+			0 /* is_cross_connect */);
   else
-    return nsim_inline (vm, node, frame,
-			0 /* is_trace */ , 0 /* is_cross_connect */ );
+    return nsim_inline (vm, node, frame, 0 /* is_trace */,
+			0 /* is_cross_connect */);
 }
 
-/* *INDENT-OFF* */
 #ifndef CLIB_MARCH_VARIANT
 VLIB_REGISTER_NODE (nsim_feature_node) =
 {
@@ -353,7 +349,6 @@ VLIB_REGISTER_NODE (nsim_feature_node) =
   },
 };
 #endif /* CLIB_MARCH_VARIANT */
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

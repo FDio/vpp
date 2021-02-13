@@ -28,8 +28,7 @@ listen_cmd::listen_cmd(HW::item<bool>& item,
   , m_itf(itf)
   , m_gaddr(gaddr)
   , m_saddrs(saddrs)
-{
-}
+{}
 
 bool
 listen_cmd::operator==(const listen_cmd& other) const
@@ -90,8 +89,7 @@ unlisten_cmd::unlisten_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_itf(itf)
   , m_gaddr(gaddr)
-{
-}
+{}
 
 bool
 unlisten_cmd::operator==(const unlisten_cmd& other) const
@@ -130,13 +128,11 @@ unlisten_cmd::to_string() const
 
 dump_cmd::dump_cmd(const handle_t& hdl)
   : m_itf(hdl)
-{
-}
+{}
 
 dump_cmd::dump_cmd(const dump_cmd& d)
   : m_itf(d.m_itf)
-{
-}
+{}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const

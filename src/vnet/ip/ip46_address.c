@@ -16,7 +16,7 @@
 #include <vnet/ip/ip46_address.h>
 
 u8 *
-format_ip46_type (u8 * s, va_list * args)
+format_ip46_type (u8 *s, va_list *args)
 {
   ip46_type_t type = va_arg (*args, ip46_type_t);
 
@@ -34,7 +34,7 @@ format_ip46_type (u8 * s, va_list * args)
 }
 
 void
-ip4_address_increment (ip4_address_t * i)
+ip4_address_increment (ip4_address_t *i)
 {
   u32 t = clib_net_to_host_u32 (i->as_u32);
   t++;
@@ -42,7 +42,7 @@ ip4_address_increment (ip4_address_t * i)
 }
 
 void
-ip6_address_increment (ip6_address_t * i)
+ip6_address_increment (ip6_address_t *i)
 {
   u64 tmp = clib_net_to_host_u64 (i->as_u64[1]);
 
@@ -58,7 +58,7 @@ ip6_address_increment (ip6_address_t * i)
 }
 
 void
-ip46_address_increment (ip46_type_t type, ip46_address_t * ip)
+ip46_address_increment (ip46_type_t type, ip46_address_t *ip)
 {
   if (IP46_TYPE_IP4 == type ||
       (IP46_TYPE_ANY == type && ip46_address_is_ip4 (ip)))

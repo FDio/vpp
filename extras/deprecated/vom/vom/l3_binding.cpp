@@ -29,15 +29,13 @@ l3_binding::l3_binding(const interface& itf, const route::prefix_t& pfx)
   : m_itf(itf.singular())
   , m_pfx(pfx)
   , m_binding(true, rc_t::NOOP)
-{
-}
+{}
 
 l3_binding::l3_binding(const l3_binding& o)
   : m_itf(o.m_itf)
   , m_pfx(o.m_pfx)
   , m_binding(o.m_binding)
-{
-}
+{}
 
 l3_binding::~l3_binding()
 {

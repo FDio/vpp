@@ -48,11 +48,11 @@
  * | 0x0105..0xFFEF | Unassigned - First Come First Served |
  * | 0xFFF0..FFFF   | Experimental                         |
  * +----------------+--------------------------------------+
-*/
-#define LINUX_OPT_CLASS  0x0100
-#define OVS_OPT_CLASS    0x0101
-#define OVN_OPT_CLASS    0x0102
-#define INT_OPT_CLASS    0x0103
+ */
+#define LINUX_OPT_CLASS	 0x0100
+#define OVS_OPT_CLASS	 0x0101
+#define OVN_OPT_CLASS	 0x0102
+#define INT_OPT_CLASS	 0x0103
 #define VMWARE_OPT_CLASS 0x0104
 
 /*
@@ -92,10 +92,10 @@ typedef struct
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
-#define GENEVE_BASE_HEADER_LENGTH   8	// GENEVE BASE HEADER in bytes
+#define GENEVE_BASE_HEADER_LENGTH   8 // GENEVE BASE HEADER in bytes
 #define GENEVE_MAX_TOTAL_HDR_LENGTH 260
 
-#define GENEVE_VERSION 0
+#define GENEVE_VERSION	    0
 #define GENEVE_ETH_PROTOCOL 0x6558
 
 typedef struct
@@ -117,38 +117,38 @@ typedef struct
 } geneve_header_t;
 
 #define GENEVE_VERSION_SHIFT	30
-#define GENEVE_OPTLEN_SHIFT		24
-#define GENEVE_O_BIT_SHIFT		23
-#define GENEVE_C_BIT_SHIFT		22
+#define GENEVE_OPTLEN_SHIFT	24
+#define GENEVE_O_BIT_SHIFT	23
+#define GENEVE_C_BIT_SHIFT	22
 #define GENEVE_6_RESERVED_SHIFT 16
-#define GENEVE_VNI_SHIFT		8
+#define GENEVE_VNI_SHIFT	8
 
-#define GENEVE_VERSION_MASK		0xC0000000
-#define GENEVE_OPTLEN_MASK		0x3F000000
-#define GENEVE_O_BIT_MASK		0x00800000
-#define GENEVE_C_BIT_MASK		0x00400000
-#define GENEVE_6_RESERVED_MASK	0x003F0000
-#define GENEVE_PROTOCOL_MASK	0x0000FFFF
-#define GENEVE_VNI_MASK			0xFFFFFF00
+#define GENEVE_VERSION_MASK    0xC0000000
+#define GENEVE_OPTLEN_MASK     0x3F000000
+#define GENEVE_O_BIT_MASK      0x00800000
+#define GENEVE_C_BIT_MASK      0x00400000
+#define GENEVE_6_RESERVED_MASK 0x003F0000
+#define GENEVE_PROTOCOL_MASK   0x0000FFFF
+#define GENEVE_VNI_MASK	       0xFFFFFF00
 
 /*
  * Return the VNI in host-byte order
  */
 static inline u32
-vnet_get_geneve_vni (geneve_header_t * h)
+vnet_get_geneve_vni (geneve_header_t *h)
 {
   return ((clib_net_to_host_u32 (h->vni_rsvd) & GENEVE_VNI_MASK) >>
 	  GENEVE_VNI_SHIFT);
 }
 
 static inline u32
-vnet_get_geneve_vni_network_order (geneve_header_t * h)
+vnet_get_geneve_vni_network_order (geneve_header_t *h)
 {
   return (h->vni_rsvd & clib_net_to_host_u32 (GENEVE_VNI_MASK));
 }
 
 static inline void
-vnet_set_geneve_vni (geneve_header_t * h, u32 vni)
+vnet_set_geneve_vni (geneve_header_t *h, u32 vni)
 {
   h->vni_rsvd &= ~(GENEVE_VNI_MASK);
   h->vni_rsvd |=
@@ -156,79 +156,78 @@ vnet_set_geneve_vni (geneve_header_t * h, u32 vni)
 }
 
 static inline u8
-vnet_get_geneve_version (geneve_header_t * h)
+vnet_get_geneve_version (geneve_header_t *h)
 {
   return ((h->first_word & GENEVE_VERSION_MASK) >> GENEVE_VERSION_SHIFT);
 }
 
 static inline void
-vnet_set_geneve_version (geneve_header_t * h, u8 version)
+vnet_set_geneve_version (geneve_header_t *h, u8 version)
 {
   h->first_word &= ~(GENEVE_VERSION_MASK);
   h->first_word |= ((version << GENEVE_VERSION_SHIFT) & GENEVE_VERSION_MASK);
 }
 
 static inline u8
-vnet_get_geneve_options_len (geneve_header_t * h)
+vnet_get_geneve_options_len (geneve_header_t *h)
 {
   return ((h->first_word & GENEVE_OPTLEN_MASK) >> GENEVE_OPTLEN_SHIFT);
 }
 
 static inline void
-vnet_set_geneve_options_len (geneve_header_t * h, u8 len)
+vnet_set_geneve_options_len (geneve_header_t *h, u8 len)
 {
   h->first_word &= ~(GENEVE_OPTLEN_MASK);
   h->first_word |= ((len << GENEVE_OPTLEN_SHIFT) & GENEVE_OPTLEN_MASK);
 }
 
 static inline u8
-vnet_get_geneve_oamframe_bit (geneve_header_t * h)
+vnet_get_geneve_oamframe_bit (geneve_header_t *h)
 {
   return ((h->first_word & GENEVE_O_BIT_MASK) >> GENEVE_O_BIT_SHIFT);
 }
 
 static inline void
-vnet_set_geneve_oamframe_bit (geneve_header_t * h, u8 oam)
+vnet_set_geneve_oamframe_bit (geneve_header_t *h, u8 oam)
 {
   h->first_word &= ~(GENEVE_O_BIT_MASK);
   h->first_word |= ((oam << GENEVE_O_BIT_SHIFT) & GENEVE_O_BIT_MASK);
 }
 
 static inline u8
-vnet_get_geneve_critical_bit (geneve_header_t * h)
+vnet_get_geneve_critical_bit (geneve_header_t *h)
 {
   return ((h->first_word & GENEVE_C_BIT_MASK) >> GENEVE_C_BIT_SHIFT);
 }
 
 static inline void
-vnet_set_geneve_critical_bit (geneve_header_t * h, u8 critical_opts)
+vnet_set_geneve_critical_bit (geneve_header_t *h, u8 critical_opts)
 {
   h->first_word &= ~(GENEVE_C_BIT_MASK);
-  h->first_word |=
-    ((critical_opts << GENEVE_C_BIT_SHIFT) & GENEVE_C_BIT_MASK);
+  h->first_word |= ((critical_opts << GENEVE_C_BIT_SHIFT) & GENEVE_C_BIT_MASK);
 }
 
 static inline u16
-vnet_get_geneve_protocol (geneve_header_t * h)
+vnet_get_geneve_protocol (geneve_header_t *h)
 {
   return (h->first_word & GENEVE_PROTOCOL_MASK);
 }
 
 static inline void
-vnet_set_geneve_protocol (geneve_header_t * h, u16 protocol)
+vnet_set_geneve_protocol (geneve_header_t *h, u16 protocol)
 {
   h->first_word &= ~(GENEVE_PROTOCOL_MASK);
   h->first_word |= (protocol & GENEVE_PROTOCOL_MASK);
 }
 
 static inline void
-vnet_geneve_hdr_1word_ntoh (geneve_header_t * h)
+vnet_geneve_hdr_1word_ntoh (geneve_header_t *h)
 {
   h->first_word = clib_net_to_host_u32 (h->first_word);
 }
 
 static inline void
-vnet_geneve_hdr_1word_hton (geneve_header_t * h)
+vnet_geneve_hdr_1word_hton (geneve_header_t *h)
 {
   h->first_word = clib_host_to_net_u32 (h->first_word);
 }

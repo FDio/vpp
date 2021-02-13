@@ -75,9 +75,9 @@ typedef struct
 struct vapi_ctx_s
 {
   vapi_mode_e mode;
-  int requests_size;		/* size of the requests array (circular queue) */
-  int requests_start;		/* index of first request */
-  int requests_count;		/* number of used slots */
+  int requests_size;  /* size of the requests array (circular queue) */
+  int requests_start; /* index of first request */
+  int requests_count; /* number of used slots */
   vapi_req_t *requests;
   u32 context_counter;
   vapi_generic_cb_with_ctx generic_cb;
@@ -252,7 +252,7 @@ vapi_lookup_vapi_msg_id_t (vapi_ctx_t ctx, u16 vl_msg_id)
 }
 
 vapi_error_e
-vapi_ctx_alloc (vapi_ctx_t * result)
+vapi_ctx_alloc (vapi_ctx_t *result)
 {
   vapi_ctx_t ctx = calloc (1, sizeof (struct vapi_ctx_s));
   if (!ctx)
@@ -261,15 +261,14 @@ vapi_ctx_alloc (vapi_ctx_t * result)
     }
   ctx->context_counter = 0;
   ctx->vapi_msg_id_t_to_vl_msg_id =
-    malloc (__vapi_metadata.count *
-	    sizeof (*ctx->vapi_msg_id_t_to_vl_msg_id));
+    malloc (__vapi_metadata.count * sizeof (*ctx->vapi_msg_id_t_to_vl_msg_id));
   if (!ctx->vapi_msg_id_t_to_vl_msg_id)
     {
       goto fail;
     }
   clib_memset (ctx->vapi_msg_id_t_to_vl_msg_id, ~0,
 	       __vapi_metadata.count *
-	       sizeof (*ctx->vapi_msg_id_t_to_vl_msg_id));
+		 sizeof (*ctx->vapi_msg_id_t_to_vl_msg_id));
   ctx->event_cbs = calloc (__vapi_metadata.count, sizeof (*ctx->event_cbs));
   if (!ctx->event_cbs)
     {
@@ -302,11 +301,9 @@ vapi_is_msg_available (vapi_ctx_t ctx, vapi_msg_id_t id)
 }
 
 vapi_error_e
-vapi_connect (vapi_ctx_t ctx, const char *name,
-	      const char *chroot_prefix,
-	      int max_outstanding_requests,
-	      int response_queue_size, vapi_mode_e mode,
-	      bool handle_keepalives)
+vapi_connect (vapi_ctx_t ctx, const char *name, const char *chroot_prefix,
+	      int max_outstanding_requests, int response_queue_size,
+	      vapi_mode_e mode, bool handle_keepalives)
 {
   if (response_queue_size <= 0 || max_outstanding_requests <= 0)
     {
@@ -366,10 +363,9 @@ vapi_connect (vapi_ctx_t ctx, const char *name,
 	    }
 	  if (id > ctx->vl_msg_id_max)
 	    {
-	      vapi_msg_id_t *tmp = realloc (ctx->vl_msg_id_to_vapi_msg_t,
-					    sizeof
-					    (*ctx->vl_msg_id_to_vapi_msg_t) *
-					    (id + 1));
+	      vapi_msg_id_t *tmp =
+		realloc (ctx->vl_msg_id_to_vapi_msg_t,
+			 sizeof (*ctx->vl_msg_id_to_vapi_msg_t) * (id + 1));
 	      if (!tmp)
 		{
 		  rv = VAPI_ENOMEM;
@@ -397,8 +393,8 @@ vapi_connect (vapi_ctx_t ctx, const char *name,
   if (!vapi_is_msg_available (ctx, vapi_msg_id_control_ping) ||
       !vapi_is_msg_available (ctx, vapi_msg_id_control_ping_reply))
     {
-      VAPI_ERR
-	("control ping or control ping reply not available, cannot connect");
+      VAPI_ERR (
+	"control ping or control ping reply not available, cannot connect");
       rv = VAPI_EINCOMPATIBLE;
       goto fail;
     }
@@ -472,8 +468,8 @@ vapi_send (vapi_ctx_t ctx, void *msg)
       VAPI_DBG ("send msg@%p:%u[UNKNOWN]", msg, msgid);
     }
 #endif
-  tmp = svm_queue_add (q, (u8 *) & msg,
-		       VAPI_MODE_BLOCKING == ctx->mode ? 0 : 1);
+  tmp =
+    svm_queue_add (q, (u8 *) &msg, VAPI_MODE_BLOCKING == ctx->mode ? 0 : 1);
   if (tmp < 0)
     {
       rv = VAPI_EAGAIN;
@@ -518,7 +514,7 @@ vapi_send2 (vapi_ctx_t ctx, void *msg1, void *msg2)
     }
   VAPI_DBG ("send two: %u[%s], %u[%s]", msgid1, name1, msgid2, name2);
 #endif
-  int tmp = svm_queue_add2 (q, (u8 *) & msg1, (u8 *) & msg2,
+  int tmp = svm_queue_add2 (q, (u8 *) &msg1, (u8 *) &msg2,
 			    VAPI_MODE_BLOCKING == ctx->mode ? 0 : 1);
   if (tmp < 0)
     {
@@ -532,7 +528,7 @@ out:
 }
 
 vapi_error_e
-vapi_recv (vapi_ctx_t ctx, void **msg, size_t * msg_size,
+vapi_recv (vapi_ctx_t ctx, void **msg, size_t *msg_size,
 	   svm_q_conditional_wait_t cond, u32 time)
 {
   if (!ctx || !ctx->connected || !msg || !msg_size)
@@ -552,7 +548,7 @@ vapi_recv (vapi_ctx_t ctx, void **msg, size_t * msg_size,
 again:
   VAPI_DBG ("doing shm queue sub");
 
-  int tmp = svm_queue_sub (q, (u8 *) & data, cond, time);
+  int tmp = svm_queue_sub (q, (u8 *) &data, cond, time);
 
   if (tmp == 0)
     {
@@ -570,7 +566,7 @@ again:
       *msg = (u8 *) data;
       *msg_size = ntohl (msgbuf->data_len);
 #if VAPI_DEBUG
-      unsigned msgid = be16toh (*(u16 *) * msg);
+      unsigned msgid = be16toh (*(u16 *) *msg);
       if (msgid <= ctx->vl_msg_id_max)
 	{
 	  vapi_msg_id_t id = ctx->vl_msg_id_to_vapi_msg_t[msgid];
@@ -591,7 +587,7 @@ again:
 #endif
       if (ctx->handle_keepalives)
 	{
-	  unsigned msgid = be16toh (*(u16 *) * msg);
+	  unsigned msgid = be16toh (*(u16 *) *msg);
 	  if (msgid ==
 	      vapi_lookup_vl_msg_id (ctx, vapi_msg_id_memclnt_keepalive))
 	    {
@@ -602,12 +598,12 @@ again:
 		}
 	      while (!reply);
 	      reply->header.context = vapi_get_client_index (ctx);
-	      reply->header._vl_msg_id =
-		vapi_lookup_vl_msg_id (ctx,
-				       vapi_msg_id_memclnt_keepalive_reply);
+	      reply->header._vl_msg_id = vapi_lookup_vl_msg_id (
+		ctx, vapi_msg_id_memclnt_keepalive_reply);
 	      reply->payload.retval = 0;
 	      vapi_msg_memclnt_keepalive_reply_hton (reply);
-	      while (VAPI_EAGAIN == vapi_send (ctx, reply));
+	      while (VAPI_EAGAIN == vapi_send (ctx, reply))
+		;
 	      vapi_msg_free (ctx, *msg);
 	      VAPI_DBG ("autohandled memclnt_keepalive");
 	      goto again;
@@ -628,8 +624,8 @@ vapi_wait (vapi_ctx_t ctx, vapi_wait_mode_e mode)
 }
 
 static vapi_error_e
-vapi_dispatch_response (vapi_ctx_t ctx, vapi_msg_id_t id,
-			u32 context, void *msg)
+vapi_dispatch_response (vapi_ctx_t ctx, vapi_msg_id_t id, u32 context,
+			void *msg)
 {
   int mrv;
   if (0 != (mrv = pthread_mutex_lock (&ctx->requests_mutex)))
@@ -657,11 +653,9 @@ vapi_dispatch_response (vapi_ctx_t ctx, vapi_msg_id_t id,
 	{
 	  VAPI_ERR ("No response to req with context=%u",
 		    (unsigned) ctx->requests[tmp].context);
-	  ctx->requests[ctx->requests_start].callback (ctx, ctx->requests
-						       [ctx->
-							requests_start].callback_ctx,
-						       VAPI_ENORESP, true,
-						       NULL);
+	  ctx->requests[ctx->requests_start].callback (
+	    ctx, ctx->requests[ctx->requests_start].callback_ctx, VAPI_ENORESP,
+	    true, NULL);
 	  clib_memset (&ctx->requests[ctx->requests_start], 0,
 		       sizeof (ctx->requests[ctx->requests_start]));
 	  ++ctx->requests_start;
@@ -688,19 +682,17 @@ vapi_dispatch_response (vapi_ctx_t ctx, vapi_msg_id_t id,
 	}
       if (payload_offset != -1)
 	{
-	  rv =
-	    ctx->requests[tmp].callback (ctx, ctx->requests[tmp].callback_ctx,
-					 VAPI_OK, is_last, payload);
+	  rv = ctx->requests[tmp].callback (
+	    ctx, ctx->requests[tmp].callback_ctx, VAPI_OK, is_last, payload);
 	}
       else
 	{
 	  /* this is a message without payload, so bend the callback a little
 	   */
-	  rv =
-	    ((vapi_error_e (*)(vapi_ctx_t, void *, vapi_error_e, bool))
-	     ctx->requests[tmp].callback) (ctx,
-					   ctx->requests[tmp].callback_ctx,
-					   VAPI_OK, is_last);
+	  rv = ((vapi_error_e (*) (vapi_ctx_t, void *, vapi_error_e, bool)) ctx
+		  ->requests[tmp]
+		  .callback) (ctx, ctx->requests[tmp].callback_ctx, VAPI_OK,
+			      is_last);
 	}
       if (is_last)
 	{
@@ -720,7 +712,7 @@ vapi_dispatch_response (vapi_ctx_t ctx, vapi_msg_id_t id,
     {
       VAPI_DBG ("pthread_mutex_unlock() failed, rv=%d:%s", mrv,
 		strerror (mrv));
-      abort ();			/* this really shouldn't happen */
+      abort (); /* this really shouldn't happen */
     }
   return rv;
 }
@@ -738,9 +730,9 @@ vapi_dispatch_event (vapi_ctx_t ctx, vapi_msg_id_t id, void *msg)
     }
   else
     {
-      VAPI_DBG
-	("No handler/generic handler for msg id %u[%s], message ignored",
-	 (unsigned) id, __vapi_metadata.msgs[id]->name);
+      VAPI_DBG (
+	"No handler/generic handler for msg id %u[%s], message ignored",
+	(unsigned) id, __vapi_metadata.msgs[id]->name);
     }
   return VAPI_OK;
 }
@@ -783,9 +775,9 @@ vapi_dispatch_one (vapi_ctx_t ctx)
   const size_t expect_size = vapi_get_message_size (id);
   if (size < expect_size)
     {
-      VAPI_ERR
-	("Invalid msg received, unexpected size `%zu' < expected min `%zu'",
-	 size, expect_size);
+      VAPI_ERR (
+	"Invalid msg received, unexpected size `%zu' < expected min `%zu'",
+	size, expect_size);
       vapi_msg_free (ctx, msg);
       return VAPI_EINVAL;
     }
@@ -825,8 +817,8 @@ vapi_dispatch (vapi_ctx_t ctx)
 }
 
 void
-vapi_set_event_cb (vapi_ctx_t ctx, vapi_msg_id_t id,
-		   vapi_event_cb callback, void *callback_ctx)
+vapi_set_event_cb (vapi_ctx_t ctx, vapi_msg_id_t id, vapi_event_cb callback,
+		   void *callback_ctx)
 {
   vapi_event_cb_with_ctx *c = &ctx->event_cbs[id];
   c->cb = callback;
@@ -913,13 +905,12 @@ vapi_get_context_offset (vapi_msg_id_t id)
 }
 
 vapi_msg_id_t
-vapi_register_msg (vapi_message_desc_t * msg)
+vapi_register_msg (vapi_message_desc_t *msg)
 {
   int i = 0;
   for (i = 0; i < __vapi_metadata.count; ++i)
     {
-      if (!strcmp
-	  (msg->name_with_crc, __vapi_metadata.msgs[i]->name_with_crc))
+      if (!strcmp (msg->name_with_crc, __vapi_metadata.msgs[i]->name_with_crc))
 	{
 	  /* this happens if somebody is linking together several objects while
 	   * using the static inline headers, just fill in the already
@@ -950,7 +941,7 @@ vapi_producer_lock (vapi_ctx_t ctx)
   if (0 != (mrv = pthread_mutex_lock (&ctx->requests_mutex)))
     {
       VAPI_DBG ("pthread_mutex_lock() failed, rv=%d:%s", mrv, strerror (mrv));
-      (void) mrv;		/* avoid warning if the above debug is not enabled */
+      (void) mrv; /* avoid warning if the above debug is not enabled */
       return VAPI_MUTEX_FAILURE;
     }
   return VAPI_OK;
@@ -964,7 +955,7 @@ vapi_producer_unlock (vapi_ctx_t ctx)
     {
       VAPI_DBG ("pthread_mutex_unlock() failed, rv=%d:%s", mrv,
 		strerror (mrv));
-      (void) mrv;		/* avoid warning if the above debug is not enabled */
+      (void) mrv; /* avoid warning if the above debug is not enabled */
       return VAPI_MUTEX_FAILURE;
     }
   return VAPI_OK;

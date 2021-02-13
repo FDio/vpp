@@ -16,7 +16,7 @@
 #include <vnet/tcp/tcp_sack.h>
 
 static void
-scoreboard_remove_hole (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
+scoreboard_remove_hole (sack_scoreboard_t *sb, sack_scoreboard_hole_t *hole)
 {
   sack_scoreboard_hole_t *next, *prev;
 
@@ -51,8 +51,8 @@ scoreboard_remove_hole (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
 }
 
 static sack_scoreboard_hole_t *
-scoreboard_insert_hole (sack_scoreboard_t * sb, u32 prev_index,
-			u32 start, u32 end)
+scoreboard_insert_hole (sack_scoreboard_t *sb, u32 prev_index, u32 start,
+			u32 end)
 {
   sack_scoreboard_hole_t *hole, *next, *prev;
   u32 hole_index;
@@ -88,7 +88,7 @@ scoreboard_insert_hole (sack_scoreboard_t * sb, u32 prev_index,
 }
 
 always_inline void
-scoreboard_update_sacked (sack_scoreboard_t * sb, u32 start, u32 end,
+scoreboard_update_sacked (sack_scoreboard_t *sb, u32 start, u32 end,
 			  u8 has_rxt, u16 snd_mss)
 {
   if (!has_rxt)
@@ -112,7 +112,7 @@ scoreboard_update_sacked (sack_scoreboard_t * sb, u32 start, u32 end,
 }
 
 always_inline void
-scoreboard_update_bytes (sack_scoreboard_t * sb, u32 ack, u32 snd_mss)
+scoreboard_update_bytes (sack_scoreboard_t *sb, u32 ack, u32 snd_mss)
 {
   sack_scoreboard_hole_t *left, *right;
   u32 sacked = 0, blks = 0, old_sacked;
@@ -127,8 +127,8 @@ scoreboard_update_bytes (sack_scoreboard_t * sb, u32 ack, u32 snd_mss)
   if (!right)
     {
       sb->sacked_bytes = sb->high_sacked - ack;
-      sb->last_sacked_bytes = sb->sacked_bytes
-	- (old_sacked - sb->last_bytes_delivered);
+      sb->last_sacked_bytes =
+	sb->sacked_bytes - (old_sacked - sb->last_bytes_delivered);
       return;
     }
 
@@ -191,9 +191,8 @@ scoreboard_update_bytes (sack_scoreboard_t * sb, u32 ack, u32 snd_mss)
  * Follows logic proposed in RFC6675 Sec. 4, NextSeg()
  */
 sack_scoreboard_hole_t *
-scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
-			  sack_scoreboard_hole_t * start,
-			  u8 have_unsent, u8 * can_rescue, u8 * snd_limited)
+scoreboard_next_rxt_hole (sack_scoreboard_t *sb, sack_scoreboard_hole_t *start,
+			  u8 have_unsent, u8 *can_rescue, u8 *snd_limited)
 {
   sack_scoreboard_hole_t *hole = 0;
 
@@ -251,7 +250,7 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
 }
 
 void
-scoreboard_init_rxt (sack_scoreboard_t * sb, u32 snd_una)
+scoreboard_init_rxt (sack_scoreboard_t *sb, u32 snd_una)
 {
   sack_scoreboard_hole_t *hole;
   hole = scoreboard_first_hole (sb);
@@ -265,7 +264,7 @@ scoreboard_init_rxt (sack_scoreboard_t * sb, u32 snd_una)
 }
 
 void
-scoreboard_init (sack_scoreboard_t * sb)
+scoreboard_init (sack_scoreboard_t *sb)
 {
   sb->head = TCP_INVALID_SACK_HOLE_INDEX;
   sb->tail = TCP_INVALID_SACK_HOLE_INDEX;
@@ -274,7 +273,7 @@ scoreboard_init (sack_scoreboard_t * sb)
 }
 
 void
-scoreboard_clear (sack_scoreboard_t * sb)
+scoreboard_clear (sack_scoreboard_t *sb)
 {
   sack_scoreboard_hole_t *hole;
   while ((hole = scoreboard_first_hole (sb)))
@@ -294,13 +293,13 @@ scoreboard_clear (sack_scoreboard_t * sb)
 }
 
 void
-scoreboard_clear_reneging (sack_scoreboard_t * sb, u32 start, u32 end)
+scoreboard_clear_reneging (sack_scoreboard_t *sb, u32 start, u32 end)
 {
   sack_scoreboard_hole_t *last_hole;
 
   scoreboard_clear (sb);
-  last_hole = scoreboard_insert_hole (sb, TCP_INVALID_SACK_HOLE_INDEX,
-				      start, end);
+  last_hole =
+    scoreboard_insert_hole (sb, TCP_INVALID_SACK_HOLE_INDEX, start, end);
   last_hole->is_lost = 1;
   sb->tail = scoreboard_hole_index (sb, last_hole);
   sb->high_sacked = start;
@@ -314,16 +313,16 @@ scoreboard_clear_reneging (sack_scoreboard_t * sb, u32 start, u32 end)
  * snd_una.
  */
 u8
-tcp_scoreboard_is_sane_post_recovery (tcp_connection_t * tc)
+tcp_scoreboard_is_sane_post_recovery (tcp_connection_t *tc)
 {
   sack_scoreboard_hole_t *hole;
   hole = scoreboard_first_hole (&tc->sack_sb);
-  return (!hole || (seq_geq (hole->start, tc->snd_una)
-		    && seq_lt (hole->end, tc->snd_nxt)));
+  return (!hole || (seq_geq (hole->start, tc->snd_una) &&
+		    seq_lt (hole->end, tc->snd_nxt)));
 }
 
 void
-tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
+tcp_rcv_sacks (tcp_connection_t *tc, u32 ack)
 {
   sack_scoreboard_hole_t *hole, *next_hole;
   sack_scoreboard_t *sb = &tc->sack_sb;
@@ -335,8 +334,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   sb->last_bytes_delivered = 0;
   sb->rxt_sacked = 0;
 
-  if (!tcp_opts_sack (&tc->rcv_opts) && !sb->sacked_bytes
-      && sb->head == TCP_INVALID_SACK_HOLE_INDEX)
+  if (!tcp_opts_sack (&tc->rcv_opts) && !sb->sacked_bytes &&
+      sb->head == TCP_INVALID_SACK_HOLE_INDEX)
     return;
 
   has_rxt = tcp_in_cong_recovery (tc);
@@ -345,11 +344,9 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   blk = tc->rcv_opts.sacks;
   while (blk < vec_end (tc->rcv_opts.sacks))
     {
-      if (seq_lt (blk->start, blk->end)
-	  && seq_gt (blk->start, tc->snd_una)
-	  && seq_gt (blk->start, ack)
-	  && seq_lt (blk->start, tc->snd_nxt)
-	  && seq_leq (blk->end, tc->snd_nxt))
+      if (seq_lt (blk->start, blk->end) && seq_gt (blk->start, tc->snd_una) &&
+	  seq_gt (blk->start, ack) && seq_lt (blk->start, tc->snd_nxt) &&
+	  seq_leq (blk->end, tc->snd_nxt))
 	{
 	  blk++;
 	  continue;
@@ -436,8 +433,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	}
       /* Keep track of max byte sacked for when the last hole
        * is acked */
-      high_sacked = seq_max (rcv_sacks[vec_len (rcv_sacks) - 1].end,
-			     sb->high_sacked);
+      high_sacked =
+	seq_max (rcv_sacks[vec_len (rcv_sacks) - 1].end, sb->high_sacked);
     }
 
   /* Walk the holes with the SACK blocks */
@@ -445,8 +442,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 
   if (PREDICT_FALSE (sb->is_reneging))
     {
-      sb->last_bytes_delivered += clib_min (hole->start - tc->snd_una,
-					    ack - tc->snd_una);
+      sb->last_bytes_delivered +=
+	clib_min (hole->start - tc->snd_una, ack - tc->snd_una);
       sb->is_reneging = seq_lt (ack, hole->start);
     }
 
@@ -463,8 +460,9 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	      /* If covered by ack, compute delivered bytes */
 	      if (blk->end == ack)
 		{
-		  u32 sacked = next_hole ? next_hole->start :
-		    seq_max (sb->high_sacked, hole->end);
+		  u32 sacked = next_hole ?
+				 next_hole->start :
+				 seq_max (sb->high_sacked, hole->end);
 		  if (PREDICT_FALSE (seq_lt (ack, sacked)))
 		    {
 		      sb->last_bytes_delivered += ack - hole->end;
@@ -476,8 +474,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 		      sb->is_reneging = 0;
 		    }
 		}
-	      scoreboard_update_sacked (sb, hole->start, hole->end,
-					has_rxt, tc->snd_mss);
+	      scoreboard_update_sacked (sb, hole->start, hole->end, has_rxt,
+					tc->snd_mss);
 	      scoreboard_remove_hole (sb, hole);
 	      hole = next_hole;
 	    }
@@ -486,8 +484,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	    {
 	      if (seq_gt (blk->end, hole->start))
 		{
-		  scoreboard_update_sacked (sb, hole->start, blk->end,
-					    has_rxt, tc->snd_mss);
+		  scoreboard_update_sacked (sb, hole->start, blk->end, has_rxt,
+					    tc->snd_mss);
 		  hole->start = blk->end;
 		}
 	      blk_index++;
@@ -499,23 +497,23 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	  if (seq_lt (blk->end, hole->end))
 	    {
 	      u32 hole_index = scoreboard_hole_index (sb, hole);
-	      next_hole = scoreboard_insert_hole (sb, hole_index, blk->end,
-						  hole->end);
+	      next_hole =
+		scoreboard_insert_hole (sb, hole_index, blk->end, hole->end);
 	      /* Pool might've moved */
 	      hole = scoreboard_get_hole (sb, hole_index);
 	      hole->end = blk->start;
 	      next_hole->is_lost = hole->is_lost;
 
-	      scoreboard_update_sacked (sb, blk->start, blk->end,
-					has_rxt, tc->snd_mss);
+	      scoreboard_update_sacked (sb, blk->start, blk->end, has_rxt,
+					tc->snd_mss);
 
 	      blk_index++;
 	      ASSERT (hole->next == scoreboard_hole_index (sb, next_hole));
 	    }
 	  else if (seq_lt (blk->start, hole->end))
 	    {
-	      scoreboard_update_sacked (sb, blk->start, hole->end,
-					has_rxt, tc->snd_mss);
+	      scoreboard_update_sacked (sb, blk->start, hole->end, has_rxt,
+					tc->snd_mss);
 	      hole->end = blk->start;
 	    }
 	  hole = scoreboard_next_hole (sb, hole);
@@ -526,23 +524,25 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   scoreboard_update_bytes (sb, ack, tc->snd_mss);
 
   ASSERT (sb->last_sacked_bytes <= sb->sacked_bytes || tcp_in_recovery (tc));
-  ASSERT (sb->sacked_bytes == 0 || tcp_in_recovery (tc)
-	  || sb->sacked_bytes <= tc->snd_nxt - seq_max (tc->snd_una, ack));
-  ASSERT (sb->last_sacked_bytes + sb->lost_bytes <= tc->snd_nxt
-	  - seq_max (tc->snd_una, ack) || tcp_in_recovery (tc));
-  ASSERT (sb->head == TCP_INVALID_SACK_HOLE_INDEX || tcp_in_recovery (tc)
-	  || sb->is_reneging || sb->holes[sb->head].start == ack);
+  ASSERT (sb->sacked_bytes == 0 || tcp_in_recovery (tc) ||
+	  sb->sacked_bytes <= tc->snd_nxt - seq_max (tc->snd_una, ack));
+  ASSERT (sb->last_sacked_bytes + sb->lost_bytes <=
+	    tc->snd_nxt - seq_max (tc->snd_una, ack) ||
+	  tcp_in_recovery (tc));
+  ASSERT (sb->head == TCP_INVALID_SACK_HOLE_INDEX || tcp_in_recovery (tc) ||
+	  sb->is_reneging || sb->holes[sb->head].start == ack);
   ASSERT (sb->last_lost_bytes <= sb->lost_bytes);
-  ASSERT ((ack - tc->snd_una) + sb->last_sacked_bytes
-	  - sb->last_bytes_delivered >= sb->rxt_sacked);
-  ASSERT ((ack - tc->snd_una) >= tc->sack_sb.last_bytes_delivered
-	  || (tc->flags & TCP_CONN_FINSNT));
+  ASSERT ((ack - tc->snd_una) + sb->last_sacked_bytes -
+	    sb->last_bytes_delivered >=
+	  sb->rxt_sacked);
+  ASSERT ((ack - tc->snd_una) >= tc->sack_sb.last_bytes_delivered ||
+	  (tc->flags & TCP_CONN_FINSNT));
 
   TCP_EVT (TCP_EVT_CC_SCOREBOARD, tc);
 }
 
 static u8
-tcp_sack_vector_is_sane (sack_block_t * sacks)
+tcp_sack_vector_is_sane (sack_block_t *sacks)
 {
   int i;
   for (i = 1; i < vec_len (sacks); i++)
@@ -565,7 +565,7 @@ tcp_sack_vector_is_sane (sack_block_t * sacks)
  * @param end End sequence of the newest SACK block
  */
 void
-tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
+tcp_update_sack_list (tcp_connection_t *tc, u32 start, u32 end)
 {
   sack_block_t *new_list = tc->snd_sacks_fl, *block = 0;
   int i;
@@ -587,8 +587,8 @@ tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
 	continue;
 
       /* Merge or drop if segment overlapped by the new segment */
-      if (block && (seq_geq (tc->snd_sacks[i].end, new_list[0].start)
-		    && seq_leq (tc->snd_sacks[i].start, new_list[0].end)))
+      if (block && (seq_geq (tc->snd_sacks[i].end, new_list[0].start) &&
+		    seq_leq (tc->snd_sacks[i].start, new_list[0].end)))
 	{
 	  if (seq_lt (tc->snd_sacks[i].start, new_list[0].start))
 	    new_list[0].start = tc->snd_sacks[i].start;
@@ -614,7 +614,7 @@ tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
 }
 
 u32
-tcp_sack_list_bytes (tcp_connection_t * tc)
+tcp_sack_list_bytes (tcp_connection_t *tc)
 {
   u32 bytes = 0, i;
   for (i = 0; i < vec_len (tc->snd_sacks); i++)

@@ -82,7 +82,7 @@ lisp_gpe_tenant_find_or_create (u32 vni)
  * @brief If there are no more locks/users of te tenant, then delete it
  */
 static void
-lisp_gpe_tenant_delete_if_empty (lisp_gpe_tenant_t * lt)
+lisp_gpe_tenant_delete_if_empty (lisp_gpe_tenant_t *lt)
 {
   int i;
 
@@ -122,9 +122,8 @@ lisp_gpe_tenant_l3_iface_add_or_lock (u32 vni, u32 table_id,
   if (0 == lt->lt_locks[LISP_GPE_TENANT_LOCK_L3_IFACE])
     {
       /* create the l3 interface since there are currently no users of it */
-      lt->lt_l3_sw_if_index =
-	lisp_gpe_add_l3_iface (&lisp_gpe_main, vni, table_id,
-			       with_default_route);
+      lt->lt_l3_sw_if_index = lisp_gpe_add_l3_iface (
+	&lisp_gpe_main, vni, table_id, with_default_route);
     }
 
   lt->lt_locks[LISP_GPE_TENANT_LOCK_L3_IFACE]++;
@@ -262,20 +261,18 @@ lisp_gpe_tenant_flush (void)
 {
   lisp_gpe_tenant_t *lt;
 
-  /* *INDENT-OFF* */
   pool_foreach (lt, lisp_gpe_tenant_pool)
-   {
-    lisp_gpe_tenant_l2_iface_unlock(lt->lt_vni);
-    lisp_gpe_tenant_l3_iface_unlock(lt->lt_vni);
-  }
-  /* *INDENT-ON* */
+    {
+      lisp_gpe_tenant_l2_iface_unlock (lt->lt_vni);
+      lisp_gpe_tenant_l3_iface_unlock (lt->lt_vni);
+    }
 }
 
 /**
  * @brief Show/display one tenant
  */
 static u8 *
-format_lisp_gpe_tenant (u8 * s, va_list * ap)
+format_lisp_gpe_tenant (u8 *s, va_list *ap)
 {
   const lisp_gpe_tenant_t *lt = va_arg (*ap, lisp_gpe_tenant_t *);
 
@@ -300,28 +297,24 @@ format_lisp_gpe_tenant (u8 * s, va_list * ap)
  * @brief CLI command to show LISP-GPE tenant.
  */
 static clib_error_t *
-lisp_gpe_tenant_show (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+lisp_gpe_tenant_show (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
 {
   lisp_gpe_tenant_t *lt;
 
-  /* *INDENT-OFF* */
   pool_foreach (lt, lisp_gpe_tenant_pool)
-   {
-    vlib_cli_output (vm, "%U", format_lisp_gpe_tenant, lt);
-  }
-  /* *INDENT-ON* */
+    {
+      vlib_cli_output (vm, "%U", format_lisp_gpe_tenant, lt);
+    }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_gpe_tenant_command) = {
   .path = "show gpe tenant",
   .short_help = "show gpe tenant",
   .function = lisp_gpe_tenant_show,
 };
-/* *INDENT-ON* */
 
 
 /*

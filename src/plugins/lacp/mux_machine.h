@@ -13,19 +13,19 @@
  * limitations under the License.
  */
 
-#ifndef	__LACP_MUX_MACHINE_H__
-#define	__LACP_MUX_MACHINE_H__
+#ifndef __LACP_MUX_MACHINE_H__
+#define __LACP_MUX_MACHINE_H__
 
 #include <stdint.h>
 #include <lacp/machine.h>
 
-#define foreach_lacp_mux_event          \
-  _(0, BEGIN, "begin")                  \
-  _(1, SELECTED, "selected")            \
-  _(2, STANDBY, "standby")              \
-  _(3, UNSELECTED, "unselected")        \
-  _(4, READY, "ready")                  \
-  _(5, SYNC, "sync")
+#define foreach_lacp_mux_event                                                \
+  _ (0, BEGIN, "begin")                                                       \
+  _ (1, SELECTED, "selected")                                                 \
+  _ (2, STANDBY, "standby")                                                   \
+  _ (3, UNSELECTED, "unselected")                                             \
+  _ (4, READY, "ready")                                                       \
+  _ (5, SYNC, "sync")
 
 typedef enum
 {
@@ -34,11 +34,11 @@ typedef enum
 #undef _
 } lacp_mux_event_t;
 
-#define foreach_lacp_mux_sm_state       \
-  _(0, DETACHED, "detached")            \
-  _(1, WAITING, "waiting")              \
-  _(2, ATTACHED, "attached")            \
-  _(3, COLLECTING_DISTRIBUTING, "collecting distributing")
+#define foreach_lacp_mux_sm_state                                             \
+  _ (0, DETACHED, "detached")                                                 \
+  _ (1, WAITING, "waiting")                                                   \
+  _ (2, ATTACHED, "attached")                                                 \
+  _ (3, COLLECTING_DISTRIBUTING, "collecting distributing")
 
 typedef enum
 {
@@ -53,18 +53,17 @@ int lacp_mux_action_detached (void *p1, void *p2);
 int lacp_mux_action_attached (void *p1, void *p2);
 int lacp_mux_action_waiting (void *p1, void *p2);
 int lacp_mux_action_collecting_distributing (void *p1, void *p2);
-void lacp_mux_debug_func (member_if_t * mif, int event, int state,
-			  lacp_fsm_state_t * transition);
+void lacp_mux_debug_func (member_if_t *mif, int event, int state,
+			  lacp_fsm_state_t *transition);
 
-#define LACP_ACTION_DETACHED LACP_ACTION_ROUTINE(lacp_mux_action_detached)
-#define LACP_ACTION_ATTACHED LACP_ACTION_ROUTINE(lacp_mux_action_attached)
-#define LACP_ACTION_WAITING LACP_ACTION_ROUTINE(lacp_mux_action_waiting)
-#define LACP_ACTION_COLLECTING_DISTRIBUTING \
-  LACP_ACTION_ROUTINE(lacp_mux_action_collecting_distributing)
+#define LACP_ACTION_DETACHED LACP_ACTION_ROUTINE (lacp_mux_action_detached)
+#define LACP_ACTION_ATTACHED LACP_ACTION_ROUTINE (lacp_mux_action_attached)
+#define LACP_ACTION_WAITING  LACP_ACTION_ROUTINE (lacp_mux_action_waiting)
+#define LACP_ACTION_COLLECTING_DISTRIBUTING                                   \
+  LACP_ACTION_ROUTINE (lacp_mux_action_collecting_distributing)
 
 static inline void
-lacp_start_wait_while_timer (vlib_main_t * vm, member_if_t * mif,
-			     u8 expiration)
+lacp_start_wait_while_timer (vlib_main_t *vm, member_if_t *mif, u8 expiration)
 {
   mif->wait_while_timer = vlib_time_now (vm) + expiration;
 }

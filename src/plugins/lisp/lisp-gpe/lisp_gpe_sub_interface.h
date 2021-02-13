@@ -28,14 +28,14 @@
  */
 typedef struct lisp_gpe_sub_interface_key_t_
 {
-    /**
-     * The local-RLOC. This is the interface's 'source' address.
-     */
+  /**
+   * The local-RLOC. This is the interface's 'source' address.
+   */
   ip_address_t local_rloc;
 
-    /**
-     * The VNI. In network byte order!
-     */
+  /**
+   * The VNI. In network byte order!
+   */
   u32 vni;
 } lisp_gpe_sub_interface_key_t;
 
@@ -80,19 +80,16 @@ typedef struct lisp_gpe_sub_interface_t_
   u32 main_sw_if_index;
 } lisp_gpe_sub_interface_t;
 
-extern index_t lisp_gpe_sub_interface_find_or_create_and_lock (const
-							       ip_address_t *
-							       lrloc,
-							       u32
-							       eid_table_id,
-							       u32 vni);
+extern index_t
+lisp_gpe_sub_interface_find_or_create_and_lock (const ip_address_t *lrloc,
+						u32 eid_table_id, u32 vni);
 
-extern u8 *format_lisp_gpe_sub_interface (u8 * s, va_list * ap);
+extern u8 *format_lisp_gpe_sub_interface (u8 *s, va_list *ap);
 
 extern void lisp_gpe_sub_interface_unlock (index_t itf);
 
-extern const lisp_gpe_sub_interface_t *lisp_gpe_sub_interface_get (index_t
-								   itf);
+extern const lisp_gpe_sub_interface_t *
+lisp_gpe_sub_interface_get (index_t itf);
 
 /**
  * A DB of all L3 sub-interfaces. The key is:{VNI,l-RLOC}
@@ -105,7 +102,7 @@ extern uword *lisp_gpe_sub_interfaces_sw_if_index;
  *  Called from the data-plane
  */
 always_inline u32
-lisp_gpe_sub_interface_find_ip6 (const ip6_address_t * addr, u32 vni)
+lisp_gpe_sub_interface_find_ip6 (const ip6_address_t *addr, u32 vni)
 {
   lisp_gpe_sub_interface_key_t key;
   const uword *p;
@@ -129,7 +126,7 @@ lisp_gpe_sub_interface_find_ip6 (const ip6_address_t * addr, u32 vni)
  *  Called from the data-plane
  */
 always_inline index_t
-lisp_gpe_sub_interface_find_ip4 (const ip4_address_t * addr, u32 vni)
+lisp_gpe_sub_interface_find_ip4 (const ip4_address_t *addr, u32 vni)
 {
   lisp_gpe_sub_interface_key_t key;
   const uword *p;

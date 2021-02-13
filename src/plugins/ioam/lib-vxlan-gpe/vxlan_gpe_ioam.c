@@ -23,7 +23,7 @@
 vxlan_gpe_ioam_main_t vxlan_gpe_ioam_main;
 
 int
-vxlan_gpe_ioam_set_rewrite (vxlan_gpe_tunnel_t * t, int has_trace_option,
+vxlan_gpe_ioam_set_rewrite (vxlan_gpe_tunnel_t *t, int has_trace_option,
 			    int has_pot_option, int has_ppc_option,
 			    u8 ipv6_set)
 {
@@ -40,14 +40,14 @@ vxlan_gpe_ioam_set_rewrite (vxlan_gpe_tunnel_t * t, int has_trace_option,
   /* Work out how much space we need */
   size = sizeof (vxlan_gpe_ioam_hdr_t);
 
-  if (has_trace_option
-      && hm->add_options[VXLAN_GPE_OPTION_TYPE_IOAM_TRACE] != 0)
+  if (has_trace_option &&
+      hm->add_options[VXLAN_GPE_OPTION_TYPE_IOAM_TRACE] != 0)
     {
       size += sizeof (vxlan_gpe_ioam_option_t);
       size += hm->options_size[VXLAN_GPE_OPTION_TYPE_IOAM_TRACE];
     }
-  if (has_pot_option
-      && hm->add_options[VXLAN_GPE_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT] != 0)
+  if (has_pot_option &&
+      hm->add_options[VXLAN_GPE_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT] != 0)
     {
       size += sizeof (vxlan_gpe_ioam_option_t);
       size += hm->options_size[VXLAN_GPE_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT];
@@ -72,29 +72,27 @@ vxlan_gpe_ioam_set_rewrite (vxlan_gpe_tunnel_t * t, int has_trace_option,
 				  sizeof (ip6_vxlan_gpe_header_t));
     }
 
-
   vxlan_gpe_ioam_hdr->type = VXLAN_GPE_PROTOCOL_IOAM;
   /* Length of the header in octets */
   vxlan_gpe_ioam_hdr->length = size;
   vxlan_gpe_ioam_hdr->protocol = t->protocol;
   current = (u8 *) vxlan_gpe_ioam_hdr + sizeof (vxlan_gpe_ioam_hdr_t);
 
-  if (has_trace_option
-      && hm->add_options[VXLAN_GPE_OPTION_TYPE_IOAM_TRACE] != 0)
+  if (has_trace_option &&
+      hm->add_options[VXLAN_GPE_OPTION_TYPE_IOAM_TRACE] != 0)
     {
-      if (0 != hm->add_options[VXLAN_GPE_OPTION_TYPE_IOAM_TRACE] (current,
-								  &trace_data_size))
+      if (0 != hm->add_options[VXLAN_GPE_OPTION_TYPE_IOAM_TRACE](
+		 current, &trace_data_size))
 	return -1;
       current += trace_data_size;
     }
-  if (has_pot_option
-      && hm->add_options[VXLAN_GPE_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT] != 0)
+  if (has_pot_option &&
+      hm->add_options[VXLAN_GPE_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT] != 0)
     {
       pot_data_size =
 	hm->options_size[VXLAN_GPE_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT];
-      if (0 ==
-	  hm->add_options[VXLAN_GPE_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT]
-	  (current, &pot_data_size))
+      if (0 == hm->add_options[VXLAN_GPE_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT](
+		 current, &pot_data_size))
 	current += pot_data_size;
     }
 
@@ -102,7 +100,7 @@ vxlan_gpe_ioam_set_rewrite (vxlan_gpe_tunnel_t * t, int has_trace_option,
 }
 
 int
-vxlan_gpe_ioam_clear_rewrite (vxlan_gpe_tunnel_t * t, int has_trace_option,
+vxlan_gpe_ioam_clear_rewrite (vxlan_gpe_tunnel_t *t, int has_trace_option,
 			      int has_pot_option, int has_ppc_option,
 			      u8 ipv6_set)
 {
@@ -118,14 +116,12 @@ vxlan_gpe_ioam_clear_rewrite (vxlan_gpe_tunnel_t * t, int has_trace_option,
       vxlan6_gpe_rewrite (t, 0, 0, VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP);
     }
 
-
   return 0;
 }
 
 clib_error_t *
-vxlan_gpe_ioam_clear (vxlan_gpe_tunnel_t * t,
-		      int has_trace_option, int has_pot_option,
-		      int has_ppc_option, u8 ipv6_set)
+vxlan_gpe_ioam_clear (vxlan_gpe_tunnel_t *t, int has_trace_option,
+		      int has_pot_option, int has_ppc_option, u8 ipv6_set)
 {
   int rv;
   rv = vxlan_gpe_ioam_clear_rewrite (t, 0, 0, 0, 0);
@@ -136,22 +132,18 @@ vxlan_gpe_ioam_clear (vxlan_gpe_tunnel_t * t,
     }
   else
     {
-      return clib_error_return_code (0, rv, 0,
-				     "vxlan_gpe_ioam_clear_rewrite returned %d",
-				     rv);
+      return clib_error_return_code (
+	0, rv, 0, "vxlan_gpe_ioam_clear_rewrite returned %d", rv);
     }
-
 }
 
-
 clib_error_t *
-vxlan_gpe_ioam_set (vxlan_gpe_tunnel_t * t,
-		    int has_trace_option, int has_pot_option,
-		    int has_ppc_option, u8 ipv6_set)
+vxlan_gpe_ioam_set (vxlan_gpe_tunnel_t *t, int has_trace_option,
+		    int has_pot_option, int has_ppc_option, u8 ipv6_set)
 {
   int rv;
-  rv = vxlan_gpe_ioam_set_rewrite (t, has_trace_option,
-				   has_pot_option, has_ppc_option, ipv6_set);
+  rv = vxlan_gpe_ioam_set_rewrite (t, has_trace_option, has_pot_option,
+				   has_ppc_option, ipv6_set);
 
   if (rv == 0)
     {
@@ -159,50 +151,44 @@ vxlan_gpe_ioam_set (vxlan_gpe_tunnel_t * t,
     }
   else
     {
-      return clib_error_return_code (0, rv, 0,
-				     "vxlan_gpe_ioam_set_rewrite returned %d",
-				     rv);
+      return clib_error_return_code (
+	0, rv, 0, "vxlan_gpe_ioam_set_rewrite returned %d", rv);
     }
-
 }
 
 static void
-vxlan_gpe_set_clear_output_feature_on_intf (vlib_main_t * vm,
-					    u32 sw_if_index0, u8 is_add)
+vxlan_gpe_set_clear_output_feature_on_intf (vlib_main_t *vm, u32 sw_if_index0,
+					    u8 is_add)
 {
 
-
-
-  vnet_feature_enable_disable ("ip4-output", "vxlan-gpe-transit-ioam",
-			       sw_if_index0, is_add,
-			       0 /* void *feature_config */ ,
-			       0 /* u32 n_feature_config_bytes */ );
+  vnet_feature_enable_disable (
+    "ip4-output", "vxlan-gpe-transit-ioam", sw_if_index0, is_add,
+    0 /* void *feature_config */, 0 /* u32 n_feature_config_bytes */);
   return;
 }
 
 void
-vxlan_gpe_clear_output_feature_on_all_intfs (vlib_main_t * vm)
+vxlan_gpe_clear_output_feature_on_all_intfs (vlib_main_t *vm)
 {
   vnet_sw_interface_t *si = 0;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
 
   pool_foreach (si, im->sw_interfaces)
-  {
-    vxlan_gpe_set_clear_output_feature_on_intf (vm, si->sw_if_index, 0);
-  }
+    {
+      vxlan_gpe_set_clear_output_feature_on_intf (vm, si->sw_if_index, 0);
+    }
   return;
 }
 
-
 extern fib_forward_chain_type_t
-fib_entry_get_default_chain_type (const fib_entry_t * fib_entry);
+fib_entry_get_default_chain_type (const fib_entry_t *fib_entry);
 
 int
-vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t * vm,
+vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t *vm,
 					ip46_address_t dst_addr,
-					u32 outer_fib_index,
-					u8 is_ipv4, u8 is_add)
+					u32 outer_fib_index, u8 is_ipv4,
+					u8 is_add)
 {
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
   u32 fib_index0 = 0;
@@ -213,11 +199,11 @@ vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t * vm,
   u32 adj_index0;
   ip_adjacency_t *adj0;
   fib_prefix_t fib_prefix;
-  //fib_forward_chain_type_t fct;
+  // fib_forward_chain_type_t fct;
   load_balance_t *lb_m, *lb_b;
   const dpo_id_t *dpo0, *dpo1;
   u32 i, j;
-  //vnet_hw_interface_t *hw;
+  // vnet_hw_interface_t *hw;
 
   if (is_ipv4)
     {
@@ -234,14 +220,14 @@ vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t * vm,
   fei = fib_table_lookup (fib_index0, &fib_prefix);
   fib_entry = fib_entry_get (fei);
 
-  //fct = fib_entry_get_default_chain_type (fib_entry);
+  // fct = fib_entry_get_default_chain_type (fib_entry);
 
-  if (!dpo_id_is_valid (&fib_entry->fe_lb /*[fct] */ ))
+  if (!dpo_id_is_valid (&fib_entry->fe_lb /*[fct] */))
     {
       return (-1);
     }
 
-  lb_m = load_balance_get (fib_entry->fe_lb /*[fct] */ .dpoi_index);
+  lb_m = load_balance_get (fib_entry->fe_lb /*[fct] */.dpoi_index);
 
   for (i = 0; i < lb_m->lb_n_buckets; i++)
     {
@@ -272,15 +258,16 @@ vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t * vm,
 		      continue;
 		    }
 
-
 		  if (is_add)
 		    {
-		      vnet_feature_enable_disable ("ip4-output",
-						   "vxlan-gpe-transit-ioam",
-						   sw_if_index0, is_add, 0
-						   /* void *feature_config */
-						   , 0	/* u32 n_feature_config_bytes */
-			);
+		      vnet_feature_enable_disable (
+			"ip4-output", "vxlan-gpe-transit-ioam", sw_if_index0,
+			is_add,
+			0
+			/* void *feature_config */
+			,
+			0 /* u32 n_feature_config_bytes */
+		      );
 
 		      vec_validate_init_empty (hm->bool_ref_by_sw_if_index,
 					       sw_if_index0, ~0);
@@ -326,21 +313,17 @@ vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t * vm,
 	   * re-program the output feature on the egress interface.
 	   */
 
-	  const fib_prefix_t tun_dst_pfx = {
-	    .fp_len = 32,
-	    .fp_proto = FIB_PROTOCOL_IP4,
-	    .fp_addr = {.ip4 = t1->dst_addr.ip4,}
-	  };
+	  const fib_prefix_t tun_dst_pfx = { .fp_len = 32,
+					     .fp_proto = FIB_PROTOCOL_IP4,
+					     .fp_addr = {
+					       .ip4 = t1->dst_addr.ip4,
+					     } };
 
-	  t1->fib_entry_index =
-	    fib_table_entry_special_add (outer_fib_index,
-					 &tun_dst_pfx,
-					 FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE);
-	  t1->sibling_index =
-	    fib_entry_child_add (t1->fib_entry_index,
-				 hm->fib_entry_type, t1 - hm->dst_tunnels);
+	  t1->fib_entry_index = fib_table_entry_special_add (
+	    outer_fib_index, &tun_dst_pfx, FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE);
+	  t1->sibling_index = fib_entry_child_add (
+	    t1->fib_entry_index, hm->fib_entry_type, t1 - hm->dst_tunnels);
 	  t1->outer_fib_index = outer_fib_index;
-
 	}
       else
 	{
@@ -377,11 +360,11 @@ vxlan_gpe_refresh_output_feature_on_all_dest (void)
   vec_free (hm->bool_ref_by_sw_if_index);
   vec_validate_init_empty (hm->bool_ref_by_sw_if_index, i, ~0);
   pool_foreach (t, hm->dst_tunnels)
-  {
-    vxlan_gpe_enable_disable_ioam_for_dest
-      (hm->vlib_main, t->dst_addr, t->outer_fib_index,
-       (t->fp_proto == FIB_PROTOCOL_IP4), 1 /* is_add */ );
-  }
+    {
+      vxlan_gpe_enable_disable_ioam_for_dest (
+	hm->vlib_main, t->dst_addr, t->outer_fib_index,
+	(t->fp_proto == FIB_PROTOCOL_IP4), 1 /* is_add */);
+    }
   return;
 }
 
@@ -390,13 +373,13 @@ vxlan_gpe_clear_output_feature_on_select_intfs (void)
 {
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
   u32 sw_if_index0 = 0;
-  for (sw_if_index0 = 0;
-       sw_if_index0 < vec_len (hm->bool_ref_by_sw_if_index); sw_if_index0++)
+  for (sw_if_index0 = 0; sw_if_index0 < vec_len (hm->bool_ref_by_sw_if_index);
+       sw_if_index0++)
     {
       if (hm->bool_ref_by_sw_if_index[sw_if_index0] == 0xFF)
 	{
-	  vxlan_gpe_set_clear_output_feature_on_intf
-	    (hm->vlib_main, sw_if_index0, 0);
+	  vxlan_gpe_set_clear_output_feature_on_intf (hm->vlib_main,
+						      sw_if_index0, 0);
 	}
     }
 
@@ -404,10 +387,9 @@ vxlan_gpe_clear_output_feature_on_select_intfs (void)
 }
 
 static clib_error_t *
-vxlan_gpe_set_ioam_rewrite_command_fn (vlib_main_t *
-				       vm,
-				       unformat_input_t
-				       * input, vlib_cli_command_t * cmd)
+vxlan_gpe_set_ioam_rewrite_command_fn (vlib_main_t *vm,
+				       unformat_input_t *input,
+				       vlib_cli_command_t *cmd)
 {
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
   ip46_address_t local, remote;
@@ -431,8 +413,8 @@ vxlan_gpe_set_ioam_rewrite_command_fn (vlib_main_t *
 	  local_set = 1;
 	  ipv4_set = 1;
 	}
-      else
-	if (unformat (input, "remote %U", unformat_ip4_address, &remote.ip4))
+      else if (unformat (input, "remote %U", unformat_ip4_address,
+			 &remote.ip4))
 	{
 	  remote_set = 1;
 	  ipv4_set = 1;
@@ -442,8 +424,8 @@ vxlan_gpe_set_ioam_rewrite_command_fn (vlib_main_t *
 	  local_set = 1;
 	  ipv6_set = 1;
 	}
-      else
-	if (unformat (input, "remote %U", unformat_ip6_address, &remote.ip6))
+      else if (unformat (input, "remote %U", unformat_ip6_address,
+			 &remote.ip6))
 	{
 	  remote_set = 1;
 	  ipv6_set = 1;
@@ -462,14 +444,9 @@ vxlan_gpe_set_ioam_rewrite_command_fn (vlib_main_t *
     return clib_error_return (0, "tunnel remote address not specified");
   if (ipv4_set && ipv6_set)
     return clib_error_return (0, "both IPv4 and IPv6 addresses specified");
-  if ((ipv4_set
-       && memcmp (&local.ip4, &remote.ip4,
-		  sizeof (local.ip4)) == 0) || (ipv6_set
-						&&
-						memcmp
-						(&local.ip6,
-						 &remote.ip6,
-						 sizeof (local.ip6)) == 0))
+  if ((ipv4_set &&
+       memcmp (&local.ip4, &remote.ip4, sizeof (local.ip4)) == 0) ||
+      (ipv6_set && memcmp (&local.ip6, &remote.ip6, sizeof (local.ip6)) == 0))
     return clib_error_return (0, "src and dst addresses are identical");
   if (vni_set == 0)
     return clib_error_return (0, "vni not specified");
@@ -496,9 +473,8 @@ vxlan_gpe_set_ioam_rewrite_command_fn (vlib_main_t *
   t = pool_elt_at_index (gm->tunnels, p[0]);
   if (!disable)
     {
-      rv =
-	vxlan_gpe_ioam_set (t, hm->has_trace_option,
-			    hm->has_pot_option, hm->has_ppc_option, ipv6_set);
+      rv = vxlan_gpe_ioam_set (t, hm->has_trace_option, hm->has_pot_option,
+			       hm->has_ppc_option, ipv6_set);
     }
   else
     {
@@ -508,19 +484,15 @@ vxlan_gpe_set_ioam_rewrite_command_fn (vlib_main_t *
 }
 
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vxlan_gpe_set_ioam_rewrite_cmd, static) = {
   .path = "set vxlan-gpe-ioam",
   .short_help = "set vxlan-gpe-ioam vxlan <src-ip> <dst_ip> <vnid> [disable]",
   .function = vxlan_gpe_set_ioam_rewrite_command_fn,
 };
-/* *INDENT-ON* */
-
-
 
 clib_error_t *
-vxlan_gpe_ioam_enable (int has_trace_option,
-		       int has_pot_option, int has_ppc_option)
+vxlan_gpe_ioam_enable (int has_trace_option, int has_pot_option,
+		       int has_ppc_option)
 {
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
   hm->has_trace_option = has_trace_option;
@@ -535,9 +507,8 @@ vxlan_gpe_ioam_enable (int has_trace_option,
 }
 
 clib_error_t *
-vxlan_gpe_ioam_disable (int
-			has_trace_option,
-			int has_pot_option, int has_ppc_option)
+vxlan_gpe_ioam_disable (int has_trace_option, int has_pot_option,
+			int has_ppc_option)
 {
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
   hm->has_trace_option = has_trace_option;
@@ -560,9 +531,8 @@ vxlan_gpe_set_next_override (uword next)
 }
 
 static clib_error_t *
-vxlan_gpe_set_ioam_flags_command_fn (vlib_main_t * vm,
-				     unformat_input_t
-				     * input, vlib_cli_command_t * cmd)
+vxlan_gpe_set_ioam_flags_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				     vlib_cli_command_t *cmd)
 {
   int has_trace_option = 0;
   int has_pot_option = 0;
@@ -584,31 +554,26 @@ vxlan_gpe_set_ioam_flags_command_fn (vlib_main_t * vm,
 	break;
     }
 
-
   rv =
     vxlan_gpe_ioam_enable (has_trace_option, has_pot_option, has_ppc_option);
   return rv;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (vxlan_gpe_set_ioam_flags_cmd, static) =
-{
-.path = "set vxlan-gpe-ioam rewrite",
-.short_help = "set vxlan-gpe-ioam [trace] [pot] [ppc <encap|decap>]",
-.function = vxlan_gpe_set_ioam_flags_command_fn,};
-/* *INDENT-ON* */
+VLIB_CLI_COMMAND (vxlan_gpe_set_ioam_flags_cmd, static) = {
+  .path = "set vxlan-gpe-ioam rewrite",
+  .short_help = "set vxlan-gpe-ioam [trace] [pot] [ppc <encap|decap>]",
+  .function = vxlan_gpe_set_ioam_flags_command_fn,
+};
 
-
-int vxlan_gpe_ioam_disable_for_dest
-  (vlib_main_t * vm, ip46_address_t dst_addr, u32 outer_fib_index,
-   u8 ipv4_set)
+int
+vxlan_gpe_ioam_disable_for_dest (vlib_main_t *vm, ip46_address_t dst_addr,
+				 u32 outer_fib_index, u8 ipv4_set)
 {
   vxlan_gpe_ioam_dest_tunnels_t *t;
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
 
-  vxlan_gpe_enable_disable_ioam_for_dest (hm->vlib_main,
-					  dst_addr, outer_fib_index, ipv4_set,
-					  0);
+  vxlan_gpe_enable_disable_ioam_for_dest (hm->vlib_main, dst_addr,
+					  outer_fib_index, ipv4_set, 0);
   if (pool_elts (hm->dst_tunnels) == 0)
     {
       vxlan_gpe_clear_output_feature_on_select_intfs ();
@@ -616,20 +581,19 @@ int vxlan_gpe_ioam_disable_for_dest
     }
 
   pool_foreach (t, hm->dst_tunnels)
-  {
-    vxlan_gpe_enable_disable_ioam_for_dest
-      (hm->vlib_main,
-       t->dst_addr,
-       t->outer_fib_index,
-       (t->fp_proto == FIB_PROTOCOL_IP4), 1 /* is_add */ );
-  }
+    {
+      vxlan_gpe_enable_disable_ioam_for_dest (
+	hm->vlib_main, t->dst_addr, t->outer_fib_index,
+	(t->fp_proto == FIB_PROTOCOL_IP4), 1 /* is_add */);
+    }
   vxlan_gpe_clear_output_feature_on_select_intfs ();
   return (0);
-
 }
 
-static clib_error_t *vxlan_gpe_set_ioam_transit_rewrite_command_fn
-  (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
+static clib_error_t *
+vxlan_gpe_set_ioam_transit_rewrite_command_fn (vlib_main_t *vm,
+					       unformat_input_t *input,
+					       vlib_cli_command_t *cmd)
 {
   vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
   ip46_address_t dst_addr;
@@ -646,9 +610,8 @@ static clib_error_t *vxlan_gpe_set_ioam_transit_rewrite_command_fn
 	  dst_addr_set = 1;
 	  ipv4_set = 1;
 	}
-      else
-	if (unformat
-	    (input, "dst-ip %U", unformat_ip6_address, &dst_addr.ip6))
+      else if (unformat (input, "dst-ip %U", unformat_ip6_address,
+			 &dst_addr.ip6))
 	{
 	  dst_addr_set = 1;
 	  ipv6_set = 1;
@@ -669,47 +632,43 @@ static clib_error_t *vxlan_gpe_set_ioam_transit_rewrite_command_fn
     return clib_error_return (0, "both IPv4 and IPv6 addresses specified");
   if (!disable)
     {
-      vxlan_gpe_enable_disable_ioam_for_dest (hm->vlib_main,
-					      dst_addr, outer_fib_index,
-					      ipv4_set, 1);
+      vxlan_gpe_enable_disable_ioam_for_dest (hm->vlib_main, dst_addr,
+					      outer_fib_index, ipv4_set, 1);
     }
   else
     {
-      vxlan_gpe_ioam_disable_for_dest
-	(vm, dst_addr, outer_fib_index, ipv4_set);
+      vxlan_gpe_ioam_disable_for_dest (vm, dst_addr, outer_fib_index,
+				       ipv4_set);
     }
   return rv;
 }
 
-       /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vxlan_gpe_set_ioam_transit_rewrite_cmd, static) = {
   .path = "set vxlan-gpe-ioam-transit",
-  .short_help = "set vxlan-gpe-ioam-transit dst-ip <dst_ip> [outer-fib-index <outer_fib_index>] [disable]",
+  .short_help = "set vxlan-gpe-ioam-transit dst-ip <dst_ip> [outer-fib-index "
+		"<outer_fib_index>] [disable]",
   .function = vxlan_gpe_set_ioam_transit_rewrite_command_fn,
 };
-/* *INDENT-ON* */
 
-clib_error_t *clear_vxlan_gpe_ioam_rewrite_command_fn
-  (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
+clib_error_t *
+clear_vxlan_gpe_ioam_rewrite_command_fn (vlib_main_t *vm,
+					 unformat_input_t *input,
+					 vlib_cli_command_t *cmd)
 {
   return (vxlan_gpe_ioam_disable (0, 0, 0));
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (vxlan_gpe_clear_ioam_flags_cmd, static) =
-{
-.path = "clear vxlan-gpe-ioam rewrite",
-.short_help = "clear vxlan-gpe-ioam rewrite",
-.function = clear_vxlan_gpe_ioam_rewrite_command_fn,
+VLIB_CLI_COMMAND (vxlan_gpe_clear_ioam_flags_cmd, static) = {
+  .path = "clear vxlan-gpe-ioam rewrite",
+  .short_help = "clear vxlan-gpe-ioam rewrite",
+  .function = clear_vxlan_gpe_ioam_rewrite_command_fn,
 };
-/* *INDENT-ON* */
-
 
 /**
  * Function definition to backwalk a FIB node
  */
 static fib_node_back_walk_rc_t
-vxlan_gpe_ioam_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+vxlan_gpe_ioam_back_walk (fib_node_t *node, fib_node_back_walk_ctx_t *ctx)
 {
   vxlan_gpe_refresh_output_feature_on_all_dest ();
   return (FIB_NODE_BACK_WALK_CONTINUE);
@@ -729,11 +688,10 @@ vxlan_gpe_ioam_fib_node_get (fib_node_index_t index)
  * Function definition to inform the FIB node that its last lock has gone.
  */
 static void
-vxlan_gpe_ioam_last_lock_gone (fib_node_t * node)
+vxlan_gpe_ioam_last_lock_gone (fib_node_t *node)
 {
   ASSERT (0);
 }
-
 
 /*
  * Virtual function table registered by MPLS GRE tunnels

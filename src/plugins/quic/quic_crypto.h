@@ -22,11 +22,10 @@ struct quic_ctx_t;
 
 extern ptls_cipher_suite_t *quic_crypto_cipher_suites[];
 
-int quic_encrypt_ticket_cb (ptls_encrypt_ticket_t * _self, ptls_t * tls,
-			    int is_encrypt, ptls_buffer_t * dst,
+int quic_encrypt_ticket_cb (ptls_encrypt_ticket_t *_self, ptls_t *tls,
+			    int is_encrypt, ptls_buffer_t *dst,
 			    ptls_iovec_t src);
-void quic_crypto_decrypt_packet (quic_ctx_t * qctx,
-				 quic_rx_packet_ctx_t * pctx);
+void quic_crypto_decrypt_packet (quic_ctx_t *qctx, quic_rx_packet_ctx_t *pctx);
 
 #endif /* __included_vpp_quic_crypto_h__ */
 /*

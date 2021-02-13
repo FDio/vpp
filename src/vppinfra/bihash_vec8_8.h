@@ -20,10 +20,10 @@
 #undef BIHASH_LAZY_INSTANTIATE
 #undef BIHASH_BUCKET_PREFETCH_CACHE_LINES
 
-#define BIHASH_TYPE _vec8_8
-#define BIHASH_KVP_PER_PAGE 4
-#define BIHASH_KVP_AT_BUCKET_LEVEL 0
-#define BIHASH_LAZY_INSTANTIATE 1
+#define BIHASH_TYPE			   _vec8_8
+#define BIHASH_KVP_PER_PAGE		   4
+#define BIHASH_KVP_AT_BUCKET_LEVEL	   0
+#define BIHASH_LAZY_INSTANTIATE		   1
 #define BIHASH_BUCKET_PREFETCH_CACHE_LINES 1
 
 #ifndef __included_bihash_vec8_8_h__
@@ -38,15 +38,15 @@
 /** 8 octet key, 8 octet key value pair */
 typedef struct
 {
-  u64 key;			/**< the key */
-  u64 value;			/**< the value */
+  u64 key;   /**< the key */
+  u64 value; /**< the value */
 } clib_bihash_kv_vec8_8_t;
 
 /** Decide if a clib_bihash_kv_vec8_8_t instance is free
     @param v- pointer to the (key,value) pair
 */
 static inline int
-clib_bihash_is_free_vec8_8 (clib_bihash_kv_vec8_8_t * v)
+clib_bihash_is_free_vec8_8 (clib_bihash_kv_vec8_8_t *v)
 {
   if (v->key == ~0ULL && v->value == ~0ULL)
     return 1;
@@ -57,7 +57,7 @@ clib_bihash_is_free_vec8_8 (clib_bihash_kv_vec8_8_t * v)
     @param v - pointer to the (key,value) pair, hash the key (only)
 */
 static inline u64
-clib_bihash_hash_vec8_8 (clib_bihash_kv_vec8_8_t * v)
+clib_bihash_hash_vec8_8 (clib_bihash_kv_vec8_8_t *v)
 {
   u8 *keyp = (u8 *) (v->key);
   /* Note: to torture-test linear scan, make this fn return a constant */
@@ -87,12 +87,12 @@ clib_bihash_hash_vec8_8 (clib_bihash_kv_vec8_8_t * v)
     @return s - the u8 * vector under construction
 */
 static inline u8 *
-format_bihash_kvp_vec8_8 (u8 * s, va_list * args)
+format_bihash_kvp_vec8_8 (u8 *s, va_list *args)
 {
   clib_bihash_kv_vec8_8_t *v = va_arg (*args, clib_bihash_kv_vec8_8_t *);
 
-  s = format (s, "key %U value %llu",
-	      format_hex_bytes, v->key, vec_len ((u8 *) (v->key)), v->value);
+  s = format (s, "key %U value %llu", format_hex_bytes, v->key,
+	      vec_len ((u8 *) (v->key)), v->value);
   return s;
 }
 

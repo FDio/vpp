@@ -48,7 +48,7 @@ void os_panic (void);
 void os_exit (int code);
 
 /* External function to print a line. */
-void os_puts (u8 * string, uword length, uword is_error);
+void os_puts (u8 *string, uword length, uword is_error);
 
 /* External function to handle out of memory. */
 void os_out_of_memory (void);
@@ -83,8 +83,8 @@ os_set_numa_index (uword numa_index)
   __os_numa_index = numa_index;
 }
 
-static_always_inline uword
-os_get_cpu_number (void) __attribute__ ((deprecated));
+static_always_inline uword os_get_cpu_number (void)
+  __attribute__ ((deprecated));
 
 static_always_inline uword
 os_get_cpu_number (void)

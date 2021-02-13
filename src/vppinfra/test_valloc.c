@@ -48,7 +48,7 @@ typedef struct
 test_main_t test_main;
 
 clib_error_t *
-test_valloc (test_main_t * tm)
+test_valloc (test_main_t *tm)
 {
   clib_valloc_chunk_t _ip, *ip = &_ip;
   uword baseva;
@@ -60,7 +60,7 @@ test_valloc (test_main_t * tm)
   ip->baseva = 0x20000000;
   ip->size = 1024;
 
-  clib_valloc_init (&tm->valloc_main, ip, 1 /* lock */ );
+  clib_valloc_init (&tm->valloc_main, ip, 1 /* lock */);
 
   ip->baseva = 0x20000000 + 1024;
   ip->size = 1024 * 1024 * 1024 - 1024;
@@ -70,7 +70,7 @@ test_valloc (test_main_t * tm)
   for (i = 0; i < tm->nitems; i++)
     {
       baseva = clib_valloc_alloc (&tm->valloc_main, 1024,
-				  1 /* fail:os_out_of_memory */ );
+				  1 /* fail:os_out_of_memory */);
       vec_add1 (tm->basevas, baseva);
       vec_add1 (tm->item_in_table, 1);
     }
@@ -92,7 +92,7 @@ test_valloc (test_main_t * tm)
       else
 	{
 	  baseva = clib_valloc_alloc (&tm->valloc_main, 1024,
-				      1 /* fail:os_out_of_memory */ );
+				      1 /* fail:os_out_of_memory */);
 	  tm->basevas[index] = baseva;
 	  tm->item_in_table[index] = 1;
 	  if (0)
@@ -130,7 +130,7 @@ test_valloc (test_main_t * tm)
 			  fformat (stdout, "BUG: baseva %llx chunk %d busy\n",
 				   tm->basevas[j], p[0]);
 			  fformat (stdout, "%U\n", format_valloc,
-				   &tm->valloc_main, 1 /* verbose */ );
+				   &tm->valloc_main, 1 /* verbose */);
 			  ASSERT ((ip->flags & CLIB_VALLOC_BUSY) == 0);
 			}
 		    }
@@ -177,8 +177,8 @@ test_valloc (test_main_t * tm)
 		{
 		  fformat (stdout, "BUG: baseva %llx chunk %d busy\n",
 			   tm->basevas[i], p[0]);
-		  fformat (stdout, "%U\n", format_valloc,
-			   &tm->valloc_main, 1 /* verbose */ );
+		  fformat (stdout, "%U\n", format_valloc, &tm->valloc_main,
+			   1 /* verbose */);
 		  ASSERT ((ip->flags & CLIB_VALLOC_BUSY) == 0);
 		}
 	    }
@@ -193,13 +193,13 @@ test_valloc (test_main_t * tm)
 	clib_valloc_free (&tm->valloc_main, tm->basevas[i]);
     }
 
-  fformat (stdout, "%U", format_valloc, &tm->valloc_main, 1 /* verbose */ );
+  fformat (stdout, "%U", format_valloc, &tm->valloc_main, 1 /* verbose */);
 
   return 0;
 }
 
 clib_error_t *
-test_valloc_main (unformat_input_t * i)
+test_valloc_main (unformat_input_t *i)
 {
   test_main_t *tm = &test_main;
   clib_error_t *error;

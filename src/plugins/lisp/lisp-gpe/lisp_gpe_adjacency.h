@@ -31,12 +31,11 @@
  * adjacencies are thus present in the EID space.
  * The peer is identified by the key:{remote-rloc, sub-interface}, which is
  * equivalent to the usal adjacency key {next-hop, interface}. So curiously
- * the rloc address from the underlay is used as a next hop address in the overlay
- * This is OK because:
- *  1 - the RLOC is unique in the underlay AND there is only one underlay VRF per
- *      overlay
- *  2 - the RLOC may overlap with an address in the overlay, but we do not create
- *      an adj-fib (i.e. a route in the overlay FIB for the rloc)
+ * the rloc address from the underlay is used as a next hop address in the
+ * overlay This is OK because: 1 - the RLOC is unique in the underlay AND there
+ * is only one underlay VRF per overlay 2 - the RLOC may overlap with an
+ * address in the overlay, but we do not create an adj-fib (i.e. a route in the
+ * overlay FIB for the rloc)
  *
  *
  */
@@ -96,23 +95,19 @@ typedef struct lisp_gpe_adjacency_t_
 
 } lisp_gpe_adjacency_t;
 
-extern index_t lisp_gpe_adjacency_find_or_create_and_lock (const
-							   locator_pair_t *
-							   pair,
-							   u32 rloc_fib_index,
-							   u32 vni);
+extern index_t
+lisp_gpe_adjacency_find_or_create_and_lock (const locator_pair_t *pair,
+					    u32 rloc_fib_index, u32 vni);
 
 extern void lisp_gpe_adjacency_unlock (index_t l3si);
 
 extern const lisp_gpe_adjacency_t *lisp_gpe_adjacency_get (index_t l3si);
 
-extern void lisp_gpe_update_adjacency (vnet_main_t * vnm,
-				       u32 sw_if_index, adj_index_t ai);
-extern u8 *lisp_gpe_build_rewrite (vnet_main_t * vnm,
-				   u32 sw_if_index,
+extern void lisp_gpe_update_adjacency (vnet_main_t *vnm, u32 sw_if_index,
+				       adj_index_t ai);
+extern u8 *lisp_gpe_build_rewrite (vnet_main_t *vnm, u32 sw_if_index,
 				   vnet_link_t link_type,
 				   const void *dst_address);
-
 
 /**
  * @brief Flags for displaying the adjacency
@@ -123,7 +118,7 @@ typedef enum lisp_gpe_adjacency_format_flags_t_
   LISP_GPE_ADJ_FORMAT_FLAG_DETAIL,
 } lisp_gpe_adjacency_format_flags_t;
 
-extern u8 *format_lisp_gpe_adjacency (u8 * s, va_list * args);
+extern u8 *format_lisp_gpe_adjacency (u8 *s, va_list *args);
 
 #endif
 

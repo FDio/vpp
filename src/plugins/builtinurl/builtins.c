@@ -19,8 +19,8 @@
 #include <vpp/app/version.h>
 
 int
-handle_get_version (http_builtin_method_type_t reqtype,
-		    u8 * request, http_session_t * hs)
+handle_get_version (http_builtin_method_type_t reqtype, u8 *request,
+		    http_session_t *hs)
 {
   u8 *s = 0;
 
@@ -37,10 +37,10 @@ handle_get_version (http_builtin_method_type_t reqtype,
 }
 
 void
-trim_path_from_request (u8 * s, char *path)
+trim_path_from_request (u8 *s, char *path)
 {
   u8 *cp;
-  int trim_length = strlen (path) + 1 /* remove '?' */ ;
+  int trim_length = strlen (path) + 1 /* remove '?' */;
 
   /* Get rid of the path and question-mark */
   vec_delete (s, trim_length, 0);
@@ -64,8 +64,8 @@ trim_path_from_request (u8 * s, char *path)
 }
 
 int
-handle_get_interface_stats (http_builtin_method_type_t reqtype,
-			    u8 * request, http_session_t * hs)
+handle_get_interface_stats (http_builtin_method_type_t reqtype, u8 *request,
+			    http_session_t *hs)
 {
   u8 *s = 0, *stats = 0;
   uword *p;
@@ -98,14 +98,13 @@ handle_get_interface_stats (http_builtin_method_type_t reqtype,
 
       vec_add1 (sw_if_indices, p[0]);
     }
-  else				/* default, HTTP_BUILTIN_METHOD_GET */
+  else /* default, HTTP_BUILTIN_METHOD_GET */
     {
-      /* *INDENT-OFF* */
+
       pool_foreach (hi, im->hw_interfaces)
-       {
-        vec_add1 (sw_if_indices, hi->sw_if_index);
-      }
-      /* *INDENT-ON* */
+	{
+	  vec_add1 (sw_if_indices, hi->sw_if_index);
+	}
     }
 
   s = format (s, "{%sinterface_stats%s: [\n", q, q);
@@ -122,7 +121,7 @@ handle_get_interface_stats (http_builtin_method_type_t reqtype,
 		  format_vnet_sw_if_index_name, vnm, sw_if_indices[i], q);
 
       stats = format_vnet_sw_interface_cntrs (stats, &vnm->interface_main, si,
-					      1 /* want json */ );
+					      1 /* want json */);
       if (vec_len (stats))
 	s = format (s, "%v}", stats);
       else
@@ -143,8 +142,8 @@ out:
 }
 
 int
-handle_get_interface_list (http_builtin_method_type_t reqtype,
-			   u8 * request, http_session_t * hs)
+handle_get_interface_list (http_builtin_method_type_t reqtype, u8 *request,
+			   http_session_t *hs)
 {
   u8 *s = 0;
   int i;
@@ -155,14 +154,13 @@ handle_get_interface_list (http_builtin_method_type_t reqtype,
   int need_comma = 0;
 
   /* Construct vector of active hw_if_indexes ... */
-  /* *INDENT-OFF* */
+
   pool_foreach (hi, im->hw_interfaces)
-   {
-    /* No point in mentioning "local0"... */
-    if (hi - im->hw_interfaces)
-      vec_add1 (hw_if_indices, hi - im->hw_interfaces);
-  }
-  /* *INDENT-ON* */
+    {
+      /* No point in mentioning "local0"... */
+      if (hi - im->hw_interfaces)
+	vec_add1 (hw_if_indices, hi - im->hw_interfaces);
+    }
 
   /* Build answer */
   s = format (s, "{\"interface_list\": [\n");
@@ -185,17 +183,17 @@ handle_get_interface_list (http_builtin_method_type_t reqtype,
 }
 
 void
-builtinurl_handler_init (builtinurl_main_t * bm)
+builtinurl_handler_init (builtinurl_main_t *bm)
 {
 
   bm->register_handler (handle_get_version, "version.json",
 			HTTP_BUILTIN_METHOD_GET);
   bm->register_handler (handle_get_interface_list, "interface_list.json",
 			HTTP_BUILTIN_METHOD_GET);
-  bm->register_handler (handle_get_interface_stats,
-			"interface_stats.json", HTTP_BUILTIN_METHOD_GET);
-  bm->register_handler (handle_get_interface_stats,
-			"interface_stats.json", HTTP_BUILTIN_METHOD_POST);
+  bm->register_handler (handle_get_interface_stats, "interface_stats.json",
+			HTTP_BUILTIN_METHOD_GET);
+  bm->register_handler (handle_get_interface_stats, "interface_stats.json",
+			HTTP_BUILTIN_METHOD_POST);
 }
 
 /*

@@ -22,7 +22,7 @@ vat_main_t vat_main;
 #include <vlibapi/api_helper_macros.h>
 
 void
-vat_suspend (vlib_main_t * vm, f64 interval)
+vat_suspend (vlib_main_t *vm, f64 interval)
 {
   /* do nothing in the standalone version, just return */
 }
@@ -42,7 +42,6 @@ connect_to_vpe (char *name)
   return 0;
 }
 
-/* *INDENT-OFF* */
 
 
 vlib_main_t vlib_global_main;
@@ -52,12 +51,10 @@ static struct
   vec_header_t h;
   vlib_main_t *vm;
 } __attribute__ ((packed)) __bootstrap_vlib_main_vector
-__attribute__ ((aligned (CLIB_CACHE_LINE_BYTES))) =
-{
-  .h.len = 1,
-  .vm = &vlib_global_main,
-};
-/* *INDENT-ON* */
+  __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES))) = {
+    .h.len = 1,
+    .vm = &vlib_global_main,
+  };
 
 vlib_main_t **vlib_mains = &__bootstrap_vlib_main_vector.vm;
 
@@ -68,7 +65,7 @@ vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...)
 }
 
 static u8 *
-format_api_error (u8 * s, va_list * args)
+format_api_error (u8 *s, va_list *args)
 {
   vat_main_t *vam = va_arg (*args, vat_main_t *);
   i32 error = va_arg (*args, u32);
@@ -84,7 +81,7 @@ format_api_error (u8 * s, va_list * args)
 }
 
 void
-do_one_file (vat_main_t * vam)
+do_one_file (vat_main_t *vam)
 {
   int rv;
   int (*fp) (vat_main_t * vam);
@@ -122,11 +119,9 @@ do_one_file (vat_main_t * vam)
 
       vec_free (this_cmd);
 
-      this_cmd =
-	(u8 *) clib_macro_eval (&vam->macro_main, (i8 *) vam->inbuf,
-				1 /* complain */ ,
-				0 /* level */ ,
-				8 /* max_level */ );
+      this_cmd = (u8 *) clib_macro_eval (&vam->macro_main, (i8 *) vam->inbuf,
+					 1 /* complain */, 0 /* level */,
+					 8 /* max_level */);
 
       if (vam->exec_mode == 0)
 	{
@@ -162,7 +157,6 @@ do_one_file (vat_main_t * vam)
 	      else
 		break;
 	    }
-
 
 	  /* Blank input line? */
 	  if (*cmdp == 0)
@@ -213,12 +207,12 @@ do_one_file (vat_main_t * vam)
 }
 
 static void
-init_error_string_table (vat_main_t * vam)
+init_error_string_table (vat_main_t *vam)
 {
 
   vam->error_string_by_error_number = hash_create (0, sizeof (uword));
 
-#define _(n,v,s) hash_set (vam->error_string_by_error_number, -v, s);
+#define _(n, v, s) hash_set (vam->error_string_by_error_number, -v, s);
   foreach_vnet_api_error;
 #undef _
 
@@ -226,21 +220,21 @@ init_error_string_table (vat_main_t * vam)
 }
 
 static i8 *
-eval_current_file (clib_macro_main_t * mm, i32 complain)
+eval_current_file (clib_macro_main_t *mm, i32 complain)
 {
   vat_main_t *vam = &vat_main;
   return ((i8 *) format (0, "%s%c", vam->current_file, 0));
 }
 
 static i8 *
-eval_current_line (clib_macro_main_t * mm, i32 complain)
+eval_current_line (clib_macro_main_t *mm, i32 complain)
 {
   vat_main_t *vam = &vat_main;
   return ((i8 *) format (0, "%d%c", vam->input_line_number, 0));
 }
 
 static void
-signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
+signal_handler (int signum, siginfo_t *si, ucontext_t *uc)
 {
   vat_main_t *vam = &vat_main;
 
@@ -328,8 +322,10 @@ vat_find_plugin_path ()
     return;
   *p = 0;
 
-  s = format (0, "%s/lib/" CLIB_TARGET_TRIPLET "/vpp_api_test_plugins:"
-	      "%s/lib/vpp_api_test_plugins", path, path);
+  s = format (0,
+	      "%s/lib/" CLIB_TARGET_TRIPLET "/vpp_api_test_plugins:"
+	      "%s/lib/vpp_api_test_plugins",
+	      path, path);
   vec_add1 (s, 0);
   vat_plugin_path = (char *) s;
 }
@@ -355,8 +351,8 @@ load_features (void)
 }
 
 static inline clib_error_t *
-call_init_exit_functions_internal (vlib_main_t * vm,
-				   _vlib_init_function_list_elt_t ** headp,
+call_init_exit_functions_internal (vlib_main_t *vm,
+				   _vlib_init_function_list_elt_t **headp,
 				   int call_once, int do_sort)
 {
   clib_error_t *error = 0;
@@ -385,12 +381,12 @@ call_init_exit_functions_internal (vlib_main_t * vm,
 }
 
 clib_error_t *
-vlib_call_init_exit_functions (vlib_main_t * vm,
-			       _vlib_init_function_list_elt_t ** headp,
+vlib_call_init_exit_functions (vlib_main_t *vm,
+			       _vlib_init_function_list_elt_t **headp,
 			       int call_once)
 {
   return call_init_exit_functions_internal (vm, headp, call_once,
-					    1 /* do_sort */ );
+					    1 /* do_sort */);
 }
 
 int
@@ -412,10 +408,8 @@ main (int argc, char **argv)
   clib_mem_init_thread_safe (0, 128 << 20);
 
   clib_macro_init (&vam->macro_main);
-  clib_macro_add_builtin (&vam->macro_main, "current_file",
-			  eval_current_file);
-  clib_macro_add_builtin (&vam->macro_main, "current_line",
-			  eval_current_line);
+  clib_macro_add_builtin (&vam->macro_main, "current_file", eval_current_file);
+  clib_macro_add_builtin (&vam->macro_main, "current_line", eval_current_line);
 
   init_error_string_table (vam);
   vec_validate (vam->cmd_reply, 0);
@@ -441,10 +435,10 @@ main (int argc, char **argv)
 	{
 	  vam->socket_name = format (0, "%s%c", API_SOCKET_FILE, 0);
 	}
-      else if (unformat (a, "plugin_path %s", (u8 *) & vat_plugin_path))
+      else if (unformat (a, "plugin_path %s", (u8 *) &vat_plugin_path))
 	vec_add1 (vat_plugin_path, 0);
       else if (unformat (a, "plugin_name_filter %s",
-			 (u8 *) & vat_plugin_name_filter))
+			 (u8 *) &vat_plugin_name_filter))
 	vec_add1 (vat_plugin_name_filter, 0);
       else if (unformat (a, "chroot prefix %s", &chroot_prefix))
 	{
@@ -452,12 +446,12 @@ main (int argc, char **argv)
 	}
       else
 	{
-	  fformat
-	    (stderr,
-	     "%s: usage [in <f1> ... in <fn>] [out <fn>] [script] [json]\n"
-	     "[plugin_path <path>][default-socket][socket-name <name>]\n"
-	     "[plugin_name_filter <filter>][chroot prefix <path>]\n",
-	     argv[0]);
+	  fformat (
+	    stderr,
+	    "%s: usage [in <f1> ... in <fn>] [out <fn>] [script] [json]\n"
+	    "[plugin_path <path>][default-socket][socket-name <name>]\n"
+	    "[plugin_name_filter <filter>][chroot prefix <path>]\n",
+	    argv[0]);
 	  exit (1);
 	}
     }
@@ -484,8 +478,8 @@ main (int argc, char **argv)
   if (vam->socket_name && vat_socket_connect (vam))
     fformat (stderr, "WARNING: socket connection failed");
 
-  if ((!vam->socket_client_main || vam->socket_client_main->socket_fd == 0)
-      && connect_to_vpe ("vpp_api_test") < 0)
+  if ((!vam->socket_client_main || vam->socket_client_main->socket_fd == 0) &&
+      connect_to_vpe ("vpp_api_test") < 0)
     {
       svm_region_exit ();
       fformat (stderr, "Couldn't connect to vpe, exiting...\n");
@@ -508,14 +502,14 @@ main (int argc, char **argv)
   vm->init_functions_called = hash_create (0, 0);
 
   /* Execute plugin init and api_init functions */
-  error = vlib_call_init_exit_functions
-    (vm, &vm->init_function_registrations, 1 /* call once */ );
+  error = vlib_call_init_exit_functions (vm, &vm->init_function_registrations,
+					 1 /* call once */);
 
   if (error)
     clib_error_report (error);
 
-  error = vlib_call_init_exit_functions
-    (vm, &vm->api_init_function_registrations, 1 /* call_once */ );
+  error = vlib_call_init_exit_functions (
+    vm, &vm->api_init_function_registrations, 1 /* call_once */);
 
   if (error)
     clib_error_report (error);

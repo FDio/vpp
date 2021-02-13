@@ -52,23 +52,22 @@
 
 vlib_pci_main_t pci_main;
 
-vlib_pci_device_info_t * __attribute__ ((weak))
-vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
-			  clib_error_t ** error)
+vlib_pci_device_info_t *__attribute__ ((weak))
+vlib_pci_get_device_info (vlib_main_t *vm, vlib_pci_addr_t *addr,
+			  clib_error_t **error)
 {
   if (error)
     *error = clib_error_return (0, "unsupported");
   return 0;
 }
 
-vlib_pci_addr_t * __attribute__ ((weak)) vlib_pci_get_all_dev_addrs ()
+vlib_pci_addr_t *__attribute__ ((weak)) vlib_pci_get_all_dev_addrs ()
 {
   return 0;
 }
 
 static clib_error_t *
-show_pci_fn (vlib_main_t * vm,
-	     unformat_input_t * input, vlib_cli_command_t * cmd)
+show_pci_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   vlib_pci_addr_t *addr = 0, *addrs;
   int show_all = 0;
@@ -83,37 +82,34 @@ show_pci_fn (vlib_main_t * vm,
 				  format_unformat_error, input);
     }
 
-  vlib_cli_output (vm, "%-13s%-5s%-12s%-14s%-16s%-32s%s",
-		   "Address", "Sock", "VID:PID", "Link Speed", "Driver",
-		   "Product Name", "Vital Product Data");
+  vlib_cli_output (vm, "%-13s%-5s%-12s%-14s%-16s%-32s%s", "Address", "Sock",
+		   "VID:PID", "Link Speed", "Driver", "Product Name",
+		   "Vital Product Data");
 
   addrs = vlib_pci_get_all_dev_addrs ();
-  /* *INDENT-OFF* */
+
   vec_foreach (addr, addrs)
     {
       vlib_pci_device_info_t *d;
       d = vlib_pci_get_device_info (vm, addr, 0);
 
       if (!d)
-        continue;
+	continue;
 
       if (d->device_class != PCI_CLASS_NETWORK_ETHERNET && !show_all)
-        continue;
+	continue;
 
-        vec_reset_length (s);
-        if (d->numa_node >= 0)
-	  s = format (s, "  %d", d->numa_node);
+      vec_reset_length (s);
+      if (d->numa_node >= 0)
+	s = format (s, "  %d", d->numa_node);
 
-        vlib_cli_output (vm, "%-13U%-5v%04x:%04x   %-14U%-16s%-32v%U",
-			 format_vlib_pci_addr, addr, s,
-			 d->vendor_id, d->device_id,
-			 format_vlib_pci_link_speed, d,
-			 d->driver_name ? (char *) d->driver_name : "",
-			 d->product_name,
-			 format_vlib_pci_vpd, d->vpd_r, (u8 *) 0);
-	vlib_pci_free_device_info (d);
+      vlib_cli_output (
+	vm, "%-13U%-5v%04x:%04x   %-14U%-16s%-32v%U", format_vlib_pci_addr,
+	addr, s, d->vendor_id, d->device_id, format_vlib_pci_link_speed, d,
+	d->driver_name ? (char *) d->driver_name : "", d->product_name,
+	format_vlib_pci_vpd, d->vpd_r, (u8 *) 0);
+      vlib_pci_free_device_info (d);
     }
-  /* *INDENT-ON* */
 
   vec_free (s);
   vec_free (addrs);
@@ -121,7 +117,7 @@ show_pci_fn (vlib_main_t * vm,
 }
 
 uword
-unformat_vlib_pci_addr (unformat_input_t * input, va_list * args)
+unformat_vlib_pci_addr (unformat_input_t *input, va_list *args)
 {
   vlib_pci_addr_t *addr = va_arg (*args, vlib_pci_addr_t *);
   u32 x[4];
@@ -138,15 +134,15 @@ unformat_vlib_pci_addr (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_vlib_pci_addr (u8 * s, va_list * va)
+format_vlib_pci_addr (u8 *s, va_list *va)
 {
   vlib_pci_addr_t *addr = va_arg (*va, vlib_pci_addr_t *);
-  return format (s, "%04x:%02x:%02x.%x", addr->domain, addr->bus,
-		 addr->slot, addr->function);
+  return format (s, "%04x:%02x:%02x.%x", addr->domain, addr->bus, addr->slot,
+		 addr->function);
 }
 
 u8 *
-format_vlib_pci_link_speed (u8 * s, va_list * va)
+format_vlib_pci_link_speed (u8 *s, va_list *va)
 {
   vlib_pci_device_info_t *d = va_arg (*va, vlib_pci_device_info_t *);
   pcie_config_regs_t *r =
@@ -170,7 +166,7 @@ format_vlib_pci_link_speed (u8 * s, va_list * va)
 }
 
 u8 *
-format_vlib_pci_vpd (u8 * s, va_list * args)
+format_vlib_pci_vpd (u8 *s, va_list *args)
 {
   u8 *data = va_arg (*args, u8 *);
   u8 *id = va_arg (*args, u8 *);
@@ -198,7 +194,7 @@ format_vlib_pci_vpd (u8 * s, va_list * args)
 
 	  while (c[0])
 	    {
-	      if (*(u16 *) & data[p] == *(u16 *) c[0])
+	      if (*(u16 *) &data[p] == *(u16 *) c[0])
 		is_string = 1;
 	      c++;
 	    }
@@ -229,7 +225,7 @@ format_vlib_pci_vpd (u8 * s, va_list * args)
 		}
 	    }
 	}
-      else if (*(u16 *) & data[p] == *(u16 *) id)
+      else if (*(u16 *) &data[p] == *(u16 *) id)
 	{
 	  vec_add (s, data + p + 3, data[p + 2]);
 	  return s;
@@ -242,16 +238,14 @@ format_vlib_pci_vpd (u8 * s, va_list * args)
 }
 
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_pci_command, static) = {
   .path = "show pci",
   .short_help = "show pci [all]",
   .function = show_pci_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-pci_bus_init (vlib_main_t * vm)
+pci_bus_init (vlib_main_t *vm)
 {
   vlib_pci_main_t *pm = &pci_main;
   pm->log_default = vlib_log_register_class ("pci", 0);

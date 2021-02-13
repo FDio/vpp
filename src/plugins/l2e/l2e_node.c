@@ -18,27 +18,27 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/feat_bitmap.h>
 
-#define foreach_l2_emulation                    \
-  _(IP4, "Extract IPv4")                        \
-  _(IP6, "Extract IPv6")
+#define foreach_l2_emulation                                                  \
+  _ (IP4, "Extract IPv4")                                                     \
+  _ (IP6, "Extract IPv6")
 
 typedef enum
 {
-#define _(sym,str) L2_EMULATION_ERROR_##sym,
+#define _(sym, str) L2_EMULATION_ERROR_##sym,
   foreach_l2_emulation
 #undef _
     L2_EMULATION_N_ERROR,
 } l2_emulation_error_t;
 
 static char *l2_emulation_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_l2_emulation
 #undef _
 };
 
 typedef enum
 {
-#define _(sym,str) L2_EMULATION_NEXT_##sym,
+#define _(sym, str) L2_EMULATION_NEXT_##sym,
   foreach_l2_emulation
 #undef _
     L2_EMULATION_N_NEXT,
@@ -46,7 +46,7 @@ typedef enum
 
 /* packet trace format function */
 static u8 *
-format_l2_emulation_trace (u8 * s, va_list * args)
+format_l2_emulation_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -57,9 +57,8 @@ format_l2_emulation_trace (u8 * s, va_list * args)
   return s;
 }
 
-VLIB_NODE_FN (l2_emulation_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * frame)
+VLIB_NODE_FN (l2_emulation_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   l2_emulation_main_t *em = &l2_emulation_main;
   u32 n_left_from, *from, *to_next;
@@ -148,15 +147,15 @@ VLIB_NODE_FN (l2_emulation_node) (vlib_main_t * vm,
 		  break;
 		}
 	    }
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      l2_emulation_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->extracted = (next0 != ~0);
 	    }
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b1->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b1->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      l2_emulation_trace_t *t =
 		vlib_add_trace (vm, node, b1, sizeof (*t));
@@ -173,9 +172,9 @@ VLIB_NODE_FN (l2_emulation_node) (vlib_main_t * vm,
 	    next1 = vnet_l2_feature_next (b1, em->l2_input_feat_next,
 					  L2INPUT_FEAT_L2_EMULATION);
 
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
@@ -224,8 +223,8 @@ VLIB_NODE_FN (l2_emulation_node) (vlib_main_t * vm,
 		}
 	    }
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      l2_emulation_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -238,23 +237,21 @@ VLIB_NODE_FN (l2_emulation_node) (vlib_main_t * vm,
 					  L2INPUT_FEAT_L2_EMULATION);
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, node->node_index,
-			       L2_EMULATION_ERROR_IP4, ip4_hits);
-  vlib_node_increment_counter (vm, node->node_index,
-			       L2_EMULATION_ERROR_IP6, ip6_hits);
+  vlib_node_increment_counter (vm, node->node_index, L2_EMULATION_ERROR_IP4,
+			       ip4_hits);
+  vlib_node_increment_counter (vm, node->node_index, L2_EMULATION_ERROR_IP6,
+			       ip6_hits);
 
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_emulation_node) = {
   .name = "l2-emulation",
   .vector_size = sizeof (u32),
@@ -272,7 +269,6 @@ VLIB_REGISTER_NODE (l2_emulation_node) = {
     [L2_EMULATION_NEXT_IP6] = "ip6-input",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

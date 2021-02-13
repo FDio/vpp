@@ -25,8 +25,7 @@ bind_cmd::bind_cmd(HW::item<bool>& item,
   , m_itf(itf)
   , m_bd(bd)
   , m_port_type(port_type)
-{
-}
+{}
 
 bool
 bind_cmd::operator==(const bind_cmd& other) const
@@ -76,8 +75,7 @@ unbind_cmd::unbind_cmd(HW::item<bool>& item,
   , m_itf(itf)
   , m_bd(bd)
   , m_port_type(port_type)
-{
-}
+{}
 
 bool
 unbind_cmd::operator==(const unbind_cmd& other) const

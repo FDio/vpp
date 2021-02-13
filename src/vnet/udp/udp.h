@@ -27,25 +27,25 @@
 
 typedef enum
 {
-#define udp_error(n,s) UDP_ERROR_##n,
+#define udp_error(n, s) UDP_ERROR_##n,
 #include <vnet/udp/udp_error.def>
 #undef udp_error
   UDP_N_ERROR,
 } udp_error_t;
 
-#define foreach_udp_connection_flag					\
-  _(CONNECTED, "CONNECTED")	/**< connected mode */			\
-  _(OWNS_PORT, "OWNS_PORT")	/**< port belong to conn (UDPC) */	\
-  _(CLOSING, "CLOSING")		/**< conn closed with data */		\
-  _(LISTEN, "LISTEN")		/**< conn is listening */		\
-  _(MIGRATED, "MIGRATED")	/**< cloned to another thread */	\
+#define foreach_udp_connection_flag                                           \
+  _ (CONNECTED, "CONNECTED") /**< connected mode */                           \
+  _ (OWNS_PORT, "OWNS_PORT") /**< port belong to conn (UDPC) */               \
+  _ (CLOSING, "CLOSING")     /**< conn closed with data */                    \
+  _ (LISTEN, "LISTEN")	     /**< conn is listening */                        \
+  _ (MIGRATED, "MIGRATED")   /**< cloned to another thread */
 
 enum udp_conn_flags_bits
 {
 #define _(sym, str) UDP_CONN_F_BIT_##sym,
   foreach_udp_connection_flag
 #undef _
-  UDP_CONN_N_FLAGS
+    UDP_CONN_N_FLAGS
 };
 
 typedef enum udp_conn_flags_
@@ -59,10 +59,10 @@ typedef struct
 {
   /** Required for pool_get_aligned */
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  transport_connection_t connection;	/**< must be first */
-  clib_spinlock_t rx_lock;		/**< rx fifo lock */
-  u8 flags;				/**< connection flags */
-  u16 mss;				/**< connection mss */
+  transport_connection_t connection; /**< must be first */
+  clib_spinlock_t rx_lock;	     /**< rx fifo lock */
+  u8 flags;			     /**< connection flags */
+  u16 mss;			     /**< connection mss */
 } udp_connection_t;
 
 typedef struct
@@ -89,7 +89,7 @@ typedef struct
 typedef enum
 {
   UDP_IP6 = 0,
-  UDP_IP4,			/* the code is full of is_ip4... */
+  UDP_IP4, /* the code is full of is_ip4... */
   N_UDP_AF,
 } udp_af_t;
 
@@ -129,7 +129,7 @@ extern vlib_node_registration_t udp6_input_node;
 extern vlib_node_registration_t udp4_local_node;
 extern vlib_node_registration_t udp6_local_node;
 
-void udp_add_dst_port (udp_main_t * um, udp_dst_port_t dst_port,
+void udp_add_dst_port (udp_main_t *um, udp_dst_port_t dst_port,
 		       char *dst_port_name, u8 is_ip4);
 
 always_inline udp_connection_t *
@@ -153,18 +153,18 @@ vnet_get_udp_main ()
 }
 
 always_inline udp_connection_t *
-udp_connection_from_transport (transport_connection_t * tc)
+udp_connection_from_transport (transport_connection_t *tc)
 {
   return ((udp_connection_t *) tc);
 }
 
 always_inline u32
-udp_connection_index (udp_connection_t * uc)
+udp_connection_index (udp_connection_t *uc)
 {
   return (uc - udp_main.connections[uc->c_thread_index]);
 }
 
-void udp_connection_free (udp_connection_t * uc);
+void udp_connection_free (udp_connection_t *uc);
 udp_connection_t *udp_connection_alloc (u32 thread_index);
 
 /**
@@ -179,8 +179,7 @@ udp_pool_add_peeker (u32 thread_index)
   udp_main.connection_peekers[thread_index] += 1;
   if (udp_main.connection_peekers[thread_index] == 1)
     clib_spinlock_lock_if_init (&udp_main.peekers_write_locks[thread_index]);
-  clib_spinlock_unlock_if_init (&udp_main.peekers_readers_locks
-				[thread_index]);
+  clib_spinlock_unlock_if_init (&udp_main.peekers_readers_locks[thread_index]);
 }
 
 always_inline void
@@ -192,10 +191,8 @@ udp_pool_remove_peeker (u32 thread_index)
   clib_spinlock_lock_if_init (&udp_main.peekers_readers_locks[thread_index]);
   udp_main.connection_peekers[thread_index] -= 1;
   if (udp_main.connection_peekers[thread_index] == 0)
-    clib_spinlock_unlock_if_init (&udp_main.peekers_write_locks
-				  [thread_index]);
-  clib_spinlock_unlock_if_init (&udp_main.peekers_readers_locks
-				[thread_index]);
+    clib_spinlock_unlock_if_init (&udp_main.peekers_write_locks[thread_index]);
+  clib_spinlock_unlock_if_init (&udp_main.peekers_readers_locks[thread_index]);
 }
 
 always_inline udp_connection_t *
@@ -222,7 +219,7 @@ udp_connection_clone_safe (u32 connection_index, u32 thread_index)
 }
 
 always_inline udp_dst_port_info_t *
-udp_get_dst_port_info (udp_main_t * um, udp_dst_port_t dst_port, u8 is_ip4)
+udp_get_dst_port_info (udp_main_t *um, udp_dst_port_t dst_port, u8 is_ip4)
 {
   uword *p = hash_get (um->dst_port_info_by_dst_port[is_ip4], dst_port);
   return p ? vec_elt_at_index (um->dst_port_infos[is_ip4], p[0]) : 0;
@@ -236,7 +233,7 @@ unformat_function_t unformat_udp_port;
 
 void udp_connection_share_port (u16 lcl_port, u8 is_ip4);
 
-void udp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
+void udp_punt_unknown (vlib_main_t *vm, u8 is_ip4, u8 is_add);
 
 /*
  * fd.io coding-style-patch-verification: ON

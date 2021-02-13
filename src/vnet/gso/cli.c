@@ -21,9 +21,8 @@
 #include <vnet/gso/gso.h>
 
 static clib_error_t *
-set_interface_feature_gso_command_fn (vlib_main_t * vm,
-				      unformat_input_t * input,
-				      vlib_cli_command_t * cmd)
+set_interface_feature_gso_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -38,8 +37,8 @@ set_interface_feature_gso_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (line_input, "enable"))
 	enable = 1;
@@ -67,8 +66,7 @@ set_interface_feature_gso_command_fn (vlib_main_t * vm,
     case VNET_API_ERROR_FEATURE_DISABLED:
       error = clib_error_return (0, "interface should be ethernet interface");
       break;
-    default:
-      ;
+    default:;
     }
 
 done:
@@ -76,13 +74,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_feature_gso_command, static) = {
   .path = "set interface feature gso",
   .short_help = "set interface feature gso <intfc> [enable | disable]",
   .function = set_interface_feature_gso_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

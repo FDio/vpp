@@ -22,48 +22,61 @@
  *  LACP State = NO_PERIODIC
  */
 static lacp_fsm_state_t lacp_ptx_state_no_periodic[] = {
-  {LACP_ACTION_NO_PERIODIC, LACP_PTX_STATE_NO_PERIODIC},	// event 0 NO_PERIODIC
-  {LACP_ACTION_SLOW_PERIODIC, LACP_PTX_STATE_SLOW_PERIODIC},	// event 1 LONG_TIMEOUT
-  {LACP_ACTION_NO_PERIODIC, LACP_PTX_STATE_NO_PERIODIC},	// event 2 TIMER_EXPIRED
-  {LACP_ACTION_FAST_PERIODIC, LACP_PTX_STATE_FAST_PERIODIC},	// event 3 SHORT_TIMEOUT
+  { LACP_ACTION_NO_PERIODIC,
+    LACP_PTX_STATE_NO_PERIODIC }, // event 0 NO_PERIODIC
+  { LACP_ACTION_SLOW_PERIODIC,
+    LACP_PTX_STATE_SLOW_PERIODIC }, // event 1 LONG_TIMEOUT
+  { LACP_ACTION_NO_PERIODIC,
+    LACP_PTX_STATE_NO_PERIODIC }, // event 2 TIMER_EXPIRED
+  { LACP_ACTION_FAST_PERIODIC,
+    LACP_PTX_STATE_FAST_PERIODIC }, // event 3 SHORT_TIMEOUT
 };
 
 /*
  *  LACP State = FAST_PERIODIC
  */
 static lacp_fsm_state_t lacp_ptx_state_fast_periodic[] = {
-  {LACP_ACTION_NO_PERIODIC, LACP_PTX_STATE_NO_PERIODIC},	// event 0 NO_PERIODIC
-  {LACP_ACTION_SLOW_PERIODIC, LACP_PTX_STATE_SLOW_PERIODIC},	// event 1 LONG_TIMEOUT
-  {LACP_ACTION_TIMER_EXPIRED, LACP_PTX_STATE_PERIODIC_TX},	// event 2 TIMER_EXPIRED
-  {LACP_ACTION_FAST_PERIODIC, LACP_PTX_STATE_FAST_PERIODIC},	// event 3 SHORT_TIMEOUT
+  { LACP_ACTION_NO_PERIODIC,
+    LACP_PTX_STATE_NO_PERIODIC }, // event 0 NO_PERIODIC
+  { LACP_ACTION_SLOW_PERIODIC,
+    LACP_PTX_STATE_SLOW_PERIODIC }, // event 1 LONG_TIMEOUT
+  { LACP_ACTION_TIMER_EXPIRED,
+    LACP_PTX_STATE_PERIODIC_TX }, // event 2 TIMER_EXPIRED
+  { LACP_ACTION_FAST_PERIODIC,
+    LACP_PTX_STATE_FAST_PERIODIC }, // event 3 SHORT_TIMEOUT
 };
 
 /*
  *  LACP State = SLOW_PERIODIC
  */
 static lacp_fsm_state_t lacp_ptx_state_slow_periodic[] = {
-  {LACP_ACTION_NO_PERIODIC, LACP_PTX_STATE_NO_PERIODIC},	// event 0 NO_PERIODIC
-  {LACP_ACTION_SLOW_PERIODIC, LACP_PTX_STATE_SLOW_PERIODIC},	// event 1 LONG_TIMEOUT
-  {LACP_ACTION_TIMER_EXPIRED, LACP_PTX_STATE_PERIODIC_TX},	// event 2 TIMER_EXPIRED
-  {LACP_ACTION_FAST_PERIODIC, LACP_PTX_STATE_FAST_PERIODIC},	// event 3 SHORT_TIMEOUT
+  { LACP_ACTION_NO_PERIODIC,
+    LACP_PTX_STATE_NO_PERIODIC }, // event 0 NO_PERIODIC
+  { LACP_ACTION_SLOW_PERIODIC,
+    LACP_PTX_STATE_SLOW_PERIODIC }, // event 1 LONG_TIMEOUT
+  { LACP_ACTION_TIMER_EXPIRED,
+    LACP_PTX_STATE_PERIODIC_TX }, // event 2 TIMER_EXPIRED
+  { LACP_ACTION_FAST_PERIODIC,
+    LACP_PTX_STATE_FAST_PERIODIC }, // event 3 SHORT_TIMEOUT
 };
 
 /*
  *  LACP State = PERIODIC_TX
  */
 static lacp_fsm_state_t lacp_ptx_state_periodic_tx[] = {
-  {LACP_ACTION_NO_PERIODIC, LACP_PTX_STATE_NO_PERIODIC},	// event 0 NO_PERIODIC
-  {LACP_NOACTION, LACP_PTX_STATE_PERIODIC_TX},	// event 1 LONG_TIMEOUT
-  {LACP_ACTION_TIMER_EXPIRED, LACP_PTX_STATE_PERIODIC_TX},	// event 2 TIMER_EXPIRED
-  {LACP_NOACTION, LACP_PTX_STATE_PERIODIC_TX},	// event 3 SHORT_TIMEOUT
+  { LACP_ACTION_NO_PERIODIC,
+    LACP_PTX_STATE_NO_PERIODIC },		 // event 0 NO_PERIODIC
+  { LACP_NOACTION, LACP_PTX_STATE_PERIODIC_TX }, // event 1 LONG_TIMEOUT
+  { LACP_ACTION_TIMER_EXPIRED,
+    LACP_PTX_STATE_PERIODIC_TX },		 // event 2 TIMER_EXPIRED
+  { LACP_NOACTION, LACP_PTX_STATE_PERIODIC_TX }, // event 3 SHORT_TIMEOUT
 };
 
-
 static lacp_fsm_machine_t lacp_ptx_fsm_table[] = {
-  {lacp_ptx_state_no_periodic},
-  {lacp_ptx_state_fast_periodic},
-  {lacp_ptx_state_slow_periodic},
-  {lacp_ptx_state_periodic_tx},
+  { lacp_ptx_state_no_periodic },
+  { lacp_ptx_state_fast_periodic },
+  { lacp_ptx_state_slow_periodic },
+  { lacp_ptx_state_periodic_tx },
 };
 
 lacp_machine_t lacp_ptx_machine = {
@@ -171,13 +184,17 @@ lacp_ptx_action_timer_expired (void *p1, void *p2)
 }
 
 static u8 *
-format_ptx_event (u8 * s, va_list * args)
+format_ptx_event (u8 *s, va_list *args)
 {
   static lacp_event_struct lacp_ptx_event_array[] = {
-#define _(b, s, n) {.bit = b, .str = #s, },
+#define _(b, s, n)                                                            \
+  {                                                                           \
+    .bit = b,                                                                 \
+    .str = #s,                                                                \
+  },
     foreach_lacp_ptx_event
 #undef _
-    {.str = NULL}
+    { .str = NULL }
   };
   int e = va_arg (*args, int);
   lacp_event_struct *event_entry = lacp_ptx_event_array;
@@ -191,33 +208,31 @@ format_ptx_event (u8 * s, va_list * args)
 }
 
 void
-lacp_ptx_debug_func (member_if_t * mif, int event, int state,
-		     lacp_fsm_state_t * transition)
+lacp_ptx_debug_func (member_if_t *mif, int event, int state,
+		     lacp_fsm_state_t *transition)
 {
   vlib_worker_thread_t *w = vlib_worker_threads + os_get_thread_index ();
-  /* *INDENT-OFF* */
-  ELOG_TYPE_DECLARE (e) =
-    {
-      .format = "%s",
-      .format_args = "T4",
-    };
-  /* *INDENT-ON* */
+
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "%s",
+    .format_args = "T4",
+  };
+
   struct
   {
     u32 event;
   } *ed = 0;
 
   ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
-  ed->event =
-    elog_string (&vlib_global_main.elog_main, "%U-PTX: %U, %U->%U%c",
-		 format_vnet_sw_if_index_name, vnet_get_main (),
-		 mif->sw_if_index, format_ptx_event, event,
-		 format_ptx_sm_state, state, format_ptx_sm_state,
-		 transition->next_state, 0);
+  ed->event = elog_string (&vlib_global_main.elog_main, "%U-PTX: %U, %U->%U%c",
+			   format_vnet_sw_if_index_name, vnet_get_main (),
+			   mif->sw_if_index, format_ptx_event, event,
+			   format_ptx_sm_state, state, format_ptx_sm_state,
+			   transition->next_state, 0);
 }
 
 void
-lacp_init_ptx_machine (vlib_main_t * vm, member_if_t * mif)
+lacp_init_ptx_machine (vlib_main_t *vm, member_if_t *mif)
 {
   lacp_machine_dispatch (&lacp_ptx_machine, vm, mif,
 			 LACP_PTX_EVENT_NO_PERIODIC, &mif->ptx_state);

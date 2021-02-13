@@ -33,8 +33,7 @@ bridge_domain_arp_entry::bridge_domain_arp_entry(
   , m_bd(bd.singular())
   , m_ip_addr(ip_addr)
   , m_mac(mac)
-{
-}
+{}
 
 bridge_domain_arp_entry::bridge_domain_arp_entry(
   const boost::asio::ip::address& ip_addr,
@@ -45,8 +44,8 @@ bridge_domain_arp_entry::bridge_domain_arp_entry(
   , m_mac(mac)
 {
   /*
- * the route goes in the default table
- */
+   * the route goes in the default table
+   */
   bridge_domain bd(bridge_domain::DEFAULT_TABLE);
 
   m_bd = bd.singular();
@@ -58,8 +57,7 @@ bridge_domain_arp_entry::bridge_domain_arp_entry(
   , m_bd(bde.m_bd)
   , m_ip_addr(bde.m_ip_addr)
   , m_mac(bde.m_mac)
-{
-}
+{}
 
 bridge_domain_arp_entry::~bridge_domain_arp_entry()
 {
@@ -85,8 +83,8 @@ void
 bridge_domain_arp_entry::sweep()
 {
   if (m_hw) {
-    HW::enqueue(new bridge_domain_arp_entry_cmds::delete_cmd(m_hw, m_bd->id(),
-                                                             m_mac, m_ip_addr));
+    HW::enqueue(new bridge_domain_arp_entry_cmds::delete_cmd(
+      m_hw, m_bd->id(), m_mac, m_ip_addr));
   }
   HW::write();
 }
@@ -95,8 +93,8 @@ void
 bridge_domain_arp_entry::replay()
 {
   if (m_hw) {
-    HW::enqueue(new bridge_domain_arp_entry_cmds::create_cmd(m_hw, m_bd->id(),
-                                                             m_mac, m_ip_addr));
+    HW::enqueue(new bridge_domain_arp_entry_cmds::create_cmd(
+      m_hw, m_bd->id(), m_mac, m_ip_addr));
   }
 }
 
@@ -114,11 +112,11 @@ void
 bridge_domain_arp_entry::update(const bridge_domain_arp_entry& r)
 {
   /*
- * create the table if it is not yet created
- */
+   * create the table if it is not yet created
+   */
   if (rc_t::OK != m_hw.rc()) {
-    HW::enqueue(new bridge_domain_arp_entry_cmds::create_cmd(m_hw, m_bd->id(),
-                                                             m_mac, m_ip_addr));
+    HW::enqueue(new bridge_domain_arp_entry_cmds::create_cmd(
+      m_hw, m_bd->id(), m_mac, m_ip_addr));
   }
 }
 
@@ -149,8 +147,8 @@ bridge_domain_arp_entry::dump(std::ostream& os)
 bridge_domain_arp_entry::event_handler::event_handler()
 {
   OM::register_listener(this);
-  inspect::register_handler({ "bd-arp" },
-                            "bridge domain ARP termination entries", this);
+  inspect::register_handler(
+    { "bd-arp" }, "bridge domain ARP termination entries", this);
 }
 
 void
@@ -177,8 +175,8 @@ bridge_domain_arp_entry::event_handler::handle_populate(
 
     std::shared_ptr<bridge_domain> bd =
       bridge_domain::find(payload.entry.bd_id);
-    bridge_domain_arp_entry bd_ae(*bd, from_api(payload.entry.ip),
-                                  from_api(payload.entry.mac));
+    bridge_domain_arp_entry bd_ae(
+      *bd, from_api(payload.entry.ip), from_api(payload.entry.mac));
 
     VOM_LOG(log_level_t::DEBUG) << "dump: " << bd_ae.to_string();
 

@@ -42,13 +42,13 @@
 #include <vnet/hdlc/hdlc.h>
 #include <vppinfra/sparse_vec.h>
 
-#define foreach_hdlc_input_next			\
-  _ (PUNT, "error-punt")			\
+#define foreach_hdlc_input_next                                               \
+  _ (PUNT, "error-punt")                                                      \
   _ (DROP, "error-drop")
 
 typedef enum
 {
-#define _(s,n) HDLC_INPUT_NEXT_##s,
+#define _(s, n) HDLC_INPUT_NEXT_##s,
   foreach_hdlc_input_next
 #undef _
     HDLC_INPUT_N_NEXT,
@@ -60,7 +60,7 @@ typedef struct
 } hdlc_input_trace_t;
 
 static u8 *
-format_hdlc_input_trace (u8 * s, va_list * va)
+format_hdlc_input_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
@@ -81,8 +81,8 @@ typedef struct
 } hdlc_input_runtime_t;
 
 static uword
-hdlc_input (vlib_main_t * vm,
-	    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+hdlc_input (vlib_main_t *vm, vlib_node_runtime_t *node,
+	    vlib_frame_t *from_frame)
 {
   hdlc_input_runtime_t *rt = (void *) node->runtime_data;
   u32 n_left_from, next_index, i_next, *from, *to_next;
@@ -91,9 +91,7 @@ hdlc_input (vlib_main_t * vm,
   n_left_from = from_frame->n_vectors;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    vlib_trace_frame_buffers_only (vm, node,
-				   from,
-				   n_left_from,
+    vlib_trace_frame_buffers_only (vm, node, from, n_left_from,
 				   sizeof (from[0]),
 				   sizeof (hdlc_input_trace_t));
 
@@ -159,14 +157,12 @@ hdlc_input (vlib_main_t * vm,
 	  sparse_vec_index2 (rt->next_by_protocol, protocol0, protocol1, &i0,
 			     &i1);
 
-	  b0->error =
-	    node->errors[i0 ==
-			 SPARSE_VEC_INVALID_INDEX ?
-			 HDLC_ERROR_UNKNOWN_PROTOCOL : HDLC_ERROR_NONE];
-	  b1->error =
-	    node->errors[i1 ==
-			 SPARSE_VEC_INVALID_INDEX ?
-			 HDLC_ERROR_UNKNOWN_PROTOCOL : HDLC_ERROR_NONE];
+	  b0->error = node->errors[i0 == SPARSE_VEC_INVALID_INDEX ?
+				     HDLC_ERROR_UNKNOWN_PROTOCOL :
+				     HDLC_ERROR_NONE];
+	  b1->error = node->errors[i1 == SPARSE_VEC_INVALID_INDEX ?
+				     HDLC_ERROR_UNKNOWN_PROTOCOL :
+				     HDLC_ERROR_NONE];
 
 	  enqueue_code = (i0 != i_next) + 2 * (i1 != i_next);
 
@@ -179,30 +175,26 @@ hdlc_input (vlib_main_t * vm,
 		  to_next[-2] = bi1;
 		  to_next -= 1;
 		  n_left_to_next += 1;
-		  vlib_set_next_frame_buffer (vm, node,
-					      vec_elt (rt->next_by_protocol,
-						       i0), bi0);
+		  vlib_set_next_frame_buffer (
+		    vm, node, vec_elt (rt->next_by_protocol, i0), bi0);
 		  break;
 
 		case 2:
 		  /* A A B */
 		  to_next -= 1;
 		  n_left_to_next += 1;
-		  vlib_set_next_frame_buffer (vm, node,
-					      vec_elt (rt->next_by_protocol,
-						       i1), bi1);
+		  vlib_set_next_frame_buffer (
+		    vm, node, vec_elt (rt->next_by_protocol, i1), bi1);
 		  break;
 
 		case 3:
 		  /* A B B or A B C */
 		  to_next -= 2;
 		  n_left_to_next += 2;
-		  vlib_set_next_frame_buffer (vm, node,
-					      vec_elt (rt->next_by_protocol,
-						       i0), bi0);
-		  vlib_set_next_frame_buffer (vm, node,
-					      vec_elt (rt->next_by_protocol,
-						       i1), bi1);
+		  vlib_set_next_frame_buffer (
+		    vm, node, vec_elt (rt->next_by_protocol, i0), bi0);
+		  vlib_set_next_frame_buffer (
+		    vm, node, vec_elt (rt->next_by_protocol, i1), bi1);
 		  if (i0 == i1)
 		    {
 		      vlib_put_next_frame (vm, node, next_index,
@@ -244,10 +236,9 @@ hdlc_input (vlib_main_t * vm,
 
 	  i0 = sparse_vec_index (rt->next_by_protocol, protocol0);
 
-	  b0->error =
-	    node->errors[i0 ==
-			 SPARSE_VEC_INVALID_INDEX ?
-			 HDLC_ERROR_UNKNOWN_PROTOCOL : HDLC_ERROR_NONE];
+	  b0->error = node->errors[i0 == SPARSE_VEC_INVALID_INDEX ?
+				     HDLC_ERROR_UNKNOWN_PROTOCOL :
+				     HDLC_ERROR_NONE];
 
 	  /* Sent packet to wrong next? */
 	  if (PREDICT_FALSE (i0 != i_next))
@@ -258,8 +249,8 @@ hdlc_input (vlib_main_t * vm,
 	      /* Send to correct next. */
 	      i_next = i0;
 	      next_index = vec_elt (rt->next_by_protocol, i_next);
-	      vlib_get_next_frame (vm, node, next_index,
-				   to_next, n_left_to_next);
+	      vlib_get_next_frame (vm, node, next_index, to_next,
+				   n_left_to_next);
 
 	      to_next[0] = bi0;
 	      to_next += 1;
@@ -274,12 +265,11 @@ hdlc_input (vlib_main_t * vm,
 }
 
 static char *hdlc_error_strings[] = {
-#define hdlc_error(n,s) s,
+#define hdlc_error(n, s) s,
 #include "error.def"
 #undef hdlc_error
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (hdlc_input_node) = {
   .function = hdlc_input,
   .name = "hdlc-input",
@@ -293,7 +283,7 @@ VLIB_REGISTER_NODE (hdlc_input_node) = {
 
   .n_next_nodes = HDLC_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [HDLC_INPUT_NEXT_##s] = n,
+#define _(s, n) [HDLC_INPUT_NEXT_##s] = n,
     foreach_hdlc_input_next
 #undef _
   },
@@ -302,30 +292,29 @@ VLIB_REGISTER_NODE (hdlc_input_node) = {
   .format_trace = format_hdlc_input_trace,
   .unformat_buffer = unformat_hdlc_header,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-hdlc_input_runtime_init (vlib_main_t * vm)
+hdlc_input_runtime_init (vlib_main_t *vm)
 {
   hdlc_input_runtime_t *rt;
   rt = vlib_node_get_runtime_data (vm, hdlc_input_node.index);
 
-  rt->next_by_protocol = sparse_vec_new
-    ( /* elt bytes */ sizeof (rt->next_by_protocol[0]),
-     /* bits in index */ BITS (((hdlc_header_t *) 0)->protocol));
+  rt->next_by_protocol = sparse_vec_new (
+    /* elt bytes */ sizeof (rt->next_by_protocol[0]),
+    /* bits in index */ BITS (((hdlc_header_t *) 0)->protocol));
 
   vec_validate (rt->sparse_index_by_next_index, HDLC_INPUT_NEXT_DROP);
   vec_validate (rt->sparse_index_by_next_index, HDLC_INPUT_NEXT_PUNT);
-  rt->sparse_index_by_next_index[HDLC_INPUT_NEXT_DROP]
-    = SPARSE_VEC_INVALID_INDEX;
-  rt->sparse_index_by_next_index[HDLC_INPUT_NEXT_PUNT]
-    = SPARSE_VEC_INVALID_INDEX;
+  rt->sparse_index_by_next_index[HDLC_INPUT_NEXT_DROP] =
+    SPARSE_VEC_INVALID_INDEX;
+  rt->sparse_index_by_next_index[HDLC_INPUT_NEXT_PUNT] =
+    SPARSE_VEC_INVALID_INDEX;
 
   return 0;
 }
 
 static clib_error_t *
-hdlc_input_init (vlib_main_t * vm)
+hdlc_input_init (vlib_main_t *vm)
 {
 
   {
@@ -344,8 +333,8 @@ VLIB_INIT_FUNCTION (hdlc_input_init);
 VLIB_WORKER_INIT_FUNCTION (hdlc_input_runtime_init);
 
 void
-hdlc_register_input_protocol (vlib_main_t * vm,
-			      hdlc_protocol_t protocol, u32 node_index)
+hdlc_register_input_protocol (vlib_main_t *vm, hdlc_protocol_t protocol,
+			      u32 node_index)
 {
   hdlc_main_t *em = &hdlc_main;
   hdlc_protocol_info_t *pi;
@@ -365,9 +354,8 @@ hdlc_register_input_protocol (vlib_main_t * vm,
 
   /* Setup hdlc protocol -> next index sparse vector mapping. */
   rt = vlib_node_get_runtime_data (vm, hdlc_input_node.index);
-  n =
-    sparse_vec_validate (rt->next_by_protocol,
-			 clib_host_to_net_u16 (protocol));
+  n = sparse_vec_validate (rt->next_by_protocol,
+			   clib_host_to_net_u16 (protocol));
   n[0] = pi->next_index;
 
   /* Rebuild next index -> sparse index inverse mapping when sparse vector

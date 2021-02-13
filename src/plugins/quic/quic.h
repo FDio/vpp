@@ -34,47 +34,55 @@
  * 4 - timer events
  **/
 
-#define QUIC_DEBUG               0
-#define QUIC_TSTAMP_RESOLUTION  0.001	/* QUIC tick resolution (1ms) */
+#define QUIC_DEBUG		  0
+#define QUIC_TSTAMP_RESOLUTION	  0.001 /* QUIC tick resolution (1ms) */
 #define QUIC_TIMER_HANDLE_INVALID ((u32) ~0)
-#define QUIC_SESSION_INVALID ((u32) ~0 - 1)
-#define QUIC_MAX_PACKET_SIZE 1280
+#define QUIC_SESSION_INVALID	  ((u32) ~0 - 1)
+#define QUIC_MAX_PACKET_SIZE	  1280
 
-#define QUIC_INT_MAX  0x3FFFFFFFFFFFFFFF
-#define QUIC_DEFAULT_FIFO_SIZE (64 << 10)
+#define QUIC_INT_MAX		  0x3FFFFFFFFFFFFFFF
+#define QUIC_DEFAULT_FIFO_SIZE	  (64 << 10)
 #define QUIC_SEND_PACKET_VEC_SIZE 16
-#define QUIC_IV_LEN 17
+#define QUIC_IV_LEN		  17
 
 #define QUIC_MAX_COALESCED_PACKET 4
 
 #define QUIC_RCV_MAX_PACKETS 16
 
-#define QUIC_DEFAULT_CONN_TIMEOUT (30 * 1000)	/* 30 seconds */
+#define QUIC_DEFAULT_CONN_TIMEOUT (30 * 1000) /* 30 seconds */
 
 /* Taken from quicly.c */
 #define QUICLY_QUIC_BIT 0x40
 
-#define QUICLY_PACKET_TYPE_INITIAL (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0)
-#define QUICLY_PACKET_TYPE_0RTT (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x10)
-#define QUICLY_PACKET_TYPE_HANDSHAKE (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x20)
-#define QUICLY_PACKET_TYPE_RETRY (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x30)
+#define QUICLY_PACKET_TYPE_INITIAL                                            \
+  (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0)
+#define QUICLY_PACKET_TYPE_0RTT                                               \
+  (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x10)
+#define QUICLY_PACKET_TYPE_HANDSHAKE                                          \
+  (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x20)
+#define QUICLY_PACKET_TYPE_RETRY                                              \
+  (QUICLY_LONG_HEADER_BIT | QUICLY_QUIC_BIT | 0x30)
 #define QUICLY_PACKET_TYPE_BITMASK 0xf0
 
 /* error codes */
 #define QUIC_ERROR_FULL_FIFO 0xff10
-#define QUIC_APP_ERROR_CLOSE_NOTIFY QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE(0)
-#define QUIC_APP_ALLOCATION_ERROR QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE(0x1)
-#define QUIC_APP_ACCEPT_NOTIFY_ERROR QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE(0x2)
-#define QUIC_APP_CONNECT_NOTIFY_ERROR QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE(0x3)
+#define QUIC_APP_ERROR_CLOSE_NOTIFY                                           \
+  QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0)
+#define QUIC_APP_ALLOCATION_ERROR                                             \
+  QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0x1)
+#define QUIC_APP_ACCEPT_NOTIFY_ERROR                                          \
+  QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0x2)
+#define QUIC_APP_CONNECT_NOTIFY_ERROR                                         \
+  QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0x3)
 
-#define QUIC_DECRYPT_PACKET_OK 0
+#define QUIC_DECRYPT_PACKET_OK		 0
 #define QUIC_DECRYPT_PACKET_NOTOFFLOADED 1
-#define QUIC_DECRYPT_PACKET_ERROR 2
+#define QUIC_DECRYPT_PACKET_ERROR	 2
 
 #if QUIC_DEBUG
-#define QUIC_DBG(_lvl, _fmt, _args...)   \
-  if (_lvl <= QUIC_DEBUG)                \
-    clib_warning (_fmt, ##_args)
+#define QUIC_DBG(_lvl, _fmt, _args...)                                        \
+  if (_lvl <= QUIC_DEBUG)                                                     \
+  clib_warning (_fmt, ##_args)
 #else
 #define QUIC_DBG(_lvl, _fmt, _args...)
 #endif
@@ -82,25 +90,27 @@
 #if CLIB_ASSERT_ENABLE
 #define QUIC_ASSERT(truth) ASSERT (truth)
 #else
-#define QUIC_ASSERT(truth)                        \
-  do {                                            \
-    if (PREDICT_FALSE (! (truth)))                \
-      QUIC_ERR ("ASSERT(%s) failed", # truth);    \
-  } while (0)
+#define QUIC_ASSERT(truth)                                                    \
+  do                                                                          \
+    {                                                                         \
+      if (PREDICT_FALSE (!(truth)))                                           \
+	QUIC_ERR ("ASSERT(%s) failed", #truth);                               \
+    }                                                                         \
+  while (0)
 #endif
 
-#define QUIC_ERR(_fmt, _args...)                \
-  do {                                          \
-    clib_warning ("QUIC-ERR: " _fmt, ##_args);  \
-  } while (0)
-
-
+#define QUIC_ERR(_fmt, _args...)                                              \
+  do                                                                          \
+    {                                                                         \
+      clib_warning ("QUIC-ERR: " _fmt, ##_args);                              \
+    }                                                                         \
+  while (0)
 
 extern vlib_node_registration_t quic_input_node;
 
 typedef enum
 {
-#define quic_error(n,s) QUIC_ERROR_##n,
+#define quic_error(n, s) QUIC_ERROR_##n,
 #include <plugins/quic/quic_error.def>
 #undef quic_error
   QUIC_N_ERROR,
@@ -147,21 +157,21 @@ typedef struct quic_ctx_
   {
     transport_connection_t connection;
     struct
-    {	      /** QUIC ctx case */
+    { /** QUIC ctx case */
       quicly_conn_t *conn;
       u32 listener_ctx_id;
       u32 client_opaque;
       u8 *srv_hostname;
       u8 conn_state;
       u8 udp_is_ip4;
-      u8 _qctx_end_marker;	/* Leave this at the end */
+      u8 _qctx_end_marker; /* Leave this at the end */
     };
     struct
-    {	      /** STREAM ctx case */
+    { /** STREAM ctx case */
       quicly_stream_t *stream;
       u64 bytes_written;
       u32 quic_connection_ctx_id;
-      u8 _sctx_end_marker;	/* Leave this at the end */
+      u8 _sctx_end_marker; /* Leave this at the end */
     };
   };
   session_handle_t udp_session_handle;
@@ -185,12 +195,12 @@ typedef struct quic_ctx_
 /* Make sure our custom fields don't overlap with the fields we use in
    .connection
 */
-STATIC_ASSERT (offsetof (quic_ctx_t, _qctx_end_marker) <=
-	       TRANSPORT_CONN_ID_LEN,
-	       "connection data must be less than TRANSPORT_CONN_ID_LEN bytes");
-STATIC_ASSERT (offsetof (quic_ctx_t, _sctx_end_marker) <=
-	       TRANSPORT_CONN_ID_LEN,
-	       "connection data must be less than TRANSPORT_CONN_ID_LEN bytes");
+STATIC_ASSERT (
+  offsetof (quic_ctx_t, _qctx_end_marker) <= TRANSPORT_CONN_ID_LEN,
+  "connection data must be less than TRANSPORT_CONN_ID_LEN bytes");
+STATIC_ASSERT (
+  offsetof (quic_ctx_t, _sctx_end_marker) <= TRANSPORT_CONN_ID_LEN,
+  "connection data must be less than TRANSPORT_CONN_ID_LEN bytes");
 
 /* single-entry session cache */
 typedef struct quic_session_cache_
@@ -204,8 +214,8 @@ typedef struct quic_stream_data_
 {
   u32 ctx_id;
   u32 thread_index;
-  u32 app_rx_data_len;		/**< bytes received, to be read by external app */
-  u32 app_tx_data_len;		/**< bytes sent */
+  u32 app_rx_data_len; /**< bytes received, to be read by external app */
+  u32 app_tx_data_len; /**< bytes sent */
 } quic_stream_data_t;
 
 typedef struct quic_crypto_context_data_
@@ -218,11 +228,12 @@ typedef struct quic_crypto_context_data_
 typedef struct quic_worker_ctx_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  int64_t time_now;				   /**< worker time */
-  tw_timer_wheel_1t_3w_1024sl_ov_t timer_wheel;	   /**< worker timer wheel */
+  int64_t time_now;				/**< worker time */
+  tw_timer_wheel_1t_3w_1024sl_ov_t timer_wheel; /**< worker timer wheel */
   quicly_cid_plaintext_t next_cid;
-  crypto_context_t *crypto_ctx_pool;		/**< per thread pool of crypto contexes */
-  clib_bihash_24_8_t crypto_context_hash;	/**< per thread [params:crypto_ctx_index] hash */
+  crypto_context_t *crypto_ctx_pool; /**< per thread pool of crypto contexes */
+  clib_bihash_24_8_t
+    crypto_context_hash; /**< per thread [params:crypto_ctx_index] hash */
 } quic_worker_ctx_t;
 
 typedef struct quic_rx_packet_ctx_
@@ -246,13 +257,16 @@ typedef struct quic_main_
   u32 app_index;
   quic_ctx_t **ctx_pool;
   quic_worker_ctx_t *wrk_ctx;
-  clib_bihash_16_8_t connection_hash;	/**< quic connection id -> conn handle */
+  clib_bihash_16_8_t connection_hash; /**< quic connection id -> conn handle */
   f64 tstamp_ticks_per_clock;
 
-  ptls_cipher_suite_t ***quic_ciphers;	/**< available ciphers by crypto engine */
-  uword *available_crypto_engines;	/**< Bitmap for registered engines */
-  u8 default_crypto_engine;		/**< Used if you do connect with CRYPTO_ENGINE_NONE (0) */
-  u64 max_packets_per_key;		/**< number of packets that can be sent without a key update */
+  ptls_cipher_suite_t **
+    *quic_ciphers;		   /**< available ciphers by crypto engine */
+  uword *available_crypto_engines; /**< Bitmap for registered engines */
+  u8 default_crypto_engine; /**< Used if you do connect with CRYPTO_ENGINE_NONE
+			       (0) */
+  u64 max_packets_per_key;  /**< number of packets that can be sent without a
+			       key update */
   u8 default_quic_cc;
 
   ptls_handshake_properties_t hs_properties;

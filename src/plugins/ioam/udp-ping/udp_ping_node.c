@@ -38,32 +38,30 @@ typedef enum
   UDP_PING_N_NEXT,
 } udp_ping_next_t;
 
-#define foreach_udp_ping_error                  \
-_(BADHBH, "Malformed hop-by-hop header")
+#define foreach_udp_ping_error _ (BADHBH, "Malformed hop-by-hop header")
 
 typedef enum
 {
-#define _(sym,str) UDP_PING_ERROR_##sym,
+#define _(sym, str) UDP_PING_ERROR_##sym,
   foreach_udp_ping_error
 #undef _
     UDP_PING_N_ERROR,
 } udp_ping_error_t;
 
 static char *udp_ping_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_udp_ping_error
 #undef _
 };
 
 udp_ping_main_t udp_ping_main;
 
-uword
-udp_ping_process (vlib_main_t * vm,
-		  vlib_node_runtime_t * rt, vlib_frame_t * f);
+uword udp_ping_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
+			vlib_frame_t *f);
 
-extern int
-ip6_hbh_ioam_trace_data_list_handler (vlib_buffer_t * b, ip6_header_t * ip,
-				      ip6_hop_by_hop_option_t * opt);
+extern int ip6_hbh_ioam_trace_data_list_handler (vlib_buffer_t *b,
+						 ip6_header_t *ip,
+						 ip6_hop_by_hop_option_t *opt);
 
 typedef struct
 {
@@ -78,29 +76,25 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_udp_ping_trace (u8 * s, va_list * args)
+format_udp_ping_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   udp_ping_trace_t *t = va_arg (*args, udp_ping_trace_t *);
 
-  s = format (s, "udp-ping-local: src %U, dst %U, src_port %u, dst_port %u "
+  s = format (s,
+	      "udp-ping-local: src %U, dst %U, src_port %u, dst_port %u "
 	      "handle %u, next_index %u, msg_type %u",
-	      format_ip6_address, &t->src,
-	      format_ip6_address, &t->dst,
-	      t->src_port, t->dst_port,
-	      t->handle, t->next_index, t->msg_type);
+	      format_ip6_address, &t->src, format_ip6_address, &t->dst,
+	      t->src_port, t->dst_port, t->handle, t->next_index, t->msg_type);
   return s;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (udp_ping_node, static) =
-{
+VLIB_REGISTER_NODE (udp_ping_node, static) = {
   .function = udp_ping_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "udp-ping-process",
 };
-/* *INDENT-ON* */
 
 void
 udp_ping_calculate_timer_interval (void)
@@ -123,16 +117,16 @@ udp_ping_calculate_timer_interval (void)
   if (udp_ping_main.timer_interval != min_interval)
     {
       udp_ping_main.timer_interval = min_interval;
-      vlib_process_signal_event (udp_ping_main.vlib_main,
-				 udp_ping_node.index, EVENT_SIG_RECHECK, 0);
+      vlib_process_signal_event (udp_ping_main.vlib_main, udp_ping_node.index,
+				 EVENT_SIG_RECHECK, 0);
     }
 }
 
 void
 ip46_udp_ping_set_flow (ip46_address_t src, ip46_address_t dst,
 			u16 start_src_port, u16 end_src_port,
-			u16 start_dst_port, u16 end_dst_port,
-			u16 interval, u8 fault_det, u8 is_disable)
+			u16 start_dst_port, u16 end_dst_port, u16 interval,
+			u8 fault_det, u8 is_disable)
 {
   u8 found = 0;
   ip46_udp_ping_flow *flow = NULL;
@@ -144,8 +138,7 @@ ip46_udp_ping_set_flow (ip46_address_t src, ip46_address_t dst,
 	continue;
 
       flow = pool_elt_at_index (udp_ping_main.ip46_flow, i);
-      if ((0 == udp_ping_compare_flow (src, dst,
-				       start_src_port, end_src_port,
+      if ((0 == udp_ping_compare_flow (src, dst, start_src_port, end_src_port,
 				       start_dst_port, end_dst_port, flow)))
 	{
 	  found = 1;
@@ -172,8 +165,8 @@ ip46_udp_ping_set_flow (ip46_address_t src, ip46_address_t dst,
 	{
 	  udp_ping_main.timer_interval = interval;
 	  vlib_process_signal_event (udp_ping_main.vlib_main,
-				     udp_ping_node.index,
-				     EVENT_SIG_RECHECK, 0);
+				     udp_ping_node.index, EVENT_SIG_RECHECK,
+				     0);
 	}
       else if (udp_ping_main.timer_interval == cur_interval)
 	udp_ping_calculate_timer_interval ();
@@ -187,24 +180,23 @@ ip46_udp_ping_set_flow (ip46_address_t src, ip46_address_t dst,
 
   /* Alloc new session */
   pool_get_aligned (udp_ping_main.ip46_flow, flow, CLIB_CACHE_LINE_BYTES);
-  udp_ping_populate_flow (src, dst,
-			  start_src_port, end_src_port,
-			  start_dst_port, end_dst_port,
-			  interval, fault_det, flow);
+  udp_ping_populate_flow (src, dst, start_src_port, end_src_port,
+			  start_dst_port, end_dst_port, interval, fault_det,
+			  flow);
 
   udp_ping_create_rewrite (flow, (flow - udp_ping_main.ip46_flow));
 
   if (udp_ping_main.timer_interval > interval)
     {
       udp_ping_main.timer_interval = interval;
-      vlib_process_signal_event (udp_ping_main.vlib_main,
-				 udp_ping_node.index, EVENT_SIG_RECHECK, 0);
+      vlib_process_signal_event (udp_ping_main.vlib_main, udp_ping_node.index,
+				 EVENT_SIG_RECHECK, 0);
     }
   return;
 }
 
 uword
-unformat_port_range (unformat_input_t * input, va_list * args)
+unformat_port_range (unformat_input_t *input, va_list *args)
 {
   u16 *start_port, *end_port;
   uword c;
@@ -259,8 +251,8 @@ unformat_port_range (unformat_input_t * input, va_list * args)
 }
 
 static clib_error_t *
-set_udp_ping_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+set_udp_ping_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   ip46_address_t dst, src;
   u16 start_src_port, end_src_port;
@@ -271,18 +263,17 @@ set_udp_ping_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (input, "src %U", unformat_ip46_address, &src, IP46_TYPE_ANY))
+      if (unformat (input, "src %U", unformat_ip46_address, &src,
+		    IP46_TYPE_ANY))
 	;
-      else if (unformat (input, "src-port-range %U",
-			 unformat_port_range, &start_src_port, &end_src_port))
+      else if (unformat (input, "src-port-range %U", unformat_port_range,
+			 &start_src_port, &end_src_port))
 	;
-      else
-	if (unformat
-	    (input, "dst %U", unformat_ip46_address, &dst, IP46_TYPE_ANY))
+      else if (unformat (input, "dst %U", unformat_ip46_address, &dst,
+			 IP46_TYPE_ANY))
 	;
-      else if (unformat (input, "dst-port-range %U",
-			 unformat_port_range, &start_dst_port, &end_dst_port))
+      else if (unformat (input, "dst-port-range %U", unformat_port_range,
+			 &start_dst_port, &end_dst_port))
 	;
       else if (unformat (input, "interval %d", &interval))
 	;
@@ -301,23 +292,19 @@ set_udp_ping_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_udp_ping_command, static) =
-{
+VLIB_CLI_COMMAND (set_udp_ping_command, static) = {
   .path = "set udp-ping",
   .short_help =
-      "set udp-ping src <local IPv6 address>  src-port-range <local port range> \
+    "set udp-ping src <local IPv6 address>  src-port-range <local port range> \
       dst <remote IPv6 address> dst-port-range <destination port range> \
       interval <time interval in sec for which ping packet will be sent> \
       [disable]",
   .function = set_udp_ping_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_udp_ping_summary_cmd_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+show_udp_ping_summary_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   u8 *s = 0;
   int i, j;
@@ -333,9 +320,9 @@ show_udp_ping_summary_cmd_fn (vlib_main_t * vm,
 	continue;
 
       ip46_flow = pool_elt_at_index (udp_ping_main.ip46_flow, i);
-      s = format (s, "Src: %U, Dst: %U\n",
-		  format_ip46_address, &ip46_flow->src, IP46_TYPE_ANY,
-		  format_ip46_address, &ip46_flow->dst, IP46_TYPE_ANY);
+      s = format (s, "Src: %U, Dst: %U\n", format_ip46_address,
+		  &ip46_flow->src, IP46_TYPE_ANY, format_ip46_address,
+		  &ip46_flow->dst, IP46_TYPE_ANY);
 
       s = format (s, "Start src port: %u, End src port: %u\n",
 		  ip46_flow->udp_data.start_src_port,
@@ -353,16 +340,13 @@ show_udp_ping_summary_cmd_fn (vlib_main_t * vm,
 	       dst_port <= ip46_flow->udp_data.end_dst_port; dst_port++)
 	    {
 	      stats = ip46_flow->udp_data.stats + j;
-	      s =
-		format (s, "\nSrc Port - %u, Dst Port - %u, Flow CTX - %u\n",
-			src_port, dst_port, stats->flow_ctx);
-	      s =
-		format (s, "Path State - %s\n",
-			(stats->retry > MAX_PING_RETRIES) ? "Down" : "Up");
+	      s = format (s, "\nSrc Port - %u, Dst Port - %u, Flow CTX - %u\n",
+			  src_port, dst_port, stats->flow_ctx);
+	      s = format (s, "Path State - %s\n",
+			  (stats->retry > MAX_PING_RETRIES) ? "Down" : "Up");
 	      s = format (s, "Path Data:\n");
-	      s = print_analyse_flow (s,
-				      &ip46_flow->udp_data.
-				      stats[j].analyse_data);
+	      s = print_analyse_flow (
+		s, &ip46_flow->udp_data.stats[j].analyse_data);
 	      j++;
 	    }
 	}
@@ -374,14 +358,11 @@ show_udp_ping_summary_cmd_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_udp_ping_cmd, static) =
-{
+VLIB_CLI_COMMAND (show_udp_ping_cmd, static) = {
   .path = "show udp-ping summary",
   .short_help = "Summary of udp-ping",
   .function = show_udp_ping_summary_cmd_fn,
 };
-/* *INDENT-ON* */
 
 /**
  * @brief UDP-Ping Process node.
@@ -396,8 +377,7 @@ VLIB_CLI_COMMAND (show_udp_ping_cmd, static) =
  *
  */
 uword
-udp_ping_process (vlib_main_t * vm,
-		  vlib_node_runtime_t * rt, vlib_frame_t * f)
+udp_ping_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   f64 now;
   uword *event_data = 0;
@@ -432,12 +412,9 @@ udp_ping_process (vlib_main_t * vm,
  *
  */
 void
-udp_ping_analyse_hbh (vlib_buffer_t * b0,
-		      u32 flow_id,
-		      u16 src_port,
-		      u16 dst_port,
-		      ip6_hop_by_hop_option_t * opt0,
-		      ip6_hop_by_hop_option_t * limit0, u16 len)
+udp_ping_analyse_hbh (vlib_buffer_t *b0, u32 flow_id, u16 src_port,
+		      u16 dst_port, ip6_hop_by_hop_option_t *opt0,
+		      ip6_hop_by_hop_option_t *limit0, u16 len)
 {
   u8 type0;
   ip46_udp_ping_flow *ip46_flow;
@@ -459,8 +436,8 @@ udp_ping_analyse_hbh (vlib_buffer_t * b0,
     return;
 
   flow_index = (src_port - ip46_flow->udp_data.start_src_port) *
-    (ip46_flow->udp_data.end_dst_port - ip46_flow->udp_data.start_dst_port +
-     1);
+	       (ip46_flow->udp_data.end_dst_port -
+		ip46_flow->udp_data.start_dst_port + 1);
   flow_index += (dst_port - ip46_flow->udp_data.start_dst_port);
   data = &(ip46_flow->udp_data.stats[flow_index].analyse_data);
 
@@ -479,16 +456,15 @@ udp_ping_analyse_hbh (vlib_buffer_t * b0,
 	  /* Add trace for here as it hasnt been done yet */
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
 	  trace = (ioam_trace_option_t *) opt0;
-	  if (PREDICT_FALSE
-	      (trace->trace_hdr.ioam_trace_type & BIT_LOOPBACK_REPLY))
+	  if (PREDICT_FALSE (trace->trace_hdr.ioam_trace_type &
+			     BIT_LOOPBACK_REPLY))
 	    {
 	      ip6_ioam_analyse_hbh_trace_loopback (data, &trace->trace_hdr,
 						   (trace->hdr.length - 2));
 	      return;
 	    }
-	  ip6_hbh_ioam_trace_data_list_handler (b0,
-						vlib_buffer_get_current (b0),
-						opt0);
+	  ip6_hbh_ioam_trace_data_list_handler (
+	    b0, vlib_buffer_get_current (b0), opt0);
 	  (void) ip6_ioam_analyse_hbh_trace (data, &trace->trace_hdr, len,
 					     (trace->hdr.length - 2));
 	  break;
@@ -496,10 +472,10 @@ udp_ping_analyse_hbh (vlib_buffer_t * b0,
 	  e2e = (ioam_e2e_option_t *) opt0;
 	  (void) ip6_ioam_analyse_hbh_e2e (data, &e2e->e2e_hdr, len);
 	  break;
-	case 0:		/* Pad1 */
+	case 0: /* Pad1 */
 	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0) + 1;
 	  continue;
-	case 1:		/* PadN */
+	case 1: /* PadN */
 	  break;
 	default:
 	  break;
@@ -519,9 +495,9 @@ udp_ping_analyse_hbh (vlib_buffer_t * b0,
  *
  */
 void
-udp_ping_local_analyse (vlib_node_runtime_t * node, vlib_buffer_t * b0,
-			ip6_header_t * ip0, ip6_hop_by_hop_header_t * hbh0,
-			u16 * next0)
+udp_ping_local_analyse (vlib_node_runtime_t *node, vlib_buffer_t *b0,
+			ip6_header_t *ip0, ip6_hop_by_hop_header_t *hbh0,
+			u16 *next0)
 {
   ip6_main_t *im = &ip6_main;
   ip_lookup_main_t *lm = &im->lookup_main;
@@ -565,15 +541,13 @@ udp_ping_local_analyse (vlib_node_runtime_t * node, vlib_buffer_t * b0,
 
 	  /* Reply */
 	  opt0 = (ip6_hop_by_hop_option_t *) (hbh0 + 1);
-	  limit0 = (ip6_hop_by_hop_option_t *)
-	    ((u8 *) hbh0 + ((hbh0->length + 1) << 3));
+	  limit0 = (ip6_hop_by_hop_option_t *) ((u8 *) hbh0 +
+						((hbh0->length + 1) << 3));
 	  p_len0 = clib_net_to_host_u16 (ip0->payload_length);
-	  udp_ping_analyse_hbh (b0,
-				clib_net_to_host_u16 (udp0->
-						      ping_data.sender_handle),
-				clib_net_to_host_u16 (udp0->udp.dst_port),
-				clib_net_to_host_u16 (udp0->udp.src_port),
-				opt0, limit0, p_len0);
+	  udp_ping_analyse_hbh (
+	    b0, clib_net_to_host_u16 (udp0->ping_data.sender_handle),
+	    clib_net_to_host_u16 (udp0->udp.dst_port),
+	    clib_net_to_host_u16 (udp0->udp.src_port), opt0, limit0, p_len0);
 
 	  /* UDP Ping packet, so return */
 	  return;
@@ -593,8 +567,8 @@ udp_ping_local_analyse (vlib_node_runtime_t * node, vlib_buffer_t * b0,
 
   vlib_buffer_advance (b0, (hbh0->length + 1) << 3);
 
-  new_l0 = clib_net_to_host_u16 (ip0->payload_length) -
-    ((hbh0->length + 1) << 3);
+  new_l0 =
+    clib_net_to_host_u16 (ip0->payload_length) - ((hbh0->length + 1) << 3);
 
   ip0->payload_length = clib_host_to_net_u16 (new_l0);
 
@@ -635,8 +609,8 @@ end:
  * - Dispatches the packet to ip6-lookup/ip6-drop depending on type of packet.
  */
 static uword
-udp_ping_local_node_fn (vlib_main_t * vm,
-			vlib_node_runtime_t * node, vlib_frame_t * frame)
+udp_ping_local_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+			vlib_frame_t *frame)
 {
   udp_ping_next_t next_index;
   u32 *from, *to_next, n_left_from, n_left_to_next;
@@ -731,9 +705,9 @@ udp_ping_local_node_fn (vlib_main_t * vm,
 		}
 	    }
 
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   pi0, pi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, pi0, pi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -779,9 +753,8 @@ udp_ping_local_node_fn (vlib_main_t * vm,
 		}
 	    }
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   pi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, pi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -790,7 +763,6 @@ udp_ping_local_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 /*
  * Node for udp-ping-local
  */
@@ -814,10 +786,9 @@ VLIB_REGISTER_NODE (udp_ping_local, static) =
       [UDP_PING_NEXT_IP6_DROP] = "ip6-drop",
     },
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-udp_ping_init (vlib_main_t * vm)
+udp_ping_init (vlib_main_t *vm)
 {
   udp_ping_main.vlib_main = vm;
   udp_ping_main.vnet_main = vnet_get_main ();
@@ -828,12 +799,9 @@ udp_ping_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (udp_ping_init) =
-{
-  .runs_after = VLIB_INITS("ip_main_init"),
+VLIB_INIT_FUNCTION (udp_ping_init) = {
+  .runs_after = VLIB_INITS ("ip_main_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

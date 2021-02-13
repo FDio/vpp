@@ -33,8 +33,8 @@ perf_event_open (struct perf_event_attr *hw_event, pid_t pid, int cpu,
 }
 
 static void
-read_current_perf_counters (vlib_node_runtime_perf_callback_data_t * data,
-			    vlib_node_runtime_perf_callback_args_t * args)
+read_current_perf_counters (vlib_node_runtime_perf_callback_data_t *data,
+			    vlib_node_runtime_perf_callback_args_t *args)
 {
   int i;
   perfmon_main_t *pm = &perfmon_main;
@@ -61,12 +61,11 @@ read_current_perf_counters (vlib_node_runtime_perf_callback_data_t * data,
 	  if ((read_result = read (pt->pm_fds[i], &sw_value,
 				   sizeof (sw_value))) != sizeof (sw_value))
 	    {
-	      clib_unix_warning
-		("counter read returned %d, expected %d",
-		 read_result, sizeof (sw_value));
-	      clib_callback_data_enable_disable
-		(&args->vm->vlib_node_runtime_perf_callbacks,
-		 read_current_perf_counters, 0 /* enable */ );
+	      clib_unix_warning ("counter read returned %d, expected %d",
+				 read_result, sizeof (sw_value));
+	      clib_callback_data_enable_disable (
+		&args->vm->vlib_node_runtime_perf_callbacks,
+		read_current_perf_counters, 0 /* enable */);
 	      return;
 	    }
 	  cc[i] = sw_value;
@@ -84,14 +83,13 @@ read_current_perf_counters (vlib_node_runtime_perf_callback_data_t * data,
 }
 
 static void
-clear_counters (perfmon_main_t * pm)
+clear_counters (perfmon_main_t *pm)
 {
   int j;
   vlib_main_t *vm = pm->vlib_main;
   vlib_main_t *stat_vm;
   perfmon_thread_t *pt;
   u32 len;
-
 
   vlib_worker_thread_barrier_sync (vm);
 
@@ -112,7 +110,7 @@ clear_counters (perfmon_main_t * pm)
 }
 
 static void
-enable_current_events (perfmon_main_t * pm)
+enable_current_events (perfmon_main_t *pm)
 {
   struct perf_event_attr pe;
   int fd;
@@ -134,8 +132,8 @@ enable_current_events (perfmon_main_t * pm)
 
   for (i = 0; i < limit; i++)
     {
-      c = vec_elt_at_index (pm->single_events_to_collect,
-			    pm->current_event + i);
+      c =
+	vec_elt_at_index (pm->single_events_to_collect, pm->current_event + i);
 
       memset (&pe, 0, sizeof (struct perf_event_attr));
       pe.type = c->pe_type;
@@ -215,7 +213,7 @@ enable_current_events (perfmon_main_t * pm)
 }
 
 static void
-disable_events (perfmon_main_t * pm)
+disable_events (perfmon_main_t *pm)
 {
   vlib_main_t *vm = vlib_get_main ();
   u32 my_thread_index = vm->thread_index;
@@ -247,30 +245,30 @@ disable_events (perfmon_main_t * pm)
 }
 
 static void
-worker_thread_start_event (vlib_main_t * vm)
+worker_thread_start_event (vlib_main_t *vm)
 {
   perfmon_main_t *pm = &perfmon_main;
 
   clib_callback_enable_disable (vm->worker_thread_main_loop_callbacks,
 				vm->worker_thread_main_loop_callback_tmp,
 				vm->worker_thread_main_loop_callback_lock,
-				worker_thread_start_event, 0 /* disable */ );
+				worker_thread_start_event, 0 /* disable */);
   enable_current_events (pm);
 }
 
 static void
-worker_thread_stop_event (vlib_main_t * vm)
+worker_thread_stop_event (vlib_main_t *vm)
 {
   perfmon_main_t *pm = &perfmon_main;
   clib_callback_enable_disable (vm->worker_thread_main_loop_callbacks,
 				vm->worker_thread_main_loop_callback_tmp,
 				vm->worker_thread_main_loop_callback_lock,
-				worker_thread_stop_event, 0 /* disable */ );
+				worker_thread_stop_event, 0 /* disable */);
   disable_events (pm);
 }
 
 static void
-start_event (perfmon_main_t * pm, f64 now, uword event_data)
+start_event (perfmon_main_t *pm, f64 now, uword event_data)
 {
   int i;
   int last_set;
@@ -303,16 +301,16 @@ start_event (perfmon_main_t * pm, f64 now, uword event_data)
 	continue;
 
       if (all || clib_bitmap_get (pm->thread_bitmap, i))
-	clib_callback_enable_disable
-	  (vlib_mains[i]->worker_thread_main_loop_callbacks,
-	   vlib_mains[i]->worker_thread_main_loop_callback_tmp,
-	   vlib_mains[i]->worker_thread_main_loop_callback_lock,
-	   (void *) worker_thread_start_event, 1 /* enable */ );
+	clib_callback_enable_disable (
+	  vlib_mains[i]->worker_thread_main_loop_callbacks,
+	  vlib_mains[i]->worker_thread_main_loop_callback_tmp,
+	  vlib_mains[i]->worker_thread_main_loop_callback_lock,
+	  (void *) worker_thread_start_event, 1 /* enable */);
     }
 }
 
 void
-scrape_and_clear_counters (perfmon_main_t * pm)
+scrape_and_clear_counters (perfmon_main_t *pm)
 {
   int i, j, k;
   vlib_main_t *vm = pm->vlib_main;
@@ -377,8 +375,8 @@ scrape_and_clear_counters (perfmon_main_t * pm)
 	       * last counter when the user asks for an odd number of
 	       * counters
 	       */
-	      if ((pm->current_event + k)
-		  >= vec_len (pm->single_events_to_collect))
+	      if ((pm->current_event + k) >=
+		  vec_len (pm->single_events_to_collect))
 		break;
 
 	      capture_name = format (0, "t%d-%v%c", j, nm->nodes[i]->name, 0);
@@ -401,8 +399,8 @@ scrape_and_clear_counters (perfmon_main_t * pm)
 		}
 
 	      /* Snapshoot counters, etc. into the capture */
-	      current_event = pm->single_events_to_collect
-		+ pm->current_event + k;
+	      current_event =
+		pm->single_events_to_collect + pm->current_event + k;
 	      counter_name = (u8 *) current_event->name;
 
 	      vec_add1 (c->counter_names, counter_name);
@@ -416,7 +414,7 @@ scrape_and_clear_counters (perfmon_main_t * pm)
 }
 
 static void
-handle_timeout (vlib_main_t * vm, perfmon_main_t * pm, f64 now)
+handle_timeout (vlib_main_t *vm, perfmon_main_t *pm, f64 now)
 {
   int i;
   int last_set, all;
@@ -433,11 +431,11 @@ handle_timeout (vlib_main_t * vm, perfmon_main_t * pm, f64 now)
       if (vlib_mains[i] == 0)
 	continue;
       if (all || clib_bitmap_get (pm->thread_bitmap, i))
-	clib_callback_enable_disable
-	  (vlib_mains[i]->worker_thread_main_loop_callbacks,
-	   vlib_mains[i]->worker_thread_main_loop_callback_tmp,
-	   vlib_mains[i]->worker_thread_main_loop_callback_lock,
-	   (void *) worker_thread_stop_event, 1 /* enable */ );
+	clib_callback_enable_disable (
+	  vlib_mains[i]->worker_thread_main_loop_callbacks,
+	  vlib_mains[i]->worker_thread_main_loop_callback_tmp,
+	  vlib_mains[i]->worker_thread_main_loop_callback_lock,
+	  (void *) worker_thread_stop_event, 1 /* enable */);
     }
 
   /* Make sure workers have stopped collection */
@@ -448,9 +446,8 @@ handle_timeout (vlib_main_t * vm, perfmon_main_t * pm, f64 now)
       for (i = 1; i < vec_len (vlib_mains); i++)
 	{
 	  /* Has the worker actually stopped collecting data? */
-	  while (clib_callback_data_is_set
-		 (&vm->vlib_node_runtime_perf_callbacks,
-		  read_current_perf_counters))
+	  while (clib_callback_data_is_set (
+	    &vm->vlib_node_runtime_perf_callbacks, read_current_perf_counters))
 	    {
 	      if (vlib_time_now (vm) > deadman)
 		{
@@ -479,17 +476,17 @@ handle_timeout (vlib_main_t * vm, perfmon_main_t * pm, f64 now)
       if (vlib_mains[i] == 0)
 	continue;
       if (all || clib_bitmap_get (pm->thread_bitmap, i))
-	clib_callback_enable_disable
-	  (vlib_mains[i]->worker_thread_main_loop_callbacks,
-	   vlib_mains[i]->worker_thread_main_loop_callback_tmp,
-	   vlib_mains[i]->worker_thread_main_loop_callback_lock,
-	   worker_thread_start_event, 0 /* disable */ );
+	clib_callback_enable_disable (
+	  vlib_mains[i]->worker_thread_main_loop_callbacks,
+	  vlib_mains[i]->worker_thread_main_loop_callback_tmp,
+	  vlib_mains[i]->worker_thread_main_loop_callback_lock,
+	  worker_thread_start_event, 0 /* disable */);
     }
 }
 
 static uword
-perfmon_periodic_process (vlib_main_t * vm,
-			  vlib_node_runtime_t * rt, vlib_frame_t * f)
+perfmon_periodic_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
+			  vlib_frame_t *f)
 {
   perfmon_main_t *pm = &perfmon_main;
   f64 now;
@@ -506,7 +503,7 @@ perfmon_periodic_process (vlib_main_t * vm,
 
       now = vlib_time_now (vm);
 
-      event_type = vlib_process_get_events (vm, (uword **) & event_data);
+      event_type = vlib_process_get_events (vm, (uword **) &event_data);
 
       switch (event_type)
 	{
@@ -526,17 +523,14 @@ perfmon_periodic_process (vlib_main_t * vm,
 	}
       vec_reset_length (event_data);
     }
-  return 0;			/* or not */
+  return 0; /* or not */
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (perfmon_periodic_node) =
-{
+VLIB_REGISTER_NODE (perfmon_periodic_node) = {
   .function = perfmon_periodic_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "perfmon-periodic-process",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -35,16 +35,14 @@ const path::special_t path::special_t::PROHIBIT(4, "prohibit");
 
 path::special_t::special_t(int v, const std::string& s)
   : enum_base<path::special_t>(v, s)
-{
-}
+{}
 
 const path::flags_t path::flags_t::NONE(0, "none");
 const path::flags_t path::flags_t::DVR((1 << 0), "dvr");
 
 path::flags_t::flags_t(int v, const std::string& s)
   : enum_base<path::flags_t>(v, s)
-{
-}
+{}
 
 const itf_flags_t itf_flags_t::NONE(0, "none");
 const itf_flags_t itf_flags_t::ACCEPT((1 << 1), "accept");
@@ -52,8 +50,7 @@ const itf_flags_t itf_flags_t::FORWARD((1 << 2), "forward");
 
 itf_flags_t::itf_flags_t(int v, const std::string& s)
   : enum_base<itf_flags_t>(v, s)
-{
-}
+{}
 
 path::path(special_t special, const nh_proto_t& proto)
   : m_type(special)
@@ -64,8 +61,7 @@ path::path(special_t special, const nh_proto_t& proto)
   , m_interface(nullptr)
   , m_weight(1)
   , m_preference(0)
-{
-}
+{}
 
 path::path(const boost::asio::ip::address& nh,
            const interface& interface,
@@ -79,8 +75,7 @@ path::path(const boost::asio::ip::address& nh,
   , m_interface(interface.singular())
   , m_weight(weight)
   , m_preference(preference)
-{
-}
+{}
 
 path::path(const route_domain& rd,
            const boost::asio::ip::address& nh,
@@ -94,8 +89,7 @@ path::path(const route_domain& rd,
   , m_interface(nullptr)
   , m_weight(weight)
   , m_preference(preference)
-{
-}
+{}
 
 path::path(const interface& interface,
            const nh_proto_t& proto,
@@ -110,8 +104,7 @@ path::path(const interface& interface,
   , m_interface(interface.singular())
   , m_weight(weight)
   , m_preference(preference)
-{
-}
+{}
 
 path::path(const path& p)
   : m_type(p.m_type)
@@ -122,8 +115,7 @@ path::path(const path& p)
   , m_interface(p.m_interface)
   , m_weight(p.m_weight)
   , m_preference(p.m_preference)
-{
-}
+{}
 
 bool
 path::operator<(const path& p) const
@@ -160,9 +152,7 @@ path::operator<(const path& p) const
   return (false);
 }
 
-path::~path()
-{
-}
+path::~path() {}
 
 bool
 path::operator==(const path& p) const
@@ -257,32 +247,28 @@ ip_route::ip_route(const prefix_t& prefix, const path& p)
   , m_rd(route_domain::get_default())
   , m_prefix(prefix)
   , m_paths({ p })
-{
-}
+{}
 
 ip_route::ip_route(const prefix_t& prefix)
   : m_hw(false)
   , m_rd(route_domain::get_default())
   , m_prefix(prefix)
   , m_paths()
-{
-}
+{}
 
 ip_route::ip_route(const ip_route& r)
   : m_hw(r.m_hw)
   , m_rd(r.m_rd)
   , m_prefix(r.m_prefix)
   , m_paths(r.m_paths)
-{
-}
+{}
 
 ip_route::ip_route(const route_domain& rd, const prefix_t& prefix)
   : m_hw(false)
   , m_rd(rd.singular())
   , m_prefix(prefix)
   , m_paths()
-{
-}
+{}
 
 ip_route::ip_route(const route_domain& rd,
                    const prefix_t& prefix,
@@ -291,8 +277,7 @@ ip_route::ip_route(const route_domain& rd,
   , m_rd(rd.singular())
   , m_prefix(prefix)
   , m_paths({ p })
-{
-}
+{}
 
 ip_route::~ip_route()
 {
@@ -466,24 +451,21 @@ ip_mroute::ip_mroute(const mprefix_t& mprefix)
   , m_rd(route_domain::get_default())
   , m_mprefix(mprefix)
   , m_paths()
-{
-}
+{}
 
 ip_mroute::ip_mroute(const ip_mroute& r)
   : m_hw(r.m_hw)
   , m_rd(r.m_rd)
   , m_mprefix(r.m_mprefix)
   , m_paths(r.m_paths)
-{
-}
+{}
 
 ip_mroute::ip_mroute(const route_domain& rd, const mprefix_t& mprefix)
   : m_hw(false)
   , m_rd(rd.singular())
   , m_mprefix(mprefix)
   , m_paths()
-{
-}
+{}
 
 void
 ip_mroute::add(const path& path, const itf_flags_t& flag)
@@ -514,8 +496,8 @@ ip_mroute::sweep()
 {
   if (m_hw) {
     for (auto& p : m_paths)
-      HW::enqueue(new ip_mroute_cmds::delete_cmd(m_hw, m_rd->table_id(),
-                                                 m_mprefix, p.first, p.second));
+      HW::enqueue(new ip_mroute_cmds::delete_cmd(
+        m_hw, m_rd->table_id(), m_mprefix, p.first, p.second));
   }
   HW::write();
 }
@@ -525,8 +507,8 @@ ip_mroute::replay()
 {
   if (m_hw) {
     for (auto& p : m_paths)
-      HW::enqueue(new ip_mroute_cmds::update_cmd(m_hw, m_rd->table_id(),
-                                                 m_mprefix, p.first, p.second));
+      HW::enqueue(new ip_mroute_cmds::update_cmd(
+        m_hw, m_rd->table_id(), m_mprefix, p.first, p.second));
   }
 }
 std::string
@@ -545,8 +527,8 @@ ip_mroute::update(const ip_mroute& r)
 {
   if (rc_t::OK != m_hw.rc()) {
     for (auto& p : m_paths)
-      HW::enqueue(new ip_mroute_cmds::update_cmd(m_hw, m_rd->table_id(),
-                                                 m_mprefix, p.first, p.second));
+      HW::enqueue(new ip_mroute_cmds::update_cmd(
+        m_hw, m_rd->table_id(), m_mprefix, p.first, p.second));
   }
 }
 
@@ -577,8 +559,8 @@ ip_mroute::dump(std::ostream& os)
 ip_mroute::event_handler::event_handler()
 {
   OM::register_listener(this);
-  inspect::register_handler({ "ip-mroute" },
-                            "ip multicast route configurations", this);
+  inspect::register_handler(
+    { "ip-mroute" }, "ip multicast route configurations", this);
 }
 
 void

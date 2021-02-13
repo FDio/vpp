@@ -17,12 +17,11 @@
 #ifndef included_clib_pfhash_h
 #define included_clib_pfhash_h
 
-
 #include <vppinfra/clib.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/pool.h>
 
-#if defined(CLIB_HAVE_VEC128) && ! defined (__ALTIVEC__)
+#if defined(CLIB_HAVE_VEC128) && !defined(__ALTIVEC__)
 
 typedef struct
 {
@@ -87,7 +86,7 @@ typedef struct
 {
   /* Bucket vector */
   u32 *buckets;
-#define PFHASH_BUCKET_OVERFLOW (u32)~0
+#define PFHASH_BUCKET_OVERFLOW (u32) ~0
 
   /* Pool of key/value pairs */
   pfhash_kv_t *kvp;
@@ -106,23 +105,23 @@ typedef struct
   u32 nitems_in_overflow;
 } pfhash_t;
 
-void pfhash_init (pfhash_t * p, char *name, u32 key_size, u32 value_size,
+void pfhash_init (pfhash_t *p, char *name, u32 key_size, u32 value_size,
 		  u32 nbuckets);
-void pfhash_free (pfhash_t * p);
-u64 pfhash_get (pfhash_t * p, u32 bucket, void *key);
-void pfhash_set (pfhash_t * p, u32 bucket, void *key, void *value);
-void pfhash_unset (pfhash_t * p, u32 bucket, void *key);
+void pfhash_free (pfhash_t *p);
+u64 pfhash_get (pfhash_t *p, u32 bucket, void *key);
+void pfhash_set (pfhash_t *p, u32 bucket, void *key, void *value);
+void pfhash_unset (pfhash_t *p, u32 bucket, void *key);
 
 format_function_t format_pfhash;
 
 static inline void
-pfhash_prefetch_bucket (pfhash_t * p, u32 bucket)
+pfhash_prefetch_bucket (pfhash_t *p, u32 bucket)
 {
   CLIB_PREFETCH (&p->buckets[bucket], CLIB_CACHE_LINE_BYTES, LOAD);
 }
 
 static inline u32
-pfhash_read_bucket_prefetch_kv (pfhash_t * p, u32 bucket)
+pfhash_read_bucket_prefetch_kv (pfhash_t *p, u32 bucket)
 {
   u32 bucket_contents = p->buckets[bucket];
   if (PREDICT_TRUE ((bucket_contents & PFHASH_BUCKET_OVERFLOW) == 0))
@@ -132,15 +131,15 @@ pfhash_read_bucket_prefetch_kv (pfhash_t * p, u32 bucket)
 
 /*
  * pfhash_search_kv_16
- * See if the supplied 16-byte key matches one of three 16-byte (key,value) pairs.
- * Return the indicated value, or ~0 if no match
+ * See if the supplied 16-byte key matches one of three 16-byte (key,value)
+ * pairs. Return the indicated value, or ~0 if no match
  *
  * Note: including the overflow test, the fast path is 35 instrs
  * on x86_64. Elves will steal your keyboard in the middle of the night if
  * you "improve" it without checking the generated code!
  */
 static inline u32
-pfhash_search_kv_16 (pfhash_t * p, u32 bucket_contents, u32x4 * key)
+pfhash_search_kv_16 (pfhash_t *p, u32 bucket_contents, u32x4 *key)
 {
   u32x4 diff0, diff1, diff2;
   u32 is_equal0, is_equal1, is_equal2;
@@ -154,7 +153,7 @@ pfhash_search_kv_16 (pfhash_t * p, u32 bucket_contents, u32x4 * key)
       hp = hash_get_mem (p->overflow_hash, key);
       if (hp)
 	return hp[0];
-      return (u32) ~ 0;
+      return (u32) ~0;
     }
 
   kv = &p->kvp[bucket_contents].kv16;
@@ -168,20 +167,21 @@ pfhash_search_kv_16 (pfhash_t * p, u32 bucket_contents, u32x4 * key)
   no_match |= is_equal1;
   is_equal2 = (i16) u32x4_zero_byte_mask (diff2);
   no_match |= is_equal2;
-  /* If any of the three items matched, no_match will be zero after this line */
+  /* If any of the three items matched, no_match will be zero after this line
+   */
   no_match = ~no_match;
 
-  rv = (is_equal0 & kv->values[0])
-    | (is_equal1 & kv->values[1]) | (is_equal2 & kv->values[2]) | no_match;
+  rv = (is_equal0 & kv->values[0]) | (is_equal1 & kv->values[1]) |
+       (is_equal2 & kv->values[2]) | no_match;
 
   return rv;
 }
 
 static inline u32
-pfhash_search_kv_8 (pfhash_t * p, u32 bucket_contents, u64 * key)
+pfhash_search_kv_8 (pfhash_t *p, u32 bucket_contents, u64 *key)
 {
   pfhash_kv_8_t *kv;
-  u32 rv = (u32) ~ 0;
+  u32 rv = (u32) ~0;
 
   if (PREDICT_FALSE (bucket_contents == PFHASH_BUCKET_OVERFLOW))
     {
@@ -189,7 +189,7 @@ pfhash_search_kv_8 (pfhash_t * p, u32 bucket_contents, u64 * key)
       hp = hash_get_mem (p->overflow_hash, key);
       if (hp)
 	return hp[0];
-      return (u32) ~ 0;
+      return (u32) ~0;
     }
 
   kv = &p->kvp[bucket_contents].kv8;
@@ -204,10 +204,10 @@ pfhash_search_kv_8 (pfhash_t * p, u32 bucket_contents, u64 * key)
 }
 
 static inline u64
-pfhash_search_kv_8v8 (pfhash_t * p, u32 bucket_contents, u64 * key)
+pfhash_search_kv_8v8 (pfhash_t *p, u32 bucket_contents, u64 *key)
 {
   pfhash_kv_8v8_t *kv;
-  u64 rv = (u64) ~ 0;
+  u64 rv = (u64) ~0;
 
   if (PREDICT_FALSE (bucket_contents == PFHASH_BUCKET_OVERFLOW))
     {
@@ -215,7 +215,7 @@ pfhash_search_kv_8v8 (pfhash_t * p, u32 bucket_contents, u64 * key)
       hp = hash_get_mem (p->overflow_hash, key);
       if (hp)
 	return hp[0];
-      return (u64) ~ 0;
+      return (u64) ~0;
     }
 
   kv = &p->kvp[bucket_contents].kv8v8;
@@ -229,7 +229,7 @@ pfhash_search_kv_8v8 (pfhash_t * p, u32 bucket_contents, u64 * key)
 }
 
 static inline u32
-pfhash_search_kv_4 (pfhash_t * p, u32 bucket_contents, u32 * key)
+pfhash_search_kv_4 (pfhash_t *p, u32 bucket_contents, u32 *key)
 {
   u32x4 vector_key;
   u32x4 is_equal[2];
@@ -242,7 +242,7 @@ pfhash_search_kv_4 (pfhash_t * p, u32 bucket_contents, u32 * key)
       hp = hash_get_mem (p->overflow_hash, key);
       if (hp)
 	return hp[0];
-      return (u32) ~ 0;
+      return (u32) ~0;
     }
 
   kv = &p->kvp[bucket_contents].kv4;
@@ -255,7 +255,7 @@ pfhash_search_kv_4 (pfhash_t * p, u32 bucket_contents, u32 * key)
   zbm[1] = ~u32x4_zero_byte_mask (is_equal[1]) & 0xFFFF;
 
   if (PREDICT_FALSE ((zbm[0] == 0) && (zbm[1] == 0)))
-    return (u32) ~ 0;
+    return (u32) ~0;
 
   winner_index = min_log2 (zbm[0]) >> 2;
   winner_index = zbm[1] ? (4 + (min_log2 (zbm[1]) >> 2)) : winner_index;

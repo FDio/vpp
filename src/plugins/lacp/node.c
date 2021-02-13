@@ -19,10 +19,14 @@
 #include <lacp/node.h>
 
 lacp_state_struct lacp_state_array[] = {
-#define _(b, s, n) {.bit = b, .str = #s, },
+#define _(b, s, n)                                                            \
+  {                                                                           \
+    .bit = b,                                                                 \
+    .str = #s,                                                                \
+  },
   foreach_lacp_state_flag
 #undef _
-  {.str = NULL}
+  { .str = NULL }
 };
 
 /** \file
@@ -42,7 +46,7 @@ lacp_state_struct lacp_state_array[] = {
  * Dump these counters via the "show error" CLI command
  */
 static char *lacp_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_lacp_error
 #undef _
 };
@@ -63,14 +67,13 @@ typedef enum
  * Expect 1 packet / frame
  */
 static uword
-lacp_node_fn (vlib_main_t * vm,
-	      vlib_node_runtime_t * node, vlib_frame_t * frame)
+lacp_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from;
   lacp_input_trace_t *t0;
 
-  from = vlib_frame_vector_args (frame);	/* array of buffer indices */
-  n_left_from = frame->n_vectors;	/* number of buffer indices */
+  from = vlib_frame_vector_args (frame); /* array of buffer indices */
+  n_left_from = frame->n_vectors;	 /* number of buffer indices */
 
   while (n_left_from > 0)
     {
@@ -93,8 +96,8 @@ lacp_node_fn (vlib_main_t * vm,
 	  int len;
 
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	  len = (b0->current_length < sizeof (t0->pkt))
-	    ? b0->current_length : sizeof (t0->pkt);
+	  len = (b0->current_length < sizeof (t0->pkt)) ? b0->current_length :
+							  sizeof (t0->pkt);
 	  t0->len = len;
 	  t0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  clib_memcpy_fast (&t0->pkt, vlib_buffer_get_current (b0), len);
@@ -112,7 +115,7 @@ lacp_node_fn (vlib_main_t * vm,
 /*
  * lacp input graph node declaration
  */
-/* *INDENT-OFF* */
+
 VLIB_REGISTER_NODE (lacp_input_node, static) = {
   .function = lacp_node_fn,
   .name = "lacp-input",
@@ -129,23 +132,21 @@ VLIB_REGISTER_NODE (lacp_input_node, static) = {
     [LACP_INPUT_NEXT_NORMAL] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 static void
 lacp_elog_start_event (void)
 {
   lacp_main_t *lm = &lacp_main;
-  /* *INDENT-OFF* */
-  ELOG_TYPE_DECLARE (e) =
-    {
-      .format = "Starting LACP process, interface count = %d",
-      .format_args = "i4",
-    };
-  /* *INDENT-ON* */
+
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "Starting LACP process, interface count = %d",
+    .format_args = "i4",
+  };
+
   struct
   {
     u32 count;
-  } *ed;
+  } * ed;
 
   ed = ELOG_DATA (&vlib_global_main.elog_main, e);
   ed->count = lm->lacp_int;
@@ -155,17 +156,16 @@ static void
 lacp_elog_stop_event (void)
 {
   lacp_main_t *lm = &lacp_main;
-  /* *INDENT-OFF* */
-  ELOG_TYPE_DECLARE (e) =
-    {
-      .format = "Stopping LACP process, interface count = %d",
-      .format_args = "i4",
-    };
-  /* *INDENT-ON* */
+
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "Stopping LACP process, interface count = %d",
+    .format_args = "i4",
+  };
+
   struct
   {
     u32 count;
-  } *ed;
+  } * ed;
 
   ed = ELOG_DATA (&vlib_global_main.elog_main, e);
   ed->count = lm->lacp_int;
@@ -175,13 +175,13 @@ lacp_elog_stop_event (void)
  * lacp periodic function
  */
 static uword
-lacp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
+lacp_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   lacp_main_t *lm = &lacp_main;
   f64 poll_time_remaining;
   uword event_type, *event_data = 0;
 
-  ethernet_register_input_type (vm, ETHERNET_TYPE_SLOW_PROTOCOLS /* LACP */ ,
+  ethernet_register_input_type (vm, ETHERNET_TYPE_SLOW_PROTOCOLS /* LACP */,
 				lacp_input_node.index);
 
   poll_time_remaining = 0.2;
@@ -196,7 +196,7 @@ lacp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       event_type = vlib_process_get_events (vm, &event_data);
       switch (event_type)
 	{
-	case ~0:		/* no events => timeout */
+	case ~0: /* no events => timeout */
 	  break;
 	case LACP_PROCESS_EVENT_START:
 	  poll_time_remaining = 0.2;
@@ -235,9 +235,8 @@ lacp_create_periodic_process (void)
     return;
 
   /* No, create it now and make a note of the node index */
-  lm->lacp_process_node_index =
-    vlib_process_create (lm->vlib_main, "lacp-process", lacp_process,
-			 16 /* log2_n_stack_bytes */ );
+  lm->lacp_process_node_index = vlib_process_create (
+    lm->vlib_main, "lacp-process", lacp_process, 16 /* log2_n_stack_bytes */);
 }
 
 /*

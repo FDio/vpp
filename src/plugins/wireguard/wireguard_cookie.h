@@ -28,30 +28,30 @@ enum cookie_mac_state
   VALID_MAC_WITH_COOKIE
 };
 
-#define COOKIE_MAC_SIZE		16
-#define COOKIE_KEY_SIZE		32
-#define COOKIE_NONCE_SIZE	24
-#define COOKIE_COOKIE_SIZE	16
-#define COOKIE_SECRET_SIZE	32
-#define COOKIE_INPUT_SIZE	32
-#define COOKIE_ENCRYPTED_SIZE	(COOKIE_COOKIE_SIZE + COOKIE_MAC_SIZE)
+#define COOKIE_MAC_SIZE	      16
+#define COOKIE_KEY_SIZE	      32
+#define COOKIE_NONCE_SIZE     24
+#define COOKIE_COOKIE_SIZE    16
+#define COOKIE_SECRET_SIZE    32
+#define COOKIE_INPUT_SIZE     32
+#define COOKIE_ENCRYPTED_SIZE (COOKIE_COOKIE_SIZE + COOKIE_MAC_SIZE)
 
 #define COOKIE_MAC1_KEY_LABEL	"mac1----"
-#define COOKIE_COOKIE_KEY_LABEL	"cookie--"
+#define COOKIE_COOKIE_KEY_LABEL "cookie--"
 #define COOKIE_SECRET_MAX_AGE	120
 #define COOKIE_SECRET_LATENCY	5
 
 /* Constants for initiation rate limiting */
-#define RATELIMIT_SIZE		(1 << 13)
-#define RATELIMIT_SIZE_MAX	(RATELIMIT_SIZE * 8)
-#define NSEC_PER_SEC		1000000000LL
-#define INITIATIONS_PER_SECOND	20
-#define INITIATIONS_BURSTABLE	5
-#define INITIATION_COST		(NSEC_PER_SEC / INITIATIONS_PER_SECOND)
-#define TOKEN_MAX		(INITIATION_COST * INITIATIONS_BURSTABLE)
-#define ELEMENT_TIMEOUT		1
-#define IPV4_MASK_SIZE		4	/* Use all 4 bytes of IPv4 address */
-#define IPV6_MASK_SIZE		8	/* Use top 8 bytes (/64) of IPv6 address */
+#define RATELIMIT_SIZE	       (1 << 13)
+#define RATELIMIT_SIZE_MAX     (RATELIMIT_SIZE * 8)
+#define NSEC_PER_SEC	       1000000000LL
+#define INITIATIONS_PER_SECOND 20
+#define INITIATIONS_BURSTABLE  5
+#define INITIATION_COST	       (NSEC_PER_SEC / INITIATIONS_PER_SECOND)
+#define TOKEN_MAX	       (INITIATION_COST * INITIATIONS_BURSTABLE)
+#define ELEMENT_TIMEOUT	       1
+#define IPV4_MASK_SIZE	       4 /* Use all 4 bytes of IPv4 address */
+#define IPV6_MASK_SIZE	       8 /* Use top 8 bytes (/64) of IPv6 address */
 
 typedef struct cookie_macs
 {
@@ -79,16 +79,13 @@ typedef struct cookie_checker
   uint8_t cc_secret[COOKIE_SECRET_SIZE];
 } cookie_checker_t;
 
-
 void cookie_maker_init (cookie_maker_t *, const uint8_t[COOKIE_INPUT_SIZE]);
 void cookie_checker_update (cookie_checker_t *, uint8_t[COOKIE_INPUT_SIZE]);
 void cookie_maker_mac (cookie_maker_t *, message_macs_t *, void *, size_t);
-enum cookie_mac_state cookie_checker_validate_macs (vlib_main_t * vm,
-						    cookie_checker_t *,
-						    message_macs_t *, void *,
-						    size_t, bool,
-						    ip4_address_t ip4,
-						    u16 udp_port);
+enum cookie_mac_state
+cookie_checker_validate_macs (vlib_main_t *vm, cookie_checker_t *,
+			      message_macs_t *, void *, size_t, bool,
+			      ip4_address_t ip4, u16 udp_port);
 
 #endif /* __included_wg_cookie_h__ */
 

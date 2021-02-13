@@ -27,13 +27,13 @@
  * These enum decode/encodes use 'int' as the type for the enum because
  * one cannot forward declare an enum
  */
-extern int tunnel_encap_decap_flags_decode (vl_api_tunnel_encap_decap_flags_t
-					    _f,
-					    tunnel_encap_decap_flags_t * out);
+extern int
+tunnel_encap_decap_flags_decode (vl_api_tunnel_encap_decap_flags_t _f,
+				 tunnel_encap_decap_flags_t *out);
 extern vl_api_tunnel_encap_decap_flags_t
 tunnel_encap_decap_flags_encode (tunnel_encap_decap_flags_t f);
 
-extern int tunnel_mode_decode (vl_api_tunnel_mode_t in, tunnel_mode_t * out);
+extern int tunnel_mode_decode (vl_api_tunnel_mode_t in, tunnel_mode_t *out);
 extern vl_api_tunnel_mode_t tunnel_mode_encode (tunnel_mode_t in);
 
 extern int tunnel_flags_decode (vl_api_tunnel_flags_t in, tunnel_flags_t *out);

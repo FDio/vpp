@@ -22,42 +22,38 @@
 #include <vnet/session/mma_16.h>
 #include <vnet/session/mma_40.h>
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED (struct
-{
+typedef CLIB_PACKED (struct {
   union
+  {
+    struct
     {
-      struct
-        {
-          ip4_address_t rmt_ip;
-          ip4_address_t lcl_ip;
-          u16 rmt_port;
-          u16 lcl_port;
-        };
-      u64 as_u64[2];
+      ip4_address_t rmt_ip;
+      ip4_address_t lcl_ip;
+      u16 rmt_port;
+      u16 lcl_port;
     };
+    u64 as_u64[2];
+  };
 }) session_mask_or_match_4_t;
 
-typedef CLIB_PACKED (struct
-{
+typedef CLIB_PACKED (struct {
   union
+  {
+    struct
     {
-      struct
-        {
-          ip6_address_t rmt_ip;
-          ip6_address_t lcl_ip;
-          u16 rmt_port;
-          u16 lcl_port;
-        };
-      u64 as_u64[5];
+      ip6_address_t rmt_ip;
+      ip6_address_t lcl_ip;
+      u16 rmt_port;
+      u16 lcl_port;
     };
+    u64 as_u64[5];
+  };
 }) session_mask_or_match_6_t;
-/* *INDENT-ON* */
 
-#define SESSION_RULE_TAG_MAX_LEN 64
+#define SESSION_RULE_TAG_MAX_LEN	  64
 #define SESSION_RULES_TABLE_INVALID_INDEX MMA_TABLE_INVALID_INDEX
-#define SESSION_RULES_TABLE_ACTION_DROP (MMA_TABLE_INVALID_INDEX - 1)
-#define SESSION_RULES_TABLE_ACTION_ALLOW (MMA_TABLE_INVALID_INDEX - 2)
+#define SESSION_RULES_TABLE_ACTION_DROP	  (MMA_TABLE_INVALID_INDEX - 1)
+#define SESSION_RULES_TABLE_ACTION_ALLOW  (MMA_TABLE_INVALID_INDEX - 2)
 
 typedef struct _session_rules_table_add_del_args
 {
@@ -96,26 +92,24 @@ typedef struct _session_rules_table_t
   uword *tags_by_rules;
 } session_rules_table_t;
 
-u32 session_rules_table_lookup4 (session_rules_table_t * srt,
-				 ip4_address_t * lcl_ip,
-				 ip4_address_t * rmt_ip, u16 lcl_port,
-				 u16 rmt_port);
-u32 session_rules_table_lookup6 (session_rules_table_t * srt,
-				 ip6_address_t * lcl_ip,
-				 ip6_address_t * rmt_ip, u16 lcl_port,
-				 u16 rmt_port);
-void session_rules_table_cli_dump (vlib_main_t * vm,
-				   session_rules_table_t * srt, u8 fib_proto);
-void session_rules_table_show_rule (vlib_main_t * vm,
-				    session_rules_table_t * srt,
-				    ip46_address_t * lcl_ip, u16 lcl_port,
-				    ip46_address_t * rmt_ip, u16 rmt_port,
+u32 session_rules_table_lookup4 (session_rules_table_t *srt,
+				 ip4_address_t *lcl_ip, ip4_address_t *rmt_ip,
+				 u16 lcl_port, u16 rmt_port);
+u32 session_rules_table_lookup6 (session_rules_table_t *srt,
+				 ip6_address_t *lcl_ip, ip6_address_t *rmt_ip,
+				 u16 lcl_port, u16 rmt_port);
+void session_rules_table_cli_dump (vlib_main_t *vm, session_rules_table_t *srt,
+				   u8 fib_proto);
+void session_rules_table_show_rule (vlib_main_t *vm,
+				    session_rules_table_t *srt,
+				    ip46_address_t *lcl_ip, u16 lcl_port,
+				    ip46_address_t *rmt_ip, u16 rmt_port,
 				    u8 is_ip4);
-int session_rules_table_add_del (session_rules_table_t * srt,
-				 session_rule_table_add_del_args_t * args);
-u8 *session_rules_table_rule_tag (session_rules_table_t * srt, u32 ri,
+int session_rules_table_add_del (session_rules_table_t *srt,
+				 session_rule_table_add_del_args_t *args);
+u8 *session_rules_table_rule_tag (session_rules_table_t *srt, u32 ri,
 				  u8 is_ip4);
-void session_rules_table_init (session_rules_table_t * srt);
+void session_rules_table_init (session_rules_table_t *srt);
 #endif /* SRC_VNET_SESSION_SESSION_RULES_TABLE_H_ */
 /*
  * fd.io coding-style-patch-verification: ON

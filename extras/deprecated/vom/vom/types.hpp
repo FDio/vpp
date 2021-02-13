@@ -388,13 +388,11 @@ struct counter_t
   counter_t()
     : packets(0)
     , bytes(0)
-  {
-  }
+  {}
   counter_t(const counter_t& c)
     : packets(c.packets)
     , bytes(c.bytes)
-  {
-  }
+  {}
   uint64_t packets;
   uint64_t bytes;
 };

@@ -33,8 +33,8 @@ static u32 dhcp_base_msg_id;
 #include <vlibapi/api_helper_macros.h>
 
 static void
-  vl_api_dhcp6_pd_client_enable_disable_t_handler
-  (vl_api_dhcp6_pd_client_enable_disable_t * mp)
+vl_api_dhcp6_pd_client_enable_disable_t_handler (
+  vl_api_dhcp6_pd_client_enable_disable_t *mp)
 {
   vl_api_dhcp6_pd_client_enable_disable_reply_t *rmp;
   u32 sw_if_index;
@@ -44,8 +44,8 @@ static void
 
   sw_if_index = ntohl (mp->sw_if_index);
 
-  rv = dhcp6_pd_client_enable_disable (sw_if_index,
-				       mp->prefix_group, mp->enable);
+  rv =
+    dhcp6_pd_client_enable_disable (sw_if_index, mp->prefix_group, mp->enable);
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -53,8 +53,8 @@ static void
 }
 
 static void
-  vl_api_ip6_add_del_address_using_prefix_t_handler
-  (vl_api_ip6_add_del_address_using_prefix_t * mp)
+vl_api_ip6_add_del_address_using_prefix_t_handler (
+  vl_api_ip6_add_del_address_using_prefix_t *mp)
 {
   vl_api_ip6_add_del_address_using_prefix_reply_t *rmp;
   u32 sw_if_index;
@@ -82,7 +82,7 @@ static void
 #undef vl_msg_name_crc_list
 
 static clib_error_t *
-dhcp_pd_client_cp_api_init (vlib_main_t * vm)
+dhcp_pd_client_cp_api_init (vlib_main_t *vm)
 {
   /*
    * Set up the (msg_name, crc, message-id) table

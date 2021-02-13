@@ -31,63 +31,63 @@
 /**
  * The BIER imposition object
  */
-typedef struct bier_imp_t_ {
-    /**
-     * Required for pool_get_aligned
-     */
-    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+typedef struct bier_imp_t_
+{
+  /**
+   * Required for pool_get_aligned
+   */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
-    /**
-     * The DPO contributed from the resolving BIER table.
-     * One per-IP protocol. This allows us to share a BIER imposition
-     * object for a IPv4 and IPv6 mfib path.
-     */
-    dpo_id_t bi_dpo[FIB_PROTOCOL_IP_MAX];
+  /**
+   * The DPO contributed from the resolving BIER table.
+   * One per-IP protocol. This allows us to share a BIER imposition
+   * object for a IPv4 and IPv6 mfib path.
+   */
+  dpo_id_t bi_dpo[FIB_PROTOCOL_IP_MAX];
 
-    /**
-     * The Header to impose.
-     */
-    bier_hdr_t bi_hdr;
+  /**
+   * The Header to impose.
+   */
+  bier_hdr_t bi_hdr;
 
-    /**
-     * The bit string.
-     *  This is a memory v. speed tradeoff. We inline here the
-     *  largest header type so as the bitstring is on the same
-     *  cacheline as the header.
-     */
-    u8 bi_bits[BIER_HDR_BUCKETS_1024];
+  /**
+   * The bit string.
+   *  This is a memory v. speed tradeoff. We inline here the
+   *  largest header type so as the bitstring is on the same
+   *  cacheline as the header.
+   */
+  u8 bi_bits[BIER_HDR_BUCKETS_1024];
 
-    /**
-     * The BIER table into which to forward the post imposed packet
-     */
-    bier_table_id_t bi_tbl;
+  /**
+   * The BIER table into which to forward the post imposed packet
+   */
+  bier_table_id_t bi_tbl;
 
-    /**
-     * number of locks
-     */
-    u32 bi_locks;
+  /**
+   * number of locks
+   */
+  u32 bi_locks;
 
 } bier_imp_t;
 
-extern index_t bier_imp_add_or_lock(const bier_table_id_t *bt,
-                                    bier_bp_t sender,
-                                    const bier_bit_string_t *bs);
+extern index_t bier_imp_add_or_lock (const bier_table_id_t *bt,
+				     bier_bp_t sender,
+				     const bier_bit_string_t *bs);
 
-extern void bier_imp_unlock(index_t bii);
-extern void bier_imp_lock(index_t bii);
+extern void bier_imp_unlock (index_t bii);
+extern void bier_imp_lock (index_t bii);
 
-extern u8* format_bier_imp(u8* s, va_list *ap);
+extern u8 *format_bier_imp (u8 *s, va_list *ap);
 
-extern void bier_imp_contribute_forwarding(index_t bii,
-                                           dpo_proto_t proto,
-                                           dpo_id_t *dpo);
+extern void bier_imp_contribute_forwarding (index_t bii, dpo_proto_t proto,
+					    dpo_id_t *dpo);
 
 extern bier_imp_t *bier_imp_pool;
 
-always_inline bier_imp_t*
+always_inline bier_imp_t *
 bier_imp_get (index_t bii)
 {
-    return (pool_elt_at_index(bier_imp_pool, bii));
+  return (pool_elt_at_index (bier_imp_pool, bii));
 }
 
 #endif

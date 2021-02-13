@@ -37,7 +37,7 @@ typedef struct
 test_main_t test_main;
 
 clib_error_t *
-test_palloc (test_main_t * tm)
+test_palloc (test_main_t *tm)
 {
   clib_pmalloc_main_t *pm = &tm->pmalloc_main;
   void *arena;
@@ -58,7 +58,8 @@ test_palloc (test_main_t * tm)
 
       if (va == 0)
 	clib_error ("Failed to alloc %u byte chunk with align %u on numa %u,"
-		    "\nerror: %U", size, align, numa, format_clib_error,
+		    "\nerror: %U",
+		    size, align, numa, format_clib_error,
 		    clib_pmalloc_last_error (pm));
 
       if ((pointer_to_uword (va) & (align - 1)) != 0)
@@ -72,10 +73,9 @@ test_palloc (test_main_t * tm)
   if (tm->arena_items)
     {
       fformat (stdout, "Allocate %d items from arena ...\n", tm->arena_items);
-      arena = clib_pmalloc_create_shared_arena (pm, "test arena",
-						tm->arena_pages << 21,
-						tm->arena_log2_pg_sz,
-						tm->arena_numa);
+      arena = clib_pmalloc_create_shared_arena (
+	pm, "test arena", tm->arena_pages << 21, tm->arena_log2_pg_sz,
+	tm->arena_numa);
       if (arena == 0)
 	clib_error ("Failed to alloc shared arena: %U", format_clib_error,
 		    clib_pmalloc_last_error (pm));
@@ -90,7 +90,6 @@ test_palloc (test_main_t * tm)
       fformat (stdout, "\n%U\n", format_pmalloc, pm, tm->verbose);
     }
 
-
   fformat (stdout, "Freeing %d items ...\n", vec_len (tm->vas));
   for (i = 0; i < vec_len (tm->vas); i++)
     clib_pmalloc_free (pm, (void *) tm->vas[i]);
@@ -100,7 +99,7 @@ test_palloc (test_main_t * tm)
 }
 
 clib_error_t *
-test_palloc_main (unformat_input_t * i)
+test_palloc_main (unformat_input_t *i)
 {
   test_main_t *tm = &test_main;
   clib_error_t *error;

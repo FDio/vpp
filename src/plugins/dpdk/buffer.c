@@ -25,8 +25,9 @@
 #include <vlib/vlib.h>
 #include <dpdk/buffer.h>
 
-STATIC_ASSERT (VLIB_BUFFER_PRE_DATA_SIZE == RTE_PKTMBUF_HEADROOM,
-	       "VLIB_BUFFER_PRE_DATA_SIZE must be equal to RTE_PKTMBUF_HEADROOM");
+STATIC_ASSERT (
+  VLIB_BUFFER_PRE_DATA_SIZE == RTE_PKTMBUF_HEADROOM,
+  "VLIB_BUFFER_PRE_DATA_SIZE must be equal to RTE_PKTMBUF_HEADROOM");
 
 extern struct rte_mbuf *dpdk_mbuf_template_by_pool_index;
 #ifndef CLIB_MARCH_VARIANT
@@ -35,7 +36,7 @@ struct rte_mempool **dpdk_no_cache_mempool_by_buffer_pool_index = 0;
 struct rte_mbuf *dpdk_mbuf_template_by_pool_index = 0;
 
 clib_error_t *
-dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
+dpdk_buffer_pool_init (vlib_main_t *vm, vlib_buffer_pool_t *bp)
 {
   uword buffer_mem_start = vm->buffer_main->buffer_mem_start;
   struct rte_mempool *mp, *nmp;
@@ -55,30 +56,26 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
 
   /* normal mempool */
   name = format (name, "vpp pool %u%c", bp->index, 0);
-  mp = rte_mempool_create_empty ((char *) name, bp->n_buffers,
-				 elt_size, 512, sizeof (priv),
-				 bp->numa_node, 0);
+  mp = rte_mempool_create_empty ((char *) name, bp->n_buffers, elt_size, 512,
+				 sizeof (priv), bp->numa_node, 0);
   if (!mp)
     {
       vec_free (name);
-      return clib_error_return (0,
-				"failed to create normal mempool for numa node %u",
-				bp->index);
+      return clib_error_return (
+	0, "failed to create normal mempool for numa node %u", bp->index);
     }
   vec_reset_length (name);
 
   /* non-cached mempool */
   name = format (name, "vpp pool %u (no cache)%c", bp->index, 0);
-  nmp = rte_mempool_create_empty ((char *) name, bp->n_buffers,
-				  elt_size, 0, sizeof (priv),
-				  bp->numa_node, 0);
+  nmp = rte_mempool_create_empty ((char *) name, bp->n_buffers, elt_size, 0,
+				  sizeof (priv), bp->numa_node, 0);
   if (!nmp)
     {
       rte_mempool_free (mp);
       vec_free (name);
-      return clib_error_return (0,
-				"failed to create non-cache mempool for numa nude %u",
-				bp->index);
+      return clib_error_return (
+	0, "failed to create non-cache mempool for numa nude %u", bp->index);
     }
   vec_free (name);
 
@@ -92,8 +89,8 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
 
   /* Call the mempool priv initializer */
   memset (&priv, 0, sizeof (priv));
-  priv.mbuf_data_room_size = VLIB_BUFFER_PRE_DATA_SIZE +
-    vlib_buffer_get_default_data_size (vm);
+  priv.mbuf_data_room_size =
+    VLIB_BUFFER_PRE_DATA_SIZE + vlib_buffer_get_default_data_size (vm);
   priv.mbuf_priv_size = VLIB_BUFFER_HDR_SIZE;
   rte_pktmbuf_pool_init (mp, &priv);
   rte_pktmbuf_pool_init (nmp, &priv);
@@ -108,8 +105,8 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
       struct rte_mbuf *mb = rte_mbuf_from_vlib_buffer (b);
       hdr = (struct rte_mempool_objhdr *) RTE_PTR_SUB (mb, sizeof (*hdr));
       hdr->mp = mp;
-      hdr->iova = (iova_mode == RTE_IOVA_VA) ?
-	pointer_to_uword (mb) : vlib_physmem_get_pa (vm, mb);
+      hdr->iova = (iova_mode == RTE_IOVA_VA) ? pointer_to_uword (mb) :
+					       vlib_physmem_get_pa (vm, mb);
       STAILQ_INSERT_TAIL (&mp->elt_list, hdr, next);
       STAILQ_INSERT_TAIL (&nmp->elt_list, hdr, next);
       mp->populated_size++;
@@ -123,9 +120,9 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
   vec_validate_aligned (dpdk_mbuf_template_by_pool_index, bp->index,
 			CLIB_CACHE_LINE_BYTES);
   clib_memcpy (vec_elt_at_index (dpdk_mbuf_template_by_pool_index, bp->index),
-	       rte_mbuf_from_vlib_buffer (vlib_buffer_ptr_from_index
-					  (buffer_mem_start, *bp->buffers,
-					   0)), sizeof (struct rte_mbuf));
+	       rte_mbuf_from_vlib_buffer (vlib_buffer_ptr_from_index (
+		 buffer_mem_start, *bp->buffers, 0)),
+	       sizeof (struct rte_mbuf));
 
   for (i = 0; i < bp->n_buffers; i++)
     {
@@ -148,8 +145,8 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
       for (i = 0; i < pm->n_pages; i++)
 	{
 	  char *va = ((char *) pm->base) + i * page_sz;
-	  uword pa = (iova_mode == RTE_IOVA_VA) ?
-	    pointer_to_uword (va) : pm->page_table[i];
+	  uword pa = (iova_mode == RTE_IOVA_VA) ? pointer_to_uword (va) :
+						  pm->page_table[i];
 
 	  if (do_vfio_map &&
 #if RTE_VERSION < RTE_VERSION_NUM(19, 11, 0, 0)
@@ -193,7 +190,7 @@ dpdk_ops_vpp_free (struct rte_mempool *mp)
 #endif
 
 static_always_inline void
-dpdk_ops_vpp_enqueue_one (vlib_buffer_t * bt, void *obj)
+dpdk_ops_vpp_enqueue_one (vlib_buffer_t *bt, void *obj)
 {
   /* Only non-replicated packets (b->ref_count == 1) expected */
 
@@ -204,9 +201,9 @@ dpdk_ops_vpp_enqueue_one (vlib_buffer_t * bt, void *obj)
   vlib_buffer_copy_template (b, bt);
 }
 
-int
-CLIB_MULTIARCH_FN (dpdk_ops_vpp_enqueue) (struct rte_mempool * mp,
-					  void *const *obj_table, unsigned n)
+int CLIB_MULTIARCH_FN (dpdk_ops_vpp_enqueue) (struct rte_mempool *mp,
+					      void *const *obj_table,
+					      unsigned n)
 {
   const int batch_size = 32;
   vlib_main_t *vm = vlib_get_main ();
@@ -238,9 +235,8 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_enqueue) (struct rte_mempool * mp,
 
   while (n >= batch_size)
     {
-      vlib_get_buffer_indices_with_offset (vm, (void **) obj_table, bufs,
-					   batch_size,
-					   sizeof (struct rte_mbuf));
+      vlib_get_buffer_indices_with_offset (
+	vm, (void **) obj_table, bufs, batch_size, sizeof (struct rte_mbuf));
       vlib_buffer_pool_put (vm, buffer_pool_index, bufs, batch_size);
       n -= batch_size;
       obj_table += batch_size;
@@ -248,8 +244,8 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_enqueue) (struct rte_mempool * mp,
 
   if (n)
     {
-      vlib_get_buffer_indices_with_offset (vm, (void **) obj_table, bufs,
-					   n, sizeof (struct rte_mbuf));
+      vlib_get_buffer_indices_with_offset (vm, (void **) obj_table, bufs, n,
+					   sizeof (struct rte_mbuf));
       vlib_buffer_pool_put (vm, buffer_pool_index, bufs, n);
     }
 
@@ -259,9 +255,9 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_enqueue) (struct rte_mempool * mp,
 CLIB_MARCH_FN_REGISTRATION (dpdk_ops_vpp_enqueue);
 
 static_always_inline void
-dpdk_ops_vpp_enqueue_no_cache_one (vlib_main_t * vm, struct rte_mempool *old,
+dpdk_ops_vpp_enqueue_no_cache_one (vlib_main_t *vm, struct rte_mempool *old,
 				   struct rte_mempool *new, void *obj,
-				   vlib_buffer_t * bt)
+				   vlib_buffer_t *bt)
 {
   struct rte_mbuf *mb = obj;
   vlib_buffer_t *b = vlib_buffer_from_rte_mbuf (mb);
@@ -275,10 +271,9 @@ dpdk_ops_vpp_enqueue_no_cache_one (vlib_main_t * vm, struct rte_mempool *old,
     }
 }
 
-int
-CLIB_MULTIARCH_FN (dpdk_ops_vpp_enqueue_no_cache) (struct rte_mempool * cmp,
-						   void *const *obj_table,
-						   unsigned n)
+int CLIB_MULTIARCH_FN (dpdk_ops_vpp_enqueue_no_cache) (struct rte_mempool *cmp,
+						       void *const *obj_table,
+						       unsigned n)
 {
   vlib_main_t *vm = vlib_get_main ();
   vlib_buffer_t bt;
@@ -341,9 +336,8 @@ dpdk_mbuf_init_from_template (struct rte_mbuf **mba, struct rte_mbuf *mt,
     }
 }
 
-int
-CLIB_MULTIARCH_FN (dpdk_ops_vpp_dequeue) (struct rte_mempool * mp,
-					  void **obj_table, unsigned n)
+int CLIB_MULTIARCH_FN (dpdk_ops_vpp_dequeue) (struct rte_mempool *mp,
+					      void **obj_table, unsigned n)
 {
   const int batch_size = 32;
   vlib_main_t *vm = vlib_get_main ();
@@ -354,8 +348,8 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_dequeue) (struct rte_mempool * mp,
 
   while (n >= batch_size)
     {
-      n_alloc = vlib_buffer_alloc_from_pool (vm, bufs, batch_size,
-					     buffer_pool_index);
+      n_alloc =
+	vlib_buffer_alloc_from_pool (vm, bufs, batch_size, buffer_pool_index);
       if (n_alloc != batch_size)
 	goto alloc_fail;
 
@@ -427,12 +421,12 @@ dpdk_ops_vpp_get_count_no_cache (const struct rte_mempool *mp)
 }
 
 clib_error_t *
-dpdk_buffer_pools_create (vlib_main_t * vm)
+dpdk_buffer_pools_create (vlib_main_t *vm)
 {
   clib_error_t *err;
   vlib_buffer_pool_t *bp;
 
-  struct rte_mempool_ops ops = { };
+  struct rte_mempool_ops ops = {};
 
   strncpy (ops.name, "vpp", 4);
   ops.alloc = dpdk_ops_vpp_alloc;
@@ -448,11 +442,10 @@ dpdk_buffer_pools_create (vlib_main_t * vm)
   ops.dequeue = dpdk_ops_vpp_dequeue_no_cache;
   rte_mempool_register_ops (&ops);
 
-  /* *INDENT-OFF* */
   vec_foreach (bp, vm->buffer_main->buffer_pools)
     if (bp->start && (err = dpdk_buffer_pool_init (vm, bp)))
       return err;
-  /* *INDENT-ON* */
+
   return 0;
 }
 

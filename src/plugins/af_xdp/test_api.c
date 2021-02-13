@@ -60,7 +60,7 @@ api_af_xdp_mode (af_xdp_mode_t mode)
 
 /* af_xdp create API */
 static int
-api_af_xdp_create (vat_main_t * vam)
+api_af_xdp_create (vat_main_t *vam)
 {
   vl_api_af_xdp_create_t *mp;
   af_xdp_create_if_args_t args;
@@ -75,13 +75,13 @@ api_af_xdp_create (vat_main_t * vam)
   M (AF_XDP_CREATE, mp);
 
   snprintf ((char *) mp->host_if, sizeof (mp->host_if), "%s",
-	    args.linux_ifname ? : "");
-  snprintf ((char *) mp->name, sizeof (mp->name), "%s", args.name ? : "");
+	    args.linux_ifname ?: "");
+  snprintf ((char *) mp->name, sizeof (mp->name), "%s", args.name ?: "");
   mp->rxq_num = clib_host_to_net_u16 (args.rxq_num);
   mp->rxq_size = clib_host_to_net_u16 (args.rxq_size);
   mp->txq_size = clib_host_to_net_u16 (args.txq_size);
   mp->mode = api_af_xdp_mode (args.mode);
-  snprintf ((char *) mp->prog, sizeof (mp->prog), "%s", args.prog ? : "");
+  snprintf ((char *) mp->prog, sizeof (mp->prog), "%s", args.prog ?: "");
 
   S (mp);
   W (ret);
@@ -91,7 +91,7 @@ api_af_xdp_create (vat_main_t * vam)
 
 /* af_xdp-create reply handler */
 static void
-vl_api_af_xdp_create_reply_t_handler (vl_api_af_xdp_create_reply_t * mp)
+vl_api_af_xdp_create_reply_t_handler (vl_api_af_xdp_create_reply_t *mp)
 {
   vat_main_t *vam = af_xdp_test_main.vat_main;
   i32 retval = ntohl (mp->retval);
@@ -109,7 +109,7 @@ vl_api_af_xdp_create_reply_t_handler (vl_api_af_xdp_create_reply_t * mp)
 
 /* af_xdp delete API */
 static int
-api_af_xdp_delete (vat_main_t * vam)
+api_af_xdp_delete (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_af_xdp_delete_t *mp;

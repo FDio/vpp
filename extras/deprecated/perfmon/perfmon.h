@@ -28,26 +28,25 @@
 #include <linux/perf_event.h>
 #include <perfmon/perfmon_intel.h>
 
-#define foreach_perfmon_event                                           \
-_(PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES, "cpu-cycles")           \
-_(PERF_TYPE_HARDWARE, PERF_COUNT_HW_INSTRUCTIONS, "instructions")       \
-_(PERF_TYPE_HARDWARE, PERF_COUNT_HW_CACHE_REFERENCES,                   \
-  "cache-references")                                                   \
-_(PERF_TYPE_HARDWARE, PERF_COUNT_HW_CACHE_MISSES, "cache-misses")       \
-_(PERF_TYPE_HARDWARE, PERF_COUNT_HW_BRANCH_INSTRUCTIONS, "branches")    \
- _(PERF_TYPE_HARDWARE, PERF_COUNT_HW_BRANCH_MISSES, "branch-misses")    \
-_(PERF_TYPE_HARDWARE, PERF_COUNT_HW_BUS_CYCLES, "bus-cycles")           \
-_(PERF_TYPE_HARDWARE, PERF_COUNT_HW_STALLED_CYCLES_FRONTEND,            \
-  "stall-frontend")                                                     \
-_(PERF_TYPE_HARDWARE, PERF_COUNT_HW_STALLED_CYCLES_BACKEND,             \
-  "stall-backend")                                                      \
-_(PERF_TYPE_HARDWARE, PERF_COUNT_HW_REF_CPU_CYCLES, "ref-cpu-cycles")   \
-_(PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS, "page-faults")         \
-_(PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CONTEXT_SWITCHES, "context-switches") \
-_(PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_MIGRATIONS, "cpu-migrations")   \
-_(PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS_MIN, "minor-pagefaults") \
-_(PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS_MAJ, "major-pagefaults") \
-_(PERF_TYPE_SOFTWARE, PERF_COUNT_SW_EMULATION_FAULTS, "emulation-faults")
+#define foreach_perfmon_event                                                 \
+  _ (PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES, "cpu-cycles")              \
+  _ (PERF_TYPE_HARDWARE, PERF_COUNT_HW_INSTRUCTIONS, "instructions")          \
+  _ (PERF_TYPE_HARDWARE, PERF_COUNT_HW_CACHE_REFERENCES, "cache-references")  \
+  _ (PERF_TYPE_HARDWARE, PERF_COUNT_HW_CACHE_MISSES, "cache-misses")          \
+  _ (PERF_TYPE_HARDWARE, PERF_COUNT_HW_BRANCH_INSTRUCTIONS, "branches")       \
+  _ (PERF_TYPE_HARDWARE, PERF_COUNT_HW_BRANCH_MISSES, "branch-misses")        \
+  _ (PERF_TYPE_HARDWARE, PERF_COUNT_HW_BUS_CYCLES, "bus-cycles")              \
+  _ (PERF_TYPE_HARDWARE, PERF_COUNT_HW_STALLED_CYCLES_FRONTEND,               \
+     "stall-frontend")                                                        \
+  _ (PERF_TYPE_HARDWARE, PERF_COUNT_HW_STALLED_CYCLES_BACKEND,                \
+     "stall-backend")                                                         \
+  _ (PERF_TYPE_HARDWARE, PERF_COUNT_HW_REF_CPU_CYCLES, "ref-cpu-cycles")      \
+  _ (PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS, "page-faults")            \
+  _ (PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CONTEXT_SWITCHES, "context-switches")  \
+  _ (PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_MIGRATIONS, "cpu-migrations")      \
+  _ (PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS_MIN, "minor-pagefaults")   \
+  _ (PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS_MAJ, "major-pagefaults")   \
+  _ (PERF_TYPE_SOFTWARE, PERF_COUNT_SW_EMULATION_FAULTS, "emulation-faults")
 
 typedef struct
 {
@@ -159,9 +158,9 @@ typedef struct
 extern perfmon_main_t perfmon_main;
 
 extern vlib_node_registration_t perfmon_periodic_node;
-uword *perfmon_parse_table (perfmon_main_t * pm, char *path, char *filename);
+uword *perfmon_parse_table (perfmon_main_t *pm, char *path, char *filename);
 
-uword unformat_processor_event (unformat_input_t * input, va_list * args);
+uword unformat_processor_event (unformat_input_t *input, va_list *args);
 
 /* Periodic function events */
 #define PERFMON_START 1

@@ -28,11 +28,11 @@ pcap_main_t pcap_main;
 /**
  * @brief char * to seed a PG file
  */
-static char *pg_fmt =
-  "packet-generator new {\n"
-  "    name s%d\n"
-  "    limit 1\n" "    size %d-%d\n" "    node ethernet-input\n";
-
+static char *pg_fmt = "packet-generator new {\n"
+		      "    name s%d\n"
+		      "    limit 1\n"
+		      "    size %d-%d\n"
+		      "    node ethernet-input\n";
 
 /**
  * @brief Packet Generator Stream boilerplate
@@ -42,7 +42,7 @@ static char *pg_fmt =
  * @param *pkt - u8
  */
 void
-stream_boilerplate (FILE * ofp, int i, u8 * pkt)
+stream_boilerplate (FILE *ofp, int i, u8 *pkt)
 {
   fformat (ofp, pg_fmt, i, vec_len (pkt), vec_len (pkt));
 }
@@ -57,7 +57,7 @@ stream_boilerplate (FILE * ofp, int i, u8 * pkt)
  *
  */
 int
-pcap2pg (pcap_main_t * pm, FILE * ofp)
+pcap2pg (pcap_main_t *pm, FILE *ofp)
 {
   int i, j;
   u8 *pkt;
@@ -83,7 +83,7 @@ pcap2pg (pcap_main_t * pm, FILE * ofp)
        * This transforms captured 802.1q VLAN packets into
        * regular Ethernet packets.
        */
-      if (ethertype == 0x8100 /* 802.1q vlan */ )
+      if (ethertype == 0x8100 /* 802.1q vlan */)
 	{
 	  u16 *vlan_ethertype = (u16 *) (h + 1);
 	  ethertype = clib_net_to_host_u16 (vlan_ethertype[0]);
@@ -95,17 +95,11 @@ pcap2pg (pcap_main_t * pm, FILE * ofp)
       fformat (ofp,
 	       "          0x%04x: %02x%02x.%02x%02x.%02x%02x"
 	       " -> %02x%02x.%02x%02x.%02x%02x\n",
-	       ethertype,
-	       h->src_address[0],
-	       h->src_address[1],
-	       h->src_address[2],
-	       h->src_address[3],
-	       h->src_address[4],
-	       h->src_address[5],
-	       h->dst_address[0],
-	       h->dst_address[1],
-	       h->dst_address[2],
-	       h->dst_address[3], h->dst_address[4], h->dst_address[5]);
+	       ethertype, h->src_address[0], h->src_address[1],
+	       h->src_address[2], h->src_address[3], h->src_address[4],
+	       h->src_address[5], h->dst_address[0], h->dst_address[1],
+	       h->dst_address[2], h->dst_address[3], h->dst_address[4],
+	       h->dst_address[5]);
 
       fformat (ofp, "      hex 0x");
 
@@ -135,11 +129,11 @@ main (int argc, char **argv)
 
   while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (&input, "-i %s", &input_file)
-	  || unformat (&input, "input %s", &input_file))
+      if (unformat (&input, "-i %s", &input_file) ||
+	  unformat (&input, "input %s", &input_file))
 	;
-      else if (unformat (&input, "-o %s", &output_file)
-	       || unformat (&input, "output %s", &output_file))
+      else if (unformat (&input, "-o %s", &output_file) ||
+	       unformat (&input, "output %s", &output_file))
 	;
       else
 	{

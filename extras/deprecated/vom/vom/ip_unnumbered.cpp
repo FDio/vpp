@@ -28,15 +28,13 @@ ip_unnumbered::event_handler ip_unnumbered::m_evh;
 ip_unnumbered::ip_unnumbered(const interface& itf, const interface& l3_itf)
   : m_itf(itf.singular())
   , m_l3_itf(l3_itf.singular())
-{
-}
+{}
 
 ip_unnumbered::ip_unnumbered(const ip_unnumbered& o)
   : m_itf(o.m_itf)
   , m_l3_itf(o.m_l3_itf)
   , m_config(o.m_config)
-{
-}
+{}
 
 ip_unnumbered::~ip_unnumbered()
 {
@@ -50,8 +48,8 @@ void
 ip_unnumbered::sweep()
 {
   if (m_config) {
-    HW::enqueue(new ip_unnumbered_cmds::unconfig_cmd(m_config, m_itf->handle(),
-                                                     m_l3_itf->handle()));
+    HW::enqueue(new ip_unnumbered_cmds::unconfig_cmd(
+      m_config, m_itf->handle(), m_l3_itf->handle()));
   }
   HW::write();
 }
@@ -66,8 +64,8 @@ void
 ip_unnumbered::replay()
 {
   if (m_config) {
-    HW::enqueue(new ip_unnumbered_cmds::config_cmd(m_config, m_itf->handle(),
-                                                   m_l3_itf->handle()));
+    HW::enqueue(new ip_unnumbered_cmds::config_cmd(
+      m_config, m_itf->handle(), m_l3_itf->handle()));
   }
 }
 
@@ -85,8 +83,8 @@ void
 ip_unnumbered::update(const ip_unnumbered& desired)
 {
   if (!m_config) {
-    HW::enqueue(new ip_unnumbered_cmds::config_cmd(m_config, m_itf->handle(),
-                                                   m_l3_itf->handle()));
+    HW::enqueue(new ip_unnumbered_cmds::config_cmd(
+      m_config, m_itf->handle(), m_l3_itf->handle()));
   }
 }
 
@@ -126,9 +124,9 @@ ip_unnumbered::event_handler::handle_populate(const client_db::key_t& key)
   for (auto& ip_record : *cmd) {
     auto& payload = ip_record.get_payload();
 
-    VOM_LOG(log_level_t::DEBUG) << "ip-unnumbered dump: "
-                                << " itf: " << payload.sw_if_index
-                                << " ip: " << payload.ip_sw_if_index;
+    VOM_LOG(log_level_t::DEBUG)
+      << "ip-unnumbered dump: "
+      << " itf: " << payload.sw_if_index << " ip: " << payload.ip_sw_if_index;
 
     std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
     std::shared_ptr<interface> ip_itf = interface::find(payload.ip_sw_if_index);

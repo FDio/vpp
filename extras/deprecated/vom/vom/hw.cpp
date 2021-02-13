@@ -23,12 +23,9 @@ HW::cmd_q::cmd_q()
   : m_enabled(true)
   , m_connected(false)
   , m_conn()
-{
-}
+{}
 
-HW::cmd_q::~cmd_q()
-{
-}
+HW::cmd_q::~cmd_q() {}
 
 HW::cmd_q&
 HW::cmd_q::operator=(const HW::cmd_q& f)
@@ -274,7 +271,7 @@ HW::read_stats()
   m_statReader->read();
 }
 
-template <>
+template<>
 std::string
 HW::item<bool>::to_string() const
 {
@@ -285,7 +282,7 @@ HW::item<bool>::to_string() const
   return (os.str());
 }
 
-template <>
+template<>
 std::string
 HW::item<unsigned int>::to_string() const
 {

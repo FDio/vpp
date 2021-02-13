@@ -37,9 +37,9 @@ typedef struct
   u32 number_of_configurations_per_temperature;
 
   u32 flags;
-#define CLIB_ANNEAL_VERBOSE (1<<0)
-#define CLIB_ANNEAL_MINIMIZE (1<<1)	/* mutually exclusive */
-#define CLIB_ANNEAL_MAXIMIZE (1<<2)	/* mutually exclusive */
+#define CLIB_ANNEAL_VERBOSE  (1 << 0)
+#define CLIB_ANNEAL_MINIMIZE (1 << 1) /* mutually exclusive */
+#define CLIB_ANNEAL_MAXIMIZE (1 << 2) /* mutually exclusive */
 
   /* Random number seed, set to ensure repeatable results */
   u32 random_seed;
@@ -56,11 +56,10 @@ typedef struct
   /* Suggested initial temperature (output) */
   f64 suggested_initial_temperature;
 
-
   /*--- Callbacks ---*/
 
   /* objective function to minimize */
-    f64 (*anneal_metric) (void *opaque);
+  f64 (*anneal_metric) (void *opaque);
 
   /* Generate a new configuration */
   void (*anneal_new_configuration) (void *opaque);
@@ -76,7 +75,7 @@ typedef struct
 
 } clib_anneal_param_t;
 
-void clib_anneal (clib_anneal_param_t * p);
+void clib_anneal (clib_anneal_param_t *p);
 
 #endif /* __included_anneal_h__ */
 

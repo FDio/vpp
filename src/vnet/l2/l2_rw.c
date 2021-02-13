@@ -26,7 +26,6 @@
  * the provisioned mask and value, modifies the packet header.
  */
 
-
 #ifndef CLIB_MARCH_VARIANT
 l2_rw_main_t l2_rw_main;
 #endif /* CLIB_MARCH_VARIANT */
@@ -39,32 +38,29 @@ typedef struct
 } l2_rw_trace_t;
 
 static u8 *
-format_l2_rw_entry (u8 * s, va_list * args)
+format_l2_rw_entry (u8 *s, va_list *args)
 {
   l2_rw_entry_t *e = va_arg (*args, l2_rw_entry_t *);
   l2_rw_main_t *rw = &l2_rw_main;
-  s = format (s, "%d -  mask:%U value:%U\n",
-	      e - rw->entries,
-	      format_hex_bytes, e->mask,
-	      e->rewrite_n_vectors * sizeof (u32x4), format_hex_bytes,
+  s = format (s, "%d -  mask:%U value:%U\n", e - rw->entries, format_hex_bytes,
+	      e->mask, e->rewrite_n_vectors * sizeof (u32x4), format_hex_bytes,
 	      e->value, e->rewrite_n_vectors * sizeof (u32x4));
-  s =
-    format (s, "      hits:%d skip_bytes:%d", e->hit_count,
-	    e->skip_n_vectors * sizeof (u32x4));
+  s = format (s, "      hits:%d skip_bytes:%d", e->hit_count,
+	      e->skip_n_vectors * sizeof (u32x4));
   return s;
 }
 
 static u8 *
-format_l2_rw_config (u8 * s, va_list * args)
+format_l2_rw_config (u8 *s, va_list *args)
 {
   l2_rw_config_t *c = va_arg (*args, l2_rw_config_t *);
-  return format (s, "table-index:%d miss-index:%d",
-		 c->table_index, c->miss_index);
+  return format (s, "table-index:%d miss-index:%d", c->table_index,
+		 c->miss_index);
 }
 
 /* packet trace format function */
 static u8 *
-format_l2_rw_trace (u8 * s, va_list * args)
+format_l2_rw_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -90,7 +86,7 @@ l2_rw_get_config (u32 sw_if_index)
 }
 
 static_always_inline void
-l2_rw_rewrite (l2_rw_entry_t * rwe, u8 * h)
+l2_rw_rewrite (l2_rw_entry_t *rwe, u8 *h)
 {
   u32x4u *d = ((u32x4u *) h) + rwe->skip_n_vectors;
   switch (rwe->rewrite_n_vectors)
@@ -115,8 +111,8 @@ l2_rw_rewrite (l2_rw_entry_t * rwe, u8 * h)
     }
 }
 
-VLIB_NODE_FN (l2_rw_node) (vlib_main_t * vm,
-			   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_rw_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   l2_rw_main_t *rw = &l2_rw_main;
   u32 n_left_from, *from, *to_next, next_index;
@@ -124,7 +120,7 @@ VLIB_NODE_FN (l2_rw_node) (vlib_main_t * vm,
   f64 now = vlib_time_now (vlib_get_main ());
 
   from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;	/* number of packets to process */
+  n_left_from = frame->n_vectors; /* number of packets to process */
   next_index = node->cached_next_index;
 
   while (n_left_from > 0)
@@ -175,8 +171,10 @@ VLIB_NODE_FN (l2_rw_node) (vlib_main_t * vm,
 
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
-	  config0 = l2_rw_get_config (sw_if_index0);	/*TODO: check sw_if_index0 value */
-	  config1 = l2_rw_get_config (sw_if_index1);	/*TODO: check sw_if_index0 value */
+	  config0 = l2_rw_get_config (
+	    sw_if_index0); /*TODO: check sw_if_index0 value */
+	  config1 = l2_rw_get_config (
+	    sw_if_index1); /*TODO: check sw_if_index0 value */
 	  t0 = pool_elt_at_index (vcm->tables, config0->table_index);
 	  t1 = pool_elt_at_index (vcm->tables, config1->table_index);
 
@@ -235,9 +233,9 @@ VLIB_NODE_FN (l2_rw_node) (vlib_main_t * vm,
 	  next1 = vnet_l2_feature_next (b1, rw->feat_next_node_index,
 					L2INPUT_FEAT_RW);
 
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -262,7 +260,8 @@ VLIB_NODE_FN (l2_rw_node) (vlib_main_t * vm,
 	  h0 = vlib_buffer_get_current (b0);
 
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	  config0 = l2_rw_get_config (sw_if_index0);	/*TODO: check sw_if_index0 value */
+	  config0 = l2_rw_get_config (
+	    sw_if_index0); /*TODO: check sw_if_index0 value */
 	  t0 = pool_elt_at_index (vcm->tables, config0->table_index);
 
 	  hash0 = vnet_classify_hash_packet (t0, (u8 *) h0);
@@ -295,9 +294,8 @@ VLIB_NODE_FN (l2_rw_node) (vlib_main_t * vm,
 	  next0 = vnet_l2_feature_next (b0, rw->feat_next_node_index,
 					L2INPUT_FEAT_RW);
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
@@ -307,8 +305,7 @@ VLIB_NODE_FN (l2_rw_node) (vlib_main_t * vm,
 
 #ifndef CLIB_MARCH_VARIANT
 int
-l2_rw_mod_entry (u32 * index,
-		 u8 * mask, u8 * value, u32 len, u32 skip, u8 is_del)
+l2_rw_mod_entry (u32 *index, u8 *mask, u8 *value, u32 len, u32 skip, u8 is_del)
 {
   l2_rw_main_t *rw = &l2_rw_main;
   l2_rw_entry_t *e = 0;
@@ -357,8 +354,8 @@ l2_rw_mod_entry (u32 * index,
 #endif /* CLIB_MARCH_VARIANT */
 
 static clib_error_t *
-l2_rw_entry_cli_fn (vlib_main_t * vm,
-		    unformat_input_t * input, vlib_cli_command_t * cmd)
+l2_rw_entry_cli_fn (vlib_main_t *vm, unformat_input_t *input,
+		    vlib_cli_command_t *cmd)
 {
   u32 index = ~0;
   u8 *mask = 0;
@@ -389,8 +386,7 @@ l2_rw_entry_cli_fn (vlib_main_t * vm,
     return clib_error_return (0, "Mask and value lengths must be identical");
 
   int ret;
-  if ((ret =
-       l2_rw_mod_entry (&index, mask, value, vec_len (mask), skip, del)))
+  if ((ret = l2_rw_mod_entry (&index, mask, value, vec_len (mask), skip, del)))
     return clib_error_return (0, "Could not add entry");
 
   return 0;
@@ -404,14 +400,13 @@ l2_rw_entry_cli_fn (vlib_main_t * vm,
  * @todo This is incomplete. This needs a detailed description and a
  * practical example.
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (l2_rw_entry_cli, static) = {
   .path = "l2 rewrite entry",
-  .short_help =
-  "l2 rewrite entry [index <index>] [mask <hex-mask>] [value <hex-value>] [skip <n_bytes>] [del]",
+  .short_help = "l2 rewrite entry [index <index>] [mask <hex-mask>] [value "
+		"<hex-value>] [skip <n_bytes>] [del]",
   .function = l2_rw_entry_cli_fn,
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 int
@@ -434,8 +429,8 @@ l2_rw_interface_set_table (u32 sw_if_index, u32 table_index, u32 miss_index)
 #endif /* CLIB_MARCH_VARIANT */
 
 static clib_error_t *
-l2_rw_interface_cli_fn (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+l2_rw_interface_cli_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 table_index = ~0;
@@ -458,14 +453,12 @@ l2_rw_interface_cli_fn (vlib_main_t * vm,
     }
 
   if (sw_if_index == ~0)
-    return clib_error_return (0,
-			      "You must specify an interface 'iface <interface>'",
-			      format_unformat_error, input);
+    return clib_error_return (
+      0, "You must specify an interface 'iface <interface>'",
+      format_unformat_error, input);
   int ret;
-  if ((ret =
-       l2_rw_interface_set_table (sw_if_index, table_index, miss_index)))
-    return clib_error_return (0, "l2_rw_interface_set_table returned %d",
-			      ret);
+  if ((ret = l2_rw_interface_set_table (sw_if_index, table_index, miss_index)))
+    return clib_error_return (0, "l2_rw_interface_set_table returned %d", ret);
 
   return 0;
 }
@@ -478,30 +471,30 @@ l2_rw_interface_cli_fn (vlib_main_t * vm,
  * @todo This is incomplete. This needs a detailed description and a
  * practical example.
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (l2_rw_interface_cli, static) = {
   .path = "set interface l2 rewrite",
-  .short_help =
-  "set interface l2 rewrite <interface> [table <table index>] [miss-index <entry-index>]",
+  .short_help = "set interface l2 rewrite <interface> [table <table index>] "
+		"[miss-index <entry-index>]",
   .function = l2_rw_interface_cli_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-l2_rw_show_interfaces_cli_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+l2_rw_show_interfaces_cli_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   l2_rw_main_t *rw = &l2_rw_main;
   if (clib_bitmap_count_set_bits (rw->configs_bitmap) == 0)
     vlib_cli_output (vm, "No interface is currently using l2 rewrite\n");
 
   uword i;
-  /* *INDENT-OFF* */
-  clib_bitmap_foreach (i, rw->configs_bitmap) {
-      vlib_cli_output (vm, "sw_if_index:%d %U\n", i, format_l2_rw_config, &rw->configs[i]);
-  }
-  /* *INDENT-ON* */
+
+  clib_bitmap_foreach (i, rw->configs_bitmap)
+    {
+      vlib_cli_output (vm, "sw_if_index:%d %U\n", i, format_l2_rw_config,
+		       &rw->configs[i]);
+    }
+
   return 0;
 }
 
@@ -513,29 +506,27 @@ l2_rw_show_interfaces_cli_fn (vlib_main_t * vm,
  * @todo This is incomplete. This needs a detailed description and a
  * practical example.
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (l2_rw_show_interfaces_cli, static) = {
   .path = "show l2 rewrite interfaces",
-  .short_help =
-  "show l2 rewrite interfaces",
+  .short_help = "show l2 rewrite interfaces",
   .function = l2_rw_show_interfaces_cli_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-l2_rw_show_entries_cli_fn (vlib_main_t * vm,
-			   unformat_input_t * input, vlib_cli_command_t * cmd)
+l2_rw_show_entries_cli_fn (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   l2_rw_main_t *rw = &l2_rw_main;
   l2_rw_entry_t *e;
   if (pool_elts (rw->entries) == 0)
     vlib_cli_output (vm, "No entries\n");
 
-  /* *INDENT-OFF* */
-  pool_foreach (e, rw->entries) {
-    vlib_cli_output (vm, "%U\n", format_l2_rw_entry, e);
-  }
-  /* *INDENT-ON* */
+  pool_foreach (e, rw->entries)
+    {
+      vlib_cli_output (vm, "%U\n", format_l2_rw_entry, e);
+    }
+
   return 0;
 }
 
@@ -547,14 +538,12 @@ l2_rw_show_entries_cli_fn (vlib_main_t * vm,
  * @todo This is incomplete. This needs a detailed description and a
  * practical example.
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (l2_rw_show_entries_cli, static) = {
   .path = "show l2 rewrite entries",
-  .short_help =
-  "show l2 rewrite entries",
+  .short_help = "show l2 rewrite entries",
   .function = l2_rw_show_entries_cli_fn,
 };
-/* *INDENT-ON* */
 
 static int
 l2_rw_enable_disable (u32 bridge_domain, u8 disable)
@@ -565,8 +554,8 @@ l2_rw_enable_disable (u32 bridge_domain, u8 disable)
 }
 
 static clib_error_t *
-l2_rw_set_cli_fn (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+l2_rw_set_cli_fn (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd)
 {
   u32 bridge_domain;
   u8 disable = 0;
@@ -597,25 +586,21 @@ l2_rw_set_cli_fn (vlib_main_t * vm,
  * @todo This is incomplete. This needs a detailed description and a
  * practical example.
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (l2_rw_set_cli, static) = {
   .path = "set bridge-domain rewrite",
-  .short_help =
-  "set bridge-domain rewrite <bridge-domain> [disable]",
+  .short_help = "set bridge-domain rewrite <bridge-domain> [disable]",
   .function = l2_rw_set_cli_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-l2_rw_init (vlib_main_t * vm)
+l2_rw_init (vlib_main_t *vm)
 {
   l2_rw_main_t *rw = &l2_rw_main;
   rw->configs = 0;
   rw->entries = 0;
   clib_bitmap_alloc (rw->configs_bitmap, 1);
-  feat_bitmap_init_next_nodes (vm,
-			       l2_rw_node.index,
-			       L2INPUT_N_FEAT,
+  feat_bitmap_init_next_nodes (vm, l2_rw_node.index, L2INPUT_N_FEAT,
 			       l2input_get_feat_names (),
 			       rw->feat_next_node_index);
   return 0;
@@ -629,36 +614,33 @@ enum
   L2_RW_N_NEXT,
 };
 
-#define foreach_l2_rw_error               \
-_(UNKNOWN, "Unknown error")
+#define foreach_l2_rw_error _ (UNKNOWN, "Unknown error")
 
 typedef enum
 {
-#define _(sym,str) L2_RW_ERROR_##sym,
+#define _(sym, str) L2_RW_ERROR_##sym,
   foreach_l2_rw_error
 #undef _
     L2_RW_N_ERROR,
 } l2_rw_error_t;
 
 static char *l2_rw_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_l2_rw_error
 #undef _
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_rw_node) = {
   .name = "l2-rw",
   .vector_size = sizeof (u32),
   .format_trace = format_l2_rw_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(l2_rw_error_strings),
+  .n_errors = ARRAY_LEN (l2_rw_error_strings),
   .error_strings = l2_rw_error_strings,
   .runtime_data_bytes = 0,
   .n_next_nodes = L2_RW_N_NEXT,
-  .next_nodes = { [L2_RW_NEXT_DROP]  = "error-drop"},
+  .next_nodes = { [L2_RW_NEXT_DROP] = "error-drop" },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

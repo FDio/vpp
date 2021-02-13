@@ -33,9 +33,8 @@
 
 tracedump_main_t tracedump_main;
 
-
 static void
-vl_api_trace_set_filters_t_handler (vl_api_trace_set_filters_t * mp)
+vl_api_trace_set_filters_t_handler (vl_api_trace_set_filters_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   tracedump_main_t *tdmp = &tracedump_main;
@@ -69,9 +68,8 @@ done:
   REPLY_MACRO (VL_API_TRACE_SET_FILTERS_REPLY);
 }
 
-
 static void
-vl_api_trace_capture_packets_t_handler (vl_api_trace_capture_packets_t * mp)
+vl_api_trace_capture_packets_t_handler (vl_api_trace_capture_packets_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   tracedump_main_t *tdmp = &tracedump_main;
@@ -84,8 +82,7 @@ vl_api_trace_capture_packets_t_handler (vl_api_trace_capture_packets_t * mp)
   int rv = 0;
 
   if (!vnet_trace_placeholder)
-    vec_validate_aligned (vnet_trace_placeholder, 2048,
-			  CLIB_CACHE_LINE_BYTES);
+    vec_validate_aligned (vnet_trace_placeholder, 2048, CLIB_CACHE_LINE_BYTES);
 
   vlib_node_t *node;
   node = vlib_get_node (vm, node_index);
@@ -111,9 +108,8 @@ done:
   REPLY_MACRO (VL_API_TRACE_CAPTURE_PACKETS_REPLY);
 }
 
-
 static void
-vl_api_trace_clear_capture_t_handler (vl_api_trace_clear_capture_t * mp)
+vl_api_trace_clear_capture_t_handler (vl_api_trace_clear_capture_t *mp)
 {
   vl_api_trace_clear_capture_reply_t *rmp;
   tracedump_main_t *tdmp = &tracedump_main;
@@ -123,8 +119,6 @@ vl_api_trace_clear_capture_t_handler (vl_api_trace_clear_capture_t * mp)
   int rv = 0;
   REPLY_MACRO (VL_API_TRACE_CLEAR_CAPTURE_REPLY);
 }
-
-
 
 static int
 trace_cmp (void *a1, void *a2)
@@ -136,8 +130,8 @@ trace_cmp (void *a1, void *a2)
 }
 
 static void
-toss_client_cache (tracedump_main_t * tdmp, u32 client_index,
-		   vlib_trace_header_t *** client_trace_cache)
+toss_client_cache (tracedump_main_t *tdmp, u32 client_index,
+		   vlib_trace_header_t ***client_trace_cache)
 {
   vlib_trace_header_t **th;
   int i;
@@ -173,7 +167,7 @@ VL_MSG_API_REAPER_FUNCTION (tracedump_cache_reaper);
 
 /* API message handler */
 static void
-vl_api_trace_dump_t_handler (vl_api_trace_dump_t * mp)
+vl_api_trace_dump_t_handler (vl_api_trace_dump_t *mp)
 {
   vl_api_registration_t *rp;
   vl_api_trace_dump_reply_t *rmp;
@@ -221,8 +215,8 @@ vl_api_trace_dump_t_handler (vl_api_trace_dump_t * mp)
     max_records = chunk;
 
   /* Need a fresh cache for this client? */
-  if (vec_len (client_trace_cache) == 0
-      && (iterator_thread_id != ~0 || iterator_position != ~0))
+  if (vec_len (client_trace_cache) == 0 &&
+      (iterator_thread_id != ~0 || iterator_position != ~0))
     {
       vlib_worker_thread_barrier_sync (&vlib_global_main);
 
@@ -230,26 +224,24 @@ vl_api_trace_dump_t_handler (vl_api_trace_dump_t * mp)
       vec_validate (client_trace_cache, vec_len (vlib_mains) - 1);
       i = 0;
 
-      /* *INDENT-OFF* */
-      foreach_vlib_main (
-      ({
-        vlib_trace_main_t *tm = &this_vlib_main->trace_main;
+      foreach_vlib_main (({
+	vlib_trace_main_t *tm = &this_vlib_main->trace_main;
 
-        /* Filter as directed */
-        trace_apply_filter(this_vlib_main);
+	/* Filter as directed */
+	trace_apply_filter (this_vlib_main);
 
-        pool_foreach (th, tm->trace_buffer_pool)
-         {
-          vec_add1 (client_trace_cache[i], th[0]);
-        }
+	pool_foreach (th, tm->trace_buffer_pool)
+	  {
+	    vec_add1 (client_trace_cache[i], th[0]);
+	  }
 
-        /* Sort them by increasing time. */
-        if (vec_len (client_trace_cache[i]))
-          vec_sort_with_function (client_trace_cache[i], trace_cmp);
+	/* Sort them by increasing time. */
+	if (vec_len (client_trace_cache[i]))
+	  vec_sort_with_function (client_trace_cache[i], trace_cmp);
 
-        i++;
+	i++;
       }));
-      /* *INDENT-ON* */
+
       vlib_worker_thread_barrier_release (&vlib_global_main);
     }
 
@@ -271,8 +263,7 @@ vl_api_trace_dump_t_handler (vl_api_trace_dump_t * mp)
 	  s = format (s, "%U", format_vlib_trace, &vlib_global_main, th[0]);
 
 	  dmp = vl_msg_api_alloc (sizeof (*dmp) + vec_len (s));
-	  dmp->_vl_msg_id =
-	    htons (VL_API_TRACE_DETAILS + (tdmp->msg_id_base));
+	  dmp->_vl_msg_id = htons (VL_API_TRACE_DETAILS + (tdmp->msg_id_base));
 	  dmp->context = mp->context;
 	  last_thread_id = dmp->thread_id = ntohl (i);
 	  last_position = dmp->position = ntohl (j);
@@ -337,7 +328,7 @@ doublebreak:;
 #include <tracedump/tracedump.api.c>
 
 static clib_error_t *
-tracedump_init (vlib_main_t * vm)
+tracedump_init (vlib_main_t *vm)
 {
   tracedump_main_t *tdmp = &tracedump_main;
   api_main_t *am = vlibapi_get_main ();
@@ -356,13 +347,11 @@ tracedump_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (tracedump_init);
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () =
-{
+
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Streaming packet trace dump plugin",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

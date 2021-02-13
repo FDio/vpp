@@ -27,8 +27,7 @@ nat_static::nat_static(const boost::asio::ip::address& inside,
   , m_rd(route_domain::get_default())
   , m_inside(inside)
   , m_outside(outside)
-{
-}
+{}
 
 nat_static::nat_static(const route_domain& rd,
                        const boost::asio::ip::address& inside,
@@ -37,16 +36,14 @@ nat_static::nat_static(const route_domain& rd,
   , m_rd(rd.singular())
   , m_inside(inside)
   , m_outside(outside)
-{
-}
+{}
 
 nat_static::nat_static(const nat_static& ns)
   : m_hw(ns.m_hw)
   , m_rd(ns.m_rd)
   , m_inside(ns.m_inside)
   , m_outside(ns.m_outside)
-{
-}
+{}
 
 nat_static::~nat_static()
 {
@@ -101,8 +98,8 @@ void
 nat_static::update(const nat_static& r)
 {
   /*
- * create the table if it is not yet created
- */
+   * create the table if it is not yet created
+   */
   if (rc_t::OK != m_hw.rc()) {
     if (m_inside.is_v4()) {
       HW::enqueue(new nat_static_cmds::create_44_cmd(

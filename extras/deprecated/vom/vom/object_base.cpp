@@ -19,8 +19,7 @@ namespace VOM {
 object_ref::object_ref(std::shared_ptr<object_base> obj)
   : m_obj(obj)
   , m_state(OBJECT_STATE_NONE)
-{
-}
+{}
 
 bool
 object_ref::operator<(const object_ref& other) const

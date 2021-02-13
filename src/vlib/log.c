@@ -29,32 +29,26 @@ vlib_log_main_t log_main = {
   .default_rate_limit = 50,
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_LOG_CLASS (log_log, static) = {
   .class_name = "log",
 };
-/* *INDENT-ON* */
 
 static const int colors[] = {
   [VLIB_LOG_LEVEL_EMERG] = 1,	/* red */
   [VLIB_LOG_LEVEL_ALERT] = 1,	/* red */
   [VLIB_LOG_LEVEL_CRIT] = 1,	/* red */
   [VLIB_LOG_LEVEL_ERR] = 1,	/* red */
-  [VLIB_LOG_LEVEL_WARNING] = 3,	/* yellow */
+  [VLIB_LOG_LEVEL_WARNING] = 3, /* yellow */
   [VLIB_LOG_LEVEL_NOTICE] = 2,	/* green */
   [VLIB_LOG_LEVEL_INFO] = 4,	/* blue */
   [VLIB_LOG_LEVEL_DEBUG] = 6,	/* cyan */
 };
 
 static const int log_level_to_syslog_priority[] = {
-  [VLIB_LOG_LEVEL_EMERG] = LOG_EMERG,
-  [VLIB_LOG_LEVEL_ALERT] = LOG_ALERT,
-  [VLIB_LOG_LEVEL_CRIT] = LOG_CRIT,
-  [VLIB_LOG_LEVEL_ERR] = LOG_ERR,
-  [VLIB_LOG_LEVEL_WARNING] = LOG_WARNING,
-  [VLIB_LOG_LEVEL_NOTICE] = LOG_NOTICE,
-  [VLIB_LOG_LEVEL_INFO] = LOG_INFO,
-  [VLIB_LOG_LEVEL_DEBUG] = LOG_DEBUG,
+  [VLIB_LOG_LEVEL_EMERG] = LOG_EMERG,	  [VLIB_LOG_LEVEL_ALERT] = LOG_ALERT,
+  [VLIB_LOG_LEVEL_CRIT] = LOG_CRIT,	  [VLIB_LOG_LEVEL_ERR] = LOG_ERR,
+  [VLIB_LOG_LEVEL_WARNING] = LOG_WARNING, [VLIB_LOG_LEVEL_NOTICE] = LOG_NOTICE,
+  [VLIB_LOG_LEVEL_INFO] = LOG_INFO,	  [VLIB_LOG_LEVEL_DEBUG] = LOG_DEBUG,
   [VLIB_LOG_LEVEL_DISABLED] = LOG_DEBUG,
 };
 
@@ -86,7 +80,7 @@ get_subclass_data (vlib_log_class_t ci)
 }
 
 u8 *
-format_vlib_log_class (u8 * s, va_list * args)
+format_vlib_log_class (u8 *s, va_list *args)
 {
   vlib_log_class_t ci = va_arg (*args, vlib_log_class_t);
   vlib_log_class_data_t *c = get_class_data (ci);
@@ -99,13 +93,12 @@ format_vlib_log_class (u8 * s, va_list * args)
 }
 
 u8 *
-format_indent (u8 * s, va_list * args)
+format_indent (u8 *s, va_list *args)
 {
   u8 *v = va_arg (*args, u8 *);
   u32 indent = va_arg (*args, u32);
   u8 *c;
 
-  /* *INDENT-OFF* */
   vec_foreach (c, v)
     {
       vec_add (s, c, 1);
@@ -113,7 +106,7 @@ format_indent (u8 * s, va_list * args)
 	for (u32 i = 0; i < indent; i++)
 	  vec_add1 (s, (u8) ' ');
     }
-  /* *INDENT-ON* */
+
   return s;
 }
 
@@ -150,8 +143,7 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
 
   vec_validate (lm->entries, lm->size);
 
-  if ((delta > lm->unthrottle_time) ||
-      (sc->is_throttling == 0 && (delta > 1)))
+  if ((delta > lm->unthrottle_time) || (sc->is_throttling == 0 && (delta > 1)))
     {
       sc->last_event_timestamp = t;
       sc->last_sec_count = 0;
@@ -226,8 +218,8 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
 
       if (lm->add_to_elog)
 	{
-          /* *INDENT-OFF* */
-          ELOG_TYPE_DECLARE(ee) =
+
+	  ELOG_TYPE_DECLARE(ee) =
             {
              .format = "log-%s: %s",
              .format_args = "t4T4",
@@ -244,11 +236,12 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
                 "disabled",
                 },
             };
-          struct {
-            u32 log_level;
-            u32 string_index;
-          } *ed;
-          /* *INDENT-ON* */
+	  struct
+	  {
+	    u32 log_level;
+	    u32 string_index;
+	  } * ed;
+
 	  ed = ELOG_DATA (&vm->elog_main, ee);
 	  ed->log_level = level;
 	  ed->string_index = elog_string (&vm->elog_main, "%v", e->string);
@@ -283,15 +276,15 @@ vlib_log_register_class_internal (char *class, char *subclass, u32 limit)
   vec_free (str);
 
   vec_foreach (tmp, lm->classes)
-  {
-    if (vec_len (tmp->name) != strlen (class))
-      continue;
-    if (!memcmp (class, tmp->name, vec_len (tmp->name)))
-      {
-	c = tmp;
-	break;
-      }
-  }
+    {
+      if (vec_len (tmp->name) != strlen (class))
+	continue;
+      if (!memcmp (class, tmp->name, vec_len (tmp->name)))
+	{
+	  c = tmp;
+	  break;
+	}
+    }
   if (!c)
     {
       vec_add2 (lm->classes, c, 1);
@@ -338,7 +331,7 @@ vlib_log_class_t
 vlib_log_register_class (char *class, char *subclass)
 {
   return vlib_log_register_class_internal (class, subclass,
-					   0 /* default rate limit */ );
+					   0 /* default rate limit */);
 }
 
 vlib_log_class_t
@@ -347,26 +340,27 @@ vlib_log_register_class_rate_limit (char *class, char *subclass, u32 limit)
   return vlib_log_register_class_internal (class, subclass, limit);
 }
 
-
 u8 *
-format_vlib_log_level (u8 * s, va_list * args)
+format_vlib_log_level (u8 *s, va_list *args)
 {
   vlib_log_level_t i = va_arg (*args, vlib_log_level_t);
   char *t = 0;
 
   switch (i)
     {
-#define _(uc,lc) case VLIB_LOG_LEVEL_##uc: t = #lc; break;
+#define _(uc, lc)                                                             \
+  case VLIB_LOG_LEVEL_##uc:                                                   \
+    t = #lc;                                                                  \
+    break;
       foreach_vlib_log_level
 #undef _
-    default:
-      return format (s, "unknown");
+	default : return format (s, "unknown");
     }
   return format (s, "%s", t);
 }
 
 static clib_error_t *
-vlib_log_init (vlib_main_t * vm)
+vlib_log_init (vlib_main_t *vm)
 {
   vlib_log_main_t *lm = &log_main;
   vlib_log_class_registration_t *r = lm->registrations;
@@ -397,10 +391,8 @@ vlib_log_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (vlib_log_init);
 
-
 static clib_error_t *
-show_log (vlib_main_t * vm,
-	  unformat_input_t * input, vlib_cli_command_t * cmd)
+show_log (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   clib_error_t *error = 0;
   vlib_log_main_t *lm = &log_main;
@@ -409,33 +401,30 @@ show_log (vlib_main_t * vm,
   int count = lm->count;
   f64 time_offset;
 
-  time_offset = (f64) lm->time_zero_timeval.tv_sec
-    + (((f64) lm->time_zero_timeval.tv_usec) * 1e-6) - lm->time_zero;
+  time_offset = (f64) lm->time_zero_timeval.tv_sec +
+		(((f64) lm->time_zero_timeval.tv_usec) * 1e-6) - lm->time_zero;
 
   while (count--)
     {
       e = vec_elt_at_index (lm->entries, i);
-      vlib_cli_output (vm, "%U %-10U %-14U %v",
-		       format_time_float, 0, e->timestamp + time_offset,
-		       format_vlib_log_level, e->level,
-		       format_vlib_log_class, e->class, e->string);
+      vlib_cli_output (vm, "%U %-10U %-14U %v", format_time_float, 0,
+		       e->timestamp + time_offset, format_vlib_log_level,
+		       e->level, format_vlib_log_class, e->class, e->string);
       i = (i + 1) % lm->size;
     }
 
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_show_log, static) = {
   .path = "show logging",
   .short_help = "show logging",
   .function = show_log,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_log_config (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+show_log_config (vlib_main_t *vm, unformat_input_t *input,
+		 vlib_cli_command_t *cmd)
 {
   clib_error_t *error = 0;
   vlib_log_main_t *lm = &log_main;
@@ -444,46 +433,42 @@ show_log_config (vlib_main_t * vm,
 
   vlib_cli_output (vm, "%-20s %u entries", "Buffer Size:", lm->size);
   vlib_cli_output (vm, "Defaults:\n");
-  vlib_cli_output (vm, "%-20s %U", "  Log Level:",
-		   format_vlib_log_level, lm->default_log_level);
-  vlib_cli_output (vm, "%-20s %U", "  Syslog Log Level:",
-		   format_vlib_log_level, lm->default_syslog_log_level);
-  vlib_cli_output (vm, "%-20s %u msgs/sec", "  Rate Limit:",
-		   lm->default_rate_limit);
+  vlib_cli_output (vm, "%-20s %U", "  Log Level:", format_vlib_log_level,
+		   lm->default_log_level);
+  vlib_cli_output (vm, "%-20s %U",
+		   "  Syslog Log Level:", format_vlib_log_level,
+		   lm->default_syslog_log_level);
+  vlib_cli_output (vm, "%-20s %u msgs/sec",
+		   "  Rate Limit:", lm->default_rate_limit);
   vlib_cli_output (vm, "\n");
-  vlib_cli_output (vm, "%-22s %-14s %-14s %s",
-		   "Class/Subclass", "Level", "Syslog Level", "Rate Limit");
-
+  vlib_cli_output (vm, "%-22s %-14s %-14s %s", "Class/Subclass", "Level",
+		   "Syslog Level", "Rate Limit");
 
   u8 *defstr = format (0, "default");
   vec_foreach (c, lm->classes)
-  {
-    vlib_cli_output (vm, "%v", c->name);
-    vec_foreach (sc, c->subclasses)
     {
-      vlib_cli_output (vm, "  %-20v %-14U %-14U %d",
-		       sc->name ? sc->name : defstr,
-		       format_vlib_log_level, sc->level,
-		       format_vlib_log_level, sc->syslog_level,
-		       sc->rate_limit);
+      vlib_cli_output (vm, "%v", c->name);
+      vec_foreach (sc, c->subclasses)
+	{
+	  vlib_cli_output (vm, "  %-20v %-14U %-14U %d",
+			   sc->name ? sc->name : defstr, format_vlib_log_level,
+			   sc->level, format_vlib_log_level, sc->syslog_level,
+			   sc->rate_limit);
+	}
     }
-  }
   vec_free (defstr);
 
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_show_log_config, static) = {
   .path = "show logging configuration",
   .short_help = "show logging configuration",
   .function = show_log_config,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-clear_log (vlib_main_t * vm,
-	   unformat_input_t * input, vlib_cli_command_t * cmd)
+clear_log (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   clib_error_t *error = 0;
   vlib_log_main_t *lm = &log_main;
@@ -504,29 +489,27 @@ clear_log (vlib_main_t * vm,
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_clear_log, static) = {
   .path = "clear logging",
   .short_help = "clear logging",
   .function = clear_log,
 };
-/* *INDENT-ON* */
 
 static uword
-unformat_vlib_log_level (unformat_input_t * input, va_list * args)
+unformat_vlib_log_level (unformat_input_t *input, va_list *args)
 {
   vlib_log_level_t *level = va_arg (*args, vlib_log_level_t *);
   u8 *level_str = NULL;
   uword rv = 1;
   if (unformat (input, "%s", &level_str))
     {
-#define _(uc, lc)                                      \
-  const char __##uc[] = #lc;                           \
-  if (!strcmp ((const char *) level_str, __##uc))      \
-    {                                                  \
-      *level = VLIB_LOG_LEVEL_##uc;                    \
-      rv = 1;                                          \
-      goto done;                                       \
+#define _(uc, lc)                                                             \
+  const char __##uc[] = #lc;                                                  \
+  if (!strcmp ((const char *) level_str, __##uc))                             \
+    {                                                                         \
+      *level = VLIB_LOG_LEVEL_##uc;                                           \
+      rv = 1;                                                                 \
+      goto done;                                                              \
     }
       foreach_vlib_log_level;
       rv = 0;
@@ -538,7 +521,7 @@ done:
 }
 
 static uword
-unformat_vlib_log_class (unformat_input_t * input, va_list * args)
+unformat_vlib_log_class (unformat_input_t *input, va_list *args)
 {
   vlib_log_class_data_t **class = va_arg (*args, vlib_log_class_data_t **);
   uword rv = 0;
@@ -548,22 +531,22 @@ unformat_vlib_log_class (unformat_input_t * input, va_list * args)
     {
       vlib_log_class_data_t *cdata;
       vec_foreach (cdata, lm->classes)
-      {
-	if (vec_is_equal (cdata->name, class_str))
-	  {
-	    *class = cdata;
-	    rv = 1;
-	    break;
-	  }
-      }
+	{
+	  if (vec_is_equal (cdata->name, class_str))
+	    {
+	      *class = cdata;
+	      rv = 1;
+	      break;
+	    }
+	}
     }
   vec_free (class_str);
   return rv;
 }
 
 static clib_error_t *
-set_log_class (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+set_log_class (vlib_main_t *vm, unformat_input_t *input,
+	       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *rv = NULL;
@@ -590,16 +573,13 @@ set_log_class (vlib_main_t * vm,
 	{
 	  set_rate_limit = true;
 	}
-      else
-	if (unformat
-	    (line_input, "level %U", unformat_vlib_log_level, &level))
+      else if (unformat (line_input, "level %U", unformat_vlib_log_level,
+			 &level))
 	{
 	  set_level = true;
 	}
-      else
-	if (unformat
-	    (line_input, "syslog-level %U", unformat_vlib_log_level,
-	     &syslog_level))
+      else if (unformat (line_input, "syslog-level %U",
+			 unformat_vlib_log_level, &syslog_level))
 	{
 	  set_syslog_level = true;
 	}
@@ -614,42 +594,40 @@ set_log_class (vlib_main_t * vm,
     {
       vlib_log_subclass_data_t *subclass;
       vec_foreach (subclass, class->subclasses)
-      {
-	subclass->level = level;
-      }
+	{
+	  subclass->level = level;
+	}
     }
   if (set_syslog_level)
     {
       vlib_log_subclass_data_t *subclass;
       vec_foreach (subclass, class->subclasses)
-      {
-	subclass->syslog_level = syslog_level;
-      }
+	{
+	  subclass->syslog_level = syslog_level;
+	}
     }
   if (set_rate_limit)
     {
       vlib_log_subclass_data_t *subclass;
       vec_foreach (subclass, class->subclasses)
-      {
-	subclass->rate_limit = rate_limit;
-      }
+	{
+	  subclass->rate_limit = rate_limit;
+	}
     }
 
   return rv;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_set_log, static) = {
   .path = "set logging class",
   .short_help = "set logging class <class> [rate-limit <int>] "
-    "[level <level>] [syslog-level <level>]",
+		"[level <level>] [syslog-level <level>]",
   .function = set_log_class,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-set_log_unth_time (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+set_log_unth_time (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *rv = NULL;
@@ -672,17 +650,15 @@ set_log_unth_time (vlib_main_t * vm,
   return rv;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_set_log_params, static) = {
   .path = "set logging unthrottle-time",
   .short_help = "set logging unthrottle-time <int>",
   .function = set_log_unth_time,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-set_log_size (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+set_log_size (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *rv = NULL;
@@ -708,16 +684,14 @@ set_log_size (vlib_main_t * vm,
   return rv;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_set_log_size, static) = {
   .path = "set logging size",
   .short_help = "set logging size <int>",
   .function = set_log_size,
 };
-/* *INDENT-ON* */
 
 static uword
-unformat_vlib_log_subclass (unformat_input_t * input, va_list * args)
+unformat_vlib_log_subclass (unformat_input_t *input, va_list *args)
 {
   vlib_log_class_data_t *class = va_arg (*args, vlib_log_class_data_t *);
   vlib_log_subclass_data_t **subclass =
@@ -728,22 +702,22 @@ unformat_vlib_log_subclass (unformat_input_t * input, va_list * args)
     {
       vlib_log_subclass_data_t *scdata;
       vec_foreach (scdata, class->subclasses)
-      {
-	if (vec_is_equal (scdata->name, subclass_str))
-	  {
-	    rv = 1;
-	    *subclass = scdata;
-	    break;
-	  }
-      }
+	{
+	  if (vec_is_equal (scdata->name, subclass_str))
+	    {
+	      rv = 1;
+	      *subclass = scdata;
+	      break;
+	    }
+	}
     }
   vec_free (subclass_str);
   return rv;
 }
 
 static clib_error_t *
-test_log_class_subclass (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+test_log_class_subclass (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   /* Get a line of input. */
@@ -757,19 +731,17 @@ test_log_class_subclass (vlib_main_t * vm,
     {
       if (unformat (line_input, "%U", unformat_vlib_log_class, &class))
 	{
-	  if (unformat
-	      (line_input, "%U", unformat_vlib_log_subclass, class,
-	       &subclass))
+	  if (unformat (line_input, "%U", unformat_vlib_log_subclass, class,
+			&subclass))
 	    {
-	      vlib_log (level,
-			(class->index << 16) | (subclass->index), "%U",
+	      vlib_log (level, (class->index << 16) | (subclass->index), "%U",
 			format_unformat_input, line_input);
 	    }
 	  else
 	    {
-	      return clib_error_return (0,
-					"unknown log subclass near beginning of `%U'",
-					format_unformat_error, line_input);
+	      return clib_error_return (
+		0, "unknown log subclass near beginning of `%U'",
+		format_unformat_error, line_input);
 	    }
 	}
       else
@@ -787,16 +759,14 @@ test_log_class_subclass (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_test_log, static) = {
   .path = "test log",
   .short_help = "test log <level> <class> <subclass> <message>",
   .function = test_log_class_subclass,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-log_config_class (vlib_main_t * vm, char *name, unformat_input_t * input)
+log_config_class (vlib_main_t *vm, char *name, unformat_input_t *input)
 {
   vlib_log_main_t *lm = &log_main;
   vlib_log_class_config_t *cc, tmp;
@@ -835,7 +805,7 @@ log_config_class (vlib_main_t * vm, char *name, unformat_input_t * input)
 }
 
 static clib_error_t *
-log_config (vlib_main_t * vm, unformat_input_t * input)
+log_config (vlib_main_t *vm, unformat_input_t *input)
 {
   vlib_log_main_t *lm = &log_main;
   unformat_input_t sub_input;

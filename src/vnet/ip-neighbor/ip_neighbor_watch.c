@@ -38,8 +38,8 @@ typedef struct ip_neighbor_watch_db_t_
 static ip_neighbor_watch_db_t ipnw_db;
 
 static uword
-ip_neighbor_event_process (vlib_main_t * vm,
-			   vlib_node_runtime_t * rt, vlib_frame_t * f)
+ip_neighbor_event_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
+			   vlib_frame_t *f)
 {
   ip_neighbor_event_t *ipne, *ipnes = NULL;
   uword event_type = ~0;
@@ -53,7 +53,8 @@ ip_neighbor_event_process (vlib_main_t * vm,
       switch (event_type)
 	{
 	default:
-	  vec_foreach (ipne, ipnes) ip_neighbor_handle_event (ipne);
+	  vec_foreach (ipne, ipnes)
+	    ip_neighbor_handle_event (ipne);
 	  break;
 
 	case ~0:
@@ -66,13 +67,11 @@ ip_neighbor_event_process (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip_neighbor_event_process_node) = {
   .function = ip_neighbor_event_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "ip-neighbor-event",
 };
-/* *INDENT-ON* */
 
 
 static clib_error_t *
@@ -84,20 +83,19 @@ want_ip_neighbor_events_reaper (u32 client_index)
   i32 pos;
 
   /* walk the entire IP neighbour DB and removes the client's registrations */
-  /* *INDENT-OFF* */
-  mhash_foreach(key, v, &ipnw_db.ipnwdb_hash,
-  ({
-    watchers = (ip_neighbor_watcher_t*) *v;
 
-    vec_foreach_index_backwards (pos, watchers) {
-      if (watchers[pos].ipw_client == client_index)
-        vec_del1(watchers, pos);
-    }
+  mhash_foreach (key, v, &ipnw_db.ipnwdb_hash, ({
+		   watchers = (ip_neighbor_watcher_t *) *v;
 
-    if (vec_len(watchers) == 0)
-      vec_add1 (empty_keys, *key);
-  }));
-  /* *INDENT-OFF* */
+		   vec_foreach_index_backwards (pos, watchers)
+		     {
+		       if (watchers[pos].ipw_client == client_index)
+			 vec_del1 (watchers, pos);
+		     }
+
+		   if (vec_len (watchers) == 0)
+		     vec_add1 (empty_keys, *key);
+		 }));
 
   vec_foreach (key, empty_keys)
     mhash_unset (&ipnw_db.ipnwdb_hash, key, NULL);
@@ -108,16 +106,15 @@ want_ip_neighbor_events_reaper (u32 client_index)
 VL_MSG_API_REAPER_FUNCTION (want_ip_neighbor_events_reaper);
 
 static int
-ip_neighbor_watch_cmp (const ip_neighbor_watcher_t * w1,
-                       const ip_neighbor_watcher_t * w2)
+ip_neighbor_watch_cmp (const ip_neighbor_watcher_t *w1,
+		       const ip_neighbor_watcher_t *w2)
 {
-  return (0 == clib_memcmp (w1, w2, sizeof(*w1)));
+  return (0 == clib_memcmp (w1, w2, sizeof (*w1)));
 }
 
 void
-ip_neighbor_watch (const ip_address_t * ip,
-		   u32 sw_if_index,
-                   const ip_neighbor_watcher_t * watch)
+ip_neighbor_watch (const ip_address_t *ip, u32 sw_if_index,
+		   const ip_neighbor_watcher_t *watch)
 {
   ip_neighbor_key_t key = {
     .ipnk_ip = *ip,
@@ -130,12 +127,11 @@ ip_neighbor_watch (const ip_address_t * ip,
 
   if (p)
     {
-      ipws = (ip_neighbor_watcher_t*) p[0];
+      ipws = (ip_neighbor_watcher_t *) p[0];
 
-      if (~0 != vec_search_with_function (ipws, watch,
-                                          ip_neighbor_watch_cmp))
-        /* duplicate */
-        return;
+      if (~0 != vec_search_with_function (ipws, watch, ip_neighbor_watch_cmp))
+	/* duplicate */
+	return;
     }
 
   vec_add1 (ipws, *watch);
@@ -144,9 +140,8 @@ ip_neighbor_watch (const ip_address_t * ip,
 }
 
 void
-ip_neighbor_unwatch (const ip_address_t * ip,
-		     u32 sw_if_index,
-                     const ip_neighbor_watcher_t * watch)
+ip_neighbor_unwatch (const ip_address_t *ip, u32 sw_if_index,
+		     const ip_neighbor_watcher_t *watch)
 {
   ip_neighbor_key_t key = {
     .ipnk_ip = *ip,
@@ -161,7 +156,7 @@ ip_neighbor_unwatch (const ip_address_t * ip,
   if (!p)
     return;
 
-  ipws = (ip_neighbor_watcher_t*) p[0];
+  ipws = (ip_neighbor_watcher_t *) p[0];
 
   pos = vec_search_with_function (ipws, watch, ip_neighbor_watch_cmp);
 
@@ -170,32 +165,31 @@ ip_neighbor_unwatch (const ip_address_t * ip,
 
   vec_del1 (ipws, pos);
 
-  if (vec_len(ipws) == 0)
+  if (vec_len (ipws) == 0)
     mhash_unset (&ipnw_db.ipnwdb_hash, &key, NULL);
 }
 
 static void
-ip_neighbor_signal (ip_neighbor_watcher_t *watchers,
-                    index_t ipni,
-                    ip_neighbor_event_flags_t flags)
+ip_neighbor_signal (ip_neighbor_watcher_t *watchers, index_t ipni,
+		    ip_neighbor_event_flags_t flags)
 {
   ip_neighbor_watcher_t *watcher;
 
-  vec_foreach (watcher, watchers) {
-    ip_neighbor_event_t *ipne;
+  vec_foreach (watcher, watchers)
+    {
+      ip_neighbor_event_t *ipne;
 
-    ipne = vlib_process_signal_event_data (vlib_get_main(),
-                                           ip_neighbor_event_process_node.index,
-                                           0, 1, sizeof(*ipne));
-    ipne->ipne_watch = *watcher;
-    ipne->ipne_flags = flags;
-    ip_neighbor_clone(ip_neighbor_get(ipni), &ipne->ipne_nbr);
-  }
+      ipne = vlib_process_signal_event_data (
+	vlib_get_main (), ip_neighbor_event_process_node.index, 0, 1,
+	sizeof (*ipne));
+      ipne->ipne_watch = *watcher;
+      ipne->ipne_flags = flags;
+      ip_neighbor_clone (ip_neighbor_get (ipni), &ipne->ipne_nbr);
+    }
 }
 
 void
-ip_neighbor_publish (index_t ipni,
-                     ip_neighbor_event_flags_t flags)
+ip_neighbor_publish (index_t ipni, ip_neighbor_event_flags_t flags)
 {
   const ip_neighbor_t *ipn;
   ip_neighbor_key_t key;
@@ -208,72 +202,67 @@ ip_neighbor_publish (index_t ipni,
   /* Search the DB from longest to shortest key */
   p = mhash_get (&ipnw_db.ipnwdb_hash, &key);
 
-  if (p) {
-    ip_neighbor_signal ((ip_neighbor_watcher_t*) p[0], ipni, flags);
-  }
+  if (p)
+    {
+      ip_neighbor_signal ((ip_neighbor_watcher_t *) p[0], ipni, flags);
+    }
 
   ip_address_reset (&key.ipnk_ip);
   p = mhash_get (&ipnw_db.ipnwdb_hash, &key);
 
-  if (p) {
-    ip_neighbor_signal ((ip_neighbor_watcher_t*) p[0], ipni, flags);
-  }
+  if (p)
+    {
+      ip_neighbor_signal ((ip_neighbor_watcher_t *) p[0], ipni, flags);
+    }
 
   key.ipnk_sw_if_index = ~0;
   p = mhash_get (&ipnw_db.ipnwdb_hash, &key);
 
-  if (p) {
-    ip_neighbor_signal ((ip_neighbor_watcher_t*) p[0], ipni, flags);
-  }
+  if (p)
+    {
+      ip_neighbor_signal ((ip_neighbor_watcher_t *) p[0], ipni, flags);
+    }
 }
 
 static clib_error_t *
-ip_neighbor_watchers_show (vlib_main_t * vm,
-                           unformat_input_t * input,
-                           vlib_cli_command_t * cmd)
+ip_neighbor_watchers_show (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   ip_neighbor_watcher_t *watchers, *watcher;
   ip_neighbor_key_t *key;
   uword *v;
 
-  /* *INDENT-OFF* */
-  mhash_foreach(key, v, &ipnw_db.ipnwdb_hash,
-  ({
-    watchers = (ip_neighbor_watcher_t*) *v;
+  mhash_foreach (
+    key, v, &ipnw_db.ipnwdb_hash, ({
+      watchers = (ip_neighbor_watcher_t *) *v;
 
-    ASSERT(vec_len(watchers));
-    vlib_cli_output (vm, "Key: %U", format_ip_neighbor_key, key);
+      ASSERT (vec_len (watchers));
+      vlib_cli_output (vm, "Key: %U", format_ip_neighbor_key, key);
 
-    vec_foreach (watcher, watchers)
-      vlib_cli_output (vm, "  %U", format_ip_neighbor_watcher, watcher);
-  }));
-  /* *INDENT-ON* */
+      vec_foreach (watcher, watchers)
+	vlib_cli_output (vm, "  %U", format_ip_neighbor_watcher, watcher);
+    }));
+
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip_neighbor_watchers_cmd_node, static) = {
   .path = "show ip neighbor-watcher",
   .function = ip_neighbor_watchers_show,
   .short_help = "show ip neighbors-watcher",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-ip_neighbor_watch_init (vlib_main_t * vm)
+ip_neighbor_watch_init (vlib_main_t *vm)
 {
-  mhash_init (&ipnw_db.ipnwdb_hash,
-	      sizeof (ip_neighbor_watcher_t *), sizeof (ip_neighbor_key_t));
+  mhash_init (&ipnw_db.ipnwdb_hash, sizeof (ip_neighbor_watcher_t *),
+	      sizeof (ip_neighbor_key_t));
   return (NULL);
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (ip_neighbor_watch_init) =
-{
-  .runs_after = VLIB_INITS("ip_neighbor_init"),
+VLIB_INIT_FUNCTION (ip_neighbor_watch_init) = {
+  .runs_after = VLIB_INITS ("ip_neighbor_init"),
 };
-/* *INDENT-ON* */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

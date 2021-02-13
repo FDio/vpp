@@ -32,7 +32,7 @@
  * Dump these counters via the "show error" CLI command
  */
 static char *cdp_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_cdp_error
 #undef _
 };
@@ -53,14 +53,13 @@ typedef enum
  * Expect 1 packet / frame
  */
 static uword
-cdp_node_fn (vlib_main_t * vm,
-	     vlib_node_runtime_t * node, vlib_frame_t * frame)
+cdp_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from;
   cdp_input_trace_t *t0;
 
-  from = vlib_frame_vector_args (frame);	/* array of buffer indices */
-  n_left_from = frame->n_vectors;	/* number of buffer indices */
+  from = vlib_frame_vector_args (frame); /* array of buffer indices */
+  n_left_from = frame->n_vectors;	 /* number of buffer indices */
 
   while (n_left_from > 0)
     {
@@ -82,8 +81,8 @@ cdp_node_fn (vlib_main_t * vm,
 	{
 	  int len;
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	  len = (b0->current_length < sizeof (t0->data))
-	    ? b0->current_length : sizeof (t0->data);
+	  len = (b0->current_length < sizeof (t0->data)) ? b0->current_length :
+							   sizeof (t0->data);
 	  t0->len = len;
 	  clib_memcpy (t0->data, vlib_buffer_get_current (b0), len);
 	}
@@ -100,7 +99,7 @@ cdp_node_fn (vlib_main_t * vm,
 /*
  * cdp input graph node declaration
  */
-/* *INDENT-OFF* */
+
 VLIB_REGISTER_NODE (cdp_input_node, static) = {
   .function = cdp_node_fn,
   .name = "cdp-input",
@@ -117,13 +116,12 @@ VLIB_REGISTER_NODE (cdp_input_node, static) = {
     [CDP_INPUT_NEXT_NORMAL] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * cdp periodic function
  */
 static uword
-cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
+cdp_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   cdp_main_t *cm = &cdp_main;
   f64 poll_time_remaining;
@@ -141,7 +139,7 @@ cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       event_type = vlib_process_get_events (vm, &event_data);
       switch (event_type)
 	{
-	case ~0:		/* no events => timeout */
+	case ~0: /* no events => timeout */
 	  break;
 
 	case CDP_EVENT_ENABLE:
@@ -151,15 +149,13 @@ cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	       * Dynamically register the cdp input node
 	       * with the snap classifier
 	       */
-	      snap_register_input_protocol (vm, "cdp-input",
-					    0xC /* ieee_oui, Cisco */ ,
-					    0x2000 /* protocol CDP */ ,
-					    cdp_input_node.index);
+	      snap_register_input_protocol (
+		vm, "cdp-input", 0xC /* ieee_oui, Cisco */,
+		0x2000 /* protocol CDP */, cdp_input_node.index);
 
-	      snap_register_input_protocol (vm, "cdp-input",
-					    0xC /* ieee_oui, Cisco */ ,
-					    0x2004 /* protocol CDP */ ,
-					    cdp_input_node.index);
+	      snap_register_input_protocol (
+		vm, "cdp-input", 0xC /* ieee_oui, Cisco */,
+		0x2004 /* protocol CDP */, cdp_input_node.index);
 #if 0
 	      /*
 	       * Keep this code for reference...
@@ -169,7 +165,7 @@ cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 					    cdp_input_node.index);
 #endif
 	      /* with ethernet input (for SRP) */
-	      ethernet_register_input_type (vm, ETHERNET_TYPE_CDP /* CDP */ ,
+	      ethernet_register_input_type (vm, ETHERNET_TYPE_CDP /* CDP */,
 					    cdp_input_node.index);
 	      cm->cdp_protocol_registered = 1;
 	    }
@@ -198,16 +194,15 @@ cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 }
 
 void
-vnet_cdp_create_periodic_process (cdp_main_t * cmp)
+vnet_cdp_create_periodic_process (cdp_main_t *cmp)
 {
   /* Already created the process node? */
   if (cmp->cdp_process_node_index > 0)
     return;
 
   /* No, create it now and make a note of the node index */
-  cmp->cdp_process_node_index = vlib_process_create
-    (cmp->vlib_main, "cdp-process",
-     cdp_process, 16 /* log2_n_stack_bytes */ );
+  cmp->cdp_process_node_index = vlib_process_create (
+    cmp->vlib_main, "cdp-process", cdp_process, 16 /* log2_n_stack_bytes */);
 }
 
 /*

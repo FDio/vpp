@@ -35,7 +35,7 @@ namespace VOM {
  * subscription duration the client will be notified as events are recieved.
  * The client can then 'pop' these events from this command object.
  */
-template <typename WANT, typename EVENT>
+template<typename WANT, typename EVENT>
 class event_cmd : public rpc_cmd<HW::item<bool>, WANT>
 {
 public:
@@ -44,8 +44,7 @@ public:
    */
   event_cmd(HW::item<bool>& b)
     : rpc_cmd<HW::item<bool>, WANT>(b)
-  {
-  }
+  {}
 
   /**
    * Default destructor

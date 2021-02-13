@@ -53,8 +53,8 @@ node_cmp (void *a1, void *a2)
 }
 
 static clib_error_t *
-show_node_graph (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+show_node_graph (vlib_main_t *vm, unformat_input_t *input,
+		 vlib_cli_command_t *cmd)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n;
@@ -83,17 +83,15 @@ show_node_graph (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_node_graph_command, static) = {
   .path = "show vlib graph",
   .short_help = "Show packet processing node graph",
   .function = show_node_graph,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_node_graphviz (vlib_main_t * vm,
-		    unformat_input_t * input, vlib_cli_command_t * cmd)
+show_node_graphviz (vlib_main_t *vm, unformat_input_t *input,
+		    vlib_cli_command_t *cmd)
 {
   clib_error_t *error = 0;
   vlib_node_main_t *nm = &vm->node_main;
@@ -108,18 +106,17 @@ show_node_graphviz (vlib_main_t * vm,
     }
   else
     {
-      fd =
-	open ((char *) chroot_filename, O_CREAT | O_TRUNC | O_WRONLY, 0664);
+      fd = open ((char *) chroot_filename, O_CREAT | O_TRUNC | O_WRONLY, 0664);
     }
 
-#define format__(vm__, fd__, ...) \
-  if ((fd) < 0) \
-    { \
-      vlib_cli_output((vm__), ## __VA_ARGS__); \
-    } \
-  else \
-    { \
-      fdformat((fd__), ## __VA_ARGS__); \
+#define format__(vm__, fd__, ...)                                             \
+  if ((fd) < 0)                                                               \
+    {                                                                         \
+      vlib_cli_output ((vm__), ##__VA_ARGS__);                                \
+    }                                                                         \
+  else                                                                        \
+    {                                                                         \
+      fdformat ((fd__), ##__VA_ARGS__);                                       \
     }
 
   format__ (vm, fd, "%s", "digraph {\n");
@@ -145,9 +142,9 @@ show_node_graphviz (vlib_main_t * vm,
 
   if (fd >= 0)
     {
-      vlib_cli_output (vm,
-		       "vlib graph dumped into `%s'. Run eg. `fdp -Tsvg -O %s'.",
-		       chroot_filename, chroot_filename);
+      vlib_cli_output (
+	vm, "vlib graph dumped into `%s'. Run eg. `fdp -Tsvg -O %s'.",
+	chroot_filename, chroot_filename);
     }
 
   vec_free (nodes);
@@ -158,16 +155,14 @@ show_node_graphviz (vlib_main_t * vm,
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_node_graphviz_command, static) = {
   .path = "show vlib graphviz",
   .short_help = "Dump packet processing node graph as a graphviz dotfile",
   .function = show_node_graphviz,
 };
-/* *INDENT-ON* */
 
 static u8 *
-format_vlib_node_state (u8 * s, va_list * va)
+format_vlib_node_state (u8 *s, va_list *va)
 {
   vlib_main_t *vm = va_arg (*va, vlib_main_t *);
   vlib_node_t *n = va_arg (*va, vlib_node_t *);
@@ -178,8 +173,8 @@ format_vlib_node_state (u8 * s, va_list * va)
     {
       vlib_process_t *p = vlib_get_process_from_node (vm, n);
 
-      switch (p->flags & (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK
-			  | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT))
+      switch (p->flags & (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK |
+			  VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT))
 	{
 	default:
 	  if (!(p->flags & VLIB_PROCESS_IS_RUNNING))
@@ -194,9 +189,9 @@ format_vlib_node_state (u8 * s, va_list * va)
 	  state = "event wait";
 	  break;
 
-	case (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK):
-	  state =
-	    "any wait";
+	case (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT |
+	      VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK):
+	  state = "any wait";
 	  break;
 	}
     }
@@ -213,7 +208,7 @@ format_vlib_node_state (u8 * s, va_list * va)
 }
 
 static u8 *
-format_vlib_node_stats (u8 * s, va_list * va)
+format_vlib_node_stats (u8 *s, va_list *va)
 {
   vlib_main_t *vm = va_arg (*va, vlib_main_t *);
   vlib_node_t *n = va_arg (*va, vlib_node_t *);
@@ -230,15 +225,12 @@ format_vlib_node_stats (u8 * s, va_list * va)
   if (!n)
     {
       if (max)
-	s = format (s,
-		    "%=30s%=17s%=16s%=16s%=16s%=16s",
-		    "Name", "Max Node Clocks", "Vectors at Max",
-		    "Max Clocks", "Avg Clocks", "Avg Vectors/Call");
+	s = format (s, "%=30s%=17s%=16s%=16s%=16s%=16s", "Name",
+		    "Max Node Clocks", "Vectors at Max", "Max Clocks",
+		    "Avg Clocks", "Avg Vectors/Call");
       else
-	s = format (s,
-		    "%=30s%=12s%=16s%=16s%=16s%=16s%=16s",
-		    "Name", "State", "Calls", "Vectors", "Suspends",
-		    "Clocks", "Vectors/Call");
+	s = format (s, "%=30s%=12s%=16s%=16s%=16s%=16s%=16s", "Name", "State",
+		    "Calls", "Vectors", "Suspends", "Clocks", "Vectors/Call");
       return s;
     }
 
@@ -273,16 +265,16 @@ format_vlib_node_stats (u8 * s, va_list * va)
     {
       vlib_process_t *p = vlib_get_process_from_node (vm, n);
 
-      /* Show processes with events pending.  This helps spot bugs where events are not
-         being handled. */
+      /* Show processes with events pending.  This helps spot bugs where events
+	 are not being handled. */
       if (!clib_bitmap_is_zero (p->non_empty_event_type_bitmap))
 	misc_info = format (misc_info, "events pending, ");
     }
   ns = n->name;
 
   if (max)
-    s = format (s, "%-30v%=17.2e%=16d%=16.2e%=16.2e%=16.2e",
-		ns, maxc, maxn, maxcn, x, v);
+    s = format (s, "%-30v%=17.2e%=16d%=16.2e%=16.2e%=16.2e", ns, maxc, maxn,
+		maxcn, x, v);
   else
     s = format (s, "%-30v%=12U%16Ld%16Ld%16Ld%16.2e%16.2f", ns,
 		format_vlib_node_state, vm, n, c, p, d, x, v);
@@ -307,8 +299,8 @@ vlib_get_stat_segment_update_rate (void)
 }
 
 static clib_error_t *
-show_node_runtime (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+show_node_runtime (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n;
@@ -346,8 +338,8 @@ show_node_runtime (vlib_main_t * vm,
 	brief = 0;
       if (unformat (input, "max") || unformat (input, "m"))
 	max = 1;
-      if (unformat (input, "summary") || unformat (input, "sum")
-	  || unformat (input, "su"))
+      if (unformat (input, "summary") || unformat (input, "sum") ||
+	  unformat (input, "su"))
 	summary = 1;
 
       for (i = 0; i < vec_len (vlib_mains); i++)
@@ -381,7 +373,6 @@ show_node_runtime (vlib_main_t * vm,
 		    vlib_internal_node_vector_rate (stat_vm));
 	}
       vlib_worker_thread_barrier_release (vm);
-
 
       for (j = 0; j < vec_len (stat_vms); j++)
 	{
@@ -440,29 +431,25 @@ show_node_runtime (vlib_main_t * vm,
 	    }
 
 	  dt = time_now - nm->time_last_runtime_stats_clear;
-	  vlib_cli_output
-	    (vm,
-	     "Time %.1f, %f sec internal node vector rate %.2f loops/sec %.2f\n"
-	     "  vector rates in %.4e, out %.4e, drop %.4e, punt %.4e",
-	     dt,
-	     vlib_get_stat_segment_update_rate (),
-	     internal_node_vector_rates[j],
-	     stat_vm->loops_per_second,
-	     (f64) n_input / dt,
-	     (f64) n_output / dt, (f64) n_drop / dt, (f64) n_punt / dt);
+	  vlib_cli_output (
+	    vm,
+	    "Time %.1f, %f sec internal node vector rate %.2f loops/sec %.2f\n"
+	    "  vector rates in %.4e, out %.4e, drop %.4e, punt %.4e",
+	    dt, vlib_get_stat_segment_update_rate (),
+	    internal_node_vector_rates[j], stat_vm->loops_per_second,
+	    (f64) n_input / dt, (f64) n_output / dt, (f64) n_drop / dt,
+	    (f64) n_punt / dt);
 
 	  if (summary == 0)
 	    {
-	      vlib_cli_output (vm, "%U", format_vlib_node_stats, stat_vm,
-			       0, max);
+	      vlib_cli_output (vm, "%U", format_vlib_node_stats, stat_vm, 0,
+			       max);
 	      for (i = 0; i < vec_len (nodes); i++)
 		{
-		  c =
-		    nodes[i]->stats_total.calls -
-		    nodes[i]->stats_last_clear.calls;
-		  d =
-		    nodes[i]->stats_total.suspends -
-		    nodes[i]->stats_last_clear.suspends;
+		  c = nodes[i]->stats_total.calls -
+		      nodes[i]->stats_last_clear.calls;
+		  d = nodes[i]->stats_total.suspends -
+		      nodes[i]->stats_last_clear.suspends;
 		  if (c || d || !brief)
 		    {
 		      vlib_cli_output (vm, "%U", format_vlib_node_stats,
@@ -480,18 +467,16 @@ show_node_runtime (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_node_runtime_command, static) = {
   .path = "show runtime",
   .short_help = "Show packet processing runtime",
   .function = show_node_runtime,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-clear_node_runtime (vlib_main_t * vm,
-		    unformat_input_t * input, vlib_cli_command_t * cmd)
+clear_node_runtime (vlib_main_t *vm, unformat_input_t *input,
+		    vlib_cli_command_t *cmd)
 {
   vlib_node_main_t *nm;
   vlib_node_t *n;
@@ -533,17 +518,14 @@ clear_node_runtime (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_node_runtime_command, static) = {
   .path = "clear runtime",
   .short_help = "Clear packet processing runtime statistics",
   .function = clear_node_runtime,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_node (vlib_main_t * vm, unformat_input_t * input,
-	   vlib_cli_command_t * cmd)
+show_node (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
@@ -564,8 +546,8 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "verbose"))
 	verbose = 1;
-      else
-	if (unformat (line_input, "%U", unformat_vlib_node, vm, &node_index))
+      else if (unformat (line_input, "%U", unformat_vlib_node, vm,
+			 &node_index))
 	valid_node_name = 1;
       else if (!valid_node_name)
 	error = clib_error_return (0, "unknown node name: '%U'",
@@ -610,9 +592,8 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
   if (n->sibling_of)
     s = format (s, ", sibling-of %s", n->sibling_of);
 
-  vlib_cli_output (vm, "node %v, type %s, state %U, index %d%v\n",
-		   n->name, type_str, format_vlib_node_state, vm, n,
-		   n->index, s);
+  vlib_cli_output (vm, "node %v, type %s, state %U, index %d%v\n", n->name,
+		   type_str, format_vlib_node_state, vm, n, n->index, s);
   vec_reset_length (s);
 
   if (n->node_fn_registrations)
@@ -621,8 +602,8 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
       while (fnr)
 	{
 	  if (vec_len (s) == 0)
-	    s = format (s, "\n    %-15s  %=8s  %6s",
-			"Name", "Priority", "Active");
+	    s = format (s, "\n    %-15s  %=8s  %6s", "Name", "Priority",
+			"Active");
 	  s = format (s, "\n    %-15s  %8d  %=6s", fnr->name, fnr->priority,
 		      fnr->function == n->function ? "yes" : "");
 	  fnr = fnr->next_registration;
@@ -642,8 +623,8 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
       pn = vec_elt (nm->nodes, n->next_nodes[i]);
 
       if (vec_len (s) == 0)
-	s = format (s, "\n    %10s  %10s  %=30s %8s",
-		    "next-index", "node-index", "Node", "Vectors");
+	s = format (s, "\n    %10s  %10s  %=30s %8s", "next-index",
+		    "node-index", "Node", "Vectors");
 
       s = format (s, "\n    %=10u  %=10u  %=30v %=8llu", i, n->next_nodes[i],
 		  pn->name, vec_elt (n->n_vectors_by_next_node, i));
@@ -657,16 +638,16 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
   if (n->type == VLIB_NODE_TYPE_INTERNAL)
     {
       int j = 0;
-      /* *INDENT-OFF* */
-      clib_bitmap_foreach (i, n->prev_node_bitmap)  {
-	    vlib_node_t *pn = vlib_get_node (vm, i);
-	    if (j++ % 3 == 0)
-	      s = format (s, "\n    ");
-	    s2 = format (s2, "%v (%u)", pn->name, i);
-	    s = format (s, "%-35v", s2);
-	    vec_reset_length (s2);
-	  }
-      /* *INDENT-ON* */
+
+      clib_bitmap_foreach (i, n->prev_node_bitmap)
+	{
+	  vlib_node_t *pn = vlib_get_node (vm, i);
+	  if (j++ % 3 == 0)
+	    s = format (s, "\n    ");
+	  s2 = format (s2, "%v (%u)", pn->name, i);
+	  s = format (s, "%-35v", s2);
+	  vec_reset_length (s2);
+	}
 
       if (vec_len (s) == 0)
 	s = format (s, "\n    none");
@@ -701,7 +682,6 @@ done:
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_node_command, static) = {
   .path = "show node",
   .short_help = "show node [index] <node-name | node-index>",
@@ -709,7 +689,7 @@ VLIB_CLI_COMMAND (show_node_command, static) = {
 };
 
 static clib_error_t *
-set_node_fn(vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
+set_node_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 node_index;
@@ -763,7 +743,8 @@ set_node_fn(vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd
       fnr = fnr->next_registration;
     }
 
-  err = clib_error_return (0, "node functional variant '%s' not found", variant);
+  err =
+    clib_error_return (0, "node functional variant '%s' not found", variant);
 
 done:
   vec_free (variant);
@@ -771,13 +752,11 @@ done:
   return err;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_node_fn_command, static) = {
   .path = "set node function",
   .short_help = "set node function <node-name> <variant-name>",
   .function = set_node_fn,
 };
-/* *INDENT-ON* */
 
 /* Dummy function to get us linked in. */
 void

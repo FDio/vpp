@@ -21,18 +21,19 @@
 #include <vlibapi/api.h>
 #include <lisp/lisp-cp/packets.h>
 
-#define _assert(e)                    			\
-  error = CLIB_ERROR_ASSERT (e);      			\
-  if (error)                 		         	\
-    {							\
-      fformat(stderr, "FAIL: line %d \n\n", __LINE__);	\
-      goto done;					\
+#define _assert(e)                                                            \
+  error = CLIB_ERROR_ASSERT (e);                                              \
+  if (error)                                                                  \
+    {                                                                         \
+      fformat (stderr, "FAIL: line %d \n\n", __LINE__);                       \
+      goto done;                                                              \
     }
 
 static void
-print_chunk (u8 * b, int *offset, int c, char *des)
+print_chunk (u8 *b, int *offset, int c, char *des)
 {
-  int i, n = offset[0] + c;;
+  int i, n = offset[0] + c;
+  ;
   for (i = offset[0]; i < n; i++)
     {
       printf ("0x%02x, ", b[i]);
@@ -42,10 +43,9 @@ print_chunk (u8 * b, int *offset, int c, char *des)
 }
 
 void
-print_map_request (map_request_hdr_t * h)
+print_map_request (map_request_hdr_t *h)
 {
-#define pchunk(_count, _desc) \
-  print_chunk((u8 *)h, &offset, _count, _desc)
+#define pchunk(_count, _desc) print_chunk ((u8 *) h, &offset, _count, _desc)
 
   int offset = 0;
 
@@ -77,8 +77,8 @@ test_lisp_msg_push_ecm ()
   b = clib_mem_alloc (buff_len);
   clib_memset ((u8 *) b, 0, buff_len);
   b->current_length = buff_len;
-  b->current_data = sizeof (udp_header_t) + sizeof (ip4_header_t) +
-    sizeof (ecm_hdr_t) + 1;
+  b->current_data =
+    sizeof (udp_header_t) + sizeof (ip4_header_t) + sizeof (ecm_hdr_t) + 1;
 
   la.type = GID_ADDR_IP_PREFIX;
   la.ippref.addr.ip.ip4.as_u32 = 0xa1b2c3d4;
@@ -90,9 +90,7 @@ test_lisp_msg_push_ecm ()
 
   ecm_hdr_t *lh = lisp_msg_push_ecm (vm, b, lp, rp, &la, &ra);
 
-  u8 expected_ecm_hdr[] = {
-    0x80, 0x00, 0x00, 0x00
-  };
+  u8 expected_ecm_hdr[] = { 0x80, 0x00, 0x00, 0x00 };
   _assert (0 == memcmp (expected_ecm_hdr, lh, sizeof (expected_ecm_hdr)));
 
   ip4_header_t *ih = (ip4_header_t *) (lh + 1);
@@ -101,14 +99,14 @@ test_lisp_msg_push_ecm ()
 
   /* *INDENT-OFF* */
   u8 expected_ip4_hdr[] = {
-    0x45,                   /* version; IHL */
-    0x00,                   /* services */
-    0x03, 0xa0,             /* total length */
-    0x00, 0x00,             /* identification */
-    0x40, 0x00,             /* flags; fragment offset*/
-    0xff,                   /* TTL */
-    0x11,                   /* protocol */
-    0x00, 0x00,             /* header checksum */
+    0x45,		    /* version; IHL */
+    0x00,		    /* services */
+    0x03, 0xa0,		    /* total length */
+    0x00, 0x00,		    /* identification */
+    0x40, 0x00,		    /* flags; fragment offset*/
+    0xff,		    /* TTL */
+    0x11,		    /* protocol */
+    0x00, 0x00,		    /* header checksum */
     0xd4, 0xc3, 0xb2, 0xa1, /* src IP */
     0x63, 0x72, 0x81, 0x90, /* dst IP */
   };
@@ -153,18 +151,18 @@ test_lisp_msg_parse_mapping_record ()
   u8 map_reply_records[] = {
     /* 1. record */
     0x01, 0x02, 0x03, 0x04, /* record TTL */
-    0x01,                   /* locator count */
-    0x00, 0x00, 0x00,       /* eid-mask-len; ... */
-    0x00, 0x00,             /* reserved; map-version num */
-    0x00, 0x01,             /* EID-Prefix-AFI */
+    0x01,		    /* locator count */
+    0x00, 0x00, 0x00,	    /* eid-mask-len; ... */
+    0x00, 0x00,		    /* reserved; map-version num */
+    0x00, 0x01,		    /* EID-Prefix-AFI */
     0x33, 0x44, 0x55, 0x66, /* eid-prefix */
     /* loc */
-    0x0a,                   /* prority */
-    0x0b,                   /* weight */
-    0x0c,                   /* m-prority */
-    0x0d,                   /* m-weight */
-    0x00, 0x00,             /* unused flags */
-    0x00, 0x01,             /* Loc-AFI */
+    0x0a,		    /* prority */
+    0x0b,		    /* weight */
+    0x0c,		    /* m-prority */
+    0x0d,		    /* m-weight */
+    0x00, 0x00,		    /* unused flags */
+    0x00, 0x01,		    /* Loc-AFI */
     0xaa, 0xbb, 0xcc, 0xdd, /* Loator */
   };
   /* *INDENT-ON* */
@@ -191,8 +189,7 @@ done:
 }
 
 static map_request_hdr_t *
-build_map_request (lisp_cp_main_t * lcm, vlib_buffer_t * b,
-		   gid_address_t * rlocs)
+build_map_request (lisp_cp_main_t *lcm, vlib_buffer_t *b, gid_address_t *rlocs)
 {
   gid_address_t _seid, *seid = &_seid;
   gid_address_t _deid, *deid = &_deid;
@@ -214,14 +211,14 @@ build_map_request (lisp_cp_main_t * lcm, vlib_buffer_t * b,
   deid->ippref.addr.version = AF_IP4;
   gid_address_ippref_len (deid) = 24;
 
-  h = lisp_msg_put_mreq (lcm, b, seid, deid, rlocs,
-			 is_smr_invoked, rloc_probe_set, &nonce);
+  h = lisp_msg_put_mreq (lcm, b, seid, deid, rlocs, is_smr_invoked,
+			 rloc_probe_set, &nonce);
   vec_free (rlocs);
   return h;
 }
 
 static void
-generate_rlocs (gid_address_t ** rlocs, u32 * count)
+generate_rlocs (gid_address_t **rlocs, u32 *count)
 {
   gid_address_t gid_addr_data, *gid_addr = &gid_addr_data;
   clib_memset (gid_addr, 0, sizeof (gid_addr[0]));
@@ -263,7 +260,7 @@ test_lisp_msg_parse ()
   vlib_buffer_pull (b, sizeof (*h));
   u32 len = lisp_msg_parse_addr (b, &gid);
   _assert (len == 2 + 4
-	   /* Source-EID-AFI field lenght + IPv4 address length */ );
+	   /* Source-EID-AFI field lenght + IPv4 address length */);
   _assert (gid.ippref.addr.ip.ip4.as_u32 == 0x12345678);
   _assert (gid.ippref.addr.version == AF_IP4);
 
@@ -306,12 +303,10 @@ test_lisp_msg_put_mreq_with_lcaf ()
   ip->as_u32 = 0x11223344;
   ippref.len = 32;
 
-  gid_address_t g = {
-    .type = GID_ADDR_IP_PREFIX,
-    .ippref = ippref,
-    .vni = 0x90919293,
-    .vni_mask = 0x17
-  };
+  gid_address_t g = { .type = GID_ADDR_IP_PREFIX,
+		      .ippref = ippref,
+		      .vni = 0x90919293,
+		      .vni_mask = 0x17 };
   vec_add1 (rlocs, g);
 
   u8 *data = clib_mem_alloc (500);
@@ -323,32 +318,30 @@ test_lisp_msg_put_mreq_with_lcaf ()
   clib_memset ((u8 *) h + 4, 0, 8);
 
   /* *INDENT-OFF* */
-  u8 expected_data[] =
-    {
-      0x10, 0x40, 0x00, 0x01, /* type; flags; IRC; REC count */
-      0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, /* nonce */
-      0x00, 0x01,             /* Source-EID-AFI */
-      0x78, 0x56, 0x34, 0x12, /* Source EID Address */
+  u8 expected_data[] = {
+    0x10, 0x40, 0x00, 0x01, /* type; flags; IRC; REC count */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* nonce */
+    0x00, 0x01,					    /* Source-EID-AFI */
+    0x78, 0x56, 0x34, 0x12,			    /* Source EID Address */
 
-      /* RLOCs */
-      0x40, 0x03,             /* AFI = LCAF*/
-      /* LCAF header*/
-      0x00, 0x00,             /* reserved1, flags */
-      0x02,                   /* type = Instance ID */
-      0x17,                   /* IID mask-len */
-      0x00, 0x0a,             /* lenght */
-      0x90, 0x91, 0x92, 0x93, /* IID / VNI */
+    /* RLOCs */
+    0x40, 0x03, /* AFI = LCAF*/
+    /* LCAF header*/
+    0x00, 0x00,		    /* reserved1, flags */
+    0x02,		    /* type = Instance ID */
+    0x17,		    /* IID mask-len */
+    0x00, 0x0a,		    /* lenght */
+    0x90, 0x91, 0x92, 0x93, /* IID / VNI */
 
-      0x00, 0x01,             /* AFI = ipv4 */
-      0x44, 0x33, 0x22, 0x11, /* ITR-RLOC Address 1 */
+    0x00, 0x01,		    /* AFI = ipv4 */
+    0x44, 0x33, 0x22, 0x11, /* ITR-RLOC Address 1 */
 
-      /* record */
-      0x00,                   /* reserved */
-      0x18,                   /* EID mask-len */
-      0x00, 0x01,             /* EID-prefix-AFI */
-      0xf0, 0xde, 0xbc, 0x9a, /* EID-prefix */
-    };
+    /* record */
+    0x00,		    /* reserved */
+    0x18,		    /* EID mask-len */
+    0x00, 0x01,		    /* EID-prefix-AFI */
+    0xf0, 0xde, 0xbc, 0x9a, /* EID-prefix */
+  };
   /* *INDENT-ON* */
 
   _assert (0 == memcmp (expected_data, (u8 *) h, sizeof (expected_data)));
@@ -380,24 +373,21 @@ test_lisp_msg_put_mreq ()
   /* *INDENT-OFF* */
   u8 expected_data[50] = {
     0x10, 0x40, 0x01, 0x01, /* type; flags; IRC; REC count */
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, /* nonce */
-    0x00, 0x01,             /* Source-EID-AFI */
-    0x78, 0x56, 0x34, 0x12, /* Source EID Address */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* nonce */
+    0x00, 0x01,					    /* Source-EID-AFI */
+    0x78, 0x56, 0x34, 0x12,			    /* Source EID Address */
 
     /* RLOCs */
-    0x00, 0x01,             /* ITR-RLOC-AFI 1 */
+    0x00, 0x01,		    /* ITR-RLOC-AFI 1 */
     0x40, 0x30, 0x20, 0x10, /* ITR-RLOC Address 1 */
-    0x00, 0x02,             /* ITR-RLOC-AFI 2 */
-    0xcc, 0xdd, 0xee, 0xff,
-    0x88, 0x99, 0xaa, 0xbb,
-    0x44, 0x55, 0x66, 0x77,
+    0x00, 0x02,		    /* ITR-RLOC-AFI 2 */
+    0xcc, 0xdd, 0xee, 0xff, 0x88, 0x99, 0xaa, 0xbb, 0x44, 0x55, 0x66, 0x77,
     0x00, 0x11, 0x22, 0x33, /* ITR-RLOC Address 2 */
 
     /* record */
-    0x00,                   /* reserved */
-    0x18,                   /* EID mask-len */
-    0x00, 0x01,             /* EID-prefix-AFI */
+    0x00,		    /* reserved */
+    0x18,		    /* EID mask-len */
+    0x00, 0x01,		    /* EID-prefix-AFI */
     0xf0, 0xde, 0xbc, 0x9a, /* EID-prefix */
   };
   /* *INDENT-ON* */
@@ -418,27 +408,16 @@ build_test_map_records ()
   /* *INDENT-OFF* */
   mapping_t r = {
     .ttl = MAP_REGISTER_DEFAULT_TTL,
-    .eid = {
-      .type = GID_ADDR_MAC,
-      .mac = {1, 2, 3, 4, 5, 6},
-      .vni = 0x0
-    }
+    .eid = { .type = GID_ADDR_MAC, .mac = { 1, 2, 3, 4, 5, 6 }, .vni = 0x0 }
   };
 
-  locator_t loc = {
-    .weight = 1,
-    .priority = 2,
-    .local = 1,
-    .address = {
-      .type = GID_ADDR_IP_PREFIX,
-      .ippref = {
-        .addr = {
-          .ip.ip4.as_u32 = 0x99887766,
-          .version = AF_IP4
-        }
-      }
-    }
-  };
+  locator_t loc = { .weight = 1,
+		    .priority = 2,
+		    .local = 1,
+		    .address = {
+		      .type = GID_ADDR_IP_PREFIX,
+		      .ippref = { .addr = { .ip.ip4.as_u32 = 0x99887766,
+					    .version = AF_IP4 } } } };
   /* *INDENT-ON* */
 
   vec_add1 (r.locators, loc);
@@ -448,13 +427,13 @@ build_test_map_records ()
 }
 
 static void
-free_test_map_records (mapping_t * maps)
+free_test_map_records (mapping_t *maps)
 {
   mapping_t *map;
   vec_foreach (map, maps)
-  {
-    vec_free (map->locators);
-  }
+    {
+      vec_free (map->locators);
+    }
   vec_free (maps);
 }
 
@@ -471,9 +450,9 @@ test_lisp_map_register ()
   clib_memset (data, 0, 500);
   b = (vlib_buffer_t *) data;
 
-  lisp_msg_put_map_register (b, records, 1 /* want map notify */ ,
-			     20 /* length of HMAC_SHA_1_96 */ ,
-			     &nonce, &msg_len);
+  lisp_msg_put_map_register (b, records, 1 /* want map notify */,
+			     20 /* length of HMAC_SHA_1_96 */, &nonce,
+			     &msg_len);
   free_test_map_records (records);
 
   /* clear Nonce to simplify comparison */
@@ -485,24 +464,19 @@ test_lisp_map_register ()
   /* *INDENT-OFF* */
   u8 expected_data[] = {
     0x30, 0x00, 0x01, 0x01, /* type; rsvd; want notify; REC count */
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, /* nonce */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* nonce */
     0x00, 0x00, 0x00, 0x00, /* key id, auth data length:
-                              both are zeroes because those are set in another
-                              function (see auth_data_len_by_key_id())*/
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, /* auth data */
+			      both are zeroes because those are set in another
+			      function (see auth_data_len_by_key_id())*/
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* auth data */
 
     /* first record */
-    /* 0x00, 0x00, 0x03, 0x84, */ /* default ttl (15 minues) */
-    0x00, 0x01, 0x51, 0x80, /* default ttl (24h = 86400s) */
-    0x01, 0x00, 0x00, 0x00, /* loc count, eid len, ACT, A */
-    0x00, 0x00, 0x40, 0x05, /* rsvd, map ver num, AFI = MAC */
-    0x01, 0x02, 0x03, 0x04,
-    0x05, 0x06,             /* MAC EID */
+    /* 0x00, 0x00, 0x03, 0x84, */	/* default ttl (15 minues) */
+    0x00, 0x01, 0x51, 0x80,		/* default ttl (24h = 86400s) */
+    0x01, 0x00, 0x00, 0x00,		/* loc count, eid len, ACT, A */
+    0x00, 0x00, 0x40, 0x05,		/* rsvd, map ver num, AFI = MAC */
+    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, /* MAC EID */
 
     /* locator 1 */
     0x02, 0x01, 0x00, 0x00, /* prio, weight, mprio, mweight */
@@ -518,7 +492,7 @@ done:
 }
 
 static vlib_buffer_t *
-create_buffer (u8 * data, u32 data_len)
+create_buffer (u8 *data, u32 data_len)
 {
   vlib_buffer_t *b;
 
@@ -538,11 +512,10 @@ test_lisp_parse_map_reply ()
   clib_error_t *error = 0;
 
   /* *INDENT-OFF* */
-  u8 map_reply_data[] =
-    {
-      0x00, 0x00, 0x00, 0x01, /* type; rsvd; mapping count */
-      0x00, 0x00, 0x00, 0x00,
-    };
+  u8 map_reply_data[] = {
+    0x00, 0x00, 0x00, 0x01, /* type; rsvd; mapping count */
+    0x00, 0x00, 0x00, 0x00,
+  };
   /* *INDENT-ON* */
 
   vlib_buffer_t *b = create_buffer (map_reply_data, sizeof (map_reply_data));
@@ -551,16 +524,14 @@ test_lisp_parse_map_reply ()
   clib_mem_free (b);
 
   /* *INDENT-OFF* */
-  u8 map_reply_data2[] =
-    {
-      0x00, 0x00, 0x00, 0x01, /* type; rsvd */
-      0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, /* nonce */
+  u8 map_reply_data2[] = {
+    0x00, 0x00, 0x00, 0x01,			    /* type; rsvd */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* nonce */
 
-      /* 1. record  - incomplete */
-      0x01, 0x02, 0x03, 0x04, /* record TTL */
-      0x01,                   /* locator count */
-    };
+    /* 1. record  - incomplete */
+    0x01, 0x02, 0x03, 0x04, /* record TTL */
+    0x01,		    /* locator count */
+  };
   /* *INDENT-ON* */
 
   b = create_buffer (map_reply_data2, sizeof (map_reply_data2));
@@ -586,64 +557,61 @@ test_lisp_parse_lcaf ()
   clib_memset ((u8 *) b, 0, buff_len);
 
   /* *INDENT-OFF* */
-  u8 map_reply_records[] =
-    {
-      /* 1. record */
-      0x01, 0x02, 0x03, 0x04, /* record TTL */
-      0x03,                   /* locator count */
-      0x00, 0x00, 0x00,       /* eid-mask-len; ... */
-      0x00, 0x00,             /* reserved; map-version num */
-      0x00, 0x01,             /* EID-Prefix-AFI */
-      0x33, 0x44, 0x55, 0x66, /* eid-prefix */
+  u8 map_reply_records[] = {
+    /* 1. record */
+    0x01, 0x02, 0x03, 0x04, /* record TTL */
+    0x03,		    /* locator count */
+    0x00, 0x00, 0x00,	    /* eid-mask-len; ... */
+    0x00, 0x00,		    /* reserved; map-version num */
+    0x00, 0x01,		    /* EID-Prefix-AFI */
+    0x33, 0x44, 0x55, 0x66, /* eid-prefix */
 
-      /* 1st locator */
-      0x0a,                   /* prority */
-      0x0b,                   /* weight */
-      0x0c,                   /* m-prority */
-      0x0d,                   /* m-weight */
-      0x00, 0x00,             /* unused flags */
-      0x40, 0x03,             /* Loc-AFI = LCAF*/
+    /* 1st locator */
+    0x0a,	/* prority */
+    0x0b,	/* weight */
+    0x0c,	/* m-prority */
+    0x0d,	/* m-weight */
+    0x00, 0x00, /* unused flags */
+    0x40, 0x03, /* Loc-AFI = LCAF*/
 
-      /* LCAF header*/
-      0x00, 0x00,             /* reserved1, flags */
-      0x02,                   /* type = Instance ID */
-      0x18,                   /* IID mask-len */
-      0x00, 0x0a,             /* lenght */
-      /* LCAF Instance ID */
-      0x00, 0x00, 0x00, 0x09, /* iid */
-      0x00, 0x01,             /* AFI = ipv4 */
-      0x10, 0xbb, 0xcc, 0xdd, /* ipv4 loator address */
+    /* LCAF header*/
+    0x00, 0x00, /* reserved1, flags */
+    0x02,	/* type = Instance ID */
+    0x18,	/* IID mask-len */
+    0x00, 0x0a, /* lenght */
+    /* LCAF Instance ID */
+    0x00, 0x00, 0x00, 0x09, /* iid */
+    0x00, 0x01,		    /* AFI = ipv4 */
+    0x10, 0xbb, 0xcc, 0xdd, /* ipv4 loator address */
 
-      /* 2nd locator */
-      0x07,                   /* prority */
-      0x06,                   /* weight */
-      0x05,                   /* m-prority */
-      0x04,                   /* m-weight */
-      0x00, 0x00,             /* unused flags */
-      0x40, 0x03,             /* Loc-AFI = LCAF*/
+    /* 2nd locator */
+    0x07,	/* prority */
+    0x06,	/* weight */
+    0x05,	/* m-prority */
+    0x04,	/* m-weight */
+    0x00, 0x00, /* unused flags */
+    0x40, 0x03, /* Loc-AFI = LCAF*/
 
-      /* LCAF header*/
-      0x00, 0x00,             /* reserved1, flags */
-      0x02,                   /* type = Instance ID */
-      0x18,                   /* IID mask-len */
-      0x00, 0x16,             /* iid length + next AFI lenght */
-      /* LCAF Instance ID */
-      0x22, 0x44, 0x66, 0x88, /* iid */
-      0x00, 0x02,             /* AFI = ipv6 */
-      0xcc, 0xdd, 0xee, 0xff,
-      0x88, 0x99, 0xaa, 0xbb,
-      0x44, 0x55, 0x66, 0x77,
-      0x00, 0x11, 0x22, 0x33, /* ipv6 locator address */
+    /* LCAF header*/
+    0x00, 0x00, /* reserved1, flags */
+    0x02,	/* type = Instance ID */
+    0x18,	/* IID mask-len */
+    0x00, 0x16, /* iid length + next AFI lenght */
+    /* LCAF Instance ID */
+    0x22, 0x44, 0x66, 0x88, /* iid */
+    0x00, 0x02,		    /* AFI = ipv6 */
+    0xcc, 0xdd, 0xee, 0xff, 0x88, 0x99, 0xaa, 0xbb, 0x44, 0x55, 0x66, 0x77,
+    0x00, 0x11, 0x22, 0x33, /* ipv6 locator address */
 
-      /* 3rd locator */
-      0x0a,                   /* prority */
-      0x0b,                   /* weight */
-      0x0c,                   /* m-prority */
-      0x0d,                   /* m-weight */
-      0x00, 0x00,             /* unused flags */
-      0x00, 0x01,             /* Loc-AFI */
-      0xaa, 0xbb, 0xcc, 0xdd, /* Loator */
-    };
+    /* 3rd locator */
+    0x0a,		    /* prority */
+    0x0b,		    /* weight */
+    0x0c,		    /* m-prority */
+    0x0d,		    /* m-weight */
+    0x00, 0x00,		    /* unused flags */
+    0x00, 0x01,		    /* Loc-AFI */
+    0xaa, 0xbb, 0xcc, 0xdd, /* Loator */
+  };
   /* *INDENT-ON* */
 
   b->current_length = buff_len;
@@ -688,30 +656,30 @@ done:
   return error;
 }
 
-#define foreach_test_case                 \
-  _(lisp_msg_put_mreq)                    \
-  _(lisp_msg_put_mreq_with_lcaf)          \
-  _(lisp_msg_push_ecm)                    \
-  _(lisp_msg_parse)                       \
-  _(lisp_msg_parse_mapping_record)        \
-  _(lisp_parse_map_reply)                 \
-  _(lisp_parse_lcaf)                      \
-  _(lisp_map_register)
+#define foreach_test_case                                                     \
+  _ (lisp_msg_put_mreq)                                                       \
+  _ (lisp_msg_put_mreq_with_lcaf)                                             \
+  _ (lisp_msg_push_ecm)                                                       \
+  _ (lisp_msg_parse)                                                          \
+  _ (lisp_msg_parse_mapping_record)                                           \
+  _ (lisp_parse_map_reply)                                                    \
+  _ (lisp_parse_lcaf)                                                         \
+  _ (lisp_map_register)
 
 static int
-lisp_cp_serdes_tests (vlib_main_t * vm, unformat_input_t * input)
+lisp_cp_serdes_tests (vlib_main_t *vm, unformat_input_t *input)
 {
   clib_error_t *error;
 
-#define _(_test_name)                   		\
-  error = test_ ## _test_name ();       		\
-  if (error)                            		\
-    {                                   		\
-      fformat (stderr, "FAIL: test_" #_test_name "\n");	\
-      return -1;                        		\
-    }							\
-  else							\
-      fformat (stderr, "PASS: test_" #_test_name "\n");	\
+#define _(_test_name)                                                         \
+  error = test_##_test_name ();                                               \
+  if (error)                                                                  \
+    {                                                                         \
+      fformat (stderr, "FAIL: test_" #_test_name "\n");                       \
+      return -1;                                                              \
+    }                                                                         \
+  else                                                                        \
+    fformat (stderr, "PASS: test_" #_test_name "\n");
 
   foreach_test_case
 #undef _
@@ -733,15 +701,13 @@ test_locator_type (void)
   ip4->as_u32 = 0x20304050;
 
   /* local locator */
-  locator_t loc1, loc2 = {
-    .local = 1,
-    .state = 2,
-    .sw_if_index = 8,
-    .priority = 3,
-    .weight = 100,
-    .mpriority = 4,
-    .mweight = 101
-  };
+  locator_t loc1, loc2 = { .local = 1,
+			   .state = 2,
+			   .sw_if_index = 8,
+			   .priority = 3,
+			   .weight = 100,
+			   .mpriority = 4,
+			   .mweight = 101 };
   locator_copy (&loc1, &loc2);
   _assert (0 == locator_cmp (&loc1, &loc2));
 
@@ -753,17 +719,12 @@ test_locator_type (void)
   ip_prefix_len (&nested_ippref) = 0;
   ip4 = &ip_prefix_v4 (&nested_ippref);
   ip4->as_u32 = 0x33882299;
-  gid_address_t nested_gid = {
-    .type = GID_ADDR_IP_PREFIX,
-    .ippref = nested_ippref
-  };
+  gid_address_t nested_gid = { .type = GID_ADDR_IP_PREFIX,
+			       .ippref = nested_ippref };
 
   lcaf_t lcaf = {
     .type = LCAF_INSTANCE_ID,
-    .uni = {
-	    .vni_mask_len = 5,
-	    .vni = 0xa1b2c3d4,
-	    .gid_addr = &nested_gid}
+    .uni = { .vni_mask_len = 5, .vni = 0xa1b2c3d4, .gid_addr = &nested_gid }
   };
   gid_address_type (gid) = GID_ADDR_LCAF;
   gid_address_lcaf (gid) = lcaf;
@@ -786,11 +747,10 @@ test_gid_parse_ip_pref ()
   gid_address_t _gid_addr_copy, *copy = &_gid_addr_copy;
 
   /* *INDENT-OFF* */
-  u8 data[] =
-    {
-      0x00, 0x01,             /* AFI = IPv4 */
-      0x10, 0xbb, 0xcc, 0xdd, /* ipv4 address */
-    };
+  u8 data[] = {
+    0x00, 0x01,		    /* AFI = IPv4 */
+    0x10, 0xbb, 0xcc, 0xdd, /* ipv4 address */
+  };
   /* *INDENT-ON* */
 
   u32 len = gid_address_parse (data, gid_addr);
@@ -809,12 +769,11 @@ test_gid_parse_mac ()
   gid_address_t _gid_copy, *gid_copy = &_gid_copy;
 
   /* *INDENT-OFF* */
-  u8 data[] =
-    {
-      0x40, 0x05,             /* AFI = MAC address */
-      0x10, 0xbb, 0xcc, 0xdd, /* MAC */
-      0x77, 0x99,
-    };
+  u8 data[] = {
+    0x40, 0x05,		    /* AFI = MAC address */
+    0x10, 0xbb, 0xcc, 0xdd, /* MAC */
+    0x77, 0x99,
+  };
   /* *INDENT-ON* */
 
   u32 len = gid_address_parse (data, gid);
@@ -844,14 +803,13 @@ test_gid_write_nsh (void)
   u16 len = gid_address_put (b, &g);
 
   /* *INDENT-OFF* */
-  u8 expected[] =
-    {
-      0x40, 0x03, 0x00, 0x00, /* AFI = LCAF*/
-      0x11, 0x00, 0x00, 0x04, /* type = SPI LCAF, length = 4 */
+  u8 expected[] = {
+    0x40, 0x03, 0x00, 0x00, /* AFI = LCAF*/
+    0x11, 0x00, 0x00, 0x04, /* type = SPI LCAF, length = 4 */
 
-      /* Service Path ID, Service index */
-      0x11, 0x22, 0x33, 0x42, /* SPI, SI */
-    };
+    /* Service Path ID, Service index */
+    0x11, 0x22, 0x33, 0x42, /* SPI, SI */
+  };
   /* *INDENT-ON* */
 
   _assert (sizeof (expected) == len);
@@ -872,14 +830,13 @@ test_gid_parse_nsh ()
   clib_memset (copy, 0, sizeof (copy[0]));
 
   /* *INDENT-OFF* */
-  u8 data[] =
-    {
-      0x40, 0x03, 0x00, 0x00, /* AFI = LCAF*/
-      0x11, 0x00, 0x00, 0x04, /* type = SPI LCAF, length = 4 */
+  u8 data[] = {
+    0x40, 0x03, 0x00, 0x00, /* AFI = LCAF*/
+    0x11, 0x00, 0x00, 0x04, /* type = SPI LCAF, length = 4 */
 
-      /* Service Path ID, Service index */
-      0x55, 0x99, 0x42, 0x09, /* SPI, SI */
-    };
+    /* Service Path ID, Service index */
+    0x55, 0x99, 0x42, 0x09, /* SPI, SI */
+  };
   /* *INDENT-ON* */
 
   u32 len = gid_address_parse (data, gid_addr);
@@ -908,20 +865,19 @@ test_gid_parse_lcaf ()
   clib_memset (gid_addr_copy, 0, sizeof (gid_addr_copy[0]));
 
   /* *INDENT-OFF* */
-  u8 data[] =
-    {
-      0x40, 0x03,             /* AFI = LCAF*/
+  u8 data[] = {
+    0x40, 0x03, /* AFI = LCAF*/
 
-      /* LCAF header*/
-      0x00, 0x00,             /* reserved1, flags */
-      0x02,                   /* type = Instance ID */
-      0x18,                   /* IID mask-len */
-      0x00, 0x0a,             /* iid length + next AFI lenght */
-      /* LCAF Instance ID */
-      0x00, 0x00, 0x00, 0x09, /* iid */
-      0x00, 0x01,             /* AFI = ipv4 */
-      0x10, 0xbb, 0xcc, 0xdd, /* ipv4 address */
-    };
+    /* LCAF header*/
+    0x00, 0x00, /* reserved1, flags */
+    0x02,	/* type = Instance ID */
+    0x18,	/* IID mask-len */
+    0x00, 0x0a, /* iid length + next AFI lenght */
+    /* LCAF Instance ID */
+    0x00, 0x00, 0x00, 0x09, /* iid */
+    0x00, 0x01,		    /* AFI = ipv4 */
+    0x10, 0xbb, 0xcc, 0xdd, /* ipv4 address */
+  };
   /* *INDENT-ON* */
 
   u32 len = gid_address_parse (data, gid_addr);
@@ -1048,7 +1004,7 @@ test_write_mac_in_lcaf (void)
   clib_memset (b, 0, 500);
 
   gid_address_t g = {
-    .mac = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6},
+    .mac = { 0x1, 0x2, 0x3, 0x4, 0x5, 0x6 },
     .vni = 0x01020304,
     .vni_mask = 0x10,
     .type = GID_ADDR_MAC,
@@ -1057,20 +1013,18 @@ test_write_mac_in_lcaf (void)
   u16 len = gid_address_put (b, &g);
 
   /* *INDENT-OFF* */
-  u8 expected[] =
-    {
-      0x40, 0x03,             /* AFI = LCAF */
-      0x00,                   /* reserved1 */
-      0x00,                   /* flags */
-      0x02,                   /* LCAF type = Instance ID */
-      0x10,                   /* IID/IID mask len */
-      0x00, 0x0c,             /* length */
-      0x01, 0x02, 0x03, 0x04, /* Instance ID / VNI */
+  u8 expected[] = {
+    0x40, 0x03,		    /* AFI = LCAF */
+    0x00,		    /* reserved1 */
+    0x00,		    /* flags */
+    0x02,		    /* LCAF type = Instance ID */
+    0x10,		    /* IID/IID mask len */
+    0x00, 0x0c,		    /* length */
+    0x01, 0x02, 0x03, 0x04, /* Instance ID / VNI */
 
-      0x40, 0x05,             /* AFI = MAC */
-      0x01, 0x02, 0x03, 0x04,
-      0x05, 0x06              /* MAC */
-    };
+    0x40, 0x05,			       /* AFI = MAC */
+    0x01, 0x02, 0x03, 0x04, 0x05, 0x06 /* MAC */
+  };
   /* *INDENT-ON* */
 
   _assert (sizeof (expected) == len);
@@ -1089,7 +1043,7 @@ test_mac_address_write (void)
   clib_memset (b, 0, 500);
 
   gid_address_t g = {
-    .mac = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6},
+    .mac = { 0x1, 0x2, 0x3, 0x4, 0x5, 0x6 },
     .type = GID_ADDR_MAC,
   };
 
@@ -1097,12 +1051,10 @@ test_mac_address_write (void)
   _assert (8 == len);
 
   /* *INDENT-OFF* */
-  u8 expected[] =
-    {
-      0x40, 0x05,             /* AFI = MAC */
-      0x01, 0x02, 0x03, 0x04,
-      0x05, 0x06              /* MAC */
-    };
+  u8 expected[] = {
+    0x40, 0x05,			       /* AFI = MAC */
+    0x01, 0x02, 0x03, 0x04, 0x05, 0x06 /* MAC */
+  };
   /* *INDENT-ON* */
 
   _assert (0 == memcmp (expected, b, len));
@@ -1119,47 +1071,25 @@ test_src_dst_with_vni_serdes (void)
   clib_memset (b, 0, 500);
 
   /* *INDENT-OFF* */
-  fid_address_t src =
-    {
-      .type = FID_ADDR_IP_PREF,
-      .ippref =
-        {
-          .len = 24,
-          .addr =
-            {
-              .version = AF_IP4,
-              .ip.ip4.data = { 0x1, 0x2, 0x3, 0x0 }
-            }
-        }
-    };
+  fid_address_t src = {
+    .type = FID_ADDR_IP_PREF,
+    .ippref = { .len = 24,
+		.addr = { .version = AF_IP4,
+			  .ip.ip4.data = { 0x1, 0x2, 0x3, 0x0 } } }
+  };
 
-  fid_address_t dst =
-    {
-      .type = FID_ADDR_IP_PREF,
-      .ippref =
-        {
-          .len = 16,
-          .addr =
-            {
-              .version = AF_IP4,
-              .ip.ip4.data = { 0x9, 0x8, 0x0, 0x0 }
-            }
-        }
-    };
+  fid_address_t dst = {
+    .type = FID_ADDR_IP_PREF,
+    .ippref = { .len = 16,
+		.addr = { .version = AF_IP4,
+			  .ip.ip4.data = { 0x9, 0x8, 0x0, 0x0 } } }
+  };
 
-  source_dest_t sd =
-    {
-      .src = src,
-      .dst = dst
-    };
+  source_dest_t sd = { .src = src, .dst = dst };
 
-  gid_address_t g =
-    {
-      .sd = sd,
-      .type = GID_ADDR_SRC_DST,
-      .vni = 0x12345678,
-      .vni_mask = 0x9
-    };
+  gid_address_t g = {
+    .sd = sd, .type = GID_ADDR_SRC_DST, .vni = 0x12345678, .vni_mask = 0x9
+  };
 
   /* *INDENT-ON* */
 
@@ -1171,22 +1101,21 @@ test_src_dst_with_vni_serdes (void)
   _assert (size_to_put == write_len);
 
   /* *INDENT-OFF* */
-  u8 expected_data[] =
-    {
-      0x40, 0x03, 0x00, 0x00,  /* AFI = LCAF, reserved1, flags */
-      0x02, 0x09, 0x00, 0x1c,  /* LCAF type = IID, IID mask-len, length */
-      0x12, 0x34, 0x56, 0x78,  /* reserved; source-ML, Dest-ML */
+  u8 expected_data[] = {
+    0x40, 0x03, 0x00, 0x00, /* AFI = LCAF, reserved1, flags */
+    0x02, 0x09, 0x00, 0x1c, /* LCAF type = IID, IID mask-len, length */
+    0x12, 0x34, 0x56, 0x78, /* reserved; source-ML, Dest-ML */
 
-      0x40, 0x03, 0x00, 0x00,  /* AFI = LCAF, reserved1, flags */
-      0x0c, 0x00, 0x00, 0x10,  /* LCAF type = source/dest key, rsvd, length */
-      0x00, 0x00, 0x18, 0x10,  /* reserved; source-ML, Dest-ML */
+    0x40, 0x03, 0x00, 0x00, /* AFI = LCAF, reserved1, flags */
+    0x0c, 0x00, 0x00, 0x10, /* LCAF type = source/dest key, rsvd, length */
+    0x00, 0x00, 0x18, 0x10, /* reserved; source-ML, Dest-ML */
 
-      0x00, 0x01,              /* AFI = ip4 */
-      0x01, 0x02, 0x03, 0x00,  /* source */
+    0x00, 0x01,		    /* AFI = ip4 */
+    0x01, 0x02, 0x03, 0x00, /* source */
 
-      0x00, 0x01,              /* AFI = ip4 */
-      0x09, 0x08, 0x00, 0x00,  /* destination */
-    };
+    0x00, 0x01,		    /* AFI = ip4 */
+    0x09, 0x08, 0x00, 0x00, /* destination */
+  };
   /* *INDENT-ON* */
 
   _assert (0 == memcmp (expected_data, b, sizeof (expected_data)));
@@ -1206,20 +1135,17 @@ test_src_dst_deser_bad_afi (void)
   clib_error_t *error = 0;
 
   /* *INDENT-OFF* */
-  u8 expected_data[] =
-    {
-      0x40, 0x03, 0x00, 0x00,  /* AFI = LCAF, reserved1, flags */
-      0x0c, 0x00, 0x00, 0x14,  /* LCAF type = source/dest key, rsvd, length */
-      0x00, 0x00, 0x00, 0x00,  /* reserved; source-ML, Dest-ML */
+  u8 expected_data[] = {
+    0x40, 0x03, 0x00, 0x00, /* AFI = LCAF, reserved1, flags */
+    0x0c, 0x00, 0x00, 0x14, /* LCAF type = source/dest key, rsvd, length */
+    0x00, 0x00, 0x00, 0x00, /* reserved; source-ML, Dest-ML */
 
-      0xde, 0xad,              /* AFI = bad value */
-      0x11, 0x22, 0x33, 0x44,
-      0x55, 0x66,              /* source */
+    0xde, 0xad,				/* AFI = bad value */
+    0x11, 0x22, 0x33, 0x44, 0x55, 0x66, /* source */
 
-      0x40, 0x05,              /* AFI = MAC */
-      0x10, 0x21, 0x32, 0x43,
-      0x54, 0x65,              /* destination */
-    };
+    0x40, 0x05,				/* AFI = MAC */
+    0x10, 0x21, 0x32, 0x43, 0x54, 0x65, /* destination */
+  };
   /* *INDENT-ON* */
 
   gid_address_t p;
@@ -1236,26 +1162,16 @@ test_src_dst_serdes (void)
   u8 *b = clib_mem_alloc (500);
   clib_memset (b, 0, 500);
 
-  fid_address_t src = {
-    .type = FID_ADDR_MAC,
-    .mac = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66}
-  };
+  fid_address_t src = { .type = FID_ADDR_MAC,
+			.mac = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 } };
 
-  fid_address_t dst = {
-    .type = FID_ADDR_MAC,
-    .mac = {0x10, 0x21, 0x32, 0x43, 0x54, 0x65}
-  };
+  fid_address_t dst = { .type = FID_ADDR_MAC,
+			.mac = { 0x10, 0x21, 0x32, 0x43, 0x54, 0x65 } };
 
-  source_dest_t sd = {
-    .src = src,
-    .dst = dst
-  };
+  source_dest_t sd = { .src = src, .dst = dst };
 
   gid_address_t g = {
-    .sd = sd,
-    .type = GID_ADDR_SRC_DST,
-    .vni = 0x0,
-    .vni_mask = 0x0
+    .sd = sd, .type = GID_ADDR_SRC_DST, .vni = 0x0, .vni_mask = 0x0
   };
 
   u16 size_to_put = gid_address_size_to_put (&g);
@@ -1266,20 +1182,17 @@ test_src_dst_serdes (void)
   _assert (size_to_put == write_len);
 
   /* *INDENT-OFF* */
-  u8 expected_data[] =
-    {
-      0x40, 0x03, 0x00, 0x00,  /* AFI = LCAF, reserved1, flags */
-      0x0c, 0x00, 0x00, 0x14,  /* LCAF type = source/dest key, rsvd, length */
-      0x00, 0x00, 0x00, 0x00,  /* reserved; source-ML, Dest-ML */
+  u8 expected_data[] = {
+    0x40, 0x03, 0x00, 0x00, /* AFI = LCAF, reserved1, flags */
+    0x0c, 0x00, 0x00, 0x14, /* LCAF type = source/dest key, rsvd, length */
+    0x00, 0x00, 0x00, 0x00, /* reserved; source-ML, Dest-ML */
 
-      0x40, 0x05,              /* AFI = MAC */
-      0x11, 0x22, 0x33, 0x44,
-      0x55, 0x66,              /* source */
+    0x40, 0x05,				/* AFI = MAC */
+    0x11, 0x22, 0x33, 0x44, 0x55, 0x66, /* source */
 
-      0x40, 0x05,              /* AFI = MAC */
-      0x10, 0x21, 0x32, 0x43,
-      0x54, 0x65,              /* destination */
-    };
+    0x40, 0x05,				/* AFI = MAC */
+    0x10, 0x21, 0x32, 0x43, 0x54, 0x65, /* destination */
+  };
   /* *INDENT-ON* */
 
   _assert (0 == memcmp (expected_data, b, sizeof (expected_data)));
@@ -1307,12 +1220,10 @@ test_gid_address_write (void)
   ip4_address_t *ip4 = &ip_prefix_v4 (ippref);
   ip4->as_u32 = 0xaabbccdd;
 
-  gid_address_t g = {
-    .ippref = ippref[0],
-    .type = GID_ADDR_IP_PREFIX,
-    .vni = 0x01020304,
-    .vni_mask = 0x18
-  };
+  gid_address_t g = { .ippref = ippref[0],
+		      .type = GID_ADDR_IP_PREFIX,
+		      .vni = 0x01020304,
+		      .vni_mask = 0x18 };
 
   _assert (18 == gid_address_size_to_put (&g));
   _assert (gid_address_len (&g) == 9);
@@ -1321,19 +1232,18 @@ test_gid_address_write (void)
   _assert (18 == write_len);
 
   /* *INDENT-OFF* */
-  u8 expected_gid_data[] =
-    {
-      0x40, 0x03,             /* AFI = LCAF */
-      0x00,                   /* reserved1 */
-      0x00,                   /* flags */
-      0x02,                   /* LCAF type = Instance ID */
-      0x18,                   /* IID/VNI mask len */
-      0x00, 0x0a,             /* length */
-      0x01, 0x02, 0x03, 0x04, /* Instance ID / VNI */
+  u8 expected_gid_data[] = {
+    0x40, 0x03,		    /* AFI = LCAF */
+    0x00,		    /* reserved1 */
+    0x00,		    /* flags */
+    0x02,		    /* LCAF type = Instance ID */
+    0x18,		    /* IID/VNI mask len */
+    0x00, 0x0a,		    /* length */
+    0x01, 0x02, 0x03, 0x04, /* Instance ID / VNI */
 
-      0x00, 0x01,             /* AFI = IPv4 */
-      0xdd, 0xcc, 0xbb, 0xaa, /* ipv4 addr */
-    };
+    0x00, 0x01,		    /* AFI = IPv4 */
+    0xdd, 0xcc, 0xbb, 0xaa, /* ipv4 addr */
+  };
   /* *INDENT-ON* */
 
   _assert (0 == memcmp (expected_gid_data, b, sizeof (expected_gid_data)));
@@ -1344,34 +1254,34 @@ done:
 
 #undef foreach_test_case
 
-#define foreach_test_case                 \
-  _(locator_type)                         \
-  _(gid_parse_ip_pref)                    \
-  _(gid_parse_mac)                        \
-  _(gid_parse_lcaf)                       \
-  _(gid_parse_nsh)                        \
-  _(gid_write_nsh)                        \
-  _(mac_address_write)                    \
-  _(gid_address_write)                    \
-  _(src_dst_serdes)                       \
-  _(write_mac_in_lcaf)                    \
-  _(src_dst_deser_bad_afi)                \
-  _(src_dst_with_vni_serdes)
+#define foreach_test_case                                                     \
+  _ (locator_type)                                                            \
+  _ (gid_parse_ip_pref)                                                       \
+  _ (gid_parse_mac)                                                           \
+  _ (gid_parse_lcaf)                                                          \
+  _ (gid_parse_nsh)                                                           \
+  _ (gid_write_nsh)                                                           \
+  _ (mac_address_write)                                                       \
+  _ (gid_address_write)                                                       \
+  _ (src_dst_serdes)                                                          \
+  _ (write_mac_in_lcaf)                                                       \
+  _ (src_dst_deser_bad_afi)                                                   \
+  _ (src_dst_with_vni_serdes)
 
 static int
-lisp_cp_types_tests (vlib_main_t * vm, unformat_input_t * input)
+lisp_cp_types_tests (vlib_main_t *vm, unformat_input_t *input)
 {
   clib_error_t *error;
 
-#define _(_test_name)                   		\
-  error = test_ ## _test_name ();       		\
-  if (error)                            		\
-    {                                   		\
-      fformat (stderr, "FAIL: test_" #_test_name "\n");	\
-      return -1;                        		\
-    }							\
-  else							\
-      fformat (stderr, "PASS: test_" #_test_name "\n");	\
+#define _(_test_name)                                                         \
+  error = test_##_test_name ();                                               \
+  if (error)                                                                  \
+    {                                                                         \
+      fformat (stderr, "FAIL: test_" #_test_name "\n");                       \
+      return -1;                                                              \
+    }                                                                         \
+  else                                                                        \
+    fformat (stderr, "PASS: test_" #_test_name "\n");
 
   foreach_test_case
 #undef _
@@ -1381,8 +1291,8 @@ lisp_cp_types_tests (vlib_main_t * vm, unformat_input_t * input)
 #undef _assert
 
 static clib_error_t *
-lisp_cp_test (vlib_main_t * vm, unformat_input_t * input,
-	      vlib_cli_command_t * cmd_arg)
+lisp_cp_test (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd_arg)
 {
   int res = 0;
 
@@ -1390,53 +1300,4 @@ lisp_cp_test (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (input, "serdes"))
 	{
-	  res = lisp_cp_serdes_tests (vm, input);
-	}
-      if (unformat (input, "types"))
-	{
-	  res = lisp_cp_types_tests (vm, input);
-	}
-      else if (unformat (input, "all"))
-	{
-	  if ((res = lisp_cp_serdes_tests (vm, input)))
-	    goto done;
-	  if ((res = lisp_cp_types_tests (vm, input)))
-	    goto done;
-	}
-      else
-	break;
-    }
-
-done:
-  if (res)
-    return clib_error_return (0, "rbtree unit test failed");
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (lisp_cp_command, static) =
-{
-  .path = "test lisp cp",
-  .short_help = "lisp cp internal unit tests",
-  .function = lisp_cp_test,
-};
-/* *INDENT-ON* */
-
-#include <vlib/unix/plugin.h>
-#include <vpp/app/version.h>
-
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Test Locator ID Separation Protocol (LISP)",
-    .default_disabled = 1,
-};
-/* *INDENT-ON* */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+	  r

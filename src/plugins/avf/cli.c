@@ -27,8 +27,8 @@
 #include <avf/avf.h>
 
 static clib_error_t *
-avf_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
-		       vlib_cli_command_t * cmd)
+avf_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   avf_create_if_args_t args;
@@ -67,7 +67,6 @@ avf_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return args.error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (avf_create_command, static) = {
   .path = "create interface avf",
   .short_help = "create interface avf <pci-address> "
@@ -75,11 +74,10 @@ VLIB_CLI_COMMAND (avf_create_command, static) = {
 		"[num-rx-queues <size>]",
   .function = avf_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-avf_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
-		       vlib_cli_command_t * cmd)
+avf_delete_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
@@ -94,8 +92,8 @@ avf_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "sw_if_index %d", &sw_if_index))
 	;
-      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
@@ -117,19 +115,17 @@ avf_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (avf_delete_command, static) = {
   .path = "delete interface avf",
   .short_help = "delete interface avf "
-    "{<interface> | sw_if_index <sw_idx>}",
+		"{<interface> | sw_if_index <sw_idx>}",
   .function = avf_delete_command_fn,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-avf_test_command_fn (vlib_main_t * vm, unformat_input_t * input,
-		     vlib_cli_command_t * cmd)
+avf_test_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
@@ -152,8 +148,8 @@ avf_test_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	enable_elog = 1;
       else if (unformat (line_input, "elog-off"))
 	disable_elog = 1;
-      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
@@ -183,17 +179,15 @@ avf_test_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (avf_test_command, static) = {
   .path = "test avf",
   .short_help = "test avf [<interface> | sw_if_index <sw_idx>] [irq] "
-    "[elog-on] [elog-off]",
+		"[elog-on] [elog-off]",
   .function = avf_test_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-avf_cli_init (vlib_main_t * vm)
+avf_cli_init (vlib_main_t *vm)
 {
   return 0;
 }

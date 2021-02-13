@@ -23,16 +23,15 @@
 #include <vnet/tunnel/tunnel_types.api_enum.h>
 #include <vnet/tunnel/tunnel_types.api_types.h>
 
-
 STATIC_ASSERT (sizeof (vl_api_tunnel_encap_decap_flags_t) ==
-	       sizeof (tunnel_encap_decap_flags_t),
+		 sizeof (tunnel_encap_decap_flags_t),
 	       "tunnel API and internal flags enum size differ");
 STATIC_ASSERT (sizeof (vl_api_tunnel_flags_t) == sizeof (tunnel_flags_t),
 	       "tunnel API and internal flags enum size differ");
 
 int
 tunnel_encap_decap_flags_decode (vl_api_tunnel_encap_decap_flags_t f,
-				 tunnel_encap_decap_flags_t * o)
+				 tunnel_encap_decap_flags_t *o)
 {
   if (f & ~TUNNEL_ENCAP_DECAP_FLAG_MASK)
     /* unknown flags set */
@@ -66,14 +65,14 @@ tunnel_flags_encode (tunnel_flags_t f)
 }
 
 int
-tunnel_mode_decode (vl_api_tunnel_mode_t in, tunnel_mode_t * out)
+tunnel_mode_decode (vl_api_tunnel_mode_t in, tunnel_mode_t *out)
 {
   switch (in)
     {
-#define _(n, v)                                       \
-      case TUNNEL_API_MODE_##n:                       \
-        *out = TUNNEL_MODE_##n;                       \
-        return (0);
+#define _(n, v)                                                               \
+  case TUNNEL_API_MODE_##n:                                                   \
+    *out = TUNNEL_MODE_##n;                                                   \
+    return (0);
       foreach_tunnel_mode
 #undef _
     }
@@ -88,10 +87,10 @@ tunnel_mode_encode (tunnel_mode_t in)
 
   switch (in)
     {
-#define _(n, v)                                       \
-      case TUNNEL_MODE_##n:                           \
-        out = TUNNEL_API_MODE_##n;                    \
-        break;
+#define _(n, v)                                                               \
+  case TUNNEL_MODE_##n:                                                       \
+    out = TUNNEL_API_MODE_##n;                                                \
+    break;
       foreach_tunnel_mode
 #undef _
     }

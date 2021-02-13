@@ -26,7 +26,7 @@
 #if __GNUC__ < 4
 #define SQRT(a) a
 #else
-#define SQRT(a) sqrt(a)
+#define SQRT(a) sqrt (a)
 #endif
 
 typedef struct
@@ -63,7 +63,7 @@ typedef struct
 } test_timing_wheel_tmp_t;
 
 static void
-set_event (test_timing_wheel_main_t * tm, uword i)
+set_event (test_timing_wheel_main_t *tm, uword i)
 {
   timing_wheel_t *w = &tm->timing_wheel;
   u64 cpu_time;
@@ -90,7 +90,7 @@ test_timing_wheel_tmp_cmp (void *a1, void *a2)
 }
 
 clib_error_t *
-test_timing_wheel_main (unformat_input_t * input)
+test_timing_wheel_main (unformat_input_t *input)
 {
   clib_error_t *error = 0;
   test_timing_wheel_main_t _tm, *tm = &_tm;
@@ -115,8 +115,7 @@ test_timing_wheel_main (unformat_input_t * input)
 	;
       else if (unformat (input, "events %d", &tm->n_events))
 	;
-      else
-	if (unformat (input, "elt-time-bits %d", &w->n_wheel_elt_time_bits))
+      else if (unformat (input, "elt-time-bits %d", &w->n_wheel_elt_time_bits))
 	;
       else if (unformat (input, "seed %d", &tm->seed))
 	;
@@ -162,9 +161,9 @@ test_timing_wheel_main (unformat_input_t * input)
       timing_wheel_init (w, clib_cpu_time_now (), tm->time.clocks_per_second);
     }
 
-  clib_warning ("iter %wd, events %d, seed %u, %U",
-		tm->n_iter, tm->n_events, tm->seed,
-		format_timing_wheel, &tm->timing_wheel, /* verbose */ 0);
+  clib_warning ("iter %wd, events %d, seed %u, %U", tm->n_iter, tm->n_events,
+		tm->seed, format_timing_wheel, &tm->timing_wheel,
+		/* verbose */ 0);
 
   /* Make some events. */
   vec_resize (tm->events, tm->n_events);
@@ -212,9 +211,8 @@ test_timing_wheel_main (unformat_input_t * input)
 	      {
 		uword is_expired;
 
-		is_expired =
-		  (cpu_time >> w->log2_clocks_per_bin) >=
-		  (tm->events[i] >> w->log2_clocks_per_bin);
+		is_expired = (cpu_time >> w->log2_clocks_per_bin) >=
+			     (tm->events[i] >> w->log2_clocks_per_bin);
 		expired_bitmap[0] =
 		  clib_bitmap_set (expired_bitmap[0], i, is_expired);
 
@@ -252,9 +250,8 @@ test_timing_wheel_main (unformat_input_t * input)
 	    if (fdt_cpu < min_error)
 	      min_error = fdt_cpu;
 
-	    idt =
-	      (cpu_time >> w->log2_clocks_per_bin) -
-	      (tm->events[j] >> w->log2_clocks_per_bin);
+	    idt = (cpu_time >> w->log2_clocks_per_bin) -
+		  (tm->events[j] >> w->log2_clocks_per_bin);
 	    idt = zvec_signed_to_unsigned (idt);
 	    vec_validate (error_hist, idt);
 	    error_hist[idt] += 1;
@@ -278,8 +275,8 @@ test_timing_wheel_main (unformat_input_t * input)
 	  clib_error ("min next time wrong 0x%Lx != 0x%Lx", min_next_time[0],
 		      min_next_time[1]);
 
-	if (tm->time_per_status_update != 0
-	    && clib_time_now (&tm->time) >= tm->time_next_status_update)
+	if (tm->time_per_status_update != 0 &&
+	    clib_time_now (&tm->time) >= tm->time_next_status_update)
 	  {
 	    f64 ave = 0, rms = 0;
 
@@ -290,14 +287,14 @@ test_timing_wheel_main (unformat_input_t * input)
 		rms = SQRT (rms_error / n_expired - ave * ave);
 	      }
 
-	    clib_warning
-	      ("%12wd iter done %10wd expired; ave. error %.4e +- %.4e, range %.4e %.4e",
-	       iter, n_expired, ave, rms, min_error, max_error);
+	    clib_warning ("%12wd iter done %10wd expired; ave. error %.4e +- "
+			  "%.4e, range %.4e %.4e",
+			  iter, n_expired, ave, rms, min_error, max_error);
 	  }
 
-	if (tm->total_iterate_time != 0
-	    && (clib_time_now (&tm->time) - tm->time_iterate_start
-		>= tm->total_iterate_time))
+	if (tm->total_iterate_time != 0 &&
+	    (clib_time_now (&tm->time) - tm->time_iterate_start >=
+	     tm->total_iterate_time))
 	  tm->n_iter = iter;
 
 	/* Add new events to wheel to replace expired ones. */
@@ -308,8 +305,7 @@ test_timing_wheel_main (unformat_input_t * input)
 	      {
 		uword j = expired[i];
 		set_event (tm, j);
-		expired_bitmap[1] =
-		  clib_bitmap_andnoti (expired_bitmap[1], j);
+		expired_bitmap[1] = clib_bitmap_andnoti (expired_bitmap[1], j);
 	      }
 	    n_events_in_wheel += vec_len (expired);
 	  }
@@ -318,9 +314,9 @@ test_timing_wheel_main (unformat_input_t * input)
     ave_error /= n_expired;
     rms_error = SQRT (rms_error / n_expired - ave_error * ave_error);
 
-    clib_warning
-      ("%wd iter done %wd expired; ave. error %.4e +- %.4e, range %.4e %.4e",
-       1 + iter, n_expired, ave_error, rms_error, min_error, max_error);
+    clib_warning (
+      "%wd iter done %wd expired; ave. error %.4e +- %.4e, range %.4e %.4e",
+      1 + iter, n_expired, ave_error, rms_error, min_error, max_error);
 
     {
       test_timing_wheel_tmp_t *fs, *f;
@@ -343,14 +339,14 @@ test_timing_wheel_main (unformat_input_t * input)
 
       total_fraction = 0;
       vec_foreach (f, fs)
-      {
-	total_fraction += f->fraction;
-	if (f == fs)
-	  fformat (stdout, "%=12s %=16s %=16s %s\n", "Error max", "Fraction",
-		   "Total", "Count");
-	fformat (stdout, "%12.4e %16.4f%% %16.4f%% %Ld\n", f->dt,
-		 f->fraction * 100, total_fraction * 100, f->count);
-      }
+	{
+	  total_fraction += f->fraction;
+	  if (f == fs)
+	    fformat (stdout, "%=12s %=16s %=16s %s\n", "Error max", "Fraction",
+		     "Total", "Count");
+	  fformat (stdout, "%12.4e %16.4f%% %16.4f%% %Ld\n", f->dt,
+		   f->fraction * 100, total_fraction * 100, f->count);
+	}
     }
 
     clib_warning ("%U", format_timing_wheel, w, /* verbose */ 1);

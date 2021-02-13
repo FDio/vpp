@@ -26,11 +26,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -42,20 +42,19 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-
-#define foreach_qos_api_msg                                             \
-  _(QOS_RECORD_ENABLE_DISABLE, qos_record_enable_disable)               \
-  _(QOS_RECORD_DUMP, qos_record_dump)                                   \
-  _(QOS_STORE_ENABLE_DISABLE, qos_store_enable_disable)                 \
-  _(QOS_STORE_DUMP, qos_store_dump)                                     \
-  _(QOS_EGRESS_MAP_DELETE, qos_egress_map_delete)                       \
-  _(QOS_EGRESS_MAP_UPDATE, qos_egress_map_update)                       \
-  _(QOS_EGRESS_MAP_DUMP, qos_egress_map_dump)                           \
-  _(QOS_MARK_ENABLE_DISABLE, qos_mark_enable_disable)                   \
-  _(QOS_MARK_DUMP, qos_mark_dump)
+#define foreach_qos_api_msg                                                   \
+  _ (QOS_RECORD_ENABLE_DISABLE, qos_record_enable_disable)                    \
+  _ (QOS_RECORD_DUMP, qos_record_dump)                                        \
+  _ (QOS_STORE_ENABLE_DISABLE, qos_store_enable_disable)                      \
+  _ (QOS_STORE_DUMP, qos_store_dump)                                          \
+  _ (QOS_EGRESS_MAP_DELETE, qos_egress_map_delete)                            \
+  _ (QOS_EGRESS_MAP_UPDATE, qos_egress_map_update)                            \
+  _ (QOS_EGRESS_MAP_DUMP, qos_egress_map_dump)                                \
+  _ (QOS_MARK_ENABLE_DISABLE, qos_mark_enable_disable)                        \
+  _ (QOS_MARK_DUMP, qos_mark_dump)
 
 static int
-qos_source_decode (vl_api_qos_source_t v, qos_source_t * q)
+qos_source_decode (vl_api_qos_source_t v, qos_source_t *q)
 {
   switch (v)
     {
@@ -83,8 +82,8 @@ qos_source_encode (qos_source_t q)
 }
 
 void
-vl_api_qos_record_enable_disable_t_handler (vl_api_qos_record_enable_disable_t
-					    * mp)
+vl_api_qos_record_enable_disable_t_handler (
+  vl_api_qos_record_enable_disable_t *mp)
 {
   vl_api_qos_record_enable_disable_reply_t *rmp;
   qos_source_t qs;
@@ -132,7 +131,7 @@ send_qos_record_details (u32 sw_if_index, qos_source_t input_source, void *c)
 }
 
 static void
-vl_api_qos_record_dump_t_handler (vl_api_qos_record_dump_t * mp)
+vl_api_qos_record_dump_t_handler (vl_api_qos_record_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -148,8 +147,8 @@ vl_api_qos_record_dump_t_handler (vl_api_qos_record_dump_t * mp)
 }
 
 void
-vl_api_qos_store_enable_disable_t_handler (vl_api_qos_store_enable_disable_t
-					   * mp)
+vl_api_qos_store_enable_disable_t_handler (
+  vl_api_qos_store_enable_disable_t *mp)
 {
   vl_api_qos_store_enable_disable_reply_t *rmp;
   qos_source_t qs;
@@ -179,8 +178,8 @@ typedef struct qos_store_send_walk_ctx_t_
 } qos_store_send_walk_ctx_t;
 
 static walk_rc_t
-send_qos_store_details (u32 sw_if_index,
-			qos_source_t input_source, qos_bits_t value, void *c)
+send_qos_store_details (u32 sw_if_index, qos_source_t input_source,
+			qos_bits_t value, void *c)
 {
   qos_store_send_walk_ctx_t *ctx;
   vl_api_qos_store_details_t *mp;
@@ -200,7 +199,7 @@ send_qos_store_details (u32 sw_if_index,
 }
 
 static void
-vl_api_qos_store_dump_t_handler (vl_api_qos_store_dump_t * mp)
+vl_api_qos_store_dump_t_handler (vl_api_qos_store_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -216,7 +215,7 @@ vl_api_qos_store_dump_t_handler (vl_api_qos_store_dump_t * mp)
 }
 
 void
-vl_api_qos_egress_map_update_t_handler (vl_api_qos_egress_map_update_t * mp)
+vl_api_qos_egress_map_update_t_handler (vl_api_qos_egress_map_update_t *mp)
 {
   vl_api_qos_egress_map_update_reply_t *rmp;
   qos_source_t qs;
@@ -232,7 +231,7 @@ vl_api_qos_egress_map_update_t_handler (vl_api_qos_egress_map_update_t * mp)
 }
 
 void
-vl_api_qos_egress_map_delete_t_handler (vl_api_qos_egress_map_delete_t * mp)
+vl_api_qos_egress_map_delete_t_handler (vl_api_qos_egress_map_delete_t *mp)
 {
   vl_api_qos_egress_map_delete_reply_t *rmp;
   int rv = 0;
@@ -249,8 +248,8 @@ typedef struct qos_egress_map_send_walk_ctx_t_
 } qos_egress_map_send_walk_ctx_t;
 
 static walk_rc_t
-send_qos_egress_map_details (qos_egress_map_id_t id,
-			     const qos_egress_map_t * m, void *c)
+send_qos_egress_map_details (qos_egress_map_id_t id, const qos_egress_map_t *m,
+			     void *c)
 {
   qos_egress_map_send_walk_ctx_t *ctx;
   vl_api_qos_egress_map_details_t *mp;
@@ -272,7 +271,7 @@ send_qos_egress_map_details (qos_egress_map_id_t id,
 }
 
 static void
-vl_api_qos_egress_map_dump_t_handler (vl_api_qos_egress_map_dump_t * mp)
+vl_api_qos_egress_map_dump_t_handler (vl_api_qos_egress_map_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -288,8 +287,7 @@ vl_api_qos_egress_map_dump_t_handler (vl_api_qos_egress_map_dump_t * mp)
 }
 
 void
-vl_api_qos_mark_enable_disable_t_handler (vl_api_qos_mark_enable_disable_t *
-					  mp)
+vl_api_qos_mark_enable_disable_t_handler (vl_api_qos_mark_enable_disable_t *mp)
 {
   vl_api_qos_mark_enable_disable_reply_t *rmp;
   qos_source_t qs;
@@ -300,8 +298,8 @@ vl_api_qos_mark_enable_disable_t_handler (vl_api_qos_mark_enable_disable_t *
   if (0 == rv)
     {
       if (mp->enable)
-	rv = qos_mark_enable (ntohl (mp->mark.sw_if_index),
-			      qs, ntohl (mp->mark.map_id));
+	rv = qos_mark_enable (ntohl (mp->mark.sw_if_index), qs,
+			      ntohl (mp->mark.map_id));
       else
 	rv = qos_mark_disable (ntohl (mp->mark.sw_if_index), qs);
     }
@@ -316,8 +314,8 @@ typedef struct qos_mark_send_walk_ctx_t_
 } qos_mark_send_walk_ctx_t;
 
 static walk_rc_t
-send_qos_mark_details (u32 sw_if_index,
-		       u32 map_id, qos_source_t output_source, void *c)
+send_qos_mark_details (u32 sw_if_index, u32 map_id, qos_source_t output_source,
+		       void *c)
 {
   qos_mark_send_walk_ctx_t *ctx;
   vl_api_qos_mark_details_t *mp;
@@ -337,7 +335,7 @@ send_qos_mark_details (u32 sw_if_index,
 }
 
 static void
-vl_api_qos_mark_dump_t_handler (vl_api_qos_mark_dump_t * mp)
+vl_api_qos_mark_dump_t_handler (vl_api_qos_mark_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -357,25 +355,22 @@ vl_api_qos_mark_dump_t_handler (vl_api_qos_mark_dump_t * mp)
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_qos;
 #undef _
 }
 
 static clib_error_t *
-qos_api_hookup (vlib_main_t * vm)
+qos_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_qos_api_msg;
 #undef _
 

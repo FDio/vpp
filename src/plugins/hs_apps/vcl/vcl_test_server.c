@@ -78,7 +78,7 @@ static __thread int __wrk_index = 0;
 static vcl_test_server_main_t vcl_server_main;
 
 static inline void
-conn_pool_expand (vcl_test_server_worker_t * wrk, size_t expand_size)
+conn_pool_expand (vcl_test_server_worker_t *wrk, size_t expand_size)
 {
   vcl_test_server_conn_t *conn_pool;
   size_t new_size = wrk->conn_pool_size + expand_size;
@@ -92,8 +92,8 @@ conn_pool_expand (vcl_test_server_worker_t * wrk, size_t expand_size)
 	  vcl_test_server_conn_t *conn = &conn_pool[i];
 	  memset (conn, 0, sizeof (*conn));
 	  vcl_test_cfg_init (&conn->cfg);
-	  vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */ ,
-			      &conn->buf, &conn->buf_size);
+	  vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */, &conn->buf,
+			      &conn->buf_size);
 	  conn->cfg.txbuf_size = conn->cfg.rxbuf_size;
 	}
 
@@ -107,7 +107,7 @@ conn_pool_expand (vcl_test_server_worker_t * wrk, size_t expand_size)
 }
 
 static inline vcl_test_server_conn_t *
-conn_pool_alloc (vcl_test_server_worker_t * wrk)
+conn_pool_alloc (vcl_test_server_worker_t *wrk)
 {
   int i, expand = 0;
 
@@ -133,32 +133,32 @@ again:
 }
 
 static inline void
-conn_pool_free (vcl_test_server_conn_t * conn)
+conn_pool_free (vcl_test_server_conn_t *conn)
 {
   conn->fd = 0;
   conn->is_alloc = 0;
 }
 
 static inline void
-sync_config_and_reply (vcl_test_server_conn_t * conn, vcl_test_cfg_t * rx_cfg)
+sync_config_and_reply (vcl_test_server_conn_t *conn, vcl_test_cfg_t *rx_cfg)
 {
   conn->cfg = *rx_cfg;
-  vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */ ,
-		      &conn->buf, &conn->buf_size);
+  vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */, &conn->buf,
+		      &conn->buf_size);
   conn->cfg.txbuf_size = conn->cfg.rxbuf_size;
 
   if (conn->cfg.verbose)
     {
       vtinf ("(fd %d): Replying to cfg message!\n", conn->fd);
-      vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */ );
+      vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */);
     }
-  (void) vcl_test_write (conn->fd, (uint8_t *) & conn->cfg,
-			 sizeof (conn->cfg), NULL, conn->cfg.verbose);
+  (void) vcl_test_write (conn->fd, (uint8_t *) &conn->cfg, sizeof (conn->cfg),
+			 NULL, conn->cfg.verbose);
 }
 
 static void
-vts_server_start_stop (vcl_test_server_worker_t * wrk,
-		       vcl_test_server_conn_t * conn, vcl_test_cfg_t * rx_cfg)
+vts_server_start_stop (vcl_test_server_worker_t *wrk,
+		       vcl_test_server_conn_t *conn, vcl_test_cfg_t *rx_cfg)
 {
   u8 is_bi = rx_cfg->test == VCL_TEST_TYPE_BI;
   vcl_test_server_conn_t *tc;
@@ -181,21 +181,19 @@ vts_server_start_stop (vcl_test_server_worker_t * wrk,
 	  if (conn->cfg.verbose)
 	    {
 	      snprintf (buf, sizeof (buf), "SERVER (fd %d) RESULTS", tc->fd);
-	      vcl_test_stats_dump (buf, &tc->stats, 1 /* show_rx */ ,
-				   is_bi /* show tx */ , conn->cfg.verbose);
+	      vcl_test_stats_dump (buf, &tc->stats, 1 /* show_rx */,
+				   is_bi /* show tx */, conn->cfg.verbose);
 	    }
 	}
 
-      vcl_test_stats_dump ("SERVER RESULTS", &conn->stats, 1 /* show_rx */ ,
-			   is_bi /* show_tx */ , conn->cfg.verbose);
-      vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */ );
+      vcl_test_stats_dump ("SERVER RESULTS", &conn->stats, 1 /* show_rx */,
+			   is_bi /* show_tx */, conn->cfg.verbose);
+      vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */);
       if (conn->cfg.verbose)
 	{
-	  vtinf ("  vcl server main\n"
-		 VCL_TEST_SEPARATOR_STRING
+	  vtinf ("  vcl server main\n" VCL_TEST_SEPARATOR_STRING
 		 "       buf:  %p\n"
-		 "  buf size:  %u (0x%08x)\n"
-		 VCL_TEST_SEPARATOR_STRING,
+		 "  buf size:  %u (0x%08x)\n" VCL_TEST_SEPARATOR_STRING,
 		 conn->buf, conn->buf_size, conn->buf_size);
 	}
 
@@ -224,7 +222,7 @@ vts_server_start_stop (vcl_test_server_worker_t * wrk,
 }
 
 static inline void
-vts_server_rx (vcl_test_server_conn_t * conn, int rx_bytes)
+vts_server_rx (vcl_test_server_conn_t *conn, int rx_bytes)
 {
   vcl_test_server_main_t *vsm = &vcl_server_main;
   int client_fd = conn->fd;
@@ -253,7 +251,7 @@ vts_server_rx (vcl_test_server_conn_t * conn, int rx_bytes)
 }
 
 static void
-vts_copy_ds (void *buf, vppcom_data_segment_t * ds, u32 max_bytes)
+vts_copy_ds (void *buf, vppcom_data_segment_t *ds, u32 max_bytes)
 {
   uint32_t n_bytes = 0, ds_idx = 0, to_copy;
 
@@ -267,7 +265,7 @@ vts_copy_ds (void *buf, vppcom_data_segment_t * ds, u32 max_bytes)
 }
 
 static void
-vts_server_echo (vcl_test_server_conn_t * conn, int rx_bytes)
+vts_server_echo (vcl_test_server_conn_t *conn, int rx_bytes)
 {
   vcl_test_server_main_t *vsm = &vcl_server_main;
   int tx_bytes, nbytes, pos;
@@ -291,7 +289,7 @@ vts_server_echo (vcl_test_server_conn_t * conn, int rx_bytes)
 }
 
 static void
-vts_new_client (vcl_test_server_worker_t * wrk, int listen_fd)
+vts_new_client (vcl_test_server_worker_t *wrk, int listen_fd)
 {
   vcl_test_server_conn_t *conn;
   struct epoll_event ev;
@@ -329,20 +327,19 @@ vts_new_client (vcl_test_server_worker_t * wrk, int listen_fd)
 static void
 print_usage_and_exit (void)
 {
-  fprintf (stderr,
-	   "vcl_test_server [OPTIONS] <port>\n"
-	   "  OPTIONS\n"
-	   "  -h               Print this message and exit.\n"
-	   "  -6               Use IPv6\n"
-	   "  -w <num>         Number of workers\n"
-	   "  -p <PROTO>       Use <PROTO> transport layer\n"
-	   "  -D               Use UDP transport layer\n"
-	   "  -L               Use TLS transport layer\n");
+  fprintf (stderr, "vcl_test_server [OPTIONS] <port>\n"
+		   "  OPTIONS\n"
+		   "  -h               Print this message and exit.\n"
+		   "  -6               Use IPv6\n"
+		   "  -w <num>         Number of workers\n"
+		   "  -p <PROTO>       Use <PROTO> transport layer\n"
+		   "  -D               Use UDP transport layer\n"
+		   "  -L               Use TLS transport layer\n");
   exit (1);
 }
 
 static void
-vcl_test_init_endpoint_addr (vcl_test_server_main_t * vsm)
+vcl_test_init_endpoint_addr (vcl_test_server_main_t *vsm)
 {
   struct sockaddr_storage *servaddr = &vsm->servaddr;
   memset (servaddr, 0, sizeof (*servaddr));
@@ -366,20 +363,20 @@ vcl_test_init_endpoint_addr (vcl_test_server_main_t * vsm)
     {
       struct sockaddr_in6 *server_addr = (struct sockaddr_in6 *) servaddr;
       vsm->cfg.endpt.is_ip4 = 0;
-      vsm->cfg.endpt.ip = (uint8_t *) & server_addr->sin6_addr;
+      vsm->cfg.endpt.ip = (uint8_t *) &server_addr->sin6_addr;
       vsm->cfg.endpt.port = (uint16_t) server_addr->sin6_port;
     }
   else
     {
       struct sockaddr_in *server_addr = (struct sockaddr_in *) servaddr;
       vsm->cfg.endpt.is_ip4 = 1;
-      vsm->cfg.endpt.ip = (uint8_t *) & server_addr->sin_addr;
+      vsm->cfg.endpt.ip = (uint8_t *) &server_addr->sin_addr;
       vsm->cfg.endpt.port = (uint16_t) server_addr->sin_port;
     }
 }
 
 static void
-vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
+vcl_test_server_process_opts (vcl_test_server_main_t *vsm, int argc,
 			      char **argv)
 {
   int v, c;
@@ -454,8 +451,7 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
 }
 
 static void
-vts_clean_connected_listeners (vcl_test_server_worker_t * wrk,
-			       int listener_fd)
+vts_clean_connected_listeners (vcl_test_server_worker_t *wrk, int listener_fd)
 {
   if ((vppcom_session_n_accepted (listener_fd) == 0) &
       vppcom_session_is_connectable_listener (listener_fd))
@@ -467,14 +463,14 @@ vts_clean_connected_listeners (vcl_test_server_worker_t * wrk,
 }
 
 int
-vts_handle_cfg (vcl_test_server_worker_t * wrk, vcl_test_cfg_t * rx_cfg,
-		vcl_test_server_conn_t * conn, int rx_bytes)
+vts_handle_cfg (vcl_test_server_worker_t *wrk, vcl_test_cfg_t *rx_cfg,
+		vcl_test_server_conn_t *conn, int rx_bytes)
 {
   int listener_fd;
   if (rx_cfg->verbose)
     {
       vtinf ("(fd %d): Received a cfg msg!", conn->fd);
-      vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
+      vcl_test_cfg_dump (rx_cfg, 0 /* is_client */);
     }
 
   if (rx_bytes != sizeof (*rx_cfg))
@@ -486,10 +482,10 @@ vts_handle_cfg (vcl_test_server_worker_t * wrk, vcl_test_cfg_t * rx_cfg,
       if (conn->cfg.verbose)
 	{
 	  vtinf ("(fd %d): Replying to cfg msg", conn->fd);
-	  vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
+	  vcl_test_cfg_dump (rx_cfg, 0 /* is_client */);
 	}
-      vcl_test_write (conn->fd, (uint8_t *) & conn->cfg,
-		      sizeof (conn->cfg), NULL, conn->cfg.verbose);
+      vcl_test_write (conn->fd, (uint8_t *) &conn->cfg, sizeof (conn->cfg),
+		      NULL, conn->cfg.verbose);
       return -1;
     }
 
@@ -517,7 +513,7 @@ vts_handle_cfg (vcl_test_server_worker_t * wrk, vcl_test_cfg_t * rx_cfg,
 
     default:
       vtwrn ("Unknown test type %d", rx_cfg->test);
-      vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
+      vcl_test_cfg_dump (rx_cfg, 0 /* is_client */);
       break;
     }
 
@@ -525,7 +521,7 @@ vts_handle_cfg (vcl_test_server_worker_t * wrk, vcl_test_cfg_t * rx_cfg,
 }
 
 static void
-vts_worker_init (vcl_test_server_worker_t * wrk)
+vts_worker_init (vcl_test_server_worker_t *wrk)
 {
   vcl_test_server_main_t *vsm = &vcl_server_main;
   struct epoll_event listen_ev;
@@ -540,8 +536,8 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
     if (vppcom_worker_register ())
       vtfail ("vppcom_worker_register()", 1);
 
-  wrk->listen_fd = vppcom_session_create (vsm->cfg.proto,
-					  0 /* is_nonblocking */ );
+  wrk->listen_fd =
+    vppcom_session_create (vsm->cfg.proto, 0 /* is_nonblocking */);
   if (wrk->listen_fd < 0)
     vtfail ("vppcom_session_create()", wrk->listen_fd);
 
@@ -589,8 +585,7 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
 
   listen_ev.events = EPOLLIN;
   listen_ev.data.u32 = ~0;
-  rv = vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, wrk->listen_fd,
-			 &listen_ev);
+  rv = vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, wrk->listen_fd, &listen_ev);
   if (rv < 0)
     vtfail ("vppcom_epoll_ctl", rv);
 
@@ -599,17 +594,17 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
 }
 
 static int
-vts_conn_expect_config (vcl_test_server_conn_t * conn)
+vts_conn_expect_config (vcl_test_server_conn_t *conn)
 {
   if (conn->cfg.test == VCL_TEST_TYPE_ECHO)
     return 1;
 
-  return (conn->stats.rx_bytes < 128
-	  || conn->stats.rx_bytes > conn->cfg.total_bytes);
+  return (conn->stats.rx_bytes < 128 ||
+	  conn->stats.rx_bytes > conn->cfg.total_bytes);
 }
 
 static vcl_test_cfg_t *
-vts_conn_read_config (vcl_test_server_conn_t * conn)
+vts_conn_read_config (vcl_test_server_conn_t *conn)
 {
   vcl_test_server_main_t *vsm = &vcl_server_main;
 
@@ -623,7 +618,7 @@ vts_conn_read_config (vcl_test_server_conn_t * conn)
 }
 
 static inline int
-vts_conn_read (vcl_test_server_conn_t * conn)
+vts_conn_read (vcl_test_server_conn_t *conn)
 {
   vcl_test_server_main_t *vsm = &vcl_server_main;
   if (vsm->use_ds)
@@ -633,7 +628,7 @@ vts_conn_read (vcl_test_server_conn_t * conn)
 }
 
 static inline int
-vts_conn_has_ascii (vcl_test_server_conn_t * conn)
+vts_conn_has_ascii (vcl_test_server_conn_t *conn)
 {
   vcl_test_server_main_t *vsm = &vcl_server_main;
 
@@ -729,8 +724,8 @@ vts_worker_loop (void *arg)
 		      continue;
 		    }
 		}
-	      if ((conn->cfg.test == VCL_TEST_TYPE_UNI)
-		  || (conn->cfg.test == VCL_TEST_TYPE_BI))
+	      if ((conn->cfg.test == VCL_TEST_TYPE_UNI) ||
+		  (conn->cfg.test == VCL_TEST_TYPE_BI))
 		{
 		  vts_server_rx (conn, rx_bytes);
 		  if (vppcom_session_attr (conn->fd, VPPCOM_ATTR_GET_NREAD, 0,

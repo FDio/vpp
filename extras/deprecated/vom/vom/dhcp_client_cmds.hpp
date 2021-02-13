@@ -27,8 +27,8 @@ namespace VOM {
 namespace dhcp_client_cmds {
 
 /**
-  * A command class that binds the DHCP config to the interface
-  */
+ * A command class that binds the DHCP config to the interface
+ */
 class bind_cmd : public rpc_cmd<HW::item<bool>, vapi::Dhcp_client_config>
 {
 public:

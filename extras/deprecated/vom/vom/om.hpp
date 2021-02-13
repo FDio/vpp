@@ -198,7 +198,7 @@ public:
    *  But don't call the HW - use this whilst processing dumped
    *  data from HW
    */
-  template <typename OBJ>
+  template<typename OBJ>
   static rc_t commit(const client_db::key_t& key, const OBJ& obj)
   {
     rc_t rc = rc_t::OK;
@@ -217,7 +217,7 @@ public:
    * This is a template function so the object's update() function is
    * always called with the derived type.
    */
-  template <typename OBJ>
+  template<typename OBJ>
   static rc_t write(const client_db::key_t& key, const OBJ& obj)
   {
     rc_t rc = rc_t::OK;

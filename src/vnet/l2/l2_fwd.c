@@ -31,7 +31,6 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/sparse_vec.h>
 
-
 /**
  * @file
  * @brief Ethernet Forwarding.
@@ -69,20 +68,19 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_l2fwd_trace (u8 * s, va_list * args)
+format_l2fwd_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   l2fwd_trace_t *t = va_arg (*args, l2fwd_trace_t *);
 
-  s =
-    format (s,
-	    "l2-fwd:   sw_if_index %d dst %U src %U bd_index %d result [0x%llx, %d] %U",
-	    t->sw_if_index, format_ethernet_address, t->dst_and_src,
-	    format_ethernet_address, t->dst_and_src + 6,
-	    t->bd_index, t->result.raw,
-	    t->result.fields.sw_if_index, format_l2fib_entry_result_flags,
-	    t->result.fields.flags);
+  s = format (s,
+	      "l2-fwd:   sw_if_index %d dst %U src %U bd_index %d result "
+	      "[0x%llx, %d] %U",
+	      t->sw_if_index, format_ethernet_address, t->dst_and_src,
+	      format_ethernet_address, t->dst_and_src + 6, t->bd_index,
+	      t->result.raw, t->result.fields.sw_if_index,
+	      format_l2fib_entry_result_flags, t->result.fields.flags);
   return s;
 }
 
@@ -94,26 +92,26 @@ extern l2fwd_main_t l2fwd_main;
 
 extern vlib_node_registration_t l2fwd_node;
 
-#define foreach_l2fwd_error				\
-_(L2FWD,         "L2 forward packets")			\
-_(FLOOD,         "L2 forward misses")			\
-_(HIT,           "L2 forward hits")			\
-_(BVI_BAD_MAC,   "BVI L3 MAC mismatch")  		\
-_(BVI_ETHERTYPE, "BVI packet with unhandled ethertype")	\
-_(FILTER_DROP,   "Filter Mac Drop")			\
-_(REFLECT_DROP,  "Reflection Drop")			\
-_(STALE_DROP,    "Stale entry Drop")
+#define foreach_l2fwd_error                                                   \
+  _ (L2FWD, "L2 forward packets")                                             \
+  _ (FLOOD, "L2 forward misses")                                              \
+  _ (HIT, "L2 forward hits")                                                  \
+  _ (BVI_BAD_MAC, "BVI L3 MAC mismatch")                                      \
+  _ (BVI_ETHERTYPE, "BVI packet with unhandled ethertype")                    \
+  _ (FILTER_DROP, "Filter Mac Drop")                                          \
+  _ (REFLECT_DROP, "Reflection Drop")                                         \
+  _ (STALE_DROP, "Stale entry Drop")
 
 typedef enum
 {
-#define _(sym,str) L2FWD_ERROR_##sym,
+#define _(sym, str) L2FWD_ERROR_##sym,
   foreach_l2fwd_error
 #undef _
     L2FWD_N_ERROR,
 } l2fwd_error_t;
 
 static char *l2fwd_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_l2fwd_error
 #undef _
 };
@@ -128,12 +126,9 @@ typedef enum
 /** Forward one packet based on the mac table lookup result. */
 
 static_always_inline void
-l2fwd_process (vlib_main_t * vm,
-	       vlib_node_runtime_t * node,
-	       l2fwd_main_t * msm,
-	       vlib_error_main_t * em,
-	       vlib_buffer_t * b0,
-	       u32 sw_if_index0, l2fib_entry_result_t * result0, u16 * next0)
+l2fwd_process (vlib_main_t *vm, vlib_node_runtime_t *node, l2fwd_main_t *msm,
+	       vlib_error_main_t *em, vlib_buffer_t *b0, u32 sw_if_index0,
+	       l2fib_entry_result_t *result0, u16 *next0)
 {
   int try_flood = result0->raw == ~0;
   int flood_error;
@@ -157,9 +152,8 @@ l2fwd_process (vlib_main_t * vm,
       if (!l2fib_entry_result_is_set_AGE_NOT (result0))
 	{
 	  l2fib_seq_num_t in_sn = vnet_buffer (b0)->l2.l2fib_sn;
-	  l2fib_seq_num_t expected_sn = l2_fib_update_seq_num (in_sn,
-							       l2_input_seq_num
-							       (result0->fields.sw_if_index));
+	  l2fib_seq_num_t expected_sn = l2_fib_update_seq_num (
+	    in_sn, l2_input_seq_num (result0->fields.sw_if_index));
 
 	  l2fib_seq_num_valid = expected_sn == result0->fields.sn;
 	}
@@ -185,9 +179,7 @@ l2fwd_process (vlib_main_t * vm,
       else if (PREDICT_FALSE (l2fib_entry_result_is_set_BVI (result0)))
 	{
 	  u32 rc;
-	  rc = l2_to_bvi (vm,
-			  msm->vnet_main,
-			  b0,
+	  rc = l2_to_bvi (vm, msm->vnet_main, b0,
 			  vnet_buffer (b0)->sw_if_index[VLIB_TX],
 			  &msm->l3_next, next0);
 
@@ -215,8 +207,7 @@ l2fwd_process (vlib_main_t * vm,
        * unless some other feature is inserted before uu_flood
        */
       if (vnet_buffer (b0)->l2.feature_bitmap &
-	  (L2INPUT_FEAT_UU_FLOOD |
-	   L2INPUT_FEAT_UU_FWD | L2INPUT_FEAT_GBP_FWD))
+	  (L2INPUT_FEAT_UU_FLOOD | L2INPUT_FEAT_UU_FWD | L2INPUT_FEAT_GBP_FWD))
 	{
 	  *next0 = vnet_l2_feature_next (b0, msm->feat_next_node_index,
 					 L2INPUT_FEAT_FWD);
@@ -230,10 +221,9 @@ l2fwd_process (vlib_main_t * vm,
     }
 }
 
-
 static_always_inline uword
-l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		   vlib_frame_t * frame, int do_trace)
+l2fwd_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame, int do_trace)
 {
   u32 n_left, *from;
   l2fwd_main_t *msm = &l2fwd_main;
@@ -250,7 +240,7 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   cached_result.raw = ~0;
 
   from = vlib_frame_vector_args (frame);
-  n_left = frame->n_vectors;	/* number of packets to process */
+  n_left = frame->n_vectors; /* number of packets to process */
   vlib_get_buffers (vm, from, bufs, n_left);
   next = nexts;
   b = bufs;
@@ -289,23 +279,18 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 #ifdef COUNTERS
       em->counters[node_counter_base_index + L2FWD_ERROR_L2FWD] += 4;
 #endif
-      /* *INDENT-OFF* */
+
       l2fib_lookup_4 (msm->mac_table, &cached_key, &cached_result,
-                      h0->dst_address, h1->dst_address,
-                      h2->dst_address, h3->dst_address,
-                      vnet_buffer (b[0])->l2.bd_index,
-                      vnet_buffer (b[1])->l2.bd_index,
-                      vnet_buffer (b[2])->l2.bd_index,
-                      vnet_buffer (b[3])->l2.bd_index,
-                      &key0,	/* not used */
-                      &key1,	/* not used */
-                      &key2,	/* not used */
-                      &key3,	/* not used */
-                      &result0,
-                      &result1,
-                      &result2,
-                      &result3);
-      /* *INDENT-ON* */
+		      h0->dst_address, h1->dst_address, h2->dst_address,
+		      h3->dst_address, vnet_buffer (b[0])->l2.bd_index,
+		      vnet_buffer (b[1])->l2.bd_index,
+		      vnet_buffer (b[2])->l2.bd_index,
+		      vnet_buffer (b[3])->l2.bd_index, &key0, /* not used */
+		      &key1,				      /* not used */
+		      &key2,				      /* not used */
+		      &key3,				      /* not used */
+		      &result0, &result1, &result2, &result3);
+
       l2fwd_process (vm, node, msm, em, b[0], sw_if_index0, &result0, next);
       l2fwd_process (vm, node, msm, em, b[1], sw_if_index1, &result1,
 		     next + 1);
@@ -325,7 +310,7 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      t->bd_index = vnet_buffer (b[0])->l2.bd_index;
 	      clib_memcpy_fast (t->dst_and_src, h0->dst_address,
 				sizeof (h0->dst_address) +
-				sizeof (h0->src_address));
+				  sizeof (h0->src_address));
 	      t->result = result0;
 	    }
 	  if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
@@ -335,7 +320,7 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      t->bd_index = vnet_buffer (b[1])->l2.bd_index;
 	      clib_memcpy_fast (t->dst_and_src, h1->dst_address,
 				sizeof (h1->dst_address) +
-				sizeof (h1->src_address));
+				  sizeof (h1->src_address));
 	      t->result = result1;
 	    }
 	  if (b[2]->flags & VLIB_BUFFER_IS_TRACED)
@@ -345,7 +330,7 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      t->bd_index = vnet_buffer (b[2])->l2.bd_index;
 	      clib_memcpy_fast (t->dst_and_src, h2->dst_address,
 				sizeof (h2->dst_address) +
-				sizeof (h2->src_address));
+				  sizeof (h2->src_address));
 	      t->result = result2;
 	    }
 	  if (b[3]->flags & VLIB_BUFFER_IS_TRACED)
@@ -355,7 +340,7 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      t->bd_index = vnet_buffer (b[3])->l2.bd_index;
 	      clib_memcpy_fast (t->dst_and_src, h3->dst_address,
 				sizeof (h3->dst_address) +
-				sizeof (h3->src_address));
+				  sizeof (h3->src_address));
 	      t->result = result3;
 	    }
 	}
@@ -392,7 +377,7 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  t->bd_index = vnet_buffer (b[0])->l2.bd_index;
 	  clib_memcpy_fast (t->dst_and_src, h0->dst_address,
 			    sizeof (h0->dst_address) +
-			    sizeof (h0->src_address));
+			      sizeof (h0->src_address));
 	  t->result = result0;
 	}
 
@@ -407,15 +392,14 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (l2fwd_node) (vlib_main_t * vm,
-			   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2fwd_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
-    return l2fwd_node_inline (vm, node, frame, 1 /* do_trace */ );
-  return l2fwd_node_inline (vm, node, frame, 0 /* do_trace */ );
+    return l2fwd_node_inline (vm, node, frame, 1 /* do_trace */);
+  return l2fwd_node_inline (vm, node, frame, 0 /* do_trace */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2fwd_node) = {
   .name = "l2-fwd",
   .vector_size = sizeof (u32),
@@ -433,11 +417,10 @@ VLIB_REGISTER_NODE (l2fwd_node) = {
     [L2FWD_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 clib_error_t *
-l2fwd_init (vlib_main_t * vm)
+l2fwd_init (vlib_main_t *vm)
 {
   l2fwd_main_t *mp = &l2fwd_main;
 
@@ -445,9 +428,7 @@ l2fwd_init (vlib_main_t * vm)
   mp->vnet_main = vnet_get_main ();
 
   /* Initialize the feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2fwd_node.index,
-			       L2INPUT_N_FEAT,
+  feat_bitmap_init_next_nodes (vm, l2fwd_node.index, L2INPUT_N_FEAT,
 			       l2input_get_feat_names (),
 			       mp->feat_next_node_index);
 
@@ -462,11 +443,10 @@ l2fwd_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (l2fwd_init);
 
-
 /** Add the L3 input node for this ethertype to the next nodes structure. */
 void
-l2fwd_register_input_type (vlib_main_t * vm,
-			   ethernet_type_t type, u32 node_index)
+l2fwd_register_input_type (vlib_main_t *vm, ethernet_type_t type,
+			   u32 node_index)
 {
   l2fwd_main_t *mp = &l2fwd_main;
   u32 next_index;
@@ -476,14 +456,13 @@ l2fwd_register_input_type (vlib_main_t * vm,
   next_by_ethertype_register (&mp->l3_next, type, next_index);
 }
 
-
 /**
  * Set subinterface forward enable/disable.
  * The CLI format is:
  *   set interface l2 forward <interface> [disable]
  */
 static clib_error_t *
-int_fwd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
+int_fwd (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
@@ -528,13 +507,12 @@ done:
  * Example of how to disable forwarding:
  * @cliexcmd{set interface l2 forward GigabitEthernet0/8/0 disable}
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (int_fwd_cli, static) = {
   .path = "set interface l2 forward",
   .short_help = "set interface l2 forward <interface> [disable]",
   .function = int_fwd,
 };
-/* *INDENT-ON* */
 
 #endif
 

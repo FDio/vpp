@@ -40,7 +40,7 @@ public:
    * The item is a pair of the data written/read and the result of that
    * operation.
    */
-  template <typename T>
+  template<typename T>
   class item
   {
   public:
@@ -50,16 +50,14 @@ public:
     item(const T& data)
       : item_data(data)
       , item_rc(rc_t::NOOP)
-    {
-    }
+    {}
     /**
      * Constructor
      */
     item()
       : item_data()
       , item_rc(rc_t::UNSET)
-    {
-    }
+    {}
 
     /**
      * Constructor
@@ -67,8 +65,7 @@ public:
     item(rc_t rc)
       : item_data()
       , item_rc(rc)
-    {
-    }
+    {}
 
     /**
      * Constructor
@@ -76,8 +73,7 @@ public:
     item(const T& data, rc_t rc)
       : item_data(data)
       , item_rc(rc)
-    {
-    }
+    {}
 
     /**
      * Destructor
@@ -375,13 +371,13 @@ private:
 /**
  * bool Specialisation for HW::item to_string
  */
-template <>
+template<>
 std::string HW::item<bool>::to_string() const;
 
 /**
  * uint Specialisation for HW::item to_string
  */
-template <>
+template<>
 std::string HW::item<unsigned int>::to_string() const;
 };
 

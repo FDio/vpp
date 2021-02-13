@@ -42,31 +42,31 @@
 
 /* Vector types. */
 
-#if defined (__MMX__) || defined (__IWMMXT__) || defined (__aarch64__) \
-  || defined (__i686__)
+#if defined(__MMX__) || defined(__IWMMXT__) || defined(__aarch64__) ||        \
+  defined(__i686__)
 #define CLIB_HAVE_VEC64
 #endif
 
-#if defined (__aarch64__) && defined(__ARM_NEON) || defined (__i686__)
+#if defined(__aarch64__) && defined(__ARM_NEON) || defined(__i686__)
 #define CLIB_HAVE_VEC128
 #endif
 
-#if defined (__SSE4_2__) && __GNUC__ >= 4
+#if defined(__SSE4_2__) && __GNUC__ >= 4
 #define CLIB_HAVE_VEC128
 #endif
 
-#if defined (__ALTIVEC__)
+#if defined(__ALTIVEC__)
 #define CLIB_HAVE_VEC128
 #endif
 
-#if defined (__AVX2__)
+#if defined(__AVX2__)
 #define CLIB_HAVE_VEC256
-#if defined (__clang__)  && __clang_major__ < 4
+#if defined(__clang__) && __clang_major__ < 4
 #undef CLIB_HAVE_VEC256
 #endif
 #endif
 
-#if defined (__AVX512BITALG__)
+#if defined(__AVX512BITALG__)
 #define CLIB_HAVE_VEC512
 #endif
 
@@ -76,52 +76,54 @@
 #endif
 
 #define _vector_size(n) __attribute__ ((vector_size (n)))
-#define _vector_size_unaligned(n) __attribute__ ((vector_size (n),  __aligned__ (1)))
+#define _vector_size_unaligned(n)                                             \
+  __attribute__ ((vector_size (n), __aligned__ (1)))
 
-#define foreach_vec64i  _(i,8,8)  _(i,16,4)  _(i,32,2)
-#define foreach_vec64u  _(u,8,8)  _(u,16,4)  _(u,32,2)
-#define foreach_vec64f  _(f,32,2)
-#define foreach_vec128i _(i,8,16) _(i,16,8)  _(i,32,4)  _(i,64,2)
-#define foreach_vec128u _(u,8,16) _(u,16,8)  _(u,32,4)  _(u,64,2)
-#define foreach_vec128f _(f,32,4) _(f,64,2)
-#define foreach_vec256i _(i,8,32) _(i,16,16) _(i,32,8)  _(i,64,4)
-#define foreach_vec256u _(u,8,32) _(u,16,16) _(u,32,8)  _(u,64,4)
-#define foreach_vec256f _(f,32,8) _(f,64,4)
-#define foreach_vec512i _(i,8,64) _(i,16,32) _(i,32,16) _(i,64,8)
-#define foreach_vec512u _(u,8,64) _(u,16,32) _(u,32,16) _(u,64,8)
-#define foreach_vec512f _(f,32,16) _(f,64,8)
+#define foreach_vec64i	_ (i, 8, 8) _ (i, 16, 4) _ (i, 32, 2)
+#define foreach_vec64u	_ (u, 8, 8) _ (u, 16, 4) _ (u, 32, 2)
+#define foreach_vec64f	_ (f, 32, 2)
+#define foreach_vec128i _ (i, 8, 16) _ (i, 16, 8) _ (i, 32, 4) _ (i, 64, 2)
+#define foreach_vec128u _ (u, 8, 16) _ (u, 16, 8) _ (u, 32, 4) _ (u, 64, 2)
+#define foreach_vec128f _ (f, 32, 4) _ (f, 64, 2)
+#define foreach_vec256i _ (i, 8, 32) _ (i, 16, 16) _ (i, 32, 8) _ (i, 64, 4)
+#define foreach_vec256u _ (u, 8, 32) _ (u, 16, 16) _ (u, 32, 8) _ (u, 64, 4)
+#define foreach_vec256f _ (f, 32, 8) _ (f, 64, 4)
+#define foreach_vec512i _ (i, 8, 64) _ (i, 16, 32) _ (i, 32, 16) _ (i, 64, 8)
+#define foreach_vec512u _ (u, 8, 64) _ (u, 16, 32) _ (u, 32, 16) _ (u, 64, 8)
+#define foreach_vec512f _ (f, 32, 16) _ (f, 64, 8)
 
-#if defined (CLIB_HAVE_VEC512)
-#define foreach_int_vec foreach_vec64i foreach_vec128i foreach_vec256i foreach_vec512i
-#define foreach_uint_vec foreach_vec64u foreach_vec128u foreach_vec256u foreach_vec512u
-#define foreach_float_vec foreach_vec64f foreach_vec128f foreach_vec256f foreach_vec512f
-#elif defined (CLIB_HAVE_VEC256)
-#define foreach_int_vec foreach_vec64i foreach_vec128i foreach_vec256i
-#define foreach_uint_vec foreach_vec64u foreach_vec128u foreach_vec256u
+#if defined(CLIB_HAVE_VEC512)
+#define foreach_int_vec                                                       \
+  foreach_vec64i foreach_vec128i foreach_vec256i foreach_vec512i
+#define foreach_uint_vec                                                      \
+  foreach_vec64u foreach_vec128u foreach_vec256u foreach_vec512u
+#define foreach_float_vec                                                     \
+  foreach_vec64f foreach_vec128f foreach_vec256f foreach_vec512f
+#elif defined(CLIB_HAVE_VEC256)
+#define foreach_int_vec	  foreach_vec64i foreach_vec128i foreach_vec256i
+#define foreach_uint_vec  foreach_vec64u foreach_vec128u foreach_vec256u
 #define foreach_float_vec foreach_vec64f foreach_vec128f foreach_vec256f
 #else
-#define foreach_int_vec foreach_vec64i foreach_vec128i
-#define foreach_uint_vec foreach_vec64u foreach_vec128u
+#define foreach_int_vec	  foreach_vec64i foreach_vec128i
+#define foreach_uint_vec  foreach_vec64u foreach_vec128u
 #define foreach_float_vec foreach_vec64f foreach_vec128f
 #endif
 
 #define foreach_vec foreach_int_vec foreach_uint_vec foreach_float_vec
 
-/* *INDENT-OFF* */
-
 /* Type Definitions */
-#define _(t,s,c) \
-typedef t##s t##s##x##c _vector_size (s/8*c);	\
-typedef t##s t##s##x##c##u _vector_size_unaligned (s/8*c);	\
-typedef union {	  \
-  t##s##x##c as_##t##s##x##c;	\
-  t##s as_##t##s[c];	  \
-} t##s##x##c##_union_t;
+#define _(t, s, c)                                                            \
+  typedef t##s t##s##x##c _vector_size (s / 8 * c);                           \
+  typedef t##s t##s##x##c##u _vector_size_unaligned (s / 8 * c);              \
+  typedef union                                                               \
+  {                                                                           \
+    t##s##x##c as_##t##s##x##c;                                               \
+    t##s as_##t##s[c];                                                        \
+  } t##s##x##c##_union_t;
 
-  foreach_vec64i foreach_vec64u foreach_vec64f
-  foreach_vec128i foreach_vec128u foreach_vec128f
-  foreach_vec256i foreach_vec256u foreach_vec256f
-  foreach_vec512i foreach_vec512u foreach_vec512f
+foreach_vec64i foreach_vec64u foreach_vec64f foreach_vec128i foreach_vec128u
+  foreach_vec128f foreach_vec256i foreach_vec256u foreach_vec256f
+    foreach_vec512i foreach_vec512u foreach_vec512f
 #undef _
 
 /* Vector word sized types. */
@@ -135,7 +137,7 @@ typedef union {	  \
 
 /* Vector word sized types. */
 #if CLIB_VECTOR_WORD_BITS == 128
-typedef i8 i8x _vector_size (16);
+  typedef i8 i8x _vector_size (16);
 typedef i16 i16x _vector_size (16);
 typedef i32 i32x _vector_size (16);
 typedef i64 i64x _vector_size (16);
@@ -156,39 +158,40 @@ typedef u64 u64x _vector_size (8);
 #endif
 
 /* universal inlines */
-#define _(t, s, c) \
-static_always_inline t##s##x##c                                         \
-t##s##x##c##_zero ()                                                    \
-{ return (t##s##x##c) {}; }                                             \
+#define _(t, s, c)                                                            \
+  static_always_inline t##s##x##c t##s##x##c##_zero ()                        \
+  {                                                                           \
+    return (t##s##x##c){};                                                    \
+  }
 
 foreach_vec
 #undef _
 
 #undef _vector_size
 
-#define VECTOR_WORD_TYPE(t) t##x
-#define VECTOR_WORD_TYPE_LEN(t) (sizeof (VECTOR_WORD_TYPE(t)) / sizeof (t))
+#define VECTOR_WORD_TYPE(t)	t##x
+#define VECTOR_WORD_TYPE_LEN(t) (sizeof (VECTOR_WORD_TYPE (t)) / sizeof (t))
 
-#if defined (__SSE4_2__) && __GNUC__ >= 4
+#if defined(__SSE4_2__) && __GNUC__ >= 4
 #include <vppinfra/vector_sse42.h>
 #endif
 
-#if defined (__AVX2__)
+#if defined(__AVX2__)
 #include <vppinfra/vector_avx2.h>
 #endif
 
-#if defined (__AVX512BITALG__)
+#if defined(__AVX512BITALG__)
 /* Due to power level transition issues, we don't preffer AVX-512 on
    Skylake X and CascadeLake CPUs, AVX512BITALG is introduced on
    icelake CPUs  */
 #include <vppinfra/vector_avx512.h>
 #endif
 
-#if defined (__ALTIVEC__)
+#if defined(__ALTIVEC__)
 #include <vppinfra/vector_altivec.h>
 #endif
 
-#if defined (__aarch64__)
+#if defined(__aarch64__)
 #include <vppinfra/vector_neon.h>
 #endif
 
@@ -198,29 +201,26 @@ foreach_vec
 
 /* this macro generate _splat inline functions for each scalar vector type */
 #ifndef CLIB_VEC128_SPLAT_DEFINED
-#define _(t, s, c) \
-  static_always_inline t##s##x##c			\
-t##s##x##c##_splat (t##s x)				\
-{							\
-    t##s##x##c r;					\
-    int i;						\
-							\
-    for (i = 0; i < c; i++)				\
-      r[i] = x;						\
-							\
-    return r;						\
-}
+#define _(t, s, c)                                                            \
+  static_always_inline t##s##x##c t##s##x##c##_splat (t##s x)                 \
+  {                                                                           \
+    t##s##x##c r;                                                             \
+    int i;                                                                    \
+                                                                              \
+    for (i = 0; i < c; i++)                                                   \
+      r[i] = x;                                                               \
+                                                                              \
+    return r;                                                                 \
+  }
   foreach_vec128i foreach_vec128u
 #undef _
 #endif
 
-/* *INDENT-ON* */
-
 #endif /* included_clib_vector_h */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+  /*
+   * fd.io coding-style-patch-verification: ON
+   *
+   * Local Variables:
+   * eval: (c-set-style "gnu")
+   * End:
+   */

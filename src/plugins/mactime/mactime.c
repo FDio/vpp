@@ -42,7 +42,7 @@ mactime_main_t mactime_main;
  */
 
 static void
-feature_init (mactime_main_t * mm)
+feature_init (mactime_main_t *mm)
 {
   if (mm->feature_initialized == 0)
     {
@@ -62,9 +62,9 @@ feature_init (mactime_main_t * mm)
 }
 
 /** Action function shared between message handler and debug CLI
-*/
+ */
 int
-mactime_enable_disable (mactime_main_t * mm, u32 sw_if_index,
+mactime_enable_disable (mactime_main_t *mm, u32 sw_if_index,
 			int enable_disable)
 {
   vnet_sw_interface_t *sw;
@@ -83,10 +83,10 @@ mactime_enable_disable (mactime_main_t * mm, u32 sw_if_index,
   if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
-  vnet_feature_enable_disable ("device-input", "mactime",
-			       sw_if_index, enable_disable, 0, 0);
-  vnet_feature_enable_disable ("interface-output", "mactime-tx",
-			       sw_if_index, enable_disable, 0, 0);
+  vnet_feature_enable_disable ("device-input", "mactime", sw_if_index,
+			       enable_disable, 0, 0);
+  vnet_feature_enable_disable ("interface-output", "mactime-tx", sw_if_index,
+			       enable_disable, 0, 0);
   if (url_init_done == 0)
     {
       mactime_url_init (mm->vlib_main);
@@ -97,9 +97,8 @@ mactime_enable_disable (mactime_main_t * mm, u32 sw_if_index,
 }
 
 static clib_error_t *
-mactime_enable_disable_command_fn (vlib_main_t * vm,
-				   unformat_input_t * input,
-				   vlib_cli_command_t * cmd)
+mactime_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
 {
   mactime_main_t *mm = &mactime_main;
   u32 sw_if_index = ~0;
@@ -131,8 +130,8 @@ mactime_enable_disable_command_fn (vlib_main_t * vm,
       break;
 
     case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-      return clib_error_return
-	(0, "Invalid interface, only works on physical ports");
+      return clib_error_return (
+	0, "Invalid interface, only works on physical ports");
       break;
 
     default:
@@ -141,22 +140,17 @@ mactime_enable_disable_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (mactime_enable_disable_command, static) =
-{
+VLIB_CLI_COMMAND (mactime_enable_disable_command, static) = {
   .path = "mactime enable-disable",
-  .short_help =
-  "mactime enable-disable <interface-name> [disable]",
+  .short_help = "mactime enable-disable <interface-name> [disable]",
   .function = mactime_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
-
 
 /** Enable / disable time-base src mac filtration on an interface
  */
 
-static void vl_api_mactime_enable_disable_t_handler
-  (vl_api_mactime_enable_disable_t * mp)
+static void
+vl_api_mactime_enable_disable_t_handler (vl_api_mactime_enable_disable_t *mp)
 {
   vl_api_mactime_enable_disable_reply_t *rmp;
   mactime_main_t *mm = &mactime_main;
@@ -171,7 +165,7 @@ static void vl_api_mactime_enable_disable_t_handler
 }
 
 static void
-vl_api_mactime_dump_t_handler (vl_api_mactime_dump_t * mp)
+vl_api_mactime_dump_t_handler (vl_api_mactime_dump_t *mp)
 {
   vl_api_mactime_details_t *ep;
   vl_api_mactime_dump_reply_t *rmp;
@@ -194,58 +188,54 @@ vl_api_mactime_dump_t_handler (vl_api_mactime_dump_t * mp)
       goto send_reply;
     }
 
-  /* *INDENT-OFF* */
   pool_foreach (dev, mm->devices)
-   {
-    message_size = sizeof(*ep) + vec_len(dev->device_name) +
-      vec_len(dev->ranges) * sizeof(ep->ranges[0]);
+    {
+      message_size = sizeof (*ep) + vec_len (dev->device_name) +
+		     vec_len (dev->ranges) * sizeof (ep->ranges[0]);
 
-    ep = vl_msg_api_alloc (message_size);
-    memset (ep, 0, message_size);
-    ep->_vl_msg_id = clib_host_to_net_u16 (VL_API_MACTIME_DETAILS
-                                           + mm->msg_id_base);
-    ep->context = mp->context;
-    /* Index is the key for the stats segment combined counters */
-    ep->pool_index = clib_host_to_net_u32 (dev - mm->devices);
+      ep = vl_msg_api_alloc (message_size);
+      memset (ep, 0, message_size);
+      ep->_vl_msg_id =
+	clib_host_to_net_u16 (VL_API_MACTIME_DETAILS + mm->msg_id_base);
+      ep->context = mp->context;
+      /* Index is the key for the stats segment combined counters */
+      ep->pool_index = clib_host_to_net_u32 (dev - mm->devices);
 
-    clib_memcpy_fast (ep->mac_address, dev->mac_address,
-                      sizeof (ep->mac_address));
-    ep->data_quota = clib_host_to_net_u64 (dev->data_quota);
-    ep->data_used_in_range = clib_host_to_net_u64 (dev->data_used_in_range);
-    ep->flags = clib_host_to_net_u32 (dev->flags);
-    nranges = vec_len (dev->ranges);
-    ep->nranges = clib_host_to_net_u32 (nranges);
+      clib_memcpy_fast (ep->mac_address, dev->mac_address,
+			sizeof (ep->mac_address));
+      ep->data_quota = clib_host_to_net_u64 (dev->data_quota);
+      ep->data_used_in_range = clib_host_to_net_u64 (dev->data_used_in_range);
+      ep->flags = clib_host_to_net_u32 (dev->flags);
+      nranges = vec_len (dev->ranges);
+      ep->nranges = clib_host_to_net_u32 (nranges);
 
-    for (i = 0; i < vec_len (dev->ranges); i++)
-      {
-        ep->ranges[i].start = dev->ranges[i].start;
-        ep->ranges[i].end = dev->ranges[i].end;
-      }
+      for (i = 0; i < vec_len (dev->ranges); i++)
+	{
+	  ep->ranges[i].start = dev->ranges[i].start;
+	  ep->ranges[i].end = dev->ranges[i].end;
+	}
 
-    name_len = vec_len (dev->device_name);
-    name_len = (name_len < ARRAY_LEN(ep->device_name)) ?
-      name_len : ARRAY_LEN(ep->device_name) - 1;
+      name_len = vec_len (dev->device_name);
+      name_len = (name_len < ARRAY_LEN (ep->device_name)) ?
+		   name_len :
+		   ARRAY_LEN (ep->device_name) - 1;
 
-    clib_memcpy_fast (ep->device_name, dev->device_name,
-                      name_len);
-    ep->device_name [ARRAY_LEN(ep->device_name) -1] = 0;
-    vl_api_send_msg (rp, (u8 *)ep);
-  }
-  /* *INDENT-OFF* */
+      clib_memcpy_fast (ep->device_name, dev->device_name, name_len);
+      ep->device_name[ARRAY_LEN (ep->device_name) - 1] = 0;
+      vl_api_send_msg (rp, (u8 *) ep);
+    }
 
- send_reply:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_MACTIME_DUMP_REPLY,
-  ({
-    rmp->table_epoch = clib_host_to_net_u32 (mm->device_table_epoch);
-  }));
-  /* *INDENT-ON* */
+send_reply:
+
+  REPLY_MACRO2 (
+    VL_API_MACTIME_DUMP_REPLY,
+    ({ rmp->table_epoch = clib_host_to_net_u32 (mm->device_table_epoch); }));
 }
 
 /** Create a lookup table entry for the indicated mac address
  */
 void
-mactime_send_create_entry_message (u8 * mac_address)
+mactime_send_create_entry_message (u8 *mac_address)
 {
   mactime_main_t *mm = &mactime_main;
   api_main_t *am;
@@ -265,14 +255,14 @@ mactime_send_create_entry_message (u8 * mac_address)
   /* $$$ config: create allow / drop / range */
   mp->allow = 1;
   mp->is_add = 1;
-  vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) &mp);
 }
 
 /** Add or delete static / dynamic accept/drop configuration for a src mac
  */
 
-static void vl_api_mactime_add_del_range_t_handler
-  (vl_api_mactime_add_del_range_t * mp)
+static void
+vl_api_mactime_add_del_range_t_handler (vl_api_mactime_add_del_range_t *mp)
 {
   mactime_main_t *mm = &mactime_main;
   vl_api_mactime_add_del_range_reply_t *rmp;
@@ -352,9 +342,9 @@ static void vl_api_mactime_add_del_range_t_handler
 
 	  /* Add the hash table entry */
 	  kv.value = dp - mm->devices;
-	  clib_bihash_add_del_8_8 (lut, &kv, 1 /* is_add */ );
+	  clib_bihash_add_del_8_8 (lut, &kv, 1 /* is_add */);
 	}
-      else			/* add more ranges, flags, etc. */
+      else /* add more ranges, flags, etc. */
 	{
 	  dp = pool_elt_at_index (mm->devices, kv.value);
 
@@ -390,7 +380,7 @@ static void vl_api_mactime_add_del_range_t_handler
 	  dp->data_quota = data_quota;
 	}
     }
-  else				/* delete case */
+  else /* delete case */
     {
       if (found == 0)
 	{
@@ -402,7 +392,7 @@ static void vl_api_mactime_add_del_range_t_handler
       dp = pool_elt_at_index (mm->devices, kv.value);
 
       /* Remove it from the lookup table */
-      clib_bihash_add_del_8_8 (lut, &kv, 0 /* is_add */ );
+      clib_bihash_add_del_8_8 (lut, &kv, 0 /* is_add */);
       vec_free (dp->ranges);
       pool_put (mm->devices, dp);
     }
@@ -413,7 +403,7 @@ reply:
 
 #include <mactime/mactime.api.c>
 static clib_error_t *
-mactime_init (vlib_main_t * vm)
+mactime_init (vlib_main_t *vm)
 {
   mactime_main_t *mm = &mactime_main;
 
@@ -425,19 +415,16 @@ mactime_init (vlib_main_t * vm)
 
   mm->lookup_table_num_buckets = MACTIME_NUM_BUCKETS;
   mm->lookup_table_memory_size = MACTIME_MEMORY_SIZE;
-  mm->timezone_offset = -5;	/* US EST / EDT */
+  mm->timezone_offset = -5; /* US EST / EDT */
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (mactime_init) =
-{
-  .runs_after = VLIB_INITS("ip_neighbor_init"),
+VLIB_INIT_FUNCTION (mactime_init) = {
+  .runs_after = VLIB_INITS ("ip_neighbor_init"),
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-mactime_config (vlib_main_t * vm, unformat_input_t * input)
+mactime_config (vlib_main_t *vm, unformat_input_t *input)
 {
   mactime_main_t *mm = &mactime_main;
 
@@ -446,8 +433,8 @@ mactime_config (vlib_main_t * vm, unformat_input_t * input)
       if (unformat (input, "lookup-table-buckets %u",
 		    &mm->lookup_table_num_buckets))
 	;
-      else if (unformat (input, "lookup-table-memory %U",
-			 unformat_memory_size, &mm->lookup_table_memory_size))
+      else if (unformat (input, "lookup-table-memory %U", unformat_memory_size,
+			 &mm->lookup_table_memory_size))
 	;
       else if (unformat (input, "timezone_offset %d", &mm->timezone_offset))
 	;
@@ -462,34 +449,25 @@ mactime_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_CONFIG_FUNCTION (mactime_config, "mactime");
 
-/* *INDENT-OFF* */
-VNET_FEATURE_INIT (mactime, static) =
-{
+VNET_FEATURE_INIT (mactime, static) = {
   .arc_name = "device-input",
   .node_name = "mactime",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
-/* *INDENT-ON */
 
-/* *INDENT-OFF* */
-VNET_FEATURE_INIT (mactime_tx, static) =
-{
+VNET_FEATURE_INIT (mactime_tx, static) = {
   .arc_name = "interface-output",
   .node_name = "mactime-tx",
   .runs_before = VNET_FEATURES ("interface-tx"),
 };
-/* *INDENT-ON */
 
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () =
-{
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Time-based MAC Source Address Filter",
 };
-/* *INDENT-ON* */
 
 u8 *
-format_bytes_with_width (u8 * s, va_list * va)
+format_bytes_with_width (u8 *s, va_list *va)
 {
   uword nbytes = va_arg (*va, u64);
   int width = va_arg (*va, int);
@@ -539,8 +517,8 @@ mactime_ip_neighbor_copy (index_t ipni, void *ctx)
 }
 
 static clib_error_t *
-show_mactime_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+show_mactime_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   mactime_main_t *mm = &mactime_main;
   mactime_device_t *dp;
@@ -555,9 +533,8 @@ show_mactime_command_fn (vlib_main_t * vm,
   ip_neighbor_t *ipn;
 
   if (mm->feature_initialized == 0)
-    return clib_error_return
-      (0,
-       "Feature not initialized, suggest 'help mactime enable-disable'...");
+    return clib_error_return (
+      0, "Feature not initialized, suggest 'help mactime enable-disable'...");
 
   vec_reset_length (mm->arp_cache_copy);
   /* Walk all ip4 neighbours on all interfaces */
@@ -577,16 +554,13 @@ show_mactime_command_fn (vlib_main_t * vm,
   if (verbose)
     vlib_cli_output (vm, "Time now: %U", format_clib_timebase_time, now);
 
-  /* *INDENT-OFF* */
   pool_foreach (dp, mm->devices)
-   {
-    vec_add1 (pool_indices, dp - mm->devices);
-  }
-  /* *INDENT-ON* */
+    {
+      vec_add1 (pool_indices, dp - mm->devices);
+    }
 
-  vlib_cli_output (vm, "%-15s %18s %14s %10s %11s %13s",
-		   "Device Name", "Addresses", "Status",
-		   "AllowPkt", "AllowByte", "DropPkt");
+  vlib_cli_output (vm, "%-15s %18s %14s %10s %11s %13s", "Device Name",
+		   "Addresses", "Status", "AllowPkt", "AllowByte", "DropPkt");
 
   for (i = 0; i < vec_len (pool_indices); i++)
     {
@@ -666,21 +640,19 @@ show_mactime_command_fn (vlib_main_t * vm,
       vlib_get_combined_counter (&mm->allow_counters, dp - mm->devices,
 				 &allow);
       vlib_get_combined_counter (&mm->drop_counters, dp - mm->devices, &drop);
-      vlib_cli_output (vm, "%-15s %18s %14s %10lld %U %13lld",
-		       dp->device_name, macstring, status_string,
-		       allow.packets, format_bytes_with_width, allow.bytes,
-		       10, drop.packets);
+      vlib_cli_output (vm, "%-15s %18s %14s %10lld %U %13lld", dp->device_name,
+		       macstring, status_string, allow.packets,
+		       format_bytes_with_width, allow.bytes, 10, drop.packets);
       if (dp->data_quota > 0)
 	vlib_cli_output (vm, "%-54s %s%U %s%U", " ", "Quota ",
-			 format_bytes_with_width, dp->data_quota, 10,
-			 "Use ", format_bytes_with_width,
-			 dp->data_used_in_range, 8);
+			 format_bytes_with_width, dp->data_quota, 10, "Use ",
+			 format_bytes_with_width, dp->data_used_in_range, 8);
       /* This is really only good for small N... */
       for (j = 0; j < vec_len (mm->arp_cache_copy); j++)
 	{
 	  ipn = ip_neighbor_get (mm->arp_cache_copy[j]);
-	  if (!memcmp
-	      (dp->mac_address, ipn->ipn_mac.bytes, sizeof (ipn->ipn_mac)))
+	  if (!memcmp (dp->mac_address, ipn->ipn_mac.bytes,
+		       sizeof (ipn->ipn_mac)))
 	    {
 	      vlib_cli_output (vm, "%17s%U", " ", format_ip46_address,
 			       ip_neighbor_get_ip (ipn), IP46_TYPE_IP4);
@@ -693,25 +665,21 @@ show_mactime_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_mactime_command, static) =
-{
+VLIB_CLI_COMMAND (show_mactime_command, static) = {
   .path = "show mactime",
   .short_help = "show mactime [verbose]",
   .function = show_mactime_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-clear_mactime_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+clear_mactime_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   mactime_main_t *mm = &mactime_main;
 
   if (mm->feature_initialized == 0)
-    return clib_error_return
-      (0,
-       "Feature not initialized, suggest 'help mactime enable-disable'...");
+    return clib_error_return (
+      0, "Feature not initialized, suggest 'help mactime enable-disable'...");
 
   vlib_clear_combined_counters (&mm->allow_counters);
   vlib_clear_combined_counters (&mm->drop_counters);
@@ -719,16 +687,11 @@ clear_mactime_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (clear_mactime_command, static) =
-{
+VLIB_CLI_COMMAND (clear_mactime_command, static) = {
   .path = "clear mactime",
   .short_help = "clear mactime counters",
   .function = clear_mactime_command_fn,
 };
-/* *INDENT-ON* */
-
-
 
 /*
  * fd.io coding-style-patch-verification: ON

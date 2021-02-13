@@ -21,13 +21,13 @@
 #undef BIHASH_BUCKET_PREFETCH_CACHE_LINES
 #undef BIHASH_USE_HEAP
 
-#define BIHASH_TYPE _8_8_stats
-#define BIHASH_KVP_PER_PAGE 4
-#define BIHASH_ENABLE_STATS 1
-#define BIHASH_KVP_AT_BUCKET_LEVEL 0
-#define BIHASH_LAZY_INSTANTIATE 1
+#define BIHASH_TYPE			   _8_8_stats
+#define BIHASH_KVP_PER_PAGE		   4
+#define BIHASH_ENABLE_STATS		   1
+#define BIHASH_KVP_AT_BUCKET_LEVEL	   0
+#define BIHASH_LAZY_INSTANTIATE		   1
 #define BIHASH_BUCKET_PREFETCH_CACHE_LINES 1
-#define BIHASH_USE_HEAP 1
+#define BIHASH_USE_HEAP			   1
 
 #ifndef __included_bihash_8_8_stats_h__
 #define __included_bihash_8_8__stats_h__
@@ -41,15 +41,15 @@
 /** 8 octet key, 8 octet key value pair */
 typedef struct
 {
-  u64 key;			/**< the key */
-  u64 value;			/**< the value */
+  u64 key;   /**< the key */
+  u64 value; /**< the value */
 } clib_bihash_kv_8_8_stats_t;
 
 /** Decide if a clib_bihash_kv_8_8_t instance is free
     @param v- pointer to the (key,value) pair
 */
 static inline int
-clib_bihash_is_free_8_8_stats (clib_bihash_kv_8_8_stats_t * v)
+clib_bihash_is_free_8_8_stats (clib_bihash_kv_8_8_stats_t *v)
 {
   if (v->key == ~0ULL && v->value == ~0ULL)
     return 1;
@@ -60,11 +60,11 @@ clib_bihash_is_free_8_8_stats (clib_bihash_kv_8_8_stats_t * v)
     @param v - pointer to the (key,value) pair, hash the key (only)
 */
 static inline u64
-clib_bihash_hash_8_8_stats (clib_bihash_kv_8_8_stats_t * v)
+clib_bihash_hash_8_8_stats (clib_bihash_kv_8_8_stats_t *v)
 {
   /* Note: to torture-test linear scan, make this fn return a constant */
 #ifdef clib_crc32c_uses_intrinsics
-  return clib_crc32c ((u8 *) & v->key, 8);
+  return clib_crc32c ((u8 *) &v->key, 8);
 #else
   return clib_xxhash (v->key);
 #endif
@@ -76,10 +76,9 @@ clib_bihash_hash_8_8_stats (clib_bihash_kv_8_8_stats_t * v)
     @return s - the u8 * vector under construction
 */
 static inline u8 *
-format_bihash_kvp_8_8_stats (u8 * s, va_list * args)
+format_bihash_kvp_8_8_stats (u8 *s, va_list *args)
 {
-  clib_bihash_kv_8_8_stats_t *v =
-    va_arg (*args, clib_bihash_kv_8_8_stats_t *);
+  clib_bihash_kv_8_8_stats_t *v = va_arg (*args, clib_bihash_kv_8_8_stats_t *);
 
   s = format (s, "key %llu value %llu", v->key, v->value);
   return s;

@@ -34,15 +34,13 @@ route_domain::route_domain(route::table_id_t id)
   : m_hw_v4(true)
   , m_hw_v6(true)
   , m_table_id(id)
-{
-}
+{}
 
 route_domain::route_domain(const route_domain& o)
   : m_hw_v4(o.m_hw_v4)
   , m_hw_v6(o.m_hw_v6)
   , m_table_id(o.m_table_id)
-{
-}
+{}
 
 bool
 route_domain::operator==(const route_domain& r) const
@@ -130,8 +128,8 @@ void
 route_domain::update(const route_domain& desired)
 {
   /*
- * create the table if it is not yet created
- */
+   * create the table if it is not yet created
+   */
   if (rc_t::OK != m_hw_v4.rc()) {
     HW::enqueue(
       new route_domain_cmds::create_cmd(m_hw_v4, l3_proto_t::IPV4, m_table_id));

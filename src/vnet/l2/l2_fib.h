@@ -25,19 +25,19 @@
  * The size of the hash table
  */
 #define L2FIB_NUM_BUCKETS (256 * 1024)
-#define L2FIB_MEMORY_SIZE (128<<20)
+#define L2FIB_MEMORY_SIZE (128 << 20)
 
 /* Ager scan interval is 1 minute for aging */
-#define L2FIB_AGE_SCAN_INTERVAL		(60.0)
+#define L2FIB_AGE_SCAN_INTERVAL (60.0)
 
 /* MAC event scan delay is 100 msec unless specified by MAC event client */
-#define L2FIB_EVENT_SCAN_DELAY_DEFAULT	(0.1)
+#define L2FIB_EVENT_SCAN_DELAY_DEFAULT (0.1)
 
 /* Max MACs in a event message is 100 unless specified by MAC event client */
-#define L2FIB_EVENT_MAX_MACS_DEFAULT	(100)
+#define L2FIB_EVENT_MAX_MACS_DEFAULT (100)
 
 /* MAC event learn limit is 1000 unless specified by MAC event client */
-#define L2FIB_EVENT_LEARN_LIMIT_DEFAULT	(1000)
+#define L2FIB_EVENT_LEARN_LIMIT_DEFAULT (1000)
 
 typedef struct
 {
@@ -121,9 +121,8 @@ l2_fib_update_seq_num (l2fib_seq_num_t sn, u8 if_sn)
   return (sn);
 }
 
-extern void l2_fib_extract_seq_num (l2fib_seq_num_t sn, u8 * bd_sn,
-				    u8 * if_sn);
-extern u8 *format_l2_fib_seq_num (u8 * s, va_list * a);
+extern void l2_fib_extract_seq_num (l2fib_seq_num_t sn, u8 *bd_sn, u8 *if_sn);
+extern u8 *format_l2_fib_seq_num (u8 *s, va_list *a);
 
 /**
  * Flags associated with an L2 Fib Entry
@@ -134,25 +133,25 @@ extern u8 *format_l2_fib_seq_num (u8 * s, va_list * a);
  *   - MAC learned to be sent in L2 MAC event
  *   -MAC learned is a MAC move
  */
-#define foreach_l2fib_entry_result_attr       \
-  _(STATIC,  0, "static")                     \
-  _(AGE_NOT, 1, "age-not")                    \
-  _(BVI,     2, "bvi")                        \
-  _(FILTER,  3, "filter")                     \
-  _(LRN_EVT, 4, "learn-event")                \
-  _(LRN_MOV, 5, "learn-move")
+#define foreach_l2fib_entry_result_attr                                       \
+  _ (STATIC, 0, "static")                                                     \
+  _ (AGE_NOT, 1, "age-not")                                                   \
+  _ (BVI, 2, "bvi")                                                           \
+  _ (FILTER, 3, "filter")                                                     \
+  _ (LRN_EVT, 4, "learn-event")                                               \
+  _ (LRN_MOV, 5, "learn-move")
 
 typedef enum l2fib_entry_result_flags_t_
 {
   L2FIB_ENTRY_RESULT_FLAG_NONE = 0,
-#define _(a,v,s) L2FIB_ENTRY_RESULT_FLAG_##a = (1 << v),
+#define _(a, v, s) L2FIB_ENTRY_RESULT_FLAG_##a = (1 << v),
   foreach_l2fib_entry_result_attr
 #undef _
 } __attribute__ ((packed)) l2fib_entry_result_flags_t;
 
 STATIC_ASSERT_SIZEOF (l2fib_entry_result_flags_t, 1);
 
-extern u8 *format_l2fib_entry_result_flags (u8 * s, va_list * args);
+extern u8 *format_l2fib_entry_result_flags (u8 *s, va_list *args);
 
 /*
  * The l2fib entry results
@@ -163,11 +162,11 @@ typedef struct l2fib_entry_result_t_
   {
     struct
     {
-      u32 sw_if_index;		/* output sw_if_index (L3 intf if bvi==1) */
+      u32 sw_if_index; /* output sw_if_index (L3 intf if bvi==1) */
       l2fib_entry_result_flags_t flags;
 
-      u8 timestamp;		/* timestamp for aging */
-      l2fib_seq_num_t sn;	/* bd/int seq num */
+      u8 timestamp;	  /* timestamp for aging */
+      l2fib_seq_num_t sn; /* bd/int seq num */
     } fields;
     u64 raw;
   };
@@ -175,36 +174,37 @@ typedef struct l2fib_entry_result_t_
 
 STATIC_ASSERT_SIZEOF (l2fib_entry_result_t, 8);
 
-#define _(a,v,s)                                                        \
-  always_inline int                                                     \
-  l2fib_entry_result_is_set_##a (const l2fib_entry_result_t *r) {       \
-    return (r->fields.flags & L2FIB_ENTRY_RESULT_FLAG_##a);             \
+#define _(a, v, s)                                                            \
+  always_inline int l2fib_entry_result_is_set_##a (                           \
+    const l2fib_entry_result_t *r)                                            \
+  {                                                                           \
+    return (r->fields.flags & L2FIB_ENTRY_RESULT_FLAG_##a);                   \
   }
 foreach_l2fib_entry_result_attr
 #undef _
-#define _(a,v,s)                                                        \
-  always_inline void                                                    \
-  l2fib_entry_result_set_##a (l2fib_entry_result_t *r) {       \
-    r->fields.flags |= L2FIB_ENTRY_RESULT_FLAG_##a;             \
+#define _(a, v, s)                                                            \
+  always_inline void l2fib_entry_result_set_##a (l2fib_entry_result_t *r)     \
+  {                                                                           \
+    r->fields.flags |= L2FIB_ENTRY_RESULT_FLAG_##a;                           \
   }
   foreach_l2fib_entry_result_attr
 #undef _
-#define _(a,v,s)                                                        \
-  always_inline void                                                    \
-  l2fib_entry_result_clear_##a (l2fib_entry_result_t *r) {       \
-    r->fields.flags &= ~L2FIB_ENTRY_RESULT_FLAG_##a;             \
+#define _(a, v, s)                                                            \
+  always_inline void l2fib_entry_result_clear_##a (l2fib_entry_result_t *r)   \
+  {                                                                           \
+    r->fields.flags &= ~L2FIB_ENTRY_RESULT_FLAG_##a;                          \
   }
-  foreach_l2fib_entry_result_attr
+    foreach_l2fib_entry_result_attr
 #undef _
   static inline void
-l2fib_entry_result_set_bits (l2fib_entry_result_t * r,
-			     l2fib_entry_result_flags_t bits)
+  l2fib_entry_result_set_bits (l2fib_entry_result_t *r,
+			       l2fib_entry_result_flags_t bits)
 {
   r->fields.flags |= bits;
 }
 
 static inline void
-l2fib_entry_result_clear_bits (l2fib_entry_result_t * r,
+l2fib_entry_result_clear_bits (l2fib_entry_result_t *r,
 			       l2fib_entry_result_flags_t bits)
 {
   r->fields.flags &= ~bits;
@@ -223,13 +223,13 @@ typedef enum
  * the corresponding bucket index
  */
 always_inline u32
-l2fib_compute_hash_bucket (l2fib_entry_key_t * key)
+l2fib_compute_hash_bucket (l2fib_entry_key_t *key)
 {
   u32 result;
   u32 temp_a;
   u32 temp_b;
 
-  result = 0xa5a5a5a5;		/* some seed */
+  result = 0xa5a5a5a5; /* some seed */
   temp_a = key->words.w0;
   temp_b = key->words.w1;
   hash_mix32 (temp_a, temp_b, result);
@@ -238,7 +238,7 @@ l2fib_compute_hash_bucket (l2fib_entry_key_t * key)
 }
 
 always_inline u64
-l2fib_make_key (const u8 * mac_address, u16 bd_index)
+l2fib_make_key (const u8 *mac_address, u16 bd_index)
 {
   u64 temp;
 
@@ -265,8 +265,6 @@ l2fib_make_key (const u8 * mac_address, u16 bd_index)
   return temp;
 }
 
-
-
 /**
  * Lookup the entry for mac and bd_index in the mac table for 1 packet.
  * Cached_key and cached_result are used as a one-entry cache.
@@ -280,12 +278,9 @@ l2fib_make_key (const u8 * mac_address, u16 bd_index)
  */
 
 static_always_inline void
-l2fib_lookup_1 (BVT (clib_bihash) * mac_table,
-		l2fib_entry_key_t * cached_key,
-		l2fib_entry_result_t * cached_result,
-		u8 * mac0,
-		u16 bd_index0,
-		l2fib_entry_key_t * key0, l2fib_entry_result_t * result0)
+l2fib_lookup_1 (BVT (clib_bihash) * mac_table, l2fib_entry_key_t *cached_key,
+		l2fib_entry_result_t *cached_result, u8 *mac0, u16 bd_index0,
+		l2fib_entry_key_t *key0, l2fib_entry_result_t *result0)
 {
   /* set up key */
   key0->raw = l2fib_make_key (mac0, bd_index0);
@@ -311,7 +306,6 @@ l2fib_lookup_1 (BVT (clib_bihash) * mac_table,
     }
 }
 
-
 /**
  * Lookup the entry for mac and bd_index in the mac table for 2 packets.
  * The lookups for the two packets are interleaved.
@@ -324,17 +318,11 @@ l2fib_lookup_1 (BVT (clib_bihash) * mac_table,
  * holds for mac1/bd_index1/result1.
  */
 static_always_inline void
-l2fib_lookup_2 (BVT (clib_bihash) * mac_table,
-		l2fib_entry_key_t * cached_key,
-		l2fib_entry_result_t * cached_result,
-		u8 * mac0,
-		u8 * mac1,
-		u16 bd_index0,
-		u16 bd_index1,
-		l2fib_entry_key_t * key0,
-		l2fib_entry_key_t * key1,
-		l2fib_entry_result_t * result0,
-		l2fib_entry_result_t * result1)
+l2fib_lookup_2 (BVT (clib_bihash) * mac_table, l2fib_entry_key_t *cached_key,
+		l2fib_entry_result_t *cached_result, u8 *mac0, u8 *mac1,
+		u16 bd_index0, u16 bd_index1, l2fib_entry_key_t *key0,
+		l2fib_entry_key_t *key1, l2fib_entry_result_t *result0,
+		l2fib_entry_result_t *result1)
 {
   /* set up key */
   key0->raw = l2fib_make_key (mac0, bd_index0);
@@ -372,25 +360,14 @@ l2fib_lookup_2 (BVT (clib_bihash) * mac_table,
 }
 
 static_always_inline void
-l2fib_lookup_4 (BVT (clib_bihash) * mac_table,
-		l2fib_entry_key_t * cached_key,
-		l2fib_entry_result_t * cached_result,
-		const u8 * mac0,
-		const u8 * mac1,
-		const u8 * mac2,
-		const u8 * mac3,
-		u16 bd_index0,
-		u16 bd_index1,
-		u16 bd_index2,
-		u16 bd_index3,
-		l2fib_entry_key_t * key0,
-		l2fib_entry_key_t * key1,
-		l2fib_entry_key_t * key2,
-		l2fib_entry_key_t * key3,
-		l2fib_entry_result_t * result0,
-		l2fib_entry_result_t * result1,
-		l2fib_entry_result_t * result2,
-		l2fib_entry_result_t * result3)
+l2fib_lookup_4 (BVT (clib_bihash) * mac_table, l2fib_entry_key_t *cached_key,
+		l2fib_entry_result_t *cached_result, const u8 *mac0,
+		const u8 *mac1, const u8 *mac2, const u8 *mac3, u16 bd_index0,
+		u16 bd_index1, u16 bd_index2, u16 bd_index3,
+		l2fib_entry_key_t *key0, l2fib_entry_key_t *key1,
+		l2fib_entry_key_t *key2, l2fib_entry_key_t *key3,
+		l2fib_entry_result_t *result0, l2fib_entry_result_t *result1,
+		l2fib_entry_result_t *result2, l2fib_entry_result_t *result3)
 {
   /* set up key */
   key0->raw = l2fib_make_key (mac0, bd_index0);
@@ -444,34 +421,31 @@ void l2fib_clear_table (void);
 
 void l2fib_table_init (void);
 
-void
-l2fib_add_entry (const u8 * mac,
-		 u32 bd_index,
-		 u32 sw_if_index, l2fib_entry_result_flags_t flags);
+void l2fib_add_entry (const u8 *mac, u32 bd_index, u32 sw_if_index,
+		      l2fib_entry_result_flags_t flags);
 
 static inline void
-l2fib_add_filter_entry (const u8 * mac, u32 bd_index)
+l2fib_add_filter_entry (const u8 *mac, u32 bd_index)
 {
-  l2fib_add_entry (mac, bd_index, ~0,
-		   (L2FIB_ENTRY_RESULT_FLAG_FILTER |
-		    L2FIB_ENTRY_RESULT_FLAG_STATIC));
+  l2fib_add_entry (
+    mac, bd_index, ~0,
+    (L2FIB_ENTRY_RESULT_FLAG_FILTER | L2FIB_ENTRY_RESULT_FLAG_STATIC));
 }
 
-u32 l2fib_del_entry (const u8 * mac, u32 bd_index, u32 sw_if_index);
+u32 l2fib_del_entry (const u8 *mac, u32 bd_index, u32 sw_if_index);
 
-void l2fib_start_ager_scan (vlib_main_t * vm);
+void l2fib_start_ager_scan (vlib_main_t *vm);
 
-void l2fib_flush_int_mac (vlib_main_t * vm, u32 sw_if_index);
+void l2fib_flush_int_mac (vlib_main_t *vm, u32 sw_if_index);
 
-void l2fib_flush_bd_mac (vlib_main_t * vm, u32 bd_index);
+void l2fib_flush_bd_mac (vlib_main_t *vm, u32 bd_index);
 
-void l2fib_flush_all_mac (vlib_main_t * vm);
+void l2fib_flush_all_mac (vlib_main_t *vm);
 
-void
-l2fib_table_dump (u32 bd_index, l2fib_entry_key_t ** l2fe_key,
-		  l2fib_entry_result_t ** l2fe_res);
+void l2fib_table_dump (u32 bd_index, l2fib_entry_key_t **l2fe_key,
+		       l2fib_entry_result_t **l2fe_res);
 
-u8 *format_vnet_sw_if_index_name_with_NA (u8 * s, va_list * args);
+u8 *format_vnet_sw_if_index_name_with_NA (u8 *s, va_list *args);
 
 BVT (clib_bihash) * get_mac_table (void);
 

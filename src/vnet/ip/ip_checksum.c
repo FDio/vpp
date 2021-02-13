@@ -53,23 +53,24 @@ _ip_incremental_checksum (ip_csum_t sum, void *_data, uword n_bytes)
    * one's complememt sum. It's impractical to optimize
    * the calculation if the incoming address is odd.
    */
-#define _(t)					\
-do {						\
-  if (n_bytes >= sizeof (t)			\
-      && sizeof (t) < sizeof (ip_csum_t)	\
-      && (data % (2 * sizeof (t))) != 0)	\
-    {						\
-      sum0 += * uword_to_pointer (data, t *);	\
-      data += sizeof (t);			\
-      n_bytes -= sizeof (t);			\
-    }						\
-} while (0)
+#define _(t)                                                                  \
+  do                                                                          \
+    {                                                                         \
+      if (n_bytes >= sizeof (t) && sizeof (t) < sizeof (ip_csum_t) &&         \
+	  (data % (2 * sizeof (t))) != 0)                                     \
+	{                                                                     \
+	  sum0 += *uword_to_pointer (data, t *);                              \
+	  data += sizeof (t);                                                 \
+	  n_bytes -= sizeof (t);                                              \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
   if (PREDICT_TRUE ((data & 1) == 0))
     {
-      _(u16);
+      _ (u16);
       if (BITS (ip_csum_t) > 32)
-	_(u32);
+	_ (u32);
     }
 #undef _
 
@@ -87,21 +88,23 @@ do {						\
     data = pointer_to_uword (d);
   }
 
-#define _(t)								\
-do {									\
-  if (n_bytes >= sizeof (t) && sizeof (t) <= sizeof (ip_csum_t))	\
-    {									\
-      sum0 = ip_csum_with_carry (sum0, * uword_to_pointer (data, t *));	\
-      data += sizeof (t);						\
-      n_bytes -= sizeof (t);						\
-    }									\
-} while (0)
+#define _(t)                                                                  \
+  do                                                                          \
+    {                                                                         \
+      if (n_bytes >= sizeof (t) && sizeof (t) <= sizeof (ip_csum_t))          \
+	{                                                                     \
+	  sum0 = ip_csum_with_carry (sum0, *uword_to_pointer (data, t *));    \
+	  data += sizeof (t);                                                 \
+	  n_bytes -= sizeof (t);                                              \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
   if (BITS (ip_csum_t) > 32)
-    _(u64);
-  _(u32);
-  _(u16);
-  _(u8);
+    _ (u64);
+  _ (u32);
+  _ (u16);
+  _ (u8);
 
 #undef _
 
@@ -135,14 +138,13 @@ VLIB_INIT_FUNCTION (ip_checksum_init);
 #if CLIB_DEBUG > 0
 
 static const char test_pkt[] = {
-  0x45, 0x00, 0x00, 0x3c, 0x5d, 0x6f, 0x40, 0x00,
-  0x40, 0x06, 0x3f, 0x6b, 0x0a, 0x76, 0x72, 0x44,
-  0x0a, 0x56, 0x16, 0xd2,
+  0x45, 0x00, 0x00, 0x3c, 0x5d, 0x6f, 0x40, 0x00, 0x40, 0x06,
+  0x3f, 0x6b, 0x0a, 0x76, 0x72, 0x44, 0x0a, 0x56, 0x16, 0xd2,
 };
 
 static clib_error_t *
-test_ip_checksum_fn (vlib_main_t * vm,
-		     unformat_input_t * input, vlib_cli_command_t * cmd)
+test_ip_checksum_fn (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
 {
   u16 csum;
   ip4_header_t *hp;
@@ -165,14 +167,11 @@ test_ip_checksum_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_checksum, static) =
-{
+VLIB_CLI_COMMAND (test_checksum, static) = {
   .path = "test ip checksum",
   .short_help = "test ip checksum",
   .function = test_ip_checksum_fn,
 };
-/* *INDENT-ON* */
 
 #endif /* CLIB_DEBUG */
 

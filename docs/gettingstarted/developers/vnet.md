@@ -746,7 +746,6 @@ If the node expects L2 Ethernet MAC headers, specify ".unformat_buffer
 = unformat_ethernet_header":
 
 ```
-    /* *INDENT-OFF* */
     VLIB_REGISTER_NODE (ethernet_input_node) =
     {
       <snip>

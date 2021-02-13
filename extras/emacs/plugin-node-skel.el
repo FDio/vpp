@@ -306,7 +306,7 @@ VLIB_NODE_FN (" plugin-name "_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
+
 #ifndef CLIB_MARCH_VARIANT
 VLIB_REGISTER_NODE (" plugin-name "_node) = 
 {
@@ -326,7 +326,7 @@ VLIB_REGISTER_NODE (" plugin-name "_node) =
   },
 };
 #endif /* CLIB_MARCH_VARIANT */
-/* *INDENT-ON* */
+
 /*
  * fd.io coding-style-patch-verification: " capital-oh-en "
  *

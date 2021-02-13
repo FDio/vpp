@@ -25,7 +25,7 @@
 #include <vnet/crypto/crypto.h>
 #include <vppinfra/cpu.h>
 
-#define HMAC_MAX_BLOCK_SIZE SHA_512_BLOCK_SIZE
+#define HMAC_MAX_BLOCK_SIZE  SHA_512_BLOCK_SIZE
 #define EXPANDED_KEY_N_BYTES (16 * 15)
 
 typedef struct
@@ -58,17 +58,18 @@ typedef struct
   u8 dec_key_exp[EXPANDED_KEY_N_BYTES];
 } ipsecmb_aes_key_data_t;
 
-static ipsecmb_main_t ipsecmb_main = { };
+static ipsecmb_main_t ipsecmb_main = {};
 
 /*
- * (Alg, JOB_HASH_ALG, fn, block-size-bytes, hash-size-bytes, digest-size-bytes)
+ * (Alg, JOB_HASH_ALG, fn, block-size-bytes, hash-size-bytes,
+ * digest-size-bytes)
  */
-#define foreach_ipsecmb_hmac_op                                \
-  _(SHA1,   SHA1,    sha1,   64,  20, 20)                      \
-  _(SHA224, SHA_224, sha224, 64,  32, 28)                      \
-  _(SHA256, SHA_256, sha256, 64,  32, 32)                      \
-  _(SHA384, SHA_384, sha384, 128, 64, 48)                      \
-  _(SHA512, SHA_512, sha512, 128, 64, 64)
+#define foreach_ipsecmb_hmac_op                                               \
+  _ (SHA1, SHA1, sha1, 64, 20, 20)                                            \
+  _ (SHA224, SHA_224, sha224, 64, 32, 28)                                     \
+  _ (SHA256, SHA_256, sha256, 64, 32, 32)                                     \
+  _ (SHA384, SHA_384, sha384, 128, 64, 48)                                    \
+  _ (SHA512, SHA_512, sha512, 128, 64, 64)
 
 /*
  * (Alg, key-len-bits, JOB_CIPHER_MODE)
@@ -84,10 +85,10 @@ static ipsecmb_main_t ipsecmb_main = { };
 /*
  * (Alg, key-len-bytes, iv-len-bytes)
  */
-#define foreach_ipsecmb_gcm_cipher_op                          \
-  _(AES_128_GCM, 128)                                          \
-  _(AES_192_GCM, 192)                                          \
-  _(AES_256_GCM, 256)
+#define foreach_ipsecmb_gcm_cipher_op                                         \
+  _ (AES_128_GCM, 128)                                                        \
+  _ (AES_192_GCM, 192)                                                        \
+  _ (AES_256_GCM, 256)
 
 static_always_inline vnet_crypto_op_status_t
 ipsecmb_status_job (JOB_STS status)
@@ -110,7 +111,7 @@ ipsecmb_status_job (JOB_STS status)
 }
 
 always_inline void
-ipsecmb_retire_hmac_job (JOB_AES_HMAC * job, u32 * n_fail, u32 digest_size)
+ipsecmb_retire_hmac_job (JOB_AES_HMAC *job, u32 *n_fail, u32 digest_size)
 {
   vnet_crypto_op_t *op = job->user_data;
   u32 len = op->digest_len ? op->digest_len : digest_size;
@@ -140,13 +141,13 @@ ipsecmb_retire_hmac_job (JOB_AES_HMAC * job, u32 * n_fail, u32 digest_size)
 }
 
 static_always_inline u32
-ipsecmb_ops_hmac_inline (vlib_main_t * vm, vnet_crypto_op_t * ops[],
-			 u32 n_ops, u32 block_size, u32 hash_size,
-			 u32 digest_size, JOB_HASH_ALG alg)
+ipsecmb_ops_hmac_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
+			 u32 block_size, u32 hash_size, u32 digest_size,
+			 JOB_HASH_ALG alg)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
-  ipsecmb_per_thread_data_t *ptd = vec_elt_at_index (imbm->per_thread_data,
-						     vm->thread_index);
+  ipsecmb_per_thread_data_t *ptd =
+    vec_elt_at_index (imbm->per_thread_data, vm->thread_index);
   JOB_AES_HMAC *job;
   u32 i, n_fail = 0;
   u8 scratch[n_ops][digest_size];
@@ -188,18 +189,18 @@ ipsecmb_ops_hmac_inline (vlib_main_t * vm, vnet_crypto_op_t * ops[],
   return n_ops - n_fail;
 }
 
-#define _(a, b, c, d, e, f)                                             \
-static_always_inline u32                                                \
-ipsecmb_ops_hmac_##a (vlib_main_t * vm,                                 \
-                      vnet_crypto_op_t * ops[],                         \
-                      u32 n_ops)                                        \
-{ return ipsecmb_ops_hmac_inline (vm, ops, n_ops, d, e, f, b); }        \
+#define _(a, b, c, d, e, f)                                                   \
+  static_always_inline u32 ipsecmb_ops_hmac_##a (                             \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
+  {                                                                           \
+    return ipsecmb_ops_hmac_inline (vm, ops, n_ops, d, e, f, b);              \
+  }
 
 foreach_ipsecmb_hmac_op;
 #undef _
 
 always_inline void
-ipsecmb_retire_cipher_job (JOB_AES_HMAC * job, u32 * n_fail)
+ipsecmb_retire_cipher_job (JOB_AES_HMAC *job, u32 *n_fail)
 {
   vnet_crypto_op_t *op = job->user_data;
 
@@ -219,8 +220,8 @@ ipsecmb_ops_aes_cipher_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 			       JOB_CIPHER_MODE cipher_mode)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
-  ipsecmb_per_thread_data_t *ptd = vec_elt_at_index (imbm->per_thread_data,
-						     vm->thread_index);
+  ipsecmb_per_thread_data_t *ptd =
+    vec_elt_at_index (imbm->per_thread_data, vm->thread_index);
   JOB_AES_HMAC *job;
   u32 i, n_fail = 0;
 
@@ -286,148 +287,146 @@ ipsecmb_ops_aes_cipher_inline (vlib_main_t *vm, vnet_crypto_op_t *ops[],
 foreach_ipsecmb_cipher_op;
 #undef _
 
-#define _(a, b)                                                              \
-static_always_inline u32                                                     \
-ipsecmb_ops_gcm_cipher_enc_##a##_chained (vlib_main_t * vm,                  \
-    vnet_crypto_op_t * ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops)     \
-{                                                                            \
-  ipsecmb_main_t *imbm = &ipsecmb_main;                                      \
-  ipsecmb_per_thread_data_t *ptd = vec_elt_at_index (imbm->per_thread_data,  \
-                                                     vm->thread_index);      \
-  MB_MGR *m = ptd->mgr;                                                      \
-  vnet_crypto_op_chunk_t *chp;                                               \
-  u32 i, j;                                                                  \
-                                                                             \
-  for (i = 0; i < n_ops; i++)                                                \
-    {                                                                        \
-      struct gcm_key_data *kd;                                               \
-      struct gcm_context_data ctx;                                           \
-      vnet_crypto_op_t *op = ops[i];                                         \
-                                                                             \
-      kd = (struct gcm_key_data *) imbm->key_data[op->key_index];            \
-      ASSERT (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS);              \
-      IMB_AES##b##_GCM_INIT(m, kd, &ctx, op->iv, op->aad, op->aad_len);      \
-      chp = chunks + op->chunk_index;                                        \
-      for (j = 0; j < op->n_chunks; j++)                                     \
-        {                                                                    \
-          IMB_AES##b##_GCM_ENC_UPDATE (m, kd, &ctx, chp->dst, chp->src,      \
-                                       chp->len);                            \
-          chp += 1;                                                          \
-        }                                                                    \
-      IMB_AES##b##_GCM_ENC_FINALIZE(m, kd, &ctx, op->tag, op->tag_len);      \
-                                                                             \
-      op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;                          \
-    }                                                                        \
-                                                                             \
-  return n_ops;                                                              \
-}                                                                            \
-                                                                             \
-static_always_inline u32                                                     \
-ipsecmb_ops_gcm_cipher_enc_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[],  \
-                                u32 n_ops)                                   \
-{                                                                            \
-  ipsecmb_main_t *imbm = &ipsecmb_main;                                      \
-  ipsecmb_per_thread_data_t *ptd = vec_elt_at_index (imbm->per_thread_data,  \
-                                                     vm->thread_index);      \
-  MB_MGR *m = ptd->mgr;                                                      \
-  u32 i;                                                                     \
-                                                                             \
-  for (i = 0; i < n_ops; i++)                                                \
-    {                                                                        \
-      struct gcm_key_data *kd;                                               \
-      struct gcm_context_data ctx;                                           \
-      vnet_crypto_op_t *op = ops[i];                                         \
-                                                                             \
-      kd = (struct gcm_key_data *) imbm->key_data[op->key_index];            \
-      IMB_AES##b##_GCM_ENC (m, kd, &ctx, op->dst, op->src, op->len, op->iv,  \
-                            op->aad, op->aad_len, op->tag, op->tag_len);     \
-                                                                             \
-      op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;                          \
-    }                                                                        \
-                                                                             \
-  return n_ops;                                                              \
-}                                                                            \
-                                                                             \
-static_always_inline u32                                                     \
-ipsecmb_ops_gcm_cipher_dec_##a##_chained (vlib_main_t * vm,                  \
-    vnet_crypto_op_t * ops[], vnet_crypto_op_chunk_t *chunks, u32 n_ops)     \
-{                                                                            \
-  ipsecmb_main_t *imbm = &ipsecmb_main;                                      \
-  ipsecmb_per_thread_data_t *ptd = vec_elt_at_index (imbm->per_thread_data,  \
-                                                     vm->thread_index);      \
-  MB_MGR *m = ptd->mgr;                                                      \
-  vnet_crypto_op_chunk_t *chp;                                               \
-  u32 i, j, n_failed = 0;                                                    \
-                                                                             \
-  for (i = 0; i < n_ops; i++)                                                \
-    {                                                                        \
-      struct gcm_key_data *kd;                                               \
-      struct gcm_context_data ctx;                                           \
-      vnet_crypto_op_t *op = ops[i];                                         \
-      u8 scratch[64];                                                        \
-                                                                             \
-      kd = (struct gcm_key_data *) imbm->key_data[op->key_index];            \
-      ASSERT (op->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS);              \
-      IMB_AES##b##_GCM_INIT(m, kd, &ctx, op->iv, op->aad, op->aad_len);      \
-      chp = chunks + op->chunk_index;                                        \
-      for (j = 0; j < op->n_chunks; j++)                                     \
-        {                                                                    \
-          IMB_AES##b##_GCM_DEC_UPDATE (m, kd, &ctx, chp->dst, chp->src,      \
-                                       chp->len);                            \
-          chp += 1;                                                          \
-        }                                                                    \
-      IMB_AES##b##_GCM_DEC_FINALIZE(m, kd, &ctx, scratch, op->tag_len);      \
-                                                                             \
-      if ((memcmp (op->tag, scratch, op->tag_len)))                          \
-        {                                                                    \
-          op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;                  \
-          n_failed++;                                                        \
-        }                                                                    \
-      else                                                                   \
-        op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;                        \
-    }                                                                        \
-                                                                             \
-  return n_ops - n_failed;                                                   \
-}                                                                            \
-                                                                             \
-static_always_inline u32                                                     \
-ipsecmb_ops_gcm_cipher_dec_##a (vlib_main_t * vm, vnet_crypto_op_t * ops[],  \
-                                 u32 n_ops)                                  \
-{                                                                            \
-  ipsecmb_main_t *imbm = &ipsecmb_main;                                      \
-  ipsecmb_per_thread_data_t *ptd = vec_elt_at_index (imbm->per_thread_data,  \
-                                                     vm->thread_index);      \
-  MB_MGR *m = ptd->mgr;                                                      \
-  u32 i, n_failed = 0;                                                       \
-                                                                             \
-  for (i = 0; i < n_ops; i++)                                                \
-    {                                                                        \
-      struct gcm_key_data *kd;                                               \
-      struct gcm_context_data ctx;                                           \
-      vnet_crypto_op_t *op = ops[i];                                         \
-      u8 scratch[64];                                                        \
-                                                                             \
-      kd = (struct gcm_key_data *) imbm->key_data[op->key_index];            \
-      IMB_AES##b##_GCM_DEC (m, kd, &ctx, op->dst, op->src, op->len, op->iv,  \
-                            op->aad, op->aad_len, scratch, op->tag_len);     \
-                                                                             \
-      if ((memcmp (op->tag, scratch, op->tag_len)))                          \
-        {                                                                    \
-          op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;                  \
-          n_failed++;                                                        \
-        }                                                                    \
-      else                                                                   \
-        op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;                        \
-    }                                                                        \
-                                                                             \
-  return n_ops - n_failed;                                                   \
-}
+#define _(a, b)                                                               \
+  static_always_inline u32 ipsecmb_ops_gcm_cipher_enc_##a##_chained (         \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, \
+    u32 n_ops)                                                                \
+  {                                                                           \
+    ipsecmb_main_t *imbm = &ipsecmb_main;                                     \
+    ipsecmb_per_thread_data_t *ptd =                                          \
+      vec_elt_at_index (imbm->per_thread_data, vm->thread_index);             \
+    MB_MGR *m = ptd->mgr;                                                     \
+    vnet_crypto_op_chunk_t *chp;                                              \
+    u32 i, j;                                                                 \
+                                                                              \
+    for (i = 0; i < n_ops; i++)                                               \
+      {                                                                       \
+	struct gcm_key_data *kd;                                              \
+	struct gcm_context_data ctx;                                          \
+	vnet_crypto_op_t *op = ops[i];                                        \
+                                                                              \
+	kd = (struct gcm_key_data *) imbm->key_data[op->key_index];           \
+	ASSERT (op->flags &VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS);              \
+	IMB_AES##b##_GCM_INIT (m, kd, &ctx, op->iv, op->aad, op->aad_len);    \
+	chp = chunks + op->chunk_index;                                       \
+	for (j = 0; j < op->n_chunks; j++)                                    \
+	  {                                                                   \
+	    IMB_AES##b##_GCM_ENC_UPDATE (m, kd, &ctx, chp->dst, chp->src,     \
+					 chp->len);                           \
+	    chp += 1;                                                         \
+	  }                                                                   \
+	IMB_AES##b##_GCM_ENC_FINALIZE (m, kd, &ctx, op->tag, op->tag_len);    \
+                                                                              \
+	op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;                         \
+      }                                                                       \
+                                                                              \
+    return n_ops;                                                             \
+  }                                                                           \
+                                                                              \
+  static_always_inline u32 ipsecmb_ops_gcm_cipher_enc_##a (                   \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
+  {                                                                           \
+    ipsecmb_main_t *imbm = &ipsecmb_main;                                     \
+    ipsecmb_per_thread_data_t *ptd =                                          \
+      vec_elt_at_index (imbm->per_thread_data, vm->thread_index);             \
+    MB_MGR *m = ptd->mgr;                                                     \
+    u32 i;                                                                    \
+                                                                              \
+    for (i = 0; i < n_ops; i++)                                               \
+      {                                                                       \
+	struct gcm_key_data *kd;                                              \
+	struct gcm_context_data ctx;                                          \
+	vnet_crypto_op_t *op = ops[i];                                        \
+                                                                              \
+	kd = (struct gcm_key_data *) imbm->key_data[op->key_index];           \
+	IMB_AES##b##_GCM_ENC (m, kd, &ctx, op->dst, op->src, op->len, op->iv, \
+			      op->aad, op->aad_len, op->tag, op->tag_len);    \
+                                                                              \
+	op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;                         \
+      }                                                                       \
+                                                                              \
+    return n_ops;                                                             \
+  }                                                                           \
+                                                                              \
+  static_always_inline u32 ipsecmb_ops_gcm_cipher_dec_##a##_chained (         \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks, \
+    u32 n_ops)                                                                \
+  {                                                                           \
+    ipsecmb_main_t *imbm = &ipsecmb_main;                                     \
+    ipsecmb_per_thread_data_t *ptd =                                          \
+      vec_elt_at_index (imbm->per_thread_data, vm->thread_index);             \
+    MB_MGR *m = ptd->mgr;                                                     \
+    vnet_crypto_op_chunk_t *chp;                                              \
+    u32 i, j, n_failed = 0;                                                   \
+                                                                              \
+    for (i = 0; i < n_ops; i++)                                               \
+      {                                                                       \
+	struct gcm_key_data *kd;                                              \
+	struct gcm_context_data ctx;                                          \
+	vnet_crypto_op_t *op = ops[i];                                        \
+	u8 scratch[64];                                                       \
+                                                                              \
+	kd = (struct gcm_key_data *) imbm->key_data[op->key_index];           \
+	ASSERT (op->flags &VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS);              \
+	IMB_AES##b##_GCM_INIT (m, kd, &ctx, op->iv, op->aad, op->aad_len);    \
+	chp = chunks + op->chunk_index;                                       \
+	for (j = 0; j < op->n_chunks; j++)                                    \
+	  {                                                                   \
+	    IMB_AES##b##_GCM_DEC_UPDATE (m, kd, &ctx, chp->dst, chp->src,     \
+					 chp->len);                           \
+	    chp += 1;                                                         \
+	  }                                                                   \
+	IMB_AES##b##_GCM_DEC_FINALIZE (m, kd, &ctx, scratch, op->tag_len);    \
+                                                                              \
+	if ((memcmp (op->tag, scratch, op->tag_len)))                         \
+	  {                                                                   \
+	    op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;                 \
+	    n_failed++;                                                       \
+	  }                                                                   \
+	else                                                                  \
+	  op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;                       \
+      }                                                                       \
+                                                                              \
+    return n_ops - n_failed;                                                  \
+  }                                                                           \
+                                                                              \
+  static_always_inline u32 ipsecmb_ops_gcm_cipher_dec_##a (                   \
+    vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops)                      \
+  {                                                                           \
+    ipsecmb_main_t *imbm = &ipsecmb_main;                                     \
+    ipsecmb_per_thread_data_t *ptd =                                          \
+      vec_elt_at_index (imbm->per_thread_data, vm->thread_index);             \
+    MB_MGR *m = ptd->mgr;                                                     \
+    u32 i, n_failed = 0;                                                      \
+                                                                              \
+    for (i = 0; i < n_ops; i++)                                               \
+      {                                                                       \
+	struct gcm_key_data *kd;                                              \
+	struct gcm_context_data ctx;                                          \
+	vnet_crypto_op_t *op = ops[i];                                        \
+	u8 scratch[64];                                                       \
+                                                                              \
+	kd = (struct gcm_key_data *) imbm->key_data[op->key_index];           \
+	IMB_AES##b##_GCM_DEC (m, kd, &ctx, op->dst, op->src, op->len, op->iv, \
+			      op->aad, op->aad_len, scratch, op->tag_len);    \
+                                                                              \
+	if ((memcmp (op->tag, scratch, op->tag_len)))                         \
+	  {                                                                   \
+	    op->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;                 \
+	    n_failed++;                                                       \
+	  }                                                                   \
+	else                                                                  \
+	  op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;                       \
+      }                                                                       \
+                                                                              \
+    return n_ops - n_failed;                                                  \
+  }
 
 foreach_ipsecmb_gcm_cipher_op;
 #undef _
 
 clib_error_t *
-crypto_ipsecmb_iv_init (ipsecmb_main_t * imbm)
+crypto_ipsecmb_iv_init (ipsecmb_main_t *imbm)
 {
   ipsecmb_per_thread_data_t *ptd;
   clib_error_t *err = 0;
@@ -437,21 +436,22 @@ crypto_ipsecmb_iv_init (ipsecmb_main_t * imbm)
     return clib_error_return_unix (0, "failed to open '/dev/urandom'");
 
   vec_foreach (ptd, imbm->per_thread_data)
-  {
-    if (read (fd, &ptd->cbc_iv, sizeof (ptd->cbc_iv)) != sizeof (ptd->cbc_iv))
-      {
-	err = clib_error_return_unix (0, "'/dev/urandom' read failure");
-	close (fd);
-	return (err);
-      }
-  }
+    {
+      if (read (fd, &ptd->cbc_iv, sizeof (ptd->cbc_iv)) !=
+	  sizeof (ptd->cbc_iv))
+	{
+	  err = clib_error_return_unix (0, "'/dev/urandom' read failure");
+	  close (fd);
+	  return (err);
+	}
+    }
 
   close (fd);
   return (NULL);
 }
 
 static void
-crypto_ipsecmb_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
+crypto_ipsecmb_key_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
 			    vnet_crypto_key_index_t idx)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
@@ -487,8 +487,8 @@ crypto_ipsecmb_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
       clib_mem_free_s (imbm->key_data[idx]);
     }
 
-  kd = imbm->key_data[idx] = clib_mem_alloc_aligned (ad->data_size,
-						     CLIB_CACHE_LINE_BYTES);
+  kd = imbm->key_data[idx] =
+    clib_mem_alloc_aligned (ad->data_size, CLIB_CACHE_LINE_BYTES);
 
   /* AES CBC key expansion */
   if (ad->keyexp)
@@ -530,7 +530,7 @@ crypto_ipsecmb_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
 }
 
 static clib_error_t *
-crypto_ipsecmb_init (vlib_main_t * vm)
+crypto_ipsecmb_init (vlib_main_t *vm)
 {
   ipsecmb_main_t *imbm = &ipsecmb_main;
   ipsecmb_alg_data_t *ad;
@@ -554,33 +554,31 @@ crypto_ipsecmb_init (vlib_main_t * vm)
   vec_validate_aligned (imbm->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-  /* *INDENT-OFF* */
   vec_foreach (ptd, imbm->per_thread_data)
     {
-	ptd->mgr = alloc_mb_mgr (0);
-        if (clib_cpu_supports_avx512f ())
-	  init_mb_mgr_avx512 (ptd->mgr);
-        else if (clib_cpu_supports_avx2 ())
-	  init_mb_mgr_avx2 (ptd->mgr);
-	else
-	  init_mb_mgr_sse (ptd->mgr);
+      ptd->mgr = alloc_mb_mgr (0);
+      if (clib_cpu_supports_avx512f ())
+	init_mb_mgr_avx512 (ptd->mgr);
+      else if (clib_cpu_supports_avx2 ())
+	init_mb_mgr_avx2 (ptd->mgr);
+      else
+	init_mb_mgr_sse (ptd->mgr);
 
-	if (ptd == imbm->per_thread_data)
-	  m = ptd->mgr;
+      if (ptd == imbm->per_thread_data)
+	m = ptd->mgr;
     }
-  /* *INDENT-ON* */
 
   if (clib_cpu_supports_x86_aes () && (error = crypto_ipsecmb_iv_init (imbm)))
     return (error);
 
-#define _(a, b, c, d, e, f)                                              \
-  vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_HMAC, \
-                                    ipsecmb_ops_hmac_##a);               \
-  ad = imbm->alg_data + VNET_CRYPTO_ALG_HMAC_##a;                        \
-  ad->block_size = d;                                                    \
-  ad->data_size = e * 2;                                                 \
-  ad->hash_one_block = m-> c##_one_block;                                \
-  ad->hash_fn = m-> c;                                                   \
+#define _(a, b, c, d, e, f)                                                   \
+  vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_HMAC,      \
+				    ipsecmb_ops_hmac_##a);                    \
+  ad = imbm->alg_data + VNET_CRYPTO_ALG_HMAC_##a;                             \
+  ad->block_size = d;                                                         \
+  ad->data_size = e * 2;                                                      \
+  ad->hash_one_block = m->c##_one_block;                                      \
+  ad->hash_fn = m->c;
 
   foreach_ipsecmb_hmac_op;
 #undef _
@@ -595,20 +593,20 @@ crypto_ipsecmb_init (vlib_main_t * vm)
 
   foreach_ipsecmb_cipher_op;
 #undef _
-#define _(a, b)                                                         \
-  vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_ENC, \
-                                    ipsecmb_ops_gcm_cipher_enc_##a);    \
-  vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_DEC, \
-                                    ipsecmb_ops_gcm_cipher_dec_##a);    \
-  vnet_crypto_register_chained_ops_handler                              \
-      (vm, eidx, VNET_CRYPTO_OP_##a##_ENC,                              \
-       ipsecmb_ops_gcm_cipher_enc_##a##_chained);                       \
-  vnet_crypto_register_chained_ops_handler                              \
-      (vm, eidx, VNET_CRYPTO_OP_##a##_DEC,                              \
-       ipsecmb_ops_gcm_cipher_dec_##a##_chained);                       \
-  ad = imbm->alg_data + VNET_CRYPTO_ALG_##a;                            \
-  ad->data_size = sizeof (struct gcm_key_data);                         \
-  ad->aes_gcm_pre = m->gcm##b##_pre;                                    \
+#define _(a, b)                                                               \
+  vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_ENC,       \
+				    ipsecmb_ops_gcm_cipher_enc_##a);          \
+  vnet_crypto_register_ops_handler (vm, eidx, VNET_CRYPTO_OP_##a##_DEC,       \
+				    ipsecmb_ops_gcm_cipher_dec_##a);          \
+  vnet_crypto_register_chained_ops_handler (                                  \
+    vm, eidx, VNET_CRYPTO_OP_##a##_ENC,                                       \
+    ipsecmb_ops_gcm_cipher_enc_##a##_chained);                                \
+  vnet_crypto_register_chained_ops_handler (                                  \
+    vm, eidx, VNET_CRYPTO_OP_##a##_DEC,                                       \
+    ipsecmb_ops_gcm_cipher_dec_##a##_chained);                                \
+  ad = imbm->alg_data + VNET_CRYPTO_ALG_##a;                                  \
+  ad->data_size = sizeof (struct gcm_key_data);                               \
+  ad->aes_gcm_pre = m->gcm##b##_pre;
 
   foreach_ipsecmb_gcm_cipher_op;
 #undef _
@@ -617,20 +615,14 @@ crypto_ipsecmb_init (vlib_main_t * vm)
   return (NULL);
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (crypto_ipsecmb_init) =
-{
+VLIB_INIT_FUNCTION (crypto_ipsecmb_init) = {
   .runs_after = VLIB_INITS ("vnet_crypto_init"),
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () =
-{
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Intel IPSEC Multi-buffer Crypto Engine",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

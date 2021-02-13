@@ -25,8 +25,8 @@ typedef uint64_t counter_t;
  */
 typedef struct
 {
-  counter_t packets;			/**< packet counter */
-  counter_t bytes;			/**< byte counter  */
+  counter_t packets; /**< packet counter */
+  counter_t bytes;   /**< byte counter  */
 } vlib_counter_t;
 
 #endif

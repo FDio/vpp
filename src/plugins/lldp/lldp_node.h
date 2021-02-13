@@ -102,19 +102,19 @@ typedef struct
   u16 msg_tx_interval;
 } lldp_main_t;
 
-#define LLDP_MIN_TX_HOLD (1)
-#define LLDP_MAX_TX_HOLD (100)
+#define LLDP_MIN_TX_HOLD     (1)
+#define LLDP_MAX_TX_HOLD     (100)
 #define LLDP_MIN_TX_INTERVAL (1)
 #define LLDP_MAX_TX_INTERVAL (3600)
 
 extern lldp_main_t lldp_main;
 
 /* Packet counters */
-#define foreach_lldp_error(F)                     \
-    F(NONE, "good lldp packets (processed)")      \
-    F(CACHE_HIT, "good lldp packets (cache hit)") \
-    F(BAD_TLV, "lldp packets with bad TLVs")      \
-    F(DISABLED, "lldp packets received on disabled interfaces")
+#define foreach_lldp_error(F)                                                 \
+  F (NONE, "good lldp packets (processed)")                                   \
+  F (CACHE_HIT, "good lldp packets (cache hit)")                              \
+  F (BAD_TLV, "lldp packets with bad TLVs")                                   \
+  F (DISABLED, "lldp packets received on disabled interfaces")
 
 typedef enum
 {
@@ -136,14 +136,14 @@ typedef enum
   LLDP_EVENT_RESCHEDULE = 1,
 } lldp_process_event_t;
 
-lldp_intf_t *lldp_get_intf (lldp_main_t * lm, u32 hw_if_index);
-lldp_intf_t *lldp_create_intf (lldp_main_t * lm, u32 hw_if_index);
-void lldp_delete_intf (lldp_main_t * lm, lldp_intf_t * n);
-lldp_error_t lldp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0);
-u8 *lldp_input_format_trace (u8 * s, va_list * args);
-void lldp_send_ethernet (lldp_main_t * lm, lldp_intf_t * n, int shutdown);
-void lldp_schedule_intf (lldp_main_t * lm, lldp_intf_t * n);
-void lldp_unschedule_intf (lldp_main_t * lm, lldp_intf_t * n);
+lldp_intf_t *lldp_get_intf (lldp_main_t *lm, u32 hw_if_index);
+lldp_intf_t *lldp_create_intf (lldp_main_t *lm, u32 hw_if_index);
+void lldp_delete_intf (lldp_main_t *lm, lldp_intf_t *n);
+lldp_error_t lldp_input (vlib_main_t *vm, vlib_buffer_t *b0, u32 bi0);
+u8 *lldp_input_format_trace (u8 *s, va_list *args);
+void lldp_send_ethernet (lldp_main_t *lm, lldp_intf_t *n, int shutdown);
+void lldp_schedule_intf (lldp_main_t *lm, lldp_intf_t *n);
+void lldp_unschedule_intf (lldp_main_t *lm, lldp_intf_t *n);
 
 #endif /* __included_lldp_node_h__ */
 

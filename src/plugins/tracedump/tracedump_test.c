@@ -37,9 +37,8 @@ typedef struct
 
 tracedump_test_main_t tracedump_test_main;
 
-
 int
-api_trace_set_filters (vat_main_t * vam)
+api_trace_set_filters (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_trace_set_filters_t *mp;
@@ -87,9 +86,8 @@ api_trace_set_filters (vat_main_t * vam)
   return ret;
 }
 
-
 int
-api_trace_capture_packets (vat_main_t * vam)
+api_trace_capture_packets (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_trace_capture_packets_t *mp;
@@ -136,9 +134,8 @@ api_trace_capture_packets (vat_main_t * vam)
   return ret;
 }
 
-
 static void
-vl_api_trace_details_t_handler (vl_api_trace_details_t * dmp)
+vl_api_trace_details_t_handler (vl_api_trace_details_t *dmp)
 {
   u32 packet_number;
   u32 thread_id, position;
@@ -146,18 +143,17 @@ vl_api_trace_details_t_handler (vl_api_trace_details_t * dmp)
   thread_id = clib_net_to_host_u32 (dmp->thread_id);
   position = clib_net_to_host_u32 (dmp->position);
   packet_number = clib_net_to_host_u32 (dmp->packet_number);
-  fformat
-    (stdout,
-     "thread %d position %d more_this_thread %d more_threads %d done %d\n",
-     thread_id, position, (u32) dmp->more_this_thread,
-     (u32) dmp->more_threads, (u32) dmp->done);
-  fformat (stdout, "Packet %d\n%U\n\n",
-	   packet_number, vl_api_format_string, (&dmp->trace_data));
+  fformat (
+    stdout,
+    "thread %d position %d more_this_thread %d more_threads %d done %d\n",
+    thread_id, position, (u32) dmp->more_this_thread, (u32) dmp->more_threads,
+    (u32) dmp->done);
+  fformat (stdout, "Packet %d\n%U\n\n", packet_number, vl_api_format_string,
+	   (&dmp->trace_data));
 }
 
-
 static void
-vl_api_trace_dump_reply_t_handler (vl_api_trace_dump_reply_t * rmp)
+vl_api_trace_dump_reply_t_handler (vl_api_trace_dump_reply_t *rmp)
 {
   tracedump_test_main_t *ttm = &tracedump_test_main;
   vat_main_t *vam = ttm->vat_main;
@@ -203,7 +199,7 @@ vl_api_trace_dump_reply_t_handler (vl_api_trace_dump_reply_t * rmp)
 }
 
 static int
-api_trace_dump (vat_main_t * vam)
+api_trace_dump (vat_main_t *vam)
 {
   vl_api_trace_dump_t *mp;
   int ret;
@@ -221,7 +217,7 @@ api_trace_dump (vat_main_t * vam)
 }
 
 int
-api_trace_clear_capture (vat_main_t * vam)
+api_trace_clear_capture (vat_main_t *vam)
 {
   vl_api_trace_clear_capture_t *mp;
   int ret;
@@ -232,9 +228,6 @@ api_trace_clear_capture (vat_main_t * vam)
   return ret;
 }
 
-
-
-
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_endianfun
 #include <tracedump/tracedump.api.h>
@@ -244,14 +237,13 @@ api_trace_clear_capture (vat_main_t * vam)
 #undef vl_printfun
 
 void
-manual_setup_message_id_table (vat_main_t * vam)
+manual_setup_message_id_table (vat_main_t *vam)
 {
-  vl_msg_api_set_handlers (VL_API_TRACE_DETAILS
-			   + tracedump_test_main.msg_id_base, "trace_details",
-			   vl_api_trace_details_t_handler, vl_noop_handler,
-			   vl_api_trace_details_t_endian,
-			   vl_api_trace_details_t_print,
-			   sizeof (vl_api_trace_details_t), 1);
+  vl_msg_api_set_handlers (
+    VL_API_TRACE_DETAILS + tracedump_test_main.msg_id_base, "trace_details",
+    vl_api_trace_details_t_handler, vl_noop_handler,
+    vl_api_trace_details_t_endian, vl_api_trace_details_t_print,
+    sizeof (vl_api_trace_details_t), 1);
 }
 
 #define VL_API_LOCAL_SETUP_MESSAGE_ID_TABLE manual_setup_message_id_table

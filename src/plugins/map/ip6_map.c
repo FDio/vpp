@@ -68,7 +68,7 @@ typedef struct
 } map_ip6_map_ip4_reass_trace_t;
 
 u8 *
-format_ip6_map_post_ip4_reass_trace (u8 * s, va_list * args)
+format_ip6_map_post_ip4_reass_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -87,7 +87,7 @@ typedef struct
 } map_ip6_map_ip6_reass_trace_t;
 
 u8 *
-format_ip6_map_ip6_reass_trace (u8 * s, va_list * args)
+format_ip6_map_ip6_reass_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -101,25 +101,24 @@ format_ip6_map_ip6_reass_trace (u8 * s, va_list * args)
  * ip6_map_sec_check
  */
 static_always_inline bool
-ip6_map_sec_check (map_domain_t * d, u16 port, ip4_header_t * ip4,
-		   ip6_header_t * ip6)
+ip6_map_sec_check (map_domain_t *d, u16 port, ip4_header_t *ip4,
+		   ip6_header_t *ip6)
 {
   u16 sp4 = clib_net_to_host_u16 (port);
   u32 sa4 = clib_net_to_host_u32 (ip4->src_address.as_u32);
   u64 sal6 = map_get_pfx (d, sa4, sp4);
   u64 sar6 = map_get_sfx (d, sa4, sp4);
 
-  if (PREDICT_FALSE
-      (sal6 != clib_net_to_host_u64 (ip6->src_address.as_u64[0])
-       || sar6 != clib_net_to_host_u64 (ip6->src_address.as_u64[1])))
+  if (PREDICT_FALSE (
+	sal6 != clib_net_to_host_u64 (ip6->src_address.as_u64[0]) ||
+	sar6 != clib_net_to_host_u64 (ip6->src_address.as_u64[1])))
     return (false);
   return (true);
 }
 
 static_always_inline void
-ip6_map_security_check (map_domain_t * d, vlib_buffer_t * b0,
-			ip4_header_t * ip4, ip6_header_t * ip6, u32 * next,
-			u8 * error)
+ip6_map_security_check (map_domain_t *d, vlib_buffer_t *b0, ip4_header_t *ip4,
+			ip6_header_t *ip6, u32 *next, u8 *error)
 {
   map_main_t *mm = &map_main;
   if (d->ea_bits_len || d->rules)
@@ -132,10 +131,9 @@ ip6_map_security_check (map_domain_t * d, vlib_buffer_t * b0,
 	      if (port)
 		{
 		  if (mm->sec_check)
-		    *error =
-		      ip6_map_sec_check (d, port, ip4,
-					 ip6) ? MAP_ERROR_NONE :
-		      MAP_ERROR_DECAP_SEC_CHECK;
+		    *error = ip6_map_sec_check (d, port, ip4, ip6) ?
+			       MAP_ERROR_NONE :
+			       MAP_ERROR_DECAP_SEC_CHECK;
 		}
 	      else
 		{
@@ -159,7 +157,7 @@ ip6_map_security_check (map_domain_t * d, vlib_buffer_t * b0,
  * ip6_map
  */
 static uword
-ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+ip6_map (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
   vlib_node_runtime_t *error_node =
@@ -223,7 +221,8 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  /*
 	   * Encapsulated IPv4 packet
-	   *   - IPv4 fragmented -> Pass to virtual reassembly unless security check disabled
+	   *   - IPv4 fragmented -> Pass to virtual reassembly unless security
+	   * check disabled
 	   *   - Lookup/Rewrite or Fragment node in case of packet > MTU
 	   * Fragmented IPv6 packet
 	   * ICMP IPv6 packet
@@ -231,24 +230,22 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	   *   - Info -> Pass to IPv6 local
 	   * Anything else -> drop
 	   */
-	  if (PREDICT_TRUE
-	      (ip60->protocol == IP_PROTOCOL_IP_IN_IP
-	       && clib_net_to_host_u16 (ip60->payload_length) > 20))
+	  if (PREDICT_TRUE (ip60->protocol == IP_PROTOCOL_IP_IN_IP &&
+			    clib_net_to_host_u16 (ip60->payload_length) > 20))
 	    {
-	      d0 =
-		ip4_map_get_domain ((ip4_address_t *) & ip40->
-				    src_address.as_u32, &map_domain_index0,
-				    &error0);
+	      d0 = ip4_map_get_domain (
+		(ip4_address_t *) &ip40->src_address.as_u32,
+		&map_domain_index0, &error0);
 	    }
 	  else if (ip60->protocol == IP_PROTOCOL_ICMP6 &&
 		   clib_net_to_host_u16 (ip60->payload_length) >
-		   sizeof (icmp46_header_t))
+		     sizeof (icmp46_header_t))
 	    {
 	      icmp46_header_t *icmp = (void *) (ip60 + 1);
-	      next0 = (icmp->type == ICMP6_echo_request
-		       || icmp->type ==
-		       ICMP6_echo_reply) ? IP6_MAP_NEXT_IP6_LOCAL :
-		IP6_MAP_NEXT_IP6_ICMP_RELAY;
+	      next0 = (icmp->type == ICMP6_echo_request ||
+		       icmp->type == ICMP6_echo_reply) ?
+			IP6_MAP_NEXT_IP6_LOCAL :
+			IP6_MAP_NEXT_IP6_ICMP_RELAY;
 	    }
 	  else if (ip60->protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
 	    {
@@ -258,24 +255,22 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    {
 	      error0 = MAP_ERROR_BAD_PROTOCOL;
 	    }
-	  if (PREDICT_TRUE
-	      (ip61->protocol == IP_PROTOCOL_IP_IN_IP
-	       && clib_net_to_host_u16 (ip61->payload_length) > 20))
+	  if (PREDICT_TRUE (ip61->protocol == IP_PROTOCOL_IP_IN_IP &&
+			    clib_net_to_host_u16 (ip61->payload_length) > 20))
 	    {
-	      d1 =
-		ip4_map_get_domain ((ip4_address_t *) & ip41->
-				    src_address.as_u32, &map_domain_index1,
-				    &error1);
+	      d1 = ip4_map_get_domain (
+		(ip4_address_t *) &ip41->src_address.as_u32,
+		&map_domain_index1, &error1);
 	    }
 	  else if (ip61->protocol == IP_PROTOCOL_ICMP6 &&
 		   clib_net_to_host_u16 (ip61->payload_length) >
-		   sizeof (icmp46_header_t))
+		     sizeof (icmp46_header_t))
 	    {
 	      icmp46_header_t *icmp = (void *) (ip61 + 1);
-	      next1 = (icmp->type == ICMP6_echo_request
-		       || icmp->type ==
-		       ICMP6_echo_reply) ? IP6_MAP_NEXT_IP6_LOCAL :
-		IP6_MAP_NEXT_IP6_ICMP_RELAY;
+	      next1 = (icmp->type == ICMP6_echo_request ||
+		       icmp->type == ICMP6_echo_reply) ?
+			IP6_MAP_NEXT_IP6_LOCAL :
+			IP6_MAP_NEXT_IP6_ICMP_RELAY;
 	    }
 	  else if (ip61->protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
 	    {
@@ -294,9 +289,8 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      if (PREDICT_TRUE (error0 == MAP_ERROR_NONE &&
 				next0 == IP6_MAP_NEXT_IP4_LOOKUP))
 		{
-		  if (PREDICT_FALSE
-		      (d0->mtu
-		       && (clib_host_to_net_u16 (ip40->length) > d0->mtu)))
+		  if (PREDICT_FALSE (d0->mtu && (clib_host_to_net_u16 (
+						   ip40->length) > d0->mtu)))
 		    {
 		      vnet_buffer (p0)->ip_frag.flags = 0;
 		      vnet_buffer (p0)->ip_frag.next_index =
@@ -306,16 +300,13 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		    }
 		  else
 		    {
-		      next0 =
-			ip6_map_ip4_lookup_bypass (p0,
-						   ip40) ?
-			IP6_MAP_NEXT_IP4_REWRITE : next0;
+		      next0 = ip6_map_ip4_lookup_bypass (p0, ip40) ?
+				IP6_MAP_NEXT_IP4_REWRITE :
+				next0;
 		    }
-		  vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_RX,
-						   thread_index,
-						   map_domain_index0, 1,
-						   clib_net_to_host_u16
-						   (ip40->length));
+		  vlib_increment_combined_counter (
+		    cm + MAP_DOMAIN_COUNTER_RX, thread_index,
+		    map_domain_index0, 1, clib_net_to_host_u16 (ip40->length));
 		}
 	    }
 	  if (d1)
@@ -326,9 +317,8 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      if (PREDICT_TRUE (error1 == MAP_ERROR_NONE &&
 				next1 == IP6_MAP_NEXT_IP4_LOOKUP))
 		{
-		  if (PREDICT_FALSE
-		      (d1->mtu
-		       && (clib_host_to_net_u16 (ip41->length) > d1->mtu)))
+		  if (PREDICT_FALSE (d1->mtu && (clib_host_to_net_u16 (
+						   ip41->length) > d1->mtu)))
 		    {
 		      vnet_buffer (p1)->ip_frag.flags = 0;
 		      vnet_buffer (p1)->ip_frag.next_index =
@@ -338,16 +328,13 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		    }
 		  else
 		    {
-		      next1 =
-			ip6_map_ip4_lookup_bypass (p1,
-						   ip41) ?
-			IP6_MAP_NEXT_IP4_REWRITE : next1;
+		      next1 = ip6_map_ip4_lookup_bypass (p1, ip41) ?
+				IP6_MAP_NEXT_IP4_REWRITE :
+				next1;
 		    }
-		  vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_RX,
-						   thread_index,
-						   map_domain_index1, 1,
-						   clib_net_to_host_u16
-						   (ip41->length));
+		  vlib_increment_combined_counter (
+		    cm + MAP_DOMAIN_COUNTER_RX, thread_index,
+		    map_domain_index1, 1, clib_net_to_host_u16 (ip41->length));
 		}
 	    }
 
@@ -365,9 +352,9 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    {
 	      /* Set ICMP parameters */
 	      vlib_buffer_advance (p0, -sizeof (ip6_header_t));
-	      icmp6_error_set_vnet_buffer (p0, ICMP6_destination_unreachable,
-					   ICMP6_destination_unreachable_source_address_failed_policy,
-					   0);
+	      icmp6_error_set_vnet_buffer (
+		p0, ICMP6_destination_unreachable,
+		ICMP6_destination_unreachable_source_address_failed_policy, 0);
 	      next0 = IP6_MAP_NEXT_ICMP;
 	    }
 	  else
@@ -379,9 +366,9 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    {
 	      /* Set ICMP parameters */
 	      vlib_buffer_advance (p1, -sizeof (ip6_header_t));
-	      icmp6_error_set_vnet_buffer (p1, ICMP6_destination_unreachable,
-					   ICMP6_destination_unreachable_source_address_failed_policy,
-					   0);
+	      icmp6_error_set_vnet_buffer (
+		p1, ICMP6_destination_unreachable,
+		ICMP6_destination_unreachable_source_address_failed_policy, 0);
 	      next1 = IP6_MAP_NEXT_ICMP;
 	    }
 	  else
@@ -428,7 +415,8 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  /*
 	   * Encapsulated IPv4 packet
-	   *   - IPv4 fragmented -> Pass to virtual reassembly unless security check disabled
+	   *   - IPv4 fragmented -> Pass to virtual reassembly unless security
+	   * check disabled
 	   *   - Lookup/Rewrite or Fragment node in case of packet > MTU
 	   * Fragmented IPv6 packet
 	   * ICMP IPv6 packet
@@ -436,24 +424,22 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	   *   - Info -> Pass to IPv6 local
 	   * Anything else -> drop
 	   */
-	  if (PREDICT_TRUE
-	      (ip60->protocol == IP_PROTOCOL_IP_IN_IP
-	       && clib_net_to_host_u16 (ip60->payload_length) > 20))
+	  if (PREDICT_TRUE (ip60->protocol == IP_PROTOCOL_IP_IN_IP &&
+			    clib_net_to_host_u16 (ip60->payload_length) > 20))
 	    {
-	      d0 =
-		ip4_map_get_domain ((ip4_address_t *) & ip40->
-				    src_address.as_u32, &map_domain_index0,
-				    &error0);
+	      d0 = ip4_map_get_domain (
+		(ip4_address_t *) &ip40->src_address.as_u32,
+		&map_domain_index0, &error0);
 	    }
 	  else if (ip60->protocol == IP_PROTOCOL_ICMP6 &&
 		   clib_net_to_host_u16 (ip60->payload_length) >
-		   sizeof (icmp46_header_t))
+		     sizeof (icmp46_header_t))
 	    {
 	      icmp46_header_t *icmp = (void *) (ip60 + 1);
-	      next0 = (icmp->type == ICMP6_echo_request
-		       || icmp->type ==
-		       ICMP6_echo_reply) ? IP6_MAP_NEXT_IP6_LOCAL :
-		IP6_MAP_NEXT_IP6_ICMP_RELAY;
+	      next0 = (icmp->type == ICMP6_echo_request ||
+		       icmp->type == ICMP6_echo_reply) ?
+			IP6_MAP_NEXT_IP6_LOCAL :
+			IP6_MAP_NEXT_IP6_ICMP_RELAY;
 	    }
 	  else if (ip60->protocol == IP_PROTOCOL_IPV6_FRAGMENTATION &&
 		   (((ip6_frag_hdr_t *) (ip60 + 1))->next_hdr ==
@@ -464,7 +450,7 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  else
 	    {
 	      /* XXX: Move get_domain to ip6_get_domain lookup on source */
-	      //error0 = MAP_ERROR_BAD_PROTOCOL;
+	      // error0 = MAP_ERROR_BAD_PROTOCOL;
 	      vlib_buffer_advance (p0, -sizeof (ip6_header_t));
 	      vnet_feature_next (&next0, p0);
 	    }
@@ -477,9 +463,8 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      if (PREDICT_TRUE (error0 == MAP_ERROR_NONE &&
 				next0 == IP6_MAP_NEXT_IP4_LOOKUP))
 		{
-		  if (PREDICT_FALSE
-		      (d0->mtu
-		       && (clib_host_to_net_u16 (ip40->length) > d0->mtu)))
+		  if (PREDICT_FALSE (d0->mtu && (clib_host_to_net_u16 (
+						   ip40->length) > d0->mtu)))
 		    {
 		      vnet_buffer (p0)->ip_frag.flags = 0;
 		      vnet_buffer (p0)->ip_frag.next_index =
@@ -489,16 +474,13 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		    }
 		  else
 		    {
-		      next0 =
-			ip6_map_ip4_lookup_bypass (p0,
-						   ip40) ?
-			IP6_MAP_NEXT_IP4_REWRITE : next0;
+		      next0 = ip6_map_ip4_lookup_bypass (p0, ip40) ?
+				IP6_MAP_NEXT_IP4_REWRITE :
+				next0;
 		    }
-		  vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_RX,
-						   thread_index,
-						   map_domain_index0, 1,
-						   clib_net_to_host_u16
-						   (ip40->length));
+		  vlib_increment_combined_counter (
+		    cm + MAP_DOMAIN_COUNTER_RX, thread_index,
+		    map_domain_index0, 1, clib_net_to_host_u16 (ip40->length));
 		}
 	    }
 
@@ -507,15 +489,14 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      map_add_trace (vm, node, p0, map_domain_index0, port0);
 	    }
 
-	  if (mm->icmp6_enabled &&
-	      (error0 == MAP_ERROR_DECAP_SEC_CHECK
-	       || error0 == MAP_ERROR_NO_DOMAIN))
+	  if (mm->icmp6_enabled && (error0 == MAP_ERROR_DECAP_SEC_CHECK ||
+				    error0 == MAP_ERROR_NO_DOMAIN))
 	    {
 	      /* Set ICMP parameters */
 	      vlib_buffer_advance (p0, -sizeof (ip6_header_t));
-	      icmp6_error_set_vnet_buffer (p0, ICMP6_destination_unreachable,
-					   ICMP6_destination_unreachable_source_address_failed_policy,
-					   0);
+	      icmp6_error_set_vnet_buffer (
+		p0, ICMP6_destination_unreachable,
+		ICMP6_destination_unreachable_source_address_failed_policy, 0);
 	      next0 = IP6_MAP_NEXT_ICMP;
 	    }
 	  else
@@ -537,7 +518,6 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   return frame->n_vectors;
 }
 
-
 void
 map_ip6_drop_pi (u32 pi)
 {
@@ -551,8 +531,8 @@ map_ip6_drop_pi (u32 pi)
  * ip6_map_post_ip4_reass
  */
 static uword
-ip6_map_post_ip4_reass (vlib_main_t * vm,
-			vlib_node_runtime_t * node, vlib_frame_t * frame)
+ip6_map_post_ip4_reass (vlib_main_t *vm, vlib_node_runtime_t *node,
+			vlib_frame_t *frame)
 {
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
   vlib_node_runtime_t *error_node =
@@ -591,21 +571,18 @@ ip6_map_post_ip4_reass (vlib_main_t * vm,
 	  ip40 = vlib_buffer_get_current (p0);
 	  ip60 = ((ip6_header_t *) ip40) - 1;
 
-	  d0 =
-	    ip4_map_get_domain ((ip4_address_t *) & ip40->src_address.as_u32,
-				&map_domain_index0, &error0);
+	  d0 = ip4_map_get_domain ((ip4_address_t *) &ip40->src_address.as_u32,
+				   &map_domain_index0, &error0);
 
 	  port0 = vnet_buffer (p0)->ip.reass.l4_src_port;
 
 	  if (PREDICT_TRUE (error0 == MAP_ERROR_NONE))
-	    error0 =
-	      ip6_map_sec_check (d0, port0, ip40,
-				 ip60) ? MAP_ERROR_NONE :
-	      MAP_ERROR_DECAP_SEC_CHECK;
+	    error0 = ip6_map_sec_check (d0, port0, ip40, ip60) ?
+		       MAP_ERROR_NONE :
+		       MAP_ERROR_DECAP_SEC_CHECK;
 
-	  if (PREDICT_FALSE
-	      (error0 == MAP_ERROR_NONE &&
-	       d0->mtu && (clib_host_to_net_u16 (ip40->length) > d0->mtu)))
+	  if (PREDICT_FALSE (error0 == MAP_ERROR_NONE && d0->mtu &&
+			     (clib_host_to_net_u16 (ip40->length) > d0->mtu)))
 	    {
 	      vnet_buffer (p0)->ip_frag.flags = 0;
 	      vnet_buffer (p0)->ip_frag.next_index = IP_FRAG_NEXT_IP4_LOOKUP;
@@ -622,18 +599,15 @@ ip6_map_post_ip4_reass (vlib_main_t * vm,
 	    }
 
 	  if (error0 == MAP_ERROR_NONE)
-	    vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_RX,
-					     thread_index,
-					     map_domain_index0, 1,
-					     clib_net_to_host_u16
-					     (ip40->length));
-	  next0 =
-	    (error0 ==
-	     MAP_ERROR_NONE) ? next0 : IP6_MAP_POST_IP4_REASS_NEXT_DROP;
+	    vlib_increment_combined_counter (
+	      cm + MAP_DOMAIN_COUNTER_RX, thread_index, map_domain_index0, 1,
+	      clib_net_to_host_u16 (ip40->length));
+	  next0 = (error0 == MAP_ERROR_NONE) ?
+		    next0 :
+		    IP6_MAP_POST_IP4_REASS_NEXT_DROP;
 	  p0->error = error_node->errors[error0];
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, next0);
-
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
@@ -644,8 +618,8 @@ ip6_map_post_ip4_reass (vlib_main_t * vm,
  * ip6_icmp_relay
  */
 static uword
-ip6_map_icmp_relay (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
+ip6_map_icmp_relay (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *frame)
 {
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
   vlib_node_runtime_t *error_node =
@@ -659,9 +633,8 @@ ip6_map_icmp_relay (vlib_main_t * vm,
   next_index = node->cached_next_index;
 
   /* Get random fragment IDs for replies. */
-  fid = fragment_ids =
-    clib_random_buffer_get_data (&vm->random_buffer,
-				 n_left_from * sizeof (fragment_ids[0]));
+  fid = fragment_ids = clib_random_buffer_get_data (
+    &vm->random_buffer, n_left_from * sizeof (fragment_ids[0]));
 
   while (n_left_from > 0)
     {
@@ -716,7 +689,8 @@ ip6_map_icmp_relay (vlib_main_t * vm,
 	    }
 
 	  ip4_header_t *inner_ip40 = (ip4_header_t *) (inner_ip60 + 1);
-	  vlib_buffer_advance (p0, 60);	/* sizeof ( IPv6 + ICMP + IPv6 - IPv4 - ICMP ) */
+	  vlib_buffer_advance (
+	    p0, 60); /* sizeof ( IPv6 + ICMP + IPv6 - IPv4 - ICMP ) */
 	  ip4_header_t *new_ip40 = vlib_buffer_get_current (p0);
 	  icmp46_header_t *new_icmp40 = (icmp46_header_t *) (new_ip40 + 1);
 
@@ -736,13 +710,13 @@ ip6_map_icmp_relay (vlib_main_t * vm,
 
 	    case ICMP6_packet_too_big:
 	      /* Type 3 - destination unreachable, Code 4 - packet too big */
-	      /* Potential TODO: Adjust domain tunnel MTU based on the value received here */
+	      /* Potential TODO: Adjust domain tunnel MTU based on the value
+	       * received here */
 	      mtu = clib_net_to_host_u32 (*((u32 *) (icmp60 + 1)));
 
 	      /* Check DF flag */
-	      if (!
-		  (inner_ip40->flags_and_fragment_offset &
-		   clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT)))
+	      if (!(inner_ip40->flags_and_fragment_offset &
+		    clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT)))
 		{
 		  error0 = MAP_ERROR_ICMP_RELAY;
 		  goto error;
@@ -800,12 +774,9 @@ ip6_map_icmp_relay (vlib_main_t * vm,
     }
 
   return frame->n_vectors;
-
 }
 
-/* *INDENT-OFF* */
-VNET_FEATURE_INIT (ip6_map_feature, static) =
-{
+VNET_FEATURE_INIT (ip6_map_feature, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "ip6-map",
   .runs_before = VNET_FEATURES ("ip6-flow-classify"),
@@ -836,9 +807,7 @@ VLIB_REGISTER_NODE(ip6_map_node) = {
     [IP6_MAP_NEXT_ICMP] = "ip6-icmp-error",
   },
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE(ip6_map_post_ip4_reass_node) = {
   .function = ip6_map_post_ip4_reass,
   .name = "ip6-map-post-ip4-reass",
@@ -854,9 +823,7 @@ VLIB_REGISTER_NODE(ip6_map_post_ip4_reass_node) = {
     [IP6_MAP_POST_IP4_REASS_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE(ip6_map_icmp_relay_node, static) = {
   .function = ip6_map_icmp_relay,
   .name = "ip6-map-icmp-relay",
@@ -871,20 +838,18 @@ VLIB_REGISTER_NODE(ip6_map_icmp_relay_node, static) = {
     [IP6_ICMP_RELAY_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-ip6_map_init (vlib_main_t * vm)
+ip6_map_init (vlib_main_t *vm)
 {
   map_main.ip4_sv_reass_custom_next_index =
-    ip4_sv_reass_custom_register_next_node
-    (ip6_map_post_ip4_reass_node.index);
+    ip4_sv_reass_custom_register_next_node (ip6_map_post_ip4_reass_node.index);
   return 0;
 }
 
-VLIB_INIT_FUNCTION (ip6_map_init) =
-{
-.runs_after = VLIB_INITS ("map_init"),};
+VLIB_INIT_FUNCTION (ip6_map_init) = {
+  .runs_after = VLIB_INITS ("map_init"),
+};
 
 /*
  * fd.io coding-style-patch-verification: ON

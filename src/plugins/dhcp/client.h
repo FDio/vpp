@@ -22,10 +22,10 @@
 #include <vnet/ip/ip.h>
 #include <dhcp/dhcp4_packet.h>
 
-#define foreach_dhcp_client_state               \
-_(DHCP_DISCOVER)                                \
-_(DHCP_REQUEST)                                 \
-_(DHCP_BOUND)
+#define foreach_dhcp_client_state                                             \
+  _ (DHCP_DISCOVER)                                                           \
+  _ (DHCP_REQUEST)                                                            \
+  _ (DHCP_BOUND)
 
 typedef enum
 {
@@ -40,7 +40,7 @@ struct dhcp_client_t_;
  * Callback function for DHCP complete events
  */
 typedef void (*dhcp_event_cb_t) (u32 client_index,
-				 const struct dhcp_client_t_ * client);
+				 const struct dhcp_client_t_ *client);
 
 /**
  * The set of addresses/mask that contribute forwarding info
@@ -87,16 +87,16 @@ typedef struct dhcp_client_t_
   /* have local Addresses and default route been installed */
   u8 addresses_installed;
 
-  ip4_address_t *domain_server_address;	/* option 6 */
-  u32 lease_renewal_interval;	/* option 51 */
-  u32 lease_lifetime;		/* option 59 */
+  ip4_address_t *domain_server_address; /* option 6 */
+  u32 lease_renewal_interval;		/* option 51 */
+  u32 lease_lifetime;			/* option 59 */
 
   /* Requested data (option 55) */
   u8 *option_55_data;
 
   /* hostname and software client identifiers */
   u8 *hostname;
-  u8 *client_identifier;	/* software version, e.g. vpe 1.0 */
+  u8 *client_identifier; /* software version, e.g. vpe 1.0 */
 
   /* Information used for event callback */
   u32 client_index;
@@ -153,25 +153,18 @@ typedef struct
 
 extern dhcp_client_main_t dhcp_client_main;
 
-#define EVENT_DHCP_CLIENT_WAKEUP	1
+#define EVENT_DHCP_CLIENT_WAKEUP 1
 
-int dhcp_client_for_us (u32 bi0,
-			vlib_buffer_t * b0,
-			ip4_header_t * ip0,
-			udp_header_t * u0, dhcp_header_t * dh0);
+int dhcp_client_for_us (u32 bi0, vlib_buffer_t *b0, ip4_header_t *ip0,
+			udp_header_t *u0, dhcp_header_t *dh0);
 
 /**
  * Add/Delete DHCP clients
  */
-extern int dhcp_client_config (u32 is_add,
-			       u32 client_index,
-			       vlib_main_t * vm,
-			       u32 sw_if_index,
-			       u8 * hostname,
-			       u8 * client_id,
+extern int dhcp_client_config (u32 is_add, u32 client_index, vlib_main_t *vm,
+			       u32 sw_if_index, u8 *hostname, u8 *client_id,
 			       dhcp_event_cb_t event_callback,
-			       u8 set_broadcast_flag,
-			       ip_dscp_t dscp, u32 pid);
+			       u8 set_broadcast_flag, ip_dscp_t dscp, u32 pid);
 
 /**
  * callback function for clients walking the DHCP client configurations
@@ -180,8 +173,7 @@ extern int dhcp_client_config (u32 is_add,
  * @param data   The data passed during the call to 'walk'
  * @return !0 to continue walking 0 to stop.
  */
-typedef int (*dhcp_client_walk_cb_t) (const dhcp_client_t * client,
-				      void *data);
+typedef int (*dhcp_client_walk_cb_t) (const dhcp_client_t *client, void *data);
 
 /**
  * Walk (visit each) DHCP client configuration

@@ -35,7 +35,7 @@ typedef struct qos_record_trace_t_
 
 /* packet trace format function */
 static u8 *
-format_qos_record_trace (u8 * s, va_list * args)
+format_qos_record_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -47,10 +47,9 @@ format_qos_record_trace (u8 * s, va_list * args)
 }
 
 static inline uword
-qos_record_inline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node,
-		   vlib_frame_t * frame,
-		   qos_source_t qos_src, dpo_proto_t dproto, int is_l2)
+qos_record_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame, qos_source_t qos_src,
+		   dpo_proto_t dproto, int is_l2)
 {
   u32 n_left_from, *from, *to_next, next_index;
 
@@ -147,17 +146,15 @@ qos_record_inline (vlib_main_t * vm,
 	  if (is_l2)
 	    {
 	      vlib_buffer_advance (b0, -l2_len);
-	      next0 = vnet_l2_feature_next (b0,
-					    l2_qos_input_next[qos_src],
+	      next0 = vnet_l2_feature_next (b0, l2_qos_input_next[qos_src],
 					    L2INPUT_FEAT_L2_IP_QOS_RECORD);
 	    }
 	  else
 	    vnet_feature_next (&next0, b0);
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -166,63 +163,54 @@ qos_record_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-
-VLIB_NODE_FN (ip4_qos_record_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_qos_record_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return (qos_record_inline (vm, node, frame, QOS_SOURCE_IP,
-			     DPO_PROTO_IP4, 0));
+  return (
+    qos_record_inline (vm, node, frame, QOS_SOURCE_IP, DPO_PROTO_IP4, 0));
 }
 
-VLIB_NODE_FN (ip6_qos_record_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_qos_record_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return (qos_record_inline (vm, node, frame, QOS_SOURCE_IP,
-			     DPO_PROTO_IP6, 0));
+  return (
+    qos_record_inline (vm, node, frame, QOS_SOURCE_IP, DPO_PROTO_IP6, 0));
 }
 
-VLIB_NODE_FN (mpls_qos_record_node) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * frame)
+VLIB_NODE_FN (mpls_qos_record_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return (qos_record_inline (vm, node, frame, QOS_SOURCE_MPLS,
-			     DPO_PROTO_MPLS, 0));
+  return (
+    qos_record_inline (vm, node, frame, QOS_SOURCE_MPLS, DPO_PROTO_MPLS, 0));
 }
 
-VLIB_NODE_FN (vlan_ip4_qos_record_node) (vlib_main_t * vm,
-					 vlib_node_runtime_t * node,
-					 vlib_frame_t * frame)
+VLIB_NODE_FN (vlan_ip4_qos_record_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (qos_record_inline (vm, node, frame, QOS_SOURCE_VLAN,
 			     DPO_PROTO_ETHERNET, 0));
 }
 
-VLIB_NODE_FN (vlan_ip6_qos_record_node) (vlib_main_t * vm,
-					 vlib_node_runtime_t * node,
-					 vlib_frame_t * frame)
+VLIB_NODE_FN (vlan_ip6_qos_record_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (qos_record_inline (vm, node, frame, QOS_SOURCE_VLAN,
 			     DPO_PROTO_ETHERNET, 0));
 }
 
-VLIB_NODE_FN (vlan_mpls_qos_record_node) (vlib_main_t * vm,
-					  vlib_node_runtime_t * node,
-					  vlib_frame_t * frame)
+VLIB_NODE_FN (vlan_mpls_qos_record_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (qos_record_inline (vm, node, frame, QOS_SOURCE_VLAN,
 			     DPO_PROTO_ETHERNET, 0));
 }
 
-VLIB_NODE_FN (l2_ip_qos_record_node) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * frame)
+VLIB_NODE_FN (l2_ip_qos_record_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (qos_record_inline (vm, node, frame, QOS_SOURCE_VLAN, 0, 1));
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_qos_record_node) = {
   .name = "ip4-qos-record",
   .vector_size = sizeof (u32),
@@ -238,12 +226,12 @@ VLIB_REGISTER_NODE (ip4_qos_record_node) = {
 };
 
 VNET_FEATURE_INIT (ip4_qos_record_node, static) = {
-    .arc_name = "ip4-unicast",
-    .node_name = "ip4-qos-record",
+  .arc_name = "ip4-unicast",
+  .node_name = "ip4-qos-record",
 };
 VNET_FEATURE_INIT (ip4m_qos_record_node, static) = {
-    .arc_name = "ip4-multicast",
-    .node_name = "ip4-qos-record",
+  .arc_name = "ip4-multicast",
+  .node_name = "ip4-qos-record",
 };
 
 VLIB_REGISTER_NODE (ip6_qos_record_node) = {
@@ -261,12 +249,12 @@ VLIB_REGISTER_NODE (ip6_qos_record_node) = {
 };
 
 VNET_FEATURE_INIT (ip6_qos_record_node, static) = {
-    .arc_name = "ip6-unicast",
-    .node_name = "ip6-qos-record",
+  .arc_name = "ip6-unicast",
+  .node_name = "ip6-qos-record",
 };
 VNET_FEATURE_INIT (ip6m_qos_record_node, static) = {
-    .arc_name = "ip6-multicast",
-    .node_name = "ip6-qos-record",
+  .arc_name = "ip6-multicast",
+  .node_name = "ip6-qos-record",
 };
 
 VLIB_REGISTER_NODE (mpls_qos_record_node) = {
@@ -284,8 +272,8 @@ VLIB_REGISTER_NODE (mpls_qos_record_node) = {
 };
 
 VNET_FEATURE_INIT (mpls_qos_record_node, static) = {
-    .arc_name = "mpls-input",
-    .node_name = "mpls-qos-record",
+  .arc_name = "mpls-input",
+  .node_name = "mpls-qos-record",
 };
 
 VLIB_REGISTER_NODE (vlan_mpls_qos_record_node) = {
@@ -303,9 +291,9 @@ VLIB_REGISTER_NODE (vlan_mpls_qos_record_node) = {
 };
 
 VNET_FEATURE_INIT (vlan_mpls_qos_record_node, static) = {
-    .arc_name = "mpls-input",
-    .node_name = "vlan-mpls-qos-record",
-    .runs_before = VNET_FEATURES ("mpls-qos-record"),
+  .arc_name = "mpls-input",
+  .node_name = "vlan-mpls-qos-record",
+  .runs_before = VNET_FEATURES ("mpls-qos-record"),
 };
 
 VLIB_REGISTER_NODE (vlan_ip4_qos_record_node) = {
@@ -323,14 +311,14 @@ VLIB_REGISTER_NODE (vlan_ip4_qos_record_node) = {
 };
 
 VNET_FEATURE_INIT (vlan_ip4_qos_record_node, static) = {
-    .arc_name = "ip4-unicast",
-    .node_name = "vlan-ip4-qos-record",
-    .runs_before = VNET_FEATURES ("ip4-qos-record"),
+  .arc_name = "ip4-unicast",
+  .node_name = "vlan-ip4-qos-record",
+  .runs_before = VNET_FEATURES ("ip4-qos-record"),
 };
 VNET_FEATURE_INIT (vlan_ip4m_qos_record_node, static) = {
-    .arc_name = "ip4-multicast",
-    .node_name = "vlan-ip4-qos-record",
-    .runs_before = VNET_FEATURES ("ip4-qos-record"),
+  .arc_name = "ip4-multicast",
+  .node_name = "vlan-ip4-qos-record",
+  .runs_before = VNET_FEATURES ("ip4-qos-record"),
 };
 
 VLIB_REGISTER_NODE (vlan_ip6_qos_record_node) = {
@@ -348,14 +336,14 @@ VLIB_REGISTER_NODE (vlan_ip6_qos_record_node) = {
 };
 
 VNET_FEATURE_INIT (vlan_ip6_qos_record_node, static) = {
-    .arc_name = "ip6-unicast",
-    .node_name = "vlan-ip6-qos-record",
-    .runs_before = VNET_FEATURES ("ip6-qos-record"),
+  .arc_name = "ip6-unicast",
+  .node_name = "vlan-ip6-qos-record",
+  .runs_before = VNET_FEATURES ("ip6-qos-record"),
 };
 VNET_FEATURE_INIT (vlan_ip6m_qos_record_node, static) = {
-    .arc_name = "ip6-multicast",
-    .node_name = "vlan-ip6-qos-record",
-    .runs_before = VNET_FEATURES ("ip6-qos-record"),
+  .arc_name = "ip6-multicast",
+  .node_name = "vlan-ip6-qos-record",
+  .runs_before = VNET_FEATURES ("ip6-qos-record"),
 };
 
 VLIB_REGISTER_NODE (l2_ip_qos_record_node) = {
@@ -372,7 +360,6 @@ VLIB_REGISTER_NODE (l2_ip_qos_record_node) = {
     [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

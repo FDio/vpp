@@ -17,7 +17,6 @@
 
 lisp_cp_main_t lisp_control_main;
 
-
 /*
  * fd.io coding-style-patch-verification: ON
  *

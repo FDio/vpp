@@ -22,8 +22,7 @@ namespace l2_emulation_cmds {
 enable_cmd::enable_cmd(HW::item<bool>& item, const handle_t& itf)
   : rpc_cmd(item)
   , m_itf(itf)
-{
-}
+{}
 
 bool
 enable_cmd::operator==(const enable_cmd& other) const
@@ -58,8 +57,7 @@ enable_cmd::to_string() const
 disable_cmd::disable_cmd(HW::item<bool>& item, const handle_t& itf)
   : rpc_cmd(item)
   , m_itf(itf)
-{
-}
+{}
 
 bool
 disable_cmd::operator==(const disable_cmd& other) const

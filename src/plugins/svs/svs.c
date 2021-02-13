@@ -44,10 +44,10 @@ svs_table_delete (fib_protocol_t fproto, u32 table_id)
   fib_index = fib_table_find (fproto, table_id);
 
   vec_foreach_index (ii, svs_itf_db[fproto])
-  {
-    if (svs_itf_db[fproto][ii] == fib_index)
-      return VNET_API_ERROR_INSTANCE_IN_USE;
-  }
+    {
+      if (svs_itf_db[fproto][ii] == fib_index)
+	return VNET_API_ERROR_INSTANCE_IN_USE;
+    }
 
   if (~0 == fib_index)
     return VNET_API_ERROR_NO_SUCH_FIB;
@@ -58,19 +58,15 @@ svs_table_delete (fib_protocol_t fproto, u32 table_id)
 }
 
 static int
-svs_route_add_i (u32 fib_index, const fib_prefix_t * pfx, u32 src_fib_index)
+svs_route_add_i (u32 fib_index, const fib_prefix_t *pfx, u32 src_fib_index)
 {
   dpo_id_t dpo = DPO_INVALID;
 
+  lookup_dpo_add_or_lock_w_fib_index (
+    src_fib_index, fib_proto_to_dpo (pfx->fp_proto), LOOKUP_UNICAST,
+    LOOKUP_INPUT_SRC_ADDR, LOOKUP_TABLE_FROM_CONFIG, &dpo);
 
-  lookup_dpo_add_or_lock_w_fib_index (src_fib_index,
-				      fib_proto_to_dpo (pfx->fp_proto),
-				      LOOKUP_UNICAST,
-				      LOOKUP_INPUT_SRC_ADDR,
-				      LOOKUP_TABLE_FROM_CONFIG, &dpo);
-
-  fib_table_entry_special_dpo_add (fib_index, pfx,
-				   svs_fib_src,
+  fib_table_entry_special_dpo_add (fib_index, pfx, svs_fib_src,
 				   FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
 
   dpo_unlock (&dpo);
@@ -79,7 +75,7 @@ svs_route_add_i (u32 fib_index, const fib_prefix_t * pfx, u32 src_fib_index)
 }
 
 int
-svs_route_add (u32 table_id, const fib_prefix_t * pfx, u32 source_table_id)
+svs_route_add (u32 table_id, const fib_prefix_t *pfx, u32 source_table_id)
 {
   u32 fib_index, src_fib_index;
   int rv;
@@ -100,7 +96,7 @@ svs_route_add (u32 table_id, const fib_prefix_t * pfx, u32 source_table_id)
 }
 
 int
-svs_route_delete (u32 table_id, const fib_prefix_t * pfx)
+svs_route_delete (u32 table_id, const fib_prefix_t *pfx)
 {
   u32 fib_index;
 
@@ -138,12 +134,10 @@ svs_enable (fib_protocol_t fproto, u32 table_id, u32 sw_if_index)
 
   svs_itf_db[fproto][sw_if_index] = fib_index;
 
-  vnet_feature_enable_disable ((FIB_PROTOCOL_IP4 == fproto ?
-				"ip4-unicast" :
-				"ip6-unicast"),
-			       (FIB_PROTOCOL_IP4 == fproto ?
-				"svs-ip4" :
-				"svs-ip6"), sw_if_index, 1, NULL, 0);
+  vnet_feature_enable_disable (
+    (FIB_PROTOCOL_IP4 == fproto ? "ip4-unicast" : "ip6-unicast"),
+    (FIB_PROTOCOL_IP4 == fproto ? "svs-ip4" : "svs-ip6"), sw_if_index, 1, NULL,
+    0);
 
   return (0);
 }
@@ -176,17 +170,15 @@ svs_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 itf_fib_index)
 }
 
 static void
-svs_ip6_table_bind (ip6_main_t * im,
-		    uword opaque,
-		    u32 sw_if_index, u32 new_fib_index, u32 old_fib_index)
+svs_ip6_table_bind (ip6_main_t *im, uword opaque, u32 sw_if_index,
+		    u32 new_fib_index, u32 old_fib_index)
 {
   svs_table_bind (FIB_PROTOCOL_IP6, sw_if_index, new_fib_index);
 }
 
 static void
-svs_ip4_table_bind (ip4_main_t * im,
-		    uword opaque,
-		    u32 sw_if_index, u32 new_fib_index, u32 old_fib_index)
+svs_ip4_table_bind (ip4_main_t *im, uword opaque, u32 sw_if_index,
+		    u32 new_fib_index, u32 old_fib_index)
 {
   svs_table_bind (FIB_PROTOCOL_IP4, sw_if_index, new_fib_index);
 }
@@ -209,12 +201,10 @@ svs_disable (fib_protocol_t fproto, u32 table_id, u32 sw_if_index)
 
   svs_itf_db[fproto][sw_if_index] = ~0;
 
-  vnet_feature_enable_disable ((FIB_PROTOCOL_IP4 == fproto ?
-				"ip4-unicast" :
-				"ip6-unicast"),
-			       (FIB_PROTOCOL_IP4 == fproto ?
-				"svs-ip4" :
-				"svs-ip6"), sw_if_index, 0, NULL, 0);
+  vnet_feature_enable_disable (
+    (FIB_PROTOCOL_IP4 == fproto ? "ip4-unicast" : "ip6-unicast"),
+    (FIB_PROTOCOL_IP4 == fproto ? "svs-ip4" : "svs-ip6"), sw_if_index, 0, NULL,
+    0);
 
   fib_table_entry_special_remove (fib_index, &pfx, svs_fib_src);
 
@@ -230,17 +220,17 @@ svs_walk (svs_walk_fn_t fn, void *ctx)
   FOR_EACH_FIB_IP_PROTOCOL (fproto)
   {
     vec_foreach_index (ii, svs_itf_db[fproto])
-    {
-      fib_index = svs_itf_db[fproto][ii];
+      {
+	fib_index = svs_itf_db[fproto][ii];
 
-      if (~0 != fib_index)
-	{
-	  if (WALK_CONTINUE != fn (fproto,
-				   fib_table_get_table_id (fib_index, fproto),
-				   ii, ctx))
-	    return;
-	}
-    }
+	if (~0 != fib_index)
+	  {
+	    if (WALK_CONTINUE !=
+		fn (fproto, fib_table_get_table_id (fib_index, fproto), ii,
+		    ctx))
+	      return;
+	  }
+      }
   }
 }
 
@@ -256,9 +246,8 @@ typedef struct svs_input_trace_t_
 } svs_input_trace_t;
 
 always_inline uword
-svs_input_inline (vlib_main_t * vm,
-		  vlib_node_runtime_t * node,
-		  vlib_frame_t * frame, fib_protocol_t fproto)
+svs_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		  vlib_frame_t *frame, fib_protocol_t fproto)
 {
   u32 n_left_from, *from, *to_next, next_index;
 
@@ -297,18 +286,16 @@ svs_input_inline (vlib_main_t * vm,
 	      ip4_header_t *ip0;
 
 	      ip0 = vlib_buffer_get_current (b0);
-	      lbi0 =
-		ip4_fib_forwarding_lookup (svs_itf_db[fproto][sw_if_index0],
-					   &ip0->src_address);
+	      lbi0 = ip4_fib_forwarding_lookup (
+		svs_itf_db[fproto][sw_if_index0], &ip0->src_address);
 	    }
 	  else
 	    {
 	      ip6_header_t *ip0;
 
 	      ip0 = vlib_buffer_get_current (b0);
-	      lbi0 = ip6_fib_table_fwding_lookup (svs_itf_db[fproto]
-						  [sw_if_index0],
-						  &ip0->src_address);
+	      lbi0 = ip6_fib_table_fwding_lookup (
+		svs_itf_db[fproto][sw_if_index0], &ip0->src_address);
 	    }
 	  lb0 = load_balance_get (lbi0);
 	  dpo0 = load_balance_get_fwd_bucket (lb0, 0);
@@ -327,9 +314,8 @@ svs_input_inline (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next, bi0,
-					   next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -339,21 +325,19 @@ svs_input_inline (vlib_main_t * vm,
 }
 
 static uword
-svs_input_ip4 (vlib_main_t * vm,
-	       vlib_node_runtime_t * node, vlib_frame_t * frame)
+svs_input_ip4 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return svs_input_inline (vm, node, frame, FIB_PROTOCOL_IP4);
 }
 
 static uword
-svs_input_ip6 (vlib_main_t * vm,
-	       vlib_node_runtime_t * node, vlib_frame_t * frame)
+svs_input_ip6 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return svs_input_inline (vm, node, frame, FIB_PROTOCOL_IP6);
 }
 
 static u8 *
-format_svs_input_trace (u8 * s, va_list * args)
+format_svs_input_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -363,50 +347,38 @@ format_svs_input_trace (u8 * s, va_list * args)
   return s;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (svs_ip4_node) =
-{
-  .function = svs_input_ip4,
-  .name = "svs-ip4",
-  .vector_size = sizeof (u32),
-  .format_trace = format_svs_input_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_next_nodes = SVS_N_NEXT,
-  .next_nodes =
-  {
-    [SVS_NEXT_DROP] = "error-drop",
-  }
-};
+VLIB_REGISTER_NODE (svs_ip4_node) = { .function = svs_input_ip4,
+				      .name = "svs-ip4",
+				      .vector_size = sizeof (u32),
+				      .format_trace = format_svs_input_trace,
+				      .type = VLIB_NODE_TYPE_INTERNAL,
+				      .n_next_nodes = SVS_N_NEXT,
+				      .next_nodes = {
+					[SVS_NEXT_DROP] = "error-drop",
+				      } };
 
-VLIB_REGISTER_NODE (svs_ip6_node) =
-{
-  .function = svs_input_ip6,
-  .name = "svs-ip6",
-  .vector_size = sizeof (u32),
-  .format_trace = format_svs_input_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .next_nodes =
-  {
-    [SVS_NEXT_DROP] = "error-drop",
-  }
-};
+VLIB_REGISTER_NODE (svs_ip6_node) = { .function = svs_input_ip6,
+				      .name = "svs-ip6",
+				      .vector_size = sizeof (u32),
+				      .format_trace = format_svs_input_trace,
+				      .type = VLIB_NODE_TYPE_INTERNAL,
+				      .next_nodes = {
+					[SVS_NEXT_DROP] = "error-drop",
+				      } };
 
-VNET_FEATURE_INIT (svs_ip4_feat, static) =
-{
+VNET_FEATURE_INIT (svs_ip4_feat, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "svs-ip4",
 };
 
-VNET_FEATURE_INIT (svs_ip6_feat, static) =
-{
+VNET_FEATURE_INIT (svs_ip6_feat, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "svs-ip6",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-svs_table_cli (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+svs_table_cli (vlib_main_t *vm, unformat_input_t *input,
+	       vlib_cli_command_t *cmd)
 {
   fib_protocol_t fproto;
   u32 table_id;
@@ -443,17 +415,15 @@ svs_table_cli (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (svs_table_cmd_cli, static) = {
-    .path = "svs table",
-    .short_help = "Source VRF select table [add|delete] [ip4|ip6] table-id X",
-    .function = svs_table_cli,
+  .path = "svs table",
+  .short_help = "Source VRF select table [add|delete] [ip4|ip6] table-id X",
+  .function = svs_table_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-svs_enable_cli (vlib_main_t * vm,
-		unformat_input_t * input, vlib_cli_command_t * cmd)
+svs_enable_cli (vlib_main_t *vm, unformat_input_t *input,
+		vlib_cli_command_t *cmd)
 {
   u32 sw_if_index, table_id;
   fib_protocol_t fproto;
@@ -467,8 +437,8 @@ svs_enable_cli (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_vnet_sw_interface,
-		    vnm, &sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (input, "enable"))
 	enable = 1;
@@ -497,17 +467,16 @@ svs_enable_cli (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (svs_enable_cli_cmd, static) = {
-    .path = "svs enable",
-    .short_help = "Source VRF select [enable|disable] [ip4|ip6] <table-id> X <interface>",
-    .function = svs_enable_cli,
+  .path = "svs enable",
+  .short_help =
+    "Source VRF select [enable|disable] [ip4|ip6] <table-id> X <interface>",
+  .function = svs_enable_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-svs_route_cli (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+svs_route_cli (vlib_main_t *vm, unformat_input_t *input,
+	       vlib_cli_command_t *cmd)
 {
   u32 table_id, src_table_id;
   fib_prefix_t pfx;
@@ -527,13 +496,13 @@ svs_route_cli (vlib_main_t * vm,
 	;
       else if (unformat (input, "src-table-id %d", &src_table_id))
 	;
-      else if (unformat (input, "%U/%d",
-			 unformat_ip4_address, &pfx.fp_addr.ip4, &pfx.fp_len))
+      else if (unformat (input, "%U/%d", unformat_ip4_address,
+			 &pfx.fp_addr.ip4, &pfx.fp_len))
 	{
 	  pfx.fp_proto = FIB_PROTOCOL_IP4;
 	}
-      else if (unformat (input, "%U/%d",
-			 unformat_ip6_address, &pfx.fp_addr.ip6, &pfx.fp_len))
+      else if (unformat (input, "%U/%d", unformat_ip6_address,
+			 &pfx.fp_addr.ip6, &pfx.fp_len))
 	{
 	  pfx.fp_proto = FIB_PROTOCOL_IP6;
 	}
@@ -552,24 +521,22 @@ svs_route_cli (vlib_main_t * vm,
     rv = svs_route_delete (table_id, &pfx);
 
   if (rv != 0)
-    return clib_error_return (0,
-			      "failed, rv=%d:%U",
-			      (int) rv, format_vnet_api_errno, rv);
+    return clib_error_return (0, "failed, rv=%d:%U", (int) rv,
+			      format_vnet_api_errno, rv);
 
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (svs_route_cmd_cli, static) = {
-    .path = "svs route",
-    .short_help = "Source VRF select route [add|delete] <table-id> <prefix> <src-table-id>",
-    .function = svs_route_cli,
+  .path = "svs route",
+  .short_help =
+    "Source VRF select route [add|delete] <table-id> <prefix> <src-table-id>",
+  .function = svs_route_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-svs_show_cli (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+svs_show_cli (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd)
 {
   fib_protocol_t fproto;
   u32 ii;
@@ -579,25 +546,23 @@ svs_show_cli (vlib_main_t * vm,
   {
     vlib_cli_output (vm, " %U", format_fib_protocol, fproto);
     vec_foreach_index (ii, svs_itf_db[fproto])
-    {
-      if (~0 != svs_itf_db[fproto][ii])
-	vlib_cli_output (vm, "  %U -> %d", format_vnet_sw_if_index_name,
-			 vnet_get_main (), ii, svs_itf_db[fproto][ii]);
-    }
+      {
+	if (~0 != svs_itf_db[fproto][ii])
+	  vlib_cli_output (vm, "  %U -> %d", format_vnet_sw_if_index_name,
+			   vnet_get_main (), ii, svs_itf_db[fproto][ii]);
+      }
   }
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (svs_show_cli_cmd, static) = {
   .path = "show svs",
   .short_help = "Source VRF select show",
   .function = svs_show_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-svs_init (vlib_main_t * vm)
+svs_init (vlib_main_t *vm)
 {
   ip6_table_bind_callback_t cbt6 = {
     .function = svs_ip6_table_bind,
@@ -609,9 +574,8 @@ svs_init (vlib_main_t * vm)
   };
   vec_add1 (ip4_main.table_bind_callbacks, cbt4);
 
-  svs_fib_src = fib_source_allocate ("svs",
-				     FIB_SOURCE_PRIORITY_LOW,
-				     FIB_SOURCE_BH_SIMPLE);
+  svs_fib_src =
+    fib_source_allocate ("svs", FIB_SOURCE_PRIORITY_LOW, FIB_SOURCE_BH_SIMPLE);
 
   return (NULL);
 }

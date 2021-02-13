@@ -37,7 +37,7 @@ http_static_server_main_t http_static_server_main;
  */
 
 static u8 *
-format_state_machine_called_from (u8 * s, va_list * args)
+format_state_machine_called_from (u8 *s, va_list *args)
 {
   http_state_machine_called_from_t cf =
     va_arg (*args, http_state_machine_called_from_t);
@@ -62,7 +62,6 @@ format_state_machine_called_from (u8 * s, va_list * args)
   s = format (s, "%s", which);
   return s;
 }
-
 
 /** \brief Acquire reader lock on the sessions pools
  */
@@ -99,7 +98,7 @@ http_static_server_sessions_writer_unlock (void)
 /** \brief Start a session cleanup timer
  */
 static void
-http_static_server_session_timer_start (http_session_t * hs)
+http_static_server_session_timer_start (http_session_t *hs)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
   u32 hs_handle;
@@ -109,8 +108,8 @@ http_static_server_session_timer_start (http_session_t * hs)
     {
       hs_handle = hs->thread_index << 24 | hs->session_index;
       clib_spinlock_lock (&http_static_server_main.tw_lock);
-      hs->timer_handle = tw_timer_start_2t_1w_2048sl
-	(&http_static_server_main.tw, hs_handle, 0, 60);
+      hs->timer_handle = tw_timer_start_2t_1w_2048sl (
+	&http_static_server_main.tw, hs_handle, 0, 60);
       clib_spinlock_unlock (&http_static_server_main.tw_lock);
     }
 }
@@ -118,7 +117,7 @@ http_static_server_session_timer_start (http_session_t * hs)
 /** \brief stop a session cleanup timer
  */
 static void
-http_static_server_session_timer_stop (http_session_t * hs)
+http_static_server_session_timer_stop (http_session_t *hs)
 {
   if (hs->timer_handle == ~0)
     return;
@@ -135,8 +134,7 @@ http_static_server_session_alloc (u32 thread_index)
   http_static_server_main_t *hsm = &http_static_server_main;
   http_session_t *hs;
   pool_get_aligned_zero_numa (hsm->sessions[thread_index], hs,
-			      0 /* not aligned */ ,
-			      1 /* zero */ ,
+			      0 /* not aligned */, 1 /* zero */,
 			      os_get_numa_index ());
   hs->session_index = hs - hsm->sessions[thread_index];
   hs->thread_index = thread_index;
@@ -159,7 +157,7 @@ http_static_server_session_get (u32 thread_index, u32 hs_index)
 /** \brief Free an http session
  */
 static void
-http_static_server_session_free (http_session_t * hs)
+http_static_server_session_free (http_session_t *hs)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
 
@@ -219,7 +217,7 @@ http_static_server_session_lookup (u32 thread_index, u32 s_index)
  */
 
 static void
-http_static_server_detach_cache_entry (http_session_t * hs)
+http_static_server_detach_cache_entry (http_session_t *hs)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
   file_data_cache_t *ep;
@@ -249,7 +247,7 @@ http_static_server_detach_cache_entry (http_session_t * hs)
 /** \brief Disconnect a session
  */
 static void
-http_static_server_session_disconnect (http_session_t * hs)
+http_static_server_session_disconnect (http_session_t *hs)
 {
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
   a->handle = hs->vpp_session_handle;
@@ -260,22 +258,20 @@ http_static_server_session_disconnect (http_session_t * hs)
 /* *INDENT-OFF* */
 /** \brief http error boilerplate
  */
-static const char *http_error_template =
-    "HTTP/1.1 %s\r\n"
-    "Date: %U GMT\r\n"
-    "Content-Type: text/html\r\n"
-    "Connection: close\r\n"
-    "Pragma: no-cache\r\n"
-    "Content-Length: 0\r\n\r\n";
+static const char *http_error_template = "HTTP/1.1 %s\r\n"
+					 "Date: %U GMT\r\n"
+					 "Content-Type: text/html\r\n"
+					 "Connection: close\r\n"
+					 "Pragma: no-cache\r\n"
+					 "Content-Length: 0\r\n\r\n";
 
 /** \brief http response boilerplate
  */
-static const char *http_response_template =
-    "Date: %U GMT\r\n"
-    "Expires: %U GMT\r\n"
-    "Server: VPP Static\r\n"
-    "Content-Type: %s\r\n"
-    "Content-Length: %d\r\n\r\n";
+static const char *http_response_template = "Date: %U GMT\r\n"
+					    "Expires: %U GMT\r\n"
+					    "Server: VPP Static\r\n"
+					    "Content-Type: %s\r\n"
+					    "Content-Length: %d\r\n\r\n";
 
 /* *INDENT-ON* */
 
@@ -288,7 +284,7 @@ static const char *http_response_template =
 */
 
 static u32
-static_send_data (http_session_t * hs, u8 * data, u32 length, u32 offset)
+static_send_data (http_session_t *hs, u8 *data, u32 length, u32 offset)
 {
   u32 bytes_to_send;
   http_static_server_main_t *hsm = &http_static_server_main;
@@ -299,8 +295,8 @@ static_send_data (http_session_t * hs, u8 * data, u32 length, u32 offset)
     {
       int actual_transfer;
 
-      actual_transfer = svm_fifo_enqueue
-	(hs->tx_fifo, bytes_to_send, data + offset);
+      actual_transfer =
+	svm_fifo_enqueue (hs->tx_fifo, bytes_to_send, data + offset);
 
       /* Made any progress? */
       if (actual_transfer <= 0)
@@ -332,7 +328,7 @@ static_send_data (http_session_t * hs, u8 * data, u32 length, u32 offset)
     @param str - the error string, e.g. "404 Not Found"
 */
 static void
-send_error (http_session_t * hs, char *str)
+send_error (http_session_t *hs, char *str)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
   u8 *data;
@@ -347,7 +343,7 @@ send_error (http_session_t * hs, char *str)
 /** \brief Retrieve data from the application layer
  */
 static int
-session_rx_request (http_session_t * hs)
+session_rx_request (http_session_t *hs)
 {
   u32 max_dequeue, cursize;
   int n_read;
@@ -358,8 +354,8 @@ session_rx_request (http_session_t * hs)
     return -1;
 
   vec_validate (hs->rx_buf, cursize + max_dequeue - 1);
-  n_read = app_recv_stream_raw (hs->rx_fifo, hs->rx_buf + cursize,
-				max_dequeue, 0, 0 /* peek */ );
+  n_read = app_recv_stream_raw (hs->rx_fifo, hs->rx_buf + cursize, max_dequeue,
+				0, 0 /* peek */);
   ASSERT (n_read == max_dequeue);
   if (svm_fifo_is_empty (hs->rx_fifo))
     svm_fifo_unset_event (hs->rx_fifo);
@@ -371,7 +367,7 @@ session_rx_request (http_session_t * hs)
 /** \brief Sanity-check the forward and reverse LRU lists
  */
 static inline void
-lru_validate (http_static_server_main_t * hsm)
+lru_validate (http_static_server_main_t *hsm)
 {
 #if CLIB_DEBUG > 0
   f64 last_timestamp;
@@ -388,8 +384,8 @@ lru_validate (http_static_server_main_t * hsm)
       if (ep->last_used > last_timestamp)
 	{
 	  clib_warning ("%d[%d]: last used %.6f, last_timestamp %.6f",
-			ep - hsm->cache_pool, i,
-			ep->last_used, last_timestamp);
+			ep - hsm->cache_pool, i, ep->last_used,
+			last_timestamp);
 	}
       last_timestamp = ep->last_used;
       i++;
@@ -404,8 +400,8 @@ lru_validate (http_static_server_main_t * hsm)
       if (ep->last_used < last_timestamp)
 	{
 	  clib_warning ("%d[%d]: last used %.6f, last_timestamp %.6f",
-			ep - hsm->cache_pool, i,
-			ep->last_used, last_timestamp);
+			ep - hsm->cache_pool, i, ep->last_used,
+			last_timestamp);
 	}
       last_timestamp = ep->last_used;
       i++;
@@ -416,7 +412,7 @@ lru_validate (http_static_server_main_t * hsm)
 /** \brief Remove a data cache entry from the LRU lists
  */
 static inline void
-lru_remove (http_static_server_main_t * hsm, file_data_cache_t * ep)
+lru_remove (http_static_server_main_t *hsm, file_data_cache_t *ep)
 {
   file_data_cache_t *next_ep, *prev_ep;
   u32 ep_index;
@@ -450,7 +446,7 @@ lru_remove (http_static_server_main_t * hsm, file_data_cache_t * ep)
  */
 
 static inline void
-lru_add (http_static_server_main_t * hsm, file_data_cache_t * ep, f64 now)
+lru_add (http_static_server_main_t *hsm, file_data_cache_t *ep, f64 now)
 {
   file_data_cache_t *next_ep;
   u32 ep_index;
@@ -487,7 +483,7 @@ lru_add (http_static_server_main_t * hsm, file_data_cache_t * ep, f64 now)
  */
 
 static inline void
-lru_update (http_static_server_main_t * hsm, file_data_cache_t * ep, f64 now)
+lru_update (http_static_server_main_t *hsm, file_data_cache_t *ep, f64 now)
 {
   lru_remove (hsm, ep);
   lru_add (hsm, ep, now);
@@ -505,38 +501,40 @@ xmit routine. */
 /** \brief closed state - should never really get here
  */
 static int
-state_closed (session_t * s, http_session_t * hs,
+state_closed (session_t *s, http_session_t *hs,
 	      http_state_machine_called_from_t cf)
 {
-  clib_warning ("WARNING: http session %d, called from %U",
-		hs->session_index, format_state_machine_called_from, cf);
+  clib_warning ("WARNING: http session %d, called from %U", hs->session_index,
+		format_state_machine_called_from, cf);
   return -1;
 }
 
 static void
-close_session (http_session_t * hs)
+close_session (http_session_t *hs)
 {
   http_static_server_session_disconnect (hs);
 }
 
 /** \brief Register a builtin GET or POST handler
  */
-__clib_export void http_static_server_register_builtin_handler
-  (void *fp, char *url, int request_type)
+__clib_export void
+http_static_server_register_builtin_handler (void *fp, char *url,
+					     int request_type)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
   uword *p, *builtin_table;
 
-  builtin_table = (request_type == HTTP_BUILTIN_METHOD_GET)
-    ? hsm->get_url_handlers : hsm->post_url_handlers;
+  builtin_table = (request_type == HTTP_BUILTIN_METHOD_GET) ?
+		    hsm->get_url_handlers :
+		    hsm->post_url_handlers;
 
   p = hash_get_mem (builtin_table, url);
 
   if (p)
     {
       clib_warning ("WARNING: attempt to replace handler for %s '%s' ignored",
-		    (request_type == HTTP_BUILTIN_METHOD_GET) ?
-		    "GET" : "POST", url);
+		    (request_type == HTTP_BUILTIN_METHOD_GET) ? "GET" : "POST",
+		    url);
       return;
     }
 
@@ -553,7 +551,7 @@ __clib_export void http_static_server_register_builtin_handler
 }
 
 static int
-v_find_index (u8 * vec, char *str)
+v_find_index (u8 *vec, char *str)
 {
   int start_index;
   u32 slen = (u32) strnlen_s_inline (str, 8);
@@ -576,7 +574,7 @@ v_find_index (u8 * vec, char *str)
 /** \brief established state - waiting for GET, POST, etc.
  */
 static int
-state_established (session_t * s, http_session_t * hs,
+state_established (session_t *s, http_session_t *hs,
 		   http_state_machine_called_from_t cf)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
@@ -646,12 +644,14 @@ find_end:
     path = format (0, "%s/%s%c", hsm->www_root, request, 0);
 
   if (hsm->debug_level > 0)
-    clib_warning ("%s '%s'", (request_type) == HTTP_BUILTIN_METHOD_GET ?
-		  "GET" : "POST", path);
+    clib_warning ("%s '%s'",
+		  (request_type) == HTTP_BUILTIN_METHOD_GET ? "GET" : "POST",
+		  path);
 
   /* Look for built-in GET / POST handlers */
   builtin_table = (request_type == HTTP_BUILTIN_METHOD_GET) ?
-    hsm->get_url_handlers : hsm->post_url_handlers;
+		    hsm->get_url_handlers :
+		    hsm->post_url_handlers;
 
   p = hash_get_mem (builtin_table, request);
 
@@ -667,9 +667,10 @@ find_end:
       rv = (*fp) (request_type, request, hs);
       if (rv)
 	{
-	  clib_warning ("builtin handler %llx hit on %s '%s' but failed!",
-			p[0], (request_type == HTTP_BUILTIN_METHOD_GET) ?
-			"GET" : "POST", request);
+	  clib_warning (
+	    "builtin handler %llx hit on %s '%s' but failed!", p[0],
+	    (request_type == HTTP_BUILTIN_METHOD_GET) ? "GET" : "POST",
+	    request);
 	  send_error (hs, "404 Not Found");
 	  close_session (hs);
 	  return -1;
@@ -689,25 +690,25 @@ find_end:
     }
 
   /* Try to find the file. 2x special cases to find index.html */
-  if (stat ((char *) path, sb) < 0	/* cant even stat the file */
-      || sb->st_size < 20	/* file too small */
-      || (sb->st_mode & S_IFMT) != S_IFREG /* not a regular file */ )
+  if (stat ((char *) path, sb) < 0 /* cant even stat the file */
+      || sb->st_size < 20	   /* file too small */
+      || (sb->st_mode & S_IFMT) != S_IFREG /* not a regular file */)
     {
       u32 save_length = vec_len (path) - 1;
       /* Try appending "index.html"... */
       _vec_len (path) -= 1;
       path = format (path, "index.html%c", 0);
-      if (stat ((char *) path, sb) < 0	/* cant even stat the file */
-	  || sb->st_size < 20	/* file too small */
-	  || (sb->st_mode & S_IFMT) != S_IFREG /* not a regular file */ )
+      if (stat ((char *) path, sb) < 0 /* cant even stat the file */
+	  || sb->st_size < 20	       /* file too small */
+	  || (sb->st_mode & S_IFMT) != S_IFREG /* not a regular file */)
 	{
 	  _vec_len (path) = save_length;
 	  path = format (path, "/index.html%c", 0);
 
 	  /* Send a redirect, otherwise the browser will confuse itself */
-	  if (stat ((char *) path, sb) < 0	/* cant even stat the file */
-	      || sb->st_size < 20	/* file too small */
-	      || (sb->st_mode & S_IFMT) != S_IFREG /* not a regular file */ )
+	  if (stat ((char *) path, sb) < 0 /* cant even stat the file */
+	      || sb->st_size < 20	   /* file too small */
+	      || (sb->st_mode & S_IFMT) != S_IFREG /* not a regular file */)
 	    {
 	      vec_free (path);
 	      send_error (hs, "404 Not Found");
@@ -730,25 +731,26 @@ find_end:
 
 	      vec_delete (path, vec_len (hsm->www_root) - 1, 0);
 
-	      session_get_endpoint (s, &endpoint, 1 /* is_local */ );
+	      session_get_endpoint (s, &endpoint, 1 /* is_local */);
 
 	      local_port = clib_net_to_host_u16 (endpoint.port);
 
 	      proto = session_type_transport_proto (s->session_type);
 
-	      if ((proto == TRANSPORT_PROTO_TCP && local_port != 80)
-		  || (proto == TRANSPORT_PROTO_TLS && local_port != 443))
+	      if ((proto == TRANSPORT_PROTO_TCP && local_port != 80) ||
+		  (proto == TRANSPORT_PROTO_TLS && local_port != 443))
 		{
 		  print_port = 1;
 		  port_str = format (0, ":%u", (u32) local_port);
 		}
 
-	      redirect = format (0, "HTTP/1.1 301 Moved Permanently\r\n"
-				 "Location: http%s://%U%s%s\r\n\r\n",
-				 proto == TRANSPORT_PROTO_TLS ? "s" : "",
-				 format_ip46_address, &endpoint.ip,
-				 endpoint.is_ip4,
-				 print_port ? port_str : (u8 *) "", path);
+	      redirect =
+		format (0,
+			"HTTP/1.1 301 Moved Permanently\r\n"
+			"Location: http%s://%U%s%s\r\n\r\n",
+			proto == TRANSPORT_PROTO_TLS ? "s" : "",
+			format_ip46_address, &endpoint.ip, endpoint.is_ip4,
+			print_port ? port_str : (u8 *) "", path);
 	      if (hsm->debug_level > 0)
 		clib_warning ("redirect: %s", redirect);
 
@@ -811,12 +813,11 @@ find_end:
 		      if (hsm->debug_level > 1)
 			clib_warning ("index %d in use refcnt %d",
 				      dp - hsm->cache_pool, dp->inuse);
-
 		    }
 		  kv.key = (u64) (dp->filename);
 		  kv.value = ~0ULL;
 		  if (BV (clib_bihash_add_del) (&hsm->name_to_data, &kv,
-						0 /* is_add */ ) < 0)
+						0 /* is_add */) < 0)
 		    {
 		      clib_warning ("LRU delete '%s' FAILED!", dp->filename);
 		    }
@@ -864,7 +865,7 @@ find_end:
 	    clib_warning ("add '%s' value %lld", kv.key, kv.value);
 
 	  if (BV (clib_bihash_add_del) (&hsm->name_to_data, &kv,
-					1 /* is_add */ ) < 0)
+					1 /* is_add */) < 0)
 	    {
 	      clib_warning ("BUG: add failed!");
 	    }
@@ -880,20 +881,19 @@ send_ok:
 }
 
 static int
-state_send_more_data (session_t * s, http_session_t * hs,
+state_send_more_data (session_t *s, http_session_t *hs,
 		      http_state_machine_called_from_t cf)
 {
 
   /* Start sending data */
-  hs->data_offset = static_send_data (hs, hs->data, vec_len (hs->data),
-				      hs->data_offset);
+  hs->data_offset =
+    static_send_data (hs, hs->data, vec_len (hs->data), hs->data_offset);
 
   /* Did we finish? */
   if (hs->data_offset < vec_len (hs->data))
     {
       /* No: ask for a shoulder-tap when the tx fifo has space */
-      svm_fifo_add_want_deq_ntf (hs->tx_fifo,
-				 SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
+      svm_fifo_add_want_deq_ntf (hs->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL);
       hs->session_state = HTTP_STATE_SEND_MORE_DATA;
       return 0;
     }
@@ -906,7 +906,7 @@ state_send_more_data (session_t * s, http_session_t * hs,
 }
 
 static int
-state_sent_ok (session_t * s, http_session_t * hs,
+state_sent_ok (session_t *s, http_session_t *hs,
 	       http_state_machine_called_from_t cf)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
@@ -931,8 +931,7 @@ state_sent_ok (session_t * s, http_session_t * hs,
 
   if (hs->data == 0)
     {
-      clib_warning ("BUG: hs->data not set for session %d",
-		    hs->session_index);
+      clib_warning ("BUG: hs->data not set for session %d", hs->session_index);
       close_session (hs);
       return 0;
     }
@@ -946,8 +945,8 @@ state_sent_ok (session_t * s, http_session_t * hs,
 			  /* Date */
 			  format_clib_timebase_time, now,
 			  /* Expires */
-			  format_clib_timebase_time, now + 600.0,
-			  http_type, vec_len (hs->data));
+			  format_clib_timebase_time, now + 600.0, http_type,
+			  vec_len (hs->data));
   offset = static_send_data (hs, http_response, vec_len (http_response), 0);
   if (offset != vec_len (http_response))
     {
@@ -974,7 +973,7 @@ static void *state_funcs[HTTP_STATE_N_STATES] = {
 };
 
 static inline int
-http_static_server_rx_tx_callback (session_t * s,
+http_static_server_rx_tx_callback (session_t *s,
 				   http_state_machine_called_from_t cf)
 {
   http_session_t *hs;
@@ -1013,23 +1012,22 @@ session_closed:
 }
 
 static int
-http_static_server_rx_callback (session_t * s)
+http_static_server_rx_callback (session_t *s)
 {
   return http_static_server_rx_tx_callback (s, CALLED_FROM_RX);
 }
 
 static int
-http_static_server_tx_callback (session_t * s)
+http_static_server_tx_callback (session_t *s)
 {
   return http_static_server_rx_tx_callback (s, CALLED_FROM_TX);
 }
-
 
 /** \brief Session accept callback
  */
 
 static int
-http_static_server_session_accept_callback (session_t * s)
+http_static_server_session_accept_callback (session_t *s)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
   http_session_t *hs;
@@ -1059,7 +1057,7 @@ http_static_server_session_accept_callback (session_t * s)
  */
 
 static void
-http_static_server_session_disconnect_callback (session_t * s)
+http_static_server_session_disconnect_callback (session_t *s)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
@@ -1073,7 +1071,7 @@ http_static_server_session_disconnect_callback (session_t * s)
  */
 
 static void
-http_static_server_session_reset_callback (session_t * s)
+http_static_server_session_reset_callback (session_t *s)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
@@ -1085,7 +1083,7 @@ http_static_server_session_reset_callback (session_t * s)
 
 static int
 http_static_server_session_connected_callback (u32 app_index, u32 api_context,
-					       session_t * s,
+					       session_t *s,
 					       session_error_t err)
 {
   clib_warning ("called...");
@@ -1100,7 +1098,7 @@ http_static_server_add_segment_callback (u32 client_index, u64 segment_handle)
 }
 
 static void
-http_static_session_cleanup (session_t * s, session_cleanup_ntf_t ntf)
+http_static_session_cleanup (session_t *s, session_cleanup_ntf_t ntf)
 {
   http_session_t *hs;
 
@@ -1219,8 +1217,8 @@ http_static_server_session_close_cb (void *hs_handlep)
     http_static_server_session_get (hs_handle >> 24, hs_handle & 0x00FFFFFF);
 
   if (hsm->debug_level > 1)
-    clib_warning ("terminate thread %d index %d hs %llx",
-		  hs_handle >> 24, hs_handle & 0x00FFFFFF, hs);
+    clib_warning ("terminate thread %d index %d hs %llx", hs_handle >> 24,
+		  hs_handle & 0x00FFFFFF, hs);
   if (!hs)
     return;
   hs->timer_handle = ~0;
@@ -1230,7 +1228,7 @@ http_static_server_session_close_cb (void *hs_handlep)
 /** \brief Expired session timer-wheel callback
  */
 static void
-http_expired_timers_dispatch (u32 * expired_timers)
+http_expired_timers_dispatch (u32 *expired_timers)
 {
   u32 hs_handle;
   int i;
@@ -1248,8 +1246,8 @@ http_expired_timers_dispatch (u32 * expired_timers)
 /** \brief Timer-wheel expiration process
  */
 static uword
-http_static_server_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
-			    vlib_frame_t * f)
+http_static_server_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
+			    vlib_frame_t *f)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
   f64 now, timeout = 1.0;
@@ -1260,7 +1258,7 @@ http_static_server_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
     {
       vlib_process_wait_for_event_or_clock (vm, timeout);
       now = vlib_time_now (vm);
-      event_type = vlib_process_get_events (vm, (uword **) & event_data);
+      event_type = vlib_process_get_events (vm, (uword **) &event_data);
 
       /* expire timers */
       clib_spinlock_lock (&http_static_server_main.tw_lock);
@@ -1273,8 +1271,7 @@ http_static_server_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (http_static_server_process_node) =
-{
+VLIB_REGISTER_NODE (http_static_server_process_node) = {
   .function = http_static_server_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "static-http-server-process",
@@ -1283,14 +1280,14 @@ VLIB_REGISTER_NODE (http_static_server_process_node) =
 /* *INDENT-ON* */
 
 static int
-http_static_server_create (vlib_main_t * vm)
+http_static_server_create (vlib_main_t *vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   http_static_server_main_t *hsm = &http_static_server_main;
   u32 num_threads;
   vlib_node_t *n;
 
-  num_threads = 1 /* main thread */  + vtm->n_threads;
+  num_threads = 1 /* main thread */ + vtm->n_threads;
   vec_validate (hsm->vpp_queue, num_threads - 1);
   vec_validate (hsm->sessions, num_threads - 1);
   vec_validate (hsm->session_to_http_session, num_threads - 1);
@@ -1317,7 +1314,7 @@ http_static_server_create (vlib_main_t * vm)
 
   /* Init timer wheel and process */
   tw_timer_wheel_init_2t_1w_2048sl (&hsm->tw, http_expired_timers_dispatch,
-				    1.0 /* timer interval */ , ~0);
+				    1.0 /* timer interval */, ~0);
   vlib_node_set_state (vm, http_static_server_process_node.index,
 		       VLIB_NODE_STATE_POLLING);
   n = vlib_get_node (vm, http_static_server_process_node.index);
@@ -1330,9 +1327,8 @@ http_static_server_create (vlib_main_t * vm)
  */
 int
 http_static_server_enable_api (u32 fifo_size, u32 cache_limit,
-			       u32 prealloc_fifos,
-			       u32 private_segment_size,
-			       u8 * www_root, u8 * uri)
+			       u32 prealloc_fifos, u32 private_segment_size,
+			       u8 *www_root, u8 *uri)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
   int rv;
@@ -1350,7 +1346,7 @@ http_static_server_enable_api (u32 fifo_size, u32 cache_limit,
   if (hsm->my_client_index != ~0)
     return VNET_API_ERROR_APP_ALREADY_ATTACHED;
 
-  vnet_session_enable_disable (hsm->vlib_main, 1 /* turn on TCP, etc. */ );
+  vnet_session_enable_disable (hsm->vlib_main, 1 /* turn on TCP, etc. */);
 
   rv = http_static_server_create (hsm->vlib_main);
   switch (rv)
@@ -1366,9 +1362,8 @@ http_static_server_enable_api (u32 fifo_size, u32 cache_limit,
 }
 
 static clib_error_t *
-http_static_server_create_command_fn (vlib_main_t * vm,
-				      unformat_input_t * input,
-				      vlib_cli_command_t * cmd)
+http_static_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -1390,8 +1385,8 @@ http_static_server_create_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "www-root %s", &www_root))
 	;
-      else
-	if (unformat (line_input, "prealloc-fifos %d", &hsm->prealloc_fifos))
+      else if (unformat (line_input, "prealloc-fifos %d",
+			 &hsm->prealloc_fifos))
 	;
       else if (unformat (line_input, "private-segment-size %U",
 			 unformat_memory_size, &seg_size))
@@ -1434,7 +1429,7 @@ http_static_server_create_command_fn (vlib_main_t * vm,
       return clib_error_return (0, "Must specify www-root <path>");
     }
 
-  if (hsm->my_client_index != (u32) ~ 0)
+  if (hsm->my_client_index != (u32) ~0)
     {
       vec_free (www_root);
       return clib_error_return (0, "http server already running...");
@@ -1442,7 +1437,7 @@ http_static_server_create_command_fn (vlib_main_t * vm,
 
   hsm->www_root = www_root;
 
-  vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
+  vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */);
 
   rv = http_static_server_create (vm);
   switch (rv)
@@ -1469,12 +1464,12 @@ http_static_server_create_command_fn (vlib_main_t * vm,
  *   [private-segment-size <nnMG>] [fifo-size <nbytes>] [uri <uri>]}
 ?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (http_static_server_create_command, static) =
-{
+VLIB_CLI_COMMAND (http_static_server_create_command, static) = {
   .path = "http static server",
-  .short_help = "http static server www-root <path> [prealloc-fifos <nn>]\n"
-  "[private-segment-size <nnMG>] [fifo-size <nbytes>] [uri <uri>]\n"
-  "[debug [nn]]\n",
+  .short_help =
+    "http static server www-root <path> [prealloc-fifos <nn>]\n"
+    "[private-segment-size <nnMG>] [fifo-size <nbytes>] [uri <uri>]\n"
+    "[debug [nn]]\n",
   .function = http_static_server_create_command_fn,
 };
 /* *INDENT-ON* */
@@ -1482,7 +1477,7 @@ VLIB_CLI_COMMAND (http_static_server_create_command, static) =
 /** \brief format a file cache entry
  */
 u8 *
-format_hsm_cache_entry (u8 * s, va_list * args)
+format_hsm_cache_entry (u8 *s, va_list *args)
 {
   file_data_cache_t *ep = va_arg (*args, file_data_cache_t *);
   f64 now = va_arg (*args, f64);
@@ -1499,7 +1494,7 @@ format_hsm_cache_entry (u8 * s, va_list * args)
 }
 
 u8 *
-format_http_session_state (u8 * s, va_list * args)
+format_http_session_state (u8 *s, va_list *args)
 {
   http_session_state_t state = va_arg (*args, http_session_state_t);
   char *state_string = "bogus!";
@@ -1526,7 +1521,7 @@ format_http_session_state (u8 * s, va_list * args)
 }
 
 u8 *
-format_http_session (u8 * s, va_list * args)
+format_http_session (u8 *s, va_list *args)
 {
   http_session_t *hs = va_arg (*args, http_session_t *);
   int verbose = va_arg (*args, int);
@@ -1536,16 +1531,15 @@ format_http_session (u8 * s, va_list * args)
   if (verbose > 0)
     {
       s = format (s, "\n path %s, data length %u, data_offset %u",
-		  hs->path ? hs->path : (u8 *) "[none]",
-		  vec_len (hs->data), hs->data_offset);
+		  hs->path ? hs->path : (u8 *) "[none]", vec_len (hs->data),
+		  hs->data_offset);
     }
   return s;
 }
 
 static clib_error_t *
-http_show_static_server_command_fn (vlib_main_t * vm,
-				    unformat_input_t * input,
-				    vlib_cli_command_t * cmd)
+http_show_static_server_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
   file_data_cache_t *ep, **entries = 0;
@@ -1579,18 +1573,18 @@ http_show_static_server_command_fn (vlib_main_t * vm,
     {
       if (verbose == 0)
 	{
-	  vlib_cli_output
-	    (vm, "www_root %s, cache size %lld bytes, limit %lld bytes, "
-	     "evictions %lld",
-	     hsm->www_root, hsm->cache_size, hsm->cache_limit,
-	     hsm->cache_evictions);
+	  vlib_cli_output (
+	    vm,
+	    "www_root %s, cache size %lld bytes, limit %lld bytes, "
+	    "evictions %lld",
+	    hsm->www_root, hsm->cache_size, hsm->cache_limit,
+	    hsm->cache_evictions);
 	  return 0;
 	}
 
       now = vlib_time_now (vm);
 
-      vlib_cli_output (vm, "%U", format_hsm_cache_entry, 0 /* header */ ,
-		       now);
+      vlib_cli_output (vm, "%U", format_hsm_cache_entry, 0 /* header */, now);
 
       for (index = hsm->first_index; index != ~0;)
 	{
@@ -1614,19 +1608,19 @@ http_show_static_server_command_fn (vlib_main_t * vm,
 
       for (i = 0; i < vec_len (hsm->sessions); i++)
 	{
-          /* *INDENT-OFF* */
+	  /* *INDENT-OFF* */
 	  pool_foreach (hs, hsm->sessions[i])
-           {
-            vec_add1 (session_indices, hs - hsm->sessions[i]);
-          }
-          /* *INDENT-ON* */
+	    {
+	      vec_add1 (session_indices, hs - hsm->sessions[i]);
+	    }
+	  /* *INDENT-ON* */
 
 	  for (j = 0; j < vec_len (session_indices); j++)
 	    {
-	      vlib_cli_output (vm, "%U", format_http_session,
-			       pool_elt_at_index
-			       (hsm->sessions[i], session_indices[j]),
-			       verbose);
+	      vlib_cli_output (
+		vm, "%U", format_http_session,
+		pool_elt_at_index (hsm->sessions[i], session_indices[j]),
+		verbose);
 	    }
 	  vec_reset_length (session_indices);
 	}
@@ -1647,8 +1641,7 @@ http_show_static_server_command_fn (vlib_main_t * vm,
  * @cliexcmd{show http static server sessions cache [verbose [nn]]}
 ?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (http_show_static_server_command, static) =
-{
+VLIB_CLI_COMMAND (http_show_static_server_command, static) = {
   .path = "show http static server",
   .short_help = "show http static server sessions cache [verbose [<nn>]]",
   .function = http_show_static_server_command_fn,
@@ -1656,9 +1649,8 @@ VLIB_CLI_COMMAND (http_show_static_server_command, static) =
 /* *INDENT-ON* */
 
 static clib_error_t *
-http_clear_static_cache_command_fn (vlib_main_t * vm,
-				    unformat_input_t * input,
-				    vlib_cli_command_t * cmd)
+http_clear_static_cache_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
   file_data_cache_t *dp;
@@ -1686,8 +1678,8 @@ http_clear_static_cache_command_fn (vlib_main_t * vm,
 	}
       kv.key = (u64) (dp->filename);
       kv.value = ~0ULL;
-      if (BV (clib_bihash_add_del) (&hsm->name_to_data, &kv,
-				    0 /* is_add */ ) < 0)
+      if (BV (clib_bihash_add_del) (&hsm->name_to_data, &kv, 0 /* is_add */) <
+	  0)
 	{
 	  clib_warning ("BUG: cache clear delete '%s' FAILED!", dp->filename);
 	}
@@ -1722,8 +1714,7 @@ http_clear_static_cache_command_fn (vlib_main_t * vm,
  * @cliexcmd{clear http static cache}
 ?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (clear_http_static_cache_command, static) =
-{
+VLIB_CLI_COMMAND (clear_http_static_cache_command, static) = {
   .path = "clear http static cache",
   .short_help = "clear http static cache",
   .function = http_clear_static_cache_command_fn,
@@ -1731,7 +1722,7 @@ VLIB_CLI_COMMAND (clear_http_static_cache_command, static) =
 /* *INDENT-ON* */
 
 static clib_error_t *
-http_static_server_main_init (vlib_main_t * vm)
+http_static_server_main_init (vlib_main_t *vm)
 {
   http_static_server_main_t *hsm = &http_static_server_main;
 
@@ -1739,19 +1730,5 @@ http_static_server_main_init (vlib_main_t * vm)
   hsm->vlib_main = vm;
   hsm->first_index = hsm->last_index = ~0;
 
-  clib_timebase_init (&hsm->timebase, 0 /* GMT */ ,
-		      CLIB_TIMEBASE_DAYLIGHT_NONE,
-		      &vm->clib_time /* share the system clock */ );
-
-  return 0;
-}
-
-VLIB_INIT_FUNCTION (http_static_server_main_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+  clib_timebase_init (&hsm->timebase, 0 /* GMT */, CLIB_TIMEBASE_DAYLIGHT_NONE,
+		      &vm->clib_

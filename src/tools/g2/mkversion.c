@@ -18,58 +18,59 @@
 #include <time.h>
 #include <string.h>
 
-int main (int argc, char **argv)
+int
+main (int argc, char **argv)
 {
-    time_t now;
-    FILE *ofp;
-    char *dateval;
-    char *username;
-    char *userstr;
-    char *datestr;
-    int i;
-    char propname[32];
-    char *propvalue;
-    char timestr[64];
-    char *cp;
+  time_t now;
+  FILE *ofp;
+  char *dateval;
+  char *username;
+  char *userstr;
+  char *datestr;
+  int i;
+  char propname[32];
+  char *propvalue;
+  char timestr[64];
+  char *cp;
 
-    if (argc < 4) {
-        printf ("usage: mkversion ostype version outputfile\n");
-        exit (1);
+  if (argc < 4)
+    {
+      printf ("usage: mkversion ostype version outputfile\n");
+      exit (1);
     }
 
-    ofp = fopen (argv[3], "w");
-    if (ofp == NULL) {
-        printf ("Couldn't create %s\n", argv[3]);
-        exit (1);
+  ofp = fopen (argv[3], "w");
+  if (ofp == NULL)
+    {
+      printf ("Couldn't create %s\n", argv[3]);
+      exit (1);
     }
 
-    now = time (0);
+  now = time (0);
 
-    fprintf (ofp, "/*\n");
-    fprintf (ofp, " * G2 Version Stamp, %s",
-             ctime (&now));
-    fprintf (ofp, " * Automatically generated, hand edits are pointless.\n");
-    fprintf (ofp, " */\n\n");
+  fprintf (ofp, "/*\n");
+  fprintf (ofp, " * G2 Version Stamp, %s", ctime (&now));
+  fprintf (ofp, " * Automatically generated, hand edits are pointless.\n");
+  fprintf (ofp, " */\n\n");
 
-    fprintf (ofp,
-            "const char *version_string = \"G2 (%s) major version %s\";\n",
-             argv[1], argv[2]);
+  fprintf (ofp, "const char *version_string = \"G2 (%s) major version %s\";\n",
+	   argv[1], argv[2]);
 
-    username = (char *) cuserid (0);
+  username = (char *) cuserid (0);
 
-    strncpy(timestr, ctime(&now), sizeof (timestr));
+  strncpy (timestr, ctime (&now), sizeof (timestr));
 
-    cp = timestr;
+  cp = timestr;
 
-    while (*cp) {
-        cp++;
+  while (*cp)
+    {
+      cp++;
     }
-    if (*--cp == '\n')
-        *cp = 0;
+  if (*--cp == '\n')
+    *cp = 0;
 
-    fprintf (ofp,
-             "const char *minor_v_string = \"Built by %s at %s\";\n",
-             username, timestr);
+  fprintf (ofp, "const char *minor_v_string = \"Built by %s at %s\";\n",
+	   username, timestr);
 
-    exit (0);
+  exit (0);
 }

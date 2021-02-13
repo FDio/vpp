@@ -38,7 +38,8 @@ static const char modp_dh_1024_prime[] =
   "29024E088A67CC74020BBEA63B139B22514A08798E3404DD"
   "EF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245"
   "E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7ED"
-  "EE386BFB5A899FA5AE9F24117C4B1FE649286651ECE65381" "FFFFFFFFFFFFFFFF";
+  "EE386BFB5A899FA5AE9F24117C4B1FE649286651ECE65381"
+  "FFFFFFFFFFFFFFFF";
 static const char modp_dh_1024_generator[] = "02";
 
 /* from RFC3526 */
@@ -107,7 +108,8 @@ static const char modp_dh_4096_prime[] =
   "2583E9CA2AD44CE8DBBBC2DB04DE8EF92E8EFC141FBECAA6"
   "287C59474E6BC05D99B2964FA090C3A2233BA186515BE7ED"
   "1F612970CEE2D7AFB81BDD762170481CD0069127D5B05AA9"
-  "93B4EA988D8FDDC186FFB7DC90A6C08F4DF435C934063199" "FFFFFFFFFFFFFFFF";
+  "93B4EA988D8FDDC186FFB7DC90A6C08F4DF435C934063199"
+  "FFFFFFFFFFFFFFFF";
 static const char modp_dh_4096_generator[] = "02";
 
 static const char modp_dh_6144_prime[] =
@@ -193,13 +195,15 @@ static const char modp_dh_1024_160_prime[] =
   "9A6A9DCA52D23B616073E28675A23D189838EF1E2EE652C0"
   "13ECB4AEA906112324975C3CD49B83BFACCBDD7D90C4BD70"
   "98488E9C219A73724EFFD6FAE5644738FAA31A4FF55BCCC0"
-  "A151AF5F0DC8B4BD45BF37DF365C1A65E68CFDA76D4DA708" "DF1FB2BC2E4A4371";
+  "A151AF5F0DC8B4BD45BF37DF365C1A65E68CFDA76D4DA708"
+  "DF1FB2BC2E4A4371";
 static const char modp_dh_1024_160_generator[] =
   "A4D1CBD5C3FD34126765A442EFB99905F8104DD258AC507F"
   "D6406CFF14266D31266FEA1E5C41564B777E690F5504F213"
   "160217B4B01B886A5E91547F9E2749F4D7FBD7D3B9A92EE1"
   "909D0D2263F80A76A6A24C087A091F531DBF0A0169B6A28A"
-  "D662A4D18E73AFA32D779D5918D08BC8858F4DCEF97C2A24" "855E6EEB22B3B2E5";
+  "D662A4D18E73AFA32D779D5918D08BC8858F4DCEF97C2A24"
+  "855E6EEB22B3B2E5";
 
 static const char modp_dh_2048_224_prime[] =
   "AD107E1E9123A9D0D660FAA79559C51FA20D64E5683B9FD1"
@@ -252,7 +256,7 @@ static const char modp_dh_2048_256_generator[] =
   "5E2327CFEF98C582664B4C0F6CC41659";
 
 v8 *
-ikev2_calc_prf (ikev2_sa_transform_t * tr, v8 * key, v8 * data)
+ikev2_calc_prf (ikev2_sa_transform_t *tr, v8 *key, v8 *data)
 {
   ikev2_main_per_thread_data_t *ptd = ikev2_get_per_thread_data ();
   HMAC_CTX *ctx = ptd->hmac_ctx;
@@ -269,7 +273,7 @@ ikev2_calc_prf (ikev2_sa_transform_t * tr, v8 * key, v8 * data)
 }
 
 u8 *
-ikev2_calc_prfplus (ikev2_sa_transform_t * tr, u8 * key, u8 * seed, int len)
+ikev2_calc_prfplus (ikev2_sa_transform_t *tr, u8 *key, u8 *seed, int len)
 {
   v8 *t = 0, *s = 0, *tmp = 0, *ret = 0;
   u8 x = 0;
@@ -311,7 +315,7 @@ ikev2_calc_prfplus (ikev2_sa_transform_t * tr, u8 * key, u8 * seed, int len)
 }
 
 v8 *
-ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
+ikev2_calc_integr (ikev2_sa_transform_t *tr, v8 *key, u8 *data, int len)
 {
   ikev2_main_per_thread_data_t *ptd = ikev2_get_per_thread_data ();
   HMAC_CTX *ctx = ptd->hmac_ctx;
@@ -341,17 +345,16 @@ ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data, int len)
 }
 
 static_always_inline void
-ikev2_init_gcm_nonce (u8 * nonce, u8 * salt, u8 * iv)
+ikev2_init_gcm_nonce (u8 *nonce, u8 *salt, u8 *iv)
 {
   clib_memcpy (nonce, salt, IKEV2_GCM_SALT_SIZE);
   clib_memcpy (nonce + IKEV2_GCM_SALT_SIZE, iv, IKEV2_GCM_IV_SIZE);
 }
 
 int
-ikev2_decrypt_aead_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
-			 ikev2_sa_transform_t * tr_encr, u8 * data,
-			 int data_len, u8 * aad, u32 aad_len, u8 * tag,
-			 u32 * out_len)
+ikev2_decrypt_aead_data (ikev2_main_per_thread_data_t *ptd, ikev2_sa_t *sa,
+			 ikev2_sa_transform_t *tr_encr, u8 *data, int data_len,
+			 u8 *aad, u32 aad_len, u8 *tag, u32 *out_len)
 {
   EVP_CIPHER_CTX *ctx = ptd->evp_ctx;
   int len = 0;
@@ -386,9 +389,9 @@ ikev2_decrypt_aead_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
 }
 
 int
-ikev2_decrypt_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
-		    ikev2_sa_transform_t * tr_encr, u8 * data, int len,
-		    u32 * out_len)
+ikev2_decrypt_data (ikev2_main_per_thread_data_t *ptd, ikev2_sa_t *sa,
+		    ikev2_sa_transform_t *tr_encr, u8 *data, int len,
+		    u32 *out_len)
 {
   EVP_CIPHER_CTX *ctx = ptd->evp_ctx;
   int tmp_len = 0, block_size;
@@ -419,9 +422,9 @@ ikev2_decrypt_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
 }
 
 int
-ikev2_encrypt_aead_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
-			 ikev2_sa_transform_t * tr_encr,
-			 v8 * src, u8 * dst, u8 * aad, u32 aad_len, u8 * tag)
+ikev2_encrypt_aead_data (ikev2_main_per_thread_data_t *ptd, ikev2_sa_t *sa,
+			 ikev2_sa_transform_t *tr_encr, v8 *src, u8 *dst,
+			 u8 *aad, u32 aad_len, u8 *tag)
 {
   EVP_CIPHER_CTX *ctx = ptd->evp_ctx;
   int out_len = 0, len = 0;
@@ -432,8 +435,7 @@ ikev2_encrypt_aead_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
 
   /* generate IV; its length must be 8 octets for aes-gcm (rfc5282) */
   RAND_bytes (dst, IKEV2_GCM_IV_SIZE);
-  ikev2_init_gcm_nonce (nonce, key + vec_len (key) - IKEV2_GCM_SALT_SIZE,
-			dst);
+  ikev2_init_gcm_nonce (nonce, key + vec_len (key) - IKEV2_GCM_SALT_SIZE, dst);
   dst += IKEV2_GCM_IV_SIZE;
 
   EVP_EncryptInit_ex (ctx, tr_encr->cipher, 0, 0, 0);
@@ -450,8 +452,8 @@ ikev2_encrypt_aead_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
 }
 
 int
-ikev2_encrypt_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
-		    ikev2_sa_transform_t * tr_encr, v8 * src, u8 * dst)
+ikev2_encrypt_data (ikev2_main_per_thread_data_t *ptd, ikev2_sa_t *sa,
+		    ikev2_sa_transform_t *tr_encr, v8 *src, u8 *dst)
 {
   EVP_CIPHER_CTX *ctx = ptd->evp_ctx;
   int out_len = 0, len = 0;
@@ -479,7 +481,7 @@ ikev2_encrypt_data (ikev2_main_per_thread_data_t * ptd, ikev2_sa_t * sa,
 
 #ifndef BN_bn2binpad
 int
-BN_bn2binpad (const BIGNUM * a, unsigned char *to, int tolen)
+BN_bn2binpad (const BIGNUM *a, unsigned char *to, int tolen)
 {
   int r = BN_bn2bin (a, to);
   ASSERT (tolen >= r);
@@ -495,7 +497,7 @@ BN_bn2binpad (const BIGNUM * a, unsigned char *to, int tolen)
 #endif
 
 void
-ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
+ikev2_generate_dh (ikev2_sa_t *sa, ikev2_sa_transform_t *t)
 {
   int r;
 
@@ -643,7 +645,7 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 }
 
 void
-ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
+ikev2_complete_dh (ikev2_sa_t *sa, ikev2_sa_transform_t *t)
 {
   int r;
 
@@ -695,8 +697,7 @@ ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
       u16 x_off, y_off, len;
       BIGNUM *prv;
 
-      prv =
-	BN_bin2bn (sa->dh_private_key, vec_len (sa->dh_private_key), NULL);
+      prv = BN_bin2bn (sa->dh_private_key, vec_len (sa->dh_private_key), NULL);
       EC_KEY_set_private_key (ec, prv);
 
       x = BN_new ();
@@ -750,7 +751,7 @@ ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 }
 
 int
-ikev2_verify_sign (EVP_PKEY * pkey, u8 * sigbuf, u8 * data)
+ikev2_verify_sign (EVP_PKEY *pkey, u8 *sigbuf, u8 *data)
 {
   int verify;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -779,7 +780,7 @@ ikev2_verify_sign (EVP_PKEY * pkey, u8 * sigbuf, u8 * data)
 }
 
 u8 *
-ikev2_calc_sign (EVP_PKEY * pkey, u8 * data)
+ikev2_calc_sign (EVP_PKEY *pkey, u8 *data)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
   EVP_MD_CTX *md_ctx = EVP_MD_CTX_new ();
@@ -813,7 +814,7 @@ ikev2_calc_sign (EVP_PKEY * pkey, u8 * data)
 }
 
 EVP_PKEY *
-ikev2_load_cert_file (u8 * file)
+ikev2_load_cert_file (u8 *file)
 {
   FILE *fp;
   X509 *x509;
@@ -844,7 +845,7 @@ end:
 }
 
 EVP_PKEY *
-ikev2_load_key_file (u8 * file)
+ikev2_load_key_file (u8 *file)
 {
   FILE *fp;
   EVP_PKEY *pkey = NULL;
@@ -866,13 +867,13 @@ end:
 }
 
 void
-ikev2_crypto_init (ikev2_main_t * km)
+ikev2_crypto_init (ikev2_main_t *km)
 {
   ikev2_sa_transform_t *tr;
 
   /* vector of supported transforms - in order of preference */
 
-  //Encryption
+  // Encryption
 
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_ENCR;
@@ -916,7 +917,7 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->block_size = 128 / 8;
   tr->cipher = EVP_aes_128_gcm ();
 
-  //PRF
+  // PRF
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_PRF;
   tr->prf_type = IKEV2_TRANSFORM_PRF_TYPE_PRF_HMAC_SHA2_256;
@@ -945,7 +946,7 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->key_trunc = 160 / 8;
   tr->md = EVP_sha1 ();
 
-  //Integrity
+  // Integrity
   vec_add2 (km->supported_transforms, tr, 1);
   tr->type = IKEV2_TRANSFORM_TYPE_INTEG;
   tr->integ_type = IKEV2_TRANSFORM_INTEG_TYPE_AUTH_HMAC_SHA2_256_128;
@@ -980,7 +981,6 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->key_len = 160 / 8;
   tr->key_trunc = 96 / 8;
   tr->md = EVP_sha1 ();
-
 
 #if defined(OPENSSL_NO_CISCO_FECDH)
   vec_add2 (km->supported_transforms, tr, 1);
@@ -1143,8 +1143,6 @@ ikev2_crypto_init (ikev2_main_t * km)
   tr->type = IKEV2_TRANSFORM_TYPE_ESN;
   tr->esn_type = IKEV2_TRANSFORM_ESN_TYPE_NO_ESN;
 }
-
-
 
 /*
  * fd.io coding-style-patch-verification: ON

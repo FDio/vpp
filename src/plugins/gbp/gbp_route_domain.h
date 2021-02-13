@@ -49,10 +49,8 @@ typedef struct gpb_route_domain_t_
   u32 grd_locks;
 } gbp_route_domain_t;
 
-extern int gbp_route_domain_add_and_lock (u32 rd_id,
-					  gbp_scope_t scope,
-					  u32 ip4_table_id,
-					  u32 ip6_table_id,
+extern int gbp_route_domain_add_and_lock (u32 rd_id, gbp_scope_t scope,
+					  u32 ip4_table_id, u32 ip6_table_id,
 					  u32 ip4_uu_sw_if_index,
 					  u32 ip6_uu_sw_if_index);
 extern void gbp_route_domain_unlock (index_t grdi);
@@ -65,13 +63,13 @@ extern gbp_route_domain_t *gbp_route_domain_get (index_t i);
 extern u32 gbp_route_domain_get_rd_id (index_t i);
 extern gbp_scope_t gbp_route_domain_get_scope (index_t i);
 
-typedef int (*gbp_route_domain_cb_t) (gbp_route_domain_t * gb, void *ctx);
+typedef int (*gbp_route_domain_cb_t) (gbp_route_domain_t *gb, void *ctx);
 extern void gbp_route_domain_walk (gbp_route_domain_cb_t bgpe, void *ctx);
 
 extern const mac_address_t *gbp_route_domain_get_local_mac (void);
 extern const mac_address_t *gbp_route_domain_get_remote_mac (void);
 
-extern u8 *format_gbp_route_domain (u8 * s, va_list * args);
+extern u8 *format_gbp_route_domain (u8 *s, va_list *args);
 
 #endif
 

@@ -79,34 +79,34 @@ typedef struct
 } heap_elt_t;
 
 /* Use high bit of offset as free bit. */
-#define HEAP_ELT_FREE_BIT	(1 << 31)
+#define HEAP_ELT_FREE_BIT (1 << 31)
 
 always_inline uword
-heap_is_free (heap_elt_t * e)
+heap_is_free (heap_elt_t *e)
 {
   return (e->offset & HEAP_ELT_FREE_BIT) != 0;
 }
 
 always_inline uword
-heap_offset (heap_elt_t * e)
+heap_offset (heap_elt_t *e)
 {
   return e->offset & ~HEAP_ELT_FREE_BIT;
 }
 
 always_inline heap_elt_t *
-heap_next (heap_elt_t * e)
+heap_next (heap_elt_t *e)
 {
   return e + e->next;
 }
 
 always_inline heap_elt_t *
-heap_prev (heap_elt_t * e)
+heap_prev (heap_elt_t *e)
 {
   return e + e->prev;
 }
 
 always_inline uword
-heap_elt_size (void *v, heap_elt_t * e)
+heap_elt_size (void *v, heap_elt_t *e)
 {
   heap_elt_t *n = heap_next (e);
   uword next_offset = n != e ? heap_offset (n) : vec_len (v);
@@ -115,9 +115,9 @@ heap_elt_size (void *v, heap_elt_t * e)
 
 /* Sizes are binned.  Sizes 1 to 2^log2_small_bins have their
    own free lists.  Larger sizes are grouped in powers of two. */
-#define HEAP_LOG2_SMALL_BINS	(5)
-#define HEAP_SMALL_BINS		(1 << HEAP_LOG2_SMALL_BINS)
-#define HEAP_N_BINS		(2 * HEAP_SMALL_BINS)
+#define HEAP_LOG2_SMALL_BINS (5)
+#define HEAP_SMALL_BINS	     (1 << HEAP_LOG2_SMALL_BINS)
+#define HEAP_N_BINS	     (2 * HEAP_SMALL_BINS)
 
 /* Header for heaps. */
 typedef struct
@@ -170,7 +170,7 @@ heap_header_bytes ()
 }
 
 always_inline void
-heap_dup_header (heap_header_t * old, heap_header_t * new)
+heap_dup_header (heap_header_t *old, heap_header_t *new)
 {
   uword i;
 
@@ -185,7 +185,7 @@ heap_dup_header (heap_header_t * old, heap_header_t * new)
 }
 
 /* Make a duplicate copy of a heap. */
-#define heap_dup(v) _heap_dup(v, vec_len (v) * sizeof (v[0]))
+#define heap_dup(v) _heap_dup (v, vec_len (v) * sizeof (v[0]))
 
 always_inline void *
 _heap_dup (void *v_old, uword v_bytes)
@@ -199,9 +199,8 @@ _heap_dup (void *v_old, uword v_bytes)
     return v_old;
 
   v_new = 0;
-  v_new =
-    _vec_resize (v_new, _vec_len (v_old), v_bytes, sizeof (heap_header_t),
-		 HEAP_DATA_ALIGN);
+  v_new = _vec_resize (v_new, _vec_len (v_old), v_bytes,
+		       sizeof (heap_header_t), HEAP_DATA_ALIGN);
   h_new = heap_header (v_new);
   heap_dup_header (h_old, h_new);
   clib_memcpy_fast (v_new, v_old, v_bytes);
@@ -221,8 +220,7 @@ always_inline void *
 _heap_new (u32 len, u32 n_elt_bytes)
 {
   void *v = _vec_resize ((void *) 0, len, (uword) len * n_elt_bytes,
-			 sizeof (heap_header_t),
-			 HEAP_DATA_ALIGN);
+			 sizeof (heap_header_t), HEAP_DATA_ALIGN);
   heap_header (v)->elt_bytes = n_elt_bytes;
   return v;
 }
@@ -230,7 +228,7 @@ _heap_new (u32 len, u32 n_elt_bytes)
 #define heap_new(v) (v) = _heap_new (0, sizeof ((v)[0]))
 
 always_inline void
-heap_set_format (void *v, format_function_t * format_elt)
+heap_set_format (void *v, format_function_t *format_elt)
 {
   ASSERT (v);
   heap_header (v)->format_elt = format_elt;
@@ -271,29 +269,35 @@ heap_create_from_memory (void *memory, uword max_len, uword elt_bytes)
 }
 
 /* Execute BODY for each allocated heap element. */
-#define heap_foreach(var,len,heap,body)			\
-do {							\
-  if (vec_len (heap) > 0)				\
-    {							\
-      heap_header_t * _h = heap_header (heap);		\
-      heap_elt_t * _e   = _h->elts + _h->head;		\
-      heap_elt_t * _end = _h->elts + _h->tail;		\
-      while (1)						\
-	{						\
-	  if (! heap_is_free (_e))			\
-	    {						\
-	      (var) = (heap) + heap_offset (_e);	\
-	      (len) = heap_elt_size ((heap), _e);	\
-	      do { body; } while (0);			\
-	    }						\
-	  if (_e == _end)				\
-	    break;					\
-	  _e = heap_next (_e);				\
-	}						\
-    }							\
-} while (0)
+#define heap_foreach(var, len, heap, body)                                    \
+  do                                                                          \
+    {                                                                         \
+      if (vec_len (heap) > 0)                                                 \
+	{                                                                     \
+	  heap_header_t *_h = heap_header (heap);                             \
+	  heap_elt_t *_e = _h->elts + _h->head;                               \
+	  heap_elt_t *_end = _h->elts + _h->tail;                             \
+	  while (1)                                                           \
+	    {                                                                 \
+	      if (!heap_is_free (_e))                                         \
+		{                                                             \
+		  (var) = (heap) + heap_offset (_e);                          \
+		  (len) = heap_elt_size ((heap), _e);                         \
+		  do                                                          \
+		    {                                                         \
+		      body;                                                   \
+		    }                                                         \
+		  while (0);                                                  \
+		}                                                             \
+	      if (_e == _end)                                                 \
+		break;                                                        \
+	      _e = heap_next (_e);                                            \
+	    }                                                                 \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
-#define heap_elt_at_index(v,index) vec_elt_at_index(v,index)
+#define heap_elt_at_index(v, index) vec_elt_at_index (v, index)
 
 always_inline heap_elt_t *
 heap_get_elt (void *v, uword handle)
@@ -304,11 +308,11 @@ heap_get_elt (void *v, uword handle)
   return e;
 }
 
-#define heap_elt_with_handle(v,handle)			\
-({							\
-  heap_elt_t * _e = heap_get_elt ((v), (handle));	\
-  (v) + heap_offset (_e);				\
-})
+#define heap_elt_with_handle(v, handle)                                       \
+  ({                                                                          \
+    heap_elt_t *_e = heap_get_elt ((v), (handle));                            \
+    (v) + heap_offset (_e);                                                   \
+  })
 
 always_inline uword
 heap_is_free_handle (void *v, uword heap_handle)
@@ -322,29 +326,30 @@ extern uword heap_len (void *v, word handle);
 
 /* Low level allocation call. */
 extern void *_heap_alloc (void *v, uword size, uword alignment,
-			  uword elt_bytes, uword * offset, uword * handle);
+			  uword elt_bytes, uword *offset, uword *handle);
 
-#define heap_alloc_aligned(v,size,align,handle)			\
-({								\
-  uword _o, _h;							\
-  uword _a = (align);						\
-  uword _s = (size);						\
-  (v) = _heap_alloc ((v), _s, _a, sizeof ((v)[0]), &_o, &_h);	\
-  (handle) = _h;						\
-  _o;								\
-})
+#define heap_alloc_aligned(v, size, align, handle)                            \
+  ({                                                                          \
+    uword _o, _h;                                                             \
+    uword _a = (align);                                                       \
+    uword _s = (size);                                                        \
+    (v) = _heap_alloc ((v), _s, _a, sizeof ((v)[0]), &_o, &_h);               \
+    (handle) = _h;                                                            \
+    _o;                                                                       \
+  })
 
-#define heap_alloc(v,size,handle) heap_alloc_aligned((v),(size),0,(handle))
+#define heap_alloc(v, size, handle)                                           \
+  heap_alloc_aligned ((v), (size), 0, (handle))
 
 extern void heap_dealloc (void *v, uword handle);
 extern void heap_validate (void *v);
 
 /* Format heap internal data structures as string. */
-extern u8 *format_heap (u8 * s, va_list * va);
+extern u8 *format_heap (u8 *s, va_list *va);
 
 void *_heap_free (void *v);
 
-#define heap_free(v) (v)=_heap_free(v)
+#define heap_free(v) (v) = _heap_free (v)
 
 #endif /* included_heap_h */
 

@@ -26,8 +26,6 @@
 nat66_main_t nat66_main;
 fib_source_t nat_fib_src_hi;
 
-/* *INDENT-OFF* */
-
 /* Hook up input features */
 VNET_FEATURE_INIT (nat66_in2out, static) = {
   .arc_name = "ip6-unicast",
@@ -42,11 +40,9 @@ VNET_FEATURE_INIT (nat66_out2in, static) = {
   .runs_after = VNET_FEATURES ("ip6-sv-reassembly-feature"),
 };
 
-/* *INDENT-ON* */
-
-clib_error_t *nat66_plugin_api_hookup (vlib_main_t * vm);
+clib_error_t *nat66_plugin_api_hookup (vlib_main_t *vm);
 static clib_error_t *
-nat66_init (vlib_main_t * vm)
+nat66_init (vlib_main_t *vm)
 {
   nat66_main_t *nm = &nat66_main;
   vlib_node_t *node;
@@ -66,8 +62,7 @@ nat66_init (vlib_main_t * vm)
 
   nm->session_counters.name = "session counters";
 
-  nat_fib_src_hi = fib_source_allocate ("nat66-hi",
-					FIB_SOURCE_PRIORITY_HI,
+  nat_fib_src_hi = fib_source_allocate ("nat66-hi", FIB_SOURCE_PRIORITY_HI,
 					FIB_SOURCE_BH_SIMPLE);
 
   nm->in2out_packets.name = "in2out";
@@ -78,7 +73,7 @@ nat66_init (vlib_main_t * vm)
 }
 
 static void
-nat66_validate_counters (nat66_main_t * nm, u32 sw_if_index)
+nat66_validate_counters (nat66_main_t *nm, u32 sw_if_index)
 {
   vlib_validate_simple_counter (&nm->in2out_packets, sw_if_index);
   vlib_zero_simple_counter (&nm->in2out_packets, sw_if_index);
@@ -93,16 +88,14 @@ nat66_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add)
   nat66_interface_t *interface = 0, *i;
   const char *feature_name;
 
-  /* *INDENT-OFF* */
   pool_foreach (i, nm->interfaces)
-   {
-    if (i->sw_if_index == sw_if_index)
-      {
-        interface = i;
-        break;
-      }
-  }
-  /* *INDENT-ON* */
+    {
+      if (i->sw_if_index == sw_if_index)
+	{
+	  interface = i;
+	  break;
+	}
+    }
 
   if (is_add)
     {
@@ -111,9 +104,8 @@ nat66_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add)
 
       pool_get (nm->interfaces, interface);
       interface->sw_if_index = sw_if_index;
-      interface->flags =
-	is_inside ? NAT66_INTERFACE_FLAG_IS_INSIDE :
-	NAT66_INTERFACE_FLAG_IS_OUTSIDE;
+      interface->flags = is_inside ? NAT66_INTERFACE_FLAG_IS_INSIDE :
+				     NAT66_INTERFACE_FLAG_IS_OUTSIDE;
       nat66_validate_counters (nm, sw_if_index);
     }
   else
@@ -128,8 +120,8 @@ nat66_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add)
   int rv = ip6_sv_reass_enable_disable_with_refcnt (sw_if_index, is_add);
   if (rv)
     return rv;
-  return vnet_feature_enable_disable ("ip6-unicast", feature_name,
-				      sw_if_index, is_add, 0, 0);
+  return vnet_feature_enable_disable ("ip6-unicast", feature_name, sw_if_index,
+				      is_add, 0, 0);
 }
 
 void
@@ -138,17 +130,15 @@ nat66_interfaces_walk (nat66_interface_walk_fn_t fn, void *ctx)
   nat66_main_t *nm = &nat66_main;
   nat66_interface_t *i = 0;
 
-  /* *INDENT-OFF* */
   pool_foreach (i, nm->interfaces)
-   {
-    if (fn (i, ctx))
-      break;
-  }
-  /* *INDENT-ON* */
+    {
+      if (fn (i, ctx))
+	break;
+    }
 }
 
 nat66_static_mapping_t *
-nat66_static_mapping_get (ip6_address_t * addr, u32 fib_index, u8 is_local)
+nat66_static_mapping_get (ip6_address_t *addr, u32 fib_index, u8 is_local)
 {
   nat66_main_t *nm = &nat66_main;
   nat66_static_mapping_t *sm = 0;
@@ -164,15 +154,14 @@ nat66_static_mapping_get (ip6_address_t * addr, u32 fib_index, u8 is_local)
   kv.key[1] = sm_key.as_u64[1];
   kv.key[2] = sm_key.as_u64[2];
 
-  if (!clib_bihash_search_24_8
-      (is_local ? &nm->sm_l : &nm->sm_e, &kv, &value))
+  if (!clib_bihash_search_24_8 (is_local ? &nm->sm_l : &nm->sm_e, &kv, &value))
     sm = pool_elt_at_index (nm->sm, value.value);
 
   return sm;
 }
 
 int
-nat66_static_mapping_add_del (ip6_address_t * l_addr, ip6_address_t * e_addr,
+nat66_static_mapping_add_del (ip6_address_t *l_addr, ip6_address_t *e_addr,
 			      u32 vrf_id, u8 is_add)
 {
   nat66_main_t *nm = &nat66_main;
@@ -256,13 +245,11 @@ nat66_static_mappings_walk (nat66_static_mapping_walk_fn_t fn, void *ctx)
   nat66_main_t *nm = &nat66_main;
   nat66_static_mapping_t *sm = 0;
 
-  /* *INDENT-OFF* */
   pool_foreach (sm, nm->sm)
-   {
-    if (fn (sm, ctx))
-      break;
-  }
-  /* *INDENT-ON* */
+    {
+      if (fn (sm, ctx))
+	break;
+    }
 }
 
 /*static*/ void
@@ -272,22 +259,16 @@ nat66_config (void)
   u32 outside_ip6_vrf_id = 0;
 
   nm->outside_vrf_id = outside_ip6_vrf_id;
-  nm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
-							     outside_ip6_vrf_id,
-							     nat_fib_src_hi);
-
+  nm->outside_fib_index = fib_table_find_or_create_and_lock (
+    FIB_PROTOCOL_IP6, outside_ip6_vrf_id, nat_fib_src_hi);
 }
 
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () =
-{
- .version = VPP_BUILD_VER,
- .description = "NAT66",
+VLIB_PLUGIN_REGISTER () = {
+  .version = VPP_BUILD_VER,
+  .description = "NAT66",
 };
 
 VLIB_INIT_FUNCTION (nat66_init);
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

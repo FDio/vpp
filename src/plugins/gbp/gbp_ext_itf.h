@@ -59,15 +59,13 @@ typedef struct gpb_ext_itf_t_
 
 } gbp_ext_itf_t;
 
-
 extern int gbp_ext_itf_add (u32 sw_if_index, u32 bd_id, u32 rd_id, u32 flags);
 extern int gbp_ext_itf_delete (u32 sw_if_index);
 
-extern u8 *format_gbp_ext_itf (u8 * s, va_list * args);
+extern u8 *format_gbp_ext_itf (u8 *s, va_list *args);
 
-typedef walk_rc_t (*gbp_ext_itf_cb_t) (gbp_ext_itf_t * gbpe, void *ctx);
+typedef walk_rc_t (*gbp_ext_itf_cb_t) (gbp_ext_itf_t *gbpe, void *ctx);
 extern void gbp_ext_itf_walk (gbp_ext_itf_cb_t bgpe, void *ctx);
-
 
 /**
  * Exposed types for the data-plane

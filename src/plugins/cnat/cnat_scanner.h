@@ -21,7 +21,6 @@
 /* delay in seconds between two scans of session/clients tables */
 extern f64 cnat_scanner_timeout;
 
-
 /*
  * fd.io coding-style-patch-verification: ON
  *

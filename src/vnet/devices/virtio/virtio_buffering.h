@@ -19,7 +19,7 @@
 #define _VNET_DEVICES_VIRTIO_VIRTIO_BUFFERING_H_
 
 #define VIRTIO_BUFFERING_DEFAULT_SIZE 1024
-#define VIRTIO_BUFFERING_TIMEOUT 1e-5
+#define VIRTIO_BUFFERING_TIMEOUT      1e-5
 
 typedef struct
 {
@@ -34,7 +34,7 @@ typedef struct
 } virtio_vring_buffering_t;
 
 static_always_inline clib_error_t *
-virtio_vring_buffering_init (virtio_vring_buffering_t ** buffering,
+virtio_vring_buffering_init (virtio_vring_buffering_t **buffering,
 			     u32 node_index, u16 size)
 {
   if (*buffering)
@@ -50,9 +50,8 @@ virtio_vring_buffering_init (virtio_vring_buffering_t ** buffering,
     size = VIRTIO_BUFFERING_DEFAULT_SIZE;
 
   virtio_vring_buffering_t *b_temp = 0;
-  b_temp =
-    (virtio_vring_buffering_t *)
-    clib_mem_alloc (sizeof (virtio_vring_buffering_t));
+  b_temp = (virtio_vring_buffering_t *) clib_mem_alloc (
+    sizeof (virtio_vring_buffering_t));
   if (!b_temp)
     return clib_error_return (0, "buffering: memory allocation failed");
 
@@ -70,8 +69,8 @@ virtio_vring_buffering_init (virtio_vring_buffering_t ** buffering,
 }
 
 static_always_inline void
-virtio_vring_buffering_buffers_free (vlib_main_t * vm,
-				     virtio_vring_buffering_t * buffering)
+virtio_vring_buffering_buffers_free (vlib_main_t *vm,
+				     virtio_vring_buffering_t *buffering)
 {
   u16 n_buffers = buffering->size - buffering->free_size;
   if (n_buffers)
@@ -83,8 +82,8 @@ virtio_vring_buffering_buffers_free (vlib_main_t * vm,
 }
 
 static_always_inline void
-virtio_vring_buffering_free (vlib_main_t * vm,
-			     virtio_vring_buffering_t * buffering)
+virtio_vring_buffering_free (vlib_main_t *vm,
+			     virtio_vring_buffering_t *buffering)
 {
   if (buffering)
     {
@@ -95,7 +94,7 @@ virtio_vring_buffering_free (vlib_main_t * vm,
 }
 
 static_always_inline u8
-virtio_vring_buffering_is_enable (virtio_vring_buffering_t * buffering)
+virtio_vring_buffering_is_enable (virtio_vring_buffering_t *buffering)
 {
   if (buffering)
     return buffering->is_enable;
@@ -104,7 +103,7 @@ virtio_vring_buffering_is_enable (virtio_vring_buffering_t * buffering)
 }
 
 static_always_inline void
-virtio_vring_buffering_set_is_enable (virtio_vring_buffering_t * buffering,
+virtio_vring_buffering_set_is_enable (virtio_vring_buffering_t *buffering,
 				      u8 is_enable)
 {
   if (buffering)
@@ -112,8 +111,8 @@ virtio_vring_buffering_set_is_enable (virtio_vring_buffering_t * buffering,
 }
 
 static_always_inline void
-virtio_vring_buffering_set_timeout (vlib_main_t * vm,
-				    virtio_vring_buffering_t * buffering,
+virtio_vring_buffering_set_timeout (vlib_main_t *vm,
+				    virtio_vring_buffering_t *buffering,
 				    f64 timeout_expire)
 {
   if (buffering)
@@ -121,8 +120,8 @@ virtio_vring_buffering_set_timeout (vlib_main_t * vm,
 }
 
 static_always_inline u8
-virtio_vring_buffering_is_timeout (vlib_main_t * vm,
-				   virtio_vring_buffering_t * buffering)
+virtio_vring_buffering_is_timeout (vlib_main_t *vm,
+				   virtio_vring_buffering_t *buffering)
 {
   if (buffering && (buffering->timeout_ts < vlib_time_now (vm)))
     return 1;
@@ -130,7 +129,7 @@ virtio_vring_buffering_is_timeout (vlib_main_t * vm,
 }
 
 static_always_inline u8
-virtio_vring_buffering_is_empty (virtio_vring_buffering_t * buffering)
+virtio_vring_buffering_is_empty (virtio_vring_buffering_t *buffering)
 {
   if (buffering->size == buffering->free_size)
     return 1;
@@ -138,7 +137,7 @@ virtio_vring_buffering_is_empty (virtio_vring_buffering_t * buffering)
 }
 
 static_always_inline u8
-virtio_vring_buffering_is_full (virtio_vring_buffering_t * buffering)
+virtio_vring_buffering_is_full (virtio_vring_buffering_t *buffering)
 {
   if (buffering->free_size == 0)
     return 1;
@@ -146,19 +145,19 @@ virtio_vring_buffering_is_full (virtio_vring_buffering_t * buffering)
 }
 
 static_always_inline u16
-virtio_vring_n_buffers (virtio_vring_buffering_t * buffering)
+virtio_vring_n_buffers (virtio_vring_buffering_t *buffering)
 {
   return (buffering->size - buffering->free_size);
 }
 
 static_always_inline u16
-virtio_vring_buffering_store_packets (virtio_vring_buffering_t * buffering,
-				      u32 * bi, u16 n_store)
+virtio_vring_buffering_store_packets (virtio_vring_buffering_t *buffering,
+				      u32 *bi, u16 n_store)
 {
   u16 mask, n_s = 0, i = 0;
 
-  if (!virtio_vring_buffering_is_enable (buffering)
-      || virtio_vring_buffering_is_full (buffering))
+  if (!virtio_vring_buffering_is_enable (buffering) ||
+      virtio_vring_buffering_is_full (buffering))
     return 0;
 
   mask = buffering->size - 1;
@@ -175,7 +174,7 @@ virtio_vring_buffering_store_packets (virtio_vring_buffering_t * buffering,
 }
 
 static_always_inline u32
-virtio_vring_buffering_read_from_front (virtio_vring_buffering_t * buffering)
+virtio_vring_buffering_read_from_front (virtio_vring_buffering_t *buffering)
 {
   u32 bi = ~0;
   u16 mask = buffering->size - 1;
@@ -190,7 +189,7 @@ virtio_vring_buffering_read_from_front (virtio_vring_buffering_t * buffering)
 }
 
 static_always_inline u32
-virtio_vring_buffering_read_from_back (virtio_vring_buffering_t * buffering)
+virtio_vring_buffering_read_from_back (virtio_vring_buffering_t *buffering)
 {
   u32 bi = ~0;
   u16 mask = buffering->size - 1;
@@ -205,12 +204,11 @@ virtio_vring_buffering_read_from_back (virtio_vring_buffering_t * buffering)
 }
 
 static_always_inline void
-virtio_vring_buffering_schedule_node_on_dispatcher (vlib_main_t * vm,
-						    virtio_vring_buffering_t *
-						    buffering)
+virtio_vring_buffering_schedule_node_on_dispatcher (
+  vlib_main_t *vm, virtio_vring_buffering_t *buffering)
 {
-  if (buffering && virtio_vring_buffering_is_timeout (vm, buffering)
-      && virtio_vring_n_buffers (buffering))
+  if (buffering && virtio_vring_buffering_is_timeout (vm, buffering) &&
+      virtio_vring_n_buffers (buffering))
     {
       vlib_frame_t *f = vlib_get_frame_to_node (vm, buffering->node_index);
       u32 *f_to = vlib_frame_vector_args (f);
@@ -223,7 +221,7 @@ virtio_vring_buffering_schedule_node_on_dispatcher (vlib_main_t * vm,
 }
 
 static_always_inline u8 *
-virtio_vring_buffering_format (u8 * s, va_list * args)
+virtio_vring_buffering_format (u8 *s, va_list *args)
 {
   virtio_vring_buffering_t *buffering =
     va_arg (*args, virtio_vring_buffering_t *);
@@ -238,12 +236,9 @@ virtio_vring_buffering_format (u8 * s, va_list * args)
     s = format (s, "packet-buffering: enable\n");
   else
     s = format (s, "packet-buffering: disable\n");
-  s =
-    format (s,
-	    "%Usize %u n_buffers %u front %u back %u",
-	    format_white_space, indent, buffering->size,
-	    virtio_vring_n_buffers (buffering), buffering->front,
-	    buffering->back);
+  s = format (s, "%Usize %u n_buffers %u front %u back %u", format_white_space,
+	      indent, buffering->size, virtio_vring_n_buffers (buffering),
+	      buffering->front, buffering->back);
 
   return s;
 }

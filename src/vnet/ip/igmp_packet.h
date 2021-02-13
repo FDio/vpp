@@ -43,24 +43,24 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 
-#define foreach_igmp_type			\
-  _ (0x11, membership_query)			\
-  _ (0x12, membership_report_v1)		\
-  _ (0x13, dvmrp)				\
-  _ (0x14, pim_v1)				\
-  _ (0x15, cisco_trace)				\
-  _ (0x16, membership_report_v2)		\
-  _ (0x17, leave_group_v2)			\
-  _ (0x1e, traceroute_response)			\
-  _ (0x1f, traceroute_request)			\
-  _ (0x22, membership_report_v3)		\
-  _ (0x30, router_advertisement)		\
-  _ (0x31, router_solicitation)			\
+#define foreach_igmp_type                                                     \
+  _ (0x11, membership_query)                                                  \
+  _ (0x12, membership_report_v1)                                              \
+  _ (0x13, dvmrp)                                                             \
+  _ (0x14, pim_v1)                                                            \
+  _ (0x15, cisco_trace)                                                       \
+  _ (0x16, membership_report_v2)                                              \
+  _ (0x17, leave_group_v2)                                                    \
+  _ (0x1e, traceroute_response)                                               \
+  _ (0x1f, traceroute_request)                                                \
+  _ (0x22, membership_report_v3)                                              \
+  _ (0x30, router_advertisement)                                              \
+  _ (0x31, router_solicitation)                                               \
   _ (0x32, router_termination)
 
 typedef enum
 {
-#define _(n,f) IGMP_TYPE_##f = n,
+#define _(n, f) IGMP_TYPE_##f = n,
   foreach_igmp_type
 #undef _
 } __attribute__ ((packed)) igmp_type_t;
@@ -79,7 +79,7 @@ typedef struct
  *  - RFC 3367 Section 4.1.1
  */
 always_inline f64
-igmp_header_get_max_resp_time (const igmp_header_t * header)
+igmp_header_get_max_resp_time (const igmp_header_t *header)
 {
   f64 qqi;
 
@@ -116,30 +116,29 @@ typedef struct
 } igmp_membership_query_v3_t;
 
 always_inline u32
-igmp_membership_query_v3_length (const igmp_membership_query_v3_t * q)
+igmp_membership_query_v3_length (const igmp_membership_query_v3_t *q)
 {
-  return (sizeof (*q) +
-	  (sizeof (ip4_address_t) *
-	   clib_net_to_host_u16 (q->n_src_addresses)));
+  return (sizeof (*q) + (sizeof (ip4_address_t) *
+			 clib_net_to_host_u16 (q->n_src_addresses)));
 }
 
 always_inline int
-igmp_membership_query_v3_is_general (const igmp_membership_query_v3_t * q)
+igmp_membership_query_v3_is_general (const igmp_membership_query_v3_t *q)
 {
   return (0 == q->group_address.as_u32);
 }
 
-#define foreach_igmp_membership_group_v3_type	\
-  _ (1, mode_is_include)			\
-  _ (2, mode_is_exclude)			\
-  _ (3, change_to_include)                      \
-  _ (4, change_to_exclude)                      \
-  _ (5, allow_new_sources)			\
+#define foreach_igmp_membership_group_v3_type                                 \
+  _ (1, mode_is_include)                                                      \
+  _ (2, mode_is_exclude)                                                      \
+  _ (3, change_to_include)                                                    \
+  _ (4, change_to_exclude)                                                    \
+  _ (5, allow_new_sources)                                                    \
   _ (6, block_old_sources)
 
 typedef enum
 {
-#define _(n,f) IGMP_MEMBERSHIP_GROUP_##f = n,
+#define _(n, f) IGMP_MEMBERSHIP_GROUP_##f = n,
   foreach_igmp_membership_group_v3_type
 #undef _
 } __attribute__ ((packed)) igmp_membership_group_v3_type_t;
@@ -161,19 +160,17 @@ typedef struct
 } igmp_membership_group_v3_t;
 
 always_inline u32
-igmp_membership_group_v3_length (const igmp_membership_group_v3_t * g)
+igmp_membership_group_v3_length (const igmp_membership_group_v3_t *g)
 {
-  return (sizeof (*g) +
-	  (sizeof (ip4_address_t) *
-	   clib_net_to_host_u16 (g->n_src_addresses)));
+  return (sizeof (*g) + (sizeof (ip4_address_t) *
+			 clib_net_to_host_u16 (g->n_src_addresses)));
 }
 
 always_inline igmp_membership_group_v3_t *
-igmp_membership_group_v3_next (igmp_membership_group_v3_t * g)
+igmp_membership_group_v3_next (igmp_membership_group_v3_t *g)
 {
-  return ((void *) g
-	  + g->n_src_addresses * sizeof (g->src_addresses[0])
-	  + g->n_aux_u32s * sizeof (u32));
+  return ((void *) g + g->n_src_addresses * sizeof (g->src_addresses[0]) +
+	  g->n_aux_u32s * sizeof (u32));
 }
 
 typedef struct
@@ -190,7 +187,7 @@ typedef struct
 } igmp_membership_report_v3_t;
 
 always_inline u32
-igmp_membership_report_v3_length (const igmp_membership_report_v3_t * r)
+igmp_membership_report_v3_length (const igmp_membership_report_v3_t *r)
 {
   const igmp_membership_group_v3_t *g;
   u32 len, ii, glen;

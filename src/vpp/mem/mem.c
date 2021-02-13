@@ -1,22 +1,24 @@
 #include <stdio.h>
 #include <vppinfra/mem.h>
 
-extern void * __libc_malloc (size_t);
+extern void *__libc_malloc (size_t);
 extern void __libc_free (void *);
-extern void * __libc_calloc (size_t, size_t);
-extern void * __libc_realloc (void *, size_t);
-extern void * __libc_valloc (size_t);
-extern void * __libc_memalign (size_t, size_t);
-extern void * __libc_pvalloc (size_t);
+extern void *__libc_calloc (size_t, size_t);
+extern void *__libc_realloc (void *, size_t);
+extern void *__libc_valloc (size_t);
+extern void *__libc_memalign (size_t, size_t);
+extern void *__libc_pvalloc (size_t);
 
 __thread u64 vpp_mem_no_vpp_heap;
 
-static void no_heap (void)
+static void
+no_heap (void)
 {
   vpp_mem_no_vpp_heap++;
 
   if (1 == vpp_mem_no_vpp_heap)
-    fprintf (stderr, "vpp mem: libc allocation requested but no vpp heap ready, defaulting to libc.\n");
+    fprintf (stderr, "vpp mem: libc allocation requested but no vpp heap "
+		     "ready, defaulting to libc.\n");
 }
 
 static_always_inline int
@@ -30,7 +32,7 @@ check_vpp_heap (void)
 }
 
 void *
-malloc(size_t size)
+malloc (size_t size)
 {
   if (!check_vpp_heap ())
     return __libc_malloc (size);
@@ -39,7 +41,7 @@ malloc(size_t size)
 }
 
 void
-free(void *p)
+free (void *p)
 {
   if (!p)
     return;
@@ -51,9 +53,9 @@ free(void *p)
 }
 
 void *
-calloc(size_t nmemb, size_t size)
+calloc (size_t nmemb, size_t size)
 {
-  void * p;
+  void *p;
 
   if (!check_vpp_heap ())
     return __libc_calloc (nmemb, size);
@@ -64,7 +66,7 @@ calloc(size_t nmemb, size_t size)
 }
 
 void *
-realloc(void *p, size_t size)
+realloc (void *p, size_t size)
 {
   if (!check_vpp_heap ())
     return __libc_realloc (p, size);
@@ -73,7 +75,7 @@ realloc(void *p, size_t size)
 }
 
 int
-posix_memalign(void **memptr, size_t alignment, size_t size)
+posix_memalign (void **memptr, size_t alignment, size_t size)
 {
   if (!check_vpp_heap ())
     *memptr = __libc_memalign (alignment, size);
@@ -83,7 +85,7 @@ posix_memalign(void **memptr, size_t alignment, size_t size)
 }
 
 void *
-aligned_alloc(size_t alignment, size_t size)
+aligned_alloc (size_t alignment, size_t size)
 {
   if (!check_vpp_heap ())
     return __libc_memalign (alignment, size);
@@ -92,7 +94,7 @@ aligned_alloc(size_t alignment, size_t size)
 }
 
 void *
-valloc(size_t size)
+valloc (size_t size)
 {
   if (!check_vpp_heap ())
     return __libc_valloc (size);
@@ -100,7 +102,8 @@ valloc(size_t size)
   return clib_mem_alloc_aligned (size, clib_mem_get_page_size ());
 }
 
-void *memalign(size_t alignment, size_t size)
+void *
+memalign (size_t alignment, size_t size)
 {
   if (!check_vpp_heap ())
     return __libc_memalign (alignment, size);
@@ -109,7 +112,7 @@ void *memalign(size_t alignment, size_t size)
 }
 
 void *
-pvalloc(size_t size)
+pvalloc (size_t size)
 {
   uword pagesz;
 

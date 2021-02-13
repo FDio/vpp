@@ -24,18 +24,17 @@
 #include <vnet/adj/rewrite.h>
 
 /* Statistics (not all errors) */
-#define foreach_vxlan_encap_error    \
-_(ENCAPSULATED, "good packets encapsulated")
+#define foreach_vxlan_encap_error _ (ENCAPSULATED, "good packets encapsulated")
 
 static char *vxlan_encap_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_vxlan_encap_error
 #undef _
 };
 
 typedef enum
 {
-#define _(sym,str) VXLAN_ENCAP_ERROR_##sym,
+#define _(sym, str) VXLAN_ENCAP_ERROR_##sym,
   foreach_vxlan_encap_error
 #undef _
     VXLAN_ENCAP_N_ERROR,
@@ -55,22 +54,21 @@ typedef struct
 
 #ifndef CLIB_MARCH_VARIANT
 u8 *
-format_vxlan_encap_trace (u8 * s, va_list * args)
+format_vxlan_encap_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   vxlan_encap_trace_t *t = va_arg (*args, vxlan_encap_trace_t *);
 
-  s = format (s, "VXLAN encap to vxlan_tunnel%d vni %d",
-	      t->tunnel_index, t->vni);
+  s = format (s, "VXLAN encap to vxlan_tunnel%d vni %d", t->tunnel_index,
+	      t->vni);
   return s;
 }
 #endif
 
 always_inline uword
-vxlan_encap_inline (vlib_main_t * vm,
-		    vlib_node_runtime_t * node,
-		    vlib_frame_t * from_frame, u8 is_ip4, u8 csum_offload)
+vxlan_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *from_frame, u8 is_ip4, u8 csum_offload)
 {
   u32 n_left_from, next_index, *from, *to_next;
   vxlan_main_t *vxm = &vxlan_main;
@@ -95,17 +93,19 @@ vxlan_encap_inline (vlib_main_t * vm,
   STATIC_ASSERT_SIZEOF (ip6_vxlan_header_t, 56);
   STATIC_ASSERT_SIZEOF (ip4_vxlan_header_t, 36);
 
-  u8 const underlay_hdr_len = is_ip4 ?
-    sizeof (ip4_vxlan_header_t) : sizeof (ip6_vxlan_header_t);
+  u8 const underlay_hdr_len =
+    is_ip4 ? sizeof (ip4_vxlan_header_t) : sizeof (ip6_vxlan_header_t);
   u16 const l3_len = is_ip4 ? sizeof (ip4_header_t) : sizeof (ip6_header_t);
-  u32 const csum_flags = is_ip4 ? VNET_BUFFER_F_OFFLOAD_IP_CKSUM |
-    VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
-    VNET_BUFFER_F_L3_HDR_OFFSET_VALID | VNET_BUFFER_F_L4_HDR_OFFSET_VALID :
-    VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
-    VNET_BUFFER_F_L3_HDR_OFFSET_VALID | VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
-  u32 const inner_packet_csum_offload_flags =
-    VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
-    VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+  u32 const csum_flags =
+    is_ip4 ?
+      VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4 |
+	VNET_BUFFER_F_OFFLOAD_UDP_CKSUM | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+	VNET_BUFFER_F_L4_HDR_OFFSET_VALID :
+      VNET_BUFFER_F_IS_IP6 | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
+	VNET_BUFFER_F_L3_HDR_OFFSET_VALID | VNET_BUFFER_F_L4_HDR_OFFSET_VALID;
+  u32 const inner_packet_csum_offload_flags = VNET_BUFFER_F_OFFLOAD_IP_CKSUM |
+					      VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
+					      VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
   u32 const inner_packet_removed_flags =
     VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_IS_IP6 |
     VNET_BUFFER_F_L2_HDR_OFFSET_VALID | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
@@ -149,20 +149,16 @@ vxlan_encap_inline (vlib_main_t * vm,
 	      /* Only calculate the non-GSO packet csum offload */
 	      if ((b0->flags & VNET_BUFFER_F_GSO) == 0)
 		{
-		  vnet_calc_checksums_inline (vm, b0,
-					      b0->flags &
-					      VNET_BUFFER_F_IS_IP4,
-					      b0->flags &
-					      VNET_BUFFER_F_IS_IP6);
+		  vnet_calc_checksums_inline (
+		    vm, b0, b0->flags & VNET_BUFFER_F_IS_IP4,
+		    b0->flags & VNET_BUFFER_F_IS_IP6);
 		  b0->flags &= ~inner_packet_removed_flags;
 		}
 	      if ((b1->flags & VNET_BUFFER_F_GSO) == 0)
 		{
-		  vnet_calc_checksums_inline (vm, b1,
-					      b1->flags &
-					      VNET_BUFFER_F_IS_IP4,
-					      b1->flags &
-					      VNET_BUFFER_F_IS_IP6);
+		  vnet_calc_checksums_inline (
+		    vm, b1, b1->flags & VNET_BUFFER_F_IS_IP4,
+		    b1->flags & VNET_BUFFER_F_IS_IP6);
 		  b1->flags &= ~inner_packet_removed_flags;
 		}
 	    }
@@ -256,7 +252,7 @@ vxlan_encap_inline (vlib_main_t * vm,
 	      udp0 = &hdr0->udp;
 	      udp1 = &hdr1->udp;
 	    }
-	  else			/* ipv6 */
+	  else /* ipv6 */
 	    {
 	      ip6_vxlan_header_t *hdr0 = underlay0;
 	      ip6_vxlan_header_t *hdr1 = underlay1;
@@ -293,20 +289,20 @@ vxlan_encap_inline (vlib_main_t * vm,
 	    {
 	      ip_csum_t sum0 = ip4_0->checksum;
 	      sum0 = ip_csum_update (sum0, 0, ip4_0->length, ip4_header_t,
-				     length /* changed member */ );
+				     length /* changed member */);
 	      if (PREDICT_FALSE (ip4_0_tos))
 		{
 		  sum0 = ip_csum_update (sum0, 0, ip4_0_tos, ip4_header_t,
-					 tos /* changed member */ );
+					 tos /* changed member */);
 		}
 	      ip4_0->checksum = ip_csum_fold (sum0);
 	      ip_csum_t sum1 = ip4_1->checksum;
 	      sum1 = ip_csum_update (sum1, 0, ip4_1->length, ip4_header_t,
-				     length /* changed member */ );
+				     length /* changed member */);
 	      if (PREDICT_FALSE (ip4_1_tos))
 		{
 		  sum1 = ip_csum_update (sum1, 0, ip4_1_tos, ip4_header_t,
-					 tos /* changed member */ );
+					 tos /* changed member */);
 		}
 	      ip4_1->checksum = ip_csum_fold (sum1);
 	    }
@@ -315,13 +311,13 @@ vxlan_encap_inline (vlib_main_t * vm,
 	    {
 	      int bogus = 0;
 
-	      udp0->checksum = ip6_tcp_udp_icmp_compute_checksum
-		(vm, b0, ip6_0, &bogus);
+	      udp0->checksum =
+		ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip6_0, &bogus);
 	      ASSERT (bogus == 0);
 	      if (udp0->checksum == 0)
 		udp0->checksum = 0xffff;
-	      udp1->checksum = ip6_tcp_udp_icmp_compute_checksum
-		(vm, b1, ip6_1, &bogus);
+	      udp1->checksum =
+		ip6_tcp_udp_icmp_compute_checksum (vm, b1, ip6_1, &bogus);
 	      ASSERT (bogus == 0);
 	      if (udp1->checksum == 0)
 		udp1->checksum = 0xffff;
@@ -361,9 +357,9 @@ vxlan_encap_inline (vlib_main_t * vm,
 	      tr->vni = t1->vni;
 	    }
 
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -382,11 +378,9 @@ vxlan_encap_inline (vlib_main_t * vm,
 	      /* Only calculate the non-GSO packet csum offload */
 	      if ((b0->flags & VNET_BUFFER_F_GSO) == 0)
 		{
-		  vnet_calc_checksums_inline (vm, b0,
-					      b0->flags &
-					      VNET_BUFFER_F_IS_IP4,
-					      b0->flags &
-					      VNET_BUFFER_F_IS_IP6);
+		  vnet_calc_checksums_inline (
+		    vm, b0, b0->flags & VNET_BUFFER_F_IS_IP4,
+		    b0->flags & VNET_BUFFER_F_IS_IP6);
 		  b0->flags &= ~inner_packet_removed_flags;
 		}
 	    }
@@ -438,7 +432,7 @@ vxlan_encap_inline (vlib_main_t * vm,
 	      l3_0 = (u8 *) ip4_0;
 	      udp0 = &hdr->udp;
 	    }
-	  else			/* ip6 path */
+	  else /* ip6 path */
 	    {
 	      ip6_vxlan_header_t *hdr = underlay0;
 
@@ -465,11 +459,11 @@ vxlan_encap_inline (vlib_main_t * vm,
 	    {
 	      ip_csum_t sum0 = ip4_0->checksum;
 	      sum0 = ip_csum_update (sum0, 0, ip4_0->length, ip4_header_t,
-				     length /* changed member */ );
+				     length /* changed member */);
 	      if (PREDICT_FALSE (ip4_0_tos))
 		{
 		  sum0 = ip_csum_update (sum0, 0, ip4_0_tos, ip4_header_t,
-					 tos /* changed member */ );
+					 tos /* changed member */);
 		}
 	      ip4_0->checksum = ip_csum_fold (sum0);
 	    }
@@ -478,8 +472,8 @@ vxlan_encap_inline (vlib_main_t * vm,
 	    {
 	      int bogus = 0;
 
-	      udp0->checksum = ip6_tcp_udp_icmp_compute_checksum
-		(vm, b0, ip6_0, &bogus);
+	      udp0->checksum =
+		ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip6_0, &bogus);
 	      ASSERT (bogus == 0);
 	      if (udp0->checksum == 0)
 		udp0->checksum = 0xffff;
@@ -499,25 +493,22 @@ vxlan_encap_inline (vlib_main_t * vm,
 	      tr->tunnel_index = t0 - vxm->tunnels;
 	      tr->vni = t0->vni;
 	    }
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
   /* Do we still need this now that tunnel tx stats is kept? */
-  vlib_node_increment_counter (vm, node->node_index,
-			       VXLAN_ENCAP_ERROR_ENCAPSULATED,
-			       pkts_encapsulated);
+  vlib_node_increment_counter (
+    vm, node->node_index, VXLAN_ENCAP_ERROR_ENCAPSULATED, pkts_encapsulated);
 
   return from_frame->n_vectors;
 }
 
-VLIB_NODE_FN (vxlan4_encap_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * from_frame)
+VLIB_NODE_FN (vxlan4_encap_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   /* Disable chksum offload as setup overhead in tx node is not worthwhile
      for ip4 header checksum only, unless udp checksum is also required */
@@ -525,16 +516,14 @@ VLIB_NODE_FN (vxlan4_encap_node) (vlib_main_t * vm,
 			     /* csum_offload */ 0);
 }
 
-VLIB_NODE_FN (vxlan6_encap_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * from_frame)
+VLIB_NODE_FN (vxlan6_encap_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   /* Enable checksum offload for ip6 as udp checksum is mandatory, */
   return vxlan_encap_inline (vm, node, from_frame, /* is_ip4 */ 0,
 			     /* csum_offload */ 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vxlan4_encap_node) = {
   .name = "vxlan4-encap",
   .vector_size = sizeof (u32),
@@ -560,7 +549,6 @@ VLIB_REGISTER_NODE (vxlan6_encap_node) = {
         [VXLAN_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

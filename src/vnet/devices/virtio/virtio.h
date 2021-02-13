@@ -23,9 +23,9 @@
 #include <vnet/devices/virtio/virtio_buffering.h>
 #include <vnet/gso/gro.h>
 
-#define foreach_virtio_if_flag		\
-  _(0, ADMIN_UP, "admin-up")		\
-  _(1, DELETING, "deleting")
+#define foreach_virtio_if_flag                                                \
+  _ (0, ADMIN_UP, "admin-up")                                                 \
+  _ (1, DELETING, "deleting")
 
 typedef enum
 {
@@ -34,17 +34,17 @@ typedef enum
 #undef _
 } virtio_if_flag_t;
 
-#define TX_QUEUE(X) ((X*2) + 1)
-#define RX_QUEUE(X) (X*2)
-#define TX_QUEUE_ACCESS(X) (X/2)
-#define RX_QUEUE_ACCESS(X) (X/2)
+#define TX_QUEUE(X)	   ((X * 2) + 1)
+#define RX_QUEUE(X)	   (X * 2)
+#define TX_QUEUE_ACCESS(X) (X / 2)
+#define RX_QUEUE_ACCESS(X) (X / 2)
 
 #define VIRTIO_NUM_RX_DESC 256
 #define VIRTIO_NUM_TX_DESC 256
 
-#define foreach_virtio_if_types \
-  _ (TAP, 0)                    \
-  _ (TUN, 1)                    \
+#define foreach_virtio_if_types                                               \
+  _ (TAP, 0)                                                                  \
+  _ (TUN, 1)                                                                  \
   _ (PCI, 2)
 
 typedef enum
@@ -58,7 +58,7 @@ typedef enum
 #define VIRTIO_RING_FLAG_MASK_INT 1
 
 #define VIRTIO_EVENT_START_TIMER 1
-#define VIRTIO_EVENT_STOP_TIMER 2
+#define VIRTIO_EVENT_STOP_TIMER	 2
 
 typedef struct
 {
@@ -116,8 +116,8 @@ typedef union
   {
     u16 domain;
     u8 bus;
-    u8 slot:5;
-    u8 function:3;
+    u8 slot : 5;
+    u8 function : 3;
   };
   u32 as_u32;
 } pci_addr_t;
@@ -152,7 +152,7 @@ typedef struct
   u32 hw_if_index;
   u32 sw_if_index;
 
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   int packet_coalesce;
   int packet_buffering;
   u32 dev_instance;
@@ -172,7 +172,7 @@ typedef struct
   };
   union
   {
-    struct			/* tun/tap interface */
+    struct /* tun/tap interface */
     {
       ip6_address_t host_ip6_addr;
       int *vhost_fds;
@@ -187,9 +187,9 @@ typedef struct
       ip4_address_t host_ip4_addr;
       u8 host_ip4_prefix_len;
       u8 host_ip6_prefix_len;
-      u8 host_carrier_up;	/* host tun/tap driver link carrier state */
+      u8 host_carrier_up; /* host tun/tap driver link carrier state */
     };
-    struct			/* native virtio */
+    struct /* native virtio */
     {
       void *bar;
       virtio_vring_t *cxq_vring;
@@ -203,7 +203,7 @@ typedef struct
       u16 isr_offset;
       u16 max_queue_pairs;
       u16 msix_table_size;
-      u8 support_int_mode;	/* support interrupt mode */
+      u8 support_int_mode; /* support interrupt mode */
       u8 status;
     };
   };
@@ -225,30 +225,30 @@ extern vnet_device_class_t virtio_device_class;
 extern vlib_node_registration_t virtio_input_node;
 extern vlib_node_registration_t virtio_send_interrupt_node;
 
-clib_error_t *virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx,
+clib_error_t *virtio_vring_init (vlib_main_t *vm, virtio_if_t *vif, u16 idx,
 				 u16 sz);
-clib_error_t *virtio_vring_free_rx (vlib_main_t * vm, virtio_if_t * vif,
+clib_error_t *virtio_vring_free_rx (vlib_main_t *vm, virtio_if_t *vif,
 				    u32 idx);
-clib_error_t *virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif,
+clib_error_t *virtio_vring_free_tx (vlib_main_t *vm, virtio_if_t *vif,
 				    u32 idx);
 void virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif);
-extern void virtio_free_buffers (vlib_main_t * vm, virtio_vring_t * vring);
-extern void virtio_set_net_hdr_size (virtio_if_t * vif);
-extern void virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
+extern void virtio_free_buffers (vlib_main_t *vm, virtio_vring_t *vring);
+extern void virtio_set_net_hdr_size (virtio_if_t *vif);
+extern void virtio_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr,
 			 u32 type);
-extern void virtio_set_packet_coalesce (virtio_if_t * vif);
-clib_error_t *virtio_set_packet_buffering (virtio_if_t * vif, u16 size);
-extern void virtio_pci_legacy_notify_queue (vlib_main_t * vm,
-					    virtio_if_t * vif, u16 queue_id,
+extern void virtio_set_packet_coalesce (virtio_if_t *vif);
+clib_error_t *virtio_set_packet_buffering (virtio_if_t *vif, u16 size);
+extern void virtio_pci_legacy_notify_queue (vlib_main_t *vm, virtio_if_t *vif,
+					    u16 queue_id,
 					    u16 queue_notify_offset);
-extern void virtio_pci_modern_notify_queue (vlib_main_t * vm,
-					    virtio_if_t * vif, u16 queue_id,
+extern void virtio_pci_modern_notify_queue (vlib_main_t *vm, virtio_if_t *vif,
+					    u16 queue_id,
 					    u16 queue_notify_offset);
 format_function_t format_virtio_device_name;
 format_function_t format_virtio_log_name;
 
 static_always_inline void
-virtio_kick (vlib_main_t * vm, virtio_vring_t * vring, virtio_if_t * vif)
+virtio_kick (vlib_main_t *vm, virtio_vring_t *vring, virtio_if_t *vif)
 {
   if (vif->type == VIRTIO_IF_TYPE_PCI)
     {
@@ -269,26 +269,23 @@ virtio_kick (vlib_main_t * vm, virtio_vring_t * vring, virtio_if_t * vif)
     }
 }
 
-#define virtio_log_debug(vif, f, ...)				\
-{								\
-  vlib_log(VLIB_LOG_LEVEL_DEBUG, virtio_main.log_default,	\
-	   "%U: " f, format_virtio_log_name, vif,		\
-           ##__VA_ARGS__);					\
-};
+#define virtio_log_debug(vif, f, ...)                                         \
+  {                                                                           \
+    vlib_log (VLIB_LOG_LEVEL_DEBUG, virtio_main.log_default, "%U: " f,        \
+	      format_virtio_log_name, vif, ##__VA_ARGS__);                    \
+  };
 
-#define virtio_log_warning(vif, f, ...)				\
-{								\
-  vlib_log(VLIB_LOG_LEVEL_WARNING, virtio_main.log_default,	\
-	   "%U: " f, format_virtio_log_name, vif,		\
-           ##__VA_ARGS__);					\
-};
+#define virtio_log_warning(vif, f, ...)                                       \
+  {                                                                           \
+    vlib_log (VLIB_LOG_LEVEL_WARNING, virtio_main.log_default, "%U: " f,      \
+	      format_virtio_log_name, vif, ##__VA_ARGS__);                    \
+  };
 
-#define virtio_log_error(vif, f, ...)				\
-{								\
-  vlib_log(VLIB_LOG_LEVEL_ERR, virtio_main.log_default,		\
-	   "%U: " f, format_virtio_log_name, vif,		\
-           ##__VA_ARGS__);					\
-};
+#define virtio_log_error(vif, f, ...)                                         \
+  {                                                                           \
+    vlib_log (VLIB_LOG_LEVEL_ERR, virtio_main.log_default, "%U: " f,          \
+	      format_virtio_log_name, vif, ##__VA_ARGS__);                    \
+  };
 
 #endif /* _VNET_DEVICES_VIRTIO_VIRTIO_H_ */
 

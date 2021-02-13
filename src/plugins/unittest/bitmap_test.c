@@ -16,8 +16,8 @@
 #include <vppinfra/bitmap.h>
 
 static clib_error_t *
-test_bitmap_command_fn (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+test_bitmap_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   u64 *bm = 0;
   u64 *bm2 = 0;
@@ -32,7 +32,6 @@ test_bitmap_command_fn (vlib_main_t * vm,
   bm2 = clib_bitmap_set_multiple (bm2, 0, ~0ULL, BITS (uword));
   _vec_len (bm2) = 1;
   junk = clib_bitmap_next_clear (bm2, 0);
-
 
   bm = clib_bitmap_set_multiple (bm, 2, ~0ULL, BITS (uword) - 3);
   junk = clib_bitmap_get_multiple (bm, 2, BITS (uword));
@@ -56,16 +55,11 @@ test_bitmap_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_bihash_command, static) =
-{
+VLIB_CLI_COMMAND (test_bihash_command, static) = {
   .path = "test bitmap",
   .short_help = "Coverage test for bitmap.h",
   .function = test_bitmap_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

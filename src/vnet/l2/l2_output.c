@@ -25,11 +25,10 @@
 #include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_output.h>
 
-
 #ifndef CLIB_MARCH_VARIANT
 /* Feature graph node names */
 static char *l2output_feat_names[] = {
-#define _(sym,name) name,
+#define _(sym, name) name,
   foreach_l2output_feat
 #undef _
 };
@@ -41,10 +40,10 @@ l2output_get_feat_names (void)
 }
 
 u8 *
-format_l2_output_features (u8 * s, va_list * args)
+format_l2_output_features (u8 *s, va_list *args)
 {
   static char *display_names[] = {
-#define _(sym,name) #sym,
+#define _(sym, name) #sym,
     foreach_l2output_feat
 #undef _
   };
@@ -63,9 +62,8 @@ format_l2_output_features (u8 * s, va_list * args)
       if (feature_bitmap & (1 << i))
 	{
 	  if (verbose)
-	    s =
-	      format (s, "%17s (%s)\n", display_names[i],
-		      l2output_feat_names[i]);
+	    s = format (s, "%17s (%s)\n", display_names[i],
+			l2output_feat_names[i]);
 	  else
 	    s = format (s, "%s ", l2output_feat_names[i]);
 	}
@@ -83,32 +81,30 @@ typedef struct
   u8 src[6];
   u8 dst[6];
   u32 sw_if_index;
-  u8 raw[12];			/* raw data */
+  u8 raw[12]; /* raw data */
 } l2output_trace_t;
 
 /* packet trace format function */
 static u8 *
-format_l2output_trace (u8 * s, va_list * args)
+format_l2output_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   l2output_trace_t *t = va_arg (*args, l2output_trace_t *);
 
-  s = format (s, "l2-output: sw_if_index %d dst %U src %U data "
+  s = format (s,
+	      "l2-output: sw_if_index %d dst %U src %U data "
 	      "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-	      t->sw_if_index,
-	      format_ethernet_address, t->dst,
-	      format_ethernet_address, t->src,
-	      t->raw[0], t->raw[1], t->raw[2], t->raw[3], t->raw[4],
-	      t->raw[5], t->raw[6], t->raw[7], t->raw[8], t->raw[9],
-	      t->raw[10], t->raw[11]);
+	      t->sw_if_index, format_ethernet_address, t->dst,
+	      format_ethernet_address, t->src, t->raw[0], t->raw[1], t->raw[2],
+	      t->raw[3], t->raw[4], t->raw[5], t->raw[6], t->raw[7], t->raw[8],
+	      t->raw[9], t->raw[10], t->raw[11]);
 
   return s;
 }
 
-
 static char *l2output_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_l2output_error
 #undef _
 };
@@ -121,8 +117,8 @@ static char *l2output_error_strings[] = {
  * in which case the check always passes.
  */
 static_always_inline void
-split_horizon_violation (vlib_node_runtime_t * node, u8 shg,
-			 vlib_buffer_t * b, u16 * next)
+split_horizon_violation (vlib_node_runtime_t *node, u8 shg, vlib_buffer_t *b,
+			 u16 *next)
 {
   if (shg != vnet_buffer (b)->l2.shg)
     return;
@@ -131,11 +127,11 @@ split_horizon_violation (vlib_node_runtime_t * node, u8 shg,
 }
 
 static_always_inline void
-l2output_process_batch_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			       l2_output_config_t * config,
-			       vlib_buffer_t ** b, i16 * cdo, u16 * next,
-			       u32 n_left, int l2_efp, int l2_vtr, int l2_pbb,
-			       int shg_set, int update_feature_bitmap)
+l2output_process_batch_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			       l2_output_config_t *config, vlib_buffer_t **b,
+			       i16 *cdo, u16 *next, u32 n_left, int l2_efp,
+			       int l2_vtr, int l2_pbb, int shg_set,
+			       int update_feature_bitmap)
 {
   while (n_left >= 8)
     {
@@ -166,8 +162,8 @@ l2output_process_batch_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  int i;
 	  for (i = 0; i < 4; i++)
 	    {
-	      u32 failed1 = l2_efp &&
-		l2_efp_filter_process (b[i], &(config->input_vtr));
+	      u32 failed1 =
+		l2_efp && l2_efp_filter_process (b[i], &(config->input_vtr));
 	      u32 failed2 = l2_vtr_process (b[i], &(config->output_vtr));
 	      if (PREDICT_FALSE (failed1 | failed2))
 		{
@@ -212,8 +208,8 @@ l2output_process_batch_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (l2_vtr)
 	{
-	  u32 failed1 = l2_efp &&
-	    l2_efp_filter_process (b[0], &(config->input_vtr));
+	  u32 failed1 =
+	    l2_efp && l2_efp_filter_process (b[0], &(config->input_vtr));
 	  u32 failed2 = l2_vtr_process (b[0], &(config->output_vtr));
 	  if (PREDICT_FALSE (failed1 | failed2))
 	    {
@@ -242,7 +238,7 @@ l2output_process_batch_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline void
-l2output_set_buffer_error (vlib_buffer_t ** b, u32 n_left, vlib_error_t error)
+l2output_set_buffer_error (vlib_buffer_t **b, u32 n_left, vlib_error_t error)
 {
   while (n_left >= 8)
     {
@@ -263,9 +259,9 @@ l2output_set_buffer_error (vlib_buffer_t ** b, u32 n_left, vlib_error_t error)
 }
 
 static_always_inline void
-l2output_process_batch (vlib_main_t * vm, vlib_node_runtime_t * node,
-			l2_output_config_t * config, vlib_buffer_t ** b,
-			i16 * cdo, u16 * next, u32 n_left, int l2_efp,
+l2output_process_batch (vlib_main_t *vm, vlib_node_runtime_t *node,
+			l2_output_config_t *config, vlib_buffer_t **b,
+			i16 *cdo, u16 *next, u32 n_left, int l2_efp,
 			int l2_vtr, int l2_pbb)
 {
   u32 feature_bitmap = config->feature_bitmap & ~L2OUTPUT_FEAT_OUTPUT;
@@ -287,9 +283,8 @@ l2output_process_batch (vlib_main_t * vm, vlib_node_runtime_t * node,
 				   l2_efp, l2_vtr, l2_pbb, 1, 1);
 }
 
-VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
-			      vlib_node_runtime_t * node,
-			      vlib_frame_t * frame)
+VLIB_NODE_FN (l2output_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left, *from;
   l2output_main_t *msm = &l2output_main;
@@ -301,7 +296,7 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
   u32 feature_bitmap;
 
   from = vlib_frame_vector_args (frame);
-  n_left = frame->n_vectors;	/* number of packets to process */
+  n_left = frame->n_vectors; /* number of packets to process */
 
   vlib_get_buffers (vm, from, bufs, n_left);
   b = bufs;
@@ -369,17 +364,17 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
       config = vec_elt_at_index (msm->configs, sw_if_index[0]);
       feature_bitmap = config->feature_bitmap;
       if (PREDICT_FALSE ((feature_bitmap & ~L2OUTPUT_FEAT_OUTPUT) != 0))
-	new_next = feat_bitmap_get_next_node_index
-	  (l2output_main.l2_out_feat_next, feature_bitmap);
+	new_next = feat_bitmap_get_next_node_index (
+	  l2output_main.l2_out_feat_next, feature_bitmap);
       else
-	new_next = vec_elt (l2output_main.output_node_index_vec,
-			    sw_if_index[0]);
+	new_next =
+	  vec_elt (l2output_main.output_node_index_vec, sw_if_index[0]);
       clib_memset_u16 (nexts + off, new_next, count);
 
       if (new_next == L2OUTPUT_NEXT_DROP)
 	{
-	  l2output_set_buffer_error
-	    (b, count, node->errors[L2OUTPUT_ERROR_MAPPING_DROP]);
+	  l2output_set_buffer_error (
+	    b, count, node->errors[L2OUTPUT_ERROR_MAPPING_DROP]);
 	  continue;
 	}
 
@@ -410,10 +405,9 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
 				/* l2_pbb */ 0);
     }
 
-
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     {
-      n_left = frame->n_vectors;	/* number of packets to process */
+      n_left = frame->n_vectors; /* number of packets to process */
       b = bufs;
 
       while (n_left)
@@ -442,7 +436,6 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2output_node) = {
   .name = "l2-output",
   .vector_size = sizeof (u32),
@@ -460,26 +453,23 @@ VLIB_REGISTER_NODE (l2output_node) = {
         [L2OUTPUT_NEXT_BAD_INTF] = "l2-output-bad-intf",
   },
 };
-/* *INDENT-ON* */
 
-
-#define foreach_l2output_bad_intf_error	\
-_(DROP,     "L2 output to interface not in L2 mode or deleted")
+#define foreach_l2output_bad_intf_error                                       \
+  _ (DROP, "L2 output to interface not in L2 mode or deleted")
 
 static char *l2output_bad_intf_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_l2output_bad_intf_error
 #undef _
 };
 
 typedef enum
 {
-#define _(sym,str) L2OUTPUT_BAD_INTF_ERROR_##sym,
+#define _(sym, str) L2OUTPUT_BAD_INTF_ERROR_##sym,
   foreach_l2output_bad_intf_error
 #undef _
     L2OUTPUT_BAD_INTF_N_ERROR,
 } l2output_bad_intf_error_t;
-
 
 /**
  * Output node for interfaces/tunnels which was in L2 mode but were changed
@@ -490,18 +480,18 @@ typedef enum
  * this sw_if_index, l2-output will send packets for this sw_if_index to the
  * l2-output-bad-intf node which just setup the proper drop reason before
  * sending packets to the error-drop node to drop the packet. Then, stale L2FIB
- * entries for deleted tunnels won't cause possible packet or memory corruption.
+ * entries for deleted tunnels won't cause possible packet or memory
+ * corruption.
  */
 
-VLIB_NODE_FN (l2output_bad_intf_node) (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * frame)
+VLIB_NODE_FN (l2output_bad_intf_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   l2output_next_t next_index = 0;
 
   from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;	/* number of packets to process */
+  n_left_from = frame->n_vectors; /* number of packets to process */
 
   while (n_left_from > 0)
     {
@@ -548,7 +538,6 @@ VLIB_NODE_FN (l2output_bad_intf_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2output_bad_intf_node) = {
   .name = "l2-output-bad-intf",
   .vector_size = sizeof (u32),
@@ -564,10 +553,9 @@ VLIB_REGISTER_NODE (l2output_bad_intf_node) = {
 	[0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-l2output_init (vlib_main_t * vm)
+l2output_init (vlib_main_t *vm)
 {
   l2output_main_t *mp = &l2output_main;
 
@@ -576,30 +564,28 @@ l2output_init (vlib_main_t * vm)
 
   /* Create the config vector */
   vec_validate (mp->configs, 100);
-  /* Until we hook up the CLI config, just create 100 sw interface entries  and zero them */
+  /* Until we hook up the CLI config, just create 100 sw interface entries  and
+   * zero them */
 
   /* Initialize the feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2output_node.index,
-			       L2OUTPUT_N_FEAT,
+  feat_bitmap_init_next_nodes (vm, l2output_node.index, L2OUTPUT_N_FEAT,
 			       l2output_get_feat_names (),
 			       mp->l2_out_feat_next);
 
   /* Initialize the output node mapping table */
-  vec_validate_init_empty (mp->output_node_index_vec, 100,
-			   L2OUTPUT_NEXT_DROP);
+  vec_validate_init_empty (mp->output_node_index_vec, 100, L2OUTPUT_NEXT_DROP);
 
   return 0;
 }
 
 VLIB_INIT_FUNCTION (l2output_init);
 
-
 #ifndef CLIB_MARCH_VARIANT
-/** Create a mapping in the next node mapping table for the given sw_if_index. */
+/** Create a mapping in the next node mapping table for the given sw_if_index.
+ */
 void
-l2output_create_output_node_mapping (vlib_main_t * vlib_main,
-				     vnet_main_t * vnet_main, u32 sw_if_index)
+l2output_create_output_node_mapping (vlib_main_t *vlib_main,
+				     vnet_main_t *vnet_main, u32 sw_if_index)
 {
   vnet_hw_interface_t *hw0 =
     vnet_get_sup_hw_interface (vnet_main, sw_if_index);

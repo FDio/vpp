@@ -24,8 +24,7 @@ ethertype_rule_t::ethertype_rule_t(const ethertype_t& eth,
                                    const direction_t& dir)
   : m_eth(eth)
   , m_dir(dir)
-{
-}
+{}
 
 std::string
 ethertype_rule_t::to_string() const
@@ -75,15 +74,13 @@ acl_ethertype::acl_ethertype(const interface& itf,
   : m_itf(itf.singular())
   , m_le(le)
   , m_binding(true)
-{
-}
+{}
 
 acl_ethertype::acl_ethertype(const acl_ethertype& o)
   : m_itf(o.m_itf)
   , m_le(o.m_le)
   , m_binding(o.m_binding)
-{
-}
+{}
 
 acl_ethertype::~acl_ethertype()
 {
@@ -179,8 +176,8 @@ acl_ethertype::singular() const
 acl_ethertype::event_handler::event_handler()
 {
   OM::register_listener(this);
-  inspect::register_handler({ "acl-ethertype" }, "ACL Ethertype bindings",
-                            this);
+  inspect::register_handler(
+    { "acl-ethertype" }, "ACL Ethertype bindings", this);
 }
 
 void

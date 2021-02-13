@@ -51,9 +51,9 @@
 #define AUX_DATA_DECL
 #define AUX_DATA_PTR(pi)
 #else
-#define AUX_DATA_ARG ,##AUX_DATA_TYPE *ap
-#define AUX_DATA_DECL AUX_DATA_TYPE aux_data[VLIB_FRAME_SIZE]
-#define AUX_DATA_PTR(pi) ,aux_data +(pi)
+#define AUX_DATA_ARG	 , ##AUX_DATA_TYPE *ap
+#define AUX_DATA_DECL	 AUX_DATA_TYPE aux_data[VLIB_FRAME_SIZE]
+#define AUX_DATA_PTR(pi) , aux_data + (pi)
 #endif
 
 /*
@@ -71,8 +71,8 @@
  * This implementation won't use the aux data argument
  */
 static STAGE_INLINE void
-generic_stage0 (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_buffer_t * b AUX_DATA_ARG)
+generic_stage0 (vlib_main_t *vm, vlib_node_runtime_t *node,
+		vlib_buffer_t *b AUX_DATA_ARG)
 {
   vlib_prefetch_buffer_header (b, STORE);
   CLIB_PREFETCH (b->data, CLIB_CACHE_LINE_BYTES, STORE);
@@ -81,8 +81,8 @@ generic_stage0 (vlib_main_t * vm,
 #if NSTAGES == 2
 
 static STAGE_INLINE uword
-dispatch_pipeline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+dispatch_pipeline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame)
 {
   u32 *from;
   u32 n_left_from;
@@ -123,8 +123,8 @@ dispatch_pipeline (vlib_main_t * vm,
 
 #if NSTAGES == 3
 static STAGE_INLINE uword
-dispatch_pipeline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+dispatch_pipeline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame)
 {
   u32 *from;
   u32 n_left_from;
@@ -170,8 +170,8 @@ dispatch_pipeline (vlib_main_t * vm,
 
 #if NSTAGES == 4
 static STAGE_INLINE uword
-dispatch_pipeline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+dispatch_pipeline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame)
 {
   u32 *from;
   u32 n_left_from;
@@ -222,8 +222,8 @@ dispatch_pipeline (vlib_main_t * vm,
 
 #if NSTAGES == 5
 static STAGE_INLINE uword
-dispatch_pipeline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+dispatch_pipeline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame)
 {
   u32 *from;
   u32 n_left_from;
@@ -279,8 +279,8 @@ dispatch_pipeline (vlib_main_t * vm,
 
 #if NSTAGES == 6
 static STAGE_INLINE uword
-dispatch_pipeline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+dispatch_pipeline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame)
 {
   u32 *from;
   u32 n_left_from;

@@ -30,16 +30,14 @@ gbp_ext_itf::gbp_ext_itf(const interface& itf,
   , m_itf(itf.singular())
   , m_bd(gbd.singular())
   , m_rd(grd.singular())
-{
-}
+{}
 
 gbp_ext_itf::gbp_ext_itf(const gbp_ext_itf& gbpe)
   : m_hw(gbpe.m_hw)
   , m_itf(gbpe.m_itf)
   , m_bd(gbpe.m_bd)
   , m_rd(gbpe.m_rd)
-{
-}
+{}
 
 gbp_ext_itf::~gbp_ext_itf()
 {
@@ -79,8 +77,8 @@ void
 gbp_ext_itf::replay()
 {
   if (m_hw) {
-    HW::enqueue(new gbp_ext_itf_cmds::create_cmd(m_hw, m_itf->handle(),
-                                                 m_bd->id(), m_rd->id()));
+    HW::enqueue(new gbp_ext_itf_cmds::create_cmd(
+      m_hw, m_itf->handle(), m_bd->id(), m_rd->id()));
   }
 }
 
@@ -98,8 +96,8 @@ void
 gbp_ext_itf::update(const gbp_ext_itf& r)
 {
   if (rc_t::OK != m_hw.rc()) {
-    HW::enqueue(new gbp_ext_itf_cmds::create_cmd(m_hw, m_itf->handle(),
-                                                 m_bd->id(), m_rd->id()));
+    HW::enqueue(new gbp_ext_itf_cmds::create_cmd(
+      m_hw, m_itf->handle(), m_bd->id(), m_rd->id()));
   }
 }
 
@@ -158,9 +156,9 @@ gbp_ext_itf::event_handler::handle_populate(const client_db::key_t& key)
     std::shared_ptr<gbp_route_domain> grd =
       gbp_route_domain::find(payload.ext_itf.rd_id);
 
-    VOM_LOG(log_level_t::DEBUG) << "data: [" << payload.ext_itf.sw_if_index
-                                << ", " << payload.ext_itf.bd_id << ", "
-                                << payload.ext_itf.rd_id << "]";
+    VOM_LOG(log_level_t::DEBUG)
+      << "data: [" << payload.ext_itf.sw_if_index << ", "
+      << payload.ext_itf.bd_id << ", " << payload.ext_itf.rd_id << "]";
 
     if (itf && gbd && grd) {
       gbp_ext_itf ext_itf(*itf, *gbd, *grd);

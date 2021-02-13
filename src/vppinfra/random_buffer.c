@@ -39,7 +39,7 @@
 
 /* Fill random buffer. */
 __clib_export void
-clib_random_buffer_fill (clib_random_buffer_t * b, uword n_words)
+clib_random_buffer_fill (clib_random_buffer_t *b, uword n_words)
 {
   uword *w, n = n_words;
 
@@ -59,7 +59,7 @@ clib_random_buffer_fill (clib_random_buffer_t * b, uword n_words)
 }
 
 __clib_export void
-clib_random_buffer_init (clib_random_buffer_t * b, uword seed)
+clib_random_buffer_init (clib_random_buffer_t *b, uword seed)
 {
   uword i, j;
 

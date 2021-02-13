@@ -41,7 +41,7 @@ static int verbose;
 static u8 *test_vec;
 
 static u8 *
-format_test1 (u8 * s, va_list * va)
+format_test1 (u8 *s, va_list *va)
 {
   uword x = va_arg (*va, uword);
   f64 y = va_arg (*va, f64);
@@ -61,8 +61,8 @@ expectation (const char *exp, char *fmt, ...)
   vec_add1 (test_vec, 0);
   if (strcmp (exp, (char *) test_vec))
     {
-      fformat (stdout, "FAIL: %s (expected vs. result)\n\"%s\"\n\"%v\"\n",
-	       fmt, exp, test_vec);
+      fformat (stdout, "FAIL: %s (expected vs. result)\n\"%s\"\n\"%v\"\n", fmt,
+	       exp, test_vec);
       ret = 1;
     }
   else if (verbose)
@@ -72,7 +72,7 @@ expectation (const char *exp, char *fmt, ...)
 }
 
 int
-test_format_main (unformat_input_t * input)
+test_format_main (unformat_input_t *input)
 {
   int ret = 0;
   u8 *food = format (0, "food");
@@ -80,15 +80,15 @@ test_format_main (unformat_input_t * input)
   ret |= expectation ("foo", "foo");
   ret |= expectation ("foo", "%s", "foo");
   ret |= expectation ("9876", "%d", 9876);
-  ret |= expectation ("-9876", "%wd", (word) - 9876);
+  ret |= expectation ("-9876", "%wd", (word) -9876);
   ret |= expectation ("98765432", "%u", 98765432);
   ret |= expectation ("1200ffee", "%x", 0x1200ffee);
   ret |= expectation ("BABEBABE", "%X", 0xbabebabe);
   ret |= expectation ("10%a", "%d%%%c", 10, 'a');
   ret |= expectation ("123456789abcdef0", "%016Lx", 0x123456789abcdef0LL);
   ret |= expectation ("00000123", "%08x", 0x123);
-  ret |= expectation ("             23           23    2.3037e1",
-		      "%40U", format_test1, 23, 23.0367);
+  ret |= expectation ("             23           23    2.3037e1", "%40U",
+		      format_test1, 23, 23.0367);
   ret |= expectation ("left      ", "%-10s", "left");
   ret |= expectation ("  center  ", "%=10s", "center");
   ret |= expectation ("     right", "%+10s", "right");
@@ -111,29 +111,29 @@ typedef struct
 } foo_t;
 
 static u8 *
-format_foo (u8 * s, va_list * va)
+format_foo (u8 *s, va_list *va)
 {
   foo_t *foo = va_arg (*va, foo_t *);
   return format (s, "{a %d, b %d}", foo->a, foo->b);
 }
 
 static uword
-unformat_foo (unformat_input_t * i, va_list * va)
+unformat_foo (unformat_input_t *i, va_list *va)
 {
   foo_t *foo = va_arg (*va, foo_t *);
-  return unformat (i, "{%D,%D}",
-		   sizeof (foo->a), &foo->a, sizeof (foo->b), &foo->b);
+  return unformat (i, "{%D,%D}", sizeof (foo->a), &foo->a, sizeof (foo->b),
+		   &foo->b);
 }
 
 int
-test_unformat_main (unformat_input_t * input)
+test_unformat_main (unformat_input_t *input)
 {
   u32 v[8];
   long l;
   long long ll;
   f64 f;
   u8 *s;
-  foo_t foo = {.a = ~0,.b = ~0 };
+  foo_t foo = { .a = ~0, .b = ~0 };
 
   v[0] = v[1] = 0;
 
@@ -159,11 +159,10 @@ test_unformat_main (unformat_input_t * input)
 	fformat (stdout, "got an `ignore-me2'\n");
       else if (unformat (input, "gi%d_%d@-", &v[0], &v[1]))
 	fformat (stdout, "got `gi%d_%d@-'\n", v[0], v[1]);
-      else if (unformat (input, "%_%d.%d.%d.%d%_->%_%d.%d.%d.%d%_",
-			 &v[0], &v[1], &v[2], &v[3],
-			 &v[4], &v[5], &v[6], &v[7]))
-	fformat (stdout, "got %d.%d.%d.%d -> %d.%d.%d.%d",
-		 v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
+      else if (unformat (input, "%_%d.%d.%d.%d%_->%_%d.%d.%d.%d%_", &v[0],
+			 &v[1], &v[2], &v[3], &v[4], &v[5], &v[6], &v[7]))
+	fformat (stdout, "got %d.%d.%d.%d -> %d.%d.%d.%d", v[0], v[1], v[2],
+		 v[3], v[4], v[5], v[6], v[7]);
       else
 	{
 	  clib_warning ("unknown input `%U'\n", format_unformat_error, input);

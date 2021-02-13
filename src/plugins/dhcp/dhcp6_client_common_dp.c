@@ -26,7 +26,7 @@ dhcp6_client_common_main_t dhcp6_client_common_main;
 dhcpv6_duid_ll_string_t client_duid;
 
 u32
-server_index_get_or_create (u8 * data, u16 len)
+server_index_get_or_create (u8 *data, u16 len)
 {
   dhcp6_client_common_main_t *ccm = &dhcp6_client_common_main;
   u32 i;
@@ -61,14 +61,12 @@ generate_client_duid (void)
   vnet_hw_interface_t *hi;
   ethernet_interface_t *eth_if = 0;
 
-  /* *INDENT-OFF* */
   pool_foreach (hi, im->hw_interfaces)
-   {
-    eth_if = ethernet_get_interface (&ethernet_main, hi->hw_if_index);
-    if (eth_if)
-      break;
-  }
-  /* *INDENT-ON* */
+    {
+      eth_if = ethernet_get_interface (&ethernet_main, hi->hw_if_index);
+      if (eth_if)
+	break;
+    }
 
   if (eth_if)
     clib_memcpy (client_duid.lla, &eth_if->address, 6);
@@ -78,7 +76,7 @@ generate_client_duid (void)
 		    "setting DHCPv6 DUID link-layer address to random value");
       u32 seed = random_default_seed ();
       random_u32 (&seed);
-      client_duid.lla[0] = 0xc2;	/* locally administered unicast */
+      client_duid.lla[0] = 0xc2; /* locally administered unicast */
       client_duid.lla[1] = 0x18;
       client_duid.lla[2] = 0x44;
       client_duid.lla[3] = random_u32 (&seed);
@@ -87,13 +85,13 @@ generate_client_duid (void)
     }
 }
 
-#define foreach_dhcpv6_client \
-  _(DROP, "error-drop")       \
-  _(LOOKUP, "ip6-lookup")
+#define foreach_dhcpv6_client                                                 \
+  _ (DROP, "error-drop")                                                      \
+  _ (LOOKUP, "ip6-lookup")
 
 typedef enum
 {
-#define _(sym,str) DHCPV6_CLIENT_NEXT_##sym,
+#define _(sym, str) DHCPV6_CLIENT_NEXT_##sym,
   foreach_dhcpv6_client
 #undef _
     DHCPV6_CLIENT_N_NEXT,
@@ -107,11 +105,11 @@ typedef struct dhcpv6_client_trace_t_
 } dhcpv6_client_trace_t;
 
 static u8 *
-format_dhcpv6_client_trace (u8 * s, va_list * args)
+format_dhcpv6_client_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  //dhcpv6_client_trace_t *t = va_arg (*args, dhcpv6_client_trace_t *);
+  // dhcpv6_client_trace_t *t = va_arg (*args, dhcpv6_client_trace_t *);
 
   s = format (s, "nothing");
 
@@ -119,8 +117,8 @@ format_dhcpv6_client_trace (u8 * s, va_list * args)
 }
 
 static uword
-dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_frame_t * frame)
+dhcpv6_client_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_frame_t *frame)
 {
   dhcp6_ia_na_client_main_t *icm = &dhcp6_ia_na_client_main;
   dhcp6_pd_client_main_t *pcm = &dhcp6_pd_client_main;
@@ -172,9 +170,8 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip0 = (void *) (b0->data + vnet_buffer (b0)->l3_hdr_offset);
 	  u32 dhcpv6_ip6_payload_offset =
 	    (u8 *) dhcpv60 - ((u8 *) ip0 + sizeof (*ip0));
-	  options_length =
-	    clib_net_to_host_u16 (ip0->payload_length) -
-	    dhcpv6_ip6_payload_offset - sizeof (*dhcpv60);
+	  options_length = clib_net_to_host_u16 (ip0->payload_length) -
+			   dhcpv6_ip6_payload_offset - sizeof (*dhcpv60);
 
 	  clib_memset (&report, 0, sizeof (report));
 
@@ -190,16 +187,15 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    pd_client_state = &pcm->client_state_by_sw_if_index[sw_if_index];
 
 	  xid =
-	    (dhcpv60->xid[0] << 16) + (dhcpv60->xid[1] << 8) +
-	    dhcpv60->xid[2];
+	    (dhcpv60->xid[0] << 16) + (dhcpv60->xid[1] << 8) + dhcpv60->xid[2];
 	  if (ia_na_client_state && ia_na_client_state->transaction_id == xid)
 	    is_pd_packet = 0;
 	  else if (pd_client_state && pd_client_state->transaction_id == xid)
 	    is_pd_packet = 1;
 	  else
 	    {
-	      clib_warning
-		("Received DHCPv6 message with wrong Transaction ID");
+	      clib_warning (
+		"Received DHCPv6 message with wrong Transaction ID");
 	      discard = 1;
 	    }
 
@@ -215,14 +211,13 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      while (options_length > 0)
 		{
 		  if (options_length <
-		      clib_net_to_host_u16 (option->length) +
-		      sizeof (*option))
+		      clib_net_to_host_u16 (option->length) + sizeof (*option))
 		    {
-		      clib_warning
-			("remaining payload length < option length (%d < %d)",
-			 options_length,
-			 clib_net_to_host_u16 (option->length) +
-			 sizeof (*option));
+		      clib_warning (
+			"remaining payload length < option length (%d < %d)",
+			options_length,
+			clib_net_to_host_u16 (option->length) +
+			  sizeof (*option));
 		      break;
 		    }
 		  u16 oo = clib_net_to_host_u16 (option->option);
@@ -242,8 +237,7 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  report.T1 = T1;
 			  report.T2 = T2;
 			}
-		      dhcpv6_option_t *inner_option =
-			(void *) ia_header->data;
+		      dhcpv6_option_t *inner_option = (void *) ia_header->data;
 		      u16 inner_options_length =
 			clib_net_to_host_u16 (option->length) -
 			(sizeof (*ia_header) - sizeof (dhcpv6_option_t));
@@ -284,27 +278,25 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    }
 			  else if (inner_oo == DHCPV6_OPTION_STATUS_CODE)
 			    {
-			      dhcpv6_status_code_t *sc =
-				(void *) inner_option;
+			      dhcpv6_status_code_t *sc = (void *) inner_option;
 			      report.inner_status_code =
 				clib_net_to_host_u16 (sc->status_code);
 			    }
 			  inner_options_length -=
 			    sizeof (*inner_option) +
 			    clib_net_to_host_u16 (inner_option->length);
-			  inner_option =
-			    (void *) ((u8 *) inner_option +
-				      sizeof (*inner_option) +
-				      clib_net_to_host_u16
-				      (inner_option->length));
+			  inner_option = (void *) ((u8 *) inner_option +
+						   sizeof (*inner_option) +
+						   clib_net_to_host_u16 (
+						     inner_option->length));
 			}
 		    }
 		  else if (oo == DHCPV6_OPTION_CLIENTID)
 		    {
 		      if (client_id_present)
 			{
-			  clib_warning
-			    ("Duplicate Client ID in received DHVPv6 message");
+			  clib_warning (
+			    "Duplicate Client ID in received DHVPv6 message");
 			  discard = 1;
 			}
 		      else
@@ -316,8 +308,8 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 					   client_duid.bin_string,
 					   CLIENT_DUID_LENGTH))
 			    {
-			      clib_warning
-				("Unrecognized client DUID inside received DHVPv6 message");
+			      clib_warning ("Unrecognized client DUID inside "
+					    "received DHVPv6 message");
 			      discard = 1;
 			    }
 			}
@@ -326,17 +318,17 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    {
 		      if (report.server_index != ~0)
 			{
-			  clib_warning
-			    ("Duplicate Server ID in received DHVPv6 message");
+			  clib_warning (
+			    "Duplicate Server ID in received DHVPv6 message");
 			  discard = 1;
 			}
 		      else
 			{
 			  u16 ol = clib_net_to_host_u16 (option->length);
-			  if (ol - 2 /* 2 byte DUID type code */  > 128)
+			  if (ol - 2 /* 2 byte DUID type code */ > 128)
 			    {
-			      clib_warning
-				("Server DUID (without type code) is longer than 128 octets");
+			      clib_warning ("Server DUID (without type code) "
+					    "is longer than 128 octets");
 			      discard = 1;
 			    }
 			  else
@@ -358,21 +350,20 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    }
 		  options_length -=
 		    sizeof (*option) + clib_net_to_host_u16 (option->length);
-		  option =
-		    (void *) ((u8 *) option + sizeof (*option) +
-			      clib_net_to_host_u16 (option->length));
+		  option = (void *) ((u8 *) option + sizeof (*option) +
+				     clib_net_to_host_u16 (option->length));
 		}
 
 	      if (!client_id_present)
 		{
-		  clib_warning
-		    ("Missing Client ID in received DHVPv6 message");
+		  clib_warning (
+		    "Missing Client ID in received DHVPv6 message");
 		  discard = 1;
 		}
 	      if (report.server_index == ~0)
 		{
-		  clib_warning
-		    ("Missing Server ID in received DHVPv6 message");
+		  clib_warning (
+		    "Missing Server ID in received DHVPv6 message");
 		  discard = 1;
 		}
 
@@ -414,9 +405,8 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -425,7 +415,6 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dhcpv6_client_node, static) = {
     .function = dhcpv6_client_node_fn,
     .name = "dhcpv6-client",
@@ -435,14 +424,13 @@ VLIB_REGISTER_NODE (dhcpv6_client_node, static) = {
 
     .n_next_nodes = DHCPV6_CLIENT_N_NEXT,
     .next_nodes = {
-  #define _(s,n) [DHCPV6_CLIENT_NEXT_##s] = n,
+#define _(s, n) [DHCPV6_CLIENT_NEXT_##s] = n,
       foreach_dhcpv6_client
-  #undef _
+#undef _
     },
 
     .format_trace = format_dhcpv6_client_trace,
 };
-/* *INDENT-ON* */
 
 void
 dhcp6_clients_enable_disable (u8 enable)
@@ -454,11 +442,11 @@ dhcp6_clients_enable_disable (u8 enable)
       if (client_duid.duid_type == 0)
 	generate_client_duid ();
       udp_register_dst_port (vm, UDP_DST_PORT_dhcpv6_to_client,
-			     dhcpv6_client_node.index, 0 /* is_ip6 */ );
+			     dhcpv6_client_node.index, 0 /* is_ip6 */);
     }
   else
     udp_unregister_dst_port (vm, UDP_DST_PORT_dhcpv6_to_client,
-			     0 /* is_ip6 */ );
+			     0 /* is_ip6 */);
 }
 
 /*

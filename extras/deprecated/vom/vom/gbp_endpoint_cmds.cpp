@@ -50,8 +50,7 @@ create_cmd::create_cmd(HW::item<handle_t>& item,
   , m_mac(mac)
   , m_sclass(sclass)
   , m_flags(flags)
-{
-}
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
@@ -64,8 +63,8 @@ create_cmd::operator==(const create_cmd& other) const
 rc_t
 create_cmd::issue(connection& con)
 {
-  msg_t req(con.ctx(), m_ip_addrs.size() * sizeof(vapi_type_address),
-            std::ref(*this));
+  msg_t req(
+    con.ctx(), m_ip_addrs.size() * sizeof(vapi_type_address), std::ref(*this));
   uint8_t n;
 
   auto& payload = req.get_request().get_payload();
@@ -121,8 +120,7 @@ create_cmd::to_string() const
 
 delete_cmd::delete_cmd(HW::item<handle_t>& item)
   : rpc_cmd(item)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
@@ -152,9 +150,7 @@ delete_cmd::to_string() const
   return (s.str());
 }
 
-dump_cmd::dump_cmd()
-{
-}
+dump_cmd::dump_cmd() {}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const

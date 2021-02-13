@@ -25,44 +25,46 @@
 /**
  * Keep a lock per-source and a total
  */
-#define MFIB_TABLE_N_LOCKS (MFIB_N_SOURCES+1)
+#define MFIB_TABLE_N_LOCKS     (MFIB_N_SOURCES + 1)
 #define MFIB_TABLE_TOTAL_LOCKS MFIB_N_SOURCES
 
 /**
  * Flags for the source data
  */
-typedef enum mfib_table_attribute_t_ {
-    /**
-     * Marker. Add new values after this one.
-     */
-    MFIB_TABLE_ATTRIBUTE_FIRST,
-    /**
-     * the table is currently resync-ing
-     */
-    MFIB_TABLE_ATTRIBUTE_RESYNC = MFIB_TABLE_ATTRIBUTE_FIRST,
-    /**
-     * Marker. add new entries before this one.
-     */
-    MFIB_TABLE_ATTRIBUTE_LAST = MFIB_TABLE_ATTRIBUTE_RESYNC,
+typedef enum mfib_table_attribute_t_
+{
+  /**
+   * Marker. Add new values after this one.
+   */
+  MFIB_TABLE_ATTRIBUTE_FIRST,
+  /**
+   * the table is currently resync-ing
+   */
+  MFIB_TABLE_ATTRIBUTE_RESYNC = MFIB_TABLE_ATTRIBUTE_FIRST,
+  /**
+   * Marker. add new entries before this one.
+   */
+  MFIB_TABLE_ATTRIBUTE_LAST = MFIB_TABLE_ATTRIBUTE_RESYNC,
 } mfib_table_attribute_t;
 
-#define MFIB_TABLE_ATTRIBUTE_MAX (MFIB_TABLE_ATTRIBUTE_LAST+1)
+#define MFIB_TABLE_ATTRIBUTE_MAX (MFIB_TABLE_ATTRIBUTE_LAST + 1)
 
-#define MFIB_TABLE_ATTRIBUTES {		         \
-    [MFIB_TABLE_ATTRIBUTE_RESYNC]  = "resync",    \
-}
+#define MFIB_TABLE_ATTRIBUTES                                                 \
+  {                                                                           \
+    [MFIB_TABLE_ATTRIBUTE_RESYNC] = "resync",                                 \
+  }
 
-#define FOR_EACH_MFIB_TABLE_ATTRIBUTE(_item)      	\
-    for (_item = MFIB_TABLE_ATTRIBUTE_FIRST;		\
-	 _item < MFIB_TABLE_ATTRIBUTE_MAX;		\
-	 _item++)
+#define FOR_EACH_MFIB_TABLE_ATTRIBUTE(_item)                                  \
+  for (_item = MFIB_TABLE_ATTRIBUTE_FIRST; _item < MFIB_TABLE_ATTRIBUTE_MAX;  \
+       _item++)
 
-typedef enum mfib_table_flags_t_ {
-    MFIB_TABLE_FLAG_NONE   = 0,
-    MFIB_TABLE_FLAG_RESYNC  = (1 << MFIB_TABLE_ATTRIBUTE_RESYNC),
+typedef enum mfib_table_flags_t_
+{
+  MFIB_TABLE_FLAG_NONE = 0,
+  MFIB_TABLE_FLAG_RESYNC = (1 << MFIB_TABLE_ATTRIBUTE_RESYNC),
 } __attribute__ ((packed)) mfib_table_flags_t;
 
-extern u8* format_mfib_table_flags(u8 *s, va_list *args);
+extern u8 *format_mfib_table_flags (u8 *s, va_list *args);
 
 /**
  * @brief
@@ -70,68 +72,69 @@ extern u8* format_mfib_table_flags(u8 *s, va_list *args);
  */
 typedef struct mfib_table_t_
 {
-    /**
-     * Required for pool_get_aligned
-     */
-    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+  /**
+   * Required for pool_get_aligned
+   */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
-    /**
-     * A union of the protocol specific FIBs that provide the
-     * underlying LPM mechanism.
-     * This element is first in the struct so that it is in the
-     * first cache line.
-     */
-    union {
-        ip4_mfib_t v4;
-        ip6_mfib_t v6;
-    };
+  /**
+   * A union of the protocol specific FIBs that provide the
+   * underlying LPM mechanism.
+   * This element is first in the struct so that it is in the
+   * first cache line.
+   */
+  union
+  {
+    ip4_mfib_t v4;
+    ip6_mfib_t v6;
+  };
 
-    /**
-     * Which protocol this table serves. Used to switch on the union above.
-     */
-    fib_protocol_t mft_proto;
+  /**
+   * Which protocol this table serves. Used to switch on the union above.
+   */
+  fib_protocol_t mft_proto;
 
-    /**
-     * table falgs
-     */
-    mfib_table_flags_t mft_flags;
+  /**
+   * table falgs
+   */
+  mfib_table_flags_t mft_flags;
 
-    /**
-     * number of locks on the table
-     */
-    u32 mft_locks[MFIB_TABLE_N_LOCKS];
+  /**
+   * number of locks on the table
+   */
+  u32 mft_locks[MFIB_TABLE_N_LOCKS];
 
-    /**
-     * Table ID (hash key) for this FIB.
-     */
-    u32 mft_table_id;
+  /**
+   * Table ID (hash key) for this FIB.
+   */
+  u32 mft_table_id;
 
-    /**
-     * resync epoch
-     */
-    u32 mft_epoch;
+  /**
+   * resync epoch
+   */
+  u32 mft_epoch;
 
-    /**
-     * Index into FIB vector.
-     */
-    fib_node_index_t mft_index;
+  /**
+   * Index into FIB vector.
+   */
+  fib_node_index_t mft_index;
 
-    /**
-     * Total route counters
-     */
-    u32 mft_total_route_counts;
+  /**
+   * Total route counters
+   */
+  u32 mft_total_route_counts;
 
-    /**
-     * Table description
-     */
-    u8* mft_desc;
+  /**
+   * Table description
+   */
+  u8 *mft_desc;
 } mfib_table_t;
 
 /**
  * @brief
  *  Format the description/name of the table
  */
-extern u8* format_mfib_table_name(u8* s, va_list *ap);
+extern u8 *format_mfib_table_name (u8 *s, va_list *ap);
 
 /**
  * @brief
@@ -144,10 +147,11 @@ extern u8* format_mfib_table_name(u8* s, va_list *ap);
  *  The prefix to lookup
  *
  * @return
- *  The index of the fib_entry_t for the best match, which may be the default route
+ *  The index of the fib_entry_t for the best match, which may be the default
+ * route
  */
-extern fib_node_index_t mfib_table_lookup(u32 fib_index,
-                                         const mfib_prefix_t *prefix);
+extern fib_node_index_t mfib_table_lookup (u32 fib_index,
+					   const mfib_prefix_t *prefix);
 
 /**
  * @brief
@@ -163,8 +167,8 @@ extern fib_node_index_t mfib_table_lookup(u32 fib_index,
  *  The index of the fib_entry_t for the exact match, or INVALID
  *  is there is no match.
  */
-extern fib_node_index_t mfib_table_lookup_exact_match(u32 fib_index,
-                                                      const mfib_prefix_t *prefix);
+extern fib_node_index_t
+mfib_table_lookup_exact_match (u32 fib_index, const mfib_prefix_t *prefix);
 
 /**
  * @brief
@@ -176,11 +180,11 @@ extern fib_node_index_t mfib_table_lookup_exact_match(u32 fib_index,
  * @return
  *  the index of the fib_entry_t that is created (or existed already).
  */
-extern fib_node_index_t mfib_table_entry_update(u32 fib_index,
-                                                const mfib_prefix_t *prefix,
-                                                mfib_source_t source,
-                                                fib_rpf_id_t rpf_id,
-                                                mfib_entry_flags_t flags);
+extern fib_node_index_t mfib_table_entry_update (u32 fib_index,
+						 const mfib_prefix_t *prefix,
+						 mfib_source_t source,
+						 fib_rpf_id_t rpf_id,
+						 mfib_entry_flags_t flags);
 
 /**
  * @brief
@@ -207,14 +211,14 @@ extern fib_node_index_t mfib_table_entry_update(u32 fib_index,
  * @return
  *  the index of the fib_entry_t that is created (or existed already).
  */
-extern fib_node_index_t mfib_table_entry_path_update(u32 fib_index,
-                                                     const mfib_prefix_t *prefix,
-                                                     mfib_source_t source,
-                                                     const fib_route_path_t *rpath);
-extern fib_node_index_t mfib_table_entry_paths_update(u32 fib_index,
-                                                      const mfib_prefix_t *prefix,
-                                                      mfib_source_t source,
-                                                      const fib_route_path_t *rpath);
+extern fib_node_index_t
+mfib_table_entry_path_update (u32 fib_index, const mfib_prefix_t *prefix,
+			      mfib_source_t source,
+			      const fib_route_path_t *rpath);
+extern fib_node_index_t
+mfib_table_entry_paths_update (u32 fib_index, const mfib_prefix_t *prefix,
+			       mfib_source_t source,
+			       const fib_route_path_t *rpath);
 
 /**
  * @brief
@@ -235,16 +239,14 @@ extern fib_node_index_t mfib_table_entry_paths_update(u32 fib_index,
  * @param rpaths
  *  A vector of paths.
  */
-extern void mfib_table_entry_path_remove(u32 fib_index,
-                                         const mfib_prefix_t *prefix,
-                                         mfib_source_t source,
-                                         const fib_route_path_t *paths);
-extern void mfib_table_entry_paths_remove(u32 fib_index,
-                                          const mfib_prefix_t *prefix,
-                                          mfib_source_t source,
-                                          const fib_route_path_t *paths);
-
-
+extern void mfib_table_entry_path_remove (u32 fib_index,
+					  const mfib_prefix_t *prefix,
+					  mfib_source_t source,
+					  const fib_route_path_t *paths);
+extern void mfib_table_entry_paths_remove (u32 fib_index,
+					   const mfib_prefix_t *prefix,
+					   mfib_source_t source,
+					   const fib_route_path_t *paths);
 
 /**
  * @brief
@@ -260,9 +262,9 @@ extern void mfib_table_entry_paths_remove(u32 fib_index,
  * @param source
  *  The ID of the client/source adding the entry.
  */
-extern void mfib_table_entry_delete(u32 fib_index,
-                                    const mfib_prefix_t *prefix,
-                                    mfib_source_t source);
+extern void mfib_table_entry_delete (u32 fib_index,
+				     const mfib_prefix_t *prefix,
+				     mfib_source_t source);
 
 /**
  * @brief
@@ -275,8 +277,8 @@ extern void mfib_table_entry_delete(u32 fib_index,
  * @param source
  *  The ID of the client/source adding the entry.
  */
-extern void mfib_table_entry_delete_index(fib_node_index_t entry_index,
-                                          mfib_source_t source);
+extern void mfib_table_entry_delete_index (fib_node_index_t entry_index,
+					   mfib_source_t source);
 
 /**
  * @brief
@@ -285,7 +287,7 @@ extern void mfib_table_entry_delete_index(fib_node_index_t entry_index,
  *  via the usual mechanisms (i.e. recurisve or neighbour adj DB lookup).
  *  Instead the client/source provides the index of a replicate DPO to link to.
  *
-  * @param fib_index
+ * @param fib_index
  *  The index of the FIB
  *
  * @param prefix
@@ -303,11 +305,10 @@ extern void mfib_table_entry_delete_index(fib_node_index_t entry_index,
  * @return
  *  the index of the fib_entry_t that is created (or existed already).
  */
-extern fib_node_index_t mfib_table_entry_special_add(u32 fib_index,
-                                                     const mfib_prefix_t *prefix,
-                                                     mfib_source_t source,
-                                                     mfib_entry_flags_t flags,
-                                                     index_t rep_dpo);
+extern fib_node_index_t
+mfib_table_entry_special_add (u32 fib_index, const mfib_prefix_t *prefix,
+			      mfib_source_t source, mfib_entry_flags_t flags,
+			      index_t rep_dpo);
 
 /**
  * @brief
@@ -322,9 +323,8 @@ extern fib_node_index_t mfib_table_entry_special_add(u32 fib_index,
  * @param source
  *  the source to flush
  */
-extern void mfib_table_flush(u32 fib_index,
-                             fib_protocol_t proto,
-                             mfib_source_t source);
+extern void mfib_table_flush (u32 fib_index, fib_protocol_t proto,
+			      mfib_source_t source);
 
 /**
  * @brief
@@ -342,9 +342,8 @@ extern void mfib_table_flush(u32 fib_index,
  * @param source
  *  the source to flush
  */
-extern void mfib_table_mark(u32 fib_index,
-                            fib_protocol_t proto,
-                            mfib_source_t source);
+extern void mfib_table_mark (u32 fib_index, fib_protocol_t proto,
+			     mfib_source_t source);
 
 /**
  * @brief
@@ -362,9 +361,8 @@ extern void mfib_table_mark(u32 fib_index,
  * @param source
  *  the source to flush
  */
-extern void mfib_table_sweep(u32 fib_index,
-                             fib_protocol_t proto,
-                             mfib_source_t source);
+extern void mfib_table_sweep (u32 fib_index, fib_protocol_t proto,
+			      mfib_source_t source);
 
 /**
  * @brief
@@ -379,8 +377,8 @@ extern void mfib_table_sweep(u32 fib_index,
  * @return fib_index
  *  The index of the FIB
  */
-extern u32 mfib_table_get_index_for_sw_if_index(fib_protocol_t proto,
-                                                u32 sw_if_index);
+extern u32 mfib_table_get_index_for_sw_if_index (fib_protocol_t proto,
+						 u32 sw_if_index);
 
 /**
  * @brief
@@ -395,7 +393,7 @@ extern u32 mfib_table_get_index_for_sw_if_index(fib_protocol_t proto,
  * @return fib_index
  *  The tableID of the FIB
  */
-extern u32 mfib_table_get_table_id(u32 fib_index, fib_protocol_t proto);
+extern u32 mfib_table_get_table_id (u32 fib_index, fib_protocol_t proto);
 
 /**
  * @brief
@@ -411,7 +409,7 @@ extern u32 mfib_table_get_table_id(u32 fib_index, fib_protocol_t proto);
  * @return fib_index
  *  The index of the FIB, which may be INVALID.
  */
-extern u32 mfib_table_find(fib_protocol_t proto, u32 table_id);
+extern u32 mfib_table_find (fib_protocol_t proto, u32 table_id);
 
 /**
  * @brief
@@ -426,7 +424,7 @@ extern u32 mfib_table_find(fib_protocol_t proto, u32 table_id);
  * @return fib_index
  *  The tableID of the FIB
  */
-extern u32 mfib_table_get_table_id(u32 fib_index, fib_protocol_t proto);
+extern u32 mfib_table_get_table_id (u32 fib_index, fib_protocol_t proto);
 
 /**
  * @brief
@@ -445,9 +443,9 @@ extern u32 mfib_table_get_table_id(u32 fib_index, fib_protocol_t proto);
  * @param source
  *  The ID of the client/source.
  */
-extern u32 mfib_table_find_or_create_and_lock(fib_protocol_t proto,
-                                              u32 table_id,
-                                              mfib_source_t source);
+extern u32 mfib_table_find_or_create_and_lock (fib_protocol_t proto,
+					       u32 table_id,
+					       mfib_source_t source);
 
 /**
  * @brief
@@ -469,11 +467,10 @@ extern u32 mfib_table_find_or_create_and_lock(fib_protocol_t proto,
  * @param name
  *  The client is choosing the name they want the table to have
  */
-extern u32 mfib_table_find_or_create_and_lock_w_name(fib_protocol_t proto,
-                                                     u32 table_id,
-                                                     mfib_source_t source,
-                                                     const u8 *name);
-
+extern u32 mfib_table_find_or_create_and_lock_w_name (fib_protocol_t proto,
+						      u32 table_id,
+						      mfib_source_t source,
+						      const u8 *name);
 
 /**
  * @brief
@@ -488,9 +485,8 @@ extern u32 mfib_table_find_or_create_and_lock_w_name(fib_protocol_t proto,
  * @param source
  *  The ID of the client/source.
  */
-extern void mfib_table_unlock(u32 fib_index,
-                              fib_protocol_t proto,
-                              mfib_source_t source);
+extern void mfib_table_unlock (u32 fib_index, fib_protocol_t proto,
+			       mfib_source_t source);
 
 /**
  * @brief
@@ -506,9 +502,8 @@ extern void mfib_table_unlock(u32 fib_index,
  * @param source
  *  The ID of the client/source.
  */
-extern void mfib_table_lock(u32 fib_index,
-                            fib_protocol_t proto,
-                            mfib_source_t source);
+extern void mfib_table_lock (u32 fib_index, fib_protocol_t proto,
+			     mfib_source_t source);
 
 /**
  * @brief
@@ -522,8 +517,7 @@ extern void mfib_table_lock(u32 fib_index,
  *
  * @return number of sourced entries.
  */
-extern u32 mfib_table_get_num_entries(u32 fib_index,
-                                      fib_protocol_t proto);
+extern u32 mfib_table_get_num_entries (u32 fib_index, fib_protocol_t proto);
 
 /**
  * @brief
@@ -538,41 +532,37 @@ extern u32 mfib_table_get_num_entries(u32 fib_index,
  * @return
  *  The index of the less specific fib_entry_t.
  */
-extern fib_node_index_t mfib_table_get_less_specific(u32 fib_index,
-						    const mfib_prefix_t *prefix);
+extern fib_node_index_t
+mfib_table_get_less_specific (u32 fib_index, const mfib_prefix_t *prefix);
 
 /**
  * @brief
  * Get a pointer to a FIB table
  */
-extern mfib_table_t *mfib_table_get(fib_node_index_t index,
-                                    fib_protocol_t proto);
+extern mfib_table_t *mfib_table_get (fib_node_index_t index,
+				     fib_protocol_t proto);
 
 /**
  * @brief Call back function when walking entries in a FIB table
  */
-typedef walk_rc_t (*mfib_table_walk_fn_t)(fib_node_index_t fei,
-                                          void *ctx);
+typedef walk_rc_t (*mfib_table_walk_fn_t) (fib_node_index_t fei, void *ctx);
 
 /**
  * @brief Walk all entries in a FIB table
  * N.B: This is NOT safe to deletes. If you need to delete, walk the whole
  * table and store elements in a vector, then delete the elements
  */
-extern void mfib_table_walk(u32 fib_index,
-                            fib_protocol_t proto,
-                            mfib_table_walk_fn_t fn,
-                            void *ctx);
+extern void mfib_table_walk (u32 fib_index, fib_protocol_t proto,
+			     mfib_table_walk_fn_t fn, void *ctx);
 /**
  * @brief format (display) the memory usage for mfibs
  */
-extern u8 * format_mfib_table_memory(u8 * s, va_list * args);
+extern u8 *format_mfib_table_memory (u8 *s, va_list *args);
 
 /**
  * To assit UT
  */
-extern u32 mfib_table_get_n_routes(fib_node_index_t index,
-                                   fib_protocol_t proto);
-
+extern u32 mfib_table_get_n_routes (fib_node_index_t index,
+				    fib_protocol_t proto);
 
 #endif

@@ -45,18 +45,16 @@ typedef enum
 {
   VLIB_RX,
   VLIB_TX,
-  VLIB_N_RX_TX = 2,		/* Used to size arrays. */
+  VLIB_N_RX_TX = 2, /* Used to size arrays. */
 } vlib_rx_or_tx_t;
-
 
 #define vlib_foreach_rx_tx(v) for (v = 0; v < VLIB_N_RX_TX; v++)
 
 /* alias the rx/tx to 'direction' */
 typedef vlib_rx_or_tx_t vlib_dir_t;
 
-#define VLIB_N_DIR VLIB_N_RX_TX
-#define FOREACH_VLIB_DIR(_dir) \
-  for (_dir = VLIB_RX; _dir <= VLIB_TX; _dir++)
+#define VLIB_N_DIR	       VLIB_N_RX_TX
+#define FOREACH_VLIB_DIR(_dir) for (_dir = VLIB_RX; _dir <= VLIB_TX; _dir++)
 
 /* Read/write. */
 typedef enum

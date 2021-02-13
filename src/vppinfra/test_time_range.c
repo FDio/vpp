@@ -16,7 +16,7 @@
 #include <vppinfra/time_range.h>
 
 static int
-test_time_range_main (unformat_input_t * input)
+test_time_range_main (unformat_input_t *input)
 {
   clib_timebase_t _tb, *tb = &_tb;
   clib_timebase_component_t _c, *cp = &_c;
@@ -30,8 +30,8 @@ test_time_range_main (unformat_input_t * input)
   f64 timezone_offset;
 
   /* Init time base */
-  clib_timebase_init (tb, -5 /* EST */ , CLIB_TIMEBASE_DAYLIGHT_USA,
-		      0 /* allocate a clib_time_t */ );
+  clib_timebase_init (tb, -5 /* EST */, CLIB_TIMEBASE_DAYLIGHT_USA,
+		      0 /* allocate a clib_time_t */);
 
   /* Set up summer time cache */
   now = clib_timebase_now (tb);
@@ -122,19 +122,17 @@ test_time_range_main (unformat_input_t * input)
 
   test_range_string = "Mon 11 - 17 Tue 7 - 11 Wed - Fri 8 - 18";
 
-  unformat_init_string (input2, test_range_string,
-			strlen (test_range_string));
+  unformat_init_string (input2, test_range_string, strlen (test_range_string));
 
   if (unformat (input2, "%U", unformat_clib_timebase_range_vector, &rp))
     {
       vec_foreach (this_rp, rp)
-      {
-	start_time = sunday_midnight + this_rp->start;
-	end_time = sunday_midnight + this_rp->end;
-	fformat (stdout, "range: %U - %U\n",
-		 format_clib_timebase_time, start_time,
-		 format_clib_timebase_time, end_time);
-      }
+	{
+	  start_time = sunday_midnight + this_rp->start;
+	  end_time = sunday_midnight + this_rp->end;
+	  fformat (stdout, "range: %U - %U\n", format_clib_timebase_time,
+		   start_time, format_clib_timebase_time, end_time);
+	}
       vec_free (rp);
     }
   else

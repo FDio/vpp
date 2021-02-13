@@ -19,9 +19,7 @@
 #include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
 #include <vnet/ip/ip.h>
 
-
-
-#define VXLAN_GPE_OPTION_TYPE_IOAM_TRACE   59
+#define VXLAN_GPE_OPTION_TYPE_IOAM_TRACE	    59
 #define VXLAN_GPE_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT 60
 
 /**
@@ -48,9 +46,7 @@ typedef struct
   u8 length;
 } vxlan_gpe_ioam_option_t;
 
-
 #endif
-
 
 /*
  * fd.io coding-style-patch-verification: ON

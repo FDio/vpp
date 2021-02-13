@@ -31,10 +31,10 @@
 #define MAX_VALUE_U24 0xffffff
 
 /* mapping timer control constants (in seconds) */
-#define TIME_UNTIL_REFETCH_OR_DELETE  20
-#define MAPPING_TIMEOUT (((m->ttl) * 60) - TIME_UNTIL_REFETCH_OR_DELETE)
+#define TIME_UNTIL_REFETCH_OR_DELETE 20
+#define MAPPING_TIMEOUT		     (((m->ttl) * 60) - TIME_UNTIL_REFETCH_OR_DELETE)
 
-u8 *format_lisp_cp_input_trace (u8 * s, va_list * args);
+u8 *format_lisp_cp_input_trace (u8 *s, va_list *args);
 static void *send_map_request_thread_fn (void *arg);
 
 typedef enum
@@ -69,17 +69,16 @@ auth_data_len_by_key_id (lisp_key_type_t key_id)
       return SHA256_AUTH_DATA_LEN;
     default:
       clib_warning ("unsupported key type: %d!", key_id);
-      return (u16) ~ 0;
+      return (u16) ~0;
     }
-  return (u16) ~ 0;
+  return (u16) ~0;
 }
 
-static int
-queue_map_request (gid_address_t * seid, gid_address_t * deid,
-		   u8 smr_invoked, u8 is_resend);
+static int queue_map_request (gid_address_t *seid, gid_address_t *deid,
+			      u8 smr_invoked, u8 is_resend);
 
 ip_interface_address_t *
-ip_interface_get_first_interface_address (ip_lookup_main_t * lm,
+ip_interface_get_first_interface_address (ip_lookup_main_t *lm,
 					  u32 sw_if_index, u8 loop)
 {
   vnet_main_t *vnm = vnet_get_main ();
@@ -88,13 +87,13 @@ ip_interface_get_first_interface_address (ip_lookup_main_t * lm,
     sw_if_index = swif->unnumbered_sw_if_index;
   u32 ia =
     (vec_len ((lm)->if_address_pool_index_by_sw_if_index) > (sw_if_index)) ?
-    vec_elt ((lm)->if_address_pool_index_by_sw_if_index, (sw_if_index)) :
-    (u32) ~ 0;
+      vec_elt ((lm)->if_address_pool_index_by_sw_if_index, (sw_if_index)) :
+      (u32) ~0;
   return pool_elt_at_index ((lm)->if_address_pool, ia);
 }
 
 void *
-ip_interface_get_first_address (ip_lookup_main_t * lm, u32 sw_if_index,
+ip_interface_get_first_address (ip_lookup_main_t *lm, u32 sw_if_index,
 				u8 version)
 {
   ip_interface_address_t *ia;
@@ -127,7 +126,7 @@ ip_interface_get_first_ip_address (lisp_cp_main_t *lcm, u32 sw_if_index,
  * dst.
  */
 u32
-ip_fib_get_egress_iface_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst)
+ip_fib_get_egress_iface_for_dst (lisp_cp_main_t *lcm, ip_address_t *dst)
 {
   fib_node_index_t fei;
   fib_prefix_t prefix;
@@ -144,8 +143,8 @@ ip_fib_get_egress_iface_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst)
  * Returns 1 if the address is found 0 otherwise.
  */
 int
-ip_fib_get_first_egress_ip_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst,
-				    ip_address_t * result)
+ip_fib_get_first_egress_ip_for_dst (lisp_cp_main_t *lcm, ip_address_t *dst,
+				    ip_address_t *result)
 {
   u32 si;
   ip_lookup_main_t *lm;
@@ -159,7 +158,7 @@ ip_fib_get_first_egress_ip_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst,
   lm = (ipver == AF_IP4) ? &lcm->im4->lookup_main : &lcm->im6->lookup_main;
   si = ip_fib_get_egress_iface_for_dst (lcm, dst);
 
-  if ((u32) ~ 0 == si)
+  if ((u32) ~0 == si)
     return 0;
 
   /* find the first ip address */
@@ -172,7 +171,7 @@ ip_fib_get_first_egress_ip_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst,
 }
 
 static int
-dp_add_del_iface (lisp_cp_main_t * lcm, u32 vni, u8 is_l2, u8 is_add,
+dp_add_del_iface (lisp_cp_main_t *lcm, u32 vni, u8 is_l2, u8 is_add,
 		  u8 with_default_route)
 {
   uword *dp_table;
@@ -218,7 +217,7 @@ dp_add_del_iface (lisp_cp_main_t * lcm, u32 vni, u8 is_l2, u8 is_add,
 }
 
 static void
-dp_del_fwd_entry (lisp_cp_main_t * lcm, u32 dst_map_index)
+dp_del_fwd_entry (lisp_cp_main_t *lcm, u32 dst_map_index)
 {
   vnet_lisp_gpe_add_del_fwd_entry_args_t _a, *a = &_a;
   fwd_entry_t *fe = 0;
@@ -255,8 +254,8 @@ dp_del_fwd_entry (lisp_cp_main_t * lcm, u32 dst_map_index)
  *
  */
 static u32
-get_locator_pairs (lisp_cp_main_t * lcm, mapping_t * lcl_map,
-		   mapping_t * rmt_map, locator_pair_t ** locator_pairs)
+get_locator_pairs (lisp_cp_main_t *lcm, mapping_t *lcl_map, mapping_t *rmt_map,
+		   locator_pair_t **locator_pairs)
 {
   u32 i, limitp = 0, li, found = 0, esi;
   locator_set_t *rmt_ls, *lcl_ls;
@@ -290,8 +289,8 @@ get_locator_pairs (lisp_cp_main_t * lcm, mapping_t * lcl_map,
 	  if (gid_address_type (&lp->address) != GID_ADDR_IP_PREFIX)
 	    continue;
 
-	  if ((found && lp->priority == limitp)
-	      || (!found && lp->priority >= limitp))
+	  if ((found && lp->priority == limitp) ||
+	      (!found && lp->priority >= limitp))
 	    {
 	      rmt = lp;
 
@@ -306,10 +305,9 @@ get_locator_pairs (lisp_cp_main_t * lcm, mapping_t * lcl_map,
       if (rmt != 0)
 	{
 	  /* find egress sw_if_index for rmt locator */
-	  esi =
-	    ip_fib_get_egress_iface_for_dst (lcm,
-					     &gid_address_ip (&rmt->address));
-	  if ((u32) ~ 0 == esi)
+	  esi = ip_fib_get_egress_iface_for_dst (
+	    lcm, &gid_address_ip (&rmt->address));
+	  if ((u32) ~0 == esi)
 	    continue;
 
 	  for (i = 0; i < vec_len (lcl_ls->locator_indices); i++)
@@ -321,11 +319,9 @@ get_locator_pairs (lisp_cp_main_t * lcm, mapping_t * lcl_map,
 	      if (sl->sw_if_index == esi)
 		{
 		  /* and it has an address */
-		  if (0 == ip_interface_get_first_ip_address (lcm,
-							      sl->sw_if_index,
-							      gid_address_ip_version
-							      (&rmt->address),
-							      lcl_addr))
+		  if (0 == ip_interface_get_first_ip_address (
+			     lcm, sl->sw_if_index,
+			     gid_address_ip_version (&rmt->address), lcl_addr))
 		    continue;
 
 		  clib_memset (&pair, 0, sizeof (pair));
@@ -348,8 +344,8 @@ get_locator_pairs (lisp_cp_main_t * lcm, mapping_t * lcl_map,
 }
 
 static void
-gid_address_sd_to_flat (gid_address_t * dst, gid_address_t * src,
-			fid_address_t * fid)
+gid_address_sd_to_flat (gid_address_t *dst, gid_address_t *src,
+			fid_address_t *fid)
 {
   ASSERT (GID_ADDR_SRC_DST == gid_address_type (src));
 
@@ -386,7 +382,7 @@ vnet_lisp_rloc_probe_state_get (void)
 }
 
 static void
-dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
+dp_add_fwd_entry (lisp_cp_main_t *lcm, u32 src_map_index, u32 dst_map_index)
 {
   vnet_lisp_gpe_add_del_fwd_entry_args_t _a, *a = &_a;
   gid_address_t *rmt_eid, *lcl_eid;
@@ -520,8 +516,7 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
 	    fe - lcm->fwd_entry_pool);
 
   /* Add rmt mapping to the vector of adjacent mappings to lcl mapping */
-  rmts_stored_idxp =
-    hash_get (lcm->lcl_to_rmt_adjs_by_lcl_idx, src_map_index);
+  rmts_stored_idxp = hash_get (lcm->lcl_to_rmt_adjs_by_lcl_idx, src_map_index);
   if (!rmts_stored_idxp)
     {
       pool_get (lcm->lcl_to_rmt_adjacencies, rmts);
@@ -561,8 +556,8 @@ dp_add_fwd_entry_from_mt (u32 si, u32 di)
   a.si = si;
   a.di = di;
 
-  vl_api_rpc_call_main_thread (dp_add_fwd_entry_thread_fn,
-			       (u8 *) & a, sizeof (a));
+  vl_api_rpc_call_main_thread (dp_add_fwd_entry_thread_fn, (u8 *) &a,
+			       sizeof (a));
   return 0;
 }
 
@@ -583,53 +578,53 @@ vnet_lisp_adjacencies_get_by_vni (u32 vni)
 
   /* *INDENT-OFF* */
   pool_foreach (fwd, lcm->fwd_entry_pool)
-   {
-    if (gid_address_vni (&fwd->reid) != vni)
-      continue;
+    {
+      if (gid_address_vni (&fwd->reid) != vni)
+	continue;
 
-    gid_address_copy (&adj.reid, &fwd->reid);
-    gid_address_copy (&adj.leid, &fwd->leid);
-    vec_add1 (adjs, adj);
-  }
+      gid_address_copy (&adj.reid, &fwd->reid);
+      gid_address_copy (&adj.leid, &fwd->leid);
+      vec_add1 (adjs, adj);
+    }
   /* *INDENT-ON* */
 
   return adjs;
 }
 
 static lisp_msmr_t *
-get_map_server (ip_address_t * a)
+get_map_server (ip_address_t *a)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   lisp_msmr_t *m;
 
   vec_foreach (m, lcm->map_servers)
-  {
-    if (!ip_address_cmp (&m->address, a))
-      {
-	return m;
-      }
-  }
+    {
+      if (!ip_address_cmp (&m->address, a))
+	{
+	  return m;
+	}
+    }
   return 0;
 }
 
 static lisp_msmr_t *
-get_map_resolver (ip_address_t * a)
+get_map_resolver (ip_address_t *a)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   lisp_msmr_t *m;
 
   vec_foreach (m, lcm->map_resolvers)
-  {
-    if (!ip_address_cmp (&m->address, a))
-      {
-	return m;
-      }
-  }
+    {
+      if (!ip_address_cmp (&m->address, a))
+	{
+	  return m;
+	}
+    }
   return 0;
 }
 
 int
-vnet_lisp_add_del_map_server (ip_address_t * addr, u8 is_add)
+vnet_lisp_add_del_map_server (ip_address_t *addr, u8 is_add)
 {
   u32 i;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -680,8 +675,8 @@ vnet_lisp_add_del_map_server (ip_address_t * addr, u8 is_add)
  * Add/remove mapping to/from map-cache. Overwriting not allowed.
  */
 int
-vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,
-			     u32 * map_index_result)
+vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t *a,
+			     u32 *map_index_result)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u32 mi, *map_indexp, map_index, i;
@@ -740,8 +735,8 @@ vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,
 
       /* add eid to list of eids supported by locator-set */
       vec_validate (lcm->locator_set_to_eids, a->locator_set_index);
-      eid_indexes = vec_elt_at_index (lcm->locator_set_to_eids,
-				      a->locator_set_index);
+      eid_indexes =
+	vec_elt_at_index (lcm->locator_set_to_eids, a->locator_set_index);
       vec_add1 (eid_indexes[0], map_index);
 
       if (a->local)
@@ -761,8 +756,8 @@ vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,
 	}
 
       /* clear locator-set to eids binding */
-      eid_indexes = vec_elt_at_index (lcm->locator_set_to_eids,
-				      a->locator_set_index);
+      eid_indexes =
+	vec_elt_at_index (lcm->locator_set_to_eids, a->locator_set_index);
       for (i = 0; i < vec_len (eid_indexes[0]); i++)
 	{
 	  map_indexp = vec_elt_at_index (eid_indexes[0], i);
@@ -782,9 +777,9 @@ vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,
 	      rmts =
 		pool_elt_at_index (lcm->lcl_to_rmt_adjacencies, rmts_idxp[0]);
 	      vec_foreach (remote_idxp, rmts[0])
-	      {
-		dp_del_fwd_entry (lcm, remote_idxp[0]);
-	      }
+		{
+		  dp_del_fwd_entry (lcm, remote_idxp[0]);
+		}
 	      vec_free (rmts[0]);
 	      pool_put (lcm->lcl_to_rmt_adjacencies, rmts);
 	      hash_unset (lcm->lcl_to_rmt_adjs_by_lcl_idx, mi);
@@ -806,17 +801,17 @@ vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,
 	   */
 	  /* *INDENT-OFF* */
 	  pool_foreach (rmts, lcm->lcl_to_rmt_adjacencies)
-	   {
-	    vec_foreach_index (rmts_itr, rmts[0])
 	    {
-	      remote_idx = vec_elt (rmts[0], rmts_itr);
-	      if (mi == remote_idx)
+	      vec_foreach_index (rmts_itr, rmts[0])
 		{
-		  vec_del1 (rmts[0], rmts_itr);
-		  break;
+		  remote_idx = vec_elt (rmts[0], rmts_itr);
+		  if (mi == remote_idx)
+		    {
+		      vec_del1 (rmts[0], rmts_itr);
+		      break;
+		    }
 		}
 	    }
-	  }
 	  /* *INDENT-ON* */
 	}
 
@@ -833,8 +828,8 @@ vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,
  *  Add/update/delete mapping to/in/from map-cache.
  */
 int
-vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
-				 u32 * map_index_result)
+vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t *a,
+				 u32 *map_index_result)
 {
   uword *dp_table = 0;
   u32 vni;
@@ -885,8 +880,8 @@ vnet_lisp_l2_arp_bds_get (void)
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u32 *bds = 0;
 
-  gid_dict_foreach_l2_arp_ndp_entry (&lcm->mapping_index_by_gid,
-				     add_l2_arp_bd, &bds);
+  gid_dict_foreach_l2_arp_ndp_entry (&lcm->mapping_index_by_gid, add_l2_arp_bd,
+				     &bds);
   return bds;
 }
 
@@ -909,8 +904,8 @@ vnet_lisp_ndp_bds_get (void)
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u32 *bds = 0;
 
-  gid_dict_foreach_l2_arp_ndp_entry (&lcm->mapping_index_by_gid,
-				     add_ndp_bd, &bds);
+  gid_dict_foreach_l2_arp_ndp_entry (&lcm->mapping_index_by_gid, add_ndp_bd,
+				     &bds);
   return bds;
 }
 
@@ -987,13 +982,13 @@ vnet_lisp_ndp_entries_get_by_bd (u32 bd)
   a.vector = &entries;
   a.bd = bd;
 
-  gid_dict_foreach_l2_arp_ndp_entry (&lcm->mapping_index_by_gid,
-				     add_ndp_entry, &a);
+  gid_dict_foreach_l2_arp_ndp_entry (&lcm->mapping_index_by_gid, add_ndp_entry,
+				     &a);
   return entries;
 }
 
 int
-vnet_lisp_add_del_l2_arp_ndp_entry (gid_address_t * key, u8 * mac, u8 is_add)
+vnet_lisp_add_del_l2_arp_ndp_entry (gid_address_t *key, u8 *mac, u8 is_add)
 {
   if (vnet_lisp_enable_disable_status () == 0)
     {
@@ -1014,7 +1009,7 @@ vnet_lisp_add_del_l2_arp_ndp_entry (gid_address_t * key, u8 * mac, u8 is_add)
 	}
       u64 val = mac_to_u64 (mac);
       gid_dictionary_add_del (&lcm->mapping_index_by_gid, key, val,
-			      1 /* is_add */ );
+			      1 /* is_add */);
     }
   else
     {
@@ -1025,7 +1020,7 @@ vnet_lisp_add_del_l2_arp_ndp_entry (gid_address_t * key, u8 * mac, u8 is_add)
 	  return -1;
 	}
       gid_dictionary_add_del (&lcm->mapping_index_by_gid, key, 0,
-			      0 /* is_add */ );
+			      0 /* is_add */);
     }
 
   return rc;
@@ -1060,38 +1055,39 @@ vnet_lisp_eid_table_map (u32 vni, u32 dp_id, u8 is_l2, u8 is_add)
       if (dp_idp || vnip)
 	{
 	  clib_warning ("vni %d or vrf %d already used in vrf/vni "
-			"mapping!", vni, dp_id);
+			"mapping!",
+			vni, dp_id);
 	  return -1;
 	}
       hash_set (dp_table_by_vni[0], vni, dp_id);
       hash_set (vni_by_dp_table[0], dp_id, vni);
 
       /* create dp iface */
-      dp_add_del_iface (lcm, vni, is_l2, 1 /* is_add */ ,
-			1 /* with_default_route */ );
+      dp_add_del_iface (lcm, vni, is_l2, 1 /* is_add */,
+			1 /* with_default_route */);
     }
   else
     {
       if (!dp_idp || !vnip)
 	{
 	  clib_warning ("vni %d or vrf %d not used in any vrf/vni! "
-			"mapping!", vni, dp_id);
+			"mapping!",
+			vni, dp_id);
 	  return -1;
 	}
       /* remove dp iface */
-      dp_add_del_iface (lcm, vni, is_l2, 0 /* is_add */ , 0 /* unused */ );
+      dp_add_del_iface (lcm, vni, is_l2, 0 /* is_add */, 0 /* unused */);
 
       hash_unset (dp_table_by_vni[0], vni);
       hash_unset (vni_by_dp_table[0], dp_id);
     }
   return 0;
-
 }
 
 /* return 0 if the two locator sets are identical 1 otherwise */
 static u8
-compare_locators (lisp_cp_main_t * lcm, u32 * old_ls_indexes,
-		  locator_t * new_locators)
+compare_locators (lisp_cp_main_t *lcm, u32 *old_ls_indexes,
+		  locator_t *new_locators)
 {
   u32 i, old_li;
   locator_t *old_loc, *new_loc;
@@ -1163,7 +1159,7 @@ remove_mapping_if_needed (u32 mi, void *arg)
  *    then the mapping is removed
  */
 static void
-remove_overlapping_sub_prefixes (lisp_cp_main_t * lcm, gid_address_t * eid,
+remove_overlapping_sub_prefixes (lisp_cp_main_t *lcm, gid_address_t *eid,
 				 u8 is_negative)
 {
   gid_address_t *e;
@@ -1176,8 +1172,8 @@ remove_overlapping_sub_prefixes (lisp_cp_main_t * lcm, gid_address_t * eid,
     return;
 
   /* ... and  only for IP prefix */
-  if (GID_ADDR_SRC_DST != gid_address_type (eid)
-      || (FID_ADDR_IP_PREF != gid_address_sd_dst_type (eid)))
+  if (GID_ADDR_SRC_DST != gid_address_type (eid) ||
+      (FID_ADDR_IP_PREF != gid_address_sd_dst_type (eid)))
     return;
 
   a.is_negative = is_negative;
@@ -1187,23 +1183,23 @@ remove_overlapping_sub_prefixes (lisp_cp_main_t * lcm, gid_address_t * eid,
 			      remove_mapping_if_needed, &a);
 
   vec_foreach (e, a.eids_to_be_deleted)
-  {
-    vnet_lisp_add_del_adjacency_args_t _adj_args, *adj_args = &_adj_args;
+    {
+      vnet_lisp_add_del_adjacency_args_t _adj_args, *adj_args = &_adj_args;
 
-    clib_memset (adj_args, 0, sizeof (adj_args[0]));
-    gid_address_copy (&adj_args->reid, e);
-    adj_args->is_add = 0;
-    if (vnet_lisp_add_del_adjacency (adj_args))
-      clib_warning ("failed to del adjacency!");
+      clib_memset (adj_args, 0, sizeof (adj_args[0]));
+      gid_address_copy (&adj_args->reid, e);
+      adj_args->is_add = 0;
+      if (vnet_lisp_add_del_adjacency (adj_args))
+	clib_warning ("failed to del adjacency!");
 
-    vnet_lisp_del_mapping (e, NULL);
-  }
+      vnet_lisp_del_mapping (e, NULL);
+    }
 
   vec_free (a.eids_to_be_deleted);
 }
 
 static int
-is_local_ip (lisp_cp_main_t * lcm, ip_address_t * addr)
+is_local_ip (lisp_cp_main_t *lcm, ip_address_t *addr)
 {
   fib_node_index_t fei;
   fib_prefix_t prefix;
@@ -1226,9 +1222,8 @@ is_local_ip (lisp_cp_main_t * lcm, ip_address_t * addr)
  * @return return code
  */
 int
-vnet_lisp_add_mapping (vnet_lisp_add_del_mapping_args_t * a,
-		       locator_t * rlocs,
-		       u32 * res_map_index, u8 * is_updated)
+vnet_lisp_add_mapping (vnet_lisp_add_del_mapping_args_t *a, locator_t *rlocs,
+		       u32 *res_map_index, u8 *is_updated)
 {
   vnet_lisp_add_del_locator_set_args_t _ls_args, *ls_args = &_ls_args;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -1251,19 +1246,19 @@ vnet_lisp_add_mapping (vnet_lisp_add_del_mapping_args_t * a,
 
   ls_args->locators = rlocs;
   mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &a->eid);
-  old_map = ((u32) ~ 0 != mi) ? pool_elt_at_index (lcm->mapping_pool, mi) : 0;
+  old_map = ((u32) ~0 != mi) ? pool_elt_at_index (lcm->mapping_pool, mi) : 0;
 
   /* check if none of the locators match locally configured address */
   vec_foreach (loc, rlocs)
-  {
-    ip_prefix_t *p = &gid_address_ippref (&loc->address);
-    if (is_local_ip (lcm, &ip_prefix_addr (p)))
-      {
-	clib_warning ("RLOC %U matches a local address!",
-		      format_gid_address, &loc->address);
-	return VNET_API_ERROR_LISP_RLOC_LOCAL;
-      }
-  }
+    {
+      ip_prefix_t *p = &gid_address_ippref (&loc->address);
+      if (is_local_ip (lcm, &ip_prefix_addr (p)))
+	{
+	  clib_warning ("RLOC %U matches a local address!", format_gid_address,
+			&loc->address);
+	  return VNET_API_ERROR_LISP_RLOC_LOCAL;
+	}
+    }
 
   /* overwrite: if mapping already exists, decide if locators should be
    * updated and be done */
@@ -1273,8 +1268,8 @@ vnet_lisp_add_mapping (vnet_lisp_add_del_mapping_args_t * a,
 	{
 	  /* do not overwrite local or static remote mappings */
 	  clib_warning ("mapping %U rejected due to collision with local "
-			"or static remote mapping!", format_gid_address,
-			&a->eid);
+			"or static remote mapping!",
+			format_gid_address, &a->eid);
 	  return 0;
 	}
 
@@ -1288,8 +1283,8 @@ vnet_lisp_add_mapping (vnet_lisp_add_del_mapping_args_t * a,
       old_map->authoritative = a->authoritative;
       old_map->ttl = a->ttl;
 
-      old_ls = pool_elt_at_index (lcm->locator_set_pool,
-				  old_map->locator_set_index);
+      old_ls =
+	pool_elt_at_index (lcm->locator_set_pool, old_map->locator_set_index);
       if (compare_locators (lcm, old_ls->locator_indices, ls_args->locators))
 	{
 	  /* set locator-set index to overwrite */
@@ -1335,7 +1330,7 @@ vnet_lisp_add_mapping (vnet_lisp_add_del_mapping_args_t * a,
  * @return return code
  */
 int
-vnet_lisp_del_mapping (gid_address_t * eid, u32 * res_map_index)
+vnet_lisp_del_mapping (gid_address_t *eid, u32 *res_map_index)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   vnet_lisp_add_del_mapping_args_t _m_args, *m_args = &_m_args;
@@ -1349,12 +1344,12 @@ vnet_lisp_del_mapping (gid_address_t * eid, u32 * res_map_index)
     res_map_index[0] = ~0;
 
   mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, eid);
-  old_map = ((u32) ~ 0 != mi) ? pool_elt_at_index (lcm->mapping_pool, mi) : 0;
+  old_map = ((u32) ~0 != mi) ? pool_elt_at_index (lcm->mapping_pool, mi) : 0;
 
   if (old_map == 0 || gid_address_cmp (&old_map->eid, eid) != 0)
     {
-      clib_warning ("cannot delete mapping for eid %U",
-		    format_gid_address, eid);
+      clib_warning ("cannot delete mapping for eid %U", format_gid_address,
+		    eid);
       return -1;
     }
 
@@ -1394,34 +1389,34 @@ vnet_lisp_clear_all_remote_adjacencies (void)
 
   /* *INDENT-OFF* */
   pool_foreach_index (mi, lcm->mapping_pool)
-   {
-    vec_add1 (map_indices, mi);
-  }
+    {
+      vec_add1 (map_indices, mi);
+    }
   /* *INDENT-ON* */
 
   vec_foreach (map_indexp, map_indices)
-  {
-    mapping_t *map = pool_elt_at_index (lcm->mapping_pool, map_indexp[0]);
-    if (!map->local)
-      {
-	dp_del_fwd_entry (lcm, map_indexp[0]);
+    {
+      mapping_t *map = pool_elt_at_index (lcm->mapping_pool, map_indexp[0]);
+      if (!map->local)
+	{
+	  dp_del_fwd_entry (lcm, map_indexp[0]);
 
-	dm_args->is_add = 0;
-	gid_address_copy (&dm_args->eid, &map->eid);
-	dm_args->locator_set_index = map->locator_set_index;
+	  dm_args->is_add = 0;
+	  gid_address_copy (&dm_args->eid, &map->eid);
+	  dm_args->locator_set_index = map->locator_set_index;
 
-	/* delete mapping associated to fwd entry */
-	vnet_lisp_map_cache_add_del (dm_args, 0);
+	  /* delete mapping associated to fwd entry */
+	  vnet_lisp_map_cache_add_del (dm_args, 0);
 
-	ls->is_add = 0;
-	ls->local = 0;
-	ls->index = map->locator_set_index;
-	/* delete locator set */
-	rv = vnet_lisp_add_del_locator_set (ls, 0);
-	if (rv != 0)
-	  goto cleanup;
-      }
-  }
+	  ls->is_add = 0;
+	  ls->local = 0;
+	  ls->index = map->locator_set_index;
+	  /* delete locator set */
+	  rv = vnet_lisp_add_del_locator_set (ls, 0);
+	  if (rv != 0)
+	    goto cleanup;
+	}
+    }
 
 cleanup:
   if (map_indices)
@@ -1435,7 +1430,7 @@ cleanup:
  * being created.
  */
 int
-vnet_lisp_add_del_adjacency (vnet_lisp_add_del_adjacency_args_t * a)
+vnet_lisp_add_del_adjacency (vnet_lisp_add_del_adjacency_args_t *a)
 {
   lisp_cp_main_t *lcm = &lisp_control_main;
   u32 local_mi, remote_mi = ~0;
@@ -1446,8 +1441,8 @@ vnet_lisp_add_del_adjacency (vnet_lisp_add_del_adjacency_args_t * a)
       return VNET_API_ERROR_LISP_DISABLED;
     }
 
-  remote_mi = gid_dictionary_sd_lookup (&lcm->mapping_index_by_gid,
-					&a->reid, &a->leid);
+  remote_mi =
+    gid_dictionary_sd_lookup (&lcm->mapping_index_by_gid, &a->reid, &a->leid);
   if (GID_LOOKUP_MISS == remote_mi)
     {
       clib_warning ("Remote eid %U not found. Cannot add adjacency!",
@@ -1483,8 +1478,8 @@ vnet_lisp_add_del_adjacency (vnet_lisp_add_del_adjacency_args_t * a)
 	    }
 	  else
 	    {
-	      local_mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid,
-						&a->leid);
+	      local_mi =
+		gid_dictionary_lookup (&lcm->mapping_index_by_gid, &a->leid);
 	    }
 	}
 
@@ -1527,7 +1522,7 @@ vnet_lisp_set_map_request_mode (u8 mode)
 }
 
 int
-vnet_lisp_nsh_set_locator_set (u8 * locator_set_name, u8 is_add)
+vnet_lisp_nsh_set_locator_set (u8 *locator_set_name, u8 is_add)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
@@ -1543,7 +1538,7 @@ vnet_lisp_nsh_set_locator_set (u8 * locator_set_name, u8 is_add)
 
   if (is_add)
     {
-      if (lcm->nsh_map_index == (u32) ~ 0)
+      if (lcm->nsh_map_index == (u32) ~0)
 	{
 	  p = hash_get_mem (lcm->locator_set_index_by_name, locator_set_name);
 	  if (!p)
@@ -1566,7 +1561,7 @@ vnet_lisp_nsh_set_locator_set (u8 * locator_set_name, u8 is_add)
     }
   else
     {
-      if (lcm->nsh_map_index != (u32) ~ 0)
+      if (lcm->nsh_map_index != (u32) ~0)
 	{
 	  /* remove NSH mapping */
 	  pool_put_index (lcm->mapping_pool, lcm->nsh_map_index);
@@ -1578,7 +1573,7 @@ vnet_lisp_nsh_set_locator_set (u8 * locator_set_name, u8 is_add)
 }
 
 int
-vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add)
+vnet_lisp_pitr_set_locator_set (u8 *locator_set_name, u8 is_add)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u32 locator_set_index = ~0;
@@ -1645,7 +1640,7 @@ vnet_lisp_map_register_fallback_threshold_get (void)
  * return 0 on success
  */
 int
-vnet_lisp_use_petr (ip_address_t * ip, u8 is_add)
+vnet_lisp_use_petr (ip_address_t *ip, u8 is_add)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u32 ls_index = ~0;
@@ -1705,15 +1700,15 @@ vnet_lisp_use_petr (ip_address_t * ip, u8 is_add)
 /* cleans locator to locator-set data and removes locators not part of
  * any locator-set */
 static void
-clean_locator_to_locator_set (lisp_cp_main_t * lcm, u32 lsi)
+clean_locator_to_locator_set (lisp_cp_main_t *lcm, u32 lsi)
 {
   u32 i, j, *loc_indexp, *ls_indexp, **ls_indexes, *to_be_deleted = 0;
   locator_set_t *ls = pool_elt_at_index (lcm->locator_set_pool, lsi);
   for (i = 0; i < vec_len (ls->locator_indices); i++)
     {
       loc_indexp = vec_elt_at_index (ls->locator_indices, i);
-      ls_indexes = vec_elt_at_index (lcm->locator_to_locator_sets,
-				     loc_indexp[0]);
+      ls_indexes =
+	vec_elt_at_index (lcm->locator_to_locator_sets, loc_indexp[0]);
       for (j = 0; j < vec_len (ls_indexes[0]); j++)
 	{
 	  ls_indexp = vec_elt_at_index (ls_indexes[0], j);
@@ -1744,7 +1739,7 @@ clean_locator_to_locator_set (lisp_cp_main_t * lcm, u32 lsi)
 }
 
 static inline uword *
-get_locator_set_index (vnet_lisp_add_del_locator_set_args_t * a, uword * p)
+get_locator_set_index (vnet_lisp_add_del_locator_set_args_t *a, uword *p)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
 
@@ -1766,8 +1761,8 @@ get_locator_set_index (vnet_lisp_add_del_locator_set_args_t * a, uword * p)
 }
 
 static inline int
-is_locator_in_locator_set (lisp_cp_main_t * lcm, locator_set_t * ls,
-			   locator_t * loc)
+is_locator_in_locator_set (lisp_cp_main_t *lcm, locator_set_t *ls,
+			   locator_t *loc)
 {
   locator_t *itloc;
   u32 *locit;
@@ -1776,22 +1771,22 @@ is_locator_in_locator_set (lisp_cp_main_t * lcm, locator_set_t * ls,
   ASSERT (loc != NULL);
 
   vec_foreach (locit, ls->locator_indices)
-  {
-    itloc = pool_elt_at_index (lcm->locator_pool, locit[0]);
-    if ((ls->local && itloc->sw_if_index == loc->sw_if_index) ||
-	(!ls->local && !gid_address_cmp (&itloc->address, &loc->address)))
-      {
-	clib_warning ("Duplicate locator");
-	return VNET_API_ERROR_VALUE_EXIST;
-      }
-  }
+    {
+      itloc = pool_elt_at_index (lcm->locator_pool, locit[0]);
+      if ((ls->local && itloc->sw_if_index == loc->sw_if_index) ||
+	  (!ls->local && !gid_address_cmp (&itloc->address, &loc->address)))
+	{
+	  clib_warning ("Duplicate locator");
+	  return VNET_API_ERROR_VALUE_EXIST;
+	}
+    }
 
   return 0;
 }
 
 static void
-update_adjacencies_by_map_index (lisp_cp_main_t * lcm,
-				 u32 mapping_index, u8 remove_only)
+update_adjacencies_by_map_index (lisp_cp_main_t *lcm, u32 mapping_index,
+				 u8 remove_only)
 {
   fwd_entry_t *fwd;
   mapping_t *map;
@@ -1807,28 +1802,27 @@ update_adjacencies_by_map_index (lisp_cp_main_t * lcm,
       rmts_idxp = hash_get (lcm->lcl_to_rmt_adjs_by_lcl_idx, mapping_index);
       if (rmts_idxp)
 	{
-	  rmts =
-	    pool_elt_at_index (lcm->lcl_to_rmt_adjacencies, rmts_idxp[0]);
+	  rmts = pool_elt_at_index (lcm->lcl_to_rmt_adjacencies, rmts_idxp[0]);
 	  rmts_copy = vec_dup (rmts[0]);
 
 	  vec_foreach (remote_idxp, rmts_copy)
-	  {
-	    fei = hash_get (lcm->fwd_entry_by_mapping_index, remote_idxp[0]);
-	    if (!fei)
-	      continue;
+	    {
+	      fei = hash_get (lcm->fwd_entry_by_mapping_index, remote_idxp[0]);
+	      if (!fei)
+		continue;
 
-	    fwd = pool_elt_at_index (lcm->fwd_entry_pool, fei[0]);
-	    a->is_add = 0;
-	    gid_address_copy (&a->leid, &fwd->leid);
-	    gid_address_copy (&a->reid, &fwd->reid);
-	    vnet_lisp_add_del_adjacency (a);
+	      fwd = pool_elt_at_index (lcm->fwd_entry_pool, fei[0]);
+	      a->is_add = 0;
+	      gid_address_copy (&a->leid, &fwd->leid);
+	      gid_address_copy (&a->reid, &fwd->reid);
+	      vnet_lisp_add_del_adjacency (a);
 
-	    if (!remove_only)
-	      {
-		a->is_add = 1;
-		vnet_lisp_add_del_adjacency (a);
-	      }
-	  }
+	      if (!remove_only)
+		{
+		  a->is_add = 1;
+		  vnet_lisp_add_del_adjacency (a);
+		}
+	    }
 	  vec_free (rmts_copy);
 	}
     }
@@ -1853,8 +1847,8 @@ update_adjacencies_by_map_index (lisp_cp_main_t * lcm,
 }
 
 static void
-update_fwd_entries_by_locator_set (lisp_cp_main_t * lcm,
-				   u32 ls_index, u8 remove_only)
+update_fwd_entries_by_locator_set (lisp_cp_main_t *lcm, u32 ls_index,
+				   u8 remove_only)
 {
   u32 i, *map_indexp;
   u32 **eid_indexes;
@@ -1872,8 +1866,8 @@ update_fwd_entries_by_locator_set (lisp_cp_main_t * lcm,
 }
 
 static inline void
-remove_locator_from_locator_set (locator_set_t * ls, u32 * locit,
-				 u32 ls_index, u32 loc_id)
+remove_locator_from_locator_set (locator_set_t *ls, u32 *locit, u32 ls_index,
+				 u32 loc_id)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u32 **ls_indexes = NULL;
@@ -1888,12 +1882,12 @@ remove_locator_from_locator_set (locator_set_t * ls, u32 * locit,
 }
 
 int
-vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t * a,
-			   locator_set_t * ls, u32 * ls_result)
+vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t *a,
+			   locator_set_t *ls, u32 *ls_result)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   locator_t *loc = NULL, *itloc = NULL;
-  uword _p = (u32) ~ 0, *p = &_p;
+  uword _p = (u32) ~0, *p = &_p;
   u32 loc_index = ~0, ls_index = ~0, *locit = NULL, **ls_indexes = NULL;
   u32 loc_id = ~0;
   int ret = 0;
@@ -1931,24 +1925,24 @@ vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t * a,
 
       /* allocate locators */
       vec_foreach (itloc, a->locators)
-      {
-	ret = is_locator_in_locator_set (lcm, ls, itloc);
-	if (0 != ret)
-	  {
-	    return ret;
-	  }
+	{
+	  ret = is_locator_in_locator_set (lcm, ls, itloc);
+	  if (0 != ret)
+	    {
+	      return ret;
+	    }
 
-	pool_get (lcm->locator_pool, loc);
-	loc[0] = itloc[0];
-	loc_index = loc - lcm->locator_pool;
+	  pool_get (lcm->locator_pool, loc);
+	  loc[0] = itloc[0];
+	  loc_index = loc - lcm->locator_pool;
 
-	vec_add1 (ls->locator_indices, loc_index);
+	  vec_add1 (ls->locator_indices, loc_index);
 
-	vec_validate (lcm->locator_to_locator_sets, loc_index);
-	ls_indexes = vec_elt_at_index (lcm->locator_to_locator_sets,
-				       loc_index);
-	vec_add1 (ls_indexes[0], p[0]);
-      }
+	  vec_validate (lcm->locator_to_locator_sets, loc_index);
+	  ls_indexes =
+	    vec_elt_at_index (lcm->locator_to_locator_sets, loc_index);
+	  vec_add1 (ls_indexes[0], p[0]);
+	}
     }
   else
     {
@@ -1956,48 +1950,49 @@ vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t * a,
       u8 removed;
 
       vec_foreach (itloc, a->locators)
-      {
-	removed = 0;
-	loc_id = 0;
-	vec_foreach (locit, ls->locator_indices)
 	{
-	  loc = pool_elt_at_index (lcm->locator_pool, locit[0]);
-
-	  if (loc->local && loc->sw_if_index == itloc->sw_if_index)
+	  removed = 0;
+	  loc_id = 0;
+	  vec_foreach (locit, ls->locator_indices)
 	    {
-	      removed = 1;
-	      remove_locator_from_locator_set (ls, locit, ls_index, loc_id);
-	    }
-	  else if (0 == loc->local &&
-		   !gid_address_cmp (&loc->address, &itloc->address))
-	    {
-	      removed = 1;
-	      remove_locator_from_locator_set (ls, locit, ls_index, loc_id);
-	    }
+	      loc = pool_elt_at_index (lcm->locator_pool, locit[0]);
 
-	  if (removed)
-	    {
-	      /* update fwd entries using this locator in DP */
-	      update_fwd_entries_by_locator_set (lcm, ls_index,
-						 vec_len (ls->locator_indices)
-						 == 0);
-	    }
+	      if (loc->local && loc->sw_if_index == itloc->sw_if_index)
+		{
+		  removed = 1;
+		  remove_locator_from_locator_set (ls, locit, ls_index,
+						   loc_id);
+		}
+	      else if (0 == loc->local &&
+		       !gid_address_cmp (&loc->address, &itloc->address))
+		{
+		  removed = 1;
+		  remove_locator_from_locator_set (ls, locit, ls_index,
+						   loc_id);
+		}
 
-	  loc_id++;
+	      if (removed)
+		{
+		  /* update fwd entries using this locator in DP */
+		  update_fwd_entries_by_locator_set (
+		    lcm, ls_index, vec_len (ls->locator_indices) == 0);
+		}
+
+	      loc_id++;
+	    }
 	}
-      }
     }
 
   return 0;
 }
 
 int
-vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
-			       u32 * ls_result)
+vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t *a,
+			       u32 *ls_result)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   locator_set_t *ls;
-  uword _p = (u32) ~ 0, *p = &_p;
+  uword _p = (u32) ~0, *p = &_p;
   u32 ls_index;
   u32 **eid_indexes;
   int ret = 0;
@@ -2013,7 +2008,7 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
       p = get_locator_set_index (a, p);
 
       /* overwrite */
-      if (p && p[0] != (u32) ~ 0)
+      if (p && p[0] != (u32) ~0)
 	{
 	  ls = pool_elt_at_index (lcm->locator_set_pool, p[0]);
 	  if (!ls)
@@ -2047,9 +2042,8 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
 	      ls->name = vec_dup (a->name);
 
 	      if (!lcm->locator_set_index_by_name)
-		lcm->locator_set_index_by_name =
-		  hash_create_vec ( /* size */ 0, sizeof (ls->name[0]),
-				   sizeof (uword));
+		lcm->locator_set_index_by_name = hash_create_vec (
+		  /* size */ 0, sizeof (ls->name[0]), sizeof (uword));
 	      hash_set_mem (lcm->locator_set_index_by_name, ls->name,
 			    ls_index);
 
@@ -2095,8 +2089,7 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
 	  eid_indexes = vec_elt_at_index (lcm->locator_set_to_eids, p[0]);
 	  if (vec_len (eid_indexes[0]) != 0)
 	    {
-	      clib_warning
-		("Can't delete a locator that supports a mapping!");
+	      clib_warning ("Can't delete a locator that supports a mapping!");
 	      return -1;
 	    }
 	}
@@ -2109,14 +2102,14 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
 	  u32 it, lsi;
 
 	  vec_foreach_index (it, lcm->local_locator_set_indexes)
-	  {
-	    lsi = vec_elt (lcm->local_locator_set_indexes, it);
-	    if (lsi == p[0])
-	      {
-		vec_del1 (lcm->local_locator_set_indexes, it);
-		break;
-	      }
-	  }
+	    {
+	      lsi = vec_elt (lcm->local_locator_set_indexes, it);
+	      if (lsi == p[0])
+		{
+		  vec_del1 (lcm->local_locator_set_indexes, it);
+		  break;
+		}
+	    }
 	  hash_unset_mem (lcm->locator_set_index_by_name, ls->name);
 	}
       vec_free (ls->name);
@@ -2145,19 +2138,19 @@ vnet_lisp_map_register_enable_disable (u8 is_enable)
 }
 
 static void
-lisp_cp_register_dst_port (vlib_main_t * vm)
+lisp_cp_register_dst_port (vlib_main_t *vm)
 {
-  udp_register_dst_port (vm, UDP_DST_PORT_lisp_cp,
-			 lisp_cp_input_node.index, 1 /* is_ip4 */ );
-  udp_register_dst_port (vm, UDP_DST_PORT_lisp_cp6,
-			 lisp_cp_input_node.index, 0 /* is_ip4 */ );
+  udp_register_dst_port (vm, UDP_DST_PORT_lisp_cp, lisp_cp_input_node.index,
+			 1 /* is_ip4 */);
+  udp_register_dst_port (vm, UDP_DST_PORT_lisp_cp6, lisp_cp_input_node.index,
+			 0 /* is_ip4 */);
 }
 
 static void
-lisp_cp_unregister_dst_port (vlib_main_t * vm)
+lisp_cp_unregister_dst_port (vlib_main_t *vm)
 {
-  udp_unregister_dst_port (vm, UDP_DST_PORT_lisp_cp, 0 /* is_ip4 */ );
-  udp_unregister_dst_port (vm, UDP_DST_PORT_lisp_cp6, 1 /* is_ip4 */ );
+  udp_unregister_dst_port (vm, UDP_DST_PORT_lisp_cp, 0 /* is_ip4 */);
+  udp_unregister_dst_port (vm, UDP_DST_PORT_lisp_cp6, 1 /* is_ip4 */);
 }
 
 /**
@@ -2166,24 +2159,23 @@ lisp_cp_unregister_dst_port (vlib_main_t * vm)
  * Enable all l2 and l3 ifaces
  */
 static void
-lisp_cp_enable_l2_l3_ifaces (lisp_cp_main_t * lcm, u8 with_default_route)
+lisp_cp_enable_l2_l3_ifaces (lisp_cp_main_t *lcm, u8 with_default_route)
 {
   u32 vni, dp_table;
 
   /* *INDENT-OFF* */
-  hash_foreach(vni, dp_table, lcm->table_id_by_vni, ({
-    dp_add_del_iface(lcm, vni, /* is_l2 */ 0, /* is_add */1,
-                     with_default_route);
-  }));
-  hash_foreach(vni, dp_table, lcm->bd_id_by_vni, ({
-    dp_add_del_iface(lcm, vni, /* is_l2 */ 1, 1,
-                     with_default_route);
-  }));
+  hash_foreach (vni, dp_table, lcm->table_id_by_vni, ({
+		  dp_add_del_iface (lcm, vni, /* is_l2 */ 0, /* is_add */ 1,
+				    with_default_route);
+		}));
+  hash_foreach (
+    vni, dp_table, lcm->bd_id_by_vni,
+    ({ dp_add_del_iface (lcm, vni, /* is_l2 */ 1, 1, with_default_route); }));
   /* *INDENT-ON* */
 }
 
 static void
-lisp_cp_disable_l2_l3_ifaces (lisp_cp_main_t * lcm)
+lisp_cp_disable_l2_l3_ifaces (lisp_cp_main_t *lcm)
 {
   u32 **rmts;
 
@@ -2193,9 +2185,9 @@ lisp_cp_disable_l2_l3_ifaces (lisp_cp_main_t * lcm)
   /* Clear state tracking rmt-lcl fwd entries */
   /* *INDENT-OFF* */
   pool_foreach (rmts, lcm->lcl_to_rmt_adjacencies)
-  {
-    vec_free(rmts[0]);
-  }
+    {
+      vec_free (rmts[0]);
+    }
   /* *INDENT-ON* */
   hash_free (lcm->lcl_to_rmt_adjs_by_lcl_idx);
   pool_free (lcm->lcl_to_rmt_adjacencies);
@@ -2223,7 +2215,7 @@ vnet_lisp_enable_disable (u8 is_enable)
       if (is_enable)
 	{
 	  lisp_cp_register_dst_port (lcm->vlib_main);
-	  lisp_cp_enable_l2_l3_ifaces (lcm, 1 /* with_default_route */ );
+	  lisp_cp_enable_l2_l3_ifaces (lcm, 1 /* with_default_route */);
 	}
       else
 	{
@@ -2249,7 +2241,7 @@ vnet_lisp_enable_disable (u8 is_enable)
       if (is_enable)
 	{
 	  /* install interfaces, but no default routes */
-	  lisp_cp_enable_l2_l3_ifaces (lcm, 0 /* with_default_route */ );
+	  lisp_cp_enable_l2_l3_ifaces (lcm, 0 /* with_default_route */);
 	}
       else
 	{
@@ -2274,7 +2266,7 @@ vnet_lisp_enable_disable_status (void)
 }
 
 int
-vnet_lisp_add_del_map_resolver (vnet_lisp_add_del_map_resolver_args_t * a)
+vnet_lisp_add_del_map_resolver (vnet_lisp_add_del_map_resolver_args_t *a)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u32 i;
@@ -2337,7 +2329,7 @@ vnet_lisp_map_register_get_ttl (void)
 }
 
 int
-vnet_lisp_add_del_mreq_itr_rlocs (vnet_lisp_add_del_mreq_itr_rloc_args_t * a)
+vnet_lisp_add_del_mreq_itr_rlocs (vnet_lisp_add_del_mreq_itr_rloc_args_t *a)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   uword *p = 0;
@@ -2368,22 +2360,21 @@ vnet_lisp_add_del_mreq_itr_rlocs (vnet_lisp_add_del_mreq_itr_rloc_args_t * a)
 }
 
 /* Statistics (not really errors) */
-#define foreach_lisp_cp_lookup_error           \
-_(DROP, "drop")                                \
-_(MAP_REQUESTS_SENT, "map-request sent")       \
-_(ARP_REPLY_TX, "ARP replies sent")            \
-_(NDP_NEIGHBOR_ADVERTISEMENT_TX,               \
-  "neighbor advertisement sent")
+#define foreach_lisp_cp_lookup_error                                          \
+  _ (DROP, "drop")                                                            \
+  _ (MAP_REQUESTS_SENT, "map-request sent")                                   \
+  _ (ARP_REPLY_TX, "ARP replies sent")                                        \
+  _ (NDP_NEIGHBOR_ADVERTISEMENT_TX, "neighbor advertisement sent")
 
 static char *lisp_cp_lookup_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_lisp_cp_lookup_error
 #undef _
 };
 
 typedef enum
 {
-#define _(sym,str) LISP_CP_LOOKUP_ERROR_##sym,
+#define _(sym, str) LISP_CP_LOOKUP_ERROR_##sym,
   foreach_lisp_cp_lookup_error
 #undef _
     LISP_CP_LOOKUP_N_ERROR,
@@ -2403,7 +2394,7 @@ typedef struct
 } lisp_cp_lookup_trace_t;
 
 u8 *
-format_lisp_cp_lookup_trace (u8 * s, va_list * args)
+format_lisp_cp_lookup_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -2416,8 +2407,8 @@ format_lisp_cp_lookup_trace (u8 * s, va_list * args)
 }
 
 int
-get_mr_and_local_iface_ip (lisp_cp_main_t * lcm, ip_address_t * mr_ip,
-			   ip_address_t * sloc)
+get_mr_and_local_iface_ip (lisp_cp_main_t *lcm, ip_address_t *mr_ip,
+			   ip_address_t *sloc)
 {
   lisp_msmr_t *mrit;
   ip_address_t *a;
@@ -2431,23 +2422,23 @@ get_mr_and_local_iface_ip (lisp_cp_main_t * lcm, ip_address_t * mr_ip,
   /* find the first mr ip we have a route to and the ip of the
    * iface that has a route to it */
   vec_foreach (mrit, lcm->map_resolvers)
-  {
-    a = &mrit->address;
-    if (0 != ip_fib_get_first_egress_ip_for_dst (lcm, a, sloc))
-      {
-	ip_address_copy (mr_ip, a);
+    {
+      a = &mrit->address;
+      if (0 != ip_fib_get_first_egress_ip_for_dst (lcm, a, sloc))
+	{
+	  ip_address_copy (mr_ip, a);
 
-	/* also update globals */
-	return 1;
-      }
-  }
+	  /* also update globals */
+	  return 1;
+	}
+    }
 
   clib_warning ("Can't find map-resolver and local interface ip!");
   return 0;
 }
 
 static gid_address_t *
-build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
+build_itr_rloc_list (lisp_cp_main_t *lcm, locator_set_t *loc_set)
 {
   void *addr;
   u32 i;
@@ -2469,36 +2460,33 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
       /* Add ipv4 locators first TODO sort them */
 
       /* *INDENT-OFF* */
-      foreach_ip_interface_address (&lcm->im4->lookup_main, ia,
-				    loc->sw_if_index, 1 /* unnumbered */,
-      ({
-	addr = ip_interface_address_get_address (&lcm->im4->lookup_main, ia);
-	ip_address_set (rloc, addr, AF_IP4);
-        ip_prefix_len (ippref) = 32;
-        ip_prefix_normalize (ippref);
-        vec_add1 (rlocs, gid[0]);
-      }));
+      foreach_ip_interface_address (
+	&lcm->im4->lookup_main, ia, loc->sw_if_index, 1 /* unnumbered */, ({
+	  addr = ip_interface_address_get_address (&lcm->im4->lookup_main, ia);
+	  ip_address_set (rloc, addr, AF_IP4);
+	  ip_prefix_len (ippref) = 32;
+	  ip_prefix_normalize (ippref);
+	  vec_add1 (rlocs, gid[0]);
+	}));
 
       /* Add ipv6 locators */
-      foreach_ip_interface_address (&lcm->im6->lookup_main, ia,
-				    loc->sw_if_index, 1 /* unnumbered */,
-      ({
-        addr = ip_interface_address_get_address (&lcm->im6->lookup_main, ia);
-        ip_address_set (rloc, addr, AF_IP6);
-        ip_prefix_len (ippref) = 128;
-        ip_prefix_normalize (ippref);
-        vec_add1 (rlocs, gid[0]);
-      }));
+      foreach_ip_interface_address (
+	&lcm->im6->lookup_main, ia, loc->sw_if_index, 1 /* unnumbered */, ({
+	  addr = ip_interface_address_get_address (&lcm->im6->lookup_main, ia);
+	  ip_address_set (rloc, addr, AF_IP6);
+	  ip_prefix_len (ippref) = 128;
+	  ip_prefix_normalize (ippref);
+	  vec_add1 (rlocs, gid[0]);
+	}));
       /* *INDENT-ON* */
-
     }
   return rlocs;
 }
 
 static vlib_buffer_t *
-build_map_request (lisp_cp_main_t * lcm, gid_address_t * deid,
-		   ip_address_t * sloc, ip_address_t * rloc,
-		   gid_address_t * itr_rlocs, u64 * nonce_res, u32 * bi_res)
+build_map_request (lisp_cp_main_t *lcm, gid_address_t *deid,
+		   ip_address_t *sloc, ip_address_t *rloc,
+		   gid_address_t *itr_rlocs, u64 *nonce_res, u32 *bi_res)
 {
   vlib_buffer_t *b;
   u32 bi;
@@ -2516,12 +2504,12 @@ build_map_request (lisp_cp_main_t * lcm, gid_address_t * deid,
   vlib_buffer_make_headroom (b, MAX_LISP_MSG_ENCAP_LEN);
 
   /* put lisp msg */
-  lisp_msg_put_mreq (lcm, b, NULL, deid, itr_rlocs, 0 /* smr invoked */ ,
-		     1 /* rloc probe */ , nonce_res);
+  lisp_msg_put_mreq (lcm, b, NULL, deid, itr_rlocs, 0 /* smr invoked */,
+		     1 /* rloc probe */, nonce_res);
 
   /* push outer ip header */
-  pkt_push_udp_and_ip (vm, b, LISP_CONTROL_PORT, LISP_CONTROL_PORT, sloc,
-		       rloc, 1);
+  pkt_push_udp_and_ip (vm, b, LISP_CONTROL_PORT, LISP_CONTROL_PORT, sloc, rloc,
+		       1);
 
   bi_res[0] = bi;
 
@@ -2529,11 +2517,10 @@ build_map_request (lisp_cp_main_t * lcm, gid_address_t * deid,
 }
 
 static vlib_buffer_t *
-build_encapsulated_map_request (lisp_cp_main_t * lcm,
-				gid_address_t * seid, gid_address_t * deid,
-				locator_set_t * loc_set, ip_address_t * mr_ip,
-				ip_address_t * sloc, u8 is_smr_invoked,
-				u64 * nonce_res, u32 * bi_res)
+build_encapsulated_map_request (lisp_cp_main_t *lcm, gid_address_t *seid,
+				gid_address_t *deid, locator_set_t *loc_set,
+				ip_address_t *mr_ip, ip_address_t *sloc,
+				u8 is_smr_invoked, u64 *nonce_res, u32 *bi_res)
 {
   vlib_buffer_t *b;
   u32 bi;
@@ -2555,20 +2542,20 @@ build_encapsulated_map_request (lisp_cp_main_t * lcm,
   /* get rlocs */
   rlocs = build_itr_rloc_list (lcm, loc_set);
 
-  if (MR_MODE_SRC_DST == lcm->map_request_mode
-      && GID_ADDR_SRC_DST != gid_address_type (deid))
+  if (MR_MODE_SRC_DST == lcm->map_request_mode &&
+      GID_ADDR_SRC_DST != gid_address_type (deid))
     {
       gid_address_t sd;
       clib_memset (&sd, 0, sizeof (sd));
       build_src_dst (&sd, seid, deid);
       lisp_msg_put_mreq (lcm, b, seid, &sd, rlocs, is_smr_invoked,
-			 0 /* rloc probe */ , nonce_res);
+			 0 /* rloc probe */, nonce_res);
     }
   else
     {
       /* put lisp msg */
       lisp_msg_put_mreq (lcm, b, seid, deid, rlocs, is_smr_invoked,
-			 0 /* rloc probe */ , nonce_res);
+			 0 /* rloc probe */, nonce_res);
     }
 
   /* push ecm: udp-ip-lisp */
@@ -2585,46 +2572,46 @@ build_encapsulated_map_request (lisp_cp_main_t * lcm,
 }
 
 static void
-reset_pending_mr_counters (pending_map_request_t * r)
+reset_pending_mr_counters (pending_map_request_t *r)
 {
   r->time_to_expire = PENDING_MREQ_EXPIRATION_TIME;
   r->retries_num = 0;
 }
 
-#define foreach_msmr \
-  _(server) \
-  _(resolver)
+#define foreach_msmr                                                          \
+  _ (server)                                                                  \
+  _ (resolver)
 
-#define _(name) \
-static int                                                              \
-elect_map_ ## name (lisp_cp_main_t * lcm)                               \
-{                                                                       \
-  lisp_msmr_t *mr;                                                      \
-  vec_foreach (mr, lcm->map_ ## name ## s)                              \
-  {                                                                     \
-    if (!mr->is_down)                                                   \
-      {                                                                 \
-	ip_address_copy (&lcm->active_map_ ##name, &mr->address);       \
-	lcm->do_map_ ## name ## _election = 0;                          \
-	return 1;                                                       \
-      }                                                                 \
-  }                                                                     \
-  return 0;                                                             \
-}
+#define _(name)                                                               \
+  static int elect_map_##name (lisp_cp_main_t *lcm)                           \
+  {                                                                           \
+    lisp_msmr_t *mr;                                                          \
+    vec_foreach (mr, lcm->map_##name##s)                                      \
+      {                                                                       \
+	if (!mr->is_down)                                                     \
+	  {                                                                   \
+	    ip_address_copy (&lcm->active_map_##name, &mr->address);          \
+	    lcm->do_map_##name##_election = 0;                                \
+	    return 1;                                                         \
+	  }                                                                   \
+      }                                                                       \
+    return 0;                                                                 \
+  }
 foreach_msmr
 #undef _
   static void
-free_map_register_records (mapping_t * maps)
+  free_map_register_records (mapping_t *maps)
 {
   mapping_t *map;
-  vec_foreach (map, maps) vec_free (map->locators);
+  vec_foreach (map, maps)
+    vec_free (map->locators);
 
   vec_free (maps);
 }
 
 static void
-add_locators (lisp_cp_main_t * lcm, mapping_t * m, u32 locator_set_index,
-	      ip_address_t * probed_loc)
+add_locators (lisp_cp_main_t *lcm, mapping_t *m, u32 locator_set_index,
+	      ip_address_t *probed_loc)
 {
   u32 *li;
   locator_t *loc, new;
@@ -2633,56 +2620,56 @@ add_locators (lisp_cp_main_t * lcm, mapping_t * m, u32 locator_set_index,
   ip_address_t *new_ip = &gid_address_ip (&new.address);
 
   m->locators = 0;
-  locator_set_t *ls = pool_elt_at_index (lcm->locator_set_pool,
-					 locator_set_index);
+  locator_set_t *ls =
+    pool_elt_at_index (lcm->locator_set_pool, locator_set_index);
   vec_foreach (li, ls->locator_indices)
-  {
-    loc = pool_elt_at_index (lcm->locator_pool, li[0]);
-    new = loc[0];
-    if (loc->local)
-      {
-          /* *INDENT-OFF* */
-          foreach_ip_interface_address (&lcm->im4->lookup_main, ia,
-                                        loc->sw_if_index, 1 /* unnumbered */,
-          ({
-            addr = ip_interface_address_get_address (&lcm->im4->lookup_main,
-                                                     ia);
-            ip_address_set (new_ip, addr, AF_IP4);
-          }));
+    {
+      loc = pool_elt_at_index (lcm->locator_pool, li[0]);
+      new = loc[0];
+      if (loc->local)
+	{
+	  /* *INDENT-OFF* */
+	  foreach_ip_interface_address (
+	    &lcm->im4->lookup_main, ia, loc->sw_if_index, 1 /* unnumbered */,
+	    ({
+	      addr =
+		ip_interface_address_get_address (&lcm->im4->lookup_main, ia);
+	      ip_address_set (new_ip, addr, AF_IP4);
+	    }));
 
-          /* Add ipv6 locators */
-          foreach_ip_interface_address (&lcm->im6->lookup_main, ia,
-                                        loc->sw_if_index, 1 /* unnumbered */,
-          ({
-            addr = ip_interface_address_get_address (&lcm->im6->lookup_main,
-                                                     ia);
-            ip_address_set (new_ip, addr, AF_IP6);
-          }));
-          /* *INDENT-ON* */
+	  /* Add ipv6 locators */
+	  foreach_ip_interface_address (
+	    &lcm->im6->lookup_main, ia, loc->sw_if_index, 1 /* unnumbered */,
+	    ({
+	      addr =
+		ip_interface_address_get_address (&lcm->im6->lookup_main, ia);
+	      ip_address_set (new_ip, addr, AF_IP6);
+	    }));
+	  /* *INDENT-ON* */
 
-	if (probed_loc && ip_address_cmp (probed_loc, new_ip) == 0)
-	  new.probed = 1;
-      }
-    vec_add1 (m->locators, new);
-  }
+	  if (probed_loc && ip_address_cmp (probed_loc, new_ip) == 0)
+	    new.probed = 1;
+	}
+      vec_add1 (m->locators, new);
+    }
 }
 
 static mapping_t *
-build_map_register_record_list (lisp_cp_main_t * lcm)
+build_map_register_record_list (lisp_cp_main_t *lcm)
 {
   mapping_t *recs = 0, rec, *m;
 
   /* *INDENT-OFF* */
   pool_foreach (m, lcm->mapping_pool)
-  {
-    /* for now build only local mappings */
-    if (!m->local)
-      continue;
+    {
+      /* for now build only local mappings */
+      if (!m->local)
+	continue;
 
-    rec = m[0];
-    add_locators (lcm, &rec, m->locator_set_index, NULL);
-    vec_add1 (recs, rec);
-  }
+      rec = m[0];
+      add_locators (lcm, &rec, m->locator_set_index, NULL);
+      vec_add1 (recs, rec);
+    }
   /* *INDENT-ON* */
 
   return recs;
@@ -2721,8 +2708,8 @@ lisp_key_type_to_crypto_op (lisp_key_type_t key_id)
 }
 
 static int
-update_map_register_auth_data (map_register_hdr_t * map_reg_hdr,
-			       lisp_key_type_t key_id, u8 * key,
+update_map_register_auth_data (map_register_hdr_t *map_reg_hdr,
+			       lisp_key_type_t key_id, u8 *key,
 			       u16 auth_data_len, u32 msg_len)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -2738,9 +2725,8 @@ update_map_register_auth_data (map_register_hdr_t * map_reg_hdr,
   op->digest_len = 0;
   op->iv = 0;
 
-  ki = vnet_crypto_key_add (lcm->vlib_main,
-			    lisp_key_type_to_crypto_alg (key_id), key,
-			    vec_len (key));
+  ki = vnet_crypto_key_add (
+    lcm->vlib_main, lisp_key_type_to_crypto_alg (key_id), key, vec_len (key));
 
   op->key_index = ki;
 
@@ -2751,10 +2737,10 @@ update_map_register_auth_data (map_register_hdr_t * map_reg_hdr,
 }
 
 static vlib_buffer_t *
-build_map_register (lisp_cp_main_t * lcm, ip_address_t * sloc,
-		    ip_address_t * ms_ip, u64 * nonce_res, u8 want_map_notif,
-		    mapping_t * records, lisp_key_type_t key_id, u8 * key,
-		    u32 * bi_res)
+build_map_register (lisp_cp_main_t *lcm, ip_address_t *sloc,
+		    ip_address_t *ms_ip, u64 *nonce_res, u8 want_map_notif,
+		    mapping_t *records, lisp_key_type_t key_id, u8 *key,
+		    u32 *bi_res)
 {
   void *map_reg_hdr;
   vlib_buffer_t *b;
@@ -2774,8 +2760,7 @@ build_map_register (lisp_cp_main_t * lcm, ip_address_t * sloc,
 
   auth_data_len = auth_data_len_by_key_id (key_id);
   map_reg_hdr = lisp_msg_put_map_register (b, records, want_map_notif,
-					   auth_data_len, nonce_res,
-					   &msg_len);
+					   auth_data_len, nonce_res, &msg_len);
 
   update_map_register_auth_data (map_reg_hdr, key_id, key, auth_data_len,
 				 msg_len);
@@ -2788,50 +2773,51 @@ build_map_register (lisp_cp_main_t * lcm, ip_address_t * sloc,
   return b;
 }
 
-#define _(name) \
-static int                                                              \
-get_egress_map_ ##name## _ip (lisp_cp_main_t * lcm, ip_address_t * ip)  \
-{                                                                       \
-  lisp_msmr_t *mr;                                                      \
-  while (lcm->do_map_ ## name ## _election                              \
-	 | (0 == ip_fib_get_first_egress_ip_for_dst                     \
-            (lcm, &lcm->active_map_ ##name, ip)))                       \
-    {                                                                   \
-      if (0 == elect_map_ ## name (lcm))                                \
-	/* all map resolvers/servers are down */                        \
-	{                                                               \
-	  /* restart MR/MS checking by marking all of them up */        \
-	  vec_foreach (mr, lcm->map_ ## name ## s) mr->is_down = 0;     \
-	  return -1;                                                    \
-	}                                                               \
-    }                                                                   \
-  return 0;                                                             \
-}
+#define _(name)                                                               \
+  static int get_egress_map_##name##_ip (lisp_cp_main_t *lcm,                 \
+					 ip_address_t *ip)                    \
+  {                                                                           \
+    lisp_msmr_t *mr;                                                          \
+    while (lcm->do_map_##name##_election |                                    \
+	   (0 == ip_fib_get_first_egress_ip_for_dst (                         \
+		   lcm, &lcm->active_map_##name, ip)))                        \
+      {                                                                       \
+	if (0 == elect_map_##name (lcm))                                      \
+	  /* all map resolvers/servers are down */                            \
+	  {                                                                   \
+	    /* restart MR/MS checking by marking all of them up */            \
+	    vec_foreach (mr, lcm->map_##name##s)                              \
+	      mr->is_down = 0;                                                \
+	    return -1;                                                        \
+	  }                                                                   \
+      }                                                                       \
+    return 0;                                                                 \
+  }
 
 foreach_msmr
 #undef _
 /* CP output statistics */
-#define foreach_lisp_cp_output_error                  \
-_(MAP_REGISTERS_SENT, "map-registers sent")           \
-_(MAP_REQUESTS_SENT, "map-requests sent")             \
-_(RLOC_PROBES_SENT, "rloc-probes sent")
-static char *lisp_cp_output_error_strings[] = {
-#define _(sym,string) string,
-  foreach_lisp_cp_output_error
+#define foreach_lisp_cp_output_error                                          \
+  _ (MAP_REGISTERS_SENT, "map-registers sent")                                \
+  _ (MAP_REQUESTS_SENT, "map-requests sent")                                  \
+  _ (RLOC_PROBES_SENT, "rloc-probes sent")
+  static char *lisp_cp_output_error_strings[] = {
+#define _(sym, string) string,
+    foreach_lisp_cp_output_error
 #undef _
-};
+  };
 
 typedef enum
 {
-#define _(sym,str) LISP_CP_OUTPUT_ERROR_##sym,
+#define _(sym, str) LISP_CP_OUTPUT_ERROR_##sym,
   foreach_lisp_cp_output_error
 #undef _
     LISP_CP_OUTPUT_N_ERROR,
 } lisp_cp_output_error_t;
 
 static uword
-lisp_cp_output (vlib_main_t * vm, vlib_node_runtime_t * node,
-		vlib_frame_t * from_frame)
+lisp_cp_output (vlib_main_t *vm, vlib_node_runtime_t *node,
+		vlib_frame_t *from_frame)
 {
   return 0;
 }
@@ -2857,9 +2843,9 @@ VLIB_REGISTER_NODE (lisp_cp_output_node) = {
 /* *INDENT-ON* */
 
 static int
-send_rloc_probe (lisp_cp_main_t * lcm, gid_address_t * deid,
-		 u32 local_locator_set_index, ip_address_t * sloc,
-		 ip_address_t * rloc)
+send_rloc_probe (lisp_cp_main_t *lcm, gid_address_t *deid,
+		 u32 local_locator_set_index, ip_address_t *sloc,
+		 ip_address_t *rloc)
 {
   locator_set_t *ls;
   u32 bi;
@@ -2879,8 +2865,8 @@ send_rloc_probe (lisp_cp_main_t * lcm, gid_address_t * deid,
 
   vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
 
-  next_index = (ip_addr_version (rloc) == AF_IP4) ?
-    ip4_lookup_node.index : ip6_lookup_node.index;
+  next_index = (ip_addr_version (rloc) == AF_IP4) ? ip4_lookup_node.index :
+						    ip6_lookup_node.index;
 
   f = vlib_get_frame_to_node (lcm->vlib_main, next_index);
 
@@ -2894,7 +2880,7 @@ send_rloc_probe (lisp_cp_main_t * lcm, gid_address_t * deid,
 }
 
 static int
-send_rloc_probes (lisp_cp_main_t * lcm)
+send_rloc_probes (lisp_cp_main_t *lcm)
 {
   u8 lprio = 0;
   mapping_t *lm;
@@ -2904,34 +2890,35 @@ send_rloc_probes (lisp_cp_main_t * lcm)
 
   /* *INDENT-OFF* */
   pool_foreach (e, lcm->fwd_entry_pool)
-  {
-    if (vec_len (e->locator_pairs) == 0)
-      continue;
+    {
+      if (vec_len (e->locator_pairs) == 0)
+	continue;
 
-    si = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &e->leid);
-    if (~0 == si)
-      {
-        clib_warning ("internal error: cannot find local eid %U in "
-                      "map-cache!", format_gid_address, &e->leid);
-        continue;
-      }
-    lm = pool_elt_at_index (lcm->mapping_pool, si);
+      si = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &e->leid);
+      if (~0 == si)
+	{
+	  clib_warning ("internal error: cannot find local eid %U in "
+			"map-cache!",
+			format_gid_address, &e->leid);
+	  continue;
+	}
+      lm = pool_elt_at_index (lcm->mapping_pool, si);
 
-    /* get the best (lowest) priority */
-    lprio = e->locator_pairs[0].priority;
+      /* get the best (lowest) priority */
+      lprio = e->locator_pairs[0].priority;
 
-    /* send rloc-probe for pair(s) with the best remote locator priority */
-    vec_foreach (lp, e->locator_pairs)
-      {
-        if (lp->priority != lprio)
-          break;
+      /* send rloc-probe for pair(s) with the best remote locator priority */
+      vec_foreach (lp, e->locator_pairs)
+	{
+	  if (lp->priority != lprio)
+	    break;
 
-        /* get first remote locator */
-        send_rloc_probe (lcm, &e->reid, lm->locator_set_index, &lp->lcl_loc,
-                         &lp->rmt_loc);
-        rloc_probes_sent++;
-      }
-  }
+	  /* get first remote locator */
+	  send_rloc_probe (lcm, &e->reid, lm->locator_set_index, &lp->lcl_loc,
+			   &lp->rmt_loc);
+	  rloc_probes_sent++;
+	}
+    }
   /* *INDENT-ON* */
 
   vlib_node_increment_counter (vlib_get_main (), lisp_cp_output_node.index,
@@ -2941,7 +2928,7 @@ send_rloc_probes (lisp_cp_main_t * lcm)
 }
 
 static int
-send_map_register (lisp_cp_main_t * lcm, u8 want_map_notif)
+send_map_register (lisp_cp_main_t *lcm, u8 want_map_notif)
 {
   pending_map_register_t *pmr;
   u32 bi, map_registers_sent = 0;
@@ -2960,55 +2947,56 @@ send_map_register (lisp_cp_main_t * lcm, u8 want_map_notif)
     return -1;
 
   vec_foreach (r, records)
-  {
-    u8 *key = r->key;
-    u8 key_id = r->key_id;
+    {
+      u8 *key = r->key;
+      u8 key_id = r->key_id;
 
-    if (!key)
-      continue;			/* no secret key -> map-register cannot be sent */
+      if (!key)
+	continue; /* no secret key -> map-register cannot be sent */
 
-    group = 0;
-    vec_add1 (group, r[0]);
+      group = 0;
+      vec_add1 (group, r[0]);
 
-    /* group mappings that share common key */
-    for (k = r + 1; k < vec_end (records); k++)
-      {
-	if (k->key_id != r->key_id)
-	  continue;
+      /* group mappings that share common key */
+      for (k = r + 1; k < vec_end (records); k++)
+	{
+	  if (k->key_id != r->key_id)
+	    continue;
 
-	if (vec_is_equal (k->key, r->key))
-	  {
-	    vec_add1 (group, k[0]);
-	    k->key = 0;		/* don't process this mapping again */
-	  }
-      }
+	  if (vec_is_equal (k->key, r->key))
+	    {
+	      vec_add1 (group, k[0]);
+	      k->key = 0; /* don't process this mapping again */
+	    }
+	}
 
-    b = build_map_register (lcm, &sloc, &lcm->active_map_server, &nonce,
-			    want_map_notif, group, key_id, key, &bi);
-    vec_free (group);
-    if (!b)
-      continue;
+      b = build_map_register (lcm, &sloc, &lcm->active_map_server, &nonce,
+			      want_map_notif, group, key_id, key, &bi);
+      vec_free (group);
+      if (!b)
+	continue;
 
-    vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
+      vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
 
-    next_index = (ip_addr_version (&lcm->active_map_server) == AF_IP4) ?
-      ip4_lookup_node.index : ip6_lookup_node.index;
+      next_index = (ip_addr_version (&lcm->active_map_server) == AF_IP4) ?
+		     ip4_lookup_node.index :
+		     ip6_lookup_node.index;
 
-    f = vlib_get_frame_to_node (lcm->vlib_main, next_index);
+      f = vlib_get_frame_to_node (lcm->vlib_main, next_index);
 
-    /* Enqueue the packet */
-    to_next = vlib_frame_vector_args (f);
-    to_next[0] = bi;
-    f->n_vectors = 1;
-    vlib_put_frame_to_node (lcm->vlib_main, next_index, f);
-    map_registers_sent++;
+      /* Enqueue the packet */
+      to_next = vlib_frame_vector_args (f);
+      to_next[0] = bi;
+      f->n_vectors = 1;
+      vlib_put_frame_to_node (lcm->vlib_main, next_index, f);
+      map_registers_sent++;
 
-    pool_get (lcm->pending_map_registers_pool, pmr);
-    clib_memset (pmr, 0, sizeof (*pmr));
-    pmr->time_to_expire = PENDING_MREG_EXPIRATION_TIME;
-    hash_set (lcm->map_register_messages_by_nonce, nonce,
-	      pmr - lcm->pending_map_registers_pool);
-  }
+      pool_get (lcm->pending_map_registers_pool, pmr);
+      clib_memset (pmr, 0, sizeof (*pmr));
+      pmr->time_to_expire = PENDING_MREG_EXPIRATION_TIME;
+      hash_set (lcm->map_register_messages_by_nonce, nonce,
+		pmr - lcm->pending_map_registers_pool);
+    }
   free_map_register_records (records);
 
   vlib_node_increment_counter (vlib_get_main (), lisp_cp_output_node.index,
@@ -3018,16 +3006,16 @@ send_map_register (lisp_cp_main_t * lcm, u8 want_map_notif)
   return 0;
 }
 
-#define send_encapsulated_map_request(lcm, seid, deid, smr) \
-  _send_encapsulated_map_request(lcm, seid, deid, smr, 0)
+#define send_encapsulated_map_request(lcm, seid, deid, smr)                   \
+  _send_encapsulated_map_request (lcm, seid, deid, smr, 0)
 
-#define resend_encapsulated_map_request(lcm, seid, deid, smr) \
-  _send_encapsulated_map_request(lcm, seid, deid, smr, 1)
+#define resend_encapsulated_map_request(lcm, seid, deid, smr)                 \
+  _send_encapsulated_map_request (lcm, seid, deid, smr, 1)
 
 static int
-_send_encapsulated_map_request (lisp_cp_main_t * lcm,
-				gid_address_t * seid, gid_address_t * deid,
-				u8 is_smr_invoked, u8 is_resend)
+_send_encapsulated_map_request (lisp_cp_main_t *lcm, gid_address_t *seid,
+				gid_address_t *deid, u8 is_smr_invoked,
+				u8 is_resend)
 {
   u32 next_index, bi = 0, *to_next, map_index;
   vlib_buffer_t *b;
@@ -3043,14 +3031,14 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
 
   /* *INDENT-OFF* */
   pool_foreach (pmr, lcm->pending_map_requests_pool)
-   {
-    if (!gid_address_cmp (&pmr->src, seid)
-        && !gid_address_cmp (&pmr->dst, deid))
-      {
-        duplicate_pmr = pmr;
-        break;
-      }
-  }
+    {
+      if (!gid_address_cmp (&pmr->src, seid) &&
+	  !gid_address_cmp (&pmr->dst, deid))
+	{
+	  duplicate_pmr = pmr;
+	  break;
+	}
+    }
   /* *INDENT-ON* */
 
   if (!is_resend && duplicate_pmr)
@@ -3076,9 +3064,8 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
 
       if (!map->local)
 	{
-	  clib_warning
-	    ("Mapping found for src eid %U is not marked as local!",
-	     format_gid_address, seid);
+	  clib_warning ("Mapping found for src eid %U is not marked as local!",
+			format_gid_address, seid);
 	  return -1;
 	}
       ls_index = map->locator_set_index;
@@ -3089,8 +3076,7 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
 	{
 	  if (lcm->pitr_map_index != ~0)
 	    {
-	      map =
-		pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
+	      map = pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
 	      ls_index = map->locator_set_index;
 	    }
 	  else
@@ -3100,7 +3086,7 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
 	}
       else
 	{
-	  if (lcm->nsh_map_index == (u32) ~ 0)
+	  if (lcm->nsh_map_index == (u32) ~0)
 	    {
 	      clib_warning ("No locator-set defined for NSH!");
 	      return -1;
@@ -3130,8 +3116,8 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
 
   /* build the encapsulated map request */
   b = build_encapsulated_map_request (lcm, seid, deid, loc_set,
-				      &lcm->active_map_resolver,
-				      &sloc, is_smr_invoked, &nonce, &bi);
+				      &lcm->active_map_resolver, &sloc,
+				      is_smr_invoked, &nonce, &bi);
 
   if (!b)
     return -1;
@@ -3139,7 +3125,8 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
   /* set fib index to default and lookup node */
   vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
   next_index = (ip_addr_version (&lcm->active_map_resolver) == AF_IP4) ?
-    ip4_lookup_node.index : ip6_lookup_node.index;
+		 ip4_lookup_node.index :
+		 ip6_lookup_node.index;
 
   f = vlib_get_frame_to_node (lcm->vlib_main, next_index);
 
@@ -3186,7 +3173,7 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
 }
 
 static void
-get_src_and_dst_ip (void *hdr, ip_address_t * src, ip_address_t * dst)
+get_src_and_dst_ip (void *hdr, ip_address_t *src, ip_address_t *dst)
 {
   ip4_header_t *ip4 = hdr;
   ip6_header_t *ip6;
@@ -3205,19 +3192,14 @@ get_src_and_dst_ip (void *hdr, ip_address_t * src, ip_address_t * dst)
 }
 
 static u32
-lisp_get_vni_from_buffer_ip (lisp_cp_main_t * lcm, vlib_buffer_t * b,
-			     u8 version)
+lisp_get_vni_from_buffer_ip (lisp_cp_main_t *lcm, vlib_buffer_t *b, u8 version)
 {
   uword *vnip;
   u32 vni = ~0, table_id = ~0;
 
-  table_id = fib_table_get_table_id_for_sw_if_index ((version ==
-						      AF_IP4 ?
-						      FIB_PROTOCOL_IP4 :
-						      FIB_PROTOCOL_IP6),
-						     vnet_buffer
-						     (b)->sw_if_index
-						     [VLIB_RX]);
+  table_id = fib_table_get_table_id_for_sw_if_index (
+    (version == AF_IP4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6),
+    vnet_buffer (b)->sw_if_index[VLIB_RX]);
 
   vnip = hash_get (lcm->vni_by_table_id, table_id);
   if (vnip)
@@ -3229,7 +3211,7 @@ lisp_get_vni_from_buffer_ip (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 }
 
 always_inline u32
-lisp_get_bd_from_buffer_eth (vlib_buffer_t * b)
+lisp_get_bd_from_buffer_eth (vlib_buffer_t *b)
 {
   u32 sw_if_index0;
 
@@ -3245,7 +3227,7 @@ lisp_get_bd_from_buffer_eth (vlib_buffer_t * b)
 }
 
 always_inline u32
-lisp_get_vni_from_buffer_eth (lisp_cp_main_t * lcm, vlib_buffer_t * b)
+lisp_get_vni_from_buffer_eth (lisp_cp_main_t *lcm, vlib_buffer_t *b)
 {
   uword *vnip;
   u32 vni = ~0;
@@ -3261,8 +3243,8 @@ lisp_get_vni_from_buffer_eth (lisp_cp_main_t * lcm, vlib_buffer_t * b)
 }
 
 void
-get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
-				  gid_address_t * src, gid_address_t * dst,
+get_src_and_dst_eids_from_buffer (lisp_cp_main_t *lcm, vlib_buffer_t *b,
+				  gid_address_t *src, gid_address_t *dst,
 				  u16 type)
 {
   ethernet_header_t *eh;
@@ -3306,8 +3288,7 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 	  ah = (ethernet_arp_header_t *) (((u8 *) eh) + sizeof (*eh));
 	  gid_address_type (dst) = GID_ADDR_ARP;
 
-	  if (clib_net_to_host_u16 (ah->opcode)
-	      != ETHERNET_ARP_OPCODE_request)
+	  if (clib_net_to_host_u16 (ah->opcode) != ETHERNET_ARP_OPCODE_request)
 	    {
 	      clib_memset (&gid_address_arp_ndp_ip (dst), 0,
 			   sizeof (ip_address_t));
@@ -3335,11 +3316,13 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 		    {
 		      gid_address_type (dst) = GID_ADDR_NDP;
 
-		      /* check that source link layer address option is present */
+		      /* check that source link layer address option is present
+		       */
 		      opt = (void *) (ndh + 1);
-		      if ((opt->header.type !=
-			   ICMP6_NEIGHBOR_DISCOVERY_OPTION_source_link_layer_address)
-			  || (opt->header.n_data_u64s != 1))
+		      if (
+			(opt->header.type !=
+			 ICMP6_NEIGHBOR_DISCOVERY_OPTION_source_link_layer_address) ||
+			(opt->header.n_data_u64s != 1))
 			{
 			  clib_memset (&gid_address_arp_ndp_ip (dst), 0,
 				       sizeof (ip_address_t));
@@ -3391,9 +3374,8 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 }
 
 static uword
-lisp_cp_lookup_inline (vlib_main_t * vm,
-		       vlib_node_runtime_t * node,
-		       vlib_frame_t * from_frame, int overlay)
+lisp_cp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_frame_t *from_frame, int overlay)
 {
   icmp6_neighbor_discovery_ethernet_link_layer_address_option_t *opt;
   u32 *from, *to_next, di, si;
@@ -3448,8 +3430,8 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 	      hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
 
 	      eth0 = vlib_buffer_get_current (b0);
-	      arp0 = (ethernet_arp_header_t *) (((u8 *) eth0)
-						+ sizeof (*eth0));
+	      arp0 =
+		(ethernet_arp_header_t *) (((u8 *) eth0) + sizeof (*eth0));
 	      arp0->opcode = clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply);
 	      arp0->ip4_over_ethernet[1] = arp0->ip4_over_ethernet[0];
 	      mac_address_from_u64 (&arp0->ip4_over_ethernet[0].mac, mac0);
@@ -3485,38 +3467,37 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 	      opt = (void *) (ndh + 1);
 	      opt->header.type =
 		ICMP6_NEIGHBOR_DISCOVERY_OPTION_target_link_layer_address;
-	      clib_memcpy (opt->ethernet_address, (u8 *) & mac0, 6);
+	      clib_memcpy (opt->ethernet_address, (u8 *) &mac0, 6);
 	      ndh->icmp.type = ICMP6_neighbor_advertisement;
-	      ndh->advertisement_flags = clib_host_to_net_u32
-		(ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_SOLICITED |
-		 ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE);
+	      ndh->advertisement_flags = clib_host_to_net_u32 (
+		ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_SOLICITED |
+		ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE);
 	      ndh->icmp.checksum = 0;
 	      ndh->icmp.checksum =
-		ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip0,
-						   &bogus_length);
+		ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip0, &bogus_length);
 	      clib_memcpy (eh0->dst_address, eh0->src_address, 6);
-	      clib_memcpy (eh0->src_address, (u8 *) & mac0, 6);
+	      clib_memcpy (eh0->src_address, (u8 *) &mac0, 6);
 	      b0->error =
-		node->errors
-		[LISP_CP_LOOKUP_ERROR_NDP_NEIGHBOR_ADVERTISEMENT_TX];
+		node
+		  ->errors[LISP_CP_LOOKUP_ERROR_NDP_NEIGHBOR_ADVERTISEMENT_TX];
 	      next0 = LISP_CP_LOOKUP_NEXT_ARP_NDP_REPLY_TX;
 	      goto enqueue;
 	    }
 
 	  /* if we have remote mapping for destination already in map-cache
 	     add forwarding tunnel directly. If not send a map-request */
-	  di = gid_dictionary_sd_lookup (&lcm->mapping_index_by_gid, &dst,
-					 &src);
+	  di =
+	    gid_dictionary_sd_lookup (&lcm->mapping_index_by_gid, &dst, &src);
 	  if (~0 != di)
 	    {
 	      mapping_t *m = vec_elt_at_index (lcm->mapping_pool, di);
 	      /* send a map-request also in case of negative mapping entry
-	         with corresponding action */
+		 with corresponding action */
 	      if (m->action == LISP_SEND_MAP_REQUEST)
 		{
 		  /* send map-request */
-		  queue_map_request (&src, &dst, 0 /* smr_invoked */ ,
-				     0 /* is_resend */ );
+		  queue_map_request (&src, &dst, 0 /* smr_invoked */,
+				     0 /* is_resend */);
 		}
 	      else
 		{
@@ -3537,8 +3518,8 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 	  else
 	    {
 	      /* send map-request */
-	      queue_map_request (&src, &dst, 0 /* smr_invoked */ ,
-				 0 /* is_resend */ );
+	      queue_map_request (&src, &dst, 0 /* smr_invoked */,
+				 0 /* is_resend */);
 	    }
 
 	drop:
@@ -3547,8 +3528,8 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 	enqueue:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      lisp_cp_lookup_trace_t *tr = vlib_add_trace (vm, node, b0,
-							   sizeof (*tr));
+	      lisp_cp_lookup_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
 
 	      clib_memset (tr, 0, sizeof (*tr));
 	      if ((gid_address_type (&dst) == GID_ADDR_NDP) ||
@@ -3561,8 +3542,7 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 	    }
 	  gid_address_free (&dst);
 	  gid_address_free (&src);
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next,
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, next0);
 	}
 
@@ -3572,29 +3552,29 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 }
 
 static uword
-lisp_cp_lookup_ip4 (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+lisp_cp_lookup_ip4 (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *from_frame)
 {
   return (lisp_cp_lookup_inline (vm, node, from_frame, LISP_AFI_IP));
 }
 
 static uword
-lisp_cp_lookup_ip6 (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+lisp_cp_lookup_ip6 (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *from_frame)
 {
   return (lisp_cp_lookup_inline (vm, node, from_frame, LISP_AFI_IP6));
 }
 
 static uword
-lisp_cp_lookup_l2 (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+lisp_cp_lookup_l2 (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *from_frame)
 {
   return (lisp_cp_lookup_inline (vm, node, from_frame, LISP_AFI_MAC));
 }
 
 static uword
-lisp_cp_lookup_nsh (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+lisp_cp_lookup_nsh (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *from_frame)
 {
   /* TODO decide if NSH should be propagated as LCAF or not */
   return (lisp_cp_lookup_inline (vm, node, from_frame, LISP_AFI_LCAF));
@@ -3681,22 +3661,22 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_nsh_node) = {
 /* *INDENT-ON* */
 
 /* lisp_cp_input statistics */
-#define foreach_lisp_cp_input_error                               \
-_(DROP, "drop")                                                   \
-_(RLOC_PROBE_REQ_RECEIVED, "rloc-probe requests received")        \
-_(RLOC_PROBE_REP_RECEIVED, "rloc-probe replies received")         \
-_(MAP_NOTIFIES_RECEIVED, "map-notifies received")                 \
-_(MAP_REPLIES_RECEIVED, "map-replies received")
+#define foreach_lisp_cp_input_error                                           \
+  _ (DROP, "drop")                                                            \
+  _ (RLOC_PROBE_REQ_RECEIVED, "rloc-probe requests received")                 \
+  _ (RLOC_PROBE_REP_RECEIVED, "rloc-probe replies received")                  \
+  _ (MAP_NOTIFIES_RECEIVED, "map-notifies received")                          \
+  _ (MAP_REPLIES_RECEIVED, "map-replies received")
 
 static char *lisp_cp_input_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_lisp_cp_input_error
 #undef _
 };
 
 typedef enum
 {
-#define _(sym,str) LISP_CP_INPUT_ERROR_##sym,
+#define _(sym, str) LISP_CP_INPUT_ERROR_##sym,
   foreach_lisp_cp_input_error
 #undef _
     LISP_CP_INPUT_N_ERROR,
@@ -3709,7 +3689,7 @@ typedef struct
 } lisp_cp_input_trace_t;
 
 u8 *
-format_lisp_cp_input_trace (u8 * s, va_list * args)
+format_lisp_cp_input_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -3721,7 +3701,7 @@ format_lisp_cp_input_trace (u8 * s, va_list * args)
 }
 
 static void
-remove_expired_mapping (lisp_cp_main_t * lcm, u32 mi)
+remove_expired_mapping (lisp_cp_main_t *lcm, u32 mi)
 {
   mapping_t *m;
   vnet_lisp_add_del_adjacency_args_t _adj_args, *adj_args = &_adj_args;
@@ -3739,7 +3719,7 @@ remove_expired_mapping (lisp_cp_main_t * lcm, u32 mi)
 }
 
 static void
-mapping_start_expiration_timer (lisp_cp_main_t * lcm, u32 mi,
+mapping_start_expiration_timer (lisp_cp_main_t *lcm, u32 mi,
 				f64 expiration_time)
 {
   mapping_t *m;
@@ -3754,7 +3734,7 @@ mapping_start_expiration_timer (lisp_cp_main_t * lcm, u32 mi,
 }
 
 static void
-process_expired_mapping (lisp_cp_main_t * lcm, u32 mi)
+process_expired_mapping (lisp_cp_main_t *lcm, u32 mi)
 {
   int rv;
   vnet_lisp_gpe_add_del_fwd_entry_args_t _a, *a = &_a;
@@ -3788,7 +3768,7 @@ process_expired_mapping (lisp_cp_main_t * lcm, u32 mi)
 
   if (m->almost_expired)
     {
-      m->almost_expired = 0;	/* reset flag */
+      m->almost_expired = 0; /* reset flag */
       if (have_stats)
 	{
 	  if (m->packets != c.packets)
@@ -3821,20 +3801,20 @@ process_expired_mapping (lisp_cp_main_t * lcm, u32 mi)
 }
 
 static void
-map_records_arg_free (map_records_arg_t * a)
+map_records_arg_free (map_records_arg_t *a)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   mapping_t *m;
   vec_foreach (m, a->mappings)
-  {
-    vec_free (m->locators);
-    gid_address_free (&m->eid);
-  }
+    {
+      vec_free (m->locators);
+      gid_address_free (&m->eid);
+    }
   pool_put (lcm->map_records_args_pool[vlib_get_thread_index ()], a);
 }
 
 void *
-process_map_reply (map_records_arg_t * a)
+process_map_reply (map_records_arg_t *a)
 {
   mapping_t *m;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -3857,46 +3837,46 @@ process_map_reply (map_records_arg_t * a)
   pmr = pool_elt_at_index (lcm->pending_map_requests_pool, pmr_index[0]);
 
   vec_foreach (m, a->mappings)
-  {
-    vnet_lisp_add_del_mapping_args_t _m_args, *m_args = &_m_args;
-    clib_memset (m_args, 0, sizeof (m_args[0]));
-    gid_address_copy (&m_args->eid, &m->eid);
-    m_args->action = m->action;
-    m_args->authoritative = m->authoritative;
-    m_args->ttl = m->ttl;
-    m_args->is_static = 0;
+    {
+      vnet_lisp_add_del_mapping_args_t _m_args, *m_args = &_m_args;
+      clib_memset (m_args, 0, sizeof (m_args[0]));
+      gid_address_copy (&m_args->eid, &m->eid);
+      m_args->action = m->action;
+      m_args->authoritative = m->authoritative;
+      m_args->ttl = m->ttl;
+      m_args->is_static = 0;
 
-    /* insert/update mappings cache */
-    vnet_lisp_add_mapping (m_args, m->locators, &dst_map_index, &is_changed);
+      /* insert/update mappings cache */
+      vnet_lisp_add_mapping (m_args, m->locators, &dst_map_index, &is_changed);
 
-    if (dst_map_index == (u32) ~ 0)
-      continue;
+      if (dst_map_index == (u32) ~0)
+	continue;
 
-    if (is_changed)
-      {
-	/* try to program forwarding only if mapping saved or updated */
-	vnet_lisp_add_del_adjacency_args_t _adj_args, *adj_args = &_adj_args;
-	clib_memset (adj_args, 0, sizeof (adj_args[0]));
+      if (is_changed)
+	{
+	  /* try to program forwarding only if mapping saved or updated */
+	  vnet_lisp_add_del_adjacency_args_t _adj_args, *adj_args = &_adj_args;
+	  clib_memset (adj_args, 0, sizeof (adj_args[0]));
 
-	gid_address_copy (&adj_args->leid, &pmr->src);
-	gid_address_copy (&adj_args->reid, &m->eid);
-	adj_args->is_add = 1;
+	  gid_address_copy (&adj_args->leid, &pmr->src);
+	  gid_address_copy (&adj_args->reid, &m->eid);
+	  adj_args->is_add = 1;
 
-	if (vnet_lisp_add_del_adjacency (adj_args))
-	  clib_warning ("failed to add adjacency!");
-      }
+	  if (vnet_lisp_add_del_adjacency (adj_args))
+	    clib_warning ("failed to add adjacency!");
+	}
 
-    if ((u32) ~ 0 != m->ttl)
-      mapping_start_expiration_timer (lcm, dst_map_index,
-				      (m->ttl == 0) ? 0 : MAPPING_TIMEOUT);
-  }
+      if ((u32) ~0 != m->ttl)
+	mapping_start_expiration_timer (lcm, dst_map_index,
+					(m->ttl == 0) ? 0 : MAPPING_TIMEOUT);
+    }
 
   /* remove pending map request entry */
 
   /* *INDENT-OFF* */
-  clib_fifo_foreach (noncep, pmr->nonces, ({
-    hash_unset(lcm->pending_map_requests_by_nonce, noncep[0]);
-  }));
+  clib_fifo_foreach (
+    noncep, pmr->nonces,
+    ({ hash_unset (lcm->pending_map_requests_by_nonce, noncep[0]); }));
   /* *INDENT-ON* */
 
   clib_fifo_free (pmr->nonces);
@@ -3908,8 +3888,8 @@ done:
 }
 
 static int
-is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
-		    lisp_key_type_t key_id, u8 * key)
+is_auth_data_valid (map_notify_hdr_t *h, u32 msg_len, lisp_key_type_t key_id,
+		    u8 *key)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u8 *auth_data = 0;
@@ -3917,10 +3897,12 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   int result;
   vnet_crypto_op_t _op, *op = &_op;
   vnet_crypto_key_index_t ki;
-  u8 out[EVP_MAX_MD_SIZE] = { 0, };
+  u8 out[EVP_MAX_MD_SIZE] = {
+    0,
+  };
 
   auth_data_len = auth_data_len_by_key_id (key_id);
-  if ((u16) ~ 0 == auth_data_len)
+  if ((u16) ~0 == auth_data_len)
     {
       clib_warning ("invalid length for key_id %d!", key_id);
       return 0;
@@ -3940,9 +3922,8 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   op->digest_len = 0;
   op->iv = 0;
 
-  ki = vnet_crypto_key_add (lcm->vlib_main,
-			    lisp_key_type_to_crypto_alg (key_id), key,
-			    vec_len (key));
+  ki = vnet_crypto_key_add (
+    lcm->vlib_main, lisp_key_type_to_crypto_alg (key_id), key, vec_len (key));
 
   op->key_index = ki;
 
@@ -3957,7 +3938,7 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
 }
 
 static void
-process_map_notify (map_records_arg_t * a)
+process_map_notify (map_records_arg_t *a)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   uword *pmr_index;
@@ -3965,8 +3946,7 @@ process_map_notify (map_records_arg_t * a)
   pmr_index = hash_get (lcm->map_register_messages_by_nonce, a->nonce);
   if (!pmr_index)
     {
-      clib_warning ("No pending map-register entry with nonce %lu!",
-		    a->nonce);
+      clib_warning ("No pending map-register entry with nonce %lu!", a->nonce);
       return;
     }
 
@@ -3979,15 +3959,14 @@ process_map_notify (map_records_arg_t * a)
 }
 
 static mapping_t *
-get_mapping (lisp_cp_main_t * lcm, gid_address_t * e)
+get_mapping (lisp_cp_main_t *lcm, gid_address_t *e)
 {
   u32 mi;
 
   mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, e);
   if (~0 == mi)
     {
-      clib_warning ("eid %U not found in map-cache!", unformat_gid_address,
-		    e);
+      clib_warning ("eid %U not found in map-cache!", unformat_gid_address, e);
       return 0;
     }
   return pool_elt_at_index (lcm->mapping_pool, mi);
@@ -3999,8 +3978,8 @@ get_mapping (lisp_cp_main_t * lcm, gid_address_t * e)
  * data in map-notify message.
  */
 static int
-map_record_integrity_check (lisp_cp_main_t * lcm, mapping_t * maps,
-			    u32 key_id, u8 ** key_out)
+map_record_integrity_check (lisp_cp_main_t *lcm, mapping_t *maps, u32 key_id,
+			    u8 **key_out)
 {
   u32 i, len = vec_len (maps);
   mapping_t *m;
@@ -4028,7 +4007,7 @@ map_record_integrity_check (lisp_cp_main_t * lcm, mapping_t * maps,
 }
 
 static int
-parse_map_records (vlib_buffer_t * b, map_records_arg_t * a, u8 count)
+parse_map_records (vlib_buffer_t *b, map_records_arg_t *a, u8 count)
 {
   locator_t *locators = 0;
   u32 i, len;
@@ -4046,7 +4025,8 @@ parse_map_records (vlib_buffer_t * b, map_records_arg_t * a, u8 count)
       if (len == ~0)
 	{
 	  clib_warning ("Failed to parse mapping record!");
-	  vec_foreach (loc, locators) locator_free (loc);
+	  vec_foreach (loc, locators)
+	    locator_free (loc);
 	  vec_free (locators);
 	  return -1;
 	}
@@ -4067,10 +4047,11 @@ map_record_args_get ()
 
   /* Cleanup first */
   /* *INDENT-OFF* */
-  pool_foreach (rec, lcm->map_records_args_pool[vlib_get_thread_index()])  {
-    if (rec->is_free)
-      map_records_arg_free (rec);
-  }
+  pool_foreach (rec, lcm->map_records_args_pool[vlib_get_thread_index ()])
+    {
+      if (rec->is_free)
+	map_records_arg_free (rec);
+    }
   /* *INDENT-ON* */
 
   pool_get (lcm->map_records_args_pool[vlib_get_thread_index ()], rec);
@@ -4078,7 +4059,7 @@ map_record_args_get ()
 }
 
 static map_records_arg_t *
-parse_map_notify (vlib_buffer_t * b)
+parse_map_notify (vlib_buffer_t *b)
 {
   int rc = 0;
   map_notify_hdr_t *mnotif_hdr;
@@ -4119,11 +4100,12 @@ parse_map_notify (vlib_buffer_t * b)
     }
 
   /* verify authentication data */
-  if (!is_auth_data_valid (mnotif_hdr, vlib_buffer_get_tail (b)
-			   - (u8 *) mnotif_hdr, key_id, key))
+  if (!is_auth_data_valid (
+	mnotif_hdr, vlib_buffer_get_tail (b) - (u8 *) mnotif_hdr, key_id, key))
     {
       clib_warning ("Map-notify auth data verification failed for nonce "
-		    "0x%lx!", a->nonce);
+		    "0x%lx!",
+		    a->nonce);
       map_records_arg_free (a);
       return 0;
     }
@@ -4131,9 +4113,9 @@ parse_map_notify (vlib_buffer_t * b)
 }
 
 static vlib_buffer_t *
-build_map_reply (lisp_cp_main_t * lcm, ip_address_t * sloc,
-		 ip_address_t * dst, u64 nonce, u8 probe_bit,
-		 mapping_t * records, u16 dst_port, u32 * bi_res)
+build_map_reply (lisp_cp_main_t *lcm, ip_address_t *sloc, ip_address_t *dst,
+		 u64 nonce, u8 probe_bit, mapping_t *records, u16 dst_port,
+		 u32 *bi_res)
 {
   vlib_buffer_t *b;
   u32 bi;
@@ -4160,9 +4142,8 @@ build_map_reply (lisp_cp_main_t * lcm, ip_address_t * sloc,
 }
 
 static int
-send_map_reply (lisp_cp_main_t * lcm, u32 mi, ip_address_t * dst,
-		u8 probe_bit, u64 nonce, u16 dst_port,
-		ip_address_t * probed_loc)
+send_map_reply (lisp_cp_main_t *lcm, u32 mi, ip_address_t *dst, u8 probe_bit,
+		u64 nonce, u16 dst_port, ip_address_t *probed_loc)
 {
   ip_address_t src;
   u32 bi;
@@ -4186,15 +4167,16 @@ send_map_reply (lisp_cp_main_t * lcm, u32 mi, ip_address_t * dst,
       return -1;
     }
 
-  b = build_map_reply (lcm, &src, dst, nonce, probe_bit, records, dst_port,
-		       &bi);
+  b =
+    build_map_reply (lcm, &src, dst, nonce, probe_bit, records, dst_port, &bi);
   if (!b)
     return -1;
   free_map_register_records (records);
 
   vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
   next_index = (ip_addr_version (&lcm->active_map_resolver) == AF_IP4) ?
-    ip4_lookup_node.index : ip6_lookup_node.index;
+		 ip4_lookup_node.index :
+		 ip6_lookup_node.index;
 
   f = vlib_get_frame_to_node (lcm->vlib_main, next_index);
 
@@ -4207,7 +4189,7 @@ send_map_reply (lisp_cp_main_t * lcm, u32 mi, ip_address_t * dst,
 }
 
 static void
-find_ip_header (vlib_buffer_t * b, u8 ** ip_hdr)
+find_ip_header (vlib_buffer_t *b, u8 **ip_hdr)
 {
   const i32 start = vnet_buffer (b)->l3_hdr_offset;
   if (start < 0 && start < -sizeof (b->pre_data))
@@ -4217,13 +4199,13 @@ find_ip_header (vlib_buffer_t * b, u8 ** ip_hdr)
     }
 
   *ip_hdr = b->data + start;
-  if ((u8 *) * ip_hdr > (u8 *) vlib_buffer_get_current (b))
+  if ((u8 *) *ip_hdr > (u8 *) vlib_buffer_get_current (b))
     *ip_hdr = 0;
 }
 
 void
-process_map_request (vlib_main_t * vm, vlib_node_runtime_t * node,
-		     lisp_cp_main_t * lcm, vlib_buffer_t * b)
+process_map_request (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     lisp_cp_main_t *lcm, vlib_buffer_t *b)
 {
   u8 *ip_hdr = 0;
   ip_address_t *dst_loc = 0, probed_loc, src_loc;
@@ -4237,8 +4219,7 @@ process_map_request (vlib_main_t * vm, vlib_node_runtime_t * node,
   mreq_hdr = vlib_buffer_get_current (b);
   if (!MREQ_SMR (mreq_hdr) && !MREQ_RLOC_PROBE (mreq_hdr))
     {
-      clib_warning
-	("Only SMR Map-Requests and RLOC probe supported for now!");
+      clib_warning ("Only SMR Map-Requests and RLOC probe supported for now!");
       return;
     }
 
@@ -4269,7 +4250,7 @@ process_map_request (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (MREQ_SMR (mreq_hdr))
 	{
 	  /* send SMR-invoked map-requests */
-	  queue_map_request (&dst, &src, 1 /* invoked */ , 0 /* resend */ );
+	  queue_map_request (&dst, &src, 1 /* invoked */, 0 /* resend */);
 	}
       else if (MREQ_RLOC_PROBE (mreq_hdr))
 	{
@@ -4292,8 +4273,8 @@ process_map_request (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  // TODO get source port from buffer
 	  u16 src_port = LISP_CONTROL_PORT;
 
-	  send_map_reply (lcm, mi, dst_loc, 1 /* probe-bit */ , nonce,
-			  src_port, &probed_loc);
+	  send_map_reply (lcm, mi, dst_loc, 1 /* probe-bit */, nonce, src_port,
+			  &probed_loc);
 	}
     }
 
@@ -4305,7 +4286,7 @@ done:
 }
 
 map_records_arg_t *
-parse_map_reply (vlib_buffer_t * b)
+parse_map_reply (vlib_buffer_t *b)
 {
   locator_t probed;
   gid_address_t deid;
@@ -4356,23 +4337,23 @@ parse_map_reply (vlib_buffer_t * b)
 }
 
 static void
-queue_map_reply_for_processing (map_records_arg_t * a)
+queue_map_reply_for_processing (map_records_arg_t *a)
 {
   vl_api_rpc_call_main_thread (process_map_reply, (u8 *) a, sizeof (*a));
 }
 
 static void
-queue_map_notify_for_processing (map_records_arg_t * a)
+queue_map_notify_for_processing (map_records_arg_t *a)
 {
   vl_api_rpc_call_main_thread (process_map_notify, (u8 *) a, sizeof (a[0]));
 }
 
 static uword
-lisp_cp_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-	       vlib_frame_t * from_frame)
+lisp_cp_input (vlib_main_t *vm, vlib_node_runtime_t *node,
+	       vlib_frame_t *from_frame)
 {
   u32 n_left_from, *from, *to_next_drop, rloc_probe_rep_recv = 0,
-    map_notifies_recv = 0;
+					 map_notifies_recv = 0;
   lisp_msg_type_e type;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   map_records_arg_t *a;
@@ -4380,13 +4361,12 @@ lisp_cp_input (vlib_main_t * vm, vlib_node_runtime_t * node,
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
 
-
   while (n_left_from > 0)
     {
       u32 n_left_to_next_drop;
 
-      vlib_get_next_frame (vm, node, LISP_CP_INPUT_NEXT_DROP,
-			   to_next_drop, n_left_to_next_drop);
+      vlib_get_next_frame (vm, node, LISP_CP_INPUT_NEXT_DROP, to_next_drop,
+			   n_left_to_next_drop);
       while (n_left_from > 0 && n_left_to_next_drop > 0)
 	{
 	  u32 bi0;
@@ -4433,7 +4413,6 @@ lisp_cp_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-
 	    }
 	}
 
@@ -4469,7 +4448,7 @@ VLIB_REGISTER_NODE (lisp_cp_input_node) = {
 /* *INDENT-ON* */
 
 clib_error_t *
-lisp_cp_init (vlib_main_t * vm)
+lisp_cp_init (vlib_main_t *vm)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   clib_error_t *error = 0;
@@ -4496,16 +4475,16 @@ lisp_cp_init (vlib_main_t * vm)
   lcm->do_map_server_election = 1;
   lcm->map_request_mode = MR_MODE_DST_ONLY;
 
-  num_threads = 1 /* main thread */  + vtm->n_threads;
+  num_threads = 1 /* main thread */ + vtm->n_threads;
   vec_validate (lcm->map_records_args_pool, num_threads - 1);
 
   /* default vrf mapped to vni 0 */
   hash_set (lcm->table_id_by_vni, 0, 0);
   hash_set (lcm->vni_by_table_id, 0, 0);
 
-  TW (tw_timer_wheel_init) (&lcm->wheel, 0 /* no callback */ ,
-			    1e-3 /* timer period 1ms */ ,
-			    ~0 /* max expirations per call */ );
+  TW (tw_timer_wheel_init)
+  (&lcm->wheel, 0 /* no callback */, 1e-3 /* timer period 1ms */,
+   ~0 /* max expirations per call */);
   lcm->nsh_map_index = ~0;
   lcm->map_register_ttl = MAP_REGISTER_DEFAULT_TTL;
   lcm->max_expired_map_registers = MAX_EXPIRED_MAP_REGISTERS_DEFAULT;
@@ -4516,8 +4495,8 @@ lisp_cp_init (vlib_main_t * vm)
 }
 
 static int
-lisp_stats_api_fill (lisp_cp_main_t * lcm, lisp_gpe_main_t * lgm,
-		     lisp_api_stats_t * stat, lisp_stats_key_t * key,
+lisp_stats_api_fill (lisp_cp_main_t *lcm, lisp_gpe_main_t *lgm,
+		     lisp_api_stats_t *stat, lisp_stats_key_t *key,
 		     u32 stats_index)
 {
   vlib_counter_t v;
@@ -4555,8 +4534,7 @@ vnet_lisp_get_stats (void)
   u32 index;
 
   /* *INDENT-OFF* */
-  hash_foreach_mem (key, index, lgm->lisp_stats_index_by_key,
-  {
+  hash_foreach_mem (key, index, lgm->lisp_stats_index_by_key, {
     if (lisp_stats_api_fill (lcm, lgm, &stat, key, index))
       vec_add1 (stats, stat);
   });
@@ -4580,8 +4558,8 @@ send_map_request_thread_fn (void *arg)
 }
 
 static int
-queue_map_request (gid_address_t * seid, gid_address_t * deid,
-		   u8 smr_invoked, u8 is_resend)
+queue_map_request (gid_address_t *seid, gid_address_t *deid, u8 smr_invoked,
+		   u8 is_resend)
 {
   map_request_args_t a;
 
@@ -4590,8 +4568,8 @@ queue_map_request (gid_address_t * seid, gid_address_t * deid,
   gid_address_copy (&a.deid, deid);
   a.smr_invoked = smr_invoked;
 
-  vl_api_rpc_call_main_thread (send_map_request_thread_fn,
-			       (u8 *) & a, sizeof (a));
+  vl_api_rpc_call_main_thread (send_map_request_thread_fn, (u8 *) &a,
+			       sizeof (a));
   return 0;
 }
 
@@ -4600,7 +4578,7 @@ queue_map_request (gid_address_t * seid, gid_address_t * deid,
  * and re-try counters.
  */
 static void
-update_pending_request (pending_map_request_t * r, f64 dt)
+update_pending_request (pending_map_request_t *r, f64 dt)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   lisp_msmr_t *mr;
@@ -4615,8 +4593,8 @@ update_pending_request (pending_map_request_t * r, f64 dt)
 	  if (!mr)
 	    {
 	      clib_warning ("Map resolver %U not found - probably deleted "
-			    "by the user recently.", format_ip_address,
-			    &lcm->active_map_resolver);
+			    "by the user recently.",
+			    format_ip_address, &lcm->active_map_resolver);
 	    }
 	  else
 	    {
@@ -4634,13 +4612,13 @@ update_pending_request (pending_map_request_t * r, f64 dt)
 
 	  /* try to find a next eligible map resolver and re-send */
 	  queue_map_request (&r->src, &r->dst, r->is_smr_invoked,
-			     1 /* resend */ );
+			     1 /* resend */);
 	}
       else
 	{
 	  /* try again */
 	  queue_map_request (&r->src, &r->dst, r->is_smr_invoked,
-			     1 /* resend */ );
+			     1 /* resend */);
 	  r->retries_num++;
 	  r->time_to_expire = PENDING_MREQ_EXPIRATION_TIME;
 	}
@@ -4650,7 +4628,7 @@ update_pending_request (pending_map_request_t * r, f64 dt)
 }
 
 static void
-remove_dead_pending_map_requests (lisp_cp_main_t * lcm)
+remove_dead_pending_map_requests (lisp_cp_main_t *lcm)
 {
   u64 *nonce;
   pending_map_request_t *pmr;
@@ -4658,16 +4636,16 @@ remove_dead_pending_map_requests (lisp_cp_main_t * lcm)
 
   /* *INDENT-OFF* */
   pool_foreach (pmr, lcm->pending_map_requests_pool)
-   {
-    if (pmr->to_be_removed)
-      {
-        clib_fifo_foreach (nonce, pmr->nonces, ({
-          hash_unset (lcm->pending_map_requests_by_nonce, nonce[0]);
-        }));
+    {
+      if (pmr->to_be_removed)
+	{
+	  clib_fifo_foreach (
+	    nonce, pmr->nonces,
+	    ({ hash_unset (lcm->pending_map_requests_by_nonce, nonce[0]); }));
 
-        vec_add1 (to_be_removed, pmr - lcm->pending_map_requests_pool);
-      }
-  }
+	  vec_add1 (to_be_removed, pmr - lcm->pending_map_requests_pool);
+	}
+    }
   /* *INDENT-ON* */
 
   vec_foreach (pmr_index, to_be_removed)
@@ -4677,7 +4655,7 @@ remove_dead_pending_map_requests (lisp_cp_main_t * lcm)
 }
 
 static void
-update_rloc_probing (lisp_cp_main_t * lcm, f64 dt)
+update_rloc_probing (lisp_cp_main_t *lcm, f64 dt)
 {
   static f64 time_left = RLOC_PROBING_INTERVAL;
 
@@ -4693,7 +4671,7 @@ update_rloc_probing (lisp_cp_main_t * lcm, f64 dt)
 }
 
 static int
-update_pending_map_register (pending_map_register_t * r, f64 dt, u8 * del_all)
+update_pending_map_register (pending_map_register_t *r, f64 dt, u8 *del_all)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   lisp_msmr_t *ms;
@@ -4711,8 +4689,8 @@ update_pending_map_register (pending_map_register_t * r, f64 dt, u8 * del_all)
 	  if (!ms)
 	    {
 	      clib_warning ("Map server %U not found - probably deleted "
-			    "by the user recently.", format_ip_address,
-			    &lcm->active_map_server);
+			    "by the user recently.",
+			    format_ip_address, &lcm->active_map_server);
 	    }
 	  else
 	    {
@@ -4742,7 +4720,7 @@ update_pending_map_register (pending_map_register_t * r, f64 dt, u8 * del_all)
 }
 
 static void
-update_map_register (lisp_cp_main_t * lcm, f64 dt)
+update_map_register (lisp_cp_main_t *lcm, f64 dt)
 {
   u32 *to_be_removed = 0, *pmr_index;
   static f64 time_left = QUICK_MAP_REGISTER_INTERVAL;
@@ -4756,14 +4734,14 @@ update_map_register (lisp_cp_main_t * lcm, f64 dt)
 
   /* *INDENT-OFF* */
   pool_foreach (pmr, lcm->pending_map_registers_pool)
-   {
-    if (!update_pending_map_register (pmr, dt, &del_all))
     {
-      if (del_all)
-        break;
-      vec_add1 (to_be_removed, pmr - lcm->pending_map_registers_pool);
+      if (!update_pending_map_register (pmr, dt, &del_all))
+	{
+	  if (del_all)
+	    break;
+	  vec_add1 (to_be_removed, pmr - lcm->pending_map_registers_pool);
+	}
     }
-  }
   /* *INDENT-ON* */
 
   if (del_all)
@@ -4794,13 +4772,13 @@ update_map_register (lisp_cp_main_t * lcm, f64 dt)
 	  mreg_sent_counter++;
 	  time_left = QUICK_MAP_REGISTER_INTERVAL;
 	}
-      send_map_register (lcm, 1 /* want map notify */ );
+      send_map_register (lcm, 1 /* want map notify */);
     }
 }
 
 static uword
-send_map_resolver_service (vlib_main_t * vm,
-			   vlib_node_runtime_t * rt, vlib_frame_t * f)
+send_map_resolver_service (vlib_main_t *vm, vlib_node_runtime_t *rt,
+			   vlib_frame_t *f)
 {
   u32 *expired = 0;
   f64 period = 2.0;
@@ -4816,10 +4794,10 @@ send_map_resolver_service (vlib_main_t * vm,
 
       /* *INDENT-OFF* */
       pool_foreach (pmr, lcm->pending_map_requests_pool)
-       {
-        if (!pmr->to_be_removed)
-          update_pending_request (pmr, period);
-      }
+	{
+	  if (!pmr->to_be_removed)
+	    update_pending_request (pmr, period);
+	}
       /* *INDENT-ON* */
 
       remove_dead_pending_map_requests (lcm);
@@ -4833,9 +4811,9 @@ send_map_resolver_service (vlib_main_t * vm,
 	{
 	  u32 *mi = 0;
 	  vec_foreach (mi, expired)
-	  {
-	    process_expired_mapping (lcm, mi[0]);
-	  }
+	    {
+	      process_expired_mapping (lcm, mi[0]);
+	    }
 	  _vec_len (expired) = 0;
 	}
     }
@@ -4872,15 +4850,14 @@ vnet_lisp_stats_enable_disable_state (void)
 }
 
 void
-vnet_lisp_create_retry_process (lisp_cp_main_t * lcm)
+vnet_lisp_create_retry_process (lisp_cp_main_t *lcm)
 {
   if (lcm->retry_service_index)
     return;
 
-  lcm->retry_service_index = vlib_process_create (vlib_get_main (),
-						  "lisp-retry-service",
-						  send_map_resolver_service,
-						  16 /* stack_bytes */ );
+  lcm->retry_service_index =
+    vlib_process_create (vlib_get_main (), "lisp-retry-service",
+			 send_map_resolver_service, 16 /* stack_bytes */);
 }
 
 u32
@@ -4925,7 +4902,7 @@ vnet_lisp_enable_disable_xtr_mode (u8 is_enabled)
 	{
 	  lisp_cp_register_dst_port (lcm->vlib_main);
 	}
-      lisp_cp_enable_l2_l3_ifaces (lcm, 1 /* with_default_route */ );
+      lisp_cp_enable_l2_l3_ifaces (lcm, 1 /* with_default_route */);
       lcm->flags |= LISP_FLAG_XTR_MODE;
     }
   else
@@ -4958,7 +4935,7 @@ vnet_lisp_enable_disable_pitr_mode (u8 is_enabled)
   if (is_enabled)
     {
       /* create iface, no default route */
-      lisp_cp_enable_l2_l3_ifaces (lcm, 0 /* with_default_route */ );
+      lisp_cp_enable_l2_l3_ifaces (lcm, 0 /* with_default_route */);
       lcm->flags |= LISP_FLAG_PITR_MODE;
     }
   else
@@ -4979,54 +4956,4 @@ vnet_lisp_enable_disable_petr_mode (u8 is_enabled)
   if (is_enabled && petr_mode)
     return 0;
   if (!is_enabled && !petr_mode)
-    return 0;
-
-  if (is_enabled)
-    {
-      if (!xtr_mode)
-	{
-	  lisp_cp_register_dst_port (lcm->vlib_main);
-	}
-      lcm->flags |= LISP_FLAG_PETR_MODE;
-    }
-  else
-    {
-      if (!xtr_mode)
-	{
-	  lisp_cp_unregister_dst_port (lcm->vlib_main);
-	}
-      lcm->flags &= ~LISP_FLAG_PETR_MODE;
-    }
-  return 0;
-}
-
-u8
-vnet_lisp_get_xtr_mode (void)
-{
-  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
-  return (lcm->flags & LISP_FLAG_XTR_MODE);
-}
-
-u8
-vnet_lisp_get_pitr_mode (void)
-{
-  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
-  return (lcm->flags & LISP_FLAG_PITR_MODE);
-}
-
-u8
-vnet_lisp_get_petr_mode (void)
-{
-  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
-  return (lcm->flags & LISP_FLAG_PETR_MODE);
-}
-
-VLIB_INIT_FUNCTION (lisp_cp_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+  re

@@ -166,7 +166,7 @@ policer_bind_worker (u8 *name, u32 worker, bool bind)
 }
 
 u8 *
-format_policer_instance (u8 * s, va_list * va)
+format_policer_instance (u8 *s, va_list *va)
 {
   policer_t *i = va_arg (*va, policer_t *);
   uword pi = va_arg (*va, uword);
@@ -179,14 +179,14 @@ format_policer_instance (u8 * s, va_list * va)
 				 &counts[result]);
     }
 
-  s = format (s, "policer at %llx: %s rate, %s color-aware\n",
-	      i, i->single_rate ? "single" : "dual",
-	      i->color_aware ? "is" : "not");
+  s =
+    format (s, "policer at %llx: %s rate, %s color-aware\n", i,
+	    i->single_rate ? "single" : "dual", i->color_aware ? "is" : "not");
   s = format (s, "cir %u tok/period, pir %u tok/period, scale %u\n",
 	      i->cir_tokens_per_period, i->pir_tokens_per_period, i->scale);
   s = format (s, "cur lim %u, cur bkt %u, ext lim %u, ext bkt %u\n",
-	      i->current_limit,
-	      i->current_bucket, i->extended_limit, i->extended_bucket);
+	      i->current_limit, i->current_bucket, i->extended_limit,
+	      i->extended_bucket);
   s = format (s, "last update %llu\n", i->last_update_time);
   s = format (s, "conform %llu packets, %llu bytes\n",
 	      counts[POLICE_CONFORM].packets, counts[POLICE_CONFORM].bytes);
@@ -198,7 +198,7 @@ format_policer_instance (u8 * s, va_list * va)
 }
 
 static u8 *
-format_policer_round_type (u8 * s, va_list * va)
+format_policer_round_type (u8 *s, va_list *va)
 {
   qos_pol_cfg_params_st *c = va_arg (*va, qos_pol_cfg_params_st *);
 
@@ -213,9 +213,8 @@ format_policer_round_type (u8 * s, va_list * va)
   return s;
 }
 
-
 static u8 *
-format_policer_rate_type (u8 * s, va_list * va)
+format_policer_rate_type (u8 *s, va_list *va)
 {
   qos_pol_cfg_params_st *c = va_arg (*va, qos_pol_cfg_params_st *);
 
@@ -229,7 +228,7 @@ format_policer_rate_type (u8 * s, va_list * va)
 }
 
 static u8 *
-format_policer_type (u8 * s, va_list * va)
+format_policer_type (u8 *s, va_list *va)
 {
   qos_pol_cfg_params_st *c = va_arg (*va, qos_pol_cfg_params_st *);
 
@@ -253,7 +252,7 @@ format_policer_type (u8 * s, va_list * va)
 }
 
 static u8 *
-format_policer_action_type (u8 * s, va_list * va)
+format_policer_action_type (u8 *s, va_list *va)
 {
   qos_pol_action_params_st *a = va_arg (*va, qos_pol_action_params_st *);
 
@@ -269,16 +268,15 @@ format_policer_action_type (u8 * s, va_list * va)
 }
 
 u8 *
-format_policer_config (u8 * s, va_list * va)
+format_policer_config (u8 *s, va_list *va)
 {
   qos_pol_cfg_params_st *c = va_arg (*va, qos_pol_cfg_params_st *);
 
-  s = format (s, "type %U cir %u eir %u cb %u eb %u\n",
-	      format_policer_type, c,
-	      c->rb.kbps.cir_kbps,
-	      c->rb.kbps.eir_kbps, c->rb.kbps.cb_bytes, c->rb.kbps.eb_bytes);
-  s = format (s, "rate type %U, round type %U\n",
-	      format_policer_rate_type, c, format_policer_round_type, c);
+  s = format (s, "type %U cir %u eir %u cb %u eb %u\n", format_policer_type, c,
+	      c->rb.kbps.cir_kbps, c->rb.kbps.eir_kbps, c->rb.kbps.cb_bytes,
+	      c->rb.kbps.eb_bytes);
+  s = format (s, "rate type %U, round type %U\n", format_policer_rate_type, c,
+	      format_policer_round_type, c);
   s = format (s, "conform action %U, exceed action %U, violate action %U\n",
 	      format_policer_action_type, &c->conform_action,
 	      format_policer_action_type, &c->exceed_action,
@@ -287,7 +285,7 @@ format_policer_config (u8 * s, va_list * va)
 }
 
 static uword
-unformat_policer_type (unformat_input_t * input, va_list * va)
+unformat_policer_type (unformat_input_t *input, va_list *va)
 {
   qos_pol_cfg_params_st *c = va_arg (*va, qos_pol_cfg_params_st *);
 
@@ -310,7 +308,7 @@ unformat_policer_type (unformat_input_t * input, va_list * va)
 }
 
 static uword
-unformat_policer_round_type (unformat_input_t * input, va_list * va)
+unformat_policer_round_type (unformat_input_t *input, va_list *va)
 {
   qos_pol_cfg_params_st *c = va_arg (*va, qos_pol_cfg_params_st *);
 
@@ -329,7 +327,7 @@ unformat_policer_round_type (unformat_input_t * input, va_list * va)
 }
 
 static uword
-unformat_policer_rate_type (unformat_input_t * input, va_list * va)
+unformat_policer_rate_type (unformat_input_t *input, va_list *va)
 {
   qos_pol_cfg_params_st *c = va_arg (*va, qos_pol_cfg_params_st *);
 
@@ -346,7 +344,7 @@ unformat_policer_rate_type (unformat_input_t * input, va_list * va)
 }
 
 static uword
-unformat_policer_cir (unformat_input_t * input, va_list * va)
+unformat_policer_cir (unformat_input_t *input, va_list *va)
 {
   qos_pol_cfg_params_st *c = va_arg (*va, qos_pol_cfg_params_st *);
 
@@ -356,7 +354,7 @@ unformat_policer_cir (unformat_input_t * input, va_list * va)
 }
 
 static uword
-unformat_policer_eir (unformat_input_t * input, va_list * va)
+unformat_policer_eir (unformat_input_t *input, va_list *va)
 {
   qos_pol_cfg_params_st *c = va_arg (*va, qos_pol_cfg_params_st *);
 
@@ -366,7 +364,7 @@ unformat_policer_eir (unformat_input_t * input, va_list * va)
 }
 
 static uword
-unformat_policer_cb (unformat_input_t * input, va_list * va)
+unformat_policer_cb (unformat_input_t *input, va_list *va)
 {
   qos_pol_cfg_params_st *c = va_arg (*va, qos_pol_cfg_params_st *);
 
@@ -376,7 +374,7 @@ unformat_policer_cb (unformat_input_t * input, va_list * va)
 }
 
 static uword
-unformat_policer_eb (unformat_input_t * input, va_list * va)
+unformat_policer_eb (unformat_input_t *input, va_list *va)
 {
   qos_pol_cfg_params_st *c = va_arg (*va, qos_pol_cfg_params_st *);
 
@@ -386,7 +384,7 @@ unformat_policer_eb (unformat_input_t * input, va_list * va)
 }
 
 static uword
-unformat_policer_action_type (unformat_input_t * input, va_list * va)
+unformat_policer_action_type (unformat_input_t *input, va_list *va)
 {
   qos_pol_action_params_st *a = va_arg (*va, qos_pol_action_params_st *);
 
@@ -403,7 +401,7 @@ unformat_policer_action_type (unformat_input_t * input, va_list * va)
 }
 
 static uword
-unformat_policer_action (unformat_input_t * input, va_list * va)
+unformat_policer_action (unformat_input_t *input, va_list *va)
 {
   qos_pol_cfg_params_st *c = va_arg (*va, qos_pol_cfg_params_st *);
 
@@ -420,7 +418,7 @@ unformat_policer_action (unformat_input_t * input, va_list * va)
 }
 
 static uword
-unformat_policer_classify_next_index (unformat_input_t * input, va_list * va)
+unformat_policer_classify_next_index (unformat_input_t *input, va_list *va)
 {
   u32 *r = va_arg (*va, u32 *);
   vnet_policer_main_t *pm = &vnet_policer_main;
@@ -443,7 +441,7 @@ unformat_policer_classify_next_index (unformat_input_t * input, va_list * va)
 }
 
 static uword
-unformat_policer_classify_precolor (unformat_input_t * input, va_list * va)
+unformat_policer_classify_precolor (unformat_input_t *input, va_list *va)
 {
   u32 *r = va_arg (*va, u32 *);
 
@@ -457,20 +455,19 @@ unformat_policer_classify_precolor (unformat_input_t * input, va_list * va)
   return 1;
 }
 
-#define foreach_config_param                    \
-_(eb)                                           \
-_(cb)                                           \
-_(eir)                                          \
-_(cir)                                          \
-_(rate_type)                                    \
-_(round_type)                                   \
-_(type)                                         \
-_(action)
+#define foreach_config_param                                                  \
+  _ (eb)                                                                      \
+  _ (cb)                                                                      \
+  _ (eir)                                                                     \
+  _ (cir)                                                                     \
+  _ (rate_type)                                                               \
+  _ (round_type)                                                              \
+  _ (type)                                                                    \
+  _ (action)
 
 static clib_error_t *
-configure_policer_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+configure_policer_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   qos_pol_cfg_params_st c;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -494,15 +491,15 @@ configure_policer_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "color-aware"))
 	c.color_aware = 1;
 
-#define _(a) else if (unformat (line_input, "%U", unformat_policer_##a, &c)) ;
+#define _(a) else if (unformat (line_input, "%U", unformat_policer_##a, &c));
       foreach_config_param
 #undef _
 	else
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
+      {
+	error = clib_error_return (0, "unknown input `%U'",
+				   format_unformat_error, line_input);
+	goto done;
+      }
     }
 
   error = policer_add_del (vm, name, &c, &pi, is_add);
@@ -513,17 +510,15 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (configure_policer_command, static) = {
-    .path = "configure policer",
-    .short_help = "configure policer name <name> <params> ",
-    .function = configure_policer_command_fn,
+  .path = "configure policer",
+  .short_help = "configure policer name <name> <params> ",
+  .function = configure_policer_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_policer_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+show_policer_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   vnet_policer_main_t *pm = &vnet_policer_main;
   hash_pair_t *p;
@@ -536,60 +531,53 @@ show_policer_command_fn (vlib_main_t * vm,
 
   (void) unformat (input, "name %s", &match_name);
 
-  /* *INDENT-OFF* */
-  hash_foreach_pair (p, pm->policer_config_by_name,
-  ({
-    name = (u8 *) p->key;
-    if (match_name == 0 || !strcmp((char *) name, (char *) match_name))
-      {
-	pi = hash_get_mem (pm->policer_index_by_name, name);
+  hash_foreach_pair (
+    p, pm->policer_config_by_name, ({
+      name = (u8 *) p->key;
+      if (match_name == 0 || !strcmp ((char *) name, (char *) match_name))
+	{
+	  pi = hash_get_mem (pm->policer_index_by_name, name);
 
-	pool_index = p->value[0];
-	config = pool_elt_at_index (pm->configs, pool_index);
-	templ = pool_elt_at_index (pm->policer_templates, pool_index);
-	vlib_cli_output (vm, "Name \"%s\" %U ", name, format_policer_config,
-			 config);
-	vlib_cli_output (vm, "Template %U", format_policer_instance, templ,
-			 pi[0]);
-	vlib_cli_output (vm, "-----------");
-      }
-  }));
-  /* *INDENT-ON* */
+	  pool_index = p->value[0];
+	  config = pool_elt_at_index (pm->configs, pool_index);
+	  templ = pool_elt_at_index (pm->policer_templates, pool_index);
+	  vlib_cli_output (vm, "Name \"%s\" %U ", name, format_policer_config,
+			   config);
+	  vlib_cli_output (vm, "Template %U", format_policer_instance, templ,
+			   pi[0]);
+	  vlib_cli_output (vm, "-----------");
+	}
+    }));
+
   return 0;
 }
 
-
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_policer_command, static) = {
-    .path = "show policer",
-    .short_help = "show policer [name]",
-    .function = show_policer_command_fn,
+  .path = "show policer",
+  .short_help = "show policer [name]",
+  .function = show_policer_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_policer_pools_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+show_policer_pools_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   vnet_policer_main_t *pm = &vnet_policer_main;
 
   vlib_cli_output (vm, "pool sizes: configs=%d templates=%d policers=%d",
-		   pool_elts (pm->configs),
-		   pool_elts (pm->policer_templates),
+		   pool_elts (pm->configs), pool_elts (pm->policer_templates),
 		   pool_elts (pm->policers));
   return 0;
 }
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (show_policer_pools_command, static) = {
-    .path = "show policer pools",
-    .short_help = "show policer pools",
-    .function = show_policer_pools_command_fn,
+  .path = "show policer pools",
+  .short_help = "show policer pools",
+  .function = show_policer_pools_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-policer_init (vlib_main_t * vm)
+policer_init (vlib_main_t *vm)
 {
   vnet_policer_main_t *pm = &vnet_policer_main;
   void vnet_policer_node_funcs_reference (void);
@@ -603,17 +591,15 @@ policer_init (vlib_main_t * vm)
   pm->policer_config_by_name = hash_create_string (0, sizeof (uword));
   pm->policer_index_by_name = hash_create_string (0, sizeof (uword));
 
-  vnet_classify_register_unformat_policer_next_index_fn
-    (unformat_policer_classify_next_index);
-  vnet_classify_register_unformat_opaque_index_fn
-    (unformat_policer_classify_precolor);
+  vnet_classify_register_unformat_policer_next_index_fn (
+    unformat_policer_classify_next_index);
+  vnet_classify_register_unformat_opaque_index_fn (
+    unformat_policer_classify_precolor);
 
   return 0;
 }
 
 VLIB_INIT_FUNCTION (policer_init);
-
-
 
 /*
  * fd.io coding-style-patch-verification: ON

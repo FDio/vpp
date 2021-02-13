@@ -44,7 +44,7 @@
 #define DEBUG_MESSAGE_BUFFER_OVERRUN 0
 
 CLIB_NOSANITIZE_ADDR static inline void *
-vl_msg_api_alloc_internal (svm_region_t * vlib_rp, int nbytes, int pool,
+vl_msg_api_alloc_internal (svm_region_t *vlib_rp, int nbytes, int pool,
 			   int may_return_null)
 {
   int i;
@@ -117,9 +117,8 @@ vl_msg_api_alloc_internal (svm_region_t * vlib_rp, int nbytes, int pool,
 		  if (CLIB_DEBUG > 0)
 		    {
 		      u16 *msg_idp, msg_id;
-		      clib_warning
-			("garbage collect pool %d ring %d index %d", pool, i,
-			 q->head);
+		      clib_warning ("garbage collect pool %d ring %d index %d",
+				    pool, i, q->head);
 		      msg_idp = (u16 *) (rv->data);
 		      msg_id = clib_net_to_host_u16 (*msg_idp);
 		      if (msg_id < vec_len (vlibapi_get_main ()->msg_names))
@@ -130,7 +129,6 @@ vl_msg_api_alloc_internal (svm_region_t * vlib_rp, int nbytes, int pool,
 		  goto collected;
 		}
 	    }
-
 
 	  /* yes, loser; try next larger pool */
 	  ap[i].misses++;
@@ -207,7 +205,7 @@ vl_msg_api_alloc (int nbytes)
    */
   pool = (am->our_pid == shmem_hdr->vl_pid);
   return vl_msg_api_alloc_internal (am->vlib_rp, nbytes, pool,
-				    0 /* may_return_null */ );
+				    0 /* may_return_null */);
 }
 
 void *
@@ -229,7 +227,7 @@ vl_msg_api_alloc_or_null (int nbytes)
 
   pool = (am->our_pid == shmem_hdr->vl_pid);
   return vl_msg_api_alloc_internal (am->vlib_rp, nbytes, pool,
-				    1 /* may_return_null */ );
+				    1 /* may_return_null */);
 }
 
 void *
@@ -237,7 +235,7 @@ vl_msg_api_alloc_as_if_client (int nbytes)
 {
   api_main_t *am = vlibapi_get_main ();
   return vl_msg_api_alloc_internal (am->vlib_rp, nbytes, 0,
-				    0 /* may_return_null */ );
+				    0 /* may_return_null */);
 }
 
 void *
@@ -255,18 +253,18 @@ vl_msg_api_alloc_as_if_client_or_null (int nbytes)
 {
   api_main_t *am = vlibapi_get_main ();
   return vl_msg_api_alloc_internal (am->vlib_rp, nbytes, 0,
-				    1 /* may_return_null */ );
+				    1 /* may_return_null */);
 }
 
 void *
-vl_mem_api_alloc_as_if_client_w_reg (vl_api_registration_t * reg, int nbytes)
+vl_mem_api_alloc_as_if_client_w_reg (vl_api_registration_t *reg, int nbytes)
 {
   return vl_msg_api_alloc_internal (reg->vlib_rp, nbytes, 0,
-				    0 /* may_return_null */ );
+				    0 /* may_return_null */);
 }
 
 void
-vl_msg_api_free_w_region (svm_region_t * vlib_rp, void *a)
+vl_msg_api_free_w_region (svm_region_t *vlib_rp, void *a)
 {
   msgbuf_t *rv;
   void *oldheap;
@@ -404,7 +402,7 @@ vl_set_api_pvt_heap_size (u64 size)
 }
 
 static void
-vl_api_default_mem_config (vl_shmem_hdr_t * shmem_hdr)
+vl_api_default_mem_config (vl_shmem_hdr_t *shmem_hdr)
 {
   api_main_t *am = vlibapi_get_main ();
   u32 vlib_input_queue_length;
@@ -414,41 +412,44 @@ vl_api_default_mem_config (vl_shmem_hdr_t * shmem_hdr)
   if (am->vlib_input_queue_length)
     vlib_input_queue_length = am->vlib_input_queue_length;
 
-  shmem_hdr->vl_input_queue =
-    svm_queue_alloc_and_init (vlib_input_queue_length, sizeof (uword),
-			      getpid ());
+  shmem_hdr->vl_input_queue = svm_queue_alloc_and_init (
+    vlib_input_queue_length, sizeof (uword), getpid ());
 
-#define _(sz,n)                                                 \
-    do {                                                        \
-        ring_alloc_t _rp;                                       \
-        _rp.rp = svm_queue_alloc_and_init ((n), (sz), 0); 	\
-        _rp.size = (sz);                                        \
-        _rp.nitems = n;                                         \
-        _rp.hits = 0;                                           \
-        _rp.misses = 0;                                         \
-        vec_add1(shmem_hdr->vl_rings, _rp);                     \
-    } while (0);
+#define _(sz, n)                                                              \
+  do                                                                          \
+    {                                                                         \
+      ring_alloc_t _rp;                                                       \
+      _rp.rp = svm_queue_alloc_and_init ((n), (sz), 0);                       \
+      _rp.size = (sz);                                                        \
+      _rp.nitems = n;                                                         \
+      _rp.hits = 0;                                                           \
+      _rp.misses = 0;                                                         \
+      vec_add1 (shmem_hdr->vl_rings, _rp);                                    \
+    }                                                                         \
+  while (0);
 
   foreach_vl_aring_size;
 #undef _
 
-#define _(sz,n)                                                 \
-    do {                                                        \
-        ring_alloc_t _rp;                                       \
-        _rp.rp = svm_queue_alloc_and_init ((n), (sz), 0); 	\
-        _rp.size = (sz);                                        \
-        _rp.nitems = n;                                         \
-        _rp.hits = 0;                                           \
-        _rp.misses = 0;                                         \
-        vec_add1(shmem_hdr->client_rings, _rp);                 \
-    } while (0);
+#define _(sz, n)                                                              \
+  do                                                                          \
+    {                                                                         \
+      ring_alloc_t _rp;                                                       \
+      _rp.rp = svm_queue_alloc_and_init ((n), (sz), 0);                       \
+      _rp.size = (sz);                                                        \
+      _rp.nitems = n;                                                         \
+      _rp.hits = 0;                                                           \
+      _rp.misses = 0;                                                         \
+      vec_add1 (shmem_hdr->client_rings, _rp);                                \
+    }                                                                         \
+  while (0);
 
   foreach_clnt_aring_size;
 #undef _
 }
 
 void
-vl_api_mem_config (vl_shmem_hdr_t * hdr, vl_api_shm_elem_config_t * config)
+vl_api_mem_config (vl_shmem_hdr_t *hdr, vl_api_shm_elem_config_t *config)
 {
   vl_api_shm_elem_config_t *c;
   ring_alloc_t *rp;
@@ -461,35 +462,35 @@ vl_api_mem_config (vl_shmem_hdr_t * hdr, vl_api_shm_elem_config_t * config)
     }
 
   vec_foreach (c, config)
-  {
-    switch (c->type)
-      {
-      case VL_API_QUEUE:
-	hdr->vl_input_queue = svm_queue_alloc_and_init (c->count, c->size,
-							getpid ());
-	continue;
-      case VL_API_VLIB_RING:
-	vec_add2 (hdr->vl_rings, rp, 1);
-	break;
-      case VL_API_CLIENT_RING:
-	vec_add2 (hdr->client_rings, rp, 1);
-	break;
-      default:
-	clib_warning ("unknown config type: %d", c->type);
-	continue;
-      }
+    {
+      switch (c->type)
+	{
+	case VL_API_QUEUE:
+	  hdr->vl_input_queue =
+	    svm_queue_alloc_and_init (c->count, c->size, getpid ());
+	  continue;
+	case VL_API_VLIB_RING:
+	  vec_add2 (hdr->vl_rings, rp, 1);
+	  break;
+	case VL_API_CLIENT_RING:
+	  vec_add2 (hdr->client_rings, rp, 1);
+	  break;
+	default:
+	  clib_warning ("unknown config type: %d", c->type);
+	  continue;
+	}
 
-    size = sizeof (ring_alloc_t) + c->size;
-    rp->rp = svm_queue_alloc_and_init (c->count, size, 0);
-    rp->size = size;
-    rp->nitems = c->count;
-    rp->hits = 0;
-    rp->misses = 0;
-  }
+      size = sizeof (ring_alloc_t) + c->size;
+      rp->rp = svm_queue_alloc_and_init (c->count, size, 0);
+      rp->size = size;
+      rp->nitems = c->count;
+      rp->hits = 0;
+      rp->misses = 0;
+    }
 }
 
 void
-vl_init_shmem (svm_region_t * vlib_rp, vl_api_shm_elem_config_t * config,
+vl_init_shmem (svm_region_t *vlib_rp, vl_api_shm_elem_config_t *config,
 	       int is_vlib, int is_private_region)
 {
   api_main_t *am = vlibapi_get_main ();
@@ -545,8 +546,8 @@ vl_map_shmem (const char *region_name, int is_vlib)
   if (strstr (region_name, vpe_api_region_suffix))
     {
       u8 *root_path = format (0, "%s", region_name);
-      _vec_len (root_path) = (vec_len (root_path) -
-			      strlen (vpe_api_region_suffix));
+      _vec_len (root_path) =
+	(vec_len (root_path) - strlen (vpe_api_region_suffix));
       vec_terminate_c_string (root_path);
       a->root_path = (const char *) root_path;
       am->root_path = (const char *) root_path;
@@ -560,8 +561,8 @@ vl_map_shmem (const char *region_name, int is_vlib)
        * Clients wait for vpp to set up the root / API regioins
        */
       if (am->root_path)
-	api_name = format (0, "/dev/shm/%s-%s%c", am->root_path,
-			   region_name + 1, 0);
+	api_name =
+	  format (0, "/dev/shm/%s-%s%c", am->root_path, region_name + 1, 0);
       else
 	api_name = format (0, "/dev/shm%s%c", region_name, 0);
 
@@ -569,7 +570,7 @@ vl_map_shmem (const char *region_name, int is_vlib)
       for (i = 0; i < 10000; i++)
 	{
 	  ts.tv_sec = 0;
-	  ts.tv_nsec = 10000 * 1000;	/* 10 ms */
+	  ts.tv_nsec = 10000 * 1000; /* 10 ms */
 	  while (nanosleep (&ts, &tsrem) < 0)
 	    ts = tsrem;
 	  tfd = open ((char *) api_name, O_RDWR);
@@ -634,7 +635,7 @@ vl_map_shmem (const char *region_name, int is_vlib)
 		  goto mutex_ok;
 		}
 	      ts.tv_sec = 0;
-	      ts.tv_nsec = 10000 * 1000;	/* 10 ms */
+	      ts.tv_nsec = 10000 * 1000; /* 10 ms */
 	      while (nanosleep (&ts, &tsrem) < 0)
 		ts = tsrem;
 	    }
@@ -644,8 +645,8 @@ vl_map_shmem (const char *region_name, int is_vlib)
 
 	mutex_ok:
 	  am->vlib_rp = vlib_rp;
-	  while (svm_queue_sub (q, (u8 *) & old_msg, SVM_Q_NOWAIT, 0)
-		 != -2 /* queue underflow */ )
+	  while (svm_queue_sub (q, (u8 *) &old_msg, SVM_Q_NOWAIT, 0) !=
+		 -2 /* queue underflow */)
 	    {
 	      vl_msg_api_free_nolock ((void *) old_msg);
 	      am->shmem_hdr->restart_reclaims++;
@@ -675,7 +676,7 @@ vl_map_shmem (const char *region_name, int is_vlib)
       for (i = 0; i < 10000; i++)
 	{
 	  ts.tv_sec = 0;
-	  ts.tv_nsec = 10000 * 1000;	/* 10 ms */
+	  ts.tv_nsec = 10000 * 1000; /* 10 ms */
 	  while (nanosleep (&ts, &tsrem) < 0)
 	    ts = tsrem;
 	  if (vlib_rp->user_ctx)
@@ -695,15 +696,15 @@ vl_map_shmem (const char *region_name, int is_vlib)
     }
 
   /* Nope, it's our problem... */
-  vl_init_shmem (vlib_rp, 0 /* default config */ , 1 /* is vlib */ ,
-		 0 /* is_private_region */ );
+  vl_init_shmem (vlib_rp, 0 /* default config */, 1 /* is vlib */,
+		 0 /* is_private_region */);
 
   vec_add1 (am->mapped_shmem_regions, vlib_rp);
   return 0;
 }
 
 void
-vl_register_mapped_shmem_region (svm_region_t * rp)
+vl_register_mapped_shmem_region (svm_region_t *rp)
 {
   api_main_t *am = vlibapi_get_main ();
 
@@ -750,7 +751,7 @@ vl_unmap_shmem_client (void)
 }
 
 void
-vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem)
+vl_msg_api_send_shmem (svm_queue_t *q, u8 *elem)
 {
   api_main_t *am = vlibapi_get_main ();
   void *msg = (void *) *(uword *) elem;
@@ -763,22 +764,21 @@ vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem)
    * some client's input queue is stuffed.
    * The situation may be recoverable, or not.
    */
-  if (PREDICT_FALSE
-      (am->vl_clients /* vpp side */  && (q->cursize == q->maxsize)))
+  if (PREDICT_FALSE (am->vl_clients /* vpp side */ &&
+		     (q->cursize == q->maxsize)))
     {
       if (PREDICT_FALSE (am->elog_trace_api_messages))
 	{
-          /* *INDENT-OFF* */
-          ELOG_TYPE_DECLARE (e) =
-            {
-              .format = "api-client-queue-stuffed: %x%x",
-              .format_args = "i4i4",
-            };
-          /* *INDENT-ON* */
+
+	  ELOG_TYPE_DECLARE (e) = {
+	    .format = "api-client-queue-stuffed: %x%x",
+	    .format_args = "i4i4",
+	  };
+
 	  struct
 	  {
 	    u32 hi, low;
-	  } *ed;
+	  } * ed;
 	  ed = ELOG_DATA (am->elog_main, e);
 	  ed->hi = (uword) q >> 32;
 	  ed->low = (uword) q & 0xFFFFFFFF;
@@ -787,17 +787,17 @@ vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem)
 	}
     }
   VL_MSG_API_POISON (msg);
-  (void) svm_queue_add (q, elem, 0 /* nowait */ );
+  (void) svm_queue_add (q, elem, 0 /* nowait */);
 }
 
 int
-vl_mem_api_can_send (svm_queue_t * q)
+vl_mem_api_can_send (svm_queue_t *q)
 {
   return (q->cursize < q->maxsize);
 }
 
 void
-vl_msg_api_send_shmem_nolock (svm_queue_t * q, u8 * elem)
+vl_msg_api_send_shmem_nolock (svm_queue_t *q, u8 *elem)
 {
   api_main_t *am = vlibapi_get_main ();
   void *msg = (void *) *(uword *) elem;

@@ -45,17 +45,17 @@
 #include <vppinfra/serialize.h>
 #include <vppinfra/vector.h>
 #include <vppinfra/lock.h>
-#include <vlib/error.h>		/* for vlib_error_t */
+#include <vlib/error.h> /* for vlib_error_t */
 
-#include <vlib/config.h>	/* for __PRE_DATA_SIZE */
-#define VLIB_BUFFER_PRE_DATA_SIZE	__PRE_DATA_SIZE
+#include <vlib/config.h> /* for __PRE_DATA_SIZE */
+#define VLIB_BUFFER_PRE_DATA_SIZE __PRE_DATA_SIZE
 
 #define VLIB_BUFFER_DEFAULT_DATA_SIZE (2048)
 
 /* Minimum buffer chain segment size. Does not apply to last buffer in chain.
    Dataplane code can safely asume that specified amount of data is not split
    into 2 chained buffers */
-#define VLIB_BUFFER_MIN_CHAIN_SEG_SIZE	(128)
+#define VLIB_BUFFER_MIN_CHAIN_SEG_SIZE (128)
 
 /* Amount of head buffer data copied to each replica head buffer */
 #define VLIB_BUFFER_CLONE_HEAD_SIZE (256)
@@ -70,33 +70,33 @@
 /**
  * Buffer Flags
  */
-#define foreach_vlib_buffer_flag \
-  _( 0, IS_TRACED, 0)					\
-  _( 1, NEXT_PRESENT, "next-present")			\
-  _( 2, TOTAL_LENGTH_VALID, 0)				\
-  _( 3, EXT_HDR_VALID, "ext-hdr-valid")
+#define foreach_vlib_buffer_flag                                              \
+  _ (0, IS_TRACED, 0)                                                         \
+  _ (1, NEXT_PRESENT, "next-present")                                         \
+  _ (2, TOTAL_LENGTH_VALID, 0)                                                \
+  _ (3, EXT_HDR_VALID, "ext-hdr-valid")
 
 /* NOTE: only buffer generic flags should be defined here, please consider
    using user flags. i.e. src/vnet/buffer.h */
 
 enum
 {
-#define _(bit, name, v) VLIB_BUFFER_##name  = (1 << (bit)),
+#define _(bit, name, v) VLIB_BUFFER_##name = (1 << (bit)),
   foreach_vlib_buffer_flag
 #undef _
 };
 
 enum
 {
-#define _(bit, name, v) VLIB_BUFFER_LOG2_##name  = (bit),
+#define _(bit, name, v) VLIB_BUFFER_LOG2_##name = (bit),
   foreach_vlib_buffer_flag
 #undef _
 };
 
-  /* User defined buffer flags. */
+/* User defined buffer flags. */
 #define LOG2_VLIB_BUFFER_FLAG_USER(n) (32 - (n))
-#define VLIB_BUFFER_FLAG_USER(n) (1 << LOG2_VLIB_BUFFER_FLAG_USER(n))
-#define VLIB_BUFFER_FLAGS_ALL (0x0f)
+#define VLIB_BUFFER_FLAG_USER(n)      (1 << LOG2_VLIB_BUFFER_FLAG_USER (n))
+#define VLIB_BUFFER_FLAGS_ALL	      (0x0f)
 
 /** VLIB buffer representation. */
 typedef union
@@ -106,20 +106,20 @@ typedef union
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
     /** signed offset in data[], pre_data[] that we are currently
-      * processing. If negative current header points into predata area.  */
+     * processing. If negative current header points into predata area.  */
     i16 current_data;
 
     /** Nbytes between current data and the end of this buffer.  */
     u16 current_length;
 
     /** buffer flags:
-	<br> VLIB_BUFFER_FREE_LIST_INDEX_MASK: bits used to store free list index,
-	<br> VLIB_BUFFER_IS_TRACED: trace this buffer.
-	<br> VLIB_BUFFER_NEXT_PRESENT: this is a multi-chunk buffer.
-	<br> VLIB_BUFFER_TOTAL_LENGTH_VALID: as it says
-	<br> VLIB_BUFFER_EXT_HDR_VALID: buffer contains valid external buffer manager header,
-	set to avoid adding it to a flow report
-	<br> VLIB_BUFFER_FLAG_USER(n): user-defined bit N
+	<br> VLIB_BUFFER_FREE_LIST_INDEX_MASK: bits used to store free list
+       index, <br> VLIB_BUFFER_IS_TRACED: trace this buffer. <br>
+       VLIB_BUFFER_NEXT_PRESENT: this is a multi-chunk buffer. <br>
+       VLIB_BUFFER_TOTAL_LENGTH_VALID: as it says <br>
+       VLIB_BUFFER_EXT_HDR_VALID: buffer contains valid external buffer manager
+       header, set to avoid adding it to a flow report <br>
+       VLIB_BUFFER_FLAG_USER(n): user-defined bit N
      */
     u32 flags;
 
@@ -136,7 +136,7 @@ typedef union
     vlib_error_t error;
 
     /** Next buffer for this linked-list of buffers. Only valid if
-      * VLIB_BUFFER_NEXT_PRESENT flag is set. */
+     * VLIB_BUFFER_NEXT_PRESENT flag is set. */
     u32 next_buffer;
 
     /** The following fields can be in a union because once a packet enters
@@ -153,28 +153,29 @@ typedef union
     u32 opaque[10];
 
     /** part of buffer metadata which is initialized on alloc ends here. */
-      STRUCT_MARK (template_end);
+    STRUCT_MARK (template_end);
 
-    /** start of 2nd half (2nd cacheline on systems where cacheline size is 64) */
-      CLIB_ALIGN_MARK (second_half, 64);
+    /** start of 2nd half (2nd cacheline on systems where cacheline size is 64)
+     */
+    CLIB_ALIGN_MARK (second_half, 64);
 
     /** Specifies trace buffer handle if VLIB_PACKET_IS_TRACED flag is
-      * set. */
+     * set. */
     u32 trace_handle;
 
     /** Only valid for first buffer in chain. Current length plus total length
-      * given here give total number of bytes in buffer chain. */
+     * given here give total number of bytes in buffer chain. */
     u32 total_length_not_including_first_buffer;
 
     /**< More opaque data, see ../vnet/vnet/buffer.h */
     u32 opaque2[14];
 
     /** start of buffer headroom */
-      CLIB_ALIGN_MARK (headroom, 64);
+    CLIB_ALIGN_MARK (headroom, 64);
 
     /** Space for inserting data before buffer start.  Packet rewrite string
-      * will be rewritten backwards and may extend back before
-      * buffer->data[0].  Must come directly before packet data.  */
+     * will be rewritten backwards and may extend back before
+     * buffer->data[0].  Must come directly before packet data.  */
     u8 pre_data[VLIB_BUFFER_PRE_DATA_SIZE];
 
     /** Packet data */
@@ -192,10 +193,12 @@ typedef union
 } vlib_buffer_t;
 
 STATIC_ASSERT_SIZEOF (vlib_buffer_t, 128 + VLIB_BUFFER_PRE_DATA_SIZE);
-STATIC_ASSERT (VLIB_BUFFER_PRE_DATA_SIZE % CLIB_CACHE_LINE_BYTES == 0,
-	       "VLIB_BUFFER_PRE_DATA_SIZE must be divisible by cache line size");
+STATIC_ASSERT (
+  VLIB_BUFFER_PRE_DATA_SIZE % CLIB_CACHE_LINE_BYTES == 0,
+  "VLIB_BUFFER_PRE_DATA_SIZE must be divisible by cache line size");
 
-#define VLIB_BUFFER_HDR_SIZE  (sizeof(vlib_buffer_t) - VLIB_BUFFER_PRE_DATA_SIZE)
+#define VLIB_BUFFER_HDR_SIZE                                                  \
+  (sizeof (vlib_buffer_t) - VLIB_BUFFER_PRE_DATA_SIZE)
 
 /** \brief Prefetch buffer metadata.
     The first 64 bytes of buffer contains most header information
@@ -204,12 +207,12 @@ STATIC_ASSERT (VLIB_BUFFER_PRE_DATA_SIZE % CLIB_CACHE_LINE_BYTES == 0,
     @param type - LOAD, STORE. In most cases, STORE is the right answer
 */
 
-#define vlib_prefetch_buffer_header(b,type) CLIB_PREFETCH (b, 64, type)
-#define vlib_prefetch_buffer_data(b,type) \
-  CLIB_PREFETCH (vlib_buffer_get_current(b), CLIB_CACHE_LINE_BYTES, type)
+#define vlib_prefetch_buffer_header(b, type) CLIB_PREFETCH (b, 64, type)
+#define vlib_prefetch_buffer_data(b, type)                                    \
+  CLIB_PREFETCH (vlib_buffer_get_current (b), CLIB_CACHE_LINE_BYTES, type)
 
 always_inline void
-vlib_buffer_struct_is_sane (vlib_buffer_t * b)
+vlib_buffer_struct_is_sane (vlib_buffer_t *b)
 {
   ASSERT (sizeof (b[0]) % 64 == 0);
 
@@ -218,7 +221,7 @@ vlib_buffer_struct_is_sane (vlib_buffer_t * b)
 }
 
 always_inline uword
-vlib_buffer_get_va (vlib_buffer_t * b)
+vlib_buffer_get_va (vlib_buffer_t *b)
 {
   return pointer_to_uword (b->data);
 }
@@ -230,7 +233,7 @@ vlib_buffer_get_va (vlib_buffer_t * b)
 */
 
 always_inline void *
-vlib_buffer_get_current (vlib_buffer_t * b)
+vlib_buffer_get_current (vlib_buffer_t *b)
 {
   /* Check bounds. */
   ASSERT ((signed) b->current_data >= (signed) -VLIB_BUFFER_PRE_DATA_SIZE);
@@ -238,7 +241,7 @@ vlib_buffer_get_current (vlib_buffer_t * b)
 }
 
 always_inline uword
-vlib_buffer_get_current_va (vlib_buffer_t * b)
+vlib_buffer_get_current_va (vlib_buffer_t *b)
 {
   return vlib_buffer_get_va (b) + b->current_data;
 }
@@ -249,7 +252,7 @@ vlib_buffer_get_current_va (vlib_buffer_t * b)
     @param l - (word) signed increment
 */
 always_inline void
-vlib_buffer_advance (vlib_buffer_t * b, word l)
+vlib_buffer_advance (vlib_buffer_t *b, word l)
 {
   ASSERT (b->current_length >= l);
   b->current_data += l;
@@ -266,7 +269,7 @@ vlib_buffer_advance (vlib_buffer_t * b, word l)
     @return - 0 if there is less space than 'l' in buffer
 */
 always_inline u8
-vlib_buffer_has_space (vlib_buffer_t * b, word l)
+vlib_buffer_has_space (vlib_buffer_t *b, word l)
 {
   return b->current_length >= l;
 }
@@ -278,7 +281,7 @@ vlib_buffer_has_space (vlib_buffer_t * b, word l)
 */
 
 always_inline void
-vlib_buffer_reset (vlib_buffer_t * b)
+vlib_buffer_reset (vlib_buffer_t *b)
 {
   b->current_length += clib_max (b->current_data, 0);
   b->current_data = 0;
@@ -290,7 +293,7 @@ vlib_buffer_reset (vlib_buffer_t * b)
     @return - (void *) b->opaque
 */
 always_inline void *
-vlib_get_buffer_opaque (vlib_buffer_t * b)
+vlib_get_buffer_opaque (vlib_buffer_t *b)
 {
   return (void *) b->opaque;
 }
@@ -301,7 +304,7 @@ vlib_get_buffer_opaque (vlib_buffer_t * b)
     @return - (void *) b->opaque2
 */
 always_inline void *
-vlib_get_buffer_opaque2 (vlib_buffer_t * b)
+vlib_get_buffer_opaque2 (vlib_buffer_t *b)
 {
   return (void *) b->opaque2;
 }
@@ -311,7 +314,7 @@ vlib_get_buffer_opaque2 (vlib_buffer_t * b)
  * @return      pointer to tail of packet's data
  */
 always_inline u8 *
-vlib_buffer_get_tail (vlib_buffer_t * b)
+vlib_buffer_get_tail (vlib_buffer_t *b)
 {
   return b->data + b->current_data + b->current_length;
 }
@@ -322,7 +325,7 @@ vlib_buffer_get_tail (vlib_buffer_t * b)
  * @return      pointer to beginning of uninitialized data
  */
 always_inline void *
-vlib_buffer_put_uninit (vlib_buffer_t * b, u16 size)
+vlib_buffer_put_uninit (vlib_buffer_t *b, u16 size)
 {
   void *p = vlib_buffer_get_tail (b);
   /* XXX make sure there's enough space */
@@ -336,7 +339,7 @@ vlib_buffer_put_uninit (vlib_buffer_t * b, u16 size)
  * @return      pointer to beginning of uninitialized data
  */
 always_inline void *
-vlib_buffer_push_uninit (vlib_buffer_t * b, u8 size)
+vlib_buffer_push_uninit (vlib_buffer_t *b, u8 size)
 {
   ASSERT (b->current_data + VLIB_BUFFER_PRE_DATA_SIZE >= size);
   b->current_data -= size;
@@ -351,7 +354,7 @@ vlib_buffer_push_uninit (vlib_buffer_t * b, u8 size)
  * @return      pointer to start of buffer (current data)
  */
 always_inline void *
-vlib_buffer_make_headroom (vlib_buffer_t * b, u8 size)
+vlib_buffer_make_headroom (vlib_buffer_t *b, u8 size)
 {
   b->current_data += size;
   return vlib_buffer_get_current (b);
@@ -377,7 +380,7 @@ vlib_buffer_make_trace_handle (u32 thread, u32 pool_index)
  * @return the thread id
  */
 always_inline u32
-vlib_buffer_get_trace_thread (vlib_buffer_t * b)
+vlib_buffer_get_trace_thread (vlib_buffer_t *b)
 {
   u32 trace_handle = b->trace_handle;
 
@@ -389,7 +392,7 @@ vlib_buffer_get_trace_thread (vlib_buffer_t * b)
  * @return the trace index
  */
 always_inline u32
-vlib_buffer_get_trace_index (vlib_buffer_t * b)
+vlib_buffer_get_trace_index (vlib_buffer_t *b)
 {
   u32 trace_handle = b->trace_handle;
   return trace_handle & 0x00FFFFFF;
@@ -401,7 +404,7 @@ vlib_buffer_get_trace_index (vlib_buffer_t * b)
  * @return      pointer to start of buffer (current data)
  */
 always_inline void *
-vlib_buffer_pull (vlib_buffer_t * b, u8 size)
+vlib_buffer_pull (vlib_buffer_t *b, u8 size)
 {
   if (b->current_length + VLIB_BUFFER_PRE_DATA_SIZE < size)
     return 0;
@@ -488,24 +491,23 @@ clib_error_t *vlib_buffer_main_init (struct vlib_main_t *vm);
 #define VLIB_BUFFER_TRACE_TRAJECTORY 0
 
 #if VLIB_BUFFER_TRACE_TRAJECTORY > 0
-extern void (*vlib_buffer_trace_trajectory_cb) (vlib_buffer_t * b, u32 index);
-extern void (*vlib_buffer_trace_trajectory_init_cb) (vlib_buffer_t * b);
-extern void vlib_buffer_trace_trajectory_init (vlib_buffer_t * b);
-#define VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b) \
+extern void (*vlib_buffer_trace_trajectory_cb) (vlib_buffer_t *b, u32 index);
+extern void (*vlib_buffer_trace_trajectory_init_cb) (vlib_buffer_t *b);
+extern void vlib_buffer_trace_trajectory_init (vlib_buffer_t *b);
+#define VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b)                                  \
   vlib_buffer_trace_trajectory_init (b);
 #else
 #define VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b)
 #endif /* VLIB_BUFFER_TRACE_TRAJECTORY */
 
 extern u16 __vlib_buffer_external_hdr_size;
-#define VLIB_BUFFER_SET_EXT_HDR_SIZE(x) \
-static void __clib_constructor \
-vnet_buffer_set_ext_hdr_size() \
-{ \
-  if (__vlib_buffer_external_hdr_size) \
-    clib_error ("buffer external header space already set"); \
-  __vlib_buffer_external_hdr_size = CLIB_CACHE_LINE_ROUND (x); \
-}
+#define VLIB_BUFFER_SET_EXT_HDR_SIZE(x)                                       \
+  static void __clib_constructor vnet_buffer_set_ext_hdr_size ()              \
+  {                                                                           \
+    if (__vlib_buffer_external_hdr_size)                                      \
+      clib_error ("buffer external header space already set");                \
+    __vlib_buffer_external_hdr_size = CLIB_CACHE_LINE_ROUND (x);              \
+  }
 
 #endif /* included_vlib_buffer_h */
 

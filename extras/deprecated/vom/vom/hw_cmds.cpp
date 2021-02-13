@@ -20,8 +20,7 @@ namespace hw_cmds {
 
 poll::poll(HW::item<bool>& item)
   : rpc_cmd(item)
-{
-}
+{}
 
 rc_t
 poll::issue(connection& con)

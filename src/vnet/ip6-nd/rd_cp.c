@@ -78,7 +78,9 @@ static void
 router_solicitation_start_stop (u32 sw_if_index, u8 start)
 {
   rd_cp_main_t *rm = &rd_cp_main;
-  icmp6_send_router_solicitation_params_t params = { 0, };
+  icmp6_send_router_solicitation_params_t params = {
+    0,
+  };
 
   if (start)
     {
@@ -86,15 +88,14 @@ router_solicitation_start_stop (u32 sw_if_index, u8 start)
       params.mrt = 120;
     }
 
-  icmp6_send_router_solicitation (rm->vlib_main, sw_if_index, !start,
-				  &params);
+  icmp6_send_router_solicitation (rm->vlib_main, sw_if_index, !start, &params);
 }
 
 static void interrupt_process (void);
 
 static int
-add_slaac_address (vlib_main_t * vm, u32 sw_if_index, u8 address_length,
-		   const ip6_address_t * address, f64 due_time)
+add_slaac_address (vlib_main_t *vm, u32 sw_if_index, u8 address_length,
+		   const ip6_address_t *address, f64 due_time)
 {
   rd_cp_main_t *rm = &rd_cp_main;
   slaac_address_t *slaac_address;
@@ -107,16 +108,15 @@ add_slaac_address (vlib_main_t * vm, u32 sw_if_index, u8 address_length,
   slaac_address->address = *address;
   slaac_address->due_time = due_time;
 
-  rv =
-    ip6_add_del_interface_address (vm, sw_if_index, &slaac_address->address,
-				   address_length, 0);
+  rv = ip6_add_del_interface_address (vm, sw_if_index, &slaac_address->address,
+				      address_length, 0);
 
   return rv != 0;
 }
 
 static void
-add_default_route (vlib_main_t * vm, u32 sw_if_index,
-		   const ip6_address_t * next_hop_address, f64 due_time)
+add_default_route (vlib_main_t *vm, u32 sw_if_index,
+		   const ip6_address_t *next_hop_address, f64 due_time)
 {
   rd_cp_main_t *rm = &rd_cp_main;
   default_route_t *default_route;
@@ -128,27 +128,22 @@ add_default_route (vlib_main_t * vm, u32 sw_if_index,
   default_route->due_time = due_time;
 
   {
-    u32 fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6,
-							 default_route->
-							 sw_if_index);
+    u32 fib_index = fib_table_get_index_for_sw_if_index (
+      FIB_PROTOCOL_IP6, default_route->sw_if_index);
     fib_prefix_t pfx = {
       .fp_proto = FIB_PROTOCOL_IP6,
     };
     ip46_address_t nh = {
       .ip6 = default_route->router_address,
     };
-    fib_table_entry_update_one_path (fib_index, &pfx,
-				     FIB_SOURCE_API,
-				     FIB_ENTRY_FLAG_NONE,
-				     DPO_PROTO_IP6,
-				     &nh,
-				     default_route->sw_if_index,
-				     0, 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+    fib_table_entry_update_one_path (
+      fib_index, &pfx, FIB_SOURCE_API, FIB_ENTRY_FLAG_NONE, DPO_PROTO_IP6, &nh,
+      default_route->sw_if_index, 0, 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
   }
 }
 
 static int
-remove_slaac_address (vlib_main_t * vm, slaac_address_t * slaac_address)
+remove_slaac_address (vlib_main_t *vm, slaac_address_t *slaac_address)
 {
   rd_cp_main_t *rm = &rd_cp_main;
   clib_error_t *rv = 0;
@@ -163,26 +158,22 @@ remove_slaac_address (vlib_main_t * vm, slaac_address_t * slaac_address)
 }
 
 static void
-remove_default_route (vlib_main_t * vm, default_route_t * default_route)
+remove_default_route (vlib_main_t *vm, default_route_t *default_route)
 {
   rd_cp_main_t *rm = &rd_cp_main;
 
   {
-    u32 fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6,
-							 default_route->
-							 sw_if_index);
+    u32 fib_index = fib_table_get_index_for_sw_if_index (
+      FIB_PROTOCOL_IP6, default_route->sw_if_index);
     fib_prefix_t pfx = {
       .fp_proto = FIB_PROTOCOL_IP6,
     };
     ip46_address_t nh = {
       .ip6 = default_route->router_address,
     };
-    fib_table_entry_path_remove (fib_index, &pfx,
-				 FIB_SOURCE_API,
-				 DPO_PROTO_IP6,
-				 &nh,
-				 default_route->sw_if_index,
-				 0, 1, FIB_ROUTE_PATH_FLAG_NONE);
+    fib_table_entry_path_remove (
+      fib_index, &pfx, FIB_SOURCE_API, DPO_PROTO_IP6, &nh,
+      default_route->sw_if_index, 0, 1, FIB_ROUTE_PATH_FLAG_NONE);
   }
 
   pool_put (rm->default_route_pool, default_route);
@@ -217,7 +208,7 @@ get_interface_mac_address (u32 sw_if_index, u8 mac[])
 }
 
 static u8
-ip6_prefixes_equal (ip6_address_t * prefix1, ip6_address_t * prefix2, u8 len)
+ip6_prefixes_equal (ip6_address_t *prefix1, ip6_address_t *prefix2, u8 len)
 {
   if (len >= 64)
     {
@@ -226,7 +217,7 @@ ip6_prefixes_equal (ip6_address_t * prefix1, ip6_address_t * prefix2, u8 len)
       if (len == 64)
 	return 1;
       return prefix1->as_u64[1] >> (128 - len) ==
-	prefix2->as_u64[1] >> (128 - len);
+	     prefix2->as_u64[1] >> (128 - len);
     }
   return prefix1->as_u64[0] >> (64 - len) == prefix2->as_u64[0] >> (64 - len);
 }
@@ -235,7 +226,7 @@ ip6_prefixes_equal (ip6_address_t * prefix1, ip6_address_t * prefix2, u8 len)
 #define PREFIX_FLAG_L (1 << 7)
 
 static void
-ip6_ra_report_handler (const ip6_ra_report_t * r)
+ip6_ra_report_handler (const ip6_ra_report_t *r)
 {
   rd_cp_main_t *rm = &rd_cp_main;
   vlib_main_t *vm = rm->vlib_main;
@@ -262,21 +253,21 @@ ip6_ra_report_handler (const ip6_ra_report_t * r)
     {
       router_lifetime_in_sec = r->router_lifetime_in_sec;
       u8 route_already_present = 0;
-      /* *INDENT-OFF* */
+
       pool_foreach (default_route, rm->default_route_pool)
-       {
-        if (default_route->sw_if_index != sw_if_index)
-          ;
-        else if (0 != memcmp (&default_route->router_address,
-                              &r->router_address, 16))
-          ;
-        else
-          {
-            route_already_present = 1;
-            goto default_route_pool_foreach_out;
-          }
-      }
-      /* *INDENT-ON* */
+	{
+	  if (default_route->sw_if_index != sw_if_index)
+	    ;
+	  else if (0 != memcmp (&default_route->router_address,
+				&r->router_address, 16))
+	    ;
+	  else
+	    {
+	      route_already_present = 1;
+	      goto default_route_pool_foreach_out;
+	    }
+	}
+
     default_route_pool_foreach_out:
 
       if (!route_already_present)
@@ -333,23 +324,23 @@ ip6_ra_report_handler (const ip6_ra_report_t * r)
 	continue;
 
       u8 address_already_present = 0;
-      /* *INDENT-OFF* */
+
       pool_foreach (slaac_address, rm->slaac_address_pool)
-       {
-        if (slaac_address->sw_if_index != sw_if_index)
-          ;
-        else if (slaac_address->address_length != prefix_length)
-          ;
-        else if (!ip6_prefixes_equal (&slaac_address->address, dst_address,
-                                 prefix_length))
-          ;
-        else
-          {
-            address_already_present = 1;
-            goto slaac_address_pool_foreach_out;
-          }
-      }
-      /* *INDENT-ON* */
+	{
+	  if (slaac_address->sw_if_index != sw_if_index)
+	    ;
+	  else if (slaac_address->address_length != prefix_length)
+	    ;
+	  else if (!ip6_prefixes_equal (&slaac_address->address, dst_address,
+					prefix_length))
+	    ;
+	  else
+	    {
+	      address_already_present = 1;
+	      goto slaac_address_pool_foreach_out;
+	    }
+	}
+
     slaac_address_pool_foreach_out:
 
       if (address_already_present)
@@ -388,7 +379,7 @@ ip6_ra_report_handler (const ip6_ra_report_t * r)
 }
 
 static uword
-rd_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
+rd_cp_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   uword *event_data = 0;
   rd_cp_main_t *rm = &rd_cp_main;
@@ -414,35 +405,37 @@ rd_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	   * we do not use pool_foreach() to iterate over pool elements here
 	   * as we are removing elements inside the loop body
 	   */
-          /* *INDENT-OFF* */
-          pool_foreach_index (index, rm->slaac_address_pool)
-           {
-            slaac_address = pool_elt_at_index(rm->slaac_address_pool, index);
-            if (slaac_address->due_time > current_time)
-              {
-                if (slaac_address->due_time < due_time)
-                  due_time = slaac_address->due_time;
-              }
-            else
-              {
-                u32 sw_if_index = slaac_address->sw_if_index;
-                remove_slaac_address (vm, slaac_address);
-                /* make sure ip6 stays enabled */
-                ip6_link_enable (sw_if_index, NULL);
-              }
-          }
-          pool_foreach_index (index, rm->default_route_pool)
-           {
-            default_route = pool_elt_at_index(rm->default_route_pool, index);
-            if (default_route->due_time > current_time)
-              {
-                if (default_route->due_time < due_time)
-                  due_time = default_route->due_time;
-              }
-            else
-              remove_default_route (vm, default_route);
-          }
-          /* *INDENT-ON* */
+
+	  pool_foreach_index (index, rm->slaac_address_pool)
+	    {
+	      slaac_address =
+		pool_elt_at_index (rm->slaac_address_pool, index);
+	      if (slaac_address->due_time > current_time)
+		{
+		  if (slaac_address->due_time < due_time)
+		    due_time = slaac_address->due_time;
+		}
+	      else
+		{
+		  u32 sw_if_index = slaac_address->sw_if_index;
+		  remove_slaac_address (vm, slaac_address);
+		  /* make sure ip6 stays enabled */
+		  ip6_link_enable (sw_if_index, NULL);
+		}
+	    }
+	  pool_foreach_index (index, rm->default_route_pool)
+	    {
+	      default_route =
+		pool_elt_at_index (rm->default_route_pool, index);
+	      if (default_route->due_time > current_time)
+		{
+		  if (default_route->due_time < due_time)
+		    due_time = default_route->due_time;
+		}
+	      else
+		remove_default_route (vm, default_route);
+	    }
+
 	  current_time = vlib_time_now (vm);
 	}
       while (due_time < current_time);
@@ -453,13 +446,11 @@ rd_cp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (rd_cp_process_node) = {
-    .function = rd_cp_process,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "rd-cp-process",
+  .function = rd_cp_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "rd-cp-process",
 };
-/* *INDENT-ON* */
 
 static void
 interrupt_process (void)
@@ -472,8 +463,8 @@ interrupt_process (void)
 }
 
 int
-rd_cp_set_address_autoconfig (u32 sw_if_index,
-			      u8 enable, u8 install_default_routes)
+rd_cp_set_address_autoconfig (u32 sw_if_index, u8 enable,
+			      u8 install_default_routes)
 {
   rd_cp_main_t *rm = &rd_cp_main;
   vlib_main_t *vm = rm->vlib_main;
@@ -506,29 +497,27 @@ rd_cp_set_address_autoconfig (u32 sw_if_index,
   if (!if_config->enabled && enable)
     ip6_link_enable (sw_if_index, NULL);
 
-  if ((!if_config->enabled && enable)
-      || (!if_config->install_default_routes && install_default_routes))
+  if ((!if_config->enabled && enable) ||
+      (!if_config->install_default_routes && install_default_routes))
     router_solicitation_start_stop (sw_if_index, 1);
   else if (if_config->enabled && !enable)
     router_solicitation_start_stop (sw_if_index, 0);
 
   if (if_config->enabled && !enable)
     {
-      /* *INDENT-OFF* */
+
       pool_foreach (slaac_address, rm->slaac_address_pool)
-       {
-          remove_slaac_address (vm, slaac_address);
-      }
-      /* *INDENT-ON* */
+	{
+	  remove_slaac_address (vm, slaac_address);
+	}
     }
   if (if_config->install_default_routes && !install_default_routes)
     {
-      /* *INDENT-OFF* */
+
       pool_foreach (default_route, rm->default_route_pool)
-       {
-          remove_default_route (vm, default_route);
-      }
-      /* *INDENT-ON* */
+	{
+	  remove_default_route (vm, default_route);
+	}
     }
 
   if_config->enabled = enable;
@@ -538,8 +527,8 @@ rd_cp_set_address_autoconfig (u32 sw_if_index,
 }
 
 static clib_error_t *
-ip6_nd_address_autoconfig (vlib_main_t * vm,
-			   unformat_input_t * input, vlib_cli_command_t * cmd)
+ip6_nd_address_autoconfig (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   rd_cp_main_t *rm = &rd_cp_main;
   vnet_main_t *vnm = rm->vnet_main;
@@ -550,8 +539,8 @@ ip6_nd_address_autoconfig (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       if (unformat (input, "default-route"))
 	default_route = 1;
@@ -588,16 +577,16 @@ ip6_nd_address_autoconfig (vlib_main_t * vm,
  * @cliexcmd{ip6 nd address autoconfig GigabitEthernet2/0/0 disable}
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (ip6_nd_address_autoconfig_command, static) = {
   .path = "ip6 nd address autoconfig",
-  .short_help = "ip6 nd address autoconfig <interface> [default-route|disable]",
+  .short_help =
+    "ip6 nd address autoconfig <interface> [default-route|disable]",
   .function = ip6_nd_address_autoconfig,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-rd_cp_init (vlib_main_t * vm)
+rd_cp_init (vlib_main_t *vm)
 {
   rd_cp_main_t *rm = &rd_cp_main;
 
