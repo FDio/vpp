@@ -31,9 +31,9 @@
 
 #include <vlib/pci/pci.h>
 #include <vlibmemory/api.h>
-#include <vlibmemory/vl_memory_msg_enum.h>	/* enumerate all vlib messages */
+#include <vlibmemory/vl_memory_msg_enum.h> /* enumerate all vlib messages */
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_typedefs
 
@@ -141,21 +141,21 @@ static dpdk_device_config_hqos_t hqos_params_default = {
 };
 
 static struct rte_sched_subport_params hqos_subport_params_default = {
-  .tb_rate = 1250000000,	/* 10GbE line rate (measured in bytes/second) */
+  .tb_rate = 1250000000, /* 10GbE line rate (measured in bytes/second) */
   .tb_size = 1000000,
-  .tc_rate = {1250000000, 1250000000, 1250000000, 1250000000},
+  .tc_rate = { 1250000000, 1250000000, 1250000000, 1250000000 },
   .tc_period = 10,
 };
 
 static struct rte_sched_pipe_params hqos_pipe_params_default = {
-  .tb_rate = 305175,		/* 10GbE line rate divided by 4K pipes */
+  .tb_rate = 305175, /* 10GbE line rate divided by 4K pipes */
   .tb_size = 1000000,
-  .tc_rate = {305175, 305175, 305175, 305175},
+  .tc_rate = { 305175, 305175, 305175, 305175 },
   .tc_period = 40,
 #ifdef RTE_SCHED_SUBPORT_TC_OV
   .tc_ov_weight = 1,
 #endif
-  .wrr_weights = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+  .wrr_weights = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
 };
 
 /***
@@ -174,35 +174,35 @@ dpdk_hqos_validate_mask (u64 mask, u32 n)
 
   /* Handle the exceptions */
   if (n == 0)
-    return -1;			/* Error */
+    return -1; /* Error */
 
   if ((mask == 0) && (n == 1))
-    return 0;			/* OK */
+    return 0; /* OK */
 
   if (((mask == 0) && (n != 1)) || ((mask != 0) && (n == 1)))
-    return -2;			/* Error */
+    return -2; /* Error */
 
   /* Check that mask is contiguous */
   if ((pos_lead - pos_trail) != count)
-    return -3;			/* Error */
+    return -3; /* Error */
 
   /* Check that mask contains the expected number of bits set */
   if (count != count_expected)
-    return -4;			/* Error */
+    return -4; /* Error */
 
-  return 0;			/* OK */
+  return 0; /* OK */
 }
 
 void
-dpdk_device_config_hqos_pipe_profile_default (dpdk_device_config_hqos_t *
-					      hqos, u32 pipe_profile_id)
+dpdk_device_config_hqos_pipe_profile_default (dpdk_device_config_hqos_t *hqos,
+					      u32 pipe_profile_id)
 {
   memcpy (&hqos->pipe[pipe_profile_id], &hqos_pipe_params_default,
 	  sizeof (hqos_pipe_params_default));
 }
 
 void
-dpdk_device_config_hqos_default (dpdk_device_config_hqos_t * hqos)
+dpdk_device_config_hqos_default (dpdk_device_config_hqos_t *hqos)
 {
   struct rte_sched_subport_params *subport_params;
   struct rte_sched_pipe_params *pipe_params;
@@ -215,8 +215,8 @@ dpdk_device_config_hqos_default (dpdk_device_config_hqos_t * hqos)
   vec_add2 (hqos->pipe, pipe_params, hqos->port.n_pipe_profiles);
 
   for (i = 0; i < vec_len (hqos->pipe); i++)
-    memcpy (&pipe_params[i],
-	    &hqos_pipe_params_default, sizeof (hqos_pipe_params_default));
+    memcpy (&pipe_params[i], &hqos_pipe_params_default,
+	    sizeof (hqos_pipe_params_default));
 
   hqos->port.pipe_profiles = hqos->pipe;
 
@@ -224,13 +224,11 @@ dpdk_device_config_hqos_default (dpdk_device_config_hqos_t * hqos)
   vec_add2 (hqos->subport, subport_params, hqos->port.n_subports_per_port);
 
   for (i = 0; i < vec_len (hqos->subport); i++)
-    memcpy (&subport_params[i],
-	    &hqos_subport_params_default,
+    memcpy (&subport_params[i], &hqos_subport_params_default,
 	    sizeof (hqos_subport_params_default));
 
   /* pipe profile */
-  vec_add2 (hqos->pipe_map,
-	    pipe_map,
+  vec_add2 (hqos->pipe_map, pipe_map,
 	    hqos->port.n_subports_per_port * hqos->port.n_pipes_per_subport);
 
   for (i = 0; i < vec_len (hqos->pipe_map); i++)
@@ -244,7 +242,7 @@ dpdk_device_config_hqos_default (dpdk_device_config_hqos_t * hqos)
  ***/
 
 clib_error_t *
-dpdk_port_setup_hqos (dpdk_device_t * xd, dpdk_device_config_hqos_t * hqos)
+dpdk_port_setup_hqos (dpdk_device_t *xd, dpdk_device_config_hqos_t *hqos)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   char name[32];
@@ -256,8 +254,7 @@ dpdk_port_setup_hqos (dpdk_device_t * xd, dpdk_device_config_hqos_t * hqos)
   int worker_thread_count = 0;
 
   uword *p = hash_get_mem (tm->thread_registrations_by_name, "workers");
-  vlib_thread_registration_t *tr =
-    p ? (vlib_thread_registration_t *) p[0] : 0;
+  vlib_thread_registration_t *tr = p ? (vlib_thread_registration_t *) p[0] : 0;
 
   if (tr && tr->count > 0)
     {
@@ -273,7 +270,8 @@ dpdk_port_setup_hqos (dpdk_device_t * xd, dpdk_device_config_hqos_t * hqos)
   vec_validate_aligned (xd->hqos_ht, 0, CLIB_CACHE_LINE_BYTES);
   clib_memset (xd->hqos_ht, 0, sizeof (xd->hqos_ht[0]));
 
-  /* Allocate space for one SWQ per worker thread in the I/O TX thread data structure */
+  /* Allocate space for one SWQ per worker thread in the I/O TX thread data
+   * structure */
   vec_validate (xd->hqos_ht->swq, worker_thread_count);
 
   /* SWQ */
@@ -286,9 +284,8 @@ dpdk_port_setup_hqos (dpdk_device_t * xd, dpdk_device_config_hqos_t * hqos)
       xd->hqos_ht->swq[i] =
 	rte_ring_create (name, hqos->swq_size, xd->cpu_socket, swq_flags);
       if (xd->hqos_ht->swq[i] == NULL)
-	return clib_error_return (0,
-				  "SWQ-worker%u-to-device%u: rte_ring_create err",
-				  i, xd->port_id);
+	return clib_error_return (
+	  0, "SWQ-worker%u-to-device%u: rte_ring_create err", i, xd->port_id);
     }
 
   /*
@@ -316,13 +313,12 @@ dpdk_port_setup_hqos (dpdk_device_t * xd, dpdk_device_config_hqos_t * hqos)
     {
       u32 pipe_id;
 
-      rv =
-	rte_sched_subport_config (xd->hqos_ht->hqos, subport_id,
-				  &hqos->subport[subport_id]);
+      rv = rte_sched_subport_config (xd->hqos_ht->hqos, subport_id,
+				     &hqos->subport[subport_id]);
       if (rv)
-	return clib_error_return (0,
-				  "HQoS%u subport %u: rte_sched_subport_config err (%d)",
-				  xd->port_id, subport_id, rv);
+	return clib_error_return (
+	  0, "HQoS%u subport %u: rte_sched_subport_config err (%d)",
+	  xd->port_id, subport_id, rv);
 
       /* HQoS pipe */
       for (pipe_id = 0; pipe_id < hqos->port.n_pipes_per_subport; pipe_id++)
@@ -330,13 +326,12 @@ dpdk_port_setup_hqos (dpdk_device_t * xd, dpdk_device_config_hqos_t * hqos)
 	  u32 pos = subport_id * hqos->port.n_pipes_per_subport + pipe_id;
 	  u32 profile_id = hqos->pipe_map[pos];
 
-	  rv =
-	    rte_sched_pipe_config (xd->hqos_ht->hqos, subport_id, pipe_id,
-				   profile_id);
+	  rv = rte_sched_pipe_config (xd->hqos_ht->hqos, subport_id, pipe_id,
+				      profile_id);
 	  if (rv)
-	    return clib_error_return (0,
-				      "HQoS%u subport %u pipe %u: rte_sched_pipe_config err (%d)",
-				      xd->port_id, subport_id, pipe_id, rv);
+	    return clib_error_return (
+	      0, "HQoS%u subport %u pipe %u: rte_sched_pipe_config err (%d)",
+	      xd->port_id, subport_id, pipe_id, rv);
 	}
     }
 
@@ -390,7 +385,7 @@ dpdk_port_setup_hqos (dpdk_device_t * xd, dpdk_device_config_hqos_t * hqos)
  *     Information for the current thread
  */
 static_always_inline void
-dpdk_hqos_thread_internal_hqos_dbg_bypass (vlib_main_t * vm)
+dpdk_hqos_thread_internal_hqos_dbg_bypass (vlib_main_t *vm)
 {
   dpdk_main_t *dm = &dpdk_main;
   u32 thread_index = vm->thread_index;
@@ -425,10 +420,8 @@ dpdk_hqos_thread_internal_hqos_dbg_bypass (vlib_main_t * vm)
 	  struct rte_ring *swq = hqos->swq[swq_pos];
 
 	  /* Read SWQ burst to packet buffer of this device */
-	  pkts_enq_len += rte_ring_sc_dequeue_burst (swq,
-						     (void **)
-						     &pkts_enq[pkts_enq_len],
-						     hqos->hqos_burst_enq, 0);
+	  pkts_enq_len += rte_ring_sc_dequeue_burst (
+	    swq, (void **) &pkts_enq[pkts_enq_len], hqos->hqos_burst_enq, 0);
 
 	  /* Get next SWQ for this device */
 	  swq_pos++;
@@ -439,10 +432,9 @@ dpdk_hqos_thread_internal_hqos_dbg_bypass (vlib_main_t * vm)
 	  /* HWQ TX enqueue when burst available */
 	  if (pkts_enq_len >= hqos->hqos_burst_enq)
 	    {
-	      u32 n_pkts = rte_eth_tx_burst (device_index,
-					     (uint16_t) queue_id,
-					     pkts_enq,
-					     (uint16_t) pkts_enq_len);
+	      u32 n_pkts =
+		rte_eth_tx_burst (device_index, (uint16_t) queue_id, pkts_enq,
+				  (uint16_t) pkts_enq_len);
 
 	      for (; n_pkts < pkts_enq_len; n_pkts++)
 		rte_pktmbuf_free (pkts_enq[n_pkts]);
@@ -472,7 +464,7 @@ dpdk_hqos_thread_internal_hqos_dbg_bypass (vlib_main_t * vm)
 }
 
 static_always_inline void
-dpdk_hqos_thread_internal (vlib_main_t * vm)
+dpdk_hqos_thread_internal (vlib_main_t *vm)
 {
   dpdk_main_t *dm = &dpdk_main;
   u32 thread_index = vm->thread_index;
@@ -516,10 +508,8 @@ dpdk_hqos_thread_internal (vlib_main_t * vm)
 	  struct rte_ring *swq = hqos->swq[swq_pos];
 
 	  /* Read SWQ burst to packet buffer of this device */
-	  pkts_enq_len += rte_ring_sc_dequeue_burst (swq,
-						     (void **)
-						     &pkts_enq[pkts_enq_len],
-						     hqos->hqos_burst_enq, 0);
+	  pkts_enq_len += rte_ring_sc_dequeue_burst (
+	    swq, (void **) &pkts_enq[pkts_enq_len], hqos->hqos_burst_enq, 0);
 
 	  /* Get next SWQ for this device */
 	  swq_pos++;
@@ -557,13 +547,11 @@ dpdk_hqos_thread_internal (vlib_main_t * vm)
       {
 	u32 pkts_deq_len, n_pkts;
 
-	pkts_deq_len = rte_sched_port_dequeue (hqos->hqos,
-					       pkts_deq,
-					       hqos->hqos_burst_deq);
+	pkts_deq_len =
+	  rte_sched_port_dequeue (hqos->hqos, pkts_deq, hqos->hqos_burst_deq);
 
 	for (n_pkts = 0; n_pkts < pkts_deq_len;)
-	  n_pkts += rte_eth_tx_burst (device_index,
-				      (uint16_t) queue_id,
+	  n_pkts += rte_eth_tx_burst (device_index, (uint16_t) queue_id,
 				      &pkts_deq[n_pkts],
 				      (uint16_t) (pkts_deq_len - n_pkts));
       }
@@ -574,7 +562,7 @@ dpdk_hqos_thread_internal (vlib_main_t * vm)
 }
 
 void
-dpdk_hqos_thread (vlib_worker_thread_t * w)
+dpdk_hqos_thread (vlib_worker_thread_t *w)
 {
   vlib_main_t *vm;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -592,9 +580,8 @@ dpdk_hqos_thread (vlib_worker_thread_t * w)
     vlib_worker_thread_barrier_check ();
 
   if (vec_len (dm->devices_by_hqos_cpu[vm->thread_index]) == 0)
-    return
-      clib_error
-      ("current I/O TX thread does not have any devices assigned to it");
+    return clib_error (
+      "current I/O TX thread does not have any devices assigned to it");
 
   if (DPDK_HQOS_DBG_BYPASS)
     dpdk_hqos_thread_internal_hqos_dbg_bypass (vm);
@@ -610,34 +597,29 @@ dpdk_hqos_thread_fn (void *arg)
   dpdk_hqos_thread (w);
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_THREAD (hqos_thread_reg, static) =
-{
+VLIB_REGISTER_THREAD (hqos_thread_reg, static) = {
   .name = "hqos-threads",
   .short_name = "hqos-threads",
   .function = dpdk_hqos_thread_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * HQoS run-time code to be called by the worker threads
  */
-#define BITFIELD(byte_array, slab_pos, slab_mask, slab_shr)     \
-({                                                              \
-  u64 slab = *((u64 *) &byte_array[slab_pos]);                  \
-  u64 val = (rte_be_to_cpu_64(slab) & slab_mask) >> slab_shr;   \
-  val;                                                          \
-})
+#define BITFIELD(byte_array, slab_pos, slab_mask, slab_shr)                   \
+  ({                                                                          \
+    u64 slab = *((u64 *) &byte_array[slab_pos]);                              \
+    u64 val = (rte_be_to_cpu_64 (slab) & slab_mask) >> slab_shr;              \
+    val;                                                                      \
+  })
 
-#define RTE_SCHED_PORT_HIERARCHY(subport, pipe, traffic_class, queue, color) \
-  ((((u64) (queue)) & 0x3) |                               \
-  ((((u64) (traffic_class)) & 0x3) << 2) |                 \
-  ((((u64) (color)) & 0x3) << 4) |                         \
-  ((((u64) (subport)) & 0xFFFF) << 16) |                   \
-  ((((u64) (pipe)) & 0xFFFFFFFF) << 32))
+#define RTE_SCHED_PORT_HIERARCHY(subport, pipe, traffic_class, queue, color)  \
+  ((((u64) (queue)) & 0x3) | ((((u64) (traffic_class)) & 0x3) << 2) |         \
+   ((((u64) (color)) & 0x3) << 4) | ((((u64) (subport)) & 0xFFFF) << 16) |    \
+   ((((u64) (pipe)) & 0xFFFFFFFF) << 32))
 
 void
-dpdk_hqos_metadata_set (dpdk_device_hqos_per_worker_thread_t * hqos,
+dpdk_hqos_metadata_set (dpdk_device_hqos_per_worker_thread_t *hqos,
 			struct rte_mbuf **pkts, u32 n_pkts)
 {
   u32 i;
@@ -654,74 +636,62 @@ dpdk_hqos_metadata_set (dpdk_device_hqos_per_worker_thread_t * hqos,
       u8 *pkt2_data = rte_pktmbuf_mtod (pkt2, u8 *);
       u8 *pkt3_data = rte_pktmbuf_mtod (pkt3, u8 *);
 
-      u64 pkt0_subport = BITFIELD (pkt0_data, hqos->hqos_field0_slabpos,
-				   hqos->hqos_field0_slabmask,
-				   hqos->hqos_field0_slabshr);
-      u64 pkt0_pipe = BITFIELD (pkt0_data, hqos->hqos_field1_slabpos,
-				hqos->hqos_field1_slabmask,
-				hqos->hqos_field1_slabshr);
-      u64 pkt0_dscp = BITFIELD (pkt0_data, hqos->hqos_field2_slabpos,
-				hqos->hqos_field2_slabmask,
-				hqos->hqos_field2_slabshr);
+      u64 pkt0_subport =
+	BITFIELD (pkt0_data, hqos->hqos_field0_slabpos,
+		  hqos->hqos_field0_slabmask, hqos->hqos_field0_slabshr);
+      u64 pkt0_pipe =
+	BITFIELD (pkt0_data, hqos->hqos_field1_slabpos,
+		  hqos->hqos_field1_slabmask, hqos->hqos_field1_slabshr);
+      u64 pkt0_dscp =
+	BITFIELD (pkt0_data, hqos->hqos_field2_slabpos,
+		  hqos->hqos_field2_slabmask, hqos->hqos_field2_slabshr);
       u32 pkt0_tc = hqos->hqos_tc_table[pkt0_dscp & 0x3F] >> 2;
       u32 pkt0_tc_q = hqos->hqos_tc_table[pkt0_dscp & 0x3F] & 0x3;
 
-      u64 pkt1_subport = BITFIELD (pkt1_data, hqos->hqos_field0_slabpos,
-				   hqos->hqos_field0_slabmask,
-				   hqos->hqos_field0_slabshr);
-      u64 pkt1_pipe = BITFIELD (pkt1_data, hqos->hqos_field1_slabpos,
-				hqos->hqos_field1_slabmask,
-				hqos->hqos_field1_slabshr);
-      u64 pkt1_dscp = BITFIELD (pkt1_data, hqos->hqos_field2_slabpos,
-				hqos->hqos_field2_slabmask,
-				hqos->hqos_field2_slabshr);
+      u64 pkt1_subport =
+	BITFIELD (pkt1_data, hqos->hqos_field0_slabpos,
+		  hqos->hqos_field0_slabmask, hqos->hqos_field0_slabshr);
+      u64 pkt1_pipe =
+	BITFIELD (pkt1_data, hqos->hqos_field1_slabpos,
+		  hqos->hqos_field1_slabmask, hqos->hqos_field1_slabshr);
+      u64 pkt1_dscp =
+	BITFIELD (pkt1_data, hqos->hqos_field2_slabpos,
+		  hqos->hqos_field2_slabmask, hqos->hqos_field2_slabshr);
       u32 pkt1_tc = hqos->hqos_tc_table[pkt1_dscp & 0x3F] >> 2;
       u32 pkt1_tc_q = hqos->hqos_tc_table[pkt1_dscp & 0x3F] & 0x3;
 
-      u64 pkt2_subport = BITFIELD (pkt2_data, hqos->hqos_field0_slabpos,
-				   hqos->hqos_field0_slabmask,
-				   hqos->hqos_field0_slabshr);
-      u64 pkt2_pipe = BITFIELD (pkt2_data, hqos->hqos_field1_slabpos,
-				hqos->hqos_field1_slabmask,
-				hqos->hqos_field1_slabshr);
-      u64 pkt2_dscp = BITFIELD (pkt2_data, hqos->hqos_field2_slabpos,
-				hqos->hqos_field2_slabmask,
-				hqos->hqos_field2_slabshr);
+      u64 pkt2_subport =
+	BITFIELD (pkt2_data, hqos->hqos_field0_slabpos,
+		  hqos->hqos_field0_slabmask, hqos->hqos_field0_slabshr);
+      u64 pkt2_pipe =
+	BITFIELD (pkt2_data, hqos->hqos_field1_slabpos,
+		  hqos->hqos_field1_slabmask, hqos->hqos_field1_slabshr);
+      u64 pkt2_dscp =
+	BITFIELD (pkt2_data, hqos->hqos_field2_slabpos,
+		  hqos->hqos_field2_slabmask, hqos->hqos_field2_slabshr);
       u32 pkt2_tc = hqos->hqos_tc_table[pkt2_dscp & 0x3F] >> 2;
       u32 pkt2_tc_q = hqos->hqos_tc_table[pkt2_dscp & 0x3F] & 0x3;
 
-      u64 pkt3_subport = BITFIELD (pkt3_data, hqos->hqos_field0_slabpos,
-				   hqos->hqos_field0_slabmask,
-				   hqos->hqos_field0_slabshr);
-      u64 pkt3_pipe = BITFIELD (pkt3_data, hqos->hqos_field1_slabpos,
-				hqos->hqos_field1_slabmask,
-				hqos->hqos_field1_slabshr);
-      u64 pkt3_dscp = BITFIELD (pkt3_data, hqos->hqos_field2_slabpos,
-				hqos->hqos_field2_slabmask,
-				hqos->hqos_field2_slabshr);
+      u64 pkt3_subport =
+	BITFIELD (pkt3_data, hqos->hqos_field0_slabpos,
+		  hqos->hqos_field0_slabmask, hqos->hqos_field0_slabshr);
+      u64 pkt3_pipe =
+	BITFIELD (pkt3_data, hqos->hqos_field1_slabpos,
+		  hqos->hqos_field1_slabmask, hqos->hqos_field1_slabshr);
+      u64 pkt3_dscp =
+	BITFIELD (pkt3_data, hqos->hqos_field2_slabpos,
+		  hqos->hqos_field2_slabmask, hqos->hqos_field2_slabshr);
       u32 pkt3_tc = hqos->hqos_tc_table[pkt3_dscp & 0x3F] >> 2;
       u32 pkt3_tc_q = hqos->hqos_tc_table[pkt3_dscp & 0x3F] & 0x3;
 
-      u64 pkt0_sched = RTE_SCHED_PORT_HIERARCHY (pkt0_subport,
-						 pkt0_pipe,
-						 pkt0_tc,
-						 pkt0_tc_q,
-						 0);
-      u64 pkt1_sched = RTE_SCHED_PORT_HIERARCHY (pkt1_subport,
-						 pkt1_pipe,
-						 pkt1_tc,
-						 pkt1_tc_q,
-						 0);
-      u64 pkt2_sched = RTE_SCHED_PORT_HIERARCHY (pkt2_subport,
-						 pkt2_pipe,
-						 pkt2_tc,
-						 pkt2_tc_q,
-						 0);
-      u64 pkt3_sched = RTE_SCHED_PORT_HIERARCHY (pkt3_subport,
-						 pkt3_pipe,
-						 pkt3_tc,
-						 pkt3_tc_q,
-						 0);
+      u64 pkt0_sched = RTE_SCHED_PORT_HIERARCHY (pkt0_subport, pkt0_pipe,
+						 pkt0_tc, pkt0_tc_q, 0);
+      u64 pkt1_sched = RTE_SCHED_PORT_HIERARCHY (pkt1_subport, pkt1_pipe,
+						 pkt1_tc, pkt1_tc_q, 0);
+      u64 pkt2_sched = RTE_SCHED_PORT_HIERARCHY (pkt2_subport, pkt2_pipe,
+						 pkt2_tc, pkt2_tc_q, 0);
+      u64 pkt3_sched = RTE_SCHED_PORT_HIERARCHY (pkt3_subport, pkt3_pipe,
+						 pkt3_tc, pkt3_tc_q, 0);
 
       pkt0->hash.sched.lo = pkt0_sched & 0xFFFFFFFF;
       pkt0->hash.sched.hi = pkt0_sched >> 32;
@@ -739,23 +709,20 @@ dpdk_hqos_metadata_set (dpdk_device_hqos_per_worker_thread_t * hqos,
 
       u8 *pkt_data = rte_pktmbuf_mtod (pkt, u8 *);
 
-      u64 pkt_subport = BITFIELD (pkt_data, hqos->hqos_field0_slabpos,
-				  hqos->hqos_field0_slabmask,
-				  hqos->hqos_field0_slabshr);
-      u64 pkt_pipe = BITFIELD (pkt_data, hqos->hqos_field1_slabpos,
-			       hqos->hqos_field1_slabmask,
-			       hqos->hqos_field1_slabshr);
-      u64 pkt_dscp = BITFIELD (pkt_data, hqos->hqos_field2_slabpos,
-			       hqos->hqos_field2_slabmask,
-			       hqos->hqos_field2_slabshr);
+      u64 pkt_subport =
+	BITFIELD (pkt_data, hqos->hqos_field0_slabpos,
+		  hqos->hqos_field0_slabmask, hqos->hqos_field0_slabshr);
+      u64 pkt_pipe =
+	BITFIELD (pkt_data, hqos->hqos_field1_slabpos,
+		  hqos->hqos_field1_slabmask, hqos->hqos_field1_slabshr);
+      u64 pkt_dscp =
+	BITFIELD (pkt_data, hqos->hqos_field2_slabpos,
+		  hqos->hqos_field2_slabmask, hqos->hqos_field2_slabshr);
       u32 pkt_tc = hqos->hqos_tc_table[pkt_dscp & 0x3F] >> 2;
       u32 pkt_tc_q = hqos->hqos_tc_table[pkt_dscp & 0x3F] & 0x3;
 
-      u64 pkt_sched = RTE_SCHED_PORT_HIERARCHY (pkt_subport,
-						pkt_pipe,
-						pkt_tc,
-						pkt_tc_q,
-						0);
+      u64 pkt_sched =
+	RTE_SCHED_PORT_HIERARCHY (pkt_subport, pkt_pipe, pkt_tc, pkt_tc_q, 0);
 
       pkt->hash.sched.lo = pkt_sched & 0xFFFFFFFF;
       pkt->hash.sched.hi = pkt_sched >> 32;

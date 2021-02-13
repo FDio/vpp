@@ -44,18 +44,16 @@ vlib_log_class_t gr_logger;
 static void (*l2e_enable) (u32 sw_if_index);
 static void (*l2e_disable) (u32 sw_if_index);
 
-#define GBP_RECIRC_DBG(...)                           \
-    vlib_log_debug (gr_logger, __VA_ARGS__);
+#define GBP_RECIRC_DBG(...) vlib_log_debug (gr_logger, __VA_ARGS__);
 
 u8 *
-format_gbp_recirc (u8 * s, va_list * args)
+format_gbp_recirc (u8 *s, va_list *args)
 {
   gbp_recirc_t *gr = va_arg (*args, gbp_recirc_t *);
   vnet_main_t *vnm = vnet_get_main ();
 
-  return format (s, "  %U, sclass:%d, ext:%d",
-		 format_vnet_sw_if_index_name, vnm,
-		 gr->gr_sw_if_index, gr->gr_sclass, gr->gr_is_ext);
+  return format (s, "  %U, sclass:%d, ext:%d", format_vnet_sw_if_index_name,
+		 vnm, gr->gr_sw_if_index, gr->gr_sclass, gr->gr_is_ext);
 }
 
 int
@@ -129,20 +127,16 @@ gbp_recirc_add (u32 sw_if_index, sclass_t sclass, u8 is_ext)
 	   * the external EPG, these are classified to the NAT EPG
 	   * based on its port
 	   */
-	  mac_address_from_bytes (&mac,
-				  vnet_sw_interface_get_hw_address
-				  (vnet_get_main (), gr->gr_sw_if_index));
-	  gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_CP,
-					gr->gr_sw_if_index,
-					NULL, &mac, INDEX_INVALID,
-					INDEX_INVALID, gr->gr_sclass,
-					GBP_ENDPOINT_FLAG_NONE,
-					NULL, NULL, &gr->gr_ep);
-	  vnet_feature_enable_disable ("ip4-unicast",
-				       "ip4-gbp-src-classify",
+	  mac_address_from_bytes (
+	    &mac, vnet_sw_interface_get_hw_address (vnet_get_main (),
+						    gr->gr_sw_if_index));
+	  gbp_endpoint_update_and_lock (
+	    GBP_ENDPOINT_SRC_CP, gr->gr_sw_if_index, NULL, &mac, INDEX_INVALID,
+	    INDEX_INVALID, gr->gr_sclass, GBP_ENDPOINT_FLAG_NONE, NULL, NULL,
+	    &gr->gr_ep);
+	  vnet_feature_enable_disable ("ip4-unicast", "ip4-gbp-src-classify",
 				       gr->gr_sw_if_index, 1, 0, 0);
-	  vnet_feature_enable_disable ("ip6-unicast",
-				       "ip6-gbp-src-classify",
+	  vnet_feature_enable_disable ("ip6-unicast", "ip6-gbp-src-classify",
 				       gr->gr_sw_if_index, 1, 0, 0);
 	}
       else
@@ -152,11 +146,9 @@ gbp_recirc_add (u32 sw_if_index, sclass_t sclass, u8 is_ext)
 	   * the external EPG, these are classified based on a LPM
 	   * in the EPG's route-domain
 	   */
-	  vnet_feature_enable_disable ("ip4-unicast",
-				       "ip4-gbp-lpm-classify",
+	  vnet_feature_enable_disable ("ip4-unicast", "ip4-gbp-lpm-classify",
 				       gr->gr_sw_if_index, 1, 0, 0);
-	  vnet_feature_enable_disable ("ip6-unicast",
-				       "ip6-gbp-lpm-classify",
+	  vnet_feature_enable_disable ("ip6-unicast", "ip6-gbp-lpm-classify",
 				       gr->gr_sw_if_index, 1, 0, 0);
 	}
 
@@ -190,20 +182,16 @@ gbp_recirc_delete (u32 sw_if_index)
       if (gr->gr_is_ext)
 	{
 	  gbp_endpoint_unlock (GBP_ENDPOINT_SRC_CP, gr->gr_ep);
-	  vnet_feature_enable_disable ("ip4-unicast",
-				       "ip4-gbp-src-classify",
+	  vnet_feature_enable_disable ("ip4-unicast", "ip4-gbp-src-classify",
 				       gr->gr_sw_if_index, 0, 0, 0);
-	  vnet_feature_enable_disable ("ip6-unicast",
-				       "ip6-gbp-src-classify",
+	  vnet_feature_enable_disable ("ip6-unicast", "ip6-gbp-src-classify",
 				       gr->gr_sw_if_index, 0, 0, 0);
 	}
       else
 	{
-	  vnet_feature_enable_disable ("ip4-unicast",
-				       "ip4-gbp-lpm-classify",
+	  vnet_feature_enable_disable ("ip4-unicast", "ip4-gbp-lpm-classify",
 				       gr->gr_sw_if_index, 0, 0, 0);
-	  vnet_feature_enable_disable ("ip6-unicast",
-				       "ip6-gbp-lpm-classify",
+	  vnet_feature_enable_disable ("ip6-unicast", "ip6-gbp-lpm-classify",
 				       gr->gr_sw_if_index, 0, 0, 0);
 	}
 
@@ -226,17 +214,15 @@ gbp_recirc_walk (gbp_recirc_cb_t cb, void *ctx)
 {
   gbp_recirc_t *ge;
 
-  /* *INDENT-OFF* */
   pool_foreach (ge, gbp_recirc_pool)
-  {
-    if (!cb(ge, ctx))
-      break;
-  }
-  /* *INDENT-ON* */
+    {
+      if (!cb (ge, ctx))
+	break;
+    }
 }
 
 static walk_rc_t
-gbp_recirc_show_one (gbp_recirc_t * gr, void *ctx)
+gbp_recirc_show_one (gbp_recirc_t *gr, void *ctx)
 {
   vlib_cli_output (ctx, "  %U", format_gbp_recirc, gr);
 
@@ -244,8 +230,8 @@ gbp_recirc_show_one (gbp_recirc_t * gr, void *ctx)
 }
 
 static clib_error_t *
-gbp_recirc_show (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+gbp_recirc_show (vlib_main_t *vm, unformat_input_t *input,
+		 vlib_cli_command_t *cmd)
 {
   vlib_cli_output (vm, "Recirculation-Interfaces:");
   gbp_recirc_walk (gbp_recirc_show_one, vm);
@@ -260,21 +246,19 @@ gbp_recirc_show (vlib_main_t * vm,
  * @cliexstart{show gbp recirc}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (gbp_recirc_show_node, static) = {
   .path = "show gbp recirc",
   .short_help = "show gbp recirc\n",
   .function = gbp_recirc_show,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-gbp_recirc_init (vlib_main_t * vm)
+gbp_recirc_init (vlib_main_t *vm)
 {
   gr_logger = vlib_log_register_class ("gbp", "recirc");
 
-  l2e_enable =
-    vlib_get_plugin_symbol ("l2e_plugin.so", "l2_emulation_enable");
+  l2e_enable = vlib_get_plugin_symbol ("l2e_plugin.so", "l2_emulation_enable");
   l2e_disable =
     vlib_get_plugin_symbol ("l2e_plugin.so", "l2_emulation_disable");
 

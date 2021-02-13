@@ -28,11 +28,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -44,14 +44,14 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                             \
-_(SR_MPLS_POLICY_DEL, sr_mpls_policy_del)                         \
-_(SR_MPLS_STEERING_ADD_DEL, sr_mpls_steering_add_del)             \
-_(SR_MPLS_POLICY_ASSIGN_ENDPOINT_COLOR, sr_mpls_policy_assign_endpoint_color)
-
+#define foreach_vpe_api_msg                                                   \
+  _ (SR_MPLS_POLICY_DEL, sr_mpls_policy_del)                                  \
+  _ (SR_MPLS_STEERING_ADD_DEL, sr_mpls_steering_add_del)                      \
+  _ (SR_MPLS_POLICY_ASSIGN_ENDPOINT_COLOR,                                    \
+     sr_mpls_policy_assign_endpoint_color)
 
 static void
-vl_api_sr_mpls_policy_add_t_handler (vl_api_sr_mpls_policy_add_t * mp)
+vl_api_sr_mpls_policy_add_t_handler (vl_api_sr_mpls_policy_add_t *mp)
 {
   vl_api_sr_mpls_policy_add_reply_t *rmp;
 
@@ -67,15 +67,15 @@ vl_api_sr_mpls_policy_add_t_handler (vl_api_sr_mpls_policy_add_t * mp)
     }
 
   int rv = 0;
-  rv = sr_mpls_policy_add (ntohl (mp->bsid),
-			   segments, mp->is_spray, ntohl (mp->weight));
+  rv = sr_mpls_policy_add (ntohl (mp->bsid), segments, mp->is_spray,
+			   ntohl (mp->weight));
   vec_free (segments);
 
   REPLY_MACRO (VL_API_SR_MPLS_POLICY_ADD_REPLY);
 }
 
 static void
-vl_api_sr_mpls_policy_mod_t_handler (vl_api_sr_mpls_policy_mod_t * mp)
+vl_api_sr_mpls_policy_mod_t_handler (vl_api_sr_mpls_policy_mod_t *mp)
 {
   vl_api_sr_mpls_policy_mod_reply_t *rmp;
 
@@ -91,8 +91,7 @@ vl_api_sr_mpls_policy_mod_t_handler (vl_api_sr_mpls_policy_mod_t * mp)
     }
 
   int rv = 0;
-  rv = sr_mpls_policy_mod (ntohl (mp->bsid),
-			   ntohl (mp->operation), segments,
+  rv = sr_mpls_policy_mod (ntohl (mp->bsid), ntohl (mp->operation), segments,
 			   ntohl (mp->sl_index), ntohl (mp->weight));
   vec_free (segments);
 
@@ -100,7 +99,7 @@ vl_api_sr_mpls_policy_mod_t_handler (vl_api_sr_mpls_policy_mod_t * mp)
 }
 
 static void
-vl_api_sr_mpls_policy_del_t_handler (vl_api_sr_mpls_policy_del_t * mp)
+vl_api_sr_mpls_policy_del_t_handler (vl_api_sr_mpls_policy_del_t *mp)
 {
   vl_api_sr_mpls_policy_del_reply_t *rmp;
   int rv = 0;
@@ -109,8 +108,9 @@ vl_api_sr_mpls_policy_del_t_handler (vl_api_sr_mpls_policy_del_t * mp)
   REPLY_MACRO (VL_API_SR_MPLS_POLICY_DEL_REPLY);
 }
 
-static void vl_api_sr_mpls_steering_add_del_t_handler
-  (vl_api_sr_mpls_steering_add_del_t * mp)
+static void
+vl_api_sr_mpls_steering_add_del_t_handler (
+  vl_api_sr_mpls_steering_add_del_t *mp)
 {
   vl_api_sr_mpls_steering_add_del_reply_t *rmp;
   fib_prefix_t prefix;
@@ -122,30 +122,24 @@ static void vl_api_sr_mpls_steering_add_del_t_handler
 
   int rv = 0;
   if (mp->is_del)
-    rv = sr_mpls_steering_policy_del (&prefix.fp_addr,
-				      prefix.fp_len,
-				      ip46_address_is_ip4 (&prefix.fp_addr) ?
-				      SR_STEER_IPV4 : SR_STEER_IPV6,
-				      ntohl (mp->table_id),
-				      ntohl (mp->color));
+    rv = sr_mpls_steering_policy_del (
+      &prefix.fp_addr, prefix.fp_len,
+      ip46_address_is_ip4 (&prefix.fp_addr) ? SR_STEER_IPV4 : SR_STEER_IPV6,
+      ntohl (mp->table_id), ntohl (mp->color));
   else
-    rv = sr_mpls_steering_policy_add (ntohl (mp->bsid),
-				      ntohl (mp->table_id),
-				      &prefix.fp_addr,
-				      prefix.fp_len,
-				      ip46_address_is_ip4 (&prefix.fp_addr) ?
-				      SR_STEER_IPV4 : SR_STEER_IPV6,
-				      &next_hop,
-				      ip46_address_is_ip4 (&next_hop) ?
-				      SR_STEER_IPV4 : SR_STEER_IPV6,
-				      ntohl (mp->color), mp->co_bits,
-				      ntohl (mp->vpn_label));
+    rv = sr_mpls_steering_policy_add (
+      ntohl (mp->bsid), ntohl (mp->table_id), &prefix.fp_addr, prefix.fp_len,
+      ip46_address_is_ip4 (&prefix.fp_addr) ? SR_STEER_IPV4 : SR_STEER_IPV6,
+      &next_hop,
+      ip46_address_is_ip4 (&next_hop) ? SR_STEER_IPV4 : SR_STEER_IPV6,
+      ntohl (mp->color), mp->co_bits, ntohl (mp->vpn_label));
 
   REPLY_MACRO (VL_API_SR_MPLS_STEERING_ADD_DEL_REPLY);
 }
 
-static void vl_api_sr_mpls_policy_assign_endpoint_color_t_handler
-  (vl_api_sr_mpls_policy_assign_endpoint_color_t * mp)
+static void
+vl_api_sr_mpls_policy_assign_endpoint_color_t_handler (
+  vl_api_sr_mpls_policy_assign_endpoint_color_t *mp)
 {
   vl_api_sr_mpls_policy_assign_endpoint_color_reply_t *rmp;
   int rv = 0;
@@ -154,11 +148,10 @@ static void vl_api_sr_mpls_policy_assign_endpoint_color_t_handler
   clib_memset (&endpoint, 0, sizeof (ip46_address_t));
   ip_address_decode (&mp->endpoint, &endpoint);
 
-  rv = sr_mpls_policy_assign_endpoint_color (ntohl (mp->bsid),
-					     &endpoint,
-					     ip46_address_is_ip4 (&endpoint) ?
-					     SR_STEER_IPV4 : SR_STEER_IPV6,
-					     ntohl (mp->color));
+  rv = sr_mpls_policy_assign_endpoint_color (
+    ntohl (mp->bsid), &endpoint,
+    ip46_address_is_ip4 (&endpoint) ? SR_STEER_IPV4 : SR_STEER_IPV6,
+    ntohl (mp->color));
 
   REPLY_MACRO (VL_API_SR_MPLS_POLICY_ASSIGN_ENDPOINT_COLOR_REPLY);
 }
@@ -173,25 +166,22 @@ static void vl_api_sr_mpls_policy_assign_endpoint_color_t_handler
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_sr_mpls;
 #undef _
 }
 
 static clib_error_t *
-sr_mpls_api_hookup (vlib_main_t * vm)
+sr_mpls_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_vpe_api_msg;
 #undef _
 
@@ -199,22 +189,18 @@ sr_mpls_api_hookup (vlib_main_t * vm)
    * Manually register the sr policy add msg, so we trace enough bytes
    * to capture a typical segment list
    */
-  vl_msg_api_set_handlers (VL_API_SR_MPLS_POLICY_ADD,
-			   "sr_mpls_policy_add",
+  vl_msg_api_set_handlers (VL_API_SR_MPLS_POLICY_ADD, "sr_mpls_policy_add",
 			   vl_api_sr_mpls_policy_add_t_handler,
-			   vl_noop_handler,
-			   vl_api_sr_mpls_policy_add_t_endian,
+			   vl_noop_handler, vl_api_sr_mpls_policy_add_t_endian,
 			   vl_api_sr_mpls_policy_add_t_print, 256, 1);
 
   /*
    * Manually register the sr policy mod msg, so we trace enough bytes
    * to capture a typical segment list
    */
-  vl_msg_api_set_handlers (VL_API_SR_MPLS_POLICY_MOD,
-			   "sr_mpls_policy_mod",
+  vl_msg_api_set_handlers (VL_API_SR_MPLS_POLICY_MOD, "sr_mpls_policy_mod",
 			   vl_api_sr_mpls_policy_mod_t_handler,
-			   vl_noop_handler,
-			   vl_api_sr_mpls_policy_mod_t_endian,
+			   vl_noop_handler, vl_api_sr_mpls_policy_mod_t_endian,
 			   vl_api_sr_mpls_policy_mod_t_print, 256, 1);
 
   /*

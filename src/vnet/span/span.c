@@ -32,7 +32,7 @@ typedef enum
 } span_state_t;
 
 static_always_inline u32
-span_dst_set (span_mirror_t * sm, u32 dst_sw_if_index, int enable)
+span_dst_set (span_mirror_t *sm, u32 dst_sw_if_index, int enable)
 {
   if (dst_sw_if_index == ~0)
     {
@@ -49,17 +49,16 @@ span_dst_set (span_mirror_t * sm, u32 dst_sw_if_index, int enable)
 }
 
 int
-span_add_delete_entry (vlib_main_t * vm,
-		       u32 src_sw_if_index, u32 dst_sw_if_index, u8 state,
-		       span_feat_t sf)
+span_add_delete_entry (vlib_main_t *vm, u32 src_sw_if_index,
+		       u32 dst_sw_if_index, u8 state, span_feat_t sf)
 {
   span_main_t *sm = &span_main;
 
   if (state > SPAN_BOTH)
     return VNET_API_ERROR_UNIMPLEMENTED;
 
-  if ((src_sw_if_index == ~0) || (dst_sw_if_index == ~0 && state > 0)
-      || (src_sw_if_index == dst_sw_if_index))
+  if ((src_sw_if_index == ~0) || (dst_sw_if_index == ~0 && state > 0) ||
+      (src_sw_if_index == dst_sw_if_index))
     return VNET_API_ERROR_INVALID_INTERFACE;
 
   vec_validate_aligned (sm->interfaces, src_sw_if_index,
@@ -67,8 +66,8 @@ span_add_delete_entry (vlib_main_t * vm,
 
   span_interface_t *si = vec_elt_at_index (sm->interfaces, src_sw_if_index);
 
-  int rx = ! !(state & SPAN_RX);
-  int tx = ! !(state & SPAN_TX);
+  int rx = !!(state & SPAN_RX);
+  int tx = !!(state & SPAN_TX);
 
   span_mirror_t *rxm = &si->mirror_rxtx[sf][VLIB_RX];
   span_mirror_t *txm = &si->mirror_rxtx[sf][VLIB_TX];
@@ -108,7 +107,7 @@ span_add_delete_entry (vlib_main_t * vm,
 }
 
 static uword
-unformat_span_state (unformat_input_t * input, va_list * args)
+unformat_span_state (unformat_input_t *input, va_list *args)
 {
   span_state_t *state = va_arg (*args, span_state_t *);
   if (unformat (input, "disable"))
@@ -125,9 +124,8 @@ unformat_span_state (unformat_input_t * input, va_list * args)
 }
 
 static clib_error_t *
-set_interface_span_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+set_interface_span_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   span_main_t *sm = &span_main;
   u32 src_sw_if_index = ~0;
@@ -138,8 +136,8 @@ set_interface_span_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_vnet_sw_interface,
-		    sm->vnet_main, &src_sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, sm->vnet_main,
+		    &src_sw_if_index))
 	;
       else if (unformat (input, "destination %U", unformat_vnet_sw_interface,
 			 sm->vnet_main, &dst_sw_if_index))
@@ -163,84 +161,79 @@ set_interface_span_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_span_command, static) = {
   .path = "set interface span",
-  .short_help = "set interface span <if-name> [l2] {disable | destination <if-name> [both|rx|tx]}",
+  .short_help = "set interface span <if-name> [l2] {disable | destination "
+		"<if-name> [both|rx|tx]}",
   .function = set_interface_span_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_interfaces_span_command_fn (vlib_main_t * vm,
-				 unformat_input_t * input,
-				 vlib_cli_command_t * cmd)
+show_interfaces_span_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				 vlib_cli_command_t *cmd)
 {
   span_main_t *sm = &span_main;
   span_interface_t *si;
   vnet_main_t *vnm = &vnet_main;
   u8 header = 1;
-  static const char *states[] = {
-    [SPAN_DISABLE] = "none",
-    [SPAN_RX] = "rx",
-    [SPAN_TX] = "tx",
-    [SPAN_BOTH] = "both"
-  };
+  static const char *states[] = { [SPAN_DISABLE] = "none",
+				  [SPAN_RX] = "rx",
+				  [SPAN_TX] = "tx",
+				  [SPAN_BOTH] = "both" };
   u8 *s = 0;
 
-  /* *INDENT-OFF* */
   vec_foreach (si, sm->interfaces)
-  {
-  span_mirror_t * drxm = &si->mirror_rxtx[SPAN_FEAT_DEVICE][VLIB_RX];
-  span_mirror_t * dtxm = &si->mirror_rxtx[SPAN_FEAT_DEVICE][VLIB_TX];
+    {
+      span_mirror_t *drxm = &si->mirror_rxtx[SPAN_FEAT_DEVICE][VLIB_RX];
+      span_mirror_t *dtxm = &si->mirror_rxtx[SPAN_FEAT_DEVICE][VLIB_TX];
 
-  span_mirror_t * lrxm = &si->mirror_rxtx[SPAN_FEAT_L2][VLIB_RX];
-  span_mirror_t * ltxm = &si->mirror_rxtx[SPAN_FEAT_L2][VLIB_TX];
+      span_mirror_t *lrxm = &si->mirror_rxtx[SPAN_FEAT_L2][VLIB_RX];
+      span_mirror_t *ltxm = &si->mirror_rxtx[SPAN_FEAT_L2][VLIB_TX];
 
-    if (drxm->num_mirror_ports || dtxm->num_mirror_ports ||
-        lrxm->num_mirror_ports || ltxm->num_mirror_ports)
-      {
-	u32 i;
-	clib_bitmap_t *d = clib_bitmap_dup_or (drxm->mirror_ports, dtxm->mirror_ports);
-	clib_bitmap_t *l = clib_bitmap_dup_or (lrxm->mirror_ports, ltxm->mirror_ports);
-	clib_bitmap_t *b = clib_bitmap_dup_or (d, l);
-	if (header)
-	  {
-	    vlib_cli_output (vm, "%-32s %-32s  %6s   %6s", "Source", "Destination",
-			     "Device", "L2");
-	    header = 0;
-	  }
-	s = format (s, "%U", format_vnet_sw_if_index_name, vnm,
-		    si - sm->interfaces);
-	clib_bitmap_foreach (i, b)
-	  {
-	    int device = (clib_bitmap_get (drxm->mirror_ports, i) +
-		         clib_bitmap_get (dtxm->mirror_ports, i) * 2);
-	    int l2 = (clib_bitmap_get (lrxm->mirror_ports, i) +
-		      clib_bitmap_get (ltxm->mirror_ports, i) * 2);
+      if (drxm->num_mirror_ports || dtxm->num_mirror_ports ||
+	  lrxm->num_mirror_ports || ltxm->num_mirror_ports)
+	{
+	  u32 i;
+	  clib_bitmap_t *d =
+	    clib_bitmap_dup_or (drxm->mirror_ports, dtxm->mirror_ports);
+	  clib_bitmap_t *l =
+	    clib_bitmap_dup_or (lrxm->mirror_ports, ltxm->mirror_ports);
+	  clib_bitmap_t *b = clib_bitmap_dup_or (d, l);
+	  if (header)
+	    {
+	      vlib_cli_output (vm, "%-32s %-32s  %6s   %6s", "Source",
+			       "Destination", "Device", "L2");
+	      header = 0;
+	    }
+	  s = format (s, "%U", format_vnet_sw_if_index_name, vnm,
+		      si - sm->interfaces);
+	  clib_bitmap_foreach (i, b)
+	    {
+	      int device = (clib_bitmap_get (drxm->mirror_ports, i) +
+			    clib_bitmap_get (dtxm->mirror_ports, i) * 2);
+	      int l2 = (clib_bitmap_get (lrxm->mirror_ports, i) +
+			clib_bitmap_get (ltxm->mirror_ports, i) * 2);
 
-	    vlib_cli_output (vm, "%-32v %-32U (%6s) (%6s)", s,
-			     format_vnet_sw_if_index_name, vnm, i,
-			     states[device], states[l2]);
-	    vec_reset_length (s);
-	  }
-	clib_bitmap_free (b);
-	clib_bitmap_free (l);
-	clib_bitmap_free (d);
-      }
-      }
-  /* *INDENT-ON* */
+	      vlib_cli_output (vm, "%-32v %-32U (%6s) (%6s)", s,
+			       format_vnet_sw_if_index_name, vnm, i,
+			       states[device], states[l2]);
+	      vec_reset_length (s);
+	    }
+	  clib_bitmap_free (b);
+	  clib_bitmap_free (l);
+	  clib_bitmap_free (d);
+	}
+    }
+
   vec_free (s);
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_interfaces_span_command, static) = {
   .path = "show interface span",
   .short_help = "Shows SPAN mirror table",
   .function = show_interfaces_span_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

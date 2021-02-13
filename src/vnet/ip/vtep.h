@@ -29,18 +29,17 @@
  * processing and go directly to the tunnel protocol handler node.
  */
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED
-(struct {
-  union {
-    struct {
+typedef CLIB_PACKED (struct {
+  union
+  {
+    struct
+    {
       ip4_address_t addr;
       u32 fib_index;
     };
     u64 as_u64;
   };
 }) vtep4_key_t;
-/* *INDENT-ON* */
 
 /**
  * @brief Tunnel endpoint key (IPv6)
@@ -51,42 +50,39 @@ typedef CLIB_PACKED
  * processing and go directly to the tunnel protocol handler node.
  */
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED
-(struct {
+typedef CLIB_PACKED (struct {
   ip6_address_t addr;
   u32 fib_index;
 }) vtep6_key_t;
-/* *INDENT-ON* */
 
 typedef struct
 {
-  uword *vtep4;			/* local ip4 VTEPs keyed on their ip4 addr + fib_index */
-  uword *vtep6;			/* local ip6 VTEPs keyed on their ip6 addr + fib_index */
+  uword *vtep4; /* local ip4 VTEPs keyed on their ip4 addr + fib_index */
+  uword *vtep6; /* local ip6 VTEPs keyed on their ip6 addr + fib_index */
 } vtep_table_t;
 
 always_inline vtep_table_t
 vtep_table_create ()
 {
-  vtep_table_t t = { };
+  vtep_table_t t = {};
   t.vtep6 = hash_create_mem (0, sizeof (vtep6_key_t), sizeof (uword));
   return t;
 }
 
-uword vtep_addr_ref (vtep_table_t * t, u32 fib_index, ip46_address_t * ip);
-uword vtep_addr_unref (vtep_table_t * t, u32 fib_index, ip46_address_t * ip);
+uword vtep_addr_ref (vtep_table_t *t, u32 fib_index, ip46_address_t *ip);
+uword vtep_addr_unref (vtep_table_t *t, u32 fib_index, ip46_address_t *ip);
 
 always_inline void
-vtep4_key_init (vtep4_key_t * k4)
+vtep4_key_init (vtep4_key_t *k4)
 {
   k4->as_u64 = ~((u64) 0);
 }
 
 always_inline void
-vtep6_key_init (vtep6_key_t * k6)
+vtep6_key_init (vtep6_key_t *k6)
 {
   ip6_address_set_zero (&k6->addr);
-  k6->fib_index = (u32) ~ 0;
+  k6->fib_index = (u32) ~0;
 }
 
 enum
@@ -97,8 +93,8 @@ enum
 };
 
 always_inline u8
-vtep4_check (vtep_table_t * t, vlib_buffer_t * b0, ip4_header_t * ip40,
-	     vtep4_key_t * last_k4)
+vtep4_check (vtep_table_t *t, vlib_buffer_t *b0, ip4_header_t *ip40,
+	     vtep4_key_t *last_k4)
 {
   vtep4_key_t k4;
   k4.addr.as_u32 = ip40->dst_address.as_u32;
@@ -118,8 +114,8 @@ typedef struct
 } vtep4_cache_t;
 
 always_inline u8
-vtep4_check_vector (vtep_table_t * t, vlib_buffer_t * b0, ip4_header_t * ip40,
-		    vtep4_key_t * last_k4, vtep4_cache_t * vtep4_u512)
+vtep4_check_vector (vtep_table_t *t, vlib_buffer_t *b0, ip4_header_t *ip40,
+		    vtep4_key_t *last_k4, vtep4_cache_t *vtep4_u512)
 {
   vtep4_key_t k4;
   k4.addr.as_u32 = ip40->dst_address.as_u32;
@@ -154,15 +150,14 @@ vtep4_check_vector (vtep_table_t * t, vlib_buffer_t * b0, ip4_header_t * ip40,
 }
 
 always_inline u8
-vtep6_check (vtep_table_t * t, vlib_buffer_t * b0, ip6_header_t * ip60,
-	     vtep6_key_t * last_k6)
+vtep6_check (vtep_table_t *t, vlib_buffer_t *b0, ip6_header_t *ip60,
+	     vtep6_key_t *last_k6)
 {
   vtep6_key_t k6;
   k6.fib_index = vlib_buffer_get_ip6_fib_index (b0);
-  if (PREDICT_TRUE (k6.fib_index == last_k6->fib_index
-		    && ip60->dst_address.as_u64[0] == last_k6->addr.as_u64[0]
-		    && ip60->dst_address.as_u64[1] ==
-		    last_k6->addr.as_u64[1]))
+  if (PREDICT_TRUE (k6.fib_index == last_k6->fib_index &&
+		    ip60->dst_address.as_u64[0] == last_k6->addr.as_u64[0] &&
+		    ip60->dst_address.as_u64[1] == last_k6->addr.as_u64[1]))
     {
       return VTEP_CHECK_PASS_UNCHANGED;
     }

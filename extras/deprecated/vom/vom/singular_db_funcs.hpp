@@ -30,7 +30,7 @@ namespace VOM {
 /**
  * Print each of the objects in the DB into the stream provided
  */
-template <typename DB>
+template<typename DB>
 void
 db_dump(const DB& db, std::ostream& os)
 {

@@ -57,7 +57,7 @@ openssl_ctx_alloc (void)
 }
 
 static void
-openssl_ctx_free (tls_ctx_t * ctx)
+openssl_ctx_free (tls_ctx_t *ctx)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
 
@@ -139,7 +139,7 @@ openssl_listen_ctx_alloc (void)
 }
 
 static void
-openssl_listen_ctx_free (openssl_listen_ctx_t * lctx)
+openssl_listen_ctx_free (openssl_listen_ctx_t *lctx)
 {
   pool_put_index (openssl_main.lctx_pool, lctx->openssl_lctx_index);
 }
@@ -151,7 +151,7 @@ openssl_lctx_get (u32 lctx_index)
 }
 
 static int
-openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
+openssl_read_from_ssl_into_fifo (svm_fifo_t *f, SSL *ssl)
 {
   int read, rv, n_fs, i;
   const int n_segs = 2;
@@ -210,8 +210,8 @@ openssl_write_from_fifo_into_ssl (svm_fifo_t *f, SSL *ssl, u32 max_len)
 
 #ifdef HAVE_OPENSSL_ASYNC
 static int
-openssl_check_async_status (tls_ctx_t * ctx, openssl_resume_handler * handler,
-			    session_t * session)
+openssl_check_async_status (tls_ctx_t *ctx, openssl_resume_handler *handler,
+			    session_t *session)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   int estatus;
@@ -227,13 +227,12 @@ openssl_check_async_status (tls_ctx_t * ctx, openssl_resume_handler * handler,
     }
 
   return 1;
-
 }
 
 #endif
 
 static void
-openssl_handle_handshake_failure (tls_ctx_t * ctx)
+openssl_handle_handshake_failure (tls_ctx_t *ctx)
 {
   session_t *app_session;
 
@@ -242,8 +241,7 @@ openssl_handle_handshake_failure (tls_ctx_t * ctx)
       /*
        * Cleanup pre-allocated app session and close transport
        */
-      app_session =
-	session_get_if_valid (ctx->c_s_index, ctx->c_thread_index);
+      app_session = session_get_if_valid (ctx->c_s_index, ctx->c_thread_index);
       if (app_session)
 	{
 	  session_free (app_session);
@@ -262,7 +260,7 @@ openssl_handle_handshake_failure (tls_ctx_t * ctx)
 }
 
 int
-openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
+openssl_ctx_handshake_rx (tls_ctx_t *ctx, session_t *tls_session)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   int rv = 0, err;
@@ -344,7 +342,7 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, session_t * tls_session)
 }
 
 static void
-openssl_confirm_app_close (tls_ctx_t * ctx)
+openssl_confirm_app_close (tls_ctx_t *ctx)
 {
   tls_disconnect_transport (ctx);
   session_transport_closed_notify (&ctx->connection);
@@ -567,7 +565,7 @@ openssl_ctx_read (tls_ctx_t *ctx, session_t *ts)
 }
 
 static int
-openssl_ctx_init_client (tls_ctx_t * ctx)
+openssl_ctx_init_client (tls_ctx_t *ctx)
 {
   long flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
@@ -666,7 +664,7 @@ openssl_ctx_init_client (tls_ctx_t * ctx)
 }
 
 static int
-openssl_start_listen (tls_ctx_t * lctx)
+openssl_start_listen (tls_ctx_t *lctx)
 {
   const SSL_METHOD *method;
   SSL_CTX *ssl_ctx;
@@ -754,11 +752,10 @@ openssl_start_listen (tls_ctx_t * lctx)
   lctx->tls_ssl_ctx = olc_index;
 
   return 0;
-
 }
 
 static int
-openssl_stop_listen (tls_ctx_t * lctx)
+openssl_stop_listen (tls_ctx_t *lctx)
 {
   u32 olc_index;
   openssl_listen_ctx_t *olc;
@@ -776,7 +773,7 @@ openssl_stop_listen (tls_ctx_t * lctx)
 }
 
 static int
-openssl_ctx_init_server (tls_ctx_t * ctx)
+openssl_ctx_init_server (tls_ctx_t *ctx)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   u32 olc_index = ctx->tls_ssl_ctx;
@@ -836,7 +833,7 @@ openssl_ctx_init_server (tls_ctx_t * ctx)
 }
 
 static u8
-openssl_handshake_is_over (tls_ctx_t * ctx)
+openssl_handshake_is_over (tls_ctx_t *ctx)
 {
   openssl_ctx_t *mc = (openssl_ctx_t *) ctx;
   if (!mc->ssl)
@@ -845,7 +842,7 @@ openssl_handshake_is_over (tls_ctx_t * ctx)
 }
 
 static int
-openssl_transport_close (tls_ctx_t * ctx)
+openssl_transport_close (tls_ctx_t *ctx)
 {
 #ifdef HAVE_OPENSSL_ASYNC
   if (vpp_openssl_is_inflight (ctx))
@@ -862,15 +859,15 @@ openssl_transport_close (tls_ctx_t * ctx)
 }
 
 static int
-openssl_app_close (tls_ctx_t * ctx)
+openssl_app_close (tls_ctx_t *ctx)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   session_t *app_session;
 
   /* Wait for all data to be written to tcp */
   app_session = session_get_from_handle (ctx->app_session_handle);
-  if (BIO_ctrl_pending (oc->rbio) <= 0
-      && !svm_fifo_max_dequeue_cons (app_session->tx_fifo))
+  if (BIO_ctrl_pending (oc->rbio) <= 0 &&
+      !svm_fifo_max_dequeue_cons (app_session->tx_fifo))
     openssl_confirm_app_close (ctx);
   else
     ctx->app_closed = 1;
@@ -962,11 +959,10 @@ tls_openssl_set_ciphers (char *ciphers)
     }
 
   return 0;
-
 }
 
 static clib_error_t *
-tls_openssl_init (vlib_main_t * vm)
+tls_openssl_init (vlib_main_t *vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   openssl_main_t *om = &openssl_main;
@@ -974,7 +970,7 @@ tls_openssl_init (vlib_main_t * vm)
   u32 num_threads, i;
 
   error = tls_openssl_api_init (vm);
-  num_threads = 1 /* main thread */  + vtm->n_threads;
+  num_threads = 1 /* main thread */ + vtm->n_threads;
 
   SSL_library_init ();
   SSL_load_error_strings ();
@@ -998,22 +994,20 @@ tls_openssl_init (vlib_main_t * vm)
   om->engine_init = 0;
 
   /* default ciphers */
-  tls_openssl_set_ciphers
-    ("ALL:!ADH:!LOW:!EXP:!MD5:!RC4-SHA:!DES-CBC3-SHA:@STRENGTH");
+  tls_openssl_set_ciphers (
+    "ALL:!ADH:!LOW:!EXP:!MD5:!RC4-SHA:!DES-CBC3-SHA:@STRENGTH");
 
   return error;
 }
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (tls_openssl_init) =
-{
-  .runs_after = VLIB_INITS("tls_init"),
+
+VLIB_INIT_FUNCTION (tls_openssl_init) = {
+  .runs_after = VLIB_INITS ("tls_init"),
 };
-/* *INDENT-ON* */
 
 #ifdef HAVE_OPENSSL_ASYNC
 static clib_error_t *
-tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+tls_openssl_set_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   openssl_main_t *om = &openssl_main;
   char *engine_name = NULL;
@@ -1026,8 +1020,8 @@ tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (om->engine_init)
     {
       clib_warning ("engine has started!\n");
-      return clib_error_return
-	(0, "engine has started, and no config is accepted");
+      return clib_error_return (
+	0, "engine has started, and no config is accepted");
     }
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1079,22 +1073,19 @@ tls_openssl_set_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (tls_openssl_set_command, static) =
-{
+VLIB_CLI_COMMAND (tls_openssl_set_command, static) = {
   .path = "tls openssl set",
-  .short_help = "tls openssl set [engine <engine name>] [alg [algorithm] [async]",
+  .short_help =
+    "tls openssl set [engine <engine name>] [alg [algorithm] [async]",
   .function = tls_openssl_set_command_fn,
 };
-/* *INDENT-ON* */
+
 #endif
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Transport Layer Security (TLS) Engine, OpenSSL Based",
+  .version = VPP_BUILD_VER,
+  .description = "Transport Layer Security (TLS) Engine, OpenSSL Based",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

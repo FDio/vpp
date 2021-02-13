@@ -24,33 +24,34 @@
  */
 typedef struct mfib_itf_t_
 {
-    /**
-     * Required for pool_get_aligned
-     */
-    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+  /**
+   * Required for pool_get_aligned
+   */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
-    /**
-     * @brief Forwarding Flags on the entry - checked in the data-path
-     */
-    mfib_itf_flags_t mfi_flags;
+  /**
+   * @brief Forwarding Flags on the entry - checked in the data-path
+   */
+  mfib_itf_flags_t mfi_flags;
 
-    /**
-     * The SW IF index that this MFIB interface represents
-     */
-    u32 mfi_sw_if_index;
+  /**
+   * The SW IF index that this MFIB interface represents
+   */
+  u32 mfi_sw_if_index;
 
-    /**
-     * The index of the signal in the pending list
-     */
-    u32 mfi_si;
+  /**
+   * The index of the signal in the pending list
+   */
+  u32 mfi_si;
 
-    /**
-     * A hash table of path-inidices that are contributing flags to this interface.
-     * Since paths with next-hops can be on the same interface and each of those
-     * paths can contribute different flags, we need to maintain the flag
-     * contribution from each path, and use a combination for forwarding.
-     */
-    uword *mfi_hash;
+  /**
+   * A hash table of path-inidices that are contributing flags to this
+   * interface. Since paths with next-hops can be on the same interface and
+   * each of those paths can contribute different flags, we need to maintain
+   * the flag contribution from each path, and use a combination for
+   * forwarding.
+   */
+  uword *mfi_hash;
 } mfib_itf_t;
 
 /**
@@ -58,21 +59,18 @@ typedef struct mfib_itf_t_
  * returns 1 if the entry is removed, i.e. has no flags left, as a result
  * of the update.
  */
-extern int mfib_itf_update(mfib_itf_t *itf,
-                           fib_node_index_t path_index,
-                           mfib_itf_flags_t mfi_flags);
+extern int mfib_itf_update (mfib_itf_t *itf, fib_node_index_t path_index,
+			    mfib_itf_flags_t mfi_flags);
 
-extern index_t mfib_itf_create(fib_node_index_t path_index,
-                               mfib_itf_flags_t mfi_flags);
+extern index_t mfib_itf_create (fib_node_index_t path_index,
+				mfib_itf_flags_t mfi_flags);
 
-extern void mfib_itf_delete(mfib_itf_t *itf);
+extern void mfib_itf_delete (mfib_itf_t *itf);
 
-extern u8 *format_mfib_itf(u8 * s, va_list * args);
+extern u8 *format_mfib_itf (u8 *s, va_list *args);
 
-extern void mfib_itf_mac_add(mfib_itf_t *itf,
-                             const mfib_prefix_t *pfx);
-extern void mfib_itf_mac_del(mfib_itf_t *itf,
-                             const mfib_prefix_t *pfx);
+extern void mfib_itf_mac_add (mfib_itf_t *itf, const mfib_prefix_t *pfx);
+extern void mfib_itf_mac_del (mfib_itf_t *itf, const mfib_prefix_t *pfx);
 
 extern mfib_itf_t *mfib_itf_pool;
 
@@ -82,13 +80,13 @@ extern mfib_itf_t *mfib_itf_pool;
 static inline mfib_itf_t *
 mfib_itf_get (index_t mi)
 {
-    return (pool_elt_at_index(mfib_itf_pool, mi));
+  return (pool_elt_at_index (mfib_itf_pool, mi));
 }
 
 static inline index_t
 mfib_itf_get_index (const mfib_itf_t *mfi)
 {
-    return (mfi - mfib_itf_pool);
+  return (mfi - mfib_itf_pool);
 }
 
 #endif

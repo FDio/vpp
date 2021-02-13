@@ -49,7 +49,7 @@ prom_string (char *s)
 }
 
 static void
-dump_metrics (FILE * stream, u8 ** patterns)
+dump_metrics (FILE *stream, u8 **patterns)
 {
   stat_segment_data_t *res;
   int i, j, k;
@@ -58,7 +58,7 @@ dump_metrics (FILE * stream, u8 ** patterns)
 retry:
   res = stat_segment_dump (stats);
   if (res == 0)
-    {				/* Memory layout has changed */
+    { /* Memory layout has changed */
       if (stats)
 	vec_free (stats);
       stats = stat_segment_ls (patterns);
@@ -121,15 +121,17 @@ retry:
 	}
     }
   stat_segment_data_free (res);
-
 }
 
-
-#define ROOTPAGE  "<html><head><title>Metrics exporter</title></head><body><ul><li><a href=\"/metrics\">metrics</a></li></ul></body></html>"
-#define NOT_FOUND_ERROR "<html><head><title>Document not found</title></head><body><h1>404 - Document not found</h1></body></html>"
+#define ROOTPAGE                                                              \
+  "<html><head><title>Metrics exporter</title></head><body><ul><li><a "       \
+  "href=\"/metrics\">metrics</a></li></ul></body></html>"
+#define NOT_FOUND_ERROR                                                       \
+  "<html><head><title>Document not found</title></head><body><h1>404 - "      \
+  "Document not found</h1></body></html>"
 
 static void
-http_handler (FILE * stream, u8 ** patterns)
+http_handler (FILE *stream, u8 **patterns)
 {
   char status[80] = { 0 };
   if (fgets (status, sizeof (status) - 1, stream) == 0)
@@ -174,8 +176,7 @@ http_handler (FILE * stream, u8 ** patterns)
     }
   if (strcmp (request_uri, "/metrics") != 0)
     {
-      fprintf (stream,
-	       "HTTP/1.0 404 Not Found\r\nContent-Length: %lu\r\n\r\n",
+      fprintf (stream, "HTTP/1.0 404 Not Found\r\nContent-Length: %lu\r\n\r\n",
 	       (unsigned long) strlen (NOT_FOUND_ERROR));
       fputs (NOT_FOUND_ERROR, stream);
       return;
@@ -236,8 +237,6 @@ union my_sockaddr
   struct sockaddr_in6 sin6_addr;
 };
 
-
-
 int
 main (int argc, char **argv)
 {
@@ -262,8 +261,7 @@ main (int argc, char **argv)
 	}
       else
 	{
-	  fformat (stderr,
-		   "%s: usage [socket-name <name>] <patterns> ...\n",
+	  fformat (stderr, "%s: usage [socket-name <name>] <patterns> ...\n",
 		   argv[0]);
 	  exit (1);
 	}
@@ -271,8 +269,8 @@ main (int argc, char **argv)
 
   if (vec_len (patterns) == 0)
     {
-      fformat (stderr,
-	       "%s: usage [socket-name <name>] <patterns> ...\n", argv[0]);
+      fformat (stderr, "%s: usage [socket-name <name>] <patterns> ...\n",
+	       argv[0]);
       exit (1);
     }
 
@@ -303,8 +301,8 @@ main (int argc, char **argv)
 	  char address[INET6_ADDRSTRLEN];
 	  socklen_t addrlen;
 	  getpeername (conn_sock, (struct sockaddr *) &clientaddr, &addrlen);
-	  if (inet_ntop
-	      (AF_INET6, &clientaddr.sin6_addr, address, sizeof (address)))
+	  if (inet_ntop (AF_INET6, &clientaddr.sin6_addr, address,
+			 sizeof (address)))
 	    {
 	      fprintf (stderr, "Client address is [%s]:%d\n", address,
 		       ntohs (clientaddr.sin6_port));

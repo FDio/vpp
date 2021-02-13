@@ -18,66 +18,83 @@
 #include <vppinfra/lock.h>
 #include <vlib/log.h>
 
-#define MEMIF_DEFAULT_SOCKET_FILENAME  "memif.sock"
-#define MEMIF_DEFAULT_RING_SIZE 1024
-#define MEMIF_DEFAULT_RX_QUEUES 1
-#define MEMIF_DEFAULT_TX_QUEUES 1
-#define MEMIF_DEFAULT_BUFFER_SIZE 2048
+#define MEMIF_DEFAULT_SOCKET_FILENAME "memif.sock"
+#define MEMIF_DEFAULT_RING_SIZE	      1024
+#define MEMIF_DEFAULT_RX_QUEUES	      1
+#define MEMIF_DEFAULT_TX_QUEUES	      1
+#define MEMIF_DEFAULT_BUFFER_SIZE     2048
 
-#define MEMIF_MAX_M2S_RING		(vec_len (vlib_mains))
-#define MEMIF_MAX_S2M_RING		256
-#define MEMIF_MAX_REGION		256
-#define MEMIF_MAX_LOG2_RING_SIZE	14
+#define MEMIF_MAX_M2S_RING	 (vec_len (vlib_mains))
+#define MEMIF_MAX_S2M_RING	 256
+#define MEMIF_MAX_REGION	 256
+#define MEMIF_MAX_LOG2_RING_SIZE 14
 
+#define memif_log_debug(dev, f, ...)                                          \
+  do                                                                          \
+    {                                                                         \
+      memif_if_t *_dev = (memif_if_t *) dev;                                  \
+      if (_dev)                                                               \
+	vlib_log (VLIB_LOG_LEVEL_DEBUG, memif_main.log_class, "%U: " f,       \
+		  format_vnet_hw_if_index_name, vnet_get_main (),             \
+		  _dev->hw_if_index, ##__VA_ARGS__);                          \
+      else                                                                    \
+	vlib_log (VLIB_LOG_LEVEL_DEBUG, memif_main.log_class, f,              \
+		  ##__VA_ARGS__);                                             \
+    }                                                                         \
+  while (0)
 
-#define memif_log_debug(dev, f, ...) do {                               \
-  memif_if_t *_dev = (memif_if_t *) dev;                                \
-  if (_dev)                                                             \
-    vlib_log(VLIB_LOG_LEVEL_DEBUG, memif_main.log_class, "%U: " f,      \
-	     format_vnet_hw_if_index_name, vnet_get_main(),             \
-	     _dev->hw_if_index, ##__VA_ARGS__);                         \
-  else                                                                  \
-    vlib_log(VLIB_LOG_LEVEL_DEBUG, memif_main.log_class, f,             \
-             ##__VA_ARGS__);                                            \
-} while (0)
+#define memif_log_warn(dev, f, ...)                                           \
+  do                                                                          \
+    {                                                                         \
+      memif_if_t *_dev = (memif_if_t *) dev;                                  \
+      if (_dev)                                                               \
+	vlib_log (VLIB_LOG_LEVEL_WARNING, memif_main.log_class, "%U: " f,     \
+		  format_vnet_hw_if_index_name, vnet_get_main (),             \
+		  _dev->hw_if_index, ##__VA_ARGS__);                          \
+      else                                                                    \
+	vlib_log (VLIB_LOG_LEVEL_WARNING, memif_main.log_class, f,            \
+		  ##__VA_ARGS__);                                             \
+    }                                                                         \
+  while (0)
 
-#define memif_log_warn(dev, f, ...) do {                                \
-  memif_if_t *_dev = (memif_if_t *) dev;                                \
-  if (_dev)                                                             \
-    vlib_log(VLIB_LOG_LEVEL_WARNING, memif_main.log_class, "%U: " f,    \
-	     format_vnet_hw_if_index_name, vnet_get_main(),             \
-	     _dev->hw_if_index, ##__VA_ARGS__);                         \
-  else                                                                  \
-    vlib_log(VLIB_LOG_LEVEL_WARNING, memif_main.log_class, f,           \
-             ##__VA_ARGS__);                                            \
-} while (0)
+#define memif_log_err(dev, f, ...)                                            \
+  do                                                                          \
+    {                                                                         \
+      memif_if_t *_dev = (memif_if_t *) dev;                                  \
+      if (_dev)                                                               \
+	vlib_log (VLIB_LOG_LEVEL_ERR, memif_main.log_class, "%U: " f,         \
+		  format_vnet_hw_if_index_name, vnet_get_main (),             \
+		  _dev->hw_if_index, ##__VA_ARGS__);                          \
+      else                                                                    \
+	vlib_log (VLIB_LOG_LEVEL_ERR, memif_main.log_class, f,                \
+		  ##__VA_ARGS__);                                             \
+    }                                                                         \
+  while (0)
 
-#define memif_log_err(dev, f, ...) do {                                 \
-  memif_if_t *_dev = (memif_if_t *) dev;                                \
-  if (_dev)                                                             \
-    vlib_log(VLIB_LOG_LEVEL_ERR, memif_main.log_class, "%U: " f,        \
-	     format_vnet_hw_if_index_name, vnet_get_main(),             \
-	     _dev->hw_if_index, ##__VA_ARGS__);                         \
-  else                                                                  \
-    vlib_log(VLIB_LOG_LEVEL_ERR, memif_main.log_class, f,               \
-             ##__VA_ARGS__);                                            \
-} while (0)
+#define memif_file_add(a, b)                                                  \
+  do                                                                          \
+    {                                                                         \
+      *a = clib_file_add (&file_main, b);                                     \
+      memif_log_warn (0, "clib_file_add fd %d private_data %u idx %u",        \
+		      (b)->file_descriptor, (b)->private_data, *a);           \
+    }                                                                         \
+  while (0)
 
-#define memif_file_add(a, b) do {					\
-  *a = clib_file_add (&file_main, b);					\
-  memif_log_warn (0, "clib_file_add fd %d private_data %u idx %u",	\
-		(b)->file_descriptor, (b)->private_data, *a);		\
-} while (0)
+#define memif_file_del(a)                                                     \
+  do                                                                          \
+    {                                                                         \
+      memif_log_warn (0, "clib_file_del idx %u", a - file_main.file_pool);    \
+      clib_file_del (&file_main, a);                                          \
+    }                                                                         \
+  while (0)
 
-#define memif_file_del(a) do {						\
-  memif_log_warn (0, "clib_file_del idx %u", a - file_main.file_pool);	\
-  clib_file_del (&file_main, a);					\
-} while (0)
-
-#define memif_file_del_by_index(a) do {					\
-  memif_log_warn (0, "clib_file_del idx %u", a);			\
-  clib_file_del_by_index (&file_main, a);				\
-} while (0)
+#define memif_file_del_by_index(a)                                            \
+  do                                                                          \
+    {                                                                         \
+      memif_log_warn (0, "clib_file_del idx %u", a);                          \
+      clib_file_del_by_index (&file_main, a);                                 \
+    }                                                                         \
+  while (0)
 
 typedef struct
 {
@@ -135,14 +152,14 @@ typedef struct
   u32 queue_index;
 } memif_queue_t;
 
-#define foreach_memif_if_flag \
-  _(0, ADMIN_UP, "admin-up")		\
-  _(1, IS_SLAVE, "slave")		\
-  _(2, CONNECTING, "connecting")	\
-  _(3, CONNECTED, "connected")		\
-  _(4, DELETING, "deleting")		\
-  _(5, ZERO_COPY, "zero-copy")		\
-  _(6, ERROR, "error")
+#define foreach_memif_if_flag                                                 \
+  _ (0, ADMIN_UP, "admin-up")                                                 \
+  _ (1, IS_SLAVE, "slave")                                                    \
+  _ (2, CONNECTING, "connecting")                                             \
+  _ (3, CONNECTED, "connected")                                               \
+  _ (4, DELETING, "deleting")                                                 \
+  _ (5, ZERO_COPY, "zero-copy")                                               \
+  _ (6, ERROR, "error")
 
 typedef enum
 {
@@ -160,7 +177,7 @@ typedef struct
   u32 hw_if_index;
   u32 sw_if_index;
   uword dev_instance;
-  memif_interface_mode_t mode:8;
+  memif_interface_mode_t mode : 8;
 
   u32 per_interface_next_index;
 
@@ -208,7 +225,7 @@ typedef struct
 
 typedef struct
 {
-  CLIB_ALIGN_MARK (pad, 16);	/* align up to 16 bytes for 32bit builds */
+  CLIB_ALIGN_MARK (pad, 16); /* align up to 16 bytes for 32bit builds */
   void *data;
   u32 data_len;
   i16 buffer_offset;
@@ -243,7 +260,7 @@ typedef struct
 
   /* pool of all unix socket files */
   memif_socket_file_t *socket_files;
-  uword *socket_file_index_by_sock_id;	/* map user socket id to pool idx */
+  uword *socket_file_index_by_sock_id; /* map user socket id to pool idx */
 
   /* per thread data */
   memif_per_thread_data_t *per_thread_data;
@@ -270,7 +287,7 @@ typedef struct
   u8 *secret;
   u8 is_master;
   u8 is_zero_copy;
-  memif_interface_mode_t mode:8;
+  memif_interface_mode_t mode : 8;
   memif_log2_ring_size_t log2_ring_size;
   u16 buffer_size;
   u8 hw_addr_set;
@@ -282,39 +299,36 @@ typedef struct
   u32 sw_if_index;
 } memif_create_if_args_t;
 
-int memif_socket_filename_add_del (u8 is_add, u32 sock_id,
-				   u8 * sock_filename);
-int memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args);
-int memif_delete_if (vlib_main_t * vm, memif_if_t * mif);
-clib_error_t *memif_plugin_api_hookup (vlib_main_t * vm);
+int memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 *sock_filename);
+int memif_create_if (vlib_main_t *vm, memif_create_if_args_t *args);
+int memif_delete_if (vlib_main_t *vm, memif_if_t *mif);
+clib_error_t *memif_plugin_api_hookup (vlib_main_t *vm);
 clib_error_t *memif_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index,
 					     u32 flags);
 
 static_always_inline void *
-memif_get_buffer (memif_if_t * mif, memif_ring_t * ring, u16 slot)
+memif_get_buffer (memif_if_t *mif, memif_ring_t *ring, u16 slot)
 {
   u16 region = ring->desc[slot].region;
   return mif->regions[region].shm + ring->desc[slot].offset;
 }
 
 /* memif.c */
-clib_error_t *memif_init_regions_and_queues (memif_if_t * mif);
-clib_error_t *memif_connect (memif_if_t * mif);
-void memif_disconnect (memif_if_t * mif, clib_error_t * err);
+clib_error_t *memif_init_regions_and_queues (memif_if_t *mif);
+clib_error_t *memif_connect (memif_if_t *mif);
+void memif_disconnect (memif_if_t *mif, clib_error_t *err);
 
 /* socket.c */
-void memif_socket_close (clib_socket_t ** sock);
-clib_error_t *memif_conn_fd_accept_ready (clib_file_t * uf);
-clib_error_t *memif_master_conn_fd_read_ready (clib_file_t * uf);
-clib_error_t *memif_slave_conn_fd_read_ready (clib_file_t * uf);
-clib_error_t *memif_master_conn_fd_write_ready (clib_file_t * uf);
-clib_error_t *memif_slave_conn_fd_write_ready (clib_file_t * uf);
-clib_error_t *memif_master_conn_fd_error (clib_file_t * uf);
-clib_error_t *memif_slave_conn_fd_error (clib_file_t * uf);
-clib_error_t *memif_msg_send_disconnect (memif_if_t * mif,
-					 clib_error_t * err);
-u8 *format_memif_device_name (u8 * s, va_list * args);
-
+void memif_socket_close (clib_socket_t **sock);
+clib_error_t *memif_conn_fd_accept_ready (clib_file_t *uf);
+clib_error_t *memif_master_conn_fd_read_ready (clib_file_t *uf);
+clib_error_t *memif_slave_conn_fd_read_ready (clib_file_t *uf);
+clib_error_t *memif_master_conn_fd_write_ready (clib_file_t *uf);
+clib_error_t *memif_slave_conn_fd_write_ready (clib_file_t *uf);
+clib_error_t *memif_master_conn_fd_error (clib_file_t *uf);
+clib_error_t *memif_slave_conn_fd_error (clib_file_t *uf);
+clib_error_t *memif_msg_send_disconnect (memif_if_t *mif, clib_error_t *err);
+u8 *format_memif_device_name (u8 *s, va_list *args);
 
 /*
  * fd.io coding-style-patch-verification: ON

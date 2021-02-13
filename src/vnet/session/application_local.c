@@ -18,9 +18,9 @@
 
 typedef struct ct_main_
 {
-  ct_connection_t **connections;	/**< Per-worker connection pools */
-  u32 n_workers;			/**< Number of vpp workers */
-  u32 n_sessions;			/**< Cumulative sessions counter */
+  ct_connection_t **connections; /**< Per-worker connection pools */
+  u32 n_workers;		 /**< Number of vpp workers */
+  u32 n_sessions;		 /**< Cumulative sessions counter */
 } ct_main_t;
 
 static ct_main_t ct_main;
@@ -47,7 +47,7 @@ ct_connection_get (u32 ct_index, u32 thread_index)
 }
 
 static void
-ct_connection_free (ct_connection_t * ct)
+ct_connection_free (ct_connection_t *ct)
 {
   if (CLIB_DEBUG)
     {
@@ -60,7 +60,7 @@ ct_connection_free (ct_connection_t * ct)
 }
 
 session_t *
-ct_session_get_peer (session_t * s)
+ct_session_get_peer (session_t *s)
 {
   ct_connection_t *ct, *peer_ct;
   ct = ct_connection_get (s->connection_index, s->thread_index);
@@ -69,7 +69,7 @@ ct_session_get_peer (session_t * s)
 }
 
 void
-ct_session_endpoint (session_t * ll, session_endpoint_t * sep)
+ct_session_endpoint (session_t *ll, session_endpoint_t *sep)
 {
   ct_connection_t *ct;
   ct = (ct_connection_t *) session_get_transport (ll);
@@ -80,7 +80,7 @@ ct_session_endpoint (session_t * ll, session_endpoint_t * sep)
 }
 
 int
-ct_session_connect_notify (session_t * ss)
+ct_session_connect_notify (session_t *ss)
 {
   u32 ss_index, opaque, thread_index;
   ct_connection_t *sct, *cct;
@@ -163,9 +163,8 @@ error:
 }
 
 static int
-ct_init_accepted_session (app_worker_t * server_wrk,
-			  ct_connection_t * ct, session_t * ls,
-			  session_t * ll)
+ct_init_accepted_session (app_worker_t *server_wrk, ct_connection_t *ct,
+			  session_t *ls, session_t *ll)
 {
   u32 round_rx_fifo_sz, round_tx_fifo_sz, sm_index, seg_size;
   segment_manager_props_t *props;
@@ -196,10 +195,9 @@ ct_init_accepted_session (app_worker_t * server_wrk,
     }
   seg = segment_manager_get_segment_w_lock (sm, seg_index);
 
-  rv = segment_manager_try_alloc_fifos (seg, ls->thread_index,
-					props->rx_fifo_size,
-					props->tx_fifo_size, &ls->rx_fifo,
-					&ls->tx_fifo);
+  rv = segment_manager_try_alloc_fifos (
+    seg, ls->thread_index, props->rx_fifo_size, props->tx_fifo_size,
+    &ls->rx_fifo, &ls->tx_fifo);
   if (rv)
     {
       clib_warning ("failed to add fifos in cut-through segment");
@@ -259,7 +257,7 @@ ct_accept_rpc_wrk_handler (void *accept_args)
   cct = ct_connection_alloc (args->thread_index);
   cct_index = cct->c_c_index;
   sct = ct_connection_alloc (args->thread_index);
-  ll_ct = ct_connection_get (ll->connection_index, 0 /* listener thread */ );
+  ll_ct = ct_connection_get (ll->connection_index, 0 /* listener thread */);
 
   /*
    * Alloc and init client transport
@@ -294,8 +292,8 @@ ct_accept_rpc_wrk_handler (void *accept_args)
    */
   ss = session_alloc (args->thread_index);
   ll = listen_session_get (args->ll_s_index);
-  ss->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE,
-						     sct->c_is_ip4);
+  ss->session_type =
+    session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE, sct->c_is_ip4);
   ss->connection_index = sct->c_c_index;
   ss->listener_handle = listen_session_get_handle (ll);
   ss->session_state = SESSION_STATE_CREATED;
@@ -328,8 +326,8 @@ ct_accept_rpc_wrk_handler (void *accept_args)
 }
 
 static int
-ct_connect (app_worker_t * client_wrk, session_t * ll,
-	    session_endpoint_cfg_t * sep)
+ct_connect (app_worker_t *client_wrk, session_t *ll,
+	    session_endpoint_cfg_t *sep)
 {
   ct_accept_rpc_args_t *args;
   ct_main_t *cm = &ct_main;
@@ -357,7 +355,7 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
 }
 
 static u32
-ct_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
+ct_start_listen (u32 app_listener_index, transport_endpoint_t *tep)
 {
   session_endpoint_cfg_t *sep;
   ct_connection_t *ct;
@@ -389,7 +387,7 @@ ct_listener_get (u32 ct_index)
 }
 
 static int
-ct_session_connect (transport_endpoint_cfg_t * tep)
+ct_session_connect (transport_endpoint_cfg_t *tep)
 {
   session_endpoint_cfg_t *sep_ext;
   session_endpoint_t *sep;
@@ -484,12 +482,11 @@ ct_session_close (u32 ct_index, u32 thread_index)
 static transport_connection_t *
 ct_session_get (u32 ct_index, u32 thread_index)
 {
-  return (transport_connection_t *) ct_connection_get (ct_index,
-						       thread_index);
+  return (transport_connection_t *) ct_connection_get (ct_index, thread_index);
 }
 
 static u8 *
-format_ct_connection_id (u8 * s, va_list * args)
+format_ct_connection_id (u8 *s, va_list *args)
 {
   ct_connection_t *ct = va_arg (*args, ct_connection_t *);
   if (!ct)
@@ -515,7 +512,7 @@ format_ct_connection_id (u8 * s, va_list * args)
 }
 
 static int
-ct_custom_tx (void *session, transport_send_params_t * sp)
+ct_custom_tx (void *session, transport_send_params_t *sp)
 {
   session_t *s = (session_t *) session;
   if (session_has_transport (s))
@@ -534,7 +531,7 @@ ct_custom_tx (void *session, transport_send_params_t * sp)
 }
 
 static int
-ct_app_rx_evt (transport_connection_t * tc)
+ct_app_rx_evt (transport_connection_t *tc)
 {
   ct_connection_t *ct = (ct_connection_t *) tc, *peer_ct;
   session_t *ps;
@@ -547,7 +544,7 @@ ct_app_rx_evt (transport_connection_t * tc)
 }
 
 static u8 *
-format_ct_listener (u8 * s, va_list * args)
+format_ct_listener (u8 *s, va_list *args)
 {
   u32 tc_index = va_arg (*args, u32);
   u32 __clib_unused thread_index = va_arg (*args, u32);
@@ -560,7 +557,7 @@ format_ct_listener (u8 * s, va_list * args)
 }
 
 static u8 *
-format_ct_connection (u8 * s, va_list * args)
+format_ct_connection (u8 *s, va_list *args)
 {
   ct_connection_t *ct = va_arg (*args, ct_connection_t *);
   u32 verbose = va_arg (*args, u32);
@@ -580,7 +577,7 @@ format_ct_connection (u8 * s, va_list * args)
 }
 
 static u8 *
-format_ct_session (u8 * s, va_list * args)
+format_ct_session (u8 *s, va_list *args)
 {
   u32 ct_index = va_arg (*args, u32);
   u32 thread_index = va_arg (*args, u32);
@@ -599,14 +596,13 @@ format_ct_session (u8 * s, va_list * args)
 }
 
 clib_error_t *
-ct_enable_disable (vlib_main_t * vm, u8 is_en)
+ct_enable_disable (vlib_main_t *vm, u8 is_en)
 {
   ct_main.n_workers = vlib_num_workers ();
   vec_validate (ct_main.connections, ct_main.n_workers);
   return 0;
 }
 
-/* *INDENT-OFF* */
 static const transport_proto_vft_t cut_thru_proto = {
   .enable = ct_enable_disable,
   .start_listen = ct_start_listen,
@@ -626,10 +622,9 @@ static const transport_proto_vft_t cut_thru_proto = {
     .service_type = TRANSPORT_SERVICE_APP,
   },
 };
-/* *INDENT-ON* */
 
 int
-ct_session_tx (session_t * s)
+ct_session_tx (session_t *s)
 {
   ct_connection_t *ct, *peer_ct;
   session_t *peer_s;
@@ -645,7 +640,7 @@ ct_session_tx (session_t * s)
 }
 
 static clib_error_t *
-ct_transport_init (vlib_main_t * vm)
+ct_transport_init (vlib_main_t *vm)
 {
   transport_register_protocol (TRANSPORT_PROTO_NONE, &cut_thru_proto,
 			       FIB_PROTOCOL_IP4, ~0);

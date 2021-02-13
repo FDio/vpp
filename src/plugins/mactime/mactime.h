@@ -80,20 +80,20 @@ typedef struct
 } mactime_main_t;
 
 /* size for an hgw use-case */
-#define MACTIME_NUM_BUCKETS	128
-#define MACTIME_MEMORY_SIZE	(256<<10)
+#define MACTIME_NUM_BUCKETS 128
+#define MACTIME_MEMORY_SIZE (256 << 10)
 
 extern mactime_main_t mactime_main;
 
 extern vlib_node_registration_t mactime_node;
 extern vlib_node_registration_t mactime_tx_node;
 
-void mactime_send_create_entry_message (u8 * mac_address);
-void mactime_url_init (vlib_main_t * vm);
+void mactime_send_create_entry_message (u8 *mac_address);
+void mactime_url_init (vlib_main_t *vm);
 
 /* Periodic function events */
-#define MACTIME_EVENT1 1
-#define MACTIME_EVENT2 2
+#define MACTIME_EVENT1			      1
+#define MACTIME_EVENT2			      2
 #define MACTIME_EVENT_PERIODIC_ENABLE_DISABLE 3
 
 #endif /* __included_mactime_h__ */

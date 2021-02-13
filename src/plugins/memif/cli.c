@@ -26,11 +26,10 @@
 #include <memif/memif.h>
 #include <memif/private.h>
 
-
 static clib_error_t *
-memif_socket_filename_create_command_fn (vlib_main_t * vm,
-					 unformat_input_t * input,
-					 vlib_cli_command_t * cmd)
+memif_socket_filename_create_command_fn (vlib_main_t *vm,
+					 unformat_input_t *input,
+					 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   int r;
@@ -96,18 +95,16 @@ memif_socket_filename_create_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (memif_socket_filename_create_command, static) = {
   .path = "create memif socket",
   .short_help = "create memif socket [id <id>] [filename <path>]",
   .function = memif_socket_filename_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-memif_socket_filename_delete_command_fn (vlib_main_t * vm,
-					 unformat_input_t * input,
-					 vlib_cli_command_t * cmd)
+memif_socket_filename_delete_command_fn (vlib_main_t *vm,
+					 unformat_input_t *input,
+					 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   int r;
@@ -159,17 +156,15 @@ memif_socket_filename_delete_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (memif_socket_filename_delete_command, static) = {
   .path = "delete memif socket",
   .short_help = "delete memif socket [id <id>]",
   .function = memif_socket_filename_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			 vlib_cli_command_t * cmd)
+memif_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   int r;
@@ -209,8 +204,8 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.is_zero_copy = 0;
       else if (unformat (line_input, "mode ip"))
 	args.mode = MEMIF_INTERFACE_MODE_IP;
-      else if (unformat (line_input, "hw-addr %U",
-			 unformat_ethernet_address, args.hw_addr))
+      else if (unformat (line_input, "hw-addr %U", unformat_ethernet_address,
+			 args.hw_addr))
 	args.hw_addr_set = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
@@ -238,8 +233,8 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   vec_free (args.secret);
 
-  if (r <= VNET_API_ERROR_SYSCALL_ERROR_1
-      && r >= VNET_API_ERROR_SYSCALL_ERROR_10)
+  if (r <= VNET_API_ERROR_SYSCALL_ERROR_1 &&
+      r >= VNET_API_ERROR_SYSCALL_ERROR_10)
     return clib_error_return (0, "%s (errno %d)", strerror (errno), errno);
 
   if (r == VNET_API_ERROR_INVALID_ARGUMENT)
@@ -254,21 +249,19 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (memif_create_command, static) = {
   .path = "create interface memif",
   .short_help = "create interface memif [id <id>] [socket-id <socket-id>] "
-                "[ring-size <size>] [buffer-size <size>] "
+		"[ring-size <size>] [buffer-size <size>] "
 		"[hw-addr <mac-address>] "
 		"<master|slave> [rx-queues <number>] [tx-queues <number>] "
 		"[mode ip] [secret <string>]",
   .function = memif_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-memif_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			 vlib_cli_command_t * cmd)
+memif_delete_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
@@ -285,8 +278,8 @@ memif_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "sw_if_index %d", &sw_if_index))
 	;
-      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
@@ -308,26 +301,26 @@ memif_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (memif_delete_command, static) = {
   .path = "delete interface memif",
   .short_help = "delete interface memif {<interface> | sw_if_index <sw_idx>}",
   .function = memif_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 static u8 *
-format_memif_if_flags (u8 * s, va_list * args)
+format_memif_if_flags (u8 *s, va_list *args)
 {
   u32 flags = va_arg (*args, u32);
-#define _(a,b,c) if ( flags & (1 << a)) s = format (s, " %s", c);
+#define _(a, b, c)                                                            \
+  if (flags & (1 << a))                                                       \
+    s = format (s, " %s", c);
   foreach_memif_if_flag
 #undef _
     return s;
 }
 
 static u8 *
-format_memif_if_mode (u8 * s, va_list * args)
+format_memif_if_mode (u8 *s, va_list *args)
 {
   memif_if_t *mif = va_arg (*args, memif_if_t *);
   if (mif->mode == MEMIF_INTERFACE_MODE_ETHERNET)
@@ -336,35 +329,34 @@ format_memif_if_mode (u8 * s, va_list * args)
     return format (s, "ip");
   if (mif->mode == MEMIF_INTERFACE_MODE_PUNT_INJECT)
     return format (s, "punt-inject");
-  return format (s, "unknown mode (%u)", mif->mode);;
+  return format (s, "unknown mode (%u)", mif->mode);
+  ;
 }
 
 static u8 *
-format_memif_queue (u8 * s, va_list * args)
+format_memif_queue (u8 *s, va_list *args)
 {
   memif_queue_t *mq = va_arg (*args, memif_queue_t *);
   uword i = va_arg (*args, uword);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "%U%s ring %u:\n",
-	      format_white_space, indent,
-	      (mq->type == MEMIF_RING_S2M) ?
-	      "slave-to-master" : "master-to-slave", i);
+  s = format (
+    s, "%U%s ring %u:\n", format_white_space, indent,
+    (mq->type == MEMIF_RING_S2M) ? "slave-to-master" : "master-to-slave", i);
   s = format (s, "%Uregion %u offset %u ring-size %u int-fd %d\n",
-	      format_white_space, indent + 4,
-	      mq->region, mq->offset, (1 << mq->log2_ring_size), mq->int_fd);
+	      format_white_space, indent + 4, mq->region, mq->offset,
+	      (1 << mq->log2_ring_size), mq->int_fd);
 
   if (mq->ring)
     s = format (s, "%Uhead %u tail %u flags 0x%04x interrupts %u\n",
-		format_white_space, indent + 4,
-		mq->ring->head, mq->ring->tail, mq->ring->flags,
-		mq->int_count);
+		format_white_space, indent + 4, mq->ring->head, mq->ring->tail,
+		mq->ring->flags, mq->int_count);
 
   return s;
 }
 
 static u8 *
-format_memif_descriptor (u8 * s, va_list * args)
+format_memif_descriptor (u8 *s, va_list *args)
 {
   memif_if_t *mif = va_arg (*args, memif_if_t *);
   memif_queue_t *mq = va_arg (*args, memif_queue_t *);
@@ -378,23 +370,21 @@ format_memif_descriptor (u8 * s, va_list * args)
   if (ring)
     {
       s = format (s, "%Udescriptor table:\n", format_white_space, indent);
-      s =
-	format (s,
-		"%Uid    flags   len         address       offset    user address\n",
-		format_white_space, indent);
-      s =
-	format (s,
-		"%U===== ===== ======== ================== ====== ==================\n",
-		format_white_space, indent);
+      s = format (
+	s,
+	"%Uid    flags   len         address       offset    user address\n",
+	format_white_space, indent);
+      s = format (s,
+		  "%U===== ===== ======== ================== ====== "
+		  "==================\n",
+		  format_white_space, indent);
       for (slot = 0; slot < ring_size; slot++)
 	{
-	  s = format (s, "%U%-5d %-5d %-7d  0x%016lx %-6d 0x%016lx\n",
-		      format_white_space, indent, slot,
-		      ring->desc[slot].flags,
-		      ring->desc[slot].length,
-		      mif->regions[ring->desc[slot].region].shm,
-		      ring->desc[slot].offset, memif_get_buffer (mif, ring,
-								 slot));
+	  s = format (
+	    s, "%U%-5d %-5d %-7d  0x%016lx %-6d 0x%016lx\n",
+	    format_white_space, indent, slot, ring->desc[slot].flags,
+	    ring->desc[slot].length, mif->regions[ring->desc[slot].region].shm,
+	    ring->desc[slot].offset, memif_get_buffer (mif, ring, slot));
 	}
       s = format (s, "\n");
     }
@@ -403,8 +393,8 @@ format_memif_descriptor (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
-		       vlib_cli_command_t * cmd)
+memif_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   memif_main_t *mm = &memif_main;
   memif_if_t *mif;
@@ -421,8 +411,8 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+      if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
+		    &hw_if_index))
 	vec_add1 (hw_if_indices, hw_if_index);
       else if (unformat (input, "descriptors"))
 	show_descr = 1;
@@ -437,33 +427,31 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "sockets\n");
   vlib_cli_output (vm, "  %-3s %-11s %s\n", "id", "listener", "filename");
 
-  /* *INDENT-OFF* */
-  hash_foreach (sock_id, msf_idx, mm->socket_file_index_by_sock_id,
-    ({
-      memif_socket_file_t *msf;
-      u8 *filename;
+  hash_foreach (sock_id, msf_idx, mm->socket_file_index_by_sock_id, ({
+		  memif_socket_file_t *msf;
+		  u8 *filename;
 
-      msf = pool_elt_at_index(mm->socket_files, msf_idx);
-      filename = msf->filename;
-      if (msf->is_listener)
-        s = format (s, "yes (%u)", msf->ref_cnt);
-      else
-        s = format (s, "no");
+		  msf = pool_elt_at_index (mm->socket_files, msf_idx);
+		  filename = msf->filename;
+		  if (msf->is_listener)
+		    s = format (s, "yes (%u)", msf->ref_cnt);
+		  else
+		    s = format (s, "no");
 
-      vlib_cli_output(vm, "  %-3u %-11v %s\n", sock_id, s, filename);
-      vec_reset_length (s);
-    }));
-  /* *INDENT-ON* */
+		  vlib_cli_output (vm, "  %-3u %-11v %s\n", sock_id, s,
+				   filename);
+		  vec_reset_length (s);
+		}));
+
   vec_free (s);
 
   vlib_cli_output (vm, "\n");
 
   if (vec_len (hw_if_indices) == 0)
     {
-      /* *INDENT-OFF* */
+
       pool_foreach (mif, mm->interfaces)
-	  vec_add1 (hw_if_indices, mif->hw_if_index);
-      /* *INDENT-ON* */
+	vec_add1 (hw_if_indices, mif->hw_if_index);
     }
 
   for (hw_if_index = 0; hw_if_index < vec_len (hw_if_indices); hw_if_index++)
@@ -471,22 +459,22 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
       vnet_hw_interface_t *hi =
 	vnet_get_hw_interface (vnm, hw_if_indices[hw_if_index]);
       mif = pool_elt_at_index (mm->interfaces, hi->dev_instance);
-      memif_socket_file_t *msf = vec_elt_at_index (mm->socket_files,
-						   mif->socket_file_index);
-      vlib_cli_output (vm, "interface %U", format_vnet_sw_if_index_name,
-		       vnm, mif->sw_if_index);
+      memif_socket_file_t *msf =
+	vec_elt_at_index (mm->socket_files, mif->socket_file_index);
+      vlib_cli_output (vm, "interface %U", format_vnet_sw_if_index_name, vnm,
+		       mif->sw_if_index);
       if (mif->remote_name)
 	vlib_cli_output (vm, "  remote-name \"%s\"", mif->remote_name);
       if (mif->remote_if_name)
-	vlib_cli_output (vm, "  remote-interface \"%s\"",
-			 mif->remote_if_name);
+	vlib_cli_output (vm, "  remote-interface \"%s\"", mif->remote_if_name);
       vlib_cli_output (vm, "  socket-id %u id %u mode %U", msf->socket_id,
 		       mif->id, format_memif_if_mode, mif);
       vlib_cli_output (vm, "  flags%U", format_memif_if_flags, mif->flags);
       vlib_cli_output (vm, "  listener-fd %d conn-fd %d",
 		       msf->sock ? msf->sock->fd : 0,
 		       mif->sock ? mif->sock->fd : 0);
-      vlib_cli_output (vm, "  num-s2m-rings %u num-m2s-rings %u "
+      vlib_cli_output (vm,
+		       "  num-s2m-rings %u num-m2s-rings %u "
 		       "buffer-size %u num-regions %u",
 		       mif->run.num_s2m_rings, mif->run.num_m2s_rings,
 		       mif->run.buffer_size, vec_len (mif->regions));
@@ -498,12 +486,11 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	vlib_cli_output (vm, "  remote-disc-reason \"%s\"",
 			 mif->remote_disc_string);
 
-      /* *INDENT-OFF* */
       vec_foreach_index (i, mif->regions)
 	{
 	  mr = vec_elt_at_index (mif->regions, i);
-	  vlib_cli_output (vm, "  region %u size %u fd %d", i,
-			   mr->region_size, mr->fd);
+	  vlib_cli_output (vm, "  region %u size %u fd %d", i, mr->region_size,
+			   mr->fd);
 	}
       vec_foreach_index (i, mif->tx_queues)
 	{
@@ -519,23 +506,20 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  if (show_descr)
 	    vlib_cli_output (vm, "  %U", format_memif_descriptor, mif, mq);
 	}
-      /* *INDENT-ON* */
     }
 done:
   vec_free (hw_if_indices);
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (memif_show_command, static) = {
   .path = "show memif",
   .short_help = "show memif [<interface>] [descriptors]",
   .function = memif_show_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-memif_cli_init (vlib_main_t * vm)
+memif_cli_init (vlib_main_t *vm)
 {
   return 0;
 }

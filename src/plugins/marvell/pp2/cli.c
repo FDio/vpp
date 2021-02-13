@@ -26,8 +26,8 @@
 #include <marvell/pp2/pp2.h>
 
 static clib_error_t *
-mrvl_pp2_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+mrvl_pp2_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   mrvl_pp2_create_if_args_t args = { 0 };
@@ -51,7 +51,6 @@ mrvl_pp2_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
   unformat_free (line_input);
 
-
   mrvl_pp2_create_if (&args);
 
   vec_free (args.name);
@@ -59,17 +58,16 @@ mrvl_pp2_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return args.error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (mrvl_pp2_create_command, static) = {
   .path = "create interface marvell pp2",
-  .short_help = "create interface marvell pp2 [name <ifname>] [rx-queue-size slots] [tx-queue-size slots]",
+  .short_help = "create interface marvell pp2 [name <ifname>] [rx-queue-size "
+		"slots] [tx-queue-size slots]",
   .function = mrvl_pp2_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-mrvl_pp2_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+mrvl_pp2_delete_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
@@ -86,8 +84,8 @@ mrvl_pp2_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "sw_if_index %d", &sw_if_index))
 	;
-      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
@@ -110,17 +108,15 @@ mrvl_pp2_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (mrvl_pp2_delete_command, static) = {
   .path = "delete interface marvell pp2",
   .short_help = "delete interface marvell pp2 "
-    "{<interface> | sw_if_index <sw_idx>}",
+		"{<interface> | sw_if_index <sw_idx>}",
   .function = mrvl_pp2_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-mrvl_pp2_cli_init (vlib_main_t * vm)
+mrvl_pp2_cli_init (vlib_main_t *vm)
 {
   /* initialize binary API */
   mrvl_pp2_plugin_api_hookup (vm);

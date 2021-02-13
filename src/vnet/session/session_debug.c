@@ -21,8 +21,8 @@
 session_dbg_main_t session_dbg_main;
 
 static clib_error_t *
-show_session_dbg_clock_cycles_fn (vlib_main_t * vm, unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
+show_session_dbg_clock_cycles_fn (vlib_main_t *vm, unformat_input_t *input,
+				  vlib_cli_command_t *cmd)
 {
   u32 thread;
 
@@ -35,15 +35,15 @@ show_session_dbg_clock_cycles_fn (vlib_main_t * vm, unformat_input_t * input,
       vlib_cli_output (vm, "Threads %u:\n", thread);
       session_dbg_evts_t *sdm = &session_dbg_main.wrk[thread];
 
-#define _(sym, disp, type, str) 								         \
-  if(disp)								\
-    {									\
-      if (!type)							\
-	vlib_cli_output (vm, "\t %25s : %12lu ", str,                 	\
-	                 sdm->counters[SESS_Q_##sym].u64);		\
-      else								\
-	vlib_cli_output (vm, "\t %25s : %12.3f ", str,                  \
-	                 sdm->counters[SESS_Q_##sym].f64);		\
+#define _(sym, disp, type, str)                                               \
+  if (disp)                                                                   \
+    {                                                                         \
+      if (!type)                                                              \
+	vlib_cli_output (vm, "\t %25s : %12lu ", str,                         \
+			 sdm->counters[SESS_Q_##sym].u64);                    \
+      else                                                                    \
+	vlib_cli_output (vm, "\t %25s : %12.3f ", str,                        \
+			 sdm->counters[SESS_Q_##sym].f64);                    \
     }
       foreach_session_events
 #undef _
@@ -51,20 +51,15 @@ show_session_dbg_clock_cycles_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_session_dbg_clock_cycles_command, static) =
-{
+VLIB_CLI_COMMAND (show_session_dbg_clock_cycles_command, static) = {
   .path = "show session dbg clock_cycles",
   .short_help = "show session dbg clock_cycles",
   .function = show_session_dbg_clock_cycles_fn,
 };
-/* *INDENT-ON* */
-
 
 static clib_error_t *
-clear_session_dbg_clock_cycles_fn (vlib_main_t * vm, unformat_input_t * input,
-				   vlib_cli_command_t * cmd)
+clear_session_dbg_clock_cycles_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
 {
   session_dbg_evts_t *sde;
   u32 thread;
@@ -84,15 +79,11 @@ clear_session_dbg_clock_cycles_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (clear_session_clock_cycles_command, static) =
-{
+VLIB_CLI_COMMAND (clear_session_clock_cycles_command, static) = {
   .path = "clear session dbg clock_cycles",
   .short_help = "clear session dbg clock_cycles",
   .function = clear_session_dbg_clock_cycles_fn,
 };
-/* *INDENT-ON* */
 
 void
 session_debug_init (void)
@@ -159,14 +150,14 @@ dump_thread_0_event_queue (void)
 	  break;
 
 	case SESSION_CTRL_EVT_RPC:
-	  fformat (stdout, "[%04d] RPC call %llx with %llx\n",
-		   i, (u64) (uword) (e->rpc_args.fp),
+	  fformat (stdout, "[%04d] RPC call %llx with %llx\n", i,
+		   (u64) (uword) (e->rpc_args.fp),
 		   (u64) (uword) (e->rpc_args.arg));
 	  break;
 
 	default:
-	  fformat (stdout, "[%04d] unhandled event type %d\n",
-		   i, e->event_type);
+	  fformat (stdout, "[%04d] unhandled event type %d\n", i,
+		   e->event_type);
 	  break;
 	}
 
@@ -178,7 +169,7 @@ dump_thread_0_event_queue (void)
 }
 
 static u8
-session_node_cmp_event (session_event_t * e, svm_fifo_t * f)
+session_node_cmp_event (session_event_t *e, svm_fifo_t *f)
 {
   session_t *s;
   switch (e->event_type)
@@ -210,7 +201,7 @@ session_node_cmp_event (session_event_t * e, svm_fifo_t * f)
 }
 
 u8
-session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
+session_node_lookup_fifo_event (svm_fifo_t *f, session_event_t *e)
 {
   svm_msg_q_shared_queue_t *sq;
   session_evt_elt_t *elt;
@@ -245,31 +236,27 @@ session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
    * Search pending events vector
    */
 
-  /* *INDENT-OFF* */
   clib_llist_foreach (wrk->event_elts, evt_list,
-                      pool_elt_at_index (wrk->event_elts, wrk->new_head),
-                      elt, ({
-    found = session_node_cmp_event (&elt->evt, f);
-    if (found)
-      {
-	clib_memcpy_fast (e, &elt->evt, sizeof (*e));
-	goto done;
-      }
-  }));
-  /* *INDENT-ON* */
+		      pool_elt_at_index (wrk->event_elts, wrk->new_head), elt,
+		      ({
+			found = session_node_cmp_event (&elt->evt, f);
+			if (found)
+			  {
+			    clib_memcpy_fast (e, &elt->evt, sizeof (*e));
+			    goto done;
+			  }
+		      }));
 
-  /* *INDENT-OFF* */
   clib_llist_foreach (wrk->event_elts, evt_list,
-                      pool_elt_at_index (wrk->event_elts, wrk->old_head),
-                      elt, ({
-    found = session_node_cmp_event (&elt->evt, f);
-    if (found)
-      {
-	clib_memcpy_fast (e, &elt->evt, sizeof (*e));
-	goto done;
-      }
-  }));
-  /* *INDENT-ON* */
+		      pool_elt_at_index (wrk->event_elts, wrk->old_head), elt,
+		      ({
+			found = session_node_cmp_event (&elt->evt, f);
+			if (found)
+			  {
+			    clib_memcpy_fast (e, &elt->evt, sizeof (*e));
+			    goto done;
+			  }
+		      }));
 
 done:
   return found;

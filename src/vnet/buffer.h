@@ -46,34 +46,34 @@
  * Flags that are set in the high order bits of ((vlib_buffer*)b)->flags
  *
  */
-#define foreach_vnet_buffer_flag                        \
-  _( 1, L4_CHECKSUM_COMPUTED, "l4-cksum-computed", 1)	\
-  _( 2, L4_CHECKSUM_CORRECT, "l4-cksum-correct", 1)	\
-  _( 3, VLAN_2_DEEP, "vlan-2-deep", 1)			\
-  _( 4, VLAN_1_DEEP, "vlan-1-deep", 1)			\
-  _( 5, SPAN_CLONE, "span-clone", 1)                    \
-  _( 6, LOOP_COUNTER_VALID, "loop-counter-valid", 0)    \
-  _( 7, LOCALLY_ORIGINATED, "local", 1)                 \
-  _( 8, IS_IP4, "ip4", 1)                               \
-  _( 9, IS_IP6, "ip6", 1)                               \
-  _(10, OFFLOAD_IP_CKSUM, "offload-ip-cksum", 1)        \
-  _(11, OFFLOAD_TCP_CKSUM, "offload-tcp-cksum", 1)      \
-  _(12, OFFLOAD_UDP_CKSUM, "offload-udp-cksum", 1)      \
-  _(13, IS_NATED, "natted", 1)                          \
-  _(14, L2_HDR_OFFSET_VALID, "l2_hdr_offset_valid", 0)  \
-  _(15, L3_HDR_OFFSET_VALID, "l3_hdr_offset_valid", 0)  \
-  _(16, L4_HDR_OFFSET_VALID, "l4_hdr_offset_valid", 0)  \
-  _(17, FLOW_REPORT, "flow-report", 1)                  \
-  _(18, IS_DVR, "dvr", 1)                               \
-  _(19, QOS_DATA_VALID, "qos-data-valid", 0)            \
-  _(20, GSO, "gso", 0)                                  \
-  _(21, AVAIL1, "avail1", 1)                            \
-  _(22, AVAIL2, "avail2", 1)                            \
-  _(23, AVAIL3, "avail3", 1)                            \
-  _(24, AVAIL4, "avail4", 1)                            \
-  _(25, AVAIL5, "avail5", 1)                            \
-  _(26, AVAIL6, "avail6", 1)                            \
-  _(27, AVAIL7, "avail7", 1)
+#define foreach_vnet_buffer_flag                                              \
+  _ (1, L4_CHECKSUM_COMPUTED, "l4-cksum-computed", 1)                         \
+  _ (2, L4_CHECKSUM_CORRECT, "l4-cksum-correct", 1)                           \
+  _ (3, VLAN_2_DEEP, "vlan-2-deep", 1)                                        \
+  _ (4, VLAN_1_DEEP, "vlan-1-deep", 1)                                        \
+  _ (5, SPAN_CLONE, "span-clone", 1)                                          \
+  _ (6, LOOP_COUNTER_VALID, "loop-counter-valid", 0)                          \
+  _ (7, LOCALLY_ORIGINATED, "local", 1)                                       \
+  _ (8, IS_IP4, "ip4", 1)                                                     \
+  _ (9, IS_IP6, "ip6", 1)                                                     \
+  _ (10, OFFLOAD_IP_CKSUM, "offload-ip-cksum", 1)                             \
+  _ (11, OFFLOAD_TCP_CKSUM, "offload-tcp-cksum", 1)                           \
+  _ (12, OFFLOAD_UDP_CKSUM, "offload-udp-cksum", 1)                           \
+  _ (13, IS_NATED, "natted", 1)                                               \
+  _ (14, L2_HDR_OFFSET_VALID, "l2_hdr_offset_valid", 0)                       \
+  _ (15, L3_HDR_OFFSET_VALID, "l3_hdr_offset_valid", 0)                       \
+  _ (16, L4_HDR_OFFSET_VALID, "l4_hdr_offset_valid", 0)                       \
+  _ (17, FLOW_REPORT, "flow-report", 1)                                       \
+  _ (18, IS_DVR, "dvr", 1)                                                    \
+  _ (19, QOS_DATA_VALID, "qos-data-valid", 0)                                 \
+  _ (20, GSO, "gso", 0)                                                       \
+  _ (21, AVAIL1, "avail1", 1)                                                 \
+  _ (22, AVAIL2, "avail2", 1)                                                 \
+  _ (23, AVAIL3, "avail3", 1)                                                 \
+  _ (24, AVAIL4, "avail4", 1)                                                 \
+  _ (25, AVAIL5, "avail5", 1)                                                 \
+  _ (26, AVAIL6, "avail6", 1)                                                 \
+  _ (27, AVAIL7, "avail7", 1)
 
 /*
  * Please allocate the FIRST available bit, redefine
@@ -81,24 +81,26 @@
  * VNET_BUFFER_FLAGS_ALL_AVAIL definition.
  */
 
-#define VNET_BUFFER_FLAGS_ALL_AVAIL                                     \
-  (VNET_BUFFER_F_AVAIL1 | VNET_BUFFER_F_AVAIL2 | VNET_BUFFER_F_AVAIL3 | \
-   VNET_BUFFER_F_AVAIL4 | VNET_BUFFER_F_AVAIL5 | VNET_BUFFER_F_AVAIL6 | \
+#define VNET_BUFFER_FLAGS_ALL_AVAIL                                           \
+  (VNET_BUFFER_F_AVAIL1 | VNET_BUFFER_F_AVAIL2 | VNET_BUFFER_F_AVAIL3 |       \
+   VNET_BUFFER_F_AVAIL4 | VNET_BUFFER_F_AVAIL5 | VNET_BUFFER_F_AVAIL6 |       \
    VNET_BUFFER_F_AVAIL7)
 
-#define VNET_BUFFER_FLAGS_VLAN_BITS \
+#define VNET_BUFFER_FLAGS_VLAN_BITS                                           \
   (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)
 
 enum
 {
-#define _(bit, name, s, v) VNET_BUFFER_F_##name  = (1 << LOG2_VLIB_BUFFER_FLAG_USER(bit)),
+#define _(bit, name, s, v)                                                    \
+  VNET_BUFFER_F_##name = (1 << LOG2_VLIB_BUFFER_FLAG_USER (bit)),
   foreach_vnet_buffer_flag
 #undef _
 };
 
 enum
 {
-#define _(bit, name, s, v) VNET_BUFFER_F_LOG2_##name  = LOG2_VLIB_BUFFER_FLAG_USER(bit),
+#define _(bit, name, s, v)                                                    \
+  VNET_BUFFER_F_LOG2_##name = LOG2_VLIB_BUFFER_FLAG_USER (bit),
   foreach_vnet_buffer_flag
 #undef _
 };
@@ -107,18 +109,18 @@ enum
 STATIC_ASSERT (((VNET_BUFFER_FLAGS_ALL_AVAIL & VLIB_BUFFER_FLAGS_ALL) == 0),
 	       "VLIB / VNET buffer flags overlap");
 
-#define foreach_buffer_opaque_union_subtype     \
-_(ip)                                           \
-_(l2)                                           \
-_(l2t)                                          \
-_(l2_classify)                                  \
-_(policer)                                      \
-_(ipsec)					\
-_(map)						\
-_(map_t)					\
-_(ip_frag)					\
-_(mpls)					        \
-_(tcp)
+#define foreach_buffer_opaque_union_subtype                                   \
+  _ (ip)                                                                      \
+  _ (l2)                                                                      \
+  _ (l2t)                                                                     \
+  _ (l2_classify)                                                             \
+  _ (policer)                                                                 \
+  _ (ipsec)                                                                   \
+  _ (map)                                                                     \
+  _ (map_t)                                                                   \
+  _ (ip_frag)                                                                 \
+  _ (mpls)                                                                    \
+  _ (tcp)
 
 /*
  * vnet stack buffer opaque array overlay structure.
@@ -146,8 +148,8 @@ typedef struct
     struct
     {
       /* Adjacency from destination IP address lookup [VLIB_TX].
-         Adjacency from source IP address lookup [VLIB_RX].
-         This gets set to ~0 until source lookup is performed. */
+	 Adjacency from source IP address lookup [VLIB_RX].
+	 This gets set to ~0 until source lookup is performed. */
       u32 adj_index[VLIB_N_RX_TX];
 
       union
@@ -192,8 +194,9 @@ typedef struct
 	    /* input variables */
 	    struct
 	    {
-	      u32 next_index;	/* index of next node - used by custom apps */
-	      u32 error_next_index;	/* index of next node if error - used by custom apps */
+	      u32 next_index; /* index of next node - used by custom apps */
+	      u32 error_next_index; /* index of next node if error - used by
+				       custom apps */
 	    };
 	    /* handoff variables */
 	    struct
@@ -209,11 +212,11 @@ typedef struct
 	      /* shallow virtual reassembly output variables */
 	      struct
 	      {
-		u16 l4_src_port;	/* tcp/udp/icmp src port */
-		u16 l4_dst_port;	/* tcp/udp/icmp dst port */
+		u16 l4_src_port; /* tcp/udp/icmp src port */
+		u16 l4_dst_port; /* tcp/udp/icmp dst port */
 		u32 tcp_ack_number;
 		u8 save_rewrite_length;
-		u8 ip_proto;	/* protocol in ip header */
+		u8 ip_proto; /* protocol in ip header */
 		u8 icmp_type_or_tcp_flags;
 		u8 is_non_first_fragment;
 		u32 tcp_seq_number;
@@ -221,7 +224,8 @@ typedef struct
 	      /* full reassembly output variables */
 	      struct
 	      {
-		u16 estimated_mtu;	/* estimated MTU calculated during reassembly */
+		u16 estimated_mtu; /* estimated MTU calculated during
+				      reassembly */
 	      };
 	    };
 	  };
@@ -251,8 +255,8 @@ typedef struct
       u8 ttl;
       u8 exp;
       u8 first;
-      u8 pyld_proto:3;		/* dpo_proto_t */
-      u8 rsvd:5;
+      u8 pyld_proto : 3; /* dpo_proto_t */
+      u8 rsvd : 5;
       /* Rewrite length */
       u8 save_rewrite_length;
       /* Save the mpls header length including all label stack */
@@ -272,17 +276,17 @@ typedef struct
     struct opaque_l2
     {
       u32 feature_bitmap;
-      u16 bd_index;		/* bridge-domain index */
-      u16 l2fib_sn;		/* l2fib bd/int seq_num */
-      u8 l2_len;		/* ethernet header length */
-      u8 shg;			/* split-horizon group */
-      u8 bd_age;		/* aging enabled */
+      u16 bd_index; /* bridge-domain index */
+      u16 l2fib_sn; /* l2fib bd/int seq_num */
+      u8 l2_len;    /* ethernet header length */
+      u8 shg;	    /* split-horizon group */
+      u8 bd_age;    /* aging enabled */
     } l2;
 
     /* l2tpv3 softwire encap, only valid there */
     struct
     {
-      u32 pad[4];		/* do not overlay w/ ip.adj_index[0,1] */
+      u32 pad[4]; /* do not overlay w/ ip.adj_index[0,1] */
       u8 next_index;
       u32 session_index;
     } l2t;
@@ -302,7 +306,7 @@ typedef struct
     /* vnet policer */
     struct
     {
-      u32 pad[8 - VLIB_N_RX_TX - 1];	/* to end of opaque */
+      u32 pad[8 - VLIB_N_RX_TX - 1]; /* to end of opaque */
       u32 index;
     } policer;
 
@@ -329,21 +333,21 @@ typedef struct
       struct
       {
 	u32 saddr, daddr;
-	u16 frag_offset;	//Fragmentation header offset
-	u16 l4_offset;		//L4 header overall offset
-	u8 l4_protocol;		//The final protocol number
-      } v6;			//Used by ip6_map_t only
-      u16 checksum_offset;	//L4 checksum overall offset
-      u16 mtu;			//Exit MTU
+	u16 frag_offset;   // Fragmentation header offset
+	u16 l4_offset;	   // L4 header overall offset
+	u8 l4_protocol;	   // The final protocol number
+      } v6;		   // Used by ip6_map_t only
+      u16 checksum_offset; // L4 checksum overall offset
+      u16 mtu;		   // Exit MTU
     } map_t;
 
     /* IP Fragmentation */
     struct
     {
-      u32 pad[2];		/* do not overlay w/ ip.adj_index[0,1] */
+      u32 pad[2]; /* do not overlay w/ ip.adj_index[0,1] */
       u16 mtu;
       u8 next_index;
-      u8 flags;			//See ip_frag.h
+      u8 flags; // See ip_frag.h
     } ip_frag;
 
     /* COP - configurable junk filter(s) */
@@ -371,9 +375,9 @@ typedef struct
       };
       u32 seq_end;
       u32 ack_number;
-      u16 hdr_offset;		/**< offset relative to ip hdr */
-      u16 data_offset;		/**< offset relative to ip hdr */
-      u16 data_len;		/**< data len */
+      u16 hdr_offset;  /**< offset relative to ip hdr */
+      u16 data_offset; /**< offset relative to ip hdr */
+      u16 data_len;    /**< data len */
       u8 flags;
     } tcp;
 
@@ -390,32 +394,29 @@ typedef struct
 
 #define VNET_REWRITE_TOTAL_BYTES (VLIB_BUFFER_PRE_DATA_SIZE)
 
-STATIC_ASSERT (STRUCT_SIZE_OF (vnet_buffer_opaque_t, ip.save_rewrite_length)
-	       == STRUCT_SIZE_OF (vnet_buffer_opaque_t,
-				  ip.reass.save_rewrite_length)
-	       && STRUCT_SIZE_OF (vnet_buffer_opaque_t,
-				  ip.reass.save_rewrite_length) ==
-	       STRUCT_SIZE_OF (vnet_buffer_opaque_t, mpls.save_rewrite_length)
-	       && STRUCT_SIZE_OF (vnet_buffer_opaque_t,
-				  mpls.save_rewrite_length) == 1
-	       && VNET_REWRITE_TOTAL_BYTES < UINT8_MAX,
-	       "save_rewrite_length member must be able to hold the max value of rewrite length");
+STATIC_ASSERT (
+  STRUCT_SIZE_OF (vnet_buffer_opaque_t, ip.save_rewrite_length) ==
+      STRUCT_SIZE_OF (vnet_buffer_opaque_t, ip.reass.save_rewrite_length) &&
+    STRUCT_SIZE_OF (vnet_buffer_opaque_t, ip.reass.save_rewrite_length) ==
+      STRUCT_SIZE_OF (vnet_buffer_opaque_t, mpls.save_rewrite_length) &&
+    STRUCT_SIZE_OF (vnet_buffer_opaque_t, mpls.save_rewrite_length) == 1 &&
+    VNET_REWRITE_TOTAL_BYTES < UINT8_MAX,
+  "save_rewrite_length member must be able to hold the max value of rewrite "
+  "length");
 
-STATIC_ASSERT (STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.save_rewrite_length)
-	       == STRUCT_OFFSET_OF (vnet_buffer_opaque_t,
-				    ip.reass.save_rewrite_length)
-	       && STRUCT_OFFSET_OF (vnet_buffer_opaque_t,
-				    mpls.save_rewrite_length) ==
-	       STRUCT_OFFSET_OF (vnet_buffer_opaque_t,
-				 ip.reass.save_rewrite_length),
-	       "save_rewrite_length must be aligned so that reass doesn't overwrite it");
+STATIC_ASSERT (
+  STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.save_rewrite_length) ==
+      STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.reass.save_rewrite_length) &&
+    STRUCT_OFFSET_OF (vnet_buffer_opaque_t, mpls.save_rewrite_length) ==
+      STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.reass.save_rewrite_length),
+  "save_rewrite_length must be aligned so that reass doesn't overwrite it");
 
 /*
  * The opaque field of the vlib_buffer_t is interpreted as a
  * vnet_buffer_opaque_t. Hence it should be big enough to accommodate one.
  */
 STATIC_ASSERT (sizeof (vnet_buffer_opaque_t) <=
-	       STRUCT_SIZE_OF (vlib_buffer_t, opaque),
+		 STRUCT_SIZE_OF (vlib_buffer_t, opaque),
 	       "VNET buffer meta-data too large for vlib_buffer");
 
 #define vnet_buffer(b) ((vnet_buffer_opaque_t *) (b)->opaque)
@@ -448,9 +449,10 @@ typedef struct
   /**
    * The L4 payload size set on input on GSO enabled interfaces
    * when we receive a GSO packet (a chain of buffers with the first one
-   * having GSO bit set), and needs to persist all the way to the interface-output,
-   * in case the egress interface is not GSO-enabled - then we need to perform
-   * the segmentation, and use this value to cut the payload appropriately.
+   * having GSO bit set), and needs to persist all the way to the
+   * interface-output, in case the egress interface is not GSO-enabled - then
+   * we need to perform the segmentation, and use this value to cut the payload
+   * appropriately.
    */
   u16 gso_size;
   /* size of L4 prototol header */
@@ -491,14 +493,12 @@ typedef struct
  * vnet_buffer_opaque2_t. Hence it should be big enough to accommodate one.
  */
 STATIC_ASSERT (sizeof (vnet_buffer_opaque2_t) <=
-	       STRUCT_SIZE_OF (vlib_buffer_t, opaque2),
+		 STRUCT_SIZE_OF (vlib_buffer_t, opaque2),
 	       "VNET buffer opaque2 meta-data too large for vlib_buffer");
 
-#define gso_mtu_sz(b) (vnet_buffer2(b)->gso_size + \
-                       vnet_buffer2(b)->gso_l4_hdr_sz + \
-                       vnet_buffer(b)->l4_hdr_offset - \
-                       vnet_buffer (b)->l3_hdr_offset)
-
+#define gso_mtu_sz(b)                                                         \
+  (vnet_buffer2 (b)->gso_size + vnet_buffer2 (b)->gso_l4_hdr_sz +             \
+   vnet_buffer (b)->l4_hdr_offset - vnet_buffer (b)->l3_hdr_offset)
 
 format_function_t format_vnet_buffer;
 

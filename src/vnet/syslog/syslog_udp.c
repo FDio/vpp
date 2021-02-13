@@ -22,7 +22,7 @@
 #include <vnet/udp/udp_packet.h>
 
 void
-syslog_add_udp_transport (vlib_main_t * vm, u32 bi)
+syslog_add_udp_transport (vlib_main_t *vm, u32 bi)
 {
   syslog_main_t *sm = &syslog_main;
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);

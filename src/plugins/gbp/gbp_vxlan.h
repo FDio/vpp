@@ -25,7 +25,7 @@
 
 typedef enum gbp_vxlan_tunnel_layer_t_
 {
-#define _(s,n) GBP_VXLAN_TUN_##s,
+#define _(s, n) GBP_VXLAN_TUN_##s,
   foreach_gbp_vxlan_tunnel_layer
 #undef _
 } gbp_vxlan_tunnel_layer_t;
@@ -101,27 +101,24 @@ typedef enum gbp_vxlan_tunnel_type_t_
 } gbp_vxlan_tunnel_type_t;
 
 extern int gbp_vxlan_tunnel_add (u32 vni, gbp_vxlan_tunnel_layer_t layer,
-				 u32 bd_rd_id,
-				 const ip4_address_t * src,
-				 u32 * sw_if_indexp);
+				 u32 bd_rd_id, const ip4_address_t *src,
+				 u32 *sw_if_indexp);
 extern int gbp_vxlan_tunnel_del (u32 vni);
 
 extern gbp_vxlan_tunnel_type_t gbp_vxlan_tunnel_get_type (u32 sw_if_index);
 
-extern gbp_itf_hdl_t gbp_vxlan_tunnel_clone_and_lock (u32 parent_tunnel,
-						      const ip46_address_t *
-						      src,
-						      const ip46_address_t *
-						      dst);
+extern gbp_itf_hdl_t
+gbp_vxlan_tunnel_clone_and_lock (u32 parent_tunnel, const ip46_address_t *src,
+				 const ip46_address_t *dst);
 
 extern u32 vxlan_gbp_tunnel_get_parent (u32 sw_if_index);
 extern gbp_itf_hdl_t vxlan_gbp_tunnel_lock_itf (u32 sw_if_index);
 
-typedef walk_rc_t (*gbp_vxlan_cb_t) (gbp_vxlan_tunnel_t * gt, void *ctx);
+typedef walk_rc_t (*gbp_vxlan_cb_t) (gbp_vxlan_tunnel_t *gt, void *ctx);
 extern void gbp_vxlan_walk (gbp_vxlan_cb_t cb, void *ctx);
 
-extern u8 *format_gbp_vxlan_tunnel (u8 * s, va_list * args);
-extern u8 *format_gbp_vxlan_tunnel_layer (u8 * s, va_list * args);
+extern u8 *format_gbp_vxlan_tunnel (u8 *s, va_list *args);
+extern u8 *format_gbp_vxlan_tunnel_layer (u8 *s, va_list *args);
 
 extern gbp_vxlan_tunnel_t *gbp_vxlan_tunnel_get (index_t gti);
 #endif

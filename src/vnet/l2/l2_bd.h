@@ -52,9 +52,9 @@ extern bd_main_t bd_main;
 
 typedef struct
 {
-  u32 sw_if_index;		/* the output L2 interface */
-  u8 flags;			/* 0=normal, 1=bvi */
-  u8 shg;			/* split horizon group number  */
+  u32 sw_if_index; /* the output L2 interface */
+  u8 flags;	   /* 0=normal, 1=bvi */
+  u8 shg;	   /* split horizon group number  */
   u16 spare;
 } l2_flood_member_t;
 
@@ -119,7 +119,7 @@ typedef struct
 } l2_bridge_domain_t;
 
 /* Limit Bridge Domain ID to 24 bits to match 24-bit VNI range */
-#define L2_BD_ID_MAX ((1<<24)-1)
+#define L2_BD_ID_MAX ((1 << 24) - 1)
 
 typedef struct
 {
@@ -137,18 +137,17 @@ typedef struct
 
 /* Return 1 if bridge domain has been initialized */
 always_inline u32
-bd_is_valid (l2_bridge_domain_t * bd_config)
+bd_is_valid (l2_bridge_domain_t *bd_config)
 {
   return (bd_config->feature_bitmap != 0);
 }
 
 /* Init bridge domain if not done already */
-void bd_validate (l2_bridge_domain_t * bd_config);
+void bd_validate (l2_bridge_domain_t *bd_config);
 
-void
-bd_add_member (l2_bridge_domain_t * bd_config, l2_flood_member_t * member);
+void bd_add_member (l2_bridge_domain_t *bd_config, l2_flood_member_t *member);
 
-u32 bd_remove_member (l2_bridge_domain_t * bd_config, u32 sw_if_index);
+u32 bd_remove_member (l2_bridge_domain_t *bd_config, u32 sw_if_index);
 
 typedef enum bd_flags_t_
 {
@@ -161,11 +160,10 @@ typedef enum bd_flags_t_
   L2_ARP_UFWD = (1 << 5),
 } bd_flags_t;
 
-u32 bd_set_flags (vlib_main_t * vm, u32 bd_index, bd_flags_t flags,
-		  u32 enable);
-void bd_set_mac_age (vlib_main_t * vm, u32 bd_index, u8 age);
+u32 bd_set_flags (vlib_main_t *vm, u32 bd_index, bd_flags_t flags, u32 enable);
+void bd_set_mac_age (vlib_main_t *vm, u32 bd_index, u8 age);
 void bd_set_learn_limit (vlib_main_t *vm, u32 bd_index, u32 learn_limit);
-int bd_add_del (l2_bridge_domain_add_del_args_t * args);
+int bd_add_del (l2_bridge_domain_add_del_args_t *args);
 
 /**
  * \brief Get a bridge domain.
@@ -174,9 +172,10 @@ int bd_add_del (l2_bridge_domain_add_del_args_t * args);
  *
  * \param bdm bd_main pointer.
  * \param bd_id The bridge domain ID
- * \return The bridge domain index in \c l2input_main->l2_bridge_domain_t vector.
+ * \return The bridge domain index in \c l2input_main->l2_bridge_domain_t
+ * vector.
  */
-u32 bd_find_index (bd_main_t * bdm, u32 bd_id);
+u32 bd_find_index (bd_main_t *bdm, u32 bd_id);
 
 /**
  * \brief Create a bridge domain.
@@ -184,22 +183,25 @@ u32 bd_find_index (bd_main_t * bdm, u32 bd_id);
  * Create a bridge domain with the given bridge domain ID
  *
  * \param bdm bd_main pointer.
- * \return The bridge domain index in \c l2input_main->l2_bridge_domain_t vector.
+ * \return The bridge domain index in \c l2input_main->l2_bridge_domain_t
+ * vector.
  */
-u32 bd_add_bd_index (bd_main_t * bdm, u32 bd_id);
+u32 bd_add_bd_index (bd_main_t *bdm, u32 bd_id);
 
 /**
  * \brief Get or create a bridge domain.
  *
- * Get a bridge domain with the given bridge domain ID, if one exists, otherwise
- * create one with the given ID, or the first unused ID if the given ID is ~0..
+ * Get a bridge domain with the given bridge domain ID, if one exists,
+ * otherwise create one with the given ID, or the first unused ID if the given
+ * ID is ~0..
  *
  * \param bdm bd_main pointer.
  * \param bd_id The bridge domain ID
- * \return The bridge domain index in \c l2input_main->l2_bridge_domain_t vector.
+ * \return The bridge domain index in \c l2input_main->l2_bridge_domain_t
+ * vector.
  */
 static inline u32
-bd_find_or_add_bd_index (bd_main_t * bdm, u32 bd_id)
+bd_find_or_add_bd_index (bd_main_t *bdm, u32 bd_id)
 {
   u32 bd_index = bd_find_index (bdm, bd_id);
   if (bd_index == ~0)
@@ -217,10 +219,9 @@ u32 bd_input_walk (u32 bd_index, bd_input_walk_fn_t fn, void *data);
 l2_bridge_domain_t *bd_get (u32 bd_index);
 l2_bridge_domain_t *bd_get_by_table_id (u32 table_id);
 
-u32 bd_add_del_ip_mac (u32 bd_index,
-		       ip46_type_t type,
-		       const ip46_address_t * ip_addr,
-		       const mac_address_t * mac, u8 is_add);
+u32 bd_add_del_ip_mac (u32 bd_index, ip46_type_t type,
+		       const ip46_address_t *ip_addr, const mac_address_t *mac,
+		       u8 is_add);
 
 void bd_flush_ip_mac (u32 bd_index);
 

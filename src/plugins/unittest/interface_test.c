@@ -16,8 +16,8 @@
 #include <vnet/vnet.h>
 
 static clib_error_t *
-test_interface_command_fn (vlib_main_t * vm,
-			   unformat_input_t * input, vlib_cli_command_t * cmd)
+test_interface_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   vnet_hw_interface_flags_t flags;
   vnet_main_t *vnm;
@@ -29,8 +29,8 @@ test_interface_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (input, "up"))
 	flags = VNET_HW_INTERFACE_FLAG_LINK_UP;
@@ -57,14 +57,11 @@ test_interface_command_fn (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_interface_command, static) =
-{
+VLIB_CLI_COMMAND (test_interface_command, static) = {
   .path = "test interface link-state",
   .short_help = "test interface link-state <interface> [up] [down]",
   .function = test_interface_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

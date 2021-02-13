@@ -15,8 +15,7 @@
 #ifndef __IPSEC_IO_H__
 #define __IPSEC_IO_H__
 
-#define foreach_ipsec_output_next  \
-  _ (DROP, "error-drop")
+#define foreach_ipsec_output_next _ (DROP, "error-drop")
 
 #define _(v, s) IPSEC_OUTPUT_NEXT_##v,
 typedef enum
@@ -26,8 +25,8 @@ typedef enum
     IPSEC_OUTPUT_N_NEXT,
 } ipsec_output_next_t;
 
-#define foreach_ipsec_input_next   \
-  _ (PUNT, "punt-dispatch")        \
+#define foreach_ipsec_input_next                                              \
+  _ (PUNT, "punt-dispatch")                                                   \
   _ (DROP, "error-drop")
 
 typedef enum
@@ -37,7 +36,6 @@ typedef enum
 #undef _
     IPSEC_INPUT_N_NEXT,
 } ipsec_input_next_t;
-
 
 typedef struct
 {

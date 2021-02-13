@@ -20,7 +20,7 @@
 #include <vppinfra/error.h>
 #include <ctype.h>
 
-uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
+uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
 
 /* Declare message IDs */
 #include <tlsopenssl/tls_openssl.api_enum.h>
@@ -39,7 +39,7 @@ tls_openssl_test_main_t tls_openssl_test_main;
 #include <vlibapi/vat_helper_macros.h>
 
 static int
-api_tls_openssl_set_engine (vat_main_t * vam)
+api_tls_openssl_set_engine (vat_main_t *vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_tls_openssl_set_engine_t *mp;
@@ -82,7 +82,6 @@ api_tls_openssl_set_engine (vat_main_t * vam)
       for (int i = 0; i < strnlen ((char *) engine_alg, 63); i++)
 	engine_alg[i] = toupper (engine_alg[i]);
     }
-
 
   /* Construct the API message */
   M (TLS_OPENSSL_SET_ENGINE, mp);

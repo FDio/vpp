@@ -42,7 +42,7 @@
 #ifdef CLIB_UNIX
 #include <unistd.h>
 #include <stdlib.h>
-#include <stdio.h>		/* scanf */
+#include <stdio.h> /* scanf */
 #endif
 
 #include <vppinfra/format.h>
@@ -50,8 +50,11 @@
 #include <vppinfra/time.h>
 
 static int verbose = 0;
-#define if_verbose(format,args...) \
-  if (verbose) { clib_warning(format, ## args); }
+#define if_verbose(format, args...)                                           \
+  if (verbose)                                                                \
+    {                                                                         \
+      clib_warning (format, ##args);                                          \
+    }
 
 int
 test1 (void)
@@ -73,9 +76,8 @@ test1 (void)
 
   for (i = 0; i < vec_len (objects); i++)
     {
-      h = mheap_get_aligned (h, 24 /* size */ ,
-			     64 /* align */ ,
-			     16 /* align at offset */ , &objects[i]);
+      h = mheap_get_aligned (h, 24 /* size */, 64 /* align */,
+			     16 /* align at offset */, &objects[i]);
     }
 
   after = clib_time_now (&clib_time);
@@ -87,9 +89,8 @@ test1 (void)
   return 0;
 }
 
-
 int
-test_mheap_main (unformat_input_t * input)
+test_mheap_main (unformat_input_t *input)
 {
   int i, j, k, n_iterations;
   void *h, *h_mem;
@@ -117,20 +118,19 @@ test_mheap_main (unformat_input_t * input)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (0 == unformat (input, "iter %d", &n_iterations)
-	  && 0 == unformat (input, "count %d", &n_objects)
-	  && 0 == unformat (input, "size %d", &max_object_size)
-	  && 0 == unformat (input, "seed %d", &seed)
-	  && 0 == unformat (input, "print %d", &print_every)
-	  && 0 == unformat (input, "validdata %|",
-			    &check_mask, CHECK_DATA | CHECK_VALIDITY)
-	  && 0 == unformat (input, "valid %|",
-			    &check_mask, CHECK_VALIDITY)
-	  && 0 == unformat (input, "verbose %=", &really_verbose, 1)
-	  && 0 == unformat (input, "trace %=", &trace, 1)
-	  && 0 == unformat (input, "vm %=", &use_vm, 1)
-	  && 0 == unformat (input, "align %|", &check_mask, CHECK_ALIGN)
-	  && 0 == unformat (input, "test1 %|", &check_mask, TEST1))
+      if (0 == unformat (input, "iter %d", &n_iterations) &&
+	  0 == unformat (input, "count %d", &n_objects) &&
+	  0 == unformat (input, "size %d", &max_object_size) &&
+	  0 == unformat (input, "seed %d", &seed) &&
+	  0 == unformat (input, "print %d", &print_every) &&
+	  0 == unformat (input, "validdata %|", &check_mask,
+			 CHECK_DATA | CHECK_VALIDITY) &&
+	  0 == unformat (input, "valid %|", &check_mask, CHECK_VALIDITY) &&
+	  0 == unformat (input, "verbose %=", &really_verbose, 1) &&
+	  0 == unformat (input, "trace %=", &trace, 1) &&
+	  0 == unformat (input, "vm %=", &use_vm, 1) &&
+	  0 == unformat (input, "align %|", &check_mask, CHECK_ALIGN) &&
+	  0 == unformat (input, "test1 %|", &check_mask, TEST1))
 	{
 	  clib_warning ("unknown input `%U'", format_unformat_error, input);
 	  return 1;
@@ -146,20 +146,19 @@ test_mheap_main (unformat_input_t * input)
       return test1 ();
     }
 
-  if_verbose
-    ("testing %d iterations, %d %saligned objects, max. size %d, seed %d",
-     n_iterations, n_objects, (check_mask & CHECK_ALIGN) ? "randomly " : "un",
-     max_object_size, seed);
+  if_verbose (
+    "testing %d iterations, %d %saligned objects, max. size %d, seed %d",
+    n_iterations, n_objects, (check_mask & CHECK_ALIGN) ? "randomly " : "un",
+    max_object_size, seed);
 
   vec_resize (objects, n_objects);
-  if (vec_bytes (objects) > 0)	/* stupid warning be gone */
+  if (vec_bytes (objects) > 0) /* stupid warning be gone */
     clib_memset (objects, ~0, vec_bytes (objects));
   objects_used = 0;
 
   /* Allocate initial heap. */
   {
-    uword size =
-      max_pow2 (2 * n_objects * max_object_size * sizeof (data[0]));
+    uword size = max_pow2 (2 * n_objects * max_object_size * sizeof (data[0]));
 
     h_mem = clib_mem_alloc (size);
     if (!h_mem)
@@ -205,8 +204,8 @@ test_mheap_main (unformat_input_t * input)
 	  if (check_mask & CHECK_ALIGN)
 	    {
 	      align = 1 << (random_u32 (&seed) % 10);
-	      align_offset = round_pow2 (random_u32 (&seed) & (align - 1),
-					 sizeof (u32));
+	      align_offset =
+		round_pow2 (random_u32 (&seed) & (align - 1), sizeof (u32));
 	    }
 
 	  h = mheap_get_aligned (h, size, align, align_offset, &objects[j]);

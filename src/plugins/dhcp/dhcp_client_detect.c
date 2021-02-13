@@ -18,26 +18,25 @@
 #include <dhcp/client.h>
 #include <vnet/udp/udp_local.h>
 
-#define foreach_dhcp_client_detect                    \
-  _(EXTRACT, "Extract")
+#define foreach_dhcp_client_detect _ (EXTRACT, "Extract")
 
 typedef enum
 {
-#define _(sym,str) DHCP_CLIENT_DETECT_ERROR_##sym,
+#define _(sym, str) DHCP_CLIENT_DETECT_ERROR_##sym,
   foreach_dhcp_client_detect
 #undef _
     DHCP_CLIENT_DETECT_N_ERROR,
 } dhcp_client_detect_error_t;
 
 static char *dhcp_client_detect_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_dhcp_client_detect
 #undef _
 };
 
 typedef enum
 {
-#define _(sym,str) DHCP_CLIENT_DETECT_NEXT_##sym,
+#define _(sym, str) DHCP_CLIENT_DETECT_NEXT_##sym,
   foreach_dhcp_client_detect
 #undef _
     DHCP_CLIENT_DETECT_N_NEXT,
@@ -52,9 +51,8 @@ typedef struct dhcp_client_detect_trace_t_
   u8 extracted;
 } dhcp_client_detect_trace_t;
 
-VLIB_NODE_FN (dhcp_client_detect_node) (vlib_main_t * vm,
-					vlib_node_runtime_t * node,
-					vlib_frame_t * frame)
+VLIB_NODE_FN (dhcp_client_detect_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   dhcp_client_detect_next_t next_index;
   u16 dhcp_client_port_network_order;
@@ -203,9 +201,8 @@ VLIB_NODE_FN (dhcp_client_detect_node) (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, bi2, bi3,
+	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, bi2, bi3,
 					   next0, next1, next2, next3);
 	}
 
@@ -258,9 +255,8 @@ VLIB_NODE_FN (dhcp_client_detect_node) (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -274,19 +270,17 @@ VLIB_NODE_FN (dhcp_client_detect_node) (vlib_main_t * vm,
 
 /* packet trace format function */
 static u8 *
-format_dhcp_client_detect_trace (u8 * s, va_list * args)
+format_dhcp_client_detect_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  dhcp_client_detect_trace_t *t =
-    va_arg (*args, dhcp_client_detect_trace_t *);
+  dhcp_client_detect_trace_t *t = va_arg (*args, dhcp_client_detect_trace_t *);
 
   s = format (s, "dhcp-client-detect: %s", (t->extracted ? "yes" : "no"));
 
   return s;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dhcp_client_detect_node) = {
   .name = "ip4-dhcp-client-detect",
   .vector_size = sizeof (u32),
@@ -306,14 +300,11 @@ VLIB_REGISTER_NODE (dhcp_client_detect_node) = {
   },
 };
 
-VNET_FEATURE_INIT (ip4_dvr_reinject_feat_node, static) =
-{
+VNET_FEATURE_INIT (ip4_dvr_reinject_feat_node, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "ip4-dhcp-client-detect",
   .runs_before = VNET_FEATURES ("ip4-not-enabled"),
 };
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

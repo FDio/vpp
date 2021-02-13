@@ -46,7 +46,7 @@ gbp_policy_dpo_alloc (void)
 }
 
 static inline gbp_policy_dpo_t *
-gbp_policy_dpo_get_from_dpo (const dpo_id_t * dpo)
+gbp_policy_dpo_get_from_dpo (const dpo_id_t *dpo)
 {
   ASSERT (gbp_policy_dpo_type == dpo->dpoi_type);
 
@@ -54,13 +54,13 @@ gbp_policy_dpo_get_from_dpo (const dpo_id_t * dpo)
 }
 
 static inline index_t
-gbp_policy_dpo_get_index (gbp_policy_dpo_t * gpd)
+gbp_policy_dpo_get_index (gbp_policy_dpo_t *gpd)
 {
   return (gpd - gbp_policy_dpo_pool);
 }
 
 static void
-gbp_policy_dpo_lock (dpo_id_t * dpo)
+gbp_policy_dpo_lock (dpo_id_t *dpo)
 {
   gbp_policy_dpo_t *gpd;
 
@@ -69,7 +69,7 @@ gbp_policy_dpo_lock (dpo_id_t * dpo)
 }
 
 static void
-gbp_policy_dpo_unlock (dpo_id_t * dpo)
+gbp_policy_dpo_unlock (dpo_id_t *dpo)
 {
   gbp_policy_dpo_t *gpd;
 
@@ -84,7 +84,7 @@ gbp_policy_dpo_unlock (dpo_id_t * dpo)
 }
 
 static u32
-gbp_policy_dpo_get_urpf (const dpo_id_t * dpo)
+gbp_policy_dpo_get_urpf (const dpo_id_t *dpo)
 {
   gbp_policy_dpo_t *gpd;
 
@@ -94,9 +94,8 @@ gbp_policy_dpo_get_urpf (const dpo_id_t * dpo)
 }
 
 void
-gbp_policy_dpo_add_or_lock (dpo_proto_t dproto,
-			    gbp_scope_t scope,
-			    sclass_t sclass, u32 sw_if_index, dpo_id_t * dpo)
+gbp_policy_dpo_add_or_lock (dpo_proto_t dproto, gbp_scope_t scope,
+			    sclass_t sclass, u32 sw_if_index, dpo_id_t *dpo)
 {
   gbp_policy_dpo_t *gpd;
   dpo_id_t parent = DPO_INVALID;
@@ -125,7 +124,7 @@ gbp_policy_dpo_add_or_lock (dpo_proto_t dproto,
 }
 
 u8 *
-format_gbp_policy_dpo (u8 * s, va_list * ap)
+format_gbp_policy_dpo (u8 *s, va_list *ap)
 {
   index_t index = va_arg (*ap, index_t);
   u32 indent = va_arg (*ap, u32);
@@ -133,9 +132,9 @@ format_gbp_policy_dpo (u8 * s, va_list * ap)
   vnet_main_t *vnm = vnet_get_main ();
 
   s = format (s, "gbp-policy-dpo: %U, scope:%d sclass:%d out:%U",
-	      format_dpo_proto, gpd->gpd_proto,
-	      gpd->gpd_scope, (int) gpd->gpd_sclass,
-	      format_vnet_sw_if_index_name, vnm, gpd->gpd_sw_if_index);
+	      format_dpo_proto, gpd->gpd_proto, gpd->gpd_scope,
+	      (int) gpd->gpd_sclass, format_vnet_sw_if_index_name, vnm,
+	      gpd->gpd_sw_if_index);
   s = format (s, "\n%U", format_white_space, indent + 2);
   s = format (s, "%U", format_dpo_id, &gpd->gpd_dpo, indent + 4);
 
@@ -146,8 +145,8 @@ format_gbp_policy_dpo (u8 * s, va_list * ap)
  * Interpose a policy DPO
  */
 static void
-gbp_policy_dpo_interpose (const dpo_id_t * original,
-			  const dpo_id_t * parent, dpo_id_t * clone)
+gbp_policy_dpo_interpose (const dpo_id_t *original, const dpo_id_t *parent,
+			  dpo_id_t *clone)
 {
   gbp_policy_dpo_t *gpd, *gpd_clone;
 
@@ -166,12 +165,11 @@ gbp_policy_dpo_interpose (const dpo_id_t * original,
   if (~0 == gpd_clone->gpd_sw_if_index)
     gpd_clone->gpd_sw_if_index = dpo_get_urpf (parent);
 
-  dpo_stack (gbp_policy_dpo_type,
-	     gpd_clone->gpd_proto, &gpd_clone->gpd_dpo, parent);
+  dpo_stack (gbp_policy_dpo_type, gpd_clone->gpd_proto, &gpd_clone->gpd_dpo,
+	     parent);
 
-  dpo_set (clone,
-	   gbp_policy_dpo_type,
-	   gpd_clone->gpd_proto, gbp_policy_dpo_get_index (gpd_clone));
+  dpo_set (clone, gbp_policy_dpo_type, gpd_clone->gpd_proto,
+	   gbp_policy_dpo_get_index (gpd_clone));
 }
 
 const static dpo_vft_t gbp_policy_dpo_vft = {
@@ -211,10 +209,10 @@ gbp_policy_dpo_get_type (void)
 }
 
 static clib_error_t *
-gbp_policy_dpo_module_init (vlib_main_t * vm)
+gbp_policy_dpo_module_init (vlib_main_t *vm)
 {
-  gbp_policy_dpo_type = dpo_register_new_type (&gbp_policy_dpo_vft,
-					       gbp_policy_dpo_nodes);
+  gbp_policy_dpo_type =
+    dpo_register_new_type (&gbp_policy_dpo_vft, gbp_policy_dpo_nodes);
 
   return (NULL);
 }
@@ -229,7 +227,7 @@ typedef enum
 } gbp_policy_next_t;
 
 always_inline u32
-gbp_rule_l3_redirect (const gbp_rule_t * gu, vlib_buffer_t * b0, int is_ip6)
+gbp_rule_l3_redirect (const gbp_rule_t *gu, vlib_buffer_t *b0, int is_ip6)
 {
   gbp_policy_node_t pnode;
   const dpo_id_t *dpo;
@@ -246,9 +244,8 @@ gbp_rule_l3_redirect (const gbp_rule_t * gu, vlib_buffer_t * b0, int is_ip6)
 }
 
 always_inline uword
-gbp_policy_dpo_inline (vlib_main_t * vm,
-		       vlib_node_runtime_t * node,
-		       vlib_frame_t * from_frame, u8 is_ip6)
+gbp_policy_dpo_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_frame_t *from_frame, u8 is_ip6)
 {
   gbp_main_t *gm = &gbp_main;
   u32 n_left_from, next_index, *from, *to_next;
@@ -293,8 +290,9 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	  /*
 	   * Reflection check; in and out on an ivxlan tunnel
 	   */
-	  if ((~0 != vxlan_gbp_tunnel_by_sw_if_index (gpd0->gpd_sw_if_index))
-	      && (vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_R))
+	  if ((~0 !=
+	       vxlan_gbp_tunnel_by_sw_if_index (gpd0->gpd_sw_if_index)) &&
+	      (vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_R))
 	    {
 	      goto trace;
 	    }
@@ -324,12 +322,10 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	  key0.gck_scope = gpd0->gpd_scope;
 	  key0.gck_dst = gpd0->gpd_sclass;
 
-	  action0 =
-	    gbp_contract_apply (vm, gm, &key0, b0, &rule0, &n_allow_intra,
-				&n_allow_sclass_1, &acl_match, &rule_match,
-				&err0,
-				is_ip6 ? GBP_CONTRACT_APPLY_IP6 :
-				GBP_CONTRACT_APPLY_IP4);
+	  action0 = gbp_contract_apply (
+	    vm, gm, &key0, b0, &rule0, &n_allow_intra, &n_allow_sclass_1,
+	    &acl_match, &rule_match, &err0,
+	    is_ip6 ? GBP_CONTRACT_APPLY_IP6 : GBP_CONTRACT_APPLY_IP4);
 	  switch (action0)
 	    {
 	    case GBP_RULE_PERMIT:
@@ -360,56 +356,49 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 			       GBP_CONTRACT_ERROR_ALLOW_INTRA, n_allow_intra);
   vlib_node_increment_counter (vm, node->node_index,
 			       GBP_CONTRACT_ERROR_ALLOW_A_BIT, n_allow_a_bit);
-  vlib_node_increment_counter (vm, node->node_index,
-			       GBP_CONTRACT_ERROR_ALLOW_SCLASS_1,
-			       n_allow_sclass_1);
+  vlib_node_increment_counter (
+    vm, node->node_index, GBP_CONTRACT_ERROR_ALLOW_SCLASS_1, n_allow_sclass_1);
   return from_frame->n_vectors;
 }
 
-VLIB_NODE_FN (ip4_gbp_policy_dpo_node) (vlib_main_t * vm,
-					vlib_node_runtime_t * node,
-					vlib_frame_t * from_frame)
+VLIB_NODE_FN (ip4_gbp_policy_dpo_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return (gbp_policy_dpo_inline (vm, node, from_frame, 0));
 }
 
-VLIB_NODE_FN (ip6_gbp_policy_dpo_node) (vlib_main_t * vm,
-					vlib_node_runtime_t * node,
-					vlib_frame_t * from_frame)
+VLIB_NODE_FN (ip6_gbp_policy_dpo_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return (gbp_policy_dpo_inline (vm, node, from_frame, 1));
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip4_gbp_policy_dpo_node) = {
-    .name = "ip4-gbp-policy-dpo",
-    .vector_size = sizeof (u32),
-    .format_trace = format_gbp_policy_trace,
+VLIB_REGISTER_NODE (
+  ip4_gbp_policy_dpo_node) = { .name = "ip4-gbp-policy-dpo",
+			       .vector_size = sizeof (u32),
+			       .format_trace = format_gbp_policy_trace,
 
-    .n_errors = ARRAY_LEN(gbp_contract_error_strings),
-    .error_strings = gbp_contract_error_strings,
+			       .n_errors =
+				 ARRAY_LEN (gbp_contract_error_strings),
+			       .error_strings = gbp_contract_error_strings,
 
-    .n_next_nodes = GBP_POLICY_N_NEXT,
-    .next_nodes =
-    {
-        [GBP_POLICY_DROP] = "ip4-drop",
-    }
-};
-VLIB_REGISTER_NODE (ip6_gbp_policy_dpo_node) = {
-    .name = "ip6-gbp-policy-dpo",
-    .vector_size = sizeof (u32),
-    .format_trace = format_gbp_policy_trace,
+			       .n_next_nodes = GBP_POLICY_N_NEXT,
+			       .next_nodes = {
+				 [GBP_POLICY_DROP] = "ip4-drop",
+			       } };
+VLIB_REGISTER_NODE (
+  ip6_gbp_policy_dpo_node) = { .name = "ip6-gbp-policy-dpo",
+			       .vector_size = sizeof (u32),
+			       .format_trace = format_gbp_policy_trace,
 
-    .n_errors = ARRAY_LEN(gbp_contract_error_strings),
-    .error_strings = gbp_contract_error_strings,
+			       .n_errors =
+				 ARRAY_LEN (gbp_contract_error_strings),
+			       .error_strings = gbp_contract_error_strings,
 
-    .n_next_nodes = GBP_POLICY_N_NEXT,
-    .next_nodes =
-    {
-        [GBP_POLICY_DROP] = "ip6-drop",
-    }
-};
-/* *INDENT-ON* */
+			       .n_next_nodes = GBP_POLICY_N_NEXT,
+			       .next_nodes = {
+				 [GBP_POLICY_DROP] = "ip6-drop",
+			       } };
 
 /*
  * fd.io coding-style-patch-verification: ON

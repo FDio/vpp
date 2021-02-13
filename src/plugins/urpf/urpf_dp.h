@@ -59,7 +59,7 @@ typedef struct
 } urpf_trace_t;
 
 static u8 *
-format_urpf_trace (u8 * s, va_list * va)
+format_urpf_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
@@ -70,12 +70,11 @@ format_urpf_trace (u8 * s, va_list * va)
   return s;
 }
 
-#define foreach_urpf_error                 \
-  _(DROP, "uRPF Drop")                     \
+#define foreach_urpf_error _ (DROP, "uRPF Drop")
 
 typedef enum urpf_error_t_
 {
-#define _(a,b) URPF_ERROR_##a,
+#define _(a, b) URPF_ERROR_##a,
   foreach_urpf_error
 #undef _
     URPF_N_ERROR,
@@ -88,9 +87,7 @@ typedef enum
 } urpf_next_t;
 
 static_always_inline uword
-urpf_inline (vlib_main_t * vm,
-	     vlib_node_runtime_t * node,
-	     vlib_frame_t * frame,
+urpf_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	     ip_address_family_t af, vlib_dir_t dir, urpf_mode_t mode)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
@@ -135,15 +132,15 @@ urpf_inline (vlib_main_t * vm,
 	  ip0 = (ip4_header_t *) h0;
 	  ip1 = (ip4_header_t *) h1;
 
-	  fib_index0 = ip4_main.fib_index_by_sw_if_index
-	    [vnet_buffer (b[0])->sw_if_index[dir]];
-	  fib_index1 = ip4_main.fib_index_by_sw_if_index
-	    [vnet_buffer (b[1])->sw_if_index[dir]];
+	  fib_index0 =
+	    ip4_main
+	      .fib_index_by_sw_if_index[vnet_buffer (b[0])->sw_if_index[dir]];
+	  fib_index1 =
+	    ip4_main
+	      .fib_index_by_sw_if_index[vnet_buffer (b[1])->sw_if_index[dir]];
 
-	  ip4_fib_forwarding_lookup_x2 (fib_index0,
-					fib_index1,
-					&ip0->src_address,
-					&ip1->src_address,
+	  ip4_fib_forwarding_lookup_x2 (fib_index0, fib_index1,
+					&ip0->src_address, &ip1->src_address,
 					&lb_index0, &lb_index1);
 	  /* Pass multicast. */
 	  pass0 = (ip4_address_is_multicast (&ip0->src_address) ||
@@ -155,18 +152,20 @@ urpf_inline (vlib_main_t * vm,
 	{
 	  const ip6_header_t *ip0, *ip1;
 
-	  fib_index0 = ip6_main.fib_index_by_sw_if_index
-	    [vnet_buffer (b[0])->sw_if_index[dir]];
-	  fib_index1 = ip6_main.fib_index_by_sw_if_index
-	    [vnet_buffer (b[1])->sw_if_index[dir]];
+	  fib_index0 =
+	    ip6_main
+	      .fib_index_by_sw_if_index[vnet_buffer (b[0])->sw_if_index[dir]];
+	  fib_index1 =
+	    ip6_main
+	      .fib_index_by_sw_if_index[vnet_buffer (b[1])->sw_if_index[dir]];
 
 	  ip0 = (ip6_header_t *) h0;
 	  ip1 = (ip6_header_t *) h1;
 
-	  lb_index0 = ip6_fib_table_fwding_lookup (fib_index0,
-						   &ip0->src_address);
-	  lb_index1 = ip6_fib_table_fwding_lookup (fib_index1,
-						   &ip1->src_address);
+	  lb_index0 =
+	    ip6_fib_table_fwding_lookup (fib_index0, &ip0->src_address);
+	  lb_index1 =
+	    ip6_fib_table_fwding_lookup (fib_index1, &ip1->src_address);
 	  pass0 = ip6_address_is_multicast (&ip0->src_address);
 	  pass1 = ip6_address_is_multicast (&ip1->src_address);
 	}
@@ -259,12 +258,13 @@ urpf_inline (vlib_main_t * vm,
 	{
 	  const ip4_header_t *ip0;
 
-	  fib_index0 = ip4_main.fib_index_by_sw_if_index
-	    [vnet_buffer (b[0])->sw_if_index[dir]];
+	  fib_index0 =
+	    ip4_main
+	      .fib_index_by_sw_if_index[vnet_buffer (b[0])->sw_if_index[dir]];
 	  ip0 = (ip4_header_t *) h0;
 
-	  lb_index0 = ip4_fib_forwarding_lookup (fib_index0,
-						 &ip0->src_address);
+	  lb_index0 =
+	    ip4_fib_forwarding_lookup (fib_index0, &ip0->src_address);
 
 	  /* Pass multicast. */
 	  pass0 = (ip4_address_is_multicast (&ip0->src_address) ||
@@ -275,11 +275,12 @@ urpf_inline (vlib_main_t * vm,
 	  const ip6_header_t *ip0;
 
 	  ip0 = (ip6_header_t *) h0;
-	  fib_index0 = ip6_main.fib_index_by_sw_if_index
-	    [vnet_buffer (b[0])->sw_if_index[dir]];
+	  fib_index0 =
+	    ip6_main
+	      .fib_index_by_sw_if_index[vnet_buffer (b[0])->sw_if_index[dir]];
 
-	  lb_index0 = ip6_fib_table_fwding_lookup (fib_index0,
-						   &ip0->src_address);
+	  lb_index0 =
+	    ip6_fib_table_fwding_lookup (fib_index0, &ip0->src_address);
 	  pass0 = ip6_address_is_multicast (&ip0->src_address);
 	}
 

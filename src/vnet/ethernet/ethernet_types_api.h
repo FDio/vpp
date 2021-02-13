@@ -23,8 +23,8 @@
 #include <vnet/ethernet/mac_address.h>
 #include <vlibapi/api_types.h>
 
-extern void mac_address_decode (const u8 * in, mac_address_t * out);
-extern void mac_address_encode (const mac_address_t * in, u8 * out);
+extern void mac_address_decode (const u8 *in, mac_address_t *out);
+extern void mac_address_encode (const mac_address_t *in, u8 *out);
 
 #endif
 

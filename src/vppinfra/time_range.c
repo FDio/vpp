@@ -16,16 +16,16 @@
 #include <vppinfra/time_range.h>
 
 __clib_export void
-clib_timebase_init (clib_timebase_t * tb, i32 timezone_offset_in_hours,
+clib_timebase_init (clib_timebase_t *tb, i32 timezone_offset_in_hours,
 		    clib_timebase_daylight_time_t daylight_type,
-		    clib_time_t * clib_time)
+		    clib_time_t *clib_time)
 {
   clib_memset (tb, 0, sizeof (*tb));
 
   if (clib_time == 0)
     {
-      tb->clib_time = clib_mem_alloc_aligned
-	(sizeof (*clib_time), CLIB_CACHE_LINE_BYTES);
+      tb->clib_time =
+	clib_mem_alloc_aligned (sizeof (*clib_time), CLIB_CACHE_LINE_BYTES);
       memset (tb->clib_time, 0, sizeof (*clib_time));
       clib_time_init (tb->clib_time);
     }
@@ -50,58 +50,35 @@ clib_timebase_init (clib_timebase_t * tb, i32 timezone_offset_in_hours,
 }
 
 const static u32 days_per_month[] = {
-  31,				/* Jan */
-  28,				/* Feb */
-  31,				/* Mar */
-  30,				/* Apr */
-  31,				/* May */
-  30,				/* Jun */
-  31,				/* Jul */
-  31,				/* Aug */
-  30,				/* Sep */
-  31,				/* Oct */
-  30,				/* Nov */
-  31,				/* Dec */
+  31, /* Jan */
+  28, /* Feb */
+  31, /* Mar */
+  30, /* Apr */
+  31, /* May */
+  30, /* Jun */
+  31, /* Jul */
+  31, /* Aug */
+  30, /* Sep */
+  31, /* Oct */
+  30, /* Nov */
+  31, /* Dec */
 };
 
 const static char *month_short_names[] = {
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 };
 
 const static char *day_names_epoch_order[] = {
-  "Thu",
-  "Fri",
-  "Sat",
-  "Sun",
-  "Mon",
-  "Tue",
-  "Wed",
+  "Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed",
 };
 
 const static char *day_names_calendar_order[] = {
-  "Sun",
-  "Mon",
-  "Tue",
-  "Wed",
-  "Thu",
-  "Fri",
-  "Sat",
+  "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat",
 };
 
-
 __clib_export void
-clib_timebase_time_to_components (f64 now, clib_timebase_component_t * cp)
+clib_timebase_time_to_components (f64 now, clib_timebase_component_t *cp)
 {
   u32 year, month, hours, minutes, seconds, nanoseconds;
   u32 days_in_year, days_in_month, day_of_month;
@@ -182,7 +159,7 @@ clib_timebase_time_to_components (f64 now, clib_timebase_component_t * cp)
 }
 
 __clib_export f64
-clib_timebase_components_to_time (clib_timebase_component_t * cp)
+clib_timebase_components_to_time (clib_timebase_component_t *cp)
 {
   f64 now = 0;
   u32 year, days_in_year, month, days_in_month;
@@ -229,7 +206,7 @@ clib_timebase_find_sunday_midnight (f64 start_time)
 
   start_time = clib_timebase_components_to_time (cp);
 
-  while (cp->day_name_index != 3 /* sunday */ )
+  while (cp->day_name_index != 3 /* sunday */)
     {
       /* Back up one day */
       start_time -= 86400.0;
@@ -237,13 +214,13 @@ clib_timebase_find_sunday_midnight (f64 start_time)
     }
   /* Clean up residual fraction */
   start_time -= cp->fractional_seconds;
-  start_time += 1e-6;		/* 1us inside Sunday  */
+  start_time += 1e-6; /* 1us inside Sunday  */
 
   return (start_time);
 }
 
 f64
-clib_timebase_offset_from_sunday (u8 * day)
+clib_timebase_offset_from_sunday (u8 *day)
 {
   int i;
 
@@ -255,9 +232,8 @@ clib_timebase_offset_from_sunday (u8 * day)
   return 0.0;
 }
 
-
 __clib_export u8 *
-format_clib_timebase_time (u8 * s, va_list * args)
+format_clib_timebase_time (u8 *s, va_list *args)
 {
   f64 now = va_arg (*args, f64);
   clib_timebase_component_t _c, *cp = &_c;
@@ -265,30 +241,28 @@ format_clib_timebase_time (u8 * s, va_list * args)
   clib_timebase_time_to_components (now, cp);
 
   s = format (s, "%s, %u %s %u %u:%02u:%02u",
-	      day_names_epoch_order[cp->day_name_index],
-	      cp->day,
-	      month_short_names[cp->month],
-	      cp->year, cp->hour, cp->minute, cp->second);
+	      day_names_epoch_order[cp->day_name_index], cp->day,
+	      month_short_names[cp->month], cp->year, cp->hour, cp->minute,
+	      cp->second);
   return (s);
 }
 
 uword
-unformat_clib_timebase_range_hms (unformat_input_t * input, va_list * args)
+unformat_clib_timebase_range_hms (unformat_input_t *input, va_list *args)
 {
   clib_timebase_range_t *rp = va_arg (*args, clib_timebase_range_t *);
   clib_timebase_component_t _c, *cp = &_c;
   u32 start_hour, start_minute, start_second;
   u32 end_hour, end_minute, end_second;
 
-  start_hour = start_minute = start_second
-    = end_hour = end_minute = end_second = 0;
+  start_hour = start_minute = start_second = end_hour = end_minute =
+    end_second = 0;
 
-  if (unformat (input, "%u:%u:%u - %u:%u:%u",
-		&start_hour, &start_minute, &start_second,
-		&end_hour, &end_minute, &end_second))
+  if (unformat (input, "%u:%u:%u - %u:%u:%u", &start_hour, &start_minute,
+		&start_second, &end_hour, &end_minute, &end_second))
     ;
-  else if (unformat (input, "%u:%u - %u:%u",
-		     &start_hour, &start_minute, &end_hour, &end_minute))
+  else if (unformat (input, "%u:%u - %u:%u", &start_hour, &start_minute,
+		     &end_hour, &end_minute))
     ;
   else if (unformat (input, "%u - %u", &start_hour, &end_hour))
     ;
@@ -313,7 +287,7 @@ unformat_clib_timebase_range_hms (unformat_input_t * input, va_list * args)
 }
 
 __clib_export uword
-unformat_clib_timebase_range_vector (unformat_input_t * input, va_list * args)
+unformat_clib_timebase_range_vector (unformat_input_t *input, va_list *args)
 {
   clib_timebase_range_t **rpp = va_arg (*args, clib_timebase_range_t **);
   clib_timebase_range_t _tmp, *tmp = &_tmp;
@@ -329,11 +303,11 @@ unformat_clib_timebase_range_vector (unformat_input_t * input, va_list * args)
 
   while (1)
     {
-      if (!day_range_match
-	  && unformat (input, "%s - %s", &start_day, &end_day))
+      if (!day_range_match &&
+	  unformat (input, "%s - %s", &start_day, &end_day))
 	{
-	  range_start_time_offset
-	    = clib_timebase_offset_from_sunday (start_day);
+	  range_start_time_offset =
+	    clib_timebase_offset_from_sunday (start_day);
 	  range_end_time_offset = clib_timebase_offset_from_sunday (end_day);
 	  vec_free (start_day);
 	  vec_free (end_day);
@@ -342,8 +316,8 @@ unformat_clib_timebase_range_vector (unformat_input_t * input, va_list * args)
 	}
       else if (!day_range_match && unformat (input, "%s", &start_day))
 	{
-	  range_start_time_offset
-	    = clib_timebase_offset_from_sunday (start_day);
+	  range_start_time_offset =
+	    clib_timebase_offset_from_sunday (start_day);
 	  range_end_time_offset = range_start_time_offset + 86399.0;
 	  day_range_match = 1;
 	  vec_free (start_day);
@@ -388,14 +362,14 @@ unformat_clib_timebase_range_vector (unformat_input_t * input, va_list * args)
 }
 
 __clib_export f64
-clib_timebase_summer_offset (clib_timebase_t * tb, f64 now)
+clib_timebase_summer_offset (clib_timebase_t *tb, f64 now)
 {
   clib_timebase_component_t _c, *cp = &_c;
   f64 second_sunday_march_2am;
   f64 first_sunday_november_2am;
 
-  if (PREDICT_TRUE
-      (now >= tb->cached_year_start && now <= tb->cached_year_end))
+  if (PREDICT_TRUE (now >= tb->cached_year_start &&
+		    now <= tb->cached_year_end))
     {
       if (now >= tb->cached_summer_start && now <= tb->cached_summer_end)
 	return tb->summer_offset;
@@ -436,7 +410,7 @@ clib_timebase_summer_offset (clib_timebase_t * tb, f64 now)
       clib_timebase_time_to_components (second_sunday_march_2am, cp);
       second_sunday_march_2am += 86400.0;
     }
-  while (cp->day_name_index != 3 /* sunday */ );
+  while (cp->day_name_index != 3 /* sunday */);
 
   /* Find the second sunday */
   do
@@ -444,7 +418,7 @@ clib_timebase_summer_offset (clib_timebase_t * tb, f64 now)
       clib_timebase_time_to_components (second_sunday_march_2am, cp);
       second_sunday_march_2am += 86400.0;
     }
-  while (cp->day_name_index != 3 /* sunday */ );
+  while (cp->day_name_index != 3 /* sunday */);
 
   second_sunday_march_2am -= 86400.0;
 
@@ -457,7 +431,7 @@ clib_timebase_summer_offset (clib_timebase_t * tb, f64 now)
   first_sunday_november_2am = clib_timebase_components_to_time (cp);
   clib_timebase_time_to_components (first_sunday_november_2am, cp);
 
-  while (cp->day_name_index != 3 /* sunday */ )
+  while (cp->day_name_index != 3 /* sunday */)
     {
       first_sunday_november_2am += 86400.0;
       clib_timebase_time_to_components (first_sunday_november_2am, cp);

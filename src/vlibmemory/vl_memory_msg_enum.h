@@ -23,7 +23,7 @@
 
 #include <vppinfra/byte_order.h>
 
-#define vl_msg_id(n,h) n,
+#define vl_msg_id(n, h) n,
 typedef enum
 {
   VL_ILLEGAL_MESSAGE_ID = 0,

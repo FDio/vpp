@@ -24,17 +24,17 @@
 srv6_end_main_v6_decap_t srv6_end_main_v6_decap;
 
 static void
-clb_dpo_lock_srv6_end_m_gtp6_d (dpo_id_t * dpo)
+clb_dpo_lock_srv6_end_m_gtp6_d (dpo_id_t *dpo)
 {
 }
 
 static void
-clb_dpo_unlock_srv6_end_m_gtp6_d (dpo_id_t * dpo)
+clb_dpo_unlock_srv6_end_m_gtp6_d (dpo_id_t *dpo)
 {
 }
 
 static u8 *
-clb_dpo_format_srv6_end_m_gtp6_d (u8 * s, va_list * args)
+clb_dpo_format_srv6_end_m_gtp6_d (u8 *s, va_list *args)
 {
   index_t index = va_arg (*args, index_t);
   CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
@@ -64,15 +64,14 @@ static u8 def_str[] =
 static u8 param_str[] = "<sr-prefix>/<sr-prefixlen> [nhtype <nhtype>]";
 
 static u8 *
-clb_format_srv6_end_m_gtp6_d (u8 * s, va_list * args)
+clb_format_srv6_end_m_gtp6_d (u8 *s, va_list *args)
 {
   srv6_end_gtp6_param_t *ls_mem = va_arg (*args, void *);
 
   s = format (s, "SRv6 End gtp6.d\n\t");
 
-  s =
-    format (s, "SR Prefix: %U/%d", format_ip6_address, &ls_mem->sr_prefix,
-	    ls_mem->sr_prefixlen);
+  s = format (s, "SR Prefix: %U/%d", format_ip6_address, &ls_mem->sr_prefix,
+	      ls_mem->sr_prefixlen);
 
   if (ls_mem->nhtype != SRV6_NHTYPE_NONE)
     {
@@ -92,7 +91,7 @@ clb_format_srv6_end_m_gtp6_d (u8 * s, va_list * args)
 }
 
 static uword
-clb_unformat_srv6_end_m_gtp6_d (unformat_input_t * input, va_list * args)
+clb_unformat_srv6_end_m_gtp6_d (unformat_input_t *input, va_list *args)
 {
   void **plugin_mem_p = va_arg (*args, void **);
   srv6_end_gtp6_param_t *ls_mem;
@@ -100,8 +99,8 @@ clb_unformat_srv6_end_m_gtp6_d (unformat_input_t * input, va_list * args)
   u32 sr_prefixlen;
   u8 nhtype;
 
-  if (unformat (input, "end.m.gtp6.d %U/%d nh-type ipv4",
-		unformat_ip6_address, &sr_prefix, &sr_prefixlen))
+  if (unformat (input, "end.m.gtp6.d %U/%d nh-type ipv4", unformat_ip6_address,
+		&sr_prefix, &sr_prefixlen))
     {
       nhtype = SRV6_NHTYPE_IPV4;
     }
@@ -115,8 +114,8 @@ clb_unformat_srv6_end_m_gtp6_d (unformat_input_t * input, va_list * args)
     {
       nhtype = SRV6_NHTYPE_NON_IP;
     }
-  else if (unformat (input, "end.m.gtp6.d %U/%d",
-		     unformat_ip6_address, &sr_prefix, &sr_prefixlen))
+  else if (unformat (input, "end.m.gtp6.d %U/%d", unformat_ip6_address,
+		     &sr_prefix, &sr_prefixlen))
     {
       nhtype = SRV6_NHTYPE_NONE;
     }
@@ -138,13 +137,13 @@ clb_unformat_srv6_end_m_gtp6_d (unformat_input_t * input, va_list * args)
 }
 
 static int
-clb_creation_srv6_end_m_gtp6_d (ip6_sr_localsid_t * localsid)
+clb_creation_srv6_end_m_gtp6_d (ip6_sr_localsid_t *localsid)
 {
   return 0;
 }
 
 static int
-clb_removal_srv6_end_m_gtp6_d (ip6_sr_localsid_t * localsid)
+clb_removal_srv6_end_m_gtp6_d (ip6_sr_localsid_t *localsid)
 {
   srv6_end_gtp6_param_t *ls_mem;
 
@@ -156,7 +155,7 @@ clb_removal_srv6_end_m_gtp6_d (ip6_sr_localsid_t * localsid)
 }
 
 static clib_error_t *
-srv6_end_m_gtp6_d_init (vlib_main_t * vm)
+srv6_end_m_gtp6_d_init (vlib_main_t *vm)
 {
   srv6_end_main_v6_decap_t *sm = &srv6_end_main_v6_decap;
   ip6_header_t *ip6;
@@ -184,28 +183,23 @@ srv6_end_m_gtp6_d_init (vlib_main_t * vm)
 
   dpo_type = dpo_register_new_type (&dpo_vft, dpo_nodes);
 
-  rc = sr_localsid_register_function (vm, fn_name, keyword_str, def_str, param_str, 128,	//prefix len
-				      &dpo_type,
-				      clb_format_srv6_end_m_gtp6_d,
-				      clb_unformat_srv6_end_m_gtp6_d,
-				      clb_creation_srv6_end_m_gtp6_d,
-				      clb_removal_srv6_end_m_gtp6_d);
+  rc = sr_localsid_register_function (
+    vm, fn_name, keyword_str, def_str, param_str, 128, // prefix len
+    &dpo_type, clb_format_srv6_end_m_gtp6_d, clb_unformat_srv6_end_m_gtp6_d,
+    clb_creation_srv6_end_m_gtp6_d, clb_removal_srv6_end_m_gtp6_d);
   if (rc < 0)
     clib_error_return (0, "SRv6 Endpoint GTP6.D LocalSID function"
-		       "couldn't be registered");
+			  "couldn't be registered");
   return 0;
 }
 
-/* *INDENT-OFF* */
-VNET_FEATURE_INIT (srv6_end_m_gtp6_d, static) =
-{
+VNET_FEATURE_INIT (srv6_end_m_gtp6_d, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "srv6-end-m-gtp6-d",
   .runs_before = 0,
 };
 
 VLIB_INIT_FUNCTION (srv6_end_m_gtp6_d_init);
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

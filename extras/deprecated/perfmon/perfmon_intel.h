@@ -47,17 +47,15 @@ typedef struct
   u32 n_models;
 } perfmon_intel_pmc_registration_t;
 
+void perfmon_register_intel_pmc (perfmon_intel_pmc_cpu_model_t *m,
+				 int n_models, perfmon_intel_pmc_event_t *e,
+				 int n_events);
 
-void
-perfmon_register_intel_pmc (perfmon_intel_pmc_cpu_model_t * m, int n_models,
-			    perfmon_intel_pmc_event_t * e, int n_events);
-
-#define PERFMON_REGISTER_INTEL_PMC(m, e) \
-static void __clib_constructor \
-perfmon_register_intel_pmc_constructor() \
-{ \
-  perfmon_register_intel_pmc (m, ARRAY_LEN(m), e, ARRAY_LEN (e)); \
-}
+#define PERFMON_REGISTER_INTEL_PMC(m, e)                                      \
+  static void __clib_constructor perfmon_register_intel_pmc_constructor ()    \
+  {                                                                           \
+    perfmon_register_intel_pmc (m, ARRAY_LEN (m), e, ARRAY_LEN (e));          \
+  }
 
 #endif /* _PERFMON_INTEL_H_ */
 

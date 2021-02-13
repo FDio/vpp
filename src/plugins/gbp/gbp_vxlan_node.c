@@ -33,43 +33,41 @@ typedef struct gbp_vxlan_trace_t_
   u8 flags;
 } gbp_vxlan_trace_t;
 
-#define foreach_gbp_vxlan_input_next         \
-  _(DROP, "error-drop")                      \
-  _(L2_INPUT, "l2-input")                    \
-  _(IP4_INPUT, "ip4-input")                  \
-  _(IP6_INPUT, "ip6-input")
+#define foreach_gbp_vxlan_input_next                                          \
+  _ (DROP, "error-drop")                                                      \
+  _ (L2_INPUT, "l2-input")                                                    \
+  _ (IP4_INPUT, "ip4-input")                                                  \
+  _ (IP6_INPUT, "ip6-input")
 
 typedef enum
 {
-#define _(s,n) GBP_VXLAN_INPUT_NEXT_##s,
+#define _(s, n) GBP_VXLAN_INPUT_NEXT_##s,
   foreach_gbp_vxlan_input_next
 #undef _
     GBP_VXLAN_INPUT_N_NEXT,
 } gbp_vxlan_input_next_t;
 
-
-#define foreach_gbp_vxlan_error              \
-  _(DECAPPED, "decapped")                    \
-  _(LEARNED, "learned")
+#define foreach_gbp_vxlan_error                                               \
+  _ (DECAPPED, "decapped")                                                    \
+  _ (LEARNED, "learned")
 
 typedef enum
 {
-#define _(s,n) GBP_VXLAN_ERROR_##s,
+#define _(s, n) GBP_VXLAN_ERROR_##s,
   foreach_gbp_vxlan_error
 #undef _
     GBP_VXLAN_N_ERROR,
 } gbp_vxlan_input_error_t;
 
 static char *gbp_vxlan_error_strings[] = {
-#define _(n,s) s,
+#define _(n, s) s,
   foreach_gbp_vxlan_error
 #undef _
 };
 
 static uword
-gbp_vxlan_decap (vlib_main_t * vm,
-		 vlib_node_runtime_t * node,
-		 vlib_frame_t * from_frame, u8 is_ip4)
+gbp_vxlan_decap (vlib_main_t *vm, vlib_node_runtime_t *node,
+		 vlib_frame_t *from_frame, u8 is_ip4)
 {
   u32 n_left_to_next, n_left_from, next_index, *to_next, *from;
 
@@ -160,9 +158,8 @@ gbp_vxlan_decap (vlib_main_t * vm,
 	      tr->sclass = vxlan_gbp_get_sclass (vxlan_gbp0);
 	    }
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -171,28 +168,26 @@ gbp_vxlan_decap (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-VLIB_NODE_FN (gbp_vxlan4_input_node) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * from_frame)
+VLIB_NODE_FN (gbp_vxlan4_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return gbp_vxlan_decap (vm, node, from_frame, 1);
 }
 
 static u8 *
-format_gbp_vxlan_rx_trace (u8 * s, va_list * args)
+format_gbp_vxlan_rx_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   gbp_vxlan_trace_t *t = va_arg (*args, gbp_vxlan_trace_t *);
 
-  s = format (s, "vni:%d dropped:%d rx:%d sclass:%d flags:%U",
-	      t->vni, t->dropped, t->sw_if_index,
-	      t->sclass, format_vxlan_gbp_header_gpflags, t->flags);
+  s = format (s, "vni:%d dropped:%d rx:%d sclass:%d flags:%U", t->vni,
+	      t->dropped, t->sw_if_index, t->sclass,
+	      format_vxlan_gbp_header_gpflags, t->flags);
 
   return (s);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gbp_vxlan4_input_node) =
 {
   .name = "gbp-vxlan4",
@@ -202,12 +197,11 @@ VLIB_REGISTER_NODE (gbp_vxlan4_input_node) =
   .n_next_nodes = GBP_VXLAN_INPUT_N_NEXT,
   .format_trace = format_gbp_vxlan_rx_trace,
   .next_nodes = {
-#define _(s,n) [GBP_VXLAN_INPUT_NEXT_##s] = n,
+#define _(s, n) [GBP_VXLAN_INPUT_NEXT_##s] = n,
     foreach_gbp_vxlan_input_next
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

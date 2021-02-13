@@ -20,7 +20,6 @@
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
 
-
 #include <acl/acl.h>
 #include <vnet/ip/icmp46_packet.h>
 
@@ -45,26 +44,23 @@ typedef struct
   u8 action;
 } acl_fa_trace_t;
 
-/* *INDENT-OFF* */
-#define foreach_acl_fa_error \
-_(ACL_DROP, "ACL deny packets")  \
-_(ACL_PERMIT, "ACL permit packets")  \
-_(ACL_NEW_SESSION, "new sessions added") \
-_(ACL_EXIST_SESSION, "existing session packets") \
-_(ACL_CHECK, "checked packets") \
-_(ACL_RESTART_SESSION_TIMER, "restart session timer") \
-_(ACL_TOO_MANY_SESSIONS, "too many sessions to add new") \
-/* end  of errors */
+#define foreach_acl_fa_error                                                  \
+  _ (ACL_DROP, "ACL deny packets")                                            \
+  _ (ACL_PERMIT, "ACL permit packets")                                        \
+  _ (ACL_NEW_SESSION, "new sessions added")                                   \
+  _ (ACL_EXIST_SESSION, "existing session packets")                           \
+  _ (ACL_CHECK, "checked packets")                                            \
+  _ (ACL_RESTART_SESSION_TIMER, "restart session timer")                      \
+  _ (ACL_TOO_MANY_SESSIONS, "too many sessions to add new")                   \
+  /* end  of errors */
 
 typedef enum
 {
-#define _(sym,str) ACL_FA_ERROR_##sym,
+#define _(sym, str) ACL_FA_ERROR_##sym,
   foreach_acl_fa_error
 #undef _
     ACL_FA_N_ERROR,
 } acl_fa_error_t;
-
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -75,7 +71,7 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_nonip_in_out_trace (u8 * s, u32 is_output, va_list * args)
+format_nonip_in_out_trace (u8 *s, u32 is_output, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -88,66 +84,59 @@ format_nonip_in_out_trace (u8 * s, u32 is_output, va_list * args)
 }
 
 static u8 *
-format_l2_nonip_in_trace (u8 * s, va_list * args)
+format_l2_nonip_in_trace (u8 *s, va_list *args)
 {
   return format_nonip_in_out_trace (s, 0, args);
 }
 
 static u8 *
-format_l2_nonip_out_trace (u8 * s, va_list * args)
+format_l2_nonip_out_trace (u8 *s, va_list *args)
 {
   return format_nonip_in_out_trace (s, 1, args);
 }
 
-#define foreach_nonip_in_error                    \
-_(DROP, "dropped inbound non-whitelisted non-ip packets") \
-_(PERMIT, "permitted inbound whitelisted non-ip packets") \
+#define foreach_nonip_in_error                                                \
+  _ (DROP, "dropped inbound non-whitelisted non-ip packets")                  \
+  _ (PERMIT, "permitted inbound whitelisted non-ip packets")
 
-
-#define foreach_nonip_out_error                    \
-_(DROP, "dropped outbound non-whitelisted non-ip packets") \
-_(PERMIT, "permitted outbound whitelisted non-ip packets") \
-
-
-/* *INDENT-OFF* */
+#define foreach_nonip_out_error                                               \
+  _ (DROP, "dropped outbound non-whitelisted non-ip packets")                 \
+  _ (PERMIT, "permitted outbound whitelisted non-ip packets")
 
 typedef enum
 {
-#define _(sym,str) FA_IN_NONIP_ERROR_##sym,
+#define _(sym, str) FA_IN_NONIP_ERROR_##sym,
   foreach_nonip_in_error
 #undef _
     FA_IN_NONIP_N_ERROR,
 } l2_in_feat_arc_error_t;
 
 static char *fa_in_nonip_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_nonip_in_error
 #undef _
 };
 
 typedef enum
 {
-#define _(sym,str) FA_OUT_NONIP_ERROR_##sym,
+#define _(sym, str) FA_OUT_NONIP_ERROR_##sym,
   foreach_nonip_out_error
 #undef _
     FA_OUT_NONIP_N_ERROR,
 } l2_out_feat_arc_error_t;
 
 static char *fa_out_nonip_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_nonip_out_error
 #undef _
 };
-/* *INDENT-ON* */
-
 
 always_inline int
-is_permitted_ethertype (acl_main_t * am, int sw_if_index0, int is_output,
+is_permitted_ethertype (acl_main_t *am, int sw_if_index0, int is_output,
 			u16 ethertype)
 {
-  u16 **v = is_output
-    ? am->output_etype_whitelist_by_sw_if_index
-    : am->input_etype_whitelist_by_sw_if_index;
+  u16 **v = is_output ? am->output_etype_whitelist_by_sw_if_index :
+			am->input_etype_whitelist_by_sw_if_index;
   u16 *whitelist = vec_elt (v, sw_if_index0);
   int i;
 
@@ -160,12 +149,11 @@ is_permitted_ethertype (acl_main_t * am, int sw_if_index0, int is_output,
   return 0;
 }
 
-#define get_u16(addr) ( *((u16 *)(addr)) )
+#define get_u16(addr) (*((u16 *) (addr)))
 
 always_inline uword
-nonip_in_out_node_fn (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame,
-		      int is_output)
+nonip_in_out_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vlib_frame_t *frame, int is_output)
 {
   acl_main_t *am = &acl_main;
   u32 n_left, *from;
@@ -202,8 +190,8 @@ nonip_in_out_node_fn (vlib_main_t * vm,
       if (0 == next[0])
 	b[0]->error = error_node->errors[error0];
 
-      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			 && (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			 (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
 	{
 	  nonip_in_out_trace_t *t =
 	    vlib_add_trace (vm, node, b[0], sizeof (*t));
@@ -222,68 +210,53 @@ nonip_in_out_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (acl_in_nonip_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * frame)
+VLIB_NODE_FN (acl_in_nonip_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return nonip_in_out_node_fn (vm, node, frame, 0);
 }
 
-VLIB_NODE_FN (acl_out_nonip_node) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
+VLIB_NODE_FN (acl_out_nonip_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return nonip_in_out_node_fn (vm, node, frame, 1);
 }
 
+VLIB_REGISTER_NODE (
+  acl_in_nonip_node) = { .name = "acl-plugin-in-nonip-l2",
+			 .vector_size = sizeof (u32),
+			 .format_trace = format_l2_nonip_in_trace,
+			 .type = VLIB_NODE_TYPE_INTERNAL,
+			 .n_errors = ARRAY_LEN (fa_in_nonip_error_strings),
+			 .error_strings = fa_in_nonip_error_strings,
+			 .n_next_nodes = ACL_FA_N_NEXT,
+			 .next_nodes = {
+			   [ACL_FA_ERROR_DROP] = "error-drop",
+			 } };
 
-/* *INDENT-OFF* */
-
-VLIB_REGISTER_NODE (acl_in_nonip_node) =
-{
-  .name = "acl-plugin-in-nonip-l2",
-  .vector_size = sizeof (u32),
-  .format_trace = format_l2_nonip_in_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN (fa_in_nonip_error_strings),
-  .error_strings = fa_in_nonip_error_strings,
-  .n_next_nodes = ACL_FA_N_NEXT,
-  .next_nodes =
-  {
-    [ACL_FA_ERROR_DROP] = "error-drop",
-  }
-};
-
-VNET_FEATURE_INIT (acl_in_l2_nonip_fa_feature, static) =
-{
+VNET_FEATURE_INIT (acl_in_l2_nonip_fa_feature, static) = {
   .arc_name = "l2-input-nonip",
   .node_name = "acl-plugin-in-nonip-l2",
   .runs_before = VNET_FEATURES ("l2-input-feat-arc-end"),
 };
 
-VLIB_REGISTER_NODE (acl_out_nonip_node) =
-{
-  .name = "acl-plugin-out-nonip-l2",
-  .vector_size = sizeof (u32),
-  .format_trace = format_l2_nonip_out_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN (fa_out_nonip_error_strings),
-  .error_strings = fa_out_nonip_error_strings,
-  .n_next_nodes = ACL_FA_N_NEXT,
-  .next_nodes =
-  {
-    [ACL_FA_ERROR_DROP] = "error-drop",
-  }
-};
+VLIB_REGISTER_NODE (
+  acl_out_nonip_node) = { .name = "acl-plugin-out-nonip-l2",
+			  .vector_size = sizeof (u32),
+			  .format_trace = format_l2_nonip_out_trace,
+			  .type = VLIB_NODE_TYPE_INTERNAL,
+			  .n_errors = ARRAY_LEN (fa_out_nonip_error_strings),
+			  .error_strings = fa_out_nonip_error_strings,
+			  .n_next_nodes = ACL_FA_N_NEXT,
+			  .next_nodes = {
+			    [ACL_FA_ERROR_DROP] = "error-drop",
+			  } };
 
-VNET_FEATURE_INIT (acl_out_l2_nonip_fa_feature, static) =
-{
+VNET_FEATURE_INIT (acl_out_l2_nonip_fa_feature, static) = {
   .arc_name = "l2-output-nonip",
   .node_name = "acl-plugin-out-nonip-l2",
   .runs_before = VNET_FEATURES ("l2-output-feat-arc-end"),
 };
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

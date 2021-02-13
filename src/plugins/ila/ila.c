@@ -23,30 +23,32 @@
 static ila_main_t ila_main;
 
 #define ILA_TABLE_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
-#define ILA_TABLE_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+#define ILA_TABLE_DEFAULT_HASH_MEMORY_SIZE (32 << 20)
 
-#define foreach_ila_error \
- _(NONE, "valid ILA packets")
+#define foreach_ila_error _ (NONE, "valid ILA packets")
 
-typedef enum {
-#define _(sym,str) ILA_ERROR_##sym,
+typedef enum
+{
+#define _(sym, str) ILA_ERROR_##sym,
   foreach_ila_error
 #undef _
     ILA_N_ERROR,
 } ila_error_t;
 
 static char *ila_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ila_error
 #undef _
 };
 
-typedef enum {
+typedef enum
+{
   ILA_ILA2SIR_NEXT_DROP,
   ILA_ILA2SIR_N_NEXT,
 } ila_ila2sir_next_t;
 
-typedef struct {
+typedef struct
+{
   u32 ila_index;
   ip6_address_t initial_dst;
   u32 adj_index;
@@ -55,7 +57,7 @@ typedef struct {
 static ila_entry_t ila_sir2ila_default_entry = {
   .csum_mode = ILA_CSUM_MODE_NO_ACTION,
   .type = ILA_TYPE_IID,
-  .dir = ILA_DIR_ILA2SIR, //Will pass the packet with no
+  .dir = ILA_DIR_ILA2SIR, // Will pass the packet with no
 };
 
 /**
@@ -74,91 +76,85 @@ static fib_node_type_t ila_fib_node_type;
 static fib_source_t ila_fib_src;
 
 u8 *
-format_half_ip6_address (u8 * s, va_list * va)
+format_half_ip6_address (u8 *s, va_list *va)
 {
   u64 v = clib_net_to_host_u64 (va_arg (*va, u64));
 
-  return format (s, "%04x:%04x:%04x:%04x",
-		 v >> 48, (v >> 32) & 0xffff, (v >> 16) & 0xffff, v & 0xffff);
-
+  return format (s, "%04x:%04x:%04x:%04x", v >> 48, (v >> 32) & 0xffff,
+		 (v >> 16) & 0xffff, v & 0xffff);
 }
 
 u8 *
-format_ila_direction (u8 * s, va_list * args)
+format_ila_direction (u8 *s, va_list *args)
 {
   ila_direction_t t = va_arg (*args, ila_direction_t);
-#define _(i,n,st) \
-  if (t == ILA_DIR_##i) \
-    return format(s, st);
+#define _(i, n, st)                                                           \
+  if (t == ILA_DIR_##i)                                                       \
+    return format (s, st);
   ila_foreach_direction
 #undef _
     return format (s, "invalid_ila_direction");
 }
 
 static u8 *
-format_csum_mode (u8 * s, va_list * va)
+format_csum_mode (u8 *s, va_list *va)
 {
   ila_csum_mode_t csum_mode = va_arg (*va, ila_csum_mode_t);
   char *txt;
 
   switch (csum_mode)
     {
-#define _(i,n,st) \
-  case ILA_CSUM_MODE_##i: \
-    txt = st; \
+#define _(i, n, st)                                                           \
+  case ILA_CSUM_MODE_##i:                                                     \
+    txt = st;                                                                 \
     break;
       ila_csum_foreach_type
 #undef _
-    default:
-      txt = "invalid_ila_csum_mode";
+	default : txt = "invalid_ila_csum_mode";
       break;
     }
   return format (s, txt);
 }
 
 u8 *
-format_ila_type (u8 * s, va_list * args)
+format_ila_type (u8 *s, va_list *args)
 {
   ila_type_t t = va_arg (*args, ila_type_t);
-#define _(i,n,st) \
-  if (t == ILA_TYPE_##i) \
-    return format(s, st);
+#define _(i, n, st)                                                           \
+  if (t == ILA_TYPE_##i)                                                      \
+    return format (s, st);
   ila_foreach_type
 #undef _
     return format (s, "invalid_ila_type");
 }
 
 static u8 *
-format_ila_entry (u8 * s, va_list * va)
+format_ila_entry (u8 *s, va_list *va)
 {
   vnet_main_t *vnm = va_arg (*va, vnet_main_t *);
   ila_entry_t *e = va_arg (*va, ila_entry_t *);
 
   if (!e)
     {
-      return format (s, "%-15s%=40s%=40s%+16s%+18s%+11s", "Type", "SIR Address",
-		     "ILA Address", "Checksum Mode", "Direction", "Next DPO");
+      return format (s, "%-15s%=40s%=40s%+16s%+18s%+11s", "Type",
+		     "SIR Address", "ILA Address", "Checksum Mode",
+		     "Direction", "Next DPO");
     }
   else if (vnm)
     {
-      if (ip6_address_is_zero(&e->next_hop))
+      if (ip6_address_is_zero (&e->next_hop))
 	{
-	  return format (s, "%-15U%=40U%=40U%18U%11U%s",
-			 format_ila_type, e->type,
-			 format_ip6_address, &e->sir_address,
-			 format_ip6_address, &e->ila_address,
-			 format_csum_mode, e->csum_mode,
-			 format_ila_direction, e->dir,
-			 "n/a");
+	  return format (s, "%-15U%=40U%=40U%18U%11U%s", format_ila_type,
+			 e->type, format_ip6_address, &e->sir_address,
+			 format_ip6_address, &e->ila_address, format_csum_mode,
+			 e->csum_mode, format_ila_direction, e->dir, "n/a");
 	}
       else
 	{
-	  return format (s, "%-15U%=40U%=40U%18U%11U%U",
-			 format_ila_type, e->type,
-			 format_ip6_address, &e->sir_address,
-			 format_ip6_address, &e->ila_address,
-			 format_csum_mode, e->csum_mode,
-			 format_ila_direction, e->dir,
+	  return format (s, "%-15U%=40U%=40U%18U%11U%U", format_ila_type,
+			 e->type, format_ip6_address, &e->sir_address,
+			 format_ip6_address, &e->ila_address, format_csum_mode,
+			 e->csum_mode, format_ila_direction, e->dir,
 			 format_dpo_id, &e->ila_dpo, 0);
 	}
     }
@@ -167,27 +163,26 @@ format_ila_entry (u8 * s, va_list * va)
 }
 
 u8 *
-format_ila_ila2sir_trace (u8 * s, va_list * args)
+format_ila_ila2sir_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ila_ila2sir_trace_t *t = va_arg (*args, ila_ila2sir_trace_t *);
-  return format (s,
-		 "ILA -> SIR adj index: %d entry index: %d initial_dst: %U",
+  return format (s, "ILA -> SIR adj index: %d entry index: %d initial_dst: %U",
 		 t->adj_index, t->ila_index, format_ip6_address,
 		 &t->initial_dst);
 }
 
 static uword
-unformat_ila_direction (unformat_input_t * input, va_list * args)
+unformat_ila_direction (unformat_input_t *input, va_list *args)
 {
   ila_direction_t *result = va_arg (*args, ila_direction_t *);
-#define _(i,n,s) \
-  if (unformat(input, s)) \
-      { \
-        *result = ILA_DIR_##i; \
-        return 1;\
-      }
+#define _(i, n, s)                                                            \
+  if (unformat (input, s))                                                    \
+    {                                                                         \
+      *result = ILA_DIR_##i;                                                  \
+      return 1;                                                               \
+    }
 
   ila_foreach_direction
 #undef _
@@ -195,15 +190,15 @@ unformat_ila_direction (unformat_input_t * input, va_list * args)
 }
 
 static uword
-unformat_ila_type (unformat_input_t * input, va_list * args)
+unformat_ila_type (unformat_input_t *input, va_list *args)
 {
   ila_type_t *result = va_arg (*args, ila_type_t *);
-#define _(i,n,s) \
-  if (unformat(input, s)) \
-      { \
-        *result = ILA_TYPE_##i; \
-        return 1;\
-      }
+#define _(i, n, s)                                                            \
+  if (unformat (input, s))                                                    \
+    {                                                                         \
+      *result = ILA_TYPE_##i;                                                 \
+      return 1;                                                               \
+    }
 
   ila_foreach_type
 #undef _
@@ -211,7 +206,7 @@ unformat_ila_type (unformat_input_t * input, va_list * args)
 }
 
 static uword
-unformat_ila_csum_mode (unformat_input_t * input, va_list * args)
+unformat_ila_csum_mode (unformat_input_t *input, va_list *args)
 {
   ila_csum_mode_t *result = va_arg (*args, ila_csum_mode_t *);
   if (unformat (input, "none") || unformat (input, "no-action"))
@@ -233,7 +228,7 @@ unformat_ila_csum_mode (unformat_input_t * input, va_list * args)
 }
 
 static uword
-unformat_half_ip6_address (unformat_input_t * input, va_list * args)
+unformat_half_ip6_address (unformat_input_t *input, va_list *args)
 {
   u64 *result = va_arg (*args, u64 *);
   u32 a[4];
@@ -244,8 +239,7 @@ unformat_half_ip6_address (unformat_input_t * input, va_list * args)
   if (a[0] > 0xFFFF || a[1] > 0xFFFF || a[2] > 0xFFFF || a[3] > 0xFFFF)
     return 0;
 
-  *result = clib_host_to_net_u64 ((((u64) a[0]) << 48) |
-				  (((u64) a[1]) << 32) |
+  *result = clib_host_to_net_u64 ((((u64) a[0]) << 48) | (((u64) a[1]) << 32) |
 				  (((u64) a[2]) << 16) | (((u64) a[3])));
 
   return 1;
@@ -254,8 +248,7 @@ unformat_half_ip6_address (unformat_input_t * input, va_list * args)
 static vlib_node_registration_t ila_ila2sir_node;
 
 static uword
-ila_ila2sir (vlib_main_t * vm,
-	     vlib_node_runtime_t * node, vlib_frame_t * frame)
+ila_ila2sir (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
   ila_main_t *ilm = &ila_main;
@@ -324,8 +317,10 @@ ila_ila2sir (vlib_main_t * vm,
 	      tr->adj_index = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
 	    }
 
-	  sir_address0 = (ie0->dir != ILA_DIR_SIR2ILA) ? &ie0->sir_address : sir_address0;
-	  sir_address1 = (ie1->dir != ILA_DIR_SIR2ILA) ? &ie1->sir_address : sir_address1;
+	  sir_address0 =
+	    (ie0->dir != ILA_DIR_SIR2ILA) ? &ie0->sir_address : sir_address0;
+	  sir_address1 =
+	    (ie1->dir != ILA_DIR_SIR2ILA) ? &ie1->sir_address : sir_address1;
 	  ip60->dst_address.as_u64[0] = sir_address0->as_u64[0];
 	  ip60->dst_address.as_u64[1] = sir_address0->as_u64[1];
 	  ip61->dst_address.as_u64[0] = sir_address1->as_u64[0];
@@ -334,10 +329,9 @@ ila_ila2sir (vlib_main_t * vm,
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = ie0->ila_dpo.dpoi_index;
 	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = ie1->ila_dpo.dpoi_index;
 
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
-					   n_left_to_next, pi0, pi1,
-					   ie0->ila_dpo.dpoi_next_node,
-					   ie1->ila_dpo.dpoi_next_node);
+	  vlib_validate_buffer_enqueue_x2 (
+	    vm, node, next_index, to_next, n_left_to_next, pi0, pi1,
+	    ie0->ila_dpo.dpoi_next_node, ie1->ila_dpo.dpoi_next_node);
 	}
 
       /* Single loop */
@@ -370,7 +364,8 @@ ila_ila2sir (vlib_main_t * vm,
 	      tr->adj_index = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
 	    }
 
-	  sir_address0 = (ie0->dir != ILA_DIR_SIR2ILA) ? &ie0->sir_address : sir_address0;
+	  sir_address0 =
+	    (ie0->dir != ILA_DIR_SIR2ILA) ? &ie0->sir_address : sir_address0;
 	  ip60->dst_address.as_u64[0] = sir_address0->as_u64[0];
 	  ip60->dst_address.as_u64[1] = sir_address0->as_u64[1];
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = ie0->ila_dpo.dpoi_index;
@@ -385,9 +380,7 @@ ila_ila2sir (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/** *INDENT-OFF* */
-VLIB_REGISTER_NODE (ila_ila2sir_node, static) =
-{
+VLIB_REGISTER_NODE (ila_ila2sir_node, static) = {
   .function = ila_ila2sir,
   .name = "ila-to-sir",
   .vector_size = sizeof (u32),
@@ -395,12 +388,8 @@ VLIB_REGISTER_NODE (ila_ila2sir_node, static) =
   .n_errors = ILA_N_ERROR,
   .error_strings = ila_error_strings,
   .n_next_nodes = ILA_ILA2SIR_N_NEXT,
-  .next_nodes =
-  {
-      [ILA_ILA2SIR_NEXT_DROP] = "error-drop"
-  },
+  .next_nodes = { [ILA_ILA2SIR_NEXT_DROP] = "error-drop" },
 };
-/** *INDENT-ON* */
 
 typedef enum
 {
@@ -415,21 +404,20 @@ typedef struct
 } ila_sir2ila_trace_t;
 
 u8 *
-format_ila_sir2ila_trace (u8 * s, va_list * args)
+format_ila_sir2ila_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ila_sir2ila_trace_t *t = va_arg (*args, ila_sir2ila_trace_t *);
 
-  return format (s, "SIR -> ILA entry index: %d initial_dst: %U",
-		 t->ila_index, format_ip6_address, &t->initial_dst);
+  return format (s, "SIR -> ILA entry index: %d initial_dst: %U", t->ila_index,
+		 format_ip6_address, &t->initial_dst);
 }
 
 static vlib_node_registration_t ila_sir2ila_node;
 
 static uword
-ila_sir2ila (vlib_main_t * vm,
-	     vlib_node_runtime_t * node, vlib_frame_t * frame)
+ila_sir2ila (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
   ila_main_t *ilm = &ila_main;
@@ -487,24 +475,31 @@ ila_sir2ila (vlib_main_t * vm,
 	  kv1.key[1] = ip61->dst_address.as_u64[1];
 	  kv1.key[2] = 0;
 
-	  if (PREDICT_TRUE((BV (clib_bihash_search)
-	      (&ilm->id_to_entry_table, &kv0, &value0)) == 0)) {
+	  if (PREDICT_TRUE ((BV (clib_bihash_search) (&ilm->id_to_entry_table,
+						      &kv0, &value0)) == 0))
+	    {
 	      ie0 = &ilm->entries[value0.value];
-	      ila_address0 = (ie0->dir != ILA_DIR_ILA2SIR) ? &ie0->ila_address : ila_address0;
-	  }
+	      ila_address0 = (ie0->dir != ILA_DIR_ILA2SIR) ?
+			       &ie0->ila_address :
+			       ila_address0;
+	    }
 
-	  if ((BV (clib_bihash_search)
-	       (&ilm->id_to_entry_table, &kv1, &value1)) == 0) {
-	    ie1 = &ilm->entries[value1.value];
-	    ila_address1 = (ie1->dir != ILA_DIR_ILA2SIR) ? &ie1->ila_address : ila_address1;
-	  }
+	  if ((BV (clib_bihash_search) (&ilm->id_to_entry_table, &kv1,
+					&value1)) == 0)
+	    {
+	      ie1 = &ilm->entries[value1.value];
+	      ila_address1 = (ie1->dir != ILA_DIR_ILA2SIR) ?
+			       &ie1->ila_address :
+			       ila_address1;
+	    }
 
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      ila_sir2ila_trace_t *tr =
 		vlib_add_trace (vm, node, p0, sizeof (*tr));
-	      tr->ila_index =
-		(ie0 != &ila_sir2ila_default_entry) ? (ie0 - ilm->entries) : ~0;
+	      tr->ila_index = (ie0 != &ila_sir2ila_default_entry) ?
+				(ie0 - ilm->entries) :
+				~0;
 	      tr->initial_dst = ip60->dst_address;
 	    }
 
@@ -512,8 +507,9 @@ ila_sir2ila (vlib_main_t * vm,
 	    {
 	      ila_sir2ila_trace_t *tr =
 		vlib_add_trace (vm, node, p1, sizeof (*tr));
-	      tr->ila_index =
-		(ie1 != &ila_sir2ila_default_entry) ? (ie1 - ilm->entries) : ~0;
+	      tr->ila_index = (ie1 != &ila_sir2ila_default_entry) ?
+				(ie1 - ilm->entries) :
+				~0;
 	      tr->initial_dst = ip61->dst_address;
 	    }
 
@@ -555,22 +551,27 @@ ila_sir2ila (vlib_main_t * vm,
 	  kv0.key[1] = ip60->dst_address.as_u64[1];
 	  kv0.key[2] = 0;
 
-	  if (PREDICT_TRUE((BV (clib_bihash_search)
-	       (&ilm->id_to_entry_table, &kv0, &value0)) == 0)) {
-	    ie0 = &ilm->entries[value0.value];
-	    ila_address0 = (ie0->dir != ILA_DIR_ILA2SIR) ? &ie0->ila_address : ila_address0;
-	  }
+	  if (PREDICT_TRUE ((BV (clib_bihash_search) (&ilm->id_to_entry_table,
+						      &kv0, &value0)) == 0))
+	    {
+	      ie0 = &ilm->entries[value0.value];
+	      ila_address0 = (ie0->dir != ILA_DIR_ILA2SIR) ?
+			       &ie0->ila_address :
+			       ila_address0;
+	    }
 
 	  if (PREDICT_FALSE (p0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      ila_sir2ila_trace_t *tr =
 		vlib_add_trace (vm, node, p0, sizeof (*tr));
-	      tr->ila_index =
-		(ie0 != &ila_sir2ila_default_entry) ? (ie0 - ilm->entries) : ~0;
+	      tr->ila_index = (ie0 != &ila_sir2ila_default_entry) ?
+				(ie0 - ilm->entries) :
+				~0;
 	      tr->initial_dst = ip60->dst_address;
 	    }
 
-	  //This operation should do everything for any type (except vnid4 obviously)
+	  // This operation should do everything for any type (except vnid4
+	  // obviously)
 	  ip60->dst_address.as_u64[0] = ila_address0->as_u64[0];
 	  ip60->dst_address.as_u64[1] = ila_address0->as_u64[1];
 
@@ -585,51 +586,41 @@ ila_sir2ila (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/** *INDENT-OFF* */
-VLIB_REGISTER_NODE (ila_sir2ila_node, static) =
-{
-  .function = ila_sir2ila,.name = "sir-to-ila",
+VLIB_REGISTER_NODE (ila_sir2ila_node, static) = {
+  .function = ila_sir2ila,
+  .name = "sir-to-ila",
   .vector_size = sizeof (u32),
   .format_trace = format_ila_sir2ila_trace,
   .n_errors = ILA_N_ERROR,
   .error_strings = ila_error_strings,
   .n_next_nodes = ILA_SIR2ILA_N_NEXT,
-  .next_nodes =
-  {
-      [ILA_SIR2ILA_NEXT_DROP] = "error-drop"
-  },
+  .next_nodes = { [ILA_SIR2ILA_NEXT_DROP] = "error-drop" },
 };
-/** *INDENT-ON* */
 
-/** *INDENT-OFF* */
-VNET_FEATURE_INIT (ila_sir2ila, static) =
-{
+VNET_FEATURE_INIT (ila_sir2ila, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "sir-to-ila",
   .runs_before = VNET_FEATURES ("ip6-lookup"),
 };
-/** *INDENT-ON* */
 
 static void
 ila_entry_stack (ila_entry_t *ie)
 {
-    /*
-     * restack on the next-hop's FIB entry
-     */
-    dpo_stack(ila_dpo_type,
-	      DPO_PROTO_IP6,
-	      &ie->ila_dpo,
-	      fib_entry_contribute_ip_forwarding(
-		  ie->next_hop_fib_entry_index));
+  /*
+   * restack on the next-hop's FIB entry
+   */
+  dpo_stack (
+    ila_dpo_type, DPO_PROTO_IP6, &ie->ila_dpo,
+    fib_entry_contribute_ip_forwarding (ie->next_hop_fib_entry_index));
 }
 
 int
-ila_add_del_entry (ila_add_del_entry_args_t * args)
+ila_add_del_entry (ila_add_del_entry_args_t *args)
 {
   ila_main_t *ilm = &ila_main;
   BVT (clib_bihash_kv) kv, value;
 
-  //Sanity check
+  // Sanity check
   if (args->type == ILA_TYPE_IID || args->type == ILA_TYPE_LUID)
     {
       if ((args->sir_address.as_u8[8] >> 5) != args->type)
@@ -671,7 +662,7 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
       e->csum_mode = args->csum_mode;
       e->dir = args->dir;
 
-      //Construct ILA address
+      // Construct ILA address
       switch (e->type)
 	{
 	case ILA_TYPE_IID:
@@ -700,7 +691,7 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
 	  return -1;
 	}
 
-      //Modify ILA checksum if necessary
+      // Modify ILA checksum if necessary
       if (e->csum_mode == ILA_CSUM_MODE_NEUTRAL_MAP)
 	{
 	  ip_csum_t csum = e->ila_address.as_u16[7];
@@ -715,15 +706,14 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
 	  e->ila_address.as_u8[8] |= 0x10;
 	}
 
-      //Create entry with the sir address
+      // Create entry with the sir address
       kv.key[0] = e->sir_address.as_u64[0];
       kv.key[1] = e->sir_address.as_u64[1];
       kv.key[2] = 0;
       kv.value = e - ilm->entries;
-      BV (clib_bihash_add_del) (&ilm->id_to_entry_table, &kv,
-				1 /* is_add */ );
+      BV (clib_bihash_add_del) (&ilm->id_to_entry_table, &kv, 1 /* is_add */);
 
-      if (!ip6_address_is_zero(&e->next_hop))
+      if (!ip6_address_is_zero (&e->next_hop))
 	{
 	  /*
 	   * become a child of the FIB netry for the next-hop
@@ -737,15 +727,10 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
 	      .fp_proto = FIB_PROTOCOL_IP6,
 	  };
 
-	  e->next_hop_fib_entry_index = 
-	      fib_table_entry_special_add(0,
-					  &next_hop,
-					  FIB_SOURCE_RR,
-					  FIB_ENTRY_FLAG_NONE);
-	  e->next_hop_child_index =
-	      fib_entry_child_add(e->next_hop_fib_entry_index,
-				  ila_fib_node_type,
-				  e - ilm->entries);
+	  e->next_hop_fib_entry_index = fib_table_entry_special_add (
+	    0, &next_hop, FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE);
+	  e->next_hop_child_index = fib_entry_child_add (
+	    e->next_hop_fib_entry_index, ila_fib_node_type, e - ilm->entries);
 
 	  /*
 	   * Create a route that results in the ILA entry
@@ -759,14 +744,11 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
 	      .fp_proto = FIB_PROTOCOL_IP6,
 	  };
 
-	  dpo_set(&dpo, ila_dpo_type, DPO_PROTO_IP6, e - ilm->entries);
+	  dpo_set (&dpo, ila_dpo_type, DPO_PROTO_IP6, e - ilm->entries);
 
-	  fib_table_entry_special_dpo_add(0,
-					  &pfx,
-					  ila_fib_src,
-					  FIB_ENTRY_FLAG_EXCLUSIVE,
-					  &dpo);
-	  dpo_reset(&dpo);
+	  fib_table_entry_special_dpo_add (0, &pfx, ila_fib_src,
+					   FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
+	  dpo_reset (&dpo);
 
 	  /*
 	   * finally stack the ILA entry so it will forward to the next-hop
@@ -781,15 +763,14 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
       kv.key[1] = args->sir_address.as_u64[1];
       kv.key[2] = 0;
 
-      if ((BV (clib_bihash_search) (&ilm->id_to_entry_table, &kv, &value) <
-	   0))
+      if ((BV (clib_bihash_search) (&ilm->id_to_entry_table, &kv, &value) < 0))
 	{
 	  return -1;
 	}
 
       e = &ilm->entries[value.value];
 
-      if (!ip6_address_is_zero(&e->next_hop))
+      if (!ip6_address_is_zero (&e->next_hop))
 	{
 	  fib_prefix_t pfx = {
 	      .fp_addr = {
@@ -799,20 +780,19 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
 	      .fp_proto = FIB_PROTOCOL_IP6,
 	  };
 
-	  fib_table_entry_special_remove(0, &pfx, ila_fib_src);
+	  fib_table_entry_special_remove (0, &pfx, ila_fib_src);
 	  /*
 	   * remove this ILA entry as child of the FIB netry for the next-hop
 	   */
-	  fib_entry_child_remove(e->next_hop_fib_entry_index,
-				 e->next_hop_child_index);
-	  fib_table_entry_delete_index(e->next_hop_fib_entry_index,
-				       FIB_SOURCE_RR);
+	  fib_entry_child_remove (e->next_hop_fib_entry_index,
+				  e->next_hop_child_index);
+	  fib_table_entry_delete_index (e->next_hop_fib_entry_index,
+					FIB_SOURCE_RR);
 	  e->next_hop_fib_entry_index = FIB_NODE_INDEX_INVALID;
 	}
       dpo_reset (&e->ila_dpo);
 
-      BV (clib_bihash_add_del) (&ilm->id_to_entry_table, &kv,
-				0 /* is_add */ );
+      BV (clib_bihash_add_del) (&ilm->id_to_entry_table, &kv, 0 /* is_add */);
       pool_put (ilm->entries, e);
     }
   return 0;
@@ -826,22 +806,20 @@ ila_interface (u32 sw_if_index, u8 disable)
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Identifier Locator Addressing (ILA) for IPv6",
+  .version = VPP_BUILD_VER,
+  .description = "Identifier Locator Addressing (ILA) for IPv6",
 };
-/* *INDENT-ON* */
 
-u8 *format_ila_dpo (u8 * s, va_list * va)
+u8 *
+format_ila_dpo (u8 *s, va_list *va)
 {
   index_t index = va_arg (*va, index_t);
-  CLIB_UNUSED(u32 indent) = va_arg (*va, u32);
+  CLIB_UNUSED (u32 indent) = va_arg (*va, u32);
   ila_main_t *ilm = &ila_main;
   ila_entry_t *ie = pool_elt_at_index (ilm->entries, index);
-  return format(s, "ILA: idx:%d sir:%U",
-		index,
-		format_ip6_address, &ie->sir_address);
+  return format (s, "ILA: idx:%d sir:%U", index, format_ip6_address,
+		 &ie->sir_address);
 }
 
 /**
@@ -863,18 +841,16 @@ ila_dpo_unlock (dpo_id_t *dpo)
 }
 
 const static dpo_vft_t ila_vft = {
-    .dv_lock = ila_dpo_lock,
-    .dv_unlock = ila_dpo_unlock,
-    .dv_format = format_ila_dpo,
+  .dv_lock = ila_dpo_lock,
+  .dv_unlock = ila_dpo_unlock,
+  .dv_format = format_ila_dpo,
 };
-const static char* const ila_ip6_nodes[] =
-{
-    "ila-to-sir",
-    NULL,
+const static char *const ila_ip6_nodes[] = {
+  "ila-to-sir",
+  NULL,
 };
-const static char* const * const ila_nodes[DPO_PROTO_NUM] =
-{
-    [DPO_PROTO_IP6]  = ila_ip6_nodes,
+const static char *const *const ila_nodes[DPO_PROTO_NUM] = {
+  [DPO_PROTO_IP6] = ila_ip6_nodes,
 };
 
 static fib_node_t *
@@ -898,8 +874,8 @@ ila_fib_node_last_lock_gone (fib_node_t *node)
 static ila_entry_t *
 ila_entry_from_fib_node (fib_node_t *node)
 {
-    return ((ila_entry_t*)(((char*)node) -
-			   STRUCT_OFFSET_OF(ila_entry_t, ila_fib_node)));
+  return ((ila_entry_t *) (((char *) node) -
+			   STRUCT_OFFSET_OF (ila_entry_t, ila_fib_node)));
 }
 
 /**
@@ -907,25 +883,24 @@ ila_entry_from_fib_node (fib_node_t *node)
  * Callback function invoked when the forwarding changes for the ILA next-hop
  */
 static fib_node_back_walk_rc_t
-ila_fib_node_back_walk_notify (fib_node_t *node,
-			       fib_node_back_walk_ctx_t *ctx)
+ila_fib_node_back_walk_notify (fib_node_t *node, fib_node_back_walk_ctx_t *ctx)
 {
-    ila_entry_stack(ila_entry_from_fib_node(node));
+  ila_entry_stack (ila_entry_from_fib_node (node));
 
-    return (FIB_NODE_BACK_WALK_CONTINUE);
+  return (FIB_NODE_BACK_WALK_CONTINUE);
 }
 
 /*
  * ILA's FIB graph node virtual function table
  */
 static const fib_node_vft_t ila_fib_node_vft = {
-    .fnv_get = ila_fib_node_get_node,
-    .fnv_last_lock = ila_fib_node_last_lock_gone,
-    .fnv_back_walk = ila_fib_node_back_walk_notify,
+  .fnv_get = ila_fib_node_get_node,
+  .fnv_last_lock = ila_fib_node_last_lock_gone,
+  .fnv_back_walk = ila_fib_node_back_walk_notify,
 };
 
 clib_error_t *
-ila_init (vlib_main_t * vm)
+ila_init (vlib_main_t *vm)
 {
   ila_main_t *ilm = &ila_main;
   ilm->entries = NULL;
@@ -934,23 +909,22 @@ ila_init (vlib_main_t * vm)
   ilm->lookup_table_nbuckets = 1 << max_log2 (ilm->lookup_table_nbuckets);
   ilm->lookup_table_size = ILA_TABLE_DEFAULT_HASH_MEMORY_SIZE;
 
-  BV (clib_bihash_init) (&ilm->id_to_entry_table,
-			 "ila id to entry index table",
-			 ilm->lookup_table_nbuckets, ilm->lookup_table_size);
+  BV (clib_bihash_init)
+  (&ilm->id_to_entry_table, "ila id to entry index table",
+   ilm->lookup_table_nbuckets, ilm->lookup_table_size);
 
-  ila_dpo_type = dpo_register_new_type(&ila_vft, ila_nodes);
-  ila_fib_node_type = fib_node_register_new_type(&ila_fib_node_vft);
-  ila_fib_src = fib_source_allocate("ila",
-                                    FIB_SOURCE_PRIORITY_HI,
-                                    FIB_SOURCE_BH_SIMPLE);
+  ila_dpo_type = dpo_register_new_type (&ila_vft, ila_nodes);
+  ila_fib_node_type = fib_node_register_new_type (&ila_fib_node_vft);
+  ila_fib_src =
+    fib_source_allocate ("ila", FIB_SOURCE_PRIORITY_HI, FIB_SOURCE_BH_SIMPLE);
   return NULL;
 }
 
 VLIB_INIT_FUNCTION (ila_init);
 
 static clib_error_t *
-ila_entry_command_fn (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+ila_entry_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ila_add_del_entry_args_t args = { 0 };
@@ -970,27 +944,23 @@ ila_entry_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "type %U", unformat_ila_type, &args.type))
 	;
-      else if (unformat
-	       (line_input, "sir-address %U", unformat_ip6_address,
-		&args.sir_address))
+      else if (unformat (line_input, "sir-address %U", unformat_ip6_address,
+			 &args.sir_address))
 	;
-      else if (unformat
-	       (line_input, "locator %U", unformat_half_ip6_address,
-		&args.locator))
+      else if (unformat (line_input, "locator %U", unformat_half_ip6_address,
+			 &args.locator))
 	;
-      else if (unformat
-	       (line_input, "csum-mode %U", unformat_ila_csum_mode,
-		&args.csum_mode))
+      else if (unformat (line_input, "csum-mode %U", unformat_ila_csum_mode,
+			 &args.csum_mode))
 	;
       else if (unformat (line_input, "vnid %x", &args.vnid))
 	;
-      else if (unformat
-	       (line_input, "next-hop %U", unformat_ip6_address,
-		&args.next_hop_address))
+      else if (unformat (line_input, "next-hop %U", unformat_ip6_address,
+			 &args.next_hop_address))
 	;
-      else if (unformat
-	      (line_input, "direction %U", unformat_ila_direction, &args.dir))
-        next_hop_set = 1;
+      else if (unformat (line_input, "direction %U", unformat_ila_direction,
+			 &args.dir))
+	next_hop_set = 1;
       else if (unformat (line_input, "del"))
 	args.is_del = 1;
       else
@@ -1009,7 +979,8 @@ ila_entry_command_fn (vlib_main_t * vm,
 
   if ((ret = ila_add_del_entry (&args)))
     {
-      error = clib_error_return (0, "ila_add_del_entry returned error %d", ret);
+      error =
+	clib_error_return (0, "ila_add_del_entry returned error %d", ret);
       goto done;
     }
 
@@ -1019,18 +990,19 @@ done:
   return error;
 }
 
-VLIB_CLI_COMMAND (ila_entry_command, static) =
-{
+VLIB_CLI_COMMAND (ila_entry_command, static) = {
   .path = "ila entry",
-  .short_help = "ila entry [type <type>] [sir-address <address>] [locator <locator>] [vnid <hex-vnid>]"
-    " [adj-index <adj-index>] [next-hop <next-hop>] [direction (bidir|sir2ila|ila2sir)]"
-    " [csum-mode (no-action|neutral-map|transport-adjust)] [del]",
+  .short_help = "ila entry [type <type>] [sir-address <address>] [locator "
+		"<locator>] [vnid <hex-vnid>]"
+		" [adj-index <adj-index>] [next-hop <next-hop>] [direction "
+		"(bidir|sir2ila|ila2sir)]"
+		" [csum-mode (no-action|neutral-map|transport-adjust)] [del]",
   .function = ila_entry_command_fn,
 };
 
 static clib_error_t *
-ila_interface_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+ila_interface_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index = ~0;
@@ -1053,17 +1025,15 @@ ila_interface_command_fn (vlib_main_t * vm,
   return NULL;
 }
 
-VLIB_CLI_COMMAND (ila_interface_command, static) =
-{
+VLIB_CLI_COMMAND (ila_interface_command, static) = {
   .path = "ila interface",
   .short_help = "ila interface <interface-name> [disable]",
   .function = ila_interface_command_fn,
 };
 
 static clib_error_t *
-ila_show_entries_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+ila_show_entries_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ila_main_t *ilm = &ila_main;
@@ -1071,15 +1041,14 @@ ila_show_entries_command_fn (vlib_main_t * vm,
 
   vlib_cli_output (vm, "  %U\n", format_ila_entry, vnm, NULL);
   pool_foreach (e, ilm->entries)
-     {
+    {
       vlib_cli_output (vm, "  %U\n", format_ila_entry, vnm, e);
     }
 
   return NULL;
 }
 
-VLIB_CLI_COMMAND (ila_show_entries_command, static) =
-{
+VLIB_CLI_COMMAND (ila_show_entries_command, static) = {
   .path = "show ila entries",
   .short_help = "show ila entries",
   .function = ila_show_entries_command_fn,

@@ -29,8 +29,8 @@
 #include <vnet/devices/tap/tap.h>
 
 static clib_error_t *
-tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
-		       vlib_cli_command_t * cmd)
+tap_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   tap_create_if_args_t args = { 0 };
@@ -49,8 +49,8 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	{
 	  if (unformat (line_input, "id %u", &args.id))
 	    ;
-	  else
-	    if (unformat (line_input, "host-if-name %s", &args.host_if_name))
+	  else if (unformat (line_input, "host-if-name %s",
+			     &args.host_if_name))
 	    ;
 	  else if (unformat (line_input, "host-ns %s", &args.host_namespace))
 	    ;
@@ -80,9 +80,8 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    args.rx_ring_sz = tmp;
 	  else if (unformat (line_input, "tx-ring-size %d", &tmp))
 	    args.tx_ring_sz = tmp;
-	  else
-	    if (unformat
-		(line_input, "host-mtu-size %d", &args.host_mtu_size))
+	  else if (unformat (line_input, "host-mtu-size %d",
+			     &args.host_mtu_size))
 	    args.host_mtu_set = 1;
 	  else if (unformat (line_input, "no-gso"))
 	    args.tap_flags &= ~TAP_FLAG_GSO;
@@ -117,7 +116,7 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (ip_addr_set && args.host_bridge)
     return clib_error_return (0, "Please specify either host ip address or "
-			      "host bridge");
+				 "host bridge");
 
   tap_create_if (vm, &args);
 
@@ -130,13 +129,12 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vec_free (args.host_bridge);
 
   return args.error;
-
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tap_create_command, static) = {
   .path = "create tap",
-  .short_help = "create tap {id <if-id>} [hw-addr <mac-address>] "
+  .short_help =
+    "create tap {id <if-id>} [hw-addr <mac-address>] "
     "[num-rx-queues <n>] [rx-ring-size <size>] [tx-ring-size <size>] "
     "[host-ns <netns>] [host-bridge <bridge-name>] "
     "[host-ip4-addr <ip4addr/mask>] [host-ip6-addr <ip6-addr>] "
@@ -146,11 +144,10 @@ VLIB_CLI_COMMAND (tap_create_command, static) = {
     "[persist] [attach] [tun] [packed] [in-order]",
   .function = tap_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-tap_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
-		       vlib_cli_command_t * cmd)
+tap_delete_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
@@ -165,8 +162,8 @@ tap_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "sw_if_index %d", &sw_if_index))
 	;
-      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
@@ -187,18 +184,15 @@ tap_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (tap_delete__command, static) =
-{
+VLIB_CLI_COMMAND (tap_delete__command, static) = {
   .path = "delete tap",
   .short_help = "delete tap {<interface> | sw_if_index <sw_idx>}",
   .function = tap_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-tap_offload_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			vlib_cli_command_t * cmd)
+tap_offload_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
@@ -215,8 +209,8 @@ tap_offload_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "sw_if_index %d", &sw_if_index))
 	;
-      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else if (unformat (line_input, "gso-enable"))
 	{
@@ -257,20 +251,18 @@ tap_offload_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (tap_offload_command, static) =
-{
+VLIB_CLI_COMMAND (tap_offload_command, static) = {
   .path = "set tap offload",
-  .short_help = "set tap offload {<interface> | sw_if_index <sw_idx>}"
+  .short_help =
+    "set tap offload {<interface> | sw_if_index <sw_idx>}"
     " <gso-enable [gro-coalesce]  | gso-disable | csum-offload-enable |"
     "csum-offload-disable>",
   .function = tap_offload_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-tap_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
-		     vlib_cli_command_t * cmd)
+tap_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
 {
   virtio_main_t *mm = &virtio_main;
   virtio_if_t *vif;
@@ -281,8 +273,8 @@ tap_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+      if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
+		    &hw_if_index))
 	vec_add1 (hw_if_indices, hw_if_index);
       else if (unformat (input, "descriptors"))
 	show_descr = 1;
@@ -296,10 +288,9 @@ tap_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (vec_len (hw_if_indices) == 0)
     {
-      /* *INDENT-OFF* */
+
       pool_foreach (vif, mm->interfaces)
-	  vec_add1 (hw_if_indices, vif->hw_if_index);
-      /* *INDENT-ON* */
+	vec_add1 (hw_if_indices, vif->hw_if_index);
     }
 
   virtio_show (vm, hw_if_indices, show_descr, VIRTIO_IF_TYPE_TAP);
@@ -309,17 +300,15 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tap_show_command, static) = {
   .path = "show tap",
   .short_help = "show tap {<interface>] [descriptors]",
   .function = tap_show_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-tun_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
-		     vlib_cli_command_t * cmd)
+tun_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
 {
   virtio_main_t *mm = &virtio_main;
   virtio_if_t *vif;
@@ -330,8 +319,8 @@ tun_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+      if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
+		    &hw_if_index))
 	vec_add1 (hw_if_indices, hw_if_index);
       else if (unformat (input, "descriptors"))
 	show_descr = 1;
@@ -345,10 +334,9 @@ tun_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (vec_len (hw_if_indices) == 0)
     {
-      /* *INDENT-OFF* */
+
       pool_foreach (vif, mm->interfaces)
-          vec_add1 (hw_if_indices, vif->hw_if_index);
-      /* *INDENT-ON* */
+	vec_add1 (hw_if_indices, vif->hw_if_index);
     }
 
   virtio_show (vm, hw_if_indices, show_descr, VIRTIO_IF_TYPE_TUN);
@@ -358,16 +346,14 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tun_show_command, static) = {
   .path = "show tun",
   .short_help = "show tun {<interface>] [descriptors]",
   .function = tun_show_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-tap_cli_init (vlib_main_t * vm)
+tap_cli_init (vlib_main_t *vm)
 {
   return 0;
 }

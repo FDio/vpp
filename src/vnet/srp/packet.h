@@ -46,28 +46,31 @@
 
 /* SRP version 2. */
 
-#define foreach_srp_mode			\
-  _ (reserved0)					\
-  _ (reserved1)					\
-  _ (reserved2)					\
-  _ (reserved3)					\
-  _ (control_pass_to_host)			\
-  _ (control_locally_buffered_for_host)		\
-  _ (keep_alive)				\
+#define foreach_srp_mode                                                      \
+  _ (reserved0)                                                               \
+  _ (reserved1)                                                               \
+  _ (reserved2)                                                               \
+  _ (reserved3)                                                               \
+  _ (control_pass_to_host)                                                    \
+  _ (control_locally_buffered_for_host)                                       \
+  _ (keep_alive)                                                              \
   _ (data)
 
-typedef enum {
+typedef enum
+{
 #define _(f) SRP_MODE_##f,
   foreach_srp_mode
 #undef _
-  SRP_N_MODE,
+    SRP_N_MODE,
 } srp_mode_t;
 
-typedef union {
+typedef union
+{
   /* For computing parity bit. */
   u16 as_u16;
 
-  struct {
+  struct
+  {
     u8 ttl;
 
 #if CLIB_ARCH_IS_BIG_ENDIAN
@@ -86,27 +89,29 @@ typedef union {
 } srp_header_t;
 
 always_inline void
-srp_header_compute_parity (srp_header_t * h)
+srp_header_compute_parity (srp_header_t *h)
 {
   h->parity = 0;
   h->parity = count_set_bits (h->as_u16) ^ 1; /* odd parity */
 }
 
-typedef struct {
+typedef struct
+{
   srp_header_t srp;
   ethernet_header_t ethernet;
 } srp_and_ethernet_header_t;
 
-#define foreach_srp_control_packet_type		\
-  _ (reserved)					\
-  _ (topology)					\
+#define foreach_srp_control_packet_type                                       \
+  _ (reserved)                                                                \
+  _ (topology)                                                                \
   _ (ips)
 
-typedef enum {
+typedef enum
+{
 #define _(f) SRP_CONTROL_PACKET_TYPE_##f,
   foreach_srp_control_packet_type
 #undef _
-  SRP_N_CONTROL_PACKET_TYPE,
+    SRP_N_CONTROL_PACKET_TYPE,
 } srp_control_packet_type_t;
 
 typedef CLIB_PACKED (struct {
@@ -121,16 +126,18 @@ typedef CLIB_PACKED (struct {
   u16 ttl;
 }) srp_control_header_t;
 
-typedef struct {
+typedef struct
+{
   srp_header_t srp;
   ethernet_header_t ethernet;
   srp_control_header_t control;
 } srp_generic_control_header_t;
 
-typedef struct {
+typedef struct
+{
   u8 flags;
 #define SRP_TOPOLOGY_MAC_BINDING_FLAG_IS_INNER_RING (1 << 6)
-#define SRP_TOPOLOGY_MAC_BINDING_FLAG_IS_WRAPPED (1 << 5)
+#define SRP_TOPOLOGY_MAC_BINDING_FLAG_IS_WRAPPED    (1 << 5)
 
   /* MAC address. */
   u8 address[6];
@@ -151,40 +158,45 @@ typedef CLIB_PACKED (struct {
   srp_topology_mac_binding_t bindings[0];
 }) srp_topology_header_t;
 
-#define foreach_srp_ips_request_type		\
-  _ (idle, 0x0)					\
-  _ (wait_to_restore, 0x5)			\
-  _ (manual_switch, 0x6)			\
-  _ (signal_degrade, 0x8)			\
-  _ (signal_fail, 0xb)				\
+#define foreach_srp_ips_request_type                                          \
+  _ (idle, 0x0)                                                               \
+  _ (wait_to_restore, 0x5)                                                    \
+  _ (manual_switch, 0x6)                                                      \
+  _ (signal_degrade, 0x8)                                                     \
+  _ (signal_fail, 0xb)                                                        \
   _ (forced_switch, 0xd)
 
-typedef enum {
-#define _(f,n) SRP_IPS_REQUEST_##f = n,
+typedef enum
+{
+#define _(f, n) SRP_IPS_REQUEST_##f = n,
   foreach_srp_ips_request_type
 #undef _
 } srp_ips_request_type_t;
 
-#define foreach_srp_ips_status			\
-  _ (idle, 0x0)					\
+#define foreach_srp_ips_status                                                \
+  _ (idle, 0x0)                                                               \
   _ (wrapped, 0x2)
 
-typedef enum {
-#define _(f,n) SRP_IPS_STATUS_##f = n,
+typedef enum
+{
+#define _(f, n) SRP_IPS_STATUS_##f = n,
   foreach_srp_ips_status
 #undef _
 } srp_ips_status_t;
 
-typedef struct {
+typedef struct
+{
   srp_header_t srp;
   ethernet_header_t ethernet;
   srp_control_header_t control;
   u8 originator_address[6];
 
-  union {
+  union
+  {
     u8 ips_octet;
 
-    struct {
+    struct
+    {
 #if CLIB_ARCH_IS_BIG_ENDIAN
       u8 request_type : 4;
       u8 is_long_path : 1;

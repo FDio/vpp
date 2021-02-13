@@ -44,7 +44,7 @@ main (int argc, char *argv[])
 	}
     }
 
-  (void) junk;			/* compiler warning */
+  (void) junk; /* compiler warning */
 
   pool_put_index (tp, 1);
   pool_put_index (tp, 65);
@@ -77,24 +77,22 @@ main (int argc, char *argv[])
     }
   while (next != ~0);
 
-  /* *INDENT-OFF* */
   pool_foreach (junk, tp)
-   {
-    int is_free;
+    {
+      int is_free;
 
-    is_free = pool_is_free_index (tp, junk - tp);
+      is_free = pool_is_free_index (tp, junk - tp);
       if (is_free == 0)
-        {
-          if (i == 1 || i == 65)
-            clib_warning ("oops, free index %d reported busy", i);
-        }
+	{
+	  if (i == 1 || i == 65)
+	    clib_warning ("oops, free index %d reported busy", i);
+	}
       else
-        {
-          if (i != 1 && i != 65)
-            clib_warning ("oops, busy index %d reported free", i);
-        }
-  }
-  /* *INDENT-ON* */
+	{
+	  if (i != 1 && i != 65)
+	    clib_warning ("oops, busy index %d reported free", i);
+	}
+    }
 
   return 0;
 }

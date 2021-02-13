@@ -29,8 +29,7 @@ create_cmd::create_cmd(HW::item<handle_t>& item,
   , m_vni(vni)
   , m_is_l2(is_l2)
   , m_bd_rd(bd_rd)
-{
-}
+{}
 
 rc_t
 create_cmd::issue(connection& con)
@@ -70,8 +69,7 @@ create_cmd::to_string() const
 delete_cmd::delete_cmd(HW::item<handle_t>& item, uint32_t vni)
   : interface::delete_cmd<vapi::Gbp_vxlan_tunnel_del>(item)
   , m_vni(vni)
-{
-}
+{}
 
 rc_t
 delete_cmd::issue(connection& con)
@@ -99,9 +97,7 @@ delete_cmd::to_string() const
   return (s.str());
 }
 
-dump_cmd::dump_cmd()
-{
-}
+dump_cmd::dump_cmd() {}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const

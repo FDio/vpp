@@ -68,8 +68,8 @@ public:
   };
 
   /**
-    * A bond interface load balance
-    */
+   * A bond interface load balance
+   */
   struct lb_t : enum_base<lb_t>
   {
     /**

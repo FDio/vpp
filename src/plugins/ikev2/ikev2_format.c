@@ -22,7 +22,7 @@
 #include <plugins/ikev2/ikev2_priv.h>
 
 u8 *
-format_ikev2_sa_transform (u8 * s, va_list * args)
+format_ikev2_sa_transform (u8 *s, va_list *args)
 {
   ikev2_sa_transform_t *tr = va_arg (*args, ikev2_sa_transform_t *);
 
@@ -58,93 +58,123 @@ format_ikev2_sa_transform (u8 * s, va_list * args)
   if (tr->type == IKEV2_TRANSFORM_TYPE_ENCR &&
       tr->encr_type == IKEV2_TRANSFORM_ENCR_TYPE_AES_CBC && tr->key_len)
     s = format (s, "-%u", tr->key_len * 8);
-  else if (vec_len (tr->attrs) == 4 && tr->attrs[0] == 0x80
-	   && tr->attrs[1] == 0x0e)
+  else if (vec_len (tr->attrs) == 4 && tr->attrs[0] == 0x80 &&
+	   tr->attrs[1] == 0x0e)
     s = format (s, "-%u", tr->attrs[2] * 256 + tr->attrs[3]);
   else if (vec_len (tr->attrs))
-    s = format (s, "(unknown attr %U)", format_hex_bytes,
-		tr->attrs, vec_len (tr->attrs));
+    s = format (s, "(unknown attr %U)", format_hex_bytes, tr->attrs,
+		vec_len (tr->attrs));
 
   return s;
 }
 
-#define MACRO_FORMAT(lc)                                \
-u8 * format_ikev2_##lc (u8 * s, va_list * args)         \
-{                                                       \
-  u32 i = va_arg (*args, u32);                          \
-  char * t = 0;                                         \
-  switch (i) {                                          \
-        foreach_ikev2_##lc                              \
-      default:                                          \
-        return format (s, "unknown (%u)", i);           \
-    }                                                   \
-  s = format (s, "%s", t);                              \
-  return s;                                             \
-}
+#define MACRO_FORMAT(lc)                                                      \
+  u8 *format_ikev2_##lc (u8 *s, va_list *args)                                \
+  {                                                                           \
+    u32 i = va_arg (*args, u32);                                              \
+    char *t = 0;                                                              \
+    switch (i)                                                                \
+      {                                                                       \
+	foreach_ikev2_##lc default : return format (s, "unknown (%u)", i);    \
+      }                                                                       \
+    s = format (s, "%s", t);                                                  \
+    return s;                                                                 \
+  }
 
-#define MACRO_UNFORMAT(lc)                              \
-uword                                                   \
-unformat_ikev2_##lc (unformat_input_t * input,          \
-                     va_list * args)                    \
-{                                                       \
-  u32 * r = va_arg (*args, u32 *);                      \
-  if (0) ;                                              \
-  foreach_ikev2_##lc                                    \
-  else                                                  \
-    return 0;                                           \
-  return 1;                                             \
-}
+#define MACRO_UNFORMAT(lc)                                                    \
+  uword unformat_ikev2_##lc (unformat_input_t *input, va_list *args)          \
+  {                                                                           \
+    u32 *r = va_arg (*args, u32 *);                                           \
+    if (0)                                                                    \
+      ;                                                                       \
+    foreach_ikev2_##lc else return 0;                                         \
+    return 1;                                                                 \
+  }
 
-#define _(v,f,str) case IKEV2_AUTH_METHOD_##f: t = str; break;
+#define _(v, f, str)                                                          \
+  case IKEV2_AUTH_METHOD_##f:                                                 \
+    t = str;                                                                  \
+    break;
 MACRO_FORMAT (auth_method)
 #undef _
-#define _(v,f,str) else if (unformat (input, str)) *r = IKEV2_AUTH_METHOD_##f;
-  MACRO_UNFORMAT (auth_method)
+#define _(v, f, str)                                                          \
+  else if (unformat (input, str)) *r = IKEV2_AUTH_METHOD_##f;
+MACRO_UNFORMAT (auth_method)
 #undef _
-#define _(v,f,str) case IKEV2_TRANSFORM_TYPE_##f: t = str; break;
-  MACRO_FORMAT (transform_type)
+#define _(v, f, str)                                                          \
+  case IKEV2_TRANSFORM_TYPE_##f:                                              \
+    t = str;                                                                  \
+    break;
+MACRO_FORMAT (transform_type)
 #undef _
-#define _(v,f,str) else if (unformat (input, str)) *r = IKEV2_TRANSFORM_TYPE_##f;
-  MACRO_UNFORMAT (transform_type)
+#define _(v, f, str)                                                          \
+  else if (unformat (input, str)) *r = IKEV2_TRANSFORM_TYPE_##f;
+MACRO_UNFORMAT (transform_type)
 #undef _
-#define _(v,f) case IKEV2_NOTIFY_MSG_##f: t = #f; break;
-  MACRO_FORMAT (notify_msg_type)
+#define _(v, f)                                                               \
+  case IKEV2_NOTIFY_MSG_##f:                                                  \
+    t = #f;                                                                   \
+    break;
+MACRO_FORMAT (notify_msg_type)
 #undef _
-#define _(v,f,str) case IKEV2_ID_TYPE_##f: t = str; break;
-  MACRO_FORMAT (id_type)
+#define _(v, f, str)                                                          \
+  case IKEV2_ID_TYPE_##f:                                                     \
+    t = str;                                                                  \
+    break;
+MACRO_FORMAT (id_type)
 #undef _
-#define _(v,f,str) else if (unformat (input, str)) *r = IKEV2_ID_TYPE_##f;
-  MACRO_UNFORMAT (id_type)
+#define _(v, f, str) else if (unformat (input, str)) *r = IKEV2_ID_TYPE_##f;
+MACRO_UNFORMAT (id_type)
 #undef _
-#define _(v,f,str) case IKEV2_TRANSFORM_ENCR_TYPE_##f: t = str; break;
-  MACRO_FORMAT (transform_encr_type)
+#define _(v, f, str)                                                          \
+  case IKEV2_TRANSFORM_ENCR_TYPE_##f:                                         \
+    t = str;                                                                  \
+    break;
+MACRO_FORMAT (transform_encr_type)
 #undef _
-#define _(v,f,str) else if (unformat (input, str)) *r = IKEV2_TRANSFORM_ENCR_TYPE_##f;
-  MACRO_UNFORMAT (transform_encr_type)
+#define _(v, f, str)                                                          \
+  else if (unformat (input, str)) *r = IKEV2_TRANSFORM_ENCR_TYPE_##f;
+MACRO_UNFORMAT (transform_encr_type)
 #undef _
-#define _(v,f,str) case IKEV2_TRANSFORM_PRF_TYPE_##f: t = str; break;
-  MACRO_FORMAT (transform_prf_type)
+#define _(v, f, str)                                                          \
+  case IKEV2_TRANSFORM_PRF_TYPE_##f:                                          \
+    t = str;                                                                  \
+    break;
+MACRO_FORMAT (transform_prf_type)
 #undef _
-#define _(v,f,str) else if (unformat (input, str)) *r = IKEV2_TRANSFORM_PRF_TYPE_##f;
-  MACRO_UNFORMAT (transform_prf_type)
+#define _(v, f, str)                                                          \
+  else if (unformat (input, str)) *r = IKEV2_TRANSFORM_PRF_TYPE_##f;
+MACRO_UNFORMAT (transform_prf_type)
 #undef _
-#define _(v,f,str) case IKEV2_TRANSFORM_INTEG_TYPE_##f: t = str; break;
-  MACRO_FORMAT (transform_integ_type)
+#define _(v, f, str)                                                          \
+  case IKEV2_TRANSFORM_INTEG_TYPE_##f:                                        \
+    t = str;                                                                  \
+    break;
+MACRO_FORMAT (transform_integ_type)
 #undef _
-#define _(v,f,str) else if (unformat (input, str)) *r = IKEV2_TRANSFORM_INTEG_TYPE_##f;
-  MACRO_UNFORMAT (transform_integ_type)
+#define _(v, f, str)                                                          \
+  else if (unformat (input, str)) *r = IKEV2_TRANSFORM_INTEG_TYPE_##f;
+MACRO_UNFORMAT (transform_integ_type)
 #undef _
-#define _(v,f,str) case IKEV2_TRANSFORM_DH_TYPE_##f: t = str; break;
-  MACRO_FORMAT (transform_dh_type)
+#define _(v, f, str)                                                          \
+  case IKEV2_TRANSFORM_DH_TYPE_##f:                                           \
+    t = str;                                                                  \
+    break;
+MACRO_FORMAT (transform_dh_type)
 #undef _
-#define _(v,f,str) else if (unformat (input, str)) *r = IKEV2_TRANSFORM_DH_TYPE_##f;
-  MACRO_UNFORMAT (transform_dh_type)
+#define _(v, f, str)                                                          \
+  else if (unformat (input, str)) *r = IKEV2_TRANSFORM_DH_TYPE_##f;
+MACRO_UNFORMAT (transform_dh_type)
 #undef _
-#define _(v,f,str) case IKEV2_TRANSFORM_ESN_TYPE_##f: t = str; break;
-  MACRO_FORMAT (transform_esn_type)
+#define _(v, f, str)                                                          \
+  case IKEV2_TRANSFORM_ESN_TYPE_##f:                                          \
+    t = str;                                                                  \
+    break;
+MACRO_FORMAT (transform_esn_type)
 #undef _
-#define _(v,f,str) else if (unformat (input, str)) *r = IKEV2_TRANSFORM_ESN_TYPE_##f;
-  MACRO_UNFORMAT (transform_esn_type)
+#define _(v, f, str)                                                          \
+  else if (unformat (input, str)) *r = IKEV2_TRANSFORM_ESN_TYPE_##f;
+MACRO_UNFORMAT (transform_esn_type)
 #undef _
 /*
  * fd.io coding-style-patch-verification: ON

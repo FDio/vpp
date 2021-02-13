@@ -33,8 +33,8 @@ calc_nat_key (ip4_address_t addr, u16 port, u32 fib_index, u8 proto)
 }
 
 always_inline void
-split_nat_key (u64 key, ip4_address_t * addr, u16 * port,
-	       u32 * fib_index, nat_protocol_t * proto)
+split_nat_key (u64 key, ip4_address_t *addr, u16 *port, u32 *fib_index,
+	       nat_protocol_t *proto)
 {
   if (addr)
     {
@@ -42,7 +42,7 @@ split_nat_key (u64 key, ip4_address_t * addr, u16 * port,
     }
   if (port)
     {
-      *port = (key >> 16) & (u16) ~ 0;
+      *port = (key >> 16) & (u16) ~0;
     }
   if (fib_index)
     {
@@ -55,7 +55,7 @@ split_nat_key (u64 key, ip4_address_t * addr, u16 * port,
 }
 
 always_inline void
-init_nat_k (clib_bihash_kv_8_8_t * kv, ip4_address_t addr, u16 port,
+init_nat_k (clib_bihash_kv_8_8_t *kv, ip4_address_t addr, u16 port,
 	    u32 fib_index, nat_protocol_t proto)
 {
   kv->key = calc_nat_key (addr, port, fib_index, proto);
@@ -72,7 +72,7 @@ init_nat_kv (clib_bihash_kv_8_8_t *kv, ip4_address_t addr, u16 port,
 }
 
 always_inline void
-init_nat_i2o_k (clib_bihash_kv_8_8_t * kv, snat_session_t * s)
+init_nat_i2o_k (clib_bihash_kv_8_8_t *kv, snat_session_t *s)
 {
   return init_nat_k (kv, s->in2out.addr, s->in2out.port, s->in2out.fib_index,
 		     s->nat_proto);
@@ -88,7 +88,7 @@ init_nat_i2o_kv (clib_bihash_kv_8_8_t *kv, snat_session_t *s, u32 thread_index,
 }
 
 always_inline void
-init_nat_o2i_k (clib_bihash_kv_8_8_t * kv, snat_session_t * s)
+init_nat_o2i_k (clib_bihash_kv_8_8_t *kv, snat_session_t *s)
 {
   return init_nat_k (kv, s->out2in.addr, s->out2in.port, s->out2in.fib_index,
 		     s->nat_proto);
@@ -116,9 +116,8 @@ nat_value_get_session_index (clib_bihash_kv_8_8_t *value)
 }
 
 static inline uword
-nat_pre_node_fn_inline (vlib_main_t * vm,
-			vlib_node_runtime_t * node,
-			vlib_frame_t * frame, u32 def_next)
+nat_pre_node_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			vlib_frame_t *frame, u32 def_next)
 {
   u32 n_left_from, *from;
 
@@ -199,8 +198,8 @@ nat_pre_node_fn_inline (vlib_main_t * vm,
       vnet_feature_next (&arc_next0, b0);
       vnet_buffer2 (b0)->nat.arc_next = arc_next0;
 
-      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			 (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	{
 	  nat_pre_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	  t->next_index = next0;
@@ -218,7 +217,7 @@ nat_pre_node_fn_inline (vlib_main_t * vm,
 }
 
 always_inline u8
-is_interface_addr (snat_main_t * sm, vlib_node_runtime_t * node,
+is_interface_addr (snat_main_t *sm, vlib_node_runtime_t *node,
 		   u32 sw_if_index0, u32 ip4_addr)
 {
   snat_runtime_t *rt = (snat_runtime_t *) node->runtime_data;
@@ -226,9 +225,8 @@ is_interface_addr (snat_main_t * sm, vlib_node_runtime_t * node,
 
   if (PREDICT_FALSE (rt->cached_sw_if_index != sw_if_index0))
     {
-      first_int_addr =
-	ip4_interface_first_address (sm->ip4_main, sw_if_index0,
-				     0 /* just want the address */ );
+      first_int_addr = ip4_interface_first_address (
+	sm->ip4_main, sw_if_index0, 0 /* just want the address */);
       rt->cached_sw_if_index = sw_if_index0;
       if (first_int_addr)
 	rt->cached_ip4_address = first_int_addr->as_u32;
@@ -243,7 +241,7 @@ is_interface_addr (snat_main_t * sm, vlib_node_runtime_t * node,
 }
 
 always_inline void
-user_session_increment (snat_main_t * sm, snat_user_t * u, u8 is_static)
+user_session_increment (snat_main_t *sm, snat_user_t *u, u8 is_static)
 {
   if (u->nsessions + u->nstaticsessions < sm->max_translations_per_user)
     {
@@ -255,13 +253,13 @@ user_session_increment (snat_main_t * sm, snat_user_t * u, u8 is_static)
 }
 
 always_inline void
-nat44_delete_user_with_no_session (snat_main_t * sm, snat_user_t * u,
+nat44_delete_user_with_no_session (snat_main_t *sm, snat_user_t *u,
 				   u32 thread_index)
 {
   clib_bihash_kv_8_8_t kv;
   snat_user_key_t u_key;
-  snat_main_per_thread_data_t *tsm = vec_elt_at_index (sm->per_thread_data,
-						       thread_index);
+  snat_main_per_thread_data_t *tsm =
+    vec_elt_at_index (sm->per_thread_data, thread_index);
 
   if (u->nstaticsessions == 0 && u->nsessions == 0)
     {
@@ -277,17 +275,14 @@ nat44_delete_user_with_no_session (snat_main_t * sm, snat_user_t * u,
 }
 
 always_inline void
-nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
-		      u32 thread_index)
+nat44_delete_session (snat_main_t *sm, snat_session_t *ses, u32 thread_index)
 {
-  snat_main_per_thread_data_t *tsm = vec_elt_at_index (sm->per_thread_data,
-						       thread_index);
+  snat_main_per_thread_data_t *tsm =
+    vec_elt_at_index (sm->per_thread_data, thread_index);
   clib_bihash_kv_8_8_t kv, value;
   snat_user_t *u;
-  const snat_user_key_t u_key = {
-    .addr = ses->in2out.addr,
-    .fib_index = ses->in2out.fib_index
-  };
+  const snat_user_key_t u_key = { .addr = ses->in2out.addr,
+				  .fib_index = ses->in2out.fib_index };
   const u8 u_static = snat_is_session_static (ses);
 
   clib_dlist_remove (tsm->list_pool, ses->per_user_index);
@@ -315,9 +310,8 @@ nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
 }
 
 always_inline void
-nat44_set_tcp_session_state_i2o (snat_main_t * sm, f64 now,
-				 snat_session_t * ses, vlib_buffer_t * b,
-				 u32 thread_index)
+nat44_set_tcp_session_state_i2o (snat_main_t *sm, f64 now, snat_session_t *ses,
+				 vlib_buffer_t *b, u32 thread_index)
 {
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   u8 tcp_flags = vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags;
@@ -343,7 +337,7 @@ nat44_set_tcp_session_state_i2o (snat_main_t * sm, f64 now,
 	{
 	  ses->state |= NAT44_SES_O2I_FIN_ACK;
 	  if (nat44_is_ses_closed (ses))
-	    {			// if session is now closed, save the timestamp
+	    { // if session is now closed, save the timestamp
 	      ses->tcp_closed_timestamp = now + sm->timeouts.tcp.transitory;
 	      ses->last_lru_update = now;
 	    }
@@ -364,10 +358,9 @@ nat44_set_tcp_session_state_i2o (snat_main_t * sm, f64 now,
 }
 
 always_inline void
-nat44_set_tcp_session_state_o2i (snat_main_t * sm, f64 now,
-				 snat_session_t * ses, u8 tcp_flags,
-				 u32 tcp_ack_number, u32 tcp_seq_number,
-				 u32 thread_index)
+nat44_set_tcp_session_state_o2i (snat_main_t *sm, f64 now, snat_session_t *ses,
+				 u8 tcp_flags, u32 tcp_ack_number,
+				 u32 tcp_seq_number, u32 thread_index)
 {
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   if ((ses->state == 0) && (tcp_flags & TCP_FLAG_RST))
@@ -389,7 +382,7 @@ nat44_set_tcp_session_state_o2i (snat_main_t * sm, f64 now,
       if (clib_net_to_host_u32 (tcp_ack_number) > ses->i2o_fin_seq)
 	ses->state |= NAT44_SES_I2O_FIN_ACK;
       if (nat44_is_ses_closed (ses))
-	{			// if session is now closed, save the timestamp
+	{ // if session is now closed, save the timestamp
 	  ses->tcp_closed_timestamp = now + sm->timeouts.tcp.transitory;
 	  ses->last_lru_update = now;
 	}
@@ -408,7 +401,7 @@ nat44_set_tcp_session_state_o2i (snat_main_t * sm, f64 now,
 }
 
 always_inline u32
-nat44_session_get_timeout (snat_main_t * sm, snat_session_t * s)
+nat44_session_get_timeout (snat_main_t *sm, snat_session_t *s)
 {
   switch (s->nat_proto)
     {
@@ -431,7 +424,7 @@ nat44_session_get_timeout (snat_main_t * sm, snat_session_t * s)
 }
 
 always_inline void
-nat44_session_update_counters (snat_session_t * s, f64 now, uword bytes,
+nat44_session_update_counters (snat_session_t *s, f64 now, uword bytes,
 			       u32 thread_index)
 {
   s->last_heard = now;
@@ -447,8 +440,7 @@ nat44_session_update_counters (snat_session_t * s, f64 now, uword bytes,
 
 /** \brief Per-user LRU list maintenance */
 always_inline void
-nat44_session_update_lru (snat_main_t * sm, snat_session_t * s,
-			  u32 thread_index)
+nat44_session_update_lru (snat_main_t *sm, snat_session_t *s, u32 thread_index)
 {
   /* don't update too often - timeout is in magnitude of seconds anyway */
   if (s->last_heard > s->last_lru_update + 1)
@@ -472,7 +464,7 @@ nat44_session_update_lru (snat_main_t * sm, snat_session_t * s,
 }
 
 always_inline void
-init_ed_k (clib_bihash_kv_16_8_t * kv, ip4_address_t l_addr, u16 l_port,
+init_ed_k (clib_bihash_kv_16_8_t *kv, ip4_address_t l_addr, u16 l_port,
 	   ip4_address_t r_addr, u16 r_port, u32 fib_index, u8 proto)
 {
   kv->key[0] = (u64) r_addr.as_u32 << 32 | l_addr.as_u32;
@@ -481,7 +473,7 @@ init_ed_k (clib_bihash_kv_16_8_t * kv, ip4_address_t l_addr, u16 l_port,
 }
 
 always_inline void
-init_ed_kv (clib_bihash_kv_16_8_t * kv, ip4_address_t l_addr, u16 l_port,
+init_ed_kv (clib_bihash_kv_16_8_t *kv, ip4_address_t l_addr, u16 l_port,
 	    ip4_address_t r_addr, u16 r_port, u32 fib_index, u8 proto,
 	    u32 thread_index, u32 session_index)
 {
@@ -490,25 +482,25 @@ init_ed_kv (clib_bihash_kv_16_8_t * kv, ip4_address_t l_addr, u16 l_port,
 }
 
 always_inline u32
-ed_value_get_thread_index (clib_bihash_kv_16_8_t * value)
+ed_value_get_thread_index (clib_bihash_kv_16_8_t *value)
 {
   return value->value >> 32;
 }
 
 always_inline u32
-ed_value_get_session_index (clib_bihash_kv_16_8_t * value)
+ed_value_get_session_index (clib_bihash_kv_16_8_t *value)
 {
   return value->value & ~(u32) 0;
 }
 
 always_inline void
-split_ed_kv (clib_bihash_kv_16_8_t * kv,
-	     ip4_address_t * l_addr, ip4_address_t * r_addr, u8 * proto,
-	     u32 * fib_index, u16 * l_port, u16 * r_port)
+split_ed_kv (clib_bihash_kv_16_8_t *kv, ip4_address_t *l_addr,
+	     ip4_address_t *r_addr, u8 *proto, u32 *fib_index, u16 *l_port,
+	     u16 *r_port)
 {
   if (l_addr)
     {
-      l_addr->as_u32 = kv->key[0] & (u32) ~ 0;
+      l_addr->as_u32 = kv->key[0] & (u32) ~0;
     }
   if (r_addr)
     {
@@ -520,7 +512,7 @@ split_ed_kv (clib_bihash_kv_16_8_t * kv,
     }
   if (l_port)
     {
-      *l_port = (kv->key[1] >> 32) & (u16) ~ 0;
+      *l_port = (kv->key[1] >> 32) & (u16) ~0;
     }
   if (fib_index)
     {
@@ -528,7 +520,7 @@ split_ed_kv (clib_bihash_kv_16_8_t * kv,
     }
   if (proto)
     {
-      *proto = kv->key[1] & (u8) ~ 0;
+      *proto = kv->key[1] & (u8) ~0;
     }
 }
 
@@ -552,8 +544,8 @@ nat_get_icmp_session_lookup_values (vlib_buffer_t *b, ip4_header_t *ip0,
   *lookup_sport = 0;
   *lookup_dport = 0;
 
-  if (!icmp_type_is_error_message
-      (vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags))
+  if (!icmp_type_is_error_message (
+	vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags))
     {
       *lookup_protocol = IP_PROTOCOL_ICMP;
       lookup_saddr->as_u32 = ip0->src_address.as_u32;
@@ -604,8 +596,8 @@ nat_get_icmp_session_lookup_values (vlib_buffer_t *b, ip4_header_t *ip0,
  * @returns 0 if packet should be translated otherwise 1
  */
 static inline int
-snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t * node,
-			 u32 sw_if_index0, ip4_header_t * ip0, u32 proto0,
+snat_not_translate_fast (snat_main_t *sm, vlib_node_runtime_t *node,
+			 u32 sw_if_index0, ip4_header_t *ip0, u32 proto0,
 			 u32 rx_fib_index0)
 {
   if (sm->out2in_dpo)
@@ -623,8 +615,8 @@ snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t * node,
   };
 
   /* Don't NAT packet aimed at the intfc address */
-  if (PREDICT_FALSE (is_interface_addr (sm, node, sw_if_index0,
-					ip0->dst_address.as_u32)))
+  if (PREDICT_FALSE (
+	is_interface_addr (sm, node, sw_if_index0, ip0->dst_address.as_u32)))
     return 1;
 
   fei = fib_table_lookup (rx_fib_index0, &pfx);
@@ -634,27 +626,28 @@ snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t * node,
       if (sw_if_index == ~0)
 	{
 	  vec_foreach (outside_fib, sm->outside_fibs)
-	  {
-	    fei = fib_table_lookup (outside_fib->fib_index, &pfx);
-	    if (FIB_NODE_INDEX_INVALID != fei)
-	      {
-		sw_if_index = fib_entry_get_resolving_interface (fei);
-		if (sw_if_index != ~0)
-		  break;
-	      }
-	  }
+	    {
+	      fei = fib_table_lookup (outside_fib->fib_index, &pfx);
+	      if (FIB_NODE_INDEX_INVALID != fei)
+		{
+		  sw_if_index = fib_entry_get_resolving_interface (fei);
+		  if (sw_if_index != ~0)
+		    break;
+		}
+	    }
 	}
       if (sw_if_index == ~0)
 	return 1;
 
       snat_interface_t *i;
-      /* *INDENT-OFF* */
-      pool_foreach (i, sm->interfaces)  {
-        /* NAT packet aimed at outside interface */
-	if ((nat_interface_is_outside (i)) && (sw_if_index == i->sw_if_index))
-          return 0;
-      }
-      /* *INDENT-ON* */
+
+      pool_foreach (i, sm->interfaces)
+	{
+	  /* NAT packet aimed at outside interface */
+	  if ((nat_interface_is_outside (i)) &&
+	      (sw_if_index == i->sw_if_index))
+	    return 0;
+	}
     }
 
   return 1;

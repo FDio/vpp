@@ -56,7 +56,7 @@ typedef enum
 } ip4_input_next_t;
 
 static_always_inline void
-check_ver_opt_csum (ip4_header_t * ip, u8 * error, int verify_checksum)
+check_ver_opt_csum (ip4_header_t *ip, u8 *error, int verify_checksum)
 {
   if (PREDICT_FALSE (ip->ip_version_and_header_length != 0x45))
     {
@@ -69,17 +69,15 @@ check_ver_opt_csum (ip4_header_t * ip, u8 * error, int verify_checksum)
       else
 	*error = IP4_ERROR_VERSION;
     }
-  else
-    if (PREDICT_FALSE (verify_checksum &&
-		       ip_csum (ip, sizeof (ip4_header_t)) != 0))
+  else if (PREDICT_FALSE (verify_checksum &&
+			  ip_csum (ip, sizeof (ip4_header_t)) != 0))
     *error = IP4_ERROR_BAD_CHECKSUM;
 }
 
 always_inline void
-ip4_input_check_x4 (vlib_main_t * vm,
-		    vlib_node_runtime_t * error_node,
-		    vlib_buffer_t ** p, ip4_header_t ** ip,
-		    u16 * next, int verify_checksum)
+ip4_input_check_x4 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
+		    vlib_buffer_t **p, ip4_header_t **ip, u16 *next,
+		    int verify_checksum)
 {
   u8 error0, error1, error2, error3;
   u32 ip_len0, cur_len0;
@@ -106,13 +104,17 @@ ip4_input_check_x4 (vlib_main_t * vm,
 
   /* Drop fragmentation offset 1 packets. */
   error0 = ip4_get_fragment_offset (ip[0]) == 1 ?
-    IP4_ERROR_FRAGMENT_OFFSET_ONE : error0;
+	     IP4_ERROR_FRAGMENT_OFFSET_ONE :
+	     error0;
   error1 = ip4_get_fragment_offset (ip[1]) == 1 ?
-    IP4_ERROR_FRAGMENT_OFFSET_ONE : error1;
+	     IP4_ERROR_FRAGMENT_OFFSET_ONE :
+	     error1;
   error2 = ip4_get_fragment_offset (ip[2]) == 1 ?
-    IP4_ERROR_FRAGMENT_OFFSET_ONE : error2;
+	     IP4_ERROR_FRAGMENT_OFFSET_ONE :
+	     error2;
   error3 = ip4_get_fragment_offset (ip[3]) == 1 ?
-    IP4_ERROR_FRAGMENT_OFFSET_ONE : error3;
+	     IP4_ERROR_FRAGMENT_OFFSET_ONE :
+	     error3;
 
   /* Verify lengths. */
   ip_len0 = clib_net_to_host_u16 (ip[0]->length);
@@ -145,66 +147,65 @@ ip4_input_check_x4 (vlib_main_t * vm,
     {
       if (error0 == IP4_ERROR_TIME_EXPIRED)
 	{
-	  icmp4_error_set_vnet_buffer (p[0], ICMP4_time_exceeded,
-				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
-				       0);
+	  icmp4_error_set_vnet_buffer (
+	    p[0], ICMP4_time_exceeded,
+	    ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
 	  next[0] = IP4_INPUT_NEXT_ICMP_ERROR;
 	}
       else
-	next[0] = error0 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	next[0] = error0 != IP4_ERROR_OPTIONS ? IP4_INPUT_NEXT_DROP :
+						IP4_INPUT_NEXT_OPTIONS;
       p[0]->error = error_node->errors[error0];
     }
   if (PREDICT_FALSE (error1 != IP4_ERROR_NONE))
     {
       if (error1 == IP4_ERROR_TIME_EXPIRED)
 	{
-	  icmp4_error_set_vnet_buffer (p[1], ICMP4_time_exceeded,
-				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
-				       0);
+	  icmp4_error_set_vnet_buffer (
+	    p[1], ICMP4_time_exceeded,
+	    ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
 	  next[1] = IP4_INPUT_NEXT_ICMP_ERROR;
 	}
       else
-	next[1] = error1 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	next[1] = error1 != IP4_ERROR_OPTIONS ? IP4_INPUT_NEXT_DROP :
+						IP4_INPUT_NEXT_OPTIONS;
       p[1]->error = error_node->errors[error1];
     }
   if (PREDICT_FALSE (error2 != IP4_ERROR_NONE))
     {
       if (error2 == IP4_ERROR_TIME_EXPIRED)
 	{
-	  icmp4_error_set_vnet_buffer (p[2], ICMP4_time_exceeded,
-				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
-				       0);
+	  icmp4_error_set_vnet_buffer (
+	    p[2], ICMP4_time_exceeded,
+	    ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
 	  next[2] = IP4_INPUT_NEXT_ICMP_ERROR;
 	}
       else
-	next[2] = error2 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	next[2] = error2 != IP4_ERROR_OPTIONS ? IP4_INPUT_NEXT_DROP :
+						IP4_INPUT_NEXT_OPTIONS;
       p[2]->error = error_node->errors[error2];
     }
   if (PREDICT_FALSE (error3 != IP4_ERROR_NONE))
     {
       if (error3 == IP4_ERROR_TIME_EXPIRED)
 	{
-	  icmp4_error_set_vnet_buffer (p[3], ICMP4_time_exceeded,
-				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
-				       0);
+	  icmp4_error_set_vnet_buffer (
+	    p[3], ICMP4_time_exceeded,
+	    ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
 	  next[3] = IP4_INPUT_NEXT_ICMP_ERROR;
 	}
       else
-	next[3] = error3 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	next[3] = error3 != IP4_ERROR_OPTIONS ? IP4_INPUT_NEXT_DROP :
+						IP4_INPUT_NEXT_OPTIONS;
       p[3]->error = error_node->errors[error3];
     }
 }
 
 always_inline void
-ip4_input_check_x2 (vlib_main_t * vm,
-		    vlib_node_runtime_t * error_node,
-		    vlib_buffer_t * p0, vlib_buffer_t * p1,
-		    ip4_header_t * ip0, ip4_header_t * ip1,
-		    u32 * next0, u32 * next1, int verify_checksum)
+ip4_input_check_x2 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
+		    vlib_buffer_t *p0, vlib_buffer_t *p1, ip4_header_t *ip0,
+		    ip4_header_t *ip1, u32 *next0, u32 *next1,
+		    int verify_checksum)
 {
   u8 error0, error1;
   u32 ip_len0, cur_len0;
@@ -222,10 +223,10 @@ ip4_input_check_x2 (vlib_main_t * vm,
     error1 = IP4_ERROR_TIME_EXPIRED;
 
   /* Drop fragmentation offset 1 packets. */
-  error0 = ip4_get_fragment_offset (ip0) == 1 ?
-    IP4_ERROR_FRAGMENT_OFFSET_ONE : error0;
-  error1 = ip4_get_fragment_offset (ip1) == 1 ?
-    IP4_ERROR_FRAGMENT_OFFSET_ONE : error1;
+  error0 = ip4_get_fragment_offset (ip0) == 1 ? IP4_ERROR_FRAGMENT_OFFSET_ONE :
+						error0;
+  error1 = ip4_get_fragment_offset (ip1) == 1 ? IP4_ERROR_FRAGMENT_OFFSET_ONE :
+						error1;
 
   /* Verify lengths. */
   ip_len0 = clib_net_to_host_u16 (ip0->length);
@@ -248,37 +249,36 @@ ip4_input_check_x2 (vlib_main_t * vm,
     {
       if (error0 == IP4_ERROR_TIME_EXPIRED)
 	{
-	  icmp4_error_set_vnet_buffer (p0, ICMP4_time_exceeded,
-				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
-				       0);
+	  icmp4_error_set_vnet_buffer (
+	    p0, ICMP4_time_exceeded,
+	    ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
 	  *next0 = IP4_INPUT_NEXT_ICMP_ERROR;
 	}
       else
-	*next0 = error0 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	*next0 = error0 != IP4_ERROR_OPTIONS ? IP4_INPUT_NEXT_DROP :
+					       IP4_INPUT_NEXT_OPTIONS;
       p0->error = error_node->errors[error0];
     }
   if (PREDICT_FALSE (error1 != IP4_ERROR_NONE))
     {
       if (error1 == IP4_ERROR_TIME_EXPIRED)
 	{
-	  icmp4_error_set_vnet_buffer (p1, ICMP4_time_exceeded,
-				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
-				       0);
+	  icmp4_error_set_vnet_buffer (
+	    p1, ICMP4_time_exceeded,
+	    ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
 	  *next1 = IP4_INPUT_NEXT_ICMP_ERROR;
 	}
       else
-	*next1 = error1 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	*next1 = error1 != IP4_ERROR_OPTIONS ? IP4_INPUT_NEXT_DROP :
+					       IP4_INPUT_NEXT_OPTIONS;
       p1->error = error_node->errors[error1];
     }
 }
 
 always_inline void
-ip4_input_check_x1 (vlib_main_t * vm,
-		    vlib_node_runtime_t * error_node,
-		    vlib_buffer_t * p0,
-		    ip4_header_t * ip0, u32 * next0, int verify_checksum)
+ip4_input_check_x1 (vlib_main_t *vm, vlib_node_runtime_t *error_node,
+		    vlib_buffer_t *p0, ip4_header_t *ip0, u32 *next0,
+		    int verify_checksum)
 {
   u32 ip_len0, cur_len0;
   i32 len_diff0;
@@ -292,8 +292,8 @@ ip4_input_check_x1 (vlib_main_t * vm,
     error0 = IP4_ERROR_TIME_EXPIRED;
 
   /* Drop fragmentation offset 1 packets. */
-  error0 = ip4_get_fragment_offset (ip0) == 1 ?
-    IP4_ERROR_FRAGMENT_OFFSET_ONE : error0;
+  error0 = ip4_get_fragment_offset (ip0) == 1 ? IP4_ERROR_FRAGMENT_OFFSET_ONE :
+						error0;
 
   /* Verify lengths. */
   ip_len0 = clib_net_to_host_u16 (ip0->length);
@@ -311,14 +311,14 @@ ip4_input_check_x1 (vlib_main_t * vm,
     {
       if (error0 == IP4_ERROR_TIME_EXPIRED)
 	{
-	  icmp4_error_set_vnet_buffer (p0, ICMP4_time_exceeded,
-				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
-				       0);
+	  icmp4_error_set_vnet_buffer (
+	    p0, ICMP4_time_exceeded,
+	    ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
 	  *next0 = IP4_INPUT_NEXT_ICMP_ERROR;
 	}
       else
-	*next0 = error0 != IP4_ERROR_OPTIONS ?
-	  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_OPTIONS;
+	*next0 = error0 != IP4_ERROR_OPTIONS ? IP4_INPUT_NEXT_DROP :
+					       IP4_INPUT_NEXT_OPTIONS;
       p0->error = error_node->errors[error0];
     }
 }

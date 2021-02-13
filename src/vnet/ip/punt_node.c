@@ -35,19 +35,19 @@
 
 typedef enum
 {
-#define punt_error(n,s) PUNT_ERROR_##n,
+#define punt_error(n, s) PUNT_ERROR_##n,
 #include <vnet/ip/punt_error.def>
 #undef punt_error
   PUNT_N_ERROR,
 } punt_error_t;
 
-#define foreach_punt_next			\
-  _ (PUNT4, "ip4-punt")                         \
+#define foreach_punt_next                                                     \
+  _ (PUNT4, "ip4-punt")                                                       \
   _ (PUNT6, "ip6-punt")
 
 typedef enum
 {
-#define _(s,n) PUNT_NEXT_##s,
+#define _(s, n) PUNT_NEXT_##s,
   foreach_punt_next
 #undef _
     PUNT_N_NEXT,
@@ -74,9 +74,8 @@ enum punt_socket_rx_next_e
     @param is_ipv4 indicates if called for IPv4 or IPv6 node
 */
 always_inline uword
-udp46_punt_inline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node,
-		   vlib_frame_t * from_frame, int is_ip4)
+udp46_punt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *from_frame, int is_ip4)
 {
   u32 n_left_from, *from, *to_next;
   word advance;
@@ -121,7 +120,7 @@ udp46_punt_inline (vlib_main_t * vm,
 }
 
 static char *punt_error_strings[] = {
-#define punt_error(n,s) s,
+#define punt_error(n, s) s,
 #include "punt_error.def"
 #undef punt_error
 };
@@ -147,11 +146,10 @@ static char *punt_error_strings[] = {
     <em>Next Index:</em>
     - Dispatches the packet to the "error-punt" node
 */
-VLIB_NODE_FN (udp4_punt_node) (vlib_main_t * vm,
-			       vlib_node_runtime_t * node,
-			       vlib_frame_t * from_frame)
+VLIB_NODE_FN (udp4_punt_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return udp46_punt_inline (vm, node, from_frame, 1 /* is_ip4 */ );
+  return udp46_punt_inline (vm, node, from_frame, 1 /* is_ip4 */);
 }
 
 /** @brief IPv6 UDP punt node.
@@ -175,14 +173,12 @@ VLIB_NODE_FN (udp4_punt_node) (vlib_main_t * vm,
     <em>Next Index:</em>
     - Dispatches the packet to the "error-punt" node
 */
-VLIB_NODE_FN (udp6_punt_node) (vlib_main_t * vm,
-			       vlib_node_runtime_t * node,
-			       vlib_frame_t * from_frame)
+VLIB_NODE_FN (udp6_punt_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return udp46_punt_inline (vm, node, from_frame, 0 /* is_ip4 */ );
+  return udp46_punt_inline (vm, node, from_frame, 0 /* is_ip4 */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp4_punt_node) = {
   .name = "ip4-udp-punt",
   /* Takes a vector of packets. */
@@ -193,7 +189,7 @@ VLIB_REGISTER_NODE (udp4_punt_node) = {
 
   .n_next_nodes = PUNT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [PUNT_NEXT_##s] = n,
+#define _(s, n) [PUNT_NEXT_##s] = n,
      foreach_punt_next
 #undef _
   },
@@ -209,12 +205,11 @@ VLIB_REGISTER_NODE (udp6_punt_node) = {
 
   .n_next_nodes = PUNT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [PUNT_NEXT_##s] = n,
+#define _(s, n) [PUNT_NEXT_##s] = n,
      foreach_punt_next
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -224,7 +219,7 @@ typedef struct
 } udp_punt_trace_t;
 
 static u8 *
-format_udp_punt_trace (u8 * s, va_list * args)
+format_udp_punt_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -236,17 +231,16 @@ format_udp_punt_trace (u8 * s, va_list * args)
       s = format (s, "\n%U(buffer is part of chain)", format_white_space,
 		  indent);
     }
-  s = format (s, "\n%U%U", format_white_space, indent,
-	      format_hex_bytes, t->packet_data, sizeof (t->packet_data));
+  s = format (s, "\n%U%U", format_white_space, indent, format_hex_bytes,
+	      t->packet_data, sizeof (t->packet_data));
 
   return s;
 }
 
 always_inline uword
-punt_socket_inline (vlib_main_t * vm,
-		    vlib_node_runtime_t * node,
-		    vlib_frame_t * frame,
-		    punt_type_t pt, ip_address_family_t af)
+punt_socket_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *frame, punt_type_t pt,
+		    ip_address_family_t af)
 {
   u32 *buffers = vlib_frame_vector_args (frame);
   u32 thread_index = vm->thread_index;
@@ -255,9 +249,8 @@ punt_socket_inline (vlib_main_t * vm,
   int i;
 
   punt_thread_data_t *ptd = &pm->thread_data[thread_index];
-  u32 node_index = (AF_IP4 == af ?
-		    udp4_punt_socket_node.index :
-		    udp6_punt_socket_node.index);
+  u32 node_index =
+    (AF_IP4 == af ? udp4_punt_socket_node.index : udp6_punt_socket_node.index);
 
   for (i = 0; i < n_packets; i++)
     {
@@ -275,15 +268,15 @@ punt_socket_inline (vlib_main_t * vm,
 	  udp_header_t *udp;
 	  if (AF_IP4 == af)
 	    {
-	      vlib_buffer_advance (b, -(sizeof (ip4_header_t) +
-					sizeof (udp_header_t)));
+	      vlib_buffer_advance (
+		b, -(sizeof (ip4_header_t) + sizeof (udp_header_t)));
 	      ip4_header_t *ip = vlib_buffer_get_current (b);
 	      udp = (udp_header_t *) (ip + 1);
 	    }
 	  else
 	    {
-	      vlib_buffer_advance (b, -(sizeof (ip6_header_t) +
-					sizeof (udp_header_t)));
+	      vlib_buffer_advance (
+		b, -(sizeof (ip6_header_t) + sizeof (udp_header_t)));
 	      ip6_header_t *ip = vlib_buffer_get_current (b);
 	      udp = (udp_header_t *) (ip + 1);
 	    }
@@ -349,8 +342,7 @@ punt_socket_inline (vlib_main_t * vm,
 	  udp_punt_trace_t *t;
 	  t = vlib_add_trace (vm, node, b, sizeof (t[0]));
 	  clib_memcpy_fast (&t->client, c, sizeof (t->client));
-	  clib_memcpy_fast (t->packet_data,
-			    vlib_buffer_get_current (b),
+	  clib_memcpy_fast (t->packet_data, vlib_buffer_get_current (b),
 			    sizeof (t->packet_data));
 	}
 
@@ -397,45 +389,42 @@ error:
 }
 
 static uword
-udp4_punt_socket (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+udp4_punt_socket (vlib_main_t *vm, vlib_node_runtime_t *node,
+		  vlib_frame_t *from_frame)
 {
   return punt_socket_inline (vm, node, from_frame, PUNT_TYPE_L4, AF_IP4);
 }
 
 static uword
-udp6_punt_socket (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+udp6_punt_socket (vlib_main_t *vm, vlib_node_runtime_t *node,
+		  vlib_frame_t *from_frame)
 {
   return punt_socket_inline (vm, node, from_frame, PUNT_TYPE_L4, AF_IP6);
 }
 
 static uword
-ip4_proto_punt_socket (vlib_main_t * vm,
-		       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+ip4_proto_punt_socket (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_frame_t *from_frame)
 {
-  return punt_socket_inline (vm, node, from_frame,
-			     PUNT_TYPE_IP_PROTO, AF_IP4);
+  return punt_socket_inline (vm, node, from_frame, PUNT_TYPE_IP_PROTO, AF_IP4);
 }
 
 static uword
-ip6_proto_punt_socket (vlib_main_t * vm,
-		       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+ip6_proto_punt_socket (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_frame_t *from_frame)
 {
-  return punt_socket_inline (vm, node, from_frame,
-			     PUNT_TYPE_IP_PROTO, AF_IP6);
+  return punt_socket_inline (vm, node, from_frame, PUNT_TYPE_IP_PROTO, AF_IP6);
 }
 
 static uword
-exception_punt_socket (vlib_main_t * vm,
-		       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+exception_punt_socket (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_frame_t *from_frame)
 {
-  return punt_socket_inline (vm, node, from_frame,
-			     PUNT_TYPE_EXCEPTION, AF_IP4);
+  return punt_socket_inline (vm, node, from_frame, PUNT_TYPE_EXCEPTION,
+			     AF_IP4);
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp4_punt_socket_node) = {
   .function = udp4_punt_socket,
   .name = "ip4-udp-punt-socket",
@@ -483,7 +472,6 @@ VLIB_REGISTER_NODE (exception_punt_socket_node) = {
   .n_errors = PUNT_N_ERROR,
   .error_strings = punt_error_strings,
 };
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -492,19 +480,19 @@ typedef struct
 } punt_trace_t;
 
 static u8 *
-format_punt_trace (u8 * s, va_list * va)
+format_punt_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
   vnet_main_t *vnm = vnet_get_main ();
   punt_trace_t *t = va_arg (*va, punt_trace_t *);
-  s = format (s, "%U Action: %d", format_vnet_sw_if_index_name,
-	      vnm, t->sw_if_index, t->action);
+  s = format (s, "%U Action: %d", format_vnet_sw_if_index_name, vnm,
+	      t->sw_if_index, t->action);
   return s;
 }
 
 static uword
-punt_socket_rx_fd (vlib_main_t * vm, vlib_node_runtime_t * node, u32 fd)
+punt_socket_rx_fd (vlib_main_t *vm, vlib_node_runtime_t *node, u32 fd)
 {
   const uword buffer_size = vlib_buffer_get_default_data_size (vm);
   u32 n_trace = vlib_get_trace_count (vm, node);
@@ -573,9 +561,8 @@ punt_socket_rx_fd (vlib_main_t * vm, vlib_node_runtime_t * node, u32 fd)
       goto error;
     }
 
-  if (PREDICT_FALSE
-      (n_trace > 0
-       && vlib_trace_buffer (vm, node, next_index, b, 1 /* follow_chain */ )))
+  if (PREDICT_FALSE (n_trace > 0 && vlib_trace_buffer (vm, node, next_index, b,
+						       1 /* follow_chain */)))
     {
       punt_trace_t *t;
       vlib_set_trace_count (vm, node, --n_trace);
@@ -588,8 +575,8 @@ punt_socket_rx_fd (vlib_main_t * vm, vlib_node_runtime_t * node, u32 fd)
   to_next++;
   n_left_to_next--;
 
-  vlib_validate_buffer_enqueue_x1 (vm, node, next, to_next, n_left_to_next,
-				   bi, next_index);
+  vlib_validate_buffer_enqueue_x1 (vm, node, next, to_next, n_left_to_next, bi,
+				   next_index);
   vlib_put_next_frame (vm, node, next, n_left_to_next);
 
   return 1;
@@ -601,8 +588,8 @@ error:
 }
 
 static uword
-punt_socket_rx (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * frame)
+punt_socket_rx (vlib_main_t *vm, vlib_node_runtime_t *node,
+		vlib_frame_t *frame)
 {
   punt_main_t *pm = &punt_main;
   u32 total_count = 0;
@@ -616,7 +603,6 @@ punt_socket_rx (vlib_main_t * vm,
   return total_count;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (punt_socket_rx_node) =
 {
  .function = punt_socket_rx,
@@ -635,7 +621,6 @@ VLIB_REGISTER_NODE (punt_socket_rx_node) =
   },
  .format_trace = format_punt_trace,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

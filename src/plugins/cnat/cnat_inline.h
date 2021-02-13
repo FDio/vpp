@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 #ifndef __CNAT_INLINE_H__
 #define __CNAT_INLINE_H__
 

@@ -19,7 +19,6 @@
 #include <vnet/ip/ip.h>
 #include <vnet/l2/l2_output.h>
 
-
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 #include <vppinfra/bitmap.h>
@@ -34,31 +33,38 @@
 #include "hash_lookup_types.h"
 #include "lookup_context.h"
 
-#define  ACL_PLUGIN_VERSION_MAJOR 1
-#define  ACL_PLUGIN_VERSION_MINOR 4
+#define ACL_PLUGIN_VERSION_MAJOR 1
+#define ACL_PLUGIN_VERSION_MINOR 4
 
-#define UDP_SESSION_IDLE_TIMEOUT_SEC 600
-#define TCP_SESSION_IDLE_TIMEOUT_SEC (3600*24)
+#define UDP_SESSION_IDLE_TIMEOUT_SEC	  600
+#define TCP_SESSION_IDLE_TIMEOUT_SEC	  (3600 * 24)
 #define TCP_SESSION_TRANSIENT_TIMEOUT_SEC 120
 
 #define SESSION_PURGATORY_TIMEOUT_USEC 10
 
 #define ACL_PLUGIN_HASH_LOOKUP_HASH_BUCKETS 65536
-#define ACL_PLUGIN_HASH_LOOKUP_HASH_MEMORY (2 << 25)
+#define ACL_PLUGIN_HASH_LOOKUP_HASH_MEMORY  (2 << 25)
 
 extern vlib_node_registration_t acl_in_node;
 extern vlib_node_registration_t acl_out_node;
 
-void input_acl_packet_match(u32 sw_if_index, vlib_buffer_t * b0, u32 *nextp, u32 *acl_match_p, u32 *rule_match_p, u32 *trace_bitmap);
-void output_acl_packet_match(u32 sw_if_index, vlib_buffer_t * b0, u32 *nextp, u32 *acl_match_p, u32 *rule_match_p, u32 *trace_bitmap);
+void input_acl_packet_match (u32 sw_if_index, vlib_buffer_t *b0, u32 *nextp,
+			     u32 *acl_match_p, u32 *rule_match_p,
+			     u32 *trace_bitmap);
+void output_acl_packet_match (u32 sw_if_index, vlib_buffer_t *b0, u32 *nextp,
+			      u32 *acl_match_p, u32 *rule_match_p,
+			      u32 *trace_bitmap);
 
-enum acl_timeout_e {
+enum acl_timeout_e
+{
   ACL_TIMEOUT_UNUSED = 0,
   ACL_TIMEOUT_UDP_IDLE,
   ACL_TIMEOUT_TCP_IDLE,
   ACL_TIMEOUT_TCP_TRANSIENT,
   ACL_N_USER_TIMEOUTS,
-  ACL_TIMEOUT_PURGATORY = ACL_N_USER_TIMEOUTS, /* a special-case queue for deletion-in-progress sessions */
+  ACL_TIMEOUT_PURGATORY =
+    ACL_N_USER_TIMEOUTS, /* a special-case queue for deletion-in-progress
+			    sessions */
   ACL_N_TIMEOUTS
 };
 
@@ -78,7 +84,7 @@ typedef struct
 typedef struct
 {
   /** Required for pool_get_aligned */
-  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u8 tag[64];
   acl_rule_t *rules;
 } acl_list_t;
@@ -86,7 +92,7 @@ typedef struct
 typedef struct
 {
   /** Required for pool_get_aligned */
-  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u8 tag[64];
   u32 count;
   macip_acl_rule_t *rules;
@@ -107,13 +113,14 @@ typedef struct
 typedef struct
 {
   /** Required for pool_get_aligned */
-  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   fa_5tuple_t mask;
   u32 refcount;
   u8 from_tm;
 } ace_mask_type_entry_t;
 
-typedef struct {
+typedef struct
+{
   /* API message ID base */
   u16 msg_id_base;
 
@@ -122,19 +129,20 @@ typedef struct {
   /* The pool of ACL lookup contexts */
   acl_lookup_context_t *acl_lookup_contexts;
 
-  acl_list_t *acls;	/* Pool of ACLs */
-  hash_acl_info_t *hash_acl_infos; /* corresponding hash matching housekeeping info */
+  acl_list_t *acls; /* Pool of ACLs */
+  hash_acl_info_t
+    *hash_acl_infos; /* corresponding hash matching housekeeping info */
   clib_bihash_48_8_t acl_lookup_hash; /* ACL lookup hash table. */
   u32 hash_lookup_hash_buckets;
   uword hash_lookup_hash_memory;
 
   int acl_lookup_hash_initialized;
-/*
-  applied_hash_ace_entry_t **input_hash_entry_vec_by_sw_if_index;
-  applied_hash_ace_entry_t **output_hash_entry_vec_by_sw_if_index;
-  applied_hash_acl_info_t *input_applied_hash_acl_info_by_sw_if_index;
-  applied_hash_acl_info_t *output_applied_hash_acl_info_by_sw_if_index;
-*/
+  /*
+    applied_hash_ace_entry_t **input_hash_entry_vec_by_sw_if_index;
+    applied_hash_ace_entry_t **output_hash_entry_vec_by_sw_if_index;
+    applied_hash_acl_info_t *input_applied_hash_acl_info_by_sw_if_index;
+    applied_hash_acl_info_t *output_applied_hash_acl_info_by_sw_if_index;
+  */
   applied_hash_ace_entry_t **hash_entry_vec_by_lc_index;
   applied_hash_acl_info_t *applied_hash_acl_info_by_lc_index;
 
@@ -144,7 +152,7 @@ typedef struct {
   /* context user id for interface ACLs */
   u32 interface_acl_user_id;
 
-  macip_acl_list_t *macip_acls;	/* Pool of MAC-IP ACLs */
+  macip_acl_list_t *macip_acls; /* Pool of MAC-IP ACLs */
 
   /* ACLs associated with interfaces */
   u32 **input_acl_vec_by_sw_if_index;
@@ -168,8 +176,6 @@ typedef struct {
   /* whether we need to take the epoch of the session into account */
   int reclassify_sessions;
 
-
-
   /* Total count of interface+direction pairs enabled */
   u32 fa_total_enabled_count;
 
@@ -186,7 +192,8 @@ typedef struct {
   /* a pool of all mask types present in all ACEs */
   ace_mask_type_entry_t *ace_mask_type_pool;
 
-  /* vec of vectors of all info of all mask types present in ACEs contained in each lc_index */
+  /* vec of vectors of all info of all mask types present in ACEs contained in
+   * each lc_index */
   hash_applied_mask_info_t **hash_applied_mask_info_vec_by_lc_index;
 
   /*
@@ -275,25 +282,24 @@ typedef struct {
   /* Configured session timeout */
   u64 session_timeout[ACL_N_TIMEOUTS];
 
-
   /* Counters for the cleaner thread */
 
-#define foreach_fa_cleaner_counter                                         \
-  _(fa_cleaner_cnt_delete_by_sw_index, "delete_by_sw_index events")        \
-  _(fa_cleaner_cnt_delete_by_sw_index_ok, "delete_by_sw_index handled ok") \
-  _(fa_cleaner_cnt_unknown_event, "unknown events received")               \
-  _(fa_cleaner_cnt_timer_restarted, "session idle timers restarted")       \
-  _(fa_cleaner_cnt_wait_with_timeout, "event wait with timeout called")    \
-  _(fa_cleaner_cnt_wait_without_timeout, "event wait w/o timeout called")  \
-  _(fa_cleaner_cnt_event_cycles, "total event cycles")                     \
+#define foreach_fa_cleaner_counter                                            \
+  _ (fa_cleaner_cnt_delete_by_sw_index, "delete_by_sw_index events")          \
+  _ (fa_cleaner_cnt_delete_by_sw_index_ok, "delete_by_sw_index handled ok")   \
+  _ (fa_cleaner_cnt_unknown_event, "unknown events received")                 \
+  _ (fa_cleaner_cnt_timer_restarted, "session idle timers restarted")         \
+  _ (fa_cleaner_cnt_wait_with_timeout, "event wait with timeout called")      \
+  _ (fa_cleaner_cnt_wait_without_timeout, "event wait w/o timeout called")    \
+  _ (fa_cleaner_cnt_event_cycles, "total event cycles")                       \
 /* end of counters */
 #define _(id, desc) u32 id;
   foreach_fa_cleaner_counter
 #undef _
 
-  /* convenience */
-  vlib_main_t * vlib_main;
-  vnet_main_t * vnet_main;
+    /* convenience */
+    vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
   /* logging */
   vlib_log_class_t log_default;
   /* acl counters exposed via stats segment */
@@ -303,42 +309,40 @@ typedef struct {
   u32 interface_acl_counters_enabled;
 } acl_main_t;
 
-#define acl_log_err(...) \
-  vlib_log(VLIB_LOG_LEVEL_ERR, acl_main.log_default, __VA_ARGS__)
-#define acl_log_warn(...) \
-  vlib_log(VLIB_LOG_LEVEL_WARNING, acl_main.log_default, __VA_ARGS__)
-#define acl_log_notice(...) \
-  vlib_log(VLIB_LOG_LEVEL_NOTICE, acl_main.log_default, __VA_ARGS__)
-#define acl_log_info(...) \
-  vlib_log(VLIB_LOG_LEVEL_INFO, acl_main.log_default, __VA_ARGS__)
-
+#define acl_log_err(...)                                                      \
+  vlib_log (VLIB_LOG_LEVEL_ERR, acl_main.log_default, __VA_ARGS__)
+#define acl_log_warn(...)                                                     \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, acl_main.log_default, __VA_ARGS__)
+#define acl_log_notice(...)                                                   \
+  vlib_log (VLIB_LOG_LEVEL_NOTICE, acl_main.log_default, __VA_ARGS__)
+#define acl_log_info(...)                                                     \
+  vlib_log (VLIB_LOG_LEVEL_INFO, acl_main.log_default, __VA_ARGS__)
 
 static inline void
-acl_plugin_counter_lock (acl_main_t * am)
+acl_plugin_counter_lock (acl_main_t *am)
 {
   if (am->acl_counter_lock)
     while (clib_atomic_test_and_set (am->acl_counter_lock))
-      /* zzzz */ ;
+      /* zzzz */;
 }
 
 static inline void
-acl_plugin_counter_unlock (acl_main_t * am)
+acl_plugin_counter_unlock (acl_main_t *am)
 {
   if (am->acl_counter_lock)
     clib_atomic_release (am->acl_counter_lock);
 }
 
-
-#define foreach_acl_eh                                          \
-   _(HOPBYHOP , 0  , "IPv6ExtHdrHopByHop")                      \
-   _(ROUTING  , 43 , "IPv6ExtHdrRouting")                       \
-   _(DESTOPT  , 60 , "IPv6ExtHdrDestOpt")                       \
-   _(FRAGMENT , 44 , "IPv6ExtHdrFragment")                      \
-   _(MOBILITY , 135, "Mobility Header")                         \
-   _(HIP      , 139, "Experimental use Host Identity Protocol") \
-   _(SHIM6    , 140, "Shim6 Protocol")                          \
-   _(EXP1     , 253, "Use for experimentation and testing")     \
-   _(EXP2     , 254, "Use for experimentation and testing")
+#define foreach_acl_eh                                                        \
+  _ (HOPBYHOP, 0, "IPv6ExtHdrHopByHop")                                       \
+  _ (ROUTING, 43, "IPv6ExtHdrRouting")                                        \
+  _ (DESTOPT, 60, "IPv6ExtHdrDestOpt")                                        \
+  _ (FRAGMENT, 44, "IPv6ExtHdrFragment")                                      \
+  _ (MOBILITY, 135, "Mobility Header")                                        \
+  _ (HIP, 139, "Experimental use Host Identity Protocol")                     \
+  _ (SHIM6, 140, "Shim6 Protocol")                                            \
+  _ (EXP1, 253, "Use for experimentation and testing")                        \
+  _ (EXP2, 254, "Use for experimentation and testing")
 
 /*
 
@@ -353,30 +357,33 @@ ESP is hiding its internal format, so no point in trying to go past it.
    _(ESP      , 50 , "EncapsulatingSecurityPayload")            \
 
 
-AH has a special treatment of its length, it is in 32-bit words, not 64-bit words like the rest.
+AH has a special treatment of its length, it is in 32-bit words, not 64-bit
+words like the rest.
 
    _(AUTH     , 51 , "Authentication Header")                   \
 
 
 */
 
-
- typedef enum {
- #define _(N, v, s) ACL_EH_##N = v,
-	 foreach_acl_eh
- #undef _
- } acl_eh_t;
-
-
+typedef enum
+{
+#define _(N, v, s) ACL_EH_##N = v,
+  foreach_acl_eh
+#undef _
+} acl_eh_t;
 
 extern acl_main_t acl_main;
 
-typedef enum {
+typedef enum
+{
   ACL_FA_REQ_SESS_RESCHEDULE = 0,
   ACL_FA_N_REQ,
 } acl_fa_sess_req_t;
 
-void aclp_post_session_change_request(acl_main_t *am, u32 target_thread, u32 target_session, acl_fa_sess_req_t request_type);
-void aclp_swap_wip_and_pending_session_change_requests(acl_main_t *am, u32 target_thread);
+void aclp_post_session_change_request (acl_main_t *am, u32 target_thread,
+				       u32 target_session,
+				       acl_fa_sess_req_t request_type);
+void aclp_swap_wip_and_pending_session_change_requests (acl_main_t *am,
+							u32 target_thread);
 
 #endif

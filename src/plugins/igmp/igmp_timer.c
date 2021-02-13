@@ -29,7 +29,7 @@ static igmp_timer_type_t igmp_default_timer_values[] = {
   [IGMP_TIMER_REPORT_INTERVAL] = 1,
 };
 
-#define IGMP_N_TIMERS (IGMP_TIMER_REPORT_INTERVAL+1)
+#define IGMP_N_TIMERS (IGMP_TIMER_REPORT_INTERVAL + 1)
 
 /**
  * Timer
@@ -77,7 +77,6 @@ igmp_timer_type_set (igmp_timer_type_t t, u32 v)
   ASSERT (t < IGMP_N_TIMERS);
   igmp_default_timer_values[t] = v;
 }
-
 
 static int
 igmp_timer_compare (const void *_v1, const void *_v2)
@@ -141,8 +140,7 @@ igmp_timer_is_running (igmp_timer_id_t tid)
     Handle igmp timers.
 */
 static uword
-igmp_timer_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
-		    vlib_frame_t * f)
+igmp_timer_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   uword *event_data = 0, event_type;
   igmp_timer_id_t tid;
@@ -156,8 +154,8 @@ igmp_timer_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       if (IGMP_TIMER_ID_INVALID != tid)
 	{
 	  timer = pool_elt_at_index (timer_pool, tid);
-	  vlib_process_wait_for_event_or_clock
-	    (vm, timer->exp_time - vlib_time_now (vm));
+	  vlib_process_wait_for_event_or_clock (vm, timer->exp_time -
+						      vlib_time_now (vm));
 	}
       else
 	vlib_process_wait_for_event (vm);
@@ -181,15 +179,12 @@ igmp_timer_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (igmp_timer_process_node) =
-{
+VLIB_REGISTER_NODE (igmp_timer_process_node) = {
   .function = igmp_timer_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "igmp-timer-process",
   .n_next_nodes = 0,
 };
-/* *INDENT-ON* */
 
 igmp_timer_id_t
 igmp_timer_schedule (f64 when, u32 obj, igmp_timer_function_t fn, void *data)
@@ -218,7 +213,7 @@ igmp_timer_schedule (f64 when, u32 obj, igmp_timer_function_t fn, void *data)
 }
 
 void
-igmp_timer_retire (igmp_timer_id_t * tid)
+igmp_timer_retire (igmp_timer_id_t *tid)
 {
   if (IGMP_TIMER_ID_INVALID == *tid)
     return;
@@ -226,13 +221,12 @@ igmp_timer_retire (igmp_timer_id_t * tid)
   pool_put_index (timer_pool, *tid);
   *tid = IGMP_TIMER_ID_INVALID;
 
-  vlib_process_signal_event (vlib_get_main (),
-			     igmp_timer_process_node.index,
+  vlib_process_signal_event (vlib_get_main (), igmp_timer_process_node.index,
 			     IGMP_PROCESS_EVENT_UPDATE_TIMER, 0);
 }
 
 u8 *
-format_igmp_timer_id (u8 * s, va_list * args)
+format_igmp_timer_id (u8 *s, va_list *args)
 {
   igmp_timer_id_t tid = va_arg (*args, igmp_timer_id_t);
   igmp_timer_t *timer;
@@ -245,9 +239,8 @@ format_igmp_timer_id (u8 * s, va_list * args)
     {
       timer = pool_elt_at_index (timer_pool, tid);
 
-      s =
-	format (s, "[expires-in:%f]",
-		timer->exp_time - vlib_time_now (vlib_get_main ()));
+      s = format (s, "[expires-in:%f]",
+		  timer->exp_time - vlib_time_now (vlib_get_main ()));
     }
 
   return (s);

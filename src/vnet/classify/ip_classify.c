@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 #include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
+#include <vnet/ethernet/ethernet.h> /* for ethernet_header_t */
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/dpo/classify_dpo.h>
 
@@ -26,7 +26,7 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_ip_classify_trace (u8 * s, va_list * args)
+format_ip_classify_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -37,29 +37,28 @@ format_ip_classify_trace (u8 * s, va_list * args)
   return s;
 }
 
-#define foreach_ip_classify_error               \
-_(MISS, "Classify misses")                      \
-_(HIT, "Classify hits")                         \
-_(CHAIN_HIT, "Classify hits after chain walk")
+#define foreach_ip_classify_error                                             \
+  _ (MISS, "Classify misses")                                                 \
+  _ (HIT, "Classify hits")                                                    \
+  _ (CHAIN_HIT, "Classify hits after chain walk")
 
 typedef enum
 {
-#define _(sym,str) IP_CLASSIFY_ERROR_##sym,
+#define _(sym, str) IP_CLASSIFY_ERROR_##sym,
   foreach_ip_classify_error
 #undef _
     IP_CLASSIFY_N_ERROR,
 } ip_classify_error_t;
 
 static char *ip_classify_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ip_classify_error
 #undef _
 };
 
 static inline uword
-ip_classify_inline (vlib_main_t * vm,
-		    vlib_node_runtime_t * node,
-		    vlib_frame_t * frame, int is_ip4)
+ip_classify_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *frame, int is_ip4)
 {
   u32 n_left_from, *from, *to_next;
   ip_lookup_next_t next_index;
@@ -234,11 +233,12 @@ ip_classify_inline (vlib_main_t * vm,
 	      e0 = vnet_classify_find_entry (t0, h0, hash0, now);
 	      if (e0)
 		{
-		  vnet_buffer (b0)->l2_classify.opaque_index
-		    = e0->opaque_index;
+		  vnet_buffer (b0)->l2_classify.opaque_index =
+		    e0->opaque_index;
 		  vlib_buffer_advance (b0, e0->advance);
 		  next0 = (e0->next_index < node->n_next_nodes) ?
-		    e0->next_index : next0;
+			    e0->next_index :
+			    next0;
 		  hits++;
 		}
 	      else
@@ -251,7 +251,8 @@ ip_classify_inline (vlib_main_t * vm,
 		      else
 			{
 			  next0 = (t0->miss_next_index < n_next) ?
-			    t0->miss_next_index : next0;
+				    t0->miss_next_index :
+				    next0;
 			  misses++;
 			  break;
 			}
@@ -260,11 +261,12 @@ ip_classify_inline (vlib_main_t * vm,
 		      e0 = vnet_classify_find_entry (t0, h0, hash0, now);
 		      if (e0)
 			{
-			  vnet_buffer (b0)->l2_classify.opaque_index
-			    = e0->opaque_index;
+			  vnet_buffer (b0)->l2_classify.opaque_index =
+			    e0->opaque_index;
 			  vlib_buffer_advance (b0, e0->advance);
 			  next0 = (e0->next_index < node->n_next_nodes) ?
-			    e0->next_index : next0;
+				    e0->next_index :
+				    next0;
 			  hits++;
 			  chain_hits++;
 			  break;
@@ -273,8 +275,8 @@ ip_classify_inline (vlib_main_t * vm,
 		}
 	    }
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      ip_classify_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -284,68 +286,59 @@ ip_classify_inline (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, node->node_index,
-			       IP_CLASSIFY_ERROR_MISS, misses);
-  vlib_node_increment_counter (vm, node->node_index,
-			       IP_CLASSIFY_ERROR_HIT, hits);
+  vlib_node_increment_counter (vm, node->node_index, IP_CLASSIFY_ERROR_MISS,
+			       misses);
+  vlib_node_increment_counter (vm, node->node_index, IP_CLASSIFY_ERROR_HIT,
+			       hits);
   vlib_node_increment_counter (vm, node->node_index,
 			       IP_CLASSIFY_ERROR_CHAIN_HIT, chain_hits);
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (ip4_classify_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return ip_classify_inline (vm, node, frame, 1 /* is_ip4 */ );
+  return ip_classify_inline (vm, node, frame, 1 /* is_ip4 */);
 }
 
-
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_classify_node) = {
   .name = "ip4-classify",
   .vector_size = sizeof (u32),
   .sibling_of = "ip4-lookup",
   .format_trace = format_ip_classify_trace,
-  .n_errors = ARRAY_LEN(ip_classify_error_strings),
+  .n_errors = ARRAY_LEN (ip_classify_error_strings),
   .error_strings = ip_classify_error_strings,
 
   .n_next_nodes = 0,
 };
-/* *INDENT-ON* */
 
-VLIB_NODE_FN (ip6_classify_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return ip_classify_inline (vm, node, frame, 0 /* is_ip4 */ );
+  return ip_classify_inline (vm, node, frame, 0 /* is_ip4 */);
 }
 
-
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_classify_node) = {
   .name = "ip6-classify",
   .vector_size = sizeof (u32),
   .sibling_of = "ip6-lookup",
   .format_trace = format_ip_classify_trace,
-  .n_errors = ARRAY_LEN(ip_classify_error_strings),
+  .n_errors = ARRAY_LEN (ip_classify_error_strings),
   .error_strings = ip_classify_error_strings,
 
   .n_next_nodes = 0,
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 static clib_error_t *
-ip_classify_init (vlib_main_t * vm)
+ip_classify_init (vlib_main_t *vm)
 {
   return 0;
 }

@@ -15,7 +15,6 @@
 #ifndef included_ping_ping_h
 #define included_ping_ping_h
 
-
 #include <vnet/ip/ip.h>
 
 #include <vnet/ip/lookup.h>
@@ -26,18 +25,18 @@ typedef enum
   PING_RESPONSE_IP4,
 } ping_response_type_t;
 
-#define foreach_ip46_ping_result                                      \
-  _ (OK, "OK")                                                        \
-  _ (ALLOC_FAIL, "packet allocation failed")                          \
-  _ (NO_INTERFACE, "no egress interface")                             \
-  _ (NO_TABLE, "no FIB table for lookup")                            \
-  _ (NO_SRC_ADDRESS, "no source address for egress interface")        \
-  _ (NO_BUFFERS, "could not allocate a new buffer")                   \
+#define foreach_ip46_ping_result                                              \
+  _ (OK, "OK")                                                                \
+  _ (ALLOC_FAIL, "packet allocation failed")                                  \
+  _ (NO_INTERFACE, "no egress interface")                                     \
+  _ (NO_TABLE, "no FIB table for lookup")                                     \
+  _ (NO_SRC_ADDRESS, "no source address for egress interface")                \
+  _ (NO_BUFFERS, "could not allocate a new buffer")
 
 typedef enum
 {
 #define _(v, s) SEND_PING_##v,
-    foreach_ip46_ping_result
+  foreach_ip46_ping_result
 #undef _
 } send_ip46_ping_result_t;
 
@@ -69,8 +68,6 @@ extern ping_main_t ping_main;
 
 #define PING_CLI_UNKNOWN_NODE (~0)
 
-/* *INDENT-OFF* */
-
 typedef CLIB_PACKED (struct {
   u16 id;
   u16 seq;
@@ -78,7 +75,6 @@ typedef CLIB_PACKED (struct {
   u8 data[0];
 }) icmp46_echo_request_t;
 
-/* *INDENT-ON* */
 
 
 typedef enum

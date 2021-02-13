@@ -18,25 +18,25 @@
 
 /* serialized representation of state strings */
 
-#define foreach_state_string_code               \
-_(STATE_DONE, "done")                           \
-_(STATE_DISABLED, "disabled")                   \
-_(STATE_TIME_WAIT, "time wait")                 \
-_(STATE_EVENT_WAIT, "event wait")               \
-_(STATE_ANY_WAIT, "any wait")                   \
-_(STATE_POLLING, "polling")                     \
-_(STATE_INTERRUPT_WAIT, "interrupt wait")       \
-_(STATE_INTERNAL, "internal")
+#define foreach_state_string_code                                             \
+  _ (STATE_DONE, "done")                                                      \
+  _ (STATE_DISABLED, "disabled")                                              \
+  _ (STATE_TIME_WAIT, "time wait")                                            \
+  _ (STATE_EVENT_WAIT, "event wait")                                          \
+  _ (STATE_ANY_WAIT, "any wait")                                              \
+  _ (STATE_POLLING, "polling")                                                \
+  _ (STATE_INTERRUPT_WAIT, "interrupt wait")                                  \
+  _ (STATE_INTERNAL, "internal")
 
 typedef enum
 {
-#define _(a,b) a,
+#define _(a, b) a,
   foreach_state_string_code
 #undef _
 } state_string_enum_t;
 
 static char *state_strings[] = {
-#define _(a,b) b,
+#define _(a, b) b,
   foreach_state_string_code
 #undef _
 };
@@ -48,7 +48,7 @@ static char *state_strings[] = {
  * Switch heaps before/after to serialize into API client shared memory.
  */
 u8 *
-vlib_node_serialize (vlib_main_t * vm, vlib_node_t *** node_dups, u8 * vector,
+vlib_node_serialize (vlib_main_t *vm, vlib_node_t ***node_dups, u8 *vector,
 		     int include_nexts, int include_stats)
 {
   serialize_main_t _sm, *sm = &_sm;
@@ -84,9 +84,8 @@ vlib_node_serialize (vlib_main_t * vm, vlib_node_t *** node_dups, u8 * vector,
 	    {
 	      vlib_process_t *p = vlib_get_process_from_node (vm, n);
 
-	      switch (p->flags
-		      & (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK
-			 | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT))
+	      switch (p->flags & (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK |
+				  VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT))
 		{
 		default:
 		  if (!(p->flags & VLIB_PROCESS_IS_RUNNING))
@@ -101,9 +100,9 @@ vlib_node_serialize (vlib_main_t * vm, vlib_node_t *** node_dups, u8 * vector,
 		  state_code = STATE_EVENT_WAIT;
 		  break;
 
-		case (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK):
-		  state_code =
-		    STATE_ANY_WAIT;
+		case (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT |
+		      VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK):
+		  state_code = STATE_ANY_WAIT;
 		  break;
 		}
 	    }
@@ -128,11 +127,10 @@ vlib_node_serialize (vlib_main_t * vm, vlib_node_t *** node_dups, u8 * vector,
 
 	  if (include_nexts)
 	    {
-	      serialize_likely_small_unsigned_integer
-		(sm, vec_len (n->next_nodes));
+	      serialize_likely_small_unsigned_integer (
+		sm, vec_len (n->next_nodes));
 	      for (k = 0; k < vec_len (n->next_nodes); k++)
-		serialize_likely_small_unsigned_integer (sm,
-							 n->next_nodes[k]);
+		serialize_likely_small_unsigned_integer (sm, n->next_nodes[k]);
 	    }
 	  else
 	    serialize_likely_small_unsigned_integer (sm, 0);
@@ -150,7 +148,7 @@ vlib_node_serialize (vlib_main_t * vm, vlib_node_t *** node_dups, u8 * vector,
 	      /* Total suspends */
 	      serialize_integer (sm, d, 8);
 	    }
-	  else			/* no stats */
+	  else /* no stats */
 	    serialize_likely_small_unsigned_integer (sm, 0);
 	}
     }
@@ -158,7 +156,7 @@ vlib_node_serialize (vlib_main_t * vm, vlib_node_t *** node_dups, u8 * vector,
 }
 
 vlib_node_t ***
-vlib_node_unserialize (u8 * vector)
+vlib_node_unserialize (u8 *vector)
 {
   serialize_main_t _sm, *sm = &_sm;
   u32 nnodes, nnexts;
@@ -234,9 +232,8 @@ vlib_node_unserialize (u8 * vector)
 #if TEST_CODE
 
 static clib_error_t *
-test_node_serialize_command_fn (vlib_main_t * vm,
-				unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+test_node_serialize_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
 {
   vlib_node_main_t *nm = &vm->node_main;
   u8 *vector = 0;
@@ -245,7 +242,7 @@ test_node_serialize_command_fn (vlib_main_t * vm,
   vlib_node_t *node;
   vlib_node_t *next_node;
   int i, j, k;
-  u32 max_threads = (u32) ~ 0;
+  u32 max_threads = (u32) ~0;
   int include_nexts = 0;
   int include_stats = 0;
 
@@ -269,8 +266,8 @@ test_node_serialize_command_fn (vlib_main_t * vm,
   vec_validate (vector, 16383);
   vec_reset_length (vector);
 
-  vector = vlib_node_serialize (nm, vector, max_threads,
-				include_nexts, include_stats);
+  vector = vlib_node_serialize (nm, vector, max_threads, include_nexts,
+				include_stats);
 
   vlib_cli_output (vm, "result vector %d bytes", vec_len (vector));
 
@@ -291,12 +288,12 @@ test_node_serialize_command_fn (vlib_main_t * vm,
 	  vlib_cli_output (vm, "[%d] %s state %s", j, node->name,
 			   node->state_string);
 
-	  vlib_cli_output
-	    (vm, "    clocks %lld calls %lld suspends"
-	     " %lld vectors %lld",
-	     node->stats_total.clocks,
-	     node->stats_total.calls,
-	     node->stats_total.suspends, node->stats_total.vectors);
+	  vlib_cli_output (vm,
+			   "    clocks %lld calls %lld suspends"
+			   " %lld vectors %lld",
+			   node->stats_total.clocks, node->stats_total.calls,
+			   node->stats_total.suspends,
+			   node->stats_total.vectors);
 
 	  for (k = 0; k < vec_len (node->next_nodes); k++)
 	    {
@@ -326,13 +323,12 @@ test_node_serialize_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_node_serialize_node, static) = {
-    .path = "test node serialize",
-    .short_help = "test node serialize [max-threads NN] nexts stats",
-    .function = test_node_serialize_command_fn,
+  .path = "test node serialize",
+  .short_help = "test node serialize [max-threads NN] nexts stats",
+  .function = test_node_serialize_command_fn,
 };
-/* *INDENT-ON* */
+
 #endif
 
 /*

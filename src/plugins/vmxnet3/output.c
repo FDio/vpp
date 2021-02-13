@@ -26,7 +26,7 @@
 #include <vmxnet3/vmxnet3.h>
 
 static_always_inline void
-vmxnet3_tx_comp_ring_advance_next (vmxnet3_txq_t * txq)
+vmxnet3_tx_comp_ring_advance_next (vmxnet3_txq_t *txq)
 {
   vmxnet3_tx_comp_ring *comp_ring = &txq->tx_comp_ring;
 
@@ -39,7 +39,7 @@ vmxnet3_tx_comp_ring_advance_next (vmxnet3_txq_t * txq)
 }
 
 static_always_inline void
-vmxnet3_tx_ring_advance_produce (vmxnet3_txq_t * txq)
+vmxnet3_tx_ring_advance_produce (vmxnet3_txq_t *txq)
 {
   txq->tx_ring.produce++;
   if (PREDICT_FALSE (txq->tx_ring.produce == txq->size))
@@ -50,15 +50,14 @@ vmxnet3_tx_ring_advance_produce (vmxnet3_txq_t * txq)
 }
 
 static_always_inline void
-vmxnet3_tx_ring_advance_consume (vmxnet3_txq_t * txq)
+vmxnet3_tx_ring_advance_consume (vmxnet3_txq_t *txq)
 {
   txq->tx_ring.consume++;
   txq->tx_ring.consume &= txq->size - 1;
 }
 
 static_always_inline void
-vmxnet3_txq_release (vlib_main_t * vm, vmxnet3_device_t * vd,
-		     vmxnet3_txq_t * txq)
+vmxnet3_txq_release (vlib_main_t *vm, vmxnet3_device_t *vd, vmxnet3_txq_t *txq)
 {
   vmxnet3_tx_comp *tx_comp;
   vmxnet3_tx_comp_ring *comp_ring;
@@ -84,7 +83,7 @@ vmxnet3_txq_release (vlib_main_t * vm, vmxnet3_device_t * vd,
 }
 
 static_always_inline u16
-vmxnet3_tx_ring_space_left (vmxnet3_txq_t * txq)
+vmxnet3_tx_ring_space_left (vmxnet3_txq_t *txq)
 {
   u16 count;
 
@@ -95,9 +94,8 @@ vmxnet3_tx_ring_space_left (vmxnet3_txq_t * txq)
   return count;
 }
 
-VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
-						vlib_node_runtime_t * node,
-						vlib_frame_t * frame)
+VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   vmxnet3_main_t *vmxm = &vmxnet3_main;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
@@ -199,10 +197,10 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
 	      l4_hdr_sz = vnet_buffer2 (b0)->gso_l4_hdr_sz;
 	      if (b0->flags & VNET_BUFFER_F_IS_IP6)
 		hdr_len = sizeof (ethernet_header_t) + sizeof (ip6_header_t) +
-		  l4_hdr_sz;
+			  l4_hdr_sz;
 	      else
 		hdr_len = sizeof (ethernet_header_t) + sizeof (ip4_header_t) +
-		  l4_hdr_sz;
+			  l4_hdr_sz;
 	    }
 
 	  generation = txq->tx_ring.gen;
@@ -215,7 +213,7 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
 	  txq->tx_desc[first_idx].flags[0] |= VMXNET3_TXF_MSSCOF (gso_size);
 	}
       txd->flags[1] |= VMXNET3_TXF_CQ | VMXNET3_TXF_EOP;
-      asm volatile ("":::"memory");
+      asm volatile("" ::: "memory");
       /*
        * Now toggle back the generation bit for the first segment.
        * Device can start reading the packet

@@ -25,8 +25,8 @@
 #include <vlibapi/api_helper_macros.h>
 
 static void
-  vl_api_nat64_plugin_enable_disable_t_handler
-  (vl_api_nat64_plugin_enable_disable_t * mp)
+vl_api_nat64_plugin_enable_disable_t_handler (
+  vl_api_nat64_plugin_enable_disable_t *mp)
 {
   nat64_main_t *nm = &nat64_main;
   vl_api_nat64_plugin_enable_disable_reply_t *rmp;
@@ -48,7 +48,7 @@ static void
 }
 
 static void
-vl_api_nat64_set_timeouts_t_handler (vl_api_nat64_set_timeouts_t * mp)
+vl_api_nat64_set_timeouts_t_handler (vl_api_nat64_set_timeouts_t *mp)
 {
   nat64_main_t *nm = &nat64_main;
   vl_api_nat64_set_timeouts_reply_t *rmp;
@@ -63,26 +63,23 @@ vl_api_nat64_set_timeouts_t_handler (vl_api_nat64_set_timeouts_t * mp)
 }
 
 static void
-vl_api_nat64_get_timeouts_t_handler (vl_api_nat64_get_timeouts_t * mp)
+vl_api_nat64_get_timeouts_t_handler (vl_api_nat64_get_timeouts_t *mp)
 {
   nat64_main_t *nm = &nat64_main;
   vl_api_nat64_get_timeouts_reply_t *rmp;
   int rv = 0;
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_NAT64_GET_TIMEOUTS_REPLY,
-  ({
-    rmp->udp = htonl (nm->udp_timeout);
-    rmp->tcp_established = htonl (nm->tcp_est_timeout);
-    rmp->tcp_transitory = htonl (nm->tcp_trans_timeout);
-    rmp->icmp = htonl (nm->icmp_timeout);
-  }))
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_NAT64_GET_TIMEOUTS_REPLY, ({
+		  rmp->udp = htonl (nm->udp_timeout);
+		  rmp->tcp_established = htonl (nm->tcp_est_timeout);
+		  rmp->tcp_transitory = htonl (nm->tcp_trans_timeout);
+		  rmp->icmp = htonl (nm->icmp_timeout);
+		}))
 }
 
 static void
-  vl_api_nat64_add_del_pool_addr_range_t_handler
-  (vl_api_nat64_add_del_pool_addr_range_t * mp)
+vl_api_nat64_add_del_pool_addr_range_t_handler (
+  vl_api_nat64_add_del_pool_addr_range_t *mp)
 {
   nat64_main_t *nm = &nat64_main;
   vl_api_nat64_add_del_pool_addr_range_reply_t *rmp;
@@ -124,7 +121,7 @@ typedef struct nat64_api_walk_ctx_t_
 } nat64_api_walk_ctx_t;
 
 static int
-nat64_api_pool_walk (nat64_address_t * a, void *arg)
+nat64_api_pool_walk (nat64_address_t *a, void *arg)
 {
   nat64_main_t *nm = &nat64_main;
   vl_api_nat64_pool_addr_details_t *rmp;
@@ -151,7 +148,7 @@ nat64_api_pool_walk (nat64_address_t * a, void *arg)
 }
 
 static void
-vl_api_nat64_pool_addr_dump_t_handler (vl_api_nat64_pool_addr_dump_t * mp)
+vl_api_nat64_pool_addr_dump_t_handler (vl_api_nat64_pool_addr_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -168,8 +165,7 @@ vl_api_nat64_pool_addr_dump_t_handler (vl_api_nat64_pool_addr_dump_t * mp)
 }
 
 static void
-vl_api_nat64_add_del_interface_t_handler (vl_api_nat64_add_del_interface_t *
-					  mp)
+vl_api_nat64_add_del_interface_t_handler (vl_api_nat64_add_del_interface_t *mp)
 {
   nat64_main_t *nm = &nat64_main;
   vl_api_nat64_add_del_interface_reply_t *rmp;
@@ -177,9 +173,8 @@ vl_api_nat64_add_del_interface_t_handler (vl_api_nat64_add_del_interface_t *
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv =
-    nat64_interface_add_del (ntohl (mp->sw_if_index),
-			     mp->flags & NAT_API_IS_INSIDE, mp->is_add);
+  rv = nat64_interface_add_del (ntohl (mp->sw_if_index),
+				mp->flags & NAT_API_IS_INSIDE, mp->is_add);
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -187,7 +182,7 @@ vl_api_nat64_add_del_interface_t_handler (vl_api_nat64_add_del_interface_t *
 }
 
 static int
-nat64_api_interface_walk (nat64_interface_t * i, void *arg)
+nat64_api_interface_walk (nat64_interface_t *i, void *arg)
 {
   nat64_main_t *nm = &nat64_main;
   vl_api_nat64_interface_details_t *rmp;
@@ -211,7 +206,7 @@ nat64_api_interface_walk (nat64_interface_t * i, void *arg)
 }
 
 static void
-vl_api_nat64_interface_dump_t_handler (vl_api_nat64_interface_dump_t * mp)
+vl_api_nat64_interface_dump_t_handler (vl_api_nat64_interface_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -228,8 +223,8 @@ vl_api_nat64_interface_dump_t_handler (vl_api_nat64_interface_dump_t * mp)
 }
 
 static void
-  vl_api_nat64_add_del_static_bib_t_handler
-  (vl_api_nat64_add_del_static_bib_t * mp)
+vl_api_nat64_add_del_static_bib_t_handler (
+  vl_api_nat64_add_del_static_bib_t *mp)
 {
   nat64_main_t *nm = &nat64_main;
   vl_api_nat64_add_del_static_bib_reply_t *rmp;
@@ -240,19 +235,16 @@ static void
   memcpy (&in_addr.as_u8, mp->i_addr, 16);
   memcpy (&out_addr.as_u8, mp->o_addr, 4);
 
-  rv =
-    nat64_add_del_static_bib_entry (&in_addr, &out_addr,
-				    clib_net_to_host_u16 (mp->i_port),
-				    clib_net_to_host_u16 (mp->o_port),
-				    mp->proto,
-				    clib_net_to_host_u32 (mp->vrf_id),
-				    mp->is_add);
+  rv = nat64_add_del_static_bib_entry (
+    &in_addr, &out_addr, clib_net_to_host_u16 (mp->i_port),
+    clib_net_to_host_u16 (mp->o_port), mp->proto,
+    clib_net_to_host_u32 (mp->vrf_id), mp->is_add);
 
   REPLY_MACRO (VL_API_NAT64_ADD_DEL_STATIC_BIB_REPLY);
 }
 
 static int
-nat64_api_bib_walk (nat64_db_bib_entry_t * bibe, void *arg)
+nat64_api_bib_walk (nat64_db_bib_entry_t *bibe, void *arg)
 {
   nat64_main_t *nm = &nat64_main;
   vl_api_nat64_bib_details_t *rmp;
@@ -283,7 +275,7 @@ nat64_api_bib_walk (nat64_db_bib_entry_t * bibe, void *arg)
 }
 
 static void
-vl_api_nat64_bib_dump_t_handler (vl_api_nat64_bib_dump_t * mp)
+vl_api_nat64_bib_dump_t_handler (vl_api_nat64_bib_dump_t *mp)
 {
   nat64_main_t *nm = &nat64_main;
   vl_api_registration_t *reg;
@@ -298,14 +290,12 @@ vl_api_nat64_bib_dump_t_handler (vl_api_nat64_bib_dump_t * mp)
     .context = mp->context,
   };
 
-  /* *INDENT-OFF* */
   vec_foreach (db, nm->db)
     nat64_db_bib_walk (db, mp->proto, nat64_api_bib_walk, &ctx);
-  /* *INDENT-ON* */
 }
 
 static int
-nat64_api_st_walk (nat64_db_st_entry_t * ste, void *arg)
+nat64_api_st_walk (nat64_db_st_entry_t *ste, void *arg)
 {
   nat64_main_t *nm = &nat64_main;
   vl_api_nat64_st_details_t *rmp;
@@ -341,7 +331,7 @@ nat64_api_st_walk (nat64_db_st_entry_t * ste, void *arg)
 }
 
 static void
-vl_api_nat64_st_dump_t_handler (vl_api_nat64_st_dump_t * mp)
+vl_api_nat64_st_dump_t_handler (vl_api_nat64_st_dump_t *mp)
 {
   nat64_main_t *nm = &nat64_main;
   vl_api_registration_t *reg;
@@ -356,17 +346,15 @@ vl_api_nat64_st_dump_t_handler (vl_api_nat64_st_dump_t * mp)
     .context = mp->context,
   };
 
-  /* *INDENT-OFF* */
   vec_foreach (db, nm->db)
     {
       ctx.db = db;
       nat64_db_st_walk (db, mp->proto, nat64_api_st_walk, &ctx);
     }
-  /* *INDENT-ON* */
 }
 
 static void
-vl_api_nat64_add_del_prefix_t_handler (vl_api_nat64_add_del_prefix_t * mp)
+vl_api_nat64_add_del_prefix_t_handler (vl_api_nat64_add_del_prefix_t *mp)
 {
   nat64_main_t *nm = &nat64_main;
   vl_api_nat64_add_del_prefix_reply_t *rmp;
@@ -375,14 +363,13 @@ vl_api_nat64_add_del_prefix_t_handler (vl_api_nat64_add_del_prefix_t * mp)
 
   memcpy (&prefix.as_u8, mp->prefix.address, 16);
 
-  rv =
-    nat64_add_del_prefix (&prefix, mp->prefix.len,
-			  clib_net_to_host_u32 (mp->vrf_id), mp->is_add);
+  rv = nat64_add_del_prefix (&prefix, mp->prefix.len,
+			     clib_net_to_host_u32 (mp->vrf_id), mp->is_add);
   REPLY_MACRO (VL_API_NAT64_ADD_DEL_PREFIX_REPLY);
 }
 
 static int
-nat64_api_prefix_walk (nat64_prefix_t * p, void *arg)
+nat64_api_prefix_walk (nat64_prefix_t *p, void *arg)
 {
   nat64_main_t *nm = &nat64_main;
   vl_api_nat64_prefix_details_t *rmp;
@@ -402,7 +389,7 @@ nat64_api_prefix_walk (nat64_prefix_t * p, void *arg)
 }
 
 static void
-vl_api_nat64_prefix_dump_t_handler (vl_api_nat64_prefix_dump_t * mp)
+vl_api_nat64_prefix_dump_t_handler (vl_api_nat64_prefix_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -419,8 +406,8 @@ vl_api_nat64_prefix_dump_t_handler (vl_api_nat64_prefix_dump_t * mp)
 }
 
 static void
-  vl_api_nat64_add_del_interface_addr_t_handler
-  (vl_api_nat64_add_del_interface_addr_t * mp)
+vl_api_nat64_add_del_interface_addr_t_handler (
+  vl_api_nat64_add_del_interface_addr_t *mp)
 {
   nat64_main_t *nm = &nat64_main;
   vl_api_nat64_add_del_interface_addr_reply_t *rmp;
@@ -442,7 +429,7 @@ static void
 
 /* Set up the API message handling tables */
 clib_error_t *
-nat64_api_hookup (vlib_main_t * vm)
+nat64_api_hookup (vlib_main_t *vm)
 {
   nat64_main_t *nm = &nat64_main;
   nm->msg_id_base = setup_message_id_table ();

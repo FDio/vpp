@@ -51,32 +51,36 @@ clib_memswap (void *_a, void *_b, uword bytes)
   uword pa = pointer_to_uword (_a);
   uword pb = pointer_to_uword (_b);
 
-#define _(TYPE)					\
-  if (0 == ((pa | pb) & (sizeof (TYPE) - 1)))	\
-    {						\
-      TYPE * a = uword_to_pointer (pa, TYPE *);	\
-      TYPE * b = uword_to_pointer (pb, TYPE *);	\
-						\
-      while (bytes >= 2*sizeof (TYPE))		\
-	{					\
-	  TYPE a0, a1, b0, b1;			\
-	  bytes -= 2*sizeof (TYPE);		\
-	  a += 2;				\
-	  b += 2;				\
-	  a0 = a[-2]; a1 = a[-1];		\
-	  b0 = b[-2]; b1 = b[-1];		\
-	  a[-2] = b0; a[-1] = b1;		\
-	  b[-2] = a0; b[-1] = a1;		\
-	}					\
-      pa = pointer_to_uword (a);		\
-      pb = pointer_to_uword (b);		\
+#define _(TYPE)                                                               \
+  if (0 == ((pa | pb) & (sizeof (TYPE) - 1)))                                 \
+    {                                                                         \
+      TYPE *a = uword_to_pointer (pa, TYPE *);                                \
+      TYPE *b = uword_to_pointer (pb, TYPE *);                                \
+                                                                              \
+      while (bytes >= 2 * sizeof (TYPE))                                      \
+	{                                                                     \
+	  TYPE a0, a1, b0, b1;                                                \
+	  bytes -= 2 * sizeof (TYPE);                                         \
+	  a += 2;                                                             \
+	  b += 2;                                                             \
+	  a0 = a[-2];                                                         \
+	  a1 = a[-1];                                                         \
+	  b0 = b[-2];                                                         \
+	  b1 = b[-1];                                                         \
+	  a[-2] = b0;                                                         \
+	  a[-1] = b1;                                                         \
+	  b[-2] = a0;                                                         \
+	  b[-1] = a1;                                                         \
+	}                                                                     \
+      pa = pointer_to_uword (a);                                              \
+      pb = pointer_to_uword (b);                                              \
     }
 
   if (BITS (uword) == BITS (u64))
-    _(u64);
-  _(u32);
-  _(u16);
-  _(u8);
+    _ (u64);
+  _ (u32);
+  _ (u16);
+  _ (u8);
 
 #undef _
 
@@ -117,8 +121,8 @@ clib_c11_violation (const char *s)
  *
  */
 __clib_export errno_t
-memcpy_s (void *__restrict__ dest, rsize_t dmax,
-	  const void *__restrict__ src, rsize_t n)
+memcpy_s (void *__restrict__ dest, rsize_t dmax, const void *__restrict__ src,
+	  rsize_t n)
 {
   return memcpy_s_inline (dest, dmax, src, n);
 }
@@ -158,9 +162,9 @@ memset_s (void *s, rsize_t smax, int c, rsize_t n)
  * @param s1max   maximum length of s1
  * @param *s2     pointer to memory to compare with s1
  * @param s2max   length of s2
- * @param *diff   pointer to the diff which is an integer greater than, equal to,
- *                or less than zero according to s1 is greater than, equal to,
- *                or less than s2.
+ * @param *diff   pointer to the diff which is an integer greater than, equal
+ * to, or less than zero according to s1 is greater than, equal to, or less
+ * than s2.
  *
  * @constraints   No null pointers
  *                s1max and s2max shall not be zero
@@ -296,8 +300,8 @@ strcpy_s (char *__restrict__ dest, rsize_t dmax, const char *__restrict__ src)
  *
  */
 __clib_export errno_t
-strncpy_s (char *__restrict__ dest, rsize_t dmax,
-	   const char *__restrict__ src, rsize_t n)
+strncpy_s (char *__restrict__ dest, rsize_t dmax, const char *__restrict__ src,
+	   rsize_t n)
 {
   return strncpy_s_inline (dest, dmax, src, n);
 }
@@ -355,8 +359,8 @@ strcat_s (char *__restrict__ dest, rsize_t dmax, const char *__restrict__ src)
  *
  */
 __clib_export errno_t
-strncat_s (char *__restrict__ dest, rsize_t dmax,
-	   const char *__restrict__ src, rsize_t n)
+strncat_s (char *__restrict__ dest, rsize_t dmax, const char *__restrict__ src,
+	   rsize_t n)
 {
   return strncat_s_inline (dest, dmax, src, n);
 }
@@ -407,7 +411,7 @@ strncat_s (char *__restrict__ dest, rsize_t dmax,
  *   tok6 = "wit", tok7 = null
  */
 __clib_export char *
-strtok_s (char *__restrict__ s1, rsize_t * __restrict__ s1max,
+strtok_s (char *__restrict__ s1, rsize_t *__restrict__ s1max,
 	  const char *__restrict__ s2, char **__restrict__ ptr)
 {
   return strtok_s_inline (s1, s1max, s2, ptr);

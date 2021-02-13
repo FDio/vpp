@@ -85,8 +85,11 @@ from_api(const vapi_type_fib_path& p)
         throw invalid_decode("fib-path deocde no interface:" +
                              std::to_string(p.sw_if_index));
 
-      return (route::path(*itf, from_api(p.proto), route::path::flags_t::DVR,
-                          p.weight, p.preference));
+      return (route::path(*itf,
+                          from_api(p.proto),
+                          route::path::flags_t::DVR,
+                          p.weight,
+                          p.preference));
     }
     case FIB_API_PATH_TYPE_NORMAL: {
       boost::asio::ip::address address = from_api(p.nh.address, p.proto);

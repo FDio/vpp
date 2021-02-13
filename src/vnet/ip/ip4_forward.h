@@ -53,8 +53,8 @@
  */
 
 always_inline uword
-ip4_lookup_inline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+ip4_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame)
 {
   ip4_main_t *im = &ip4_main;
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_to_counters;
@@ -162,10 +162,8 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  flow_hash_config0 = lb0->lb_hash_config;
 	  hash_c0 = vnet_buffer (b[0])->ip.flow_hash =
 	    ip4_compute_flow_hash (ip0, flow_hash_config0);
-	  dpo0 =
-	    load_balance_get_fwd_bucket (lb0,
-					 (hash_c0 &
-					  (lb0->lb_n_buckets_minus_1)));
+	  dpo0 = load_balance_get_fwd_bucket (
+	    lb0, (hash_c0 & (lb0->lb_n_buckets_minus_1)));
 	}
       else
 	{
@@ -176,10 +174,8 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  flow_hash_config1 = lb1->lb_hash_config;
 	  hash_c1 = vnet_buffer (b[1])->ip.flow_hash =
 	    ip4_compute_flow_hash (ip1, flow_hash_config1);
-	  dpo1 =
-	    load_balance_get_fwd_bucket (lb1,
-					 (hash_c1 &
-					  (lb1->lb_n_buckets_minus_1)));
+	  dpo1 = load_balance_get_fwd_bucket (
+	    lb1, (hash_c1 & (lb1->lb_n_buckets_minus_1)));
 	}
       else
 	{
@@ -190,10 +186,8 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  flow_hash_config2 = lb2->lb_hash_config;
 	  hash_c2 = vnet_buffer (b[2])->ip.flow_hash =
 	    ip4_compute_flow_hash (ip2, flow_hash_config2);
-	  dpo2 =
-	    load_balance_get_fwd_bucket (lb2,
-					 (hash_c2 &
-					  (lb2->lb_n_buckets_minus_1)));
+	  dpo2 = load_balance_get_fwd_bucket (
+	    lb2, (hash_c2 & (lb2->lb_n_buckets_minus_1)));
 	}
       else
 	{
@@ -204,10 +198,8 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  flow_hash_config3 = lb3->lb_hash_config;
 	  hash_c3 = vnet_buffer (b[3])->ip.flow_hash =
 	    ip4_compute_flow_hash (ip3, flow_hash_config3);
-	  dpo3 =
-	    load_balance_get_fwd_bucket (lb3,
-					 (hash_c3 &
-					  (lb3->lb_n_buckets_minus_1)));
+	  dpo3 = load_balance_get_fwd_bucket (
+	    lb3, (hash_c3 & (lb3->lb_n_buckets_minus_1)));
 	}
       else
 	{
@@ -223,18 +215,14 @@ ip4_lookup_inline (vlib_main_t * vm,
       next[3] = dpo3->dpoi_next_node;
       vnet_buffer (b[3])->ip.adj_index[VLIB_TX] = dpo3->dpoi_index;
 
-      vlib_increment_combined_counter
-	(cm, thread_index, lb_index0, 1,
-	 vlib_buffer_length_in_chain (vm, b[0]));
-      vlib_increment_combined_counter
-	(cm, thread_index, lb_index1, 1,
-	 vlib_buffer_length_in_chain (vm, b[1]));
-      vlib_increment_combined_counter
-	(cm, thread_index, lb_index2, 1,
-	 vlib_buffer_length_in_chain (vm, b[2]));
-      vlib_increment_combined_counter
-	(cm, thread_index, lb_index3, 1,
-	 vlib_buffer_length_in_chain (vm, b[3]));
+      vlib_increment_combined_counter (cm, thread_index, lb_index0, 1,
+				       vlib_buffer_length_in_chain (vm, b[0]));
+      vlib_increment_combined_counter (cm, thread_index, lb_index1, 1,
+				       vlib_buffer_length_in_chain (vm, b[1]));
+      vlib_increment_combined_counter (cm, thread_index, lb_index2, 1,
+				       vlib_buffer_length_in_chain (vm, b[2]));
+      vlib_increment_combined_counter (cm, thread_index, lb_index3, 1,
+				       vlib_buffer_length_in_chain (vm, b[3]));
 
       b += 4;
       next += 4;
@@ -303,10 +291,8 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  flow_hash_config0 = lb0->lb_hash_config;
 	  hash_c0 = vnet_buffer (b[0])->ip.flow_hash =
 	    ip4_compute_flow_hash (ip0, flow_hash_config0);
-	  dpo0 =
-	    load_balance_get_fwd_bucket (lb0,
-					 (hash_c0 &
-					  (lb0->lb_n_buckets_minus_1)));
+	  dpo0 = load_balance_get_fwd_bucket (
+	    lb0, (hash_c0 & (lb0->lb_n_buckets_minus_1)));
 	}
       else
 	{
@@ -317,10 +303,8 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  flow_hash_config1 = lb1->lb_hash_config;
 	  hash_c1 = vnet_buffer (b[1])->ip.flow_hash =
 	    ip4_compute_flow_hash (ip1, flow_hash_config1);
-	  dpo1 =
-	    load_balance_get_fwd_bucket (lb1,
-					 (hash_c1 &
-					  (lb1->lb_n_buckets_minus_1)));
+	  dpo1 = load_balance_get_fwd_bucket (
+	    lb1, (hash_c1 & (lb1->lb_n_buckets_minus_1)));
 	}
       else
 	{
@@ -332,12 +316,10 @@ ip4_lookup_inline (vlib_main_t * vm,
       next[1] = dpo1->dpoi_next_node;
       vnet_buffer (b[1])->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
 
-      vlib_increment_combined_counter
-	(cm, thread_index, lb_index0, 1,
-	 vlib_buffer_length_in_chain (vm, b[0]));
-      vlib_increment_combined_counter
-	(cm, thread_index, lb_index1, 1,
-	 vlib_buffer_length_in_chain (vm, b[1]));
+      vlib_increment_combined_counter (cm, thread_index, lb_index0, 1,
+				       vlib_buffer_length_in_chain (vm, b[0]));
+      vlib_increment_combined_counter (cm, thread_index, lb_index1, 1,
+				       vlib_buffer_length_in_chain (vm, b[1]));
 
       b += 2;
       next += 2;
@@ -380,10 +362,8 @@ ip4_lookup_inline (vlib_main_t * vm,
 
 	  hash_c0 = vnet_buffer (b[0])->ip.flow_hash =
 	    ip4_compute_flow_hash (ip0, flow_hash_config0);
-	  dpo0 =
-	    load_balance_get_fwd_bucket (lb0,
-					 (hash_c0 &
-					  (lb0->lb_n_buckets_minus_1)));
+	  dpo0 = load_balance_get_fwd_bucket (
+	    lb0, (hash_c0 & (lb0->lb_n_buckets_minus_1)));
 	}
       else
 	{
@@ -394,8 +374,7 @@ ip4_lookup_inline (vlib_main_t * vm,
       vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
       vlib_increment_combined_counter (cm, thread_index, lbi0, 1,
-				       vlib_buffer_length_in_chain (vm,
-								    b[0]));
+				       vlib_buffer_length_in_chain (vm, b[0]));
 
       b += 1;
       next += 1;

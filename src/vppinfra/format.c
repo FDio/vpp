@@ -45,7 +45,7 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <stdarg.h>		/* va_start, etc */
+#include <stdarg.h> /* va_start, etc */
 
 #ifdef CLIB_UNIX
 #include <unistd.h>
@@ -61,7 +61,7 @@
 #include <vppinfra/vec.h>
 #include <vppinfra/error.h>
 #include <vppinfra/string.h>
-#include <vppinfra/os.h>	/* os_puts */
+#include <vppinfra/os.h> /* os_puts */
 #include <vppinfra/math.h>
 
 typedef struct
@@ -79,9 +79,9 @@ typedef struct
   u8 uppercase_digits;
 } format_integer_options_t;
 
-static u8 *format_integer (u8 * s, u64 number,
-			   format_integer_options_t * options);
-static u8 *format_float (u8 * s, f64 x, uword n_digits_to_print,
+static u8 *format_integer (u8 *s, u64 number,
+			   format_integer_options_t *options);
+static u8 *format_float (u8 *s, f64 x, uword n_digits_to_print,
 			 uword output_style);
 
 typedef struct
@@ -101,7 +101,7 @@ typedef struct
 } format_info_t;
 
 static u8 *
-justify (u8 * s, format_info_t * fi, uword s_len_orig)
+justify (u8 *s, format_info_t *fi, uword s_len_orig)
 {
   uword i0, l0, l1;
 
@@ -152,7 +152,7 @@ justify (u8 * s, format_info_t * fi, uword s_len_orig)
 }
 
 static const u8 *
-do_percent (u8 ** _s, const u8 * fmt, va_list * va)
+do_percent (u8 **_s, const u8 *fmt, va_list *va)
 {
   u8 *s = *_s;
   uword c;
@@ -161,7 +161,7 @@ do_percent (u8 ** _s, const u8 * fmt, va_list * va)
 
   format_info_t fi = {
     .justify = '+',
-    .width = {0},
+    .width = { 0 },
     .pad_char = ' ',
     .how_long = 0,
   };
@@ -384,7 +384,7 @@ done:
 }
 
 __clib_export u8 *
-va_format (u8 * s, const char *fmt, va_list * va)
+va_format (u8 *s, const char *fmt, va_list *va)
 {
   const u8 *f = (u8 *) fmt, *g;
   u8 c;
@@ -421,7 +421,7 @@ va_format (u8 * s, const char *fmt, va_list * va)
 }
 
 __clib_export u8 *
-format (u8 * s, const char *fmt, ...)
+format (u8 *s, const char *fmt, ...)
 {
   va_list va;
   va_start (va, fmt);
@@ -435,7 +435,7 @@ format (u8 * s, const char *fmt, ...)
 }
 
 __clib_export word
-va_fformat (FILE * f, char *fmt, va_list * va)
+va_fformat (FILE *f, char *fmt, va_list *va)
 {
   word ret;
   u8 *s;
@@ -459,7 +459,7 @@ va_fformat (FILE * f, char *fmt, va_list * va)
 }
 
 __clib_export word
-fformat (FILE * f, char *fmt, ...)
+fformat (FILE *f, char *fmt, ...)
 {
   va_list va;
   word ret;
@@ -473,7 +473,7 @@ fformat (FILE * f, char *fmt, ...)
 
 #ifdef CLIB_UNIX
 __clib_export void
-fformat_append_cr (FILE * ofp, const char *fmt, ...)
+fformat_append_cr (FILE *ofp, const char *fmt, ...)
 {
   va_list va;
 
@@ -502,7 +502,7 @@ fdformat (int fd, char *fmt, ...)
 
 /* Format integral type. */
 static u8 *
-format_integer (u8 * s, u64 number, format_integer_options_t * options)
+format_integer (u8 *s, u64 number, format_integer_options_t *options)
 {
   u64 q;
   u32 r;
@@ -535,13 +535,13 @@ format_integer (u8 * s, u64 number, format_integer_options_t * options)
 	  else
 	    c = 'A' + (r - 10 - 26);
 
-	  if (options->uppercase_digits
-	      && base <= 10 + 26 && c >= 'a' && c <= 'z')
+	  if (options->uppercase_digits && base <= 10 + 26 && c >= 'a' &&
+	      c <= 'z')
 	    c += 'A' - 'a';
 
 	  *--d = c;
 	}
-      else			/* will never happen, warning be gone */
+      else /* will never happen, warning be gone */
 	{
 	  *--d = '?';
 	}
@@ -558,14 +558,20 @@ format_integer (u8 * s, u64 number, format_integer_options_t * options)
 
 /* Floating point formatting. */
 /* Deconstruct IEEE 64 bit number into sign exponent and fraction. */
-#define f64_down(f,sign,expon,fraction)				\
-do {								\
-  union { u64 u; f64 f; } _f64_down_tmp;			\
-  _f64_down_tmp.f = (f);					\
-  (sign) = (_f64_down_tmp.u >> 63);				\
-  (expon) = ((_f64_down_tmp.u >> 52) & 0x7ff) - 1023;		\
-  (fraction) = ((_f64_down_tmp.u << 12) >> 12) | ((u64) 1 << 52); \
-} while (0)
+#define f64_down(f, sign, expon, fraction)                                    \
+  do                                                                          \
+    {                                                                         \
+      union                                                                   \
+      {                                                                       \
+	u64 u;                                                                \
+	f64 f;                                                                \
+      } _f64_down_tmp;                                                        \
+      _f64_down_tmp.f = (f);                                                  \
+      (sign) = (_f64_down_tmp.u >> 63);                                       \
+      (expon) = ((_f64_down_tmp.u >> 52) & 0x7ff) - 1023;                     \
+      (fraction) = ((_f64_down_tmp.u << 12) >> 12) | ((u64) 1 << 52);         \
+    }                                                                         \
+  while (0)
 
 /* Construct IEEE 64 bit number. */
 static f64
@@ -599,7 +605,8 @@ f64_precision (int base2_expon)
 
   if (!n_bits)
     {
-      /* Compute number of significant bits in floating point representation. */
+      /* Compute number of significant bits in floating point representation.
+       */
       f64 one = 0;
       f64 small = 1;
 
@@ -620,7 +627,9 @@ times_power_of_ten (f64 x, int n)
 {
   if (n >= 0)
     {
-      static f64 t[8] = { 1e+0, 1e+1, 1e+2, 1e+3, 1e+4, 1e+5, 1e+6, 1e+7, };
+      static f64 t[8] = {
+	1e+0, 1e+1, 1e+2, 1e+3, 1e+4, 1e+5, 1e+6, 1e+7,
+      };
       while (n >= 8)
 	{
 	  x *= 1e+8;
@@ -630,7 +639,9 @@ times_power_of_ten (f64 x, int n)
     }
   else
     {
-      static f64 t[8] = { 1e-0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, };
+      static f64 t[8] = {
+	1e-0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7,
+      };
       while (n <= -8)
 	{
 	  x *= 1e-8;
@@ -638,12 +649,11 @@ times_power_of_ten (f64 x, int n)
 	}
       return x * t[-n];
     }
-
 }
 
 /* Write x = y * 10^expon with 1 < y < 10. */
 static f64
-normalize (f64 x, word * expon_return, f64 * prec_return)
+normalize (f64 x, word *expon_return, f64 *prec_return)
 {
   word expon2, expon10;
   CLIB_UNUSED (u64 fraction);
@@ -653,8 +663,7 @@ normalize (f64 x, word * expon_return, f64 * prec_return)
   f64_down (x, sign, expon2, fraction);
 
   expon10 =
-    .5 +
-    expon2 * .301029995663981195213738894724493 /* Log (2) / Log (10) */ ;
+    .5 + expon2 * .301029995663981195213738894724493 /* Log (2) / Log (10) */;
 
   prec = f64_precision (expon2);
   x = times_power_of_ten (x, -expon10);
@@ -687,7 +696,7 @@ normalize (f64 x, word * expon_return, f64 * prec_return)
 }
 
 static u8 *
-add_some_zeros (u8 * s, uword n_zeros)
+add_some_zeros (u8 *s, uword n_zeros)
 {
   while (n_zeros > 0)
     {
@@ -698,9 +707,10 @@ add_some_zeros (u8 * s, uword n_zeros)
 }
 
 /* Format a floating point number with the given number of fractional
-   digits (e.g. 1.2345 with 2 fraction digits yields "1.23") and output style. */
+   digits (e.g. 1.2345 with 2 fraction digits yields "1.23") and output style.
+ */
 static u8 *
-format_float (u8 * s, f64 x, uword n_fraction_digits, uword output_style)
+format_float (u8 *s, f64 x, uword n_fraction_digits, uword output_style)
 {
   f64 prec;
   word sign, expon, n_fraction_done, added_decimal_point;
@@ -740,15 +750,15 @@ format_float (u8 * s, f64 x, uword n_fraction_digits, uword output_style)
   x = normalize (x, &expon, &prec);
 
   /* Not enough digits to print anything: so just print 0 */
-  if ((word) - expon > (word) n_fraction_digits
-      && (output_style == 'f' || (output_style == 'g')))
+  if ((word) -expon > (word) n_fraction_digits &&
+      (output_style == 'f' || (output_style == 'g')))
     goto do_zero;
 
   if (sign)
     vec_add1 (s, '-');
 
-  if (output_style == 'f'
-      || (output_style == 'g' && expon > -10 && expon < 10))
+  if (output_style == 'f' ||
+      (output_style == 'g' && expon > -10 && expon < 10))
     {
       if (expon < 0)
 	{
@@ -786,8 +796,8 @@ format_float (u8 * s, f64 x, uword n_fraction_digits, uword output_style)
 	}
 
       /* Round last printed digit. */
-      if (decimal_point <= 0
-	  && n_fraction_done + 1 == n_fraction_digits && digit < 9)
+      if (decimal_point <= 0 && n_fraction_done + 1 == n_fraction_digits &&
+	  digit < 9)
 	digit += x >= .5;
 
       vec_add1 (s, '0' + digit);
@@ -828,7 +838,6 @@ done:
 
   return s;
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

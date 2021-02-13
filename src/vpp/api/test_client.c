@@ -52,13 +52,13 @@
 #include <vnet/interface.h>
 
 #define f64_endian(a)
-#define f64_print(a,b)
+#define f64_print(a, b)
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_endianfun
 
@@ -96,16 +96,16 @@ vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...)
 }
 
 u8 *
-format_ethernet_address (u8 * s, va_list * args)
+format_ethernet_address (u8 *s, va_list *args)
 {
   u8 *a = va_arg (*args, u8 *);
 
-  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
-		 a[0], a[1], a[2], a[3], a[4], a[5]);
+  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x", a[0], a[1], a[2], a[3],
+		 a[4], a[5]);
 }
 
 static void
-vl_api_sw_interface_details_t_handler (vl_api_sw_interface_details_t * mp)
+vl_api_sw_interface_details_t_handler (vl_api_sw_interface_details_t *mp)
 {
   char *duplex, *speed;
 
@@ -165,98 +165,99 @@ vl_api_sw_interface_details_t_handler (vl_api_sw_interface_details_t * mp)
     }
   fformat (stdout,
 	   "details: %s device_type %s sw_if_index %d sup_sw_if_index %d "
-	   "link_duplex %s link_speed %s", mp->interface_name,
-	   mp->interface_dev_type, ntohl (mp->sw_if_index),
+	   "link_duplex %s link_speed %s",
+	   mp->interface_name, mp->interface_dev_type, ntohl (mp->sw_if_index),
 	   ntohl (mp->sup_sw_if_index), duplex, speed);
 
   if (mp->l2_address_length)
-    fformat (stdout, "  l2 address: %U\n",
-	     format_ethernet_address, mp->l2_address);
+    fformat (stdout, "  l2 address: %U\n", format_ethernet_address,
+	     mp->l2_address);
   else
     fformat (stdout, "\n");
 }
 
 static void
-vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t * mp)
+vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t *mp)
 {
   fformat (stdout, "set flags: sw_if_index %d, admin %s\n",
 	   ntohl (mp->sw_if_index), mp->admin_up_down ? "up" : "down");
 }
 
 static void
-  vl_api_sw_interface_set_flags_reply_t_handler
-  (vl_api_sw_interface_set_flags_reply_t * mp)
+vl_api_sw_interface_set_flags_reply_t_handler (
+  vl_api_sw_interface_set_flags_reply_t *mp)
 {
   fformat (stdout, "set flags reply: reply %d\n", ntohl (mp->retval));
 }
 
 static void
-  vl_api_want_interface_events_reply_t_handler
-  (vl_api_want_interface_events_reply_t * mp)
+vl_api_want_interface_events_reply_t_handler (
+  vl_api_want_interface_events_reply_t *mp)
 {
 }
 
 static void
-vl_api_want_stats_reply_t_handler (vl_api_want_stats_reply_t * mp)
+vl_api_want_stats_reply_t_handler (vl_api_want_stats_reply_t *mp)
 {
   fformat (stdout, "want stats reply %d\n", ntohl (mp->retval));
 }
 
 static void
-vl_api_want_oam_events_reply_t_handler (vl_api_want_oam_events_reply_t * mp)
+vl_api_want_oam_events_reply_t_handler (vl_api_want_oam_events_reply_t *mp)
 {
   fformat (stdout, "want oam reply %d\n", ntohl (mp->retval));
 }
 
 static void
-vl_api_ip_add_del_route_reply_t_handler (vl_api_ip_add_del_route_reply_t * mp)
+vl_api_ip_add_del_route_reply_t_handler (vl_api_ip_add_del_route_reply_t *mp)
 {
   fformat (stdout, "add_route reply %d\n", ntohl (mp->retval));
 }
 
 static void
-  vl_api_sw_interface_add_del_address_reply_t_handler
-  (vl_api_sw_interface_add_del_address_reply_t * mp)
+vl_api_sw_interface_add_del_address_reply_t_handler (
+  vl_api_sw_interface_add_del_address_reply_t *mp)
 {
   fformat (stdout, "add_del_address reply %d\n", ntohl (mp->retval));
 }
 
 static void
-  vl_api_sw_interface_set_table_reply_t_handler
-  (vl_api_sw_interface_set_table_reply_t * mp)
+vl_api_sw_interface_set_table_reply_t_handler (
+  vl_api_sw_interface_set_table_reply_t *mp)
 {
   fformat (stdout, "set_table reply %d\n", ntohl (mp->retval));
 }
 
 static void
-vl_api_tap_connect_reply_t_handler (vl_api_tap_connect_reply_t * mp)
+vl_api_tap_connect_reply_t_handler (vl_api_tap_connect_reply_t *mp)
 {
   fformat (stdout, "tap connect reply %d, sw_if_index %d\n",
 	   ntohl (mp->retval), ntohl (mp->sw_if_index));
 }
 
 static void
-vl_api_create_vlan_subif_reply_t_handler (vl_api_create_vlan_subif_reply_t *
-					  mp)
+vl_api_create_vlan_subif_reply_t_handler (vl_api_create_vlan_subif_reply_t *mp)
 {
   fformat (stdout, "create vlan subif reply %d, sw_if_index %d\n",
 	   ntohl (mp->retval), ntohl (mp->sw_if_index));
 }
 
-static void vl_api_proxy_arp_add_del_reply_t_handler
-  (vl_api_proxy_arp_add_del_reply_t * mp)
+static void
+vl_api_proxy_arp_add_del_reply_t_handler (vl_api_proxy_arp_add_del_reply_t *mp)
 {
   fformat (stdout, "add del proxy arp reply %d\n", ntohl (mp->retval));
 }
 
-static void vl_api_proxy_arp_intfc_enable_disable_reply_t_handler
-  (vl_api_proxy_arp_intfc_enable_disable_reply_t * mp)
+static void
+vl_api_proxy_arp_intfc_enable_disable_reply_t_handler (
+  vl_api_proxy_arp_intfc_enable_disable_reply_t *mp)
 {
   fformat (stdout, "proxy arp intfc ena/dis reply %d\n", ntohl (mp->retval));
 }
 
-static void vl_api_ip_neighbor_add_del_reply_t_handler
-  (vl_api_ip_neighbor_add_del_reply_t * mp)
+static void
+vl_api_ip_neighbor_add_del_reply_t_handler (
+  vl_api_ip_neighbor_add_del_reply_t *mp)
 {
   fformat (stdout, "ip neighbor add del reply %d\n", ntohl (mp->retval));
 }
@@ -353,7 +354,7 @@ vl_api_vnet_interface_counters_t_handler (vl_api_vnet_interface_counters_t *
 
 /* Format an IP4 address. */
 u8 *
-format_ip4_address (u8 * s, va_list * args)
+format_ip4_address (u8 *s, va_list *args)
 {
   u8 *a = va_arg (*args, u8 *);
   return format (s, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
@@ -361,7 +362,7 @@ format_ip4_address (u8 * s, va_list * args)
 
 /* Format an IP4 route destination and length. */
 u8 *
-format_ip4_address_and_length (u8 * s, va_list * args)
+format_ip4_address_and_length (u8 *s, va_list *args)
 {
   u8 *a = va_arg (*args, u8 *);
   u8 l = va_arg (*args, u32);
@@ -369,7 +370,7 @@ format_ip4_address_and_length (u8 * s, va_list * args)
 }
 
 static void
-vl_api_vnet_ip4_fib_counters_t_handler (vl_api_vnet_ip4_fib_counters_t * mp)
+vl_api_vnet_ip4_fib_counters_t_handler (vl_api_vnet_ip4_fib_counters_t *mp)
 {
   int i;
   vl_api_ip4_fib_counter_t *ctrp;
@@ -377,8 +378,8 @@ vl_api_vnet_ip4_fib_counters_t_handler (vl_api_vnet_ip4_fib_counters_t * mp)
 
   count = ntohl (mp->count);
 
-  fformat (stdout, "fib id %d, count this msg %d\n",
-	   ntohl (mp->vrf_id), count);
+  fformat (stdout, "fib id %d, count this msg %d\n", ntohl (mp->vrf_id),
+	   count);
 
   ctrp = mp->c;
   for (i = 0; i < count; i++)
@@ -394,7 +395,7 @@ vl_api_vnet_ip4_fib_counters_t_handler (vl_api_vnet_ip4_fib_counters_t * mp)
 
 /* Format an IP6 address. */
 u8 *
-format_ip6_address (u8 * s, va_list * args)
+format_ip6_address (u8 *s, va_list *args)
 {
   ip6_address_t *a = va_arg (*args, ip6_address_t *);
   u32 i, i_max_n_zero, max_n_zeros, i_first_zero, n_zeros, last_double_colon;
@@ -412,8 +413,8 @@ format_ip6_address (u8 * s, va_list * args)
 	  n_zeros = 0;
 	}
       n_zeros += is_zero;
-      if ((!is_zero && n_zeros > max_n_zeros)
-	  || (i + 1 >= ARRAY_LEN (a->as_u16) && n_zeros > max_n_zeros))
+      if ((!is_zero && n_zeros > max_n_zeros) ||
+	  (i + 1 >= ARRAY_LEN (a->as_u16) && n_zeros > max_n_zeros))
 	{
 	  i_max_n_zero = i_first_zero;
 	  max_n_zeros = n_zeros;
@@ -433,8 +434,7 @@ format_ip6_address (u8 * s, va_list * args)
 	}
       else
 	{
-	  s = format (s, "%s%x",
-		      (last_double_colon || i == 0) ? "" : ":",
+	  s = format (s, "%s%x", (last_double_colon || i == 0) ? "" : ":",
 		      clib_net_to_host_u16 (a->as_u16[i]));
 	  last_double_colon = 0;
 	}
@@ -445,7 +445,7 @@ format_ip6_address (u8 * s, va_list * args)
 
 /* Format an IP6 route destination and length. */
 u8 *
-format_ip6_address_and_length (u8 * s, va_list * args)
+format_ip6_address_and_length (u8 *s, va_list *args)
 {
   ip6_address_t *a = va_arg (*args, ip6_address_t *);
   u8 l = va_arg (*args, u32);
@@ -453,7 +453,7 @@ format_ip6_address_and_length (u8 * s, va_list * args)
 }
 
 static void
-vl_api_vnet_ip6_fib_counters_t_handler (vl_api_vnet_ip6_fib_counters_t * mp)
+vl_api_vnet_ip6_fib_counters_t_handler (vl_api_vnet_ip6_fib_counters_t *mp)
 {
   int i;
   vl_api_ip6_fib_counter_t *ctrp;
@@ -461,8 +461,8 @@ vl_api_vnet_ip6_fib_counters_t_handler (vl_api_vnet_ip6_fib_counters_t * mp)
 
   count = ntohl (mp->count);
 
-  fformat (stdout, "fib id %d, count this msg %d\n",
-	   ntohl (mp->vrf_id), count);
+  fformat (stdout, "fib id %d, count this msg %d\n", ntohl (mp->vrf_id),
+	   count);
 
   ctrp = mp->c;
   for (i = 0; i < count; i++)
@@ -477,102 +477,103 @@ vl_api_vnet_ip6_fib_counters_t_handler (vl_api_vnet_ip6_fib_counters_t * mp)
 }
 
 static void
-vl_api_oam_event_t_handler (vl_api_oam_event_t * mp)
+vl_api_oam_event_t_handler (vl_api_oam_event_t *mp)
 {
-  fformat (stdout, "OAM: %U now %s\n",
-	   format_ip4_address, &mp->dst_address,
+  fformat (stdout, "OAM: %U now %s\n", format_ip4_address, &mp->dst_address,
 	   mp->state == 1 ? "alive" : "dead");
 }
 
 static void
-vl_api_oam_add_del_reply_t_handler (vl_api_oam_add_del_reply_t * mp)
+vl_api_oam_add_del_reply_t_handler (vl_api_oam_add_del_reply_t *mp)
 {
   fformat (stdout, "oam add del reply %d\n", ntohl (mp->retval));
 }
 
 static void
-vl_api_reset_fib_reply_t_handler (vl_api_reset_fib_reply_t * mp)
+vl_api_reset_fib_reply_t_handler (vl_api_reset_fib_reply_t *mp)
 {
   fformat (stdout, "fib reset reply %d\n", ntohl (mp->retval));
 }
 
 static void
-vl_api_dhcp_proxy_set_vss_reply_t_handler (vl_api_dhcp_proxy_set_vss_reply_t *
-					   mp)
+vl_api_dhcp_proxy_set_vss_reply_t_handler (
+  vl_api_dhcp_proxy_set_vss_reply_t *mp)
 {
   fformat (stdout, "dhcp proxy set vss reply %d\n", ntohl (mp->retval));
 }
 
 static void
-vl_api_dhcp_proxy_config_reply_t_handler (vl_api_dhcp_proxy_config_reply_t *
-					  mp)
+vl_api_dhcp_proxy_config_reply_t_handler (vl_api_dhcp_proxy_config_reply_t *mp)
 {
   fformat (stdout, "dhcp proxy config reply %d\n", ntohl (mp->retval));
 }
 
 static void
-vl_api_set_ip_flow_hash_reply_t_handler (vl_api_set_ip_flow_hash_reply_t * mp)
+vl_api_set_ip_flow_hash_reply_t_handler (vl_api_set_ip_flow_hash_reply_t *mp)
 {
   fformat (stdout, "set ip flow hash reply %d\n", ntohl (mp->retval));
 }
 
 static void
-  vl_api_sw_interface_ip6nd_ra_config_reply_t_handler
-  (vl_api_sw_interface_ip6nd_ra_config_reply_t * mp)
+vl_api_sw_interface_ip6nd_ra_config_reply_t_handler (
+  vl_api_sw_interface_ip6nd_ra_config_reply_t *mp)
 {
   fformat (stdout, "ip6 nd ra-config  reply %d\n", ntohl (mp->retval));
 }
 
 static void
-  vl_api_sw_interface_ip6nd_ra_prefix_reply_t_handler
-  (vl_api_sw_interface_ip6nd_ra_prefix_reply_t * mp)
+vl_api_sw_interface_ip6nd_ra_prefix_reply_t_handler (
+  vl_api_sw_interface_ip6nd_ra_prefix_reply_t *mp)
 {
   fformat (stdout, "ip6 nd ra-prefix  reply %d\n", ntohl (mp->retval));
 }
 
 static void
-  vl_api_sw_interface_ip6_enable_disable_reply_t_handler
-  (vl_api_sw_interface_ip6_enable_disable_reply_t * mp)
+vl_api_sw_interface_ip6_enable_disable_reply_t_handler (
+  vl_api_sw_interface_ip6_enable_disable_reply_t *mp)
 {
   fformat (stdout, "ip6 enable/disable reply %d\n", ntohl (mp->retval));
 }
 
 static void
-  vl_api_sw_interface_ip6_set_link_local_address_reply_t_handler
-  (vl_api_sw_interface_ip6_set_link_local_address_reply_t * mp)
+vl_api_sw_interface_ip6_set_link_local_address_reply_t_handler (
+  vl_api_sw_interface_ip6_set_link_local_address_reply_t *mp)
 {
   fformat (stdout, "ip6 set link-local address reply %d\n",
 	   ntohl (mp->retval));
 }
 
-static void vl_api_create_loopback_reply_t_handler
-  (vl_api_create_loopback_reply_t * mp)
+static void
+vl_api_create_loopback_reply_t_handler (vl_api_create_loopback_reply_t *mp)
 {
   fformat (stdout, "create loopback status %d, sw_if_index %d\n",
 	   ntohl (mp->retval), ntohl (mp->sw_if_index));
 }
 
-static void vl_api_create_loopback_instance_reply_t_handler
-  (vl_api_create_loopback_instance_reply_t * mp)
+static void
+vl_api_create_loopback_instance_reply_t_handler (
+  vl_api_create_loopback_instance_reply_t *mp)
 {
   fformat (stdout, "create loopback status %d, sw_if_index %d\n",
 	   ntohl (mp->retval), ntohl (mp->sw_if_index));
 }
 
-static void vl_api_l2_patch_add_del_reply_t_handler
-  (vl_api_l2_patch_add_del_reply_t * mp)
+static void
+vl_api_l2_patch_add_del_reply_t_handler (vl_api_l2_patch_add_del_reply_t *mp)
 {
   fformat (stdout, "l2 patch reply %d\n", ntohl (mp->retval));
 }
 
-static void vl_api_sw_interface_set_l2_xconnect_reply_t_handler
-  (vl_api_sw_interface_set_l2_xconnect_reply_t * mp)
+static void
+vl_api_sw_interface_set_l2_xconnect_reply_t_handler (
+  vl_api_sw_interface_set_l2_xconnect_reply_t *mp)
 {
   fformat (stdout, "l2_xconnect reply %d\n", ntohl (mp->retval));
 }
 
-static void vl_api_sw_interface_set_l2_bridge_reply_t_handler
-  (vl_api_sw_interface_set_l2_bridge_reply_t * mp)
+static void
+vl_api_sw_interface_set_l2_bridge_reply_t_handler (
+  vl_api_sw_interface_set_l2_bridge_reply_t *mp)
 {
   fformat (stdout, "l2_bridge reply %d\n", ntohl (mp->retval));
 }
@@ -583,42 +584,45 @@ noop_handler (void *notused)
 }
 
 #define vl_api_vnet_ip4_fib_counters_t_endian noop_handler
-#define vl_api_vnet_ip4_fib_counters_t_print noop_handler
+#define vl_api_vnet_ip4_fib_counters_t_print  noop_handler
 #define vl_api_vnet_ip6_fib_counters_t_endian noop_handler
-#define vl_api_vnet_ip6_fib_counters_t_print noop_handler
+#define vl_api_vnet_ip6_fib_counters_t_print  noop_handler
 
-#define foreach_api_msg                                                 \
-_(SW_INTERFACE_DETAILS, sw_interface_details)                           \
-_(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
-_(SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply)           \
-_(WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)             \
-_(WANT_STATS_REPLY, want_stats_reply)                                   \
-_(WANT_OAM_EVENTS_REPLY, want_oam_events_reply)                         \
-_(OAM_EVENT, oam_event)                                                 \
-_(OAM_ADD_DEL_REPLY, oam_add_del_reply)				        \
-_(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)                         \
-_(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)                         \
-_(IP_ADD_DEL_ROUTE_REPLY, ip_add_del_route_reply)                       \
-_(SW_INTERFACE_ADD_DEL_ADDRESS_REPLY, sw_interface_add_del_address_reply) \
-_(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply)           \
-_(TAP_CONNECT_REPLY, tap_connect_reply)                                 \
-_(CREATE_VLAN_SUBIF_REPLY, create_vlan_subif_reply)                     \
-_(PROXY_ARP_ADD_DEL_REPLY, proxy_arp_add_del_reply)			\
-_(PROXY_ARP_INTFC_ENABLE_DISABLE_REPLY, proxy_arp_intfc_enable_disable_reply) \
-_(IP_NEIGHBOR_ADD_DEL_REPLY, ip_neighbor_add_del_reply)                 \
-_(RESET_FIB_REPLY, reset_fib_reply)                                     \
-_(DHCP_PROXY_CONFIG_REPLY, dhcp_proxy_config_reply)                     \
-_(DHCP_PROXY_SET_VSS_REPLY, dhcp_proxy_set_vss_reply)                   \
-_(SET_IP_FLOW_HASH_REPLY, set_ip_flow_hash_reply)                       \
-_(SW_INTERFACE_IP6ND_RA_CONFIG_REPLY, sw_interface_ip6nd_ra_config_reply) \
-_(SW_INTERFACE_IP6ND_RA_PREFIX_REPLY, sw_interface_ip6nd_ra_prefix_reply) \
-_(SW_INTERFACE_IP6_ENABLE_DISABLE_REPLY, sw_interface_ip6_enable_disable_reply) \
-_(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS_REPLY, sw_interface_ip6_set_link_local_address_reply) \
- _(CREATE_LOOPBACK_REPLY, create_loopback_reply)			\
- _(CREATE_LOOPBACK_INSTANCE_REPLY, create_loopback_instance_reply)	\
-_(L2_PATCH_ADD_DEL_REPLY, l2_patch_add_del_reply)			\
-_(SW_INTERFACE_SET_L2_XCONNECT_REPLY, sw_interface_set_l2_xconnect_reply) \
-_(SW_INTERFACE_SET_L2_BRIDGE_REPLY, sw_interface_set_l2_bridge_reply)
+#define foreach_api_msg                                                       \
+  _ (SW_INTERFACE_DETAILS, sw_interface_details)                              \
+  _ (SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                          \
+  _ (SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply)              \
+  _ (WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)                \
+  _ (WANT_STATS_REPLY, want_stats_reply)                                      \
+  _ (WANT_OAM_EVENTS_REPLY, want_oam_events_reply)                            \
+  _ (OAM_EVENT, oam_event)                                                    \
+  _ (OAM_ADD_DEL_REPLY, oam_add_del_reply)                                    \
+  _ (VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)                            \
+  _ (VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)                            \
+  _ (IP_ADD_DEL_ROUTE_REPLY, ip_add_del_route_reply)                          \
+  _ (SW_INTERFACE_ADD_DEL_ADDRESS_REPLY, sw_interface_add_del_address_reply)  \
+  _ (SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply)              \
+  _ (TAP_CONNECT_REPLY, tap_connect_reply)                                    \
+  _ (CREATE_VLAN_SUBIF_REPLY, create_vlan_subif_reply)                        \
+  _ (PROXY_ARP_ADD_DEL_REPLY, proxy_arp_add_del_reply)                        \
+  _ (PROXY_ARP_INTFC_ENABLE_DISABLE_REPLY,                                    \
+     proxy_arp_intfc_enable_disable_reply)                                    \
+  _ (IP_NEIGHBOR_ADD_DEL_REPLY, ip_neighbor_add_del_reply)                    \
+  _ (RESET_FIB_REPLY, reset_fib_reply)                                        \
+  _ (DHCP_PROXY_CONFIG_REPLY, dhcp_proxy_config_reply)                        \
+  _ (DHCP_PROXY_SET_VSS_REPLY, dhcp_proxy_set_vss_reply)                      \
+  _ (SET_IP_FLOW_HASH_REPLY, set_ip_flow_hash_reply)                          \
+  _ (SW_INTERFACE_IP6ND_RA_CONFIG_REPLY, sw_interface_ip6nd_ra_config_reply)  \
+  _ (SW_INTERFACE_IP6ND_RA_PREFIX_REPLY, sw_interface_ip6nd_ra_prefix_reply)  \
+  _ (SW_INTERFACE_IP6_ENABLE_DISABLE_REPLY,                                   \
+     sw_interface_ip6_enable_disable_reply)                                   \
+  _ (SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS_REPLY,                           \
+     sw_interface_ip6_set_link_local_address_reply)                           \
+  _ (CREATE_LOOPBACK_REPLY, create_loopback_reply)                            \
+  _ (CREATE_LOOPBACK_INSTANCE_REPLY, create_loopback_instance_reply)          \
+  _ (L2_PATCH_ADD_DEL_REPLY, l2_patch_add_del_reply)                          \
+  _ (SW_INTERFACE_SET_L2_XCONNECT_REPLY, sw_interface_set_l2_xconnect_reply)  \
+  _ (SW_INTERFACE_SET_L2_BRIDGE_REPLY, sw_interface_set_l2_bridge_reply)
 
 int
 connect_to_vpe (char *name)
@@ -627,13 +631,10 @@ connect_to_vpe (char *name)
 
   rv = vl_client_connect_to_vlib ("/vpe-api", name, 32);
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           noop_handler,                        \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   noop_handler, vl_api_##n##_t_endian,               \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_api_msg;
 #undef _
 
@@ -650,7 +651,7 @@ disconnect_from_vpe (void)
 }
 
 void
-link_up_down_enable_disable (test_main_t * tm, int enable)
+link_up_down_enable_disable (test_main_t *tm, int enable)
 {
   vl_api_want_interface_events_t *mp;
 
@@ -662,12 +663,12 @@ link_up_down_enable_disable (test_main_t * tm, int enable)
   mp->context = 0xdeadbeef;
   mp->enable_disable = enable;
   mp->pid = getpid ();
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
   tm->link_events_on = enable;
 }
 
 void
-stats_enable_disable (test_main_t * tm, int enable)
+stats_enable_disable (test_main_t *tm, int enable)
 {
   vl_api_want_stats_t *mp;
 
@@ -678,12 +679,12 @@ stats_enable_disable (test_main_t * tm, int enable)
   mp->context = 0xdeadbeef;
   mp->enable_disable = enable;
   mp->pid = getpid ();
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
   tm->stats_on = enable;
 }
 
 void
-oam_events_enable_disable (test_main_t * tm, int enable)
+oam_events_enable_disable (test_main_t *tm, int enable)
 {
   vl_api_want_oam_events_t *mp;
 
@@ -694,12 +695,12 @@ oam_events_enable_disable (test_main_t * tm, int enable)
   mp->context = 0xdeadbeef;
   mp->enable_disable = enable;
   mp->pid = getpid ();
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
   tm->oam_events_on = enable;
 }
 
 void
-oam_add_del (test_main_t * tm, int is_add)
+oam_add_del (test_main_t *tm, int is_add)
 {
   vl_api_oam_add_del_t *mp;
   ip4_address_t tmp;
@@ -711,18 +712,18 @@ oam_add_del (test_main_t * tm, int is_add)
   mp->context = 0xdeadbeef;
   mp->is_add = is_add;
 
-  tmp.as_u32 = ntohl (0xc0a80101);	/* 192.168.1.1 */
+  tmp.as_u32 = ntohl (0xc0a80101); /* 192.168.1.1 */
   clib_memcpy (mp->src_address, tmp.as_u8, 4);
 
-  tmp.as_u32 = ntohl (0xc0a80103);	/* 192.168.1.3 */
+  tmp.as_u32 = ntohl (0xc0a80103); /* 192.168.1.3 */
   clib_memcpy (mp->dst_address, tmp.as_u8, 4);
 
   mp->vrf_id = 0;
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-dump (test_main_t * tm)
+dump (test_main_t *tm)
 {
   vl_api_sw_interface_dump_t *mp;
 
@@ -733,11 +734,11 @@ dump (test_main_t * tm)
   mp->name_filter_valid = 1;
   strncpy ((char *) mp->name_filter, "eth", sizeof (mp->name_filter) - 1);
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-add_del_ip4_route (test_main_t * tm, int enable_disable)
+add_del_ip4_route (test_main_t *tm, int enable_disable)
 {
   vl_api_ip_add_del_route_t *mp;
   u32 tmp;
@@ -762,11 +763,11 @@ add_del_ip4_route (test_main_t * tm, int enable_disable)
   clib_memcpy (mp->dst_address, &tmp, sizeof (tmp));
   mp->dst_address_length = 0;
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-add_del_ip6_route (test_main_t * tm, int enable_disable)
+add_del_ip6_route (test_main_t *tm, int enable_disable)
 {
   vl_api_ip_add_del_route_t *mp;
   u64 tmp[2];
@@ -794,11 +795,11 @@ add_del_ip6_route (test_main_t * tm, int enable_disable)
   clib_memcpy (mp->next_hop_address, &tmp[0], 8);
   clib_memcpy (&mp->next_hop_address[8], &tmp[1], 8);
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-add_del_interface_address (test_main_t * tm, int enable_disable)
+add_del_interface_address (test_main_t *tm, int enable_disable)
 {
   vl_api_sw_interface_add_del_address_t *mp;
   u32 tmp;
@@ -815,11 +816,11 @@ add_del_interface_address (test_main_t * tm, int enable_disable)
   tmp = ntohl (0x01020304);
   clib_memcpy (mp->address, &tmp, 4);
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-add_del_v6_interface_address (test_main_t * tm, int enable_disable)
+add_del_v6_interface_address (test_main_t *tm, int enable_disable)
 {
   vl_api_sw_interface_add_del_address_t *mp;
   u64 tmp[2];
@@ -840,11 +841,11 @@ add_del_v6_interface_address (test_main_t * tm, int enable_disable)
   clib_memcpy (mp->address, &tmp[0], 8);
   clib_memcpy (&mp->address[8], &tmp[1], 8);
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-del_all_interface_addresses (test_main_t * tm)
+del_all_interface_addresses (test_main_t *tm)
 {
   vl_api_sw_interface_add_del_address_t *mp;
 
@@ -856,11 +857,11 @@ del_all_interface_addresses (test_main_t * tm)
   mp->sw_if_index = ntohl (5);
   mp->del_all = 1;
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-set_interface_table (test_main_t * tm, int is_ipv6, u32 vrf_id)
+set_interface_table (test_main_t *tm, int is_ipv6, u32 vrf_id)
 {
   vl_api_sw_interface_set_table_t *mp;
 
@@ -873,11 +874,11 @@ set_interface_table (test_main_t * tm, int is_ipv6, u32 vrf_id)
   mp->is_ipv6 = is_ipv6;
   mp->vrf_id = ntohl (vrf_id);
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-connect_unix_tap (test_main_t * tm, char *name)
+connect_unix_tap (test_main_t *tm, char *name)
 {
   vl_api_tap_connect_t *mp;
 
@@ -888,11 +889,11 @@ connect_unix_tap (test_main_t * tm, char *name)
   mp->context = 0xdeadbeef;
   strncpy ((char *) mp->tap_name, name, sizeof (mp->tap_name) - 1);
   mp->use_random_mac = 1;
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-create_vlan_subif (test_main_t * tm, u32 vlan_id)
+create_vlan_subif (test_main_t *tm, u32 vlan_id)
 {
   vl_api_create_vlan_subif_t *mp;
 
@@ -904,11 +905,11 @@ create_vlan_subif (test_main_t * tm, u32 vlan_id)
   mp->sw_if_index = ntohl (5);
   mp->vlan_id = ntohl (vlan_id);
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-add_del_proxy_arp (test_main_t * tm, int is_add)
+add_del_proxy_arp (test_main_t *tm, int is_add)
 {
   vl_api_proxy_arp_add_del_t *mp;
   u32 tmp;
@@ -928,11 +929,11 @@ add_del_proxy_arp (test_main_t * tm, int is_add)
   tmp = ntohl (0x0101010a);
   clib_memcpy (mp->proxy.hi_address, &tmp, 4);
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-proxy_arp_intfc_enable_disable (test_main_t * tm, int enable_disable)
+proxy_arp_intfc_enable_disable (test_main_t *tm, int enable_disable)
 {
   vl_api_proxy_arp_intfc_enable_disable_t *mp;
 
@@ -944,11 +945,11 @@ proxy_arp_intfc_enable_disable (test_main_t * tm, int enable_disable)
   mp->sw_if_index = ntohl (6);
   mp->enable_disable = enable_disable;
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-add_ip4_neighbor (test_main_t * tm, int add_del)
+add_ip4_neighbor (test_main_t *tm, int add_del)
 {
   vl_api_ip_neighbor_add_del_t *mp;
   u32 tmp;
@@ -966,11 +967,11 @@ add_ip4_neighbor (test_main_t * tm, int add_del)
   tmp = ntohl (0x0101010a);
   clib_memcpy (mp->dst_address, &tmp, 4);
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-add_ip6_neighbor (test_main_t * tm, int add_del)
+add_ip6_neighbor (test_main_t *tm, int add_del)
 {
   vl_api_ip_neighbor_add_del_t *mp;
   u64 tmp[2];
@@ -992,11 +993,11 @@ add_ip6_neighbor (test_main_t * tm, int add_del)
   clib_memcpy (mp->dst_address, &tmp[0], 8);
   clib_memcpy (&mp->dst_address[8], &tmp[1], 8);
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-reset_fib (test_main_t * tm, u8 is_ip6)
+reset_fib (test_main_t *tm, u8 is_ip6)
 {
   vl_api_reset_fib_t *mp;
 
@@ -1008,11 +1009,11 @@ reset_fib (test_main_t * tm, u8 is_ip6)
   mp->vrf_id = ntohl (11);
   mp->is_ipv6 = is_ip6;
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-dhcpv6_set_vss (test_main_t * tm)
+dhcpv6_set_vss (test_main_t *tm)
 {
   vl_api_dhcp_proxy_set_vss_t *mp;
 
@@ -1025,11 +1026,11 @@ dhcpv6_set_vss (test_main_t * tm)
   mp->tbl_id = ntohl (60);
   mp->is_add = 1;
   mp->is_ipv6 = 1;
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-dhcpv4_set_vss (test_main_t * tm)
+dhcpv4_set_vss (test_main_t *tm)
 {
   vl_api_dhcp_proxy_set_vss_t *mp;
 
@@ -1042,18 +1043,18 @@ dhcpv4_set_vss (test_main_t * tm)
   mp->tbl_id = ntohl (40);
   mp->is_add = 1;
   mp->is_ipv6 = 0;
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-dhcp_set_vss (test_main_t * tm)
+dhcp_set_vss (test_main_t *tm)
 {
   dhcpv4_set_vss (tm);
   dhcpv6_set_vss (tm);
 }
 
 void
-dhcp_set_proxy (test_main_t * tm, int ipv6)
+dhcp_set_proxy (test_main_t *tm, int ipv6)
 {
   vl_api_dhcp_proxy_config_t *mp;
 
@@ -1086,11 +1087,11 @@ dhcp_set_proxy (test_main_t * tm, int ipv6)
   mp->dhcp_src_address[14] = 0;
   mp->dhcp_src_address[15] = 0x2;
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-set_ip_flow_hash (test_main_t * tm, u8 is_ip6)
+set_ip_flow_hash (test_main_t *tm, u8 is_ip6)
 {
   vl_api_set_ip_flow_hash_t *mp;
 
@@ -1104,11 +1105,11 @@ set_ip_flow_hash (test_main_t * tm, u8 is_ip6)
   mp->dst = 1;
   mp->reverse = 1;
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-ip6nd_ra_config (test_main_t * tm, int is_no)
+ip6nd_ra_config (test_main_t *tm, int is_no)
 {
   vl_api_sw_interface_ip6nd_ra_config_t *mp;
 
@@ -1122,13 +1123,12 @@ ip6nd_ra_config (test_main_t * tm, int is_no)
 
   mp->suppress = 1;
 
-
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_IP6ND_RA_CONFIG);
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-ip6nd_ra_prefix (test_main_t * tm, int is_no)
+ip6nd_ra_prefix (test_main_t *tm, int is_no)
 {
   vl_api_sw_interface_ip6nd_ra_prefix_t *mp;
   u64 tmp[2];
@@ -1143,23 +1143,20 @@ ip6nd_ra_prefix (test_main_t * tm, int is_no)
 
   mp->use_default = 1;
 
-
   tmp[0] = clib_host_to_net_u64 (0xdb01000000000000ULL);
   tmp[1] = clib_host_to_net_u64 (0x11ULL);
-
 
   clib_memcpy (mp->address, &tmp[0], 8);
   clib_memcpy (&mp->address[8], &tmp[1], 8);
 
   mp->address_length = 64;
 
-
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_IP6ND_RA_PREFIX);
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-ip6_enable_disable (test_main_t * tm, int enable)
+ip6_enable_disable (test_main_t *tm, int enable)
 {
   vl_api_sw_interface_ip6_enable_disable_t *mp;
 
@@ -1169,14 +1166,15 @@ ip6_enable_disable (test_main_t * tm, int enable)
   mp->client_index = tm->my_client_index;
   mp->context = 0xdeadbeef;
   mp->sw_if_index = ntohl (5);
-  mp->enable = (enable == 1);;
+  mp->enable = (enable == 1);
+  ;
 
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_IP6_ENABLE_DISABLE);
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-loop_create (test_main_t * tm)
+loop_create (test_main_t *tm)
 {
   vl_api_create_loopback_t *mp;
 
@@ -1186,11 +1184,11 @@ loop_create (test_main_t * tm)
   mp->_vl_msg_id = ntohs (VL_API_CREATE_LOOPBACK);
   mp->client_index = tm->my_client_index;
   mp->context = 0xdeadbeef;
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-ip6_set_link_local_address (test_main_t * tm)
+ip6_set_link_local_address (test_main_t *tm)
 {
   vl_api_sw_interface_ip6_set_link_local_address_t *mp;
   u64 tmp[2];
@@ -1205,16 +1203,15 @@ ip6_set_link_local_address (test_main_t * tm)
   tmp[0] = clib_host_to_net_u64 (0xfe80000000000000ULL);
   tmp[1] = clib_host_to_net_u64 (0x11ULL);
 
-  ip6_address_encode ((ip6_address_encode *) & tmp, mp->address);
+  ip6_address_encode ((ip6_address_encode *) &tmp, mp->address);
 
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS);
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
-
 void
-set_flags (test_main_t * tm, int up_down)
+set_flags (test_main_t *tm, int up_down)
 {
   vl_api_sw_interface_set_flags_t *mp;
 
@@ -1226,12 +1223,11 @@ set_flags (test_main_t * tm, int up_down)
   mp->context = 0xdeadbeef;
   mp->sw_if_index = ntohl (5);
   mp->admin_up_down = up_down;
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
-
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-l2_patch_add_del (test_main_t * tm, int is_add)
+l2_patch_add_del (test_main_t *tm, int is_add)
 {
   vl_api_l2_patch_add_del_t *mp;
 
@@ -1244,11 +1240,11 @@ l2_patch_add_del (test_main_t * tm, int is_add)
   mp->rx_sw_if_index = ntohl (1);
   mp->tx_sw_if_index = ntohl (2);
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-l2_xconnect (test_main_t * tm)
+l2_xconnect (test_main_t *tm)
 {
   vl_api_sw_interface_set_l2_xconnect_t *mp;
 
@@ -1261,11 +1257,11 @@ l2_xconnect (test_main_t * tm)
   mp->tx_sw_if_index = ntohl (6);
   mp->enable = 1;
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 void
-l2_bridge (test_main_t * tm)
+l2_bridge (test_main_t *tm)
 {
   vl_api_sw_interface_set_l2_bridge_t *mp;
 
@@ -1280,7 +1276,7 @@ l2_bridge (test_main_t * tm)
   mp->shg = ntohl (0);
   mp->enable = 1;
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 int
@@ -1308,57 +1304,57 @@ main (int argc, char **argv)
 	  dump (tm);
 	  break;
 	case 'L':
-	  link_up_down_enable_disable (tm, 1 /* enable_disable */ );
+	  link_up_down_enable_disable (tm, 1 /* enable_disable */);
 	  break;
 	case 'l':
-	  link_up_down_enable_disable (tm, 0 /* enable_disable */ );
+	  link_up_down_enable_disable (tm, 0 /* enable_disable */);
 	  break;
 	case 'S':
-	  stats_enable_disable (tm, 1 /* enable_disable */ );
+	  stats_enable_disable (tm, 1 /* enable_disable */);
 	  break;
 	case 's':
-	  stats_enable_disable (tm, 0 /* enable_disable */ );
+	  stats_enable_disable (tm, 0 /* enable_disable */);
 	  break;
 	case '3':
-	  add_del_ip4_route (tm, 0 /* add */ );
+	  add_del_ip4_route (tm, 0 /* add */);
 	  break;
 	case '4':
-	  add_del_ip4_route (tm, 1 /* add */ );
+	  add_del_ip4_route (tm, 1 /* add */);
 	  break;
 	case '5':
-	  add_del_ip6_route (tm, 0 /* add */ );
+	  add_del_ip6_route (tm, 0 /* add */);
 	  break;
 	case '6':
-	  add_del_ip6_route (tm, 1 /* add */ );
+	  add_del_ip6_route (tm, 1 /* add */);
 	  break;
 	case 'A':
-	  add_del_interface_address (tm, 1 /* add */ );
+	  add_del_interface_address (tm, 1 /* add */);
 	  break;
 	case 'a':
-	  add_del_interface_address (tm, 0 /* add */ );
+	  add_del_interface_address (tm, 0 /* add */);
 	  break;
 	case 'B':
-	  add_del_v6_interface_address (tm, 1 /* add */ );
+	  add_del_v6_interface_address (tm, 1 /* add */);
 	  break;
 	case 'b':
-	  add_del_v6_interface_address (tm, 0 /* add */ );
+	  add_del_v6_interface_address (tm, 0 /* add */);
 	  break;
 	case 'E':
-	  l2_patch_add_del (tm, 1 /* is_add */ );
+	  l2_patch_add_del (tm, 1 /* is_add */);
 	  break;
 	case 'e':
-	  l2_patch_add_del (tm, 0 /* is_add */ );
+	  l2_patch_add_del (tm, 0 /* is_add */);
 	  break;
 	case 'z':
 	  del_all_interface_addresses (tm);
 	  break;
 	case 't':
-	  set_interface_table (tm, 0 /* is_ipv6 */ ,
-			       11 /* my amp goes to 11 */ );
+	  set_interface_table (tm, 0 /* is_ipv6 */,
+			       11 /* my amp goes to 11 */);
 	  break;
 	case 'T':
-	  set_interface_table (tm, 1 /* is_ipv6 */ ,
-			       12 /* my amp goes to 12 */ );
+	  set_interface_table (tm, 1 /* is_ipv6 */,
+			       12 /* my amp goes to 12 */);
 	  break;
 
 	case 'u':
@@ -1370,45 +1366,45 @@ main (int argc, char **argv)
 	  break;
 
 	case 'n':
-	  add_ip4_neighbor (tm, 1 /* is_add */ );
-	  add_ip6_neighbor (tm, 1 /* is_add */ );
+	  add_ip4_neighbor (tm, 1 /* is_add */);
+	  add_ip6_neighbor (tm, 1 /* is_add */);
 	  break;
 
 	case 'N':
-	  add_ip4_neighbor (tm, 0 /* is_add */ );
-	  add_ip6_neighbor (tm, 0 /* is_add */ );
+	  add_ip4_neighbor (tm, 0 /* is_add */);
+	  add_ip6_neighbor (tm, 0 /* is_add */);
 	  break;
 
 	case 'p':
-	  add_del_proxy_arp (tm, 1 /* add */ );
+	  add_del_proxy_arp (tm, 1 /* add */);
 	  break;
 
 	case 'i':
-	  proxy_arp_intfc_enable_disable (tm, 1 /* enable */ );
+	  proxy_arp_intfc_enable_disable (tm, 1 /* enable */);
 	  break;
 
 	case 'O':
-	  oam_events_enable_disable (tm, 0 /* enable */ );
+	  oam_events_enable_disable (tm, 0 /* enable */);
 	  break;
 
 	case 'o':
-	  oam_events_enable_disable (tm, 1 /* enable */ );
+	  oam_events_enable_disable (tm, 1 /* enable */);
 	  break;
 
 	case '0':
-	  oam_add_del (tm, 0 /* is_add */ );
+	  oam_add_del (tm, 0 /* is_add */);
 	  break;
 
 	case '1':
-	  oam_add_del (tm, 1 /* is_add */ );
+	  oam_add_del (tm, 1 /* is_add */);
 	  break;
 
 	case 'r':
-	  reset_fib (tm, 0 /* is_ip6 */ );
+	  reset_fib (tm, 0 /* is_ip6 */);
 	  break;
 
 	case 'R':
-	  reset_fib (tm, 1 /* is_ip6 */ );
+	  reset_fib (tm, 1 /* is_ip6 */);
 	  break;
 
 	case 'j':
@@ -1420,11 +1416,11 @@ main (int argc, char **argv)
 	  break;
 
 	case 'K':
-	  dhcp_set_proxy (tm, 1 /*ipv6 */ );
+	  dhcp_set_proxy (tm, 1 /*ipv6 */);
 	  break;
 
 	case 'v':
-	  set_ip_flow_hash (tm, 0 /* is_ip6 */ );
+	  set_ip_flow_hash (tm, 0 /* is_ip6 */);
 	  break;
 
 	case 'V':
@@ -1432,24 +1428,24 @@ main (int argc, char **argv)
 	  break;
 
 	case 'w':
-	  ip6_enable_disable (tm, 1 /* enable */ );
+	  ip6_enable_disable (tm, 1 /* enable */);
 	  break;
 
 	case 'W':
-	  ip6_enable_disable (tm, 0 /* disable */ );
+	  ip6_enable_disable (tm, 0 /* disable */);
 	  break;
 
 	case 'x':
-	  ip6nd_ra_config (tm, 0 /* is_no */ );
+	  ip6nd_ra_config (tm, 0 /* is_no */);
 	  break;
 	case 'X':
-	  ip6nd_ra_config (tm, 1 /* is_no */ );
+	  ip6nd_ra_config (tm, 1 /* is_no */);
 	  break;
 	case 'y':
-	  ip6nd_ra_prefix (tm, 0 /* is_no */ );
+	  ip6nd_ra_prefix (tm, 0 /* is_no */);
 	  break;
 	case 'Y':
-	  ip6nd_ra_prefix (tm, 1 /* is_no */ );
+	  ip6nd_ra_prefix (tm, 1 /* is_no */);
 	  break;
 
 	case '7':
@@ -1457,11 +1453,11 @@ main (int argc, char **argv)
 	  break;
 
 	case 'F':
-	  set_flags (tm, 1 /* up_down */ );
+	  set_flags (tm, 1 /* up_down */);
 	  break;
 
 	case 'f':
-	  set_flags (tm, 0 /* up_down */ );
+	  set_flags (tm, 0 /* up_down */);
 	  break;
 
 	case '@':
@@ -1500,29 +1496,28 @@ main (int argc, char **argv)
 	default:
 	  break;
 	}
-
     }
 
 done:
 
   if (tm->link_events_on)
-    link_up_down_enable_disable (tm, 0 /* enable */ );
+    link_up_down_enable_disable (tm, 0 /* enable */);
   if (tm->stats_on)
-    stats_enable_disable (tm, 0 /* enable */ );
+    stats_enable_disable (tm, 0 /* enable */);
   if (tm->oam_events_on)
-    oam_events_enable_disable (tm, 0 /* enable */ );
+    oam_events_enable_disable (tm, 0 /* enable */);
 
   disconnect_from_vpe ();
   exit (0);
 }
 
 #undef vl_api_version
-#define vl_api_version(n,v) static u32 vpe_api_version = v;
+#define vl_api_version(n, v) static u32 vpe_api_version = v;
 #include <vpp/api/vpe.api.h>
 #undef vl_api_version
 
 void
-vl_client_add_api_signatures (vl_api_memclnt_create_t * mp)
+vl_client_add_api_signatures (vl_api_memclnt_create_t *mp)
 {
   /*
    * Send the main API signature in slot 0. This bit of code must

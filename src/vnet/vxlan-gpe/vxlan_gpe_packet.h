@@ -16,7 +16,7 @@
  *  @file
  *  @brief VXLAN GPE packet header structure
  *
-*/
+ */
 #ifndef included_vxlan_gpe_packet_h
 #define included_vxlan_gpe_packet_h
 
@@ -64,13 +64,12 @@
  * 3 - ETHERNET
  * 4 - NSH
  */
-#define foreach_vxlan_gpe_protocol \
-_ (0x01, IP4)                         \
-_ (0x02, IP6)                         \
-_ (0x03, ETHERNET)		     \
-_ (0x04, NSH)		     \
-_ (0x05, IOAM)
-
+#define foreach_vxlan_gpe_protocol                                            \
+  _ (0x01, IP4)                                                               \
+  _ (0x02, IP6)                                                               \
+  _ (0x03, ETHERNET)                                                          \
+  _ (0x04, NSH)                                                               \
+  _ (0x05, IOAM)
 
 /**
  * @brief Struct for VXLAN GPE support inner protocol definition.
@@ -82,7 +81,7 @@ _ (0x05, IOAM)
  */
 typedef enum
 {
-#define _(n,f) VXLAN_GPE_PROTOCOL_##f = n,
+#define _(n, f) VXLAN_GPE_PROTOCOL_##f = n,
   foreach_vxlan_gpe_protocol
 #undef _
     VXLAN_GPE_PROTOCOL_MAX,

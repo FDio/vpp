@@ -44,13 +44,13 @@
 #include <vnet/hdlc/hdlc.h>
 #include <vnet/llc/llc.h>
 
-#define foreach_osi_input_next			\
-  _ (PUNT, "error-punt")			\
+#define foreach_osi_input_next                                                \
+  _ (PUNT, "error-punt")                                                      \
   _ (DROP, "error-drop")
 
 typedef enum
 {
-#define _(s,n) OSI_INPUT_NEXT_##s,
+#define _(s, n) OSI_INPUT_NEXT_##s,
   foreach_osi_input_next
 #undef _
     OSI_INPUT_N_NEXT,
@@ -62,7 +62,7 @@ typedef struct
 } osi_input_trace_t;
 
 static u8 *
-format_osi_input_trace (u8 * s, va_list * va)
+format_osi_input_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
@@ -74,8 +74,8 @@ format_osi_input_trace (u8 * s, va_list * va)
 }
 
 static uword
-osi_input (vlib_main_t * vm,
-	   vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+osi_input (vlib_main_t *vm, vlib_node_runtime_t *node,
+	   vlib_frame_t *from_frame)
 {
   osi_main_t *lm = &osi_main;
   u32 n_left_from, next_index, *from, *to_next;
@@ -84,9 +84,7 @@ osi_input (vlib_main_t * vm,
   n_left_from = from_frame->n_vectors;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    vlib_trace_frame_buffers_only (vm, node,
-				   from,
-				   n_left_from,
+    vlib_trace_frame_buffers_only (vm, node, from, n_left_from,
 				   sizeof (from[0]),
 				   sizeof (osi_input_trace_t));
 
@@ -137,14 +135,12 @@ osi_input (vlib_main_t * vm,
 	  next0 = lm->input_next_by_protocol[h0->protocol];
 	  next1 = lm->input_next_by_protocol[h1->protocol];
 
-	  b0->error =
-	    node->errors[next0 ==
-			 OSI_INPUT_NEXT_DROP ? OSI_ERROR_UNKNOWN_PROTOCOL :
-			 OSI_ERROR_NONE];
-	  b1->error =
-	    node->errors[next1 ==
-			 OSI_INPUT_NEXT_DROP ? OSI_ERROR_UNKNOWN_PROTOCOL :
-			 OSI_ERROR_NONE];
+	  b0->error = node->errors[next0 == OSI_INPUT_NEXT_DROP ?
+				     OSI_ERROR_UNKNOWN_PROTOCOL :
+				     OSI_ERROR_NONE];
+	  b1->error = node->errors[next1 == OSI_INPUT_NEXT_DROP ?
+				     OSI_ERROR_UNKNOWN_PROTOCOL :
+				     OSI_ERROR_NONE];
 
 	  enqueue_code = (next0 != next_index) + 2 * (next1 != next_index);
 
@@ -205,10 +201,9 @@ osi_input (vlib_main_t * vm,
 
 	  next0 = lm->input_next_by_protocol[h0->protocol];
 
-	  b0->error =
-	    node->errors[next0 ==
-			 OSI_INPUT_NEXT_DROP ? OSI_ERROR_UNKNOWN_PROTOCOL :
-			 OSI_ERROR_NONE];
+	  b0->error = node->errors[next0 == OSI_INPUT_NEXT_DROP ?
+				     OSI_ERROR_UNKNOWN_PROTOCOL :
+				     OSI_ERROR_NONE];
 
 	  /* Sent packet to wrong next? */
 	  if (PREDICT_FALSE (next0 != next_index))
@@ -234,12 +229,11 @@ osi_input (vlib_main_t * vm,
 }
 
 static char *osi_error_strings[] = {
-#define _(f,s) s,
+#define _(f, s) s,
   foreach_osi_error
 #undef _
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (osi_input_node) = {
   .function = osi_input,
   .name = "osi-input",
@@ -251,7 +245,7 @@ VLIB_REGISTER_NODE (osi_input_node) = {
 
   .n_next_nodes = OSI_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [OSI_INPUT_NEXT_##s] = n,
+#define _(s, n) [OSI_INPUT_NEXT_##s] = n,
     foreach_osi_input_next
 #undef _
   },
@@ -260,10 +254,9 @@ VLIB_REGISTER_NODE (osi_input_node) = {
   .format_trace = format_osi_input_trace,
   .unformat_buffer = unformat_osi_header,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-osi_input_init (vlib_main_t * vm)
+osi_input_init (vlib_main_t *vm)
 {
   clib_error_t *error = 0;
   osi_main_t *lm = &osi_main;

@@ -48,7 +48,6 @@ clib_bihash_copied (void *dst, void *src)
   clib_warning ("Couldn't find bihash copy source %llx!", src);
 }
 
-
 /*
  * fd.io coding-style-patch-verification: ON
  *

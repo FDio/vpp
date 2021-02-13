@@ -55,7 +55,7 @@ typedef struct
 tw_timer_test_main_t tw_timer_test_main;
 
 static void
-run_single_wheel (tw_timer_wheel_2t_1w_2048sl_t * tw, u32 n_ticks)
+run_single_wheel (tw_timer_wheel_2t_1w_2048sl_t *tw, u32 n_ticks)
 {
   u32 i;
   f64 now = tw->last_run_time + 1.01;
@@ -68,7 +68,7 @@ run_single_wheel (tw_timer_wheel_2t_1w_2048sl_t * tw, u32 n_ticks)
 }
 
 static void
-run_double_wheel (tw_timer_wheel_16t_2w_512sl_t * tw, u32 n_ticks)
+run_double_wheel (tw_timer_wheel_16t_2w_512sl_t *tw, u32 n_ticks)
 {
   u32 i;
   f64 now = tw->last_run_time + 1.01;
@@ -81,7 +81,7 @@ run_double_wheel (tw_timer_wheel_16t_2w_512sl_t * tw, u32 n_ticks)
 }
 
 static void
-run_two_timer_double_wheel (tw_timer_wheel_2t_2w_512sl_t * tw, u32 n_ticks)
+run_two_timer_double_wheel (tw_timer_wheel_2t_2w_512sl_t *tw, u32 n_ticks)
 {
   u32 i;
   f64 now = tw->last_run_time + 1.01;
@@ -94,7 +94,7 @@ run_two_timer_double_wheel (tw_timer_wheel_2t_2w_512sl_t * tw, u32 n_ticks)
 }
 
 static void
-run_triple_wheel (tw_timer_wheel_4t_3w_256sl_t * tw, u32 n_ticks)
+run_triple_wheel (tw_timer_wheel_4t_3w_256sl_t *tw, u32 n_ticks)
 {
   u32 i;
   f64 now = tw->last_run_time + 1.01;
@@ -107,7 +107,7 @@ run_triple_wheel (tw_timer_wheel_4t_3w_256sl_t * tw, u32 n_ticks)
 }
 
 static void
-run_triple_ov_wheel (tw_timer_wheel_1t_3w_1024sl_ov_t * tw, u32 n_ticks)
+run_triple_ov_wheel (tw_timer_wheel_1t_3w_1024sl_ov_t *tw, u32 n_ticks)
 {
   u32 i;
   f64 now = tw->last_run_time + 1.01;
@@ -120,7 +120,7 @@ run_triple_ov_wheel (tw_timer_wheel_1t_3w_1024sl_ov_t * tw, u32 n_ticks)
 }
 
 static void
-expired_timer_single_callback (u32 * expired_timers)
+expired_timer_single_callback (u32 *expired_timers)
 {
   int i;
   u32 pool_index, timer_id;
@@ -147,7 +147,7 @@ expired_timer_single_callback (u32 * expired_timers)
 }
 
 static void
-expired_timer_double_callback (u32 * expired_timers)
+expired_timer_double_callback (u32 *expired_timers)
 {
   int i;
   u32 pool_index, timer_id;
@@ -174,7 +174,7 @@ expired_timer_double_callback (u32 * expired_timers)
 }
 
 static void
-expired_timer_two_timer_double_callback (u32 * expired_timers)
+expired_timer_two_timer_double_callback (u32 *expired_timers)
 {
   int i;
   u32 pool_index, timer_id;
@@ -201,7 +201,7 @@ expired_timer_two_timer_double_callback (u32 * expired_timers)
 }
 
 static void
-expired_timer_triple_callback (u32 * expired_timers)
+expired_timer_triple_callback (u32 *expired_timers)
 {
   int i;
   u32 pool_index, timer_id;
@@ -228,7 +228,7 @@ expired_timer_triple_callback (u32 * expired_timers)
 }
 
 static void
-expired_timer_triple_ov_callback (u32 * expired_timers)
+expired_timer_triple_ov_callback (u32 *expired_timers)
 {
   int i;
   u32 pool_index;
@@ -252,7 +252,7 @@ expired_timer_triple_ov_callback (u32 * expired_timers)
 }
 
 static clib_error_t *
-test2_single (tw_timer_test_main_t * tm)
+test2_single (tw_timer_test_main_t *tm)
 {
   u32 i, j;
   tw_timer_test_elt_t *e;
@@ -267,7 +267,7 @@ test2_single (tw_timer_test_main_t * tm)
 
   tw_timer_wheel_init_2t_1w_2048sl (&tm->single_wheel,
 				    expired_timer_single_callback,
-				    1.0 /* timer interval */ , ~0);
+				    1.0 /* timer interval */, ~0);
 
   /* Prime offset */
   initial_wheel_offset = 757;
@@ -280,8 +280,7 @@ test2_single (tw_timer_test_main_t * tm)
 
   initial_wheel_offset = tm->single_wheel.current_tick;
 
-  fformat (stdout,
-	   "test %d timers, %d iter, %d ticks per iter, 0x%llx seed\n",
+  fformat (stdout, "test %d timers, %d iter, %d ticks per iter, 0x%llx seed\n",
 	   tm->ntimers, tm->niter, tm->ticks_per_iter, tm->seed);
 
   before = clib_time_now (&tm->clib_time);
@@ -304,8 +303,7 @@ test2_single (tw_timer_test_main_t * tm)
       e->expected_to_expire = expiration_time + initial_wheel_offset;
       e->stop_timer_handle =
 	tw_timer_start_2t_1w_2048sl (&tm->single_wheel, e - tm->test_elts,
-				     1 /* timer id */ ,
-				     expiration_time);
+				     1 /* timer id */, expiration_time);
     }
 
   adds += i;
@@ -318,12 +316,12 @@ test2_single (tw_timer_test_main_t * tm)
       vec_reset_length (deleted_indices);
       /* *INDENT-OFF* */
       pool_foreach (e, tm->test_elts)
-       {
-        tw_timer_stop_2t_1w_2048sl (&tm->single_wheel, e->stop_timer_handle);
-        vec_add1 (deleted_indices, e - tm->test_elts);
-        if (++j >= tm->ntimers / 4)
-          goto del_and_re_add;
-      }
+	{
+	  tw_timer_stop_2t_1w_2048sl (&tm->single_wheel, e->stop_timer_handle);
+	  vec_add1 (deleted_indices, e - tm->test_elts);
+	  if (++j >= tm->ntimers / 4)
+	    goto del_and_re_add;
+	}
       /* *INDENT-ON* */
 
     del_and_re_add:
@@ -350,9 +348,9 @@ test2_single (tw_timer_test_main_t * tm)
 
 	  e->expected_to_expire =
 	    expiration_time + tm->single_wheel.current_tick;
-	  e->stop_timer_handle = tw_timer_start_2t_1w_2048sl
-	    (&tm->single_wheel, e - tm->test_elts, 1 /* timer id */ ,
-	     expiration_time);
+	  e->stop_timer_handle =
+	    tw_timer_start_2t_1w_2048sl (&tm->single_wheel, e - tm->test_elts,
+					 1 /* timer id */, expiration_time);
 	}
       adds += j;
     }
@@ -367,8 +365,8 @@ test2_single (tw_timer_test_main_t * tm)
 	   tm->single_wheel.current_tick);
   fformat (stdout, "test ran %.2f seconds, %.2f ops/second\n",
 	   (after - before),
-	   ((f64) adds + (f64) deletes +
-	    (f64) tm->single_wheel.current_tick) / (after - before));
+	   ((f64) adds + (f64) deletes + (f64) tm->single_wheel.current_tick) /
+	     (after - before));
 
   if (pool_elts (tm->test_elts))
     fformat (stdout, "Note: %d elements remain in pool\n",
@@ -376,11 +374,10 @@ test2_single (tw_timer_test_main_t * tm)
 
   /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
-   {
-    fformat (stdout, "[%d] expected to expire %d\n",
-             e - tm->test_elts,
-             e->expected_to_expire);
-  }
+    {
+      fformat (stdout, "[%d] expected to expire %d\n", e - tm->test_elts,
+	       e->expected_to_expire);
+    }
   /* *INDENT-ON* */
 
   pool_free (tm->test_elts);
@@ -389,7 +386,7 @@ test2_single (tw_timer_test_main_t * tm)
 }
 
 static clib_error_t *
-test2_double (tw_timer_test_main_t * tm)
+test2_double (tw_timer_test_main_t *tm)
 {
   u32 i, j;
   tw_timer_test_elt_t *e;
@@ -404,7 +401,7 @@ test2_double (tw_timer_test_main_t * tm)
 
   tw_timer_wheel_init_16t_2w_512sl (&tm->double_wheel,
 				    expired_timer_double_callback,
-				    1.0 /* timer interval */ , ~0);
+				    1.0 /* timer interval */, ~0);
 
   /* Prime offset */
   initial_wheel_offset = 7577;
@@ -418,8 +415,7 @@ test2_double (tw_timer_test_main_t * tm)
 
   initial_wheel_offset = tm->double_wheel.current_tick;
 
-  fformat (stdout,
-	   "test %d timers, %d iter, %d ticks per iter, 0x%llx seed\n",
+  fformat (stdout, "test %d timers, %d iter, %d ticks per iter, 0x%llx seed\n",
 	   tm->ntimers, tm->niter, tm->ticks_per_iter, tm->seed);
 
   before = clib_time_now (&tm->clib_time);
@@ -443,8 +439,7 @@ test2_double (tw_timer_test_main_t * tm)
 
       e->stop_timer_handle =
 	tw_timer_start_16t_2w_512sl (&tm->double_wheel, e - tm->test_elts,
-				     14 /* timer id */ ,
-				     expiration_time);
+				     14 /* timer id */, expiration_time);
     }
 
   adds += i;
@@ -457,12 +452,12 @@ test2_double (tw_timer_test_main_t * tm)
       vec_reset_length (deleted_indices);
       /* *INDENT-OFF* */
       pool_foreach (e, tm->test_elts)
-       {
-        tw_timer_stop_16t_2w_512sl (&tm->double_wheel, e->stop_timer_handle);
-        vec_add1 (deleted_indices, e - tm->test_elts);
-        if (++j >= tm->ntimers / 4)
-          goto del_and_re_add;
-      }
+	{
+	  tw_timer_stop_16t_2w_512sl (&tm->double_wheel, e->stop_timer_handle);
+	  vec_add1 (deleted_indices, e - tm->test_elts);
+	  if (++j >= tm->ntimers / 4)
+	    goto del_and_re_add;
+	}
       /* *INDENT-ON* */
 
     del_and_re_add:
@@ -485,12 +480,12 @@ test2_double (tw_timer_test_main_t * tm)
 	  if (expiration_time > max_expiration_time)
 	    max_expiration_time = expiration_time;
 
-	  e->expected_to_expire = expiration_time +
-	    tm->double_wheel.current_tick;
+	  e->expected_to_expire =
+	    expiration_time + tm->double_wheel.current_tick;
 
-	  e->stop_timer_handle = tw_timer_start_16t_2w_512sl
-	    (&tm->double_wheel, e - tm->test_elts, 14 /* timer id */ ,
-	     expiration_time);
+	  e->stop_timer_handle =
+	    tw_timer_start_16t_2w_512sl (&tm->double_wheel, e - tm->test_elts,
+					 14 /* timer id */, expiration_time);
 	}
       adds += j;
     }
@@ -505,8 +500,8 @@ test2_double (tw_timer_test_main_t * tm)
 	   tm->double_wheel.current_tick);
   fformat (stdout, "test ran %.2f seconds, %.2f ops/second\n",
 	   (after - before),
-	   ((f64) adds + (f64) deletes +
-	    (f64) tm->double_wheel.current_tick) / (after - before));
+	   ((f64) adds + (f64) deletes + (f64) tm->double_wheel.current_tick) /
+	     (after - before));
 
   if (pool_elts (tm->test_elts))
     fformat (stdout, "Note: %d elements remain in pool\n",
@@ -514,11 +509,10 @@ test2_double (tw_timer_test_main_t * tm)
 
   /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
-   {
-    fformat (stdout, "[%d] expected to expire %d\n",
-             e - tm->test_elts,
-             e->expected_to_expire);
-  }
+    {
+      fformat (stdout, "[%d] expected to expire %d\n", e - tm->test_elts,
+	       e->expected_to_expire);
+    }
   /* *INDENT-ON* */
 
   pool_free (tm->test_elts);
@@ -527,7 +521,7 @@ test2_double (tw_timer_test_main_t * tm)
 }
 
 static u32
-get_expiration_time (tw_timer_test_main_t * tm)
+get_expiration_time (tw_timer_test_main_t *tm)
 {
   u32 expiration_time;
   do
@@ -539,7 +533,7 @@ get_expiration_time (tw_timer_test_main_t * tm)
 }
 
 static clib_error_t *
-test2_double_updates (tw_timer_test_main_t * tm)
+test2_double_updates (tw_timer_test_main_t *tm)
 {
   u32 i, j;
   tw_timer_test_elt_t *e;
@@ -551,7 +545,7 @@ test2_double_updates (tw_timer_test_main_t * tm)
   clib_time_init (&tm->clib_time);
   tw_timer_wheel_init_16t_2w_512sl (&tm->double_wheel,
 				    expired_timer_double_callback,
-				    1.0 /* timer interval */ , ~0);
+				    1.0 /* timer interval */, ~0);
 
   /* Prime offset */
   initial_wheel_offset = 7577;
@@ -562,8 +556,7 @@ test2_double_updates (tw_timer_test_main_t * tm)
 	   tm->double_wheel.current_index[TW_TIMER_RING_SLOW]);
 
   initial_wheel_offset = tm->double_wheel.current_tick;
-  fformat (stdout,
-	   "test %d timers, %d iter, %d ticks per iter, 0x%llx seed\n",
+  fformat (stdout, "test %d timers, %d iter, %d ticks per iter, 0x%llx seed\n",
 	   tm->ntimers, tm->niter, tm->ticks_per_iter, tm->seed);
 
   before = clib_time_now (&tm->clib_time);
@@ -578,10 +571,9 @@ test2_double_updates (tw_timer_test_main_t * tm)
       max_expiration_time = clib_max (expiration_time, max_expiration_time);
 
       e->expected_to_expire = expiration_time + initial_wheel_offset;
-      e->stop_timer_handle = tw_timer_start_16t_2w_512sl (&tm->double_wheel,
-							  e - tm->test_elts,
-							  14 /* timer id */ ,
-							  expiration_time);
+      e->stop_timer_handle =
+	tw_timer_start_16t_2w_512sl (&tm->double_wheel, e - tm->test_elts,
+				     14 /* timer id */, expiration_time);
     }
 
   for (i = 0; i < tm->niter; i++)
@@ -592,16 +584,17 @@ test2_double_updates (tw_timer_test_main_t * tm)
 
       /* *INDENT-OFF* */
       pool_foreach (e, tm->test_elts)
-       {
-        expiration_time = get_expiration_time (tm);
-        max_expiration_time = clib_max (expiration_time, max_expiration_time);
-	e->expected_to_expire = expiration_time
-				+ tm->double_wheel.current_tick;
-        tw_timer_update_16t_2w_512sl (&tm->double_wheel, e->stop_timer_handle,
-                                      expiration_time);
-        if (++j >= tm->ntimers / 4)
-          goto done;
-      }
+	{
+	  expiration_time = get_expiration_time (tm);
+	  max_expiration_time =
+	    clib_max (expiration_time, max_expiration_time);
+	  e->expected_to_expire =
+	    expiration_time + tm->double_wheel.current_tick;
+	  tw_timer_update_16t_2w_512sl (&tm->double_wheel,
+					e->stop_timer_handle, expiration_time);
+	  if (++j >= tm->ntimers / 4)
+	    goto done;
+	}
       /* *INDENT-ON* */
 
     done:
@@ -614,10 +607,9 @@ test2_double_updates (tw_timer_test_main_t * tm)
 
   fformat (stdout, "%d updates, %d ticks\n", updates,
 	   tm->double_wheel.current_tick);
-  fformat (stdout, "test ran %.2f seconds, %.2f ops/second\n",
-	   (after - before),
-	   ((f64) updates + (f64) tm->double_wheel.current_tick) / (after -
-								    before));
+  fformat (
+    stdout, "test ran %.2f seconds, %.2f ops/second\n", (after - before),
+    ((f64) updates + (f64) tm->double_wheel.current_tick) / (after - before));
 
   if (pool_elts (tm->test_elts))
     fformat (stdout, "Note: %d elements remain in pool\n",
@@ -625,11 +617,10 @@ test2_double_updates (tw_timer_test_main_t * tm)
 
   /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
-   {
-    fformat (stdout, "[%d] expected to expire %d\n",
-             e - tm->test_elts,
-             e->expected_to_expire);
-  }
+    {
+      fformat (stdout, "[%d] expected to expire %d\n", e - tm->test_elts,
+	       e->expected_to_expire);
+    }
   /* *INDENT-ON* */
 
   pool_free (tm->test_elts);
@@ -638,7 +629,7 @@ test2_double_updates (tw_timer_test_main_t * tm)
 }
 
 static clib_error_t *
-test2_triple (tw_timer_test_main_t * tm)
+test2_triple (tw_timer_test_main_t *tm)
 {
   u32 i, j;
   tw_timer_test_elt_t *e;
@@ -653,15 +644,13 @@ test2_triple (tw_timer_test_main_t * tm)
 
   tw_timer_wheel_init_4t_3w_256sl (&tm->triple_wheel,
 				   expired_timer_triple_callback,
-				   1.0 /* timer interval */ , ~0);
-
+				   1.0 /* timer interval */, ~0);
 
   /* Prime offset */
   initial_wheel_offset = 75700;
   run_triple_wheel (&tm->triple_wheel, initial_wheel_offset);
 
-  fformat (stdout,
-	   "initial wheel time %d, fi %d si %d gi %d\n",
+  fformat (stdout, "initial wheel time %d, fi %d si %d gi %d\n",
 	   tm->triple_wheel.current_tick,
 	   tm->triple_wheel.current_index[TW_TIMER_RING_FAST],
 	   tm->triple_wheel.current_index[TW_TIMER_RING_SLOW],
@@ -669,8 +658,7 @@ test2_triple (tw_timer_test_main_t * tm)
 
   initial_wheel_offset = tm->triple_wheel.current_tick;
 
-  fformat (stdout,
-	   "test %d timers, %d iter, %d ticks per iter, 0x%llx seed\n",
+  fformat (stdout, "test %d timers, %d iter, %d ticks per iter, 0x%llx seed\n",
 	   tm->ntimers, tm->niter, tm->ticks_per_iter, tm->seed);
 
   before = clib_time_now (&tm->clib_time);
@@ -694,8 +682,7 @@ test2_triple (tw_timer_test_main_t * tm)
 
       e->stop_timer_handle =
 	tw_timer_start_4t_3w_256sl (&tm->triple_wheel, e - tm->test_elts,
-				    3 /* timer id */ ,
-				    expiration_time);
+				    3 /* timer id */, expiration_time);
     }
 
   adds += i;
@@ -708,12 +695,12 @@ test2_triple (tw_timer_test_main_t * tm)
       vec_reset_length (deleted_indices);
       /* *INDENT-OFF* */
       pool_foreach (e, tm->test_elts)
-       {
-        tw_timer_stop_4t_3w_256sl (&tm->triple_wheel, e->stop_timer_handle);
-        vec_add1 (deleted_indices, e - tm->test_elts);
-        if (++j >= tm->ntimers / 4)
-          goto del_and_re_add;
-      }
+	{
+	  tw_timer_stop_4t_3w_256sl (&tm->triple_wheel, e->stop_timer_handle);
+	  vec_add1 (deleted_indices, e - tm->test_elts);
+	  if (++j >= tm->ntimers / 4)
+	    goto del_and_re_add;
+	}
       /* *INDENT-ON* */
 
     del_and_re_add:
@@ -736,12 +723,12 @@ test2_triple (tw_timer_test_main_t * tm)
 	  if (expiration_time > max_expiration_time)
 	    max_expiration_time = expiration_time;
 
-	  e->expected_to_expire = expiration_time +
-	    tm->triple_wheel.current_tick;
+	  e->expected_to_expire =
+	    expiration_time + tm->triple_wheel.current_tick;
 
-	  e->stop_timer_handle = tw_timer_start_4t_3w_256sl
-	    (&tm->triple_wheel, e - tm->test_elts, 3 /* timer id */ ,
-	     expiration_time);
+	  e->stop_timer_handle =
+	    tw_timer_start_4t_3w_256sl (&tm->triple_wheel, e - tm->test_elts,
+					3 /* timer id */, expiration_time);
 	}
       adds += j;
     }
@@ -756,8 +743,8 @@ test2_triple (tw_timer_test_main_t * tm)
 	   tm->triple_wheel.current_tick);
   fformat (stdout, "test ran %.2f seconds, %.2f ops/second\n",
 	   (after - before),
-	   ((f64) adds + (f64) deletes +
-	    (f64) tm->triple_wheel.current_tick) / (after - before));
+	   ((f64) adds + (f64) deletes + (f64) tm->triple_wheel.current_tick) /
+	     (after - before));
 
   if (pool_elts (tm->test_elts))
     fformat (stdout, "Note: %d elements remain in pool\n",
@@ -765,11 +752,10 @@ test2_triple (tw_timer_test_main_t * tm)
 
   /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
-   {
-    fformat (stdout, "[%d] expected to expire %d\n",
-             e - tm->test_elts,
-             e->expected_to_expire);
-  }
+    {
+      fformat (stdout, "[%d] expected to expire %d\n", e - tm->test_elts,
+	       e->expected_to_expire);
+    }
   /* *INDENT-ON* */
 
   pool_free (tm->test_elts);
@@ -778,7 +764,7 @@ test2_triple (tw_timer_test_main_t * tm)
 }
 
 static clib_error_t *
-test2_triple_ov (tw_timer_test_main_t * tm)
+test2_triple_ov (tw_timer_test_main_t *tm)
 {
   u32 i, j;
   tw_timer_test_elt_t *e;
@@ -793,15 +779,13 @@ test2_triple_ov (tw_timer_test_main_t * tm)
 
   tw_timer_wheel_init_1t_3w_1024sl_ov (&tm->triple_ov_wheel,
 				       expired_timer_triple_ov_callback,
-				       1.0 /* timer interval */ , ~0);
-
+				       1.0 /* timer interval */, ~0);
 
   /* Prime offset */
   initial_wheel_offset = 75700;
   run_triple_ov_wheel (&tm->triple_ov_wheel, initial_wheel_offset);
 
-  fformat (stdout,
-	   "initial wheel time %d, fi %d si %d gi %d\n",
+  fformat (stdout, "initial wheel time %d, fi %d si %d gi %d\n",
 	   tm->triple_ov_wheel.current_tick,
 	   tm->triple_ov_wheel.current_index[TW_TIMER_RING_FAST],
 	   tm->triple_ov_wheel.current_index[TW_TIMER_RING_SLOW],
@@ -809,8 +793,7 @@ test2_triple_ov (tw_timer_test_main_t * tm)
 
   initial_wheel_offset = tm->triple_ov_wheel.current_tick;
 
-  fformat (stdout,
-	   "test %d timers, %d iter, %d ticks per iter, 0x%llx seed\n",
+  fformat (stdout, "test %d timers, %d iter, %d ticks per iter, 0x%llx seed\n",
 	   tm->ntimers, tm->niter, tm->ticks_per_iter, tm->seed);
 
   before = clib_time_now (&tm->clib_time);
@@ -832,10 +815,9 @@ test2_triple_ov (tw_timer_test_main_t * tm)
 
       e->expected_to_expire = expiration_time + initial_wheel_offset;
 
-      e->stop_timer_handle =
-	tw_timer_start_1t_3w_1024sl_ov (&tm->triple_ov_wheel,
-					e - tm->test_elts, 0 /* timer id */ ,
-					expiration_time);
+      e->stop_timer_handle = tw_timer_start_1t_3w_1024sl_ov (
+	&tm->triple_ov_wheel, e - tm->test_elts, 0 /* timer id */,
+	expiration_time);
     }
 
   adds += i;
@@ -848,13 +830,13 @@ test2_triple_ov (tw_timer_test_main_t * tm)
       vec_reset_length (deleted_indices);
       /* *INDENT-OFF* */
       pool_foreach (e, tm->test_elts)
-       {
-        tw_timer_stop_1t_3w_1024sl_ov (&tm->triple_ov_wheel,
-                                       e->stop_timer_handle);
-        vec_add1 (deleted_indices, e - tm->test_elts);
-        if (++j >= tm->ntimers / 4)
-          goto del_and_re_add;
-      }
+	{
+	  tw_timer_stop_1t_3w_1024sl_ov (&tm->triple_ov_wheel,
+					 e->stop_timer_handle);
+	  vec_add1 (deleted_indices, e - tm->test_elts);
+	  if (++j >= tm->ntimers / 4)
+	    goto del_and_re_add;
+	}
       /* *INDENT-ON* */
 
     del_and_re_add:
@@ -877,12 +859,12 @@ test2_triple_ov (tw_timer_test_main_t * tm)
 	  if (expiration_time > max_expiration_time)
 	    max_expiration_time = expiration_time;
 
-	  e->expected_to_expire = expiration_time +
-	    tm->triple_ov_wheel.current_tick;
+	  e->expected_to_expire =
+	    expiration_time + tm->triple_ov_wheel.current_tick;
 
-	  e->stop_timer_handle = tw_timer_start_1t_3w_1024sl_ov
-	    (&tm->triple_ov_wheel, e - tm->test_elts, 0 /* timer id */ ,
-	     expiration_time);
+	  e->stop_timer_handle = tw_timer_start_1t_3w_1024sl_ov (
+	    &tm->triple_ov_wheel, e - tm->test_elts, 0 /* timer id */,
+	    expiration_time);
 	}
       adds += j;
     }
@@ -895,10 +877,10 @@ test2_triple_ov (tw_timer_test_main_t * tm)
 
   fformat (stdout, "%d adds, %d deletes, %d ticks\n", adds, deletes,
 	   tm->triple_ov_wheel.current_tick);
-  fformat (stdout, "test ran %.2f seconds, %.2f ops/second\n",
-	   (after - before),
-	   ((f64) adds + (f64) deletes +
-	    (f64) tm->triple_ov_wheel.current_tick) / (after - before));
+  fformat (
+    stdout, "test ran %.2f seconds, %.2f ops/second\n", (after - before),
+    ((f64) adds + (f64) deletes + (f64) tm->triple_ov_wheel.current_tick) /
+      (after - before));
 
   if (pool_elts (tm->test_elts))
     fformat (stdout, "Note: %d elements remain in pool\n",
@@ -906,15 +888,14 @@ test2_triple_ov (tw_timer_test_main_t * tm)
 
   /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
-   {
-    TWT (tw_timer) * t;
+    {
+      TWT (tw_timer) * t;
 
-    fformat (stdout, "[%d] expected to expire %d\n",
-             e - tm->test_elts,
-             e->expected_to_expire);
-    t = pool_elt_at_index (tm->triple_ov_wheel.timers, e->stop_timer_handle);
-    fformat (stdout, "  expiration_time %lld\n", t->expiration_time);
-  }
+      fformat (stdout, "[%d] expected to expire %d\n", e - tm->test_elts,
+	       e->expected_to_expire);
+      t = pool_elt_at_index (tm->triple_ov_wheel.timers, e->stop_timer_handle);
+      fformat (stdout, "  expiration_time %lld\n", t->expiration_time);
+    }
   /* *INDENT-ON* */
 
   pool_free (tm->test_elts);
@@ -923,7 +904,7 @@ test2_triple_ov (tw_timer_test_main_t * tm)
 }
 
 static clib_error_t *
-test1_single (tw_timer_test_main_t * tm)
+test1_single (tw_timer_test_main_t *tm)
 {
   u32 i;
   tw_timer_test_elt_t *e;
@@ -931,7 +912,7 @@ test1_single (tw_timer_test_main_t * tm)
 
   tw_timer_wheel_init_2t_1w_2048sl (&tm->single_wheel,
 				    expired_timer_single_callback,
-				    1.0 /* timer interval */ , ~0);
+				    1.0 /* timer interval */, ~0);
 
   /*
    * Prime offset, to make sure that the wheel starts in a
@@ -962,9 +943,8 @@ test1_single (tw_timer_test_main_t * tm)
       pool_get (tm->test_elts, e);
       clib_memset (e, 0, sizeof (*e));
       e->expected_to_expire = expected_to_expire;
-      e->stop_timer_handle = tw_timer_start_2t_1w_2048sl
-	(&tm->single_wheel, e - tm->test_elts, 1 /* timer id */ ,
-	 timer_arg);
+      e->stop_timer_handle = tw_timer_start_2t_1w_2048sl (
+	&tm->single_wheel, e - tm->test_elts, 1 /* timer id */, timer_arg);
     }
   run_single_wheel (&tm->single_wheel, tm->ntimers + 3);
 
@@ -974,15 +954,13 @@ test1_single (tw_timer_test_main_t * tm)
 
   /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
-   {
-    fformat(stdout, "[%d] expected to expire %d\n",
-                     e - tm->test_elts,
-                     e->expected_to_expire);
-  }
+    {
+      fformat (stdout, "[%d] expected to expire %d\n", e - tm->test_elts,
+	       e->expected_to_expire);
+    }
   /* *INDENT-ON* */
 
-  fformat (stdout,
-	   "final wheel time %d, fast index %d\n",
+  fformat (stdout, "final wheel time %d, fast index %d\n",
 	   tm->single_wheel.current_tick,
 	   tm->single_wheel.current_index[TW_TIMER_RING_FAST]);
 
@@ -992,7 +970,7 @@ test1_single (tw_timer_test_main_t * tm)
 }
 
 static clib_error_t *
-test1_double (tw_timer_test_main_t * tm)
+test1_double (tw_timer_test_main_t *tm)
 {
   u32 i;
   tw_timer_test_elt_t *e;
@@ -1000,7 +978,7 @@ test1_double (tw_timer_test_main_t * tm)
 
   tw_timer_wheel_init_16t_2w_512sl (&tm->double_wheel,
 				    expired_timer_double_callback,
-				    1.0 /* timer interval */ , ~0);
+				    1.0 /* timer interval */, ~0);
 
   /*
    * Prime offset, to make sure that the wheel starts in a
@@ -1020,9 +998,8 @@ test1_double (tw_timer_test_main_t * tm)
       clib_memset (e, 0, sizeof (*e));
 
       e->expected_to_expire = i + tm->double_wheel.current_tick + 1;
-      e->stop_timer_handle = tw_timer_start_16t_2w_512sl
-	(&tm->double_wheel, e - tm->test_elts, 14 /* timer id */ ,
-	 i + 1);
+      e->stop_timer_handle = tw_timer_start_16t_2w_512sl (
+	&tm->double_wheel, e - tm->test_elts, 14 /* timer id */, i + 1);
     }
   run_double_wheel (&tm->double_wheel, tm->ntimers + 3);
 
@@ -1032,15 +1009,13 @@ test1_double (tw_timer_test_main_t * tm)
 
   /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
-   {
-    fformat(stdout, "[%d] expected to expire %d\n",
-                     e - tm->test_elts,
-                     e->expected_to_expire);
-  }
+    {
+      fformat (stdout, "[%d] expected to expire %d\n", e - tm->test_elts,
+	       e->expected_to_expire);
+    }
   /* *INDENT-ON* */
 
-  fformat (stdout,
-	   "final wheel time %d, fast index %d\n",
+  fformat (stdout, "final wheel time %d, fast index %d\n",
 	   tm->double_wheel.current_tick,
 	   tm->double_wheel.current_index[TW_TIMER_RING_FAST]);
 
@@ -1050,7 +1025,7 @@ test1_double (tw_timer_test_main_t * tm)
 }
 
 static clib_error_t *
-test1_two_timer_double (tw_timer_test_main_t * tm)
+test1_two_timer_double (tw_timer_test_main_t *tm)
 {
   u32 i;
   tw_timer_test_elt_t *e;
@@ -1058,7 +1033,7 @@ test1_two_timer_double (tw_timer_test_main_t * tm)
 
   tw_timer_wheel_init_2t_2w_512sl (&tm->two_timer_double_wheel,
 				   expired_timer_two_timer_double_callback,
-				   1.0 /* timer interval */ , ~0);
+				   1.0 /* timer interval */, ~0);
 
   /*
    * Prime offset, to make sure that the wheel starts in a
@@ -1078,9 +1053,9 @@ test1_two_timer_double (tw_timer_test_main_t * tm)
       clib_memset (e, 0, sizeof (*e));
 
       e->expected_to_expire = i + tm->two_timer_double_wheel.current_tick + 1;
-      e->stop_timer_handle = tw_timer_start_2t_2w_512sl
-	(&tm->two_timer_double_wheel, e - tm->test_elts, 1 /* timer id */ ,
-	 i + 1);
+      e->stop_timer_handle = tw_timer_start_2t_2w_512sl (
+	&tm->two_timer_double_wheel, e - tm->test_elts, 1 /* timer id */,
+	i + 1);
     }
   run_two_timer_double_wheel (&tm->two_timer_double_wheel, tm->ntimers + 3);
 
@@ -1090,15 +1065,13 @@ test1_two_timer_double (tw_timer_test_main_t * tm)
 
   /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
-   {
-    fformat(stdout, "[%d] expected to expire %d\n",
-                     e - tm->test_elts,
-                     e->expected_to_expire);
-  }
+    {
+      fformat (stdout, "[%d] expected to expire %d\n", e - tm->test_elts,
+	       e->expected_to_expire);
+    }
   /* *INDENT-ON* */
 
-  fformat (stdout,
-	   "final wheel time %d, fast index %d\n",
+  fformat (stdout, "final wheel time %d, fast index %d\n",
 	   tm->two_timer_double_wheel.current_tick,
 	   tm->two_timer_double_wheel.current_index[TW_TIMER_RING_FAST]);
 
@@ -1108,7 +1081,7 @@ test1_two_timer_double (tw_timer_test_main_t * tm)
 }
 
 static clib_error_t *
-test3_triple_double (tw_timer_test_main_t * tm)
+test3_triple_double (tw_timer_test_main_t *tm)
 {
   tw_timer_test_elt_t *e;
   u32 initial_wheel_offset = 0;
@@ -1121,13 +1094,12 @@ test3_triple_double (tw_timer_test_main_t * tm)
 
   tw_timer_wheel_init_4t_3w_256sl (&tm->triple_wheel,
 				   expired_timer_triple_callback,
-				   1.0 /* timer interval */ , ~0);
+				   1.0 /* timer interval */, ~0);
 
   initial_wheel_offset = 0;
   run_triple_wheel (&tm->triple_wheel, initial_wheel_offset);
 
-  fformat (stdout,
-	   "initial wheel time %d, fi %d si %d gi %d\n",
+  fformat (stdout, "initial wheel time %d, fi %d si %d gi %d\n",
 	   tm->triple_wheel.current_tick,
 	   tm->triple_wheel.current_index[TW_TIMER_RING_FAST],
 	   tm->triple_wheel.current_index[TW_TIMER_RING_SLOW],
@@ -1148,10 +1120,8 @@ test3_triple_double (tw_timer_test_main_t * tm)
   e->expected_to_expire = expiration_time + initial_wheel_offset;
   max_expiration_time = expiration_time;
 
-  e->stop_timer_handle =
-    tw_timer_start_4t_3w_256sl (&tm->triple_wheel, e - tm->test_elts,
-				3 /* timer id */ ,
-				expiration_time);
+  e->stop_timer_handle = tw_timer_start_4t_3w_256sl (
+    &tm->triple_wheel, e - tm->test_elts, 3 /* timer id */, expiration_time);
 
   run_triple_wheel (&tm->triple_wheel, max_expiration_time + 1);
 
@@ -1161,8 +1131,8 @@ test3_triple_double (tw_timer_test_main_t * tm)
 	   tm->triple_wheel.current_tick);
   fformat (stdout, "test ran %.2f seconds, %.2f ops/second\n",
 	   (after - before),
-	   ((f64) adds + (f64) deletes +
-	    (f64) tm->triple_wheel.current_tick) / (after - before));
+	   ((f64) adds + (f64) deletes + (f64) tm->triple_wheel.current_tick) /
+	     (after - before));
 
   if (pool_elts (tm->test_elts))
     fformat (stdout, "Note: %d elements remain in pool\n",
@@ -1170,11 +1140,10 @@ test3_triple_double (tw_timer_test_main_t * tm)
 
   /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
-   {
-    fformat (stdout, "[%d] expected to expire %d\n",
-             e - tm->test_elts,
-             e->expected_to_expire);
-  }
+    {
+      fformat (stdout, "[%d] expected to expire %d\n", e - tm->test_elts,
+	       e->expected_to_expire);
+    }
   /* *INDENT-ON* */
 
   pool_free (tm->test_elts);
@@ -1183,7 +1152,7 @@ test3_triple_double (tw_timer_test_main_t * tm)
 }
 
 static clib_error_t *
-test4_double_double (tw_timer_test_main_t * tm)
+test4_double_double (tw_timer_test_main_t *tm)
 {
   u32 i;
   tw_timer_test_elt_t *e;
@@ -1198,7 +1167,7 @@ test4_double_double (tw_timer_test_main_t * tm)
 
   tw_timer_wheel_init_16t_2w_512sl (&tm->double_wheel,
 				    expired_timer_double_callback,
-				    1.0 /* timer interval */ , ~0);
+				    1.0 /* timer interval */, ~0);
   /* Prime offset */
   initial_wheel_offset = 0;
 
@@ -1229,8 +1198,7 @@ test4_double_double (tw_timer_test_main_t * tm)
       e->expected_to_expire = expiration_time + initial_wheel_offset;
       e->stop_timer_handle =
 	tw_timer_start_16t_2w_512sl (&tm->double_wheel, e - tm->test_elts,
-				     14 /* timer id */ ,
-				     expiration_time);
+				     14 /* timer id */, expiration_time);
     }
 
   adds = 1;
@@ -1245,8 +1213,8 @@ test4_double_double (tw_timer_test_main_t * tm)
 	   tm->double_wheel.current_tick);
   fformat (stdout, "test ran %.2f seconds, %.2f ops/second\n",
 	   (after - before),
-	   ((f64) adds + (f64) deletes +
-	    (f64) tm->double_wheel.current_tick) / (after - before));
+	   ((f64) adds + (f64) deletes + (f64) tm->double_wheel.current_tick) /
+	     (after - before));
 
   if (pool_elts (tm->test_elts))
     fformat (stdout, "Note: %d elements remain in pool\n",
@@ -1254,11 +1222,10 @@ test4_double_double (tw_timer_test_main_t * tm)
 
   /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
-   {
-    fformat (stdout, "[%d] expected to expire %d\n",
-             e - tm->test_elts,
-             e->expected_to_expire);
-  }
+    {
+      fformat (stdout, "[%d] expected to expire %d\n", e - tm->test_elts,
+	       e->expected_to_expire);
+    }
   /* *INDENT-ON* */
 
   pool_free (tm->test_elts);
@@ -1267,7 +1234,7 @@ test4_double_double (tw_timer_test_main_t * tm)
 }
 
 static clib_error_t *
-test5_double (tw_timer_test_main_t * tm)
+test5_double (tw_timer_test_main_t *tm)
 {
   u32 i;
   tw_timer_test_elt_t *e;
@@ -1281,7 +1248,7 @@ test5_double (tw_timer_test_main_t * tm)
 
   tw_timer_wheel_init_16t_2w_512sl (&tm->double_wheel,
 				    expired_timer_double_callback,
-				    1.0 /* timer interval */ , ~0);
+				    1.0 /* timer interval */, ~0);
 
   /* Prime offset */
   initial_wheel_offset = 7567;
@@ -1295,8 +1262,7 @@ test5_double (tw_timer_test_main_t * tm)
 
   initial_wheel_offset = tm->double_wheel.current_tick;
 
-  fformat (stdout,
-	   "test %d timers, %d iter, %d ticks per iter, 0x%llx seed\n",
+  fformat (stdout, "test %d timers, %d iter, %d ticks per iter, 0x%llx seed\n",
 	   tm->ntimers, tm->niter, tm->ticks_per_iter, tm->seed);
 
   before = clib_time_now (&tm->clib_time);
@@ -1315,8 +1281,7 @@ test5_double (tw_timer_test_main_t * tm)
       e->expected_to_expire = expiration_time + initial_wheel_offset;
       e->stop_timer_handle =
 	tw_timer_start_16t_2w_512sl (&tm->double_wheel, e - tm->test_elts,
-				     14 /* timer id */ ,
-				     expiration_time);
+				     14 /* timer id */, expiration_time);
     }
 
   adds += i;
@@ -1329,8 +1294,8 @@ test5_double (tw_timer_test_main_t * tm)
 	   tm->double_wheel.current_tick);
   fformat (stdout, "test ran %.2f seconds, %.2f ops/second\n",
 	   (after - before),
-	   ((f64) adds + (f64) deletes +
-	    (f64) tm->double_wheel.current_tick) / (after - before));
+	   ((f64) adds + (f64) deletes + (f64) tm->double_wheel.current_tick) /
+	     (after - before));
 
   if (pool_elts (tm->test_elts))
     fformat (stdout, "Note: %d elements remain in pool\n",
@@ -1338,11 +1303,10 @@ test5_double (tw_timer_test_main_t * tm)
 
   /* *INDENT-OFF* */
   pool_foreach (e, tm->test_elts)
-   {
-    fformat (stdout, "[%d] expected to expire %d\n",
-             e - tm->test_elts,
-             e->expected_to_expire);
-  }
+    {
+      fformat (stdout, "[%d] expected to expire %d\n", e - tm->test_elts,
+	       e->expected_to_expire);
+    }
   /* *INDENT-ON* */
 
   pool_free (tm->test_elts);
@@ -1351,7 +1315,7 @@ test5_double (tw_timer_test_main_t * tm)
 }
 
 static clib_error_t *
-timer_test_command_fn (tw_timer_test_main_t * tm, unformat_input_t * input)
+timer_test_command_fn (tw_timer_test_main_t *tm, unformat_input_t *input)
 {
 
   int is_test1 = 0, is_updates = 0;
@@ -1447,50 +1411,4 @@ timer_test_command_fn (tw_timer_test_main_t * tm, unformat_input_t * input)
 
 #ifdef CLIB_UNIX
 int
-main (int argc, char *argv[])
-{
-  unformat_input_t i;
-  clib_error_t *error;
-  tw_timer_test_main_t *tm = &tw_timer_test_main;
-
-  clib_mem_init (0, 3ULL << 30);
-
-  unformat_init_command_line (&i, argv);
-  error = timer_test_command_fn (tm, &i);
-  unformat_free (&i);
-
-  if (error)
-    {
-      clib_error_report (error);
-      return 1;
-    }
-  return 0;
-}
-#endif /* CLIB_UNIX */
-
-/* For debugging... */
-int
-pifi (void *p, u32 index)
-{
-  return pool_is_free_index (p, index);
-}
-
-u32
-vl (void *p)
-{
-  return vec_len (p);
-}
-
-uword
-pe (void *v)
-{
-  return (pool_elts (v));
-}
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+main (int argc, char

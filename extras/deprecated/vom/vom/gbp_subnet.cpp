@@ -22,8 +22,7 @@ namespace VOM {
 
 gbp_subnet::type_t::type_t(int v, const std::string s)
   : enum_base<gbp_subnet::type_t>(v, s)
-{
-}
+{}
 
 const gbp_subnet::type_t gbp_subnet::type_t::STITCHED_INTERNAL(
   0,
@@ -49,8 +48,7 @@ gbp_subnet::gbp_subnet(const gbp_route_domain& rd,
   , m_recirc(nullptr)
   , m_epg(nullptr)
   , m_sclass(~0)
-{
-}
+{}
 
 gbp_subnet::gbp_subnet(const gbp_route_domain& rd,
                        const route::prefix_t& prefix,
@@ -63,8 +61,7 @@ gbp_subnet::gbp_subnet(const gbp_route_domain& rd,
   , m_recirc(recirc.singular())
   , m_epg(epg.singular())
   , m_sclass(~0)
-{
-}
+{}
 
 gbp_subnet::gbp_subnet(const gbp_route_domain& rd,
                        const route::prefix_t& prefix,
@@ -77,8 +74,7 @@ gbp_subnet::gbp_subnet(const gbp_route_domain& rd,
   , m_recirc(nullptr)
   , m_epg()
   , m_sclass(sclass)
-{
-}
+{}
 
 gbp_subnet::gbp_subnet(const gbp_subnet& o)
   : m_hw(o.m_hw)
@@ -88,8 +84,7 @@ gbp_subnet::gbp_subnet(const gbp_subnet& o)
   , m_recirc(o.m_recirc)
   , m_epg(o.m_epg)
   , m_sclass(o.m_sclass)
-{
-}
+{}
 
 gbp_subnet::~gbp_subnet()
 {
@@ -125,7 +120,10 @@ gbp_subnet::replay()
 {
   if (m_hw) {
     HW::enqueue(new gbp_subnet_cmds::create_cmd(
-      m_hw, m_rd->id(), m_prefix, m_type,
+      m_hw,
+      m_rd->id(),
+      m_prefix,
+      m_type,
       (m_recirc ? m_recirc->handle() : handle_t::INVALID),
       (m_epg ? m_epg->sclass() : m_sclass)));
   }
@@ -152,7 +150,10 @@ gbp_subnet::update(const gbp_subnet& r)
 {
   if (rc_t::OK != m_hw.rc()) {
     HW::enqueue(new gbp_subnet_cmds::create_cmd(
-      m_hw, m_rd->id(), m_prefix, m_type,
+      m_hw,
+      m_rd->id(),
+      m_prefix,
+      m_type,
       (m_recirc ? m_recirc->handle() : handle_t::INVALID),
       (m_epg ? m_epg->sclass() : m_sclass)));
   } else {
@@ -162,7 +163,10 @@ gbp_subnet::update(const gbp_subnet& r)
       m_type = r.m_type;
 
       HW::enqueue(new gbp_subnet_cmds::create_cmd(
-        m_hw, m_rd->id(), m_prefix, m_type,
+        m_hw,
+        m_rd->id(),
+        m_prefix,
+        m_type,
         (m_recirc ? m_recirc->handle() : handle_t::INVALID),
         (m_epg ? m_epg->sclass() : m_sclass)));
     }

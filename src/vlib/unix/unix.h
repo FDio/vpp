@@ -58,11 +58,10 @@ typedef struct
   u32 flags;
   /* Run interactively or as daemon (background process). */
 #define UNIX_FLAG_INTERACTIVE (1 << 0)
-#define UNIX_FLAG_NODAEMON (1 << 1)
-#define UNIX_FLAG_NOSYSLOG (1 << 2)
-#define UNIX_FLAG_NOCOLOR (1 << 3)
-#define UNIX_FLAG_NOBANNER (1 << 4)
-
+#define UNIX_FLAG_NODAEMON    (1 << 1)
+#define UNIX_FLAG_NOSYSLOG    (1 << 2)
+#define UNIX_FLAG_NOCOLOR     (1 << 3)
+#define UNIX_FLAG_NOBANNER    (1 << 4)
 
   /* CLI listen socket. */
   clib_socket_t cli_listen_socket;
@@ -124,7 +123,7 @@ extern unix_main_t unix_main;
 extern clib_file_main_t file_main;
 
 always_inline void
-unix_save_error (unix_main_t * um, clib_error_t * error)
+unix_save_error (unix_main_t *um, clib_error_t *error)
 {
   unix_error_history_t *eh = um->error_history + um->error_history_index;
   clib_error_free_vector (eh->error);
@@ -158,17 +157,15 @@ extern u8 **vlib_thread_stacks;
 
 /* utils */
 
-clib_error_t *foreach_directory_file (char *dir_name,
-				      clib_error_t * (*f) (void *arg,
-							   u8 * path_name,
-							   u8 * file_name),
-				      void *arg, int scan_dirs);
+clib_error_t *foreach_directory_file (
+  char *dir_name, clib_error_t *(*f) (void *arg, u8 *path_name, u8 *file_name),
+  void *arg, int scan_dirs);
 
 clib_error_t *vlib_unix_recursive_mkdir (char *path);
 
-clib_error_t *vlib_unix_validate_runtime_file (unix_main_t * um,
+clib_error_t *vlib_unix_validate_runtime_file (unix_main_t *um,
 					       const char *path,
-					       u8 ** full_path);
+					       u8 **full_path);
 
 #endif /* included_unix_unix_h */
 

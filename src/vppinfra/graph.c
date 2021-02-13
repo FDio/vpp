@@ -16,7 +16,7 @@
 
 /* Set link distance, creating link if not found. */
 u32
-graph_set_link (graph_t * g, u32 src, u32 dst, u32 distance)
+graph_set_link (graph_t *g, u32 src, u32 dst, u32 distance)
 {
   graph_node_t *src_node, *dst_node;
   graph_link_t *l;
@@ -64,7 +64,7 @@ graph_set_link (graph_t * g, u32 src, u32 dst, u32 distance)
 }
 
 void
-graph_del_link (graph_t * g, u32 src, u32 dst)
+graph_del_link (graph_t *g, u32 src, u32 dst)
 {
   graph_node_t *src_node, *dst_node;
 
@@ -77,7 +77,7 @@ graph_del_link (graph_t * g, u32 src, u32 dst)
 
 /* Delete source node and all links from other nodes from/to source. */
 uword
-graph_del_node (graph_t * g, u32 src)
+graph_del_node (graph_t *g, u32 src)
 {
   graph_node_t *src_node, *n;
   uword index;
@@ -86,16 +86,16 @@ graph_del_node (graph_t * g, u32 src)
   src_node = pool_elt_at_index (g->nodes, src);
 
   vec_foreach (l, src_node->next.links)
-  {
-    n = pool_elt_at_index (g->nodes, l->node_index);
-    graph_dir_del_link (&n->prev, src);
-  }
+    {
+      n = pool_elt_at_index (g->nodes, l->node_index);
+      graph_dir_del_link (&n->prev, src);
+    }
 
   vec_foreach (l, src_node->prev.links)
-  {
-    n = pool_elt_at_index (g->nodes, l->node_index);
-    graph_dir_del_link (&n->next, src);
-  }
+    {
+      n = pool_elt_at_index (g->nodes, l->node_index);
+      graph_dir_del_link (&n->next, src);
+    }
 
   graph_dir_free (&src_node->next);
   graph_dir_free (&src_node->prev);
@@ -108,7 +108,7 @@ graph_del_node (graph_t * g, u32 src)
 }
 
 uword
-unformat_graph (unformat_input_t * input, va_list * args)
+unformat_graph (unformat_input_t *input, va_list *args)
 {
   graph_t *g = va_arg (*args, graph_t *);
   typedef struct
@@ -127,17 +127,17 @@ unformat_graph (unformat_input_t * input, va_list * args)
   _vec_len (links) -= 1;
   result = vec_len (links) > 0;
   vec_foreach (l, links)
-  {
-    graph_set_link (g, l->src, l->dst, l->distance);
-    graph_set_link (g, l->dst, l->src, l->distance);
-  }
+    {
+      graph_set_link (g, l->src, l->dst, l->distance);
+      graph_set_link (g, l->dst, l->src, l->distance);
+    }
 
   vec_free (links);
   return result;
 }
 
 u8 *
-format_graph_node (u8 * s, va_list * args)
+format_graph_node (u8 *s, va_list *args)
 {
   graph_t *g = va_arg (*args, graph_t *);
   u32 node_index = va_arg (*args, u32);
@@ -151,7 +151,7 @@ format_graph_node (u8 * s, va_list * args)
 }
 
 u8 *
-format_graph (u8 * s, va_list * args)
+format_graph (u8 *s, va_list *args)
 {
   graph_t *g = va_arg (*args, graph_t *);
   graph_node_t *n;
@@ -159,16 +159,15 @@ format_graph (u8 * s, va_list * args)
   u32 indent = format_get_indent (s);
 
   s = format (s, "graph %d nodes", pool_elts (g->nodes));
-  /* *INDENT-OFF* */
-  pool_foreach (n, g->nodes)  {
-    s = format (s, "\n%U", format_white_space, indent + 2);
-    s = format (s, "%U -> ", format_graph_node, g, n - g->nodes);
-    vec_foreach (l, n->next.links)
-      s = format (s, "%U (%d), ",
-		  format_graph_node, g, l->node_index,
-		  l->distance);
-  }
-  /* *INDENT-ON* */
+
+  pool_foreach (n, g->nodes)
+    {
+      s = format (s, "\n%U", format_white_space, indent + 2);
+      s = format (s, "%U -> ", format_graph_node, g, n - g->nodes);
+      vec_foreach (l, n->next.links)
+	s = format (s, "%U (%d), ", format_graph_node, g, l->node_index,
+		    l->distance);
+    }
 
   return s;
 }

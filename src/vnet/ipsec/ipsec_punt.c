@@ -39,7 +39,7 @@ ipsec_punt_interested_listener (vlib_enable_or_disable_t action, void *data)
 }
 
 static clib_error_t *
-ipsec_punt_init (vlib_main_t * vm)
+ipsec_punt_init (vlib_main_t *vm)
 {
   clib_error_t *error;
 
@@ -48,17 +48,15 @@ ipsec_punt_init (vlib_main_t * vm)
 
   punt_hdl = vlib_punt_client_register ("ipsec");
 
-#define _(s,v)  vlib_punt_reason_alloc (punt_hdl, v,                    \
-                                        ipsec_punt_interested_listener, \
-                                        NULL,                           \
-                                        &ipsec_punt_reason[IPSEC_PUNT_##s]);
+#define _(s, v)                                                               \
+  vlib_punt_reason_alloc (punt_hdl, v, ipsec_punt_interested_listener, NULL,  \
+			  &ipsec_punt_reason[IPSEC_PUNT_##s]);
   foreach_ipsec_punt_reason
 #undef _
     return (error);
 }
 
 VLIB_INIT_FUNCTION (ipsec_punt_init);
-
 
 /*
  * fd.io coding-style-patch-verification: ON

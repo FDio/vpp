@@ -46,22 +46,25 @@
 #include <vppinfra/asm_mips.h>
 
 __clib_export uword
-clib_backtrace (uword * callers, uword max_callers, uword n_frames_to_skip)
+clib_backtrace (uword *callers, uword max_callers, uword n_frames_to_skip)
 {
   u32 *pc;
   void *sp;
   uword i, saved_pc;
 
   /* Figure current PC, saved PC and stack pointer. */
-  asm volatile (".set push\n"
-		".set noat\n" "move %[saved_pc], $31\n" "move %[sp], $29\n"
-		/* Fetches current PC. */
-		"la $at, 1f\n"
-		"jalr %[pc], $at\n"
-		"nop\n"
-		"1:\n"
-		".set pop\n":[pc] "=r" (pc),
-		[saved_pc] "=r" (saved_pc),[sp] "=r" (sp));
+  asm volatile(".set push\n"
+	       ".set noat\n"
+	       "move %[saved_pc], $31\n"
+	       "move %[sp], $29\n"
+	       /* Fetches current PC. */
+	       "la $at, 1f\n"
+	       "jalr %[pc], $at\n"
+	       "nop\n"
+	       "1:\n"
+	       ".set pop\n"
+	       :
+	       [ pc ] "=r"(pc), [ saved_pc ] "=r"(saved_pc), [ sp ] "=r"(sp));
 
   /* Also skip current frame. */
   n_frames_to_skip += 1;
@@ -74,8 +77,8 @@ clib_backtrace (uword * callers, uword max_callers, uword n_frames_to_skip)
       u32 *start_pc;
 
       /* Parse instructions until we reach prologue for this
-         stack frame.  We'll need to figure out where saved
-         PC is and where previous stack frame lives. */
+	 stack frame.  We'll need to figure out where saved
+	 PC is and where previous stack frame lives. */
       start_pc = pc;
       found_saved_pc = 0;
       while (1)
@@ -176,7 +179,8 @@ clib_backtrace (uword * callers, uword max_callers, uword n_frames_to_skip)
 		switch (funct)
 		  {
 		  default:
-		    /* Give up when we find anyone setting the stack pointer. */
+		    /* Give up when we find anyone setting the stack pointer.
+		     */
 		    goto backtrace_done;
 
 		  case MIPS_SPECIAL_FUNCT_break:
@@ -223,7 +227,7 @@ backtrace_done:
 #include <execinfo.h>
 
 __clib_export uword
-clib_backtrace (uword * callers, uword max_callers, uword n_frames_to_skip)
+clib_backtrace (uword *callers, uword max_callers, uword n_frames_to_skip)
 {
   int size;
   void *array[20];
@@ -247,7 +251,6 @@ clib_backtrace (uword * callers, uword max_callers, uword n_frames_to_skip)
   else
     return i - n_frames_to_skip;
 }
-
 
 #endif /* clib_backtrace_defined */
 

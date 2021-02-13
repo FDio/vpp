@@ -33,26 +33,22 @@ typedef struct vrrp_vr_key
   u8 is_ipv6;
 } vrrp_vr_key_t;
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED
-(struct vrrp4_arp_key {
-  union {
-    struct {
+typedef CLIB_PACKED (struct vrrp4_arp_key {
+  union
+  {
+    struct
+    {
       u32 sw_if_index;
       ip4_address_t addr;
     };
     u64 as_u64;
   };
 }) vrrp4_arp_key_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED
-(struct vrrp6_nd_key {
+typedef CLIB_PACKED (struct vrrp6_nd_key {
   u32 sw_if_index;
   ip6_address_t addr;
 }) vrrp6_nd_key_t;
-/* *INDENT-ON* */
 
 typedef struct vrrp_vr_tracking_if
 {
@@ -77,16 +73,16 @@ typedef struct vrrp_vr_config
   ip46_address_t *peer_addrs;
 } vrrp_vr_config_t;
 
-#define foreach_vrrp_vr_state		\
-_(0, INIT, "Initialize")		\
-_(1, BACKUP, "Backup")			\
-_(2, MASTER, "Master")			\
-_(3, INTF_DOWN, "Interface Down")
+#define foreach_vrrp_vr_state                                                 \
+  _ (0, INIT, "Initialize")                                                   \
+  _ (1, BACKUP, "Backup")                                                     \
+  _ (2, MASTER, "Master")                                                     \
+  _ (3, INTF_DOWN, "Interface Down")
 
 /* VRRP runtime data */
 typedef enum vrrp_vr_state
 {
-#define _(v,f,n) VRRP_VR_STATE_##f = v,
+#define _(v, f, n) VRRP_VR_STATE_##f = v,
   foreach_vrrp_vr_state
 #undef _
 } vrrp_vr_state_t;
@@ -120,7 +116,7 @@ typedef enum vrrp_vr_timer_type
 typedef struct vrrp_vr_timer
 {
   u32 vr_index;
-  f64 expire_time;		/* monotonic, relative to vlib_time_now() */
+  f64 expire_time; /* monotonic, relative to vlib_time_now() */
   vrrp_vr_timer_type_t type;
 } vrrp_vr_timer_t;
 
@@ -181,37 +177,34 @@ extern vlib_node_registration_t vrrp_node;
 extern vlib_node_registration_t vrrp_periodic_node;
 
 /* Periodic function events */
-#define VRRP_EVENT_VR_TIMER_UPDATE 1
-#define VRRP_EVENT_VR_STOP 2
+#define VRRP_EVENT_VR_TIMER_UPDATE	   1
+#define VRRP_EVENT_VR_STOP		   2
 #define VRRP_EVENT_PERIODIC_ENABLE_DISABLE 3
 
-clib_error_t *vrrp_plugin_api_hookup (vlib_main_t * vm);
+clib_error_t *vrrp_plugin_api_hookup (vlib_main_t *vm);
 
-int vrrp_vr_add_del (u8 is_add, vrrp_vr_config_t * conf);
-int vrrp_vr_start_stop (u8 is_start, vrrp_vr_key_t * vr_key);
-extern u8 *format_vrrp_vr (u8 * s, va_list * args);
-extern u8 *format_vrrp_vr_key (u8 * s, va_list * args);
-extern u8 *format_vrrp_vr_state (u8 * s, va_list * args);
-extern u8 *format_vrrp_packet_hdr (u8 * s, va_list * args);
-void vrrp_vr_timer_set (vrrp_vr_t * vr, vrrp_vr_timer_type_t type);
-void vrrp_vr_timer_cancel (vrrp_vr_t * vr);
-void vrrp_vr_transition (vrrp_vr_t * vr, vrrp_vr_state_t new_state,
-			 void *data);
-int vrrp_vr_set_peers (vrrp_vr_key_t * key, ip46_address_t * peers);
-int vrrp_vr_multicast_group_join (vrrp_vr_t * vr);
-int vrrp_adv_send (vrrp_vr_t * vr, int shutdown);
-int vrrp_garp_or_na_send (vrrp_vr_t * vr);
+int vrrp_vr_add_del (u8 is_add, vrrp_vr_config_t *conf);
+int vrrp_vr_start_stop (u8 is_start, vrrp_vr_key_t *vr_key);
+extern u8 *format_vrrp_vr (u8 *s, va_list *args);
+extern u8 *format_vrrp_vr_key (u8 *s, va_list *args);
+extern u8 *format_vrrp_vr_state (u8 *s, va_list *args);
+extern u8 *format_vrrp_packet_hdr (u8 *s, va_list *args);
+void vrrp_vr_timer_set (vrrp_vr_t *vr, vrrp_vr_timer_type_t type);
+void vrrp_vr_timer_cancel (vrrp_vr_t *vr);
+void vrrp_vr_transition (vrrp_vr_t *vr, vrrp_vr_state_t new_state, void *data);
+int vrrp_vr_set_peers (vrrp_vr_key_t *key, ip46_address_t *peers);
+int vrrp_vr_multicast_group_join (vrrp_vr_t *vr);
+int vrrp_adv_send (vrrp_vr_t *vr, int shutdown);
+int vrrp_garp_or_na_send (vrrp_vr_t *vr);
 u16 vrrp_adv_csum (void *l3_hdr, void *payload, u8 is_ipv6, u16 len);
-int vrrp_vr_tracking_if_add_del (vrrp_vr_t * vr, u32 sw_if_index,
-				 u8 priority, u8 is_add);
-int vrrp_vr_tracking_ifs_add_del (vrrp_vr_t * vr,
-				  vrrp_vr_tracking_if_t * track_ifs,
-				  u8 is_add);
-void vrrp_vr_event (vrrp_vr_t * vr, vrrp_vr_state_t new_state);
-
+int vrrp_vr_tracking_if_add_del (vrrp_vr_t *vr, u32 sw_if_index, u8 priority,
+				 u8 is_add);
+int vrrp_vr_tracking_ifs_add_del (vrrp_vr_t *vr,
+				  vrrp_vr_tracking_if_t *track_ifs, u8 is_add);
+void vrrp_vr_event (vrrp_vr_t *vr, vrrp_vr_state_t new_state);
 
 always_inline void
-vrrp_vr_skew_compute (vrrp_vr_t * vr)
+vrrp_vr_skew_compute (vrrp_vr_t *vr)
 {
   vrrp_vr_config_t *vrc = &vr->config;
   vrrp_vr_runtime_t *vrt = &vr->runtime;
@@ -220,7 +213,7 @@ vrrp_vr_skew_compute (vrrp_vr_t * vr)
 }
 
 always_inline void
-vrrp_vr_master_down_compute (vrrp_vr_t * vr)
+vrrp_vr_master_down_compute (vrrp_vr_t *vr)
 {
   vrrp_vr_runtime_t *vrt = &vr->runtime;
 
@@ -309,43 +302,43 @@ vrrp_intf_num_vrs (u32 sw_if_index, u8 is_ipv6)
 }
 
 always_inline u8
-vrrp_vr_is_ipv6 (vrrp_vr_t * vr)
+vrrp_vr_is_ipv6 (vrrp_vr_t *vr)
 {
   return ((vr->config.flags & VRRP_VR_IPV6) != 0);
 }
 
 always_inline u8
-vrrp_vr_is_unicast (vrrp_vr_t * vr)
+vrrp_vr_is_unicast (vrrp_vr_t *vr)
 {
   return ((vr->config.flags & VRRP_VR_UNICAST) != 0);
 }
 
 always_inline u8
-vrrp_vr_is_owner (vrrp_vr_t * vr)
+vrrp_vr_is_owner (vrrp_vr_t *vr)
 {
   return (vr->config.priority == 255);
 }
 
 always_inline u8
-vrrp_vr_n_vr_addrs (vrrp_vr_t * vr)
+vrrp_vr_n_vr_addrs (vrrp_vr_t *vr)
 {
   return vec_len (vr->config.vr_addrs);
 }
 
 always_inline u8
-vrrp_vr_n_peer_addrs (vrrp_vr_t * vr)
+vrrp_vr_n_peer_addrs (vrrp_vr_t *vr)
 {
   return vec_len (vr->config.peer_addrs);
 }
 
 always_inline u8
-vrrp_vr_accept_mode_enabled (vrrp_vr_t * vr)
+vrrp_vr_accept_mode_enabled (vrrp_vr_t *vr)
 {
   return ((vr->config.flags & VRRP_VR_ACCEPT) != 0);
 }
 
 always_inline u32
-vrrp_vr_index (vrrp_vr_t * vr)
+vrrp_vr_index (vrrp_vr_t *vr)
 {
   vrrp_main_t *vmp = &vrrp_main;
 
@@ -353,7 +346,7 @@ vrrp_vr_index (vrrp_vr_t * vr)
 }
 
 always_inline u8
-vrrp_vr_priority (vrrp_vr_t * vr)
+vrrp_vr_priority (vrrp_vr_t *vr)
 {
   u8 rv;
 

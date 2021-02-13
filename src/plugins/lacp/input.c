@@ -19,7 +19,7 @@
 #include <vpp/stats/stat_segment.h>
 
 static int
-lacp_packet_scan (vlib_main_t * vm, member_if_t * mif)
+lacp_packet_scan (vlib_main_t *vm, member_if_t *mif)
 {
   lacp_pdu_t *lacpdu = (lacp_pdu_t *) mif->last_rx_pkt;
 
@@ -36,14 +36,14 @@ lacp_packet_scan (vlib_main_t * vm, member_if_t * mif)
       (lacpdu->terminator.tlv_length != 0))
     return (LACP_ERROR_BAD_TLV);
 
-  lacp_machine_dispatch (&lacp_rx_machine, vm, mif,
-			 LACP_RX_EVENT_PDU_RECEIVED, &mif->rx_state);
+  lacp_machine_dispatch (&lacp_rx_machine, vm, mif, LACP_RX_EVENT_PDU_RECEIVED,
+			 &mif->rx_state);
 
   return LACP_ERROR_NONE;
 }
 
 static void
-marker_fill_pdu (marker_pdu_t * marker, member_if_t * mif)
+marker_fill_pdu (marker_pdu_t *marker, member_if_t *mif)
 {
   marker_pdu_t *pkt = (marker_pdu_t *) mif->last_marker_pkt;
 
@@ -52,7 +52,7 @@ marker_fill_pdu (marker_pdu_t * marker, member_if_t * mif)
 }
 
 void
-marker_fill_request_pdu (marker_pdu_t * marker, member_if_t * mif)
+marker_fill_request_pdu (marker_pdu_t *marker, member_if_t *mif)
 {
   marker->marker_info.tlv_type = MARKER_INFORMATION;
   marker->marker_info.requester_port = mif->actor.port_number;
@@ -62,7 +62,7 @@ marker_fill_request_pdu (marker_pdu_t * marker, member_if_t * mif)
 }
 
 static void
-send_ethernet_marker_response_pdu (vlib_main_t * vm, member_if_t * mif)
+send_ethernet_marker_response_pdu (vlib_main_t *vm, member_if_t *mif)
 {
   lacp_main_t *lm = &lacp_main;
   u32 *to_next;
@@ -77,8 +77,8 @@ send_ethernet_marker_response_pdu (vlib_main_t * vm, member_if_t * mif)
    * see lacp_periodic_init() to understand what's already painted
    * into the buffer by the packet template mechanism
    */
-  h0 = vlib_packet_template_get_packet
-    (vm, &lm->marker_packet_templates[mif->packet_template_index], &bi0);
+  h0 = vlib_packet_template_get_packet (
+    vm, &lm->marker_packet_templates[mif->packet_template_index], &bi0);
 
   if (!h0)
     return;
@@ -113,7 +113,7 @@ send_ethernet_marker_response_pdu (vlib_main_t * vm, member_if_t * mif)
 }
 
 static int
-handle_marker_protocol (vlib_main_t * vm, member_if_t * mif)
+handle_marker_protocol (vlib_main_t *vm, member_if_t *mif)
 {
   marker_pdu_t *marker = (marker_pdu_t *) mif->last_marker_pkt;
 
@@ -134,7 +134,7 @@ handle_marker_protocol (vlib_main_t * vm, member_if_t * mif)
  * lacp input routine
  */
 lacp_error_t
-lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
+lacp_input (vlib_main_t *vm, vlib_buffer_t *b0, u32 bi0)
 {
   bond_main_t *bm = &bond_main;
   member_if_t *mif;
@@ -215,12 +215,12 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
       /* Actually scan the packet */
       e = lacp_packet_scan (vm, mif);
       bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
-      stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
-				      [mif->sw_if_index].actor_state,
-				      mif->actor.state);
-      stat_segment_set_state_counter (bm->stats[bif->sw_if_index]
-				      [mif->sw_if_index].partner_state,
-				      mif->partner.state);
+      stat_segment_set_state_counter (
+	bm->stats[bif->sw_if_index][mif->sw_if_index].actor_state,
+	mif->actor.state);
+      stat_segment_set_state_counter (
+	bm->stats[bif->sw_if_index][mif->sw_if_index].partner_state,
+	mif->partner.state);
       mif->last_packet_signature_valid = 1;
       mif->last_packet_signature = last_packet_signature;
     }
@@ -236,17 +236,14 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
  * setup neighbor hash table
  */
 static clib_error_t *
-lacp_init (vlib_main_t * vm)
+lacp_init (vlib_main_t *vm)
 {
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (lacp_init) =
-{
-  .runs_after = VLIB_INITS("lacp_periodic_init"),
+VLIB_INIT_FUNCTION (lacp_init) = {
+  .runs_after = VLIB_INITS ("lacp_periodic_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * packet trace format function, very similar to
@@ -254,7 +251,7 @@ VLIB_INIT_FUNCTION (lacp_init) =
  * functions instead of the per TLV processing functions
  */
 u8 *
-lacp_input_format_trace (u8 * s, va_list * args)
+lacp_input_format_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -308,7 +305,7 @@ lacp_input_format_trace (u8 * s, va_list * args)
 	  s = format (s, "    Port number %u\n",
 		      ntohs (lacpdu->actor.port_info.port_number));
 	  s = format (s, "    State 0x%x\n", lacpdu->actor.port_info.state);
-	  state_entry = (lacp_state_struct *) & lacp_state_array;
+	  state_entry = (lacp_state_struct *) &lacp_state_array;
 	  while (state_entry->str)
 	    {
 	      if (lacpdu->actor.port_info.state & (1 << state_entry->bit))
@@ -325,14 +322,12 @@ lacp_input_format_trace (u8 * s, va_list * args)
 		      ntohs (lacpdu->partner.port_info.system_priority));
 	  s =
 	    format (s, "    Key %u\n", ntohs (lacpdu->partner.port_info.key));
-	  s =
-	    format (s, "    Port priority %u\n",
-		    ntohs (lacpdu->partner.port_info.port_priority));
-	  s =
-	    format (s, "    Port number %u\n",
-		    ntohs (lacpdu->partner.port_info.port_number));
+	  s = format (s, "    Port priority %u\n",
+		      ntohs (lacpdu->partner.port_info.port_priority));
+	  s = format (s, "    Port number %u\n",
+		      ntohs (lacpdu->partner.port_info.port_number));
 	  s = format (s, "    State 0x%x\n", lacpdu->partner.port_info.state);
-	  state_entry = (lacp_state_struct *) & lacp_state_array;
+	  state_entry = (lacp_state_struct *) &lacp_state_array;
 	  while (state_entry->str)
 	    {
 	      if (lacpdu->partner.port_info.state & (1 << state_entry->bit))

@@ -18,8 +18,7 @@
 
 #include <vnet/ip6-nd/ip6_nd.h>
 
-extern int rd_cp_set_address_autoconfig (u32 sw_if_index,
-					 u8 enable,
+extern int rd_cp_set_address_autoconfig (u32 sw_if_index, u8 enable,
 					 u8 install_default_routes);
 
 #endif

@@ -18,26 +18,24 @@
 
 #include <vnet/ip/ip_types.h>
 
-#define foreach_urpf_mode \
-  _(OFF, "off")           \
-  _(LOOSE, "loose")       \
-  _(STRICT, "strict")     \
+#define foreach_urpf_mode                                                     \
+  _ (OFF, "off")                                                              \
+  _ (LOOSE, "loose")                                                          \
+  _ (STRICT, "strict")
 
 typedef enum urpf_mode_t_
 {
-#define _(a,b) URPF_MODE_##a,
+#define _(a, b) URPF_MODE_##a,
   foreach_urpf_mode
 #undef _
 } __clib_packed urpf_mode_t;
 
-#define URPF_N_MODES (URPF_MODE_STRICT+1)
+#define URPF_N_MODES (URPF_MODE_STRICT + 1)
 
-extern u8 *format_urpf_mode (u8 * s, va_list * a);
+extern u8 *format_urpf_mode (u8 *s, va_list *a);
 
-extern void urpf_update (urpf_mode_t mode,
-			 u32 sw_if_index,
+extern void urpf_update (urpf_mode_t mode, u32 sw_if_index,
 			 ip_address_family_t af, vlib_dir_t dir);
-
 
 #endif
 

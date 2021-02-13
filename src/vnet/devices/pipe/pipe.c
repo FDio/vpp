@@ -26,7 +26,7 @@
  */
 const static pipe_t PIPE_INVALID = {
   .sw_if_index = ~0,
-  .subint = {0},
+  .subint = { 0 },
 };
 
 /**
@@ -55,9 +55,8 @@ static pipe_main_t pipe_main;
  * since pipes don't have them.
  */
 static u8 *
-pipe_build_rewrite (vnet_main_t * vnm,
-		    u32 sw_if_index,
-		    vnet_link_t link_type, const void *dst_address)
+pipe_build_rewrite (vnet_main_t *vnm, u32 sw_if_index, vnet_link_t link_type,
+		    const void *dst_address)
 {
   ethernet_header_t *h;
   ethernet_type_t type;
@@ -65,11 +64,14 @@ pipe_build_rewrite (vnet_main_t * vnm,
 
   switch (link_type)
     {
-#define _(a,b) case VNET_LINK_##a: type = ETHERNET_TYPE_##b; break
-      _(IP4, IP4);
-      _(IP6, IP6);
-      _(MPLS, MPLS);
-      _(ARP, ARP);
+#define _(a, b)                                                               \
+  case VNET_LINK_##a:                                                         \
+    type = ETHERNET_TYPE_##b;                                                 \
+    break
+      _ (IP4, IP4);
+      _ (IP6, IP6);
+      _ (MPLS, MPLS);
+      _ (ARP, ARP);
 #undef _
     default:
       return NULL;
@@ -83,13 +85,11 @@ pipe_build_rewrite (vnet_main_t * vnm,
   return (rewrite);
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (pipe_hw_interface_class) = {
   .name = "Pipe",
   .build_rewrite = pipe_build_rewrite,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
-/* *INDENT-ON* */
 
 pipe_t *
 pipe_get (u32 sw_if_index)
@@ -100,7 +100,7 @@ pipe_get (u32 sw_if_index)
 }
 
 uword
-unformat_pipe_interface (unformat_input_t * input, va_list * args)
+unformat_pipe_interface (unformat_input_t *input, va_list *args)
 {
   vnet_main_t *vnm = va_arg (*args, vnet_main_t *);
   u32 *result = va_arg (*args, u32 *);
@@ -127,7 +127,7 @@ unformat_pipe_interface (unformat_input_t * input, va_list * args)
  * swapped to the RX.
  */
 static uword
-pipe_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+pipe_tx (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, n_left_to_next, n_copy, *from, *to_next;
   u32 next_index = VNET_PIPE_TX_NEXT_ETHERNET_INPUT;
@@ -171,48 +171,42 @@ pipe_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 }
 
 static u8 *
-format_pipe_name (u8 * s, va_list * args)
+format_pipe_name (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   return format (s, "pipe%d", dev_instance);
 }
 
 static clib_error_t *
-pipe_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+pipe_admin_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 {
   vnet_hw_interface_t *hi;
   u32 id, sw_if_index;
 
   u32 hw_flags = ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ?
-		  VNET_HW_INTERFACE_FLAG_LINK_UP : 0);
+		    VNET_HW_INTERFACE_FLAG_LINK_UP :
+		    0);
   vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
 
-  /* *INDENT-OFF* */
   hi = vnet_get_hw_interface (vnm, hw_if_index);
   hash_foreach (id, sw_if_index, hi->sub_interface_sw_if_index_by_id,
-  ({
-    vnet_sw_interface_set_flags (vnm, sw_if_index, flags);
-  }));
-  /* *INDENT-ON* */
+		({ vnet_sw_interface_set_flags (vnm, sw_if_index, flags); }));
 
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (pipe_device_class) = {
   .name = "Pipe",
   .format_device_name = format_pipe_name,
   .tx_function = pipe_tx,
   .admin_up_down_function = pipe_admin_up_down,
 };
-/* *INDENT-ON* */
 
-#define foreach_pipe_rx_next                    \
-  _ (DROP, "error-drop")
+#define foreach_pipe_rx_next _ (DROP, "error-drop")
 
 typedef enum pipe_rx_next_t_
 {
-#define _(s,n) PIPE_RX_NEXT_##s,
+#define _(s, n) PIPE_RX_NEXT_##s,
   foreach_pipe_rx_next
 #undef _
     PIPE_RX_N_NEXT,
@@ -224,7 +218,7 @@ typedef struct pipe_rx_trace_t_
 } pipe_rx_trace_t;
 
 static u8 *
-format_pipe_rx_trace (u8 * s, va_list * va)
+format_pipe_rx_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
@@ -240,10 +234,8 @@ format_pipe_rx_trace (u8 * s, va_list * va)
  * next node mechanism
  */
 static_always_inline void
-pipe_determine_next_node (ethernet_main_t * em,
-			  u32 is_l20,
-			  u32 type0,
-			  vlib_buffer_t * b0, pipe_rx_next_t * next0)
+pipe_determine_next_node (ethernet_main_t *em, u32 is_l20, u32 type0,
+			  vlib_buffer_t *b0, pipe_rx_next_t *next0)
 {
   if (is_l20)
     {
@@ -260,7 +252,6 @@ pipe_determine_next_node (ethernet_main_t * em,
   else if (type0 == ETHERNET_TYPE_MPLS)
     {
       *next0 = em->l3_next.input_next_mpls;
-
     }
   else if (em->redirect_l3)
     {
@@ -284,8 +275,7 @@ pipe_determine_next_node (ethernet_main_t * em,
 }
 
 static_always_inline uword
-pipe_rx (vlib_main_t * vm,
-	 vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+pipe_rx (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   u32 n_left_from, next_index, *from, *to_next;
   u32 n_left_to_next;
@@ -294,11 +284,8 @@ pipe_rx (vlib_main_t * vm,
   n_left_from = from_frame->n_vectors;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    vlib_trace_frame_buffers_only (vm, node,
-				   from,
-				   n_left_from,
-				   sizeof (from[0]),
-				   sizeof (pipe_rx_trace_t));
+    vlib_trace_frame_buffers_only (vm, node, from, n_left_from,
+				   sizeof (from[0]), sizeof (pipe_rx_trace_t));
 
   next_index = node->cached_next_index;
 
@@ -356,12 +343,10 @@ pipe_rx (vlib_main_t * vm,
 	    vnet_buffer (b0)->l2_hdr_offset + sizeof (ethernet_header_t);
 	  vnet_buffer (b1)->l3_hdr_offset =
 	    vnet_buffer (b1)->l2_hdr_offset + sizeof (ethernet_header_t);
-	  b0->flags |=
-	    VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
-	    VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
-	  b1->flags |=
-	    VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
-	    VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+	  b0->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		       VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+	  b1->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		       VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
 	  is_l20 = pipe0->subint.flags & SUBINT_CONFIG_L2;
 	  is_l21 = pipe1->subint.flags & SUBINT_CONFIG_L2;
@@ -375,14 +360,12 @@ pipe_rx (vlib_main_t * vm,
 	  vlib_buffer_advance (b0, is_l20 ? 0 : sizeof (ethernet_header_t));
 	  vlib_buffer_advance (b1, is_l21 ? 0 : sizeof (ethernet_header_t));
 
-	  pipe_determine_next_node (&ethernet_main, is_l20, type0, b0,
-				    &next0);
-	  pipe_determine_next_node (&ethernet_main, is_l21, type1, b1,
-				    &next1);
+	  pipe_determine_next_node (&ethernet_main, is_l20, type0, b0, &next0);
+	  pipe_determine_next_node (&ethernet_main, is_l21, type1, b1, &next1);
 
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
@@ -411,21 +394,18 @@ pipe_rx (vlib_main_t * vm,
 	  vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
 	  vnet_buffer (b0)->l3_hdr_offset =
 	    vnet_buffer (b0)->l2_hdr_offset + sizeof (ethernet_header_t);
-	  b0->flags |=
-	    VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
-	    VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+	  b0->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		       VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
 	  is_l20 = pipe0->subint.flags & SUBINT_CONFIG_L2;
 
 	  vnet_buffer (b0)->l2.l2_len = sizeof (ethernet_header_t);
 	  vlib_buffer_advance (b0, is_l20 ? 0 : sizeof (ethernet_header_t));
 
-	  pipe_determine_next_node (&ethernet_main, is_l20, type0, b0,
-				    &next0);
+	  pipe_determine_next_node (&ethernet_main, is_l20, type0, b0, &next0);
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -434,7 +414,6 @@ pipe_rx (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (pipe_rx_node) = {
   .function = pipe_rx,
   .name = "pipe-rx",
@@ -444,12 +423,11 @@ VLIB_REGISTER_NODE (pipe_rx_node) = {
 
   .sibling_of = "ethernet-input",
 };
-/* *INDENT-ON* */
 
 /*
  * Maintain a bitmap of allocated pipe instance numbers.
  */
-#define PIPE_MAX_INSTANCE		(16 * 1024)
+#define PIPE_MAX_INSTANCE (16 * 1024)
 
 static u32
 pipe_instance_alloc (u8 is_specified, u32 want)
@@ -512,8 +490,8 @@ pipe_instance_free (u32 instance)
 }
 
 static clib_error_t *
-pipe_create_sub_interface (vnet_hw_interface_t * hi,
-			   u32 sub_id, u32 * sw_if_index)
+pipe_create_sub_interface (vnet_hw_interface_t *hi, u32 sub_id,
+			   u32 *sw_if_index)
 {
   vnet_sw_interface_t template;
 
@@ -523,14 +501,12 @@ pipe_create_sub_interface (vnet_hw_interface_t * hi,
   template.sup_sw_if_index = hi->sw_if_index;
   template.sub.id = sub_id;
 
-  return (vnet_create_sw_interface (vnet_get_main (),
-				    &template, sw_if_index));
+  return (vnet_create_sw_interface (vnet_get_main (), &template, sw_if_index));
 }
 
 int
-vnet_create_pipe_interface (u8 is_specified,
-			    u32 user_instance,
-			    u32 * parent_sw_if_index, u32 pipe_sw_if_index[2])
+vnet_create_pipe_interface (u8 is_specified, u32 user_instance,
+			    u32 *parent_sw_if_index, u32 pipe_sw_if_index[2])
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
@@ -564,8 +540,8 @@ vnet_create_pipe_interface (u8 is_specified,
    */
   address[5] = instance;
 
-  error = ethernet_register_interface (vnm, pipe_device_class.index,
-				       instance, address, &hw_if_index,
+  error = ethernet_register_interface (vnm, pipe_device_class.index, instance,
+				       address, &hw_if_index,
 				       /* flag change */ 0);
 
   if (error)
@@ -576,8 +552,7 @@ vnet_create_pipe_interface (u8 is_specified,
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
   *parent_sw_if_index = hi->sw_if_index;
-  slot = vlib_node_add_named_next_with_slot (vm, hi->tx_node_index,
-					     "pipe-rx",
+  slot = vlib_node_add_named_next_with_slot (vm, hi->tx_node_index, "pipe-rx",
 					     VNET_PIPE_TX_NEXT_ETHERNET_INPUT);
   ASSERT (slot == VNET_PIPE_TX_NEXT_ETHERNET_INPUT);
 
@@ -597,10 +572,8 @@ vnet_create_pipe_interface (u8 is_specified,
   hash_set (hi->sub_interface_sw_if_index_by_id, 0, pipe_sw_if_index[0]);
   hash_set (hi->sub_interface_sw_if_index_by_id, 1, pipe_sw_if_index[1]);
 
-  vec_validate_init_empty (pipe_main.pipes, pipe_sw_if_index[0],
-			   PIPE_INVALID);
-  vec_validate_init_empty (pipe_main.pipes, pipe_sw_if_index[1],
-			   PIPE_INVALID);
+  vec_validate_init_empty (pipe_main.pipes, pipe_sw_if_index[0], PIPE_INVALID);
+  vec_validate_init_empty (pipe_main.pipes, pipe_sw_if_index[1], PIPE_INVALID);
 
   pipe_main.pipes[pipe_sw_if_index[0]].sw_if_index = pipe_sw_if_index[1];
   pipe_main.pipes[pipe_sw_if_index[1]].sw_if_index = pipe_sw_if_index[0];
@@ -619,7 +592,7 @@ typedef struct pipe_hw_walk_ctx_t_
 } pipe_hw_walk_ctx_t;
 
 static walk_rc_t
-pipe_hw_walk (vnet_main_t * vnm, u32 hw_if_index, void *args)
+pipe_hw_walk (vnet_main_t *vnm, u32 hw_if_index, void *args)
 {
   vnet_hw_interface_t *hi;
   pipe_hw_walk_ctx_t *ctx;
@@ -631,13 +604,10 @@ pipe_hw_walk (vnet_main_t * vnm, u32 hw_if_index, void *args)
     {
       u32 pipe_sw_if_index[2], id, sw_if_index;
 
-      /* *INDENT-OFF* */
-      hash_foreach (id, sw_if_index, hi->sub_interface_sw_if_index_by_id,
-      ({
-        ASSERT(id < 2);
-        pipe_sw_if_index[id] = sw_if_index;
-      }));
-      /* *INDENT-ON* */
+      hash_foreach (id, sw_if_index, hi->sub_interface_sw_if_index_by_id, ({
+		      ASSERT (id < 2);
+		      pipe_sw_if_index[id] = sw_if_index;
+		    }));
 
       ctx->cb (hi->sw_if_index, pipe_sw_if_index, hi->dev_instance, ctx->ctx);
     }
@@ -659,8 +629,8 @@ pipe_walk (pipe_cb_fn_t fn, void *ctx)
 }
 
 static clib_error_t *
-create_pipe_interfaces (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+create_pipe_interfaces (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   int rv;
   u32 sw_if_index;
@@ -676,14 +646,14 @@ create_pipe_interfaces (vlib_main_t * vm,
 	break;
     }
 
-  rv = vnet_create_pipe_interface (is_specified, user_instance,
-				   &sw_if_index, pipe_sw_if_index);
+  rv = vnet_create_pipe_interface (is_specified, user_instance, &sw_if_index,
+				   pipe_sw_if_index);
 
   if (rv)
     return clib_error_return (0, "vnet_create_pipe_interface failed");
 
-  vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name,
-		   vnet_get_main (), sw_if_index);
+  vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main (),
+		   sw_if_index);
   return 0;
 }
 
@@ -696,13 +666,12 @@ create_pipe_interfaces (vlib_main_t * vm,
  * Example of how to create a pipe interface:
  * @cliexcmd{pipe create}
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (pipe_create_interface_command, static) = {
   .path = "pipe create",
   .short_help = "pipe create [instance <instance>]",
   .function = create_pipe_interfaces,
 };
-/* *INDENT-ON* */
 
 int
 vnet_delete_pipe_interface (u32 sw_if_index)
@@ -726,13 +695,10 @@ vnet_delete_pipe_interface (u32 sw_if_index)
       return VNET_API_ERROR_INVALID_SW_IF_INDEX;
     }
 
-  /* *INDENT-OFF* */
-  hash_foreach (id, sw_if_index, hi->sub_interface_sw_if_index_by_id,
-  ({
-    vnet_delete_sub_interface(sw_if_index);
-    pipe_main.pipes[sw_if_index] = PIPE_INVALID;
-  }));
-  /* *INDENT-ON* */
+  hash_foreach (id, sw_if_index, hi->sub_interface_sw_if_index_by_id, ({
+		  vnet_delete_sub_interface (sw_if_index);
+		  pipe_main.pipes[sw_if_index] = PIPE_INVALID;
+		}));
 
   ethernet_delete_interface (vnm, hw_if_index);
 
@@ -740,8 +706,8 @@ vnet_delete_pipe_interface (u32 sw_if_index)
 }
 
 static clib_error_t *
-delete_pipe_interfaces (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+delete_pipe_interfaces (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index = ~0;
@@ -749,8 +715,8 @@ delete_pipe_interfaces (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U",
-		    unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else
 	break;
@@ -776,13 +742,12 @@ delete_pipe_interfaces (vlib_main_t * vm,
  * Example of how to delete a pipe interface:
  * @cliexcmd{pipe delete-interface intfc loop0}
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (pipe_delete_interface_command, static) = {
   .path = "pipe delete",
   .short_help = "pipe delete <interface>",
   .function = delete_pipe_interfaces,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

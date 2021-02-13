@@ -48,7 +48,7 @@ extern vnet_hw_interface_class_t ppp_hw_interface_class;
 
 typedef enum
 {
-#define ppp_error(n,s) PPP_ERROR_##n,
+#define ppp_error(n, s) PPP_ERROR_##n,
 #include <vnet/ppp/error.def>
 #undef ppp_error
   PPP_N_ERROR,
@@ -80,7 +80,7 @@ typedef struct
 } ppp_main_t;
 
 always_inline ppp_protocol_info_t *
-ppp_get_protocol_info (ppp_main_t * em, ppp_protocol_t protocol)
+ppp_get_protocol_info (ppp_main_t *em, ppp_protocol_t protocol)
 {
   uword *p = hash_get (em->protocol_info_by_protocol, protocol);
   return p ? vec_elt_at_index (em->protocol_infos, p[0]) : 0;
@@ -89,9 +89,8 @@ ppp_get_protocol_info (ppp_main_t * em, ppp_protocol_t protocol)
 extern ppp_main_t ppp_main;
 
 /* Register given node index to take input for given ppp type. */
-void
-ppp_register_input_type (vlib_main_t * vm,
-			 ppp_protocol_t protocol, u32 node_index);
+void ppp_register_input_type (vlib_main_t *vm, ppp_protocol_t protocol,
+			      u32 node_index);
 
 format_function_t format_ppp_protocol;
 format_function_t format_ppp_header;
@@ -107,7 +106,7 @@ unformat_function_t unformat_ppp_header;
 unformat_function_t unformat_pg_ppp_header;
 
 always_inline void
-ppp_setup_node (vlib_main_t * vm, u32 node_index)
+ppp_setup_node (vlib_main_t *vm, u32 node_index)
 {
   vlib_node_t *n = vlib_get_node (vm, node_index);
   pg_node_t *pn = pg_get_node (node_index);
@@ -117,9 +116,8 @@ ppp_setup_node (vlib_main_t * vm, u32 node_index)
   pn->unformat_edit = unformat_pg_ppp_header;
 }
 
-void
-ppp_register_input_protocol (vlib_main_t * vm,
-			     ppp_protocol_t protocol, u32 node_index);
+void ppp_register_input_protocol (vlib_main_t *vm, ppp_protocol_t protocol,
+				  u32 node_index);
 
 #endif /* included_ppp_h */
 

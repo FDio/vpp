@@ -28,11 +28,11 @@
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>
 
-#define foreach_esp_encrypt_next                   \
-_(DROP, "error-drop")                              \
-_(IP4_LOOKUP, "ip4-lookup")                        \
-_(IP6_LOOKUP, "ip6-lookup")                        \
-_(INTERFACE_OUTPUT, "interface-output")
+#define foreach_esp_encrypt_next                                              \
+  _ (DROP, "error-drop")                                                      \
+  _ (IP4_LOOKUP, "ip4-lookup")                                                \
+  _ (IP6_LOOKUP, "ip6-lookup")                                                \
+  _ (INTERFACE_OUTPUT, "interface-output")
 
 #define _(v, s) ESP_ENCRYPT_NEXT_##v,
 typedef enum
@@ -42,25 +42,24 @@ typedef enum
     ESP_ENCRYPT_N_NEXT,
 } esp_encrypt_next_t;
 
-#define foreach_esp_encrypt_error                   \
- _(RX_PKTS, "ESP pkts received")                    \
- _(SEQ_CYCLED, "Sequence number cycled")            \
- _(ENQ_FAIL, "Enqueue encrypt failed (queue full)")     \
- _(DISCARD, "Not enough crypto operations")         \
- _(SESSION, "Failed to get crypto session")         \
- _(NOSUP, "Cipher/Auth not supported")
-
+#define foreach_esp_encrypt_error                                             \
+  _ (RX_PKTS, "ESP pkts received")                                            \
+  _ (SEQ_CYCLED, "Sequence number cycled")                                    \
+  _ (ENQ_FAIL, "Enqueue encrypt failed (queue full)")                         \
+  _ (DISCARD, "Not enough crypto operations")                                 \
+  _ (SESSION, "Failed to get crypto session")                                 \
+  _ (NOSUP, "Cipher/Auth not supported")
 
 typedef enum
 {
-#define _(sym,str) ESP_ENCRYPT_ERROR_##sym,
+#define _(sym, str) ESP_ENCRYPT_ERROR_##sym,
   foreach_esp_encrypt_error
 #undef _
     ESP_ENCRYPT_N_ERROR,
 } esp_encrypt_error_t;
 
 static char *esp_encrypt_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_esp_encrypt_error
 #undef _
 };
@@ -79,7 +78,7 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_esp_encrypt_trace (u8 * s, va_list * args)
+format_esp_encrypt_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -87,33 +86,31 @@ format_esp_encrypt_trace (u8 * s, va_list * args)
   ip4_header_t *ih4 = (ip4_header_t *) t->packet_data;
   u32 indent = format_get_indent (s), offset;
 
-  s = format (s, "cipher %U auth %U\n",
-	      format_ipsec_crypto_alg, t->crypto_alg,
+  s = format (s, "cipher %U auth %U\n", format_ipsec_crypto_alg, t->crypto_alg,
 	      format_ipsec_integ_alg, t->integ_alg);
 
   if ((ih4->ip_version_and_header_length & 0xF0) == 0x60)
     {
-      s = format (s, "%U%U", format_white_space, indent,
-		  format_ip6_header, ih4);
+      s =
+	format (s, "%U%U", format_white_space, indent, format_ip6_header, ih4);
       offset = sizeof (ip6_header_t);
     }
   else
     {
-      s = format (s, "%U%U", format_white_space, indent,
-		  format_ip4_header, ih4);
+      s =
+	format (s, "%U%U", format_white_space, indent, format_ip4_header, ih4);
       offset = ip4_header_bytes (ih4);
     }
 
-  s = format (s, "\n%U%U", format_white_space, indent,
-	      format_esp_header, t->packet_data + offset);
+  s = format (s, "\n%U%U", format_white_space, indent, format_esp_header,
+	      t->packet_data + offset);
 
   return s;
 }
 
 always_inline uword
-dpdk_esp_encrypt_inline (vlib_main_t * vm,
-			 vlib_node_runtime_t * node,
-			 vlib_frame_t * from_frame, int is_ip6, int is_tun)
+dpdk_esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			 vlib_frame_t *from_frame, int is_ip6, int is_tun)
 {
   u32 n_left_from, *from, *to_next, next_index, thread_index;
   ipsec_main_t *im = &ipsec_main;
@@ -128,8 +125,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
   u32 ret, last_sa_index = ~0;
   u8 numa = rte_socket_id ();
   u8 is_aead = 0;
-  crypto_worker_main_t *cwm =
-    vec_elt_at_index (dcm->workers_main, thread_idx);
+  crypto_worker_main_t *cwm = vec_elt_at_index (dcm->workers_main, thread_idx);
   struct rte_crypto_op **ops = cwm->ops;
 
   from = vlib_frame_vector_args (from_frame);
@@ -220,9 +216,9 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  if (is_tun)
 	    {
 	      /* we are on a ipsec tunnel's feature arc */
-	      vnet_buffer (b0)->ipsec.sad_index =
-		sa_index0 = ipsec_tun_protect_get_sa_out
-		(vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	      vnet_buffer (b0)->ipsec.sad_index = sa_index0 =
+		ipsec_tun_protect_get_sa_out (
+		  vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 	    }
 	  else
 	    sa_index0 = vnet_buffer (b0)->ipsec.sad_index;
@@ -242,7 +238,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 
 	      res_idx = get_resource (cwm, sa0);
 
-	      if (PREDICT_FALSE (res_idx == (u16) ~ 0))
+	      if (PREDICT_FALSE (res_idx == (u16) ~0))
 		{
 		  if (is_ip6)
 		    vlib_node_increment_counter (vm,
@@ -265,13 +261,11 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 		  if (is_ip6)
 		    vlib_node_increment_counter (vm,
 						 dpdk_esp6_encrypt_node.index,
-						 ESP_ENCRYPT_ERROR_SESSION,
-						 1);
+						 ESP_ENCRYPT_ERROR_SESSION, 1);
 		  else
 		    vlib_node_increment_counter (vm,
 						 dpdk_esp4_encrypt_node.index,
-						 ESP_ENCRYPT_ERROR_SESSION,
-						 1);
+						 ESP_ENCRYPT_ERROR_SESSION, 1);
 		  to_next[0] = bi0;
 		  to_next += 1;
 		  n_left_to_next -= 1;
@@ -284,14 +278,12 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  if (PREDICT_FALSE (esp_seq_advance (sa0)))
 	    {
 	      if (is_ip6)
-		vlib_node_increment_counter (vm,
-					     dpdk_esp6_encrypt_node.index,
+		vlib_node_increment_counter (vm, dpdk_esp6_encrypt_node.index,
 					     ESP_ENCRYPT_ERROR_SEQ_CYCLED, 1);
 	      else
-		vlib_node_increment_counter (vm,
-					     dpdk_esp4_encrypt_node.index,
+		vlib_node_increment_counter (vm, dpdk_esp4_encrypt_node.index,
 					     ESP_ENCRYPT_ERROR_SEQ_CYCLED, 1);
-	      //TODO: rekey SA
+	      // TODO: rekey SA
 	      to_next[0] = bi0;
 	      to_next += 1;
 	      n_left_to_next -= 1;
@@ -300,17 +292,17 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 
 	  orig_sz = b0->current_length;
 
-	  /* TODO multi-seg support - total_length_not_including_first_buffer */
-	  vlib_increment_combined_counter
-	    (&ipsec_sa_counters, thread_index, sa_index0,
-	     1, b0->current_length);
+	  /* TODO multi-seg support - total_length_not_including_first_buffer
+	   */
+	  vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
+					   sa_index0, 1, b0->current_length);
 
 	  /* Update tunnel interface tx counters */
 	  if (is_tun)
-	    vlib_increment_combined_counter
-	      (vim->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
-	       thread_index, vnet_buffer (b0)->sw_if_index[VLIB_TX],
-	       1, b0->current_length);
+	    vlib_increment_combined_counter (
+	      vim->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
+	      thread_index, vnet_buffer (b0)->sw_if_index[VLIB_TX], 1,
+	      b0->current_length);
 
 	  res->ops[res->n_ops] = op;
 	  res->bi[res->n_ops] = bi0;
@@ -323,24 +315,25 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  iv_size = cipher_alg->iv_len;
 	  trunc_size = auth_alg->trunc_size;
 
-	  /* if UDP encapsulation is used adjust the address of the IP header */
+	  /* if UDP encapsulation is used adjust the address of the IP header
+	   */
 	  if (ipsec_sa_is_set_UDP_ENCAP (sa0) && !is_ip6)
 	    udp_encap_adv = sizeof (udp_header_t);
 
 	  if (ipsec_sa_is_set_IS_TUNNEL (sa0))
 	    {
 	      rewrite_len = 0;
-	      if (!ipsec_sa_is_set_IS_TUNNEL_V6 (sa0))	/* ip4 */
+	      if (!ipsec_sa_is_set_IS_TUNNEL_V6 (sa0)) /* ip4 */
 		{
 		  /* in tunnel mode send it back to FIB */
 		  priv->next = DPDK_CRYPTO_INPUT_NEXT_IP4_LOOKUP;
 		  u8 adv = sizeof (ip4_header_t) + udp_encap_adv +
-		    sizeof (esp_header_t) + iv_size;
+			   sizeof (esp_header_t) + iv_size;
 		  vlib_buffer_advance (b0, -adv);
 		  oh0 = vlib_buffer_get_current (b0);
 		  ouh0 = vlib_buffer_get_current (b0);
-		  next_hdr_type = (is_ip6 ?
-				   IP_PROTOCOL_IPV6 : IP_PROTOCOL_IP_IN_IP);
+		  next_hdr_type =
+		    (is_ip6 ? IP_PROTOCOL_IPV6 : IP_PROTOCOL_IP_IN_IP);
 		  /*
 		   * oh0->ip4.ip_version_and_header_length = 0x45;
 		   * oh0->ip4.tos = ih0->ip4.tos;
@@ -383,8 +376,8 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 		  ih6_0 = (ip6_and_esp_header_t *) ih0;
 		  oh6_0 = vlib_buffer_get_current (b0);
 
-		  next_hdr_type = (is_ip6 ?
-				   IP_PROTOCOL_IPV6 : IP_PROTOCOL_IP_IN_IP);
+		  next_hdr_type =
+		    (is_ip6 ? IP_PROTOCOL_IPV6 : IP_PROTOCOL_IP_IN_IP);
 
 		  oh6_0->ip6.ip_version_traffic_class_and_flow_label =
 		    ih6_0->ip6.ip_version_traffic_class_and_flow_label;
@@ -404,9 +397,9 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 		  oh6_0->esp.seq = clib_host_to_net_u32 (sa0->seq);
 		}
 
-	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~0;
 	    }
-	  else			/* transport mode */
+	  else /* transport mode */
 	    {
 	      if (is_tun)
 		{
@@ -435,7 +428,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 		  oh6_0->ip6.protocol = IP_PROTOCOL_IPSEC_ESP;
 		  esp0 = &oh6_0->esp;
 		}
-	      else		/* ipv4 */
+	      else /* ipv4 */
 		{
 		  u16 ip_size = ip4_header_bytes (&ih0->ip4);
 		  orig_sz -= ip_size;
@@ -446,8 +439,8 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 		  if (ipsec_sa_is_set_UDP_ENCAP (sa0))
 		    {
 		      oh0->ip4.protocol = IP_PROTOCOL_UDP;
-		      esp0 = (esp_header_t *)
-			(((u8 *) oh0) + ip_size + udp_encap_adv);
+		      esp0 = (esp_header_t *) (((u8 *) oh0) + ip_size +
+					       udp_encap_adv);
 		    }
 		  else
 		    {
@@ -494,13 +487,12 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	      oh0->ip4.checksum = ip4_header_checksum (&oh0->ip4);
 	      if (ipsec_sa_is_set_UDP_ENCAP (sa0) && ouh0)
 		{
-		  ouh0->udp.length =
-		    clib_host_to_net_u16 (clib_net_to_host_u16
-					  (ouh0->ip4.length) -
-					  ip4_header_bytes (&ouh0->ip4));
+		  ouh0->udp.length = clib_host_to_net_u16 (
+		    clib_net_to_host_u16 (ouh0->ip4.length) -
+		    ip4_header_bytes (&ouh0->ip4));
 		}
 	    }
-	  else			/* should never happen */
+	  else /* should never happen */
 	    clib_warning ("No outer header found for ESP packet");
 
 	  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
@@ -522,7 +514,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	      cipher_off = sizeof (esp_header_t);
 	      cipher_len = iv_size + pad_payload_len;
 	    }
-	  else			/* CTR/GCM */
+	  else /* CTR/GCM */
 	    {
 	      u32 *esp_iv = (u32 *) (esp0 + 1);
 	      esp_iv[0] = sa0->seq;
@@ -582,26 +574,24 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
   if (is_ip6)
     {
       vlib_node_increment_counter (vm,
-				   (is_tun ?
-				    dpdk_esp6_encrypt_tun_node.index :
-				    dpdk_esp6_encrypt_node.index),
+				   (is_tun ? dpdk_esp6_encrypt_tun_node.index :
+					     dpdk_esp6_encrypt_node.index),
 				   ESP_ENCRYPT_ERROR_RX_PKTS,
 				   from_frame->n_vectors);
 
       crypto_enqueue_ops (vm, cwm, dpdk_esp6_encrypt_node.index,
-			  ESP_ENCRYPT_ERROR_ENQ_FAIL, numa, 1 /* encrypt */ );
+			  ESP_ENCRYPT_ERROR_ENQ_FAIL, numa, 1 /* encrypt */);
     }
   else
     {
       vlib_node_increment_counter (vm,
-				   (is_tun ?
-				    dpdk_esp4_encrypt_tun_node.index :
-				    dpdk_esp4_encrypt_node.index),
+				   (is_tun ? dpdk_esp4_encrypt_tun_node.index :
+					     dpdk_esp4_encrypt_node.index),
 				   ESP_ENCRYPT_ERROR_RX_PKTS,
 				   from_frame->n_vectors);
 
       crypto_enqueue_ops (vm, cwm, dpdk_esp4_encrypt_node.index,
-			  ESP_ENCRYPT_ERROR_ENQ_FAIL, numa, 1 /* encrypt */ );
+			  ESP_ENCRYPT_ERROR_ENQ_FAIL, numa, 1 /* encrypt */);
     }
 
   crypto_free_ops (numa, ops, cwm->ops + from_frame->n_vectors - ops);
@@ -609,97 +599,81 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-VLIB_NODE_FN (dpdk_esp4_encrypt_node) (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * from_frame)
+VLIB_NODE_FN (dpdk_esp4_encrypt_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return dpdk_esp_encrypt_inline (vm, node, from_frame, 0 /*is_ip6 */ , 0);
+  return dpdk_esp_encrypt_inline (vm, node, from_frame, 0 /*is_ip6 */, 0);
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (dpdk_esp4_encrypt_node) = {
-  .name = "dpdk-esp4-encrypt",
-  .flags = VLIB_NODE_FLAG_IS_OUTPUT,
-  .vector_size = sizeof (u32),
-  .format_trace = format_esp_encrypt_trace,
-  .n_errors = ARRAY_LEN (esp_encrypt_error_strings),
-  .error_strings = esp_encrypt_error_strings,
-  .n_next_nodes = 1,
-  .next_nodes =
-    {
-      [ESP_ENCRYPT_NEXT_DROP] = "error-drop",
-    }
-};
-/* *INDENT-ON* */
+VLIB_REGISTER_NODE (
+  dpdk_esp4_encrypt_node) = { .name = "dpdk-esp4-encrypt",
+			      .flags = VLIB_NODE_FLAG_IS_OUTPUT,
+			      .vector_size = sizeof (u32),
+			      .format_trace = format_esp_encrypt_trace,
+			      .n_errors =
+				ARRAY_LEN (esp_encrypt_error_strings),
+			      .error_strings = esp_encrypt_error_strings,
+			      .n_next_nodes = 1,
+			      .next_nodes = {
+				[ESP_ENCRYPT_NEXT_DROP] = "error-drop",
+			      } };
 
-VLIB_NODE_FN (dpdk_esp6_encrypt_node) (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * from_frame)
+VLIB_NODE_FN (dpdk_esp6_encrypt_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return dpdk_esp_encrypt_inline (vm, node, from_frame, 1 /*is_ip6 */ , 0);
+  return dpdk_esp_encrypt_inline (vm, node, from_frame, 1 /*is_ip6 */, 0);
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (dpdk_esp6_encrypt_node) = {
-  .name = "dpdk-esp6-encrypt",
-  .flags = VLIB_NODE_FLAG_IS_OUTPUT,
-  .vector_size = sizeof (u32),
-  .format_trace = format_esp_encrypt_trace,
-  .n_errors = ARRAY_LEN (esp_encrypt_error_strings),
-  .error_strings = esp_encrypt_error_strings,
-  .n_next_nodes = 1,
-  .next_nodes =
-    {
-      [ESP_ENCRYPT_NEXT_DROP] = "error-drop",
-    }
-};
-/* *INDENT-ON* */
+VLIB_REGISTER_NODE (
+  dpdk_esp6_encrypt_node) = { .name = "dpdk-esp6-encrypt",
+			      .flags = VLIB_NODE_FLAG_IS_OUTPUT,
+			      .vector_size = sizeof (u32),
+			      .format_trace = format_esp_encrypt_trace,
+			      .n_errors =
+				ARRAY_LEN (esp_encrypt_error_strings),
+			      .error_strings = esp_encrypt_error_strings,
+			      .n_next_nodes = 1,
+			      .next_nodes = {
+				[ESP_ENCRYPT_NEXT_DROP] = "error-drop",
+			      } };
 
-VLIB_NODE_FN (dpdk_esp4_encrypt_tun_node) (vlib_main_t * vm,
-					   vlib_node_runtime_t * node,
-					   vlib_frame_t * from_frame)
+VLIB_NODE_FN (dpdk_esp4_encrypt_tun_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return dpdk_esp_encrypt_inline (vm, node, from_frame, 0 /*is_ip6 */ , 1);
+  return dpdk_esp_encrypt_inline (vm, node, from_frame, 0 /*is_ip6 */, 1);
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (dpdk_esp4_encrypt_tun_node) = {
-  .name = "dpdk-esp4-encrypt-tun",
-  .flags = VLIB_NODE_FLAG_IS_OUTPUT,
-  .vector_size = sizeof (u32),
-  .format_trace = format_esp_encrypt_trace,
-  .n_errors = ARRAY_LEN (esp_encrypt_error_strings),
-  .error_strings = esp_encrypt_error_strings,
-  .n_next_nodes = 1,
-  .next_nodes =
-    {
-      [ESP_ENCRYPT_NEXT_DROP] = "error-drop",
-    }
-};
-/* *INDENT-ON* */
+VLIB_REGISTER_NODE (
+  dpdk_esp4_encrypt_tun_node) = { .name = "dpdk-esp4-encrypt-tun",
+				  .flags = VLIB_NODE_FLAG_IS_OUTPUT,
+				  .vector_size = sizeof (u32),
+				  .format_trace = format_esp_encrypt_trace,
+				  .n_errors =
+				    ARRAY_LEN (esp_encrypt_error_strings),
+				  .error_strings = esp_encrypt_error_strings,
+				  .n_next_nodes = 1,
+				  .next_nodes = {
+				    [ESP_ENCRYPT_NEXT_DROP] = "error-drop",
+				  } };
 
-VLIB_NODE_FN (dpdk_esp6_encrypt_tun_node) (vlib_main_t * vm,
-					   vlib_node_runtime_t * node,
-					   vlib_frame_t * from_frame)
+VLIB_NODE_FN (dpdk_esp6_encrypt_tun_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return dpdk_esp_encrypt_inline (vm, node, from_frame, 1 /*is_ip6 */ , 1);
+  return dpdk_esp_encrypt_inline (vm, node, from_frame, 1 /*is_ip6 */, 1);
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (dpdk_esp6_encrypt_tun_node) = {
-  .name = "dpdk-esp6-encrypt-tun",
-  .flags = VLIB_NODE_FLAG_IS_OUTPUT,
-  .vector_size = sizeof (u32),
-  .format_trace = format_esp_encrypt_trace,
-  .n_errors = ARRAY_LEN (esp_encrypt_error_strings),
-  .error_strings = esp_encrypt_error_strings,
-  .n_next_nodes = 1,
-  .next_nodes =
-    {
-      [ESP_ENCRYPT_NEXT_DROP] = "error-drop",
-    }
-};
-/* *INDENT-ON* */
+VLIB_REGISTER_NODE (
+  dpdk_esp6_encrypt_tun_node) = { .name = "dpdk-esp6-encrypt-tun",
+				  .flags = VLIB_NODE_FLAG_IS_OUTPUT,
+				  .vector_size = sizeof (u32),
+				  .format_trace = format_esp_encrypt_trace,
+				  .n_errors =
+				    ARRAY_LEN (esp_encrypt_error_strings),
+				  .error_strings = esp_encrypt_error_strings,
+				  .n_next_nodes = 1,
+				  .next_nodes = {
+				    [ESP_ENCRYPT_NEXT_DROP] = "error-drop",
+				  } };
 
 /*
  * fd.io coding-style-patch-verification: ON

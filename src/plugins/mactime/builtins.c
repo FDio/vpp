@@ -16,8 +16,8 @@ mactime_ip_neighbor_copy (index_t ipni, void *ctx)
 }
 
 static int
-handle_get_mactime (http_builtin_method_type_t reqtype,
-		    u8 * request, http_session_t * hs)
+handle_get_mactime (http_builtin_method_type_t reqtype, u8 *request,
+		    http_session_t *hs)
 {
   mactime_main_t *mm = &mactime_main;
   mactime_device_t *dp;
@@ -42,12 +42,10 @@ handle_get_mactime (http_builtin_method_type_t reqtype,
   if (PREDICT_FALSE ((now - mm->sunday_midnight) > 86400.0 * 7.0))
     mm->sunday_midnight = clib_timebase_find_sunday_midnight (now);
 
-    /* *INDENT-OFF* */
-    pool_foreach (dp, mm->devices)
-     {
-        vec_add1 (pool_indices, dp - mm->devices);
+  pool_foreach (dp, mm->devices)
+    {
+      vec_add1 (pool_indices, dp - mm->devices);
     }
-    /* *INDENT-ON* */
 
   s = format (s, "{%smactime%s: [\n", q, q);
 
@@ -124,8 +122,8 @@ handle_get_mactime (http_builtin_method_type_t reqtype,
       vlib_get_combined_counter (&mm->allow_counters, dp - mm->devices,
 				 &allow);
       vlib_get_combined_counter (&mm->drop_counters, dp - mm->devices, &drop);
-      s = format (s, "%sname%s: %s%s%s, %sstatus%s: %s%s%s,",
-		  q, q, q, dp->device_name, q, q, q, q, status_string, q);
+      s = format (s, "%sname%s: %s%s%s, %sstatus%s: %s%s%s,", q, q, q,
+		  dp->device_name, q, q, q, q, status_string, q);
       s = format (s, "%sallow_pkts%s: %lld,", q, q, allow.packets);
       s = format (s, "%sallow_bytes%s: %lld,", q, q, allow.bytes);
       s = format (s, "%sdrop_pkts%s: %lld", q, q, drop.packets);
@@ -133,12 +131,12 @@ handle_get_mactime (http_builtin_method_type_t reqtype,
       for (j = 0; j < vec_len (mm->arp_cache_copy); j++)
 	{
 	  n = ip_neighbor_get (mm->arp_cache_copy[j]);
-	  if (!memcmp (dp->mac_address,
-		       ip_neighbor_get_mac (n), sizeof (mac_address_t)))
+	  if (!memcmp (dp->mac_address, ip_neighbor_get_mac (n),
+		       sizeof (mac_address_t)))
 	    {
-	      s = format (s, ", %sip4_address%s: %s%U%s", q, q,
-			  q, format_ip46_address,
-			  ip_neighbor_get_ip (n), IP46_TYPE_IP4, q);
+	      s = format (s, ", %sip4_address%s: %s%U%s", q, q, q,
+			  format_ip46_address, ip_neighbor_get_ip (n),
+			  IP46_TYPE_IP4, q);
 	      break;
 	    }
 	}
@@ -157,7 +155,7 @@ handle_get_mactime (http_builtin_method_type_t reqtype,
 }
 
 void
-mactime_url_init (vlib_main_t * vm)
+mactime_url_init (vlib_main_t *vm)
 {
   void (*fp) (void *, char *, int);
 

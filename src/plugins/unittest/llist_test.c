@@ -15,25 +15,27 @@
 #include <vppinfra/llist.h>
 #include <vlib/vlib.h>
 
-#define LLIST_TEST_I(_cond, _comment, _args...)			\
-({								\
-  int _evald = (_cond);						\
-  if (!(_evald)) {						\
-    fformat(stderr, "FAIL:%d: " _comment "\n",			\
-	    __LINE__, ##_args);					\
-  } else {							\
-    fformat(stderr, "PASS:%d: " _comment "\n",			\
-	    __LINE__, ##_args);					\
-  }								\
-  _evald;							\
-})
+#define LLIST_TEST_I(_cond, _comment, _args...)                               \
+  ({                                                                          \
+    int _evald = (_cond);                                                     \
+    if (!(_evald))                                                            \
+      {                                                                       \
+	fformat (stderr, "FAIL:%d: " _comment "\n", __LINE__, ##_args);       \
+      }                                                                       \
+    else                                                                      \
+      {                                                                       \
+	fformat (stderr, "PASS:%d: " _comment "\n", __LINE__, ##_args);       \
+      }                                                                       \
+    _evald;                                                                   \
+  })
 
-#define LLIST_TEST(_cond, _comment, _args...)			\
-{								\
-    if (!LLIST_TEST_I(_cond, _comment, ##_args)) {		\
-	return 1;                                               \
-    }								\
-}
+#define LLIST_TEST(_cond, _comment, _args...)                                 \
+  {                                                                           \
+    if (!LLIST_TEST_I (_cond, _comment, ##_args))                             \
+      {                                                                       \
+	return 1;                                                             \
+      }                                                                       \
+  }
 
 typedef struct list_elt
 {
@@ -42,29 +44,30 @@ typedef struct list_elt
   u32 data;
 } list_elt_t;
 
-#define list_elt_is_sane(pl,name,E,P,N)					\
- (E->name.next == (N) - pl 						\
-  && E->name.prev == (P) - pl 						\
-  && P->name.next == (E) - pl 						\
-  && N->name.prev == (E) - pl)
+#define list_elt_is_sane(pl, name, E, P, N)                                   \
+  (E->name.next == (N) -pl && E->name.prev == (P) -pl &&                      \
+   P->name.next == (E) -pl && N->name.prev == (E) -pl)
 
-#define list_test_is_sane(pl,name,h)					\
-do {									\
-  typeof (pl) e;							\
-  int rv;								\
-  clib_llist_foreach (pl, name, h, e, ({					\
-    rv = list_elt_is_sane ((pl), name, (e),				\
-			   clib_llist_prev (pl,name,e),			\
-                           clib_llist_next (pl,name,e));			\
-    if (!rv)								\
-      LLIST_TEST (0, "invalid elt %u prev %u/%u next %u/%u", e - pl, 	\
-                  e->name.prev, clib_llist_prev (pl,name,e) - pl,		\
-                  e->name.next, clib_llist_next (pl,name,e) - pl);		\
-  }));									\
-} while (0)
+#define list_test_is_sane(pl, name, h)                                        \
+  do                                                                          \
+    {                                                                         \
+      typeof (pl) e;                                                          \
+      int rv;                                                                 \
+      clib_llist_foreach (                                                    \
+	pl, name, h, e, ({                                                    \
+	  rv =                                                                \
+	    list_elt_is_sane ((pl), name, (e), clib_llist_prev (pl, name, e), \
+			      clib_llist_next (pl, name, e));                 \
+	  if (!rv)                                                            \
+	    LLIST_TEST (0, "invalid elt %u prev %u/%u next %u/%u", e - pl,    \
+			e->name.prev, clib_llist_prev (pl, name, e) - pl,     \
+			e->name.next, clib_llist_next (pl, name, e) - pl);    \
+	}));                                                                  \
+    }                                                                         \
+  while (0)
 
 static int
-llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
+llist_test_basic (vlib_main_t *vm, unformat_input_t *input)
 {
   list_elt_t *pelts = 0, *he, *he2, *he3, *e, *next, *nnext;
   int __clib_unused verbose, i, rv;
@@ -127,18 +130,17 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
     }
 
   he = pool_elt_at_index (pelts, head);
-  LLIST_TEST (!clib_llist_is_empty (pelts, ll_test, he),
-	      "shoud not be empty");
+  LLIST_TEST (!clib_llist_is_empty (pelts, ll_test, he), "shoud not be empty");
   list_test_is_sane (pelts, ll_test, he);
 
   i--;
-  /* *INDENT-OFF* */
+
   clib_llist_foreach (pelts, ll_test, he, e, ({
-    if (i != e->data)
-      LLIST_TEST (0, "incorrect element i = %u data = %u", i, e->data);
-    i--;
-  }));
-  /* *INDENT-ON* */
+			if (i != e->data)
+			  LLIST_TEST (0, "incorrect element i = %u data = %u",
+				      i, e->data);
+			i--;
+		      }));
 
   LLIST_TEST (i == -1, "head insertion works i = %d", i);
 
@@ -180,13 +182,14 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
 	      "list should not be empty");
 
   i--;
-  /* *INDENT-OFF* */
-  clib_llist_foreach_reverse (pelts, ll_test2, he2, e, ({
-    if (i != e->data)
+
+  clib_llist_foreach_reverse (
+    pelts, ll_test2, he2, e, ({
+      if (i != e->data)
 	LLIST_TEST (0, "incorrect element i = %u data = %u", i, e->data);
-    i--;
-  }));
-  /* *INDENT-ON* */
+      i--;
+    }));
+
   LLIST_TEST (i == -1, "tail insertion works");
 
   /*
@@ -211,19 +214,17 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
   he = pool_elt_at_index (pelts, head);
   he2 = pool_elt_at_index (pelts, head2);
   list_test_is_sane (pelts, ll_test, he);
-  LLIST_TEST (!clib_llist_is_empty (pelts, ll_test, he),
-	      "shoud not be empty");
+  LLIST_TEST (!clib_llist_is_empty (pelts, ll_test, he), "shoud not be empty");
   LLIST_TEST (clib_llist_is_empty (pelts, ll_test2, he2), "shoud be empty");
 
   i = 0;
 
-  /* *INDENT-OFF* */
   clib_llist_foreach (pelts, ll_test, he, e, ({
-    if (i != e->data)
-	LLIST_TEST (0, "incorrect element i = %u data = %u", i, e->data);
-    i++;
-  }));
-  /* *INDENT-ON* */
+			if (i != e->data)
+			  LLIST_TEST (0, "incorrect element i = %u data = %u",
+				      i, e->data);
+			i++;
+		      }));
 
   LLIST_TEST (i == 100, "move from ll_test2 to ll_test worked i %u", i);
 
@@ -309,8 +310,8 @@ llist_test_basic (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static clib_error_t *
-llist_test (vlib_main_t * vm,
-	    unformat_input_t * input, vlib_cli_command_t * cmd_arg)
+llist_test (vlib_main_t *vm, unformat_input_t *input,
+	    vlib_cli_command_t *cmd_arg)
 {
   int res = 0;
 
@@ -335,14 +336,11 @@ done:
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (llist_test_command, static) =
-{
+VLIB_CLI_COMMAND (llist_test_command, static) = {
   .path = "test llist",
   .short_help = "internal llist unit tests",
   .function = llist_test,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

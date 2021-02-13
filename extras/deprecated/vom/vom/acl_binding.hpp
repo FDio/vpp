@@ -35,7 +35,7 @@ namespace ACL {
  * A binding between an ACL and an interface.
  * A representation of the application of the ACL to the interface.
  */
-template <typename LIST>
+template<typename LIST>
 class binding : public object_base
 {
 public:
@@ -64,8 +64,7 @@ public:
     , m_itf(o.m_itf)
     , m_acl(o.m_acl)
     , m_binding(o.m_binding)
-  {
-  }
+  {}
 
   /**
    * Destructor
@@ -105,7 +104,9 @@ private:
   /**
    * Class definition for listeners to OM events
    */
-  class event_handler : public OM::listener, public inspect::command_handler
+  class event_handler
+    : public OM::listener
+    , public inspect::command_handler
   {
   public:
     event_handler();
@@ -217,11 +218,11 @@ typedef binding<l2_list> l2_binding;
 /**
  * Definition of the static Singular DB for ACL bindings
  */
-template <typename LIST>
+template<typename LIST>
 singular_db<typename ACL::binding<LIST>::key_t, ACL::binding<LIST>>
   binding<LIST>::m_db;
 
-template <typename LIST>
+template<typename LIST>
 typename ACL::binding<LIST>::event_handler binding<LIST>::m_evh;
 
 namespace {

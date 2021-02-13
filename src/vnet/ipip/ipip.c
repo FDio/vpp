@@ -40,22 +40,21 @@ typedef struct
 } ipip_tx_trace_t;
 
 u8 *
-format_ipip_tx_trace (u8 * s, va_list * args)
+format_ipip_tx_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ipip_tx_trace_t *t = va_arg (*args, ipip_tx_trace_t *);
 
-  s =
-    format (s, "IPIP: tunnel %d len %d src %U dst %U", t->tunnel_id,
-	    t->length, format_ip46_address, &t->src, IP46_TYPE_ANY,
-	    format_ip46_address, &t->dst, IP46_TYPE_ANY);
+  s = format (s, "IPIP: tunnel %d len %d src %U dst %U", t->tunnel_id,
+	      t->length, format_ip46_address, &t->src, IP46_TYPE_ANY,
+	      format_ip46_address, &t->dst, IP46_TYPE_ANY);
   return s;
 }
 
 static u8 *
-ipip_build_rewrite (vnet_main_t * vnm, u32 sw_if_index,
-		    vnet_link_t link_type, const void *dst_address)
+ipip_build_rewrite (vnet_main_t *vnm, u32 sw_if_index, vnet_link_t link_type,
+		    const void *dst_address)
 {
   const ip46_address_t *dst;
   ip4_header_t *ip4;
@@ -136,7 +135,7 @@ ipip_build_rewrite (vnet_main_t * vnm, u32 sw_if_index,
 }
 
 static void
-ipip64_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
+ipip64_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b,
 	      const void *data)
 {
   tunnel_encap_decap_flags_t flags;
@@ -152,7 +151,7 @@ ipip64_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
 }
 
 static void
-ipip44_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
+ipip44_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b,
 	      const void *data)
 {
   tunnel_encap_decap_flags_t flags;
@@ -168,7 +167,7 @@ ipip44_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
 }
 
 static void
-ipip46_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
+ipip46_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b,
 	      const void *data)
 {
   tunnel_encap_decap_flags_t flags;
@@ -182,14 +181,13 @@ ipip46_fixup (vlib_main_t * vm, const ip_adjacency_t * adj, vlib_buffer_t * b,
 
   ip6 = vlib_buffer_get_current (b);
   ip6->payload_length =
-    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b) -
-			  sizeof (*ip6));
+    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b) - sizeof (*ip6));
   tunnel_encap_fixup_4o6 (flags, b, ((ip4_header_t *) (ip6 + 1)), ip6);
 }
 
 static void
-ipip66_fixup (vlib_main_t * vm,
-	      const ip_adjacency_t * adj, vlib_buffer_t * b, const void *data)
+ipip66_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b,
+	      const void *data)
 {
   tunnel_encap_decap_flags_t flags;
   ip6_header_t *ip6;
@@ -202,8 +200,7 @@ ipip66_fixup (vlib_main_t * vm,
 
   ip6 = vlib_buffer_get_current (b);
   ip6->payload_length =
-    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b) -
-			  sizeof (*ip6));
+    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b) - sizeof (*ip6));
   tunnel_encap_fixup_6o6 (flags, ip6 + 1, ip6);
 }
 
@@ -269,15 +266,13 @@ ipip_tunnel_stack (adj_index_t ai)
     }
   else
     {
-      /* *INDENT-OFF* */
+
       fib_prefix_t dst = {
-        .fp_len = t->transport == IPIP_TRANSPORT_IP6 ? 128 : 32,
-        .fp_proto = (t->transport == IPIP_TRANSPORT_IP6 ?
-                     FIB_PROTOCOL_IP6 :
-                     FIB_PROTOCOL_IP4),
-        .fp_addr = t->tunnel_dst
+	.fp_len = t->transport == IPIP_TRANSPORT_IP6 ? 128 : 32,
+	.fp_proto = (t->transport == IPIP_TRANSPORT_IP6 ? FIB_PROTOCOL_IP6 :
+							  FIB_PROTOCOL_IP4),
+	.fp_addr = t->tunnel_dst
       };
-      /* *INDENT-ON* */
 
       adj_midchain_delegate_stack (ai, t->fib_index, &dst);
     }
@@ -292,7 +287,7 @@ ipip_adj_walk_cb (adj_index_t ai, void *ctx)
 }
 
 static void
-ipip_tunnel_restack (ipip_tunnel_t * gt)
+ipip_tunnel_restack (ipip_tunnel_t *gt)
 {
   fib_protocol_t proto;
 
@@ -306,7 +301,7 @@ ipip_tunnel_restack (ipip_tunnel_t * gt)
 }
 
 static adj_midchain_fixup_t
-ipip_get_fixup (const ipip_tunnel_t * t, vnet_link_t lt, adj_flags_t * aflags)
+ipip_get_fixup (const ipip_tunnel_t *t, vnet_link_t lt, adj_flags_t *aflags)
 {
   if (t->transport == IPIP_TRANSPORT_IP6 && lt == VNET_LINK_IP6)
     return (ipip66_fixup);
@@ -329,7 +324,7 @@ ipip_get_fixup (const ipip_tunnel_t * t, vnet_link_t lt, adj_flags_t * aflags)
 }
 
 void
-ipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
+ipip_update_adj (vnet_main_t *vnm, u32 sw_if_index, adj_index_t ai)
 {
   adj_midchain_fixup_t fixup;
   ipip_tunnel_t *t;
@@ -352,11 +347,10 @@ ipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
     af |= ADJ_FLAG_MIDCHAIN_NO_COUNT;
 
   fixup = ipip_get_fixup (t, adj_get_link_type (ai), &af);
-  adj_nbr_midchain_update_rewrite
-    (ai, fixup,
-     uword_to_pointer (t->flags, void *), af,
-     ipip_build_rewrite (vnm, sw_if_index,
-			 adj_get_link_type (ai), &t->tunnel_dst));
+  adj_nbr_midchain_update_rewrite (
+    ai, fixup, uword_to_pointer (t->flags, void *), af,
+    ipip_build_rewrite (vnm, sw_if_index, adj_get_link_type (ai),
+			&t->tunnel_dst));
   ipip_tunnel_stack (ai);
 }
 
@@ -384,13 +378,11 @@ mipip_mk_complete_walk (adj_index_t ai, void *data)
   if (!(ctx->t->flags & TUNNEL_ENCAP_DECAP_FLAG_ENCAP_INNER_HASH))
     af |= ADJ_FLAG_MIDCHAIN_IP_STACK;
 
-  adj_nbr_midchain_update_rewrite
-    (ai, fixup,
-     uword_to_pointer (ctx->t->flags, void *),
-     af, ipip_build_rewrite (vnet_get_main (),
-			     ctx->t->sw_if_index,
-			     adj_get_link_type (ai),
-			     &teib_entry_get_nh (ctx->ne)->fp_addr));
+  adj_nbr_midchain_update_rewrite (
+    ai, fixup, uword_to_pointer (ctx->t->flags, void *), af,
+    ipip_build_rewrite (vnet_get_main (), ctx->t->sw_if_index,
+			adj_get_link_type (ai),
+			&teib_entry_get_nh (ctx->ne)->fp_addr));
 
   teib_entry_adj_stack (ctx->ne, ai);
 
@@ -415,7 +407,7 @@ mipip_mk_incomplete_walk (adj_index_t ai, void *data)
 }
 
 void
-mipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
+mipip_update_adj (vnet_main_t *vnm, u32 sw_if_index, adj_index_t ai)
 {
   ipip_main_t *gm = &ipip_main;
   adj_midchain_fixup_t fixup;
@@ -430,29 +422,25 @@ mipip_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
   t = pool_elt_at_index (gm->tunnels, ti);
 
-  ne = teib_entry_find_46 (sw_if_index,
-			   adj->ia_nh_proto, &adj->sub_type.nbr.next_hop);
+  ne = teib_entry_find_46 (sw_if_index, adj->ia_nh_proto,
+			   &adj->sub_type.nbr.next_hop);
 
   if (NULL == ne)
     {
       // no TEIB entry to provide the next-hop
       fixup = ipip_get_fixup (t, adj_get_link_type (ai), &af);
-      adj_nbr_midchain_update_rewrite
-	(ai, fixup, uword_to_pointer (t->flags, void *), ADJ_FLAG_NONE, NULL);
+      adj_nbr_midchain_update_rewrite (
+	ai, fixup, uword_to_pointer (t->flags, void *), ADJ_FLAG_NONE, NULL);
       return;
     }
 
-  mipip_walk_ctx_t ctx = {
-    .t = t,
-    .ne = ne
-  };
-  adj_nbr_walk_nh (sw_if_index,
-		   adj->ia_nh_proto,
-		   &adj->sub_type.nbr.next_hop, mipip_mk_complete_walk, &ctx);
+  mipip_walk_ctx_t ctx = { .t = t, .ne = ne };
+  adj_nbr_walk_nh (sw_if_index, adj->ia_nh_proto, &adj->sub_type.nbr.next_hop,
+		   mipip_mk_complete_walk, &ctx);
 }
 
 static u8 *
-format_ipip_tunnel_name (u8 * s, va_list * args)
+format_ipip_tunnel_name (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   ipip_main_t *gm = &ipip_main;
@@ -466,7 +454,7 @@ format_ipip_tunnel_name (u8 * s, va_list * args)
 }
 
 static u8 *
-format_ipip_device (u8 * s, va_list * args)
+format_ipip_device (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   CLIB_UNUSED (int verbose) = va_arg (*args, int);
@@ -476,7 +464,7 @@ format_ipip_device (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-ipip_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+ipip_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 {
   vnet_hw_interface_t *hi;
   ipip_tunnel_t *t;
@@ -491,7 +479,7 @@ ipip_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
     vnet_hw_interface_set_flags (vnm, hw_if_index,
 				 VNET_HW_INTERFACE_FLAG_LINK_UP);
   else
-    vnet_hw_interface_set_flags (vnm, hw_if_index, 0 /* down */ );
+    vnet_hw_interface_set_flags (vnm, hw_if_index, 0 /* down */);
 
   ipip_tunnel_restack (t);
 
@@ -499,8 +487,8 @@ ipip_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 }
 
 static int
-ipip_tunnel_desc (u32 sw_if_index,
-		  ip46_address_t * src, ip46_address_t * dst, u8 * is_l2)
+ipip_tunnel_desc (u32 sw_if_index, ip46_address_t *src, ip46_address_t *dst,
+		  u8 *is_l2)
 {
   ipip_tunnel_t *t;
 
@@ -515,40 +503,39 @@ ipip_tunnel_desc (u32 sw_if_index,
   return (0);
 }
 
-/* *INDENT-OFF* */
-VNET_DEVICE_CLASS(ipip_device_class) = {
-    .name = "IPIP tunnel device",
-    .format_device_name = format_ipip_tunnel_name,
-    .format_device = format_ipip_device,
-    .format_tx_trace = format_ipip_tx_trace,
-    .admin_up_down_function = ipip_interface_admin_up_down,
-    .ip_tun_desc = ipip_tunnel_desc,
+VNET_DEVICE_CLASS (ipip_device_class) = {
+  .name = "IPIP tunnel device",
+  .format_device_name = format_ipip_tunnel_name,
+  .format_device = format_ipip_device,
+  .format_tx_trace = format_ipip_tx_trace,
+  .admin_up_down_function = ipip_interface_admin_up_down,
+  .ip_tun_desc = ipip_tunnel_desc,
 #ifdef SOON
-    .clear counter = 0;
+  .clear counter = 0;
 #endif
+}
+;
+
+VNET_HW_INTERFACE_CLASS (ipip_hw_interface_class) = {
+  .name = "IPIP",
+  //.format_header = format_ipip_header_with_length,
+  //.unformat_header = unformat_ipip_header,
+  .build_rewrite = ipip_build_rewrite,
+  .update_adjacency = ipip_update_adj,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
 
-VNET_HW_INTERFACE_CLASS(ipip_hw_interface_class) = {
-    .name = "IPIP",
-    //.format_header = format_ipip_header_with_length,
-    //.unformat_header = unformat_ipip_header,
-    .build_rewrite = ipip_build_rewrite,
-    .update_adjacency = ipip_update_adj,
-    .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
+VNET_HW_INTERFACE_CLASS (mipip_hw_interface_class) = {
+  .name = "mIPIP",
+  //.format_header = format_ipip_header_with_length,
+  //.unformat_header = unformat_ipip_header,
+  .build_rewrite = ipip_build_rewrite,
+  .update_adjacency = mipip_update_adj,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_NBMA,
 };
-
-VNET_HW_INTERFACE_CLASS(mipip_hw_interface_class) = {
-    .name = "mIPIP",
-    //.format_header = format_ipip_header_with_length,
-    //.unformat_header = unformat_ipip_header,
-    .build_rewrite = ipip_build_rewrite,
-    .update_adjacency = mipip_update_adj,
-    .flags = VNET_HW_INTERFACE_CLASS_FLAG_NBMA,
-};
-/* *INDENT-ON* */
 
 ipip_tunnel_t *
-ipip_tunnel_db_find (const ipip_tunnel_key_t * key)
+ipip_tunnel_db_find (const ipip_tunnel_key_t *key)
 {
   ipip_main_t *gm = &ipip_main;
   uword *p;
@@ -572,7 +559,7 @@ ipip_tunnel_db_find_by_sw_if_index (u32 sw_if_index)
 }
 
 void
-ipip_tunnel_db_add (ipip_tunnel_t * t, const ipip_tunnel_key_t * key)
+ipip_tunnel_db_add (ipip_tunnel_t *t, const ipip_tunnel_key_t *key)
 {
   ipip_main_t *gm = &ipip_main;
 
@@ -580,7 +567,7 @@ ipip_tunnel_db_add (ipip_tunnel_t * t, const ipip_tunnel_key_t * key)
 }
 
 void
-ipip_tunnel_db_remove (ipip_tunnel_t * t, const ipip_tunnel_key_t * key)
+ipip_tunnel_db_remove (ipip_tunnel_t *t, const ipip_tunnel_key_t *key)
 {
   ipip_main_t *gm = &ipip_main;
 
@@ -588,43 +575,41 @@ ipip_tunnel_db_remove (ipip_tunnel_t * t, const ipip_tunnel_key_t * key)
 }
 
 void
-ipip_mk_key_i (ipip_transport_t transport,
-	       ipip_mode_t mode,
-	       const ip46_address_t * src,
-	       const ip46_address_t * dst,
-	       u32 fib_index, ipip_tunnel_key_t * key)
+ipip_mk_key_i (ipip_transport_t transport, ipip_mode_t mode,
+	       const ip46_address_t *src, const ip46_address_t *dst,
+	       u32 fib_index, ipip_tunnel_key_t *key)
 {
   key->transport = transport;
   key->mode = mode;
   key->src = *src;
   key->dst = *dst;
   key->fib_index = fib_index;
-  key->__pad = 0;;
+  key->__pad = 0;
+  ;
 }
 
 void
-ipip_mk_key (const ipip_tunnel_t * t, ipip_tunnel_key_t * key)
+ipip_mk_key (const ipip_tunnel_t *t, ipip_tunnel_key_t *key)
 {
-  ipip_mk_key_i (t->transport, t->mode,
-		 &t->tunnel_src, &t->tunnel_dst, t->fib_index, key);
+  ipip_mk_key_i (t->transport, t->mode, &t->tunnel_src, &t->tunnel_dst,
+		 t->fib_index, key);
 }
 
 static void
-ipip_teib_mk_key (const ipip_tunnel_t * t,
-		  const teib_entry_t * ne, ipip_tunnel_key_t * key)
+ipip_teib_mk_key (const ipip_tunnel_t *t, const teib_entry_t *ne,
+		  ipip_tunnel_key_t *key)
 {
   const fib_prefix_t *nh;
 
   nh = teib_entry_get_nh (ne);
 
   /* construct the key using mode P2P so it can be found in the DP */
-  ipip_mk_key_i (t->transport, IPIP_MODE_P2P,
-		 &t->tunnel_src, &nh->fp_addr,
+  ipip_mk_key_i (t->transport, IPIP_MODE_P2P, &t->tunnel_src, &nh->fp_addr,
 		 teib_entry_get_fib_index (ne), key);
 }
 
 static void
-ipip_teib_entry_added (const teib_entry_t * ne)
+ipip_teib_entry_added (const teib_entry_t *ne)
 {
   ipip_main_t *gm = &ipip_main;
   const ip_address_t *nh;
@@ -648,20 +633,16 @@ ipip_teib_entry_added (const teib_entry_t * ne)
   ipip_tunnel_db_add (t, &key);
 
   // update the rewrites for each of the adjacencies for this next-hop
-  mipip_walk_ctx_t ctx = {
-    .t = t,
-    .ne = ne
-  };
+  mipip_walk_ctx_t ctx = { .t = t, .ne = ne };
   nh = teib_entry_get_peer (ne);
-  adj_nbr_walk_nh (teib_entry_get_sw_if_index (ne),
-		   (AF_IP4 == ip_addr_version (nh) ?
-		    FIB_PROTOCOL_IP4 :
-		    FIB_PROTOCOL_IP6),
-		   &ip_addr_46 (nh), mipip_mk_complete_walk, &ctx);
+  adj_nbr_walk_nh (
+    teib_entry_get_sw_if_index (ne),
+    (AF_IP4 == ip_addr_version (nh) ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6),
+    &ip_addr_46 (nh), mipip_mk_complete_walk, &ctx);
 }
 
 static void
-ipip_teib_entry_deleted (const teib_entry_t * ne)
+ipip_teib_entry_deleted (const teib_entry_t *ne)
 {
   ipip_main_t *gm = &ipip_main;
   const ip_address_t *nh;
@@ -687,11 +668,10 @@ ipip_teib_entry_deleted (const teib_entry_t * ne)
   nh = teib_entry_get_peer (ne);
 
   /* make all the adjacencies incomplete */
-  adj_nbr_walk_nh (teib_entry_get_sw_if_index (ne),
-		   (AF_IP4 == ip_addr_version (nh) ?
-		    FIB_PROTOCOL_IP4 :
-		    FIB_PROTOCOL_IP6),
-		   &ip_addr_46 (nh), mipip_mk_incomplete_walk, t);
+  adj_nbr_walk_nh (
+    teib_entry_get_sw_if_index (ne),
+    (AF_IP4 == ip_addr_version (nh) ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6),
+    &ip_addr_46 (nh), mipip_mk_incomplete_walk, t);
 }
 
 static walk_rc_t
@@ -719,10 +699,10 @@ ipip_tunnel_add_teib_walk (index_t nei, void *ctx)
 }
 
 int
-ipip_add_tunnel (ipip_transport_t transport,
-		 u32 instance, ip46_address_t * src, ip46_address_t * dst,
-		 u32 fib_index, tunnel_encap_decap_flags_t flags,
-		 ip_dscp_t dscp, tunnel_mode_t tmode, u32 * sw_if_indexp)
+ipip_add_tunnel (ipip_transport_t transport, u32 instance, ip46_address_t *src,
+		 ip46_address_t *dst, u32 fib_index,
+		 tunnel_encap_decap_flags_t flags, ip_dscp_t dscp,
+		 tunnel_mode_t tmode, u32 *sw_if_indexp)
 {
   ipip_main_t *gm = &ipip_main;
   vnet_main_t *vnm = gm->vnet_main;
@@ -752,8 +732,8 @@ ipip_add_tunnel (ipip_transport_t transport,
   clib_memset (t, 0, sizeof (*t));
 
   /* Reconcile the real dev_instance and a possible requested instance */
-  u32 t_idx = t - gm->tunnels;	/* tunnel index (or instance) */
-  u32 u_idx = instance;		/* user specified instance */
+  u32 t_idx = t - gm->tunnels; /* tunnel index (or instance) */
+  u32 u_idx = instance;	       /* user specified instance */
   if (u_idx == ~0)
     u_idx = t_idx;
   if (hash_get (gm->instance_used, u_idx))
@@ -763,13 +743,13 @@ ipip_add_tunnel (ipip_transport_t transport,
     }
   hash_set (gm->instance_used, u_idx, 1);
 
-  t->dev_instance = t_idx;	/* actual */
-  t->user_instance = u_idx;	/* name */
+  t->dev_instance = t_idx;  /* actual */
+  t->user_instance = u_idx; /* name */
 
   hw_if_index = vnet_register_interface (vnm, ipip_device_class.index, t_idx,
 					 (mode == IPIP_MODE_P2P ?
-					  ipip_hw_interface_class.index :
-					  mipip_hw_interface_class.index),
+					    ipip_hw_interface_class.index :
+					    mipip_hw_interface_class.index),
 					 t_idx);
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
@@ -843,7 +823,7 @@ ipip_del_tunnel (u32 sw_if_index)
   if (t->mode == IPIP_MODE_P2MP)
     teib_walk_itf (t->sw_if_index, ipip_tunnel_delete_teib_walk, t);
 
-  vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */ );
+  vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */);
   gm->tunnel_index_by_sw_if_index[sw_if_index] = ~0;
   vnet_delete_hw_interface (vnm, t->hw_if_index);
   hash_unset (gm->instance_used, t->user_instance);
@@ -861,7 +841,7 @@ const static teib_vft_t ipip_teib_vft = {
 };
 
 static clib_error_t *
-ipip_init (vlib_main_t * vm)
+ipip_init (vlib_main_t *vm)
 {
   ipip_main_t *gm = &ipip_main;
 

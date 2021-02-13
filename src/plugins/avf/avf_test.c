@@ -45,7 +45,7 @@ avf_test_main_t avf_test_main;
 
 /* avf create API */
 static int
-api_avf_create (vat_main_t * vam)
+api_avf_create (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_avf_create_t *mp;
@@ -96,7 +96,7 @@ api_avf_create (vat_main_t * vam)
 
 /* avf-create reply handler */
 static void
-vl_api_avf_create_reply_t_handler (vl_api_avf_create_reply_t * mp)
+vl_api_avf_create_reply_t_handler (vl_api_avf_create_reply_t *mp)
 {
   vat_main_t *vam = avf_test_main.vat_main;
   i32 retval = ntohl (mp->retval);
@@ -114,7 +114,7 @@ vl_api_avf_create_reply_t_handler (vl_api_avf_create_reply_t * mp)
 
 /* avf delete API */
 static int
-api_avf_delete (vat_main_t * vam)
+api_avf_delete (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_avf_delete_t *mp;

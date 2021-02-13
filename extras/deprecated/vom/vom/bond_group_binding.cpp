@@ -32,15 +32,13 @@ bond_group_binding::bond_group_binding(const bond_interface& itf,
   : m_itf(itf.singular())
   , m_mem_itfs(itfs)
   , m_binding(false)
-{
-}
+{}
 
 bond_group_binding::bond_group_binding(const bond_group_binding& o)
   : m_itf(o.m_itf)
   , m_mem_itfs(o.m_mem_itfs)
   , m_binding(o.m_binding)
-{
-}
+{}
 
 bond_group_binding::~bond_group_binding()
 {
@@ -136,8 +134,8 @@ bond_group_binding::singular() const
 bond_group_binding::event_handler::event_handler()
 {
   OM::register_listener(this);
-  inspect::register_handler({ "bond-intf-binding" }, "Bond interface binding",
-                            this);
+  inspect::register_handler(
+    { "bond-intf-binding" }, "Bond interface binding", this);
 }
 
 void

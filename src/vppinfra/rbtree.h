@@ -31,73 +31,73 @@ typedef enum rb_tree_color_
 
 typedef struct rb_node_
 {
-  u8 color;			/**< node color */
-  rb_node_index_t parent;	/**< parent index */
-  rb_node_index_t left;		/**< left child index */
-  rb_node_index_t right;	/**< right child index */
-  u32 key;			/**< node key */
-  uword opaque;			/**< value stored by node */
+  u8 color;		  /**< node color */
+  rb_node_index_t parent; /**< parent index */
+  rb_node_index_t left;	  /**< left child index */
+  rb_node_index_t right;  /**< right child index */
+  u32 key;		  /**< node key */
+  uword opaque;		  /**< value stored by node */
 } rb_node_t;
 
 typedef struct rb_tree_
 {
-  rb_node_t *nodes;		/**< pool of nodes */
-  rb_node_index_t root;		/**< root index */
+  rb_node_t *nodes;	/**< pool of nodes */
+  rb_node_index_t root; /**< root index */
 } rb_tree_t;
 
 typedef int (*rb_tree_lt_fn) (u32 a, u32 b);
 
-void rb_tree_init (rb_tree_t * rt);
-rb_node_index_t rb_tree_add (rb_tree_t * rt, u32 key);
-rb_node_index_t rb_tree_add2 (rb_tree_t * rt, u32 key, uword opaque);
-rb_node_index_t rb_tree_add_custom (rb_tree_t * rt, u32 key, uword opaque,
+void rb_tree_init (rb_tree_t *rt);
+rb_node_index_t rb_tree_add (rb_tree_t *rt, u32 key);
+rb_node_index_t rb_tree_add2 (rb_tree_t *rt, u32 key, uword opaque);
+rb_node_index_t rb_tree_add_custom (rb_tree_t *rt, u32 key, uword opaque,
 				    rb_tree_lt_fn ltfn);
-void rb_tree_del (rb_tree_t * rt, u32 key);
-void rb_tree_del_node (rb_tree_t * rt, rb_node_t * z);
-void rb_tree_del_custom (rb_tree_t * rt, u32 key, rb_tree_lt_fn ltfn);
-void rb_tree_free_nodes (rb_tree_t * rt);
-u32 rb_tree_n_nodes (rb_tree_t * rt);
-rb_node_t *rb_tree_min_subtree (rb_tree_t * rt, rb_node_t * x);
-rb_node_t *rb_tree_max_subtree (rb_tree_t * rt, rb_node_t * x);
-rb_node_t *rb_tree_search_subtree (rb_tree_t * rt, rb_node_t * x, u32 key);
-rb_node_t *rb_tree_search_subtree_custom (rb_tree_t * rt, rb_node_t * x,
-					  u32 key, rb_tree_lt_fn ltfn);
-rb_node_t *rb_tree_successor (rb_tree_t * rt, rb_node_t * x);
-rb_node_t *rb_tree_predecessor (rb_tree_t * rt, rb_node_t * x);
-int rb_tree_is_init (rb_tree_t * rt);
+void rb_tree_del (rb_tree_t *rt, u32 key);
+void rb_tree_del_node (rb_tree_t *rt, rb_node_t *z);
+void rb_tree_del_custom (rb_tree_t *rt, u32 key, rb_tree_lt_fn ltfn);
+void rb_tree_free_nodes (rb_tree_t *rt);
+u32 rb_tree_n_nodes (rb_tree_t *rt);
+rb_node_t *rb_tree_min_subtree (rb_tree_t *rt, rb_node_t *x);
+rb_node_t *rb_tree_max_subtree (rb_tree_t *rt, rb_node_t *x);
+rb_node_t *rb_tree_search_subtree (rb_tree_t *rt, rb_node_t *x, u32 key);
+rb_node_t *rb_tree_search_subtree_custom (rb_tree_t *rt, rb_node_t *x, u32 key,
+					  rb_tree_lt_fn ltfn);
+rb_node_t *rb_tree_successor (rb_tree_t *rt, rb_node_t *x);
+rb_node_t *rb_tree_predecessor (rb_tree_t *rt, rb_node_t *x);
+int rb_tree_is_init (rb_tree_t *rt);
 
 static inline rb_node_index_t
-rb_node_index (rb_tree_t * rt, rb_node_t * n)
+rb_node_index (rb_tree_t *rt, rb_node_t *n)
 {
   return n - rt->nodes;
 }
 
 static inline u8
-rb_node_is_tnil (rb_tree_t * rt, rb_node_t * n)
+rb_node_is_tnil (rb_tree_t *rt, rb_node_t *n)
 {
   return rb_node_index (rt, n) == RBTREE_TNIL_INDEX;
 }
 
 static inline rb_node_t *
-rb_node (rb_tree_t * rt, rb_node_index_t ri)
+rb_node (rb_tree_t *rt, rb_node_index_t ri)
 {
   return pool_elt_at_index (rt->nodes, ri);
 }
 
 static inline rb_node_t *
-rb_node_right (rb_tree_t * rt, rb_node_t * n)
+rb_node_right (rb_tree_t *rt, rb_node_t *n)
 {
   return pool_elt_at_index (rt->nodes, n->right);
 }
 
 static inline rb_node_t *
-rb_node_left (rb_tree_t * rt, rb_node_t * n)
+rb_node_left (rb_tree_t *rt, rb_node_t *n)
 {
   return pool_elt_at_index (rt->nodes, n->left);
 }
 
 static inline rb_node_t *
-rb_node_parent (rb_tree_t * rt, rb_node_t * n)
+rb_node_parent (rb_tree_t *rt, rb_node_t *n)
 {
   return pool_elt_at_index (rt->nodes, n->parent);
 }

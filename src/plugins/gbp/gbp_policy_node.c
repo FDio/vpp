@@ -47,7 +47,7 @@ ethertype_to_dpo_proto (u16 etype)
 }
 
 always_inline u32
-gbp_rule_l2_redirect (const gbp_rule_t * gu, vlib_buffer_t * b0)
+gbp_rule_l2_redirect (const gbp_rule_t *gu, vlib_buffer_t *b0)
 {
   const ethernet_header_t *eth0;
   const dpo_id_t *dpo;
@@ -69,7 +69,7 @@ gbp_rule_l2_redirect (const gbp_rule_t * gu, vlib_buffer_t * b0)
 }
 
 static_always_inline gbp_policy_next_t
-gbp_policy_l2_feature_next (gbp_policy_main_t * gpm, vlib_buffer_t * b,
+gbp_policy_l2_feature_next (gbp_policy_main_t *gpm, vlib_buffer_t *b,
 			    const gbp_policy_type_t type)
 {
   u32 feat_bit;
@@ -93,9 +93,8 @@ gbp_policy_l2_feature_next (gbp_policy_main_t * gpm, vlib_buffer_t * b,
 }
 
 static uword
-gbp_policy_inline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node,
-		   vlib_frame_t * frame, const gbp_policy_type_t type)
+gbp_policy_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame, const gbp_policy_type_t type)
 {
   gbp_main_t *gm = &gbp_main;
   gbp_policy_main_t *gpm = &gbp_policy_main;
@@ -173,16 +172,14 @@ gbp_policy_inline (vlib_main_t * vm,
 	    {
 	      const ip4_address_t *ip4 = 0;
 	      const ip6_address_t *ip6 = 0;
-	      const dpo_proto_t proto =
-		gbp_classify_get_ip_address (h0, &ip4, &ip6,
-					     GBP_CLASSIFY_GET_IP_DST);
+	      const dpo_proto_t proto = gbp_classify_get_ip_address (
+		h0, &ip4, &ip6, GBP_CLASSIFY_GET_IP_DST);
 	      if (PREDICT_TRUE (DPO_PROTO_NONE != proto))
 		{
 		  const gbp_ext_itf_t *ext_itf =
 		    gbp_ext_itf_get (sw_if_index0);
-		  const gbp_policy_dpo_t *gpd =
-		    gbp_classify_get_gpd (ip4, ip6,
-					  ext_itf->gx_fib_index[proto]);
+		  const gbp_policy_dpo_t *gpd = gbp_classify_get_gpd (
+		    ip4, ip6, ext_itf->gx_fib_index[proto]);
 		  if (gpd)
 		    key0.gck_dst = gpd->gpd_sclass;
 		}
@@ -219,10 +216,9 @@ gbp_policy_inline (vlib_main_t * vm,
 	  key0.gck_scope =
 	    gbp_bridge_domain_get_scope (vnet_buffer (b0)->l2.bd_index);
 
-	  action0 =
-	    gbp_contract_apply (vm, gm, &key0, b0, &rule0, &n_allow_intra,
-				&n_allow_sclass_1, &acl_match, &rule_match,
-				&err0, GBP_CONTRACT_APPLY_L2);
+	  action0 = gbp_contract_apply (
+	    vm, gm, &key0, b0, &rule0, &n_allow_intra, &n_allow_sclass_1,
+	    &acl_match, &rule_match, &err0, GBP_CONTRACT_APPLY_L2);
 	  switch (action0)
 	    {
 	    case GBP_RULE_PERMIT:
@@ -244,9 +240,8 @@ gbp_policy_inline (vlib_main_t * vm,
 			    rule_match);
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -256,35 +251,30 @@ gbp_policy_inline (vlib_main_t * vm,
 			       GBP_CONTRACT_ERROR_ALLOW_INTRA, n_allow_intra);
   vlib_node_increment_counter (vm, node->node_index,
 			       GBP_CONTRACT_ERROR_ALLOW_A_BIT, n_allow_a_bit);
-  vlib_node_increment_counter (vm, node->node_index,
-			       GBP_CONTRACT_ERROR_ALLOW_SCLASS_1,
-			       n_allow_sclass_1);
+  vlib_node_increment_counter (
+    vm, node->node_index, GBP_CONTRACT_ERROR_ALLOW_SCLASS_1, n_allow_sclass_1);
 
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (gbp_policy_port_node) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_policy_port_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (gbp_policy_inline (vm, node, frame, GBP_POLICY_PORT));
 }
 
-VLIB_NODE_FN (gbp_policy_mac_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_policy_mac_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (gbp_policy_inline (vm, node, frame, GBP_POLICY_MAC));
 }
 
-VLIB_NODE_FN (gbp_policy_lpm_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_policy_lpm_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (gbp_policy_inline (vm, node, frame, GBP_POLICY_LPM));
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gbp_policy_port_node) = {
   .name = "gbp-policy-port",
   .vector_size = sizeof (u32),
@@ -329,8 +319,6 @@ VLIB_REGISTER_NODE (gbp_policy_lpm_node) = {
     [GBP_POLICY_NEXT_DROP] = "error-drop",
   },
 };
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

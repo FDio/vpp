@@ -38,7 +38,7 @@
 #define ED_PORT_ALLOC_ATTEMPTS (10)
 
 static char *nat_in2out_ed_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_nat_in2out_ed_error
 #undef _
 };
@@ -58,16 +58,15 @@ typedef struct
 } nat_in2out_ed_trace_t;
 
 static u8 *
-format_nat_in2out_ed_trace (u8 * s, va_list * args)
+format_nat_in2out_ed_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   nat_in2out_ed_trace_t *t = va_arg (*args, nat_in2out_ed_trace_t *);
   char *tag;
 
-  tag =
-    t->is_slow_path ? "NAT44_IN2OUT_ED_SLOW_PATH" :
-    "NAT44_IN2OUT_ED_FAST_PATH";
+  tag = t->is_slow_path ? "NAT44_IN2OUT_ED_SLOW_PATH" :
+			  "NAT44_IN2OUT_ED_FAST_PATH";
 
   s = format (s, "%s: sw_if_index %d, next index %d, session %d", tag,
 	      t->sw_if_index, t->next_index, t->session_index);
@@ -187,7 +186,7 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index, u32 nat_proto,
 }
 
 static_always_inline u32
-nat_outside_fib_index_lookup (snat_main_t * sm, ip4_address_t addr)
+nat_outside_fib_index_lookup (snat_main_t *sm, ip4_address_t addr)
 {
   fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
   nat_outside_fib_t *outside_fib;
@@ -203,12 +202,12 @@ nat_outside_fib_index_lookup (snat_main_t * sm, ip4_address_t addr)
     {
       fei = fib_table_lookup (outside_fib->fib_index, &pfx);
       if (FIB_NODE_INDEX_INVALID != fei)
-        {
-          if (fib_entry_get_resolving_interface (fei) != ~0)
-            {
-              return outside_fib->fib_index;
-            }
-        }
+	{
+	  if (fib_entry_get_resolving_interface (fei) != ~0)
+	    {
+	      return outside_fib->fib_index;
+	    }
+	}
     }
   /* *INDENT-ON* */
   return ~0;
@@ -262,17 +261,16 @@ slow_path_ed (snat_main_t *sm, vlib_buffer_t *b, ip4_address_t l_addr,
 
   if (PREDICT_TRUE (nat_proto == NAT_PROTOCOL_TCP))
     {
-      if (PREDICT_FALSE
-	  (!tcp_flags_is_init
-	   (vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags)))
+      if (PREDICT_FALSE (!tcp_flags_is_init (
+	    vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags)))
 	{
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_NON_SYN];
 	  return NAT_NEXT_DROP;
 	}
     }
 
-  if (PREDICT_FALSE
-      (nat44_ed_maximum_sessions_exceeded (sm, rx_fib_index, thread_index)))
+  if (PREDICT_FALSE (
+	nat44_ed_maximum_sessions_exceeded (sm, rx_fib_index, thread_index)))
     {
       if (!nat_lru_free_one (sm, thread_index, now))
 	{
@@ -434,19 +432,14 @@ slow_path_ed (snat_main_t *sm, vlib_buffer_t *b, ip4_address_t l_addr,
     }
 
   /* log NAT event */
-  nat_ipfix_logging_nat44_ses_create (thread_index,
-				      s->in2out.addr.as_u32,
-				      s->out2in.addr.as_u32,
-				      s->nat_proto,
-				      s->in2out.port,
-				      s->out2in.port, s->in2out.fib_index);
+  nat_ipfix_logging_nat44_ses_create (
+    thread_index, s->in2out.addr.as_u32, s->out2in.addr.as_u32, s->nat_proto,
+    s->in2out.port, s->out2in.port, s->in2out.fib_index);
 
-  nat_syslog_nat44_sadd (s->user_index, s->in2out.fib_index,
-			 &s->in2out.addr, s->in2out.port,
-			 &s->ext_host_nat_addr, s->ext_host_nat_port,
-			 &s->out2in.addr, s->out2in.port,
-			 &s->ext_host_addr, s->ext_host_port, s->nat_proto,
-			 0);
+  nat_syslog_nat44_sadd (s->user_index, s->in2out.fib_index, &s->in2out.addr,
+			 s->in2out.port, &s->ext_host_nat_addr,
+			 s->ext_host_nat_port, &s->out2in.addr, s->out2in.port,
+			 &s->ext_host_addr, s->ext_host_port, s->nat_proto, 0);
 
   per_vrf_sessions_register_session (s, thread_index);
 
@@ -468,8 +461,8 @@ error:
 }
 
 static_always_inline int
-nat44_ed_not_translate (snat_main_t * sm, vlib_node_runtime_t * node,
-			u32 sw_if_index, ip4_header_t * ip, u32 proto,
+nat44_ed_not_translate (snat_main_t *sm, vlib_node_runtime_t *node,
+			u32 sw_if_index, ip4_header_t *ip, u32 proto,
 			u32 rx_fib_index, u32 thread_index)
 {
   udp_header_t *udp = ip4_next_header (ip);
@@ -485,10 +478,10 @@ nat44_ed_not_translate (snat_main_t * sm, vlib_node_runtime_t * node,
       ip4_address_t placeholder_addr;
       u16 placeholder_port;
       u32 placeholder_fib_index;
-      if (!snat_static_mapping_match
-	  (sm, ip->dst_address, udp->dst_port, sm->outside_fib_index, proto,
-	   &placeholder_addr, &placeholder_port, &placeholder_fib_index, 1, 0,
-	   0, 0, 0, 0, 0))
+      if (!snat_static_mapping_match (
+	    sm, ip->dst_address, udp->dst_port, sm->outside_fib_index, proto,
+	    &placeholder_addr, &placeholder_port, &placeholder_fib_index, 1, 0,
+	    0, 0, 0, 0, 0))
 	return 0;
     }
   else
@@ -502,9 +495,9 @@ nat44_ed_not_translate (snat_main_t * sm, vlib_node_runtime_t * node,
 }
 
 static_always_inline int
-nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
+nat_not_translate_output_feature_fwd (snat_main_t *sm, ip4_header_t *ip,
 				      u32 thread_index, f64 now,
-				      vlib_main_t * vm, vlib_buffer_t * b)
+				      vlib_main_t *vm, vlib_buffer_t *b)
 {
   clib_bihash_kv_16_8_t kv, value;
   snat_session_t *s = 0;
@@ -533,16 +526,14 @@ nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
     }
   else
     {
-      init_ed_k (&kv, ip->src_address, 0, ip->dst_address, 0, 0,
-		 ip->protocol);
+      init_ed_k (&kv, ip->src_address, 0, ip->dst_address, 0, 0, ip->protocol);
     }
 
   if (!clib_bihash_search_16_8 (&sm->flow_hash, &kv, &value))
     {
       ASSERT (thread_index == ed_value_get_thread_index (&value));
       s =
-	pool_elt_at_index (tsm->sessions,
-			   ed_value_get_session_index (&value));
+	pool_elt_at_index (tsm->sessions, ed_value_get_session_index (&value));
 
       if (is_fwd_bypass_session (s))
 	{
@@ -551,9 +542,8 @@ nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
 	      nat44_set_tcp_session_state_i2o (sm, now, s, b, thread_index);
 	    }
 	  /* Accounting */
-	  nat44_session_update_counters (s, now,
-					 vlib_buffer_length_in_chain (vm, b),
-					 thread_index);
+	  nat44_session_update_counters (
+	    s, now, vlib_buffer_length_in_chain (vm, b), thread_index);
 	  /* Per-user LRU list maintenance */
 	  nat44_session_update_lru (sm, s, thread_index);
 	  return 1;
@@ -566,7 +556,7 @@ nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
 }
 
 static_always_inline int
-nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
+nat44_ed_not_translate_output_feature (snat_main_t *sm, ip4_header_t *ip,
 				       u16 src_port, u16 dst_port,
 				       u32 thread_index, u32 rx_sw_if_index,
 				       u32 tx_sw_if_index, f64 now)
@@ -585,10 +575,9 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
     {
       ASSERT (thread_index == ed_value_get_thread_index (&value));
       s =
-	pool_elt_at_index (tsm->sessions,
-			   ed_value_get_session_index (&value));
-      if (nat44_is_ses_closed (s)
-	  && (!s->tcp_closed_timestamp || now >= s->tcp_closed_timestamp))
+	pool_elt_at_index (tsm->sessions, ed_value_get_session_index (&value));
+      if (nat44_is_ses_closed (s) &&
+	  (!s->tcp_closed_timestamp || now >= s->tcp_closed_timestamp))
 	{
 	  nat_free_session_data (sm, s, thread_index, 0);
 	  nat_ed_session_delete (sm, s, thread_index, 1);
@@ -603,8 +592,7 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
     {
       ASSERT (thread_index == ed_value_get_thread_index (&value));
       s =
-	pool_elt_at_index (tsm->sessions,
-			   ed_value_get_session_index (&value));
+	pool_elt_at_index (tsm->sessions, ed_value_get_session_index (&value));
 
       if (is_fwd_bypass_session (s))
 	return 0;
@@ -612,10 +600,11 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
       /* hairpinning */
       /* *INDENT-OFF* */
       pool_foreach (i, sm->output_feature_interfaces)
-       {
-        if ((nat_interface_is_inside (i)) && (rx_sw_if_index == i->sw_if_index))
-           return 0;
-      }
+	{
+	  if ((nat_interface_is_inside (i)) &&
+	      (rx_sw_if_index == i->sw_if_index))
+	    return 0;
+	}
       /* *INDENT-ON* */
       return 1;
     }
@@ -855,9 +844,9 @@ nat44_ed_in2out_slowpath_unknown_proto (snat_main_t *sm, vlib_buffer_t *b,
 }
 
 static inline uword
-nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
-					  vlib_node_runtime_t * node,
-					  vlib_frame_t * frame,
+nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t *vm,
+					  vlib_node_runtime_t *node,
+					  vlib_frame_t *frame,
 					  int is_output_feature)
 {
   u32 n_left_from, *from;
@@ -865,8 +854,8 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
   f64 now = vlib_time_now (vm);
   u32 thread_index = vm->thread_index;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-  u32 def_slow = is_output_feature ? NAT_NEXT_IN2OUT_ED_OUTPUT_SLOW_PATH
-    : NAT_NEXT_IN2OUT_ED_SLOW_PATH;
+  u32 def_slow = is_output_feature ? NAT_NEXT_IN2OUT_ED_OUTPUT_SLOW_PATH :
+				     NAT_NEXT_IN2OUT_ED_SLOW_PATH;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -921,10 +910,10 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 
       if (PREDICT_FALSE (ip0->ttl == 1))
 	{
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	  icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
-				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
-				       0);
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~0;
+	  icmp4_error_set_vnet_buffer (
+	    b0, ICMP4_time_exceeded,
+	    ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
 	  next[0] = NAT_NEXT_ICMP_ERROR;
 	  goto trace0;
 	}
@@ -933,9 +922,8 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 
       if (is_output_feature)
 	{
-	  if (PREDICT_FALSE
-	      (nat_not_translate_output_feature_fwd
-	       (sm, ip0, thread_index, now, vm, b0)))
+	  if (PREDICT_FALSE (nat_not_translate_output_feature_fwd (
+		sm, ip0, thread_index, now, vm, b0)))
 	    goto trace0;
 	}
 
@@ -1008,9 +996,8 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 	}
 
       ASSERT (thread_index == ed_value_get_thread_index (&value0));
-      s0 =
-	pool_elt_at_index (tsm->sessions,
-			   ed_value_get_session_index (&value0));
+      s0 = pool_elt_at_index (tsm->sessions,
+			      ed_value_get_session_index (&value0));
 
     skip_lookup:
 
@@ -1109,16 +1096,14 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 	}
 
       /* Accounting */
-      nat44_session_update_counters (s0, now,
-				     vlib_buffer_length_in_chain (vm, b0),
-				     thread_index);
+      nat44_session_update_counters (
+	s0, now, vlib_buffer_length_in_chain (vm, b0), thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s0, thread_index);
 
     trace0:
-      if (PREDICT_FALSE
-	  ((node->flags & VLIB_NODE_FLAG_TRACE)
-	   && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			 (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	{
 	  nat_in2out_ed_trace_t *t =
 	    vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -1144,9 +1129,9 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 
       if (next[0] == NAT_NEXT_DROP)
 	{
-	  vlib_increment_simple_counter (&sm->counters.fastpath.
-					 in2out_ed.drops, thread_index,
-					 sw_if_index0, 1);
+	  vlib_increment_simple_counter (
+	    &sm->counters.fastpath.in2out_ed.drops, thread_index, sw_if_index0,
+	    1);
 	}
 
       n_left_from--;
@@ -1159,9 +1144,9 @@ nat44_ed_in2out_fast_path_node_fn_inline (vlib_main_t * vm,
 }
 
 static inline uword
-nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
-					  vlib_node_runtime_t * node,
-					  vlib_frame_t * frame,
+nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t *vm,
+					  vlib_node_runtime_t *node,
+					  vlib_frame_t *frame,
 					  int is_output_feature)
 {
   u32 n_left_from, *from;
@@ -1196,8 +1181,8 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 
       next[0] = vnet_buffer2 (b0)->nat.arc_next;
 
-      ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
-			      iph_offset0);
+      ip0 =
+	(ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) + iph_offset0);
 
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
       rx_fib_index0 =
@@ -1205,10 +1190,10 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 
       if (PREDICT_FALSE (ip0->ttl == 1))
 	{
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	  icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
-				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
-				       0);
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~0;
+	  icmp4_error_set_vnet_buffer (
+	    b0, ICMP4_time_exceeded,
+	    ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
 	  next[0] = NAT_NEXT_ICMP_ERROR;
 	  goto trace0;
 	}
@@ -1231,9 +1216,9 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
-	  vlib_increment_simple_counter (&sm->counters.slowpath.
-					 in2out_ed.other, thread_index,
-					 sw_if_index0, 1);
+	  vlib_increment_simple_counter (
+	    &sm->counters.slowpath.in2out_ed.other, thread_index, sw_if_index0,
+	    1);
 	  goto trace0;
 	}
 
@@ -1250,9 +1235,8 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
-	  vlib_increment_simple_counter (&sm->counters.slowpath.
-					 in2out_ed.icmp, thread_index,
-					 sw_if_index0, 1);
+	  vlib_increment_simple_counter (&sm->counters.slowpath.in2out_ed.icmp,
+					 thread_index, sw_if_index0, 1);
 	  goto trace0;
 	}
 
@@ -1263,9 +1247,8 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
       if (!clib_bihash_search_16_8 (&sm->flow_hash, &kv0, &value0))
 	{
 	  ASSERT (thread_index == ed_value_get_thread_index (&value0));
-	  s0 =
-	    pool_elt_at_index (tsm->sessions,
-			       ed_value_get_session_index (&value0));
+	  s0 = pool_elt_at_index (tsm->sessions,
+				  ed_value_get_session_index (&value0));
 
 	  if (s0->tcp_closed_timestamp && now >= s0->tcp_closed_timestamp)
 	    {
@@ -1279,9 +1262,8 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	{
 	  if (is_output_feature)
 	    {
-	      if (PREDICT_FALSE
-		  (nat44_ed_not_translate_output_feature
-		   (sm, ip0, vnet_buffer (b0)->ip.reass.l4_src_port,
+	      if (PREDICT_FALSE (nat44_ed_not_translate_output_feature (
+		    sm, ip0, vnet_buffer (b0)->ip.reass.l4_src_port,
 		    vnet_buffer (b0)->ip.reass.l4_dst_port, thread_index,
 		    sw_if_index0, vnet_buffer (b0)->sw_if_index[VLIB_TX],
 		    now)))
@@ -1291,35 +1273,32 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	       * Send DHCP packets to the ipv4 stack, or we won't
 	       * be able to use dhcp client on the outside interface
 	       */
-	      if (PREDICT_FALSE
-		  (proto0 == NAT_PROTOCOL_UDP
-		   && (vnet_buffer (b0)->ip.reass.l4_dst_port ==
-		       clib_host_to_net_u16 (UDP_DST_PORT_dhcp_to_server))
-		   && ip0->dst_address.as_u32 == 0xffffffff))
+	      if (PREDICT_FALSE (
+		    proto0 == NAT_PROTOCOL_UDP &&
+		    (vnet_buffer (b0)->ip.reass.l4_dst_port ==
+		     clib_host_to_net_u16 (UDP_DST_PORT_dhcp_to_server)) &&
+		    ip0->dst_address.as_u32 == 0xffffffff))
 		goto trace0;
 	    }
 	  else
 	    {
-	      if (PREDICT_FALSE
-		  (nat44_ed_not_translate
-		   (sm, node, sw_if_index0, ip0, proto0, rx_fib_index0,
+	      if (PREDICT_FALSE (nat44_ed_not_translate (
+		    sm, node, sw_if_index0, ip0, proto0, rx_fib_index0,
 		    thread_index)))
 		goto trace0;
 	    }
 
-	  next[0] =
-	    slow_path_ed (sm, b0, ip0->src_address, ip0->dst_address,
-			  vnet_buffer (b0)->ip.reass.l4_src_port,
-			  vnet_buffer (b0)->ip.reass.l4_dst_port,
-			  ip0->protocol, rx_fib_index0, &s0, node, next[0],
-			  thread_index, now);
+	  next[0] = slow_path_ed (sm, b0, ip0->src_address, ip0->dst_address,
+				  vnet_buffer (b0)->ip.reass.l4_src_port,
+				  vnet_buffer (b0)->ip.reass.l4_dst_port,
+				  ip0->protocol, rx_fib_index0, &s0, node,
+				  next[0], thread_index, now);
 
 	  if (PREDICT_FALSE (next[0] == NAT_NEXT_DROP))
 	    goto trace0;
 
 	  if (PREDICT_FALSE (!s0))
 	    goto trace0;
-
 	}
 
       b0->flags |= VNET_BUFFER_F_IS_NATED;
@@ -1347,15 +1326,14 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	}
 
       /* Accounting */
-      nat44_session_update_counters (s0, now,
-				     vlib_buffer_length_in_chain
-				     (vm, b0), thread_index);
+      nat44_session_update_counters (
+	s0, now, vlib_buffer_length_in_chain (vm, b0), thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s0, thread_index);
 
     trace0:
-      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			 (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	{
 	  nat_in2out_ed_trace_t *t =
 	    vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -1381,9 +1359,9 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 
       if (next[0] == NAT_NEXT_DROP)
 	{
-	  vlib_increment_simple_counter (&sm->counters.slowpath.
-					 in2out_ed.drops, thread_index,
-					 sw_if_index0, 1);
+	  vlib_increment_simple_counter (
+	    &sm->counters.slowpath.in2out_ed.drops, thread_index, sw_if_index0,
+	    1);
 	}
 
       n_left_from--;
@@ -1397,9 +1375,8 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (nat44_ed_in2out_node) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_ed_in2out_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return nat44_ed_in2out_fast_path_node_fn_inline (vm, node, frame, 0);
 }
@@ -1417,9 +1394,8 @@ VLIB_REGISTER_NODE (nat44_ed_in2out_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FN (nat44_ed_in2out_output_node) (vlib_main_t * vm,
-					    vlib_node_runtime_t * node,
-					    vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_ed_in2out_output_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return nat44_ed_in2out_fast_path_node_fn_inline (vm, node, frame, 1);
 }
@@ -1437,9 +1413,8 @@ VLIB_REGISTER_NODE (nat44_ed_in2out_output_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FN (nat44_ed_in2out_slowpath_node) (vlib_main_t * vm,
-					      vlib_node_runtime_t *
-					      node, vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_ed_in2out_slowpath_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return nat44_ed_in2out_slow_path_node_fn_inline (vm, node, frame, 0);
 }
@@ -1457,10 +1432,8 @@ VLIB_REGISTER_NODE (nat44_ed_in2out_slowpath_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FN (nat44_ed_in2out_output_slowpath_node) (vlib_main_t * vm,
-						     vlib_node_runtime_t
-						     * node,
-						     vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_ed_in2out_output_slowpath_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return nat44_ed_in2out_slow_path_node_fn_inline (vm, node, frame, 1);
 }
@@ -1479,7 +1452,7 @@ VLIB_REGISTER_NODE (nat44_ed_in2out_output_slowpath_node) = {
 /* *INDENT-ON* */
 
 static u8 *
-format_nat_pre_trace (u8 * s, va_list * args)
+format_nat_pre_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -1489,14 +1462,14 @@ format_nat_pre_trace (u8 * s, va_list * args)
 }
 
 VLIB_NODE_FN (nat_pre_in2out_node)
-  (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return nat_pre_node_fn_inline (vm, node, frame,
 				 NAT_NEXT_IN2OUT_ED_FAST_PATH);
 }
 
 VLIB_NODE_FN (nat_pre_in2out_output_node)
-  (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return nat_pre_node_fn_inline (vm, node, frame,
 				 NAT_NEXT_IN2OUT_ED_OUTPUT_FAST_PATH);
@@ -1514,18 +1487,4 @@ VLIB_REGISTER_NODE (nat_pre_in2out_node) = {
 
 VLIB_REGISTER_NODE (nat_pre_in2out_output_node) = {
   .name = "nat-pre-in2out-output",
-  .vector_size = sizeof (u32),
-  .sibling_of = "nat-default",
-  .format_trace = format_nat_pre_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = 0,
-};
-/* *INDENT-ON* */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+  .vector_size = sizeof (u3

@@ -32,8 +32,7 @@ igmp_listen::igmp_listen(const igmp_binding& igmp_bind,
   , m_gaddr(gaddr)
   , m_saddrs(saddrs)
   , m_listen(true, rc_t::NOOP)
-{
-}
+{}
 
 igmp_listen::igmp_listen(const igmp_binding& igmp_bind,
                          const boost::asio::ip::address_v4& gaddr)
@@ -41,16 +40,14 @@ igmp_listen::igmp_listen(const igmp_binding& igmp_bind,
   , m_gaddr(gaddr)
   , m_saddrs()
   , m_listen(true, rc_t::NOOP)
-{
-}
+{}
 
 igmp_listen::igmp_listen(const igmp_listen& o)
   : m_igmp_bind(o.m_igmp_bind)
   , m_gaddr(o.m_gaddr)
   , m_saddrs(o.m_saddrs)
   , m_listen(o.m_listen)
-{
-}
+{}
 
 igmp_listen::~igmp_listen()
 {

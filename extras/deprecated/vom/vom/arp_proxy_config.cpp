@@ -29,15 +29,13 @@ arp_proxy_config::arp_proxy_config(const boost::asio::ip::address_v4& low,
   : m_low(low)
   , m_high(high)
   , m_config(true)
-{
-}
+{}
 
 arp_proxy_config::arp_proxy_config(const arp_proxy_config& o)
   : m_low(o.m_low)
   , m_high(o.m_high)
   , m_config(o.m_config)
-{
-}
+{}
 
 arp_proxy_config::~arp_proxy_config()
 {
@@ -104,8 +102,8 @@ arp_proxy_config::singular() const
 arp_proxy_config::event_handler::event_handler()
 {
   OM::register_listener(this);
-  inspect::register_handler({ "arp-proxy-config" }, "ARP Proxy configurations",
-                            this);
+  inspect::register_handler(
+    { "arp-proxy-config" }, "ARP Proxy configurations", this);
 }
 
 void

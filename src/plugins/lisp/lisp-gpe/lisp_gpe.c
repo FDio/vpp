@@ -29,12 +29,11 @@
 /** LISP-GPE global state */
 lisp_gpe_main_t lisp_gpe_main;
 
-
 /** CLI command to add/del forwarding entry. */
 static clib_error_t *
-lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
-				       unformat_input_t * input,
-				       vlib_cli_command_t * cmd)
+lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t *vm,
+				       unformat_input_t *input,
+				       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_add = 1;
@@ -42,7 +41,7 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
   gid_address_t _reid, *reid = &_reid, _leid, *leid = &_leid;
   u8 reid_set = 0, leid_set = 0, is_negative = 0, dp_table_set = 0,
-    vni_set = 0;
+     vni_set = 0;
   u32 vni = 0, dp_table = 0, action = ~0, w;
   locator_pair_t pair, *pairs = 0;
   int rv;
@@ -88,8 +87,8 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
 	  is_negative = 1;
 	}
       else if (unformat (line_input, "loc-pair %U %U w %d",
-			 unformat_ip_address, &lloc,
-			 unformat_ip_address, &rloc, &w))
+			 unformat_ip_address, &lloc, unformat_ip_address,
+			 &rloc, &w))
 	{
 	  ip_address_copy (&pair.lcl_loc, &lloc);
 	  ip_address_copy (&pair.rmt_loc, &rloc);
@@ -100,8 +99,8 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
       else
 	{
 	  error = unformat_parse_error (line_input);
-	  vlib_cli_output (vm, "parse error: '%U'",
-			   format_unformat_error, line_input);
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
+			   line_input);
 	  goto done;
 	}
     }
@@ -169,15 +168,13 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_gpe_add_del_fwd_entry_command, static) = {
   .path = "gpe entry",
   .short_help = "gpe entry add/del vni <vni> vrf/bd <id> [leid <leid>]"
-      "reid <reid> [loc-pair <lloc> <rloc> w <weight>] "
-      "[negative action <action>]",
+		"reid <reid> [loc-pair <lloc> <rloc> w <weight>] "
+		"[negative action <action>]",
   .function = lisp_gpe_add_del_fwd_entry_command_fn,
 };
-/* *INDENT-ON* */
 
 /** Check if LISP-GPE is enabled. */
 u8
@@ -190,7 +187,7 @@ vnet_lisp_gpe_enable_disable_status (void)
 
 /** Enable/disable LISP-GPE. */
 clib_error_t *
-vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a)
+vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t *a)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   vlib_main_t *vm = vlib_get_main ();
@@ -199,9 +196,9 @@ vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a)
     {
       lgm->is_en = 1;
       udp_register_dst_port (vm, UDP_DST_PORT_lisp_gpe,
-			     lisp_gpe_ip4_input_node.index, 1 /* is_ip4 */ );
+			     lisp_gpe_ip4_input_node.index, 1 /* is_ip4 */);
       udp_register_dst_port (vm, UDP_DST_PORT_lisp_gpe6,
-			     lisp_gpe_ip6_input_node.index, 0 /* is_ip4 */ );
+			     lisp_gpe_ip6_input_node.index, 0 /* is_ip4 */);
     }
   else
     {
@@ -211,8 +208,8 @@ vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a)
       /* disable all l3 ifaces */
       lisp_gpe_tenant_flush ();
 
-      udp_unregister_dst_port (vm, UDP_DST_PORT_lisp_gpe, 0 /* is_ip4 */ );
-      udp_unregister_dst_port (vm, UDP_DST_PORT_lisp_gpe6, 1 /* is_ip4 */ );
+      udp_unregister_dst_port (vm, UDP_DST_PORT_lisp_gpe, 0 /* is_ip4 */);
+      udp_unregister_dst_port (vm, UDP_DST_PORT_lisp_gpe6, 1 /* is_ip4 */);
       lgm->is_en = 0;
     }
 
@@ -237,9 +234,8 @@ vnet_gpe_set_encap_mode (gpe_encap_mode_t mode)
 
 /** CLI command to set GPE encap */
 static clib_error_t *
-gpe_set_encap_mode_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+gpe_set_encap_mode_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   gpe_encap_mode_t mode = GPE_ENCAP_COUNT;
@@ -264,24 +260,22 @@ gpe_set_encap_mode_command_fn (vlib_main_t * vm,
   rv = vnet_gpe_set_encap_mode (mode);
   if (rv)
     {
-      return clib_error_return (0,
-				"Error: invalid mode or GPE entries are present!");
+      return clib_error_return (
+	0, "Error: invalid mode or GPE entries are present!");
     }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gpe_set_encap_mode_command, static) = {
   .path = "gpe encap",
   .short_help = "gpe encap [lisp|vxlan]",
   .function = gpe_set_encap_mode_command_fn,
 };
-/* *INDENT-ON* */
 
 /** Format GPE encap mode. */
 u8 *
-format_vnet_gpe_encap_mode (u8 * s, va_list * args)
+format_vnet_gpe_encap_mode (u8 *s, va_list *args)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
 
@@ -299,27 +293,23 @@ format_vnet_gpe_encap_mode (u8 * s, va_list * args)
 
 /** CLI command to show GPE encap */
 static clib_error_t *
-gpe_show_encap_mode_command_fn (vlib_main_t * vm,
-				unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+gpe_show_encap_mode_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
 {
   vlib_cli_output (vm, "encap mode: %U", format_vnet_gpe_encap_mode);
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gpe_show_encap_mode_command, static) = {
   .path = "show gpe encap",
   .short_help = "show GPE encapulation mode",
   .function = gpe_show_encap_mode_command_fn,
 };
-/* *INDENT-ON* */
 
 /** CLI command to enable/disable LISP-GPE. */
 static clib_error_t *
-lisp_gpe_enable_disable_command_fn (vlib_main_t * vm,
-				    unformat_input_t * input,
-				    vlib_cli_command_t * cmd)
+lisp_gpe_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_en = 1;
@@ -352,56 +342,47 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (enable_disable_lisp_gpe_command, static) = {
   .path = "gpe",
   .short_help = "gpe [enable|disable]",
   .function = lisp_gpe_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
 /** CLI command to show LISP-GPE interfaces. */
 static clib_error_t *
-lisp_show_iface_command_fn (vlib_main_t * vm,
-			    unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+lisp_show_iface_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   hash_pair_t *p;
 
   vlib_cli_output (vm, "%=10s%=12s", "vrf", "hw_if_index");
 
-  /* *INDENT-OFF* */
   hash_foreach_pair (p, lgm->l3_ifaces.hw_if_index_by_dp_table, ({
-    vlib_cli_output (vm, "%=10d%=10d", p->key, p->value[0]);
-  }));
-  /* *INDENT-ON* */
+		       vlib_cli_output (vm, "%=10d%=10d", p->key, p->value[0]);
+		     }));
 
   if (0 != lgm->l2_ifaces.hw_if_index_by_dp_table)
     {
       vlib_cli_output (vm, "%=10s%=12s", "bd_id", "hw_if_index");
-      /* *INDENT-OFF* */
-      hash_foreach_pair (p, lgm->l2_ifaces.hw_if_index_by_dp_table, ({
-        vlib_cli_output (vm, "%=10d%=10d", p->key, p->value[0]);
-      }));
-      /* *INDENT-ON* */
+
+      hash_foreach_pair (
+	p, lgm->l2_ifaces.hw_if_index_by_dp_table,
+	({ vlib_cli_output (vm, "%=10d%=10d", p->key, p->value[0]); }));
     }
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_show_iface_command) = {
-    .path = "show gpe interface",
-    .short_help = "show gpe interface",
-    .function = lisp_show_iface_command_fn,
+  .path = "show gpe interface",
+  .short_help = "show gpe interface",
+  .function = lisp_show_iface_command_fn,
 };
-/* *INDENT-ON* */
 
 /** CLI command to show GPE fwd native route path. */
 static clib_error_t *
-gpe_show_native_fwd_rpath_command_fn (vlib_main_t * vm,
-				      unformat_input_t * input,
-				      vlib_cli_command_t * cmd)
+gpe_show_native_fwd_rpath_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   fib_route_path_t *rpath;
@@ -409,32 +390,31 @@ gpe_show_native_fwd_rpath_command_fn (vlib_main_t * vm,
   if (vec_len (lgm->native_fwd_rpath[AF_IP4]))
     {
       vec_foreach (rpath, lgm->native_fwd_rpath[AF_IP4])
-      {
-	vlib_cli_output (vm, "nh: %U fib_index %u sw_if_index %u",
-			 format_ip46_address, &rpath->frp_addr,
-			 IP46_TYPE_IP4, rpath->frp_fib_index,
-			 rpath->frp_sw_if_index);
-      }
+	{
+	  vlib_cli_output (vm, "nh: %U fib_index %u sw_if_index %u",
+			   format_ip46_address, &rpath->frp_addr,
+			   IP46_TYPE_IP4, rpath->frp_fib_index,
+			   rpath->frp_sw_if_index);
+	}
     }
   if (vec_len (lgm->native_fwd_rpath[AF_IP6]))
     {
       vec_foreach (rpath, lgm->native_fwd_rpath[AF_IP6])
-      {
-	vlib_cli_output (vm, "nh: %U fib_index %u sw_if_index %u",
-			 format_ip46_address, &rpath->frp_addr, IP46_TYPE_IP6,
-			 rpath->frp_fib_index, rpath->frp_sw_if_index);
-      }
+	{
+	  vlib_cli_output (vm, "nh: %U fib_index %u sw_if_index %u",
+			   format_ip46_address, &rpath->frp_addr,
+			   IP46_TYPE_IP6, rpath->frp_fib_index,
+			   rpath->frp_sw_if_index);
+	}
     }
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gpe_show_native_fwd_rpath_command) = {
-    .path = "show gpe native-forward",
-    .short_help = "show gpe native-forward",
-    .function = gpe_show_native_fwd_rpath_command_fn,
+  .path = "show gpe native-forward",
+  .short_help = "show gpe native-forward",
+  .function = gpe_show_native_fwd_rpath_command_fn,
 };
-/* *INDENT-ON* */
 
 void
 gpe_update_native_fwd_path (u8 ip_version)
@@ -445,17 +425,17 @@ gpe_update_native_fwd_path (u8 ip_version)
   u32 *lfei;
 
   vec_foreach (lfei, lgm->native_fwd_lfes[ip_version])
-  {
-    lfe = pool_elt_at_index (lgm->lisp_fwd_entry_pool, lfei[0]);
-    ip_prefix_to_fib_prefix (&lfe->key->rmt.ippref, &fib_prefix);
-    fib_table_entry_update (lfe->eid_fib_index, &fib_prefix, FIB_SOURCE_LISP,
-			    FIB_ENTRY_FLAG_NONE,
-			    lgm->native_fwd_rpath[ip_version]);
-  }
+    {
+      lfe = pool_elt_at_index (lgm->lisp_fwd_entry_pool, lfei[0]);
+      ip_prefix_to_fib_prefix (&lfe->key->rmt.ippref, &fib_prefix);
+      fib_table_entry_update (lfe->eid_fib_index, &fib_prefix, FIB_SOURCE_LISP,
+			      FIB_ENTRY_FLAG_NONE,
+			      lgm->native_fwd_rpath[ip_version]);
+    }
 }
 
 int
-vnet_gpe_add_del_native_fwd_rpath (vnet_gpe_native_fwd_rpath_args_t * a)
+vnet_gpe_add_del_native_fwd_rpath (vnet_gpe_native_fwd_rpath_args_t *a)
 {
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
   fib_route_path_t *rpath;
@@ -470,14 +450,14 @@ vnet_gpe_add_del_native_fwd_rpath (vnet_gpe_native_fwd_rpath_args_t * a)
   else
     {
       vec_foreach (rpath, lgm->native_fwd_rpath[ip_version])
-      {
-	if (!fib_route_path_cmp (rpath, &a->rpath))
-	  {
-	    vec_del1 (lgm->native_fwd_rpath[ip_version],
-		      rpath - lgm->native_fwd_rpath[ip_version]);
-	    break;
-	  }
-      }
+	{
+	  if (!fib_route_path_cmp (rpath, &a->rpath))
+	    {
+	      vec_del1 (lgm->native_fwd_rpath[ip_version],
+			rpath - lgm->native_fwd_rpath[ip_version]);
+	      break;
+	    }
+	}
     }
   gpe_update_native_fwd_path (ip_version);
   return 0;
@@ -487,8 +467,8 @@ vnet_gpe_add_del_native_fwd_rpath (vnet_gpe_native_fwd_rpath_args_t * a)
  * CLI command to add action for native forward.
  */
 static clib_error_t *
-gpe_native_forward_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+gpe_native_forward_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -511,33 +491,29 @@ gpe_native_forward_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "del"))
 	is_add = 0;
-      else if (unformat (line_input, "via %U %U",
-			 unformat_ip4_address,
-			 &rpath.frp_addr.ip4,
-			 unformat_vnet_sw_interface, vnm,
+      else if (unformat (line_input, "via %U %U", unformat_ip4_address,
+			 &rpath.frp_addr.ip4, unformat_vnet_sw_interface, vnm,
 			 &rpath.frp_sw_if_index))
 	{
 	  rpath.frp_weight = 1;
 	  rpath.frp_proto = DPO_PROTO_IP4;
 	}
-      else if (unformat (line_input, "via %U %U",
-			 unformat_ip6_address,
-			 &rpath.frp_addr.ip6,
-			 unformat_vnet_sw_interface, vnm,
+      else if (unformat (line_input, "via %U %U", unformat_ip6_address,
+			 &rpath.frp_addr.ip6, unformat_vnet_sw_interface, vnm,
 			 &rpath.frp_sw_if_index))
 	{
 	  rpath.frp_weight = 1;
 	  rpath.frp_proto = DPO_PROTO_IP6;
 	}
-      else if (unformat (line_input, "via %U",
-			 unformat_ip4_address, &rpath.frp_addr.ip4))
+      else if (unformat (line_input, "via %U", unformat_ip4_address,
+			 &rpath.frp_addr.ip4))
 	{
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
 	  rpath.frp_proto = DPO_PROTO_IP4;
 	}
-      else if (unformat (line_input, "via %U",
-			 unformat_ip6_address, &rpath.frp_addr.ip6))
+      else if (unformat (line_input, "via %U", unformat_ip6_address,
+			 &rpath.frp_addr.ip6))
 	{
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
@@ -550,7 +526,7 @@ gpe_native_forward_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
     }
 
-  if ((u32) ~ 0 == table_id)
+  if ((u32) ~0 == table_id)
     {
       rpath.frp_fib_index = 0;
     }
@@ -558,7 +534,7 @@ gpe_native_forward_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       rpath.frp_fib_index =
 	fib_table_find (dpo_proto_to_fib (rpath.frp_proto), table_id);
-      if ((u32) ~ 0 == rpath.frp_fib_index)
+      if ((u32) ~0 == rpath.frp_fib_index)
 	{
 	  error = clib_error_return (0, "Nonexistent table id %d", table_id);
 	  goto done;
@@ -578,18 +554,16 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gpe_native_forward_command) = {
-    .path = "gpe native-forward",
-    .short_help = "gpe native-forward [del] via <nh-ip-addr> [iface] "
-	"[table <table>]",
-    .function = gpe_native_forward_command_fn,
+  .path = "gpe native-forward",
+  .short_help = "gpe native-forward [del] via <nh-ip-addr> [iface] "
+		"[table <table>]",
+  .function = gpe_native_forward_command_fn,
 };
-/* *INDENT-ON* */
 
 /** Format LISP-GPE status. */
 u8 *
-format_vnet_lisp_gpe_status (u8 * s, va_list * args)
+format_vnet_lisp_gpe_status (u8 *s, va_list *args)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   return format (s, "%s", lgm->is_en ? "enabled" : "disabled");
@@ -597,7 +571,7 @@ format_vnet_lisp_gpe_status (u8 * s, va_list * args)
 
 /** LISP-GPE init function. */
 clib_error_t *
-lisp_gpe_init (vlib_main_t * vm)
+lisp_gpe_init (vlib_main_t *vm)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   clib_error_t *error = 0;
@@ -635,7 +609,7 @@ vnet_gpe_get_encap_mode (void)
 }
 
 static clib_error_t *
-lisp_gpe_test_send_nsh_packet (u8 * file_name)
+lisp_gpe_test_send_nsh_packet (u8 *file_name)
 {
   vlib_frame_t *f;
   vlib_buffer_t *b;
@@ -672,8 +646,8 @@ lisp_gpe_test_send_nsh_packet (u8 * file_name)
   clib_memcpy_fast (p, pm.packets_read[0], vec_len (pm.packets_read[0]));
   vlib_buffer_pull (b, sizeof (ethernet_header_t));
 
-  vlib_node_t *n = vlib_get_node_by_name (lgm->vlib_main,
-					  (u8 *) "interface-tx");
+  vlib_node_t *n =
+    vlib_get_node_by_name (lgm->vlib_main, (u8 *) "interface-tx");
   f = vlib_get_frame_to_node (lgm->vlib_main, n->index);
   u32 *to_next = vlib_frame_vector_args (f);
   to_next[0] = bi;
@@ -684,8 +658,8 @@ lisp_gpe_test_send_nsh_packet (u8 * file_name)
 }
 
 static clib_error_t *
-lisp_test_nsh_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			  vlib_cli_command_t * cmd)
+lisp_test_nsh_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   clib_error_t *error = 0;
   u8 *file_name = 0;
@@ -709,13 +683,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_test_nsh_command, static) = {
   .path = "test one nsh",
   .short_help = "test gpe nsh pcap <path-to-pcap-file>",
   .function = lisp_test_nsh_command_fn,
 };
-/* *INDENT-ON* */
 
 VLIB_INIT_FUNCTION (lisp_gpe_init);
 

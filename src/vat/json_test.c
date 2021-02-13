@@ -50,7 +50,7 @@ print_json_test (void)
   vat_json_init_object (vat_json_object_add (&node, "a4"));
 
   struct in_addr ipv4 = { 0 };
-  struct in6_addr ipv6 = { {{0}} };
+  struct in6_addr ipv6 = { { { 0 } } };
 
   vat_json_object_add_ip4 (&node, "ipv4", ipv4);
   vat_json_object_add_ip6 (&node, "ipv6", ipv6);

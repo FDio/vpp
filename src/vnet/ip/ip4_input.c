@@ -49,20 +49,20 @@ typedef struct
 } ip4_input_trace_t;
 
 static u8 *
-format_ip4_input_trace (u8 * s, va_list * va)
+format_ip4_input_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
   ip4_input_trace_t *t = va_arg (*va, ip4_input_trace_t *);
 
-  s = format (s, "%U",
-	      format_ip4_header, t->packet_data, sizeof (t->packet_data));
+  s = format (s, "%U", format_ip4_header, t->packet_data,
+	      sizeof (t->packet_data));
 
   return s;
 }
 
 static_always_inline u32
-ip4_input_set_next (u32 sw_if_index, vlib_buffer_t * b, int arc_enabled)
+ip4_input_set_next (u32 sw_if_index, vlib_buffer_t *b, int arc_enabled)
 {
   ip4_main_t *im = &ip4_main;
   ip_lookup_main_t *lm = &im->lookup_main;
@@ -89,9 +89,8 @@ ip4_input_set_next (u32 sw_if_index, vlib_buffer_t * b, int arc_enabled)
 }
 
 static_always_inline void
-ip4_input_check_sw_if_index (vlib_main_t * vm,
-			     vlib_simple_counter_main_t * cm, u32 sw_if_index,
-			     u32 * last_sw_if_index, u32 * cnt,
+ip4_input_check_sw_if_index (vlib_main_t *vm, vlib_simple_counter_main_t *cm,
+			     u32 sw_if_index, u32 *last_sw_if_index, u32 *cnt,
 			     int *arc_enabled)
 {
   ip4_main_t *im = &ip4_main;
@@ -119,9 +118,8 @@ ip4_input_check_sw_if_index (vlib_main_t * vm,
 /* Validate IP v4 packets and pass them either to forwarding code
    or drop/punt exception packets. */
 always_inline uword
-ip4_input_inline (vlib_main_t * vm,
-		  vlib_node_runtime_t * node,
-		  vlib_frame_t * frame, int verify_checksum)
+ip4_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		  vlib_frame_t *frame, int verify_checksum)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 n_left_from, *from;
@@ -142,8 +140,7 @@ ip4_input_inline (vlib_main_t * vm,
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     vlib_trace_frame_buffers_only (vm, node, from, frame->n_vectors,
-				   /* stride */ 1,
-				   sizeof (ip4_input_trace_t));
+				   /* stride */ 1, sizeof (ip4_input_trace_t));
 
   cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
 			 VNET_INTERFACE_COUNTER_IP4);
@@ -289,8 +286,8 @@ ip4_input_inline (vlib_main_t * vm,
       ip[0] = vlib_buffer_get_current (b[0]);
       ip[1] = vlib_buffer_get_current (b[1]);
 
-      ip4_input_check_x2 (vm, error_node, b[0], b[1], ip[0], ip[1],
-			  &next0, &next1, verify_checksum);
+      ip4_input_check_x2 (vm, error_node, b[0], b[1], ip[0], ip[1], &next0,
+			  &next1, verify_checksum);
       next[0] = (u16) next0;
       next[1] = (u16) next1;
 
@@ -340,48 +337,46 @@ ip4_input_inline (vlib_main_t * vm,
     @par Graph mechanics: buffer metadata, next index usage
 
     @em Uses:
-    - vnet_feature_config_main_t cm corresponding to each pkt's dst address unicast /
-      multicast status.
+    - vnet_feature_config_main_t cm corresponding to each pkt's dst address
+   unicast / multicast status.
     - <code>b->current_config_index</code> corresponding to each pkt's
       rx sw_if_index.
-         - This sets the per-packet graph trajectory, ensuring that
-           each packet visits the per-interface features in order.
+	 - This sets the per-packet graph trajectory, ensuring that
+	   each packet visits the per-interface features in order.
 
     - <code>vnet_buffer(b)->sw_if_index[VLIB_RX]</code>
-        - Indicates the @c sw_if_index value of the interface that the
+	- Indicates the @c sw_if_index value of the interface that the
 	  packet was received on.
 
     @em Sets:
     - <code>vnet_buffer(b)->ip.adj_index[VLIB_TX]</code>
-        - The lookup result adjacency index.
+	- The lookup result adjacency index.
 
     <em>Next Indices:</em>
     - Dispatches pkts to the (first) feature node:
       <code> vnet_get_config_data (... &next0 ...); </code>
       or @c error-drop
 */
-VLIB_NODE_FN (ip4_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			       vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return ip4_input_inline (vm, node, frame, /* verify_checksum */ 1);
 }
 
-VLIB_NODE_FN (ip4_input_no_checksum_node) (vlib_main_t * vm,
-					   vlib_node_runtime_t * node,
-					   vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_input_no_checksum_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return ip4_input_inline (vm, node, frame, /* verify_checksum */ 0);
 }
 
 #ifndef CLIB_MARCH_VARIANT
 char *ip4_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ip4_error
 #undef _
 };
 #endif
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_input_node) = {
   .name = "ip4-input",
   .vector_size = sizeof (u32),
@@ -413,10 +408,9 @@ VLIB_REGISTER_NODE (ip4_input_no_checksum_node) = {
   .format_buffer = format_ip4_header,
   .format_trace = format_ip4_input_trace,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-ip4_init (vlib_main_t * vm)
+ip4_init (vlib_main_t *vm)
 {
   clib_error_t *error;
 
@@ -436,8 +430,8 @@ ip4_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, ip4_cli_init)))
     return error;
 
-  if ((error = vlib_call_init_function
-       (vm, ip4_source_and_port_range_check_init)))
+  if ((error =
+	 vlib_call_init_function (vm, ip4_source_and_port_range_check_init)))
     return error;
 
   /* Set flow hash to something non-zero. */

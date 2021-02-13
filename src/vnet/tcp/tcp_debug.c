@@ -17,7 +17,7 @@
 tcp_dbg_main_t tcp_dbg_main;
 
 void
-tcp_evt_track_register (elog_track_t * et)
+tcp_evt_track_register (elog_track_t *et)
 {
   tcp_dbg_main_t *tdm = &tcp_dbg_main;
   u32 fl_len, track_index;
@@ -77,8 +77,8 @@ tcp_debug_check_lc (void)
 }
 
 static clib_error_t *
-tcp_debug_fn (vlib_main_t * vm, unformat_input_t * input,
-	      vlib_cli_command_t * cmd)
+tcp_debug_fn (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   tcp_dbg_main_t *tdm = &tcp_dbg_main;
@@ -134,14 +134,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (tcp_debug_command, static) =
-{
+VLIB_CLI_COMMAND (tcp_debug_command, static) = {
   .path = "tcp debug",
   .short_help = "tcp [show] [debug group <N> level <N>]",
   .function = tcp_debug_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

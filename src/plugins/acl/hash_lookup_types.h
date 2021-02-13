@@ -21,7 +21,8 @@
 #include "types.h"
 
 /* The structure representing the single entry with hash representation */
-typedef struct {
+typedef struct
+{
   fa_5tuple_t match;
   /* these two entries refer to the original ACL# and rule# within that ACL */
   u32 acl_index;
@@ -33,9 +34,11 @@ typedef struct {
 } hash_ace_info_t;
 
 /*
- * The structure holding the information necessary for the hash-based ACL operation
+ * The structure holding the information necessary for the hash-based ACL
+ * operation
  */
-typedef struct {
+typedef struct
+{
   /* hash ACL applied on these lookup contexts */
   u32 *lc_index_list;
   hash_ace_info_t *rules;
@@ -43,8 +46,8 @@ typedef struct {
   int hash_acl_exists;
 } hash_acl_info_t;
 
-
-typedef struct {
+typedef struct
+{
   acl_rule_t rule;
   u32 acl_index;
   u32 ace_index;
@@ -52,7 +55,8 @@ typedef struct {
   u32 applied_entry_index;
 } collision_match_rule_t;
 
-typedef struct {
+typedef struct
+{
   /* original non-compiled ACL */
   u32 acl_index;
   u32 ace_index;
@@ -82,37 +86,40 @@ typedef struct {
   u8 action;
 } applied_hash_ace_entry_t;
 
-typedef struct {
+typedef struct
+{
 
-   /* applied ACLs so we can track them independently from main ACL module */
-   u32 *applied_acls;
+  /* applied ACLs so we can track them independently from main ACL module */
+  u32 *applied_acls;
 } applied_hash_acl_info_t;
 
-
-typedef union {
+typedef union
+{
   u64 as_u64;
-  struct {
+  struct
+  {
     u32 applied_entry_index;
     u16 reserved_u16;
     u8 reserved_u8;
-    u8 reserved_flags:8;
+    u8 reserved_flags : 8;
   };
 } hash_acl_lookup_value_t;
 
-
-typedef struct {
-   u32 mask_type_index;
-   /* first rule # for this mask */
-   u32 first_rule_index;
-   /* Debug Information */
-   u32 num_entries;
-   u32 max_collisions;
+typedef struct
+{
+  u32 mask_type_index;
+  /* first rule # for this mask */
+  u32 first_rule_index;
+  /* Debug Information */
+  u32 num_entries;
+  u32 max_collisions;
 } hash_applied_mask_info_t;
 
+#define CT_ASSERT_EQUAL(name, x, y)                                           \
+  typedef int assert_##name##_compile_time_assertion_failed[((x) == (y)) - 1]
 
-#define CT_ASSERT_EQUAL(name, x,y) typedef int assert_ ## name ## _compile_time_assertion_failed[((x) == (y))-1]
-
-CT_ASSERT_EQUAL(hash_acl_lookup_value_t_is_u64, sizeof(hash_acl_lookup_value_t), sizeof(u64));
+CT_ASSERT_EQUAL (hash_acl_lookup_value_t_is_u64,
+		 sizeof (hash_acl_lookup_value_t), sizeof (u64));
 
 #undef CT_ASSERT_EQUAL
 

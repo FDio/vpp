@@ -83,11 +83,11 @@ abf_itf_attach_get (u32 index)
   return (pool_elt_at_index (abf_itf_attach_pool, index));
 }
 
-extern int abf_itf_attach (fib_protocol_t fproto,
-			   u32 policy_id, u32 priority, u32 sw_if_index);
+extern int abf_itf_attach (fib_protocol_t fproto, u32 policy_id, u32 priority,
+			   u32 sw_if_index);
 
-extern int abf_itf_detach (fib_protocol_t fproto,
-			   u32 policy_id, u32 sw_if_index);
+extern int abf_itf_detach (fib_protocol_t fproto, u32 policy_id,
+			   u32 sw_if_index);
 
 typedef int (*abf_itf_attach_walk_cb_t) (index_t aii, void *ctx0);
 

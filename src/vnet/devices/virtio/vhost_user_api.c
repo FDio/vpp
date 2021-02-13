@@ -29,11 +29,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -45,16 +45,16 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                                             \
-_(CREATE_VHOST_USER_IF, create_vhost_user_if)                           \
-_(MODIFY_VHOST_USER_IF, modify_vhost_user_if)                           \
-_(CREATE_VHOST_USER_IF_V2, create_vhost_user_if_v2)                     \
-_(MODIFY_VHOST_USER_IF_V2, modify_vhost_user_if_v2)                     \
-_(DELETE_VHOST_USER_IF, delete_vhost_user_if)                           \
-_(SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump)
+#define foreach_vpe_api_msg                                                   \
+  _ (CREATE_VHOST_USER_IF, create_vhost_user_if)                              \
+  _ (MODIFY_VHOST_USER_IF, modify_vhost_user_if)                              \
+  _ (CREATE_VHOST_USER_IF_V2, create_vhost_user_if_v2)                        \
+  _ (MODIFY_VHOST_USER_IF_V2, modify_vhost_user_if_v2)                        \
+  _ (DELETE_VHOST_USER_IF, delete_vhost_user_if)                              \
+  _ (SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump)
 
 static void
-vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
+vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t *mp)
 {
   int rv = 0;
   vl_api_create_vhost_user_if_reply_t *rmp;
@@ -63,8 +63,8 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
   u64 disabled_features = (u64) (0ULL);
   vhost_user_create_if_args_t args = { 0 };
 
-  args.sw_if_index = (u32) ~ 0;
-  args.feature_mask = (u64) ~ (0ULL);
+  args.sw_if_index = (u32) ~0;
+  args.feature_mask = (u64) ~(0ULL);
   if (mp->disable_mrg_rxbuf)
     disabled_features = VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF);
 
@@ -77,7 +77,7 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
    * explicitly via enable_gso and enable_packed argument
    */
   disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS |
-    VIRTIO_FEATURE (VIRTIO_F_RING_PACKED);
+		       VIRTIO_FEATURE (VIRTIO_F_RING_PACKED);
 
   /* EVENT_IDX is disabled by default */
   disabled_features |= VIRTIO_FEATURE (VIRTIO_RING_F_EVENT_IDX);
@@ -108,16 +108,12 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
 	}
     }
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_CREATE_VHOST_USER_IF_REPLY,
-  ({
-    rmp->sw_if_index = ntohl (args.sw_if_index);
-  }));
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_CREATE_VHOST_USER_IF_REPLY,
+		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
 }
 
 static void
-vl_api_modify_vhost_user_if_t_handler (vl_api_modify_vhost_user_if_t * mp)
+vl_api_modify_vhost_user_if_t_handler (vl_api_modify_vhost_user_if_t *mp)
 {
   int rv = 0;
   vl_api_modify_vhost_user_if_reply_t *rmp;
@@ -126,14 +122,14 @@ vl_api_modify_vhost_user_if_t_handler (vl_api_modify_vhost_user_if_t * mp)
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
 
-  args.feature_mask = (u64) ~ (0ULL);
+  args.feature_mask = (u64) ~(0ULL);
   /*
    * GSO and PACKED are not supported by feature mask via binary API. We
    * disable GSO and PACKED feature in the feature mask. They may be enabled
    * explicitly via enable_gso and enable_packed argument
    */
   disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS |
-    VIRTIO_FEATURE (VIRTIO_F_RING_PACKED);
+		       VIRTIO_FEATURE (VIRTIO_F_RING_PACKED);
 
   /* EVENT_IDX is disabled by default */
   disabled_features |= VIRTIO_FEATURE (VIRTIO_RING_F_EVENT_IDX);
@@ -152,8 +148,7 @@ vl_api_modify_vhost_user_if_t_handler (vl_api_modify_vhost_user_if_t * mp)
 }
 
 static void
-vl_api_create_vhost_user_if_v2_t_handler (vl_api_create_vhost_user_if_v2_t *
-					  mp)
+vl_api_create_vhost_user_if_v2_t_handler (vl_api_create_vhost_user_if_v2_t *mp)
 {
   int rv = 0;
   vl_api_create_vhost_user_if_v2_reply_t *rmp;
@@ -162,8 +157,8 @@ vl_api_create_vhost_user_if_v2_t_handler (vl_api_create_vhost_user_if_v2_t *
   u64 disabled_features = (u64) (0ULL);
   vhost_user_create_if_args_t args = { 0 };
 
-  args.sw_if_index = (u32) ~ 0;
-  args.feature_mask = (u64) ~ (0ULL);
+  args.sw_if_index = (u32) ~0;
+  args.feature_mask = (u64) ~(0ULL);
   if (mp->disable_mrg_rxbuf)
     disabled_features = VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF);
 
@@ -176,7 +171,7 @@ vl_api_create_vhost_user_if_v2_t_handler (vl_api_create_vhost_user_if_v2_t *
    * explicitly via enable_gso and enable_packed argument
    */
   disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS |
-    VIRTIO_FEATURE (VIRTIO_F_RING_PACKED);
+		       VIRTIO_FEATURE (VIRTIO_F_RING_PACKED);
 
   /* EVENT_IDX is disabled by default */
   disabled_features |= VIRTIO_FEATURE (VIRTIO_RING_F_EVENT_IDX);
@@ -207,17 +202,12 @@ vl_api_create_vhost_user_if_v2_t_handler (vl_api_create_vhost_user_if_v2_t *
 	}
     }
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_CREATE_VHOST_USER_IF_V2_REPLY,
-  ({
-    rmp->sw_if_index = ntohl (args.sw_if_index);
-  }));
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_CREATE_VHOST_USER_IF_V2_REPLY,
+		({ rmp->sw_if_index = ntohl (args.sw_if_index); }));
 }
 
 static void
-vl_api_modify_vhost_user_if_v2_t_handler (vl_api_modify_vhost_user_if_v2_t *
-					  mp)
+vl_api_modify_vhost_user_if_v2_t_handler (vl_api_modify_vhost_user_if_v2_t *mp)
 {
   int rv = 0;
   vl_api_modify_vhost_user_if_v2_reply_t *rmp;
@@ -226,14 +216,14 @@ vl_api_modify_vhost_user_if_v2_t_handler (vl_api_modify_vhost_user_if_v2_t *
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
 
-  args.feature_mask = (u64) ~ (0ULL);
+  args.feature_mask = (u64) ~(0ULL);
   /*
    * GSO and PACKED are not supported by feature mask via binary API. We
    * disable GSO and PACKED feature in the feature mask. They may be enabled
    * explicitly via enable_gso and enable_packed argument
    */
   disabled_features |= FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS |
-    VIRTIO_FEATURE (VIRTIO_F_RING_PACKED);
+		       VIRTIO_FEATURE (VIRTIO_F_RING_PACKED);
 
   /* EVENT_IDX is disabled by default */
   disabled_features |= VIRTIO_FEATURE (VIRTIO_RING_F_EVENT_IDX);
@@ -253,7 +243,7 @@ vl_api_modify_vhost_user_if_v2_t_handler (vl_api_modify_vhost_user_if_v2_t *
 }
 
 static void
-vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
+vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t *mp)
 {
   int rv = 0;
   vl_api_delete_vhost_user_if_reply_t *rmp;
@@ -277,9 +267,9 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
 }
 
 static void
-send_sw_interface_vhost_user_details (vpe_api_main_t * am,
-				      vl_api_registration_t * reg,
-				      vhost_user_intf_details_t * vui,
+send_sw_interface_vhost_user_details (vpe_api_main_t *am,
+				      vl_api_registration_t *reg,
+				      vhost_user_intf_details_t *vui,
 				      u32 context)
 {
   vl_api_sw_interface_vhost_user_details_t *mp;
@@ -289,24 +279,24 @@ send_sw_interface_vhost_user_details (vpe_api_main_t * am,
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_VHOST_USER_DETAILS);
   mp->sw_if_index = ntohl (vui->sw_if_index);
   mp->virtio_net_hdr_sz = ntohl (vui->virtio_net_hdr_sz);
-  virtio_features_encode (vui->features, (u32 *) & mp->features_first_32,
-			  (u32 *) & mp->features_last_32);
+  virtio_features_encode (vui->features, (u32 *) &mp->features_first_32,
+			  (u32 *) &mp->features_last_32);
   mp->is_server = vui->is_server;
   mp->num_regions = ntohl (vui->num_regions);
   mp->sock_errno = ntohl (vui->sock_errno);
   mp->context = context;
 
-  strncpy ((char *) mp->sock_filename,
-	   (char *) vui->sock_filename, ARRAY_LEN (mp->sock_filename) - 1);
-  strncpy ((char *) mp->interface_name,
-	   (char *) vui->if_name, ARRAY_LEN (mp->interface_name) - 1);
+  strncpy ((char *) mp->sock_filename, (char *) vui->sock_filename,
+	   ARRAY_LEN (mp->sock_filename) - 1);
+  strncpy ((char *) mp->interface_name, (char *) vui->if_name,
+	   ARRAY_LEN (mp->interface_name) - 1);
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
-  vl_api_sw_interface_vhost_user_dump_t_handler
-  (vl_api_sw_interface_vhost_user_dump_t * mp)
+vl_api_sw_interface_vhost_user_dump_t_handler (
+  vl_api_sw_interface_vhost_user_dump_t *mp)
 {
   int rv = 0;
   vpe_api_main_t *am = &vpe_api_main;
@@ -330,11 +320,11 @@ static void
     return;
 
   vec_foreach (vuid, ifaces)
-  {
-    if ((filter_sw_if_index == ~0) ||
-	(vuid->sw_if_index == filter_sw_if_index))
-      send_sw_interface_vhost_user_details (am, reg, vuid, mp->context);
-  }
+    {
+      if ((filter_sw_if_index == ~0) ||
+	  (vuid->sw_if_index == filter_sw_if_index))
+	send_sw_interface_vhost_user_details (am, reg, vuid, mp->context);
+    }
   BAD_SW_IF_INDEX_LABEL;
   vec_free (ifaces);
 }
@@ -351,25 +341,22 @@ static void
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_vhost_user;
 #undef _
 }
 
 static clib_error_t *
-vhost_user_api_hookup (vlib_main_t * vm)
+vhost_user_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_vpe_api_msg;
 #undef _
 

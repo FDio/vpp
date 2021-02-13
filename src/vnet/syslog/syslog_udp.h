@@ -24,7 +24,7 @@
 /**
  * @brief Add UDP/IP transport layer by prepending it to existing data
  */
-void syslog_add_udp_transport (vlib_main_t * vm, u32 bi);
+void syslog_add_udp_transport (vlib_main_t *vm, u32 bi);
 
 #endif /* __included_syslog_udp_h__ */
 

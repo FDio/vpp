@@ -11,7 +11,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #include <vppinfra/maplog.h>
 
@@ -30,8 +30,8 @@ typedef enum
 } test_type_t;
 
 static void
-process_maplog_records (clib_maplog_header_t * h,
-			test_entry_t * e, u64 records_this_file)
+process_maplog_records (clib_maplog_header_t *h, test_entry_t *e,
+			u64 records_this_file)
 {
   static int print_header;
   int i = 0;
@@ -39,7 +39,7 @@ process_maplog_records (clib_maplog_header_t * h,
   if (print_header == 0)
     {
       print_header = 1;
-      fformat (stdout, "%U", format_maplog_header, h, 1 /* verbose */ );
+      fformat (stdout, "%U", format_maplog_header, h, 1 /* verbose */);
     }
 
   while (records_this_file--)
@@ -59,7 +59,7 @@ process_maplog_records (clib_maplog_header_t * h,
 }
 
 int
-test_maplog_main (unformat_input_t * input)
+test_maplog_main (unformat_input_t *input)
 {
   clib_maplog_main_t *mm = &maplog_main;
   clib_maplog_init_args_t _a, *a = &_a;
@@ -132,7 +132,6 @@ main (int argc, char *argv[])
   return ret;
 }
 #endif /* CLIB_UNIX */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

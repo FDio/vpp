@@ -29,25 +29,21 @@ typedef struct
 } ah_header_t;
 
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;
   ah_header_t ah;
 }) ip4_and_ah_header_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip6_header_t ip6;
   ah_header_t ah;
 }) ip6_and_ah_header_t;
-/* *INDENT-ON* */
 
 always_inline u8
 ah_calc_icv_padding_len (u8 icv_size, int is_ipv6)
 {
   ASSERT (0 == is_ipv6 || 1 == is_ipv6);
-  const u8 req_multiple = 4 + 4 * is_ipv6;	// 4 for ipv4, 8 for ipv6
+  const u8 req_multiple = 4 + 4 * is_ipv6; // 4 for ipv4, 8 for ipv6
   const u8 total_size = sizeof (ah_header_t) + icv_size;
   return (req_multiple - total_size % req_multiple) % req_multiple;
 }

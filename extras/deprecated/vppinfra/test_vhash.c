@@ -112,8 +112,8 @@ test_vhash_4key_gather (void *_tm, u32 vi, u32 wi, u32 n_key_u32s)
 }
 
 always_inline u32
-test_vhash_get_result (void *_tm,
-		       u32 vector_index, u32 result_index, u32 n_key_u32s)
+test_vhash_get_result (void *_tm, u32 vector_index, u32 result_index,
+		       u32 n_key_u32s)
 {
   test_vhash_main_t *tm = _tm;
   u32 *p = vec_elt_at_index (tm->vhash_results, vector_index);
@@ -122,8 +122,8 @@ test_vhash_get_result (void *_tm,
 }
 
 always_inline u32x4
-test_vhash_get_4result (void *_tm,
-			u32 vector_index, u32x4 results, u32 n_key_u32s)
+test_vhash_get_4result (void *_tm, u32 vector_index, u32x4 results,
+			u32 n_key_u32s)
 {
   test_vhash_main_t *tm = _tm;
   u32 *p = vec_elt_at_index (tm->vhash_results, vector_index);
@@ -132,8 +132,8 @@ test_vhash_get_4result (void *_tm,
 }
 
 always_inline u32
-test_vhash_set_result (void *_tm,
-		       u32 vector_index, u32 old_result, u32 n_key_u32s)
+test_vhash_set_result (void *_tm, u32 vector_index, u32 old_result,
+		       u32 n_key_u32s)
 {
   test_vhash_main_t *tm = _tm;
   u32 *p = vec_elt_at_index (tm->vhash_results, vector_index);
@@ -151,158 +151,138 @@ test_vhash_unset_result (void *_tm, u32 i, u32 old_result, u32 n_key_u32s)
   return 0;
 }
 
-#define _(N_KEY_U32)							\
-  always_inline u32							\
-  test_vhash_key_gather_##N_KEY_U32 (void * _tm, u32 vi, u32 i)		\
-  { return test_vhash_key_gather (_tm, vi, i, N_KEY_U32); }		\
-									\
-  always_inline u32x4							\
-  test_vhash_key_gather_4_##N_KEY_U32 (void * _tm, u32 vi, u32 i)	\
-  {  return test_vhash_4key_gather (_tm, vi, i, N_KEY_U32); }		\
-									\
-  clib_pipeline_stage							\
-  (test_vhash_gather_keys_stage_##N_KEY_U32,				\
-   test_vhash_main_t *, tm, i,						\
-   {									\
-     vhash_gather_4key_stage						\
-       (&tm->vhash,							\
-	/* vector_index */ i,						\
-	test_vhash_key_gather_4_##N_KEY_U32,				\
-	tm,								\
-	N_KEY_U32);							\
-   })									\
-									\
-  clib_pipeline_stage_no_inline						\
-  (test_vhash_gather_keys_mod_stage_##N_KEY_U32,			\
-   test_vhash_main_t *, tm, i,						\
-   {									\
-     vhash_gather_key_stage						\
-       (&tm->vhash,							\
-	/* vector_index */ tm->n_vectors_div_4,				\
-	/* n_vectors */ tm->n_vectors_mod_4,				\
-	test_vhash_key_gather_##N_KEY_U32,				\
-	tm,								\
-	N_KEY_U32);							\
-   })									\
-									\
-  clib_pipeline_stage							\
-  (test_vhash_hash_finalize_stage_##N_KEY_U32,				\
-   test_vhash_main_t *, tm, i,						\
-   {									\
-     vhash_finalize_stage (&tm->vhash, i, N_KEY_U32);			\
-   })									\
-									\
-  clib_pipeline_stage_no_inline						\
-  (test_vhash_hash_finalize_mod_stage_##N_KEY_U32,			\
-   test_vhash_main_t *, tm, i,						\
-   {									\
-     vhash_finalize_stage (&tm->vhash, tm->n_vectors_div_4, N_KEY_U32);	\
-   })									\
-									\
-  clib_pipeline_stage							\
-  (test_vhash_get_stage_##N_KEY_U32,					\
-   test_vhash_main_t *, tm, i,						\
-   {									\
-     vhash_get_4_stage (&tm->vhash,					\
-			/* vector_index */ i,				\
-			test_vhash_get_4result,				\
-			tm, N_KEY_U32);					\
-   })									\
-									\
-  clib_pipeline_stage_no_inline						\
-  (test_vhash_get_mod_stage_##N_KEY_U32,				\
-   test_vhash_main_t *, tm, i,						\
-   {									\
-     vhash_get_stage (&tm->vhash,					\
-		      /* vector_index */ tm->n_vectors_div_4,		\
-		      /* n_vectors */ tm->n_vectors_mod_4,		\
-		      test_vhash_get_result,				\
-		      tm, N_KEY_U32);					\
-   })									\
-									\
-  clib_pipeline_stage							\
-  (test_vhash_set_stage_##N_KEY_U32,					\
-   test_vhash_main_t *, tm, i,						\
-   {									\
-     vhash_set_stage (&tm->vhash,					\
-		      /* vector_index */ i,				\
-		      /* n_vectors */ VECTOR_WORD_TYPE_LEN (u32),	\
-		      test_vhash_set_result,				\
-		      tm, N_KEY_U32);					\
-   })									\
-									\
-  clib_pipeline_stage_no_inline						\
-  (test_vhash_set_mod_stage_##N_KEY_U32,				\
-   test_vhash_main_t *, tm, i,						\
-   {									\
-     vhash_set_stage (&tm->vhash,					\
-		      /* vector_index */ tm->n_vectors_div_4,		\
-		      /* n_vectors */ tm->n_vectors_mod_4,		\
-		      test_vhash_set_result,				\
-		      tm, N_KEY_U32);					\
-   })									\
-									\
-  clib_pipeline_stage							\
-  (test_vhash_unset_stage_##N_KEY_U32,					\
-   test_vhash_main_t *, tm, i,						\
-   {									\
-     vhash_unset_stage (&tm->vhash,					\
-			/* vector_index */ i,				\
-			/* n_vectors */ VECTOR_WORD_TYPE_LEN (u32),	\
-			test_vhash_unset_result,			\
-			tm, N_KEY_U32);					\
-   })									\
-									\
-  clib_pipeline_stage_no_inline						\
-  (test_vhash_unset_mod_stage_##N_KEY_U32,				\
-   test_vhash_main_t *, tm, i,						\
-   {									\
-     vhash_unset_stage (&tm->vhash,					\
-			/* vector_index */ tm->n_vectors_div_4,		\
-			/* n_vectors */ tm->n_vectors_mod_4,		\
-			test_vhash_unset_result,			\
-			tm, N_KEY_U32);					\
-   })
+#define _(N_KEY_U32)                                                          \
+  always_inline u32 test_vhash_key_gather_##N_KEY_U32 (void *_tm, u32 vi,     \
+						       u32 i)                 \
+  {                                                                           \
+    return test_vhash_key_gather (_tm, vi, i, N_KEY_U32);                     \
+  }                                                                           \
+                                                                              \
+  always_inline u32x4 test_vhash_key_gather_4_##N_KEY_U32 (void *_tm, u32 vi, \
+							   u32 i)             \
+  {                                                                           \
+    return test_vhash_4key_gather (_tm, vi, i, N_KEY_U32);                    \
+  }                                                                           \
+                                                                              \
+  clib_pipeline_stage (                                                       \
+    test_vhash_gather_keys_stage_##N_KEY_U32, test_vhash_main_t *, tm, i,     \
+    {                                                                         \
+      vhash_gather_4key_stage (&tm->vhash, /* vector_index */ i,              \
+			       test_vhash_key_gather_4_##N_KEY_U32, tm,       \
+			       N_KEY_U32);                                    \
+    })                                                                        \
+                                                                              \
+    clib_pipeline_stage_no_inline (                                           \
+      test_vhash_gather_keys_mod_stage_##N_KEY_U32, test_vhash_main_t *, tm,  \
+      i,                                                                      \
+      {                                                                       \
+	vhash_gather_key_stage (                                              \
+	  &tm->vhash, /* vector_index */ tm->n_vectors_div_4,                 \
+	  /* n_vectors */ tm->n_vectors_mod_4,                                \
+	  test_vhash_key_gather_##N_KEY_U32, tm, N_KEY_U32);                  \
+      })                                                                      \
+                                                                              \
+      clib_pipeline_stage (                                                   \
+	test_vhash_hash_finalize_stage_##N_KEY_U32, test_vhash_main_t *, tm,  \
+	i, { vhash_finalize_stage (&tm->vhash, i, N_KEY_U32); })              \
+                                                                              \
+	clib_pipeline_stage_no_inline (                                       \
+	  test_vhash_hash_finalize_mod_stage_##N_KEY_U32,                     \
+	  test_vhash_main_t *, tm, i,                                         \
+	  {                                                                   \
+	    vhash_finalize_stage (&tm->vhash, tm->n_vectors_div_4,            \
+				  N_KEY_U32);                                 \
+	  })                                                                  \
+                                                                              \
+	  clib_pipeline_stage (                                               \
+	    test_vhash_get_stage_##N_KEY_U32, test_vhash_main_t *, tm, i,     \
+	    {                                                                 \
+	      vhash_get_4_stage (&tm->vhash, /* vector_index */ i,            \
+				 test_vhash_get_4result, tm, N_KEY_U32);      \
+	    })                                                                \
+                                                                              \
+	    clib_pipeline_stage_no_inline (                                   \
+	      test_vhash_get_mod_stage_##N_KEY_U32, test_vhash_main_t *, tm,  \
+	      i,                                                              \
+	      {                                                               \
+		vhash_get_stage (&tm->vhash,                                  \
+				 /* vector_index */ tm->n_vectors_div_4,      \
+				 /* n_vectors */ tm->n_vectors_mod_4,         \
+				 test_vhash_get_result, tm, N_KEY_U32);       \
+	      })                                                              \
+                                                                              \
+	      clib_pipeline_stage (                                           \
+		test_vhash_set_stage_##N_KEY_U32, test_vhash_main_t *, tm, i, \
+		{                                                             \
+		  vhash_set_stage (                                           \
+		    &tm->vhash, /* vector_index */ i,                         \
+		    /* n_vectors */ VECTOR_WORD_TYPE_LEN (u32),               \
+		    test_vhash_set_result, tm, N_KEY_U32);                    \
+		})                                                            \
+                                                                              \
+		clib_pipeline_stage_no_inline (                               \
+		  test_vhash_set_mod_stage_##N_KEY_U32, test_vhash_main_t *,  \
+		  tm, i,                                                      \
+		  {                                                           \
+		    vhash_set_stage (&tm->vhash,                              \
+				     /* vector_index */ tm->n_vectors_div_4,  \
+				     /* n_vectors */ tm->n_vectors_mod_4,     \
+				     test_vhash_set_result, tm, N_KEY_U32);   \
+		  })                                                          \
+                                                                              \
+		  clib_pipeline_stage (                                       \
+		    test_vhash_unset_stage_##N_KEY_U32, test_vhash_main_t *,  \
+		    tm, i,                                                    \
+		    {                                                         \
+		      vhash_unset_stage (                                     \
+			&tm->vhash, /* vector_index */ i,                     \
+			/* n_vectors */ VECTOR_WORD_TYPE_LEN (u32),           \
+			test_vhash_unset_result, tm, N_KEY_U32);              \
+		    })                                                        \
+                                                                              \
+		    clib_pipeline_stage_no_inline (                           \
+		      test_vhash_unset_mod_stage_##N_KEY_U32,                 \
+		      test_vhash_main_t *, tm, i, {                           \
+			vhash_unset_stage (                                   \
+			  &tm->vhash, /* vector_index */ tm->n_vectors_div_4, \
+			  /* n_vectors */ tm->n_vectors_mod_4,                \
+			  test_vhash_unset_result, tm, N_KEY_U32);            \
+		      })
 
-_(1);
-_(2);
-_(3);
-_(4);
-_(5);
-_(6);
+_ (1);
+_ (2);
+_ (3);
+_ (4);
+_ (5);
+_ (6);
 
 #undef _
 
-#define _(N_KEY_U32)							\
-  clib_pipeline_stage							\
-  (test_vhash_hash_mix_stage_##N_KEY_U32,				\
-   test_vhash_main_t *, tm, i,						\
-   {									\
-     vhash_mix_stage (&tm->vhash, i, N_KEY_U32);			\
-   })									\
-									\
-  clib_pipeline_stage_no_inline						\
-  (test_vhash_hash_mix_mod_stage_##N_KEY_U32,				\
-   test_vhash_main_t *, tm, i,						\
-   {									\
-     vhash_mix_stage (&tm->vhash, tm->n_vectors_div_4, N_KEY_U32);	\
-   })
+#define _(N_KEY_U32)                                                          \
+  clib_pipeline_stage (test_vhash_hash_mix_stage_##N_KEY_U32,                 \
+		       test_vhash_main_t *, tm, i,                            \
+		       { vhash_mix_stage (&tm->vhash, i, N_KEY_U32); })       \
+                                                                              \
+    clib_pipeline_stage_no_inline (                                           \
+      test_vhash_hash_mix_mod_stage_##N_KEY_U32, test_vhash_main_t *, tm, i,  \
+      { vhash_mix_stage (&tm->vhash, tm->n_vectors_div_4, N_KEY_U32); })
 
-_(4);
-_(5);
-_(6);
+_ (4);
+_ (5);
+_ (6);
 
 #undef _
 
 typedef enum
 {
-  GET, SET, UNSET,
+  GET,
+  SET,
+  UNSET,
 } test_vhash_op_t;
 
 static void
-test_vhash_op (test_vhash_main_t * tm,
-	       u32 * key_indices,
-	       u32 * results, uword n_keys, test_vhash_op_t op)
+test_vhash_op (test_vhash_main_t *tm, u32 *key_indices, u32 *results,
+	       uword n_keys, test_vhash_op_t op)
 {
   vhash_validate_sizes (&tm->vhash, tm->n_key_u32, n_keys);
 
@@ -319,73 +299,60 @@ test_vhash_op (test_vhash_main_t * tm,
 	  ASSERT (0);
 	  break;
 
-#define _(N_KEY_U32)						\
-	case N_KEY_U32:						\
-	  if (op == GET)					\
-	    clib_pipeline_run_3_stage				\
-	      (tm->n_vectors_div_4,				\
-	       tm,						\
-	       test_vhash_gather_keys_stage_##N_KEY_U32,	\
-	       test_vhash_hash_finalize_stage_##N_KEY_U32,	\
-	       test_vhash_get_stage_##N_KEY_U32);		\
-	  else if (op == SET)					\
-	    clib_pipeline_run_3_stage				\
-	      (tm->n_vectors_div_4,				\
-	       tm,						\
-	       test_vhash_gather_keys_stage_##N_KEY_U32,	\
-	       test_vhash_hash_finalize_stage_##N_KEY_U32,	\
-	       test_vhash_set_stage_##N_KEY_U32);		\
-	  else							\
-	    clib_pipeline_run_3_stage				\
-	      (tm->n_vectors_div_4,				\
-	       tm,						\
-	       test_vhash_gather_keys_stage_##N_KEY_U32,	\
-	       test_vhash_hash_finalize_stage_##N_KEY_U32,	\
-	       test_vhash_unset_stage_##N_KEY_U32);		\
-	  break;
+#define _(N_KEY_U32)                                                          \
+  case N_KEY_U32:                                                             \
+    if (op == GET)                                                            \
+      clib_pipeline_run_3_stage (tm->n_vectors_div_4, tm,                     \
+				 test_vhash_gather_keys_stage_##N_KEY_U32,    \
+				 test_vhash_hash_finalize_stage_##N_KEY_U32,  \
+				 test_vhash_get_stage_##N_KEY_U32);           \
+    else if (op == SET)                                                       \
+      clib_pipeline_run_3_stage (tm->n_vectors_div_4, tm,                     \
+				 test_vhash_gather_keys_stage_##N_KEY_U32,    \
+				 test_vhash_hash_finalize_stage_##N_KEY_U32,  \
+				 test_vhash_set_stage_##N_KEY_U32);           \
+    else                                                                      \
+      clib_pipeline_run_3_stage (tm->n_vectors_div_4, tm,                     \
+				 test_vhash_gather_keys_stage_##N_KEY_U32,    \
+				 test_vhash_hash_finalize_stage_##N_KEY_U32,  \
+				 test_vhash_unset_stage_##N_KEY_U32);         \
+    break;
 
-	  _(1);
-	  _(2);
-	  _(3);
+	  _ (1);
+	  _ (2);
+	  _ (3);
 
 #undef _
 
-#define _(N_KEY_U32)						\
-	case N_KEY_U32:						\
-	  if (op == GET)					\
-	    clib_pipeline_run_4_stage				\
-	      (tm->n_vectors_div_4,				\
-	       tm,						\
-	       test_vhash_gather_keys_stage_##N_KEY_U32,	\
-	       test_vhash_hash_mix_stage_##N_KEY_U32,		\
-	       test_vhash_hash_finalize_stage_##N_KEY_U32,	\
-	       test_vhash_get_stage_##N_KEY_U32);		\
-	  else if (op == SET)					\
-	    clib_pipeline_run_4_stage				\
-	      (tm->n_vectors_div_4,				\
-	       tm,						\
-	       test_vhash_gather_keys_stage_##N_KEY_U32,	\
-	       test_vhash_hash_mix_stage_##N_KEY_U32,		\
-	       test_vhash_hash_finalize_stage_##N_KEY_U32,	\
-	       test_vhash_set_stage_##N_KEY_U32);		\
-	  else							\
-	    clib_pipeline_run_4_stage				\
-	      (tm->n_vectors_div_4,				\
-	       tm,						\
-	       test_vhash_gather_keys_stage_##N_KEY_U32,	\
-	       test_vhash_hash_mix_stage_##N_KEY_U32,		\
-	       test_vhash_hash_finalize_stage_##N_KEY_U32,	\
-	       test_vhash_unset_stage_##N_KEY_U32);		\
-	  break;
+#define _(N_KEY_U32)                                                          \
+  case N_KEY_U32:                                                             \
+    if (op == GET)                                                            \
+      clib_pipeline_run_4_stage (tm->n_vectors_div_4, tm,                     \
+				 test_vhash_gather_keys_stage_##N_KEY_U32,    \
+				 test_vhash_hash_mix_stage_##N_KEY_U32,       \
+				 test_vhash_hash_finalize_stage_##N_KEY_U32,  \
+				 test_vhash_get_stage_##N_KEY_U32);           \
+    else if (op == SET)                                                       \
+      clib_pipeline_run_4_stage (tm->n_vectors_div_4, tm,                     \
+				 test_vhash_gather_keys_stage_##N_KEY_U32,    \
+				 test_vhash_hash_mix_stage_##N_KEY_U32,       \
+				 test_vhash_hash_finalize_stage_##N_KEY_U32,  \
+				 test_vhash_set_stage_##N_KEY_U32);           \
+    else                                                                      \
+      clib_pipeline_run_4_stage (tm->n_vectors_div_4, tm,                     \
+				 test_vhash_gather_keys_stage_##N_KEY_U32,    \
+				 test_vhash_hash_mix_stage_##N_KEY_U32,       \
+				 test_vhash_hash_finalize_stage_##N_KEY_U32,  \
+				 test_vhash_unset_stage_##N_KEY_U32);         \
+    break;
 
-	  _(4);
-	  _(5);
-	  _(6);
+	  _ (4);
+	  _ (5);
+	  _ (6);
 
 #undef _
 	}
     }
-
 
   if (tm->n_vectors_mod_4 > 0)
     {
@@ -395,68 +362,56 @@ test_vhash_op (test_vhash_main_t * tm,
 	  ASSERT (0);
 	  break;
 
-#define _(N_KEY_U32)						\
-	case N_KEY_U32:						\
-	  if (op == GET)					\
-	    clib_pipeline_run_3_stage				\
-	      (1,						\
-	       tm,						\
-	       test_vhash_gather_keys_mod_stage_##N_KEY_U32,	\
-	       test_vhash_hash_finalize_mod_stage_##N_KEY_U32,	\
-	       test_vhash_get_mod_stage_##N_KEY_U32);		\
-	  else if (op == SET)					\
-	    clib_pipeline_run_3_stage				\
-	      (1,						\
-	       tm,						\
-	       test_vhash_gather_keys_mod_stage_##N_KEY_U32,	\
-	       test_vhash_hash_finalize_mod_stage_##N_KEY_U32,	\
-	       test_vhash_set_mod_stage_##N_KEY_U32);		\
-	  else							\
-	    clib_pipeline_run_3_stage				\
-	      (1,						\
-	       tm,						\
-	       test_vhash_gather_keys_mod_stage_##N_KEY_U32,	\
-	       test_vhash_hash_finalize_mod_stage_##N_KEY_U32,	\
-	       test_vhash_unset_mod_stage_##N_KEY_U32);		\
-	break;
+#define _(N_KEY_U32)                                                          \
+  case N_KEY_U32:                                                             \
+    if (op == GET)                                                            \
+      clib_pipeline_run_3_stage (                                             \
+	1, tm, test_vhash_gather_keys_mod_stage_##N_KEY_U32,                  \
+	test_vhash_hash_finalize_mod_stage_##N_KEY_U32,                       \
+	test_vhash_get_mod_stage_##N_KEY_U32);                                \
+    else if (op == SET)                                                       \
+      clib_pipeline_run_3_stage (                                             \
+	1, tm, test_vhash_gather_keys_mod_stage_##N_KEY_U32,                  \
+	test_vhash_hash_finalize_mod_stage_##N_KEY_U32,                       \
+	test_vhash_set_mod_stage_##N_KEY_U32);                                \
+    else                                                                      \
+      clib_pipeline_run_3_stage (                                             \
+	1, tm, test_vhash_gather_keys_mod_stage_##N_KEY_U32,                  \
+	test_vhash_hash_finalize_mod_stage_##N_KEY_U32,                       \
+	test_vhash_unset_mod_stage_##N_KEY_U32);                              \
+    break;
 
-	  _(1);
-	  _(2);
-	  _(3);
+	  _ (1);
+	  _ (2);
+	  _ (3);
 
 #undef _
 
-#define _(N_KEY_U32)						\
-	case N_KEY_U32:						\
-	  if (op == GET)					\
-	    clib_pipeline_run_4_stage				\
-	      (1,						\
-	       tm,						\
-	       test_vhash_gather_keys_mod_stage_##N_KEY_U32,	\
-	       test_vhash_hash_mix_mod_stage_##N_KEY_U32,	\
-	       test_vhash_hash_finalize_mod_stage_##N_KEY_U32,	\
-	       test_vhash_get_mod_stage_##N_KEY_U32);		\
-	  else if (op == SET)					\
-	    clib_pipeline_run_4_stage				\
-	      (1,						\
-	       tm,						\
-	       test_vhash_gather_keys_mod_stage_##N_KEY_U32,	\
-	       test_vhash_hash_mix_mod_stage_##N_KEY_U32,	\
-	       test_vhash_hash_finalize_mod_stage_##N_KEY_U32,	\
-	       test_vhash_set_mod_stage_##N_KEY_U32);		\
-	  else							\
-	    clib_pipeline_run_4_stage				\
-	      (1,						\
-	       tm,						\
-	       test_vhash_gather_keys_mod_stage_##N_KEY_U32,	\
-	       test_vhash_hash_mix_mod_stage_##N_KEY_U32,	\
-	       test_vhash_hash_finalize_mod_stage_##N_KEY_U32,	\
-	       test_vhash_unset_mod_stage_##N_KEY_U32);		\
-	  break;
+#define _(N_KEY_U32)                                                          \
+  case N_KEY_U32:                                                             \
+    if (op == GET)                                                            \
+      clib_pipeline_run_4_stage (                                             \
+	1, tm, test_vhash_gather_keys_mod_stage_##N_KEY_U32,                  \
+	test_vhash_hash_mix_mod_stage_##N_KEY_U32,                            \
+	test_vhash_hash_finalize_mod_stage_##N_KEY_U32,                       \
+	test_vhash_get_mod_stage_##N_KEY_U32);                                \
+    else if (op == SET)                                                       \
+      clib_pipeline_run_4_stage (                                             \
+	1, tm, test_vhash_gather_keys_mod_stage_##N_KEY_U32,                  \
+	test_vhash_hash_mix_mod_stage_##N_KEY_U32,                            \
+	test_vhash_hash_finalize_mod_stage_##N_KEY_U32,                       \
+	test_vhash_set_mod_stage_##N_KEY_U32);                                \
+    else                                                                      \
+      clib_pipeline_run_4_stage (                                             \
+	1, tm, test_vhash_gather_keys_mod_stage_##N_KEY_U32,                  \
+	test_vhash_hash_mix_mod_stage_##N_KEY_U32,                            \
+	test_vhash_hash_finalize_mod_stage_##N_KEY_U32,                       \
+	test_vhash_unset_mod_stage_##N_KEY_U32);                              \
+    break;
 
-	  _(4);
-	  _(5);
-	  _(6);
+	  _ (4);
+	  _ (5);
+	  _ (6);
 
 #undef _
 	}
@@ -464,7 +419,7 @@ test_vhash_op (test_vhash_main_t * tm,
 }
 
 int
-test_vhash_main (unformat_input_t * input)
+test_vhash_main (unformat_input_t *input)
 {
   clib_error_t *error = 0;
   test_vhash_main_t _tm, *tm = &_tm;
@@ -561,25 +516,24 @@ test_vhash_main (unformat_input_t * input)
 
 	do
 	  {
-	    to_set_bitmap = clib_bitmap_random (to_set_bitmap,
-						tm->n_keys, &tm->seed);
+	    to_set_bitmap =
+	      clib_bitmap_random (to_set_bitmap, tm->n_keys, &tm->seed);
 	  }
 	while (clib_bitmap_is_zero (to_set_bitmap));
 	to_unset_bitmap = clib_bitmap_dup_and (to_set_bitmap, is_set_bitmap);
 	to_set_bitmap = clib_bitmap_andnot (to_set_bitmap, to_unset_bitmap);
 
-	/* *INDENT-OFF* */
 	clib_bitmap_foreach (j, to_set_bitmap, ({
-	      vec_add1 (to_set, j);
-	      vec_add1 (to_set_results, tm->results[j]);
-	}));
-	/* *INDENT-ON* */
-	/* *INDENT-OFF* */
+			       vec_add1 (to_set, j);
+			       vec_add1 (to_set_results, tm->results[j]);
+			     }))
+	  ;
+
 	clib_bitmap_foreach (j, to_unset_bitmap, ({
-	      vec_add1 (to_unset, j);
-	      vec_add1 (to_unset_results, 0xdeadbeef);
-	}));
-	/* *INDENT-ON* */
+			       vec_add1 (to_unset, j);
+			       vec_add1 (to_unset_results, 0xdeadbeef);
+			     }))
+	  ;
 
 	if (vec_len (to_set) > 0)
 	  {
@@ -593,8 +547,7 @@ test_vhash_main (unformat_input_t * input)
 	  }
 
 	t[0] = clib_cpu_time_now ();
-	test_vhash_op (tm, tm->vhash_get_key_indices,
-		       tm->vhash_get_results,
+	test_vhash_op (tm, tm->vhash_get_key_indices, tm->vhash_get_results,
 		       vec_len (tm->vhash_get_key_indices), GET);
 	t[1] = clib_cpu_time_now ();
 	tm->get_stats.n_clocks += t[1] - t[0];
@@ -623,8 +576,8 @@ test_vhash_main (unformat_input_t * input)
 	if (vec_len (to_unset) > 0)
 	  {
 	    t[0] = clib_cpu_time_now ();
-	    test_vhash_op (tm, to_unset, to_unset_results,
-			   vec_len (to_unset), UNSET);
+	    test_vhash_op (tm, to_unset, to_unset_results, vec_len (to_unset),
+			   UNSET);
 	    t[1] = clib_cpu_time_now ();
 	    tm->unset_stats.n_clocks += t[1] - t[0];
 	    tm->unset_stats.n_vectors += vec_len (to_unset);
@@ -634,8 +587,7 @@ test_vhash_main (unformat_input_t * input)
 	  }
 
 	t[0] = clib_cpu_time_now ();
-	test_vhash_op (tm, tm->vhash_get_key_indices,
-		       tm->vhash_get_results,
+	test_vhash_op (tm, tm->vhash_get_key_indices, tm->vhash_get_results,
 		       vec_len (tm->vhash_get_key_indices), GET);
 	t[1] = clib_cpu_time_now ();
 	tm->get_stats.n_clocks += t[1] - t[0];
@@ -664,8 +616,7 @@ test_vhash_main (unformat_input_t * input)
 
     vhash_resize (vh, tm->log2_size + 1);
 
-    test_vhash_op (tm, tm->vhash_get_key_indices,
-		   tm->vhash_get_results,
+    test_vhash_op (tm, tm->vhash_get_key_indices, tm->vhash_get_results,
 		   vec_len (tm->vhash_get_key_indices), GET);
 
     for (j = 0; j < vec_len (tm->vhash_get_results); j++)
@@ -694,27 +645,24 @@ test_vhash_main (unformat_input_t * input)
     clib_time_init (&ct);
 
     clib_warning ("%.4e clocks/get %.4e gets/call %.4e gets/sec",
-		  (f64) tm->get_stats.n_clocks /
-		  (f64) tm->get_stats.n_vectors,
+		  (f64) tm->get_stats.n_clocks / (f64) tm->get_stats.n_vectors,
 		  (f64) tm->get_stats.n_vectors / (f64) tm->get_stats.n_calls,
 		  (f64) tm->get_stats.n_vectors /
-		  (f64) (tm->get_stats.n_clocks * ct.seconds_per_clock));
+		    (f64) (tm->get_stats.n_clocks * ct.seconds_per_clock));
     if (tm->set_stats.n_calls > 0)
-      clib_warning ("%.4e clocks/set %.4e sets/call %.4e sets/sec",
-		    (f64) tm->set_stats.n_clocks /
-		    (f64) tm->set_stats.n_vectors,
-		    (f64) tm->set_stats.n_vectors /
-		    (f64) tm->set_stats.n_calls,
-		    (f64) tm->set_stats.n_vectors /
-		    (f64) (tm->set_stats.n_clocks * ct.seconds_per_clock));
+      clib_warning (
+	"%.4e clocks/set %.4e sets/call %.4e sets/sec",
+	(f64) tm->set_stats.n_clocks / (f64) tm->set_stats.n_vectors,
+	(f64) tm->set_stats.n_vectors / (f64) tm->set_stats.n_calls,
+	(f64) tm->set_stats.n_vectors /
+	  (f64) (tm->set_stats.n_clocks * ct.seconds_per_clock));
     if (tm->unset_stats.n_calls > 0)
-      clib_warning ("%.4e clocks/unset %.4e unsets/call %.4e unsets/sec",
-		    (f64) tm->unset_stats.n_clocks /
-		    (f64) tm->unset_stats.n_vectors,
-		    (f64) tm->unset_stats.n_vectors /
-		    (f64) tm->unset_stats.n_calls,
-		    (f64) tm->unset_stats.n_vectors /
-		    (f64) (tm->unset_stats.n_clocks * ct.seconds_per_clock));
+      clib_warning (
+	"%.4e clocks/unset %.4e unsets/call %.4e unsets/sec",
+	(f64) tm->unset_stats.n_clocks / (f64) tm->unset_stats.n_vectors,
+	(f64) tm->unset_stats.n_vectors / (f64) tm->unset_stats.n_calls,
+	(f64) tm->unset_stats.n_vectors /
+	  (f64) (tm->unset_stats.n_clocks * ct.seconds_per_clock));
   }
 
 done:
@@ -727,7 +675,7 @@ done:
 
 #ifndef CLIB_HAVE_VEC128
 int
-test_vhash_main (unformat_input_t * input)
+test_vhash_main (unformat_input_t *input)
 {
   clib_error ("compiled without vector support");
   return 0;

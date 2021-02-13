@@ -27,14 +27,14 @@
 #include <rdma/rdma.h>
 
 static clib_error_t *
-rdma_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			vlib_cli_command_t * cmd)
+rdma_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   rdma_create_if_args_t args;
 
   if (!unformat_user (input, unformat_rdma_create_if_args, &args))
-    return clib_error_return (0, "unknown input `%U'",
-			      format_unformat_error, input);
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
+			      input);
 
   rdma_create_if (vm, &args);
 
@@ -44,21 +44,19 @@ rdma_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return args.error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (rdma_create_command, static) = {
   .path = "create interface rdma",
   .short_help = "create interface rdma <host-if ifname> [name <name>]"
-    " [rx-queue-size <size>] [tx-queue-size <size>]"
-    " [num-rx-queues <size>] [mode <auto|ibv|dv]"
-    " [no-multi-seg] [no-striding]"
-    " [max-pktlen <size>]",
+		" [rx-queue-size <size>] [tx-queue-size <size>]"
+		" [num-rx-queues <size>] [mode <auto|ibv|dv]"
+		" [no-multi-seg] [no-striding]"
+		" [max-pktlen <size>]",
   .function = rdma_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-rdma_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			vlib_cli_command_t * cmd)
+rdma_delete_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
@@ -75,8 +73,8 @@ rdma_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "sw_if_index %d", &sw_if_index))
 	;
-      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
@@ -99,18 +97,16 @@ rdma_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (rdma_delete_command, static) = {
   .path = "delete interface rdma",
   .short_help = "delete interface rdma "
-    "{<interface> | sw_if_index <sw_idx>}",
+		"{<interface> | sw_if_index <sw_idx>}",
   .function = rdma_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-test_rdma_dump_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			   vlib_cli_command_t * cmd)
+test_rdma_dump_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
@@ -128,8 +124,8 @@ test_rdma_dump_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "sw_if_index %d", &sw_if_index))
 	;
-      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
@@ -150,28 +146,25 @@ test_rdma_dump_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if ((rd->flags & RDMA_DEVICE_F_MLX5DV) == 0)
     return clib_error_return (0, "not a mlx5 interface");
 
-  vlib_cli_output (vm, "netdev %s pci-addr %U lkey 0x%x",
-		   rd->linux_ifname, format_vlib_pci_addr, &rd->pci->addr,
-		   &rd->lkey);
+  vlib_cli_output (vm, "netdev %s pci-addr %U lkey 0x%x", rd->linux_ifname,
+		   format_vlib_pci_addr, &rd->pci->addr, &rd->lkey);
 
   vec_foreach_index (i, rd->rxqs)
-  {
-    vlib_cli_output (vm, "RX queue %u\n  %U\n", i, format_rdma_rxq, rd, i);
-  }
+    {
+      vlib_cli_output (vm, "RX queue %u\n  %U\n", i, format_rdma_rxq, rd, i);
+    }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_rdma_mlx5dv_dump_command, static) = {
   .path = "test rdma dump",
   .short_help = "test rdma dump {<interface> | sw_if_index <sw_idx>}",
   .function = test_rdma_dump_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-rdma_cli_init (vlib_main_t * vm)
+rdma_cli_init (vlib_main_t *vm)
 {
   return 0;
 }

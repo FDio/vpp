@@ -27,9 +27,8 @@ curve25519_gen_shared (u8 shared_key[CURVE25519_KEY_SIZE],
   size_t key_len;
 
   EVP_PKEY *peerkey = NULL;
-  EVP_PKEY *pkey =
-    EVP_PKEY_new_raw_private_key (EVP_PKEY_X25519, NULL, secret_key,
-				  CURVE25519_KEY_SIZE);
+  EVP_PKEY *pkey = EVP_PKEY_new_raw_private_key (
+    EVP_PKEY_X25519, NULL, secret_key, CURVE25519_KEY_SIZE);
 
   ret = true;
 
@@ -40,9 +39,8 @@ curve25519_gen_shared (u8 shared_key[CURVE25519_KEY_SIZE],
       goto out;
     }
 
-  peerkey =
-    EVP_PKEY_new_raw_public_key (EVP_PKEY_X25519, NULL, basepoint,
-				 CURVE25519_KEY_SIZE);
+  peerkey = EVP_PKEY_new_raw_public_key (EVP_PKEY_X25519, NULL, basepoint,
+					 CURVE25519_KEY_SIZE);
   if (EVP_PKEY_derive_set_peer (ctx, peerkey) <= 0)
     {
       ret = false;
@@ -67,9 +65,8 @@ curve25519_gen_public (u8 public_key[CURVE25519_KEY_SIZE],
 		       const u8 secret_key[CURVE25519_KEY_SIZE])
 {
   size_t pub_len;
-  EVP_PKEY *pkey =
-    EVP_PKEY_new_raw_private_key (EVP_PKEY_X25519, NULL, secret_key,
-				  CURVE25519_KEY_SIZE);
+  EVP_PKEY *pkey = EVP_PKEY_new_raw_private_key (
+    EVP_PKEY_X25519, NULL, secret_key, CURVE25519_KEY_SIZE);
   pub_len = CURVE25519_KEY_SIZE;
   if (!EVP_PKEY_get_raw_public_key (pkey, public_key, &pub_len))
     {
@@ -101,7 +98,7 @@ curve25519_gen_secret (u8 secret_key[CURVE25519_KEY_SIZE])
 }
 
 bool
-key_to_base64 (const u8 * src, size_t src_len, u8 * out)
+key_to_base64 (const u8 *src, size_t src_len, u8 *out)
 {
   if (!EVP_EncodeBlock (out, src, src_len))
     return false;
@@ -109,7 +106,7 @@ key_to_base64 (const u8 * src, size_t src_len, u8 * out)
 }
 
 bool
-key_from_base64 (const u8 * src, size_t src_len, u8 * out)
+key_from_base64 (const u8 *src, size_t src_len, u8 *out)
 {
   if (EVP_DecodeBlock (out, src, src_len - 1) <= 0)
     return false;

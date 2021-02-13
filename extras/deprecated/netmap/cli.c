@@ -26,8 +26,8 @@
 #include <vnet/devices/netmap/netmap.h>
 
 static clib_error_t *
-netmap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			  vlib_cli_command_t * cmd)
+netmap_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 *host_if_name = NULL;
@@ -47,9 +47,8 @@ netmap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "name %s", &host_if_name))
 	;
-      else
-	if (unformat
-	    (line_input, "hw-addr %U", unformat_ethernet_address, hwaddr))
+      else if (unformat (line_input, "hw-addr %U", unformat_ethernet_address,
+			 hwaddr))
 	hw_addr_ptr = hwaddr;
       else if (unformat (line_input, "pipe"))
 	is_pipe = 1;
@@ -71,9 +70,8 @@ netmap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       goto done;
     }
 
-  r =
-    netmap_create_if (vm, host_if_name, hw_addr_ptr, is_pipe, is_master,
-		      &sw_if_index);
+  r = netmap_create_if (vm, host_if_name, hw_addr_ptr, is_pipe, is_master,
+			&sw_if_index);
 
   if (r == VNET_API_ERROR_SYSCALL_ERROR_1)
     {
@@ -112,7 +110,8 @@ done:
  * generates the '<em>netmap.ko</em>' kernel module that needs to be loaded
  * before netmap interfaces can be created.
  * - https://github.com/luigirizzo/netmap - Netmap/VALE repo.
- * - https://github.com/vpp-dev/netmap - VPP development package for Netmap/VALE,
+ * - https://github.com/vpp-dev/netmap - VPP development package for
+Netmap/VALE,
  * which is a snapshot of the Netmap/VALE repo with minor changes to work
  * with containers and modified kernel drivers to work with NICs.
  *
@@ -142,24 +141,23 @@ done:
  * @cliexpar
  * Example of how to create a netmap interface tied to the linux
  * namespace '<em>vpp1</em>':
- * @cliexstart{create netmap name vale00:vpp1 hw-addr 02:FE:3F:34:15:9B pipe master}
+ * @cliexstart{create netmap name vale00:vpp1 hw-addr 02:FE:3F:34:15:9B pipe
+master}
  * netmap-vale00:vpp1
  * @cliexend
  * Once the netmap interface is created, enable the interface using:
  * @cliexcmd{set interface state netmap-vale00:vpp1 up}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (netmap_create_command, static) = {
   .path = "create netmap",
   .short_help = "create netmap name <ifname>|valeXXX:YYY "
-    "[hw-addr <mac-addr>] [pipe] [master|slave]",
+		"[hw-addr <mac-addr>] [pipe] [master|slave]",
   .function = netmap_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-netmap_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			  vlib_cli_command_t * cmd)
+netmap_delete_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 *host_if_name = NULL;
@@ -208,19 +206,18 @@ done:
  *   - Where '<em>YYY</em>' is an existing linux namespace.
  *
  * @cliexpar
- * Example of how to delete a netmap interface named '<em>netmap-vale00:vpp1</em>':
+ * Example of how to delete a netmap interface named
+'<em>netmap-vale00:vpp1</em>':
  * @cliexcmd{delete netmap name vale00:vpp1}
 ?*/
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (netmap_delete_command, static) = {
   .path = "delete netmap",
   .short_help = "delete netmap name <ifname>|valeXXX:YYY",
   .function = netmap_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-netmap_cli_init (vlib_main_t * vm)
+netmap_cli_init (vlib_main_t *vm)
 {
   return 0;
 }

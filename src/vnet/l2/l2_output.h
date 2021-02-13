@@ -23,7 +23,6 @@
 #include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_vtr.h>
 
-
 /* The L2 output feature configuration, a per-interface struct */
 typedef struct
 {
@@ -78,28 +77,28 @@ extern vlib_node_registration_t l2output_node;
 /* L2 output features */
 
 /* Mappings from feature ID to graph node name in reverse order */
-#define foreach_l2output_feat \
- _(OUTPUT,            "interface-output")           \
- _(SPAN,              "span-l2-output")             \
- _(GBP_POLICY_LPM,    "gbp-policy-lpm")            \
- _(GBP_POLICY_PORT,   "gbp-policy-port")            \
- _(GBP_POLICY_MAC,    "gbp-policy-mac")             \
- _(CFM,               "feature-bitmap-drop")        \
- _(QOS,               "feature-bitmap-drop")        \
- _(ACL,               "l2-output-acl")              \
- _(L2PT,              "feature-bitmap-drop")        \
- _(EFP_FILTER,        "l2-efp-filter")              \
- _(IPIW,              "feature-bitmap-drop")        \
- _(STP_BLOCKED,       "feature-bitmap-drop")        \
- _(LINESTATUS_DOWN,   "feature-bitmap-drop")        \
- _(OUTPUT_CLASSIFY,   "l2-output-classify")	    \
- _(OUTPUT_FEAT_ARC,   "l2-output-feat-arc")	    \
- _(XCRW,	      "l2-xcrw")
+#define foreach_l2output_feat                                                 \
+  _ (OUTPUT, "interface-output")                                              \
+  _ (SPAN, "span-l2-output")                                                  \
+  _ (GBP_POLICY_LPM, "gbp-policy-lpm")                                        \
+  _ (GBP_POLICY_PORT, "gbp-policy-port")                                      \
+  _ (GBP_POLICY_MAC, "gbp-policy-mac")                                        \
+  _ (CFM, "feature-bitmap-drop")                                              \
+  _ (QOS, "feature-bitmap-drop")                                              \
+  _ (ACL, "l2-output-acl")                                                    \
+  _ (L2PT, "feature-bitmap-drop")                                             \
+  _ (EFP_FILTER, "l2-efp-filter")                                             \
+  _ (IPIW, "feature-bitmap-drop")                                             \
+  _ (STP_BLOCKED, "feature-bitmap-drop")                                      \
+  _ (LINESTATUS_DOWN, "feature-bitmap-drop")                                  \
+  _ (OUTPUT_CLASSIFY, "l2-output-classify")                                   \
+  _ (OUTPUT_FEAT_ARC, "l2-output-feat-arc")                                   \
+  _ (XCRW, "l2-xcrw")
 
 /* Feature bitmap positions */
 typedef enum
 {
-#define _(sym,str) L2OUTPUT_FEAT_##sym##_BIT,
+#define _(sym, str) L2OUTPUT_FEAT_##sym##_BIT,
   foreach_l2output_feat
 #undef _
     L2OUTPUT_N_FEAT,
@@ -111,18 +110,18 @@ STATIC_ASSERT (L2OUTPUT_N_FEAT <= 32, "too many l2 output features");
 typedef enum
 {
   L2OUTPUT_FEAT_NONE = 0,
-#define _(sym,str) L2OUTPUT_FEAT_##sym = (1<<L2OUTPUT_FEAT_##sym##_BIT),
+#define _(sym, str) L2OUTPUT_FEAT_##sym = (1 << L2OUTPUT_FEAT_##sym##_BIT),
   foreach_l2output_feat
 #undef _
 } l2output_feat_masks_t;
 
-#define foreach_l2output_error				\
-_(L2OUTPUT,     "L2 output packets")			\
-_(EFP_DROP,     "L2 EFP filter pre-rewrite drops")	\
-_(VTR_DROP,     "L2 output tag rewrite drops")		\
-_(SHG_DROP,     "L2 split horizon drops")		\
-_(DROP,         "L2 output drops")			\
-_(MAPPING_DROP, "L2 Output interface not valid")
+#define foreach_l2output_error                                                \
+  _ (L2OUTPUT, "L2 output packets")                                           \
+  _ (EFP_DROP, "L2 EFP filter pre-rewrite drops")                             \
+  _ (VTR_DROP, "L2 output tag rewrite drops")                                 \
+  _ (SHG_DROP, "L2 split horizon drops")                                      \
+  _ (DROP, "L2 output drops")                                                 \
+  _ (MAPPING_DROP, "L2 Output interface not valid")
 
 typedef enum
 {
@@ -133,7 +132,7 @@ typedef enum
 
 typedef enum
 {
-#define _(sym,str) L2OUTPUT_ERROR_##sym,
+#define _(sym, str) L2OUTPUT_ERROR_##sym,
   foreach_l2output_error
 #undef _
     L2OUTPUT_N_ERROR,
@@ -143,7 +142,7 @@ typedef enum
 char **l2output_get_feat_names (void);
 
 /* arg0 - u32 feature_bitmap, arg1 - u32 verbose */
-u8 *format_l2_output_features (u8 * s, va_list * args);
+u8 *format_l2_output_features (u8 *s, va_list *args);
 
 /**
  * The next set of functions is for use by output feature graph nodes.
@@ -153,8 +152,8 @@ u8 *format_l2_output_features (u8 * s, va_list * args);
  */
 
 /* Create a mapping to the output graph node for the given sw_if_index */
-void l2output_create_output_node_mapping (vlib_main_t * vlib_main,
-					  vnet_main_t * vnet_main,
+void l2output_create_output_node_mapping (vlib_main_t *vlib_main,
+					  vnet_main_t *vnet_main,
 					  u32 sw_if_index);
 
 /** Get a pointer to the config for the given interface */

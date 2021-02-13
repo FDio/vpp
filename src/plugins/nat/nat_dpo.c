@@ -19,13 +19,13 @@
 dpo_type_t nat_dpo_type;
 
 void
-nat_dpo_create (dpo_proto_t dproto, u32 aftr_index, dpo_id_t * dpo)
+nat_dpo_create (dpo_proto_t dproto, u32 aftr_index, dpo_id_t *dpo)
 {
   dpo_set (dpo, nat_dpo_type, dproto, aftr_index);
 }
 
 u8 *
-format_nat_dpo (u8 * s, va_list * args)
+format_nat_dpo (u8 *s, va_list *args)
 {
   index_t index = va_arg (*args, index_t);
   CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
@@ -34,12 +34,12 @@ format_nat_dpo (u8 * s, va_list * args)
 }
 
 static void
-nat_dpo_lock (dpo_id_t * dpo)
+nat_dpo_lock (dpo_id_t *dpo)
 {
 }
 
 static void
-nat_dpo_unlock (dpo_id_t * dpo)
+nat_dpo_unlock (dpo_id_t *dpo)
 {
 }
 

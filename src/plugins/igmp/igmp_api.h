@@ -42,9 +42,8 @@ int igmp_enable_disable (u32 sw_if_index, u8 enable, u8 mode);
  *   send a status change report from the interface.
  *   If a report was received on interface notify registered api clients.
  */
-int igmp_listen (vlib_main_t * vm, u8 enable, u32 sw_if_index,
-		 const ip46_address_t * saddr, const ip46_address_t * gaddr);
-
+int igmp_listen (vlib_main_t *vm, u8 enable, u32 sw_if_index,
+		 const ip46_address_t *saddr, const ip46_address_t *gaddr);
 
 #endif /* _IGMP_API_H_ */
 

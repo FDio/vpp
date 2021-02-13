@@ -28,7 +28,7 @@ vppcom_main_t _vppcom_main = {
 vppcom_main_t *vcm = &_vppcom_main;
 
 void
-vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
+vppcom_cfg_init (vppcom_cfg_t *vcl_cfg)
 {
   ASSERT (vcl_cfg);
 
@@ -49,11 +49,11 @@ vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
   vcl_cfg->event_log_path = "/dev/shm";
 }
 
-#define VCFG_DBG(_lvl, _fmt, _args...) 			\
-{							\
-  if (vcm->debug > _lvl) 				\
-    fprintf (stderr, _fmt "\n", ##_args);		\
-}
+#define VCFG_DBG(_lvl, _fmt, _args...)                                        \
+  {                                                                           \
+    if (vcm->debug > _lvl)                                                    \
+      fprintf (stderr, _fmt "\n", ##_args);                                   \
+  }
 void
 vppcom_cfg_heapsize (char *conf_fname)
 {
@@ -73,8 +73,8 @@ vppcom_cfg_heapsize (char *conf_fname)
   fp = fopen (conf_fname, "r");
   if (fp == NULL)
     {
-      VCFG_DBG (0, "VCL<%d>: using default heapsize %lu (0x%lx)",
-		getpid (), (unsigned long) vcl_cfg->heapsize,
+      VCFG_DBG (0, "VCL<%d>: using default heapsize %lu (0x%lx)", getpid (),
+		(unsigned long) vcl_cfg->heapsize,
 		(unsigned long) vcl_cfg->heapsize);
       goto defaulted;
     }
@@ -82,8 +82,10 @@ vppcom_cfg_heapsize (char *conf_fname)
   argv = calloc (1, sizeof (char *));
   if (argv == NULL)
     {
-      VCFG_DBG (0, "VCL<%d>: calloc failed, using default heapsize %lu"
-		" (0x%lx)", getpid (), (unsigned long) vcl_cfg->heapsize,
+      VCFG_DBG (0,
+		"VCL<%d>: calloc failed, using default heapsize %lu"
+		" (0x%lx)",
+		getpid (), (unsigned long) vcl_cfg->heapsize,
 		(unsigned long) vcl_cfg->heapsize);
       goto defaulted;
     }
@@ -101,9 +103,10 @@ vppcom_cfg_heapsize (char *conf_fname)
 	  char **tmp = realloc (argv, argc * sizeof (char *));
 	  if (tmp == NULL)
 	    {
-	      VCFG_DBG (0, "VCL<%d>: realloc failed, using default "
-			"heapsize %lu (0x%lx)", getpid (),
-			(unsigned long) vcl_cfg->heapsize,
+	      VCFG_DBG (0,
+			"VCL<%d>: realloc failed, using default "
+			"heapsize %lu (0x%lx)",
+			getpid (), (unsigned long) vcl_cfg->heapsize,
 			(unsigned long) vcl_cfg->heapsize);
 	      goto defaulted;
 	    }
@@ -111,9 +114,10 @@ vppcom_cfg_heapsize (char *conf_fname)
 	  arg = strndup (p, 1024);
 	  if (arg == NULL)
 	    {
-	      VCFG_DBG (0, "VCL<%d>: strndup failed, using default "
-			"heapsize %lu (0x%lx)", getpid (),
-			(unsigned long) vcl_cfg->heapsize,
+	      VCFG_DBG (0,
+			"VCL<%d>: strndup failed, using default "
+			"heapsize %lu (0x%lx)",
+			getpid (), (unsigned long) vcl_cfg->heapsize,
 			(unsigned long) vcl_cfg->heapsize);
 	      goto defaulted;
 	    }
@@ -128,8 +132,10 @@ vppcom_cfg_heapsize (char *conf_fname)
   char **tmp = realloc (argv, (argc + 1) * sizeof (char *));
   if (tmp == NULL)
     {
-      VCFG_DBG (0, "VCL<%d>: realloc failed, using default heapsize %lu "
-		"(0x%lx)", getpid (), (unsigned long) vcl_cfg->heapsize,
+      VCFG_DBG (0,
+		"VCL<%d>: realloc failed, using default heapsize %lu "
+		"(0x%lx)",
+		getpid (), (unsigned long) vcl_cfg->heapsize,
 		(unsigned long) vcl_cfg->heapsize);
       goto defaulted;
     }
@@ -156,9 +162,11 @@ vppcom_cfg_heapsize (char *conf_fname)
 	    }
 	  if (size == 0)
 	    {
-	      VCFG_DBG (0, "VCL<%d>: parse error '%s %s', using default "
-			"heapsize %lu (0x%lx)", getpid (), argv[i],
-			argv[i + 1], (unsigned long) vcl_cfg->heapsize,
+	      VCFG_DBG (0,
+			"VCL<%d>: parse error '%s %s', using default "
+			"heapsize %lu (0x%lx)",
+			getpid (), argv[i], argv[i + 1],
+			(unsigned long) vcl_cfg->heapsize,
 			(unsigned long) vcl_cfg->heapsize);
 	      goto defaulted;
 	    }
@@ -169,9 +177,11 @@ vppcom_cfg_heapsize (char *conf_fname)
 	    vcl_cfg->heapsize = size << 20;
 	  else
 	    {
-	      VCFG_DBG (0, "VCL<%d>: parse error '%s %s', using default "
-			"heapsize %lu (0x%lx)", getpid (), argv[i],
-			argv[i + 1], (unsigned long) vcl_cfg->heapsize,
+	      VCFG_DBG (0,
+			"VCL<%d>: parse error '%s %s', using default "
+			"heapsize %lu (0x%lx)",
+			getpid (), argv[i], argv[i + 1],
+			(unsigned long) vcl_cfg->heapsize,
 			(unsigned long) vcl_cfg->heapsize);
 	      goto defaulted;
 	    }
@@ -189,10 +199,11 @@ defaulted:
 		  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
   if (vcl_mem == MAP_FAILED)
     {
-      VCFG_DBG (0, "VCL<%d>: ERROR: mmap(0, %lu == 0x%lx, "
+      VCFG_DBG (0,
+		"VCL<%d>: ERROR: mmap(0, %lu == 0x%lx, "
 		"PROT_READ | PROT_WRITE,MAP_SHARED | MAP_ANONYMOUS, "
-		"-1, 0) failed!", getpid (),
-		(unsigned long) vcl_cfg->heapsize,
+		"-1, 0) failed!",
+		getpid (), (unsigned long) vcl_cfg->heapsize,
 		(unsigned long) vcl_cfg->heapsize);
       ASSERT (vcl_mem != MAP_FAILED);
       return;
@@ -215,8 +226,8 @@ defaulted:
   clib_memcpy (vcl_mem, &_vppcom_main, sizeof (_vppcom_main));
   vcm = vcl_mem;
 
-  VCFG_DBG (0, "VCL<%d>: allocated VCL heap = %p, size %lu (0x%lx)",
-	    getpid (), heap, (unsigned long) vcl_cfg->heapsize,
+  VCFG_DBG (0, "VCL<%d>: allocated VCL heap = %p, size %lu (0x%lx)", getpid (),
+	    heap, (unsigned long) vcl_cfg->heapsize,
 	    (unsigned long) vcl_cfg->heapsize);
 }
 
@@ -247,8 +258,10 @@ vppcom_cfg_read_file (char *conf_fname)
 
   if (!(S_ISREG (s.st_mode) || S_ISLNK (s.st_mode)))
     {
-      VCFG_DBG (0, "VCL<%d>: not a regular file `%s', using default "
-		"configuration", getpid (), conf_fname);
+      VCFG_DBG (0,
+		"VCL<%d>: not a regular file `%s', using default "
+		"configuration",
+		getpid (), conf_fname);
       goto file_done;
     }
 
@@ -274,9 +287,8 @@ vppcom_cfg_read_file (char *conf_fname)
 	      VCFG_DBG (0, "VCL<%d>: configured heapsize %lu", getpid (),
 			(unsigned long) vcl_cfg->heapsize);
 	    }
-	  else
-	    if (unformat
-		(line_input, "max-workers %u", &vcl_cfg->max_workers))
+	  else if (unformat (line_input, "max-workers %u",
+			     &vcl_cfg->max_workers))
 	    {
 	      VCFG_DBG (0, "VCL<%d>: configured max-workers %u", getpid (),
 			vcl_cfg->max_workers);
@@ -342,8 +354,10 @@ vppcom_cfg_read_file (char *conf_fname)
 	  else if (unformat (line_input, "preallocated-fifo-pairs %u",
 			     &vcl_cfg->preallocated_fifo_pairs))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured preallocated_fifo_pairs %u "
-			"(0x%x)", getpid (), vcl_cfg->preallocated_fifo_pairs,
+	      VCFG_DBG (0,
+			"VCL<%d>: configured preallocated_fifo_pairs %u "
+			"(0x%x)",
+			getpid (), vcl_cfg->preallocated_fifo_pairs,
 			vcl_cfg->preallocated_fifo_pairs);
 	    }
 	  else if (unformat (line_input, "rx-fifo-size 0x%x",
@@ -405,20 +419,20 @@ vppcom_cfg_read_file (char *conf_fname)
 	  else if (unformat (line_input, "app-timeout %f",
 			     &vcl_cfg->app_timeout))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured app_timeout %f",
-			getpid (), vcl_cfg->app_timeout);
+	      VCFG_DBG (0, "VCL<%d>: configured app_timeout %f", getpid (),
+			vcl_cfg->app_timeout);
 	    }
 	  else if (unformat (line_input, "session-timeout %f",
 			     &vcl_cfg->session_timeout))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured session_timeout %f",
-			getpid (), vcl_cfg->session_timeout);
+	      VCFG_DBG (0, "VCL<%d>: configured session_timeout %f", getpid (),
+			vcl_cfg->session_timeout);
 	    }
 	  else if (unformat (line_input, "accept-timeout %f",
 			     &vcl_cfg->accept_timeout))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured accept_timeout %f",
-			getpid (), vcl_cfg->accept_timeout);
+	      VCFG_DBG (0, "VCL<%d>: configured accept_timeout %f", getpid (),
+			vcl_cfg->accept_timeout);
 	    }
 	  else if (unformat (line_input, "app-proxy-transport-tcp"))
 	    {
@@ -447,8 +461,10 @@ vppcom_cfg_read_file (char *conf_fname)
 	  else if (unformat (line_input, "namespace-secret %lu",
 			     &vcl_cfg->namespace_secret))
 	    {
-	      VCFG_DBG (0, "VCL<%d>: configured namespace_secret %llu "
-			"(0x%llx)", getpid (),
+	      VCFG_DBG (0,
+			"VCL<%d>: configured namespace_secret %llu "
+			"(0x%llx)",
+			getpid (),
 			(unsigned long long) vcl_cfg->namespace_secret,
 			(unsigned long long) vcl_cfg->namespace_secret);
 	    }
@@ -460,13 +476,14 @@ vppcom_cfg_read_file (char *conf_fname)
 	      if (nsid_vec_len > max_nsid_vec_len)
 		{
 		  _vec_len (vcl_cfg->namespace_id) = max_nsid_vec_len;
-		  VCFG_DBG (0, "VCL<%d>: configured namespace_id is too long,"
+		  VCFG_DBG (0,
+			    "VCL<%d>: configured namespace_id is too long,"
 			    " truncated to %d characters!",
 			    getpid (), max_nsid_vec_len);
 		}
 
-	      VCFG_DBG (0, "VCL<%d>: configured namespace_id %s",
-			getpid (), (char *) vcl_cfg->namespace_id);
+	      VCFG_DBG (0, "VCL<%d>: configured namespace_id %s", getpid (),
+			(char *) vcl_cfg->namespace_id);
 	    }
 	  else if (unformat (line_input, "use-mq-eventfd"))
 	    {
@@ -498,9 +515,9 @@ vppcom_cfg_read_file (char *conf_fname)
 	    {
 	      if (line_input->buffer[line_input->index] != '#')
 		{
-		  clib_warning ("VCL<%d>: Unknown vppcom config option: '%s'",
-				getpid (), (char *)
-				&line_input->buffer[line_input->index]);
+		  clib_warning (
+		    "VCL<%d>: Unknown vppcom config option: '%s'", getpid (),
+		    (char *) &line_input->buffer[line_input->index]);
 		}
 	    }
 	  unformat_free (line_input);
@@ -516,7 +533,7 @@ file_done:
 }
 
 void
-vppcom_cfg (vppcom_cfg_t * vcl_cfg)
+vppcom_cfg (vppcom_cfg_t *vcl_cfg)
 {
   char *conf_fname, *env_var_str;
 
@@ -527,15 +544,19 @@ vppcom_cfg (vppcom_cfg_t * vcl_cfg)
       u32 tmp;
       if (sscanf (env_var_str, "%u", &tmp) != 1)
 	{
-	  VCFG_DBG (0, "VCL<%d>: WARNING: Invalid debug level specified "
-		    "in the environment variable " VPPCOM_ENV_DEBUG
-		    " (%s)!\n", getpid (), env_var_str);
+	  VCFG_DBG (0,
+		    "VCL<%d>: WARNING: Invalid debug level specified "
+		    "in the environment variable " VPPCOM_ENV_DEBUG " (%s)!\n",
+		    getpid (), env_var_str);
 	}
       else
 	{
 	  vcm->debug = tmp;
-	  VCFG_DBG (0, "VCL<%d>: configured VCL debug level (%u) from "
-		    VPPCOM_ENV_DEBUG "!", getpid (), vcm->debug);
+	  VCFG_DBG (
+	    0,
+	    "VCL<%d>: configured VCL debug level (%u) from " VPPCOM_ENV_DEBUG
+	    "!",
+	    getpid (), vcm->debug);
 	}
     }
   conf_fname = getenv (VPPCOM_ENV_CONF);
@@ -555,8 +576,10 @@ vppcom_cfg (vppcom_cfg_t * vcl_cfg)
       vec_validate (vcm->cfg.namespace_id, ns_id_vec_len - 1);
       clib_memcpy (vcm->cfg.namespace_id, env_var_str, ns_id_vec_len);
 
-      VCFG_DBG (0, "VCL<%d>: configured namespace_id (%s) from "
-		VPPCOM_ENV_APP_NAMESPACE_ID "!", getpid (), env_var_str);
+      VCFG_DBG (0,
+		"VCL<%d>: configured namespace_id (%s) "
+		"from " VPPCOM_ENV_APP_NAMESPACE_ID "!",
+		getpid (), env_var_str);
     }
   env_var_str = getenv (VPPCOM_ENV_APP_NAMESPACE_SECRET);
   if (env_var_str)
@@ -564,46 +587,53 @@ vppcom_cfg (vppcom_cfg_t * vcl_cfg)
       u64 tmp;
       if (sscanf (env_var_str, "%llu", (unsigned long long *) &tmp) != 1)
 	{
-	  VCFG_DBG (0, "VCL<%d>: WARNING: Invalid namespace secret specified"
-		    " in the environment variable "
-		    VPPCOM_ENV_APP_NAMESPACE_SECRET " (%s)!\n", getpid (),
-		    env_var_str);
+	  VCFG_DBG (
+	    0,
+	    "VCL<%d>: WARNING: Invalid namespace secret specified"
+	    " in the environment variable " VPPCOM_ENV_APP_NAMESPACE_SECRET
+	    " (%s)!\n",
+	    getpid (), env_var_str);
 	}
       else
 	{
 	  vcm->cfg.namespace_secret = tmp;
-	  VCFG_DBG (0, "VCL<%d>: configured namespace secret (%llu) from "
-		    VPPCOM_ENV_APP_NAMESPACE_SECRET "!", getpid (),
-		    (unsigned long long) vcm->cfg.namespace_secret);
+	  VCFG_DBG (0,
+		    "VCL<%d>: configured namespace secret (%llu) "
+		    "from " VPPCOM_ENV_APP_NAMESPACE_SECRET "!",
+		    getpid (), (unsigned long long) vcm->cfg.namespace_secret);
 	}
     }
   if (getenv (VPPCOM_ENV_APP_PROXY_TRANSPORT_TCP))
     {
       vcm->cfg.app_proxy_transport_tcp = 1;
-      VCFG_DBG (0, "VCL<%d>: configured app_proxy_transport_tcp (%u) from "
-		VPPCOM_ENV_APP_PROXY_TRANSPORT_TCP "!", getpid (),
-		vcm->cfg.app_proxy_transport_tcp);
+      VCFG_DBG (0,
+		"VCL<%d>: configured app_proxy_transport_tcp (%u) "
+		"from " VPPCOM_ENV_APP_PROXY_TRANSPORT_TCP "!",
+		getpid (), vcm->cfg.app_proxy_transport_tcp);
     }
   if (getenv (VPPCOM_ENV_APP_PROXY_TRANSPORT_UDP))
     {
       vcm->cfg.app_proxy_transport_udp = 1;
-      VCFG_DBG (0, "VCL<%d>: configured app_proxy_transport_udp (%u) from "
-		VPPCOM_ENV_APP_PROXY_TRANSPORT_UDP "!", getpid (),
-		vcm->cfg.app_proxy_transport_udp);
+      VCFG_DBG (0,
+		"VCL<%d>: configured app_proxy_transport_udp (%u) "
+		"from " VPPCOM_ENV_APP_PROXY_TRANSPORT_UDP "!",
+		getpid (), vcm->cfg.app_proxy_transport_udp);
     }
   if (getenv (VPPCOM_ENV_APP_SCOPE_LOCAL))
     {
       vcm->cfg.app_scope_local = 1;
-      VCFG_DBG (0, "VCL<%d>: configured app_scope_local (%u) from "
-		VPPCOM_ENV_APP_SCOPE_LOCAL "!", getpid (),
-		vcm->cfg.app_scope_local);
+      VCFG_DBG (0,
+		"VCL<%d>: configured app_scope_local (%u) "
+		"from " VPPCOM_ENV_APP_SCOPE_LOCAL "!",
+		getpid (), vcm->cfg.app_scope_local);
     }
   if (getenv (VPPCOM_ENV_APP_SCOPE_GLOBAL))
     {
       vcm->cfg.app_scope_global = 1;
-      VCFG_DBG (0, "VCL<%d>: configured app_scope_global (%u) from "
-		VPPCOM_ENV_APP_SCOPE_GLOBAL "!", getpid (),
-		vcm->cfg.app_scope_global);
+      VCFG_DBG (0,
+		"VCL<%d>: configured app_scope_global (%u) "
+		"from " VPPCOM_ENV_APP_SCOPE_GLOBAL "!",
+		getpid (), vcm->cfg.app_scope_global);
     }
   env_var_str = getenv (VPPCOM_ENV_VPP_API_SOCKET);
   if (env_var_str)

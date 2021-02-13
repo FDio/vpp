@@ -39,8 +39,8 @@ static u32 geneve_base_msg_id;
 #include <vlibapi/api_helper_macros.h>
 
 static void
-  vl_api_sw_interface_set_geneve_bypass_t_handler
-  (vl_api_sw_interface_set_geneve_bypass_t * mp)
+vl_api_sw_interface_set_geneve_bypass_t_handler (
+  vl_api_sw_interface_set_geneve_bypass_t *mp)
 {
   vl_api_sw_interface_set_geneve_bypass_reply_t *rmp;
   int rv = 0;
@@ -54,8 +54,8 @@ static void
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_GENEVE_BYPASS_REPLY);
 }
 
-static void vl_api_geneve_add_del_tunnel_t_handler
-  (vl_api_geneve_add_del_tunnel_t * mp)
+static void
+vl_api_geneve_add_del_tunnel_t_handler (vl_api_geneve_add_del_tunnel_t *mp)
 {
   vl_api_geneve_add_del_tunnel_reply_t *rmp;
   int rv = 0;
@@ -97,16 +97,13 @@ static void vl_api_geneve_add_del_tunnel_t_handler
   rv = vnet_geneve_add_del_tunnel (&a, &sw_if_index);
 
 out:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_GENEVE_ADD_DEL_TUNNEL_REPLY,
-  ({
-    rmp->sw_if_index = ntohl (sw_if_index);
-  }));
-  /* *INDENT-ON* */
+
+  REPLY_MACRO2 (VL_API_GENEVE_ADD_DEL_TUNNEL_REPLY,
+		({ rmp->sw_if_index = ntohl (sw_if_index); }));
 }
 
-static void vl_api_geneve_add_del_tunnel2_t_handler
-  (vl_api_geneve_add_del_tunnel2_t * mp)
+static void
+vl_api_geneve_add_del_tunnel2_t_handler (vl_api_geneve_add_del_tunnel2_t *mp)
 {
   vl_api_geneve_add_del_tunnel2_reply_t *rmp;
   int rv = 0;
@@ -149,16 +146,14 @@ static void vl_api_geneve_add_del_tunnel2_t_handler
   rv = vnet_geneve_add_del_tunnel (&a, &sw_if_index);
 
 out:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_GENEVE_ADD_DEL_TUNNEL2_REPLY,
-  ({
-    rmp->sw_if_index = ntohl (sw_if_index);
-  }));
-  /* *INDENT-ON* */
+
+  REPLY_MACRO2 (VL_API_GENEVE_ADD_DEL_TUNNEL2_REPLY,
+		({ rmp->sw_if_index = ntohl (sw_if_index); }));
 }
 
-static void send_geneve_tunnel_details
-  (geneve_tunnel_t * t, vl_api_registration_t * reg, u32 context)
+static void
+send_geneve_tunnel_details (geneve_tunnel_t *t, vl_api_registration_t *reg,
+			    u32 context)
 {
   vl_api_geneve_tunnel_details_t *rmp;
   ip4_main_t *im4 = &ip4_main;
@@ -173,8 +168,8 @@ static void send_geneve_tunnel_details
   ip_address_encode (&t->remote, is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
 		     &rmp->dst_address);
   rmp->encap_vrf_id =
-    htonl (is_ipv6 ? im6->fibs[t->encap_fib_index].
-	   ft_table_id : im4->fibs[t->encap_fib_index].ft_table_id);
+    htonl (is_ipv6 ? im6->fibs[t->encap_fib_index].ft_table_id :
+		     im4->fibs[t->encap_fib_index].ft_table_id);
 
   rmp->mcast_sw_if_index = htonl (t->mcast_sw_if_index);
   rmp->vni = htonl (t->vni);
@@ -185,8 +180,8 @@ static void send_geneve_tunnel_details
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
-static void vl_api_geneve_tunnel_dump_t_handler
-  (vl_api_geneve_tunnel_dump_t * mp)
+static void
+vl_api_geneve_tunnel_dump_t_handler (vl_api_geneve_tunnel_dump_t *mp)
 {
   vl_api_registration_t *reg;
   geneve_main_t *vxm = &geneve_main;
@@ -201,12 +196,11 @@ static void vl_api_geneve_tunnel_dump_t_handler
 
   if (~0 == sw_if_index)
     {
-      /* *INDENT-OFF* */
+
       pool_foreach (t, vxm->tunnels)
-       {
-        send_geneve_tunnel_details(t, reg, mp->context);
-      }
-      /* *INDENT-ON* */
+	{
+	  send_geneve_tunnel_details (t, reg, mp->context);
+	}
     }
   else
     {
@@ -229,7 +223,7 @@ static void vl_api_geneve_tunnel_dump_t_handler
 #include <geneve/geneve.api.c>
 
 static clib_error_t *
-geneve_api_hookup (vlib_main_t * vm)
+geneve_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
@@ -249,12 +243,10 @@ VLIB_API_INIT_FUNCTION (geneve_api_hookup);
 #include <vlib/unix/plugin.h>
 #include <vpp/app/version.h>
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "GENEVE Tunnels",
+  .version = VPP_BUILD_VER,
+  .description = "GENEVE Tunnels",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

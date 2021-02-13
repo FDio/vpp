@@ -32,22 +32,19 @@ typedef struct qos_store_t_
 qos_store_t *qos_store_configs[QOS_N_SOURCES];
 
 static void
-qos_store_feature_config (u32 sw_if_index,
-			  qos_source_t input_source,
+qos_store_feature_config (u32 sw_if_index, qos_source_t input_source,
 			  u8 enable, qos_bits_t value)
 {
   switch (input_source)
     {
     case QOS_SOURCE_IP:
-      vnet_feature_enable_disable ("ip6-unicast", "ip6-qos-store",
-				   sw_if_index, enable, &value,
-				   sizeof (value));
+      vnet_feature_enable_disable ("ip6-unicast", "ip6-qos-store", sw_if_index,
+				   enable, &value, sizeof (value));
       vnet_feature_enable_disable ("ip6-multicast", "ip6-qos-store",
 				   sw_if_index, enable, &value,
 				   sizeof (value));
-      vnet_feature_enable_disable ("ip4-unicast", "ip4-qos-store",
-				   sw_if_index, enable, &value,
-				   sizeof (value));
+      vnet_feature_enable_disable ("ip4-unicast", "ip4-qos-store", sw_if_index,
+				   enable, &value, sizeof (value));
       vnet_feature_enable_disable ("ip4-multicast", "ip4-qos-store",
 				   sw_if_index, enable, &value,
 				   sizeof (value));
@@ -61,8 +58,7 @@ qos_store_feature_config (u32 sw_if_index,
 }
 
 int
-qos_store_enable (u32 sw_if_index,
-		  qos_source_t input_source, qos_bits_t value)
+qos_store_enable (u32 sw_if_index, qos_source_t input_source, qos_bits_t value)
 {
   qos_store_t *qst;
 
@@ -118,11 +114,11 @@ qos_store_walk (qos_store_walk_cb_t fn, void *c)
     u32 sw_if_index;
 
     vec_foreach_index (sw_if_index, qos_store_configs[qs])
-    {
-      qst = &qos_store_configs[qs][sw_if_index];
-      if (0 != qst->qst_n_cfgs)
-	fn (sw_if_index, qs, qst->qst_value, c);
-    }
+      {
+	qst = &qos_store_configs[qs][sw_if_index];
+	if (0 != qst->qst_n_cfgs)
+	  fn (sw_if_index, qs, qst->qst_value, c);
+      }
   }
 }
 
@@ -131,8 +127,7 @@ qos_store_walk (qos_store_walk_cb_t fn, void *c)
  * is deleted
  */
 static clib_error_t *
-qos_store_ip_interface_add_del (vnet_main_t * vnm,
-				u32 sw_if_index, u32 is_add)
+qos_store_ip_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
 {
   if (!is_add)
     {
@@ -140,7 +135,8 @@ qos_store_ip_interface_add_del (vnet_main_t * vnm,
 
       FOR_EACH_QOS_SOURCE (qs)
       {
-	while (qos_store_disable (sw_if_index, qs) == 0);
+	while (qos_store_disable (sw_if_index, qs) == 0)
+	  ;
       }
     }
 
@@ -150,7 +146,7 @@ qos_store_ip_interface_add_del (vnet_main_t * vnm,
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (qos_store_ip_interface_add_del);
 
 clib_error_t *
-qos_store_init (vlib_main_t * vm)
+qos_store_init (vlib_main_t *vm)
 {
   return 0;
 }
@@ -158,8 +154,8 @@ qos_store_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (qos_store_init);
 
 static clib_error_t *
-qos_store_cli (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+qos_store_cli (vlib_main_t *vm, unformat_input_t *input,
+	       vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index, qs, value;
@@ -172,8 +168,8 @@ qos_store_cli (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_vnet_sw_interface,
-		    vnm, &sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (input, "%U", unformat_qos_source, &qs))
 	;
@@ -211,19 +207,18 @@ qos_store_cli (vlib_main_t * vm,
  * @cliexpar
  * @cliexcmd{qos store ip GigEthernet0/1/0}
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (qos_store_command, static) = {
   .path = "qos store",
   .short_help = "qos store <store-source> <INTERFACE> [disable]",
   .function = qos_store_cli,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static void
-qos_store_show_one_interface (vlib_main_t * vm, u32 sw_if_index)
+qos_store_show_one_interface (vlib_main_t *vm, u32 sw_if_index)
 {
-  u8 n_cfgs[QOS_N_SOURCES] = { };
+  u8 n_cfgs[QOS_N_SOURCES] = {};
   qos_source_t qs;
   bool set;
 
@@ -245,16 +240,15 @@ qos_store_show_one_interface (vlib_main_t * vm, u32 sw_if_index)
       FOR_EACH_QOS_SOURCE (qs)
       {
 	if (n_cfgs[qs] != 0)
-	  vlib_cli_output (vm, "  %U -> %d",
-			   format_qos_source, qs,
+	  vlib_cli_output (vm, "  %U -> %d", format_qos_source, qs,
 			   qos_store_configs[qs][sw_if_index].qst_value);
       }
     }
 }
 
 static clib_error_t *
-qos_store_show (vlib_main_t * vm,
-		unformat_input_t * input, vlib_cli_command_t * cmd)
+qos_store_show (vlib_main_t *vm, unformat_input_t *input,
+		vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   qos_source_t qs;
@@ -264,8 +258,8 @@ qos_store_show (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_vnet_sw_interface,
-		    vnm, &sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
     }
 
@@ -295,14 +289,13 @@ qos_store_show (vlib_main_t * vm,
  * @cliexpar
  * @cliexcmd{show qos egress map}
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (qos_store_show_command, static) = {
   .path = "show qos store",
   .short_help = "show qos store [interface]",
   .function = qos_store_show,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

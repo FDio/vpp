@@ -22,12 +22,12 @@
  *  LACP State = TRANSMIT
  */
 static lacp_fsm_state_t lacp_tx_state_transmit[] = {
-  {LACP_ACTION_TRANSMIT, LACP_TX_STATE_TRANSMIT},	// event 0 BEGIN
-  {LACP_ACTION_TRANSMIT, LACP_TX_STATE_TRANSMIT},	// event 1 NTT
+  { LACP_ACTION_TRANSMIT, LACP_TX_STATE_TRANSMIT }, // event 0 BEGIN
+  { LACP_ACTION_TRANSMIT, LACP_TX_STATE_TRANSMIT }, // event 1 NTT
 };
 
 static lacp_fsm_machine_t lacp_tx_fsm_table[] = {
-  {lacp_tx_state_transmit},
+  { lacp_tx_state_transmit },
 };
 
 lacp_machine_t lacp_tx_machine = {
@@ -60,13 +60,17 @@ lacp_tx_action_transmit (void *p1, void *p2)
 }
 
 static u8 *
-format_tx_event (u8 * s, va_list * args)
+format_tx_event (u8 *s, va_list *args)
 {
   static lacp_event_struct lacp_tx_event_array[] = {
-#define _(b, s, n) {.bit = b, .str = #s, },
+#define _(b, s, n)                                                            \
+  {                                                                           \
+    .bit = b,                                                                 \
+    .str = #s,                                                                \
+  },
     foreach_lacp_tx_event
 #undef _
-    {.str = NULL}
+    { .str = NULL }
   };
   int e = va_arg (*args, int);
   lacp_event_struct *event_entry = lacp_tx_event_array;
@@ -80,32 +84,31 @@ format_tx_event (u8 * s, va_list * args)
 }
 
 void
-lacp_tx_debug_func (member_if_t * mif, int event, int state,
-		    lacp_fsm_state_t * transition)
+lacp_tx_debug_func (member_if_t *mif, int event, int state,
+		    lacp_fsm_state_t *transition)
 {
   vlib_worker_thread_t *w = vlib_worker_threads + os_get_thread_index ();
-  /* *INDENT-OFF* */
-  ELOG_TYPE_DECLARE (e) =
-    {
-      .format = "%s",
-      .format_args = "T4",
-    };
-  /* *INDENT-ON* */
+
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "%s",
+    .format_args = "T4",
+  };
+
   struct
   {
     u32 event;
   } *ed = 0;
 
   ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
-  ed->event = elog_string (&vlib_global_main.elog_main, "%U-TX: %U, %U->%U%c",
-			   format_vnet_sw_if_index_name, vnet_get_main (),
-			   mif->sw_if_index, format_tx_event, event,
-			   format_tx_sm_state, state, format_tx_sm_state,
-			   transition->next_state, 0);
+  ed->event =
+    elog_string (&vlib_global_main.elog_main, "%U-TX: %U, %U->%U%c",
+		 format_vnet_sw_if_index_name, vnet_get_main (),
+		 mif->sw_if_index, format_tx_event, event, format_tx_sm_state,
+		 state, format_tx_sm_state, transition->next_state, 0);
 }
 
 void
-lacp_init_tx_machine (vlib_main_t * vm, member_if_t * mif)
+lacp_init_tx_machine (vlib_main_t *vm, member_if_t *mif)
 {
   lacp_machine_dispatch (&lacp_tx_machine, vm, mif, LACP_TX_EVENT_BEGIN,
 			 &mif->tx_state);

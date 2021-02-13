@@ -42,12 +42,12 @@
 
 #include "svmdb.h"
 
-static void local_set_variable_nolock (svmdb_client_t * client,
-				       svmdb_namespace_t namespace,
-				       u8 * var, u8 * val, u32 elsize);
+static void local_set_variable_nolock (svmdb_client_t *client,
+				       svmdb_namespace_t namespace, u8 *var,
+				       u8 *val, u32 elsize);
 
 always_inline void
-region_lock (svm_region_t * rp, int tag)
+region_lock (svm_region_t *rp, int tag)
 {
   pthread_mutex_lock (&rp->mutex);
 #ifdef MUTEX_DEBUG
@@ -57,7 +57,7 @@ region_lock (svm_region_t * rp, int tag)
 }
 
 always_inline void
-region_unlock (svm_region_t * rp)
+region_unlock (svm_region_t *rp)
 {
 #ifdef MUTEX_DEBUG
   rp->mutex_owner_pid = 0;
@@ -67,7 +67,7 @@ region_unlock (svm_region_t * rp)
 }
 
 svmdb_client_t *
-svmdb_map (svmdb_map_args_t * dba)
+svmdb_map (svmdb_map_args_t *dba)
 {
   svmdb_client_t *client = 0;
   svm_map_region_args_t *a = 0;
@@ -108,9 +108,9 @@ svmdb_map (svmdb_map_args_t * dba)
   if (CLIB_DEBUG > 2)
     {
       /* Add a bogus client (pid=0) so the svm won't be deallocated */
-      clib_warning
-	("[%d] adding fake client (pid=0) so '%s' won't be unlinked",
-	 getpid (), db_rp->region_name);
+      clib_warning (
+	"[%d] adding fake client (pid=0) so '%s' won't be unlinked", getpid (),
+	db_rp->region_name);
       oldheap = svm_push_pvt_heap (db_rp);
       vec_add1 (client->db_rp->client_pids, 0);
       svm_pop_heap (oldheap);
@@ -119,10 +119,9 @@ svmdb_map (svmdb_map_args_t * dba)
 
   vec_validate (hp, 0);
   hp->version = SVMDB_SHM_VERSION;
-  hp->namespaces[SVMDB_NAMESPACE_STRING]
-    = hash_create_string (0, sizeof (uword));
-  hp->namespaces[SVMDB_NAMESPACE_VEC]
-    = hash_create_string (0, sizeof (uword));
+  hp->namespaces[SVMDB_NAMESPACE_STRING] =
+    hash_create_string (0, sizeof (uword));
+  hp->namespaces[SVMDB_NAMESPACE_VEC] = hash_create_string (0, sizeof (uword));
 
   db_rp->user_ctx = hp;
   client->shm = hp;
@@ -135,7 +134,7 @@ svmdb_map (svmdb_map_args_t * dba)
 }
 
 void
-svmdb_unmap (svmdb_client_t * client)
+svmdb_unmap (svmdb_client_t *client)
 {
   ASSERT (client);
 
@@ -148,7 +147,7 @@ svmdb_unmap (svmdb_client_t * client)
 }
 
 static void
-notify_value (svmdb_value_t * v, svmdb_action_t a)
+notify_value (svmdb_value_t *v, svmdb_action_t a)
 {
   int i;
   int rv;
@@ -182,16 +181,16 @@ notify_value (svmdb_value_t * v, svmdb_action_t a)
   for (i = 0; i < vec_len (dead_registrations); i++)
     {
       np = vec_elt_at_index (v->notifications, dead_registrations[i]);
-      clib_warning ("dead reg pid %d sig %d action %d opaque %x",
-		    np->pid, np->signum, np->action, np->opaque);
+      clib_warning ("dead reg pid %d sig %d action %d opaque %x", np->pid,
+		    np->signum, np->action, np->opaque);
       vec_delete (v->notifications, 1, dead_registrations[i]);
     }
   vec_free (dead_registrations);
 }
 
 int
-svmdb_local_add_del_notification (svmdb_client_t * client,
-				  svmdb_notification_args_t * a)
+svmdb_local_add_del_notification (svmdb_client_t *client,
+				  svmdb_notification_args_t *a)
 {
   uword *h;
   void *oldheap;
@@ -227,20 +226,19 @@ svmdb_local_add_del_notification (svmdb_client_t * client,
   for (i = 0; i < vec_len (value->notifications); i++)
     {
       np = vec_elt_at_index (value->notifications, i);
-      if ((np->pid == client->pid)
-	  && (np->signum == a->signum)
-	  && (np->action == a->action) && (np->opaque == a->opaque))
+      if ((np->pid == client->pid) && (np->signum == a->signum) &&
+	  (np->action == a->action) && (np->opaque == a->opaque))
 	{
-	  if (a->add_del == 0 /* delete */ )
+	  if (a->add_del == 0 /* delete */)
 	    {
 	      vec_delete (value->notifications, 1, i);
 	      goto out;
 	    }
 	  else
-	    {			/* add */
-	      clib_warning
-		("%s: ignore dup reg pid %d signum %d action %d opaque %x",
-		 a->var, client->pid, a->signum, a->action, a->opaque);
+	    { /* add */
+	      clib_warning (
+		"%s: ignore dup reg pid %d signum %d action %d opaque %x",
+		a->var, client->pid, a->signum, a->action, a->opaque);
 	      rv = -2;
 	      goto out;
 	    }
@@ -264,9 +262,8 @@ out:
   return rv;
 }
 
-
 static void
-local_unset_variable_nolock (svmdb_client_t * client,
+local_unset_variable_nolock (svmdb_client_t *client,
 			     svmdb_namespace_t namespace, char *var)
 {
   uword *h;
@@ -287,7 +284,7 @@ local_unset_variable_nolock (svmdb_client_t * client,
 }
 
 void
-svmdb_local_unset_string_variable (svmdb_client_t * client, char *var)
+svmdb_local_unset_string_variable (svmdb_client_t *client, char *var)
 {
   void *oldheap;
 
@@ -299,9 +296,8 @@ svmdb_local_unset_string_variable (svmdb_client_t * client, char *var)
 }
 
 static void
-local_set_variable_nolock (svmdb_client_t * client,
-			   svmdb_namespace_t namespace,
-			   u8 * var, u8 * val, u32 elsize)
+local_set_variable_nolock (svmdb_client_t *client, svmdb_namespace_t namespace,
+			   u8 *var, u8 *val, u32 elsize)
 {
   uword *h;
   hash_pair_t *hp;
@@ -336,8 +332,7 @@ local_set_variable_nolock (svmdb_client_t * client,
 }
 
 void
-svmdb_local_set_string_variable (svmdb_client_t * client,
-				 char *var, char *val)
+svmdb_local_set_string_variable (svmdb_client_t *client, char *var, char *val)
 {
   void *oldheap;
 
@@ -346,15 +341,15 @@ svmdb_local_set_string_variable (svmdb_client_t * client,
 
   local_unset_variable_nolock (client, SVMDB_NAMESPACE_STRING, var);
 
-  local_set_variable_nolock (client, SVMDB_NAMESPACE_STRING,
-			     (u8 *) var, (u8 *) val, 1 /* elsize */ );
+  local_set_variable_nolock (client, SVMDB_NAMESPACE_STRING, (u8 *) var,
+			     (u8 *) val, 1 /* elsize */);
   svm_pop_heap (oldheap);
   region_unlock (client->db_rp);
 }
 
 static u8 *
-local_get_variable_nolock (svmdb_client_t * client,
-			   svmdb_namespace_t namespace, u8 * var)
+local_get_variable_nolock (svmdb_client_t *client, svmdb_namespace_t namespace,
+			   u8 *var)
 {
   uword *h;
   uword *p;
@@ -374,7 +369,7 @@ local_get_variable_nolock (svmdb_client_t * client,
 }
 
 void *
-svmdb_local_get_variable_reference (svmdb_client_t * client,
+svmdb_local_get_variable_reference (svmdb_client_t *client,
 				    svmdb_namespace_t namespace, char *var)
 {
   u8 *rv;
@@ -386,7 +381,7 @@ svmdb_local_get_variable_reference (svmdb_client_t * client,
 }
 
 char *
-svmdb_local_get_string_variable (svmdb_client_t * client, char *var)
+svmdb_local_get_string_variable (svmdb_client_t *client, char *var)
 {
   u8 *rv = 0;
 
@@ -403,7 +398,7 @@ svmdb_local_get_string_variable (svmdb_client_t * client, char *var)
 }
 
 void
-svmdb_local_dump_strings (svmdb_client_t * client)
+svmdb_local_dump_strings (svmdb_client_t *client)
 {
   uword *h;
   u8 *key;
@@ -414,20 +409,19 @@ svmdb_local_dump_strings (svmdb_client_t * client)
 
   h = client->shm->namespaces[SVMDB_NAMESPACE_STRING];
 
-  /* *INDENT-OFF* */
-  hash_foreach_mem(key, value, h,
-  ({
-    svmdb_value_t *v = pool_elt_at_index (shm->values, value);
+  hash_foreach_mem (key, value, h, ({
+		      svmdb_value_t *v =
+			pool_elt_at_index (shm->values, value);
 
-    fformat(stdout, "%s: %s\n", key,
-            vec_len(v->value) ? v->value : (u8 *)"(nil)");
-  }));
-  /* *INDENT-ON* */
+		      fformat (stdout, "%s: %s\n", key,
+			       vec_len (v->value) ? v->value : (u8 *) "(nil)");
+		    }));
+
   region_unlock (client->db_rp);
 }
 
 int
-svmdb_local_serialize_strings (svmdb_client_t * client, char *filename)
+svmdb_local_serialize_strings (svmdb_client_t *client, char *filename)
 {
   uword *h;
   u8 *key;
@@ -440,8 +434,8 @@ svmdb_local_serialize_strings (svmdb_client_t * client, char *filename)
 
   if (strstr (filename, "..") || index (filename, '/'))
     {
-      error = clib_error_return (0, "Illegal characters in filename '%s'",
-				 filename);
+      error =
+	clib_error_return (0, "Illegal characters in filename '%s'", filename);
       goto out;
     }
 
@@ -463,19 +457,18 @@ svmdb_local_serialize_strings (svmdb_client_t * client, char *filename)
 
   serialize_likely_small_unsigned_integer (sm, hash_elts (h));
 
-  /* *INDENT-OFF* */
-  hash_foreach_mem(key, value, h,
-  ({
-    svmdb_value_t *v = pool_elt_at_index (shm->values, value);
+  hash_foreach_mem (key, value, h, ({
+		      svmdb_value_t *v =
+			pool_elt_at_index (shm->values, value);
 
-    /* Omit names with nil values */
-    if (vec_len(v->value))
-      {
-        serialize_cstring (sm, (char *)key);
-        serialize_cstring (sm, (char *)v->value);
-      }
-  }));
-  /* *INDENT-ON* */
+		      /* Omit names with nil values */
+		      if (vec_len (v->value))
+			{
+			  serialize_cstring (sm, (char *) key);
+			  serialize_cstring (sm, (char *) v->value);
+			}
+		    }));
+
   region_unlock (client->db_rp);
 
   serialize_close (sm);
@@ -493,7 +486,7 @@ out:
 }
 
 int
-svmdb_local_unserialize_strings (svmdb_client_t * client, char *filename)
+svmdb_local_unserialize_strings (svmdb_client_t *client, char *filename)
 {
   serialize_main_t _sm, *sm = &_sm;
   void *oldheap;
@@ -522,8 +515,8 @@ svmdb_local_unserialize_strings (svmdb_client_t * client, char *filename)
     {
       unserialize_cstring (sm, (char **) &key);
       unserialize_cstring (sm, (char **) &value);
-      local_set_variable_nolock (client, SVMDB_NAMESPACE_STRING,
-				 key, value, 1 /* elsize */ );
+      local_set_variable_nolock (client, SVMDB_NAMESPACE_STRING, key, value,
+				 1 /* elsize */);
       vec_free (key);
       vec_free (value);
     }
@@ -545,7 +538,7 @@ out:
 }
 
 void
-svmdb_local_unset_vec_variable (svmdb_client_t * client, char *var)
+svmdb_local_unset_vec_variable (svmdb_client_t *client, char *var)
 {
   void *oldheap;
 
@@ -557,8 +550,8 @@ svmdb_local_unset_vec_variable (svmdb_client_t * client, char *var)
 }
 
 void
-svmdb_local_set_vec_variable (svmdb_client_t * client,
-			      char *var, void *val_arg, u32 elsize)
+svmdb_local_set_vec_variable (svmdb_client_t *client, char *var, void *val_arg,
+			      u32 elsize)
 {
   u8 *val = (u8 *) val_arg;
   void *oldheap;
@@ -567,15 +560,15 @@ svmdb_local_set_vec_variable (svmdb_client_t * client,
   oldheap = svm_push_data_heap (client->db_rp);
 
   local_unset_variable_nolock (client, SVMDB_NAMESPACE_VEC, var);
-  local_set_variable_nolock (client, SVMDB_NAMESPACE_VEC, (u8 *) var,
-			     val, elsize);
+  local_set_variable_nolock (client, SVMDB_NAMESPACE_VEC, (u8 *) var, val,
+			     elsize);
 
   svm_pop_heap (oldheap);
   region_unlock (client->db_rp);
 }
 
 void *
-svmdb_local_get_vec_variable (svmdb_client_t * client, char *var, u32 elsize)
+svmdb_local_get_vec_variable (svmdb_client_t *client, char *var, u32 elsize)
 {
   u8 *rv = 0;
   u8 *copy = 0;
@@ -598,7 +591,7 @@ svmdb_local_get_vec_variable (svmdb_client_t * client, char *var, u32 elsize)
 }
 
 void
-svmdb_local_dump_vecs (svmdb_client_t * client)
+svmdb_local_dump_vecs (svmdb_client_t *client)
 {
   uword *h;
   u8 *key;
@@ -610,22 +603,20 @@ svmdb_local_dump_vecs (svmdb_client_t * client)
 
   h = client->shm->namespaces[SVMDB_NAMESPACE_VEC];
 
-  /* *INDENT-OFF* */
-  hash_foreach_mem(key, value, h,
-  ({
-    svmdb_value_t *v = pool_elt_at_index (shm->values, value);
-    (void) fformat(stdout, "%s:\n %U (%.2f)\n", key,
-                   format_hex_bytes, v->value,
-                   vec_len(v->value)*v->elsize, ((f64 *)(v->value))[0]);
-  }));
-  /* *INDENT-ON* */
+  hash_foreach_mem (
+    key, value, h, ({
+      svmdb_value_t *v = pool_elt_at_index (shm->values, value);
+      (void) fformat (stdout, "%s:\n %U (%.2f)\n", key, format_hex_bytes,
+		      v->value, vec_len (v->value) * v->elsize,
+		      ((f64 *) (v->value))[0]);
+    }));
 
   region_unlock (client->db_rp);
 }
 
 void *
-svmdb_local_find_or_add_vec_variable (svmdb_client_t * client,
-				      char *var, u32 nbytes)
+svmdb_local_find_or_add_vec_variable (svmdb_client_t *client, char *var,
+				      u32 nbytes)
 {
   void *oldheap;
   u8 *rv = 0;

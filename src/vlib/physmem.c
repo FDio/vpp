@@ -32,16 +32,16 @@
 #if defined(__x86_64__) && !defined(CLIB_SANITIZE_ADDR)
 /* we keep physmem in low 38 bits of VA address space as some
    IOMMU implamentation cannot map above that range */
-#define VLIB_PHYSMEM_DEFAULT_BASE_ADDDR		(1ULL << 36)
+#define VLIB_PHYSMEM_DEFAULT_BASE_ADDDR (1ULL << 36)
 #else
 /* let kernel decide */
-#define VLIB_PHYSMEM_DEFAULT_BASE_ADDDR		0
+#define VLIB_PHYSMEM_DEFAULT_BASE_ADDDR 0
 #endif
 
 clib_error_t *
-vlib_physmem_shared_map_create (vlib_main_t * vm, char *name, uword size,
+vlib_physmem_shared_map_create (vlib_main_t *vm, char *name, uword size,
 				u32 log2_page_sz, u32 numa_node,
-				u32 * map_index)
+				u32 *map_index)
 {
   clib_pmalloc_main_t *pm = vm->physmem_main.pmalloc_main;
   vlib_physmem_main_t *vpm = &vm->physmem_main;
@@ -51,8 +51,8 @@ vlib_physmem_shared_map_create (vlib_main_t * vm, char *name, uword size,
   void *va;
   uword i;
 
-  va = clib_pmalloc_create_shared_arena (pm, name, size, log2_page_sz,
-					 numa_node);
+  va =
+    clib_pmalloc_create_shared_arena (pm, name, size, log2_page_sz, numa_node);
 
   if (va == 0)
     return clib_error_return (0, "%U", format_clib_error,
@@ -84,14 +84,14 @@ vlib_physmem_shared_map_create (vlib_main_t * vm, char *name, uword size,
 }
 
 vlib_physmem_map_t *
-vlib_physmem_get_map (vlib_main_t * vm, u32 index)
+vlib_physmem_get_map (vlib_main_t *vm, u32 index)
 {
   vlib_physmem_main_t *vpm = &vm->physmem_main;
   return pool_elt_at_index (vpm->maps, index);
 }
 
 clib_error_t *
-vlib_physmem_init (vlib_main_t * vm)
+vlib_physmem_init (vlib_main_t *vm)
 {
   vlib_physmem_main_t *vpm = &vm->physmem_main;
   clib_error_t *error = 0;
@@ -119,15 +119,15 @@ vlib_physmem_init (vlib_main_t * vm)
 
   /* update base_addr and max_size per actual allocation */
   vpm->base_addr = (uword) vpm->pmalloc_main->base;
-  vpm->max_size = (uword) vpm->pmalloc_main->max_pages <<
-    vpm->pmalloc_main->def_log2_page_sz;
+  vpm->max_size = (uword) vpm->pmalloc_main->max_pages
+		  << vpm->pmalloc_main->def_log2_page_sz;
 
   return error;
 }
 
 static clib_error_t *
-show_physmem (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+show_physmem (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd)
 {
   vlib_physmem_main_t *vpm = &vm->physmem_main;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -161,16 +161,14 @@ show_physmem (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_physmem_command, static) = {
   .path = "show physmem",
   .short_help = "show physmem [verbose | detail | map]",
   .function = show_physmem,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-vlib_physmem_config (vlib_main_t * vm, unformat_input_t * input)
+vlib_physmem_config (vlib_main_t *vm, unformat_input_t *input)
 {
   vlib_physmem_main_t *vpm = &vm->physmem_main;
 
@@ -178,8 +176,8 @@ vlib_physmem_config (vlib_main_t * vm, unformat_input_t * input)
     {
       if (unformat (input, "base-addr 0x%lx", &vpm->base_addr))
 	;
-      else if (unformat (input, "max-size %U",
-			 unformat_memory_size, &vpm->max_size))
+      else if (unformat (input, "max-size %U", unformat_memory_size,
+			 &vpm->max_size))
 	;
       else
 	return unformat_parse_error (input);

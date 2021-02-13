@@ -28,8 +28,8 @@
 #include <marvell/pp2/pp2.h>
 
 uword
-mrvl_pp2_interface_tx (vlib_main_t * vm,
-		       vlib_node_runtime_t * node, vlib_frame_t * frame)
+mrvl_pp2_interface_tx (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_frame_t *frame)
 {
   mrvl_pp2_main_t *ppm = &mrvl_pp2_main;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
@@ -44,8 +44,8 @@ mrvl_pp2_interface_tx (vlib_main_t * vm,
   struct pp2_ppio_desc *d;
   u16 mask = outq->size - 1;
 
-  if (PREDICT_FALSE (pp2_ppio_get_num_outq_done (ppif->ppio, ptd->hif, qid,
-						 &n_done)))
+  if (PREDICT_FALSE (
+	pp2_ppio_get_num_outq_done (ppif->ppio, ptd->hif, qid, &n_done)))
     {
       n_done = 0;
       vlib_error_count (vm, node->node_index,

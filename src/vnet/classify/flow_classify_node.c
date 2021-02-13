@@ -30,7 +30,7 @@ typedef struct
 } flow_classify_trace_t;
 
 static u8 *
-format_flow_classify_trace (u8 * s, va_list * args)
+format_flow_classify_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -41,30 +41,29 @@ format_flow_classify_trace (u8 * s, va_list * args)
   return s;
 }
 
-#define foreach_flow_classify_error                 \
-_(MISS, "Flow classify misses")                     \
-_(HIT, "Flow classify hits")                        \
-_(CHAIN_HIT, "Flow classify hits after chain walk") \
-_(DROP, "Flow classify action drop")
+#define foreach_flow_classify_error                                           \
+  _ (MISS, "Flow classify misses")                                            \
+  _ (HIT, "Flow classify hits")                                               \
+  _ (CHAIN_HIT, "Flow classify hits after chain walk")                        \
+  _ (DROP, "Flow classify action drop")
 
 typedef enum
 {
-#define _(sym,str) FLOW_CLASSIFY_ERROR_##sym,
+#define _(sym, str) FLOW_CLASSIFY_ERROR_##sym,
   foreach_flow_classify_error
 #undef _
     FLOW_CLASSIFY_N_ERROR,
 } flow_classify_error_t;
 
 static char *flow_classify_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_flow_classify_error
 #undef _
 };
 
 static inline uword
-flow_classify_inline (vlib_main_t * vm,
-		      vlib_node_runtime_t * node,
-		      vlib_frame_t * frame, flow_classify_table_id_t tid)
+flow_classify_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vlib_frame_t *frame, flow_classify_table_id_t tid)
 {
   u32 n_left_from, *from, *to_next;
   flow_classify_next_index_t next_index;
@@ -235,14 +234,14 @@ flow_classify_inline (vlib_main_t * vm,
 	      else
 		{
 		  misses++;
-		  vnet_classify_add_del_session (vcm, table_index0,
-						 h0, ~0, 0, 0, 0, 0, 1);
+		  vnet_classify_add_del_session (vcm, table_index0, h0, ~0, 0,
+						 0, 0, 0, 1);
 		  /* increment counter */
 		  vnet_classify_find_entry (t0, h0, hash0, now);
 		}
 	    }
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      flow_classify_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -260,26 +259,24 @@ flow_classify_inline (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, node->node_index,
-			       FLOW_CLASSIFY_ERROR_MISS, misses);
-  vlib_node_increment_counter (vm, node->node_index,
-			       FLOW_CLASSIFY_ERROR_HIT, hits);
+  vlib_node_increment_counter (vm, node->node_index, FLOW_CLASSIFY_ERROR_MISS,
+			       misses);
+  vlib_node_increment_counter (vm, node->node_index, FLOW_CLASSIFY_ERROR_HIT,
+			       hits);
   vlib_node_increment_counter (vm, node->node_index,
 			       FLOW_CLASSIFY_ERROR_CHAIN_HIT, chain_hits);
-  vlib_node_increment_counter (vm, node->node_index,
-			       FLOW_CLASSIFY_ERROR_DROP, drop);
+  vlib_node_increment_counter (vm, node->node_index, FLOW_CLASSIFY_ERROR_DROP,
+			       drop);
 
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (ip4_flow_classify_node) (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_flow_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return flow_classify_inline (vm, node, frame, FLOW_CLASSIFY_TABLE_IP4);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_flow_classify_node) = {
   .name = "ip4-flow-classify",
   .vector_size = sizeof (u32),
@@ -291,16 +288,13 @@ VLIB_REGISTER_NODE (ip4_flow_classify_node) = {
     [FLOW_CLASSIFY_NEXT_INDEX_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
-VLIB_NODE_FN (ip6_flow_classify_node) (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_flow_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return flow_classify_inline (vm, node, frame, FLOW_CLASSIFY_TABLE_IP6);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_flow_classify_node) = {
   .name = "ip6-flow-classify",
   .vector_size = sizeof (u32),
@@ -313,11 +307,8 @@ VLIB_REGISTER_NODE (ip6_flow_classify_node) = {
   },
 };
 
-/* *INDENT-ON* */
-
-
 static clib_error_t *
-flow_classify_init (vlib_main_t * vm)
+flow_classify_init (vlib_main_t *vm)
 {
   flow_classify_main_t *fcm = &flow_classify_main;
 

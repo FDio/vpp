@@ -18,7 +18,7 @@
 #include <ioam/lib-e2e/ioam_seqno_lib.h>
 
 u8 *
-show_ioam_seqno_cmd_fn (u8 * s, ioam_seqno_data * seqno_data, u8 enc)
+show_ioam_seqno_cmd_fn (u8 *s, ioam_seqno_data *seqno_data, u8 enc)
 {
   seqno_rx_info *rx;
 
@@ -38,7 +38,7 @@ show_ioam_seqno_cmd_fn (u8 * s, ioam_seqno_data * seqno_data, u8 enc)
 }
 
 u8 *
-show_ioam_seqno_analyse_data_fn (u8 * s, seqno_rx_info * rx)
+show_ioam_seqno_analyse_data_fn (u8 *s, seqno_rx_info *rx)
 {
   s = format (s, "  Highest Seq. Number : %llu\n", rx->bitmap.highest);
   s = format (s, "     Packets received : %llu\n", rx->rx_packets);
@@ -51,7 +51,7 @@ show_ioam_seqno_analyse_data_fn (u8 * s, seqno_rx_info * rx)
 }
 
 void
-ioam_seqno_init_data (ioam_seqno_data * data)
+ioam_seqno_init_data (ioam_seqno_data *data)
 {
   data->seq_num = 0;
   ioam_seqno_init_rx_info (&data->seqno_rx);
@@ -59,13 +59,13 @@ ioam_seqno_init_data (ioam_seqno_data * data)
 }
 
 void
-ioam_seqno_init_rx_info (seqno_rx_info * data)
+ioam_seqno_init_rx_info (seqno_rx_info *data)
 {
   seqno_bitmap *bitmap = &data->bitmap;
   bitmap->window_size = SEQNO_WINDOW_SIZE;
   bitmap->array_size = SEQNO_WINDOW_ARRAY_SIZE;
   bitmap->mask = 32 * SEQNO_WINDOW_ARRAY_SIZE - 1;
-  bitmap->array[0] = 0x00000000;	/* pretend we haven seen sequence numbers 0 */
+  bitmap->array[0] = 0x00000000; /* pretend we haven seen sequence numbers 0 */
   bitmap->highest = 0;
 
   data->dup_packets = 0;

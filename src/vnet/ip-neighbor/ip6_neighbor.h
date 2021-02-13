@@ -29,19 +29,15 @@
 /* Template used to generate IP6 neighbor solicitation packets. */
 extern vlib_packet_template_t ip6_neighbor_packet_template;
 
-extern void ip6_neighbor_advertise (vlib_main_t * vm,
-				    vnet_main_t * vnm,
+extern void ip6_neighbor_advertise (vlib_main_t *vm, vnet_main_t *vnm,
 				    u32 sw_if_index,
-				    const ip6_address_t * addr);
+				    const ip6_address_t *addr);
 
-extern void ip6_neighbor_probe_dst (u32 sw_if_index,
-				    const ip6_address_t * dst);
+extern void ip6_neighbor_probe_dst (u32 sw_if_index, const ip6_address_t *dst);
 
 always_inline vlib_buffer_t *
-ip6_neighbor_probe (vlib_main_t * vm,
-		    vnet_main_t * vnm,
-		    u32 sw_if_index,
-		    const ip6_address_t * src, const ip6_address_t * dst)
+ip6_neighbor_probe (vlib_main_t *vm, vnet_main_t *vnm, u32 sw_if_index,
+		    const ip6_address_t *src, const ip6_address_t *dst)
 {
   icmp6_neighbor_solicitation_header_t *h0;
   vnet_hw_interface_t *hw_if0;
@@ -50,8 +46,8 @@ ip6_neighbor_probe (vlib_main_t * vm,
   int bogus_length;
   u32 bi0 = 0;
 
-  h0 = vlib_packet_template_get_packet
-    (vm, &ip6_neighbor_packet_template, &bi0);
+  h0 =
+    vlib_packet_template_get_packet (vm, &ip6_neighbor_packet_template, &bi0);
   if (!h0)
     return NULL;
 
@@ -77,8 +73,8 @@ ip6_neighbor_probe (vlib_main_t * vm,
 
   h0->neighbor.target_address = *dst;
 
-  clib_memcpy (h0->link_layer_option.ethernet_address,
-	       hw_if0->hw_address, vec_len (hw_if0->hw_address));
+  clib_memcpy (h0->link_layer_option.ethernet_address, hw_if0->hw_address,
+	       vec_len (hw_if0->hw_address));
 
   /* $$$$ appears we need this; why is the checksum non-zero? */
   h0->neighbor.icmp.checksum = 0;

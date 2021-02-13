@@ -61,10 +61,10 @@
 #include <vpp/api/vpe_msg_enum.h>
 #include <vpp/api/types.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_typedefs
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_endianfun
 /* instantiate all the print functions we know about */
@@ -74,23 +74,23 @@
 #undef vl_printfun
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                                             \
-_(CONTROL_PING, control_ping)                                           \
-_(CLI, cli)                                                             \
-_(CLI_INBAND, cli_inband)						                        \
-_(GET_NODE_INDEX, get_node_index)                                       \
-_(ADD_NODE_NEXT, add_node_next)						                    \
-_(SHOW_VERSION, show_version)						                    \
-_(SHOW_THREADS, show_threads)						                    \
-_(GET_NODE_GRAPH, get_node_graph)                                       \
-_(GET_NEXT_INDEX, get_next_index)                                       \
-_(LOG_DUMP, log_dump)                                                   \
-_(SHOW_VPE_SYSTEM_TIME, show_vpe_system_time)				\
-_(GET_F64_ENDIAN_VALUE, get_f64_endian_value)							\
-_(GET_F64_INCREMENT_BY_ONE, get_f64_increment_by_one)					\
+#define foreach_vpe_api_msg                                                   \
+  _ (CONTROL_PING, control_ping)                                              \
+  _ (CLI, cli)                                                                \
+  _ (CLI_INBAND, cli_inband)                                                  \
+  _ (GET_NODE_INDEX, get_node_index)                                          \
+  _ (ADD_NODE_NEXT, add_node_next)                                            \
+  _ (SHOW_VERSION, show_version)                                              \
+  _ (SHOW_THREADS, show_threads)                                              \
+  _ (GET_NODE_GRAPH, get_node_graph)                                          \
+  _ (GET_NEXT_INDEX, get_next_index)                                          \
+  _ (LOG_DUMP, log_dump)                                                      \
+  _ (SHOW_VPE_SYSTEM_TIME, show_vpe_system_time)                              \
+  _ (GET_F64_ENDIAN_VALUE, get_f64_endian_value)                              \
+  _ (GET_F64_INCREMENT_BY_ONE, get_f64_increment_by_one)
 
 #define QUOTE_(x) #x
-#define QUOTE(x) QUOTE_(x)
+#define QUOTE(x)  QUOTE_ (x)
 
 typedef enum
 {
@@ -108,12 +108,13 @@ memclnt_delete_callback (u32 client_index)
   vpe_client_registration_t *rp;
   uword *p;
 
-#define _(a)                                                    \
-    p = hash_get (vam->a##_registration_hash, client_index);    \
-    if (p) {                                                    \
-        rp = pool_elt_at_index (vam->a##_registrations, p[0]);  \
-        pool_put (vam->a##_registrations, rp);                  \
-        hash_unset (vam->a##_registration_hash, client_index);  \
+#define _(a)                                                                  \
+  p = hash_get (vam->a##_registration_hash, client_index);                    \
+  if (p)                                                                      \
+    {                                                                         \
+      rp = pool_elt_at_index (vam->a##_registrations, p[0]);                  \
+      pool_put (vam->a##_registrations, rp);                                  \
+      hash_unset (vam->a##_registration_hash, client_index);                  \
     }
   foreach_registration_hash;
 #undef _
@@ -123,21 +124,17 @@ memclnt_delete_callback (u32 client_index)
 VL_MSG_API_REAPER_FUNCTION (memclnt_delete_callback);
 
 static void
-vl_api_control_ping_t_handler (vl_api_control_ping_t * mp)
+vl_api_control_ping_t_handler (vl_api_control_ping_t *mp)
 {
   vl_api_control_ping_reply_t *rmp;
   int rv = 0;
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_CONTROL_PING_REPLY,
-  ({
-    rmp->vpe_pid = ntohl (getpid());
-  }));
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_CONTROL_PING_REPLY,
+		({ rmp->vpe_pid = ntohl (getpid ()); }));
 }
 
 static void
-shmem_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
+shmem_cli_output (uword arg, u8 *buffer, uword buffer_bytes)
 {
   u8 **shmem_vecp = (u8 **) arg;
   u8 *shmem_vec;
@@ -159,9 +156,8 @@ shmem_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
   *shmem_vecp = shmem_vec;
 }
 
-
 static void
-vl_api_cli_t_handler (vl_api_cli_t * mp)
+vl_api_cli_t_handler (vl_api_cli_t *mp)
 {
   vl_api_cli_reply_t *rp;
   vl_api_registration_t *reg;
@@ -172,7 +168,8 @@ vl_api_cli_t_handler (vl_api_cli_t * mp)
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
-    return;;
+    return;
+  ;
 
   rp = vl_msg_api_alloc (sizeof (*rp));
   rp->_vl_msg_id = ntohs (VL_API_CLI_REPLY);
@@ -180,7 +177,7 @@ vl_api_cli_t_handler (vl_api_cli_t * mp)
 
   unformat_init_vector (&input, (u8 *) (uword) mp->cmd_in_shmem);
 
-  vlib_cli_input (vm, &input, shmem_cli_output, (uword) & shmem_vec);
+  vlib_cli_input (vm, &input, shmem_cli_output, (uword) &shmem_vec);
 
   oldheap = vl_msg_push_heap ();
   vec_add1 (shmem_vec, 0);
@@ -192,7 +189,7 @@ vl_api_cli_t_handler (vl_api_cli_t * mp)
 }
 
 static void
-inband_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
+inband_cli_output (uword arg, u8 *buffer, uword buffer_bytes)
 {
   u8 **mem_vecp = (u8 **) arg;
   u8 *mem_vec = *mem_vecp;
@@ -204,7 +201,7 @@ inband_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
 }
 
 static void
-vl_api_cli_inband_t_handler (vl_api_cli_inband_t * mp)
+vl_api_cli_inband_t_handler (vl_api_cli_inband_t *mp)
 {
   vl_api_cli_inband_reply_t *rmp;
   int rv = 0;
@@ -224,21 +221,19 @@ vl_api_cli_inband_t_handler (vl_api_cli_inband_t * mp)
 
   unformat_init_string (&input, (char *) cmd_vec,
 			vl_api_string_len (&mp->cmd));
-  rv = vlib_cli_input (vm, &input, inband_cli_output, (uword) & out_vec);
+  rv = vlib_cli_input (vm, &input, inband_cli_output, (uword) &out_vec);
 
 error:
-  /* *INDENT-OFF* */
-  REPLY_MACRO3(VL_API_CLI_INBAND_REPLY, vec_len (out_vec),
-  ({
-    vl_api_vec_to_api_string(out_vec, &rmp->reply);
-  }));
-  /* *INDENT-ON* */
+
+  REPLY_MACRO3 (VL_API_CLI_INBAND_REPLY, vec_len (out_vec),
+		({ vl_api_vec_to_api_string (out_vec, &rmp->reply); }));
+
   vec_free (out_vec);
   vec_free (cmd_vec);
 }
 
 static void
-vl_api_show_version_t_handler (vl_api_show_version_t * mp)
+vl_api_show_version_t_handler (vl_api_show_version_t *mp)
 {
   vl_api_show_version_reply_t *rmp;
   int rv = 0;
@@ -246,22 +241,20 @@ vl_api_show_version_t_handler (vl_api_show_version_t * mp)
   char *vpe_api_get_version (void);
   char *vpe_api_get_build_date (void);
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_SHOW_VERSION_REPLY,
-  ({
-    strncpy ((char *) rmp->program, "vpe", ARRAY_LEN(rmp->program)-1);
-    strncpy ((char *) rmp->build_directory, vpe_api_get_build_directory(),
-             ARRAY_LEN(rmp->build_directory)-1);
-    strncpy ((char *) rmp->version, vpe_api_get_version(),
-             ARRAY_LEN(rmp->version)-1);
-    strncpy ((char *) rmp->build_date, vpe_api_get_build_date(),
-             ARRAY_LEN(rmp->build_date)-1);
-  }));
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (
+    VL_API_SHOW_VERSION_REPLY, ({
+      strncpy ((char *) rmp->program, "vpe", ARRAY_LEN (rmp->program) - 1);
+      strncpy ((char *) rmp->build_directory, vpe_api_get_build_directory (),
+	       ARRAY_LEN (rmp->build_directory) - 1);
+      strncpy ((char *) rmp->version, vpe_api_get_version (),
+	       ARRAY_LEN (rmp->version) - 1);
+      strncpy ((char *) rmp->build_date, vpe_api_get_build_date (),
+	       ARRAY_LEN (rmp->build_date) - 1);
+    }));
 }
 
 static void
-get_thread_data (vl_api_thread_data_t * td, int index)
+get_thread_data (vl_api_thread_data_t *td, int index)
 {
   vlib_worker_thread_t *w = vlib_worker_threads + index;
   td->id = htonl (index);
@@ -277,7 +270,7 @@ get_thread_data (vl_api_thread_data_t * td, int index)
 }
 
 static void
-vl_api_show_threads_t_handler (vl_api_show_threads_t * mp)
+vl_api_show_threads_t_handler (vl_api_show_threads_t *mp)
 {
   int count = 0;
 
@@ -313,17 +306,14 @@ vl_api_show_threads_t_handler (vl_api_show_threads_t * mp)
   /* unimplemented support */
   rv = -9;
   clib_warning ("power pc does not support show threads api");
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_SHOW_THREADS_REPLY,
-  ({
-    rmp->count = htonl(count);
-  }));
-  /* *INDENT-ON* */
+
+  REPLY_MACRO2 (VL_API_SHOW_THREADS_REPLY, ({ rmp->count = htonl (count); }));
+
 #endif
 }
 
 static void
-vl_api_get_node_index_t_handler (vl_api_get_node_index_t * mp)
+vl_api_get_node_index_t_handler (vl_api_get_node_index_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_get_node_index_reply_t *rmp;
@@ -338,16 +328,12 @@ vl_api_get_node_index_t_handler (vl_api_get_node_index_t * mp)
   else
     node_index = n->index;
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_GET_NODE_INDEX_REPLY,
-  ({
-    rmp->node_index = htonl(node_index);
-  }));
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_GET_NODE_INDEX_REPLY,
+		({ rmp->node_index = htonl (node_index); }));
 }
 
 static void
-vl_api_get_next_index_t_handler (vl_api_get_next_index_t * mp)
+vl_api_get_next_index_t_handler (vl_api_get_next_index_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_get_next_index_reply_t *rmp;
@@ -385,16 +371,13 @@ vl_api_get_next_index_t_handler (vl_api_get_next_index_t * mp)
     next_index = p[0];
 
 out:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_GET_NEXT_INDEX_REPLY,
-  ({
-    rmp->next_index = htonl(next_index);
-  }));
-  /* *INDENT-ON* */
+
+  REPLY_MACRO2 (VL_API_GET_NEXT_INDEX_REPLY,
+		({ rmp->next_index = htonl (next_index); }));
 }
 
 static void
-vl_api_add_node_next_t_handler (vl_api_add_node_next_t * mp)
+vl_api_add_node_next_t_handler (vl_api_add_node_next_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_add_node_next_reply_t *rmp;
@@ -418,16 +401,13 @@ vl_api_add_node_next_t_handler (vl_api_add_node_next_t * mp)
     next_index = vlib_node_add_next (vm, n->index, next->index);
 
 out:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_ADD_NODE_NEXT_REPLY,
-  ({
-    rmp->next_index = htonl(next_index);
-  }));
-  /* *INDENT-ON* */
+
+  REPLY_MACRO2 (VL_API_ADD_NODE_NEXT_REPLY,
+		({ rmp->next_index = htonl (next_index); }));
 }
 
 static void
-vl_api_get_node_graph_t_handler (vl_api_get_node_graph_t * mp)
+vl_api_get_node_graph_t_handler (vl_api_get_node_graph_t *mp)
 {
   int rv = 0;
   u8 *vector = 0;
@@ -445,35 +425,27 @@ vl_api_get_node_graph_t_handler (vl_api_get_node_graph_t * mp)
   vec_validate (vector, 16384);
   vec_reset_length (vector);
 
-  vlib_node_get_nodes (vm, 0 /* main threads */ ,
-		       0 /* include stats */ ,
-		       1 /* barrier sync */ ,
-		       &node_dups, &stat_vms);
-  vector = vlib_node_serialize (vm, node_dups, vector, 1 /* include nexts */ ,
-				1 /* include stats */ );
+  vlib_node_get_nodes (vm, 0 /* main threads */, 0 /* include stats */,
+		       1 /* barrier sync */, &node_dups, &stat_vms);
+  vector = vlib_node_serialize (vm, node_dups, vector, 1 /* include nexts */,
+				1 /* include stats */);
 
   vl_msg_pop_heap (oldheap);
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_GET_NODE_GRAPH_REPLY,
-  ({
-    rmp->reply_in_shmem = (uword) vector;
-  }));
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_GET_NODE_GRAPH_REPLY,
+		({ rmp->reply_in_shmem = (uword) vector; }));
 }
 
 static void
-show_log_details (vl_api_registration_t * reg, u32 context,
-		  f64 timestamp,
-		  vl_api_log_level_t * level, u8 * msg_class, u8 * message)
+show_log_details (vl_api_registration_t *reg, u32 context, f64 timestamp,
+		  vl_api_log_level_t *level, u8 *msg_class, u8 *message)
 {
   u32 msg_size;
 
   vl_api_log_details_t *rmp;
   int class_len =
     clib_min (vec_len (msg_class) + 1, ARRAY_LEN (rmp->msg_class));
-  int message_len =
-    clib_min (vec_len (message) + 1, ARRAY_LEN (rmp->message));
+  int message_len = clib_min (vec_len (message) + 1, ARRAY_LEN (rmp->message));
   msg_size = sizeof (*rmp) + class_len + message_len;
 
   rmp = vl_msg_api_alloc (msg_size);
@@ -494,7 +466,7 @@ show_log_details (vl_api_registration_t * reg, u32 context,
 }
 
 static void
-vl_api_log_dump_t_handler (vl_api_log_dump_t * mp)
+vl_api_log_dump_t_handler (vl_api_log_dump_t *mp)
 {
 
   /* from log.c */
@@ -511,37 +483,34 @@ vl_api_log_dump_t_handler (vl_api_log_dump_t * mp)
 
   start_time = clib_net_to_host_f64 (mp->start_timestamp);
 
-  time_offset = (f64) lm->time_zero_timeval.tv_sec
-    + (((f64) lm->time_zero_timeval.tv_usec) * 1e-6) - lm->time_zero;
+  time_offset = (f64) lm->time_zero_timeval.tv_sec +
+		(((f64) lm->time_zero_timeval.tv_usec) * 1e-6) - lm->time_zero;
 
   while (count--)
     {
       e = vec_elt_at_index (lm->entries, i);
       if (start_time <= e->timestamp + time_offset)
 	show_log_details (reg, mp->context, e->timestamp + time_offset,
-			  (vl_api_log_level_t *) & e->level,
+			  (vl_api_log_level_t *) &e->level,
 			  format (0, "%U", format_vlib_log_class, e->class),
 			  e->string);
       i = (i + 1) % lm->size;
     }
-
 }
 
 static void
-vl_api_show_vpe_system_time_t_handler (vl_api_show_vpe_system_time_t * mp)
+vl_api_show_vpe_system_time_t_handler (vl_api_show_vpe_system_time_t *mp)
 {
   int rv = 0;
   vl_api_show_vpe_system_time_reply_t *rmp;
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_SHOW_VPE_SYSTEM_TIME_REPLY,
-  ({
-    rmp->vpe_system_time = clib_host_to_net_f64 (unix_time_now ());
-  }));
-  /* *INDENT-ON* */
+
+  REPLY_MACRO2 (
+    VL_API_SHOW_VPE_SYSTEM_TIME_REPLY,
+    ({ rmp->vpe_system_time = clib_host_to_net_f64 (unix_time_now ()); }));
 }
 
 static void
-vl_api_get_f64_endian_value_t_handler (vl_api_get_f64_endian_value_t * mp)
+vl_api_get_f64_endian_value_t_handler (vl_api_get_f64_endian_value_t *mp)
 {
   int rv = 0;
   f64 one = 1.0;
@@ -549,39 +518,32 @@ vl_api_get_f64_endian_value_t_handler (vl_api_get_f64_endian_value_t * mp)
   if (1.0 != clib_net_to_host_f64 (mp->f64_one))
     rv = VNET_API_ERROR_API_ENDIAN_FAILED;
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_GET_F64_ENDIAN_VALUE_REPLY,
-  ({
-    rmp->f64_one_result = clib_host_to_net_f64 (one);
-  }));
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_GET_F64_ENDIAN_VALUE_REPLY,
+		({ rmp->f64_one_result = clib_host_to_net_f64 (one); }));
 }
 
 static void
-vl_api_get_f64_increment_by_one_t_handler (vl_api_get_f64_increment_by_one_t *
-					   mp)
+vl_api_get_f64_increment_by_one_t_handler (
+  vl_api_get_f64_increment_by_one_t *mp)
 {
   int rv = 0;
   vl_api_get_f64_increment_by_one_reply_t *rmp;
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_GET_F64_INCREMENT_BY_ONE_REPLY,
-  ({
-    rmp->f64_value = clib_host_to_net_f64 (clib_net_to_host_f64(mp->f64_value) + 1.0);
-  }));
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_GET_F64_INCREMENT_BY_ONE_REPLY, ({
+		  rmp->f64_value = clib_host_to_net_f64 (
+		    clib_net_to_host_f64 (mp->f64_value) + 1.0);
+		}));
 }
 
-#define BOUNCE_HANDLER(nn)                                              \
-static void vl_api_##nn##_t_handler (                                   \
-    vl_api_##nn##_t *mp)                                                \
-{                                                                       \
-    vpe_client_registration_t *reg;                                     \
-    vpe_api_main_t * vam = &vpe_api_main;                               \
-    svm_queue_t * q;                                     \
-                                                                        \
-    /* One registration only... */                                      \
-    pool_foreach (reg, vam->nn##_registrations)                          \
+#define BOUNCE_HANDLER(nn)                                                    \
+  static void vl_api_##nn##_t_handler (vl_api_##nn##_t *mp)                   \
+  {                                                                           \
+    vpe_client_registration_t *reg;                                           \
+    vpe_api_main_t *vam = &vpe_api_main;                                      \
+    svm_queue_t *q;                                                           \
+                                                                              \
+    /* One registration only... */                                            \
+    pool_foreach (reg, vam->nn##_registrations)                               \
     ({                                                                  \
         q = vl_api_client_index_to_input_queue (reg->client_index);     \
         if (q) {                                                        \
@@ -598,11 +560,11 @@ static void vl_api_##nn##_t_handler (                                   \
             vl_msg_api_send_shmem (q, (u8 *)&mp);                       \
             return;                                                     \
         }                                                               \
-    }));                                                                \
-    vl_msg_api_free (mp);                                               \
-}
+    }));                                                                      \
+    vl_msg_api_free (mp);                                                     \
+  }
 
-static void setup_message_id_table (api_main_t * am);
+static void setup_message_id_table (api_main_t *am);
 
 /*
  * vpe_api_hookup
@@ -612,17 +574,14 @@ static void setup_message_id_table (api_main_t * am);
  * See .../open-repo/vlib/memclnt_vlib.c:memclnt_process()
  */
 static clib_error_t *
-vpe_api_hookup (vlib_main_t * vm)
+vpe_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_vpe_api_msg;
 #undef _
 
@@ -652,25 +611,24 @@ vpe_api_hookup (vlib_main_t * vm)
 VLIB_API_INIT_FUNCTION (vpe_api_hookup);
 
 clib_error_t *
-vpe_api_init (vlib_main_t * vm)
+vpe_api_init (vlib_main_t *vm)
 {
   vpe_api_main_t *am = &vpe_api_main;
 
   am->vlib_main = vm;
   am->vnet_main = vnet_get_main ();
-#define _(a)                                                    \
-  am->a##_registration_hash = hash_create (0, sizeof (uword));
+#define _(a) am->a##_registration_hash = hash_create (0, sizeof (uword));
   foreach_registration_hash;
 #undef _
 
   vl_set_memory_region_name ("/vpe-api");
-  vl_mem_api_enable_disable (vm, 1 /* enable it */ );
+  vl_mem_api_enable_disable (vm, 1 /* enable it */);
 
   return 0;
 }
 
 static clib_error_t *
-api_segment_config (vlib_main_t * vm, unformat_input_t * input)
+api_segment_config (vlib_main_t *vm, unformat_input_t *input)
 {
   u8 *chroot_path;
   u64 baseva, size, pvt_heap_size;
@@ -707,8 +665,7 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 	vl_set_global_pvt_heap_size (pvt_heap_size);
       else if (unformat (input, "api-pvt-heap-size %lldM", &pvt_heap_size))
 	vl_set_api_pvt_heap_size (pvt_heap_size * (1ULL << 20));
-      else if (unformat (input, "api-pvt-heap-size size %lld",
-			 &pvt_heap_size))
+      else if (unformat (input, "api-pvt-heap-size size %lld", &pvt_heap_size))
 	vl_set_api_pvt_heap_size (pvt_heap_size);
       else if (unformat (input, "api-size %lldM", &size))
 	vl_set_api_memory_size (size * (1ULL << 20));
@@ -720,26 +677,24 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  /* lookup the username */
 	  pw = NULL;
-	  while (((rv =
-		   getpwnam_r (s, &_pw, buf, vec_len (buf), &pw)) == ERANGE)
-		 && (vec_len (buf) <= max_buf_size))
+	  while (
+	    ((rv = getpwnam_r (s, &_pw, buf, vec_len (buf), &pw)) == ERANGE) &&
+	    (vec_len (buf) <= max_buf_size))
 	    {
 	      vec_resize (buf, vec_len (buf) * 2);
 	    }
 	  if (rv < 0)
 	    {
-	      e = clib_error_return_code (0, rv,
-					  CLIB_ERROR_ERRNO_VALID |
-					  CLIB_ERROR_FATAL,
-					  "cannot fetch username %s", s);
+	      e = clib_error_return_code (
+		0, rv, CLIB_ERROR_ERRNO_VALID | CLIB_ERROR_FATAL,
+		"cannot fetch username %s", s);
 	      vec_free (s);
 	      vec_free (buf);
 	      return e;
 	    }
 	  if (pw == NULL)
 	    {
-	      e =
-		clib_error_return_fatal (0, "username %s does not exist", s);
+	      e = clib_error_return_fatal (0, "username %s does not exist", s);
 	      vec_free (s);
 	      vec_free (buf);
 	      return e;
@@ -751,19 +706,17 @@ api_segment_config (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  /* lookup the group name */
 	  grp = NULL;
-	  while (((rv =
-		   getgrnam_r (s, &_grp, buf, vec_len (buf),
-			       &grp)) == ERANGE)
-		 && (vec_len (buf) <= max_buf_size))
+	  while (((rv = getgrnam_r (s, &_grp, buf, vec_len (buf), &grp)) ==
+		  ERANGE) &&
+		 (vec_len (buf) <= max_buf_size))
 	    {
 	      vec_resize (buf, vec_len (buf) * 2);
 	    }
 	  if (rv != 0)
 	    {
-	      e = clib_error_return_code (0, rv,
-					  CLIB_ERROR_ERRNO_VALID |
-					  CLIB_ERROR_FATAL,
-					  "cannot fetch group %s", s);
+	      e = clib_error_return_code (
+		0, rv, CLIB_ERROR_ERRNO_VALID | CLIB_ERROR_FATAL,
+		"cannot fetch group %s", s);
 	      vec_free (s);
 	      vec_free (buf);
 	      return e;
@@ -799,19 +752,18 @@ get_unformat_vnet_sw_interface (void)
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_memclnt;
   foreach_vl_msg_name_crc_vpe;
 #undef _
 
-#define vl_api_version_tuple(n,mj, mi, p) \
+#define vl_api_version_tuple(n, mj, mi, p)                                    \
   vl_msg_api_add_version (am, #n, mj, mi, p);
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_api_version_tuple
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

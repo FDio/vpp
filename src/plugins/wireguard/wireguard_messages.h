@@ -20,10 +20,10 @@
 #include <wireguard/wireguard_noise.h>
 #include <wireguard/wireguard_cookie.h>
 
-#define WG_TICK 0.01				/**< WG tick period (s) */
-#define WHZ (u32) (1/WG_TICK)		/**< WG tick frequency */
+#define WG_TICK 0.01		    /**< WG tick period (s) */
+#define WHZ	(u32) (1 / WG_TICK) /**< WG tick frequency */
 
-#define NOISE_KEY_LEN_BASE64 ((((NOISE_PUBLIC_KEY_LEN) + 2) / 3) * 4 + 1)
+#define NOISE_KEY_LEN_BASE64	       ((((NOISE_PUBLIC_KEY_LEN) + 2) / 3) * 4 + 1)
 #define noise_encrypted_len(plain_len) ((plain_len) + NOISE_AUTHTAG_LEN)
 
 enum limits
@@ -35,16 +35,16 @@ enum limits
   MAX_PEERS = 1U << 20
 };
 
-#define foreach_wg_message_type	\
-  _(INVALID, "Invalid")		\
-  _(HANDSHAKE_INITIATION, "Handshake initiation")		\
-  _(HANDSHAKE_RESPONSE, "Handshake response") \
-  _(HANDSHAKE_COOKIE, "Handshake cookie") \
-  _(DATA, "Data") \
+#define foreach_wg_message_type                                               \
+  _ (INVALID, "Invalid")                                                      \
+  _ (HANDSHAKE_INITIATION, "Handshake initiation")                            \
+  _ (HANDSHAKE_RESPONSE, "Handshake response")                                \
+  _ (HANDSHAKE_COOKIE, "Handshake cookie")                                    \
+  _ (DATA, "Data")
 
 typedef enum message_type
 {
-#define _(v,s) MESSAGE_##v,
+#define _(v, s) MESSAGE_##v,
   foreach_wg_message_type
 #undef _
 } message_type_t;
@@ -90,8 +90,8 @@ typedef struct message_data
   u8 encrypted_data[];
 } message_data_t;
 
-#define message_data_len(plain_len) \
-    (noise_encrypted_len(plain_len) + sizeof(message_data_t))
+#define message_data_len(plain_len)                                           \
+  (noise_encrypted_len (plain_len) + sizeof (message_data_t))
 
 #endif /* __included_wg_messages_h__ */
 

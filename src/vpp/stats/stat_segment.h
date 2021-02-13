@@ -22,53 +22,55 @@
 
 typedef enum
 {
- STAT_COUNTER_VECTOR_RATE = 0,
- STAT_COUNTER_NUM_WORKER_THREADS,
- STAT_COUNTER_VECTOR_RATE_PER_WORKER,
- STAT_COUNTER_INPUT_RATE,
- STAT_COUNTER_LAST_UPDATE,
- STAT_COUNTER_LAST_STATS_CLEAR,
- STAT_COUNTER_HEARTBEAT,
- STAT_COUNTER_NODE_CLOCKS,
- STAT_COUNTER_NODE_VECTORS,
- STAT_COUNTER_NODE_CALLS,
- STAT_COUNTER_NODE_SUSPENDS,
- STAT_COUNTER_INTERFACE_NAMES,
- STAT_COUNTER_NODE_NAMES,
- STAT_COUNTER_MEM_STATSEG_TOTAL,
- STAT_COUNTER_MEM_STATSEG_USED,
- STAT_COUNTERS
+  STAT_COUNTER_VECTOR_RATE = 0,
+  STAT_COUNTER_NUM_WORKER_THREADS,
+  STAT_COUNTER_VECTOR_RATE_PER_WORKER,
+  STAT_COUNTER_INPUT_RATE,
+  STAT_COUNTER_LAST_UPDATE,
+  STAT_COUNTER_LAST_STATS_CLEAR,
+  STAT_COUNTER_HEARTBEAT,
+  STAT_COUNTER_NODE_CLOCKS,
+  STAT_COUNTER_NODE_VECTORS,
+  STAT_COUNTER_NODE_CALLS,
+  STAT_COUNTER_NODE_SUSPENDS,
+  STAT_COUNTER_INTERFACE_NAMES,
+  STAT_COUNTER_NODE_NAMES,
+  STAT_COUNTER_MEM_STATSEG_TOTAL,
+  STAT_COUNTER_MEM_STATSEG_USED,
+  STAT_COUNTERS
 } stat_segment_counter_t;
 
-#define foreach_stat_segment_counter_name                       \
-  _(VECTOR_RATE, SCALAR_INDEX, vector_rate, /sys)               \
-  _(VECTOR_RATE_PER_WORKER, COUNTER_VECTOR_SIMPLE,              \
-    vector_rate_per_worker, /sys)                               \
-  _(NUM_WORKER_THREADS, SCALAR_INDEX, num_worker_threads, /sys) \
-  _(INPUT_RATE, SCALAR_INDEX, input_rate, /sys)                 \
-  _(LAST_UPDATE, SCALAR_INDEX, last_update, /sys)               \
-  _(LAST_STATS_CLEAR, SCALAR_INDEX, last_stats_clear, /sys)     \
-  _(HEARTBEAT, SCALAR_INDEX, heartbeat, /sys)                   \
-  _(NODE_CLOCKS, COUNTER_VECTOR_SIMPLE, clocks, /sys/node)      \
-  _(NODE_VECTORS, COUNTER_VECTOR_SIMPLE, vectors, /sys/node)    \
-  _(NODE_CALLS, COUNTER_VECTOR_SIMPLE, calls, /sys/node)        \
-  _(NODE_SUSPENDS, COUNTER_VECTOR_SIMPLE, suspends, /sys/node)  \
-  _(INTERFACE_NAMES, NAME_VECTOR, names, /if)                   \
-  _(NODE_NAMES, NAME_VECTOR, names, /sys/node)                  \
-  _(MEM_STATSEG_TOTAL, SCALAR_INDEX, total, /mem/statseg)       \
-  _(MEM_STATSEG_USED, SCALAR_INDEX, used, /mem/statseg)
+#define foreach_stat_segment_counter_name                                     \
+  _ (VECTOR_RATE, SCALAR_INDEX, vector_rate, / sys)                           \
+  _ (VECTOR_RATE_PER_WORKER, COUNTER_VECTOR_SIMPLE, vector_rate_per_worker,   \
+     / sys)                                                                   \
+  _ (NUM_WORKER_THREADS, SCALAR_INDEX, num_worker_threads, / sys)             \
+  _ (INPUT_RATE, SCALAR_INDEX, input_rate, / sys)                             \
+  _ (LAST_UPDATE, SCALAR_INDEX, last_update, / sys)                           \
+  _ (LAST_STATS_CLEAR, SCALAR_INDEX, last_stats_clear, / sys)                 \
+  _ (HEARTBEAT, SCALAR_INDEX, heartbeat, / sys)                               \
+  _ (NODE_CLOCKS, COUNTER_VECTOR_SIMPLE, clocks, / sys / node)                \
+  _ (NODE_VECTORS, COUNTER_VECTOR_SIMPLE, vectors, / sys / node)              \
+  _ (NODE_CALLS, COUNTER_VECTOR_SIMPLE, calls, / sys / node)                  \
+  _ (NODE_SUSPENDS, COUNTER_VECTOR_SIMPLE, suspends, / sys / node)            \
+  _ (INTERFACE_NAMES, NAME_VECTOR, names, / if)                               \
+  _ (NODE_NAMES, NAME_VECTOR, names, / sys / node)                            \
+  _ (MEM_STATSEG_TOTAL, SCALAR_INDEX, total, / mem / statseg)                 \
+  _ (MEM_STATSEG_USED, SCALAR_INDEX, used, / mem / statseg)
 
 /* Default stat segment 32m */
-#define STAT_SEGMENT_DEFAULT_SIZE	(32<<20)
+#define STAT_SEGMENT_DEFAULT_SIZE (32 << 20)
 
 /* Shared segment memory layout version */
-#define STAT_SEGMENT_VERSION		2
+#define STAT_SEGMENT_VERSION 2
 
-#define STAT_SEGMENT_INDEX_INVALID	UINT32_MAX
+#define STAT_SEGMENT_INDEX_INVALID UINT32_MAX
 
-typedef void (*stat_segment_update_fn)(stat_segment_directory_entry_t * e, u32 i);
+typedef void (*stat_segment_update_fn) (stat_segment_directory_entry_t *e,
+					u32 i);
 
-typedef struct {
+typedef struct
+{
   u32 directory_index;
   stat_segment_update_fn fn;
   u32 caller_index;
@@ -97,7 +99,8 @@ typedef struct
   u8 node_counters_enabled;
   void *last;
   void *heap;
-  stat_segment_shared_header_t *shared_header;	/* pointer to shared memory segment */
+  stat_segment_shared_header_t
+    *shared_header; /* pointer to shared memory segment */
   int memfd;
 
   u64 last_input_packets; // OLE REMOVE?
@@ -105,12 +108,11 @@ typedef struct
 
 extern stat_segment_main_t stat_segment_main;
 
-clib_error_t *
-stat_segment_register_gauge (u8 *names, stat_segment_update_fn update_fn, u32 index);
-clib_error_t *
-stat_segment_register_state_counter(u8 *name, u32 *index);
-clib_error_t *
-stat_segment_deregister_state_counter(u32 index);
+clib_error_t *stat_segment_register_gauge (u8 *names,
+					   stat_segment_update_fn update_fn,
+					   u32 index);
+clib_error_t *stat_segment_register_state_counter (u8 *name, u32 *index);
+clib_error_t *stat_segment_deregister_state_counter (u32 index);
 void stat_segment_set_state_counter (u32 index, u64 value);
 
 #endif

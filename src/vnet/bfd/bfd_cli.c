@@ -27,7 +27,7 @@
 #include <vnet/bfd/bfd_main.h>
 
 static u8 *
-format_bfd_session_cli (u8 * s, va_list * args)
+format_bfd_session_cli (u8 *s, va_list *args)
 {
   vlib_main_t *vm = va_arg (*args, vlib_main_t *);
   bfd_session_t *bs = va_arg (*args, bfd_session_t *);
@@ -56,48 +56,44 @@ format_bfd_session_cli (u8 * s, va_list * args)
 	      "Required Min Rx Interval (usec)",
 	      bs->config_required_min_rx_usec, bs->remote_min_rx_usec);
   s = format (s, "%10s %-32s %20u %20u\n", "",
-	      "Desired Min Tx Interval (usec)",
-	      bs->config_desired_min_tx_usec,
+	      "Desired Min Tx Interval (usec)", bs->config_desired_min_tx_usec,
 	      bfd_nsec_to_usec (bs->remote_desired_min_tx_nsec));
-  s =
-    format (s, "%10s %-32s %20u\n", "", "Transmit interval",
-	    bfd_nsec_to_usec (bs->transmit_interval_nsec));
+  s = format (s, "%10s %-32s %20u\n", "", "Transmit interval",
+	      bfd_nsec_to_usec (bs->transmit_interval_nsec));
   u64 now = clib_cpu_time_now ();
   u8 *tmp = NULL;
   if (bs->last_tx_nsec > 0)
     {
-      tmp = format (tmp, "%.2fs ago", (now - bs->last_tx_nsec) *
-		    vm->clib_time.seconds_per_clock);
+      tmp =
+	format (tmp, "%.2fs ago",
+		(now - bs->last_tx_nsec) * vm->clib_time.seconds_per_clock);
       s = format (s, "%10s %-32s %20v\n", "", "Last control frame tx", tmp);
       vec_reset_length (tmp);
     }
   if (bs->last_rx_nsec)
     {
-      tmp = format (tmp, "%.2fs ago", (now - bs->last_rx_nsec) *
-		    vm->clib_time.seconds_per_clock);
+      tmp =
+	format (tmp, "%.2fs ago",
+		(now - bs->last_rx_nsec) * vm->clib_time.seconds_per_clock);
       s = format (s, "%10s %-32s %20v\n", "", "Last control frame rx", tmp);
       vec_reset_length (tmp);
     }
-  s =
-    format (s, "%10s %-32s %20u %20llu\n", "", "Min Echo Rx Interval (usec)",
-	    1, bs->remote_min_echo_rx_usec);
+  s = format (s, "%10s %-32s %20u %20llu\n", "", "Min Echo Rx Interval (usec)",
+	      1, bs->remote_min_echo_rx_usec);
   if (bs->echo)
     {
-      s =
-	format (s, "%10s %-32s %20u\n", "", "Echo transmit interval",
-		bfd_nsec_to_usec (bs->echo_transmit_interval_nsec));
-      tmp =
-	format (tmp, "%.2fs ago",
-		(now -
-		 bs->echo_last_tx_nsec) * vm->clib_time.seconds_per_clock);
+      s = format (s, "%10s %-32s %20u\n", "", "Echo transmit interval",
+		  bfd_nsec_to_usec (bs->echo_transmit_interval_nsec));
+      tmp = format (tmp, "%.2fs ago",
+		    (now - bs->echo_last_tx_nsec) *
+		      vm->clib_time.seconds_per_clock);
       s = format (s, "%10s %-32s %20v\n", "", "Last echo frame tx", tmp);
       vec_reset_length (tmp);
       tmp = format (tmp, "%.6fs",
 		    (bs->echo_last_rx_nsec - bs->echo_last_tx_nsec) *
-		    vm->clib_time.seconds_per_clock);
-      s =
-	format (s, "%10s %-32s %20v\n", "", "Last echo frame roundtrip time",
-		tmp);
+		      vm->clib_time.seconds_per_clock);
+      s = format (s, "%10s %-32s %20v\n", "", "Last echo frame roundtrip time",
+		  tmp);
     }
   vec_free (tmp);
   tmp = NULL;
@@ -118,8 +114,8 @@ format_bfd_session_cli (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-show_bfd (vlib_main_t * vm, unformat_input_t * input,
-	  CLIB_UNUSED (vlib_cli_command_t * lmd))
+show_bfd (vlib_main_t *vm, unformat_input_t *input,
+	  CLIB_UNUSED (vlib_cli_command_t *lmd))
 {
   bfd_main_t *bm = &bfd_main;
   bfd_session_t *bs = NULL;
@@ -134,12 +130,13 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
       bfd_auth_key_t *key = NULL;
       u8 *s = format (NULL, "%=10s %=25s %=10s\n", "Configuration Key ID",
 		      "Type", "Use Count");
-      /* *INDENT-OFF* */
-      pool_foreach (key, bm->auth_keys) {
-        s = format (s, "%10u %-25s %10u\n", key->conf_key_id,
-                    bfd_auth_type_str (key->auth_type), key->use_count);
-      }
-      /* *INDENT-ON* */
+
+      pool_foreach (key, bm->auth_keys)
+	{
+	  s = format (s, "%10u %-25s %10u\n", key->conf_key_id,
+		      bfd_auth_type_str (key->auth_type), key->use_count);
+	}
+
       vlib_cli_output (vm, "%v\n", s);
       vec_free (s);
       vlib_cli_output (vm, "Number of configured BFD keys: %lu\n",
@@ -149,11 +146,12 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
     {
       u8 *s = format (NULL, "%=10s %=32s %=20s %=20s\n", "Index", "Property",
 		      "Local value", "Remote value");
-      /* *INDENT-OFF* */
-      pool_foreach (bs, bm->sessions) {
-        s = format (s, "%U", format_bfd_session_cli, vm, bs);
-      }
-      /* *INDENT-ON* */
+
+      pool_foreach (bs, bm->sessions)
+	{
+	  s = format (s, "%U", format_bfd_session_cli, vm, bs);
+	}
+
       vlib_cli_output (vm, "%v", s);
       vec_free (s);
       vlib_cli_output (vm, "Number of configured BFD sessions: %lu\n",
@@ -212,17 +210,15 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_bfd_command, static) = {
   .path = "show bfd",
   .short_help = "show bfd [keys|sessions|echo-source]",
   .function = show_bfd,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-bfd_cli_key_add (vlib_main_t * vm, unformat_input_t * input,
-		 CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_key_add (vlib_main_t *vm, unformat_input_t *input,
+		 CLIB_UNUSED (vlib_cli_command_t *lmd))
 {
   clib_error_t *ret = NULL;
   int have_key_id = 0;
@@ -248,13 +244,12 @@ bfd_cli_key_add (vlib_main_t * vm, unformat_input_t * input,
 			 &vec_auth_type))
 	{
 	  if (vec_len (vec_auth_type) == sizeof (keyed_sha1) - 1 &&
-	      0 == memcmp (vec_auth_type, keyed_sha1,
-			   sizeof (keyed_sha1) - 1))
+	      0 == memcmp (vec_auth_type, keyed_sha1, sizeof (keyed_sha1) - 1))
 	    {
 	      auth_type = BFD_AUTH_TYPE_keyed_sha1;
 	    }
 	  else if (vec_len (vec_auth_type) ==
-		   sizeof (meticulous_keyed_sha1) - 1 &&
+		     sizeof (meticulous_keyed_sha1) - 1 &&
 		   0 == memcmp (vec_auth_type, meticulous_keyed_sha1,
 				sizeof (meticulous_keyed_sha1) - 1))
 	    {
@@ -266,8 +261,8 @@ bfd_cli_key_add (vlib_main_t * vm, unformat_input_t * input,
 	      goto out;
 	    }
 	}
-      else
-	if (unformat (line_input, "secret %U", unformat_hex_string, &secret))
+      else if (unformat (line_input, "secret %U", unformat_hex_string,
+			 &secret))
 	{
 	  /* nothing to do here */
 	}
@@ -281,8 +276,7 @@ bfd_cli_key_add (vlib_main_t * vm, unformat_input_t * input,
 
   if (!have_key_id)
     {
-      ret =
-	clib_error_return (0, "required parameter missing: `conf-key-id'");
+      ret = clib_error_return (0, "required parameter missing: `conf-key-id'");
       goto out;
     }
   if (!vec_auth_type)
@@ -310,20 +304,18 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_key_add_command, static) = {
   .path = "bfd key set",
   .short_help = "bfd key set"
-                " conf-key-id <id>"
-                " type <keyed-sha1|meticulous-keyed-sha1> "
-                " secret <secret>",
+		" conf-key-id <id>"
+		" type <keyed-sha1|meticulous-keyed-sha1> "
+		" secret <secret>",
   .function = bfd_cli_key_add,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-bfd_cli_key_del (vlib_main_t * vm, unformat_input_t * input,
-		 CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_key_del (vlib_main_t *vm, unformat_input_t *input,
+		 CLIB_UNUSED (vlib_cli_command_t *lmd))
 {
   clib_error_t *ret = NULL;
   u32 key_id = 0;
@@ -355,65 +347,63 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_key_del_command, static) = {
   .path = "bfd key del",
   .short_help = "bfd key del conf-key-id <id>",
   .function = bfd_cli_key_del,
 };
-/* *INDENT-ON* */
 
-#define INTERFACE_STR "interface"
-#define LOCAL_ADDR_STR "local-addr"
-#define PEER_ADDR_STR "peer-addr"
-#define CONF_KEY_ID_STR "conf-key-id"
-#define BFD_KEY_ID_STR "bfd-key-id"
-#define DESIRED_MIN_TX_STR "desired-min-tx"
+#define INTERFACE_STR	    "interface"
+#define LOCAL_ADDR_STR	    "local-addr"
+#define PEER_ADDR_STR	    "peer-addr"
+#define CONF_KEY_ID_STR	    "conf-key-id"
+#define BFD_KEY_ID_STR	    "bfd-key-id"
+#define DESIRED_MIN_TX_STR  "desired-min-tx"
 #define REQUIRED_MIN_RX_STR "required-min-rx"
-#define DETECT_MULT_STR "detect-mult"
-#define ADMIN_STR "admin"
-#define DELAYED_STR "delayed"
+#define DETECT_MULT_STR	    "detect-mult"
+#define ADMIN_STR	    "admin"
+#define DELAYED_STR	    "delayed"
 
 static const unsigned mandatory = 1;
 static const unsigned optional = 0;
 
-#define DECLARE(t, n, s, r, ...) \
-  int have_##n = 0;              \
+#define DECLARE(t, n, s, r, ...)                                              \
+  int have_##n = 0;                                                           \
   t n;
 
-#define UNFORMAT(t, n, s, r, ...)              \
-  if (unformat (line_input, s " " __VA_ARGS__, &n)) \
-    {                                          \
-      something_parsed = 1;                    \
-      have_##n = 1;                            \
+#define UNFORMAT(t, n, s, r, ...)                                             \
+  if (unformat (line_input, s " " __VA_ARGS__, &n))                           \
+    {                                                                         \
+      something_parsed = 1;                                                   \
+      have_##n = 1;                                                           \
     }
 
-#define CHECK_MANDATORY(t, n, s, r, ...)                                  \
-WARN_OFF(tautological-compare)                                            \
-  if (mandatory == r && !have_##n)                                        \
-    {                                                                     \
-      WARN_ON(tautological-compare)                                       \
-      ret = clib_error_return (0, "Required parameter `%s' missing.", s); \
-      goto out;                                                           \
+#define CHECK_MANDATORY(t, n, s, r, ...)                                      \
+  WARN_OFF (tautological - compare)                                           \
+  if (mandatory == r && !have_##n)                                            \
+    {                                                                         \
+      WARN_ON (tautological - compare)                                        \
+      ret = clib_error_return (0, "Required parameter `%s' missing.", s);     \
+      goto out;                                                               \
     }
 
 static clib_error_t *
-bfd_cli_udp_session_add (vlib_main_t * vm, unformat_input_t * input,
-			 CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_udp_session_add (vlib_main_t *vm, unformat_input_t *input,
+			 CLIB_UNUSED (vlib_cli_command_t *lmd))
 {
   clib_error_t *ret = NULL;
   unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_add_cli_param(F)              \
-  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",            \
-     unformat_vnet_sw_interface, &vnet_main)                      \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U", \
-     unformat_ip46_address)                                       \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",   \
-     unformat_ip46_address)                                       \
-  F (u32, desired_min_tx, DESIRED_MIN_TX_STR, mandatory, "%u")    \
-  F (u32, required_min_rx, REQUIRED_MIN_RX_STR, mandatory, "%u")  \
-  F (u32, detect_mult, DETECT_MULT_STR, mandatory, "%u")          \
-  F (u32, conf_key_id, CONF_KEY_ID_STR, optional, "%u")           \
+#define foreach_bfd_cli_udp_session_add_cli_param(F)                          \
+  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",                        \
+     unformat_vnet_sw_interface, &vnet_main)                                  \
+  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
+     unformat_ip46_address)                                                   \
+  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
+     unformat_ip46_address)                                                   \
+  F (u32, desired_min_tx, DESIRED_MIN_TX_STR, mandatory, "%u")                \
+  F (u32, required_min_rx, REQUIRED_MIN_RX_STR, mandatory, "%u")              \
+  F (u32, detect_mult, DETECT_MULT_STR, mandatory, "%u")                      \
+  F (u32, conf_key_id, CONF_KEY_ID_STR, optional, "%u")                       \
   F (u32, bfd_key_id, BFD_KEY_ID_STR, optional, "%u")
 
   foreach_bfd_cli_udp_session_add_cli_param (DECLARE);
@@ -439,9 +429,11 @@ bfd_cli_udp_session_add (vlib_main_t * vm, unformat_input_t * input,
 
   if (1 == have_conf_key_id + have_bfd_key_id)
     {
-      ret = clib_error_return (0, "Incompatible parameter combination, `%s' "
-			       "and `%s' must be either both specified or none",
-			       CONF_KEY_ID_STR, BFD_KEY_ID_STR);
+      ret =
+	clib_error_return (0,
+			   "Incompatible parameter combination, `%s' "
+			   "and `%s' must be either both specified or none",
+			   CONF_KEY_ID_STR, BFD_KEY_ID_STR);
       goto out;
     }
 
@@ -459,17 +451,14 @@ bfd_cli_udp_session_add (vlib_main_t * vm, unformat_input_t * input,
       goto out;
     }
 
-  vnet_api_error_t rv =
-    bfd_udp_add_session (sw_if_index, &local_addr, &peer_addr, desired_min_tx,
-			 required_min_rx,
-			 detect_mult, have_conf_key_id, conf_key_id,
-			 bfd_key_id);
+  vnet_api_error_t rv = bfd_udp_add_session (
+    sw_if_index, &local_addr, &peer_addr, desired_min_tx, required_min_rx,
+    detect_mult, have_conf_key_id, conf_key_id, bfd_key_id);
   if (rv)
     {
-      ret =
-	clib_error_return (0,
-			   "`bfd_add_add_session' API call failed, rv=%d:%U",
-			   (int) rv, format_vnet_api_errno, rv);
+      ret = clib_error_return (
+	0, "`bfd_add_add_session' API call failed, rv=%d:%U", (int) rv,
+	format_vnet_api_errno, rv);
       goto out;
     }
 
@@ -477,39 +466,37 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_udp_session_add_command, static) = {
   .path = "bfd udp session add",
   .short_help = "bfd udp session add"
-                " interface <interface>"
-                " local-addr <local-address>"
-                " peer-addr <peer-address>"
-                " desired-min-tx <desired min tx interval>"
-                " required-min-rx <required min rx interval>"
-                " detect-mult <detect multiplier> "
-                "["
-                " conf-key-id <config key ID>"
-                " bfd-key-id <BFD key ID>"
-                "]",
+		" interface <interface>"
+		" local-addr <local-address>"
+		" peer-addr <peer-address>"
+		" desired-min-tx <desired min tx interval>"
+		" required-min-rx <required min rx interval>"
+		" detect-mult <detect multiplier> "
+		"["
+		" conf-key-id <config key ID>"
+		" bfd-key-id <BFD key ID>"
+		"]",
   .function = bfd_cli_udp_session_add,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-bfd_cli_udp_session_mod (vlib_main_t * vm, unformat_input_t * input,
-			 CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_udp_session_mod (vlib_main_t *vm, unformat_input_t *input,
+			 CLIB_UNUSED (vlib_cli_command_t *lmd))
 {
   clib_error_t *ret = NULL;
   unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_mod_cli_param(F)              \
-  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",            \
-     unformat_vnet_sw_interface, &vnet_main)                      \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U", \
-     unformat_ip46_address)                                       \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",   \
-     unformat_ip46_address)                                       \
-  F (u32, desired_min_tx, DESIRED_MIN_TX_STR, mandatory, "%u")    \
-  F (u32, required_min_rx, REQUIRED_MIN_RX_STR, mandatory, "%u")  \
+#define foreach_bfd_cli_udp_session_mod_cli_param(F)                          \
+  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",                        \
+     unformat_vnet_sw_interface, &vnet_main)                                  \
+  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
+     unformat_ip46_address)                                                   \
+  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
+     unformat_ip46_address)                                                   \
+  F (u32, desired_min_tx, DESIRED_MIN_TX_STR, mandatory, "%u")                \
+  F (u32, required_min_rx, REQUIRED_MIN_RX_STR, mandatory, "%u")              \
   F (u32, detect_mult, DETECT_MULT_STR, mandatory, "%u")
 
   foreach_bfd_cli_udp_session_mod_cli_param (DECLARE);
@@ -541,14 +528,13 @@ bfd_cli_udp_session_mod (vlib_main_t * vm, unformat_input_t * input,
     }
 
   vnet_api_error_t rv =
-    bfd_udp_mod_session (sw_if_index, &local_addr, &peer_addr,
-			 desired_min_tx, required_min_rx, detect_mult);
+    bfd_udp_mod_session (sw_if_index, &local_addr, &peer_addr, desired_min_tx,
+			 required_min_rx, detect_mult);
   if (rv)
     {
-      ret =
-	clib_error_return (0,
-			   "`bfd_udp_mod_session' API call failed, rv=%d:%U",
-			   (int) rv, format_vnet_api_errno, rv);
+      ret = clib_error_return (
+	0, "`bfd_udp_mod_session' API call failed, rv=%d:%U", (int) rv,
+	format_vnet_api_errno, rv);
       goto out;
     }
 
@@ -556,32 +542,30 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_udp_session_mod_command, static) = {
   .path = "bfd udp session mod",
   .short_help = "bfd udp session mod interface"
-                " <interface> local-addr"
-                " <local-address> peer-addr"
-                " <peer-address> desired-min-tx"
-                " <desired min tx interval> required-min-rx"
-                " <required min rx interval> detect-mult"
-                " <detect multiplier> ",
+		" <interface> local-addr"
+		" <local-address> peer-addr"
+		" <peer-address> desired-min-tx"
+		" <desired min tx interval> required-min-rx"
+		" <required min rx interval> detect-mult"
+		" <detect multiplier> ",
   .function = bfd_cli_udp_session_mod,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-bfd_cli_udp_session_del (vlib_main_t * vm, unformat_input_t * input,
-			 CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_udp_session_del (vlib_main_t *vm, unformat_input_t *input,
+			 CLIB_UNUSED (vlib_cli_command_t *lmd))
 {
   clib_error_t *ret = NULL;
   unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_del_cli_param(F)              \
-  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",            \
-     unformat_vnet_sw_interface, &vnet_main)                      \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U", \
-     unformat_ip46_address)                                       \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",   \
+#define foreach_bfd_cli_udp_session_del_cli_param(F)                          \
+  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",                        \
+     unformat_vnet_sw_interface, &vnet_main)                                  \
+  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
+     unformat_ip46_address)                                                   \
+  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
      unformat_ip46_address)
 
   foreach_bfd_cli_udp_session_del_cli_param (DECLARE);
@@ -609,10 +593,9 @@ bfd_cli_udp_session_del (vlib_main_t * vm, unformat_input_t * input,
     bfd_udp_del_session (sw_if_index, &local_addr, &peer_addr);
   if (rv)
     {
-      ret =
-	clib_error_return (0,
-			   "`bfd_udp_del_session' API call failed, rv=%d:%U",
-			   (int) rv, format_vnet_api_errno, rv);
+      ret = clib_error_return (
+	0, "`bfd_udp_del_session' API call failed, rv=%d:%U", (int) rv,
+	format_vnet_api_errno, rv);
       goto out;
     }
 
@@ -620,31 +603,29 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_udp_session_del_command, static) = {
   .path = "bfd udp session del",
   .short_help = "bfd udp session del interface"
-                " <interface> local-addr"
-                " <local-address> peer-addr"
-                "<peer-address> ",
+		" <interface> local-addr"
+		" <local-address> peer-addr"
+		"<peer-address> ",
   .function = bfd_cli_udp_session_del,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-bfd_cli_udp_session_set_flags (vlib_main_t * vm, unformat_input_t * input,
-			       CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_udp_session_set_flags (vlib_main_t *vm, unformat_input_t *input,
+			       CLIB_UNUSED (vlib_cli_command_t *lmd))
 {
   clib_error_t *ret = NULL;
   unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_set_flags_cli_param(F)        \
-  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",            \
-     unformat_vnet_sw_interface, &vnet_main)                      \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U", \
-     unformat_ip46_address)                                       \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",   \
-     unformat_ip46_address)                                       \
-  F (u8 *, admin_up_down_token, ADMIN_STR, mandatory, "%v",       \
+#define foreach_bfd_cli_udp_session_set_flags_cli_param(F)                    \
+  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",                        \
+     unformat_vnet_sw_interface, &vnet_main)                                  \
+  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
+     unformat_ip46_address)                                                   \
+  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
+     unformat_ip46_address)                                                   \
+  F (u8 *, admin_up_down_token, ADMIN_STR, mandatory, "%v",                   \
      &admin_up_down_token)
 
   foreach_bfd_cli_udp_session_set_flags_cli_param (DECLARE);
@@ -686,15 +667,13 @@ bfd_cli_udp_session_set_flags (vlib_main_t * vm, unformat_input_t * input,
 			   ADMIN_STR, admin_up_down_token);
       goto out;
     }
-  vnet_api_error_t rv =
-    bfd_udp_session_set_flags (vm, sw_if_index, &local_addr,
-			       &peer_addr, admin_up_down);
+  vnet_api_error_t rv = bfd_udp_session_set_flags (
+    vm, sw_if_index, &local_addr, &peer_addr, admin_up_down);
   if (rv)
     {
-      ret =
-	clib_error_return (0,
-			   "`bfd_udp_session_set_flags' API call failed, rv=%d:%U",
-			   (int) rv, format_vnet_api_errno, rv);
+      ret = clib_error_return (
+	0, "`bfd_udp_session_set_flags' API call failed, rv=%d:%U", (int) rv,
+	format_vnet_api_errno, rv);
       goto out;
     }
 
@@ -702,34 +681,31 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_udp_session_set_flags_command, static) = {
   .path = "bfd udp session set-flags",
   .short_help = "bfd udp session set-flags"
-                " interface <interface>"
-                " local-addr <local-address>"
-                " peer-addr <peer-address>"
-                " admin <up|down>",
+		" interface <interface>"
+		" local-addr <local-address>"
+		" peer-addr <peer-address>"
+		" admin <up|down>",
   .function = bfd_cli_udp_session_set_flags,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-bfd_cli_udp_session_auth_activate (vlib_main_t * vm,
-				   unformat_input_t * input,
-				   CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_udp_session_auth_activate (vlib_main_t *vm, unformat_input_t *input,
+				   CLIB_UNUSED (vlib_cli_command_t *lmd))
 {
   clib_error_t *ret = NULL;
   unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_auth_activate_cli_param(F)    \
-  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",            \
-     unformat_vnet_sw_interface, &vnet_main)                      \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U", \
-     unformat_ip46_address)                                       \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",   \
-     unformat_ip46_address)                                       \
-  F (u8 *, delayed_token, DELAYED_STR, optional, "%v")            \
-  F (u32, conf_key_id, CONF_KEY_ID_STR, mandatory, "%u")          \
+#define foreach_bfd_cli_udp_session_auth_activate_cli_param(F)                \
+  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",                        \
+     unformat_vnet_sw_interface, &vnet_main)                                  \
+  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
+     unformat_ip46_address)                                                   \
+  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
+     unformat_ip46_address)                                                   \
+  F (u8 *, delayed_token, DELAYED_STR, optional, "%v")                        \
+  F (u32, conf_key_id, CONF_KEY_ID_STR, mandatory, "%u")                      \
   F (u32, bfd_key_id, BFD_KEY_ID_STR, mandatory, "%u")
 
   foreach_bfd_cli_udp_session_auth_activate_cli_param (DECLARE);
@@ -768,10 +744,9 @@ bfd_cli_udp_session_auth_activate (vlib_main_t * vm,
 	}
       else
 	{
-	  ret =
-	    clib_error_return (0,
-			       "Unrecognized value for `%s' parameter: `%v'",
-			       DELAYED_STR, delayed_token);
+	  ret = clib_error_return (
+	    0, "Unrecognized value for `%s' parameter: `%v'", DELAYED_STR,
+	    delayed_token);
 	  goto out;
 	}
     }
@@ -783,15 +758,13 @@ bfd_cli_udp_session_auth_activate (vlib_main_t * vm,
       goto out;
     }
 
-  vnet_api_error_t rv =
-    bfd_udp_auth_activate (sw_if_index, &local_addr, &peer_addr, conf_key_id,
-			   bfd_key_id, is_delayed);
+  vnet_api_error_t rv = bfd_udp_auth_activate (
+    sw_if_index, &local_addr, &peer_addr, conf_key_id, bfd_key_id, is_delayed);
   if (rv)
     {
-      ret =
-	clib_error_return (0,
-			   "`bfd_udp_auth_activate' API call failed, rv=%d:%U",
-			   (int) rv, format_vnet_api_errno, rv);
+      ret = clib_error_return (
+	0, "`bfd_udp_auth_activate' API call failed, rv=%d:%U", (int) rv,
+	format_vnet_api_errno, rv);
       goto out;
     }
 
@@ -799,32 +772,31 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_udp_session_auth_activate_command, static) = {
   .path = "bfd udp session auth activate",
   .short_help = "bfd udp session auth activate"
-                " interface <interface>"
-                " local-addr <local-address>"
-                " peer-addr <peer-address>"
-                " conf-key-id <config key ID>"
-                " bfd-key-id <BFD key ID>"
-                " [ delayed <yes|no> ]",
+		" interface <interface>"
+		" local-addr <local-address>"
+		" peer-addr <peer-address>"
+		" conf-key-id <config key ID>"
+		" bfd-key-id <BFD key ID>"
+		" [ delayed <yes|no> ]",
   .function = bfd_cli_udp_session_auth_activate,
 };
 
 static clib_error_t *
 bfd_cli_udp_session_auth_deactivate (vlib_main_t *vm, unformat_input_t *input,
-                                     CLIB_UNUSED (vlib_cli_command_t *lmd))
+				     CLIB_UNUSED (vlib_cli_command_t *lmd))
 {
   clib_error_t *ret = NULL;
   unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_auth_deactivate_cli_param(F)  \
-  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",            \
-     unformat_vnet_sw_interface, &vnet_main)                      \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U", \
-     unformat_ip46_address)                                       \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",   \
-     unformat_ip46_address)                                       \
+#define foreach_bfd_cli_udp_session_auth_deactivate_cli_param(F)              \
+  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",                        \
+     unformat_vnet_sw_interface, &vnet_main)                                  \
+  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
+     unformat_ip46_address)                                                   \
+  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
+     unformat_ip46_address)                                                   \
   F (u8 *, delayed_token, DELAYED_STR, optional, "%v")
 
   foreach_bfd_cli_udp_session_auth_deactivate_cli_param (DECLARE);
@@ -839,11 +811,11 @@ bfd_cli_udp_session_auth_deactivate (vlib_main_t *vm, unformat_input_t *input,
       foreach_bfd_cli_udp_session_auth_deactivate_cli_param (UNFORMAT);
 
       if (!something_parsed)
-        {
-          ret = clib_error_return (0, "Unknown input `%U'",
-                                   format_unformat_error, input);
-          goto out;
-        }
+	{
+	  ret = clib_error_return (0, "Unknown input `%U'",
+				   format_unformat_error, input);
+	  goto out;
+	}
     }
 
   foreach_bfd_cli_udp_session_auth_deactivate_cli_param (CHECK_MANDATORY);
@@ -854,29 +826,29 @@ bfd_cli_udp_session_auth_deactivate (vlib_main_t *vm, unformat_input_t *input,
       static const char yes[] = "yes";
       static const char no[] = "no";
       if (!memcmp (delayed_token, yes, sizeof (yes) - 1))
-        {
-          is_delayed = 1;
-        }
+	{
+	  is_delayed = 1;
+	}
       else if (!memcmp (delayed_token, no, sizeof (no) - 1))
-        {
-          is_delayed = 0;
-        }
+	{
+	  is_delayed = 0;
+	}
       else
-        {
-          ret = clib_error_return (
-              0, "Unrecognized value for `%s' parameter: `%v'", DELAYED_STR,
-              delayed_token);
-          goto out;
-        }
+	{
+	  ret = clib_error_return (
+	    0, "Unrecognized value for `%s' parameter: `%v'", DELAYED_STR,
+	    delayed_token);
+	  goto out;
+	}
     }
 
-  vnet_api_error_t rv = bfd_udp_auth_deactivate (sw_if_index, &local_addr,
-                                                 &peer_addr, is_delayed);
+  vnet_api_error_t rv =
+    bfd_udp_auth_deactivate (sw_if_index, &local_addr, &peer_addr, is_delayed);
   if (rv)
     {
       ret = clib_error_return (
-          0, "`bfd_udp_auth_deactivate' API call failed, rv=%d:%U", (int)rv,
-          format_vnet_api_errno, rv);
+	0, "`bfd_udp_auth_deactivate' API call failed, rv=%d:%U", (int) rv,
+	format_vnet_api_errno, rv);
       goto out;
     }
 
@@ -884,26 +856,24 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_udp_session_auth_deactivate_command, static) = {
   .path = "bfd udp session auth deactivate",
   .short_help = "bfd udp session auth deactivate"
-                " interface <interface>"
-                " local-addr <local-address>"
-                " peer-addr <peer-address>"
-                "[ delayed <yes|no> ]",
+		" interface <interface>"
+		" local-addr <local-address>"
+		" peer-addr <peer-address>"
+		"[ delayed <yes|no> ]",
   .function = bfd_cli_udp_session_auth_deactivate,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-bfd_cli_udp_set_echo_source (vlib_main_t * vm, unformat_input_t * input,
-			     CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_udp_set_echo_source (vlib_main_t *vm, unformat_input_t *input,
+			     CLIB_UNUSED (vlib_cli_command_t *lmd))
 {
   clib_error_t *ret = NULL;
   unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_set_echo_source_cli_param(F) \
-  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",   \
+#define foreach_bfd_cli_udp_set_echo_source_cli_param(F)                      \
+  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",                        \
      unformat_vnet_sw_interface, &vnet_main)
 
   foreach_bfd_cli_udp_set_echo_source_cli_param (DECLARE);
@@ -930,10 +900,9 @@ bfd_cli_udp_set_echo_source (vlib_main_t * vm, unformat_input_t * input,
   vnet_api_error_t rv = bfd_udp_set_echo_source (sw_if_index);
   if (rv)
     {
-      ret =
-	clib_error_return (0,
-			   "`bfd_udp_set_echo_source' API call failed, rv=%d:%U",
-			   (int) rv, format_vnet_api_errno, rv);
+      ret = clib_error_return (
+	0, "`bfd_udp_set_echo_source' API call failed, rv=%d:%U", (int) rv,
+	format_vnet_api_errno, rv);
       goto out;
     }
 
@@ -941,36 +910,32 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_udp_set_echo_source_cmd, static) = {
   .path = "bfd udp echo-source set",
   .short_help = "bfd udp echo-source set interface <interface>",
   .function = bfd_cli_udp_set_echo_source,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-bfd_cli_udp_del_echo_source (vlib_main_t * vm, unformat_input_t * input,
-			     CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_udp_del_echo_source (vlib_main_t *vm, unformat_input_t *input,
+			     CLIB_UNUSED (vlib_cli_command_t *lmd))
 {
   vnet_api_error_t rv = bfd_udp_del_echo_source ();
   if (rv)
     {
-      return clib_error_return (0,
-				"`bfd_udp_del_echo_source' API call failed, rv=%d:%U",
-				(int) rv, format_vnet_api_errno, rv);
+      return clib_error_return (
+	0, "`bfd_udp_del_echo_source' API call failed, rv=%d:%U", (int) rv,
+	format_vnet_api_errno, rv);
     }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bfd_cli_udp_del_echo_source_cmd, static) = {
   .path = "bfd udp echo-source del",
   .short_help = "bfd udp echo-source del",
   .function = bfd_cli_udp_del_echo_source,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -43,8 +43,8 @@ static mdata_t mdata_none;
     before_or_after: 0 => before, 1=> after
 */
 static void
-mdata_trace_callback (vlib_node_runtime_perf_callback_data_t * data,
-		      vlib_node_runtime_perf_callback_args_t * args)
+mdata_trace_callback (vlib_node_runtime_perf_callback_data_t *data,
+		      vlib_node_runtime_perf_callback_args_t *args)
 {
   int i;
   mdata_main_t *mm = &mdata_main;
@@ -135,7 +135,7 @@ after_pass:
 }
 
 int
-mdata_enable_disable (mdata_main_t * mmp, int enable_disable)
+mdata_enable_disable (mdata_main_t *mmp, int enable_disable)
 {
   int rv = 0;
   vlib_thread_main_t *thread_main = vlib_get_thread_main ();
@@ -158,18 +158,17 @@ mdata_enable_disable (mdata_main_t * mmp, int enable_disable)
       if (vlib_mains[i] == 0)
 	continue;
 
-      clib_callback_data_enable_disable
-	(&vlib_mains[i]->vlib_node_runtime_perf_callbacks,
-	 mdata_trace_callback, enable_disable);
+      clib_callback_data_enable_disable (
+	&vlib_mains[i]->vlib_node_runtime_perf_callbacks, mdata_trace_callback,
+	enable_disable);
     }
 
   return rv;
 }
 
 static clib_error_t *
-mdata_enable_disable_command_fn (vlib_main_t * vm,
-				 unformat_input_t * input,
-				 vlib_cli_command_t * cmd)
+mdata_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				 vlib_cli_command_t *cmd)
 {
   mdata_main_t *mmp = &mdata_main;
   int enable_disable = 1;
@@ -213,18 +212,15 @@ mdata_enable_disable_command_fn (vlib_main_t * vm,
  *@cliexend
 ?*/
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (mdata_enable_disable_command, static) =
-{
+VLIB_CLI_COMMAND (mdata_enable_disable_command, static) = {
   .path = "buffer metadata tracking",
   .short_help = "buffer metadata tracking [on][off]",
   .function = mdata_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
 /* API message handler */
-static void vl_api_mdata_enable_disable_t_handler
-  (vl_api_mdata_enable_disable_t * mp)
+static void
+vl_api_mdata_enable_disable_t_handler (vl_api_mdata_enable_disable_t *mp)
 {
   vl_api_mdata_enable_disable_reply_t *rmp;
   mdata_main_t *mmp = &mdata_main;
@@ -239,7 +235,7 @@ static void vl_api_mdata_enable_disable_t_handler
 #include <mdata/mdata.api.c>
 
 static clib_error_t *
-mdata_init (vlib_main_t * vm)
+mdata_init (vlib_main_t *vm)
 {
   mdata_main_t *mmp = &mdata_main;
   clib_error_t *error = 0;
@@ -255,112 +251,106 @@ mdata_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (mdata_init);
 
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () =
-{
-  .version = VPP_BUILD_VER,
-  .description = "Buffer metadata change tracker."
-};
-/* *INDENT-ON* */
+VLIB_PLUGIN_REGISTER () = { .version = VPP_BUILD_VER,
+			    .description = "Buffer metadata change tracker." };
 
+#define foreach_primary_metadata_field                                        \
+  _ (current_data)                                                            \
+  _ (current_length)                                                          \
+  _ (flags)                                                                   \
+  _ (flow_id)                                                                 \
+  _ (ref_count)                                                               \
+  _ (buffer_pool_index)                                                       \
+  _ (error)                                                                   \
+  _ (next_buffer)                                                             \
+  _ (current_config_index)                                                    \
+  _ (punt_reason)
 
-#define foreach_primary_metadata_field          \
-_(current_data)                                 \
-_(current_length)                               \
-_(flags)                                        \
-_(flow_id)                                      \
-_(ref_count)                                    \
-_(buffer_pool_index)                            \
-_(error)                                        \
-_(next_buffer)                                  \
-_(current_config_index)                         \
-_(punt_reason)
+#define foreach_opaque_metadata_field                                         \
+  _ (sw_if_index[0])                                                          \
+  _ (sw_if_index[1])                                                          \
+  _ (l2_hdr_offset)                                                           \
+  _ (l3_hdr_offset)                                                           \
+  _ (l4_hdr_offset)                                                           \
+  _ (feature_arc_index)                                                       \
+  _ (ip.adj_index[0])                                                         \
+  _ (ip.adj_index[1])                                                         \
+  _ (ip.flow_hash)                                                            \
+  _ (ip.save_protocol)                                                        \
+  _ (ip.fib_index)                                                            \
+  _ (ip.icmp.type)                                                            \
+  _ (ip.icmp.code)                                                            \
+  _ (ip.icmp.data)                                                            \
+  _ (ip.reass.next_index)                                                     \
+  _ (ip.reass.error_next_index)                                               \
+  _ (ip.reass.owner_thread_index)                                             \
+  _ (ip.reass.ip_proto)                                                       \
+  _ (ip.reass.l4_src_port)                                                    \
+  _ (ip.reass.l4_dst_port)                                                    \
+  _ (ip.reass.estimated_mtu)                                                  \
+  _ (ip.reass.fragment_first)                                                 \
+  _ (ip.reass.fragment_last)                                                  \
+  _ (ip.reass.range_first)                                                    \
+  _ (ip.reass.range_last)                                                     \
+  _ (ip.reass.next_range_bi)                                                  \
+  _ (ip.reass.ip6_frag_hdr_offset)                                            \
+  _ (mpls.ttl)                                                                \
+  _ (mpls.exp)                                                                \
+  _ (mpls.first)                                                              \
+  _ (mpls.save_rewrite_length)                                                \
+  _ (mpls.mpls_hdr_length)                                                    \
+  _ (mpls.bier.n_bytes)                                                       \
+  _ (l2.feature_bitmap)                                                       \
+  _ (l2.bd_index)                                                             \
+  _ (l2.l2fib_sn)                                                             \
+  _ (l2.l2_len)                                                               \
+  _ (l2.shg)                                                                  \
+  _ (l2.bd_age)                                                               \
+  _ (l2t.next_index)                                                          \
+  _ (l2t.session_index)                                                       \
+  _ (l2_classify.table_index)                                                 \
+  _ (l2_classify.opaque_index)                                                \
+  _ (l2_classify.hash)                                                        \
+  _ (policer.index)                                                           \
+  _ (ipsec.sad_index)                                                         \
+  _ (ipsec.protect_index)                                                     \
+  _ (map.mtu)                                                                 \
+  _ (map_t.map_domain_index)                                                  \
+  _ (map_t.v6.saddr)                                                          \
+  _ (map_t.v6.daddr)                                                          \
+  _ (map_t.v6.frag_offset)                                                    \
+  _ (map_t.v6.l4_offset)                                                      \
+  _ (map_t.v6.l4_protocol)                                                    \
+  _ (map_t.checksum_offset)                                                   \
+  _ (map_t.mtu)                                                               \
+  _ (ip_frag.mtu)                                                             \
+  _ (ip_frag.next_index)                                                      \
+  _ (ip_frag.flags)                                                           \
+  _ (cop.current_config_index)                                                \
+  _ (lisp.overlay_afi)                                                        \
+  _ (tcp.connection_index)                                                    \
+  _ (tcp.seq_number)                                                          \
+  _ (tcp.next_node_opaque)                                                    \
+  _ (tcp.seq_end)                                                             \
+  _ (tcp.ack_number)                                                          \
+  _ (tcp.hdr_offset)                                                          \
+  _ (tcp.data_offset)                                                         \
+  _ (tcp.data_len)                                                            \
+  _ (tcp.flags)                                                               \
+  _ (snat.flags)
 
-#define foreach_opaque_metadata_field           \
-_(sw_if_index[0])                               \
-_(sw_if_index[1])                               \
-_(l2_hdr_offset)                                \
-_(l3_hdr_offset)                                \
-_(l4_hdr_offset)                                \
-_(feature_arc_index)                            \
-_(ip.adj_index[0])                              \
-_(ip.adj_index[1])                              \
-_(ip.flow_hash)                                 \
-_(ip.save_protocol)                             \
-_(ip.fib_index)                                 \
-_(ip.icmp.type)                                 \
-_(ip.icmp.code)                                 \
-_(ip.icmp.data)                                 \
-_(ip.reass.next_index)                          \
-_(ip.reass.error_next_index)                    \
-_(ip.reass.owner_thread_index)                  \
-_(ip.reass.ip_proto)                            \
-_(ip.reass.l4_src_port)                         \
-_(ip.reass.l4_dst_port)                         \
-_(ip.reass.estimated_mtu)                       \
-_(ip.reass.fragment_first)                      \
-_(ip.reass.fragment_last)                       \
-_(ip.reass.range_first)                         \
-_(ip.reass.range_last)                          \
-_(ip.reass.next_range_bi)                       \
-_(ip.reass.ip6_frag_hdr_offset)                 \
-_(mpls.ttl)                                     \
-_(mpls.exp)                                     \
-_(mpls.first)                                   \
-_(mpls.save_rewrite_length)                     \
-_(mpls.mpls_hdr_length)                         \
-_(mpls.bier.n_bytes)                            \
-_(l2.feature_bitmap)                            \
-_(l2.bd_index)                                  \
-_(l2.l2fib_sn)                                  \
-_(l2.l2_len)                                    \
-_(l2.shg)                                       \
-_(l2.bd_age)                                    \
-_(l2t.next_index)                               \
-_(l2t.session_index)                            \
-_(l2_classify.table_index)                      \
-_(l2_classify.opaque_index)                     \
-_(l2_classify.hash)                             \
-_(policer.index)                                \
-_(ipsec.sad_index)                              \
-_(ipsec.protect_index)                          \
-_(map.mtu)                                      \
-_(map_t.map_domain_index)			\
-_(map_t.v6.saddr)                               \
-_(map_t.v6.daddr)                               \
-_(map_t.v6.frag_offset)                         \
-_(map_t.v6.l4_offset)                           \
-_(map_t.v6.l4_protocol)                         \
-_(map_t.checksum_offset)			\
-_(map_t.mtu)                                    \
-_(ip_frag.mtu)                                  \
-_(ip_frag.next_index)                           \
-_(ip_frag.flags)                                \
-_(cop.current_config_index)                     \
-_(lisp.overlay_afi)                             \
-_(tcp.connection_index)                         \
-_(tcp.seq_number)                               \
-_(tcp.next_node_opaque)                         \
-_(tcp.seq_end)                                  \
-_(tcp.ack_number)                               \
-_(tcp.hdr_offset)                               \
-_(tcp.data_offset)                              \
-_(tcp.data_len)                                 \
-_(tcp.flags)                                    \
-_(snat.flags)
-
-#define foreach_opaque2_metadata_field          \
-_(qos.bits)                                     \
-_(qos.source)                                   \
-_(loop_counter)                                 \
-_(gbp.flags)                                    \
-_(gbp.sclass)                                   \
-_(gso_size)                                     \
-_(gso_l4_hdr_sz)                                \
-_(pg_replay_timestamp)
+#define foreach_opaque2_metadata_field                                        \
+  _ (qos.bits)                                                                \
+  _ (qos.source)                                                              \
+  _ (loop_counter)                                                            \
+  _ (gbp.flags)                                                               \
+  _ (gbp.sclass)                                                              \
+  _ (gso_size)                                                                \
+  _ (gso_l4_hdr_sz)                                                           \
+  _ (pg_replay_timestamp)
 
 static u8 *
-format_buffer_metadata_changes (u8 * s, va_list * args)
+format_buffer_metadata_changes (u8 *s, va_list *args)
 {
   mdata_main_t *mm = va_arg (*args, mdata_main_t *);
   int verbose = va_arg (*args, int);
@@ -404,7 +394,12 @@ format_buffer_metadata_changes (u8 * s, va_list * args)
       s = format (s, "\n%v: ", node->name);
 
       printed = 0;
-#define _(n) if (b->n) {s = format (s, "%s ", #n); printed = 1;}
+#define _(n)                                                                  \
+  if (b->n)                                                                   \
+    {                                                                         \
+      s = format (s, "%s ", #n);                                              \
+      printed = 1;                                                            \
+    }
       foreach_primary_metadata_field;
 #undef _
 
@@ -422,7 +417,12 @@ format_buffer_metadata_changes (u8 * s, va_list * args)
       printed = 0;
       s = format (s, "  vnet_buffer_t: ");
 
-#define _(n) if (o->n) {s = format (s, "%s ", #n); printed = 1;}
+#define _(n)                                                                  \
+  if (o->n)                                                                   \
+    {                                                                         \
+      s = format (s, "%s ", #n);                                              \
+      printed = 1;                                                            \
+    }
       foreach_opaque_metadata_field;
 #undef _
 
@@ -435,14 +435,18 @@ format_buffer_metadata_changes (u8 * s, va_list * args)
       printed = 0;
       s = format (s, "  vnet_buffer2_t: ");
 
-#define _(n) if (o2->n) {s = format (s, "%s ", #n); printed = 1;}
+#define _(n)                                                                  \
+  if (o2->n)                                                                  \
+    {                                                                         \
+      s = format (s, "%s ", #n);                                              \
+      printed = 1;                                                            \
+    }
       foreach_opaque2_metadata_field;
 #undef _
       if (printed == 0)
 	s = format (s, "no changes");
 
       vec_add1 (s, '\n');
-
     }
 
   clib_spinlock_unlock_if_init (&mm->modify_lock);
@@ -451,8 +455,8 @@ format_buffer_metadata_changes (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-show_metadata_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+show_metadata_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   int verbose = 0;
 
@@ -480,14 +484,11 @@ show_metadata_command_fn (vlib_main_t * vm,
  *@cliexend
 ?*/
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_metadata_command, static) =
-{
+VLIB_CLI_COMMAND (show_metadata_command, static) = {
   .path = "show buffer metadata",
   .short_help = "show buffer metadata",
   .function = show_metadata_command_fn,
 };
-/* *INDENT-OFF* */
 
 /*
  * fd.io coding-style-patch-verification: ON

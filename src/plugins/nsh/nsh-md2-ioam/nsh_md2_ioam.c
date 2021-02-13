@@ -42,45 +42,37 @@
 nsh_md2_ioam_main_t nsh_md2_ioam_main;
 
 static void
-nsh_md2_ioam_set_clear_output_feature_on_intf (vlib_main_t * vm,
-						    u32 sw_if_index0,
-						    u8 is_add)
+nsh_md2_ioam_set_clear_output_feature_on_intf (vlib_main_t *vm,
+					       u32 sw_if_index0, u8 is_add)
 {
 
-
-
-  vnet_feature_enable_disable ("ip4-output",
-			       "nsh-md2-ioam-encap-transit",
-			       sw_if_index0, is_add,
-			       0 /* void *feature_config */ ,
-			       0 /* u32 n_feature_config_bytes */ );
+  vnet_feature_enable_disable (
+    "ip4-output", "nsh-md2-ioam-encap-transit", sw_if_index0, is_add,
+    0 /* void *feature_config */, 0 /* u32 n_feature_config_bytes */);
   return;
 }
 
 void
-nsh_md2_ioam_clear_output_feature_on_all_intfs (vlib_main_t * vm)
+nsh_md2_ioam_clear_output_feature_on_all_intfs (vlib_main_t *vm)
 {
   vnet_sw_interface_t *si = 0;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
 
   pool_foreach (si, im->sw_interfaces)
-					 {
-					 nsh_md2_ioam_set_clear_output_feature_on_intf
-					 (vm, si->sw_if_index, 0);
-					 }
+    {
+      nsh_md2_ioam_set_clear_output_feature_on_intf (vm, si->sw_if_index, 0);
+    }
   return;
 }
 
-
 extern fib_forward_chain_type_t
-fib_entry_get_default_chain_type (const fib_entry_t * fib_entry);
+fib_entry_get_default_chain_type (const fib_entry_t *fib_entry);
 
 int
-nsh_md2_ioam_enable_disable_for_dest (vlib_main_t * vm,
-					   ip46_address_t dst_addr,
-					   u32 outer_fib_index,
-					   u8 is_ipv4, u8 is_add)
+nsh_md2_ioam_enable_disable_for_dest (vlib_main_t *vm, ip46_address_t dst_addr,
+				      u32 outer_fib_index, u8 is_ipv4,
+				      u8 is_add)
 {
   nsh_md2_ioam_main_t *hm = &nsh_md2_ioam_main;
   u32 fib_index0 = 0;
@@ -103,10 +95,10 @@ nsh_md2_ioam_enable_disable_for_dest (vlib_main_t * vm,
       clib_memset (&fib_prefix, 0, sizeof (fib_prefix_t));
       fib_prefix.fp_len = 32;
       fib_prefix.fp_proto = FIB_PROTOCOL_IP4;
-#define  TRANSIT_UNIT_TEST_HACK 1
+#define TRANSIT_UNIT_TEST_HACK 1
 #ifdef TRANSIT_UNIT_TEST_HACK
-      clib_memset(&dst_addr, 0, sizeof(dst_addr));
-      dst_addr.ip4.as_u32 = clib_net_to_host_u32(0x14020102);
+      clib_memset (&dst_addr, 0, sizeof (dst_addr));
+      dst_addr.ip4.as_u32 = clib_net_to_host_u32 (0x14020102);
 #endif
       fib_prefix.fp_addr = dst_addr;
     }
@@ -197,25 +189,24 @@ nsh_md2_ioam_enable_disable_for_dest (vlib_main_t * vm,
     }
 #else
 
-u32 fib_path_get_resolving_interface (fib_node_index_t path_index);
-    vec_add1(intf_list, fib_path_get_resolving_interface(fei));
-    vec_foreach(sw_if_index0, intf_list)
+  u32 fib_path_get_resolving_interface (fib_node_index_t path_index);
+  vec_add1 (intf_list, fib_path_get_resolving_interface (fei));
+  vec_foreach (sw_if_index0, intf_list)
     if (is_add)
       {
-        vnet_feature_enable_disable ("ip4-output",
-                         "nsh-md2-ioam-encap-transit",
-                         *sw_if_index0, is_add, 0,
-                         /* void *feature_config */
-                         0    /* u32 n_feature_config_bytes */
-          );
+	vnet_feature_enable_disable (
+	  "ip4-output", "nsh-md2-ioam-encap-transit", *sw_if_index0, is_add, 0,
+	  /* void *feature_config */
+	  0 /* u32 n_feature_config_bytes */
+	);
 
-        vec_validate_init_empty (hm->bool_ref_by_sw_if_index,
-                         *sw_if_index0, ~0);
-        hm->bool_ref_by_sw_if_index[*sw_if_index0] = 1;
+	vec_validate_init_empty (hm->bool_ref_by_sw_if_index, *sw_if_index0,
+				 ~0);
+	hm->bool_ref_by_sw_if_index[*sw_if_index0] = 1;
       }
     else
       {
-        hm->bool_ref_by_sw_if_index[*sw_if_index0] = ~0;
+	hm->bool_ref_by_sw_if_index[*sw_if_index0] = ~0;
       }
 
 #endif
@@ -241,7 +232,7 @@ u32 fib_path_get_resolving_interface (fib_node_index_t path_index);
 	  t1->fp_proto = FIB_PROTOCOL_IP4;
 	  t1->dst_addr.ip4.as_u32 = fib_prefix.fp_addr.ip4.as_u32;
 	  key4_copy = clib_mem_alloc (sizeof (*key4_copy));
-          clib_memset(key4_copy, 0, sizeof(*key4_copy));
+	  clib_memset (key4_copy, 0, sizeof (*key4_copy));
 	  clib_memcpy_fast (key4_copy, &key4, sizeof (*key4_copy));
 	  hash_set_mem (hm->dst_by_ip4, key4_copy, t1 - hm->dst_tunnels);
 	  /*
@@ -251,22 +242,17 @@ u32 fib_path_get_resolving_interface (fib_node_index_t path_index);
 	   * re-program the output feature on the egress interface.
 	   */
 
-	  const fib_prefix_t tun_dst_pfx = {
-	    .fp_len = 32,
-	    .fp_proto = FIB_PROTOCOL_IP4,
-	    .fp_addr = {.ip4 = t1->dst_addr.ip4,}
-	  };
+	  const fib_prefix_t tun_dst_pfx = { .fp_len = 32,
+					     .fp_proto = FIB_PROTOCOL_IP4,
+					     .fp_addr = {
+					       .ip4 = t1->dst_addr.ip4,
+					     } };
 
-	  t1->fib_entry_index =
-	    fib_table_entry_special_add (outer_fib_index,
-					 &tun_dst_pfx,
-					 FIB_SOURCE_RR,
-					 FIB_ENTRY_FLAG_NONE);
-	  t1->sibling_index =
-	    fib_entry_child_add (t1->fib_entry_index,
-				 hm->fib_entry_type, t1 - hm->dst_tunnels);
+	  t1->fib_entry_index = fib_table_entry_special_add (
+	    outer_fib_index, &tun_dst_pfx, FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE);
+	  t1->sibling_index = fib_entry_child_add (
+	    t1->fib_entry_index, hm->fib_entry_type, t1 - hm->dst_tunnels);
 	  t1->outer_fib_index = outer_fib_index;
-
 	}
       else
 	{
@@ -306,15 +292,13 @@ nsh_md2_ioam_refresh_output_feature_on_all_dest (void)
   vec_free (hm->bool_ref_by_sw_if_index);
   vec_validate_init_empty (hm->bool_ref_by_sw_if_index, i, ~0);
   pool_foreach (t, hm->dst_tunnels)
-				      {
-				      nsh_md2_ioam_enable_disable_for_dest
-				      (gm->vlib_main,
-				       t->dst_addr,
-				       t->outer_fib_index,
-				       (t->fp_proto == FIB_PROTOCOL_IP4), 1
-				       /* is_add */
-				      );
-				      }
+    {
+      nsh_md2_ioam_enable_disable_for_dest (
+	gm->vlib_main, t->dst_addr, t->outer_fib_index,
+	(t->fp_proto == FIB_PROTOCOL_IP4), 1
+	/* is_add */
+      );
+    }
   return;
 }
 
@@ -325,25 +309,22 @@ nsh_md2_ioam_clear_output_feature_on_select_intfs (void)
   nsh_main_t *gm = &nsh_main;
 
   u32 sw_if_index0 = 0;
-  for (sw_if_index0 = 0;
-       sw_if_index0 < vec_len (hm->bool_ref_by_sw_if_index); sw_if_index0++)
+  for (sw_if_index0 = 0; sw_if_index0 < vec_len (hm->bool_ref_by_sw_if_index);
+       sw_if_index0++)
     {
       if (hm->bool_ref_by_sw_if_index[sw_if_index0] == 0xFF)
 	{
-	  nsh_md2_ioam_set_clear_output_feature_on_intf
-	    (gm->vlib_main, sw_if_index0, 0);
+	  nsh_md2_ioam_set_clear_output_feature_on_intf (gm->vlib_main,
+							 sw_if_index0, 0);
 	}
     }
 
   return;
 }
 
-
-
-
 clib_error_t *
 nsh_md2_ioam_enable_disable (int has_trace_option, int has_pot_option,
-				  int has_ppc_option)
+			     int has_ppc_option)
 {
   nsh_md2_ioam_main_t *hm = &nsh_md2_ioam_main;
 
@@ -363,18 +344,16 @@ nsh_md2_ioam_enable_disable (int has_trace_option, int has_pot_option,
   return 0;
 }
 
-
-int nsh_md2_ioam_disable_for_dest
-  (vlib_main_t * vm, ip46_address_t dst_addr, u32 outer_fib_index,
-   u8 ipv4_set)
+int
+nsh_md2_ioam_disable_for_dest (vlib_main_t *vm, ip46_address_t dst_addr,
+			       u32 outer_fib_index, u8 ipv4_set)
 {
   nsh_md2_ioam_dest_tunnels_t *t;
   nsh_md2_ioam_main_t *hm = &nsh_md2_ioam_main;
   nsh_main_t *gm = &nsh_main;
 
-  nsh_md2_ioam_enable_disable_for_dest (gm->vlib_main,
-					     dst_addr, outer_fib_index,
-					     ipv4_set, 0);
+  nsh_md2_ioam_enable_disable_for_dest (gm->vlib_main, dst_addr,
+					outer_fib_index, ipv4_set, 0);
   if (pool_elts (hm->dst_tunnels) == 0)
     {
       nsh_md2_ioam_clear_output_feature_on_select_intfs ();
@@ -382,21 +361,19 @@ int nsh_md2_ioam_disable_for_dest
     }
 
   pool_foreach (t, hm->dst_tunnels)
-				      {
-				      nsh_md2_ioam_enable_disable_for_dest
-				      (gm->vlib_main,
-				       t->dst_addr,
-				       t->outer_fib_index,
-				       (t->fp_proto ==
-					FIB_PROTOCOL_IP4), 1 /* is_add */ );
-				      }
+    {
+      nsh_md2_ioam_enable_disable_for_dest (
+	gm->vlib_main, t->dst_addr, t->outer_fib_index,
+	(t->fp_proto == FIB_PROTOCOL_IP4), 1 /* is_add */);
+    }
   nsh_md2_ioam_clear_output_feature_on_select_intfs ();
   return (0);
-
 }
 
-static clib_error_t *nsh_md2_ioam_set_transit_rewrite_command_fn
-  (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
+static clib_error_t *
+nsh_md2_ioam_set_transit_rewrite_command_fn (vlib_main_t *vm,
+					     unformat_input_t *input,
+					     vlib_cli_command_t *cmd)
 {
   nsh_main_t *gm = &nsh_main;
   ip46_address_t dst_addr;
@@ -413,9 +390,8 @@ static clib_error_t *nsh_md2_ioam_set_transit_rewrite_command_fn
 	  dst_addr_set = 1;
 	  ipv4_set = 1;
 	}
-      else
-	if (unformat
-	    (input, "dst-ip %U", unformat_ip6_address, &dst_addr.ip6))
+      else if (unformat (input, "dst-ip %U", unformat_ip6_address,
+			 &dst_addr.ip6))
 	{
 	  dst_addr_set = 1;
 	  ipv6_set = 1;
@@ -431,28 +407,26 @@ static clib_error_t *nsh_md2_ioam_set_transit_rewrite_command_fn
     }
 
   if (dst_addr_set == 0)
-    return clib_error_return (0,
-			      "LISP-GPE Tunnel destination address not specified");
+    return clib_error_return (
+      0, "LISP-GPE Tunnel destination address not specified");
   if (ipv4_set && ipv6_set)
     return clib_error_return (0, "both IPv4 and IPv6 addresses specified");
   if (!disable)
     {
-      nsh_md2_ioam_enable_disable_for_dest (gm->vlib_main,
-						 dst_addr, outer_fib_index,
-						 ipv4_set, 1);
+      nsh_md2_ioam_enable_disable_for_dest (gm->vlib_main, dst_addr,
+					    outer_fib_index, ipv4_set, 1);
     }
   else
     {
-      nsh_md2_ioam_disable_for_dest
-	(vm, dst_addr, outer_fib_index, ipv4_set);
+      nsh_md2_ioam_disable_for_dest (vm, dst_addr, outer_fib_index, ipv4_set);
     }
   return rv;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (nsh_md2_ioam_set_transit_rewrite_cmd, static) = {
   .path = "set nsh-md2-ioam-transit",
-  .short_help = "set nsh-ioam-lisp-gpe-transit dst-ip <dst_ip> [outer-fib-index <outer_fib_index>] [disable]",
+  .short_help = "set nsh-ioam-lisp-gpe-transit dst-ip <dst_ip> "
+		"[outer-fib-index <outer_fib_index>] [disable]",
   .function = nsh_md2_ioam_set_transit_rewrite_command_fn,
 };
 
@@ -460,7 +434,7 @@ VLIB_CLI_COMMAND (nsh_md2_ioam_set_transit_rewrite_cmd, static) = {
  * Function definition to backwalk a FIB node
  */
 static fib_node_back_walk_rc_t
-nsh_md2_ioam_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+nsh_md2_ioam_back_walk (fib_node_t *node, fib_node_back_walk_ctx_t *ctx)
 {
   nsh_md2_ioam_refresh_output_feature_on_all_dest ();
   return (FIB_NODE_BACK_WALK_CONTINUE);
@@ -480,11 +454,10 @@ nsh_md2_ioam_fib_node_get (fib_node_index_t index)
  * Function definition to inform the FIB node that its last lock has gone.
  */
 static void
-nsh_md2_ioam_last_lock_gone (fib_node_t * node)
+nsh_md2_ioam_last_lock_gone (fib_node_t *node)
 {
   ASSERT (0);
 }
-
 
 /*
  * Virtual function table registered by MPLS GRE tunnels
@@ -503,4 +476,3 @@ nsh_md2_ioam_interface_init (void)
   hm->fib_entry_type = fib_node_register_new_type (&nsh_md2_ioam_vft);
   return;
 }
-

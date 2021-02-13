@@ -48,14 +48,14 @@ typedef struct
 } pg_snap_header_t;
 
 static inline void
-pg_snap_header_init (pg_snap_header_t * e)
+pg_snap_header_init (pg_snap_header_t *e)
 {
   pg_edit_init (&e->oui, snap_header_t, oui);
   pg_edit_init (&e->protocol, snap_header_t, protocol);
 }
 
 uword
-unformat_pg_snap_header (unformat_input_t * input, va_list * args)
+unformat_pg_snap_header (unformat_input_t *input, va_list *args)
 {
   pg_stream_t *s = va_arg (*args, pg_stream_t *);
   pg_snap_header_t *h;
@@ -66,9 +66,8 @@ unformat_pg_snap_header (unformat_input_t * input, va_list * args)
   pg_snap_header_init (h);
 
   error = 1;
-  if (!unformat (input, "%U -> %U",
-		 unformat_pg_edit,
-		 unformat_snap_protocol, &h->oui, &h->protocol))
+  if (!unformat (input, "%U -> %U", unformat_pg_edit, unformat_snap_protocol,
+		 &h->oui, &h->protocol))
     goto done;
 
   {
@@ -91,8 +90,8 @@ unformat_pg_snap_header (unformat_input_t * input, va_list * args)
 	  pg_node = pg_get_node (pi->node_index);
       }
 
-    if (pg_node && pg_node->unformat_edit
-	&& unformat_user (input, pg_node->unformat_edit, s))
+    if (pg_node && pg_node->unformat_edit &&
+	unformat_user (input, pg_node->unformat_edit, s))
       ;
 
     else if (!unformat_user (input, unformat_pg_payload, s))
@@ -105,7 +104,6 @@ done:
     pg_free_edit_group (s);
   return error == 0;
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

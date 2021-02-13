@@ -40,8 +40,8 @@ static u32 crypto_base_msg_id;
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_crypto_set_async_dispatch_t_handler (vl_api_crypto_set_async_dispatch_t
-					    * mp)
+vl_api_crypto_set_async_dispatch_t_handler (
+  vl_api_crypto_set_async_dispatch_t *mp)
 {
   vl_api_crypto_set_async_dispatch_reply_t *rmp;
   int rv = 0;
@@ -52,7 +52,7 @@ vl_api_crypto_set_async_dispatch_t_handler (vl_api_crypto_set_async_dispatch_t
 }
 
 static void
-vl_api_crypto_set_handler_t_handler (vl_api_crypto_set_handler_t * mp)
+vl_api_crypto_set_handler_t_handler (vl_api_crypto_set_handler_t *mp)
 {
   vl_api_crypto_set_handler_reply_t *rmp;
   int rv = 0;
@@ -75,7 +75,7 @@ vl_api_crypto_set_handler_t_handler (vl_api_crypto_set_handler_t * mp)
 #include <vnet/crypto/crypto.api.c>
 
 clib_error_t *
-crypto_api_hookup (vlib_main_t * vm)
+crypto_api_hookup (vlib_main_t *vm)
 {
   /* Ask for a correctly-sized block of API message decode slots */
   crypto_base_msg_id = setup_message_id_table ();

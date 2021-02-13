@@ -21,34 +21,33 @@
 #include <vppinfra/tw_timer_16t_2w_512sl.h>
 
 /** WG timers */
-#define foreach_wg_timer                            \
-  _(RETRANSMIT_HANDSHAKE, "RETRANSMIT HANDSHAKE")   \
-  _(PERSISTENT_KEEPALIVE, "PERSISTENT KEEPALIVE")   \
-  _(SEND_KEEPALIVE, "SEND KEEPALIVE")               \
-  _(NEW_HANDSHAKE, "NEW HANDSHAKE")                 \
-  _(KEY_ZEROING, "KEY ZEROING")                     \
+#define foreach_wg_timer                                                      \
+  _ (RETRANSMIT_HANDSHAKE, "RETRANSMIT HANDSHAKE")                            \
+  _ (PERSISTENT_KEEPALIVE, "PERSISTENT KEEPALIVE")                            \
+  _ (SEND_KEEPALIVE, "SEND KEEPALIVE")                                        \
+  _ (NEW_HANDSHAKE, "NEW HANDSHAKE")                                          \
+  _ (KEY_ZEROING, "KEY ZEROING")
 
 typedef enum _wg_timers
 {
 #define _(sym, str) WG_TIMER_##sym,
   foreach_wg_timer
 #undef _
-  WG_N_TIMERS
+    WG_N_TIMERS
 } wg_timers_e;
 
 typedef struct wg_peer wg_peer_t;
 
 void wg_timer_wheel_init ();
-void wg_timers_stop (wg_peer_t * peer);
-void wg_timers_data_sent (wg_peer_t * peer);
-void wg_timers_data_received (wg_peer_t * peer);
-void wg_timers_any_authenticated_packet_sent (wg_peer_t * peer);
-void wg_timers_any_authenticated_packet_received (wg_peer_t * peer);
-void wg_timers_handshake_initiated (wg_peer_t * peer);
-void wg_timers_handshake_complete (wg_peer_t * peer);
-void wg_timers_session_derived (wg_peer_t * peer);
-void wg_timers_any_authenticated_packet_traversal (wg_peer_t * peer);
-
+void wg_timers_stop (wg_peer_t *peer);
+void wg_timers_data_sent (wg_peer_t *peer);
+void wg_timers_data_received (wg_peer_t *peer);
+void wg_timers_any_authenticated_packet_sent (wg_peer_t *peer);
+void wg_timers_any_authenticated_packet_received (wg_peer_t *peer);
+void wg_timers_handshake_initiated (wg_peer_t *peer);
+void wg_timers_handshake_complete (wg_peer_t *peer);
+void wg_timers_session_derived (wg_peer_t *peer);
+void wg_timers_any_authenticated_packet_traversal (wg_peer_t *peer);
 
 static inline bool
 wg_birthdate_has_expired (f64 birthday_seconds, f64 expiration_seconds)

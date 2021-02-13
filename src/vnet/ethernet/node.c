@@ -46,16 +46,16 @@
 #include <vnet/l2/l2_bvi.h>
 #include <vnet/classify/trace_classify.h>
 
-#define foreach_ethernet_input_next		\
-  _ (PUNT, "error-punt")			\
-  _ (DROP, "error-drop")			\
-  _ (LLC, "llc-input")				\
-  _ (IP4_INPUT, "ip4-input")			\
+#define foreach_ethernet_input_next                                           \
+  _ (PUNT, "error-punt")                                                      \
+  _ (DROP, "error-drop")                                                      \
+  _ (LLC, "llc-input")                                                        \
+  _ (IP4_INPUT, "ip4-input")                                                  \
   _ (IP4_INPUT_NCS, "ip4-input-no-checksum")
 
 typedef enum
 {
-#define _(s,n) ETHERNET_INPUT_NEXT_##s,
+#define _(s, n) ETHERNET_INPUT_NEXT_##s,
   foreach_ethernet_input_next
 #undef _
     ETHERNET_INPUT_N_NEXT,
@@ -69,7 +69,7 @@ typedef struct
 } ethernet_input_trace_t;
 
 static u8 *
-format_ethernet_input_trace (u8 * s, va_list * va)
+format_ethernet_input_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
@@ -98,19 +98,15 @@ typedef enum
   ETHERNET_INPUT_VARIANT_NOT_L2,
 } ethernet_input_variant_t;
 
-
 // Parse the ethernet header to extract vlan tags and innermost ethertype
 static_always_inline void
-parse_header (ethernet_input_variant_t variant,
-	      vlib_buffer_t * b0,
-	      u16 * type,
-	      u16 * orig_type,
-	      u16 * outer_id, u16 * inner_id, u32 * match_flags)
+parse_header (ethernet_input_variant_t variant, vlib_buffer_t *b0, u16 *type,
+	      u16 *orig_type, u16 *outer_id, u16 *inner_id, u32 *match_flags)
 {
   u8 vlan_count;
 
-  if (variant == ETHERNET_INPUT_VARIANT_ETHERNET
-      || variant == ETHERNET_INPUT_VARIANT_NOT_L2)
+  if (variant == ETHERNET_INPUT_VARIANT_ETHERNET ||
+      variant == ETHERNET_INPUT_VARIANT_NOT_L2)
     {
       ethernet_header_t *e0;
 
@@ -187,7 +183,7 @@ parse_header (ethernet_input_variant_t variant,
 	      *match_flags = SUBINT_CONFIG_VALID | SUBINT_CONFIG_MATCH_3_TAG;
 
 	      vlib_buffer_advance (b0, sizeof (h0[0]));
-	      vlan_count = 3;	// "unknown" number, aka, 3-or-more
+	      vlan_count = 3; // "unknown" number, aka, 3-or-more
 	    }
 	}
     }
@@ -195,23 +191,18 @@ parse_header (ethernet_input_variant_t variant,
 }
 
 static_always_inline void
-ethernet_input_inline_dmac_check (vnet_hw_interface_t * hi,
-				  u64 * dmacs, u8 * dmacs_bad,
-				  u32 n_packets, ethernet_interface_t * ei,
-				  u8 have_sec_dmac);
+ethernet_input_inline_dmac_check (vnet_hw_interface_t *hi, u64 *dmacs,
+				  u8 *dmacs_bad, u32 n_packets,
+				  ethernet_interface_t *ei, u8 have_sec_dmac);
 
 // Determine the subinterface for this packet, given the result of the
 // vlan table lookups and vlan header parsing. Check the most specific
 // matches first.
 static_always_inline void
-identify_subint (ethernet_main_t * em,
-		 vnet_hw_interface_t * hi,
-		 vlib_buffer_t * b0,
-		 u32 match_flags,
-		 main_intf_t * main_intf,
-		 vlan_intf_t * vlan_intf,
-		 qinq_intf_t * qinq_intf,
-		 u32 * new_sw_if_index, u8 * error0, u32 * is_l2)
+identify_subint (ethernet_main_t *em, vnet_hw_interface_t *hi,
+		 vlib_buffer_t *b0, u32 match_flags, main_intf_t *main_intf,
+		 vlan_intf_t *vlan_intf, qinq_intf_t *qinq_intf,
+		 u32 *new_sw_if_index, u8 *error0, u32 *is_l2)
 {
   u32 matched;
   ethernet_interface_t *ei = ethernet_get_interface (em, hi->hw_if_index);
@@ -238,12 +229,12 @@ identify_subint (ethernet_main_t * em,
 
 	  if (ei0 && vec_len (ei0->secondary_addrs))
 	    ethernet_input_inline_dmac_check (hi, dmacs, dmacs_bad,
-					      1 /* n_packets */ , ei0,
-					      1 /* have_sec_dmac */ );
+					      1 /* n_packets */, ei0,
+					      1 /* have_sec_dmac */);
 	  else
 	    ethernet_input_inline_dmac_check (hi, dmacs, dmacs_bad,
-					      1 /* n_packets */ , ei0,
-					      0 /* have_sec_dmac */ );
+					      1 /* n_packets */, ei0,
+					      0 /* have_sec_dmac */);
 	  if (dmacs_bad[0])
 	    *error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
 	}
@@ -254,10 +245,9 @@ identify_subint (ethernet_main_t * em,
 }
 
 static_always_inline void
-determine_next_node (ethernet_main_t * em,
-		     ethernet_input_variant_t variant,
-		     u32 is_l20,
-		     u32 type0, vlib_buffer_t * b0, u8 * error0, u8 * next0)
+determine_next_node (ethernet_main_t *em, ethernet_input_variant_t variant,
+		     u32 is_l20, u32 type0, vlib_buffer_t *b0, u8 *error0,
+		     u8 *next0)
 {
   vnet_buffer (b0)->l3_hdr_offset = b0->current_data;
   b0->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
@@ -273,8 +263,7 @@ determine_next_node (ethernet_main_t * em,
       u32 eth_start = vnet_buffer (b0)->l2_hdr_offset;
       vnet_buffer (b0)->l2.l2_len = b0->current_data - eth_start;
       *next0 = em->l2_next;
-      ASSERT (vnet_buffer (b0)->l2.l2_len ==
-	      ethernet_buffer_header_size (b0));
+      ASSERT (vnet_buffer (b0)->l2.l2_len == ethernet_buffer_header_size (b0));
       vlib_buffer_advance (b0, -(vnet_buffer (b0)->l2.l2_len));
 
       // check for common IP/MPLS ethertypes
@@ -290,7 +279,6 @@ determine_next_node (ethernet_main_t * em,
   else if (type0 == ETHERNET_TYPE_MPLS)
     {
       *next0 = em->l3_next.input_next_mpls;
-
     }
   else if (em->redirect_l3)
     {
@@ -305,12 +293,12 @@ determine_next_node (ethernet_main_t * em,
       i0 = sparse_vec_index (em->l3_next.input_next_by_type, type0);
       *next0 = vec_elt (em->l3_next.input_next_by_type, i0);
       *error0 =
-	i0 ==
-	SPARSE_VEC_INVALID_INDEX ? ETHERNET_ERROR_UNKNOWN_TYPE : *error0;
+	i0 == SPARSE_VEC_INVALID_INDEX ? ETHERNET_ERROR_UNKNOWN_TYPE : *error0;
 
       // The table is not populated with LLC values, so check that now.
       // If variant is variant_ethernet then we came from LLC processing. Don't
-      // go back there; drop instead using by keeping the drop/bad table result.
+      // go back there; drop instead using by keeping the drop/bad table
+      // result.
       if ((type0 < 0x600) && (variant == ETHERNET_INPUT_VARIANT_ETHERNET))
 	{
 	  *next0 = ETHERNET_INPUT_NEXT_LLC;
@@ -318,21 +306,20 @@ determine_next_node (ethernet_main_t * em,
     }
 }
 
-
 /* following vector code relies on following assumptions */
 STATIC_ASSERT_OFFSET_OF (vlib_buffer_t, current_data, 0);
 STATIC_ASSERT_OFFSET_OF (vlib_buffer_t, current_length, 2);
 STATIC_ASSERT_OFFSET_OF (vlib_buffer_t, flags, 4);
 STATIC_ASSERT (STRUCT_OFFSET_OF (vnet_buffer_opaque_t, l2_hdr_offset) ==
-	       STRUCT_OFFSET_OF (vnet_buffer_opaque_t, l3_hdr_offset) - 2,
+		 STRUCT_OFFSET_OF (vnet_buffer_opaque_t, l3_hdr_offset) - 2,
 	       "l3_hdr_offset must follow l2_hdr_offset");
 
 static_always_inline void
-eth_input_adv_and_flags_x4 (vlib_buffer_t ** b, int is_l3)
+eth_input_adv_and_flags_x4 (vlib_buffer_t **b, int is_l3)
 {
   i16 adv = sizeof (ethernet_header_t);
-  u32 flags = VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
-    VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+  u32 flags =
+    VNET_BUFFER_F_L2_HDR_OFFSET_VALID | VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
 #ifdef CLIB_HAVE_VEC256
   /* to reduce number of small loads/stores we are loading first 64 bits
@@ -344,10 +331,8 @@ eth_input_adv_and_flags_x4 (vlib_buffer_t ** b, int is_l3)
   /* vector if signed 16 bit integers used in signed vector add operation
      to advnce current_data and current_length */
   u32x8 flags4 = { 0, flags, 0, flags, 0, flags, 0, flags };
-  i16x16 adv4 = {
-    adv, -adv, 0, 0, adv, -adv, 0, 0,
-    adv, -adv, 0, 0, adv, -adv, 0, 0
-  };
+  i16x16 adv4 = { adv, -adv, 0, 0, adv, -adv, 0, 0,
+		  adv, -adv, 0, 0, adv, -adv, 0, 0 };
 
   /* load 4 x 64 bits */
   r = u64x4_gather (b[0], b[1], b[2], b[3]);
@@ -430,11 +415,11 @@ eth_input_adv_and_flags_x4 (vlib_buffer_t ** b, int is_l3)
 }
 
 static_always_inline void
-eth_input_adv_and_flags_x1 (vlib_buffer_t ** b, int is_l3)
+eth_input_adv_and_flags_x1 (vlib_buffer_t **b, int is_l3)
 {
   i16 adv = sizeof (ethernet_header_t);
-  u32 flags = VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
-    VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+  u32 flags =
+    VNET_BUFFER_F_L2_HDR_OFFSET_VALID | VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
   vnet_buffer (b[0])->l2_hdr_offset = b[0]->current_data;
   vnet_buffer (b[0])->l3_hdr_offset = b[0]->current_data + adv;
@@ -446,15 +431,14 @@ eth_input_adv_and_flags_x1 (vlib_buffer_t ** b, int is_l3)
     vnet_buffer (b[0])->l2.l2_len = adv;
 }
 
-
 static_always_inline void
-eth_input_get_etype_and_tags (vlib_buffer_t ** b, u16 * etype, u64 * tags,
-			      u64 * dmacs, int offset, int dmac_check)
+eth_input_get_etype_and_tags (vlib_buffer_t **b, u16 *etype, u64 *tags,
+			      u64 *dmacs, int offset, int dmac_check)
 {
   ethernet_header_t *e;
   e = vlib_buffer_get_current (b[offset]);
 #ifdef CLIB_HAVE_VEC128
-  u64x2 r = u64x2_load_unaligned (((u8 *) & e->type) - 6);
+  u64x2 r = u64x2_load_unaligned (((u8 *) &e->type) - 6);
   etype[offset] = ((u16x8) r)[3];
   tags[offset] = r[1];
 #else
@@ -471,9 +455,10 @@ eth_input_next_by_type (u16 etype)
 {
   ethernet_main_t *em = &ethernet_main;
 
-  return (etype < 0x600) ? ETHERNET_INPUT_NEXT_LLC :
-    vec_elt (em->l3_next.input_next_by_type,
-	     sparse_vec_index (em->l3_next.input_next_by_type, etype));
+  return (etype < 0x600) ?
+	   ETHERNET_INPUT_NEXT_LLC :
+	   vec_elt (em->l3_next.input_next_by_type,
+		    sparse_vec_index (em->l3_next.input_next_by_type, etype));
 }
 
 typedef struct
@@ -487,8 +472,8 @@ typedef struct
 } eth_input_tag_lookup_t;
 
 static_always_inline void
-eth_input_update_if_counters (vlib_main_t * vm, vnet_main_t * vnm,
-			      eth_input_tag_lookup_t * l)
+eth_input_update_if_counters (vlib_main_t *vm, vnet_main_t *vnm,
+			      eth_input_tag_lookup_t *l)
 {
   if (l->n_packets == 0 || l->sw_if_index == ~0)
     return;
@@ -496,17 +481,16 @@ eth_input_update_if_counters (vlib_main_t * vm, vnet_main_t * vnm,
   if (l->adv > 0)
     l->n_bytes += l->n_packets * l->len;
 
-  vlib_increment_combined_counter
-    (vnm->interface_main.combined_sw_if_counters +
-     VNET_INTERFACE_COUNTER_RX, vm->thread_index, l->sw_if_index,
-     l->n_packets, l->n_bytes);
+  vlib_increment_combined_counter (
+    vnm->interface_main.combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
+    vm->thread_index, l->sw_if_index, l->n_packets, l->n_bytes);
 }
 
 static_always_inline void
-eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
-		      vlib_node_runtime_t * node, vnet_hw_interface_t * hi,
-		      u64 tag, u16 * next, vlib_buffer_t * b,
-		      eth_input_tag_lookup_t * l, u8 dmac_bad, int is_dot1ad,
+eth_input_tag_lookup (vlib_main_t *vm, vnet_main_t *vnm,
+		      vlib_node_runtime_t *node, vnet_hw_interface_t *hi,
+		      u64 tag, u16 *next, vlib_buffer_t *b,
+		      eth_input_tag_lookup_t *l, u8 dmac_bad, int is_dot1ad,
 		      int main_is_l3, int check_dmac)
 {
   ethernet_main_t *em = &ethernet_main;
@@ -518,13 +502,13 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
       qinq_intf_t *qif;
       vlan_table_t *vlan_table;
       qinq_table_t *qinq_table;
-      u16 *t = (u16 *) & tag;
+      u16 *t = (u16 *) &tag;
       u16 vlan1 = clib_net_to_host_u16 (t[0]) & 0xFFF;
       u16 vlan2 = clib_net_to_host_u16 (t[2]) & 0xFFF;
       u32 matched, is_l2, new_sw_if_index;
 
-      vlan_table = vec_elt_at_index (em->vlan_pool, is_dot1ad ?
-				     mif->dot1ad_vlans : mif->dot1q_vlans);
+      vlan_table = vec_elt_at_index (
+	em->vlan_pool, is_dot1ad ? mif->dot1ad_vlans : mif->dot1q_vlans);
       vif = &vlan_table->vlans[vlan1];
       qinq_table = vec_elt_at_index (em->qinq_pool, vif->qinqs);
       qif = &qinq_table->vlans[vlan2];
@@ -535,10 +519,9 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
 	{
 	  l->type = clib_net_to_host_u16 (t[3]);
 	  l->n_tags = 2;
-	  matched = eth_identify_subint (hi, SUBINT_CONFIG_VALID |
-					 SUBINT_CONFIG_MATCH_2_TAG, mif, vif,
-					 qif, &new_sw_if_index, &l->err,
-					 &is_l2);
+	  matched = eth_identify_subint (
+	    hi, SUBINT_CONFIG_VALID | SUBINT_CONFIG_MATCH_2_TAG, mif, vif, qif,
+	    &new_sw_if_index, &l->err, &is_l2);
 	}
       else
 	{
@@ -551,10 +534,9 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
 	      is_l2 = main_is_l3 == 0;
 	    }
 	  else
-	    matched = eth_identify_subint (hi, SUBINT_CONFIG_VALID |
-					   SUBINT_CONFIG_MATCH_1_TAG, mif,
-					   vif, qif, &new_sw_if_index,
-					   &l->err, &is_l2);
+	    matched = eth_identify_subint (
+	      hi, SUBINT_CONFIG_VALID | SUBINT_CONFIG_MATCH_1_TAG, mif, vif,
+	      qif, &new_sw_if_index, &l->err, &is_l2);
 	}
 
       if (l->sw_if_index != new_sw_if_index)
@@ -565,18 +547,17 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
 	  l->sw_if_index = new_sw_if_index;
 	}
       l->tag = tag;
-      l->mask = (l->n_tags == 2) ?
-	clib_net_to_host_u64 (0xffffffffffffffff) :
-	clib_net_to_host_u64 (0xffffffff00000000);
+      l->mask = (l->n_tags == 2) ? clib_net_to_host_u64 (0xffffffffffffffff) :
+				   clib_net_to_host_u64 (0xffffffff00000000);
 
       if (matched && l->sw_if_index == ~0)
 	l->err = ETHERNET_ERROR_DOWN;
 
       l->len = sizeof (ethernet_header_t) +
-	l->n_tags * sizeof (ethernet_vlan_header_t);
+	       l->n_tags * sizeof (ethernet_vlan_header_t);
       if (main_is_l3)
 	l->adv = is_l2 ? -(int) sizeof (ethernet_header_t) :
-	  l->n_tags * sizeof (ethernet_vlan_header_t);
+			 l->n_tags * sizeof (ethernet_vlan_header_t);
       else
 	l->adv = is_l2 ? 0 : l->len;
 
@@ -625,12 +606,12 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
   l->n_bytes += vlib_buffer_length_in_chain (vm, b);
 }
 
-#define DMAC_MASK clib_net_to_host_u64 (0xFFFFFFFFFFFF0000)
+#define DMAC_MASK  clib_net_to_host_u64 (0xFFFFFFFFFFFF0000)
 #define DMAC_IGBIT clib_net_to_host_u64 (0x0100000000000000)
 
 #ifdef CLIB_HAVE_VEC256
 static_always_inline u32
-is_dmac_bad_x4 (u64 * dmacs, u64 hwaddr)
+is_dmac_bad_x4 (u64 *dmacs, u64 hwaddr)
 {
   u64x4 r0 = u64x4_load_unaligned (dmacs) & u64x4_splat (DMAC_MASK);
   r0 = (r0 != u64x4_splat (hwaddr)) & ((r0 & u64x4_splat (DMAC_IGBIT)) == 0);
@@ -653,7 +634,7 @@ is_sec_dmac_bad (u64 dmac, u64 hwaddr)
 
 #ifdef CLIB_HAVE_VEC256
 static_always_inline u32
-is_sec_dmac_bad_x4 (u64 * dmacs, u64 hwaddr)
+is_sec_dmac_bad_x4 (u64 *dmacs, u64 hwaddr)
 {
   u64x4 r0 = u64x4_load_unaligned (dmacs) & u64x4_splat (DMAC_MASK);
   r0 = (r0 != u64x4_splat (hwaddr));
@@ -662,14 +643,14 @@ is_sec_dmac_bad_x4 (u64 * dmacs, u64 hwaddr)
 #endif
 
 static_always_inline u8
-eth_input_sec_dmac_check_x1 (u64 hwaddr, u64 * dmac, u8 * dmac_bad)
+eth_input_sec_dmac_check_x1 (u64 hwaddr, u64 *dmac, u8 *dmac_bad)
 {
   dmac_bad[0] &= is_sec_dmac_bad (dmac[0], hwaddr);
   return dmac_bad[0];
 }
 
 static_always_inline u32
-eth_input_sec_dmac_check_x4 (u64 hwaddr, u64 * dmac, u8 * dmac_bad)
+eth_input_sec_dmac_check_x4 (u64 hwaddr, u64 *dmac, u8 *dmac_bad)
 {
 #ifdef CLIB_HAVE_VEC256
   *(u32 *) (dmac_bad + 0) &= is_sec_dmac_bad_x4 (dmac + 0, hwaddr);
@@ -689,10 +670,9 @@ eth_input_sec_dmac_check_x4 (u64 hwaddr, u64 * dmac, u8 * dmac_bad)
  * n_packets should be 1 or 2 for ethernet_input_inline()
  */
 static_always_inline void
-ethernet_input_inline_dmac_check (vnet_hw_interface_t * hi,
-				  u64 * dmacs, u8 * dmacs_bad,
-				  u32 n_packets, ethernet_interface_t * ei,
-				  u8 have_sec_dmac)
+ethernet_input_inline_dmac_check (vnet_hw_interface_t *hi, u64 *dmacs,
+				  u8 *dmacs_bad, u32 n_packets,
+				  ethernet_interface_t *ei, u8 have_sec_dmac)
 {
   u64 hwaddr = ei->address.as_u64;
   u8 bad = 0;
@@ -709,25 +689,24 @@ ethernet_input_inline_dmac_check (vnet_hw_interface_t * hi,
       ethernet_interface_address_t *sec_addr;
 
       vec_foreach (sec_addr, ei->secondary_addrs)
-      {
-	ASSERT (0 == sec_addr->zero);
-	hwaddr = sec_addr->as_u64;
+	{
+	  ASSERT (0 == sec_addr->zero);
+	  hwaddr = sec_addr->as_u64;
 
-	bad = (eth_input_sec_dmac_check_x1 (hwaddr, dmacs, dmacs_bad) |
-	       eth_input_sec_dmac_check_x1 (hwaddr, dmacs + 1,
-					    dmacs_bad + 1));
+	  bad =
+	    (eth_input_sec_dmac_check_x1 (hwaddr, dmacs, dmacs_bad) |
+	     eth_input_sec_dmac_check_x1 (hwaddr, dmacs + 1, dmacs_bad + 1));
 
-	if (!bad)
-	  return;
-      }
+	  if (!bad)
+	    return;
+	}
     }
 }
 
 static_always_inline void
-eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
-				    u64 * dmacs, u8 * dmacs_bad,
-				    u32 n_packets, ethernet_interface_t * ei,
-				    u8 have_sec_dmac)
+eth_input_process_frame_dmac_check (vnet_hw_interface_t *hi, u64 *dmacs,
+				    u8 *dmacs_bad, u32 n_packets,
+				    ethernet_interface_t *ei, u8 have_sec_dmac)
 {
   u64 hwaddr = ei->address.as_u64;
   u64 *dmac = dmacs;
@@ -768,57 +747,57 @@ eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
       ethernet_interface_address_t *addr;
 
       vec_foreach (addr, ei->secondary_addrs)
-      {
-	u64 hwaddr = addr->as_u64;
-	i32 n_left = n_packets;
-	u64 *dmac = dmacs;
-	u8 *dmac_bad = dmacs_bad;
+	{
+	  u64 hwaddr = addr->as_u64;
+	  i32 n_left = n_packets;
+	  u64 *dmac = dmacs;
+	  u8 *dmac_bad = dmacs_bad;
 
-	ASSERT (0 == addr->zero);
+	  ASSERT (0 == addr->zero);
 
-	bad = 0;
+	  bad = 0;
 
-	while (n_left > 0)
-	  {
-	    int adv = 0;
-	    int n_bad;
+	  while (n_left > 0)
+	    {
+	      int adv = 0;
+	      int n_bad;
 
-	    /* skip any that have already matched */
-	    if (!dmac_bad[0])
-	      {
-		dmac += 1;
-		dmac_bad += 1;
-		n_left -= 1;
-		continue;
-	      }
+	      /* skip any that have already matched */
+	      if (!dmac_bad[0])
+		{
+		  dmac += 1;
+		  dmac_bad += 1;
+		  n_left -= 1;
+		  continue;
+		}
 
-	    n_bad = clib_min (4, n_left);
+	      n_bad = clib_min (4, n_left);
 
-	    /* If >= 4 left, compare 4 together */
-	    if (n_bad == 4)
-	      {
-		bad |= eth_input_sec_dmac_check_x4 (hwaddr, dmac, dmac_bad);
-		adv = 4;
-		n_bad = 0;
-	      }
+	      /* If >= 4 left, compare 4 together */
+	      if (n_bad == 4)
+		{
+		  bad |= eth_input_sec_dmac_check_x4 (hwaddr, dmac, dmac_bad);
+		  adv = 4;
+		  n_bad = 0;
+		}
 
-	    /* handle individually */
-	    while (n_bad > 0)
-	      {
-		bad |= eth_input_sec_dmac_check_x1 (hwaddr, dmac + adv,
-						    dmac_bad + adv);
-		adv += 1;
-		n_bad -= 1;
-	      }
+	      /* handle individually */
+	      while (n_bad > 0)
+		{
+		  bad |= eth_input_sec_dmac_check_x1 (hwaddr, dmac + adv,
+						      dmac_bad + adv);
+		  adv += 1;
+		  n_bad -= 1;
+		}
 
-	    dmac += adv;
-	    dmac_bad += adv;
-	    n_left -= adv;
-	  }
+	      dmac += adv;
+	      dmac_bad += adv;
+	      n_left -= adv;
+	    }
 
-	if (!bad)		/* can stop looping if everything matched */
-	  break;
-      }
+	  if (!bad) /* can stop looping if everything matched */
+	    break;
+	}
     }
 }
 
@@ -828,13 +807,12 @@ eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
    Optionally store Destionation MAC address and tag data into arrays
    for further processing */
 
-STATIC_ASSERT (VLIB_FRAME_SIZE % 8 == 0,
-	       "VLIB_FRAME_SIZE must be power of 8");
+STATIC_ASSERT (VLIB_FRAME_SIZE % 8 == 0, "VLIB_FRAME_SIZE must be power of 8");
 static_always_inline void
-eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 vnet_hw_interface_t * hi,
-			 u32 * buffer_indices, u32 n_packets, int main_is_l3,
-			 int ip4_cksum_ok, int dmac_check)
+eth_input_process_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+			 vnet_hw_interface_t *hi, u32 *buffer_indices,
+			 u32 n_packets, int main_is_l3, int ip4_cksum_ok,
+			 int dmac_check)
 {
   ethernet_main_t *em = &ethernet_main;
   u16 nexts[VLIB_FRAME_SIZE], *next;
@@ -918,10 +896,10 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       if (ei && vec_len (ei->secondary_addrs))
 	eth_input_process_frame_dmac_check (hi, dmacs, dmacs_bad, n_packets,
-					    ei, 1 /* have_sec_dmac */ );
+					    ei, 1 /* have_sec_dmac */);
       else
 	eth_input_process_frame_dmac_check (hi, dmacs, dmacs_bad, n_packets,
-					    ei, 0 /* have_sec_dmac */ );
+					    ei, 0 /* have_sec_dmac */);
     }
 
   next_ip4 = em->l3_next.input_next_ip4;
@@ -1001,8 +979,7 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	next[0] = next_ip6;
       else if (main_is_l3 && etype[0] == et_mpls)
 	next[0] = next_mpls;
-      else if (main_is_l3 == 0 &&
-	       etype[0] != et_vlan && etype[0] != et_dot1ad)
+      else if (main_is_l3 == 0 && etype[0] != et_vlan && etype[0] != et_dot1ad)
 	next[0] = next_l2;
       else
 	{
@@ -1024,9 +1001,7 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
       u32 last_unknown_etype = ~0;
       u32 last_unknown_next = ~0;
       eth_input_tag_lookup_t dot1ad_lookup, dot1q_lookup = {
-	.mask = -1LL,
-	.tag = tags[si[0]] ^ -1LL,
-	.sw_if_index = ~0
+	.mask = -1LL, .tag = tags[si[0]] ^ -1LL, .sw_if_index = ~0
       };
 
       clib_memcpy_fast (&dot1ad_lookup, &dot1q_lookup, sizeof (dot1q_lookup));
@@ -1040,9 +1015,8 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      vlib_buffer_t *b = vlib_get_buffer (vm, buffer_indices[i]);
 	      eth_input_tag_lookup (vm, vnm, node, hi, tags[i], nexts + i, b,
-				    &dot1q_lookup, dmacs_bad[i], 0,
-				    main_is_l3, dmac_check);
-
+				    &dot1q_lookup, dmacs_bad[i], 0, main_is_l3,
+				    dmac_check);
 	    }
 	  else if (etype == et_dot1ad)
 	    {
@@ -1083,8 +1057,8 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline void
-eth_input_single_int (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vnet_hw_interface_t * hi, u32 * from, u32 n_pkts,
+eth_input_single_int (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vnet_hw_interface_t *hi, u32 *from, u32 n_pkts,
 		      int ip4_cksum_ok)
 {
   ethernet_main_t *em = &ethernet_main;
@@ -1098,14 +1072,14 @@ eth_input_single_int (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (main_is_l3)
     {
-      if (int_is_l3 ||		/* DMAC filter already done by NIC */
+      if (int_is_l3 || /* DMAC filter already done by NIC */
 	  ((hi->l2_if_count != 0) && (hi->l3_if_count == 0)))
-	{			/* All L2 usage - DMAC check not needed */
+	{ /* All L2 usage - DMAC check not needed */
 	  eth_input_process_frame (vm, node, hi, from, n_pkts,
 				   /*is_l3 */ 1, ip4_cksum_ok, 0);
 	}
       else
-	{			/* DMAC check needed for L3 */
+	{ /* DMAC check needed for L3 */
 	  eth_input_process_frame (vm, node, hi, from, n_pkts,
 				   /*is_l3 */ 1, ip4_cksum_ok, 1);
 	}
@@ -1114,12 +1088,12 @@ eth_input_single_int (vlib_main_t * vm, vlib_node_runtime_t * node,
   else
     {
       if (hi->l3_if_count == 0)
-	{			/* All L2 usage - DMAC check not needed */
+	{ /* All L2 usage - DMAC check not needed */
 	  eth_input_process_frame (vm, node, hi, from, n_pkts,
 				   /*is_l3 */ 0, ip4_cksum_ok, 0);
 	}
       else
-	{			/* DMAC check needed for L3 */
+	{ /* DMAC check needed for L3 */
 	  eth_input_process_frame (vm, node, hi, from, n_pkts,
 				   /*is_l3 */ 0, ip4_cksum_ok, 1);
 	}
@@ -1128,8 +1102,8 @@ eth_input_single_int (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline void
-ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vlib_frame_t * from_frame)
+ethernet_input_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vlib_frame_t *from_frame)
 {
   u32 *from, n_left;
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
@@ -1144,8 +1118,8 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	    {
-	      t0 = vlib_add_trace (vm, node, b0,
-				   sizeof (ethernet_input_trace_t));
+	      t0 =
+		vlib_add_trace (vm, node, b0, sizeof (ethernet_input_trace_t));
 	      clib_memcpy_fast (t0->packet_data, b0->data + b0->current_data,
 				sizeof (t0->packet_data));
 	      t0->frame_flags = from_frame->flags;
@@ -1176,9 +1150,8 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  if (pp->filter_classify_table_index != ~0)
 	    {
-	      classify_filter_result =
-		vnet_is_packet_traced_inline
-		(b0, pp->filter_classify_table_index, 0 /* full classify */ );
+	      classify_filter_result = vnet_is_packet_traced_inline (
+		b0, pp->filter_classify_table_index, 0 /* full classify */);
 	      if (classify_filter_result)
 		pcap_add_buffer (&pp->pcap_main, vm, bi0,
 				 pp->max_bytes_per_pkt);
@@ -1189,15 +1162,13 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      pp->pcap_sw_if_index == vnet_buffer (b0)->sw_if_index[VLIB_RX])
 	    {
 	      vnet_main_t *vnm = vnet_get_main ();
-	      vnet_hw_interface_t *hi =
-		vnet_get_sup_hw_interface
-		(vnm, vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+	      vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (
+		vnm, vnet_buffer (b0)->sw_if_index[VLIB_RX]);
 
 	      /* Capture pkt if not filtered, or if filter hits */
 	      if (hi->trace_classify_table_index == ~0 ||
-		  vnet_is_packet_traced_inline
-		  (b0, hi->trace_classify_table_index,
-		   0 /* full classify */ ))
+		  vnet_is_packet_traced_inline (
+		    b0, hi->trace_classify_table_index, 0 /* full classify */))
 		pcap_add_buffer (&pp->pcap_main, vm, bi0,
 				 pp->max_bytes_per_pkt);
 	    }
@@ -1206,10 +1177,8 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline void
-ethernet_input_inline (vlib_main_t * vm,
-		       vlib_node_runtime_t * node,
-		       u32 * from, u32 n_packets,
-		       ethernet_input_variant_t variant)
+ethernet_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, u32 *from,
+		       u32 n_packets, ethernet_input_variant_t variant)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ethernet_main_t *em = &ethernet_main;
@@ -1218,8 +1187,8 @@ ethernet_input_inline (vlib_main_t * vm,
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
   u32 thread_index = vm->thread_index;
   u32 cached_sw_if_index = ~0;
-  u32 cached_is_l2 = 0;		/* shut up gcc */
-  vnet_hw_interface_t *hi = NULL;	/* used for main interface only */
+  u32 cached_is_l2 = 0;		  /* shut up gcc */
+  vnet_hw_interface_t *hi = NULL; /* used for main interface only */
   ethernet_interface_t *ei = NULL;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
   vlib_buffer_t **b = bufs;
@@ -1296,9 +1265,8 @@ ethernet_input_inline (vlib_main_t * vm,
 	  b1->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID;
 
 	  /* Speed-path for the untagged case */
-	  if (PREDICT_TRUE (variant == ETHERNET_INPUT_VARIANT_ETHERNET
-			    && !ethernet_frame_is_any_tagged_x2 (type0,
-								 type1)))
+	  if (PREDICT_TRUE (variant == ETHERNET_INPUT_VARIANT_ETHERNET &&
+			    !ethernet_frame_is_any_tagged_x2 (type0, type1)))
 	    {
 	      main_intf_t *intf0;
 	      subint_config_t *subint0;
@@ -1347,17 +1315,13 @@ ethernet_input_inline (vlib_main_t * vm,
 		  dmacs[1] = *(u64 *) e1;
 
 		  if (ei && vec_len (ei->secondary_addrs))
-		    ethernet_input_inline_dmac_check (hi, dmacs,
-						      dmacs_bad,
-						      2 /* n_packets */ ,
-						      ei,
-						      1 /* have_sec_dmac */ );
+		    ethernet_input_inline_dmac_check (hi, dmacs, dmacs_bad,
+						      2 /* n_packets */, ei,
+						      1 /* have_sec_dmac */);
 		  else
-		    ethernet_input_inline_dmac_check (hi, dmacs,
-						      dmacs_bad,
-						      2 /* n_packets */ ,
-						      ei,
-						      0 /* have_sec_dmac */ );
+		    ethernet_input_inline_dmac_check (hi, dmacs, dmacs_bad,
+						      2 /* n_packets */, ei,
+						      0 /* have_sec_dmac */);
 
 		  if (dmacs_bad[0])
 		    error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
@@ -1366,123 +1330,92 @@ ethernet_input_inline (vlib_main_t * vm,
 
 		skip_dmac_check01:
 		  vlib_buffer_advance (b0, sizeof (ethernet_header_t));
-		  determine_next_node (em, variant, 0, type0, b0,
-				       &error0, &next0);
+		  determine_next_node (em, variant, 0, type0, b0, &error0,
+				       &next0);
 		  vlib_buffer_advance (b1, sizeof (ethernet_header_t));
-		  determine_next_node (em, variant, 0, type1, b1,
-				       &error1, &next1);
+		  determine_next_node (em, variant, 0, type1, b1, &error1,
+				       &next1);
 		}
 	      goto ship_it01;
 	    }
 
 	  /* Slow-path for the tagged case */
 	slowpath:
-	  parse_header (variant,
-			b0,
-			&type0,
-			&orig_type0, &outer_id0, &inner_id0, &match_flags0);
+	  parse_header (variant, b0, &type0, &orig_type0, &outer_id0,
+			&inner_id0, &match_flags0);
 
-	  parse_header (variant,
-			b1,
-			&type1,
-			&orig_type1, &outer_id1, &inner_id1, &match_flags1);
+	  parse_header (variant, b1, &type1, &orig_type1, &outer_id1,
+			&inner_id1, &match_flags1);
 
 	  old_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  old_sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
 
-	  eth_vlan_table_lookups (em,
-				  vnm,
-				  old_sw_if_index0,
-				  orig_type0,
-				  outer_id0,
-				  inner_id0,
-				  &hi0,
-				  &main_intf0, &vlan_intf0, &qinq_intf0);
+	  eth_vlan_table_lookups (em, vnm, old_sw_if_index0, orig_type0,
+				  outer_id0, inner_id0, &hi0, &main_intf0,
+				  &vlan_intf0, &qinq_intf0);
 
-	  eth_vlan_table_lookups (em,
-				  vnm,
-				  old_sw_if_index1,
-				  orig_type1,
-				  outer_id1,
-				  inner_id1,
-				  &hi1,
-				  &main_intf1, &vlan_intf1, &qinq_intf1);
+	  eth_vlan_table_lookups (em, vnm, old_sw_if_index1, orig_type1,
+				  outer_id1, inner_id1, &hi1, &main_intf1,
+				  &vlan_intf1, &qinq_intf1);
 
-	  identify_subint (em,
-			   hi0,
-			   b0,
-			   match_flags0,
-			   main_intf0,
-			   vlan_intf0,
+	  identify_subint (em, hi0, b0, match_flags0, main_intf0, vlan_intf0,
 			   qinq_intf0, &new_sw_if_index0, &error0, &is_l20);
 
-	  identify_subint (em,
-			   hi1,
-			   b1,
-			   match_flags1,
-			   main_intf1,
-			   vlan_intf1,
+	  identify_subint (em, hi1, b1, match_flags1, main_intf1, vlan_intf1,
 			   qinq_intf1, &new_sw_if_index1, &error1, &is_l21);
 
 	  // Save RX sw_if_index for later nodes
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
-	    error0 !=
-	    ETHERNET_ERROR_NONE ? old_sw_if_index0 : new_sw_if_index0;
+	    error0 != ETHERNET_ERROR_NONE ? old_sw_if_index0 :
+					    new_sw_if_index0;
 	  vnet_buffer (b1)->sw_if_index[VLIB_RX] =
-	    error1 !=
-	    ETHERNET_ERROR_NONE ? old_sw_if_index1 : new_sw_if_index1;
+	    error1 != ETHERNET_ERROR_NONE ? old_sw_if_index1 :
+					    new_sw_if_index1;
 
-	  // Check if there is a stat to take (valid and non-main sw_if_index for pkt 0 or pkt 1)
-	  if (((new_sw_if_index0 != ~0)
-	       && (new_sw_if_index0 != old_sw_if_index0))
-	      || ((new_sw_if_index1 != ~0)
-		  && (new_sw_if_index1 != old_sw_if_index1)))
+	  // Check if there is a stat to take (valid and non-main sw_if_index
+	  // for pkt 0 or pkt 1)
+	  if (((new_sw_if_index0 != ~0) &&
+	       (new_sw_if_index0 != old_sw_if_index0)) ||
+	      ((new_sw_if_index1 != ~0) &&
+	       (new_sw_if_index1 != old_sw_if_index1)))
 	    {
 
-	      len0 = vlib_buffer_length_in_chain (vm, b0) + b0->current_data
-		- vnet_buffer (b0)->l2_hdr_offset;
-	      len1 = vlib_buffer_length_in_chain (vm, b1) + b1->current_data
-		- vnet_buffer (b1)->l2_hdr_offset;
+	      len0 = vlib_buffer_length_in_chain (vm, b0) + b0->current_data -
+		     vnet_buffer (b0)->l2_hdr_offset;
+	      len1 = vlib_buffer_length_in_chain (vm, b1) + b1->current_data -
+		     vnet_buffer (b1)->l2_hdr_offset;
 
 	      stats_n_packets += 2;
 	      stats_n_bytes += len0 + len1;
 
-	      if (PREDICT_FALSE
-		  (!(new_sw_if_index0 == stats_sw_if_index
-		     && new_sw_if_index1 == stats_sw_if_index)))
+	      if (PREDICT_FALSE (!(new_sw_if_index0 == stats_sw_if_index &&
+				   new_sw_if_index1 == stats_sw_if_index)))
 		{
 		  stats_n_packets -= 2;
 		  stats_n_bytes -= len0 + len1;
 
-		  if (new_sw_if_index0 != old_sw_if_index0
-		      && new_sw_if_index0 != ~0)
-		    vlib_increment_combined_counter (vnm->
-						     interface_main.combined_sw_if_counters
-						     +
-						     VNET_INTERFACE_COUNTER_RX,
-						     thread_index,
-						     new_sw_if_index0, 1,
-						     len0);
-		  if (new_sw_if_index1 != old_sw_if_index1
-		      && new_sw_if_index1 != ~0)
-		    vlib_increment_combined_counter (vnm->
-						     interface_main.combined_sw_if_counters
-						     +
-						     VNET_INTERFACE_COUNTER_RX,
-						     thread_index,
-						     new_sw_if_index1, 1,
-						     len1);
+		  if (new_sw_if_index0 != old_sw_if_index0 &&
+		      new_sw_if_index0 != ~0)
+		    vlib_increment_combined_counter (
+		      vnm->interface_main.combined_sw_if_counters +
+			VNET_INTERFACE_COUNTER_RX,
+		      thread_index, new_sw_if_index0, 1, len0);
+		  if (new_sw_if_index1 != old_sw_if_index1 &&
+		      new_sw_if_index1 != ~0)
+		    vlib_increment_combined_counter (
+		      vnm->interface_main.combined_sw_if_counters +
+			VNET_INTERFACE_COUNTER_RX,
+		      thread_index, new_sw_if_index1, 1, len1);
 
 		  if (new_sw_if_index0 == new_sw_if_index1)
 		    {
 		      if (stats_n_packets > 0)
 			{
-			  vlib_increment_combined_counter
-			    (vnm->interface_main.combined_sw_if_counters
-			     + VNET_INTERFACE_COUNTER_RX,
-			     thread_index,
-			     stats_sw_if_index,
-			     stats_n_packets, stats_n_bytes);
+			  vlib_increment_combined_counter (
+			    vnm->interface_main.combined_sw_if_counters +
+			      VNET_INTERFACE_COUNTER_RX,
+			    thread_index, stats_sw_if_index, stats_n_packets,
+			    stats_n_bytes);
 			  stats_n_packets = stats_n_bytes = 0;
 			}
 		      stats_sw_if_index = new_sw_if_index0;
@@ -1552,8 +1485,8 @@ ethernet_input_inline (vlib_main_t * vm,
 	  b0->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID;
 
 	  /* Speed-path for the untagged case */
-	  if (PREDICT_TRUE (variant == ETHERNET_INPUT_VARIANT_ETHERNET
-			    && !ethernet_frame_is_tagged (type0)))
+	  if (PREDICT_TRUE (variant == ETHERNET_INPUT_VARIANT_ETHERNET &&
+			    !ethernet_frame_is_tagged (type0)))
 	    {
 	      main_intf_t *intf0;
 	      subint_config_t *subint0;
@@ -1572,7 +1505,6 @@ ethernet_input_inline (vlib_main_t * vm,
 		  cached_is_l2 = is_l20 = subint0->flags & SUBINT_CONFIG_L2;
 		}
 
-
 	      if (PREDICT_TRUE (is_l20 != 0))
 		{
 		  vnet_buffer (b0)->l3_hdr_offset =
@@ -1590,58 +1522,42 @@ ethernet_input_inline (vlib_main_t * vm,
 		  dmacs[0] = *(u64 *) e0;
 
 		  if (ei && vec_len (ei->secondary_addrs))
-		    ethernet_input_inline_dmac_check (hi, dmacs,
-						      dmacs_bad,
-						      1 /* n_packets */ ,
-						      ei,
-						      1 /* have_sec_dmac */ );
+		    ethernet_input_inline_dmac_check (hi, dmacs, dmacs_bad,
+						      1 /* n_packets */, ei,
+						      1 /* have_sec_dmac */);
 		  else
-		    ethernet_input_inline_dmac_check (hi, dmacs,
-						      dmacs_bad,
-						      1 /* n_packets */ ,
-						      ei,
-						      0 /* have_sec_dmac */ );
+		    ethernet_input_inline_dmac_check (hi, dmacs, dmacs_bad,
+						      1 /* n_packets */, ei,
+						      0 /* have_sec_dmac */);
 
 		  if (dmacs_bad[0])
 		    error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
 
 		skip_dmac_check0:
 		  vlib_buffer_advance (b0, sizeof (ethernet_header_t));
-		  determine_next_node (em, variant, 0, type0, b0,
-				       &error0, &next0);
+		  determine_next_node (em, variant, 0, type0, b0, &error0,
+				       &next0);
 		}
 	      goto ship_it0;
 	    }
 
 	  /* Slow-path for the tagged case */
-	  parse_header (variant,
-			b0,
-			&type0,
-			&orig_type0, &outer_id0, &inner_id0, &match_flags0);
+	  parse_header (variant, b0, &type0, &orig_type0, &outer_id0,
+			&inner_id0, &match_flags0);
 
 	  old_sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
-	  eth_vlan_table_lookups (em,
-				  vnm,
-				  old_sw_if_index0,
-				  orig_type0,
-				  outer_id0,
-				  inner_id0,
-				  &hi0,
-				  &main_intf0, &vlan_intf0, &qinq_intf0);
+	  eth_vlan_table_lookups (em, vnm, old_sw_if_index0, orig_type0,
+				  outer_id0, inner_id0, &hi0, &main_intf0,
+				  &vlan_intf0, &qinq_intf0);
 
-	  identify_subint (em,
-			   hi0,
-			   b0,
-			   match_flags0,
-			   main_intf0,
-			   vlan_intf0,
+	  identify_subint (em, hi0, b0, match_flags0, main_intf0, vlan_intf0,
 			   qinq_intf0, &new_sw_if_index0, &error0, &is_l20);
 
 	  // Save RX sw_if_index for later nodes
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
-	    error0 !=
-	    ETHERNET_ERROR_NONE ? old_sw_if_index0 : new_sw_if_index0;
+	    error0 != ETHERNET_ERROR_NONE ? old_sw_if_index0 :
+					    new_sw_if_index0;
 
 	  // Increment subinterface stats
 	  // Note that interface-level counters have already been incremented
@@ -1652,12 +1568,12 @@ ethernet_input_inline (vlib_main_t * vm,
 	  // interface and all subinterfaces. Subinterface level counters
 	  // include only those packets received on that subinterface
 	  // Increment stats if the subint is valid and it is not the main intf
-	  if ((new_sw_if_index0 != ~0)
-	      && (new_sw_if_index0 != old_sw_if_index0))
+	  if ((new_sw_if_index0 != ~0) &&
+	      (new_sw_if_index0 != old_sw_if_index0))
 	    {
 
-	      len0 = vlib_buffer_length_in_chain (vm, b0) + b0->current_data
-		- vnet_buffer (b0)->l2_hdr_offset;
+	      len0 = vlib_buffer_length_in_chain (vm, b0) + b0->current_data -
+		     vnet_buffer (b0)->l2_hdr_offset;
 
 	      stats_n_packets += 1;
 	      stats_n_bytes += len0;
@@ -1670,17 +1586,17 @@ ethernet_input_inline (vlib_main_t * vm,
 		  stats_n_bytes -= len0;
 
 		  if (new_sw_if_index0 != ~0)
-		    vlib_increment_combined_counter
-		      (vnm->interface_main.combined_sw_if_counters
-		       + VNET_INTERFACE_COUNTER_RX,
-		       thread_index, new_sw_if_index0, 1, len0);
+		    vlib_increment_combined_counter (
+		      vnm->interface_main.combined_sw_if_counters +
+			VNET_INTERFACE_COUNTER_RX,
+		      thread_index, new_sw_if_index0, 1, len0);
 		  if (stats_n_packets > 0)
 		    {
-		      vlib_increment_combined_counter
-			(vnm->interface_main.combined_sw_if_counters
-			 + VNET_INTERFACE_COUNTER_RX,
-			 thread_index,
-			 stats_sw_if_index, stats_n_packets, stats_n_bytes);
+		      vlib_increment_combined_counter (
+			vnm->interface_main.combined_sw_if_counters +
+			  VNET_INTERFACE_COUNTER_RX,
+			thread_index, stats_sw_if_index, stats_n_packets,
+			stats_n_bytes);
 		      stats_n_packets = stats_n_bytes = 0;
 		    }
 		  stats_sw_if_index = new_sw_if_index0;
@@ -1697,9 +1613,8 @@ ethernet_input_inline (vlib_main_t * vm,
 	  b0->error = error_node->errors[error0];
 
 	  // verify speculative enqueue
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -1708,17 +1623,16 @@ ethernet_input_inline (vlib_main_t * vm,
   // Increment any remaining batched stats
   if (stats_n_packets > 0)
     {
-      vlib_increment_combined_counter
-	(vnm->interface_main.combined_sw_if_counters
-	 + VNET_INTERFACE_COUNTER_RX,
-	 thread_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
+      vlib_increment_combined_counter (
+	vnm->interface_main.combined_sw_if_counters +
+	  VNET_INTERFACE_COUNTER_RX,
+	thread_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
       node->runtime_data[0] = stats_sw_if_index;
     }
 }
 
-VLIB_NODE_FN (ethernet_input_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
+VLIB_NODE_FN (ethernet_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 *from = vlib_frame_vector_args (frame);
@@ -1739,9 +1653,8 @@ VLIB_NODE_FN (ethernet_input_node) (vlib_main_t * vm,
   return n_packets;
 }
 
-VLIB_NODE_FN (ethernet_input_type_node) (vlib_main_t * vm,
-					 vlib_node_runtime_t * node,
-					 vlib_frame_t * from_frame)
+VLIB_NODE_FN (ethernet_input_type_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   u32 *from = vlib_frame_vector_args (from_frame);
   u32 n_packets = from_frame->n_vectors;
@@ -1751,9 +1664,8 @@ VLIB_NODE_FN (ethernet_input_type_node) (vlib_main_t * vm,
   return n_packets;
 }
 
-VLIB_NODE_FN (ethernet_input_not_l2_node) (vlib_main_t * vm,
-					   vlib_node_runtime_t * node,
-					   vlib_frame_t * from_frame)
+VLIB_NODE_FN (ethernet_input_not_l2_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   u32 *from = vlib_frame_vector_args (from_frame);
   u32 n_packets = from_frame->n_vectors;
@@ -1763,15 +1675,13 @@ VLIB_NODE_FN (ethernet_input_not_l2_node) (vlib_main_t * vm,
   return n_packets;
 }
 
-
 // Return the subinterface config struct for the given sw_if_index
 // Also return via parameter the appropriate match flags for the
 // configured number of tags.
 // On error (unsupported or not ethernet) return 0.
 static subint_config_t *
-ethernet_sw_interface_get_config (vnet_main_t * vnm,
-				  u32 sw_if_index,
-				  u32 * flags, u32 * unsupported)
+ethernet_sw_interface_get_config (vnet_main_t *vnm, u32 sw_if_index,
+				  u32 *flags, u32 *unsupported)
 {
   ethernet_main_t *em = &ethernet_main;
   vnet_hw_interface_t *hi;
@@ -1786,7 +1696,7 @@ ethernet_sw_interface_get_config (vnet_main_t * vnm,
   if (!hi || (hi->hw_class_index != ethernet_hw_interface_class.index))
     {
       *unsupported = 0;
-      goto done;		// non-ethernet interface
+      goto done; // non-ethernet interface
     }
 
   // ensure there's an entry for the main intf (shouldn't really be necessary)
@@ -1821,8 +1731,8 @@ ethernet_sw_interface_get_config (vnet_main_t * vnm,
   else if (si->sub.eth.flags.default_sub)
     {
       subint = &main_intf->default_subint;
-      *flags = SUBINT_CONFIG_MATCH_1_TAG |
-	SUBINT_CONFIG_MATCH_2_TAG | SUBINT_CONFIG_MATCH_3_TAG;
+      *flags = SUBINT_CONFIG_MATCH_1_TAG | SUBINT_CONFIG_MATCH_2_TAG |
+	       SUBINT_CONFIG_MATCH_3_TAG;
     }
   else if ((si->sub.eth.flags.no_tags) || (si->sub.eth.raw_flags == 0))
     {
@@ -1851,7 +1761,7 @@ ethernet_sw_interface_get_config (vnet_main_t * vnm,
 	    }
 	}
       else
-	{			// dot1q
+	{ // dot1q
 	  if (main_intf->dot1q_vlans == 0)
 	    {
 	      // Allocate a vlan table from the pool
@@ -1869,9 +1779,9 @@ ethernet_sw_interface_get_config (vnet_main_t * vnm,
       if (si->sub.eth.flags.one_tag)
 	{
 	  *flags = si->sub.eth.flags.exact_match ?
-	    SUBINT_CONFIG_MATCH_1_TAG :
-	    (SUBINT_CONFIG_MATCH_1_TAG |
-	     SUBINT_CONFIG_MATCH_2_TAG | SUBINT_CONFIG_MATCH_3_TAG);
+		     SUBINT_CONFIG_MATCH_1_TAG :
+		     (SUBINT_CONFIG_MATCH_1_TAG | SUBINT_CONFIG_MATCH_2_TAG |
+		      SUBINT_CONFIG_MATCH_3_TAG);
 
 	  if (si->sub.eth.flags.outer_vlan_id_any)
 	    {
@@ -1882,21 +1792,19 @@ ethernet_sw_interface_get_config (vnet_main_t * vnm,
 	  else
 	    {
 	      // a single vlan, a common case
-	      subint =
-		&vlan_table->vlans[si->sub.eth.
-				   outer_vlan_id].single_tag_subint;
+	      subint = &vlan_table->vlans[si->sub.eth.outer_vlan_id]
+			  .single_tag_subint;
 	    }
-
 	}
       else
 	{
 	  // Two tags
 	  *flags = si->sub.eth.flags.exact_match ?
-	    SUBINT_CONFIG_MATCH_2_TAG :
-	    (SUBINT_CONFIG_MATCH_2_TAG | SUBINT_CONFIG_MATCH_3_TAG);
+		     SUBINT_CONFIG_MATCH_2_TAG :
+		     (SUBINT_CONFIG_MATCH_2_TAG | SUBINT_CONFIG_MATCH_3_TAG);
 
-	  if (si->sub.eth.flags.outer_vlan_id_any
-	      && si->sub.eth.flags.inner_vlan_id_any)
+	  if (si->sub.eth.flags.outer_vlan_id_any &&
+	      si->sub.eth.flags.inner_vlan_id_any)
 	    {
 	      // not implemented yet
 	      *unsupported = 1;
@@ -1908,16 +1816,15 @@ ethernet_sw_interface_get_config (vnet_main_t * vnm,
 	      // a specific outer and "any" inner
 	      // don't need a qinq table for this
 	      subint =
-		&vlan_table->vlans[si->sub.eth.
-				   outer_vlan_id].inner_any_subint;
+		&vlan_table->vlans[si->sub.eth.outer_vlan_id].inner_any_subint;
 	      if (si->sub.eth.flags.exact_match)
 		{
 		  *flags = SUBINT_CONFIG_MATCH_2_TAG;
 		}
 	      else
 		{
-		  *flags = SUBINT_CONFIG_MATCH_2_TAG |
-		    SUBINT_CONFIG_MATCH_3_TAG;
+		  *flags =
+		    SUBINT_CONFIG_MATCH_2_TAG | SUBINT_CONFIG_MATCH_3_TAG;
 		}
 	    }
 	  else
@@ -1935,11 +1842,9 @@ ethernet_sw_interface_get_config (vnet_main_t * vnm,
 	      else
 		{
 		  // Get ptr to existing qinq table
-		  qinq_table =
-		    vec_elt_at_index (em->qinq_pool,
-				      vlan_table->vlans[si->sub.
-							eth.outer_vlan_id].
-				      qinqs);
+		  qinq_table = vec_elt_at_index (
+		    em->qinq_pool,
+		    vlan_table->vlans[si->sub.eth.outer_vlan_id].qinqs);
 		}
 	      subint = &qinq_table->vlans[si->sub.eth.inner_vlan_id].subint;
 	    }
@@ -1951,7 +1856,7 @@ done:
 }
 
 static clib_error_t *
-ethernet_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
+ethernet_sw_interface_up_down (vnet_main_t *vnm, u32 sw_if_index, u32 flags)
 {
   subint_config_t *subint;
   u32 placeholder_flags;
@@ -1959,9 +1864,8 @@ ethernet_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
   clib_error_t *error = 0;
 
   // Find the config for this subinterface
-  subint =
-    ethernet_sw_interface_get_config (vnm, sw_if_index, &placeholder_flags,
-				      &placeholder_unsup);
+  subint = ethernet_sw_interface_get_config (
+    vnm, sw_if_index, &placeholder_flags, &placeholder_unsup);
 
   if (subint == 0)
     {
@@ -1978,11 +1882,10 @@ done:
 
 VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (ethernet_sw_interface_up_down);
 
-
 #ifndef CLIB_MARCH_VARIANT
 // Set the L2/L3 mode for the subinterface
 void
-ethernet_sw_interface_set_l2_mode (vnet_main_t * vnm, u32 sw_if_index, u32 l2)
+ethernet_sw_interface_set_l2_mode (vnet_main_t *vnm, u32 sw_if_index, u32 l2)
 {
   subint_config_t *subint;
   u32 placeholder_flags;
@@ -1993,9 +1896,8 @@ ethernet_sw_interface_set_l2_mode (vnet_main_t * vnm, u32 sw_if_index, u32 l2)
   is_port = !(sw->type == VNET_SW_INTERFACE_TYPE_SUB);
 
   // Find the config for this subinterface
-  subint =
-    ethernet_sw_interface_get_config (vnm, sw_if_index, &placeholder_flags,
-				      &placeholder_unsup);
+  subint = ethernet_sw_interface_get_config (
+    vnm, sw_if_index, &placeholder_flags, &placeholder_unsup);
 
   if (subint == 0)
     {
@@ -2003,24 +1905,25 @@ ethernet_sw_interface_set_l2_mode (vnet_main_t * vnm, u32 sw_if_index, u32 l2)
       goto done;
     }
 
-  // Double check that the config we found is for our interface (or the interface is down)
+  // Double check that the config we found is for our interface (or the
+  // interface is down)
   ASSERT ((subint->sw_if_index == sw_if_index) | (subint->sw_if_index == ~0));
 
   if (l2)
     {
       subint->flags |= SUBINT_CONFIG_L2;
       if (is_port)
-	subint->flags |=
-	  SUBINT_CONFIG_MATCH_0_TAG | SUBINT_CONFIG_MATCH_1_TAG
-	  | SUBINT_CONFIG_MATCH_2_TAG | SUBINT_CONFIG_MATCH_3_TAG;
+	subint->flags |= SUBINT_CONFIG_MATCH_0_TAG |
+			 SUBINT_CONFIG_MATCH_1_TAG |
+			 SUBINT_CONFIG_MATCH_2_TAG | SUBINT_CONFIG_MATCH_3_TAG;
     }
   else
     {
       subint->flags &= ~SUBINT_CONFIG_L2;
       if (is_port)
 	subint->flags &=
-	  ~(SUBINT_CONFIG_MATCH_1_TAG | SUBINT_CONFIG_MATCH_2_TAG
-	    | SUBINT_CONFIG_MATCH_3_TAG);
+	  ~(SUBINT_CONFIG_MATCH_1_TAG | SUBINT_CONFIG_MATCH_2_TAG |
+	    SUBINT_CONFIG_MATCH_3_TAG);
     }
 
 done:
@@ -2031,17 +1934,16 @@ done:
  * Set the L2/L3 mode for the subinterface regardless of port
  */
 void
-ethernet_sw_interface_set_l2_mode_noport (vnet_main_t * vnm,
-					  u32 sw_if_index, u32 l2)
+ethernet_sw_interface_set_l2_mode_noport (vnet_main_t *vnm, u32 sw_if_index,
+					  u32 l2)
 {
   subint_config_t *subint;
   u32 placeholder_flags;
   u32 placeholder_unsup;
 
   /* Find the config for this subinterface */
-  subint =
-    ethernet_sw_interface_get_config (vnm, sw_if_index, &placeholder_flags,
-				      &placeholder_unsup);
+  subint = ethernet_sw_interface_get_config (
+    vnm, sw_if_index, &placeholder_flags, &placeholder_unsup);
 
   if (subint == 0)
     {
@@ -2070,8 +1972,8 @@ done:
 #endif
 
 static clib_error_t *
-ethernet_sw_interface_add_del (vnet_main_t * vnm,
-			       u32 sw_if_index, u32 is_create)
+ethernet_sw_interface_add_del (vnet_main_t *vnm, u32 sw_if_index,
+			       u32 is_create)
 {
   clib_error_t *error = 0;
   subint_config_t *subint;
@@ -2079,9 +1981,8 @@ ethernet_sw_interface_add_del (vnet_main_t * vnm,
   u32 unsupported = 0;
 
   // Find the config for this subinterface
-  subint =
-    ethernet_sw_interface_get_config (vnm, sw_if_index, &match_flags,
-				      &unsupported);
+  subint = ethernet_sw_interface_get_config (vnm, sw_if_index, &match_flags,
+					     &unsupported);
 
   if (subint == 0)
     {
@@ -2110,7 +2011,7 @@ ethernet_sw_interface_add_del (vnet_main_t * vnm,
     {
       // Note that config is L3 by default
       subint->flags = SUBINT_CONFIG_VALID | match_flags;
-      subint->sw_if_index = ~0;	// because interfaces are initially down
+      subint->sw_if_index = ~0; // because interfaces are initially down
     }
 
 done:
@@ -2120,7 +2021,7 @@ done:
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ethernet_sw_interface_add_del);
 
 static char *ethernet_error_strings[] = {
-#define ethernet_error(n,c,s) s,
+#define ethernet_error(n, c, s) s,
 #include "error.def"
 #undef ethernet_error
 };
@@ -2135,7 +2036,7 @@ VLIB_REGISTER_NODE (ethernet_input_node) = {
   .error_strings = ethernet_error_strings,
   .n_next_nodes = ETHERNET_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [ETHERNET_INPUT_NEXT_##s] = n,
+#define _(s, n) [ETHERNET_INPUT_NEXT_##s] = n,
     foreach_ethernet_input_next
 #undef _
   },
@@ -2150,7 +2051,7 @@ VLIB_REGISTER_NODE (ethernet_input_type_node) = {
   .vector_size = sizeof (u32),
   .n_next_nodes = ETHERNET_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [ETHERNET_INPUT_NEXT_##s] = n,
+#define _(s, n) [ETHERNET_INPUT_NEXT_##s] = n,
     foreach_ethernet_input_next
 #undef _
   },
@@ -2162,7 +2063,7 @@ VLIB_REGISTER_NODE (ethernet_input_not_l2_node) = {
   .vector_size = sizeof (u32),
   .n_next_nodes = ETHERNET_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [ETHERNET_INPUT_NEXT_##s] = n,
+#define _(s, n) [ETHERNET_INPUT_NEXT_##s] = n,
     foreach_ethernet_input_next
 #undef _
   },
@@ -2171,26 +2072,25 @@ VLIB_REGISTER_NODE (ethernet_input_not_l2_node) = {
 
 #ifndef CLIB_MARCH_VARIANT
 void
-ethernet_set_rx_redirect (vnet_main_t * vnm,
-			  vnet_hw_interface_t * hi, u32 enable)
+ethernet_set_rx_redirect (vnet_main_t *vnm, vnet_hw_interface_t *hi,
+			  u32 enable)
 {
   // Insure all packets go to ethernet-input (i.e. untagged ipv4 packets
   // don't go directly to ip4-input)
-  vnet_hw_interface_rx_redirect_to_node
-    (vnm, hi->hw_if_index, enable ? ethernet_input_node.index : ~0);
+  vnet_hw_interface_rx_redirect_to_node (
+    vnm, hi->hw_if_index, enable ? ethernet_input_node.index : ~0);
 }
-
 
 /*
  * Initialization and registration for the next_by_ethernet structure
  */
 
 clib_error_t *
-next_by_ethertype_init (next_by_ethertype_t * l3_next)
+next_by_ethertype_init (next_by_ethertype_t *l3_next)
 {
-  l3_next->input_next_by_type = sparse_vec_new
-    ( /* elt bytes */ sizeof (l3_next->input_next_by_type[0]),
-     /* bits in index */ BITS (((ethernet_header_t *) 0)->type));
+  l3_next->input_next_by_type = sparse_vec_new (
+    /* elt bytes */ sizeof (l3_next->input_next_by_type[0]),
+    /* bits in index */ BITS (((ethernet_header_t *) 0)->type));
 
   vec_validate (l3_next->sparse_index_by_input_next_index,
 		ETHERNET_INPUT_NEXT_DROP);
@@ -2216,8 +2116,8 @@ next_by_ethertype_init (next_by_ethertype_t * l3_next)
 
 // Add an ethertype -> next index mapping to the structure
 clib_error_t *
-next_by_ethertype_register (next_by_ethertype_t * l3_next,
-			    u32 ethertype, u32 next_index)
+next_by_ethertype_register (next_by_ethertype_t *l3_next, u32 ethertype,
+			    u32 next_index)
 {
   u32 i;
   u16 *n;
@@ -2237,8 +2137,8 @@ next_by_ethertype_register (next_by_ethertype_t * l3_next,
      is updated. */
   vec_validate (l3_next->sparse_index_by_input_next_index, next_index);
   for (i = 1; i < vec_len (l3_next->input_next_by_type); i++)
-    l3_next->
-      sparse_index_by_input_next_index[l3_next->input_next_by_type[i]] = i;
+    l3_next->sparse_index_by_input_next_index[l3_next->input_next_by_type[i]] =
+      i;
 
   // do not allow the cached next index's to be updated if L3
   // redirect is enabled, as it will have overwritten them
@@ -2262,7 +2162,7 @@ next_by_ethertype_register (next_by_ethertype_t * l3_next,
 }
 
 void
-ethernet_input_init (vlib_main_t * vm, ethernet_main_t * em)
+ethernet_input_init (vlib_main_t *vm, ethernet_main_t *em)
 {
   __attribute__ ((unused)) vlan_table_t *invalid_vlan_table;
   __attribute__ ((unused)) qinq_table_t *invalid_qinq_table;
@@ -2274,19 +2174,19 @@ ethernet_input_init (vlib_main_t * vm, ethernet_main_t * em)
   next_by_ethertype_init (&em->l3_next);
 
   // Initialize pools and vector for vlan parsing
-  vec_validate (em->main_intfs, 10);	// 10 main interfaces
+  vec_validate (em->main_intfs, 10); // 10 main interfaces
   pool_alloc (em->vlan_pool, 10);
   pool_alloc (em->qinq_pool, 1);
 
   // The first vlan pool will always be reserved for an invalid table
-  pool_get (em->vlan_pool, invalid_vlan_table);	// first id = 0
+  pool_get (em->vlan_pool, invalid_vlan_table); // first id = 0
   // The first qinq pool will always be reserved for an invalid table
-  pool_get (em->qinq_pool, invalid_qinq_table);	// first id = 0
+  pool_get (em->qinq_pool, invalid_qinq_table); // first id = 0
 }
 
 void
-ethernet_register_input_type (vlib_main_t * vm,
-			      ethernet_type_t type, u32 node_index)
+ethernet_register_input_type (vlib_main_t *vm, ethernet_type_t type,
+			      u32 node_index)
 {
   ethernet_main_t *em = &ethernet_main;
   ethernet_type_info_t *ti;
@@ -2305,8 +2205,8 @@ ethernet_register_input_type (vlib_main_t * vm,
       return;
     }
   ti->node_index = node_index;
-  ti->next_index = vlib_node_add_next (vm,
-				       ethernet_input_node.index, node_index);
+  ti->next_index =
+    vlib_node_add_next (vm, ethernet_input_node.index, node_index);
   i = vlib_node_add_next (vm, ethernet_input_type_node.index, node_index);
   ASSERT (i == ti->next_index);
 
@@ -2321,13 +2221,12 @@ ethernet_register_input_type (vlib_main_t * vm,
 }
 
 void
-ethernet_register_l2_input (vlib_main_t * vm, u32 node_index)
+ethernet_register_l2_input (vlib_main_t *vm, u32 node_index)
 {
   ethernet_main_t *em = &ethernet_main;
   u32 i;
 
-  em->l2_next =
-    vlib_node_add_next (vm, ethernet_input_node.index, node_index);
+  em->l2_next = vlib_node_add_next (vm, ethernet_input_node.index, node_index);
 
   /*
    * Even if we never use these arcs, we have to align the next indices...
@@ -2342,15 +2241,14 @@ ethernet_register_l2_input (vlib_main_t * vm, u32 node_index)
 
 // Register a next node for L3 redirect, and enable L3 redirect
 void
-ethernet_register_l3_redirect (vlib_main_t * vm, u32 node_index)
+ethernet_register_l3_redirect (vlib_main_t *vm, u32 node_index)
 {
   ethernet_main_t *em = &ethernet_main;
   u32 i;
 
   em->redirect_l3 = 1;
-  em->redirect_l3_next = vlib_node_add_next (vm,
-					     ethernet_input_node.index,
-					     node_index);
+  em->redirect_l3_next =
+    vlib_node_add_next (vm, ethernet_input_node.index, node_index);
   /*
    * Change the cached next nodes to the redirect node
    */
@@ -2375,6 +2273,4 @@ ethernet_register_l3_redirect (vlib_main_t * vm, u32 node_index)
  * fd.io coding-style-patch-verification: ON
  *
  * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+ * eva

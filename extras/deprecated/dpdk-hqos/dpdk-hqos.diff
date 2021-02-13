@@ -100,7 +100,7 @@ index 416d97360..0f771c6ba 100644
  		  vlib_cli_command_t * cmd)
 @@ -408,1308 +353,6 @@ VLIB_CLI_COMMAND (cmd_set_dpdk_if_desc,static) = {
  };
- /* *INDENT-ON* */
+
  
 -#if 0
 -static int
@@ -166,13 +166,13 @@ index 416d97360..0f771c6ba 100644
 - *   GigabitEthernet0/9/0 queue 0
 - * @cliexend
 -?*/
--/* *INDENT-OFF* */
+-
 -VLIB_CLI_COMMAND (cmd_show_dpdk_if_hqos_placement, static) = {
 -  .path = "show dpdk interface hqos placement",
 -  .short_help = "show dpdk interface hqos placement",
 -  .function = show_dpdk_if_hqos_placement,
 -};
--/* *INDENT-ON* */
+-
 -
 -static clib_error_t *
 -set_dpdk_if_hqos_placement (vlib_main_t * vm, unformat_input_t * input,
@@ -271,13 +271,13 @@ index 416d97360..0f771c6ba 100644
 - * Example of how to assign a DPDK output interface and HQoS queue to a thread:
 - * @cliexcmd{set dpdk interface hqos placement GigabitEthernet0/8/0 thread 2}
 -?*/
--/* *INDENT-OFF* */
+-
 -VLIB_CLI_COMMAND (cmd_set_dpdk_if_hqos_placement, static) = {
 -  .path = "set dpdk interface hqos placement",
 -  .short_help = "set dpdk interface hqos placement <interface> thread <n>",
 -  .function = set_dpdk_if_hqos_placement,
 -};
--/* *INDENT-ON* */
+-
 -
 -static clib_error_t *
 -set_dpdk_if_hqos_pipe (vlib_main_t * vm, unformat_input_t * input,
@@ -357,7 +357,7 @@ index 416d97360..0f771c6ba 100644
 - * Example of how to assign a new profile to a HQoS pipe:
 - * @cliexcmd{set dpdk interface hqos pipe GigabitEthernet0/8/0 subport 0 pipe 2 profile 1}
 -?*/
--/* *INDENT-OFF* */
+-
 -VLIB_CLI_COMMAND (cmd_set_dpdk_if_hqos_pipe, static) =
 -{
 -  .path = "set dpdk interface hqos pipe",
@@ -365,7 +365,7 @@ index 416d97360..0f771c6ba 100644
 -                  "profile <profile_id>",
 -  .function = set_dpdk_if_hqos_pipe,
 -};
--/* *INDENT-ON* */
+-
 -
 -static clib_error_t *
 -set_dpdk_if_hqos_subport (vlib_main_t * vm, unformat_input_t * input,
@@ -495,7 +495,7 @@ index 416d97360..0f771c6ba 100644
 - * Example of how modify the subport attributes for a 1GbE link:
 - * @cliexcmd{set dpdk interface hqos subport GigabitEthernet0/8/0 subport 0 rate 125000000}
 -?*/
--/* *INDENT-OFF* */
+-
 -VLIB_CLI_COMMAND (cmd_set_dpdk_if_hqos_subport, static) = {
 -  .path = "set dpdk interface hqos subport",
 -  .short_help = "set dpdk interface hqos subport <interface> subport <subport_id> "
@@ -503,7 +503,7 @@ index 416d97360..0f771c6ba 100644
 -                 "[period <n>]",
 -  .function = set_dpdk_if_hqos_subport,
 -};
--/* *INDENT-ON* */
+-
 -
 -static clib_error_t *
 -set_dpdk_if_hqos_tctbl (vlib_main_t * vm, unformat_input_t * input,
@@ -612,13 +612,13 @@ index 416d97360..0f771c6ba 100644
 - * Example of how modify the traffic class translation table:
 - * @cliexcmd{set dpdk interface hqos tctbl GigabitEthernet0/8/0 entry 16 tc 2 queue 2}
 -?*/
--/* *INDENT-OFF* */
+-
 -VLIB_CLI_COMMAND (cmd_set_dpdk_if_hqos_tctbl, static) = {
 -  .path = "set dpdk interface hqos tctbl",
 -  .short_help = "set dpdk interface hqos tctbl <interface> entry <map_val> tc <tc_id> queue <queue_id>",
 -  .function = set_dpdk_if_hqos_tctbl,
 -};
--/* *INDENT-ON* */
+-
 -
 -static clib_error_t *
 -set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
@@ -835,14 +835,14 @@ index 416d97360..0f771c6ba 100644
 - * Example of how modify the '<em>pipe</em>' classification filter to match VLAN:
 - * @cliexcmd{set dpdk interface hqos pktfield GigabitEthernet0/8/0 id pipe offset 8 mask 0000000000000FFF}
 -?*/
--/* *INDENT-OFF* */
+-
 -VLIB_CLI_COMMAND (cmd_set_dpdk_if_hqos_pktfield, static) = {
 -  .path = "set dpdk interface hqos pktfield",
 -  .short_help = "set dpdk interface hqos pktfield <interface> id subport|pipe|tc offset <n> "
 -                 "mask <hex-mask>",
 -  .function = set_dpdk_if_hqos_pktfield,
 -};
--/* *INDENT-ON* */
+-
 -
 -static clib_error_t *
 -show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
@@ -1235,14 +1235,14 @@ index 416d97360..0f771c6ba 100644
 - *    TC3 WRR weights: Q0 = 1, Q1 = 1, Q2 = 1, Q3 = 1
 - * @cliexend
 -?*/
--/* *INDENT-OFF* */
+-
 -VLIB_CLI_COMMAND (cmd_show_dpdk_if_hqos, static) = {
 -  .path = "show dpdk interface hqos",
 -  .short_help = "show dpdk interface hqos <interface>",
 -  .function = show_dpdk_if_hqos,
 -};
 -
--/* *INDENT-ON* */
+-
 -
 -static clib_error_t *
 -show_dpdk_hqos_queue_stats (vlib_main_t * vm, unformat_input_t * input,
@@ -1395,13 +1395,13 @@ index 416d97360..0f771c6ba 100644
 - *       Bytes dropped             0
 - * @cliexend
 -?*/
--/* *INDENT-OFF* */
+-
 -VLIB_CLI_COMMAND (cmd_show_dpdk_hqos_queue_stats, static) = {
 -  .path = "show dpdk hqos queue",
 -  .short_help = "show dpdk hqos queue <interface> subport <subport_id> pipe <pipe_id> tc <tc_id> tc_q <queue_id>",
 -  .function = show_dpdk_hqos_queue_stats,
 -};
--/* *INDENT-ON* */
+-
 -#endif
 -
  static clib_error_t *

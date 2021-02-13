@@ -33,7 +33,7 @@ typedef struct
 plugin_info_t *plugin_info;
 
 static int
-load_one_plugin (plugin_info_t * pi)
+load_one_plugin (plugin_info_t *pi)
 {
   void *handle, *register_handle;
   clib_error_t *(*fp) (void);
@@ -139,8 +139,8 @@ vat2_load_plugins (char *path, char *filter, int *loaded)
 		  goto next;
 	    }
 
-	  plugin_name = format (0, "%s/%s%c", plugin_path[i],
-				entry->d_name, 0);
+	  plugin_name =
+	    format (0, "%s/%s%c", plugin_path[i], entry->d_name, 0);
 
 	  /* unreadable */
 	  if (stat ((char *) plugin_name, &statb) < 0)
@@ -173,8 +173,7 @@ vat2_load_plugins (char *path, char *filter, int *loaded)
 			    pi - plugin_info);
 	      *loaded = *loaded + 1;
 	    }
-	next:
-	  ;
+	next:;
 	}
       closedir (dp);
       vec_free (plugin_path[i]);
@@ -184,7 +183,7 @@ vat2_load_plugins (char *path, char *filter, int *loaded)
 }
 
 #define QUOTE_(x) #x
-#define QUOTE(x) QUOTE_(x)
+#define QUOTE(x)  QUOTE_ (x)
 
 /*
  * fd.io coding-style-patch-verification: ON

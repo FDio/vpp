@@ -58,15 +58,15 @@ typedef struct
     u16 raw_flags;
     struct
     {
-      u16 no_tags:1;
-      u16 one_tag:1;
-      u16 two_tags:1;
+      u16 no_tags : 1;
+      u16 one_tag : 1;
+      u16 two_tags : 1;
       /* 0 = dot1q, 1=dot1ad */
-      u16 sub_dot1ad:1;
-      u16 sub_exact_match:1;
-      u16 sub_default:1;
-      u16 sub_outer_vlan_id_any:1;
-      u16 sub_inner_vlan_id_any:1;
+      u16 sub_dot1ad : 1;
+      u16 sub_exact_match : 1;
+      u16 sub_default : 1;
+      u16 sub_outer_vlan_id_any : 1;
+      u16 sub_inner_vlan_id_any : 1;
     };
   };
 
@@ -238,30 +238,30 @@ typedef struct
 
 extern vat_main_t vat_main;
 
-void vat_suspend (vlib_main_t * vm, f64 interval);
-f64 vat_time_now (vat_main_t * vam);
+void vat_suspend (vlib_main_t *vm, f64 interval);
+f64 vat_time_now (vat_main_t *vam);
 void errmsg (char *fmt, ...);
-void vat_api_hookup (vat_main_t * vam);
-int api_sw_interface_dump (vat_main_t * vam);
-void do_one_file (vat_main_t * vam);
-int exec (vat_main_t * vam);
+void vat_api_hookup (vat_main_t *vam);
+int api_sw_interface_dump (vat_main_t *vam);
+void do_one_file (vat_main_t *vam);
+int exec (vat_main_t *vam);
 
 /* Plugin API library functions */
 extern char *vat_plugin_path;
 extern char *vat_plugin_name_filter;
 void vat_plugin_api_reference (void);
-uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
-uword unformat_ip4_address (unformat_input_t * input, va_list * args);
-uword unformat_ethernet_address (unformat_input_t * input, va_list * args);
-uword unformat_ethernet_type_host_byte_order (unformat_input_t * input,
-					      va_list * args);
-uword unformat_ip6_address (unformat_input_t * input, va_list * args);
-u8 *format_ip4_address (u8 * s, va_list * args);
-u8 *format_ip6_address (u8 * s, va_list * args);
-u8 *format_ip46_address (u8 * s, va_list * args);
-u8 *format_ethernet_address (u8 * s, va_list * args);
+uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
+uword unformat_ip4_address (unformat_input_t *input, va_list *args);
+uword unformat_ethernet_address (unformat_input_t *input, va_list *args);
+uword unformat_ethernet_type_host_byte_order (unformat_input_t *input,
+					      va_list *args);
+uword unformat_ip6_address (unformat_input_t *input, va_list *args);
+u8 *format_ip4_address (u8 *s, va_list *args);
+u8 *format_ip6_address (u8 *s, va_list *args);
+u8 *format_ip46_address (u8 *s, va_list *args);
+u8 *format_ethernet_address (u8 *s, va_list *args);
 
-int vat_socket_connect (vat_main_t * vam);
+int vat_socket_connect (vat_main_t *vam);
 
 #if VPP_API_TEST_BUILTIN
 #define print api_cli_output
@@ -271,30 +271,26 @@ void api_cli_output (void *, const char *fmt, ...);
 void fformat_append_cr (FILE *, const char *fmt, ...);
 #endif
 
-
-typedef clib_error_t *(vat_feature_function_t) (vat_main_t * vam);
+typedef clib_error_t *(vat_feature_function_t) (vat_main_t *vam);
 typedef struct vat_registered_features_t
 {
   vat_feature_function_t *function;
   struct vat_registered_features_t *next;
 } vat_registered_features_t;
 
-
-#define VAT_REGISTER_FEATURE_FUNCTION(x)                               \
-    vat_registered_features_t _vat_feature_function_##x;               \
-static void __vlib_add_config_function_##x (void)                      \
-    __attribute__((__constructor__)) ;                                 \
-static void __vlib_add_config_function_##x (void)                      \
-{                                                                      \
-  vat_main_t * vam = &vat_main;                                                \
-  _vat_feature_function_##x.next = vam->feature_function_registrations;        \
-  vam->feature_function_registrations = &_vat_feature_function_##x;    \
-}                                                                      \
- vat_registered_features_t _vat_feature_function_##x =		       \
-   {								       \
-    .function = x,						       \
-   }
-
+#define VAT_REGISTER_FEATURE_FUNCTION(x)                                      \
+  vat_registered_features_t _vat_feature_function_##x;                        \
+  static void __vlib_add_config_function_##x (void)                           \
+    __attribute__ ((__constructor__));                                        \
+  static void __vlib_add_config_function_##x (void)                           \
+  {                                                                           \
+    vat_main_t *vam = &vat_main;                                              \
+    _vat_feature_function_##x.next = vam->feature_function_registrations;     \
+    vam->feature_function_registrations = &_vat_feature_function_##x;         \
+  }                                                                           \
+  vat_registered_features_t _vat_feature_function_##x = {                     \
+    .function = x,                                                            \
+  }
 
 #endif /* __included_vat_h__ */
 

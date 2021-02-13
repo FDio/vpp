@@ -37,7 +37,7 @@
  * @return  src_fib_index   The index/ID of the SRC FIB created.
  */
 static u32
-ip_dst_fib_add_route (u32 dst_fib_index, const ip_prefix_t * dst_prefix)
+ip_dst_fib_add_route (u32 dst_fib_index, const ip_prefix_t *dst_prefix)
 {
   fib_node_index_t src_fib_index;
   fib_prefix_t dst_fib_prefix;
@@ -62,44 +62,35 @@ ip_dst_fib_add_route (u32 dst_fib_index, const ip_prefix_t * dst_prefix)
       dpo_id_t src_lkup_dpo = DPO_INVALID;
 
       /* create a new src FIB.  */
-      src_fib_index =
-	fib_table_create_and_lock (dst_fib_prefix.fp_proto,
-				   FIB_SOURCE_LISP,
-				   "LISP-src for [%d,%U]",
-				   dst_fib_index,
-				   format_fib_prefix, &dst_fib_prefix);
+      src_fib_index = fib_table_create_and_lock (
+	dst_fib_prefix.fp_proto, FIB_SOURCE_LISP, "LISP-src for [%d,%U]",
+	dst_fib_index, format_fib_prefix, &dst_fib_prefix);
       /*
        * add src fib default route
        */
       fib_prefix_t prefix = {
 	.fp_proto = dst_fib_prefix.fp_proto,
       };
-      fib_table_entry_special_dpo_add (src_fib_index, &prefix,
-				       FIB_SOURCE_LISP,
-				       FIB_ENTRY_FLAG_EXCLUSIVE,
-				       lisp_cp_dpo_get (fib_proto_to_dpo
-							(dst_fib_prefix.fp_proto)));
+      fib_table_entry_special_dpo_add (
+	src_fib_index, &prefix, FIB_SOURCE_LISP, FIB_ENTRY_FLAG_EXCLUSIVE,
+	lisp_cp_dpo_get (fib_proto_to_dpo (dst_fib_prefix.fp_proto)));
       /*
        * create a data-path object to perform the source address lookup
        * in the SRC FIB
        */
-      lookup_dpo_add_or_lock_w_fib_index (src_fib_index,
-					  (ip_prefix_version (dst_prefix) ==
-					   AF_IP6 ? DPO_PROTO_IP6 :
-					   DPO_PROTO_IP4),
-					  LOOKUP_UNICAST,
-					  LOOKUP_INPUT_SRC_ADDR,
-					  LOOKUP_TABLE_FROM_CONFIG,
-					  &src_lkup_dpo);
+      lookup_dpo_add_or_lock_w_fib_index (
+	src_fib_index,
+	(ip_prefix_version (dst_prefix) == AF_IP6 ? DPO_PROTO_IP6 :
+						    DPO_PROTO_IP4),
+	LOOKUP_UNICAST, LOOKUP_INPUT_SRC_ADDR, LOOKUP_TABLE_FROM_CONFIG,
+	&src_lkup_dpo);
 
       /*
        * add the entry to the destination FIB that uses the lookup DPO
        */
-      dst_fei = fib_table_entry_special_dpo_add (dst_fib_index,
-						 &dst_fib_prefix,
-						 FIB_SOURCE_LISP,
-						 FIB_ENTRY_FLAG_EXCLUSIVE,
-						 &src_lkup_dpo);
+      dst_fei = fib_table_entry_special_dpo_add (
+	dst_fib_index, &dst_fib_prefix, FIB_SOURCE_LISP,
+	FIB_ENTRY_FLAG_EXCLUSIVE, &src_lkup_dpo);
 
       /*
        * the DPO is locked by the FIB entry, and we have no further
@@ -118,8 +109,8 @@ ip_dst_fib_add_route (u32 dst_fib_index, const ip_prefix_t * dst_prefix)
       /*
        * destination FIB entry already present
        */
-      src_fib_index = *(u32 *) fib_entry_get_source_data (dst_fei,
-							  FIB_SOURCE_LISP);
+      src_fib_index =
+	*(u32 *) fib_entry_get_source_data (dst_fei, FIB_SOURCE_LISP);
     }
 
   return (src_fib_index);
@@ -136,9 +127,8 @@ ip_dst_fib_add_route (u32 dst_fib_index, const ip_prefix_t * dst_prefix)
  * @param[in]   dst_prefix      Destination IP prefix.
  */
 static void
-ip_src_dst_fib_del_route (u32 src_fib_index,
-			  const ip_prefix_t * src_prefix,
-			  u32 dst_fib_index, const ip_prefix_t * dst_prefix)
+ip_src_dst_fib_del_route (u32 src_fib_index, const ip_prefix_t *src_prefix,
+			  u32 dst_fib_index, const ip_prefix_t *dst_prefix)
 {
   fib_prefix_t dst_fib_prefix, src_fib_prefix;
   u8 have_default = 0;
@@ -153,17 +143,14 @@ ip_src_dst_fib_del_route (u32 src_fib_index,
   fib_table_entry_delete (src_fib_index, &src_fib_prefix, FIB_SOURCE_LISP);
 
   /* check if only default left or empty */
-  fib_prefix_t default_pref = {
-    .fp_proto = dst_fib_prefix.fp_proto
-  };
+  fib_prefix_t default_pref = { .fp_proto = dst_fib_prefix.fp_proto };
 
-  if (fib_table_lookup_exact_match (src_fib_index,
-				    &default_pref) != FIB_NODE_INDEX_INVALID)
+  if (fib_table_lookup_exact_match (src_fib_index, &default_pref) !=
+      FIB_NODE_INDEX_INVALID)
     have_default = 1;
 
-  n_entries = fib_table_get_num_entries (src_fib_index,
-					 src_fib_prefix.fp_proto,
-					 FIB_SOURCE_LISP);
+  n_entries = fib_table_get_num_entries (
+    src_fib_index, src_fib_prefix.fp_proto, FIB_SOURCE_LISP);
   if (n_entries == 0 || (have_default && n_entries == 1))
     {
       /*
@@ -177,8 +164,8 @@ ip_src_dst_fib_del_route (u32 src_fib_index,
        * there's nothing left now, unlock the source FIB and the
        * destination route
        */
-      fib_table_entry_special_remove (dst_fib_index,
-				      &dst_fib_prefix, FIB_SOURCE_LISP);
+      fib_table_entry_special_remove (dst_fib_index, &dst_fib_prefix,
+				      FIB_SOURCE_LISP);
       fib_table_unlock (src_fib_index, src_fib_prefix.fp_proto,
 			FIB_SOURCE_LISP);
     }
@@ -197,9 +184,8 @@ ip_src_dst_fib_del_route (u32 src_fib_index,
  * @return fib index of the inserted prefix
  */
 static fib_node_index_t
-ip_src_fib_add_route_w_dpo (u32 src_fib_index,
-			    const ip_prefix_t * src_prefix,
-			    const dpo_id_t * src_dpo)
+ip_src_fib_add_route_w_dpo (u32 src_fib_index, const ip_prefix_t *src_prefix,
+			    const dpo_id_t *src_dpo)
 {
   fib_node_index_t fei = ~0;
   fib_prefix_t src_fib_prefix;
@@ -216,17 +202,15 @@ ip_src_fib_add_route_w_dpo (u32 src_fib_index,
   if (FIB_NODE_INDEX_INVALID == src_fei ||
       !fib_entry_is_sourced (src_fei, FIB_SOURCE_LISP))
     {
-      fei = fib_table_entry_special_dpo_add (src_fib_index,
-					     &src_fib_prefix,
-					     FIB_SOURCE_LISP,
-					     FIB_ENTRY_FLAG_EXCLUSIVE,
-					     src_dpo);
+      fei = fib_table_entry_special_dpo_add (
+	src_fib_index, &src_fib_prefix, FIB_SOURCE_LISP,
+	FIB_ENTRY_FLAG_EXCLUSIVE, src_dpo);
     }
   return fei;
 }
 
 static fib_route_path_t *
-lisp_gpe_mk_fib_paths (const lisp_fwd_path_t * paths)
+lisp_gpe_mk_fib_paths (const lisp_fwd_path_t *paths)
 {
   const lisp_gpe_adjacency_t *ladj;
   fib_route_path_t *rpaths = NULL;
@@ -239,18 +223,18 @@ lisp_gpe_mk_fib_paths (const lisp_fwd_path_t * paths)
   best_priority = paths[0].priority;
 
   vec_foreach_index (ii, paths)
-  {
-    if (paths[0].priority != best_priority)
-      break;
+    {
+      if (paths[0].priority != best_priority)
+	break;
 
-    ladj = lisp_gpe_adjacency_get (paths[ii].lisp_adj);
+      ladj = lisp_gpe_adjacency_get (paths[ii].lisp_adj);
 
-    fp = ip_address_to_46 (&ladj->remote_rloc, &rpaths[ii].frp_addr);
+      fp = ip_address_to_46 (&ladj->remote_rloc, &rpaths[ii].frp_addr);
 
-    rpaths[ii].frp_proto = fib_proto_to_dpo (fp);
-    rpaths[ii].frp_sw_if_index = ladj->sw_if_index;
-    rpaths[ii].frp_weight = (paths[ii].weight ? paths[ii].weight : 1);
-  }
+      rpaths[ii].frp_proto = fib_proto_to_dpo (fp);
+      rpaths[ii].frp_sw_if_index = ladj->sw_if_index;
+      rpaths[ii].frp_weight = (paths[ii].weight ? paths[ii].weight : 1);
+    }
 
   ASSERT (0 != vec_len (rpaths));
 
@@ -268,9 +252,8 @@ lisp_gpe_mk_fib_paths (const lisp_fwd_path_t * paths)
  *                              load balance
  */
 static fib_node_index_t
-ip_src_fib_add_route (u32 src_fib_index,
-		      const ip_prefix_t * src_prefix,
-		      const lisp_fwd_path_t * paths)
+ip_src_fib_add_route (u32 src_fib_index, const ip_prefix_t *src_prefix,
+		      const lisp_fwd_path_t *paths)
 {
   fib_prefix_t src_fib_prefix;
   fib_route_path_t *rpaths;
@@ -287,7 +270,7 @@ ip_src_fib_add_route (u32 src_fib_index,
 }
 
 static void
-gpe_native_fwd_add_del_lfe (lisp_gpe_fwd_entry_t * lfe, u8 is_add)
+gpe_native_fwd_add_del_lfe (lisp_gpe_fwd_entry_t *lfe, u8 is_add)
 {
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
   u8 found = 0, ip_version;
@@ -296,14 +279,14 @@ gpe_native_fwd_add_del_lfe (lisp_gpe_fwd_entry_t * lfe, u8 is_add)
 
   new_lfei = lfe - lgm->lisp_fwd_entry_pool;
   vec_foreach (lfei, lgm->native_fwd_lfes[ip_version])
-  {
-    lfe = pool_elt_at_index (lgm->lisp_fwd_entry_pool, lfei[0]);
-    if (lfei[0] == new_lfei)
-      {
-	found = 1;
-	break;
-      }
-  }
+    {
+      lfe = pool_elt_at_index (lgm->lisp_fwd_entry_pool, lfei[0]);
+      if (lfei[0] == new_lfei)
+	{
+	  found = 1;
+	  break;
+	}
+    }
 
   if (is_add)
     {
@@ -318,7 +301,7 @@ gpe_native_fwd_add_del_lfe (lisp_gpe_fwd_entry_t * lfe, u8 is_add)
 }
 
 static index_t
-create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
+create_fib_entries (lisp_gpe_fwd_entry_t *lfe)
 {
   fib_node_index_t fi;
   fib_entry_t *fe;
@@ -331,8 +314,8 @@ create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 
   if (lfe->is_src_dst)
     {
-      lfe->src_fib_index = ip_dst_fib_add_route (lfe->eid_fib_index,
-						 &lfe->key->rmt.ippref);
+      lfe->src_fib_index =
+	ip_dst_fib_add_route (lfe->eid_fib_index, &lfe->key->rmt.ippref);
       memcpy (&ippref, &lfe->key->lcl.ippref, sizeof (ippref));
     }
   else
@@ -352,10 +335,9 @@ create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 	  if (vec_len (lgm->native_fwd_rpath[ip_version]))
 	    {
 	      ip_prefix_to_fib_prefix (&lfe->key->rmt.ippref, &fib_prefix);
-	      fi = fib_table_entry_update (lfe->eid_fib_index, &fib_prefix,
-					   FIB_SOURCE_LISP,
-					   FIB_ENTRY_FLAG_NONE,
-					   lgm->native_fwd_rpath[ip_version]);
+	      fi = fib_table_entry_update (
+		lfe->eid_fib_index, &fib_prefix, FIB_SOURCE_LISP,
+		FIB_ENTRY_FLAG_NONE, lgm->native_fwd_rpath[ip_version]);
 	      gpe_native_fwd_add_del_lfe (lfe, 1);
 	      goto done;
 	    }
@@ -366,7 +348,8 @@ create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 	  dpo_copy (&dpo, lisp_cp_dpo_get (dproto));
 	  break;
 	case LISP_DROP:
-	  /* for drop fwd entries, just add route, no need to add encap tunnel */
+	  /* for drop fwd entries, just add route, no need to add encap tunnel
+	   */
 	  dpo_copy (&dpo, drop_dpo_get (dproto));
 	  break;
 	}
@@ -383,13 +366,12 @@ done:
 }
 
 static void
-delete_fib_entries (lisp_gpe_fwd_entry_t * lfe)
+delete_fib_entries (lisp_gpe_fwd_entry_t *lfe)
 {
   fib_prefix_t dst_fib_prefix;
 
   if (lfe->is_src_dst)
-    ip_src_dst_fib_del_route (lfe->src_fib_index,
-			      &lfe->key->lcl.ippref,
+    ip_src_dst_fib_del_route (lfe->src_fib_index, &lfe->key->lcl.ippref,
 			      lfe->eid_fib_index, &lfe->key->rmt.ippref);
   else
     {
@@ -401,9 +383,9 @@ delete_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 }
 
 static lisp_gpe_fwd_entry_t *
-find_fwd_entry (lisp_gpe_main_t * lgm,
-		vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
-		lisp_gpe_fwd_entry_key_t * key)
+find_fwd_entry (lisp_gpe_main_t *lgm,
+		vnet_lisp_gpe_add_del_fwd_entry_args_t *a,
+		lisp_gpe_fwd_entry_key_t *key)
 {
   uword *p;
 
@@ -441,8 +423,8 @@ lisp_gpe_fwd_entry_path_sort (void *a1, void *a2)
 }
 
 static void
-lisp_gpe_fwd_entry_mk_paths (lisp_gpe_fwd_entry_t * lfe,
-			     vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
+lisp_gpe_fwd_entry_mk_paths (lisp_gpe_fwd_entry_t *lfe,
+			     vnet_lisp_gpe_add_del_fwd_entry_args_t *a)
 {
   lisp_fwd_path_t *path;
   u32 index;
@@ -450,22 +432,20 @@ lisp_gpe_fwd_entry_mk_paths (lisp_gpe_fwd_entry_t * lfe,
   vec_validate (lfe->paths, vec_len (a->locator_pairs) - 1);
 
   vec_foreach_index (index, a->locator_pairs)
-  {
-    path = &lfe->paths[index];
+    {
+      path = &lfe->paths[index];
 
-    path->priority = a->locator_pairs[index].priority;
-    path->weight = a->locator_pairs[index].weight;
+      path->priority = a->locator_pairs[index].priority;
+      path->weight = a->locator_pairs[index].weight;
 
-    path->lisp_adj =
-      lisp_gpe_adjacency_find_or_create_and_lock (&a->locator_pairs
-						  [index],
-						  a->dp_table, lfe->key->vni);
-  }
+      path->lisp_adj = lisp_gpe_adjacency_find_or_create_and_lock (
+	&a->locator_pairs[index], a->dp_table, lfe->key->vni);
+    }
   vec_sort_with_function (lfe->paths, lisp_gpe_fwd_entry_path_sort);
 }
 
 void
-vnet_lisp_gpe_add_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
+vnet_lisp_gpe_add_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t *a,
 				u32 fwd_entry_index)
 {
   const lisp_gpe_adjacency_t *ladj;
@@ -488,22 +468,20 @@ vnet_lisp_gpe_add_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
   key.fwd_entry_index = fwd_entry_index;
 
   vec_foreach (path, lfe->paths)
-  {
-    ladj = lisp_gpe_adjacency_get (path->lisp_adj);
-    key.tunnel_index = ladj->tunnel_index;
-    lisp_stats_key_t *key_copy = clib_mem_alloc (sizeof (*key_copy));
-    memcpy (key_copy, &key, sizeof (*key_copy));
-    pool_get (lgm->placeholder_stats_pool, placeholder_elt);
-    hash_set_mem (lgm->lisp_stats_index_by_key, key_copy,
-		  placeholder_elt - lgm->placeholder_stats_pool);
+    {
+      ladj = lisp_gpe_adjacency_get (path->lisp_adj);
+      key.tunnel_index = ladj->tunnel_index;
+      lisp_stats_key_t *key_copy = clib_mem_alloc (sizeof (*key_copy));
+      memcpy (key_copy, &key, sizeof (*key_copy));
+      pool_get (lgm->placeholder_stats_pool, placeholder_elt);
+      hash_set_mem (lgm->lisp_stats_index_by_key, key_copy,
+		    placeholder_elt - lgm->placeholder_stats_pool);
 
-    vlib_validate_combined_counter (&lgm->counters,
-				    placeholder_elt -
-				    lgm->placeholder_stats_pool);
-    vlib_zero_combined_counter (&lgm->counters,
-				placeholder_elt -
-				lgm->placeholder_stats_pool);
-  }
+      vlib_validate_combined_counter (
+	&lgm->counters, placeholder_elt - lgm->placeholder_stats_pool);
+      vlib_zero_combined_counter (
+	&lgm->counters, placeholder_elt - lgm->placeholder_stats_pool);
+    }
 }
 
 /**
@@ -517,8 +495,8 @@ vnet_lisp_gpe_add_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
  * @return 0 on success.
  */
 static int
-add_ip_fwd_entry (lisp_gpe_main_t * lgm,
-		  vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
+add_ip_fwd_entry (lisp_gpe_main_t *lgm,
+		  vnet_lisp_gpe_add_del_fwd_entry_args_t *a)
 {
   lisp_gpe_fwd_entry_key_t key;
   lisp_gpe_fwd_entry_t *lfe;
@@ -540,16 +518,15 @@ add_ip_fwd_entry (lisp_gpe_main_t * lgm,
   a->fwd_entry_index = lfe - lgm->lisp_fwd_entry_pool;
 
   fproto = (AF_IP4 == ip_prefix_version (&fid_addr_ippref (&lfe->key->rmt)) ?
-	    FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
+	      FIB_PROTOCOL_IP4 :
+	      FIB_PROTOCOL_IP6);
 
-  lfe->type = (a->is_negative ?
-	       LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE :
-	       LISP_GPE_FWD_ENTRY_TYPE_NORMAL);
+  lfe->type = (a->is_negative ? LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE :
+				LISP_GPE_FWD_ENTRY_TYPE_NORMAL);
   lfe->tenant = lisp_gpe_tenant_find_or_create (lfe->key->vni);
   lfe->eid_table_id = a->table_id;
-  lfe->eid_fib_index = fib_table_find_or_create_and_lock (fproto,
-							  lfe->eid_table_id,
-							  FIB_SOURCE_LISP);
+  lfe->eid_fib_index = fib_table_find_or_create_and_lock (
+    fproto, lfe->eid_table_id, FIB_SOURCE_LISP);
   lfe->is_src_dst = a->is_src_dst;
 
   if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE != lfe->type)
@@ -566,7 +543,7 @@ add_ip_fwd_entry (lisp_gpe_main_t * lgm,
 }
 
 static void
-del_ip_fwd_entry_i (lisp_gpe_main_t * lgm, lisp_gpe_fwd_entry_t * lfe)
+del_ip_fwd_entry_i (lisp_gpe_main_t *lgm, lisp_gpe_fwd_entry_t *lfe)
 {
   lisp_fwd_path_t *path;
   fib_protocol_t fproto;
@@ -574,15 +551,16 @@ del_ip_fwd_entry_i (lisp_gpe_main_t * lgm, lisp_gpe_fwd_entry_t * lfe)
   if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE != lfe->type)
     {
       vec_foreach (path, lfe->paths)
-      {
-	lisp_gpe_adjacency_unlock (path->lisp_adj);
-      }
+	{
+	  lisp_gpe_adjacency_unlock (path->lisp_adj);
+	}
     }
 
   delete_fib_entries (lfe);
 
   fproto = (AF_IP4 == ip_prefix_version (&fid_addr_ippref (&lfe->key->rmt)) ?
-	    FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
+	      FIB_PROTOCOL_IP4 :
+	      FIB_PROTOCOL_IP6);
   fib_table_unlock (lfe->eid_fib_index, fproto, FIB_SOURCE_LISP);
 
   hash_unset_mem (lgm->lisp_gpe_fwd_entries, lfe->key);
@@ -601,8 +579,8 @@ del_ip_fwd_entry_i (lisp_gpe_main_t * lgm, lisp_gpe_fwd_entry_t * lfe)
  * @return 0 on success.
  */
 static int
-del_ip_fwd_entry (lisp_gpe_main_t * lgm,
-		  vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
+del_ip_fwd_entry (lisp_gpe_main_t *lgm,
+		  vnet_lisp_gpe_add_del_fwd_entry_args_t *a)
 {
   lisp_gpe_fwd_entry_key_t key;
   lisp_gpe_fwd_entry_t *lfe;
@@ -641,7 +619,7 @@ make_mac_fib_key (BVT (clib_bihash_kv) * kv, u16 bd_index, u8 src_mac[6],
  * @return index of mapping matching the lookup key.
  */
 index_t
-lisp_l2_fib_lookup (lisp_gpe_main_t * lgm, u16 bd_index, u8 src_mac[6],
+lisp_l2_fib_lookup (lisp_gpe_main_t *lgm, u16 bd_index, u8 src_mac[6],
 		    u8 dst_mac[6])
 {
   int rv;
@@ -680,8 +658,8 @@ lisp_l2_fib_lookup (lisp_gpe_main_t * lgm, u16 bd_index, u8 src_mac[6],
  * @return ~0 or value of overwritten entry.
  */
 static u32
-lisp_l2_fib_add_del_entry (u16 bd_index, u8 src_mac[6],
-			   u8 dst_mac[6], const dpo_id_t * dpo, u8 is_add)
+lisp_l2_fib_add_del_entry (u16 bd_index, u8 src_mac[6], u8 dst_mac[6],
+			   const dpo_id_t *dpo, u8 is_add)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   BVT (clib_bihash_kv) kv, value;
@@ -693,26 +671,26 @@ lisp_l2_fib_add_del_entry (u16 bd_index, u8 src_mac[6],
     old_val = value.value;
 
   if (!is_add)
-    BV (clib_bihash_add_del) (&lgm->l2_fib, &kv, 0 /* is_add */ );
+    BV (clib_bihash_add_del) (&lgm->l2_fib, &kv, 0 /* is_add */);
   else
     {
       kv.value = dpo->dpoi_index;
-      BV (clib_bihash_add_del) (&lgm->l2_fib, &kv, 1 /* is_add */ );
+      BV (clib_bihash_add_del) (&lgm->l2_fib, &kv, 1 /* is_add */);
     }
   return old_val;
 }
 
 #define L2_FIB_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
-#define L2_FIB_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+#define L2_FIB_DEFAULT_HASH_MEMORY_SIZE (32 << 20)
 
 static void
-l2_fib_init (lisp_gpe_main_t * lgm)
+l2_fib_init (lisp_gpe_main_t *lgm)
 {
   index_t lbi;
 
-  BV (clib_bihash_init) (&lgm->l2_fib, "l2 fib",
-			 1 << max_log2 (L2_FIB_DEFAULT_HASH_NUM_BUCKETS),
-			 L2_FIB_DEFAULT_HASH_MEMORY_SIZE);
+  BV (clib_bihash_init)
+  (&lgm->l2_fib, "l2 fib", 1 << max_log2 (L2_FIB_DEFAULT_HASH_NUM_BUCKETS),
+   L2_FIB_DEFAULT_HASH_MEMORY_SIZE);
 
   /*
    * the result from a 'miss' in a L2 Table
@@ -724,16 +702,16 @@ l2_fib_init (lisp_gpe_main_t * lgm)
 }
 
 static void
-del_l2_fwd_entry_i (lisp_gpe_main_t * lgm, lisp_gpe_fwd_entry_t * lfe)
+del_l2_fwd_entry_i (lisp_gpe_main_t *lgm, lisp_gpe_fwd_entry_t *lfe)
 {
   lisp_fwd_path_t *path;
 
   if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE != lfe->type)
     {
       vec_foreach (path, lfe->paths)
-      {
-	lisp_gpe_adjacency_unlock (path->lisp_adj);
-      }
+	{
+	  lisp_gpe_adjacency_unlock (path->lisp_adj);
+	}
       fib_path_list_child_remove (lfe->l2.path_list_index,
 				  lfe->l2.child_index);
     }
@@ -758,8 +736,8 @@ del_l2_fwd_entry_i (lisp_gpe_main_t * lgm, lisp_gpe_fwd_entry_t * lfe)
  * @return 0 on success.
  */
 static int
-del_l2_fwd_entry (lisp_gpe_main_t * lgm,
-		  vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
+del_l2_fwd_entry (lisp_gpe_main_t *lgm,
+		  vnet_lisp_gpe_add_del_fwd_entry_args_t *a)
 {
   lisp_gpe_fwd_entry_key_t key;
   lisp_gpe_fwd_entry_t *lfe;
@@ -778,17 +756,16 @@ del_l2_fwd_entry (lisp_gpe_main_t * lgm,
  * @brief Construct and insert the forwarding information used by an L2 entry
  */
 static void
-lisp_gpe_l2_update_fwding (lisp_gpe_fwd_entry_t * lfe)
+lisp_gpe_l2_update_fwding (lisp_gpe_fwd_entry_t *lfe)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   dpo_id_t dpo = DPO_INVALID;
 
   if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE != lfe->type)
     {
-      fib_path_list_contribute_forwarding (lfe->l2.path_list_index,
-					   FIB_FORW_CHAIN_TYPE_ETHERNET,
-					   FIB_PATH_LIST_FWD_FLAG_NONE,
-					   &lfe->l2.dpo);
+      fib_path_list_contribute_forwarding (
+	lfe->l2.path_list_index, FIB_FORW_CHAIN_TYPE_ETHERNET,
+	FIB_PATH_LIST_FWD_FLAG_NONE, &lfe->l2.dpo);
       dpo_copy (&dpo, &lfe->l2.dpo);
     }
   else
@@ -826,8 +803,8 @@ lisp_gpe_l2_update_fwding (lisp_gpe_fwd_entry_t * lfe)
  * @return 0 on success.
  */
 static int
-add_l2_fwd_entry (lisp_gpe_main_t * lgm,
-		  vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
+add_l2_fwd_entry (lisp_gpe_main_t *lgm,
+		  vnet_lisp_gpe_add_del_fwd_entry_args_t *a)
 {
   lisp_gpe_fwd_entry_key_t key;
   bd_main_t *bdm = &bd_main;
@@ -856,9 +833,8 @@ add_l2_fwd_entry (lisp_gpe_main_t * lgm,
 		lfe - lgm->lisp_fwd_entry_pool);
   a->fwd_entry_index = lfe - lgm->lisp_fwd_entry_pool;
 
-  lfe->type = (a->is_negative ?
-	       LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE :
-	       LISP_GPE_FWD_ENTRY_TYPE_NORMAL);
+  lfe->type = (a->is_negative ? LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE :
+				LISP_GPE_FWD_ENTRY_TYPE_NORMAL);
   lfe->l2.eid_bd_id = a->bd_id;
   lfe->l2.eid_bd_index = bd_indexp[0];
   lfe->tenant = lisp_gpe_tenant_find_or_create (lfe->key->vni);
@@ -885,10 +861,9 @@ add_l2_fwd_entry (lisp_gpe_main_t * lgm,
        * become a child of the path-list so we receive updates when
        * its forwarding state changes. this includes an implicit lock.
        */
-      lfe->l2.child_index =
-	fib_path_list_child_add (lfe->l2.path_list_index,
-				 FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY,
-				 lfe - lgm->lisp_fwd_entry_pool);
+      lfe->l2.child_index = fib_path_list_child_add (
+	lfe->l2.path_list_index, FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY,
+	lfe - lgm->lisp_fwd_entry_pool);
     }
   else
     {
@@ -911,7 +886,7 @@ add_l2_fwd_entry (lisp_gpe_main_t * lgm,
  * @return next node index.
  */
 const dpo_id_t *
-lisp_nsh_fib_lookup (lisp_gpe_main_t * lgm, u32 spi_si_net_order)
+lisp_nsh_fib_lookup (lisp_gpe_main_t *lgm, u32 spi_si_net_order)
 {
   int rv;
   BVT (clib_bihash_kv) kv, value;
@@ -959,24 +934,24 @@ lisp_nsh_fib_add_del_entry (u32 spi_si_host_order, u32 lfei, u8 is_add)
     old_val = value.value;
 
   if (!is_add)
-    BV (clib_bihash_add_del) (&lgm->nsh_fib, &kv, 0 /* is_add */ );
+    BV (clib_bihash_add_del) (&lgm->nsh_fib, &kv, 0 /* is_add */);
   else
     {
       kv.value = lfei;
-      BV (clib_bihash_add_del) (&lgm->nsh_fib, &kv, 1 /* is_add */ );
+      BV (clib_bihash_add_del) (&lgm->nsh_fib, &kv, 1 /* is_add */);
     }
   return old_val;
 }
 
 #define NSH_FIB_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
-#define NSH_FIB_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+#define NSH_FIB_DEFAULT_HASH_MEMORY_SIZE (32 << 20)
 
 static void
-nsh_fib_init (lisp_gpe_main_t * lgm)
+nsh_fib_init (lisp_gpe_main_t *lgm)
 {
-  BV (clib_bihash_init) (&lgm->nsh_fib, "nsh fib",
-			 1 << max_log2 (NSH_FIB_DEFAULT_HASH_NUM_BUCKETS),
-			 NSH_FIB_DEFAULT_HASH_MEMORY_SIZE);
+  BV (clib_bihash_init)
+  (&lgm->nsh_fib, "nsh fib", 1 << max_log2 (NSH_FIB_DEFAULT_HASH_NUM_BUCKETS),
+   NSH_FIB_DEFAULT_HASH_MEMORY_SIZE);
 
   /*
    * the result from a 'miss' in a NSH Table
@@ -985,22 +960,22 @@ nsh_fib_init (lisp_gpe_main_t * lgm)
 }
 
 static void
-del_nsh_fwd_entry_i (lisp_gpe_main_t * lgm, lisp_gpe_fwd_entry_t * lfe)
+del_nsh_fwd_entry_i (lisp_gpe_main_t *lgm, lisp_gpe_fwd_entry_t *lfe)
 {
   lisp_fwd_path_t *path;
 
   if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE != lfe->type)
     {
       vec_foreach (path, lfe->paths)
-      {
-	lisp_gpe_adjacency_unlock (path->lisp_adj);
-      }
+	{
+	  lisp_gpe_adjacency_unlock (path->lisp_adj);
+	}
       fib_path_list_child_remove (lfe->nsh.path_list_index,
 				  lfe->nsh.child_index);
       dpo_reset (&lfe->nsh.choice);
     }
 
-  lisp_nsh_fib_add_del_entry (fid_addr_nsh (&lfe->key->rmt), (u32) ~ 0, 0);
+  lisp_nsh_fib_add_del_entry (fid_addr_nsh (&lfe->key->rmt), (u32) ~0, 0);
 
   hash_unset_mem (lgm->lisp_gpe_fwd_entries, lfe->key);
   clib_mem_free (lfe->key);
@@ -1018,8 +993,8 @@ del_nsh_fwd_entry_i (lisp_gpe_main_t * lgm, lisp_gpe_fwd_entry_t * lfe)
  * @return 0 on success.
  */
 static int
-del_nsh_fwd_entry (lisp_gpe_main_t * lgm,
-		   vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
+del_nsh_fwd_entry (lisp_gpe_main_t *lgm,
+		   vnet_lisp_gpe_add_del_fwd_entry_args_t *a)
 {
   lisp_gpe_fwd_entry_key_t key;
   lisp_gpe_fwd_entry_t *lfe;
@@ -1038,7 +1013,7 @@ del_nsh_fwd_entry (lisp_gpe_main_t * lgm,
  * @brief Construct and insert the forwarding information used by an NSH entry
  */
 static void
-lisp_gpe_nsh_update_fwding (lisp_gpe_fwd_entry_t * lfe)
+lisp_gpe_nsh_update_fwding (lisp_gpe_fwd_entry_t *lfe)
 {
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
   dpo_id_t dpo = DPO_INVALID;
@@ -1047,10 +1022,9 @@ lisp_gpe_nsh_update_fwding (lisp_gpe_fwd_entry_t * lfe)
 
   if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE != lfe->type)
     {
-      fib_path_list_contribute_forwarding (lfe->nsh.path_list_index,
-					   FIB_FORW_CHAIN_TYPE_NSH,
-					   FIB_PATH_LIST_FWD_FLAG_NONE,
-					   &lfe->nsh.dpo);
+      fib_path_list_contribute_forwarding (
+	lfe->nsh.path_list_index, FIB_FORW_CHAIN_TYPE_NSH,
+	FIB_PATH_LIST_FWD_FLAG_NONE, &lfe->nsh.dpo);
 
       /*
        * LISP encap is always the same for this SPI+SI so we do that hash now
@@ -1095,7 +1069,6 @@ lisp_gpe_nsh_update_fwding (lisp_gpe_fwd_entry_t * lfe)
   lisp_nsh_fib_add_del_entry (fid_addr_nsh (&lfe->key->rmt),
 			      lfe - lgm->lisp_fwd_entry_pool, 1);
   dpo_reset (&dpo);
-
 }
 
 /**
@@ -1110,8 +1083,8 @@ lisp_gpe_nsh_update_fwding (lisp_gpe_fwd_entry_t * lfe)
  * @return 0 on success.
  */
 static int
-add_nsh_fwd_entry (lisp_gpe_main_t * lgm,
-		   vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
+add_nsh_fwd_entry (lisp_gpe_main_t *lgm,
+		   vnet_lisp_gpe_add_del_fwd_entry_args_t *a)
 {
   lisp_gpe_fwd_entry_key_t key;
   lisp_gpe_fwd_entry_t *lfe;
@@ -1131,9 +1104,8 @@ add_nsh_fwd_entry (lisp_gpe_main_t * lgm,
 		lfe - lgm->lisp_fwd_entry_pool);
   a->fwd_entry_index = lfe - lgm->lisp_fwd_entry_pool;
 
-  lfe->type = (a->is_negative ?
-	       LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE :
-	       LISP_GPE_FWD_ENTRY_TYPE_NORMAL);
+  lfe->type = (a->is_negative ? LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE :
+				LISP_GPE_FWD_ENTRY_TYPE_NORMAL);
   lfe->tenant = 0;
 
   if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE != lfe->type)
@@ -1158,10 +1130,9 @@ add_nsh_fwd_entry (lisp_gpe_main_t * lgm,
        * become a child of the path-list so we receive updates when
        * its forwarding state changes. this includes an implicit lock.
        */
-      lfe->nsh.child_index =
-	fib_path_list_child_add (lfe->nsh.path_list_index,
-				 FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY,
-				 lfe - lgm->lisp_fwd_entry_pool);
+      lfe->nsh.child_index = fib_path_list_child_add (
+	lfe->nsh.path_list_index, FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY,
+	lfe - lgm->lisp_fwd_entry_pool);
     }
   else
     {
@@ -1177,19 +1148,18 @@ add_nsh_fwd_entry (lisp_gpe_main_t * lgm,
  * @brief conver from the embedded fib_node_t struct to the LSIP entry
  */
 static lisp_gpe_fwd_entry_t *
-lisp_gpe_fwd_entry_from_fib_node (fib_node_t * node)
+lisp_gpe_fwd_entry_from_fib_node (fib_node_t *node)
 {
-  return ((lisp_gpe_fwd_entry_t *) (((char *) node) -
-				    STRUCT_OFFSET_OF (lisp_gpe_fwd_entry_t,
-						      node)));
+  return (
+    (lisp_gpe_fwd_entry_t *) (((char *) node) -
+			      STRUCT_OFFSET_OF (lisp_gpe_fwd_entry_t, node)));
 }
 
 /**
  * @brief Function invoked during a backwalk of the FIB graph
  */
 static fib_node_back_walk_rc_t
-lisp_gpe_fib_node_back_walk (fib_node_t * node,
-			     fib_node_back_walk_ctx_t * ctx)
+lisp_gpe_fib_node_back_walk (fib_node_t *node, fib_node_back_walk_ctx_t *ctx)
 {
   lisp_gpe_fwd_entry_t *lfe = lisp_gpe_fwd_entry_from_fib_node (node);
 
@@ -1219,7 +1189,7 @@ lisp_gpe_fwd_entry_get_fib_node (fib_node_index_t index)
  * @brief An indication from the graph that the last lock has gone
  */
 static void
-lisp_gpe_fwd_entry_fib_node_last_lock_gone (fib_node_t * node)
+lisp_gpe_fwd_entry_fib_node_last_lock_gone (fib_node_t *node)
 {
   /* We don't manage the locks of the LISP objects via the graph, since
    * this object has no children. so this is a no-op. */
@@ -1245,8 +1215,8 @@ const static fib_node_vft_t lisp_fwd_vft = {
  * @return 0 on success.
  */
 int
-vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
-				 u32 * hw_if_indexp)
+vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t *a,
+				 u32 *hw_if_indexp)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   u8 type;
@@ -1299,7 +1269,7 @@ vnet_lisp_flush_stats (void)
 }
 
 static void
-lisp_del_adj_stats (lisp_gpe_main_t * lgm, u32 fwd_entry_index, u32 ti)
+lisp_del_adj_stats (lisp_gpe_main_t *lgm, u32 fwd_entry_index, u32 ti)
 {
   hash_pair_t *hp;
   lisp_stats_key_t key;
@@ -1324,7 +1294,7 @@ lisp_del_adj_stats (lisp_gpe_main_t * lgm, u32 fwd_entry_index, u32 ti)
 }
 
 void
-vnet_lisp_gpe_del_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
+vnet_lisp_gpe_del_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t *a,
 				u32 fwd_entry_index)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
@@ -1341,10 +1311,10 @@ vnet_lisp_gpe_del_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
     return;
 
   vec_foreach (path, lfe->paths)
-  {
-    ladj = lisp_gpe_adjacency_get (path->lisp_adj);
-    lisp_del_adj_stats (lgm, fwd_entry_index, ladj->tunnel_index);
-  }
+    {
+      ladj = lisp_gpe_adjacency_get (path->lisp_adj);
+      lisp_del_adj_stats (lgm, fwd_entry_index, ladj->tunnel_index);
+    }
 }
 
 /**
@@ -1358,31 +1328,30 @@ vnet_lisp_gpe_fwd_entry_flush (void)
 
   /* *INDENT-OFF* */
   pool_foreach (lfe, lgm->lisp_fwd_entry_pool)
-   {
-    switch (fid_addr_type(&lfe->key->rmt))
-      {
-      case FID_ADDR_MAC:
-	del_l2_fwd_entry_i (lgm, lfe);
-	break;
-      case FID_ADDR_IP_PREF:
-	del_ip_fwd_entry_i (lgm, lfe);
-	break;
-      case FID_ADDR_NSH:
-        del_nsh_fwd_entry_i (lgm, lfe);
-        break;
-      }
-  }
+    {
+      switch (fid_addr_type (&lfe->key->rmt))
+	{
+	case FID_ADDR_MAC:
+	  del_l2_fwd_entry_i (lgm, lfe);
+	  break;
+	case FID_ADDR_IP_PREF:
+	  del_ip_fwd_entry_i (lgm, lfe);
+	  break;
+	case FID_ADDR_NSH:
+	  del_nsh_fwd_entry_i (lgm, lfe);
+	  break;
+	}
+    }
   /* *INDENT-ON* */
 }
 
 static u8 *
-format_lisp_fwd_path (u8 * s, va_list * ap)
+format_lisp_fwd_path (u8 *s, va_list *ap)
 {
   lisp_fwd_path_t *lfp = va_arg (*ap, lisp_fwd_path_t *);
 
   s = format (s, "weight:%d ", lfp->weight);
-  s = format (s, "adj:[%U]\n",
-	      format_lisp_gpe_adjacency,
+  s = format (s, "adj:[%U]\n", format_lisp_gpe_adjacency,
 	      lisp_gpe_adjacency_get (lfp->lisp_adj),
 	      LISP_GPE_ADJ_FORMAT_FLAG_NONE);
 
@@ -1395,25 +1364,23 @@ typedef enum lisp_gpe_fwd_entry_format_flag_t_
   LISP_GPE_FWD_ENTRY_FORMAT_DETAIL = (1 << 1),
 } lisp_gpe_fwd_entry_format_flag_t;
 
-
 static u8 *
-format_lisp_gpe_fwd_entry (u8 * s, va_list * ap)
+format_lisp_gpe_fwd_entry (u8 *s, va_list *ap)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   lisp_gpe_fwd_entry_t *lfe = va_arg (*ap, lisp_gpe_fwd_entry_t *);
   lisp_gpe_fwd_entry_format_flag_t flags =
     va_arg (*ap, lisp_gpe_fwd_entry_format_flag_t);
 
-  s = format (s, "VNI:%d VRF:%d EID: %U -> %U  [index:%d]",
-	      lfe->key->vni, lfe->eid_table_id,
-	      format_fid_address, &lfe->key->lcl,
+  s = format (s, "VNI:%d VRF:%d EID: %U -> %U  [index:%d]", lfe->key->vni,
+	      lfe->eid_table_id, format_fid_address, &lfe->key->lcl,
 	      format_fid_address, &lfe->key->rmt,
 	      lfe - lgm->lisp_fwd_entry_pool);
 
   if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE == lfe->type)
     {
-      s = format (s, "\n Negative - action:%U",
-		  format_negative_mapping_action, lfe->action);
+      s = format (s, "\n Negative - action:%U", format_negative_mapping_action,
+		  lfe->action);
     }
   else
     {
@@ -1421,9 +1388,9 @@ format_lisp_gpe_fwd_entry (u8 * s, va_list * ap)
 
       s = format (s, "\n via:");
       vec_foreach (path, lfe->paths)
-      {
-	s = format (s, "\n  %U", format_lisp_fwd_path, path);
-      }
+	{
+	  s = format (s, "\n  %U", format_lisp_fwd_path, path);
+	}
     }
 
   if (flags & LISP_GPE_FWD_ENTRY_FORMAT_DETAIL)
@@ -1447,8 +1414,8 @@ format_lisp_gpe_fwd_entry (u8 * s, va_list * ap)
 }
 
 static clib_error_t *
-lisp_gpe_fwd_entry_show (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+lisp_gpe_fwd_entry_show (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   lisp_gpe_fwd_entry_t *lfe;
@@ -1463,10 +1430,8 @@ lisp_gpe_fwd_entry_show (vlib_main_t * vm,
 	{
 	  lfe = pool_elt_at_index (lgm->lisp_fwd_entry_pool, index);
 
-	  vlib_cli_output (vm, "[%d@] %U",
-			   index,
-			   format_lisp_gpe_fwd_entry, lfe,
-			   LISP_GPE_FWD_ENTRY_FORMAT_DETAIL);
+	  vlib_cli_output (vm, "[%d@] %U", index, format_lisp_gpe_fwd_entry,
+			   lfe, LISP_GPE_FWD_ENTRY_FORMAT_DETAIL);
 	}
       else
 	{
@@ -1478,12 +1443,11 @@ lisp_gpe_fwd_entry_show (vlib_main_t * vm,
 
   /* *INDENT-OFF* */
   pool_foreach (lfe, lgm->lisp_fwd_entry_pool)
-   {
-    if ((vni == ~0) ||
-	(lfe->key->vni == vni))
-      vlib_cli_output (vm, "%U", format_lisp_gpe_fwd_entry, lfe,
-		       LISP_GPE_FWD_ENTRY_FORMAT_NONE);
-  }
+    {
+      if ((vni == ~0) || (lfe->key->vni == vni))
+	vlib_cli_output (vm, "%U", format_lisp_gpe_fwd_entry, lfe,
+			 LISP_GPE_FWD_ENTRY_FORMAT_NONE);
+    }
   /* *INDENT-ON* */
 
   return (NULL);
@@ -1498,7 +1462,7 @@ VLIB_CLI_COMMAND (lisp_gpe_fwd_entry_show_command, static) = {
 /* *INDENT-ON* */
 
 clib_error_t *
-lisp_gpe_fwd_entry_init (vlib_main_t * vm)
+lisp_gpe_fwd_entry_init (vlib_main_t *vm)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   clib_error_t *error = NULL;
@@ -1523,9 +1487,9 @@ vnet_lisp_gpe_get_fwd_entry_vnis (void)
 
   /* *INDENT-OFF* */
   pool_foreach (lfe, lgm->lisp_fwd_entry_pool)
-   {
-    hash_set (vnis, lfe->key->vni, 0);
-  }
+    {
+      hash_set (vnis, lfe->key->vni, 0);
+    }
   /* *INDENT-ON* */
 
   return vnis;
@@ -1540,28 +1504,28 @@ vnet_lisp_gpe_fwd_entries_get_by_vni (u32 vni)
 
   /* *INDENT-OFF* */
   pool_foreach (lfe, lgm->lisp_fwd_entry_pool)
-   {
-    if (lfe->key->vni == vni)
-      {
-        clib_memset (&e, 0, sizeof (e));
-        e.dp_table = lfe->eid_table_id;
-        e.vni = lfe->key->vni;
-        if (lfe->type == LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE)
-          e.action = lfe->action;
-        e.fwd_entry_index = lfe - lgm->lisp_fwd_entry_pool;
-        memcpy (&e.reid, &lfe->key->rmt, sizeof (e.reid));
-        memcpy (&e.leid, &lfe->key->lcl, sizeof (e.leid));
-        vec_add1 (entries, e);
-      }
-  }
+    {
+      if (lfe->key->vni == vni)
+	{
+	  clib_memset (&e, 0, sizeof (e));
+	  e.dp_table = lfe->eid_table_id;
+	  e.vni = lfe->key->vni;
+	  if (lfe->type == LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE)
+	    e.action = lfe->action;
+	  e.fwd_entry_index = lfe - lgm->lisp_fwd_entry_pool;
+	  memcpy (&e.reid, &lfe->key->rmt, sizeof (e.reid));
+	  memcpy (&e.leid, &lfe->key->lcl, sizeof (e.leid));
+	  vec_add1 (entries, e);
+	}
+    }
   /* *INDENT-ON* */
 
   return entries;
 }
 
 int
-vnet_lisp_gpe_get_fwd_stats (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
-			     vlib_counter_t * c)
+vnet_lisp_gpe_get_fwd_stats (vnet_lisp_gpe_add_del_fwd_entry_args_t *a,
+			     vlib_counter_t *c)
 {
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
   lisp_gpe_fwd_entry_t *lfe;
@@ -1578,16 +1542,4 @@ vnet_lisp_gpe_get_fwd_stats (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
     return -1;
 
   vlib_get_combined_counter (&load_balance_main.lbm_to_counters,
-			     lfe->dpoi_index, c);
-  return 0;
-}
-
-VLIB_INIT_FUNCTION (lisp_gpe_fwd_entry_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+			     lfe-

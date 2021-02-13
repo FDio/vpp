@@ -33,8 +33,7 @@ bind_cmd::bind_cmd(HW::item<bool>& item,
   , m_client_id(client_id)
   , m_set_broadcast_flag(set_broadcast_flag)
   , m_dscp(dscp)
-{
-}
+{}
 
 bool
 bind_cmd::operator==(const bind_cmd& other) const
@@ -56,7 +55,8 @@ bind_cmd::issue(connection& con)
   payload.client.dscp = to_api(m_dscp);
 
   memset(payload.client.hostname, 0, sizeof(payload.client.hostname));
-  memcpy(payload.client.hostname, m_hostname.c_str(),
+  memcpy(payload.client.hostname,
+         m_hostname.c_str(),
          std::min(sizeof(payload.client.hostname), m_hostname.length()));
 
   memset(payload.client.id, 0, sizeof(payload.client.id));
@@ -88,8 +88,7 @@ unbind_cmd::unbind_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_itf(itf)
   , m_hostname(hostname)
-{
-}
+{}
 
 bool
 unbind_cmd::operator==(const unbind_cmd& other) const
@@ -108,7 +107,8 @@ unbind_cmd::issue(connection& con)
   payload.client.pid = getpid();
   payload.client.want_dhcp_event = 0;
 
-  memcpy(payload.client.hostname, m_hostname.c_str(),
+  memcpy(payload.client.hostname,
+         m_hostname.c_str(),
          std::min(sizeof(payload.client.hostname), m_hostname.length()));
 
   VAPI_CALL(req.execute());
@@ -132,8 +132,7 @@ unbind_cmd::to_string() const
 events_cmd::events_cmd(dhcp_client::event_listener& el)
   : event_cmd(el.status())
   , m_listener(el)
-{
-}
+{}
 
 events_cmd::~events_cmd()
 {
@@ -162,8 +161,7 @@ events_cmd::issue(connection& con)
 
 void
 events_cmd::retire(connection& con)
-{
-}
+{}
 
 void
 events_cmd::notify()
@@ -181,15 +179,18 @@ events_cmd::notify()
     if (itf) {
       std::shared_ptr<dhcp_client::lease_t> ev =
         std::make_shared<dhcp_client::lease_t>(
-          s, itf, from_bytes(0, (uint8_t*)&payload.lease.router_address.un),
-          pfx, reinterpret_cast<const char*>(payload.lease.hostname),
+          s,
+          itf,
+          from_bytes(0, (uint8_t*)&payload.lease.router_address.un),
+          pfx,
+          reinterpret_cast<const char*>(payload.lease.hostname),
           mac_address_t(payload.lease.host_mac));
       m_listener.handle_dhcp_event(ev);
 
       VOM_LOG(log_level_t::INFO) << "DHCP: " << ev->to_string();
     } else {
-      VOM_LOG(log_level_t::ERROR) << "DHCP: no interface: "
-                                  << payload.lease.sw_if_index;
+      VOM_LOG(log_level_t::ERROR)
+        << "DHCP: no interface: " << payload.lease.sw_if_index;
     }
   }
 
@@ -202,9 +203,7 @@ events_cmd::to_string() const
   return ("dhcp-events");
 }
 
-dump_cmd::dump_cmd()
-{
-}
+dump_cmd::dump_cmd() {}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const

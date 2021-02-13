@@ -16,16 +16,14 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 
-u8 *vlib_validate_buffers (vlib_main_t * vm,
-			   u32 * buffers,
-			   uword next_buffer_stride,
-			   uword n_buffers,
+u8 *vlib_validate_buffers (vlib_main_t *vm, u32 *buffers,
+			   uword next_buffer_stride, uword n_buffers,
 			   vlib_buffer_known_state_t known_state,
 			   uword follow_buffer_next);
 
 static clib_error_t *
-test_vlib_command_fn (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+test_vlib_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
 {
   u32 bi;
   u8 *res;
@@ -58,8 +56,8 @@ test_vlib_command_fn (vlib_main_t * vm,
   /* Force buffer allocation */
   b->current_length = 2048;
   last_b = b;
-  vlib_buffer_chain_append_data_with_alloc (vm, b, &last_b,
-					    junk, ARRAY_LEN (junk));
+  vlib_buffer_chain_append_data_with_alloc (vm, b, &last_b, junk,
+					    ARRAY_LEN (junk));
 
   /* Cover vlib_buffer_length_in_chain_slow_path(...) */
   b->flags &= ~(VLIB_BUFFER_TOTAL_LENGTH_VALID);
@@ -93,35 +91,34 @@ test_vlib_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "%llx", vlib_buffer_get_current_pa (vm, b));
 
   /* Validate it one way */
-  res = vlib_validate_buffer (vm, bi, 1 /* follow_buffer_next */ );
+  res = vlib_validate_buffer (vm, bi, 1 /* follow_buffer_next */);
   if (res)
     return clib_error_return (0, "%v", res);
 
   /* Validate it a different way */
-  res = vlib_validate_buffers (vm, &bi, 0 /* stride */ ,
-			       1, VLIB_BUFFER_KNOWN_ALLOCATED,
-			       1 /* follow_buffer_next */ );
+  res = vlib_validate_buffers (vm, &bi, 0 /* stride */, 1,
+			       VLIB_BUFFER_KNOWN_ALLOCATED,
+			       1 /* follow_buffer_next */);
   if (res)
     return clib_error_return (0, "%v", res);
 
   /* Free it */
   vlib_buffer_free_one (vm, bi);
   /* It will be free */
-  res = vlib_validate_buffers (vm, &bi, 0 /* stride */ ,
-			       1, VLIB_BUFFER_KNOWN_FREE,
-			       1 /* follow_buffer_next */ );
+  res =
+    vlib_validate_buffers (vm, &bi, 0 /* stride */, 1, VLIB_BUFFER_KNOWN_FREE,
+			   1 /* follow_buffer_next */);
   if (res)
     return clib_error_return (0, "%v", res);
 
   /* Misc */
-  vlib_cli_output
-    (vm, "%u",
-     vlib_combined_counter_n_counters (im->combined_sw_if_counters));
+  vlib_cli_output (
+    vm, "%u", vlib_combined_counter_n_counters (im->combined_sw_if_counters));
 
   /* buffer will not be allocated at this point, exercise error path */
-  res = vlib_validate_buffers (vm, &bi, 0 /* stride */ ,
-			       1, VLIB_BUFFER_KNOWN_ALLOCATED,
-			       1 /* follow_buffer_next */ );
+  res = vlib_validate_buffers (vm, &bi, 0 /* stride */, 1,
+			       VLIB_BUFFER_KNOWN_ALLOCATED,
+			       1 /* follow_buffer_next */);
   if (res)
     return clib_error_return (0, "%v", res);
 
@@ -129,23 +126,20 @@ test_vlib_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_vlib_command, static) =
-{
+VLIB_CLI_COMMAND (test_vlib_command, static) = {
   .path = "test vlib",
   .short_help = "vlib code coverage unit test",
   .function = test_vlib_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-test_format_vlib_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+test_format_vlib_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   unformat_input_t _i, *i = &_i;
   int enable = -1, disable = -1;
-  int twenty_seven = -1;;
+  int twenty_seven = -1;
+  ;
   int rxtx = -1;
 
   memset (i, 0, sizeof (*i));
@@ -180,18 +174,15 @@ test_format_vlib_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_format_vlib_command, static) =
-{
+VLIB_CLI_COMMAND (test_format_vlib_command, static) = {
   .path = "test format-vlib",
   .short_help = "vlib format code coverate unit test",
   .function = test_format_vlib_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-test_vlib2_command_fn (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+test_vlib2_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   u8 *s;
   u8 **result;
@@ -215,18 +206,11 @@ test_vlib2_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_vlib2_command, static) =
-{
+VLIB_CLI_COMMAND (test_vlib2_command, static) = {
   .path = "test vlib2",
   .short_help = "vlib code coverage unit test #2",
   .function = test_vlib2_command_fn,
 };
-/* *INDENT-ON* */
-
-
-
-
 
 /*
  * fd.io coding-style-patch-verification: ON

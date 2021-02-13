@@ -46,7 +46,7 @@
 #include <dpdk/device/dpdk_priv.h>
 
 static clib_error_t *
-dpdk_launch_thread (void *fp, vlib_worker_thread_t * w, unsigned lcore_id)
+dpdk_launch_thread (void *fp, vlib_worker_thread_t *w, unsigned lcore_id)
 {
   int r;
   r = rte_eal_remote_launch (fp, (void *) w, lcore_id);
@@ -67,7 +67,7 @@ static vlib_thread_callbacks_t callbacks = {
 };
 
 static clib_error_t *
-dpdk_thread_init (vlib_main_t * vm)
+dpdk_thread_init (vlib_main_t *vm)
 {
   vlib_thread_cb_register (vm, &callbacks);
   return 0;

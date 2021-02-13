@@ -55,7 +55,7 @@ vrrp_vr_timer_get_next (void)
  * - adv received on backup. master down timer should be rescheduled.
  */
 void
-vrrp_vr_timer_cancel (vrrp_vr_t * vr)
+vrrp_vr_timer_cancel (vrrp_vr_t *vr)
 {
   vrrp_main_t *vmp = &vrrp_main;
   u32 *t;
@@ -68,13 +68,13 @@ vrrp_vr_timer_cancel (vrrp_vr_t * vr)
   /* vec_foreach_backwards does not deal with 0 pointers, check first */
   if (vmp->pending_timers)
     vec_foreach_backwards (t, vmp->pending_timers)
-    {
-      if (*t == vr->runtime.timer_index)
-	{
-	  vec_delete (vmp->pending_timers, 1, t - vmp->pending_timers);
-	  break;
-	}
-    }
+      {
+	if (*t == vr->runtime.timer_index)
+	  {
+	    vec_delete (vmp->pending_timers, 1, t - vmp->pending_timers);
+	    break;
+	  }
+      }
 
   if (!pool_is_free_index (vmp->vr_timers, vr->runtime.timer_index))
     pool_put_index (vmp->vr_timers, vr->runtime.timer_index);
@@ -86,7 +86,7 @@ vrrp_vr_timer_cancel (vrrp_vr_t * vr)
 }
 
 void
-vrrp_vr_timer_set (vrrp_vr_t * vr, vrrp_vr_timer_type_t type)
+vrrp_vr_timer_set (vrrp_vr_t *vr, vrrp_vr_timer_type_t type)
 {
   vrrp_main_t *vmp = &vrrp_main;
   vlib_main_t *vm = vlib_get_main ();
@@ -159,12 +159,11 @@ vrrp_vr_timer_timeout (u32 timer_index)
       clib_warning ("Unrecognized timer type %d", timer->type);
       return;
     }
-
 }
 
 static uword
-vrrp_periodic_process (vlib_main_t * vm,
-		       vlib_node_runtime_t * rt, vlib_frame_t * f)
+vrrp_periodic_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
+		       vlib_frame_t *f)
 {
   vrrp_main_t *pm = &vrrp_main;
   f64 now;
@@ -190,7 +189,7 @@ vrrp_periodic_process (vlib_main_t * vm,
 	  vlib_process_wait_for_event_or_clock (vm, timeout);
 	}
 
-      event_type = vlib_process_get_events (vm, (uword **) & event_data);
+      event_type = vlib_process_get_events (vm, (uword **) &event_data);
 
       switch (event_type)
 	{
@@ -210,14 +209,11 @@ vrrp_periodic_process (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (vrrp_periodic_node) =
-{
+VLIB_REGISTER_NODE (vrrp_periodic_node) = {
   .function = vrrp_periodic_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "vrrp-periodic-process",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -136,7 +136,7 @@ static clib_error_t *
   return 0;
 }
 
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (" plugin-name "_enable_disable_command, static) =
 {
   .path = \"" plugin-name " enable-disable\",
@@ -144,7 +144,7 @@ VLIB_CLI_COMMAND (" plugin-name "_enable_disable_command, static) =
   \"" plugin-name " enable-disable <interface-name> [disable]\",
   .function = " plugin-name "_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
+
 
 /* API message handler */
 static void vl_api_" plugin-name "_enable_disable_t_handler
@@ -179,7 +179,7 @@ static clib_error_t * " plugin-name "_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (" plugin-name "_init);
 
-/* *INDENT-OFF* */
+
 VNET_FEATURE_INIT (" plugin-name ", static) =
 {
   .arc_name = \"device-input\",
@@ -188,13 +188,13 @@ VNET_FEATURE_INIT (" plugin-name ", static) =
 };
 /* *INDENT-ON */
 
-/* *INDENT-OFF* */
+
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
   .description = \"" plugin-name " plugin description goes here\",
 };
-/* *INDENT-ON* */
+
 
 /*
  * fd.io coding-style-patch-verification: " capital-oh-en "

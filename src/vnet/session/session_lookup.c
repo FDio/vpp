@@ -39,38 +39,38 @@ static u32 *fib_index_to_table_index[2];
 /* 16 octets */
 typedef CLIB_PACKED (struct {
   union
+  {
+    struct
     {
-      struct
-	{
-	  ip4_address_t src;
-	  ip4_address_t dst;
-	  u16 src_port;
-	  u16 dst_port;
-	  /* align by making this 4 octets even though its a 1-bit field
-	   * NOTE: avoid key overlap with other transports that use 5 tuples for
-	   * session identification.
-	   */
-	  u32 proto;
-	};
-      u64 as_u64[2];
+      ip4_address_t src;
+      ip4_address_t dst;
+      u16 src_port;
+      u16 dst_port;
+      /* align by making this 4 octets even though its a 1-bit field
+       * NOTE: avoid key overlap with other transports that use 5 tuples for
+       * session identification.
+       */
+      u32 proto;
     };
+    u64 as_u64[2];
+  };
 }) v4_connection_key_t;
 
 typedef CLIB_PACKED (struct {
   union
+  {
+    struct
     {
-      struct
-	{
-	  /* 48 octets */
-	  ip6_address_t src;
-	  ip6_address_t dst;
-	  u16 src_port;
-	  u16 dst_port;
-	  u32 proto;
-	  u64 unused;
-	};
-      u64 as_u64[6];
+      /* 48 octets */
+      ip6_address_t src;
+      ip6_address_t dst;
+      u16 src_port;
+      u16 dst_port;
+      u32 proto;
+      u64 unused;
     };
+    u64 as_u64[6];
+  };
 }) v6_connection_key_t;
 /* *INDENT-ON* */
 
@@ -78,7 +78,7 @@ typedef clib_bihash_kv_16_8_t session_kv4_t;
 typedef clib_bihash_kv_48_8_t session_kv6_t;
 
 always_inline void
-make_v4_ss_kv (session_kv4_t * kv, ip4_address_t * lcl, ip4_address_t * rmt,
+make_v4_ss_kv (session_kv4_t *kv, ip4_address_t *lcl, ip4_address_t *rmt,
 	       u16 lcl_port, u16 rmt_port, u8 proto)
 {
   kv->key[0] = (u64) rmt->as_u32 << 32 | (u64) lcl->as_u32;
@@ -87,7 +87,7 @@ make_v4_ss_kv (session_kv4_t * kv, ip4_address_t * lcl, ip4_address_t * rmt,
 }
 
 always_inline void
-make_v4_listener_kv (session_kv4_t * kv, ip4_address_t * lcl, u16 lcl_port,
+make_v4_listener_kv (session_kv4_t *kv, ip4_address_t *lcl, u16 lcl_port,
 		     u8 proto)
 {
   kv->key[0] = (u64) lcl->as_u32;
@@ -96,7 +96,7 @@ make_v4_listener_kv (session_kv4_t * kv, ip4_address_t * lcl, u16 lcl_port,
 }
 
 always_inline void
-make_v4_proxy_kv (session_kv4_t * kv, ip4_address_t * lcl, u8 proto)
+make_v4_proxy_kv (session_kv4_t *kv, ip4_address_t *lcl, u8 proto)
 {
   kv->key[0] = (u64) lcl->as_u32;
   kv->key[1] = (u64) proto << 32;
@@ -104,14 +104,14 @@ make_v4_proxy_kv (session_kv4_t * kv, ip4_address_t * lcl, u8 proto)
 }
 
 always_inline void
-make_v4_ss_kv_from_tc (session_kv4_t * kv, transport_connection_t * tc)
+make_v4_ss_kv_from_tc (session_kv4_t *kv, transport_connection_t *tc)
 {
   make_v4_ss_kv (kv, &tc->lcl_ip.ip4, &tc->rmt_ip.ip4, tc->lcl_port,
 		 tc->rmt_port, tc->proto);
 }
 
 always_inline void
-make_v6_ss_kv (session_kv6_t * kv, ip6_address_t * lcl, ip6_address_t * rmt,
+make_v6_ss_kv (session_kv6_t *kv, ip6_address_t *lcl, ip6_address_t *rmt,
 	       u16 lcl_port, u16 rmt_port, u8 proto)
 {
   kv->key[0] = lcl->as_u64[0];
@@ -124,7 +124,7 @@ make_v6_ss_kv (session_kv6_t * kv, ip6_address_t * lcl, ip6_address_t * rmt,
 }
 
 always_inline void
-make_v6_listener_kv (session_kv6_t * kv, ip6_address_t * lcl, u16 lcl_port,
+make_v6_listener_kv (session_kv6_t *kv, ip6_address_t *lcl, u16 lcl_port,
 		     u8 proto)
 {
   kv->key[0] = lcl->as_u64[0];
@@ -137,7 +137,7 @@ make_v6_listener_kv (session_kv6_t * kv, ip6_address_t * lcl, u16 lcl_port,
 }
 
 always_inline void
-make_v6_proxy_kv (session_kv6_t * kv, ip6_address_t * lcl, u8 proto)
+make_v6_proxy_kv (session_kv6_t *kv, ip6_address_t *lcl, u8 proto)
 {
   kv->key[0] = lcl->as_u64[0];
   kv->key[1] = lcl->as_u64[1];
@@ -149,7 +149,7 @@ make_v6_proxy_kv (session_kv6_t * kv, ip6_address_t * lcl, u8 proto)
 }
 
 always_inline void
-make_v6_ss_kv_from_tc (session_kv6_t * kv, transport_connection_t * tc)
+make_v6_ss_kv_from_tc (session_kv6_t *kv, transport_connection_t *tc)
 {
   make_v6_ss_kv (kv, &tc->lcl_ip.ip6, &tc->rmt_ip.ip6, tc->lcl_port,
 		 tc->rmt_port, tc->proto);
@@ -181,7 +181,7 @@ session_table_get_or_alloc (u8 fib_proto, u32 fib_index)
 }
 
 static session_table_t *
-session_table_get_or_alloc_for_connection (transport_connection_t * tc)
+session_table_get_or_alloc_for_connection (transport_connection_t *tc)
 {
   u32 fib_proto;
   fib_proto = transport_connection_fib_proto (tc);
@@ -189,13 +189,13 @@ session_table_get_or_alloc_for_connection (transport_connection_t * tc)
 }
 
 static session_table_t *
-session_table_get_for_connection (transport_connection_t * tc)
+session_table_get_for_connection (transport_connection_t *tc)
 {
   u32 fib_proto = transport_connection_fib_proto (tc);
   if (vec_len (fib_index_to_table_index[fib_proto]) <= tc->fib_index)
     return 0;
-  return
-    session_table_get (fib_index_to_table_index[fib_proto][tc->fib_index]);
+  return session_table_get (
+    fib_index_to_table_index[fib_proto][tc->fib_index]);
 }
 
 static session_table_t *
@@ -226,7 +226,7 @@ session_lookup_get_index_for_fib (u32 fib_proto, u32 fib_index)
  * @return non-zero if failure
  */
 int
-session_lookup_add_connection (transport_connection_t * tc, u64 value)
+session_lookup_add_connection (transport_connection_t *tc, u64 value)
 {
   session_table_t *st;
   session_kv4_t kv4;
@@ -240,20 +240,20 @@ session_lookup_add_connection (transport_connection_t * tc, u64 value)
       make_v4_ss_kv_from_tc (&kv4, tc);
       kv4.value = value;
       return clib_bihash_add_del_16_8 (&st->v4_session_hash, &kv4,
-				       1 /* is_add */ );
+				       1 /* is_add */);
     }
   else
     {
       make_v6_ss_kv_from_tc (&kv6, tc);
       kv6.value = value;
       return clib_bihash_add_del_48_8 (&st->v6_session_hash, &kv6,
-				       1 /* is_add */ );
+				       1 /* is_add */);
     }
 }
 
 int
-session_lookup_add_session_endpoint (u32 table_index,
-				     session_endpoint_t * sep, u64 value)
+session_lookup_add_session_endpoint (u32 table_index, session_endpoint_t *sep,
+				     u64 value)
 {
   session_table_t *st;
   session_kv4_t kv4;
@@ -279,8 +279,7 @@ session_lookup_add_session_endpoint (u32 table_index,
 }
 
 int
-session_lookup_del_session_endpoint (u32 table_index,
-				     session_endpoint_t * sep)
+session_lookup_del_session_endpoint (u32 table_index, session_endpoint_t *sep)
 {
   session_table_t *st;
   session_kv4_t kv4;
@@ -304,7 +303,7 @@ session_lookup_del_session_endpoint (u32 table_index,
 }
 
 int
-session_lookup_del_session_endpoint2 (session_endpoint_t * sep)
+session_lookup_del_session_endpoint2 (session_endpoint_t *sep)
 {
   fib_protocol_t fib_proto;
   session_table_t *st;
@@ -338,7 +337,7 @@ session_lookup_del_session_endpoint2 (session_endpoint_t * sep)
  * @return non-zero if failure
  */
 int
-session_lookup_del_connection (transport_connection_t * tc)
+session_lookup_del_connection (transport_connection_t *tc)
 {
   session_table_t *st;
   session_kv4_t kv4;
@@ -351,18 +350,18 @@ session_lookup_del_connection (transport_connection_t * tc)
     {
       make_v4_ss_kv_from_tc (&kv4, tc);
       return clib_bihash_add_del_16_8 (&st->v4_session_hash, &kv4,
-				       0 /* is_add */ );
+				       0 /* is_add */);
     }
   else
     {
       make_v6_ss_kv_from_tc (&kv6, tc);
       return clib_bihash_add_del_48_8 (&st->v6_session_hash, &kv6,
-				       0 /* is_add */ );
+				       0 /* is_add */);
     }
 }
 
 int
-session_lookup_del_session (session_t * s)
+session_lookup_del_session (session_t *s)
 {
   transport_connection_t *ts;
   ts = transport_get_connection (session_get_transport_proto (s),
@@ -375,8 +374,8 @@ session_lookup_del_session (session_t * s)
 static u8
 session_lookup_action_index_is_valid (u32 action_index)
 {
-  if (action_index == SESSION_RULES_TABLE_ACTION_ALLOW
-      || action_index == SESSION_RULES_TABLE_INVALID_INDEX)
+  if (action_index == SESSION_RULES_TABLE_ACTION_ALLOW ||
+      action_index == SESSION_RULES_TABLE_INVALID_INDEX)
     return 0;
   return 1;
 }
@@ -423,14 +422,14 @@ session_lookup_action_to_session (u32 action_index, u8 fib_proto,
 
 /** UNUSED */
 session_t *
-session_lookup_rules_table_session4 (session_table_t * st, u8 proto,
-				     ip4_address_t * lcl, u16 lcl_port,
-				     ip4_address_t * rmt, u16 rmt_port)
+session_lookup_rules_table_session4 (session_table_t *st, u8 proto,
+				     ip4_address_t *lcl, u16 lcl_port,
+				     ip4_address_t *rmt, u16 rmt_port)
 {
   session_rules_table_t *srt = &st->session_rules[proto];
   u32 action_index, app_index;
-  action_index = session_rules_table_lookup4 (srt, lcl, rmt, lcl_port,
-					      rmt_port);
+  action_index =
+    session_rules_table_lookup4 (srt, lcl, rmt, lcl_port, rmt_port);
   app_index = session_lookup_action_to_handle (action_index);
   /* Nothing sophisticated for now, action index is app index */
   return session_lookup_app_listen_session (app_index, FIB_PROTOCOL_IP4,
@@ -439,14 +438,14 @@ session_lookup_rules_table_session4 (session_table_t * st, u8 proto,
 
 /** UNUSED */
 session_t *
-session_lookup_rules_table_session6 (session_table_t * st, u8 proto,
-				     ip6_address_t * lcl, u16 lcl_port,
-				     ip6_address_t * rmt, u16 rmt_port)
+session_lookup_rules_table_session6 (session_table_t *st, u8 proto,
+				     ip6_address_t *lcl, u16 lcl_port,
+				     ip6_address_t *rmt, u16 rmt_port)
 {
   session_rules_table_t *srt = &st->session_rules[proto];
   u32 action_index, app_index;
-  action_index = session_rules_table_lookup6 (srt, lcl, rmt, lcl_port,
-					      rmt_port);
+  action_index =
+    session_rules_table_lookup6 (srt, lcl, rmt, lcl_port, rmt_port);
   app_index = session_lookup_action_to_handle (action_index);
   return session_lookup_app_listen_session (app_index, FIB_PROTOCOL_IP6,
 					    proto);
@@ -463,7 +462,7 @@ session_lookup_rules_table_session6 (session_table_t * st, u8 proto,
  * 	   or an action derived handle if a rule is hit
  */
 u64
-session_lookup_endpoint_listener (u32 table_index, session_endpoint_t * sep,
+session_lookup_endpoint_listener (u32 table_index, session_endpoint_t *sep,
 				  u8 use_rules)
 {
   session_rules_table_t *srt;
@@ -535,7 +534,7 @@ session_lookup_endpoint_listener (u32 table_index, session_endpoint_t * sep,
  * @return session handle that can be interpreted as an adjacency
  */
 u64
-session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
+session_lookup_local_endpoint (u32 table_index, session_endpoint_t *sep)
 {
   session_rules_table_t *srt;
   session_table_t *st;
@@ -557,8 +556,8 @@ session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
        */
       clib_memset (&lcl4, 0, sizeof (lcl4));
       srt = &st->session_rules[sep->transport_proto];
-      ai = session_rules_table_lookup4 (srt, &lcl4, &sep->ip.ip4, 0,
-					sep->port);
+      ai =
+	session_rules_table_lookup4 (srt, &lcl4, &sep->ip.ip4, 0, sep->port);
       if (session_lookup_action_index_is_valid (ai))
 	return session_lookup_action_to_handle (ai);
 
@@ -602,8 +601,8 @@ session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
 
       clib_memset (&lcl6, 0, sizeof (lcl6));
       srt = &st->session_rules[sep->transport_proto];
-      ai = session_rules_table_lookup6 (srt, &lcl6, &sep->ip.ip6, 0,
-					sep->port);
+      ai =
+	session_rules_table_lookup6 (srt, &lcl6, &sep->ip.ip6, 0, sep->port);
       if (session_lookup_action_index_is_valid (ai))
 	return session_lookup_action_to_handle (ai);
 
@@ -641,7 +640,7 @@ session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
 }
 
 static inline session_t *
-session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
+session_lookup_listener4_i (session_table_t *st, ip4_address_t *lcl,
 			    u16 lcl_port, u8 proto, u8 use_wildcard)
 {
   session_kv4_t kv4;
@@ -682,7 +681,7 @@ session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
 }
 
 session_t *
-session_lookup_listener4 (u32 fib_index, ip4_address_t * lcl, u16 lcl_port,
+session_lookup_listener4 (u32 fib_index, ip4_address_t *lcl, u16 lcl_port,
 			  u8 proto, u8 use_wildcard)
 {
   session_table_t *st;
@@ -693,7 +692,7 @@ session_lookup_listener4 (u32 fib_index, ip4_address_t * lcl, u16 lcl_port,
 }
 
 static session_t *
-session_lookup_listener6_i (session_table_t * st, ip6_address_t * lcl,
+session_lookup_listener6_i (session_table_t *st, ip6_address_t *lcl,
 			    u16 lcl_port, u8 proto, u8 ip_wildcard)
 {
   session_kv6_t kv6;
@@ -725,7 +724,7 @@ session_lookup_listener6_i (session_table_t * st, ip6_address_t * lcl,
 }
 
 session_t *
-session_lookup_listener6 (u32 fib_index, ip6_address_t * lcl, u16 lcl_port,
+session_lookup_listener6 (u32 fib_index, ip6_address_t *lcl, u16 lcl_port,
 			  u8 proto, u8 use_wildcard)
 {
   session_table_t *st;
@@ -739,7 +738,7 @@ session_lookup_listener6 (u32 fib_index, ip6_address_t * lcl, u16 lcl_port,
  * Lookup listener, exact or proxy (inaddr_any:0) match
  */
 session_t *
-session_lookup_listener (u32 table_index, session_endpoint_t * sep)
+session_lookup_listener (u32 table_index, session_endpoint_t *sep)
 {
   session_table_t *st;
   st = session_table_get (table_index);
@@ -758,25 +757,23 @@ session_lookup_listener (u32 table_index, session_endpoint_t * sep)
  * Lookup listener wildcard match
  */
 session_t *
-session_lookup_listener_wildcard (u32 table_index, session_endpoint_t * sep)
+session_lookup_listener_wildcard (u32 table_index, session_endpoint_t *sep)
 {
   session_table_t *st;
   st = session_table_get (table_index);
   if (!st)
     return 0;
   if (sep->is_ip4)
-    return session_lookup_listener4_i (st, &sep->ip.ip4, sep->port,
-				       sep->transport_proto,
-				       1 /* use_wildcard */ );
+    return session_lookup_listener4_i (
+      st, &sep->ip.ip4, sep->port, sep->transport_proto, 1 /* use_wildcard */);
   else
-    return session_lookup_listener6_i (st, &sep->ip.ip6, sep->port,
-				       sep->transport_proto,
-				       1 /* use_wildcard */ );
+    return session_lookup_listener6_i (
+      st, &sep->ip.ip6, sep->port, sep->transport_proto, 1 /* use_wildcard */);
   return 0;
 }
 
 int
-session_lookup_add_half_open (transport_connection_t * tc, u64 value)
+session_lookup_add_half_open (transport_connection_t *tc, u64 value)
 {
   session_table_t *st;
   session_kv4_t kv4;
@@ -790,19 +787,19 @@ session_lookup_add_half_open (transport_connection_t * tc, u64 value)
       make_v4_ss_kv_from_tc (&kv4, tc);
       kv4.value = value;
       return clib_bihash_add_del_16_8 (&st->v4_half_open_hash, &kv4,
-				       1 /* is_add */ );
+				       1 /* is_add */);
     }
   else
     {
       make_v6_ss_kv_from_tc (&kv6, tc);
       kv6.value = value;
       return clib_bihash_add_del_48_8 (&st->v6_half_open_hash, &kv6,
-				       1 /* is_add */ );
+				       1 /* is_add */);
     }
 }
 
 int
-session_lookup_del_half_open (transport_connection_t * tc)
+session_lookup_del_half_open (transport_connection_t *tc)
 {
   session_table_t *st;
   session_kv4_t kv4;
@@ -815,18 +812,18 @@ session_lookup_del_half_open (transport_connection_t * tc)
     {
       make_v4_ss_kv_from_tc (&kv4, tc);
       return clib_bihash_add_del_16_8 (&st->v4_half_open_hash, &kv4,
-				       0 /* is_add */ );
+				       0 /* is_add */);
     }
   else
     {
       make_v6_ss_kv_from_tc (&kv6, tc);
       return clib_bihash_add_del_48_8 (&st->v6_half_open_hash, &kv6,
-				       0 /* is_add */ );
+				       0 /* is_add */);
     }
 }
 
 u64
-session_lookup_half_open_handle (transport_connection_t * tc)
+session_lookup_half_open_handle (transport_connection_t *tc)
 {
   session_table_t *st;
   session_kv4_t kv4;
@@ -894,10 +891,9 @@ session_lookup_half_open_connection (u64 handle, u8 proto, u8 is_ip4)
  * @return pointer to transport connection, if one is found, 0 otherwise
  */
 transport_connection_t *
-session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
-			       ip4_address_t * rmt, u16 lcl_port,
-			       u16 rmt_port, u8 proto, u32 thread_index,
-			       u8 * result)
+session_lookup_connection_wt4 (u32 fib_index, ip4_address_t *lcl,
+			       ip4_address_t *rmt, u16 lcl_port, u16 rmt_port,
+			       u8 proto, u32 thread_index, u8 *result)
 {
   session_table_t *st;
   session_kv4_t kv4;
@@ -977,8 +973,8 @@ session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
  * @return pointer to transport connection, if one is found, 0 otherwise
  */
 transport_connection_t *
-session_lookup_connection4 (u32 fib_index, ip4_address_t * lcl,
-			    ip4_address_t * rmt, u16 lcl_port, u16 rmt_port,
+session_lookup_connection4 (u32 fib_index, ip4_address_t *lcl,
+			    ip4_address_t *rmt, u16 lcl_port, u16 rmt_port,
 			    u8 proto)
 {
   session_table_t *st;
@@ -1049,7 +1045,7 @@ session_lookup_connection4 (u32 fib_index, ip4_address_t * lcl,
  * Typically used by dgram connections
  */
 session_t *
-session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl, ip4_address_t * rmt,
+session_lookup_safe4 (u32 fib_index, ip4_address_t *lcl, ip4_address_t *rmt,
 		      u16 lcl_port, u16 rmt_port, u8 proto)
 {
   session_table_t *st;
@@ -1118,10 +1114,9 @@ session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl, ip4_address_t * rmt,
  * @return pointer to transport connection, if one is found, 0 otherwise
  */
 transport_connection_t *
-session_lookup_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
-			       ip6_address_t * rmt, u16 lcl_port,
-			       u16 rmt_port, u8 proto, u32 thread_index,
-			       u8 * result)
+session_lookup_connection_wt6 (u32 fib_index, ip6_address_t *lcl,
+			       ip6_address_t *rmt, u16 lcl_port, u16 rmt_port,
+			       u8 proto, u32 thread_index, u8 *result)
 {
   session_table_t *st;
   session_t *s;
@@ -1194,8 +1189,8 @@ session_lookup_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
  * @return pointer to transport connection, if one is found, 0 otherwise
  */
 transport_connection_t *
-session_lookup_connection6 (u32 fib_index, ip6_address_t * lcl,
-			    ip6_address_t * rmt, u16 lcl_port, u16 rmt_port,
+session_lookup_connection6 (u32 fib_index, ip6_address_t *lcl,
+			    ip6_address_t *rmt, u16 lcl_port, u16 rmt_port,
 			    u8 proto)
 {
   session_table_t *st;
@@ -1257,7 +1252,7 @@ session_lookup_connection6 (u32 fib_index, ip6_address_t * lcl,
  * Typically used by dgram connections
  */
 session_t *
-session_lookup_safe6 (u32 fib_index, ip6_address_t * lcl, ip6_address_t * rmt,
+session_lookup_safe6 (u32 fib_index, ip6_address_t *lcl, ip6_address_t *rmt,
 		      u16 lcl_port, u16 rmt_port, u8 proto)
 {
   session_table_t *st;
@@ -1293,8 +1288,8 @@ session_lookup_safe6 (u32 fib_index, ip6_address_t * lcl, ip6_address_t * rmt,
 }
 
 transport_connection_t *
-session_lookup_connection (u32 fib_index, ip46_address_t * lcl,
-			   ip46_address_t * rmt, u16 lcl_port, u16 rmt_port,
+session_lookup_connection (u32 fib_index, ip46_address_t *lcl,
+			   ip46_address_t *rmt, u16 lcl_port, u16 rmt_port,
 			   u8 proto, u8 is_ip4)
 {
   if (is_ip4)
@@ -1306,7 +1301,7 @@ session_lookup_connection (u32 fib_index, ip46_address_t * lcl,
 }
 
 int
-vnet_session_rule_add_del (session_rule_add_del_args_t * args)
+vnet_session_rule_add_del (session_rule_add_del_args_t *args)
 {
   app_namespace_t *app_ns = app_namespace_get (args->appns_index);
   session_rules_table_t *srt;
@@ -1321,8 +1316,8 @@ vnet_session_rule_add_del (session_rule_add_del_args_t * args)
   if (args->scope > 3)
     return VNET_API_ERROR_INVALID_VALUE;
 
-  if (args->transport_proto != TRANSPORT_PROTO_TCP
-      && args->transport_proto != TRANSPORT_PROTO_UDP)
+  if (args->transport_proto != TRANSPORT_PROTO_TCP &&
+      args->transport_proto != TRANSPORT_PROTO_UDP)
     return VNET_API_ERROR_INVALID_VALUE;
 
   if ((args->scope & SESSION_RULE_SCOPE_GLOBAL) || args->scope == 0)
@@ -1350,7 +1345,7 @@ vnet_session_rule_add_del (session_rule_add_del_args_t * args)
  * Mark (global) tables as pertaining to app ns
  */
 void
-session_lookup_set_tables_appns (app_namespace_t * app_ns)
+session_lookup_set_tables_appns (app_namespace_t *app_ns)
 {
   session_table_t *st;
   u32 fib_index;
@@ -1366,7 +1361,7 @@ session_lookup_set_tables_appns (app_namespace_t * app_ns)
 }
 
 u8 *
-format_ip4_session_lookup_kvp (u8 * s, va_list * args)
+format_ip4_session_lookup_kvp (u8 *s, va_list *args)
 {
   clib_bihash_kv_16_8_t *kvp = va_arg (*args, clib_bihash_kv_16_8_t *);
   u32 is_local = va_arg (*args, u32);
@@ -1407,7 +1402,7 @@ typedef struct _ip4_session_table_show_ctx_t
 } ip4_session_table_show_ctx_t;
 
 static int
-ip4_session_table_show (clib_bihash_kv_16_8_t * kvp, void *arg)
+ip4_session_table_show (clib_bihash_kv_16_8_t *kvp, void *arg)
 {
   ip4_session_table_show_ctx_t *ctx = arg;
   vlib_cli_output (ctx->vm, "%U", format_ip4_session_lookup_kvp, kvp,
@@ -1416,7 +1411,7 @@ ip4_session_table_show (clib_bihash_kv_16_8_t * kvp, void *arg)
 }
 
 void
-session_lookup_show_table_entries (vlib_main_t * vm, session_table_t * table,
+session_lookup_show_table_entries (vlib_main_t *vm, session_table_t *table,
 				   u8 type, u8 is_local)
 {
   ip4_session_table_show_ctx_t ctx = {
@@ -1440,8 +1435,8 @@ session_lookup_show_table_entries (vlib_main_t * vm, session_table_t * table,
 }
 
 static clib_error_t *
-session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			 vlib_cli_command_t * cmd)
+session_rule_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   u32 proto = ~0, lcl_port, rmt_port, action = 0, lcl_plen = 0, rmt_plen = 0;
   u32 appns_index, scope = 0;
@@ -1558,11 +1553,11 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (session_rule_command, static) =
-{
+VLIB_CLI_COMMAND (session_rule_command, static) = {
   .path = "session rule",
-  .short_help = "session rule [add|del] appns <ns_id> proto <proto> "
-      "<lcl-ip/plen> <lcl-port> <rmt-ip/plen> <rmt-port> action <action>",
+  .short_help =
+    "session rule [add|del] appns <ns_id> proto <proto> "
+    "<lcl-ip/plen> <lcl-port> <rmt-ip/plen> <rmt-port> action <action>",
   .function = session_rule_command_fn,
 };
 /* *INDENT-ON* */
@@ -1592,8 +1587,8 @@ session_lookup_dump_local_rules_table (u32 table_index, u8 fib_proto,
 }
 
 static clib_error_t *
-show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+show_session_rules_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   u32 transport_proto = ~0, lcl_port, rmt_port, lcl_plen, rmt_plen;
   u32 fib_index, scope = 0;
@@ -1689,11 +1684,10 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_session_rules_command, static) =
-{
+VLIB_CLI_COMMAND (show_session_rules_command, static) = {
   .path = "show session rules",
   .short_help = "show session rules [<proto> appns <id> <lcl-ip/plen> "
-      "<lcl-port> <rmt-ip/plen> <rmt-port> scope <scope>]",
+		"<lcl-port> <rmt-ip/plen> <rmt-port> scope <scope>]",
   .function = show_session_rules_command_fn,
 };
 /* *INDENT-ON* */
@@ -1717,9 +1711,4 @@ session_lookup_init (void)
 }
 
 /*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+ * f

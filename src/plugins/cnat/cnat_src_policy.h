@@ -46,10 +46,9 @@ typedef struct cnat_src_port_allocator_
 } cnat_src_port_allocator_t;
 
 /* function to use to compute source (IP, port) for a new session to a vip */
-typedef cnat_source_policy_errors_t (*cnat_vip_source_policy_t)
-  (vlib_main_t * vm, vlib_buffer_t * b, cnat_session_t * session,
-   u32 * rsession_flags, const cnat_translation_t * ct,
-   cnat_node_ctx_t * ctx);
+typedef cnat_source_policy_errors_t (*cnat_vip_source_policy_t) (
+  vlib_main_t *vm, vlib_buffer_t *b, cnat_session_t *session,
+  u32 *rsession_flags, const cnat_translation_t *ct, cnat_node_ctx_t *ctx);
 
 typedef struct cnat_src_policy_main_
 {
@@ -63,7 +62,7 @@ typedef struct cnat_src_policy_main_
 extern cnat_src_policy_main_t cnat_src_policy_main;
 
 void cnat_register_vip_src_policy (cnat_vip_source_policy_t fp);
-int cnat_allocate_port (u16 * port, ip_protocol_t iproto);
+int cnat_allocate_port (u16 *port, ip_protocol_t iproto);
 void cnat_free_port (u16 port, ip_protocol_t iproto);
 
 /*

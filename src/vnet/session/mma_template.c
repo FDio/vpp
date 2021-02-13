@@ -11,7 +11,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 #include <vppinfra/error.h>
 
@@ -32,8 +32,8 @@ u8 RT (rule_is_exact_match) (RTT (mma_rule) * key, RTT (mma_rule) * r)
   return 1;
 }
 
-u8
-RT (rule_is_match_for_key) (RTT (mma_mask_or_match) * key, RTT (mma_rule) * r)
+u8 RT (rule_is_match_for_key) (RTT (mma_mask_or_match) * key,
+			       RTT (mma_rule) * r)
 {
   RTT (mma_mask_or_match) _tmp_key, *tkp = &_tmp_key;
   int i;
@@ -58,7 +58,7 @@ RTT (mma_rule) * RT (mma_rules_table_rule_alloc) (RTT (mma_rules_table) * srt)
 }
 
 RTT (mma_rule) *
-RT (mma_rule_free) (RTT (mma_rules_table) * srt, RTT (mma_rule) * rule)
+  RT (mma_rule_free) (RTT (mma_rules_table) * srt, RTT (mma_rule) * rule)
 {
   clib_memset (rule, 0xfa, sizeof (*rule));
   pool_put (srt->rules, rule);
@@ -66,16 +66,15 @@ RT (mma_rule_free) (RTT (mma_rules_table) * srt, RTT (mma_rule) * rule)
 }
 
 RTT (mma_rule) *
-RT (mma_rules_table_get_rule) (RTT (mma_rules_table) * srt, u32 srt_index)
+  RT (mma_rules_table_get_rule) (RTT (mma_rules_table) * srt, u32 srt_index)
 {
   if (!pool_is_free_index (srt->rules, srt_index))
     return (srt->rules + srt_index);
   return 0;
 }
 
-u32
-RT (mma_rules_table_rule_index) (RTT (mma_rules_table) * srt,
-				 RTT (mma_rule) * sr)
+u32 RT (mma_rules_table_rule_index) (RTT (mma_rules_table) * srt,
+				     RTT (mma_rule) * sr)
 {
   ASSERT (sr);
   return (sr - srt->rules);
@@ -86,9 +85,8 @@ RT (mma_rules_table_rule_index) (RTT (mma_rules_table) * srt,
  *
  * This should be optimized .. eventually
  */
-u32
-RT (mma_rules_table_lookup) (RTT (mma_rules_table) * srt,
-			     RTT (mma_mask_or_match) * key, u32 rule_index)
+u32 RT (mma_rules_table_lookup) (RTT (mma_rules_table) * srt,
+				 RTT (mma_mask_or_match) * key, u32 rule_index)
 {
   RTT (mma_rule) * rp;
   u32 rv;
@@ -109,10 +107,9 @@ RT (mma_rules_table_lookup) (RTT (mma_rules_table) * srt,
   return (rp->action_index);
 }
 
-u32
-RT (mma_rules_table_lookup_rule) (RTT (mma_rules_table) * srt,
-				  RTT (mma_mask_or_match) * key,
-				  u32 rule_index)
+u32 RT (mma_rules_table_lookup_rule) (RTT (mma_rules_table) * srt,
+				      RTT (mma_mask_or_match) * key,
+				      u32 rule_index)
 {
   RTT (mma_rule) * rp;
   u32 rv;
@@ -133,11 +130,9 @@ RT (mma_rules_table_lookup_rule) (RTT (mma_rules_table) * srt,
   return rule_index;
 }
 
-static
-RTT (mma_rules_table) *
-RTT (sort_srt);
+static RTT (mma_rules_table) * RTT (sort_srt);
 
-     int RT (mma_sort_indices) (void *e1, void *e2)
+int RT (mma_sort_indices) (void *e1, void *e2)
 {
   u32 *ri1 = e1, *ri2 = e2;
   RTT (mma_rule) * rule1, *rule2;
@@ -146,22 +141,21 @@ RTT (sort_srt);
   return RTT (sort_srt)->rule_cmp_fn (rule1, rule2);
 }
 
-void RT (mma_sort) (RTT (mma_rules_table) * srt, u32 * next_indices)
+void RT (mma_sort) (RTT (mma_rules_table) * srt, u32 *next_indices)
 {
   RTT (sort_srt) = srt;
   vec_sort_with_function (next_indices, RT (mma_sort_indices));
 }
 
-int
-RT (mma_rules_table_add_rule) (RTT (mma_rules_table) * srt,
-			       RTT (mma_rule) * rule)
+int RT (mma_rules_table_add_rule) (RTT (mma_rules_table) * srt,
+				   RTT (mma_rule) * rule)
 {
   u32 parent_index, i, *next_indices = 0, added = 0, rule_index;
   RTT (mma_rule) * parent, *child;
 
   rule_index = RT (mma_rules_table_rule_index) (srt, rule);
-  parent_index = RT (mma_rules_table_lookup_rule) (srt, &rule->match,
-						   srt->root_index);
+  parent_index =
+    RT (mma_rules_table_lookup_rule) (srt, &rule->match, srt->root_index);
   parent = RT (mma_rules_table_get_rule) (srt, parent_index);
   if (RT (rule_is_exact_match) (rule, parent))
     {
@@ -206,9 +200,8 @@ RT (mma_rules_table_add_rule) (RTT (mma_rules_table) * srt,
   return 0;
 }
 
-int
-RT (mma_rules_table_del_rule) (RTT (mma_rules_table) * srt,
-			       RTT (mma_rule) * rule, u32 rule_index)
+int RT (mma_rules_table_del_rule) (RTT (mma_rules_table) * srt,
+				   RTT (mma_rule) * rule, u32 rule_index)
 {
   RTT (mma_rule) * rp;
   u32 rv;

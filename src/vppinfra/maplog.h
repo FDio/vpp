@@ -42,15 +42,15 @@
 
 typedef struct
 {
-  u8 maplog_major_version;	/**< library major version number */
-  u8 maplog_minor_version;	/**< library minor version number */
-  u8 maplog_patch_version;	/**< library patch version number */
-  u8 maplog_flag_wrapped;	/**< log has wrapped */
-  u32 application_id;		/**< application identifier */
-  u8 application_major_version;	/**< application major version number */
-  u8 application_minor_version;	/**< application minor version number */
-  u8 application_patch_version;	/**< application patch version number */
-  u8 maplog_flag_circular;	/**< log is circular */
+  u8 maplog_major_version;	 /**< library major version number */
+  u8 maplog_minor_version;	 /**< library minor version number */
+  u8 maplog_patch_version;	 /**< library patch version number */
+  u8 maplog_flag_wrapped;	 /**< log has wrapped */
+  u32 application_id;		 /**< application identifier */
+  u8 application_major_version;	 /**< application major version number */
+  u8 application_minor_version;	 /**< application minor version number */
+  u8 application_patch_version;	 /**< application patch version number */
+  u8 maplog_flag_circular;	 /**< log is circular */
   u32 record_size_in_cachelines; /**< record size in cache lines */
   u32 cacheline_size;		 /**< cache line size  */
   u64 file_size_in_records;	 /**< file size in records */
@@ -72,26 +72,26 @@ typedef struct
   volatile u64 next_record_index;
   /** file size in records, rounded to a power of two */
   u64 file_size_in_records;
-  u32 log2_file_size_in_records; /**< lg file size in records */
+  u32 log2_file_size_in_records;   /**< lg file size in records */
   volatile u32 current_file_index; /**< current file index */
   volatile u32 flags;		   /**< flags, currently just "init" or not  */
 
   /* read-mostly cache line: size parameters, file names, etc. */
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
   u32 record_size_in_cachelines; /**< record size in cache lines */
 
   /* double-buffered mmap'ed logfiles */
-  volatile u8 *file_baseva[2];	/**< active segment base addresses */
-  u8 *filenames[2];		/**< active segment file names  */
+  volatile u8 *file_baseva[2]; /**< active segment base addresses */
+  u8 *filenames[2];	       /**< active segment file names  */
   /* vector not c-string */
-  u8 *file_basename;		/**< basename, e.g. "/tmp/mylog" */
-  u8 *header_filename;		/**< log header file name */
+  u8 *file_basename;   /**< basename, e.g. "/tmp/mylog" */
+  u8 *header_filename; /**< log header file name */
 } clib_maplog_main_t;
 
 /* flag bits */
-#define CLIB_MAPLOG_FLAG_INIT 	(1<<0)
-#define CLIB_MAPLOG_FLAG_CIRCULAR (1<<1)
-#define CLIB_MAPLOG_FLAG_WRAPPED (1<<2)
+#define CLIB_MAPLOG_FLAG_INIT	  (1 << 0)
+#define CLIB_MAPLOG_FLAG_CIRCULAR (1 << 1)
+#define CLIB_MAPLOG_FLAG_WRAPPED  (1 << 2)
 
 /** log initialization structure */
 typedef struct
@@ -101,22 +101,22 @@ typedef struct
   u64 file_size_in_bytes;	/**< file size in bytes */
   u32 record_size_in_bytes;	/**< record size in bytes */
   u32 application_id;		/**< application identifier */
-  u8 application_major_version;	/**< application major version number */
-  u8 application_minor_version;	/**< application minor version number */
-  u8 application_patch_version;	/**< application patch version number */
+  u8 application_major_version; /**< application major version number */
+  u8 application_minor_version; /**< application minor version number */
+  u8 application_patch_version; /**< application patch version number */
   u8 maplog_is_circular;	/**< single, circular log */
 } clib_maplog_init_args_t;
 
 /* function prototypes */
 
-int clib_maplog_init (clib_maplog_init_args_t * ap);
-void clib_maplog_update_header (clib_maplog_main_t * mm);
-void clib_maplog_close (clib_maplog_main_t * mm);
+int clib_maplog_init (clib_maplog_init_args_t *ap);
+void clib_maplog_update_header (clib_maplog_main_t *mm);
+void clib_maplog_close (clib_maplog_main_t *mm);
 int clib_maplog_process (char *file_basename, void *fp_arg);
 
 format_function_t format_maplog_header;
 
-u8 *_clib_maplog_get_entry_slowpath (clib_maplog_main_t * mm,
+u8 *_clib_maplog_get_entry_slowpath (clib_maplog_main_t *mm,
 				     u64 my_record_index);
 
 /**
@@ -130,7 +130,7 @@ u8 *_clib_maplog_get_entry_slowpath (clib_maplog_main_t * mm,
  * @return    pointer to the allocated log entry
  */
 static inline void *
-clib_maplog_get_entry (clib_maplog_main_t * mm)
+clib_maplog_get_entry (clib_maplog_main_t *mm)
 {
   u64 my_record_index;
   u8 *rv;
@@ -149,15 +149,16 @@ clib_maplog_get_entry (clib_maplog_main_t * mm)
 	  if (my_record_index)
 	    return _clib_maplog_get_entry_slowpath (mm, my_record_index);
 	}
-      else			/* Circular log: set the wrap bit and move along */
+      else /* Circular log: set the wrap bit and move along */
 	mm->flags |= CLIB_MAPLOG_FLAG_WRAPPED;
       /* FALLTHROUGH */
     }
 
-  rv = (u8 *)
-    mm->file_baseva[(my_record_index >> mm->log2_file_size_in_records) & 1] +
-    (my_record_index & (mm->file_size_in_records - 1))
-    * mm->record_size_in_cachelines * CLIB_CACHE_LINE_BYTES;
+  rv =
+    (u8 *)
+      mm->file_baseva[(my_record_index >> mm->log2_file_size_in_records) & 1] +
+    (my_record_index & (mm->file_size_in_records - 1)) *
+      mm->record_size_in_cachelines * CLIB_CACHE_LINE_BYTES;
 
   return rv;
 }

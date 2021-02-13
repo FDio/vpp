@@ -19,7 +19,7 @@
 u32 ip_flow_hash_router_id;
 
 u8
-ip_is_zero (ip46_address_t * ip46_address, u8 is_ip4)
+ip_is_zero (ip46_address_t *ip46_address, u8 is_ip4)
 {
   if (is_ip4)
     return (ip46_address->ip4.as_u32 == 0);
@@ -28,7 +28,7 @@ ip_is_zero (ip46_address_t * ip46_address, u8 is_ip4)
 }
 
 u8
-ip_is_local_host (ip46_address_t * ip46_address, u8 is_ip4)
+ip_is_local_host (ip46_address_t *ip46_address, u8 is_ip4)
 {
   if (is_ip4)
     return (ip46_address->ip4.as_u8[0] == 127);
@@ -38,13 +38,13 @@ ip_is_local_host (ip46_address_t * ip46_address, u8 is_ip4)
 }
 
 u8
-ip4_is_local_host (ip4_address_t * ip4_address)
+ip4_is_local_host (ip4_address_t *ip4_address)
 {
   return (ip4_address->as_u8[0] == 127);
 }
 
 u8
-ip6_is_local_host (ip6_address_t * ip6_address)
+ip6_is_local_host (ip6_address_t *ip6_address)
 {
   return (ip6_address->as_u64[0] == 0 &&
 	  clib_net_to_host_u64 (ip6_address->as_u64[1]) == 1);
@@ -54,7 +54,7 @@ ip6_is_local_host (ip6_address_t * ip6_address)
  * Checks that an ip is local to the requested fib
  */
 u8
-ip_is_local (u32 fib_index, ip46_address_t * ip46_address, u8 is_ip4)
+ip_is_local (u32 fib_index, ip46_address_t *ip46_address, u8 is_ip4)
 {
   fib_node_index_t fei;
   fib_entry_flag_t flags;
@@ -80,7 +80,7 @@ ip_is_local (u32 fib_index, ip46_address_t * ip46_address, u8 is_ip4)
 }
 
 void
-ip_copy (ip46_address_t * dst, ip46_address_t * src, u8 is_ip4)
+ip_copy (ip46_address_t *dst, ip46_address_t *src, u8 is_ip4)
 {
   if (is_ip4)
     {
@@ -92,7 +92,7 @@ ip_copy (ip46_address_t * dst, ip46_address_t * src, u8 is_ip4)
 }
 
 void
-ip_set (ip46_address_t * dst, void *src, u8 is_ip4)
+ip_set (ip46_address_t *dst, void *src, u8 is_ip4)
 {
   if (is_ip4)
     {
@@ -104,7 +104,6 @@ ip_set (ip46_address_t * dst, void *src, u8 is_ip4)
 		      sizeof (ip6_address_t));
 }
 
-/* *INDENT-OFF* */
 static const char *ip_arc_names[N_IP_FEATURE_LOCATIONS][N_AF][N_SAFI] = {
   [IP_FEATURE_INPUT] = {
     [AF_IP4] = {
@@ -157,35 +156,29 @@ static const char *ip_arc_names[N_IP_FEATURE_LOCATIONS][N_AF][N_SAFI] = {
     },
   },
 };
-/* *INDENT-ON* */
 
 void
 ip_feature_enable_disable (ip_address_family_t af,
 			   ip_sub_address_family_t safi,
-			   ip_feature_location_t loc,
-			   const char *feature_name,
-			   u32 sw_if_index, int enable,
-			   void *feature_config, u32 n_feature_config_bytes)
+			   ip_feature_location_t loc, const char *feature_name,
+			   u32 sw_if_index, int enable, void *feature_config,
+			   u32 n_feature_config_bytes)
 {
   if (IP_FEATURE_INPUT == loc)
     {
       if (N_SAFI == safi)
 	FOR_EACH_IP_ADDRESS_SUB_FAMILY (safi)
-	  vnet_feature_enable_disable (ip_arc_names[loc][af][safi],
-				       feature_name, sw_if_index,
-				       enable, feature_config,
-				       n_feature_config_bytes);
-      else
-	vnet_feature_enable_disable (ip_arc_names[loc][af][safi],
-				     feature_name, sw_if_index,
-				     enable, feature_config,
-				     n_feature_config_bytes);
+      vnet_feature_enable_disable (ip_arc_names[loc][af][safi], feature_name,
+				   sw_if_index, enable, feature_config,
+				   n_feature_config_bytes);
+      else vnet_feature_enable_disable (
+	ip_arc_names[loc][af][safi], feature_name, sw_if_index, enable,
+	feature_config, n_feature_config_bytes);
     }
   else
     vnet_feature_enable_disable (ip_arc_names[loc][af][SAFI_UNICAST],
-				 feature_name, sw_if_index,
-				 enable, feature_config,
-				 n_feature_config_bytes);
+				 feature_name, sw_if_index, enable,
+				 feature_config, n_feature_config_bytes);
 }
 
 int
@@ -212,9 +205,10 @@ ip_flow_hash_router_id_set (u32 router_id)
 }
 
 u8 *
-format_ip_address_family (u8 * s, va_list * args)
+format_ip_address_family (u8 *s, va_list *args)
 {
-  ip_address_family_t af = va_arg (*args, int);	// int promo ip_address_family_t);
+  ip_address_family_t af =
+    va_arg (*args, int); // int promo ip_address_family_t);
 
   switch (af)
     {
@@ -228,7 +222,7 @@ format_ip_address_family (u8 * s, va_list * args)
 }
 
 uword
-unformat_ip_address_family (unformat_input_t * input, va_list * args)
+unformat_ip_address_family (unformat_input_t *input, va_list *args)
 {
   ip_address_family_t *af = va_arg (*args, ip_address_family_t *);
 
@@ -248,9 +242,10 @@ unformat_ip_address_family (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_ip_sub_address_family (u8 * s, va_list * args)
+format_ip_sub_address_family (u8 *s, va_list *args)
 {
-  ip_sub_address_family_t safi = va_arg (*args, int);	// int promo ip_sub_address_family_t);
+  ip_sub_address_family_t safi =
+    va_arg (*args, int); // int promo ip_sub_address_family_t);
 
   switch (safi)
     {
@@ -264,7 +259,7 @@ format_ip_sub_address_family (u8 * s, va_list * args)
 }
 
 uword
-unformat_ip_sub_address_family (unformat_input_t * input, va_list * args)
+unformat_ip_sub_address_family (unformat_input_t *input, va_list *args)
 {
   ip_sub_address_family_t *safi = va_arg (*args, ip_sub_address_family_t *);
 
@@ -282,15 +277,15 @@ unformat_ip_sub_address_family (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_ip_dscp (u8 * s, va_list * va)
+format_ip_dscp (u8 *s, va_list *va)
 {
-  ip_dscp_t dscp = va_arg (*va, u32);	// int promotion of u8
+  ip_dscp_t dscp = va_arg (*va, u32); // int promotion of u8
 
   switch (dscp)
     {
-#define _(n,v)                                                  \
-    case IP_DSCP_##v:                                           \
-      return (format (s, "%s", #v));
+#define _(n, v)                                                               \
+  case IP_DSCP_##v:                                                           \
+    return (format (s, "%s", #v));
       foreach_ip_dscp
 #undef _
     }
@@ -299,33 +294,30 @@ format_ip_dscp (u8 * s, va_list * va)
 }
 
 uword
-unformat_ip_dscp (unformat_input_t * input, va_list * args)
+unformat_ip_dscp (unformat_input_t *input, va_list *args)
 {
   ip_dscp_t *dscp = va_arg (*args, ip_dscp_t *);
 
   if (0)
     ;
-#define _(n,v)                                                  \
-  else if (unformat (input, #v))                                \
-    *dscp = IP_DSCP_##v;
+#define _(n, v) else if (unformat (input, #v)) *dscp = IP_DSCP_##v;
   foreach_ip_dscp
 #undef _
-    else
-    return 0;
+    else return 0;
 
   return 1;
 }
 
 u8 *
-format_ip_ecn (u8 * s, va_list * va)
+format_ip_ecn (u8 *s, va_list *va)
 {
-  ip_ecn_t ecn = va_arg (*va, u32);	// int promotion of u8
+  ip_ecn_t ecn = va_arg (*va, u32); // int promotion of u8
 
   switch (ecn)
     {
-#define _(n,v)                                                  \
-    case IP_ECN_##v:                                           \
-      return (format (s, "%s", #v));
+#define _(n, v)                                                               \
+  case IP_ECN_##v:                                                            \
+    return (format (s, "%s", #v));
       foreach_ip_ecn
 #undef _
     }

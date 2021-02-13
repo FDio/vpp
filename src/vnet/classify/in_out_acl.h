@@ -45,33 +45,29 @@ typedef struct
 {
 
   /* classifier table vectors */
-  u32
-    * classify_table_index_by_sw_if_index[IN_OUT_ACL_N_TABLE_GROUPS]
-    [IN_OUT_ACL_N_TABLES];
+  u32 *classify_table_index_by_sw_if_index[IN_OUT_ACL_N_TABLE_GROUPS]
+					  [IN_OUT_ACL_N_TABLES];
 
   /* convenience variables */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
   vnet_classify_main_t *vnet_classify_main;
-    vnet_config_main_t
-    * vnet_config_main[IN_OUT_ACL_N_TABLE_GROUPS][IN_OUT_ACL_N_TABLES];
+  vnet_config_main_t
+    *vnet_config_main[IN_OUT_ACL_N_TABLE_GROUPS][IN_OUT_ACL_N_TABLES];
 } in_out_acl_main_t;
 
 extern in_out_acl_main_t in_out_acl_main;
 
-int vnet_set_in_out_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
-			       u32 ip4_table_index,
-			       u32 ip6_table_index,
+int vnet_set_in_out_acl_intfc (vlib_main_t *vm, u32 sw_if_index,
+			       u32 ip4_table_index, u32 ip6_table_index,
 			       u32 l2_table_index, u32 is_add, u32 is_output);
 
-int vnet_set_input_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
-			      u32 ip4_table_index,
-			      u32 ip6_table_index,
+int vnet_set_input_acl_intfc (vlib_main_t *vm, u32 sw_if_index,
+			      u32 ip4_table_index, u32 ip6_table_index,
 			      u32 l2_table_index, u32 is_add);
 
-int vnet_set_output_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
-			       u32 ip4_table_index,
-			       u32 ip6_table_index,
+int vnet_set_output_acl_intfc (vlib_main_t *vm, u32 sw_if_index,
+			       u32 ip4_table_index, u32 ip6_table_index,
 			       u32 l2_table_index, u32 is_add);
 
 #endif /* __included_vnet_in_out_acl_h__ */

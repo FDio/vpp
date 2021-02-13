@@ -28,14 +28,16 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 
-typedef enum {
+typedef enum
+{
   VNET_ADL_IP4,
   VNET_ADL_IP6,
   VNET_ADL_DEFAULT,
   VNET_N_ADLS,
 } vnet_adl_t;
 
-typedef enum {
+typedef enum
+{
   /* First check src address against allowlist */
   IP4_RX_ADL_ALLOWLIST,
   IP6_RX_ADL_ALLOWLIST,
@@ -52,23 +54,26 @@ typedef enum {
   ADL_RX_N_FEATURES,
 } adl_feature_type_t;
 
-typedef struct {
+typedef struct
+{
   vnet_config_main_t config_main;
-  u32 * config_index_by_sw_if_index;
+  u32 *config_index_by_sw_if_index;
 } adl_config_main_t;
 
-typedef struct {
+typedef struct
+{
   u32 fib_index;
 } adl_config_data_t;
 
-typedef struct {
+typedef struct
+{
   adl_config_main_t adl_config_mains[VNET_N_ADLS];
 
   u16 msg_id_base;
 
   /* convenience */
-  vlib_main_t * vlib_main;
-  vnet_main_t * vnet_main;
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
 } adl_main_t;
 
 extern adl_main_t adl_main;
@@ -77,7 +82,8 @@ extern vlib_node_registration_t adl_input_node;
 
 int adl_interface_enable_disable (u32 sw_if_index, int enable_disable);
 
-typedef struct {
+typedef struct
+{
   u32 sw_if_index;
   u8 ip4;
   u8 ip6;
@@ -88,24 +94,25 @@ typedef struct {
 int adl_allowlist_enable_disable (adl_allowlist_enable_disable_args_t *a);
 
 /* Plugin private opaque union type */
-typedef struct {
-    /* MUST be in sync with .../src/vnet/buffer.h */
-    u32 sw_if_index[VLIB_N_RX_TX];
-    i16 l2_hdr_offset;
-    i16 l3_hdr_offset;
-    i16 l4_hdr_offset;
-    u8 feature_arc_index;
-    u8 dont_waste_me;
-    /* end of must be in sync with .../src/vnet/buffer.h */
-    union
+typedef struct
+{
+  /* MUST be in sync with .../src/vnet/buffer.h */
+  u32 sw_if_index[VLIB_N_RX_TX];
+  i16 l2_hdr_offset;
+  i16 l3_hdr_offset;
+  i16 l4_hdr_offset;
+  u8 feature_arc_index;
+  u8 dont_waste_me;
+  /* end of must be in sync with .../src/vnet/buffer.h */
+  union
+  {
+    /* COP - configurable junk filter(s) */
+    struct
     {
-        /* COP - configurable junk filter(s) */
-        struct
-        {
-            /* Current configuration index. */
-            u32 current_config_index;
-        } adl;
-    };
+      /* Current configuration index. */
+      u32 current_config_index;
+    } adl;
+  };
 } adl_buffer_opaque_t;
 
 #define adl_buffer(b) ((adl_buffer_opaque_t *) (b)->opaque)

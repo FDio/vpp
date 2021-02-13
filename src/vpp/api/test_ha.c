@@ -53,13 +53,13 @@
 #include <vnet/ip/ip.h>
 
 #define f64_endian(a)
-#define f64_print(a,b)
+#define f64_print(a, b)
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_endianfun
 
@@ -85,8 +85,8 @@ typedef struct
 
 test_main_t test_main;
 
-static void vl_api_control_ping_reply_t_handler
-  (vl_api_control_ping_reply_t * mp)
+static void
+vl_api_control_ping_reply_t_handler (vl_api_control_ping_reply_t *mp)
 {
   test_main_t *tm = &test_main;
 
@@ -103,11 +103,10 @@ vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...)
   clib_warning ("BUG: vlib_cli_output called...");
 }
 
-#define foreach_api_msg                         \
-_(CONTROL_PING_REPLY,control_ping_reply)
+#define foreach_api_msg _ (CONTROL_PING_REPLY, control_ping_reply)
 
 void
-ping (test_main_t * tm)
+ping (test_main_t *tm)
 {
   vl_api_control_ping_t *mp;
 
@@ -117,7 +116,7 @@ ping (test_main_t * tm)
   mp->client_index = tm->my_client_index;
   mp->context = 0xdeadbeef;
 
-  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) &mp);
 }
 
 static void
@@ -136,13 +135,10 @@ connect_to_vpe (char *name)
   if (rv < 0)
     return rv;
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           noop_handler,                        \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   noop_handler, vl_api_##n##_t_endian,               \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_api_msg;
 #undef _
 
@@ -167,7 +163,6 @@ signal_handler (int signo)
 
   tm->signal_received = 1;
 }
-
 
 int
 main (int argc, char **argv)

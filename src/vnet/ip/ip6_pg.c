@@ -41,9 +41,8 @@
 #include <vnet/pg/pg.h>
 
 static void
-ip6_pg_edit_function (pg_main_t * pg,
-		      pg_stream_t * s,
-		      pg_edit_group_t * g, u32 * packets, u32 n_packets)
+ip6_pg_edit_function (pg_main_t *pg, pg_stream_t *s, pg_edit_group_t *g,
+		      u32 *packets, u32 n_packets)
 {
   vlib_main_t *vm = vlib_get_main ();
   u32 ip_header_offset = g->start_byte_offset;
@@ -103,15 +102,15 @@ typedef struct
 } pg_ip6_header_t;
 
 static inline void
-pg_ip6_header_init (pg_ip6_header_t * p)
+pg_ip6_header_init (pg_ip6_header_t *p)
 {
   /* Initialize fields that are not bit fields in the IP header. */
 #define _(f) pg_edit_init (&p->f, ip6_header_t, f);
-  _(payload_length);
-  _(hop_limit);
-  _(protocol);
-  _(src_address);
-  _(dst_address);
+  _ (payload_length);
+  _ (hop_limit);
+  _ (protocol);
+  _ (src_address);
+  _ (dst_address);
 #undef _
 
   /* Initialize bit fields. */
@@ -124,7 +123,7 @@ pg_ip6_header_init (pg_ip6_header_t * p)
 }
 
 uword
-unformat_pg_ip6_header (unformat_input_t * input, va_list * args)
+unformat_pg_ip6_header (unformat_input_t *input, va_list *args)
 {
   pg_stream_t *s = va_arg (*args, pg_stream_t *);
   pg_ip6_header_t *p;
@@ -142,33 +141,29 @@ unformat_pg_ip6_header (unformat_input_t * input, va_list * args)
 
   p->payload_length.type = PG_EDIT_UNSPECIFIED;
 
-  if (!unformat (input, "%U: %U -> %U",
-		 unformat_pg_edit,
-		 unformat_ip_protocol, &p->protocol,
-		 unformat_pg_edit,
-		 unformat_ip6_address, &p->src_address,
-		 unformat_pg_edit, unformat_ip6_address, &p->dst_address))
+  if (!unformat (input, "%U: %U -> %U", unformat_pg_edit, unformat_ip_protocol,
+		 &p->protocol, unformat_pg_edit, unformat_ip6_address,
+		 &p->src_address, unformat_pg_edit, unformat_ip6_address,
+		 &p->dst_address))
     goto error;
 
   /* Parse options. */
   while (1)
     {
-      if (unformat (input, "version %U",
-		    unformat_pg_edit, unformat_pg_number, &p->ip_version))
+      if (unformat (input, "version %U", unformat_pg_edit, unformat_pg_number,
+		    &p->ip_version))
 	;
 
-      else if (unformat (input, "traffic-class %U",
-			 unformat_pg_edit,
+      else if (unformat (input, "traffic-class %U", unformat_pg_edit,
 			 unformat_pg_number, &p->traffic_class))
 	;
 
-      else if (unformat (input, "length %U",
-			 unformat_pg_edit,
+      else if (unformat (input, "length %U", unformat_pg_edit,
 			 unformat_pg_number, &p->payload_length))
 	;
 
-      else if (unformat (input, "hop-limit %U",
-			 unformat_pg_edit, unformat_pg_number, &p->hop_limit))
+      else if (unformat (input, "hop-limit %U", unformat_pg_edit,
+			 unformat_pg_number, &p->hop_limit))
 	;
 
       /* Can't parse input: try next protocol level. */
@@ -188,21 +183,20 @@ unformat_pg_ip6_header (unformat_input_t * input, va_list * args)
 	pi = ip_get_protocol_info (im, protocol);
       }
 
-    if (pi && pi->unformat_pg_edit
-	&& unformat_user (input, pi->unformat_pg_edit, s))
+    if (pi && pi->unformat_pg_edit &&
+	unformat_user (input, pi->unformat_pg_edit, s))
       ;
 
     else if (!unformat_user (input, unformat_pg_payload, s))
       goto error;
 
-    if (p->payload_length.type == PG_EDIT_UNSPECIFIED
-	&& s->min_packet_bytes == s->max_packet_bytes
-	&& group_index + 1 < vec_len (s->edit_groups))
+    if (p->payload_length.type == PG_EDIT_UNSPECIFIED &&
+	s->min_packet_bytes == s->max_packet_bytes &&
+	group_index + 1 < vec_len (s->edit_groups))
       {
 	pg_edit_set_fixed (&p->payload_length,
-			   pg_edit_group_n_bytes (s,
-						  group_index) -
-			   sizeof (ip6_header_t));
+			   pg_edit_group_n_bytes (s, group_index) -
+			     sizeof (ip6_header_t));
       }
 
     p = pg_get_edit_group (s, group_index);
@@ -220,7 +214,6 @@ error:
   pg_free_edit_group (s);
   return 0;
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

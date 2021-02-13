@@ -24,7 +24,7 @@ typedef struct
 test_main_t test_main;
 
 int
-test_dlist_main (unformat_input_t * input)
+test_dlist_main (unformat_input_t *input)
 {
   test_main_t *tm = &test_main;
   dlist_elt_t *head, *elt;

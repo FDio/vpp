@@ -46,7 +46,7 @@ typedef struct
 ioam_vxlan_gpe_test_main_t ioam_vxlan_gpe_test_main;
 
 static int
-api_vxlan_gpe_ioam_enable (vat_main_t * vam)
+api_vxlan_gpe_ioam_enable (vat_main_t *vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_vxlan_gpe_ioam_enable_t *mp;
@@ -77,15 +77,13 @@ api_vxlan_gpe_ioam_enable (vat_main_t * vam)
   mp->pow_enable = has_pow_option;
   mp->trace_enable = has_trace_option;
 
-
   S (mp);
   W (ret);
   return ret;
 }
 
-
 static int
-api_vxlan_gpe_ioam_disable (vat_main_t * vam)
+api_vxlan_gpe_ioam_disable (vat_main_t *vam)
 {
   vl_api_vxlan_gpe_ioam_disable_t *mp;
   int ret;
@@ -97,7 +95,7 @@ api_vxlan_gpe_ioam_disable (vat_main_t * vam)
 }
 
 static int
-api_vxlan_gpe_ioam_vni_enable (vat_main_t * vam)
+api_vxlan_gpe_ioam_vni_enable (vat_main_t *vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_vxlan_gpe_ioam_vni_enable_t *mp;
@@ -108,15 +106,14 @@ api_vxlan_gpe_ioam_vni_enable (vat_main_t * vam)
   u8 vni_set = 0;
   int ret;
 
-
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "local %U", unformat_ip46_address, &local))
 	{
 	  local_set = 1;
 	}
-      else if (unformat (line_input, "remote %U",
-			 unformat_ip46_address, &remote))
+      else if (unformat (line_input, "remote %U", unformat_ip46_address,
+			 &remote))
 	{
 	  remote_set = 1;
 	}
@@ -153,12 +150,12 @@ api_vxlan_gpe_ioam_vni_enable (vat_main_t * vam)
 
   M (VXLAN_GPE_IOAM_VNI_ENABLE, mp);
 
-  ip_address_encode (&local,
-		     ip46_address_is_ip4 (&local) ? IP46_TYPE_IP4 :
-		     IP46_TYPE_IP6, &mp->local);
-  ip_address_encode (&local,
-		     ip46_address_is_ip4 (&remote) ? IP46_TYPE_IP4 :
-		     IP46_TYPE_IP6, &mp->remote);
+  ip_address_encode (
+    &local, ip46_address_is_ip4 (&local) ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
+    &mp->local);
+  ip_address_encode (
+    &local, ip46_address_is_ip4 (&remote) ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
+    &mp->remote);
 
   mp->vni = ntohl (vni);
 
@@ -168,7 +165,7 @@ api_vxlan_gpe_ioam_vni_enable (vat_main_t * vam)
 }
 
 static int
-api_vxlan_gpe_ioam_vni_disable (vat_main_t * vam)
+api_vxlan_gpe_ioam_vni_disable (vat_main_t *vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_vxlan_gpe_ioam_vni_disable_t *mp;
@@ -179,15 +176,14 @@ api_vxlan_gpe_ioam_vni_disable (vat_main_t * vam)
   u8 vni_set = 0;
   int ret;
 
-
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "local %U", unformat_ip46_address, &local))
 	{
 	  local_set = 1;
 	}
-      else if (unformat (line_input, "remote %U",
-			 unformat_ip46_address, &remote))
+      else if (unformat (line_input, "remote %U", unformat_ip46_address,
+			 &remote))
 	{
 	  remote_set = 1;
 	}
@@ -224,12 +220,12 @@ api_vxlan_gpe_ioam_vni_disable (vat_main_t * vam)
 
   M (VXLAN_GPE_IOAM_VNI_DISABLE, mp);
 
-  ip_address_encode (&local,
-		     ip46_address_is_ip4 (&local) ? IP46_TYPE_IP4 :
-		     IP46_TYPE_IP6, &mp->local);
-  ip_address_encode (&local,
-		     ip46_address_is_ip4 (&remote) ? IP46_TYPE_IP4 :
-		     IP46_TYPE_IP6, &mp->remote);
+  ip_address_encode (
+    &local, ip46_address_is_ip4 (&local) ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
+    &mp->local);
+  ip_address_encode (
+    &local, ip46_address_is_ip4 (&remote) ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
+    &mp->remote);
 
   mp->vni = ntohl (vni);
 
@@ -239,7 +235,7 @@ api_vxlan_gpe_ioam_vni_disable (vat_main_t * vam)
 }
 
 static int
-api_vxlan_gpe_ioam_transit_enable (vat_main_t * vam)
+api_vxlan_gpe_ioam_transit_enable (vat_main_t *vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_vxlan_gpe_ioam_transit_enable_t *mp;
@@ -247,7 +243,6 @@ api_vxlan_gpe_ioam_transit_enable (vat_main_t * vam)
   u8 local_set = 0;
   u32 outer_fib_index = 0;
   int ret;
-
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -272,7 +267,6 @@ api_vxlan_gpe_ioam_transit_enable (vat_main_t * vam)
 
   M (VXLAN_GPE_IOAM_TRANSIT_ENABLE, mp);
 
-
   if (!ip46_address_is_ip4 (&local))
     {
       errmsg ("IPv6 currently unsupported");
@@ -287,7 +281,7 @@ api_vxlan_gpe_ioam_transit_enable (vat_main_t * vam)
 }
 
 static int
-api_vxlan_gpe_ioam_transit_disable (vat_main_t * vam)
+api_vxlan_gpe_ioam_transit_disable (vat_main_t *vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_vxlan_gpe_ioam_transit_disable_t *mp;
@@ -295,7 +289,6 @@ api_vxlan_gpe_ioam_transit_disable (vat_main_t * vam)
   u8 local_set = 0;
   u32 outer_fib_index = 0;
   int ret;
-
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -319,7 +312,6 @@ api_vxlan_gpe_ioam_transit_disable (vat_main_t * vam)
     }
 
   M (VXLAN_GPE_IOAM_TRANSIT_DISABLE, mp);
-
 
   if (!ip46_address_is_ip4 (&local))
     {

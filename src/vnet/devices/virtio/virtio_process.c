@@ -21,11 +21,11 @@
 #include <vnet/interface/rx_queue_funcs.h>
 
 static uword
-virtio_send_interrupt_process (vlib_main_t * vm,
-			       vlib_node_runtime_t * rt, vlib_frame_t * f)
+virtio_send_interrupt_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
+			       vlib_frame_t *f)
 {
   virtio_if_t *vif;
-  f64 timeout = 3153600000.0 /* 100 years */ ;
+  f64 timeout = 3153600000.0 /* 100 years */;
   uword event_type, *event_data = 0;
   virtio_main_t *vim = &virtio_main;
 
@@ -42,7 +42,7 @@ virtio_send_interrupt_process (vlib_main_t * vm,
 	  break;
 
 	case VIRTIO_EVENT_START_TIMER:
-	  timeout = 1e-3;	/* 1 millisecond */
+	  timeout = 1e-3; /* 1 millisecond */
 	  break;
 
 	case ~0:
@@ -70,13 +70,11 @@ virtio_send_interrupt_process (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (virtio_send_interrupt_node) = {
-    .function = virtio_send_interrupt_process,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "virtio-send-interrupt-process",
+  .function = virtio_send_interrupt_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "virtio-send-interrupt-process",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

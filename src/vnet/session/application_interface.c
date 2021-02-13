@@ -38,7 +38,7 @@
  *
  */
 uword
-unformat_vnet_uri (unformat_input_t * input, va_list * args)
+unformat_vnet_uri (unformat_input_t *input, va_list *args)
 {
   session_endpoint_cfg_t *sep = va_arg (*args, session_endpoint_cfg_t *);
   u32 transport_proto = 0, port;
@@ -82,7 +82,7 @@ unformat_vnet_uri (unformat_input_t * input, va_list * args)
 		     &transport_proto, &sep->parent_handle))
     {
       sep->transport_proto = transport_proto;
-      sep->ip.ip4.as_u32 = 1;	/* ip need to be non zero in vnet */
+      sep->ip.ip4.as_u32 = 1; /* ip need to be non zero in vnet */
       return 1;
     }
   return 0;
@@ -92,7 +92,7 @@ static u8 *cache_uri;
 static session_endpoint_cfg_t *cache_sep;
 
 int
-parse_uri (char *uri, session_endpoint_cfg_t * sep)
+parse_uri (char *uri, session_endpoint_cfg_t *sep)
 {
   unformat_input_t _input, *input = &_input;
 
@@ -125,7 +125,7 @@ parse_uri (char *uri, session_endpoint_cfg_t * sep)
 }
 
 int
-vnet_bind_uri (vnet_listen_args_t * a)
+vnet_bind_uri (vnet_listen_args_t *a)
 {
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   int rv;
@@ -139,7 +139,7 @@ vnet_bind_uri (vnet_listen_args_t * a)
 }
 
 int
-vnet_unbind_uri (vnet_unlisten_args_t * a)
+vnet_unbind_uri (vnet_unlisten_args_t *a)
 {
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   application_t *app;
@@ -155,8 +155,8 @@ vnet_unbind_uri (vnet_unlisten_args_t * a)
     return VNET_API_ERROR_INVALID_VALUE;
 
   table_index = application_session_table (app, fib_ip_proto (!sep.is_ip4));
-  listener = session_lookup_listener (table_index,
-				      (session_endpoint_t *) & sep);
+  listener =
+    session_lookup_listener (table_index, (session_endpoint_t *) &sep);
   if (!listener)
     return VNET_API_ERROR_ADDRESS_NOT_IN_USE;
   a->handle = listen_session_get_handle (listener);
@@ -164,7 +164,7 @@ vnet_unbind_uri (vnet_unlisten_args_t * a)
 }
 
 int
-vnet_connect_uri (vnet_connect_args_t * a)
+vnet_connect_uri (vnet_connect_args_t *a)
 {
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   int rv;

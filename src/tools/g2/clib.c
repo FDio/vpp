@@ -37,121 +37,132 @@
 
 extern int widest_track_format;
 
-typedef struct bound_track_ {
-    u32 track;
-    u8  *track_str;
+typedef struct bound_track_
+{
+  u32 track;
+  u8 *track_str;
 } bound_track_t;
 
 extern bound_track_t *bound_tracks;
 
-extern uword *the_evtdef_hash; /* (event-id, event-definition) hash */
+extern uword *the_evtdef_hash;	 /* (event-id, event-definition) hash */
 extern uword *the_trackdef_hash; /* (track-id, track-definition) hash */
 
 extern elog_main_t elog_main;
 
-void *get_clib_event (unsigned int datum)
+void *
+get_clib_event (unsigned int datum)
 {
-    elog_event_t *ep = vec_elt_at_index (elog_main.events, datum);
-    return (void *)ep;
+  elog_event_t *ep = vec_elt_at_index (elog_main.events, datum);
+  return (void *) ep;
 }
 
 /*
  * read_clib_file
  */
-int read_clib_file(char *clib_file)
+int
+read_clib_file (char *clib_file)
 {
-    static FILE *ofp;
-    clib_error_t *error = 0;
-    int i;
-    elog_main_t *em = &elog_main;
-    double starttime, delta;
+  static FILE *ofp;
+  clib_error_t *error = 0;
+  int i;
+  elog_main_t *em = &elog_main;
+  double starttime, delta;
 
-    vec_free(em->events);
-    vec_free(em->event_types);
-    if (the_trackdef_hash)
-        hash_free(the_trackdef_hash);
+  vec_free (em->events);
+  vec_free (em->event_types);
+  if (the_trackdef_hash)
+    hash_free (the_trackdef_hash);
 
-    the_trackdef_hash = hash_create (0, sizeof (uword));
+  the_trackdef_hash = hash_create (0, sizeof (uword));
 
-    error = elog_read_file (&elog_main, clib_file);
+  error = elog_read_file (&elog_main, clib_file);
 
-    if (error) {
-        fformat(stderr, "%U", format_clib_error, error);
-        return (1);
+  if (error)
+    {
+      fformat (stderr, "%U", format_clib_error, error);
+      return (1);
     }
 
-    if (ofp == NULL) {
-        ofp = fdopen(2, "w");
-        if (ofp == NULL) {
-            fprintf(stderr, "Couldn't fdopen(2)?\n");
-            exit(1);
-        }
+  if (ofp == NULL)
+    {
+      ofp = fdopen (2, "w");
+      if (ofp == NULL)
+	{
+	  fprintf (stderr, "Couldn't fdopen(2)?\n");
+	  exit (1);
+	}
     }
 
-    em = &elog_main;
+  em = &elog_main;
 
-    for (i = 0; i < vec_len (em->tracks); i++) {
-        u32 track_code;
-        bound_track_t * btp;
-        elog_track_t * t;
-        uword * p;
-        int track_strlen;
+  for (i = 0; i < vec_len (em->tracks); i++)
+    {
+      u32 track_code;
+      bound_track_t *btp;
+      elog_track_t *t;
+      uword *p;
+      int track_strlen;
 
-        t = &em->tracks[i];
-        track_code = i;
-        p = hash_get(the_trackdef_hash, track_code);
-        if (p) {
-            fprintf(ofp, "track %d redefined, retain first definition\n",
-                    track_code);
-            continue;
-        }
-        vec_add2(bound_tracks, btp, 1);
-        btp->track = track_code;
-        btp->track_str = (u8 *) t->name;
-        hash_set(the_trackdef_hash, track_code, btp - bound_tracks);
+      t = &em->tracks[i];
+      track_code = i;
+      p = hash_get (the_trackdef_hash, track_code);
+      if (p)
+	{
+	  fprintf (ofp, "track %d redefined, retain first definition\n",
+		   track_code);
+	  continue;
+	}
+      vec_add2 (bound_tracks, btp, 1);
+      btp->track = track_code;
+      btp->track_str = (u8 *) t->name;
+      hash_set (the_trackdef_hash, track_code, btp - bound_tracks);
 
-        track_strlen = strlen((char *)btp->track_str);
-        if (track_strlen > widest_track_format)
-            widest_track_format = track_strlen;
+      track_strlen = strlen ((char *) btp->track_str);
+      if (track_strlen > widest_track_format)
+	widest_track_format = track_strlen;
     }
 
-    initialize_events();
+  initialize_events ();
 
-    for (i = 0; i < vec_len (em->event_types); i++) {
-        elog_event_type_t *ep;
-        u8 *tmp;
+  for (i = 0; i < vec_len (em->event_types); i++)
+    {
+      elog_event_type_t *ep;
+      u8 *tmp;
 
-        ep = vec_elt_at_index(em->event_types, i);
-        tmp = (u8 *) vec_dup(ep->format);
-        vec_add1(tmp,0);
-        add_event_from_clib_file (ep->type_index_plus_one, (char *) tmp, i);
-        vec_free(tmp);
+      ep = vec_elt_at_index (em->event_types, i);
+      tmp = (u8 *) vec_dup (ep->format);
+      vec_add1 (tmp, 0);
+      add_event_from_clib_file (ep->type_index_plus_one, (char *) tmp, i);
+      vec_free (tmp);
     }
 
-    finalize_events();
+  finalize_events ();
 
-    cpel_event_init(vec_len(em->events));
+  cpel_event_init (vec_len (em->events));
 
-    starttime = em->events[0].time;
+  starttime = em->events[0].time;
 
-    for (i = 0; i < vec_len (em->events); i++) {
-        elog_event_t *ep;
+  for (i = 0; i < vec_len (em->events); i++)
+    {
+      elog_event_t *ep;
 
-        ep = vec_elt_at_index(em->events, i);
+      ep = vec_elt_at_index (em->events, i);
 
-        delta = ep->time - starttime;
+      delta = ep->time - starttime;
 
-        add_clib_event (delta, ep->track, ep->event_type + 1, i);
+      add_clib_event (delta, ep->track, ep->event_type + 1, i);
     }
 
-    cpel_event_finalize();
+  cpel_event_finalize ();
 
-    set_pid_ax_width(8*widest_track_format);
+  set_pid_ax_width (8 * widest_track_format);
 
-    return(0);
+  return (0);
 }
 
-unsigned int vl(void *a)
+unsigned int
+vl (void *a)
 {
-    return vec_len (a);
+  return vec_len (a);
 }

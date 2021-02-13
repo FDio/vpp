@@ -21,8 +21,7 @@ namespace VOM {
 
 gbp_recirc::type_t::type_t(int v, const std::string s)
   : enum_base<gbp_recirc::type_t>(v, s)
-{
-}
+{}
 
 const gbp_recirc::type_t gbp_recirc::type_t::INTERNAL(0, "internal");
 const gbp_recirc::type_t gbp_recirc::type_t::EXTERNAL(1, "external");
@@ -38,16 +37,14 @@ gbp_recirc::gbp_recirc(const interface& itf,
   , m_itf(itf.singular())
   , m_type(type)
   , m_epg(epg.singular())
-{
-}
+{}
 
 gbp_recirc::gbp_recirc(const gbp_recirc& gbpe)
   : m_hw(gbpe.m_hw)
   , m_itf(gbpe.m_itf)
   , m_type(gbpe.m_type)
   , m_epg(gbpe.m_epg)
-{
-}
+{}
 
 gbp_recirc::~gbp_recirc()
 {
@@ -169,7 +166,8 @@ gbp_recirc::event_handler::handle_populate(const client_db::key_t& key)
 
     if (itf && epg) {
       gbp_recirc recirc(
-        *itf, (payload.recirc.is_ext ? type_t::EXTERNAL : type_t::INTERNAL),
+        *itf,
+        (payload.recirc.is_ext ? type_t::EXTERNAL : type_t::INTERNAL),
         *epg);
       OM::commit(key, recirc);
 

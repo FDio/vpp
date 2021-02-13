@@ -96,9 +96,11 @@ private:
   };
 
   /**
-*Class definition for listeners to OM events
-*/
-  class event_handler : public OM::listener, public inspect::command_handler
+   *Class definition for listeners to OM events
+   */
+  class event_handler
+    : public OM::listener
+    , public inspect::command_handler
   {
   public:
     event_handler();

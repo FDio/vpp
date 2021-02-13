@@ -25,8 +25,8 @@ namespace VOM {
 namespace gbp_ext_itf_cmds {
 
 /**
-* A command class that creates or updates the GBP ext_itf
-*/
+ * A command class that creates or updates the GBP ext_itf
+ */
 class create_cmd : public rpc_cmd<HW::item<bool>, vapi::Gbp_ext_itf_add_del>
 {
 public:

@@ -19,16 +19,14 @@
 #include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
 #include <vnet/ip/ip.h>
 
-
 typedef struct
 {
   u32 tunnel_index;
   ioam_trace_t fmt_trace;
 } vxlan_gpe_ioam_v4_trace_t;
 
-
 static u8 *
-format_vxlan_gpe_ioam_v4_trace (u8 * s, va_list * args)
+format_vxlan_gpe_ioam_v4_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -53,7 +51,7 @@ format_vxlan_gpe_ioam_v4_trace (u8 * s, va_list * args)
       type0 = opt0->type;
       switch (type0)
 	{
-	case 0:		/* Pad, just stop */
+	case 0: /* Pad, just stop */
 	  opt0 = (vxlan_gpe_ioam_option_t *) ((u8 *) opt0) + 1;
 	  break;
 
@@ -64,9 +62,8 @@ format_vxlan_gpe_ioam_v4_trace (u8 * s, va_list * args)
 	    }
 	  else
 	    {
-	      s =
-		format (s, "\n    unrecognized option %d length %d", type0,
-			opt0->length);
+	      s = format (s, "\n    unrecognized option %d length %d", type0,
+			  opt0->length);
 	    }
 	  opt0 =
 	    (vxlan_gpe_ioam_option_t *) (((u8 *) opt0) + opt0->length +
@@ -79,13 +76,11 @@ format_vxlan_gpe_ioam_v4_trace (u8 * s, va_list * args)
   return s;
 }
 
-
 always_inline void
-vxlan_gpe_encap_decap_ioam_v4_one_inline (vlib_main_t * vm,
-					  vlib_node_runtime_t * node,
-					  vlib_buffer_t * b0,
-					  u32 * next0, u32 drop_node_val,
-					  u8 use_adj)
+vxlan_gpe_encap_decap_ioam_v4_one_inline (vlib_main_t *vm,
+					  vlib_node_runtime_t *node,
+					  vlib_buffer_t *b0, u32 *next0,
+					  u32 drop_node_val, u8 use_adj)
 {
   ip4_header_t *ip0;
   udp_header_t *udp_hdr0;
@@ -119,16 +114,16 @@ vxlan_gpe_encap_decap_ioam_v4_one_inline (vlib_main_t * vm,
       type0 = opt0->type;
       switch (type0)
 	{
-	case 0:		/* Pad1 */
+	case 0: /* Pad1 */
 	  opt0 = (vxlan_gpe_ioam_option_t *) ((u8 *) opt0) + 1;
 	  continue;
-	case 1:		/* PadN */
+	case 1: /* PadN */
 	  break;
 	default:
 	  if (hm->options[type0])
 	    {
-	      if ((*hm->options[type0]) (b0, opt0, 1 /* is_ipv4 */ ,
-					 use_adj) < 0)
+	      if ((*hm->options[type0]) (b0, opt0, 1 /* is_ipv4 */, use_adj) <
+		  0)
 		{
 		  *next0 = drop_node_val;
 		  return;
@@ -136,11 +131,9 @@ vxlan_gpe_encap_decap_ioam_v4_one_inline (vlib_main_t * vm,
 	    }
 	  break;
 	}
-      opt0 =
-	(vxlan_gpe_ioam_option_t *) (((u8 *) opt0) + opt0->length +
-				     sizeof (vxlan_gpe_ioam_hdr_t));
+      opt0 = (vxlan_gpe_ioam_option_t *) (((u8 *) opt0) + opt0->length +
+					  sizeof (vxlan_gpe_ioam_hdr_t));
     }
-
 
   if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
     {
@@ -149,17 +142,14 @@ vxlan_gpe_encap_decap_ioam_v4_one_inline (vlib_main_t * vm,
       u32 trace_len = gpe_ioam0->length;
       t->fmt_trace.next_index = *next0;
       /* Capture the ioam option verbatim */
-      trace_len =
-	trace_len <
-	ARRAY_LEN (t->fmt_trace.
-		   option_data) ? trace_len : ARRAY_LEN (t->fmt_trace.
-							 option_data);
+      trace_len = trace_len < ARRAY_LEN (t->fmt_trace.option_data) ?
+		    trace_len :
+		    ARRAY_LEN (t->fmt_trace.option_data);
       t->fmt_trace.trace_len = trace_len;
       clib_memcpy (&(t->fmt_trace.option_data), gpe_ioam0, trace_len);
     }
   return;
 }
-
 
 #endif
 

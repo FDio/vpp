@@ -515,14 +515,12 @@ Here is a complete example:
         return 0;
     }
 
-    /* *INDENT-OFF* */
     static VLIB_CLI_COMMAND (show_ip_tuple_command) =
     {
         .path = "show ip tuple match",
         .short_help = "Show ip 5-tuple match-and-broadcast tables",
         .function = show_ip_tuple_match,
     };
-    /* *INDENT-ON* */
 ```
 
 This example implements the "show ip tuple match" debug cli

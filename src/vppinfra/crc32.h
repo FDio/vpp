@@ -26,7 +26,7 @@
 #define crc32_u32 _mm_crc32_u32
 
 static_always_inline u32
-clib_crc32c (u8 * s, int len)
+clib_crc32c (u8 *s, int len)
 {
   u32 v = 0;
 
@@ -36,8 +36,8 @@ clib_crc32c (u8 * s, int len)
 #else
   /* workaround weird GCC bug when using _mm_crc32_u32
      which happens with -O2 optimization */
-#if !defined (__i686__)
-  asm volatile ("":::"memory");
+#if !defined(__i686__)
+  asm volatile("" ::: "memory");
 #endif
 #endif
 
@@ -57,12 +57,11 @@ clib_crc32c (u8 * s, int len)
 #define clib_crc32c_uses_intrinsics
 #include <arm_acle.h>
 
-
 #define crc32_u64 __crc32cd
 #define crc32_u32 __crc32cw
 
 static_always_inline u32
-clib_crc32c (u8 * s, int len)
+clib_crc32c (u8 *s, int len)
 {
   u32 v = 0;
 

@@ -72,8 +72,8 @@ estimate_clock_frequency (f64 sample_time)
 static f64
 clock_frequency_from_proc_filesystem (void)
 {
-  f64 cpu_freq = 1e9;		/* better than 40... */
-  f64 ppc_timebase = 0;		/* warnings be gone */
+  f64 cpu_freq = 1e9;	/* better than 40... */
+  f64 ppc_timebase = 0; /* warnings be gone */
   int fd;
   unformat_input_t input;
 
@@ -111,7 +111,8 @@ clock_frequency_from_proc_filesystem (void)
   return cpu_freq;
 }
 
-/* Fetch cpu frequency via reading /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq
+/* Fetch cpu frequency via reading
+   /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq
    Only works for Linux. */
 static f64
 clock_frequency_from_sys_filesystem (void)
@@ -128,7 +129,7 @@ clock_frequency_from_sys_filesystem (void)
 
   unformat_init_clib_file (&input, fd);
   (void) unformat (&input, "%f", &cpu_freq);
-  cpu_freq *= 1e3;		/* measured in kHz */
+  cpu_freq *= 1e3; /* measured in kHz */
   unformat_free (&input);
   close (fd);
 done:
@@ -138,13 +139,13 @@ done:
 __clib_export f64
 os_cpu_clock_frequency (void)
 {
-#if defined (__aarch64__)
+#if defined(__aarch64__)
   /* The system counter increments at a fixed frequency. It is distributed
    * to each core which has registers for reading the current counter value
    * as well as the clock frequency. The system counter is not clocked at
    * the same frequency as the core. */
   u64 hz;
-  asm volatile ("mrs %0, cntfrq_el0":"=r" (hz));
+  asm volatile("mrs %0, cntfrq_el0" : "=r"(hz));
   return (f64) hz;
 #endif
   f64 cpu_freq;
@@ -156,16 +157,15 @@ os_cpu_clock_frequency (void)
     {
       u32 max_leaf = eax;
       /*
-         CPUID Leaf 0x15 - Time Stamp Counter and Nominal Core Crystal Clock Info
-         eax - denominator of the TSC/”core crystal clock” ratio
-         ebx - numerator of the TSC/”core crystal clock” ratio
-         ecx - nominal frequency of the core crystal clock in Hz
-         edx - reseved
+	 CPUID Leaf 0x15 - Time Stamp Counter and Nominal Core Crystal Clock
+	 Info eax - denominator of the TSC/”core crystal clock” ratio ebx -
+	 numerator of the TSC/”core crystal clock” ratio ecx - nominal
+	 frequency of the core crystal clock in Hz edx - reseved
        */
 
       clib_get_cpuid (0x15, &eax, &ebx, &ecx, &edx);
       if (ebx && ecx)
-	return (u64) ecx *ebx / eax;
+	return (u64) ecx * ebx / eax;
 
       if (max_leaf >= 0x16)
 	{
@@ -204,7 +204,7 @@ os_cpu_clock_frequency (void)
 
 /* Initialize time. */
 __clib_export void
-clib_time_init (clib_time_t * c)
+clib_time_init (clib_time_t *c)
 {
   clib_memset (c, 0, sizeof (c[0]));
   c->clocks_per_second = os_cpu_clock_frequency ();
@@ -248,7 +248,7 @@ clib_time_init (clib_time_t * c)
 }
 
 __clib_export void
-clib_time_verify_frequency (clib_time_t * c)
+clib_time_verify_frequency (clib_time_t *c)
 {
   f64 now_reference, delta_reference, delta_reference_max;
   f64 delta_clock_in_seconds;
@@ -263,16 +263,16 @@ clib_time_verify_frequency (clib_time_t * c)
   delta_reference = now_reference - c->last_verify_reference_time;
 
   /* And change in the CPU clock */
-  delta_clock_in_seconds = (f64) (now_clock - c->last_verify_cpu_time) *
-    c->seconds_per_clock;
+  delta_clock_in_seconds =
+    (f64) (now_clock - c->last_verify_cpu_time) * c->seconds_per_clock;
 
   /*
    * Recompute vpp start time reference, and total clocks
    * using the current clock rate
    */
   c->init_reference_time += (delta_reference - delta_clock_in_seconds);
-  c->total_cpu_time = (now_reference - c->init_reference_time)
-    * c->clocks_per_second;
+  c->total_cpu_time =
+    (now_reference - c->init_reference_time) * c->clocks_per_second;
 
   c->last_cpu_time = now_clock;
 
@@ -288,7 +288,7 @@ clib_time_verify_frequency (clib_time_t * c)
    * Someone reset the clock behind our back.
    */
   delta_reference_max = (f64) (2ULL << c->log2_clocks_per_frequency_verify) /
-    (f64) (1ULL << c->log2_clocks_per_second);
+			(f64) (1ULL << c->log2_clocks_per_second);
   delta_reference_max = delta_reference_max > 8.0 ? delta_reference_max : 8.0;
 
   /* Ignore this sample */
@@ -316,7 +316,7 @@ clib_time_verify_frequency (clib_time_t * c)
 
   /* Add sample to the exponentially-smoothed rate */
   c->clocks_per_second = c->clocks_per_second * c->damping_constant +
-    (1.0 - c->damping_constant) * new_clocks_per_second;
+			 (1.0 - c->damping_constant) * new_clocks_per_second;
   c->seconds_per_clock = 1.0 / c->clocks_per_second;
 
   /*
@@ -327,9 +327,8 @@ clib_time_verify_frequency (clib_time_t * c)
     (now_reference - c->init_reference_time) * c->clocks_per_second;
 }
 
-
 __clib_export u8 *
-format_clib_time (u8 * s, va_list * args)
+format_clib_time (u8 *s, va_list *args)
 {
   clib_time_t *c = va_arg (*args, clib_time_t *);
   int verbose = va_arg (*args, int);

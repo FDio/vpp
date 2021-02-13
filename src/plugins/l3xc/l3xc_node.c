@@ -30,16 +30,15 @@ typedef struct l3xc_input_trace_t_
 
 typedef enum
 {
-#define l3xc_error(n,s) L3XC_ERROR_##n,
+#define l3xc_error(n, s) L3XC_ERROR_##n,
 #include "l3xc_error.def"
 #undef l3xc_error
   L3XC_N_ERROR,
 } l3xc_error_t;
 
 always_inline uword
-l3xc_input_inline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node,
-		   vlib_frame_t * frame, fib_protocol_t fproto)
+l3xc_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame, fib_protocol_t fproto)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
@@ -66,18 +65,14 @@ l3xc_input_inline (vlib_main_t * vm,
 	vlib_prefetch_buffer_header (b[7], LOAD);
       }
 
-      l3xci0 =
-	*(u32 *) vnet_feature_next_with_data (&next_u32, b[0],
-					      sizeof (l3xci0));
-      l3xci1 =
-	*(u32 *) vnet_feature_next_with_data (&next_u32, b[1],
-					      sizeof (l3xci1));
-      l3xci2 =
-	*(u32 *) vnet_feature_next_with_data (&next_u32, b[2],
-					      sizeof (l3xci2));
-      l3xci3 =
-	*(u32 *) vnet_feature_next_with_data (&next_u32, b[3],
-					      sizeof (l3xci3));
+      l3xci0 = *(u32 *) vnet_feature_next_with_data (&next_u32, b[0],
+						     sizeof (l3xci0));
+      l3xci1 = *(u32 *) vnet_feature_next_with_data (&next_u32, b[1],
+						     sizeof (l3xci1));
+      l3xci2 = *(u32 *) vnet_feature_next_with_data (&next_u32, b[2],
+						     sizeof (l3xci2));
+      l3xci3 = *(u32 *) vnet_feature_next_with_data (&next_u32, b[3],
+						     sizeof (l3xci3));
 
       l3xc0 = l3xc_get (l3xci0);
       l3xc1 = l3xc_get (l3xci1);
@@ -140,9 +135,8 @@ l3xc_input_inline (vlib_main_t * vm,
       u32 l3xci0, next_u32;
       const l3xc_t *l3xc0;
 
-      l3xci0 =
-	*(u32 *) vnet_feature_next_with_data (&next_u32, b[0],
-					      sizeof (l3xci0));
+      l3xci0 = *(u32 *) vnet_feature_next_with_data (&next_u32, b[0],
+						     sizeof (l3xci0));
 
       l3xc0 = l3xc_get (l3xci0);
 
@@ -169,21 +163,21 @@ l3xc_input_inline (vlib_main_t * vm,
 }
 
 static uword
-l3xc_input_ip4 (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * frame)
+l3xc_input_ip4 (vlib_main_t *vm, vlib_node_runtime_t *node,
+		vlib_frame_t *frame)
 {
   return l3xc_input_inline (vm, node, frame, FIB_PROTOCOL_IP4);
 }
 
 static uword
-l3xc_input_ip6 (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * frame)
+l3xc_input_ip6 (vlib_main_t *vm, vlib_node_runtime_t *node,
+		vlib_frame_t *frame)
 {
   return l3xc_input_inline (vm, node, frame, FIB_PROTOCOL_IP6);
 }
 
 static u8 *
-format_l3xc_input_trace (u8 * s, va_list * args)
+format_l3xc_input_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -194,58 +188,46 @@ format_l3xc_input_trace (u8 * s, va_list * args)
 }
 
 static char *l3xc_error_strings[] = {
-#define l3xc_error(n,s) s,
+#define l3xc_error(n, s) s,
 #include "l3xc_error.def"
 #undef l3xc_error
 };
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (l3xc_ip4_node) =
-{
-  .function = l3xc_input_ip4,
-  .name = "l3xc-input-ip4",
-  .vector_size = sizeof (u32),
-  .format_trace = format_l3xc_input_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = L3XC_N_ERROR,
-  .error_strings = l3xc_error_strings,
-  .n_next_nodes = L3XC_N_NEXT,
-  .next_nodes =
-  {
-    [L3XC_NEXT_DROP] = "error-drop",
-  }
-};
+VLIB_REGISTER_NODE (l3xc_ip4_node) = { .function = l3xc_input_ip4,
+				       .name = "l3xc-input-ip4",
+				       .vector_size = sizeof (u32),
+				       .format_trace = format_l3xc_input_trace,
+				       .type = VLIB_NODE_TYPE_INTERNAL,
+				       .n_errors = L3XC_N_ERROR,
+				       .error_strings = l3xc_error_strings,
+				       .n_next_nodes = L3XC_N_NEXT,
+				       .next_nodes = {
+					 [L3XC_NEXT_DROP] = "error-drop",
+				       } };
 
-VLIB_REGISTER_NODE (l3xc_ip6_node) =
-{
-  .function = l3xc_input_ip6,
-  .name = "l3xc-input-ip6",
-  .vector_size = sizeof (u32),
-  .format_trace = format_l3xc_input_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = 0,
-  .n_next_nodes = L3XC_N_NEXT,
+VLIB_REGISTER_NODE (l3xc_ip6_node) = { .function = l3xc_input_ip6,
+				       .name = "l3xc-input-ip6",
+				       .vector_size = sizeof (u32),
+				       .format_trace = format_l3xc_input_trace,
+				       .type = VLIB_NODE_TYPE_INTERNAL,
+				       .n_errors = 0,
+				       .n_next_nodes = L3XC_N_NEXT,
 
-  .next_nodes =
-  {
-    [L3XC_NEXT_DROP] = "error-drop",
-  }
-};
+				       .next_nodes = {
+					 [L3XC_NEXT_DROP] = "error-drop",
+				       } };
 
-VNET_FEATURE_INIT (l3xc_ip4_feat, static) =
-{
+VNET_FEATURE_INIT (l3xc_ip4_feat, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "l3xc-input-ip4",
   .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa"),
 };
 
-VNET_FEATURE_INIT (l3xc_ip6_feat, static) =
-{
+VNET_FEATURE_INIT (l3xc_ip6_feat, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "l3xc-input-ip6",
   .runs_after = VNET_FEATURES ("acl-plugin-in-ip6-fa"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

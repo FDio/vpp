@@ -22,7 +22,7 @@
 #include <vnet/udp/udp_packet.h>
 
 always_inline void *
-vlib_buffer_push_udp (vlib_buffer_t * b, u16 sp, u16 dp, u8 offload_csum)
+vlib_buffer_push_udp (vlib_buffer_t *b, u16 sp, u16 dp, u8 offload_csum)
 {
   udp_header_t *uh;
   u16 udp_len = sizeof (udp_header_t) + b->current_length;
@@ -42,7 +42,7 @@ vlib_buffer_push_udp (vlib_buffer_t * b, u16 sp, u16 dp, u8 offload_csum)
 }
 
 always_inline void
-ip_udp_fixup_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 is_ip4)
+ip_udp_fixup_one (vlib_main_t *vm, vlib_buffer_t *b0, u8 is_ip4)
 {
   u16 new_l0;
   udp_header_t *udp0;
@@ -61,14 +61,14 @@ ip_udp_fixup_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 is_ip4)
       new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
 
       sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
-			     length /* changed member */ );
+			     length /* changed member */);
       ip0->checksum = ip_csum_fold (sum0);
       ip0->length = new_l0;
 
       /* Fix UDP length */
       udp0 = (udp_header_t *) (ip0 + 1);
-      new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
-				     - sizeof (*ip0));
+      new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
+				     sizeof (*ip0));
       udp0->length = new_l0;
     }
   else
@@ -78,8 +78,8 @@ ip_udp_fixup_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 is_ip4)
 
       ip0 = vlib_buffer_get_current (b0);
 
-      new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
-				     - sizeof (*ip0));
+      new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
+				     sizeof (*ip0));
       ip0->payload_length = new_l0;
 
       /* Fix UDP length */
@@ -96,7 +96,7 @@ ip_udp_fixup_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 is_ip4)
 }
 
 always_inline void
-ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
+ip_udp_encap_one (vlib_main_t *vm, vlib_buffer_t *b0, u8 *ec0, word ec_len,
 		  u8 is_ip4)
 {
   vlib_buffer_advance (b0, -ec_len);
@@ -124,8 +124,8 @@ ip_udp_encap_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 * ec0, word ec_len,
 }
 
 always_inline void
-ip_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
-		  u8 * ec0, u8 * ec1, word ec_len, u8 is_v4)
+ip_udp_encap_two (vlib_main_t *vm, vlib_buffer_t *b0, vlib_buffer_t *b1,
+		  u8 *ec0, u8 *ec1, word ec_len, u8 is_v4)
 {
   u16 new_l0, new_l1;
   udp_header_t *udp0, *udp1;
@@ -157,9 +157,9 @@ ip_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
       new_l1 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1));
 
       sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
-			     length /* changed member */ );
+			     length /* changed member */);
       sum1 = ip_csum_update (sum1, old_l1, new_l1, ip4_header_t,
-			     length /* changed member */ );
+			     length /* changed member */);
 
       ip0->checksum = ip_csum_fold (sum0);
       ip1->checksum = ip_csum_fold (sum1);
@@ -171,12 +171,10 @@ ip_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
       udp0 = (udp_header_t *) (ip0 + 1);
       udp1 = (udp_header_t *) (ip1 + 1);
 
-      new_l0 =
-	clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
-			      sizeof (*ip0));
-      new_l1 =
-	clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1) -
-			      sizeof (*ip1));
+      new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
+				     sizeof (*ip0));
+      new_l1 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1) -
+				     sizeof (*ip1));
       udp0->length = new_l0;
       udp1->length = new_l1;
     }
@@ -192,10 +190,10 @@ ip_udp_encap_two (vlib_main_t * vm, vlib_buffer_t * b0, vlib_buffer_t * b1,
       clib_memcpy_fast (ip0, ec0, ec_len);
       clib_memcpy_fast (ip1, ec1, ec_len);
 
-      new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
-				     - sizeof (*ip0));
-      new_l1 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1)
-				     - sizeof (*ip1));
+      new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
+				     sizeof (*ip0));
+      new_l1 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1) -
+				     sizeof (*ip1));
       ip0->payload_length = new_l0;
       ip1->payload_length = new_l1;
 

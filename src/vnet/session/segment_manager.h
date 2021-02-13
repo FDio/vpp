@@ -23,23 +23,23 @@
 
 typedef struct _segment_manager_props
 {
-  u32 rx_fifo_size;			/**< receive fifo size */
-  u32 tx_fifo_size;			/**< transmit fifo size */
-  u32 evt_q_size;			/**< event queue length */
-  u32 prealloc_fifos;			/**< preallocated fifo pairs */
-  u32 prealloc_fifo_hdrs;		/**< preallocated fifo hdrs */
-  uword segment_size;			/**< first segment size */
-  uword add_segment_size;		/**< additional segment size */
-  u8 add_segment:1;			/**< can add new segments flag */
-  u8 use_mq_eventfd:1;			/**< use eventfds for mqs flag */
-  u8 reserved:6;			/**< reserved flags */
-  u8 n_slices;				/**< number of fs slices/threads */
-  ssvm_segment_type_t segment_type;	/**< seg type: if set to SSVM_N_TYPES,
-					     private segments are used */
-  u32 max_fifo_size;			/**< max fifo size */
-  u8 high_watermark;			/**< memory usage high watermark % */
-  u8 low_watermark;			/**< memory usage low watermark % */
-  u8 pct_first_alloc;			/**< pct of fifo size to alloc */
+  u32 rx_fifo_size;		    /**< receive fifo size */
+  u32 tx_fifo_size;		    /**< transmit fifo size */
+  u32 evt_q_size;		    /**< event queue length */
+  u32 prealloc_fifos;		    /**< preallocated fifo pairs */
+  u32 prealloc_fifo_hdrs;	    /**< preallocated fifo hdrs */
+  uword segment_size;		    /**< first segment size */
+  uword add_segment_size;	    /**< additional segment size */
+  u8 add_segment : 1;		    /**< can add new segments flag */
+  u8 use_mq_eventfd : 1;	    /**< use eventfds for mqs flag */
+  u8 reserved : 6;		    /**< reserved flags */
+  u8 n_slices;			    /**< number of fs slices/threads */
+  ssvm_segment_type_t segment_type; /**< seg type: if set to SSVM_N_TYPES,
+					 private segments are used */
+  u32 max_fifo_size;		    /**< max fifo size */
+  u8 high_watermark;		    /**< memory usage high watermark % */
+  u8 low_watermark;		    /**< memory usage low watermark % */
+  u8 pct_first_alloc;		    /**< pct of fifo size to alloc */
 } segment_manager_props_t;
 
 typedef enum seg_manager_flag_
@@ -81,73 +81,70 @@ typedef struct _segment_manager
 #define SEGMENT_MANAGER_INVALID_APP_INDEX ((u32) ~0)
 
 segment_manager_t *segment_manager_alloc (void);
-int segment_manager_init (segment_manager_t * sm);
-int segment_manager_init_first (segment_manager_t * sm);
+int segment_manager_init (segment_manager_t *sm);
+int segment_manager_init_first (segment_manager_t *sm);
 
 /**
  * Cleanup segment manager
  *
  * @param sm	segment manager to be freed
  */
-void segment_manager_free (segment_manager_t * sm);
+void segment_manager_free (segment_manager_t *sm);
 
 /**
  * Initiate segment manager cleanup
  *
  * @param sm	segment manager to be freed
  */
-void segment_manager_init_free (segment_manager_t * sm);
+void segment_manager_init_free (segment_manager_t *sm);
 segment_manager_t *segment_manager_get (u32 index);
 segment_manager_t *segment_manager_get_if_valid (u32 index);
-u32 segment_manager_index (segment_manager_t * sm);
+u32 segment_manager_index (segment_manager_t *sm);
 
-int segment_manager_add_segment (segment_manager_t * sm, uword segment_size);
-void segment_manager_del_segment (segment_manager_t * sm,
-				  fifo_segment_t * fs);
-void segment_manager_lock_and_del_segment (segment_manager_t * sm,
+int segment_manager_add_segment (segment_manager_t *sm, uword segment_size);
+void segment_manager_del_segment (segment_manager_t *sm, fifo_segment_t *fs);
+void segment_manager_lock_and_del_segment (segment_manager_t *sm,
 					   u32 fs_index);
-fifo_segment_t *segment_manager_get_segment (segment_manager_t * sm,
+fifo_segment_t *segment_manager_get_segment (segment_manager_t *sm,
 					     u32 segment_index);
 fifo_segment_t *segment_manager_get_segment_w_handle (u64 sh);
-fifo_segment_t *segment_manager_get_segment_w_lock (segment_manager_t * sm,
+fifo_segment_t *segment_manager_get_segment_w_lock (segment_manager_t *sm,
 						    u32 segment_index);
-int segment_manager_add_first_segment (segment_manager_t * sm,
+int segment_manager_add_first_segment (segment_manager_t *sm,
 				       u32 segment_size);
 u64 segment_manager_make_segment_handle (u32 segment_manager_index,
 					 u32 segment_index);
-u64 segment_manager_segment_handle (segment_manager_t * sm,
-				    fifo_segment_t * segment);
-void segment_manager_segment_reader_unlock (segment_manager_t * sm);
-void segment_manager_segment_writer_unlock (segment_manager_t * sm);
+u64 segment_manager_segment_handle (segment_manager_t *sm,
+				    fifo_segment_t *segment);
+void segment_manager_segment_reader_unlock (segment_manager_t *sm);
+void segment_manager_segment_writer_unlock (segment_manager_t *sm);
 
-int segment_manager_alloc_session_fifos (segment_manager_t * sm,
+int segment_manager_alloc_session_fifos (segment_manager_t *sm,
 					 u32 thread_index,
-					 svm_fifo_t ** rx_fifo,
-					 svm_fifo_t ** tx_fifo);
-int segment_manager_try_alloc_fifos (fifo_segment_t * fs,
-				     u32 thread_index,
+					 svm_fifo_t **rx_fifo,
+					 svm_fifo_t **tx_fifo);
+int segment_manager_try_alloc_fifos (fifo_segment_t *fs, u32 thread_index,
 				     u32 rx_fifo_size, u32 tx_fifo_size,
-				     svm_fifo_t ** rx_fifo,
-				     svm_fifo_t ** tx_fifo);
-void segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo,
-				    svm_fifo_t * tx_fifo);
+				     svm_fifo_t **rx_fifo,
+				     svm_fifo_t **tx_fifo);
+void segment_manager_dealloc_fifos (svm_fifo_t *rx_fifo, svm_fifo_t *tx_fifo);
 void segment_manager_detach_fifo (segment_manager_t *sm, svm_fifo_t **f);
 void segment_manager_attach_fifo (segment_manager_t *sm, svm_fifo_t **f,
 				  session_t *s);
 
-void segment_manager_set_watermarks (segment_manager_t * sm,
-				     u8 high_watermark, u8 low_watermark);
+void segment_manager_set_watermarks (segment_manager_t *sm, u8 high_watermark,
+				     u8 low_watermark);
 
-u8 segment_manager_has_fifos (segment_manager_t * sm);
+u8 segment_manager_has_fifos (segment_manager_t *sm);
 
-svm_msg_q_t *segment_manager_alloc_queue (fifo_segment_t * fs,
-					  segment_manager_props_t * props);
-void segment_manager_dealloc_queue (segment_manager_t * sm, svm_queue_t * q);
-svm_msg_q_t *segment_manager_event_queue (segment_manager_t * sm);
+svm_msg_q_t *segment_manager_alloc_queue (fifo_segment_t *fs,
+					  segment_manager_props_t *props);
+void segment_manager_dealloc_queue (segment_manager_t *sm, svm_queue_t *q);
+svm_msg_q_t *segment_manager_event_queue (segment_manager_t *sm);
 u32 segment_manager_evt_q_expected_size (u32 q_size);
 
-u8 segment_manager_app_detached (segment_manager_t * sm);
-void segment_manager_app_detach (segment_manager_t * sm);
+u8 segment_manager_app_detached (segment_manager_t *sm);
+void segment_manager_app_detach (segment_manager_t *sm);
 
 /**
  * Cleanup segment manager sessions
@@ -157,17 +154,17 @@ void segment_manager_app_detach (segment_manager_t * sm);
  *
  * @param sm	segment manager whose sessions are to be disconnected
  */
-void segment_manager_del_sessions (segment_manager_t * sm);
-void segment_manager_format_sessions (segment_manager_t * sm, int verbose);
+void segment_manager_del_sessions (segment_manager_t *sm);
+void segment_manager_format_sessions (segment_manager_t *sm, int verbose);
 
 void segment_manager_main_init (void);
 
-segment_manager_props_t *segment_manager_props_init (segment_manager_props_t *
-						     sm);
+segment_manager_props_t *
+segment_manager_props_init (segment_manager_props_t *sm);
 
 static inline void
-segment_manager_parse_segment_handle (u64 segment_handle, u32 * sm_index,
-				      u32 * segment_index)
+segment_manager_parse_segment_handle (u64 segment_handle, u32 *sm_index,
+				      u32 *segment_index)
 {
   *sm_index = segment_handle >> 32;
   *segment_index = segment_handle & 0xFFFFFFFF;

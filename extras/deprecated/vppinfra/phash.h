@@ -38,7 +38,7 @@
 #ifndef included_phash_h
 #define included_phash_h
 
-#include <vppinfra/hash.h>	/* for Bob's mixing functions */
+#include <vppinfra/hash.h> /* for Bob's mixing functions */
 
 typedef struct
 {
@@ -63,7 +63,7 @@ typedef struct
 } phash_tabb_t;
 
 always_inline void
-phash_tabb_free (phash_tabb_t * b)
+phash_tabb_free (phash_tabb_t *b)
 {
   vec_free (b->keys);
   b->val_b = b->water_b = 0;
@@ -98,19 +98,19 @@ typedef struct
 
   /* Key functions want 64 bit keys.
      Use hash_mix64 rather than hash_mix32. */
-#define PHASH_FLAG_MIX64		(1 << 0)
-#define PHASH_FLAG_MIX32		(0 << 0)
+#define PHASH_FLAG_MIX64 (1 << 0)
+#define PHASH_FLAG_MIX32 (0 << 0)
 
   /* When b_bits is large enough (>= 12) we scramble. */
-#define PHASH_FLAG_USE_SCRAMBLE		(1 << 1)
+#define PHASH_FLAG_USE_SCRAMBLE (1 << 1)
 
   /* Slow mode gives smaller tables but at the expense of more run time. */
-#define PHASH_FLAG_SLOW_MODE		(0 << 2)
-#define PHASH_FLAG_FAST_MODE		(1 << 2)
+#define PHASH_FLAG_SLOW_MODE (0 << 2)
+#define PHASH_FLAG_FAST_MODE (1 << 2)
 
   /* Generate minimal perfect hash instead of perfect hash. */
-#define PHASH_FLAG_NON_MINIMAL		(0 << 3)
-#define PHASH_FLAG_MINIMAL		(1 << 3)
+#define PHASH_FLAG_NON_MINIMAL (0 << 3)
+#define PHASH_FLAG_MINIMAL     (1 << 3)
 
   /* vec_len (keys) for minimal hash;
      1 << s_bits for non-minimal hash. */
@@ -152,7 +152,7 @@ typedef struct
 } phash_main_t;
 
 always_inline void
-phash_main_free_working_memory (phash_main_t * pm)
+phash_main_free_working_memory (phash_main_t *pm)
 {
   vec_free (pm->tabb);
   vec_free (pm->tabq);
@@ -163,7 +163,7 @@ phash_main_free_working_memory (phash_main_t * pm)
 }
 
 always_inline void
-phash_main_free (phash_main_t * pm)
+phash_main_free (phash_main_t *pm)
 {
   phash_main_free_working_memory (pm);
   vec_free (pm->tab);
@@ -172,16 +172,16 @@ phash_main_free (phash_main_t * pm)
 }
 
 /* Slow hash computation for general keys. */
-uword phash_hash_slow (phash_main_t * pm, uword key);
+uword phash_hash_slow (phash_main_t *pm, uword key);
 
 /* Main routine to compute perfect hash. */
-clib_error_t *phash_find_perfect_hash (phash_main_t * pm);
+clib_error_t *phash_find_perfect_hash (phash_main_t *pm);
 
 /* Validates that hash is indeed perfect. */
-clib_error_t *phash_validate (phash_main_t * pm);
+clib_error_t *phash_validate (phash_main_t *pm);
 
 /* Unit test. */
-int phash_test_main (unformat_input_t * input);
+int phash_test_main (unformat_input_t *input);
 
 #endif /* included_phash_h */
 

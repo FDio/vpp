@@ -51,20 +51,22 @@ typedef signed short i16;
 #include <asm/types.h>
 #define CLIB_AVOID_CLASH_WITH_LINUX_TYPES
 
-#else /* ! CLIB_LINUX_KERNEL */
+#else  /* ! CLIB_LINUX_KERNEL */
 
 typedef unsigned char u8;
 typedef unsigned short u16;
 #endif /* ! CLIB_LINUX_KERNEL */
 
-#if defined (__x86_64__)
+#if defined(__x86_64__)
 #ifndef __COVERITY__
 typedef signed int i128 __attribute__ ((mode (TI)));
 typedef unsigned int u128 __attribute__ ((mode (TI)));
 #endif
 #endif
 
-#if (defined(i386) || (defined(_mips) && __mips != 64) || defined(powerpc) || defined (__SPU__) || defined(__sparc__) || defined(__arm__) || defined (__xtensa__) || defined(__TMS320C6X__))
+#if (defined(i386) || (defined(_mips) && __mips != 64) || defined(powerpc) || \
+     defined(__SPU__) || defined(__sparc__) || defined(__arm__) ||            \
+     defined(__xtensa__) || defined(__TMS320C6X__))
 typedef signed int i32;
 typedef signed long long i64;
 
@@ -73,7 +75,8 @@ typedef unsigned int u32;
 typedef unsigned long long u64;
 #endif /* CLIB_AVOID_CLASH_WITH_LINUX_TYPES */
 
-#elif defined(alpha) || (defined(_mips) && __mips == 64) || defined(__x86_64__) || defined (__powerpc64__) || defined (__aarch64__)
+#elif defined(alpha) || (defined(_mips) && __mips == 64) ||                   \
+  defined(__x86_64__) || defined(__powerpc64__) || defined(__aarch64__)
 typedef signed int i32;
 typedef signed long i64;
 
@@ -133,7 +136,7 @@ pointer_to_uword (const void *p)
   return (uword) (clib_address_t) p;
 }
 
-#define uword_to_pointer(u,type) ((type) (clib_address_t) (u))
+#define uword_to_pointer(u, type) ((type) (clib_address_t) (u))
 
 /* Any type: can be either word or pointer. */
 typedef word any;
@@ -152,16 +155,16 @@ typedef f64 fword;
      clib_mem_unaligned (p, u64) = 99
      clib_mem_unaligned (p, u64) += 99 */
 
-#define clib_mem_unaligned(pointer,type) \
+#define clib_mem_unaligned(pointer, type)                                     \
   (((struct { CLIB_PACKED (type _data); } *) (pointer))->_data)
 
 /* Access memory with specified alignment depending on align argument.
    As with clib_mem_unaligned, may be used as {r,l}value. */
-#define clib_mem_aligned(addr,type,align)		\
-  (((struct {						\
-       type _data					\
-       __attribute__ ((aligned (align), packed));	\
-    } *) (addr))->_data)
+#define clib_mem_aligned(addr, type, align)                                   \
+  (((struct {                                                                 \
+     type _data __attribute__ ((aligned (align), packed));                    \
+   } *) (addr))                                                               \
+     ->_data)
 
 #endif /* included_clib_types_h */
 

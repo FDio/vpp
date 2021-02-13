@@ -1,4 +1,4 @@
-/* 
+/*
  *------------------------------------------------------------------
  * Copyright (c) 2006-2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,55 +24,59 @@
  * Linear regression of (xi, yi), returns parameters for least-squares
  * fit y = a + bx.  Also, compute Pearson's R.
  */
-void linreg (double *x, double *y, int nitems, double *a, double *b,
-             double *minp, double *maxp, double *meanp, double *r)
+void
+linreg (double *x, double *y, int nitems, double *a, double *b, double *minp,
+	double *maxp, double *meanp, double *r)
 {
-    double sx = 0.0;
-    double sy = 0.0;
-    double st2 = 0.0;
-    double min = y[0];
-    double max = 0.0;
-    double ss, meanx, meany, t;
-    double errx, erry, prodsum, sqerrx, sqerry;
-    int i;
+  double sx = 0.0;
+  double sy = 0.0;
+  double st2 = 0.0;
+  double min = y[0];
+  double max = 0.0;
+  double ss, meanx, meany, t;
+  double errx, erry, prodsum, sqerrx, sqerry;
+  int i;
 
-    *b = 0.0;
-    
-    for (i = 0; i < nitems; i++) {
-        sx += x[i];
-        sy += y[i];
-        if (y[i] < min)
-            min = y[i];
-        if (y[i] > max)
-            max = y[i];
+  *b = 0.0;
+
+  for (i = 0; i < nitems; i++)
+    {
+      sx += x[i];
+      sy += y[i];
+      if (y[i] < min)
+	min = y[i];
+      if (y[i] > max)
+	max = y[i];
     }
-    ss = nitems;
-    meanx = sx / ss;
-    meany = *meanp = sy / ss;
-    *minp = min;
-    *maxp = max;
+  ss = nitems;
+  meanx = sx / ss;
+  meany = *meanp = sy / ss;
+  *minp = min;
+  *maxp = max;
 
-    for (i = 0; i < nitems; i++) {
-        t = x[i] - meanx;
-        st2 += t*t;
-        *b += t*y[i];
-    }
-
-    *b /= st2;
-    *a = (sy-sx*(*b))/ss;
-
-    prodsum = 0.0;
-    sqerrx = 0.0;
-    sqerry = 0.0;
-
-    /* Compute numerator of Pearson's R */
-    for (i = 0; i < nitems; i++) {
-        errx = x[i] - meanx;
-        erry = y[i] - meany;
-        prodsum += errx * erry;
-        sqerrx += errx*errx;
-        sqerry += erry*erry;
+  for (i = 0; i < nitems; i++)
+    {
+      t = x[i] - meanx;
+      st2 += t * t;
+      *b += t * y[i];
     }
 
-    *r = prodsum / (sqrt(sqerrx)*sqrt(sqerry));
+  *b /= st2;
+  *a = (sy - sx * (*b)) / ss;
+
+  prodsum = 0.0;
+  sqerrx = 0.0;
+  sqerry = 0.0;
+
+  /* Compute numerator of Pearson's R */
+  for (i = 0; i < nitems; i++)
+    {
+      errx = x[i] - meanx;
+      erry = y[i] - meany;
+      prodsum += errx * erry;
+      sqerrx += errx * errx;
+      sqerry += erry * erry;
+    }
+
+  *r = prodsum / (sqrt (sqerrx) * sqrt (sqerry));
 }

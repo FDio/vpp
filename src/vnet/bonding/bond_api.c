@@ -27,11 +27,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -44,22 +44,22 @@
 #include <vlibapi/api_helper_macros.h>
 #include <vnet/bonding/node.h>
 
-#define foreach_bond_api_msg                     \
-_(BOND_CREATE, bond_create)                      \
-_(BOND_CREATE2, bond_create2)			 \
-_(BOND_DELETE, bond_delete)                      \
-_(BOND_ENSLAVE, bond_enslave)                    \
-_(BOND_ADD_MEMBER, bond_add_member)                    \
-_(SW_INTERFACE_SET_BOND_WEIGHT, sw_interface_set_bond_weight) \
-_(BOND_DETACH_SLAVE, bond_detach_slave)          \
-_(BOND_DETACH_MEMBER, bond_detach_member)          \
-_(SW_INTERFACE_BOND_DUMP, sw_interface_bond_dump) \
-_(SW_BOND_INTERFACE_DUMP, sw_bond_interface_dump) \
-_(SW_INTERFACE_SLAVE_DUMP, sw_interface_slave_dump) \
-_(SW_MEMBER_INTERFACE_DUMP, sw_member_interface_dump)
+#define foreach_bond_api_msg                                                  \
+  _ (BOND_CREATE, bond_create)                                                \
+  _ (BOND_CREATE2, bond_create2)                                              \
+  _ (BOND_DELETE, bond_delete)                                                \
+  _ (BOND_ENSLAVE, bond_enslave)                                              \
+  _ (BOND_ADD_MEMBER, bond_add_member)                                        \
+  _ (SW_INTERFACE_SET_BOND_WEIGHT, sw_interface_set_bond_weight)              \
+  _ (BOND_DETACH_SLAVE, bond_detach_slave)                                    \
+  _ (BOND_DETACH_MEMBER, bond_detach_member)                                  \
+  _ (SW_INTERFACE_BOND_DUMP, sw_interface_bond_dump)                          \
+  _ (SW_BOND_INTERFACE_DUMP, sw_bond_interface_dump)                          \
+  _ (SW_INTERFACE_SLAVE_DUMP, sw_interface_slave_dump)                        \
+  _ (SW_MEMBER_INTERFACE_DUMP, sw_member_interface_dump)
 
 static void
-vl_api_bond_delete_t_handler (vl_api_bond_delete_t * mp)
+vl_api_bond_delete_t_handler (vl_api_bond_delete_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   int rv;
@@ -72,7 +72,7 @@ vl_api_bond_delete_t_handler (vl_api_bond_delete_t * mp)
 }
 
 static void
-vl_api_bond_create_t_handler (vl_api_bond_create_t * mp)
+vl_api_bond_create_t_handler (vl_api_bond_create_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_bond_create_reply_t *rmp;
@@ -95,16 +95,12 @@ vl_api_bond_create_t_handler (vl_api_bond_create_t * mp)
 
   int rv = ap->rv;
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_BOND_CREATE_REPLY,
-  ({
-    rmp->sw_if_index = ntohl (ap->sw_if_index);
-  }));
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_BOND_CREATE_REPLY,
+		({ rmp->sw_if_index = ntohl (ap->sw_if_index); }));
 }
 
 static void
-vl_api_bond_create2_t_handler (vl_api_bond_create2_t * mp)
+vl_api_bond_create2_t_handler (vl_api_bond_create2_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_bond_create2_reply_t *rmp;
@@ -128,16 +124,12 @@ vl_api_bond_create2_t_handler (vl_api_bond_create2_t * mp)
 
   int rv = ap->rv;
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_BOND_CREATE2_REPLY,
-  ({
-    rmp->sw_if_index = ntohl (ap->sw_if_index);
-  }));
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_BOND_CREATE2_REPLY,
+		({ rmp->sw_if_index = ntohl (ap->sw_if_index); }));
 }
 
 static void
-vl_api_bond_add_member_t_handler (vl_api_bond_add_member_t * mp)
+vl_api_bond_add_member_t_handler (vl_api_bond_add_member_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_bond_add_member_reply_t *rmp;
@@ -160,7 +152,7 @@ vl_api_bond_add_member_t_handler (vl_api_bond_add_member_t * mp)
 }
 
 static void
-vl_api_bond_enslave_t_handler (vl_api_bond_enslave_t * mp)
+vl_api_bond_enslave_t_handler (vl_api_bond_enslave_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_bond_enslave_reply_t *rmp;
@@ -183,8 +175,8 @@ vl_api_bond_enslave_t_handler (vl_api_bond_enslave_t * mp)
 }
 
 static void
-  vl_api_sw_interface_set_bond_weight_t_handler
-  (vl_api_sw_interface_set_bond_weight_t * mp)
+vl_api_sw_interface_set_bond_weight_t_handler (
+  vl_api_sw_interface_set_bond_weight_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   bond_set_intf_weight_args_t _a, *ap = &_a;
@@ -203,7 +195,7 @@ static void
 }
 
 static void
-vl_api_bond_detach_slave_t_handler (vl_api_bond_detach_slave_t * mp)
+vl_api_bond_detach_slave_t_handler (vl_api_bond_detach_slave_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_bond_detach_slave_reply_t *rmp;
@@ -220,7 +212,7 @@ vl_api_bond_detach_slave_t_handler (vl_api_bond_detach_slave_t * mp)
 }
 
 static void
-vl_api_bond_detach_member_t_handler (vl_api_bond_detach_member_t * mp)
+vl_api_bond_detach_member_t_handler (vl_api_bond_detach_member_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_bond_detach_member_reply_t *rmp;
@@ -237,10 +229,8 @@ vl_api_bond_detach_member_t_handler (vl_api_bond_detach_member_t * mp)
 }
 
 static void
-bond_send_sw_interface_details (vpe_api_main_t * am,
-				vl_api_registration_t * reg,
-				bond_interface_details_t * bond_if,
-				u32 context)
+bond_send_sw_interface_details (vpe_api_main_t *am, vl_api_registration_t *reg,
+				bond_interface_details_t *bond_if, u32 context)
 {
   vl_api_sw_interface_bond_details_t *mp;
 
@@ -263,7 +253,7 @@ bond_send_sw_interface_details (vpe_api_main_t * am,
 }
 
 static void
-vl_api_sw_interface_bond_dump_t_handler (vl_api_sw_interface_bond_dump_t * mp)
+vl_api_sw_interface_bond_dump_t_handler (vl_api_sw_interface_bond_dump_t *mp)
 {
   int rv;
   vpe_api_main_t *am = &vpe_api_main;
@@ -280,17 +270,17 @@ vl_api_sw_interface_bond_dump_t_handler (vl_api_sw_interface_bond_dump_t * mp)
     return;
 
   vec_foreach (bond_if, bondifs)
-  {
-    bond_send_sw_interface_details (am, reg, bond_if, mp->context);
-  }
+    {
+      bond_send_sw_interface_details (am, reg, bond_if, mp->context);
+    }
 
   vec_free (bondifs);
 }
 
 static void
-bond_send_sw_bond_interface_details (vpe_api_main_t * am,
-				     vl_api_registration_t * reg,
-				     bond_interface_details_t * bond_if,
+bond_send_sw_bond_interface_details (vpe_api_main_t *am,
+				     vl_api_registration_t *reg,
+				     bond_interface_details_t *bond_if,
 				     u32 context)
 {
   vl_api_sw_bond_interface_details_t *mp;
@@ -314,7 +304,7 @@ bond_send_sw_bond_interface_details (vpe_api_main_t * am,
 }
 
 static void
-vl_api_sw_bond_interface_dump_t_handler (vl_api_sw_bond_interface_dump_t * mp)
+vl_api_sw_bond_interface_dump_t_handler (vl_api_sw_bond_interface_dump_t *mp)
 {
   int rv;
   vpe_api_main_t *am = &vpe_api_main;
@@ -336,20 +326,20 @@ vl_api_sw_bond_interface_dump_t_handler (vl_api_sw_bond_interface_dump_t * mp)
     return;
 
   vec_foreach (bond_if, bondifs)
-  {
-    if ((filter_sw_if_index == ~0) ||
-	(bond_if->sw_if_index == filter_sw_if_index))
-      bond_send_sw_bond_interface_details (am, reg, bond_if, mp->context);
-  }
+    {
+      if ((filter_sw_if_index == ~0) ||
+	  (bond_if->sw_if_index == filter_sw_if_index))
+	bond_send_sw_bond_interface_details (am, reg, bond_if, mp->context);
+    }
 
   BAD_SW_IF_INDEX_LABEL;
   vec_free (bondifs);
 }
 
 static void
-bond_send_sw_member_interface_details (vpe_api_main_t * am,
-				       vl_api_registration_t * reg,
-				       member_interface_details_t * member_if,
+bond_send_sw_member_interface_details (vpe_api_main_t *am,
+				       vl_api_registration_t *reg,
+				       member_interface_details_t *member_if,
 				       u32 context)
 {
   vl_api_sw_interface_slave_details_t *mp;
@@ -371,8 +361,7 @@ bond_send_sw_member_interface_details (vpe_api_main_t * am,
 }
 
 static void
-vl_api_sw_interface_slave_dump_t_handler (vl_api_sw_interface_slave_dump_t *
-					  mp)
+vl_api_sw_interface_slave_dump_t_handler (vl_api_sw_interface_slave_dump_t *mp)
 {
   int rv;
   vpe_api_main_t *am = &vpe_api_main;
@@ -389,17 +378,17 @@ vl_api_sw_interface_slave_dump_t_handler (vl_api_sw_interface_slave_dump_t *
     return;
 
   vec_foreach (member_if, memberifs)
-  {
-    bond_send_sw_member_interface_details (am, reg, member_if, mp->context);
-  }
+    {
+      bond_send_sw_member_interface_details (am, reg, member_if, mp->context);
+    }
 
   vec_free (memberifs);
 }
 
 static void
-bond_send_member_interface_details (vpe_api_main_t * am,
-				    vl_api_registration_t * reg,
-				    member_interface_details_t * member_if,
+bond_send_member_interface_details (vpe_api_main_t *am,
+				    vl_api_registration_t *reg,
+				    member_interface_details_t *member_if,
 				    u32 context)
 {
   vl_api_sw_member_interface_details_t *mp;
@@ -421,8 +410,8 @@ bond_send_member_interface_details (vpe_api_main_t * am,
 }
 
 static void
-vl_api_sw_member_interface_dump_t_handler (vl_api_sw_member_interface_dump_t *
-					   mp)
+vl_api_sw_member_interface_dump_t_handler (
+  vl_api_sw_member_interface_dump_t *mp)
 {
   int rv;
   vpe_api_main_t *am = &vpe_api_main;
@@ -439,9 +428,9 @@ vl_api_sw_member_interface_dump_t_handler (vl_api_sw_member_interface_dump_t *
     return;
 
   vec_foreach (member_if, memberifs)
-  {
-    bond_send_member_interface_details (am, reg, member_if, mp->context);
-  }
+    {
+      bond_send_member_interface_details (am, reg, member_if, mp->context);
+    }
 
   vec_free (memberifs);
 }
@@ -451,25 +440,22 @@ vl_api_sw_member_interface_dump_t_handler (vl_api_sw_member_interface_dump_t *
 #undef vl_msg_name_crc_list
 
 static void
-bond_setup_message_id_table (api_main_t * am)
+bond_setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_bond;
 #undef _
 }
 
 static clib_error_t *
-bond_api_hookup (vlib_main_t * vm)
+bond_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_bond_api_msg;
 #undef _
 

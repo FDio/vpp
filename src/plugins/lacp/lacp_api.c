@@ -25,7 +25,6 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
-
 /* define message IDs */
 #include <vnet/format_fns.h>
 #include <lacp/lacp.api_enum.h>
@@ -34,19 +33,18 @@
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 
 /* Macro to finish up custom dump fns */
-#define FINISH                                  \
-    vec_add1 (s, 0);                            \
-    vl_print (handle, (char *)s);               \
-    vec_free (s);                               \
-    return handle;
+#define FINISH                                                                \
+  vec_add1 (s, 0);                                                            \
+  vl_print (handle, (char *) s);                                              \
+  vec_free (s);                                                               \
+  return handle;
 
 #define REPLY_MSG_ID_BASE lm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
 static void
-lacp_send_sw_interface_details (vl_api_registration_t * reg,
-				lacp_interface_details_t * lacp_if,
-				u32 context)
+lacp_send_sw_interface_details (vl_api_registration_t *reg,
+				lacp_interface_details_t *lacp_if, u32 context)
 {
   lacp_main_t *lm = &lacp_main;
   vl_api_sw_interface_lacp_details_t *mp;
@@ -90,7 +88,7 @@ lacp_send_sw_interface_details (vl_api_registration_t * reg,
  * @param mp vl_api_lacp_dump_t * mp the api message
  */
 void
-vl_api_sw_interface_lacp_dump_t_handler (vl_api_sw_interface_lacp_dump_t * mp)
+vl_api_sw_interface_lacp_dump_t_handler (vl_api_sw_interface_lacp_dump_t *mp)
 {
   int rv;
   vl_api_registration_t *reg;
@@ -106,9 +104,9 @@ vl_api_sw_interface_lacp_dump_t_handler (vl_api_sw_interface_lacp_dump_t * mp)
     return;
 
   vec_foreach (lacp_if, lacpifs)
-  {
-    lacp_send_sw_interface_details (reg, lacp_if, mp->context);
-  }
+    {
+      lacp_send_sw_interface_details (reg, lacp_if, mp->context);
+    }
 
   vec_free (lacpifs);
 }
@@ -116,7 +114,7 @@ vl_api_sw_interface_lacp_dump_t_handler (vl_api_sw_interface_lacp_dump_t * mp)
 /* Set up the API message handling tables */
 #include <lacp/lacp.api.c>
 clib_error_t *
-lacp_plugin_api_hookup (vlib_main_t * vm)
+lacp_plugin_api_hookup (vlib_main_t *vm)
 {
   lacp_main_t *lm = &lacp_main;
   api_main_t *am = vlibapi_get_main ();

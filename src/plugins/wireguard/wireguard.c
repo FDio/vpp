@@ -26,15 +26,14 @@
 wg_main_t wg_main;
 
 static clib_error_t *
-wg_init (vlib_main_t * vm)
+wg_init (vlib_main_t *vm)
 {
   wg_main_t *wmp = &wg_main;
 
   wmp->vlib_main = vm;
 
   wmp->in_fq_index = vlib_frame_queue_main_init (wg_input_node.index, 0);
-  wmp->out_fq_index =
-    vlib_frame_queue_main_init (wg_output_tun_node.index, 0);
+  wmp->out_fq_index = vlib_frame_queue_main_init (wg_output_tun_node.index, 0);
 
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
@@ -48,21 +47,16 @@ wg_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (wg_init);
 
-/* *INDENT-OFF* */
-
-VNET_FEATURE_INIT (wg_output_tun, static) =
-{
+VNET_FEATURE_INIT (wg_output_tun, static) = {
   .arc_name = "ip4-output",
   .node_name = "wg-output-tun",
   .runs_after = VNET_FEATURES ("gso-ip4"),
 };
 
-VLIB_PLUGIN_REGISTER () =
-{
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Wireguard Protocol",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -33,46 +33,45 @@
 #include <vnet/dpo/dpo.h>
 #include <vnet/adj/adj_types.h>
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;	/* 20 bytes */
   udp_header_t udp;	/* 8 bytes */
-  vxlan_header_t vxlan;	/* 8 bytes */
+  vxlan_header_t vxlan; /* 8 bytes */
 }) ip4_vxlan_header_t;
 
 typedef CLIB_PACKED (struct {
   ip6_header_t ip6;	/* 40 bytes */
   udp_header_t udp;	/* 8 bytes */
-  vxlan_header_t vxlan;	/* 8 bytes */
+  vxlan_header_t vxlan; /* 8 bytes */
 }) ip6_vxlan_header_t;
-/* *INDENT-ON* */
 
 /*
-* Key fields: remote ip, vni on incoming VXLAN packet
-* all fields in NET byte order
-*/
+ * Key fields: remote ip, vni on incoming VXLAN packet
+ * all fields in NET byte order
+ */
 typedef clib_bihash_kv_16_8_t vxlan4_tunnel_key_t;
 
 /*
-* Key fields: remote ip, vni and fib index on incoming VXLAN packet
-* ip, vni fields in NET byte order
-* fib index field in host byte order
-*/
+ * Key fields: remote ip, vni and fib index on incoming VXLAN packet
+ * ip, vni fields in NET byte order
+ * fib index field in host byte order
+ */
 typedef clib_bihash_kv_24_8_t vxlan6_tunnel_key_t;
 
 typedef union
 {
   struct
   {
-    u32 sw_if_index;		/* unicast - input interface / mcast - stats interface */
+    u32 sw_if_index; /* unicast - input interface / mcast - stats interface */
     union
     {
-      struct			/* unicast action */
+      struct /* unicast action */
       {
 	u16 next_index;
 	u8 error;
       };
-      ip4_address_t local_ip;	/* used as dst ip for mcast pkts to assign them to unicast tunnel */
+      ip4_address_t local_ip; /* used as dst ip for mcast pkts to assign them
+				 to unicast tunnel */
     };
   };
   u64 as_u64;
@@ -130,20 +129,20 @@ typedef struct
    */
   u32 sibling_index;
 
-  u32 flow_index;		/* infra flow index */
-  u32 dev_instance;		/* Real device instance in tunnel vector */
-  u32 user_instance;		/* Instance name being shown to user */
+  u32 flow_index;    /* infra flow index */
+  u32 dev_instance;  /* Real device instance in tunnel vector */
+  u32 user_instance; /* Instance name being shown to user */
 
-    VNET_DECLARE_REWRITE;
+  VNET_DECLARE_REWRITE;
 } vxlan_tunnel_t;
 
-#define foreach_vxlan_input_next        \
-_(DROP, "error-drop")                   \
-_(L2_INPUT, "l2-input")
+#define foreach_vxlan_input_next                                              \
+  _ (DROP, "error-drop")                                                      \
+  _ (L2_INPUT, "l2-input")
 
 typedef enum
 {
-#define _(s,n) VXLAN_INPUT_NEXT_##s,
+#define _(s, n) VXLAN_INPUT_NEXT_##s,
   foreach_vxlan_input_next
 #undef _
     VXLAN_INPUT_N_NEXT,
@@ -151,7 +150,7 @@ typedef enum
 
 typedef enum
 {
-#define vxlan_error(n,s) VXLAN_ERROR_##n,
+#define vxlan_error(n, s) VXLAN_ERROR_##n,
 #include <vnet/vxlan/vxlan_error.def>
 #undef vxlan_error
   VXLAN_N_ERROR,
@@ -173,7 +172,7 @@ typedef struct
   vtep_table_t vtep_table;
 
   /* mcast shared info */
-  uword *mcast_shared;		/* keyed on mcast ip46 addr */
+  uword *mcast_shared; /* keyed on mcast ip46 addr */
 
   /* Mapping from sw_if_index to tunnel index */
   u32 *tunnel_index_by_sw_if_index;
@@ -199,7 +198,7 @@ extern vlib_node_registration_t vxlan4_encap_node;
 extern vlib_node_registration_t vxlan6_encap_node;
 extern vlib_node_registration_t vxlan4_flow_input_node;
 
-u8 *format_vxlan_encap_trace (u8 * s, va_list * args);
+u8 *format_vxlan_encap_trace (u8 *s, va_list *args);
 
 typedef struct
 {
@@ -218,8 +217,8 @@ typedef struct
   u16 dst_port;
 } vnet_vxlan_add_del_tunnel_args_t;
 
-int vnet_vxlan_add_del_tunnel
-  (vnet_vxlan_add_del_tunnel_args_t * a, u32 * sw_if_indexp);
+int vnet_vxlan_add_del_tunnel (vnet_vxlan_add_del_tunnel_args_t *a,
+			       u32 *sw_if_indexp);
 
 void vnet_int_vxlan_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable);
 

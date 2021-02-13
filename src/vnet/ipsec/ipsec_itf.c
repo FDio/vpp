@@ -48,7 +48,7 @@ ipsec_itf_find_by_sw_if_index (u32 sw_if_index)
 }
 
 static u8 *
-format_ipsec_itf_name (u8 * s, va_list * args)
+format_ipsec_itf_name (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   return format (s, "ipsec%d", dev_instance);
@@ -91,7 +91,7 @@ ipsec_itf_adj_stack_cb (adj_index_t ai, void *arg)
 }
 
 static void
-ipsec_itf_restack (index_t itpi, const ipsec_itf_t * itf)
+ipsec_itf_restack (index_t itpi, const ipsec_itf_t *itf)
 {
   ipsec_tun_protect_t *itp;
   fib_protocol_t proto;
@@ -118,15 +118,16 @@ ipsec_tun_protect_walk_state_change (index_t itpi, void *arg)
 }
 
 static clib_error_t *
-ipsec_itf_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+ipsec_itf_admin_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 {
   vnet_hw_interface_t *hi;
   ipsec_itf_t *itf;
   u32 hw_flags;
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
-  hw_flags = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP ?
-	      VNET_HW_INTERFACE_FLAG_LINK_UP : 0);
+  hw_flags =
+    (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP ? VNET_HW_INTERFACE_FLAG_LINK_UP :
+					       0);
   vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
 
   itf = ipsec_itf_find_by_sw_if_index (hi->sw_if_index);
@@ -139,8 +140,8 @@ ipsec_itf_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 }
 
 static int
-ipsec_itf_tunnel_desc (u32 sw_if_index,
-		       ip46_address_t * src, ip46_address_t * dst, u8 * is_l2)
+ipsec_itf_tunnel_desc (u32 sw_if_index, ip46_address_t *src,
+		       ip46_address_t *dst, u8 *is_l2)
 {
   ip46_address_reset (src);
   ip46_address_reset (dst);
@@ -167,21 +168,19 @@ ipsec_itf_build_rewrite (void)
 }
 
 static u8 *
-ipsec_itf_build_rewrite_i (vnet_main_t * vnm,
-			   u32 sw_if_index,
+ipsec_itf_build_rewrite_i (vnet_main_t *vnm, u32 sw_if_index,
 			   vnet_link_t link_type, const void *dst_address)
 {
   return (ipsec_itf_build_rewrite ());
 }
 
 void
-ipsec_itf_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
+ipsec_itf_update_adj (vnet_main_t *vnm, u32 sw_if_index, adj_index_t ai)
 {
-  adj_nbr_midchain_update_rewrite
-    (ai, NULL, NULL, ADJ_FLAG_MIDCHAIN_IP_STACK, ipsec_itf_build_rewrite ());
+  adj_nbr_midchain_update_rewrite (ai, NULL, NULL, ADJ_FLAG_MIDCHAIN_IP_STACK,
+				   ipsec_itf_build_rewrite ());
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (ipsec_itf_device_class) = {
   .name = "IPSEC Tunnel",
   .format_device_name = format_ipsec_itf_name,
@@ -189,24 +188,23 @@ VNET_DEVICE_CLASS (ipsec_itf_device_class) = {
   .ip_tun_desc = ipsec_itf_tunnel_desc,
 };
 
-VNET_HW_INTERFACE_CLASS(ipsec_hw_interface_class) = {
+VNET_HW_INTERFACE_CLASS (ipsec_hw_interface_class) = {
   .name = "IPSec",
   .build_rewrite = ipsec_itf_build_rewrite_i,
   .update_adjacency = ipsec_itf_update_adj,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
-VNET_HW_INTERFACE_CLASS(ipsec_p2mp_hw_interface_class) = {
+VNET_HW_INTERFACE_CLASS (ipsec_p2mp_hw_interface_class) = {
   .name = "IPSec",
   .build_rewrite = ipsec_itf_build_rewrite_i,
   .update_adjacency = ipsec_itf_update_adj,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_NBMA,
 };
-/* *INDENT-ON* */
 
 /*
  * Maintain a bitmap of allocated ipsec_itf instance numbers.
  */
-#define IPSEC_ITF_MAX_INSTANCE		(16 * 1024)
+#define IPSEC_ITF_MAX_INSTANCE (16 * 1024)
 
 static u32
 ipsec_itf_instance_alloc (u32 want)
@@ -269,7 +267,7 @@ ipsec_itf_instance_free (u32 instance)
 }
 
 int
-ipsec_itf_create (u32 user_instance, tunnel_mode_t mode, u32 * sw_if_indexp)
+ipsec_itf_create (u32 user_instance, tunnel_mode_t mode, u32 *sw_if_indexp)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 instance, hw_if_index;
@@ -278,7 +276,7 @@ ipsec_itf_create (u32 user_instance, tunnel_mode_t mode, u32 * sw_if_indexp)
 
   ASSERT (sw_if_indexp);
 
-  *sw_if_indexp = (u32) ~ 0;
+  *sw_if_indexp = (u32) ~0;
 
   /*
    * Allocate a ipsec_itf instance.  Either select on dynamically
@@ -296,13 +294,11 @@ ipsec_itf_create (u32 user_instance, tunnel_mode_t mode, u32 * sw_if_indexp)
   ipsec_itf->ii_mode = mode;
   ipsec_itf->ii_user_instance = instance;
 
-  hw_if_index = vnet_register_interface (vnm,
-					 ipsec_itf_device_class.index,
-					 ipsec_itf->ii_user_instance,
-					 (mode == TUNNEL_MODE_P2P ?
-					  ipsec_hw_interface_class.index :
-					  ipsec_p2mp_hw_interface_class.index),
-					 t_idx);
+  hw_if_index = vnet_register_interface (
+    vnm, ipsec_itf_device_class.index, ipsec_itf->ii_user_instance,
+    (mode == TUNNEL_MODE_P2P ? ipsec_hw_interface_class.index :
+			       ipsec_p2mp_hw_interface_class.index),
+    t_idx);
 
   hi = vnet_get_hw_interface (vnm, hw_if_index);
 
@@ -342,8 +338,8 @@ ipsec_itf_delete (u32 sw_if_index)
 }
 
 static clib_error_t *
-ipsec_itf_create_cli (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+ipsec_itf_create_cli (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 instance, sw_if_index;
@@ -394,17 +390,16 @@ ipsec_itf_create_cli (vlib_main_t * vm,
  * Example of how to create a ipsec interface:
  * @cliexcmd{ipsec itf create}
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (ipsec_itf_create_command, static) = {
   .path = "ipsec itf create",
   .short_help = "ipsec itf create [instance <instance>]",
   .function = ipsec_itf_create_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-ipsec_itf_delete_cli (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+ipsec_itf_delete_cli (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm;
   u32 sw_if_index;
@@ -415,8 +410,8 @@ ipsec_itf_delete_cli (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else
 	break;
@@ -445,26 +440,23 @@ ipsec_itf_delete_cli (vlib_main_t * vm,
  * Example of how to create a ipsec_itf interface:
  * @cliexcmd{ipsec itf delete ipsec0}
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (ipsec_itf_delete_command, static) = {
   .path = "ipsec itf delete",
   .short_help = "ipsec itf delete <interface>",
   .function = ipsec_itf_delete_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-ipsec_interface_show (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+ipsec_interface_show (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
 {
   index_t ii;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (ii, ipsec_itf_pool)
-   {
-    vlib_cli_output (vm, "%U", format_ipsec_itf, ii);
-  }
-  /* *INDENT-ON* */
+    {
+      vlib_cli_output (vm, "%U", format_ipsec_itf, ii);
+    }
 
   return NULL;
 }
@@ -472,14 +464,12 @@ ipsec_interface_show (vlib_main_t * vm,
 /**
  * show IPSEC tunnel protection hash tables
  */
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (ipsec_interface_show_node, static) =
-{
+
+VLIB_CLI_COMMAND (ipsec_interface_show_node, static) = {
   .path = "show ipsec interface",
   .function = ipsec_interface_show,
-  .short_help =  "show ipsec interface",
+  .short_help = "show ipsec interface",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -17,13 +17,13 @@
  *------------------------------------------------------------------
  */
 
-#include <fcntl.h>		/* for open */
+#include <fcntl.h> /* for open */
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/uio.h>		/* for iovec */
+#include <sys/uio.h> /* for iovec */
 #include <netinet/in.h>
 #include <sys/vfs.h>
 
@@ -67,33 +67,32 @@
 
 extern vlib_node_registration_t vhost_user_input_node;
 
-#define foreach_vhost_user_input_func_error      \
-  _(NO_ERROR, "no error")  \
-  _(NO_BUFFER, "no available buffer")  \
-  _(MMAP_FAIL, "mmap failure")  \
-  _(INDIRECT_OVERFLOW, "indirect descriptor overflows table")  \
-  _(UNDERSIZED_FRAME, "undersized ethernet frame received (< 14 bytes)") \
-  _(NOT_READY, "vhost interface not ready or down") \
-  _(FULL_RX_QUEUE, "full rx queue (possible driver tx drop)")
+#define foreach_vhost_user_input_func_error                                   \
+  _ (NO_ERROR, "no error")                                                    \
+  _ (NO_BUFFER, "no available buffer")                                        \
+  _ (MMAP_FAIL, "mmap failure")                                               \
+  _ (INDIRECT_OVERFLOW, "indirect descriptor overflows table")                \
+  _ (UNDERSIZED_FRAME, "undersized ethernet frame received (< 14 bytes)")     \
+  _ (NOT_READY, "vhost interface not ready or down")                          \
+  _ (FULL_RX_QUEUE, "full rx queue (possible driver tx drop)")
 
 typedef enum
 {
-#define _(f,s) VHOST_USER_INPUT_FUNC_ERROR_##f,
+#define _(f, s) VHOST_USER_INPUT_FUNC_ERROR_##f,
   foreach_vhost_user_input_func_error
 #undef _
     VHOST_USER_INPUT_FUNC_N_ERROR,
 } vhost_user_input_func_error_t;
 
 static __clib_unused char *vhost_user_input_func_error_strings[] = {
-#define _(n,s) s,
+#define _(n, s) s,
   foreach_vhost_user_input_func_error
 #undef _
 };
 
 static_always_inline void
-vhost_user_rx_trace (vhost_trace_t * t,
-		     vhost_user_intf_t * vui, u16 qid,
-		     vlib_buffer_t * b, vhost_user_vring_t * txvq,
+vhost_user_rx_trace (vhost_trace_t *t, vhost_user_intf_t *vui, u16 qid,
+		     vlib_buffer_t *b, vhost_user_vring_t *txvq,
 		     u16 last_avail_idx)
 {
   vhost_user_main_t *vum = &vhost_user_main;
@@ -137,8 +136,8 @@ vhost_user_rx_trace (vhost_trace_t * t,
 }
 
 static_always_inline u32
-vhost_user_input_copy (vhost_user_intf_t * vui, vhost_copy_t * cpy,
-		       u16 copy_len, u32 * map_hint)
+vhost_user_input_copy (vhost_user_intf_t *vui, vhost_copy_t *cpy, u16 copy_len,
+		       u32 *map_hint)
 {
   void *src0, *src1, *src2, *src3;
   if (PREDICT_TRUE (copy_len >= 4))
@@ -153,11 +152,11 @@ vhost_user_input_copy (vhost_user_intf_t * vui, vhost_copy_t * cpy,
 	  src0 = src2;
 	  src1 = src3;
 
-	  if (PREDICT_FALSE
-	      (!(src2 = map_guest_mem (vui, cpy[2].src, map_hint))))
+	  if (PREDICT_FALSE (
+		!(src2 = map_guest_mem (vui, cpy[2].src, map_hint))))
 	    return 1;
-	  if (PREDICT_FALSE
-	      (!(src3 = map_guest_mem (vui, cpy[3].src, map_hint))))
+	  if (PREDICT_FALSE (
+		!(src3 = map_guest_mem (vui, cpy[3].src, map_hint))))
 	    return 1;
 
 	  CLIB_PREFETCH (src2, 64, LOAD);
@@ -185,9 +184,8 @@ vhost_user_input_copy (vhost_user_intf_t * vui, vhost_copy_t * cpy,
  * Returns the number of discarded packets.
  */
 static_always_inline u32
-vhost_user_rx_discard_packet (vlib_main_t * vm,
-			      vhost_user_intf_t * vui,
-			      vhost_user_vring_t * txvq, u32 discard_max)
+vhost_user_rx_discard_packet (vlib_main_t *vm, vhost_user_intf_t *vui,
+			      vhost_user_vring_t *txvq, u32 discard_max)
 {
   /*
    * On the RX side, each packet corresponds to one descriptor
@@ -226,8 +224,8 @@ out:
  * In case of overflow, we need to rewind the array of allocated buffers.
  */
 static_always_inline void
-vhost_user_input_rewind_buffers (vlib_main_t * vm,
-				 vhost_cpu_t * cpu, vlib_buffer_t * b_head)
+vhost_user_input_rewind_buffers (vlib_main_t *vm, vhost_cpu_t *cpu,
+				 vlib_buffer_t *b_head)
 {
   u32 bi_current = cpu->rx_buffers[cpu->rx_buffers_len];
   vlib_buffer_t *b_current = vlib_get_buffer (vm, bi_current);
@@ -245,8 +243,8 @@ vhost_user_input_rewind_buffers (vlib_main_t * vm,
 }
 
 static_always_inline void
-vhost_user_handle_rx_offload (vlib_buffer_t * b0, u8 * b0_data,
-			      virtio_net_hdr_t * hdr)
+vhost_user_handle_rx_offload (vlib_buffer_t *b0, u8 *b0_data,
+			      virtio_net_hdr_t *hdr)
 {
   u8 l4_hdr_sz = 0;
   u8 l4_proto = 0;
@@ -270,9 +268,9 @@ vhost_user_handle_rx_offload (vlib_buffer_t * b0, u8 * b0_data,
   vnet_buffer (b0)->l2_hdr_offset = 0;
   vnet_buffer (b0)->l3_hdr_offset = l2hdr_sz;
   vnet_buffer (b0)->l4_hdr_offset = hdr->csum_start;
-  b0->flags |= (VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
-		VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
-		VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
+  b0->flags |=
+    (VNET_BUFFER_F_L2_HDR_OFFSET_VALID | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+     VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
 
   if (PREDICT_TRUE (ethertype == ETHERNET_TYPE_IP4))
     {
@@ -289,8 +287,8 @@ vhost_user_handle_rx_offload (vlib_buffer_t * b0, u8 * b0_data,
 
   if (l4_proto == IP_PROTOCOL_TCP)
     {
-      tcp_header_t *tcp = (tcp_header_t *)
-	(b0_data + vnet_buffer (b0)->l4_hdr_offset);
+      tcp_header_t *tcp =
+	(tcp_header_t *) (b0_data + vnet_buffer (b0)->l4_hdr_offset);
       l4_hdr_sz = tcp_header_bytes (tcp);
       b0->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
     }
@@ -321,9 +319,9 @@ vhost_user_handle_rx_offload (vlib_buffer_t * b0, u8 * b0_data,
 }
 
 static_always_inline void
-vhost_user_input_do_interrupt (vlib_main_t * vm, vhost_user_intf_t * vui,
-			       vhost_user_vring_t * txvq,
-			       vhost_user_vring_t * rxvq)
+vhost_user_input_do_interrupt (vlib_main_t *vm, vhost_user_intf_t *vui,
+			       vhost_user_vring_t *txvq,
+			       vhost_user_vring_t *rxvq)
 {
   f64 now = vlib_time_now (vm);
 
@@ -335,10 +333,10 @@ vhost_user_input_do_interrupt (vlib_main_t * vm, vhost_user_intf_t * vui,
 }
 
 static_always_inline void
-vhost_user_input_setup_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
-			      vhost_user_intf_t * vui,
-			      u32 * current_config_index, u32 * next_index,
-			      u32 ** to_next, u32 * n_left_to_next)
+vhost_user_input_setup_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+			      vhost_user_intf_t *vui,
+			      u32 *current_config_index, u32 *next_index,
+			      u32 **to_next, u32 *n_left_to_next)
 {
   vnet_feature_main_t *fm = &feature_main;
   u8 feature_arc_idx = fm->device_input_feature_arc_index;
@@ -347,10 +345,10 @@ vhost_user_input_setup_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       vnet_feature_config_main_t *cm;
       cm = &fm->feature_config_mains[feature_arc_idx];
-      *current_config_index = vec_elt (cm->config_index_by_sw_if_index,
-				       vui->sw_if_index);
-      vnet_get_config_data (&cm->config_main, current_config_index,
-			    next_index, 0);
+      *current_config_index =
+	vec_elt (cm->config_index_by_sw_if_index, vui->sw_if_index);
+      vnet_get_config_data (&cm->config_main, current_config_index, next_index,
+			    0);
     }
 
   vlib_get_new_next_frame (vm, node, *next_index, *to_next, *n_left_to_next);
@@ -470,26 +468,25 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
 		     cpu->rx_buffers_len < 40))
     {
       u32 curr_len = cpu->rx_buffers_len;
-      cpu->rx_buffers_len +=
-	vlib_buffer_alloc (vm, cpu->rx_buffers + curr_len,
-			   VHOST_USER_RX_BUFFERS_N - curr_len);
+      cpu->rx_buffers_len += vlib_buffer_alloc (
+	vm, cpu->rx_buffers + curr_len, VHOST_USER_RX_BUFFERS_N - curr_len);
 
-      if (PREDICT_FALSE
-	  (cpu->rx_buffers_len < VHOST_USER_RX_BUFFER_STARVATION))
+      if (PREDICT_FALSE (cpu->rx_buffers_len <
+			 VHOST_USER_RX_BUFFER_STARVATION))
 	{
 	  /* In case of buffer starvation, discard some packets from the queue
 	   * and log the event.
 	   * We keep doing best effort for the remaining packets. */
 	  u32 flush = (n_left + 1 > cpu->rx_buffers_len) ?
-	    n_left + 1 - cpu->rx_buffers_len : 1;
+			n_left + 1 - cpu->rx_buffers_len :
+			1;
 	  flush = vhost_user_rx_discard_packet (vm, vui, txvq, flush);
 
 	  n_left -= flush;
-	  vlib_increment_simple_counter (vnet_main.
-					 interface_main.sw_if_counters +
-					 VNET_INTERFACE_COUNTER_DROP,
-					 vm->thread_index, vui->sw_if_index,
-					 flush);
+	  vlib_increment_simple_counter (
+	    vnet_main.interface_main.sw_if_counters +
+	      VNET_INTERFACE_COUNTER_DROP,
+	    vm->thread_index, vui->sw_if_index, flush);
 
 	  vlib_error_count (vm, vhost_user_input_node.index,
 			    VHOST_USER_INPUT_FUNC_ERROR_NO_BUFFER, flush);
@@ -524,12 +521,13 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
       cpu->rx_buffers_len--;
       bi_current = cpu->rx_buffers[cpu->rx_buffers_len];
       b_head = b_current = vlib_get_buffer (vm, bi_current);
-      to_next[0] = bi_current;	//We do that now so we can forget about bi_current
+      to_next[0] =
+	bi_current; // We do that now so we can forget about bi_current
       to_next++;
       n_left_to_next--;
 
-      vlib_prefetch_buffer_with_index
-	(vm, cpu->rx_buffers[cpu->rx_buffers_len - 1], LOAD);
+      vlib_prefetch_buffer_with_index (
+	vm, cpu->rx_buffers[cpu->rx_buffers_len - 1], LOAD);
 
       /* Just preset the used descriptor id and length for later */
       txvq->used->ring[last_used_idx & mask].id = desc_current;
@@ -540,9 +538,9 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
       b_head->total_length_not_including_first_buffer = 0;
       b_head->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
-      if (PREDICT_FALSE
-	  (n_trace > 0 && vlib_trace_buffer (vm, node, next_index, b_head,
-					     /* follow_chain */ 0)))
+      if (PREDICT_FALSE (n_trace > 0 &&
+			 vlib_trace_buffer (vm, node, next_index, b_head,
+					    /* follow_chain */ 0)))
 	{
 	  vhost_trace_t *t0 =
 	    vlib_add_trace (vm, node, b_head, sizeof (t0[0]));
@@ -556,8 +554,8 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
        * at optimizing the decision. */
       if (txvq->desc[desc_current].flags & VRING_DESC_F_INDIRECT)
 	{
-	  desc_table = map_guest_mem (vui, txvq->desc[desc_current].addr,
-				      &map_hint);
+	  desc_table =
+	    map_guest_mem (vui, txvq->desc[desc_current].addr, &map_hint);
 	  desc_current = 0;
 	  if (PREDICT_FALSE (desc_table == 0))
 	    {
@@ -588,8 +586,8 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
 		  (desc_table[desc_current].flags & VRING_DESC_F_NEXT))
 		{
 		  current = desc_table[desc_current].next;
-		  b_data = map_guest_mem (vui, desc_table[current].addr,
-					  &map_hint);
+		  b_data =
+		    map_guest_mem (vui, desc_table[current].addr, &map_hint);
 		  if (PREDICT_FALSE (b_data == 0))
 		    {
 		      vlib_error_count (vm, node->node_index,
@@ -684,7 +682,7 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b_head);
 
       vnet_buffer (b_head)->sw_if_index[VLIB_RX] = vui->sw_if_index;
-      vnet_buffer (b_head)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+      vnet_buffer (b_head)->sw_if_index[VLIB_TX] = (u32) ~0;
       b_head->error = 0;
 
       if (current_config_index != ~(u32) 0)
@@ -702,8 +700,8 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
        */
       if (PREDICT_FALSE (copy_len >= VHOST_USER_RX_COPY_THRESHOLD))
 	{
-	  if (PREDICT_FALSE (vhost_user_input_copy (vui, cpu->copy,
-						    copy_len, &map_hint)))
+	  if (PREDICT_FALSE (
+		vhost_user_input_copy (vui, cpu->copy, copy_len, &map_hint)))
 	    {
 	      vlib_error_count (vm, node->node_index,
 				VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL, 1);
@@ -723,8 +721,8 @@ stop:
   txvq->last_avail_idx = last_avail_idx;
 
   /* Do the memory copies */
-  if (PREDICT_FALSE (vhost_user_input_copy (vui, cpu->copy, copy_len,
-					    &map_hint)))
+  if (PREDICT_FALSE (
+	vhost_user_input_copy (vui, cpu->copy, copy_len, &map_hint)))
     {
       vlib_error_count (vm, node->node_index,
 			VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL, 1);
@@ -746,10 +744,10 @@ stop:
     }
 
   /* increase rx counters */
-  vlib_increment_combined_counter
-    (vnet_main.interface_main.combined_sw_if_counters
-     + VNET_INTERFACE_COUNTER_RX, vm->thread_index, vui->sw_if_index,
-     n_rx_packets, n_rx_bytes);
+  vlib_increment_combined_counter (
+    vnet_main.interface_main.combined_sw_if_counters +
+      VNET_INTERFACE_COUNTER_RX,
+    vm->thread_index, vui->sw_if_index, n_rx_packets, n_rx_bytes);
 
   vnet_device_increment_rx_packets (vm->thread_index, n_rx_packets);
 
@@ -758,8 +756,8 @@ done:
 }
 
 static_always_inline void
-vhost_user_mark_desc_consumed (vhost_user_intf_t * vui,
-			       vhost_user_vring_t * txvq, u16 desc_head,
+vhost_user_mark_desc_consumed (vhost_user_intf_t *vui,
+			       vhost_user_vring_t *txvq, u16 desc_head,
 			       u16 n_descs_processed)
 {
   vring_packed_desc_t *desc_table = txvq->packed_desc;
@@ -779,9 +777,8 @@ vhost_user_mark_desc_consumed (vhost_user_intf_t * vui,
 }
 
 static_always_inline void
-vhost_user_rx_trace_packed (vhost_trace_t * t, vhost_user_intf_t * vui,
-			    u16 qid, vhost_user_vring_t * txvq,
-			    u16 desc_current)
+vhost_user_rx_trace_packed (vhost_trace_t *t, vhost_user_intf_t *vui, u16 qid,
+			    vhost_user_vring_t *txvq, u16 desc_current)
 {
   vhost_user_main_t *vum = &vhost_user_main;
   vring_packed_desc_t *hdr_desc;
@@ -797,8 +794,8 @@ vhost_user_rx_trace_packed (vhost_trace_t * t, vhost_user_intf_t * vui,
     {
       t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_INDIRECT;
       /* Header is the first here */
-      hdr_desc = map_guest_mem (vui, txvq->packed_desc[desc_current].addr,
-				&hint);
+      hdr_desc =
+	map_guest_mem (vui, txvq->packed_desc[desc_current].addr, &hint);
     }
   if (txvq->packed_desc[desc_current].flags & VRING_DESC_F_NEXT)
     t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_SIMPLE_CHAINED;
@@ -820,10 +817,8 @@ vhost_user_rx_trace_packed (vhost_trace_t * t, vhost_user_intf_t * vui,
 }
 
 static_always_inline u32
-vhost_user_rx_discard_packet_packed (vlib_main_t * vm,
-				     vhost_user_intf_t * vui,
-				     vhost_user_vring_t * txvq,
-				     u32 discard_max)
+vhost_user_rx_discard_packet_packed (vlib_main_t *vm, vhost_user_intf_t *vui,
+				     vhost_user_vring_t *txvq, u32 discard_max)
 {
   u32 discarded_packets = 0;
   u16 mask = txvq->qsz_mask;
@@ -850,8 +845,8 @@ vhost_user_rx_discard_packet_packed (vlib_main_t * vm,
 }
 
 static_always_inline u32
-vhost_user_input_copy_packed (vhost_user_intf_t * vui, vhost_copy_t * cpy,
-			      u16 copy_len, u32 * map_hint)
+vhost_user_input_copy_packed (vhost_user_intf_t *vui, vhost_copy_t *cpy,
+			      u16 copy_len, u32 *map_hint)
 {
   void *src0, *src1, *src2, *src3, *src4, *src5, *src6, *src7;
   u8 bad;
@@ -916,9 +911,9 @@ one_by_one:
 }
 
 static_always_inline u32
-vhost_user_do_offload (vhost_user_intf_t * vui,
-		       vring_packed_desc_t * desc_table, u16 desc_current,
-		       u16 mask, vlib_buffer_t * b_head, u32 * map_hint)
+vhost_user_do_offload (vhost_user_intf_t *vui, vring_packed_desc_t *desc_table,
+		       u16 desc_current, u16 mask, vlib_buffer_t *b_head,
+		       u32 *map_hint)
 {
   u32 rc = VHOST_USER_INPUT_FUNC_ERROR_NO_ERROR;
   virtio_net_hdr_mrg_rxbuf_t *hdr;
@@ -977,10 +972,10 @@ vhost_user_compute_buffers_required (u32 desc_len, u32 buffer_data_size)
 }
 
 static_always_inline u32
-vhost_user_compute_indirect_desc_len (vhost_user_intf_t * vui,
-				      vhost_user_vring_t * txvq,
+vhost_user_compute_indirect_desc_len (vhost_user_intf_t *vui,
+				      vhost_user_vring_t *txvq,
 				      u32 buffer_data_size, u16 desc_current,
-				      u32 * map_hint)
+				      u32 *map_hint)
 {
   vring_packed_desc_t *desc_table = txvq->packed_desc;
   u32 desc_len = 0;
@@ -1003,10 +998,10 @@ vhost_user_compute_indirect_desc_len (vhost_user_intf_t * vui,
 }
 
 static_always_inline u32
-vhost_user_compute_chained_desc_len (vhost_user_intf_t * vui,
-				     vhost_user_vring_t * txvq,
-				     u32 buffer_data_size, u16 * current,
-				     u16 * n_left)
+vhost_user_compute_chained_desc_len (vhost_user_intf_t *vui,
+				     vhost_user_vring_t *txvq,
+				     u32 buffer_data_size, u16 *current,
+				     u16 *n_left)
 {
   vring_packed_desc_t *desc_table = txvq->packed_desc;
   u32 desc_len = 0;
@@ -1031,14 +1026,12 @@ vhost_user_compute_chained_desc_len (vhost_user_intf_t * vui,
 }
 
 static_always_inline void
-vhost_user_assemble_packet (vring_packed_desc_t * desc_table,
-			    u16 * desc_idx, vlib_buffer_t * b_head,
-			    vlib_buffer_t ** b_current, u32 ** next,
-			    vlib_buffer_t *** b, u32 * bi_current,
-			    vhost_cpu_t * cpu, u16 * copy_len,
-			    u32 * buffers_used, u32 buffers_required,
-			    u32 * desc_data_offset, u32 buffer_data_size,
-			    u16 mask)
+vhost_user_assemble_packet (vring_packed_desc_t *desc_table, u16 *desc_idx,
+			    vlib_buffer_t *b_head, vlib_buffer_t **b_current,
+			    u32 **next, vlib_buffer_t ***b, u32 *bi_current,
+			    vhost_cpu_t *cpu, u16 *copy_len, u32 *buffers_used,
+			    u32 buffers_required, u32 *desc_data_offset,
+			    u32 buffer_data_size, u16 mask)
 {
   u32 desc_data_l;
 
@@ -1075,7 +1068,8 @@ vhost_user_assemble_packet (vring_packed_desc_t * desc_table,
       (*b_current)->current_length += cpy->len;
       b_head->total_length_not_including_first_buffer += cpy->len;
     }
-  *desc_idx = (*desc_idx + 1) & mask;;
+  *desc_idx = (*desc_idx + 1) & mask;
+  ;
   *desc_data_offset = 0;
 }
 
@@ -1172,18 +1166,16 @@ vhost_user_if_input_packed (vlib_main_t *vm, vhost_user_main_t *vum,
     {
       if (desc_table[current].flags & VRING_DESC_F_INDIRECT)
 	{
-	  buffers_required +=
-	    vhost_user_compute_indirect_desc_len (vui, txvq, buffer_data_size,
-						  current, &map_hint);
+	  buffers_required += vhost_user_compute_indirect_desc_len (
+	    vui, txvq, buffer_data_size, current, &map_hint);
 	  n_left++;
 	  current = (current + 1) & mask;
 	  vhost_user_advance_last_avail_idx (txvq);
 	}
       else
 	{
-	  buffers_required +=
-	    vhost_user_compute_chained_desc_len (vui, txvq, buffer_data_size,
-						 &current, &n_left);
+	  buffers_required += vhost_user_compute_chained_desc_len (
+	    vui, txvq, buffer_data_size, &current, &n_left);
 	}
     }
 
@@ -1240,15 +1232,15 @@ vhost_user_if_input_packed (vlib_main_t *vm, vhost_user_main_t *vum,
       if (desc_table[desc_idx].flags & VRING_DESC_F_INDIRECT)
 	{
 	  n_descs = desc_table[desc_idx].len >> 4;
-	  desc_table = map_guest_mem (vui, desc_table[desc_idx].addr,
-				      &map_hint);
+	  desc_table =
+	    map_guest_mem (vui, desc_table[desc_idx].addr, &map_hint);
 	  desc_idx = 0;
 	  if (PREDICT_FALSE (desc_table == 0) ||
 	      (enable_csum &&
-	       (PREDICT_FALSE
-		(vhost_user_do_offload
-		 (vui, desc_table, desc_idx, mask, b_head,
-		  &map_hint) != VHOST_USER_INPUT_FUNC_ERROR_NO_ERROR))))
+	       (PREDICT_FALSE (vhost_user_do_offload (vui, desc_table,
+						      desc_idx, mask, b_head,
+						      &map_hint) !=
+			       VHOST_USER_INPUT_FUNC_ERROR_NO_ERROR))))
 	    {
 	      vlib_error_count (vm, node->node_index,
 				VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL, 1);
@@ -1261,11 +1253,10 @@ vhost_user_if_input_packed (vlib_main_t *vm, vhost_user_main_t *vum,
 	    }
 	  while (n_descs)
 	    {
-	      vhost_user_assemble_packet (desc_table, &desc_idx, b_head,
-					  &b_current, &next, &b, &bi_current,
-					  cpu, &copy_len, &buffers_used,
-					  buffers_required, &desc_data_offset,
-					  buffer_data_size, mask);
+	      vhost_user_assemble_packet (
+		desc_table, &desc_idx, b_head, &b_current, &next, &b,
+		&bi_current, cpu, &copy_len, &buffers_used, buffers_required,
+		&desc_data_offset, buffer_data_size, mask);
 	      n_descs--;
 	    }
 	}
@@ -1293,18 +1284,16 @@ vhost_user_if_input_packed (vlib_main_t *vm, vhost_user_main_t *vum,
 	  n_descs_to_process = 1;
 	  while (desc_table[desc_idx].flags & VRING_DESC_F_NEXT)
 	    {
-	      vhost_user_assemble_packet (desc_table, &desc_idx, b_head,
-					  &b_current, &next, &b, &bi_current,
-					  cpu, &copy_len, &buffers_used,
-					  buffers_required, &desc_data_offset,
-					  buffer_data_size, mask);
+	      vhost_user_assemble_packet (
+		desc_table, &desc_idx, b_head, &b_current, &next, &b,
+		&bi_current, cpu, &copy_len, &buffers_used, buffers_required,
+		&desc_data_offset, buffer_data_size, mask);
 	      n_descs_to_process++;
 	    }
-	  vhost_user_assemble_packet (desc_table, &desc_idx, b_head,
-				      &b_current, &next, &b, &bi_current,
-				      cpu, &copy_len, &buffers_used,
-				      buffers_required, &desc_data_offset,
-				      buffer_data_size, mask);
+	  vhost_user_assemble_packet (
+	    desc_table, &desc_idx, b_head, &b_current, &next, &b, &bi_current,
+	    cpu, &copy_len, &buffers_used, buffers_required, &desc_data_offset,
+	    buffer_data_size, mask);
 	}
 
       n_rx_bytes += b_head->total_length_not_including_first_buffer;
@@ -1339,8 +1328,8 @@ vhost_user_if_input_packed (vlib_main_t *vm, vhost_user_main_t *vum,
        */
       if (PREDICT_FALSE (copy_len >= VHOST_USER_RX_COPY_THRESHOLD))
 	{
-	  rv = vhost_user_input_copy_packed (vui, cpu->copy, copy_len,
-					     &map_hint);
+	  rv =
+	    vhost_user_input_copy_packed (vui, cpu->copy, copy_len, &map_hint);
 	  if (PREDICT_FALSE (rv != VHOST_USER_INPUT_FUNC_ERROR_NO_ERROR))
 	    vlib_error_count (vm, node->node_index, rv, 1);
 	  copy_len = 0;
@@ -1361,9 +1350,8 @@ vhost_user_if_input_packed (vlib_main_t *vm, vhost_user_main_t *vum,
       b = cpu->rx_buffers_pdesc;
       while (n_trace && left)
 	{
-	  if (PREDICT_TRUE
-	      (vlib_trace_buffer
-	       (vm, node, next_index, b[0], /* follow_chain */ 0)))
+	  if (PREDICT_TRUE (vlib_trace_buffer (vm, node, next_index, b[0],
+					       /* follow_chain */ 0)))
 	    {
 	      vhost_trace_t *t0;
 	      t0 = vlib_add_trace (vm, node, b[0], sizeof (t0[0]));
@@ -1392,10 +1380,10 @@ vhost_user_if_input_packed (vlib_main_t *vm, vhost_user_main_t *vum,
     }
 
   /* increase rx counters */
-  vlib_increment_combined_counter
-    (vnet_main.interface_main.combined_sw_if_counters
-     + VNET_INTERFACE_COUNTER_RX, vm->thread_index, vui->sw_if_index,
-     n_rx_packets, n_rx_bytes);
+  vlib_increment_combined_counter (
+    vnet_main.interface_main.combined_sw_if_counters +
+      VNET_INTERFACE_COUNTER_RX,
+    vm->thread_index, vui->sw_if_index, n_rx_packets, n_rx_bytes);
 
   vnet_device_increment_rx_packets (vm->thread_index, n_rx_packets);
 
@@ -1406,9 +1394,8 @@ done:
   return n_rx_packets;
 }
 
-VLIB_NODE_FN (vhost_user_input_node) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * frame)
+VLIB_NODE_FN (vhost_user_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   vhost_user_main_t *vum = &vhost_user_main;
   uword n_rx_packets = 0;
@@ -1464,6 +1451,4 @@ VLIB_REGISTER_NODE (vhost_user_input_node) = {
  * fd.io coding-style-patch-verification: ON
  *
  * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+ * eva

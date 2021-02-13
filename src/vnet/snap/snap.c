@@ -45,14 +45,17 @@
 snap_main_t snap_main;
 
 static u8 *
-format_cisco_snap_protocol (u8 * s, va_list * args)
+format_cisco_snap_protocol (u8 *s, va_list *args)
 {
   snap_header_t *h = va_arg (*args, snap_header_t *);
   u16 protocol = clib_net_to_host_u16 (h->protocol);
   char *t = 0;
   switch (protocol)
     {
-#define _(n,f) case n: t = #f; break;
+#define _(n, f)                                                               \
+  case n:                                                                     \
+    t = #f;                                                                   \
+    break;
       foreach_snap_cisco_protocol;
 #undef _
     default:
@@ -65,7 +68,7 @@ format_cisco_snap_protocol (u8 * s, va_list * args)
 }
 
 u8 *
-format_snap_protocol (u8 * s, va_list * args)
+format_snap_protocol (u8 *s, va_list *args)
 {
   snap_header_t *h = va_arg (*args, snap_header_t *);
   u32 oui = snap_header_get_oui (h);
@@ -85,7 +88,7 @@ format_snap_protocol (u8 * s, va_list * args)
 }
 
 u8 *
-format_snap_header_with_length (u8 * s, va_list * args)
+format_snap_header_with_length (u8 *s, va_list *args)
 {
   snap_main_t *sm = &snap_main;
   snap_header_t *h = va_arg (*args, snap_header_t *);
@@ -105,17 +108,16 @@ format_snap_header_with_length (u8 * s, va_list * args)
     {
       vlib_node_t *node = vlib_get_node (sm->vlib_main, pi->node_index);
       if (node->format_buffer)
-	s = format (s, "\n%U%U",
-		    format_white_space, indent,
-		    node->format_buffer, (void *) (h + 1),
-		    max_header_bytes - header_bytes);
+	s =
+	  format (s, "\n%U%U", format_white_space, indent, node->format_buffer,
+		  (void *) (h + 1), max_header_bytes - header_bytes);
     }
 
   return s;
 }
 
 u8 *
-format_snap_header (u8 * s, va_list * args)
+format_snap_header (u8 *s, va_list *args)
 {
   snap_header_t *h = va_arg (*args, snap_header_t *);
   return format (s, "%U", format_snap_header_with_length, h, 0);
@@ -123,7 +125,7 @@ format_snap_header (u8 * s, va_list * args)
 
 /* Returns snap protocol as an int in host byte order. */
 uword
-unformat_snap_protocol (unformat_input_t * input, va_list * args)
+unformat_snap_protocol (unformat_input_t *input, va_list *args)
 {
   snap_header_t *result = va_arg (*args, snap_header_t *);
   snap_main_t *sm = &snap_main;
@@ -155,7 +157,7 @@ unformat_snap_protocol (unformat_input_t * input, va_list * args)
 }
 
 uword
-unformat_snap_header (unformat_input_t * input, va_list * args)
+unformat_snap_header (unformat_input_t *input, va_list *args)
 {
   u8 **result = va_arg (*args, u8 **);
   snap_header_t _h, *h = &_h;
@@ -176,7 +178,7 @@ unformat_snap_header (unformat_input_t * input, va_list * args)
 }
 
 static clib_error_t *
-snap_init (vlib_main_t * vm)
+snap_init (vlib_main_t *vm)
 {
   snap_main_t *sm = &snap_main;
 
@@ -186,14 +188,13 @@ snap_init (vlib_main_t * vm)
   mhash_init (&sm->protocol_hash, sizeof (uword),
 	      sizeof (snap_oui_and_protocol_t));
 
-  sm->protocol_info_by_name
-    = hash_create_string ( /* elts */ 0, sizeof (uword));
+  sm->protocol_info_by_name =
+    hash_create_string (/* elts */ 0, sizeof (uword));
 
   return vlib_call_init_function (vm, snap_input_init);
 }
 
 VLIB_INIT_FUNCTION (snap_init);
-
 
 /*
  * fd.io coding-style-patch-verification: ON

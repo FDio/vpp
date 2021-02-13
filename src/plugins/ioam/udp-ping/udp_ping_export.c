@@ -23,20 +23,19 @@
 #define UDP_PING_EXPORT_RECORD_SIZE 400
 
 static u8 *
-udp_ping_template_rewrite (flow_report_main_t * frm, flow_report_t * fr,
-			   ip4_address_t * collector_address,
-			   ip4_address_t * src_address, u16 collector_port,
-			   ipfix_report_element_t * elts,
-			   u32 n_elts, u32 * stream_index)
+udp_ping_template_rewrite (flow_report_main_t *frm, flow_report_t *fr,
+			   ip4_address_t *collector_address,
+			   ip4_address_t *src_address, u16 collector_port,
+			   ipfix_report_element_t *elts, u32 n_elts,
+			   u32 *stream_index)
 {
-  return ioam_template_rewrite (frm, fr, collector_address,
-				src_address, collector_port, elts, n_elts,
-				stream_index);
+  return ioam_template_rewrite (frm, fr, collector_address, src_address,
+				collector_port, elts, n_elts, stream_index);
 }
 
 static vlib_frame_t *
-udp_ping_send_flows (flow_report_main_t * frm, flow_report_t * fr,
-		     vlib_frame_t * f, u32 * to_next, u32 node_index)
+udp_ping_send_flows (flow_report_main_t *frm, flow_report_t *fr,
+		     vlib_frame_t *f, u32 *to_next, u32 node_index)
 {
   vlib_buffer_t *b0 = NULL;
   u32 next_offset = 0;
@@ -79,7 +78,6 @@ udp_ping_send_flows (flow_report_main_t * frm, flow_report_t * fr,
 		  if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
 		    break;
 
-
 		  b0 = vlib_get_buffer (vm, bi0);
 		  memcpy (b0->data, fr->rewrite, vec_len (fr->rewrite));
 		  b0->current_data = 0;
@@ -104,18 +102,13 @@ udp_ping_send_flows (flow_report_main_t * frm, flow_report_t * fr,
 		  records_this_buffer = 0;
 		}
 
-	      next_offset = ioam_analyse_add_ipfix_record (fr,
-							   &stats->analyse_data,
-							   b0, next_offset,
-							   &ip46_flow->
-							   src.ip6,
-							   &ip46_flow->
-							   dst.ip6, src_port,
-							   dst_port);
+	      next_offset = ioam_analyse_add_ipfix_record (
+		fr, &stats->analyse_data, b0, next_offset, &ip46_flow->src.ip6,
+		&ip46_flow->dst.ip6, src_port, dst_port);
 
-	      //u32 pak_sent = clib_host_to_net_u32(stats->pak_sent);
-	      //memcpy (b0->data + next_offset, &pak_sent, sizeof(u32));
-	      //next_offset += sizeof(u32);
+	      // u32 pak_sent = clib_host_to_net_u32(stats->pak_sent);
+	      // memcpy (b0->data + next_offset, &pak_sent, sizeof(u32));
+	      // next_offset += sizeof(u32);
 
 	      records_this_buffer++;
 
@@ -125,25 +118,23 @@ udp_ping_send_flows (flow_report_main_t * frm, flow_report_t * fr,
 		  b0->current_length = next_offset;
 		  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 		  tp = vlib_buffer_get_current (b0);
-		  ip = (ip4_header_t *) & tp->ip4;
+		  ip = (ip4_header_t *) &tp->ip4;
 		  udp = (udp_header_t *) (ip + 1);
 		  h = &tp->ipfix.h;
 		  s = &tp->ipfix.s;
 
-		  s->set_id_length =
-		    ipfix_set_id_length (IOAM_FLOW_TEMPLATE_ID,
-					 next_offset - (sizeof (*ip) +
-							sizeof (*udp) +
-							sizeof (*h)));
-		  h->version_length =
-		    version_length (next_offset -
-				    (sizeof (*ip) + sizeof (*udp)));
+		  s->set_id_length = ipfix_set_id_length (
+		    IOAM_FLOW_TEMPLATE_ID,
+		    next_offset -
+		      (sizeof (*ip) + sizeof (*udp) + sizeof (*h)));
+		  h->version_length = version_length (
+		    next_offset - (sizeof (*ip) + sizeof (*udp)));
 
 		  sum0 = ip->checksum;
 		  old_l0 = ip->length;
 		  new_l0 = clib_host_to_net_u16 ((u16) next_offset);
 		  sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
-					 length /* changed member */ );
+					 length /* changed member */);
 
 		  ip->checksum = ip_csum_fold (sum0);
 		  ip->length = new_l0;
@@ -179,15 +170,14 @@ udp_ping_send_flows (flow_report_main_t * frm, flow_report_t * fr,
       b0->current_length = next_offset;
       b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
       tp = vlib_buffer_get_current (b0);
-      ip = (ip4_header_t *) & tp->ip4;
+      ip = (ip4_header_t *) &tp->ip4;
       udp = (udp_header_t *) (ip + 1);
       h = &tp->ipfix.h;
       s = &tp->ipfix.s;
 
-      s->set_id_length = ipfix_set_id_length (IOAM_FLOW_TEMPLATE_ID,
-					      next_offset - (sizeof (*ip) +
-							     sizeof (*udp) +
-							     sizeof (*h)));
+      s->set_id_length = ipfix_set_id_length (
+	IOAM_FLOW_TEMPLATE_ID,
+	next_offset - (sizeof (*ip) + sizeof (*udp) + sizeof (*h)));
       h->version_length =
 	version_length (next_offset - (sizeof (*ip) + sizeof (*udp)));
 
@@ -195,7 +185,7 @@ udp_ping_send_flows (flow_report_main_t * frm, flow_report_t * fr,
       old_l0 = ip->length;
       new_l0 = clib_host_to_net_u16 ((u16) next_offset);
       sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
-			     length /* changed member */ );
+			     length /* changed member */);
 
       ip->checksum = ip_csum_fold (sum0);
       ip->length = new_l0;
@@ -249,18 +239,17 @@ udp_ping_flow_create (u8 del)
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       return clib_error_return (0, "registration not found...");
     default:
-      return clib_error_return (0, "vnet_flow_report_add_del returned %d",
-				rv);
+      return clib_error_return (0, "vnet_flow_report_add_del returned %d", rv);
     }
 
   return 0;
 }
 
 static clib_error_t *
-set_udp_ping_export_command_fn (vlib_main_t * vm, unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+set_udp_ping_export_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
 {
-  //int rv;
+  // int rv;
   int is_add = 1;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -281,27 +270,21 @@ set_udp_ping_export_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_udp_ping_export_command, static) = {
-    .path = "set udp-ping export-ipfix",
-    .short_help = "set udp-ping export-ipfix [disable]",
-    .function = set_udp_ping_export_command_fn,
+  .path = "set udp-ping export-ipfix",
+  .short_help = "set udp-ping export-ipfix [disable]",
+  .function = set_udp_ping_export_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-udp_ping_flow_report_init (vlib_main_t * vm)
+udp_ping_flow_report_init (vlib_main_t *vm)
 {
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (udp_ping_flow_report_init) =
-{
+VLIB_INIT_FUNCTION (udp_ping_flow_report_init) = {
   .runs_after = VLIB_INITS ("flow_report_init"),
 };
-/* *INDENT-ON* */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

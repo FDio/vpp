@@ -35,22 +35,24 @@
 #define REPLY_MSG_ID_BASE am->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                                     \
-_(ADL_INTERFACE_ENABLE_DISABLE, adl_interface_enable_disable)   \
-_(ADL_LIST_ENABLE_DISABLE, adl_allowlist_enable_disable)
+#define foreach_vpe_api_msg                                                   \
+  _ (ADL_INTERFACE_ENABLE_DISABLE, adl_interface_enable_disable)              \
+  _ (ADL_LIST_ENABLE_DISABLE, adl_allowlist_enable_disable)
 
 /*
  * Compatibility shim for the core engine cop_interface_enable_disable API,
  * which will be deprecated in vpp 20.12.
  */
-int vl_api_cop_interface_enable_disable_callback
-  (u32 sw_if_index, int enable_disable)
+int
+vl_api_cop_interface_enable_disable_callback (u32 sw_if_index,
+					      int enable_disable)
 {
   return adl_interface_enable_disable (sw_if_index, enable_disable);
 }
 
-static void vl_api_adl_interface_enable_disable_t_handler
-  (vl_api_adl_interface_enable_disable_t * mp)
+static void
+vl_api_adl_interface_enable_disable_t_handler (
+  vl_api_adl_interface_enable_disable_t *mp)
 {
   adl_main_t *am = &adl_main;
   vl_api_adl_interface_enable_disable_reply_t *rmp;
@@ -73,14 +75,16 @@ static void vl_api_adl_interface_enable_disable_t_handler
  * Compatibility shim for the core engine cop_whitelist_enable_disable API,
  * which will be deprecated in vpp 20.12.
  */
-int vl_api_cop_whitelist_enable_disable_callback
-  (adl_allowlist_enable_disable_args_t * a)
+int
+vl_api_cop_whitelist_enable_disable_callback (
+  adl_allowlist_enable_disable_args_t *a)
 {
   return adl_allowlist_enable_disable (a);
 }
 
-static void vl_api_adl_allowlist_enable_disable_t_handler
-  (vl_api_adl_allowlist_enable_disable_t * mp)
+static void
+vl_api_adl_allowlist_enable_disable_t_handler (
+  vl_api_adl_allowlist_enable_disable_t *mp)
 {
   adl_main_t *am = &adl_main;
   vl_api_adl_allowlist_enable_disable_reply_t *rmp;
@@ -105,7 +109,7 @@ static void vl_api_adl_allowlist_enable_disable_t_handler
 
 #include <adl/adl.api.c>
 static clib_error_t *
-adl_api_init (vlib_main_t * vm)
+adl_api_init (vlib_main_t *vm)
 {
   adl_main_t *am = &adl_main;
   void register_vl_api_cop_interface_enable_disable_callback (void *);
@@ -117,10 +121,10 @@ adl_api_init (vlib_main_t * vm)
   am->msg_id_base = setup_message_id_table ();
 
   /* Set up transitional API callbacks */
-  register_vl_api_cop_interface_enable_disable_callback
-    (vl_api_cop_interface_enable_disable_callback);
-  register_vl_api_cop_whitelist_enable_disable_callback
-    (vl_api_cop_whitelist_enable_disable_callback);
+  register_vl_api_cop_interface_enable_disable_callback (
+    vl_api_cop_interface_enable_disable_callback);
+  register_vl_api_cop_whitelist_enable_disable_callback (
+    vl_api_cop_whitelist_enable_disable_callback);
 
   return 0;
 }

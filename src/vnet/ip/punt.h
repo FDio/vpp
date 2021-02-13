@@ -24,10 +24,10 @@
 #include <stdbool.h>
 #include <vnet/ip/ip.h>
 
-#define foreach_punt_type                       \
-  _(L4, "l4")                                   \
-  _(EXCEPTION, "exception")                     \
-  _(IP_PROTO, "ip-proto")
+#define foreach_punt_type                                                     \
+  _ (L4, "l4")                                                                \
+  _ (EXCEPTION, "exception")                                                  \
+  _ (IP_PROTO, "ip-proto")
 
 typedef enum punt_type_t_
 {
@@ -67,14 +67,12 @@ typedef struct punt_reg_t_
   punt_union_t punt;
 } punt_reg_t;
 
-
-clib_error_t *vnet_punt_add_del (vlib_main_t * vm,
-				 const punt_reg_t * pr, bool is_add);
-clib_error_t *vnet_punt_socket_add (vlib_main_t * vm,
-				    u32 header_version,
-				    const punt_reg_t * pr,
+clib_error_t *vnet_punt_add_del (vlib_main_t *vm, const punt_reg_t *pr,
+				 bool is_add);
+clib_error_t *vnet_punt_socket_add (vlib_main_t *vm, u32 header_version,
+				    const punt_reg_t *pr,
 				    char *client_pathname);
-clib_error_t *vnet_punt_socket_del (vlib_main_t * vm, const punt_reg_t * pr);
+clib_error_t *vnet_punt_socket_del (vlib_main_t *vm, const punt_reg_t *pr);
 char *vnet_punt_get_server_pathname (void);
 
 enum punt_action_e
@@ -91,7 +89,7 @@ enum punt_action_e
 #define PUNT_PACKETDESC_VERSION 1
 typedef struct __attribute__ ((packed))
 {
-  u32 sw_if_index;		/* RX or TX interface */
+  u32 sw_if_index; /* RX or TX interface */
   enum punt_action_e action;
 } punt_packetdesc_t;
 
@@ -133,10 +131,10 @@ typedef struct
 
 extern punt_main_t punt_main;
 
-typedef walk_rc_t (*punt_client_walk_cb_t) (const punt_client_t * pc,
+typedef walk_rc_t (*punt_client_walk_cb_t) (const punt_client_t *pc,
 					    void *ctx);
-extern void punt_client_walk (punt_type_t pt,
-			      punt_client_walk_cb_t cb, void *ctx);
+extern void punt_client_walk (punt_type_t pt, punt_client_walk_cb_t cb,
+			      void *ctx);
 
 /*
  * inlines for the data-plane
@@ -173,9 +171,8 @@ punt_client_ip_proto_get (ip_address_family_t af, ip_protocol_t proto)
   punt_main_t *pm = &punt_main;
   uword *p;
 
-  p =
-    hash_get (pm->db.clients_by_ip_proto,
-	      punt_client_ip_proto_mk_key (af, proto));
+  p = hash_get (pm->db.clients_by_ip_proto,
+		punt_client_ip_proto_mk_key (af, proto));
 
   if (p)
     return (pool_elt_at_index (pm->punt_client_pool, p[0]));

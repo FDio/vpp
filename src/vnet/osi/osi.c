@@ -44,7 +44,7 @@
 osi_main_t osi_main;
 
 u8 *
-format_osi_protocol (u8 * s, va_list * args)
+format_osi_protocol (u8 *s, va_list *args)
 {
   osi_protocol_t p = va_arg (*args, u32);
   osi_main_t *pm = &osi_main;
@@ -59,7 +59,7 @@ format_osi_protocol (u8 * s, va_list * args)
 }
 
 u8 *
-format_osi_header_with_length (u8 * s, va_list * args)
+format_osi_header_with_length (u8 *s, va_list *args)
 {
   osi_main_t *pm = &osi_main;
   osi_header_t *h = va_arg (*args, osi_header_t *);
@@ -80,17 +80,16 @@ format_osi_header_with_length (u8 * s, va_list * args)
       osi_protocol_info_t *pi = osi_get_protocol_info (pm, p);
       vlib_node_t *node = vlib_get_node (pm->vlib_main, pi->node_index);
       if (node->format_buffer)
-	s = format (s, "\n%U%U",
-		    format_white_space, indent,
-		    node->format_buffer, (void *) (h + 1),
-		    max_header_bytes - header_bytes);
+	s =
+	  format (s, "\n%U%U", format_white_space, indent, node->format_buffer,
+		  (void *) (h + 1), max_header_bytes - header_bytes);
     }
 
   return s;
 }
 
 u8 *
-format_osi_header (u8 * s, va_list * args)
+format_osi_header (u8 *s, va_list *args)
 {
   osi_header_t *h = va_arg (*args, osi_header_t *);
   return format (s, "%U", format_osi_header_with_length, h, 0);
@@ -98,7 +97,7 @@ format_osi_header (u8 * s, va_list * args)
 
 /* Returns osi protocol as an int in host byte order. */
 uword
-unformat_osi_protocol (unformat_input_t * input, va_list * args)
+unformat_osi_protocol (unformat_input_t *input, va_list *args)
 {
   u8 *result = va_arg (*args, u8 *);
   osi_main_t *pm = &osi_main;
@@ -126,7 +125,7 @@ unformat_osi_protocol (unformat_input_t * input, va_list * args)
 }
 
 uword
-unformat_osi_header (unformat_input_t * input, va_list * args)
+unformat_osi_header (unformat_input_t *input, va_list *args)
 {
   u8 **result = va_arg (*args, u8 **);
   osi_header_t _h, *h = &_h;
@@ -150,7 +149,7 @@ unformat_osi_header (unformat_input_t * input, va_list * args)
 }
 
 static void
-add_protocol (osi_main_t * pm, osi_protocol_t protocol, char *protocol_name)
+add_protocol (osi_main_t *pm, osi_protocol_t protocol, char *protocol_name)
 {
   osi_protocol_info_t *pi;
   u32 i;
@@ -167,7 +166,7 @@ add_protocol (osi_main_t * pm, osi_protocol_t protocol, char *protocol_name)
 }
 
 static clib_error_t *
-osi_init (vlib_main_t * vm)
+osi_init (vlib_main_t *vm)
 {
   clib_error_t *error = 0;
   osi_main_t *pm = &osi_main;
@@ -182,7 +181,7 @@ osi_init (vlib_main_t * vm)
   pm->protocol_info_by_name = hash_create_string (0, sizeof (uword));
   pm->protocol_info_by_protocol = hash_create (0, sizeof (uword));
 
-#define _(f,n) add_protocol (pm, OSI_PROTOCOL_##f, #f);
+#define _(f, n) add_protocol (pm, OSI_PROTOCOL_##f, #f);
   foreach_osi_protocol;
 #undef _
 
@@ -190,7 +189,6 @@ osi_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (osi_init);
-
 
 /*
  * fd.io coding-style-patch-verification: ON

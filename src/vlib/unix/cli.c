@@ -70,21 +70,21 @@
 #define CSI ESC "["
 
 /** ANSI clear screen. */
-#define ANSI_CLEAR      CSI "2J" CSI "1;1H"
+#define ANSI_CLEAR CSI "2J" CSI "1;1H"
 /** ANSI reset color settings. */
-#define ANSI_RESET      CSI "0m"
+#define ANSI_RESET CSI "0m"
 /** ANSI Start bold text. */
-#define ANSI_BOLD       CSI "1m"
+#define ANSI_BOLD CSI "1m"
 /** ANSI Stop bold text. */
-#define ANSI_DIM        CSI "2m"
+#define ANSI_DIM CSI "2m"
 /** ANSI Start dark red text. */
-#define ANSI_DRED       ANSI_DIM CSI "31m"
+#define ANSI_DRED ANSI_DIM CSI "31m"
 /** ANSI Start bright red text. */
-#define ANSI_BRED       ANSI_BOLD CSI "31m"
+#define ANSI_BRED ANSI_BOLD CSI "31m"
 /** ANSI clear line cursor is on. */
-#define ANSI_CLEARLINE  CSI "2K"
+#define ANSI_CLEARLINE CSI "2K"
 /** ANSI scroll screen down one line. */
-#define ANSI_SCROLLDN   CSI "1T"
+#define ANSI_SCROLLDN CSI "1T"
 /** ANSI save cursor position. */
 #define ANSI_SAVECURSOR CSI "s"
 /** ANSI restore cursor position if previously saved. */
@@ -106,27 +106,29 @@
 /** A CLI banner line. */
 typedef struct
 {
-  u8 *line;	/**< The line to print. */
-  u32 length;	/**< The length of the line without terminating NUL. */
+  u8 *line;   /**< The line to print. */
+  u32 length; /**< The length of the line without terminating NUL. */
 } unix_cli_banner_t;
 
-#define _(a) { .line = (u8 *)(a), .length = sizeof(a) - 1 }
+#define _(a)                                                                  \
+  {                                                                           \
+    .line = (u8 *) (a), .length = sizeof (a) - 1                              \
+  }
 /** Plain welcome banner. */
 static unix_cli_banner_t unix_cli_banner[] = {
-  _("    _______    _        _   _____  ___ \n"),
-  _(" __/ __/ _ \\  (_)__    | | / / _ \\/ _ \\\n"),
-  _(" _/ _// // / / / _ \\   | |/ / ___/ ___/\n"),
-  _(" /_/ /____(_)_/\\___/   |___/_/  /_/    \n"),
-  _("\n")
+  _ ("    _______    _        _   _____  ___ \n"),
+  _ (" __/ __/ _ \\  (_)__    | | / / _ \\/ _ \\\n"),
+  _ (" _/ _// // / / / _ \\   | |/ / ___/ ___/\n"),
+  _ (" /_/ /____(_)_/\\___/   |___/_/  /_/    \n"), _ ("\n")
 };
 
 /** ANSI color welcome banner. */
 static unix_cli_banner_t unix_cli_banner_color[] = {
-  _(ANSI_BRED "    _______    _     " ANSI_RESET "   _   _____  ___ \n"),
-  _(ANSI_BRED " __/ __/ _ \\  (_)__ " ANSI_RESET "   | | / / _ \\/ _ \\\n"),
-  _(ANSI_BRED " _/ _// // / / / _ \\" ANSI_RESET "   | |/ / ___/ ___/\n"),
-  _(ANSI_BRED " /_/ /____(_)_/\\___/" ANSI_RESET "   |___/_/  /_/    \n"),
-  _("\n")
+  _ (ANSI_BRED "    _______    _     " ANSI_RESET "   _   _____  ___ \n"),
+  _ (ANSI_BRED " __/ __/ _ \\  (_)__ " ANSI_RESET "   | | / / _ \\/ _ \\\n"),
+  _ (ANSI_BRED " _/ _// // / / / _ \\" ANSI_RESET "   | |/ / ___/ ___/\n"),
+  _ (ANSI_BRED " /_/ /____(_)_/\\___/" ANSI_RESET "   |___/_/  /_/    \n"),
+  _ ("\n")
 };
 
 #undef _
@@ -143,7 +145,6 @@ typedef struct
   /** Length of the string in the line */
   u32 length;
 } unix_cli_pager_index_t;
-
 
 /** Unix CLI session. */
 typedef struct
@@ -250,7 +251,7 @@ typedef struct
  * @param f The CLI session whose pager needs to be reset.
  */
 always_inline void
-unix_cli_pager_reset (unix_cli_file_t * f)
+unix_cli_pager_reset (unix_cli_file_t *f)
 {
   u8 **p;
 
@@ -260,9 +261,9 @@ unix_cli_pager_reset (unix_cli_file_t * f)
   f->pager_index = 0;
 
   vec_foreach (p, f->pager_vector)
-  {
-    vec_free (*p);
-  }
+    {
+      vec_free (*p);
+    }
   vec_free (f->pager_vector);
   f->pager_vector = 0;
 }
@@ -271,7 +272,7 @@ unix_cli_pager_reset (unix_cli_file_t * f)
  * @param f The CLI session whose storage needs to be released.
  */
 always_inline void
-unix_cli_file_free (unix_cli_file_t * f)
+unix_cli_file_free (unix_cli_file_t *f)
 {
   vec_free (f->output_vector);
   vec_free (f->input_vector);
@@ -281,42 +282,45 @@ unix_cli_file_free (unix_cli_file_t * f)
 /** CLI actions */
 typedef enum
 {
-  UNIX_CLI_PARSE_ACTION_NOACTION = 0,	/**< No action */
-  UNIX_CLI_PARSE_ACTION_CRLF,		/**< Carriage return, newline or enter */
-  UNIX_CLI_PARSE_ACTION_TAB,		/**< Tab key */
-  UNIX_CLI_PARSE_ACTION_ERASE,		/**< Erase cursor left */
-  UNIX_CLI_PARSE_ACTION_ERASERIGHT,	/**< Erase cursor right */
-  UNIX_CLI_PARSE_ACTION_UP,		/**< Up arrow */
-  UNIX_CLI_PARSE_ACTION_DOWN,		/**< Down arrow */
-  UNIX_CLI_PARSE_ACTION_LEFT,		/**< Left arrow */
-  UNIX_CLI_PARSE_ACTION_RIGHT,		/**< Right arrow */
-  UNIX_CLI_PARSE_ACTION_HOME,		/**< Home key (jump to start of line) */
-  UNIX_CLI_PARSE_ACTION_END,		/**< End key (jump to end of line) */
-  UNIX_CLI_PARSE_ACTION_WORDLEFT,	/**< Jump cursor to start of left word */
-  UNIX_CLI_PARSE_ACTION_WORDRIGHT,	/**< Jump cursor to start of right word */
+  UNIX_CLI_PARSE_ACTION_NOACTION = 0, /**< No action */
+  UNIX_CLI_PARSE_ACTION_CRLF,	      /**< Carriage return, newline or enter */
+  UNIX_CLI_PARSE_ACTION_TAB,	      /**< Tab key */
+  UNIX_CLI_PARSE_ACTION_ERASE,	      /**< Erase cursor left */
+  UNIX_CLI_PARSE_ACTION_ERASERIGHT,   /**< Erase cursor right */
+  UNIX_CLI_PARSE_ACTION_UP,	      /**< Up arrow */
+  UNIX_CLI_PARSE_ACTION_DOWN,	      /**< Down arrow */
+  UNIX_CLI_PARSE_ACTION_LEFT,	      /**< Left arrow */
+  UNIX_CLI_PARSE_ACTION_RIGHT,	      /**< Right arrow */
+  UNIX_CLI_PARSE_ACTION_HOME,	      /**< Home key (jump to start of line) */
+  UNIX_CLI_PARSE_ACTION_END,	      /**< End key (jump to end of line) */
+  UNIX_CLI_PARSE_ACTION_WORDLEFT,     /**< Jump cursor to start of left word */
+  UNIX_CLI_PARSE_ACTION_WORDRIGHT, /**< Jump cursor to start of right word */
   UNIX_CLI_PARSE_ACTION_ERASELINELEFT,	/**< Erase line to left of cursor */
-  UNIX_CLI_PARSE_ACTION_ERASELINERIGHT,	/**< Erase line to right & including cursor */
+  UNIX_CLI_PARSE_ACTION_ERASELINERIGHT, /**< Erase line to right & including
+					   cursor */
   UNIX_CLI_PARSE_ACTION_ERASEWORDLEFT,	/**< Erase word left */
   UNIX_CLI_PARSE_ACTION_CLEAR,		/**< Clear the terminal */
-  UNIX_CLI_PARSE_ACTION_REVSEARCH,	/**< Search backwards in command history */
-  UNIX_CLI_PARSE_ACTION_FWDSEARCH,	/**< Search forwards in command history */
-  UNIX_CLI_PARSE_ACTION_YANK,		/**< Undo last erase action */
-  UNIX_CLI_PARSE_ACTION_TELNETIAC,	/**< Telnet control code */
+  UNIX_CLI_PARSE_ACTION_REVSEARCH, /**< Search backwards in command history */
+  UNIX_CLI_PARSE_ACTION_FWDSEARCH, /**< Search forwards in command history */
+  UNIX_CLI_PARSE_ACTION_YANK,	   /**< Undo last erase action */
+  UNIX_CLI_PARSE_ACTION_TELNETIAC, /**< Telnet control code */
 
-  UNIX_CLI_PARSE_ACTION_PAGER_CRLF,	/**< Enter pressed (CR, CRLF, LF, etc) */
-  UNIX_CLI_PARSE_ACTION_PAGER_QUIT,	/**< Exit the pager session */
-  UNIX_CLI_PARSE_ACTION_PAGER_NEXT,	/**< Scroll to next page */
-  UNIX_CLI_PARSE_ACTION_PAGER_DN,	/**< Scroll to next line */
-  UNIX_CLI_PARSE_ACTION_PAGER_UP,	/**< Scroll to previous line */
-  UNIX_CLI_PARSE_ACTION_PAGER_TOP,	/**< Scroll to first line */
-  UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM,	/**< Scroll to last line */
-  UNIX_CLI_PARSE_ACTION_PAGER_PGDN,	/**< Scroll to next page */
-  UNIX_CLI_PARSE_ACTION_PAGER_PGUP,	/**< Scroll to previous page */
-  UNIX_CLI_PARSE_ACTION_PAGER_REDRAW,	/**< Clear and redraw the page on the terminal */
-  UNIX_CLI_PARSE_ACTION_PAGER_SEARCH,	/**< Search the pager buffer */
+  UNIX_CLI_PARSE_ACTION_PAGER_CRLF,   /**< Enter pressed (CR, CRLF, LF, etc) */
+  UNIX_CLI_PARSE_ACTION_PAGER_QUIT,   /**< Exit the pager session */
+  UNIX_CLI_PARSE_ACTION_PAGER_NEXT,   /**< Scroll to next page */
+  UNIX_CLI_PARSE_ACTION_PAGER_DN,     /**< Scroll to next line */
+  UNIX_CLI_PARSE_ACTION_PAGER_UP,     /**< Scroll to previous line */
+  UNIX_CLI_PARSE_ACTION_PAGER_TOP,    /**< Scroll to first line */
+  UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM, /**< Scroll to last line */
+  UNIX_CLI_PARSE_ACTION_PAGER_PGDN,   /**< Scroll to next page */
+  UNIX_CLI_PARSE_ACTION_PAGER_PGUP,   /**< Scroll to previous page */
+  UNIX_CLI_PARSE_ACTION_PAGER_REDRAW, /**< Clear and redraw the page on the
+					 terminal */
+  UNIX_CLI_PARSE_ACTION_PAGER_SEARCH, /**< Search the pager buffer */
 
-  UNIX_CLI_PARSE_ACTION_PARTIALMATCH,	/**< Action parser found a partial match */
-  UNIX_CLI_PARSE_ACTION_NOMATCH		/**< Action parser did not find any match */
+  UNIX_CLI_PARSE_ACTION_PARTIALMATCH, /**< Action parser found a partial match
+				       */
+  UNIX_CLI_PARSE_ACTION_NOMATCH /**< Action parser did not find any match */
 } unix_cli_parse_action_t;
 
 /** @brief Mapping of input buffer strings to action values.
@@ -325,9 +329,9 @@ typedef enum
  */
 typedef struct
 {
-  u8 *input;			    /**< Input string to match. */
-  u32 len;			    /**< Length of input without final NUL. */
-  unix_cli_parse_action_t action;   /**< Action to take when matched. */
+  u8 *input;			  /**< Input string to match. */
+  u32 len;			  /**< Length of input without final NUL. */
+  unix_cli_parse_action_t action; /**< Action to take when matched. */
 } unix_cli_parse_actions_t;
 
 /** @brief Given a capital ASCII letter character return a @c NUL terminated
@@ -339,70 +343,74 @@ typedef struct
  * @par Example
  *     @c CTL('A') returns <code>{ 0x01, 0x00 }</code> as a @c u8[].
  */
-#define CTL(c) (u8[]){ (c) - '@', 0 }
+#define CTL(c)                                                                \
+  (u8[]) { (c) - '@', 0 }
 
-#define _(a,b) { .input = (u8 *)(a), .len = sizeof(a) - 1, .action = (b) }
+#define _(a, b)                                                               \
+  {                                                                           \
+    .input = (u8 *) (a), .len = sizeof (a) - 1, .action = (b)                 \
+  }
 /**
  * Patterns to match on a CLI input stream.
  * @showinitializer
  */
 static unix_cli_parse_actions_t unix_cli_parse_strings[] = {
   /* Line handling */
-  _("\r\n", UNIX_CLI_PARSE_ACTION_CRLF),	/* Must be before '\r' */
-  _("\n", UNIX_CLI_PARSE_ACTION_CRLF),
-  _("\r\0", UNIX_CLI_PARSE_ACTION_CRLF),	/* Telnet does this */
-  _("\r", UNIX_CLI_PARSE_ACTION_CRLF),
+  _ ("\r\n", UNIX_CLI_PARSE_ACTION_CRLF), /* Must be before '\r' */
+  _ ("\n", UNIX_CLI_PARSE_ACTION_CRLF),
+  _ ("\r\0", UNIX_CLI_PARSE_ACTION_CRLF), /* Telnet does this */
+  _ ("\r", UNIX_CLI_PARSE_ACTION_CRLF),
 
   /* Unix shell control codes */
-  _(CTL ('B'), UNIX_CLI_PARSE_ACTION_LEFT),
-  _(CTL ('F'), UNIX_CLI_PARSE_ACTION_RIGHT),
-  _(CTL ('P'), UNIX_CLI_PARSE_ACTION_UP),
-  _(CTL ('N'), UNIX_CLI_PARSE_ACTION_DOWN),
-  _(CTL ('A'), UNIX_CLI_PARSE_ACTION_HOME),
-  _(CTL ('E'), UNIX_CLI_PARSE_ACTION_END),
-  _(CTL ('D'), UNIX_CLI_PARSE_ACTION_ERASERIGHT),
-  _(CTL ('U'), UNIX_CLI_PARSE_ACTION_ERASELINELEFT),
-  _(CTL ('K'), UNIX_CLI_PARSE_ACTION_ERASELINERIGHT),
-  _(CTL ('W'), UNIX_CLI_PARSE_ACTION_ERASEWORDLEFT),
-  _(CTL ('Y'), UNIX_CLI_PARSE_ACTION_YANK),
-  _(CTL ('L'), UNIX_CLI_PARSE_ACTION_CLEAR),
-  _(ESC "b", UNIX_CLI_PARSE_ACTION_WORDLEFT),	/* Alt-B */
-  _(ESC "f", UNIX_CLI_PARSE_ACTION_WORDRIGHT),	/* Alt-F */
-  _("\b", UNIX_CLI_PARSE_ACTION_ERASE),	/* ^H */
-  _("\x7f", UNIX_CLI_PARSE_ACTION_ERASE),	/* Backspace */
-  _("\t", UNIX_CLI_PARSE_ACTION_TAB),	/* ^I */
+  _ (CTL ('B'), UNIX_CLI_PARSE_ACTION_LEFT),
+  _ (CTL ('F'), UNIX_CLI_PARSE_ACTION_RIGHT),
+  _ (CTL ('P'), UNIX_CLI_PARSE_ACTION_UP),
+  _ (CTL ('N'), UNIX_CLI_PARSE_ACTION_DOWN),
+  _ (CTL ('A'), UNIX_CLI_PARSE_ACTION_HOME),
+  _ (CTL ('E'), UNIX_CLI_PARSE_ACTION_END),
+  _ (CTL ('D'), UNIX_CLI_PARSE_ACTION_ERASERIGHT),
+  _ (CTL ('U'), UNIX_CLI_PARSE_ACTION_ERASELINELEFT),
+  _ (CTL ('K'), UNIX_CLI_PARSE_ACTION_ERASELINERIGHT),
+  _ (CTL ('W'), UNIX_CLI_PARSE_ACTION_ERASEWORDLEFT),
+  _ (CTL ('Y'), UNIX_CLI_PARSE_ACTION_YANK),
+  _ (CTL ('L'), UNIX_CLI_PARSE_ACTION_CLEAR),
+  _ (ESC "b", UNIX_CLI_PARSE_ACTION_WORDLEFT),	/* Alt-B */
+  _ (ESC "f", UNIX_CLI_PARSE_ACTION_WORDRIGHT), /* Alt-F */
+  _ ("\b", UNIX_CLI_PARSE_ACTION_ERASE),	/* ^H */
+  _ ("\x7f", UNIX_CLI_PARSE_ACTION_ERASE),	/* Backspace */
+  _ ("\t", UNIX_CLI_PARSE_ACTION_TAB),		/* ^I */
 
   /* VT100 Normal mode - Broadest support */
-  _(CSI "A", UNIX_CLI_PARSE_ACTION_UP),
-  _(CSI "B", UNIX_CLI_PARSE_ACTION_DOWN),
-  _(CSI "C", UNIX_CLI_PARSE_ACTION_RIGHT),
-  _(CSI "D", UNIX_CLI_PARSE_ACTION_LEFT),
-  _(CSI "H", UNIX_CLI_PARSE_ACTION_HOME),
-  _(CSI "F", UNIX_CLI_PARSE_ACTION_END),
-  _(CSI "3~", UNIX_CLI_PARSE_ACTION_ERASERIGHT),	/* Delete */
-  _(CSI "1;5D", UNIX_CLI_PARSE_ACTION_WORDLEFT),	/* C-Left */
-  _(CSI "1;5C", UNIX_CLI_PARSE_ACTION_WORDRIGHT),	/* C-Right */
+  _ (CSI "A", UNIX_CLI_PARSE_ACTION_UP),
+  _ (CSI "B", UNIX_CLI_PARSE_ACTION_DOWN),
+  _ (CSI "C", UNIX_CLI_PARSE_ACTION_RIGHT),
+  _ (CSI "D", UNIX_CLI_PARSE_ACTION_LEFT),
+  _ (CSI "H", UNIX_CLI_PARSE_ACTION_HOME),
+  _ (CSI "F", UNIX_CLI_PARSE_ACTION_END),
+  _ (CSI "3~", UNIX_CLI_PARSE_ACTION_ERASERIGHT),  /* Delete */
+  _ (CSI "1;5D", UNIX_CLI_PARSE_ACTION_WORDLEFT),  /* C-Left */
+  _ (CSI "1;5C", UNIX_CLI_PARSE_ACTION_WORDRIGHT), /* C-Right */
 
   /* VT100 Application mode - Some Gnome Terminal functions use these */
-  _(ESC "OA", UNIX_CLI_PARSE_ACTION_UP),
-  _(ESC "OB", UNIX_CLI_PARSE_ACTION_DOWN),
-  _(ESC "OC", UNIX_CLI_PARSE_ACTION_RIGHT),
-  _(ESC "OD", UNIX_CLI_PARSE_ACTION_LEFT),
-  _(ESC "OH", UNIX_CLI_PARSE_ACTION_HOME),
-  _(ESC "OF", UNIX_CLI_PARSE_ACTION_END),
+  _ (ESC "OA", UNIX_CLI_PARSE_ACTION_UP),
+  _ (ESC "OB", UNIX_CLI_PARSE_ACTION_DOWN),
+  _ (ESC "OC", UNIX_CLI_PARSE_ACTION_RIGHT),
+  _ (ESC "OD", UNIX_CLI_PARSE_ACTION_LEFT),
+  _ (ESC "OH", UNIX_CLI_PARSE_ACTION_HOME),
+  _ (ESC "OF", UNIX_CLI_PARSE_ACTION_END),
 
   /* ANSI X3.41-1974 - sent by Microsoft Telnet and PuTTY */
-  _(CSI "1~", UNIX_CLI_PARSE_ACTION_HOME),
-  _(CSI "4~", UNIX_CLI_PARSE_ACTION_END),
+  _ (CSI "1~", UNIX_CLI_PARSE_ACTION_HOME),
+  _ (CSI "4~", UNIX_CLI_PARSE_ACTION_END),
 
   /* Emacs-ish history search */
-  _(CTL ('S'), UNIX_CLI_PARSE_ACTION_FWDSEARCH),
-  _(CTL ('R'), UNIX_CLI_PARSE_ACTION_REVSEARCH),
+  _ (CTL ('S'), UNIX_CLI_PARSE_ACTION_FWDSEARCH),
+  _ (CTL ('R'), UNIX_CLI_PARSE_ACTION_REVSEARCH),
 
   /* Other protocol things */
-  _("\xff", UNIX_CLI_PARSE_ACTION_TELNETIAC),	/* IAC */
-  _("\0", UNIX_CLI_PARSE_ACTION_NOACTION),	/* NUL */
-  _(NULL, UNIX_CLI_PARSE_ACTION_NOMATCH)
+  _ ("\xff", UNIX_CLI_PARSE_ACTION_TELNETIAC), /* IAC */
+  _ ("\0", UNIX_CLI_PARSE_ACTION_NOACTION),    /* NUL */
+  _ (NULL, UNIX_CLI_PARSE_ACTION_NOMATCH)
 };
 
 /**
@@ -411,40 +419,40 @@ static unix_cli_parse_actions_t unix_cli_parse_strings[] = {
  */
 static unix_cli_parse_actions_t unix_cli_parse_pager[] = {
   /* Line handling */
-  _("\r\n", UNIX_CLI_PARSE_ACTION_PAGER_CRLF),	/* Must be before '\r' */
-  _("\n", UNIX_CLI_PARSE_ACTION_PAGER_CRLF),
-  _("\r\0", UNIX_CLI_PARSE_ACTION_PAGER_CRLF),	/* Telnet does this */
-  _("\r", UNIX_CLI_PARSE_ACTION_PAGER_CRLF),
+  _ ("\r\n", UNIX_CLI_PARSE_ACTION_PAGER_CRLF), /* Must be before '\r' */
+  _ ("\n", UNIX_CLI_PARSE_ACTION_PAGER_CRLF),
+  _ ("\r\0", UNIX_CLI_PARSE_ACTION_PAGER_CRLF), /* Telnet does this */
+  _ ("\r", UNIX_CLI_PARSE_ACTION_PAGER_CRLF),
 
   /* Pager commands */
-  _(" ", UNIX_CLI_PARSE_ACTION_PAGER_NEXT),
-  _("q", UNIX_CLI_PARSE_ACTION_PAGER_QUIT),
-  _(CTL ('L'), UNIX_CLI_PARSE_ACTION_PAGER_REDRAW),
-  _(CTL ('R'), UNIX_CLI_PARSE_ACTION_PAGER_REDRAW),
-  _("/", UNIX_CLI_PARSE_ACTION_PAGER_SEARCH),
+  _ (" ", UNIX_CLI_PARSE_ACTION_PAGER_NEXT),
+  _ ("q", UNIX_CLI_PARSE_ACTION_PAGER_QUIT),
+  _ (CTL ('L'), UNIX_CLI_PARSE_ACTION_PAGER_REDRAW),
+  _ (CTL ('R'), UNIX_CLI_PARSE_ACTION_PAGER_REDRAW),
+  _ ("/", UNIX_CLI_PARSE_ACTION_PAGER_SEARCH),
 
   /* VT100 */
-  _(CSI "A", UNIX_CLI_PARSE_ACTION_PAGER_UP),
-  _(CSI "B", UNIX_CLI_PARSE_ACTION_PAGER_DN),
-  _(CSI "H", UNIX_CLI_PARSE_ACTION_PAGER_TOP),
-  _(CSI "F", UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM),
+  _ (CSI "A", UNIX_CLI_PARSE_ACTION_PAGER_UP),
+  _ (CSI "B", UNIX_CLI_PARSE_ACTION_PAGER_DN),
+  _ (CSI "H", UNIX_CLI_PARSE_ACTION_PAGER_TOP),
+  _ (CSI "F", UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM),
 
   /* VT100 Application mode */
-  _(ESC "OA", UNIX_CLI_PARSE_ACTION_PAGER_UP),
-  _(ESC "OB", UNIX_CLI_PARSE_ACTION_PAGER_DN),
-  _(ESC "OH", UNIX_CLI_PARSE_ACTION_PAGER_TOP),
-  _(ESC "OF", UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM),
+  _ (ESC "OA", UNIX_CLI_PARSE_ACTION_PAGER_UP),
+  _ (ESC "OB", UNIX_CLI_PARSE_ACTION_PAGER_DN),
+  _ (ESC "OH", UNIX_CLI_PARSE_ACTION_PAGER_TOP),
+  _ (ESC "OF", UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM),
 
   /* ANSI X3.41-1974 */
-  _(CSI "1~", UNIX_CLI_PARSE_ACTION_PAGER_TOP),
-  _(CSI "4~", UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM),
-  _(CSI "5~", UNIX_CLI_PARSE_ACTION_PAGER_PGUP),
-  _(CSI "6~", UNIX_CLI_PARSE_ACTION_PAGER_PGDN),
+  _ (CSI "1~", UNIX_CLI_PARSE_ACTION_PAGER_TOP),
+  _ (CSI "4~", UNIX_CLI_PARSE_ACTION_PAGER_BOTTOM),
+  _ (CSI "5~", UNIX_CLI_PARSE_ACTION_PAGER_PGUP),
+  _ (CSI "6~", UNIX_CLI_PARSE_ACTION_PAGER_PGDN),
 
   /* Other protocol things */
-  _("\xff", UNIX_CLI_PARSE_ACTION_TELNETIAC),	/* IAC */
-  _("\0", UNIX_CLI_PARSE_ACTION_NOACTION),	/* NUL */
-  _(NULL, UNIX_CLI_PARSE_ACTION_NOMATCH)
+  _ ("\xff", UNIX_CLI_PARSE_ACTION_TELNETIAC), /* IAC */
+  _ ("\0", UNIX_CLI_PARSE_ACTION_NOACTION),    /* NUL */
+  _ (NULL, UNIX_CLI_PARSE_ACTION_NOMATCH)
 };
 
 #undef _
@@ -452,7 +460,8 @@ static unix_cli_parse_actions_t unix_cli_parse_pager[] = {
 /** CLI session telnet negotiation timer events. */
 typedef enum
 {
-  UNIX_CLI_NEW_SESSION_EVENT_ADD, /**< Add a CLI session to the new session list */
+  UNIX_CLI_NEW_SESSION_EVENT_ADD, /**< Add a CLI session to the new session
+				     list */
 } unix_cli_timeout_event_type_t;
 
 /** Each new session is stored on a list with a deadline after which
@@ -461,7 +470,8 @@ typedef enum
 typedef struct
 {
   uword cf_index; /**< Session index of the new session. */
-  f64 deadline;	  /**< Deadline after which the new session must have a prompt. */
+  f64
+    deadline; /**< Deadline after which the new session must have a prompt. */
 } unix_cli_new_session_t;
 
 /** CLI global state. */
@@ -538,8 +548,8 @@ get_macro_main (void)
  *         match at all.
  */
 static unix_cli_parse_action_t
-unix_cli_match_action (unix_cli_parse_actions_t * a,
-		       u8 * input, u32 ilen, i32 * matched)
+unix_cli_match_action (unix_cli_parse_actions_t *a, u8 *input, u32 ilen,
+		       i32 *matched)
 {
   u8 partial = 0;
 
@@ -567,18 +577,16 @@ unix_cli_match_action (unix_cli_parse_actions_t * a,
       a++;
     }
 
-  return partial ?
-    UNIX_CLI_PARSE_ACTION_PARTIALMATCH : UNIX_CLI_PARSE_ACTION_NOMATCH;
+  return partial ? UNIX_CLI_PARSE_ACTION_PARTIALMATCH :
+		   UNIX_CLI_PARSE_ACTION_NOMATCH;
 }
-
 
 /** Add bytes to the output vector and then flagg the I/O system that bytes
  * are available to be sent.
  */
 static void
-unix_cli_add_pending_output (clib_file_t * uf,
-			     unix_cli_file_t * cf,
-			     u8 * buffer, uword buffer_bytes)
+unix_cli_add_pending_output (clib_file_t *uf, unix_cli_file_t *cf, u8 *buffer,
+			     uword buffer_bytes)
 {
   clib_file_main_t *fm = &file_main;
 
@@ -596,8 +604,8 @@ unix_cli_add_pending_output (clib_file_t * uf,
  * that no more bytes are available to be sent.
  */
 static void
-unix_cli_del_pending_output (clib_file_t * uf,
-			     unix_cli_file_t * cf, uword n_bytes)
+unix_cli_del_pending_output (clib_file_t *uf, unix_cli_file_t *cf,
+			     uword n_bytes)
 {
   clib_file_main_t *fm = &file_main;
 
@@ -626,7 +634,7 @@ unix_cli_del_pending_output (clib_file_t * uf,
  *          found then \c len instead.
  */
 always_inline word
-unix_vlib_findchr (u8 chr, u8 * str, word len)
+unix_vlib_findchr (u8 chr, u8 *str, word len)
 {
   word i = 0;
   for (i = 0; i < len; i++, str++)
@@ -653,12 +661,12 @@ unix_vlib_findchr (u8 chr, u8 * str, word len)
  * @param buffer_bytes The number of bytes from \c buffer to write.
  */
 static void
-unix_vlib_cli_output_raw (unix_cli_file_t * cf,
-			  clib_file_t * uf, u8 * buffer, uword buffer_bytes)
+unix_vlib_cli_output_raw (unix_cli_file_t *cf, clib_file_t *uf, u8 *buffer,
+			  uword buffer_bytes)
 {
   int n = 0;
 
-  if (cf->has_epipe)		/* don't try writing anything */
+  if (cf->has_epipe) /* don't try writing anything */
     return;
 
   if (vec_len (cf->output_vector) == 0)
@@ -704,9 +712,8 @@ unix_vlib_cli_output_raw (unix_cli_file_t * cf,
  * @param buffer_bytes The number of bytes from \c buffer to write.
  */
 static void
-unix_vlib_cli_output_cooked (unix_cli_file_t * cf,
-			     clib_file_t * uf,
-			     u8 * buffer, uword buffer_bytes)
+unix_vlib_cli_output_cooked (unix_cli_file_t *cf, clib_file_t *uf, u8 *buffer,
+			     uword buffer_bytes)
 {
   word end = 0, start = 0;
 
@@ -715,9 +722,9 @@ unix_vlib_cli_output_cooked (unix_cli_file_t * cf,
       if (cf->crlf_mode)
 	{
 	  /* iterate the line on \n's so we can insert a \r before it */
-	  end = unix_vlib_findchr ('\n',
-				   buffer + start,
-				   buffer_bytes - start) + start;
+	  end =
+	    unix_vlib_findchr ('\n', buffer + start, buffer_bytes - start) +
+	    start;
 	}
       else
 	{
@@ -732,7 +739,7 @@ unix_vlib_cli_output_cooked (unix_cli_file_t * cf,
 	  if (end < buffer_bytes)
 	    {
 	      unix_vlib_cli_output_raw (cf, uf, (u8 *) "\r\n", 2);
-	      end++;		/* skip the \n that we already sent */
+	      end++; /* skip the \n that we already sent */
 	    }
 	  start = end;
 	}
@@ -757,10 +764,10 @@ unix_vlib_cli_output_cooked (unix_cli_file_t * cf,
  * @param uf The Unix file structure of the desired stream to write to.
  */
 static void
-unix_vlib_cli_output_cursor_left (unix_cli_file_t * cf, clib_file_t * uf)
+unix_vlib_cli_output_cursor_left (unix_cli_file_t *cf, clib_file_t *uf)
 {
   unix_cli_main_t *cm = &unix_cli_main;
-  static u8 *ansi = 0;		/* assumes no reentry */
+  static u8 *ansi = 0; /* assumes no reentry */
   u32 position;
 
   if (!cf->is_interactive || !cf->ansi_capable || !cf->width)
@@ -798,24 +805,24 @@ unix_vlib_cli_output_cursor_left (unix_cli_file_t * cf, clib_file_t * uf)
   /* Relocate the cursor at the right hand edge one line above */
   ansi = format (ansi, CSI "A" CSI "%dC", cf->width - 1);
   unix_vlib_cli_output_cooked (cf, uf, ansi, vec_len (ansi));
-  vec_reset_length (ansi);	/* keep the vec around for next time */
-  cf->cursor_direction = 1;	/* going backwards now */
+  vec_reset_length (ansi);  /* keep the vec around for next time */
+  cf->cursor_direction = 1; /* going backwards now */
 }
 
 /** @brief Output the CLI prompt */
 static void
-unix_cli_cli_prompt (unix_cli_file_t * cf, clib_file_t * uf)
+unix_cli_cli_prompt (unix_cli_file_t *cf, clib_file_t *uf)
 {
   unix_cli_main_t *cm = &unix_cli_main;
 
-  if (cf->is_interactive)	/* Only interactive sessions get a prompt */
+  if (cf->is_interactive) /* Only interactive sessions get a prompt */
     unix_vlib_cli_output_raw (cf, uf, cm->cli_prompt,
 			      vec_len (cm->cli_prompt));
 }
 
 /** @brief Output a pager prompt and show number of buffered lines */
 static void
-unix_cli_pager_prompt (unix_cli_file_t * cf, clib_file_t * uf)
+unix_cli_pager_prompt (unix_cli_file_t *cf, clib_file_t *uf)
 {
   u8 *prompt;
   u32 h;
@@ -824,12 +831,10 @@ unix_cli_pager_prompt (unix_cli_file_t * cf, clib_file_t * uf)
   if (h > vec_len (cf->pager_index))
     h = vec_len (cf->pager_index);
 
-  prompt = format (0, "\r%s-- more -- (%d-%d/%d)%s",
-		   cf->ansi_capable ? ANSI_BOLD : "",
-		   cf->pager_start + 1,
-		   h,
-		   vec_len (cf->pager_index),
-		   cf->ansi_capable ? ANSI_RESET : "");
+  prompt =
+    format (0, "\r%s-- more -- (%d-%d/%d)%s",
+	    cf->ansi_capable ? ANSI_BOLD : "", cf->pager_start + 1, h,
+	    vec_len (cf->pager_index), cf->ansi_capable ? ANSI_RESET : "");
 
   unix_vlib_cli_output_cooked (cf, uf, prompt, vec_len (prompt));
 
@@ -838,13 +843,12 @@ unix_cli_pager_prompt (unix_cli_file_t * cf, clib_file_t * uf)
 
 /** @brief Output a pager "skipping" message */
 static void
-unix_cli_pager_message (unix_cli_file_t * cf, clib_file_t * uf,
-			char *message, char *postfix)
+unix_cli_pager_message (unix_cli_file_t *cf, clib_file_t *uf, char *message,
+			char *postfix)
 {
   u8 *prompt;
 
-  prompt = format (0, "\r%s-- %s --%s%s",
-		   cf->ansi_capable ? ANSI_BOLD : "",
+  prompt = format (0, "\r%s-- %s --%s%s", cf->ansi_capable ? ANSI_BOLD : "",
 		   message, cf->ansi_capable ? ANSI_RESET : "", postfix);
 
   unix_vlib_cli_output_cooked (cf, uf, prompt, vec_len (prompt));
@@ -854,13 +858,12 @@ unix_cli_pager_message (unix_cli_file_t * cf, clib_file_t * uf,
 
 /** @brief Erase the printed pager prompt */
 static void
-unix_cli_pager_prompt_erase (unix_cli_file_t * cf, clib_file_t * uf)
+unix_cli_pager_prompt_erase (unix_cli_file_t *cf, clib_file_t *uf)
 {
   if (cf->ansi_capable)
     {
       unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\r", 1);
-      unix_vlib_cli_output_cooked (cf, uf,
-				   (u8 *) ANSI_CLEARLINE,
+      unix_vlib_cli_output_cooked (cf, uf, (u8 *) ANSI_CLEARLINE,
 				   sizeof (ANSI_CLEARLINE) - 1);
     }
   else
@@ -876,7 +879,7 @@ unix_cli_pager_prompt_erase (unix_cli_file_t * cf, clib_file_t * uf)
 
 /** @brief Uses an ANSI escape sequence to move the cursor */
 static void
-unix_cli_ansi_cursor (unix_cli_file_t * cf, clib_file_t * uf, u16 x, u16 y)
+unix_cli_ansi_cursor (unix_cli_file_t *cf, clib_file_t *uf, u16 x, u16 y)
 {
   u8 *str;
 
@@ -892,7 +895,7 @@ unix_cli_ansi_cursor (unix_cli_file_t * cf, clib_file_t * uf, u16 x, u16 y)
  * @param uf Unix file of the CLI session.
  */
 static void
-unix_cli_pager_redraw (unix_cli_file_t * cf, clib_file_t * uf)
+unix_cli_pager_redraw (unix_cli_file_t *cf, clib_file_t *uf)
 {
   unix_cli_pager_index_t *pi = NULL;
   u8 *line = NULL;
@@ -905,8 +908,7 @@ unix_cli_pager_redraw (unix_cli_file_t * cf, clib_file_t * uf)
   if (cf->ansi_capable)
     {
       /* If we have ANSI, send the clear screen sequence */
-      unix_vlib_cli_output_cooked (cf, uf,
-				   (u8 *) ANSI_CLEAR,
+      unix_vlib_cli_output_cooked (cf, uf, (u8 *) ANSI_CLEAR,
 				   sizeof (ANSI_CLEAR) - 1);
     }
   else
@@ -916,8 +918,9 @@ unix_cli_pager_redraw (unix_cli_file_t * cf, clib_file_t * uf)
     }
 
   /* (Re-)send the current page of content */
-  for (i = 0; i < cf->height - 1 &&
-       i + cf->pager_start < vec_len (cf->pager_index); i++)
+  for (i = 0;
+       i < cf->height - 1 && i + cf->pager_start < vec_len (cf->pager_index);
+       i++)
     {
       pi = &cf->pager_index[cf->pager_start + i];
       line = cf->pager_vector[pi->line] + pi->offset;
@@ -953,7 +956,7 @@ unix_cli_pager_redraw (unix_cli_file_t * cf, clib_file_t * uf)
  *                     existing string to be indexed.
  */
 static void
-unix_cli_pager_add_line (unix_cli_file_t * cf, u8 * line, word len_or_index)
+unix_cli_pager_add_line (unix_cli_file_t *cf, u8 *line, word len_or_index)
 {
   u8 *p = NULL;
   word i, j, k;
@@ -988,7 +991,7 @@ unix_cli_pager_add_line (unix_cli_file_t * cf, u8 * line, word len_or_index)
       int l = len - i;
       j = unix_vlib_findchr ((u8) '\n', p, l < width ? l : width);
 
-      if (j < l && p[j] == '\n')	/* incl \n */
+      if (j < l && p[j] == '\n') /* incl \n */
 	j++;
 
       /* Add the line to the index */
@@ -1015,7 +1018,7 @@ unix_cli_pager_add_line (unix_cli_file_t * cf, u8 * line, word len_or_index)
  * @param cf The CLI session whose pager buffer should be reindexed.
  */
 static void
-unix_cli_pager_reindex (unix_cli_file_t * cf)
+unix_cli_pager_reindex (unix_cli_file_t *cf)
 {
   word i, old_line, old_offset;
   unix_cli_pager_index_t *pi;
@@ -1039,23 +1042,23 @@ unix_cli_pager_reindex (unix_cli_file_t * cf)
   /* Re-add the buffered lines to the index */
   vec_reset_length (cf->pager_index);
   vec_foreach_index (i, cf->pager_vector)
-  {
-    unix_cli_pager_add_line (cf, NULL, i);
-  }
+    {
+      unix_cli_pager_add_line (cf, NULL, i);
+    }
 
   /* Attempt to re-locate the previously stored page start line */
   vec_foreach_index (i, cf->pager_index)
-  {
-    pi = &cf->pager_index[i];
+    {
+      pi = &cf->pager_index[i];
 
-    if (pi->line == old_line &&
-	(pi->offset <= old_offset || pi->offset + pi->length > old_offset))
-      {
-	/* Found it! */
-	cf->pager_start = i;
-	break;
-      }
-  }
+      if (pi->line == old_line &&
+	  (pi->offset <= old_offset || pi->offset + pi->length > old_offset))
+	{
+	  /* Found it! */
+	  cf->pager_start = i;
+	  break;
+	}
+    }
 
   /* In case the start line was not found (rare), ensure the pager start
    * index is within bounds
@@ -1088,7 +1091,7 @@ unix_cli_pager_reindex (unix_cli_file_t * cf)
  * @param buffer_bytes   The number of bytes in @c buffer to be output.
  */
 static void
-unix_vlib_cli_output (uword cli_file_index, u8 * buffer, uword buffer_bytes)
+unix_vlib_cli_output (uword cli_file_index, u8 *buffer, uword buffer_bytes)
 {
   unix_main_t *um = &unix_main;
   clib_file_main_t *fm = &file_main;
@@ -1176,19 +1179,23 @@ unix_vlib_cli_output (uword cli_file_index, u8 * buffer, uword buffer_bytes)
  *         terminal sequences; @c 0 otherwise.
  */
 static u8
-unix_cli_terminal_type_ansi (u8 * term, uword len)
+unix_cli_terminal_type_ansi (u8 *term, uword len)
 {
   /* This may later be better done as a hash of some sort. */
-#define _(a) do { \
-    if (strncasecmp(a, (char *)term, (size_t)len) == 0) return 1; \
-  } while(0)
+#define _(a)                                                                  \
+  do                                                                          \
+    {                                                                         \
+      if (strncasecmp (a, (char *) term, (size_t) len) == 0)                  \
+	return 1;                                                             \
+    }                                                                         \
+  while (0)
 
-  _("xterm");
-  _("xterm-color");
-  _("xterm-256color");		/* iTerm on Mac */
-  _("screen");
-  _("screen-256color");		/* Screen and tmux */
-  _("ansi");			/* Microsoft Telnet */
+  _ ("xterm");
+  _ ("xterm-color");
+  _ ("xterm-256color"); /* iTerm on Mac */
+  _ ("screen");
+  _ ("screen-256color"); /* Screen and tmux */
+  _ ("ansi");		 /* Microsoft Telnet */
 #undef _
 
   return 0;
@@ -1208,14 +1215,18 @@ unix_cli_terminal_type_ansi (u8 * term, uword len)
  *         @c 0 otherwise.
  */
 static u8
-unix_cli_terminal_type_noninteractive (u8 * term, uword len)
+unix_cli_terminal_type_noninteractive (u8 *term, uword len)
 {
   /* This may later be better done as a hash of some sort. */
-#define _(a) do { \
-    if (strncasecmp(a, (char *)term, (size_t)len) == 0) return 1; \
-  } while(0)
+#define _(a)                                                                  \
+  do                                                                          \
+    {                                                                         \
+      if (strncasecmp (a, (char *) term, (size_t) len) == 0)                  \
+	return 1;                                                             \
+    }                                                                         \
+  while (0)
 
-  _("vppctl");
+  _ ("vppctl");
 #undef _
 
   return 0;
@@ -1223,7 +1234,7 @@ unix_cli_terminal_type_noninteractive (u8 * term, uword len)
 
 /** Set a session to be non-interactive. */
 static void
-unix_cli_set_session_noninteractive (unix_cli_file_t * cf)
+unix_cli_set_session_noninteractive (unix_cli_file_t *cf)
 {
   /* Non-interactive sessions don't get these */
   cf->is_interactive = 0;
@@ -1235,7 +1246,7 @@ unix_cli_set_session_noninteractive (unix_cli_file_t * cf)
 
 /** @brief Emit initial welcome banner and prompt on a connection. */
 static void
-unix_cli_file_welcome (unix_cli_main_t * cm, unix_cli_file_t * cf)
+unix_cli_file_welcome (unix_cli_main_t *cm, unix_cli_file_t *cf)
 {
   unix_main_t *um = &unix_main;
   clib_file_main_t *fm = &file_main;
@@ -1246,7 +1257,7 @@ unix_cli_file_welcome (unix_cli_main_t * cm, unix_cli_file_t * cf)
   /* Mark the session as started if we get here */
   cf->started = 1;
 
-  if (!(cf->is_interactive))	/* No banner for non-interactive sessions */
+  if (!(cf->is_interactive)) /* No banner for non-interactive sessions */
     return;
 
   /*
@@ -1271,14 +1282,13 @@ unix_cli_file_welcome (unix_cli_main_t * cm, unix_cli_file_t * cf)
 
       for (i = 0; i < len; i++)
 	{
-	  unix_vlib_cli_output_cooked (cf, uf,
-				       banner[i].line, banner[i].length);
+	  unix_vlib_cli_output_cooked (cf, uf, banner[i].line,
+				       banner[i].length);
 	}
     }
 
   /* Prompt. */
   unix_cli_cli_prompt (cf, uf);
-
 }
 
 /**
@@ -1286,8 +1296,8 @@ unix_cli_file_welcome (unix_cli_main_t * cm, unix_cli_file_t * cf)
  * prompt if TELNET negotiation fails.
  */
 static uword
-unix_cli_new_session_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
-			      vlib_frame_t * f)
+unix_cli_new_session_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
+			      vlib_frame_t *f)
 {
   unix_cli_main_t *cm = &unix_cli_main;
   uword event_type, *event_data = 0;
@@ -1304,7 +1314,7 @@ unix_cli_new_session_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
       switch (event_type)
 	{
-	case ~0:		/* no events => timeout */
+	case ~0: /* no events => timeout */
 	  break;
 
 	case UNIX_CLI_NEW_SESSION_EVENT_ADD:
@@ -1318,7 +1328,7 @@ unix_cli_new_session_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	    vec_add1 (cm->new_sessions, ns);
 
 	    if (wait > 0.1)
-	      wait = 0.1;	/* force a re-evaluation soon, but not too soon */
+	      wait = 0.1; /* force a re-evaluation soon, but not too soon */
 	  }
 	  break;
 
@@ -1347,30 +1357,30 @@ unix_cli_new_session_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  wait = INFINITY;
 
 	  vec_foreach (nsp, cm->new_sessions)
-	  {
-	    if (vlib_process_suspend_time_is_zero (nsp->deadline - now))
-	      {
-		/* Deadline reached */
-		unix_cli_file_t *cf;
+	    {
+	      if (vlib_process_suspend_time_is_zero (nsp->deadline - now))
+		{
+		  /* Deadline reached */
+		  unix_cli_file_t *cf;
 
-		/* Mark the highwater */
-		index++;
+		  /* Mark the highwater */
+		  index++;
 
-		/* Check the connection didn't close already */
-		if (pool_is_free_index (cm->cli_file_pool, nsp->cf_index))
-		  continue;
+		  /* Check the connection didn't close already */
+		  if (pool_is_free_index (cm->cli_file_pool, nsp->cf_index))
+		    continue;
 
-		cf = pool_elt_at_index (cm->cli_file_pool, nsp->cf_index);
+		  cf = pool_elt_at_index (cm->cli_file_pool, nsp->cf_index);
 
-		if (!cf->started)
-		  unix_cli_file_welcome (cm, cf);
-	      }
-	    else
-	      {
-		wait = nsp->deadline - now;
-		break;
-	      }
-	  }
+		  if (!cf->started)
+		    unix_cli_file_welcome (cm, cf);
+		}
+	      else
+		{
+		  wait = nsp->deadline - now;
+		  break;
+		}
+	    }
 
 	  if (index)
 	    {
@@ -1383,7 +1393,6 @@ unix_cli_new_session_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-
 /** @brief A mostly no-op Telnet state machine.
  * Process Telnet command bytes in a way that ensures we're mostly
  * transparent to the Telnet protocol. That is, it's mostly a no-op.
@@ -1393,9 +1402,8 @@ unix_cli_new_session_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
  *          IAC byte.
  */
 static i32
-unix_cli_process_telnet (unix_main_t * um,
-			 unix_cli_file_t * cf,
-			 clib_file_t * uf, u8 * input_vector, uword len)
+unix_cli_process_telnet (unix_main_t *um, unix_cli_file_t *cf, clib_file_t *uf,
+			 u8 *input_vector, uword len)
 {
   /* Input_vector starts at IAC byte.
    * See if we have a complete message; if not, return -1 so we wait for more.
@@ -1404,7 +1412,7 @@ unix_cli_process_telnet (unix_main_t * um,
   i32 consume = 0;
 
   if (len == 1)
-    return -1;			/* want more bytes */
+    return -1; /* want more bytes */
 
   switch (input_vector[1])
     {
@@ -1421,7 +1429,7 @@ unix_cli_process_telnet (unix_main_t * um,
     case DONT:
       /* Expect 3 bytes */
       if (len < 3)
-	return -1;		/* want more bytes */
+	return -1; /* want more bytes */
 
       consume = 2;
       break;
@@ -1462,7 +1470,7 @@ unix_cli_process_telnet (unix_main_t * um,
 
 		  case TELOPT_NAWS:
 		    /* Window size */
-		    if (i != 8)	/* check message is correct size */
+		    if (i != 8) /* check message is correct size */
 		      break;
 
 		    cf->width =
@@ -1495,10 +1503,10 @@ unix_cli_process_telnet (unix_main_t * um,
 	  }
 
 	if (i == UNIX_CLI_MAX_DEPTH_TELNET)
-	  consume = 1;		/* hit max search depth, advance one byte */
+	  consume = 1; /* hit max search depth, advance one byte */
 
 	if (consume == 0)
-	  return -1;		/* want more bytes */
+	  return -1; /* want more bytes */
 
 	break;
       }
@@ -1539,11 +1547,9 @@ unix_cli_process_telnet (unix_main_t * um,
  * searching the command history or editing the current command line.
  */
 static int
-unix_cli_line_process_one (unix_cli_main_t * cm,
-			   unix_main_t * um,
-			   unix_cli_file_t * cf,
-			   clib_file_t * uf,
-			   u8 input, unix_cli_parse_action_t action)
+unix_cli_line_process_one (unix_cli_main_t *cm, unix_main_t *um,
+			   unix_cli_file_t *cf, clib_file_t *uf, u8 input,
+			   unix_cli_parse_action_t action)
 {
   u8 *prev;
   u8 *save = 0;
@@ -1610,7 +1616,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 
       /* Print the new contents */
       unix_vlib_cli_output_cooked (cf, uf, cf->current_command, delta);
-      cf->cursor = delta;	/* for backspace tracking */
+      cf->cursor = delta; /* for backspace tracking */
 
       /* Shimmy back to the start */
       for (; cf->cursor > 0; cf->cursor--)
@@ -1639,11 +1645,11 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
     case UNIX_CLI_PARSE_ACTION_ERASEWORDLEFT:
       /* calculate num of caracter to be erased */
       delta = 0;
-      while (cf->cursor > delta
-	     && cf->current_command[cf->cursor - delta - 1] == ' ')
+      while (cf->cursor > delta &&
+	     cf->current_command[cf->cursor - delta - 1] == ' ')
 	delta++;
-      while (cf->cursor > delta
-	     && cf->current_command[cf->cursor - delta - 1] != ' ')
+      while (cf->cursor > delta &&
+	     cf->current_command[cf->cursor - delta - 1] != ' ')
 	delta++;
 
       if (vec_len (cf->current_command))
@@ -1659,10 +1665,9 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      memmove (cf->current_command + cf->cursor,
 		       cf->current_command + cf->cursor + delta,
 		       _vec_len (cf->current_command) - cf->cursor - delta);
-	      unix_vlib_cli_output_cooked (cf, uf,
-					   cf->current_command + cf->cursor,
-					   _vec_len (cf->current_command) -
-					   cf->cursor);
+	      unix_vlib_cli_output_cooked (
+		cf, uf, cf->current_command + cf->cursor,
+		_vec_len (cf->current_command) - cf->cursor);
 	      cf->cursor += _vec_len (cf->current_command) - cf->cursor;
 
 	      /* print delta amount of blank spaces,
@@ -1771,10 +1776,9 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
       if (vec_len (cf->current_command) &&
 	  cf->cursor < vec_len (cf->current_command))
 	{
-	  unix_vlib_cli_output_cooked (cf, uf,
-				       cf->current_command + cf->cursor,
-				       vec_len (cf->current_command) -
-				       cf->cursor);
+	  unix_vlib_cli_output_cooked (
+	    cf, uf, cf->current_command + cf->cursor,
+	    vec_len (cf->current_command) - cf->cursor);
 	  cf->cursor = vec_len (cf->current_command);
 	}
 
@@ -1799,7 +1803,6 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      unix_vlib_cli_output_cursor_left (cf, uf);
 	      cf->cursor--;
 	    }
-
 	}
 
       cf->search_mode = 0;
@@ -1815,15 +1818,13 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	    j++;
 	  while (j < e && isspace (cf->current_command[j]))
 	    j++;
-	  unix_vlib_cli_output_cooked (cf, uf,
-				       cf->current_command + cf->cursor,
-				       j - cf->cursor);
+	  unix_vlib_cli_output_cooked (
+	    cf, uf, cf->current_command + cf->cursor, j - cf->cursor);
 	  cf->cursor = j;
 	}
 
       cf->search_mode = 0;
       break;
-
 
     case UNIX_CLI_PARSE_ACTION_ERASE:
       if (vec_len (cf->current_command))
@@ -1849,16 +1850,15 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      /* redraw the rest of the line */
 	      unix_vlib_cli_output_cursor_left (cf, uf);
 	      cf->cursor--;
-	      unix_vlib_cli_output_cooked (cf, uf,
-					   cf->current_command + cf->cursor,
-					   j);
+	      unix_vlib_cli_output_cooked (
+		cf, uf, cf->current_command + cf->cursor, j);
 	      cf->cursor += j;
 	      /* erase last char */
 	      unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
 	      cf->cursor++;
 
 	      /* and shift the terminal cursor back where it should be */
-	      j += 2;		/* account for old string length and offset position */
+	      j += 2; /* account for old string length and offset position */
 	      while (--j)
 		{
 		  unix_vlib_cli_output_cursor_left (cf, uf);
@@ -1882,9 +1882,8 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 		       cf->current_command + cf->cursor + 1, j);
 	      _vec_len (cf->current_command)--;
 	      /* redraw the rest of the line */
-	      unix_vlib_cli_output_cooked (cf, uf,
-					   cf->current_command + cf->cursor,
-					   j);
+	      unix_vlib_cli_output_cooked (
+		cf, uf, cf->current_command + cf->cursor, j);
 	      cf->cursor += j;
 	      unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
 	      cf->cursor++;
@@ -1907,10 +1906,9 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	{
 	  /* ^D with no command entered = quit */
 	  unix_vlib_cli_output_cooked (cf, uf, (u8 *) "quit\n", 5);
-	  vlib_process_signal_event (um->vlib_main,
-				     vlib_current_process (um->vlib_main),
-				     UNIX_CLI_PROCESS_EVENT_QUIT,
-				     cf - cm->cli_file_pool);
+	  vlib_process_signal_event (
+	    um->vlib_main, vlib_current_process (um->vlib_main),
+	    UNIX_CLI_PROCESS_EVENT_QUIT, cf - cm->cli_file_pool);
 	}
       cf->search_mode = 0;
       cf->excursion = 0;
@@ -1923,16 +1921,14 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
        * the cursor back where it was in that line.
        */
       if (cf->ansi_capable)
-	unix_vlib_cli_output_cooked (cf, uf,
-				     (u8 *) ANSI_CLEAR,
+	unix_vlib_cli_output_cooked (cf, uf, (u8 *) ANSI_CLEAR,
 				     sizeof (ANSI_CLEAR) - 1);
       else
 	unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\n", 1);
 
-      unix_vlib_cli_output_raw (cf, uf,
-				cm->cli_prompt, vec_len (cm->cli_prompt));
-      unix_vlib_cli_output_cooked (cf, uf,
-				   cf->current_command,
+      unix_vlib_cli_output_raw (cf, uf, cm->cli_prompt,
+				vec_len (cm->cli_prompt));
+      unix_vlib_cli_output_cooked (cf, uf, cf->current_command,
 				   vec_len (cf->current_command));
       j = cf->cursor;
       cf->cursor = vec_len (cf->current_command);
@@ -1980,8 +1976,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	  vec_append (cf->current_command, completed);
 
 	  /* echo to the terminal */
-	  unix_vlib_cli_output_cooked (cf, uf, completed,
-				       vec_len (completed));
+	  unix_vlib_cli_output_cooked (cf, uf, completed, vec_len (completed));
 
 	  /* add one trailing space if needed */
 	  if (vec_len (save) == 0)
@@ -1991,7 +1986,6 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	    }
 
 	  cf->cursor = vec_len (cf->current_command);
-
 	}
       else if (vec_len (possible_commands) >= 2)
 	{
@@ -2000,32 +1994,32 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	  u32 i;
 
 	  vec_foreach (possible_command, possible_commands)
-	  {
-	    if (vec_len (*possible_command) > max_command_len)
-	      max_command_len = vec_len (*possible_command);
-	    if (vec_len (*possible_command) < min_command_len)
-	      min_command_len = vec_len (*possible_command);
-	  }
+	    {
+	      if (vec_len (*possible_command) > max_command_len)
+		max_command_len = vec_len (*possible_command);
+	      if (vec_len (*possible_command) < min_command_len)
+		min_command_len = vec_len (*possible_command);
+	    }
 
 	  unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\n", 1);
 
 	  i = 0;
 	  vec_foreach (possible_command, possible_commands)
-	  {
-	    if (i + max_command_len >= cf->width)
-	      {
-		unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\n", 1);
-		i = 0;
-	      }
-	    unix_vlib_cli_output_cooked (cf, uf, *possible_command,
-					 vec_len (*possible_command));
-	    for (j = vec_len (*possible_command); j < max_command_len + 2;
-		 j++)
-	      {
-		unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
-	      }
-	    i += max_command_len + 2;
-	  }
+	    {
+	      if (i + max_command_len >= cf->width)
+		{
+		  unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\n", 1);
+		  i = 0;
+		}
+	      unix_vlib_cli_output_cooked (cf, uf, *possible_command,
+					   vec_len (*possible_command));
+	      for (j = vec_len (*possible_command); j < max_command_len + 2;
+		   j++)
+		{
+		  unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
+		}
+	      i += max_command_len + 2;
+	    }
 
 	  unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\n", 1);
 
@@ -2050,23 +2044,23 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      int stop = 0;
 
 	      vec_foreach (possible_command, possible_commands)
-	      {
-		if (common == '\0')
-		  {
-		    common = (*possible_command)[i];
-		  }
-		else if (common != (*possible_command)[i])
-		  {
-		    stop = 1;
-		    break;
-		  }
-	      }
+		{
+		  if (common == '\0')
+		    {
+		      common = (*possible_command)[i];
+		    }
+		  else if (common != (*possible_command)[i])
+		    {
+		      stop = 1;
+		      break;
+		    }
+		}
 
 	      if (!stop)
 		{
 		  vec_add1 (cf->current_command, common);
 		  cf->cursor++;
-		  unix_vlib_cli_output_cooked (cf, uf, (u8 *) & common, 1);
+		  unix_vlib_cli_output_cooked (cf, uf, (u8 *) &common, 1);
 		}
 	      else
 		{
@@ -2096,7 +2090,6 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
       /* TODO */
       break;
 
-
     case UNIX_CLI_PARSE_ACTION_PAGER_QUIT:
     pager_quit:
       unix_cli_pager_prompt_erase (cf, uf);
@@ -2114,8 +2107,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 
 	  int m = cf->pager_start + (cf->height - 1);
 	  unix_cli_pager_prompt_erase (cf, uf);
-	  for (j = m;
-	       j < vec_len (cf->pager_index) && cf->pager_start < m;
+	  for (j = m; j < vec_len (cf->pager_index) && cf->pager_start < m;
 	       j++, cf->pager_start++)
 	    {
 	      pi = &cf->pager_index[j];
@@ -2192,8 +2184,8 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	    {
 	      int m = cf->pager_start + (cf->height - 1);
 	      unix_cli_pager_prompt_erase (cf, uf);
-	      for (j = cf->pager_start;
-		   j < vec_len (cf->pager_index) && j < m; j++)
+	      for (j = cf->pager_start; j < vec_len (cf->pager_index) && j < m;
+		   j++)
 		{
 		  pi = &cf->pager_index[j];
 		  line = cf->pager_vector[pi->line] + pi->offset;
@@ -2291,15 +2283,14 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
       /* search forwards in the buffer */
       break;
 
-
     case UNIX_CLI_PARSE_ACTION_CRLF:
     crlf:
       unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\n", 1);
 
       if (cf->has_history && cf->history_limit)
 	{
-	  if (cf->command_history
-	      && vec_len (cf->command_history) >= cf->history_limit)
+	  if (cf->command_history &&
+	      vec_len (cf->command_history) >= cf->history_limit)
 	    {
 	      vec_free (cf->command_history[0]);
 	      vec_delete (cf->command_history, 1, 0);
@@ -2311,9 +2302,9 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      j = vec_len (cf->command_history);
 	      if (j == 0 ||
 		  (vec_len (cf->current_command) !=
-		   vec_len (cf->command_history[j - 1])
-		   || memcmp (cf->current_command, cf->command_history[j - 1],
-			      vec_len (cf->current_command)) != 0))
+		     vec_len (cf->command_history[j - 1]) ||
+		   memcmp (cf->current_command, cf->command_history[j - 1],
+			   vec_len (cf->current_command)) != 0))
 		{
 		  /* copy the command to the history */
 		  u8 *c = 0;
@@ -2355,7 +2346,8 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      item = cf->command_history[cf->excursion];
 
 	      limit = (vec_len (cf->search_key) > vec_len (item)) ?
-		vec_len (item) : vec_len (cf->search_key);
+			vec_len (item) :
+			vec_len (cf->search_key);
 
 	      for (offset = 0; offset <= vec_len (item) - limit; offset++)
 		{
@@ -2366,8 +2358,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 		    }
 		  goto found_at_offset;
 
-		next_offset:
-		  ;
+		next_offset:;
 		}
 	      goto next;
 
@@ -2399,7 +2390,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	  cf->cursor = 0;
 	  goto crlf;
 	}
-      else if (isprint (input))	/* skip any errant control codes */
+      else if (isprint (input)) /* skip any errant control codes */
 	{
 	  if (cf->cursor == vec_len (cf->current_command))
 	    {
@@ -2420,9 +2411,8 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      cf->current_command[cf->cursor] = input;
 	      /* Redraw the line */
 	      j++;
-	      unix_vlib_cli_output_cooked (cf, uf,
-					   cf->current_command + cf->cursor,
-					   j);
+	      unix_vlib_cli_output_cooked (
+		cf, uf, cf->current_command + cf->cursor, j);
 	      cf->cursor += j;
 	      j--;
 	      /* Put terminal cursor back */
@@ -2448,8 +2438,8 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 /** @brief Process input bytes on a stream to provide line editing and
  * command history in the CLI. */
 static int
-unix_cli_line_edit (unix_cli_main_t * cm, unix_main_t * um,
-		    clib_file_main_t * fm, unix_cli_file_t * cf)
+unix_cli_line_edit (unix_cli_main_t *cm, unix_main_t *um, clib_file_main_t *fm,
+		    unix_cli_file_t *cf)
 {
   clib_file_t *uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
   int i;
@@ -2461,14 +2451,12 @@ unix_cli_line_edit (unix_cli_main_t * cm, unix_main_t * um,
       unix_cli_parse_actions_t *a;
 
       /* If we're in the pager mode, search the pager actions */
-      a =
-	vec_len (cf->pager_index) ? unix_cli_parse_pager :
-	unix_cli_parse_strings;
+      a = vec_len (cf->pager_index) ? unix_cli_parse_pager :
+				      unix_cli_parse_strings;
 
       /* See if the input buffer is some sort of control code */
-      action = unix_cli_match_action (a, &cf->input_vector[i],
-				      vec_len (cf->input_vector) - i,
-				      &matched);
+      action = unix_cli_match_action (
+	a, &cf->input_vector[i], vec_len (cf->input_vector) - i, &matched);
 
       switch (action)
 	{
@@ -2482,12 +2470,11 @@ unix_cli_line_edit (unix_cli_main_t * cm, unix_main_t * um,
 	       */
 	      vec_delete (cf->input_vector, i, 0);
 	    }
-	  return 1;		/* wait for more */
+	  return 1; /* wait for more */
 
 	case UNIX_CLI_PARSE_ACTION_TELNETIAC:
 	  /* process telnet options */
-	  matched = unix_cli_process_telnet (um, cf, uf,
-					     cf->input_vector + i,
+	  matched = unix_cli_process_telnet (um, cf, uf, cf->input_vector + i,
 					     vec_len (cf->input_vector) - i);
 	  if (matched < 0)
 	    {
@@ -2502,7 +2489,7 @@ unix_cli_line_edit (unix_cli_main_t * cm, unix_main_t * um,
 		   */
 		  vec_delete (cf->input_vector, i, 0);
 		}
-	      return 1;		/* wait for more */
+	      return 1; /* wait for more */
 	    }
 	  break;
 
@@ -2519,8 +2506,8 @@ unix_cli_line_edit (unix_cli_main_t * cm, unix_main_t * um,
 	    }
 
 	  /* process the action */
-	  if (!unix_cli_line_process_one (cm, um, cf, uf,
-					  cf->input_vector[i], action))
+	  if (!unix_cli_line_process_one (cm, um, cf, uf, cf->input_vector[i],
+					  action))
 	    {
 	      /* CRLF found. Consume the bytes from the input_vector */
 	      vec_delete (cf->input_vector, i + matched, 0);
@@ -2538,7 +2525,7 @@ unix_cli_line_edit (unix_cli_main_t * cm, unix_main_t * um,
 
 /** @brief Process input to a CLI session. */
 static void
-unix_cli_process_input (unix_cli_main_t * cm, uword cli_file_index)
+unix_cli_process_input (unix_cli_main_t *cm, uword cli_file_index)
 {
   unix_main_t *um = &unix_main;
   clib_file_main_t *fm = &file_main;
@@ -2553,7 +2540,6 @@ more:
   /* Try vlibplex first.  Someday... */
   if (0 && vlib_parse_eval (cf->input_vector) == 0)
     goto done;
-
 
   if (cf->line_mode)
     {
@@ -2572,10 +2558,9 @@ more:
     {
       static u8 *lv;
       vec_reset_length (lv);
-      lv = format (lv, "%U[%d]: %v",
-		   format_timeval, 0 /* current bat-time */ ,
-		   0 /* current bat-format */ ,
-		   cli_file_index, cf->current_command);
+      lv = format (lv, "%U[%d]: %v", format_timeval, 0 /* current bat-time */,
+		   0 /* current bat-format */, cli_file_index,
+		   cf->current_command);
       if ((vec_len (cf->current_command) > 0) &&
 	  (cf->current_command[vec_len (cf->current_command) - 1] != '\n'))
 	lv = format (lv, "\n");
@@ -2589,11 +2574,9 @@ more:
       vec_validate (cf->current_command, vec_len (cf->current_command));
       cf->current_command[vec_len (cf->current_command) - 1] = 0;
       /* The macro expander expects proper C-strings, not vectors */
-      expanded = (u8 *) clib_macro_eval (&cf->macro_main,
-					 (i8 *) cf->current_command,
-					 1 /* complain */ ,
-					 0 /* level */ ,
-					 8 /* max_level */ );
+      expanded = (u8 *) clib_macro_eval (
+	&cf->macro_main, (i8 *) cf->current_command, 1 /* complain */,
+	0 /* level */, 8 /* max_level */);
       /* Macro processor NULL terminates the return */
       _vec_len (expanded) -= 1;
       vec_reset_length (cf->current_command);
@@ -2607,7 +2590,7 @@ more:
   /* Remove leading white space from input. */
   (void) unformat (&input, "");
 
-  cf->pager_start = 0;		/* start a new pager session */
+  cf->pager_start = 0; /* start a new pager session */
 
   if (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
     vlib_cli_input (um->vlib_main, &input, unix_vlib_cli_output,
@@ -2641,8 +2624,7 @@ done:
       cf->no_pager = um->cli_no_pager;
     }
 
-  if (vec_len (cf->pager_index) == 0
-      || vec_len (cf->pager_index) < cf->height)
+  if (vec_len (cf->pager_index) == 0 || vec_len (cf->pager_index) < cf->height)
     {
       /* There was no need for the pager */
       unix_cli_pager_reset (cf);
@@ -2675,7 +2657,7 @@ done:
  *       the shutdown of VPP.
  */
 static void
-unix_cli_kill (unix_cli_main_t * cm, uword cli_file_index)
+unix_cli_kill (unix_cli_main_t *cm, uword cli_file_index)
 {
   unix_main_t *um = &unix_main;
   clib_file_main_t *fm = &file_main;
@@ -2712,8 +2694,7 @@ unix_cli_kill (unix_cli_main_t * cm, uword cli_file_index)
 
 /** Handle system events. */
 static uword
-unix_cli_process (vlib_main_t * vm,
-		  vlib_node_runtime_t * rt, vlib_frame_t * f)
+unix_cli_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   unix_cli_main_t *cm = &unix_cli_main;
   uword i, *data = 0;
@@ -2756,7 +2737,7 @@ done:
 /** Called when a CLI session file descriptor can be written to without
  * blocking. */
 static clib_error_t *
-unix_cli_write_ready (clib_file_t * uf)
+unix_cli_write_ready (clib_file_t *uf)
 {
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
@@ -2767,11 +2748,11 @@ unix_cli_write_ready (clib_file_t * uf)
   /* Flush output vector. */
   if (cf->is_socket)
     /* If it's a socket we use MSG_NOSIGNAL to prevent SIGPIPE */
-    n = send (uf->file_descriptor,
-	      cf->output_vector, vec_len (cf->output_vector), MSG_NOSIGNAL);
+    n = send (uf->file_descriptor, cf->output_vector,
+	      vec_len (cf->output_vector), MSG_NOSIGNAL);
   else
-    n = write (uf->file_descriptor,
-	       cf->output_vector, vec_len (cf->output_vector));
+    n = write (uf->file_descriptor, cf->output_vector,
+	       vec_len (cf->output_vector));
 
   if (n < 0 && errno != EAGAIN)
     {
@@ -2798,7 +2779,7 @@ unix_cli_write_ready (clib_file_t * uf)
 
 /** Called when a CLI session file descriptor has data to be read. */
 static clib_error_t *
-unix_cli_read_ready (clib_file_t * uf)
+unix_cli_read_ready (clib_file_t *uf)
 {
   unix_main_t *um = &unix_main;
   unix_cli_main_t *cm = &unix_cli_main;
@@ -2825,11 +2806,10 @@ unix_cli_read_ready (clib_file_t * uf)
     }
 
   if (!(n < 0))
-    vlib_process_signal_event (um->vlib_main,
-			       cf->process_node_index,
-			       (n_read == 0
-				? UNIX_CLI_PROCESS_EVENT_QUIT
-				: UNIX_CLI_PROCESS_EVENT_READ_READY),
+    vlib_process_signal_event (um->vlib_main, cf->process_node_index,
+			       (n_read == 0 ?
+				  UNIX_CLI_PROCESS_EVENT_QUIT :
+				  UNIX_CLI_PROCESS_EVENT_READ_READY),
 			       /* event data */ uf->private_data);
 
   return /* no error */ 0;
@@ -2837,16 +2817,15 @@ unix_cli_read_ready (clib_file_t * uf)
 
 /** Called when a CLI session file descriptor has an error condition. */
 static clib_error_t *
-unix_cli_error_detected (clib_file_t * uf)
+unix_cli_error_detected (clib_file_t *uf)
 {
   unix_main_t *um = &unix_main;
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
 
   cf = pool_elt_at_index (cm->cli_file_pool, uf->private_data);
-  cf->has_epipe = 1;		/* prevent writes while the close is pending */
-  vlib_process_signal_event (um->vlib_main,
-			     cf->process_node_index,
+  cf->has_epipe = 1; /* prevent writes while the close is pending */
+  vlib_process_signal_event (um->vlib_main, cf->process_node_index,
 			     UNIX_CLI_PROCESS_EVENT_QUIT,
 			     /* event data */ uf->private_data);
 
@@ -2859,7 +2838,7 @@ unix_cli_error_detected (clib_file_t * uf)
  * @return The session ID.
  */
 static u32
-unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
+unix_cli_file_add (unix_cli_main_t *cm, char *name, int fd)
 {
   unix_main_t *um = &unix_main;
   clib_file_main_t *fm = &file_main;
@@ -2951,7 +2930,7 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
 
 /** Telnet listening socket has a new connection. */
 static clib_error_t *
-unix_cli_listen_read_ready (clib_file_t * uf)
+unix_cli_listen_read_ready (clib_file_t *uf)
 {
   unix_main_t *um = &unix_main;
   clib_file_main_t *fm = &file_main;
@@ -2970,8 +2949,8 @@ unix_cli_listen_read_ready (clib_file_t * uf)
 
   /* Disable Nagle, ignore any errors doing so eg on PF_LOCAL socket */
   one = 1;
-  (void) setsockopt (client.fd, IPPROTO_TCP, TCP_NODELAY,
-		     (void *) &one, sizeof (one));
+  (void) setsockopt (client.fd, IPPROTO_TCP, TCP_NODELAY, (void *) &one,
+		     sizeof (one));
 
   client_name = (char *) format (0, "%U%c", format_sockaddr, &client.peer, 0);
 
@@ -2991,16 +2970,16 @@ unix_cli_listen_read_ready (clib_file_t * uf)
        * Technically these should be negotiated, but this works.
        */
       u8 charmode_option[] = {
-	IAC, WONT, TELOPT_LINEMODE,	/* server will do char-by-char */
-	IAC, DONT, TELOPT_LINEMODE,	/* client should do char-by-char */
-	IAC, WILL, TELOPT_SGA,	/* server willl supress GA */
-	IAC, DO, TELOPT_SGA,	/* client should supress Go Ahead */
-	IAC, WILL, TELOPT_ECHO,	/* server will do echo */
-	IAC, DONT, TELOPT_ECHO,	/* client should not echo */
-	IAC, DO, TELOPT_TTYPE,	/* client should tell us its term type */
-	IAC, SB, TELOPT_TTYPE, 1, IAC, SE,	/* now tell me ttype */
-	IAC, DO, TELOPT_NAWS,	/* client should tell us its window sz */
-	IAC, SB, TELOPT_NAWS, 1, IAC, SE,	/* now tell me window size */
+	IAC, WONT, TELOPT_LINEMODE, /* server will do char-by-char */
+	IAC, DONT, TELOPT_LINEMODE, /* client should do char-by-char */
+	IAC, WILL, TELOPT_SGA,	    /* server willl supress GA */
+	IAC, DO,   TELOPT_SGA,	    /* client should supress Go Ahead */
+	IAC, WILL, TELOPT_ECHO,	    /* server will do echo */
+	IAC, DONT, TELOPT_ECHO,	    /* client should not echo */
+	IAC, DO,   TELOPT_TTYPE,    /* client should tell us its term type */
+	IAC, SB,   TELOPT_TTYPE,    1, IAC, SE, /* now tell me ttype */
+	IAC, DO,   TELOPT_NAWS, /* client should tell us its window sz */
+	IAC, SB,   TELOPT_NAWS,	    1, IAC, SE, /* now tell me window size */
       };
 
       /* Enable history on this CLI */
@@ -3033,10 +3012,9 @@ unix_cli_listen_read_ready (clib_file_t * uf)
       if (cm->new_session_process_node_index == ~0)
 	{
 	  /* Create thw new session deadline process */
-	  cm->new_session_process_node_index =
-	    vlib_process_create (um->vlib_main, "unix-cli-new-session",
-				 unix_cli_new_session_process,
-				 16 /* log2_n_stack_bytes */ );
+	  cm->new_session_process_node_index = vlib_process_create (
+	    um->vlib_main, "unix-cli-new-session",
+	    unix_cli_new_session_process, 16 /* log2_n_stack_bytes */);
 	}
 
       /* In case the client doesn't negotiate terminal type, register
@@ -3045,7 +3023,6 @@ unix_cli_listen_read_ready (clib_file_t * uf)
       vlib_process_signal_event (um->vlib_main,
 				 cm->new_session_process_node_index,
 				 UNIX_CLI_NEW_SESSION_EVENT_ADD, cf_index);
-
     }
 
   return error;
@@ -3059,8 +3036,8 @@ unix_cli_resize_interrupt (int signum)
 {
   clib_file_main_t *fm = &file_main;
   unix_cli_main_t *cm = &unix_cli_main;
-  unix_cli_file_t *cf = pool_elt_at_index (cm->cli_file_pool,
-					   cm->stdin_cli_file_index);
+  unix_cli_file_t *cf =
+    pool_elt_at_index (cm->cli_file_pool, cm->stdin_cli_file_index);
   clib_file_t *uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
   struct winsize ws;
   (void) signum;
@@ -3095,7 +3072,7 @@ unix_cli_resize_interrupt (int signum)
 
 /** Handle configuration directives in the @em unix section. */
 static clib_error_t *
-unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
+unix_cli_config (vlib_main_t *vm, unformat_input_t *input)
 {
   unix_main_t *um = &unix_main;
   clib_file_main_t *fm = &file_main;
@@ -3174,10 +3151,10 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 	  tio.c_lflag &= ~(ECHO | ICANON | IEXTEN);
 	  /* disable XON/XOFF, so ^S invokes the history search */
 	  tio.c_iflag &= ~(IXON | IXOFF);
-	  tio.c_cc[VMIN] = 1;	/* 1 byte at a time */
-	  tio.c_cc[VTIME] = 0;	/* no timer */
-	  tio.c_cc[VSTOP] = _POSIX_VDISABLE;	/* not ^S */
-	  tio.c_cc[VSTART] = _POSIX_VDISABLE;	/* not ^Q */
+	  tio.c_cc[VMIN] = 1;		      /* 1 byte at a time */
+	  tio.c_cc[VTIME] = 0;		      /* no timer */
+	  tio.c_cc[VSTOP] = _POSIX_VDISABLE;  /* not ^S */
+	  tio.c_cc[VSTART] = _POSIX_VDISABLE; /* not ^Q */
 	  tcsetattr (STDIN_FILENO, TCSAFLUSH, &tio);
 
 	  /* See if we can do ANSI/VT100 output */
@@ -3222,8 +3199,8 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 	  vec_free (tmp);
 	}
 
-      s->flags = CLIB_SOCKET_F_IS_SERVER |	/* listen, don't connect */
-	CLIB_SOCKET_F_ALLOW_GROUP_WRITE;	/* PF_LOCAL socket only */
+      s->flags = CLIB_SOCKET_F_IS_SERVER |	  /* listen, don't connect */
+		 CLIB_SOCKET_F_ALLOW_GROUP_WRITE; /* PF_LOCAL socket only */
       error = clib_socket_init (s);
 
       if (error)
@@ -3252,7 +3229,7 @@ VLIB_CONFIG_FUNCTION (unix_cli_config, "unix-cli");
  * terminal state if previously saved.
  */
 static clib_error_t *
-unix_cli_exit (vlib_main_t * vm)
+unix_cli_exit (vlib_main_t *vm)
 {
   unix_main_t *um = &unix_main;
 
@@ -3281,7 +3258,7 @@ vlib_unix_cli_set_prompt (char *prompt)
 }
 
 static unix_cli_file_t *
-unix_cli_file_if_exists (unix_cli_main_t * cm)
+unix_cli_file_if_exists (unix_cli_main_t *cm)
 {
   if (!cm->cli_file_pool)
     return 0;
@@ -3289,7 +3266,7 @@ unix_cli_file_if_exists (unix_cli_main_t * cm)
 }
 
 static unix_cli_file_t *
-unix_cli_file_if_interactive (unix_cli_main_t * cm)
+unix_cli_file_if_interactive (unix_cli_main_t *cm)
 {
   unix_cli_file_t *cf;
   if ((cf = unix_cli_file_if_exists (cm)) && !cf->is_interactive)
@@ -3302,8 +3279,8 @@ unix_cli_file_if_interactive (unix_cli_main_t * cm)
  *       shutdown VPP also.
  */
 static clib_error_t *
-unix_cli_quit (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+unix_cli_quit (vlib_main_t *vm, unformat_input_t *input,
+	       vlib_cli_command_t *cmd)
 {
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
@@ -3315,8 +3292,7 @@ unix_cli_quit (vlib_main_t * vm,
   cf->is_interactive = 0;
   cf->started = 1;
 
-  vlib_process_signal_event (vm,
-			     vlib_current_process (vm),
+  vlib_process_signal_event (vm, vlib_current_process (vm),
 			     UNIX_CLI_PROCESS_EVENT_QUIT,
 			     cm->current_input_file_index);
   return 0;
@@ -3346,8 +3322,8 @@ VLIB_CLI_COMMAND (unix_cli_q_command, static) = {
 
 /** CLI command to execute a VPP command script. */
 static clib_error_t *
-unix_cli_exec (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+unix_cli_exec (vlib_main_t *vm, unformat_input_t *input,
+	       vlib_cli_command_t *cmd)
 {
   char *file_name;
   int fd;
@@ -3360,7 +3336,6 @@ unix_cli_exec (vlib_main_t * vm,
   fd = -1;
   error = 0;
   struct stat s;
-
 
   if (!unformat (input, "%s", &file_name))
     {
@@ -3412,8 +3387,7 @@ unix_cli_exec (vlib_main_t * vm,
       clib_macro_main_t *mm = 0;
 
       /* Initial config process? Use the global macro table. */
-      if (pool_is_free_index
-	  (cm->cli_file_pool, cm->current_input_file_index))
+      if (pool_is_free_index (cm->cli_file_pool, cm->current_input_file_index))
 	mm = &cm->macro_main;
       else
 	{
@@ -3423,11 +3397,9 @@ unix_cli_exec (vlib_main_t * vm,
 	  mm = &cf->macro_main;
 	}
 
-      expanded = (u8 *) clib_macro_eval (mm,
-					 (i8 *) sub_input.buffer,
-					 1 /* complain */ ,
-					 0 /* level */ ,
-					 8 /* max_level */ );
+      expanded =
+	(u8 *) clib_macro_eval (mm, (i8 *) sub_input.buffer, 1 /* complain */,
+				0 /* level */, 8 /* max_level */);
       /* Macro processor NULL terminates the return */
       _vec_len (expanded) -= 1;
       vec_reset_length (sub_input.buffer);
@@ -3480,8 +3452,8 @@ VLIB_CLI_COMMAND (cli_exec, static) = {
 
 /** CLI command to show various unix error statistics. */
 static clib_error_t *
-unix_show_errors (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+unix_show_errors (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd)
 {
   unix_main_t *um = &unix_main;
   clib_error_t *error = 0;
@@ -3494,10 +3466,9 @@ unix_show_errors (vlib_main_t * vm,
     {
       if (!unformat (input, "%d", &n_errors_to_show))
 	{
-	  error =
-	    clib_error_return (0,
-			       "expecting integer number of errors to show, got `%U'",
-			       format_unformat_error, input);
+	  error = clib_error_return (
+	    0, "expecting integer number of errors to show, got `%U'",
+	    format_unformat_error, input);
 	  goto done;
 	}
     }
@@ -3505,9 +3476,8 @@ unix_show_errors (vlib_main_t * vm,
   n_errors_to_show =
     clib_min (ARRAY_LEN (um->error_history), n_errors_to_show);
 
-  i =
-    um->error_history_index >
-    0 ? um->error_history_index - 1 : ARRAY_LEN (um->error_history) - 1;
+  i = um->error_history_index > 0 ? um->error_history_index - 1 :
+				    ARRAY_LEN (um->error_history) - 1;
 
   while (n_errors_to_show > 0)
     {
@@ -3532,12 +3502,11 @@ unix_show_errors (vlib_main_t * vm,
       for (i = vec_len (unix_errors) - 1; i >= 0; i--)
 	{
 	  unix_error_history_t *eh = vec_elt_at_index (unix_errors, i);
-	  vlib_cli_output (vm, "%U: %U",
-			   format_time_interval, "h:m:s:u", eh->time,
-			   format_clib_error, eh->error);
+	  vlib_cli_output (vm, "%U: %U", format_time_interval, "h:m:s:u",
+			   eh->time, format_clib_error, eh->error);
 	}
-      vlib_cli_output (vm, "%U: time now",
-		       format_time_interval, "h:m:s:u", vlib_time_now (vm));
+      vlib_cli_output (vm, "%U: time now", format_time_interval, "h:m:s:u",
+		       vlib_time_now (vm));
     }
 
 done:
@@ -3555,8 +3524,8 @@ VLIB_CLI_COMMAND (cli_unix_show_errors, static) = {
 
 /** CLI command to show various unix error statistics. */
 static clib_error_t *
-unix_show_files (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+unix_show_files (vlib_main_t *vm, unformat_input_t *input,
+		 vlib_cli_command_t *cmd)
 {
   clib_error_t *error = 0;
   clib_file_main_t *fm = &file_main;
@@ -3569,17 +3538,17 @@ unix_show_files (vlib_main_t * vm,
 
   /* *INDENT-OFF* */
   pool_foreach (f, fm->file_pool)
-   {
+    {
       int rv;
       s = format (s, "/proc/self/fd/%d%c", f->file_descriptor, 0);
-      rv = readlink((char *) s, path, PATH_MAX - 1);
+      rv = readlink ((char *) s, path, PATH_MAX - 1);
 
       path[rv < 0 ? 0 : rv] = 0;
 
       vlib_cli_output (vm, "%3d %6d %12d %12d %12d %-32s %v",
 		       f->file_descriptor, f->polling_thread_index,
-		       f->read_events, f->write_events, f->error_events,
-		       path, f->description);
+		       f->read_events, f->write_events, f->error_events, path,
+		       f->description);
       vec_reset_length (s);
     }
   /* *INDENT-ON* */
@@ -3598,8 +3567,8 @@ VLIB_CLI_COMMAND (cli_unix_show_files, static) = {
 
 /** CLI command to show session command history. */
 static clib_error_t *
-unix_cli_show_history (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+unix_cli_show_history (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
@@ -3635,8 +3604,8 @@ VLIB_CLI_COMMAND (cli_unix_cli_show_history, static) = {
 
 /** CLI command to show terminal status. */
 static clib_error_t *
-unix_cli_show_terminal (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+unix_cli_show_terminal (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   unix_main_t *um = &unix_main;
   unix_cli_main_t *cm = &unix_cli_main;
@@ -3649,27 +3618,26 @@ unix_cli_show_terminal (vlib_main_t * vm,
   n = vlib_get_node (vm, cf->process_node_index);
 
   vlib_cli_output (vm, "Terminal name:   %v\n", n->name);
-  vlib_cli_output (vm, "Terminal mode:   %s\n", cf->line_mode ?
-		   "line-by-line" : "char-by-char");
+  vlib_cli_output (vm, "Terminal mode:   %s\n",
+		   cf->line_mode ? "line-by-line" : "char-by-char");
   vlib_cli_output (vm, "Terminal width:  %d\n", cf->width);
   vlib_cli_output (vm, "Terminal height: %d\n", cf->height);
   vlib_cli_output (vm, "ANSI capable:    %s\n",
 		   cf->ansi_capable ? "yes" : "no");
   vlib_cli_output (vm, "Interactive:     %s\n",
 		   cf->is_interactive ? "yes" : "no");
-  vlib_cli_output (vm, "History enabled: %s%s\n",
-		   cf->has_history ? "yes" : "no", !cf->has_history
-		   || cf->history_limit ? "" :
-		   " (disabled by history limit)");
+  vlib_cli_output (
+    vm, "History enabled: %s%s\n", cf->has_history ? "yes" : "no",
+    !cf->has_history || cf->history_limit ? "" :
+					    " (disabled by history limit)");
   if (cf->has_history)
     vlib_cli_output (vm, "History limit:   %d\n", cf->history_limit);
-  vlib_cli_output (vm, "Pager enabled:   %s%s%s\n",
-		   cf->no_pager ? "no" : "yes",
-		   cf->no_pager
-		   || cf->height ? "" : " (disabled by terminal height)",
-		   cf->no_pager
-		   || um->cli_pager_buffer_limit ? "" :
-		   " (disabled by buffer limit)");
+  vlib_cli_output (
+    vm, "Pager enabled:   %s%s%s\n", cf->no_pager ? "no" : "yes",
+    cf->no_pager || cf->height ? "" : " (disabled by terminal height)",
+    cf->no_pager || um->cli_pager_buffer_limit ?
+      "" :
+      " (disabled by buffer limit)");
   if (!cf->no_pager)
     vlib_cli_output (vm, "Pager limit:     %d\n", um->cli_pager_buffer_limit);
   vlib_cli_output (vm, "CRLF mode:       %s\n",
@@ -3707,9 +3675,8 @@ VLIB_CLI_COMMAND (cli_unix_cli_show_terminal, static) = {
 
 /** CLI command to display a list of CLI sessions. */
 static clib_error_t *
-unix_cli_show_cli_sessions (vlib_main_t * vm,
-			    unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+unix_cli_show_cli_sessions (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   unix_cli_main_t *cm = &unix_cli_main;
   clib_file_main_t *fm = &file_main;
@@ -3719,23 +3686,19 @@ unix_cli_show_cli_sessions (vlib_main_t * vm,
 
   vlib_cli_output (vm, "%-5s %-5s %-20s %s", "PNI", "FD", "Name", "Flags");
 
-#define fl(x, y) ( (x) ? toupper((y)) : tolower((y)) )
+#define fl(x, y) ((x) ? toupper ((y)) : tolower ((y)))
   /* *INDENT-OFF* */
-  pool_foreach (cf, cm->cli_file_pool)  {
-    uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
-    n = vlib_get_node (vm, cf->process_node_index);
-    vlib_cli_output (vm,
-		     "%-5d %-5d %-20v %c%c%c%c%c\n",
-		     cf->process_node_index,
-		     uf->file_descriptor,
-		     n->name,
-		     fl (cf->is_interactive, 'i'),
-		     fl (cf->is_socket, 's'),
-		     fl (cf->line_mode, 'l'),
-		     fl (cf->has_epipe, 'p'),
-		     fl (cf->ansi_capable, 'a'));
-  }
-  /* *INDENT-ON* */
+  pool_foreach (cf, cm->cli_file_pool)
+    {
+      uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
+      n = vlib_get_node (vm, cf->process_node_index);
+      vlib_cli_output (vm, "%-5d %-5d %-20v %c%c%c%c%c\n",
+		       cf->process_node_index, uf->file_descriptor, n->name,
+		       fl (cf->is_interactive, 'i'), fl (cf->is_socket, 's'),
+		       fl (cf->line_mode, 'l'), fl (cf->has_epipe, 'p'),
+		       fl (cf->ansi_capable, 'a'));
+    }
+    /* *INDENT-ON* */
 #undef fl
 
   return 0;
@@ -3787,9 +3750,8 @@ VLIB_CLI_COMMAND (cli_unix_cli_show_cli_sessions, static) = {
 
 /** CLI command to set terminal pager settings. */
 static clib_error_t *
-unix_cli_set_terminal_pager (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+unix_cli_set_terminal_pager (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   unix_main_t *um = &unix_main;
   unix_cli_main_t *cm = &unix_cli_main;
@@ -3810,9 +3772,9 @@ unix_cli_set_terminal_pager (vlib_main_t * vm,
       else if (unformat (line_input, "off"))
 	cf->no_pager = 1;
       else if (unformat (line_input, "limit %u", &um->cli_pager_buffer_limit))
-	vlib_cli_output (vm,
-			 "Pager limit set to %u lines; note, this is global.\n",
-			 um->cli_pager_buffer_limit);
+	vlib_cli_output (
+	  vm, "Pager limit set to %u lines; note, this is global.\n",
+	  um->cli_pager_buffer_limit);
       else
 	{
 	  error = clib_error_return (0, "unknown parameter: `%U`",
@@ -3844,9 +3806,8 @@ VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_pager, static) = {
 
 /** CLI command to set terminal history settings. */
 static clib_error_t *
-unix_cli_set_terminal_history (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+unix_cli_set_terminal_history (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
@@ -3874,7 +3835,6 @@ unix_cli_set_terminal_history (vlib_main_t * vm,
 				     format_unformat_error, line_input);
 	  goto done;
 	}
-
     }
 
   /* If we reduced history size, or turned it off, purge the history */
@@ -3915,9 +3875,8 @@ VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_history, static) = {
 
 /** CLI command to set terminal ANSI settings. */
 static clib_error_t *
-unix_cli_set_terminal_ansi (vlib_main_t * vm,
-			    unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+unix_cli_set_terminal_ansi (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
@@ -3952,12 +3911,11 @@ VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_ansi, static) = {
 };
 /* *INDENT-ON* */
 
-
 #define MAX_CLI_WAIT 86400
 /** CLI command to wait <sec> seconds. Useful for exec script. */
 static clib_error_t *
-unix_wait_cmd (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+unix_wait_cmd (vlib_main_t *vm, unformat_input_t *input,
+	       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   f64 sec = 1.0;
@@ -3975,8 +3933,9 @@ unix_wait_cmd (vlib_main_t * vm,
     }
 
   if (sec <= 0 || sec > MAX_CLI_WAIT || floor (sec * 1000) / 1000 != sec)
-    return clib_error_return (0,
-			      "<sec> must be a positive value and less than 86400 (one day) with no more than msec precision.");
+    return clib_error_return (
+      0, "<sec> must be a positive value and less than 86400 (one day) with "
+	 "no more than msec precision.");
 
   vlib_process_wait_for_event_or_clock (vm, sec);
   vlib_cli_output (vm, "waited %.3f sec.", sec);
@@ -3993,8 +3952,7 @@ VLIB_CLI_COMMAND (cli_unix_wait_cmd, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
-echo_cmd (vlib_main_t * vm,
-	  unformat_input_t * input, vlib_cli_command_t * cmd)
+echo_cmd (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
 
@@ -4020,8 +3978,8 @@ VLIB_CLI_COMMAND (cli_unix_echo_cmd, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
-define_cmd_fn (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+define_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+	       vlib_cli_command_t *cmd)
 {
   u8 *macro_name;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -4059,8 +4017,8 @@ VLIB_CLI_COMMAND (define_cmd, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
-undefine_cmd_fn (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+undefine_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+		 vlib_cli_command_t *cmd)
 {
   u8 *macro_name;
   clib_macro_main_t *mm = get_macro_main ();
@@ -4084,8 +4042,8 @@ VLIB_CLI_COMMAND (undefine_cmd, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
-show_macro_cmd_fn (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+show_macro_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   clib_macro_main_t *mm = get_macro_main ();
   int evaluate = 1;
@@ -4095,37 +4053,4 @@ show_macro_cmd_fn (vlib_main_t * vm,
   else if (unformat (input, "noeval %=", &evaluate, 0))
     ;
 
-  vlib_cli_output (vm, "%U", format_clib_macro_main, mm, evaluate);
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_macro, static) = {
-  .path = "show macro",
-  .short_help = "show macro [noevaluate]",
-  .function = show_macro_cmd_fn,
-};
-/* *INDENT-ON* */
-
-static clib_error_t *
-unix_cli_init (vlib_main_t * vm)
-{
-  unix_cli_main_t *cm = &unix_cli_main;
-
-  /* Breadcrumb to indicate the new session process
-   * has not been started */
-  cm->new_session_process_node_index = ~0;
-  clib_macro_init (&cm->macro_main);
-
-  return 0;
-}
-
-VLIB_INIT_FUNCTION (unix_cli_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+  vlib_cli_output (vm, "%U", format_clib_macro_ma

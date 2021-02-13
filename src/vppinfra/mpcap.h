@@ -35,39 +35,39 @@
  * ip 12
  * hdlc 104
  */
-#define foreach_vnet_mpcap_packet_type          \
-  _ (null, 0)                                   \
-  _ (ethernet, 1)                               \
-  _ (ppp, 9)                                    \
-  _ (ip, 12)                                    \
+#define foreach_vnet_mpcap_packet_type                                        \
+  _ (null, 0)                                                                 \
+  _ (ethernet, 1)                                                             \
+  _ (ppp, 9)                                                                  \
+  _ (ip, 12)                                                                  \
   _ (hdlc, 104)
 
 typedef enum
 {
-#define _(f,n) MPCAP_PACKET_TYPE_##f = (n),
+#define _(f, n) MPCAP_PACKET_TYPE_##f = (n),
   foreach_vnet_mpcap_packet_type
 #undef _
 } mpcap_packet_type_t;
 
-#define foreach_mpcap_file_header                       \
-  /** 0xa1b2c3d4 host byte order.                       \
-     0xd4c3b2a1 => need to byte swap everything. */     \
-  _ (u32, magic)                                        \
-                                                        \
-  /** Currently major 2 minor 4. */                     \
-  _ (u16, major_version)                                \
-  _ (u16, minor_version)                                \
-                                                        \
-  /** 0 for GMT. */                                     \
-  _ (u32, time_zone)                                    \
-                                                        \
-  /** Accuracy of timestamps.  Typically set to 0. */   \
-  _ (u32, sigfigs)                                      \
-                                                        \
-  /** Size of largest packet in file. */                \
-  _ (u32, max_packet_size_in_bytes)                     \
-                                                        \
-  /** One of vnet_mpcap_packet_type_t. */               \
+#define foreach_mpcap_file_header                                             \
+  /** 0xa1b2c3d4 host byte order.                                             \
+     0xd4c3b2a1 => need to byte swap everything. */                           \
+  _ (u32, magic)                                                              \
+                                                                              \
+  /** Currently major 2 minor 4. */                                           \
+  _ (u16, major_version)                                                      \
+  _ (u16, minor_version)                                                      \
+                                                                              \
+  /** 0 for GMT. */                                                           \
+  _ (u32, time_zone)                                                          \
+                                                                              \
+  /** Accuracy of timestamps.  Typically set to 0. */                         \
+  _ (u32, sigfigs)                                                            \
+                                                                              \
+  /** Size of largest packet in file. */                                      \
+  _ (u32, max_packet_size_in_bytes)                                           \
+                                                                              \
+  /** One of vnet_mpcap_packet_type_t. */                                     \
   _ (u32, packet_type)
 
 /** File header struct */
@@ -78,15 +78,15 @@ typedef struct
 #undef _
 } mpcap_file_header_t;
 
-#define foreach_mpcap_packet_header             \
-  /** Time stamp in seconds  */                 \
-  _ (u32, time_in_sec)                          \
-  /** Time stamp in microseconds. */            \
-  _ (u32, time_in_usec)                         \
-                                                \
-  /** Number of bytes stored in file. */        \
-  _ (u32, n_packet_bytes_stored_in_file)        \
-  /** Number of bytes in actual packet. */	\
+#define foreach_mpcap_packet_header                                           \
+  /** Time stamp in seconds  */                                               \
+  _ (u32, time_in_sec)                                                        \
+  /** Time stamp in microseconds. */                                          \
+  _ (u32, time_in_usec)                                                       \
+                                                                              \
+  /** Number of bytes stored in file. */                                      \
+  _ (u32, n_packet_bytes_stored_in_file)                                      \
+  /** Number of bytes in actual packet. */                                    \
   _ (u32, n_bytes_in_packet)
 
 /** Packet header. */
@@ -95,8 +95,8 @@ typedef struct
 #define _(t, f) t f;
   foreach_mpcap_packet_header
 #undef _
-  /** Packet data follows. */
-  u8 data[0];
+    /** Packet data follows. */
+    u8 data[0];
 } mpcap_packet_header_t;
 
 /**
@@ -133,8 +133,8 @@ typedef struct
 
   /** flags */
   u32 flags;
-#define MPCAP_FLAG_INIT_DONE (1 << 0)
-#define MPCAP_FLAG_THREAD_SAFE (1 << 1)
+#define MPCAP_FLAG_INIT_DONE	(1 << 0)
+#define MPCAP_FLAG_THREAD_SAFE	(1 << 1)
 #define MPCAP_FLAG_WRITE_ENABLE (1 << 2)
 
   /** Bytes written */
@@ -151,16 +151,16 @@ typedef struct
 } mpcap_main_t;
 
 /* Some sensible default size */
-#define MPCAP_DEFAULT_FILE_SIZE (10<<20)
+#define MPCAP_DEFAULT_FILE_SIZE (10 << 20)
 
 /** initialize a mpcap file (for writing) */
-clib_error_t *mpcap_init (mpcap_main_t * pm);
+clib_error_t *mpcap_init (mpcap_main_t *pm);
 
 /** Flush / unmap a mpcap file */
-clib_error_t *mpcap_close (mpcap_main_t * pm);
+clib_error_t *mpcap_close (mpcap_main_t *pm);
 
 /** mmap a mpcap data file. */
-clib_error_t *mpcap_map (mpcap_main_t * pm);
+clib_error_t *mpcap_map (mpcap_main_t *pm);
 
 #endif /* included_vppinfra_mpcap_h */
 

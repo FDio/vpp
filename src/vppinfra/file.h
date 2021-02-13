@@ -44,9 +44,8 @@
 #include <vppinfra/pool.h>
 #include <termios.h>
 
-
 struct clib_file;
-typedef clib_error_t *(clib_file_function_t) (struct clib_file * f);
+typedef clib_error_t *(clib_file_function_t) (struct clib_file *f);
 
 typedef struct clib_file
 {
@@ -55,7 +54,7 @@ typedef struct clib_file
 
   u32 flags;
 #define UNIX_FILE_DATA_AVAILABLE_TO_WRITE (1 << 0)
-#define UNIX_FILE_EVENT_EDGE_TRIGGERED   (1 << 1)
+#define UNIX_FILE_EVENT_EDGE_TRIGGERED	  (1 << 1)
 
   /* polling thread index */
   u32 polling_thread_index;
@@ -87,13 +86,12 @@ typedef struct
   /* Pool of files to poll for input/output. */
   clib_file_t *file_pool;
 
-  void (*file_update) (clib_file_t * file,
-		       clib_file_update_type_t update_type);
+  void (*file_update) (clib_file_t *file, clib_file_update_type_t update_type);
 
 } clib_file_main_t;
 
 always_inline uword
-clib_file_add (clib_file_main_t * um, clib_file_t * template)
+clib_file_add (clib_file_main_t *um, clib_file_t *template)
 {
   clib_file_t *f;
   pool_get (um->file_pool, f);
@@ -106,7 +104,7 @@ clib_file_add (clib_file_main_t * um, clib_file_t * template)
 }
 
 always_inline void
-clib_file_del (clib_file_main_t * um, clib_file_t * f)
+clib_file_del (clib_file_main_t *um, clib_file_t *f)
 {
   um->file_update (f, UNIX_FILE_UPDATE_DELETE);
   close (f->file_descriptor);
@@ -116,7 +114,7 @@ clib_file_del (clib_file_main_t * um, clib_file_t * f)
 }
 
 always_inline void
-clib_file_del_by_index (clib_file_main_t * um, uword index)
+clib_file_del_by_index (clib_file_main_t *um, uword index)
 {
   clib_file_t *uf;
   uf = pool_elt_at_index (um->file_pool, index);
@@ -124,7 +122,7 @@ clib_file_del_by_index (clib_file_main_t * um, uword index)
 }
 
 always_inline void
-clib_file_set_polling_thread (clib_file_main_t * um, uword index,
+clib_file_set_polling_thread (clib_file_main_t *um, uword index,
 			      u32 thread_index)
 {
   clib_file_t *f = pool_elt_at_index (um->file_pool, index);
@@ -134,9 +132,8 @@ clib_file_set_polling_thread (clib_file_main_t * um, uword index,
 }
 
 always_inline uword
-clib_file_set_data_available_to_write (clib_file_main_t * um,
-				       u32 clib_file_index,
-				       uword is_available)
+clib_file_set_data_available_to_write (clib_file_main_t *um,
+				       u32 clib_file_index, uword is_available)
 {
   clib_file_t *uf = pool_elt_at_index (um->file_pool, clib_file_index);
   uword was_available = (uf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE);
@@ -149,7 +146,7 @@ clib_file_set_data_available_to_write (clib_file_main_t * um,
 }
 
 always_inline clib_file_t *
-clib_file_get (clib_file_main_t * fm, u32 file_index)
+clib_file_get (clib_file_main_t *fm, u32 file_index)
 {
   if (pool_is_free_index (fm->file_pool, file_index))
     return 0;
@@ -157,7 +154,7 @@ clib_file_get (clib_file_main_t * fm, u32 file_index)
 }
 
 always_inline clib_error_t *
-clib_file_write (clib_file_t * f)
+clib_file_write (clib_file_t *f)
 {
   f->write_events++;
   return f->write_function (f);

@@ -76,8 +76,8 @@ typedef void (vlib_trace_buffer_callback_t) (struct vlib_main_t *,
 struct vlib_node_runtime_t;
 struct vlib_buffer_t;
 typedef void *(vlib_add_trace_callback_t) (struct vlib_main_t *,
-					   struct vlib_node_runtime_t * r,
-					   struct vlib_buffer_t * b,
+					   struct vlib_node_runtime_t *r,
+					   struct vlib_buffer_t *b,
 					   u32 n_data_bytes);
 
 typedef struct
@@ -88,9 +88,9 @@ typedef struct
   u32 last_main_loop_count;
   u32 filter_node_index;
   u32 filter_flag;
-#define FILTER_FLAG_NONE    0
-#define FILTER_FLAG_INCLUDE 1
-#define FILTER_FLAG_EXCLUDE 2
+#define FILTER_FLAG_NONE	0
+#define FILTER_FLAG_INCLUDE	1
+#define FILTER_FLAG_EXCLUDE	2
 #define FILTER_FLAG_POST_MORTEM 3
   u32 filter_count;
 
@@ -117,8 +117,8 @@ void trace_apply_filter (struct vlib_main_t *vm);
 int trace_time_cmp (void *a1, void *a2);
 void vlib_trace_stop_and_clear (void);
 int vlib_enable_disable_pkt_trace_filter (int enable) __attribute__ ((weak));
-void trace_update_capture_options (u32 add, u32 node_index,
-				   u32 filter, u8 verbose);
+void trace_update_capture_options (u32 add, u32 node_index, u32 filter,
+				   u8 verbose);
 void trace_filter_set (u32 node_index, u32 flag, u32 count);
 void clear_trace_buffer (void);
 

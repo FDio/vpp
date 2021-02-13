@@ -17,8 +17,8 @@
 #include <vppinfra/error.h>
 #include <srv6-as/as.h>
 
-
-/******************************* Packet tracing *******************************/
+/******************************* Packet tracing
+ * *******************************/
 
 typedef struct
 {
@@ -32,7 +32,7 @@ typedef struct
 } srv6_as_rewrite_trace_t;
 
 static u8 *
-format_srv6_as_localsid_trace (u8 * s, va_list * args)
+format_srv6_as_localsid_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -42,7 +42,7 @@ format_srv6_as_localsid_trace (u8 * s, va_list * args)
 }
 
 static u8 *
-format_srv6_as_rewrite_trace (u8 * s, va_list * args)
+format_srv6_as_rewrite_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -53,39 +53,39 @@ format_srv6_as_rewrite_trace (u8 * s, va_list * args)
       return format (s, "SRv6-AS-rewrite: cache is empty");
     }
 
-  return format (s, "SRv6-AS-rewrite: src %U dst %U",
-		 format_ip6_address, &t->src, format_ip6_address, &t->dst);
+  return format (s, "SRv6-AS-rewrite: src %U dst %U", format_ip6_address,
+		 &t->src, format_ip6_address, &t->dst);
 }
 
-
-/***************************** Nodes registration *****************************/
+/***************************** Nodes registration
+ * *****************************/
 
 vlib_node_registration_t srv6_as4_rewrite_node;
 vlib_node_registration_t srv6_as6_rewrite_node;
 
+/****************************** Packet counters
+ * *******************************/
 
-/****************************** Packet counters *******************************/
-
-#define foreach_srv6_as_rewrite_counter \
-_(PROCESSED, "srv6-as rewritten packets") \
-_(NO_RW, "(Error) No header for rewriting.")
+#define foreach_srv6_as_rewrite_counter                                       \
+  _ (PROCESSED, "srv6-as rewritten packets")                                  \
+  _ (NO_RW, "(Error) No header for rewriting.")
 
 typedef enum
 {
-#define _(sym,str) SRV6_AS_REWRITE_COUNTER_##sym,
+#define _(sym, str) SRV6_AS_REWRITE_COUNTER_##sym,
   foreach_srv6_as_rewrite_counter
 #undef _
     SRV6_AS_REWRITE_N_COUNTERS,
 } srv6_as_rewrite_counters;
 
 static char *srv6_as_rewrite_counter_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_srv6_as_rewrite_counter
 #undef _
 };
 
-
-/********************************* Next nodes *********************************/
+/********************************* Next nodes
+ * *********************************/
 
 typedef enum
 {
@@ -103,16 +103,15 @@ typedef enum
   SRV6_AS_REWRITE_N_NEXT,
 } srv6_as_rewrite_next_t;
 
-
-/******************************* Local SID node *******************************/
+/******************************* Local SID node
+ * *******************************/
 
 /**
  * @brief Function doing SRH processing for AS behavior
  */
 static_always_inline void
-end_as_processing (vlib_buffer_t * b0,
-		   ip6_header_t * ip0,
-		   srv6_as_localsid_t * ls0_mem, u32 * next0)
+end_as_processing (vlib_buffer_t *b0, ip6_header_t *ip0,
+		   srv6_as_localsid_t *ls0_mem, u32 *next0)
 {
   u16 encap_len;
   ip6_ext_header_t *ext_hdr;
@@ -156,7 +155,8 @@ end_as_processing (vlib_buffer_t * b0,
 
       /* Set next node to ip-rewrite */
       *next0 = (hdr_type == IP_PROTOCOL_IPV6) ?
-	SRV6_AS_LOCALSID_NEXT_REWRITE6 : SRV6_AS_LOCALSID_NEXT_REWRITE4;
+		 SRV6_AS_LOCALSID_NEXT_REWRITE6 :
+		 SRV6_AS_LOCALSID_NEXT_REWRITE4;
     }
 }
 
@@ -164,8 +164,8 @@ end_as_processing (vlib_buffer_t * b0,
  * @brief SRv6 AS Localsid graph node
  */
 static uword
-srv6_as_localsid_fn (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+srv6_as_localsid_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     vlib_frame_t *frame)
 {
   ip6_sr_main_t *sm = &sr_main;
   u32 n_left_from, next_index, *from, *to_next;
@@ -216,14 +216,12 @@ srv6_as_localsid_fn (vlib_main_t * vm,
 	    }
 
 	  /* This increments the SRv6 per LocalSID counters. */
-	  vlib_increment_combined_counter (((next0 ==
-					     SRV6_AS_LOCALSID_NEXT_ERROR) ?
-					    &(sm->sr_ls_invalid_counters) :
-					    &(sm->sr_ls_valid_counters)),
-					   vm->thread_index,
-					   ls0 - sm->localsids, 1,
-					   vlib_buffer_length_in_chain (vm,
-									b0));
+	  vlib_increment_combined_counter (
+	    ((next0 == SRV6_AS_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    vm->thread_index, ls0 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b0));
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -237,7 +235,6 @@ srv6_as_localsid_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (srv6_as_localsid_node) = {
   .function = srv6_as_localsid_fn,
   .name = "srv6-as-localsid",
@@ -252,17 +249,17 @@ VLIB_REGISTER_NODE (srv6_as_localsid_node) = {
     [SRV6_AS_LOCALSID_NEXT_ERROR] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
-
-/******************************* Rewriting node *******************************/
+/******************************* Rewriting node
+ * *******************************/
 
 /**
- * @brief Graph node for applying a SR policy into an IPv6 packet. Encapsulation
+ * @brief Graph node for applying a SR policy into an IPv6 packet.
+ * Encapsulation
  */
 static uword
-srv6_as2_rewrite_fn (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+srv6_as2_rewrite_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     vlib_frame_t *frame)
 {
   ip6_sr_main_t *srm = &sr_main;
   srv6_as_main_t *sm = &srv6_as_main;
@@ -300,10 +297,9 @@ srv6_as2_rewrite_fn (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  en0 = vlib_buffer_get_current (b0);
-	  ls0 = pool_elt_at_index (srm->localsids,
-				   sm->sw_iface_localsid2[vnet_buffer
-							  (b0)->sw_if_index
-							  [VLIB_RX]]);
+	  ls0 = pool_elt_at_index (
+	    srm->localsids,
+	    sm->sw_iface_localsid2[vnet_buffer (b0)->sw_if_index[VLIB_RX]]);
 	  ls0_mem = ls0->plugin_mem;
 
 	  if (PREDICT_FALSE (ls0_mem == NULL || ls0_mem->rewrite == NULL))
@@ -322,9 +318,8 @@ srv6_as2_rewrite_fn (vlib_main_t * vm,
 
 	      ip0 = vlib_buffer_get_current (b0);
 
-	      ip0->payload_length =
-		clib_host_to_net_u16 (b0->current_length -
-				      sizeof (ip6_header_t));
+	      ip0->payload_length = clib_host_to_net_u16 (
+		b0->current_length - sizeof (ip6_header_t));
 	    }
 
 	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
@@ -348,13 +343,11 @@ srv6_as2_rewrite_fn (vlib_main_t * vm,
 	    }
 
 	  /* Increment per-SID AS rewrite counters */
-	  vlib_increment_combined_counter (((next0 ==
-					     SRV6_AS_LOCALSID_NEXT_ERROR) ?
-					    &(sm->invalid_counters) :
-					    &(sm->valid_counters)),
-					   vm->thread_index, ls0_mem->index,
-					   1, vlib_buffer_length_in_chain (vm,
-									   b0));
+	  vlib_increment_combined_counter (
+	    ((next0 == SRV6_AS_LOCALSID_NEXT_ERROR) ? &(sm->invalid_counters) :
+						      &(sm->valid_counters)),
+	    vm->thread_index, ls0_mem->index, 1,
+	    vlib_buffer_length_in_chain (vm, b0));
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -367,13 +360,11 @@ srv6_as2_rewrite_fn (vlib_main_t * vm,
 
   /* Update counters */
   vlib_node_increment_counter (vm, srv6_as4_rewrite_node.index,
-			       SRV6_AS_REWRITE_COUNTER_PROCESSED,
-			       cnt_packets);
+			       SRV6_AS_REWRITE_COUNTER_PROCESSED, cnt_packets);
 
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (srv6_as2_rewrite_node) = {
   .function = srv6_as2_rewrite_fn,
   .name = "srv6-as2-rewrite",
@@ -388,15 +379,14 @@ VLIB_REGISTER_NODE (srv6_as2_rewrite_node) = {
     [SRV6_AS_REWRITE_NEXT_ERROR] = "error-drop",
   },
 };
-/* *INDENT-ON* */
-
 
 /**
- * @brief Graph node for applying a SR policy into an IPv6 packet. Encapsulation
+ * @brief Graph node for applying a SR policy into an IPv6 packet.
+ * Encapsulation
  */
 static uword
-srv6_as4_rewrite_fn (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+srv6_as4_rewrite_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     vlib_frame_t *frame)
 {
   ip6_sr_main_t *srm = &sr_main;
   srv6_as_main_t *sm = &srv6_as_main;
@@ -435,10 +425,9 @@ srv6_as4_rewrite_fn (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ip0_encap = vlib_buffer_get_current (b0);
-	  ls0 = pool_elt_at_index (srm->localsids,
-				   sm->sw_iface_localsid4[vnet_buffer
-							  (b0)->sw_if_index
-							  [VLIB_RX]]);
+	  ls0 = pool_elt_at_index (
+	    srm->localsids,
+	    sm->sw_iface_localsid4[vnet_buffer (b0)->sw_if_index[VLIB_RX]]);
 	  ls0_mem = ls0->plugin_mem;
 
 	  if (PREDICT_FALSE (ls0_mem == NULL || ls0_mem->rewrite == NULL))
@@ -452,8 +441,8 @@ srv6_as4_rewrite_fn (vlib_main_t * vm,
 		      (vec_len (ls0_mem->rewrite) + b0->current_data));
 
 	      clib_memcpy_fast (((u8 *) ip0_encap) -
-				vec_len (ls0_mem->rewrite), ls0_mem->rewrite,
-				vec_len (ls0_mem->rewrite));
+				  vec_len (ls0_mem->rewrite),
+				ls0_mem->rewrite, vec_len (ls0_mem->rewrite));
 	      vlib_buffer_advance (b0, -(word) vec_len (ls0_mem->rewrite));
 
 	      ip0 = vlib_buffer_get_current (b0);
@@ -467,7 +456,7 @@ srv6_as4_rewrite_fn (vlib_main_t * vm,
 
 	      /* Update outer IPv6 length (in case it has changed) */
 	      new_l0 = vec_len (ls0_mem->rewrite) - sizeof (ip6_header_t) +
-		clib_net_to_host_u16 (ip0_encap->length);
+		       clib_net_to_host_u16 (ip0_encap->length);
 	      ip0->payload_length = clib_host_to_net_u16 (new_l0);
 	    }
 
@@ -492,13 +481,11 @@ srv6_as4_rewrite_fn (vlib_main_t * vm,
 	    }
 
 	  /* Increment per-SID AS rewrite counters */
-	  vlib_increment_combined_counter (((next0 ==
-					     SRV6_AS_LOCALSID_NEXT_ERROR) ?
-					    &(sm->invalid_counters) :
-					    &(sm->valid_counters)),
-					   vm->thread_index, ls0_mem->index,
-					   1, vlib_buffer_length_in_chain (vm,
-									   b0));
+	  vlib_increment_combined_counter (
+	    ((next0 == SRV6_AS_LOCALSID_NEXT_ERROR) ? &(sm->invalid_counters) :
+						      &(sm->valid_counters)),
+	    vm->thread_index, ls0_mem->index, 1,
+	    vlib_buffer_length_in_chain (vm, b0));
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -511,13 +498,11 @@ srv6_as4_rewrite_fn (vlib_main_t * vm,
 
   /* Update counters */
   vlib_node_increment_counter (vm, srv6_as4_rewrite_node.index,
-			       SRV6_AS_REWRITE_COUNTER_PROCESSED,
-			       cnt_packets);
+			       SRV6_AS_REWRITE_COUNTER_PROCESSED, cnt_packets);
 
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (srv6_as4_rewrite_node) = {
   .function = srv6_as4_rewrite_fn,
   .name = "srv6-as4-rewrite",
@@ -532,15 +517,14 @@ VLIB_REGISTER_NODE (srv6_as4_rewrite_node) = {
     [SRV6_AS_REWRITE_NEXT_ERROR] = "error-drop",
   },
 };
-/* *INDENT-ON* */
-
 
 /**
- * @brief Graph node for applying a SR policy into an IPv6 packet. Encapsulation
+ * @brief Graph node for applying a SR policy into an IPv6 packet.
+ * Encapsulation
  */
 static uword
-srv6_as6_rewrite_fn (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+srv6_as6_rewrite_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     vlib_frame_t *frame)
 {
   ip6_sr_main_t *srm = &sr_main;
   srv6_as_main_t *sm = &srv6_as_main;
@@ -578,10 +562,9 @@ srv6_as6_rewrite_fn (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ip0_encap = vlib_buffer_get_current (b0);
-	  ls0 = pool_elt_at_index (srm->localsids,
-				   sm->sw_iface_localsid6[vnet_buffer
-							  (b0)->sw_if_index
-							  [VLIB_RX]]);
+	  ls0 = pool_elt_at_index (
+	    srm->localsids,
+	    sm->sw_iface_localsid6[vnet_buffer (b0)->sw_if_index[VLIB_RX]]);
 	  ls0_mem = ls0->plugin_mem;
 
 	  if (PREDICT_FALSE (ls0_mem == NULL || ls0_mem->rewrite == NULL))
@@ -595,8 +578,8 @@ srv6_as6_rewrite_fn (vlib_main_t * vm,
 		      (vec_len (ls0_mem->rewrite) + b0->current_data));
 
 	      clib_memcpy_fast (((u8 *) ip0_encap) -
-				vec_len (ls0_mem->rewrite), ls0_mem->rewrite,
-				vec_len (ls0_mem->rewrite));
+				  vec_len (ls0_mem->rewrite),
+				ls0_mem->rewrite, vec_len (ls0_mem->rewrite));
 	      vlib_buffer_advance (b0, -(word) vec_len (ls0_mem->rewrite));
 
 	      ip0 = vlib_buffer_get_current (b0);
@@ -606,7 +589,7 @@ srv6_as6_rewrite_fn (vlib_main_t * vm,
 
 	      /* Update outer IPv6 length (in case it has changed) */
 	      new_l0 = vec_len (ls0_mem->rewrite) +
-		clib_net_to_host_u16 (ip0_encap->payload_length);
+		       clib_net_to_host_u16 (ip0_encap->payload_length);
 	      ip0->payload_length = clib_host_to_net_u16 (new_l0);
 	    }
 
@@ -631,13 +614,11 @@ srv6_as6_rewrite_fn (vlib_main_t * vm,
 	    }
 
 	  /* Increment per-SID AS rewrite counters */
-	  vlib_increment_combined_counter (((next0 ==
-					     SRV6_AS_LOCALSID_NEXT_ERROR) ?
-					    &(sm->invalid_counters) :
-					    &(sm->valid_counters)),
-					   vm->thread_index, ls0_mem->index,
-					   1, vlib_buffer_length_in_chain (vm,
-									   b0));
+	  vlib_increment_combined_counter (
+	    ((next0 == SRV6_AS_LOCALSID_NEXT_ERROR) ? &(sm->invalid_counters) :
+						      &(sm->valid_counters)),
+	    vm->thread_index, ls0_mem->index, 1,
+	    vlib_buffer_length_in_chain (vm, b0));
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -650,13 +631,11 @@ srv6_as6_rewrite_fn (vlib_main_t * vm,
 
   /* Update counters */
   vlib_node_increment_counter (vm, srv6_as6_rewrite_node.index,
-			       SRV6_AS_REWRITE_COUNTER_PROCESSED,
-			       cnt_packets);
+			       SRV6_AS_REWRITE_COUNTER_PROCESSED, cnt_packets);
 
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (srv6_as6_rewrite_node) = {
   .function = srv6_as6_rewrite_fn,
   .name = "srv6-as6-rewrite",
@@ -671,12 +650,11 @@ VLIB_REGISTER_NODE (srv6_as6_rewrite_node) = {
     [SRV6_AS_REWRITE_NEXT_ERROR] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
-* fd.io coding-style-patch-verification: ON
-*
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*/
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

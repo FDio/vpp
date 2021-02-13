@@ -60,9 +60,10 @@
  *
  *  <code><pre>pcap_add_buffer (&pcap, vm, pi0, 128);</pre></code>
  *
- * File will be written after @c n_packets_to_capture or call to pcap_write (&amp;pcap).
+ * File will be written after @c n_packets_to_capture or call to pcap_write
+ * (&amp;pcap).
  *
-*/
+ */
 
 /**
  * @brief Close PCAP file
@@ -71,7 +72,7 @@
  *
  */
 __clib_export clib_error_t *
-pcap_close (pcap_main_t * pm)
+pcap_close (pcap_main_t *pm)
 {
   close (pm->file_descriptor);
   pm->flags &= ~PCAP_MAIN_INIT_DONE;
@@ -86,7 +87,7 @@ pcap_close (pcap_main_t * pm)
  *
  */
 __clib_export clib_error_t *
-pcap_write (pcap_main_t * pm)
+pcap_write (pcap_main_t *pm)
 {
   clib_error_t *error = 0;
 
@@ -124,13 +125,11 @@ pcap_write (pcap_main_t * pm)
       if (n != sizeof (fh))
 	{
 	  if (n < 0)
-	    error =
-	      clib_error_return_unix (0, "write file header `%s'",
-				      pm->file_name);
+	    error = clib_error_return_unix (0, "write file header `%s'",
+					    pm->file_name);
 	  else
-	    error =
-	      clib_error_return (0, "short write of file header `%s'",
-				 pm->file_name);
+	    error = clib_error_return (0, "short write of file header `%s'",
+				       pm->file_name);
 	  goto done;
 	}
     }
@@ -140,8 +139,7 @@ pcap_write (pcap_main_t * pm)
       int n = vec_len (pm->pcap_data) - pm->n_pcap_data_written;
 
       n = write (pm->file_descriptor,
-		 vec_elt_at_index (pm->pcap_data, pm->n_pcap_data_written),
-		 n);
+		 vec_elt_at_index (pm->pcap_data, pm->n_pcap_data_written), n);
 
       if (n < 0 && unix_error_is_fatal (errno))
 	{
@@ -173,7 +171,7 @@ done:
  *
  */
 __clib_export clib_error_t *
-pcap_read (pcap_main_t * pm)
+pcap_read (pcap_main_t *pm)
 {
   clib_error_t *error = 0;
   int fd, need_swap, n;
@@ -198,7 +196,7 @@ pcap_read (pcap_main_t * pm)
   if (fh.magic == 0xd4c3b2a1)
     {
       need_swap = 1;
-#define _(t,f) fh.f = clib_byte_swap_##t (fh.f);
+#define _(t, f) fh.f = clib_byte_swap_##t (fh.f);
       foreach_pcap_file_header;
 #undef _
     }
@@ -220,7 +218,7 @@ pcap_read (pcap_main_t * pm)
 
       if (need_swap)
 	{
-#define _(t,f) ph.f = clib_byte_swap_##t (ph.f);
+#define _(t, f) ph.f = clib_byte_swap_##t (ph.f);
 	  foreach_pcap_packet_header;
 #undef _
 	}
@@ -254,7 +252,6 @@ done:
   if (fd >= 0)
     close (fd);
   return error;
-
 }
 
 /*

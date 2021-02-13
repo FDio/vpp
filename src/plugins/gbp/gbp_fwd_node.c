@@ -16,27 +16,27 @@
 #include <plugins/gbp/gbp.h>
 #include <vnet/l2/l2_input.h>
 
-#define foreach_gbp_fwd                      \
-  _(DROP,    "drop")                         \
-  _(OUTPUT,  "output")
+#define foreach_gbp_fwd                                                       \
+  _ (DROP, "drop")                                                            \
+  _ (OUTPUT, "output")
 
 typedef enum
 {
-#define _(sym,str) GBP_FWD_ERROR_##sym,
+#define _(sym, str) GBP_FWD_ERROR_##sym,
   foreach_gbp_fwd
 #undef _
     GBP_FWD_N_ERROR,
 } gbp_fwd_error_t;
 
 static char *gbp_fwd_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_gbp_fwd
 #undef _
 };
 
 typedef enum
 {
-#define _(sym,str) GBP_FWD_NEXT_##sym,
+#define _(sym, str) GBP_FWD_NEXT_##sym,
   foreach_gbp_fwd
 #undef _
     GBP_FWD_N_NEXT,
@@ -52,8 +52,8 @@ typedef struct gbp_fwd_trace_t_
   u32 sw_if_index;
 } gbp_fwd_trace_t;
 
-VLIB_NODE_FN (gbp_fwd_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			     vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_fwd_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   u32 next_index;
@@ -111,9 +111,8 @@ VLIB_NODE_FN (gbp_fwd_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -124,7 +123,7 @@ VLIB_NODE_FN (gbp_fwd_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* packet trace format function */
 static u8 *
-format_gbp_fwd_trace (u8 * s, va_list * args)
+format_gbp_fwd_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -135,7 +134,6 @@ format_gbp_fwd_trace (u8 * s, va_list * args)
   return s;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gbp_fwd_node) = {
   .name = "gbp-fwd",
   .vector_size = sizeof (u32),
@@ -152,7 +150,6 @@ VLIB_REGISTER_NODE (gbp_fwd_node) = {
     [GBP_FWD_NEXT_OUTPUT] = "l2-output",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

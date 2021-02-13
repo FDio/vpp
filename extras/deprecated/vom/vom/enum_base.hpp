@@ -26,7 +26,7 @@ namespace VOM {
  * Concrete enum types use the CRTP. Derived classes thus inherit this
  * base's function, but are not polymorphic.
  */
-template <typename T>
+template<typename T>
 class enum_base
 {
 public:
@@ -94,8 +94,7 @@ protected:
   enum_base(int value, const std::string desc)
     : m_value(value)
     , m_desc(desc)
-  {
-  }
+  {}
 
   /**
    * Constructor

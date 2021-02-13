@@ -49,7 +49,7 @@ static local_endpoint_t *local_endpoints;
 static clib_spinlock_t local_endpoints_lock;
 
 u8 *
-format_transport_proto (u8 * s, va_list * args)
+format_transport_proto (u8 *s, va_list *args)
 {
   u32 transport_proto = va_arg (*args, u32);
 
@@ -62,7 +62,7 @@ format_transport_proto (u8 * s, va_list * args)
 }
 
 u8 *
-format_transport_proto_short (u8 * s, va_list * args)
+format_transport_proto_short (u8 *s, va_list *args)
 {
   u32 transport_proto = va_arg (*args, u32);
   char *short_name;
@@ -77,7 +77,7 @@ format_transport_proto_short (u8 * s, va_list * args)
 }
 
 u8 *
-format_transport_connection (u8 * s, va_list * args)
+format_transport_connection (u8 *s, va_list *args)
 {
   u32 transport_proto = va_arg (*args, u32);
   u32 conn_index = va_arg (*args, u32);
@@ -107,7 +107,7 @@ format_transport_connection (u8 * s, va_list * args)
 }
 
 u8 *
-format_transport_listen_connection (u8 * s, va_list * args)
+format_transport_listen_connection (u8 *s, va_list *args)
 {
   u32 transport_proto = va_arg (*args, u32);
   transport_proto_vft_t *tp_vft;
@@ -121,7 +121,7 @@ format_transport_listen_connection (u8 * s, va_list * args)
 }
 
 u8 *
-format_transport_half_open_connection (u8 * s, va_list * args)
+format_transport_half_open_connection (u8 *s, va_list *args)
 {
   u32 transport_proto = va_arg (*args, u32);
   u32 listen_index = va_arg (*args, u32);
@@ -136,7 +136,7 @@ format_transport_half_open_connection (u8 * s, va_list * args)
 }
 
 static u8
-unformat_transport_str_match (unformat_input_t * input, const char *str)
+unformat_transport_str_match (unformat_input_t *input, const char *str)
 {
   int i;
 
@@ -152,7 +152,7 @@ unformat_transport_str_match (unformat_input_t * input, const char *str)
 }
 
 uword
-unformat_transport_proto (unformat_input_t * input, va_list * args)
+unformat_transport_proto (unformat_input_t *input, va_list *args)
 {
   u32 *proto = va_arg (*args, u32 *);
   transport_proto_vft_t *tp_vft;
@@ -187,7 +187,7 @@ unformat_transport_proto (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_transport_protos (u8 * s, va_list * args)
+format_transport_protos (u8 *s, va_list *args)
 {
   transport_proto_vft_t *tp_vft;
 
@@ -198,8 +198,8 @@ format_transport_protos (u8 * s, va_list * args)
 }
 
 u32
-transport_endpoint_lookup (transport_endpoint_table_t * ht, u8 proto,
-			   ip46_address_t * ip, u16 port)
+transport_endpoint_lookup (transport_endpoint_table_t *ht, u8 proto,
+			   ip46_address_t *ip, u16 port)
 {
   clib_bihash_kv_24_8_t kv;
   int rv;
@@ -216,8 +216,8 @@ transport_endpoint_lookup (transport_endpoint_table_t * ht, u8 proto,
 }
 
 void
-transport_endpoint_table_add (transport_endpoint_table_t * ht, u8 proto,
-			      transport_endpoint_t * te, u32 value)
+transport_endpoint_table_add (transport_endpoint_table_t *ht, u8 proto,
+			      transport_endpoint_t *te, u32 value)
 {
   clib_bihash_kv_24_8_t kv;
 
@@ -230,8 +230,8 @@ transport_endpoint_table_add (transport_endpoint_table_t * ht, u8 proto,
 }
 
 void
-transport_endpoint_table_del (transport_endpoint_table_t * ht, u8 proto,
-			      transport_endpoint_t * te)
+transport_endpoint_table_del (transport_endpoint_table_t *ht, u8 proto,
+			      transport_endpoint_t *te)
 {
   clib_bihash_kv_24_8_t kv;
 
@@ -244,7 +244,7 @@ transport_endpoint_table_del (transport_endpoint_table_t * ht, u8 proto,
 
 void
 transport_register_protocol (transport_proto_t transport_proto,
-			     const transport_proto_vft_t * vft,
+			     const transport_proto_vft_t *vft,
 			     fib_protocol_t fib_proto, u32 output_node)
 {
   u8 is_ip4 = fib_proto == FIB_PROTOCOL_IP4;
@@ -256,7 +256,7 @@ transport_register_protocol (transport_proto_t transport_proto,
 }
 
 transport_proto_t
-transport_register_new_protocol (const transport_proto_vft_t * vft,
+transport_register_new_protocol (const transport_proto_vft_t *vft,
 				 fib_protocol_t fib_proto, u32 output_node)
 {
   transport_proto_t transport_proto;
@@ -312,7 +312,7 @@ transport_cleanup_half_open (transport_proto_t tp, u32 conn_index)
 }
 
 int
-transport_connect (transport_proto_t tp, transport_endpoint_cfg_t * tep)
+transport_connect (transport_proto_t tp, transport_endpoint_cfg_t *tep)
 {
   return tp_vfts[tp].connect (tep);
 }
@@ -334,7 +334,7 @@ transport_reset (transport_proto_t tp, u32 conn_index, u8 thread_index)
 
 u32
 transport_start_listen (transport_proto_t tp, u32 session_index,
-			transport_endpoint_t * tep)
+			transport_endpoint_t *tep)
 {
   return tp_vfts[tp].start_listen (session_index, tep);
 }
@@ -352,8 +352,8 @@ transport_protocol_is_cl (transport_proto_t tp)
 }
 
 always_inline void
-default_get_transport_endpoint (transport_connection_t * tc,
-				transport_endpoint_t * tep, u8 is_lcl)
+default_get_transport_endpoint (transport_connection_t *tc,
+				transport_endpoint_t *tep, u8 is_lcl)
 {
   if (is_lcl)
     {
@@ -370,13 +370,11 @@ default_get_transport_endpoint (transport_connection_t * tc,
 }
 
 void
-transport_get_endpoint (transport_proto_t tp, u32 conn_index,
-			u32 thread_index, transport_endpoint_t * tep,
-			u8 is_lcl)
+transport_get_endpoint (transport_proto_t tp, u32 conn_index, u32 thread_index,
+			transport_endpoint_t *tep, u8 is_lcl)
 {
   if (tp_vfts[tp].get_transport_endpoint)
-    tp_vfts[tp].get_transport_endpoint (conn_index, thread_index, tep,
-					is_lcl);
+    tp_vfts[tp].get_transport_endpoint (conn_index, thread_index, tep, is_lcl);
   else
     {
       transport_connection_t *tc;
@@ -387,7 +385,7 @@ transport_get_endpoint (transport_proto_t tp, u32 conn_index,
 
 void
 transport_get_listener_endpoint (transport_proto_t tp, u32 conn_index,
-				 transport_endpoint_t * tep, u8 is_lcl)
+				 transport_endpoint_t *tep, u8 is_lcl)
 {
   if (tp_vfts[tp].get_transport_listener_endpoint)
     tp_vfts[tp].get_transport_listener_endpoint (conn_index, tep, is_lcl);
@@ -399,7 +397,7 @@ transport_get_listener_endpoint (transport_proto_t tp, u32 conn_index,
     }
 }
 
-#define PORT_MASK ((1 << 16)- 1)
+#define PORT_MASK ((1 << 16) - 1)
 
 void
 transport_endpoint_del (u32 tepi)
@@ -418,7 +416,7 @@ transport_endpoint_new (void)
 }
 
 void
-transport_endpoint_cleanup (u8 proto, ip46_address_t * lcl_ip, u16 port)
+transport_endpoint_cleanup (u8 proto, ip46_address_t *lcl_ip, u16 port)
 {
   local_endpoint_t *lep;
   u32 lepi;
@@ -439,7 +437,7 @@ transport_endpoint_cleanup (u8 proto, ip46_address_t * lcl_ip, u16 port)
 }
 
 static void
-transport_endpoint_mark_used (u8 proto, ip46_address_t * ip, u16 port)
+transport_endpoint_mark_used (u8 proto, ip46_address_t *ip, u16 port)
 {
   local_endpoint_t *lep;
   clib_spinlock_lock_if_init (&local_endpoints_lock);
@@ -453,7 +451,7 @@ transport_endpoint_mark_used (u8 proto, ip46_address_t * ip, u16 port)
 }
 
 void
-transport_share_local_endpoint (u8 proto, ip46_address_t * lcl_ip, u16 port)
+transport_share_local_endpoint (u8 proto, ip46_address_t *lcl_ip, u16 port)
 {
   local_endpoint_t *lep;
   u32 lepi;
@@ -472,9 +470,9 @@ transport_share_local_endpoint (u8 proto, ip46_address_t * lcl_ip, u16 port)
  * table to mark the pair as used.
  */
 int
-transport_alloc_local_port (u8 proto, ip46_address_t * ip)
+transport_alloc_local_port (u8 proto, ip46_address_t *ip)
 {
-  u16 min = 1024, max = 65535;	/* XXX configurable ? */
+  u16 min = 1024, max = 65535; /* XXX configurable ? */
   int tries, limit;
   u32 tei;
 
@@ -497,8 +495,8 @@ transport_alloc_local_port (u8 proto, ip46_address_t * ip)
 	}
 
       /* Look it up. If not found, we're done */
-      tei = transport_endpoint_lookup (&local_endpoints_table, proto, ip,
-				       port);
+      tei =
+	transport_endpoint_lookup (&local_endpoints_table, proto, ip, port);
       if (tei == ENDPOINT_INVALID_INDEX)
 	{
 	  transport_endpoint_mark_used (proto, ip, port);
@@ -509,7 +507,7 @@ transport_alloc_local_port (u8 proto, ip46_address_t * ip)
 }
 
 static session_error_t
-transport_get_interface_ip (u32 sw_if_index, u8 is_ip4, ip46_address_t * addr)
+transport_get_interface_ip (u32 sw_if_index, u8 is_ip4, ip46_address_t *addr)
 {
   if (is_ip4)
     {
@@ -531,9 +529,8 @@ transport_get_interface_ip (u32 sw_if_index, u8 is_ip4, ip46_address_t * addr)
 }
 
 static session_error_t
-transport_find_local_ip_for_remote (u32 sw_if_index,
-				    transport_endpoint_t * rmt,
-				    ip46_address_t * lcl_addr)
+transport_find_local_ip_for_remote (u32 sw_if_index, transport_endpoint_t *rmt,
+				    ip46_address_t *lcl_addr)
 {
   fib_node_index_t fei;
   fib_prefix_t prefix;
@@ -562,8 +559,8 @@ transport_find_local_ip_for_remote (u32 sw_if_index,
 }
 
 int
-transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
-				ip46_address_t * lcl_addr, u16 * lcl_port)
+transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t *rmt_cfg,
+				ip46_address_t *lcl_addr, u16 *lcl_port)
 {
   transport_endpoint_t *rmt = (transport_endpoint_t *) rmt_cfg;
   session_error_t error;
@@ -601,8 +598,8 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
     {
       port = clib_net_to_host_u16 (rmt_cfg->peer.port);
       *lcl_port = port;
-      tei = transport_endpoint_lookup (&local_endpoints_table, proto,
-				       lcl_addr, port);
+      tei = transport_endpoint_lookup (&local_endpoints_table, proto, lcl_addr,
+				       port);
       if (tei != ENDPOINT_INVALID_INDEX)
 	return SESSION_E_PORTINUSE;
 
@@ -613,7 +610,7 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
 }
 
 u8 *
-format_clib_us_time (u8 * s, va_list * args)
+format_clib_us_time (u8 *s, va_list *args)
 {
   clib_us_time_t t = va_arg (*args, clib_us_time_t);
   if (t < 1e3)
@@ -624,7 +621,7 @@ format_clib_us_time (u8 * s, va_list * args)
 }
 
 u8 *
-format_transport_pacer (u8 * s, va_list * args)
+format_transport_pacer (u8 *s, va_list *args)
 {
   spacer_t *pacer = va_arg (*args, spacer_t *);
   u32 thread_index = va_arg (*args, int);
@@ -639,7 +636,7 @@ format_transport_pacer (u8 * s, va_list * args)
 }
 
 static inline u32
-spacer_max_burst (spacer_t * pacer, clib_us_time_t time_now)
+spacer_max_burst (spacer_t *pacer, clib_us_time_t time_now)
 {
   u64 n_periods = (time_now - pacer->last_update);
   u64 inc;
@@ -654,13 +651,13 @@ spacer_max_burst (spacer_t * pacer, clib_us_time_t time_now)
 }
 
 static inline void
-spacer_update_bucket (spacer_t * pacer, u32 bytes)
+spacer_update_bucket (spacer_t *pacer, u32 bytes)
 {
   pacer->bucket -= bytes;
 }
 
 static inline void
-spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
+spacer_set_pace_rate (spacer_t *pacer, u64 rate_bytes_per_sec,
 		      clib_us_time_t rtt, clib_time_type_t sec_per_loop)
 {
   clib_us_time_t max_time;
@@ -680,27 +677,27 @@ spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec,
    */
   max_time = clib_max (rtt / TRANSPORT_PACER_BURSTS_PER_RTT,
 		       (clib_us_time_t) (sec_per_loop * CLIB_US_TIME_FREQ));
-  max_time = clib_clamp (max_time, 1 /* 1us */ , 1000 /* 1ms */ );
+  max_time = clib_clamp (max_time, 1 /* 1us */, 1000 /* 1ms */);
   pacer->max_burst = (rate_bytes_per_sec * max_time) * CLIB_US_TIME_PERIOD;
   pacer->max_burst = clib_clamp (pacer->max_burst, TRANSPORT_PACER_MIN_BURST,
 				 TRANSPORT_PACER_MAX_BURST);
 }
 
 static inline u64
-spacer_pace_rate (spacer_t * pacer)
+spacer_pace_rate (spacer_t *pacer)
 {
   return pacer->bytes_per_sec;
 }
 
 static inline void
-spacer_reset (spacer_t * pacer, clib_us_time_t time_now, u64 bucket)
+spacer_reset (spacer_t *pacer, clib_us_time_t time_now, u64 bucket)
 {
   pacer->last_update = time_now;
   pacer->bucket = bucket;
 }
 
 void
-transport_connection_tx_pacer_reset (transport_connection_t * tc,
+transport_connection_tx_pacer_reset (transport_connection_t *tc,
 				     u64 rate_bytes_per_sec, u32 start_bucket,
 				     clib_us_time_t rtt)
 {
@@ -711,24 +708,23 @@ transport_connection_tx_pacer_reset (transport_connection_t * tc,
 }
 
 void
-transport_connection_tx_pacer_reset_bucket (transport_connection_t * tc,
+transport_connection_tx_pacer_reset_bucket (transport_connection_t *tc,
 					    u32 bucket)
 {
   spacer_reset (&tc->pacer, transport_us_time_now (tc->thread_index), bucket);
 }
 
 void
-transport_connection_tx_pacer_init (transport_connection_t * tc,
-				    u64 rate_bytes_per_sec,
-				    u32 initial_bucket)
+transport_connection_tx_pacer_init (transport_connection_t *tc,
+				    u64 rate_bytes_per_sec, u32 initial_bucket)
 {
   tc->flags |= TRANSPORT_CONNECTION_F_IS_TX_PACED;
-  transport_connection_tx_pacer_reset (tc, rate_bytes_per_sec,
-				       initial_bucket, 1e6);
+  transport_connection_tx_pacer_reset (tc, rate_bytes_per_sec, initial_bucket,
+				       1e6);
 }
 
 void
-transport_connection_tx_pacer_update (transport_connection_t * tc,
+transport_connection_tx_pacer_update (transport_connection_t *tc,
 				      u64 bytes_per_sec, clib_us_time_t rtt)
 {
   spacer_set_pace_rate (&tc->pacer, bytes_per_sec, rtt,
@@ -736,34 +732,34 @@ transport_connection_tx_pacer_update (transport_connection_t * tc,
 }
 
 u32
-transport_connection_tx_pacer_burst (transport_connection_t * tc)
+transport_connection_tx_pacer_burst (transport_connection_t *tc)
 {
   return spacer_max_burst (&tc->pacer,
 			   transport_us_time_now (tc->thread_index));
 }
 
 u64
-transport_connection_tx_pacer_rate (transport_connection_t * tc)
+transport_connection_tx_pacer_rate (transport_connection_t *tc)
 {
   return spacer_pace_rate (&tc->pacer);
 }
 
 void
-transport_connection_update_tx_bytes (transport_connection_t * tc, u32 bytes)
+transport_connection_update_tx_bytes (transport_connection_t *tc, u32 bytes)
 {
   if (transport_connection_is_tx_paced (tc))
     spacer_update_bucket (&tc->pacer, bytes);
 }
 
 void
-transport_connection_tx_pacer_update_bytes (transport_connection_t * tc,
+transport_connection_tx_pacer_update_bytes (transport_connection_t *tc,
 					    u32 bytes)
 {
   spacer_update_bucket (&tc->pacer, bytes);
 }
 
 void
-transport_connection_reschedule (transport_connection_t * tc)
+transport_connection_reschedule (transport_connection_t *tc)
 {
   tc->flags &= ~TRANSPORT_CONNECTION_F_DESCHED;
   transport_connection_tx_pacer_reset_bucket (tc, TRANSPORT_PACER_MIN_BURST);
@@ -780,11 +776,11 @@ transport_connection_reschedule (transport_connection_t * tc)
 }
 
 void
-transport_fifos_init_ooo (transport_connection_t * tc)
+transport_fifos_init_ooo (transport_connection_t *tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
-  svm_fifo_init_ooo_lookup (s->rx_fifo, 0 /* ooo enq */ );
-  svm_fifo_init_ooo_lookup (s->tx_fifo, 1 /* ooo deq */ );
+  svm_fifo_init_ooo_lookup (s->rx_fifo, 0 /* ooo enq */);
+  svm_fifo_init_ooo_lookup (s->tx_fifo, 1 /* ooo deq */);
 }
 
 void
@@ -792,21 +788,21 @@ transport_update_time (clib_time_type_t time_now, u8 thread_index)
 {
   transport_proto_vft_t *vft;
   vec_foreach (vft, tp_vfts)
-  {
-    if (vft->update_time)
-      (vft->update_time) (time_now, thread_index);
-  }
+    {
+      if (vft->update_time)
+	(vft->update_time) (time_now, thread_index);
+    }
 }
 
 void
-transport_enable_disable (vlib_main_t * vm, u8 is_en)
+transport_enable_disable (vlib_main_t *vm, u8 is_en)
 {
   transport_proto_vft_t *vft;
   vec_foreach (vft, tp_vfts)
-  {
-    if (vft->enable)
-      (vft->enable) (vm, is_en);
-  }
+    {
+      if (vft->enable)
+	(vft->enable) (vm, is_en);
+    }
 }
 
 void
@@ -827,7 +823,7 @@ transport_init (void)
   clib_bihash_init_24_8 (&local_endpoints_table, "local endpoints table",
 			 smm->local_endpoints_table_buckets,
 			 smm->local_endpoints_table_memory);
-  num_threads = 1 /* main thread */  + vtm->n_threads;
+  num_threads = 1 /* main thread */ + vtm->n_threads;
   if (num_threads > 1)
     clib_spinlock_init (&local_endpoints_lock);
 }

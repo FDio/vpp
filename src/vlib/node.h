@@ -43,7 +43,7 @@
 #include <vppinfra/cpu.h>
 #include <vppinfra/longjmp.h>
 #include <vppinfra/lock.h>
-#include <vlib/trace.h>		/* for vlib_trace_filter_t */
+#include <vlib/trace.h> /* for vlib_trace_filter_t */
 
 /* Forward declaration. */
 struct vlib_node_runtime_t;
@@ -51,9 +51,9 @@ struct vlib_frame_t;
 
 /* Internal nodes (including output nodes) move data from node to
    node (or out of the graph for output nodes). */
-typedef uword (vlib_node_function_t) (struct vlib_main_t * vm,
-				      struct vlib_node_runtime_t * node,
-				      struct vlib_frame_t * frame);
+typedef uword (vlib_node_function_t) (struct vlib_main_t *vm,
+				      struct vlib_node_runtime_t *node,
+				      struct vlib_frame_t *frame);
 
 typedef enum
 {
@@ -127,9 +127,8 @@ typedef struct _vlib_node_registration
   unformat_function_t *unformat_trace;
 
   /* Function to validate incoming frames. */
-  u8 *(*validate_frame) (struct vlib_main_t * vm,
-			 struct vlib_node_runtime_t *,
-			 struct vlib_frame_t * f);
+  u8 *(*validate_frame) (struct vlib_main_t *vm, struct vlib_node_runtime_t *,
+			 struct vlib_frame_t *f);
 
   /* Per-node runtime data. */
   void *runtime_data;
@@ -167,66 +166,67 @@ typedef struct _vlib_node_registration
 } vlib_node_registration_t;
 
 #ifndef CLIB_MARCH_VARIANT
-#define VLIB_REGISTER_NODE(x,...)                                       \
-    __VA_ARGS__ vlib_node_registration_t x;                             \
-static void __vlib_add_node_registration_##x (void)                     \
-    __attribute__((__constructor__)) ;                                  \
-static void __vlib_add_node_registration_##x (void)                     \
-{                                                                       \
-    vlib_main_t * vm = vlib_get_main();                                 \
-    x.next_registration = vm->node_main.node_registrations;             \
-    vm->node_main.node_registrations = &x;                              \
-}                                                                       \
-static void __vlib_rm_node_registration_##x (void)                      \
-    __attribute__((__destructor__)) ;                                   \
-static void __vlib_rm_node_registration_##x (void)                      \
-{                                                                       \
-    vlib_main_t * vm = vlib_get_main();                                 \
-    VLIB_REMOVE_FROM_LINKED_LIST (vm->node_main.node_registrations,     \
-                                  &x, next_registration);               \
-}                                                                       \
-__VA_ARGS__ vlib_node_registration_t x
+#define VLIB_REGISTER_NODE(x, ...)                                            \
+  __VA_ARGS__ vlib_node_registration_t x;                                     \
+  static void __vlib_add_node_registration_##x (void)                         \
+    __attribute__ ((__constructor__));                                        \
+  static void __vlib_add_node_registration_##x (void)                         \
+  {                                                                           \
+    vlib_main_t *vm = vlib_get_main ();                                       \
+    x.next_registration = vm->node_main.node_registrations;                   \
+    vm->node_main.node_registrations = &x;                                    \
+  }                                                                           \
+  static void __vlib_rm_node_registration_##x (void)                          \
+    __attribute__ ((__destructor__));                                         \
+  static void __vlib_rm_node_registration_##x (void)                          \
+  {                                                                           \
+    vlib_main_t *vm = vlib_get_main ();                                       \
+    VLIB_REMOVE_FROM_LINKED_LIST (vm->node_main.node_registrations, &x,       \
+				  next_registration);                         \
+  }                                                                           \
+  __VA_ARGS__ vlib_node_registration_t x
 #else
-#define VLIB_REGISTER_NODE(x,...)                                       \
-STATIC_ASSERT (sizeof(# __VA_ARGS__) != 7,"node " #x " must not be declared as static"); \
-static __clib_unused vlib_node_registration_t __clib_unused_##x
+#define VLIB_REGISTER_NODE(x, ...)                                            \
+  STATIC_ASSERT (sizeof (#__VA_ARGS__) != 7,                                  \
+		 "node " #x " must not be declared as static");               \
+  static __clib_unused vlib_node_registration_t __clib_unused_##x
 #endif
 
 #ifndef CLIB_MARCH_VARIANT
 #define CLIB_MARCH_VARIANT_STR "default"
 #else
-#define _CLIB_MARCH_VARIANT_STR(s) __CLIB_MARCH_VARIANT_STR(s)
+#define _CLIB_MARCH_VARIANT_STR(s)  __CLIB_MARCH_VARIANT_STR (s)
 #define __CLIB_MARCH_VARIANT_STR(s) #s
-#define CLIB_MARCH_VARIANT_STR _CLIB_MARCH_VARIANT_STR(CLIB_MARCH_VARIANT)
+#define CLIB_MARCH_VARIANT_STR	    _CLIB_MARCH_VARIANT_STR (CLIB_MARCH_VARIANT)
 #endif
 
-#define VLIB_NODE_FN(node)						\
-uword CLIB_MARCH_SFX (node##_fn)();					\
-static vlib_node_fn_registration_t					\
-  CLIB_MARCH_SFX(node##_fn_registration) =				\
-  { .function = &CLIB_MARCH_SFX (node##_fn), };				\
-									\
-static void __clib_constructor						\
-CLIB_MARCH_SFX (node##_multiarch_register) (void)			\
-{									\
-  extern vlib_node_registration_t node;					\
-  vlib_node_fn_registration_t *r;					\
-  r = & CLIB_MARCH_SFX (node##_fn_registration);			\
-  r->priority = CLIB_MARCH_FN_PRIORITY();				\
-  r->name = CLIB_MARCH_VARIANT_STR;					\
-  r->next_registration = node.node_fn_registrations;			\
-  node.node_fn_registrations = r;					\
-}									\
-uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (node##_fn)
+#define VLIB_NODE_FN(node)                                                    \
+  uword CLIB_MARCH_SFX (node##_fn) ();                                        \
+  static vlib_node_fn_registration_t CLIB_MARCH_SFX (                         \
+    node##_fn_registration) = {                                               \
+    .function = &CLIB_MARCH_SFX (node##_fn),                                  \
+  };                                                                          \
+                                                                              \
+  static void __clib_constructor CLIB_MARCH_SFX (node##_multiarch_register) ( \
+    void)                                                                     \
+  {                                                                           \
+    extern vlib_node_registration_t node;                                     \
+    vlib_node_fn_registration_t *r;                                           \
+    r = &CLIB_MARCH_SFX (node##_fn_registration);                             \
+    r->priority = CLIB_MARCH_FN_PRIORITY ();                                  \
+    r->name = CLIB_MARCH_VARIANT_STR;                                         \
+    r->next_registration = node.node_fn_registrations;                        \
+    node.node_fn_registrations = r;                                           \
+  }                                                                           \
+  uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (node##_fn)
 
 unformat_function_t unformat_vlib_node_variant;
 
 always_inline vlib_node_registration_t *
-vlib_node_next_registered (vlib_node_registration_t * c)
+vlib_node_next_registered (vlib_node_registration_t *c)
 {
-  c =
-    clib_elf_section_data_next (c,
-				c->n_next_nodes * sizeof (c->next_nodes[0]));
+  c = clib_elf_section_data_next (c,
+				  c->n_next_nodes * sizeof (c->next_nodes[0]));
   return c;
 }
 
@@ -238,13 +238,13 @@ typedef struct
   u64 max_clock_n;
 } vlib_node_stats_t;
 
-#define foreach_vlib_node_state					\
-  /* Input node is called each iteration of main loop.		\
-     This is the default (zero). */				\
-  _ (POLLING)							\
-  /* Input node is called when device signals an interrupt. */	\
-  _ (INTERRUPT)							\
-  /* Input node is never called. */				\
+#define foreach_vlib_node_state                                               \
+  /* Input node is called each iteration of main loop.                        \
+     This is the default (zero). */                                           \
+  _ (POLLING)                                                                 \
+  /* Input node is called when device signals an interrupt. */                \
+  _ (INTERRUPT)                                                               \
+  /* Input node is never called. */                                           \
   _ (DISABLED)
 
 typedef enum
@@ -293,9 +293,9 @@ typedef struct vlib_node_t
 #define VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH (1 << 0)
 
   /* Node counts as output/drop/punt node for stats purposes. */
-#define VLIB_NODE_FLAG_IS_OUTPUT (1 << 1)
-#define VLIB_NODE_FLAG_IS_DROP (1 << 2)
-#define VLIB_NODE_FLAG_IS_PUNT (1 << 3)
+#define VLIB_NODE_FLAG_IS_OUTPUT  (1 << 1)
+#define VLIB_NODE_FLAG_IS_DROP	  (1 << 2)
+#define VLIB_NODE_FLAG_IS_PUNT	  (1 << 3)
 #define VLIB_NODE_FLAG_IS_HANDOFF (1 << 4)
 
   /* Set if current node runtime has traced vectors. */
@@ -303,7 +303,7 @@ typedef struct vlib_node_t
 
 #define VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE (1 << 6)
 #define VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE (1 << 7)
-#define VLIB_NODE_FLAG_TRACE_SUPPORTED (1 << 8)
+#define VLIB_NODE_FLAG_TRACE_SUPPORTED			     (1 << 8)
 
   /* State for input nodes. */
   u8 state;
@@ -362,9 +362,8 @@ typedef struct vlib_node_t
   format_function_t *format_trace;
 
   /* Function to validate incoming frames. */
-  u8 *(*validate_frame) (struct vlib_main_t * vm,
-			 struct vlib_node_runtime_t *,
-			 struct vlib_frame_t * f);
+  u8 *(*validate_frame) (struct vlib_main_t *vm, struct vlib_node_runtime_t *,
+			 struct vlib_frame_t *f);
   /* for pretty-printing, not typically valid */
   u8 *state_string;
 
@@ -375,7 +374,7 @@ typedef struct vlib_node_t
 #define VLIB_INVALID_NODE_INDEX ((u32) ~0)
 
 /* Max number of vector elements to process at once per node. */
-#define VLIB_FRAME_SIZE 256
+#define VLIB_FRAME_SIZE	 256
 #define VLIB_FRAME_ALIGN CLIB_CACHE_LINE_BYTES
 
 /* Calling frame (think stack frame) for a node. */
@@ -412,7 +411,7 @@ typedef struct
   u32 flags;
 
   /* Reflects node frame-used flag for this next. */
-#define VLIB_FRAME_NO_FREE_AFTER_DISPATCH \
+#define VLIB_FRAME_NO_FREE_AFTER_DISPATCH                                     \
   VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH
 
   /* Don't append this frame */
@@ -423,7 +422,7 @@ typedef struct
 #define VLIB_FRAME_OWNER (1 << 15)
 
   /* Set when frame has been allocated for this next. */
-#define VLIB_FRAME_IS_ALLOCATED	VLIB_NODE_FLAG_IS_OUTPUT
+#define VLIB_FRAME_IS_ALLOCATED VLIB_NODE_FLAG_IS_OUTPUT
 
   /* Set when frame has been added to pending vector. */
 #define VLIB_FRAME_PENDING VLIB_NODE_FLAG_IS_DROP
@@ -439,7 +438,7 @@ typedef struct
 } vlib_next_frame_t;
 
 always_inline void
-vlib_next_frame_init (vlib_next_frame_t * nf)
+vlib_next_frame_init (vlib_next_frame_t *nf)
 {
   clib_memset (nf, 0, sizeof (nf[0]));
   nf->node_runtime_index = ~0;
@@ -463,67 +462,68 @@ typedef struct
 
 typedef struct vlib_node_runtime_t
 {
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);	/**< cacheline mark */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0); /**< cacheline mark */
 
-  vlib_node_function_t *function;	/**< Node function to call. */
+  vlib_node_function_t *function; /**< Node function to call. */
 
-  vlib_error_t *errors;			/**< Vector of errors for this node. */
+  vlib_error_t *errors; /**< Vector of errors for this node. */
 
-  u32 clocks_since_last_overflow;	/**< Number of clock cycles. */
+  u32 clocks_since_last_overflow; /**< Number of clock cycles. */
 
-  u32 max_clock;			/**< Maximum clock cycle for an
-					  invocation. */
+  u32 max_clock; /**< Maximum clock cycle for an
+		   invocation. */
 
-  u32 max_clock_n;			/**< Number of vectors in the recorded
-					  max_clock. */
+  u32 max_clock_n; /**< Number of vectors in the recorded
+		     max_clock. */
 
-  u32 calls_since_last_overflow;	/**< Number of calls. */
+  u32 calls_since_last_overflow; /**< Number of calls. */
 
-  u32 vectors_since_last_overflow;	/**< Number of vector elements
-					  processed by this node. */
+  u32 vectors_since_last_overflow; /**< Number of vector elements
+				     processed by this node. */
 
-  u32 next_frame_index;			/**< Start of next frames for this
-					  node. */
+  u32 next_frame_index; /**< Start of next frames for this
+			  node. */
 
-  u32 node_index;			/**< Node index. */
+  u32 node_index; /**< Node index. */
 
-  u32 input_main_loops_per_call;	/**< For input nodes: decremented
-					  on each main loop interation until
-					  it reaches zero and function is
-					  called.  Allows some input nodes to
-					  be called more than others. */
+  u32 input_main_loops_per_call; /**< For input nodes: decremented
+				   on each main loop interation until
+				   it reaches zero and function is
+				   called.  Allows some input nodes to
+				   be called more than others. */
 
-  u32 main_loop_count_last_dispatch;	/**< Saved main loop counter of last
-					  dispatch of this node. */
+  u32 main_loop_count_last_dispatch; /**< Saved main loop counter of last
+				       dispatch of this node. */
 
   u32 main_loop_vector_stats[2];
 
-  u16 flags;				/**< Copy of main node flags. */
+  u16 flags; /**< Copy of main node flags. */
 
-  u16 state;				/**< Input node state. */
+  u16 state; /**< Input node state. */
 
   u16 n_next_nodes;
 
-  u16 cached_next_index;		/**< Next frame index that vector
-					  arguments were last enqueued to
-					  last time this node ran. Set to
-					  zero before first run of this
-					  node. */
+  u16 cached_next_index; /**< Next frame index that vector
+			   arguments were last enqueued to
+			   last time this node ran. Set to
+			   zero before first run of this
+			   node. */
 
-  u16 thread_index;			/**< thread this node runs on */
+  u16 thread_index; /**< thread this node runs on */
 
-  u8 runtime_data[0];			/**< Function dependent
-					  node-runtime data. This data is
-					  thread local, and it is not
-					  cloned from main thread. It needs
-					  to be initialized for each thread
-					  before it is used unless
-					  runtime_data template exists in
-					  vlib_node_t. */
-}
-vlib_node_runtime_t;
+  u8 runtime_data[0]; /**< Function dependent
+			node-runtime data. This data is
+			thread local, and it is not
+			cloned from main thread. It needs
+			to be initialized for each thread
+			before it is used unless
+			runtime_data template exists in
+			vlib_node_t. */
+} vlib_node_runtime_t;
 
-#define VLIB_NODE_RUNTIME_DATA_SIZE	(sizeof (vlib_node_runtime_t) - STRUCT_OFFSET_OF (vlib_node_runtime_t, runtime_data))
+#define VLIB_NODE_RUNTIME_DATA_SIZE                                           \
+  (sizeof (vlib_node_runtime_t) -                                             \
+   STRUCT_OFFSET_OF (vlib_node_runtime_t, runtime_data))
 
 typedef struct
 {
@@ -549,7 +549,7 @@ typedef struct
   /* Where to longjmp when process is done. */
   clib_longjmp_t return_longjmp;
 
-#define VLIB_PROCESS_RETURN_LONGJMP_RETURN ((uword) ~0 - 0)
+#define VLIB_PROCESS_RETURN_LONGJMP_RETURN  ((uword) ~0 - 0)
 #define VLIB_PROCESS_RETURN_LONGJMP_SUSPEND ((uword) ~0 - 1)
 
   /* Where to longjmp to resume node after suspend. */
@@ -637,8 +637,7 @@ typedef struct
     /* Vector of event data used only when data does not fit inline. */
     u8 *event_data_as_vector;
   };
-}
-vlib_signal_timed_event_data_t;
+} vlib_signal_timed_event_data_t;
 
 always_inline uword
 vlib_timing_wheel_data_is_timed_event (u32 d)
@@ -741,13 +740,13 @@ typedef struct
 typedef u16 vlib_error_t;
 
 always_inline u32
-vlib_error_get_node (vlib_node_main_t * nm, vlib_error_t e)
+vlib_error_get_node (vlib_node_main_t *nm, vlib_error_t e)
 {
   return nm->node_by_error[e];
 }
 
 always_inline u32
-vlib_error_get_code (vlib_node_main_t * nm, vlib_error_t e)
+vlib_error_get_code (vlib_node_main_t *nm, vlib_error_t e)
 {
   u32 node_index = nm->node_by_error[e];
   vlib_node_t *n = nm->nodes[node_index];

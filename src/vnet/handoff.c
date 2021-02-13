@@ -37,7 +37,7 @@ typedef struct
   /* Worker handoff index */
   u32 frame_queue_index;
 
-    u64 (*hash_fn) (ethernet_header_t *);
+  u64 (*hash_fn) (ethernet_header_t *);
 } handoff_main_t;
 
 extern handoff_main_t handoff_main;
@@ -53,40 +53,37 @@ typedef struct
   u32 buffer_index;
 } worker_handoff_trace_t;
 
-#define foreach_worker_handoff_error			\
-  _(CONGESTION_DROP, "congestion drop")
+#define foreach_worker_handoff_error _ (CONGESTION_DROP, "congestion drop")
 
 typedef enum
 {
-#define _(sym,str) WORKER_HANDOFF_ERROR_##sym,
+#define _(sym, str) WORKER_HANDOFF_ERROR_##sym,
   foreach_worker_handoff_error
 #undef _
     WORKER_HANDOFF_N_ERROR,
 } worker_handoff_error_t;
 
 static char *worker_handoff_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_worker_handoff_error
 #undef _
 };
 
 /* packet trace format function */
 static u8 *
-format_worker_handoff_trace (u8 * s, va_list * args)
+format_worker_handoff_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   worker_handoff_trace_t *t = va_arg (*args, worker_handoff_trace_t *);
 
-  s =
-    format (s, "worker-handoff: sw_if_index %d, next_worker %d, buffer 0x%x",
-	    t->sw_if_index, t->next_worker_index, t->buffer_index);
+  s = format (s, "worker-handoff: sw_if_index %d, next_worker %d, buffer 0x%x",
+	      t->sw_if_index, t->next_worker_index, t->buffer_index);
   return s;
 }
 
-VLIB_NODE_FN (worker_handoff_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
+VLIB_NODE_FN (worker_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   handoff_main_t *hm = &handoff_main;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
@@ -108,7 +105,6 @@ VLIB_NODE_FN (worker_handoff_node) (vlib_main_t * vm,
       per_inteface_handoff_data_t *ihd0;
       u32 index0;
 
-
       sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
       ASSERT (hm->if_data);
       ihd0 = vec_elt_at_index (hm->if_data, sw_if_index0);
@@ -119,12 +115,12 @@ VLIB_NODE_FN (worker_handoff_node) (vlib_main_t * vm,
        */
 
       /* Compute ingress LB hash */
-      hash_key = hm->hash_fn ((ethernet_header_t *)
-			      vlib_buffer_get_current (b[0]));
+      hash_key =
+	hm->hash_fn ((ethernet_header_t *) vlib_buffer_get_current (b[0]));
       hash = (u32) clib_xxhash (hash_key);
 
       /* if input node did not specify next index, then packet
-         should go to ethernet-input */
+	 should go to ethernet-input */
 
       if (PREDICT_TRUE (is_pow2 (vec_len (ihd0->workers))))
 	index0 = hash & (vec_len (ihd0->workers) - 1);
@@ -133,8 +129,8 @@ VLIB_NODE_FN (worker_handoff_node) (vlib_main_t * vm,
 
       ti[0] = hm->first_worker_index + ihd0->workers[index0];
 
-      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			 && (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			 (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
 	{
 	  worker_handoff_trace_t *t =
 	    vlib_add_trace (vm, node, b[0], sizeof (*t));
@@ -159,7 +155,6 @@ VLIB_NODE_FN (worker_handoff_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (worker_handoff_node) = {
   .name = "worker-handoff",
   .vector_size = sizeof (u32),
@@ -174,12 +169,10 @@ VLIB_REGISTER_NODE (worker_handoff_node) = {
   },
 };
 
-/* *INDENT-ON* */
-
 #ifndef CLIB_MARCH_VARIANT
 int
-interface_handoff_enable_disable (vlib_main_t * vm, u32 sw_if_index,
-				  uword * bitmap, int enable_disable)
+interface_handoff_enable_disable (vlib_main_t *vm, u32 sw_if_index,
+				  uword *bitmap, int enable_disable)
 {
   handoff_main_t *hm = &handoff_main;
   vnet_sw_interface_t *sw;
@@ -212,23 +205,21 @@ interface_handoff_enable_disable (vlib_main_t * vm, u32 sw_if_index,
   if (enable_disable)
     {
       d->workers_bitmap = bitmap;
-      /* *INDENT-OFF* */
+
       clib_bitmap_foreach (i, bitmap)
-	 {
-	  vec_add1(d->workers, i);
+	{
+	  vec_add1 (d->workers, i);
 	}
-      /* *INDENT-ON* */
     }
 
-  vnet_feature_enable_disable ("device-input", "worker-handoff",
-			       sw_if_index, enable_disable, 0, 0);
+  vnet_feature_enable_disable ("device-input", "worker-handoff", sw_if_index,
+			       enable_disable, 0, 0);
   return rv;
 }
 
 static clib_error_t *
-set_interface_handoff_command_fn (vlib_main_t * vm,
-				  unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
+set_interface_handoff_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				  vlib_cli_command_t *cmd)
 {
   handoff_main_t *hm = &handoff_main;
   u32 sw_if_index = ~0;
@@ -262,8 +253,7 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
     return clib_error_return (0, "Please specify list of workers...");
 
   rv =
-    interface_handoff_enable_disable (vm, sw_if_index, bitmap,
-				      enable_disable);
+    interface_handoff_enable_disable (vm, sw_if_index, bitmap, enable_disable);
 
   switch (rv)
     {
@@ -295,17 +285,15 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_handoff_command, static) = {
   .path = "set interface handoff",
-  .short_help =
-  "set interface handoff <interface-name> workers <workers-list> [symmetrical|asymmetrical]",
+  .short_help = "set interface handoff <interface-name> workers "
+		"<workers-list> [symmetrical|asymmetrical]",
   .function = set_interface_handoff_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-handoff_init (vlib_main_t * vm)
+handoff_init (vlib_main_t *vm)
 {
   handoff_main_t *hm = &handoff_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();

@@ -19,13 +19,15 @@
 #include <vnet/ip/ip.h>
 
 u8 *
-format_igmp_type (u8 * s, va_list * args)
+format_igmp_type (u8 *s, va_list *args)
 {
   igmp_type_t type = va_arg (*args, int);
 
   switch (type)
     {
-#define _(n,f) case IGMP_TYPE_##f: return (format (s, "%s", #f));
+#define _(n, f)                                                               \
+  case IGMP_TYPE_##f:                                                         \
+    return (format (s, "%s", #f));
       foreach_igmp_type
 #undef _
     }
@@ -33,13 +35,15 @@ format_igmp_type (u8 * s, va_list * args)
 }
 
 u8 *
-format_igmp_membership_group_type (u8 * s, va_list * args)
+format_igmp_membership_group_type (u8 *s, va_list *args)
 {
   igmp_membership_group_v3_type_t type = va_arg (*args, int);
 
   switch (type)
     {
-#define _(n,f)  case IGMP_MEMBERSHIP_GROUP_##f: return (format (s, "%s", #f));
+#define _(n, f)                                                               \
+  case IGMP_MEMBERSHIP_GROUP_##f:                                             \
+    return (format (s, "%s", #f));
       foreach_igmp_membership_group_v3_type
 #undef _
     }
@@ -47,37 +51,39 @@ format_igmp_membership_group_type (u8 * s, va_list * args)
 }
 
 u8 *
-format_igmp_filter_mode (u8 * s, va_list * args)
+format_igmp_filter_mode (u8 *s, va_list *args)
 {
   igmp_filter_mode_t mode = va_arg (*args, igmp_filter_mode_t);
 
   switch (mode)
     {
-#define _(n,f)  case IGMP_FILTER_MODE_##f: return (format (s, "%s", #f));
+#define _(n, f)                                                               \
+  case IGMP_FILTER_MODE_##f:                                                  \
+    return (format (s, "%s", #f));
       foreach_igmp_filter_mode
 #undef _
     }
   return (format (s, "unknown:%d", mode));
-
 }
 
 u8 *
-format_igmp_mode (u8 * s, va_list * args)
+format_igmp_mode (u8 *s, va_list *args)
 {
   igmp_mode_t mode = va_arg (*args, igmp_mode_t);
 
   switch (mode)
     {
-#define _(n,f)  case IGMP_MODE_##f: return (format (s, "%s", #f));
+#define _(n, f)                                                               \
+  case IGMP_MODE_##f:                                                         \
+    return (format (s, "%s", #f));
       foreach_igmp_mode
 #undef _
     }
   return (format (s, "unknown:%d", mode));
-
 }
 
 u8 *
-format_igmp_header (u8 * s, va_list * args)
+format_igmp_header (u8 *s, va_list *args)
 {
   igmp_header_t *hdr = va_arg (*args, igmp_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
@@ -89,15 +95,14 @@ format_igmp_header (u8 * s, va_list * args)
   indent = format_get_indent (s);
   indent += 2;
 
-  s =
-    format (s, "%U%U: code %u, checksum 0x%04x", format_white_space, indent,
-	    format_igmp_type, hdr->type, hdr->code,
-	    clib_net_to_host_u16 (hdr->checksum));
+  s = format (s, "%U%U: code %u, checksum 0x%04x", format_white_space, indent,
+	      format_igmp_type, hdr->type, hdr->code,
+	      clib_net_to_host_u16 (hdr->checksum));
   return s;
 }
 
 u8 *
-format_igmp_report_v3 (u8 * s, va_list * args)
+format_igmp_report_v3 (u8 *s, va_list *args)
 {
   igmp_membership_report_v3_t *igmp =
     va_arg (*args, igmp_membership_report_v3_t *);
@@ -113,37 +118,33 @@ format_igmp_report_v3 (u8 * s, va_list * args)
   indent = format_get_indent (s);
   indent += 2;
 
-  s =
-    format (s, "%Un_groups %u", format_white_space, indent,
-	    clib_net_to_host_u16 (igmp->n_groups));
+  s = format (s, "%Un_groups %u", format_white_space, indent,
+	      clib_net_to_host_u16 (igmp->n_groups));
   indent += 2;
   int i, j = 0;
   for (i = 0; i < clib_net_to_host_u16 (igmp->n_groups); i++)
     {
       group = group_ptr (igmp, len);
-      s =
-	format (s, "\n%U%U: %U, sources %u", format_white_space, indent,
-		format_igmp_membership_group_type, group->type,
-		format_ip4_address, &group->group_address,
-		clib_net_to_host_u16 (group->n_src_addresses));
+      s = format (s, "\n%U%U: %U, sources %u", format_white_space, indent,
+		  format_igmp_membership_group_type, group->type,
+		  format_ip4_address, &group->group_address,
+		  clib_net_to_host_u16 (group->n_src_addresses));
       indent += 2;
       for (j = 0; j < clib_net_to_host_u16 (group->n_src_addresses); j++)
 	{
-	  s =
-	    format (s, "\n%U%U", format_white_space, indent,
-		    format_ip4_address, &group->src_addresses[j]);
+	  s = format (s, "\n%U%U", format_white_space, indent,
+		      format_ip4_address, &group->src_addresses[j]);
 	}
       indent -= 2;
-      len +=
-	sizeof (igmp_membership_group_v3_t) +
-	(sizeof (ip4_address_t) *
-	 clib_net_to_host_u16 (group->n_src_addresses));
+      len += sizeof (igmp_membership_group_v3_t) +
+	     (sizeof (ip4_address_t) *
+	      clib_net_to_host_u16 (group->n_src_addresses));
     }
   return s;
 }
 
 u8 *
-format_igmp_query_v3 (u8 * s, va_list * args)
+format_igmp_query_v3 (u8 *s, va_list *args)
 {
   igmp_membership_query_v3_t *igmp =
     va_arg (*args, igmp_membership_query_v3_t *);
@@ -160,8 +161,8 @@ format_igmp_query_v3 (u8 * s, va_list * args)
   ip4_address_t tmp;
   tmp.as_u32 = 0;
 
-  if ((!ip4_address_compare (&igmp->group_address, &tmp))
-      && (igmp->n_src_addresses == 0))
+  if ((!ip4_address_compare (&igmp->group_address, &tmp)) &&
+      (igmp->n_src_addresses == 0))
     s = format (s, "%UGeneral Query", format_white_space, indent);
   else if (igmp->n_src_addresses == 0)
     s = format (s, "%UGroup-Specific Query: %U", format_white_space, indent,
@@ -169,9 +170,8 @@ format_igmp_query_v3 (u8 * s, va_list * args)
   else
     {
       s =
-	format (s, "%UGroup-and-Source-Specific Query: %U",
-		format_white_space, indent, format_ip4_address,
-		&igmp->group_address);
+	format (s, "%UGroup-and-Source-Specific Query: %U", format_white_space,
+		indent, format_ip4_address, &igmp->group_address);
       indent += 2;
       for (i = 0; i < clib_net_to_host_u16 (igmp->n_src_addresses); i++)
 	{
@@ -183,7 +183,7 @@ format_igmp_query_v3 (u8 * s, va_list * args)
 }
 
 u8 *
-format_igmp_src_addr_list (u8 * s, va_list * args)
+format_igmp_src_addr_list (u8 *s, va_list *args)
 {
   ip46_address_t *ss, *srcs;
 
@@ -191,16 +191,16 @@ format_igmp_src_addr_list (u8 * s, va_list * args)
 
   s = format (s, "[");
   vec_foreach (ss, srcs)
-  {
-    s = format (s, "%U ", format_ip46_address, ss, IP46_TYPE_ANY);
-  }
+    {
+      s = format (s, "%U ", format_ip46_address, ss, IP46_TYPE_ANY);
+    }
   s = format (s, "]");
 
   return (s);
 }
 
 u8 *
-format_igmp_key (u8 * s, va_list * args)
+format_igmp_key (u8 *s, va_list *args)
 {
   const igmp_key_t *key = va_arg (*args, const igmp_key_t *);
 
@@ -210,7 +210,7 @@ format_igmp_key (u8 * s, va_list * args)
 }
 
 u8 *
-format_igmp_proxy_device_id (u8 * s, va_list * args)
+format_igmp_proxy_device_id (u8 *s, va_list *args)
 {
   u32 id = va_arg (*args, u32);
 

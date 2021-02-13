@@ -23,7 +23,7 @@
  * Dump a trajectory trace, reasonably easy to call from gdb
  */
 void
-vnet_dump_trajectory_trace (vlib_main_t * vm, u32 bi)
+vnet_dump_trajectory_trace (vlib_main_t *vm, u32 bi)
 {
 #if VLIB_BUFFER_TRACE_TRAJECTORY > 0
   vlib_node_main_t *vnm = &vm->node_main;
@@ -35,8 +35,8 @@ vnet_dump_trajectory_trace (vlib_main_t * vm, u32 bi)
 
   trace = vnet_buffer2 (b)->trajectory_trace;
 
-  fformat (stderr, "Context trace for bi %d b 0x%llx, visited %d\n",
-	   bi, b, vec_len (trace));
+  fformat (stderr, "Context trace for bi %d b 0x%llx, visited %d\n", bi, b,
+	   vec_len (trace));
 
   for (i = 0; i < vec_len (trace); i++)
     {
@@ -54,7 +54,7 @@ vnet_dump_trajectory_trace (vlib_main_t * vm, u32 bi)
     }
 #else
   fformat (stderr, "in vlib/buffers.h, "
-	   "#define VLIB_BUFFER_TRACE_TRAJECTORY 1\n");
+		   "#define VLIB_BUFFER_TRACE_TRAJECTORY 1\n");
 
 #endif
 }
@@ -62,7 +62,7 @@ vnet_dump_trajectory_trace (vlib_main_t * vm, u32 bi)
 #if VLIB_BUFFER_TRACE_TRAJECTORY > 0
 
 void
-init_trajectory_trace (vlib_buffer_t * b)
+init_trajectory_trace (vlib_buffer_t *b)
 {
   if (!clib_mem_is_vec (vnet_buffer2 (b)->trajectory_trace))
     {
@@ -73,13 +73,13 @@ init_trajectory_trace (vlib_buffer_t * b)
 }
 
 void
-add_trajectory_trace (vlib_buffer_t * b, u32 node_index)
+add_trajectory_trace (vlib_buffer_t *b, u32 node_index)
 {
   vec_add1 (vnet_buffer2 (b)->trajectory_trace, (u16) node_index);
 }
 
 static clib_error_t *
-trajectory_trace_init (vlib_main_t * vm)
+trajectory_trace_init (vlib_main_t *vm)
 {
   vlib_buffer_trace_trajectory_cb = add_trajectory_trace;
   vlib_buffer_trace_trajectory_init_cb = init_trajectory_trace;

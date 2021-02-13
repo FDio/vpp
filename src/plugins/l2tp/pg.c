@@ -31,31 +31,30 @@ typedef struct
 } pg_l2tp_header_l2_sublayer_t;
 
 static inline void
-pg_l2tp_header_init (pg_l2tp_header_t * e)
+pg_l2tp_header_init (pg_l2tp_header_t *e)
 {
   pg_edit_init (&e->session_id, l2tpv3_header_t, session_id);
   pg_edit_init (&e->cookie, l2tpv3_header_t, cookie);
 }
 
 uword
-unformat_pg_l2tp_header (unformat_input_t * input, va_list * args)
+unformat_pg_l2tp_header (unformat_input_t *input, va_list *args)
 {
   pg_stream_t *s = va_arg (*args, pg_stream_t *);
   pg_l2tp_header_t *h;
   u32 group_index, error;
   vlib_main_t *vm = vlib_get_main ();
 
-  h = pg_create_edit_group (s, sizeof (h[0]),
-			    sizeof (l2tpv3_header_t) - sizeof (u32),
-			    &group_index);
+  h = pg_create_edit_group (
+    s, sizeof (h[0]), sizeof (l2tpv3_header_t) - sizeof (u32), &group_index);
   pg_l2tp_header_init (h);
 
   error = 1;
 
   /* session id and cookie are required */
-  if (!unformat (input, "L2TP: session_id %U cookie %U",
-		 unformat_pg_edit, unformat_pg_number, &h->session_id,
-		 unformat_pg_edit, unformat_pg_number, &h->cookie))
+  if (!unformat (input, "L2TP: session_id %U cookie %U", unformat_pg_edit,
+		 unformat_pg_number, &h->session_id, unformat_pg_edit,
+		 unformat_pg_number, &h->cookie))
     {
       goto done;
     }
@@ -67,8 +66,8 @@ unformat_pg_l2tp_header (unformat_input_t * input, va_list * args)
 
       h2 = pg_add_edits (s, sizeof (h2[0]), sizeof (u32), group_index);
       pg_edit_init (&h2->l2_sublayer, l2tpv3_header_t, l2_specific_sublayer);
-      if (!unformat_user (input, unformat_pg_edit,
-			  unformat_pg_number, &h2->l2_sublayer))
+      if (!unformat_user (input, unformat_pg_edit, unformat_pg_number,
+			  &h2->l2_sublayer))
 	{
 	  goto done;
 	}
@@ -84,8 +83,8 @@ unformat_pg_l2tp_header (unformat_input_t * input, va_list * args)
 
     pg_node = pg_get_node (eth_lookup_node->index);
 
-    if (pg_node && pg_node->unformat_edit
-	&& unformat_user (input, pg_node->unformat_edit, s))
+    if (pg_node && pg_node->unformat_edit &&
+	unformat_user (input, pg_node->unformat_edit, s))
       ;
   }
 

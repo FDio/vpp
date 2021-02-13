@@ -28,7 +28,7 @@
 #include <sys/epoll.h>
 #include <sys/un.h>
 
-#define SOCK_SERVER_MAX_TEST_CONN  10
+#define SOCK_SERVER_MAX_TEST_CONN    10
 #define SOCK_SERVER_MAX_EPOLL_EVENTS 10
 
 typedef struct
@@ -88,7 +88,7 @@ conn_pool_expand (size_t expand_size)
       sock_server_conn_t *conn = &conn_pool[i];
       memset (conn, 0, sizeof (*conn));
       vcl_test_cfg_init (&conn->cfg);
-      vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */ , &conn->buf,
+      vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */, &conn->buf,
 			  &conn->buf_size);
       conn->cfg.txbuf_size = conn->cfg.rxbuf_size;
     }
@@ -116,32 +116,32 @@ conn_pool_alloc (void)
 }
 
 static inline void
-conn_pool_free (sock_server_conn_t * conn)
+conn_pool_free (sock_server_conn_t *conn)
 {
   conn->fd = 0;
   conn->is_alloc = 0;
 }
 
 static inline void
-sync_config_and_reply (sock_server_conn_t * conn, vcl_test_cfg_t * rx_cfg)
+sync_config_and_reply (sock_server_conn_t *conn, vcl_test_cfg_t *rx_cfg)
 {
   conn->cfg = *rx_cfg;
-  vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */ ,
-		      &conn->buf, &conn->buf_size);
+  vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */, &conn->buf,
+		      &conn->buf_size);
   conn->cfg.txbuf_size = conn->cfg.rxbuf_size;
 
   if (conn->cfg.verbose)
     {
       stinf ("(fd %d): Replying to cfg message!\n", conn->fd);
-      vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */ );
+      vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */);
     }
-  (void) sock_test_write (conn->fd, (uint8_t *) & conn->cfg,
-			  sizeof (conn->cfg), NULL, conn->cfg.verbose);
+  (void) sock_test_write (conn->fd, (uint8_t *) &conn->cfg, sizeof (conn->cfg),
+			  NULL, conn->cfg.verbose);
 }
 
 static void
-stream_test_server_start_stop (sock_server_conn_t * conn,
-			       vcl_test_cfg_t * rx_cfg)
+stream_test_server_start_stop (sock_server_conn_t *conn,
+			       vcl_test_cfg_t *rx_cfg)
 {
   sock_server_main_t *ssm = &sock_server_main;
   int client_fd = conn->fd;
@@ -166,32 +166,30 @@ stream_test_server_start_stop (sock_server_conn_t * conn,
 
 		  snprintf (buf, sizeof (buf), "SERVER (fd %d) RESULTS",
 			    tc->fd);
-		  vcl_test_stats_dump (buf, &tc->stats, 1 /* show_rx */ ,
+		  vcl_test_stats_dump (buf, &tc->stats, 1 /* show_rx */,
 				       test == VCL_TEST_TYPE_BI
-				       /* show tx */ ,
+				       /* show tx */,
 				       conn->cfg.verbose);
 		}
 	    }
 	}
 
-      vcl_test_stats_dump ("SERVER RESULTS", &conn->stats, 1 /* show_rx */ ,
-			   (test == VCL_TEST_TYPE_BI) /* show_tx */ ,
+      vcl_test_stats_dump ("SERVER RESULTS", &conn->stats, 1 /* show_rx */,
+			   (test == VCL_TEST_TYPE_BI) /* show_tx */,
 			   conn->cfg.verbose);
-      vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */ );
+      vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */);
       if (conn->cfg.verbose)
 	{
-	  stinf ("  sock server main\n"
-		 VCL_TEST_SEPARATOR_STRING
+	  stinf ("  sock server main\n" VCL_TEST_SEPARATOR_STRING
 		 "       buf:  %p\n"
-		 "  buf size:  %u (0x%08x)\n"
-		 VCL_TEST_SEPARATOR_STRING,
+		 "  buf size:  %u (0x%08x)\n" VCL_TEST_SEPARATOR_STRING,
 		 conn->buf, conn->buf_size, conn->buf_size);
 	}
 
       sync_config_and_reply (conn, rx_cfg);
-      stinf ("SERVER (fd %d): %s-directional Stream Test Complete!\n"
-	     SOCK_TEST_BANNER_STRING "\n", conn->fd,
-	     test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
+      stinf ("SERVER (fd %d): %s-directional Stream Test "
+	     "Complete!\n" SOCK_TEST_BANNER_STRING "\n",
+	     conn->fd, test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
     }
   else
     {
@@ -200,8 +198,8 @@ stream_test_server_start_stop (sock_server_conn_t * conn,
 	     "  Sending client the test cfg to start streaming data...\n",
 	     client_fd, test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
 
-      rx_cfg->ctrl_handle = (rx_cfg->ctrl_handle == ~0) ? conn->fd :
-	rx_cfg->ctrl_handle;
+      rx_cfg->ctrl_handle =
+	(rx_cfg->ctrl_handle == ~0) ? conn->fd : rx_cfg->ctrl_handle;
 
       sync_config_and_reply (conn, rx_cfg);
 
@@ -211,9 +209,8 @@ stream_test_server_start_stop (sock_server_conn_t * conn,
     }
 }
 
-
 static inline void
-stream_test_server (sock_server_conn_t * conn, int rx_bytes)
+stream_test_server (sock_server_conn_t *conn, int rx_bytes)
 {
   int client_fd = conn->fd;
   vcl_test_t test = conn->cfg.test;
@@ -236,13 +233,13 @@ af_unix_echo (void)
   uint8_t buffer[256];
   size_t nbytes = strlen (SOCK_TEST_MIXED_EPOLL_DATA) + 1;
 
-  af_unix_client_fd = accept (ssm->af_unix_listen_fd,
-			      (struct sockaddr *) NULL, NULL);
+  af_unix_client_fd =
+    accept (ssm->af_unix_listen_fd, (struct sockaddr *) NULL, NULL);
   if (af_unix_client_fd < 0)
     stfail ("af_unix_echo accept()");
 
-  stinf ("Got an AF_UNIX connection -- fd = %d (0x%08x)!",
-	 af_unix_client_fd, af_unix_client_fd);
+  stinf ("Got an AF_UNIX connection -- fd = %d (0x%08x)!", af_unix_client_fd,
+	 af_unix_client_fd);
 
   memset (buffer, 0, sizeof (buffer));
 
@@ -303,7 +300,7 @@ new_client (void)
 }
 
 static int
-socket_server_echo_af_unix_init (sock_server_main_t * ssm)
+socket_server_echo_af_unix_init (sock_server_main_t *ssm)
 {
   int rv;
 
@@ -342,18 +339,16 @@ socket_server_echo_af_unix_init (sock_server_main_t * ssm)
 void
 print_usage_and_exit (void)
 {
-  fprintf (stderr,
-	   "sock_test_server [OPTIONS] <port>\n"
-	   "  OPTIONS\n"
-	   "  -h               Print this message and exit.\n"
-	   "  -6               Use IPv6\n"
-	   "  -u               Use UDP transport layer\n");
+  fprintf (stderr, "sock_test_server [OPTIONS] <port>\n"
+		   "  OPTIONS\n"
+		   "  -h               Print this message and exit.\n"
+		   "  -6               Use IPv6\n"
+		   "  -u               Use UDP transport layer\n");
   exit (1);
 }
 
-
 static void
-sts_server_echo (sock_server_conn_t * conn, int rx_bytes)
+sts_server_echo (sock_server_conn_t *conn, int rx_bytes)
 {
   int tx_bytes, nbytes, pos;
 
@@ -373,15 +368,14 @@ sts_server_echo (sock_server_conn_t * conn, int rx_bytes)
 }
 
 static int
-sts_handle_cfg (vcl_test_cfg_t * rx_cfg, sock_server_conn_t * conn,
-		int rx_bytes)
+sts_handle_cfg (vcl_test_cfg_t *rx_cfg, sock_server_conn_t *conn, int rx_bytes)
 {
   sock_server_main_t *ssm = &sock_server_main;
 
   if (rx_cfg->verbose)
     {
       stinf ("(fd %d): Received a cfg message!\n", conn->fd);
-      vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
+      vcl_test_cfg_dump (rx_cfg, 0 /* is_client */);
     }
 
   if (rx_bytes != sizeof (*rx_cfg))
@@ -393,9 +387,9 @@ sts_handle_cfg (vcl_test_cfg_t * rx_cfg, sock_server_conn_t * conn,
       if (conn->cfg.verbose)
 	{
 	  stinf ("(fd %d): Replying to cfg message!\n", conn->fd);
-	  vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
+	  vcl_test_cfg_dump (rx_cfg, 0 /* is_client */);
 	}
-      sock_test_write (conn->fd, (uint8_t *) & conn->cfg, sizeof (conn->cfg),
+      sock_test_write (conn->fd, (uint8_t *) &conn->cfg, sizeof (conn->cfg),
 		       NULL, conn->cfg.verbose);
       return -1;
     }
@@ -428,7 +422,7 @@ sts_handle_cfg (vcl_test_cfg_t * rx_cfg, sock_server_conn_t * conn,
 
     default:
       stinf ("ERROR: Unknown test type!\n");
-      vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
+      vcl_test_cfg_dump (rx_cfg, 0 /* is_client */);
       break;
     }
 
@@ -437,13 +431,13 @@ done:
 }
 
 static int
-sts_conn_expect_config (sock_server_conn_t * conn)
+sts_conn_expect_config (sock_server_conn_t *conn)
 {
   if (conn->cfg.test == VCL_TEST_TYPE_ECHO)
     return 1;
 
-  return (conn->stats.rx_bytes < 128
-	  || conn->stats.rx_bytes > conn->cfg.total_bytes);
+  return (conn->stats.rx_bytes < 128 ||
+	  conn->stats.rx_bytes > conn->cfg.total_bytes);
 }
 
 int
@@ -500,9 +494,9 @@ main (int argc, char **argv)
 
   conn_pool_expand (SOCK_SERVER_MAX_TEST_CONN + 1);
 
-  ssm->listen_fd = socket (ssm->cfg.address_ip6 ? AF_INET6 : AF_INET,
-			   ssm->cfg.transport_udp ? SOCK_DGRAM : SOCK_STREAM,
-			   0);
+  ssm->listen_fd =
+    socket (ssm->cfg.address_ip6 ? AF_INET6 : AF_INET,
+	    ssm->cfg.transport_udp ? SOCK_DGRAM : SOCK_STREAM, 0);
 
   if (ssm->listen_fd < 0)
     stfail ("main listen()");
@@ -588,8 +582,8 @@ main (int argc, char **argv)
 	  if (EPOLLIN & ssm->wait_events[i].events)
 	    {
 	    read_again:
-	      rx_bytes = sock_test_read (client_fd, conn->buf,
-					 conn->buf_size, &conn->stats);
+	      rx_bytes = sock_test_read (client_fd, conn->buf, conn->buf_size,
+					 &conn->stats);
 
 	      if (rx_bytes <= 0)
 		{
@@ -619,8 +613,8 @@ main (int argc, char **argv)
 		    }
 		}
 
-	      if ((conn->cfg.test == VCL_TEST_TYPE_UNI)
-		  || (conn->cfg.test == VCL_TEST_TYPE_BI))
+	      if ((conn->cfg.test == VCL_TEST_TYPE_UNI) ||
+		  (conn->cfg.test == VCL_TEST_TYPE_BI))
 		{
 		  stream_test_server (conn, rx_bytes);
 		  if (ioctl (conn->fd, FIONREAD))

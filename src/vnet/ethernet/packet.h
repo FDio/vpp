@@ -44,7 +44,7 @@
 
 typedef enum
 {
-#define ethernet_type(n,s) ETHERNET_TYPE_##s = n,
+#define ethernet_type(n, s) ETHERNET_TYPE_##s = n,
 #include <vnet/ethernet/types.def>
 #undef ethernet_type
 } ethernet_type_t;
@@ -59,37 +59,37 @@ typedef struct
   u16 type;
 } ethernet_header_t;
 
-#define ETHERNET_ADDRESS_UNICAST 0
+#define ETHERNET_ADDRESS_UNICAST   0
 #define ETHERNET_ADDRESS_MULTICAST 1
 
 /* I/G bit: individual (unicast)/group (broadcast/multicast). */
 always_inline uword
-ethernet_address_cast (const u8 * a)
+ethernet_address_cast (const u8 *a)
 {
   return (a[0] >> 0) & 1;
 }
 
 always_inline int
-ethernet_address_is_broadcast (const u8 * a)
+ethernet_address_is_broadcast (const u8 *a)
 {
   return clib_mem_unaligned (a, u32) == 0xffffffff &&
-    clib_mem_unaligned (a + 4, u16) == 0xffff;
+	 clib_mem_unaligned (a + 4, u16) == 0xffff;
 }
 
 always_inline uword
-ethernet_address_is_locally_administered (const u8 * a)
+ethernet_address_is_locally_administered (const u8 *a)
 {
   return (a[0] >> 1) & 1;
 }
 
 always_inline void
-ethernet_address_set_locally_administered (u8 * a)
+ethernet_address_set_locally_administered (u8 *a)
 {
   a[0] |= 1 << 1;
 }
 
 always_inline int
-eh_dst_addr_to_rx_ctype (const ethernet_header_t * eh)
+eh_dst_addr_to_rx_ctype (const ethernet_header_t *eh)
 {
   if (PREDICT_TRUE (ethernet_address_cast (eh->dst_address) ==
 		    ETHERNET_ADDRESS_UNICAST))
@@ -107,7 +107,7 @@ eh_dst_addr_to_rx_ctype (const ethernet_header_t * eh)
 }
 
 always_inline int
-eh_dst_addr_to_tx_ctype (const ethernet_header_t * eh)
+eh_dst_addr_to_tx_ctype (const ethernet_header_t *eh)
 {
   if (PREDICT_TRUE (ethernet_address_cast (eh->dst_address) ==
 		    ETHERNET_ADDRESS_UNICAST))
@@ -137,7 +137,7 @@ typedef struct
 } ethernet_vlan_header_t;
 
 always_inline void
-ethernet_vlan_header_set_priority_net_order (ethernet_vlan_header_t * h,
+ethernet_vlan_header_set_priority_net_order (ethernet_vlan_header_t *h,
 					     u8 prio)
 {
   u8 *bytes = (u8 *) (&h->priority_cfi_and_id);
@@ -147,7 +147,7 @@ ethernet_vlan_header_set_priority_net_order (ethernet_vlan_header_t * h,
 }
 
 always_inline u8
-ethernet_vlan_header_get_priority_net_order (ethernet_vlan_header_t * h)
+ethernet_vlan_header_get_priority_net_order (ethernet_vlan_header_t *h)
 {
   u8 *bytes = (u8 *) (&h->priority_cfi_and_id);
 
@@ -164,7 +164,8 @@ typedef struct
   u16 priority_cfi_and_id;
 } ethernet_vlan_header_tv_t;
 
-/* PBB header with B-TAG - backbone VLAN indicator and I-TAG - service encapsulation */
+/* PBB header with B-TAG - backbone VLAN indicator and I-TAG - service
+ * encapsulation */
 typedef struct
 {
   /* Backbone source/destination address. */
@@ -178,15 +179,14 @@ typedef struct
 
   /* I-tag */
   u16 i_type;
-  /* 3 bit priority, 1 bit DEI, 1 bit UCA, 3 bit RES and 24 bit I_SID (service identifier) */
+  /* 3 bit priority, 1 bit DEI, 1 bit UCA, 3 bit RES and 24 bit I_SID (service
+   * identifier) */
   u32 priority_dei_uca_res_sid;
 
 #define ETHERNET_N_PBB (1 << 24)
 } ethernet_pbb_header_t;
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED (struct
-{
+typedef CLIB_PACKED (struct {
   /* Backbone source/destination address. */
   u8 b_dst_address[6];
   u8 b_src_address[6];
@@ -198,10 +198,10 @@ typedef CLIB_PACKED (struct
 
   /* I-tag */
   u16 i_type;
-  /* 3 bit priority, 1 bit DEI, 1 bit UCA, 3 bit RES and 24 bit I_SID (service identifier) */
+  /* 3 bit priority, 1 bit DEI, 1 bit UCA, 3 bit RES and 24 bit I_SID (service
+   * identifier) */
   u32 priority_dei_uca_res_sid;
 }) ethernet_pbb_header_packed_t;
-/* *INDENT-ON* */
 
 #endif /* included_ethernet_packet_h */
 

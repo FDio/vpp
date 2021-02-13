@@ -25,8 +25,8 @@
 #include <vppinfra/format.h>
 #include <vppinfra/cache.h>
 
-typedef word (clib_slist_key_compare_function_t)
-  (void *key, u32 elt_pool_index);
+typedef word (clib_slist_key_compare_function_t) (void *key,
+						  u32 elt_pool_index);
 
 typedef enum
 {
@@ -49,7 +49,7 @@ typedef struct
 } clib_slist_elt_t;
 
 static inline u32
-clib_slist_get_next_at_level (clib_slist_elt_t * elt, int level)
+clib_slist_get_next_at_level (clib_slist_elt_t *elt, int level)
 {
   if (elt->n.next0[0] & 1)
     {
@@ -57,8 +57,8 @@ clib_slist_get_next_at_level (clib_slist_elt_t * elt, int level)
       if (level == 1)
 	return elt->n.next0[1];
       /* preserve ~0 (end of list) */
-      return (elt->n.next0[0] == (u32) ~ 0) ? elt->n.next0[0] :
-	(elt->n.next0[0] >> 1);
+      return (elt->n.next0[0] == (u32) ~0) ? elt->n.next0[0] :
+					     (elt->n.next0[0] >> 1);
     }
   else
     {
@@ -68,7 +68,7 @@ clib_slist_get_next_at_level (clib_slist_elt_t * elt, int level)
 }
 
 static inline void
-clib_slist_set_next_at_level (clib_slist_elt_t * elt, u32 index, int level)
+clib_slist_set_next_at_level (clib_slist_elt_t *elt, u32 index, int level)
 {
   u32 old_level0_value[2];
   /* level0 and not a vector */
@@ -85,8 +85,8 @@ clib_slist_set_next_at_level (clib_slist_elt_t * elt, u32 index, int level)
   /* have to save old level0 values? */
   if (elt->n.next0[0] & 1)
     {
-      old_level0_value[0] = (elt->n.next0[0] == (u32) ~ 0) ?
-	elt->n.next0[0] : elt->n.next0[0] >> 1;
+      old_level0_value[0] =
+	(elt->n.next0[0] == (u32) ~0) ? elt->n.next0[0] : elt->n.next0[0] >> 1;
       old_level0_value[1] = elt->n.next0[1];
       elt->n.nexts = 0;
       vec_add1 (elt->n.nexts, old_level0_value[0]);
@@ -95,7 +95,6 @@ clib_slist_set_next_at_level (clib_slist_elt_t * elt, u32 index, int level)
   vec_validate (elt->n.nexts, level);
   elt->n.nexts[level] = index;
 }
-
 
 typedef struct
 {
@@ -124,15 +123,15 @@ typedef struct
   u32 seed;
 } clib_slist_t;
 
-clib_error_t *clib_slist_init (clib_slist_t * sp, f64 branching_factor,
+clib_error_t *clib_slist_init (clib_slist_t *sp, f64 branching_factor,
 			       clib_slist_key_compare_function_t compare,
 			       format_function_t format_user_element);
 
 format_function_t format_slist;
 
-void clib_slist_add (clib_slist_t * sp, void *key, u32 user_pool_index);
-clib_slist_search_result_t clib_slist_del (clib_slist_t * sp, void *key);
-u32 clib_slist_search (clib_slist_t * sp, void *key, u32 * ncompares);
+void clib_slist_add (clib_slist_t *sp, void *key, u32 user_pool_index);
+clib_slist_search_result_t clib_slist_del (clib_slist_t *sp, void *key);
+u32 clib_slist_search (clib_slist_t *sp, void *key, u32 *ncompares);
 
 #endif /* included_slist_h */
 

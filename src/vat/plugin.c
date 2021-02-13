@@ -24,7 +24,7 @@
 plugin_main_t vat_plugin_main;
 
 static int
-load_one_plugin (plugin_main_t * pm, plugin_info_t * pi)
+load_one_plugin (plugin_main_t *pm, plugin_info_t *pi)
 {
   void *handle, *register_handle;
   clib_error_t *(*fp) (vat_main_t *);
@@ -53,7 +53,6 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi)
       return 0;
     }
 
-
   fp = register_handle;
 
   error = (*fp) (pm->vat_main);
@@ -71,7 +70,7 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi)
 }
 
 static u8 **
-split_plugin_path (plugin_main_t * pm)
+split_plugin_path (plugin_main_t *pm)
 {
   int i;
   u8 **rv = 0;
@@ -98,7 +97,7 @@ split_plugin_path (plugin_main_t * pm)
 }
 
 int
-vat_load_new_plugins (plugin_main_t * pm)
+vat_load_new_plugins (plugin_main_t *pm)
 {
   DIR *dp;
   struct dirent *entry;
@@ -129,8 +128,8 @@ vat_load_new_plugins (plugin_main_t * pm)
 		  goto next;
 	    }
 
-	  plugin_name = format (0, "%s/%s%c", plugin_path[i],
-				entry->d_name, 0);
+	  plugin_name =
+	    format (0, "%s/%s%c", plugin_path[i], entry->d_name, 0);
 
 	  /* unreadable */
 	  if (stat ((char *) plugin_name, &statb) < 0)
@@ -161,8 +160,7 @@ vat_load_new_plugins (plugin_main_t * pm)
 	      hash_set_mem (pm->plugin_by_name_hash, plugin_name,
 			    pi - pm->plugin_info);
 	    }
-	next:
-	  ;
+	next:;
 	}
       closedir (dp);
       vec_free (plugin_path[i]);
@@ -172,7 +170,7 @@ vat_load_new_plugins (plugin_main_t * pm)
 }
 
 #define QUOTE_(x) #x
-#define QUOTE(x) QUOTE_(x)
+#define QUOTE(x)  QUOTE_ (x)
 
 /*
  * Load plugins from /usr/lib/vpp_api_test_plugins by default
@@ -182,7 +180,7 @@ char *vat_plugin_path = "/usr/lib/vpp_api_test_plugins";
 char *vat_plugin_name_filter = 0;
 
 int
-vat_plugin_init (vat_main_t * vam)
+vat_plugin_init (vat_main_t *vam)
 {
   plugin_main_t *pm = &vat_plugin_main;
 

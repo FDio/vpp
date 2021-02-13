@@ -84,9 +84,9 @@ typedef struct
 } vlib_cli_parse_rule_t;
 
 /* CLI command callback function. */
-typedef clib_error_t *(vlib_cli_command_function_t)
-  (struct vlib_main_t * vm,
-   unformat_input_t * input, struct vlib_cli_command_t * cmd);
+typedef clib_error_t *(vlib_cli_command_function_t) (
+  struct vlib_main_t *vm, unformat_input_t *input,
+  struct vlib_cli_command_t *cmd);
 
 typedef struct vlib_cli_command_t
 {
@@ -130,8 +130,8 @@ typedef struct vlib_cli_command_t
   u32 hit_counter;
 } vlib_cli_command_t;
 
-typedef void (vlib_cli_output_function_t) (uword arg,
-					   u8 * buffer, uword buffer_bytes);
+typedef void (vlib_cli_output_function_t) (uword arg, u8 *buffer,
+					   uword buffer_bytes);
 typedef struct vlib_cli_main_t
 {
   /* Vector of all known commands. */
@@ -146,64 +146,60 @@ typedef struct vlib_cli_main_t
   /* index vector, to sort commands, etc. */
   u32 *sort_vector;
 
-
   /* performance counter callback */
-  void (**perf_counter_cbs)
-    (struct vlib_cli_main_t *, u32 id, int before_or_after);
-  void (**perf_counter_cbs_tmp)
-    (struct vlib_cli_main_t *, u32 id, int before_or_after);
+  void (**perf_counter_cbs) (struct vlib_cli_main_t *, u32 id,
+			     int before_or_after);
+  void (**perf_counter_cbs_tmp) (struct vlib_cli_main_t *, u32 id,
+				 int before_or_after);
 } vlib_cli_main_t;
 
 #ifndef CLIB_MARCH_VARIANT
-#define VLIB_CLI_COMMAND(x,...)                                         \
-    __VA_ARGS__ vlib_cli_command_t x;                                   \
-static void __vlib_cli_command_registration_##x (void)                  \
-    __attribute__((__constructor__)) ;                                  \
-static void __vlib_cli_command_registration_##x (void)                  \
-{                                                                       \
-    vlib_main_t * vm = vlib_get_main();                                 \
-    vlib_cli_main_t *cm = &vm->cli_main;                                \
-    x.next_cli_command = cm->cli_command_registrations;                 \
-    cm->cli_command_registrations = &x;                                 \
-}                                                                       \
-static void __vlib_cli_command_unregistration_##x (void)                \
-    __attribute__((__destructor__)) ;                                   \
-static void __vlib_cli_command_unregistration_##x (void)                \
-{                                                                       \
-    vlib_main_t * vm = vlib_get_main();                                 \
-    vlib_cli_main_t *cm = &vm->cli_main;                                \
-    VLIB_REMOVE_FROM_LINKED_LIST (cm->cli_command_registrations, &x,    \
-                                  next_cli_command);                    \
-}                                                                       \
-__VA_ARGS__ vlib_cli_command_t x
+#define VLIB_CLI_COMMAND(x, ...)                                              \
+  __VA_ARGS__ vlib_cli_command_t x;                                           \
+  static void __vlib_cli_command_registration_##x (void)                      \
+    __attribute__ ((__constructor__));                                        \
+  static void __vlib_cli_command_registration_##x (void)                      \
+  {                                                                           \
+    vlib_main_t *vm = vlib_get_main ();                                       \
+    vlib_cli_main_t *cm = &vm->cli_main;                                      \
+    x.next_cli_command = cm->cli_command_registrations;                       \
+    cm->cli_command_registrations = &x;                                       \
+  }                                                                           \
+  static void __vlib_cli_command_unregistration_##x (void)                    \
+    __attribute__ ((__destructor__));                                         \
+  static void __vlib_cli_command_unregistration_##x (void)                    \
+  {                                                                           \
+    vlib_main_t *vm = vlib_get_main ();                                       \
+    vlib_cli_main_t *cm = &vm->cli_main;                                      \
+    VLIB_REMOVE_FROM_LINKED_LIST (cm->cli_command_registrations, &x,          \
+				  next_cli_command);                          \
+  }                                                                           \
+  __VA_ARGS__ vlib_cli_command_t x
 #else
 /* create unused pointer to silence compiler warnings and get whole
    function optimized out */
-#define VLIB_CLI_COMMAND(x,...)                                         \
-static __clib_unused vlib_cli_command_t __clib_unused_##x
+#define VLIB_CLI_COMMAND(x, ...)                                              \
+  static __clib_unused vlib_cli_command_t __clib_unused_##x
 #endif
 
-#define VLIB_CLI_PARSE_RULE(x) \
-  vlib_cli_parse_rule_t x
+#define VLIB_CLI_PARSE_RULE(x) vlib_cli_parse_rule_t x
 /* Output to current CLI connection. */
 void vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...);
 
 /* Process CLI input. */
-int vlib_cli_input (struct vlib_main_t *vm,
-		    unformat_input_t * input,
-		    vlib_cli_output_function_t * function,
-		    uword function_arg);
+int vlib_cli_input (struct vlib_main_t *vm, unformat_input_t *input,
+		    vlib_cli_output_function_t *function, uword function_arg);
 
 clib_error_t *vlib_cli_register (struct vlib_main_t *vm,
-				 vlib_cli_command_t * c);
+				 vlib_cli_command_t *c);
 clib_error_t *vlib_cli_register_parse_rule (struct vlib_main_t *vm,
-					    vlib_cli_parse_rule_t * c);
+					    vlib_cli_parse_rule_t *c);
 
-uword unformat_vlib_cli_sub_input (unformat_input_t * i, va_list * args);
+uword unformat_vlib_cli_sub_input (unformat_input_t *i, va_list *args);
 
 /* Return an vector of strings consisting of possible auto-completions
  * for a given input string */
-u8 **vlib_cli_get_possible_completions (u8 * input_str);
+u8 **vlib_cli_get_possible_completions (u8 *input_str);
 
 #endif /* included_vlib_cli_h */
 

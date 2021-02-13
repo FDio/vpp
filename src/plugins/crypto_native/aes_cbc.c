@@ -21,8 +21,8 @@
 #include <crypto_native/crypto_native.h>
 #include <crypto_native/aes.h>
 
-#if __GNUC__ > 4  && !__clang__ && CLIB_DEBUG == 0
-#pragma GCC optimize ("O3")
+#if __GNUC__ > 4 && !__clang__ && CLIB_DEBUG == 0
+#pragma GCC optimize("O3")
 #endif
 
 typedef struct
@@ -35,9 +35,8 @@ typedef struct
 #endif
 } aes_cbc_key_data_t;
 
-
 static_always_inline void __clib_unused
-aes_cbc_dec (u8x16 * k, u8x16u * src, u8x16u * dst, u8x16u * iv, int count,
+aes_cbc_dec (u8x16 *k, u8x16u *src, u8x16u *dst, u8x16u *iv, int count,
 	     int rounds)
 {
   u8x16 r[4], c[4], f;
@@ -122,9 +121,9 @@ aes_cbc_dec (u8x16 * k, u8x16u * src, u8x16u * dst, u8x16u * iv, int count,
 #ifdef __VAES__
 
 static_always_inline u8x64
-aes_block_load_x4 (u8 * src[], int i)
+aes_block_load_x4 (u8 *src[], int i)
 {
-  u8x64 r = { };
+  u8x64 r = {};
   r = u8x64_insert_u8x16 (r, aes_block_load (src[0] + i), 0);
   r = u8x64_insert_u8x16 (r, aes_block_load (src[1] + i), 1);
   r = u8x64_insert_u8x16 (r, aes_block_load (src[2] + i), 2);
@@ -133,7 +132,7 @@ aes_block_load_x4 (u8 * src[], int i)
 }
 
 static_always_inline void
-aes_block_store_x4 (u8 * dst[], int i, u8x64 r)
+aes_block_store_x4 (u8 *dst[], int i, u8x64 r)
 {
   aes_block_store (dst[0] + i, u8x64_extract_u8x16 (r, 0));
   aes_block_store (dst[1] + i, u8x64_extract_u8x16 (r, 1));
@@ -149,10 +148,10 @@ aes_cbc_dec_permute (u8x64 a, u8x64 b)
 }
 
 static_always_inline void
-vaes_cbc_dec (u8x64 * k, u8x64u * src, u8x64u * dst, u8x16 * iv, int count,
+vaes_cbc_dec (u8x64 *k, u8x64u *src, u8x64u *dst, u8x16 *iv, int count,
 	      aes_key_size_t rounds)
 {
-  u8x64 f, r[4], c[4] = { };
+  u8x64 f, r[4], c[4] = {};
   __mmask8 m;
   int i, n_blocks = count >> 4;
 
@@ -198,8 +197,8 @@ vaes_cbc_dec (u8x64 * k, u8x64u * src, u8x64u * dst, u8x16 * iv, int count,
   while (n_blocks > 0)
     {
       m = (1 << (n_blocks * 2)) - 1;
-      c[0] = (u8x64) _mm512_mask_loadu_epi64 ((__m512i) c[0], m,
-					      (__m512i *) src);
+      c[0] =
+	(u8x64) _mm512_mask_loadu_epi64 ((__m512i) c[0], m, (__m512i *) src);
       f = aes_cbc_dec_permute (f, c[0]);
       r[0] = c[0] ^ k[0];
       for (i = 1; i < rounds; i++)
@@ -216,22 +215,22 @@ vaes_cbc_dec (u8x64 * k, u8x64u * src, u8x64u * dst, u8x16 * iv, int count,
 #endif
 
 #ifdef __VAES__
-#define N 16
-#define u32xN u32x16
-#define u32xN_min_scalar u32x16_min_scalar
+#define N		  16
+#define u32xN		  u32x16
+#define u32xN_min_scalar  u32x16_min_scalar
 #define u32xN_is_all_zero u32x16_is_all_zero
-#define u32xN_splat u32x16_splat
+#define u32xN_splat	  u32x16_splat
 #else
-#define N 4
-#define u32xN u32x4
-#define u32xN_min_scalar u32x4_min_scalar
+#define N		  4
+#define u32xN		  u32x4
+#define u32xN_min_scalar  u32x4_min_scalar
 #define u32xN_is_all_zero u32x4_is_all_zero
-#define u32xN_splat u32x4_splat
+#define u32xN_splat	  u32x4_splat
 #endif
 
 static_always_inline u32
-aes_ops_enc_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
-		     u32 n_ops, aes_key_size_t ks)
+aes_ops_enc_aes_cbc (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
+		     aes_key_size_t ks)
 {
   crypto_native_main_t *cm = &crypto_native_main;
   crypto_native_per_thread_data_t *ptd =
@@ -239,18 +238,18 @@ aes_ops_enc_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
   int rounds = AES_KEY_ROUNDS (ks);
   u8 placeholder[8192];
   u32 i, j, count, n_left = n_ops;
-  u32xN placeholder_mask = { };
-  u32xN len = { };
+  u32xN placeholder_mask = {};
+  u32xN len = {};
   vnet_crypto_key_index_t key_index[N];
-  u8 *src[N] = { };
-  u8 *dst[N] = { };
+  u8 *src[N] = {};
+  u8 *dst[N] = {};
 #if __VAES__
-  u8x64 r[N / 4] = { };
-  u8x64 k[15][N / 4] = { };
+  u8x64 r[N / 4] = {};
+  u8x64 k[15][N / 4] = {};
   u8x16 *kq, *rq = (u8x16 *) r;
 #else
-  u8x16 r[N] = { };
-  u8x16 k[15][N] = { };
+  u8x16 r[N] = {};
+  u8x16 k[15][N] = {};
 #endif
 
   for (i = 0; i < N; i++)
@@ -262,7 +261,8 @@ more:
       {
 	if (n_left == 0)
 	  {
-	    /* no more work to enqueue, so we are enqueueing placeholder buffer */
+	    /* no more work to enqueue, so we are enqueueing placeholder buffer
+	     */
 	    src[i] = dst[i] = placeholder;
 	    len[i] = sizeof (placeholder);
 	    placeholder_mask[i] = 0;
@@ -402,10 +402,9 @@ more:
   return n_ops;
 }
 
-
 static_always_inline u32
-aes_ops_dec_aes_cbc (vlib_main_t * vm, vnet_crypto_op_t * ops[],
-		     u32 n_ops, aes_key_size_t ks)
+aes_ops_dec_aes_cbc (vlib_main_t *vm, vnet_crypto_op_t *ops[], u32 n_ops,
+		     aes_key_size_t ks)
 {
   crypto_native_main_t *cm = &crypto_native_main;
   int rounds = AES_KEY_ROUNDS (ks);
@@ -436,7 +435,7 @@ decrypt:
 }
 
 static_always_inline void *
-aes_cbc_key_exp (vnet_crypto_key_t * key, aes_key_size_t ks)
+aes_cbc_key_exp (vnet_crypto_key_t *key, aes_key_size_t ks)
 {
   u8x16 e[15], d[15];
   aes_cbc_key_data_t *kd;
@@ -455,17 +454,23 @@ aes_cbc_key_exp (vnet_crypto_key_t * key, aes_key_size_t ks)
   return kd;
 }
 
-#define foreach_aes_cbc_handler_type _(128) _(192) _(256)
+#define foreach_aes_cbc_handler_type _ (128) _ (192) _ (256)
 
-#define _(x) \
-static u32 aes_ops_dec_aes_cbc_##x \
-(vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
-{ return aes_ops_dec_aes_cbc (vm, ops, n_ops, AES_KEY_##x); } \
-static u32 aes_ops_enc_aes_cbc_##x \
-(vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops) \
-{ return aes_ops_enc_aes_cbc (vm, ops, n_ops, AES_KEY_##x); } \
-static void * aes_cbc_key_exp_##x (vnet_crypto_key_t *key) \
-{ return aes_cbc_key_exp (key, AES_KEY_##x); }
+#define _(x)                                                                  \
+  static u32 aes_ops_dec_aes_cbc_##x (vlib_main_t *vm,                        \
+				      vnet_crypto_op_t *ops[], u32 n_ops)     \
+  {                                                                           \
+    return aes_ops_dec_aes_cbc (vm, ops, n_ops, AES_KEY_##x);                 \
+  }                                                                           \
+  static u32 aes_ops_enc_aes_cbc_##x (vlib_main_t *vm,                        \
+				      vnet_crypto_op_t *ops[], u32 n_ops)     \
+  {                                                                           \
+    return aes_ops_enc_aes_cbc (vm, ops, n_ops, AES_KEY_##x);                 \
+  }                                                                           \
+  static void *aes_cbc_key_exp_##x (vnet_crypto_key_t *key)                   \
+  {                                                                           \
+    return aes_cbc_key_exp (key, AES_KEY_##x);                                \
+  }
 
 foreach_aes_cbc_handler_type;
 #undef _
@@ -474,15 +479,15 @@ foreach_aes_cbc_handler_type;
 
 clib_error_t *
 #ifdef __VAES__
-crypto_native_aes_cbc_init_icl (vlib_main_t * vm)
+crypto_native_aes_cbc_init_icl (vlib_main_t *vm)
 #elif __AVX512F__
-crypto_native_aes_cbc_init_skx (vlib_main_t * vm)
+crypto_native_aes_cbc_init_skx (vlib_main_t *vm)
 #elif __aarch64__
-crypto_native_aes_cbc_init_neon (vlib_main_t * vm)
+crypto_native_aes_cbc_init_neon (vlib_main_t *vm)
 #elif __AVX2__
-crypto_native_aes_cbc_init_hsw (vlib_main_t * vm)
+crypto_native_aes_cbc_init_hsw (vlib_main_t *vm)
 #else
-crypto_native_aes_cbc_init_slm (vlib_main_t * vm)
+crypto_native_aes_cbc_init_slm (vlib_main_t *vm)
 #endif
 {
   crypto_native_main_t *cm = &crypto_native_main;
@@ -493,12 +498,11 @@ crypto_native_aes_cbc_init_slm (vlib_main_t * vm)
   if ((fd = open ("/dev/urandom", O_RDONLY)) < 0)
     return clib_error_return_unix (0, "failed to open '/dev/urandom'");
 
-  /* *INDENT-OFF* */
   vec_foreach (ptd, cm->per_thread_data)
     {
       for (int i = 0; i < 4; i++)
 	{
-	  if (read(fd, ptd->cbc_iv, sizeof (ptd->cbc_iv)) !=
+	  if (read (fd, ptd->cbc_iv, sizeof (ptd->cbc_iv)) !=
 	      sizeof (ptd->cbc_iv))
 	    {
 	      err = clib_error_return_unix (0, "'/dev/urandom' read failure");
@@ -506,15 +510,14 @@ crypto_native_aes_cbc_init_slm (vlib_main_t * vm)
 	    }
 	}
     }
-  /* *INDENT-ON* */
 
-#define _(x) \
-  vnet_crypto_register_ops_handler (vm, cm->crypto_engine_index, \
-				    VNET_CRYPTO_OP_AES_##x##_CBC_ENC, \
-				    aes_ops_enc_aes_cbc_##x); \
-  vnet_crypto_register_ops_handler (vm, cm->crypto_engine_index, \
-				    VNET_CRYPTO_OP_AES_##x##_CBC_DEC, \
-				    aes_ops_dec_aes_cbc_##x); \
+#define _(x)                                                                  \
+  vnet_crypto_register_ops_handler (vm, cm->crypto_engine_index,              \
+				    VNET_CRYPTO_OP_AES_##x##_CBC_ENC,         \
+				    aes_ops_enc_aes_cbc_##x);                 \
+  vnet_crypto_register_ops_handler (vm, cm->crypto_engine_index,              \
+				    VNET_CRYPTO_OP_AES_##x##_CBC_DEC,         \
+				    aes_ops_dec_aes_cbc_##x);                 \
   cm->key_fn[VNET_CRYPTO_ALG_AES_##x##_CBC] = aes_cbc_key_exp_##x;
   foreach_aes_cbc_handler_type;
 #undef _

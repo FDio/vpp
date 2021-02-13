@@ -19,7 +19,7 @@
 #include <hs_apps/sapi/vpp_echo_common.h>
 
 static void
-udp_echo_cleanup_cb (echo_session_t * s, u8 parent_died)
+udp_echo_cleanup_cb (echo_session_t *s, u8 parent_died)
 {
   echo_main_t *em = &echo_main;
   echo_session_t *ls;
@@ -39,8 +39,8 @@ udp_echo_cleanup_cb (echo_session_t * s, u8 parent_died)
 }
 
 static void
-udp_echo_connected_cb (session_connected_bundled_msg_t * mp,
-		       u32 session_index, u8 is_failed)
+udp_echo_connected_cb (session_connected_bundled_msg_t *mp, u32 session_index,
+		       u8 is_failed)
 {
   static u32 client_index = 0;
   echo_main_t *em = &echo_main;
@@ -49,7 +49,7 @@ udp_echo_connected_cb (session_connected_bundled_msg_t * mp,
     {
       ECHO_FAIL (ECHO_FAIL_UDP_BAPI_CONNECT,
 		 "Bapi connect errored on session %u", session_index);
-      return;			/* Dont handle bapi connect errors for now */
+      return; /* Dont handle bapi connect errors for now */
     }
 
   session->accepted_session_count = 0;
@@ -71,7 +71,7 @@ udp_echo_connected_cb (session_connected_bundled_msg_t * mp,
 }
 
 static void
-udp_echo_accepted_cb (session_accepted_msg_t * mp, echo_session_t * session)
+udp_echo_accepted_cb (session_accepted_msg_t *mp, echo_session_t *session)
 {
   static u32 client_index = 0;
   echo_main_t *em = &echo_main;
@@ -98,13 +98,13 @@ udp_echo_accepted_cb (session_accepted_msg_t * mp, echo_session_t * session)
 }
 
 static void
-udp_echo_sent_disconnect_cb (echo_session_t * s)
+udp_echo_sent_disconnect_cb (echo_session_t *s)
 {
   s->session_state = ECHO_SESSION_STATE_CLOSING;
 }
 
 static void
-udp_echo_disconnected_cb (session_disconnected_msg_t * mp, echo_session_t * s)
+udp_echo_disconnected_cb (session_disconnected_msg_t *mp, echo_session_t *s)
 {
   echo_main_t *em = &echo_main;
   echo_session_print_stats (em, s);
@@ -116,7 +116,7 @@ udp_echo_disconnected_cb (session_disconnected_msg_t * mp, echo_session_t * s)
 }
 
 static void
-udp_echo_reset_cb (session_reset_msg_t * mp, echo_session_t * s)
+udp_echo_reset_cb (session_reset_msg_t *mp, echo_session_t *s)
 {
   echo_main_t *em = &echo_main;
   clib_atomic_fetch_add (&em->stats.reset_count.s, 1);
@@ -124,7 +124,7 @@ udp_echo_reset_cb (session_reset_msg_t * mp, echo_session_t * s)
 }
 
 static void
-udp_echo_bound_uri_cb (session_bound_msg_t * mp, echo_session_t * session)
+udp_echo_bound_uri_cb (session_bound_msg_t *mp, echo_session_t *session)
 {
   echo_main_t *em = &echo_main;
   u32 session_index = session->session_index;
@@ -158,7 +158,6 @@ udp_echo_bound_uri_cb (session_bound_msg_t * mp, echo_session_t * session)
   echo_notify_event (em, ECHO_EVT_LAST_SCONNECTED);
   em->state = STATE_READY;
 }
-
 
 echo_proto_cb_vft_t echo_udp_proto_cb_vft = {
   .disconnected_cb = udp_echo_disconnected_cb,

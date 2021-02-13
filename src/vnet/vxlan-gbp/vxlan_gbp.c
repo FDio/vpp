@@ -34,7 +34,7 @@ static vlib_punt_hdl_t punt_hdl;
 vxlan_gbp_main_t vxlan_gbp_main;
 
 u8 *
-format_vxlan_gbp_tunnel_mode (u8 * s, va_list * args)
+format_vxlan_gbp_tunnel_mode (u8 *s, va_list *args)
 {
   vxlan_gbp_tunnel_mode_t mode = va_arg (*args, vxlan_gbp_tunnel_mode_t);
 
@@ -51,16 +51,15 @@ format_vxlan_gbp_tunnel_mode (u8 * s, va_list * args)
 }
 
 u8 *
-format_vxlan_gbp_tunnel (u8 * s, va_list * args)
+format_vxlan_gbp_tunnel (u8 *s, va_list *args)
 {
   vxlan_gbp_tunnel_t *t = va_arg (*args, vxlan_gbp_tunnel_t *);
 
   s = format (s,
 	      "[%d] instance %d src %U dst %U vni %d fib-idx %d"
 	      " sw-if-idx %d mode %U ",
-	      t->dev_instance, t->user_instance,
-	      format_ip46_address, &t->src, IP46_TYPE_ANY,
-	      format_ip46_address, &t->dst, IP46_TYPE_ANY,
+	      t->dev_instance, t->user_instance, format_ip46_address, &t->src,
+	      IP46_TYPE_ANY, format_ip46_address, &t->dst, IP46_TYPE_ANY,
 	      t->vni, t->encap_fib_index, t->sw_if_index,
 	      format_vxlan_gbp_tunnel_mode, t->mode);
 
@@ -73,7 +72,7 @@ format_vxlan_gbp_tunnel (u8 * s, va_list * args)
 }
 
 static u8 *
-format_vxlan_gbp_name (u8 * s, va_list * args)
+format_vxlan_gbp_name (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
@@ -91,11 +90,12 @@ format_vxlan_gbp_name (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-vxlan_gbp_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
+vxlan_gbp_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index,
 				   u32 flags)
 {
   u32 hw_flags = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ?
-    VNET_HW_INTERFACE_FLAG_LINK_UP : 0;
+		   VNET_HW_INTERFACE_FLAG_LINK_UP :
+		   0;
   vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
 
   return /* no error */ 0;
@@ -111,7 +111,7 @@ VNET_DEVICE_CLASS (vxlan_gbp_device_class, static) = {
 /* *INDENT-ON* */
 
 static u8 *
-format_vxlan_gbp_header_with_length (u8 * s, va_list * args)
+format_vxlan_gbp_header_with_length (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   s = format (s, "unimplemented dev %u", dev_instance);
@@ -127,12 +127,12 @@ VNET_HW_INTERFACE_CLASS (vxlan_gbp_hw_class) = {
 /* *INDENT-ON* */
 
 static void
-vxlan_gbp_tunnel_restack_dpo (vxlan_gbp_tunnel_t * t)
+vxlan_gbp_tunnel_restack_dpo (vxlan_gbp_tunnel_t *t)
 {
   u8 is_ip4 = ip46_address_is_ip4 (&t->dst);
   dpo_id_t dpo = DPO_INVALID;
-  fib_forward_chain_type_t forw_type = is_ip4 ?
-    FIB_FORW_CHAIN_TYPE_UNICAST_IP4 : FIB_FORW_CHAIN_TYPE_UNICAST_IP6;
+  fib_forward_chain_type_t forw_type =
+    is_ip4 ? FIB_FORW_CHAIN_TYPE_UNICAST_IP4 : FIB_FORW_CHAIN_TYPE_UNICAST_IP6;
 
   fib_entry_contribute_forwarding (t->fib_entry_index, forw_type, &dpo);
 
@@ -148,19 +148,19 @@ vxlan_gbp_tunnel_restack_dpo (vxlan_gbp_tunnel_t * t)
       dpo_copy (&dpo, load_balance_get_bucket_i (lb, 0));
     }
 
-  u32 encap_index = is_ip4 ?
-    vxlan4_gbp_encap_node.index : vxlan6_gbp_encap_node.index;
+  u32 encap_index =
+    is_ip4 ? vxlan4_gbp_encap_node.index : vxlan6_gbp_encap_node.index;
   dpo_stack_from_node (encap_index, &t->next_dpo, &dpo);
   dpo_reset (&dpo);
 }
 
 static vxlan_gbp_tunnel_t *
-vxlan_gbp_tunnel_from_fib_node (fib_node_t * node)
+vxlan_gbp_tunnel_from_fib_node (fib_node_t *node)
 {
   ASSERT (FIB_NODE_TYPE_VXLAN_GBP_TUNNEL == node->fn_type);
-  return ((vxlan_gbp_tunnel_t *) (((char *) node) -
-				  STRUCT_OFFSET_OF (vxlan_gbp_tunnel_t,
-						    node)));
+  return (
+    (vxlan_gbp_tunnel_t *) (((char *) node) -
+			    STRUCT_OFFSET_OF (vxlan_gbp_tunnel_t, node)));
 }
 
 /**
@@ -168,7 +168,7 @@ vxlan_gbp_tunnel_from_fib_node (fib_node_t * node)
  * Here we will restack the new dpo of VXLAN DIP to encap node.
  */
 static fib_node_back_walk_rc_t
-vxlan_gbp_tunnel_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+vxlan_gbp_tunnel_back_walk (fib_node_t *node, fib_node_back_walk_ctx_t *ctx)
 {
   vxlan_gbp_tunnel_restack_dpo (vxlan_gbp_tunnel_from_fib_node (node));
   return (FIB_NODE_BACK_WALK_CONTINUE);
@@ -192,7 +192,7 @@ vxlan_gbp_tunnel_fib_node_get (fib_node_index_t index)
  * Function definition to inform the FIB node that its last lock has gone.
  */
 static void
-vxlan_gbp_tunnel_last_lock_gone (fib_node_t * node)
+vxlan_gbp_tunnel_last_lock_gone (fib_node_t *node)
 {
   /*
    * The VXLAN GBP tunnel is a root of the graph. As such
@@ -211,17 +211,16 @@ const static fib_node_vft_t vxlan_gbp_vft = {
   .fnv_back_walk = vxlan_gbp_tunnel_back_walk,
 };
 
-
-#define foreach_copy_field                      \
-_(vni)                                          \
-_(mode)                                         \
-_(mcast_sw_if_index)                            \
-_(encap_fib_index)                              \
-_(src)                                          \
-_(dst)
+#define foreach_copy_field                                                    \
+  _ (vni)                                                                     \
+  _ (mode)                                                                    \
+  _ (mcast_sw_if_index)                                                       \
+  _ (encap_fib_index)                                                         \
+  _ (src)                                                                     \
+  _ (dst)
 
 static void
-vxlan_gbp_rewrite (vxlan_gbp_tunnel_t * t, bool is_ip6)
+vxlan_gbp_rewrite (vxlan_gbp_tunnel_t *t, bool is_ip6)
 {
   union
   {
@@ -272,11 +271,11 @@ vxlan_gbp_rewrite (vxlan_gbp_tunnel_t * t, bool is_ip6)
 }
 
 static uword
-vtep_addr_ref (ip46_address_t * ip)
+vtep_addr_ref (ip46_address_t *ip)
 {
   uword *vtep = ip46_address_is_ip4 (ip) ?
-    hash_get (vxlan_gbp_main.vtep4, ip->ip4.as_u32) :
-    hash_get_mem (vxlan_gbp_main.vtep6, &ip->ip6);
+		  hash_get (vxlan_gbp_main.vtep4, ip->ip4.as_u32) :
+		  hash_get_mem (vxlan_gbp_main.vtep6, &ip->ip6);
   if (vtep)
     return ++(*vtep);
   ip46_address_is_ip4 (ip) ?
@@ -286,11 +285,11 @@ vtep_addr_ref (ip46_address_t * ip)
 }
 
 static uword
-vtep_addr_unref (ip46_address_t * ip)
+vtep_addr_unref (ip46_address_t *ip)
 {
   uword *vtep = ip46_address_is_ip4 (ip) ?
-    hash_get (vxlan_gbp_main.vtep4, ip->ip4.as_u32) :
-    hash_get_mem (vxlan_gbp_main.vtep6, &ip->ip6);
+		  hash_get (vxlan_gbp_main.vtep4, ip->ip4.as_u32) :
+		  hash_get_mem (vxlan_gbp_main.vtep6, &ip->ip6);
   ALWAYS_ASSERT (vtep);
   if (--(*vtep) != 0)
     return *vtep;
@@ -301,8 +300,7 @@ vtep_addr_unref (ip46_address_t * ip)
 }
 
 /* *INDENT-OFF* */
-typedef CLIB_PACKED(union
-{
+typedef CLIB_PACKED (union {
   struct
   {
     fib_node_index_t mfib_entry_index;
@@ -313,17 +311,17 @@ typedef CLIB_PACKED(union
 /* *INDENT-ON* */
 
 static inline mcast_shared_t
-mcast_shared_get (ip46_address_t * ip)
+mcast_shared_get (ip46_address_t *ip)
 {
   ASSERT (ip46_address_is_multicast (ip));
   uword *p = hash_get_mem (vxlan_gbp_main.mcast_shared, ip);
   ALWAYS_ASSERT (p);
-  mcast_shared_t ret = {.as_u64 = *p };
+  mcast_shared_t ret = { .as_u64 = *p };
   return ret;
 }
 
 static inline void
-mcast_shared_add (ip46_address_t * dst, fib_node_index_t mfei, adj_index_t ai)
+mcast_shared_add (ip46_address_t *dst, fib_node_index_t mfei, adj_index_t ai)
 {
   mcast_shared_t new_ep = {
     .mcast_adj_index = ai,
@@ -334,7 +332,7 @@ mcast_shared_add (ip46_address_t * dst, fib_node_index_t mfei, adj_index_t ai)
 }
 
 static inline void
-mcast_shared_remove (ip46_address_t * dst)
+mcast_shared_remove (ip46_address_t *dst)
 {
   mcast_shared_t ep = mcast_shared_get (dst);
 
@@ -380,8 +378,9 @@ vxlan_gbp_unregister_udp_ports (void)
   vxm->udp_ports_registered -= 1;
 }
 
-int vnet_vxlan_gbp_tunnel_add_del
-  (vnet_vxlan_gbp_tunnel_add_del_args_t * a, u32 * sw_if_indexp)
+int
+vnet_vxlan_gbp_tunnel_add_del (vnet_vxlan_gbp_tunnel_add_del_args_t *a,
+			       u32 *sw_if_indexp)
 {
   vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
   vxlan_gbp_tunnel_t *t = 0;
@@ -396,24 +395,22 @@ int vnet_vxlan_gbp_tunnel_add_del
   if (!is_ip6)
     {
       key4.key[0] = ip46_address_is_multicast (&a->dst) ?
-	a->dst.ip4.as_u32 :
-	a->dst.ip4.as_u32 | (((u64) a->src.ip4.as_u32) << 32);
-      key4.key[1] = (((u64) a->encap_fib_index) << 32)
-	| clib_host_to_net_u32 (a->vni << 8);
+		      a->dst.ip4.as_u32 :
+		      a->dst.ip4.as_u32 | (((u64) a->src.ip4.as_u32) << 32);
+      key4.key[1] = (((u64) a->encap_fib_index) << 32) |
+		    clib_host_to_net_u32 (a->vni << 8);
       not_found =
-	clib_bihash_search_inline_16_8 (&vxm->vxlan4_gbp_tunnel_by_key,
-					&key4);
+	clib_bihash_search_inline_16_8 (&vxm->vxlan4_gbp_tunnel_by_key, &key4);
       p = &key4.value;
     }
   else
     {
       key6.key[0] = a->dst.ip6.as_u64[0];
       key6.key[1] = a->dst.ip6.as_u64[1];
-      key6.key[2] = (((u64) a->encap_fib_index) << 32)
-	| clib_host_to_net_u32 (a->vni << 8);
+      key6.key[2] = (((u64) a->encap_fib_index) << 32) |
+		    clib_host_to_net_u32 (a->vni << 8);
       not_found =
-	clib_bihash_search_inline_24_8 (&vxm->vxlan6_gbp_tunnel_by_key,
-					&key6);
+	clib_bihash_search_inline_24_8 (&vxm->vxlan6_gbp_tunnel_by_key, &key6);
       p = &key6.value;
     }
 
@@ -423,8 +420,8 @@ int vnet_vxlan_gbp_tunnel_add_del
   if (a->is_add)
     {
       l2input_main_t *l2im = &l2input_main;
-      u32 dev_instance;		/* real dev instance tunnel index */
-      u32 user_instance;	/* request and actual instance number */
+      u32 dev_instance;	 /* real dev instance tunnel index */
+      u32 user_instance; /* request and actual instance number */
 
       /* adding a tunnel: tunnel must not already exist */
       if (p)
@@ -457,23 +454,21 @@ int vnet_vxlan_gbp_tunnel_add_del
       hash_set (vxm->instance_used, user_instance, 1);
 
       t->dev_instance = dev_instance;	/* actual */
-      t->user_instance = user_instance;	/* name */
+      t->user_instance = user_instance; /* name */
 
       /* copy the key */
       int add_failed;
       if (is_ip6)
 	{
 	  key6.value = (u64) dev_instance;
-	  add_failed =
-	    clib_bihash_add_del_24_8 (&vxm->vxlan6_gbp_tunnel_by_key, &key6,
-				      1 /*add */ );
+	  add_failed = clib_bihash_add_del_24_8 (
+	    &vxm->vxlan6_gbp_tunnel_by_key, &key6, 1 /*add */);
 	}
       else
 	{
 	  key4.value = (u64) dev_instance;
-	  add_failed =
-	    clib_bihash_add_del_16_8 (&vxm->vxlan4_gbp_tunnel_by_key, &key4,
-				      1 /*add */ );
+	  add_failed = clib_bihash_add_del_16_8 (
+	    &vxm->vxlan4_gbp_tunnel_by_key, &key4, 1 /*add */);
 	}
 
       if (add_failed)
@@ -484,14 +479,14 @@ int vnet_vxlan_gbp_tunnel_add_del
 
       vxlan_gbp_register_udp_ports ();
 
-      t->hw_if_index = vnet_register_interface
-	(vnm, vxlan_gbp_device_class.index, dev_instance,
-	 vxlan_gbp_hw_class.index, dev_instance);
+      t->hw_if_index = vnet_register_interface (
+	vnm, vxlan_gbp_device_class.index, dev_instance,
+	vxlan_gbp_hw_class.index, dev_instance);
       vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, t->hw_if_index);
 
       /* Set vxlan_gbp tunnel output node */
-      u32 encap_index = !is_ip6 ?
-	vxlan4_gbp_encap_node.index : vxlan6_gbp_encap_node.index;
+      u32 encap_index =
+	!is_ip6 ? vxlan4_gbp_encap_node.index : vxlan6_gbp_encap_node.index;
       vnet_set_interface_output_node (vnm, t->hw_if_index, encap_index);
 
       t->sw_if_index = sw_if_index = hi->sw_if_index;
@@ -530,11 +525,9 @@ int vnet_vxlan_gbp_tunnel_add_del
 	   * re-stack accordingly
 	   */
 	  vtep_addr_ref (&t->src);
-	  t->fib_entry_index = fib_entry_track (t->encap_fib_index,
-						&tun_dst_pfx,
-						FIB_NODE_TYPE_VXLAN_GBP_TUNNEL,
-						dev_instance,
-						&t->sibling_index);
+	  t->fib_entry_index = fib_entry_track (
+	    t->encap_fib_index, &tun_dst_pfx, FIB_NODE_TYPE_VXLAN_GBP_TUNNEL,
+	    dev_instance, &t->sibling_index);
 	  vxlan_gbp_tunnel_restack_dpo (t);
 	}
       else
@@ -570,23 +563,19 @@ int vnet_vxlan_gbp_tunnel_add_del
 	       *  - the forwarding interface is for-us
 	       *  - the accepting interface is that from the API
 	       */
-	      mfib_table_entry_path_update (t->encap_fib_index,
-					    &mpfx,
+	      mfib_table_entry_path_update (t->encap_fib_index, &mpfx,
 					    MFIB_SOURCE_VXLAN_GBP, &path);
 
 	      path.frp_sw_if_index = a->mcast_sw_if_index;
 	      path.frp_flags = FIB_ROUTE_PATH_FLAG_NONE;
 	      path.frp_mitf_flags = MFIB_ITF_FLAG_ACCEPT;
-	      mfei = mfib_table_entry_path_update (t->encap_fib_index,
-						   &mpfx,
-						   MFIB_SOURCE_VXLAN_GBP,
-						   &path);
+	      mfei = mfib_table_entry_path_update (
+		t->encap_fib_index, &mpfx, MFIB_SOURCE_VXLAN_GBP, &path);
 
 	      /*
 	       * Create the mcast adjacency to send traffic to the group
 	       */
-	      ai = adj_mcast_add_or_lock (fp,
-					  fib_proto_to_link (fp),
+	      ai = adj_mcast_add_or_lock (fp, fib_proto_to_link (fp),
 					  a->mcast_sw_if_index);
 
 	      /*
@@ -599,8 +588,8 @@ int vnet_vxlan_gbp_tunnel_add_del
 	  mcast_shared_t ep = mcast_shared_get (&t->dst);
 
 	  /* Stack shared mcast dst mac addr rewrite on encap */
-	  dpo_set (&dpo, DPO_ADJACENCY_MCAST,
-		   fib_proto_to_dpo (fp), ep.mcast_adj_index);
+	  dpo_set (&dpo, DPO_ADJACENCY_MCAST, fib_proto_to_dpo (fp),
+		   ep.mcast_adj_index);
 
 	  dpo_stack_from_node (encap_index, &t->next_dpo, &dpo);
 	  dpo_reset (&dpo);
@@ -620,7 +609,7 @@ int vnet_vxlan_gbp_tunnel_add_del
       t = pool_elt_at_index (vxm->tunnels, instance);
 
       sw_if_index = t->sw_if_index;
-      vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */ );
+      vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */);
 
       if (VXLAN_GBP_TUNNEL_MODE_L3 == t->mode)
 	{
@@ -632,10 +621,10 @@ int vnet_vxlan_gbp_tunnel_add_del
 
       if (!is_ip6)
 	clib_bihash_add_del_16_8 (&vxm->vxlan4_gbp_tunnel_by_key, &key4,
-				  0 /*del */ );
+				  0 /*del */);
       else
 	clib_bihash_add_del_24_8 (&vxm->vxlan6_gbp_tunnel_by_key, &key6,
-				  0 /*del */ );
+				  0 /*del */);
 
       if (!ip46_address_is_multicast (&t->dst))
 	{
@@ -696,14 +685,14 @@ get_decap_next_for_node (u32 node_index, u32 ipv4_set)
 {
   vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
   vlib_main_t *vm = vxm->vlib_main;
-  uword input_node = (ipv4_set) ? vxlan4_gbp_input_node.index :
-    vxlan6_gbp_input_node.index;
+  uword input_node =
+    (ipv4_set) ? vxlan4_gbp_input_node.index : vxlan6_gbp_input_node.index;
 
   return vlib_node_add_next (vm, input_node, node_index);
 }
 
 static uword
-unformat_decap_next (unformat_input_t * input, va_list * args)
+unformat_decap_next (unformat_input_t *input, va_list *args)
 {
   u32 *result = va_arg (*args, u32 *);
   u32 ipv4_set = va_arg (*args, int);
@@ -724,13 +713,12 @@ unformat_decap_next (unformat_input_t * input, va_list * args)
 }
 
 static clib_error_t *
-vxlan_gbp_tunnel_add_del_command_fn (vlib_main_t * vm,
-				     unformat_input_t * input,
-				     vlib_cli_command_t * cmd)
+vxlan_gbp_tunnel_add_del_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				     vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  ip46_address_t src = ip46_address_initializer, dst =
-    ip46_address_initializer;
+  ip46_address_t src = ip46_address_initializer,
+		 dst = ip46_address_initializer;
   vxlan_gbp_tunnel_mode_t mode = VXLAN_GBP_TUNNEL_MODE_L2;
   u8 is_add = 1;
   u8 src_set = 0;
@@ -758,21 +746,20 @@ vxlan_gbp_tunnel_add_del_command_fn (vlib_main_t * vm,
 	}
       else if (unformat (line_input, "instance %d", &instance))
 	;
-      else if (unformat (line_input, "src %U",
-			 unformat_ip46_address, &src, IP46_TYPE_ANY))
+      else if (unformat (line_input, "src %U", unformat_ip46_address, &src,
+			 IP46_TYPE_ANY))
 	{
 	  src_set = 1;
 	  ip46_address_is_ip4 (&src) ? (ipv4_set = 1) : (ipv6_set = 1);
 	}
-      else if (unformat (line_input, "dst %U",
-			 unformat_ip46_address, &dst, IP46_TYPE_ANY))
+      else if (unformat (line_input, "dst %U", unformat_ip46_address, &dst,
+			 IP46_TYPE_ANY))
 	{
 	  dst_set = 1;
 	  ip46_address_is_ip4 (&dst) ? (ipv4_set = 1) : (ipv6_set = 1);
 	}
-      else if (unformat (line_input, "group %U %U",
-			 unformat_ip46_address, &dst, IP46_TYPE_ANY,
-			 unformat_vnet_sw_interface,
+      else if (unformat (line_input, "group %U %U", unformat_ip46_address,
+			 &dst, IP46_TYPE_ANY, unformat_vnet_sw_interface,
 			 vnet_get_main (), &mcast_sw_if_index))
 	{
 	  grp_set = dst_set = 1;
@@ -780,8 +767,7 @@ vxlan_gbp_tunnel_add_del_command_fn (vlib_main_t * vm,
 	}
       else if (unformat (line_input, "encap-vrf-id %d", &table_id))
 	{
-	  encap_fib_index =
-	    fib_table_find (fib_ip_proto (ipv6_set), table_id);
+	  encap_fib_index = fib_table_find (fib_ip_proto (ipv6_set), table_id);
 	}
       else if (unformat (line_input, "decap-next %U", unformat_decap_next,
 			 &decap_next_index, ipv4_set))
@@ -834,12 +820,11 @@ vxlan_gbp_tunnel_add_del_command_fn (vlib_main_t * vm,
   if (vni >> 24)
     return clib_error_return (0, "vni %d out of range", vni);
 
-  vnet_vxlan_gbp_tunnel_add_del_args_t a = {
-    .is_add = is_add,
-    .is_ip6 = ipv6_set,
-    .instance = instance,
+  vnet_vxlan_gbp_tunnel_add_del_args_t a = { .is_add = is_add,
+					     .is_ip6 = ipv6_set,
+					     .instance = instance,
 #define _(x) .x = x,
-    foreach_copy_field
+					     foreach_copy_field
 #undef _
   };
 
@@ -864,8 +849,8 @@ vxlan_gbp_tunnel_add_del_command_fn (vlib_main_t * vm,
       return clib_error_return (0, "Instance is in use");
 
     default:
-      return clib_error_return
-	(0, "vnet_vxlan_gbp_tunnel_add_del returned %d", rv);
+      return clib_error_return (0, "vnet_vxlan_gbp_tunnel_add_del returned %d",
+				rv);
     }
 
   return 0;
@@ -887,11 +872,15 @@ vxlan_gbp_tunnel_add_del_command_fn (vlib_main_t * vm,
  *
  * @cliexpar
  * Example of how to create a VXLAN Tunnel:
- * @cliexcmd{create vxlan_gbp tunnel src 10.0.3.1 dst 10.0.3.3 vni 13 encap-vrf-id 7}
- * Example of how to create a VXLAN Tunnel with a known name, vxlan_gbp_tunnel42:
+ * @cliexcmd{create vxlan_gbp tunnel src 10.0.3.1 dst 10.0.3.3 vni 13
+ encap-vrf-id 7}
+ * Example of how to create a VXLAN Tunnel with a known name,
+ vxlan_gbp_tunnel42:
  * @cliexcmd{create vxlan_gbp tunnel src 10.0.3.1 dst 10.0.3.3 instance 42}
- * Example of how to create a multicast VXLAN Tunnel with a known name, vxlan_gbp_tunnel23:
- * @cliexcmd{create vxlan_gbp tunnel src 10.0.3.1 group 239.1.1.1 GigabitEthernet0/8/0 instance 23}
+ * Example of how to create a multicast VXLAN Tunnel with a known name,
+ vxlan_gbp_tunnel23:
+ * @cliexcmd{create vxlan_gbp tunnel src 10.0.3.1 group 239.1.1.1
+ GigabitEthernet0/8/0 instance 23}
  * Example of how to delete a VXLAN Tunnel:
  * @cliexcmd{create vxlan_gbp tunnel src 10.0.3.1 dst 10.0.3.3 vni 13 del}
  ?*/
@@ -899,18 +888,17 @@ vxlan_gbp_tunnel_add_del_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (create_vxlan_gbp_tunnel_command, static) = {
   .path = "create vxlan-gbp tunnel",
   .short_help =
-  "create vxlan-gbp tunnel src <local-vtep-addr>"
-  " {dst <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} vni <nn>"
-  " [instance <id>]"
-  " [encap-vrf-id <nn>] [decap-next [l2|node <name>]] [del]",
+    "create vxlan-gbp tunnel src <local-vtep-addr>"
+    " {dst <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} vni <nn>"
+    " [instance <id>]"
+    " [encap-vrf-id <nn>] [decap-next [l2|node <name>]] [del]",
   .function = vxlan_gbp_tunnel_add_del_command_fn,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-show_vxlan_gbp_tunnel_command_fn (vlib_main_t * vm,
-				  unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
+show_vxlan_gbp_tunnel_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				  vlib_cli_command_t *cmd)
 {
   vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
   vxlan_gbp_tunnel_t *t;
@@ -928,21 +916,19 @@ show_vxlan_gbp_tunnel_command_fn (vlib_main_t * vm,
   if (pool_elts (vxm->tunnels) == 0)
     vlib_cli_output (vm, "No vxlan-gbp tunnels configured...");
 
-/* *INDENT-OFF* */
+  /* *INDENT-OFF* */
   pool_foreach (t, vxm->tunnels)
-   {
-    vlib_cli_output (vm, "%U", format_vxlan_gbp_tunnel, t);
-  }
-/* *INDENT-ON* */
+    {
+      vlib_cli_output (vm, "%U", format_vxlan_gbp_tunnel, t);
+    }
+  /* *INDENT-ON* */
 
   if (raw)
     {
-      vlib_cli_output (vm, "Raw IPv4 Hash Table:\n%U\n",
-		       format_bihash_16_8, &vxm->vxlan4_gbp_tunnel_by_key,
-		       1 /* verbose */ );
-      vlib_cli_output (vm, "Raw IPv6 Hash Table:\n%U\n",
-		       format_bihash_24_8, &vxm->vxlan6_gbp_tunnel_by_key,
-		       1 /* verbose */ );
+      vlib_cli_output (vm, "Raw IPv4 Hash Table:\n%U\n", format_bihash_16_8,
+		       &vxm->vxlan4_gbp_tunnel_by_key, 1 /* verbose */);
+      vlib_cli_output (vm, "Raw IPv6 Hash Table:\n%U\n", format_bihash_24_8,
+		       &vxm->vxlan6_gbp_tunnel_by_key, 1 /* verbose */);
     }
 
   return 0;
@@ -954,17 +940,17 @@ show_vxlan_gbp_tunnel_command_fn (vlib_main_t * vm,
  * @cliexpar
  * Example of how to display the VXLAN Tunnel entries:
  * @cliexstart{show vxlan_gbp tunnel}
- * [0] src 10.0.3.1 dst 10.0.3.3 vni 13 encap_fib_index 0 sw_if_index 5 decap_next l2
+ * [0] src 10.0.3.1 dst 10.0.3.3 vni 13 encap_fib_index 0 sw_if_index 5
+ decap_next l2
  * @cliexend
  ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_vxlan_gbp_tunnel_command, static) = {
-    .path = "show vxlan-gbp tunnel",
-    .short_help = "show vxlan-gbp tunnel [raw]",
-    .function = show_vxlan_gbp_tunnel_command_fn,
+  .path = "show vxlan-gbp tunnel",
+  .short_help = "show vxlan-gbp tunnel [raw]",
+  .function = show_vxlan_gbp_tunnel_command_fn,
 };
 /* *INDENT-ON* */
-
 
 void
 vnet_int_vxlan_gbp_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable)
@@ -977,10 +963,9 @@ vnet_int_vxlan_gbp_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable)
 				 sw_if_index, is_enable, 0, 0);
 }
 
-
 static clib_error_t *
-set_ip_vxlan_gbp_bypass (u32 is_ip6,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+set_ip_vxlan_gbp_bypass (u32 is_ip6, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
@@ -995,8 +980,8 @@ set_ip_vxlan_gbp_bypass (u32 is_ip6,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat_user
-	  (line_input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat_user (line_input, unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else if (unformat (line_input, "del"))
 	is_enable = 0;
@@ -1023,18 +1008,21 @@ done:
 }
 
 static clib_error_t *
-set_ip4_vxlan_gbp_bypass (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+set_ip4_vxlan_gbp_bypass (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   return set_ip_vxlan_gbp_bypass (0, input, cmd);
 }
 
 /*?
- * This command adds the 'ip4-vxlan-gbp-bypass' graph node for a given interface.
- * By adding the IPv4 vxlan_gbp-bypass graph node to an interface, the node checks
+ * This command adds the 'ip4-vxlan-gbp-bypass' graph node for a given
+interface.
+ * By adding the IPv4 vxlan_gbp-bypass graph node to an interface, the node
+checks
  *  for and validate input vxlan_gbp packet and bypass ip4-lookup, ip4-local,
  * ip4-udp-lookup nodes to speedup vxlan_gbp packet forwarding. This node will
- * cause extra overhead to for non-vxlan_gbp packets which is kept at a minimum.
+ * cause extra overhead to for non-vxlan_gbp packets which is kept at a
+minimum.
  *
  * @cliexpar
  * @parblock
@@ -1053,7 +1041,7 @@ set_ip4_vxlan_gbp_bypass (vlib_main_t * vm,
  * @cliexstart{show vlib graph ip4-vxlan-gbp-bypass}
  *            Name                      Next                    Previous
  * ip4-vxlan-gbp-bypass              error-drop [0]               ip4-input
- *                                vxlan4-gbp-input [1]        ip4-input-no-checksum
+ *                                vxlan4-gbp-input [1] ip4-input-no-checksum
  *                                   ip4-lookup [2]
  * @cliexend
  *
@@ -1080,15 +1068,17 @@ VLIB_CLI_COMMAND (set_interface_ip_vxlan_gbp_bypass_command, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
-set_ip6_vxlan_gbp_bypass (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+set_ip6_vxlan_gbp_bypass (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   return set_ip_vxlan_gbp_bypass (1, input, cmd);
 }
 
 /*?
- * This command adds the 'ip6-vxlan-gbp-bypass' graph node for a given interface.
- * By adding the IPv6 vxlan-gbp-bypass graph node to an interface, the node checks
+ * This command adds the 'ip6-vxlan-gbp-bypass' graph node for a given
+interface.
+ * By adding the IPv6 vxlan-gbp-bypass graph node to an interface, the node
+checks
  *  for and validate input vxlan_gbp packet and bypass ip6-lookup, ip6-local,
  * ip6-udp-lookup nodes to speedup vxlan_gbp packet forwarding. This node will
  * cause extra overhead to for non-vxlan packets which is kept at a minimum.
@@ -1110,7 +1100,7 @@ set_ip6_vxlan_gbp_bypass (vlib_main_t * vm,
  * @cliexstart{show vlib graph ip6-vxlan-gbp-bypass}
  *            Name                      Next                    Previous
  * ip6-vxlan-gbp-bypass              error-drop [0]               ip6-input
- *                                vxlan6-gbp-input [1]        ip4-input-no-checksum
+ *                                vxlan6-gbp-input [1] ip4-input-no-checksum
  *                                   ip6-lookup [2]
  * @cliexend
  *
@@ -1140,7 +1130,7 @@ VLIB_CLI_COMMAND (set_interface_ip6_vxlan_gbp_bypass_command, static) = {
 #define VXLAN_GBP_HASH_MEMORY_SIZE (1 << 20)
 
 clib_error_t *
-vxlan_gbp_init (vlib_main_t * vm)
+vxlan_gbp_init (vlib_main_t *vm)
 {
   vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
 
@@ -1155,37 +1145,13 @@ vxlan_gbp_init (vlib_main_t * vm)
 			 VXLAN_GBP_HASH_NUM_BUCKETS,
 			 VXLAN_GBP_HASH_MEMORY_SIZE);
   vxm->vtep6 = hash_create_mem (0, sizeof (ip6_address_t), sizeof (uword));
-  vxm->mcast_shared = hash_create_mem (0,
-				       sizeof (ip46_address_t),
-				       sizeof (mcast_shared_t));
+  vxm->mcast_shared =
+    hash_create_mem (0, sizeof (ip46_address_t), sizeof (mcast_shared_t));
 
   fib_node_register_type (FIB_NODE_TYPE_VXLAN_GBP_TUNNEL, &vxlan_gbp_vft);
 
   punt_hdl = vlib_punt_client_register ("vxlan-gbp");
 
-  vlib_punt_reason_alloc (punt_hdl,
-			  "VXLAN-GBP-no-such-v4-tunnel",
-			  NULL, NULL,
+  vlib_punt_reason_alloc (punt_hdl, "VXLAN-GBP-no-such-v4-tunnel", NULL, NULL,
 			  &vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP4]);
-  vlib_punt_reason_alloc (punt_hdl,
-			  "VXLAN-GBP-no-such-v6-tunnel",
-			  NULL, NULL,
-			  &vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP6]);
-
-  return (0);
-}
-
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (vxlan_gbp_init) =
-{
-  .runs_after = VLIB_INITS("punt_init"),
-};
-/* *INDENT-ON* */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+  vlib_punt_reason_alloc (punt_hdl, "VXLAN-GBP-no-such-v6-tunnel

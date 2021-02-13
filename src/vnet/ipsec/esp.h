@@ -36,27 +36,21 @@ typedef struct
   u8 next_header;
 } esp_footer_t;
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;
   esp_header_t esp;
 }) ip4_and_esp_header_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;
   udp_header_t udp;
   esp_header_t esp;
 }) ip4_and_udp_and_esp_header_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip6_header_t ip6;
   esp_header_t esp;
 }) ip6_and_esp_header_t;
-/* *INDENT-ON* */
 
 /**
  * AES counter mode nonce
@@ -84,16 +78,16 @@ typedef struct esp_aead_t_
   u32 data[3];
 } __clib_packed esp_aead_t;
 
-#define ESP_SEQ_MAX		(4294967295UL)
-#define ESP_MAX_BLOCK_SIZE	(16)
-#define ESP_MAX_IV_SIZE		(16)
-#define ESP_MAX_ICV_SIZE	(32)
+#define ESP_SEQ_MAX	   (4294967295UL)
+#define ESP_MAX_BLOCK_SIZE (16)
+#define ESP_MAX_IV_SIZE	   (16)
+#define ESP_MAX_ICV_SIZE   (32)
 
-u8 *format_esp_header (u8 * s, va_list * args);
+u8 *format_esp_header (u8 *s, va_list *args);
 
 /* TODO seq increment should be atomic to be accessed by multiple workers */
 always_inline int
-esp_seq_advance (ipsec_sa_t * sa)
+esp_seq_advance (ipsec_sa_t *sa)
 {
   if (PREDICT_TRUE (ipsec_sa_is_set_USE_ESN (sa)))
     {
@@ -118,7 +112,7 @@ esp_seq_advance (ipsec_sa_t * sa)
 }
 
 always_inline u16
-esp_aad_fill (u8 * data, const esp_header_t * esp, const ipsec_sa_t * sa)
+esp_aad_fill (u8 *data, const esp_header_t *esp, const ipsec_sa_t *sa)
 {
   esp_aead_t *aad;
 
@@ -146,8 +140,8 @@ esp_aad_fill (u8 * data, const esp_header_t * esp, const ipsec_sa_t * sa)
  * to next nodes.
  */
 always_inline void
-esp_set_next_index (int is_async, u32 * from, u16 * nexts, u32 bi,
-		    u16 * drop_index, u16 drop_next, u16 * next)
+esp_set_next_index (int is_async, u32 *from, u16 *nexts, u32 bi,
+		    u16 *drop_index, u16 drop_next, u16 *next)
 {
   if (is_async)
     {
@@ -161,9 +155,9 @@ esp_set_next_index (int is_async, u32 * from, u16 * nexts, u32 bi,
 
 /* when submitting a frame is failed, drop all buffers in the frame */
 always_inline void
-esp_async_recycle_failed_submit (vnet_crypto_async_frame_t * f,
-				 vlib_buffer_t ** b, u32 * from, u16 * nexts,
-				 u16 * n_dropped, u16 drop_next_index,
+esp_async_recycle_failed_submit (vnet_crypto_async_frame_t *f,
+				 vlib_buffer_t **b, u32 *from, u16 *nexts,
+				 u16 *n_dropped, u16 drop_next_index,
 				 vlib_error_t err)
 {
   u32 n_drop = f->n_elts;
@@ -226,20 +220,21 @@ typedef union
 } esp_post_data_t;
 
 STATIC_ASSERT (sizeof (esp_post_data_t) <=
-	       STRUCT_SIZE_OF (vnet_buffer_opaque_t, unused),
+		 STRUCT_SIZE_OF (vnet_buffer_opaque_t, unused),
 	       "Custom meta-data too large for vnet_buffer_opaque_t");
 
-#define esp_post_data(b) \
-    ((esp_post_data_t *)((u8 *)((b)->opaque) \
-        + STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused)))
+#define esp_post_data(b)                                                      \
+  ((esp_post_data_t *) ((u8 *) ((b)->opaque) +                                \
+			STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused)))
 
 STATIC_ASSERT (sizeof (esp_decrypt_packet_data2_t) <=
-	       STRUCT_SIZE_OF (vnet_buffer_opaque2_t, unused),
+		 STRUCT_SIZE_OF (vnet_buffer_opaque2_t, unused),
 	       "Custom meta-data too large for vnet_buffer_opaque2_t");
 
-#define esp_post_data2(b) \
-    ((esp_decrypt_packet_data2_t *)((u8 *)((b)->opaque2) \
-        + STRUCT_OFFSET_OF (vnet_buffer_opaque2_t, unused)))
+#define esp_post_data2(b)                                                     \
+  ((esp_decrypt_packet_data2_t *) ((u8 *) ((b)->opaque2) +                    \
+				   STRUCT_OFFSET_OF (vnet_buffer_opaque2_t,   \
+						     unused)))
 
 typedef struct
 {

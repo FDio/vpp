@@ -17,18 +17,16 @@
 #include <sys/mman.h>
 
 static clib_error_t *
-test_crash_command_fn (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+test_crash_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   u64 *p = (u64 *) 0xdefec8ed;
 
-  /* *INDENT-OFF* */
-  ELOG_TYPE_DECLARE (e) =
-    {
-      .format = "deliberate crash: touching %x",
-      .format_args = "i4",
-    };
-  /* *INDENT-ON* */
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "deliberate crash: touching %x",
+    .format_args = "i4",
+  };
+
   elog (&vm->elog_main, &e, 0xdefec8ed);
 
   *p = 0xdeadbeef;
@@ -37,25 +35,22 @@ test_crash_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_crash_command, static) =
-{
+VLIB_CLI_COMMAND (test_crash_command, static) = {
   .path = "test crash",
   .short_help = "crash the bus!",
   .function = test_crash_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-test_hash_command_fn (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+test_hash_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
 {
   uword hash1, hash2;
   u8 *baseaddr;
   u8 *key_loc;
 
   baseaddr = mmap (NULL, 8192, PROT_READ | PROT_WRITE,
-		   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0 /* offset */ );
+		   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0 /* offset */);
 
   if (baseaddr == 0)
     {
@@ -98,14 +93,11 @@ test_hash_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_hash_command, static) =
-{
+VLIB_CLI_COMMAND (test_hash_command, static) = {
   .path = "test hash_memory",
   .short_help = "page boundary crossing test",
   .function = test_hash_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -18,7 +18,7 @@
 #include <vnet/ip-neighbor/ip_neighbor_types.h>
 
 void
-ip_neighbor_clone (const ip_neighbor_t * ipn, ip_neighbor_t * clone)
+ip_neighbor_clone (const ip_neighbor_t *ipn, ip_neighbor_t *clone)
 {
   clib_memcpy (clone, ipn, sizeof (*ipn));
 
@@ -27,18 +27,18 @@ ip_neighbor_clone (const ip_neighbor_t * ipn, ip_neighbor_t * clone)
 }
 
 void
-ip_neighbor_free (ip_neighbor_t * ipn)
+ip_neighbor_free (ip_neighbor_t *ipn)
 {
   clib_mem_free (ipn->ipn_key);
 }
 
 u8 *
-format_ip_neighbor_flags (u8 * s, va_list * args)
+format_ip_neighbor_flags (u8 *s, va_list *args)
 {
   ip_neighbor_flags_t flags = va_arg (*args, int);
 
-#define _(a,b,c,d)                              \
-  if (flags & IP_NEIGHBOR_FLAG_##a)             \
+#define _(a, b, c, d)                                                         \
+  if (flags & IP_NEIGHBOR_FLAG_##a)                                           \
     s = format (s, "%s", d);
   foreach_ip_neighbor_flag
 #undef _
@@ -46,17 +46,17 @@ format_ip_neighbor_flags (u8 * s, va_list * args)
 }
 
 u8 *
-format_ip_neighbor_key (u8 * s, va_list * va)
+format_ip_neighbor_key (u8 *s, va_list *va)
 {
   ip_neighbor_key_t *key = va_arg (*va, ip_neighbor_key_t *);
 
-  return (format (s, "[%U, %U]",
-		  format_vnet_sw_if_index_name, vnet_get_main (),
-		  key->ipnk_sw_if_index, format_ip_address, &key->ipnk_ip));
+  return (format (s, "[%U, %U]", format_vnet_sw_if_index_name,
+		  vnet_get_main (), key->ipnk_sw_if_index, format_ip_address,
+		  &key->ipnk_ip));
 }
 
 u8 *
-format_ip_neighbor_watcher (u8 * s, va_list * va)
+format_ip_neighbor_watcher (u8 *s, va_list *va)
 {
   ip_neighbor_watcher_t *watcher = va_arg (*va, ip_neighbor_watcher_t *);
 
@@ -66,21 +66,19 @@ format_ip_neighbor_watcher (u8 * s, va_list * va)
 }
 
 u8 *
-format_ip_neighbor (u8 * s, va_list * va)
+format_ip_neighbor (u8 *s, va_list *va)
 {
   index_t ipni = va_arg (*va, index_t);
   ip_neighbor_t *ipn;
 
   ipn = ip_neighbor_get (ipni);
 
-  return (format (s, "%=12U%=40U%=6U%=20U%U",
-		  format_vlib_time, vlib_get_main (),
-		  ipn->ipn_time_last_updated,
-		  format_ip_address, &ipn->ipn_key->ipnk_ip,
-		  format_ip_neighbor_flags, ipn->ipn_flags,
-		  format_mac_address_t, &ipn->ipn_mac,
-		  format_vnet_sw_if_index_name, vnet_get_main (),
-		  ipn->ipn_key->ipnk_sw_if_index));
+  return (
+    format (s, "%=12U%=40U%=6U%=20U%U", format_vlib_time, vlib_get_main (),
+	    ipn->ipn_time_last_updated, format_ip_address,
+	    &ipn->ipn_key->ipnk_ip, format_ip_neighbor_flags, ipn->ipn_flags,
+	    format_mac_address_t, &ipn->ipn_mac, format_vnet_sw_if_index_name,
+	    vnet_get_main (), ipn->ipn_key->ipnk_sw_if_index));
 }
 
 /*

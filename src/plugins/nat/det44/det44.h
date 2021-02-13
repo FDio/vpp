@@ -42,17 +42,17 @@
 #include <nat/lib/ipfix_logging.h>
 
 /* Session state */
-#define foreach_det44_session_state        \
-  _(0, UNKNOWN, "unknown")                 \
-  _(1, UDP_ACTIVE, "udp-active")           \
-  _(2, TCP_SYN_SENT, "tcp-syn-sent")       \
-  _(3, TCP_ESTABLISHED, "tcp-established") \
-  _(4, TCP_FIN_WAIT, "tcp-fin-wait")       \
-  _(5, TCP_CLOSE_WAIT, "tcp-close-wait")   \
-  _(6, TCP_CLOSING, "tcp-closing")         \
-  _(7, TCP_LAST_ACK, "tcp-last-ack")       \
-  _(8, TCP_CLOSED, "tcp-closed")           \
-  _(9, ICMP_ACTIVE, "icmp-active")
+#define foreach_det44_session_state                                           \
+  _ (0, UNKNOWN, "unknown")                                                   \
+  _ (1, UDP_ACTIVE, "udp-active")                                             \
+  _ (2, TCP_SYN_SENT, "tcp-syn-sent")                                         \
+  _ (3, TCP_ESTABLISHED, "tcp-established")                                   \
+  _ (4, TCP_FIN_WAIT, "tcp-fin-wait")                                         \
+  _ (5, TCP_CLOSE_WAIT, "tcp-close-wait")                                     \
+  _ (6, TCP_CLOSING, "tcp-closing")                                           \
+  _ (7, TCP_LAST_ACK, "tcp-last-ack")                                         \
+  _ (8, TCP_CLOSED, "tcp-closed")                                             \
+  _ (9, ICMP_ACTIVE, "icmp-active")
 
 typedef enum
 {
@@ -191,32 +191,32 @@ typedef struct det44_main_s
 extern det44_main_t det44_main;
 
 /* logging */
-#define det44_log_err(...) \
-  vlib_log(VLIB_LOG_LEVEL_ERR, det44_main.log_class, __VA_ARGS__)
-#define det44_log_warn(...) \
-  vlib_log(VLIB_LOG_LEVEL_WARNING, det44_main.log_class, __VA_ARGS__)
-#define det44_log_notice(...) \
-  vlib_log(VLIB_LOG_LEVEL_NOTICE, det44_main.log_class, __VA_ARGS__)
-#define det44_log_info(...) \
-  vlib_log(VLIB_LOG_LEVEL_INFO, det44_main.log_class, __VA_ARGS__)
-#define det44_log_debug(...)\
-  vlib_log(VLIB_LOG_LEVEL_DEBUG, det44_main.log_class, __VA_ARGS__)
+#define det44_log_err(...)                                                    \
+  vlib_log (VLIB_LOG_LEVEL_ERR, det44_main.log_class, __VA_ARGS__)
+#define det44_log_warn(...)                                                   \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, det44_main.log_class, __VA_ARGS__)
+#define det44_log_notice(...)                                                 \
+  vlib_log (VLIB_LOG_LEVEL_NOTICE, det44_main.log_class, __VA_ARGS__)
+#define det44_log_info(...)                                                   \
+  vlib_log (VLIB_LOG_LEVEL_INFO, det44_main.log_class, __VA_ARGS__)
+#define det44_log_debug(...)                                                  \
+  vlib_log (VLIB_LOG_LEVEL_DEBUG, det44_main.log_class, __VA_ARGS__)
 
 /* Deterministic NAT interface flags */
-#define DET44_INTERFACE_FLAG_IS_INSIDE 1
+#define DET44_INTERFACE_FLAG_IS_INSIDE	1
 #define DET44_INTERFACE_FLAG_IS_OUTSIDE 2
 
 /** \brief Check if Deterministic NAT interface is inside.
     @param i Deterministic NAT interface
     @return 1 if inside interface
 */
-#define det44_interface_is_inside(i) i->flags & DET44_INTERFACE_FLAG_IS_INSIDE
+#define det44_interface_is_inside(i) i->flags &DET44_INTERFACE_FLAG_IS_INSIDE
 
 /** \brief Check if Deterministic NAT interface is outside.
     @param i Deterministic NAT interface
     @return 1 if outside interface
 */
-#define det44_interface_is_outside(i) i->flags & DET44_INTERFACE_FLAG_IS_OUTSIDE
+#define det44_interface_is_outside(i) i->flags &DET44_INTERFACE_FLAG_IS_OUTSIDE
 
 static_always_inline u8
 plugin_enabled ()
@@ -233,40 +233,38 @@ int det44_plugin_disable ();
 
 int det44_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del);
 
-int det44_set_timeouts (nat_timeouts_t * timeouts);
+int det44_set_timeouts (nat_timeouts_t *timeouts);
 nat_timeouts_t det44_get_timeouts ();
 void det44_reset_timeouts ();
 
 /* format functions */
 format_function_t format_det_map_ses;
 
-int snat_det_add_map (ip4_address_t * in_addr, u8 in_plen,
-		      ip4_address_t * out_addr, u8 out_plen, int is_add);
+int snat_det_add_map (ip4_address_t *in_addr, u8 in_plen,
+		      ip4_address_t *out_addr, u8 out_plen, int is_add);
 
 /* icmp session match functions */
-u32 icmp_match_out2in_det (vlib_node_runtime_t * node,
-			   u32 thread_index, vlib_buffer_t * b0,
-			   ip4_header_t * ip0, ip4_address_t * addr,
-			   u16 * port, u32 * fib_index,
-			   nat_protocol_t * proto, void *d, void *e,
-			   u8 * dont_translate);
-u32 icmp_match_in2out_det (vlib_node_runtime_t * node,
-			   u32 thread_index, vlib_buffer_t * b0,
-			   ip4_header_t * ip0, ip4_address_t * addr,
-			   u16 * port, u32 * fib_index,
-			   nat_protocol_t * proto, void *d, void *e,
-			   u8 * dont_translate);
-u32 det44_icmp_in2out (vlib_buffer_t * b0, ip4_header_t * ip0,
-		       icmp46_header_t * icmp0, u32 sw_if_index0,
-		       u32 rx_fib_index0, vlib_node_runtime_t * node,
-		       u32 next0, u32 thread_index, void *d, void *e);
-u32 det44_icmp_out2in (vlib_buffer_t * b0, ip4_header_t * ip0,
-		       icmp46_header_t * icmp0, u32 sw_if_index0,
-		       u32 rx_fib_index0, vlib_node_runtime_t * node,
-		       u32 next0, u32 thread_index, void *d, void *e);
+u32 icmp_match_out2in_det (vlib_node_runtime_t *node, u32 thread_index,
+			   vlib_buffer_t *b0, ip4_header_t *ip0,
+			   ip4_address_t *addr, u16 *port, u32 *fib_index,
+			   nat_protocol_t *proto, void *d, void *e,
+			   u8 *dont_translate);
+u32 icmp_match_in2out_det (vlib_node_runtime_t *node, u32 thread_index,
+			   vlib_buffer_t *b0, ip4_header_t *ip0,
+			   ip4_address_t *addr, u16 *port, u32 *fib_index,
+			   nat_protocol_t *proto, void *d, void *e,
+			   u8 *dont_translate);
+u32 det44_icmp_in2out (vlib_buffer_t *b0, ip4_header_t *ip0,
+		       icmp46_header_t *icmp0, u32 sw_if_index0,
+		       u32 rx_fib_index0, vlib_node_runtime_t *node, u32 next0,
+		       u32 thread_index, void *d, void *e);
+u32 det44_icmp_out2in (vlib_buffer_t *b0, ip4_header_t *ip0,
+		       icmp46_header_t *icmp0, u32 sw_if_index0,
+		       u32 rx_fib_index0, vlib_node_runtime_t *node, u32 next0,
+		       u32 thread_index, void *d, void *e);
 
 static_always_inline int
-is_addr_in_net (ip4_address_t * addr, ip4_address_t * net, u8 plen)
+is_addr_in_net (ip4_address_t *addr, ip4_address_t *net, u8 plen)
 {
   if (net->as_u32 == (addr->as_u32 & ip4_main.fib_masks[plen]))
     return 1;
@@ -274,74 +272,72 @@ is_addr_in_net (ip4_address_t * addr, ip4_address_t * net, u8 plen)
 }
 
 static_always_inline snat_det_map_t *
-snat_det_map_by_user (ip4_address_t * user_addr)
+snat_det_map_by_user (ip4_address_t *user_addr)
 {
   det44_main_t *dm = &det44_main;
   snat_det_map_t *mp;
-  /* *INDENT-OFF* */
+
   pool_foreach (mp, dm->det_maps)
-   {
-    if (is_addr_in_net(user_addr, &mp->in_addr, mp->in_plen))
-      return mp;
-  }
-  /* *INDENT-ON* */
+    {
+      if (is_addr_in_net (user_addr, &mp->in_addr, mp->in_plen))
+	return mp;
+    }
+
   return 0;
 }
 
 static_always_inline snat_det_map_t *
-snat_det_map_by_out (ip4_address_t * out_addr)
+snat_det_map_by_out (ip4_address_t *out_addr)
 {
   det44_main_t *dm = &det44_main;
   snat_det_map_t *mp;
-  /* *INDENT-OFF* */
+
   pool_foreach (mp, dm->det_maps)
-   {
-    if (is_addr_in_net(out_addr, &mp->out_addr, mp->out_plen))
-      return mp;
-  }
-  /* *INDENT-ON* */
+    {
+      if (is_addr_in_net (out_addr, &mp->out_addr, mp->out_plen))
+	return mp;
+    }
+
   return 0;
 }
 
 static_always_inline void
-snat_det_forward (snat_det_map_t * dm, ip4_address_t * in_addr,
-		  ip4_address_t * out_addr, u16 * lo_port)
+snat_det_forward (snat_det_map_t *dm, ip4_address_t *in_addr,
+		  ip4_address_t *out_addr, u16 *lo_port)
 {
   u32 in_offset, out_offset;
 
   in_offset = clib_net_to_host_u32 (in_addr->as_u32) -
-    clib_net_to_host_u32 (dm->in_addr.as_u32);
+	      clib_net_to_host_u32 (dm->in_addr.as_u32);
   out_offset = in_offset / dm->sharing_ratio;
-  out_addr->as_u32 =
-    clib_host_to_net_u32 (clib_net_to_host_u32 (dm->out_addr.as_u32) +
-			  out_offset);
+  out_addr->as_u32 = clib_host_to_net_u32 (
+    clib_net_to_host_u32 (dm->out_addr.as_u32) + out_offset);
   *lo_port = 1024 + dm->ports_per_host * (in_offset % dm->sharing_ratio);
 }
 
 static_always_inline void
-snat_det_reverse (snat_det_map_t * dm, ip4_address_t * out_addr, u16 out_port,
-		  ip4_address_t * in_addr)
+snat_det_reverse (snat_det_map_t *dm, ip4_address_t *out_addr, u16 out_port,
+		  ip4_address_t *in_addr)
 {
   u32 in_offset1, in_offset2, out_offset;
 
   out_offset = clib_net_to_host_u32 (out_addr->as_u32) -
-    clib_net_to_host_u32 (dm->out_addr.as_u32);
+	       clib_net_to_host_u32 (dm->out_addr.as_u32);
   in_offset1 = out_offset * dm->sharing_ratio;
   in_offset2 = (out_port - 1024) / dm->ports_per_host;
-  in_addr->as_u32 =
-    clib_host_to_net_u32 (clib_net_to_host_u32 (dm->in_addr.as_u32) +
-			  in_offset1 + in_offset2);
+  in_addr->as_u32 = clib_host_to_net_u32 (
+    clib_net_to_host_u32 (dm->in_addr.as_u32) + in_offset1 + in_offset2);
 }
 
 static_always_inline u32
-snat_det_user_ses_offset (ip4_address_t * addr, u8 plen)
+snat_det_user_ses_offset (ip4_address_t *addr, u8 plen)
 {
   return (clib_net_to_host_u32 (addr->as_u32) & pow2_mask (32 - plen)) *
-    DET44_SES_PER_USER;
+	 DET44_SES_PER_USER;
 }
 
 static_always_inline snat_det_session_t *
-snat_det_get_ses_by_out (snat_det_map_t * dm, ip4_address_t * in_addr,
+snat_det_get_ses_by_out (snat_det_map_t *dm, ip4_address_t *in_addr,
 			 u64 out_key)
 {
   u32 user_offset;
@@ -358,7 +354,7 @@ snat_det_get_ses_by_out (snat_det_map_t * dm, ip4_address_t * in_addr,
 }
 
 static_always_inline snat_det_session_t *
-snat_det_find_ses_by_in (snat_det_map_t * dm, ip4_address_t * in_addr,
+snat_det_find_ses_by_in (snat_det_map_t *dm, ip4_address_t *in_addr,
 			 u16 in_port, snat_det_out_key_t out_key)
 {
   snat_det_session_t *ses;
@@ -379,9 +375,9 @@ snat_det_find_ses_by_in (snat_det_map_t * dm, ip4_address_t * in_addr,
 }
 
 static_always_inline snat_det_session_t *
-snat_det_ses_create (u32 thread_index, snat_det_map_t * dm,
-		     ip4_address_t * in_addr, u16 in_port,
-		     snat_det_out_key_t * out)
+snat_det_ses_create (u32 thread_index, snat_det_map_t *dm,
+		     ip4_address_t *in_addr, u16 in_port,
+		     snat_det_out_key_t *out)
 {
   u32 user_offset;
   u16 i;
@@ -392,8 +388,8 @@ snat_det_ses_create (u32 thread_index, snat_det_map_t * dm,
     {
       if (!dm->sessions[i + user_offset].in_port)
 	{
-	  if (clib_atomic_bool_cmp_and_swap
-	      (&dm->sessions[i + user_offset].in_port, 0, in_port))
+	  if (clib_atomic_bool_cmp_and_swap (
+		&dm->sessions[i + user_offset].in_port, 0, in_port))
 	    {
 	      dm->sessions[i + user_offset].out.as_u64 = out->as_u64;
 	      dm->sessions[i + user_offset].state = DET44_SESSION_UNKNOWN;
@@ -404,14 +400,13 @@ snat_det_ses_create (u32 thread_index, snat_det_map_t * dm,
 	}
     }
 
-  nat_ipfix_logging_max_entries_per_user (thread_index,
-					  DET44_SES_PER_USER,
+  nat_ipfix_logging_max_entries_per_user (thread_index, DET44_SES_PER_USER,
 					  in_addr->as_u32);
   return 0;
 }
 
 static_always_inline void
-snat_det_ses_close (snat_det_map_t * dm, snat_det_session_t * ses)
+snat_det_ses_close (snat_det_map_t *dm, snat_det_session_t *ses)
 {
   if (clib_atomic_bool_cmp_and_swap (&ses->in_port, ses->in_port, 0))
     {
@@ -420,7 +415,7 @@ snat_det_ses_close (snat_det_map_t * dm, snat_det_session_t * ses)
     }
 }
 
-clib_error_t *det44_api_hookup (vlib_main_t * vm);
+clib_error_t *det44_api_hookup (vlib_main_t *vm);
 
 #endif /* __included_det44_h__ */
 

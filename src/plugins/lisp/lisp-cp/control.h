@@ -22,28 +22,28 @@
 #include <vppinfra/timing_wheel.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 
-#define NUMBER_OF_RETRIES                   1
-#define PENDING_MREQ_EXPIRATION_TIME        3.0	/* seconds */
-#define PENDING_MREQ_QUEUE_LEN              5
+#define NUMBER_OF_RETRIES	     1
+#define PENDING_MREQ_EXPIRATION_TIME 3.0 /* seconds */
+#define PENDING_MREQ_QUEUE_LEN	     5
 
-#define RLOC_PROBING_INTERVAL               60.0
+#define RLOC_PROBING_INTERVAL 60.0
 
 /* when map-registration is enabled "quick registration" takes place first.
    In this mode ETR sends map-register messages at an increased frequency
    until specified message count is reached */
-#define QUICK_MAP_REGISTER_MSG_COUNT        5
-#define QUICK_MAP_REGISTER_INTERVAL         3.0
+#define QUICK_MAP_REGISTER_MSG_COUNT 5
+#define QUICK_MAP_REGISTER_INTERVAL  3.0
 
 /* normal map-register period */
-#define MAP_REGISTER_INTERVAL               60.0
+#define MAP_REGISTER_INTERVAL 60.0
 
 /* how many tries until next map-server election */
-#define MAX_EXPIRED_MAP_REGISTERS_DEFAULT   3
+#define MAX_EXPIRED_MAP_REGISTERS_DEFAULT 3
 
-#define PENDING_MREG_EXPIRATION_TIME        3.0	/* seconds */
+#define PENDING_MREG_EXPIRATION_TIME 3.0 /* seconds */
 
 /* 24 hours */
-#define MAP_REGISTER_DEFAULT_TTL            86400
+#define MAP_REGISTER_DEFAULT_TTL 86400
 
 typedef struct
 {
@@ -117,12 +117,12 @@ typedef enum
   _MR_MODE_MAX
 } map_request_mode_t;
 
-#define foreach_lisp_flag_bit       \
-  _(USE_PETR, "Use Proxy-ETR")                    \
-  _(XTR_MODE, "ITR/ETR mode")                     \
-  _(PETR_MODE, "Proxy-ETR mode")                   \
-  _(PITR_MODE, "Proxy-ITR mode")                  \
-  _(STATS_ENABLED, "Statistics enabled")
+#define foreach_lisp_flag_bit                                                 \
+  _ (USE_PETR, "Use Proxy-ETR")                                               \
+  _ (XTR_MODE, "ITR/ETR mode")                                                \
+  _ (PETR_MODE, "Proxy-ETR mode")                                             \
+  _ (PITR_MODE, "Proxy-ITR mode")                                             \
+  _ (STATS_ENABLED, "Statistics enabled")
 
 typedef enum lisp_flag_bits
 {
@@ -267,7 +267,7 @@ typedef struct
   u8 rloc_probing;
 
   /* timing wheel for mapping timeouts */
-    TWT (tw_timer_wheel) wheel;
+  TWT (tw_timer_wheel) wheel;
 
   /** Per thread pool of records shared with thread0 */
   map_records_arg_t **map_records_args_pool;
@@ -307,10 +307,9 @@ vnet_lisp_cp_get_main ()
   return &lisp_control_main;
 }
 
-void
-get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
-				  gid_address_t * src, gid_address_t * dst,
-				  u16 type);
+void get_src_and_dst_eids_from_buffer (lisp_cp_main_t *lcm, vlib_buffer_t *b,
+				       gid_address_t *src, gid_address_t *dst,
+				       u16 type);
 
 typedef struct
 {
@@ -324,12 +323,10 @@ typedef struct
   u8 local;
 } vnet_lisp_add_del_locator_set_args_t;
 
-int
-vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
-			       u32 * ls_index);
-int
-vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t * a,
-			   locator_set_t * ls, u32 * ls_index);
+int vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t *a,
+				   u32 *ls_index);
+int vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t *a,
+			       locator_set_t *ls, u32 *ls_index);
 
 typedef struct
 {
@@ -347,19 +344,16 @@ typedef struct
   u8 key_id;
 } vnet_lisp_add_del_mapping_args_t;
 
-int
-vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,
-			     u32 * map_index);
-int
-vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
-				 u32 * map_index_result);
+int vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t *a,
+				 u32 *map_index);
+int vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t *a,
+				     u32 *map_index_result);
 
-int
-vnet_lisp_add_mapping (vnet_lisp_add_del_mapping_args_t * a,
-		       locator_t * rlocs, u32 * res_map_index,
-		       u8 * is_changed);
+int vnet_lisp_add_mapping (vnet_lisp_add_del_mapping_args_t *a,
+			   locator_t *rlocs, u32 *res_map_index,
+			   u8 *is_changed);
 
-int vnet_lisp_del_mapping (gid_address_t * eid, u32 * res_map_index);
+int vnet_lisp_del_mapping (gid_address_t *eid, u32 *res_map_index);
 
 typedef struct
 {
@@ -368,7 +362,7 @@ typedef struct
   u8 is_add;
 } vnet_lisp_add_del_adjacency_args_t;
 
-int vnet_lisp_add_del_adjacency (vnet_lisp_add_del_adjacency_args_t * a);
+int vnet_lisp_add_del_adjacency (vnet_lisp_add_del_adjacency_args_t *a);
 
 typedef struct
 {
@@ -376,16 +370,15 @@ typedef struct
   ip_address_t address;
 } vnet_lisp_add_del_map_resolver_args_t;
 
-int
-vnet_lisp_add_del_map_resolver (vnet_lisp_add_del_map_resolver_args_t * a);
-int vnet_lisp_add_del_map_server (ip_address_t * addr, u8 is_add);
+int vnet_lisp_add_del_map_resolver (vnet_lisp_add_del_map_resolver_args_t *a);
+int vnet_lisp_add_del_map_server (ip_address_t *addr, u8 is_add);
 
 clib_error_t *vnet_lisp_enable_disable (u8 is_enabled);
 u8 vnet_lisp_enable_disable_status (void);
-void vnet_lisp_create_retry_process (lisp_cp_main_t * lcm);
+void vnet_lisp_create_retry_process (lisp_cp_main_t *lcm);
 
-int vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add);
-int vnet_lisp_use_petr (ip_address_t * ip, u8 is_add);
+int vnet_lisp_pitr_set_locator_set (u8 *locator_set_name, u8 is_add);
+int vnet_lisp_use_petr (ip_address_t *ip, u8 is_add);
 
 typedef struct
 {
@@ -394,13 +387,12 @@ typedef struct
 } vnet_lisp_add_del_mreq_itr_rloc_args_t;
 
 int
-vnet_lisp_add_del_mreq_itr_rlocs (vnet_lisp_add_del_mreq_itr_rloc_args_t * a);
+vnet_lisp_add_del_mreq_itr_rlocs (vnet_lisp_add_del_mreq_itr_rloc_args_t *a);
 
 int vnet_lisp_clear_all_remote_adjacencies (void);
 
 int vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_l2, u8 is_add);
-int vnet_lisp_add_del_map_table_key (gid_address_t * eid, char *key,
-				     u8 is_add);
+int vnet_lisp_add_del_map_table_key (gid_address_t *eid, char *key, u8 is_add);
 int vnet_lisp_set_map_request_mode (u8 mode);
 u8 vnet_lisp_get_map_request_mode (void);
 lisp_adjacency_t *vnet_lisp_adjacencies_get_by_vni (u32 vni);
@@ -408,11 +400,11 @@ int vnet_lisp_rloc_probe_enable_disable (u8 is_enable);
 int vnet_lisp_map_register_enable_disable (u8 is_enable);
 u8 vnet_lisp_map_register_state_get (void);
 u8 vnet_lisp_rloc_probe_state_get (void);
-int vnet_lisp_add_del_l2_arp_ndp_entry (gid_address_t * key, u8 * mac,
+int vnet_lisp_add_del_l2_arp_ndp_entry (gid_address_t *key, u8 *mac,
 					u8 is_add);
 u32 *vnet_lisp_l2_arp_bds_get (void);
 lisp_api_l2_arp_entry_t *vnet_lisp_l2_arp_entries_get_by_bd (u32 bd);
-int vnet_lisp_nsh_set_locator_set (u8 * locator_set_name, u8 is_add);
+int vnet_lisp_nsh_set_locator_set (u8 *locator_set_name, u8 is_add);
 int vnet_lisp_map_register_set_ttl (u32 ttl);
 u32 vnet_lisp_map_register_get_ttl (void);
 int vnet_lisp_map_register_fallback_threshold_set (u32 value);
@@ -429,10 +421,10 @@ extern u8 vnet_lisp_get_xtr_mode (void);
 extern u8 vnet_lisp_get_pitr_mode (void);
 extern u8 vnet_lisp_get_petr_mode (void);
 
-map_records_arg_t *parse_map_reply (vlib_buffer_t * b);
+map_records_arg_t *parse_map_reply (vlib_buffer_t *b);
 
 always_inline mapping_t *
-lisp_get_petr_mapping (lisp_cp_main_t * lcm)
+lisp_get_petr_mapping (lisp_cp_main_t *lcm)
 {
   return pool_elt_at_index (lcm->mapping_pool, lcm->petr_map_index);
 }

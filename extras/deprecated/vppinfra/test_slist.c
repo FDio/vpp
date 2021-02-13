@@ -33,15 +33,14 @@ typedef struct
 
 test_main_t test_main;
 
-#define foreach_simple_test                     \
-_(2)                                            \
-_(4)                                            \
-_(3)                                            \
-_(1)
-
+#define foreach_simple_test                                                   \
+  _ (2)                                                                       \
+  _ (4)                                                                       \
+  _ (3)                                                                       \
+  _ (1)
 
 void
-run_test (test_main_t * tm)
+run_test (test_main_t *tm)
 {
   int i;
   u32 *tv;
@@ -76,7 +75,7 @@ run_test (test_main_t * tm)
 	       (f64) total_compares / (f64) i);
 
       fformat (stdout, "%U\n", format_slist, &tm->slist,
-	       tm->iter < 1000 /* verbose */ );
+	       tm->iter < 1000 /* verbose */);
 
       /* delete half of them */
       for (i = tm->iter / 2; i < tm->iter; i++)
@@ -93,14 +92,13 @@ run_test (test_main_t * tm)
 
 	  search_result = clib_slist_search (&tm->slist, tv, &ncompares);
 	  if (i >= tm->iter / 2)
-	    ASSERT (search_result == (u32) ~ 0);
+	    ASSERT (search_result == (u32) ~0);
 	  else
 	    ASSERT (search_result == i);
-
 	}
 
       fformat (stdout, "%U\n", format_slist, &tm->slist,
-	       tm->iter < 1000 /* verbose */ );
+	       tm->iter < 1000 /* verbose */);
 
       /* delete the rest */
       for (i = 0; i < tm->iter; i++)
@@ -111,18 +109,20 @@ run_test (test_main_t * tm)
 	}
 
       fformat (stdout, "%U\n", format_slist, &tm->slist,
-	       tm->iter < 1000 /* verbose */ );
+	       tm->iter < 1000 /* verbose */);
     }
   else
     {
 
-#define _(n)                                                            \
-    do {                                                                \
-      pool_get (tm->random_pool, tv);                                   \
-      *tv = n;                                                          \
-      clib_slist_add (&tm->slist, tv, tv - tm->random_pool);            \
-      fformat(stdout, "%U\n", format_slist, &tm->slist, 1 /* verbose */); \
-    } while (0);
+#define _(n)                                                                  \
+  do                                                                          \
+    {                                                                         \
+      pool_get (tm->random_pool, tv);                                         \
+      *tv = n;                                                                \
+      clib_slist_add (&tm->slist, tv, tv - tm->random_pool);                  \
+      fformat (stdout, "%U\n", format_slist, &tm->slist, 1 /* verbose */);    \
+    }                                                                         \
+  while (0);
       foreach_simple_test;
 #undef _
     }
@@ -144,7 +144,7 @@ test_compare (void *key, u32 elt_index)
 }
 
 u8 *
-test_format (u8 * s, va_list * args)
+test_format (u8 *s, va_list *args)
 {
   u32 elt_index = va_arg (*args, u32);
   u32 elt = test_main.random_pool[elt_index];
@@ -153,14 +153,14 @@ test_format (u8 * s, va_list * args)
 }
 
 void
-initialize_slist (test_main_t * tm)
+initialize_slist (test_main_t *tm)
 {
-  clib_slist_init (&tm->slist, tm->branching_factor,
-		   test_compare, test_format);
+  clib_slist_init (&tm->slist, tm->branching_factor, test_compare,
+		   test_format);
 }
 
 int
-test_slist_main (unformat_input_t * input)
+test_slist_main (unformat_input_t *input)
 {
   test_main_t *tm = &test_main;
   u32 tmp;
@@ -199,7 +199,6 @@ test_slist_main (unformat_input_t * input)
 usage:
   fformat (stderr, "usage: test_slist seed <seed> iter <iter> [verbose]\n");
   return 1;
-
 }
 
 #ifdef CLIB_UNIX

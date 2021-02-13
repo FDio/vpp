@@ -20,13 +20,16 @@
 #include <vnet/ip/format.h>
 
 u8 *
-format_ethernet_arp_opcode (u8 * s, va_list * va)
+format_ethernet_arp_opcode (u8 *s, va_list *va)
 {
   ethernet_arp_opcode_t o = va_arg (*va, ethernet_arp_opcode_t);
   char *t = 0;
   switch (o)
     {
-#define _(f) case ETHERNET_ARP_OPCODE_##f: t = #f; break;
+#define _(f)                                                                  \
+  case ETHERNET_ARP_OPCODE_##f:                                               \
+    t = #f;                                                                   \
+    break;
       foreach_ethernet_arp_opcode;
 #undef _
 
@@ -38,13 +41,16 @@ format_ethernet_arp_opcode (u8 * s, va_list * va)
 }
 
 u8 *
-format_ethernet_arp_hardware_type (u8 * s, va_list * va)
+format_ethernet_arp_hardware_type (u8 *s, va_list *va)
 {
   ethernet_arp_hardware_type_t h = va_arg (*va, ethernet_arp_hardware_type_t);
   char *t = 0;
   switch (h)
     {
-#define _(n,f) case n: t = #f; break;
+#define _(n, f)                                                               \
+  case n:                                                                     \
+    t = #f;                                                                   \
+    break;
       foreach_ethernet_arp_hardware_type;
 #undef _
 
@@ -56,7 +62,7 @@ format_ethernet_arp_hardware_type (u8 * s, va_list * va)
 }
 
 u8 *
-format_ethernet_arp_header (u8 * s, va_list * va)
+format_ethernet_arp_header (u8 *s, va_list *va)
 {
   ethernet_arp_header_t *a = va_arg (*va, ethernet_arp_header_t *);
   u32 max_header_bytes = va_arg (*va, u32);
@@ -73,15 +79,13 @@ format_ethernet_arp_header (u8 * s, va_list * va)
 
   s = format (s, "%U, type %U/%U, address size %d/%d",
 	      format_ethernet_arp_opcode, clib_net_to_host_u16 (a->opcode),
-	      format_ethernet_arp_hardware_type, l2_type,
-	      format_ethernet_type, l3_type,
-	      a->n_l2_address_bytes, a->n_l3_address_bytes);
+	      format_ethernet_arp_hardware_type, l2_type, format_ethernet_type,
+	      l3_type, a->n_l2_address_bytes, a->n_l3_address_bytes);
 
-  if (l2_type == ETHERNET_ARP_HARDWARE_TYPE_ethernet
-      && l3_type == ETHERNET_TYPE_IP4)
+  if (l2_type == ETHERNET_ARP_HARDWARE_TYPE_ethernet &&
+      l3_type == ETHERNET_TYPE_IP4)
     {
-      s = format (s, "\n%U%U/%U -> %U/%U",
-		  format_white_space, indent,
+      s = format (s, "\n%U%U/%U -> %U/%U", format_white_space, indent,
 		  format_mac_address_t, &a->ip4_over_ethernet[0].mac,
 		  format_ip4_address, &a->ip4_over_ethernet[0].ip4,
 		  format_mac_address_t, &a->ip4_over_ethernet[1].mac,
@@ -91,8 +95,7 @@ format_ethernet_arp_header (u8 * s, va_list * va)
     {
       uword n2 = a->n_l2_address_bytes;
       uword n3 = a->n_l3_address_bytes;
-      s = format (s, "\n%U%U/%U -> %U/%U",
-		  format_white_space, indent,
+      s = format (s, "\n%U%U/%U -> %U/%U", format_white_space, indent,
 		  format_hex_bytes, a->data + 0 * n2 + 0 * n3, n2,
 		  format_hex_bytes, a->data + 1 * n2 + 0 * n3, n3,
 		  format_hex_bytes, a->data + 1 * n2 + 1 * n3, n2,

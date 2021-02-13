@@ -20,7 +20,6 @@
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <ioam/export-common/ioam_export.h>
 
-
 typedef struct
 {
   u32 next_index;
@@ -29,33 +28,32 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_export_trace (u8 * s, va_list * args)
+format_export_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   export_trace_t *t = va_arg (*args, export_trace_t *);
 
-  s = format (s, "EXPORT: flow_label %d, next index %d",
-	      t->flow_label, t->next_index);
+  s = format (s, "EXPORT: flow_label %d, next index %d", t->flow_label,
+	      t->next_index);
   return s;
 }
 
 vlib_node_registration_t export_node;
 extern ioam_export_main_t ioam_export_main;
 
-#define foreach_export_error \
-_(RECORDED, "Packets recorded for export")
+#define foreach_export_error _ (RECORDED, "Packets recorded for export")
 
 typedef enum
 {
-#define _(sym,str) EXPORT_ERROR_##sym,
+#define _(sym, str) EXPORT_ERROR_##sym,
   foreach_export_error
 #undef _
     EXPORT_N_ERROR,
 } export_error_t;
 
 static char *export_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_export_error
 #undef _
 };
@@ -123,35 +121,34 @@ copy3cachelines (void *dst, const void *src, size_t n)
 }
 
 static void
-ip6_export_fixup_func (vlib_buffer_t * export_buf, vlib_buffer_t * pak_buf)
+ip6_export_fixup_func (vlib_buffer_t *export_buf, vlib_buffer_t *pak_buf)
 {
   ip6_header_t *ip6_temp =
-      (ip6_header_t *) (export_buf->data + export_buf->current_length);
+    (ip6_header_t *) (export_buf->data + export_buf->current_length);
   u32 flow_label_temp =
-      clib_net_to_host_u32(ip6_temp->ip_version_traffic_class_and_flow_label)
-      & 0xFFF00000;
+    clib_net_to_host_u32 (ip6_temp->ip_version_traffic_class_and_flow_label) &
+    0xFFF00000;
   flow_label_temp |=
-      IOAM_MASK_DECAP_BIT((vnet_buffer(pak_buf)->l2_classify.opaque_index));
+    IOAM_MASK_DECAP_BIT ((vnet_buffer (pak_buf)->l2_classify.opaque_index));
   ip6_temp->ip_version_traffic_class_and_flow_label =
-      clib_host_to_net_u32(flow_label_temp);
+    clib_host_to_net_u32 (flow_label_temp);
 }
 
 static uword
-ip6_export_node_fn (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
+ip6_export_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *frame)
 {
   ioam_export_main_t *em = &ioam_export_main;
-  ioam_export_node_common(em, vm, node, frame, ip6_header_t, payload_length,
-                          ip_version_traffic_class_and_flow_label, 
-                          EXPORT_NEXT_POP_HBYH, ip6_export_fixup_func);
+  ioam_export_node_common (em, vm, node, frame, ip6_header_t, payload_length,
+			   ip_version_traffic_class_and_flow_label,
+			   EXPORT_NEXT_POP_HBYH, ip6_export_fixup_func);
   return frame->n_vectors;
 }
 
 /*
  * Node for IP6 export
  */
-VLIB_REGISTER_NODE (export_node) =
-{
+VLIB_REGISTER_NODE (export_node) = {
   .function = ip6_export_node_fn,
   .name = "ip6-export",
   .vector_size = sizeof (u32),
@@ -161,8 +158,5 @@ VLIB_REGISTER_NODE (export_node) =
   .error_strings = export_error_strings,
   .n_next_nodes = EXPORT_N_NEXT,
   /* edit / add dispositions here */
-  .next_nodes =
-  {
-    [EXPORT_NEXT_POP_HBYH] = "ip6-pop-hop-by-hop"
-  },
+  .next_nodes = { [EXPORT_NEXT_POP_HBYH] = "ip6-pop-hop-by-hop" },
 };

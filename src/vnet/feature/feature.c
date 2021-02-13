@@ -45,9 +45,8 @@ vnet_feature_reg_invoke (u32 sw_if_index, u8 arc_index, u8 is_enable)
     reg->cb (sw_if_index, arc_index, is_enable, reg->data);
 }
 
-
 static clib_error_t *
-vnet_feature_init (vlib_main_t * vm)
+vnet_feature_init (vlib_main_t *vm)
 {
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_registration_t *freg;
@@ -136,7 +135,6 @@ vnet_feature_init (vlib_main_t * vm)
       creg = next;
     }
 
-
   areg = fm->next_arc;
   while (areg)
     {
@@ -148,12 +146,11 @@ vnet_feature_init (vlib_main_t * vm)
       arc_index = areg->feature_arc_index;
       cm = &fm->feature_config_mains[arc_index];
       vcm = &cm->config_main;
-      if ((error = vnet_feature_arc_init
-	   (vm, vcm, areg->start_nodes, areg->n_start_nodes,
-	    areg->last_in_arc,
-	    fm->next_feature_by_arc[arc_index],
-	    fm->next_constraint_by_arc[arc_index],
-	    &fm->feature_nodes[arc_index])))
+      if ((error = vnet_feature_arc_init (
+	     vm, vcm, areg->start_nodes, areg->n_start_nodes,
+	     areg->last_in_arc, fm->next_feature_by_arc[arc_index],
+	     fm->next_constraint_by_arc[arc_index],
+	     &fm->feature_nodes[arc_index])))
 	{
 	  clib_error_report (error);
 	  os_exit (1);
@@ -167,9 +164,8 @@ vnet_feature_init (vlib_main_t * vm)
 	  last_feature = features_in_order[vec_len (features_in_order) - 1];
 	  if (strncmp (areg->last_in_arc, last_feature,
 		       strlen (areg->last_in_arc)))
-	    clib_warning
-	      ("WARNING: %s arc: last node is %s, but expected %s!",
-	       areg->arc_name, last_feature, areg->last_in_arc);
+	    clib_warning ("WARNING: %s arc: last node is %s, but expected %s!",
+			  areg->arc_name, last_feature, areg->last_in_arc);
 	}
 
       fm->next_feature_by_name[arc_index] =
@@ -178,8 +174,8 @@ vnet_feature_init (vlib_main_t * vm)
 
       while (freg)
 	{
-	  hash_set_mem (fm->next_feature_by_name[arc_index],
-			freg->node_name, pointer_to_uword (freg));
+	  hash_set_mem (fm->next_feature_by_name[arc_index], freg->node_name,
+			pointer_to_uword (freg));
 	  freg = freg->next_in_arc;
 	}
 
@@ -214,7 +210,7 @@ vnet_get_feature_reg (const char *arc_name, const char *node_name)
   u8 arc_index;
 
   arc_index = vnet_get_feature_arc_index (arc_name);
-  if (arc_index == (u8) ~ 0)
+  if (arc_index == (u8) ~0)
     return 0;
 
   vnet_feature_main_t *fm = &feature_main;
@@ -258,7 +254,7 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   i16 feature_count;
   u32 ci;
 
-  if (arc_index == (u8) ~ 0)
+  if (arc_index == (u8) ~0)
     return VNET_API_ERROR_INVALID_VALUE;
 
   if (feature_index == ~0)
@@ -274,11 +270,9 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   if (!enable_disable && feature_count < 1)
     return 0;
 
-  ci = (enable_disable
-	? vnet_config_add_feature
-	: vnet_config_del_feature)
-    (vlib_get_main (), &cm->config_main, ci, feature_index, feature_config,
-     n_feature_config_bytes);
+  ci = (enable_disable ? vnet_config_add_feature : vnet_config_del_feature) (
+    vlib_get_main (), &cm->config_main, ci, feature_index, feature_config,
+    n_feature_config_bytes);
   if (ci == ~0)
     {
       return 0;
@@ -290,9 +284,8 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   feature_count += enable_disable ? 1 : -1;
   ASSERT (feature_count >= 0);
 
-  fm->sw_if_index_has_features[arc_index] =
-    clib_bitmap_set (fm->sw_if_index_has_features[arc_index], sw_if_index,
-		     (feature_count > 0));
+  fm->sw_if_index_has_features[arc_index] = clib_bitmap_set (
+    fm->sw_if_index_has_features[arc_index], sw_if_index, (feature_count > 0));
   vnet_feature_reg_invoke (sw_if_index, arc_index, (feature_count > 0));
 
   fm->feature_count_by_sw_if_index[arc_index][sw_if_index] = feature_count;
@@ -309,15 +302,14 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
 
   arc_index = vnet_get_feature_arc_index (arc_name);
 
-  if (arc_index == (u8) ~ 0)
+  if (arc_index == (u8) ~0)
     return VNET_API_ERROR_INVALID_VALUE;
 
   feature_index = vnet_get_feature_index (arc_index, node_name);
 
-  return vnet_feature_enable_disable_with_index (arc_index, feature_index,
-						 sw_if_index, enable_disable,
-						 feature_config,
-						 n_feature_config_bytes);
+  return vnet_feature_enable_disable_with_index (
+    arc_index, feature_index, sw_if_index, enable_disable, feature_config,
+    n_feature_config_bytes);
 }
 
 int
@@ -337,13 +329,13 @@ vnet_feature_is_enabled (const char *arc_name, const char *feature_node_name,
   arc_index = vnet_get_feature_arc_index (arc_name);
 
   /* No such arc? */
-  if (arc_index == (u8) ~ 0)
+  if (arc_index == (u8) ~0)
     return VNET_API_ERROR_INVALID_VALUE;
 
   feature_index = vnet_get_feature_index (arc_index, feature_node_name);
 
   /* No such feature? */
-  if (feature_index == (u32) ~ 0)
+  if (feature_index == (u32) ~0)
     return VNET_API_ERROR_INVALID_VALUE_2;
 
   cm = &fm->feature_config_mains[arc_index];
@@ -366,25 +358,24 @@ vnet_feature_is_enabled (const char *arc_name, const char *feature_node_name,
 
   /* Find feature with the required index */
   vec_foreach (f, current_config->features)
-  {
-    if (f->feature_index == feature_index)
-      /* Feature was enabled */
-      return 1;
-  }
+    {
+      if (f->feature_index == feature_index)
+	/* Feature was enabled */
+	return 1;
+    }
   /* feature wasn't enabled */
   return 0;
 }
 
-
 u32
-vnet_feature_modify_end_node (u8 arc_index,
-			      u32 sw_if_index, u32 end_node_index)
+vnet_feature_modify_end_node (u8 arc_index, u32 sw_if_index,
+			      u32 end_node_index)
 {
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm;
   u32 ci;
 
-  if (arc_index == (u8) ~ 0)
+  if (arc_index == (u8) ~0)
     return VNET_API_ERROR_INVALID_VALUE;
 
   if (end_node_index == ~0)
@@ -394,8 +385,8 @@ vnet_feature_modify_end_node (u8 arc_index,
   vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
   ci = cm->config_index_by_sw_if_index[sw_if_index];
 
-  ci = vnet_config_modify_end_node (vlib_get_main (), &cm->config_main,
-				    ci, end_node_index);
+  ci = vnet_config_modify_end_node (vlib_get_main (), &cm->config_main, ci,
+				    end_node_index);
 
   if (ci != ~0)
     cm->config_index_by_sw_if_index[sw_if_index] = ci;
@@ -417,8 +408,8 @@ feature_cmp (void *a1, void *a2)
 */
 
 static clib_error_t *
-show_features_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+show_features_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_arc_registration_t *areg;
@@ -450,13 +441,13 @@ show_features_command_fn (vlib_main_t * vm,
       vec_sort_with_function (feature_regs, feature_cmp);
 
       vec_foreach (freg, feature_regs)
-      {
-	if (verbose)
-	  vlib_cli_output (vm, "  [%2d]: %s\n", freg->feature_index,
-			   freg->node_name);
-	else
-	  vlib_cli_output (vm, "  %s\n", freg->node_name);
-      }
+	{
+	  if (verbose)
+	    vlib_cli_output (vm, "  [%2d]: %s\n", freg->feature_index,
+			     freg->node_name);
+	  else
+	    vlib_cli_output (vm, "  %s\n", freg->node_name);
+	}
       vec_reset_length (feature_regs);
       /* next */
       areg = areg->next;
@@ -475,20 +466,19 @@ show_features_command_fn (vlib_main_t * vm,
  * @cliexend
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (show_features_command, static) = {
   .path = "show features",
   .short_help = "show features [verbose]",
   .function = show_features_command_fn,
 };
-/* *INDENT-ON* */
 
 /** Display the set of driver features configured on a specific interface
-  * Called by "show interface" handler
+ * Called by "show interface" handler
  */
 
 void
-vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index, int verbose)
+vnet_interface_features_show (vlib_main_t *vm, u32 sw_if_index, int verbose)
 {
   vnet_feature_main_t *fm = &feature_main;
   u32 node_index, current_config_index;
@@ -503,8 +493,8 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index, int verbose)
   int i;
 
   vlib_cli_output (vm, "Feature paths configured on %U...",
-		   format_vnet_sw_if_index_name,
-		   vnet_get_main (), sw_if_index);
+		   format_vnet_sw_if_index_name, vnet_get_main (),
+		   sw_if_index);
 
   areg = fm->next_arc;
   while (areg)
@@ -539,19 +529,16 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index, int verbose)
 	}
       if (verbose)
 	{
-	  n =
-	    vlib_get_node (vm,
-			   vcm->end_node_indices_by_user_index
-			   [current_config_index]);
+	  n = vlib_get_node (
+	    vm, vcm->end_node_indices_by_user_index[current_config_index]);
 	  vlib_cli_output (vm, "  [end] %v", n->name);
 	}
     }
 }
 
 static clib_error_t *
-set_interface_features_command_fn (vlib_main_t * vm,
-				   unformat_input_t * input,
-				   vlib_cli_command_t * cmd)
+set_interface_features_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -568,9 +555,8 @@ set_interface_features_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "%U %s arc %s", unformat_vnet_sw_interface, vnm,
-	   &sw_if_index, &feature_name, &arc_name))
+      if (unformat (line_input, "%U %s arc %s", unformat_vnet_sw_interface,
+		    vnm, &sw_if_index, &feature_name, &arc_name))
 	;
       else if (unformat (line_input, "disable"))
 	enable = 0;
@@ -599,24 +585,23 @@ set_interface_features_command_fn (vlib_main_t * vm,
 
   arc_index = vnet_get_feature_arc_index ((const char *) arc_name);
 
-  if (arc_index == (u8) ~ 0)
+  if (arc_index == (u8) ~0)
     {
-      error =
-	clib_error_return (0, "Unknown arc name (%s)... ",
-			   (const char *) arc_name);
+      error = clib_error_return (0, "Unknown arc name (%s)... ",
+				 (const char *) arc_name);
       goto done;
     }
 
   vnet_feature_registration_t *reg;
-  reg =
-    vnet_get_feature_reg ((const char *) arc_name,
-			  (const char *) feature_name);
+  reg = vnet_get_feature_reg ((const char *) arc_name,
+			      (const char *) feature_name);
   if (reg == 0)
     {
-      error =
-	clib_error_return (0,
-			   "Feature (%s) not registered to arc (%s)... See 'show features verbose' for valid feature/arc combinations. ",
-			   feature_name, arc_name);
+      error = clib_error_return (
+	0,
+	"Feature (%s) not registered to arc (%s)... See 'show features "
+	"verbose' for valid feature/arc combinations. ",
+	feature_name, arc_name);
       goto done;
     }
   if (reg->enable_disable_cb)
@@ -638,21 +623,21 @@ done:
  *
  * @cliexpar
  * Example:
- * @cliexcmd{set interface feature GigabitEthernet2/0/0 ip4_flow_classify arc ip4_unicast}
+ * @cliexcmd{set interface feature GigabitEthernet2/0/0 ip4_flow_classify arc
+ip4_unicast}
  * @cliexend
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (set_interface_feature_command, static) = {
   .path = "set interface feature",
   .short_help = "set interface feature <intfc> <feature_name> arc <arc_name> "
-      "[disable]",
+		"[disable]",
   .function = set_interface_features_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-vnet_feature_add_del_sw_interface (vnet_main_t * vnm, u32 sw_if_index,
+vnet_feature_add_del_sw_interface (vnet_main_t *vnm, u32 sw_if_index,
 				   u32 is_add)
 {
   vnet_feature_main_t *fm = &feature_main;
@@ -669,23 +654,20 @@ vnet_feature_add_del_sw_interface (vnet_main_t * vnm, u32 sw_if_index,
       const u8 arc_index = far->feature_arc_index;
       vnet_feature_config_main_t *cm =
 	vec_elt_at_index (fm->feature_config_mains, arc_index);
-      const u32 ci =
-	vec_len (cm->config_index_by_sw_if_index) <=
-	sw_if_index ? ~0 : vec_elt (cm->config_index_by_sw_if_index,
-				    sw_if_index);
+      const u32 ci = vec_len (cm->config_index_by_sw_if_index) <= sw_if_index ?
+		       ~0 :
+		       vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
 
       if (~0 == ci)
 	continue;
 
-      fm->sw_if_index_has_features[arc_index] =
-	clib_bitmap_set (fm->sw_if_index_has_features[arc_index], sw_if_index,
-			 0);
+      fm->sw_if_index_has_features[arc_index] = clib_bitmap_set (
+	fm->sw_if_index_has_features[arc_index], sw_if_index, 0);
 
       vnet_feature_reg_invoke (sw_if_index, arc_index, 0);
 
       if (vec_len (fm->feature_count_by_sw_if_index[arc_index]) > sw_if_index)
-	vec_elt (fm->feature_count_by_sw_if_index[arc_index], sw_if_index) =
-	  0;
+	vec_elt (fm->feature_count_by_sw_if_index[arc_index], sw_if_index) = 0;
 
       vec_elt (cm->config_index_by_sw_if_index, sw_if_index) = ~0;
       vnet_config_del (&cm->config_main, ci);

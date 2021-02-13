@@ -16,30 +16,32 @@
 #include <vlib/vlib.h>
 #include <vlib/buffer_funcs.h>
 
-#define TEST_I(_cond, _comment, _args...)			\
-({								\
-  int _evald = (_cond);						\
-  if (!(_evald)) {						\
-    fformat(stderr, "FAIL:%d: " _comment "\n",			\
-	    __LINE__, ##_args);					\
-  } else {							\
-    fformat(stderr, "PASS:%d: " _comment "\n",			\
-	    __LINE__, ##_args);					\
-  }								\
-  _evald;							\
-})
+#define TEST_I(_cond, _comment, _args...)                                     \
+  ({                                                                          \
+    int _evald = (_cond);                                                     \
+    if (!(_evald))                                                            \
+      {                                                                       \
+	fformat (stderr, "FAIL:%d: " _comment "\n", __LINE__, ##_args);       \
+      }                                                                       \
+    else                                                                      \
+      {                                                                       \
+	fformat (stderr, "PASS:%d: " _comment "\n", __LINE__, ##_args);       \
+      }                                                                       \
+    _evald;                                                                   \
+  })
 
-#define TEST(_cond, _comment, _args...)			\
-{								\
-    if (!TEST_I(_cond, _comment, ##_args)) {		\
-	return 1;                                               \
-    }								\
-}
+#define TEST(_cond, _comment, _args...)                                       \
+  {                                                                           \
+    if (!TEST_I (_cond, _comment, ##_args))                                   \
+      {                                                                       \
+	return 1;                                                             \
+      }                                                                       \
+  }
 
 /* test function for a specific case where current_data is negative, verify
  * that there is no crash */
 static int
-linearize_negative_current_data (vlib_main_t * vm)
+linearize_negative_current_data (vlib_main_t *vm)
 {
   u32 bi[32];
   TEST (ARRAY_LEN (bi) == vlib_buffer_alloc (vm, bi, ARRAY_LEN (bi)),
@@ -61,8 +63,8 @@ linearize_negative_current_data (vlib_main_t * vm)
 }
 
 static clib_error_t *
-test_linearize_fn (vlib_main_t * vm, unformat_input_t * input,
-		   vlib_cli_command_t * cmd)
+test_linearize_fn (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
 
   if (linearize_negative_current_data (vm))
@@ -73,14 +75,11 @@ test_linearize_fn (vlib_main_t * vm, unformat_input_t * input,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_linearize_command, static) =
-{
+VLIB_CLI_COMMAND (test_linearize_command, static) = {
   .path = "test chained-buffer-linearization",
   .short_help = "test chained-buffer-linearization",
   .function = test_linearize_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

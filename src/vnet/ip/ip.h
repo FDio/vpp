@@ -41,7 +41,7 @@
 #define included_ip_main_h
 
 #include <vppinfra/hash.h>
-#include <vppinfra/heap.h>	/* adjacency heap */
+#include <vppinfra/heap.h> /* adjacency heap */
 #include <vppinfra/ptclosure.h>
 
 #include <vnet/vnet.h>
@@ -128,10 +128,10 @@ typedef struct
 
 extern ip_main_t ip_main;
 
-clib_error_t *ip_main_init (vlib_main_t * vm);
+clib_error_t *ip_main_init (vlib_main_t *vm);
 
 static inline ip_protocol_info_t *
-ip_get_protocol_info (ip_main_t * im, u32 protocol)
+ip_get_protocol_info (ip_main_t *im, u32 protocol)
 {
   uword *p;
 
@@ -140,7 +140,7 @@ ip_get_protocol_info (ip_main_t * im, u32 protocol)
 }
 
 static inline tcp_udp_port_info_t *
-ip_get_tcp_udp_port_info (ip_main_t * im, u32 port)
+ip_get_tcp_udp_port_info (ip_main_t *im, u32 port)
 {
   uword *p;
 
@@ -149,8 +149,7 @@ ip_get_tcp_udp_port_info (ip_main_t * im, u32 port)
 }
 
 always_inline ip_csum_t
-ip_incremental_checksum_buffer (vlib_main_t * vm,
-				vlib_buffer_t * first_buffer,
+ip_incremental_checksum_buffer (vlib_main_t *vm, vlib_buffer_t *first_buffer,
 				u32 first_buffer_offset,
 				u32 n_bytes_to_checksum, ip_csum_t sum)
 {
@@ -181,9 +180,9 @@ ip_incremental_checksum_buffer (vlib_main_t * vm,
 }
 
 always_inline u16
-ip_calculate_l4_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
-			  ip_csum_t sum0, u32 payload_length,
-			  u8 * iph, u32 ip_header_size, u8 * l4h)
+ip_calculate_l4_checksum (vlib_main_t *vm, vlib_buffer_t *p0, ip_csum_t sum0,
+			  u32 payload_length, u8 *iph, u32 ip_header_size,
+			  u8 *l4h)
 {
   u16 sum16;
   u8 *data_this_buffer, length_odd;
@@ -191,7 +190,7 @@ ip_calculate_l4_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 
   n_bytes_left = payload_length;
 
-  if (l4h)			/* packet l4 header and no buffer chain involved */
+  if (l4h) /* packet l4 header and no buffer chain involved */
     {
       ASSERT (p0 == NULL);
       n_this_buffer = payload_length;
@@ -200,11 +199,11 @@ ip_calculate_l4_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
   else
     {
       ASSERT (p0);
-      if (iph)			/* ip header pointer set to packet in buffer */
+      if (iph) /* ip header pointer set to packet in buffer */
 	{
 	  ASSERT (ip_header_size);
 	  n_this_buffer = payload_length;
-	  data_this_buffer = iph + ip_header_size;	/* at l4 header */
+	  data_this_buffer = iph + ip_header_size; /* at l4 header */
 	  n_ip_bytes_this_buffer =
 	    p0->current_length - (((u8 *) iph - p0->data) - p0->current_data);
 	  if (PREDICT_FALSE (payload_length + ip_header_size >
@@ -212,13 +211,13 @@ ip_calculate_l4_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 	    {
 	      n_this_buffer = n_ip_bytes_this_buffer - ip_header_size;
 	      if (PREDICT_FALSE (n_this_buffer >> 31))
-		{		/*  error - ip header don't fit this buffer */
+		{ /*  error - ip header don't fit this buffer */
 		  return 0xfefe;
 		}
 	    }
 	}
-      else			/* packet in buffer with no ip header  */
-	{			/* buffer current pointer at l4 header */
+      else /* packet in buffer with no ip header  */
+	{  /* buffer current pointer at l4 header */
 	  n_this_buffer = p0->current_length;
 	  data_this_buffer = vlib_buffer_get_current (p0);
 	}
@@ -257,42 +256,41 @@ ip_calculate_l4_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
   return sum16;
 }
 
-void ip_del_all_interface_addresses (vlib_main_t * vm, u32 sw_if_index);
+void ip_del_all_interface_addresses (vlib_main_t *vm, u32 sw_if_index);
 
 extern vlib_node_registration_t ip4_inacl_node;
 extern vlib_node_registration_t ip6_inacl_node;
 
 void ip_table_create (fib_protocol_t fproto, u32 table_id, u8 is_api,
-		      const u8 * name);
+		      const u8 *name);
 
 void ip_table_delete (fib_protocol_t fproto, u32 table_id, u8 is_api);
 
-int ip_table_bind (fib_protocol_t fproto, u32 sw_if_index,
-		   u32 table_id, u8 is_api);
+int ip_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 table_id,
+		   u8 is_api);
 
-u8 ip_is_zero (ip46_address_t * ip46_address, u8 is_ip4);
-u8 ip_is_local_host (ip46_address_t * ip46_address, u8 is_ip4);
-u8 ip4_is_local_host (ip4_address_t * ip4_address);
-u8 ip6_is_local_host (ip6_address_t * ip6_address);
-u8 ip_is_local (u32 fib_index, ip46_address_t * ip46_address, u8 is_ip4);
-void ip_copy (ip46_address_t * dst, ip46_address_t * src, u8 is_ip4);
-void ip_set (ip46_address_t * dst, void *src, u8 is_ip4);
+u8 ip_is_zero (ip46_address_t *ip46_address, u8 is_ip4);
+u8 ip_is_local_host (ip46_address_t *ip46_address, u8 is_ip4);
+u8 ip4_is_local_host (ip4_address_t *ip4_address);
+u8 ip6_is_local_host (ip6_address_t *ip6_address);
+u8 ip_is_local (u32 fib_index, ip46_address_t *ip46_address, u8 is_ip4);
+void ip_copy (ip46_address_t *dst, ip46_address_t *src, u8 is_ip4);
+void ip_set (ip46_address_t *dst, void *src, u8 is_ip4);
 
 void ip_feature_enable_disable (ip_address_family_t af,
 				ip_sub_address_family_t safi,
-				ip_feature_location_t loc,
-				const char *feature,
+				ip_feature_location_t loc, const char *feature,
 				u32 sw_if_index, int enable_disable,
 				void *feature_config,
 				u32 n_feature_config_bytes);
 
-always_inline u32 vlib_buffer_get_ip4_fib_index (vlib_buffer_t * b);
-always_inline u32 vlib_buffer_get_ip6_fib_index (vlib_buffer_t * b);
+always_inline u32 vlib_buffer_get_ip4_fib_index (vlib_buffer_t *b);
+always_inline u32 vlib_buffer_get_ip6_fib_index (vlib_buffer_t *b);
 always_inline u32
-vlib_buffer_get_ip_fib_index (vlib_buffer_t * b, u8 is_ip4)
+vlib_buffer_get_ip_fib_index (vlib_buffer_t *b, u8 is_ip4)
 {
-  return (is_ip4 ? vlib_buffer_get_ip4_fib_index
-	  : vlib_buffer_get_ip6_fib_index) (b);
+  return (is_ip4 ? vlib_buffer_get_ip4_fib_index :
+		   vlib_buffer_get_ip6_fib_index) (b);
 }
 
 #endif /* included_ip_main_h */

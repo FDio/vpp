@@ -29,8 +29,8 @@ STATIC_ASSERT ((FS_MAX_LOG2_CHUNK_SZ - FS_MIN_LOG2_CHUNK_SZ) ==
 		 FS_CHUNK_VEC_LEN - 1,
 	       "update chunk sizes");
 
-#define SVM_FIFO_TRACE 			(0)
-#define SVM_FIFO_MAX_EVT_SUBSCRIBERS	7
+#define SVM_FIFO_TRACE		     (0)
+#define SVM_FIFO_MAX_EVT_SUBSCRIBERS 7
 
 typedef struct fifo_segment_header_ fifo_segment_header_t;
 typedef uword fs_sptr_t;
@@ -40,17 +40,17 @@ typedef struct svm_fifo_chunk_
   u32 start_byte;		/**< chunk start byte */
   u32 length;			/**< length of chunk in bytes */
   fs_sptr_t next;		/**< pointer to next chunk in linked-lists */
-  rb_node_index_t enq_rb_index;	/**< enq node index if chunk in rbtree */
-  rb_node_index_t deq_rb_index;	/**< deq node index if chunk in rbtree */
+  rb_node_index_t enq_rb_index; /**< enq node index if chunk in rbtree */
+  rb_node_index_t deq_rb_index; /**< deq node index if chunk in rbtree */
   u8 data[0];			/**< start of chunk data */
 } svm_fifo_chunk_t;
 
 typedef struct
 {
-  u32 next;	/**< Next linked-list element pool index */
-  u32 prev;	/**< Previous linked-list element pool index */
-  u32 start;	/**< Start of segment, normalized*/
-  u32 length;	/**< Length of segment */
+  u32 next;   /**< Next linked-list element pool index */
+  u32 prev;   /**< Previous linked-list element pool index */
+  u32 start;  /**< Start of segment, normalized*/
+  u32 length; /**< Length of segment */
 } ooo_segment_t;
 
 typedef struct
@@ -63,26 +63,26 @@ typedef struct
 typedef struct svm_fifo_shr_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (shared);
-  fs_sptr_t start_chunk;	/**< first chunk in fifo chunk list */
-  fs_sptr_t end_chunk;		/**< end chunk in fifo chunk list */
-  volatile u32 has_event;	/**< non-zero if deq event exists */
-  u32 min_alloc;		/**< min chunk alloc if space available */
-  u32 size;			/**< size of the fifo in bytes */
-  u32 master_session_index;	/**< session layer session index */
-  u32 client_session_index;	/**< app session index */
-  u8 slice_index;		/**< segment slice for fifo */
-  fs_sptr_t next;		/**< next in freelist */
+  fs_sptr_t start_chunk;    /**< first chunk in fifo chunk list */
+  fs_sptr_t end_chunk;	    /**< end chunk in fifo chunk list */
+  volatile u32 has_event;   /**< non-zero if deq event exists */
+  u32 min_alloc;	    /**< min chunk alloc if space available */
+  u32 size;		    /**< size of the fifo in bytes */
+  u32 master_session_index; /**< session layer session index */
+  u32 client_session_index; /**< app session index */
+  u8 slice_index;	    /**< segment slice for fifo */
+  fs_sptr_t next;	    /**< next in freelist */
 
   CLIB_CACHE_LINE_ALIGN_MARK (consumer);
-  fs_sptr_t head_chunk;		/**< tracks chunk where head lands */
-  u32 head;			/**< fifo head position/byte */
-  volatile u32 want_deq_ntf;	/**< producer wants nudge */
+  fs_sptr_t head_chunk;	     /**< tracks chunk where head lands */
+  u32 head;		     /**< fifo head position/byte */
+  volatile u32 want_deq_ntf; /**< producer wants nudge */
   volatile u32 has_deq_ntf;
 
   CLIB_CACHE_LINE_ALIGN_MARK (producer);
-  u32 tail;			/**< fifo tail position/byte */
-  fs_sptr_t tail_chunk;		/**< tracks chunk where tail lands */
-  volatile u8 n_subscribers;	/**< Number of subscribers for io events */
+  u32 tail;		     /**< fifo tail position/byte */
+  fs_sptr_t tail_chunk;	     /**< tracks chunk where tail lands */
+  volatile u8 n_subscribers; /**< Number of subscribers for io events */
   u8 subscribers[SVM_FIFO_MAX_EVT_SUBSCRIBERS];
 } svm_fifo_shared_t;
 
@@ -119,10 +119,10 @@ typedef struct _svm_fifo
 typedef struct fifo_segment_slice_
 {
   fs_sptr_t free_chunks[FS_CHUNK_VEC_LEN]; /**< Free chunks by size */
-  fs_sptr_t free_fifos;			/**< Freelists of fifo shared hdrs  */
-  uword n_fl_chunk_bytes;		/**< Chunk bytes on freelist */
-  uword virtual_mem;			/**< Slice sum of all fifo sizes */
-  u32 num_chunks[FS_CHUNK_VEC_LEN];	/**< Allocated chunks by chunk size */
+  fs_sptr_t free_fifos;		    /**< Freelists of fifo shared hdrs  */
+  uword n_fl_chunk_bytes;	    /**< Chunk bytes on freelist */
+  uword virtual_mem;		    /**< Slice sum of all fifo sizes */
+  u32 num_chunks[FS_CHUNK_VEC_LEN]; /**< Allocated chunks by chunk size */
 
   CLIB_CACHE_LINE_ALIGN_MARK (lock);
   u32 chunk_lock;
@@ -137,16 +137,16 @@ typedef struct fifo_slice_private_
 
 struct fifo_segment_header_
 {
-  uword n_cached_bytes;			/**< Cached bytes */
-  u32 n_active_fifos;			/**< Number of active fifos */
-  u32 n_reserved_bytes;			/**< Bytes not to be allocated */
-  u32 max_log2_fifo_size;		/**< Max log2(chunk size) for fs */
-  u8 flags;				/**< Segment flags */
-  u8 n_slices;				/**< Number of slices */
-  u8 high_watermark;			/**< Memory pressure watermark high */
-  u8 low_watermark;			/**< Memory pressure watermark low */
-  u8 pct_first_alloc;			/**< Pct of fifo size to alloc */
-  u8 n_mqs;				/**< Num mqs for mqs segment */
+  uword n_cached_bytes;	  /**< Cached bytes */
+  u32 n_active_fifos;	  /**< Number of active fifos */
+  u32 n_reserved_bytes;	  /**< Bytes not to be allocated */
+  u32 max_log2_fifo_size; /**< Max log2(chunk size) for fs */
+  u8 flags;		  /**< Segment flags */
+  u8 n_slices;		  /**< Number of slices */
+  u8 high_watermark;	  /**< Memory pressure watermark high */
+  u8 low_watermark;	  /**< Memory pressure watermark low */
+  u8 pct_first_alloc;	  /**< Pct of fifo size to alloc */
+  u8 n_mqs;		  /**< Num mqs for mqs segment */
   CLIB_CACHE_LINE_ALIGN_MARK (allocator);
   uword byte_index;
   uword max_byte_index;
@@ -155,7 +155,7 @@ struct fifo_segment_header_
   fifo_segment_slice_t slices[0]; /** Fixed array of slices */
 };
 
-void fsh_virtual_mem_update (fifo_segment_header_t * fsh, u32 slice_index,
+void fsh_virtual_mem_update (fifo_segment_header_t *fsh, u32 slice_index,
 			     int n_bytes);
 
 always_inline void *

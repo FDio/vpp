@@ -21,19 +21,19 @@
 #include <sys/socket.h>
 
 static inline svm_msg_q_ring_t *
-svm_msg_q_ring_inline (svm_msg_q_t * mq, u32 ring_index)
+svm_msg_q_ring_inline (svm_msg_q_t *mq, u32 ring_index)
 {
   return vec_elt_at_index (mq->rings, ring_index);
 }
 
 svm_msg_q_ring_t *
-svm_msg_q_ring (svm_msg_q_t * mq, u32 ring_index)
+svm_msg_q_ring (svm_msg_q_t *mq, u32 ring_index)
 {
   return svm_msg_q_ring_inline (mq, ring_index);
 }
 
 static inline void *
-svm_msg_q_ring_data (svm_msg_q_ring_t * ring, u32 elt_index)
+svm_msg_q_ring_data (svm_msg_q_ring_t *ring, u32 elt_index)
 {
   ASSERT (elt_index < ring->nitems);
   return (ring->shr->data + elt_index * ring->elsize);
@@ -167,7 +167,7 @@ svm_msg_q_attach (svm_msg_q_t *mq, void *smq_base)
 }
 
 void
-svm_msg_q_free (svm_msg_q_t * mq)
+svm_msg_q_free (svm_msg_q_t *mq)
 {
   clib_mem_free (mq->q.shr);
   clib_spinlock_free (&mq->q.lock);
@@ -209,7 +209,7 @@ svm_msg_q_send_signal (svm_msg_q_t *mq, u8 is_consumer)
 }
 
 svm_msg_q_msg_t
-svm_msg_q_alloc_msg_w_ring (svm_msg_q_t * mq, u32 ring_index)
+svm_msg_q_alloc_msg_w_ring (svm_msg_q_t *mq, u32 ring_index)
 {
   svm_msg_q_ring_shared_t *sr;
   svm_msg_q_ring_t *ring;
@@ -227,15 +227,15 @@ svm_msg_q_alloc_msg_w_ring (svm_msg_q_t * mq, u32 ring_index)
 }
 
 int
-svm_msg_q_lock_and_alloc_msg_w_ring (svm_msg_q_t * mq, u32 ring_index,
-				     u8 noblock, svm_msg_q_msg_t * msg)
+svm_msg_q_lock_and_alloc_msg_w_ring (svm_msg_q_t *mq, u32 ring_index,
+				     u8 noblock, svm_msg_q_msg_t *msg)
 {
   if (noblock)
     {
       if (svm_msg_q_try_lock (mq))
 	return -1;
-      if (PREDICT_FALSE (svm_msg_q_is_full (mq)
-			 || svm_msg_q_ring_is_full (mq, ring_index)))
+      if (PREDICT_FALSE (svm_msg_q_is_full (mq) ||
+			 svm_msg_q_ring_is_full (mq, ring_index)))
 	{
 	  svm_msg_q_unlock (mq);
 	  return -2;
@@ -245,8 +245,7 @@ svm_msg_q_lock_and_alloc_msg_w_ring (svm_msg_q_t * mq, u32 ring_index,
   else
     {
       svm_msg_q_lock (mq);
-      while (svm_msg_q_is_full (mq)
-	     || svm_msg_q_ring_is_full (mq, ring_index))
+      while (svm_msg_q_is_full (mq) || svm_msg_q_ring_is_full (mq, ring_index))
 	svm_msg_q_wait (mq, SVM_MQ_WAIT_FULL);
       *msg = svm_msg_q_alloc_msg_w_ring (mq, ring_index);
     }
@@ -254,35 +253,35 @@ svm_msg_q_lock_and_alloc_msg_w_ring (svm_msg_q_t * mq, u32 ring_index,
 }
 
 svm_msg_q_msg_t
-svm_msg_q_alloc_msg (svm_msg_q_t * mq, u32 nbytes)
+svm_msg_q_alloc_msg (svm_msg_q_t *mq, u32 nbytes)
 {
-  svm_msg_q_msg_t msg = {.as_u64 = ~0 };
+  svm_msg_q_msg_t msg = { .as_u64 = ~0 };
   svm_msg_q_ring_shared_t *sr;
   svm_msg_q_ring_t *ring;
 
   vec_foreach (ring, mq->rings)
-  {
-    sr = ring->shr;
-    if (ring->elsize < nbytes || sr->cursize == ring->nitems)
-      continue;
-    msg.ring_index = ring - mq->rings;
-    msg.elt_index = sr->tail;
-    sr->tail = (sr->tail + 1) % ring->nitems;
-    clib_atomic_fetch_add_relax (&sr->cursize, 1);
-    break;
-  }
+    {
+      sr = ring->shr;
+      if (ring->elsize < nbytes || sr->cursize == ring->nitems)
+	continue;
+      msg.ring_index = ring - mq->rings;
+      msg.elt_index = sr->tail;
+      sr->tail = (sr->tail + 1) % ring->nitems;
+      clib_atomic_fetch_add_relax (&sr->cursize, 1);
+      break;
+    }
   return msg;
 }
 
 void *
-svm_msg_q_msg_data (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
+svm_msg_q_msg_data (svm_msg_q_t *mq, svm_msg_q_msg_t *msg)
 {
   svm_msg_q_ring_t *ring = svm_msg_q_ring_inline (mq, msg->ring_index);
   return svm_msg_q_ring_data (ring, msg->elt_index);
 }
 
 void
-svm_msg_q_free_msg (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
+svm_msg_q_free_msg (svm_msg_q_t *mq, svm_msg_q_msg_t *msg)
 {
   svm_msg_q_ring_shared_t *sr;
   svm_msg_q_ring_t *ring;
@@ -311,7 +310,7 @@ svm_msg_q_free_msg (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
 }
 
 static int
-svm_msq_q_msg_is_valid (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
+svm_msq_q_msg_is_valid (svm_msg_q_t *mq, svm_msg_q_msg_t *msg)
 {
   u32 dist1, dist2, tail, head;
   svm_msg_q_ring_shared_t *sr;
@@ -351,7 +350,7 @@ svm_msg_q_add_raw (svm_msg_q_t *mq, u8 *elem)
 }
 
 int
-svm_msg_q_add (svm_msg_q_t * mq, svm_msg_q_msg_t * msg, int nowait)
+svm_msg_q_add (svm_msg_q_t *mq, svm_msg_q_msg_t *msg, int nowait)
 {
   ASSERT (svm_msq_q_msg_is_valid (mq, msg));
 
@@ -382,7 +381,7 @@ svm_msg_q_add (svm_msg_q_t * mq, svm_msg_q_msg_t * msg, int nowait)
 }
 
 void
-svm_msg_q_add_and_unlock (svm_msg_q_t * mq, svm_msg_q_msg_t * msg)
+svm_msg_q_add_and_unlock (svm_msg_q_t *mq, svm_msg_q_msg_t *msg)
 {
   ASSERT (svm_msq_q_msg_is_valid (mq, msg));
   svm_msg_q_add_raw (mq, (u8 *) msg);
@@ -582,7 +581,7 @@ svm_msg_q_timedwait (svm_msg_q_t *mq, double timeout)
 }
 
 u8 *
-format_svm_msg_q (u8 * s, va_list * args)
+format_svm_msg_q (u8 *s, va_list *args)
 {
   svm_msg_q_t *mq = va_arg (*args, svm_msg_q_t *);
   s = format (s, " [Q:%d/%d]", mq->q.shr->cursize, mq->q.shr->maxsize);

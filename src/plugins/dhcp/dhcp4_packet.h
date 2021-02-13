@@ -32,18 +32,18 @@ typedef struct
 
 typedef struct
 {
-  u8 opcode;			/* 1 = request, 2 = reply */
-  u8 hardware_type;		/* 1 = ethernet */
+  u8 opcode;	    /* 1 = request, 2 = reply */
+  u8 hardware_type; /* 1 = ethernet */
   u8 hardware_address_length;
   u8 hops;
   u32 transaction_identifier;
   u16 seconds;
   u16 flags;
-#define DHCP_FLAG_BROADCAST (1<<15)
+#define DHCP_FLAG_BROADCAST (1 << 15)
   ip4_address_t client_ip_address;
-  ip4_address_t your_ip_address;	/* use this one */
+  ip4_address_t your_ip_address; /* use this one */
   ip4_address_t server_ip_address;
-  ip4_address_t gateway_ip_address;	/* use option 3, not this one */
+  ip4_address_t gateway_ip_address; /* use option 3, not this one */
   u8 client_hardware_address[16];
   u8 server_name[64];
   u8 boot_filename[128];
@@ -51,7 +51,7 @@ typedef struct
   dhcp_option_t options[0];
 } dhcp_header_t;
 
-extern u8 *format_dhcp_header (u8 * s, va_list * args);
+extern u8 *format_dhcp_header (u8 *s, va_list *args);
 
 typedef enum
 {
@@ -62,7 +62,7 @@ typedef enum
   DHCP_PACKET_NAK,
 } dhcp_packet_type_t;
 
-extern u8 *format_dhcp_packet_type (u8 * s, va_list * args);
+extern u8 *format_dhcp_packet_type (u8 *s, va_list *args);
 
 typedef enum dhcp_packet_option_t_
 {
@@ -71,7 +71,7 @@ typedef enum dhcp_packet_option_t_
 } dhcp_packet_option_t;
 
 /* charming antique: 99.130.83.99 is the dhcp magic cookie */
-#define DHCP_MAGIC (clib_host_to_net_u32(0x63825363))
+#define DHCP_MAGIC (clib_host_to_net_u32 (0x63825363))
 
 #endif /* included_vnet_dhcp4_packet_h */
 

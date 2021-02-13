@@ -32,7 +32,7 @@
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
+vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t *mp)
 {
   map_main_t *mm = &map_main;
   vl_api_map_add_domain_reply_t *rmp;
@@ -41,26 +41,17 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
   u8 flags = 0;
 
   mp->tag[ARRAY_LEN (mp->tag) - 1] = '\0';
-  rv =
-    map_create_domain ((ip4_address_t *) & mp->ip4_prefix.address,
-		       mp->ip4_prefix.len,
-		       (ip6_address_t *) & mp->ip6_prefix.address,
-		       mp->ip6_prefix.len,
-		       (ip6_address_t *) & mp->ip6_src.address,
-		       mp->ip6_src.len, mp->ea_bits_len, mp->psid_offset,
-		       mp->psid_length, &index, mp->mtu, flags, mp->tag);
+  rv = map_create_domain (
+    (ip4_address_t *) &mp->ip4_prefix.address, mp->ip4_prefix.len,
+    (ip6_address_t *) &mp->ip6_prefix.address, mp->ip6_prefix.len,
+    (ip6_address_t *) &mp->ip6_src.address, mp->ip6_src.len, mp->ea_bits_len,
+    mp->psid_offset, mp->psid_length, &index, mp->mtu, flags, mp->tag);
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2_END(VL_API_MAP_ADD_DOMAIN_REPLY,
-  ({
-    rmp->index = index;
-  }));
-
-  /* *INDENT-ON* */
+  REPLY_MACRO2_END (VL_API_MAP_ADD_DOMAIN_REPLY, ({ rmp->index = index; }));
 }
 
 static void
-vl_api_map_del_domain_t_handler (vl_api_map_del_domain_t * mp)
+vl_api_map_del_domain_t_handler (vl_api_map_del_domain_t *mp)
 {
   map_main_t *mm = &map_main;
   vl_api_map_del_domain_reply_t *rmp;
@@ -72,21 +63,20 @@ vl_api_map_del_domain_t_handler (vl_api_map_del_domain_t * mp)
 }
 
 static void
-vl_api_map_add_del_rule_t_handler (vl_api_map_add_del_rule_t * mp)
+vl_api_map_add_del_rule_t_handler (vl_api_map_add_del_rule_t *mp)
 {
   map_main_t *mm = &map_main;
   vl_api_map_del_domain_reply_t *rmp;
   int rv = 0;
 
-  rv =
-    map_add_del_psid (ntohl (mp->index), ntohs (mp->psid),
-		      (ip6_address_t *) & mp->ip6_dst, mp->is_add);
+  rv = map_add_del_psid (ntohl (mp->index), ntohs (mp->psid),
+			 (ip6_address_t *) &mp->ip6_dst, mp->is_add);
 
   REPLY_MACRO (VL_API_MAP_ADD_DEL_RULE_REPLY);
 }
 
 static void
-send_domain_details (u32 map_domain_index, vl_api_registration_t * rp,
+send_domain_details (u32 map_domain_index, vl_api_registration_t *rp,
 		     u32 context)
 {
   map_main_t *mm = &map_main;
@@ -98,32 +88,30 @@ send_domain_details (u32 map_domain_index, vl_api_registration_t * rp,
     vec_elt_at_index (mm->domain_extras, map_domain_index);
   int tag_len = clib_min (ARRAY_LEN (rmp->tag), vec_len (de->tag) + 1);
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO_DETAILS4(VL_API_MAP_DOMAIN_DETAILS, rp, context,
-  ({
-    rmp->domain_index = htonl (map_domain_index);
-    clib_memcpy (&rmp->ip6_prefix.address, &d->ip6_prefix,
-		 sizeof (rmp->ip6_prefix.address));
-    clib_memcpy (&rmp->ip4_prefix.address, &d->ip4_prefix,
-		 sizeof (rmp->ip4_prefix.address));
-    clib_memcpy (&rmp->ip6_src.address, &d->ip6_src,
-		 sizeof (rmp->ip6_src.address));
-    rmp->ip6_prefix.len = d->ip6_prefix_len;
-    rmp->ip4_prefix.len = d->ip4_prefix_len;
-    rmp->ip6_src.len = d->ip6_src_len;
-    rmp->ea_bits_len = d->ea_bits_len;
-    rmp->psid_offset = d->psid_offset;
-    rmp->psid_length = d->psid_length;
-    rmp->flags = d->flags;
-    rmp->mtu = htons (d->mtu);
-    memcpy (rmp->tag, de->tag, tag_len - 1);
-    rmp->tag[tag_len - 1] = '\0';
-  }));
-  /* *INDENT-ON* */
+  REPLY_MACRO_DETAILS4 (
+    VL_API_MAP_DOMAIN_DETAILS, rp, context, ({
+      rmp->domain_index = htonl (map_domain_index);
+      clib_memcpy (&rmp->ip6_prefix.address, &d->ip6_prefix,
+		   sizeof (rmp->ip6_prefix.address));
+      clib_memcpy (&rmp->ip4_prefix.address, &d->ip4_prefix,
+		   sizeof (rmp->ip4_prefix.address));
+      clib_memcpy (&rmp->ip6_src.address, &d->ip6_src,
+		   sizeof (rmp->ip6_src.address));
+      rmp->ip6_prefix.len = d->ip6_prefix_len;
+      rmp->ip4_prefix.len = d->ip4_prefix_len;
+      rmp->ip6_src.len = d->ip6_src_len;
+      rmp->ea_bits_len = d->ea_bits_len;
+      rmp->psid_offset = d->psid_offset;
+      rmp->psid_length = d->psid_length;
+      rmp->flags = d->flags;
+      rmp->mtu = htons (d->mtu);
+      memcpy (rmp->tag, de->tag, tag_len - 1);
+      rmp->tag[tag_len - 1] = '\0';
+    }));
 }
 
 static void
-vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
+vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t *mp)
 {
   map_main_t *mm = &map_main;
   int i;
@@ -136,32 +124,27 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (i, mm->domains)
-   {
-    send_domain_details(i, reg, mp->context);
-  }
-  /* *INDENT-ON* */
+    {
+      send_domain_details (i, reg, mp->context);
+    }
 }
 
 static void
-vl_api_map_domains_get_t_handler (vl_api_map_domains_get_t * mp)
+vl_api_map_domains_get_t_handler (vl_api_map_domains_get_t *mp)
 {
   map_main_t *mm = &map_main;
   vl_api_map_domains_get_reply_t *rmp;
 
   i32 rv = 0;
 
-  /* *INDENT-OFF* */
-  REPLY_AND_DETAILS_MACRO (VL_API_MAP_DOMAINS_GET_REPLY, mm->domains,
-  ({
-    send_domain_details (cursor, rp, mp->context);
-  }));
-  /* *INDENT-ON* */
+  REPLY_AND_DETAILS_MACRO (VL_API_MAP_DOMAINS_GET_REPLY, mm->domains, ({
+			     send_domain_details (cursor, rp, mp->context);
+			   }));
 }
 
 static void
-vl_api_map_rule_dump_t_handler (vl_api_map_rule_dump_t * mp)
+vl_api_map_rule_dump_t_handler (vl_api_map_rule_dump_t *mp)
 {
   vl_api_registration_t *reg;
   u16 i;
@@ -202,7 +185,7 @@ vl_api_map_rule_dump_t_handler (vl_api_map_rule_dump_t * mp)
 }
 
 static void
-vl_api_map_summary_stats_t_handler (vl_api_map_summary_stats_t * mp)
+vl_api_map_summary_stats_t_handler (vl_api_map_summary_stats_t *mp)
 {
   vl_api_map_summary_stats_reply_t *rmp;
   vlib_combined_counter_main_t *cm;
@@ -233,16 +216,16 @@ vl_api_map_summary_stats_t_handler (vl_api_map_summary_stats_t * mp)
 
   map_domain_counter_lock (mm);
   vec_foreach (cm, mm->domain_counters)
-  {
-    which = cm - mm->domain_counters;
+    {
+      which = cm - mm->domain_counters;
 
-    for (i = 0; i < vlib_combined_counter_n_counters (cm); i++)
-      {
-	vlib_get_combined_counter (cm, i, &v);
-	total_pkts[which] += v.packets;
-	total_bytes[which] += v.bytes;
-      }
-  }
+      for (i = 0; i < vlib_combined_counter_n_counters (cm); i++)
+	{
+	  vlib_get_combined_counter (cm, i, &v);
+	  total_pkts[which] += v.packets;
+	  total_bytes[which] += v.bytes;
+	}
+    }
 
   map_domain_counter_unlock (mm);
 
@@ -256,33 +239,31 @@ vl_api_map_summary_stats_t_handler (vl_api_map_summary_stats_t * mp)
   rmp->total_bytes[MAP_DOMAIN_COUNTER_TX] =
     clib_host_to_net_u64 (total_bytes[MAP_DOMAIN_COUNTER_TX]);
   rmp->total_bindings = clib_host_to_net_u64 (pool_elts (mm->domains));
-  rmp->total_ip4_fragments = 0;	// Not yet implemented. Should be a simple counter.
-  rmp->total_security_check[MAP_DOMAIN_COUNTER_TX] =
-    clib_host_to_net_u64 (map_error_counter_get
-			  (ip4_map_node.index, MAP_ERROR_ENCAP_SEC_CHECK));
-  rmp->total_security_check[MAP_DOMAIN_COUNTER_RX] =
-    clib_host_to_net_u64 (map_error_counter_get
-			  (ip4_map_node.index, MAP_ERROR_DECAP_SEC_CHECK));
+  rmp->total_ip4_fragments =
+    0; // Not yet implemented. Should be a simple counter.
+  rmp->total_security_check[MAP_DOMAIN_COUNTER_TX] = clib_host_to_net_u64 (
+    map_error_counter_get (ip4_map_node.index, MAP_ERROR_ENCAP_SEC_CHECK));
+  rmp->total_security_check[MAP_DOMAIN_COUNTER_RX] = clib_host_to_net_u64 (
+    map_error_counter_get (ip4_map_node.index, MAP_ERROR_DECAP_SEC_CHECK));
 
 out:
   vl_api_send_msg (reg, (u8 *) rmp);
 }
-
 
 int
 map_param_set_fragmentation (bool inner, bool ignore_df)
 {
   map_main_t *mm = &map_main;
 
-  mm->frag_inner = ! !inner;
-  mm->frag_ignore_df = ! !ignore_df;
+  mm->frag_inner = !!inner;
+  mm->frag_ignore_df = !!ignore_df;
 
   return 0;
 }
 
 static void
-  vl_api_map_param_set_fragmentation_t_handler
-  (vl_api_map_param_set_fragmentation_t * mp)
+vl_api_map_param_set_fragmentation_t_handler (
+  vl_api_map_param_set_fragmentation_t *mp)
 {
   map_main_t *mm = &map_main;
   vl_api_map_param_set_fragmentation_reply_t *rmp;
@@ -293,9 +274,8 @@ static void
   REPLY_MACRO (VL_API_MAP_PARAM_SET_FRAGMENTATION_REPLY);
 }
 
-
 int
-map_param_set_icmp (ip4_address_t * icmp_src_address)
+map_param_set_icmp (ip4_address_t *icmp_src_address)
 {
   map_main_t *mm = &map_main;
 
@@ -307,32 +287,30 @@ map_param_set_icmp (ip4_address_t * icmp_src_address)
   return 0;
 }
 
-
 static void
-vl_api_map_param_set_icmp_t_handler (vl_api_map_param_set_icmp_t * mp)
+vl_api_map_param_set_icmp_t_handler (vl_api_map_param_set_icmp_t *mp)
 {
   map_main_t *mm = &map_main;
   vl_api_map_param_set_icmp_reply_t *rmp;
   int rv;
 
-  rv = map_param_set_icmp ((ip4_address_t *) & mp->ip4_err_relay_src);
+  rv = map_param_set_icmp ((ip4_address_t *) &mp->ip4_err_relay_src);
 
   REPLY_MACRO (VL_API_MAP_PARAM_SET_ICMP_REPLY);
 }
-
 
 int
 map_param_set_icmp6 (u8 enable_unreachable)
 {
   map_main_t *mm = &map_main;
 
-  mm->icmp6_enabled = ! !enable_unreachable;
+  mm->icmp6_enabled = !!enable_unreachable;
 
   return 0;
 }
 
 static void
-vl_api_map_param_set_icmp6_t_handler (vl_api_map_param_set_icmp6_t * mp)
+vl_api_map_param_set_icmp6_t_handler (vl_api_map_param_set_icmp6_t *mp)
 {
   map_main_t *mm = &map_main;
   vl_api_map_param_set_icmp6_reply_t *rmp;
@@ -343,17 +321,16 @@ vl_api_map_param_set_icmp6_t_handler (vl_api_map_param_set_icmp6_t * mp)
   REPLY_MACRO (VL_API_MAP_PARAM_SET_ICMP6_REPLY);
 }
 
-
 static void
-  vl_api_map_param_add_del_pre_resolve_t_handler
-  (vl_api_map_param_add_del_pre_resolve_t * mp)
+vl_api_map_param_add_del_pre_resolve_t_handler (
+  vl_api_map_param_add_del_pre_resolve_t *mp)
 {
   map_main_t *mm = &map_main;
   vl_api_map_param_add_del_pre_resolve_reply_t *rmp;
   int rv = 0;
 
-  map_pre_resolve ((ip4_address_t *) & mp->ip4_nh_address,
-		   (ip6_address_t *) & mp->ip6_nh_address, !mp->is_add);
+  map_pre_resolve ((ip4_address_t *) &mp->ip4_nh_address,
+		   (ip6_address_t *) &mp->ip6_nh_address, !mp->is_add);
 
   REPLY_MACRO (VL_API_MAP_PARAM_ADD_DEL_PRE_RESOLVE_REPLY);
 }
@@ -363,15 +340,15 @@ map_param_set_security_check (bool enable, bool fragments)
 {
   map_main_t *mm = &map_main;
 
-  mm->sec_check = ! !enable;
-  mm->sec_check_frag = ! !fragments;
+  mm->sec_check = !!enable;
+  mm->sec_check_frag = !!fragments;
 
   return 0;
 }
 
 static void
-  vl_api_map_param_set_security_check_t_handler
-  (vl_api_map_param_set_security_check_t * mp)
+vl_api_map_param_set_security_check_t_handler (
+  vl_api_map_param_set_security_check_t *mp)
 {
   map_main_t *mm = &map_main;
   vl_api_map_param_set_security_check_reply_t *rmp;
@@ -382,21 +359,20 @@ static void
   REPLY_MACRO (VL_API_MAP_PARAM_SET_SECURITY_CHECK_REPLY);
 }
 
-
 int
 map_param_set_traffic_class (bool copy, u8 tc)
 {
   map_main_t *mm = &map_main;
 
-  mm->tc_copy = ! !copy;
+  mm->tc_copy = !!copy;
   mm->tc = tc;
 
   return 0;
 }
 
 static void
-  vl_api_map_param_set_traffic_class_t_handler
-  (vl_api_map_param_set_traffic_class_t * mp)
+vl_api_map_param_set_traffic_class_t_handler (
+  vl_api_map_param_set_traffic_class_t *mp)
 {
   map_main_t *mm = &map_main;
   vl_api_map_param_set_traffic_class_reply_t *rmp;
@@ -406,7 +382,6 @@ static void
 
   REPLY_MACRO (VL_API_MAP_PARAM_SET_TRAFFIC_CLASS_REPLY);
 }
-
 
 int
 map_param_set_tcp (u16 tcp_mss)
@@ -418,9 +393,8 @@ map_param_set_tcp (u16 tcp_mss)
   return 0;
 }
 
-
 static void
-vl_api_map_param_set_tcp_t_handler (vl_api_map_param_set_tcp_t * mp)
+vl_api_map_param_set_tcp_t_handler (vl_api_map_param_set_tcp_t *mp)
 {
   map_main_t *mm = &map_main;
   vl_api_map_param_set_tcp_reply_t *rmp;
@@ -430,9 +404,8 @@ vl_api_map_param_set_tcp_t_handler (vl_api_map_param_set_tcp_t * mp)
   REPLY_MACRO (VL_API_MAP_PARAM_SET_TCP_REPLY);
 }
 
-
 static void
-vl_api_map_param_get_t_handler (vl_api_map_param_get_t * mp)
+vl_api_map_param_get_t_handler (vl_api_map_param_get_t *mp)
 {
   map_main_t *mm = &map_main;
   vl_api_map_param_get_reply_t *rmp;
@@ -450,8 +423,8 @@ vl_api_map_param_get_t_handler (vl_api_map_param_get_t * mp)
   rmp->frag_inner = mm->frag_inner;
   rmp->frag_ignore_df = mm->frag_ignore_df;
 
-  clib_memcpy (&rmp->icmp_ip4_err_relay_src,
-	       &mm->icmp4_src_address, sizeof (rmp->icmp_ip4_err_relay_src));
+  clib_memcpy (&rmp->icmp_ip4_err_relay_src, &mm->icmp4_src_address,
+	       sizeof (rmp->icmp_ip4_err_relay_src));
 
   rmp->icmp6_enable_unreachable = mm->icmp6_enabled;
 
@@ -471,7 +444,6 @@ vl_api_map_param_get_t_handler (vl_api_map_param_get_t * mp)
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
-
 int
 map_if_enable_disable (bool is_enable, u32 sw_if_index, bool is_translation)
 {
@@ -481,18 +453,18 @@ map_if_enable_disable (bool is_enable, u32 sw_if_index, bool is_translation)
 			  sw_if_index))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
-  is_enable = ! !is_enable;
+  is_enable = !!is_enable;
 
   if (is_translation)
     {
-      if (clib_bitmap_get (mm->bm_trans_enabled_by_sw_if, sw_if_index)
-	  == is_enable)
+      if (clib_bitmap_get (mm->bm_trans_enabled_by_sw_if, sw_if_index) ==
+	  is_enable)
 	return 0;
     }
   else
     {
-      if (clib_bitmap_get (mm->bm_encap_enabled_by_sw_if, sw_if_index)
-	  == is_enable)
+      if (clib_bitmap_get (mm->bm_encap_enabled_by_sw_if, sw_if_index) ==
+	  is_enable)
 	return 0;
     }
 
@@ -504,9 +476,8 @@ map_if_enable_disable (bool is_enable, u32 sw_if_index, bool is_translation)
 				   is_enable ? 1 : 0, 0, 0);
       vnet_feature_enable_disable ("ip6-unicast", "ip6-map", sw_if_index,
 				   is_enable ? 1 : 0, 0, 0);
-      mm->bm_encap_enabled_by_sw_if =
-	clib_bitmap_set (mm->bm_encap_enabled_by_sw_if, sw_if_index,
-			 is_enable);
+      mm->bm_encap_enabled_by_sw_if = clib_bitmap_set (
+	mm->bm_encap_enabled_by_sw_if, sw_if_index, is_enable);
     }
   else
     {
@@ -516,17 +487,15 @@ map_if_enable_disable (bool is_enable, u32 sw_if_index, bool is_translation)
 				   is_enable ? 1 : 0, 0, 0);
       vnet_feature_enable_disable ("ip6-unicast", "ip6-map-t", sw_if_index,
 				   is_enable ? 1 : 0, 0, 0);
-      mm->bm_trans_enabled_by_sw_if =
-	clib_bitmap_set (mm->bm_trans_enabled_by_sw_if, sw_if_index,
-			 is_enable);
+      mm->bm_trans_enabled_by_sw_if = clib_bitmap_set (
+	mm->bm_trans_enabled_by_sw_if, sw_if_index, is_enable);
     }
 
   return 0;
 }
 
-
 static void
-vl_api_map_if_enable_disable_t_handler (vl_api_map_if_enable_disable_t * mp)
+vl_api_map_if_enable_disable_t_handler (vl_api_map_if_enable_disable_t *mp)
 {
   map_main_t *mm = &map_main;
   vl_api_map_if_enable_disable_reply_t *rmp;
@@ -534,9 +503,8 @@ vl_api_map_if_enable_disable_t_handler (vl_api_map_if_enable_disable_t * mp)
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv =
-    map_if_enable_disable (mp->is_enable, htonl (mp->sw_if_index),
-			   mp->is_translation);
+  rv = map_if_enable_disable (mp->is_enable, htonl (mp->sw_if_index),
+			      mp->is_translation);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_MAP_IF_ENABLE_DISABLE_REPLY);
@@ -548,7 +516,7 @@ vl_api_map_if_enable_disable_t_handler (vl_api_map_if_enable_disable_t * mp)
 
 /* Set up the API message handling tables */
 clib_error_t *
-map_plugin_api_hookup (vlib_main_t * vm)
+map_plugin_api_hookup (vlib_main_t *vm)
 {
   map_main_t *mm = &map_main;
 

@@ -67,7 +67,7 @@ static adj_delegate_type_t sixrd_adj_delegate_type;
 static fib_node_type_t sixrd_fib_node_type;
 
 static inline sixrd_adj_delegate_t *
-sixrd_adj_from_base (adj_delegate_t * ad)
+sixrd_adj_from_base (adj_delegate_t *ad)
 {
   if (ad == NULL)
     return (NULL);
@@ -75,7 +75,7 @@ sixrd_adj_from_base (adj_delegate_t * ad)
 }
 
 static inline const sixrd_adj_delegate_t *
-sixrd_adj_from_const_base (const adj_delegate_t * ad)
+sixrd_adj_from_const_base (const adj_delegate_t *ad)
 {
   if (ad == NULL)
     {
@@ -85,22 +85,21 @@ sixrd_adj_from_const_base (const adj_delegate_t * ad)
 }
 
 static void
-sixrd_fixup (vlib_main_t * vm,
-	     const ip_adjacency_t * adj, vlib_buffer_t * b0, const void *data)
+sixrd_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b0,
+	     const void *data)
 {
   ip4_header_t *ip4 = vlib_buffer_get_current (b0);
   ip6_header_t *ip6 = vlib_buffer_get_current (b0) + sizeof (ip4_header_t);
   const ipip_tunnel_t *t = data;
 
   ip4->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-  ip4->dst_address.as_u32 =
-    sixrd_get_addr_net (t, ip6->dst_address.as_u64[0]);
+  ip4->dst_address.as_u32 = sixrd_get_addr_net (t, ip6->dst_address.as_u64[0]);
   ip4->checksum = ip4_header_checksum (ip4);
 }
 
 static void
-ip6ip_fixup (vlib_main_t * vm,
-	     const ip_adjacency_t * adj, vlib_buffer_t * b0, const void *data)
+ip6ip_fixup (vlib_main_t *vm, const ip_adjacency_t *adj, vlib_buffer_t *b0,
+	     const void *data)
 {
   const ipip_tunnel_t *t = data;
   ip4_header_t *ip4 = vlib_buffer_get_current (b0);
@@ -111,8 +110,8 @@ ip6ip_fixup (vlib_main_t * vm,
 }
 
 static u8 *
-sixrd_build_rewrite (vnet_main_t * vnm, u32 sw_if_index,
-		     vnet_link_t link_type, const void *dst_address)
+sixrd_build_rewrite (vnet_main_t *vnm, u32 sw_if_index, vnet_link_t link_type,
+		     const void *dst_address)
 {
   u8 *rewrite = NULL;
   ipip_tunnel_t *t;
@@ -153,8 +152,7 @@ ip6ip_tunnel_stack (adj_index_t ai, u32 fib_entry_index)
   if (vnet_hw_interface_get_flags (vnet_get_main (), t->hw_if_index) &
       VNET_HW_INTERFACE_FLAG_LINK_UP)
     {
-      adj_nbr_midchain_stack_on_fib_entry (ai,
-					   fib_entry_index,
+      adj_nbr_midchain_stack_on_fib_entry (ai, fib_entry_index,
 					   FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
     }
   else
@@ -174,15 +172,15 @@ sixrd_tunnel_stack (adj_index_t ai, u32 fib_index)
   if (!t)
     return;
 
-  lookup_dpo_add_or_lock_w_fib_index (fib_index, DPO_PROTO_IP4,
-				      LOOKUP_UNICAST, LOOKUP_INPUT_DST_ADDR,
+  lookup_dpo_add_or_lock_w_fib_index (fib_index, DPO_PROTO_IP4, LOOKUP_UNICAST,
+				      LOOKUP_INPUT_DST_ADDR,
 				      LOOKUP_TABLE_FROM_CONFIG, &dpo);
   adj_nbr_midchain_stack (ai, &dpo);
   dpo_reset (&dpo);
 }
 
 static void
-sixrd_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
+sixrd_update_adj (vnet_main_t *vnm, u32 sw_if_index, adj_index_t ai)
 {
   ip_adjacency_t *adj = adj_get (ai);
   ipip_tunnel_t *t = ipip_tunnel_db_find_by_sw_if_index (sw_if_index);
@@ -192,10 +190,9 @@ sixrd_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
     return;
   if (IP_LOOKUP_NEXT_BCAST == adj->lookup_next_index)
     {
-      adj_nbr_midchain_update_rewrite (ai, sixrd_fixup, t, ADJ_FLAG_NONE,
-				       sixrd_build_rewrite (vnm, sw_if_index,
-							    adj_get_link_type
-							    (ai), NULL));
+      adj_nbr_midchain_update_rewrite (
+	ai, sixrd_fixup, t, ADJ_FLAG_NONE,
+	sixrd_build_rewrite (vnm, sw_if_index, adj_get_link_type (ai), NULL));
       sixrd_tunnel_stack (ai, t->fib_index);
     }
   else
@@ -215,10 +212,9 @@ sixrd_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 	,
       };
 
-      adj_nbr_midchain_update_rewrite (ai, ip6ip_fixup, t, ADJ_FLAG_NONE,
-				       sixrd_build_rewrite (vnm, sw_if_index,
-							    adj_get_link_type
-							    (ai), NULL));
+      adj_nbr_midchain_update_rewrite (
+	ai, ip6ip_fixup, t, ADJ_FLAG_NONE,
+	sixrd_build_rewrite (vnm, sw_if_index, adj_get_link_type (ai), NULL));
 
       sixrd_ad =
 	sixrd_adj_from_base (adj_delegate_get (adj, sixrd_adj_delegate_type));
@@ -227,11 +223,9 @@ sixrd_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 	  pool_get (sixrd_adj_delegate_pool, sixrd_ad);
 	  fib_node_init (&sixrd_ad->sixrd_node, sixrd_fib_node_type);
 	  sixrd_ad->adj_index = ai;
-	  sixrd_ad->sixrd_fib_entry_index =
-	    fib_entry_track (t->fib_index, &pfx,
-			     sixrd_fib_node_type,
-			     sixrd_ad - sixrd_adj_delegate_pool,
-			     &sixrd_ad->sixrd_sibling);
+	  sixrd_ad->sixrd_fib_entry_index = fib_entry_track (
+	    t->fib_index, &pfx, sixrd_fib_node_type,
+	    sixrd_ad - sixrd_adj_delegate_pool, &sixrd_ad->sixrd_sibling);
 
 	  adj_delegate_add (adj, sixrd_adj_delegate_type,
 			    sixrd_ad - sixrd_adj_delegate_pool);
@@ -242,7 +236,7 @@ sixrd_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 }
 
 clib_error_t *
-sixrd_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+sixrd_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 {
   /* Always up */
   vnet_hw_interface_set_flags (vnm, hw_if_index,
@@ -250,28 +244,26 @@ sixrd_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return /* no error */ 0;
 }
 
-/* *INDENT-OFF* */
-VNET_HW_INTERFACE_CLASS(sixrd_hw_interface_class) = {
-    .name = "ip6ip-6rd",
-    .build_rewrite = sixrd_build_rewrite,
-    .update_adjacency = sixrd_update_adj,
+VNET_HW_INTERFACE_CLASS (sixrd_hw_interface_class) = {
+  .name = "ip6ip-6rd",
+  .build_rewrite = sixrd_build_rewrite,
+  .update_adjacency = sixrd_update_adj,
 };
 
-VNET_DEVICE_CLASS(sixrd_device_class) = {
-    .name = "ip6ip-6rd",
-    .admin_up_down_function = sixrd_interface_admin_up_down,
+VNET_DEVICE_CLASS (sixrd_device_class) = {
+  .name = "ip6ip-6rd",
+  .admin_up_down_function = sixrd_interface_admin_up_down,
 #ifdef SOON
-    .clear counter = 0;
+  .clear counter = 0;
 #endif
 }
 ;
-/* *INDENT-ON* */
 
 int
-sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
-		  ip4_address_t * ip4_prefix, u8 ip4_prefix_len,
-		  ip4_address_t * ip4_src, bool security_check,
-		  u32 ip4_fib_index, u32 ip6_fib_index, u32 * sw_if_index)
+sixrd_add_tunnel (ip6_address_t *ip6_prefix, u8 ip6_prefix_len,
+		  ip4_address_t *ip4_prefix, u8 ip4_prefix_len,
+		  ip4_address_t *ip4_src, bool security_check,
+		  u32 ip4_fib_index, u32 ip6_fib_index, u32 *sw_if_index)
 {
   ipip_main_t *gm = &ipip_main;
   ipip_tunnel_t *t;
@@ -280,8 +272,8 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
     return VNET_API_ERROR_INVALID_VALUE;
 
   /* Tunnel already configured */
-  ip46_address_t src = ip46_address_initializer, dst =
-    ip46_address_initializer;
+  ip46_address_t src = ip46_address_initializer,
+		 dst = ip46_address_initializer;
   ip_set (&src, ip4_src, true);
   ipip_tunnel_key_t key;
 
@@ -295,7 +287,7 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
   /* Get tunnel index */
   pool_get_aligned (gm->tunnels, t, CLIB_CACHE_LINE_BYTES);
   clib_memset (t, 0, sizeof (*t));
-  u32 t_idx = t - gm->tunnels;	/* tunnel index (or instance) */
+  u32 t_idx = t - gm->tunnels; /* tunnel index (or instance) */
 
   /* Init tunnel struct */
   t->mode = IPIP_MODE_6RD;
@@ -311,8 +303,7 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
 
   /* Create interface */
   u32 hw_if_index =
-    vnet_register_interface (vnet_get_main (), sixrd_device_class.index,
-			     t_idx,
+    vnet_register_interface (vnet_get_main (), sixrd_device_class.index, t_idx,
 			     sixrd_hw_interface_class.index, t_idx);
 
   /* Default the interface to up and enable IPv6 (payload) */
@@ -339,7 +330,7 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
   ip6_sw_interface_enable_disable (t->sw_if_index, true);
 
   /* Create IPv6 route/adjacency */
-  /* *INDENT-OFF* */
+
   fib_prefix_t pfx6 = {
     .fp_proto = FIB_PROTOCOL_IP6,
     .fp_len = t->sixrd.ip6_prefix_len,
@@ -347,7 +338,6 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
       .ip6 = t->sixrd.ip6_prefix,
     },
   };
-  /* *INDENT-ON* */
 
   fib_table_lock (ip6_fib_index, FIB_PROTOCOL_IP6, FIB_SOURCE_6RD);
   fib_table_entry_update_one_path (ip6_fib_index, &pfx6, FIB_SOURCE_6RD,
@@ -384,7 +374,6 @@ sixrd_del_tunnel (u32 sw_if_index)
       return -1;
     }
 
-  /* *INDENT-OFF* */
   fib_prefix_t pfx6 = {
     .fp_proto = FIB_PROTOCOL_IP6,
     .fp_len = t->sixrd.ip6_prefix_len,
@@ -392,17 +381,13 @@ sixrd_del_tunnel (u32 sw_if_index)
       .ip6 = t->sixrd.ip6_prefix,
     },
   };
-  /* *INDENT-ON* */
 
-  fib_table_entry_path_remove (t->sixrd.ip6_fib_index, &pfx6,
-			       FIB_SOURCE_6RD,
-			       DPO_PROTO_IP6,
-			       &ADJ_BCAST_ADDR, t->sw_if_index, ~0, 1,
-			       FIB_ROUTE_PATH_FLAG_NONE);
+  fib_table_entry_path_remove (t->sixrd.ip6_fib_index, &pfx6, FIB_SOURCE_6RD,
+			       DPO_PROTO_IP6, &ADJ_BCAST_ADDR, t->sw_if_index,
+			       ~0, 1, FIB_ROUTE_PATH_FLAG_NONE);
   fib_table_unlock (t->sixrd.ip6_fib_index, FIB_PROTOCOL_IP6, FIB_SOURCE_6RD);
 
-  vnet_sw_interface_set_flags (vnet_get_main (), t->sw_if_index,
-			       0 /* down */ );
+  vnet_sw_interface_set_flags (vnet_get_main (), t->sw_if_index, 0 /* down */);
   ip6_sw_interface_enable_disable (t->sw_if_index, false);
   gm->tunnel_index_by_sw_if_index[t->sw_if_index] = ~0;
 
@@ -415,18 +400,17 @@ sixrd_del_tunnel (u32 sw_if_index)
 }
 
 static void
-sixrd_adj_delegate_adj_deleted (adj_delegate_t * aed)
+sixrd_adj_delegate_adj_deleted (adj_delegate_t *aed)
 {
   sixrd_adj_delegate_t *sixrd_ad;
 
   sixrd_ad = sixrd_adj_from_base (aed);
-  fib_entry_untrack (sixrd_ad->sixrd_fib_entry_index,
-		     sixrd_ad->sixrd_sibling);
+  fib_entry_untrack (sixrd_ad->sixrd_fib_entry_index, sixrd_ad->sixrd_sibling);
   pool_put (sixrd_adj_delegate_pool, sixrd_ad);
 }
 
 static u8 *
-sixrd_adj_delegate_format (const adj_delegate_t * aed, u8 * s)
+sixrd_adj_delegate_format (const adj_delegate_t *aed, u8 *s)
 {
   const sixrd_adj_delegate_t *sixrd_ad;
 
@@ -437,13 +421,13 @@ sixrd_adj_delegate_format (const adj_delegate_t * aed, u8 * s)
 }
 
 static void
-sixrd_fib_node_last_lock_gone (fib_node_t * node)
+sixrd_fib_node_last_lock_gone (fib_node_t *node)
 {
   /* top of the dependency tree, locks not managed here. */
 }
 
 static sixrd_adj_delegate_t *
-sixrd_adj_delegate_from_fib_node (fib_node_t * node)
+sixrd_adj_delegate_from_fib_node (fib_node_t *node)
 {
   return ((sixrd_adj_delegate_t *) (((char *) node) -
 				    STRUCT_OFFSET_OF (sixrd_adj_delegate_t,
@@ -451,8 +435,8 @@ sixrd_adj_delegate_from_fib_node (fib_node_t * node)
 }
 
 static fib_node_back_walk_rc_t
-sixrd_fib_node_back_walk_notify (fib_node_t * node,
-				 fib_node_back_walk_ctx_t * ctx)
+sixrd_fib_node_back_walk_notify (fib_node_t *node,
+				 fib_node_back_walk_ctx_t *ctx)
 {
   sixrd_adj_delegate_t *sixrd_ad;
 
@@ -493,7 +477,7 @@ const static fib_node_vft_t sixrd_fib_node_vft = {
 };
 
 static clib_error_t *
-sixrd_init (vlib_main_t * vm)
+sixrd_init (vlib_main_t *vm)
 {
   clib_error_t *error = 0;
 

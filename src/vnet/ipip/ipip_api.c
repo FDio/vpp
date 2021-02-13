@@ -31,7 +31,7 @@
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
+vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t *mp)
 {
   ipip_main_t *im = &ipip_main;
   vl_api_ipip_add_tunnel_reply_t *rmp;
@@ -76,26 +76,20 @@ vl_api_ipip_add_tunnel_t_handler (vl_api_ipip_add_tunnel_t * mp)
     }
   else
     {
-      rv = ipip_add_tunnel ((itype[0] == IP46_TYPE_IP6 ?
-			     IPIP_TRANSPORT_IP6 :
-			     IPIP_TRANSPORT_IP4),
-			    ntohl (mp->tunnel.instance), &src, &dst,
-			    fib_index, flags,
-			    ip_dscp_decode (mp->tunnel.dscp), mode,
-			    &sw_if_index);
+      rv = ipip_add_tunnel (
+	(itype[0] == IP46_TYPE_IP6 ? IPIP_TRANSPORT_IP6 : IPIP_TRANSPORT_IP4),
+	ntohl (mp->tunnel.instance), &src, &dst, fib_index, flags,
+	ip_dscp_decode (mp->tunnel.dscp), mode, &sw_if_index);
     }
 
 out:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_IPIP_ADD_TUNNEL_REPLY,
-  ({
-    rmp->sw_if_index = ntohl(sw_if_index);
-  }));
-  /* *INDENT-ON* */
+
+  REPLY_MACRO2 (VL_API_IPIP_ADD_TUNNEL_REPLY,
+		({ rmp->sw_if_index = ntohl (sw_if_index); }));
 }
 
 static void
-vl_api_ipip_del_tunnel_t_handler (vl_api_ipip_del_tunnel_t * mp)
+vl_api_ipip_del_tunnel_t_handler (vl_api_ipip_del_tunnel_t *mp)
 {
   ipip_main_t *im = &ipip_main;
   vl_api_ipip_del_tunnel_reply_t *rmp;
@@ -106,7 +100,7 @@ vl_api_ipip_del_tunnel_t_handler (vl_api_ipip_del_tunnel_t * mp)
 }
 
 static void
-send_ipip_tunnel_details (ipip_tunnel_t * t, vl_api_ipip_tunnel_dump_t * mp)
+send_ipip_tunnel_details (ipip_tunnel_t *t, vl_api_ipip_tunnel_dump_t *mp)
 {
   ipip_main_t *im = &ipip_main;
   vl_api_ipip_tunnel_details_t *rmp;
@@ -114,25 +108,23 @@ send_ipip_tunnel_details (ipip_tunnel_t * t, vl_api_ipip_tunnel_dump_t * mp)
   fib_table_t *ft;
   int rv = 0;
 
-  ft = fib_table_get (t->fib_index, (is_ipv6 ? FIB_PROTOCOL_IP6 :
-				     FIB_PROTOCOL_IP4));
+  ft = fib_table_get (t->fib_index,
+		      (is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4));
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO_DETAILS2(VL_API_IPIP_TUNNEL_DETAILS,
-  ({
-    ip_address_encode (&t->tunnel_src, IP46_TYPE_ANY, &rmp->tunnel.src);
-    ip_address_encode (&t->tunnel_dst, IP46_TYPE_ANY, &rmp->tunnel.dst);
-    rmp->tunnel.table_id = htonl (ft->ft_table_id);
-    rmp->tunnel.instance = htonl (t->user_instance);
-    rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
-    rmp->tunnel.dscp = ip_dscp_encode(t->dscp);
-    rmp->tunnel.flags = tunnel_encap_decap_flags_encode(t->flags);
-  }));
-    /* *INDENT-ON* */
+  REPLY_MACRO_DETAILS2 (
+    VL_API_IPIP_TUNNEL_DETAILS, ({
+      ip_address_encode (&t->tunnel_src, IP46_TYPE_ANY, &rmp->tunnel.src);
+      ip_address_encode (&t->tunnel_dst, IP46_TYPE_ANY, &rmp->tunnel.dst);
+      rmp->tunnel.table_id = htonl (ft->ft_table_id);
+      rmp->tunnel.instance = htonl (t->user_instance);
+      rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
+      rmp->tunnel.dscp = ip_dscp_encode (t->dscp);
+      rmp->tunnel.flags = tunnel_encap_decap_flags_encode (t->flags);
+    }));
 }
 
 static void
-vl_api_ipip_tunnel_dump_t_handler (vl_api_ipip_tunnel_dump_t * mp)
+vl_api_ipip_tunnel_dump_t_handler (vl_api_ipip_tunnel_dump_t *mp)
 {
   ipip_main_t *im = &ipip_main;
   ipip_tunnel_t *t;
@@ -142,12 +134,11 @@ vl_api_ipip_tunnel_dump_t_handler (vl_api_ipip_tunnel_dump_t * mp)
 
   if (sw_if_index == ~0)
     {
-    /* *INDENT-OFF* */
-    pool_foreach (t, im->tunnels)
-     {
-      send_ipip_tunnel_details(t, mp);
-    }
-    /* *INDENT-ON* */
+
+      pool_foreach (t, im->tunnels)
+	{
+	  send_ipip_tunnel_details (t, mp);
+	}
     }
   else
     {
@@ -158,7 +149,7 @@ vl_api_ipip_tunnel_dump_t_handler (vl_api_ipip_tunnel_dump_t * mp)
 }
 
 static void
-vl_api_ipip_6rd_add_tunnel_t_handler (vl_api_ipip_6rd_add_tunnel_t * mp)
+vl_api_ipip_6rd_add_tunnel_t_handler (vl_api_ipip_6rd_add_tunnel_t *mp)
 {
   ipip_main_t *im = &ipip_main;
   vl_api_ipip_6rd_add_tunnel_reply_t *rmp;
@@ -176,26 +167,19 @@ vl_api_ipip_6rd_add_tunnel_t_handler (vl_api_ipip_6rd_add_tunnel_t * mp)
     }
   else
     {
-      rv = sixrd_add_tunnel ((ip6_address_t *) & mp->ip6_prefix.address,
-			     mp->ip6_prefix.len,
-			     (ip4_address_t *) & mp->ip4_prefix.address,
-			     mp->ip4_prefix.len,
-			     (ip4_address_t *) & mp->ip4_src,
-			     mp->security_check,
-			     ip4_fib_index, ip6_fib_index,
-			     &sixrd_tunnel_index);
+      rv = sixrd_add_tunnel (
+	(ip6_address_t *) &mp->ip6_prefix.address, mp->ip6_prefix.len,
+	(ip4_address_t *) &mp->ip4_prefix.address, mp->ip4_prefix.len,
+	(ip4_address_t *) &mp->ip4_src, mp->security_check, ip4_fib_index,
+	ip6_fib_index, &sixrd_tunnel_index);
     }
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_IPIP_6RD_ADD_TUNNEL_REPLY,
-  ({
-    rmp->sw_if_index = htonl (sixrd_tunnel_index);
-  }));
-  /* *INDENT-ON* */
+		({ rmp->sw_if_index = htonl (sixrd_tunnel_index); }));
 }
 
 static void
-vl_api_ipip_6rd_del_tunnel_t_handler (vl_api_ipip_6rd_del_tunnel_t * mp)
+vl_api_ipip_6rd_del_tunnel_t_handler (vl_api_ipip_6rd_del_tunnel_t *mp)
 {
   ipip_main_t *im = &ipip_main;
   vl_api_ipip_6rd_del_tunnel_reply_t *rmp;
@@ -217,7 +201,7 @@ vl_api_ipip_6rd_del_tunnel_t_handler (vl_api_ipip_6rd_del_tunnel_t * mp)
 #include <vnet/ipip/ipip.api.c>
 
 static clib_error_t *
-ipip_api_hookup (vlib_main_t * vm)
+ipip_api_hookup (vlib_main_t *vm)
 {
   ipip_main_t *im = &ipip_main;
 

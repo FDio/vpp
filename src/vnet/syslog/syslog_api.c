@@ -24,11 +24,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -40,14 +40,14 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg             \
-_(SYSLOG_SET_SENDER, syslog_set_sender) \
-_(SYSLOG_GET_SENDER, syslog_get_sender) \
-_(SYSLOG_SET_FILTER, syslog_set_filter) \
-_(SYSLOG_GET_FILTER, syslog_get_filter)
+#define foreach_vpe_api_msg                                                   \
+  _ (SYSLOG_SET_SENDER, syslog_set_sender)                                    \
+  _ (SYSLOG_GET_SENDER, syslog_get_sender)                                    \
+  _ (SYSLOG_SET_FILTER, syslog_set_filter)                                    \
+  _ (SYSLOG_GET_FILTER, syslog_get_filter)
 
 static int
-syslog_severity_decode (vl_api_syslog_severity_t v, syslog_severity_t * s)
+syslog_severity_decode (vl_api_syslog_severity_t v, syslog_severity_t *s)
 {
   v = ntohl (v);
   int rv = 0;
@@ -86,7 +86,7 @@ syslog_severity_decode (vl_api_syslog_severity_t v, syslog_severity_t * s)
 }
 
 static int
-syslog_severity_encode (syslog_severity_t v, vl_api_syslog_severity_t * s)
+syslog_severity_encode (syslog_severity_t v, vl_api_syslog_severity_t *s)
 {
   int rv = 0;
   switch (v)
@@ -124,7 +124,7 @@ syslog_severity_encode (syslog_severity_t v, vl_api_syslog_severity_t * s)
 }
 
 static void
-vl_api_syslog_set_sender_t_handler (vl_api_syslog_set_sender_t * mp)
+vl_api_syslog_set_sender_t_handler (vl_api_syslog_set_sender_t *mp)
 {
   vl_api_syslog_set_sender_reply_t *rmp;
   ip4_address_t collector, src;
@@ -139,33 +139,31 @@ vl_api_syslog_set_sender_t_handler (vl_api_syslog_set_sender_t * mp)
 }
 
 static void
-vl_api_syslog_get_sender_t_handler (vl_api_syslog_get_sender_t * mp)
+vl_api_syslog_get_sender_t_handler (vl_api_syslog_get_sender_t *mp)
 {
   int rv = 0;
   vl_api_syslog_get_sender_reply_t *rmp;
   syslog_main_t *sm = &syslog_main;
   u32 vrf_id;
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_SYSLOG_GET_SENDER_REPLY,
-  ({
-    clib_memcpy (&rmp->collector_address, &(sm->collector),
-                 sizeof(ip4_address_t));
-    clib_memcpy (&rmp->src_address, &(sm->src_address),
-                 sizeof(ip4_address_t));
-    rmp->collector_port = htons (sm->collector_port);
-    if (sm->fib_index == ~0)
-      vrf_id = ~0;
-    else
-      vrf_id = htonl (fib_table_get_table_id (sm->fib_index, FIB_PROTOCOL_IP4));
-    rmp->vrf_id = vrf_id;
-    rmp->max_msg_size = htonl (sm->max_msg_size);
-  }))
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_SYSLOG_GET_SENDER_REPLY, ({
+		  clib_memcpy (&rmp->collector_address, &(sm->collector),
+			       sizeof (ip4_address_t));
+		  clib_memcpy (&rmp->src_address, &(sm->src_address),
+			       sizeof (ip4_address_t));
+		  rmp->collector_port = htons (sm->collector_port);
+		  if (sm->fib_index == ~0)
+		    vrf_id = ~0;
+		  else
+		    vrf_id = htonl (fib_table_get_table_id (sm->fib_index,
+							    FIB_PROTOCOL_IP4));
+		  rmp->vrf_id = vrf_id;
+		  rmp->max_msg_size = htonl (sm->max_msg_size);
+		}))
 }
 
 static void
-vl_api_syslog_set_filter_t_handler (vl_api_syslog_set_filter_t * mp)
+vl_api_syslog_set_filter_t_handler (vl_api_syslog_set_filter_t *mp)
 {
   vl_api_syslog_set_filter_reply_t *rmp;
   syslog_main_t *sm = &syslog_main;
@@ -183,18 +181,15 @@ send_reply:
 }
 
 static void
-vl_api_syslog_get_filter_t_handler (vl_api_syslog_get_filter_t * mp)
+vl_api_syslog_get_filter_t_handler (vl_api_syslog_get_filter_t *mp)
 {
   int rv = 0;
   vl_api_syslog_get_filter_reply_t *rmp;
   syslog_main_t *sm = &syslog_main;
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_SYSLOG_GET_FILTER_REPLY,
-  ({
-     rv = syslog_severity_encode (sm->severity_filter, &rmp->severity);
-  }))
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (
+    VL_API_SYSLOG_GET_FILTER_REPLY,
+    ({ rv = syslog_severity_encode (sm->severity_filter, &rmp->severity); }))
 }
 
 #define vl_msg_name_crc_list
@@ -202,25 +197,22 @@ vl_api_syslog_get_filter_t_handler (vl_api_syslog_get_filter_t * mp)
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_syslog;
 #undef _
 }
 
 static clib_error_t *
-syslog_api_hookup (vlib_main_t * vm)
+syslog_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_vpe_api_msg;
 #undef _
 

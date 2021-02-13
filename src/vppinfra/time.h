@@ -81,21 +81,21 @@ always_inline u64
 clib_cpu_time_now (void)
 {
   u32 a, d;
-  asm volatile ("rdtsc":"=a" (a), "=d" (d));
+  asm volatile("rdtsc" : "=a"(a), "=d"(d));
   return (u64) a + ((u64) d << (u64) 32);
 }
 
-#elif defined (__powerpc64__)
+#elif defined(__powerpc64__)
 
 always_inline u64
 clib_cpu_time_now (void)
 {
   u64 t;
-  asm volatile ("mftb %0":"=r" (t));
+  asm volatile("mftb %0" : "=r"(t));
   return t;
 }
 
-#elif defined (__SPU__)
+#elif defined(__SPU__)
 
 always_inline u64
 clib_cpu_time_now (void)
@@ -103,42 +103,44 @@ clib_cpu_time_now (void)
 #ifdef _XLC
   return spu_rdch (0x8);
 #else
-  return 0 /* __builtin_si_rdch (0x8) FIXME */ ;
+  return 0 /* __builtin_si_rdch (0x8) FIXME */;
 #endif
 }
 
-#elif defined (__powerpc__)
+#elif defined(__powerpc__)
 
 always_inline u64
 clib_cpu_time_now (void)
 {
   u32 hi1, hi2, lo;
-  asm volatile ("1:\n"
-		"mftbu %[hi1]\n"
-		"mftb  %[lo]\n"
-		"mftbu %[hi2]\n"
-		"cmpw %[hi1],%[hi2]\n"
-		"bne 1b\n":[hi1] "=r" (hi1),[hi2] "=r" (hi2),[lo] "=r" (lo));
+  asm volatile("1:\n"
+	       "mftbu %[hi1]\n"
+	       "mftb  %[lo]\n"
+	       "mftbu %[hi2]\n"
+	       "cmpw %[hi1],%[hi2]\n"
+	       "bne 1b\n"
+	       : [ hi1 ] "=r"(hi1), [ hi2 ] "=r"(hi2), [ lo ] "=r"(lo));
   return (u64) lo + ((u64) hi2 << (u64) 32);
 }
 
-#elif defined (__aarch64__)
+#elif defined(__aarch64__)
 always_inline u64
 clib_cpu_time_now (void)
 {
   u64 vct;
   /* User access to cntvct_el0 is enabled in Linux kernel since 3.12. */
-  asm volatile ("mrs %0, cntvct_el0":"=r" (vct));
+  asm volatile("mrs %0, cntvct_el0" : "=r"(vct));
   return vct;
 }
 
-#elif defined (__arm__)
+#elif defined(__arm__)
 #if defined(__ARM_ARCH_8A__)
 always_inline u64
-clib_cpu_time_now (void)	/* We may run arm64 in aarch32 mode, to leverage 64bit counter */
+clib_cpu_time_now (
+  void) /* We may run arm64 in aarch32 mode, to leverage 64bit counter */
 {
   u64 tsc;
-  asm volatile ("mrrc p15, 0, %Q0, %R0, c9":"=r" (tsc));
+  asm volatile("mrrc p15, 0, %Q0, %R0, c9" : "=r"(tsc));
   return tsc;
 }
 #elif defined(__ARM_ARCH_7A__)
@@ -146,7 +148,7 @@ always_inline u64
 clib_cpu_time_now (void)
 {
   u32 tsc;
-  asm volatile ("mrc p15, 0, %0, c9, c13, 0":"=r" (tsc));
+  asm volatile("mrc p15, 0, %0, c9, c13, 0" : "=r"(tsc));
   return (u64) tsc;
 }
 #else
@@ -154,12 +156,12 @@ always_inline u64
 clib_cpu_time_now (void)
 {
   u32 lo;
-  asm volatile ("mrc p15, 0, %[lo], c15, c12, 1":[lo] "=r" (lo));
+  asm volatile("mrc p15, 0, %[lo], c15, c12, 1" : [ lo ] "=r"(lo));
   return (u64) lo;
 }
 #endif
 
-#elif defined (__xtensa__)
+#elif defined(__xtensa__)
 
 /* Stub for now. */
 always_inline u64
@@ -168,16 +170,18 @@ clib_cpu_time_now (void)
   return 0;
 }
 
-#elif defined (__TMS320C6X__)
+#elif defined(__TMS320C6X__)
 
 always_inline u64
 clib_cpu_time_now (void)
 {
   u32 l, h;
 
-  asm volatile (" dint\n"
-		" mvc .s2 TSCL,%0\n"
-		" mvc .s2 TSCH,%1\n" " rint\n":"=b" (l), "=b" (h));
+  asm volatile(" dint\n"
+	       " mvc .s2 TSCL,%0\n"
+	       " mvc .s2 TSCH,%1\n"
+	       " rint\n"
+	       : "=b"(l), "=b"(h));
 
   return ((u64) h << 32) | l;
 }
@@ -188,7 +192,7 @@ always_inline u64
 clib_cpu_time_now (void)
 {
   u64 result;
-  asm volatile ("rdhwr %0,$31\n":"=r" (result));
+  asm volatile("rdhwr %0,$31\n" : "=r"(result));
   return result;
 }
 
@@ -197,17 +201,17 @@ clib_cpu_time_now (void)
 
 #endif
 
-void clib_time_verify_frequency (clib_time_t * c);
+void clib_time_verify_frequency (clib_time_t *c);
 
 /* Define it as the type returned by clib_time_now */
 typedef f64 clib_time_type_t;
 typedef u64 clib_us_time_t;
 
 #define CLIB_US_TIME_PERIOD (1e-6)
-#define CLIB_US_TIME_FREQ (1.0/CLIB_US_TIME_PERIOD)
+#define CLIB_US_TIME_FREQ   (1.0 / CLIB_US_TIME_PERIOD)
 
 always_inline f64
-clib_time_now_internal (clib_time_t * c, u64 n)
+clib_time_now_internal (clib_time_t *c, u64 n)
 {
   u64 l = c->last_cpu_time;
   u64 t = c->total_cpu_time;
@@ -216,9 +220,8 @@ clib_time_now_internal (clib_time_t * c, u64 n)
   c->total_cpu_time = t;
   c->last_cpu_time = n;
   rv = t * c->seconds_per_clock;
-  if (PREDICT_FALSE
-      ((c->last_cpu_time -
-	c->last_verify_cpu_time) >> c->log2_clocks_per_frequency_verify))
+  if (PREDICT_FALSE ((c->last_cpu_time - c->last_verify_cpu_time) >>
+		     c->log2_clocks_per_frequency_verify))
     clib_time_verify_frequency (c);
   return rv;
 }
@@ -227,7 +230,7 @@ clib_time_now_internal (clib_time_t * c, u64 n)
 #define CLIB_TIME_MAX (1.7976931348623157e+308)
 
 always_inline f64
-clib_time_now (clib_time_t * c)
+clib_time_now (clib_time_t *c)
 {
   return clib_time_now_internal (c, clib_cpu_time_now ());
 }
@@ -240,7 +243,7 @@ clib_cpu_time_wait (u64 dt)
     ;
 }
 
-void clib_time_init (clib_time_t * c);
+void clib_time_init (clib_time_t *c);
 
 #ifdef CLIB_UNIX
 
@@ -279,7 +282,7 @@ unix_time_now_nsec (void)
 }
 
 always_inline void
-unix_time_now_nsec_fraction (u32 * sec, u32 * nsec)
+unix_time_now_nsec_fraction (u32 *sec, u32 *nsec)
 {
   struct timespec ts;
 #ifdef __MACH__
@@ -296,8 +299,8 @@ unix_usage_now (void)
 {
   struct rusage u;
   getrusage (RUSAGE_SELF, &u);
-  return u.ru_utime.tv_sec + 1e-6 * u.ru_utime.tv_usec
-    + u.ru_stime.tv_sec + 1e-6 * u.ru_stime.tv_usec;
+  return u.ru_utime.tv_sec + 1e-6 * u.ru_utime.tv_usec + u.ru_stime.tv_sec +
+	 1e-6 * u.ru_stime.tv_usec;
 }
 
 always_inline void
@@ -326,7 +329,7 @@ unix_time_now_nsec (void)
 }
 
 always_inline void
-unix_time_now_nsec_fraction (u32 * sec, u32 * nsec)
+unix_time_now_nsec_fraction (u32 *sec, u32 *nsec)
 {
 }
 

@@ -14,10 +14,10 @@
  */
 #undef CLIB_CUCKOO_TYPE
 
-#define CLIB_CUCKOO_TYPE _8_8
-#define CLIB_CUCKOO_KVP_PER_BUCKET (4)
+#define CLIB_CUCKOO_TYPE		_8_8
+#define CLIB_CUCKOO_KVP_PER_BUCKET	(4)
 #define CLIB_CUCKOO_LOG2_KVP_PER_BUCKET (2)
-#define CLIB_CUCKOO_BFS_MAX_STEPS (2000)
+#define CLIB_CUCKOO_BFS_MAX_STEPS	(2000)
 #define CLIB_CUCKOO_BFS_MAX_PATH_LENGTH (8)
 
 #ifndef __included_cuckoo_8_8_h__
@@ -33,11 +33,11 @@
 #undef CLIB_CUCKOO_OPTIMIZE_PREFETCH
 #undef CLIB_CUCKOO_OPTIMIZE_UNROLL
 #undef CLIB_CUCKOO_OPTIMIZE_USE_COUNT_LIMITS_SEARCH
-#define CLIB_CUCKOO_OPTIMIZE_PREFETCH 1
-#define CLIB_CUCKOO_OPTIMIZE_UNROLL 1
+#define CLIB_CUCKOO_OPTIMIZE_PREFETCH		     1
+#define CLIB_CUCKOO_OPTIMIZE_UNROLL		     1
 #define CLIB_CUCKOO_OPTIMIZE_USE_COUNT_LIMITS_SEARCH 1
 
-#if __SSE4_2__ && !defined (__i386__)
+#if __SSE4_2__ && !defined(__i386__)
 #include <x86intrin.h>
 #endif
 
@@ -52,7 +52,7 @@ typedef struct
     @param v- pointer to the (key,value) pair
 */
 always_inline int
-clib_cuckoo_kv_is_free_8_8 (const clib_cuckoo_kv_8_8_t * v)
+clib_cuckoo_kv_is_free_8_8 (const clib_cuckoo_kv_8_8_t *v)
 {
   if (v->key == ~0ULL && v->value == ~0ULL)
     return 1;
@@ -60,7 +60,7 @@ clib_cuckoo_kv_is_free_8_8 (const clib_cuckoo_kv_8_8_t * v)
 }
 
 always_inline void
-clib_cuckoo_kv_set_free_8_8 (clib_cuckoo_kv_8_8_t * v)
+clib_cuckoo_kv_set_free_8_8 (clib_cuckoo_kv_8_8_t *v)
 {
   clib_memset (v, 0xff, sizeof (*v));
 }
@@ -71,7 +71,7 @@ clib_cuckoo_kv_set_free_8_8 (clib_cuckoo_kv_8_8_t * v)
     @return s - the u8 * vector under construction
 */
 always_inline u8 *
-format_cuckoo_kvp_8_8 (u8 * s, va_list * args)
+format_cuckoo_kvp_8_8 (u8 *s, va_list *args)
 {
   clib_cuckoo_kv_8_8_t *v = va_arg (*args, clib_cuckoo_kv_8_8_t *);
 
@@ -87,9 +87,9 @@ format_cuckoo_kvp_8_8 (u8 * s, va_list * args)
 }
 
 always_inline u64
-clib_cuckoo_hash_8_8 (clib_cuckoo_kv_8_8_t * v)
+clib_cuckoo_hash_8_8 (clib_cuckoo_kv_8_8_t *v)
 {
-#if defined(clib_crc32c_uses_intrinsics) && !defined (__i386__)
+#if defined(clib_crc32c_uses_intrinsics) && !defined(__i386__)
   return crc32_u64 (0, v->key);
 #else
   return clib_xxhash (v->key);

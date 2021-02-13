@@ -19,7 +19,7 @@
 #include <wireguard/wireguard_index_table.h>
 
 u32
-wg_index_table_add (wg_index_table_t * table, u32 peer_pool_idx, u32 rnd_seed)
+wg_index_table_add (wg_index_table_t *table, u32 peer_pool_idx, u32 rnd_seed)
 {
   u32 key;
 
@@ -36,7 +36,7 @@ wg_index_table_add (wg_index_table_t * table, u32 peer_pool_idx, u32 rnd_seed)
 }
 
 void
-wg_index_table_del (wg_index_table_t * table, u32 key)
+wg_index_table_del (wg_index_table_t *table, u32 key)
 {
   uword *p;
   p = hash_get (table->hash, key);
@@ -45,7 +45,7 @@ wg_index_table_del (wg_index_table_t * table, u32 key)
 }
 
 u32 *
-wg_index_table_lookup (const wg_index_table_t * table, u32 key)
+wg_index_table_lookup (const wg_index_table_t *table, u32 key)
 {
   uword *p;
 

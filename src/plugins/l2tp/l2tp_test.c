@@ -43,14 +43,15 @@ l2tp_test_main_t l2tp_test_main;
 
 /* Macro to finish up custom dump fns */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define FINISH                                  \
-    vec_add1 (s, 0);                            \
-    vl_print (handle, (char *)s);               \
-    vec_free (s);                               \
-    return handle;
+#define FINISH                                                                \
+  vec_add1 (s, 0);                                                            \
+  vl_print (handle, (char *) s);                                              \
+  vec_free (s);                                                               \
+  return handle;
 
-static void vl_api_l2tpv3_create_tunnel_reply_t_handler
-  (vl_api_l2tpv3_create_tunnel_reply_t * mp)
+static void
+vl_api_l2tpv3_create_tunnel_reply_t_handler (
+  vl_api_l2tpv3_create_tunnel_reply_t *mp)
 {
   vat_main_t *vam = &vat_main;
   i32 retval = ntohl (mp->retval);
@@ -67,7 +68,7 @@ static void vl_api_l2tpv3_create_tunnel_reply_t_handler
 }
 
 static int
-api_l2tpv3_create_tunnel (vat_main_t * vam)
+api_l2tpv3_create_tunnel (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   ip6_address_t client_address, our_address;
@@ -135,7 +136,7 @@ api_l2tpv3_create_tunnel (vat_main_t * vam)
 }
 
 static int
-api_l2tpv3_set_tunnel_cookies (vat_main_t * vam)
+api_l2tpv3_set_tunnel_cookies (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   u32 sw_if_index;
@@ -177,7 +178,7 @@ api_l2tpv3_set_tunnel_cookies (vat_main_t * vam)
 }
 
 static int
-api_l2tpv3_interface_enable_disable (vat_main_t * vam)
+api_l2tpv3_interface_enable_disable (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_l2tpv3_interface_enable_disable_t *mp;
@@ -217,7 +218,7 @@ api_l2tpv3_interface_enable_disable (vat_main_t * vam)
 }
 
 static int
-api_l2tpv3_set_lookup_key (vat_main_t * vam)
+api_l2tpv3_set_lookup_key (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_l2tpv3_set_lookup_key_t *mp;
@@ -236,7 +237,7 @@ api_l2tpv3_set_lookup_key (vat_main_t * vam)
 	break;
     }
 
-  if (key == (u8) ~ 0)
+  if (key == (u8) ~0)
     {
       errmsg ("l2tp session lookup key unset");
       return -99;
@@ -251,18 +252,17 @@ api_l2tpv3_set_lookup_key (vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_sw_if_l2tpv3_tunnel_details_t_handler
-  (vl_api_sw_if_l2tpv3_tunnel_details_t * mp)
+static void
+vl_api_sw_if_l2tpv3_tunnel_details_t_handler (
+  vl_api_sw_if_l2tpv3_tunnel_details_t *mp)
 {
   vat_main_t *vam = &vat_main;
 
   print (vam->ofp, "* %U (our) %U (client) (sw_if_index %d)",
-	 format_ip6_address, mp->our_address,
-	 format_ip6_address, mp->client_address,
-	 clib_net_to_host_u32 (mp->sw_if_index));
+	 format_ip6_address, mp->our_address, format_ip6_address,
+	 mp->client_address, clib_net_to_host_u32 (mp->sw_if_index));
 
-  print (vam->ofp,
-	 "   local cookies %016llx %016llx remote cookie %016llx",
+  print (vam->ofp, "   local cookies %016llx %016llx remote cookie %016llx",
 	 clib_net_to_host_u64 (mp->local_cookie[0]),
 	 clib_net_to_host_u64 (mp->local_cookie[1]),
 	 clib_net_to_host_u64 (mp->remote_cookie));
@@ -273,11 +273,10 @@ static void vl_api_sw_if_l2tpv3_tunnel_details_t_handler
 
   print (vam->ofp, "   l2 specific sublayer %s\n",
 	 mp->l2_sublayer_present ? "preset" : "absent");
-
 }
 
 static int
-api_sw_if_l2tpv3_tunnel_dump (vat_main_t * vam)
+api_sw_if_l2tpv3_tunnel_dump (vat_main_t *vam)
 {
   vl_api_sw_if_l2tpv3_tunnel_dump_t *mp;
   vl_api_control_ping_t *mp_ping;

@@ -41,7 +41,7 @@
 #include <vnet/ip/lookup.h>
 
 u8 *
-format_vnet_rewrite (u8 * s, va_list * args)
+format_vnet_rewrite (u8 *s, va_list *args)
 {
   vnet_rewrite_header_t *rw = va_arg (*args, vnet_rewrite_header_t *);
   u32 max_data_bytes = va_arg (*args, u32);
@@ -70,17 +70,15 @@ format_vnet_rewrite (u8 * s, va_list * args)
 }
 
 u32
-vnet_tx_node_index_for_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
+vnet_tx_node_index_for_sw_interface (vnet_main_t *vnm, u32 sw_if_index)
 {
   vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
   return (hw->output_node_index);
 }
 
 void
-vnet_rewrite_init (vnet_main_t * vnm,
-		   u32 sw_if_index,
-		   vnet_link_t linkt,
-		   u32 this_node, u32 next_node, vnet_rewrite_header_t * rw)
+vnet_rewrite_init (vnet_main_t *vnm, u32 sw_if_index, vnet_link_t linkt,
+		   u32 this_node, u32 next_node, vnet_rewrite_header_t *rw)
 {
   rw->sw_if_index = sw_if_index;
   rw->next_index = vlib_node_add_next (vnm->vlib_main, this_node, next_node);
@@ -89,21 +87,17 @@ vnet_rewrite_init (vnet_main_t * vnm,
 }
 
 void
-vnet_rewrite_update_mtu (vnet_main_t * vnm, vnet_link_t linkt,
-			 vnet_rewrite_header_t * rw)
+vnet_rewrite_update_mtu (vnet_main_t *vnm, vnet_link_t linkt,
+			 vnet_rewrite_header_t *rw)
 {
   rw->max_l3_packet_bytes =
-    vnet_sw_interface_get_mtu (vnm, rw->sw_if_index,
-			       vnet_link_to_mtu (linkt));
+    vnet_sw_interface_get_mtu (vnm, rw->sw_if_index, vnet_link_to_mtu (linkt));
 }
 
 void
-vnet_rewrite_for_sw_interface (vnet_main_t * vnm,
-			       vnet_link_t link_type,
-			       u32 sw_if_index,
-			       u32 node_index,
-			       void *dst_address,
-			       vnet_rewrite_header_t * rw,
+vnet_rewrite_for_sw_interface (vnet_main_t *vnm, vnet_link_t link_type,
+			       u32 sw_if_index, u32 node_index,
+			       void *dst_address, vnet_rewrite_header_t *rw,
 			       u32 max_rewrite_bytes)
 {
 
@@ -126,7 +120,7 @@ vnet_rewrite_for_sw_interface (vnet_main_t * vnm,
 }
 
 void
-serialize_vnet_rewrite (serialize_main_t * m, va_list * va)
+serialize_vnet_rewrite (serialize_main_t *m, va_list *va)
 {
   vnet_rewrite_header_t *rw = va_arg (*va, vnet_rewrite_header_t *);
   u32 max_data_bytes = va_arg (*va, u32);
@@ -142,7 +136,7 @@ serialize_vnet_rewrite (serialize_main_t * m, va_list * va)
 }
 
 void
-unserialize_vnet_rewrite (serialize_main_t * m, va_list * va)
+unserialize_vnet_rewrite (serialize_main_t *m, va_list *va)
 {
   vnet_rewrite_header_t *rw = va_arg (*va, vnet_rewrite_header_t *);
   u32 max_data_bytes = va_arg (*va, u32);
@@ -161,8 +155,7 @@ unserialize_vnet_rewrite (serialize_main_t * m, va_list * va)
 }
 
 u8 *
-vnet_build_rewrite_for_sw_interface (vnet_main_t * vnm,
-				     u32 sw_if_index,
+vnet_build_rewrite_for_sw_interface (vnet_main_t *vnm, u32 sw_if_index,
 				     vnet_link_t link_type,
 				     const void *dst_address)
 {
@@ -174,10 +167,9 @@ vnet_build_rewrite_for_sw_interface (vnet_main_t * vnm,
   return (hc->build_rewrite (vnm, sw_if_index, link_type, dst_address));
 }
 
-
 void
-vnet_update_adjacency_for_sw_interface (vnet_main_t * vnm,
-					u32 sw_if_index, u32 ai)
+vnet_update_adjacency_for_sw_interface (vnet_main_t *vnm, u32 sw_if_index,
+					u32 ai)
 {
   vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
   vnet_hw_interface_class_t *hc =

@@ -41,7 +41,7 @@
 
 /* Format UDP header. */
 u8 *
-format_udp_header (u8 * s, va_list * args)
+format_udp_header (u8 *s, va_list *args)
 {
   udp_header_t *udp = va_arg (*args, udp_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
@@ -55,12 +55,10 @@ format_udp_header (u8 * s, va_list * args)
   indent = format_get_indent (s);
   indent += 2;
 
-  s = format (s, "UDP: %d -> %d",
-	      clib_net_to_host_u16 (udp->src_port),
+  s = format (s, "UDP: %d -> %d", clib_net_to_host_u16 (udp->src_port),
 	      clib_net_to_host_u16 (udp->dst_port));
 
-  s = format (s, "\n%Ulength %d, checksum 0x%04x",
-	      format_white_space, indent,
+  s = format (s, "\n%Ulength %d, checksum 0x%04x", format_white_space, indent,
 	      clib_net_to_host_u16 (udp->length),
 	      clib_net_to_host_u16 (udp->checksum));
 
@@ -73,8 +71,8 @@ format_udp_header (u8 * s, va_list * args)
       pi = ip_get_tcp_udp_port_info (im, udp->dst_port);
 
       if (pi && pi->format_header)
-	s = format (s, "\n%U%U",
-		    format_white_space, indent - 2, pi->format_header,
+	s = format (s, "\n%U%U", format_white_space, indent - 2,
+		    pi->format_header,
 		    /* next protocol header */ (udp + 1),
 		    max_header_bytes - sizeof (udp[0]));
     }
@@ -83,7 +81,7 @@ format_udp_header (u8 * s, va_list * args)
 }
 
 uword
-unformat_udp_port (unformat_input_t * input, va_list * args)
+unformat_udp_port (unformat_input_t *input, va_list *args)
 {
   u16 *result = va_arg (*args, u16 *);
   int port;

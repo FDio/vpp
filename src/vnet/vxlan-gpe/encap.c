@@ -16,7 +16,7 @@
  *  @file
  *  @brief Functions for encapsulating VXLAN GPE tunnels
  *
-*/
+ */
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
 #include <vnet/vnet.h>
@@ -26,14 +26,14 @@
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 
 /** Statistics (not really errors) */
-#define foreach_vxlan_gpe_encap_error    \
-_(ENCAPSULATED, "good packets encapsulated")
+#define foreach_vxlan_gpe_encap_error                                         \
+  _ (ENCAPSULATED, "good packets encapsulated")
 
 /**
  * @brief VXLAN GPE encap error strings
  */
 static char *vxlan_gpe_encap_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_vxlan_gpe_encap_error
 #undef _
 };
@@ -43,7 +43,7 @@ static char *vxlan_gpe_encap_error_strings[] = {
  */
 typedef enum
 {
-#define _(sym,str) VXLAN_GPE_ENCAP_ERROR_##sym,
+#define _(sym, str) VXLAN_GPE_ENCAP_ERROR_##sym,
   foreach_vxlan_gpe_encap_error
 #undef _
     VXLAN_GPE_ENCAP_N_ERROR,
@@ -67,7 +67,7 @@ typedef struct
  *
  */
 u8 *
-format_vxlan_gpe_encap_trace (u8 * s, va_list * args)
+format_vxlan_gpe_encap_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -78,7 +78,8 @@ format_vxlan_gpe_encap_trace (u8 * s, va_list * args)
 }
 
 /**
- * @brief Instantiates UDP + VXLAN-GPE header then set next node to IP4|6 lookup
+ * @brief Instantiates UDP + VXLAN-GPE header then set next node to IP4|6
+ * lookup
  *
  * @param *ngm
  * @param *b0
@@ -88,8 +89,8 @@ format_vxlan_gpe_encap_trace (u8 * s, va_list * args)
  *
  */
 always_inline void
-vxlan_gpe_encap_one_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
-			    vxlan_gpe_tunnel_t * t0, u32 * next0, u8 is_v4)
+vxlan_gpe_encap_one_inline (vxlan_gpe_main_t *ngm, vlib_buffer_t *b0,
+			    vxlan_gpe_tunnel_t *t0, u32 *next0, u8 is_v4)
 {
   ASSERT (sizeof (ip4_vxlan_gpe_header_t) == 36);
   ASSERT (sizeof (ip6_vxlan_gpe_header_t) == 56);
@@ -99,23 +100,26 @@ vxlan_gpe_encap_one_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
 }
 
 /**
- * @brief Instantiates UDP + VXLAN-GPE header then set next node to IP4|6 lookup for two packets
+ * @brief Instantiates UDP + VXLAN-GPE header then set next node to IP4|6
+ * lookup for two packets
  *
  * @param *ngm
  * @param *b0 Packet0
  * @param *b1 Packet1
  * @param *t0 contains rewrite header for Packet0
  * @param *t1 contains rewrite header for Packet1
- * @param *next0 relative index of next dispatch function (next node) for Packet0
- * @param *next1 relative index of next dispatch function (next node) for Packet1
+ * @param *next0 relative index of next dispatch function (next node) for
+ * Packet0
+ * @param *next1 relative index of next dispatch function (next node) for
+ * Packet1
  * @param is_v4 Is this IPv4? (or IPv6)
  *
  */
 always_inline void
-vxlan_gpe_encap_two_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
-			    vlib_buffer_t * b1, vxlan_gpe_tunnel_t * t0,
-			    vxlan_gpe_tunnel_t * t1, u32 * next0,
-			    u32 * next1, u8 is_v4)
+vxlan_gpe_encap_two_inline (vxlan_gpe_main_t *ngm, vlib_buffer_t *b0,
+			    vlib_buffer_t *b1, vxlan_gpe_tunnel_t *t0,
+			    vxlan_gpe_tunnel_t *t1, u32 *next0, u32 *next1,
+			    u8 is_v4)
 {
   ASSERT (sizeof (ip4_vxlan_gpe_header_t) == 36);
   ASSERT (sizeof (ip6_vxlan_gpe_header_t) == 56);
@@ -126,12 +130,14 @@ vxlan_gpe_encap_two_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
 }
 
 /**
- * @brief Common processing for IPv4 and IPv6 VXLAN GPE encap dispatch functions
+ * @brief Common processing for IPv4 and IPv6 VXLAN GPE encap dispatch
+ * functions
  *
- * It is worth noting that other than trivial UDP forwarding (transit), VXLAN GPE
- * tunnels are "establish local". This means that we don't have a TX interface as yet
- * as we need to look up where the outer-header dest is. By setting the TX index in the
- * buffer metadata to the encap FIB, we can do a lookup to get the adjacency and real TX.
+ * It is worth noting that other than trivial UDP forwarding (transit), VXLAN
+ * GPE tunnels are "establish local". This means that we don't have a TX
+ * interface as yet as we need to look up where the outer-header dest is. By
+ * setting the TX index in the buffer metadata to the encap FIB, we can do a
+ * lookup to get the adjacency and real TX.
  *
  *      vnet_buffer(b0)->sw_if_index[VLIB_TX] = t0->encap_fib_index;
  *
@@ -144,8 +150,8 @@ vxlan_gpe_encap_two_inline (vxlan_gpe_main_t * ngm, vlib_buffer_t * b0,
  *
  */
 static uword
-vxlan_gpe_encap (vlib_main_t * vm,
-		 vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+vxlan_gpe_encap (vlib_main_t *vm, vlib_node_runtime_t *node,
+		 vlib_frame_t *from_frame)
 {
   u32 n_left_from, next_index, *from, *to_next;
   vxlan_gpe_main_t *ngm = &vxlan_gpe_main;
@@ -205,10 +211,8 @@ vxlan_gpe_encap (vlib_main_t * vm,
 	  if (sw_if_index0 != vnet_buffer (b[0])->sw_if_index[VLIB_TX])
 	    {
 	      sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
-	      hi0 =
-		vnet_get_sup_hw_interface (vnm,
-					   vnet_buffer (b[0])->sw_if_index
-					   [VLIB_TX]);
+	      hi0 = vnet_get_sup_hw_interface (
+		vnm, vnet_buffer (b[0])->sw_if_index[VLIB_TX]);
 	      t0 = pool_elt_at_index (ngm->tunnels, hi0->dev_instance);
 	      is_ip4_0 = (t0->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
 	    }
@@ -226,10 +230,8 @@ vxlan_gpe_encap (vlib_main_t * vm,
 	      else
 		{
 		  sw_if_index1 = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
-		  hi1 =
-		    vnet_get_sup_hw_interface (vnm,
-					       vnet_buffer (b[1])->sw_if_index
-					       [VLIB_TX]);
+		  hi1 = vnet_get_sup_hw_interface (
+		    vnm, vnet_buffer (b[1])->sw_if_index[VLIB_TX]);
 		  t1 = pool_elt_at_index (ngm->tunnels, hi1->dev_instance);
 		  is_ip4_1 = (t1->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
 		}
@@ -259,37 +261,34 @@ vxlan_gpe_encap (vlib_main_t * vm,
 	  stats_n_bytes += len0 + len1;
 
 	  /* Batch stats increment on the same vxlan tunnel so counter is not
-	     incremented per packet. Note stats are still incremented for deleted
-	     and admin-down tunnel where packets are dropped. It is not worthwhile
-	     to check for this rare case and affect normal path performance. */
-	  if (PREDICT_FALSE ((sw_if_index0 != stats_sw_if_index)
-			     || (sw_if_index1 != stats_sw_if_index)))
+	     incremented per packet. Note stats are still incremented for
+	     deleted and admin-down tunnel where packets are dropped. It is not
+	     worthwhile to check for this rare case and affect normal path
+	     performance. */
+	  if (PREDICT_FALSE ((sw_if_index0 != stats_sw_if_index) ||
+			     (sw_if_index1 != stats_sw_if_index)))
 	    {
 	      stats_n_packets -= 2;
 	      stats_n_bytes -= len0 + len1;
 	      if (sw_if_index0 == sw_if_index1)
 		{
 		  if (stats_n_packets)
-		    vlib_increment_combined_counter
-		      (im->combined_sw_if_counters +
-		       VNET_INTERFACE_COUNTER_TX, thread_index,
-		       stats_sw_if_index, stats_n_packets, stats_n_bytes);
+		    vlib_increment_combined_counter (
+		      im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
+		      thread_index, stats_sw_if_index, stats_n_packets,
+		      stats_n_bytes);
 		  stats_sw_if_index = sw_if_index0;
 		  stats_n_packets = 2;
 		  stats_n_bytes = len0 + len1;
 		}
 	      else
 		{
-		  vlib_increment_combined_counter (im->combined_sw_if_counters
-						   +
-						   VNET_INTERFACE_COUNTER_TX,
-						   thread_index, sw_if_index0,
-						   1, len0);
-		  vlib_increment_combined_counter (im->combined_sw_if_counters
-						   +
-						   VNET_INTERFACE_COUNTER_TX,
-						   thread_index, sw_if_index1,
-						   1, len1);
+		  vlib_increment_combined_counter (
+		    im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
+		    thread_index, sw_if_index0, 1, len0);
+		  vlib_increment_combined_counter (
+		    im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
+		    thread_index, sw_if_index1, 1, len1);
 		}
 	    }
 
@@ -302,8 +301,8 @@ vxlan_gpe_encap (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (b[1]->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      vxlan_gpe_encap_trace_t *tr = vlib_add_trace (vm, node, b[1],
-							    sizeof (*tr));
+	      vxlan_gpe_encap_trace_t *tr =
+		vlib_add_trace (vm, node, b[1], sizeof (*tr));
 	      tr->tunnel_index = t1 - ngm->tunnels;
 	    }
 	  b += 2;
@@ -329,10 +328,8 @@ vxlan_gpe_encap (vlib_main_t * vm,
 	  if (sw_if_index0 != vnet_buffer (b[0])->sw_if_index[VLIB_TX])
 	    {
 	      sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
-	      hi0 =
-		vnet_get_sup_hw_interface (vnm,
-					   vnet_buffer (b[0])->sw_if_index
-					   [VLIB_TX]);
+	      hi0 = vnet_get_sup_hw_interface (
+		vnm, vnet_buffer (b[0])->sw_if_index[VLIB_TX]);
 
 	      t0 = pool_elt_at_index (ngm->tunnels, hi0->dev_instance);
 
@@ -351,28 +348,27 @@ vxlan_gpe_encap (vlib_main_t * vm,
 	  stats_n_bytes += len0;
 
 	  /* Batch stats increment on the same vxlan tunnel so counter is not
-	   *  incremented per packet. Note stats are still incremented for deleted
-	   *  and admin-down tunnel where packets are dropped. It is not worthwhile
-	   *  to check for this rare case and affect normal path performance. */
+	   *  incremented per packet. Note stats are still incremented for
+	   * deleted and admin-down tunnel where packets are dropped. It is not
+	   * worthwhile to check for this rare case and affect normal path
+	   * performance. */
 	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
 	    {
 	      stats_n_packets -= 1;
 	      stats_n_bytes -= len0;
 	      if (stats_n_packets)
-		vlib_increment_combined_counter (im->combined_sw_if_counters +
-						 VNET_INTERFACE_COUNTER_TX,
-						 thread_index,
-						 stats_sw_if_index,
-						 stats_n_packets,
-						 stats_n_bytes);
+		vlib_increment_combined_counter (
+		  im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
+		  thread_index, stats_sw_if_index, stats_n_packets,
+		  stats_n_bytes);
 	      stats_n_packets = 1;
 	      stats_n_bytes = len0;
 	      stats_sw_if_index = sw_if_index0;
 	    }
 	  if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      vxlan_gpe_encap_trace_t *tr = vlib_add_trace (vm, node, b[0],
-							    sizeof (*tr));
+	      vxlan_gpe_encap_trace_t *tr =
+		vlib_add_trace (vm, node, b[0], sizeof (*tr));
 	      tr->tunnel_index = t0 - ngm->tunnels;
 	    }
 	  b += 1;
@@ -389,17 +385,15 @@ vxlan_gpe_encap (vlib_main_t * vm,
   /* Increment any remaining batch stats */
   if (stats_n_packets)
     {
-      vlib_increment_combined_counter (im->combined_sw_if_counters +
-				       VNET_INTERFACE_COUNTER_TX,
-				       thread_index, stats_sw_if_index,
-				       stats_n_packets, stats_n_bytes);
+      vlib_increment_combined_counter (
+	im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX, thread_index,
+	stats_sw_if_index, stats_n_packets, stats_n_bytes);
       node->runtime_data[0] = stats_sw_if_index;
     }
 
   return from_frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vxlan_gpe_encap_node) = {
   .function = vxlan_gpe_encap,
   .name = "vxlan-gpe-encap",
@@ -418,7 +412,6 @@ VLIB_REGISTER_NODE (vxlan_gpe_encap_node) = {
     [VXLAN_GPE_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 
 /*

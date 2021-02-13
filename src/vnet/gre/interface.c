@@ -26,15 +26,16 @@
 #include <vnet/teib/teib.h>
 
 u8 *
-format_gre_tunnel_type (u8 * s, va_list * args)
+format_gre_tunnel_type (u8 *s, va_list *args)
 {
   gre_tunnel_type_t type = va_arg (*args, int);
 
   switch (type)
     {
-#define _(n, v) case GRE_TUNNEL_TYPE_##n:       \
-      s = format (s, "%s", v);                  \
-      break;
+#define _(n, v)                                                               \
+  case GRE_TUNNEL_TYPE_##n:                                                   \
+    s = format (s, "%s", v);                                                  \
+    break;
       foreach_gre_tunnel_type
 #undef _
     }
@@ -43,15 +44,15 @@ format_gre_tunnel_type (u8 * s, va_list * args)
 }
 
 static u8 *
-format_gre_tunnel (u8 * s, va_list * args)
+format_gre_tunnel (u8 *s, va_list *args)
 {
   gre_tunnel_t *t = va_arg (*args, gre_tunnel_t *);
 
   s = format (s, "[%d] instance %d src %U dst %U fib-idx %d sw-if-idx %d ",
-	      t->dev_instance, t->user_instance,
-	      format_ip46_address, &t->tunnel_src, IP46_TYPE_ANY,
-	      format_ip46_address, &t->tunnel_dst.fp_addr, IP46_TYPE_ANY,
-	      t->outer_fib_index, t->sw_if_index);
+	      t->dev_instance, t->user_instance, format_ip46_address,
+	      &t->tunnel_src, IP46_TYPE_ANY, format_ip46_address,
+	      &t->tunnel_dst.fp_addr, IP46_TYPE_ANY, t->outer_fib_index,
+	      t->sw_if_index);
 
   s = format (s, "payload %U ", format_gre_tunnel_type, t->type);
   s = format (s, "%U ", format_tunnel_mode, t->mode);
@@ -66,22 +67,22 @@ format_gre_tunnel (u8 * s, va_list * args)
 }
 
 static gre_tunnel_t *
-gre_tunnel_db_find (const vnet_gre_tunnel_add_del_args_t * a,
-		    u32 outer_fib_index, gre_tunnel_key_t * key)
+gre_tunnel_db_find (const vnet_gre_tunnel_add_del_args_t *a,
+		    u32 outer_fib_index, gre_tunnel_key_t *key)
 {
   gre_main_t *gm = &gre_main;
   uword *p;
 
   if (!a->is_ipv6)
     {
-      gre_mk_key4 (a->src.ip4, a->dst.ip4, outer_fib_index,
-		   a->type, a->mode, a->session_id, &key->gtk_v4);
+      gre_mk_key4 (a->src.ip4, a->dst.ip4, outer_fib_index, a->type, a->mode,
+		   a->session_id, &key->gtk_v4);
       p = hash_get_mem (gm->tunnel_by_key4, &key->gtk_v4);
     }
   else
     {
-      gre_mk_key6 (&a->src.ip6, &a->dst.ip6, outer_fib_index,
-		   a->type, a->mode, a->session_id, &key->gtk_v6);
+      gre_mk_key6 (&a->src.ip6, &a->dst.ip6, outer_fib_index, a->type, a->mode,
+		   a->session_id, &key->gtk_v6);
       p = hash_get_mem (gm->tunnel_by_key6, &key->gtk_v6);
     }
 
@@ -92,7 +93,7 @@ gre_tunnel_db_find (const vnet_gre_tunnel_add_del_args_t * a,
 }
 
 static void
-gre_tunnel_db_add (gre_tunnel_t * t, gre_tunnel_key_t * key)
+gre_tunnel_db_add (gre_tunnel_t *t, gre_tunnel_key_t *key)
 {
   gre_main_t *gm = &gre_main;
 
@@ -107,7 +108,7 @@ gre_tunnel_db_add (gre_tunnel_t * t, gre_tunnel_key_t * key)
 }
 
 static void
-gre_tunnel_db_remove (gre_tunnel_t * t, gre_tunnel_key_t * key)
+gre_tunnel_db_remove (gre_tunnel_t *t, gre_tunnel_key_t *key)
 {
   gre_main_t *gm = &gre_main;
 
@@ -167,7 +168,7 @@ gre_adj_walk_cb (adj_index_t ai, void *ctx)
 }
 
 static void
-gre_tunnel_restack (gre_tunnel_t * gt)
+gre_tunnel_restack (gre_tunnel_t *gt)
 {
   fib_protocol_t proto;
 
@@ -181,8 +182,8 @@ gre_tunnel_restack (gre_tunnel_t * gt)
 }
 
 static void
-gre_teib_mk_key (const gre_tunnel_t * t,
-		 const teib_entry_t * ne, gre_tunnel_key_t * key)
+gre_teib_mk_key (const gre_tunnel_t *t, const teib_entry_t *ne,
+		 gre_tunnel_key_t *key)
 {
   const fib_prefix_t *nh;
 
@@ -190,22 +191,20 @@ gre_teib_mk_key (const gre_tunnel_t * t,
 
   /* construct the key using mode P2P so it can be found in the DP */
   if (FIB_PROTOCOL_IP4 == nh->fp_proto)
-    gre_mk_key4 (t->tunnel_src.ip4,
-		 nh->fp_addr.ip4,
-		 teib_entry_get_fib_index (ne),
-		 t->type, TUNNEL_MODE_P2P, 0, &key->gtk_v4);
+    gre_mk_key4 (t->tunnel_src.ip4, nh->fp_addr.ip4,
+		 teib_entry_get_fib_index (ne), t->type, TUNNEL_MODE_P2P, 0,
+		 &key->gtk_v4);
   else
-    gre_mk_key6 (&t->tunnel_src.ip6,
-		 &nh->fp_addr.ip6,
-		 teib_entry_get_fib_index (ne),
-		 t->type, TUNNEL_MODE_P2P, 0, &key->gtk_v6);
+    gre_mk_key6 (&t->tunnel_src.ip6, &nh->fp_addr.ip6,
+		 teib_entry_get_fib_index (ne), t->type, TUNNEL_MODE_P2P, 0,
+		 &key->gtk_v6);
 }
 
 /**
  * An TEIB entry has been added
  */
 static void
-gre_teib_entry_added (const teib_entry_t * ne)
+gre_teib_entry_added (const teib_entry_t *ne)
 {
   gre_main_t *gm = &gre_main;
   const ip_address_t *nh;
@@ -236,20 +235,16 @@ gre_teib_entry_added (const teib_entry_t * ne)
 
   /* update the rewrites for each of the adjacencies for this peer (overlay)
    * using  the next-hop (underlay) */
-  mgre_walk_ctx_t ctx = {
-    .t = t,
-    .ne = ne
-  };
+  mgre_walk_ctx_t ctx = { .t = t, .ne = ne };
   nh = teib_entry_get_peer (ne);
-  adj_nbr_walk_nh (teib_entry_get_sw_if_index (ne),
-		   (AF_IP4 == ip_addr_version (nh) ?
-		    FIB_PROTOCOL_IP4 :
-		    FIB_PROTOCOL_IP6),
-		   &ip_addr_46 (nh), mgre_mk_complete_walk, &ctx);
+  adj_nbr_walk_nh (
+    teib_entry_get_sw_if_index (ne),
+    (AF_IP4 == ip_addr_version (nh) ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6),
+    &ip_addr_46 (nh), mgre_mk_complete_walk, &ctx);
 }
 
 static void
-gre_teib_entry_deleted (const teib_entry_t * ne)
+gre_teib_entry_deleted (const teib_entry_t *ne)
 {
   gre_main_t *gm = &gre_main;
   const ip_address_t *nh;
@@ -276,11 +271,10 @@ gre_teib_entry_deleted (const teib_entry_t * ne)
   nh = teib_entry_get_peer (ne);
 
   /* make all the adjacencies incomplete */
-  adj_nbr_walk_nh (teib_entry_get_sw_if_index (ne),
-		   (AF_IP4 == ip_addr_version (nh) ?
-		    FIB_PROTOCOL_IP4 :
-		    FIB_PROTOCOL_IP6),
-		   &ip_addr_46 (nh), mgre_mk_incomplete_walk, t);
+  adj_nbr_walk_nh (
+    teib_entry_get_sw_if_index (ne),
+    (AF_IP4 == ip_addr_version (nh) ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6),
+    &ip_addr_46 (nh), mgre_mk_incomplete_walk, t);
 }
 
 static walk_rc_t
@@ -308,8 +302,8 @@ gre_tunnel_add_teib_walk (index_t nei, void *ctx)
 }
 
 static int
-vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
-		     u32 outer_fib_index, u32 * sw_if_indexp)
+vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t *a, u32 outer_fib_index,
+		     u32 *sw_if_indexp)
 {
   gre_main_t *gm = &gre_main;
   vnet_main_t *vnm = gm->vnet_main;
@@ -330,8 +324,8 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
   clib_memset (t, 0, sizeof (*t));
 
   /* Reconcile the real dev_instance and a possible requested instance */
-  u32 t_idx = t - gm->tunnels;	/* tunnel index (or instance) */
-  u32 u_idx = a->instance;	/* user specified instance */
+  u32 t_idx = t - gm->tunnels; /* tunnel index (or instance) */
+  u32 u_idx = a->instance;     /* user specified instance */
   if (u_idx == ~0)
     u_idx = t_idx;
   if (hash_get (gm->instance_used, u_idx))
@@ -341,8 +335,8 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
     }
   hash_set (gm->instance_used, u_idx, 1);
 
-  t->dev_instance = t_idx;	/* actual */
-  t->user_instance = u_idx;	/* name */
+  t->dev_instance = t_idx;  /* actual */
+  t->user_instance = u_idx; /* name */
 
   t->type = a->type;
   t->mode = a->mode;
@@ -364,11 +358,11 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
   else
     {
       /* Default MAC address (d00b:eed0:0000 + sw_if_index) */
-      u8 address[6] =
-	{ 0xd0, 0x0b, 0xee, 0xd0, (u8) (t_idx >> 8), (u8) t_idx };
-      error =
-	ethernet_register_interface (vnm, gre_device_class.index, t_idx,
-				     address, &hw_if_index, 0);
+      u8 address[6] = {
+	0xd0, 0x0b, 0xee, 0xd0, (u8) (t_idx >> 8), (u8) t_idx
+      };
+      error = ethernet_register_interface (vnm, gre_device_class.index, t_idx,
+					   address, &hw_if_index, 0);
       if (error)
 	{
 	  clib_error_report (error);
@@ -452,8 +446,8 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
 
   if (t->type != GRE_TUNNEL_TYPE_L3)
     {
-      t->l2_adj_index = adj_nbr_add_or_lock
-	(t->tunnel_dst.fp_proto, VNET_LINK_ETHERNET, &zero_addr, sw_if_index);
+      t->l2_adj_index = adj_nbr_add_or_lock (
+	t->tunnel_dst.fp_proto, VNET_LINK_ETHERNET, &zero_addr, sw_if_index);
       gre_update_adj (vnm, t->sw_if_index, t->l2_adj_index);
     }
 
@@ -468,8 +462,8 @@ vnet_gre_tunnel_add (vnet_gre_tunnel_add_del_args_t * a,
 }
 
 static int
-vnet_gre_tunnel_delete (vnet_gre_tunnel_add_del_args_t * a,
-			u32 outer_fib_index, u32 * sw_if_indexp)
+vnet_gre_tunnel_delete (vnet_gre_tunnel_add_del_args_t *a, u32 outer_fib_index,
+			u32 *sw_if_indexp)
 {
   gre_main_t *gm = &gre_main;
   vnet_main_t *vnm = gm->vnet_main;
@@ -485,7 +479,7 @@ vnet_gre_tunnel_delete (vnet_gre_tunnel_add_del_args_t * a,
     teib_walk_itf (t->sw_if_index, gre_tunnel_delete_teib_walk, t);
 
   sw_if_index = t->sw_if_index;
-  vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */ );
+  vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */);
 
   /* make sure tunnel is removed from l2 bd or xconnect */
   set_int_l2_mode (gm->vlib_main, vnm, MODE_L3, sw_if_index, 0,
@@ -523,14 +517,12 @@ vnet_gre_tunnel_delete (vnet_gre_tunnel_add_del_args_t * a,
 }
 
 int
-vnet_gre_tunnel_add_del (vnet_gre_tunnel_add_del_args_t * a,
-			 u32 * sw_if_indexp)
+vnet_gre_tunnel_add_del (vnet_gre_tunnel_add_del_args_t *a, u32 *sw_if_indexp)
 {
   u32 outer_fib_index;
 
-  outer_fib_index = fib_table_find ((a->is_ipv6 ?
-				     FIB_PROTOCOL_IP6 :
-				     FIB_PROTOCOL_IP4), a->outer_table_id);
+  outer_fib_index = fib_table_find (
+    (a->is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4), a->outer_table_id);
 
   if (~0 == outer_fib_index)
     return VNET_API_ERROR_NO_SUCH_FIB;
@@ -548,7 +540,7 @@ vnet_gre_tunnel_add_del (vnet_gre_tunnel_add_del_args_t * a,
 }
 
 clib_error_t *
-gre_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+gre_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 {
   gre_main_t *gm = &gre_main;
   vnet_hw_interface_t *hi;
@@ -573,7 +565,7 @@ gre_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
     vnet_hw_interface_set_flags (vnm, hw_if_index,
 				 VNET_HW_INTERFACE_FLAG_LINK_UP);
   else
-    vnet_hw_interface_set_flags (vnm, hw_if_index, 0 /* down */ );
+    vnet_hw_interface_set_flags (vnm, hw_if_index, 0 /* down */);
 
   gre_tunnel_restack (t);
 
@@ -581,14 +573,13 @@ gre_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 }
 
 static clib_error_t *
-create_gre_tunnel_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+create_gre_tunnel_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_gre_tunnel_add_del_args_t _a, *a = &_a;
-  ip46_address_t src = ip46_address_initializer, dst =
-    ip46_address_initializer;
+  ip46_address_t src = ip46_address_initializer,
+		 dst = ip46_address_initializer;
   u32 instance = ~0;
   u32 outer_table_id = 0;
   gre_tunnel_type_t t_type = GRE_TUNNEL_TYPE_L3;
@@ -622,10 +613,8 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
 	t_type = GRE_TUNNEL_TYPE_TEB;
       else if (unformat (line_input, "erspan %d", &session_id))
 	t_type = GRE_TUNNEL_TYPE_ERSPAN;
-      else
-	if (unformat
-	    (line_input, "flags %U", unformat_tunnel_encap_decap_flags,
-	     &flags))
+      else if (unformat (line_input, "flags %U",
+			 unformat_tunnel_encap_decap_flags, &flags))
 	;
       else
 	{
@@ -655,8 +644,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
 
   if (ip46_address_is_ip4 (&src) != ip46_address_is_ip4 (&dst))
     {
-      error =
-	clib_error_return (0, "src and dst address must be the same AF");
+      error = clib_error_return (0, "src and dst address must be the same AF");
       goto done;
     }
 
@@ -691,15 +679,14 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
       error = clib_error_return (0, "GRE tunnel doesn't exist");
       goto done;
     case VNET_API_ERROR_INVALID_SESSION_ID:
-      error = clib_error_return (0, "session ID %d out of range\n",
-				 session_id);
+      error =
+	clib_error_return (0, "session ID %d out of range\n", session_id);
       goto done;
     case VNET_API_ERROR_INSTANCE_IN_USE:
       error = clib_error_return (0, "Instance is in use");
       goto done;
     default:
-      error =
-	clib_error_return (0, "vnet_gre_tunnel_add_del returned %d", rv);
+      error = clib_error_return (0, "vnet_gre_tunnel_add_del returned %d", rv);
       goto done;
     }
 
@@ -709,20 +696,17 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_gre_tunnel_command, static) = {
   .path = "create gre tunnel",
   .short_help = "create gre tunnel src <addr> dst <addr> [instance <n>] "
-                "[outer-fib-id <fib>] [teb | erspan <session-id>] [del] "
-                "[multipoint]",
+		"[outer-fib-id <fib>] [teb | erspan <session-id>] [del] "
+		"[multipoint]",
   .function = create_gre_tunnel_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_gre_tunnel_command_fn (vlib_main_t * vm,
-			    unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+show_gre_tunnel_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   gre_main_t *gm = &gre_main;
   gre_tunnel_t *t;
@@ -741,12 +725,11 @@ show_gre_tunnel_command_fn (vlib_main_t * vm,
 
   if (~0 == ti)
     {
-      /* *INDENT-OFF* */
+
       pool_foreach (t, gm->tunnels)
-       {
-          vlib_cli_output (vm, "%U", format_gre_tunnel, t);
-      }
-      /* *INDENT-ON* */
+	{
+	  vlib_cli_output (vm, "%U", format_gre_tunnel, t);
+	}
     }
   else
     {
@@ -758,12 +741,10 @@ show_gre_tunnel_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_gre_tunnel_command, static) = {
-    .path = "show gre tunnel",
-    .function = show_gre_tunnel_command_fn,
+  .path = "show gre tunnel",
+  .function = show_gre_tunnel_command_fn,
 };
-/* *INDENT-ON* */
 
 const static teib_vft_t gre_teib_vft = {
   .nv_added = gre_teib_entry_added,
@@ -772,7 +753,7 @@ const static teib_vft_t gre_teib_vft = {
 
 /* force inclusion from application's main.c */
 clib_error_t *
-gre_interface_init (vlib_main_t * vm)
+gre_interface_init (vlib_main_t *vm)
 {
   teib_register (&gre_teib_vft);
 

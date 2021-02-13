@@ -32,7 +32,7 @@ extern openssl_main_t openssl_main;
 
 /* API message handler */
 static void
-vl_api_tls_openssl_set_engine_t_handler (vl_api_tls_openssl_set_engine_t * mp)
+vl_api_tls_openssl_set_engine_t_handler (vl_api_tls_openssl_set_engine_t *mp)
 {
   vl_api_tls_openssl_set_engine_reply_t *rmp;
   openssl_main_t *om = &openssl_main;
@@ -57,7 +57,7 @@ vl_api_tls_openssl_set_engine_t_handler (vl_api_tls_openssl_set_engine_t * mp)
 
 #include <tlsopenssl/tls_openssl.api.c>
 clib_error_t *
-tls_openssl_api_init (vlib_main_t * vm)
+tls_openssl_api_init (vlib_main_t *vm)
 {
   openssl_main_t *om = &openssl_main;
 

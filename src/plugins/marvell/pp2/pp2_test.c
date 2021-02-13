@@ -44,7 +44,7 @@ pp2_test_main_t pp2_test_main;
 
 /* mrvl_pp2 create API */
 static int
-api_mrvl_pp2_create (vat_main_t * vam)
+api_mrvl_pp2_create (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_mrvl_pp2_create_t *mp;
@@ -85,7 +85,7 @@ api_mrvl_pp2_create (vat_main_t * vam)
 
 /* mrvl_pp2 create reply handler */
 static void
-vl_api_mrvl_pp2_create_reply_t_handler (vl_api_mrvl_pp2_create_reply_t * mp)
+vl_api_mrvl_pp2_create_reply_t_handler (vl_api_mrvl_pp2_create_reply_t *mp)
 {
   vat_main_t *vam = pp2_test_main.vat_main;
   i32 retval = ntohl (mp->retval);
@@ -101,13 +101,12 @@ vl_api_mrvl_pp2_create_reply_t_handler (vl_api_mrvl_pp2_create_reply_t * mp)
   vam->regenerate_interface_table = 1;
 }
 
-
 /* mrvl_pp2 delete API */
 static int
-api_mrvl_pp2_delete (vat_main_t * vam)
+api_mrvl_pp2_delete (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
-  //vnet_main_t *vnm = vnet_get_main ();
+  // vnet_main_t *vnm = vnet_get_main ();
   vl_api_mrvl_pp2_delete_t *mp;
   u32 sw_if_index = 0;
   int ret;

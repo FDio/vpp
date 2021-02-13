@@ -41,10 +41,9 @@ extern vlib_node_registration_t export_node;
 /* Action function shared between message handler and debug CLI */
 
 int
-ioam_export_ip6_enable_disable (ioam_export_main_t * em,
-				u8 is_disable,
-				ip4_address_t * collector_address,
-				ip4_address_t * src_address)
+ioam_export_ip6_enable_disable (ioam_export_main_t *em, u8 is_disable,
+				ip4_address_t *collector_address,
+				ip4_address_t *src_address)
 {
   vlib_main_t *vm = em->vlib_main;
 
@@ -56,7 +55,6 @@ ioam_export_ip6_enable_disable (ioam_export_main_t * em,
 	  ip6_hbh_set_next_override (em->my_hbh_slot);
 	  /* Turn on the export buffer check process */
 	  vlib_process_signal_event (vm, em->export_process_node_index, 1, 0);
-
 	}
       else
 	{
@@ -70,32 +68,30 @@ ioam_export_ip6_enable_disable (ioam_export_main_t * em,
       ioam_export_thread_buffer_free (em);
       /* Turn off the export buffer check process */
       vlib_process_signal_event (vm, em->export_process_node_index, 2, 0);
-
     }
 
   return 0;
 }
 
 /* API message handler */
-static void vl_api_ioam_export_ip6_enable_disable_t_handler
-  (vl_api_ioam_export_ip6_enable_disable_t * mp)
+static void
+vl_api_ioam_export_ip6_enable_disable_t_handler (
+  vl_api_ioam_export_ip6_enable_disable_t *mp)
 {
   vl_api_ioam_export_ip6_enable_disable_reply_t *rmp;
   ioam_export_main_t *sm = &ioam_export_main;
   int rv;
 
   rv = ioam_export_ip6_enable_disable (sm, (int) (mp->is_disable),
-				       (ip4_address_t *)
-				       mp->collector_address,
+				       (ip4_address_t *) mp->collector_address,
 				       (ip4_address_t *) mp->src_address);
 
   REPLY_MACRO (VL_API_IOAM_EXPORT_IP6_ENABLE_DISABLE_REPLY);
 }
 
 static clib_error_t *
-set_ioam_export_ipfix_command_fn (vlib_main_t * vm,
-				  unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
+set_ioam_export_ipfix_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				  vlib_cli_command_t *cmd)
 {
   ioam_export_main_t *em = &ioam_export_main;
   ip4_address_t collector, src;
@@ -125,29 +121,27 @@ set_ioam_export_ipfix_command_fn (vlib_main_t * vm,
   em->ipfix_collector.as_u32 = collector.as_u32;
   em->src_address.as_u32 = src.as_u32;
 
-  vlib_cli_output (vm, "Collector %U, src address %U",
-		   format_ip4_address, &em->ipfix_collector,
-		   format_ip4_address, &em->src_address);
+  vlib_cli_output (vm, "Collector %U, src address %U", format_ip4_address,
+		   &em->ipfix_collector, format_ip4_address, &em->src_address);
 
   /* Turn on the export timer process */
   // vlib_process_signal_event (vm, flow_report_process_node.index,
-  //1, 0);
+  // 1, 0);
   ioam_export_ip6_enable_disable (em, is_disable, &collector, &src);
 
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_ipfix_command, static) =
-{
-.path = "set ioam export ipfix",.short_help =
-    "set ioam export ipfix collector <ip4-address> src <ip4-address>",.
-    function = set_ioam_export_ipfix_command_fn,};
-/* *INDENT-ON* */
+VLIB_CLI_COMMAND (set_ipfix_command, static) = {
+  .path = "set ioam export ipfix",
+  .short_help =
+    "set ioam export ipfix collector <ip4-address> src <ip4-address>",
+  .function = set_ioam_export_ipfix_command_fn,
+};
 
 #include <ioam/export/ioam_export.api.c>
 static clib_error_t *
-ioam_export_init (vlib_main_t * vm)
+ioam_export_init (vlib_main_t *vm)
 {
   ioam_export_main_t *em = &ioam_export_main;
   u32 node_index = export_node.index;
@@ -161,7 +155,7 @@ ioam_export_init (vlib_main_t * vm)
   /* Ask for a correctly-sized block of API message decode slots */
   em->msg_id_base = setup_message_id_table ();
 
-  em->unix_time_0 = (u32) time (0);	/* Store starting time */
+  em->unix_time_0 = (u32) time (0); /* Store starting time */
   em->vlib_time_0 = vlib_time_now (vm);
 
   /* Hook this export node to ip6-hop-by-hop */

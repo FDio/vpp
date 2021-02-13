@@ -23,12 +23,12 @@
 #include <vppinfra/clib.h>
 
 /* auth type value, max key length, name, description */
-#define foreach_bfd_auth_type(F)                          \
-  F (0, 0, reserved, "Reserved")                          \
-  F (1, 16, simple_password, "Simple Password")           \
-  F (2, 16, keyed_md5, "Keyed MD5")                       \
-  F (3, 16, meticulous_keyed_md5, "Meticulous Keyed MD5") \
-  F (4, 20, keyed_sha1, "Keyed SHA1")                     \
+#define foreach_bfd_auth_type(F)                                              \
+  F (0, 0, reserved, "Reserved")                                              \
+  F (1, 16, simple_password, "Simple Password")                               \
+  F (2, 16, keyed_md5, "Keyed MD5")                                           \
+  F (3, 16, meticulous_keyed_md5, "Meticulous Keyed MD5")                     \
+  F (4, 20, keyed_sha1, "Keyed SHA1")                                         \
   F (5, 20, meticulous_keyed_sha1, "Meticulous Keyed SHA1")
 
 #define BFD_AUTH_TYPE_NAME(t) BFD_AUTH_TYPE_##t
@@ -46,14 +46,11 @@ typedef enum
 u32 bfd_max_key_len_for_auth_type (bfd_auth_type_e auth_type);
 const char *bfd_auth_type_str (bfd_auth_type_e auth_type);
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 type;
   u8 len;
 }) bfd_auth_common_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   /*
    * 4.4.  Keyed SHA1 and Meticulous Keyed SHA1 Authentication Section Format
@@ -88,9 +85,7 @@ typedef CLIB_PACKED (struct {
    */
   u8 hash[20];
 }) bfd_auth_sha1_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   /*
    *  The Mandatory Section of a BFD Control packet has the following
@@ -125,51 +120,46 @@ typedef CLIB_PACKED (struct {
   u32 req_min_rx;
   u32 req_min_echo_rx;
 }) bfd_pkt_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   bfd_pkt_t pkt;
   bfd_auth_common_t common_auth;
 }) bfd_pkt_with_common_auth_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   bfd_pkt_t pkt;
   bfd_auth_sha1_t sha1_auth;
 }) bfd_pkt_with_sha1_auth_t;
-/* *INDENT-ON* */
 
-u8 bfd_pkt_get_version (const bfd_pkt_t * pkt);
-void bfd_pkt_set_version (bfd_pkt_t * pkt, int version);
-u8 bfd_pkt_get_diag_code (const bfd_pkt_t * pkt);
-void bfd_pkt_set_diag_code (bfd_pkt_t * pkt, int value);
-u8 bfd_pkt_get_state (const bfd_pkt_t * pkt);
-void bfd_pkt_set_state (bfd_pkt_t * pkt, int value);
-u8 bfd_pkt_get_poll (const bfd_pkt_t * pkt);
-void bfd_pkt_set_final (bfd_pkt_t * pkt);
-u8 bfd_pkt_get_final (const bfd_pkt_t * pkt);
-void bfd_pkt_set_poll (bfd_pkt_t * pkt);
-u8 bfd_pkt_get_control_plane_independent (const bfd_pkt_t * pkt);
-void bfd_pkt_set_control_plane_independent (bfd_pkt_t * pkt);
-u8 bfd_pkt_get_auth_present (const bfd_pkt_t * pkt);
-void bfd_pkt_set_auth_present (bfd_pkt_t * pkt);
-u8 bfd_pkt_get_demand (const bfd_pkt_t * pkt);
-void bfd_pkt_set_demand (bfd_pkt_t * pkt);
-u8 bfd_pkt_get_multipoint (const bfd_pkt_t * pkt);
-void bfd_pkt_set_multipoint (bfd_pkt_t * pkt);
+u8 bfd_pkt_get_version (const bfd_pkt_t *pkt);
+void bfd_pkt_set_version (bfd_pkt_t *pkt, int version);
+u8 bfd_pkt_get_diag_code (const bfd_pkt_t *pkt);
+void bfd_pkt_set_diag_code (bfd_pkt_t *pkt, int value);
+u8 bfd_pkt_get_state (const bfd_pkt_t *pkt);
+void bfd_pkt_set_state (bfd_pkt_t *pkt, int value);
+u8 bfd_pkt_get_poll (const bfd_pkt_t *pkt);
+void bfd_pkt_set_final (bfd_pkt_t *pkt);
+u8 bfd_pkt_get_final (const bfd_pkt_t *pkt);
+void bfd_pkt_set_poll (bfd_pkt_t *pkt);
+u8 bfd_pkt_get_control_plane_independent (const bfd_pkt_t *pkt);
+void bfd_pkt_set_control_plane_independent (bfd_pkt_t *pkt);
+u8 bfd_pkt_get_auth_present (const bfd_pkt_t *pkt);
+void bfd_pkt_set_auth_present (bfd_pkt_t *pkt);
+u8 bfd_pkt_get_demand (const bfd_pkt_t *pkt);
+void bfd_pkt_set_demand (bfd_pkt_t *pkt);
+u8 bfd_pkt_get_multipoint (const bfd_pkt_t *pkt);
+void bfd_pkt_set_multipoint (bfd_pkt_t *pkt);
 
 /* BFD diagnostic codes */
-#define foreach_bfd_diag_code(F)                             \
-  F (0, no_diag, "No Diagnostic")                            \
-  F (1, det_time_exp, "Control Detection Time Expired")      \
-  F (2, echo_failed, "Echo Function Failed")                 \
-  F (3, neighbor_sig_down, "Neighbor Signaled Session Down") \
-  F (4, fwd_plain_reset, "Forwarding Plane Reset")           \
-  F (5, path_down, "Path Down")                              \
-  F (6, concat_path_down, "Concatenated Path Down")          \
-  F (7, admin_down, "Administratively Down")                 \
+#define foreach_bfd_diag_code(F)                                              \
+  F (0, no_diag, "No Diagnostic")                                             \
+  F (1, det_time_exp, "Control Detection Time Expired")                       \
+  F (2, echo_failed, "Echo Function Failed")                                  \
+  F (3, neighbor_sig_down, "Neighbor Signaled Session Down")                  \
+  F (4, fwd_plain_reset, "Forwarding Plane Reset")                            \
+  F (5, path_down, "Path Down")                                               \
+  F (6, concat_path_down, "Concatenated Path Down")                           \
+  F (7, admin_down, "Administratively Down")                                  \
   F (8, reverse_concat_path_down, "Reverse Concatenated Path Down")
 
 #define BFD_DIAG_CODE_NAME(t) BFD_DIAG_CODE_##t
@@ -184,10 +174,10 @@ typedef enum
 const char *bfd_diag_code_string (bfd_diag_code_e diag);
 
 /* BFD state values */
-#define foreach_bfd_state(F)     \
-  F (0, admin_down, "AdminDown") \
-  F (1, down, "Down")            \
-  F (2, init, "Init")            \
+#define foreach_bfd_state(F)                                                  \
+  F (0, admin_down, "AdminDown")                                              \
+  F (1, down, "Down")                                                         \
+  F (2, init, "Init")                                                         \
   F (3, up, "Up")
 
 #define BFD_STATE_NAME(t) BFD_STATE_##t

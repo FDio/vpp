@@ -153,7 +153,7 @@ typedef struct cnat_translation_t_
 
 extern cnat_translation_t *cnat_translation_pool;
 
-extern u8 *format_cnat_translation (u8 * s, va_list * args);
+extern u8 *format_cnat_translation (u8 *s, va_list *args);
 
 /**
  * create or update a translation
@@ -164,10 +164,9 @@ extern u8 *format_cnat_translation (u8 * s, va_list * args);
  *
  * @return the ID of the translation. used to delete and gather stats
  */
-extern u32 cnat_translation_update (cnat_endpoint_t * vip,
+extern u32 cnat_translation_update (cnat_endpoint_t *vip,
 				    ip_protocol_t ip_proto,
-				    cnat_endpoint_tuple_t *
-				    backends, u8 flags);
+				    cnat_endpoint_tuple_t *backends, u8 flags);
 
 /**
  * Delete a translation
@@ -195,7 +194,7 @@ extern int cnat_translation_purge (void);
  * Add an address resolution request
  */
 extern void cnat_translation_watch_addr (index_t cti, u64 opaque,
-					 cnat_endpoint_t * ep,
+					 cnat_endpoint_t *ep,
 					 cnat_addr_resol_type_t type);
 
 /**

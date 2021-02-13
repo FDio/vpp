@@ -16,10 +16,10 @@
 #ifndef __VOM_TAP_INTERFACE_CMDS_H__
 #define __VOM_TAP_INTERFACE_CMDS_H__
 
-#include "vom/interface.hpp"
-#include "vom/tap_interface.hpp"
 #include "vom/dump_cmd.hpp"
+#include "vom/interface.hpp"
 #include "vom/rpc_cmd.hpp"
+#include "vom/tap_interface.hpp"
 
 #include <vapi/interface.api.vapi.hpp>
 #include <vapi/tapv2.api.vapi.hpp>
@@ -96,7 +96,7 @@ public:
   bool operator==(const tapv2_dump_cmd& i) const;
 };
 
-}; // namespace tap_interface_cmds 
+}; // namespace tap_interface_cmds
 }; // namespace VOM
 
 #endif

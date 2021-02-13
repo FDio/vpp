@@ -21,34 +21,34 @@
 #define VIRTCHNL_VERSION_MAJOR 1
 #define VIRTCHNL_VERSION_MINOR 1
 
-#define foreach_avf_promisc_flags \
-  _(0, UNICAST_PROMISC, "unicast") \
-  _(1, MULTICAST_PROMISC, "multicast")
+#define foreach_avf_promisc_flags                                             \
+  _ (0, UNICAST_PROMISC, "unicast")                                           \
+  _ (1, MULTICAST_PROMISC, "multicast")
 
 enum
 {
-#define _(a, b, c) FLAG_VF_ ##b = (1 << a),
+#define _(a, b, c) FLAG_VF_##b = (1 << a),
   foreach_avf_promisc_flags
 #undef _
 };
 
-#define AVFINT_DYN_CTLN(x)  (0x00003800 + (0x4 * x))
-#define AVFINT_ICR0         0x00004800
-#define AVFINT_ICR0_ENA1    0x00005000
-#define AVFINT_DYN_CTL0     0x00005C00
-#define AVF_ARQBAH          0x00006000
-#define AVF_ATQH            0x00006400
-#define AVF_ATQLEN          0x00006800
-#define AVF_ARQBAL          0x00006C00
-#define AVF_ARQT            0x00007000
-#define AVF_ARQH            0x00007400
-#define AVF_ATQBAH          0x00007800
-#define AVF_ATQBAL          0x00007C00
-#define AVF_ARQLEN          0x00008000
-#define AVF_ATQT            0x00008400
-#define AVFGEN_RSTAT        0x00008800
-#define AVF_QTX_TAIL(q)     (0x00000000 + (0x4 * q))
-#define AVF_QRX_TAIL(q)     (0x00002000 + (0x4 * q))
+#define AVFINT_DYN_CTLN(x) (0x00003800 + (0x4 * x))
+#define AVFINT_ICR0	   0x00004800
+#define AVFINT_ICR0_ENA1   0x00005000
+#define AVFINT_DYN_CTL0	   0x00005C00
+#define AVF_ARQBAH	   0x00006000
+#define AVF_ATQH	   0x00006400
+#define AVF_ATQLEN	   0x00006800
+#define AVF_ARQBAL	   0x00006C00
+#define AVF_ARQT	   0x00007000
+#define AVF_ARQH	   0x00007400
+#define AVF_ATQBAH	   0x00007800
+#define AVF_ATQBAL	   0x00007C00
+#define AVF_ARQLEN	   0x00008000
+#define AVF_ATQT	   0x00008400
+#define AVFGEN_RSTAT	   0x00008800
+#define AVF_QTX_TAIL(q)	   (0x00000000 + (0x4 * q))
+#define AVF_QRX_TAIL(q)	   (0x00002000 + (0x4 * q))
 
 #define AVF_AQ_F_DD  (1 << 0)
 #define AVF_AQ_F_CMP (1 << 1)
@@ -62,47 +62,45 @@ enum
 #define AVF_AQ_F_EI  (1 << 14)
 #define AVF_AQ_F_FE  (1 << 15)
 
-
-#define foreach_virtchnl_op \
-  _(0, UNKNOWN)					\
-  _(1, VERSION)					\
-  _(2, RESET_VF)				\
-  _(3, GET_VF_RESOURCES)			\
-  _(4, CONFIG_TX_QUEUE)				\
-  _(5, CONFIG_RX_QUEUE)				\
-  _(6, CONFIG_VSI_QUEUES)			\
-  _(7, CONFIG_IRQ_MAP)				\
-  _(8, ENABLE_QUEUES)				\
-  _(9, DISABLE_QUEUES)				\
-  _(10, ADD_ETH_ADDR)				\
-  _(11, DEL_ETH_ADDR)				\
-  _(12, ADD_VLAN)				\
-  _(13, DEL_VLAN)				\
-  _(14, CONFIG_PROMISCUOUS_MODE)		\
-  _(15, GET_STATS)				\
-  _(16, RSVD)					\
-  _(17, EVENT)					\
-  _(18, UNDEF_18)				\
-  _(19, UNDEF_19)				\
-  _(20, IWARP)					\
-  _(21, CONFIG_IWARP_IRQ_MAP)			\
-  _(22, RELEASE_IWARP_IRQ_MAP)			\
-  _(23, CONFIG_RSS_KEY)				\
-  _(24, CONFIG_RSS_LUT)				\
-  _(25, GET_RSS_HENA_CAPS)			\
-  _(26, SET_RSS_HENA)				\
-  _(27, ENABLE_VLAN_STRIPPING)			\
-  _(28, DISABLE_VLAN_STRIPPING)			\
-  _(29, REQUEST_QUEUES)				\
-  _(30, ENABLE_CHANNELS)			\
-  _(31, DISABLE_CHANNELS)			\
-  _(32, ADD_CLOUD_FILTER)			\
-  _(33, DEL_CLOUD_FILTER)
-
+#define foreach_virtchnl_op                                                   \
+  _ (0, UNKNOWN)                                                              \
+  _ (1, VERSION)                                                              \
+  _ (2, RESET_VF)                                                             \
+  _ (3, GET_VF_RESOURCES)                                                     \
+  _ (4, CONFIG_TX_QUEUE)                                                      \
+  _ (5, CONFIG_RX_QUEUE)                                                      \
+  _ (6, CONFIG_VSI_QUEUES)                                                    \
+  _ (7, CONFIG_IRQ_MAP)                                                       \
+  _ (8, ENABLE_QUEUES)                                                        \
+  _ (9, DISABLE_QUEUES)                                                       \
+  _ (10, ADD_ETH_ADDR)                                                        \
+  _ (11, DEL_ETH_ADDR)                                                        \
+  _ (12, ADD_VLAN)                                                            \
+  _ (13, DEL_VLAN)                                                            \
+  _ (14, CONFIG_PROMISCUOUS_MODE)                                             \
+  _ (15, GET_STATS)                                                           \
+  _ (16, RSVD)                                                                \
+  _ (17, EVENT)                                                               \
+  _ (18, UNDEF_18)                                                            \
+  _ (19, UNDEF_19)                                                            \
+  _ (20, IWARP)                                                               \
+  _ (21, CONFIG_IWARP_IRQ_MAP)                                                \
+  _ (22, RELEASE_IWARP_IRQ_MAP)                                               \
+  _ (23, CONFIG_RSS_KEY)                                                      \
+  _ (24, CONFIG_RSS_LUT)                                                      \
+  _ (25, GET_RSS_HENA_CAPS)                                                   \
+  _ (26, SET_RSS_HENA)                                                        \
+  _ (27, ENABLE_VLAN_STRIPPING)                                               \
+  _ (28, DISABLE_VLAN_STRIPPING)                                              \
+  _ (29, REQUEST_QUEUES)                                                      \
+  _ (30, ENABLE_CHANNELS)                                                     \
+  _ (31, DISABLE_CHANNELS)                                                    \
+  _ (32, ADD_CLOUD_FILTER)                                                    \
+  _ (33, DEL_CLOUD_FILTER)
 
 typedef enum
 {
-#define _(v,n) VIRTCHNL_OP_##n = v,
+#define _(v, n) VIRTCHNL_OP_##n = v,
   foreach_virtchnl_op
 #undef _
     VIRTCHNL_N_OPS,
@@ -120,23 +118,23 @@ typedef enum
   VIRTCHNL_STATUS_NOT_SUPPORTED = -64,
 } virtchnl_status_code_t;
 
-#define foreach_avf_vf_cap_flag \
-  _( 0, OFFLOAD_L2, "l2") \
-  _( 1, OFFLOAD_IWARP, "iwarp") \
-  _( 2, OFFLOAD_RSVD, "rsvd") \
-  _( 3, OFFLOAD_RSS_AQ, "rss-aq") \
-  _( 4, OFFLOAD_RSS_REG, "rss-reg") \
-  _( 5, OFFLOAD_WB_ON_ITR, "wb-on-itr") \
-  _( 6, OFFLOAD_REQ_QUEUES, "req-queues") \
-  _( 7, CAP_ADV_LINK_SPEED, "adv-link-speed") \
-  _(16, OFFLOAD_VLAN, "vlan") \
-  _(17, OFFLOAD_RX_POLLING, "rx-polling") \
-  _(18, OFFLOAD_RSS_PCTYPE_V2, "rss-pctype-v2") \
-  _(19, OFFLOAD_RSS_PF, "rss-pf") \
-  _(20, OFFLOAD_ENCAP, "encap") \
-  _(21, OFFLOAD_ENCAP_CSUM, "encap-csum") \
-  _(22, OFFLOAD_RX_ENCAP_CSUM, "rx-encap-csum") \
-  _(23, OFFLOAD_ADQ, "offload-adq")
+#define foreach_avf_vf_cap_flag                                               \
+  _ (0, OFFLOAD_L2, "l2")                                                     \
+  _ (1, OFFLOAD_IWARP, "iwarp")                                               \
+  _ (2, OFFLOAD_RSVD, "rsvd")                                                 \
+  _ (3, OFFLOAD_RSS_AQ, "rss-aq")                                             \
+  _ (4, OFFLOAD_RSS_REG, "rss-reg")                                           \
+  _ (5, OFFLOAD_WB_ON_ITR, "wb-on-itr")                                       \
+  _ (6, OFFLOAD_REQ_QUEUES, "req-queues")                                     \
+  _ (7, CAP_ADV_LINK_SPEED, "adv-link-speed")                                 \
+  _ (16, OFFLOAD_VLAN, "vlan")                                                \
+  _ (17, OFFLOAD_RX_POLLING, "rx-polling")                                    \
+  _ (18, OFFLOAD_RSS_PCTYPE_V2, "rss-pctype-v2")                              \
+  _ (19, OFFLOAD_RSS_PF, "rss-pf")                                            \
+  _ (20, OFFLOAD_ENCAP, "encap")                                              \
+  _ (21, OFFLOAD_ENCAP_CSUM, "encap-csum")                                    \
+  _ (22, OFFLOAD_RX_ENCAP_CSUM, "rx-encap-csum")                              \
+  _ (23, OFFLOAD_ADQ, "offload-adq")
 
 typedef enum
 {
@@ -179,33 +177,33 @@ typedef struct
   virtchnl_vsi_resource_t vsi_res[1];
 } virtchnl_vf_resource_t;
 
-#define foreach_virtchnl_event_code \
-  _(0, UNKNOWN)				\
-  _(1, LINK_CHANGE)			\
-  _(2, RESET_IMPENDING)			\
-  _(3, PF_DRIVER_CLOSE)
+#define foreach_virtchnl_event_code                                           \
+  _ (0, UNKNOWN)                                                              \
+  _ (1, LINK_CHANGE)                                                          \
+  _ (2, RESET_IMPENDING)                                                      \
+  _ (3, PF_DRIVER_CLOSE)
 
 typedef enum
 {
-#define _(a,b) VIRTCHNL_EVENT_##b = (a),
+#define _(a, b) VIRTCHNL_EVENT_##b = (a),
   foreach_virtchnl_event_code
 #undef _
 } virtchnl_event_codes_t;
 
-#define foreach_virtchnl_link_speed \
-  _(0, 2_5GB, "2.5 Gbps")		\
-  _(1, 100MB, "100 Mbps")		\
-  _(2, 1GB, "1 Gbps")			\
-  _(3, 10GB, "10 Gbps")			\
-  _(4, 40GB, "40 Gbps")			\
-  _(5, 20GB, "20 Gbps")			\
-  _(6, 25GB, "25 Gbps")			\
-  _(7, 5GB, "5 Gbps")
+#define foreach_virtchnl_link_speed                                           \
+  _ (0, 2_5GB, "2.5 Gbps")                                                    \
+  _ (1, 100MB, "100 Mbps")                                                    \
+  _ (2, 1GB, "1 Gbps")                                                        \
+  _ (3, 10GB, "10 Gbps")                                                      \
+  _ (4, 40GB, "40 Gbps")                                                      \
+  _ (5, 20GB, "20 Gbps")                                                      \
+  _ (6, 25GB, "25 Gbps")                                                      \
+  _ (7, 5GB, "5 Gbps")
 
 typedef enum
 {
   VIRTCHNL_LINK_SPEED_UNKNOWN = 0,
-#define _(a,b,c) VIRTCHNL_LINK_SPEED_##b = (1 << a),
+#define _(a, b, c) VIRTCHNL_LINK_SPEED_##b = (1 << a),
   foreach_virtchnl_link_speed
 #undef _
 } virtchnl_link_speed_t;
@@ -354,19 +352,19 @@ typedef struct
   virtchnl_ether_addr_t list[1];
 } virtchnl_ether_addr_list_t;
 
-#define foreach_virtchnl_eth_stats \
-  _(rx_bytes)		\
-  _(rx_unicast)		\
-  _(rx_multicast)	\
-  _(rx_broadcast)	\
-  _(rx_discards)	\
-  _(rx_unknown_protocol)\
-  _(tx_bytes)		\
-  _(tx_unicast)		\
-  _(tx_multicast)	\
-  _(tx_broadcast)	\
-  _(tx_discards)	\
-  _(tx_errors)
+#define foreach_virtchnl_eth_stats                                            \
+  _ (rx_bytes)                                                                \
+  _ (rx_unicast)                                                              \
+  _ (rx_multicast)                                                            \
+  _ (rx_broadcast)                                                            \
+  _ (rx_discards)                                                             \
+  _ (rx_unknown_protocol)                                                     \
+  _ (tx_bytes)                                                                \
+  _ (tx_unicast)                                                              \
+  _ (tx_multicast)                                                            \
+  _ (tx_broadcast)                                                            \
+  _ (tx_discards)                                                             \
+  _ (tx_errors)
 
 typedef struct
 {

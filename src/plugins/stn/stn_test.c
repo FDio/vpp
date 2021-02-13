@@ -38,14 +38,14 @@ typedef struct
 stn_test_main_t stn_test_main;
 
 static int
-api_stn_add_del_rule (vat_main_t * vam)
+api_stn_add_del_rule (vat_main_t *vam)
 {
   // Not yet implemented
   return -99;
 }
 
 static int
-api_stn_rules_dump (vat_main_t * vam)
+api_stn_rules_dump (vat_main_t *vam)
 {
   stn_test_main_t *sm = &stn_test_main;
   vl_api_stn_rules_dump_t *mp;
@@ -77,11 +77,10 @@ api_stn_rules_dump (vat_main_t * vam)
 }
 
 static void
-vl_api_stn_rules_details_t_handler (vl_api_stn_rules_details_t * mp)
+vl_api_stn_rules_details_t_handler (vl_api_stn_rules_details_t *mp)
 {
   vat_main_t *vam = stn_test_main.vat_main;
-  fformat (vam->ofp, "addr: %U sw_if_index: %u\n",
-	   format_ip46_address,
+  fformat (vam->ofp, "addr: %U sw_if_index: %u\n", format_ip46_address,
 	   mp->ip_address, clib_net_to_host_u32 (mp->sw_if_index));
 }
 

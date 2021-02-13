@@ -111,10 +111,10 @@
  */
 
 #ifndef IPPROTO_IPV6_ROUTE
-#define IPPROTO_IPV6_ROUTE        43
+#define IPPROTO_IPV6_ROUTE 43
 #endif
 
-#define ROUTING_HEADER_TYPE_SR    4
+#define ROUTING_HEADER_TYPE_SR 4
 
 typedef struct
 {
@@ -136,10 +136,10 @@ typedef struct
   u8 last_entry;
 
   /* Flag bits */
-#define IP6_SR_HEADER_FLAG_PROTECTED  (0x40)
-#define IP6_SR_HEADER_FLAG_OAM        (0x20)
-#define IP6_SR_HEADER_FLAG_ALERT      (0x10)
-#define IP6_SR_HEADER_FLAG_HMAC       (0x80)
+#define IP6_SR_HEADER_FLAG_PROTECTED (0x40)
+#define IP6_SR_HEADER_FLAG_OAM	     (0x20)
+#define IP6_SR_HEADER_FLAG_ALERT     (0x10)
+#define IP6_SR_HEADER_FLAG_HMAC	     (0x80)
 
   /* values 0x0, 0x4 - 0x7 are reserved */
   u8 flags;
@@ -157,11 +157,11 @@ typedef struct
 } __attribute__ ((packed)) ip6_sr_tlv_t;
 
 /*
-* fd.io coding-style-patch-verification: ON
-*
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*/
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
 
 #endif /* included_vnet_sr_packet_h */

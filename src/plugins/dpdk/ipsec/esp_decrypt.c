@@ -26,10 +26,10 @@
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>
 
-#define foreach_esp_decrypt_next	       \
-_(DROP, "error-drop")			       \
-_(IP4_INPUT, "ip4-input-no-checksum")	       \
-_(IP6_INPUT, "ip6-input")
+#define foreach_esp_decrypt_next                                              \
+  _ (DROP, "error-drop")                                                      \
+  _ (IP4_INPUT, "ip4-input-no-checksum")                                      \
+  _ (IP6_INPUT, "ip6-input")
 
 #define _(v, s) ESP_DECRYPT_NEXT_##v,
 typedef enum
@@ -39,28 +39,27 @@ typedef enum
     ESP_DECRYPT_N_NEXT,
 } esp_decrypt_next_t;
 
-#define foreach_esp_decrypt_error		 \
- _(RX_PKTS, "ESP pkts received")		 \
- _(DECRYPTION_FAILED, "ESP decryption failed")   \
- _(REPLAY, "SA replayed packet")	         \
- _(NOT_IP, "Not IP packet (dropped)")	         \
- _(ENQ_FAIL, "Enqueue decrypt failed (queue full)")     \
- _(DISCARD, "Not enough crypto operations")      \
- _(BAD_LEN, "Invalid ciphertext length")         \
- _(SESSION, "Failed to get crypto session")      \
- _(NOSUP, "Cipher/Auth not supported")
-
+#define foreach_esp_decrypt_error                                             \
+  _ (RX_PKTS, "ESP pkts received")                                            \
+  _ (DECRYPTION_FAILED, "ESP decryption failed")                              \
+  _ (REPLAY, "SA replayed packet")                                            \
+  _ (NOT_IP, "Not IP packet (dropped)")                                       \
+  _ (ENQ_FAIL, "Enqueue decrypt failed (queue full)")                         \
+  _ (DISCARD, "Not enough crypto operations")                                 \
+  _ (BAD_LEN, "Invalid ciphertext length")                                    \
+  _ (SESSION, "Failed to get crypto session")                                 \
+  _ (NOSUP, "Cipher/Auth not supported")
 
 typedef enum
 {
-#define _(sym,str) ESP_DECRYPT_ERROR_##sym,
+#define _(sym, str) ESP_DECRYPT_ERROR_##sym,
   foreach_esp_decrypt_error
 #undef _
     ESP_DECRYPT_N_ERROR,
 } esp_decrypt_error_t;
 
 static char *esp_decrypt_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_esp_decrypt_error
 #undef _
 };
@@ -77,25 +76,23 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_esp_decrypt_trace (u8 * s, va_list * args)
+format_esp_decrypt_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   esp_decrypt_trace_t *t = va_arg (*args, esp_decrypt_trace_t *);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "cipher %U auth %U\n",
-	      format_ipsec_crypto_alg, t->crypto_alg,
+  s = format (s, "cipher %U auth %U\n", format_ipsec_crypto_alg, t->crypto_alg,
 	      format_ipsec_integ_alg, t->integ_alg);
-  s = format (s, "%U%U",
-	      format_white_space, indent, format_esp_header, t->packet_data);
+  s = format (s, "%U%U", format_white_space, indent, format_esp_header,
+	      t->packet_data);
   return s;
 }
 
 always_inline uword
-dpdk_esp_decrypt_inline (vlib_main_t * vm,
-			 vlib_node_runtime_t * node,
-			 vlib_frame_t * from_frame, int is_ip6)
+dpdk_esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			 vlib_frame_t *from_frame, int is_ip6)
 {
   u32 n_left_from, *from, *to_next, next_index, thread_index;
   ipsec_main_t *im = &ipsec_main;
@@ -108,8 +105,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
   u32 ret, last_sa_index = ~0;
   u8 numa = rte_socket_id ();
   u8 is_aead = 0;
-  crypto_worker_main_t *cwm =
-    vec_elt_at_index (dcm->workers_main, thread_idx);
+  crypto_worker_main_t *cwm = vec_elt_at_index (dcm->workers_main, thread_idx);
   struct rte_crypto_op **ops = cwm->ops;
 
   from = vlib_frame_vector_args (from_frame);
@@ -176,8 +172,8 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	  CLIB_PREFETCH (op, op_len, STORE);
 
 	  sa_index0 = vnet_buffer (b0)->ipsec.sad_index;
-	  vlib_prefetch_combined_counter (&ipsec_sa_counters,
-					  thread_index, sa_index0);
+	  vlib_prefetch_combined_counter (&ipsec_sa_counters, thread_index,
+					  sa_index0);
 
 	  if (sa_index0 != last_sa_index)
 	    {
@@ -193,7 +189,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 
 	      res_idx = get_resource (cwm, sa0);
 
-	      if (PREDICT_FALSE (res_idx == (u16) ~ 0))
+	      if (PREDICT_FALSE (res_idx == (u16) ~0))
 		{
 		  if (is_ip6)
 		    vlib_node_increment_counter (vm,
@@ -216,13 +212,11 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 		  if (is_ip6)
 		    vlib_node_increment_counter (vm,
 						 dpdk_esp6_decrypt_node.index,
-						 ESP_DECRYPT_ERROR_SESSION,
-						 1);
+						 ESP_DECRYPT_ERROR_SESSION, 1);
 		  else
 		    vlib_node_increment_counter (vm,
 						 dpdk_esp4_decrypt_node.index,
-						 ESP_DECRYPT_ERROR_SESSION,
-						 1);
+						 ESP_DECRYPT_ERROR_SESSION, 1);
 		  to_next[0] = bi0;
 		  to_next += 1;
 		  n_left_to_next -= 1;
@@ -233,16 +227,14 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	    }
 
 	  /* anti-replay check */
-	  if (ipsec_sa_anti_replay_check
-	      (sa0, clib_host_to_net_u32 (esp0->seq)))
+	  if (ipsec_sa_anti_replay_check (sa0,
+					  clib_host_to_net_u32 (esp0->seq)))
 	    {
 	      if (is_ip6)
-		vlib_node_increment_counter (vm,
-					     dpdk_esp6_decrypt_node.index,
+		vlib_node_increment_counter (vm, dpdk_esp6_decrypt_node.index,
 					     ESP_DECRYPT_ERROR_REPLAY, 1);
 	      else
-		vlib_node_increment_counter (vm,
-					     dpdk_esp4_decrypt_node.index,
+		vlib_node_increment_counter (vm, dpdk_esp4_decrypt_node.index,
 					     ESP_DECRYPT_ERROR_REPLAY, 1);
 	      to_next[0] = bi0;
 	      to_next += 1;
@@ -259,9 +251,8 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	    }
 
 	  /* FIXME multi-seg */
-	  vlib_increment_combined_counter
-	    (&ipsec_sa_counters, thread_index, sa_index0,
-	     1, b0->current_length);
+	  vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
+					   sa_index0, 1, b0->current_length);
 
 	  res->ops[res->n_ops] = op;
 	  res->bi[res->n_ops] = bi0;
@@ -312,7 +303,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 
 	  if (!is_aead && cipher_alg->alg == RTE_CRYPTO_CIPHER_AES_CBC)
 	    clib_memcpy_fast (icb, iv, 16);
-	  else			/* CTR/GCM */
+	  else /* CTR/GCM */
 	    {
 	      u32 *_iv = (u32 *) iv;
 
@@ -374,7 +365,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 				   from_frame->n_vectors);
 
       crypto_enqueue_ops (vm, cwm, dpdk_esp6_decrypt_node.index,
-			  ESP_DECRYPT_ERROR_ENQ_FAIL, numa, 0 /* encrypt */ );
+			  ESP_DECRYPT_ERROR_ENQ_FAIL, numa, 0 /* encrypt */);
     }
   else
     {
@@ -383,7 +374,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 				   from_frame->n_vectors);
 
       crypto_enqueue_ops (vm, cwm, dpdk_esp4_decrypt_node.index,
-			  ESP_DECRYPT_ERROR_ENQ_FAIL, numa, 0 /* encrypt */ );
+			  ESP_DECRYPT_ERROR_ENQ_FAIL, numa, 0 /* encrypt */);
     }
 
   crypto_free_ops (numa, ops, cwm->ops + from_frame->n_vectors - ops);
@@ -391,14 +382,12 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-VLIB_NODE_FN (dpdk_esp4_decrypt_node) (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * from_frame)
+VLIB_NODE_FN (dpdk_esp4_decrypt_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return dpdk_esp_decrypt_inline (vm, node, from_frame, 0 /*is_ip6 */ );
+  return dpdk_esp_decrypt_inline (vm, node, from_frame, 0 /*is_ip6 */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_esp4_decrypt_node) = {
   .name = "dpdk-esp4-decrypt",
   .vector_size = sizeof (u32),
@@ -410,21 +399,18 @@ VLIB_REGISTER_NODE (dpdk_esp4_decrypt_node) = {
 
   .n_next_nodes = ESP_DECRYPT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [ESP_DECRYPT_NEXT_##s] = n,
+#define _(s, n) [ESP_DECRYPT_NEXT_##s] = n,
     foreach_esp_decrypt_next
 #undef _
   },
 };
-/* *INDENT-ON* */
 
-VLIB_NODE_FN (dpdk_esp6_decrypt_node) (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * from_frame)
+VLIB_NODE_FN (dpdk_esp6_decrypt_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return dpdk_esp_decrypt_inline (vm, node, from_frame, 1 /*is_ip6 */ );
+  return dpdk_esp_decrypt_inline (vm, node, from_frame, 1 /*is_ip6 */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_esp6_decrypt_node) = {
   .name = "dpdk-esp6-decrypt",
   .vector_size = sizeof (u32),
@@ -436,30 +422,28 @@ VLIB_REGISTER_NODE (dpdk_esp6_decrypt_node) = {
 
   .n_next_nodes = ESP_DECRYPT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [ESP_DECRYPT_NEXT_##s] = n,
+#define _(s, n) [ESP_DECRYPT_NEXT_##s] = n,
     foreach_esp_decrypt_next
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 /*
  * Decrypt Post Node
  */
 
-#define foreach_esp_decrypt_post_error	      \
- _(PKTS, "ESP post pkts")
+#define foreach_esp_decrypt_post_error _ (PKTS, "ESP post pkts")
 
 typedef enum
 {
-#define _(sym,str) ESP_DECRYPT_POST_ERROR_##sym,
+#define _(sym, str) ESP_DECRYPT_POST_ERROR_##sym,
   foreach_esp_decrypt_post_error
 #undef _
     ESP_DECRYPT_POST_N_ERROR,
 } esp_decrypt_post_error_t;
 
 static char *esp_decrypt_post_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_esp_decrypt_post_error
 #undef _
 };
@@ -468,32 +452,28 @@ extern vlib_node_registration_t dpdk_esp4_decrypt_post_node;
 extern vlib_node_registration_t dpdk_esp6_decrypt_post_node;
 
 static u8 *
-format_esp_decrypt_post_trace (u8 * s, va_list * args)
+format_esp_decrypt_post_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   esp_decrypt_trace_t *t = va_arg (*args, esp_decrypt_trace_t *);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "cipher %U auth %U\n",
-	      format_ipsec_crypto_alg, t->crypto_alg,
+  s = format (s, "cipher %U auth %U\n", format_ipsec_crypto_alg, t->crypto_alg,
 	      format_ipsec_integ_alg, t->integ_alg);
 
   ip4_header_t *ih4 = (ip4_header_t *) t->packet_data;
   if ((ih4->ip_version_and_header_length & 0xF0) == 0x60)
-    s =
-      format (s, "%U%U", format_white_space, indent, format_ip6_header, ih4);
+    s = format (s, "%U%U", format_white_space, indent, format_ip6_header, ih4);
   else
-    s =
-      format (s, "%U%U", format_white_space, indent, format_ip4_header, ih4);
+    s = format (s, "%U%U", format_white_space, indent, format_ip4_header, ih4);
 
   return s;
 }
 
 always_inline uword
-dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
-			      vlib_node_runtime_t * node,
-			      vlib_frame_t * from_frame, int is_ip6)
+dpdk_esp_decrypt_post_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			      vlib_frame_t *from_frame, int is_ip6)
 {
   u32 n_left_from, *from, *to_next = 0, next_index;
   ipsec_sa_t *sa0;
@@ -550,19 +530,19 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 
 	  iv_size = cipher_alg->iv_len;
 
-	  ipsec_sa_anti_replay_advance (sa0,
-					clib_host_to_net_u32 (esp0->seq));
+	  ipsec_sa_anti_replay_advance (sa0, clib_host_to_net_u32 (esp0->seq));
 
-	  /* if UDP encapsulation is used adjust the address of the IP header */
-	  if (ipsec_sa_is_set_UDP_ENCAP (sa0)
-	      && (b0->flags & VNET_BUFFER_F_IS_IP4))
+	  /* if UDP encapsulation is used adjust the address of the IP header
+	   */
+	  if (ipsec_sa_is_set_UDP_ENCAP (sa0) &&
+	      (b0->flags & VNET_BUFFER_F_IS_IP4))
 	    {
 	      udp_encap_adv = sizeof (udp_header_t);
 	    }
 
 	  if (b0->flags & VNET_BUFFER_F_IS_IP4)
-	    ih4 = (ip4_header_t *)
-	      ((u8 *) esp0 - udp_encap_adv - sizeof (ip4_header_t));
+	    ih4 = (ip4_header_t *) ((u8 *) esp0 - udp_encap_adv -
+				    sizeof (ip4_header_t));
 	  else
 	    ih4 = (ip4_header_t *) ((u8 *) esp0 - sizeof (ip6_header_t));
 
@@ -593,19 +573,17 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 		{
 		  clib_warning ("next header: 0x%x", f0->next_header);
 		  if (is_ip6)
-		    vlib_node_increment_counter (vm,
-						 dpdk_esp6_decrypt_node.index,
-						 ESP_DECRYPT_ERROR_DECRYPTION_FAILED,
-						 1);
+		    vlib_node_increment_counter (
+		      vm, dpdk_esp6_decrypt_node.index,
+		      ESP_DECRYPT_ERROR_DECRYPTION_FAILED, 1);
 		  else
-		    vlib_node_increment_counter (vm,
-						 dpdk_esp4_decrypt_node.index,
-						 ESP_DECRYPT_ERROR_DECRYPTION_FAILED,
-						 1);
+		    vlib_node_increment_counter (
+		      vm, dpdk_esp4_decrypt_node.index,
+		      ESP_DECRYPT_ERROR_DECRYPTION_FAILED, 1);
 		  goto trace;
 		}
 	    }
-	  else			/* transport mode */
+	  else /* transport mode */
 	    {
 	      if ((ih4->ip_version_and_header_length & 0xF0) == 0x40)
 		{
@@ -635,20 +613,18 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 		{
 		  clib_warning ("next header: 0x%x", f0->next_header);
 		  if (is_ip6)
-		    vlib_node_increment_counter (vm,
-						 dpdk_esp6_decrypt_node.index,
-						 ESP_DECRYPT_ERROR_DECRYPTION_FAILED,
-						 1);
+		    vlib_node_increment_counter (
+		      vm, dpdk_esp6_decrypt_node.index,
+		      ESP_DECRYPT_ERROR_DECRYPTION_FAILED, 1);
 		  else
-		    vlib_node_increment_counter (vm,
-						 dpdk_esp4_decrypt_node.index,
-						 ESP_DECRYPT_ERROR_DECRYPTION_FAILED,
-						 1);
+		    vlib_node_increment_counter (
+		      vm, dpdk_esp4_decrypt_node.index,
+		      ESP_DECRYPT_ERROR_DECRYPTION_FAILED, 1);
 		  goto trace;
 		}
 	    }
 
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~0;
 
 	trace:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -661,9 +637,8 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 	      clib_memcpy_fast (tr->packet_data, ih4, sizeof (ip6_header_t));
 	    }
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next, bi0,
-					   next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
@@ -680,14 +655,12 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-VLIB_NODE_FN (dpdk_esp4_decrypt_post_node) (vlib_main_t * vm,
-					    vlib_node_runtime_t * node,
-					    vlib_frame_t * from_frame)
+VLIB_NODE_FN (dpdk_esp4_decrypt_post_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return dpdk_esp_decrypt_post_inline (vm, node, from_frame, 0 /*is_ip6 */ );
+  return dpdk_esp_decrypt_post_inline (vm, node, from_frame, 0 /*is_ip6 */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_esp4_decrypt_post_node) = {
   .name = "dpdk-esp4-decrypt-post",
   .vector_size = sizeof (u32),
@@ -699,21 +672,18 @@ VLIB_REGISTER_NODE (dpdk_esp4_decrypt_post_node) = {
 
   .n_next_nodes = ESP_DECRYPT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [ESP_DECRYPT_NEXT_##s] = n,
+#define _(s, n) [ESP_DECRYPT_NEXT_##s] = n,
     foreach_esp_decrypt_next
 #undef _
   },
 };
-/* *INDENT-ON* */
 
-VLIB_NODE_FN (dpdk_esp6_decrypt_post_node) (vlib_main_t * vm,
-					    vlib_node_runtime_t * node,
-					    vlib_frame_t * from_frame)
+VLIB_NODE_FN (dpdk_esp6_decrypt_post_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return dpdk_esp_decrypt_post_inline (vm, node, from_frame, 0 /*is_ip6 */ );
+  return dpdk_esp_decrypt_post_inline (vm, node, from_frame, 0 /*is_ip6 */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_esp6_decrypt_post_node) = {
   .name = "dpdk-esp6-decrypt-post",
   .vector_size = sizeof (u32),
@@ -725,12 +695,11 @@ VLIB_REGISTER_NODE (dpdk_esp6_decrypt_post_node) = {
 
   .n_next_nodes = ESP_DECRYPT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [ESP_DECRYPT_NEXT_##s] = n,
+#define _(s, n) [ESP_DECRYPT_NEXT_##s] = n,
     foreach_esp_decrypt_next
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -25,8 +25,7 @@ const dhcp_client::state_t dhcp_client::state_t::BOUND(2, "bound");
 
 dhcp_client::state_t::state_t(int v, const std::string& s)
   : enum_base<dhcp_client::state_t>(v, s)
-{
-}
+{}
 
 const dhcp_client::state_t&
 dhcp_client::state_t::from_vpp(int n)
@@ -58,8 +57,7 @@ dhcp_client::dhcp_client(const interface& itf,
   , m_binding(0)
   , m_evl(ev)
   , m_event_cmd(get_event_cmd())
-{
-}
+{}
 
 dhcp_client::dhcp_client(const interface& itf,
                          const std::string& hostname,
@@ -75,8 +73,7 @@ dhcp_client::dhcp_client(const interface& itf,
   , m_binding(0)
   , m_evl(ev)
   , m_event_cmd(get_event_cmd())
-{
-}
+{}
 
 dhcp_client::dhcp_client(const dhcp_client& o)
   : m_itf(o.m_itf)
@@ -87,8 +84,7 @@ dhcp_client::dhcp_client(const dhcp_client& o)
   , m_binding(0)
   , m_evl(o.m_evl)
   , m_event_cmd(o.m_event_cmd)
-{
-}
+{}
 
 dhcp_client::~dhcp_client()
 {
@@ -202,8 +198,7 @@ dhcp_client::singular() const
 dhcp_client::lease_t::lease_t()
   : state(state_t::DISCOVER)
   , mac(mac_address_t::ZERO)
-{
-}
+{}
 
 dhcp_client::lease_t::lease_t(const state_t& state,
                               std::shared_ptr<interface> itf,
@@ -217,8 +212,7 @@ dhcp_client::lease_t::lease_t(const state_t& state,
   , host_prefix(host_prefix)
   , hostname(hostname)
   , mac(mac)
-{
-}
+{}
 
 std::string
 dhcp_client::lease_t::to_string() const
@@ -234,8 +228,7 @@ dhcp_client::lease_t::to_string() const
 
 dhcp_client::event_listener::event_listener()
   : m_status(rc_t::NOOP)
-{
-}
+{}
 
 HW::item<bool>&
 dhcp_client::event_listener::status()
@@ -284,11 +277,18 @@ dhcp_client::event_handler::handle_populate(const client_db::key_t& key)
     std::string hostname =
       reinterpret_cast<const char*>(payload.lease.hostname);
     l2_address_t l2(payload.client.id + 1);
-    dhcp_client dc(*itf, hostname, l2, payload.client.set_broadcast_flag,
+    dhcp_client dc(*itf,
+                   hostname,
+                   l2,
+                   payload.client.set_broadcast_flag,
                    from_api(payload.client.dscp));
     dc.lease(std::make_shared<dhcp_client::lease_t>(
-      s, itf, from_bytes(0, (uint8_t*)&payload.lease.router_address.un), pfx,
-      hostname, mac_address_t(payload.lease.host_mac)));
+      s,
+      itf,
+      from_bytes(0, (uint8_t*)&payload.lease.router_address.un),
+      pfx,
+      hostname,
+      mac_address_t(payload.lease.host_mac)));
     OM::commit(key, dc);
   }
 }

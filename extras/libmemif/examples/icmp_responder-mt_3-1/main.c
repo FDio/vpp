@@ -31,56 +31,56 @@
 #include <libmemif.h>
 #include <icmp_proto.h>
 
-
 #define APP_NAME "ICMP_Responder_mt_v3.1"
-#define IF_NAME  "memif_connection"
+#define IF_NAME	 "memif_connection"
 
 #ifdef ICMP_DBG
-#define DBG(...) do {                                               \
-                    printf (APP_NAME":%s:%d: ", __func__, __LINE__);         \
-                    printf (__VA_ARGS__);                           \
-                    printf ("\n");                                  \
-                } while (0)
+#define DBG(...)                                                              \
+  do                                                                          \
+    {                                                                         \
+      printf (APP_NAME ":%s:%d: ", __func__, __LINE__);                       \
+      printf (__VA_ARGS__);                                                   \
+      printf ("\n");                                                          \
+    }                                                                         \
+  while (0)
 #else
 #define DBG(...)
 #endif
 
-#define ICMPR_BUFFER_LENGTH		32
-#define ICMPR_SOCKET_FILENAME_LEN	256
-#define ICMPR_MEMIF_BUFFER_NUM		256
+#define ICMPR_BUFFER_LENGTH	  32
+#define ICMPR_SOCKET_FILENAME_LEN 256
+#define ICMPR_MEMIF_BUFFER_NUM	  256
 
-static struct option options[] = {
-  {"threads", required_argument, 0, 't'},
-  {"if_num", required_argument, 0, 'i'}
-};
+static struct option options[] = { { "threads", required_argument, 0, 't' },
+				   { "if_num", required_argument, 0, 'i' } };
 
 struct memif_connection
 {
-  uint16_t id;			/* unique interface id */
-  bool connected;		/* is connected */
-  struct per_thread_data *ptd;	/* per thread data */
-  memif_conn_handle_t handle;	/* memif connection handle */
-  uint8_t ip_addr[4];		/* ip4 address */
+  uint16_t id;		       /* unique interface id */
+  bool connected;	       /* is connected */
+  struct per_thread_data *ptd; /* per thread data */
+  memif_conn_handle_t handle;  /* memif connection handle */
+  uint8_t ip_addr[4];	       /* ip4 address */
 };
 
 struct per_thread_data
 {
-  bool running;			/* is thread main loop running */
-  uint8_t index;		/* thread index */
-  int epfd;			/* epoll file descriptor */
-  int pcfd;			/* poll cancel file descriptor */
-  uint16_t if_num;		/* number of interfaces on this thread */
-  struct memif_connection *conns;	/* memif connections pool */
-  memif_per_thread_main_handle_t pt_main;	/* memif per thread main handle */
-  memif_socket_handle_t socket_handle;		/* memif socket handle */
+  bool running;			  /* is thread main loop running */
+  uint8_t index;		  /* thread index */
+  int epfd;			  /* epoll file descriptor */
+  int pcfd;			  /* poll cancel file descriptor */
+  uint16_t if_num;		  /* number of interfaces on this thread */
+  struct memif_connection *conns; /* memif connections pool */
+  memif_per_thread_main_handle_t pt_main; /* memif per thread main handle */
+  memif_socket_handle_t socket_handle;	  /* memif socket handle */
 };
 
 struct icmpr_main
 {
-  uint8_t threads;		/* number of threads */
-  uint16_t per_thread_if_num;	/* number of interfaces per thread */
-  struct per_thread_data *ptd;	/* per thread data pool */
-  pthread_t *pthread;		/* thread pool */
+  uint8_t threads;	       /* number of threads */
+  uint16_t per_thread_if_num;  /* number of interfaces per thread */
+  struct per_thread_data *ptd; /* per thread data pool */
+  pthread_t *pthread;	       /* thread pool */
 };
 
 struct icmpr_main icmpr_main;
@@ -228,10 +228,10 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
   /* receive data from shared memory buffers */
   err = memif_rx_burst (conn, qid, mbufs, ICMPR_MEMIF_BUFFER_NUM, &rx);
   if (err != MEMIF_ERR_SUCCESS)
-  {
-    printf ("memif_rx_burst: %s\n", memif_strerror (err));
-    goto error;
-  }
+    {
+      printf ("memif_rx_burst: %s\n", memif_strerror (err));
+      goto error;
+    }
 
   /* resolve packet in place (zer-copy slave) */
   for (i = 0; i < rx; i++)
@@ -240,25 +240,25 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
   /* enqueue received buffers */
   err = memif_buffer_enq_tx (conn, qid, mbufs, i, &tx);
   if (err != MEMIF_ERR_SUCCESS)
-  {
-    printf ("memif_rx_burst: %s\n", memif_strerror (err));
-    goto error;
-  }
+    {
+      printf ("memif_rx_burst: %s\n", memif_strerror (err));
+      goto error;
+    }
 
   /* mark shared memory buffers as free */
   err = memif_refill_queue (conn, qid, rx, 0);
   if (err != MEMIF_ERR_SUCCESS)
-  {
-    printf ("memif_rx_burst: %s\n", memif_strerror (err));
-    goto error;
-  }
+    {
+      printf ("memif_rx_burst: %s\n", memif_strerror (err));
+      goto error;
+    }
 
   err = memif_tx_burst (conn, qid, mbufs, tx, &ret);
   if (err != MEMIF_ERR_SUCCESS)
-  {
-    printf ("memif_rx_burst: %s\n", memif_strerror (err));
-    goto error;
-  }
+    {
+      printf ("memif_rx_burst: %s\n", memif_strerror (err));
+      goto error;
+    }
 
   return 0;
 
@@ -325,17 +325,16 @@ icmpr_thread_fn (void *data)
   memset (ptd->conns, 0, sizeof (struct memif_connection) * ptd->if_num);
 
   /* Initialize memif database (per thread). */
-  rv =
-    memif_per_thread_init (&ptd->pt_main, ptd, control_fd_update, APP_NAME,
-			   NULL, NULL, NULL);
+  rv = memif_per_thread_init (&ptd->pt_main, ptd, control_fd_update, APP_NAME,
+			      NULL, NULL, NULL);
   if (rv != MEMIF_ERR_SUCCESS)
     {
       printf ("memif_per_thread_init: %s\n", memif_strerror (rv));
       return NULL;
     }
 
-  /*  Create unique socket. Each thread requires a unique socket. Interfaces created
-   *  on the same thread can share one socket.
+  /*  Create unique socket. Each thread requires a unique socket. Interfaces
+   * created on the same thread can share one socket.
    */
   socket_filename[strlen (socket_filename)] = '0' + ptd->index;
   strncpy (socket_filename + strlen (socket_filename), ".sock", 5);
@@ -372,8 +371,8 @@ icmpr_thread_fn (void *data)
 	}
     }
 
-  /* Poll cancel file descriptor. When an event is received on this fd, exit thread
-   * loop in respective thread.
+  /* Poll cancel file descriptor. When an event is received on this fd, exit
+   * thread loop in respective thread.
    */
   ptd->pcfd = eventfd (0, EFD_NONBLOCK);
   if (ptd->pcfd < 0)
@@ -413,8 +412,8 @@ icmpr_thread_fn (void *data)
 static void
 icmpr_print_help ()
 {
-  printf
-    ("exit - Exits the application.\nhelp - Print this help.\nshow - Show memif interfaces\n");
+  printf ("exit - Exits the application.\nhelp - Print this help.\nshow - "
+	  "Show memif interfaces\n");
 }
 
 static void
@@ -457,8 +456,8 @@ main (int argc, char **argv)
   im->per_thread_if_num = 1;
 
   /* Parse args */
-  while ((rv =
-	  getopt_long (argc, argv, "t:i:", options, &option_index)) != (-1))
+  while ((rv = getopt_long (argc, argv, "t:i:", options, &option_index)) !=
+	 (-1))
     {
       switch (rv)
 	{

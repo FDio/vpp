@@ -23,7 +23,7 @@
 #include <af_xdp/af_xdp.h>
 
 u8 *
-format_af_xdp_device_name (u8 * s, va_list * args)
+format_af_xdp_device_name (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
   af_xdp_main_t *am = &af_xdp_main;
@@ -34,11 +34,11 @@ format_af_xdp_device_name (u8 * s, va_list * args)
 }
 
 u8 *
-format_af_xdp_device_flags (u8 * s, va_list * args)
+format_af_xdp_device_flags (u8 *s, va_list *args)
 {
   af_xdp_device_t *ad = va_arg (*args, af_xdp_device_t *);
-#define _(a, b, c) \
-  if (ad->flags & (1 << a)) \
+#define _(a, b, c)                                                            \
+  if (ad->flags & (1 << a))                                                   \
     s = format (s, "%s ", c);
   foreach_af_xdp_device_flags
 #undef _
@@ -46,7 +46,7 @@ format_af_xdp_device_flags (u8 * s, va_list * args)
 }
 
 u8 *
-format_af_xdp_device (u8 * s, va_list * args)
+format_af_xdp_device (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
   af_xdp_main_t *am = &af_xdp_main;
@@ -54,9 +54,8 @@ format_af_xdp_device (u8 * s, va_list * args)
   u32 indent = format_get_indent (s);
 
   s = format (s, "netdev %v\n", ad->linux_ifname);
-  s =
-    format (s, "%Uflags: %U", format_white_space, indent,
-	    format_af_xdp_device_flags, ad);
+  s = format (s, "%Uflags: %U", format_white_space, indent,
+	      format_af_xdp_device_flags, ad);
   if (ad->error)
     s = format (s, "\n%Uerror %U", format_white_space, indent,
 		format_clib_error, ad->error);
@@ -65,7 +64,7 @@ format_af_xdp_device (u8 * s, va_list * args)
 }
 
 u8 *
-format_af_xdp_input_trace (u8 * s, va_list * args)
+format_af_xdp_input_trace (u8 *s, va_list *args)
 {
   vlib_main_t *vm = va_arg (*args, vlib_main_t *);
   vlib_node_t *node = va_arg (*args, vlib_node_t *);
@@ -73,9 +72,8 @@ format_af_xdp_input_trace (u8 * s, va_list * args)
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, t->hw_if_index);
 
-  s = format (s, "af_xdp: %v (%d) next-node %U",
-	      hi->name, t->hw_if_index, format_vlib_next_node_name, vm,
-	      node->index, t->next_index);
+  s = format (s, "af_xdp: %v (%d) next-node %U", hi->name, t->hw_if_index,
+	      format_vlib_next_node_name, vm, node->index, t->next_index);
 
   return s;
 }

@@ -41,7 +41,7 @@ typedef struct
 trace_test_main_t trace_test_main;
 
 static int
-api_trace_profile_add (vat_main_t * vam)
+api_trace_profile_add (vat_main_t *vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_trace_profile_add_t *mp;
@@ -69,7 +69,6 @@ api_trace_profile_add (vat_main_t * vam)
 	break;
     }
 
-
   M (TRACE_PROFILE_ADD, mp);
 
   mp->trace_type = trace_type;
@@ -83,10 +82,8 @@ api_trace_profile_add (vat_main_t * vam)
   return ret;
 }
 
-
-
 static int
-api_trace_profile_del (vat_main_t * vam)
+api_trace_profile_del (vat_main_t *vam)
 {
   vl_api_trace_profile_del_t *mp;
   int ret;
@@ -98,7 +95,7 @@ api_trace_profile_del (vat_main_t * vam)
 }
 
 static int
-api_trace_profile_show_config (vat_main_t * vam)
+api_trace_profile_show_config (vat_main_t *vam)
 {
   vl_api_trace_profile_show_config_t *mp;
   int ret;
@@ -110,7 +107,7 @@ api_trace_profile_show_config (vat_main_t * vam)
 }
 
 static int
-vl_api_trace_profile_show_config_reply_t_handler (vat_main_t * vam)
+vl_api_trace_profile_show_config_reply_t_handler (vat_main_t *vam)
 {
   return -1;
 }

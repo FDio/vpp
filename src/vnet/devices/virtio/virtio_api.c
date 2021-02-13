@@ -28,11 +28,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -44,15 +44,15 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_virtio_pci_api_msg                        \
-_(VIRTIO_PCI_CREATE, virtio_pci_create)                   \
-_(VIRTIO_PCI_CREATE_V2, virtio_pci_create_v2)             \
-_(VIRTIO_PCI_DELETE, virtio_pci_delete)                   \
-_(SW_INTERFACE_VIRTIO_PCI_DUMP, sw_interface_virtio_pci_dump)
+#define foreach_virtio_pci_api_msg                                            \
+  _ (VIRTIO_PCI_CREATE, virtio_pci_create)                                    \
+  _ (VIRTIO_PCI_CREATE_V2, virtio_pci_create_v2)                              \
+  _ (VIRTIO_PCI_DELETE, virtio_pci_delete)                                    \
+  _ (SW_INTERFACE_VIRTIO_PCI_DUMP, sw_interface_virtio_pci_dump)
 
 /* It will be deprecated in 21.01 */
 static void
-vl_api_virtio_pci_create_t_handler (vl_api_virtio_pci_create_t * mp)
+vl_api_virtio_pci_create_t_handler (vl_api_virtio_pci_create_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_virtio_pci_create_reply_t *rmp;
@@ -61,13 +61,13 @@ vl_api_virtio_pci_create_t_handler (vl_api_virtio_pci_create_t * mp)
 
   clib_memset (ap, 0, sizeof (*ap));
 
-  pci_address_decode (&mp->pci_addr, (vlib_pci_addr_t *) & ap->addr);
+  pci_address_decode (&mp->pci_addr, (vlib_pci_addr_t *) &ap->addr);
   if (!mp->use_random_mac)
     {
       clib_memcpy (ap->mac_addr, mp->mac_address, 6);
       ap->mac_addr_set = 1;
     }
-  ap->sw_if_index = (u32) ~ 0;
+  ap->sw_if_index = (u32) ~0;
   if (mp->gso_enabled)
     ap->gso_enabled = 1;
   else
@@ -83,7 +83,8 @@ vl_api_virtio_pci_create_t_handler (vl_api_virtio_pci_create_t * mp)
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
-    return;;
+    return;
+  ;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id = htons (VL_API_VIRTIO_PCI_CREATE_REPLY);
@@ -95,7 +96,7 @@ vl_api_virtio_pci_create_t_handler (vl_api_virtio_pci_create_t * mp)
 }
 
 static void
-vl_api_virtio_pci_create_v2_t_handler (vl_api_virtio_pci_create_v2_t * mp)
+vl_api_virtio_pci_create_v2_t_handler (vl_api_virtio_pci_create_v2_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_virtio_pci_create_v2_reply_t *rmp;
@@ -104,30 +105,30 @@ vl_api_virtio_pci_create_v2_t_handler (vl_api_virtio_pci_create_v2_t * mp)
 
   clib_memset (ap, 0, sizeof (*ap));
 
-  pci_address_decode (&mp->pci_addr, (vlib_pci_addr_t *) & ap->addr);
+  pci_address_decode (&mp->pci_addr, (vlib_pci_addr_t *) &ap->addr);
   if (!mp->use_random_mac)
     {
       clib_memcpy (ap->mac_addr, mp->mac_address, 6);
       ap->mac_addr_set = 1;
     }
-  ap->sw_if_index = (u32) ~ 0;
+  ap->sw_if_index = (u32) ~0;
 
   STATIC_ASSERT (((int) VIRTIO_API_FLAG_GSO == (int) VIRTIO_FLAG_GSO),
 		 "virtio gso api flag mismatch");
-  STATIC_ASSERT (((int) VIRTIO_API_FLAG_CSUM_OFFLOAD ==
-		  (int) VIRTIO_FLAG_CSUM_OFFLOAD),
-		 "virtio checksum offload api flag mismatch");
-  STATIC_ASSERT (((int) VIRTIO_API_FLAG_GRO_COALESCE ==
-		  (int) VIRTIO_FLAG_GRO_COALESCE),
-		 "virtio gro coalesce api flag mismatch");
+  STATIC_ASSERT (
+    ((int) VIRTIO_API_FLAG_CSUM_OFFLOAD == (int) VIRTIO_FLAG_CSUM_OFFLOAD),
+    "virtio checksum offload api flag mismatch");
+  STATIC_ASSERT (
+    ((int) VIRTIO_API_FLAG_GRO_COALESCE == (int) VIRTIO_FLAG_GRO_COALESCE),
+    "virtio gro coalesce api flag mismatch");
   STATIC_ASSERT (((int) VIRTIO_API_FLAG_PACKED == (int) VIRTIO_FLAG_PACKED),
 		 "virtio packed api flag mismatch");
-  STATIC_ASSERT (((int) VIRTIO_API_FLAG_IN_ORDER ==
-		  (int) VIRTIO_FLAG_IN_ORDER),
-		 "virtio in-order api flag mismatch");
-  STATIC_ASSERT (((int) VIRTIO_API_FLAG_BUFFERING ==
-		  (int) VIRTIO_FLAG_BUFFERING),
-		 "virtio buffering api flag mismatch");
+  STATIC_ASSERT (
+    ((int) VIRTIO_API_FLAG_IN_ORDER == (int) VIRTIO_FLAG_IN_ORDER),
+    "virtio in-order api flag mismatch");
+  STATIC_ASSERT (
+    ((int) VIRTIO_API_FLAG_BUFFERING == (int) VIRTIO_FLAG_BUFFERING),
+    "virtio buffering api flag mismatch");
 
   ap->virtio_flags = clib_net_to_host_u32 (mp->virtio_flags);
   ap->features = clib_net_to_host_u64 (mp->features);
@@ -145,7 +146,8 @@ vl_api_virtio_pci_create_v2_t_handler (vl_api_virtio_pci_create_v2_t * mp)
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
-    return;;
+    return;
+  ;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id = htons (VL_API_VIRTIO_PCI_CREATE_V2_REPLY);
@@ -157,7 +159,7 @@ vl_api_virtio_pci_create_v2_t_handler (vl_api_virtio_pci_create_v2_t * mp)
 }
 
 static void
-vl_api_virtio_pci_delete_t_handler (vl_api_virtio_pci_delete_t * mp)
+vl_api_virtio_pci_delete_t_handler (vl_api_virtio_pci_delete_t *mp)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
@@ -168,9 +170,8 @@ vl_api_virtio_pci_delete_t_handler (vl_api_virtio_pci_delete_t * mp)
   vl_api_virtio_pci_delete_reply_t *rmp;
   vl_api_registration_t *reg;
 
-  hw =
-    vnet_get_sup_hw_interface_api_visible_or_null (vnm,
-						   htonl (mp->sw_if_index));
+  hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm,
+						      htonl (mp->sw_if_index));
   if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
     {
       rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
@@ -195,9 +196,9 @@ reply:
 }
 
 static void
-virtio_pci_send_sw_interface_details (vpe_api_main_t * am,
-				      vl_api_registration_t * reg,
-				      virtio_if_t * vif, u32 context)
+virtio_pci_send_sw_interface_details (vpe_api_main_t *am,
+				      vl_api_registration_t *reg,
+				      virtio_if_t *vif, u32 context)
 {
   vl_api_sw_interface_virtio_pci_details_t *mp;
   mp = vl_msg_api_alloc (sizeof (*mp));
@@ -205,7 +206,7 @@ virtio_pci_send_sw_interface_details (vpe_api_main_t * am,
   clib_memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_VIRTIO_PCI_DETAILS);
-  pci_address_encode ((vlib_pci_addr_t *) & vif->pci_addr.as_u32,
+  pci_address_encode ((vlib_pci_addr_t *) &vif->pci_addr.as_u32,
 		      &mp->pci_addr);
   mp->sw_if_index = htonl (vif->sw_if_index);
   virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, 0);
@@ -220,8 +221,8 @@ virtio_pci_send_sw_interface_details (vpe_api_main_t * am,
 }
 
 static void
-  vl_api_sw_interface_virtio_pci_dump_t_handler
-  (vl_api_sw_interface_virtio_pci_dump_t * mp)
+vl_api_sw_interface_virtio_pci_dump_t_handler (
+  vl_api_sw_interface_virtio_pci_dump_t *mp)
 {
   vpe_api_main_t *am = &vpe_api_main;
   vl_api_registration_t *reg;
@@ -233,12 +234,12 @@ static void
     return;
 
   pool_foreach (vif, vmx->interfaces)
-  {
-    if (vif->type == VIRTIO_IF_TYPE_PCI)
-      {
-	virtio_pci_send_sw_interface_details (am, reg, vif, mp->context);
-      }
-  }
+    {
+      if (vif->type == VIRTIO_IF_TYPE_PCI)
+	{
+	  virtio_pci_send_sw_interface_details (am, reg, vif, mp->context);
+	}
+    }
 }
 
 #define vl_msg_name_crc_list
@@ -246,25 +247,22 @@ static void
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_virtio;
 #undef _
 }
 
 static clib_error_t *
-virtio_pci_api_hookup (vlib_main_t * vm)
+virtio_pci_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_virtio_pci_api_msg;
 #undef _
 

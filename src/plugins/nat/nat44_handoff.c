@@ -47,13 +47,13 @@ typedef enum
 } nat44_handoff_error_t;
 
 static char *nat44_handoff_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_nat44_handoff_error
 #undef _
 };
 
 static u8 *
-format_nat44_handoff_trace (u8 * s, va_list * args)
+format_nat44_handoff_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -62,17 +62,15 @@ format_nat44_handoff_trace (u8 * s, va_list * args)
 
   tag = t->in2out ? "IN2OUT" : "OUT2IN";
   output = t->output ? "OUTPUT-FEATURE" : "";
-  s =
-    format (s, "NAT44_%s_WORKER_HANDOFF %s: next-worker %d trace index %d",
-	    tag, output, t->next_worker_index, t->trace_index);
+  s = format (s, "NAT44_%s_WORKER_HANDOFF %s: next-worker %d trace index %d",
+	      tag, output, t->next_worker_index, t->trace_index);
 
   return s;
 }
 
 static inline uword
-nat44_worker_handoff_fn_inline (vlib_main_t * vm,
-				vlib_node_runtime_t * node,
-				vlib_frame_t * frame, u8 is_output,
+nat44_worker_handoff_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+				vlib_frame_t *frame, u8 is_output,
 				u8 is_in2out)
 {
   u32 n_enq, n_left_from, *from, do_handoff = 0, same_worker = 0;
@@ -125,14 +123,14 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm,
 	  iph_offset3 = vnet_buffer (b[3])->ip.save_rewrite_length;
 	}
 
-      ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b[0]) +
-			      iph_offset0);
-      ip1 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b[1]) +
-			      iph_offset1);
-      ip2 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b[2]) +
-			      iph_offset2);
-      ip3 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b[3]) +
-			      iph_offset3);
+      ip0 =
+	(ip4_header_t *) ((u8 *) vlib_buffer_get_current (b[0]) + iph_offset0);
+      ip1 =
+	(ip4_header_t *) ((u8 *) vlib_buffer_get_current (b[1]) + iph_offset1);
+      ip2 =
+	(ip4_header_t *) ((u8 *) vlib_buffer_get_current (b[2]) + iph_offset2);
+      ip3 =
+	(ip4_header_t *) ((u8 *) vlib_buffer_get_current (b[3]) + iph_offset3);
 
       vnet_feature_next (&arc_next0, b[0]);
       vnet_feature_next (&arc_next1, b[1]);
@@ -202,12 +200,11 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm,
       u32 iph_offset0 = 0;
       ip4_header_t *ip0;
 
-
       if (is_output)
 	iph_offset0 = vnet_buffer (b[0])->ip.save_rewrite_length;
 
-      ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b[0]) +
-			      iph_offset0);
+      ip0 =
+	(ip4_header_t *) ((u8 *) vlib_buffer_get_current (b[0]) + iph_offset0);
 
       vnet_feature_next (&arc_next0, b[0]);
       vnet_buffer2 (b[0])->nat.arc_next = arc_next0;
@@ -276,63 +273,53 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (snat_in2out_worker_handoff_node) (vlib_main_t * vm,
-						vlib_node_runtime_t * node,
-						vlib_frame_t * frame)
+VLIB_NODE_FN (snat_in2out_worker_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return nat44_worker_handoff_fn_inline (vm, node, frame, 0, 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_in2out_worker_handoff_node) = {
   .name = "nat44-in2out-worker-handoff",
   .vector_size = sizeof (u32),
   .sibling_of = "nat-default",
   .format_trace = format_nat44_handoff_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(nat44_handoff_error_strings),
+  .n_errors = ARRAY_LEN (nat44_handoff_error_strings),
   .error_strings = nat44_handoff_error_strings,
 };
-/* *INDENT-ON* */
 
-VLIB_NODE_FN (snat_in2out_output_worker_handoff_node) (vlib_main_t * vm,
-						       vlib_node_runtime_t *
-						       node,
-						       vlib_frame_t * frame)
+VLIB_NODE_FN (snat_in2out_output_worker_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return nat44_worker_handoff_fn_inline (vm, node, frame, 1, 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_in2out_output_worker_handoff_node) = {
   .name = "nat44-in2out-output-worker-handoff",
   .vector_size = sizeof (u32),
   .sibling_of = "nat-default",
   .format_trace = format_nat44_handoff_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(nat44_handoff_error_strings),
+  .n_errors = ARRAY_LEN (nat44_handoff_error_strings),
   .error_strings = nat44_handoff_error_strings,
 };
-/* *INDENT-ON* */
 
-VLIB_NODE_FN (snat_out2in_worker_handoff_node) (vlib_main_t * vm,
-						vlib_node_runtime_t * node,
-						vlib_frame_t * frame)
+VLIB_NODE_FN (snat_out2in_worker_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return nat44_worker_handoff_fn_inline (vm, node, frame, 0, 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_out2in_worker_handoff_node) = {
   .name = "nat44-out2in-worker-handoff",
   .vector_size = sizeof (u32),
   .sibling_of = "nat-default",
   .format_trace = format_nat44_handoff_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(nat44_handoff_error_strings),
+  .n_errors = ARRAY_LEN (nat44_handoff_error_strings),
   .error_strings = nat44_handoff_error_strings,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

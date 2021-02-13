@@ -44,12 +44,12 @@
 pg_main_t pg_main;
 
 static clib_error_t *
-pg_init (vlib_main_t * vm)
+pg_init (vlib_main_t *vm)
 {
   clib_error_t *error;
   pg_main_t *pg = &pg_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  u32 num_threads = 1 /* main thread */  + vtm->n_threads;
+  u32 num_threads = 1 /* main thread */ + vtm->n_threads;
 
   pg->if_index_by_if_id = hash_create (0, sizeof (uword));
 

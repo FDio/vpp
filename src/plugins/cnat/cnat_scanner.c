@@ -17,8 +17,8 @@
 #include <cnat/cnat_client.h>
 
 static uword
-cnat_scanner_process (vlib_main_t * vm,
-		      vlib_node_runtime_t * rt, vlib_frame_t * f)
+cnat_scanner_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
+		      vlib_frame_t *f)
 {
   uword event_type, *event_data = 0;
   cnat_main_t *cm = &cnat_main;
@@ -58,17 +58,15 @@ cnat_scanner_process (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (cnat_scanner_process_node) = {
   .function = cnat_scanner_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "cnat-scanner-process",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-cnat_scanner_cmd (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * c)
+cnat_scanner_cmd (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *c)
 {
   cnat_scanner_cmd_t cmd;
 
@@ -89,16 +87,14 @@ cnat_scanner_cmd (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cnat_scanner_cmd_node, static) = {
   .path = "test cnat scanner",
   .function = cnat_scanner_cmd,
   .short_help = "test cnat scanner",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-cnat_scanner_init (vlib_main_t * vm)
+cnat_scanner_init (vlib_main_t *vm)
 {
   cnat_main_t *cm = &cnat_main;
   cm->scanner_node_index = cnat_scanner_process_node.index;

@@ -9,10 +9,10 @@
 #define AF_XDP_TX_RETRIES 5
 
 static_always_inline void
-af_xdp_device_output_free (vlib_main_t * vm, const vlib_node_runtime_t * node,
-			   af_xdp_txq_t * txq)
+af_xdp_device_output_free (vlib_main_t *vm, const vlib_node_runtime_t *node,
+			   af_xdp_txq_t *txq)
 {
-  const __u64 *compl;
+  const __u64 * compl ;
   const u32 size = txq->cq.size;
   const u32 mask = size - 1;
   u32 bis[VLIB_FRAME_SIZE], *bi = bis;
@@ -20,9 +20,11 @@ af_xdp_device_output_free (vlib_main_t * vm, const vlib_node_runtime_t * node,
   u32 n = xsk_ring_cons__peek (&txq->cq, ARRAY_LEN (bis), &idx);
   const u32 n_free = n;
 
-  /* we rely on on casting addr (u64) -> bi (u32) to discard XSK offset below */
+  /* we rely on on casting addr (u64) -> bi (u32) to discard XSK offset below
+   */
   STATIC_ASSERT (BITS (bi[0]) + CLIB_LOG2_CACHE_LINE_BYTES <=
-		 XSK_UNALIGNED_BUF_OFFSET_SHIFT, "wrong size");
+		   XSK_UNALIGNED_BUF_OFFSET_SHIFT,
+		 "wrong size");
   ASSERT (mask == txq->cq.mask);
 
   if (!n_free)
@@ -37,8 +39,8 @@ wrap_around:
   while (n >= 8)
     {
 #ifdef CLIB_HAVE_VEC256
-      u64x4 b0 = (*(u64x4u *) (compl + 0)) >> CLIB_LOG2_CACHE_LINE_BYTES;
-      u64x4 b1 = (*(u64x4u *) (compl + 4)) >> CLIB_LOG2_CACHE_LINE_BYTES;
+      u64x4 b0 = (*(u64x4u *) (compl +0)) >> CLIB_LOG2_CACHE_LINE_BYTES;
+      u64x4 b1 = (*(u64x4u *) (compl +4)) >> CLIB_LOG2_CACHE_LINE_BYTES;
       /* permute 256-bit register so lower u32s of each buffer index are
        * placed into lower 128-bits */
       const u32x8 mask = { 0, 2, 4, 6, 1, 3, 5, 7 };
@@ -48,14 +50,14 @@ wrap_around:
       *(u32x4u *) (bi + 0) = u32x8_extract_lo (b2);
       *(u32x4u *) (bi + 4) = u32x8_extract_lo (b3);
 #else
-      bi[0] = compl[0] >> CLIB_LOG2_CACHE_LINE_BYTES;
-      bi[1] = compl[1] >> CLIB_LOG2_CACHE_LINE_BYTES;
-      bi[2] = compl[2] >> CLIB_LOG2_CACHE_LINE_BYTES;
-      bi[3] = compl[3] >> CLIB_LOG2_CACHE_LINE_BYTES;
-      bi[4] = compl[4] >> CLIB_LOG2_CACHE_LINE_BYTES;
-      bi[5] = compl[5] >> CLIB_LOG2_CACHE_LINE_BYTES;
-      bi[6] = compl[6] >> CLIB_LOG2_CACHE_LINE_BYTES;
-      bi[7] = compl[7] >> CLIB_LOG2_CACHE_LINE_BYTES;
+      bi[0] = compl [0] >> CLIB_LOG2_CACHE_LINE_BYTES;
+      bi[1] = compl [1] >> CLIB_LOG2_CACHE_LINE_BYTES;
+      bi[2] = compl [2] >> CLIB_LOG2_CACHE_LINE_BYTES;
+      bi[3] = compl [3] >> CLIB_LOG2_CACHE_LINE_BYTES;
+      bi[4] = compl [4] >> CLIB_LOG2_CACHE_LINE_BYTES;
+      bi[5] = compl [5] >> CLIB_LOG2_CACHE_LINE_BYTES;
+      bi[6] = compl [6] >> CLIB_LOG2_CACHE_LINE_BYTES;
+      bi[7] = compl [7] >> CLIB_LOG2_CACHE_LINE_BYTES;
 #endif
       compl += 8;
       bi += 8;
@@ -64,9 +66,8 @@ wrap_around:
 
   while (n >= 1)
     {
-      bi[0] = compl[0] >> CLIB_LOG2_CACHE_LINE_BYTES;
-      ASSERT (vlib_buffer_is_known (vm, bi[0]) ==
-	      VLIB_BUFFER_KNOWN_ALLOCATED);
+      bi[0] = compl [0] >> CLIB_LOG2_CACHE_LINE_BYTES;
+      ASSERT (vlib_buffer_is_known (vm, bi[0]) == VLIB_BUFFER_KNOWN_ALLOCATED);
       compl += 1;
       bi += 1;
       n -= 1;
@@ -85,10 +86,9 @@ wrap_around:
 }
 
 static_always_inline void
-af_xdp_device_output_tx_db (vlib_main_t * vm,
-			    const vlib_node_runtime_t * node,
-			    af_xdp_device_t * ad,
-			    af_xdp_txq_t * txq, const u32 n_tx)
+af_xdp_device_output_tx_db (vlib_main_t *vm, const vlib_node_runtime_t *node,
+			    af_xdp_device_t *ad, af_xdp_txq_t *txq,
+			    const u32 n_tx)
 {
   int ret;
 
@@ -118,10 +118,9 @@ af_xdp_device_output_tx_db (vlib_main_t * vm,
 }
 
 static_always_inline u32
-af_xdp_device_output_tx_try (vlib_main_t * vm,
-			     const vlib_node_runtime_t * node,
-			     af_xdp_device_t * ad, af_xdp_txq_t * txq,
-			     u32 n_tx, u32 * bi)
+af_xdp_device_output_tx_try (vlib_main_t *vm, const vlib_node_runtime_t *node,
+			     af_xdp_device_t *ad, af_xdp_txq_t *txq, u32 n_tx,
+			     u32 *bi)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   const uword start = vm->buffer_main->buffer_mem_start;
@@ -150,33 +149,29 @@ wrap_around:
   while (n >= 8)
     {
       vlib_prefetch_buffer_header (b[4], LOAD);
-      offset =
-	(sizeof (vlib_buffer_t) +
-	 b[0]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      offset = (sizeof (vlib_buffer_t) + b[0]->current_data)
+	       << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
       addr = pointer_to_uword (b[0]) - start;
       desc[0].addr = offset | addr;
       desc[0].len = b[0]->current_length;
 
       vlib_prefetch_buffer_header (b[5], LOAD);
-      offset =
-	(sizeof (vlib_buffer_t) +
-	 b[1]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      offset = (sizeof (vlib_buffer_t) + b[1]->current_data)
+	       << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
       addr = pointer_to_uword (b[1]) - start;
       desc[1].addr = offset | addr;
       desc[1].len = b[1]->current_length;
 
       vlib_prefetch_buffer_header (b[6], LOAD);
-      offset =
-	(sizeof (vlib_buffer_t) +
-	 b[2]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      offset = (sizeof (vlib_buffer_t) + b[2]->current_data)
+	       << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
       addr = pointer_to_uword (b[2]) - start;
       desc[2].addr = offset | addr;
       desc[2].len = b[2]->current_length;
 
       vlib_prefetch_buffer_header (b[7], LOAD);
-      offset =
-	(sizeof (vlib_buffer_t) +
-	 b[3]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      offset = (sizeof (vlib_buffer_t) + b[3]->current_data)
+	       << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
       addr = pointer_to_uword (b[3]) - start;
       desc[3].addr = offset | addr;
       desc[3].len = b[3]->current_length;
@@ -188,9 +183,8 @@ wrap_around:
 
   while (n >= 1)
     {
-      offset =
-	(sizeof (vlib_buffer_t) +
-	 b[0]->current_data) << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
+      offset = (sizeof (vlib_buffer_t) + b[0]->current_data)
+	       << XSK_UNALIGNED_BUF_OFFSET_SHIFT;
       addr = pointer_to_uword (b[0]) - start;
       desc[0].addr = offset | addr;
       desc[0].len = b[0]->current_length;
@@ -210,9 +204,8 @@ wrap_around:
   return n_tx;
 }
 
-VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
-					       vlib_node_runtime_t * node,
-					       vlib_frame_t * frame)
+VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   af_xdp_main_t *rm = &af_xdp_main;
   vnet_interface_output_runtime_t *ord = (void *) node->runtime_data;
@@ -244,8 +237,8 @@ VNET_DEVICE_CLASS_TX_FN (af_xdp_device_class) (vlib_main_t * vm,
   if (PREDICT_FALSE (n != n_tx))
     {
       vlib_buffer_free (vm, from + n, n_tx - n);
-      vlib_error_count (vm, node->node_index,
-			AF_XDP_TX_ERROR_NO_FREE_SLOTS, n_tx - n);
+      vlib_error_count (vm, node->node_index, AF_XDP_TX_ERROR_NO_FREE_SLOTS,
+			n_tx - n);
     }
 
   return n;

@@ -41,14 +41,14 @@ dhcp_test_main_t dhcp_test_main;
 
 /* Macro to finish up custom dump fns */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define FINISH                                  \
-    vec_add1 (s, 0);                            \
-    vl_print (handle, (char *)s);               \
-    vec_free (s);                               \
-    return handle;
+#define FINISH                                                                \
+  vec_add1 (s, 0);                                                            \
+  vl_print (handle, (char *) s);                                              \
+  vec_free (s);                                                               \
+  return handle;
 
 static int
-api_dhcp_proxy_config (vat_main_t * vam)
+api_dhcp_proxy_config (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_dhcp_proxy_config_t *mp;
@@ -143,7 +143,7 @@ api_dhcp_proxy_config (vat_main_t * vam)
 }
 
 static void
-vl_api_dhcp_proxy_details_t_handler (vl_api_dhcp_proxy_details_t * mp)
+vl_api_dhcp_proxy_details_t_handler (vl_api_dhcp_proxy_details_t *mp)
 {
   vat_main_t *vam = &vat_main;
   u32 i, count = mp->count;
@@ -153,36 +153,32 @@ vl_api_dhcp_proxy_details_t_handler (vl_api_dhcp_proxy_details_t * mp)
     print (vam->ofp,
 	   "RX Table-ID %d, Source Address %U, VSS Type %d, "
 	   "VSS ASCII VPN-ID '%s', VSS RFC2685 VPN-ID (oui:id) %d:%d",
-	   ntohl (mp->rx_vrf_id),
-	   format_ip6_address, mp->dhcp_src_address,
-	   mp->vss_type, mp->vss_vpn_ascii_id,
-	   ntohl (mp->vss_oui), ntohl (mp->vss_fib_id));
+	   ntohl (mp->rx_vrf_id), format_ip6_address, mp->dhcp_src_address,
+	   mp->vss_type, mp->vss_vpn_ascii_id, ntohl (mp->vss_oui),
+	   ntohl (mp->vss_fib_id));
   else
     print (vam->ofp,
 	   "RX Table-ID %d, Source Address %U, VSS Type %d, "
 	   "VSS ASCII VPN-ID '%s', VSS RFC2685 VPN-ID (oui:id) %d:%d",
-	   ntohl (mp->rx_vrf_id),
-	   format_ip4_address, mp->dhcp_src_address,
-	   mp->vss_type, mp->vss_vpn_ascii_id,
-	   ntohl (mp->vss_oui), ntohl (mp->vss_fib_id));
+	   ntohl (mp->rx_vrf_id), format_ip4_address, mp->dhcp_src_address,
+	   mp->vss_type, mp->vss_vpn_ascii_id, ntohl (mp->vss_oui),
+	   ntohl (mp->vss_fib_id));
 
   for (i = 0; i < count; i++)
     {
       s = &mp->servers[i];
 
       if (mp->is_ipv6)
-	print (vam->ofp,
-	       " Server Table-ID %d, Server Address %U",
+	print (vam->ofp, " Server Table-ID %d, Server Address %U",
 	       ntohl (s->server_vrf_id), format_ip6_address, s->dhcp_server);
       else
-	print (vam->ofp,
-	       " Server Table-ID %d, Server Address %U",
+	print (vam->ofp, " Server Table-ID %d, Server Address %U",
 	       ntohl (s->server_vrf_id), format_ip4_address, s->dhcp_server);
     }
 }
 
 static int
-api_dhcp_proxy_dump (vat_main_t * vam)
+api_dhcp_proxy_dump (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_dhcp_plugin_control_ping_t *mp_ping;
@@ -215,7 +211,7 @@ api_dhcp_proxy_dump (vat_main_t * vam)
 }
 
 static int
-api_dhcp_proxy_set_vss (vat_main_t * vam)
+api_dhcp_proxy_set_vss (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_dhcp_proxy_set_vss_t *mp;
@@ -281,7 +277,7 @@ api_dhcp_proxy_set_vss (vat_main_t * vam)
 }
 
 static int
-api_dhcp_client_config (vat_main_t * vam)
+api_dhcp_client_config (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_dhcp_client_config_t *mp;
@@ -340,31 +336,31 @@ api_dhcp_client_config (vat_main_t * vam)
 }
 
 static int
-api_want_dhcp6_reply_events (vat_main_t * vam)
+api_want_dhcp6_reply_events (vat_main_t *vam)
 {
   return -1;
 }
 
 static int
-api_want_dhcp6_pd_reply_events (vat_main_t * vam)
+api_want_dhcp6_pd_reply_events (vat_main_t *vam)
 {
   return -1;
 }
 
 static int
-api_dhcp6_send_client_message (vat_main_t * vam)
+api_dhcp6_send_client_message (vat_main_t *vam)
 {
   return -1;
 }
 
 static int
-api_dhcp6_pd_send_client_message (vat_main_t * vam)
+api_dhcp6_pd_send_client_message (vat_main_t *vam)
 {
   return -1;
 }
 
 static void
-vl_api_dhcp_client_details_t_handler (vl_api_dhcp_client_details_t * mp)
+vl_api_dhcp_client_details_t_handler (vl_api_dhcp_client_details_t *mp)
 {
   vat_main_t *vam = &vat_main;
   vl_api_dhcp_client_t *cp;
@@ -373,16 +369,14 @@ vl_api_dhcp_client_details_t_handler (vl_api_dhcp_client_details_t * mp)
   cp = &mp->client;
   lp = &mp->lease;
 
-  print (vam->ofp, "sw_if_index %d, id '%s'", ntohl (cp->sw_if_index),
-	 cp->id);
+  print (vam->ofp, "sw_if_index %d, id '%s'", ntohl (cp->sw_if_index), cp->id);
 
-  print (vam->ofp, "leased address %U, router address %U",
-	 format_ip4_address, &lp->host_address.un,
-	 format_ip4_address, &lp->router_address.un);
+  print (vam->ofp, "leased address %U, router address %U", format_ip4_address,
+	 &lp->host_address.un, format_ip4_address, &lp->router_address.un);
 }
 
 static int
-api_dhcp_client_dump (vat_main_t * vam)
+api_dhcp_client_dump (vat_main_t *vam)
 {
   vl_api_dhcp_plugin_control_ping_t *mp_ping;
   vl_api_dhcp_client_dump_t *mp;
@@ -401,32 +395,32 @@ api_dhcp_client_dump (vat_main_t * vam)
 }
 
 static int
-api_dhcp6_duid_ll_set (vat_main_t * vam)
+api_dhcp6_duid_ll_set (vat_main_t *vam)
 {
   return -1;
 }
 
 static int
-api_dhcp6_clients_enable_disable (vat_main_t * vam)
+api_dhcp6_clients_enable_disable (vat_main_t *vam)
 {
   return -1;
 }
 
 static int
-api_dhcp_plugin_control_ping (vat_main_t * vam)
+api_dhcp_plugin_control_ping (vat_main_t *vam)
 {
   return -1;
 }
 
 static int
-api_dhcp_plugin_get_version (vat_main_t * vam)
+api_dhcp_plugin_get_version (vat_main_t *vam)
 {
   return -1;
 }
 
 static void
-  vl_api_dhcp_plugin_get_version_reply_t_handler
-  (vl_api_dhcp_plugin_get_version_reply_t * mp)
+vl_api_dhcp_plugin_get_version_reply_t_handler (
+  vl_api_dhcp_plugin_get_version_reply_t *mp)
 {
   vat_main_t *vam = dhcp_test_main.vat_main;
   clib_warning ("DHCP plugin version: %d.%d", ntohl (mp->major),
@@ -435,8 +429,8 @@ static void
 }
 
 static void
-  vl_api_dhcp_plugin_control_ping_reply_t_handler
-  (vl_api_dhcp_plugin_control_ping_reply_t * mp)
+vl_api_dhcp_plugin_control_ping_reply_t_handler (
+  vl_api_dhcp_plugin_control_ping_reply_t *mp)
 {
   vat_main_t *vam = dhcp_test_main.vat_main;
   i32 retval = ntohl (mp->retval);

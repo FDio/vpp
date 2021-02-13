@@ -19,20 +19,19 @@
 
 typedef enum
 {
-#define _(sym,str) VNET_CRYPTO_ASYNC_ERROR_##sym,
+#define _(sym, str) VNET_CRYPTO_ASYNC_ERROR_##sym,
   foreach_crypto_op_status
 #undef _
     VNET_CRYPTO_ASYNC_N_ERROR,
 } vnet_crypto_async_error_t;
 
 static char *vnet_crypto_async_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_crypto_op_status
 #undef _
 };
 
-#define foreach_crypto_dispatch_next \
-  _(ERR_DROP, "error-drop")
+#define foreach_crypto_dispatch_next _ (ERR_DROP, "error-drop")
 
 typedef enum
 {
@@ -49,7 +48,7 @@ typedef struct
 } crypto_dispatch_trace_t;
 
 static u8 *
-format_crypto_dispatch_trace (u8 * s, va_list * args)
+format_crypto_dispatch_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -61,9 +60,8 @@ format_crypto_dispatch_trace (u8 * s, va_list * args)
 }
 
 static void
-vnet_crypto_async_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
-			     vlib_buffer_t * b,
-			     vnet_crypto_async_op_id_t op_id,
+vnet_crypto_async_add_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
+			     vlib_buffer_t *b, vnet_crypto_async_op_id_t op_id,
 			     vnet_crypto_op_status_t status)
 {
   crypto_dispatch_trace_t *tr = vlib_add_trace (vm, node, b, sizeof (*tr));
@@ -72,10 +70,10 @@ vnet_crypto_async_add_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static_always_inline u32
-crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vnet_crypto_thread_t * ct,
-		      vnet_crypto_frame_dequeue_t * hdl, u32 n_cache,
-		      u32 * n_total)
+crypto_dequeue_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vnet_crypto_thread_t *ct,
+		      vnet_crypto_frame_dequeue_t *hdl, u32 n_cache,
+		      u32 *n_total)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   u32 n_elts = 0;
@@ -125,8 +123,8 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      for (i = 0; i < cf->n_elts; i++)
 		{
-		  vlib_buffer_t *b = vlib_get_buffer (vm,
-						      cf->buffer_indices[i]);
+		  vlib_buffer_t *b =
+		    vlib_get_buffer (vm, cf->buffer_indices[i]);
 		  if (b->flags & VLIB_BUFFER_IS_TRACED)
 		    vnet_crypto_async_add_trace (vm, node, b, cf->op,
 						 cf->elts[i].status);
@@ -135,8 +133,8 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vnet_crypto_async_free_frame (vm, cf);
 	}
       /* signal enqueue-thread to dequeue the processed frame (n_elts>0) */
-      if (cm->dispatch_mode == VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT
-	  && n_elts > 0)
+      if (cm->dispatch_mode == VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT &&
+	  n_elts > 0)
 	{
 	  vlib_node_set_interrupt_pending (vlib_mains[enqueue_thread_idx],
 					   cm->crypto_node_index);
@@ -151,21 +149,20 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_cache;
 }
 
-VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * frame)
+VLIB_NODE_FN (crypto_dispatch_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_thread_t *ct = cm->threads + vm->thread_index;
   u32 n_dispatched = 0, n_cache = 0;
   u32 index;
 
-  /* *INDENT-OFF* */
-  clib_bitmap_foreach (index, cm->async_active_ids)  {
-    n_cache = crypto_dequeue_frame (vm, node, ct, cm->dequeue_handlers[index],
-				    n_cache, &n_dispatched);
-  }
-  /* *INDENT-ON* */
+  clib_bitmap_foreach (index, cm->async_active_ids)
+    {
+      n_cache = crypto_dequeue_frame (
+	vm, node, ct, cm->dequeue_handlers[index], n_cache, &n_dispatched);
+    }
+
   if (n_cache)
     vlib_buffer_enqueue_to_next (vm, node, ct->buffer_indice, ct->nexts,
 				 n_cache);
@@ -173,7 +170,6 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
   return n_dispatched;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (crypto_dispatch_node) = {
   .name = "crypto-dispatch",
   .type = VLIB_NODE_TYPE_INPUT,
@@ -185,13 +181,11 @@ VLIB_REGISTER_NODE (crypto_dispatch_node) = {
 
   .n_next_nodes = CRYPTO_DISPATCH_N_NEXT,
   .next_nodes = {
-#define _(n, s) \
-  [CRYPTO_DISPATCH_NEXT_##n] = s,
+#define _(n, s) [CRYPTO_DISPATCH_NEXT_##n] = s,
       foreach_crypto_dispatch_next
 #undef _
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

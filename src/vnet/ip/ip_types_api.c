@@ -16,11 +16,11 @@
 #include <vlibapi/api_types.h>
 #include <vnet/ip/ip_types_api.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -31,8 +31,7 @@
 #undef vl_printfun
 
 int
-ip_address_family_decode (vl_api_address_family_t af,
-			  ip_address_family_t * out)
+ip_address_family_decode (vl_api_address_family_t af, ip_address_family_t *out)
 {
   switch (af)
     {
@@ -62,17 +61,17 @@ ip_address_family_encode (ip_address_family_t af)
 }
 
 int
-ip_proto_decode (vl_api_ip_proto_t ipp, ip_protocol_t * out)
+ip_proto_decode (vl_api_ip_proto_t ipp, ip_protocol_t *out)
 {
   /* Not all protocol are defined in vl_api_ip_proto_t
    * so we must cast to a different type.
    */
   switch ((u8) ipp)
     {
-#define ip_protocol(n,s)                       \
-      case IP_PROTOCOL_##s:                    \
-        *out = IP_PROTOCOL_##s;                \
-        return (0);
+#define ip_protocol(n, s)                                                     \
+  case IP_PROTOCOL_##s:                                                       \
+    *out = IP_PROTOCOL_##s;                                                   \
+    return (0);
 #include "protocols.def"
 #undef ip_protocol
     }
@@ -84,9 +83,9 @@ ip_proto_encode (ip_protocol_t ipp)
 {
   switch (ipp)
     {
-#define ip_protocol(n,s)                                \
-      case IP_PROTOCOL_##s:                             \
-        return ((vl_api_ip_proto_t) IP_PROTOCOL_##s);
+#define ip_protocol(n, s)                                                     \
+  case IP_PROTOCOL_##s:                                                       \
+    return ((vl_api_ip_proto_t) IP_PROTOCOL_##s);
 #include "protocols.def"
 #undef ip_protocol
     }
@@ -109,17 +108,17 @@ ip_dscp_encode (ip_dscp_t dscp)
 
 int
 ip_feature_location_decode (vl_api_ip_feature_location_t loc,
-			    ip_feature_location_t * out)
+			    ip_feature_location_t *out)
 {
   /* Not all feature_locationcol are defined in vl_api_ip_feature_location_t
    * so we must cast to a different type.
    */
   switch (loc)
     {
-#define _(n,s)                                    \
-      case IP_API_FEATURE_##n:                    \
-        *out = IP_FEATURE_##n;                    \
-        return (0);
+#define _(n, s)                                                               \
+  case IP_API_FEATURE_##n:                                                    \
+    *out = IP_FEATURE_##n;                                                    \
+    return (0);
       foreach_ip_feature_location
 #undef _
     }
@@ -132,34 +131,33 @@ ip_feature_location_encode (ip_feature_location_t loc)
   return ((vl_api_ip_feature_location_t) (loc));
 }
 
-
 void
-ip6_address_encode (const ip6_address_t * in, vl_api_ip6_address_t out)
+ip6_address_encode (const ip6_address_t *in, vl_api_ip6_address_t out)
 {
   clib_memcpy (out, in, sizeof (*in));
 }
 
 void
-ip6_address_decode (const vl_api_ip6_address_t in, ip6_address_t * out)
+ip6_address_decode (const vl_api_ip6_address_t in, ip6_address_t *out)
 {
   clib_memcpy (out, in, sizeof (*out));
 }
 
 void
-ip4_address_encode (const ip4_address_t * in, vl_api_ip4_address_t out)
+ip4_address_encode (const ip4_address_t *in, vl_api_ip4_address_t out)
 {
   clib_memcpy (out, in, sizeof (*in));
 }
 
 void
-ip4_address_decode (const vl_api_ip4_address_t in, ip4_address_t * out)
+ip4_address_decode (const vl_api_ip4_address_t in, ip4_address_t *out)
 {
   clib_memcpy (out, in, sizeof (*out));
 }
 
 static ip46_type_t
-ip_address_union_decode (const vl_api_address_union_t * in,
-			 vl_api_address_family_t af, ip46_address_t * out)
+ip_address_union_decode (const vl_api_address_union_t *in,
+			 vl_api_address_family_t af, ip46_address_t *out)
 {
   ip46_type_t type;
 
@@ -183,13 +181,13 @@ ip_address_union_decode (const vl_api_address_union_t * in,
 }
 
 ip46_type_t
-ip_address_decode (const vl_api_address_t * in, ip46_address_t * out)
+ip_address_decode (const vl_api_address_t *in, ip46_address_t *out)
 {
   return (ip_address_union_decode (&in->un, in->af, out));
 }
 
 void
-ip_address_decode2 (const vl_api_address_t * in, ip_address_t * out)
+ip_address_decode2 (const vl_api_address_t *in, ip_address_t *out)
 {
   switch (ip_address_union_decode (&in->un, in->af, &out->ip))
     {
@@ -199,16 +197,14 @@ ip_address_decode2 (const vl_api_address_t * in, ip_address_t * out)
     case IP46_TYPE_IP6:
       out->version = AF_IP6;
       break;
-    default:
-      ;
+    default:;
       break;
     }
 }
 
 static void
-ip_address_union_encode (const ip46_address_t * in,
-			 vl_api_address_family_t af,
-			 vl_api_address_union_t * out)
+ip_address_union_encode (const ip46_address_t *in, vl_api_address_family_t af,
+			 vl_api_address_union_t *out)
 {
   if (ADDRESS_IP6 == af)
     ip6_address_encode (&in->ip6, out->ip6);
@@ -217,8 +213,8 @@ ip_address_union_encode (const ip46_address_t * in,
 }
 
 void
-ip_address_encode (const ip46_address_t * in,
-		   ip46_type_t type, vl_api_address_t * out)
+ip_address_encode (const ip46_address_t *in, ip46_type_t type,
+		   vl_api_address_t *out)
 {
   switch (type)
     {
@@ -239,7 +235,7 @@ ip_address_encode (const ip46_address_t * in,
 }
 
 void
-ip_address_encode2 (const ip_address_t * in, vl_api_address_t * out)
+ip_address_encode2 (const ip_address_t *in, vl_api_address_t *out)
 {
   switch (in->version)
     {
@@ -256,7 +252,7 @@ ip_address_encode2 (const ip_address_t * in, vl_api_address_t * out)
 }
 
 void
-ip_prefix_decode (const vl_api_prefix_t * in, fib_prefix_t * out)
+ip_prefix_decode (const vl_api_prefix_t *in, fib_prefix_t *out)
 {
   switch (in->address.af)
     {
@@ -273,7 +269,7 @@ ip_prefix_decode (const vl_api_prefix_t * in, fib_prefix_t * out)
 }
 
 int
-ip_prefix_decode2 (const vl_api_prefix_t * in, ip_prefix_t * out)
+ip_prefix_decode2 (const vl_api_prefix_t *in, ip_prefix_t *out)
 {
   out->len = in->len;
   ip_address_decode2 (&in->address, &out->addr);
@@ -284,7 +280,7 @@ ip_prefix_decode2 (const vl_api_prefix_t * in, ip_prefix_t * out)
 }
 
 void
-ip_prefix_encode (const fib_prefix_t * in, vl_api_prefix_t * out)
+ip_prefix_encode (const fib_prefix_t *in, vl_api_prefix_t *out)
 {
   out->len = in->fp_len;
   ip46_type_t ip46_type;
@@ -308,14 +304,14 @@ ip_prefix_encode (const fib_prefix_t * in, vl_api_prefix_t * out)
 }
 
 void
-ip_prefix_encode2 (const ip_prefix_t * in, vl_api_prefix_t * out)
+ip_prefix_encode2 (const ip_prefix_t *in, vl_api_prefix_t *out)
 {
   out->len = in->len;
   ip_address_encode2 (&in->addr, &out->address);
 }
 
 void
-ip_mprefix_encode (const mfib_prefix_t * in, vl_api_mprefix_t * out)
+ip_mprefix_encode (const mfib_prefix_t *in, vl_api_mprefix_t *out)
 {
   out->af = (FIB_PROTOCOL_IP6 == in->fp_proto ? ADDRESS_IP6 : ADDRESS_IP4);
   out->grp_address_length = clib_host_to_net_u16 (in->fp_len);
@@ -325,10 +321,10 @@ ip_mprefix_encode (const mfib_prefix_t * in, vl_api_mprefix_t * out)
 }
 
 void
-ip_mprefix_decode (const vl_api_mprefix_t * in, mfib_prefix_t * out)
+ip_mprefix_decode (const vl_api_mprefix_t *in, mfib_prefix_t *out)
 {
-  out->fp_proto = (ADDRESS_IP6 == in->af ?
-		   FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
+  out->fp_proto =
+    (ADDRESS_IP6 == in->af ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
   out->fp_len = clib_net_to_host_u16 (in->grp_address_length);
   out->___fp___pad = 0;
 

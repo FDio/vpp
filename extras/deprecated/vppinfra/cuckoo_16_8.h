@@ -14,10 +14,10 @@
  */
 #undef CLIB_CUCKOO_TYPE
 
-#define CLIB_CUCKOO_TYPE _16_8
-#define CLIB_CUCKOO_KVP_PER_BUCKET (4)
+#define CLIB_CUCKOO_TYPE		_16_8
+#define CLIB_CUCKOO_KVP_PER_BUCKET	(4)
 #define CLIB_CUCKOO_LOG2_KVP_PER_BUCKET (2)
-#define CLIB_CUCKOO_BFS_MAX_STEPS (2000)
+#define CLIB_CUCKOO_BFS_MAX_STEPS	(2000)
 #define CLIB_CUCKOO_BFS_MAX_PATH_LENGTH (8)
 
 #ifndef __included_cuckoo_16_8_h__
@@ -33,26 +33,26 @@
 #undef CLIB_CUCKOO_OPTIMIZE_PREFETCH
 #undef CLIB_CUCKOO_OPTIMIZE_UNROLL
 #undef CLIB_CUCKOO_OPTIMIZE_USE_COUNT_LIMITS_SEARCH
-#define CLIB_CUCKOO_OPTIMIZE_PREFETCH 1
-#define CLIB_CUCKOO_OPTIMIZE_UNROLL 1
+#define CLIB_CUCKOO_OPTIMIZE_PREFETCH		     1
+#define CLIB_CUCKOO_OPTIMIZE_UNROLL		     1
 #define CLIB_CUCKOO_OPTIMIZE_USE_COUNT_LIMITS_SEARCH 1
 
-#if __SSE4_2__ && !defined (__i386__)
+#if __SSE4_2__ && !defined(__i386__)
 #include <x86intrin.h>
 #endif
 
 /** 8 octet key, 8 octet key value pair */
 typedef struct
 {
-  u64 key[2];	/**< the key */
-  u64 value; /**< the value */
+  u64 key[2]; /**< the key */
+  u64 value;  /**< the value */
 } clib_cuckoo_kv_16_8_t;
 
 /** Decide if a clib_cuckoo_kv_16_8_t instance is free
     @param v- pointer to the (key,value) pair
 */
 always_inline int
-clib_cuckoo_kv_is_free_16_8 (const clib_cuckoo_kv_16_8_t * v)
+clib_cuckoo_kv_is_free_16_8 (const clib_cuckoo_kv_16_8_t *v)
 {
   if (v->key[0] == ~0ULL && v->value == ~0ULL)
     return 1;
@@ -60,7 +60,7 @@ clib_cuckoo_kv_is_free_16_8 (const clib_cuckoo_kv_16_8_t * v)
 }
 
 always_inline void
-clib_cuckoo_kv_set_free_16_8 (clib_cuckoo_kv_16_8_t * v)
+clib_cuckoo_kv_set_free_16_8 (clib_cuckoo_kv_16_8_t *v)
 {
   clib_memset (v, 0xff, sizeof (*v));
 }
@@ -71,7 +71,7 @@ clib_cuckoo_kv_set_free_16_8 (clib_cuckoo_kv_16_8_t * v)
     @return s - the u8 * vector under construction
 */
 always_inline u8 *
-format_cuckoo_kvp_16_8 (u8 * s, va_list * args)
+format_cuckoo_kvp_16_8 (u8 *s, va_list *args)
 {
   clib_cuckoo_kv_16_8_t *v = va_arg (*args, clib_cuckoo_kv_16_8_t *);
 
@@ -88,7 +88,7 @@ format_cuckoo_kvp_16_8 (u8 * s, va_list * args)
 }
 
 always_inline u64
-clib_cuckoo_hash_16_8 (clib_cuckoo_kv_16_8_t * v)
+clib_cuckoo_hash_16_8 (clib_cuckoo_kv_16_8_t *v)
 {
 #ifdef clib_crc32c_uses_intrinsics
   return clib_crc32c ((u8 *) v->key, 16);
@@ -103,7 +103,7 @@ clib_cuckoo_hash_16_8 (clib_cuckoo_kv_16_8_t * v)
     @param b - second key
 */
 always_inline int
-clib_cuckoo_key_compare_16_8 (u64 * a, u64 * b)
+clib_cuckoo_key_compare_16_8 (u64 *a, u64 *b)
 {
 #if defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE)
   u64x2 v;

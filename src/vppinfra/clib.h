@@ -41,12 +41,12 @@
 #include <stddef.h>
 #include <vppinfra/config.h>
 
-#ifdef  __x86_64__
+#ifdef __x86_64__
 #include <x86intrin.h>
 #endif
 
 /* Standalone means to not assume we are running on a Unix box. */
-#if ! defined (CLIB_STANDALONE) && ! defined (CLIB_LINUX_KERNEL)
+#if !defined(CLIB_STANDALONE) && !defined(CLIB_LINUX_KERNEL)
 #define CLIB_UNIX
 #endif
 
@@ -63,63 +63,62 @@
 #define NULL ((void *) 0)
 #endif
 
-#define BITS(x)		(8*sizeof(x))
-#define ARRAY_LEN(x)	(sizeof (x)/sizeof (x[0]))
+#define BITS(x)	     (8 * sizeof (x))
+#define ARRAY_LEN(x) (sizeof (x) / sizeof (x[0]))
 
-#define _STRUCT_FIELD(t,f) (((t *) 0)->f)
-#define STRUCT_OFFSET_OF(t,f) offsetof(t, f)
-#define STRUCT_BIT_OFFSET_OF(t,f) (BITS(u8) * STRUCT_OFFSET_OF (t, f))
-#define STRUCT_SIZE_OF(t,f)   (sizeof (_STRUCT_FIELD (t, f)))
-#define STRUCT_BITS_OF(t,f)   (BITS (_STRUCT_FIELD (t, f)))
-#define STRUCT_ARRAY_LEN(t,f) ARRAY_LEN (_STRUCT_FIELD (t, f))
-#define STRUCT_MARK(mark)     u8 mark[0]
-#define STRUCT_MARK_PTR(v, f) &(v)->f
+#define _STRUCT_FIELD(t, f)	   (((t *) 0)->f)
+#define STRUCT_OFFSET_OF(t, f)	   offsetof (t, f)
+#define STRUCT_BIT_OFFSET_OF(t, f) (BITS (u8) * STRUCT_OFFSET_OF (t, f))
+#define STRUCT_SIZE_OF(t, f)	   (sizeof (_STRUCT_FIELD (t, f)))
+#define STRUCT_BITS_OF(t, f)	   (BITS (_STRUCT_FIELD (t, f)))
+#define STRUCT_ARRAY_LEN(t, f)	   ARRAY_LEN (_STRUCT_FIELD (t, f))
+#define STRUCT_MARK(mark)	   u8 mark[0]
+#define STRUCT_MARK_PTR(v, f)	   &(v)->f
 
 /* Stride in bytes between struct array elements. */
-#define STRUCT_STRIDE_OF(t,f)			\
-  (  ((uword) & (((t *) 0)[1].f))		\
-   - ((uword) & (((t *) 0)[0].f)))
+#define STRUCT_STRIDE_OF(t, f)                                                \
+  (((uword) & (((t *) 0)[1].f)) - ((uword) & (((t *) 0)[0].f)))
 
-#define STRUCT_OFFSET_OF_VAR(v,f) ((uword) (&(v)->f) - (uword) (v))
+#define STRUCT_OFFSET_OF_VAR(v, f) ((uword) (&(v)->f) - (uword) (v))
 
 /* Used to pack structure elements. */
-#define CLIB_PACKED(x)	x __attribute__ ((packed))
-#define CLIB_UNUSED(x)	x __attribute__ ((unused))
+#define CLIB_PACKED(x) x __attribute__ ((packed))
+#define CLIB_UNUSED(x) x __attribute__ ((unused))
 
 /* similar to CLIB_CACHE_LINE_ALIGN_MARK() but with arbitrary alignment */
-#define CLIB_ALIGN_MARK(name, alignment) u8 name[0] __attribute__((aligned(alignment)))
+#define CLIB_ALIGN_MARK(name, alignment)                                      \
+  u8 name[0] __attribute__ ((aligned (alignment)))
 
 /* Make a string from the macro's argument */
 #define CLIB_STRING_MACRO(x) #x
 
-#define __clib_unused __attribute__ ((unused))
-#define __clib_weak __attribute__ ((weak))
-#define __clib_packed __attribute__ ((packed))
-#define __clib_constructor __attribute__ ((constructor))
-#define __clib_noinline __attribute__ ((noinline))
-#define __clib_aligned(x) __attribute__ ((aligned(x)))
-#define __clib_section(s) __attribute__ ((section(s)))
+#define __clib_unused		  __attribute__ ((unused))
+#define __clib_weak		  __attribute__ ((weak))
+#define __clib_packed		  __attribute__ ((packed))
+#define __clib_constructor	  __attribute__ ((constructor))
+#define __clib_noinline		  __attribute__ ((noinline))
+#define __clib_aligned(x)	  __attribute__ ((aligned (x)))
+#define __clib_section(s)	  __attribute__ ((section (s)))
 #define __clib_warn_unused_result __attribute__ ((warn_unused_result))
-#define __clib_export __attribute__ ((visibility("default")))
+#define __clib_export		  __attribute__ ((visibility ("default")))
 
 #define never_inline __attribute__ ((__noinline__))
 
 #if CLIB_DEBUG > 0
-#define always_inline static inline
+#define always_inline	     static inline
 #define static_always_inline static inline
 #else
-#define always_inline static inline __attribute__ ((__always_inline__))
+#define always_inline	     static inline __attribute__ ((__always_inline__))
 #define static_always_inline static inline __attribute__ ((__always_inline__))
 #endif
 
-
 /* Reserved (unused) structure element with address offset between
    from and to. */
-#define CLIB_PAD_FROM_TO(from,to) u8 pad_##from[(to) - (from)]
+#define CLIB_PAD_FROM_TO(from, to) u8 pad_##from[(to) - (from)]
 
 /* Hints to compiler about hot/cold code. */
-#define PREDICT_FALSE(x) __builtin_expect((x),0)
-#define PREDICT_TRUE(x) __builtin_expect((x),1)
+#define PREDICT_FALSE(x) __builtin_expect ((x), 0)
+#define PREDICT_TRUE(x)	 __builtin_expect ((x), 1)
 
 /*
  * Compiler barrier
@@ -127,7 +126,7 @@
  *   prevent compiler to cache values in register (force reload)
  * Not to be confused with CPU memory barrier below
  */
-#define CLIB_COMPILER_BARRIER() asm volatile ("":::"memory")
+#define CLIB_COMPILER_BARRIER() asm volatile("" ::: "memory")
 
 /* Full memory barrier (read and write). */
 #define CLIB_MEMORY_BARRIER() __sync_synchronize ()
@@ -139,25 +138,25 @@
 #endif
 
 /* Arranges for function to be called before main. */
-#define INIT_FUNCTION(decl)			\
-  decl __attribute ((constructor));		\
+#define INIT_FUNCTION(decl)                                                   \
+  decl __attribute ((constructor));                                           \
   decl
 
 /* Arranges for function to be called before exit. */
-#define EXIT_FUNCTION(decl)			\
-  decl __attribute ((destructor));		\
+#define EXIT_FUNCTION(decl)                                                   \
+  decl __attribute ((destructor));                                            \
   decl
 
 /* Use __builtin_clz if available. */
 #if uword_bits == 64
-#define count_leading_zeros(x) __builtin_clzll (x)
+#define count_leading_zeros(x)	__builtin_clzll (x)
 #define count_trailing_zeros(x) __builtin_ctzll (x)
 #else
-#define count_leading_zeros(x) __builtin_clzl (x)
+#define count_leading_zeros(x)	__builtin_clzl (x)
 #define count_trailing_zeros(x) __builtin_ctzl (x)
 #endif
 
-#if defined (count_leading_zeros)
+#if defined(count_leading_zeros)
 always_inline uword
 min_log2 (uword x)
 {
@@ -172,13 +171,15 @@ min_log2 (uword x)
   uword a = x, b = BITS (uword) / 2, c = 0, r = 0;
 
   /* Reduce x to 4 bit result. */
-#define _					\
-{						\
-  c = a >> b;					\
-  if (c) a = c;					\
-  if (c) r += b;				\
-  b /= 2;					\
-}
+#define _                                                                     \
+  {                                                                           \
+    c = a >> b;                                                               \
+    if (c)                                                                    \
+      a = c;                                                                  \
+    if (c)                                                                    \
+      r += b;                                                                 \
+    b /= 2;                                                                   \
+  }
 
   if (BITS (uword) > 32)
     _;
@@ -318,45 +319,45 @@ extract_bits (uword x, int start, int count)
   return (x >> start) & pow2_mask (count);
 }
 
-#define clib_max(x,y)				\
-({						\
-  __typeof__ (x) _x = (x);			\
-  __typeof__ (y) _y = (y);			\
-  _x > _y ? _x : _y;				\
-})
+#define clib_max(x, y)                                                        \
+  ({                                                                          \
+    __typeof__ (x) _x = (x);                                                  \
+    __typeof__ (y) _y = (y);                                                  \
+    _x > _y ? _x : _y;                                                        \
+  })
 
-#define clib_min(x,y)				\
-({						\
-  __typeof__ (x) _x = (x);			\
-  __typeof__ (y) _y = (y);			\
-  _x < _y ? _x : _y;				\
-})
+#define clib_min(x, y)                                                        \
+  ({                                                                          \
+    __typeof__ (x) _x = (x);                                                  \
+    __typeof__ (y) _y = (y);                                                  \
+    _x < _y ? _x : _y;                                                        \
+  })
 
-#define clib_clamp(x,lo,hi)			\
-({						\
-  __typeof__ (x) _x = (x);			\
-  __typeof__ (lo) _lo = (lo);			\
-  __typeof__ (hi) _hi = (hi);			\
-  _x < _lo ? _lo : (_x > _hi ? _hi : _x);	\
-})
+#define clib_clamp(x, lo, hi)                                                 \
+  ({                                                                          \
+    __typeof__ (x) _x = (x);                                                  \
+    __typeof__ (lo) _lo = (lo);                                               \
+    __typeof__ (hi) _hi = (hi);                                               \
+    _x < _lo ? _lo : (_x > _hi ? _hi : _x);                                   \
+  })
 
-#define clib_abs(x)				\
-({						\
-  __typeof__ (x) _x = (x);			\
-  _x < 0 ? -_x : _x;				\
-})
+#define clib_abs(x)                                                           \
+  ({                                                                          \
+    __typeof__ (x) _x = (x);                                                  \
+    _x < 0 ? -_x : _x;                                                        \
+  })
 
 /* Standard standalone-only function declarations. */
 #ifndef CLIB_UNIX
 void clib_standalone_init (void *memory, uword memory_bytes);
 
 void qsort (void *base, uword n, uword size,
-	    int (*)(const void *, const void *));
+	    int (*) (const void *, const void *));
 #endif
 
 /* Stack backtrace. */
-uword
-clib_backtrace (uword * callers, uword max_callers, uword n_frames_to_skip);
+uword clib_backtrace (uword *callers, uword max_callers,
+		      uword n_frames_to_skip);
 
 #endif /* included_clib_h */
 

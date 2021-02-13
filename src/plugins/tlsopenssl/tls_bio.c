@@ -19,13 +19,13 @@
 #include <vnet/session/application_interface.h>
 
 static inline session_t *
-bio_session (BIO * bio)
+bio_session (BIO *bio)
 {
   return session_get_from_handle (pointer_to_uword (BIO_get_data (bio)));
 }
 
 static int
-bio_tls_alloc (BIO * bio)
+bio_tls_alloc (BIO *bio)
 {
   BIO_set_init (bio, 0);
   BIO_set_data (bio, 0);
@@ -35,7 +35,7 @@ bio_tls_alloc (BIO * bio)
 }
 
 static int
-bio_tls_free (BIO * bio)
+bio_tls_free (BIO *bio)
 {
   if (!bio)
     return 0;
@@ -52,7 +52,7 @@ bio_tls_free (BIO * bio)
 }
 
 static int
-bio_tls_read (BIO * b, char *out, int outl)
+bio_tls_read (BIO *b, char *out, int outl)
 {
   session_t *s;
   int rv;
@@ -68,8 +68,8 @@ bio_tls_read (BIO * b, char *out, int outl)
       return -1;
     }
 
-  rv = app_recv_stream_raw (s->rx_fifo, (u8 *) out, outl,
-			    0 /* clear evt */ , 0 /* peek */ );
+  rv = app_recv_stream_raw (s->rx_fifo, (u8 *) out, outl, 0 /* clear evt */,
+			    0 /* peek */);
   if (rv < 0)
     {
       BIO_set_retry_read (b);
@@ -86,7 +86,7 @@ bio_tls_read (BIO * b, char *out, int outl)
 }
 
 static int
-bio_tls_write (BIO * b, const char *in, int inl)
+bio_tls_write (BIO *b, const char *in, int inl)
 {
   svm_msg_q_t *mq;
   session_t *s;
@@ -104,9 +104,8 @@ bio_tls_write (BIO * b, const char *in, int inl)
     }
 
   mq = session_main_get_vpp_event_queue (s->thread_index);
-  rv = app_send_stream_raw (s->tx_fifo, mq, (u8 *) in, inl,
-			    SESSION_IO_EVT_TX, 1 /* do_evt */ ,
-			    0 /* noblock */ );
+  rv = app_send_stream_raw (s->tx_fifo, mq, (u8 *) in, inl, SESSION_IO_EVT_TX,
+			    1 /* do_evt */, 0 /* noblock */);
   if (rv < 0)
     {
       BIO_set_retry_write (b);
@@ -120,7 +119,7 @@ bio_tls_write (BIO * b, const char *in, int inl)
 }
 
 long
-bio_tls_ctrl (BIO * b, int cmd, long larg, void *ptr)
+bio_tls_ctrl (BIO *b, int cmd, long larg, void *ptr)
 {
   long ret = 1;
 

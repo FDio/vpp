@@ -32,24 +32,21 @@ ip_punt_redirect::ip_punt_redirect(const interface& rx_itf,
   : m_rx_itf(rx_itf.singular())
   , m_tx_itf(tx_itf.singular())
   , m_addr(addr)
-{
-}
+{}
 
 ip_punt_redirect::ip_punt_redirect(const interface& tx_itf,
                                    const boost::asio::ip::address& addr)
   : m_rx_itf(nullptr)
   , m_tx_itf(tx_itf.singular())
   , m_addr(addr)
-{
-}
+{}
 
 ip_punt_redirect::ip_punt_redirect(const ip_punt_redirect& o)
   : m_rx_itf(o.m_rx_itf)
   , m_tx_itf(o.m_tx_itf)
   , m_addr(o.m_addr)
   , m_config(o.m_config)
-{
-}
+{}
 
 ip_punt_redirect::~ip_punt_redirect()
 {
@@ -73,8 +70,10 @@ ip_punt_redirect::sweep()
 {
   if (m_config) {
     HW::enqueue(new ip_punt_redirect_cmds::unconfig_cmd(
-      m_config, (m_rx_itf ? m_rx_itf->handle() : handle_t::INVALID),
-      m_tx_itf->handle(), m_addr));
+      m_config,
+      (m_rx_itf ? m_rx_itf->handle() : handle_t::INVALID),
+      m_tx_itf->handle(),
+      m_addr));
   }
   HW::write();
 }
@@ -90,8 +89,10 @@ ip_punt_redirect::replay()
 {
   if (m_config) {
     HW::enqueue(new ip_punt_redirect_cmds::config_cmd(
-      m_config, (m_rx_itf ? m_rx_itf->handle() : handle_t::INVALID),
-      m_tx_itf->handle(), m_addr));
+      m_config,
+      (m_rx_itf ? m_rx_itf->handle() : handle_t::INVALID),
+      m_tx_itf->handle(),
+      m_addr));
   }
 }
 
@@ -111,8 +112,10 @@ ip_punt_redirect::update(const ip_punt_redirect& desired)
 {
   if (!m_config) {
     HW::enqueue(new ip_punt_redirect_cmds::config_cmd(
-      m_config, (m_rx_itf ? m_rx_itf->handle() : handle_t::INVALID),
-      m_tx_itf->handle(), m_addr));
+      m_config,
+      (m_rx_itf ? m_rx_itf->handle() : handle_t::INVALID),
+      m_tx_itf->handle(),
+      m_addr));
   }
 }
 
@@ -131,8 +134,8 @@ ip_punt_redirect::singular() const
 ip_punt_redirect::event_handler::event_handler()
 {
   OM::register_listener(this);
-  inspect::register_handler({ "ip-punt-redirect" },
-                            "IP punt redirect configurations", this);
+  inspect::register_handler(
+    { "ip-punt-redirect" }, "IP punt redirect configurations", this);
 }
 
 void
@@ -159,9 +162,9 @@ ip_punt_redirect::event_handler::handle_populate(const client_db::key_t& key)
       interface::find(payload.punt.rx_sw_if_index);
     boost::asio::ip::address nh = from_api(payload.punt.nh);
 
-    VOM_LOG(log_level_t::DEBUG) << "data: [" << payload.punt.tx_sw_if_index
-                                << ", " << payload.punt.rx_sw_if_index << ", "
-                                << nh << "]";
+    VOM_LOG(log_level_t::DEBUG)
+      << "data: [" << payload.punt.tx_sw_if_index << ", "
+      << payload.punt.rx_sw_if_index << ", " << nh << "]";
 
     if (rx_itf && tx_itf) {
       ip_punt_redirect ipr(*rx_itf, *tx_itf, nh);

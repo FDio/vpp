@@ -22,20 +22,20 @@ typedef struct
   u32 sw_if_index;
   u8 is_ipv6;
   vrrp_header_t vrrp;
-  u8 addrs[256];		/* print up to 64 IPv4 or 16 IPv6 addresses */
+  u8 addrs[256]; /* print up to 64 IPv4 or 16 IPv6 addresses */
 } vrrp_trace_t;
 
 /* packet trace format function */
 static u8 *
-format_vrrp_trace (u8 * s, va_list * args)
+format_vrrp_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   vrrp_trace_t *t = va_arg (*args, vrrp_trace_t *);
   int i;
 
-  s = format (s, "VRRP: sw_if_index %d IPv%d\n",
-	      t->sw_if_index, (t->is_ipv6) ? 6 : 4);
+  s = format (s, "VRRP: sw_if_index %d IPv%d\n", t->sw_if_index,
+	      (t->is_ipv6) ? 6 : 4);
   s = format (s, "    %U\n", format_vrrp_packet_hdr, &t->vrrp);
   s = format (s, "    addresses: ");
 
@@ -57,25 +57,25 @@ extern vlib_node_registration_t vrrp6_input_node;
 extern vlib_node_registration_t vrrp4_arp_input_node;
 extern vlib_node_registration_t vrrp6_nd_input_node;
 
-#define foreach_vrrp_error					  \
-_(RECEIVED, "VRRP packets processed")				  \
-_(BAD_TTL, "VRRP advertisement TTL is not 255")			  \
-_(NOT_VERSION_3, "VRRP version is not 3")			  \
-_(INCOMPLETE_PKT, "VRRP packet has wrong size")			  \
-_(BAD_CHECKSUM, "VRRP checksum is invalid")			  \
-_(UNKNOWN_VR, "VRRP message does not match known VRs")		  \
-_(ADDR_MISMATCH, "VR addrs do not match configuration")
+#define foreach_vrrp_error                                                    \
+  _ (RECEIVED, "VRRP packets processed")                                      \
+  _ (BAD_TTL, "VRRP advertisement TTL is not 255")                            \
+  _ (NOT_VERSION_3, "VRRP version is not 3")                                  \
+  _ (INCOMPLETE_PKT, "VRRP packet has wrong size")                            \
+  _ (BAD_CHECKSUM, "VRRP checksum is invalid")                                \
+  _ (UNKNOWN_VR, "VRRP message does not match known VRs")                     \
+  _ (ADDR_MISMATCH, "VR addrs do not match configuration")
 
 typedef enum
 {
-#define _(sym,str) VRRP_ERROR_##sym,
+#define _(sym, str) VRRP_ERROR_##sym,
   foreach_vrrp_error
 #undef _
     VRRP_N_ERROR,
 } vrrp_error_t;
 
 static char *vrrp_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_vrrp_error
 #undef _
 };
@@ -98,7 +98,7 @@ typedef struct vrrp_input_process_args
  * the local address > the peer address
  */
 static int
-vrrp_vr_addr_cmp (vrrp_vr_t * vr, vrrp_header_t * pkt)
+vrrp_vr_addr_cmp (vrrp_vr_t *vr, vrrp_header_t *pkt)
 {
   vrrp_vr_config_t *vrc = &vr->config;
   void *peer_addr, *local_addr;
@@ -127,7 +127,7 @@ vrrp_vr_addr_cmp (vrrp_vr_t * vr, vrrp_header_t * pkt)
 }
 
 static void
-vrrp_input_process_master (vrrp_vr_t * vr, vrrp_header_t * pkt)
+vrrp_input_process_master (vrrp_vr_t *vr, vrrp_header_t *pkt)
 {
   /* received priority 0, another VR is shutting down. send an adv and
    * remain in the master state
@@ -163,7 +163,7 @@ vrrp_input_process_master (vrrp_vr_t * vr, vrrp_header_t * pkt)
 
 /* RFC 5798 section 6.4.2 */
 static void
-vrrp_input_process_backup (vrrp_vr_t * vr, vrrp_header_t * pkt)
+vrrp_input_process_backup (vrrp_vr_t *vr, vrrp_header_t *pkt)
 {
   vrrp_vr_config_t *vrc = &vr->config;
   vrrp_vr_runtime_t *vrt = &vr->runtime;
@@ -183,7 +183,7 @@ vrrp_input_process_backup (vrrp_vr_t * vr, vrrp_header_t * pkt)
       (pkt->priority >= vrrp_vr_priority (vr)))
     {
       vrt->master_adv_int = clib_net_to_host_u16 (pkt->rsvd_and_max_adv_int);
-      vrt->master_adv_int &= ((u16) 0x0fff);	/* ignore rsvd bits */
+      vrt->master_adv_int &= ((u16) 0x0fff); /* ignore rsvd bits */
 
       vrrp_vr_skew_compute (vr);
       vrrp_vr_master_down_compute (vr);
@@ -196,7 +196,7 @@ vrrp_input_process_backup (vrrp_vr_t * vr, vrrp_header_t * pkt)
 }
 
 always_inline void
-vrrp_input_process (vrrp_input_process_args_t * args)
+vrrp_input_process (vrrp_input_process_args_t *args)
 {
   vrrp_vr_t *vr;
 
@@ -239,9 +239,8 @@ typedef struct
   u8 is_ipv6;
 } vrrp_arp_nd_trace_t;
 
-
 static u8 *
-format_vrrp_arp_nd_input_trace (u8 * s, va_list * va)
+format_vrrp_arp_nd_input_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
@@ -272,8 +271,7 @@ typedef enum
 } vrrp_nd_next_t;
 
 static_always_inline void
-vrrp_arp_nd_next (vlib_buffer_t * b, u32 * next_index, u32 * vr_index,
-		  u8 is_ipv6)
+vrrp_arp_nd_next (vlib_buffer_t *b, u32 *next_index, u32 *vr_index, u8 is_ipv6)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
@@ -346,8 +344,8 @@ vrrp_arp_nd_next (vlib_buffer_t * b, u32 * next_index, u32 * vr_index,
 
   /* RFC 5798 section 6.4.3: Master "MUST respond" to ARP/ND. */
   eth = ethernet_buffer_get_header (b);
-  rewrite = ethernet_build_rewrite (vnm, sw_if_index, link_type,
-				    eth->src_address);
+  rewrite =
+    ethernet_build_rewrite (vnm, sw_if_index, link_type, eth->src_address);
   rewrite_len = vec_len (rewrite);
   if (rewrite_len == 0)
     return;
@@ -379,9 +377,9 @@ vrrp_arp_nd_next (vlib_buffer_t * b, u32 * next_index, u32 * vr_index,
       sol_adv->icmp.type = ICMP6_neighbor_advertisement;
       sol_adv->icmp.checksum = 0;
       sol_adv->advertisement_flags =
-	clib_host_to_net_u32 (ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_ROUTER
-			      | ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_SOLICITED
-			      | ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE);
+	clib_host_to_net_u32 (ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_ROUTER |
+			      ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_SOLICITED |
+			      ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE);
 
       clib_memcpy (lladdr->ethernet_address, vr->runtime.mac.bytes,
 		   sizeof (mac_address_t));
@@ -390,7 +388,6 @@ vrrp_arp_nd_next (vlib_buffer_t * b, u32 * next_index, u32 * vr_index,
 
       sol_adv->icmp.checksum =
 	ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus_length);
-
     }
   else
     {
@@ -405,8 +402,8 @@ vrrp_arp_nd_next (vlib_buffer_t * b, u32 * next_index, u32 * vr_index,
 }
 
 static_always_inline uword
-vrrp_arp_nd_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * frame, u8 is_ipv6)
+vrrp_arp_nd_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			  vlib_frame_t *frame, u8 is_ipv6)
 {
   u32 n_left_from, *from, next_index, *to_next;
 
@@ -450,7 +447,7 @@ vrrp_arp_nd_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  ip6_header_t *ip0;
 		  icmp6_neighbor_solicitation_or_advertisement_header_t
-		    * sol_adv0;
+		    *sol_adv0;
 
 		  ip0 = vlib_buffer_get_current (b0);
 		  sol_adv0 = ip6_next_header (ip0);
@@ -482,14 +479,12 @@ vrrp_arp_nd_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (vrrp4_arp_input_node) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * frame)
+VLIB_NODE_FN (vrrp4_arp_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  return vrrp_arp_nd_input_inline (vm, node, frame, 0 /* is_ipv6 */ );
+  return vrrp_arp_nd_input_inline (vm, node, frame, 0 /* is_ipv6 */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vrrp4_arp_input_node) =
 {
   .name = "vrrp4-arp-input",
@@ -508,21 +503,18 @@ VLIB_REGISTER_NODE (vrrp4_arp_input_node) =
   },
 };
 
-VNET_FEATURE_INIT (vrrp4_arp_feat_node, static) =
-{
+VNET_FEATURE_INIT (vrrp4_arp_feat_node, static) = {
   .arc_name = "arp",
   .node_name = "vrrp4-arp-input",
   .runs_before = VNET_FEATURES ("arp-reply"),
 };
 
-VLIB_NODE_FN (vrrp6_nd_input_node) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * frame)
+VLIB_NODE_FN (vrrp6_nd_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return vrrp_arp_nd_input_inline (vm, node, frame, 1 /* is_ipv6 */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vrrp6_nd_input_node) =
 {
   .name = "vrrp6-nd-input",
@@ -541,16 +533,15 @@ VLIB_REGISTER_NODE (vrrp6_nd_input_node) =
   },
 };
 
-VNET_FEATURE_INIT (vrrp6_nd_feat_node, static) =
-{
+VNET_FEATURE_INIT (vrrp6_nd_feat_node, static) = {
   .arc_name = "ip6-local",
   .node_name = "vrrp6-nd-input",
   .runs_before = VNET_FEATURES ("ip6-local-end-of-arc"),
 };
 
 static_always_inline uword
-vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		    vlib_frame_t * frame, u8 is_ipv6)
+vrrp_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame, u8 is_ipv6)
 {
   u32 n_left_from, *from;
   vrrp_main_t *vmp = &vrrp_main;
@@ -594,7 +585,7 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vrrp0 = (vrrp_header_t *) (ip4 + 1);
 	  ttl0 = &ip4->ttl;
 	  addr_len = 4;
-	  payload_len0 = clib_net_to_host_u16 (ip4->length) - sizeof(*ip4);
+	  payload_len0 = clib_net_to_host_u16 (ip4->length) - sizeof (*ip4);
 	  vlib_buffer_advance (b0, sizeof (*ip4));
 	}
 
@@ -623,8 +614,8 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
       /* Mandatory - packet must be complete */
-      if (b0->current_length < sizeof (*vrrp0) +
-          ((u32) vrrp0->n_addrs) * addr_len)
+      if (b0->current_length <
+	  sizeof (*vrrp0) + ((u32) vrrp0->n_addrs) * addr_len)
 	{
 	  error0 = VRRP_ERROR_INCOMPLETE_PKT;
 	  goto trace;
@@ -638,9 +629,8 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
       /* Mandatory - VR must be configured on the interface adv received on */
-      if (!(vr0 =
-	      vrrp_vr_lookup (vnet_buffer(b0)->sw_if_index[VLIB_RX],
-			      vrrp0->vr_id, is_ipv6)))
+      if (!(vr0 = vrrp_vr_lookup (vnet_buffer (b0)->sw_if_index[VLIB_RX],
+				  vrrp0->vr_id, is_ipv6)))
 	{
 	  error0 = VRRP_ERROR_UNKNOWN_VR;
 	  goto trace;
@@ -670,7 +660,7 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vrrp_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	  size_t addr_len = (is_ipv6 ? 16 : 4);
 
-	  t->sw_if_index = vnet_buffer(b0)->sw_if_index[VLIB_RX];
+	  t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  t->is_ipv6 = is_ipv6;
 	  clib_memcpy_fast (&t->vrrp, vrrp0, sizeof (*vrrp0));
 	  clib_memcpy_fast (t->addrs, (void *) (vrrp0 + 1),
@@ -687,13 +677,12 @@ vrrp_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (vrrp4_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-				vlib_frame_t * frame)
+VLIB_NODE_FN (vrrp4_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return vrrp_input_inline (vm, node, frame, 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vrrp4_input_node) =
 {
   .name = "vrrp4-input",
@@ -711,8 +700,8 @@ VLIB_REGISTER_NODE (vrrp4_input_node) =
   },
 };
 
-VLIB_NODE_FN (vrrp6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-				vlib_frame_t * frame)
+VLIB_NODE_FN (vrrp6_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return vrrp_input_inline (vm, node, frame, 1);
 }
@@ -743,7 +732,7 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_vrrp_accept_owner_trace (u8 * s, va_list * args)
+format_vrrp_accept_owner_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -756,28 +745,27 @@ format_vrrp_accept_owner_trace (u8 * s, va_list * args)
       ip_type = IP46_TYPE_IP6;
     }
 
-  s = format (s, "IPv%d sw_if_index %d %U -> %U",
-	      ip_ver, t->sw_if_index,
-	      format_ip46_address, &t->src, ip_type,
-	      format_ip46_address, &t->dst, ip_type);
+  s = format (s, "IPv%d sw_if_index %d %U -> %U", ip_ver, t->sw_if_index,
+	      format_ip46_address, &t->src, ip_type, format_ip46_address,
+	      &t->dst, ip_type);
 
   return s;
 }
 
-#define foreach_vrrp_accept_owner_error				  \
-_(RECEIVED, "VRRP owner accept packets received")		  \
-_(PROCESSED, "VRRP owner accept advertisements processed")
+#define foreach_vrrp_accept_owner_error                                       \
+  _ (RECEIVED, "VRRP owner accept packets received")                          \
+  _ (PROCESSED, "VRRP owner accept advertisements processed")
 
 typedef enum
 {
-#define _(sym,str) VRRP_ACCEPT_OWNER_ERROR_##sym,
+#define _(sym, str) VRRP_ACCEPT_OWNER_ERROR_##sym,
   foreach_vrrp_accept_owner_error
 #undef _
     VRRP_ACCEPT_OWNER_N_ERROR,
 } vrrp_accept_owner_error_t;
 
 static char *vrrp_accept_owner_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_vrrp_accept_owner_error
 #undef _
 };
@@ -803,8 +791,8 @@ vrrp_accept_owner_next_node (u32 sw_if_index, u8 vr_id, u8 is_ipv6,
 }
 
 static_always_inline uword
-vrrp_accept_owner_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-				vlib_frame_t * frame, u8 is_ipv6)
+vrrp_accept_owner_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+				vlib_frame_t *frame, u8 is_ipv6)
 {
   u32 n_left_from, *from, *to_next;
   u32 next_index = node->cached_next_index;
@@ -844,8 +832,8 @@ vrrp_accept_owner_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  error0 = error1 = VRRP_ACCEPT_OWNER_ERROR_RECEIVED;
 
-	  sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
-	  sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_RX];
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
 
 	  /* find VRRP advertisements which should be sent to VRRP node */
 	  if (is_ipv6)
@@ -885,8 +873,8 @@ vrrp_accept_owner_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	    }
 
-      	  b0->error = node->errors[error0];
-      	  b1->error = node->errors[error1];
+	  b0->error = node->errors[error0];
+	  b1->error = node->errors[error1];
 
 	  if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	    {
@@ -931,9 +919,9 @@ vrrp_accept_owner_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  to_next += 2;
 	  n_left_to_next -= 2;
 
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -957,7 +945,7 @@ vrrp_accept_owner_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  error0 = VRRP_ACCEPT_OWNER_ERROR_RECEIVED;
 
-	  sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
 	  /* find VRRP advertisements which should be sent to VRRP node */
 	  if (is_ipv6)
@@ -983,7 +971,7 @@ vrrp_accept_owner_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	    }
 
-      	  b0->error = node->errors[error0];
+	  b0->error = node->errors[error0];
 
 	  if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	    {
@@ -1009,9 +997,8 @@ vrrp_accept_owner_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  to_next += 1;
 	  n_left_to_next -= 1;
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -1020,9 +1007,8 @@ vrrp_accept_owner_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (vrrp4_accept_owner_input_node) (vlib_main_t * vm,
-					      vlib_node_runtime_t * node,
-					      vlib_frame_t * frame)
+VLIB_NODE_FN (vrrp4_accept_owner_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return vrrp_accept_owner_input_inline (vm, node, frame, 0);
 }
@@ -1044,16 +1030,14 @@ VLIB_REGISTER_NODE (vrrp4_accept_owner_input_node) =
   },
 };
 
-VNET_FEATURE_INIT (vrrp4_accept_owner_mc, static) =
-{
+VNET_FEATURE_INIT (vrrp4_accept_owner_mc, static) = {
   .arc_name = "ip4-multicast",
   .node_name = "vrrp4-accept-owner-input",
   .runs_before = VNET_FEATURES ("ip4-mfib-forward-lookup"),
 };
 
-VLIB_NODE_FN (vrrp6_accept_owner_input_node) (vlib_main_t * vm,
-					   vlib_node_runtime_t * node,
-					   vlib_frame_t * frame)
+VLIB_NODE_FN (vrrp6_accept_owner_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return vrrp_accept_owner_input_inline (vm, node, frame, 1);
 }
@@ -1075,8 +1059,7 @@ VLIB_REGISTER_NODE (vrrp6_accept_owner_input_node) =
   },
 };
 
-VNET_FEATURE_INIT (vrrp6_accept_owner_mc, static) =
-{
+VNET_FEATURE_INIT (vrrp6_accept_owner_mc, static) = {
   .arc_name = "ip6-multicast",
   .node_name = "vrrp6-accept-owner-input",
   .runs_before = VNET_FEATURES ("ip6-mfib-forward-lookup"),
@@ -1097,8 +1080,6 @@ vrrp_input_init (vlib_main_t *vm)
 }
 
 VLIB_INIT_FUNCTION (vrrp_input_init);
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

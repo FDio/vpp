@@ -24,30 +24,30 @@
 #include <wireguard/wireguard_key.h>
 
 #define NOISE_PUBLIC_KEY_LEN	CURVE25519_KEY_SIZE
-#define NOISE_SYMMETRIC_KEY_LEN	  32	// CHACHA20POLY1305_KEY_SIZE
-#define NOISE_TIMESTAMP_LEN	(sizeof(uint64_t) + sizeof(uint32_t))
-#define NOISE_AUTHTAG_LEN	16	//CHACHA20POLY1305_AUTHTAG_SIZE
+#define NOISE_SYMMETRIC_KEY_LEN 32 // CHACHA20POLY1305_KEY_SIZE
+#define NOISE_TIMESTAMP_LEN	(sizeof (uint64_t) + sizeof (uint32_t))
+#define NOISE_AUTHTAG_LEN	16 // CHACHA20POLY1305_AUTHTAG_SIZE
 #define NOISE_HASH_LEN		BLAKE2S_HASH_SIZE
 
 /* Protocol string constants */
-#define NOISE_HANDSHAKE_NAME	"Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s"
-#define NOISE_IDENTIFIER_NAME	"WireGuard v1 zx2c4 Jason@zx2c4.com"
+#define NOISE_HANDSHAKE_NAME  "Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s"
+#define NOISE_IDENTIFIER_NAME "WireGuard v1 zx2c4 Jason@zx2c4.com"
 
 /* Constants for the counter */
-#define COUNTER_BITS_TOTAL	8192
-#define COUNTER_BITS		(sizeof(unsigned long) * 8)
-#define COUNTER_NUM		(COUNTER_BITS_TOTAL / COUNTER_BITS)
-#define COUNTER_WINDOW_SIZE	(COUNTER_BITS_TOTAL - COUNTER_BITS)
+#define COUNTER_BITS_TOTAL  8192
+#define COUNTER_BITS	    (sizeof (unsigned long) * 8)
+#define COUNTER_NUM	    (COUNTER_BITS_TOTAL / COUNTER_BITS)
+#define COUNTER_WINDOW_SIZE (COUNTER_BITS_TOTAL - COUNTER_BITS)
 
 /* Constants for the keypair */
-#define REKEY_AFTER_MESSAGES	(1ull << 60)
-#define REJECT_AFTER_MESSAGES	(UINT64_MAX - COUNTER_WINDOW_SIZE - 1)
-#define REKEY_AFTER_TIME	120
-#define REKEY_AFTER_TIME_RECV	165
-#define REJECT_AFTER_TIME	180
-#define REJECT_INTERVAL		(0.02)	/* fifty times per sec */
+#define REKEY_AFTER_MESSAGES  (1ull << 60)
+#define REJECT_AFTER_MESSAGES (UINT64_MAX - COUNTER_WINDOW_SIZE - 1)
+#define REKEY_AFTER_TIME      120
+#define REKEY_AFTER_TIME_RECV 165
+#define REJECT_AFTER_TIME     180
+#define REJECT_INTERVAL	      (0.02) /* fifty times per sec */
 /* 24 = floor(log2(REJECT_INTERVAL)) */
-#define REJECT_INTERVAL_MASK	(~((1ull<<24)-1))
+#define REJECT_INTERVAL_MASK (~((1ull << 24) - 1))
 
 enum noise_state_crypt
 {
@@ -121,7 +121,7 @@ typedef struct noise_local
   {
     void *u_arg;
     noise_remote_t *(*u_remote_get) (const uint8_t[NOISE_PUBLIC_KEY_LEN]);
-      uint32_t (*u_index_set) (noise_remote_t *);
+    uint32_t (*u_index_set) (noise_remote_t *);
     void (*u_index_drop) (uint32_t);
   } l_upcall;
 } noise_local_t;
@@ -147,52 +147,40 @@ void noise_remote_init (noise_remote_t *, uint32_t,
 void noise_remote_precompute (noise_remote_t *);
 
 /* Cryptographic functions */
-bool noise_create_initiation (vlib_main_t * vm, noise_remote_t *,
-			      uint32_t * s_idx,
-			      uint8_t ue[NOISE_PUBLIC_KEY_LEN],
-			      uint8_t es[NOISE_PUBLIC_KEY_LEN +
-					 NOISE_AUTHTAG_LEN],
-			      uint8_t ets[NOISE_TIMESTAMP_LEN +
-					  NOISE_AUTHTAG_LEN]);
+bool
+noise_create_initiation (vlib_main_t *vm, noise_remote_t *, uint32_t *s_idx,
+			 uint8_t ue[NOISE_PUBLIC_KEY_LEN],
+			 uint8_t es[NOISE_PUBLIC_KEY_LEN + NOISE_AUTHTAG_LEN],
+			 uint8_t ets[NOISE_TIMESTAMP_LEN + NOISE_AUTHTAG_LEN]);
 
-bool noise_consume_initiation (vlib_main_t * vm, noise_local_t *,
-			       noise_remote_t **,
-			       uint32_t s_idx,
-			       uint8_t ue[NOISE_PUBLIC_KEY_LEN],
-			       uint8_t es[NOISE_PUBLIC_KEY_LEN +
-					  NOISE_AUTHTAG_LEN],
-			       uint8_t ets[NOISE_TIMESTAMP_LEN +
-					   NOISE_AUTHTAG_LEN]);
+bool noise_consume_initiation (
+  vlib_main_t *vm, noise_local_t *, noise_remote_t **, uint32_t s_idx,
+  uint8_t ue[NOISE_PUBLIC_KEY_LEN],
+  uint8_t es[NOISE_PUBLIC_KEY_LEN + NOISE_AUTHTAG_LEN],
+  uint8_t ets[NOISE_TIMESTAMP_LEN + NOISE_AUTHTAG_LEN]);
 
-bool noise_create_response (vlib_main_t * vm, noise_remote_t *,
-			    uint32_t * s_idx,
-			    uint32_t * r_idx,
-			    uint8_t ue[NOISE_PUBLIC_KEY_LEN],
+bool noise_create_response (vlib_main_t *vm, noise_remote_t *, uint32_t *s_idx,
+			    uint32_t *r_idx, uint8_t ue[NOISE_PUBLIC_KEY_LEN],
 			    uint8_t en[0 + NOISE_AUTHTAG_LEN]);
 
-bool noise_consume_response (vlib_main_t * vm, noise_remote_t *,
-			     uint32_t s_idx,
-			     uint32_t r_idx,
-			     uint8_t ue[NOISE_PUBLIC_KEY_LEN],
+bool noise_consume_response (vlib_main_t *vm, noise_remote_t *, uint32_t s_idx,
+			     uint32_t r_idx, uint8_t ue[NOISE_PUBLIC_KEY_LEN],
 			     uint8_t en[0 + NOISE_AUTHTAG_LEN]);
 
-bool noise_remote_begin_session (vlib_main_t * vm, noise_remote_t * r);
-void noise_remote_clear (vlib_main_t * vm, noise_remote_t * r);
-void noise_remote_expire_current (noise_remote_t * r);
+bool noise_remote_begin_session (vlib_main_t *vm, noise_remote_t *r);
+void noise_remote_clear (vlib_main_t *vm, noise_remote_t *r);
+void noise_remote_expire_current (noise_remote_t *r);
 
 bool noise_remote_ready (noise_remote_t *);
 
-enum noise_state_crypt
-noise_remote_encrypt (vlib_main_t * vm, noise_remote_t *,
-		      uint32_t * r_idx,
-		      uint64_t * nonce,
-		      uint8_t * src, size_t srclen, uint8_t * dst);
-enum noise_state_crypt
-noise_remote_decrypt (vlib_main_t * vm, noise_remote_t *,
-		      uint32_t r_idx,
-		      uint64_t nonce,
-		      uint8_t * src, size_t srclen, uint8_t * dst);
-
+enum noise_state_crypt noise_remote_encrypt (vlib_main_t *vm, noise_remote_t *,
+					     uint32_t *r_idx, uint64_t *nonce,
+					     uint8_t *src, size_t srclen,
+					     uint8_t *dst);
+enum noise_state_crypt noise_remote_decrypt (vlib_main_t *vm, noise_remote_t *,
+					     uint32_t r_idx, uint64_t nonce,
+					     uint8_t *src, size_t srclen,
+					     uint8_t *dst);
 
 #endif /* __included_wg_noise_h__ */
 

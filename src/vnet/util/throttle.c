@@ -16,7 +16,7 @@
 #include <vnet/util/throttle.h>
 
 void
-throttle_init (throttle_t * t, u32 n_threads, f64 time)
+throttle_init (throttle_t *t, u32 n_threads, f64 time)
 {
   u32 i;
 

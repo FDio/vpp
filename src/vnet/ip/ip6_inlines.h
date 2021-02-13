@@ -46,7 +46,7 @@
 /* Compute flow hash.  We'll use it to select which Sponge to use for this
    flow.  And other things. */
 always_inline u32
-ip6_compute_flow_hash (const ip6_header_t * ip,
+ip6_compute_flow_hash (const ip6_header_t *ip,
 		       flow_hash_config_t flow_hash_config)
 {
   tcp_header_t *tcp;
@@ -55,9 +55,8 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
   uword is_tcp_udp = 0;
   u8 protocol = ip->protocol;
 
-  if (PREDICT_TRUE
-      ((ip->protocol == IP_PROTOCOL_TCP)
-       || (ip->protocol == IP_PROTOCOL_UDP)))
+  if (PREDICT_TRUE ((ip->protocol == IP_PROTOCOL_TCP) ||
+		    (ip->protocol == IP_PROTOCOL_UDP)))
     {
       is_tcp_udp = 1;
       tcp = (void *) (ip + 1);
@@ -124,8 +123,8 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
  * in find_hdr_type.
  * This is used to locate a specific IPv6 extension header
  * or to find transport layer header.
- *   1. If the find_hdr_type < 0 then it finds and returns the protocol number and
- *   offset stored in *offset of the transport or ESP header in the chain if
+ *   1. If the find_hdr_type < 0 then it finds and returns the protocol number
+ * and offset stored in *offset of the transport or ESP header in the chain if
  *   found.
  *   2. If a header with find_hdr_type > 0 protocol number is found then the
  *      offset is stored in *offset and protocol number of the header is
@@ -134,8 +133,8 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
  *      it is a non-first fragment -1 is returned.
  */
 always_inline int
-ip6_locate_header (vlib_buffer_t * p0,
-		   ip6_header_t * ip0, int find_hdr_type, u32 * offset)
+ip6_locate_header (vlib_buffer_t *p0, ip6_header_t *ip0, int find_hdr_type,
+		   u32 *offset)
 {
   u8 next_proto = ip0->protocol;
   u8 *next_header;
@@ -149,11 +148,11 @@ ip6_locate_header (vlib_buffer_t * p0,
   while (1)
     {
       done = (next_proto == find_hdr_type);
-      if (PREDICT_FALSE
-	  (next_header >=
-	   (u8 *) vlib_buffer_get_current (p0) + p0->current_length))
+      if (PREDICT_FALSE (next_header >= (u8 *) vlib_buffer_get_current (p0) +
+					  p0->current_length))
 	{
-	  //A malicious packet could set an extension header with a too big size
+	  // A malicious packet could set an extension header with a too big
+	  // size
 	  return (-1);
 	}
       if (done)
@@ -182,8 +181,7 @@ ip6_locate_header (vlib_buffer_t * p0,
 	}
       else
 	{
-	  exthdr_len =
-	    ip6_ext_header_len (((ip6_ext_header_t *) next_header));
+	  exthdr_len = ip6_ext_header_len (((ip6_ext_header_t *) next_header));
 	  temp_nxthdr = next_header + exthdr_len;
 	}
       next_proto = ((ip6_ext_header_t *) next_header)->next_hdr;
@@ -194,7 +192,6 @@ ip6_locate_header (vlib_buffer_t * p0,
   *offset = cur_offset;
   return (next_proto);
 }
-
 
 /**
  * Push IPv6 header to buffer
@@ -209,9 +206,9 @@ ip6_locate_header (vlib_buffer_t * p0,
  * @return - pointer to start of IP header
  */
 always_inline void *
-vlib_buffer_push_ip6_custom (vlib_main_t * vm, vlib_buffer_t * b,
-			     ip6_address_t * src, ip6_address_t * dst,
-			     int proto, u32 flow_label)
+vlib_buffer_push_ip6_custom (vlib_main_t *vm, vlib_buffer_t *b,
+			     ip6_address_t *src, ip6_address_t *dst, int proto,
+			     u32 flow_label)
 {
   ip6_header_t *ip6h;
   u16 payload_length;
@@ -252,12 +249,11 @@ vlib_buffer_push_ip6_custom (vlib_main_t * vm, vlib_buffer_t * b,
  * @return - pointer to start of IP header
  */
 always_inline void *
-vlib_buffer_push_ip6 (vlib_main_t * vm, vlib_buffer_t * b,
-		      ip6_address_t * src, ip6_address_t * dst, int proto)
+vlib_buffer_push_ip6 (vlib_main_t *vm, vlib_buffer_t *b, ip6_address_t *src,
+		      ip6_address_t *dst, int proto)
 {
   return vlib_buffer_push_ip6_custom (vm, b, src, dst, proto,
-				      0 /* flow label */ );
-
+				      0 /* flow label */);
 }
 
 #endif /* included_ip_ip6_h */

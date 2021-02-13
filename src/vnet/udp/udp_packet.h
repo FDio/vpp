@@ -57,7 +57,6 @@ typedef struct
 
 #endif /* included_udp_packet_h */
 
-
 /*
  * fd.io coding-style-patch-verification: ON
  *

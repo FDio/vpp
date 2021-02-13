@@ -36,10 +36,10 @@
 */
 
 #include <vppinfra/bitmap.h>
-#include <vppinfra/bitops.h>	/* for next_with_same_number_of_set_bits */
-#include <vppinfra/error.h>	/* for ASSERT */
+#include <vppinfra/bitops.h> /* for next_with_same_number_of_set_bits */
+#include <vppinfra/error.h>  /* for ASSERT */
 #include <vppinfra/mem.h>
-#include <vppinfra/os.h>	/* for os_panic */
+#include <vppinfra/os.h> /* for os_panic */
 #include <vppinfra/vec.h>
 #include <vppinfra/zvec.h>
 
@@ -61,7 +61,7 @@
 /* Decode given compressed data.  Return number of compressed data
    bits used. */
 uword
-zvec_decode (uword coding, uword zdata, uword * n_zdata_bits)
+zvec_decode (uword coding, uword zdata, uword *n_zdata_bits)
 {
   uword c, d, result, n_bits;
   uword explicit_end, implicit_end;
@@ -94,7 +94,7 @@ zvec_decode (uword coding, uword zdata, uword * n_zdata_bits)
 }
 
 uword
-zvec_encode (uword coding, uword data, uword * n_result_bits)
+zvec_encode (uword coding, uword data, uword *n_result_bits)
 {
   uword c, shift, result;
   uword explicit_end, implicit_end;
@@ -115,7 +115,8 @@ zvec_encode (uword coding, uword data, uword * n_result_bits)
 	  result = ((data << t) | t) << shift;
 	  *n_result_bits =
 	    /* data bits */ (c == 0 ? BITS (uword) : min_log2 (c))
-	    /* shift bits */  + shift + t;
+	    /* shift bits */
+	    + shift + t;
 	  return result;
 	}
       data -= c;
@@ -134,14 +135,11 @@ get_data (void *data, uword data_bytes, uword is_signed)
   if (data_bytes == 1)
     return is_signed ? zvec_signed_to_unsigned (*(i8 *) data) : *(u8 *) data;
   else if (data_bytes == 2)
-    return is_signed ? zvec_signed_to_unsigned (*(i16 *) data) : *(u16 *)
-      data;
+    return is_signed ? zvec_signed_to_unsigned (*(i16 *) data) : *(u16 *) data;
   else if (data_bytes == 4)
-    return is_signed ? zvec_signed_to_unsigned (*(i32 *) data) : *(u32 *)
-      data;
+    return is_signed ? zvec_signed_to_unsigned (*(i32 *) data) : *(u32 *) data;
   else if (data_bytes == 8)
-    return is_signed ? zvec_signed_to_unsigned (*(i64 *) data) : *(u64 *)
-      data;
+    return is_signed ? zvec_signed_to_unsigned (*(i64 *) data) : *(u64 *) data;
   else
     {
       os_panic ();
@@ -187,12 +185,9 @@ put_data (void *data, uword data_bytes, uword is_signed, uword x)
 }
 
 always_inline uword *
-zvec_encode_inline (uword * zvec,
-		    uword * zvec_n_bits,
-		    uword coding,
-		    void *data,
-		    uword data_stride,
-		    uword n_data, uword data_bytes, uword is_signed)
+zvec_encode_inline (uword *zvec, uword *zvec_n_bits, uword coding, void *data,
+		    uword data_stride, uword n_data, uword data_bytes,
+		    uword is_signed)
 {
   uword i;
 
@@ -214,29 +209,23 @@ zvec_encode_inline (uword * zvec,
   return zvec;
 }
 
-#define _(TYPE,IS_SIGNED)					\
-  uword * zvec_encode_##TYPE (uword * zvec,			\
-			      uword * zvec_n_bits,		\
-			      uword coding,			\
-			      void * data,			\
-			      uword data_stride,		\
-			      uword n_data)			\
-  {								\
-    return zvec_encode_inline (zvec, zvec_n_bits,		\
-			    coding,				\
-			    data, data_stride, n_data,		\
-			    /* data_bytes */ sizeof (TYPE),	\
-			    /* is_signed */ IS_SIGNED);		\
+#define _(TYPE, IS_SIGNED)                                                    \
+  uword *zvec_encode_##TYPE (uword *zvec, uword *zvec_n_bits, uword coding,   \
+			     void *data, uword data_stride, uword n_data)     \
+  {                                                                           \
+    return zvec_encode_inline (zvec, zvec_n_bits, coding, data, data_stride,  \
+			       n_data, /* data_bytes */ sizeof (TYPE),        \
+			       /* is_signed */ IS_SIGNED);                    \
   }
 
-_(u8, /* is_signed */ 0);
-_(u16, /* is_signed */ 0);
-_(u32, /* is_signed */ 0);
-_(u64, /* is_signed */ 0);
-_(i8, /* is_signed */ 1);
-_(i16, /* is_signed */ 1);
-_(i32, /* is_signed */ 1);
-_(i64, /* is_signed */ 1);
+_ (u8, /* is_signed */ 0);
+_ (u16, /* is_signed */ 0);
+_ (u32, /* is_signed */ 0);
+_ (u64, /* is_signed */ 0);
+_ (i8, /* is_signed */ 1);
+_ (i16, /* is_signed */ 1);
+_ (i32, /* is_signed */ 1);
+_ (i64, /* is_signed */ 1);
 
 #undef _
 
@@ -249,12 +238,9 @@ coding_max_n_bits (uword coding)
 }
 
 always_inline void
-zvec_decode_inline (uword * zvec,
-		    uword * zvec_n_bits,
-		    uword coding,
-		    void *data,
-		    uword data_stride,
-		    uword n_data, uword data_bytes, uword is_signed)
+zvec_decode_inline (uword *zvec, uword *zvec_n_bits, uword coding, void *data,
+		    uword data_stride, uword n_data, uword data_bytes,
+		    uword is_signed)
 {
   uword i, n_max;
 
@@ -274,35 +260,29 @@ zvec_decode_inline (uword * zvec,
   *zvec_n_bits = i;
 }
 
-#define _(TYPE,IS_SIGNED)					\
-  void zvec_decode_##TYPE (uword * zvec,			\
-			   uword * zvec_n_bits,			\
-			   uword coding,			\
-			   void * data,				\
-			   uword data_stride,			\
-			   uword n_data)			\
-  {								\
-    return zvec_decode_inline (zvec, zvec_n_bits,		\
-			       coding,				\
-			       data, data_stride, n_data,	\
-			       /* data_bytes */ sizeof (TYPE),	\
-			       /* is_signed */ IS_SIGNED);	\
+#define _(TYPE, IS_SIGNED)                                                    \
+  void zvec_decode_##TYPE (uword *zvec, uword *zvec_n_bits, uword coding,     \
+			   void *data, uword data_stride, uword n_data)       \
+  {                                                                           \
+    return zvec_decode_inline (zvec, zvec_n_bits, coding, data, data_stride,  \
+			       n_data, /* data_bytes */ sizeof (TYPE),        \
+			       /* is_signed */ IS_SIGNED);                    \
   }
 
-_(u8, /* is_signed */ 0);
-_(u16, /* is_signed */ 0);
-_(u32, /* is_signed */ 0);
-_(u64, /* is_signed */ 0);
-_(i8, /* is_signed */ 1);
-_(i16, /* is_signed */ 1);
-_(i32, /* is_signed */ 1);
-_(i64, /* is_signed */ 1);
+_ (u8, /* is_signed */ 0);
+_ (u16, /* is_signed */ 0);
+_ (u32, /* is_signed */ 0);
+_ (u64, /* is_signed */ 0);
+_ (i8, /* is_signed */ 1);
+_ (i16, /* is_signed */ 1);
+_ (i32, /* is_signed */ 1);
+_ (i64, /* is_signed */ 1);
 
 #undef _
 
 /* Compute number of bits needed to encode given histogram. */
 static uword
-zvec_coding_bits (uword coding, uword * histogram_counts, uword min_bits)
+zvec_coding_bits (uword coding, uword *histogram_counts, uword min_bits)
 {
   uword n_type_bits, n_bits;
   uword this_count, last_count, max_count_index;
@@ -350,12 +330,11 @@ zvec_coding_bits (uword coding, uword * histogram_counts, uword min_bits)
 }
 
 uword
-_zvec_coding_from_histogram (void *histogram,
-			     uword histogram_len,
+_zvec_coding_from_histogram (void *histogram, uword histogram_len,
 			     uword histogram_elt_count_offset,
 			     uword histogram_elt_bytes,
 			     uword max_value_to_encode,
-			     zvec_coding_info_t * coding_return)
+			     zvec_coding_info_t *coding_return)
 {
   uword coding, min_coding;
   uword min_coding_bits, coding_bits;
@@ -389,14 +368,12 @@ _zvec_coding_from_histogram (void *histogram,
 
   {
     uword base_coding =
-      max_value_to_encode !=
-      ~0 ? (1 + max_value_to_encode) : vec_len (counts);
+      max_value_to_encode != ~0 ? (1 + max_value_to_encode) : vec_len (counts);
     uword max_coding = max_pow2 (2 * base_coding);
 
     for (n_bits_set = 1; n_bits_set <= 8; n_bits_set++)
       {
-	for (coding = pow2_mask (n_bits_set);
-	     coding < max_coding;
+	for (coding = pow2_mask (n_bits_set); coding < max_coding;
 	     coding = next_with_same_number_of_set_bits (coding))
 	  {
 	    coding_bits = zvec_coding_bits (coding, counts, min_coding_bits);
@@ -424,13 +401,13 @@ _zvec_coding_from_histogram (void *histogram,
 }
 
 u8 *
-format_zvec_coding (u8 * s, va_list * args)
+format_zvec_coding (u8 *s, va_list *args)
 {
   zvec_coding_info_t *c = va_arg (*args, zvec_coding_info_t *);
-  return format (s,
-		 "zvec coding 0x%x, %d elts, %d codes, %d bits total, %.4f ave bits/code",
-		 c->coding, c->n_data, c->n_codes, c->min_coding_bits,
-		 c->ave_coding_bits);
+  return format (
+    s,
+    "zvec coding 0x%x, %d elts, %d codes, %d bits total, %.4f ave bits/code",
+    c->coding, c->n_data, c->n_codes, c->min_coding_bits, c->ave_coding_bits);
 }
 
 /*

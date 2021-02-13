@@ -19,18 +19,17 @@
 #include <igmp/igmp_pkt.h>
 
 static f64
-igmp_get_random_resp_delay (const igmp_header_t * header)
+igmp_get_random_resp_delay (const igmp_header_t *header)
 {
   u32 seed;
 
   seed = vlib_time_now (vlib_get_main ());
 
   return ((random_f64 (&seed) * igmp_header_get_max_resp_time (header)));
-
 }
 
 static ip46_address_t *
-igmp_query_mk_source_list (const igmp_membership_query_v3_t * q)
+igmp_query_mk_source_list (const igmp_membership_query_v3_t *q)
 {
   ip46_address_t *srcs = NULL;
   const ip4_address_t *s;
@@ -75,8 +74,7 @@ igmp_send_group_report_v3 (u32 obj, void *data)
   ASSERT (group->timers[IGMP_GROUP_TIMER_QUERY_REPLY] !=
 	  IGMP_TIMER_ID_INVALID);
 
-  IGMP_DBG ("send-group-report: %U",
-	    format_vnet_sw_if_index_name,
+  IGMP_DBG ("send-group-report: %U", format_vnet_sw_if_index_name,
 	    vnet_get_main (), config->sw_if_index);
 
   if (NULL == srcs)
@@ -92,20 +90,18 @@ igmp_send_group_report_v3 (u32 obj, void *data)
     {
       /*
        * the sources stored in the timer object are the combined set of sources
-       * to be required. We need to respond only to those queried, not our full set.
+       * to be required. We need to respond only to those queried, not our full
+       * set.
        */
       ip46_address_t *intersect;
 
-      intersect = igmp_group_new_intersect_present (group,
-						    IGMP_FILTER_MODE_INCLUDE,
-						    srcs);
+      intersect = igmp_group_new_intersect_present (
+	group, IGMP_FILTER_MODE_INCLUDE, srcs);
 
       if (vec_len (intersect))
 	{
-	  igmp_pkt_report_v3_add_report (&br,
-					 group->key,
-					 intersect,
-					 IGMP_MEMBERSHIP_GROUP_mode_is_include);
+	  igmp_pkt_report_v3_add_report (
+	    &br, group->key, intersect, IGMP_MEMBERSHIP_GROUP_mode_is_include);
 	  vec_free (intersect);
 	}
     }
@@ -149,20 +145,17 @@ igmp_send_general_report_v3 (u32 obj, void *data)
 
   igmp_timer_retire (&config->timers[IGMP_CONFIG_TIMER_GENERAL_REPORT]);
 
-  IGMP_DBG ("send-general-report: %U",
-	    format_vnet_sw_if_index_name,
+  IGMP_DBG ("send-general-report: %U", format_vnet_sw_if_index_name,
 	    vnet_get_main (), config->sw_if_index);
 
   igmp_pkt_build_report_init (&br, config->sw_if_index);
 
-  /* *INDENT-OFF* */
-  FOR_EACH_GROUP (group, config,
-    ({
-      igmp_pkt_report_v3_add_group
-        (&br, group,
-         igmp_filter_mode_to_report_type(group->router_filter_mode));
+  FOR_EACH_GROUP (
+    group, config, ({
+      igmp_pkt_report_v3_add_group (
+	&br, group,
+	igmp_filter_mode_to_report_type (group->router_filter_mode));
     }));
-  /* *INDENT-ON* */
 
   igmp_pkt_report_v3_send (&br);
 }
@@ -171,7 +164,7 @@ igmp_send_general_report_v3 (u32 obj, void *data)
  * Called from the main thread on reception of a Query message
  */
 void
-igmp_handle_query (const igmp_query_args_t * args)
+igmp_handle_query (const igmp_query_args_t *args)
 {
   igmp_config_t *config;
 
@@ -189,9 +182,8 @@ igmp_handle_query (const igmp_query_args_t * args)
       // code here for querier election */
     }
 
-  IGMP_DBG ("query-rx: %U", format_vnet_sw_if_index_name,
-	    vnet_get_main (), args->sw_if_index);
-
+  IGMP_DBG ("query-rx: %U", format_vnet_sw_if_index_name, vnet_get_main (),
+	    args->sw_if_index);
 
   /*
      Section 5.2
@@ -224,8 +216,7 @@ igmp_handle_query (const igmp_query_args_t * args)
 	   * no currently running timer, schedule a new one
 	   */
 	  config->timers[IGMP_CONFIG_TIMER_GENERAL_REPORT] =
-	    igmp_timer_schedule (delay,
-				 igmp_config_index (config),
+	    igmp_timer_schedule (delay, igmp_config_index (config),
 				 igmp_send_general_report_v3, NULL);
 	}
       /*
@@ -259,10 +250,9 @@ igmp_handle_query (const igmp_query_args_t * args)
       tid = group->timers[IGMP_GROUP_TIMER_QUERY_REPLY];
 
       IGMP_DBG ("...group-query-rx: %U for (%U, %U)",
-		format_vnet_sw_if_index_name,
-		vnet_get_main (), args->sw_if_index,
-		format_igmp_src_addr_list, srcs, format_igmp_key, &key);
-
+		format_vnet_sw_if_index_name, vnet_get_main (),
+		args->sw_if_index, format_igmp_src_addr_list, srcs,
+		format_igmp_key, &key);
 
       if (IGMP_TIMER_ID_INVALID != tid)
 	{
@@ -274,13 +264,13 @@ igmp_handle_query (const igmp_query_args_t * args)
 	  current = igmp_timer_get_data (tid);
 
 	  vec_foreach (s, srcs)
-	  {
-	    if (~0 == vec_search_with_function (current, s,
-						ip46_address_is_equal))
-	      {
-		vec_add1 (current, *s);
-	      }
-	  }
+	    {
+	      if (~0 ==
+		  vec_search_with_function (current, s, ip46_address_is_equal))
+		{
+		  vec_add1 (current, *s);
+		}
+	    }
 
 	  igmp_timer_set_data (tid, current);
 	}
@@ -293,14 +283,11 @@ igmp_handle_query (const igmp_query_args_t * args)
 
 	  IGMP_DBG ("...group-query-rx: schedule:%f", delay);
 
-	  group->timers[IGMP_GROUP_TIMER_QUERY_REPLY] =
-	    igmp_timer_schedule (delay,
-				 igmp_group_index (group),
-				 igmp_send_group_report_v3, srcs);
+	  group->timers[IGMP_GROUP_TIMER_QUERY_REPLY] = igmp_timer_schedule (
+	    delay, igmp_group_index (group), igmp_send_group_report_v3, srcs);
 	}
     }
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

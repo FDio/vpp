@@ -63,19 +63,16 @@ unix_main_t unix_main;
 clib_file_main_t file_main;
 
 static clib_error_t *
-unix_main_init (vlib_main_t * vm)
+unix_main_init (vlib_main_t *vm)
 {
   unix_main_t *um = &unix_main;
   um->vlib_main = vm;
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (unix_main_init) =
-{
+VLIB_INIT_FUNCTION (unix_main_init) = {
   .runs_before = VLIB_INITS ("unix_input_init"),
 };
-/* *INDENT-ON* */
 
 static int
 unsetup_signal_handlers (int sig)
@@ -88,7 +85,6 @@ unsetup_signal_handlers (int sig)
   return sigaction (sig, &sa, 0);
 }
 
-
 /* allocate this buffer from mheap when setting up the signal handler.
     dangerous to vec_resize it when crashing, mheap itself might have been
     corrupted already */
@@ -97,7 +93,7 @@ int vlib_last_signum = 0;
 uword vlib_last_faulting_address = 0;
 
 static void
-unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
+unix_signal_handler (int signum, siginfo_t *si, ucontext_t *uc)
 {
   uword fatal = 0;
 
@@ -105,8 +101,8 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
   vlib_last_signum = signum;
   vlib_last_faulting_address = (uword) si->si_addr;
 
-  syslog_msg = format (syslog_msg, "received signal %U, PC %U",
-		       format_signal, signum, format_ucontext_pc, uc);
+  syslog_msg = format (syslog_msg, "received signal %U, PC %U", format_signal,
+		       signum, format_ucontext_pc, uc);
 
   if (signum == SIGSEGV)
     syslog_msg = format (syslog_msg, ", faulting address %p", si->si_addr);
@@ -188,11 +184,10 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
     }
   else
     clib_warning ("%s", syslog_msg);
-
 }
 
 static clib_error_t *
-setup_signal_handlers (unix_main_t * um)
+setup_signal_handlers (unix_main_t *um)
 {
   uword i;
   struct sigaction sa;
@@ -235,7 +230,7 @@ setup_signal_handlers (unix_main_t * um)
 }
 
 static void
-unix_error_handler (void *arg, u8 * msg, int msg_len)
+unix_error_handler (void *arg, u8 *msg, int msg_len)
 {
   unix_main_t *um = arg;
 
@@ -258,7 +253,7 @@ unix_error_handler (void *arg, u8 * msg, int msg_len)
 }
 
 void
-vlib_unix_error_report (vlib_main_t * vm, clib_error_t * error)
+vlib_unix_error_report (vlib_main_t *vm, clib_error_t *error)
 {
   unix_main_t *um = &unix_main;
 
@@ -284,8 +279,8 @@ vlib_unix_error_report (vlib_main_t * vm, clib_error_t * error)
 }
 
 static uword
-startup_config_process (vlib_main_t * vm,
-			vlib_node_runtime_t * rt, vlib_frame_t * f)
+startup_config_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
+			vlib_frame_t *f)
 {
   unix_main_t *um = &unix_main;
   u8 *buf = 0;
@@ -341,18 +336,17 @@ startup_config_process (vlib_main_t * vm,
       if (um->log_fd && vec_len (buf))
 	{
 	  u8 *lv = 0;
-	  lv = format (lv, "%U: ***** Startup Config *****\n%v",
-		       format_timeval, 0 /* current bat-time */ ,
-		       0 /* current bat-format */ ,
-		       buf);
+	  lv =
+	    format (lv, "%U: ***** Startup Config *****\n%v", format_timeval,
+		    0 /* current bat-time */, 0 /* current bat-format */, buf);
 	  {
 	    int rv __attribute__ ((unused)) =
 	      write (um->log_fd, lv, vec_len (lv));
 	  }
 	  vec_reset_length (lv);
-	  lv = format (lv, "%U: ***** End Startup Config *****\n",
-		       format_timeval, 0 /* current bat-time */ ,
-		       0 /* current bat-format */ );
+	  lv =
+	    format (lv, "%U: ***** End Startup Config *****\n", format_timeval,
+		    0 /* current bat-time */, 0 /* current bat-format */);
 	  {
 	    int rv __attribute__ ((unused)) =
 	      write (um->log_fd, lv, vec_len (lv));
@@ -372,17 +366,15 @@ startup_config_process (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (startup_config_node,static) = {
-    .function = startup_config_process,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "startup-config-process",
-    .process_log2_n_stack_bytes = 18,
+VLIB_REGISTER_NODE (startup_config_node, static) = {
+  .function = startup_config_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "startup-config-process",
+  .process_log2_n_stack_bytes = 18,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-unix_config (vlib_main_t * vm, unformat_input_t * input)
+unix_config (vlib_main_t *vm, unformat_input_t *input)
 {
   unix_main_t *um = &unix_main;
   clib_error_t *error = 0;
@@ -408,8 +400,8 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	um->flags |= UNIX_FLAG_NOBANNER;
       else if (unformat (input, "cli-prompt %s", &cli_prompt))
 	vlib_unix_cli_set_prompt (cli_prompt);
-      else
-	if (unformat (input, "cli-listen %s", &um->cli_listen_socket.config))
+      else if (unformat (input, "cli-listen %s",
+			 &um->cli_listen_socket.config))
 	;
       else if (unformat (input, "runtime-dir %s", &um->runtime_dir))
 	;
@@ -424,8 +416,8 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "cli-pager-buffer-limit %d",
 			 &um->cli_pager_buffer_limit))
 	;
-      else
-	if (unformat (input, "cli-history-limit %d", &um->cli_history_limit))
+      else if (unformat (input, "cli-history-limit %d",
+			 &um->cli_history_limit))
 	;
       else if (unformat (input, "coredump-size"))
 	{
@@ -434,8 +426,8 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	    {
 	      coredump_size = RLIM_INFINITY;
 	    }
-	  else
-	    if (!unformat (input, "%U", unformat_memory_size, &coredump_size))
+	  else if (!unformat (input, "%U", unformat_memory_size,
+			      &coredump_size))
 	    {
 	      return clib_error_return (0,
 					"invalid coredump-size parameter `%U'",
@@ -479,9 +471,8 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	    {
 	      u8 *lv = 0;
 	      lv = format (0, "%U: ***** Start: PID %d *****\n",
-			   format_timeval, 0 /* current bat-time */ ,
-			   0 /* current bat-format */ ,
-			   getpid ());
+			   format_timeval, 0 /* current bat-time */,
+			   0 /* current bat-format */, getpid ());
 	      {
 		int rv __attribute__ ((unused)) =
 		  write (um->log_fd, lv, vec_len (lv));
@@ -505,11 +496,10 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
     {
       uid_t uid = geteuid ();
       if (uid == 00)
-	um->runtime_dir = format (0, "/run/%s%c",
-				  vlib_default_runtime_dir, 0);
+	um->runtime_dir = format (0, "/run/%s%c", vlib_default_runtime_dir, 0);
       else
-	um->runtime_dir = format (0, "/run/user/%u/%s%c", uid,
-				  vlib_default_runtime_dir, 0);
+	um->runtime_dir =
+	  format (0, "/run/user/%u/%s%c", uid, vlib_default_runtime_dir, 0);
     }
 
   /* Ensure the runtime directory is created */
@@ -523,13 +513,12 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 
   if (um->pidfile)
     {
-      if ((error = vlib_unix_validate_runtime_file (um,
-						    (char *) um->pidfile,
+      if ((error = vlib_unix_validate_runtime_file (um, (char *) um->pidfile,
 						    &um->pidfile)))
 	return error;
 
-      if (((pidfd = open ((char *) um->pidfile,
-			  O_CREAT | O_WRONLY | O_TRUNC, 0644)) < 0))
+      if (((pidfd = open ((char *) um->pidfile, O_CREAT | O_WRONLY | O_TRUNC,
+			  0644)) < 0))
 	{
 	  return clib_error_return_unix (0, "open");
 	}
@@ -540,9 +529,10 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
       openlog (vm->name, LOG_CONS | LOG_PERROR | LOG_PID, LOG_DAEMON);
       clib_error_register_handler (unix_error_handler, um);
 
-      if (!(um->flags & UNIX_FLAG_NODAEMON) && daemon ( /* chdir to / */ 0,
-						       /* stdin/stdout/stderr -> /dev/null */
-						       0) < 0)
+      if (!(um->flags & UNIX_FLAG_NODAEMON) &&
+	  daemon (/* chdir to / */ 0,
+		  /* stdin/stdout/stderr -> /dev/null */
+		  0) < 0)
 	clib_error_return (0, "daemon () fails");
     }
 
@@ -646,7 +636,7 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 VLIB_EARLY_CONFIG_FUNCTION (unix_config, "unix");
 
 static clib_error_t *
-unix_exit (vlib_main_t * vm)
+unix_exit (vlib_main_t *vm)
 {
   /* Close syslog connection. */
   closelog ();
@@ -678,9 +668,9 @@ vlib_thread_stack_init (uword thread_index)
 {
   void *stack;
   ASSERT (thread_index < vec_len (vlib_thread_stacks));
-  stack = clib_mem_vm_map_stack (VLIB_THREAD_STACK_SIZE,
-				 CLIB_MEM_PAGE_SZ_DEFAULT,
-				 "thread stack: thread %u", thread_index);
+  stack =
+    clib_mem_vm_map_stack (VLIB_THREAD_STACK_SIZE, CLIB_MEM_PAGE_SZ_DEFAULT,
+			   "thread stack: thread %u", thread_index);
 
   if (stack == CLIB_MEM_VM_MAP_FAILED)
     clib_panic ("failed to allocate thread %u stack", thread_index);
@@ -692,7 +682,7 @@ vlib_thread_stack_init (uword thread_index)
 int
 vlib_unix_main (int argc, char *argv[])
 {
-  vlib_main_t *vm = &vlib_global_main;	/* one and only time for this! */
+  vlib_main_t *vm = &vlib_global_main; /* one and only time for this! */
   unformat_input_t input;
   clib_error_t *e;
   int i;
@@ -700,8 +690,8 @@ vlib_unix_main (int argc, char *argv[])
   vm->argv = (u8 **) argv;
   vm->name = argv[0];
   vm->heap_base = clib_mem_get_heap ();
-  vm->heap_aligned_base = (void *)
-    (((uword) vm->heap_base) & ~(VLIB_FRAME_ALIGN - 1));
+  vm->heap_aligned_base =
+    (void *) (((uword) vm->heap_base) & ~(VLIB_FRAME_ALIGN - 1));
   ASSERT (vm->heap_base);
 
   clib_time_init (&vm->clib_time);
@@ -726,7 +716,7 @@ vlib_unix_main (int argc, char *argv[])
   unformat_init_command_line (&input, (char **) vm->argv);
   if (vm->init_functions_called == 0)
     vm->init_functions_called = hash_create (0, /* value bytes */ 0);
-  e = vlib_call_all_config_functions (vm, &input, 1 /* early */ );
+  e = vlib_call_all_config_functions (vm, &input, 1 /* early */);
   if (e != 0)
     {
       clib_error_report (e);
@@ -734,7 +724,8 @@ vlib_unix_main (int argc, char *argv[])
     }
   unformat_free (&input);
 
-  /* always load symbols, for signal handler and mheap memory get/put backtrace */
+  /* always load symbols, for signal handler and mheap memory get/put backtrace
+   */
   clib_elf_main_init (vm->name);
 
   vec_validate (vlib_thread_stacks, 0);
@@ -745,8 +736,7 @@ vlib_unix_main (int argc, char *argv[])
 
   vlib_process_start_switch_stack (vm, 0);
   i = clib_calljmp (thread0, (uword) vm,
-		    (void *) (vlib_thread_stacks[0] +
-			      VLIB_THREAD_STACK_SIZE));
+		    (void *) (vlib_thread_stacks[0] + VLIB_THREAD_STACK_SIZE));
   return i;
 }
 

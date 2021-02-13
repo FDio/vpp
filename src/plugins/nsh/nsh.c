@@ -29,19 +29,13 @@ nsh_main_t nsh_main;
 
 /* Uses network order's class and type to register */
 int
-nsh_md2_register_option (u16 class,
-			 u8 type,
-			 u8 option_size,
-			 int add_options (u8 * opt,
-					  u8 * opt_size),
-			 int options (vlib_buffer_t * b,
-				      nsh_tlv_header_t * opt),
-			 int swap_options (vlib_buffer_t * b,
-					   nsh_tlv_header_t * old_opt,
-					   nsh_tlv_header_t * new_opt),
-			 int pop_options (vlib_buffer_t * b,
-					  nsh_tlv_header_t * opt),
-			 u8 * trace (u8 * s, nsh_tlv_header_t * opt))
+nsh_md2_register_option (
+  u16 class, u8 type, u8 option_size, int add_options (u8 *opt, u8 *opt_size),
+  int options (vlib_buffer_t *b, nsh_tlv_header_t *opt),
+  int swap_options (vlib_buffer_t *b, nsh_tlv_header_t *old_opt,
+		    nsh_tlv_header_t *new_opt),
+  int pop_options (vlib_buffer_t *b, nsh_tlv_header_t *opt),
+  u8 *trace (u8 *s, nsh_tlv_header_t *opt))
 {
   nsh_main_t *nm = &nsh_main;
   nsh_option_map_by_key_t key, *key_copy;
@@ -103,16 +97,14 @@ nsh_md2_lookup_option (u16 class, u8 type)
     }
 
   return pool_elt_at_index (nm->nsh_option_mappings, p[0]);
-
 }
 
 /* Uses network order's class and type to unregister */
 int
-nsh_md2_unregister_option (u16 class,
-			   u8 type,
-			   int options (vlib_buffer_t * b,
-					nsh_tlv_header_t * opt),
-			   u8 * trace (u8 * s, nsh_tlv_header_t * opt))
+nsh_md2_unregister_option (u16 class, u8 type,
+			   int options (vlib_buffer_t *b,
+					nsh_tlv_header_t *opt),
+			   u8 *trace (u8 *s, nsh_tlv_header_t *opt))
 {
   nsh_main_t *nm = &nsh_main;
   nsh_option_map_by_key_t key, *key_copy;
@@ -157,21 +149,19 @@ nsh_md2_unregister_option (u16 class,
  *
  */
 static u8 *
-format_nsh_tunnel_with_length (u8 * s, va_list * args)
+format_nsh_tunnel_with_length (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   s = format (s, "unimplemented dev %u", dev_instance);
   return s;
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (nsh_hw_class) = {
   .name = "NSH",
   .format_header = format_nsh_tunnel_with_length,
   .build_rewrite = default_build_rewrite,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
-/* *INDENT-ON* */
 
 void
 nsh_md2_set_next_ioam_export_override (uword next)
@@ -182,7 +172,7 @@ nsh_md2_set_next_ioam_export_override (uword next)
 }
 
 clib_error_t *
-nsh_init (vlib_main_t * vm)
+nsh_init (vlib_main_t *vm)
 {
   vlib_node_t *node;
   nsh_main_t *nm = &nsh_main;
@@ -196,17 +186,16 @@ nsh_init (vlib_main_t * vm)
   /* Various state maintenance mappings */
   nm->nsh_mapping_by_key = hash_create_mem (0, sizeof (u32), sizeof (uword));
 
-  nm->nsh_mapping_by_mapped_key
-    = hash_create_mem (0, sizeof (u32), sizeof (uword));
+  nm->nsh_mapping_by_mapped_key =
+    hash_create_mem (0, sizeof (u32), sizeof (uword));
 
   nm->nsh_entry_by_key = hash_create_mem (0, sizeof (u32), sizeof (uword));
 
-  nm->nsh_proxy_session_by_key
-    =
+  nm->nsh_proxy_session_by_key =
     hash_create_mem (0, sizeof (nsh_proxy_session_by_key_t), sizeof (uword));
 
-  nm->nsh_option_map_by_key
-    = hash_create_mem (0, sizeof (nsh_option_map_by_key_t), sizeof (uword));
+  nm->nsh_option_map_by_key =
+    hash_create_mem (0, sizeof (nsh_option_map_by_key_t), sizeof (uword));
 
   error = nsh_api_init (vm, nm);
   if (error)
@@ -222,10 +211,9 @@ nsh_init (vlib_main_t * vm)
   nm->nsh_classifier_node_index = node->index;
 
   /* Add dispositions to nodes that feed nsh-input */
-  //alagalah - validate we don't really need to use the node value
-  next_node =
-    vlib_node_add_next (vm, vxlan4_gpe_input_node.index,
-			nm->nsh_input_node_index);
+  // alagalah - validate we don't really need to use the node value
+  next_node = vlib_node_add_next (vm, vxlan4_gpe_input_node.index,
+				  nm->nsh_input_node_index);
   vlib_node_add_next (vm, vxlan4_gpe_input_node.index,
 		      nm->nsh_proxy_node_index);
   vlib_node_add_next (vm, vxlan4_gpe_input_node.index,
@@ -270,12 +258,10 @@ nsh_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (nsh_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Network Service Header (NSH)",
+  .version = VPP_BUILD_VER,
+  .description = "Network Service Header (NSH)",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

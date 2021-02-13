@@ -26,52 +26,50 @@
 #include <dpdk/device/dpdk_priv.h>
 #include <vppinfra/error.h>
 
-#define FLOW_IS_ETHERNET_CLASS(f) \
-  (f->type == VNET_FLOW_TYPE_ETHERNET)
+#define FLOW_IS_ETHERNET_CLASS(f) (f->type == VNET_FLOW_TYPE_ETHERNET)
 
-#define FLOW_IS_IPV4_CLASS(f) \
-  ((f->type == VNET_FLOW_TYPE_IP4) || \
-    (f->type == VNET_FLOW_TYPE_IP4_N_TUPLE) || \
-    (f->type == VNET_FLOW_TYPE_IP4_N_TUPLE_TAGGED) || \
-    (f->type == VNET_FLOW_TYPE_IP4_VXLAN) || \
-    (f->type == VNET_FLOW_TYPE_IP4_GTPC) || \
-    (f->type == VNET_FLOW_TYPE_IP4_GTPU) || \
-    (f->type == VNET_FLOW_TYPE_IP4_L2TPV3OIP) || \
-    (f->type == VNET_FLOW_TYPE_IP4_IPSEC_ESP) || \
-    (f->type == VNET_FLOW_TYPE_IP4_IPSEC_AH))
+#define FLOW_IS_IPV4_CLASS(f)                                                 \
+  ((f->type == VNET_FLOW_TYPE_IP4) ||                                         \
+   (f->type == VNET_FLOW_TYPE_IP4_N_TUPLE) ||                                 \
+   (f->type == VNET_FLOW_TYPE_IP4_N_TUPLE_TAGGED) ||                          \
+   (f->type == VNET_FLOW_TYPE_IP4_VXLAN) ||                                   \
+   (f->type == VNET_FLOW_TYPE_IP4_GTPC) ||                                    \
+   (f->type == VNET_FLOW_TYPE_IP4_GTPU) ||                                    \
+   (f->type == VNET_FLOW_TYPE_IP4_L2TPV3OIP) ||                               \
+   (f->type == VNET_FLOW_TYPE_IP4_IPSEC_ESP) ||                               \
+   (f->type == VNET_FLOW_TYPE_IP4_IPSEC_AH))
 
-#define FLOW_IS_IPV6_CLASS(f) \
-  ((f->type == VNET_FLOW_TYPE_IP6) || \
-    (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE) || \
-    (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE_TAGGED) || \
-    (f->type == VNET_FLOW_TYPE_IP6_VXLAN))
+#define FLOW_IS_IPV6_CLASS(f)                                                 \
+  ((f->type == VNET_FLOW_TYPE_IP6) ||                                         \
+   (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE) ||                                 \
+   (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE_TAGGED) ||                          \
+   (f->type == VNET_FLOW_TYPE_IP6_VXLAN))
 
 /* check if flow is VLAN sensitive */
-#define FLOW_HAS_VLAN_TAG(f) \
-  ((f->type == VNET_FLOW_TYPE_IP4_N_TUPLE_TAGGED) || \
-    (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE_TAGGED))
+#define FLOW_HAS_VLAN_TAG(f)                                                  \
+  ((f->type == VNET_FLOW_TYPE_IP4_N_TUPLE_TAGGED) ||                          \
+   (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE_TAGGED))
 
 /* check if flow is L3 type */
-#define FLOW_IS_L3_TYPE(f) \
-  ((f->type == VNET_FLOW_TYPE_IP4) || \
-    (f->type == VNET_FLOW_TYPE_IP6))
+#define FLOW_IS_L3_TYPE(f)                                                    \
+  ((f->type == VNET_FLOW_TYPE_IP4) || (f->type == VNET_FLOW_TYPE_IP6))
 
 /* check if flow is L4 type */
-#define FLOW_IS_L4_TYPE(f) \
-  ((f->type == VNET_FLOW_TYPE_IP4_N_TUPLE) || \
-    (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE) || \
-    (f->type == VNET_FLOW_TYPE_IP4_N_TUPLE_TAGGED) || \
-    (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE_TAGGED))
+#define FLOW_IS_L4_TYPE(f)                                                    \
+  ((f->type == VNET_FLOW_TYPE_IP4_N_TUPLE) ||                                 \
+   (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE) ||                                 \
+   (f->type == VNET_FLOW_TYPE_IP4_N_TUPLE_TAGGED) ||                          \
+   (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE_TAGGED))
 
 /* check if flow is L4 tunnel type */
-#define FLOW_IS_L4_TUNNEL_TYPE(f) \
-  ((f->type == VNET_FLOW_TYPE_IP4_VXLAN) || \
-    (f->type == VNET_FLOW_TYPE_IP6_VXLAN) || \
-    (f->type == VNET_FLOW_TYPE_IP4_GTPC) || \
-    (f->type == VNET_FLOW_TYPE_IP4_GTPU))
+#define FLOW_IS_L4_TUNNEL_TYPE(f)                                             \
+  ((f->type == VNET_FLOW_TYPE_IP4_VXLAN) ||                                   \
+   (f->type == VNET_FLOW_TYPE_IP6_VXLAN) ||                                   \
+   (f->type == VNET_FLOW_TYPE_IP4_GTPC) ||                                    \
+   (f->type == VNET_FLOW_TYPE_IP4_GTPU))
 
 /* constant structs */
-static const struct rte_flow_attr ingress = {.ingress = 1 };
+static const struct rte_flow_attr ingress = { .ingress = 1 };
 
 static inline bool
 mac_address_is_all_zero (const u8 addr[6])
@@ -86,17 +84,16 @@ mac_address_is_all_zero (const u8 addr[6])
 }
 
 static inline void
-dpdk_flow_convert_rss_types (u64 type, u64 * dpdk_rss_type)
+dpdk_flow_convert_rss_types (u64 type, u64 *dpdk_rss_type)
 {
-#define BIT_IS_SET(v, b) \
-  ((v) & (u64)1<<(b))
+#define BIT_IS_SET(v, b) ((v) & (u64) 1 << (b))
 
   *dpdk_rss_type = 0;
 
 #undef _
-#define _(n, f, s) \
-      if (n != -1 && BIT_IS_SET(type, n)) \
-        *dpdk_rss_type |= f;
+#define _(n, f, s)                                                            \
+  if (n != -1 && BIT_IS_SET (type, n))                                        \
+    *dpdk_rss_type |= f;
 
   foreach_dpdk_rss_hf
 #undef _
@@ -131,17 +128,17 @@ dpdk_flow_convert_rss_func (vnet_rss_function_t func)
 }
 
 static int
-dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
+dpdk_flow_add (dpdk_device_t *xd, vnet_flow_t *f, dpdk_flow_entry_t *fe)
 {
-  struct rte_flow_item_eth eth[2] = { };
-  struct rte_flow_item_ipv4 ip4[2] = { };
-  struct rte_flow_item_ipv6 ip6[2] = { };
-  struct rte_flow_item_udp udp[2] = { };
-  struct rte_flow_item_tcp tcp[2] = { };
-  struct rte_flow_item_gtp gtp[2] = { };
-  struct rte_flow_item_l2tpv3oip l2tp[2] = { };
-  struct rte_flow_item_esp esp[2] = { };
-  struct rte_flow_item_ah ah[2] = { };
+  struct rte_flow_item_eth eth[2] = {};
+  struct rte_flow_item_ipv4 ip4[2] = {};
+  struct rte_flow_item_ipv6 ip6[2] = {};
+  struct rte_flow_item_udp udp[2] = {};
+  struct rte_flow_item_tcp tcp[2] = {};
+  struct rte_flow_item_gtp gtp[2] = {};
+  struct rte_flow_item_l2tpv3oip l2tp[2] = {};
+  struct rte_flow_item_esp esp[2] = {};
+  struct rte_flow_item_ah ah[2] = {};
   struct rte_flow_action_mark mark = { 0 };
   struct rte_flow_action_queue queue = { 0 };
   struct rte_flow_action_rss rss = { 0 };
@@ -284,8 +281,7 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
       item->type = RTE_FLOW_ITEM_TYPE_IPV6;
 
       if ((ip6_ptr->src_addr.mask.as_u64[0] == 0) &&
-	  (ip6_ptr->src_addr.mask.as_u64[1] == 0) &&
-	  (!ip6_ptr->protocol.mask))
+	  (ip6_ptr->src_addr.mask.as_u64[1] == 0) && (!ip6_ptr->protocol.mask))
 	{
 	  item->spec = NULL;
 	  item->mask = NULL;
@@ -413,14 +409,12 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 	{
 	  u32 vni = f->ip4_vxlan.vni;
 
-	  vxlan_header_t spec_hdr = {
-	    .flags = VXLAN_FLAGS_I,
-	    .vni_reserved = clib_host_to_net_u32 (vni << 8)
-	  };
-	  vxlan_header_t mask_hdr = {
-	    .flags = 0xff,
-	    .vni_reserved = clib_host_to_net_u32 (((u32) - 1) << 8)
-	  };
+	  vxlan_header_t spec_hdr = { .flags = VXLAN_FLAGS_I,
+				      .vni_reserved =
+					clib_host_to_net_u32 (vni << 8) };
+	  vxlan_header_t mask_hdr = { .flags = 0xff,
+				      .vni_reserved = clib_host_to_net_u32 (
+					((u32) -1) << 8) };
 
 	  clib_memset (raw, 0, sizeof raw);
 	  raw[0].item.relative = 1;
@@ -544,8 +538,8 @@ done:
 }
 
 int
-dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
-		  u32 flow_index, uword * private_data)
+dpdk_flow_ops_fn (vnet_main_t *vnm, vnet_flow_dev_op_t op, u32 dev_instance,
+		  u32 flow_index, uword *private_data)
 {
   dpdk_main_t *dm = &dpdk_main;
   vnet_flow_t *flow = vnet_get_flow (flow_index);
@@ -602,14 +596,13 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
     }
 
   /* if we need to mark packets, assign one mark */
-  if (flow->actions & (VNET_FLOW_ACTION_MARK |
-		       VNET_FLOW_ACTION_REDIRECT_TO_NODE |
-		       VNET_FLOW_ACTION_BUFFER_ADVANCE))
+  if (flow->actions &
+      (VNET_FLOW_ACTION_MARK | VNET_FLOW_ACTION_REDIRECT_TO_NODE |
+       VNET_FLOW_ACTION_BUFFER_ADVANCE))
     {
       /* reserve slot 0 */
       if (xd->flow_lookup_entries == 0)
-	pool_get_aligned (xd->flow_lookup_entries, fle,
-			  CLIB_CACHE_LINE_BYTES);
+	pool_get_aligned (xd->flow_lookup_entries, fle, CLIB_CACHE_LINE_BYTES);
       pool_get_aligned (xd->flow_lookup_entries, fle, CLIB_CACHE_LINE_BYTES);
       fe->mark = fle - xd->flow_lookup_entries;
 
@@ -666,8 +659,8 @@ done:
 	}
     }
 disable_rx_offload:
-  if ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) != 0
-      && pool_elts (xd->flow_entries) == 0)
+  if ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) != 0 &&
+      pool_elts (xd->flow_entries) == 0)
     {
       xd->flags &= ~DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD;
       dpdk_device_setup (xd);
@@ -677,7 +670,7 @@ disable_rx_offload:
 }
 
 u8 *
-format_dpdk_flow (u8 * s, va_list * args)
+format_dpdk_flow (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   u32 flow_index = va_arg (*args, u32);
@@ -694,7 +687,7 @@ format_dpdk_flow (u8 * s, va_list * args)
 		  xd->last_flow_error.type);
       s = format (s, "%-25s: %s\n", "last DPDK error message",
 		  xd->last_flow_error.message ? xd->last_flow_error.message :
-		  "n/a");
+						"n/a");
       return s;
     }
 

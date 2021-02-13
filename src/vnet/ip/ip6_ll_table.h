@@ -46,9 +46,10 @@ typedef struct ip6_ll_table_t_
  *  The prefix to lookup
  *
  * @return
- *  The index of the fib_entry_t for the best match, which may be the default route
+ *  The index of the fib_entry_t for the best match, which may be the default
+ * route
  */
-extern fib_node_index_t ip6_ll_table_lookup (const ip6_ll_prefix_t * prefix);
+extern fib_node_index_t ip6_ll_table_lookup (const ip6_ll_prefix_t *prefix);
 
 /**
  * @brief
@@ -61,8 +62,8 @@ extern fib_node_index_t ip6_ll_table_lookup (const ip6_ll_prefix_t * prefix);
  *  The index of the fib_entry_t for the exact match, or INVALID
  *  is there is no match.
  */
-extern fib_node_index_t ip6_ll_table_lookup_exact_match
-  (const ip6_ll_prefix_t * prefix);
+extern fib_node_index_t
+ip6_ll_table_lookup_exact_match (const ip6_ll_prefix_t *prefix);
 
 /**
  * @brief
@@ -76,8 +77,9 @@ extern fib_node_index_t ip6_ll_table_lookup_exact_match
  * @return
  *  the index of the fib_entry_t that is created (or existed already).
  */
-extern fib_node_index_t ip6_ll_table_entry_update
-  (const ip6_ll_prefix_t * prefix, fib_route_path_flags_t flags);
+extern fib_node_index_t
+ip6_ll_table_entry_update (const ip6_ll_prefix_t *prefix,
+			   fib_route_path_flags_t flags);
 
 /**
  * @brief
@@ -86,7 +88,7 @@ extern fib_node_index_t ip6_ll_table_entry_update
  * @param prefix
  *  The prefix for the entry to remove
  */
-extern void ip6_ll_table_entry_delete (const ip6_ll_prefix_t * prefix);
+extern void ip6_ll_table_entry_delete (const ip6_ll_prefix_t *prefix);
 
 /**
  * @brief For use in the data plane. Get the underlying ip6 FIB

@@ -43,8 +43,8 @@ static uword *lisp_gpe_tunnel_db;
  * @return 0 on success.
  */
 u8 *
-lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
-			       const lisp_gpe_adjacency_t * ladj,
+lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t *lgt,
+			       const lisp_gpe_adjacency_t *ladj,
 			       lisp_gpe_next_protocol_e payload_proto)
 {
   lisp_gpe_header_t *lisp0;
@@ -119,13 +119,13 @@ lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
   lisp0->ver_res = 0;
   lisp0->res = 0;
   lisp0->next_protocol = payload_proto;
-  lisp0->iid = clib_host_to_net_u32 (ladj->vni) >> 8;	/* first 24 bits only */
+  lisp0->iid = clib_host_to_net_u32 (ladj->vni) >> 8; /* first 24 bits only */
 
   return (rw);
 }
 
 static lisp_gpe_tunnel_t *
-lisp_gpe_tunnel_db_find (const lisp_gpe_tunnel_key_t * key)
+lisp_gpe_tunnel_db_find (const lisp_gpe_tunnel_key_t *key)
 {
   uword *p;
 
@@ -145,7 +145,7 @@ lisp_gpe_tunnel_get_i (index_t lgti)
 }
 
 index_t
-lisp_gpe_tunnel_find_or_create_and_lock (const locator_pair_t * pair,
+lisp_gpe_tunnel_find_or_create_and_lock (const locator_pair_t *pair,
 					 u32 rloc_fib_index)
 {
   lisp_gpe_tunnel_key_t key = {
@@ -176,10 +176,8 @@ lisp_gpe_tunnel_find_or_create_and_lock (const locator_pair_t * pair,
        */
       ip_address_to_fib_prefix (&lgt->key->rmt, &pfx);
 
-      lgt->fib_entry_index = fib_table_entry_special_add (rloc_fib_index,
-							  &pfx,
-							  FIB_SOURCE_RR,
-							  FIB_ENTRY_FLAG_NONE);
+      lgt->fib_entry_index = fib_table_entry_special_add (
+	rloc_fib_index, &pfx, FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE);
 
       hash_set_mem (lisp_gpe_tunnel_db, lgt->key,
 		    (lgt - lisp_gpe_tunnel_pool));
@@ -214,18 +212,17 @@ lisp_gpe_tunnel_get (index_t lgti)
 
 /** Format LISP-GPE tunnel. */
 u8 *
-format_lisp_gpe_tunnel (u8 * s, va_list * args)
+format_lisp_gpe_tunnel (u8 *s, va_list *args)
 {
   lisp_gpe_tunnel_t *lgt = va_arg (*args, lisp_gpe_tunnel_t *);
 
   s = format (s, "tunnel %d\n", lgt - lisp_gpe_tunnel_pool);
-  s = format (s, " fib-index: %d, locks:%d \n",
-	      lgt->key->fib_index, lgt->locks);
+  s =
+    format (s, " fib-index: %d, locks:%d \n", lgt->key->fib_index, lgt->locks);
   s = format (s, " lisp ver 0\n");
 
   s = format (s, " locator-pair:\n");
-  s = format (s, "  local: %U remote: %U\n",
-	      format_ip_address, &lgt->key->lcl,
+  s = format (s, "  local: %U remote: %U\n", format_ip_address, &lgt->key->lcl,
 	      format_ip_address, &lgt->key->rmt);
   s = format (s, " RLOC FIB entry: %d\n", lgt->fib_entry_index);
 
@@ -236,9 +233,8 @@ format_lisp_gpe_tunnel (u8 * s, va_list * args)
  * CLI command to show LISP-GPE tunnels.
  */
 static clib_error_t *
-show_lisp_gpe_tunnel_command_fn (vlib_main_t * vm,
-				 unformat_input_t * input,
-				 vlib_cli_command_t * cmd)
+show_lisp_gpe_tunnel_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				 vlib_cli_command_t *cmd)
 {
   lisp_gpe_tunnel_t *lgt;
   index_t index;
@@ -253,31 +249,26 @@ show_lisp_gpe_tunnel_command_fn (vlib_main_t * vm,
     }
   else
     {
-      /* *INDENT-OFF* */
+
       pool_foreach (lgt, lisp_gpe_tunnel_pool)
-       {
-	vlib_cli_output (vm, "%U", format_lisp_gpe_tunnel, lgt);
-      }
-      /* *INDENT-ON* */
+	{
+	  vlib_cli_output (vm, "%U", format_lisp_gpe_tunnel, lgt);
+	}
     }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_lisp_gpe_tunnel_command, static) =
-{
+VLIB_CLI_COMMAND (show_lisp_gpe_tunnel_command, static) = {
   .path = "show gpe tunnel",
   .function = show_lisp_gpe_tunnel_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-lisp_gpe_tunnel_module_init (vlib_main_t * vm)
+lisp_gpe_tunnel_module_init (vlib_main_t *vm)
 {
-  lisp_gpe_tunnel_db = hash_create_mem (0,
-					sizeof (lisp_gpe_tunnel_key_t),
-					sizeof (uword));
+  lisp_gpe_tunnel_db =
+    hash_create_mem (0, sizeof (lisp_gpe_tunnel_key_t), sizeof (uword));
 
   return (NULL);
 }

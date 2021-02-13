@@ -24,11 +24,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -40,36 +40,31 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-
-#define foreach_pg_api_msg                                              \
-_(PG_CREATE_INTERFACE, pg_create_interface)                             \
-_(PG_CAPTURE, pg_capture)                                               \
-_(PG_ENABLE_DISABLE, pg_enable_disable)                                 \
-_(PG_INTERFACE_ENABLE_DISABLE_COALESCE, pg_interface_enable_disable_coalesce)
+#define foreach_pg_api_msg                                                    \
+  _ (PG_CREATE_INTERFACE, pg_create_interface)                                \
+  _ (PG_CAPTURE, pg_capture)                                                  \
+  _ (PG_ENABLE_DISABLE, pg_enable_disable)                                    \
+  _ (PG_INTERFACE_ENABLE_DISABLE_COALESCE,                                    \
+     pg_interface_enable_disable_coalesce)
 
 static void
-vl_api_pg_create_interface_t_handler (vl_api_pg_create_interface_t * mp)
+vl_api_pg_create_interface_t_handler (vl_api_pg_create_interface_t *mp)
 {
   vl_api_pg_create_interface_reply_t *rmp;
   int rv = 0;
 
   pg_main_t *pg = &pg_main;
-  u32 pg_if_id = pg_interface_add_or_get (pg, ntohl (mp->interface_id),
-					  mp->gso_enabled,
-					  ntohl (mp->gso_size), 0);
+  u32 pg_if_id = pg_interface_add_or_get (
+    pg, ntohl (mp->interface_id), mp->gso_enabled, ntohl (mp->gso_size), 0);
   pg_interface_t *pi = pool_elt_at_index (pg->interfaces, pg_if_id);
 
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_PG_CREATE_INTERFACE_REPLY,
-  ({
-    rmp->sw_if_index = ntohl(pi->sw_if_index);
-  }));
-  /* *INDENT-ON* */
+  REPLY_MACRO2 (VL_API_PG_CREATE_INTERFACE_REPLY,
+		({ rmp->sw_if_index = ntohl (pi->sw_if_index); }));
 }
 
 static void
-  vl_api_pg_interface_enable_disable_coalesce_t_handler
-  (vl_api_pg_interface_enable_disable_coalesce_t * mp)
+vl_api_pg_interface_enable_disable_coalesce_t_handler (
+  vl_api_pg_interface_enable_disable_coalesce_t *mp)
 {
   vl_api_pg_interface_enable_disable_coalesce_reply_t *rmp;
   int rv = 0;
@@ -103,7 +98,7 @@ static void
 }
 
 static void
-vl_api_pg_capture_t_handler (vl_api_pg_capture_t * mp)
+vl_api_pg_capture_t_handler (vl_api_pg_capture_t *mp)
 {
   vl_api_pg_capture_reply_t *rmp;
   int rv = 0;
@@ -146,7 +141,7 @@ vl_api_pg_capture_t_handler (vl_api_pg_capture_t * mp)
 }
 
 static void
-vl_api_pg_enable_disable_t_handler (vl_api_pg_enable_disable_t * mp)
+vl_api_pg_enable_disable_t_handler (vl_api_pg_enable_disable_t *mp)
 {
   vl_api_pg_enable_disable_reply_t *rmp;
   int rv = 0;
@@ -175,25 +170,22 @@ vl_api_pg_enable_disable_t_handler (vl_api_pg_enable_disable_t * mp)
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_pg;
 #undef _
 }
 
 static clib_error_t *
-pg_api_hookup (vlib_main_t * vm)
+pg_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_pg_api_msg;
 #undef _
 

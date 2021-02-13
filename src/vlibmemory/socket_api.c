@@ -30,7 +30,7 @@
 
 #include <vlibmemory/vl_memory_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_typedefs
 
@@ -47,10 +47,10 @@
 
 socket_main_t socket_main;
 
-#define SOCK_API_REG_HANDLE_BIT (1<<31)
+#define SOCK_API_REG_HANDLE_BIT (1 << 31)
 
 static u32
-sock_api_registration_handle (vl_api_registration_t * regp)
+sock_api_registration_handle (vl_api_registration_t *regp)
 {
   ASSERT (regp->vl_api_registration_pool_index < SOCK_API_REG_HANDLE_BIT);
   return regp->vl_api_registration_pool_index | SOCK_API_REG_HANDLE_BIT;
@@ -69,7 +69,7 @@ vl_socket_api_registration_handle_is_valid (u32 reg_handle)
 }
 
 void
-vl_sock_api_dump_clients (vlib_main_t * vm, api_main_t * am)
+vl_sock_api_dump_clients (vlib_main_t *vm, api_main_t *am)
 {
   vl_api_registration_t *reg;
   socket_main_t *sm = &socket_main;
@@ -84,15 +84,15 @@ vl_sock_api_dump_clients (vlib_main_t * vm, api_main_t * am)
 
   vlib_cli_output (vm, "Socket clients");
   vlib_cli_output (vm, "%20s %8s", "Name", "Fildesc");
-    /* *INDENT-OFF* */
-    pool_foreach (reg, sm->registration_pool)
-     {
-        if (reg->registration_type == REGISTRATION_TYPE_SOCKET_SERVER) {
-            f = vl_api_registration_file (reg);
-            vlib_cli_output (vm, "%20s %8d", reg->name, f->file_descriptor);
-        }
+
+  pool_foreach (reg, sm->registration_pool)
+    {
+      if (reg->registration_type == REGISTRATION_TYPE_SOCKET_SERVER)
+	{
+	  f = vl_api_registration_file (reg);
+	  vlib_cli_output (vm, "%20s %8d", reg->name, f->file_descriptor);
+	}
     }
-/* *INDENT-ON* */
 }
 
 vl_api_registration_t *
@@ -111,7 +111,7 @@ vl_socket_api_client_handle_to_registration (u32 handle)
 }
 
 void
-vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
+vl_socket_api_send (vl_api_registration_t *rp, u8 *elem)
 {
 #if CLIB_DEBUG > 1
   u32 output_length;
@@ -149,8 +149,8 @@ vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
   unix_save_error (&unix_main, error);
 
   /* If we didn't finish sending everything, wait for tx space */
-  if (vec_len (sock_rp->output_vector) > 0
-      && !(cf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE))
+  if (vec_len (sock_rp->output_vector) > 0 &&
+      !(cf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE))
     {
       cf->flags |= UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
       fm->file_update (cf, UNIX_FILE_UPDATE_MODIFY);
@@ -158,8 +158,7 @@ vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
 
 #if CLIB_DEBUG > 1
   output_length = sizeof (*mb) + ntohl (mb->data_len);
-  clib_warning ("wrote %u bytes to fd %d", output_length,
-		cf->file_descriptor);
+  clib_warning ("wrote %u bytes to fd %d", output_length, cf->file_descriptor);
 #endif
 
   vl_msg_api_free ((void *) elem);
@@ -194,7 +193,7 @@ vl_socket_free_registration_index (u32 pool_index)
 }
 
 void
-vl_socket_process_api_msg (vl_api_registration_t * rp, i8 * input_v)
+vl_socket_process_api_msg (vl_api_registration_t *rp, i8 *input_v)
 {
   msgbuf_t *mbp = (msgbuf_t *) input_v;
 
@@ -221,7 +220,7 @@ vl_socket_process_api_msg (vl_api_registration_t * rp, i8 * input_v)
  * pointer saved in registration's unprocessed_input.
  */
 clib_error_t *
-vl_socket_read_ready (clib_file_t * uf)
+vl_socket_read_ready (clib_file_t *uf)
 {
   clib_file_main_t *fm = &file_main;
   vlib_main_t *vm = vlib_get_main ();
@@ -252,11 +251,13 @@ vl_socket_read_ready (clib_file_t * uf)
 	  clib_file_del (fm, uf);
 	  vl_socket_free_registration_index (reg_index);
 	}
-      /* EAGAIN means we do not close the file, but no data to process anyway. */
+      /* EAGAIN means we do not close the file, but no data to process anyway.
+       */
       return 0;
     }
 
-  /* Fake smaller length teporarily, so input_buffer can be used as msg_buffer. */
+  /* Fake smaller length teporarily, so input_buffer can be used as msg_buffer.
+   */
   _vec_len (socket_main.input_buffer) = n;
 
   /*
@@ -321,11 +322,11 @@ vl_socket_read_ready (clib_file_t * uf)
       a->reg_index = reg_index;
       a->data = data_for_process;
 
-      vlib_process_signal_event (vm, vl_api_clnt_node.index,
-				 SOCKET_READ_EVENT,
+      vlib_process_signal_event (vm, vl_api_clnt_node.index, SOCKET_READ_EVENT,
 				 a - socket_main.process_args);
       if (vec_len (msg_buffer) > msgbuf_len)
-	/* There are some fragments left. Shrink the msg_buffer to simplify logic. */
+	/* There are some fragments left. Shrink the msg_buffer to simplify
+	 * logic. */
 	vec_delete (msg_buffer, msgbuf_len, 0);
       else
 	/* We are done with msg_buffer. */
@@ -339,7 +340,7 @@ vl_socket_read_ready (clib_file_t * uf)
 }
 
 clib_error_t *
-vl_socket_write_ready (clib_file_t * uf)
+vl_socket_write_ready (clib_file_t *uf)
 {
   clib_file_main_t *fm = &file_main;
   vl_api_registration_t *rp;
@@ -374,8 +375,8 @@ vl_socket_write_ready (clib_file_t * uf)
     }
 
   vec_delete (rp->output_vector, total_bytes - remaining_bytes, 0);
-  if (vec_len (rp->output_vector) <= 0
-      && (uf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE))
+  if (vec_len (rp->output_vector) <= 0 &&
+      (uf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE))
     {
       uf->flags &= ~UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
       fm->file_update (uf, UNIX_FILE_UPDATE_MODIFY);
@@ -385,7 +386,7 @@ vl_socket_write_ready (clib_file_t * uf)
 }
 
 clib_error_t *
-vl_socket_error_ready (clib_file_t * uf)
+vl_socket_error_ready (clib_file_t *uf)
 {
   vl_api_registration_t *rp;
   clib_file_main_t *fm = &file_main;
@@ -398,7 +399,7 @@ vl_socket_error_ready (clib_file_t * uf)
 }
 
 void
-socksvr_file_add (clib_file_main_t * fm, int fd)
+socksvr_file_add (clib_file_main_t *fm, int fd)
 {
   vl_api_registration_t *rp;
   clib_file_t template = { 0 };
@@ -419,7 +420,7 @@ socksvr_file_add (clib_file_main_t * fm, int fd)
 }
 
 static clib_error_t *
-socksvr_accept_ready (clib_file_t * uf)
+socksvr_accept_ready (clib_file_t *uf)
 {
   clib_file_main_t *fm = &file_main;
   socket_main_t *sm = &socket_main;
@@ -436,7 +437,7 @@ socksvr_accept_ready (clib_file_t * uf)
 }
 
 static clib_error_t *
-socksvr_bogus_write (clib_file_t * uf)
+socksvr_bogus_write (clib_file_t *uf)
 {
   clib_warning ("why am I here?");
   return 0;
@@ -446,7 +447,7 @@ socksvr_bogus_write (clib_file_t * uf)
  * vl_api_sockclnt_create_t_handler
  */
 void
-vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
+vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t *mp)
 {
   vl_api_registration_t *regp;
   vl_api_sockclnt_create_reply_t *rp;
@@ -470,17 +471,15 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
   rp->response = htonl (rv);
   rp->count = htons (nmsg);
 
-  /* *INDENT-OFF* */
-  hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
-  ({
-    rp->message_table[i].index = htons(hp->value[0]);
-    (void) strncpy_s((char *)rp->message_table[i].name,
-                     64 /* bytes of space at dst */,
-                     (char *)hp->key,
-                     64-1 /* chars to copy, without zero byte. */);
-    i++;
-  }));
-  /* *INDENT-ON* */
+  hash_foreach_pair (hp, am->msg_index_by_name_and_crc, ({
+		       rp->message_table[i].index = htons (hp->value[0]);
+		       (void) strncpy_s (
+			 (char *) rp->message_table[i].name,
+			 64 /* bytes of space at dst */, (char *) hp->key,
+			 64 - 1 /* chars to copy, without zero byte. */);
+		       i++;
+		     }));
+
   vl_api_send_msg (regp, (u8 *) rp);
 }
 
@@ -488,7 +487,7 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
  * vl_api_sockclnt_delete_t_handler
  */
 void
-vl_api_sockclnt_delete_t_handler (vl_api_sockclnt_delete_t * mp)
+vl_api_sockclnt_delete_t_handler (vl_api_sockclnt_delete_t *mp)
 {
   vl_api_registration_t *regp;
   vl_api_sockclnt_delete_reply_t *rp;
@@ -550,7 +549,7 @@ vl_sock_api_send_fd_msg (int socket_fd, int fds[], int n_fds)
 }
 
 vl_api_shm_elem_config_t *
-vl_api_make_shm_config (vl_api_sock_init_shm_t * mp)
+vl_api_make_shm_config (vl_api_sock_init_shm_t *mp)
 {
   vl_api_shm_elem_config_t *config = 0, *c;
   u64 cfg;
@@ -595,7 +594,7 @@ vl_api_make_shm_config (vl_api_sock_init_shm_t * mp)
 	  cfg = mp->configs[i];
 	  /* Pretty much a hack but it avoids defining our own api type
 	   * in memclnt.api */
-	  c = (vl_api_shm_elem_config_t *) & cfg;
+	  c = (vl_api_shm_elem_config_t *) &cfg;
 	  config[i].type = c->type;
 	  config[i].count = c->count;
 	  config[i].size = c->size;
@@ -608,7 +607,7 @@ vl_api_make_shm_config (vl_api_sock_init_shm_t * mp)
  * Bootstrap shm api using the socket api
  */
 void
-vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
+vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t *mp)
 {
   vl_api_sock_init_shm_reply_t *rmp;
   ssvm_private_t _memfd_private, *memfd = &_memfd_private;
@@ -629,7 +628,7 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
     }
   if (regp->registration_type != REGISTRATION_TYPE_SOCKET_SERVER)
     {
-      rv = -31;			/* VNET_API_ERROR_INVALID_REGISTRATION */
+      rv = -31; /* VNET_API_ERROR_INVALID_REGISTRATION */
       goto reply;
     }
 
@@ -671,8 +670,8 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
    */
   config = vl_api_make_shm_config (mp);
   vlib_rp = (svm_region_t *) a->baseva;
-  vl_init_shmem (vlib_rp, config, 1 /* is_vlib (dont-care) */ ,
-		 1 /* is_private */ );
+  vl_init_shmem (vlib_rp, config, 1 /* is_vlib (dont-care) */,
+		 1 /* is_private */);
 
   /* Remember who created this. Needs to be post vl_init_shmem */
   shmem_hdr = (vl_shmem_hdr_t *) vlib_rp->user_ctx;
@@ -723,13 +722,13 @@ reply:
   vl_sock_api_send_fd_msg (cf->file_descriptor, &memfd->fd, 1);
 }
 
-#define foreach_vlib_api_msg                    	\
-  _(SOCKCLNT_CREATE, sockclnt_create, 1)             	\
-  _(SOCKCLNT_DELETE, sockclnt_delete, 1)		\
-  _(SOCK_INIT_SHM, sock_init_shm, 1)
+#define foreach_vlib_api_msg                                                  \
+  _ (SOCKCLNT_CREATE, sockclnt_create, 1)                                     \
+  _ (SOCKCLNT_DELETE, sockclnt_delete, 1)                                     \
+  _ (SOCK_INIT_SHM, sock_init_shm, 1)
 
 clib_error_t *
-vl_sock_api_init (vlib_main_t * vm)
+vl_sock_api_init (vlib_main_t *vm)
 {
   clib_file_main_t *fm = &file_main;
   clib_file_t template = { 0 };
@@ -742,13 +741,10 @@ vl_sock_api_init (vlib_main_t * vm)
   if (sm->socket_name == 0)
     return 0;
 
-#define _(N,n,t)						\
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), t);
+#define _(N, n, t)                                                            \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), t);
   foreach_vlib_api_msg;
 #undef _
 
@@ -776,7 +772,7 @@ vl_sock_api_init (vlib_main_t * vm)
 }
 
 static clib_error_t *
-socket_exit (vlib_main_t * vm)
+socket_exit (vlib_main_t *vm)
 {
   socket_main_t *sm = &socket_main;
   vl_api_registration_t *rp;
@@ -785,13 +781,13 @@ socket_exit (vlib_main_t * vm)
   if (sm->registration_pool)
     {
       u32 index;
-        /* *INDENT-OFF* */
-        pool_foreach (rp, sm->registration_pool)  {
-          vl_api_registration_del_file (rp);
-          index = rp->vl_api_registration_pool_index;
-          vl_socket_free_registration_index (index);
-        }
-/* *INDENT-ON* */
+
+      pool_foreach (rp, sm->registration_pool)
+	{
+	  vl_api_registration_del_file (rp);
+	  index = rp->vl_api_registration_pool_index;
+	  vl_socket_free_registration_index (index);
+	}
     }
 
   return 0;
@@ -800,7 +796,7 @@ socket_exit (vlib_main_t * vm)
 VLIB_MAIN_LOOP_EXIT_FUNCTION (socket_exit);
 
 static clib_error_t *
-socksvr_config (vlib_main_t * vm, unformat_input_t * input)
+socksvr_config (vlib_main_t *vm, unformat_input_t *input)
 {
   socket_main_t *sm = &socket_main;
 
@@ -819,8 +815,8 @@ socksvr_config (vlib_main_t * vm, unformat_input_t * input)
     }
 
   if (!vec_len (sm->socket_name))
-    sm->socket_name = format (0, "%s/%s", vlib_unix_get_runtime_dir (),
-			      API_SOCKET_FILENAME);
+    sm->socket_name =
+      format (0, "%s/%s", vlib_unix_get_runtime_dir (), API_SOCKET_FILENAME);
   vec_terminate_c_string (sm->socket_name);
 
   return 0;

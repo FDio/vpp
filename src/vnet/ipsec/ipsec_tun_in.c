@@ -27,24 +27,24 @@
 #include <vnet/ip/ip4_input.h>
 
 /* Statistics (not really errors) */
-#define foreach_ipsec_tun_protect_input_error                     \
-  _(RX, "good packets received")                                  \
-  _(DISABLED, "ipsec packets received on disabled interface")     \
-  _(NO_TUNNEL, "no matching tunnel")                              \
-  _(TUNNEL_MISMATCH, "SPI-tunnel mismatch")                       \
-  _(NAT_KEEPALIVE, "NAT Keepalive")                               \
-  _(TOO_SHORT, "Too Short")                                       \
-  _(SPI_0, "SPI 0")
+#define foreach_ipsec_tun_protect_input_error                                 \
+  _ (RX, "good packets received")                                             \
+  _ (DISABLED, "ipsec packets received on disabled interface")                \
+  _ (NO_TUNNEL, "no matching tunnel")                                         \
+  _ (TUNNEL_MISMATCH, "SPI-tunnel mismatch")                                  \
+  _ (NAT_KEEPALIVE, "NAT Keepalive")                                          \
+  _ (TOO_SHORT, "Too Short")                                                  \
+  _ (SPI_0, "SPI 0")
 
 static char *ipsec_tun_protect_input_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ipsec_tun_protect_input_error
 #undef _
 };
 
 typedef enum
 {
-#define _(sym,str) IPSEC_TUN_PROTECT_INPUT_ERROR_##sym,
+#define _(sym, str) IPSEC_TUN_PROTECT_INPUT_ERROR_##sym,
   foreach_ipsec_tun_protect_input_error
 #undef _
     IPSEC_TUN_PROTECT_INPUT_N_ERROR,
@@ -70,7 +70,7 @@ typedef struct
 } ipsec_tun_protect_input_trace_t;
 
 static u8 *
-format_ipsec_tun_protect_input_trace (u8 * s, va_list * args)
+format_ipsec_tun_protect_input_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -78,25 +78,24 @@ format_ipsec_tun_protect_input_trace (u8 * s, va_list * args)
     va_arg (*args, ipsec_tun_protect_input_trace_t *);
 
   if (t->is_ip6)
-    s = format (s, "IPSec: %U seq %u",
-		format_ipsec6_tunnel_kv, &t->kv6, t->seq);
+    s =
+      format (s, "IPSec: %U seq %u", format_ipsec6_tunnel_kv, &t->kv6, t->seq);
   else
-    s = format (s, "IPSec: %U seq %u sa %d",
-		format_ipsec4_tunnel_kv, &t->kv4, t->seq);
+    s = format (s, "IPSec: %U seq %u sa %d", format_ipsec4_tunnel_kv, &t->kv4,
+		t->seq);
   return s;
 }
 
 always_inline u16
-ipsec_ip4_if_no_tunnel (vlib_node_runtime_t * node,
-			vlib_buffer_t * b,
-			const esp_header_t * esp, const ip4_header_t * ip4)
+ipsec_ip4_if_no_tunnel (vlib_node_runtime_t *node, vlib_buffer_t *b,
+			const esp_header_t *esp, const ip4_header_t *ip4)
 {
   if (PREDICT_FALSE (0 == esp->spi))
     {
       b->error = node->errors[IPSEC_TUN_PROTECT_INPUT_ERROR_SPI_0];
       b->punt_reason = ipsec_punt_reason[(ip4->protocol == IP_PROTOCOL_UDP ?
-					  IPSEC_PUNT_IP4_SPI_UDP_0 :
-					  IPSEC_PUNT_IP4_NO_SUCH_TUNNEL)];
+					    IPSEC_PUNT_IP4_SPI_UDP_0 :
+					    IPSEC_PUNT_IP4_NO_SUCH_TUNNEL)];
     }
   else
     {
@@ -107,8 +106,8 @@ ipsec_ip4_if_no_tunnel (vlib_node_runtime_t * node,
 }
 
 always_inline u16
-ipsec_ip6_if_no_tunnel (vlib_node_runtime_t * node,
-			vlib_buffer_t * b, const esp_header_t * esp)
+ipsec_ip6_if_no_tunnel (vlib_node_runtime_t *node, vlib_buffer_t *b,
+			const esp_header_t *esp)
 {
   b->error = node->errors[IPSEC_TUN_PROTECT_INPUT_ERROR_NO_TUNNEL];
   b->punt_reason = ipsec_punt_reason[IPSEC_PUNT_IP6_NO_SUCH_TUNNEL];
@@ -117,8 +116,8 @@ ipsec_ip6_if_no_tunnel (vlib_node_runtime_t * node,
 }
 
 always_inline uword
-ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-				vlib_frame_t * from_frame, int is_ip6)
+ipsec_tun_protect_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+				vlib_frame_t *from_frame, int is_ip6)
 {
   ipsec_main_t *im = &ipsec_main;
   vnet_main_t *vnm = im->vnet_main;
@@ -144,9 +143,7 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_disabled = 0, n_no_tunnel = 0;
 
   u32 last_sw_if_index = ~0;
-  ipsec_tun_lkup_result_t last_result = {
-    .tun_index = ~0
-  };
+  ipsec_tun_lkup_result_t last_result = { .tun_index = ~0 };
   ipsec4_tunnel_kv_t last_key4;
   ipsec6_tunnel_kv_t last_key6;
   ipsec_tun_lkup_result_t itr0;
@@ -174,11 +171,10 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       esp_header_t *esp0;
       u16 buf_rewind0;
 
-      ip40 =
-	(ip4_header_t *) (b[0]->data + vnet_buffer (b[0])->l3_hdr_offset);
+      ip40 = (ip4_header_t *) (b[0]->data + vnet_buffer (b[0])->l3_hdr_offset);
 
-      key60 = (ipsec6_tunnel_kv_t *) & bkey60;
-      key40 = (ipsec4_tunnel_kv_t *) & bkey40;
+      key60 = (ipsec6_tunnel_kv_t *) &bkey60;
+      key40 = (ipsec4_tunnel_kv_t *) &bkey40;
 
       if (is_ip6)
 	{
@@ -191,9 +187,8 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* NAT UDP port 4500 case, don't advance any more */
 	  if (ip40->protocol == IP_PROTOCOL_UDP)
 	    {
-	      esp0 =
-		(esp_header_t *) ((u8 *) ip40 + ip4_header_bytes (ip40) +
-				  sizeof (udp_header_t));
+	      esp0 = (esp_header_t *) ((u8 *) ip40 + ip4_header_bytes (ip40) +
+				       sizeof (udp_header_t));
 	      hdr_sz0 = 0;
 	      buf_rewind0 = ip4_header_bytes (ip40) + sizeof (udp_header_t);
 	    }
@@ -205,7 +200,7 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
       /* stats for the tunnel include all the data after the IP header
-         just like a norml IP-IP tunnel */
+	 just like a norml IP-IP tunnel */
       vlib_buffer_advance (b[0], hdr_sz0);
       len0 = vlib_buffer_length_in_chain (vm, b[0]);
 
@@ -234,9 +229,8 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      int rv =
-		clib_bihash_search_inline_24_16 (&im->tun6_protect_by_key,
-						 &bkey60);
+	      int rv = clib_bihash_search_inline_24_16 (
+		&im->tun6_protect_by_key, &bkey60);
 	      if (!rv)
 		{
 		  clib_memcpy_fast (&itr0, &bkey60.value, sizeof (itr0));
@@ -262,9 +256,8 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      int rv =
-		clib_bihash_search_inline_8_16 (&im->tun4_protect_by_key,
-						&bkey40);
+	      int rv = clib_bihash_search_inline_8_16 (
+		&im->tun4_protect_by_key, &bkey40);
 	      if (!rv)
 		{
 		  clib_memcpy_fast (&itr0, &bkey40.value, sizeof (itr0));
@@ -290,8 +283,8 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (PREDICT_FALSE (!vnet_sw_interface_is_admin_up (vnm, sw_if_index0)))
 	{
-	  vlib_increment_combined_counter
-	    (drop_counter, thread_index, sw_if_index0, 1, len0);
+	  vlib_increment_combined_counter (drop_counter, thread_index,
+					   sw_if_index0, 1, len0);
 	  n_disabled++;
 	  b[0]->error = node->errors[IPSEC_TUN_PROTECT_INPUT_ERROR_DISABLED];
 	  next[0] = IPSEC_INPUT_NEXT_DROP;
@@ -308,9 +301,9 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      if (n_packets && !(itr0.flags & IPSEC_PROTECT_ENCAPED))
 		{
-		  vlib_increment_combined_counter
-		    (rx_counter, thread_index, last_sw_if_index,
-		     n_packets, n_bytes);
+		  vlib_increment_combined_counter (rx_counter, thread_index,
+						   last_sw_if_index, n_packets,
+						   n_bytes);
 		}
 
 	      last_sw_if_index = sw_if_index0;
@@ -318,7 +311,7 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      n_bytes = len0;
 	    }
 
-	  //IPSEC_TUN_PROTECT_NEXT_DECRYPT;
+	  // IPSEC_TUN_PROTECT_NEXT_DECRYPT;
 	  next[0] = im->esp4_decrypt_tun_next_index;
 	}
     trace00:
@@ -333,8 +326,9 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		clib_memcpy (&tr->kv4, &bkey40, sizeof (tr->kv4));
 	      tr->is_ip6 = is_ip6;
-	      tr->seq = (len0 >= sizeof (*esp0) ?
-			 clib_host_to_net_u32 (esp0->seq) : ~0);
+	      tr->seq =
+		(len0 >= sizeof (*esp0) ? clib_host_to_net_u32 (esp0->seq) :
+					  ~0);
 	    }
 	}
 
@@ -345,14 +339,12 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   if (n_packets && !(itr0.flags & IPSEC_PROTECT_ENCAPED))
-    vlib_increment_combined_counter (rx_counter,
-				     thread_index,
+    vlib_increment_combined_counter (rx_counter, thread_index,
 				     last_sw_if_index, n_packets, n_bytes);
 
-  vlib_node_increment_counter (vm, node->node_index,
-			       IPSEC_TUN_PROTECT_INPUT_ERROR_RX,
-			       from_frame->n_vectors - (n_disabled +
-							n_no_tunnel));
+  vlib_node_increment_counter (
+    vm, node->node_index, IPSEC_TUN_PROTECT_INPUT_ERROR_RX,
+    from_frame->n_vectors - (n_disabled + n_no_tunnel));
   vlib_node_increment_counter (vm, node->node_index,
 			       IPSEC_TUN_PROTECT_INPUT_ERROR_NO_TUNNEL,
 			       n_no_tunnel);
@@ -362,51 +354,49 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
-VLIB_NODE_FN (ipsec4_tun_input_node) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * from_frame)
+VLIB_NODE_FN (ipsec4_tun_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return ipsec_tun_protect_input_inline (vm, node, from_frame, 0);
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ipsec4_tun_input_node) = {
-  .name = "ipsec4-tun-input",
-  .vector_size = sizeof (u32),
-  .format_trace = format_ipsec_tun_protect_input_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(ipsec_tun_protect_input_error_strings),
-  .error_strings = ipsec_tun_protect_input_error_strings,
-  .n_next_nodes = IPSEC_TUN_PROTECT_N_NEXT,
-  .next_nodes = {
-    [IPSEC_TUN_PROTECT_NEXT_DROP] = "ip4-drop",
-    [IPSEC_TUN_PROTECT_NEXT_PUNT] = "punt-dispatch",
-  }
-};
-/* *INDENT-ON* */
+VLIB_REGISTER_NODE (
+  ipsec4_tun_input_node) = { .name = "ipsec4-tun-input",
+			     .vector_size = sizeof (u32),
+			     .format_trace =
+			       format_ipsec_tun_protect_input_trace,
+			     .type = VLIB_NODE_TYPE_INTERNAL,
+			     .n_errors = ARRAY_LEN (
+			       ipsec_tun_protect_input_error_strings),
+			     .error_strings =
+			       ipsec_tun_protect_input_error_strings,
+			     .n_next_nodes = IPSEC_TUN_PROTECT_N_NEXT,
+			     .next_nodes = {
+			       [IPSEC_TUN_PROTECT_NEXT_DROP] = "ip4-drop",
+			       [IPSEC_TUN_PROTECT_NEXT_PUNT] = "punt-dispatch",
+			     } };
 
-VLIB_NODE_FN (ipsec6_tun_input_node) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * from_frame)
+VLIB_NODE_FN (ipsec6_tun_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return ipsec_tun_protect_input_inline (vm, node, from_frame, 1);
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ipsec6_tun_input_node) = {
-  .name = "ipsec6-tun-input",
-  .vector_size = sizeof (u32),
-  .format_trace = format_ipsec_tun_protect_input_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(ipsec_tun_protect_input_error_strings),
-  .error_strings = ipsec_tun_protect_input_error_strings,
-  .n_next_nodes = IPSEC_TUN_PROTECT_N_NEXT,
-  .next_nodes = {
-    [IPSEC_TUN_PROTECT_NEXT_DROP] = "ip6-drop",
-    [IPSEC_TUN_PROTECT_NEXT_PUNT] = "punt-dispatch",
-  }
-};
-/* *INDENT-ON* */
+VLIB_REGISTER_NODE (
+  ipsec6_tun_input_node) = { .name = "ipsec6-tun-input",
+			     .vector_size = sizeof (u32),
+			     .format_trace =
+			       format_ipsec_tun_protect_input_trace,
+			     .type = VLIB_NODE_TYPE_INTERNAL,
+			     .n_errors = ARRAY_LEN (
+			       ipsec_tun_protect_input_error_strings),
+			     .error_strings =
+			       ipsec_tun_protect_input_error_strings,
+			     .n_next_nodes = IPSEC_TUN_PROTECT_N_NEXT,
+			     .next_nodes = {
+			       [IPSEC_TUN_PROTECT_NEXT_DROP] = "ip6-drop",
+			       [IPSEC_TUN_PROTECT_NEXT_PUNT] = "punt-dispatch",
+			     } };
 
 /*
  * fd.io coding-style-patch-verification: ON

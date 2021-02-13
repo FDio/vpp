@@ -39,7 +39,7 @@ static u32 arp_base_msg_id;
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_proxy_arp_add_del_t_handler (vl_api_proxy_arp_add_del_t * mp)
+vl_api_proxy_arp_add_del_t_handler (vl_api_proxy_arp_add_del_t *mp)
 {
   vl_api_proxy_arp_add_del_reply_t *rmp;
   ip4_address_t lo, hi;
@@ -73,9 +73,9 @@ typedef struct proxy_arp_walk_ctx_t_
 } proxy_arp_walk_ctx_t;
 
 static walk_rc_t
-send_proxy_arp_details (const ip4_address_t * lo_addr,
-			const ip4_address_t * hi_addr,
-			u32 fib_index, void *data)
+send_proxy_arp_details (const ip4_address_t *lo_addr,
+			const ip4_address_t *hi_addr, u32 fib_index,
+			void *data)
 {
   vl_api_proxy_arp_details_t *mp;
   proxy_arp_walk_ctx_t *ctx;
@@ -97,7 +97,7 @@ send_proxy_arp_details (const ip4_address_t * lo_addr,
 }
 
 static void
-vl_api_proxy_arp_dump_t_handler (vl_api_proxy_arp_dump_t * mp)
+vl_api_proxy_arp_dump_t_handler (vl_api_proxy_arp_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -133,7 +133,7 @@ send_proxy_arp_intfc_details (u32 sw_if_index, void *data)
 }
 
 static void
-vl_api_proxy_arp_intfc_dump_t_handler (vl_api_proxy_arp_intfc_dump_t * mp)
+vl_api_proxy_arp_intfc_dump_t_handler (vl_api_proxy_arp_intfc_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -150,8 +150,8 @@ vl_api_proxy_arp_intfc_dump_t_handler (vl_api_proxy_arp_intfc_dump_t * mp)
 }
 
 static void
-  vl_api_proxy_arp_intfc_enable_disable_t_handler
-  (vl_api_proxy_arp_intfc_enable_disable_t * mp)
+vl_api_proxy_arp_intfc_enable_disable_t_handler (
+  vl_api_proxy_arp_intfc_enable_disable_t *mp)
 {
   vl_api_proxy_arp_intfc_enable_disable_reply_t *rmp;
   int rv;
@@ -171,7 +171,7 @@ static void
 #include <vnet/arp/arp.api.c>
 
 static clib_error_t *
-arp_api_init (vlib_main_t * vm)
+arp_api_init (vlib_main_t *vm)
 {
   /* Ask for a correctly-sized block of API message decode slots */
   arp_base_msg_id = setup_message_id_table ();

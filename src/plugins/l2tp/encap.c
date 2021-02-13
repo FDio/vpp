@@ -23,25 +23,24 @@
 #include <l2tp/l2tp.h>
 
 /* Statistics (not really errors) */
-#define foreach_l2t_encap_error					\
-_(NETWORK_TO_USER, "L2TP L2 network to user (ip6) pkts")	\
-_(LOOKUP_FAIL_TO_L3, "L2TP L2 session lookup failed pkts")      \
-_(ADMIN_DOWN, "L2TP tunnel is down")
+#define foreach_l2t_encap_error                                               \
+  _ (NETWORK_TO_USER, "L2TP L2 network to user (ip6) pkts")                   \
+  _ (LOOKUP_FAIL_TO_L3, "L2TP L2 session lookup failed pkts")                 \
+  _ (ADMIN_DOWN, "L2TP tunnel is down")
 
 static char *l2t_encap_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_l2t_encap_error
 #undef _
 };
 
 typedef enum
 {
-#define _(sym,str) L2T_ENCAP_ERROR_##sym,
+#define _(sym, str) L2T_ENCAP_ERROR_##sym,
   foreach_l2t_encap_error
 #undef _
     L2T_ENCAP_N_ERROR,
 } l2t_encap_error_t;
-
 
 typedef enum
 {
@@ -62,14 +61,14 @@ extern vlib_node_registration_t l2t_encap_node;
 #define NSTAGES 3
 
 static inline void
-stage0 (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
+stage0 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b)
 {
   vlib_prefetch_buffer_header (b, STORE);
   CLIB_PREFETCH (b->data, 2 * CLIB_CACHE_LINE_BYTES, STORE);
 }
 
 static inline void
-stage1 (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
+stage1 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b)
 {
   l2tp_encap_runtime_t *rt = (void *) node->runtime_data;
   vnet_hw_interface_t *hi;
@@ -92,7 +91,7 @@ stage1 (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
 }
 
 static inline u32
-last_stage (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
+last_stage (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b)
 {
   l2t_main_t *lm = &l2t_main;
   vlib_node_t *n = vlib_get_node (vm, l2t_encap_node.index);
@@ -110,19 +109,16 @@ last_stage (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
   if (vnet_buffer (b)->l2t.next_index != L2T_ENCAP_NEXT_IP6_LOOKUP)
     return vnet_buffer (b)->l2t.next_index;
 
-  em->counters[node_counter_base_index + L2T_ENCAP_ERROR_NETWORK_TO_USER] +=
-    1;
+  em->counters[node_counter_base_index + L2T_ENCAP_ERROR_NETWORK_TO_USER] += 1;
 
   session_index = vnet_buffer (b)->l2t.session_index;
 
-  counter_index =
-    session_index_to_counter_index (session_index,
-				    SESSION_COUNTER_NETWORK_TO_USER);
+  counter_index = session_index_to_counter_index (
+    session_index, SESSION_COUNTER_NETWORK_TO_USER);
 
   /* per-mapping byte stats include the ethernet header */
-  vlib_increment_combined_counter (&lm->counter_main,
-				   vlib_get_thread_index (),
-				   counter_index, 1 /* packet_increment */ ,
+  vlib_increment_combined_counter (&lm->counter_main, vlib_get_thread_index (),
+				   counter_index, 1 /* packet_increment */,
 				   vlib_buffer_length_in_chain (vm, b));
 
   s = pool_elt_at_index (lm->sessions, session_index);
@@ -166,7 +162,6 @@ last_stage (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
   ip6->dst_address.as_u64[0] = s->client_address.as_u64[0];
   ip6->dst_address.as_u64[1] = s->client_address.as_u64[1];
 
-
 done:
   if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
     {
@@ -184,15 +179,13 @@ done:
 
 #include <vnet/pipeline.h>
 
-VLIB_NODE_FN (l2t_encap_node) (vlib_main_t * vm,
-			       vlib_node_runtime_t * node,
-			       vlib_frame_t * frame)
+VLIB_NODE_FN (l2t_encap_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return dispatch_pipeline (vm, node, frame);
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2t_encap_node) = {
   .name = "l2tp-encap",
   .vector_size = sizeof (u32),
@@ -211,18 +204,17 @@ VLIB_REGISTER_NODE (l2t_encap_node) = {
     [L2T_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 void
-l2tp_encap_init (vlib_main_t * vm)
+l2tp_encap_init (vlib_main_t *vm)
 {
   l2tp_encap_runtime_t *rt;
 
   rt = vlib_node_get_runtime_data (vm, l2t_encap_node.index);
   rt->vnet_main = vnet_get_main ();
-  rt->cached_sw_if_index = (u32) ~ 0;
-  rt->cached_session_index = (u32) ~ 0;
+  rt->cached_sw_if_index = (u32) ~0;
+  rt->cached_session_index = (u32) ~0;
 }
 #endif /* CLIB_MARCH_VARIANT */
 

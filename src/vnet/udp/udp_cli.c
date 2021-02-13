@@ -17,7 +17,7 @@
 #include <vnet/session/session_types.h>
 
 u8 *
-format_udp_connection_id (u8 * s, va_list * args)
+format_udp_connection_id (u8 *s, va_list *args)
 {
   udp_connection_t *uc = va_arg (*args, udp_connection_t *);
   if (!uc)
@@ -42,7 +42,7 @@ static const char *udp_connection_flags_str[] = {
 };
 
 static u8 *
-format_udp_connection_flags (u8 * s, va_list * args)
+format_udp_connection_flags (u8 *s, va_list *args)
 {
   udp_connection_t *uc = va_arg (*args, udp_connection_t *);
   int i, last = -1;
@@ -61,7 +61,7 @@ format_udp_connection_flags (u8 * s, va_list * args)
 }
 
 static u8 *
-format_udp_vars (u8 * s, va_list * args)
+format_udp_vars (u8 *s, va_list *args)
 {
   udp_connection_t *uc = va_arg (*args, udp_connection_t *);
   s = format (s, " index %u flags: %U", uc->c_c_index,
@@ -73,7 +73,7 @@ format_udp_vars (u8 * s, va_list * args)
 }
 
 u8 *
-format_udp_connection (u8 * s, va_list * args)
+format_udp_connection (u8 *s, va_list *args)
 {
   udp_connection_t *uc = va_arg (*args, udp_connection_t *);
   u32 verbose = va_arg (*args, u32);
@@ -91,7 +91,7 @@ format_udp_connection (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-udp_config_fn (vlib_main_t * vm, unformat_input_t * input)
+udp_config_fn (vlib_main_t *vm, unformat_input_t *input)
 {
   udp_main_t *um = &udp_main;
   u32 tmp;
@@ -110,8 +110,8 @@ udp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 VLIB_CONFIG_FUNCTION (udp_config_fn, "udp");
 
 static clib_error_t *
-show_udp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
-		  vlib_cli_command_t * cmd_arg)
+show_udp_punt_fn (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd_arg)
 {
   udp_main_t *um = vnet_get_udp_main ();
 
@@ -130,12 +130,12 @@ show_udp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       u8 *s = NULL;
       vec_foreach (port_info, um->dst_port_infos[UDP_IP4])
-      {
-	if (udp_is_valid_dst_port (port_info->dst_port, 1))
-	  {
-	    s = format (s, (!s) ? "%d" : ", %d", port_info->dst_port);
-	  }
-      }
+	{
+	  if (udp_is_valid_dst_port (port_info->dst_port, 1))
+	    {
+	      s = format (s, (!s) ? "%d" : ", %d", port_info->dst_port);
+	    }
+	}
       s = format (s, "%c", 0);
       vlib_cli_output (vm, "IPV4 UDP ports punt : %s", s);
     }
@@ -148,26 +148,24 @@ show_udp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       u8 *s = NULL;
       vec_foreach (port_info, um->dst_port_infos[UDP_IP6])
-      {
-	if (udp_is_valid_dst_port (port_info->dst_port, 01))
-	  {
-	    s = format (s, (!s) ? "%d" : ", %d", port_info->dst_port);
-	  }
-      }
+	{
+	  if (udp_is_valid_dst_port (port_info->dst_port, 01))
+	    {
+	      s = format (s, (!s) ? "%d" : ", %d", port_info->dst_port);
+	    }
+	}
       s = format (s, "%c", 0);
       vlib_cli_output (vm, "IPV6 UDP ports punt : %s", s);
     }
 
   return (error);
 }
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_tcp_punt_command, static) =
-{
+
+VLIB_CLI_COMMAND (show_tcp_punt_command, static) = {
   .path = "show udp punt",
   .short_help = "show udp punt [ipv4|ipv6]",
   .function = show_udp_punt_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

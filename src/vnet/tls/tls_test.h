@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 #ifndef SRC_VNET_TLS_TLS_TEST_H_
 #define SRC_VNET_TLS_TLS_TEST_H_
 
@@ -73,7 +72,8 @@ static const char test_srv_key_rsa[] =
   "EDSKc/X8ESLfOB44iGvZUEMG6zJFscx9DgN25iQZAoGAbyd+JEWwdVH9/K3IH1t2\r\n"
   "PBkZX17kNWv+iVM1WyFjbe++vfKZCrOJiyiqhDeEqgrP3AuNMlaaduC3VRC3G5oV\r\n"
   "Mj1tlhDWQ/qhvKdCKNdIVQYDE75nw+FRWV8yYkHAnXYW3tNoweDIwixE0hkPR1bc\r\n"
-  "oEjPLVNtx8SOj/M4rhaPT3I=\r\n" "-----END PRIVATE KEY-----\r\n";
+  "oEjPLVNtx8SOj/M4rhaPT3I=\r\n"
+  "-----END PRIVATE KEY-----\r\n";
 static const u32 test_srv_key_rsa_len = sizeof (test_srv_key_rsa);
 
 #endif /* SRC_VNET_TLS_TLS_TEST_H_ */

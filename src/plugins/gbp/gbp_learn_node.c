@@ -24,29 +24,28 @@
 #include <vnet/vxlan-gbp/vxlan_gbp_packet.h>
 #include <vnet/ethernet/arp_packet.h>
 
-#define GBP_LEARN_DBG(...)                                      \
-    vlib_log_debug (gbp_learn_main.gl_logger, __VA_ARGS__);
+#define GBP_LEARN_DBG(...)                                                    \
+  vlib_log_debug (gbp_learn_main.gl_logger, __VA_ARGS__);
 
-#define foreach_gbp_learn                      \
-  _(DROP,    "drop")
+#define foreach_gbp_learn _ (DROP, "drop")
 
 typedef enum
 {
-#define _(sym,str) GBP_LEARN_ERROR_##sym,
+#define _(sym, str) GBP_LEARN_ERROR_##sym,
   foreach_gbp_learn
 #undef _
     GBP_LEARN_N_ERROR,
 } gbp_learn_error_t;
 
 static char *gbp_learn_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_gbp_learn
 #undef _
 };
 
 typedef enum
 {
-#define _(sym,str) GBP_LEARN_NEXT_##sym,
+#define _(sym, str) GBP_LEARN_NEXT_##sym,
   foreach_gbp_learn
 #undef _
     GBP_LEARN_N_NEXT,
@@ -63,14 +62,12 @@ typedef struct gbp_learn_l2_t_
   ip46_address_t outer_dst;
 } gbp_learn_l2_t;
 
-
 static void
-gbp_learn_l2_cp (const gbp_learn_l2_t * gl2)
+gbp_learn_l2_cp (const gbp_learn_l2_t *gl2)
 {
   ip46_address_t *ips = NULL;
 
-  GBP_LEARN_DBG ("L2 EP: %U %U, %d",
-		 format_mac_address_t, &gl2->mac,
+  GBP_LEARN_DBG ("L2 EP: %U %U, %d", format_mac_address_t, &gl2->mac,
 		 format_ip46_address, &gl2->ip, IP46_TYPE_ANY, gl2->sclass);
 
   if (!ip46_address_is_zero (&gl2->ip))
@@ -80,21 +77,19 @@ gbp_learn_l2_cp (const gbp_learn_l2_t * gl2)
    * flip the source and dst, since that's how it was received, this API
    * takes how it's sent
    */
-  gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_DP,
-				gl2->sw_if_index, ips,
-				&gl2->mac, INDEX_INVALID,
-				INDEX_INVALID, gl2->sclass,
-				(GBP_ENDPOINT_FLAG_LEARNT |
-				 GBP_ENDPOINT_FLAG_REMOTE),
-				&gl2->outer_dst, &gl2->outer_src, NULL);
+  gbp_endpoint_update_and_lock (
+    GBP_ENDPOINT_SRC_DP, gl2->sw_if_index, ips, &gl2->mac, INDEX_INVALID,
+    INDEX_INVALID, gl2->sclass,
+    (GBP_ENDPOINT_FLAG_LEARNT | GBP_ENDPOINT_FLAG_REMOTE), &gl2->outer_dst,
+    &gl2->outer_src, NULL);
   vec_free (ips);
 }
 
 static void
-gbp_learn_l2_ip4_dp (const u8 * mac, const ip4_address_t * ip,
-		     u32 bd_index, u32 sw_if_index, sclass_t sclass,
-		     const ip4_address_t * outer_src,
-		     const ip4_address_t * outer_dst)
+gbp_learn_l2_ip4_dp (const u8 *mac, const ip4_address_t *ip, u32 bd_index,
+		     u32 sw_if_index, sclass_t sclass,
+		     const ip4_address_t *outer_src,
+		     const ip4_address_t *outer_dst)
 {
   gbp_learn_l2_t gl2 = {
     .sw_if_index = sw_if_index,
@@ -106,14 +101,14 @@ gbp_learn_l2_ip4_dp (const u8 * mac, const ip4_address_t * ip,
   };
   mac_address_from_bytes (&gl2.mac, mac);
 
-  vl_api_rpc_call_main_thread (gbp_learn_l2_cp, (u8 *) & gl2, sizeof (gl2));
+  vl_api_rpc_call_main_thread (gbp_learn_l2_cp, (u8 *) &gl2, sizeof (gl2));
 }
 
 static void
-gbp_learn_l2_ip6_dp (const u8 * mac, const ip6_address_t * ip,
-		     u32 bd_index, u32 sw_if_index, sclass_t sclass,
-		     const ip4_address_t * outer_src,
-		     const ip4_address_t * outer_dst)
+gbp_learn_l2_ip6_dp (const u8 *mac, const ip6_address_t *ip, u32 bd_index,
+		     u32 sw_if_index, sclass_t sclass,
+		     const ip4_address_t *outer_src,
+		     const ip4_address_t *outer_dst)
 {
   gbp_learn_l2_t gl2 = {
     .sw_if_index = sw_if_index,
@@ -125,14 +120,13 @@ gbp_learn_l2_ip6_dp (const u8 * mac, const ip6_address_t * ip,
   };
   mac_address_from_bytes (&gl2.mac, mac);
 
-  vl_api_rpc_call_main_thread (gbp_learn_l2_cp, (u8 *) & gl2, sizeof (gl2));
+  vl_api_rpc_call_main_thread (gbp_learn_l2_cp, (u8 *) &gl2, sizeof (gl2));
 }
 
 static void
-gbp_learn_l2_dp (const u8 * mac, u32 bd_index, u32 sw_if_index,
-		 sclass_t sclass,
-		 const ip4_address_t * outer_src,
-		 const ip4_address_t * outer_dst)
+gbp_learn_l2_dp (const u8 *mac, u32 bd_index, u32 sw_if_index, sclass_t sclass,
+		 const ip4_address_t *outer_src,
+		 const ip4_address_t *outer_dst)
 {
   gbp_learn_l2_t gl2 = {
     .sw_if_index = sw_if_index,
@@ -143,7 +137,7 @@ gbp_learn_l2_dp (const u8 * mac, u32 bd_index, u32 sw_if_index,
   };
   mac_address_from_bytes (&gl2.mac, mac);
 
-  vl_api_rpc_call_main_thread (gbp_learn_l2_cp, (u8 *) & gl2, sizeof (gl2));
+  vl_api_rpc_call_main_thread (gbp_learn_l2_cp, (u8 *) &gl2, sizeof (gl2));
 }
 
 /**
@@ -162,16 +156,16 @@ typedef struct gbp_learn_l2_trace_t_
 } gbp_learn_l2_trace_t;
 
 always_inline void
-gbp_learn_get_outer (const ethernet_header_t * eh0,
-		     ip4_address_t * outer_src, ip4_address_t * outer_dst)
+gbp_learn_get_outer (const ethernet_header_t *eh0, ip4_address_t *outer_src,
+		     ip4_address_t *outer_dst)
 {
   ip4_header_t *ip0;
   u8 *buff;
 
   /* rewind back to the ivxlan header */
   buff = (u8 *) eh0;
-  buff -= (sizeof (vxlan_gbp_header_t) +
-	   sizeof (udp_header_t) + sizeof (ip4_header_t));
+  buff -= (sizeof (vxlan_gbp_header_t) + sizeof (udp_header_t) +
+	   sizeof (ip4_header_t));
 
   ip0 = (ip4_header_t *) buff;
 
@@ -180,8 +174,8 @@ gbp_learn_get_outer (const ethernet_header_t * eh0,
 }
 
 always_inline int
-gbp_endpoint_update_required (const gbp_endpoint_t * ge0,
-			      u32 rx_sw_if_index, sclass_t sclass)
+gbp_endpoint_update_required (const gbp_endpoint_t *ge0, u32 rx_sw_if_index,
+			      sclass_t sclass)
 {
   /* Conditions for [re]learning this EP */
 
@@ -201,9 +195,8 @@ gbp_endpoint_update_required (const gbp_endpoint_t * ge0,
   return (0);
 }
 
-VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_learn_l2_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next, next_index, thread_index, seed;
   gbp_learn_main_t *glm;
@@ -293,11 +286,10 @@ VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
 
 			ip0 = (ip4_header_t *) (eh0 + 1);
 
-			gbp_learn_l2_ip4_dp (eh0->src_address,
-					     &ip0->src_address,
-					     vnet_buffer (b0)->l2.bd_index,
-					     sw_if_index0, sclass0,
-					     &outer_src, &outer_dst);
+			gbp_learn_l2_ip4_dp (
+			  eh0->src_address, &ip0->src_address,
+			  vnet_buffer (b0)->l2.bd_index, sw_if_index0, sclass0,
+			  &outer_src, &outer_dst);
 
 			break;
 		      }
@@ -307,11 +299,10 @@ VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
 
 			ip0 = (ip6_header_t *) (eh0 + 1);
 
-			gbp_learn_l2_ip6_dp (eh0->src_address,
-					     &ip0->src_address,
-					     vnet_buffer (b0)->l2.bd_index,
-					     sw_if_index0, sclass0,
-					     &outer_src, &outer_dst);
+			gbp_learn_l2_ip6_dp (
+			  eh0->src_address, &ip0->src_address,
+			  vnet_buffer (b0)->l2.bd_index, sw_if_index0, sclass0,
+			  &outer_src, &outer_dst);
 
 			break;
 		      }
@@ -321,18 +312,16 @@ VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
 
 			arp0 = (ethernet_arp_header_t *) (eh0 + 1);
 
-			gbp_learn_l2_ip4_dp (eh0->src_address,
-					     &arp0->ip4_over_ethernet[0].ip4,
-					     vnet_buffer (b0)->l2.bd_index,
-					     sw_if_index0, sclass0,
-					     &outer_src, &outer_dst);
+			gbp_learn_l2_ip4_dp (
+			  eh0->src_address, &arp0->ip4_over_ethernet[0].ip4,
+			  vnet_buffer (b0)->l2.bd_index, sw_if_index0, sclass0,
+			  &outer_src, &outer_dst);
 			break;
 		      }
 		    default:
-		      gbp_learn_l2_dp (eh0->src_address,
-				       vnet_buffer (b0)->l2.bd_index,
-				       sw_if_index0, sclass0,
-				       &outer_src, &outer_dst);
+		      gbp_learn_l2_dp (
+			eh0->src_address, vnet_buffer (b0)->l2.bd_index,
+			sw_if_index0, sclass0, &outer_src, &outer_dst);
 		      break;
 		    }
 		}
@@ -357,14 +346,13 @@ VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
 	      t->sw_if_index = sw_if_index0;
 	      t->sclass = sclass0;
 	      t->gb_flags = gb0->gb_flags;
-	      t->d_bit = ! !(vnet_buffer2 (b0)->gbp.flags &
-			     VXLAN_GBP_GPFLAGS_D);
+	      t->d_bit =
+		!!(vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_D);
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -375,22 +363,22 @@ VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
 
 /* packet trace format function */
 static u8 *
-format_gbp_learn_l2_trace (u8 * s, va_list * args)
+format_gbp_learn_l2_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   gbp_learn_l2_trace_t *t = va_arg (*args, gbp_learn_l2_trace_t *);
 
-  s = format (s, "new:%d throttled:%d d-bit:%d mac:%U itf:%d sclass:%d"
+  s = format (s,
+	      "new:%d throttled:%d d-bit:%d mac:%U itf:%d sclass:%d"
 	      " gb-flags:%U",
-	      t->new, t->throttled, t->d_bit,
-	      format_mac_address_t, &t->mac, t->sw_if_index, t->sclass,
-	      format_gbp_bridge_domain_flags, t->gb_flags);
+	      t->new, t->throttled, t->d_bit, format_mac_address_t, &t->mac,
+	      t->sw_if_index, t->sclass, format_gbp_bridge_domain_flags,
+	      t->gb_flags);
 
   return s;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gbp_learn_l2_node) = {
   .name = "gbp-learn-l2",
   .vector_size = sizeof (u32),
@@ -406,7 +394,6 @@ VLIB_REGISTER_NODE (gbp_learn_l2_node) = {
     [GBP_LEARN_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 typedef struct gbp_learn_l3_t_
 {
@@ -419,31 +406,29 @@ typedef struct gbp_learn_l3_t_
 } gbp_learn_l3_t;
 
 static void
-gbp_learn_l3_cp (const gbp_learn_l3_t * gl3)
+gbp_learn_l3_cp (const gbp_learn_l3_t *gl3)
 {
   ip46_address_t *ips = NULL;
 
-  GBP_LEARN_DBG ("L3 EP: %U, %d", format_ip46_address, &gl3->ip,
-		 IP46_TYPE_ANY, gl3->sclass);
+  GBP_LEARN_DBG ("L3 EP: %U, %d", format_ip46_address, &gl3->ip, IP46_TYPE_ANY,
+		 gl3->sclass);
 
   vec_add1 (ips, gl3->ip);
 
-  gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_DP,
-				gl3->sw_if_index, ips, NULL,
-				INDEX_INVALID, INDEX_INVALID, gl3->sclass,
-				(GBP_ENDPOINT_FLAG_REMOTE |
-				 GBP_ENDPOINT_FLAG_LEARNT),
-				&gl3->outer_dst, &gl3->outer_src, NULL);
+  gbp_endpoint_update_and_lock (
+    GBP_ENDPOINT_SRC_DP, gl3->sw_if_index, ips, NULL, INDEX_INVALID,
+    INDEX_INVALID, gl3->sclass,
+    (GBP_ENDPOINT_FLAG_REMOTE | GBP_ENDPOINT_FLAG_LEARNT), &gl3->outer_dst,
+    &gl3->outer_src, NULL);
   vec_free (ips);
 }
 
 static void
-gbp_learn_ip4_dp (const ip4_address_t * ip,
-		  u32 fib_index, u32 sw_if_index, sclass_t sclass,
-		  const ip4_address_t * outer_src,
-		  const ip4_address_t * outer_dst)
+gbp_learn_ip4_dp (const ip4_address_t *ip, u32 fib_index, u32 sw_if_index,
+		  sclass_t sclass, const ip4_address_t *outer_src,
+		  const ip4_address_t *outer_dst)
 {
-  /* *INDENT-OFF* */
+
   gbp_learn_l3_t gl3 = {
     .ip = {
       .ip4 = *ip,
@@ -454,18 +439,16 @@ gbp_learn_ip4_dp (const ip4_address_t * ip,
     .outer_src.ip4 = *outer_src,
     .outer_dst.ip4 = *outer_dst,
   };
-  /* *INDENT-ON* */
 
-  vl_api_rpc_call_main_thread (gbp_learn_l3_cp, (u8 *) & gl3, sizeof (gl3));
+  vl_api_rpc_call_main_thread (gbp_learn_l3_cp, (u8 *) &gl3, sizeof (gl3));
 }
 
 static void
-gbp_learn_ip6_dp (const ip6_address_t * ip,
-		  u32 fib_index, u32 sw_if_index, sclass_t sclass,
-		  const ip4_address_t * outer_src,
-		  const ip4_address_t * outer_dst)
+gbp_learn_ip6_dp (const ip6_address_t *ip, u32 fib_index, u32 sw_if_index,
+		  sclass_t sclass, const ip4_address_t *outer_src,
+		  const ip4_address_t *outer_dst)
 {
-  /* *INDENT-OFF* */
+
   gbp_learn_l3_t gl3 = {
     .ip = {
       .ip6 = *ip,
@@ -476,9 +459,8 @@ gbp_learn_ip6_dp (const ip6_address_t * ip,
     .outer_src.ip4 = *outer_src,
     .outer_dst.ip4 = *outer_dst,
   };
-  /* *INDENT-ON* */
 
-  vl_api_rpc_call_main_thread (gbp_learn_l3_cp, (u8 *) & gl3, sizeof (gl3));
+  vl_api_rpc_call_main_thread (gbp_learn_l3_cp, (u8 *) &gl3, sizeof (gl3));
 }
 
 /**
@@ -495,8 +477,7 @@ typedef struct gbp_learn_l3_trace_t_
 } gbp_learn_l3_trace_t;
 
 static uword
-gbp_learn_l3 (vlib_main_t * vm,
-	      vlib_node_runtime_t * node, vlib_frame_t * frame,
+gbp_learn_l3 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	      fib_protocol_t fproto)
 {
   u32 n_left_from, *from, *to_next, next_index, thread_index, seed;
@@ -553,8 +534,8 @@ gbp_learn_l3 (vlib_main_t * vm,
 	      goto trace;
 	    }
 
-	  fib_index0 = fib_table_get_index_for_sw_if_index (fproto,
-							    sw_if_index0);
+	  fib_index0 =
+	    fib_table_get_index_for_sw_if_index (fproto, sw_if_index0);
 
 	  if (FIB_PROTOCOL_IP6 == fproto)
 	    {
@@ -568,16 +549,15 @@ gbp_learn_l3 (vlib_main_t * vm,
 	      if ((NULL == ge0) ||
 		  gbp_endpoint_update_required (ge0, sw_if_index0, sclass0))
 		{
-		  t0 = throttle_check (&glm->gl_l3_throttle,
-				       thread_index,
-				       ip6_address_hash_to_u32
-				       (&ip6_0->src_address), seed);
+		  t0 = throttle_check (
+		    &glm->gl_l3_throttle, thread_index,
+		    ip6_address_hash_to_u32 (&ip6_0->src_address), seed);
 
 		  if (!t0)
 		    {
-		      gbp_learn_ip6_dp (&ip6_0->src_address,
-					fib_index0, sw_if_index0, sclass0,
-					&outer_src, &outer_dst);
+		      gbp_learn_ip6_dp (&ip6_0->src_address, fib_index0,
+					sw_if_index0, sclass0, &outer_src,
+					&outer_dst);
 		    }
 		}
 	      else
@@ -607,9 +587,9 @@ gbp_learn_l3 (vlib_main_t * vm,
 
 		  if (!t0)
 		    {
-		      gbp_learn_ip4_dp (&ip4_0->src_address,
-					fib_index0, sw_if_index0, sclass0,
-					&outer_src, &outer_dst);
+		      gbp_learn_ip4_dp (&ip4_0->src_address, fib_index0,
+					sw_if_index0, sclass0, &outer_src,
+					&outer_dst);
 		    }
 		}
 	      else
@@ -639,9 +619,8 @@ gbp_learn_l3 (vlib_main_t * vm,
 	      t->sclass = sclass0;
 	    }
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -652,35 +631,31 @@ gbp_learn_l3 (vlib_main_t * vm,
 
 /* packet trace format function */
 static u8 *
-format_gbp_learn_l3_trace (u8 * s, va_list * args)
+format_gbp_learn_l3_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   gbp_learn_l3_trace_t *t = va_arg (*args, gbp_learn_l3_trace_t *);
 
-  s = format (s, "new:%d throttled:%d ip:%U itf:%d sclass:%d",
-	      t->new, t->throttled,
-	      format_ip46_address, &t->ip, IP46_TYPE_ANY, t->sw_if_index,
-	      t->sclass);
+  s = format (s, "new:%d throttled:%d ip:%U itf:%d sclass:%d", t->new,
+	      t->throttled, format_ip46_address, &t->ip, IP46_TYPE_ANY,
+	      t->sw_if_index, t->sclass);
 
   return s;
 }
 
-VLIB_NODE_FN (gbp_learn_ip4_node) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_learn_ip4_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (gbp_learn_l3 (vm, node, frame, FIB_PROTOCOL_IP4));
 }
 
-VLIB_NODE_FN (gbp_learn_ip6_node) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_learn_ip6_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (gbp_learn_l3 (vm, node, frame, FIB_PROTOCOL_IP6));
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gbp_learn_ip4_node) = {
   .name = "gbp-learn-ip4",
   .vector_size = sizeof (u32),
@@ -688,8 +663,7 @@ VLIB_REGISTER_NODE (gbp_learn_ip4_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
 };
 
-VNET_FEATURE_INIT (gbp_learn_ip4, static) =
-{
+VNET_FEATURE_INIT (gbp_learn_ip4, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "gbp-learn-ip4",
 };
@@ -701,13 +675,10 @@ VLIB_REGISTER_NODE (gbp_learn_ip6_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
 };
 
-VNET_FEATURE_INIT (gbp_learn_ip6, static) =
-{
+VNET_FEATURE_INIT (gbp_learn_ip6, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "gbp-learn-ip6",
 };
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

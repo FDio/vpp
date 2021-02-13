@@ -45,7 +45,7 @@ vlib_node_registration_t cnat_vip_ip4_node;
 vlib_node_registration_t cnat_vip_ip6_node;
 
 static u8 *
-format_cnat_translation_trace (u8 * s, va_list * args)
+format_cnat_translation_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -54,9 +54,8 @@ format_cnat_translation_trace (u8 * s, va_list * args)
   if (t->found_session)
     s = format (s, "found: %U", format_cnat_session, &t->session, 1);
   else if (t->created_session)
-    s = format (s, "created: %U\n  tr: %U",
-		format_cnat_session, &t->session, 1,
-		format_cnat_translation, &t->tr, 0);
+    s = format (s, "created: %U\n  tr: %U", format_cnat_session, &t->session,
+		1, format_cnat_translation, &t->tr, 0);
   else if (t->has_tr)
     s = format (s, "tr pass: %U", format_cnat_translation, &t->tr, 0);
   else
@@ -66,10 +65,8 @@ format_cnat_translation_trace (u8 * s, va_list * args)
 
 /* CNat sub for NAT behind a fib entry (VIP or interposed real IP) */
 static uword
-cnat_vip_node_fn (vlib_main_t * vm,
-		  vlib_node_runtime_t * node,
-		  vlib_buffer_t * b,
-		  cnat_node_ctx_t * ctx, int rv, cnat_session_t * session)
+cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
+		  cnat_node_ctx_t *ctx, int rv, cnat_session_t *session)
 {
   vlib_combined_counter_main_t *cntm = &cnat_translation_counters;
   const cnat_translation_t *ct = NULL;
@@ -97,8 +94,8 @@ cnat_vip_node_fn (vlib_main_t * vm,
 
   cc = cnat_client_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
 
-  if (iproto != IP_PROTOCOL_UDP && iproto != IP_PROTOCOL_TCP
-      && iproto != IP_PROTOCOL_ICMP && iproto != IP_PROTOCOL_ICMP6)
+  if (iproto != IP_PROTOCOL_UDP && iproto != IP_PROTOCOL_TCP &&
+      iproto != IP_PROTOCOL_ICMP && iproto != IP_PROTOCOL_ICMP6)
     {
       /* Dont translate & follow the fib programming */
       next0 = cc->cc_parent.dpoi_next_node;
@@ -132,9 +129,8 @@ cnat_vip_node_fn (vlib_main_t * vm,
     }
   else
     {
-      ct =
-	cnat_find_translation (cc->parent_cci,
-			       clib_host_to_net_u16 (udp0->dst_port), iproto);
+      ct = cnat_find_translation (
+	cc->parent_cci, clib_host_to_net_u16 (udp0->dst_port), iproto);
       if (NULL == ct)
 	{
 	  /* Dont translate & Follow the fib programming */
@@ -160,9 +156,9 @@ cnat_vip_node_fn (vlib_main_t * vm,
 	}
 
       /* session table miss */
-      hash_c0 = (AF_IP4 == ctx->af ?
-		 ip4_compute_flow_hash (ip4, lb0->lb_hash_config) :
-		 ip6_compute_flow_hash (ip6, lb0->lb_hash_config));
+      hash_c0 =
+	(AF_IP4 == ctx->af ? ip4_compute_flow_hash (ip4, lb0->lb_hash_config) :
+			     ip6_compute_flow_hash (ip6, lb0->lb_hash_config));
       bucket0 = hash_c0 % lb0->lb_n_buckets;
       dpo0 = load_balance_get_fwd_bucket (lb0, bucket0);
 
@@ -246,58 +242,48 @@ trace:
   return next0;
 }
 
-VLIB_NODE_FN (cnat_vip_ip4_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * frame)
+VLIB_NODE_FN (cnat_vip_ip4_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return cnat_node_inline (vm, node, frame, cnat_vip_node_fn, AF_IP4,
-			     1 /* do_trace */ );
+			     1 /* do_trace */);
   return cnat_node_inline (vm, node, frame, cnat_vip_node_fn, AF_IP4,
-			   0 /* do_trace */ );
+			   0 /* do_trace */);
 }
 
-VLIB_NODE_FN (cnat_vip_ip6_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * frame)
+VLIB_NODE_FN (cnat_vip_ip6_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return cnat_node_inline (vm, node, frame, cnat_vip_node_fn, AF_IP6,
-			     1 /* do_trace */ );
+			     1 /* do_trace */);
   return cnat_node_inline (vm, node, frame, cnat_vip_node_fn, AF_IP6,
-			   0 /* do_trace */ );
+			   0 /* do_trace */);
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (cnat_vip_ip4_node) =
-{
-  .name = "ip4-cnat-tx",
-  .vector_size = sizeof (u32),
-  .format_trace = format_cnat_translation_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = 0,
-  .n_next_nodes = CNAT_TRANSLATION_N_NEXT,
-  .next_nodes =
-  {
-    [CNAT_TRANSLATION_NEXT_DROP] = "ip4-drop",
-    [CNAT_TRANSLATION_NEXT_LOOKUP] = "ip4-lookup",
-  }
-};
-VLIB_REGISTER_NODE (cnat_vip_ip6_node) =
-{
-  .name = "ip6-cnat-tx",
-  .vector_size = sizeof (u32),
-  .format_trace = format_cnat_translation_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = 0,
-  .n_next_nodes = CNAT_TRANSLATION_N_NEXT,
-  .next_nodes =
-  {
-    [CNAT_TRANSLATION_NEXT_DROP] = "ip6-drop",
-    [CNAT_TRANSLATION_NEXT_LOOKUP] = "ip6-lookup",
-  }
-};
-/* *INDENT-ON* */
+VLIB_REGISTER_NODE (
+  cnat_vip_ip4_node) = { .name = "ip4-cnat-tx",
+			 .vector_size = sizeof (u32),
+			 .format_trace = format_cnat_translation_trace,
+			 .type = VLIB_NODE_TYPE_INTERNAL,
+			 .n_errors = 0,
+			 .n_next_nodes = CNAT_TRANSLATION_N_NEXT,
+			 .next_nodes = {
+			   [CNAT_TRANSLATION_NEXT_DROP] = "ip4-drop",
+			   [CNAT_TRANSLATION_NEXT_LOOKUP] = "ip4-lookup",
+			 } };
+VLIB_REGISTER_NODE (
+  cnat_vip_ip6_node) = { .name = "ip6-cnat-tx",
+			 .vector_size = sizeof (u32),
+			 .format_trace = format_cnat_translation_trace,
+			 .type = VLIB_NODE_TYPE_INTERNAL,
+			 .n_errors = 0,
+			 .n_next_nodes = CNAT_TRANSLATION_N_NEXT,
+			 .next_nodes = {
+			   [CNAT_TRANSLATION_NEXT_DROP] = "ip6-drop",
+			   [CNAT_TRANSLATION_NEXT_LOOKUP] = "ip6-lookup",
+			 } };
 
 /*
  * fd.io coding-style-patch-verification: ON

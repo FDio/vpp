@@ -20,7 +20,8 @@
 
 namespace VOM {
 
-typedef enum end_t_ {
+typedef enum end_t_
+{
   EAST = 0,
   WEST,
 } end_t;
@@ -40,8 +41,7 @@ pipe_mk_name(uint32_t instance)
 pipe::pipe(uint32_t instance, admin_state_t state)
   : interface(pipe_mk_name(instance), type_t::PIPE, state)
   , m_instance(instance)
-{
-}
+{}
 
 pipe::~pipe()
 {
@@ -52,8 +52,7 @@ pipe::~pipe()
 pipe::pipe(const pipe& o)
   : interface(o)
   , m_instance(o.m_instance)
-{
-}
+{}
 
 std::string
 pipe::to_string(void) const
@@ -132,8 +131,7 @@ pipe::pipe_end::pipe_end(const pipe& p, uint8_t id)
               interface::type_t::PIPE_END,
               interface::admin_state_t::UP)
   , m_pipe(p.singular())
-{
-}
+{}
 
 std::queue<cmd*>&
 pipe::pipe_end::mk_create_cmd(std::queue<cmd*>& q)

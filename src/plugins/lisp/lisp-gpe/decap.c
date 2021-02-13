@@ -29,7 +29,7 @@ typedef struct
 } lisp_gpe_rx_trace_t;
 
 static u8 *
-format_lisp_gpe_rx_trace (u8 * s, va_list * args)
+format_lisp_gpe_rx_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -46,26 +46,24 @@ format_lisp_gpe_rx_trace (u8 * s, va_list * args)
 		  t->error);
     }
   s = format (s, "\n  %U", format_lisp_gpe_header_with_length, &t->h,
-	      (u32) sizeof (t->h) /* max size */ );
+	      (u32) sizeof (t->h) /* max size */);
   return s;
 }
 
 static u32 next_proto_to_next_index[LISP_GPE_NEXT_PROTOS] = {
-  LISP_GPE_INPUT_NEXT_DROP,
-  LISP_GPE_INPUT_NEXT_IP4_INPUT,
-  LISP_GPE_INPUT_NEXT_IP6_INPUT,
-  LISP_GPE_INPUT_NEXT_L2_INPUT,
+  LISP_GPE_INPUT_NEXT_DROP, LISP_GPE_INPUT_NEXT_IP4_INPUT,
+  LISP_GPE_INPUT_NEXT_IP6_INPUT, LISP_GPE_INPUT_NEXT_L2_INPUT,
   LISP_GPE_INPUT_NEXT_DROP
 };
 
 always_inline u32
-next_protocol_to_next_index (lisp_gpe_header_t * lgh, u8 * next_header)
+next_protocol_to_next_index (lisp_gpe_header_t *lgh, u8 *next_header)
 {
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
 
   /* lisp-gpe router */
-  if (PREDICT_TRUE ((lgh->flags & LISP_GPE_FLAGS_P)
-		    || GPE_ENCAP_VXLAN == lgm->encap_mode))
+  if (PREDICT_TRUE ((lgh->flags & LISP_GPE_FLAGS_P) ||
+		    GPE_ENCAP_VXLAN == lgm->encap_mode))
     {
       if (PREDICT_FALSE (lgh->next_protocol >= LISP_GPE_NEXT_PROTOS))
 	return LISP_GPE_INPUT_NEXT_DROP;
@@ -88,10 +86,10 @@ next_protocol_to_next_index (lisp_gpe_header_t * lgh, u8 * next_header)
 }
 
 always_inline tunnel_lookup_t *
-next_index_to_iface (lisp_gpe_main_t * lgm, u32 next_index)
+next_index_to_iface (lisp_gpe_main_t *lgm, u32 next_index)
 {
-  if (LISP_GPE_INPUT_NEXT_IP4_INPUT == next_index
-      || LISP_GPE_INPUT_NEXT_IP6_INPUT == next_index)
+  if (LISP_GPE_INPUT_NEXT_IP4_INPUT == next_index ||
+      LISP_GPE_INPUT_NEXT_IP6_INPUT == next_index)
     return &lgm->l3_ifaces;
   else if (LISP_GPE_INPUT_NEXT_L2_INPUT == next_index)
     return &lgm->l2_ifaces;
@@ -102,9 +100,9 @@ next_index_to_iface (lisp_gpe_main_t * lgm, u32 next_index)
 }
 
 static_always_inline void
-incr_decap_stats (vnet_main_t * vnm, u32 thread_index, u32 length,
-		  u32 sw_if_index, u32 * last_sw_if_index, u32 * n_packets,
-		  u32 * n_bytes)
+incr_decap_stats (vnet_main_t *vnm, u32 thread_index, u32 length,
+		  u32 sw_if_index, u32 *last_sw_if_index, u32 *n_packets,
+		  u32 *n_bytes)
 {
   vnet_interface_main_t *im;
 
@@ -119,10 +117,9 @@ incr_decap_stats (vnet_main_t * vnm, u32 thread_index, u32 length,
 	{
 	  im = &vnm->interface_main;
 
-	  vlib_increment_combined_counter (im->combined_sw_if_counters +
-					   VNET_INTERFACE_COUNTER_RX,
-					   thread_index, *last_sw_if_index,
-					   *n_packets, *n_bytes);
+	  vlib_increment_combined_counter (
+	    im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
+	    thread_index, *last_sw_if_index, *n_packets, *n_bytes);
 	}
       *last_sw_if_index = sw_if_index;
       *n_packets = 1;
@@ -146,8 +143,8 @@ incr_decap_stats (vnet_main_t * vnm, u32 thread_index, u32 length,
  * @return number of vectors in frame.
  */
 static uword
-lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_frame_t * from_frame, u8 is_v4)
+lisp_gpe_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_frame_t *from_frame, u8 is_v4)
 {
   u32 n_left_from, next_index, *from, *to_next, thread_index;
   u32 n_bytes = 0, n_packets = 0, last_sw_if_index = ~0, drops = 0;
@@ -205,12 +202,10 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* udp leaves current_data pointing at the lisp header */
 	  if (is_v4)
 	    {
-	      vlib_buffer_advance (b0,
-				   -(word) (sizeof (udp_header_t) +
-					    sizeof (ip4_header_t)));
-	      vlib_buffer_advance (b1,
-				   -(word) (sizeof (udp_header_t) +
-					    sizeof (ip4_header_t)));
+	      vlib_buffer_advance (
+		b0, -(word) (sizeof (udp_header_t) + sizeof (ip4_header_t)));
+	      vlib_buffer_advance (
+		b1, -(word) (sizeof (udp_header_t) + sizeof (ip4_header_t)));
 
 	      iul4_0 = vlib_buffer_get_current (b0);
 	      iul4_1 = vlib_buffer_get_current (b1);
@@ -224,12 +219,10 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      vlib_buffer_advance (b0,
-				   -(word) (sizeof (udp_header_t) +
-					    sizeof (ip6_header_t)));
-	      vlib_buffer_advance (b1,
-				   -(word) (sizeof (udp_header_t) +
-					    sizeof (ip6_header_t)));
+	      vlib_buffer_advance (
+		b0, -(word) (sizeof (udp_header_t) + sizeof (ip6_header_t)));
+	      vlib_buffer_advance (
+		b1, -(word) (sizeof (udp_header_t) + sizeof (ip6_header_t)));
 
 	      iul6_0 = vlib_buffer_get_current (b0);
 	      iul6_1 = vlib_buffer_get_current (b1);
@@ -243,10 +236,10 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* determine next_index from lisp-gpe header */
-	  next0 = next_protocol_to_next_index (lh0,
-					       vlib_buffer_get_current (b0));
-	  next1 = next_protocol_to_next_index (lh1,
-					       vlib_buffer_get_current (b1));
+	  next0 =
+	    next_protocol_to_next_index (lh0, vlib_buffer_get_current (b0));
+	  next1 =
+	    next_protocol_to_next_index (lh1, vlib_buffer_get_current (b1));
 
 	  /* determine if tunnel is l2 or l3 */
 	  tl0 = next_index_to_iface (lgm, next0);
@@ -258,7 +251,6 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  clib_net_to_host_u32 (lh0->iid << 8));
 	  si1 = hash_get (tl1->sw_if_index_by_vni,
 			  clib_net_to_host_u32 (lh1->iid << 8));
-
 
 	  /* Required to make the l2 tag push / pop code work on l2 subifs */
 	  vnet_update_l2_len (b0);
@@ -299,8 +291,8 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      lisp_gpe_rx_trace_t *tr = vlib_add_trace (vm, node, b0,
-							sizeof (*tr));
+	      lisp_gpe_rx_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->next_index = next0;
 	      tr->error = error0;
 	      tr->h = lh0[0];
@@ -308,8 +300,8 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      lisp_gpe_rx_trace_t *tr = vlib_add_trace (vm, node, b1,
-							sizeof (*tr));
+	      lisp_gpe_rx_trace_t *tr =
+		vlib_add_trace (vm, node, b1, sizeof (*tr));
 	      tr->next_index = next1;
 	      tr->error = error1;
 	      tr->h = lh1[0];
@@ -347,9 +339,8 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * info is not going to be used for dp smrs/dpsec */
 	  if (is_v4)
 	    {
-	      vlib_buffer_advance (b0,
-				   -(word) (sizeof (udp_header_t) +
-					    sizeof (ip4_header_t)));
+	      vlib_buffer_advance (
+		b0, -(word) (sizeof (udp_header_t) + sizeof (ip4_header_t)));
 
 	      iul4_0 = vlib_buffer_get_current (b0);
 
@@ -360,9 +351,8 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      vlib_buffer_advance (b0,
-				   -(word) (sizeof (udp_header_t) +
-					    sizeof (ip6_header_t)));
+	      vlib_buffer_advance (
+		b0, -(word) (sizeof (udp_header_t) + sizeof (ip6_header_t)));
 
 	      iul6_0 = vlib_buffer_get_current (b0);
 
@@ -379,8 +369,8 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * the packet is one of its locators */
 
 	  /* determine next_index from lisp-gpe header */
-	  next0 = next_protocol_to_next_index (lh0,
-					       vlib_buffer_get_current (b0));
+	  next0 =
+	    next_protocol_to_next_index (lh0, vlib_buffer_get_current (b0));
 
 	  /* determine if tunnel is l2 or l3 */
 	  tl0 = next_index_to_iface (lgm, next0);
@@ -414,8 +404,8 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      lisp_gpe_rx_trace_t *tr = vlib_add_trace (vm, node, b0,
-							sizeof (*tr));
+	      lisp_gpe_rx_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->next_index = next0;
 	      tr->error = error0;
 	      tr->h = lh0[0];
@@ -437,26 +427,25 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static uword
-lisp_gpe_ip4_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-		    vlib_frame_t * from_frame)
+lisp_gpe_ip4_input (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *from_frame)
 {
   return lisp_gpe_input_inline (vm, node, from_frame, 1);
 }
 
 static uword
-lisp_gpe_ip6_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-		    vlib_frame_t * from_frame)
+lisp_gpe_ip6_input (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *from_frame)
 {
   return lisp_gpe_input_inline (vm, node, from_frame, 0);
 }
 
 static char *lisp_gpe_ip4_input_error_strings[] = {
-#define lisp_gpe_error(n,s) s,
+#define lisp_gpe_error(n, s) s,
 #include <lisp/lisp-gpe/lisp_gpe_error.def>
 #undef lisp_gpe_error
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (lisp_gpe_ip4_input_node) = {
   .function = lisp_gpe_ip4_input,
   .name = "lisp-gpe-ip4-input",
@@ -464,7 +453,7 @@ VLIB_REGISTER_NODE (lisp_gpe_ip4_input_node) = {
   .vector_size = sizeof (u32),
   .n_next_nodes = LISP_GPE_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [LISP_GPE_INPUT_NEXT_##s] = n,
+#define _(s, n) [LISP_GPE_INPUT_NEXT_##s] = n,
     foreach_lisp_gpe_ip_input_next
 #undef _
   },
@@ -476,9 +465,7 @@ VLIB_REGISTER_NODE (lisp_gpe_ip4_input_node) = {
   .format_trace = format_lisp_gpe_rx_trace,
   // $$$$ .unformat_buffer = unformat_lisp_gpe_header,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (lisp_gpe_ip6_input_node) = {
   .function = lisp_gpe_ip6_input,
   .name = "lisp-gpe-ip6-input",
@@ -486,7 +473,7 @@ VLIB_REGISTER_NODE (lisp_gpe_ip6_input_node) = {
   .vector_size = sizeof (u32),
   .n_next_nodes = LISP_GPE_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [LISP_GPE_INPUT_NEXT_##s] = n,
+#define _(s, n) [LISP_GPE_INPUT_NEXT_##s] = n,
     foreach_lisp_gpe_ip_input_next
 #undef _
   },
@@ -498,7 +485,6 @@ VLIB_REGISTER_NODE (lisp_gpe_ip6_input_node) = {
   .format_trace = format_lisp_gpe_rx_trace,
   // $$$$ .unformat_buffer = unformat_lisp_gpe_header,
 };
-/* *INDENT-ON* */
 
 /**
  * Adds arc from lisp-gpe-input to nsh-input if nsh-input is available
@@ -511,8 +497,8 @@ gpe_add_arc_from_input_to_nsh ()
   vlib_node_t *nsh_input;
 
   /* Arc already exists */
-  if (next_proto_to_next_index[LISP_GPE_NEXT_PROTO_NSH]
-      != LISP_GPE_INPUT_NEXT_DROP)
+  if (next_proto_to_next_index[LISP_GPE_NEXT_PROTO_NSH] !=
+      LISP_GPE_INPUT_NEXT_DROP)
     return;
 
   /* Check if nsh-input is available */
@@ -533,7 +519,7 @@ gpe_add_arc_from_input_to_nsh ()
 
 /** GPE decap init function. */
 clib_error_t *
-gpe_decap_init (vlib_main_t * vm)
+gpe_decap_init (vlib_main_t *vm)
 {
   clib_error_t *error = 0;
 
@@ -545,8 +531,8 @@ gpe_decap_init (vlib_main_t * vm)
 }
 
 static uword
-lisp_gpe_nsh_placeholder_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-				vlib_frame_t * from_frame)
+lisp_gpe_nsh_placeholder_input (vlib_main_t *vm, vlib_node_runtime_t *node,
+				vlib_frame_t *from_frame)
 {
   vlib_node_increment_counter (vm, node->node_index, 0, 1);
   return from_frame->n_vectors;
@@ -556,7 +542,6 @@ static char *lisp_gpe_nsh_placeholder_error_strings[] = {
   "lisp gpe placeholder nsh decap",
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (lisp_gpe_nsh_placeholder_input_node) = {
   .function = lisp_gpe_nsh_placeholder_input,
   .name = "lisp-gpe-nsh-placeholder-input",
@@ -571,12 +556,11 @@ VLIB_REGISTER_NODE (lisp_gpe_nsh_placeholder_input_node) = {
       [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-lisp_add_placeholder_nsh_node_command_fn (vlib_main_t * vm,
-					  unformat_input_t * input,
-					  vlib_cli_command_t * cmd)
+lisp_add_placeholder_nsh_node_command_fn (vlib_main_t *vm,
+					  unformat_input_t *input,
+					  vlib_cli_command_t *cmd)
 {
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
   vlib_node_add_next (lgm->vlib_main, lisp_gpe_ip4_input_node.index,
@@ -586,12 +570,10 @@ lisp_add_placeholder_nsh_node_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_add_placeholder_nsh_node_command, static) = {
   .path = "test one nsh add-placeholder-decap-node",
   .function = lisp_add_placeholder_nsh_node_command_fn,
 };
-/* *INDENT-ON* */
 
 VLIB_INIT_FUNCTION (gpe_decap_init);
 

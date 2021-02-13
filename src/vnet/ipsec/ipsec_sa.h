@@ -21,18 +21,18 @@
 #include <vnet/fib/fib_node.h>
 #include <vnet/tunnel/tunnel.h>
 
-#define foreach_ipsec_crypto_alg    \
-  _ (0, NONE, "none")               \
-  _ (1, AES_CBC_128, "aes-cbc-128") \
-  _ (2, AES_CBC_192, "aes-cbc-192") \
-  _ (3, AES_CBC_256, "aes-cbc-256") \
-  _ (4, AES_CTR_128, "aes-ctr-128") \
-  _ (5, AES_CTR_192, "aes-ctr-192") \
-  _ (6, AES_CTR_256, "aes-ctr-256") \
-  _ (7, AES_GCM_128, "aes-gcm-128") \
-  _ (8, AES_GCM_192, "aes-gcm-192") \
-  _ (9, AES_GCM_256, "aes-gcm-256") \
-  _ (10, DES_CBC, "des-cbc")        \
+#define foreach_ipsec_crypto_alg                                              \
+  _ (0, NONE, "none")                                                         \
+  _ (1, AES_CBC_128, "aes-cbc-128")                                           \
+  _ (2, AES_CBC_192, "aes-cbc-192")                                           \
+  _ (3, AES_CBC_256, "aes-cbc-256")                                           \
+  _ (4, AES_CTR_128, "aes-ctr-128")                                           \
+  _ (5, AES_CTR_192, "aes-ctr-192")                                           \
+  _ (6, AES_CTR_256, "aes-ctr-256")                                           \
+  _ (7, AES_GCM_128, "aes-gcm-128")                                           \
+  _ (8, AES_GCM_192, "aes-gcm-192")                                           \
+  _ (9, AES_GCM_256, "aes-gcm-256")                                           \
+  _ (10, DES_CBC, "des-cbc")                                                  \
   _ (11, 3DES_CBC, "3des-cbc")
 
 typedef enum
@@ -43,9 +43,9 @@ typedef enum
     IPSEC_CRYPTO_N_ALG,
 } __clib_packed ipsec_crypto_alg_t;
 
-#define IPSEC_CRYPTO_ALG_IS_GCM(_alg)                     \
-  (((_alg == IPSEC_CRYPTO_ALG_AES_GCM_128) ||             \
-    (_alg == IPSEC_CRYPTO_ALG_AES_GCM_192) ||             \
+#define IPSEC_CRYPTO_ALG_IS_GCM(_alg)                                         \
+  (((_alg == IPSEC_CRYPTO_ALG_AES_GCM_128) ||                                 \
+    (_alg == IPSEC_CRYPTO_ALG_AES_GCM_192) ||                                 \
     (_alg == IPSEC_CRYPTO_ALG_AES_GCM_256)))
 
 #define IPSEC_CRYPTO_ALG_IS_CTR(_alg)                                         \
@@ -53,14 +53,14 @@ typedef enum
     (_alg == IPSEC_CRYPTO_ALG_AES_CTR_192) ||                                 \
     (_alg == IPSEC_CRYPTO_ALG_AES_CTR_256)))
 
-#define foreach_ipsec_integ_alg                                            \
-  _ (0, NONE, "none")                                                      \
-  _ (1, MD5_96, "md5-96")           /* RFC2403 */                          \
-  _ (2, SHA1_96, "sha1-96")         /* RFC2404 */                          \
-  _ (3, SHA_256_96, "sha-256-96")   /* draft-ietf-ipsec-ciph-sha-256-00 */ \
-  _ (4, SHA_256_128, "sha-256-128") /* RFC4868 */                          \
-  _ (5, SHA_384_192, "sha-384-192") /* RFC4868 */                          \
-  _ (6, SHA_512_256, "sha-512-256")	/* RFC4868 */
+#define foreach_ipsec_integ_alg                                               \
+  _ (0, NONE, "none")                                                         \
+  _ (1, MD5_96, "md5-96")	    /* RFC2403 */                             \
+  _ (2, SHA1_96, "sha1-96")	    /* RFC2404 */                             \
+  _ (3, SHA_256_96, "sha-256-96")   /* draft-ietf-ipsec-ciph-sha-256-00 */    \
+  _ (4, SHA_256_128, "sha-256-128") /* RFC4868 */                             \
+  _ (5, SHA_384_192, "sha-384-192") /* RFC4868 */                             \
+  _ (6, SHA_512_256, "sha-512-256") /* RFC4868 */
 
 typedef enum
 {
@@ -144,15 +144,15 @@ typedef struct
   {
     struct
     {
-      vnet_crypto_op_id_t crypto_enc_op_id:16;
-      vnet_crypto_op_id_t crypto_dec_op_id:16;
-      vnet_crypto_op_id_t integ_op_id:16;
+      vnet_crypto_op_id_t crypto_enc_op_id : 16;
+      vnet_crypto_op_id_t crypto_dec_op_id : 16;
+      vnet_crypto_op_id_t integ_op_id : 16;
     };
 
     struct
     {
-      vnet_crypto_async_op_id_t crypto_async_enc_op_id:16;
-      vnet_crypto_async_op_id_t crypto_async_dec_op_id:16;
+      vnet_crypto_async_op_id_t crypto_async_enc_op_id : 16;
+      vnet_crypto_async_op_id_t crypto_async_dec_op_id : 16;
       vnet_crypto_key_index_t linked_key_index;
     };
 
@@ -177,16 +177,16 @@ typedef struct
   u8 __pad[2];
 
   /* data accessed by dataplane code should be above this comment */
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
 
   /* Elements with u64 size multiples */
   union
   {
     struct
     {
-      vnet_crypto_op_id_t crypto_enc_op_id:16;
-      vnet_crypto_op_id_t crypto_dec_op_id:16;
-      vnet_crypto_op_id_t integ_op_id:16;
+      vnet_crypto_op_id_t crypto_enc_op_id : 16;
+      vnet_crypto_op_id_t crypto_dec_op_id : 16;
+      vnet_crypto_op_id_t integ_op_id : 16;
     };
     u64 data;
   } sync_op_data;
@@ -195,8 +195,8 @@ typedef struct
   {
     struct
     {
-      vnet_crypto_async_op_id_t crypto_async_enc_op_id:16;
-      vnet_crypto_async_op_id_t crypto_async_dec_op_id:16;
+      vnet_crypto_async_op_id_t crypto_async_enc_op_id : 16;
+      vnet_crypto_async_op_id_t crypto_async_dec_op_id : 16;
       vnet_crypto_key_index_t linked_key_index;
     };
     u64 data;
@@ -231,34 +231,34 @@ STATIC_ASSERT (STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ipsec.sad_index) ==
 		 STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.save_protocol),
 	       "IPSec data is overlapping with IP data");
 
-#define _(a,v,s)                                                        \
-  always_inline int                                                     \
-  ipsec_sa_is_set_##v (const ipsec_sa_t *sa) {                          \
-    return (sa->flags & IPSEC_SA_FLAG_##v);                             \
+#define _(a, v, s)                                                            \
+  always_inline int ipsec_sa_is_set_##v (const ipsec_sa_t *sa)                \
+  {                                                                           \
+    return (sa->flags & IPSEC_SA_FLAG_##v);                                   \
   }
 foreach_ipsec_sa_flags
 #undef _
-#define _(a,v,s)                                                        \
-  always_inline int                                                     \
-  ipsec_sa_set_##v (ipsec_sa_t *sa) {                                   \
-    return (sa->flags |= IPSEC_SA_FLAG_##v);                            \
+#define _(a, v, s)                                                            \
+  always_inline int ipsec_sa_set_##v (ipsec_sa_t *sa)                         \
+  {                                                                           \
+    return (sa->flags |= IPSEC_SA_FLAG_##v);                                  \
   }
   foreach_ipsec_sa_flags
 #undef _
-#define _(a,v,s)                                                        \
-  always_inline int                                                     \
-  ipsec_sa_unset_##v (ipsec_sa_t *sa) {                                 \
-    return (sa->flags &= ~IPSEC_SA_FLAG_##v);                           \
+#define _(a, v, s)                                                            \
+  always_inline int ipsec_sa_unset_##v (ipsec_sa_t *sa)                       \
+  {                                                                           \
+    return (sa->flags &= ~IPSEC_SA_FLAG_##v);                                 \
   }
-  foreach_ipsec_sa_flags
+    foreach_ipsec_sa_flags
 #undef _
-/**
- * @brief
- * SA packet & bytes counters
- */
-extern vlib_combined_counter_main_t ipsec_sa_counters;
+  /**
+   * @brief
+   * SA packet & bytes counters
+   */
+  extern vlib_combined_counter_main_t ipsec_sa_counters;
 
-extern void ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len);
+extern void ipsec_mk_key (ipsec_key_t *key, const u8 *data, u8 len);
 
 extern int
 ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
@@ -271,46 +271,47 @@ extern int ipsec_sa_unlock_id (u32 id);
 extern void ipsec_sa_unlock (index_t sai);
 extern void ipsec_sa_lock (index_t sai);
 extern void ipsec_sa_clear (index_t sai);
-extern void ipsec_sa_set_crypto_alg (ipsec_sa_t * sa,
+extern void ipsec_sa_set_crypto_alg (ipsec_sa_t *sa,
 				     ipsec_crypto_alg_t crypto_alg);
-extern void ipsec_sa_set_integ_alg (ipsec_sa_t * sa,
+extern void ipsec_sa_set_integ_alg (ipsec_sa_t *sa,
 				    ipsec_integ_alg_t integ_alg);
 
-typedef walk_rc_t (*ipsec_sa_walk_cb_t) (ipsec_sa_t * sa, void *ctx);
+typedef walk_rc_t (*ipsec_sa_walk_cb_t) (ipsec_sa_t *sa, void *ctx);
 extern void ipsec_sa_walk (ipsec_sa_walk_cb_t cd, void *ctx);
 
-extern u8 *format_ipsec_crypto_alg (u8 * s, va_list * args);
-extern u8 *format_ipsec_integ_alg (u8 * s, va_list * args);
-extern u8 *format_ipsec_sa (u8 * s, va_list * args);
-extern u8 *format_ipsec_key (u8 * s, va_list * args);
-extern uword unformat_ipsec_crypto_alg (unformat_input_t * input,
-					va_list * args);
-extern uword unformat_ipsec_integ_alg (unformat_input_t * input,
-				       va_list * args);
-extern uword unformat_ipsec_key (unformat_input_t * input, va_list * args);
+extern u8 *format_ipsec_crypto_alg (u8 *s, va_list *args);
+extern u8 *format_ipsec_integ_alg (u8 *s, va_list *args);
+extern u8 *format_ipsec_sa (u8 *s, va_list *args);
+extern u8 *format_ipsec_key (u8 *s, va_list *args);
+extern uword unformat_ipsec_crypto_alg (unformat_input_t *input,
+					va_list *args);
+extern uword unformat_ipsec_integ_alg (unformat_input_t *input, va_list *args);
+extern uword unformat_ipsec_key (unformat_input_t *input, va_list *args);
 
-#define IPSEC_UDP_PORT_NONE ((u16)~0)
+#define IPSEC_UDP_PORT_NONE ((u16) ~0)
 
 /*
  * Anti Replay definitions
  */
 
 #define IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE (64)
-#define IPSEC_SA_ANTI_REPLAY_WINDOW_MAX_INDEX (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE-1)
+#define IPSEC_SA_ANTI_REPLAY_WINDOW_MAX_INDEX                                 \
+  (IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE - 1)
 
 /*
  * sequence number less than the lower bound are outside of the window
  * From RFC4303 Appendix A:
  *  Bl = Tl - W + 1
  */
-#define IPSEC_SA_ANTI_REPLAY_WINDOW_LOWER_BOUND(_tl) (_tl - IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE + 1)
+#define IPSEC_SA_ANTI_REPLAY_WINDOW_LOWER_BOUND(_tl)                          \
+  (_tl - IPSEC_SA_ANTI_REPLAY_WINDOW_SIZE + 1)
 
 /*
  * Anti replay check.
  *  inputs need to be in host byte order.
  */
 always_inline int
-ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 seq)
+ipsec_sa_anti_replay_check (ipsec_sa_t *sa, u32 seq)
 {
   u32 diff, tl, th;
 
@@ -419,10 +420,9 @@ ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 seq)
 	{
 	  /*
 	   * the packet seq number is between the lower bound (a large nubmer)
-	   * and MAX_SEQ_NUM. This is in the window since the window upper bound
-	   * tl > 0.
-	   * However, since TL is the other side of 0 to the received
-	   * packet, the SA has moved on to a higher sequence number.
+	   * and MAX_SEQ_NUM. This is in the window since the window upper
+	   * bound tl > 0. However, since TL is the other side of 0 to the
+	   * received packet, the SA has moved on to a higher sequence number.
 	   */
 	  sa->seq_hi = th - 1;
 	  return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
@@ -437,7 +437,7 @@ ipsec_sa_anti_replay_check (ipsec_sa_t * sa, u32 seq)
  *  inputs need to be in host byte order.
  */
 always_inline void
-ipsec_sa_anti_replay_advance (ipsec_sa_t * sa, u32 seq)
+ipsec_sa_anti_replay_advance (ipsec_sa_t *sa, u32 seq)
 {
   u32 pos;
   if (PREDICT_TRUE (sa->flags & IPSEC_SA_FLAG_USE_ANTI_REPLAY) == 0)
@@ -496,16 +496,15 @@ ipsec_sa_anti_replay_advance (ipsec_sa_t * sa, u32 seq)
     }
 }
 
-
 /*
  * Makes choice for thread_id should be assigned.
  *  if input ~0, gets random worker_id based on unix_time_now_nsec
-*/
+ */
 always_inline u32
 ipsec_sa_assign_thread (u32 thread_id)
 {
-  return ((thread_id) ? thread_id
-	  : (unix_time_now_nsec () % vlib_num_workers ()) + 1);
+  return ((thread_id) ? thread_id :
+			(unix_time_now_nsec () % vlib_num_workers ()) + 1);
 }
 
 #endif /* __IPSEC_SPD_SA_H__ */

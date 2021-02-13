@@ -43,8 +43,11 @@
 #include <vppinfra/format.h>
 
 static int verbose;
-#define if_verbose(format,args...) \
-  if (verbose) { clib_warning(format, ## args); }
+#define if_verbose(format, args...)                                           \
+  if (verbose)                                                                \
+    {                                                                         \
+      clib_warning (format, ##args);                                          \
+    }
 
 u32
 vl (void *p)
@@ -94,7 +97,7 @@ main (int argc, char *argv[])
     fformat (stderr, "%U\n", format_clib_mem_usage, /* verbose */ 0);
 
   vec_resize (objects, 1000);
-  if (vec_bytes (objects) > 0)	/* stupid warning be gone */
+  if (vec_bytes (objects) > 0) /* stupid warning be gone */
     clib_memset (objects, ~0, vec_bytes (objects));
   vec_resize (handles, vec_len (objects));
 

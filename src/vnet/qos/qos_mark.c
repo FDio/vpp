@@ -27,10 +27,10 @@ index_t *qos_mark_configs[QOS_N_SOURCES];
 void
 qos_mark_ip_enable_disable (u32 sw_if_index, u8 enable)
 {
-  vnet_feature_enable_disable ("ip6-output", "ip6-qos-mark",
-			       sw_if_index, enable, NULL, 0);
-  vnet_feature_enable_disable ("ip4-output", "ip4-qos-mark",
-			       sw_if_index, enable, NULL, 0);
+  vnet_feature_enable_disable ("ip6-output", "ip6-qos-mark", sw_if_index,
+			       enable, NULL, 0);
+  vnet_feature_enable_disable ("ip4-output", "ip4-qos-mark", sw_if_index,
+			       enable, NULL, 0);
 }
 
 void
@@ -40,10 +40,10 @@ qos_mark_vlan_enable_disable (u32 sw_if_index, u8 enable)
    * one cannot run a feature on a sub-interface, so we need
    * to enable a feature on all the L3 output paths
    */
-  vnet_feature_enable_disable ("ip6-output", "vlan-ip6-qos-mark",
-			       sw_if_index, enable, NULL, 0);
-  vnet_feature_enable_disable ("ip4-output", "vlan-ip4-qos-mark",
-			       sw_if_index, enable, NULL, 0);
+  vnet_feature_enable_disable ("ip6-output", "vlan-ip6-qos-mark", sw_if_index,
+			       enable, NULL, 0);
+  vnet_feature_enable_disable ("ip4-output", "vlan-ip4-qos-mark", sw_if_index,
+			       enable, NULL, 0);
   vnet_feature_enable_disable ("mpls-output", "vlan-mpls-qos-mark",
 			       sw_if_index, enable, NULL, 0);
 }
@@ -51,8 +51,8 @@ qos_mark_vlan_enable_disable (u32 sw_if_index, u8 enable)
 void
 qos_mark_mpls_enable_disable (u32 sw_if_index, u8 enable)
 {
-  vnet_feature_enable_disable ("mpls-output", "mpls-qos-mark",
-			       sw_if_index, enable, NULL, 0);
+  vnet_feature_enable_disable ("mpls-output", "mpls-qos-mark", sw_if_index,
+			       enable, NULL, 0);
 }
 
 static void
@@ -76,13 +76,13 @@ qos_egress_map_feature_config (u32 sw_if_index, qos_source_t qs, u8 enable)
 }
 
 int
-qos_mark_enable (u32 sw_if_index,
-		 qos_source_t output_source, qos_egress_map_id_t mid)
+qos_mark_enable (u32 sw_if_index, qos_source_t output_source,
+		 qos_egress_map_id_t mid)
 {
   index_t qemi;
 
-  vec_validate_init_empty (qos_mark_configs[output_source],
-			   sw_if_index, INDEX_INVALID);
+  vec_validate_init_empty (qos_mark_configs[output_source], sw_if_index,
+			   INDEX_INVALID);
 
   qemi = qos_egress_map_find (mid);
 
@@ -127,17 +127,18 @@ qos_mark_walk (qos_mark_walk_cb_t fn, void *c)
     u32 sw_if_index;
 
     vec_foreach_index (sw_if_index, qos_mark_configs[qs])
-    {
-      if (INDEX_INVALID != qos_mark_configs[qs][sw_if_index])
-	fn (sw_if_index,
-	    qos_egress_map_get_id (qos_mark_configs[qs][sw_if_index]), qs, c);
-    }
+      {
+	if (INDEX_INVALID != qos_mark_configs[qs][sw_if_index])
+	  fn (sw_if_index,
+	      qos_egress_map_get_id (qos_mark_configs[qs][sw_if_index]), qs,
+	      c);
+      }
   }
 }
 
 static clib_error_t *
-qos_mark_cli (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+qos_mark_cli (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd)
 {
   qos_egress_map_id_t map_id;
   u32 sw_if_index, qs;
@@ -157,8 +158,8 @@ qos_mark_cli (vlib_main_t * vm,
 	enable = 0;
       else if (unformat (input, "%U", unformat_qos_source, &qs))
 	;
-      else if (unformat (input, "%U",
-			 unformat_vnet_sw_interface, vnm, &sw_if_index))
+      else if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else
 	break;
@@ -187,17 +188,16 @@ qos_mark_cli (vlib_main_t * vm,
  * @cliexpar
  * @cliexcmd{qos egress interface GigEthernet0/9/0 id 0 output ip}
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (qos_egress_map_interface_command, static) = {
   .path = "qos mark",
   .short_help = "qos mark <SOURCE> <INTERFACE> id <MAP>",
   .function = qos_mark_cli,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static void
-qos_mark_show_one_interface (vlib_main_t * vm, u32 sw_if_index)
+qos_mark_show_one_interface (vlib_main_t *vm, u32 sw_if_index)
 {
   index_t qemis[QOS_N_SOURCES];
   qos_source_t qs;
@@ -229,8 +229,8 @@ qos_mark_show_one_interface (vlib_main_t * vm, u32 sw_if_index)
 }
 
 static clib_error_t *
-qos_mark_show (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+qos_mark_show (vlib_main_t *vm, unformat_input_t *input,
+	       vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   qos_source_t qs;
@@ -240,8 +240,8 @@ qos_mark_show (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_vnet_sw_interface,
-		    vnm, &sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
     }
 
@@ -271,20 +271,19 @@ qos_mark_show (vlib_main_t * vm,
  * @cliexpar
  * @cliexcmd{show qos egress map}
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (qos_mark_show_command, static) = {
   .path = "show qos mark",
   .short_help = "show qos mark [interface]",
   .function = qos_mark_show,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
  *
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*
-*/
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ *
+ */

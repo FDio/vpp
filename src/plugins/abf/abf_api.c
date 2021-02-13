@@ -41,7 +41,7 @@ static u32 abf_base_msg_id;
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_abf_plugin_get_version_t_handler (vl_api_abf_plugin_get_version_t * mp)
+vl_api_abf_plugin_get_version_t_handler (vl_api_abf_plugin_get_version_t *mp)
 {
   vl_api_abf_plugin_get_version_reply_t *rmp;
   vl_api_registration_t *rp;
@@ -61,7 +61,7 @@ vl_api_abf_plugin_get_version_t_handler (vl_api_abf_plugin_get_version_t * mp)
 }
 
 static void
-vl_api_abf_policy_add_del_t_handler (vl_api_abf_policy_add_del_t * mp)
+vl_api_abf_policy_add_del_t_handler (vl_api_abf_policy_add_del_t *mp)
 {
   vl_api_abf_policy_add_del_reply_t *rmp;
   fib_route_path_t *paths = NULL, *path;
@@ -97,24 +97,22 @@ done:
 }
 
 static void
-vl_api_abf_itf_attach_add_del_t_handler (vl_api_abf_itf_attach_add_del_t * mp)
+vl_api_abf_itf_attach_add_del_t_handler (vl_api_abf_itf_attach_add_del_t *mp)
 {
   vl_api_abf_itf_attach_add_del_reply_t *rmp;
-  fib_protocol_t fproto = (mp->attach.is_ipv6 ?
-			   FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
+  fib_protocol_t fproto =
+    (mp->attach.is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
   int rv = 0;
 
   if (mp->is_add)
     {
-      abf_itf_attach (fproto,
-		      ntohl (mp->attach.policy_id),
+      abf_itf_attach (fproto, ntohl (mp->attach.policy_id),
 		      ntohl (mp->attach.priority),
 		      ntohl (mp->attach.sw_if_index));
     }
   else
     {
-      abf_itf_detach (fproto,
-		      ntohl (mp->attach.policy_id),
+      abf_itf_detach (fproto, ntohl (mp->attach.policy_id),
 		      ntohl (mp->attach.sw_if_index));
     }
 
@@ -160,10 +158,10 @@ abf_policy_send_details (u32 api, void *args)
 
   fp = mp->policy.paths;
   vec_foreach (rpath, walk_ctx.rpaths)
-  {
-    fib_api_path_encode (rpath, fp);
-    fp++;
-  }
+    {
+      fib_api_path_encode (rpath, fp);
+      fp++;
+    }
 
   vl_api_send_msg (ctx->rp, (u8 *) mp);
 
@@ -173,7 +171,7 @@ abf_policy_send_details (u32 api, void *args)
 }
 
 static void
-vl_api_abf_policy_dump_t_handler (vl_api_abf_policy_dump_t * mp)
+vl_api_abf_policy_dump_t_handler (vl_api_abf_policy_dump_t *mp)
 {
   vl_api_registration_t *rp;
 
@@ -216,7 +214,7 @@ abf_itf_attach_send_details (u32 aiai, void *args)
 }
 
 static void
-vl_api_abf_itf_attach_dump_t_handler (vl_api_abf_itf_attach_dump_t * mp)
+vl_api_abf_itf_attach_dump_t_handler (vl_api_abf_itf_attach_dump_t *mp)
 {
   vl_api_registration_t *rp;
 
@@ -235,7 +233,7 @@ vl_api_abf_itf_attach_dump_t_handler (vl_api_abf_itf_attach_dump_t * mp)
 #include <abf/abf.api.c>
 
 static clib_error_t *
-abf_api_init (vlib_main_t * vm)
+abf_api_init (vlib_main_t *vm)
 {
   /* Ask for a correctly-sized block of API message decode slots */
   abf_base_msg_id = setup_message_id_table ();
@@ -245,12 +243,10 @@ abf_api_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (abf_api_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Access Control List (ACL) Based Forwarding",
+  .version = VPP_BUILD_VER,
+  .description = "Access Control List (ACL) Based Forwarding",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -60,7 +60,7 @@ l3xc_db_remove (u32 sw_if_index, fib_protocol_t fproto)
 }
 
 static void
-l3xc_stack (l3xc_t * l3xc)
+l3xc_stack (l3xc_t *l3xc)
 {
   /*
    * stack the DPO on the forwarding contributed by the path-list
@@ -69,18 +69,19 @@ l3xc_stack (l3xc_t * l3xc)
 
   fib_path_list_contribute_forwarding (l3xc->l3xc_pl,
 				       (FIB_PROTOCOL_IP4 == l3xc->l3xc_proto ?
-					FIB_FORW_CHAIN_TYPE_UNICAST_IP4 :
-					FIB_FORW_CHAIN_TYPE_UNICAST_IP6),
+					  FIB_FORW_CHAIN_TYPE_UNICAST_IP4 :
+					  FIB_FORW_CHAIN_TYPE_UNICAST_IP6),
 				       FIB_PATH_LIST_FWD_FLAG_NONE, &via_dpo);
 
   dpo_stack_from_node ((FIB_PROTOCOL_IP4 == l3xc->l3xc_proto ?
-			l3xc_ip4_node.index :
-			l3xc_ip6_node.index), &l3xc->l3xc_dpo, &via_dpo);
+			  l3xc_ip4_node.index :
+			  l3xc_ip6_node.index),
+		       &l3xc->l3xc_dpo, &via_dpo);
   dpo_reset (&via_dpo);
 }
 
 int
-l3xc_update (u32 sw_if_index, u8 is_ip6, const fib_route_path_t * rpaths)
+l3xc_update (u32 sw_if_index, u8 is_ip6, const fib_route_path_t *rpaths)
 {
   fib_protocol_t fproto;
   l3xc_t *l3xc;
@@ -106,27 +107,22 @@ l3xc_update (u32 sw_if_index, u8 is_ip6, const fib_route_path_t * rpaths)
        * create and become a child of a path list so we get poked when
        * the forwarding changes and stack on the DPO the path-list provides
        */
-      l3xc->l3xc_pl = fib_path_list_create ((FIB_PATH_LIST_FLAG_SHARED |
-					     FIB_PATH_LIST_FLAG_NO_URPF),
-					    rpaths);
-      l3xc->l3xc_sibling = fib_path_list_child_add (l3xc->l3xc_pl,
-						    l3xc_fib_node_type,
-						    l3xci);
+      l3xc->l3xc_pl = fib_path_list_create (
+	(FIB_PATH_LIST_FLAG_SHARED | FIB_PATH_LIST_FLAG_NO_URPF), rpaths);
+      l3xc->l3xc_sibling =
+	fib_path_list_child_add (l3xc->l3xc_pl, l3xc_fib_node_type, l3xci);
       l3xc_stack (l3xc);
 
       /*
-       * add this new policy to the DB and enable the feature on input interface
+       * add this new policy to the DB and enable the feature on input
+       * interface
        */
       l3xc_db_add (sw_if_index, fproto, l3xci);
 
-      vnet_feature_enable_disable ((FIB_PROTOCOL_IP4 == fproto ?
-				    "ip4-unicast" :
-				    "ip6-unicast"),
-				   (FIB_PROTOCOL_IP4 == fproto ?
-				    "l3xc-input-ip4" :
-				    "l3xc-input-ip6"),
-				   l3xc->l3xc_sw_if_index,
-				   1, &l3xci, sizeof (l3xci));
+      vnet_feature_enable_disable (
+	(FIB_PROTOCOL_IP4 == fproto ? "ip4-unicast" : "ip6-unicast"),
+	(FIB_PROTOCOL_IP4 == fproto ? "l3xc-input-ip4" : "l3xc-input-ip6"),
+	l3xc->l3xc_sw_if_index, 1, &l3xci, sizeof (l3xci));
     }
   else
     {
@@ -141,13 +137,11 @@ l3xc_update (u32 sw_if_index, u8 is_ip6, const fib_route_path_t * rpaths)
 	  fib_path_list_child_remove (l3xc->l3xc_pl, l3xc->l3xc_sibling);
 	}
 
-      l3xc->l3xc_pl = fib_path_list_create ((FIB_PATH_LIST_FLAG_SHARED |
-					     FIB_PATH_LIST_FLAG_NO_URPF),
-					    rpaths);
+      l3xc->l3xc_pl = fib_path_list_create (
+	(FIB_PATH_LIST_FLAG_SHARED | FIB_PATH_LIST_FLAG_NO_URPF), rpaths);
 
-      l3xc->l3xc_sibling = fib_path_list_child_add (l3xc->l3xc_pl,
-						    l3xc_fib_node_type,
-						    l3xci);
+      l3xc->l3xc_sibling =
+	fib_path_list_child_add (l3xc->l3xc_pl, l3xc_fib_node_type, l3xci);
     }
   return (0);
 }
@@ -174,14 +168,10 @@ l3xc_delete (u32 sw_if_index, u8 is_ip6)
     {
       l3xc = l3xc_get (l3xci);
 
-      vnet_feature_enable_disable ((FIB_PROTOCOL_IP4 == fproto ?
-				    "ip4-unicast" :
-				    "ip6-unicast"),
-				   (FIB_PROTOCOL_IP4 == fproto ?
-				    "l3xc-input-ip4" :
-				    "l3xc-input-ip6"),
-				   l3xc->l3xc_sw_if_index,
-				   0, &l3xci, sizeof (l3xci));
+      vnet_feature_enable_disable (
+	(FIB_PROTOCOL_IP4 == fproto ? "ip4-unicast" : "ip6-unicast"),
+	(FIB_PROTOCOL_IP4 == fproto ? "l3xc-input-ip4" : "l3xc-input-ip6"),
+	l3xc->l3xc_sw_if_index, 0, &l3xci, sizeof (l3xci));
 
       fib_path_list_child_remove (l3xc->l3xc_pl, l3xc->l3xc_sibling);
 
@@ -193,8 +183,8 @@ l3xc_delete (u32 sw_if_index, u8 is_ip6)
 }
 
 static clib_error_t *
-l3xc_cmd (vlib_main_t * vm,
-	  unformat_input_t * main_input, vlib_cli_command_t * cmd)
+l3xc_cmd (vlib_main_t *vm, unformat_input_t *main_input,
+	  vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   fib_route_path_t *rpaths = NULL, rpath;
@@ -213,8 +203,8 @@ l3xc_cmd (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (line_input, "ip6"))
 	is_ip6 = 1;
@@ -224,8 +214,8 @@ l3xc_cmd (vlib_main_t * vm,
 	is_del = 1;
       else if (unformat (line_input, "add"))
 	is_del = 0;
-      else if (unformat (line_input, "via %U",
-			 unformat_fib_route_path, &rpath, &payload_proto))
+      else if (unformat (line_input, "via %U", unformat_fib_route_path, &rpath,
+			 &payload_proto))
 	vec_add1 (rpaths, rpath);
       else
 	return (clib_error_return (0, "unknown input '%U'",
@@ -263,7 +253,6 @@ out:
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 /**
  * Create an L3XC policy.
  */
@@ -273,17 +262,15 @@ VLIB_CLI_COMMAND (l3xc_cmd_node, static) = {
   .short_help = "l3xc [add|del] <INTERFACE> via ...",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static u8 *
-format_l3xc (u8 * s, va_list * args)
+format_l3xc (u8 *s, va_list *args)
 {
   l3xc_t *l3xc = va_arg (*args, l3xc_t *);
   vnet_main_t *vnm = vnet_get_main ();
 
-  s = format (s, "l3xc:[%d]: %U",
-	      l3xc - l3xc_pool, format_vnet_sw_if_index_name,
-	      vnm, l3xc->l3xc_sw_if_index);
+  s = format (s, "l3xc:[%d]: %U", l3xc - l3xc_pool,
+	      format_vnet_sw_if_index_name, vnm, l3xc->l3xc_sw_if_index);
   s = format (s, "\n");
   if (FIB_NODE_INDEX_INVALID == l3xc->l3xc_pl)
     {
@@ -304,39 +291,33 @@ l3xc_walk (l3xc_walk_cb_t cb, void *ctx)
 {
   u32 l3xci;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (l3xci, l3xc_pool)
-   {
-    if (!cb(l3xci, ctx))
-      break;
-  }
-  /* *INDENT-ON* */
+    {
+      if (!cb (l3xci, ctx))
+	break;
+    }
 }
 
 static clib_error_t *
-l3xc_show_cmd (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+l3xc_show_cmd (vlib_main_t *vm, unformat_input_t *input,
+	       vlib_cli_command_t *cmd)
 {
   l3xc_t *l3xc;
 
-  /* *INDENT-OFF* */
   pool_foreach (l3xc, l3xc_pool)
-   {
-    vlib_cli_output(vm, "%U", format_l3xc, l3xc);
-  }
-  /* *INDENT-ON* */
+    {
+      vlib_cli_output (vm, "%U", format_l3xc, l3xc);
+    }
 
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l3xc_show_cmd_node, static) = {
   .path = "show l3xc",
   .function = l3xc_show_cmd,
   .short_help = "show l3xc",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static fib_node_t *
 l3xc_get_node (fib_node_index_t index)
@@ -346,14 +327,13 @@ l3xc_get_node (fib_node_index_t index)
 }
 
 static l3xc_t *
-l3xc_get_from_node (fib_node_t * node)
+l3xc_get_from_node (fib_node_t *node)
 {
-  return ((l3xc_t *) (((char *) node) -
-		      STRUCT_OFFSET_OF (l3xc_t, l3xc_node)));
+  return ((l3xc_t *) (((char *) node) - STRUCT_OFFSET_OF (l3xc_t, l3xc_node)));
 }
 
 static void
-l3xc_last_lock_gone (fib_node_t * node)
+l3xc_last_lock_gone (fib_node_t *node)
 {
 }
 
@@ -361,7 +341,7 @@ l3xc_last_lock_gone (fib_node_t * node)
  * A back walk has reached this L3XC policy
  */
 static fib_node_back_walk_rc_t
-l3xc_back_walk_notify (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+l3xc_back_walk_notify (fib_node_t *node, fib_node_back_walk_ctx_t *ctx)
 {
   l3xc_stack (l3xc_get_from_node (node));
 
@@ -378,7 +358,7 @@ static const fib_node_vft_t l3xc_vft = {
 };
 
 static clib_error_t *
-l3xc_init (vlib_main_t * vm)
+l3xc_init (vlib_main_t *vm)
 {
   l3xc_fib_node_type = fib_node_register_new_type (&l3xc_vft);
 

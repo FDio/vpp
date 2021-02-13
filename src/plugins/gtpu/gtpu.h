@@ -51,71 +51,63 @@
  * 10		Sequence Number (2nd Octet)1) 4)
  * 11		N-PDU Number2) 4)
  * 12		Next Extension Header Type3) 4)
-**/
+ **/
 
 typedef struct
 {
   u8 ver_flags;
   u8 type;
-  u16 length;			/* length in octets of the data following the fixed part of the header */
+  u16 length; /* length in octets of the data following the fixed part of the
+		 header */
   u32 teid;
   u16 sequence;
   u8 pdu_number;
   u8 next_ext_type;
 } gtpu_header_t;
 
-#define GTPU_V1_HDR_LEN   8
+#define GTPU_V1_HDR_LEN 8
 
-#define GTPU_VER_MASK (7<<5)
-#define GTPU_PT_BIT   (1<<4)
-#define GTPU_E_BIT    (1<<2)
-#define GTPU_S_BIT    (1<<1)
-#define GTPU_PN_BIT   (1<<0)
-#define GTPU_E_S_PN_BIT  (7<<0)
+#define GTPU_VER_MASK	(7 << 5)
+#define GTPU_PT_BIT	(1 << 4)
+#define GTPU_E_BIT	(1 << 2)
+#define GTPU_S_BIT	(1 << 1)
+#define GTPU_PN_BIT	(1 << 0)
+#define GTPU_E_S_PN_BIT (7 << 0)
 
-#define GTPU_V1_VER   (1<<5)
+#define GTPU_V1_VER (1 << 5)
 
-#define GTPU_PT_GTP    (1<<4)
-#define GTPU_TYPE_GTPU  255
+#define GTPU_PT_GTP    (1 << 4)
+#define GTPU_TYPE_GTPU 255
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED(struct
-{
-  ip4_header_t ip4;            /* 20 bytes */
-  udp_header_t udp;            /* 8 bytes */
-  gtpu_header_t gtpu;	       /* 12 bytes */
+typedef CLIB_PACKED (struct {
+  ip4_header_t ip4;   /* 20 bytes */
+  udp_header_t udp;   /* 8 bytes */
+  gtpu_header_t gtpu; /* 12 bytes */
 }) ip4_gtpu_header_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED(struct
-{
-  ip6_header_t ip6;            /* 40 bytes */
-  udp_header_t udp;            /* 8 bytes */
-  gtpu_header_t gtpu;     /* 8 bytes */
+typedef CLIB_PACKED (struct {
+  ip6_header_t ip6;   /* 40 bytes */
+  udp_header_t udp;   /* 8 bytes */
+  gtpu_header_t gtpu; /* 8 bytes */
 }) ip6_gtpu_header_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED
-(struct {
+typedef CLIB_PACKED (struct {
   /*
    * Key fields: ip src and gtpu teid on incoming gtpu packet
    * all fields in NET byte order
    */
-  union {
-    struct {
+  union
+  {
+    struct
+    {
       u32 src;
       u32 teid;
     };
     u64 as_u64;
   };
 }) gtpu4_tunnel_key_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED
-(struct {
+typedef CLIB_PACKED (struct {
   /*
    * Key fields: ip src and gtpu teid on incoming gtpu packet
    * all fields in NET byte order
@@ -123,7 +115,6 @@ typedef CLIB_PACKED
   ip6_address_t src;
   u32 teid;
 }) gtpu6_tunnel_key_t;
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -177,18 +168,18 @@ typedef struct
    */
   u32 sibling_index;
 
-  u32 flow_index;		/* infra flow index */
+  u32 flow_index; /* infra flow index */
 } gtpu_tunnel_t;
 
-#define foreach_gtpu_input_next        \
-_(DROP, "error-drop")                  \
-_(L2_INPUT, "l2-input")                \
-_(IP4_INPUT,  "ip4-input")             \
-_(IP6_INPUT, "ip6-input" )
+#define foreach_gtpu_input_next                                               \
+  _ (DROP, "error-drop")                                                      \
+  _ (L2_INPUT, "l2-input")                                                    \
+  _ (IP4_INPUT, "ip4-input")                                                  \
+  _ (IP6_INPUT, "ip6-input")
 
 typedef enum
 {
-#define _(s,n) GTPU_INPUT_NEXT_##s,
+#define _(s, n) GTPU_INPUT_NEXT_##s,
   foreach_gtpu_input_next
 #undef _
     GTPU_INPUT_N_NEXT,
@@ -196,7 +187,7 @@ typedef enum
 
 typedef enum
 {
-#define gtpu_error(n,s) GTPU_ERROR_##n,
+#define gtpu_error(n, s) GTPU_ERROR_##n,
 #include <gtpu/gtpu_error.def>
 #undef gtpu_error
   GTPU_N_ERROR,
@@ -208,15 +199,15 @@ typedef struct
   gtpu_tunnel_t *tunnels;
 
   /* lookup tunnel by key */
-  uword *gtpu4_tunnel_by_key;	/* keyed on ipv4.dst + teid */
-  uword *gtpu6_tunnel_by_key;	/* keyed on ipv6.dst + teid */
+  uword *gtpu4_tunnel_by_key; /* keyed on ipv4.dst + teid */
+  uword *gtpu6_tunnel_by_key; /* keyed on ipv6.dst + teid */
 
   /* local VTEP IPs ref count used by gtpu-bypass node to check if
      received gtpu packet DIP matches any local VTEP address */
   vtep_table_t vtep_table;
 
   /* mcast shared info */
-  uword *mcast_shared;		/* keyed on mcast ip46 addr */
+  uword *mcast_shared; /* keyed on mcast ip46 addr */
 
   /* Free vlib hw_if_indices */
   u32 *free_gtpu_tunnel_hw_if_indices;
@@ -246,24 +237,24 @@ extern vlib_node_registration_t gtpu4_encap_node;
 extern vlib_node_registration_t gtpu6_encap_node;
 extern vlib_node_registration_t gtpu4_flow_input_node;
 
-u8 *format_gtpu_encap_trace (u8 * s, va_list * args);
+u8 *format_gtpu_encap_trace (u8 *s, va_list *args);
 
 typedef struct
 {
   u8 opn;
 #define GTPU_DEL_TUNNEL 0
 #define GTPU_ADD_TUNNEL 1
-#define GTPU_UPD_TTEID  2
+#define GTPU_UPD_TTEID	2
   ip46_address_t src, dst;
   u32 mcast_sw_if_index;
   u32 encap_fib_index;
   u32 decap_next_index;
-  u32 teid;			/* local  or rx teid */
-  u32 tteid;			/* remote or tx teid */
+  u32 teid;  /* local  or rx teid */
+  u32 tteid; /* remote or tx teid */
 } vnet_gtpu_add_mod_del_tunnel_args_t;
 
-int vnet_gtpu_add_mod_del_tunnel
-  (vnet_gtpu_add_mod_del_tunnel_args_t * a, u32 * sw_if_indexp);
+int vnet_gtpu_add_mod_del_tunnel (vnet_gtpu_add_mod_del_tunnel_args_t *a,
+				  u32 *sw_if_indexp);
 
 typedef struct
 {
@@ -276,7 +267,6 @@ u32 vnet_gtpu_get_tunnel_index (u32 sw_if_index);
 int vnet_gtpu_add_del_rx_flow (u32 hw_if_index, u32 t_imdex, int is_add);
 
 #endif /* included_vnet_gtpu_h */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

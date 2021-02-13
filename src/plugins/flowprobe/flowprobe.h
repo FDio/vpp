@@ -28,9 +28,9 @@
 #include <vppinfra/tw_timer_2t_1w_2048sl.h>
 
 /* Default timers in seconds */
-#define FLOWPROBE_TIMER_ACTIVE   (15)
-#define FLOWPROBE_TIMER_PASSIVE  120	// XXXX: FOR TESTING (30*60)
-#define FLOWPROBE_LOG2_HASHSIZE  (18)
+#define FLOWPROBE_TIMER_ACTIVE	(15)
+#define FLOWPROBE_TIMER_PASSIVE 120 // XXXX: FOR TESTING (30*60)
+#define FLOWPROBE_LOG2_HASHSIZE (18)
 
 typedef enum
 {
@@ -42,7 +42,6 @@ typedef enum
   FLOW_N_RECORDS = 1 << 5,
 } flowprobe_record_t;
 
-/* *INDENT-OFF* */
 typedef enum __attribute__ ((__packed__))
 {
   FLOW_VARIANT_IP4,
@@ -52,13 +51,12 @@ typedef enum __attribute__ ((__packed__))
   FLOW_VARIANT_L2_IP6,
   FLOW_N_VARIANTS,
 } flowprobe_variant_t;
-/* *INDENT-ON* */
 
 STATIC_ASSERT (sizeof (flowprobe_variant_t) == 1,
 	       "flowprobe_variant_t is expected to be 1 byte, "
 	       "revisit padding in flowprobe_key_t");
 
-#define FLOW_MAXIMUM_EXPORT_ENTRIES	(1024)
+#define FLOW_MAXIMUM_EXPORT_ENTRIES (1024)
 
 typedef struct
 {
@@ -72,8 +70,8 @@ typedef struct
   u16 *next_record_offset_per_worker;
 } flowprobe_protocol_context_t;
 
-/* *INDENT-OFF* */
-typedef struct __attribute__ ((aligned (8))) {
+typedef struct __attribute__ ((aligned (8)))
+{
   u32 rx_sw_if_index;
   u32 tx_sw_if_index;
   u8 src_mac[6];
@@ -86,7 +84,6 @@ typedef struct __attribute__ ((aligned (8))) {
   u16 dst_port;
   flowprobe_variant_t which;
 } flowprobe_key_t;
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -131,12 +128,12 @@ typedef struct
   f64 vlib_time_0;
 
   /** Per CPU flow-state */
-  u8 ht_log2len;		/* Hash table size is 2^log2len */
+  u8 ht_log2len; /* Hash table size is 2^log2len */
   u32 **hash_per_worker;
   flowprobe_entry_t **pool_per_worker;
-  /* *INDENT-OFF* */
-  TWT (tw_timer_wheel) ** timers_per_worker;
-  /* *INDENT-ON* */
+
+  TWT (tw_timer_wheel) * *timers_per_worker;
+
   u32 **expired_passive_per_worker;
 
   flowprobe_record_t record;
@@ -162,7 +159,7 @@ extern vlib_node_registration_t flowprobe_walker_node;
 void flowprobe_flush_callback_ip4 (void);
 void flowprobe_flush_callback_ip6 (void);
 void flowprobe_flush_callback_l2 (void);
-u8 *format_flowprobe_entry (u8 * s, va_list * args);
+u8 *format_flowprobe_entry (u8 *s, va_list *args);
 
 #endif
 

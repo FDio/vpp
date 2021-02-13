@@ -30,15 +30,13 @@ record::record(const interface& itf, const source_t& src)
   : m_config(false)
   , m_itf(itf.singular())
   , m_src(src)
-{
-}
+{}
 
 record::record(const record& r)
   : m_config(r.m_config)
   , m_itf(r.m_itf)
   , m_src(r.m_src)
-{
-}
+{}
 
 record::~record()
 {
@@ -151,8 +149,8 @@ record::event_handler::handle_populate(const client_db::key_t& key)
 
       VOM_LOG(log_level_t::DEBUG) << "read: " << qr.to_string();
     } else {
-      VOM_LOG(log_level_t::ERROR) << "no interface:"
-                                  << payload.record.sw_if_index;
+      VOM_LOG(log_level_t::ERROR)
+        << "no interface:" << payload.record.sw_if_index;
     }
   }
 }

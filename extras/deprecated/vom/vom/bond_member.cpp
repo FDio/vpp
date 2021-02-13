@@ -23,19 +23,15 @@ bond_member::bond_member(const interface& itf, mode_t mode, rate_t rate)
   : m_itf(itf.singular())
   , m_mode(mode)
   , m_rate(rate)
-{
-}
+{}
 
-bond_member::~bond_member()
-{
-}
+bond_member::~bond_member() {}
 
 bond_member::bond_member(const bond_member& o)
   : m_itf(o.m_itf)
   , m_mode(o.m_mode)
   , m_rate(o.m_rate)
-{
-}
+{}
 
 void
 bond_member::to_vpp(vapi_payload_bond_enslave& bond_enslave) const
@@ -100,8 +96,7 @@ bond_member::mode_t::from_numeric_val(uint8_t numeric)
 
 bond_member::mode_t::mode_t(int v, const std::string& s)
   : enum_base<bond_member::mode_t>(v, s)
-{
-}
+{}
 
 const bond_member::rate_t bond_member::rate_t::FAST(0, "fast");
 const bond_member::rate_t bond_member::rate_t::SLOW(1, "slow");
@@ -117,8 +112,7 @@ bond_member::rate_t::from_numeric_val(uint8_t numeric)
 
 bond_member::rate_t::rate_t(int v, const std::string& s)
   : enum_base<bond_member::rate_t>(v, s)
-{
-}
+{}
 }; // namespace VOM
 
 /*

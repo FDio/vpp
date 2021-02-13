@@ -20,14 +20,14 @@
  */
 
 extern int ip6_link_enable (u32 sw_if_index,
-			    const ip6_address_t * link_local_addr);
+			    const ip6_address_t *link_local_addr);
 extern bool ip6_link_is_enabled (u32 sw_if_index);
 extern int ip6_link_disable (u32 sw_if_index);
 
 extern const ip6_address_t *ip6_get_link_local_address (u32 sw_if_index);
 
 extern int ip6_link_set_local_address (u32 sw_if_index,
-				       const ip6_address_t * address);
+				       const ip6_address_t *address);
 extern adj_index_t ip6_link_get_mcast_adj (u32 sw_if_index);
 
 /**
@@ -42,9 +42,8 @@ extern adj_index_t ip6_link_get_mcast_adj (u32 sw_if_index);
  */
 typedef void (*ip6_link_enable_fn_t) (u32 sw_if_index);
 typedef void (*ip6_link_disable_fn_t) (index_t ildi);
-typedef void (*ip6_link_ll_change_fn_t) (u32 ildi, const ip6_address_t * a);
-typedef void (*ip6_link_address_change_fn_t) (u32 ildi,
-					      const ip6_address_t * a,
+typedef void (*ip6_link_ll_change_fn_t) (u32 ildi, const ip6_address_t *a);
+typedef void (*ip6_link_address_change_fn_t) (u32 ildi, const ip6_address_t *a,
 					      u8 address_oength);
 
 typedef struct ip6_link_delegate_vft_t_
@@ -59,10 +58,8 @@ typedef struct ip6_link_delegate_vft_t_
 
 typedef u32 ip6_link_delegate_id_t;
 
-
-extern ip6_link_delegate_id_t ip6_link_delegate_register (const
-							  ip6_link_delegate_vft_t
-							  * vft);
+extern ip6_link_delegate_id_t
+ip6_link_delegate_register (const ip6_link_delegate_vft_t *vft);
 extern index_t ip6_link_delegate_get (u32 sw_if_index,
 				      ip6_link_delegate_id_t id);
 extern bool ip6_link_delegate_update (u32 sw_if_index,

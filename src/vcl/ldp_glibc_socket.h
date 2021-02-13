@@ -55,7 +55,6 @@ extern ssize_t __wur read (int __fd, void *__buf, size_t __nbytes);
    __THROW.  */
 extern ssize_t __wur write (int __fd, const void *__buf, size_t __n);
 
-
 /*
  * glibc APIs from <fcntl.h>
  */
@@ -66,7 +65,6 @@ extern ssize_t __wur write (int __fd, const void *__buf, size_t __n);
    This function is a cancellation point and therefore not marked with
    __THROW.  */
 extern int fcntl (int __fd, int __cmd, ...);
-
 
 /*
  * glibc APIs from <sys/select.h>
@@ -81,11 +79,10 @@ extern int fcntl (int __fd, int __cmd, ...);
 
    This function is a cancellation point and therefore not marked with
    __THROW.  */
-extern int
-select (int __nfds, fd_set * __restrict __readfds,
-	fd_set * __restrict __writefds,
-	fd_set * __restrict __exceptfds,
-	struct timeval *__restrict __timeout);
+extern int select (int __nfds, fd_set *__restrict __readfds,
+		   fd_set *__restrict __writefds,
+		   fd_set *__restrict __exceptfds,
+		   struct timeval *__restrict __timeout);
 
 #ifdef __USE_XOPEN2K
 /* Same as above only that the TIMEOUT value is given with higher
@@ -94,14 +91,12 @@ select (int __nfds, fd_set * __restrict __readfds,
 
    This function is a cancellation point and therefore not marked with
    __THROW.  */
-extern int
-pselect (int __nfds, fd_set * __restrict __readfds,
-	 fd_set * __restrict __writefds,
-	 fd_set * __restrict __exceptfds,
-	 const struct timespec *__restrict __timeout,
-	 const __sigset_t * __restrict __sigmask);
+extern int pselect (int __nfds, fd_set *__restrict __readfds,
+		    fd_set *__restrict __writefds,
+		    fd_set *__restrict __exceptfds,
+		    const struct timespec *__restrict __timeout,
+		    const __sigset_t *__restrict __sigmask);
 #endif
-
 
 /*
  *
@@ -122,16 +117,16 @@ extern int __THROW socket (int __domain, int __type, int __protocol);
    protocol PROTOCOL, which are connected to each other, and put file
    descriptors for them in FDS[0] and FDS[1].  If PROTOCOL is zero,
    one will be chosen automatically.  Returns 0 on success, -1 for errors.  */
-extern int __THROW
-socketpair (int __domain, int __type, int __protocol, int __fds[2]);
+extern int __THROW socketpair (int __domain, int __type, int __protocol,
+			       int __fds[2]);
 
 /* Give the socket FD the local address ADDR (which is LEN bytes long).  */
-extern int __THROW
-bind (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len);
+extern int __THROW bind (int __fd, __CONST_SOCKADDR_ARG __addr,
+			 socklen_t __len);
 
 /* Put the local address of FD into *ADDR and its length in *LEN.  */
-extern int __THROW
-getsockname (int __fd, __SOCKADDR_ARG __addr, socklen_t * __restrict __len);
+extern int __THROW getsockname (int __fd, __SOCKADDR_ARG __addr,
+				socklen_t *__restrict __len);
 
 /* Open a connection on socket FD to peer at ADDR (which LEN bytes long).
    For connectionless socket types, just set the default address to send to
@@ -144,8 +139,8 @@ extern int connect (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len);
 
 /* Put the address of the peer connected to socket FD into *ADDR
    (which is *LEN bytes long), and its actual length into *LEN.  */
-extern int __THROW
-getpeername (int __fd, __SOCKADDR_ARG __addr, socklen_t * __restrict __len);
+extern int __THROW getpeername (int __fd, __SOCKADDR_ARG __addr,
+				socklen_t *__restrict __len);
 
 /* Send N bytes of BUF to socket FD.  Returns the number sent or -1.
 
@@ -153,7 +148,7 @@ getpeername (int __fd, __SOCKADDR_ARG __addr, socklen_t * __restrict __len);
    __THROW.  */
 extern ssize_t send (int __fd, const void *__buf, size_t __n, int __flags);
 
-extern ssize_t sendfile (int __out_fd, int __in_fd, off_t * __offset,
+extern ssize_t sendfile (int __out_fd, int __in_fd, off_t *__offset,
 			 size_t __len);
 
 /* Read N bytes into BUF from socket FD.
@@ -168,9 +163,8 @@ extern ssize_t recv (int __fd, void *__buf, size_t __n, int __flags);
 
    This function is a cancellation point and therefore not marked with
    __THROW.  */
-extern ssize_t
-sendto (int __fd, const void *__buf, size_t __n,
-	int __flags, __CONST_SOCKADDR_ARG __addr, socklen_t __addr_len);
+extern ssize_t sendto (int __fd, const void *__buf, size_t __n, int __flags,
+		       __CONST_SOCKADDR_ARG __addr, socklen_t __addr_len);
 
 /* Read N bytes into BUF through socket FD.
    If ADDR is not NULL, fill in *ADDR_LEN bytes of it with tha address of
@@ -179,18 +173,16 @@ sendto (int __fd, const void *__buf, size_t __n,
 
    This function is a cancellation point and therefore not marked with
    __THROW.  */
-extern ssize_t
-recvfrom (int __fd, void *__restrict __buf,
-	  size_t __n, int __flags,
-	  __SOCKADDR_ARG __addr, socklen_t * __restrict __addr_len);
+extern ssize_t recvfrom (int __fd, void *__restrict __buf, size_t __n,
+			 int __flags, __SOCKADDR_ARG __addr,
+			 socklen_t *__restrict __addr_len);
 
 /* Send a message described MESSAGE on socket FD.
    Returns the number of bytes sent, or -1 for errors.
 
    This function is a cancellation point and therefore not marked with
    __THROW.  */
-extern ssize_t
-sendmsg (int __fd, const struct msghdr *__message, int __flags);
+extern ssize_t sendmsg (int __fd, const struct msghdr *__message, int __flags);
 
 #ifdef __USE_GNU
 /* Send a VLEN messages as described by VMESSAGES to socket FD.
@@ -198,9 +190,8 @@ sendmsg (int __fd, const struct msghdr *__message, int __flags);
 
    This function is a cancellation point and therefore not marked with
    __THROW.  */
-extern int
-sendmmsg (int __fd, struct mmsghdr *__vmessages,
-	  unsigned int __vlen, int __flags);
+extern int sendmmsg (int __fd, struct mmsghdr *__vmessages,
+		     unsigned int __vlen, int __flags);
 #endif
 
 /* Receive a message as described by MESSAGE from socket FD.
@@ -216,25 +207,22 @@ extern ssize_t recvmsg (int __fd, struct msghdr *__message, int __flags);
 
    This function is a cancellation point and therefore not marked with
    __THROW.  */
-extern int
-recvmmsg (int __fd, struct mmsghdr *__vmessages,
-	  unsigned int __vlen, int __flags, struct timespec *__tmo);
+extern int recvmmsg (int __fd, struct mmsghdr *__vmessages,
+		     unsigned int __vlen, int __flags, struct timespec *__tmo);
 #endif
-
 
 /* Put the current value for socket FD's option OPTNAME at protocol level LEVEL
    into OPTVAL (which is *OPTLEN bytes long), and set *OPTLEN to the value's
    actual length.  Returns 0 on success, -1 for errors.  */
-extern int __THROW
-getsockopt (int __fd, int __level, int __optname,
-	    void *__restrict __optval, socklen_t * __restrict __optlen);
+extern int __THROW getsockopt (int __fd, int __level, int __optname,
+			       void *__restrict __optval,
+			       socklen_t *__restrict __optlen);
 
 /* Set socket FD's option OPTNAME at protocol level LEVEL
    to *OPTVAL (which is OPTLEN bytes long).
    Returns 0 on success, -1 for errors.  */
-extern int __THROW
-setsockopt (int __fd, int __level, int __optname,
-	    const void *__optval, socklen_t __optlen);
+extern int __THROW setsockopt (int __fd, int __level, int __optname,
+			       const void *__optval, socklen_t __optlen);
 
 /* Prepare to accept connections on socket FD.
    N connection requests will be queued before further requests are refused.
@@ -249,17 +237,16 @@ extern int __THROW listen (int __fd, int __n);
 
    This function is a cancellation point and therefore not marked with
    __THROW.  */
-extern int
-accept (int __fd, __SOCKADDR_ARG __addr, socklen_t * __restrict __addr_len);
+extern int accept (int __fd, __SOCKADDR_ARG __addr,
+		   socklen_t *__restrict __addr_len);
 
 /* Similar to 'accept' but takes an additional parameter to specify flags.
 
    This function is a cancellation point and therefore not marked with
    __THROW.  */
-     /* TBD: implemented later */
-extern int
-accept4 (int __fd, __SOCKADDR_ARG __addr,
-	 socklen_t * __restrict __addr_len, int __flags);
+/* TBD: implemented later */
+extern int accept4 (int __fd, __SOCKADDR_ARG __addr,
+		    socklen_t *__restrict __addr_len, int __flags);
 
 /* Shut down all or part of the connection open on socket FD.
    HOW determines what to shut down:
@@ -268,7 +255,6 @@ accept4 (int __fd, __SOCKADDR_ARG __addr,
      SHUT_RDWR = No more receptions or transmissions.
    Returns 0 on success, -1 for errors.  */
 extern int __THROW shutdown (int __fd, int __how);
-
 
 /*
  * glibc APIs from <sys/epoll.h>
@@ -290,11 +276,11 @@ extern int __THROW epoll_create1 (int __flags);
    constants defined above. The "fd" parameter is the target of the
    operation. The "event" parameter describes which events the caller
    is interested in and any associated user data.  */
-extern int __THROW
-epoll_ctl (int __epfd, int __op, int __fd, struct epoll_event *__event);
+extern int __THROW epoll_ctl (int __epfd, int __op, int __fd,
+			      struct epoll_event *__event);
 
-#define EP_INT_MAX ((int)(~0U>>1))
-#define EP_MAX_EVENTS (EP_INT_MAX / sizeof(struct epoll_event))
+#define EP_INT_MAX    ((int) (~0U >> 1))
+#define EP_MAX_EVENTS (EP_INT_MAX / sizeof (struct epoll_event))
 
 /* Wait for events on an epoll instance "epfd". Returns the number of
    triggered events returned in "events" buffer. Or -1 in case of
@@ -306,18 +292,17 @@ epoll_ctl (int __epfd, int __op, int __fd, struct epoll_event *__event);
 
    This function is a cancellation point and therefore not marked with
    __THROW.  */
-extern int
-epoll_wait (int __epfd, struct epoll_event *__events,
-	    int __maxevents, int __timeout);
+extern int epoll_wait (int __epfd, struct epoll_event *__events,
+		       int __maxevents, int __timeout);
 
 /* Same as epoll_wait, but the thread's signal mask is temporarily
    and atomically replaced with the one provided as parameter.
 
    This function is a cancellation point and therefore not marked with
    __THROW.  */
-extern int
-epoll_pwait (int __epfd, struct epoll_event *__events,
-	     int __maxevents, int __timeout, const __sigset_t * __ss);
+extern int epoll_pwait (int __epfd, struct epoll_event *__events,
+			int __maxevents, int __timeout,
+			const __sigset_t *__ss);
 
 /* Poll the file descriptors described by the NFDS structures starting at
    FDS.  If TIMEOUT is nonzero and not -1, allow TIMEOUT milliseconds for
@@ -337,9 +322,8 @@ extern int poll (struct pollfd *__fds, nfds_t __nfds, int __timeout);
    This function is a cancellation point and therefore not marked with
    __THROW.  */
 extern int ppoll (struct pollfd *__fds, nfds_t __nfds,
-		  const struct timespec *__timeout, const __sigset_t * __ss);
+		  const struct timespec *__timeout, const __sigset_t *__ss);
 #endif
-
 
 #endif /* included_ldp_glibc_socket_h */
 

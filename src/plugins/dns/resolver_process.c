@@ -26,17 +26,15 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-int
-vnet_dns_response_to_reply (u8 * response,
-			    vl_api_dns_resolve_name_reply_t * rmp,
-			    u32 * min_ttlp);
-int
-vnet_dns_response_to_name (u8 * response,
-			   vl_api_dns_resolve_ip_reply_t * rmp,
-			   u32 * min_ttlp);
+int vnet_dns_response_to_reply (u8 *response,
+				vl_api_dns_resolve_name_reply_t *rmp,
+				u32 *min_ttlp);
+int vnet_dns_response_to_name (u8 *response,
+			       vl_api_dns_resolve_ip_reply_t *rmp,
+			       u32 *min_ttlp);
 
 static void
-resolve_event (vlib_main_t * vm, dns_main_t * dm, f64 now, u8 * reply)
+resolve_event (vlib_main_t *vm, dns_main_t *dm, f64 now, u8 *reply)
 {
   dns_pending_request_t *pr;
   dns_header_t *d;
@@ -87,7 +85,7 @@ resolve_event (vlib_main_t * vm, dns_main_t * dm, f64 now, u8 * reply)
   if (rv < 0)
     {
       /* Try a different server */
-      if (ep->server_af /* ip6 */ )
+      if (ep->server_af /* ip6 */)
 	{
 	  if (0)
 	    clib_warning ("Server %U failed to resolve '%s'",
@@ -107,8 +105,8 @@ resolve_event (vlib_main_t * vm, dns_main_t * dm, f64 now, u8 * reply)
 	  if (0)
 	    clib_warning ("Try server %U", format_ip6_address,
 			  dm->ip6_name_servers + ep->server_rotor);
-	  vnet_dns_send_dns6_request
-	    (vm, dm, ep, dm->ip6_name_servers + ep->server_rotor);
+	  vnet_dns_send_dns6_request (vm, dm, ep,
+				      dm->ip6_name_servers + ep->server_rotor);
 	}
       else
 	{
@@ -130,8 +128,8 @@ resolve_event (vlib_main_t * vm, dns_main_t * dm, f64 now, u8 * reply)
 	  if (0)
 	    clib_warning ("Try server %U", format_ip4_address,
 			  dm->ip4_name_servers + ep->server_rotor);
-	  vnet_dns_send_dns4_request
-	    (vm, dm, ep, dm->ip4_name_servers + ep->server_rotor);
+	  vnet_dns_send_dns4_request (vm, dm, ep,
+				      dm->ip4_name_servers + ep->server_rotor);
 	}
       dns_cache_unlock (dm);
       return;
@@ -148,9 +146,9 @@ reply:
   ep->expiration_time = now + 600.0;
 
   if (0)
-    clib_warning ("resolving '%s', was %s valid",
-		  ep->name, (ep->flags & DNS_CACHE_ENTRY_FLAG_VALID) ?
-		  "already" : "not");
+    clib_warning ("resolving '%s', was %s valid", ep->name,
+		  (ep->flags & DNS_CACHE_ENTRY_FLAG_VALID) ? "already" :
+							     "not");
   /*
    * The world is a mess. A single DNS request sent to e.g. 8.8.8.8
    * may yield multiple, subtly different responses - all with the same
@@ -183,9 +181,8 @@ reply:
 	      continue;
 
 	    rmp = vl_msg_api_alloc (sizeof (*rmp));
-	    rmp->_vl_msg_id =
-	      clib_host_to_net_u16 (VL_API_DNS_RESOLVE_NAME_REPLY
-				    + dm->msg_id_base);
+	    rmp->_vl_msg_id = clib_host_to_net_u16 (
+	      VL_API_DNS_RESOLVE_NAME_REPLY + dm->msg_id_base);
 	    rmp->context = pr->client_context;
 	    min_ttl = ~0;
 	    rv = vnet_dns_response_to_reply (ep->dns_response, rmp, &min_ttl);
@@ -205,9 +202,8 @@ reply:
 	      continue;
 
 	    rmp = vl_msg_api_alloc (sizeof (*rmp));
-	    rmp->_vl_msg_id =
-	      clib_host_to_net_u16 (VL_API_DNS_RESOLVE_IP_REPLY
-				    + dm->msg_id_base);
+	    rmp->_vl_msg_id = clib_host_to_net_u16 (
+	      VL_API_DNS_RESOLVE_IP_REPLY + dm->msg_id_base);
 	    rmp->context = pr->client_context;
 	    min_ttl = ~0;
 	    rv = vnet_dns_response_to_name (ep->dns_response, rmp, &min_ttl);
@@ -221,9 +217,9 @@ reply:
 	case DNS_PEER_PENDING_IP_TO_NAME:
 	case DNS_PEER_PENDING_NAME_TO_IP:
 	  if (pr->is_ip6)
-	    vnet_send_dns6_reply (vm, dm, pr, ep, 0 /* allocate a buffer */ );
+	    vnet_send_dns6_reply (vm, dm, pr, ep, 0 /* allocate a buffer */);
 	  else
-	    vnet_send_dns4_reply (vm, dm, pr, ep, 0 /* allocate a buffer */ );
+	    vnet_send_dns4_reply (vm, dm, pr, ep, 0 /* allocate a buffer */);
 	  break;
 	default:
 	  clib_warning ("request type %d unknown", pr->request_type);
@@ -246,7 +242,7 @@ reply:
   if (remove_count == 0)
     {
       u32 error_code = entry_was_valid ? DNS46_REPLY_ERROR_MULTIPLE_REPLY :
-	DNS46_REPLY_ERROR_NO_UNRESOLVED_ENTRY;
+					 DNS46_REPLY_ERROR_NO_UNRESOLVED_ENTRY;
 
       vlib_node_increment_counter (vm, dns46_reply_node.index, error_code, 1);
       dns_cache_unlock (dm);
@@ -264,12 +260,10 @@ reply:
     case DNS_RCODE_NOT_IMPLEMENTED:
     case DNS_RCODE_REFUSED:
       if (ep->server_af == 0)
-	clib_warning ("name server %U can't resolve '%s'",
-		      format_ip4_address,
+	clib_warning ("name server %U can't resolve '%s'", format_ip4_address,
 		      dm->ip4_name_servers + ep->server_rotor, ep->name);
       else
-	clib_warning ("name server %U can't resolve '%s'",
-		      format_ip6_address,
+	clib_warning ("name server %U can't resolve '%s'", format_ip6_address,
 		      dm->ip6_name_servers + ep->server_rotor, ep->name);
       /* FALLTHROUGH */
     case DNS_RCODE_NAME_ERROR:
@@ -279,13 +273,12 @@ reply:
       break;
     }
 
-
   dns_cache_unlock (dm);
   return;
 }
 
 static void
-retry_scan (vlib_main_t * vm, dns_main_t * dm, f64 now)
+retry_scan (vlib_main_t *vm, dns_main_t *dm, f64 now)
 {
   int i;
   dns_cache_entry_t *ep;
@@ -302,8 +295,8 @@ retry_scan (vlib_main_t * vm, dns_main_t * dm, f64 now)
 }
 
 static uword
-dns_resolver_process (vlib_main_t * vm,
-		      vlib_node_runtime_t * rt, vlib_frame_t * f)
+dns_resolver_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
+		      vlib_frame_t *f)
 {
   dns_main_t *dm = &dns_main;
   f64 now;
@@ -318,7 +311,7 @@ dns_resolver_process (vlib_main_t * vm,
 
       now = vlib_time_now (vm);
 
-      event_type = vlib_process_get_events (vm, (uword **) & event_data);
+      event_type = vlib_process_get_events (vm, (uword **) &event_data);
 
       switch (event_type)
 	{
@@ -332,7 +325,7 @@ dns_resolver_process (vlib_main_t * vm,
 	    resolve_event (vm, dm, now, (u8 *) event_data[i]);
 	  break;
 
-	case ~0:		/* timeout */
+	case ~0: /* timeout */
 	  retry_scan (vm, dm, now);
 	  break;
 	}
@@ -342,20 +335,20 @@ dns_resolver_process (vlib_main_t * vm,
       if (vec_len (dm->unresolved_entries) == 0)
 	timeout = 1000.0;
     }
-  return 0;			/* or not */
+  return 0; /* or not */
 }
 
 void
-vnet_dns_create_resolver_process (vlib_main_t * vm, dns_main_t * dm)
+vnet_dns_create_resolver_process (vlib_main_t *vm, dns_main_t *dm)
 {
   /* Already created the resolver process? */
   if (dm->resolver_process_node_index > 0)
     return;
 
   /* No, create it now and make a note of the node index */
-  dm->resolver_process_node_index = vlib_process_create
-    (vm, "dns-resolver-process",
-     dns_resolver_process, 16 /* log2_n_stack_bytes */ );
+  dm->resolver_process_node_index =
+    vlib_process_create (vm, "dns-resolver-process", dns_resolver_process,
+			 16 /* log2_n_stack_bytes */);
 }
 
 /*

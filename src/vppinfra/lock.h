@@ -21,32 +21,36 @@
 
 #if __x86_64__
 #define CLIB_PAUSE() __builtin_ia32_pause ()
-#elif defined (__aarch64__) || defined (__arm__)
-#define CLIB_PAUSE() __asm__ ("yield")
+#elif defined(__aarch64__) || defined(__arm__)
+#define CLIB_PAUSE() __asm__("yield")
 #else
 #define CLIB_PAUSE()
 #endif
 
 #if CLIB_DEBUG > 1
-#define CLIB_LOCK_DBG(_p)				\
-do {							\
-    (*_p)->frame_address = __builtin_frame_address (0);	\
-    (*_p)->pid = getpid ();				\
-    (*_p)->thread_index = os_get_thread_index ();	\
-} while (0)
-#define CLIB_LOCK_DBG_CLEAR(_p)				\
-do {							\
-    (*_p)->frame_address = 0;				\
-    (*_p)->pid = 0;					\
-    (*_p)->thread_index = 0;				\
-} while (0)
+#define CLIB_LOCK_DBG(_p)                                                     \
+  do                                                                          \
+    {                                                                         \
+      (*_p)->frame_address = __builtin_frame_address (0);                     \
+      (*_p)->pid = getpid ();                                                 \
+      (*_p)->thread_index = os_get_thread_index ();                           \
+    }                                                                         \
+  while (0)
+#define CLIB_LOCK_DBG_CLEAR(_p)                                               \
+  do                                                                          \
+    {                                                                         \
+      (*_p)->frame_address = 0;                                               \
+      (*_p)->pid = 0;                                                         \
+      (*_p)->thread_index = 0;                                                \
+    }                                                                         \
+  while (0)
 #else
 #define CLIB_LOCK_DBG(_p)
 #define CLIB_LOCK_DBG_CLEAR(_p)
 #endif
 
-#define CLIB_SPINLOCK_IS_LOCKED(_p) (*(_p))->lock
-#define CLIB_SPINLOCK_ASSERT_LOCKED(_p) ASSERT(CLIB_SPINLOCK_IS_LOCKED((_p)))
+#define CLIB_SPINLOCK_IS_LOCKED(_p)	(*(_p))->lock
+#define CLIB_SPINLOCK_ASSERT_LOCKED(_p) ASSERT (CLIB_SPINLOCK_IS_LOCKED ((_p)))
 
 struct clib_spinlock_s
 {
@@ -62,14 +66,14 @@ struct clib_spinlock_s
 typedef struct clib_spinlock_s *clib_spinlock_t;
 
 static inline void
-clib_spinlock_init (clib_spinlock_t * p)
+clib_spinlock_init (clib_spinlock_t *p)
 {
   *p = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
   clib_memset ((void *) *p, 0, CLIB_CACHE_LINE_BYTES);
 }
 
 static inline void
-clib_spinlock_free (clib_spinlock_t * p)
+clib_spinlock_free (clib_spinlock_t *p)
 {
   if (*p)
     {
@@ -79,7 +83,7 @@ clib_spinlock_free (clib_spinlock_t * p)
 }
 
 static_always_inline void
-clib_spinlock_lock (clib_spinlock_t * p)
+clib_spinlock_lock (clib_spinlock_t *p)
 {
   u32 free = 0;
   while (!clib_atomic_cmp_and_swap_acq_relax_n (&(*p)->lock, &free, 1, 0))
@@ -94,7 +98,7 @@ clib_spinlock_lock (clib_spinlock_t * p)
 }
 
 static_always_inline int
-clib_spinlock_trylock (clib_spinlock_t * p)
+clib_spinlock_trylock (clib_spinlock_t *p)
 {
   if (PREDICT_FALSE (CLIB_SPINLOCK_IS_LOCKED (p)))
     return 0;
@@ -103,14 +107,14 @@ clib_spinlock_trylock (clib_spinlock_t * p)
 }
 
 static_always_inline void
-clib_spinlock_lock_if_init (clib_spinlock_t * p)
+clib_spinlock_lock_if_init (clib_spinlock_t *p)
 {
   if (PREDICT_FALSE (*p != 0))
     clib_spinlock_lock (p);
 }
 
 static_always_inline int
-clib_spinlock_trylock_if_init (clib_spinlock_t * p)
+clib_spinlock_trylock_if_init (clib_spinlock_t *p)
 {
   if (PREDICT_FALSE (*p != 0))
     return clib_spinlock_trylock (p);
@@ -118,7 +122,7 @@ clib_spinlock_trylock_if_init (clib_spinlock_t * p)
 }
 
 static_always_inline void
-clib_spinlock_unlock (clib_spinlock_t * p)
+clib_spinlock_unlock (clib_spinlock_t *p)
 {
   CLIB_LOCK_DBG_CLEAR (p);
   /* Make sure all reads/writes are complete before releasing the lock */
@@ -126,7 +130,7 @@ clib_spinlock_unlock (clib_spinlock_t * p)
 }
 
 static_always_inline void
-clib_spinlock_unlock_if_init (clib_spinlock_t * p)
+clib_spinlock_unlock_if_init (clib_spinlock_t *p)
 {
   if (PREDICT_FALSE (*p != 0))
     clib_spinlock_unlock (p);
@@ -146,17 +150,17 @@ typedef struct clib_rw_lock_
   uword thread_index;
   void *frame_address;
 #endif
-} *clib_rwlock_t;
+} * clib_rwlock_t;
 
 always_inline void
-clib_rwlock_init (clib_rwlock_t * p)
+clib_rwlock_init (clib_rwlock_t *p)
 {
   *p = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
   clib_memset ((void *) *p, 0, CLIB_CACHE_LINE_BYTES);
 }
 
 always_inline void
-clib_rwlock_free (clib_rwlock_t * p)
+clib_rwlock_free (clib_rwlock_t *p)
 {
   if (*p)
     {
@@ -166,7 +170,7 @@ clib_rwlock_free (clib_rwlock_t * p)
 }
 
 always_inline void
-clib_rwlock_reader_lock (clib_rwlock_t * p)
+clib_rwlock_reader_lock (clib_rwlock_t *p)
 {
   i32 cnt;
   do
@@ -175,13 +179,13 @@ clib_rwlock_reader_lock (clib_rwlock_t * p)
       while ((cnt = clib_atomic_load_relax_n (&(*p)->rw_cnt)) < 0)
 	CLIB_PAUSE ();
     }
-  while (!clib_atomic_cmp_and_swap_acq_relax_n
-	 (&(*p)->rw_cnt, &cnt, cnt + 1, 1));
+  while (
+    !clib_atomic_cmp_and_swap_acq_relax_n (&(*p)->rw_cnt, &cnt, cnt + 1, 1));
   CLIB_LOCK_DBG (p);
 }
 
 always_inline void
-clib_rwlock_reader_unlock (clib_rwlock_t * p)
+clib_rwlock_reader_unlock (clib_rwlock_t *p)
 {
   ASSERT ((*p)->rw_cnt > 0);
   CLIB_LOCK_DBG_CLEAR (p);
@@ -189,7 +193,7 @@ clib_rwlock_reader_unlock (clib_rwlock_t * p)
 }
 
 always_inline void
-clib_rwlock_writer_lock (clib_rwlock_t * p)
+clib_rwlock_writer_lock (clib_rwlock_t *p)
 {
   i32 cnt = 0;
   do
@@ -203,7 +207,7 @@ clib_rwlock_writer_lock (clib_rwlock_t * p)
 }
 
 always_inline void
-clib_rwlock_writer_unlock (clib_rwlock_t * p)
+clib_rwlock_writer_unlock (clib_rwlock_t *p)
 {
   CLIB_LOCK_DBG_CLEAR (p);
   clib_atomic_release (&(*p)->rw_cnt);

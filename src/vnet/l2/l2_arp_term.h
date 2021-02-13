@@ -44,7 +44,6 @@ extern vlib_node_registration_t l2_arp_term_process_node;
 
 extern void l2_arp_term_set_publisher_node (bool on);
 
-
 /*
  * fd.io coding-style-patch-verification: ON
  *

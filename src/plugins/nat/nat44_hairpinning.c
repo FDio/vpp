@@ -50,15 +50,14 @@ typedef struct
 } nat_hairpin_trace_t;
 
 static u8 *
-format_nat_hairpin_trace (u8 * s, va_list * args)
+format_nat_hairpin_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   nat_hairpin_trace_t *t = va_arg (*args, nat_hairpin_trace_t *);
 
-  s =
-    format (s, "new dst addr %U port %u fib-index %u", format_ip4_address,
-	    &t->addr, clib_net_to_host_u16 (t->port), t->fib_index);
+  s = format (s, "new dst addr %U port %u fib-index %u", format_ip4_address,
+	      &t->addr, clib_net_to_host_u16 (t->port), t->fib_index);
   if (~0 == t->session_index)
     {
       s = format (s, " is-static-mapping");
@@ -74,7 +73,7 @@ format_nat_hairpin_trace (u8 * s, va_list * args)
 extern vnet_feature_arc_registration_t vnet_feat_arc_ip4_local;
 
 static_always_inline int
-is_hairpinning (snat_main_t * sm, ip4_address_t * dst_addr)
+is_hairpinning (snat_main_t *sm, ip4_address_t *dst_addr)
 {
   snat_address_t *ap;
   clib_bihash_kv_8_8_t kv, value;
@@ -82,7 +81,7 @@ is_hairpinning (snat_main_t * sm, ip4_address_t * dst_addr)
   vec_foreach (ap, sm->addresses)
     {
       if (ap->addr.as_u32 == dst_addr->as_u32)
-        return 1;
+	return 1;
     }
 
   init_nat_k (&kv, *dst_addr, 0, 0, 0);
@@ -110,9 +109,9 @@ snat_hairpinning (vlib_main_t *vm, vlib_node_runtime_t *node, snat_main_t *sm,
   u32 sm0_fib_index;
   u32 old_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
   /* Check if destination is static mappings */
-  if (!snat_static_mapping_match
-      (sm, ip0->dst_address, udp0->dst_port, sm->outside_fib_index, proto0,
-       &sm0_addr, &sm0_port, &sm0_fib_index, 1, 0, 0, 0, 0, 0, 0))
+  if (!snat_static_mapping_match (
+	sm, ip0->dst_address, udp0->dst_port, sm->outside_fib_index, proto0,
+	&sm0_addr, &sm0_port, &sm0_fib_index, 1, 0, 0, 0, 0, 0, 0))
     {
       new_dst_addr0 = sm0_addr.as_u32;
       new_dst_port0 = sm0_port;
@@ -149,9 +148,8 @@ snat_hairpinning (vlib_main_t *vm, vlib_node_runtime_t *node, snat_main_t *sm,
      changed. */
   old_dst_addr0 = ip0->dst_address.as_u32;
   old_dst_port0 = tcp0->dst;
-  if (new_dst_addr0 == old_dst_addr0
-      && new_dst_port0 == old_dst_port0
-      && vnet_buffer (b0)->sw_if_index[VLIB_TX] == old_sw_if_index)
+  if (new_dst_addr0 == old_dst_addr0 && new_dst_port0 == old_dst_port0 &&
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] == old_sw_if_index)
     return 0;
 
   /* Destination is behind the same NAT, use internal address and port */
@@ -160,8 +158,8 @@ snat_hairpinning (vlib_main_t *vm, vlib_node_runtime_t *node, snat_main_t *sm,
       old_dst_addr0 = ip0->dst_address.as_u32;
       ip0->dst_address.as_u32 = new_dst_addr0;
       sum0 = ip0->checksum;
-      sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0,
-			     ip4_header_t, dst_address);
+      sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0, ip4_header_t,
+			     dst_address);
       ip0->checksum = ip_csum_fold (sum0);
 
       old_dst_port0 = tcp0->dst;
@@ -174,7 +172,7 @@ snat_hairpinning (vlib_main_t *vm, vlib_node_runtime_t *node, snat_main_t *sm,
 	      sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0,
 				     ip4_header_t, dst_address);
 	      sum0 = ip_csum_update (sum0, old_dst_port0, new_dst_port0,
-				     ip4_header_t /* cheat */ , length);
+				     ip4_header_t /* cheat */, length);
 	      tcp0->checksum = ip_csum_fold (sum0);
 	    }
 	  else
@@ -198,8 +196,8 @@ snat_hairpinning (vlib_main_t *vm, vlib_node_runtime_t *node, snat_main_t *sm,
     }
   rv = 0;
 trace:
-  if (do_trace && PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-				 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+  if (do_trace && PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+				 (b0->flags & VLIB_BUFFER_IS_TRACED)))
     {
       nat_hairpin_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
       t->addr.as_u32 = new_dst_addr0;
@@ -234,8 +232,8 @@ snat_icmp_hairpinning (snat_main_t *sm, vlib_buffer_t *b0, u32 thread_index,
   snat_session_t *s0;
   snat_static_mapping_t *m0;
 
-  if (icmp_type_is_error_message
-      (vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags))
+  if (icmp_type_is_error_message (
+	vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags))
     {
       ip4_header_t *inner_ip0 = 0;
       tcp_udp_header_t *l4_header = 0;
@@ -267,15 +265,15 @@ snat_icmp_hairpinning (snat_main_t *sm, vlib_buffer_t *b0, u32 thread_index,
       inner_ip0->src_address.as_u32 = new_dst_addr0;
       new_addr0 = inner_ip0->src_address.as_u32;
       sum0 = icmp0->checksum;
-      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
-			     src_address);
+      sum0 =
+	ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t, src_address);
       icmp0->checksum = ip_csum_fold (sum0);
 
       /* update inner IP header checksum */
       old_checksum0 = inner_ip0->checksum;
       sum0 = inner_ip0->checksum;
-      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
-			     src_address);
+      sum0 =
+	ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t, src_address);
       inner_ip0->checksum = ip_csum_fold (sum0);
       new_checksum0 = inner_ip0->checksum;
       sum0 = icmp0->checksum;
@@ -339,8 +337,8 @@ change_addr:
       old_dst_addr0 = ip0->dst_address.as_u32;
       ip0->dst_address.as_u32 = new_dst_addr0;
       sum0 = ip0->checksum;
-      sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0,
-			     ip4_header_t, dst_address);
+      sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0, ip4_header_t,
+			     dst_address);
       ip0->checksum = ip_csum_fold (sum0);
     }
   return 0;
@@ -349,8 +347,8 @@ change_addr:
 
 #ifndef CLIB_MARCH_VARIANT
 void
-nat_hairpinning_sm_unknown_proto (snat_main_t * sm,
-				  vlib_buffer_t * b, ip4_header_t * ip)
+nat_hairpinning_sm_unknown_proto (snat_main_t *sm, vlib_buffer_t *b,
+				  ip4_header_t *ip)
 {
   clib_bihash_kv_8_8_t kv, value;
   snat_static_mapping_t *m;
@@ -447,15 +445,13 @@ nat44_hairpinning_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  if (next0 != NAT_HAIRPIN_NEXT_DROP)
 	    {
-	      vlib_increment_simple_counter (&sm->counters.hairpinning,
-					     vm->thread_index, sw_if_index0,
-					     1);
+	      vlib_increment_simple_counter (
+		&sm->counters.hairpinning, vm->thread_index, sw_if_index0, 1);
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -464,9 +460,8 @@ nat44_hairpinning_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (nat44_hairpinning_node) (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_hairpinning_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return nat44_hairpinning_fn_inline (vm, node, frame);
 }
@@ -585,15 +580,13 @@ snat_hairpin_dst_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  if (next0 != NAT_HAIRPIN_NEXT_DROP)
 	    {
-	      vlib_increment_simple_counter (&sm->counters.hairpinning,
-					     vm->thread_index, sw_if_index0,
-					     1);
+	      vlib_increment_simple_counter (
+		&sm->counters.hairpinning, vm->thread_index, sw_if_index0, 1);
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -602,9 +595,8 @@ snat_hairpin_dst_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (snat_hairpin_dst_node) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * frame)
+VLIB_NODE_FN (snat_hairpin_dst_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return snat_hairpin_dst_fn_inline (vm, node, frame);
 }
@@ -681,34 +673,33 @@ snat_hairpin_src_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  vnet_feature_next (&next0, b0);
 
-          pool_foreach (i, sm->output_feature_interfaces)
-           {
-            /* Only packets from NAT inside interface */
-            if ((nat_interface_is_inside(i)) && (sw_if_index0 == i->sw_if_index))
-              {
-                if (PREDICT_FALSE ((vnet_buffer (b0)->snat.flags) &
-                                    SNAT_FLAG_HAIRPINNING))
-                  {
-                    if (PREDICT_TRUE (sm->num_workers > 1))
-                      next0 = SNAT_HAIRPIN_SRC_NEXT_SNAT_IN2OUT_WH;
-                    else
-                      next0 = SNAT_HAIRPIN_SRC_NEXT_SNAT_IN2OUT;
-                  }
-                break;
-              }
-          }
+	  pool_foreach (i, sm->output_feature_interfaces)
+	    {
+	      /* Only packets from NAT inside interface */
+	      if ((nat_interface_is_inside (i)) &&
+		  (sw_if_index0 == i->sw_if_index))
+		{
+		  if (PREDICT_FALSE ((vnet_buffer (b0)->snat.flags) &
+				     SNAT_FLAG_HAIRPINNING))
+		    {
+		      if (PREDICT_TRUE (sm->num_workers > 1))
+			next0 = SNAT_HAIRPIN_SRC_NEXT_SNAT_IN2OUT_WH;
+		      else
+			next0 = SNAT_HAIRPIN_SRC_NEXT_SNAT_IN2OUT;
+		    }
+		  break;
+		}
+	    }
 
 	  if (next0 != SNAT_HAIRPIN_SRC_NEXT_DROP)
 	    {
-	      vlib_increment_simple_counter (&sm->counters.hairpinning,
-					     vm->thread_index, sw_if_index0,
-					     1);
+	      vlib_increment_simple_counter (
+		&sm->counters.hairpinning, vm->thread_index, sw_if_index0, 1);
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -717,9 +708,8 @@ snat_hairpin_src_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (snat_hairpin_src_node) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * frame)
+VLIB_NODE_FN (snat_hairpin_src_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return snat_hairpin_src_fn_inline (vm, node, frame);
 }

@@ -22,7 +22,7 @@
 
 #include <vnet/interface.api_types.h>
 
-extern int direction_decode (vl_api_direction_t _dir, vlib_dir_t * out);
+extern int direction_decode (vl_api_direction_t _dir, vlib_dir_t *out);
 extern vl_api_direction_t direction_encode (vlib_dir_t dir);
 
 #endif

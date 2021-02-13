@@ -56,7 +56,6 @@ typedef enum lisp_gpe_fwd_entry_type_t_
   LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE,
 } lisp_gpe_fwd_entry_type_t;
 
-
 /**
  * LISP-GPE fwd entry key
  */
@@ -70,7 +69,8 @@ typedef struct lisp_gpe_fwd_entry_key_t_
 /**
  * @brief A LISP Forwarding Entry
  *
- * A forwarding entry is from a locai EID to a remote EID over a set of rloc pairs
+ * A forwarding entry is from a locai EID to a remote EID over a set of rloc
+ * pairs
  */
 typedef struct lisp_gpe_fwd_entry_t_
 {
@@ -207,27 +207,25 @@ typedef struct lisp_gpe_fwd_entry_t_
 } lisp_gpe_fwd_entry_t;
 
 extern int
-vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
-				 u32 * hw_if_indexp);
+vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t *a,
+				 u32 *hw_if_indexp);
 
 extern void vnet_lisp_gpe_fwd_entry_flush (void);
 
-extern u32 lisp_l2_fib_lookup (lisp_gpe_main_t * lgm,
-			       u16 bd_index, u8 src_mac[8], u8 dst_mac[8]);
+extern u32 lisp_l2_fib_lookup (lisp_gpe_main_t *lgm, u16 bd_index,
+			       u8 src_mac[8], u8 dst_mac[8]);
 
-extern const dpo_id_t *lisp_nsh_fib_lookup (lisp_gpe_main_t * lgm,
-					    u32 spi_si);
+extern const dpo_id_t *lisp_nsh_fib_lookup (lisp_gpe_main_t *lgm, u32 spi_si);
 extern void
-vnet_lisp_gpe_del_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
+vnet_lisp_gpe_del_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t *a,
 				u32 fwd_entry_index);
 extern void
-vnet_lisp_gpe_add_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
+vnet_lisp_gpe_add_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t *a,
 				u32 fwd_entry_index);
 extern u32 *vnet_lisp_gpe_get_fwd_entry_vnis (void);
 
-int
-vnet_lisp_gpe_get_fwd_stats (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
-			     vlib_counter_t * c);
+int vnet_lisp_gpe_get_fwd_stats (vnet_lisp_gpe_add_del_fwd_entry_args_t *a,
+				 vlib_counter_t *c);
 
 #endif
 

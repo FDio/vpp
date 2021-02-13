@@ -44,32 +44,26 @@ typedef struct
 lacp_test_main_t lacp_test_main;
 
 /* lacp-dump API */
-static void vl_api_sw_interface_lacp_details_t_handler
-  (vl_api_sw_interface_lacp_details_t * mp)
+static void
+vl_api_sw_interface_lacp_details_t_handler (
+  vl_api_sw_interface_lacp_details_t *mp)
 {
   vat_main_t *vam = &vat_main;
 
-  fformat (vam->ofp,
-	   "%-25s %-12d %-16s %3x %3x %3x %3x %3x %3x %3x %3x "
-	   "%4x %3x %3x %3x %3x %3x %3x %3x\n",
-	   mp->interface_name, ntohl (mp->sw_if_index),
-	   mp->bond_interface_name,
-	   lacp_bit_test (mp->actor_state, 7),
-	   lacp_bit_test (mp->actor_state, 6),
-	   lacp_bit_test (mp->actor_state, 5),
-	   lacp_bit_test (mp->actor_state, 4),
-	   lacp_bit_test (mp->actor_state, 3),
-	   lacp_bit_test (mp->actor_state, 2),
-	   lacp_bit_test (mp->actor_state, 1),
-	   lacp_bit_test (mp->actor_state, 0),
-	   lacp_bit_test (mp->partner_state, 7),
-	   lacp_bit_test (mp->partner_state, 6),
-	   lacp_bit_test (mp->partner_state, 5),
-	   lacp_bit_test (mp->partner_state, 4),
-	   lacp_bit_test (mp->partner_state, 3),
-	   lacp_bit_test (mp->partner_state, 2),
-	   lacp_bit_test (mp->partner_state, 1),
-	   lacp_bit_test (mp->partner_state, 0));
+  fformat (
+    vam->ofp,
+    "%-25s %-12d %-16s %3x %3x %3x %3x %3x %3x %3x %3x "
+    "%4x %3x %3x %3x %3x %3x %3x %3x\n",
+    mp->interface_name, ntohl (mp->sw_if_index), mp->bond_interface_name,
+    lacp_bit_test (mp->actor_state, 7), lacp_bit_test (mp->actor_state, 6),
+    lacp_bit_test (mp->actor_state, 5), lacp_bit_test (mp->actor_state, 4),
+    lacp_bit_test (mp->actor_state, 3), lacp_bit_test (mp->actor_state, 2),
+    lacp_bit_test (mp->actor_state, 1), lacp_bit_test (mp->actor_state, 0),
+    lacp_bit_test (mp->partner_state, 7), lacp_bit_test (mp->partner_state, 6),
+    lacp_bit_test (mp->partner_state, 5), lacp_bit_test (mp->partner_state, 4),
+    lacp_bit_test (mp->partner_state, 3), lacp_bit_test (mp->partner_state, 2),
+    lacp_bit_test (mp->partner_state, 1),
+    lacp_bit_test (mp->partner_state, 0));
   fformat (vam->ofp,
 	   "  LAG ID: [(%04x,%02x-%02x-%02x-%02x-%02x-%02x,%04x,%04x,%04x), "
 	   "(%04x,%02x-%02x-%02x-%02x-%02x-%02x,%04x,%04x,%04x)]\n",
@@ -78,10 +72,9 @@ static void vl_api_sw_interface_lacp_details_t_handler
 	   mp->actor_system[4], mp->actor_system[5], ntohs (mp->actor_key),
 	   ntohs (mp->actor_port_priority), ntohs (mp->actor_port_number),
 	   ntohs (mp->partner_system_priority), mp->partner_system[0],
-	   mp->partner_system[1], mp->partner_system[2],
-	   mp->partner_system[3], mp->partner_system[4],
-	   mp->partner_system[5], ntohs (mp->partner_key),
-	   ntohs (mp->partner_port_priority),
+	   mp->partner_system[1], mp->partner_system[2], mp->partner_system[3],
+	   mp->partner_system[4], mp->partner_system[5],
+	   ntohs (mp->partner_key), ntohs (mp->partner_port_priority),
 	   ntohs (mp->partner_port_number));
   fformat (vam->ofp,
 	   "  RX-state: %U, TX-state: %U, MUX-state: %U, PTX-state: %U\n",
@@ -91,7 +84,7 @@ static void vl_api_sw_interface_lacp_details_t_handler
 }
 
 static int
-api_sw_interface_lacp_dump (vat_main_t * vam)
+api_sw_interface_lacp_dump (vat_main_t *vam)
 {
   lacp_test_main_t *lm = &lacp_test_main;
   vl_api_sw_interface_lacp_dump_t *mp;

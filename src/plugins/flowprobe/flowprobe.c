@@ -38,30 +38,27 @@
 
 flowprobe_main_t flowprobe_main;
 static vlib_node_registration_t flowprobe_timer_node;
-uword flowprobe_walker_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
-				vlib_frame_t * f);
+uword flowprobe_walker_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
+				vlib_frame_t *f);
 
 #define REPLY_MSG_ID_BASE fm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
 /* Define the per-interface configurable features */
 /* *INDENT-OFF* */
-VNET_FEATURE_INIT (flow_perpacket_ip4, static) =
-{
+VNET_FEATURE_INIT (flow_perpacket_ip4, static) = {
   .arc_name = "ip4-output",
   .node_name = "flowprobe-ip4",
   .runs_before = VNET_FEATURES ("interface-output"),
 };
 
-VNET_FEATURE_INIT (flow_perpacket_ip6, static) =
-{
+VNET_FEATURE_INIT (flow_perpacket_ip6, static) = {
   .arc_name = "ip6-output",
   .node_name = "flowprobe-ip6",
   .runs_before = VNET_FEATURES ("interface-output"),
 };
 
-VNET_FEATURE_INIT (flow_perpacket_l2, static) =
-{
+VNET_FEATURE_INIT (flow_perpacket_l2, static) = {
   .arc_name = "interface-output",
   .node_name = "flowprobe-l2",
   .runs_before = VNET_FEATURES ("interface-tx"),
@@ -70,124 +67,116 @@ VNET_FEATURE_INIT (flow_perpacket_l2, static) =
 
 /* Macro to finish up custom dump fns */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define FINISH                                  \
-    vec_add1 (s, 0);                            \
-    vl_print (handle, (char *)s);               \
-    vec_free (s);                               \
-    return handle;
+#define FINISH                                                                \
+  vec_add1 (s, 0);                                                            \
+  vl_print (handle, (char *) s);                                              \
+  vec_free (s);                                                               \
+  return handle;
 
 static inline ipfix_field_specifier_t *
-flowprobe_template_ip4_fields (ipfix_field_specifier_t * f)
+flowprobe_template_ip4_fields (ipfix_field_specifier_t *f)
 {
 #define flowprobe_template_ip4_field_count() 4
   /* sourceIpv4Address, TLV type 8, u32 */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      sourceIPv4Address, 4);
+  f->e_id_length =
+    ipfix_e_id_length (0 /* enterprise */, sourceIPv4Address, 4);
   f++;
   /* destinationIPv4Address, TLV type 12, u32 */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      destinationIPv4Address, 4);
+  f->e_id_length =
+    ipfix_e_id_length (0 /* enterprise */, destinationIPv4Address, 4);
   f++;
   /* protocolIdentifier, TLV type 4, u8 */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      protocolIdentifier, 1);
+  f->e_id_length =
+    ipfix_e_id_length (0 /* enterprise */, protocolIdentifier, 1);
   f++;
   /* octetDeltaCount, TLV type 1, u64 */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      octetDeltaCount, 8);
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */, octetDeltaCount, 8);
   f++;
   return f;
 }
 
 static inline ipfix_field_specifier_t *
-flowprobe_template_ip6_fields (ipfix_field_specifier_t * f)
+flowprobe_template_ip6_fields (ipfix_field_specifier_t *f)
 {
 #define flowprobe_template_ip6_field_count() 4
   /* sourceIpv6Address, TLV type 27, 16 octets */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      sourceIPv6Address, 16);
+  f->e_id_length =
+    ipfix_e_id_length (0 /* enterprise */, sourceIPv6Address, 16);
   f++;
   /* destinationIPv6Address, TLV type 28, 16 octets */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      destinationIPv6Address, 16);
+  f->e_id_length =
+    ipfix_e_id_length (0 /* enterprise */, destinationIPv6Address, 16);
   f++;
   /* protocolIdentifier, TLV type 4, u8 */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      protocolIdentifier, 1);
+  f->e_id_length =
+    ipfix_e_id_length (0 /* enterprise */, protocolIdentifier, 1);
   f++;
   /* octetDeltaCount, TLV type 1, u64 */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      octetDeltaCount, 8);
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */, octetDeltaCount, 8);
   f++;
   return f;
 }
 
 static inline ipfix_field_specifier_t *
-flowprobe_template_l2_fields (ipfix_field_specifier_t * f)
+flowprobe_template_l2_fields (ipfix_field_specifier_t *f)
 {
 #define flowprobe_template_l2_field_count() 3
   /* sourceMacAddress, TLV type 56, u8[6] we hope */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      sourceMacAddress, 6);
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */, sourceMacAddress, 6);
   f++;
   /* destinationMacAddress, TLV type 80, u8[6] we hope */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      destinationMacAddress, 6);
+  f->e_id_length =
+    ipfix_e_id_length (0 /* enterprise */, destinationMacAddress, 6);
   f++;
   /* ethernetType, TLV type 256, u16 */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      ethernetType, 2);
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */, ethernetType, 2);
   f++;
   return f;
 }
 
 static inline ipfix_field_specifier_t *
-flowprobe_template_common_fields (ipfix_field_specifier_t * f)
+flowprobe_template_common_fields (ipfix_field_specifier_t *f)
 {
 #define flowprobe_template_common_field_count() 5
   /* ingressInterface, TLV type 10, u32 */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      ingressInterface, 4);
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */, ingressInterface, 4);
   f++;
 
   /* egressInterface, TLV type 14, u32 */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      egressInterface, 4);
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */, egressInterface, 4);
   f++;
 
   /* packetDeltaCount, TLV type 2, u64 */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      packetDeltaCount, 8);
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */, packetDeltaCount, 8);
   f++;
 
   /* flowStartNanoseconds, TLV type 156, u64 */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      flowStartNanoseconds, 8);
+  f->e_id_length =
+    ipfix_e_id_length (0 /* enterprise */, flowStartNanoseconds, 8);
   f++;
 
   /* flowEndNanoseconds, TLV type 157, u64 */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      flowEndNanoseconds, 8);
+  f->e_id_length =
+    ipfix_e_id_length (0 /* enterprise */, flowEndNanoseconds, 8);
   f++;
 
   return f;
 }
 
 static inline ipfix_field_specifier_t *
-flowprobe_template_l4_fields (ipfix_field_specifier_t * f)
+flowprobe_template_l4_fields (ipfix_field_specifier_t *f)
 {
 #define flowprobe_template_l4_field_count() 3
   /* sourceTransportPort, TLV type 7, u16 */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      sourceTransportPort, 2);
+  f->e_id_length =
+    ipfix_e_id_length (0 /* enterprise */, sourceTransportPort, 2);
   f++;
   /* destinationTransportPort, TLV type 11, u16 */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      destinationTransportPort, 2);
+  f->e_id_length =
+    ipfix_e_id_length (0 /* enterprise */, destinationTransportPort, 2);
   f++;
   /* tcpControlBits, TLV type 6, u16 */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      tcpControlBits, 2);
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */, tcpControlBits, 2);
   f++;
 
   return f;
@@ -203,10 +192,9 @@ flowprobe_template_l4_fields (ipfix_field_specifier_t * f)
  * @returns u8 * vector containing the indicated IPFIX template packet
  */
 static inline u8 *
-flowprobe_template_rewrite_inline (flow_report_main_t * frm,
-				   flow_report_t * fr,
-				   ip4_address_t * collector_address,
-				   ip4_address_t * src_address,
+flowprobe_template_rewrite_inline (flow_report_main_t *frm, flow_report_t *fr,
+				   ip4_address_t *collector_address,
+				   ip4_address_t *src_address,
 				   u16 collector_port,
 				   flowprobe_variant_t which)
 {
@@ -248,13 +236,13 @@ flowprobe_template_rewrite_inline (flow_report_main_t * frm,
     field_count += flowprobe_template_l4_field_count ();
 
   /* allocate rewrite space */
-  vec_validate_aligned
-    (rewrite, sizeof (ip4_ipfix_template_packet_t)
-     + field_count * sizeof (ipfix_field_specifier_t) - 1,
-     CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (rewrite,
+			sizeof (ip4_ipfix_template_packet_t) +
+			  field_count * sizeof (ipfix_field_specifier_t) - 1,
+			CLIB_CACHE_LINE_BYTES);
 
   tp = (ip4_ipfix_template_packet_t *) rewrite;
-  ip = (ip4_header_t *) & tp->ip4;
+  ip = (ip4_header_t *) &tp->ip4;
   udp = (udp_header_t *) (ip + 1);
   h = (ipfix_message_header_t *) (udp + 1);
   s = (ipfix_set_header_t *) (h + 1);
@@ -287,7 +275,7 @@ flowprobe_template_rewrite_inline (flow_report_main_t * frm,
     f = flowprobe_template_l4_fields (f);
 
   /* Back to the template packet... */
-  ip = (ip4_header_t *) & tp->ip4;
+  ip = (ip4_header_t *) &tp->ip4;
   udp = (udp_header_t *) (ip + 1);
 
   ASSERT (f - first_field);
@@ -297,8 +285,7 @@ flowprobe_template_rewrite_inline (flow_report_main_t * frm,
   fm->template_size[flags] = (u8 *) f - (u8 *) s;
 
   /* set length in octets */
-  s->set_id_length =
-    ipfix_set_id_length (2 /* set_id */ , (u8 *) f - (u8 *) s);
+  s->set_id_length = ipfix_set_id_length (2 /* set_id */, (u8 *) f - (u8 *) s);
 
   /* message length in octets */
   h->version_length = version_length ((u8 *) f - (u8 *) h);
@@ -310,73 +297,62 @@ flowprobe_template_rewrite_inline (flow_report_main_t * frm,
 }
 
 static u8 *
-flowprobe_template_rewrite_ip6 (flow_report_main_t * frm,
-				flow_report_t * fr,
-				ip4_address_t * collector_address,
-				ip4_address_t * src_address,
-				u16 collector_port,
-				ipfix_report_element_t * elts,
-				u32 n_elts, u32 * stream_index)
+flowprobe_template_rewrite_ip6 (flow_report_main_t *frm, flow_report_t *fr,
+				ip4_address_t *collector_address,
+				ip4_address_t *src_address, u16 collector_port,
+				ipfix_report_element_t *elts, u32 n_elts,
+				u32 *stream_index)
 {
-  return flowprobe_template_rewrite_inline
-    (frm, fr, collector_address, src_address, collector_port,
-     FLOW_VARIANT_IP6);
+  return flowprobe_template_rewrite_inline (
+    frm, fr, collector_address, src_address, collector_port, FLOW_VARIANT_IP6);
 }
 
 static u8 *
-flowprobe_template_rewrite_ip4 (flow_report_main_t * frm,
-				flow_report_t * fr,
-				ip4_address_t * collector_address,
-				ip4_address_t * src_address,
-				u16 collector_port,
-				ipfix_report_element_t * elts,
-				u32 n_elts, u32 * stream_index)
+flowprobe_template_rewrite_ip4 (flow_report_main_t *frm, flow_report_t *fr,
+				ip4_address_t *collector_address,
+				ip4_address_t *src_address, u16 collector_port,
+				ipfix_report_element_t *elts, u32 n_elts,
+				u32 *stream_index)
 {
-  return flowprobe_template_rewrite_inline
-    (frm, fr, collector_address, src_address, collector_port,
-     FLOW_VARIANT_IP4);
+  return flowprobe_template_rewrite_inline (
+    frm, fr, collector_address, src_address, collector_port, FLOW_VARIANT_IP4);
 }
 
 static u8 *
-flowprobe_template_rewrite_l2 (flow_report_main_t * frm,
-			       flow_report_t * fr,
-			       ip4_address_t * collector_address,
-			       ip4_address_t * src_address,
-			       u16 collector_port,
-			       ipfix_report_element_t * elts,
-			       u32 n_elts, u32 * stream_index)
+flowprobe_template_rewrite_l2 (flow_report_main_t *frm, flow_report_t *fr,
+			       ip4_address_t *collector_address,
+			       ip4_address_t *src_address, u16 collector_port,
+			       ipfix_report_element_t *elts, u32 n_elts,
+			       u32 *stream_index)
 {
-  return flowprobe_template_rewrite_inline
-    (frm, fr, collector_address, src_address, collector_port,
-     FLOW_VARIANT_L2);
+  return flowprobe_template_rewrite_inline (
+    frm, fr, collector_address, src_address, collector_port, FLOW_VARIANT_L2);
 }
 
 static u8 *
-flowprobe_template_rewrite_l2_ip4 (flow_report_main_t * frm,
-				   flow_report_t * fr,
-				   ip4_address_t * collector_address,
-				   ip4_address_t * src_address,
+flowprobe_template_rewrite_l2_ip4 (flow_report_main_t *frm, flow_report_t *fr,
+				   ip4_address_t *collector_address,
+				   ip4_address_t *src_address,
 				   u16 collector_port,
-				   ipfix_report_element_t * elts,
-				   u32 n_elts, u32 * stream_index)
+				   ipfix_report_element_t *elts, u32 n_elts,
+				   u32 *stream_index)
 {
-  return flowprobe_template_rewrite_inline
-    (frm, fr, collector_address, src_address, collector_port,
-     FLOW_VARIANT_L2_IP4);
+  return flowprobe_template_rewrite_inline (frm, fr, collector_address,
+					    src_address, collector_port,
+					    FLOW_VARIANT_L2_IP4);
 }
 
 static u8 *
-flowprobe_template_rewrite_l2_ip6 (flow_report_main_t * frm,
-				   flow_report_t * fr,
-				   ip4_address_t * collector_address,
-				   ip4_address_t * src_address,
+flowprobe_template_rewrite_l2_ip6 (flow_report_main_t *frm, flow_report_t *fr,
+				   ip4_address_t *collector_address,
+				   ip4_address_t *src_address,
 				   u16 collector_port,
-				   ipfix_report_element_t * elts,
-				   u32 n_elts, u32 * stream_index)
+				   ipfix_report_element_t *elts, u32 n_elts,
+				   u32 *stream_index)
 {
-  return flowprobe_template_rewrite_inline
-    (frm, fr, collector_address, src_address, collector_port,
-     FLOW_VARIANT_L2_IP6);
+  return flowprobe_template_rewrite_inline (frm, fr, collector_address,
+					    src_address, collector_port,
+					    FLOW_VARIANT_L2_IP6);
 }
 
 /**
@@ -390,27 +366,24 @@ flowprobe_template_rewrite_l2_ip6 (flow_report_main_t * frm,
  * will be sent.
  */
 vlib_frame_t *
-flowprobe_data_callback_ip4 (flow_report_main_t * frm,
-			     flow_report_t * fr,
-			     vlib_frame_t * f, u32 * to_next, u32 node_index)
+flowprobe_data_callback_ip4 (flow_report_main_t *frm, flow_report_t *fr,
+			     vlib_frame_t *f, u32 *to_next, u32 node_index)
 {
   flowprobe_flush_callback_ip4 ();
   return f;
 }
 
 vlib_frame_t *
-flowprobe_data_callback_ip6 (flow_report_main_t * frm,
-			     flow_report_t * fr,
-			     vlib_frame_t * f, u32 * to_next, u32 node_index)
+flowprobe_data_callback_ip6 (flow_report_main_t *frm, flow_report_t *fr,
+			     vlib_frame_t *f, u32 *to_next, u32 node_index)
 {
   flowprobe_flush_callback_ip6 ();
   return f;
 }
 
 vlib_frame_t *
-flowprobe_data_callback_l2 (flow_report_main_t * frm,
-			    flow_report_t * fr,
-			    vlib_frame_t * f, u32 * to_next, u32 node_index)
+flowprobe_data_callback_l2 (flow_report_main_t *frm, flow_report_t *fr,
+			    vlib_frame_t *f, u32 *to_next, u32 node_index)
 {
   flowprobe_flush_callback_l2 ();
   return f;
@@ -419,9 +392,9 @@ flowprobe_data_callback_l2 (flow_report_main_t * frm,
 static int
 flowprobe_template_add_del (u32 domain_id, u16 src_port,
 			    flowprobe_record_t flags,
-			    vnet_flow_data_callback_t * flow_data_callback,
-			    vnet_flow_rewrite_callback_t * rewrite_callback,
-			    bool is_add, u16 * template_id)
+			    vnet_flow_data_callback_t *flow_data_callback,
+			    vnet_flow_rewrite_callback_t *rewrite_callback,
+			    bool is_add, u16 *template_id)
 {
   flow_report_main_t *frm = &flow_report_main;
   vnet_flow_report_add_del_args_t a = {
@@ -436,7 +409,7 @@ flowprobe_template_add_del (u32 domain_id, u16 src_port,
 }
 
 static void
-flowprobe_expired_timer_callback (u32 * expired_timers)
+flowprobe_expired_timer_callback (u32 *expired_timers)
 {
   vlib_main_t *vm = vlib_get_main ();
   flowprobe_main_t *fm = &flowprobe_main;
@@ -462,7 +435,7 @@ flowprobe_create_state_tables (u32 active_timer)
   int i;
 
   /* Decide how many worker threads we have */
-  num_threads = 1 /* main thread */  + tm->n_threads;
+  num_threads = 1 /* main thread */ + tm->n_threads;
 
   /* Hash table per worker */
   fm->ht_log2len = FLOWPROBE_LOG2_HASHSIZE;
@@ -503,12 +476,11 @@ flowprobe_create_state_tables (u32 active_timer)
 }
 
 static int
-validate_feature_on_interface (flowprobe_main_t * fm, u32 sw_if_index,
-			       u8 which)
+validate_feature_on_interface (flowprobe_main_t *fm, u32 sw_if_index, u8 which)
 {
   vec_validate_init_empty (fm->flow_per_interface, sw_if_index, ~0);
 
-  if (fm->flow_per_interface[sw_if_index] == (u8) ~ 0)
+  if (fm->flow_per_interface[sw_if_index] == (u8) ~0)
     return -1;
   else if (fm->flow_per_interface[sw_if_index] != which)
     return 0;
@@ -525,15 +497,15 @@ validate_feature_on_interface (flowprobe_main_t * fm, u32 sw_if_index,
  */
 
 static int
-flowprobe_tx_interface_add_del_feature (flowprobe_main_t * fm,
-					u32 sw_if_index, u8 which, int is_add)
+flowprobe_tx_interface_add_del_feature (flowprobe_main_t *fm, u32 sw_if_index,
+					u8 which, int is_add)
 {
   vlib_main_t *vm = vlib_get_main ();
   int rv = 0;
   u16 template_id = 0;
   flowprobe_record_t flags = fm->record;
 
-  fm->flow_per_interface[sw_if_index] = (is_add) ? which : (u8) ~ 0;
+  fm->flow_per_interface[sw_if_index] = (is_add) ? which : (u8) ~0;
   fm->template_per_flow[which] += (is_add) ? 1 : -1;
   if (is_add && fm->template_per_flow[which] > 1)
     template_id = fm->template_reports[flags];
@@ -545,24 +517,20 @@ flowprobe_tx_interface_add_del_feature (flowprobe_main_t * fm,
 	{
 	  if (fm->record & FLOW_RECORD_L2)
 	    {
-	      rv = flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags,
-					       flowprobe_data_callback_l2,
-					       flowprobe_template_rewrite_l2,
-					       is_add, &template_id);
+	      rv = flowprobe_template_add_del (
+		1, UDP_DST_PORT_ipfix, flags, flowprobe_data_callback_l2,
+		flowprobe_template_rewrite_l2, is_add, &template_id);
 	    }
 	  if (fm->record & FLOW_RECORD_L3 || fm->record & FLOW_RECORD_L4)
 	    {
-	      rv = flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags,
-					       flowprobe_data_callback_l2,
-					       flowprobe_template_rewrite_l2_ip4,
-					       is_add, &template_id);
+	      rv = flowprobe_template_add_del (
+		1, UDP_DST_PORT_ipfix, flags, flowprobe_data_callback_l2,
+		flowprobe_template_rewrite_l2_ip4, is_add, &template_id);
 	      fm->template_reports[flags | FLOW_RECORD_L2_IP4] =
 		(is_add) ? template_id : 0;
-	      rv =
-		flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags,
-					    flowprobe_data_callback_l2,
-					    flowprobe_template_rewrite_l2_ip6,
-					    is_add, &template_id);
+	      rv = flowprobe_template_add_del (
+		1, UDP_DST_PORT_ipfix, flags, flowprobe_data_callback_l2,
+		flowprobe_template_rewrite_l2_ip6, is_add, &template_id);
 	      fm->template_reports[flags | FLOW_RECORD_L2_IP6] =
 		(is_add) ? template_id : 0;
 
@@ -576,15 +544,13 @@ flowprobe_tx_interface_add_del_feature (flowprobe_main_t * fm,
 	    }
 	}
       else if (which == FLOW_VARIANT_IP4)
-	rv = flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags,
-					 flowprobe_data_callback_ip4,
-					 flowprobe_template_rewrite_ip4,
-					 is_add, &template_id);
+	rv = flowprobe_template_add_del (
+	  1, UDP_DST_PORT_ipfix, flags, flowprobe_data_callback_ip4,
+	  flowprobe_template_rewrite_ip4, is_add, &template_id);
       else if (which == FLOW_VARIANT_IP6)
-	rv = flowprobe_template_add_del (1, UDP_DST_PORT_ipfix, flags,
-					 flowprobe_data_callback_ip6,
-					 flowprobe_template_rewrite_ip6,
-					 is_add, &template_id);
+	rv = flowprobe_template_add_del (
+	  1, UDP_DST_PORT_ipfix, flags, flowprobe_data_callback_ip6,
+	  flowprobe_template_rewrite_ip6, is_add, &template_id);
     }
   if (rv && rv != VNET_API_ERROR_VALUE_EXIST)
     {
@@ -592,18 +558,18 @@ flowprobe_tx_interface_add_del_feature (flowprobe_main_t * fm,
       return -1;
     }
 
-  if (which != (u8) ~ 0)
+  if (which != (u8) ~0)
     {
       fm->context[which].flags = fm->record;
       fm->template_reports[flags] = (is_add) ? template_id : 0;
     }
 
   if (which == FLOW_VARIANT_IP4)
-    vnet_feature_enable_disable ("ip4-output", "flowprobe-ip4",
-				 sw_if_index, is_add, 0, 0);
+    vnet_feature_enable_disable ("ip4-output", "flowprobe-ip4", sw_if_index,
+				 is_add, 0, 0);
   else if (which == FLOW_VARIANT_IP6)
-    vnet_feature_enable_disable ("ip6-output", "flowprobe-ip6",
-				 sw_if_index, is_add, 0, 0);
+    vnet_feature_enable_disable ("ip6-output", "flowprobe-ip6", sw_if_index,
+				 is_add, 0, 0);
   else if (which == FLOW_VARIANT_L2)
     vnet_feature_enable_disable ("interface-output", "flowprobe-l2",
 				 sw_if_index, is_add, 0, 0);
@@ -623,8 +589,9 @@ flowprobe_tx_interface_add_del_feature (flowprobe_main_t * fm,
  * @brief API message handler
  * @param mp vl_api_flowprobe_tx_interface_add_del_t * mp the api message
  */
-void vl_api_flowprobe_tx_interface_add_del_t_handler
-  (vl_api_flowprobe_tx_interface_add_del_t * mp)
+void
+vl_api_flowprobe_tx_interface_add_del_t_handler (
+  vl_api_flowprobe_tx_interface_add_del_t *mp)
 {
   flowprobe_main_t *fm = &flowprobe_main;
   vl_api_flowprobe_tx_interface_add_del_reply_t *rmp;
@@ -647,8 +614,8 @@ void vl_api_flowprobe_tx_interface_add_del_t_handler
       goto out;
     }
 
-  rv = flowprobe_tx_interface_add_del_feature
-    (fm, sw_if_index, mp->which, mp->is_add);
+  rv = flowprobe_tx_interface_add_del_feature (fm, sw_if_index, mp->which,
+					       mp->is_add);
 
 out:
   BAD_SW_IF_INDEX_LABEL;
@@ -656,26 +623,25 @@ out:
   REPLY_MACRO (VL_API_FLOWPROBE_TX_INTERFACE_ADD_DEL_REPLY);
 }
 
-#define vec_neg_search(v,E)         \
-({              \
-  word _v(i) = 0;         \
-  while (_v(i) < vec_len(v) && v[_v(i)] == E)        \
-  {             \
-    _v(i)++;            \
-  }             \
-  if (_v(i) == vec_len(v))        \
-    _v(i) = ~0;                 \
-  _v(i);            \
-})
+#define vec_neg_search(v, E)                                                  \
+  ({                                                                          \
+    word _v (i) = 0;                                                          \
+    while (_v (i) < vec_len (v) && v[_v (i)] == E)                            \
+      {                                                                       \
+	_v (i)++;                                                             \
+      }                                                                       \
+    if (_v (i) == vec_len (v))                                                \
+      _v (i) = ~0;                                                            \
+    _v (i);                                                                   \
+  })
 
 static int
-flowprobe_params (flowprobe_main_t * fm, u8 record_l2,
-		  u8 record_l3, u8 record_l4,
-		  u32 active_timer, u32 passive_timer)
+flowprobe_params (flowprobe_main_t *fm, u8 record_l2, u8 record_l3,
+		  u8 record_l4, u32 active_timer, u32 passive_timer)
 {
   flowprobe_record_t flags = 0;
 
-  if (vec_neg_search (fm->flow_per_interface, (u8) ~ 0) != ~0)
+  if (vec_neg_search (fm->flow_per_interface, (u8) ~0) != ~0)
     return ~0;
 
   if (record_l2)
@@ -691,49 +657,47 @@ flowprobe_params (flowprobe_main_t * fm, u8 record_l2,
    * Timers: ~0 is default, 0 is off
    */
   fm->active_timer =
-    (active_timer == (u32) ~ 0 ? FLOWPROBE_TIMER_ACTIVE : active_timer);
+    (active_timer == (u32) ~0 ? FLOWPROBE_TIMER_ACTIVE : active_timer);
   fm->passive_timer =
-    (passive_timer == (u32) ~ 0 ? FLOWPROBE_TIMER_PASSIVE : passive_timer);
+    (passive_timer == (u32) ~0 ? FLOWPROBE_TIMER_PASSIVE : passive_timer);
 
   return 0;
 }
 
 void
-vl_api_flowprobe_params_t_handler (vl_api_flowprobe_params_t * mp)
+vl_api_flowprobe_params_t_handler (vl_api_flowprobe_params_t *mp)
 {
   flowprobe_main_t *fm = &flowprobe_main;
   vl_api_flowprobe_params_reply_t *rmp;
   int rv = 0;
 
-  rv = flowprobe_params
-    (fm,
-     mp->record_flags & FLOWPROBE_RECORD_FLAG_L2,
-     mp->record_flags & FLOWPROBE_RECORD_FLAG_L3,
-     mp->record_flags & FLOWPROBE_RECORD_FLAG_L4,
-     clib_net_to_host_u32 (mp->active_timer),
-     clib_net_to_host_u32 (mp->passive_timer));
+  rv = flowprobe_params (fm, mp->record_flags & FLOWPROBE_RECORD_FLAG_L2,
+			 mp->record_flags & FLOWPROBE_RECORD_FLAG_L3,
+			 mp->record_flags & FLOWPROBE_RECORD_FLAG_L4,
+			 clib_net_to_host_u32 (mp->active_timer),
+			 clib_net_to_host_u32 (mp->passive_timer));
 
   REPLY_MACRO (VL_API_FLOWPROBE_PARAMS_REPLY);
 }
 
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Flow per Packet",
+  .version = VPP_BUILD_VER,
+  .description = "Flow per Packet",
 };
 /* *INDENT-ON* */
 
 u8 *
-format_flowprobe_entry (u8 * s, va_list * args)
+format_flowprobe_entry (u8 *s, va_list *args)
 {
   flowprobe_entry_t *e = va_arg (*args, flowprobe_entry_t *);
   s = format (s, " %d/%d", e->key.rx_sw_if_index, e->key.tx_sw_if_index);
 
   s = format (s, " %U %U", format_ethernet_address, &e->key.src_mac,
 	      format_ethernet_address, &e->key.dst_mac);
-  s = format (s, " %U -> %U",
-	      format_ip46_address, &e->key.src_address, IP46_TYPE_ANY,
-	      format_ip46_address, &e->key.dst_address, IP46_TYPE_ANY);
+  s = format (s, " %U -> %U", format_ip46_address, &e->key.src_address,
+	      IP46_TYPE_ANY, format_ip46_address, &e->key.dst_address,
+	      IP46_TYPE_ANY);
   s = format (s, " %d", e->key.protocol);
   s = format (s, " %d %d\n", clib_net_to_host_u16 (e->key.src_port),
 	      clib_net_to_host_u16 (e->key.dst_port));
@@ -742,7 +706,7 @@ format_flowprobe_entry (u8 * s, va_list * args)
 }
 
 u8 *
-format_flowprobe_feature (u8 * s, va_list * args)
+format_flowprobe_feature (u8 *s, va_list *args)
 {
   u8 *which = va_arg (*args, u8 *);
   if (*which == FLOW_VARIANT_IP4)
@@ -756,7 +720,7 @@ format_flowprobe_feature (u8 * s, va_list * args)
 }
 
 u8 *
-format_flowprobe_params (u8 * s, va_list * args)
+format_flowprobe_params (u8 *s, va_list *args)
 {
   flowprobe_record_t flags = va_arg (*args, flowprobe_record_t);
   u32 active_timer = va_arg (*args, u32);
@@ -769,18 +733,18 @@ format_flowprobe_params (u8 * s, va_list * args)
   if (flags & FLOW_RECORD_L4)
     s = format (s, " l4");
 
-  if (active_timer != (u32) ~ 0)
+  if (active_timer != (u32) ~0)
     s = format (s, " active: %d", active_timer);
 
-  if (passive_timer != (u32) ~ 0)
+  if (passive_timer != (u32) ~0)
     s = format (s, " passive: %d", passive_timer);
 
   return s;
 }
 
 static clib_error_t *
-flowprobe_show_table_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cm)
+flowprobe_show_table_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cm)
 {
   flowprobe_main_t *fm = &flowprobe_main;
   int i;
@@ -793,19 +757,16 @@ flowprobe_show_table_fn (vlib_main_t * vm,
       /* *INDENT-OFF* */
       pool_foreach (e, fm->pool_per_worker[i])
 	{
-	  vlib_cli_output (vm, "%U",
-			   format_flowprobe_entry,
-			   e);
+	  vlib_cli_output (vm, "%U", format_flowprobe_entry, e);
 	}
       /* *INDENT-ON* */
-
     }
   return 0;
 }
 
 static clib_error_t *
-flowprobe_show_stats_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cm)
+flowprobe_show_stats_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cm)
 {
   flowprobe_main_t *fm = &flowprobe_main;
   int i;
@@ -818,14 +779,14 @@ flowprobe_show_stats_fn (vlib_main_t * vm,
   for (i = 0; i < vec_len (fm->pool_per_worker); i++)
     vlib_cli_output (vm, "Pool utilisation thread %d is %d%%\n", i,
 		     (100 * pool_elts (fm->pool_per_worker[i])) /
-		     (0x1 << FLOWPROBE_LOG2_HASHSIZE));
+		       (0x1 << FLOWPROBE_LOG2_HASHSIZE));
   return 0;
 }
 
 static clib_error_t *
-flowprobe_tx_interface_add_del_feature_command_fn (vlib_main_t * vm,
-						   unformat_input_t * input,
-						   vlib_cli_command_t * cmd)
+flowprobe_tx_interface_add_del_feature_command_fn (vlib_main_t *vm,
+						   unformat_input_t *input,
+						   vlib_cli_command_t *cmd)
 {
   flowprobe_main_t *fm = &flowprobe_main;
   u32 sw_if_index = ~0;
@@ -838,7 +799,8 @@ flowprobe_tx_interface_add_del_feature_command_fn (vlib_main_t * vm,
       if (unformat (input, "disable"))
 	is_add = 0;
       else if (unformat (input, "%U", unformat_vnet_sw_interface,
-			 fm->vnet_main, &sw_if_index));
+			 fm->vnet_main, &sw_if_index))
+	;
       else if (unformat (input, "ip4"))
 	which = FLOW_VARIANT_IP4;
       else if (unformat (input, "ip6"))
@@ -850,8 +812,8 @@ flowprobe_tx_interface_add_del_feature_command_fn (vlib_main_t * vm,
     }
 
   if (fm->record == 0)
-    return clib_error_return (0,
-			      "Please specify flowprobe params record first...");
+    return clib_error_return (
+      0, "Please specify flowprobe params record first...");
 
   if (sw_if_index == ~0)
     return clib_error_return (0, "Please specify an interface...");
@@ -860,23 +822,22 @@ flowprobe_tx_interface_add_del_feature_command_fn (vlib_main_t * vm,
   if (rv == 1)
     {
       if (is_add)
-	return clib_error_return (0,
-				  "Datapath is already enabled for given interface...");
+	return clib_error_return (
+	  0, "Datapath is already enabled for given interface...");
     }
   else if (rv == 0)
     return clib_error_return (0,
 			      "Interface has enable different datapath ...");
 
-  rv =
-    flowprobe_tx_interface_add_del_feature (fm, sw_if_index, which, is_add);
+  rv = flowprobe_tx_interface_add_del_feature (fm, sw_if_index, which, is_add);
   switch (rv)
     {
     case 0:
       break;
 
     case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-      return clib_error_return
-	(0, "Invalid interface, only works on physical ports");
+      return clib_error_return (
+	0, "Invalid interface, only works on physical ports");
       break;
 
     case VNET_API_ERROR_UNIMPLEMENTED:
@@ -884,38 +845,35 @@ flowprobe_tx_interface_add_del_feature_command_fn (vlib_main_t * vm,
       break;
 
     default:
-      return clib_error_return (0, "flowprobe_enable_disable returned %d",
-				rv);
+      return clib_error_return (0, "flowprobe_enable_disable returned %d", rv);
     }
   return 0;
 }
 
 static clib_error_t *
-flowprobe_show_feature_command_fn (vlib_main_t * vm,
-				   unformat_input_t * input,
-				   vlib_cli_command_t * cmd)
+flowprobe_show_feature_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
 {
   flowprobe_main_t *fm = &flowprobe_main;
   u8 *which;
   u32 sw_if_index;
 
   vec_foreach (which, fm->flow_per_interface)
-  {
-    if (*which == (u8) ~ 0)
-      continue;
+    {
+      if (*which == (u8) ~0)
+	continue;
 
-    sw_if_index = which - fm->flow_per_interface;
-    vlib_cli_output (vm, " %U %U", format_vnet_sw_if_index_name,
-		     vnet_get_main (), sw_if_index, format_flowprobe_feature,
-		     which);
-  }
+      sw_if_index = which - fm->flow_per_interface;
+      vlib_cli_output (vm, " %U %U", format_vnet_sw_if_index_name,
+		       vnet_get_main (), sw_if_index, format_flowprobe_feature,
+		       which);
+    }
   return 0;
 }
 
 static clib_error_t *
-flowprobe_params_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+flowprobe_params_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   flowprobe_main_t *fm = &flowprobe_main;
   bool record_l2 = false, record_l3 = false, record_l4 = false;
@@ -945,20 +903,19 @@ flowprobe_params_command_fn (vlib_main_t * vm,
     }
 
   if (passive_timer > 0 && active_timer > passive_timer)
-    return clib_error_return (0,
-			      "Passive timer has to be greater than active one...");
+    return clib_error_return (
+      0, "Passive timer has to be greater than active one...");
 
-  if (flowprobe_params (fm, record_l2, record_l3, record_l4,
-			active_timer, passive_timer))
-    return clib_error_return (0,
-			      "Couldn't change flowperpacket params when feature is enabled on some interface ...");
+  if (flowprobe_params (fm, record_l2, record_l3, record_l4, active_timer,
+			passive_timer))
+    return clib_error_return (0, "Couldn't change flowperpacket params when "
+				 "feature is enabled on some interface ...");
   return 0;
 }
 
 static clib_error_t *
-flowprobe_show_params_command_fn (vlib_main_t * vm,
-				  unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
+flowprobe_show_params_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				  vlib_cli_command_t *cmd)
 {
   flowprobe_main_t *fm = &flowprobe_main;
   flowprobe_record_t flags = fm->record;
@@ -986,39 +943,37 @@ flowprobe_show_params_command_fn (vlib_main_t * vm,
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (flowprobe_enable_disable_command, static) = {
-    .path = "flowprobe feature add-del",
-    .short_help =
+  .path = "flowprobe feature add-del",
+  .short_help =
     "flowprobe feature add-del <interface-name> <l2|ip4|ip6> disable",
-    .function = flowprobe_tx_interface_add_del_feature_command_fn,
+  .function = flowprobe_tx_interface_add_del_feature_command_fn,
 };
 VLIB_CLI_COMMAND (flowprobe_params_command, static) = {
-    .path = "flowprobe params",
-    .short_help =
-    "flowprobe params record <[l2] [l3] [l4]> [active <timer> passive <timer>]",
-    .function = flowprobe_params_command_fn,
+  .path = "flowprobe params",
+  .short_help = "flowprobe params record <[l2] [l3] [l4]> [active <timer> "
+		"passive <timer>]",
+  .function = flowprobe_params_command_fn,
 };
 
 VLIB_CLI_COMMAND (flowprobe_show_feature_command, static) = {
-    .path = "show flowprobe feature",
-    .short_help =
-    "show flowprobe feature",
-    .function = flowprobe_show_feature_command_fn,
+  .path = "show flowprobe feature",
+  .short_help = "show flowprobe feature",
+  .function = flowprobe_show_feature_command_fn,
 };
 VLIB_CLI_COMMAND (flowprobe_show_params_command, static) = {
-    .path = "show flowprobe params",
-    .short_help =
-    "show flowprobe params",
-    .function = flowprobe_show_params_command_fn,
+  .path = "show flowprobe params",
+  .short_help = "show flowprobe params",
+  .function = flowprobe_show_params_command_fn,
 };
 VLIB_CLI_COMMAND (flowprobe_show_table_command, static) = {
-    .path = "show flowprobe table",
-    .short_help = "show flowprobe table",
-    .function = flowprobe_show_table_fn,
+  .path = "show flowprobe table",
+  .short_help = "show flowprobe table",
+  .function = flowprobe_show_table_fn,
 };
 VLIB_CLI_COMMAND (flowprobe_show_stats_command, static) = {
-    .path = "show flowprobe statistics",
-    .short_help = "show flowprobe statistics",
-    .function = flowprobe_show_stats_fn,
+  .path = "show flowprobe statistics",
+  .short_help = "show flowprobe statistics",
+  .function = flowprobe_show_stats_fn,
 };
 /* *INDENT-ON* */
 
@@ -1027,7 +982,7 @@ VLIB_CLI_COMMAND (flowprobe_show_stats_command, static) = {
  * process that spins the per worker timer wheel.
  */
 static uword
-timer_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
+timer_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   uword *event_data = 0;
   vlib_main_t **worker_vms = 0, *worker_vm;
@@ -1071,11 +1026,11 @@ timer_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	}
       vlib_process_suspend (vm, sleep_duration);
     }
-  return 0;			/* or not */
+  return 0; /* or not */
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (flowprobe_timer_node,static) = {
+VLIB_REGISTER_NODE (flowprobe_timer_node, static) = {
   .function = timer_process,
   .name = "flowprobe-timer-process",
   .type = VLIB_NODE_TYPE_PROCESS,
@@ -1090,7 +1045,7 @@ VLIB_REGISTER_NODE (flowprobe_timer_node,static) = {
  * @returns 0 to indicate all is well, or a clib_error_t
  */
 static clib_error_t *
-flowprobe_init (vlib_main_t * vm)
+flowprobe_init (vlib_main_t *vm)
 {
   flowprobe_main_t *fm = &flowprobe_main;
   vlib_thread_main_t *tm = &vlib_thread_main;
@@ -1112,7 +1067,7 @@ flowprobe_init (vlib_main_t * vm)
   clib_memset (fm->template_per_flow, 0, sizeof (fm->template_per_flow));
 
   /* Decide how many worker threads we have */
-  num_threads = 1 /* main thread */  + tm->n_threads;
+  num_threads = 1 /* main thread */ + tm->n_threads;
 
   /* Allocate per worker thread vectors per flavour */
   for (i = 0; i < FLOW_N_VARIANTS; i++)
@@ -1124,17 +1079,4 @@ flowprobe_init (vlib_main_t * vm)
     }
 
   fm->active_timer = FLOWPROBE_TIMER_ACTIVE;
-  fm->passive_timer = FLOWPROBE_TIMER_PASSIVE;
-
-  return error;
-}
-
-VLIB_INIT_FUNCTION (flowprobe_init);
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+  fm->passive_timer = FLOWPROB

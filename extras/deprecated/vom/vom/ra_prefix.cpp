@@ -32,8 +32,7 @@ ra_prefix::ra_prefix(const route::prefix_t& pfx,
   , m_no_onlink(0)
   , m_val_lifetime(val_lifetime)
   , m_pref_lifetime(pref_lifetime)
-{
-}
+{}
 
 void
 ra_prefix::to_vpp(vapi_payload_sw_interface_ip6nd_ra_prefix& ra_prefix) const

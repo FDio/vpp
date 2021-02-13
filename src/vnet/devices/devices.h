@@ -30,14 +30,15 @@ typedef enum
   VNET_DEVICE_INPUT_N_NEXT_NODES,
 } vnet_device_input_next_t;
 
-#define VNET_DEVICE_INPUT_NEXT_NODES {					\
-    [VNET_DEVICE_INPUT_NEXT_DROP] = "error-drop",			\
-    [VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT] = "ethernet-input",		\
-    [VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT] = "ip4-input-no-checksum",	\
-    [VNET_DEVICE_INPUT_NEXT_IP4_INPUT] = "ip4-input",			\
-    [VNET_DEVICE_INPUT_NEXT_IP6_INPUT] = "ip6-input",			\
-    [VNET_DEVICE_INPUT_NEXT_MPLS_INPUT] = "mpls-input",			\
-}
+#define VNET_DEVICE_INPUT_NEXT_NODES                                          \
+  {                                                                           \
+    [VNET_DEVICE_INPUT_NEXT_DROP] = "error-drop",                             \
+    [VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT] = "ethernet-input",               \
+    [VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT] = "ip4-input-no-checksum",         \
+    [VNET_DEVICE_INPUT_NEXT_IP4_INPUT] = "ip4-input",                         \
+    [VNET_DEVICE_INPUT_NEXT_IP6_INPUT] = "ip6-input",                         \
+    [VNET_DEVICE_INPUT_NEXT_MPLS_INPUT] = "mpls-input",                       \
+  }
 
 typedef struct
 {
@@ -67,7 +68,8 @@ vnet_get_aggregate_rx_packets (void)
   u64 sum = 0;
   vnet_device_per_worker_data_t *pwd;
 
-  vec_foreach (pwd, vdm->workers) sum += pwd->aggregate_rx_packets;
+  vec_foreach (pwd, vdm->workers)
+    sum += pwd->aggregate_rx_packets;
 
   return sum;
 }

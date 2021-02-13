@@ -23,8 +23,8 @@
 #define UDP_PING_PROBE 1
 #define UDP_PING_REPLY 2
 
-#define UDP_PING_PROBE_MARKER1          0xDEAD
-#define UDP_PING_PROBE_MARKER2          0xBEEF
+#define UDP_PING_PROBE_MARKER1 0xDEAD
+#define UDP_PING_PROBE_MARKER2 0xBEEF
 
 /*
  * Refer to:
@@ -48,75 +48,75 @@
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  * (1)   The "Probe Marker" fields are arbitrary 32-bit values generally
-         used by the network elements to identify the packet as a probe
-         packet.  These fields should be interpreted as unsigned integer
-         values, stored in network byte order.  For example, a network
-         element may be configured to recognize a UDP packet destined to
-         port 31337 and having 0xDEAD 0xBEEF as the values in "Probe
-         Marker" field as an active probe, and treat it respectively.
+	 used by the network elements to identify the packet as a probe
+	 packet.  These fields should be interpreted as unsigned integer
+	 values, stored in network byte order.  For example, a network
+	 element may be configured to recognize a UDP packet destined to
+	 port 31337 and having 0xDEAD 0xBEEF as the values in "Probe
+	 Marker" field as an active probe, and treat it respectively.
 
    (2)   "Version Number" is currently set to 1.
 
    (3)   The "Message Type" field value could be either "1" - "Probe" or
-         "2" - "Probe Reply"
+	 "2" - "Probe Reply"
 
    (4)   The "Flags" field is 8 bits, and defines the following flags:
 
    (5)
-         (1)  "Overflow" (O-bit) (least significant bit).  This bit is
-              set by the network element if the number of records on the
-              packet is at the maximum limit as specified by the packet:
-              i.e. the packet is already "full" of telemetry
-              information.
+	 (1)  "Overflow" (O-bit) (least significant bit).  This bit is
+	      set by the network element if the number of records on the
+	      packet is at the maximum limit as specified by the packet:
+	      i.e. the packet is already "full" of telemetry
+	      information.
 
    (6)   "Telemetry Request Vector" is a 32-bit long field that requests
-         well-known inband telemetry information from the network
-         elements on the path.  A bit set in this vector translates to a
-         request of a particular type of information.  The following
-         types/bits are currently defined, starting with the least
-         significant bit first:
+	 well-known inband telemetry information from the network
+	 elements on the path.  A bit set in this vector translates to a
+	 request of a particular type of information.  The following
+	 types/bits are currently defined, starting with the least
+	 significant bit first:
 
-         (1)  Bit 0: Device identifier.
+	 (1)  Bit 0: Device identifier.
 
-         (2)  Bit 1: Timestamp.
+	 (2)  Bit 1: Timestamp.
 
-         (3)  Bit 2: Queueing delay.
+	 (3)  Bit 2: Queueing delay.
 
-         (4)  Bit 3: Ingress/Egress port identifiers.
+	 (4)  Bit 3: Ingress/Egress port identifiers.
 
-         (5)  Bit 31: Opaque state snapshot request.
+	 (5)  Bit 31: Opaque state snapshot request.
 
    (7)   "Hop Limit" is defined only for "Message Type" of "1"
-         ("Probe").  For "Probe Reply" the "Hop Limit" field must be set
-         to zero.  This field is treated as an integer value
-         representing the number of network elements.  See the Section 4
-         section on the intended use of the field.
+	 ("Probe").  For "Probe Reply" the "Hop Limit" field must be set
+	 to zero.  This field is treated as an integer value
+	 representing the number of network elements.  See the Section 4
+	 section on the intended use of the field.
 
    (8)   The "Hop Count" field specifies the current number of hops of
-         capable network elements the packet has transit through.  It
-         begins with zero and must be incremented by one for every
-         network element that adds a telemetry record.  Combined with a
-         push mechanism, this simplifies the work for the subsequent
-         network element and the packet receiver.  The subsequent
-         network element just needs to parse the template and then
-         insert new record(s) immediately after the template.
+	 capable network elements the packet has transit through.  It
+	 begins with zero and must be incremented by one for every
+	 network element that adds a telemetry record.  Combined with a
+	 push mechanism, this simplifies the work for the subsequent
+	 network element and the packet receiver.  The subsequent
+	 network element just needs to parse the template and then
+	 insert new record(s) immediately after the template.
 
    (9)   The "Max Length" field specifies the maximum length of the
-         telemetry payload in bytes.  Given that the sender knows the
-         minimum path MTU, the sender can set the maximum of payload
-         bytes allowed before exceeding the MTU.  Thus, a simple
-         comparison between "Current Length" and "Max Length" allows to
-         decide whether or not data could be added.
+	 telemetry payload in bytes.  Given that the sender knows the
+	 minimum path MTU, the sender can set the maximum of payload
+	 bytes allowed before exceeding the MTU.  Thus, a simple
+	 comparison between "Current Length" and "Max Length" allows to
+	 decide whether or not data could be added.
 
    (10)  The "Current Length" field specifies the current length of data
-         stored in the probe.  This field is incremented by eacn network
-         element by the number of bytes it has added with the telemetry
-         data frame.
+	 stored in the probe.  This field is incremented by eacn network
+	 element by the number of bytes it has added with the telemetry
+	 data frame.
 
    (11)  The "Sender's Handle" field is set by the sender to allow the
-         receiver to identify a particular originator of probe packets.
-         Along with "Sequence Number" it allows for tracking of packet
-         order and loss within the network.
+	 receiver to identify a particular originator of probe packets.
+	 Along with "Sequence Number" it allows for tracking of packet
+	 order and loss within the network.
 
  *
  */

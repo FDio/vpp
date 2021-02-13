@@ -23,7 +23,7 @@
 #include <vpp/app/version.h>
 
 /* define message IDs */
-#define vl_msg_id(n,h) n,
+#define vl_msg_id(n, h) n,
 typedef enum
 {
 #include <nsh/nsh.api.h>
@@ -49,7 +49,7 @@ typedef enum
 #undef vl_printfun
 
 /* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
+#define vl_api_version(n, v) static u32 api_version = (v);
 #include <nsh/nsh.api.h>
 #undef vl_api_version
 
@@ -62,11 +62,11 @@ typedef enum
 
 /* List of message types that this plugin understands */
 
-#define foreach_nsh_plugin_api_msg		\
-  _(NSH_ADD_DEL_ENTRY, nsh_add_del_entry)	\
-  _(NSH_ENTRY_DUMP, nsh_entry_dump)             \
-  _(NSH_ADD_DEL_MAP, nsh_add_del_map)           \
-  _(NSH_MAP_DUMP, nsh_map_dump)
+#define foreach_nsh_plugin_api_msg                                            \
+  _ (NSH_ADD_DEL_ENTRY, nsh_add_del_entry)                                    \
+  _ (NSH_ENTRY_DUMP, nsh_entry_dump)                                          \
+  _ (NSH_ADD_DEL_MAP, nsh_add_del_map)                                        \
+  _ (NSH_MAP_DUMP, nsh_map_dump)
 
 /**
  * @brief CLI function for NSH admin up/down
@@ -79,7 +79,7 @@ typedef enum
  *
  */
 static clib_error_t *
-nsh_interface_admin_up_down (vnet_main_t * vnm, u32 nsh_hw_if, u32 flags)
+nsh_interface_admin_up_down (vnet_main_t *vnm, u32 nsh_hw_if, u32 flags)
 {
   if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
     vnet_hw_interface_set_flags (vnm, nsh_hw_if,
@@ -100,22 +100,20 @@ nsh_interface_admin_up_down (vnet_main_t * vnm, u32 nsh_hw_if, u32 flags)
  *
  */
 static u8 *
-format_nsh_name (u8 * s, va_list * args)
+format_nsh_name (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   return format (s, "nsh_tunnel%d", dev_instance);
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (nsh_device_class, static) = {
   .name = "NSH",
   .format_device_name = format_nsh_name,
   .admin_up_down_function = nsh_interface_admin_up_down,
 };
-/* *INDENT-ON* */
 
-static void send_nsh_entry_details
-  (nsh_entry_t * t, vl_api_registration_t * rp, u32 context)
+static void
+send_nsh_entry_details (nsh_entry_t *t, vl_api_registration_t *rp, u32 context)
 {
   vl_api_nsh_entry_details_t *rmp;
   nsh_main_t *nm = &nsh_main;
@@ -126,7 +124,7 @@ static void send_nsh_entry_details
   rmp->_vl_msg_id = ntohs ((VL_API_NSH_ENTRY_DETAILS) + nm->msg_id_base);
   rmp->ver_o_c = t->nsh_base.ver_o_c;
   rmp->ttl = (t->nsh_base.ver_o_c & NSH_TTL_H4_MASK) << 2 |
-    (t->nsh_base.length & NSH_TTL_L2_MASK) >> 6;
+	     (t->nsh_base.length & NSH_TTL_L2_MASK) >> 6;
   rmp->length = t->nsh_base.length & NSH_LEN_MASK;
   rmp->md_type = t->nsh_base.md_type;
   rmp->next_protocol = t->nsh_base.next_protocol;
@@ -151,8 +149,8 @@ static void send_nsh_entry_details
   vl_api_send_msg (rp, (u8 *) rmp);
 }
 
-static void send_nsh_map_details
-  (nsh_map_t * t, vl_api_registration_t * rp, u32 context)
+static void
+send_nsh_map_details (nsh_map_t *t, vl_api_registration_t *rp, u32 context)
 {
   vl_api_nsh_map_details_t *rmp;
   nsh_main_t *nm = &nsh_main;
@@ -174,7 +172,7 @@ static void send_nsh_map_details
 }
 
 static void
-vl_api_nsh_map_dump_t_handler (vl_api_nsh_map_dump_t * mp)
+vl_api_nsh_map_dump_t_handler (vl_api_nsh_map_dump_t *mp)
 {
   nsh_main_t *nm = &nsh_main;
   nsh_map_t *t;
@@ -190,9 +188,9 @@ vl_api_nsh_map_dump_t_handler (vl_api_nsh_map_dump_t * mp)
   if (~0 == map_index)
     {
       pool_foreach (t, nm->nsh_mappings)
-      {
-	send_nsh_map_details (t, rp, mp->context);
-      }
+	{
+	  send_nsh_map_details (t, rp, mp->context);
+	}
     }
   else
     {
@@ -207,7 +205,7 @@ vl_api_nsh_map_dump_t_handler (vl_api_nsh_map_dump_t * mp)
 
 /** API message handler */
 static void
-vl_api_nsh_add_del_map_t_handler (vl_api_nsh_add_del_map_t * mp)
+vl_api_nsh_add_del_map_t_handler (vl_api_nsh_add_del_map_t *mp)
 {
   vl_api_nsh_add_del_map_reply_t *rmp;
   nsh_main_t *nm = &nsh_main;
@@ -225,22 +223,18 @@ vl_api_nsh_add_del_map_t_handler (vl_api_nsh_add_del_map_t * mp)
 
   rv = nsh_add_del_map (a, &map_index);
 
-  if ((a->map.next_node == NSH_NODE_NEXT_ENCAP_VXLAN4)
-      | (a->map.next_node == NSH_NODE_NEXT_ENCAP_VXLAN6))
+  if ((a->map.next_node == NSH_NODE_NEXT_ENCAP_VXLAN4) |
+      (a->map.next_node == NSH_NODE_NEXT_ENCAP_VXLAN6))
     {
       rv = nsh_add_del_proxy_session (a);
     }
 
-  REPLY_MACRO2 (VL_API_NSH_ADD_DEL_MAP_REPLY, (
-						{
-						rmp->map_index =
-						htonl (map_index);
-						}
-		));
+  REPLY_MACRO2 (VL_API_NSH_ADD_DEL_MAP_REPLY,
+		({ rmp->map_index = htonl (map_index); }));
 }
 
 int
-nsh_header_rewrite (nsh_entry_t * nsh_entry)
+nsh_header_rewrite (nsh_entry_t *nsh_entry)
 {
   u8 *rw = 0;
   int len = 0;
@@ -305,8 +299,8 @@ nsh_header_rewrite (nsh_entry_t * nsh_entry)
 
 	  if (nm->add_options[nsh_option->option_id] != NULL)
 	    {
-	      if (0 != nm->add_options[nsh_option->option_id] ((u8 *) nsh_md2,
-							       &new_option_size))
+	      if (0 != nm->add_options[nsh_option->option_id](
+			 (u8 *) nsh_md2, &new_option_size))
 		{
 		  goto next_tlv_md2;
 		}
@@ -324,13 +318,12 @@ nsh_header_rewrite (nsh_entry_t * nsh_entry)
 	    next_tlv_md2:
 	      opt0 = (nsh_md2_data_t *) (((u8 *) opt0) + old_option_size);
 	    }
-
 	}
     }
 
   nsh_entry->rewrite = rw;
   nsh_base->length = (nsh_base->length & NSH_TTL_L2_MASK) |
-    ((nsh_entry->rewrite_size >> 2) & NSH_LEN_MASK);
+		     ((nsh_entry->rewrite_size >> 2) & NSH_LEN_MASK);
 
   return 0;
 }
@@ -342,7 +335,7 @@ extern vnet_hw_interface_class_t nsh_hw_class;
  * Shared by both CLI and binary API
  **/
 int
-nsh_add_del_map (nsh_add_del_map_args_t * a, u32 * map_indexp)
+nsh_add_del_map (nsh_add_del_map_args_t *a, u32 *map_indexp)
 {
   nsh_main_t *nm = &nsh_main;
   vnet_main_t *vnm = nm->vnet_main;
@@ -364,7 +357,7 @@ nsh_add_del_map (nsh_add_del_map_args_t * a, u32 * map_indexp)
     {
       /* adding an entry, must not already exist */
       if (entry)
-	return -1;		//TODO API_ERROR_INVALID_VALUE;
+	return -1; // TODO API_ERROR_INVALID_VALUE;
 
       pool_get_aligned (nm->nsh_mappings, map, CLIB_CACHE_LINE_BYTES);
       clib_memset (map, 0, sizeof (*map));
@@ -378,7 +371,6 @@ nsh_add_del_map (nsh_add_del_map_args_t * a, u32 * map_indexp)
       map->next_node = a->map.next_node;
       map->adj_index = a->map.adj_index;
 
-
       key_copy = clib_mem_alloc (sizeof (*key_copy));
       clib_memcpy (key_copy, &key, sizeof (*key_copy));
 
@@ -388,7 +380,7 @@ nsh_add_del_map (nsh_add_del_map_args_t * a, u32 * map_indexp)
       if (vec_len (nm->free_nsh_tunnel_hw_if_indices) > 0)
 	{
 	  nsh_hw_if = nm->free_nsh_tunnel_hw_if_indices
-	    [vec_len (nm->free_nsh_tunnel_hw_if_indices) - 1];
+			[vec_len (nm->free_nsh_tunnel_hw_if_indices) - 1];
 	  _vec_len (nm->free_nsh_tunnel_hw_if_indices) -= 1;
 
 	  hi = vnet_get_hw_interface (vnm, nsh_hw_if);
@@ -397,17 +389,16 @@ nsh_add_del_map (nsh_add_del_map_args_t * a, u32 * map_indexp)
 	}
       else
 	{
-	  nsh_hw_if = vnet_register_interface
-	    (vnm, nsh_device_class.index, map_index, nsh_hw_class.index,
-	     map_index);
+	  nsh_hw_if =
+	    vnet_register_interface (vnm, nsh_device_class.index, map_index,
+				     nsh_hw_class.index, map_index);
 	  hi = vnet_get_hw_interface (vnm, nsh_hw_if);
 	  hi->output_node_index = nsh_aware_vnf_proxy_node.index;
 	}
 
       map->nsh_hw_if = nsh_hw_if;
       map->nsh_sw_if = nsh_sw_if = hi->sw_if_index;
-      vec_validate_init_empty (nm->tunnel_index_by_sw_if_index, nsh_sw_if,
-			       ~0);
+      vec_validate_init_empty (nm->tunnel_index_by_sw_if_index, nsh_sw_if, ~0);
       nm->tunnel_index_by_sw_if_index[nsh_sw_if] = key;
 
       vnet_sw_interface_set_flags (vnm, hi->sw_if_index,
@@ -416,7 +407,7 @@ nsh_add_del_map (nsh_add_del_map_args_t * a, u32 * map_indexp)
   else
     {
       if (!entry)
-	return -2;		//TODO API_ERROR_NO_SUCH_ENTRY;
+	return -2; // TODO API_ERROR_NO_SUCH_ENTRY;
 
       map = pool_elt_at_index (nm->nsh_mappings, entry[0]);
 
@@ -444,7 +435,7 @@ nsh_add_del_map (nsh_add_del_map_args_t * a, u32 * map_indexp)
  * Shared by both CLI and binary API
  **/
 int
-nsh_add_del_proxy_session (nsh_add_del_map_args_t * a)
+nsh_add_del_proxy_session (nsh_add_del_map_args_t *a)
 {
   nsh_main_t *nm = &nsh_main;
   nsh_proxy_session_t *proxy = 0;
@@ -463,7 +454,7 @@ nsh_add_del_proxy_session (nsh_add_del_map_args_t * a)
     {
       /* adding an entry, must not already exist */
       if (entry)
-	return -1;		//TODO API_ERROR_INVALID_VALUE;
+	return -1; // TODO API_ERROR_INVALID_VALUE;
 
       pool_get_aligned (nm->nsh_proxy_sessions, proxy, CLIB_CACHE_LINE_BYTES);
       clib_memset (proxy, 0, sizeof (*proxy));
@@ -487,7 +478,7 @@ nsh_add_del_proxy_session (nsh_add_del_map_args_t * a)
   else
     {
       if (!entry)
-	return -2;		//TODO API_ERROR_NO_SUCH_ENTRY;
+	return -2; // TODO API_ERROR_NO_SUCH_ENTRY;
 
       proxy = pool_elt_at_index (nm->nsh_proxy_sessions, entry[0]);
       hp = hash_get_pair (nm->nsh_proxy_session_by_key, &key);
@@ -506,7 +497,7 @@ nsh_add_del_proxy_session (nsh_add_del_map_args_t * a)
  * nsh_add_del_entry_args_t *a: host order
  */
 int
-nsh_add_del_entry (nsh_add_del_entry_args_t * a, u32 * entry_indexp)
+nsh_add_del_entry (nsh_add_del_entry_args_t *a, u32 *entry_indexp)
 {
   nsh_main_t *nm = &nsh_main;
   nsh_entry_t *nsh_entry = 0;
@@ -526,7 +517,7 @@ nsh_add_del_entry (nsh_add_del_entry_args_t * a, u32 * entry_indexp)
     {
       /* adding an entry, must not already exist */
       if (entry_id)
-	return -1;		// TODO VNET_API_ERROR_INVALID_VALUE;
+	return -1; // TODO VNET_API_ERROR_INVALID_VALUE;
 
       pool_get_aligned (nm->nsh_entries, nsh_entry, CLIB_CACHE_LINE_BYTES);
       clib_memset (nsh_entry, 0, sizeof (*nsh_entry));
@@ -567,7 +558,7 @@ nsh_add_del_entry (nsh_add_del_entry_args_t * a, u32 * entry_indexp)
   else
     {
       if (!entry_id)
-	return -2;		//TODO API_ERROR_NO_SUCH_ENTRY;
+	return -2; // TODO API_ERROR_NO_SUCH_ENTRY;
 
       nsh_entry = pool_elt_at_index (nm->nsh_entries, entry_id[0]);
       hp = hash_get_pair (nm->nsh_entry_by_key, &key);
@@ -586,10 +577,9 @@ nsh_add_del_entry (nsh_add_del_entry_args_t * a, u32 * entry_indexp)
   return 0;
 }
 
-
 /** API message handler */
-static void vl_api_nsh_add_del_entry_t_handler
-  (vl_api_nsh_add_del_entry_t * mp)
+static void
+vl_api_nsh_add_del_entry_t_handler (vl_api_nsh_add_del_entry_t *mp)
 {
   vl_api_nsh_add_del_entry_reply_t *rmp;
   nsh_main_t *nm = &nsh_main;
@@ -626,16 +616,12 @@ static void vl_api_nsh_add_del_entry_t_handler
 
   rv = nsh_add_del_entry (a, &entry_index);
 
-  REPLY_MACRO2 (VL_API_NSH_ADD_DEL_ENTRY_REPLY, (
-						  {
-						  rmp->entry_index =
-						  htonl (entry_index);
-						  }
-		));
+  REPLY_MACRO2 (VL_API_NSH_ADD_DEL_ENTRY_REPLY,
+		({ rmp->entry_index = htonl (entry_index); }));
 }
 
 static void
-vl_api_nsh_entry_dump_t_handler (vl_api_nsh_entry_dump_t * mp)
+vl_api_nsh_entry_dump_t_handler (vl_api_nsh_entry_dump_t *mp)
 {
   nsh_main_t *nm = &nsh_main;
   nsh_entry_t *t;
@@ -651,9 +637,9 @@ vl_api_nsh_entry_dump_t_handler (vl_api_nsh_entry_dump_t * mp)
   if (~0 == entry_index)
     {
       pool_foreach (t, nm->nsh_entries)
-      {
-	send_nsh_entry_details (t, rp, mp->context);
-      }
+	{
+	  send_nsh_entry_details (t, rp, mp->context);
+	}
     }
   else
     {
@@ -667,9 +653,9 @@ vl_api_nsh_entry_dump_t_handler (vl_api_nsh_entry_dump_t * mp)
 }
 
 static void
-setup_message_id_table (nsh_main_t * nm, api_main_t * am)
+setup_message_id_table (nsh_main_t *nm, api_main_t *am)
 {
-#define _(id,n,crc) \
+#define _(id, n, crc)                                                         \
   vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + nm->msg_id_base);
   foreach_vl_msg_name_crc_nsh;
 #undef _
@@ -677,17 +663,14 @@ setup_message_id_table (nsh_main_t * nm, api_main_t * am)
 
 /* Set up the API message handling tables */
 static clib_error_t *
-nsh_plugin_api_hookup (vlib_main_t * vm)
+nsh_plugin_api_hookup (vlib_main_t *vm)
 {
   nsh_main_t *nm __attribute__ ((unused)) = &nsh_main;
-#define _(N,n)                                                  \
-  vl_msg_api_set_handlers((VL_API_##N + nm->msg_id_base),	\
-			  #n,					\
-			  vl_api_##n##_t_handler,		\
-			  vl_noop_handler,			\
-			  vl_api_##n##_t_endian,		\
-			  vl_api_##n##_t_print,			\
-			  sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers ((VL_API_##N + nm->msg_id_base), #n,                \
+			   vl_api_##n##_t_handler, vl_noop_handler,           \
+			   vl_api_##n##_t_endian, vl_api_##n##_t_print,       \
+			   sizeof (vl_api_##n##_t), 1);
   foreach_nsh_plugin_api_msg;
 #undef _
 
@@ -695,7 +678,7 @@ nsh_plugin_api_hookup (vlib_main_t * vm)
 }
 
 clib_error_t *
-nsh_api_init (vlib_main_t * vm, nsh_main_t * nm)
+nsh_api_init (vlib_main_t *vm, nsh_main_t *nm)
 {
   clib_error_t *error;
   u8 *name;
@@ -703,8 +686,8 @@ nsh_api_init (vlib_main_t * vm, nsh_main_t * nm)
   name = format (0, "nsh_%08x%c", api_version, 0);
 
   /* Set up the API */
-  nm->msg_id_base = vl_msg_api_get_msg_ids
-    ((char *) name, VL_MSG_FIRST_AVAILABLE);
+  nm->msg_id_base =
+    vl_msg_api_get_msg_ids ((char *) name, VL_MSG_FIRST_AVAILABLE);
 
   error = nsh_plugin_api_hookup (vm);
 

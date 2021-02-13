@@ -19,53 +19,53 @@
 #include <vnet/tcp/tcp_types.h>
 
 always_inline void
-tcp_cc_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
+tcp_cc_rcv_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs)
 {
   tc->cc_algo->rcv_ack (tc, rs);
   tc->tsecr_last_ack = tc->rcv_opts.tsecr;
 }
 
 static inline void
-tcp_cc_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
-		     tcp_rate_sample_t * rs)
+tcp_cc_rcv_cong_ack (tcp_connection_t *tc, tcp_cc_ack_t ack_type,
+		     tcp_rate_sample_t *rs)
 {
   tc->cc_algo->rcv_cong_ack (tc, ack_type, rs);
 }
 
 static inline void
-tcp_cc_congestion (tcp_connection_t * tc)
+tcp_cc_congestion (tcp_connection_t *tc)
 {
   tc->cc_algo->congestion (tc);
 }
 
 static inline void
-tcp_cc_loss (tcp_connection_t * tc)
+tcp_cc_loss (tcp_connection_t *tc)
 {
   tc->cc_algo->loss (tc);
 }
 
 static inline void
-tcp_cc_recovered (tcp_connection_t * tc)
+tcp_cc_recovered (tcp_connection_t *tc)
 {
   tc->cc_algo->recovered (tc);
 }
 
 static inline void
-tcp_cc_undo_recovery (tcp_connection_t * tc)
+tcp_cc_undo_recovery (tcp_connection_t *tc)
 {
   if (tc->cc_algo->undo_recovery)
     tc->cc_algo->undo_recovery (tc);
 }
 
 static inline void
-tcp_cc_event (tcp_connection_t * tc, tcp_cc_event_t evt)
+tcp_cc_event (tcp_connection_t *tc, tcp_cc_event_t evt)
 {
   if (tc->cc_algo->event)
     tc->cc_algo->event (tc, evt);
 }
 
 static inline u64
-tcp_cc_get_pacing_rate (tcp_connection_t * tc)
+tcp_cc_get_pacing_rate (tcp_connection_t *tc)
 {
   if (tc->cc_algo->get_pacing_rate)
     return tc->cc_algo->get_pacing_rate (tc);
@@ -78,7 +78,7 @@ tcp_cc_get_pacing_rate (tcp_connection_t * tc)
 }
 
 static inline void *
-tcp_cc_data (tcp_connection_t * tc)
+tcp_cc_data (tcp_connection_t *tc)
 {
   return (void *) tc->cc_data;
 }
@@ -87,18 +87,16 @@ tcp_cc_data (tcp_connection_t * tc)
  * Register exiting cc algo type
  */
 void tcp_cc_algo_register (tcp_cc_algorithm_type_e type,
-			   const tcp_cc_algorithm_t * vft);
+			   const tcp_cc_algorithm_t *vft);
 
 /**
  * Register new cc algo type
  */
-tcp_cc_algorithm_type_e tcp_cc_algo_new_type (const tcp_cc_algorithm_t * vft);
+tcp_cc_algorithm_type_e tcp_cc_algo_new_type (const tcp_cc_algorithm_t *vft);
 tcp_cc_algorithm_t *tcp_cc_algo_get (tcp_cc_algorithm_type_e type);
 
-
-void newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
-			   tcp_rate_sample_t * rs);
-
+void newreno_rcv_cong_ack (tcp_connection_t *tc, tcp_cc_ack_t ack_type,
+			   tcp_rate_sample_t *rs);
 
 #endif /* SRC_VNET_TCP_TCP_CC_H_ */
 

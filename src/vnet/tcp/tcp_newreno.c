@@ -26,26 +26,26 @@ static newreno_cfg_t newreno_cfg = {
 };
 
 static void
-newreno_congestion (tcp_connection_t * tc)
+newreno_congestion (tcp_connection_t *tc)
 {
   tc->ssthresh = clib_max (tcp_flight_size (tc) / 2, 2 * tc->snd_mss);
   tc->cwnd = tc->ssthresh;
 }
 
 static void
-newreno_loss (tcp_connection_t * tc)
+newreno_loss (tcp_connection_t *tc)
 {
   tc->cwnd = tcp_loss_wnd (tc);
 }
 
 static void
-newreno_recovered (tcp_connection_t * tc)
+newreno_recovered (tcp_connection_t *tc)
 {
   tc->cwnd = tc->ssthresh;
 }
 
 static void
-newreno_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
+newreno_rcv_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs)
 {
   if (tcp_in_slowstart (tc))
     {
@@ -59,8 +59,8 @@ newreno_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 }
 
 void
-newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
-		      tcp_rate_sample_t * rs)
+newreno_rcv_cong_ack (tcp_connection_t *tc, tcp_cc_ack_t ack_type,
+		      tcp_rate_sample_t *rs)
 {
   if (ack_type == TCP_CC_DUPACK)
     {
@@ -82,7 +82,8 @@ newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
 	   * eventually ends, approximately ssthresh amount of data will be
 	   * outstanding in the network.*/
 	  tc->cwnd = (tc->cwnd > tc->bytes_acked + tc->snd_mss) ?
-	    tc->cwnd - tc->bytes_acked : tc->snd_mss;
+		       tc->cwnd - tc->bytes_acked :
+		       tc->snd_mss;
 	  if (tc->bytes_acked > tc->snd_mss)
 	    tc->cwnd += tc->snd_mss;
 	}
@@ -90,14 +91,14 @@ newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type,
 }
 
 static void
-newreno_conn_init (tcp_connection_t * tc)
+newreno_conn_init (tcp_connection_t *tc)
 {
   tc->ssthresh = newreno_cfg.ssthresh;
   tc->cwnd = tcp_initial_cwnd (tc);
 }
 
 static uword
-newreno_unformat_config (unformat_input_t * input)
+newreno_unformat_config (unformat_input_t *input)
 {
   u32 ssthresh = 0x7FFFFFFFU;
 
@@ -128,7 +129,7 @@ const static tcp_cc_algorithm_t tcp_newreno = {
 };
 
 clib_error_t *
-newreno_init (vlib_main_t * vm)
+newreno_init (vlib_main_t *vm)
 {
   clib_error_t *error = 0;
 

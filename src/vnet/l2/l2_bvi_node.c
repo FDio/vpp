@@ -20,9 +20,8 @@
 /**
  * send packets to l2-input.
  */
-VNET_DEVICE_CLASS_TX_FN (bvi_device_class) (vlib_main_t * vm,
-					    vlib_node_runtime_t * node,
-					    vlib_frame_t * frame)
+VNET_DEVICE_CLASS_TX_FN (bvi_device_class)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 sw_if_indices[VLIB_FRAME_SIZE], *sw_if_index;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;

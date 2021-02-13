@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/ethernet/ethernet.h>
@@ -33,11 +32,11 @@
 #include <vlibmemory/api.h>
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -54,7 +53,7 @@
 l2fib_main_t l2fib_main;
 
 u8 *
-format_l2fib_entry_result_flags (u8 * s, va_list * args)
+format_l2fib_entry_result_flags (u8 *s, va_list *args)
 {
   l2fib_entry_result_flags_t flags = va_arg (*args, int);
 
@@ -64,10 +63,11 @@ format_l2fib_entry_result_flags (u8 * s, va_list * args)
     }
   else
     {
-#define _(a,v,t) {                              \
-      if (flags & L2FIB_ENTRY_RESULT_FLAG_##a)  \
-        s = format (s, "%s ", t);               \
-    }
+#define _(a, v, t)                                                            \
+  {                                                                           \
+    if (flags & L2FIB_ENTRY_RESULT_FLAG_##a)                                  \
+      s = format (s, "%s ", t);                                               \
+  }
       foreach_l2fib_entry_result_attr
 #undef _
     }
@@ -75,11 +75,11 @@ format_l2fib_entry_result_flags (u8 * s, va_list * args)
 }
 
 static void
-incr_mac_address (u8 * mac)
+incr_mac_address (u8 *mac)
 {
   u64 tmp = *((u64 *) mac);
   tmp = clib_net_to_host_u64 (tmp);
-  tmp += 1 << 16;		/* skip unused (least significant) octets */
+  tmp += 1 << 16; /* skip unused (least significant) octets */
   tmp = clib_host_to_net_u64 (tmp);
 
   clib_memcpy_fast (mac, &tmp, 6);
@@ -87,15 +87,14 @@ incr_mac_address (u8 * mac)
 
 /** Format sw_if_index. If the value is ~0, use the text "N/A" */
 u8 *
-format_vnet_sw_if_index_name_with_NA (u8 * s, va_list * args)
+format_vnet_sw_if_index_name_with_NA (u8 *s, va_list *args)
 {
   vnet_main_t *vnm = va_arg (*args, vnet_main_t *);
   u32 sw_if_index = va_arg (*args, u32);
   if (sw_if_index == ~0)
     return format (s, "N/A");
 
-  vnet_sw_interface_t *swif =
-    vnet_get_sw_interface_or_null (vnm, sw_if_index);
+  vnet_sw_interface_t *swif = vnet_get_sw_interface_or_null (vnm, sw_if_index);
   if (!swif)
     return format (s, "Stale");
 
@@ -130,9 +129,8 @@ l2fib_dump_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
 }
 
 void
-l2fib_table_dump (u32 bd_index,
-		  l2fib_entry_key_t ** l2fe_key,
-		  l2fib_entry_result_t ** l2fe_res)
+l2fib_table_dump (u32 bd_index, l2fib_entry_key_t **l2fe_key,
+		  l2fib_entry_result_t **l2fe_res)
 {
   l2fib_main_t *msm = &l2fib_main;
   l2fib_dump_walk_ctx_t ctx = {
@@ -140,21 +138,21 @@ l2fib_table_dump (u32 bd_index,
   };
 
   BV (clib_bihash_foreach_key_value_pair)
-    (&msm->mac_table, l2fib_dump_walk_cb, &ctx);
+  (&msm->mac_table, l2fib_dump_walk_cb, &ctx);
 
   *l2fe_key = ctx.l2fe_key;
   *l2fe_res = ctx.l2fe_res;
 }
 
 void
-l2_fib_extract_seq_num (l2fib_seq_num_t sn, u8 * bd_sn, u8 * if_sn)
+l2_fib_extract_seq_num (l2fib_seq_num_t sn, u8 *bd_sn, u8 *if_sn)
 {
   *bd_sn = sn >> 8;
   *if_sn = sn & 0xff;
 }
 
 u8 *
-format_l2_fib_seq_num (u8 * s, va_list * a)
+format_l2_fib_seq_num (u8 *s, va_list *a)
 {
   l2fib_seq_num_t sn = va_arg (*a, int);
   u8 bd_sn, if_sn;
@@ -190,11 +188,10 @@ l2fib_show_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
   if (ctx->verbose && ctx->first_entry)
     {
       ctx->first_entry = 0;
-      vlib_cli_output (ctx->vm,
-		       "%=19s%=7s%=7s%=8s%=9s%=7s%=7s%=5s%=30s",
-		       "Mac-Address", "BD-Idx", "If-Idx",
-		       "BSN-ISN", "Age(min)", "static", "filter",
-		       "bvi", "Interface-Name");
+      vlib_cli_output (ctx->vm, "%=19s%=7s%=7s%=8s%=9s%=7s%=7s%=5s%=30s",
+		       "Mac-Address", "BD-Idx", "If-Idx", "BSN-ISN",
+		       "Age(min)", "static", "filter", "bvi",
+		       "Interface-Name");
     }
 
   key.raw = kvp->key;
@@ -207,10 +204,10 @@ l2fib_show_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
       u8 *s = NULL;
 
       if (ctx->learn && l2fib_entry_result_is_set_AGE_NOT (&result))
-	return (BIHASH_WALK_CONTINUE);	/* skip provisioned macs */
+	return (BIHASH_WALK_CONTINUE); /* skip provisioned macs */
 
       if (ctx->add && !l2fib_entry_result_is_set_AGE_NOT (&result))
-	return (BIHASH_WALK_CONTINUE);	/* skip learned macs */
+	return (BIHASH_WALK_CONTINUE); /* skip learned macs */
 
       bd_config = &vec_elt (l2input_main.bd_configs, key.fields.bd_index);
 
@@ -225,18 +222,16 @@ l2fib_show_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
 	  s = format (s, "%d", delta);
 	}
 
-      vlib_cli_output (ctx->vm,
-		       "%=19U%=7d%=7d %U%=9v%=7s%=7s%=5s%=30U",
-		       format_ethernet_address, key.fields.mac,
-		       key.fields.bd_index,
-		       result.fields.sw_if_index == ~0
-		       ? -1 : result.fields.sw_if_index,
-		       format_l2_fib_seq_num, result.fields.sn, s,
-		       l2fib_entry_result_is_set_STATIC (&result) ? "*" : "-",
-		       l2fib_entry_result_is_set_FILTER (&result) ? "*" : "-",
-		       l2fib_entry_result_is_set_BVI (&result) ? "*" : "-",
-		       format_vnet_sw_if_index_name_with_NA,
-		       ctx->vnm, result.fields.sw_if_index);
+      vlib_cli_output (
+	ctx->vm, "%=19U%=7d%=7d %U%=9v%=7s%=7s%=5s%=30U",
+	format_ethernet_address, key.fields.mac, key.fields.bd_index,
+	result.fields.sw_if_index == ~0 ? -1 : result.fields.sw_if_index,
+	format_l2_fib_seq_num, result.fields.sn, s,
+	l2fib_entry_result_is_set_STATIC (&result) ? "*" : "-",
+	l2fib_entry_result_is_set_FILTER (&result) ? "*" : "-",
+	l2fib_entry_result_is_set_BVI (&result) ? "*" : "-",
+	format_vnet_sw_if_index_name_with_NA, ctx->vnm,
+	result.fields.sw_if_index);
       vec_free (s);
     }
 
@@ -245,8 +240,7 @@ l2fib_show_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
 
 /** Display the contents of the l2fib. */
 static clib_error_t *
-show_l2fib (vlib_main_t * vm,
-	    unformat_input_t * input, vlib_cli_command_t * cmd)
+show_l2fib (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   bd_main_t *bdm = &bd_main;
   l2fib_main_t *msm = &l2fib_main;
@@ -295,8 +289,7 @@ show_l2fib (vlib_main_t * vm,
 	      ctx.bd_index = p[0];
 	    }
 	  else
-	    return clib_error_return (0,
-				      "bridge domain id %d doesn't exist\n",
+	    return clib_error_return (0, "bridge domain id %d doesn't exist\n",
 				      bd_id);
 	}
       else
@@ -310,19 +303,21 @@ show_l2fib (vlib_main_t * vm,
     }
 
   BV (clib_bihash_foreach_key_value_pair)
-    (&msm->mac_table, l2fib_show_walk_cb, &ctx);
+  (&msm->mac_table, l2fib_show_walk_cb, &ctx);
 
   if (ctx.total_entries == 0)
     vlib_cli_output (vm, "no l2fib entries");
   else
     {
       l2learn_main_t *lm = &l2learn_main;
-      vlib_cli_output (vm, "L2FIB total/learned entries: %d/%d  "
+      vlib_cli_output (vm,
+		       "L2FIB total/learned entries: %d/%d  "
 		       "Last scan time: %.4esec  Learn limit: %d ",
 		       ctx.total_entries, lm->global_learn_count,
 		       msm->age_scan_duration, lm->global_learn_limit);
       if (lm->client_pid)
-	vlib_cli_output (vm, "L2MAC events client PID: %d  "
+	vlib_cli_output (vm,
+			 "L2MAC events client PID: %d  "
 			 "Last e-scan time: %.4esec  Delay: %.2esec  "
 			 "Max macs in event: %d",
 			 lm->client_pid, msm->evt_scan_duration,
@@ -330,8 +325,8 @@ show_l2fib (vlib_main_t * vm,
     }
 
   if (raw)
-    vlib_cli_output (vm, "Raw Hash Table:\n%U\n",
-		     BV (format_bihash), &msm->mac_table, 1 /* verbose */ );
+    vlib_cli_output (vm, "Raw Hash Table:\n%U\n", BV (format_bihash),
+		     &msm->mac_table, 1 /* verbose */);
 
   return 0;
 }
@@ -350,17 +345,22 @@ show_l2fib (vlib_main_t * vm,
  * Example of how to display all the MAC Address entries in the L2
  * FIB table:
  * @cliexstart{show l2fib all}
- *     Mac Address     BD Idx           Interface           Index  static  filter  bvi  refresh  timestamp
- *  52:54:00:53:18:33    1      GigabitEthernet0/8/0.200      3       0       0     0      0         0
- *  52:54:00:53:18:55    1      GigabitEthernet0/8/0.200      3       1       0     0      0         0
- *  52:54:00:53:18:77    1                 N/A                -1      1       1     0      0         0
+ *     Mac Address     BD Idx           Interface           Index  static
+filter  bvi  refresh  timestamp
+ *  52:54:00:53:18:33    1      GigabitEthernet0/8/0.200      3       0       0
+0      0         0
+ *  52:54:00:53:18:55    1      GigabitEthernet0/8/0.200      3       1       0
+0      0         0
+ *  52:54:00:53:18:77    1                 N/A                -1      1       1
+0      0         0
  * 3 l2fib entries
  * @cliexend
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_l2fib_cli, static) = {
   .path = "show l2fib",
-  .short_help = "show l2fib [all] | [bd_id <nn> | bd_index <nn>] [learn | add] | [raw]",
+  .short_help =
+    "show l2fib [all] | [bd_id <nn> | bd_index <nn>] [learn | add] | [raw]",
   .function = show_l2fib,
 };
 /* *INDENT-ON* */
@@ -373,8 +373,9 @@ l2fib_table_init (void)
   if (mp->mac_table_initialized == 1)
     return;
 
-  BV (clib_bihash_init) (&mp->mac_table, "l2fib mac table",
-			 mp->mac_table_n_buckets, mp->mac_table_memory_size);
+  BV (clib_bihash_init)
+  (&mp->mac_table, "l2fib mac table", mp->mac_table_n_buckets,
+   mp->mac_table_memory_size);
   mp->mac_table_initialized = 1;
 }
 
@@ -402,8 +403,7 @@ l2fib_clear_table (void)
  * @TODO: Later we may want a way to remove only the non-static entries
  */
 static clib_error_t *
-clear_l2fib (vlib_main_t * vm,
-	     unformat_input_t * input, vlib_cli_command_t * cmd)
+clear_l2fib (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   l2fib_clear_table ();
   return 0;
@@ -442,8 +442,8 @@ l2fib_cur_seq_num (u32 bd_index, u32 sw_if_index)
  * If the entry already exists then overwrite it
  */
 void
-l2fib_add_entry (const u8 * mac, u32 bd_index,
-		 u32 sw_if_index, l2fib_entry_result_flags_t flags)
+l2fib_add_entry (const u8 *mac, u32 bd_index, u32 sw_if_index,
+		 l2fib_entry_result_flags_t flags)
 {
   l2fib_entry_key_t key;
   l2fib_entry_result_t result;
@@ -482,7 +482,7 @@ l2fib_add_entry (const u8 * mac, u32 bd_index,
     }
 
   /* set up result */
-  result.raw = 0;		/* clear all fields */
+  result.raw = 0; /* clear all fields */
   result.fields.sw_if_index = sw_if_index;
   result.fields.flags = flags;
 
@@ -491,7 +491,7 @@ l2fib_add_entry (const u8 * mac, u32 bd_index,
 
   kv.value = result.raw;
 
-  BV (clib_bihash_add_del) (&fm->mac_table, &kv, 1 /* is_add */ );
+  BV (clib_bihash_add_del) (&fm->mac_table, &kv, 1 /* is_add */);
 }
 
 /**
@@ -502,8 +502,7 @@ l2fib_add_entry (const u8 * mac, u32 bd_index,
  * Note that filter and bvi entries are always static
  */
 static clib_error_t *
-l2fib_add (vlib_main_t * vm,
-	   unformat_input_t * input, vlib_cli_command_t * cmd)
+l2fib_add (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   bd_main_t *bdm = &bd_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -590,25 +589,29 @@ done:
  * @cliexcmd{l2fib add 52:54:00:53:18:77 200 filter}
  * Example of show command of the provisioned MAC Addresses and filters:
  * @cliexstart{show l2fib verbose}
- *     Mac Address     BD Idx           Interface           Index  static  filter  bvi  refresh  timestamp
- *  52:54:00:53:18:33    1      GigabitEthernet0/8/0.200      3       0       0     0      0         0
- *  52:54:00:53:18:55    1      GigabitEthernet0/8/0.200      3       1       0     0      0         0
- *  52:54:00:53:18:77    1                 N/A                -1      1       1     0      0         0
+ *     Mac Address     BD Idx           Interface           Index  static
+filter  bvi  refresh  timestamp
+ *  52:54:00:53:18:33    1      GigabitEthernet0/8/0.200      3       0       0
+0      0         0
+ *  52:54:00:53:18:55    1      GigabitEthernet0/8/0.200      3       1       0
+0      0         0
+ *  52:54:00:53:18:77    1                 N/A                -1      1       1
+0      0         0
  * 3 l2fib entries
  * @cliexend
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (l2fib_add_cli, static) = {
   .path = "l2fib add",
-  .short_help = "l2fib add <mac> <bridge-domain-id> filter | <intf> [static | bvi]",
+  .short_help =
+    "l2fib add <mac> <bridge-domain-id> filter | <intf> [static | bvi]",
   .function = l2fib_add,
 };
 /* *INDENT-ON* */
 
-
 static clib_error_t *
-l2fib_test_command_fn (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+l2fib_test_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   u8 mac[6], save_mac[6];
   u32 bd_index = 0;
@@ -640,8 +643,7 @@ l2fib_test_command_fn (vlib_main_t * vm,
     return clib_error_return (0, "mac not set");
 
   if (is_add == 0 && is_del == 0 && is_check == 0)
-    return clib_error_return (0,
-			      "noop: pick at least one of (add,del,check)");
+    return clib_error_return (0, "noop: pick at least one of (add,del,check)");
 
   clib_memcpy_fast (save_mac, mac, 6);
 
@@ -692,7 +694,8 @@ l2fib_test_command_fn (vlib_main_t * vm,
 }
 
 /*?
- * The set of '<em>test l2fib</em>' commands allow the L2 FIB table of the default
+ * The set of '<em>test l2fib</em>' commands allow the L2 FIB table of the
+default
  * bridge domain (bridge-domain-id of 0) to be modified.
  *
  * @cliexpar
@@ -703,11 +706,16 @@ l2fib_test_command_fn (vlib_main_t * vm,
  *
  * Show the set of 4 sequential MAC Address entries that were added:
  * @cliexstart{show l2fib verbose}
- *     Mac Address     BD Idx           Interface           Index  static  filter  bvi  refresh  timestamp
- * 52:54:00:53:00:00    0       GigabitEthernet0/8/0.300     8       0       0     0      0         0
- * 52:54:00:53:00:01    0       GigabitEthernet0/8/0.300     8       0       0     0      0         0
- * 52:54:00:53:00:03    0       GigabitEthernet0/8/0.300     8       0       0     0      0         0
- * 52:54:00:53:00:02    0       GigabitEthernet0/8/0.300     8       0       0     0      0         0
+ *     Mac Address     BD Idx           Interface           Index  static
+filter  bvi  refresh  timestamp
+ * 52:54:00:53:00:00    0       GigabitEthernet0/8/0.300     8       0       0
+0      0         0
+ * 52:54:00:53:00:01    0       GigabitEthernet0/8/0.300     8       0       0
+0      0         0
+ * 52:54:00:53:00:03    0       GigabitEthernet0/8/0.300     8       0       0
+0      0         0
+ * 52:54:00:53:00:02    0       GigabitEthernet0/8/0.300     8       0       0
+0      0         0
  * 4 l2fib entries
  * @cliexend
  *
@@ -721,7 +729,8 @@ l2fib_test_command_fn (vlib_main_t * vm,
  *
  * <b><em># tail -f /var/log/messages | grep l2fib_test_command_fn</em></b>
  *
- * Sep  7 17:15:24 localhost vnet[4952]: l2fib_test_command_fn:446: key 52:54:00:53:00:04 AWOL
+ * Sep  7 17:15:24 localhost vnet[4952]: l2fib_test_command_fn:446: key
+52:54:00:53:00:04 AWOL
  *
  * Example of how to delete a set of 4 sequential MAC Address entries
  * from L2 FIB table of the default bridge-domain:
@@ -736,14 +745,13 @@ VLIB_CLI_COMMAND (l2fib_test_command, static) = {
 };
 /* *INDENT-ON* */
 
-
 /**
  * Delete an entry from the l2fib.
  * Return 0 if the entry was deleted, or 1 it was not found or if
  * sw_if_index is non-zero and does not match that in the entry.
  */
 u32
-l2fib_del_entry (const u8 * mac, u32 bd_index, u32 sw_if_index)
+l2fib_del_entry (const u8 *mac, u32 bd_index, u32 sw_if_index)
 {
   l2fib_entry_result_t result;
   l2fib_main_t *mp = &l2fib_main;
@@ -776,7 +784,7 @@ l2fib_del_entry (const u8 * mac, u32 bd_index, u32 sw_if_index)
     }
 
   /* Remove entry from hash table */
-  BV (clib_bihash_add_del) (&mp->mac_table, &kv, 0 /* is_add */ );
+  BV (clib_bihash_add_del) (&mp->mac_table, &kv, 0 /* is_add */);
   return 0;
 }
 
@@ -786,8 +794,7 @@ l2fib_del_entry (const u8 * mac, u32 bd_index, u32 sw_if_index)
  *    l2fib del <mac> <bd-id>
  */
 static clib_error_t *
-l2fib_del (vlib_main_t * vm,
-	   unformat_input_t * input, vlib_cli_command_t * cmd)
+l2fib_del (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   bd_main_t *bdm = &bd_main;
   clib_error_t *error = 0;
@@ -834,7 +841,8 @@ done:
  * table of an existing bridge-domain.
  *
  * @cliexpar
- * Example of how to delete a MAC Address entry from the L2 FIB table of a bridge-domain (where 200 is the bridge-domain-id):
+ * Example of how to delete a MAC Address entry from the L2 FIB table of a
+bridge-domain (where 200 is the bridge-domain-id):
  * @cliexcmd{l2fib del 52:54:00:53:18:33 200}
 ?*/
 /* *INDENT-OFF* */
@@ -879,30 +887,30 @@ VLIB_CLI_COMMAND (l2fib_set_scan_delay_cli, static) = {
     Kick off ager to scan MACs to age/delete MAC entries
 */
 void
-l2fib_start_ager_scan (vlib_main_t * vm)
+l2fib_start_ager_scan (vlib_main_t *vm)
 {
   uword evt = L2_MAC_AGE_PROCESS_EVENT_ONE_PASS;
 
   /* check if there is at least one bd with mac aging enabled */
   l2_bridge_domain_t *bd_config;
   vec_foreach (bd_config, l2input_main.bd_configs)
-  {
-    if (bd_config->bd_id != ~0 && bd_config->mac_age != 0)
-      {
-	evt = L2_MAC_AGE_PROCESS_EVENT_START;
-	break;
-      }
-  }
+    {
+      if (bd_config->bd_id != ~0 && bd_config->mac_age != 0)
+	{
+	  evt = L2_MAC_AGE_PROCESS_EVENT_START;
+	  break;
+	}
+    }
 
-  vlib_process_signal_event (vm, l2fib_mac_age_scanner_process_node.index,
-			     evt, 0);
+  vlib_process_signal_event (vm, l2fib_mac_age_scanner_process_node.index, evt,
+			     0);
 }
 
 /**
     Flush all non static MACs from an interface
 */
 void
-l2fib_flush_int_mac (vlib_main_t * vm, u32 sw_if_index)
+l2fib_flush_int_mac (vlib_main_t *vm, u32 sw_if_index)
 {
   l2_input_seq_num_inc (sw_if_index);
   l2fib_start_ager_scan (vm);
@@ -912,7 +920,7 @@ l2fib_flush_int_mac (vlib_main_t * vm, u32 sw_if_index)
     Flush all non static MACs in a bridge domain
 */
 void
-l2fib_flush_bd_mac (vlib_main_t * vm, u32 bd_index)
+l2fib_flush_bd_mac (vlib_main_t *vm, u32 bd_index)
 {
   l2_bridge_domain_t *bd_config = l2input_bd_config (bd_index);
   bd_config->seq_num += 1;
@@ -923,16 +931,15 @@ l2fib_flush_bd_mac (vlib_main_t * vm, u32 bd_index)
     Flush all non static MACs - flushes all valid BDs
 */
 void
-l2fib_flush_all_mac (vlib_main_t * vm)
+l2fib_flush_all_mac (vlib_main_t *vm)
 {
   l2_bridge_domain_t *bd_config;
   vec_foreach (bd_config, l2input_main.bd_configs)
     if (bd_is_valid (bd_config))
-    bd_config->seq_num += 1;
+      bd_config->seq_num += 1;
 
   l2fib_start_ager_scan (vm);
 }
-
 
 /**
     Flush MACs, except static ones, associated with an interface
@@ -940,8 +947,8 @@ l2fib_flush_all_mac (vlib_main_t * vm)
     l2fib flush-mac interface <if-name>
 */
 static clib_error_t *
-l2fib_flush_mac_int (vlib_main_t * vm,
-		     unformat_input_t * input, vlib_cli_command_t * cmd)
+l2fib_flush_mac_int (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
@@ -966,8 +973,8 @@ done:
     l2fib flush-mac all
 */
 static clib_error_t *
-l2fib_flush_mac_all (vlib_main_t * vm,
-		     unformat_input_t * input, vlib_cli_command_t * cmd)
+l2fib_flush_mac_all (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
 {
   l2fib_flush_all_mac (vm);
   return 0;
@@ -978,7 +985,8 @@ l2fib_flush_mac_all (vlib_main_t * vm,
  * except static ones, associated with an interface from the L2 FIB table.
  *
  * @cliexpar
- * Example of how to flush MAC Address entries learned on an interface from the L2 FIB table:
+ * Example of how to flush MAC Address entries learned on an interface from the
+L2 FIB table:
  * @cliexcmd{l2fib flush-mac interface GigabitEthernet2/1/0}
 ?*/
 /* *INDENT-OFF* */
@@ -994,7 +1002,8 @@ VLIB_CLI_COMMAND (l2fib_flush_mac_all_cli, static) = {
  * except static ones, associated with an interface from the L2 FIB table.
  *
  * @cliexpar
- * Example of how to flush MAC Address entries learned on an interface from the L2 FIB table:
+ * Example of how to flush MAC Address entries learned on an interface from the
+L2 FIB table:
  * @cliexcmd{l2fib flush-mac interface GigabitEthernet2/1/0}
 ?*/
 /* *INDENT-OFF* */
@@ -1011,8 +1020,8 @@ VLIB_CLI_COMMAND (l2fib_flush_mac_int_cli, static) = {
     l2fib flush-mac bridge-domain <bd-id>
 */
 static clib_error_t *
-l2fib_flush_mac_bd (vlib_main_t * vm,
-		    unformat_input_t * input, vlib_cli_command_t * cmd)
+l2fib_flush_mac_bd (vlib_main_t *vm, unformat_input_t *input,
+		    vlib_cli_command_t *cmd)
 {
   bd_main_t *bdm = &bd_main;
   clib_error_t *error = 0;
@@ -1043,7 +1052,8 @@ done:
  * except static ones, in a bridge domain from the L2 FIB table.
  *
  * @cliexpar
- * Example of how to flush MAC Address entries learned in a bridge domain from the L2 FIB table:
+ * Example of how to flush MAC Address entries learned in a bridge domain from
+the L2 FIB table:
  * @cliexcmd{l2fib flush-mac bridge-domain 1000}
 ?*/
 /* *INDENT-OFF* */
@@ -1055,7 +1065,7 @@ VLIB_CLI_COMMAND (l2fib_flush_mac_bd_cli, static) = {
 /* *INDENT-ON* */
 
 clib_error_t *
-l2fib_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
+l2fib_sw_interface_up_down (vnet_main_t *vnm, u32 sw_if_index, u32 flags)
 {
   l2_input_config_t *config = l2input_intf_config (sw_if_index);
   if ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) == 0 &&
@@ -1076,8 +1086,8 @@ static_always_inline void *
 allocate_mac_evt_buf (u32 client, u32 client_index)
 {
   l2fib_main_t *fm = &l2fib_main;
-  vl_api_l2_macs_event_t *mp = vl_msg_api_alloc
-    (sizeof (*mp) + (fm->max_macs_in_event * sizeof (vl_api_mac_entry_t)));
+  vl_api_l2_macs_event_t *mp = vl_msg_api_alloc (
+    sizeof (*mp) + (fm->max_macs_in_event * sizeof (vl_api_mac_entry_t)));
   mp->_vl_msg_id = htons (VL_API_L2_MACS_EVENT);
   mp->pid = htonl (client);
   mp->client_index = client_index;
@@ -1085,12 +1095,12 @@ allocate_mac_evt_buf (u32 client, u32 client_index)
 }
 
 static_always_inline f64
-l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
+l2fib_scan (vlib_main_t *vm, f64 start_time, u8 event_only)
 {
   l2fib_main_t *fm = &l2fib_main;
   l2learn_main_t *lm = &l2learn_main;
 
-  BVT (clib_bihash) * h = &fm->mac_table;
+  BVT (clib_bihash) *h = &fm->mac_table;
   int i, j, k;
   f64 last_start = start_time;
   f64 accum_t = 0;
@@ -1123,7 +1133,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
       delta_t = vlib_time_now (vm) - last_start;
       if (delta_t > 20e-6)
 	{
-	  vlib_process_suspend (vm, 100e-6);	/* suspend for 100 us */
+	  vlib_process_suspend (vm, 100e-6); /* suspend for 100 us */
 	  /* in case a new bd was created while sleeping */
 	  vec_validate (bd_learn_counts,
 			vec_len (l2input_main.bd_configs) - 1);
@@ -1133,22 +1143,21 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 
       if (i < (h->nbuckets - 3))
 	{
-	  BVT (clib_bihash_bucket) * b =
-	    BV (clib_bihash_get_bucket) (h, i + 3);
+	  BVT (clib_bihash_bucket) *b = BV (clib_bihash_get_bucket) (h, i + 3);
 	  CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
 	  b = BV (clib_bihash_get_bucket) (h, i + 1);
 	  if (!BV (clib_bihash_bucket_is_empty) (b))
 	    {
-	      BVT (clib_bihash_value) * v =
+	      BVT (clib_bihash_value) *v =
 		BV (clib_bihash_get_value) (h, b->offset);
 	      CLIB_PREFETCH (v, CLIB_CACHE_LINE_BYTES, LOAD);
 	    }
 	}
 
-      BVT (clib_bihash_bucket) * b = BV (clib_bihash_get_bucket) (h, i);
+      BVT (clib_bihash_bucket) *b = BV (clib_bihash_get_bucket) (h, i);
       if (BV (clib_bihash_bucket_is_empty) (b))
 	continue;
-      BVT (clib_bihash_value) * v = BV (clib_bihash_get_value) (h, b->offset);
+      BVT (clib_bihash_value) *v = BV (clib_bihash_get_value) (h, b->offset);
       for (j = 0; j < (1 << b->log2_pages); j++)
 	{
 	  for (k = 0; k < BIHASH_KVP_PER_PAGE; k++)
@@ -1156,8 +1165,8 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 	      if (v->kvp[k].key == ~0ULL && v->kvp[k].value == ~0ULL)
 		continue;
 
-	      l2fib_entry_key_t key = {.raw = v->kvp[k].key };
-	      l2fib_entry_result_t result = {.raw = v->kvp[k].value };
+	      l2fib_entry_key_t key = { .raw = v->kvp[k].key };
+	      l2fib_entry_result_t result = { .raw = v->kvp[k].value };
 
 	      if (!l2fib_entry_result_is_set_AGE_NOT (&result))
 		{
@@ -1180,8 +1189,8 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 			{
 			  if (reg)
 			    clib_warning ("MAC event to pid %d queue stuffed!"
-					  " %d MAC entries lost", client,
-					  evt_idx);
+					  " %d MAC entries lost",
+					  client, evt_idx);
 			}
 		      evt_idx = 0;
 		    }
@@ -1193,8 +1202,8 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 					key.fields.mac, 6);
 		      mp->mac[evt_idx].action =
 			l2fib_entry_result_is_set_LRN_MOV (&result) ?
-			(vl_api_mac_event_action_t) MAC_EVENT_ACTION_MOVE
-			: (vl_api_mac_event_action_t) MAC_EVENT_ACTION_ADD;
+			  (vl_api_mac_event_action_t) MAC_EVENT_ACTION_MOVE :
+			  (vl_api_mac_event_action_t) MAC_EVENT_ACTION_ADD;
 		      mp->mac[evt_idx].action =
 			htonl (mp->mac[evt_idx].action);
 		      mp->mac[evt_idx].sw_if_index =
@@ -1207,31 +1216,31 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 		      kv.value = result.raw;
 		      BV (clib_bihash_add_del) (&fm->mac_table, &kv, 1);
 		      evt_idx++;
-		      continue;	/* skip aging */
+		      continue; /* skip aging */
 		    }
 		}
 
 	      if (event_only || l2fib_entry_result_is_set_AGE_NOT (&result))
-		continue;	/* skip aging - static_mac always age_not */
+		continue; /* skip aging - static_mac always age_not */
 
 	      /* start aging processing */
 	      u32 bd_index = key.fields.bd_index;
 	      u32 sw_if_index = result.fields.sw_if_index;
 	      u16 sn = l2fib_cur_seq_num (bd_index, sw_if_index);
 	      if (result.fields.sn != sn)
-		goto age_out;	/* stale mac */
+		goto age_out; /* stale mac */
 
 	      l2_bridge_domain_t *bd_config =
 		vec_elt_at_index (l2input_main.bd_configs, bd_index);
 
 	      if (bd_config->mac_age == 0)
-		continue;	/* skip aging */
+		continue; /* skip aging */
 
 	      i16 delta = (u8) (start_time / 60) - result.fields.timestamp;
 	      delta += delta < 0 ? 256 : 0;
 
 	      if (delta < bd_config->mac_age)
-		continue;	/* still valid */
+		continue; /* still valid */
 
 	    age_out:
 	      if (client)
@@ -1261,8 +1270,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 	    }
 	  v++;
 	}
-    doublebreak:
-      ;
+    doublebreak:;
     }
 
   /* keep learn count consistent */
@@ -1287,7 +1295,8 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 	    {
 	      if (reg)
 		clib_warning ("MAC event to pid %d queue stuffed!"
-			      " %d MAC entries lost", client, evt_idx);
+			      " %d MAC entries lost",
+			      client, evt_idx);
 	      vl_msg_api_free (mp);
 	    }
 	}
@@ -1298,8 +1307,8 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 }
 
 static uword
-l2fib_mac_age_scanner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
-			       vlib_frame_t * f)
+l2fib_mac_age_scanner_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
+			       vlib_frame_t *f)
 {
   uword event_type, *event_data = 0;
   l2fib_main_t *fm = &l2fib_main;
@@ -1324,11 +1333,15 @@ l2fib_mac_age_scanner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
       start_time = vlib_time_now (vm);
       enum
-      { SCAN_MAC_AGE, SCAN_MAC_EVENT, SCAN_DISABLE } scan = SCAN_MAC_AGE;
+      {
+	SCAN_MAC_AGE,
+	SCAN_MAC_EVENT,
+	SCAN_DISABLE
+      } scan = SCAN_MAC_AGE;
 
       switch (event_type)
 	{
-	case ~0:		/* timer expired */
+	case ~0: /* timer expired */
 	  if (lm->client_pid != 0 && start_time < next_age_scan_time)
 	    scan = SCAN_MAC_EVENT;
 	  break;
@@ -1372,14 +1385,14 @@ l2fib_mac_age_scanner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2fib_mac_age_scanner_process_node) = {
-    .function = l2fib_mac_age_scanner_process,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "l2fib-mac-age-scanner-process",
+  .function = l2fib_mac_age_scanner_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "l2fib-mac-age-scanner-process",
 };
 /* *INDENT-ON* */
 
 clib_error_t *
-l2fib_init (vlib_main_t * vm)
+l2fib_init (vlib_main_t *vm)
 {
   l2fib_main_t *mp = &l2fib_main;
   l2fib_entry_key_t test_key;
@@ -1397,7 +1410,7 @@ l2fib_init (vlib_main_t * vm)
   clib_memset (test_mac, 0, sizeof (test_mac));
   test_mac[0] = 0x11;
   test_key.raw = 0;
-  test_key.raw = l2fib_make_key ((u8 *) & test_mac, 0x1234);
+  test_key.raw = l2fib_make_key ((u8 *) &test_mac, 0x1234);
   ASSERT (test_key.fields.mac[0] == 0x11);
   ASSERT (test_key.fields.bd_index == 0x1234);
 
@@ -1407,7 +1420,7 @@ l2fib_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (l2fib_init);
 
 static clib_error_t *
-lfib_config (vlib_main_t * vm, unformat_input_t * input)
+lfib_config (vlib_main_t *vm, unformat_input_t *input)
 {
   l2fib_main_t *lm = &l2fib_main;
   uword table_size = ~0;
@@ -1415,8 +1428,7 @@ lfib_config (vlib_main_t * vm, unformat_input_t * input)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "table-size %U", unformat_memory_size,
-		    &table_size))
+      if (unformat (input, "table-size %U", unformat_memory_size, &table_size))
 	;
       else if (unformat (input, "num-buckets %u", &n_buckets))
 	;
@@ -1428,21 +1440,4 @@ lfib_config (vlib_main_t * vm, unformat_input_t * input)
   if (n_buckets != ~0)
     {
       if (!is_pow2 (n_buckets))
-	return clib_error_return (0, "num-buckets must be power of 2");
-      lm->mac_table_n_buckets = n_buckets;
-    }
-
-  if (table_size != ~0)
-    lm->mac_table_memory_size = table_size;
-  return 0;
-}
-
-VLIB_CONFIG_FUNCTION (lfib_config, "l2fib");
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+	return clib_error_return (0, "num-bucket

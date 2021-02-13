@@ -64,7 +64,7 @@ typedef struct
  * Data structures in persistent shared memory, all the time
  */
 clib_error_t *
-persist_malloc (persist_main_t * pm)
+persist_malloc (persist_main_t *pm)
 {
   demo_struct2_t *demo2;
   demo_struct1_t *demo1;
@@ -73,8 +73,8 @@ persist_malloc (persist_main_t * pm)
   void *oldheap;
 
   /* Get back the root pointer */
-  demo1 = svmdb_local_get_variable_reference
-    (pm->c, SVMDB_NAMESPACE_VEC, "demo1_location");
+  demo1 = svmdb_local_get_variable_reference (pm->c, SVMDB_NAMESPACE_VEC,
+					      "demo1_location");
 
   /* It doesnt exist create our data structures */
   if (demo1 == 0)
@@ -104,9 +104,8 @@ persist_malloc (persist_main_t * pm)
        * Set the root pointer. Note: this guy switches heaps, locks, etc.
        * We allocated demo1 as a vector to make this "just work..."
        */
-      svmdb_local_set_vec_variable (pm->c, "demo1_location",
-				    demo1, sizeof (demo1));
-
+      svmdb_local_set_vec_variable (pm->c, "demo1_location", demo1,
+				    sizeof (demo1));
     }
   else
     {
@@ -121,7 +120,7 @@ persist_malloc (persist_main_t * pm)
 }
 
 void
-unserialize_demo1 (serialize_main_t * sm, va_list * args)
+unserialize_demo1 (serialize_main_t *sm, va_list *args)
 {
   demo_struct1_t **result = va_arg (*args, demo_struct1_t **);
   demo_struct1_t *demo1;
@@ -140,7 +139,7 @@ unserialize_demo1 (serialize_main_t * sm, va_list * args)
 }
 
 void
-serialize_demo1 (serialize_main_t * sm, va_list * args)
+serialize_demo1 (serialize_main_t *sm, va_list *args)
 {
   demo_struct1_t *demo1 = va_arg (*args, demo_struct1_t *);
   demo_struct2_t *demo2 = demo1->demo2;
@@ -152,7 +151,7 @@ serialize_demo1 (serialize_main_t * sm, va_list * args)
 
 /* Serialize / unserialize variant */
 clib_error_t *
-persist_serialize (persist_main_t * pm)
+persist_serialize (persist_main_t *pm)
 {
   u8 *checkpoint;
   serialize_main_t sm;
@@ -163,8 +162,8 @@ persist_serialize (persist_main_t * pm)
   char *datestring = ctime (&starttime);
 
   /* Get back the root pointer */
-  checkpoint = svmdb_local_get_vec_variable (pm->c, "demo1_checkpoint",
-					     sizeof (u8));
+  checkpoint =
+    svmdb_local_get_vec_variable (pm->c, "demo1_checkpoint", sizeof (u8));
 
   /* It doesnt exist create our data structures */
   if (checkpoint == 0)
@@ -185,8 +184,8 @@ persist_serialize (persist_main_t * pm)
       checkpoint = serialize_close_vector (&sm);
 
       /* Copy checkpoint into shared memory */
-      svmdb_local_set_vec_variable (pm->c, "demo1_checkpoint",
-				    checkpoint, sizeof (u8));
+      svmdb_local_set_vec_variable (pm->c, "demo1_checkpoint", checkpoint,
+				    sizeof (u8));
       /* Toss the process-private-memory original.. */
       vec_free (checkpoint);
     }
@@ -208,7 +207,6 @@ persist_serialize (persist_main_t * pm)
     }
   return 0;
 }
-
 
 int
 main (int argc, char **argv)

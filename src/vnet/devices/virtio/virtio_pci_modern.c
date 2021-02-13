@@ -26,9 +26,8 @@
 #include <vnet/devices/virtio/virtio_pci_modern.h>
 #include <vnet/devices/virtio/pci.h>
 
-
 static u64
-virtio_pci_modern_get_device_features (vlib_main_t * vm, virtio_if_t * vif)
+virtio_pci_modern_get_device_features (vlib_main_t *vm, virtio_if_t *vif)
 {
   u64 features_lo, features_hi;
   virtio_pci_reg_write_u32 (vif, VIRTIO_DEVICE_FEATURE_SELECT_OFFSET (vif),
@@ -44,7 +43,7 @@ virtio_pci_modern_get_device_features (vlib_main_t * vm, virtio_if_t * vif)
 }
 
 static u64
-virtio_pci_modern_get_driver_features (vlib_main_t * vm, virtio_if_t * vif)
+virtio_pci_modern_get_driver_features (vlib_main_t *vm, virtio_if_t *vif)
 {
   u64 features_lo, features_hi;
   virtio_pci_reg_write_u32 (vif, VIRTIO_DRIVER_FEATURE_SELECT_OFFSET (vif),
@@ -61,7 +60,7 @@ virtio_pci_modern_get_driver_features (vlib_main_t * vm, virtio_if_t * vif)
 }
 
 static void
-virtio_pci_modern_set_driver_features (vlib_main_t * vm, virtio_if_t * vif,
+virtio_pci_modern_set_driver_features (vlib_main_t *vm, virtio_if_t *vif,
 				       u64 features)
 {
   u32 features_lo = (u32) features, features_hi = (u32) (features >> 32);
@@ -81,7 +80,7 @@ virtio_pci_modern_set_driver_features (vlib_main_t * vm, virtio_if_t * vif,
 }
 
 static u16
-virtio_pci_modern_get_msix_config (virtio_if_t * vif)
+virtio_pci_modern_get_msix_config (virtio_if_t *vif)
 {
   u16 msix_config;
   msix_config =
@@ -90,7 +89,7 @@ virtio_pci_modern_get_msix_config (virtio_if_t * vif)
 }
 
 static u16
-virtio_pci_modern_set_msix_config (vlib_main_t * vm, virtio_if_t * vif,
+virtio_pci_modern_set_msix_config (vlib_main_t *vm, virtio_if_t *vif,
 				   u16 msix_config)
 {
   virtio_pci_reg_write_u16 (vif, VIRTIO_MSIX_CONFIG_VECTOR_OFFSET (vif),
@@ -99,7 +98,7 @@ virtio_pci_modern_set_msix_config (vlib_main_t * vm, virtio_if_t * vif,
 }
 
 static u16
-virtio_pci_modern_get_num_queues (virtio_if_t * vif)
+virtio_pci_modern_get_num_queues (virtio_if_t *vif)
 {
   u16 num_queues = 0;
   num_queues = virtio_pci_reg_read_u16 (vif, VIRTIO_NUM_QUEUES_OFFSET (vif));
@@ -107,7 +106,7 @@ virtio_pci_modern_get_num_queues (virtio_if_t * vif)
 }
 
 static u8
-virtio_pci_modern_get_status (vlib_main_t * vm, virtio_if_t * vif)
+virtio_pci_modern_get_status (vlib_main_t *vm, virtio_if_t *vif)
 {
   u8 status = 0;
   status = virtio_pci_reg_read_u8 (vif, VIRTIO_DEVICE_STATUS_OFFSET (vif));
@@ -115,7 +114,7 @@ virtio_pci_modern_get_status (vlib_main_t * vm, virtio_if_t * vif)
 }
 
 static void
-virtio_pci_modern_set_status (vlib_main_t * vm, virtio_if_t * vif, u8 status)
+virtio_pci_modern_set_status (vlib_main_t *vm, virtio_if_t *vif, u8 status)
 {
   if (status != VIRTIO_CONFIG_STATUS_RESET)
     status |= virtio_pci_modern_get_status (vm, vif);
@@ -123,14 +122,14 @@ virtio_pci_modern_set_status (vlib_main_t * vm, virtio_if_t * vif, u8 status)
 }
 
 static u8
-virtio_pci_modern_reset (vlib_main_t * vm, virtio_if_t * vif)
+virtio_pci_modern_reset (vlib_main_t *vm, virtio_if_t *vif)
 {
   virtio_pci_modern_set_status (vm, vif, VIRTIO_CONFIG_STATUS_RESET);
   return virtio_pci_modern_get_status (vm, vif);
 }
 
 static u8
-virtio_pci_modern_get_config_generation (virtio_if_t * vif)
+virtio_pci_modern_get_config_generation (virtio_if_t *vif)
 {
   u8 config_generation = 0;
   config_generation =
@@ -139,14 +138,14 @@ virtio_pci_modern_get_config_generation (virtio_if_t * vif)
 }
 
 static void
-virtio_pci_modern_set_queue_select (virtio_if_t * vif, u16 queue_select)
+virtio_pci_modern_set_queue_select (virtio_if_t *vif, u16 queue_select)
 {
   virtio_pci_reg_write_u16 (vif, VIRTIO_QUEUE_SELECT_OFFSET (vif),
 			    queue_select);
 }
 
 static u16
-virtio_pci_modern_get_queue_size (vlib_main_t * vm, virtio_if_t * vif,
+virtio_pci_modern_get_queue_size (vlib_main_t *vm, virtio_if_t *vif,
 				  u16 queue_id)
 {
   u16 queue_size = 0;
@@ -156,7 +155,7 @@ virtio_pci_modern_get_queue_size (vlib_main_t * vm, virtio_if_t * vif,
 }
 
 static void
-virtio_pci_modern_set_queue_size (vlib_main_t * vm, virtio_if_t * vif,
+virtio_pci_modern_set_queue_size (vlib_main_t *vm, virtio_if_t *vif,
 				  u16 queue_id, u16 queue_size)
 {
   if (!is_pow2 (queue_size))
@@ -165,12 +164,11 @@ virtio_pci_modern_set_queue_size (vlib_main_t * vm, virtio_if_t * vif,
     }
 
   if (virtio_pci_modern_get_queue_size (vm, vif, queue_id) > queue_size)
-    virtio_pci_reg_write_u16 (vif, VIRTIO_QUEUE_SIZE_OFFSET (vif),
-			      queue_size);
+    virtio_pci_reg_write_u16 (vif, VIRTIO_QUEUE_SIZE_OFFSET (vif), queue_size);
 }
 
 static u16
-virtio_pci_modern_get_queue_msix_vector (virtio_if_t * vif)
+virtio_pci_modern_get_queue_msix_vector (virtio_if_t *vif)
 {
   u16 queue_msix_vector = 0;
   queue_msix_vector =
@@ -179,7 +177,7 @@ virtio_pci_modern_get_queue_msix_vector (virtio_if_t * vif)
 }
 
 static u16
-virtio_pci_modern_set_queue_msix_vector (vlib_main_t * vm, virtio_if_t * vif,
+virtio_pci_modern_set_queue_msix_vector (vlib_main_t *vm, virtio_if_t *vif,
 					 u16 queue_msix_vector, u16 queue_id)
 {
   virtio_pci_modern_set_queue_select (vif, queue_id);
@@ -189,7 +187,7 @@ virtio_pci_modern_set_queue_msix_vector (vlib_main_t * vm, virtio_if_t * vif,
 }
 
 static u16
-virtio_pci_modern_get_queue_enable (virtio_if_t * vif, u16 queue_id)
+virtio_pci_modern_get_queue_enable (virtio_if_t *vif, u16 queue_id)
 {
   u16 queue_enable = 0;
   virtio_pci_modern_set_queue_select (vif, queue_id);
@@ -199,7 +197,7 @@ virtio_pci_modern_get_queue_enable (virtio_if_t * vif, u16 queue_id)
 }
 
 static void
-virtio_pci_modern_set_queue_enable (virtio_if_t * vif, u16 queue_id,
+virtio_pci_modern_set_queue_enable (virtio_if_t *vif, u16 queue_id,
 				    u16 queue_enable)
 {
   virtio_pci_modern_set_queue_select (vif, queue_id);
@@ -208,7 +206,7 @@ virtio_pci_modern_set_queue_enable (virtio_if_t * vif, u16 queue_id,
 }
 
 static u16
-virtio_pci_modern_get_queue_notify_off (vlib_main_t * vm, virtio_if_t * vif,
+virtio_pci_modern_get_queue_notify_off (vlib_main_t *vm, virtio_if_t *vif,
 					u16 queue_id)
 {
   u16 queue_notify_off = 0;
@@ -219,7 +217,7 @@ virtio_pci_modern_get_queue_notify_off (vlib_main_t * vm, virtio_if_t * vif,
 }
 
 static u64
-virtio_pci_modern_get_queue_desc (virtio_if_t * vif)
+virtio_pci_modern_get_queue_desc (virtio_if_t *vif)
 {
   u64 queue_desc = 0;
   queue_desc = virtio_pci_reg_read_u64 (vif, VIRTIO_QUEUE_DESC_OFFSET (vif));
@@ -227,13 +225,13 @@ virtio_pci_modern_get_queue_desc (virtio_if_t * vif)
 }
 
 static void
-virtio_pci_modern_set_queue_desc (virtio_if_t * vif, u64 queue_desc)
+virtio_pci_modern_set_queue_desc (virtio_if_t *vif, u64 queue_desc)
 {
   virtio_pci_reg_write_u64 (vif, VIRTIO_QUEUE_DESC_OFFSET (vif), queue_desc);
 }
 
 static u64
-virtio_pci_modern_get_queue_driver (virtio_if_t * vif)
+virtio_pci_modern_get_queue_driver (virtio_if_t *vif)
 {
   u64 queue_driver = 0;
   queue_driver =
@@ -242,14 +240,14 @@ virtio_pci_modern_get_queue_driver (virtio_if_t * vif)
 }
 
 static void
-virtio_pci_modern_set_queue_driver (virtio_if_t * vif, u64 queue_driver)
+virtio_pci_modern_set_queue_driver (virtio_if_t *vif, u64 queue_driver)
 {
   virtio_pci_reg_write_u64 (vif, VIRTIO_QUEUE_DRIVER_OFFSET (vif),
 			    queue_driver);
 }
 
 static u64
-virtio_pci_modern_get_queue_device (virtio_if_t * vif)
+virtio_pci_modern_get_queue_device (virtio_if_t *vif)
 {
   u64 queue_device = 0;
   queue_device =
@@ -258,15 +256,15 @@ virtio_pci_modern_get_queue_device (virtio_if_t * vif)
 }
 
 static void
-virtio_pci_modern_set_queue_device (virtio_if_t * vif, u64 queue_device)
+virtio_pci_modern_set_queue_device (virtio_if_t *vif, u64 queue_device)
 {
   virtio_pci_reg_write_u64 (vif, VIRTIO_QUEUE_DEVICE_OFFSET (vif),
 			    queue_device);
 }
 
 static u8
-virtio_pci_modern_setup_queue (vlib_main_t * vm, virtio_if_t * vif,
-			       u16 queue_id, void *p)
+virtio_pci_modern_setup_queue (vlib_main_t *vm, virtio_if_t *vif, u16 queue_id,
+			       void *p)
 {
   u64 desc, avail, used;
   u16 queue_size = 0;
@@ -314,8 +312,7 @@ virtio_pci_modern_setup_queue (vlib_main_t * vm, virtio_if_t * vif,
 }
 
 static void
-virtio_pci_modern_del_queue (vlib_main_t * vm, virtio_if_t * vif,
-			     u16 queue_id)
+virtio_pci_modern_del_queue (vlib_main_t *vm, virtio_if_t *vif, u16 queue_id)
 {
   virtio_pci_modern_set_queue_select (vif, queue_id);
   virtio_pci_modern_set_queue_enable (vif, queue_id, 0);
@@ -325,23 +322,21 @@ virtio_pci_modern_del_queue (vlib_main_t * vm, virtio_if_t * vif,
 }
 
 static void
-virtio_pci_modern_get_device_mac (vlib_main_t * vm, virtio_if_t * vif)
+virtio_pci_modern_get_device_mac (vlib_main_t *vm, virtio_if_t *vif)
 {
   vif->mac_addr32 = virtio_pci_reg_read_u32 (vif, VIRTIO_MAC_OFFSET (vif));
-  vif->mac_addr16 =
-    virtio_pci_reg_read_u16 (vif, VIRTIO_MAC_OFFSET (vif) + 4);
+  vif->mac_addr16 = virtio_pci_reg_read_u16 (vif, VIRTIO_MAC_OFFSET (vif) + 4);
 }
 
 static void
-virtio_pci_modern_set_device_mac (vlib_main_t * vm, virtio_if_t * vif)
+virtio_pci_modern_set_device_mac (vlib_main_t *vm, virtio_if_t *vif)
 {
   virtio_pci_reg_write_u32 (vif, VIRTIO_MAC_OFFSET (vif), vif->mac_addr32);
-  virtio_pci_reg_write_u16 (vif, VIRTIO_MAC_OFFSET (vif) + 4,
-			    vif->mac_addr16);
+  virtio_pci_reg_write_u16 (vif, VIRTIO_MAC_OFFSET (vif) + 4, vif->mac_addr16);
 }
 
 static u16
-virtio_pci_modern_get_device_status (vlib_main_t * vm, virtio_if_t * vif)
+virtio_pci_modern_get_device_status (vlib_main_t *vm, virtio_if_t *vif)
 {
   u16 status = 0;
   status = virtio_pci_reg_read_u16 (vif, VIRTIO_STATUS_OFFSET (vif));
@@ -349,8 +344,7 @@ virtio_pci_modern_get_device_status (vlib_main_t * vm, virtio_if_t * vif)
 }
 
 static u16
-virtio_pci_modern_get_max_virtqueue_pairs (vlib_main_t * vm,
-					   virtio_if_t * vif)
+virtio_pci_modern_get_max_virtqueue_pairs (vlib_main_t *vm, virtio_if_t *vif)
 {
   u16 max_virtqueue_pairs = 0;
   max_virtqueue_pairs =
@@ -362,7 +356,7 @@ virtio_pci_modern_get_max_virtqueue_pairs (vlib_main_t * vm,
 }
 
 static u16
-virtio_pci_modern_get_device_mtu (vlib_main_t * vm, virtio_if_t * vif)
+virtio_pci_modern_get_device_mtu (vlib_main_t *vm, virtio_if_t *vif)
 {
   u16 mtu = 0;
   mtu = virtio_pci_reg_read_u16 (vif, VIRTIO_MTU_OFFSET (vif));
@@ -370,7 +364,7 @@ virtio_pci_modern_get_device_mtu (vlib_main_t * vm, virtio_if_t * vif)
 }
 
 static void
-virtio_pci_modern_read_config (vlib_main_t * vm, virtio_if_t * vif, void *dst,
+virtio_pci_modern_read_config (vlib_main_t *vm, virtio_if_t *vif, void *dst,
 			       int len, u32 addr)
 {
   u8 config_count;
@@ -389,30 +383,28 @@ virtio_pci_modern_read_config (vlib_main_t * vm, virtio_if_t * vif, void *dst,
 }
 
 static void
-virtio_pci_modern_write_config (vlib_main_t * vm, virtio_if_t * vif,
-				void *src, int len, u32 addr)
+virtio_pci_modern_write_config (vlib_main_t *vm, virtio_if_t *vif, void *src,
+				int len, u32 addr)
 {
   // do nothing
 }
 
 static u8
-virtio_pci_modern_get_isr (vlib_main_t * vm, virtio_if_t * vif)
+virtio_pci_modern_get_isr (vlib_main_t *vm, virtio_if_t *vif)
 {
   return virtio_pci_reg_read_u8 (vif, VIRTIO_ISR_OFFSET (vif));
 }
 
 inline void
-virtio_pci_modern_notify_queue (vlib_main_t * vm, virtio_if_t * vif,
+virtio_pci_modern_notify_queue (vlib_main_t *vm, virtio_if_t *vif,
 				u16 queue_id, u16 queue_notify_off)
 {
-  virtio_pci_reg_write_u16 (vif,
-			    VIRTIO_NOTIFICATION_OFFSET (vif) +
-			    queue_notify_off, queue_id);
+  virtio_pci_reg_write_u16 (
+    vif, VIRTIO_NOTIFICATION_OFFSET (vif) + queue_notify_off, queue_id);
 }
 
 static void
-virtio_pci_modern_device_debug_config_space (vlib_main_t * vm,
-					     virtio_if_t * vif)
+virtio_pci_modern_device_debug_config_space (vlib_main_t *vm, virtio_if_t *vif)
 {
   // do nothing for now
 }

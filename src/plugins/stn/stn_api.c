@@ -31,14 +31,14 @@
 
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 /* Macro to finish up custom dump fns */
-#define FINISH                                  \
-    vec_add1 (s, 0);                            \
-    vl_print (handle, (char *)s);               \
-    vec_free (s);                               \
-    return handle;
+#define FINISH                                                                \
+  vec_add1 (s, 0);                                                            \
+  vl_print (handle, (char *) s);                                              \
+  vec_free (s);                                                               \
+  return handle;
 
 static void
-vl_api_stn_add_del_rule_t_handler (vl_api_stn_add_del_rule_t * mp)
+vl_api_stn_add_del_rule_t_handler (vl_api_stn_add_del_rule_t *mp)
 {
   stn_rule_add_del_args_t args;
   vl_api_stn_add_del_rule_reply_t *rmp;
@@ -54,8 +54,7 @@ vl_api_stn_add_del_rule_t_handler (vl_api_stn_add_del_rule_t * mp)
 }
 
 static void
-send_stn_rules_details (stn_rule_t * r, vl_api_registration_t * reg,
-			u32 context)
+send_stn_rules_details (stn_rule_t *r, vl_api_registration_t *reg, u32 context)
 {
   vl_api_stn_rules_details_t *rmp;
 
@@ -66,7 +65,8 @@ send_stn_rules_details (stn_rule_t * r, vl_api_registration_t * reg,
 
   ip_address_encode (&r->address,
 		     ip46_address_is_ip4 (&r->address) ? IP46_TYPE_IP4 :
-		     IP46_TYPE_IP6, &rmp->ip_address);
+							 IP46_TYPE_IP6,
+		     &rmp->ip_address);
   rmp->context = context;
   rmp->sw_if_index = clib_host_to_net_u32 (r->sw_if_index);
 
@@ -74,7 +74,7 @@ send_stn_rules_details (stn_rule_t * r, vl_api_registration_t * reg,
 }
 
 static void
-vl_api_stn_rules_dump_t_handler (vl_api_stn_rules_dump_t * mp)
+vl_api_stn_rules_dump_t_handler (vl_api_stn_rules_dump_t *mp)
 {
   vl_api_registration_t *reg;
   stn_main_t *stn = &stn_main;
@@ -84,16 +84,15 @@ vl_api_stn_rules_dump_t_handler (vl_api_stn_rules_dump_t * mp)
   if (reg == 0)
     return;
 
-  /* *INDENT-OFF* */
-  pool_foreach (r, stn->rules) {
-    send_stn_rules_details (r, reg, mp->context);
-  }
-  /* *INDENT-ON* */
+  pool_foreach (r, stn->rules)
+    {
+      send_stn_rules_details (r, reg, mp->context);
+    }
 }
 
 #include <stn/stn.api.c>
 clib_error_t *
-stn_api_init (vlib_main_t * vm, stn_main_t * sm)
+stn_api_init (vlib_main_t *vm, stn_main_t *sm)
 {
   /* Ask for a correctly-sized block of API message decode slots */
   sm->msg_id_base = setup_message_id_table ();

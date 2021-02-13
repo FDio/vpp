@@ -17,9 +17,8 @@
 #include <lisp/lisp-gpe/lisp_gpe.h>
 
 static clib_error_t *
-lisp_show_adjacencies_command_fn (vlib_main_t * vm,
-				  unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
+lisp_show_adjacencies_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				  vlib_cli_command_t *cmd)
 {
   lisp_adjacency_t *adjs, *adj;
   vlib_cli_output (vm, "%s %40s\n", "leid", "reid");
@@ -37,8 +36,8 @@ lisp_show_adjacencies_command_fn (vlib_main_t * vm,
 	;
       else
 	{
-	  vlib_cli_output (vm, "parse error: '%U'",
-			   format_unformat_error, line_input);
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
+			   line_input);
 	  goto done;
 	}
     }
@@ -52,10 +51,10 @@ lisp_show_adjacencies_command_fn (vlib_main_t * vm,
   adjs = vnet_lisp_adjacencies_get_by_vni (vni);
 
   vec_foreach (adj, adjs)
-  {
-    vlib_cli_output (vm, "%U %40U\n", format_gid_address, &adj->leid,
-		     format_gid_address, &adj->reid);
-  }
+    {
+      vlib_cli_output (vm, "%U %40U\n", format_gid_address, &adj->leid,
+		       format_gid_address, &adj->reid);
+    }
   vec_free (adjs);
 
 done:
@@ -66,16 +65,15 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_show_adjacencies_command) = {
-    .path = "show lisp adjacencies",
-    .short_help = "show lisp adjacencies",
-    .function = lisp_show_adjacencies_command_fn,
+  .path = "show lisp adjacencies",
+  .short_help = "show lisp adjacencies",
+  .function = lisp_show_adjacencies_command_fn,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-lisp_add_del_map_server_command_fn (vlib_main_t * vm,
-				    unformat_input_t * input,
-				    vlib_cli_command_t * cmd)
+lisp_add_del_map_server_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
 {
   int rv = 0;
   u8 is_add = 1, ip_set = 0;
@@ -97,8 +95,8 @@ lisp_add_del_map_server_command_fn (vlib_main_t * vm,
 	ip_set = 1;
       else
 	{
-	  vlib_cli_output (vm, "parse error: '%U'",
-			   format_unformat_error, line_input);
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
+			   line_input);
 	  goto done;
 	}
     }
@@ -122,16 +120,15 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_add_del_map_server_command) = {
-    .path = "lisp map-server",
-    .short_help = "lisp map-server add|del <ip>",
-    .function = lisp_add_del_map_server_command_fn,
+  .path = "lisp map-server",
+  .short_help = "lisp map-server add|del <ip>",
+  .function = lisp_add_del_map_server_command_fn,
 };
 /* *INDENT-ON* */
 
-
 static clib_error_t *
-lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
-				   vlib_cli_command_t * cmd)
+lisp_add_del_local_eid_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -200,7 +197,8 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (key && (0 == key_id))
     {
       vlib_cli_output (vm, "invalid key_id!");
-      goto done;;
+      goto done;
+      ;
     }
 
   gid_address_copy (&a->eid, &eid);
@@ -229,17 +227,17 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_add_del_local_eid_command) = {
-    .path = "lisp eid-table",
-    .short_help = "lisp eid-table add/del [vni <vni>] eid <eid> "
-      "locator-set <locator-set> [key <secret-key> key-id sha1|sha256 ]",
-    .function = lisp_add_del_local_eid_command_fn,
+  .path = "lisp eid-table",
+  .short_help =
+    "lisp eid-table add/del [vni <vni>] eid <eid> "
+    "locator-set <locator-set> [key <secret-key> key-id sha1|sha256 ]",
+  .function = lisp_add_del_local_eid_command_fn,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-lisp_eid_table_map_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+lisp_eid_table_map_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   u8 is_add = 1, is_l2 = 0;
   u32 vni = 0, dp_id = 0;
@@ -276,9 +274,9 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_eid_table_map_command) = {
-    .path = "lisp eid-table map",
-    .short_help = "lisp eid-table map [del] vni <vni> vrf <vrf> | bd <bdi>",
-    .function = lisp_eid_table_map_command_fn,
+  .path = "lisp eid-table map",
+  .short_help = "lisp eid-table map [del] vni <vni> vrf <vrf> | bd <bdi>",
+  .function = lisp_eid_table_map_command_fn,
 };
 /* *INDENT-ON* */
 
@@ -291,9 +289,9 @@ VLIB_CLI_COMMAND (lisp_eid_table_map_command) = {
  * @return pointer to clib error structure
  */
 static clib_error_t *
-lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
-					unformat_input_t * input,
-					vlib_cli_command_t * cmd)
+lisp_add_del_remote_mapping_command_fn (vlib_main_t *vm,
+					unformat_input_t *input,
+					vlib_cli_command_t *cmd)
 {
   clib_error_t *error = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -329,8 +327,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
 	{
 	  if (!curr_rloc)
 	    {
-	      clib_warning
-		("No RLOC configured for setting priority/weight!");
+	      clib_warning ("No RLOC configured for setting priority/weight!");
 	      goto done;
 	    }
 	  curr_rloc->priority = p;
@@ -420,12 +417,12 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_add_del_remote_mapping_command) = {
-    .path = "lisp remote-mapping",
-    .short_help = "lisp remote-mapping add|del [del-all] vni <vni> "
-		  "eid <est-eid> [action <no-action|natively-forward|"
-		  "send-map-request|drop>] rloc <dst-locator> p <prio> "
-		  "w <weight> [rloc <dst-locator> ... ]",
-    .function = lisp_add_del_remote_mapping_command_fn,
+  .path = "lisp remote-mapping",
+  .short_help = "lisp remote-mapping add|del [del-all] vni <vni> "
+		"eid <est-eid> [action <no-action|natively-forward|"
+		"send-map-request|drop>] rloc <dst-locator> p <prio> "
+		"w <weight> [rloc <dst-locator> ... ]",
+  .function = lisp_add_del_remote_mapping_command_fn,
 };
 /* *INDENT-ON* */
 
@@ -433,8 +430,8 @@ VLIB_CLI_COMMAND (lisp_add_del_remote_mapping_command) = {
  * Handler for add/del adjacency CLI.
  */
 static clib_error_t *
-lisp_add_del_adjacency_command_fn (vlib_main_t * vm, unformat_input_t * input,
-				   vlib_cli_command_t * cmd)
+lisp_add_del_adjacency_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
 {
   clib_error_t *error = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -463,8 +460,8 @@ lisp_add_del_adjacency_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	is_add = 0;
       else if (unformat (line_input, "add"))
 	;
-      else if (unformat (line_input, "reid %U",
-			 unformat_ip_prefix, reid_ippref))
+      else if (unformat (line_input, "reid %U", unformat_ip_prefix,
+			 reid_ippref))
 	{
 	  gid_address_type (&reid) = GID_ADDR_IP_PREFIX;
 	  reid_set = 1;
@@ -479,8 +476,8 @@ lisp_add_del_adjacency_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  gid_address_vni (&leid) = vni;
 	  gid_address_vni (&reid) = vni;
 	}
-      else if (unformat (line_input, "leid %U",
-			 unformat_ip_prefix, leid_ippref))
+      else if (unformat (line_input, "leid %U", unformat_ip_prefix,
+			 leid_ippref))
 	{
 	  gid_address_type (&leid) = GID_ADDR_IP_PREFIX;
 	  leid_set = 1;
@@ -503,10 +500,9 @@ lisp_add_del_adjacency_command_fn (vlib_main_t * vm, unformat_input_t * input,
       goto done;
     }
 
-  if ((gid_address_type (&leid) != gid_address_type (&reid))
-      || (gid_address_type (&reid) == GID_ADDR_IP_PREFIX
-	  && ip_prefix_version (reid_ippref)
-	  != ip_prefix_version (leid_ippref)))
+  if ((gid_address_type (&leid) != gid_address_type (&reid)) ||
+      (gid_address_type (&reid) == GID_ADDR_IP_PREFIX &&
+       ip_prefix_version (reid_ippref) != ip_prefix_version (leid_ippref)))
     {
       clib_warning ("remote and local EIDs are of different types!");
       goto done;
@@ -527,18 +523,16 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_add_del_adjacency_command) = {
-    .path = "lisp adjacency",
-    .short_help = "lisp adjacency add|del vni <vni> reid <remote-eid> "
-      "leid <local-eid>",
-    .function = lisp_add_del_adjacency_command_fn,
+  .path = "lisp adjacency",
+  .short_help = "lisp adjacency add|del vni <vni> reid <remote-eid> "
+		"leid <local-eid>",
+  .function = lisp_add_del_adjacency_command_fn,
 };
 /* *INDENT-ON* */
 
-
 static clib_error_t *
-lisp_map_request_mode_command_fn (vlib_main_t * vm,
-				  unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
+lisp_map_request_mode_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				  vlib_cli_command_t *cmd)
 {
   unformat_input_t _i, *i = &_i;
   map_request_mode_t mr_mode = _MR_MODE_MAX;
@@ -577,15 +571,14 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_map_request_mode_command) = {
-    .path = "lisp map-request mode",
-    .short_help = "lisp map-request mode dst-only|src-dst",
-    .function = lisp_map_request_mode_command_fn,
+  .path = "lisp map-request mode",
+  .short_help = "lisp map-request mode dst-only|src-dst",
+  .function = lisp_map_request_mode_command_fn,
 };
 /* *INDENT-ON* */
 
-
 static u8 *
-format_lisp_map_request_mode (u8 * s, va_list * args)
+format_lisp_map_request_mode (u8 *s, va_list *args)
 {
   u32 mode = va_arg (*args, u32);
 
@@ -600,9 +593,9 @@ format_lisp_map_request_mode (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-lisp_show_map_request_mode_command_fn (vlib_main_t * vm,
-				       unformat_input_t * input,
-				       vlib_cli_command_t * cmd)
+lisp_show_map_request_mode_command_fn (vlib_main_t *vm,
+				       unformat_input_t *input,
+				       vlib_cli_command_t *cmd)
 {
   vlib_cli_output (vm, "map-request mode: %U", format_lisp_map_request_mode,
 		   vnet_lisp_get_map_request_mode ());
@@ -611,40 +604,37 @@ lisp_show_map_request_mode_command_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_show_map_request_mode_command) = {
-    .path = "show lisp map-request mode",
-    .short_help = "show lisp map-request mode",
-    .function = lisp_show_map_request_mode_command_fn,
+  .path = "show lisp map-request mode",
+  .short_help = "show lisp map-request mode",
+  .function = lisp_show_map_request_mode_command_fn,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-lisp_show_map_resolvers_command_fn (vlib_main_t * vm,
-				    unformat_input_t * input,
-				    vlib_cli_command_t * cmd)
+lisp_show_map_resolvers_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
 {
   lisp_msmr_t *mr;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
 
   vec_foreach (mr, lcm->map_resolvers)
-  {
-    vlib_cli_output (vm, "%U", format_ip_address, &mr->address);
-  }
+    {
+      vlib_cli_output (vm, "%U", format_ip_address, &mr->address);
+    }
   return 0;
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_show_map_resolvers_command) = {
-    .path = "show lisp map-resolvers",
-    .short_help = "show lisp map-resolvers",
-    .function = lisp_show_map_resolvers_command_fn,
+  .path = "show lisp map-resolvers",
+  .short_help = "show lisp map-resolvers",
+  .function = lisp_show_map_resolvers_command_fn,
 };
 /* *INDENT-ON* */
 
-
 static clib_error_t *
-lisp_pitr_set_locator_set_command_fn (vlib_main_t * vm,
-				      unformat_input_t * input,
-				      vlib_cli_command_t * cmd)
+lisp_pitr_set_locator_set_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
 {
   u8 locator_name_set = 0;
   u8 *locator_set_name = 0;
@@ -679,8 +669,8 @@ lisp_pitr_set_locator_set_command_fn (vlib_main_t * vm,
   rv = vnet_lisp_pitr_set_locator_set (locator_set_name, is_add);
   if (0 != rv)
     {
-      error = clib_error_return (0, "failed to %s pitr!",
-				 is_add ? "add" : "delete");
+      error =
+	clib_error_return (0, "failed to %s pitr!", is_add ? "add" : "delete");
     }
 
 done:
@@ -693,15 +683,15 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_pitr_set_locator_set_command) = {
-    .path = "lisp pitr",
-    .short_help = "lisp pitr [disable] ls <locator-set-name>",
-    .function = lisp_pitr_set_locator_set_command_fn,
+  .path = "lisp pitr",
+  .short_help = "lisp pitr [disable] ls <locator-set-name>",
+  .function = lisp_pitr_set_locator_set_command_fn,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-lisp_show_pitr_command_fn (vlib_main_t * vm,
-			   unformat_input_t * input, vlib_cli_command_t * cmd)
+lisp_show_pitr_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   mapping_t *m;
@@ -726,8 +716,7 @@ lisp_show_pitr_command_fn (vlib_main_t * vm,
       m = pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
       if (~0 != m->locator_set_index)
 	{
-	  ls =
-	    pool_elt_at_index (lcm->locator_set_pool, m->locator_set_index);
+	  ls = pool_elt_at_index (lcm->locator_set_pool, m->locator_set_index);
 	  tmp_str = format (0, "%s", ls->name);
 	}
       else
@@ -746,14 +735,14 @@ lisp_show_pitr_command_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_show_pitr_command) = {
-    .path = "show lisp pitr",
-    .short_help = "Show pitr",
-    .function = lisp_show_pitr_command_fn,
+  .path = "show lisp pitr",
+  .short_help = "Show pitr",
+  .function = lisp_show_pitr_command_fn,
 };
 /* *INDENT-ON* */
 
 static u8 *
-format_eid_entry (u8 * s, va_list * args)
+format_eid_entry (u8 *s, va_list *args)
 {
   vnet_main_t *vnm = va_arg (*args, vnet_main_t *);
   lisp_cp_main_t *lcm = va_arg (*args, lisp_cp_main_t *);
@@ -766,43 +755,42 @@ format_eid_entry (u8 * s, va_list * args)
   u8 first_line = 1;
   u8 *loc;
 
-  u8 *type = ls->local ? format (0, "local(%s)", ls->name)
-    : format (0, "remote");
+  u8 *type =
+    ls->local ? format (0, "local(%s)", ls->name) : format (0, "remote");
 
   if (vec_len (ls->locator_indices) == 0)
     {
-      s = format (s, "%-35U%-30s%-20u%-u", format_gid_address, gid,
-		  type, ttl, aut);
+      s = format (s, "%-35U%-30s%-20u%-u", format_gid_address, gid, type, ttl,
+		  aut);
     }
   else
     {
       vec_foreach (loc_index, ls->locator_indices)
-      {
-	locator_t *l = pool_elt_at_index (lcm->locator_pool, loc_index[0]);
-	if (l->local)
-	  loc = format (0, "%U", format_vnet_sw_if_index_name, vnm,
-			l->sw_if_index);
-	else
-	  loc = format (0, "%U", format_ip_address,
-			&gid_address_ip (&l->address));
+	{
+	  locator_t *l = pool_elt_at_index (lcm->locator_pool, loc_index[0]);
+	  if (l->local)
+	    loc = format (0, "%U", format_vnet_sw_if_index_name, vnm,
+			  l->sw_if_index);
+	  else
+	    loc = format (0, "%U", format_ip_address,
+			  &gid_address_ip (&l->address));
 
-	if (first_line)
-	  {
-	    s = format (s, "%-35U%-20s%-30v%-20u%-u\n", format_gid_address,
-			gid, type, loc, ttl, aut);
-	    first_line = 0;
-	  }
-	else
-	  s = format (s, "%55s%v\n", "", loc);
-      }
+	  if (first_line)
+	    {
+	      s = format (s, "%-35U%-20s%-30v%-20u%-u\n", format_gid_address,
+			  gid, type, loc, ttl, aut);
+	      first_line = 0;
+	    }
+	  else
+	    s = format (s, "%55s%v\n", "", loc);
+	}
     }
   return s;
 }
 
 static clib_error_t *
-lisp_show_eid_table_command_fn (vlib_main_t * vm,
-				unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+lisp_show_eid_table_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   mapping_t *mapit;
@@ -835,47 +823,47 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
 	}
     }
 
-  vlib_cli_output (vm, "%-35s%-20s%-30s%-20s%-s",
-		   "EID", "type", "locators", "ttl", "authoritative");
+  vlib_cli_output (vm, "%-35s%-20s%-30s%-20s%-s", "EID", "type", "locators",
+		   "ttl", "authoritative");
 
   if (print_all)
     {
       /* *INDENT-OFF* */
       pool_foreach (mapit, lcm->mapping_pool)
-       {
-        if (mapit->pitr_set)
-          continue;
+	{
+	  if (mapit->pitr_set)
+	    continue;
 
-        locator_set_t * ls = pool_elt_at_index (lcm->locator_set_pool,
-                                                mapit->locator_set_index);
-        if (filter && !((1 == filter && ls->local) ||
-          (2 == filter && !ls->local)))
-          {
-            continue;
-          }
-        vlib_cli_output (vm, "%U", format_eid_entry, lcm->vnet_main,
-                         lcm, mapit, ls);
-      }
+	  locator_set_t *ls = pool_elt_at_index (lcm->locator_set_pool,
+						 mapit->locator_set_index);
+	  if (filter &&
+	      !((1 == filter && ls->local) || (2 == filter && !ls->local)))
+	    {
+	      continue;
+	    }
+	  vlib_cli_output (vm, "%U", format_eid_entry, lcm->vnet_main, lcm,
+			   mapit, ls);
+	}
       /* *INDENT-ON* */
     }
   else
     {
       mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &eid);
-      if ((u32) ~ 0 == mi)
+      if ((u32) ~0 == mi)
 	goto done;
 
       mapit = pool_elt_at_index (lcm->mapping_pool, mi);
-      locator_set_t *ls = pool_elt_at_index (lcm->locator_set_pool,
-					     mapit->locator_set_index);
+      locator_set_t *ls =
+	pool_elt_at_index (lcm->locator_set_pool, mapit->locator_set_index);
 
-      if (filter && !((1 == filter && ls->local) ||
-		      (2 == filter && !ls->local)))
+      if (filter &&
+	  !((1 == filter && ls->local) || (2 == filter && !ls->local)))
 	{
 	  goto done;
 	}
 
-      vlib_cli_output (vm, "%U,", format_eid_entry, lcm->vnet_main,
-		       lcm, mapit, ls);
+      vlib_cli_output (vm, "%U,", format_eid_entry, lcm->vnet_main, lcm, mapit,
+		       ls);
     }
 
 done:
@@ -886,16 +874,15 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_cp_show_eid_table_command) = {
-    .path = "show lisp eid-table",
-    .short_help = "show lisp eid-table [local|remote|eid <eid>]",
-    .function = lisp_show_eid_table_command_fn,
+  .path = "show lisp eid-table",
+  .short_help = "show lisp eid-table [local|remote|eid <eid>]",
+  .function = lisp_show_eid_table_command_fn,
 };
 /* *INDENT-ON* */
 
-
 static clib_error_t *
-lisp_enable_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			vlib_cli_command_t * cmd)
+lisp_enable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     return clib_error_return (0, "parse error: '%U'", format_unformat_error,
@@ -908,15 +895,15 @@ lisp_enable_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_cp_enable_command) = {
-    .path = "lisp enable",
-    .short_help = "lisp enable",
-    .function = lisp_enable_command_fn,
+  .path = "lisp enable",
+  .short_help = "lisp enable",
+  .function = lisp_enable_command_fn,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-lisp_disable_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			 vlib_cli_command_t * cmd)
+lisp_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     return clib_error_return (0, "parse error: '%U'", format_unformat_error,
@@ -929,16 +916,16 @@ lisp_disable_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_cp_disable_command) = {
-    .path = "lisp disable",
-    .short_help = "lisp disable",
-    .function = lisp_disable_command_fn,
+  .path = "lisp disable",
+  .short_help = "lisp disable",
+  .function = lisp_disable_command_fn,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-lisp_map_register_enable_disable_command_fn (vlib_main_t * vm,
-					     unformat_input_t * input,
-					     vlib_cli_command_t * cmd)
+lisp_map_register_enable_disable_command_fn (vlib_main_t *vm,
+					     unformat_input_t *input,
+					     vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_enabled = 0;
@@ -982,16 +969,16 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_map_register_enable_disable_command) = {
-    .path = "lisp map-register",
-    .short_help = "lisp map-register [enable|disable]",
-    .function = lisp_map_register_enable_disable_command_fn,
+  .path = "lisp map-register",
+  .short_help = "lisp map-register [enable|disable]",
+  .function = lisp_map_register_enable_disable_command_fn,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-lisp_rloc_probe_enable_disable_command_fn (vlib_main_t * vm,
-					   unformat_input_t * input,
-					   vlib_cli_command_t * cmd)
+lisp_rloc_probe_enable_disable_command_fn (vlib_main_t *vm,
+					   unformat_input_t *input,
+					   vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_enabled = 0;
@@ -1035,26 +1022,26 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_rloc_probe_enable_disable_command) = {
-    .path = "lisp rloc-probe",
-    .short_help = "lisp rloc-probe [enable|disable]",
-    .function = lisp_rloc_probe_enable_disable_command_fn,
+  .path = "lisp rloc-probe",
+  .short_help = "lisp rloc-probe [enable|disable]",
+  .function = lisp_rloc_probe_enable_disable_command_fn,
 };
 /* *INDENT-ON* */
 
 static u8 *
-format_lisp_status (u8 * s, va_list * args)
+format_lisp_status (u8 *s, va_list *args)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   return format (s, "%s", lcm->is_enabled ? "enabled" : "disabled");
 }
 
 static clib_error_t *
-lisp_show_status_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+lisp_show_status_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   u8 *msg = 0;
-  msg = format (msg, "feature: %U\ngpe: %U\n",
-		format_lisp_status, format_vnet_lisp_gpe_status);
+  msg = format (msg, "feature: %U\ngpe: %U\n", format_lisp_status,
+		format_vnet_lisp_gpe_status);
   vlib_cli_output (vm, "%v", msg);
   vec_free (msg);
   return 0;
@@ -1062,16 +1049,15 @@ lisp_show_status_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_show_status_command) = {
-    .path = "show lisp status",
-    .short_help = "show lisp status",
-    .function = lisp_show_status_command_fn,
+  .path = "show lisp status",
+  .short_help = "show lisp status",
+  .function = lisp_show_status_command_fn,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-lisp_show_eid_table_map_command_fn (vlib_main_t * vm,
-				    unformat_input_t * input,
-				    vlib_cli_command_t * cmd)
+lisp_show_eid_table_map_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
 {
   hash_pair_t *p;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -1113,10 +1099,9 @@ lisp_show_eid_table_map_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "%=10s%=10s", "VNI", is_l2 ? "BD" : "VRF");
 
   /* *INDENT-OFF* */
-  hash_foreach_pair (p, vni_table,
-  ({
-    vlib_cli_output (vm, "%=10d%=10d", p->key, p->value[0]);
-  }));
+  hash_foreach_pair (p, vni_table, ({
+		       vlib_cli_output (vm, "%=10d%=10d", p->key, p->value[0]);
+		     }));
   /* *INDENT-ON* */
 
 done:
@@ -1127,17 +1112,15 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_show_eid_table_map_command) = {
-    .path = "show lisp eid-table map",
-    .short_help = "show lisp eid-table map l2|l3",
-    .function = lisp_show_eid_table_map_command_fn,
+  .path = "show lisp eid-table map",
+  .short_help = "show lisp eid-table map l2|l3",
+  .function = lisp_show_eid_table_map_command_fn,
 };
 /* *INDENT-ON* */
 
-
 static clib_error_t *
-lisp_add_del_locator_set_command_fn (vlib_main_t * vm,
-				     unformat_input_t * input,
-				     vlib_cli_command_t * cmd)
+lisp_add_del_locator_set_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				     vlib_cli_command_t *cmd)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   vnet_main_t *vnm = lgm->vnet_main;
@@ -1164,9 +1147,8 @@ lisp_add_del_locator_set_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "del %_%v%_", &locator_set_name))
 	is_add = 0;
       else if (unformat (line_input, "iface %U p %d w %d",
-			 unformat_vnet_sw_interface, vnm,
-			 &locator.sw_if_index, &locator.priority,
-			 &locator.weight))
+			 unformat_vnet_sw_interface, vnm, &locator.sw_if_index,
+			 &locator.priority, &locator.weight))
 	{
 	  locator.local = 1;
 	  locator.state = 1;
@@ -1203,17 +1185,17 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_cp_add_del_locator_set_command) = {
-    .path = "lisp locator-set",
-    .short_help = "lisp locator-set add/del <name> [iface <iface-name> "
-        "p <priority> w <weight>]",
-    .function = lisp_add_del_locator_set_command_fn,
+  .path = "lisp locator-set",
+  .short_help = "lisp locator-set add/del <name> [iface <iface-name> "
+		"p <priority> w <weight>]",
+  .function = lisp_add_del_locator_set_command_fn,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-lisp_add_del_locator_in_set_command_fn (vlib_main_t * vm,
-					unformat_input_t * input,
-					vlib_cli_command_t * cmd)
+lisp_add_del_locator_in_set_command_fn (vlib_main_t *vm,
+					unformat_input_t *input,
+					vlib_cli_command_t *cmd)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   vnet_main_t *vnm = lgm->vnet_main;
@@ -1242,9 +1224,8 @@ lisp_add_del_locator_in_set_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "locator-set %_%v%_", &locator_set_name))
 	locator_set_name_set = 1;
       else if (unformat (line_input, "iface %U p %d w %d",
-			 unformat_vnet_sw_interface, vnm,
-			 &locator.sw_if_index, &locator.priority,
-			 &locator.weight))
+			 unformat_vnet_sw_interface, vnm, &locator.sw_if_index,
+			 &locator.priority, &locator.weight))
 	{
 	  locator.local = 1;
 	  vec_add1 (locators, locator);
@@ -1279,17 +1260,16 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_cp_add_del_locator_in_set_command) = {
-    .path = "lisp locator",
-    .short_help = "lisp locator add/del locator-set <name> iface <iface-name> "
-                  "p <priority> w <weight>",
-    .function = lisp_add_del_locator_in_set_command_fn,
+  .path = "lisp locator",
+  .short_help = "lisp locator add/del locator-set <name> iface <iface-name> "
+		"p <priority> w <weight>",
+  .function = lisp_add_del_locator_in_set_command_fn,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-lisp_cp_show_locator_sets_command_fn (vlib_main_t * vm,
-				      unformat_input_t * input,
-				      vlib_cli_command_t * cmd)
+lisp_cp_show_locator_sets_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
 {
   locator_set_t *lsit;
   locator_t *loc;
@@ -1301,53 +1281,52 @@ lisp_cp_show_locator_sets_command_fn (vlib_main_t * vm,
 
   /* *INDENT-OFF* */
   pool_foreach (lsit, lcm->locator_set_pool)
-   {
-    u8 * msg = 0;
-    int next_line = 0;
-    if (lsit->local)
-      {
-        msg = format (msg, "%v", lsit->name);
-      }
-    else
-      {
-        msg = format (msg, "<%s-%d>", "remote", lsit - lcm->locator_set_pool);
-      }
-    vec_foreach (locit, lsit->locator_indices)
-      {
-        if (next_line)
-          {
-            msg = format (msg, "%16s", " ");
-          }
-        loc = pool_elt_at_index (lcm->locator_pool, locit[0]);
-        if (loc->local)
-          msg = format (msg, "%16d%16d%16d\n", loc->sw_if_index, loc->priority,
-                        loc->weight);
-        else
-          msg = format (msg, "%16U%16d%16d\n", format_ip_address,
-                        &gid_address_ip(&loc->address), loc->priority,
-                        loc->weight);
-        next_line = 1;
-      }
-    vlib_cli_output (vm, "%v", msg);
-    vec_free (msg);
-  }
+    {
+      u8 *msg = 0;
+      int next_line = 0;
+      if (lsit->local)
+	{
+	  msg = format (msg, "%v", lsit->name);
+	}
+      else
+	{
+	  msg =
+	    format (msg, "<%s-%d>", "remote", lsit - lcm->locator_set_pool);
+	}
+      vec_foreach (locit, lsit->locator_indices)
+	{
+	  if (next_line)
+	    {
+	      msg = format (msg, "%16s", " ");
+	    }
+	  loc = pool_elt_at_index (lcm->locator_pool, locit[0]);
+	  if (loc->local)
+	    msg = format (msg, "%16d%16d%16d\n", loc->sw_if_index,
+			  loc->priority, loc->weight);
+	  else
+	    msg = format (msg, "%16U%16d%16d\n", format_ip_address,
+			  &gid_address_ip (&loc->address), loc->priority,
+			  loc->weight);
+	  next_line = 1;
+	}
+      vlib_cli_output (vm, "%v", msg);
+      vec_free (msg);
+    }
   /* *INDENT-ON* */
   return 0;
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_cp_show_locator_sets_command) = {
-    .path = "show lisp locator-set",
-    .short_help = "Shows locator-sets",
-    .function = lisp_cp_show_locator_sets_command_fn,
+  .path = "show lisp locator-set",
+  .short_help = "Shows locator-sets",
+  .function = lisp_cp_show_locator_sets_command_fn,
 };
 /* *INDENT-ON* */
 
-
 static clib_error_t *
-lisp_add_del_map_resolver_command_fn (vlib_main_t * vm,
-				      unformat_input_t * input,
-				      vlib_cli_command_t * cmd)
+lisp_add_del_map_resolver_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_add = 1, addr_set = 0;
@@ -1398,17 +1377,16 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_add_del_map_resolver_command) = {
-    .path = "lisp map-resolver",
-    .short_help = "lisp map-resolver add/del <ip_address>",
-    .function = lisp_add_del_map_resolver_command_fn,
+  .path = "lisp map-resolver",
+  .short_help = "lisp map-resolver add/del <ip_address>",
+  .function = lisp_add_del_map_resolver_command_fn,
 };
 /* *INDENT-ON* */
 
-
 static clib_error_t *
-lisp_add_del_mreq_itr_rlocs_command_fn (vlib_main_t * vm,
-					unformat_input_t * input,
-					vlib_cli_command_t * cmd)
+lisp_add_del_mreq_itr_rlocs_command_fn (vlib_main_t *vm,
+					unformat_input_t *input,
+					vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_add = 1;
@@ -1453,16 +1431,15 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_add_del_map_request_command) = {
-    .path = "lisp map-request itr-rlocs",
-    .short_help = "lisp map-request itr-rlocs add/del <locator_set_name>",
-    .function = lisp_add_del_mreq_itr_rlocs_command_fn,
+  .path = "lisp map-request itr-rlocs",
+  .short_help = "lisp map-request itr-rlocs add/del <locator_set_name>",
+  .function = lisp_add_del_mreq_itr_rlocs_command_fn,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-lisp_show_mreq_itr_rlocs_command_fn (vlib_main_t * vm,
-				     unformat_input_t * input,
-				     vlib_cli_command_t * cmd)
+lisp_show_mreq_itr_rlocs_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				     vlib_cli_command_t *cmd)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   locator_set_t *loc_set;
@@ -1483,16 +1460,16 @@ lisp_show_mreq_itr_rlocs_command_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_show_map_request_command) = {
-    .path = "show lisp map-request itr-rlocs",
-    .short_help = "Shows map-request itr-rlocs",
-    .function = lisp_show_mreq_itr_rlocs_command_fn,
+  .path = "show lisp map-request itr-rlocs",
+  .short_help = "Shows map-request itr-rlocs",
+  .function = lisp_show_mreq_itr_rlocs_command_fn,
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
-lisp_use_petr_set_locator_set_command_fn (vlib_main_t * vm,
-					  unformat_input_t * input,
-					  vlib_cli_command_t * cmd)
+lisp_use_petr_set_locator_set_command_fn (vlib_main_t *vm,
+					  unformat_input_t *input,
+					  vlib_cli_command_t *cmd)
 {
   u8 is_add = 1, ip_set = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -1524,8 +1501,8 @@ lisp_use_petr_set_locator_set_command_fn (vlib_main_t * vm,
 
   if (vnet_lisp_use_petr (&ip, is_add))
     {
-      error = clib_error_return (0, "failed to %s petr!",
-				 is_add ? "add" : "delete");
+      error =
+	clib_error_return (0, "failed to %s petr!", is_add ? "add" : "delete");
     }
 
 done:
@@ -1536,14 +1513,14 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_use_petr_set_locator_set_command) = {
-    .path = "lisp use-petr",
-    .short_help = "lisp use-petr [disable] <petr-ip>",
-    .function = lisp_use_petr_set_locator_set_command_fn,
+  .path = "lisp use-petr",
+  .short_help = "lisp use-petr [disable] <petr-ip>",
+  .function = lisp_use_petr_set_locator_set_command_fn,
 };
 
 static clib_error_t *
-lisp_show_petr_command_fn (vlib_main_t * vm,
-                           unformat_input_t * input, vlib_cli_command_t * cmd)
+lisp_show_petr_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   mapping_t *m;
@@ -1551,53 +1528,4 @@ lisp_show_petr_command_fn (vlib_main_t * vm,
   locator_t *loc;
   u8 *tmp_str = 0;
   u8 use_petr = lcm->flags & LISP_FLAG_USE_PETR;
-  vlib_cli_output (vm, "%=20s%=16s", "petr", use_petr ? "ip" : "");
-
-  if (!use_petr)
-    {
-      vlib_cli_output (vm, "%=20s", "disable");
-      return 0;
-    }
-
-  if (~0 == lcm->petr_map_index)
-    {
-      tmp_str = format (0, "N/A");
-    }
-  else
-    {
-      m = pool_elt_at_index (lcm->mapping_pool, lcm->petr_map_index);
-      if (~0 != m->locator_set_index)
-        {
-          ls = pool_elt_at_index(lcm->locator_set_pool, m->locator_set_index);
-          loc = pool_elt_at_index (lcm->locator_pool, ls->locator_indices[0]);
-          tmp_str = format (0, "%U", format_ip_address, &loc->address);
-        }
-      else
-        {
-          tmp_str = format (0, "N/A");
-        }
-    }
-  vec_add1 (tmp_str, 0);
-
-  vlib_cli_output (vm, "%=20s%=16s", "enable", tmp_str);
-
-  vec_free (tmp_str);
-
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (lisp_show_petr_command) = {
-    .path = "show lisp petr",
-    .short_help = "Show petr",
-    .function = lisp_show_petr_command_fn,
-};
-/* *INDENT-ON* */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+  vlib_cli_output (vm, "%=20s%=16s",

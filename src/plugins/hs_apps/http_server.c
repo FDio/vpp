@@ -1,17 +1,17 @@
 /*
-* Copyright (c) 2017-2019 Cisco and/or its affiliates.
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at:
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright (c) 2017-2019 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <vnet/vnet.h>
 #include <vnet/session/application.h>
@@ -43,7 +43,7 @@ typedef struct
 #define _(type, name) type name;
   foreach_app_session_field
 #undef _
-  u32 thread_index;
+    u32 thread_index;
   u8 *rx_buf;
   u32 vpp_session_index;
   u64 vpp_session_handle;
@@ -136,7 +136,7 @@ http_server_session_get (u32 thread_index, u32 hs_index)
 }
 
 static void
-http_server_session_free (http_session_t * hs)
+http_server_session_free (http_session_t *hs)
 {
   http_server_main_t *hsm = &http_server_main;
   u32 thread = hs->thread_index;
@@ -174,20 +174,19 @@ http_server_session_lookup (u32 thread_index, u32 s_index)
   return 0;
 }
 
-
 static void
-http_server_session_timer_start (http_session_t * hs)
+http_server_session_timer_start (http_session_t *hs)
 {
   u32 hs_handle;
   hs_handle = hs->thread_index << 24 | hs->session_index;
   clib_spinlock_lock (&http_server_main.tw_lock);
-  hs->timer_handle = tw_timer_start_2t_1w_2048sl (&http_server_main.tw,
-						  hs_handle, 0, 60);
+  hs->timer_handle =
+    tw_timer_start_2t_1w_2048sl (&http_server_main.tw, hs_handle, 0, 60);
   clib_spinlock_unlock (&http_server_main.tw_lock);
 }
 
 static void
-http_server_session_timer_stop (http_session_t * hs)
+http_server_session_timer_stop (http_session_t *hs)
 {
   if (hs->timer_handle == ~0)
     return;
@@ -197,7 +196,7 @@ http_server_session_timer_stop (http_session_t * hs)
 }
 
 static void
-http_server_session_disconnect (http_session_t * hs)
+http_server_session_disconnect (http_session_t *hs)
 {
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
   a->handle = hs->vpp_session_handle;
@@ -206,7 +205,7 @@ http_server_session_disconnect (http_session_t * hs)
 }
 
 static void
-http_process_free (http_server_args * args)
+http_process_free (http_server_args *args)
 {
   vlib_node_runtime_t *rt;
   vlib_main_t *vm = &vlib_global_main;
@@ -233,45 +232,40 @@ http_process_free (http_server_args * args)
   vec_add1 (hsm->free_http_cli_process_node_indices, node_index);
 }
 
-/* *INDENT-OFF* */
-static const char *http_ok =
-    "HTTP/1.1 200 OK\r\n";
+static const char *http_ok = "HTTP/1.1 200 OK\r\n";
 
-static const char *http_response =
-    "Content-Type: text/html\r\n"
-    "Expires: Mon, 11 Jan 1970 10:10:10 GMT\r\n"
-    "Connection: close \r\n"
-    "Pragma: no-cache\r\n"
-    "Content-Length: %d\r\n\r\n%v";
+static const char *http_response = "Content-Type: text/html\r\n"
+				   "Expires: Mon, 11 Jan 1970 10:10:10 GMT\r\n"
+				   "Connection: close \r\n"
+				   "Pragma: no-cache\r\n"
+				   "Content-Length: %d\r\n\r\n%v";
 
 static const char *http_error_template =
-    "HTTP/1.1 %s\r\n"
-    "Content-Type: text/html\r\n"
-    "Expires: Mon, 11 Jan 1970 10:10:10 GMT\r\n"
-    "Connection: close\r\n"
-    "Pragma: no-cache\r\n"
-    "Content-Length: 0\r\n\r\n";
+  "HTTP/1.1 %s\r\n"
+  "Content-Type: text/html\r\n"
+  "Expires: Mon, 11 Jan 1970 10:10:10 GMT\r\n"
+  "Connection: close\r\n"
+  "Pragma: no-cache\r\n"
+  "Content-Length: 0\r\n\r\n";
 
 /* Header, including incantation to suppress favicon.ico requests */
 static const char *html_header_template =
-    "<html><head><title>%v</title></head>"
-    "<link rel=\"icon\" href=\"data:,\">"
-    "<body><pre>";
+  "<html><head><title>%v</title></head>"
+  "<link rel=\"icon\" href=\"data:,\">"
+  "<body><pre>";
 
-static const char *html_footer =
-    "</pre></body></html>\r\n";
+static const char *html_footer = "</pre></body></html>\r\n";
 
 static const char *html_header_static =
-    "<html><head><title>static reply</title></head>"
-    "<link rel=\"icon\" href=\"data:,\">"
-    "<body><pre>hello</pre></body></html>\r\n";
-/* *INDENT-ON* */
+  "<html><head><title>static reply</title></head>"
+  "<link rel=\"icon\" href=\"data:,\">"
+  "<body><pre>hello</pre></body></html>\r\n";
 
 static u8 *static_http;
 static u8 *static_ok;
 
 static void
-http_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
+http_cli_output (uword arg, u8 *buffer, uword buffer_bytes)
 {
   u8 **output_vecp = (u8 **) arg;
   u8 *output_vec;
@@ -287,7 +281,7 @@ http_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
 }
 
 void
-send_data (http_session_t * hs, u8 * data)
+send_data (http_session_t *hs, u8 *data)
 {
   http_server_main_t *hsm = &http_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
@@ -303,8 +297,8 @@ send_data (http_session_t * hs, u8 * data)
     {
       int actual_transfer;
 
-      actual_transfer = svm_fifo_enqueue
-	(hs->tx_fifo, bytes_to_send, data + offset);
+      actual_transfer =
+	svm_fifo_enqueue (hs->tx_fifo, bytes_to_send, data + offset);
 
       /* Made any progress? */
       if (actual_transfer <= 0)
@@ -340,7 +334,7 @@ send_data (http_session_t * hs, u8 * data)
 }
 
 static void
-send_error (http_session_t * hs, char *str)
+send_error (http_session_t *hs, char *str)
 {
   u8 *data;
 
@@ -350,8 +344,7 @@ send_error (http_session_t * hs, char *str)
 }
 
 static uword
-http_cli_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
-		  vlib_frame_t * f)
+http_cli_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   u8 *request = 0, *reply = 0, *http = 0, *html = 0;
   http_server_main_t *hsm = &http_server_main;
@@ -378,8 +371,7 @@ http_cli_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
   for (i = 0; i < vec_len (request) - 4; i++)
     {
-      if (request[i] == 'G' &&
-	  request[i + 1] == 'E' &&
+      if (request[i] == 'G' && request[i + 1] == 'E' &&
 	  request[i + 2] == 'T' && request[i + 3] == ' ')
 	goto found;
     }
@@ -410,11 +402,11 @@ found:
     }
 
   /* Generate the html header */
-  html = format (0, html_header_template, request /* title */ );
+  html = format (0, html_header_template, request /* title */);
 
   /* Run the command */
   unformat_init_vector (&input, vec_dup (request));
-  vlib_cli_input (vm, &input, http_cli_output, (uword) & reply);
+  vlib_cli_input (vm, &input, http_cli_output, (uword) &reply);
   unformat_free (&input);
   request = 0;
 
@@ -440,7 +432,7 @@ out:
 }
 
 static void
-alloc_http_process (http_server_args * args)
+alloc_http_process (http_server_args *args)
 {
   char *name;
   vlib_node_t *n;
@@ -490,7 +482,7 @@ alloc_http_process_callback (void *cb_args)
 }
 
 static int
-session_rx_request (http_session_t * hs)
+session_rx_request (http_session_t *hs)
 {
   u32 max_dequeue, cursize;
   int n_read;
@@ -501,8 +493,8 @@ session_rx_request (http_session_t * hs)
     return -1;
 
   vec_validate (hs->rx_buf, cursize + max_dequeue - 1);
-  n_read = app_recv_stream_raw (hs->rx_fifo, hs->rx_buf + cursize,
-				max_dequeue, 0, 0 /* peek */ );
+  n_read = app_recv_stream_raw (hs->rx_fifo, hs->rx_buf + cursize, max_dequeue,
+				0, 0 /* peek */);
   ASSERT (n_read == max_dequeue);
   if (svm_fifo_is_empty_cons (hs->rx_fifo))
     svm_fifo_unset_event (hs->rx_fifo);
@@ -512,7 +504,7 @@ session_rx_request (http_session_t * hs)
 }
 
 static int
-http_server_rx_callback (session_t * s)
+http_server_rx_callback (session_t *s)
 {
   http_server_args args;
   http_session_t *hs;
@@ -536,7 +528,7 @@ http_server_rx_callback (session_t * s)
 
   /* Send RPC request to main thread */
   if (vlib_get_thread_index () != 0)
-    vlib_rpc_call_main_thread (alloc_http_process_callback, (u8 *) & args,
+    vlib_rpc_call_main_thread (alloc_http_process_callback, (u8 *) &args,
 			       sizeof (args));
   else
     alloc_http_process (&args);
@@ -544,7 +536,7 @@ http_server_rx_callback (session_t * s)
 }
 
 static int
-http_server_rx_callback_static (session_t * s)
+http_server_rx_callback_static (session_t *s)
 {
   http_session_t *hs;
   u32 request_len;
@@ -573,8 +565,7 @@ http_server_rx_callback_static (session_t * s)
 
   for (i = 0; i < request_len - 4; i++)
     {
-      if (request[i] == 'G' &&
-	  request[i + 1] == 'E' &&
+      if (request[i] == 'G' && request[i + 1] == 'E' &&
 	  request[i + 2] == 'T' && request[i + 3] == ' ')
 	goto find_end;
     }
@@ -584,8 +575,8 @@ http_server_rx_callback_static (session_t * s)
 find_end:
 
   /* check for the end sequence: /r/n/r/n */
-  if (request[request_len - 1] != 0xa || request[request_len - 3] != 0xa
-      || request[request_len - 2] != 0xd || request[request_len - 4] != 0xd)
+  if (request[request_len - 1] != 0xa || request[request_len - 3] != 0xa ||
+      request[request_len - 2] != 0xd || request[request_len - 4] != 0xd)
     goto wait_for_data;
 
   /* send 200 OK first */
@@ -610,7 +601,7 @@ wait_for_data:
 }
 
 static int
-http_server_session_accept_callback (session_t * s)
+http_server_session_accept_callback (session_t *s)
 {
   http_server_main_t *hsm = &http_server_main;
   http_session_t *hs;
@@ -639,7 +630,7 @@ http_server_session_accept_callback (session_t * s)
 }
 
 static void
-http_server_session_disconnect_callback (session_t * s)
+http_server_session_disconnect_callback (session_t *s)
 {
   http_server_main_t *hsm = &http_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
@@ -650,7 +641,7 @@ http_server_session_disconnect_callback (session_t * s)
 }
 
 static void
-http_server_session_reset_callback (session_t * s)
+http_server_session_reset_callback (session_t *s)
 {
   http_server_main_t *hsm = &http_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
@@ -662,7 +653,7 @@ http_server_session_reset_callback (session_t * s)
 
 static int
 http_server_session_connected_callback (u32 app_index, u32 api_context,
-					session_t * s, session_error_t err)
+					session_t *s, session_error_t err)
 {
   clib_warning ("called...");
   return -1;
@@ -676,7 +667,7 @@ http_server_add_segment_callback (u32 client_index, u64 segment_handle)
 }
 
 static void
-http_server_cleanup_callback (session_t * s, session_cleanup_ntf_t ntf)
+http_server_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
 {
   http_server_main_t *hsm = &http_server_main;
   http_session_t *hs;
@@ -796,7 +787,7 @@ http_server_session_close_cb (void *hs_handlep)
 }
 
 static void
-http_expired_timers_dispatch (u32 * expired_timers)
+http_expired_timers_dispatch (u32 *expired_timers)
 {
   u32 hs_handle;
   int i;
@@ -812,8 +803,7 @@ http_expired_timers_dispatch (u32 * expired_timers)
 }
 
 static uword
-http_server_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
-		     vlib_frame_t * f)
+http_server_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   http_server_main_t *hsm = &http_server_main;
   f64 now, timeout = 1.0;
@@ -824,7 +814,7 @@ http_server_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
     {
       vlib_process_wait_for_event_or_clock (vm, timeout);
       now = vlib_time_now (vm);
-      event_type = vlib_process_get_events (vm, (uword **) & event_data);
+      event_type = vlib_process_get_events (vm, (uword **) &event_data);
 
       /* expire timers */
       clib_spinlock_lock (&http_server_main.tw_lock);
@@ -836,25 +826,22 @@ http_server_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (http_server_process_node) =
-{
+VLIB_REGISTER_NODE (http_server_process_node) = {
   .function = http_server_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "http-server-process",
   .state = VLIB_NODE_STATE_DISABLED,
 };
-/* *INDENT-ON* */
 
 static int
-http_server_create (vlib_main_t * vm)
+http_server_create (vlib_main_t *vm)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   http_server_main_t *hsm = &http_server_main;
   u32 num_threads;
   vlib_node_t *n;
 
-  num_threads = 1 /* main thread */  + vtm->n_threads;
+  num_threads = 1 /* main thread */ + vtm->n_threads;
   vec_validate (hsm->vpp_queue, num_threads - 1);
   vec_validate (hsm->sessions, num_threads - 1);
   vec_validate (hsm->session_to_http_session, num_threads - 1);
@@ -875,7 +862,7 @@ http_server_create (vlib_main_t * vm)
 
   /* Init timer wheel and process */
   tw_timer_wheel_init_2t_1w_2048sl (&hsm->tw, http_expired_timers_dispatch,
-				    1 /* timer interval */ , ~0);
+				    1 /* timer interval */, ~0);
   vlib_node_set_state (vm, http_server_process_node.index,
 		       VLIB_NODE_STATE_POLLING);
   n = vlib_get_node (vm, http_server_process_node.index);
@@ -885,9 +872,8 @@ http_server_create (vlib_main_t * vm)
 }
 
 static clib_error_t *
-http_server_create_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+http_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   http_server_main_t *hsm = &http_server_main;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -908,8 +894,8 @@ http_server_create_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "static"))
 	hsm->is_static = 1;
-      else
-	if (unformat (line_input, "prealloc-fifos %d", &hsm->prealloc_fifos))
+      else if (unformat (line_input, "prealloc-fifos %d",
+			 &hsm->prealloc_fifos))
 	;
       else if (unformat (line_input, "private-segment-size %U",
 			 unformat_memory_size, &seg_size))
@@ -934,10 +920,10 @@ http_server_create_command_fn (vlib_main_t * vm,
 
 start_server:
 
-  if (hsm->my_client_index != (u32) ~ 0)
+  if (hsm->my_client_index != (u32) ~0)
     return clib_error_return (0, "test http server is already running");
 
-  vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
+  vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */);
 
   if (hsm->is_static)
     {
@@ -958,17 +944,14 @@ start_server:
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (http_server_create_command, static) =
-{
+VLIB_CLI_COMMAND (http_server_create_command, static) = {
   .path = "test http server",
   .short_help = "test http server",
   .function = http_server_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-http_server_main_init (vlib_main_t * vm)
+http_server_main_init (vlib_main_t *vm)
 {
   http_server_main_t *hsm = &http_server_main;
 
@@ -980,9 +963,9 @@ http_server_main_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (http_server_main_init);
 
 /*
-* fd.io coding-style-patch-verification: ON
-*
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*/
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

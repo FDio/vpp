@@ -33,18 +33,18 @@
  * bytes. The MTHREShold is where we stop finding a better median.
  */
 
-#define THRESH  4		/* threshold for insertion */
-#define MTHRESH 6		/* threshold for median */
+#define THRESH	4 /* threshold for insertion */
+#define MTHRESH 6 /* threshold for median */
 
 typedef struct
 {
-  word qsz;			/* size of each record */
-  word thresh;			/* THRESHold in chars */
-  word mthresh;			/* MTHRESHold in chars */
-  int (*qcmp) (const void *, const void *);	/* the comparison routine */
+  word qsz;				    /* size of each record */
+  word thresh;				    /* THRESHold in chars */
+  word mthresh;				    /* MTHRESHold in chars */
+  int (*qcmp) (const void *, const void *); /* the comparison routine */
 } qst_t;
 
-static void qst (qst_t * q, char *base, char *max);
+static void qst (qst_t *q, char *base, char *max);
 
 /*
  * qqsort: First, set up some global parameters for qst to share.
@@ -94,7 +94,7 @@ qsort (void *base, uword n, uword size,
 	j = lo;
     }
   if (j != base)
-    {				/* swap j into place */
+    { /* swap j into place */
       for (i = base, hi = base + q->qsz; i < hi;)
 	{
 	  c = *j;
@@ -111,7 +111,8 @@ qsort (void *base, uword n, uword size,
    */
   for (min = base; (hi = min += q->qsz) < max;)
     {
-      while ((*q->qcmp) (hi -= q->qsz, min) > 0);
+      while ((*q->qcmp) (hi -= q->qsz, min) > 0)
+	;
       if ((hi += q->qsz) != min)
 	{
 	  for (lo = min + q->qsz; --lo >= min;)
@@ -124,8 +125,6 @@ qsort (void *base, uword n, uword size,
 	}
     }
 }
-
-
 
 /*
  * qst: Do a quicksort.  First, find the median element, and put that one in
@@ -142,7 +141,7 @@ qsort (void *base, uword n, uword size,
  */
 
 static void
-qst (qst_t * q, char *base, char *max)
+qst (qst_t *q, char *base, char *max)
 {
   char *i;
   char *j;
@@ -155,7 +154,7 @@ qst (qst_t * q, char *base, char *max)
   int hi;
   int qsz = q->qsz;
 
-  lo = (int) (max - base);	/* number of elements as chars */
+  lo = (int) (max - base); /* number of elements as chars */
   do
     {
       /*
@@ -202,13 +201,13 @@ qst (qst_t * q, char *base, char *max)
 		  j -= qsz;
 		  continue;
 		}
-	      tmp = i + qsz;	/* value of i after swap */
+	      tmp = i + qsz; /* value of i after swap */
 	      if (i == mid)
-		{		/* j <-> mid, new mid is j */
+		{ /* j <-> mid, new mid is j */
 		  mid = jj = j;
 		}
 	      else
-		{		/* i <-> j */
+		{ /* i <-> j */
 		  jj = j;
 		  j -= qsz;
 		}
@@ -219,9 +218,9 @@ qst (qst_t * q, char *base, char *max)
 	      break;
 	    }
 	  else
-	    {			/* i <-> mid, new mid is i */
+	    { /* i <-> mid, new mid is i */
 	      jj = mid;
-	      tmp = mid = i;	/* value of i after swap */
+	      tmp = mid = i; /* value of i after swap */
 	      j -= qsz;
 	    }
 	swap:

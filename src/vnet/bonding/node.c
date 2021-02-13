@@ -25,40 +25,38 @@
 bond_main_t bond_main;
 #endif /* CLIB_MARCH_VARIANT */
 
-#define foreach_bond_input_error \
-  _(NONE, "no error")            \
-  _(IF_DOWN, "interface down")   \
-  _(PASSIVE_IF, "traffic received on passive interface")   \
-  _(PASS_THRU, "pass through (CDP, LLDP, slow protocols)")
+#define foreach_bond_input_error                                              \
+  _ (NONE, "no error")                                                        \
+  _ (IF_DOWN, "interface down")                                               \
+  _ (PASSIVE_IF, "traffic received on passive interface")                     \
+  _ (PASS_THRU, "pass through (CDP, LLDP, slow protocols)")
 
 typedef enum
 {
-#define _(f,s) BOND_INPUT_ERROR_##f,
+#define _(f, s) BOND_INPUT_ERROR_##f,
   foreach_bond_input_error
 #undef _
     BOND_INPUT_N_ERROR,
 } bond_input_error_t;
 
 static char *bond_input_error_strings[] = {
-#define _(n,s) s,
+#define _(n, s) s,
   foreach_bond_input_error
 #undef _
 };
 
 static u8 *
-format_bond_input_trace (u8 * s, va_list * args)
+format_bond_input_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   bond_packet_trace_t *t = va_arg (*args, bond_packet_trace_t *);
 
-  s = format (s, "src %U, dst %U, %U -> %U",
-	      format_ethernet_address, t->ethernet.src_address,
-	      format_ethernet_address, t->ethernet.dst_address,
-	      format_vnet_sw_if_index_name, vnet_get_main (),
-	      t->sw_if_index,
-	      format_vnet_sw_if_index_name, vnet_get_main (),
-	      t->bond_sw_if_index);
+  s = format (s, "src %U, dst %U, %U -> %U", format_ethernet_address,
+	      t->ethernet.src_address, format_ethernet_address,
+	      t->ethernet.dst_address, format_vnet_sw_if_index_name,
+	      vnet_get_main (), t->sw_if_index, format_vnet_sw_if_index_name,
+	      vnet_get_main (), t->bond_sw_if_index);
 
   return s;
 }
@@ -70,7 +68,7 @@ typedef enum
 } bond_output_next_t;
 
 static_always_inline u8
-packet_is_cdp (ethernet_header_t * eth)
+packet_is_cdp (ethernet_header_t *eth)
 {
   llc_header_t *llc;
   snap_header_t *snap;
@@ -80,15 +78,14 @@ packet_is_cdp (ethernet_header_t * eth)
 
   return ((eth->type == htons (ETHERNET_TYPE_CDP)) ||
 	  ((llc->src_sap == 0xAA) && (llc->control == 0x03) &&
-	   (snap->protocol == htons (0x2000)) &&
-	   (snap->oui[0] == 0) && (snap->oui[1] == 0) &&
-	   (snap->oui[2] == 0x0C)));
+	   (snap->protocol == htons (0x2000)) && (snap->oui[0] == 0) &&
+	   (snap->oui[1] == 0) && (snap->oui[2] == 0x0C)));
 }
 
 static inline void
-bond_sw_if_idx_rewrite (vlib_main_t * vm, vlib_node_runtime_t * node,
-			vlib_buffer_t * b, u32 bond_sw_if_index,
-			u32 * n_rx_packets, u32 * n_rx_bytes)
+bond_sw_if_idx_rewrite (vlib_main_t *vm, vlib_node_runtime_t *node,
+			vlib_buffer_t *b, u32 bond_sw_if_index,
+			u32 *n_rx_packets, u32 *n_rx_bytes)
 {
   u16 *ethertype_p, ethertype;
   ethernet_vlan_header_t *vlan;
@@ -100,9 +97,9 @@ bond_sw_if_idx_rewrite (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (!ethernet_frame_is_tagged (ntohs (ethertype)))
     {
       // Let some layer2 packets pass through.
-      if (PREDICT_TRUE ((ethertype != htons (ETHERNET_TYPE_SLOW_PROTOCOLS))
-			&& !packet_is_cdp (eth)
-			&& (ethertype != htons (ETHERNET_TYPE_802_1_LLDP))))
+      if (PREDICT_TRUE ((ethertype != htons (ETHERNET_TYPE_SLOW_PROTOCOLS)) &&
+			!packet_is_cdp (eth) &&
+			(ethertype != htons (ETHERNET_TYPE_802_1_LLDP))))
 	{
 	  /* Change the physical interface to bond interface */
 	  vnet_buffer (b)->sw_if_index[VLIB_RX] = bond_sw_if_index;
@@ -120,9 +117,9 @@ bond_sw_if_idx_rewrite (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ethertype_p = &vlan->type;
 	}
       ethertype = clib_mem_unaligned (ethertype_p, u16);
-      if (PREDICT_TRUE ((ethertype != htons (ETHERNET_TYPE_SLOW_PROTOCOLS))
-			&& (ethertype != htons (ETHERNET_TYPE_CDP))
-			&& (ethertype != htons (ETHERNET_TYPE_802_1_LLDP))))
+      if (PREDICT_TRUE ((ethertype != htons (ETHERNET_TYPE_SLOW_PROTOCOLS)) &&
+			(ethertype != htons (ETHERNET_TYPE_CDP)) &&
+			(ethertype != htons (ETHERNET_TYPE_802_1_LLDP))))
 	{
 	  /* Change the physical interface to bond interface */
 	  vnet_buffer (b)->sw_if_index[VLIB_RX] = bond_sw_if_index;
@@ -135,10 +132,10 @@ bond_sw_if_idx_rewrite (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static inline void
-bond_update_next (vlib_main_t * vm, vlib_node_runtime_t * node,
-		  u32 * last_member_sw_if_index, u32 member_sw_if_index,
-		  u32 * bond_sw_if_index, vlib_buffer_t * b,
-		  u32 * next_index, vlib_error_t * error)
+bond_update_next (vlib_main_t *vm, vlib_node_runtime_t *node,
+		  u32 *last_member_sw_if_index, u32 member_sw_if_index,
+		  u32 *bond_sw_if_index, vlib_buffer_t *b, u32 *next_index,
+		  vlib_error_t *error)
 {
   member_if_t *mif;
   bond_if_t *bif;
@@ -181,8 +178,8 @@ next:
 }
 
 static_always_inline void
-bond_update_next_x4 (vlib_buffer_t * b0, vlib_buffer_t * b1,
-		     vlib_buffer_t * b2, vlib_buffer_t * b3)
+bond_update_next_x4 (vlib_buffer_t *b0, vlib_buffer_t *b1, vlib_buffer_t *b2,
+		     vlib_buffer_t *b3)
 {
   u32 tmp0, tmp1, tmp2, tmp3;
 
@@ -193,9 +190,8 @@ bond_update_next_x4 (vlib_buffer_t * b0, vlib_buffer_t * b1,
   vnet_feature_next (&tmp3, b3);
 }
 
-VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
-				vlib_node_runtime_t * node,
-				vlib_frame_t * frame)
+VLIB_NODE_FN (bond_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u16 thread_index = vm->thread_index;
   u32 *from, n_left;
@@ -260,9 +256,9 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 		   vnet_buffer (b[2])->feature_arc_index) &&
 		  (vnet_buffer (b[0])->feature_arc_index ==
 		   vnet_buffer (b[3])->feature_arc_index));
-	  if (PREDICT_FALSE (vnet_get_feature_count
-			     (vnet_buffer (b[0])->feature_arc_index,
-			      last_member_sw_if_index) > 1))
+	  if (PREDICT_FALSE (
+		vnet_get_feature_count (vnet_buffer (b[0])->feature_arc_index,
+					last_member_sw_if_index) > 1))
 	    bond_update_next_x4 (b[0], b[1], b[2], b[3]);
 
 	  next[0] = next[1] = next[2] = next[3] = next_index;
@@ -287,9 +283,8 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 	}
       else
 	{
-	  bond_update_next (vm, node, &last_member_sw_if_index,
-			    sw_if_index[0], &bond_sw_if_index, b[0],
-			    &next_index, &error);
+	  bond_update_next (vm, node, &last_member_sw_if_index, sw_if_index[0],
+			    &bond_sw_if_index, b[0], &next_index, &error);
 	  next[0] = next_index;
 	  if (next_index == BOND_INPUT_NEXT_DROP)
 	    b[0]->error = error;
@@ -297,9 +292,8 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 	    bond_sw_if_idx_rewrite (vm, node, b[0], bond_sw_if_index,
 				    &n_rx_packets, &n_rx_bytes);
 
-	  bond_update_next (vm, node, &last_member_sw_if_index,
-			    sw_if_index[1], &bond_sw_if_index, b[1],
-			    &next_index, &error);
+	  bond_update_next (vm, node, &last_member_sw_if_index, sw_if_index[1],
+			    &bond_sw_if_index, b[1], &next_index, &error);
 	  next[1] = next_index;
 	  if (next_index == BOND_INPUT_NEXT_DROP)
 	    b[1]->error = error;
@@ -307,9 +301,8 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 	    bond_sw_if_idx_rewrite (vm, node, b[1], bond_sw_if_index,
 				    &n_rx_packets, &n_rx_bytes);
 
-	  bond_update_next (vm, node, &last_member_sw_if_index,
-			    sw_if_index[2], &bond_sw_if_index, b[2],
-			    &next_index, &error);
+	  bond_update_next (vm, node, &last_member_sw_if_index, sw_if_index[2],
+			    &bond_sw_if_index, b[2], &next_index, &error);
 	  next[2] = next_index;
 	  if (next_index == BOND_INPUT_NEXT_DROP)
 	    b[2]->error = error;
@@ -317,9 +310,8 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 	    bond_sw_if_idx_rewrite (vm, node, b[2], bond_sw_if_index,
 				    &n_rx_packets, &n_rx_bytes);
 
-	  bond_update_next (vm, node, &last_member_sw_if_index,
-			    sw_if_index[3], &bond_sw_if_index, b[3],
-			    &next_index, &error);
+	  bond_update_next (vm, node, &last_member_sw_if_index, sw_if_index[3],
+			    &bond_sw_if_index, b[3], &next_index, &error);
 	  next[3] = next_index;
 	  if (next_index == BOND_INPUT_NEXT_DROP)
 	    b[3]->error = error;
@@ -363,7 +355,7 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     {
-      n_left = frame->n_vectors;	/* number of packets to process */
+      n_left = frame->n_vectors; /* number of packets to process */
       b = bufs;
       sw_if_index = sw_if_indices;
       bond_packet_trace_t *t0;
@@ -386,10 +378,10 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
     }
 
   /* increase rx counters */
-  vlib_increment_combined_counter
-    (vnet_main.interface_main.combined_sw_if_counters +
-     VNET_INTERFACE_COUNTER_RX, thread_index, bond_sw_if_index, n_rx_packets,
-     n_rx_bytes);
+  vlib_increment_combined_counter (
+    vnet_main.interface_main.combined_sw_if_counters +
+      VNET_INTERFACE_COUNTER_RX,
+    thread_index, bond_sw_if_index, n_rx_packets, n_rx_bytes);
 
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   vlib_node_increment_counter (vm, bond_input_node.index,
@@ -399,12 +391,11 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 }
 
 static clib_error_t *
-bond_input_init (vlib_main_t * vm)
+bond_input_init (vlib_main_t *vm)
 {
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (bond_input_node) = {
   .name = "bond-input",
   .vector_size = sizeof (u32),
@@ -414,24 +405,19 @@ VLIB_REGISTER_NODE (bond_input_node) = {
   .n_errors = BOND_INPUT_N_ERROR,
   .error_strings = bond_input_error_strings,
   .n_next_nodes = BOND_INPUT_N_NEXT,
-  .next_nodes =
-  {
-    [BOND_INPUT_NEXT_DROP] = "error-drop"
-  }
+  .next_nodes = { [BOND_INPUT_NEXT_DROP] = "error-drop" }
 };
 
 VLIB_INIT_FUNCTION (bond_input_init);
 
-VNET_FEATURE_INIT (bond_input, static) =
-{
+VNET_FEATURE_INIT (bond_input, static) = {
   .arc_name = "device-input",
   .node_name = "bond-input",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-bond_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
+bond_sw_interface_up_down (vnet_main_t *vnm, u32 sw_if_index, u32 flags)
 {
   bond_main_t *bm = &bond_main;
   member_if_t *mif;
@@ -458,7 +444,7 @@ bond_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (bond_sw_interface_up_down);
 
 static clib_error_t *
-bond_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+bond_hw_interface_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 {
   bond_main_t *bm = &bond_main;
   member_if_t *mif;
@@ -473,9 +459,9 @@ bond_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 	return 0;
 
       /* port_enabled is both admin up and hw link up */
-      mif->port_enabled = ((flags & VNET_HW_INTERFACE_FLAG_LINK_UP) &&
-			   vnet_sw_interface_is_admin_up (vnm,
-							  sw->sw_if_index));
+      mif->port_enabled =
+	((flags & VNET_HW_INTERFACE_FLAG_LINK_UP) &&
+	 vnet_sw_interface_is_admin_up (vnm, sw->sw_if_index));
       if (mif->port_enabled == 0)
 	bond_disable_collecting_distributing (vm, mif);
       else

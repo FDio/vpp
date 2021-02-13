@@ -34,7 +34,7 @@
 #include <ikev2/ikev2.api_types.h>
 #include <vpp/api/vpe.api_types.h>
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <plugins/ikev2/ikev2.api.h>
 #undef vl_endianfun
 
@@ -50,73 +50,96 @@ static const char *valid_chars = "a-zA-Z0-9_";
 ikev2_test_main_t ikev2_test_main;
 
 uword
-unformat_ikev2_auth_method (unformat_input_t * input, va_list * args)
+unformat_ikev2_auth_method (unformat_input_t *input, va_list *args)
 {
   u32 *r = va_arg (*args, u32 *);
 
-  if (0);
-#define _(v,f,s) else if (unformat (input, s)) *r = IKEV2_AUTH_METHOD_##f;
+  if (0)
+    ;
+#define _(v, f, s) else if (unformat (input, s)) *r = IKEV2_AUTH_METHOD_##f;
   foreach_ikev2_auth_method
 #undef _
-    else
-    return 0;
+    else return 0;
   return 1;
 }
 
-
 uword
-unformat_ikev2_id_type (unformat_input_t * input, va_list * args)
+unformat_ikev2_id_type (unformat_input_t *input, va_list *args)
 {
   u32 *r = va_arg (*args, u32 *);
 
-  if (0);
-#define _(v,f,s) else if (unformat (input, s)) *r = IKEV2_ID_TYPE_##f;
+  if (0)
+    ;
+#define _(v, f, s) else if (unformat (input, s)) *r = IKEV2_ID_TYPE_##f;
   foreach_ikev2_id_type
 #undef _
-    else
-    return 0;
+    else return 0;
   return 1;
 }
 
-#define MACRO_FORMAT(lc)                                \
-u8 * format_ikev2_##lc (u8 * s, va_list * args)         \
-{                                                       \
-  u32 i = va_arg (*args, u32);                          \
-  char * t = 0;                                         \
-  switch (i) {                                          \
-        foreach_ikev2_##lc                              \
-      default:                                          \
-        return format (s, "unknown (%u)", i);           \
-    }                                                   \
-  s = format (s, "%s", t);                              \
-  return s;                                             \
-}
+#define MACRO_FORMAT(lc)                                                      \
+  u8 *format_ikev2_##lc (u8 *s, va_list *args)                                \
+  {                                                                           \
+    u32 i = va_arg (*args, u32);                                              \
+    char *t = 0;                                                              \
+    switch (i)                                                                \
+      {                                                                       \
+	foreach_ikev2_##lc default : return format (s, "unknown (%u)", i);    \
+      }                                                                       \
+    s = format (s, "%s", t);                                                  \
+    return s;                                                                 \
+  }
 
-#define _(v,f,str) case IKEV2_AUTH_METHOD_##f: t = str; break;
+#define _(v, f, str)                                                          \
+  case IKEV2_AUTH_METHOD_##f:                                                 \
+    t = str;                                                                  \
+    break;
 MACRO_FORMAT (auth_method)
 #undef _
-#define _(v,f,str) case IKEV2_ID_TYPE_##f: t = str; break;
-  MACRO_FORMAT (id_type)
+#define _(v, f, str)                                                          \
+  case IKEV2_ID_TYPE_##f:                                                     \
+    t = str;                                                                  \
+    break;
+MACRO_FORMAT (id_type)
 #undef _
-#define _(v,f,str) case IKEV2_TRANSFORM_TYPE_##f: t = str; break;
-  MACRO_FORMAT (transform_type)
+#define _(v, f, str)                                                          \
+  case IKEV2_TRANSFORM_TYPE_##f:                                              \
+    t = str;                                                                  \
+    break;
+MACRO_FORMAT (transform_type)
 #undef _
-#define _(v,f,str) case IKEV2_TRANSFORM_ENCR_TYPE_##f: t = str; break;
-  MACRO_FORMAT (transform_encr_type)
+#define _(v, f, str)                                                          \
+  case IKEV2_TRANSFORM_ENCR_TYPE_##f:                                         \
+    t = str;                                                                  \
+    break;
+MACRO_FORMAT (transform_encr_type)
 #undef _
-#define _(v,f,str) case IKEV2_TRANSFORM_PRF_TYPE_##f: t = str; break;
-  MACRO_FORMAT (transform_prf_type)
+#define _(v, f, str)                                                          \
+  case IKEV2_TRANSFORM_PRF_TYPE_##f:                                          \
+    t = str;                                                                  \
+    break;
+MACRO_FORMAT (transform_prf_type)
 #undef _
-#define _(v,f,str) case IKEV2_TRANSFORM_INTEG_TYPE_##f: t = str; break;
-  MACRO_FORMAT (transform_integ_type)
+#define _(v, f, str)                                                          \
+  case IKEV2_TRANSFORM_INTEG_TYPE_##f:                                        \
+    t = str;                                                                  \
+    break;
+MACRO_FORMAT (transform_integ_type)
 #undef _
-#define _(v,f,str) case IKEV2_TRANSFORM_DH_TYPE_##f: t = str; break;
-  MACRO_FORMAT (transform_dh_type)
+#define _(v, f, str)                                                          \
+  case IKEV2_TRANSFORM_DH_TYPE_##f:                                           \
+    t = str;                                                                  \
+    break;
+MACRO_FORMAT (transform_dh_type)
 #undef _
-#define _(v,f,str) case IKEV2_TRANSFORM_ESN_TYPE_##f: t = str; break;
-  MACRO_FORMAT (transform_esn_type)
+#define _(v, f, str)                                                          \
+  case IKEV2_TRANSFORM_ESN_TYPE_##f:                                          \
+    t = str;                                                                  \
+    break;
+MACRO_FORMAT (transform_esn_type)
 #undef _
-     u8 *format_ikev2_id_type_and_data (u8 * s, va_list * args)
+u8 *
+format_ikev2_id_type_and_data (u8 *s, va_list *args)
 {
   vl_api_ikev2_id_t *id = va_arg (*args, vl_api_ikev2_id_t *);
 
@@ -149,7 +172,7 @@ MACRO_FORMAT (auth_method)
 }
 
 u8 *
-format_ikev2_sa_transform (u8 * s, va_list * args)
+format_ikev2_sa_transform (u8 *s, va_list *args)
 {
   vl_api_ikev2_sa_transform_t *tr =
     va_arg (*args, vl_api_ikev2_sa_transform_t *);
@@ -165,8 +188,7 @@ format_ikev2_sa_transform (u8 * s, va_list * args)
   switch (tr->transform_type)
     {
     case IKEV2_TRANSFORM_TYPE_ENCR:
-      s =
-	format (s, "%U", format_ikev2_transform_encr_type, tr->transform_id);
+      s = format (s, "%U", format_ikev2_transform_encr_type, tr->transform_id);
       break;
     case IKEV2_TRANSFORM_TYPE_PRF:
       s = format (s, "%U", format_ikev2_transform_prf_type, tr->transform_id);
@@ -193,7 +215,7 @@ format_ikev2_sa_transform (u8 * s, va_list * args)
 }
 
 static int
-api_ikev2_profile_disable_natt (vat_main_t * vam)
+api_ikev2_profile_disable_natt (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_profile_disable_natt_t *mp;
@@ -234,7 +256,7 @@ api_ikev2_profile_disable_natt (vat_main_t * vam)
 }
 
 static int
-api_ikev2_profile_dump (vat_main_t * vam)
+api_ikev2_profile_dump (vat_main_t *vam)
 {
   ikev2_test_main_t *ik = &ikev2_test_main;
   vl_api_ikev2_profile_dump_t *mp;
@@ -262,8 +284,8 @@ api_ikev2_profile_dump (vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_ikev2_profile_details_t_handler
-  (vl_api_ikev2_profile_details_t * mp)
+static void
+vl_api_ikev2_profile_details_t_handler (vl_api_ikev2_profile_details_t *mp)
 {
   vat_main_t *vam = ikev2_test_main.vat_main;
   vl_api_ikev2_profile_t *p = &mp->profile;
@@ -274,15 +296,12 @@ static void vl_api_ikev2_profile_details_t_handler
     {
       if (p->auth.hex)
 	fformat (vam->ofp, "  auth-method %U auth data 0x%U\n",
-		 format_ikev2_auth_method, p->auth.method,
-		 format_hex_bytes, p->auth.data,
-		 clib_net_to_host_u32 (p->auth.data_len));
+		 format_ikev2_auth_method, p->auth.method, format_hex_bytes,
+		 p->auth.data, clib_net_to_host_u32 (p->auth.data_len));
       else
 	fformat (vam->ofp, "  auth-method %U auth data %v\n",
-		 format_ikev2_auth_method, p->auth.method, format (0,
-								   "%s",
-								   p->
-								   auth.data));
+		 format_ikev2_auth_method, p->auth.method,
+		 format (0, "%s", p->auth.data));
     }
 
   if (p->loc_id.type)
@@ -297,18 +316,18 @@ static void vl_api_ikev2_profile_details_t_handler
 	       format_ikev2_id_type_and_data, &p->rem_id);
     }
 
-  fformat (vam->ofp, "  local traffic-selector addr %U - %U port %u - %u"
+  fformat (vam->ofp,
+	   "  local traffic-selector addr %U - %U port %u - %u"
 	   " protocol %u\n",
-	   format_ip_address, &p->loc_ts.start_addr,
-	   format_ip_address, &p->loc_ts.end_addr,
-	   clib_net_to_host_u16 (p->loc_ts.start_port),
+	   format_ip_address, &p->loc_ts.start_addr, format_ip_address,
+	   &p->loc_ts.end_addr, clib_net_to_host_u16 (p->loc_ts.start_port),
 	   clib_net_to_host_u16 (p->loc_ts.end_port), p->loc_ts.protocol_id);
 
-  fformat (vam->ofp, "  remote traffic-selector addr %U - %U port %u - %u"
+  fformat (vam->ofp,
+	   "  remote traffic-selector addr %U - %U port %u - %u"
 	   " protocol %u\n",
-	   format_ip_address, &p->rem_ts.start_addr,
-	   format_ip_address, &p->rem_ts.end_addr,
-	   clib_net_to_host_u16 (p->rem_ts.start_port),
+	   format_ip_address, &p->rem_ts.start_addr, format_ip_address,
+	   &p->rem_ts.end_addr, clib_net_to_host_u16 (p->rem_ts.start_port),
 	   clib_net_to_host_u16 (p->rem_ts.end_port), p->rem_ts.protocol_id);
   u32 tun_itf = clib_net_to_host_u32 (p->tun_itf);
   if (~0 != tun_itf)
@@ -316,8 +335,8 @@ static void vl_api_ikev2_profile_details_t_handler
 
   u32 sw_if_index = clib_net_to_host_u32 (p->responder.sw_if_index);
   if (~0 != sw_if_index)
-    fformat (vam->ofp, "  responder idx %d %U\n",
-	     sw_if_index, format_ip_address, &p->responder.addr);
+    fformat (vam->ofp, "  responder idx %d %U\n", sw_if_index,
+	     format_ip_address, &p->responder.addr);
 
   if (p->udp_encap)
     fformat (vam->ofp, "  udp-encap\n");
@@ -330,8 +349,8 @@ static void vl_api_ikev2_profile_details_t_handler
     fformat (vam->ofp, "  ipsec-over-udp port %d\n", ipsec_over_udp_port);
 
   u32 crypto_key_size = clib_net_to_host_u32 (p->ike_ts.crypto_key_size);
-  if (p->ike_ts.crypto_alg || p->ike_ts.integ_alg || p->ike_ts.dh_group
-      || crypto_key_size)
+  if (p->ike_ts.crypto_alg || p->ike_ts.integ_alg || p->ike_ts.dh_group ||
+      crypto_key_size)
     fformat (vam->ofp, "  ike-crypto-alg %U %u ike-integ-alg %U ike-dh %U\n",
 	     format_ikev2_transform_encr_type, p->ike_ts.crypto_alg,
 	     crypto_key_size, format_ikev2_transform_integ_type,
@@ -342,8 +361,8 @@ static void vl_api_ikev2_profile_details_t_handler
   if (p->esp_ts.crypto_alg || p->esp_ts.integ_alg)
     fformat (vam->ofp, "  esp-crypto-alg %U %u esp-integ-alg %U\n",
 	     format_ikev2_transform_encr_type, p->esp_ts.crypto_alg,
-	     crypto_key_size,
-	     format_ikev2_transform_integ_type, p->esp_ts.integ_alg);
+	     crypto_key_size, format_ikev2_transform_integ_type,
+	     p->esp_ts.integ_alg);
 
   fformat (vam->ofp, "  lifetime %d jitter %d handover %d maxdata %d\n",
 	   clib_net_to_host_u64 (p->lifetime),
@@ -355,7 +374,7 @@ static void vl_api_ikev2_profile_details_t_handler
 }
 
 static int
-api_ikev2_sa_dump (vat_main_t * vam)
+api_ikev2_sa_dump (vat_main_t *vam)
 {
   ikev2_test_main_t *im = &ikev2_test_main;
   vl_api_ikev2_sa_dump_t *mp;
@@ -384,7 +403,7 @@ api_ikev2_sa_dump (vat_main_t * vam)
 }
 
 static void
-vl_api_ikev2_sa_details_t_handler (vl_api_ikev2_sa_details_t * mp)
+vl_api_ikev2_sa_details_t_handler (vl_api_ikev2_sa_details_t *mp)
 {
   vat_main_t *vam = ikev2_test_main.vat_main;
   vl_api_ikev2_sa_t *sa = &mp->sa;
@@ -396,8 +415,8 @@ vl_api_ikev2_sa_details_t_handler (vl_api_ikev2_sa_details_t * mp)
   ip_address_decode2 (&sa->iaddr, &iaddr);
   ip_address_decode2 (&sa->raddr, &raddr);
 
-  fformat (vam->ofp, "profile index %d sa index: %d\n",
-	   mp->sa.profile_index, mp->sa.sa_index);
+  fformat (vam->ofp, "profile index %d sa index: %d\n", mp->sa.profile_index,
+	   mp->sa.sa_index);
   fformat (vam->ofp, " iip %U ispi %lx rip %U rspi %lx\n", format_ip_address,
 	   &iaddr, sa->ispi, format_ip_address, &raddr, sa->rspi);
   fformat (vam->ofp, " %U ", format_ikev2_sa_transform, &sa->encryption);
@@ -405,12 +424,10 @@ vl_api_ikev2_sa_details_t_handler (vl_api_ikev2_sa_details_t * mp)
   fformat (vam->ofp, "%U ", format_ikev2_sa_transform, &sa->integrity);
   fformat (vam->ofp, "%U \n", format_ikev2_sa_transform, &sa->dh);
 
-  fformat (vam->ofp, "  SK_d    %U\n",
-	   format_hex_bytes, k->sk_d, k->sk_d_len);
+  fformat (vam->ofp, "  SK_d    %U\n", format_hex_bytes, k->sk_d, k->sk_d_len);
 
-  fformat (vam->ofp, "  SK_a  i:%U\n        r:%U\n",
-	   format_hex_bytes, k->sk_ai, k->sk_ai_len, format_hex_bytes,
-	   k->sk_ar, k->sk_ar_len);
+  fformat (vam->ofp, "  SK_a  i:%U\n        r:%U\n", format_hex_bytes,
+	   k->sk_ai, k->sk_ai_len, format_hex_bytes, k->sk_ar, k->sk_ar_len);
 
   fformat (vam->ofp, "  SK_e  i:%U\n        r:%U\n", format_hex_bytes,
 	   k->sk_ei, k->sk_ei_len, format_hex_bytes, k->sk_er, k->sk_er_len);
@@ -418,16 +435,16 @@ vl_api_ikev2_sa_details_t_handler (vl_api_ikev2_sa_details_t * mp)
   fformat (vam->ofp, "  SK_p  i:%U\n        r:%U\n", format_hex_bytes,
 	   k->sk_pi, k->sk_pi_len, format_hex_bytes, k->sk_pr, k->sk_pr_len);
 
-  fformat (vam->ofp, "  identifier (i) %U\n",
-	   format_ikev2_id_type_and_data, &sa->i_id);
-  fformat (vam->ofp, "  identifier (r) %U\n",
-	   format_ikev2_id_type_and_data, &sa->r_id);
+  fformat (vam->ofp, "  identifier (i) %U\n", format_ikev2_id_type_and_data,
+	   &sa->i_id);
+  fformat (vam->ofp, "  identifier (r) %U\n", format_ikev2_id_type_and_data,
+	   &sa->r_id);
 
   vam->result_ready = 1;
 }
 
 static int
-api_ikev2_child_sa_dump (vat_main_t * vam)
+api_ikev2_child_sa_dump (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   ikev2_test_main_t *im = &ikev2_test_main;
@@ -474,7 +491,7 @@ api_ikev2_child_sa_dump (vat_main_t * vam)
 }
 
 static void
-vl_api_ikev2_child_sa_details_t_handler (vl_api_ikev2_child_sa_details_t * mp)
+vl_api_ikev2_child_sa_details_t_handler (vl_api_ikev2_child_sa_details_t *mp)
 {
   vat_main_t *vam = ikev2_test_main.vat_main;
   vl_api_ikev2_child_sa_t *child_sa = &mp->child_sa;
@@ -488,23 +505,22 @@ vl_api_ikev2_child_sa_details_t_handler (vl_api_ikev2_child_sa_details_t * mp)
   fformat (vam->ofp, "%U ", format_ikev2_sa_transform, &child_sa->integrity);
   fformat (vam->ofp, "%U \n", format_ikev2_sa_transform, &child_sa->esn);
 
-  fformat (vam->ofp, "    spi(i) %lx spi(r) %lx\n",
-	   child_sa->i_spi, child_sa->r_spi);
+  fformat (vam->ofp, "    spi(i) %lx spi(r) %lx\n", child_sa->i_spi,
+	   child_sa->r_spi);
 
-  fformat (vam->ofp, "    SK_e  i:%U\n          r:%U\n",
-	   format_hex_bytes, k->sk_ei, k->sk_ei_len,
-	   format_hex_bytes, k->sk_er, k->sk_er_len);
+  fformat (vam->ofp, "    SK_e  i:%U\n          r:%U\n", format_hex_bytes,
+	   k->sk_ei, k->sk_ei_len, format_hex_bytes, k->sk_er, k->sk_er_len);
   if (k->sk_ai_len)
     {
-      fformat (vam->ofp, "    SK_a  i:%U\n          r:%U\n",
-	       format_hex_bytes, k->sk_ai, k->sk_ai_len,
-	       format_hex_bytes, k->sk_ar, k->sk_ar_len);
+      fformat (vam->ofp, "    SK_a  i:%U\n          r:%U\n", format_hex_bytes,
+	       k->sk_ai, k->sk_ai_len, format_hex_bytes, k->sk_ar,
+	       k->sk_ar_len);
     }
   vam->result_ready = 1;
 }
 
 static int
-api_ikev2_traffic_selector_dump (vat_main_t * vam)
+api_ikev2_traffic_selector_dump (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   ikev2_test_main_t *im = &ikev2_test_main;
@@ -561,8 +577,8 @@ api_ikev2_traffic_selector_dump (vat_main_t * vam)
 }
 
 static void
-  vl_api_ikev2_traffic_selector_details_t_handler
-  (vl_api_ikev2_traffic_selector_details_t * mp)
+vl_api_ikev2_traffic_selector_details_t_handler (
+  vl_api_ikev2_traffic_selector_details_t *mp)
 {
   vat_main_t *vam = ikev2_test_main.vat_main;
   vl_api_ikev2_ts_t *ts = &mp->ts;
@@ -572,16 +588,16 @@ static void
   ip_address_decode2 (&ts->start_addr, &start_addr);
   ip_address_decode2 (&ts->end_addr, &end_addr);
 
-  fformat (vam->ofp, " %s protocol_id %u addr "
+  fformat (vam->ofp,
+	   " %s protocol_id %u addr "
 	   "%U - %U port %u - %u\n",
-	   ts->is_local, ts->protocol_id,
-	   format_ip_address, &start_addr,
+	   ts->is_local, ts->protocol_id, format_ip_address, &start_addr,
 	   format_ip_address, &end_addr, ts->start_port, ts->end_port);
   vam->result_ready = 1;
 }
 
 static int
-api_ikev2_nonce_get (vat_main_t * vam)
+api_ikev2_nonce_get (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   ikev2_test_main_t *im = &ikev2_test_main;
@@ -634,19 +650,19 @@ api_ikev2_nonce_get (vat_main_t * vam)
 }
 
 static void
-vl_api_ikev2_nonce_get_reply_t_handler (vl_api_ikev2_nonce_get_reply_t * mp)
+vl_api_ikev2_nonce_get_reply_t_handler (vl_api_ikev2_nonce_get_reply_t *mp)
 {
   vat_main_t *vam = ikev2_test_main.vat_main;
   mp->data_len = clib_net_to_host_u32 (mp->data_len);
 
-  fformat (vam->ofp, "  nonce:%U\n",
-	   format_hex_bytes, mp->nonce, mp->data_len);
+  fformat (vam->ofp, "  nonce:%U\n", format_hex_bytes, mp->nonce,
+	   mp->data_len);
 
   vam->result_ready = 1;
 }
 
 static int
-api_ikev2_plugin_get_version (vat_main_t * vam)
+api_ikev2_plugin_get_version (vat_main_t *vam)
 {
   ikev2_test_main_t *sm = &ikev2_test_main;
   vl_api_ikev2_plugin_get_version_t *mp;
@@ -667,8 +683,9 @@ api_ikev2_plugin_get_version (vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_ikev2_plugin_get_version_reply_t_handler
-  (vl_api_ikev2_plugin_get_version_reply_t * mp)
+static void
+vl_api_ikev2_plugin_get_version_reply_t_handler (
+  vl_api_ikev2_plugin_get_version_reply_t *mp)
 {
   vat_main_t *vam = ikev2_test_main.vat_main;
   clib_warning ("IKEv2 plugin version: %d.%d", ntohl (mp->major),
@@ -677,13 +694,13 @@ static void vl_api_ikev2_plugin_get_version_reply_t_handler
 }
 
 static int
-api_ikev2_profile_set_ipsec_udp_port (vat_main_t * vam)
+api_ikev2_profile_set_ipsec_udp_port (vat_main_t *vam)
 {
   return 0;
 }
 
 static int
-api_ikev2_profile_set_liveness (vat_main_t * vam)
+api_ikev2_profile_set_liveness (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_profile_set_liveness_t *mp;
@@ -711,7 +728,7 @@ api_ikev2_profile_set_liveness (vat_main_t * vam)
 }
 
 static int
-api_ikev2_profile_add_del (vat_main_t * vam)
+api_ikev2_profile_add_del (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_profile_add_del_t *mp;
@@ -756,7 +773,7 @@ api_ikev2_profile_add_del (vat_main_t * vam)
 }
 
 static int
-api_ikev2_profile_set_auth (vat_main_t * vam)
+api_ikev2_profile_set_auth (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_profile_set_auth_t *mp;
@@ -770,8 +787,8 @@ api_ikev2_profile_set_auth (vat_main_t * vam)
     {
       if (unformat (i, "name %U", unformat_token, valid_chars, &name))
 	vec_add1 (name, 0);
-      else if (unformat (i, "auth_method %U",
-			 unformat_ikev2_auth_method, &auth_method))
+      else if (unformat (i, "auth_method %U", unformat_ikev2_auth_method,
+			 &auth_method))
 	;
       else if (unformat (i, "auth_data 0x%U", unformat_hex_string, &data))
 	is_hex = 1;
@@ -824,7 +841,7 @@ api_ikev2_profile_set_auth (vat_main_t * vam)
 }
 
 static int
-api_ikev2_profile_set_id (vat_main_t * vam)
+api_ikev2_profile_set_id (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_profile_set_id_t *mp;
@@ -901,13 +918,13 @@ api_ikev2_profile_set_id (vat_main_t * vam)
 }
 
 static int
-api_ikev2_profile_set_ts (vat_main_t * vam)
+api_ikev2_profile_set_ts (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_profile_set_ts_t *mp;
   u8 *name = 0;
   u8 is_local = 0;
-  u32 proto = 0, start_port = 0, end_port = (u32) ~ 0;
+  u32 proto = 0, start_port = 0, end_port = (u32) ~0;
   ip_address_t start_addr, end_addr;
   u8 start_addr_set = 0, end_addr_set = 0;
   int ret;
@@ -922,8 +939,7 @@ api_ikev2_profile_set_ts (vat_main_t * vam)
 	;
       else if (unformat (i, "end_port %d", &end_port))
 	;
-      else
-	if (unformat (i, "start_addr %U", unformat_ip_address, &start_addr))
+      else if (unformat (i, "start_addr %U", unformat_ip_address, &start_addr))
 	start_addr_set = 1;
       else if (unformat (i, "end_addr %U", unformat_ip_address, &end_addr))
 	end_addr_set = 1;
@@ -973,7 +989,7 @@ api_ikev2_profile_set_ts (vat_main_t * vam)
 }
 
 static int
-api_ikev2_set_local_key (vat_main_t * vam)
+api_ikev2_set_local_key (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_set_local_key_t *mp;
@@ -1014,7 +1030,7 @@ api_ikev2_set_local_key (vat_main_t * vam)
 }
 
 static int
-api_ikev2_profile_set_udp_encap (vat_main_t * vam)
+api_ikev2_profile_set_udp_encap (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_set_responder_t *mp;
@@ -1055,13 +1071,13 @@ api_ikev2_profile_set_udp_encap (vat_main_t * vam)
 }
 
 static int
-api_ikev2_set_tunnel_interface (vat_main_t * vam)
+api_ikev2_set_tunnel_interface (vat_main_t *vam)
 {
   return (0);
 }
 
 static int
-api_ikev2_set_responder (vat_main_t * vam)
+api_ikev2_set_responder (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_set_responder_t *mp;
@@ -1072,9 +1088,9 @@ api_ikev2_set_responder (vat_main_t * vam)
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (i, "%U interface %d address %U", unformat_token, valid_chars,
-	   &name, &sw_if_index, unformat_ip_address, &address))
+      if (unformat (i, "%U interface %d address %U", unformat_token,
+		    valid_chars, &name, &sw_if_index, unformat_ip_address,
+		    &address))
 	vec_add1 (name, 0);
       else
 	{
@@ -1109,7 +1125,7 @@ api_ikev2_set_responder (vat_main_t * vam)
 }
 
 static int
-api_ikev2_set_ike_transforms (vat_main_t * vam)
+api_ikev2_set_ike_transforms (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_set_ike_transforms_t *mp;
@@ -1155,9 +1171,8 @@ api_ikev2_set_ike_transforms (vat_main_t * vam)
   return ret;
 }
 
-
 static int
-api_ikev2_set_esp_transforms (vat_main_t * vam)
+api_ikev2_set_esp_transforms (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_set_esp_transforms_t *mp;
@@ -1203,7 +1218,7 @@ api_ikev2_set_esp_transforms (vat_main_t * vam)
 }
 
 static int
-api_ikev2_set_sa_lifetime (vat_main_t * vam)
+api_ikev2_set_sa_lifetime (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_set_sa_lifetime_t *mp;
@@ -1215,8 +1230,7 @@ api_ikev2_set_sa_lifetime (vat_main_t * vam)
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (i, "%U %lu %u %u %lu", unformat_token, valid_chars, &name,
-		    &lifetime, &lifetime_jitter, &handover,
-		    &lifetime_maxdata))
+		    &lifetime, &lifetime_jitter, &handover, &lifetime_maxdata))
 	vec_add1 (name, 0);
       else
 	{
@@ -1252,7 +1266,7 @@ api_ikev2_set_sa_lifetime (vat_main_t * vam)
 }
 
 static int
-api_ikev2_initiate_sa_init (vat_main_t * vam)
+api_ikev2_initiate_sa_init (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_initiate_sa_init_t *mp;
@@ -1293,13 +1307,12 @@ api_ikev2_initiate_sa_init (vat_main_t * vam)
 }
 
 static int
-api_ikev2_initiate_del_ike_sa (vat_main_t * vam)
+api_ikev2_initiate_del_ike_sa (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_initiate_del_ike_sa_t *mp;
   int ret;
   u64 ispi;
-
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -1322,13 +1335,12 @@ api_ikev2_initiate_del_ike_sa (vat_main_t * vam)
 }
 
 static int
-api_ikev2_initiate_del_child_sa (vat_main_t * vam)
+api_ikev2_initiate_del_child_sa (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_initiate_del_child_sa_t *mp;
   int ret;
   u32 ispi;
-
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -1351,13 +1363,12 @@ api_ikev2_initiate_del_child_sa (vat_main_t * vam)
 }
 
 static int
-api_ikev2_initiate_rekey_child_sa (vat_main_t * vam)
+api_ikev2_initiate_rekey_child_sa (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_initiate_rekey_child_sa_t *mp;
   int ret;
   u32 ispi;
-
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {

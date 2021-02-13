@@ -33,7 +33,6 @@
 #include <vlib/vlib.h>
 #include <vppinfra/bihash_8_8.h>
 
-
 typedef struct
 {
   u8 ver_type;
@@ -44,7 +43,7 @@ typedef struct
 } pppoe_header_t;
 
 #define PPPOE_VER_TYPE 0x11
-#define PPPOE_PADS 0x65
+#define PPPOE_PADS     0x65
 
 typedef struct
 {
@@ -72,15 +71,15 @@ typedef struct
 
 } pppoe_session_t;
 
-#define foreach_pppoe_input_next        \
-_(DROP, "error-drop")                  \
-_(IP4_INPUT, "ip4-input")              \
-_(IP6_INPUT, "ip6-input" )             \
-_(CP_INPUT, "pppoe-cp-dispatch" )      \
+#define foreach_pppoe_input_next                                              \
+  _ (DROP, "error-drop")                                                      \
+  _ (IP4_INPUT, "ip4-input")                                                  \
+  _ (IP6_INPUT, "ip6-input")                                                  \
+  _ (CP_INPUT, "pppoe-cp-dispatch")
 
 typedef enum
 {
-#define _(s,n) PPPOE_INPUT_NEXT_##s,
+#define _(s, n) PPPOE_INPUT_NEXT_##s,
   foreach_pppoe_input_next
 #undef _
     PPPOE_INPUT_N_NEXT,
@@ -88,7 +87,7 @@ typedef enum
 
 typedef enum
 {
-#define pppoe_error(n,s) PPPOE_ERROR_##n,
+#define pppoe_error(n, s) PPPOE_ERROR_##n,
 #include <pppoe/pppoe_error.def>
 #undef pppoe_error
   PPPOE_N_ERROR,
@@ -97,16 +96,17 @@ typedef enum
 extern char *pppoe_error_strings[];
 
 #define MTU 1500
-#define MTU_BUFFERS ((MTU + vlib_buffer_get_default_data_size(vm) - 1) / vlib_buffer_get_default_data_size(vm))
+#define MTU_BUFFERS                                                           \
+  ((MTU + vlib_buffer_get_default_data_size (vm) - 1) /                       \
+   vlib_buffer_get_default_data_size (vm))
 #define NUM_BUFFERS_TO_ALLOC 32
 
 /*
  * The size of pppoe session table
  */
 #define PPPOE_NUM_BUCKETS (64 * 1024)
-#define PPPOE_MEMORY_SIZE (8<<20)
+#define PPPOE_MEMORY_SIZE (8 << 20)
 
-/* *INDENT-OFF* */
 /*
  * The PPPoE key is the mac address and session ID
  */
@@ -127,9 +127,7 @@ typedef struct
     u64 raw;
   };
 } pppoe_entry_key_t;
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 /*
  * The PPPoE entry results
  */
@@ -146,8 +144,7 @@ typedef struct
     } fields;
     u64 raw;
   };
-}  pppoe_entry_result_t;
-/* *INDENT-ON* */
+} pppoe_entry_result_t;
 
 typedef struct
 {
@@ -155,10 +152,10 @@ typedef struct
   pppoe_session_t *sessions;
 
   /* For CP:  vector of CP path */
-    BVT (clib_bihash) link_table;
+  BVT (clib_bihash) link_table;
 
   /* For DP:  vector of DP path */
-    BVT (clib_bihash) session_table;
+  BVT (clib_bihash) session_table;
 
   /* Free vlib hw_if_indices */
   u32 *free_pppoe_session_hw_if_indices;
@@ -195,8 +192,8 @@ typedef struct
   u8 client_mac[6];
 } vnet_pppoe_add_del_session_args_t;
 
-int vnet_pppoe_add_del_session
-  (vnet_pppoe_add_del_session_args_t * a, u32 * sw_if_indexp);
+int vnet_pppoe_add_del_session (vnet_pppoe_add_del_session_args_t *a,
+				u32 *sw_if_indexp);
 
 typedef struct
 {
@@ -208,7 +205,7 @@ typedef struct
 int pppoe_add_del_cp (u32 cp_if_index, u8 is_add);
 
 always_inline u64
-pppoe_make_key (u8 * mac_address, u16 session_id)
+pppoe_make_key (u8 *mac_address, u16 session_id)
 {
   u64 temp;
 
@@ -239,17 +236,16 @@ pppoe_make_key (u8 * mac_address, u16 session_id)
  * Perform learning on one packet based on the mac table lookup result.
  * */
 static_always_inline void
-pppoe_learn_process (BVT (clib_bihash) * table,
-		     u32 sw_if_index0,
-		     pppoe_entry_key_t * key0,
-		     pppoe_entry_key_t * cached_key,
-		     u32 * bucket0, pppoe_entry_result_t * result0)
+pppoe_learn_process (BVT (clib_bihash) * table, u32 sw_if_index0,
+		     pppoe_entry_key_t *key0, pppoe_entry_key_t *cached_key,
+		     u32 *bucket0, pppoe_entry_result_t *result0)
 {
   /* Check mac table lookup result */
   if (PREDICT_TRUE (result0->fields.sw_if_index == sw_if_index0))
     {
       /*
-       * The entry was in the table, and the sw_if_index matched, the normal case
+       * The entry was in the table, and the sw_if_index matched, the normal
+       * case
        */
       return;
     }
@@ -258,11 +254,12 @@ pppoe_learn_process (BVT (clib_bihash) * table,
       /* The entry was not in table, so add it  */
       result0->fields.sw_if_index = sw_if_index0;
       result0->fields.session_index = ~0;
-      cached_key->raw = ~0;	/* invalidate the cache */
+      cached_key->raw = ~0; /* invalidate the cache */
     }
   else
     {
-      /* The entry was in the table, but with the wrong sw_if_index mapping (mac move) */
+      /* The entry was in the table, but with the wrong sw_if_index mapping
+       * (mac move) */
       result0->fields.sw_if_index = sw_if_index0;
     }
 
@@ -270,17 +267,14 @@ pppoe_learn_process (BVT (clib_bihash) * table,
   BVT (clib_bihash_kv) kv;
   kv.key = key0->raw;
   kv.value = result0->raw;
-  BV (clib_bihash_add_del) (table, &kv, 1 /* is_add */ );
+  BV (clib_bihash_add_del) (table, &kv, 1 /* is_add */);
 }
 
 static_always_inline void
-pppoe_lookup_1 (BVT (clib_bihash) * table,
-		pppoe_entry_key_t * cached_key,
-		pppoe_entry_result_t * cached_result,
-		u8 * mac0,
-		u16 session_id0,
-		pppoe_entry_key_t * key0,
-		u32 * bucket0, pppoe_entry_result_t * result0)
+pppoe_lookup_1 (BVT (clib_bihash) * table, pppoe_entry_key_t *cached_key,
+		pppoe_entry_result_t *cached_result, u8 *mac0, u16 session_id0,
+		pppoe_entry_key_t *key0, u32 *bucket0,
+		pppoe_entry_result_t *result0)
 {
   /* set up key */
   key0->raw = pppoe_make_key (mac0, session_id0);
@@ -308,11 +302,9 @@ pppoe_lookup_1 (BVT (clib_bihash) * table,
 }
 
 static_always_inline void
-pppoe_update_1 (BVT (clib_bihash) * table,
-		u8 * mac0,
-		u16 session_id0,
-		pppoe_entry_key_t * key0,
-		u32 * bucket0, pppoe_entry_result_t * result0)
+pppoe_update_1 (BVT (clib_bihash) * table, u8 *mac0, u16 session_id0,
+		pppoe_entry_key_t *key0, u32 *bucket0,
+		pppoe_entry_result_t *result0)
 {
   /* set up key */
   key0->raw = pppoe_make_key (mac0, session_id0);
@@ -322,8 +314,7 @@ pppoe_update_1 (BVT (clib_bihash) * table,
   BVT (clib_bihash_kv) kv;
   kv.key = key0->raw;
   kv.value = result0->raw;
-  BV (clib_bihash_add_del) (table, &kv, 1 /* is_add */ );
-
+  BV (clib_bihash_add_del) (table, &kv, 1 /* is_add */);
 }
 #endif /* _PPPOE_H */
 

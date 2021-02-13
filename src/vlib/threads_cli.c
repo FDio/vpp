@@ -21,7 +21,7 @@
 #include <vlib/unix/unix.h>
 
 static u8 *
-format_sched_policy_and_priority (u8 * s, va_list * args)
+format_sched_policy_and_priority (u8 *s, va_list *args)
 {
   long i = va_arg (*args, long);
   struct sched_param sched_param;
@@ -29,7 +29,10 @@ format_sched_policy_and_priority (u8 * s, va_list * args)
 
   switch (sched_getscheduler (i))
     {
-#define _(v,f,str) case SCHED_POLICY_##f: t = (u8 *) str; break;
+#define _(v, f, str)                                                          \
+  case SCHED_POLICY_##f:                                                      \
+    t = (u8 *) str;                                                           \
+    break;
       foreach_sched_policy
 #undef _
     }
@@ -40,15 +43,15 @@ format_sched_policy_and_priority (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-show_threads_fn (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+show_threads_fn (vlib_main_t *vm, unformat_input_t *input,
+		 vlib_cli_command_t *cmd)
 {
   vlib_worker_thread_t *w;
   int i;
 
-  vlib_cli_output (vm, "%-7s%-20s%-12s%-8s%-25s%-7s%-7s%-7s%-10s",
-		   "ID", "Name", "Type", "LWP", "Sched Policy (Priority)",
-		   "lcore", "Core", "Socket", "State");
+  vlib_cli_output (vm, "%-7s%-20s%-12s%-8s%-25s%-7s%-7s%-7s%-10s", "ID",
+		   "Name", "Type", "LWP", "Sched Policy (Priority)", "lcore",
+		   "Core", "Socket", "State");
 
 #if !defined(__powerpc64__)
   for (i = 0; i < vec_len (vlib_worker_threads); i++)
@@ -56,10 +59,9 @@ show_threads_fn (vlib_main_t * vm,
       w = vlib_worker_threads + i;
       u8 *line = NULL;
 
-      line = format (line, "%-7d%-20s%-12s%-8d",
-		     i,
-		     w->name ? w->name : (u8 *) "",
-		     w->registration ? w->registration->name : "", w->lwp);
+      line =
+	format (line, "%-7d%-20s%-12s%-8d", i, w->name ? w->name : (u8 *) "",
+		w->registration ? w->registration->name : "", w->lwp);
 
       line = format (line, "%-25U", format_sched_policy_and_priority, w->lwp);
 
@@ -84,20 +86,18 @@ show_threads_fn (vlib_main_t * vm,
 }
 
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_threads_command, static) = {
   .path = "show threads",
   .short_help = "Show threads",
   .function = show_threads_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * Trigger threads to grab frame queue trace data
  */
 static clib_error_t *
-trace_frame_queue (vlib_main_t * vm, unformat_input_t * input,
-		   vlib_cli_command_t * cmd)
+trace_frame_queue (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = NULL;
@@ -143,8 +143,8 @@ trace_frame_queue (vlib_main_t * vm, unformat_input_t * input,
 
   if (index > vec_len (tm->frame_queue_mains) - 1)
     {
-      error = clib_error_return (0,
-				 "expecting valid worker handoff queue index");
+      error =
+	clib_error_return (0, "expecting valid worker handoff queue index");
       goto done;
     }
 
@@ -180,22 +180,19 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cmd_trace_frame_queue,static) = {
-    .path = "trace frame-queue",
-    .short_help = "trace frame-queue (on|off)",
-    .function = trace_frame_queue,
-    .is_mp_safe = 1,
+VLIB_CLI_COMMAND (cmd_trace_frame_queue, static) = {
+  .path = "trace frame-queue",
+  .short_help = "trace frame-queue (on|off)",
+  .function = trace_frame_queue,
+  .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
-
 
 /*
  * Adding two counters and compute percent of total
  * Round up, e.g. 0.000001 => 1%
  */
 static u32
-compute_percent (u64 * two_counters, u64 total)
+compute_percent (u64 *two_counters, u64 total)
 {
   if (total == 0)
     {
@@ -203,8 +200,8 @@ compute_percent (u64 * two_counters, u64 total)
     }
   else
     {
-      return (((two_counters[0] + two_counters[1]) * 100) +
-	      (total - 1)) / total;
+      return (((two_counters[0] + two_counters[1]) * 100) + (total - 1)) /
+	     total;
     }
 }
 
@@ -212,8 +209,8 @@ compute_percent (u64 * two_counters, u64 total)
  * Display frame queue trace data gathered by threads.
  */
 static clib_error_t *
-show_frame_queue_internal (vlib_main_t * vm,
-			   vlib_frame_queue_main_t * fqm, u32 histogram)
+show_frame_queue_internal (vlib_main_t *vm, vlib_frame_queue_main_t *fqm,
+			   u32 histogram)
 {
   clib_error_t *error = NULL;
   frame_queue_trace_t *fqt;
@@ -230,7 +227,8 @@ show_frame_queue_internal (vlib_main_t * vm,
 
   if (histogram)
     {
-      vlib_cli_output (vm, "0-1   2-3   4-5   6-7   8-9   10-11 12-13 14-15 "
+      vlib_cli_output (vm,
+		       "0-1   2-3   4-5   6-7   8-9   10-11 12-13 14-15 "
 		       "16-17 18-19 20-21 22-23 24-25 26-27 28-29 30-31\n");
     }
 
@@ -260,30 +258,32 @@ show_frame_queue_internal (vlib_main_t * vm,
 
 	  /*
 	   * Print in pairs to condense the output.
-	   * Allow entries with 0 counts to be clearly identified, by rounding up.
-	   * Any non-zero value will be displayed as at least one percent. This
-	   * also means the sum of percentages can be > 100, but that is fine. The
-	   * histogram is counted from the last time "trace frame on" was issued.
+	   * Allow entries with 0 counts to be clearly identified, by rounding
+	   * up. Any non-zero value will be displayed as at least one percent.
+	   * This also means the sum of percentages can be > 100, but that is
+	   * fine. The histogram is counted from the last time "trace frame on"
+	   * was issued.
 	   */
-	  vlib_cli_output (vm,
-			   "%3d%%  %3d%%  %3d%%  %3d%%  %3d%%  %3d%%  %3d%%  %3d%%  "
-			   "%3d%%  %3d%%  %3d%%  %3d%%  %3d%%  %3d%%  %3d%%  %3d%%\n",
-			   compute_percent (&fqh->count[0], total),
-			   compute_percent (&fqh->count[2], total),
-			   compute_percent (&fqh->count[4], total),
-			   compute_percent (&fqh->count[6], total),
-			   compute_percent (&fqh->count[8], total),
-			   compute_percent (&fqh->count[10], total),
-			   compute_percent (&fqh->count[12], total),
-			   compute_percent (&fqh->count[14], total),
-			   compute_percent (&fqh->count[16], total),
-			   compute_percent (&fqh->count[18], total),
-			   compute_percent (&fqh->count[20], total),
-			   compute_percent (&fqh->count[22], total),
-			   compute_percent (&fqh->count[24], total),
-			   compute_percent (&fqh->count[26], total),
-			   compute_percent (&fqh->count[28], total),
-			   compute_percent (&fqh->count[30], total));
+	  vlib_cli_output (
+	    vm,
+	    "%3d%%  %3d%%  %3d%%  %3d%%  %3d%%  %3d%%  %3d%%  %3d%%  "
+	    "%3d%%  %3d%%  %3d%%  %3d%%  %3d%%  %3d%%  %3d%%  %3d%%\n",
+	    compute_percent (&fqh->count[0], total),
+	    compute_percent (&fqh->count[2], total),
+	    compute_percent (&fqh->count[4], total),
+	    compute_percent (&fqh->count[6], total),
+	    compute_percent (&fqh->count[8], total),
+	    compute_percent (&fqh->count[10], total),
+	    compute_percent (&fqh->count[12], total),
+	    compute_percent (&fqh->count[14], total),
+	    compute_percent (&fqh->count[16], total),
+	    compute_percent (&fqh->count[18], total),
+	    compute_percent (&fqh->count[20], total),
+	    compute_percent (&fqh->count[22], total),
+	    compute_percent (&fqh->count[24], total),
+	    compute_percent (&fqh->count[26], total),
+	    compute_percent (&fqh->count[28], total),
+	    compute_percent (&fqh->count[30], total));
 	}
       else
 	{
@@ -292,99 +292,93 @@ show_frame_queue_internal (vlib_main_t * vm,
 			   fqt->threshold, fqt->nelts, fqt->n_in_use);
 	  vlib_cli_output (vm, "  head %12d  head_hint %12d  tail %12d\n",
 			   fqt->head, fqt->head_hint, fqt->tail);
-	  vlib_cli_output (vm,
-			   "  %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d\n",
-			   fqt->n_vectors[0], fqt->n_vectors[1],
-			   fqt->n_vectors[2], fqt->n_vectors[3],
-			   fqt->n_vectors[4], fqt->n_vectors[5],
-			   fqt->n_vectors[6], fqt->n_vectors[7],
-			   fqt->n_vectors[8], fqt->n_vectors[9],
-			   fqt->n_vectors[10], fqt->n_vectors[11],
-			   fqt->n_vectors[12], fqt->n_vectors[13],
-			   fqt->n_vectors[14], fqt->n_vectors[15]);
+	  vlib_cli_output (
+	    vm,
+	    "  %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d "
+	    "%3d\n",
+	    fqt->n_vectors[0], fqt->n_vectors[1], fqt->n_vectors[2],
+	    fqt->n_vectors[3], fqt->n_vectors[4], fqt->n_vectors[5],
+	    fqt->n_vectors[6], fqt->n_vectors[7], fqt->n_vectors[8],
+	    fqt->n_vectors[9], fqt->n_vectors[10], fqt->n_vectors[11],
+	    fqt->n_vectors[12], fqt->n_vectors[13], fqt->n_vectors[14],
+	    fqt->n_vectors[15]);
 
 	  if (fqt->nelts > 16)
 	    {
-	      vlib_cli_output (vm,
-			       "  %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d\n",
-			       fqt->n_vectors[16], fqt->n_vectors[17],
-			       fqt->n_vectors[18], fqt->n_vectors[19],
-			       fqt->n_vectors[20], fqt->n_vectors[21],
-			       fqt->n_vectors[22], fqt->n_vectors[23],
-			       fqt->n_vectors[24], fqt->n_vectors[25],
-			       fqt->n_vectors[26], fqt->n_vectors[27],
-			       fqt->n_vectors[28], fqt->n_vectors[29],
-			       fqt->n_vectors[30], fqt->n_vectors[31]);
+	      vlib_cli_output (
+		vm,
+		"  %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d "
+		"%3d %3d\n",
+		fqt->n_vectors[16], fqt->n_vectors[17], fqt->n_vectors[18],
+		fqt->n_vectors[19], fqt->n_vectors[20], fqt->n_vectors[21],
+		fqt->n_vectors[22], fqt->n_vectors[23], fqt->n_vectors[24],
+		fqt->n_vectors[25], fqt->n_vectors[26], fqt->n_vectors[27],
+		fqt->n_vectors[28], fqt->n_vectors[29], fqt->n_vectors[30],
+		fqt->n_vectors[31]);
 	    }
 	}
-
     }
   return error;
 }
 
 static clib_error_t *
-show_frame_queue_trace (vlib_main_t * vm, unformat_input_t * input,
-			vlib_cli_command_t * cmd)
+show_frame_queue_trace (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_frame_queue_main_t *fqm;
   clib_error_t *error;
 
   vec_foreach (fqm, tm->frame_queue_mains)
-  {
-    vlib_cli_output (vm, "Worker handoff queue index %u (next node '%U'):",
-		     fqm - tm->frame_queue_mains,
-		     format_vlib_node_name, vm, fqm->node_index);
-    error = show_frame_queue_internal (vm, fqm, 0);
-    if (error)
-      return error;
-  }
+    {
+      vlib_cli_output (vm, "Worker handoff queue index %u (next node '%U'):",
+		       fqm - tm->frame_queue_mains, format_vlib_node_name, vm,
+		       fqm->node_index);
+      error = show_frame_queue_internal (vm, fqm, 0);
+      if (error)
+	return error;
+    }
   return 0;
 }
 
 static clib_error_t *
-show_frame_queue_histogram (vlib_main_t * vm, unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+show_frame_queue_histogram (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_frame_queue_main_t *fqm;
   clib_error_t *error;
 
   vec_foreach (fqm, tm->frame_queue_mains)
-  {
-    vlib_cli_output (vm, "Worker handoff queue index %u (next node '%U'):",
-		     fqm - tm->frame_queue_mains,
-		     format_vlib_node_name, vm, fqm->node_index);
-    error = show_frame_queue_internal (vm, fqm, 1);
-    if (error)
-      return error;
-  }
+    {
+      vlib_cli_output (vm, "Worker handoff queue index %u (next node '%U'):",
+		       fqm - tm->frame_queue_mains, format_vlib_node_name, vm,
+		       fqm->node_index);
+      error = show_frame_queue_internal (vm, fqm, 1);
+      if (error)
+	return error;
+    }
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cmd_show_frame_queue_trace,static) = {
-    .path = "show frame-queue",
-    .short_help = "show frame-queue trace",
-    .function = show_frame_queue_trace,
+VLIB_CLI_COMMAND (cmd_show_frame_queue_trace, static) = {
+  .path = "show frame-queue",
+  .short_help = "show frame-queue trace",
+  .function = show_frame_queue_trace,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cmd_show_frame_queue_histogram,static) = {
-    .path = "show frame-queue histogram",
-    .short_help = "show frame-queue histogram",
-    .function = show_frame_queue_histogram,
+VLIB_CLI_COMMAND (cmd_show_frame_queue_histogram, static) = {
+  .path = "show frame-queue histogram",
+  .short_help = "show frame-queue histogram",
+  .function = show_frame_queue_histogram,
 };
-/* *INDENT-ON* */
-
 
 /*
  * Modify the number of elements on the frame_queues
  */
 static clib_error_t *
-test_frame_queue_nelts (vlib_main_t * vm, unformat_input_t * input,
-			vlib_cli_command_t * cmd)
+test_frame_queue_nelts (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -414,8 +408,8 @@ test_frame_queue_nelts (vlib_main_t * vm, unformat_input_t * input,
 
   if (index > vec_len (tm->frame_queue_mains) - 1)
     {
-      error = clib_error_return (0,
-				 "expecting valid worker handoff queue index");
+      error =
+	clib_error_return (0, "expecting valid worker handoff queue index");
       goto done;
     }
 
@@ -445,21 +439,18 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cmd_test_frame_queue_nelts,static) = {
-    .path = "test frame-queue nelts",
-    .short_help = "test frame-queue nelts (4,8,16,32)",
-    .function = test_frame_queue_nelts,
+VLIB_CLI_COMMAND (cmd_test_frame_queue_nelts, static) = {
+  .path = "test frame-queue nelts",
+  .short_help = "test frame-queue nelts (4,8,16,32)",
+  .function = test_frame_queue_nelts,
 };
-/* *INDENT-ON* */
-
 
 /*
  * Modify the max number of packets pulled off the frame queues
  */
 static clib_error_t *
-test_frame_queue_threshold (vlib_main_t * vm, unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+test_frame_queue_threshold (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -489,13 +480,12 @@ test_frame_queue_threshold (vlib_main_t * vm, unformat_input_t * input,
 
   if (index > vec_len (tm->frame_queue_mains) - 1)
     {
-      error = clib_error_return (0,
-				 "expecting valid worker handoff queue index");
+      error =
+	clib_error_return (0, "expecting valid worker handoff queue index");
       goto done;
     }
 
   fqm = vec_elt_at_index (tm->frame_queue_mains, index);
-
 
   if (threshold == ~(u32) 0)
     {
@@ -524,13 +514,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cmd_test_frame_queue_threshold,static) = {
-    .path = "test frame-queue threshold",
-    .short_help = "test frame-queue threshold N (0=no limit)",
-    .function = test_frame_queue_threshold,
+VLIB_CLI_COMMAND (cmd_test_frame_queue_threshold, static) = {
+  .path = "test frame-queue threshold",
+  .short_help = "test frame-queue threshold N (0=no limit)",
+  .function = test_frame_queue_threshold,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

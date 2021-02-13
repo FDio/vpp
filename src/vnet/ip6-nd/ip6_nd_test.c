@@ -41,19 +41,19 @@ ip6_nd_test_main_t ip6_nd_test_main;
 #include <vlibapi/vat_helper_macros.h>
 
 static int
-api_want_ip6_ra_events (vat_main_t * vam)
+api_want_ip6_ra_events (vat_main_t *vam)
 {
   return -1;
 }
 
 static int
-api_ip6nd_send_router_solicitation (vat_main_t * vam)
+api_ip6nd_send_router_solicitation (vat_main_t *vam)
 {
   return -1;
 }
 
 static int
-api_ip6nd_proxy_add_del (vat_main_t * vam)
+api_ip6nd_proxy_add_del (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ip6nd_proxy_add_del_t *mp;
@@ -108,7 +108,7 @@ api_ip6nd_proxy_add_del (vat_main_t * vam)
 }
 
 static int
-api_ip6nd_proxy_dump (vat_main_t * vam)
+api_ip6nd_proxy_dump (vat_main_t *vam)
 {
   vl_api_ip6nd_proxy_dump_t *mp;
   vl_api_control_ping_t *mp_ping;
@@ -131,17 +131,17 @@ api_ip6nd_proxy_dump (vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_ip6nd_proxy_details_t_handler
-  (vl_api_ip6nd_proxy_details_t * mp)
+static void
+vl_api_ip6nd_proxy_details_t_handler (vl_api_ip6nd_proxy_details_t *mp)
 {
   vat_main_t *vam = &vat_main;
 
-  print (vam->ofp, "host %U sw_if_index %d",
-	 format_vl_api_ip6_address, mp->ip, ntohl (mp->sw_if_index));
+  print (vam->ofp, "host %U sw_if_index %d", format_vl_api_ip6_address, mp->ip,
+	 ntohl (mp->sw_if_index));
 }
 
 static int
-api_sw_interface_ip6nd_ra_prefix (vat_main_t * vam)
+api_sw_interface_ip6nd_ra_prefix (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_ip6nd_ra_prefix_t *mp;
@@ -225,7 +225,7 @@ api_sw_interface_ip6nd_ra_prefix (vat_main_t * vam)
 }
 
 static int
-api_sw_interface_ip6nd_ra_config (vat_main_t * vam)
+api_sw_interface_ip6nd_ra_config (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_ip6nd_ra_config_t *mp;
@@ -245,7 +245,6 @@ api_sw_interface_ip6nd_ra_config (vat_main_t * vam)
   u32 initial_count = 0;
   u32 initial_interval = 0;
   int ret;
-
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)

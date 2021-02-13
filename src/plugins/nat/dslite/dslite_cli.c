@@ -15,9 +15,8 @@
 #include <nat/dslite/dslite.h>
 
 static clib_error_t *
-dslite_add_del_pool_addr_command_fn (vlib_main_t * vm,
-				     unformat_input_t * input,
-				     vlib_cli_command_t * cmd)
+dslite_add_del_pool_addr_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				     vlib_cli_command_t *cmd)
 {
   dslite_main_t *dm = &dslite_main;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -33,8 +32,7 @@ dslite_add_del_pool_addr_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%U - %U",
-		    unformat_ip4_address, &start_addr,
+      if (unformat (line_input, "%U - %U", unformat_ip4_address, &start_addr,
 		    unformat_ip4_address, &end_addr))
 	;
       else if (unformat (line_input, "%U", unformat_ip4_address, &start_addr))
@@ -66,14 +64,12 @@ dslite_add_del_pool_addr_command_fn (vlib_main_t * vm,
   switch (rv)
     {
     case VNET_API_ERROR_NO_SUCH_ENTRY:
-      error =
-	clib_error_return (0, "DS-Lite pool address %U not exist.",
-			   format_ip4_address, &this_addr);
+      error = clib_error_return (0, "DS-Lite pool address %U not exist.",
+				 format_ip4_address, &this_addr);
       break;
     case VNET_API_ERROR_VALUE_EXIST:
-      error =
-	clib_error_return (0, "DS-Lite pool address %U exist.",
-			   format_ip4_address, &this_addr);
+      error = clib_error_return (0, "DS-Lite pool address %U exist.",
+				 format_ip4_address, &this_addr);
       break;
     }
 
@@ -84,28 +80,26 @@ done:
 }
 
 static clib_error_t *
-dslite_show_pool_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+dslite_show_pool_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   dslite_main_t *dm = &dslite_main;
   nat_ip4_pool_addr_t *a;
 
   vlib_cli_output (vm, "DS-Lite pool:");
 
-  /* *INDENT-OFF* */
   vec_foreach (a, dm->pool.pool_addr)
     {
       vlib_cli_output (vm, "%U", format_ip4_address, &a->addr);
     }
-  /* *INDENT-ON* */
+
   return 0;
 }
 
 static clib_error_t *
-dslite_set_aftr_tunnel_addr_command_fn (vlib_main_t * vm,
-					unformat_input_t * input,
-					vlib_cli_command_t * cmd)
+dslite_set_aftr_tunnel_addr_command_fn (vlib_main_t *vm,
+					unformat_input_t *input,
+					vlib_cli_command_t *cmd)
 {
   dslite_main_t *dm = &dslite_main;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -132,9 +126,8 @@ dslite_set_aftr_tunnel_addr_command_fn (vlib_main_t * vm,
   rv = dslite_set_aftr_ip6_addr (dm, &ip6_addr);
 
   if (rv)
-    error =
-      clib_error_return (0,
-			 "Set DS-Lite AFTR tunnel endpoint address failed.");
+    error = clib_error_return (
+      0, "Set DS-Lite AFTR tunnel endpoint address failed.");
 
 done:
   unformat_free (line_input);
@@ -143,9 +136,8 @@ done:
 }
 
 static clib_error_t *
-dslite_show_aftr_ip6_addr_command_fn (vlib_main_t * vm,
-				      unformat_input_t * input,
-				      vlib_cli_command_t * cmd)
+dslite_show_aftr_ip6_addr_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
 {
   dslite_main_t *dm = &dslite_main;
 
@@ -154,9 +146,8 @@ dslite_show_aftr_ip6_addr_command_fn (vlib_main_t * vm,
 }
 
 static clib_error_t *
-dslite_set_b4_tunnel_addr_command_fn (vlib_main_t * vm,
-				      unformat_input_t * input,
-				      vlib_cli_command_t * cmd)
+dslite_set_b4_tunnel_addr_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
 {
   dslite_main_t *dm = &dslite_main;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -193,9 +184,8 @@ done:
 }
 
 static clib_error_t *
-dslite_show_b4_ip6_addr_command_fn (vlib_main_t * vm,
-				    unformat_input_t * input,
-				    vlib_cli_command_t * cmd)
+dslite_show_b4_ip6_addr_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
 {
   dslite_main_t *dm = &dslite_main;
 
@@ -204,18 +194,20 @@ dslite_show_b4_ip6_addr_command_fn (vlib_main_t * vm,
 }
 
 static u8 *
-format_nat_protocol (u8 * s, va_list * args)
+format_nat_protocol (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
   u8 *t = 0;
 
   switch (i)
     {
-#define _(N, j, n, str) case NAT_PROTOCOL_##N: t = (u8 *) str; break;
+#define _(N, j, n, str)                                                       \
+  case NAT_PROTOCOL_##N:                                                      \
+    t = (u8 *) str;                                                           \
+    break;
       foreach_nat_protocol
 #undef _
-    default:
-      s = format (s, "unknown");
+	default : s = format (s, "unknown");
       return s;
     }
   s = format (s, "%s", t);
@@ -223,26 +215,24 @@ format_nat_protocol (u8 * s, va_list * args)
 }
 
 static u8 *
-format_dslite_session (u8 * s, va_list * args)
+format_dslite_session (u8 *s, va_list *args)
 {
   dslite_session_t *session = va_arg (*args, dslite_session_t *);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "%Uin %U:%u out %U:%u protocol %U\n",
-	      format_white_space, indent + 2,
-	      format_ip4_address, &session->in2out.addr,
-	      clib_net_to_host_u16 (session->in2out.port),
-	      format_ip4_address, &session->out2in.addr,
-	      clib_net_to_host_u16 (session->out2in.port),
-	      format_nat_protocol, session->in2out.proto);
-  s = format (s, "%Utotal pkts %d, total bytes %lld\n",
-	      format_white_space, indent + 4,
-	      session->total_pkts, session->total_bytes);
+  s =
+    format (s, "%Uin %U:%u out %U:%u protocol %U\n", format_white_space,
+	    indent + 2, format_ip4_address, &session->in2out.addr,
+	    clib_net_to_host_u16 (session->in2out.port), format_ip4_address,
+	    &session->out2in.addr, clib_net_to_host_u16 (session->out2in.port),
+	    format_nat_protocol, session->in2out.proto);
+  s = format (s, "%Utotal pkts %d, total bytes %lld\n", format_white_space,
+	      indent + 4, session->total_pkts, session->total_bytes);
   return s;
 }
 
 static u8 *
-format_dslite_b4 (u8 * s, va_list * args)
+format_dslite_b4 (u8 *s, va_list *args)
 {
   dslite_per_thread_data_t *td = va_arg (*args, dslite_per_thread_data_t *);
   dslite_b4_t *b4 = va_arg (*args, dslite_b4_t *);
@@ -251,9 +241,8 @@ format_dslite_b4 (u8 * s, va_list * args)
   u32 session_index;
   dslite_session_t *session;
 
-  s =
-    format (s, "B4 %U %d sessions\n", format_ip6_address, &b4->addr,
-	    b4->nsessions);
+  s = format (s, "B4 %U %d sessions\n", format_ip6_address, &b4->addr,
+	      b4->nsessions);
 
   if (b4->nsessions == 0)
     return s;
@@ -276,28 +265,23 @@ format_dslite_b4 (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-dslite_show_sessions_command_fn (vlib_main_t * vm,
-				 unformat_input_t * input,
-				 vlib_cli_command_t * cmd)
+dslite_show_sessions_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				 vlib_cli_command_t *cmd)
 {
   dslite_main_t *dm = &dslite_main;
   dslite_per_thread_data_t *td;
   dslite_b4_t *b4;
 
-  /* *INDENT-OFF* */
   vec_foreach (td, dm->per_thread_data)
     {
       pool_foreach (b4, td->b4s)
-       {
-        vlib_cli_output (vm, "%U", format_dslite_b4, td, b4);
-      }
+	{
+	  vlib_cli_output (vm, "%U", format_dslite_b4, td, b4);
+	}
     }
-  /* *INDENT-ON* */
 
   return 0;
 }
-
-/* *INDENT-OFF* */
 
 /*?
  * @cliexpar
@@ -311,8 +295,9 @@ dslite_show_sessions_command_fn (vlib_main_t * vm,
 ?*/
 VLIB_CLI_COMMAND (dslite_add_pool_address_command, static) = {
   .path = "dslite add pool address",
-  .short_help = "dslite add pool address <ip4-range-start> [- <ip4-range-end>] "
-                " [del]",
+  .short_help =
+    "dslite add pool address <ip4-range-start> [- <ip4-range-end>] "
+    " [del]",
   .function = dslite_add_del_pool_addr_command_fn,
 };
 
@@ -410,8 +395,6 @@ VLIB_CLI_COMMAND (dslite_show_sessions, static) = {
   .short_help = "show dslite sessions",
   .function = dslite_show_sessions_command_fn,
 };
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

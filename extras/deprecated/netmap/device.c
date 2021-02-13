@@ -26,27 +26,26 @@
 #include <vnet/devices/netmap/net_netmap.h>
 #include <vnet/devices/netmap/netmap.h>
 
-#define foreach_netmap_tx_func_error	       \
-_(NO_FREE_SLOTS, "no free tx slots")           \
-_(PENDING_MSGS, "pending msgs in tx ring")
+#define foreach_netmap_tx_func_error                                          \
+  _ (NO_FREE_SLOTS, "no free tx slots")                                       \
+  _ (PENDING_MSGS, "pending msgs in tx ring")
 
 typedef enum
 {
-#define _(f,s) NETMAP_TX_ERROR_##f,
+#define _(f, s) NETMAP_TX_ERROR_##f,
   foreach_netmap_tx_func_error
 #undef _
     NETMAP_TX_N_ERROR,
 } netmap_tx_func_error_t;
 
 static char *netmap_tx_func_error_strings[] = {
-#define _(n,s) s,
+#define _(n, s) s,
   foreach_netmap_tx_func_error
 #undef _
 };
 
-
 static u8 *
-format_netmap_device_name (u8 * s, va_list * args)
+format_netmap_device_name (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
   netmap_main_t *apm = &netmap_main;
@@ -57,7 +56,7 @@ format_netmap_device_name (u8 * s, va_list * args)
 }
 
 static u8 *
-format_netmap_device (u8 * s, va_list * args)
+format_netmap_device (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   int verbose = va_arg (*args, int);
@@ -68,34 +67,29 @@ format_netmap_device (u8 * s, va_list * args)
   s = format (s, "NETMAP interface");
   if (verbose)
     {
-      s = format (s, "\n%U version %d flags 0x%x"
+      s = format (s,
+		  "\n%U version %d flags 0x%x"
 		  "\n%U region %u memsize 0x%x offset 0x%x"
 		  "\n%U tx_slots %u rx_slots %u tx_rings %u rx_rings %u",
-		  format_white_space, indent + 2,
-		  nif->req->nr_version,
-		  nif->req->nr_flags,
-		  format_white_space, indent + 2,
-		  nif->mem_region,
-		  nif->req->nr_memsize,
-		  nif->req->nr_offset,
-		  format_white_space, indent + 2,
-		  nif->req->nr_tx_slots,
-		  nif->req->nr_rx_slots,
-		  nif->req->nr_tx_rings, nif->req->nr_rx_rings);
+		  format_white_space, indent + 2, nif->req->nr_version,
+		  nif->req->nr_flags, format_white_space, indent + 2,
+		  nif->mem_region, nif->req->nr_memsize, nif->req->nr_offset,
+		  format_white_space, indent + 2, nif->req->nr_tx_slots,
+		  nif->req->nr_rx_slots, nif->req->nr_tx_rings,
+		  nif->req->nr_rx_rings);
     }
   return s;
 }
 
 static u8 *
-format_netmap_tx_trace (u8 * s, va_list * args)
+format_netmap_tx_trace (u8 *s, va_list *args)
 {
   s = format (s, "Unimplemented...");
   return s;
 }
 
-VNET_DEVICE_CLASS_TX_FN (netmap_device_class) (vlib_main_t * vm,
-					       vlib_node_runtime_t * node,
-					       vlib_frame_t * frame)
+VNET_DEVICE_CLASS_TX_FN (netmap_device_class)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   netmap_main_t *nm = &netmap_main;
   u32 *buffers = vlib_frame_vector_args (frame);
@@ -144,7 +138,8 @@ VNET_DEVICE_CLASS_TX_FN (netmap_device_class) (vlib_main_t * vm,
 	      len = b0->current_length;
 	      /* memcpy */
 	      clib_memcpy_fast ((u8 *) NETMAP_BUF (ring, slot->buf_idx) +
-				offset, vlib_buffer_get_current (b0), len);
+				  offset,
+				vlib_buffer_get_current (b0), len);
 	      offset += len;
 	    }
 	  while ((bi = b0->next_buffer));
@@ -165,16 +160,17 @@ VNET_DEVICE_CLASS_TX_FN (netmap_device_class) (vlib_main_t * vm,
 
   if (n_left)
     vlib_error_count (vm, node->node_index,
-		      (n_left ==
-		       frame->n_vectors ? NETMAP_TX_ERROR_PENDING_MSGS :
-		       NETMAP_TX_ERROR_NO_FREE_SLOTS), n_left);
+		      (n_left == frame->n_vectors ?
+			 NETMAP_TX_ERROR_PENDING_MSGS :
+			 NETMAP_TX_ERROR_NO_FREE_SLOTS),
+		      n_left);
 
   vlib_buffer_free (vm, vlib_frame_vector_args (frame), frame->n_vectors);
   return frame->n_vectors;
 }
 
 static void
-netmap_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
+netmap_set_interface_next_node (vnet_main_t *vnm, u32 hw_if_index,
 				u32 node_index)
 {
   netmap_main_t *apm = &netmap_main;
@@ -189,8 +185,7 @@ netmap_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
     }
 
   nif->per_interface_next_index =
-    vlib_node_add_next (vlib_get_main (), netmap_input_node.index,
-			node_index);
+    vlib_node_add_next (vlib_get_main (), netmap_input_node.index, node_index);
 }
 
 static void
@@ -200,7 +195,7 @@ netmap_clear_hw_interface_counters (u32 instance)
 }
 
 static clib_error_t *
-netmap_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+netmap_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 {
   netmap_main_t *apm = &netmap_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
@@ -220,15 +215,13 @@ netmap_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 }
 
 static clib_error_t *
-netmap_subif_add_del_function (vnet_main_t * vnm,
-			       u32 hw_if_index,
+netmap_subif_add_del_function (vnet_main_t *vnm, u32 hw_if_index,
 			       struct vnet_sw_interface_t *st, int is_add)
 {
   /* Nothing for now */
   return 0;
 }
 
-/* *INDENT-OFF* */
 VNET_DEVICE_CLASS (netmap_device_class) = {
   .name = "netmap",
   .format_device_name = format_netmap_device_name,
@@ -241,7 +234,6 @@ VNET_DEVICE_CLASS (netmap_device_class) = {
   .admin_up_down_function = netmap_interface_admin_up_down,
   .subif_add_del_function = netmap_subif_add_del_function,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

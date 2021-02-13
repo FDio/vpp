@@ -25,17 +25,17 @@
 
 #define RDMA_TX_RETRIES 5
 
-#define RDMA_TXQ_DV_DSEG_SZ(txq)        (RDMA_MLX5_WQE_DS * RDMA_TXQ_DV_SQ_SZ(txq))
-#define RDMA_TXQ_DV_DSEG2WQE(d)         (((d) + RDMA_MLX5_WQE_DS - 1) / RDMA_MLX5_WQE_DS)
+#define RDMA_TXQ_DV_DSEG_SZ(txq) (RDMA_MLX5_WQE_DS * RDMA_TXQ_DV_SQ_SZ (txq))
+#define RDMA_TXQ_DV_DSEG2WQE(d)                                               \
+  (((d) + RDMA_MLX5_WQE_DS - 1) / RDMA_MLX5_WQE_DS)
 
 /*
  * MLX5 direct verbs tx/free functions
  */
 
 static_always_inline void
-rdma_device_output_free_mlx5 (vlib_main_t * vm,
-			      const vlib_node_runtime_t * node,
-			      rdma_txq_t * txq)
+rdma_device_output_free_mlx5 (vlib_main_t *vm, const vlib_node_runtime_t *node,
+			      rdma_txq_t *txq)
 {
   u16 idx = txq->dv_cq_idx;
   u32 cq_mask = pow2_mask (txq->dv_cq_log2sz);
@@ -51,7 +51,8 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
     {
       op_own = *(volatile u8 *) &cur->op_own;
       if (((idx >> log2_cq_sz) & MLX5_CQE_OWNER_MASK) !=
-	  (op_own & MLX5_CQE_OWNER_MASK) || (op_own >> 4) == MLX5_CQE_INVALID)
+	    (op_own & MLX5_CQE_OWNER_MASK) ||
+	  (op_own >> 4) == MLX5_CQE_INVALID)
 	break;
       if (PREDICT_FALSE ((op_own >> 4)) != MLX5_CQE_REQ)
 	vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_COMPLETION, 1);
@@ -60,7 +61,7 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
     }
 
   if (idx == txq->dv_cq_idx)
-    return;			/* nothing to do */
+    return; /* nothing to do */
 
   cur = cqes + ((idx - 1) & cq_mask);
   saved = cur->op_own;
@@ -71,7 +72,7 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
   /* retrieve original WQE and get new tail counter */
   wqe = txq->dv_sq_wqes + (be16toh (cur->wqe_counter) & sq_mask);
   if (PREDICT_FALSE (wqe->ctrl.imm == RDMA_TXQ_DV_INVALID_ID))
-    return;			/* can happen if CQE reports error for an intermediate WQE */
+    return; /* can happen if CQE reports error for an intermediate WQE */
 
   ASSERT (RDMA_TXQ_USED_SZ (txq->head, wqe->ctrl.imm) <= buf_sz &&
 	  RDMA_TXQ_USED_SZ (wqe->ctrl.imm, txq->tail) < buf_sz);
@@ -87,15 +88,15 @@ rdma_device_output_free_mlx5 (vlib_main_t * vm,
 }
 
 static_always_inline void
-rdma_device_output_tx_mlx5_doorbell (rdma_txq_t * txq, rdma_mlx5_wqe_t * last,
+rdma_device_output_tx_mlx5_doorbell (rdma_txq_t *txq, rdma_mlx5_wqe_t *last,
 				     const u16 tail, u32 sq_mask)
 {
-  last->ctrl.imm = tail;	/* register item to free */
-  last->ctrl.fm_ce_se = MLX5_WQE_CTRL_CQ_UPDATE;	/* generate a CQE so we can free buffers */
+  last->ctrl.imm = tail; /* register item to free */
+  last->ctrl.fm_ce_se =
+    MLX5_WQE_CTRL_CQ_UPDATE; /* generate a CQE so we can free buffers */
 
-  ASSERT (tail != txq->tail &&
-	  RDMA_TXQ_AVAIL_SZ (txq, txq->head, txq->tail) >=
-	  RDMA_TXQ_USED_SZ (txq->tail, tail));
+  ASSERT (tail != txq->tail && RDMA_TXQ_AVAIL_SZ (txq, txq->head, txq->tail) >=
+				 RDMA_TXQ_USED_SZ (txq->tail, tail));
 
   CLIB_MEMORY_STORE_BARRIER ();
   txq->dv_sq_dbrec[MLX5_SND_DBR] = htobe32 (tail);
@@ -104,8 +105,8 @@ rdma_device_output_tx_mlx5_doorbell (rdma_txq_t * txq, rdma_mlx5_wqe_t * last,
 }
 
 static_always_inline void
-rdma_mlx5_wqe_init (rdma_mlx5_wqe_t * wqe, const void *tmpl,
-		    vlib_buffer_t * b, const u16 tail)
+rdma_mlx5_wqe_init (rdma_mlx5_wqe_t *wqe, const void *tmpl, vlib_buffer_t *b,
+		    const u16 tail)
 {
   u16 sz = b->current_length;
   const void *cur = vlib_buffer_get_current (b);
@@ -114,9 +115,9 @@ rdma_mlx5_wqe_init (rdma_mlx5_wqe_t * wqe, const void *tmpl,
   clib_memcpy_fast (wqe, tmpl, RDMA_MLX5_WQE_SZ);
   /* speculatively copy at least MLX5_ETH_L2_INLINE_HEADER_SIZE (18-bytes) */
   STATIC_ASSERT (STRUCT_SIZE_OF (struct mlx5_wqe_eth_seg, inline_hdr_start) +
-		 STRUCT_SIZE_OF (struct mlx5_wqe_eth_seg,
-				 inline_hdr) >=
-		 MLX5_ETH_L2_INLINE_HEADER_SIZE, "wrong size");
+		     STRUCT_SIZE_OF (struct mlx5_wqe_eth_seg, inline_hdr) >=
+		   MLX5_ETH_L2_INLINE_HEADER_SIZE,
+		 "wrong size");
   clib_memcpy_fast (wqe->eseg.inline_hdr_start, cur,
 		    MLX5_ETH_L2_INLINE_HEADER_SIZE);
 
@@ -125,7 +126,7 @@ rdma_mlx5_wqe_init (rdma_mlx5_wqe_t * wqe, const void *tmpl,
   if (PREDICT_TRUE (sz >= MLX5_ETH_L2_INLINE_HEADER_SIZE))
     {
       /* inline_hdr_sz is set to MLX5_ETH_L2_INLINE_HEADER_SIZE
-         in the template */
+	 in the template */
       wqe->dseg.byte_count = htobe32 (sz - MLX5_ETH_L2_INLINE_HEADER_SIZE);
       wqe->dseg.addr = htobe64 (addr + MLX5_ETH_L2_INLINE_HEADER_SIZE);
     }
@@ -143,12 +144,12 @@ rdma_mlx5_wqe_init (rdma_mlx5_wqe_t * wqe, const void *tmpl,
  * plenty of descriptors available
  */
 static_always_inline u32
-rdma_device_output_tx_mlx5_chained (vlib_main_t * vm,
-				    const vlib_node_runtime_t * node,
-				    const rdma_device_t * rd,
-				    rdma_txq_t * txq, u32 n_left_from, u32 n,
-				    u32 * bi, vlib_buffer_t ** b,
-				    rdma_mlx5_wqe_t * wqe, u16 tail)
+rdma_device_output_tx_mlx5_chained (vlib_main_t *vm,
+				    const vlib_node_runtime_t *node,
+				    const rdma_device_t *rd, rdma_txq_t *txq,
+				    u32 n_left_from, u32 n, u32 *bi,
+				    vlib_buffer_t **b, rdma_mlx5_wqe_t *wqe,
+				    u16 tail)
 {
   rdma_mlx5_wqe_t *last = wqe;
   u32 wqe_n = RDMA_TXQ_AVAIL_SZ (txq, txq->head, tail);
@@ -178,7 +179,7 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t * vm,
 	   *  - 4 dseg per WQEBB available
 	   *  - max 32 dseg per WQE (5-bits length field in WQE ctrl)
 	   */
-#define RDMA_MLX5_WQE_DS_MAX    (1 << 5)
+#define RDMA_MLX5_WQE_DS_MAX (1 << 5)
 	  const u32 dseg_max =
 	    clib_min (RDMA_MLX5_WQE_DS * (wqe_n - 1), RDMA_MLX5_WQE_DS_MAX);
 	  vlib_buffer_t *chained_b = b[0];
@@ -186,8 +187,9 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t * vm,
 
 	  /* there are exactly 4 dseg per WQEBB and we rely on that */
 	  STATIC_ASSERT (RDMA_MLX5_WQE_DS *
-			 sizeof (struct mlx5_wqe_data_seg) ==
-			 MLX5_SEND_WQE_BB, "wrong size");
+			     sizeof (struct mlx5_wqe_data_seg) ==
+			   MLX5_SEND_WQE_BB,
+			 "wrong size");
 
 	  /*
 	   * iterate over fragments, supporting ring wrap-around contrary to
@@ -195,8 +197,8 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t * vm,
 	   * buffers because we are close to the end of the ring while we
 	   * still have plenty of descriptors available
 	   */
-	  while (chained_n < dseg_max
-		 && chained_b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  while (chained_n < dseg_max &&
+		 chained_b->flags & VLIB_BUFFER_NEXT_PRESENT)
 	    {
 	      struct mlx5_wqe_data_seg *dseg = (void *) txq->dv_sq_wqes;
 	      dseg += ((tail + 1) * RDMA_MLX5_WQE_DS + chained_n) & dseg_mask;
@@ -230,13 +232,14 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t * vm,
 	       * no descriptors left: drop the chain including 1st WQE
 	       * skip the problematic packet and continue
 	       */
-	      vlib_buffer_free_from_ring (vm, txq->bufs, tail & mask,
-					  RDMA_TXQ_BUF_SZ (txq), 1 +
-					  RDMA_TXQ_DV_DSEG2WQE (chained_n));
+	      vlib_buffer_free_from_ring (
+		vm, txq->bufs, tail & mask, RDMA_TXQ_BUF_SZ (txq),
+		1 + RDMA_TXQ_DV_DSEG2WQE (chained_n));
 	      vlib_error_count (vm, node->node_index,
 				dseg_max == chained_n ?
-				RDMA_TX_ERROR_SEGMENT_SIZE_EXCEEDED :
-				RDMA_TX_ERROR_NO_FREE_SLOTS, 1);
+				  RDMA_TX_ERROR_SEGMENT_SIZE_EXCEEDED :
+				  RDMA_TX_ERROR_NO_FREE_SLOTS,
+				1);
 
 	      /* fixup tail to overwrite wqe head with next packet */
 	      tail -= 1;
@@ -244,7 +247,7 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t * vm,
 	  else
 	    {
 	      /* update WQE descriptor with new dseg number */
-	      ((u8 *) & wqe[0].ctrl.qpn_ds)[3] = RDMA_MLX5_WQE_DS + chained_n;
+	      ((u8 *) &wqe[0].ctrl.qpn_ds)[3] = RDMA_MLX5_WQE_DS + chained_n;
 
 	      tail += RDMA_TXQ_DV_DSEG2WQE (chained_n);
 	      wqe_n -= RDMA_TXQ_DV_DSEG2WQE (chained_n);
@@ -273,11 +276,9 @@ rdma_device_output_tx_mlx5_chained (vlib_main_t * vm,
 }
 
 static_always_inline u32
-rdma_device_output_tx_mlx5 (vlib_main_t * vm,
-			    const vlib_node_runtime_t * node,
-			    const rdma_device_t * rd, rdma_txq_t * txq,
-			    const u32 n_left_from, u32 * bi,
-			    vlib_buffer_t ** b)
+rdma_device_output_tx_mlx5 (vlib_main_t *vm, const vlib_node_runtime_t *node,
+			    const rdma_device_t *rd, rdma_txq_t *txq,
+			    const u32 n_left_from, u32 *bi, vlib_buffer_t **b)
 {
 
   u32 sq_mask = pow2_mask (txq->dv_sq_log2sz);
@@ -299,9 +300,8 @@ wrap_around:
     {
       u32 flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
       if (PREDICT_FALSE (flags & VLIB_BUFFER_NEXT_PRESENT))
-	return rdma_device_output_tx_mlx5_chained (vm, node, rd, txq,
-						   n_left_from, n, bi, b, wqe,
-						   tail);
+	return rdma_device_output_tx_mlx5_chained (
+	  vm, node, rd, txq, n_left_from, n, bi, b, wqe, tail);
 
       vlib_prefetch_buffer_header (b[4], LOAD);
       rdma_mlx5_wqe_init (wqe + 0, txq->dv_wqe_tmpl, b[0], tail + 0);
@@ -324,9 +324,8 @@ wrap_around:
   while (n >= 1)
     {
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT))
-	return rdma_device_output_tx_mlx5_chained (vm, node, rd, txq,
-						   n_left_from, n, bi, b, wqe,
-						   tail);
+	return rdma_device_output_tx_mlx5_chained (
+	  vm, node, rd, txq, n_left_from, n, bi, b, wqe, tail);
 
       rdma_mlx5_wqe_init (wqe, txq->dv_wqe_tmpl, b[0], tail);
 
@@ -355,9 +354,9 @@ wrap_around:
  */
 
 static_always_inline void
-rdma_device_output_free_ibverb (vlib_main_t * vm,
-				const vlib_node_runtime_t * node,
-				rdma_txq_t * txq)
+rdma_device_output_free_ibverb (vlib_main_t *vm,
+				const vlib_node_runtime_t *node,
+				rdma_txq_t *txq)
 {
   struct ibv_wc wc[VLIB_FRAME_SIZE];
   u32 mask = pow2_mask (txq->bufs_log2sz);
@@ -388,10 +387,9 @@ rdma_device_output_free_ibverb (vlib_main_t * vm,
 }
 
 static_always_inline u32
-rdma_device_output_tx_ibverb (vlib_main_t * vm,
-			      const vlib_node_runtime_t * node,
-			      const rdma_device_t * rd, rdma_txq_t * txq,
-			      u32 n_left_from, u32 * bi, vlib_buffer_t ** b)
+rdma_device_output_tx_ibverb (vlib_main_t *vm, const vlib_node_runtime_t *node,
+			      const rdma_device_t *rd, rdma_txq_t *txq,
+			      u32 n_left_from, u32 *bi, vlib_buffer_t **b)
 {
   const u32 mask = pow2_mask (txq->bufs_log2sz);
   struct ibv_send_wr wr[VLIB_FRAME_SIZE], *w = wr;
@@ -468,9 +466,10 @@ rdma_device_output_tx_ibverb (vlib_main_t * vm,
       n -= 1;
     }
 
-  w[-1].wr_id = txq->tail;	/* register item to free */
-  w[-1].next = 0;		/* fix next pointer in WR linked-list */
-  w[-1].send_flags = IBV_SEND_SIGNALED;	/* generate a CQE so we can free buffers */
+  w[-1].wr_id = txq->tail; /* register item to free */
+  w[-1].next = 0;	   /* fix next pointer in WR linked-list */
+  w[-1].send_flags =
+    IBV_SEND_SIGNALED; /* generate a CQE so we can free buffers */
 
   w = wr;
   if (PREDICT_FALSE (0 != ibv_post_send (txq->ibv_qp, w, &w)))
@@ -490,8 +489,8 @@ rdma_device_output_tx_ibverb (vlib_main_t * vm,
  */
 
 static_always_inline void
-rdma_device_output_free (vlib_main_t * vm, const vlib_node_runtime_t * node,
-			 rdma_txq_t * txq, int is_mlx5dv)
+rdma_device_output_free (vlib_main_t *vm, const vlib_node_runtime_t *node,
+			 rdma_txq_t *txq, int is_mlx5dv)
 {
   if (is_mlx5dv)
     rdma_device_output_free_mlx5 (vm, node, txq);
@@ -500,35 +499,32 @@ rdma_device_output_free (vlib_main_t * vm, const vlib_node_runtime_t * node,
 }
 
 static_always_inline u32
-rdma_device_output_tx_try (vlib_main_t * vm, const vlib_node_runtime_t * node,
-			   const rdma_device_t * rd, rdma_txq_t * txq,
-			   u32 n_left_from, u32 * bi, int is_mlx5dv)
+rdma_device_output_tx_try (vlib_main_t *vm, const vlib_node_runtime_t *node,
+			   const rdma_device_t *rd, rdma_txq_t *txq,
+			   u32 n_left_from, u32 *bi, int is_mlx5dv)
 {
   vlib_buffer_t *b[VLIB_FRAME_SIZE];
 
   /* do not enqueue more packet than ring space */
-  n_left_from = clib_min (n_left_from, RDMA_TXQ_AVAIL_SZ (txq, txq->head,
-							  txq->tail));
+  n_left_from =
+    clib_min (n_left_from, RDMA_TXQ_AVAIL_SZ (txq, txq->head, txq->tail));
   /* if ring is full, do nothing */
   if (PREDICT_FALSE (n_left_from == 0))
     return 0;
 
   vlib_get_buffers (vm, bi, b, n_left_from);
 
-  n_left_from = is_mlx5dv ?
-    rdma_device_output_tx_mlx5 (vm, node, rd, txq, n_left_from, bi,
-				b) : rdma_device_output_tx_ibverb (vm, node,
-								   rd, txq,
-								   n_left_from,
-								   bi, b);
+  n_left_from =
+    is_mlx5dv ?
+      rdma_device_output_tx_mlx5 (vm, node, rd, txq, n_left_from, bi, b) :
+      rdma_device_output_tx_ibverb (vm, node, rd, txq, n_left_from, bi, b);
 
   return n_left_from;
 }
 
 static_always_inline uword
-rdma_device_output_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_frame_t * frame, rdma_device_t * rd,
-		       int is_mlx5dv)
+rdma_device_output_tx (vlib_main_t *vm, vlib_node_runtime_t *node,
+		       vlib_frame_t *frame, rdma_device_t *rd, int is_mlx5dv)
 {
   u32 thread_index = vm->thread_index;
   rdma_txq_t *txq =
@@ -560,25 +556,24 @@ rdma_device_output_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (PREDICT_FALSE (n_left_from))
     {
       vlib_buffer_free (vm, from, n_left_from);
-      vlib_error_count (vm, node->node_index,
-			RDMA_TX_ERROR_NO_FREE_SLOTS, n_left_from);
+      vlib_error_count (vm, node->node_index, RDMA_TX_ERROR_NO_FREE_SLOTS,
+			n_left_from);
     }
 
   return frame->n_vectors - n_left_from;
 }
 
-VNET_DEVICE_CLASS_TX_FN (rdma_device_class) (vlib_main_t * vm,
-					     vlib_node_runtime_t * node,
-					     vlib_frame_t * frame)
+VNET_DEVICE_CLASS_TX_FN (rdma_device_class)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   rdma_main_t *rm = &rdma_main;
   vnet_interface_output_runtime_t *ord = (void *) node->runtime_data;
   rdma_device_t *rd = pool_elt_at_index (rm->devices, ord->dev_instance);
 
   if (PREDICT_TRUE (rd->flags & RDMA_DEVICE_F_MLX5DV))
-    return rdma_device_output_tx (vm, node, frame, rd, 1 /* is_mlx5dv */ );
+    return rdma_device_output_tx (vm, node, frame, rd, 1 /* is_mlx5dv */);
 
-  return rdma_device_output_tx (vm, node, frame, rd, 0 /* is_mlx5dv */ );
+  return rdma_device_output_tx (vm, node, frame, rd, 0 /* is_mlx5dv */);
 }
 
 /*

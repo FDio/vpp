@@ -90,36 +90,40 @@ mhash_key_sum_inline (void *data, uword n_data_bytes, u32 seed)
   return c;
 }
 
-#define foreach_mhash_key_size			\
-  _ (2) _ (3) _ (4) _ (5) _ (6) _ (7)		\
-  _ (8) _ (12) _ (16) _ (20)			\
-  _ (24) _ (28) _ (32) _ (36)			\
-  _ (40) _ (44) _ (48) _ (52)			\
-  _ (56) _ (60) _ (64)
+#define foreach_mhash_key_size                                                \
+  _ (2)                                                                       \
+  _ (3)                                                                       \
+  _ (4)                                                                       \
+  _ (5)                                                                       \
+  _ (6)                                                                       \
+  _ (7)                                                                       \
+  _ (8)                                                                       \
+  _ (12)                                                                      \
+  _ (16)                                                                      \
+  _ (20)                                                                      \
+  _ (24) _ (28) _ (32) _ (36) _ (40) _ (44) _ (48) _ (52) _ (56) _ (60) _ (64)
 
-#define _(N_KEY_BYTES)							\
-  static uword								\
-  mhash_key_sum_##N_KEY_BYTES (hash_t * h, uword key)			\
-  {									\
-    mhash_t * hv = uword_to_pointer (h->user, mhash_t *);		\
-    return mhash_key_sum_inline (mhash_key_to_mem (hv, key),		\
-				 (N_KEY_BYTES),				\
-				 hv->hash_seed);			\
-  }									\
-									\
-  static uword								\
-  mhash_key_equal_##N_KEY_BYTES (hash_t * h, uword key1, uword key2)	\
-  {									\
-    mhash_t * hv = uword_to_pointer (h->user, mhash_t *);		\
-    void * k1 = mhash_key_to_mem (hv, key1);				\
-    void * k2 = mhash_key_to_mem (hv, key2);				\
-    return ! memcmp (k1, k2, (N_KEY_BYTES));				\
+#define _(N_KEY_BYTES)                                                        \
+  static uword mhash_key_sum_##N_KEY_BYTES (hash_t *h, uword key)             \
+  {                                                                           \
+    mhash_t *hv = uword_to_pointer (h->user, mhash_t *);                      \
+    return mhash_key_sum_inline (mhash_key_to_mem (hv, key), (N_KEY_BYTES),   \
+				 hv->hash_seed);                              \
+  }                                                                           \
+                                                                              \
+  static uword mhash_key_equal_##N_KEY_BYTES (hash_t *h, uword key1,          \
+					      uword key2)                     \
+  {                                                                           \
+    mhash_t *hv = uword_to_pointer (h->user, mhash_t *);                      \
+    void *k1 = mhash_key_to_mem (hv, key1);                                   \
+    void *k2 = mhash_key_to_mem (hv, key2);                                   \
+    return !memcmp (k1, k2, (N_KEY_BYTES));                                   \
   }
 
 foreach_mhash_key_size
 #undef _
-static uword
-mhash_key_sum_c_string (hash_t * h, uword key)
+  static uword
+  mhash_key_sum_c_string (hash_t *h, uword key)
 {
   mhash_t *hv = uword_to_pointer (h->user, mhash_t *);
   void *k = mhash_key_to_mem (hv, key);
@@ -127,7 +131,7 @@ mhash_key_sum_c_string (hash_t * h, uword key)
 }
 
 static uword
-mhash_key_equal_c_string (hash_t * h, uword key1, uword key2)
+mhash_key_equal_c_string (hash_t *h, uword key1, uword key2)
 {
   mhash_t *hv = uword_to_pointer (h->user, mhash_t *);
   void *k1 = mhash_key_to_mem (hv, key1);
@@ -136,7 +140,7 @@ mhash_key_equal_c_string (hash_t * h, uword key1, uword key2)
 }
 
 static uword
-mhash_key_sum_vec_string (hash_t * h, uword key)
+mhash_key_sum_vec_string (hash_t *h, uword key)
 {
   mhash_t *hv = uword_to_pointer (h->user, mhash_t *);
   void *k = mhash_key_to_mem (hv, key);
@@ -144,7 +148,7 @@ mhash_key_sum_vec_string (hash_t * h, uword key)
 }
 
 static uword
-mhash_key_equal_vec_string (hash_t * h, uword key1, uword key2)
+mhash_key_equal_vec_string (hash_t *h, uword key1, uword key2)
 {
   mhash_t *hv = uword_to_pointer (h->user, mhash_t *);
   void *k1 = mhash_key_to_mem (hv, key1);
@@ -157,7 +161,7 @@ mhash_key_equal_vec_string (hash_t * h, uword key1, uword key2)
    So we must always be careful that it points to the correct
    address. */
 always_inline void
-mhash_sanitize_hash_user (mhash_t * mh)
+mhash_sanitize_hash_user (mhash_t *mh)
 {
   uword *hash = mh->hash;
   hash_t *h = hash_header (hash);
@@ -165,7 +169,7 @@ mhash_sanitize_hash_user (mhash_t * mh)
 }
 
 __clib_export void
-mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
+mhash_init (mhash_t *h, uword n_value_bytes, uword n_key_bytes)
 {
   static struct
   {
@@ -173,11 +177,11 @@ mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
     hash_key_equal_function_t *key_equal;
   } t[] =
   {
-#define _(N_KEY_BYTES)					\
-    [N_KEY_BYTES] = {					\
-      .key_sum = mhash_key_sum_##N_KEY_BYTES,		\
-      .key_equal = mhash_key_equal_##N_KEY_BYTES,	\
-    },
+#define _(N_KEY_BYTES)                                                        \
+  [N_KEY_BYTES] = {                                                           \
+    .key_sum = mhash_key_sum_##N_KEY_BYTES,                                   \
+    .key_equal = mhash_key_equal_##N_KEY_BYTES,                               \
+  },
 
     foreach_mhash_key_size
 #undef _
@@ -208,7 +212,7 @@ mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
   vec_validate (h->key_tmps, os_get_nthreads () - 1);
 
   ASSERT (n_key_bytes < ARRAY_LEN (t));
-  h->hash = hash_create2 ( /* elts */ 0,
+  h->hash = hash_create2 (/* elts */ 0,
 			  /* user */ pointer_to_uword (h),
 			  /* value_bytes */ n_value_bytes,
 			  t[n_key_bytes].key_sum, t[n_key_bytes].key_equal,
@@ -217,7 +221,7 @@ mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
 }
 
 static uword
-mhash_set_tmp_key (mhash_t * h, const void *key)
+mhash_set_tmp_key (mhash_t *h, const void *key)
 {
   u8 *key_tmp;
   int my_cpu = os_get_thread_index ();
@@ -244,7 +248,7 @@ mhash_set_tmp_key (mhash_t * h, const void *key)
 }
 
 __clib_export hash_pair_t *
-mhash_get_pair (mhash_t * h, const void *key)
+mhash_get_pair (mhash_t *h, const void *key)
 {
   uword ikey;
   mhash_sanitize_hash_user (h);
@@ -261,7 +265,7 @@ typedef struct
 } mhash_string_key_t;
 
 __clib_export uword
-mhash_set_mem (mhash_t * h, void *key, uword * new_value, uword * old_value)
+mhash_set_mem (mhash_t *h, void *key, uword *new_value, uword *old_value)
 {
   u8 *k;
   uword ikey, i, l = 0, n_key_bytes, old_n_elts, key_alloc_from_free_list = 0;
@@ -275,9 +279,8 @@ mhash_set_mem (mhash_t * h, void *key, uword * new_value, uword * old_value)
       uword handle;
 
       n_key_bytes = is_c_string ? (strlen (key) + 1) : vec_len (key);
-      i =
-	heap_alloc (h->key_vector_or_heap, n_key_bytes + sizeof (sk[0]),
-		    handle);
+      i = heap_alloc (h->key_vector_or_heap, n_key_bytes + sizeof (sk[0]),
+		      handle);
 
       sk = (void *) (h->key_vector_or_heap + i);
       sk->heap_handle = handle;
@@ -289,8 +292,8 @@ mhash_set_mem (mhash_t * h, void *key, uword * new_value, uword * old_value)
     }
   else
     {
-      key_alloc_from_free_list = (l =
-				  vec_len (h->key_vector_free_indices)) > 0;
+      key_alloc_from_free_list =
+	(l = vec_len (h->key_vector_free_indices)) > 0;
       if (key_alloc_from_free_list)
 	{
 	  i = h->key_vector_free_indices[l - 1];
@@ -343,7 +346,7 @@ mhash_set_mem (mhash_t * h, void *key, uword * new_value, uword * old_value)
 }
 
 __clib_export uword
-mhash_unset (mhash_t * h, void *key, uword * old_value)
+mhash_unset (mhash_t *h, void *key, uword *old_value)
 {
   hash_pair_t *p;
   uword i;
@@ -372,7 +375,7 @@ mhash_unset (mhash_t * h, void *key, uword * old_value)
 }
 
 u8 *
-format_mhash_key (u8 * s, va_list * va)
+format_mhash_key (u8 *s, va_list *va)
 {
   mhash_t *h = va_arg (*va, mhash_t *);
   u32 ki = va_arg (*va, u32);

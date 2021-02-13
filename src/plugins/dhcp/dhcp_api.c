@@ -43,12 +43,11 @@ static u32 dhcp_base_msg_id;
 
 #include <vlibapi/api_helper_macros.h>
 
-#define  DHCP_PLUGIN_VERSION_MAJOR 1
-#define  DHCP_PLUGIN_VERSION_MINOR 0
+#define DHCP_PLUGIN_VERSION_MAJOR 1
+#define DHCP_PLUGIN_VERSION_MINOR 0
 
 static void
-vl_api_dhcp_plugin_get_version_t_handler (vl_api_dhcp_plugin_get_version_t *
-					  mp)
+vl_api_dhcp_plugin_get_version_t_handler (vl_api_dhcp_plugin_get_version_t *mp)
 {
   vl_api_dhcp_plugin_get_version_reply_t *rmp;
   int msg_size = sizeof (*rmp);
@@ -70,22 +69,18 @@ vl_api_dhcp_plugin_get_version_t_handler (vl_api_dhcp_plugin_get_version_t *
 }
 
 static void
-vl_api_dhcp_plugin_control_ping_t_handler (vl_api_dhcp_plugin_control_ping_t *
-					   mp)
+vl_api_dhcp_plugin_control_ping_t_handler (
+  vl_api_dhcp_plugin_control_ping_t *mp)
 {
   vl_api_dhcp_plugin_control_ping_reply_t *rmp;
   int rv = 0;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_DHCP_PLUGIN_CONTROL_PING_REPLY,
-  ({
-    rmp->vpe_pid = ntohl (getpid ());
-  }));
-  /* *INDENT-ON* */
+		({ rmp->vpe_pid = ntohl (getpid ()); }));
 }
 
 static void
-vl_api_dhcp6_duid_ll_set_t_handler (vl_api_dhcp6_duid_ll_set_t * mp)
+vl_api_dhcp6_duid_ll_set_t_handler (vl_api_dhcp6_duid_ll_set_t *mp)
 {
   vl_api_dhcp6_duid_ll_set_reply_t *rmp;
   dhcpv6_duid_ll_string_t *duid;
@@ -104,7 +99,7 @@ reply:
 }
 
 static void
-vl_api_dhcp_proxy_set_vss_t_handler (vl_api_dhcp_proxy_set_vss_t * mp)
+vl_api_dhcp_proxy_set_vss_t_handler (vl_api_dhcp_proxy_set_vss_t *mp)
 {
   vl_api_dhcp_proxy_set_vss_reply_t *rmp;
   u8 *vpn_ascii_id;
@@ -112,18 +107,16 @@ vl_api_dhcp_proxy_set_vss_t_handler (vl_api_dhcp_proxy_set_vss_t * mp)
 
   mp->vpn_ascii_id[sizeof (mp->vpn_ascii_id) - 1] = 0;
   vpn_ascii_id = format (0, "%s", mp->vpn_ascii_id);
-  rv =
-    dhcp_proxy_set_vss ((mp->is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4),
-			ntohl (mp->tbl_id), ntohl (mp->vss_type),
-			vpn_ascii_id, ntohl (mp->oui), ntohl (mp->vpn_index),
-			mp->is_add == 0);
+  rv = dhcp_proxy_set_vss ((mp->is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4),
+			   ntohl (mp->tbl_id), ntohl (mp->vss_type),
+			   vpn_ascii_id, ntohl (mp->oui),
+			   ntohl (mp->vpn_index), mp->is_add == 0);
 
   REPLY_MACRO (VL_API_DHCP_PROXY_SET_VSS_REPLY);
 }
 
-
-static void vl_api_dhcp_proxy_config_t_handler
-  (vl_api_dhcp_proxy_config_t * mp)
+static void
+vl_api_dhcp_proxy_config_t_handler (vl_api_dhcp_proxy_config_t *mp)
 {
   vl_api_dhcp_proxy_set_vss_reply_t *rmp;
   ip46_address_t src, server;
@@ -140,17 +133,13 @@ static void vl_api_dhcp_proxy_config_t_handler
 
   if (mp->dhcp_src_address.af == ADDRESS_IP4)
     {
-      rv = dhcp4_proxy_set_server (&server,
-				   &src,
-				   (u32) ntohl (mp->rx_vrf_id),
+      rv = dhcp4_proxy_set_server (&server, &src, (u32) ntohl (mp->rx_vrf_id),
 				   (u32) ntohl (mp->server_vrf_id),
 				   (int) (mp->is_add == 0));
     }
   else
     {
-      rv = dhcp6_proxy_set_server (&server,
-				   &src,
-				   (u32) ntohl (mp->rx_vrf_id),
+      rv = dhcp6_proxy_set_server (&server, &src, (u32) ntohl (mp->rx_vrf_id),
 				   (u32) ntohl (mp->server_vrf_id),
 				   (int) (mp->is_add == 0));
     }
@@ -160,21 +149,22 @@ reply:
 }
 
 static void
-vl_api_dhcp_proxy_dump_t_handler (vl_api_dhcp_proxy_dump_t * mp)
+vl_api_dhcp_proxy_dump_t_handler (vl_api_dhcp_proxy_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
-    return;;
+    return;
+  ;
 
-  dhcp_proxy_dump ((mp->is_ip6 == 1 ?
-		    FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4), reg, mp->context);
+  dhcp_proxy_dump ((mp->is_ip6 == 1 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4),
+		   reg, mp->context);
 }
 
 void
-dhcp_send_details (fib_protocol_t proto,
-		   void *opaque, u32 context, dhcp_proxy_t * proxy)
+dhcp_send_details (fib_protocol_t proto, void *opaque, u32 context,
+		   dhcp_proxy_t *proxy)
 {
   vl_api_dhcp_proxy_details_t *mp;
   vl_api_registration_t *reg = opaque;
@@ -211,11 +201,11 @@ dhcp_send_details (fib_protocol_t proto,
 	}
       else if (vss->vss_type == VSS_TYPE_VPN_ID)
 	{
-	  u32 oui = ((u32) vss->vpn_id[0] << 16) + ((u32) vss->vpn_id[1] << 8)
-	    + ((u32) vss->vpn_id[2]);
+	  u32 oui = ((u32) vss->vpn_id[0] << 16) +
+		    ((u32) vss->vpn_id[1] << 8) + ((u32) vss->vpn_id[2]);
 	  u32 fib_id = ((u32) vss->vpn_id[3] << 24) +
-	    ((u32) vss->vpn_id[4] << 16) + ((u32) vss->vpn_id[5] << 8) +
-	    ((u32) vss->vpn_id[6]);
+		       ((u32) vss->vpn_id[4] << 16) +
+		       ((u32) vss->vpn_id[5] << 8) + ((u32) vss->vpn_id[6]);
 	  mp->vss_oui = htonl (oui);
 	  mp->vss_fib_id = htonl (fib_id);
 	}
@@ -224,24 +214,24 @@ dhcp_send_details (fib_protocol_t proto,
     mp->vss_type = VSS_TYPE_INVALID;
 
   vec_foreach_index (count, proxy->dhcp_servers)
-  {
-    server = &proxy->dhcp_servers[count];
-    v_server = &mp->servers[count];
+    {
+      server = &proxy->dhcp_servers[count];
+      v_server = &mp->servers[count];
 
-    s_fib = fib_table_get (server->server_fib_index, proto);
+      s_fib = fib_table_get (server->server_fib_index, proto);
 
-    v_server->server_vrf_id = htonl (s_fib->ft_table_id);
+      v_server->server_vrf_id = htonl (s_fib->ft_table_id);
 
-    if (mp->is_ipv6)
-      {
-	memcpy (&v_server->dhcp_server.un, &server->dhcp_server.ip6, 16);
-      }
-    else
-      {
-	/* put the address in the first bytes */
-	memcpy (&v_server->dhcp_server.un, &server->dhcp_server.ip4, 4);
-      }
-  }
+      if (mp->is_ipv6)
+	{
+	  memcpy (&v_server->dhcp_server.un, &server->dhcp_server.ip6, 16);
+	}
+      else
+	{
+	  /* put the address in the first bytes */
+	  memcpy (&v_server->dhcp_server.un, &server->dhcp_server.ip4, 4);
+	}
+    }
 
   if (mp->is_ipv6)
     {
@@ -256,13 +246,13 @@ dhcp_send_details (fib_protocol_t proto,
 }
 
 static void
-dhcp_client_lease_encode (vl_api_dhcp_lease_t * lease,
-			  const dhcp_client_t * client)
+dhcp_client_lease_encode (vl_api_dhcp_lease_t *lease,
+			  const dhcp_client_t *client)
 {
   size_t len;
   u8 i;
 
-  lease->is_ipv6 = 0;		// only support IPv4 clients
+  lease->is_ipv6 = 0; // only support IPv4 clients
   lease->sw_if_index = ntohl (client->sw_if_index);
   lease->state = ntohl (client->state);
   len = clib_min (sizeof (lease->hostname) - 1, vec_len (client->hostname));
@@ -271,24 +261,24 @@ dhcp_client_lease_encode (vl_api_dhcp_lease_t * lease,
 
   lease->mask_width = client->installed.subnet_mask_width;
   clib_memcpy (&lease->host_address.un,
-	       (u8 *) & client->installed.leased_address,
+	       (u8 *) &client->installed.leased_address,
 	       sizeof (ip4_address_t));
   clib_memcpy (&lease->router_address.un,
-	       (u8 *) & client->installed.router_address,
+	       (u8 *) &client->installed.router_address,
 	       sizeof (ip4_address_t));
 
   lease->count = vec_len (client->domain_server_address);
   for (i = 0; i < lease->count; i++)
     clib_memcpy (&lease->domain_server[i].address,
-		 (u8 *) & client->domain_server_address[i],
+		 (u8 *) &client->domain_server_address[i],
 		 sizeof (ip4_address_t));
 
   clib_memcpy (&lease->host_mac[0], client->client_hardware_address, 6);
 }
 
 static void
-dhcp_client_data_encode (vl_api_dhcp_client_t * vclient,
-			 const dhcp_client_t * client)
+dhcp_client_data_encode (vl_api_dhcp_client_t *vclient,
+			 const dhcp_client_t *client)
 {
   size_t len;
 
@@ -297,8 +287,8 @@ dhcp_client_data_encode (vl_api_dhcp_client_t * vclient,
   clib_memcpy (&vclient->hostname, client->hostname, len);
   vclient->hostname[len] = 0;
 
-  len = clib_min (sizeof (vclient->id) - 1,
-		  vec_len (client->client_identifier));
+  len =
+    clib_min (sizeof (vclient->id) - 1, vec_len (client->client_identifier));
   clib_memcpy (&vclient->id, client->client_identifier, len);
   vclient->id[len] = 0;
 
@@ -312,7 +302,7 @@ dhcp_client_data_encode (vl_api_dhcp_client_t * vclient,
 }
 
 static void
-dhcp_compl_event_callback (u32 client_index, const dhcp_client_t * client)
+dhcp_compl_event_callback (u32 client_index, const dhcp_client_t *client)
 {
   vl_api_registration_t *reg;
   vl_api_dhcp_compl_event_t *mp;
@@ -331,8 +321,8 @@ dhcp_compl_event_callback (u32 client_index, const dhcp_client_t * client)
   vl_api_send_msg (reg, (u8 *) mp);
 }
 
-static void vl_api_dhcp_client_config_t_handler
-  (vl_api_dhcp_client_config_t * mp)
+static void
+vl_api_dhcp_client_config_t_handler (vl_api_dhcp_client_config_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_dhcp_client_config_reply_t *rmp;
@@ -345,17 +335,11 @@ static void vl_api_dhcp_client_config_t_handler
   sw_if_index = ntohl (mp->client.sw_if_index);
   dscp = ip_dscp_decode (mp->client.dscp);
 
-  rv = dhcp_client_config (mp->is_add,
-			   mp->client_index,
-			   vm,
-			   sw_if_index,
-			   mp->client.hostname,
-			   mp->client.id,
-			   (mp->client.want_dhcp_event ?
-			    dhcp_compl_event_callback :
-			    NULL),
-			   mp->client.set_broadcast_flag,
-			   dscp, mp->client.pid);
+  rv = dhcp_client_config (
+    mp->is_add, mp->client_index, vm, sw_if_index, mp->client.hostname,
+    mp->client.id,
+    (mp->client.want_dhcp_event ? dhcp_compl_event_callback : NULL),
+    mp->client.set_broadcast_flag, dscp, mp->client.pid);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_DHCP_CLIENT_CONFIG_REPLY);
@@ -368,7 +352,7 @@ typedef struct dhcp_client_send_walk_ctx_t_
 } dhcp_client_send_walk_ctx_t;
 
 static int
-send_dhcp_client_entry (const dhcp_client_t * client, void *arg)
+send_dhcp_client_entry (const dhcp_client_t *client, void *arg)
 {
   dhcp_client_send_walk_ctx_t *ctx;
   vl_api_dhcp_client_details_t *mp;
@@ -396,7 +380,7 @@ send_dhcp_client_entry (const dhcp_client_t * client, void *arg)
 }
 
 static void
-vl_api_dhcp_client_dump_t_handler (vl_api_dhcp_client_dump_t * mp)
+vl_api_dhcp_client_dump_t_handler (vl_api_dhcp_client_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -412,8 +396,8 @@ vl_api_dhcp_client_dump_t_handler (vl_api_dhcp_client_dump_t * mp)
 }
 
 static void
-  vl_api_dhcp6_clients_enable_disable_t_handler
-  (vl_api_dhcp6_clients_enable_disable_t * mp)
+vl_api_dhcp6_clients_enable_disable_t_handler (
+  vl_api_dhcp6_clients_enable_disable_t *mp)
 {
   vl_api_dhcp6_clients_enable_disable_reply_t *rmp;
   int rv = 0;
@@ -424,8 +408,7 @@ static void
 }
 
 void
-  vl_api_want_dhcp6_reply_events_t_handler
-  (vl_api_want_dhcp6_reply_events_t * mp)
+vl_api_want_dhcp6_reply_events_t_handler (vl_api_want_dhcp6_reply_events_t *mp)
 {
   vpe_api_main_t *am = &vpe_api_main;
   vl_api_want_dhcp6_reply_events_reply_t *rmp;
@@ -472,8 +455,8 @@ reply:
 }
 
 void
-  vl_api_want_dhcp6_pd_reply_events_t_handler
-  (vl_api_want_dhcp6_pd_reply_events_t * mp)
+vl_api_want_dhcp6_pd_reply_events_t_handler (
+  vl_api_want_dhcp6_pd_reply_events_t *mp)
 {
   vpe_api_main_t *am = &vpe_api_main;
   vl_api_want_dhcp6_pd_reply_events_reply_t *rmp;
@@ -521,8 +504,8 @@ reply:
 }
 
 void
-  vl_api_dhcp6_send_client_message_t_handler
-  (vl_api_dhcp6_send_client_message_t * mp)
+vl_api_dhcp6_send_client_message_t_handler (
+  vl_api_dhcp6_send_client_message_t *mp)
 {
   vl_api_dhcp6_send_client_message_reply_t *rmp;
   dhcp6_send_client_message_params_t params;
@@ -571,8 +554,8 @@ void
 }
 
 void
-  vl_api_dhcp6_pd_send_client_message_t_handler
-  (vl_api_dhcp6_pd_send_client_message_t * mp)
+vl_api_dhcp6_pd_send_client_message_t_handler (
+  vl_api_dhcp6_pd_send_client_message_t *mp)
 {
   vl_api_dhcp6_pd_send_client_message_reply_t *rmp;
   dhcp6_pd_send_client_message_params_t params;
@@ -613,8 +596,7 @@ void
   for (i = 0; i < n_prefixes; i++)
     {
       vl_api_dhcp6_pd_prefix_info_t *pi = &mp->prefixes[i];
-      dhcp6_pd_send_client_message_params_prefix_t *pref =
-	&params.prefixes[i];
+      dhcp6_pd_send_client_message_params_prefix_t *pref = &params.prefixes[i];
       pref->preferred_lt = ntohl (pi->preferred_time);
       pref->valid_lt = ntohl (pi->valid_time);
       ip6_address_decode (pi->prefix.address, &pref->prefix);
@@ -626,9 +608,8 @@ void
 }
 
 static clib_error_t *
-call_dhcp6_reply_event_callbacks (void *data,
-				  _vnet_dhcp6_reply_event_function_list_elt_t
-				  * elt)
+call_dhcp6_reply_event_callbacks (
+  void *data, _vnet_dhcp6_reply_event_function_list_elt_t *elt)
 {
   clib_error_t *error = 0;
 
@@ -644,8 +625,7 @@ call_dhcp6_reply_event_callbacks (void *data,
 }
 
 static uword
-dhcp6_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
-		     vlib_frame_t * f)
+dhcp6_reply_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   /* These cross the longjmp  boundary (vlib_process_wait_for_event)
    * and need to be volatile - to prevent them from being optimized into
@@ -663,10 +643,9 @@ dhcp6_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  address_report_t *events = event_data;
 	  for (i = 0; i < vec_len (events); i++)
 	    {
-	      u32 event_size =
-		sizeof (vl_api_dhcp6_reply_event_t) +
-		vec_len (events[i].addresses) *
-		sizeof (vl_api_dhcp6_address_info_t);
+	      u32 event_size = sizeof (vl_api_dhcp6_reply_event_t) +
+			       vec_len (events[i].addresses) *
+				 sizeof (vl_api_dhcp6_address_info_t);
 	      vl_api_dhcp6_reply_event_t *event = clib_mem_alloc (event_size);
 	      clib_memset (event, 0, event_size);
 
@@ -699,24 +678,24 @@ dhcp6_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	      call_dhcp6_reply_event_callbacks (event, dcpm->functions);
 
 	      vpe_client_registration_t *reg;
-              /* *INDENT-OFF* */
-              pool_foreach (reg, vpe_api_main.dhcp6_reply_events_registrations)
-               {
-                vl_api_registration_t *vl_reg;
-                vl_reg =
-                  vl_api_client_index_to_registration (reg->client_index);
-                if (vl_reg && vl_api_can_send_msg (vl_reg))
-                  {
-                    vl_api_dhcp6_reply_event_t *msg =
-                      vl_msg_api_alloc (event_size);
-                    clib_memcpy (msg, event, event_size);
-                    msg->_vl_msg_id = htons (VL_API_DHCP6_REPLY_EVENT + REPLY_MSG_ID_BASE);
-                    msg->client_index = reg->client_index;
-                    msg->pid = reg->client_pid;
-                    vl_api_send_msg (vl_reg, (u8 *) msg);
-                  }
-              }
-              /* *INDENT-ON* */
+
+	      pool_foreach (reg, vpe_api_main.dhcp6_reply_events_registrations)
+		{
+		  vl_api_registration_t *vl_reg;
+		  vl_reg =
+		    vl_api_client_index_to_registration (reg->client_index);
+		  if (vl_reg && vl_api_can_send_msg (vl_reg))
+		    {
+		      vl_api_dhcp6_reply_event_t *msg =
+			vl_msg_api_alloc (event_size);
+		      clib_memcpy (msg, event, event_size);
+		      msg->_vl_msg_id =
+			htons (VL_API_DHCP6_REPLY_EVENT + REPLY_MSG_ID_BASE);
+		      msg->client_index = reg->client_index;
+		      msg->pid = reg->client_pid;
+		      vl_api_send_msg (vl_reg, (u8 *) msg);
+		    }
+		}
 
 	      clib_mem_free (event);
 	    }
@@ -727,18 +706,15 @@ dhcp6_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dhcp6_reply_process_node) = {
   .function = dhcp6_reply_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "dhcp6-reply-publisher-process",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-call_dhcp6_pd_reply_event_callbacks (void *data,
-				     _vnet_dhcp6_pd_reply_event_function_list_elt_t
-				     * elt)
+call_dhcp6_pd_reply_event_callbacks (
+  void *data, _vnet_dhcp6_pd_reply_event_function_list_elt_t *elt)
 {
   clib_error_t *error = 0;
 
@@ -754,8 +730,8 @@ call_dhcp6_pd_reply_event_callbacks (void *data,
 }
 
 static uword
-dhcp6_pd_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
-			vlib_frame_t * f)
+dhcp6_pd_reply_process (vlib_main_t *vm, vlib_node_runtime_t *rt,
+			vlib_frame_t *f)
 {
   /* These cross the longjmp  boundary (vlib_process_wait_for_event)
    * and need to be volatile - to prevent them from being optimized into
@@ -773,10 +749,9 @@ dhcp6_pd_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  prefix_report_t *events = event_data;
 	  for (i = 0; i < vec_len (events); i++)
 	    {
-	      u32 event_size =
-		sizeof (vl_api_dhcp6_pd_reply_event_t) +
-		vec_len (events[i].prefixes) *
-		sizeof (vl_api_dhcp6_pd_prefix_info_t);
+	      u32 event_size = sizeof (vl_api_dhcp6_pd_reply_event_t) +
+			       vec_len (events[i].prefixes) *
+				 sizeof (vl_api_dhcp6_pd_prefix_info_t);
 	      vl_api_dhcp6_pd_reply_event_t *event =
 		clib_mem_alloc (event_size);
 	      clib_memset (event, 0, event_size);
@@ -811,24 +786,25 @@ dhcp6_pd_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	      call_dhcp6_pd_reply_event_callbacks (event, dpcpm->functions);
 
 	      vpe_client_registration_t *reg;
-              /* *INDENT-OFF* */
-              pool_foreach (reg, vpe_api_main.dhcp6_pd_reply_events_registrations)
-               {
-                vl_api_registration_t *vl_reg;
-                vl_reg =
-                  vl_api_client_index_to_registration (reg->client_index);
-                if (vl_reg && vl_api_can_send_msg (vl_reg))
-                  {
-                    vl_api_dhcp6_pd_reply_event_t *msg =
-                      vl_msg_api_alloc (event_size);
-                    clib_memcpy (msg, event, event_size);
-                    msg->_vl_msg_id = htons (VL_API_DHCP6_PD_REPLY_EVENT + REPLY_MSG_ID_BASE);
-                    msg->client_index = reg->client_index;
-                    msg->pid = reg->client_pid;
-                    vl_api_send_msg (vl_reg, (u8 *) msg);
-                  }
-              }
-              /* *INDENT-ON* */
+
+	      pool_foreach (reg,
+			    vpe_api_main.dhcp6_pd_reply_events_registrations)
+		{
+		  vl_api_registration_t *vl_reg;
+		  vl_reg =
+		    vl_api_client_index_to_registration (reg->client_index);
+		  if (vl_reg && vl_api_can_send_msg (vl_reg))
+		    {
+		      vl_api_dhcp6_pd_reply_event_t *msg =
+			vl_msg_api_alloc (event_size);
+		      clib_memcpy (msg, event, event_size);
+		      msg->_vl_msg_id = htons (VL_API_DHCP6_PD_REPLY_EVENT +
+					       REPLY_MSG_ID_BASE);
+		      msg->client_index = reg->client_index;
+		      msg->pid = reg->client_pid;
+		      vl_api_send_msg (vl_reg, (u8 *) msg);
+		    }
+		}
 
 	      clib_mem_free (event);
 	    }
@@ -839,13 +815,11 @@ dhcp6_pd_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dhcp6_pd_reply_process_node) = {
   .function = dhcp6_pd_reply_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "dhcp6-pd-reply-publisher-process",
 };
-/* *INDENT-ON* */
 
 /*
  * dhcp_api_hookup
@@ -857,7 +831,7 @@ VLIB_REGISTER_NODE (dhcp6_pd_reply_process_node) = {
 #include <dhcp/dhcp.api.c>
 
 static clib_error_t *
-dhcp_api_hookup (vlib_main_t * vm)
+dhcp_api_hookup (vlib_main_t *vm)
 {
   /*
    * Set up the (msg_name, crc, message-id) table
@@ -877,12 +851,10 @@ VLIB_API_INIT_FUNCTION (dhcp_api_hookup);
 #include <vlib/unix/plugin.h>
 #include <vpp/app/version.h>
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Dynamic Host Configuration Protocol (DHCP)",
+  .version = VPP_BUILD_VER,
+  .description = "Dynamic Host Configuration Protocol (DHCP)",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

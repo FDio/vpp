@@ -13,16 +13,15 @@
  * limitations under the License.
  */
 
-
 #include <vnet/ipsec/ipsec_types_api.h>
 #include <vlibapi/api_types.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
 int
-ipsec_proto_decode (vl_api_ipsec_proto_t in, ipsec_protocol_t * out)
+ipsec_proto_decode (vl_api_ipsec_proto_t in, ipsec_protocol_t *out)
 {
   in = clib_net_to_host_u32 (in);
 
@@ -53,15 +52,16 @@ ipsec_proto_encode (ipsec_protocol_t p)
 
 int
 ipsec_crypto_algo_decode (vl_api_ipsec_crypto_alg_t in,
-			  ipsec_crypto_alg_t * out)
+			  ipsec_crypto_alg_t *out)
 {
   in = clib_net_to_host_u32 (in);
 
   switch (in)
     {
-#define _(v,f,s) case IPSEC_API_CRYPTO_ALG_##f: \
-      *out = IPSEC_CRYPTO_ALG_##f;              \
-      return (0);
+#define _(v, f, s)                                                            \
+  case IPSEC_API_CRYPTO_ALG_##f:                                              \
+    *out = IPSEC_CRYPTO_ALG_##f;                                              \
+    return (0);
       foreach_ipsec_crypto_alg
 #undef _
     }
@@ -73,27 +73,28 @@ ipsec_crypto_algo_encode (ipsec_crypto_alg_t c)
 {
   switch (c)
     {
-#define _(v,f,s) case IPSEC_CRYPTO_ALG_##f:                     \
-      return clib_host_to_net_u32(IPSEC_API_CRYPTO_ALG_##f);
+#define _(v, f, s)                                                            \
+  case IPSEC_CRYPTO_ALG_##f:                                                  \
+    return clib_host_to_net_u32 (IPSEC_API_CRYPTO_ALG_##f);
       foreach_ipsec_crypto_alg
 #undef _
-    case IPSEC_CRYPTO_N_ALG:
-      break;
+	case IPSEC_CRYPTO_N_ALG : break;
     }
   ASSERT (0);
   return (VNET_API_ERROR_UNIMPLEMENTED);
 }
 
 int
-ipsec_integ_algo_decode (vl_api_ipsec_integ_alg_t in, ipsec_integ_alg_t * out)
+ipsec_integ_algo_decode (vl_api_ipsec_integ_alg_t in, ipsec_integ_alg_t *out)
 {
   in = clib_net_to_host_u32 (in);
 
   switch (in)
     {
-#define _(v,f,s) case IPSEC_API_INTEG_ALG_##f:  \
-      *out = IPSEC_INTEG_ALG_##f;               \
-      return (0);
+#define _(v, f, s)                                                            \
+  case IPSEC_API_INTEG_ALG_##f:                                               \
+    *out = IPSEC_INTEG_ALG_##f;                                               \
+    return (0);
       foreach_ipsec_integ_alg
 #undef _
     }
@@ -105,25 +106,25 @@ ipsec_integ_algo_encode (ipsec_integ_alg_t i)
 {
   switch (i)
     {
-#define _(v,f,s) case IPSEC_INTEG_ALG_##f:                      \
-      return (clib_host_to_net_u32(IPSEC_API_INTEG_ALG_##f));
+#define _(v, f, s)                                                            \
+  case IPSEC_INTEG_ALG_##f:                                                   \
+    return (clib_host_to_net_u32 (IPSEC_API_INTEG_ALG_##f));
       foreach_ipsec_integ_alg
 #undef _
-    case IPSEC_INTEG_N_ALG:
-      break;
+	case IPSEC_INTEG_N_ALG : break;
     }
   ASSERT (0);
   return (VNET_API_ERROR_UNIMPLEMENTED);
 }
 
 void
-ipsec_key_decode (const vl_api_key_t * key, ipsec_key_t * out)
+ipsec_key_decode (const vl_api_key_t *key, ipsec_key_t *out)
 {
   ipsec_mk_key (out, key->data, key->length);
 }
 
 void
-ipsec_key_encode (const ipsec_key_t * in, vl_api_key_t * out)
+ipsec_key_encode (const ipsec_key_t *in, vl_api_key_t *out)
 {
   out->length = in->len;
   clib_memcpy (out->data, in->data, out->length);
@@ -152,7 +153,7 @@ ipsec_sa_flags_decode (vl_api_ipsec_sad_flags_t in)
 }
 
 vl_api_ipsec_sad_flags_t
-ipsec_sad_flags_encode (const ipsec_sa_t * sa)
+ipsec_sad_flags_encode (const ipsec_sa_t *sa)
 {
   vl_api_ipsec_sad_flags_t flags = IPSEC_API_SAD_FLAG_NONE;
 

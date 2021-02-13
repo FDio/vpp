@@ -51,29 +51,28 @@ typedef struct
   f64 start, end;
 } clib_timebase_range_t;
 
-void clib_timebase_init (clib_timebase_t * tb, i32 timezone_offset_in_hours,
+void clib_timebase_init (clib_timebase_t *tb, i32 timezone_offset_in_hours,
 			 clib_timebase_daylight_time_t daylight_type,
-			 clib_time_t * clib_time);
+			 clib_time_t *clib_time);
 
-void clib_timebase_time_to_components (f64 now,
-				       clib_timebase_component_t * cp);
+void clib_timebase_time_to_components (f64 now, clib_timebase_component_t *cp);
 
-f64 clib_timebase_components_to_time (clib_timebase_component_t * cp);
+f64 clib_timebase_components_to_time (clib_timebase_component_t *cp);
 
 f64 clib_timebase_find_sunday_midnight (f64 start_time);
-f64 clib_timebase_offset_from_sunday (u8 * day);
-f64 clib_timebase_summer_offset (clib_timebase_t * tb, f64 now);
+f64 clib_timebase_offset_from_sunday (u8 *day);
+f64 clib_timebase_summer_offset (clib_timebase_t *tb, f64 now);
 
 unformat_function_t unformat_clib_timebase_range_hms;
 unformat_function_t unformat_clib_timebase_range_vector;
 
 format_function_t format_clib_timebase_time;
 
-static inline f64 clib_timebase_summer_offset_fastpath
-  (clib_timebase_t * tb, f64 now)
+static inline f64
+clib_timebase_summer_offset_fastpath (clib_timebase_t *tb, f64 now)
 {
-  if (PREDICT_TRUE
-      (now >= tb->cached_year_start && now <= tb->cached_year_end))
+  if (PREDICT_TRUE (now >= tb->cached_year_start &&
+		    now <= tb->cached_year_end))
     {
       if (now >= tb->cached_summer_start && now <= tb->cached_summer_end)
 	return tb->summer_offset;
@@ -85,7 +84,7 @@ static inline f64 clib_timebase_summer_offset_fastpath
 }
 
 static inline f64
-clib_timebase_now (clib_timebase_t * tb)
+clib_timebase_now (clib_timebase_t *tb)
 {
   f64 now;
 
@@ -116,7 +115,6 @@ clib_timebase_is_leap_year (u32 year)
 }
 
 #endif /* included_time_range_h */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

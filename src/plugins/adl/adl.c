@@ -20,12 +20,13 @@
 adl_main_t adl_main;
 
 static clib_error_t *
-adl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
+adl_sw_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
 {
   adl_main_t *am = &adl_main;
   adl_config_data_t _data, *data = &_data;
   vlib_main_t *vm = am->vlib_main;
-  vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);;
+  vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  ;
   adl_config_main_t *acm;
   int address_family;
   u32 ci, default_next;
@@ -64,9 +65,9 @@ adl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 		  [IP4_RX_ADL_INPUT] = "ip4-input",
 		};
 
-		vnet_config_init (vm, &acm->config_main,
-				  start_nodes, ARRAY_LEN (start_nodes),
-				  feature_nodes, ARRAY_LEN (feature_nodes));
+		vnet_config_init (vm, &acm->config_main, start_nodes,
+				  ARRAY_LEN (start_nodes), feature_nodes,
+				  ARRAY_LEN (feature_nodes));
 	      }
 	      break;
 	    case VNET_ADL_IP6:
@@ -76,9 +77,9 @@ adl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 		  [IP6_RX_ADL_ALLOWLIST] = "ip6-adl-allowlist",
 		  [IP6_RX_ADL_INPUT] = "ip6-input",
 		};
-		vnet_config_init (vm, &acm->config_main,
-				  start_nodes, ARRAY_LEN (start_nodes),
-				  feature_nodes, ARRAY_LEN (feature_nodes));
+		vnet_config_init (vm, &acm->config_main, start_nodes,
+				  ARRAY_LEN (start_nodes), feature_nodes,
+				  ARRAY_LEN (feature_nodes));
 	      }
 	      break;
 
@@ -89,9 +90,9 @@ adl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 		  [DEFAULT_RX_ADL_ALLOWLIST] = "default-adl-allowlist",
 		  [DEFAULT_RX_ADL_INPUT] = "ethernet-input",
 		};
-		vnet_config_init (vm, &acm->config_main,
-				  start_nodes, ARRAY_LEN (start_nodes),
-				  feature_nodes, ARRAY_LEN (feature_nodes));
+		vnet_config_init (vm, &acm->config_main, start_nodes,
+				  ARRAY_LEN (start_nodes), feature_nodes,
+				  ARRAY_LEN (feature_nodes));
 	      }
 	      break;
 
@@ -114,16 +115,15 @@ adl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 	default_next = DEFAULT_RX_ADL_INPUT;
 
       if (is_add)
-	ci = vnet_config_add_feature (vm, &acm->config_main,
-				      ci, default_next, data, sizeof (*data));
+	ci = vnet_config_add_feature (vm, &acm->config_main, ci, default_next,
+				      data, sizeof (*data));
       else
 	{
 	  /* If the feature was actually configured */
 	  if (ci != ~0)
 	    {
-	      ci = vnet_config_del_feature (vm, &acm->config_main,
-					    ci, default_next, data,
-					    sizeof (*data));
+	      ci = vnet_config_del_feature (
+		vm, &acm->config_main, ci, default_next, data, sizeof (*data));
 	    }
 	}
 
@@ -135,7 +135,7 @@ adl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (adl_sw_interface_add_del);
 
 static clib_error_t *
-adl_init (vlib_main_t * vm)
+adl_init (vlib_main_t *vm)
 {
   adl_main_t *cm = &adl_main;
 
@@ -150,100 +150,96 @@ adl_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (adl_init) =
-{
+VLIB_INIT_FUNCTION (adl_init) = {
   .runs_after = VLIB_INITS ("ip4_allowlist_init", "ip6_allowlist_init"),
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
-VNET_FEATURE_INIT (adl, static) =
-{
+VNET_FEATURE_INIT (adl, static) = {
   .arc_name = "device-input",
   .node_name = "adl-input",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
-/* *INDENT-ON */
 
-int adl_interface_enable_disable (u32 sw_if_index, int enable_disable)
+int
+adl_interface_enable_disable (u32 sw_if_index, int enable_disable)
 {
   /*
    * Redirect pkts from the driver to the adl node.
    */
-  vnet_feature_enable_disable ("device-input", "adl-input",
-			       sw_if_index, enable_disable, 0, 0);
+  vnet_feature_enable_disable ("device-input", "adl-input", sw_if_index,
+			       enable_disable, 0, 0);
   return 0;
 }
 
 static clib_error_t *
-adl_enable_disable_command_fn (vlib_main_t * vm,
-                                unformat_input_t * input,
-                                vlib_cli_command_t * cmd)
+adl_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
-  adl_main_t * cm = &adl_main;
+  adl_main_t *cm = &adl_main;
   u32 sw_if_index = ~0;
   int enable_disable = 1;
 
   int rv;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
-    if (unformat (input, "disable"))
-      enable_disable = 0;
-    else if (unformat (input, "%U", unformat_vnet_sw_interface,
-                       cm->vnet_main, &sw_if_index))
-      ;
-    else
-      break;
-  }
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "disable"))
+	enable_disable = 0;
+      else if (unformat (input, "%U", unformat_vnet_sw_interface,
+			 cm->vnet_main, &sw_if_index))
+	;
+      else
+	break;
+    }
 
   if (sw_if_index == ~0)
     return clib_error_return (0, "Please specify an interface...");
 
   rv = adl_interface_enable_disable (sw_if_index, enable_disable);
 
-  switch(rv) {
-  case 0:
-    break;
+  switch (rv)
+    {
+    case 0:
+      break;
 
-  case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-    return clib_error_return
-      (0, "Invalid interface, only works on physical ports");
-    break;
+    case VNET_API_ERROR_INVALID_SW_IF_INDEX:
+      return clib_error_return (
+	0, "Invalid interface, only works on physical ports");
+      break;
 
-  case VNET_API_ERROR_UNIMPLEMENTED:
-    return clib_error_return (0, "Device driver doesn't support redirection");
-    break;
+    case VNET_API_ERROR_UNIMPLEMENTED:
+      return clib_error_return (0,
+				"Device driver doesn't support redirection");
+      break;
 
-  default:
-    return clib_error_return (0, "adl_interface_enable_disable returned %d",
-                              rv);
-  }
+    default:
+      return clib_error_return (0, "adl_interface_enable_disable returned %d",
+				rv);
+    }
   return 0;
 }
 
 VLIB_CLI_COMMAND (adl_interface_command, static) = {
-    .path = "adl interface",
-    .short_help =
-    "adl interface <interface-name> [disable]",
-    .function = adl_enable_disable_command_fn,
+  .path = "adl interface",
+  .short_help = "adl interface <interface-name> [disable]",
+  .function = adl_enable_disable_command_fn,
 };
 
-
-int adl_allowlist_enable_disable (adl_allowlist_enable_disable_args_t *a)
+int
+adl_allowlist_enable_disable (adl_allowlist_enable_disable_args_t *a)
 {
-  adl_main_t * cm = &adl_main;
-  vlib_main_t * vm = cm->vlib_main;
-  ip4_main_t * im4 = &ip4_main;
-  ip6_main_t * im6 = &ip6_main;
+  adl_main_t *cm = &adl_main;
+  vlib_main_t *vm = cm->vlib_main;
+  ip4_main_t *im4 = &ip4_main;
+  ip6_main_t *im6 = &ip6_main;
   int address_family;
   int is_add;
-  adl_config_main_t * acm;
+  adl_config_main_t *acm;
   u32 next_to_add_del = 0;
-  uword * p;
+  uword *p;
   u32 fib_index = 0;
   u32 ci;
-  adl_config_data_t _data, *data=&_data;
+  adl_config_data_t _data, *data = &_data;
 
   /*
    * Enable / disable allowlist processing on the specified interface
@@ -254,68 +250,65 @@ int adl_allowlist_enable_disable (adl_allowlist_enable_disable_args_t *a)
     {
       acm = &cm->adl_config_mains[address_family];
 
-      switch(address_family)
-        {
-        case VNET_ADL_IP4:
-          is_add = (a->ip4 != 0);
-          next_to_add_del = IP4_RX_ADL_ALLOWLIST;
-          /* configured opaque data must match, or no supper */
-          p = hash_get (im4->fib_index_by_table_id, a->fib_id);
-          if (p)
-            fib_index = p[0];
-          else
-            {
-              if (is_add)
-                return VNET_API_ERROR_NO_SUCH_FIB;
-              else
-                continue;
-            }
-          break;
+      switch (address_family)
+	{
+	case VNET_ADL_IP4:
+	  is_add = (a->ip4 != 0);
+	  next_to_add_del = IP4_RX_ADL_ALLOWLIST;
+	  /* configured opaque data must match, or no supper */
+	  p = hash_get (im4->fib_index_by_table_id, a->fib_id);
+	  if (p)
+	    fib_index = p[0];
+	  else
+	    {
+	      if (is_add)
+		return VNET_API_ERROR_NO_SUCH_FIB;
+	      else
+		continue;
+	    }
+	  break;
 
-        case VNET_ADL_IP6:
-          is_add = (a->ip6 != 0);
-          next_to_add_del = IP6_RX_ADL_ALLOWLIST;
-          p = hash_get (im6->fib_index_by_table_id, a->fib_id);
-          if (p)
-            fib_index = p[0];
-          else
-            {
-              if (is_add)
-                return VNET_API_ERROR_NO_SUCH_FIB;
-              else
-                continue;
-            }
-          break;
+	case VNET_ADL_IP6:
+	  is_add = (a->ip6 != 0);
+	  next_to_add_del = IP6_RX_ADL_ALLOWLIST;
+	  p = hash_get (im6->fib_index_by_table_id, a->fib_id);
+	  if (p)
+	    fib_index = p[0];
+	  else
+	    {
+	      if (is_add)
+		return VNET_API_ERROR_NO_SUCH_FIB;
+	      else
+		continue;
+	    }
+	  break;
 
-        case VNET_ADL_DEFAULT:
-          is_add = (a->default_adl != 0);
-          next_to_add_del = DEFAULT_RX_ADL_ALLOWLIST;
-          break;
+	case VNET_ADL_DEFAULT:
+	  is_add = (a->default_adl != 0);
+	  next_to_add_del = DEFAULT_RX_ADL_ALLOWLIST;
+	  break;
 
-        default:
-          clib_warning ("BUG");
-        }
+	default:
+	  clib_warning ("BUG");
+	}
 
       ci = acm->config_index_by_sw_if_index[a->sw_if_index];
       data->fib_index = fib_index;
 
       if (is_add)
-	ci = vnet_config_add_feature (vm, &acm->config_main,
-				      ci,
-                                      next_to_add_del,
-                                      data, sizeof (*data));
+	ci = vnet_config_add_feature (vm, &acm->config_main, ci,
+				      next_to_add_del, data, sizeof (*data));
       else
-        {
-          /* If the feature was actually configured... */
-          if (ci != ~0)
-            {
-              /* delete it */
-              ci = vnet_config_del_feature (vm, &acm->config_main,
-                                            ci,
-                                            next_to_add_del,
-                                            data, sizeof (*data));
-            }
-        }
+	{
+	  /* If the feature was actually configured... */
+	  if (ci != ~0)
+	    {
+	      /* delete it */
+	      ci = vnet_config_del_feature (vm, &acm->config_main, ci,
+					    next_to_add_del, data,
+					    sizeof (*data));
+	    }
+	}
 
       acm->config_index_by_sw_if_index[a->sw_if_index] = ci;
     }
@@ -323,34 +316,35 @@ int adl_allowlist_enable_disable (adl_allowlist_enable_disable_args_t *a)
 }
 
 static clib_error_t *
-adl_allowlist_enable_disable_command_fn (vlib_main_t * vm,
-                                         unformat_input_t * input,
-                                         vlib_cli_command_t * cmd)
+adl_allowlist_enable_disable_command_fn (vlib_main_t *vm,
+					 unformat_input_t *input,
+					 vlib_cli_command_t *cmd)
 {
-  adl_main_t * cm = &adl_main;
+  adl_main_t *cm = &adl_main;
   u32 sw_if_index = ~0;
   u8 ip4 = 0;
   u8 ip6 = 0;
   u8 default_adl = 0;
   u32 fib_id = 0;
   int rv;
-  adl_allowlist_enable_disable_args_t _a, * a = &_a;
+  adl_allowlist_enable_disable_args_t _a, *a = &_a;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
-    if (unformat (input, "ip4"))
-      ip4 = 1;
-    else if (unformat (input, "ip6"))
-      ip6 = 1;
-    else if (unformat (input, "default"))
-      default_adl = 1;
-    else if (unformat (input, "%U", unformat_vnet_sw_interface,
-                       cm->vnet_main, &sw_if_index))
-      ;
-    else if (unformat (input, "fib-id %d", &fib_id))
-      ;
-    else
-      break;
-  }
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "ip4"))
+	ip4 = 1;
+      else if (unformat (input, "ip6"))
+	ip6 = 1;
+      else if (unformat (input, "default"))
+	default_adl = 1;
+      else if (unformat (input, "%U", unformat_vnet_sw_interface,
+			 cm->vnet_main, &sw_if_index))
+	;
+      else if (unformat (input, "fib-id %d", &fib_id))
+	;
+      else
+	break;
+    }
 
   if (sw_if_index == ~0)
     return clib_error_return (0, "Please specify an interface...");
@@ -363,50 +357,44 @@ adl_allowlist_enable_disable_command_fn (vlib_main_t * vm,
 
   rv = adl_allowlist_enable_disable (a);
 
-  switch(rv) {
-  case 0:
-    break;
+  switch (rv)
+    {
+    case 0:
+      break;
 
-  case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-    return clib_error_return
-      (0, "Invalid interface, only works on physical ports");
-    break;
+    case VNET_API_ERROR_INVALID_SW_IF_INDEX:
+      return clib_error_return (
+	0, "Invalid interface, only works on physical ports");
+      break;
 
-  case VNET_API_ERROR_NO_SUCH_FIB:
-    return clib_error_return
-      (0, "Invalid fib");
-    break;
+    case VNET_API_ERROR_NO_SUCH_FIB:
+      return clib_error_return (0, "Invalid fib");
+      break;
 
-  case VNET_API_ERROR_UNIMPLEMENTED:
-    return clib_error_return (0, "Device driver doesn't support redirection");
-    break;
+    case VNET_API_ERROR_UNIMPLEMENTED:
+      return clib_error_return (0,
+				"Device driver doesn't support redirection");
+      break;
 
-  default:
-    return clib_error_return (0, "adl_allowlist_enable_disable returned %d",
-                              rv);
-  }
+    default:
+      return clib_error_return (0, "adl_allowlist_enable_disable returned %d",
+				rv);
+    }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (adl_allowlist_command, static) =
-{
-   .path = "adl allowlist",
-   .short_help =
-   "adl allowlist <interface-name> [ip4][ip6][default][fib-id <NN>][disable]",
-   .function = adl_allowlist_enable_disable_command_fn,
+VLIB_CLI_COMMAND (adl_allowlist_command, static) = {
+  .path = "adl allowlist",
+  .short_help =
+    "adl allowlist <interface-name> [ip4][ip6][default][fib-id <NN>][disable]",
+  .function = adl_allowlist_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () =
-{
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Allow/deny list plugin",
 };
-/* *INDENT-ON* */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -19,19 +19,19 @@ dpo_type_t dslite_dpo_type;
 dpo_type_t dslite_ce_dpo_type;
 
 void
-dslite_dpo_create (dpo_proto_t dproto, u32 aftr_index, dpo_id_t * dpo)
+dslite_dpo_create (dpo_proto_t dproto, u32 aftr_index, dpo_id_t *dpo)
 {
   dpo_set (dpo, dslite_dpo_type, dproto, aftr_index);
 }
 
 void
-dslite_ce_dpo_create (dpo_proto_t dproto, u32 b4_index, dpo_id_t * dpo)
+dslite_ce_dpo_create (dpo_proto_t dproto, u32 b4_index, dpo_id_t *dpo)
 {
   dpo_set (dpo, dslite_ce_dpo_type, dproto, b4_index);
 }
 
 u8 *
-format_dslite_dpo (u8 * s, va_list * args)
+format_dslite_dpo (u8 *s, va_list *args)
 {
   index_t index = va_arg (*args, index_t);
   CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
@@ -40,7 +40,7 @@ format_dslite_dpo (u8 * s, va_list * args)
 }
 
 u8 *
-format_dslite_ce_dpo (u8 * s, va_list * args)
+format_dslite_ce_dpo (u8 *s, va_list *args)
 {
   index_t index = va_arg (*args, index_t);
   CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
@@ -49,22 +49,22 @@ format_dslite_ce_dpo (u8 * s, va_list * args)
 }
 
 static void
-dslite_dpo_lock (dpo_id_t * dpo)
+dslite_dpo_lock (dpo_id_t *dpo)
 {
 }
 
 static void
-dslite_dpo_unlock (dpo_id_t * dpo)
+dslite_dpo_unlock (dpo_id_t *dpo)
 {
 }
 
 static void
-dslite_ce_dpo_lock (dpo_id_t * dpo)
+dslite_ce_dpo_lock (dpo_id_t *dpo)
 {
 }
 
 static void
-dslite_ce_dpo_unlock (dpo_id_t * dpo)
+dslite_ce_dpo_unlock (dpo_id_t *dpo)
 {
 }
 
@@ -116,8 +116,8 @@ void
 dslite_dpo_module_init (void)
 {
   dslite_dpo_type = dpo_register_new_type (&dslite_dpo_vft, dslite_nodes);
-  dslite_ce_dpo_type = dpo_register_new_type (&dslite_ce_dpo_vft,
-					      dslite_ce_nodes);
+  dslite_ce_dpo_type =
+    dpo_register_new_type (&dslite_ce_dpo_vft, dslite_ce_nodes);
 }
 
 /*

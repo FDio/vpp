@@ -70,8 +70,7 @@ typedef struct
 } vlib_error_main_t;
 
 /* Per node error registration. */
-void vlib_register_errors (struct vlib_main_t *vm,
-			   u32 node_index,
+void vlib_register_errors (struct vlib_main_t *vm, u32 node_index,
 			   u32 n_errors, char *error_strings[],
 			   vl_counter_t counters[]);
 

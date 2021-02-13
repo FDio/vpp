@@ -17,9 +17,9 @@
 #include <vnet/tcp/tcp_inlines.h>
 #include <math.h>
 
-#define beta_cubic 	0.7
-#define cubic_c		0.4
-#define west_const 	(3 * (1 - beta_cubic) / (1 + beta_cubic))
+#define beta_cubic 0.7
+#define cubic_c	   0.4
+#define west_const (3 * (1 - beta_cubic) / (1 + beta_cubic))
 
 typedef struct cubic_cfg_
 {
@@ -60,7 +60,7 @@ cubic_time (u32 thread_index)
  * CUBIC window increase function. Time and K need to be provided in seconds.
  */
 static inline u64
-W_cubic (cubic_data_t * cd, f64 t)
+W_cubic (cubic_data_t *cd, f64 t)
 {
   f64 diff = t - cd->K;
 
@@ -72,7 +72,7 @@ W_cubic (cubic_data_t * cd, f64 t)
  * RFC 8312 Eq. 2
  */
 static inline f64
-K_cubic (cubic_data_t * cd, u32 wnd)
+K_cubic (cubic_data_t *cd, u32 wnd)
 {
   /* K = cubic_root(W_max*(1-beta_cubic)/C)
    * Because the current window may be less than W_max * beta_cubic because
@@ -88,14 +88,14 @@ K_cubic (cubic_data_t * cd, u32 wnd)
  * Time (t) and rtt should be provided in seconds
  */
 static inline u32
-W_est (cubic_data_t * cd, f64 t, f64 rtt)
+W_est (cubic_data_t *cd, f64 t, f64 rtt)
 {
   /* W_est(t) = W_max*beta_cubic+[3*(1-beta_cubic)/(1+beta_cubic)]*(t/RTT) */
   return cd->w_max * beta_cubic + west_const * (t / rtt);
 }
 
 static void
-cubic_congestion (tcp_connection_t * tc)
+cubic_congestion (tcp_connection_t *tc)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
   u32 w_max;
@@ -110,7 +110,7 @@ cubic_congestion (tcp_connection_t * tc)
 }
 
 static void
-cubic_loss (tcp_connection_t * tc)
+cubic_loss (tcp_connection_t *tc)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
 
@@ -121,7 +121,7 @@ cubic_loss (tcp_connection_t * tc)
 }
 
 static void
-cubic_recovered (tcp_connection_t * tc)
+cubic_recovered (tcp_connection_t *tc)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
   cd->t_start = cubic_time (tc->c_thread_index);
@@ -130,7 +130,7 @@ cubic_recovered (tcp_connection_t * tc)
 }
 
 static void
-cubic_cwnd_accumulate (tcp_connection_t * tc, u32 thresh, u32 bytes_acked)
+cubic_cwnd_accumulate (tcp_connection_t *tc, u32 thresh, u32 bytes_acked)
 {
   /* We just updated the threshold and don't know how large the previous
    * one was. Still, optimistically increase cwnd by one segment and
@@ -145,7 +145,7 @@ cubic_cwnd_accumulate (tcp_connection_t * tc, u32 thresh, u32 bytes_acked)
 }
 
 static void
-cubic_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
+cubic_rcv_ack (tcp_connection_t *tc, tcp_rate_sample_t *rs)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
   u64 w_cubic, w_aimd;
@@ -200,7 +200,7 @@ cubic_rcv_ack (tcp_connection_t * tc, tcp_rate_sample_t * rs)
 }
 
 static void
-cubic_conn_init (tcp_connection_t * tc)
+cubic_conn_init (tcp_connection_t *tc)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
   tc->ssthresh = cubic_cfg.ssthresh;
@@ -211,7 +211,7 @@ cubic_conn_init (tcp_connection_t * tc)
 }
 
 static uword
-cubic_unformat_config (unformat_input_t * input)
+cubic_unformat_config (unformat_input_t *input)
 {
   u32 ssthresh = 0x7FFFFFFFU;
 
@@ -244,7 +244,7 @@ const static tcp_cc_algorithm_t tcp_cubic = {
 };
 
 clib_error_t *
-cubic_init (vlib_main_t * vm)
+cubic_init (vlib_main_t *vm)
 {
   clib_error_t *error = 0;
 

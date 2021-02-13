@@ -27,8 +27,8 @@ namespace VOM {
 namespace ip_unnumbered_cmds {
 
 /**
-*A command class that configures the IP unnumbered
-*/
+ *A command class that configures the IP unnumbered
+ */
 class config_cmd
   : public rpc_cmd<HW::item<bool>, vapi::Sw_interface_set_unnumbered>
 {

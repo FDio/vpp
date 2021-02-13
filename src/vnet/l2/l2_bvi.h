@@ -24,13 +24,13 @@
 
 #include <vnet/l2/l2_input.h>
 
-#define TO_BVI_ERR_OK        0
+#define TO_BVI_ERR_OK	     0
 #define TO_BVI_ERR_BAD_MAC   1
 #define TO_BVI_ERR_ETHERTYPE 2
 
 static_always_inline u32
-l2_to_bvi_dmac_check (vnet_hw_interface_t * hi, u8 * dmac,
-		      ethernet_interface_t * ei, u8 have_sec_dmac)
+l2_to_bvi_dmac_check (vnet_hw_interface_t *hi, u8 *dmac,
+		      ethernet_interface_t *ei, u8 have_sec_dmac)
 {
   ethernet_interface_address_t *sec_addr;
 
@@ -40,10 +40,10 @@ l2_to_bvi_dmac_check (vnet_hw_interface_t * hi, u8 * dmac,
   if (have_sec_dmac)
     {
       vec_foreach (sec_addr, ei->secondary_addrs)
-      {
-	if (ethernet_mac_address_equal (dmac, sec_addr->mac.bytes))
-	  return TO_BVI_ERR_OK;
-      }
+	{
+	  if (ethernet_mac_address_equal (dmac, sec_addr->mac.bytes))
+	    return TO_BVI_ERR_OK;
+	}
     }
 
   return TO_BVI_ERR_BAD_MAC;
@@ -56,10 +56,8 @@ l2_to_bvi_dmac_check (vnet_hw_interface_t * hi, u8 * dmac,
  */
 
 static_always_inline u32
-l2_to_bvi (vlib_main_t * vlib_main,
-	   vnet_main_t * vnet_main,
-	   vlib_buffer_t * b0,
-	   u32 bvi_sw_if_index, next_by_ethertype_t * l3_next, u16 * next0)
+l2_to_bvi (vlib_main_t *vlib_main, vnet_main_t *vnet_main, vlib_buffer_t *b0,
+	   u32 bvi_sw_if_index, next_by_ethertype_t *l3_next, u16 *next0)
 {
   ethernet_main_t *em = &ethernet_main;
 
@@ -74,10 +72,10 @@ l2_to_bvi (vlib_main_t * vlib_main,
 
       if (PREDICT_FALSE (ei && (vec_len (ei->secondary_addrs) > 0)))
 	rv = l2_to_bvi_dmac_check (hi, e0->dst_address, ei,
-				   1 /* have_sec_dmac */ );
+				   1 /* have_sec_dmac */);
       else
 	rv = l2_to_bvi_dmac_check (hi, e0->dst_address, ei,
-				   0 /* have_sec_dmac */ );
+				   0 /* have_sec_dmac */);
 
       if (rv != TO_BVI_ERR_OK)
 	return rv;
@@ -119,20 +117,19 @@ l2_to_bvi (vlib_main_t * vlib_main,
     }
 
   /* increment BVI RX interface stat */
-  vlib_increment_combined_counter
-    (vnet_main->interface_main.combined_sw_if_counters
-     + VNET_INTERFACE_COUNTER_RX,
-     vlib_main->thread_index, bvi_sw_if_index,
-     1, vlib_buffer_length_in_chain (vlib_main, b0));
+  vlib_increment_combined_counter (
+    vnet_main->interface_main.combined_sw_if_counters +
+      VNET_INTERFACE_COUNTER_RX,
+    vlib_main->thread_index, bvi_sw_if_index, 1,
+    vlib_buffer_length_in_chain (vlib_main, b0));
   return TO_BVI_ERR_OK;
 }
 
-void
-l2bvi_register_input_type (vlib_main_t * vm,
-			   ethernet_type_t type, u32 node_index);
+void l2bvi_register_input_type (vlib_main_t *vm, ethernet_type_t type,
+				u32 node_index);
 
-extern int l2_bvi_create (u32 instance, const mac_address_t * mac,
-			  u32 * sw_if_index);
+extern int l2_bvi_create (u32 instance, const mac_address_t *mac,
+			  u32 *sw_if_index);
 extern int l2_bvi_delete (u32 sw_if_index);
 
 #endif

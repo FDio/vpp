@@ -57,14 +57,11 @@
 #endif
 
 /* r1 r2 link condition+vsave regs 14-31 fp regs 14-31 vector regs 20-31 */
-#define CLIB_ARCH_LONGJMP_REGS				\
-  (/* r1 lr cr vrsave */				\
-   4							\
-   /* gp */						\
-   + (31 - 14 + 1)					\
-   /* fp */						\
-   + (sizeof (f64) / sizeof (uword)) * (31 - 14 + 1)	\
-   /* vector regs */					\
+#define CLIB_ARCH_LONGJMP_REGS                                                \
+  (						     /* r1 lr cr vrsave */    \
+   4						     /* gp */                 \
+   + (31 - 14 + 1)				     /* fp */                 \
+   + (sizeof (f64) / sizeof (uword)) * (31 - 14 + 1) /* vector regs */        \
    + (16 / sizeof (uword)) * CLIB_POWERPC_ALTIVEC_N_REGS)
 
 #elif defined(__SPU__)
@@ -78,7 +75,7 @@
 #define CLIB_ARCH_LONGJMP_REGS (10)
 #else
 /* For iwmmxt we save 6 extra 8 byte registers. */
-#define CLIB_ARCH_LONGJMP_REGS (10 + (6*2))
+#define CLIB_ARCH_LONGJMP_REGS (10 + (6 * 2))
 #endif
 
 #elif defined(__xtensa__)
@@ -105,15 +102,15 @@ typedef struct
 } clib_longjmp_t __attribute__ ((aligned (16)));
 
 /* Return given value to saved context. */
-void clib_longjmp (clib_longjmp_t * save, uword return_value);
+void clib_longjmp (clib_longjmp_t *save, uword return_value);
 
 /* Save context.  Returns given value if jump is not taken;
    otherwise returns value from clib_longjmp if long jump is taken. */
-uword clib_setjmp (clib_longjmp_t * save, uword return_value_not_taken);
+uword clib_setjmp (clib_longjmp_t *save, uword return_value_not_taken);
 
 /* Call function on given stack. */
-uword clib_calljmp (uword (*func) (uword func_arg),
-		    uword func_arg, void *stack);
+uword clib_calljmp (uword (*func) (uword func_arg), uword func_arg,
+		    void *stack);
 
 #endif /* included_clib_longjmp_h */
 

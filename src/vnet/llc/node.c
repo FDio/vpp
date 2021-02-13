@@ -40,13 +40,13 @@
 #include <vlib/vlib.h>
 #include <vnet/llc/llc.h>
 
-#define foreach_llc_input_next			\
-  _ (PUNT, "error-punt")			\
+#define foreach_llc_input_next                                                \
+  _ (PUNT, "error-punt")                                                      \
   _ (DROP, "error-drop")
 
 typedef enum
 {
-#define _(s,n) LLC_INPUT_NEXT_##s,
+#define _(s, n) LLC_INPUT_NEXT_##s,
   foreach_llc_input_next
 #undef _
     LLC_INPUT_N_NEXT,
@@ -58,7 +58,7 @@ typedef struct
 } llc_input_trace_t;
 
 static u8 *
-format_llc_input_trace (u8 * s, va_list * va)
+format_llc_input_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
@@ -70,8 +70,8 @@ format_llc_input_trace (u8 * s, va_list * va)
 }
 
 static uword
-llc_input (vlib_main_t * vm,
-	   vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+llc_input (vlib_main_t *vm, vlib_node_runtime_t *node,
+	   vlib_frame_t *from_frame)
 {
   llc_main_t *lm = &llc_main;
   u32 n_left_from, next_index, *from, *to_next;
@@ -80,9 +80,7 @@ llc_input (vlib_main_t * vm,
   n_left_from = from_frame->n_vectors;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    vlib_trace_frame_buffers_only (vm, node,
-				   from,
-				   n_left_from,
+    vlib_trace_frame_buffers_only (vm, node, from, n_left_from,
 				   sizeof (from[0]),
 				   sizeof (llc_input_trace_t));
 
@@ -139,14 +137,12 @@ llc_input (vlib_main_t * vm,
 	  next0 = lm->input_next_by_protocol[h0->dst_sap];
 	  next1 = lm->input_next_by_protocol[h1->dst_sap];
 
-	  b0->error =
-	    node->errors[next0 ==
-			 LLC_INPUT_NEXT_DROP ? LLC_ERROR_UNKNOWN_PROTOCOL :
-			 LLC_ERROR_NONE];
-	  b1->error =
-	    node->errors[next1 ==
-			 LLC_INPUT_NEXT_DROP ? LLC_ERROR_UNKNOWN_PROTOCOL :
-			 LLC_ERROR_NONE];
+	  b0->error = node->errors[next0 == LLC_INPUT_NEXT_DROP ?
+				     LLC_ERROR_UNKNOWN_PROTOCOL :
+				     LLC_ERROR_NONE];
+	  b1->error = node->errors[next1 == LLC_INPUT_NEXT_DROP ?
+				     LLC_ERROR_UNKNOWN_PROTOCOL :
+				     LLC_ERROR_NONE];
 
 	  enqueue_code = (next0 != next_index) + 2 * (next1 != next_index);
 
@@ -211,10 +207,9 @@ llc_input (vlib_main_t * vm,
 
 	  next0 = lm->input_next_by_protocol[h0->dst_sap];
 
-	  b0->error =
-	    node->errors[next0 ==
-			 LLC_INPUT_NEXT_DROP ? LLC_ERROR_UNKNOWN_PROTOCOL :
-			 LLC_ERROR_NONE];
+	  b0->error = node->errors[next0 == LLC_INPUT_NEXT_DROP ?
+				     LLC_ERROR_UNKNOWN_PROTOCOL :
+				     LLC_ERROR_NONE];
 
 	  /* Sent packet to wrong next? */
 	  if (PREDICT_FALSE (next0 != next_index))
@@ -224,8 +219,8 @@ llc_input (vlib_main_t * vm,
 
 	      /* Send to correct next. */
 	      next_index = next0;
-	      vlib_get_next_frame (vm, node, next_index,
-				   to_next, n_left_to_next);
+	      vlib_get_next_frame (vm, node, next_index, to_next,
+				   n_left_to_next);
 
 	      to_next[0] = bi0;
 	      to_next += 1;
@@ -240,12 +235,11 @@ llc_input (vlib_main_t * vm,
 }
 
 static char *llc_error_strings[] = {
-#define _(f,s) s,
+#define _(f, s) s,
   foreach_llc_error
 #undef _
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (llc_input_node) = {
   .function = llc_input,
   .name = "llc-input",
@@ -257,7 +251,7 @@ VLIB_REGISTER_NODE (llc_input_node) = {
 
   .n_next_nodes = LLC_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [LLC_INPUT_NEXT_##s] = n,
+#define _(s, n) [LLC_INPUT_NEXT_##s] = n,
     foreach_llc_input_next
 #undef _
   },
@@ -266,10 +260,9 @@ VLIB_REGISTER_NODE (llc_input_node) = {
   .format_trace = format_llc_input_trace,
   .unformat_buffer = unformat_llc_header,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-llc_input_init (vlib_main_t * vm)
+llc_input_init (vlib_main_t *vm)
 {
   llc_main_t *lm = &llc_main;
 
@@ -293,8 +286,8 @@ llc_input_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (llc_input_init);
 
 void
-llc_register_input_protocol (vlib_main_t * vm,
-			     llc_protocol_t protocol, u32 node_index)
+llc_register_input_protocol (vlib_main_t *vm, llc_protocol_t protocol,
+			     u32 node_index)
 {
   llc_main_t *lm = &llc_main;
   llc_protocol_info_t *pi;

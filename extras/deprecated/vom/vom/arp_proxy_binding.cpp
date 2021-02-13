@@ -29,14 +29,12 @@ arp_proxy_binding::event_handler arp_proxy_binding::m_evh;
 arp_proxy_binding::arp_proxy_binding(const interface& itf)
   : m_itf(itf.singular())
   , m_binding(true)
-{
-}
+{}
 
 arp_proxy_binding::arp_proxy_binding(const arp_proxy_binding& o)
   : m_itf(o.m_itf)
   , m_binding(o.m_binding)
-{
-}
+{}
 
 arp_proxy_binding::~arp_proxy_binding()
 {
@@ -82,8 +80,8 @@ void
 arp_proxy_binding::update(const arp_proxy_binding& desired)
 {
   /*
- * the desired state is always that the interface should be created
- */
+   * the desired state is always that the interface should be created
+   */
   if (!m_binding) {
     HW::enqueue(
       new arp_proxy_binding_cmds::bind_cmd(m_binding, m_itf->handle()));
@@ -105,8 +103,8 @@ arp_proxy_binding::singular() const
 arp_proxy_binding::event_handler::event_handler()
 {
   OM::register_listener(this);
-  inspect::register_handler({ "arp-proxy-binding" }, "ARP proxy bindings",
-                            this);
+  inspect::register_handler(
+    { "arp-proxy-binding" }, "ARP proxy bindings", this);
 }
 
 void

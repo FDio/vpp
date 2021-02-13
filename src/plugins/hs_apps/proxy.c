@@ -1,17 +1,17 @@
 /*
-* Copyright (c) 2017-2019 Cisco and/or its affiliates.
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at:
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright (c) 2017-2019 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
@@ -45,7 +45,7 @@ proxy_cb_fn (void *data, u32 data_len)
 }
 
 static void
-proxy_call_main_thread (vnet_connect_args_t * a)
+proxy_call_main_thread (vnet_connect_args_t *a)
 {
   if (vlib_get_thread_index () == 0)
     {
@@ -57,12 +57,12 @@ proxy_call_main_thread (vnet_connect_args_t * a)
       args.api_context = a->api_context;
       args.app_index = a->app_index;
       clib_memcpy (args.uri, a->uri, vec_len (a->uri));
-      vl_api_rpc_call_main_thread (proxy_cb_fn, (u8 *) & args, sizeof (args));
+      vl_api_rpc_call_main_thread (proxy_cb_fn, (u8 *) &args, sizeof (args));
     }
 }
 
 static proxy_session_t *
-proxy_get_active_open (proxy_main_t * pm, session_handle_t handle)
+proxy_get_active_open (proxy_main_t *pm, session_handle_t handle)
 {
   proxy_session_t *ps = 0;
   uword *p;
@@ -74,7 +74,7 @@ proxy_get_active_open (proxy_main_t * pm, session_handle_t handle)
 }
 
 static proxy_session_t *
-proxy_get_passive_open (proxy_main_t * pm, session_handle_t handle)
+proxy_get_passive_open (proxy_main_t *pm, session_handle_t handle)
 {
   proxy_session_t *ps = 0;
   uword *p;
@@ -86,7 +86,7 @@ proxy_get_passive_open (proxy_main_t * pm, session_handle_t handle)
 }
 
 static void
-proxy_try_close_session (session_t * s, int is_active_open)
+proxy_try_close_session (session_t *s, int is_active_open)
 {
   proxy_main_t *pm = &proxy_main;
   proxy_session_t *ps = 0;
@@ -142,7 +142,7 @@ proxy_try_close_session (session_t * s, int is_active_open)
 }
 
 static void
-proxy_session_free (proxy_session_t * ps)
+proxy_session_free (proxy_session_t *ps)
 {
   proxy_main_t *pm = &proxy_main;
   if (CLIB_DEBUG > 0)
@@ -151,7 +151,7 @@ proxy_session_free (proxy_session_t * ps)
 }
 
 static void
-proxy_try_delete_session (session_t * s, u8 is_active_open)
+proxy_try_delete_session (session_t *s, u8 is_active_open)
 {
   proxy_main_t *pm = &proxy_main;
   proxy_session_t *ps = 0;
@@ -190,7 +190,7 @@ proxy_try_delete_session (session_t * s, u8 is_active_open)
 }
 
 static int
-common_fifo_tuning_callback (session_t * s, svm_fifo_t * f,
+common_fifo_tuning_callback (session_t *s, svm_fifo_t *f,
 			     session_ft_action_t act, u32 bytes)
 {
   proxy_main_t *pm = &proxy_main;
@@ -217,7 +217,7 @@ common_fifo_tuning_callback (session_t * s, svm_fifo_t * f,
       if (update_size)
 	svm_fifo_set_size (f, fifo_size + update_size);
     }
-  else				/* dequeued */
+  else /* dequeued */
     {
       if (seg_usage > pm->high_watermark || fifo_usage < 20)
 	update_size = bytes;
@@ -234,7 +234,7 @@ common_fifo_tuning_callback (session_t * s, svm_fifo_t * f,
 }
 
 static int
-proxy_accept_callback (session_t * s)
+proxy_accept_callback (session_t *s)
 {
   proxy_main_t *pm = &proxy_main;
   proxy_session_t *ps;
@@ -256,20 +256,20 @@ proxy_accept_callback (session_t * s)
 }
 
 static void
-proxy_disconnect_callback (session_t * s)
+proxy_disconnect_callback (session_t *s)
 {
-  proxy_try_close_session (s, 0 /* is_active_open */ );
+  proxy_try_close_session (s, 0 /* is_active_open */);
 }
 
 static void
-proxy_reset_callback (session_t * s)
+proxy_reset_callback (session_t *s)
 {
-  proxy_try_close_session (s, 0 /* is_active_open */ );
+  proxy_try_close_session (s, 0 /* is_active_open */);
 }
 
 static int
-proxy_connected_callback (u32 app_index, u32 api_context,
-			  session_t * s, session_error_t err)
+proxy_connected_callback (u32 app_index, u32 api_context, session_t *s,
+			  session_error_t err)
 {
   clib_warning ("called...");
   return -1;
@@ -283,7 +283,7 @@ proxy_add_segment_callback (u32 client_index, u64 segment_handle)
 }
 
 static int
-proxy_rx_callback (session_t * s)
+proxy_rx_callback (session_t *s)
 {
   proxy_main_t *pm = &proxy_main;
   u32 thread_index = vlib_get_thread_index ();
@@ -310,9 +310,8 @@ proxy_rx_callback (session_t * s)
 	{
 	  u32 ao_thread_index = ao_tx_fifo->master_thread_index;
 	  u32 ao_session_index = ao_tx_fifo->shr->master_session_index;
-	  if (session_send_io_evt_to_thread_custom (&ao_session_index,
-						    ao_thread_index,
-						    SESSION_IO_EVT_TX))
+	  if (session_send_io_evt_to_thread_custom (
+		&ao_session_index, ao_thread_index, SESSION_IO_EVT_TX))
 	    clib_warning ("failed to enqueue tx evt");
 	}
 
@@ -338,7 +337,7 @@ proxy_rx_callback (session_t * s)
 	return 0;
 
       max_dequeue = clib_min (pm->rcv_buffer_size, max_dequeue);
-      actual_transfer = svm_fifo_peek (rx_fifo, 0 /* relative_offset */ ,
+      actual_transfer = svm_fifo_peek (rx_fifo, 0 /* relative_offset */,
 				       max_dequeue, pm->rx_buf[thread_index]);
 
       /* $$$ your message in this space: parse url, etc. */
@@ -373,7 +372,7 @@ proxy_force_ack (void *handlep)
 }
 
 static int
-proxy_tx_callback (session_t * proxy_s)
+proxy_tx_callback (session_t *proxy_s)
 {
   proxy_main_t *pm = &proxy_main;
   proxy_session_t *ps;
@@ -406,12 +405,12 @@ proxy_tx_callback (session_t * proxy_s)
 }
 
 static void
-proxy_cleanup_callback (session_t * s, session_cleanup_ntf_t ntf)
+proxy_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
 {
   if (ntf == SESSION_CLEANUP_TRANSPORT)
     return;
 
-  proxy_try_delete_session (s, 0 /* is_active_open */ );
+  proxy_try_delete_session (s, 0 /* is_active_open */);
 }
 
 static session_cb_vft_t proxy_session_cb_vft = {
@@ -427,8 +426,8 @@ static session_cb_vft_t proxy_session_cb_vft = {
 };
 
 static int
-active_open_connected_callback (u32 app_index, u32 opaque,
-				session_t * s, session_error_t err)
+active_open_connected_callback (u32 app_index, u32 opaque, session_t *s,
+				session_error_t err)
 {
   proxy_main_t *pm = &proxy_main;
   proxy_session_t *ps;
@@ -502,25 +501,25 @@ active_open_connected_callback (u32 app_index, u32 opaque,
 }
 
 static void
-active_open_reset_callback (session_t * s)
+active_open_reset_callback (session_t *s)
 {
-  proxy_try_close_session (s, 1 /* is_active_open */ );
+  proxy_try_close_session (s, 1 /* is_active_open */);
 }
 
 static int
-active_open_create_callback (session_t * s)
+active_open_create_callback (session_t *s)
 {
   return 0;
 }
 
 static void
-active_open_disconnect_callback (session_t * s)
+active_open_disconnect_callback (session_t *s)
 {
-  proxy_try_close_session (s, 1 /* is_active_open */ );
+  proxy_try_close_session (s, 1 /* is_active_open */);
 }
 
 static int
-active_open_rx_callback (session_t * s)
+active_open_rx_callback (session_t *s)
 {
   svm_fifo_t *proxy_tx_fifo;
 
@@ -533,9 +532,8 @@ active_open_rx_callback (session_t * s)
     {
       u8 thread_index = proxy_tx_fifo->master_thread_index;
       u32 session_index = proxy_tx_fifo->shr->master_session_index;
-      return session_send_io_evt_to_thread_custom (&session_index,
-						   thread_index,
-						   SESSION_IO_EVT_TX);
+      return session_send_io_evt_to_thread_custom (
+	&session_index, thread_index, SESSION_IO_EVT_TX);
     }
 
   if (svm_fifo_max_enqueue (proxy_tx_fifo) <= TCP_MSS)
@@ -545,7 +543,7 @@ active_open_rx_callback (session_t * s)
 }
 
 static int
-active_open_tx_callback (session_t * ao_s)
+active_open_tx_callback (session_t *ao_s)
 {
   proxy_main_t *pm = &proxy_main;
   transport_connection_t *tc;
@@ -588,15 +586,14 @@ active_open_tx_callback (session_t * ao_s)
 }
 
 static void
-active_open_cleanup_callback (session_t * s, session_cleanup_ntf_t ntf)
+active_open_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
 {
   if (ntf == SESSION_CLEANUP_TRANSPORT)
     return;
 
-  proxy_try_delete_session (s, 1 /* is_active_open */ );
+  proxy_try_delete_session (s, 1 /* is_active_open */);
 }
 
-/* *INDENT-OFF* */
 static session_cb_vft_t active_open_clients = {
   .session_reset_callback = active_open_reset_callback,
   .session_connected_callback = active_open_connected_callback,
@@ -607,7 +604,6 @@ static session_cb_vft_t active_open_clients = {
   .builtin_app_tx_callback = active_open_tx_callback,
   .fifo_tuning_callback = common_fifo_tuning_callback
 };
-/* *INDENT-ON* */
 
 static int
 proxy_server_attach ()
@@ -674,8 +670,8 @@ active_open_attach (void)
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     pm->prealloc_fifos ? pm->prealloc_fifos : 0;
 
-  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN
-    | APP_OPTIONS_FLAGS_IS_PROXY;
+  options[APP_OPTIONS_FLAGS] =
+    APP_OPTIONS_FLAGS_IS_BUILTIN | APP_OPTIONS_FLAGS_IS_PROXY;
 
   a->options = options;
 
@@ -701,14 +697,14 @@ proxy_server_listen ()
 }
 
 static int
-proxy_server_create (vlib_main_t * vm)
+proxy_server_create (vlib_main_t *vm)
 {
   proxy_main_t *pm = &proxy_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads;
   int i;
 
-  num_threads = 1 /* main thread */  + vtm->n_threads;
+  num_threads = 1 /* main thread */ + vtm->n_threads;
   vec_validate (proxy_main.server_event_queue, num_threads - 1);
   vec_validate (proxy_main.active_open_event_queue, num_threads - 1);
   vec_validate (pm->rx_buf, num_threads - 1);
@@ -745,8 +741,8 @@ proxy_server_create (vlib_main_t * vm)
 }
 
 static clib_error_t *
-proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+proxy_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
 {
   proxy_main_t *pm = &proxy_main;
   char *default_server_uri = "tcp://0.0.0.0/23";
@@ -769,11 +765,11 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "fifo-size %U",
-		    unformat_memory_size, &pm->fifo_size))
+      if (unformat (input, "fifo-size %U", unformat_memory_size,
+		    &pm->fifo_size))
 	;
-      else if (unformat (input, "max-fifo-size %U",
-			 unformat_memory_size, &pm->max_fifo_size))
+      else if (unformat (input, "max-fifo-size %U", unformat_memory_size,
+			 &pm->max_fifo_size))
 	;
       else if (unformat (input, "high-watermark %d", &tmp32))
 	pm->high_watermark = (u8) tmp32;
@@ -790,8 +786,8 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 unformat_memory_size, &tmp64))
 	{
 	  if (tmp64 >= 0x100000000ULL)
-	    return clib_error_return
-	      (0, "private segment size %lld (%llu) too large", tmp64, tmp64);
+	    return clib_error_return (
+	      0, "private segment size %lld (%llu) too large", tmp64, tmp64);
 	  pm->private_segment_size = tmp64;
 	}
       else if (unformat (input, "server-uri %s", &pm->server_uri))
@@ -816,7 +812,7 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       pm->client_uri = format (0, "%s%c", default_client_uri, 0);
     }
 
-  vnet_session_enable_disable (vm, 1 /* turn on session and transport */ );
+  vnet_session_enable_disable (vm, 1 /* turn on session and transport */);
 
   rv = proxy_server_create (vm);
   switch (rv)
@@ -830,21 +826,18 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (proxy_create_command, static) =
-{
+VLIB_CLI_COMMAND (proxy_create_command, static) = {
   .path = "test proxy server",
   .short_help = "test proxy server [server-uri <tcp://ip/port>]"
-      "[client-uri <tcp://ip/port>][fifo-size <nn>[k|m]]"
-      "[max-fifo-size <nn>[k|m]][high-watermark <nn>]"
-      "[low-watermark <nn>][rcv-buf-size <nn>][prealloc-fifos <nn>]"
-      "[private-segment-size <mem>][private-segment-count <nn>]",
+		"[client-uri <tcp://ip/port>][fifo-size <nn>[k|m]]"
+		"[max-fifo-size <nn>[k|m]][high-watermark <nn>]"
+		"[low-watermark <nn>][rcv-buf-size <nn>][prealloc-fifos <nn>]"
+		"[private-segment-size <mem>][private-segment-count <nn>]",
   .function = proxy_server_create_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-proxy_main_init (vlib_main_t * vm)
+proxy_main_init (vlib_main_t *vm)
 {
   proxy_main_t *pm = &proxy_main;
   pm->server_client_index = ~0;
@@ -858,9 +851,9 @@ proxy_main_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (proxy_main_init);
 
 /*
-* fd.io coding-style-patch-verification: ON
-*
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*/
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

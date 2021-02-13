@@ -75,10 +75,10 @@ vl_socket_get_registration (u32 reg_index)
 void vl_socket_free_registration_index (u32 pool_index);
 clib_error_t *vl_socket_read_ready (struct clib_file *uf);
 clib_error_t *vl_socket_write_ready (struct clib_file *uf);
-void vl_socket_api_send (vl_api_registration_t * rp, u8 * elem);
-void vl_socket_process_api_msg (vl_api_registration_t * rp, i8 * input_v);
-void vl_sock_api_dump_clients (vlib_main_t * vm, api_main_t * am);
-clib_error_t *vl_sock_api_init (vlib_main_t * vm);
+void vl_socket_api_send (vl_api_registration_t *rp, u8 *elem);
+void vl_socket_process_api_msg (vl_api_registration_t *rp, i8 *input_v);
+void vl_sock_api_dump_clients (vlib_main_t *vm, api_main_t *am);
+clib_error_t *vl_sock_api_init (vlib_main_t *vm);
 clib_error_t *vl_sock_api_send_fd_msg (int socket_fd, int fds[], int n_fds);
 clib_error_t *vl_sock_api_recv_fd_msg (int socket_fd, int fds[], int n_fds,
 				       u32 wait);

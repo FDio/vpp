@@ -21,9 +21,9 @@
 #include <vnet/fib/ip6_fib.h>
 
 static int
-ip6_nd_proxy_add_del (u32 sw_if_index, const ip6_address_t * addr, u8 is_del)
+ip6_nd_proxy_add_del (u32 sw_if_index, const ip6_address_t *addr, u8 is_del)
 {
-  /* *INDENT-OFF* */
+
   u32 fib_index;
   fib_prefix_t pfx = {
     .fp_len = 128,
@@ -35,7 +35,6 @@ ip6_nd_proxy_add_del (u32 sw_if_index, const ip6_address_t * addr, u8 is_del)
   ip46_address_t nh = {
     .ip6 = *addr,
   };
-  /* *INDENT-ON* */
 
   fib_index = ip6_fib_table_get_index_for_sw_if_index (sw_if_index);
 
@@ -44,13 +43,9 @@ ip6_nd_proxy_add_del (u32 sw_if_index, const ip6_address_t * addr, u8 is_del)
 
   if (is_del)
     {
-      fib_table_entry_path_remove (fib_index,
-				   &pfx,
-				   FIB_SOURCE_IP6_ND_PROXY,
-				   DPO_PROTO_IP6,
-				   &nh,
-				   sw_if_index,
-				   ~0, 1, FIB_ROUTE_PATH_FLAG_NONE);
+      fib_table_entry_path_remove (fib_index, &pfx, FIB_SOURCE_IP6_ND_PROXY,
+				   DPO_PROTO_IP6, &nh, sw_if_index, ~0, 1,
+				   FIB_ROUTE_PATH_FLAG_NONE);
       /* flush the ND cache of this address if it's there */
       ip_address_t ip = {
 	.ip = nh,
@@ -60,33 +55,29 @@ ip6_nd_proxy_add_del (u32 sw_if_index, const ip6_address_t * addr, u8 is_del)
     }
   else
     {
-      fib_table_entry_path_add (fib_index,
-				&pfx,
-				FIB_SOURCE_IP6_ND_PROXY,
-				FIB_ENTRY_FLAG_NONE,
-				DPO_PROTO_IP6,
-				&nh,
-				sw_if_index,
-				~0, 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+      fib_table_entry_path_add (fib_index, &pfx, FIB_SOURCE_IP6_ND_PROXY,
+				FIB_ENTRY_FLAG_NONE, DPO_PROTO_IP6, &nh,
+				sw_if_index, ~0, 1, NULL,
+				FIB_ROUTE_PATH_FLAG_NONE);
     }
   return (0);
 }
 
 int
-ip6_nd_proxy_add (u32 sw_if_index, const ip6_address_t * addr)
+ip6_nd_proxy_add (u32 sw_if_index, const ip6_address_t *addr)
 {
   return (ip6_nd_proxy_add_del (sw_if_index, addr, 0));
 }
 
 int
-ip6_nd_proxy_del (u32 sw_if_index, const ip6_address_t * addr)
+ip6_nd_proxy_del (u32 sw_if_index, const ip6_address_t *addr)
 {
   return (ip6_nd_proxy_add_del (sw_if_index, addr, 1));
 }
 
 static clib_error_t *
-set_ip6_nd_proxy_cmd (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+set_ip6_nd_proxy_cmd (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
@@ -113,14 +104,11 @@ set_ip6_nd_proxy_cmd (vlib_main_t * vm,
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_ip6_nd_proxy_command, static) =
-{
+VLIB_CLI_COMMAND (set_ip6_nd_proxy_command, static) = {
   .path = "set ip6 nd proxy",
   .short_help = "set ip6 nd proxy <interface> [del] <host-ip>",
   .function = set_ip6_nd_proxy_cmd,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

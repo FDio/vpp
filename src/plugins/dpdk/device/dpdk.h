@@ -66,42 +66,42 @@ extern vlib_node_registration_t admin_up_down_process_node;
 #define DPDK_MLX5_PMD_NAME "mlx5_pci"
 #endif
 
-#define foreach_dpdk_pmd          \
-  _ ("net_thunderx", THUNDERX)    \
-  _ ("net_e1000_em", E1000EM)     \
-  _ ("net_e1000_igb", IGB)        \
-  _ ("net_e1000_igb_vf", IGBVF)   \
-  _ ("net_ixgbe", IXGBE)          \
-  _ ("net_ixgbe_vf", IXGBEVF)     \
-  _ ("net_i40e", I40E)            \
-  _ ("net_i40e_vf", I40EVF)       \
-  _ ("net_ice", ICE)              \
-  _ ("net_iavf", IAVF)            \
-  _ ("net_virtio", VIRTIO)        \
-  _ ("net_enic", ENIC)            \
-  _ ("net_vmxnet3", VMXNET3)      \
-  _ ("AF_PACKET PMD", AF_PACKET)  \
-  _ ("net_fm10k", FM10K)          \
-  _ ("net_cxgbe", CXGBE)          \
-  _ ("net_mlx4", MLX4)            \
-  _ (DPDK_MLX5_PMD_NAME, MLX5)    \
-  _ ("net_dpaa2", DPAA2)          \
-  _ ("net_virtio_user", VIRTIO_USER) \
-  _ ("net_vhost", VHOST_ETHER)    \
-  _ ("net_ena", ENA)              \
-  _ ("net_failsafe", FAILSAFE)    \
-  _ ("net_liovf", LIOVF_ETHER)    \
-  _ ("net_qede", QEDE)		  \
-  _ ("net_netvsc", NETVSC)        \
+#define foreach_dpdk_pmd                                                      \
+  _ ("net_thunderx", THUNDERX)                                                \
+  _ ("net_e1000_em", E1000EM)                                                 \
+  _ ("net_e1000_igb", IGB)                                                    \
+  _ ("net_e1000_igb_vf", IGBVF)                                               \
+  _ ("net_ixgbe", IXGBE)                                                      \
+  _ ("net_ixgbe_vf", IXGBEVF)                                                 \
+  _ ("net_i40e", I40E)                                                        \
+  _ ("net_i40e_vf", I40EVF)                                                   \
+  _ ("net_ice", ICE)                                                          \
+  _ ("net_iavf", IAVF)                                                        \
+  _ ("net_virtio", VIRTIO)                                                    \
+  _ ("net_enic", ENIC)                                                        \
+  _ ("net_vmxnet3", VMXNET3)                                                  \
+  _ ("AF_PACKET PMD", AF_PACKET)                                              \
+  _ ("net_fm10k", FM10K)                                                      \
+  _ ("net_cxgbe", CXGBE)                                                      \
+  _ ("net_mlx4", MLX4)                                                        \
+  _ (DPDK_MLX5_PMD_NAME, MLX5)                                                \
+  _ ("net_dpaa2", DPAA2)                                                      \
+  _ ("net_virtio_user", VIRTIO_USER)                                          \
+  _ ("net_vhost", VHOST_ETHER)                                                \
+  _ ("net_ena", ENA)                                                          \
+  _ ("net_failsafe", FAILSAFE)                                                \
+  _ ("net_liovf", LIOVF_ETHER)                                                \
+  _ ("net_qede", QEDE)                                                        \
+  _ ("net_netvsc", NETVSC)                                                    \
   _ ("net_bnxt", BNXT)
 
 typedef enum
 {
   VNET_DPDK_PMD_NONE,
-#define _(s,f) VNET_DPDK_PMD_##f,
+#define _(s, f) VNET_DPDK_PMD_##f,
   foreach_dpdk_pmd
 #undef _
-    VNET_DPDK_PMD_UNKNOWN,	/* must be last */
+    VNET_DPDK_PMD_UNKNOWN, /* must be last */
 } dpdk_pmd_t;
 
 typedef enum
@@ -128,17 +128,17 @@ typedef enum
 
 typedef uint16_t dpdk_portid_t;
 
-#define foreach_dpdk_device_flags \
-  _( 0, ADMIN_UP, "admin-up") \
-  _( 1, PROMISC, "promisc") \
-  _( 2, PMD, "pmd") \
-  _( 3, PMD_INIT_FAIL, "pmd-init-fail") \
-  _( 4, MAYBE_MULTISEG, "maybe-multiseg") \
-  _( 5, HAVE_SUBIF, "subif") \
-  _( 9, TX_OFFLOAD, "tx-offload") \
-  _(10, INTEL_PHDR_CKSUM, "intel-phdr-cksum") \
-  _(11, RX_FLOW_OFFLOAD, "rx-flow-offload") \
-  _(12, RX_IP4_CKSUM, "rx-ip4-cksum")
+#define foreach_dpdk_device_flags                                             \
+  _ (0, ADMIN_UP, "admin-up")                                                 \
+  _ (1, PROMISC, "promisc")                                                   \
+  _ (2, PMD, "pmd")                                                           \
+  _ (3, PMD_INIT_FAIL, "pmd-init-fail")                                       \
+  _ (4, MAYBE_MULTISEG, "maybe-multiseg")                                     \
+  _ (5, HAVE_SUBIF, "subif")                                                  \
+  _ (9, TX_OFFLOAD, "tx-offload")                                             \
+  _ (10, INTEL_PHDR_CKSUM, "intel-phdr-cksum")                                \
+  _ (11, RX_FLOW_OFFLOAD, "rx-flow-offload")                                  \
+  _ (12, RX_IP4_CKSUM, "rx-ip4-cksum")
 
 enum
 {
@@ -196,10 +196,10 @@ typedef struct
 
   /* DPDK device port number */
   dpdk_portid_t port_id;
-  dpdk_pmd_t pmd:8;
+  dpdk_pmd_t pmd : 8;
   i8 cpu_socket;
 
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   u16 nb_tx_desc;
   u16 nb_rx_desc;
 
@@ -215,9 +215,9 @@ typedef struct
 
   /* flow related */
   u32 supported_flow_actions;
-  dpdk_flow_entry_t *flow_entries;	/* pool */
-  dpdk_flow_lookup_entry_t *flow_lookup_entries;	/* pool */
-  u32 *parked_lookup_indexes;	/* vector */
+  dpdk_flow_entry_t *flow_entries;		 /* pool */
+  dpdk_flow_lookup_entry_t *flow_lookup_entries; /* pool */
+  u32 *parked_lookup_indexes;			 /* vector */
   u32 parked_loop_count;
   struct rte_flow_error last_flow_error;
 
@@ -240,17 +240,17 @@ typedef struct
   clib_error_t *errors;
 } dpdk_device_t;
 
-#define DPDK_STATS_POLL_INTERVAL      (10.0)
-#define DPDK_MIN_STATS_POLL_INTERVAL  (0.001)	/* 1msec */
+#define DPDK_STATS_POLL_INTERVAL     (10.0)
+#define DPDK_MIN_STATS_POLL_INTERVAL (0.001) /* 1msec */
 
-#define DPDK_LINK_POLL_INTERVAL       (3.0)
-#define DPDK_MIN_LINK_POLL_INTERVAL   (0.001)	/* 1msec */
+#define DPDK_LINK_POLL_INTERVAL	    (3.0)
+#define DPDK_MIN_LINK_POLL_INTERVAL (0.001) /* 1msec */
 
-#define foreach_dpdk_device_config_item \
-  _ (num_rx_queues) \
-  _ (num_tx_queues) \
-  _ (num_rx_desc) \
-  _ (num_tx_desc) \
+#define foreach_dpdk_device_config_item                                       \
+  _ (num_rx_queues)                                                           \
+  _ (num_tx_queues)                                                           \
+  _ (num_rx_desc)                                                             \
+  _ (num_tx_desc)                                                             \
   _ (rss_fn)
 
 typedef enum
@@ -272,20 +272,20 @@ typedef struct
   u8 is_blacklisted;
   u8 vlan_strip_offload;
 #define DPDK_DEVICE_VLAN_STRIP_DEFAULT 0
-#define DPDK_DEVICE_VLAN_STRIP_OFF 1
-#define DPDK_DEVICE_VLAN_STRIP_ON  2
+#define DPDK_DEVICE_VLAN_STRIP_OFF     1
+#define DPDK_DEVICE_VLAN_STRIP_ON      2
 
 #define _(x) uword x;
-    foreach_dpdk_device_config_item
+  foreach_dpdk_device_config_item
 #undef _
-    clib_bitmap_t * workers;
+    clib_bitmap_t *workers;
   u8 tso;
   u8 *devargs;
   clib_bitmap_t *rss_queues;
 
 #define DPDK_DEVICE_TSO_DEFAULT 0
-#define DPDK_DEVICE_TSO_OFF 1
-#define DPDK_DEVICE_TSO_ON  2
+#define DPDK_DEVICE_TSO_OFF	1
+#define DPDK_DEVICE_TSO_ON	2
 } dpdk_device_config_t;
 
 typedef struct
@@ -383,7 +383,7 @@ typedef struct
   u16 device_index;
   u8 queue_index;
   struct rte_mbuf mb;
-  u8 data[256];			/* First 256 data bytes, used for hexdump */
+  u8 data[256]; /* First 256 data bytes, used for hexdump */
   /* Copy of VLIB buffer; packet data stored in pre_data. */
   vlib_buffer_t buffer;
 } dpdk_tx_trace_t;
@@ -394,71 +394,71 @@ typedef struct
   u16 device_index;
   u16 queue_index;
   struct rte_mbuf mb;
-  u8 data[256];			/* First 256 data bytes, used for hexdump */
-  vlib_buffer_t buffer;		/* Copy of VLIB buffer; pkt data stored in pre_data. */
+  u8 data[256];		/* First 256 data bytes, used for hexdump */
+  vlib_buffer_t buffer; /* Copy of VLIB buffer; pkt data stored in pre_data. */
 } dpdk_rx_trace_t;
 
-void dpdk_device_setup (dpdk_device_t * xd);
-void dpdk_device_start (dpdk_device_t * xd);
-void dpdk_device_stop (dpdk_device_t * xd);
+void dpdk_device_setup (dpdk_device_t *xd);
+void dpdk_device_start (dpdk_device_t *xd);
+void dpdk_device_stop (dpdk_device_t *xd);
 int dpdk_port_state_callback (dpdk_portid_t port_id,
-			      enum rte_eth_event_type type,
-			      void *param, void *ret_param);
+			      enum rte_eth_event_type type, void *param,
+			      void *ret_param);
 
-#define foreach_dpdk_error						\
-  _(NONE, "no error")							\
-  _(RX_PACKET_ERROR, "Rx packet errors")				\
-  _(RX_BAD_FCS, "Rx bad fcs")						\
-  _(IP_CHECKSUM_ERROR, "Rx ip checksum errors")				\
-  _(RX_ALLOC_FAIL, "rx buf alloc from free list failed")		\
-  _(RX_ALLOC_NO_PHYSMEM, "rx buf alloc failed no physmem")		\
-  _(RX_ALLOC_DROP_PKTS, "rx packets dropped due to alloc error")
+#define foreach_dpdk_error                                                    \
+  _ (NONE, "no error")                                                        \
+  _ (RX_PACKET_ERROR, "Rx packet errors")                                     \
+  _ (RX_BAD_FCS, "Rx bad fcs")                                                \
+  _ (IP_CHECKSUM_ERROR, "Rx ip checksum errors")                              \
+  _ (RX_ALLOC_FAIL, "rx buf alloc from free list failed")                     \
+  _ (RX_ALLOC_NO_PHYSMEM, "rx buf alloc failed no physmem")                   \
+  _ (RX_ALLOC_DROP_PKTS, "rx packets dropped due to alloc error")
 
 typedef enum
 {
-#define _(f,s) DPDK_ERROR_##f,
+#define _(f, s) DPDK_ERROR_##f,
   foreach_dpdk_error
 #undef _
     DPDK_N_ERROR,
 } dpdk_error_t;
 
-#define dpdk_log_err(...) \
-  vlib_log(VLIB_LOG_LEVEL_ERR, dpdk_main.log_default, __VA_ARGS__)
-#define dpdk_log_warn(...) \
-  vlib_log(VLIB_LOG_LEVEL_WARNING, dpdk_main.log_default, __VA_ARGS__)
-#define dpdk_log_notice(...) \
-  vlib_log(VLIB_LOG_LEVEL_NOTICE, dpdk_main.log_default, __VA_ARGS__)
-#define dpdk_log_info(...) \
-  vlib_log(VLIB_LOG_LEVEL_INFO, dpdk_main.log_default, __VA_ARGS__)
+#define dpdk_log_err(...)                                                     \
+  vlib_log (VLIB_LOG_LEVEL_ERR, dpdk_main.log_default, __VA_ARGS__)
+#define dpdk_log_warn(...)                                                    \
+  vlib_log (VLIB_LOG_LEVEL_WARNING, dpdk_main.log_default, __VA_ARGS__)
+#define dpdk_log_notice(...)                                                  \
+  vlib_log (VLIB_LOG_LEVEL_NOTICE, dpdk_main.log_default, __VA_ARGS__)
+#define dpdk_log_info(...)                                                    \
+  vlib_log (VLIB_LOG_LEVEL_INFO, dpdk_main.log_default, __VA_ARGS__)
 
-void dpdk_update_link_state (dpdk_device_t * xd, f64 now);
+void dpdk_update_link_state (dpdk_device_t *xd, f64 now);
 
-#define foreach_dpdk_rss_hf                    \
-  _(0, ETH_RSS_FRAG_IPV4,           "ipv4-frag")    \
-  _(1, ETH_RSS_NONFRAG_IPV4_TCP,    "ipv4-tcp")     \
-  _(2, ETH_RSS_NONFRAG_IPV4_UDP,    "ipv4-udp")     \
-  _(3, ETH_RSS_NONFRAG_IPV4_SCTP,   "ipv4-sctp")    \
-  _(4, ETH_RSS_NONFRAG_IPV4_OTHER,  "ipv4-other")   \
-  _(5, ETH_RSS_IPV4,                "ipv4")         \
-  _(6, ETH_RSS_IPV6_TCP_EX,         "ipv6-tcp-ex")  \
-  _(7, ETH_RSS_IPV6_UDP_EX,         "ipv6-udp-ex")  \
-  _(8, ETH_RSS_FRAG_IPV6,           "ipv6-frag")    \
-  _(9, ETH_RSS_NONFRAG_IPV6_TCP,    "ipv6-tcp")     \
-  _(10, ETH_RSS_NONFRAG_IPV6_UDP,   "ipv6-udp")     \
-  _(11, ETH_RSS_NONFRAG_IPV6_SCTP,  "ipv6-sctp")    \
-  _(12, ETH_RSS_NONFRAG_IPV6_OTHER, "ipv6-other")   \
-  _(13, ETH_RSS_IPV6_EX,            "ipv6-ex")      \
-  _(14, ETH_RSS_IPV6,               "ipv6")         \
-  _(15, ETH_RSS_L2_PAYLOAD,         "l2-payload")   \
-  _(16, ETH_RSS_PORT,               "port")         \
-  _(17, ETH_RSS_VXLAN,              "vxlan")        \
-  _(18, ETH_RSS_GENEVE,             "geneve")       \
-  _(19, ETH_RSS_NVGRE,              "nvgre")        \
-  _(20, ETH_RSS_GTPU,               "gtpu")         \
-  _(60, ETH_RSS_L4_DST_ONLY,        "l4-dst-only")  \
-  _(61, ETH_RSS_L4_SRC_ONLY,        "l4-src-only")  \
-  _(62, ETH_RSS_L3_DST_ONLY,        "l3-dst-only")  \
-  _(63, ETH_RSS_L3_SRC_ONLY,        "l3-src-only")
+#define foreach_dpdk_rss_hf                                                   \
+  _ (0, ETH_RSS_FRAG_IPV4, "ipv4-frag")                                       \
+  _ (1, ETH_RSS_NONFRAG_IPV4_TCP, "ipv4-tcp")                                 \
+  _ (2, ETH_RSS_NONFRAG_IPV4_UDP, "ipv4-udp")                                 \
+  _ (3, ETH_RSS_NONFRAG_IPV4_SCTP, "ipv4-sctp")                               \
+  _ (4, ETH_RSS_NONFRAG_IPV4_OTHER, "ipv4-other")                             \
+  _ (5, ETH_RSS_IPV4, "ipv4")                                                 \
+  _ (6, ETH_RSS_IPV6_TCP_EX, "ipv6-tcp-ex")                                   \
+  _ (7, ETH_RSS_IPV6_UDP_EX, "ipv6-udp-ex")                                   \
+  _ (8, ETH_RSS_FRAG_IPV6, "ipv6-frag")                                       \
+  _ (9, ETH_RSS_NONFRAG_IPV6_TCP, "ipv6-tcp")                                 \
+  _ (10, ETH_RSS_NONFRAG_IPV6_UDP, "ipv6-udp")                                \
+  _ (11, ETH_RSS_NONFRAG_IPV6_SCTP, "ipv6-sctp")                              \
+  _ (12, ETH_RSS_NONFRAG_IPV6_OTHER, "ipv6-other")                            \
+  _ (13, ETH_RSS_IPV6_EX, "ipv6-ex")                                          \
+  _ (14, ETH_RSS_IPV6, "ipv6")                                                \
+  _ (15, ETH_RSS_L2_PAYLOAD, "l2-payload")                                    \
+  _ (16, ETH_RSS_PORT, "port")                                                \
+  _ (17, ETH_RSS_VXLAN, "vxlan")                                              \
+  _ (18, ETH_RSS_GENEVE, "geneve")                                            \
+  _ (19, ETH_RSS_NVGRE, "nvgre")                                              \
+  _ (20, ETH_RSS_GTPU, "gtpu")                                                \
+  _ (60, ETH_RSS_L4_DST_ONLY, "l4-dst-only")                                  \
+  _ (61, ETH_RSS_L4_SRC_ONLY, "l4-src-only")                                  \
+  _ (62, ETH_RSS_L3_DST_ONLY, "l3-dst-only")                                  \
+  _ (63, ETH_RSS_L3_SRC_ONLY, "l3-src-only")
 
 format_function_t format_dpdk_device_name;
 format_function_t format_dpdk_device;
@@ -473,16 +473,16 @@ format_function_t format_dpdk_rx_offload_caps;
 format_function_t format_dpdk_tx_offload_caps;
 vnet_flow_dev_ops_function_t dpdk_flow_ops_fn;
 
-clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);
+clib_error_t *unformat_rss_fn (unformat_input_t *input, uword *rss_fn);
 
-struct rte_pci_device *dpdk_get_pci_device (const struct rte_eth_dev_info
-					    *info);
+struct rte_pci_device *
+dpdk_get_pci_device (const struct rte_eth_dev_info *info);
 struct rte_vmbus_device *
 dpdk_get_vmbus_device (const struct rte_eth_dev_info *info);
 void dpdk_cli_reference (void);
 
 #if CLI_DEBUG
-int dpdk_buffer_validate_trajectory_all (u32 * uninitialized);
+int dpdk_buffer_validate_trajectory_all (u32 *uninitialized);
 void dpdk_buffer_poison_trajectory_all (void);
 #endif
 

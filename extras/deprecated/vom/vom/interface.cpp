@@ -63,8 +63,7 @@ interface::interface(const std::string& name,
   , m_listener(nullptr)
   , m_oper(oper_state_t::DOWN)
   , m_tag(tag)
-{
-}
+{}
 
 interface::interface(const std::string& name,
                      interface::type_t itf_type,
@@ -83,8 +82,7 @@ interface::interface(const std::string& name,
   , m_listener(nullptr)
   , m_oper(oper_state_t::DOWN)
   , m_tag(tag)
-{
-}
+{}
 
 interface::interface(const interface& o)
   : m_hdl(o.m_hdl)
@@ -99,8 +97,7 @@ interface::interface(const interface& o)
   , m_listener(o.m_listener)
   , m_oper(o.m_oper)
   , m_tag(o.m_tag)
-{
-}
+{}
 
 bool
 interface::operator==(const interface& i) const
@@ -113,8 +110,7 @@ interface::operator==(const interface& i) const
 
 interface::event_listener::event_listener()
   : m_status(rc_t::NOOP)
-{
-}
+{}
 
 HW::item<bool>&
 interface::event_listener::status()
@@ -124,8 +120,7 @@ interface::event_listener::status()
 
 interface::stat_listener::stat_listener()
   : m_status(rc_t::NOOP)
-{
-}
+{}
 
 HW::item<bool>&
 interface::stat_listener::status()

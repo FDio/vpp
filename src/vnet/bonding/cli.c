@@ -23,7 +23,7 @@
 #include <vpp/stats/stat_segment.h>
 
 void
-bond_disable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
+bond_disable_collecting_distributing (vlib_main_t *vm, member_if_t *mif)
 {
   bond_main_t *bm = &bond_main;
   bond_if_t *bif;
@@ -34,29 +34,29 @@ bond_disable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
   bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
   clib_spinlock_lock_if_init (&bif->lockp);
   vec_foreach_index (i, bif->active_members)
-  {
-    p = *vec_elt_at_index (bif->active_members, i);
-    if (p == mif->sw_if_index)
-      {
-	if ((bif->mode == BOND_MODE_ACTIVE_BACKUP) && (i == 0) &&
-	    (vec_len (bif->active_members) > 1))
-	  /* deleting the active member for active-backup */
-	  switching_active = 1;
-	vec_del1 (bif->active_members, i);
-	if (mif->lacp_enabled && bif->numa_only)
-	  {
-	    /* For lacp mode, if we check it is a member on local numa node,
-	       bif->n_numa_members should be decreased by 1 becasue the first
-	       bif->n_numa_members are all members on local numa node */
-	    if (i < bif->n_numa_members)
-	      {
-		bif->n_numa_members--;
-		ASSERT (bif->n_numa_members >= 0);
-	      }
-	  }
-	break;
-      }
-  }
+    {
+      p = *vec_elt_at_index (bif->active_members, i);
+      if (p == mif->sw_if_index)
+	{
+	  if ((bif->mode == BOND_MODE_ACTIVE_BACKUP) && (i == 0) &&
+	      (vec_len (bif->active_members) > 1))
+	    /* deleting the active member for active-backup */
+	    switching_active = 1;
+	  vec_del1 (bif->active_members, i);
+	  if (mif->lacp_enabled && bif->numa_only)
+	    {
+	      /* For lacp mode, if we check it is a member on local numa node,
+		 bif->n_numa_members should be decreased by 1 becasue the first
+		 bif->n_numa_members are all members on local numa node */
+	      if (i < bif->n_numa_members)
+		{
+		  bif->n_numa_members--;
+		  ASSERT (bif->n_numa_members >= 0);
+		}
+	    }
+	  break;
+	}
+    }
 
   /* We get a new member just becoming active */
   if (switching_active)
@@ -119,7 +119,7 @@ bond_member_sort (void *a1, void *a2)
 }
 
 static void
-bond_sort_members (bond_if_t * bif)
+bond_sort_members (bond_if_t *bif)
 {
   bond_main_t *bm = &bond_main;
   u32 old_active = bif->active_members[0];
@@ -131,7 +131,7 @@ bond_sort_members (bond_if_t * bif)
 }
 
 void
-bond_enable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
+bond_enable_collecting_distributing (vlib_main_t *vm, member_if_t *mif)
 {
   bond_if_t *bif;
   bond_main_t *bm = &bond_main;
@@ -143,11 +143,11 @@ bond_enable_collecting_distributing (vlib_main_t * vm, member_if_t * mif)
   bif = bond_get_bond_if_by_dev_instance (mif->bif_dev_instance);
   clib_spinlock_lock_if_init (&bif->lockp);
   vec_foreach_index (i, bif->active_members)
-  {
-    p = *vec_elt_at_index (bif->active_members, i);
-    if (p == mif->sw_if_index)
-      goto done;
-  }
+    {
+      p = *vec_elt_at_index (bif->active_members, i);
+      if (p == mif->sw_if_index)
+	goto done;
+    }
 
   if (mif->lacp_enabled && bif->numa_only && (vm->numa_node == hw->numa_node))
     {
@@ -174,7 +174,7 @@ done:
 }
 
 int
-bond_dump_ifs (bond_interface_details_t ** out_bondifs)
+bond_dump_ifs (bond_interface_details_t **out_bondifs)
 {
   vnet_main_t *vnm = vnet_get_main ();
   bond_main_t *bm = &bond_main;
@@ -183,25 +183,25 @@ bond_dump_ifs (bond_interface_details_t ** out_bondifs)
   bond_interface_details_t *r_bondifs = NULL;
   bond_interface_details_t *bondif = NULL;
 
-  /* *INDENT-OFF* */
-  pool_foreach (bif, bm->interfaces) {
-    vec_add2(r_bondifs, bondif, 1);
-    clib_memset (bondif, 0, sizeof (*bondif));
-    bondif->id = bif->id;
-    bondif->sw_if_index = bif->sw_if_index;
-    hi = vnet_get_hw_interface (vnm, bif->hw_if_index);
-    clib_memcpy(bondif->interface_name, hi->name,
-                MIN (ARRAY_LEN (bondif->interface_name) - 1,
-                     vec_len ((const char *) hi->name)));
-    /* enforce by memset() above */
-    ASSERT(0 == bondif->interface_name[ARRAY_LEN (bondif->interface_name) - 1]);
-    bondif->mode = bif->mode;
-    bondif->lb = bif->lb;
-    bondif->numa_only = bif->numa_only;
-    bondif->active_members = vec_len (bif->active_members);
-    bondif->members = vec_len (bif->members);
-  }
-  /* *INDENT-ON* */
+  pool_foreach (bif, bm->interfaces)
+    {
+      vec_add2 (r_bondifs, bondif, 1);
+      clib_memset (bondif, 0, sizeof (*bondif));
+      bondif->id = bif->id;
+      bondif->sw_if_index = bif->sw_if_index;
+      hi = vnet_get_hw_interface (vnm, bif->hw_if_index);
+      clib_memcpy (bondif->interface_name, hi->name,
+		   MIN (ARRAY_LEN (bondif->interface_name) - 1,
+			vec_len ((const char *) hi->name)));
+      /* enforce by memset() above */
+      ASSERT (0 ==
+	      bondif->interface_name[ARRAY_LEN (bondif->interface_name) - 1]);
+      bondif->mode = bif->mode;
+      bondif->lb = bif->lb;
+      bondif->numa_only = bif->numa_only;
+      bondif->active_members = vec_len (bif->active_members);
+      bondif->members = vec_len (bif->members);
+    }
 
   *out_bondifs = r_bondifs;
 
@@ -209,7 +209,7 @@ bond_dump_ifs (bond_interface_details_t ** out_bondifs)
 }
 
 int
-bond_dump_member_ifs (member_interface_details_t ** out_memberifs,
+bond_dump_member_ifs (member_interface_details_t **out_memberifs,
 		      u32 bond_sw_if_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
@@ -226,28 +226,28 @@ bond_dump_member_ifs (member_interface_details_t ** out_memberifs,
     return 1;
 
   vec_foreach (sw_if_index, bif->members)
-  {
-    vec_add2 (r_memberifs, memberif, 1);
-    clib_memset (memberif, 0, sizeof (*memberif));
-    mif = bond_get_member_by_sw_if_index (*sw_if_index);
-    if (mif)
-      {
-	sw = vnet_get_sw_interface (vnm, mif->sw_if_index);
-	hi = vnet_get_hw_interface (vnm, sw->hw_if_index);
-	clib_memcpy (memberif->interface_name, hi->name,
-		     MIN (ARRAY_LEN (memberif->interface_name) - 1,
-			  vec_len ((const char *) hi->name)));
-	/* enforce by memset() above */
-	ASSERT (0 ==
-		memberif->interface_name[ARRAY_LEN (memberif->interface_name)
-					 - 1]);
-	memberif->sw_if_index = mif->sw_if_index;
-	memberif->is_passive = mif->is_passive;
-	memberif->is_long_timeout = mif->is_long_timeout;
-	memberif->is_local_numa = mif->is_local_numa;
-	memberif->weight = mif->weight;
-      }
-  }
+    {
+      vec_add2 (r_memberifs, memberif, 1);
+      clib_memset (memberif, 0, sizeof (*memberif));
+      mif = bond_get_member_by_sw_if_index (*sw_if_index);
+      if (mif)
+	{
+	  sw = vnet_get_sw_interface (vnm, mif->sw_if_index);
+	  hi = vnet_get_hw_interface (vnm, sw->hw_if_index);
+	  clib_memcpy (memberif->interface_name, hi->name,
+		       MIN (ARRAY_LEN (memberif->interface_name) - 1,
+			    vec_len ((const char *) hi->name)));
+	  /* enforce by memset() above */
+	  ASSERT (
+	    0 == memberif
+		   ->interface_name[ARRAY_LEN (memberif->interface_name) - 1]);
+	  memberif->sw_if_index = mif->sw_if_index;
+	  memberif->is_passive = mif->is_passive;
+	  memberif->is_long_timeout = mif->is_long_timeout;
+	  memberif->is_local_numa = mif->is_local_numa;
+	  memberif->weight = mif->weight;
+	}
+    }
   *out_memberifs = r_memberifs;
 
   return 0;
@@ -260,8 +260,7 @@ bond_dump_member_ifs (member_interface_details_t ** out_memberifs,
  * member.
  */
 static void
-bond_member_add_del_mac_addrs (bond_if_t * bif, u32 mif_sw_if_index,
-			       u8 is_add)
+bond_member_add_del_mac_addrs (bond_if_t *bif, u32 mif_sw_if_index, u8 is_add)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ethernet_interface_t *b_ei;
@@ -280,7 +279,7 @@ bond_member_add_del_mac_addrs (bond_if_t * bif, u32 mif_sw_if_index,
 }
 
 static void
-bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, member_if_t * mif)
+bond_delete_neighbor (vlib_main_t *vm, bond_if_t *bif, member_if_t *mif)
 {
   bond_main_t *bm = &bond_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -289,51 +288,49 @@ bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, member_if_t * mif)
 
   mif_hw = vnet_get_sup_hw_interface (vnm, mif->sw_if_index);
 
-  bif->port_number_bitmap =
-    clib_bitmap_set (bif->port_number_bitmap,
-		     ntohs (mif->actor_admin.port_number) - 1, 0);
+  bif->port_number_bitmap = clib_bitmap_set (
+    bif->port_number_bitmap, ntohs (mif->actor_admin.port_number) - 1, 0);
   bm->member_by_sw_if_index[mif->sw_if_index] = 0;
   vec_free (mif->last_marker_pkt);
   vec_free (mif->last_rx_pkt);
   vec_foreach_index (i, bif->members)
-  {
-    uword p = *vec_elt_at_index (bif->members, i);
-    if (p == mif->sw_if_index)
-      {
-	vec_del1 (bif->members, i);
-	break;
-      }
-  }
+    {
+      uword p = *vec_elt_at_index (bif->members, i);
+      if (p == mif->sw_if_index)
+	{
+	  vec_del1 (bif->members, i);
+	  break;
+	}
+    }
 
   bond_disable_collecting_distributing (vm, mif);
 
-  vnet_feature_enable_disable ("device-input", "bond-input",
-			       mif->sw_if_index, 0, 0, 0);
+  vnet_feature_enable_disable ("device-input", "bond-input", mif->sw_if_index,
+			       0, 0, 0);
 
   /* Put back the old mac */
   vnet_hw_interface_change_mac_address (vnm, mif_hw->hw_if_index,
 					mif->persistent_hw_address);
 
   /* delete the bond's secondary/virtual mac addrs from the member */
-  bond_member_add_del_mac_addrs (bif, mif->sw_if_index, 0 /* is_add */ );
-
+  bond_member_add_del_mac_addrs (bif, mif->sw_if_index, 0 /* is_add */);
 
   if ((bif->mode == BOND_MODE_LACP) && bm->lacp_enable_disable)
     (*bm->lacp_enable_disable) (vm, bif, mif, 0);
 
   if (bif->mode == BOND_MODE_LACP)
     {
-      stat_segment_deregister_state_counter
-	(bm->stats[bif->sw_if_index][mif->sw_if_index].actor_state);
-      stat_segment_deregister_state_counter
-	(bm->stats[bif->sw_if_index][mif->sw_if_index].partner_state);
+      stat_segment_deregister_state_counter (
+	bm->stats[bif->sw_if_index][mif->sw_if_index].actor_state);
+      stat_segment_deregister_state_counter (
+	bm->stats[bif->sw_if_index][mif->sw_if_index].partner_state);
     }
 
   pool_put (bm->neighbors, mif);
 }
 
 int
-bond_delete_if (vlib_main_t * vm, u32 sw_if_index)
+bond_delete_if (vlib_main_t *vm, u32 sw_if_index)
 {
   bond_main_t *bm = &bond_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -351,11 +348,11 @@ bond_delete_if (vlib_main_t * vm, u32 sw_if_index)
 
   vec_append (s_list, bif->members);
   vec_foreach (mif_sw_if_index, s_list)
-  {
-    mif = bond_get_member_by_sw_if_index (*mif_sw_if_index);
-    if (mif)
-      bond_delete_neighbor (vm, bif, mif);
-  }
+    {
+      mif = bond_get_member_by_sw_if_index (*mif_sw_if_index);
+      if (mif)
+	bond_delete_neighbor (vm, bif, mif);
+    }
   vec_free (s_list);
 
   /* bring down the interface */
@@ -374,7 +371,7 @@ bond_delete_if (vlib_main_t * vm, u32 sw_if_index)
 }
 
 void
-bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
+bond_create_if (vlib_main_t *vm, bond_create_if_args_t *args)
 {
   bond_main_t *bm = &bond_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -440,10 +437,10 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
       args->hw_addr[1] = 0xfe;
     }
   memcpy (bif->hw_address, args->hw_addr, 6);
-  args->error = ethernet_register_interface
-    (vnm, bond_dev_class.index, bif->dev_instance /* device instance */ ,
-     bif->hw_address /* ethernet address */ ,
-     &bif->hw_if_index, 0 /* flag change */ );
+  args->error = ethernet_register_interface (
+    vnm, bond_dev_class.index, bif->dev_instance /* device instance */,
+    bif->hw_address /* ethernet address */, &bif->hw_if_index,
+    0 /* flag change */);
 
   if (args->error)
     {
@@ -481,8 +478,8 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
 }
 
 static clib_error_t *
-bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			vlib_cli_command_t * cmd)
+bond_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   bond_create_if_args_t args = { 0 };
@@ -500,12 +497,13 @@ bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "mode %U", unformat_bond_mode, &args.mode))
 	mode_is_set = 1;
-      else if (((args.mode == BOND_MODE_LACP) || (args.mode == BOND_MODE_XOR))
-	       && unformat (line_input, "load-balance %U",
-			    unformat_bond_load_balance, &args.lb))
+      else if (((args.mode == BOND_MODE_LACP) ||
+		(args.mode == BOND_MODE_XOR)) &&
+	       unformat (line_input, "load-balance %U",
+			 unformat_bond_load_balance, &args.lb))
 	;
-      else if (unformat (line_input, "hw-addr %U",
-			 unformat_ethernet_address, args.hw_addr))
+      else if (unformat (line_input, "hw-addr %U", unformat_ethernet_address,
+			 args.hw_addr))
 	args.hw_addr_set = 1;
       else if (unformat (line_input, "id %u", &args.id))
 	;
@@ -516,8 +514,8 @@ bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  if (args.mode == BOND_MODE_LACP)
 	    args.numa_only = 1;
 	  else
-	    return clib_error_return (0,
-				      "Only lacp mode supports numa-only so far!");
+	    return clib_error_return (
+	      0, "Only lacp mode supports numa-only so far!");
 	}
       else
 	return clib_error_return (0, "unknown input `%U'",
@@ -537,19 +535,17 @@ bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return args.error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bond_create_command, static) = {
   .path = "create bond",
   .short_help = "create bond mode {round-robin | active-backup | broadcast | "
-    "{lacp | xor} [load-balance { l2 | l23 | l34 } [numa-only]]} "
-    "[hw-addr <mac-address>] [id <if-id>] [gso]",
+		"{lacp | xor} [load-balance { l2 | l23 | l34 } [numa-only]]} "
+		"[hw-addr <mac-address>] [id <if-id>] [gso]",
   .function = bond_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-bond_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			vlib_cli_command_t * cmd)
+bond_delete_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
@@ -564,8 +560,8 @@ bond_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "sw_if_index %d", &sw_if_index))
 	;
-      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
@@ -586,17 +582,14 @@ bond_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (bond_delete__command, static) =
-{
+VLIB_CLI_COMMAND (bond_delete__command, static) = {
   .path = "delete bond",
   .short_help = "delete bond {<interface> | sw_if_index <sw_idx>}",
   .function = bond_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 void
-bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
+bond_add_member (vlib_main_t *vm, bond_add_member_args_t *args)
 {
   bond_main_t *bm = &bond_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -619,8 +612,8 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
   if (bond_get_member_by_sw_if_index (args->member))
     {
       args->rv = VNET_API_ERROR_VALUE_EXIST;
-      args->error = clib_error_return
-	(0, "interface was already added as member");
+      args->error =
+	clib_error_return (0, "interface was already added as member");
       return;
     }
   mif_hw = vnet_get_sup_hw_interface (vnm, args->member);
@@ -646,8 +639,8 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
       vec_validate (bm->stats, bif->sw_if_index);
       vec_validate (bm->stats[bif->sw_if_index], args->member);
 
-      args->error = stat_segment_register_state_counter
-	(name, &bm->stats[bif->sw_if_index][args->member].actor_state);
+      args->error = stat_segment_register_state_counter (
+	name, &bm->stats[bif->sw_if_index][args->member].actor_state);
       if (args->error != 0)
 	{
 	  args->rv = VNET_API_ERROR_INVALID_INTERFACE;
@@ -658,8 +651,8 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
       vec_reset_length (name);
       name = format (0, "/if/lacp/%u/%u/partner-state%c", bif->sw_if_index,
 		     args->member, 0);
-      args->error = stat_segment_register_state_counter
-	(name, &bm->stats[bif->sw_if_index][args->member].partner_state);
+      args->error = stat_segment_register_state_counter (
+	name, &bm->stats[bif->sw_if_index][args->member].partner_state);
       vec_free (name);
       if (args->error != 0)
 	{
@@ -675,7 +668,7 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
   mif->port_enabled = vnet_sw_interface_is_up (vnm, sw->sw_if_index);
   mif->sw_if_index = sw->sw_if_index;
   mif->hw_if_index = sw->hw_if_index;
-  mif->packet_template_index = (u8) ~ 0;
+  mif->packet_template_index = (u8) ~0;
   mif->is_passive = args->is_passive;
   mif->group = args->group;
   mif->bif_dev_instance = bif->dev_instance;
@@ -726,7 +719,7 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
     }
 
   /* if there are secondary/virtual mac addrs, propagate to the member */
-  bond_member_add_del_mac_addrs (bif, mif->sw_if_index, 1 /* is_add */ );
+  bond_member_add_del_mac_addrs (bif, mif->sw_if_index, 1 /* is_add */);
 
   if (bif_hw->l2_if_count)
     ethernet_set_flags (vnm, mif_hw->hw_if_index,
@@ -746,18 +739,18 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
     }
 
   vec_foreach_index (thread_index, bm->per_thread_data)
-  {
-    bond_per_thread_data_t *ptd = vec_elt_at_index (bm->per_thread_data,
-						    thread_index);
-
-    vec_validate_aligned (ptd->per_port_queue, vec_len (bif->members) - 1,
-			  CLIB_CACHE_LINE_BYTES);
-
-    vec_foreach_index (mif_if_index, ptd->per_port_queue)
     {
-      ptd->per_port_queue[mif_if_index].n_buffers = 0;
+      bond_per_thread_data_t *ptd =
+	vec_elt_at_index (bm->per_thread_data, thread_index);
+
+      vec_validate_aligned (ptd->per_port_queue, vec_len (bif->members) - 1,
+			    CLIB_CACHE_LINE_BYTES);
+
+      vec_foreach_index (mif_if_index, ptd->per_port_queue)
+	{
+	  ptd->per_port_queue[mif_if_index].n_buffers = 0;
+	}
     }
-  }
 
   args->rv = vnet_feature_enable_disable ("device-input", "bond-input",
 					  mif->sw_if_index, 1, 0, 0);
@@ -765,14 +758,13 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
   if (args->rv)
     {
       args->error =
-	clib_error_return (0,
-			   "Error encountered on input feature arc enable");
+	clib_error_return (0, "Error encountered on input feature arc enable");
     }
 }
 
 static clib_error_t *
-add_member_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
-				 vlib_cli_command_t * cmd)
+add_member_interface_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				 vlib_cli_command_t *cmd)
 {
   bond_add_member_args_t args = { 0 };
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -786,9 +778,9 @@ add_member_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
   args.group = ~0;
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%U %U",
-		    unformat_vnet_sw_interface, vnm, &args.group,
-		    unformat_vnet_sw_interface, vnm, &args.member))
+      if (unformat (line_input, "%U %U", unformat_vnet_sw_interface, vnm,
+		    &args.group, unformat_vnet_sw_interface, vnm,
+		    &args.member))
 	;
       else if (unformat (line_input, "passive"))
 	args.is_passive = 1;
@@ -808,25 +800,22 @@ add_member_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (args.group == ~0)
     return clib_error_return (0, "Missing bond interface");
   if (args.member == ~0)
-    return clib_error_return (0,
-			      "please specify valid member interface name");
+    return clib_error_return (0, "please specify valid member interface name");
 
   bond_add_member (vm, &args);
 
   return args.error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (add_member_interface_command, static) = {
   .path = "bond add",
   .short_help = "bond add <BondEthernetx> <member-interface> "
-                "[passive] [long-timeout]",
+		"[passive] [long-timeout]",
   .function = add_member_interface_command_fn,
 };
-/* *INDENT-ON* */
 
 void
-bond_detach_member (vlib_main_t * vm, bond_detach_member_args_t * args)
+bond_detach_member (vlib_main_t *vm, bond_detach_member_args_t *args)
 {
   bond_if_t *bif;
   member_if_t *mif;
@@ -843,8 +832,8 @@ bond_detach_member (vlib_main_t * vm, bond_detach_member_args_t * args)
 }
 
 static clib_error_t *
-detach_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+detach_interface_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   bond_detach_member_args_t args = { 0 };
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -857,8 +846,8 @@ detach_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
   args.member = ~0;
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%U",
-		    unformat_vnet_sw_interface, vnm, &args.member))
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+		    &args.member))
 	;
       else
 	{
@@ -872,96 +861,91 @@ detach_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (args.error)
     return args.error;
   if (args.member == ~0)
-    return clib_error_return (0,
-			      "please specify valid member interface name");
+    return clib_error_return (0, "please specify valid member interface name");
 
   bond_detach_member (vm, &args);
 
   return args.error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (detach_interface_command, static) = {
   .path = "bond del",
   .short_help = "bond del <member-interface>",
   .function = detach_interface_command_fn,
 };
-/* *INDENT-ON* */
 
 static void
-show_bond (vlib_main_t * vm)
+show_bond (vlib_main_t *vm)
 {
   bond_main_t *bm = &bond_main;
   bond_if_t *bif;
 
-  vlib_cli_output (vm, "%-16s %-12s %-13s %-13s %-14s %s",
-		   "interface name", "sw_if_index", "mode",
-		   "load balance", "active members", "members");
+  vlib_cli_output (vm, "%-16s %-12s %-13s %-13s %-14s %s", "interface name",
+		   "sw_if_index", "mode", "load balance", "active members",
+		   "members");
 
-  /* *INDENT-OFF* */
   pool_foreach (bif, bm->interfaces)
-   {
-    vlib_cli_output (vm, "%-16U %-12d %-13U %-13U %-14u %u",
-		     format_bond_interface_name, bif->dev_instance,
-		     bif->sw_if_index, format_bond_mode, bif->mode,
-		     format_bond_load_balance, bif->lb,
-		     vec_len (bif->active_members), vec_len (bif->members));
-  }
-  /* *INDENT-ON* */
+    {
+      vlib_cli_output (vm, "%-16U %-12d %-13U %-13U %-14u %u",
+		       format_bond_interface_name, bif->dev_instance,
+		       bif->sw_if_index, format_bond_mode, bif->mode,
+		       format_bond_load_balance, bif->lb,
+		       vec_len (bif->active_members), vec_len (bif->members));
+    }
 }
 
 static void
-show_bond_details (vlib_main_t * vm)
+show_bond_details (vlib_main_t *vm)
 {
   bond_main_t *bm = &bond_main;
   bond_if_t *bif;
   u32 *sw_if_index;
 
-  /* *INDENT-OFF* */
   pool_foreach (bif, bm->interfaces)
-   {
-    vlib_cli_output (vm, "%U", format_bond_interface_name, bif->dev_instance);
-    vlib_cli_output (vm, "  mode: %U",
-		     format_bond_mode, bif->mode);
-    vlib_cli_output (vm, "  load balance: %U",
-		     format_bond_load_balance, bif->lb);
-    if (bif->gso)
-      vlib_cli_output (vm, "  gso enable");
-    if (bif->mode == BOND_MODE_ROUND_ROBIN)
-      vlib_cli_output (vm, "  last xmit member index: %u",
-		       bif->lb_rr_last_index);
-    vlib_cli_output (vm, "  number of active members: %d",
-		     vec_len (bif->active_members));
-    vec_foreach (sw_if_index, bif->active_members)
-      {
-        vlib_cli_output (vm, "    %U", format_vnet_sw_if_index_name,
-			 vnet_get_main (), *sw_if_index);
-	if (bif->mode == BOND_MODE_ACTIVE_BACKUP)
-	  {
-	    member_if_t *mif = bond_get_member_by_sw_if_index (*sw_if_index);
-	    if (mif)
-	      vlib_cli_output (vm, "      weight: %u, is_local_numa: %u, "
-			       "sw_if_index: %u", mif->weight,
-			       mif->is_local_numa, mif->sw_if_index);
-	  }
-      }
-    vlib_cli_output (vm, "  number of members: %d", vec_len (bif->members));
-    vec_foreach (sw_if_index, bif->members)
-      {
-        vlib_cli_output (vm, "    %U", format_vnet_sw_if_index_name,
-			 vnet_get_main (), *sw_if_index);
-      }
-    vlib_cli_output (vm, "  device instance: %d", bif->dev_instance);
-    vlib_cli_output (vm, "  interface id: %d", bif->id);
-    vlib_cli_output (vm, "  sw_if_index: %d", bif->sw_if_index);
-    vlib_cli_output (vm, "  hw_if_index: %d", bif->hw_if_index);
-  }
-  /* *INDENT-ON* */
+    {
+      vlib_cli_output (vm, "%U", format_bond_interface_name,
+		       bif->dev_instance);
+      vlib_cli_output (vm, "  mode: %U", format_bond_mode, bif->mode);
+      vlib_cli_output (vm, "  load balance: %U", format_bond_load_balance,
+		       bif->lb);
+      if (bif->gso)
+	vlib_cli_output (vm, "  gso enable");
+      if (bif->mode == BOND_MODE_ROUND_ROBIN)
+	vlib_cli_output (vm, "  last xmit member index: %u",
+			 bif->lb_rr_last_index);
+      vlib_cli_output (vm, "  number of active members: %d",
+		       vec_len (bif->active_members));
+      vec_foreach (sw_if_index, bif->active_members)
+	{
+	  vlib_cli_output (vm, "    %U", format_vnet_sw_if_index_name,
+			   vnet_get_main (), *sw_if_index);
+	  if (bif->mode == BOND_MODE_ACTIVE_BACKUP)
+	    {
+	      member_if_t *mif = bond_get_member_by_sw_if_index (*sw_if_index);
+	      if (mif)
+		vlib_cli_output (vm,
+				 "      weight: %u, is_local_numa: %u, "
+				 "sw_if_index: %u",
+				 mif->weight, mif->is_local_numa,
+				 mif->sw_if_index);
+	    }
+	}
+      vlib_cli_output (vm, "  number of members: %d", vec_len (bif->members));
+      vec_foreach (sw_if_index, bif->members)
+	{
+	  vlib_cli_output (vm, "    %U", format_vnet_sw_if_index_name,
+			   vnet_get_main (), *sw_if_index);
+	}
+      vlib_cli_output (vm, "  device instance: %d", bif->dev_instance);
+      vlib_cli_output (vm, "  interface id: %d", bif->id);
+      vlib_cli_output (vm, "  sw_if_index: %d", bif->sw_if_index);
+      vlib_cli_output (vm, "  hw_if_index: %d", bif->hw_if_index);
+    }
 }
 
 static clib_error_t *
-show_bond_fn (vlib_main_t * vm, unformat_input_t * input,
-	      vlib_cli_command_t * cmd)
+show_bond_fn (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd)
 {
   u8 details = 0;
 
@@ -984,16 +968,14 @@ show_bond_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_bond_command, static) = {
   .path = "show bond",
   .short_help = "show bond [details]",
   .function = show_bond_fn,
 };
-/* *INDENT-ON* */
 
 void
-bond_set_intf_weight (vlib_main_t * vm, bond_set_intf_weight_args_t * args)
+bond_set_intf_weight (vlib_main_t *vm, bond_set_intf_weight_args_t *args)
 {
   member_if_t *mif;
   bond_if_t *bif;
@@ -1027,8 +1009,8 @@ bond_set_intf_weight (vlib_main_t * vm, bond_set_intf_weight_args_t * args)
   vnm = vnet_get_main ();
   /*
    * No need to sort the list if the affected member is not up (not in active
-   * member set), active member count is 1, or the current member is already the
-   * primary member and new weight > old weight.
+   * member set), active member count is 1, or the current member is already
+   * the primary member and new weight > old weight.
    */
   if (!vnet_sw_interface_is_up (vnm, mif->sw_if_index) ||
       (vec_len (bif->active_members) == 1) ||
@@ -1040,11 +1022,11 @@ bond_set_intf_weight (vlib_main_t * vm, bond_set_intf_weight_args_t * args)
 }
 
 static clib_error_t *
-bond_set_intf_cmd (vlib_main_t * vm, unformat_input_t * input,
-		   vlib_cli_command_t * cmd)
+bond_set_intf_cmd (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   bond_set_intf_weight_args_t args = { 0 };
-  u32 sw_if_index = (u32) ~ 0;
+  u32 sw_if_index = (u32) ~0;
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
   u8 weight_enter = 0;
@@ -1072,7 +1054,7 @@ bond_set_intf_cmd (vlib_main_t * vm, unformat_input_t * input,
     }
 
   unformat_free (line_input);
-  if (sw_if_index == (u32) ~ 0)
+  if (sw_if_index == (u32) ~0)
     {
       args.rv = VNET_API_ERROR_INVALID_INTERFACE;
       clib_error_return (0, "Interface name is invalid!");
@@ -1090,17 +1072,15 @@ bond_set_intf_cmd (vlib_main_t * vm, unformat_input_t * input,
   return args.error;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND(set_interface_bond_cmd, static) = {
+VLIB_CLI_COMMAND (set_interface_bond_cmd, static) = {
   .path = "set interface bond",
   .short_help = "set interface bond <interface> | sw_if_index <idx>"
-                " weight <value>",
+		" weight <value>",
   .function = bond_set_intf_cmd,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-bond_cli_init (vlib_main_t * vm)
+bond_cli_init (vlib_main_t *vm)
 {
   bond_main_t *bm = &bond_main;
 

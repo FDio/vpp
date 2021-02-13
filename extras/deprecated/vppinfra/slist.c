@@ -49,7 +49,7 @@
  */
 
 clib_error_t *
-clib_slist_init (clib_slist_t * sp, f64 branching_factor,
+clib_slist_init (clib_slist_t *sp, f64 branching_factor,
 		 clib_slist_key_compare_function_t compare,
 		 format_function_t format_user_element)
 {
@@ -60,8 +60,8 @@ clib_slist_init (clib_slist_t * sp, f64 branching_factor,
   sp->compare = compare;
   sp->seed = 0xdeaddabe;
   pool_get (sp->elts, head);
-  vec_add1 (head->n.nexts, (u32) ~ 0);
-  head->user_pool_index = (u32) ~ 0;
+  vec_add1 (head->n.nexts, (u32) ~0);
+  head->user_pool_index = (u32) ~0;
   vec_validate (sp->path, 1);
   vec_validate (sp->occupancy, 0);
 
@@ -72,7 +72,7 @@ clib_slist_init (clib_slist_t * sp, f64 branching_factor,
  * slist_search_internal
  */
 static inline clib_slist_search_result_t
-slist_search_internal (clib_slist_t * sp, void *key, int need_full_path)
+slist_search_internal (clib_slist_t *sp, void *key, int need_full_path)
 {
   int level, comp_result;
   clib_slist_elt_t *search_elt, *head_elt;
@@ -103,14 +103,15 @@ slist_search_internal (clib_slist_t * sp, void *key, int need_full_path)
        * Prefetching the next element at this level makes a measurable
        * difference, but doesn't fix the dependent read stall problem
        */
-      prefetch_elt = sp->elts +
-	clib_slist_get_next_at_level (search_elt, level);
+      prefetch_elt =
+	sp->elts + clib_slist_get_next_at_level (search_elt, level);
 
       CLIB_PREFETCH (prefetch_elt, CLIB_CACHE_LINE_BYTES, READ);
 
       /* Compare the key with the current element */
-      comp_result = (search_elt == head_elt) ? 1 :
-	sp->compare (key, search_elt->user_pool_index);
+      comp_result = (search_elt == head_elt) ?
+		      1 :
+		      sp->compare (key, search_elt->user_pool_index);
 
       sp->ncompares++;
       /* key "lighter" than this element */
@@ -159,23 +160,22 @@ slist_search_internal (clib_slist_t * sp, void *key, int need_full_path)
       sp->path[level] = search_elt - sp->elts;
 
       /* Out of list at this level? */
-      next_index_this_level =
-	clib_slist_get_next_at_level (search_elt, level);
-      if (next_index_this_level == (u32) ~ 0)
+      next_index_this_level = clib_slist_get_next_at_level (search_elt, level);
+      if (next_index_this_level == (u32) ~0)
 	goto next_list;
 
       /* No, try the next element */
       search_elt = pool_elt_at_index (sp->elts, next_index_this_level);
     }
-  return 0;			/* notreached */
+  return 0; /* notreached */
 }
 
 u32
-clib_slist_search (clib_slist_t * sp, void *key, u32 * ncompares)
+clib_slist_search (clib_slist_t *sp, void *key, u32 *ncompares)
 {
   clib_slist_search_result_t rv;
 
-  rv = slist_search_internal (sp, key, 0 /* dont need full path */ );
+  rv = slist_search_internal (sp, key, 0 /* dont need full path */);
   if (rv == CLIB_SLIST_MATCH)
     {
       clib_slist_elt_t *elt;
@@ -184,18 +184,18 @@ clib_slist_search (clib_slist_t * sp, void *key, u32 * ncompares)
 	*ncompares = sp->ncompares;
       return elt->user_pool_index;
     }
-  return (u32) ~ 0;
+  return (u32) ~0;
 }
 
 void
-clib_slist_add (clib_slist_t * sp, void *key, u32 user_pool_index)
+clib_slist_add (clib_slist_t *sp, void *key, u32 user_pool_index)
 {
   clib_slist_elt_t *new_elt;
   clib_slist_search_result_t search_result;
   int level;
 
-  search_result = slist_search_internal (sp, key,
-					 0 /* don't need full path */ );
+  search_result =
+    slist_search_internal (sp, key, 0 /* don't need full path */);
 
   /* Special case: key exists, just replace user_pool_index */
   if (PREDICT_FALSE (search_result == CLIB_SLIST_MATCH))
@@ -218,8 +218,8 @@ clib_slist_add (clib_slist_t * sp, void *key, u32 user_pool_index)
 
       /* Add to list at the current level */
       prev_elt_this_level = pool_elt_at_index (sp->elts, sp->path[level]);
-      prev_elt_next_index_this_level = clib_slist_get_next_at_level
-	(prev_elt_this_level, level);
+      prev_elt_next_index_this_level =
+	clib_slist_get_next_at_level (prev_elt_this_level, level);
 
       clib_slist_set_next_at_level (new_elt, prev_elt_next_index_this_level,
 				    level);
@@ -239,7 +239,7 @@ clib_slist_add (clib_slist_t * sp, void *key, u32 user_pool_index)
     if (((f64) sp->occupancy[top_level]) * sp->branching_factor > 1.0)
       {
 	vec_add1 (sp->occupancy, 0);
-	vec_add1 (head_elt->n.nexts, (u32) ~ 0);
+	vec_add1 (head_elt->n.nexts, (u32) ~0);
 	/* full match case returns n+1 items */
 	vec_validate (sp->path, vec_len (head_elt->n.nexts));
       }
@@ -247,13 +247,13 @@ clib_slist_add (clib_slist_t * sp, void *key, u32 user_pool_index)
 }
 
 clib_slist_search_result_t
-clib_slist_del (clib_slist_t * sp, void *key)
+clib_slist_del (clib_slist_t *sp, void *key)
 {
   clib_slist_search_result_t search_result;
   clib_slist_elt_t *del_elt;
   int level;
 
-  search_result = slist_search_internal (sp, key, 1 /* need full path */ );
+  search_result = slist_search_internal (sp, key, 1 /* need full path */);
 
   if (PREDICT_FALSE (search_result == CLIB_SLIST_NO_MATCH))
     return search_result;
@@ -286,7 +286,7 @@ clib_slist_del (clib_slist_t * sp, void *key)
 }
 
 u8 *
-format_slist (u8 * s, va_list * args)
+format_slist (u8 *s, va_list *args)
 {
   clib_slist_t *sl = va_arg (*args, clib_slist_t *);
   int verbose = va_arg (*args, int);
@@ -306,7 +306,7 @@ format_slist (u8 * s, va_list * args)
       s = format (s, "level %d: %d elts\n", i,
 		  sl->occupancy ? sl->occupancy[i] : 0);
 
-      if (verbose && head_elt->n.nexts[i] != (u32) ~ 0)
+      if (verbose && head_elt->n.nexts[i] != (u32) ~0)
 	{
 	  elt = pool_elt_at_index (sl->elts, head_elt->n.nexts[i]);
 	  while (elt)
@@ -316,7 +316,7 @@ format_slist (u8 * s, va_list * args)
 			  elt->user_pool_index, elt - sl->elts);
 	      next_index = clib_slist_get_next_at_level (elt, i);
 	      ASSERT (next_index != 0x7fffffff);
-	      if (next_index == (u32) ~ 0)
+	      if (next_index == (u32) ~0)
 		break;
 	      else
 		elt = pool_elt_at_index (sl->elts, next_index);

@@ -22,23 +22,22 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface.h>
 
-#define LACP_FAST_PERIODIC_TIMER        1.0
-#define LACP_SHORT_TIMOUT_TIME          (LACP_FAST_PERIODIC_TIMER * 3)
-#define LACP_SLOW_PERIODIC_TIMER        30.0
-#define LACP_LONG_TIMOUT_TIME           (LACP_SLOW_PERIODIC_TIMER * 3)
+#define LACP_FAST_PERIODIC_TIMER 1.0
+#define LACP_SHORT_TIMOUT_TIME	 (LACP_FAST_PERIODIC_TIMER * 3)
+#define LACP_SLOW_PERIODIC_TIMER 30.0
+#define LACP_LONG_TIMOUT_TIME	 (LACP_SLOW_PERIODIC_TIMER * 3)
 
 #ifndef MIN
-#define MIN(x,y) (((x)<(y))?(x):(y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #endif
 
-#define BOND_MODULO_SHORTCUT(a) \
-  (is_pow2 (a))
+#define BOND_MODULO_SHORTCUT(a) (is_pow2 (a))
 
-#define foreach_bond_mode	    \
-  _ (1, ROUND_ROBIN, "round-robin") \
-  _ (2, ACTIVE_BACKUP, "active-backup") \
-  _ (3, XOR, "xor") \
-  _ (4, BROADCAST, "broadcast") \
+#define foreach_bond_mode                                                     \
+  _ (1, ROUND_ROBIN, "round-robin")                                           \
+  _ (2, ACTIVE_BACKUP, "active-backup")                                       \
+  _ (3, XOR, "xor")                                                           \
+  _ (4, BROADCAST, "broadcast")                                               \
   _ (5, LACP, "lacp")
 
 typedef enum
@@ -49,18 +48,18 @@ typedef enum
 } bond_mode_t;
 
 /* configurable load-balances */
-#define foreach_bond_lb	  \
-  _ (2, L23, "l23", l23)  \
-  _ (1, L34 , "l34", l34) \
+#define foreach_bond_lb                                                       \
+  _ (2, L23, "l23", l23)                                                      \
+  _ (1, L34, "l34", l34)                                                      \
   _ (0, L2, "l2", l2)
 
 /* load-balance functions implemented in bond-output */
-#define foreach_bond_lb_algo			 \
-  _ (0, L2, "l2", l2)                            \
-  _ (1, L34 , "l34", l34)                        \
-  _ (2, L23, "l23", l23)                         \
-  _ (3, RR, "round-robin", round_robin)          \
-  _ (4, BC, "broadcast", broadcast)              \
+#define foreach_bond_lb_algo                                                  \
+  _ (0, L2, "l2", l2)                                                         \
+  _ (1, L34, "l34", l34)                                                      \
+  _ (2, L23, "l23", l23)                                                      \
+  _ (3, RR, "round-robin", round_robin)                                       \
+  _ (4, BC, "broadcast", broadcast)                                           \
   _ (5, AB, "active-backup", active_backup)
 
 typedef enum
@@ -145,13 +144,14 @@ typedef struct
   u32 active_members;
 } member_interface_details_t;
 
-typedef CLIB_PACKED (struct
-		     {
-		     u16 system_priority;
-		     u8 system[6];
-		     u16 key; u16 port_priority; u16 port_number;
-		     u8 state;
-		     }) lacp_port_info_t;
+typedef CLIB_PACKED (struct {
+  u16 system_priority;
+  u8 system[6];
+  u16 key;
+  u16 port_priority;
+  u16 port_number;
+  u8 state;
+}) lacp_port_info_t;
 
 typedef struct
 {
@@ -252,7 +252,8 @@ typedef struct
 
   /* Partner port information */
   lacp_port_info_t partner;
-  lacp_port_info_t partner_admin;;
+  lacp_port_info_t partner_admin;
+  ;
 
   /* Actor port information */
   lacp_port_info_t actor;
@@ -349,8 +350,8 @@ typedef struct
   u8 is_local_numa;
 } member_if_t;
 
-typedef void (*lacp_enable_disable_func) (vlib_main_t * vm, bond_if_t * bif,
-					  member_if_t * mif, u8 enable);
+typedef void (*lacp_enable_disable_func) (vlib_main_t *vm, bond_if_t *bif,
+					  member_if_t *mif, u8 enable);
 
 typedef struct
 {
@@ -396,9 +397,9 @@ typedef struct
   u32 bond_sw_if_index;
 } bond_packet_trace_t;
 
-typedef u32 (*load_balance_func) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node, bond_if_t * bif,
-				  vlib_buffer_t * b0, uword member_count);
+typedef u32 (*load_balance_func) (vlib_main_t *vm, vlib_node_runtime_t *node,
+				  bond_if_t *bif, vlib_buffer_t *b0,
+				  uword member_count);
 
 typedef struct
 {
@@ -410,82 +411,83 @@ extern vlib_node_registration_t bond_process_node;
 extern vnet_device_class_t bond_dev_class;
 extern bond_main_t bond_main;
 
-void bond_disable_collecting_distributing (vlib_main_t * vm,
-					   member_if_t * mif);
-void bond_enable_collecting_distributing (vlib_main_t * vm,
-					  member_if_t * mif);
-u8 *format_bond_interface_name (u8 * s, va_list * args);
+void bond_disable_collecting_distributing (vlib_main_t *vm, member_if_t *mif);
+void bond_enable_collecting_distributing (vlib_main_t *vm, member_if_t *mif);
+u8 *format_bond_interface_name (u8 *s, va_list *args);
 
-void bond_set_intf_weight (vlib_main_t * vm,
-			   bond_set_intf_weight_args_t * args);
-void bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args);
-int bond_delete_if (vlib_main_t * vm, u32 sw_if_index);
-void bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args);
-void bond_detach_member (vlib_main_t * vm, bond_detach_member_args_t * args);
-int bond_dump_ifs (bond_interface_details_t ** out_bondids);
-int bond_dump_member_ifs (member_interface_details_t ** out_memberids,
+void bond_set_intf_weight (vlib_main_t *vm, bond_set_intf_weight_args_t *args);
+void bond_create_if (vlib_main_t *vm, bond_create_if_args_t *args);
+int bond_delete_if (vlib_main_t *vm, u32 sw_if_index);
+void bond_add_member (vlib_main_t *vm, bond_add_member_args_t *args);
+void bond_detach_member (vlib_main_t *vm, bond_detach_member_args_t *args);
+int bond_dump_ifs (bond_interface_details_t **out_bondids);
+int bond_dump_member_ifs (member_interface_details_t **out_memberids,
 			  u32 bond_sw_if_index);
 
 static inline uword
-unformat_bond_mode (unformat_input_t * input, va_list * args)
+unformat_bond_mode (unformat_input_t *input, va_list *args)
 {
   u8 *r = va_arg (*args, u8 *);
 
-  if (0);
+  if (0)
+    ;
 #define _(v, f, s) else if (unformat (input, s)) *r = BOND_MODE_##f;
   foreach_bond_mode
 #undef _
-    else
-    return 0;
+    else return 0;
 
   return 1;
 }
 
 static inline u8 *
-format_bond_mode (u8 * s, va_list * args)
+format_bond_mode (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
   u8 *t = 0;
 
   switch (i)
     {
-#define _(v, f, s) case BOND_MODE_##f: t = (u8 *) s; break;
+#define _(v, f, s)                                                            \
+  case BOND_MODE_##f:                                                         \
+    t = (u8 *) s;                                                             \
+    break;
       foreach_bond_mode
 #undef _
-    default:
-      return format (s, "unknown");
+	default : return format (s, "unknown");
     }
   return format (s, "%s", t);
 }
 
 static inline uword
-unformat_bond_load_balance (unformat_input_t * input, va_list * args)
+unformat_bond_load_balance (unformat_input_t *input, va_list *args)
 {
   u8 *r = va_arg (*args, u8 *);
 
-  if (0);
+  if (0)
+    ;
 #define _(v, f, s, p) else if (unformat (input, s)) *r = BOND_LB_##f;
   foreach_bond_lb
 #undef _
-    else
-    return 0;
+    else return 0;
 
   return 1;
 }
 
 static inline u8 *
-format_bond_load_balance (u8 * s, va_list * args)
+format_bond_load_balance (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
   u8 *t = 0;
 
   switch (i)
     {
-#define _(v, f, s, p) case BOND_LB_##f: t = (u8 *) s; break;
+#define _(v, f, s, p)                                                         \
+  case BOND_LB_##f:                                                           \
+    t = (u8 *) s;                                                             \
+    break;
       foreach_bond_lb_algo
 #undef _
-    default:
-      return format (s, "unknown");
+	default : return format (s, "unknown");
     }
   return format (s, "%s", t);
 }

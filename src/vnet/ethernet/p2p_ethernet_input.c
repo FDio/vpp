@@ -28,40 +28,39 @@ extern vlib_node_registration_t p2p_ethernet_input_node;
 
 /* packet trace format function */
 static u8 *
-format_p2p_ethernet_trace (u8 * s, va_list * args)
+format_p2p_ethernet_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   p2p_ethernet_trace_t *t = va_arg (*args, p2p_ethernet_trace_t *);
 
   vnet_main_t *vnm = &vnet_main;
-  s = format (s, "P2P ethernet: %U -> %U",
-	      format_vnet_sw_if_index_name, vnm, t->sw_if_index,
-	      format_vnet_sw_if_index_name, vnm, t->p2pe_sw_if_index);
+  s = format (s, "P2P ethernet: %U -> %U", format_vnet_sw_if_index_name, vnm,
+	      t->sw_if_index, format_vnet_sw_if_index_name, vnm,
+	      t->p2pe_sw_if_index);
 
   return s;
 }
 
-#define foreach_p2p_ethernet_error                      \
-_(HITS, "P2P ethernet incoming packets processed")
+#define foreach_p2p_ethernet_error                                            \
+  _ (HITS, "P2P ethernet incoming packets processed")
 
 typedef enum
 {
-#define _(sym,str) P2PE_ERROR_##sym,
+#define _(sym, str) P2PE_ERROR_##sym,
   foreach_p2p_ethernet_error
 #undef _
     P2PE_N_ERROR,
 } p2p_ethernet_error_t;
 
 static char *p2p_ethernet_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_p2p_ethernet_error
 #undef _
 };
 
-VLIB_NODE_FN (p2p_ethernet_input_node) (vlib_main_t * vm,
-					vlib_node_runtime_t * node,
-					vlib_frame_t * frame)
+VLIB_NODE_FN (p2p_ethernet_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 thread_index = vm->thread_index;
   u32 n_trace = vlib_get_trace_count (vm, node);
@@ -119,10 +118,9 @@ VLIB_NODE_FN (p2p_ethernet_input_node) (vlib_main_t * vm,
 	      vnet_buffer (b0)->sw_if_index[VLIB_RX] = rx0;
 	      n_p2p_ethernet_packets += 1;
 
-	      if (PREDICT_FALSE
-		  (n_trace > 0
-		   && vlib_trace_buffer (vm, node, next_index, b0,
-					 1 /* follow_chain */ )))
+	      if (PREDICT_FALSE (n_trace > 0 &&
+				 vlib_trace_buffer (vm, node, next_index, b0,
+						    1 /* follow_chain */)))
 		{
 		  p2p_ethernet_trace_t *t0;
 		  vlib_set_trace_count (vm, node, --n_trace);
@@ -131,9 +129,9 @@ VLIB_NODE_FN (p2p_ethernet_input_node) (vlib_main_t * vm,
 		  t0->p2pe_sw_if_index = rx0;
 		}
 
-	      vlib_increment_combined_counter (cm, thread_index, rx0, 1,
-					       vlib_buffer_length_in_chain
-					       (vm, b0));
+	      vlib_increment_combined_counter (
+		cm, thread_index, rx0, 1,
+		vlib_buffer_length_in_chain (vm, b0));
 	    }
 	  if (rx1 != ~0)
 	    {
@@ -141,10 +139,9 @@ VLIB_NODE_FN (p2p_ethernet_input_node) (vlib_main_t * vm,
 	      vnet_buffer (b1)->sw_if_index[VLIB_RX] = rx1;
 	      n_p2p_ethernet_packets += 1;
 
-	      if (PREDICT_FALSE
-		  (n_trace > 0
-		   && vlib_trace_buffer (vm, node, next_index, b1,
-					 1 /* follow_chain */ )))
+	      if (PREDICT_FALSE (n_trace > 0 &&
+				 vlib_trace_buffer (vm, node, next_index, b1,
+						    1 /* follow_chain */)))
 		{
 		  p2p_ethernet_trace_t *t1;
 		  vlib_set_trace_count (vm, node, --n_trace);
@@ -153,18 +150,16 @@ VLIB_NODE_FN (p2p_ethernet_input_node) (vlib_main_t * vm,
 		  t1->p2pe_sw_if_index = rx1;
 		}
 
-	      vlib_increment_combined_counter (cm, thread_index, rx1, 1,
-					       vlib_buffer_length_in_chain
-					       (vm, b1));
+	      vlib_increment_combined_counter (
+		cm, thread_index, rx1, 1,
+		vlib_buffer_length_in_chain (vm, b1));
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi1, next1);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi1, next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -197,10 +192,9 @@ VLIB_NODE_FN (p2p_ethernet_input_node) (vlib_main_t * vm,
 	      vnet_buffer (b0)->sw_if_index[VLIB_RX] = rx0;
 	      n_p2p_ethernet_packets += 1;
 
-	      if (PREDICT_FALSE
-		  (n_trace > 0
-		   && vlib_trace_buffer (vm, node, next_index, b0,
-					 1 /* follow_chain */ )))
+	      if (PREDICT_FALSE (n_trace > 0 &&
+				 vlib_trace_buffer (vm, node, next_index, b0,
+						    1 /* follow_chain */)))
 		{
 		  p2p_ethernet_trace_t *t0;
 		  vlib_set_trace_count (vm, node, --n_trace);
@@ -209,9 +203,9 @@ VLIB_NODE_FN (p2p_ethernet_input_node) (vlib_main_t * vm,
 		  t0->p2pe_sw_if_index = rx0;
 		}
 
-	      vlib_increment_combined_counter (cm, thread_index, rx0, 1,
-					       vlib_buffer_length_in_chain
-					       (vm, b0));
+	      vlib_increment_combined_counter (
+		cm, thread_index, rx0, 1,
+		vlib_buffer_length_in_chain (vm, b0));
 	    }
 	  else
 	    {
@@ -222,9 +216,8 @@ VLIB_NODE_FN (p2p_ethernet_input_node) (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
@@ -235,7 +228,6 @@ VLIB_NODE_FN (p2p_ethernet_input_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (p2p_ethernet_input_node) = {
   .name = "p2p-ethernet-input",
   .vector_size = sizeof (u32),
@@ -253,7 +245,6 @@ VLIB_REGISTER_NODE (p2p_ethernet_input_node) = {
     [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

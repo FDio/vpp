@@ -21,19 +21,20 @@
 #include <vnet/ethernet/ethernet_types_api.h>
 
 int
-unformat_lisp_eid_api (gid_address_t * dst, u32 vni, const vl_api_eid_t * eid)
+unformat_lisp_eid_api (gid_address_t *dst, u32 vni, const vl_api_eid_t *eid)
 {
   switch (eid->type)
     {
-    case EID_TYPE_API_PREFIX:			/* ip prefix */
+    case EID_TYPE_API_PREFIX: /* ip prefix */
       gid_address_type (dst) = GID_ADDR_IP_PREFIX;
       ip_address_decode2 (&eid->address.prefix.address, &dst->ippref.addr);
       gid_address_ippref_len (dst) = eid->address.prefix.len;
       ip_prefix_normalize (&gid_address_ippref (dst));
       break;
-    case EID_TYPE_API_MAC:			/* l2 mac */
+    case EID_TYPE_API_MAC: /* l2 mac */
       gid_address_type (dst) = GID_ADDR_MAC;
-      mac_address_decode (eid->address.mac, (mac_address_t *) gid_address_mac (dst));
+      mac_address_decode (eid->address.mac,
+			  (mac_address_t *) gid_address_mac (dst));
       break;
     default:
       /* unknown type */
@@ -46,7 +47,7 @@ unformat_lisp_eid_api (gid_address_t * dst, u32 vni, const vl_api_eid_t * eid)
 }
 
 void
-lisp_fid_put_api (vl_api_eid_t * eid, const fid_address_t * fid)
+lisp_fid_put_api (vl_api_eid_t *eid, const fid_address_t *fid)
 {
   switch (fid_addr_type (fid))
     {
@@ -56,7 +57,8 @@ lisp_fid_put_api (vl_api_eid_t * eid, const fid_address_t * fid)
       break;
 
     case FID_ADDR_MAC:
-      mac_address_encode ((mac_address_t *) fid_addr_mac (fid), eid->address.mac);
+      mac_address_encode ((mac_address_t *) fid_addr_mac (fid),
+			  eid->address.mac);
       eid->type = EID_TYPE_API_MAC;
       break;
 
@@ -67,7 +69,7 @@ lisp_fid_put_api (vl_api_eid_t * eid, const fid_address_t * fid)
 }
 
 void
-lisp_gid_put_api (vl_api_eid_t * eid, const gid_address_t * gid)
+lisp_gid_put_api (vl_api_eid_t *eid, const gid_address_t *gid)
 {
   switch (gid_address_type (gid))
     {
@@ -77,7 +79,8 @@ lisp_gid_put_api (vl_api_eid_t * eid, const gid_address_t * gid)
       break;
 
     case GID_ADDR_MAC:
-      mac_address_encode ((mac_address_t *) gid_address_mac (gid), eid->address.mac);
+      mac_address_encode ((mac_address_t *) gid_address_mac (gid),
+			  eid->address.mac);
       eid->type = EID_TYPE_API_MAC;
       break;
 

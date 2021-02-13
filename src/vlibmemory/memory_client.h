@@ -49,8 +49,8 @@ int vl_client_connect_to_vlib (const char *svm_name, const char *client_name,
 			       int rx_queue_size);
 int vl_client_connect_to_vlib_thread_fn (const char *svm_name,
 					 const char *client_name,
-					 int rx_queue_size,
-					 void *(*)(void *), void *);
+					 int rx_queue_size, void *(*) (void *),
+					 void *);
 int vl_client_connect_to_vlib_no_rx_pthread (const char *svm_name,
 					     const char *client_name,
 					     int rx_queue_size);
@@ -71,7 +71,7 @@ vlibapi_get_memory_client_main (void)
 }
 
 always_inline void
-vlibapi_set_memory_client_main (memory_client_main_t * mm)
+vlibapi_set_memory_client_main (memory_client_main_t *mm)
 {
   my_memory_client_main = mm;
 }

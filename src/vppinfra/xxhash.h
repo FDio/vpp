@@ -47,12 +47,12 @@
 #ifndef __included_xxhash_h__
 #define __included_xxhash_h__
 
-#define PRIME64_1 11400714785074694791ULL
-#define PRIME64_2 14029467366897019727ULL
-#define PRIME64_3  1609587929392839161ULL
-#define PRIME64_4  9650029242287828579ULL
-#define PRIME64_5  2870177450012600261ULL
-#define XXH_rotl64(x,r) ((x << r) | (x >> (64 - r)))
+#define PRIME64_1	 11400714785074694791ULL
+#define PRIME64_2	 14029467366897019727ULL
+#define PRIME64_3	 1609587929392839161ULL
+#define PRIME64_4	 9650029242287828579ULL
+#define PRIME64_5	 2870177450012600261ULL
+#define XXH_rotl64(x, r) ((x << r) | (x >> (64 - r)))
 
 static inline u64
 clib_xxhash (u64 key)

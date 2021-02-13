@@ -24,22 +24,22 @@
 #include <vnet/l2/l2_input.h>
 
 /* Statistics (not really errors) */
-#define foreach_l2t_decap_error                                 \
-_(USER_TO_NETWORK, "L2TP user (ip6) to L2 network pkts")        \
-_(SESSION_ID_MISMATCH, "l2tpv3 local session id mismatches")    \
-_(COOKIE_MISMATCH, "l2tpv3 local cookie mismatches")            \
-_(NO_SESSION, "l2tpv3 session not found")                       \
-_(ADMIN_DOWN, "l2tpv3 tunnel is down")
+#define foreach_l2t_decap_error                                               \
+  _ (USER_TO_NETWORK, "L2TP user (ip6) to L2 network pkts")                   \
+  _ (SESSION_ID_MISMATCH, "l2tpv3 local session id mismatches")               \
+  _ (COOKIE_MISMATCH, "l2tpv3 local cookie mismatches")                       \
+  _ (NO_SESSION, "l2tpv3 session not found")                                  \
+  _ (ADMIN_DOWN, "l2tpv3 tunnel is down")
 
 static char *l2t_decap_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_l2t_decap_error
 #undef _
 };
 
 typedef enum
 {
-#define _(sym,str) L2T_DECAP_ERROR_##sym,
+#define _(sym, str) L2T_DECAP_ERROR_##sym,
   foreach_l2t_decap_error
 #undef _
     L2T_DECAP_N_ERROR,
@@ -57,7 +57,7 @@ typedef enum
 #define NSTAGES 3
 
 static inline void
-stage0 (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
+stage0 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b)
 {
   vlib_prefetch_buffer_header (b, STORE);
   /* l2tpv3 header is a long way away, need 2 cache lines */
@@ -65,7 +65,7 @@ stage0 (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
 }
 
 static inline void
-stage1 (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
+stage1 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b)
 {
   l2t_main_t *lm = &l2t_main;
   ip6_header_t *ip6 = vlib_buffer_get_current (b);
@@ -115,7 +115,7 @@ stage1 (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
 }
 
 static inline u32
-last_stage (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
+last_stage (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b)
 {
   l2t_main_t *lm = &l2t_main;
   ip6_header_t *ip6 = vlib_buffer_get_current (b);
@@ -136,21 +136,18 @@ last_stage (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
       goto done;
     }
 
-  em->counters[node_counter_base_index + L2T_DECAP_ERROR_USER_TO_NETWORK] +=
-    1;
+  em->counters[node_counter_base_index + L2T_DECAP_ERROR_USER_TO_NETWORK] += 1;
 
   session_index = vnet_buffer (b)->l2t.session_index;
 
-  counter_index =
-    session_index_to_counter_index (session_index,
-				    SESSION_COUNTER_USER_TO_NETWORK);
+  counter_index = session_index_to_counter_index (
+    session_index, SESSION_COUNTER_USER_TO_NETWORK);
 
   /* per-mapping byte stats include the ethernet header */
-  vlib_increment_combined_counter (&lm->counter_main,
-				   vlib_get_thread_index (),
-				   counter_index, 1 /* packet_increment */ ,
+  vlib_increment_combined_counter (&lm->counter_main, vlib_get_thread_index (),
+				   counter_index, 1 /* packet_increment */,
 				   vlib_buffer_length_in_chain (vm, b) +
-				   sizeof (ethernet_header_t));
+				     sizeof (ethernet_header_t));
 
   session = pool_elt_at_index (lm->sessions, session_index);
 
@@ -169,7 +166,8 @@ last_stage (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_buffer_t * b)
     {
       if (l2tp->cookie != session->local_cookie[1])
 	{
-	  /* Key and session ID matched, but cookie doesn't. Drop this packet. */
+	  /* Key and session ID matched, but cookie doesn't. Drop this packet.
+	   */
 	  b->error = node->errors[L2T_DECAP_ERROR_COOKIE_MISMATCH];
 	  next_index = L2T_DECAP_NEXT_DROP;
 	  goto done;
@@ -236,9 +234,8 @@ done:
 
 #include <vnet/pipeline.h>
 
-VLIB_NODE_FN (l2t_decap_node) (vlib_main_t * vm,
-			       vlib_node_runtime_t * node,
-			       vlib_frame_t * frame)
+VLIB_NODE_FN (l2t_decap_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return dispatch_pipeline (vm, node, frame);
 }
@@ -249,7 +246,6 @@ VLIB_NODE_FN (l2t_decap_node) (vlib_main_t * vm,
  * while l2tp-decap-local drops it.
  */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2t_decap_node) = {
   .name = "l2tp-decap",
   .vector_size = sizeof (u32),
@@ -267,11 +263,9 @@ VLIB_REGISTER_NODE (l2t_decap_node) = {
         [L2T_DECAP_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 extern vlib_node_function_t l2t_decap_node_fn;
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2t_decap_local_node) = {
   .function = l2t_decap_node_fn,
   .name = "l2tp-decap-local",
@@ -290,7 +284,6 @@ VLIB_REGISTER_NODE (l2t_decap_local_node) = {
     [L2T_DECAP_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

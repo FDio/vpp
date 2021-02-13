@@ -38,18 +38,16 @@ typedef struct
 
 graph_test_main_t graph_test_main;
 
-
 uword
-api_unformat_node_index (unformat_input_t * input, va_list * args)
+api_unformat_node_index (unformat_input_t *input, va_list *args)
 {
   u32 *result = va_arg (*args, u32 *);
 
   return unformat (input, "%u", result);
 }
 
-
 static void
-vl_api_graph_node_get_reply_t_handler (vl_api_graph_node_get_reply_t * mp)
+vl_api_graph_node_get_reply_t_handler (vl_api_graph_node_get_reply_t *mp)
 {
   vat_main_t *vam = &vat_main;
 
@@ -58,7 +56,7 @@ vl_api_graph_node_get_reply_t_handler (vl_api_graph_node_get_reply_t * mp)
 }
 
 int
-api_graph_node_get (vat_main_t * vam)
+api_graph_node_get (vat_main_t *vam)
 {
   graph_test_main_t *gtm = &graph_test_main;
   unformat_input_t *i = vam->input;
@@ -125,8 +123,7 @@ api_graph_node_get (vat_main_t * vam)
   S (mp);
 
   if (!gtm->ping_id)
-    gtm->ping_id =
-      vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
+    gtm->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
 
   mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));
   mp_ping->_vl_msg_id = htons (gtm->ping_id);
@@ -139,15 +136,14 @@ api_graph_node_get (vat_main_t * vam)
 }
 
 void
-vl_api_graph_node_details_t_handler (vl_api_graph_node_details_t * mp)
+vl_api_graph_node_details_t_handler (vl_api_graph_node_details_t *mp)
 {
   vat_main_t *vam = &vat_main;
   u32 n_arcs;
   int i;
 
-  fformat (vam->ofp,
-	   "Node: %s  Index:%d  Flags:0x%x\n",
-	   mp->name, ntohl (mp->index), ntohl (mp->flags));
+  fformat (vam->ofp, "Node: %s  Index:%d  Flags:0x%x\n", mp->name,
+	   ntohl (mp->index), ntohl (mp->flags));
 
   n_arcs = ntohl (mp->n_arcs);
   for (i = 0; i < n_arcs; ++i)
@@ -158,7 +154,7 @@ vl_api_graph_node_details_t_handler (vl_api_graph_node_details_t * mp)
 }
 
 void
-vl_api_graph_node_details_t_handler_json (vl_api_graph_node_details_t * mp)
+vl_api_graph_node_details_t_handler_json (vl_api_graph_node_details_t *mp)
 {
   clib_error ("graph_node_details JSON not supported");
 }
@@ -168,7 +164,7 @@ vl_api_graph_node_details_t_handler_json (vl_api_graph_node_details_t * mp)
 #include <tracedump/graph.api_test.c>
 
 static clib_error_t *
-graph_api_hookup_shim (vlib_main_t * vm)
+graph_api_hookup_shim (vlib_main_t *vm)
 {
   graph_test_vat_plugin_register (&vat_main);
   return 0;

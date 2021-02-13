@@ -51,9 +51,9 @@ pvh (void *p)
   return _vec_find (p);
 }
 
-
 /**
- * @brief GDB callable function: pe - call pool_elts - number of elements in a pool
+ * @brief GDB callable function: pe - call pool_elts - number of elements in a
+ * pool
  *
  * @param *v - void - address of pool
  *
@@ -81,7 +81,8 @@ ph (void *p)
 }
 
 /**
- * @brief GDB callable function: pifi - call pool_is_free_index - is passed index free?
+ * @brief GDB callable function: pifi - call pool_is_free_index - is passed
+ * index free?
  *
  * @param *p - void - address of pool
  * @param *index - u32
@@ -103,7 +104,7 @@ pifi (void *p, u32 index)
  *
  */
 void
-debug_hex_bytes (u8 * s, u32 n)
+debug_hex_bytes (u8 *s, u32 n)
 {
   fformat (stderr, "%U\n", format_hex_bytes, s, n);
 }
@@ -123,28 +124,27 @@ vlib_dump_frame_ownership (void)
   u32 index;
 
   vec_foreach (this_node_runtime, nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL])
-  {
-    first_nf_index = this_node_runtime->next_frame_index;
+    {
+      first_nf_index = this_node_runtime->next_frame_index;
 
-    for (index = first_nf_index; index < first_nf_index +
-	 this_node_runtime->n_next_nodes; index++)
-      {
-	vlib_node_runtime_t *owned_runtime;
-	nf = vec_elt_at_index (vm->node_main.next_frames, index);
-	if (nf->flags & VLIB_FRAME_OWNER)
-	  {
-	    owned_runtime = vec_elt_at_index (nm->nodes_by_type[0],
-					      nf->node_runtime_index);
-	    fformat (stderr,
-		     "%s next index %d owns enqueue rights to %s\n",
-		     nm->nodes[this_node_runtime->node_index]->name,
-		     index - first_nf_index,
-		     nm->nodes[owned_runtime->node_index]->name);
-	    fformat (stderr, "  nf index %d nf->frame %p\n",
-		     nf - vm->node_main.next_frames, nf->frame);
-	  }
-      }
-  }
+      for (index = first_nf_index;
+	   index < first_nf_index + this_node_runtime->n_next_nodes; index++)
+	{
+	  vlib_node_runtime_t *owned_runtime;
+	  nf = vec_elt_at_index (vm->node_main.next_frames, index);
+	  if (nf->flags & VLIB_FRAME_OWNER)
+	    {
+	      owned_runtime = vec_elt_at_index (nm->nodes_by_type[0],
+						nf->node_runtime_index);
+	      fformat (stderr, "%s next index %d owns enqueue rights to %s\n",
+		       nm->nodes[this_node_runtime->node_index]->name,
+		       index - first_nf_index,
+		       nm->nodes[owned_runtime->node_index]->name);
+	      fformat (stderr, "  nf index %d nf->frame %p\n",
+		       nf - vm->node_main.next_frames, nf->frame);
+	    }
+	}
+    }
 }
 
 /**
@@ -187,7 +187,7 @@ gdb_show_errors (int verbose)
       return;
     }
 
-  vlib_cli_show_errors.function (vm, &input, 0 /* cmd */ );
+  vlib_cli_show_errors.function (vm, &input, 0 /* cmd */);
   unformat_free (&input);
 }
 
@@ -210,7 +210,7 @@ gdb_show_session (int verbose)
       return;
     }
 
-  vlib_cli_show_session_command.function (vm, &input, 0 /* cmd */ );
+  vlib_cli_show_session_command.function (vm, &input, 0 /* cmd */);
   unformat_free (&input);
 }
 
@@ -238,26 +238,24 @@ gdb_show_traces ()
 
   /* Get active traces from pool. */
 
-  /* *INDENT-OFF* */
-  foreach_vlib_main (
-  ({
+  foreach_vlib_main (({
     fmt = "------------------- Start of thread %d %s -------------------\n";
     s = format (s, fmt, index, vlib_worker_threads[index].name);
 
     tm = &this_vlib_main->trace_main;
 
-    trace_apply_filter(this_vlib_main);
+    trace_apply_filter (this_vlib_main);
 
     traces = 0;
     pool_foreach (h, tm->trace_buffer_pool)
-     {
-      vec_add1 (traces, h[0]);
-    }
+      {
+	vec_add1 (traces, h[0]);
+      }
 
     if (vec_len (traces) == 0)
       {
-        s = format (s, "No packets in trace buffer\n");
-        goto done;
+	s = format (s, "No packets in trace buffer\n");
+	goto done;
       }
 
     /* Sort them by increasing time. */
@@ -265,15 +263,17 @@ gdb_show_traces ()
 
     for (i = 0; i < vec_len (traces); i++)
       {
-        if (i == max)
-          {
-            fformat (stderr, "Limiting display to %d packets."
-                                 " To display more specify max.", max);
-            goto done;
-          }
+	if (i == max)
+	  {
+	    fformat (stderr,
+		     "Limiting display to %d packets."
+		     " To display more specify max.",
+		     max);
+	    goto done;
+	  }
 
-        s = format (s, "Packet %d\n%U\n\n", i + 1,
-                         format_vlib_trace, vlib_mains[0], traces[i]);
+	s = format (s, "Packet %d\n%U\n\n", i + 1, format_vlib_trace,
+		    vlib_mains[0], traces[i]);
       }
 
   done:
@@ -281,7 +281,6 @@ gdb_show_traces ()
 
     index++;
   }));
-  /* *INDENT-ON* */
 
   fformat (stderr, "%v", s);
   vec_free (s);
@@ -295,15 +294,14 @@ gdb_show_traces ()
  * @return error - clib_error_t
  */
 static clib_error_t *
-show_gdb_command_fn (vlib_main_t * vm,
-		     unformat_input_t * input, vlib_cli_command_t * cmd)
+show_gdb_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
 {
   vlib_cli_output (vm, "vl(p) returns vec_len(p)");
   vlib_cli_output (vm, "vb(b) returns vnet_buffer(b) [opaque]");
   vlib_cli_output (vm, "vb2(b) returns vnet_buffer2(b) [opaque2]");
   vlib_cli_output (vm, "vbi(b) returns b index");
-  vlib_cli_output (vm,
-		   "vgb(bi) returns vlib_get_buffer(vlib_get_main(), bi)");
+  vlib_cli_output (vm, "vgb(bi) returns vlib_get_buffer(vlib_get_main(), bi)");
   vlib_cli_output (vm, "pe(p) returns pool_elts(p)");
   vlib_cli_output (vm, "ph(p) returns pool_header(p)");
   vlib_cli_output (vm, "pifi(p, i) returns pool_is_free_index(p, i)");
@@ -318,13 +316,11 @@ show_gdb_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_gdb_funcs_command, static) = {
   .path = "show gdb",
   .short_help = "Describe functions which can be called from gdb",
   .function = show_gdb_command_fn,
 };
-/* *INDENT-ON* */
 
 vlib_buffer_t *
 vgb (u32 bi)
@@ -355,7 +351,7 @@ vb2 (void *vb_arg)
 }
 
 u32
-vbi (vlib_buffer_t * b)
+vbi (vlib_buffer_t *b)
 {
   vlib_main_t *vm = vlib_get_main ();
   vlib_buffer_main_t *bm = vm->buffer_main;
@@ -365,7 +361,7 @@ vbi (vlib_buffer_t * b)
 }
 
 int
-gdb_validate_buffer (vlib_buffer_t * b)
+gdb_validate_buffer (vlib_buffer_t *b)
 {
   vlib_main_t *vm = vlib_get_main ();
   u32 bi = vbi (b);
@@ -382,7 +378,7 @@ gdb_validate_buffer (vlib_buffer_t * b)
 
 /* Cafeteria plan, maybe you don't want these functions */
 clib_error_t *
-gdb_func_init (vlib_main_t * vm)
+gdb_func_init (vlib_main_t *vm)
 {
   return 0;
 }

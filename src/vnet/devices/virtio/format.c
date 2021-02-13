@@ -24,7 +24,7 @@
 #include <vnet/devices/virtio/pci.h>
 
 u8 *
-format_virtio_device_name (u8 * s, va_list * args)
+format_virtio_device_name (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   virtio_main_t *mm = &virtio_main;
@@ -34,8 +34,7 @@ format_virtio_device_name (u8 * s, va_list * args)
     s = format (s, "tap%u", vif->id);
   else if (vif->type == VIRTIO_IF_TYPE_PCI)
     s = format (s, "virtio-%x/%x/%x/%x", vif->pci_addr.domain,
-		vif->pci_addr.bus, vif->pci_addr.slot,
-		vif->pci_addr.function);
+		vif->pci_addr.bus, vif->pci_addr.slot, vif->pci_addr.function);
   else if (vif->type == VIRTIO_IF_TYPE_TUN)
     s = format (s, "tun%u", vif->id);
   else
@@ -45,7 +44,7 @@ format_virtio_device_name (u8 * s, va_list * args)
 }
 
 u8 *
-format_virtio_log_name (u8 * s, va_list * args)
+format_virtio_log_name (u8 *s, va_list *args)
 {
   virtio_if_t *vif = va_arg (*args, virtio_if_t *);
 

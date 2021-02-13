@@ -36,7 +36,7 @@ clib_ptclosure_alloc (int n)
 }
 
 __clib_export void
-clib_ptclosure_free (u8 ** ptc)
+clib_ptclosure_free (u8 **ptc)
 {
   u8 *row;
   int n = vec_len (ptc);
@@ -53,7 +53,7 @@ clib_ptclosure_free (u8 ** ptc)
 }
 
 void
-clib_ptclosure_copy (u8 ** dst, u8 ** src)
+clib_ptclosure_copy (u8 **dst, u8 **src)
 {
   int i, n;
   u8 *src_row, *dst_row;
@@ -87,7 +87,7 @@ clib_ptclosure_copy (u8 ** dst, u8 ** src)
  */
 
 __clib_export u8 **
-clib_ptclosure (u8 ** orig)
+clib_ptclosure (u8 **orig)
 {
   int i, j, k;
   int n;
@@ -113,8 +113,6 @@ clib_ptclosure (u8 ** orig)
   clib_ptclosure_free (prev);
   return cur;
 }
-
-
 
 /*
  * fd.io coding-style-patch-verification: ON

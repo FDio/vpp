@@ -36,7 +36,6 @@ static abf_policy_t *abf_policy_pool;
  */
 static uword *abf_policy_db;
 
-
 abf_policy_t *
 abf_policy_get (u32 index)
 {
@@ -44,7 +43,7 @@ abf_policy_get (u32 index)
 }
 
 static u32
-abf_policy_get_index (const abf_policy_t * abf)
+abf_policy_get_index (const abf_policy_t *abf)
 {
   return (abf - abf_policy_pool);
 }
@@ -75,10 +74,9 @@ abf_policy_find (u32 policy_id)
   return (INDEX_INVALID);
 }
 
-
 int
-abf_policy_update (u32 policy_id,
-		   u32 acl_index, const fib_route_path_t * rpaths)
+abf_policy_update (u32 policy_id, u32 acl_index,
+		   const fib_route_path_t *rpaths)
 {
   abf_policy_t *ap;
   u32 api;
@@ -96,16 +94,15 @@ abf_policy_update (u32 policy_id,
       fib_node_init (&ap->ap_node, abf_policy_fib_node_type);
       ap->ap_acl = acl_index;
       ap->ap_id = policy_id;
-      ap->ap_pl = fib_path_list_create ((FIB_PATH_LIST_FLAG_SHARED |
-					 FIB_PATH_LIST_FLAG_NO_URPF), rpaths);
+      ap->ap_pl = fib_path_list_create (
+	(FIB_PATH_LIST_FLAG_SHARED | FIB_PATH_LIST_FLAG_NO_URPF), rpaths);
 
       /*
        * become a child of the path list so we get poked when
        * the forwarding changes.
        */
-      ap->ap_sibling = fib_path_list_child_add (ap->ap_pl,
-						abf_policy_fib_node_type,
-						api);
+      ap->ap_sibling =
+	fib_path_list_child_add (ap->ap_pl, abf_policy_fib_node_type, api);
 
       /*
        * add this new policy to the DB
@@ -136,23 +133,19 @@ abf_policy_update (u32 policy_id,
 
       if (FIB_NODE_INDEX_INVALID != old_pl)
 	{
-	  ap->ap_pl = fib_path_list_copy_and_path_add (old_pl,
-						       (FIB_PATH_LIST_FLAG_SHARED
-							|
-							FIB_PATH_LIST_FLAG_NO_URPF),
-						       rpaths);
+	  ap->ap_pl = fib_path_list_copy_and_path_add (
+	    old_pl, (FIB_PATH_LIST_FLAG_SHARED | FIB_PATH_LIST_FLAG_NO_URPF),
+	    rpaths);
 	  fib_path_list_child_remove (old_pl, ap->ap_sibling);
 	}
       else
 	{
-	  ap->ap_pl = fib_path_list_create ((FIB_PATH_LIST_FLAG_SHARED |
-					     FIB_PATH_LIST_FLAG_NO_URPF),
-					    rpaths);
+	  ap->ap_pl = fib_path_list_create (
+	    (FIB_PATH_LIST_FLAG_SHARED | FIB_PATH_LIST_FLAG_NO_URPF), rpaths);
 	}
 
-      ap->ap_sibling = fib_path_list_child_add (ap->ap_pl,
-						abf_policy_fib_node_type,
-						api);
+      ap->ap_sibling =
+	fib_path_list_child_add (ap->ap_pl, abf_policy_fib_node_type, api);
 
       fib_node_back_walk_ctx_t ctx = {
 	.fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE,
@@ -164,7 +157,7 @@ abf_policy_update (u32 policy_id,
 }
 
 static void
-abf_policy_destroy (abf_policy_t * ap)
+abf_policy_destroy (abf_policy_t *ap)
 {
   /*
    * this ABF should not be a sibling on the path list, since
@@ -178,7 +171,7 @@ abf_policy_destroy (abf_policy_t * ap)
 }
 
 int
-abf_policy_delete (u32 policy_id, const fib_route_path_t * rpaths)
+abf_policy_delete (u32 policy_id, const fib_route_path_t *rpaths)
 {
   abf_policy_t *ap;
   u32 api;
@@ -205,11 +198,9 @@ abf_policy_delete (u32 policy_id, const fib_route_path_t * rpaths)
       old_pl = ap->ap_pl;
 
       fib_path_list_lock (old_pl);
-      ap->ap_pl =
-	fib_path_list_copy_and_path_remove (ap->ap_pl,
-					    (FIB_PATH_LIST_FLAG_SHARED |
-					     FIB_PATH_LIST_FLAG_NO_URPF),
-					    rpaths);
+      ap->ap_pl = fib_path_list_copy_and_path_remove (
+	ap->ap_pl, (FIB_PATH_LIST_FLAG_SHARED | FIB_PATH_LIST_FLAG_NO_URPF),
+	rpaths);
 
       fib_path_list_child_remove (old_pl, ap->ap_sibling);
       ap->ap_sibling = ~0;
@@ -224,9 +215,8 @@ abf_policy_delete (u32 policy_id, const fib_route_path_t * rpaths)
 	}
       else
 	{
-	  ap->ap_sibling = fib_path_list_child_add (ap->ap_pl,
-						    abf_policy_fib_node_type,
-						    api);
+	  ap->ap_sibling =
+	    fib_path_list_child_add (ap->ap_pl, abf_policy_fib_node_type, api);
 
 	  fib_node_back_walk_ctx_t ctx = {
 	    .fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE,
@@ -241,8 +231,8 @@ abf_policy_delete (u32 policy_id, const fib_route_path_t * rpaths)
 }
 
 static clib_error_t *
-abf_policy_cmd (vlib_main_t * vm,
-		unformat_input_t * main_input, vlib_cli_command_t * cmd)
+abf_policy_cmd (vlib_main_t *vm, unformat_input_t *main_input,
+		vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   fib_route_path_t *rpaths = NULL, rpath;
@@ -268,8 +258,8 @@ abf_policy_cmd (vlib_main_t * vm,
 	is_del = 1;
       else if (unformat (line_input, "add"))
 	is_del = 0;
-      else if (unformat (line_input, "via %U",
-			 unformat_fib_route_path, &rpath, &payload_proto))
+      else if (unformat (line_input, "via %U", unformat_fib_route_path, &rpath,
+			 &payload_proto))
 	vec_add1 (rpaths, rpath);
       else
 	return (clib_error_return (0, "unknown input '%U'",
@@ -294,8 +284,8 @@ abf_policy_cmd (vlib_main_t * vm,
       /* Should change this error code to something more descriptive */
       if (rv == VNET_API_ERROR_INVALID_VALUE)
 	{
-	  vlib_cli_output (vm,
-			   "ACL index must match existing ACL index in policy");
+	  vlib_cli_output (
+	    vm, "ACL index must match existing ACL index in policy");
 	  return 0;
 	}
     }
@@ -308,7 +298,6 @@ abf_policy_cmd (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 /**
  * Create an ABF policy.
  */
@@ -318,15 +307,14 @@ VLIB_CLI_COMMAND (abf_policy_cmd_node, static) = {
   .short_help = "abf policy [add|del] id <index> acl <index> via ...",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static u8 *
-format_abf (u8 * s, va_list * args)
+format_abf (u8 *s, va_list *args)
 {
   abf_policy_t *ap = va_arg (*args, abf_policy_t *);
 
-  s = format (s, "abf:[%d]: policy:%d acl:%d",
-	      ap - abf_policy_pool, ap->ap_id, ap->ap_acl);
+  s = format (s, "abf:[%d]: policy:%d acl:%d", ap - abf_policy_pool, ap->ap_id,
+	      ap->ap_acl);
   s = format (s, "\n ");
   if (FIB_NODE_INDEX_INVALID == ap->ap_pl)
     {
@@ -345,18 +333,16 @@ abf_policy_walk (abf_policy_walk_cb_t cb, void *ctx)
 {
   u32 api;
 
-  /* *INDENT-OFF* */
   pool_foreach_index (api, abf_policy_pool)
-   {
-    if (!cb(api, ctx))
-      break;
-  }
-  /* *INDENT-ON* */
+    {
+      if (!cb (api, ctx))
+	break;
+    }
 }
 
 static clib_error_t *
-abf_show_policy_cmd (vlib_main_t * vm,
-		     unformat_input_t * input, vlib_cli_command_t * cmd)
+abf_show_policy_cmd (vlib_main_t *vm, unformat_input_t *input,
+		     vlib_cli_command_t *cmd)
 {
   u32 policy_id;
   abf_policy_t *ap;
@@ -374,12 +360,11 @@ abf_show_policy_cmd (vlib_main_t * vm,
 
   if (INDEX_INVALID == policy_id)
     {
-      /* *INDENT-OFF* */
+
       pool_foreach (ap, abf_policy_pool)
-       {
-        vlib_cli_output(vm, "%U", format_abf, ap);
-      }
-      /* *INDENT-ON* */
+	{
+	  vlib_cli_output (vm, "%U", format_abf, ap);
+	}
     }
   else
     {
@@ -394,14 +379,12 @@ abf_show_policy_cmd (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (abf_policy_show_policy_cmd_node, static) = {
   .path = "show abf policy",
   .function = abf_show_policy_cmd,
   .short_help = "show abf policy <value>",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static fib_node_t *
 abf_policy_get_node (fib_node_index_t index)
@@ -411,14 +394,14 @@ abf_policy_get_node (fib_node_index_t index)
 }
 
 static abf_policy_t *
-abf_policy_get_from_node (fib_node_t * node)
+abf_policy_get_from_node (fib_node_t *node)
 {
   return ((abf_policy_t *) (((char *) node) -
 			    STRUCT_OFFSET_OF (abf_policy_t, ap_node)));
 }
 
 static void
-abf_policy_last_lock_gone (fib_node_t * node)
+abf_policy_last_lock_gone (fib_node_t *node)
 {
   abf_policy_destroy (abf_policy_get_from_node (node));
 }
@@ -427,8 +410,7 @@ abf_policy_last_lock_gone (fib_node_t * node)
  * A back walk has reached this ABF policy
  */
 static fib_node_back_walk_rc_t
-abf_policy_back_walk_notify (fib_node_t * node,
-			     fib_node_back_walk_ctx_t * ctx)
+abf_policy_back_walk_notify (fib_node_t *node, fib_node_back_walk_ctx_t *ctx)
 {
   /*
    * re-stack the fmask on the n-eos of the via
@@ -454,7 +436,7 @@ static const fib_node_vft_t abf_policy_vft = {
 };
 
 static clib_error_t *
-abf_policy_init (vlib_main_t * vm)
+abf_policy_init (vlib_main_t *vm)
 {
   abf_policy_fib_node_type = fib_node_register_new_type (&abf_policy_vft);
 

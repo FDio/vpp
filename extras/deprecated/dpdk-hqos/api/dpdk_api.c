@@ -42,8 +42,8 @@
 #include <vlibapi/api_helper_macros.h>
 
 static void
-  vl_api_sw_interface_set_dpdk_hqos_pipe_t_handler
-  (vl_api_sw_interface_set_dpdk_hqos_pipe_t * mp)
+vl_api_sw_interface_set_dpdk_hqos_pipe_t_handler (
+  vl_api_sw_interface_set_dpdk_hqos_pipe_t *mp)
 {
   vl_api_sw_interface_set_dpdk_hqos_pipe_reply_t *rmp;
   int rv = 0;
@@ -71,8 +71,9 @@ static void
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_DPDK_HQOS_PIPE_REPLY);
 }
 
-static void *vl_api_sw_interface_set_dpdk_hqos_pipe_t_print
-  (vl_api_sw_interface_set_dpdk_hqos_pipe_t * mp, void *handle)
+static void *
+vl_api_sw_interface_set_dpdk_hqos_pipe_t_print (
+  vl_api_sw_interface_set_dpdk_hqos_pipe_t *mp, void *handle)
 {
   u8 *s;
 
@@ -80,15 +81,15 @@ static void *vl_api_sw_interface_set_dpdk_hqos_pipe_t_print
 
   s = format (s, "sw_if_index %u ", ntohl (mp->sw_if_index));
 
-  s = format (s, "subport %u  pipe %u  profile %u ",
-	      ntohl (mp->subport), ntohl (mp->pipe), ntohl (mp->profile));
+  s = format (s, "subport %u  pipe %u  profile %u ", ntohl (mp->subport),
+	      ntohl (mp->pipe), ntohl (mp->profile));
 
   FINISH;
 }
 
 static void
-  vl_api_sw_interface_set_dpdk_hqos_subport_t_handler
-  (vl_api_sw_interface_set_dpdk_hqos_subport_t * mp)
+vl_api_sw_interface_set_dpdk_hqos_subport_t_handler (
+  vl_api_sw_interface_set_dpdk_hqos_subport_t *mp)
 {
   vl_api_sw_interface_set_dpdk_hqos_subport_reply_t *rmp;
   int rv = 0;
@@ -123,8 +124,9 @@ static void
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_DPDK_HQOS_SUBPORT_REPLY);
 }
 
-static void *vl_api_sw_interface_set_dpdk_hqos_subport_t_print
-  (vl_api_sw_interface_set_dpdk_hqos_subport_t * mp, void *handle)
+static void *
+vl_api_sw_interface_set_dpdk_hqos_subport_t_print (
+  vl_api_sw_interface_set_dpdk_hqos_subport_t *mp, void *handle)
 {
   u8 *s;
 
@@ -132,20 +134,19 @@ static void *vl_api_sw_interface_set_dpdk_hqos_subport_t_print
 
   s = format (s, "sw_if_index %u ", ntohl (mp->sw_if_index));
 
-  s =
-    format (s,
-	    "subport %u  rate %u  bkt_size %u  tc0 %u tc1 %u tc2 %u tc3 %u period %u",
-	    ntohl (mp->subport), ntohl (mp->tb_rate), ntohl (mp->tb_size),
-	    ntohl (mp->tc_rate[0]), ntohl (mp->tc_rate[1]),
-	    ntohl (mp->tc_rate[2]), ntohl (mp->tc_rate[3]),
-	    ntohl (mp->tc_period));
+  s = format (
+    s,
+    "subport %u  rate %u  bkt_size %u  tc0 %u tc1 %u tc2 %u tc3 %u period %u",
+    ntohl (mp->subport), ntohl (mp->tb_rate), ntohl (mp->tb_size),
+    ntohl (mp->tc_rate[0]), ntohl (mp->tc_rate[1]), ntohl (mp->tc_rate[2]),
+    ntohl (mp->tc_rate[3]), ntohl (mp->tc_period));
 
   FINISH;
 }
 
 static void
-  vl_api_sw_interface_set_dpdk_hqos_tctbl_t_handler
-  (vl_api_sw_interface_set_dpdk_hqos_tctbl_t * mp)
+vl_api_sw_interface_set_dpdk_hqos_tctbl_t_handler (
+  vl_api_sw_interface_set_dpdk_hqos_tctbl_t *mp)
 {
   vl_api_sw_interface_set_dpdk_hqos_tctbl_reply_t *rmp;
   int rv = 0;
@@ -206,8 +207,9 @@ done:
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_DPDK_HQOS_TCTBL_REPLY);
 }
 
-static void *vl_api_sw_interface_set_dpdk_hqos_tctbl_t_print
-  (vl_api_sw_interface_set_dpdk_hqos_tctbl_t * mp, void *handle)
+static void *
+vl_api_sw_interface_set_dpdk_hqos_tctbl_t_print (
+  vl_api_sw_interface_set_dpdk_hqos_tctbl_t *mp, void *handle)
 {
   u8 *s;
 
@@ -215,15 +217,15 @@ static void *vl_api_sw_interface_set_dpdk_hqos_tctbl_t_print
 
   s = format (s, "sw_if_index %u ", ntohl (mp->sw_if_index));
 
-  s = format (s, "entry %u  tc %u  queue %u",
-	      ntohl (mp->entry), ntohl (mp->tc), ntohl (mp->queue));
+  s = format (s, "entry %u  tc %u  queue %u", ntohl (mp->entry),
+	      ntohl (mp->tc), ntohl (mp->queue));
 
   FINISH;
 }
 
 #include <dpdk/api/dpdk.api.c>
 static clib_error_t *
-dpdk_api_init (vlib_main_t * vm)
+dpdk_api_init (vlib_main_t *vm)
 {
   dpdk_main_t *dm = &dpdk_main;
 
@@ -233,16 +235,13 @@ dpdk_api_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (dpdk_api_init) =
-{
+VLIB_INIT_FUNCTION (dpdk_api_init) = {
   .runs_after = VLIB_INITS ("dpdk_init"),
-/* *INDENT-OFF* */
 
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+  /*
+   * fd.io coding-style-patch-verification: ON
+   *
+   * Local Variables:
+   * eval: (c-set-style "gnu")
+   * End:
+   */

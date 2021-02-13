@@ -50,25 +50,24 @@
 
 #include <vnet/format_fns.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_endianfun
 
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 
-#define FINISH                                  \
-    vec_add1 (s, 0);                            \
-    vl_print (handle, (char *)s);               \
-    vec_free (s);                               \
-    return handle;
+#define FINISH                                                                \
+  vec_add1 (s, 0);                                                            \
+  vl_print (handle, (char *) s);                                              \
+  vec_free (s);                                                               \
+  return handle;
 
-
-static void *vl_api_create_loopback_t_print
-  (vl_api_create_loopback_t * mp, void *handle)
+static void *
+vl_api_create_loopback_t_print (vl_api_create_loopback_t *mp, void *handle)
 {
   u8 *s;
 
@@ -78,8 +77,9 @@ static void *vl_api_create_loopback_t_print
   FINISH;
 }
 
-static void *vl_api_create_loopback_instance_t_print
-  (vl_api_create_loopback_instance_t * mp, void *handle)
+static void *
+vl_api_create_loopback_instance_t_print (vl_api_create_loopback_instance_t *mp,
+					 void *handle)
 {
   u8 *s;
 
@@ -90,8 +90,8 @@ static void *vl_api_create_loopback_instance_t_print
   FINISH;
 }
 
-static void *vl_api_delete_loopback_t_print
-  (vl_api_delete_loopback_t * mp, void *handle)
+static void *
+vl_api_delete_loopback_t_print (vl_api_delete_loopback_t *mp, void *handle)
 {
   u8 *s;
 
@@ -101,8 +101,9 @@ static void *vl_api_delete_loopback_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_set_flags_t_print
-  (vl_api_sw_interface_set_flags_t * mp, void *handle)
+static void *
+vl_api_sw_interface_set_flags_t_print (vl_api_sw_interface_set_flags_t *mp,
+				       void *handle)
 {
   u8 *s;
   s = format (0, "SCRIPT: sw_interface_set_flags ");
@@ -117,9 +118,9 @@ static void *vl_api_sw_interface_set_flags_t_print
   FINISH;
 }
 
-__clib_unused
-  static void *vl_api_sw_interface_set_rx_placement_t_print
-  (vl_api_sw_interface_set_rx_placement_t * mp, void *handle)
+__clib_unused static void *
+vl_api_sw_interface_set_rx_placement_t_print (
+  vl_api_sw_interface_set_rx_placement_t *mp, void *handle)
 {
   u8 *s;
   s = format (0, "SCRIPT: sw_interface_set_rx_placement ");
@@ -135,8 +136,9 @@ __clib_unused
   FINISH;
 }
 
-static void *vl_api_sw_interface_rx_placement_dump_t_print
-  (vl_api_sw_interface_rx_placement_dump_t * mp, void *handle)
+static void *
+vl_api_sw_interface_rx_placement_dump_t_print (
+  vl_api_sw_interface_rx_placement_dump_t *mp, void *handle)
 {
   u8 *s;
   u32 sw_if_index = (mp->sw_if_index);
@@ -149,8 +151,9 @@ static void *vl_api_sw_interface_rx_placement_dump_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_event_t_print
-  (vl_api_sw_interface_event_t * mp, void *handle)
+static void *
+vl_api_sw_interface_event_t_print (vl_api_sw_interface_event_t *mp,
+				   void *handle)
 {
   u8 *s;
   s = format (0, "SCRIPT: sw_interface_event ");
@@ -173,9 +176,9 @@ static void *vl_api_sw_interface_event_t_print
   FINISH;
 }
 
-
-static void *vl_api_sw_interface_add_del_address_t_print
-  (vl_api_sw_interface_add_del_address_t * mp, void *handle)
+static void *
+vl_api_sw_interface_add_del_address_t_print (
+  vl_api_sw_interface_add_del_address_t *mp, void *handle)
 {
   u8 *s;
 
@@ -190,8 +193,9 @@ static void *vl_api_sw_interface_add_del_address_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_set_table_t_print
-  (vl_api_sw_interface_set_table_t * mp, void *handle)
+static void *
+vl_api_sw_interface_set_table_t_print (vl_api_sw_interface_set_table_t *mp,
+				       void *handle)
 {
   u8 *s;
 
@@ -208,8 +212,9 @@ static void *vl_api_sw_interface_set_table_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_set_mpls_enable_t_print
-  (vl_api_sw_interface_set_mpls_enable_t * mp, void *handle)
+static void *
+vl_api_sw_interface_set_mpls_enable_t_print (
+  vl_api_sw_interface_set_mpls_enable_t *mp, void *handle)
 {
   u8 *s;
 
@@ -223,8 +228,9 @@ static void *vl_api_sw_interface_set_mpls_enable_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_set_vpath_t_print
-  (vl_api_sw_interface_set_vpath_t * mp, void *handle)
+static void *
+vl_api_sw_interface_set_vpath_t_print (vl_api_sw_interface_set_vpath_t *mp,
+				       void *handle)
 {
   u8 *s;
 
@@ -240,8 +246,9 @@ static void *vl_api_sw_interface_set_vpath_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_set_vxlan_bypass_t_print
-  (vl_api_sw_interface_set_vxlan_bypass_t * mp, void *handle)
+static void *
+vl_api_sw_interface_set_vxlan_bypass_t_print (
+  vl_api_sw_interface_set_vxlan_bypass_t *mp, void *handle)
 {
   u8 *s;
 
@@ -260,8 +267,9 @@ static void *vl_api_sw_interface_set_vxlan_bypass_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_set_l2_xconnect_t_print
-  (vl_api_sw_interface_set_l2_xconnect_t * mp, void *handle)
+static void *
+vl_api_sw_interface_set_l2_xconnect_t_print (
+  vl_api_sw_interface_set_l2_xconnect_t *mp, void *handle)
 {
   u8 *s;
 
@@ -279,8 +287,9 @@ static void *vl_api_sw_interface_set_l2_xconnect_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_set_l2_bridge_t_print
-  (vl_api_sw_interface_set_l2_bridge_t * mp, void *handle)
+static void *
+vl_api_sw_interface_set_l2_bridge_t_print (
+  vl_api_sw_interface_set_l2_bridge_t *mp, void *handle)
 {
   u8 *s;
 
@@ -303,8 +312,9 @@ static void *vl_api_sw_interface_set_l2_bridge_t_print
   FINISH;
 }
 
-static void *vl_api_bridge_domain_add_del_t_print
-  (vl_api_bridge_domain_add_del_t * mp, void *handle)
+static void *
+vl_api_bridge_domain_add_del_t_print (vl_api_bridge_domain_add_del_t *mp,
+				      void *handle)
 {
   u8 *s;
 
@@ -326,8 +336,9 @@ static void *vl_api_bridge_domain_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_bridge_domain_set_mac_age_t_print
-  (vl_api_bridge_domain_set_mac_age_t * mp, void *handle)
+static void *
+vl_api_bridge_domain_set_mac_age_t_print (
+  vl_api_bridge_domain_set_mac_age_t *mp, void *handle)
 {
   u8 *s;
 
@@ -340,8 +351,9 @@ static void *vl_api_bridge_domain_set_mac_age_t_print
   FINISH;
 }
 
-static void *vl_api_bridge_domain_dump_t_print
-  (vl_api_bridge_domain_dump_t * mp, void *handle)
+static void *
+vl_api_bridge_domain_dump_t_print (vl_api_bridge_domain_dump_t *mp,
+				   void *handle)
 {
   u8 *s;
   u32 bd_id = (mp->bd_id);
@@ -354,8 +366,8 @@ static void *vl_api_bridge_domain_dump_t_print
   FINISH;
 }
 
-static void *vl_api_l2fib_flush_all_t_print
-  (vl_api_l2fib_flush_all_t * mp, void *handle)
+static void *
+vl_api_l2fib_flush_all_t_print (vl_api_l2fib_flush_all_t *mp, void *handle)
 {
   u8 *s;
 
@@ -364,9 +376,8 @@ static void *vl_api_l2fib_flush_all_t_print
   FINISH;
 }
 
-
-static void *vl_api_l2fib_flush_bd_t_print
-  (vl_api_l2fib_flush_bd_t * mp, void *handle)
+static void *
+vl_api_l2fib_flush_bd_t_print (vl_api_l2fib_flush_bd_t *mp, void *handle)
 {
   u8 *s;
   u32 bd_id = (mp->bd_id);
@@ -377,8 +388,8 @@ static void *vl_api_l2fib_flush_bd_t_print
   FINISH;
 }
 
-static void *vl_api_l2fib_flush_int_t_print
-  (vl_api_l2fib_flush_int_t * mp, void *handle)
+static void *
+vl_api_l2fib_flush_int_t_print (vl_api_l2fib_flush_int_t *mp, void *handle)
 {
   u8 *s;
   u32 sw_if_index = (mp->sw_if_index);
@@ -389,8 +400,8 @@ static void *vl_api_l2fib_flush_int_t_print
   FINISH;
 }
 
-static void *vl_api_l2fib_add_del_t_print
-  (vl_api_l2fib_add_del_t * mp, void *handle)
+static void *
+vl_api_l2fib_add_del_t_print (vl_api_l2fib_add_del_t *mp, void *handle)
 {
   u8 *s;
 
@@ -399,7 +410,6 @@ static void *vl_api_l2fib_add_del_t_print
   s = format (s, "mac %U ", format_ethernet_address, mp->mac);
 
   s = format (s, "bd_id %d ", (mp->bd_id));
-
 
   if (mp->is_add)
     {
@@ -420,7 +430,7 @@ static void *vl_api_l2fib_add_del_t_print
 }
 
 static void *
-vl_api_l2_flags_t_print (vl_api_l2_flags_t * mp, void *handle)
+vl_api_l2_flags_t_print (vl_api_l2_flags_t *mp, void *handle)
 {
   u8 *s;
   u32 flags = (mp->feature_bitmap);
@@ -446,8 +456,8 @@ vl_api_l2_flags_t_print (vl_api_l2_flags_t * mp, void *handle)
   FINISH;
 }
 
-static void *vl_api_bridge_flags_t_print
-  (vl_api_bridge_flags_t * mp, void *handle)
+static void *
+vl_api_bridge_flags_t_print (vl_api_bridge_flags_t *mp, void *handle)
 {
   u8 *s;
   u32 flags = (mp->flags);
@@ -473,8 +483,8 @@ static void *vl_api_bridge_flags_t_print
   FINISH;
 }
 
-static void *vl_api_bd_ip_mac_add_del_t_print
-  (vl_api_bd_ip_mac_add_del_t * mp, void *handle)
+static void *
+vl_api_bd_ip_mac_add_del_t_print (vl_api_bd_ip_mac_add_del_t *mp, void *handle)
 {
   u8 *s;
 
@@ -489,8 +499,8 @@ static void *vl_api_bd_ip_mac_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_bd_ip_mac_flush_t_print
-  (vl_api_bd_ip_mac_flush_t * mp, void *handle)
+static void *
+vl_api_bd_ip_mac_flush_t_print (vl_api_bd_ip_mac_flush_t *mp, void *handle)
 {
   u8 *s;
 
@@ -500,9 +510,8 @@ static void *vl_api_bd_ip_mac_flush_t_print
   FINISH;
 }
 
-__clib_unused
-  static void *vl_api_bd_ip_mac_dump_t_print
-  (vl_api_bd_ip_mac_dump_t * mp, void *handle)
+__clib_unused static void *
+vl_api_bd_ip_mac_dump_t_print (vl_api_bd_ip_mac_dump_t *mp, void *handle)
 {
   u8 *s;
 
@@ -511,8 +520,8 @@ __clib_unused
   FINISH;
 }
 
-static void *vl_api_tap_create_v2_t_print
-  (vl_api_tap_create_v2_t * mp, void *handle)
+static void *
+vl_api_tap_create_v2_t_print (vl_api_tap_create_v2_t *mp, void *handle)
 {
   u8 *s;
   u8 null_mac[6];
@@ -522,11 +531,11 @@ static void *vl_api_tap_create_v2_t_print
   s = format (0, "SCRIPT: tap_create_v2 ");
   s = format (s, "id %u ", (mp->id));
   if (memcmp (mp->mac_address, null_mac, 6))
-    s = format (s, "mac-address %U ",
-		format_ethernet_address, mp->mac_address);
+    s =
+      format (s, "mac-address %U ", format_ethernet_address, mp->mac_address);
   if (memcmp (mp->host_mac_addr, null_mac, 6))
-    s = format (s, "host-mac-addr %U ",
-		format_ethernet_address, mp->host_mac_addr);
+    s = format (s, "host-mac-addr %U ", format_ethernet_address,
+		mp->host_mac_addr);
   if (mp->host_if_name_set)
     s = format (s, "host-if-name %s ", mp->host_if_name);
   if (mp->host_namespace_set)
@@ -540,13 +549,11 @@ static void *vl_api_tap_create_v2_t_print
     s = format (s, "host-ip6-addr %U/%d ", format_ip6_address,
 		mp->host_ip6_prefix.address, mp->host_ip6_prefix.len);
   if (mp->host_ip4_gw_set)
-    s =
-      format (s, "host-ip4-gw %U ", format_ip4_address,
-	      mp->host_ip4_prefix.address);
+    s = format (s, "host-ip4-gw %U ", format_ip4_address,
+		mp->host_ip4_prefix.address);
   if (mp->host_ip6_gw_set)
-    s =
-      format (s, "host-ip6-gw %U ", format_ip6_address,
-	      mp->host_ip6_prefix.address);
+    s = format (s, "host-ip6-gw %U ", format_ip6_address,
+		mp->host_ip6_prefix.address);
   if (mp->num_rx_queues)
     s = format (s, "num_rx_queues %u ", mp->num_rx_queues);
   if (mp->tx_ring_sz)
@@ -574,8 +581,8 @@ static void *vl_api_tap_create_v2_t_print
   FINISH;
 }
 
-static void *vl_api_tap_delete_v2_t_print
-  (vl_api_tap_delete_v2_t * mp, void *handle)
+static void *
+vl_api_tap_delete_v2_t_print (vl_api_tap_delete_v2_t *mp, void *handle)
 {
   u8 *s;
 
@@ -585,8 +592,9 @@ static void *vl_api_tap_delete_v2_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_tap_v2_dump_t_print
-  (vl_api_sw_interface_tap_v2_dump_t * mp, void *handle)
+static void *
+vl_api_sw_interface_tap_v2_dump_t_print (vl_api_sw_interface_tap_v2_dump_t *mp,
+					 void *handle)
 {
   u8 *s;
 
@@ -595,9 +603,8 @@ static void *vl_api_sw_interface_tap_v2_dump_t_print
   FINISH;
 }
 
-__clib_unused
-  static void *vl_api_virtio_pci_create_t_print
-  (vl_api_virtio_pci_create_t * mp, void *handle)
+__clib_unused static void *
+vl_api_virtio_pci_create_t_print (vl_api_virtio_pci_create_t *mp, void *handle)
 {
   u8 *s;
   u8 null_mac[6];
@@ -607,8 +614,8 @@ __clib_unused
   s = format (0, "SCRIPT: virtio_pci_create ");
   s = format (s, "pci_addr %U ", format_vlib_pci_addr, (mp->pci_addr));
   if (memcmp (mp->mac_address, null_mac, 6))
-    s = format (s, "mac-address %U ",
-		format_ethernet_address, mp->mac_address);
+    s =
+      format (s, "mac-address %U ", format_ethernet_address, mp->mac_address);
   if (mp->features)
     s = format (s, "features 0x%llx ", clib_net_to_host_u64 (mp->features));
   if (mp->gso_enabled)
@@ -618,9 +625,9 @@ __clib_unused
   FINISH;
 }
 
-__clib_unused
-  static void *vl_api_virtio_pci_create_v2_t_print
-  (vl_api_virtio_pci_create_v2_t * mp, void *handle)
+__clib_unused static void *
+vl_api_virtio_pci_create_v2_t_print (vl_api_virtio_pci_create_v2_t *mp,
+				     void *handle)
 {
   u8 *s;
   u8 null_mac[6];
@@ -630,8 +637,8 @@ __clib_unused
   s = format (0, "SCRIPT: virtio_pci_create_v2 ");
   s = format (s, "pci_addr %U ", format_vlib_pci_addr, (mp->pci_addr));
   if (memcmp (mp->mac_address, null_mac, 6))
-    s = format (s, "mac-address %U ",
-		format_ethernet_address, mp->mac_address);
+    s =
+      format (s, "mac-address %U ", format_ethernet_address, mp->mac_address);
   if (mp->features)
     s = format (s, "features 0x%llx ", clib_net_to_host_u64 (mp->features));
   if (mp->virtio_flags & VIRTIO_API_FLAG_GSO)
@@ -649,9 +656,8 @@ __clib_unused
   FINISH;
 }
 
-__clib_unused
-  static void *vl_api_virtio_pci_delete_t_print
-  (vl_api_virtio_pci_delete_t * mp, void *handle)
+__clib_unused static void *
+vl_api_virtio_pci_delete_t_print (vl_api_virtio_pci_delete_t *mp, void *handle)
 {
   u8 *s;
 
@@ -661,9 +667,9 @@ __clib_unused
   FINISH;
 }
 
-__clib_unused
-  static void *vl_api_sw_interface_virtio_pci_dump_t_print
-  (vl_api_sw_interface_virtio_pci_dump_t * mp, void *handle)
+__clib_unused static void *
+vl_api_sw_interface_virtio_pci_dump_t_print (
+  vl_api_sw_interface_virtio_pci_dump_t *mp, void *handle)
 {
   u8 *s;
 
@@ -672,8 +678,8 @@ __clib_unused
   FINISH;
 }
 
-static void *vl_api_bond_create_t_print
-  (vl_api_bond_create_t * mp, void *handle)
+static void *
+vl_api_bond_create_t_print (vl_api_bond_create_t *mp, void *handle)
 {
   u8 *s;
   u8 null_mac[6];
@@ -682,8 +688,8 @@ static void *vl_api_bond_create_t_print
 
   s = format (0, "SCRIPT: bond_create ");
   if (memcmp (mp->mac_address, null_mac, 6))
-    s = format (s, "mac-address %U ",
-		format_ethernet_address, mp->mac_address);
+    s =
+      format (s, "mac-address %U ", format_ethernet_address, mp->mac_address);
   if (mp->mode)
     s = format (s, "mode %U ", format_bond_mode, ntohl (mp->mode));
   if (mp->lb)
@@ -695,8 +701,8 @@ static void *vl_api_bond_create_t_print
   FINISH;
 }
 
-static void *vl_api_bond_create2_t_print
-  (vl_api_bond_create2_t * mp, void *handle)
+static void *
+vl_api_bond_create2_t_print (vl_api_bond_create2_t *mp, void *handle)
 {
   u8 *s;
   u8 null_mac[6];
@@ -705,8 +711,8 @@ static void *vl_api_bond_create2_t_print
 
   s = format (0, "SCRIPT: bond_create2 ");
   if (memcmp (mp->mac_address, null_mac, 6))
-    s = format (s, "mac-address %U ",
-		format_ethernet_address, mp->mac_address);
+    s =
+      format (s, "mac-address %U ", format_ethernet_address, mp->mac_address);
   if (mp->mode)
     s = format (s, "mode %U ", format_bond_mode, ntohl (mp->mode));
   if (mp->lb)
@@ -720,8 +726,8 @@ static void *vl_api_bond_create2_t_print
   FINISH;
 }
 
-static void *vl_api_bond_delete_t_print
-  (vl_api_bond_delete_t * mp, void *handle)
+static void *
+vl_api_bond_delete_t_print (vl_api_bond_delete_t *mp, void *handle)
 {
   u8 *s;
 
@@ -731,8 +737,8 @@ static void *vl_api_bond_delete_t_print
   FINISH;
 }
 
-static void *vl_api_bond_add_member_t_print
-  (vl_api_bond_add_member_t * mp, void *handle)
+static void *
+vl_api_bond_add_member_t_print (vl_api_bond_add_member_t *mp, void *handle)
 {
   u8 *s;
 
@@ -747,8 +753,9 @@ static void *vl_api_bond_add_member_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_set_bond_weight_t_print
-  (vl_api_sw_interface_set_bond_weight_t * mp, void *handle)
+static void *
+vl_api_sw_interface_set_bond_weight_t_print (
+  vl_api_sw_interface_set_bond_weight_t *mp, void *handle)
 {
   u8 *s;
 
@@ -759,8 +766,9 @@ static void *vl_api_sw_interface_set_bond_weight_t_print
   FINISH;
 }
 
-static void *vl_api_bond_detach_member_t_print
-  (vl_api_bond_detach_member_t * mp, void *handle)
+static void *
+vl_api_bond_detach_member_t_print (vl_api_bond_detach_member_t *mp,
+				   void *handle)
 {
   u8 *s;
 
@@ -770,8 +778,9 @@ static void *vl_api_bond_detach_member_t_print
   FINISH;
 }
 
-static void *vl_api_sw_bond_interface_dump_t_print
-  (vl_api_sw_bond_interface_dump_t * mp, void *handle)
+static void *
+vl_api_sw_bond_interface_dump_t_print (vl_api_sw_bond_interface_dump_t *mp,
+				       void *handle)
 {
   u8 *s;
 
@@ -782,8 +791,9 @@ static void *vl_api_sw_bond_interface_dump_t_print
   FINISH;
 }
 
-static void *vl_api_sw_member_interface_dump_t_print
-  (vl_api_sw_member_interface_dump_t * mp, void *handle)
+static void *
+vl_api_sw_member_interface_dump_t_print (vl_api_sw_member_interface_dump_t *mp,
+					 void *handle)
 {
   u8 *s;
 
@@ -793,8 +803,8 @@ static void *vl_api_sw_member_interface_dump_t_print
   FINISH;
 }
 
-static void *vl_api_ip_route_add_del_t_print
-  (vl_api_ip_route_add_del_t * mp, void *handle)
+static void *
+vl_api_ip_route_add_del_t_print (vl_api_ip_route_add_del_t *mp, void *handle)
 {
   u8 *s, p;
 
@@ -810,8 +820,9 @@ static void *vl_api_ip_route_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_mpls_route_add_del_t_print
-  (vl_api_mpls_route_add_del_t * mp, void *handle)
+static void *
+vl_api_mpls_route_add_del_t_print (vl_api_mpls_route_add_del_t *mp,
+				   void *handle)
 {
   u8 *s, p;
 
@@ -834,15 +845,13 @@ static void *vl_api_mpls_route_add_del_t_print
     s = format (s, "multicast ");
 
   for (p = 0; p < mp->mr_route.mr_n_paths; p++)
-    s =
-      format (s, " [%U]", format_vl_api_fib_path, &mp->mr_route.mr_paths[p]);
-
+    s = format (s, " [%U]", format_vl_api_fib_path, &mp->mr_route.mr_paths[p]);
 
   FINISH;
 }
 
-static void *vl_api_ip_table_add_del_t_print
-  (vl_api_ip_table_add_del_t * mp, void *handle)
+static void *
+vl_api_ip_table_add_del_t_print (vl_api_ip_table_add_del_t *mp, void *handle)
 {
   u8 *s;
 
@@ -859,8 +868,9 @@ static void *vl_api_ip_table_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_mpls_table_add_del_t_print
-  (vl_api_mpls_table_add_del_t * mp, void *handle)
+static void *
+vl_api_mpls_table_add_del_t_print (vl_api_mpls_table_add_del_t *mp,
+				   void *handle)
 {
   u8 *s;
 
@@ -874,8 +884,9 @@ static void *vl_api_mpls_table_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_mpls_tunnel_add_del_t_print
-  (vl_api_mpls_tunnel_add_del_t * mp, void *handle)
+static void *
+vl_api_mpls_tunnel_add_del_t_print (vl_api_mpls_tunnel_add_del_t *mp,
+				    void *handle)
 {
   u8 *s, p;
 
@@ -886,7 +897,6 @@ static void *vl_api_mpls_tunnel_add_del_t_print
   else
     s = format (s, "sw_if_index %d ", (mp->mt_tunnel.mt_sw_if_index));
 
-
   if (mp->mt_tunnel.mt_l2_only)
     s = format (s, "l2-only ");
   if (mp->mt_tunnel.mt_is_multicast)
@@ -895,14 +905,15 @@ static void *vl_api_mpls_tunnel_add_del_t_print
     s = format (s, "tunnel-index ");
 
   for (p = 0; p < mp->mt_tunnel.mt_n_paths; p++)
-    s = format (s, " [%U]", format_vl_api_fib_path,
-		&mp->mt_tunnel.mt_paths[p]);
+    s =
+      format (s, " [%U]", format_vl_api_fib_path, &mp->mt_tunnel.mt_paths[p]);
 
   FINISH;
 }
 
-static void *vl_api_sr_mpls_policy_add_t_print
-  (vl_api_sr_mpls_policy_add_t * mp, void *handle)
+static void *
+vl_api_sr_mpls_policy_add_t_print (vl_api_sr_mpls_policy_add_t *mp,
+				   void *handle)
 {
   u8 *s;
 
@@ -926,8 +937,9 @@ static void *vl_api_sr_mpls_policy_add_t_print
   FINISH;
 }
 
-static void *vl_api_sr_mpls_policy_del_t_print
-  (vl_api_sr_mpls_policy_del_t * mp, void *handle)
+static void *
+vl_api_sr_mpls_policy_del_t_print (vl_api_sr_mpls_policy_del_t *mp,
+				   void *handle)
 {
   u8 *s;
 
@@ -938,8 +950,9 @@ static void *vl_api_sr_mpls_policy_del_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_set_unnumbered_t_print
-  (vl_api_sw_interface_set_unnumbered_t * mp, void *handle)
+static void *
+vl_api_sw_interface_set_unnumbered_t_print (
+  vl_api_sw_interface_set_unnumbered_t *mp, void *handle)
 {
   u8 *s;
 
@@ -955,8 +968,8 @@ static void *vl_api_sw_interface_set_unnumbered_t_print
   FINISH;
 }
 
-static void *vl_api_create_vlan_subif_t_print
-  (vl_api_create_vlan_subif_t * mp, void *handle)
+static void *
+vl_api_create_vlan_subif_t_print (vl_api_create_vlan_subif_t *mp, void *handle)
 {
   u8 *s;
 
@@ -971,18 +984,18 @@ static void *vl_api_create_vlan_subif_t_print
   FINISH;
 }
 
-#define foreach_create_subif_flag		\
-_(0, "no_tags")					\
-_(1, "one_tag")					\
-_(2, "two_tags")				\
-_(3, "dot1ad")					\
-_(4, "exact_match")				\
-_(5, "default_sub")				\
-_(6, "outer_vlan_id_any")			\
-_(7, "inner_vlan_id_any")
+#define foreach_create_subif_flag                                             \
+  _ (0, "no_tags")                                                            \
+  _ (1, "one_tag")                                                            \
+  _ (2, "two_tags")                                                           \
+  _ (3, "dot1ad")                                                             \
+  _ (4, "exact_match")                                                        \
+  _ (5, "default_sub")                                                        \
+  _ (6, "outer_vlan_id_any")                                                  \
+  _ (7, "inner_vlan_id_any")
 
-static void *vl_api_create_subif_t_print
-  (vl_api_create_subif_t * mp, void *handle)
+static void *
+vl_api_create_subif_t_print (vl_api_create_subif_t *mp, void *handle)
 {
   u8 *s;
 
@@ -998,15 +1011,17 @@ static void *vl_api_create_subif_t_print
   if (mp->inner_vlan_id)
     s = format (s, "inner_vlan_id %d ", (mp->inner_vlan_id));
 
-#define _(a,b) if (mp->sub_if_flags & (1 << a)) s = format (s, "%s ", b);
+#define _(a, b)                                                               \
+  if (mp->sub_if_flags & (1 << a))                                            \
+    s = format (s, "%s ", b);
   foreach_create_subif_flag;
 #undef _
 
   FINISH;
 }
 
-static void *vl_api_delete_subif_t_print
-  (vl_api_delete_subif_t * mp, void *handle)
+static void *
+vl_api_delete_subif_t_print (vl_api_delete_subif_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1017,48 +1032,48 @@ static void *vl_api_delete_subif_t_print
 }
 
 static void *
-vl_api_ip_table_replace_begin_t_print (vl_api_ip_table_replace_begin_t * mp,
+vl_api_ip_table_replace_begin_t_print (vl_api_ip_table_replace_begin_t *mp,
 				       void *handle)
 {
   u8 *s;
 
   s = format (0, "SCRIPT: ip_table_replace_begin ");
 
-  s = format (s, "v%s-table %d ",
-	      mp->table.is_ip6 ? "6" : "4", (mp->table.table_id));
+  s = format (s, "v%s-table %d ", mp->table.is_ip6 ? "6" : "4",
+	      (mp->table.table_id));
 
   FINISH;
 }
 
 static void *
-vl_api_ip_table_flush_t_print (vl_api_ip_table_flush_t * mp, void *handle)
+vl_api_ip_table_flush_t_print (vl_api_ip_table_flush_t *mp, void *handle)
 {
   u8 *s;
 
   s = format (0, "SCRIPT: ip_table_flush ");
 
-  s = format (s, "v%s-table %d ",
-	      mp->table.is_ip6 ? "6" : "4", (mp->table.table_id));
+  s = format (s, "v%s-table %d ", mp->table.is_ip6 ? "6" : "4",
+	      (mp->table.table_id));
 
   FINISH;
 }
 
 static void *
-vl_api_ip_table_replace_end_t_print (vl_api_ip_table_replace_end_t * mp,
+vl_api_ip_table_replace_end_t_print (vl_api_ip_table_replace_end_t *mp,
 				     void *handle)
 {
   u8 *s;
 
   s = format (0, "SCRIPT: ip_table_replace_end ");
 
-  s = format (s, "v%s-table %d ",
-	      mp->table.is_ip6 ? "6" : "4", (mp->table.table_id));
+  s = format (s, "v%s-table %d ", mp->table.is_ip6 ? "6" : "4",
+	      (mp->table.table_id));
 
   FINISH;
 }
 
-static void *vl_api_set_ip_flow_hash_t_print
-  (vl_api_set_ip_flow_hash_t * mp, void *handle)
+static void *
+vl_api_set_ip_flow_hash_t_print (vl_api_set_ip_flow_hash_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1090,9 +1105,8 @@ static void *vl_api_set_ip_flow_hash_t_print
   FINISH;
 }
 
-
-static void *vl_api_l2_patch_add_del_t_print
-  (vl_api_l2_patch_add_del_t * mp, void *handle)
+static void *
+vl_api_l2_patch_add_del_t_print (vl_api_l2_patch_add_del_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1108,8 +1122,9 @@ static void *vl_api_l2_patch_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_sr_localsid_add_del_t_print
-  (vl_api_sr_localsid_add_del_t * mp, void *handle)
+static void *
+vl_api_sr_localsid_add_del_t_print (vl_api_sr_localsid_add_del_t *mp,
+				    void *handle)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u8 *s;
@@ -1119,77 +1134,79 @@ static void *vl_api_sr_localsid_add_del_t_print
   switch (mp->behavior)
     {
     case SR_BEHAVIOR_END:
-      s = format (s, "Address: %U\nBehavior: End",
-		  format_ip6_address, (ip6_address_t *) mp->localsid);
+      s = format (s, "Address: %U\nBehavior: End", format_ip6_address,
+		  (ip6_address_t *) mp->localsid);
       s = format (s, (mp->end_psp ? "End.PSP: True" : "End.PSP: False"));
       break;
     case SR_BEHAVIOR_X:
-      s =
-	format (s,
-		"Address: %U\nBehavior: X (Endpoint with Layer-3 cross-connect)"
-		"\nIface: %U\nNext hop: %U", format_ip6_address,
-		(ip6_address_t *) mp->localsid,
-		format_vnet_sw_if_index_name, vnm, (mp->sw_if_index),
-		format_ip6_address, (ip6_address_t *) mp->nh_addr.un.ip6);
+      s = format (
+	s,
+	"Address: %U\nBehavior: X (Endpoint with Layer-3 cross-connect)"
+	"\nIface: %U\nNext hop: %U",
+	format_ip6_address, (ip6_address_t *) mp->localsid,
+	format_vnet_sw_if_index_name, vnm, (mp->sw_if_index),
+	format_ip6_address, (ip6_address_t *) mp->nh_addr.un.ip6);
       s = format (s, (mp->end_psp ? "End.PSP: True" : "End.PSP: False"));
       break;
     case SR_BEHAVIOR_DX4:
-      s =
-	format (s,
-		"Address: %U\nBehavior: DX4 (Endpoint with decapsulation with IPv4 cross-connect)"
-		"\nIface: %U\nNext hop: %U", format_ip6_address,
-		(ip6_address_t *) mp->localsid,
-		format_vnet_sw_if_index_name, vnm, (mp->sw_if_index),
-		format_ip4_address, (ip4_address_t *) mp->nh_addr.un.ip4);
+      s = format (s,
+		  "Address: %U\nBehavior: DX4 (Endpoint with decapsulation "
+		  "with IPv4 cross-connect)"
+		  "\nIface: %U\nNext hop: %U",
+		  format_ip6_address, (ip6_address_t *) mp->localsid,
+		  format_vnet_sw_if_index_name, vnm, (mp->sw_if_index),
+		  format_ip4_address, (ip4_address_t *) mp->nh_addr.un.ip4);
       break;
     case SR_BEHAVIOR_DX6:
-      s =
-	format (s,
-		"Address: %U\nBehavior: DX6 (Endpoint with decapsulation with IPv6 cross-connect)"
-		"\nIface: %UNext hop: %U", format_ip6_address,
-		(ip6_address_t *) mp->localsid,
-		format_vnet_sw_if_index_name, vnm, (mp->sw_if_index),
-		format_ip6_address, (ip6_address_t *) mp->nh_addr.un.ip6);
+      s = format (s,
+		  "Address: %U\nBehavior: DX6 (Endpoint with decapsulation "
+		  "with IPv6 cross-connect)"
+		  "\nIface: %UNext hop: %U",
+		  format_ip6_address, (ip6_address_t *) mp->localsid,
+		  format_vnet_sw_if_index_name, vnm, (mp->sw_if_index),
+		  format_ip6_address, (ip6_address_t *) mp->nh_addr.un.ip6);
       break;
     case SR_BEHAVIOR_DX2:
-      s =
-	format (s,
-		"Address: %U\nBehavior: DX2 (Endpoint with decapulation and Layer-2 cross-connect)"
-		"\nIface: %U", format_ip6_address,
-		(ip6_address_t *) mp->localsid,
-		format_vnet_sw_if_index_name, vnm, (mp->sw_if_index));
+      s = format (s,
+		  "Address: %U\nBehavior: DX2 (Endpoint with decapulation and "
+		  "Layer-2 cross-connect)"
+		  "\nIface: %U",
+		  format_ip6_address, (ip6_address_t *) mp->localsid,
+		  format_vnet_sw_if_index_name, vnm, (mp->sw_if_index));
       break;
     case SR_BEHAVIOR_DT6:
-      s =
-	format (s,
-		"Address: %U\nBehavior: DT6 (Endpoint with decapsulation and specific IPv6 table lookup)"
-		"\nTable: %u", format_ip6_address,
-		(ip6_address_t *) mp->localsid, (mp->fib_table));
+      s = format (s,
+		  "Address: %U\nBehavior: DT6 (Endpoint with decapsulation "
+		  "and specific IPv6 table lookup)"
+		  "\nTable: %u",
+		  format_ip6_address, (ip6_address_t *) mp->localsid,
+		  (mp->fib_table));
       break;
     case SR_BEHAVIOR_DT4:
-      s =
-	format (s,
-		"Address: %U\nBehavior: DT4 (Endpoint with decapsulation and specific IPv4 table lookup)"
-		"\nTable: %u", format_ip6_address,
-		(ip6_address_t *) mp->localsid, (mp->fib_table));
+      s = format (s,
+		  "Address: %U\nBehavior: DT4 (Endpoint with decapsulation "
+		  "and specific IPv4 table lookup)"
+		  "\nTable: %u",
+		  format_ip6_address, (ip6_address_t *) mp->localsid,
+		  (mp->fib_table));
       break;
     default:
       if (mp->behavior >= SR_BEHAVIOR_LAST)
 	{
-	  s = format (s, "Address: %U\n Behavior: %u",
-		      format_ip6_address, (ip6_address_t *) mp->localsid,
-		      mp->behavior);
+	  s = format (s, "Address: %U\n Behavior: %u", format_ip6_address,
+		      (ip6_address_t *) mp->localsid, mp->behavior);
 	}
       else
-	//Should never get here...
+	// Should never get here...
 	s = format (s, "Internal error");
       break;
     }
   FINISH;
 }
 
-static void *vl_api_sr_steering_add_del_t_print
-  (vl_api_sr_steering_add_del_t * mp, void *handle)
+static void *
+vl_api_sr_steering_add_del_t_print (vl_api_sr_steering_add_del_t *mp,
+				    void *handle)
 {
   u8 *s;
 
@@ -1203,14 +1220,14 @@ static void *vl_api_sr_steering_add_del_t_print
       s = format (s, "Traffic type: L2 iface: %u", (mp->sw_if_index));
       break;
     case SR_STEER_IPV4:
-      s = format (s, "Traffic type: IPv4 %U/%u", format_ip4_address,
-		  (ip4_address_t *) mp->prefix.address.un.ip4,
-		  (mp->prefix.len));
+      s =
+	format (s, "Traffic type: IPv4 %U/%u", format_ip4_address,
+		(ip4_address_t *) mp->prefix.address.un.ip4, (mp->prefix.len));
       break;
     case SR_STEER_IPV6:
-      s = format (s, "Traffic type: IPv6 %U/%u", format_ip6_address,
-		  (ip6_address_t *) mp->prefix.address.un.ip6,
-		  (mp->prefix.len));
+      s =
+	format (s, "Traffic type: IPv6 %U/%u", format_ip6_address,
+		(ip6_address_t *) mp->prefix.address.un.ip6, (mp->prefix.len));
       break;
     default:
       s = format (s, "Traffic type: Unknown(%u)", mp->traffic_type);
@@ -1226,8 +1243,8 @@ static void *vl_api_sr_steering_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_sr_policy_add_t_print
-  (vl_api_sr_policy_add_t * mp, void *handle)
+static void *
+vl_api_sr_policy_add_t_print (vl_api_sr_policy_add_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1247,10 +1264,8 @@ static void *vl_api_sr_policy_add_t_print
   s = format (s, "BSID: %U", format_ip6_address,
 	      (ip6_address_t *) mp->bsid_addr);
 
-  s =
-    format (s,
-	    (mp->is_encap ? "Behavior: Encapsulation" :
-	     "Behavior: SRH insertion"));
+  s = format (
+    s, (mp->is_encap ? "Behavior: Encapsulation" : "Behavior: SRH insertion"));
 
   s = format (s, "FIB_table: %u", (mp->fib_table));
 
@@ -1260,16 +1275,16 @@ static void *vl_api_sr_policy_add_t_print
 
   s = format (s, "{");
   vec_foreach (seg, segments)
-  {
-    s = format (s, "%U, ", format_ip6_address, seg);
-  }
+    {
+      s = format (s, "%U, ", format_ip6_address, seg);
+    }
   s = format (s, "\b\b } ");
 
   FINISH;
 }
 
-static void *vl_api_sr_policy_mod_t_print
-  (vl_api_sr_policy_mod_t * mp, void *handle)
+static void *
+vl_api_sr_policy_mod_t_print (vl_api_sr_policy_mod_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1299,16 +1314,16 @@ static void *vl_api_sr_policy_mod_t_print
 
   s = format (s, "{");
   vec_foreach (seg, segments)
-  {
-    s = format (s, "%U, ", format_ip6_address, seg);
-  }
+    {
+      s = format (s, "%U, ", format_ip6_address, seg);
+    }
   s = format (s, "\b\b } ");
 
   FINISH;
 }
 
-static void *vl_api_sr_policy_del_t_print
-  (vl_api_sr_policy_del_t * mp, void *handle)
+static void *
+vl_api_sr_policy_del_t_print (vl_api_sr_policy_del_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1317,8 +1332,9 @@ static void *vl_api_sr_policy_del_t_print
   FINISH;
 }
 
-static void *vl_api_classify_add_del_table_t_print
-  (vl_api_classify_add_del_table_t * mp, void *handle)
+static void *
+vl_api_classify_add_del_table_t_print (vl_api_classify_add_del_table_t *mp,
+				       void *handle)
 {
   u8 *s;
   int i;
@@ -1350,8 +1366,9 @@ static void *vl_api_classify_add_del_table_t_print
   FINISH;
 }
 
-static void *vl_api_classify_add_del_session_t_print
-  (vl_api_classify_add_del_session_t * mp, void *handle)
+static void *
+vl_api_classify_add_del_session_t_print (vl_api_classify_add_del_session_t *mp,
+					 void *handle)
 {
   u8 *s;
   int i, limit = 0;
@@ -1384,8 +1401,9 @@ static void *vl_api_classify_add_del_session_t_print
   FINISH;
 }
 
-static void *vl_api_classify_set_interface_ip_table_t_print
-  (vl_api_classify_set_interface_ip_table_t * mp, void *handle)
+static void *
+vl_api_classify_set_interface_ip_table_t_print (
+  vl_api_classify_set_interface_ip_table_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1400,8 +1418,9 @@ static void *vl_api_classify_set_interface_ip_table_t_print
   FINISH;
 }
 
-static void *vl_api_classify_set_interface_l2_tables_t_print
-  (vl_api_classify_set_interface_l2_tables_t * mp, void *handle)
+static void *
+vl_api_classify_set_interface_l2_tables_t_print (
+  vl_api_classify_set_interface_l2_tables_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1416,8 +1435,8 @@ static void *vl_api_classify_set_interface_l2_tables_t_print
   FINISH;
 }
 
-static void *vl_api_add_node_next_t_print
-  (vl_api_add_node_next_t * mp, void *handle)
+static void *
+vl_api_add_node_next_t_print (vl_api_add_node_next_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1428,23 +1447,23 @@ static void *vl_api_add_node_next_t_print
   FINISH;
 }
 
-static void *vl_api_vxlan_add_del_tunnel_t_print
-  (vl_api_vxlan_add_del_tunnel_t * mp, void *handle)
+static void *
+vl_api_vxlan_add_del_tunnel_t_print (vl_api_vxlan_add_del_tunnel_t *mp,
+				     void *handle)
 {
   u8 *s;
   s = format (0, "SCRIPT: vxlan_add_del_tunnel ");
 
   ip46_address_t src =
-    to_ip46 (mp->src_address.af, (u8 *) & mp->src_address.un);
+    to_ip46 (mp->src_address.af, (u8 *) &mp->src_address.un);
   ip46_address_t dst =
-    to_ip46 (mp->dst_address.af, (u8 *) & mp->dst_address.un);
+    to_ip46 (mp->dst_address.af, (u8 *) &mp->dst_address.un);
 
   u8 is_grp = ip46_address_is_multicast (&dst);
   char *dst_name = is_grp ? "group" : "dst";
 
   s = format (s, "src %U ", format_ip46_address, &src, IP46_TYPE_ANY);
-  s = format (s, "%s %U ", dst_name, format_ip46_address,
-	      &dst, IP46_TYPE_ANY);
+  s = format (s, "%s %U ", dst_name, format_ip46_address, &dst, IP46_TYPE_ANY);
 
   if (is_grp)
     s = format (s, "mcast_sw_if_index %d ", (mp->mcast_sw_if_index));
@@ -1464,8 +1483,8 @@ static void *vl_api_vxlan_add_del_tunnel_t_print
   FINISH;
 }
 
-static void *vl_api_vxlan_offload_rx_t_print
-  (vl_api_vxlan_offload_rx_t * mp, void *handle)
+static void *
+vl_api_vxlan_offload_rx_t_print (vl_api_vxlan_offload_rx_t *mp, void *handle)
 {
   u8 *s;
   s = format (0, "SCRIPT: vxlan_offload_rx ");
@@ -1478,8 +1497,8 @@ static void *vl_api_vxlan_offload_rx_t_print
   FINISH;
 }
 
-static void *vl_api_vxlan_tunnel_dump_t_print
-  (vl_api_vxlan_tunnel_dump_t * mp, void *handle)
+static void *
+vl_api_vxlan_tunnel_dump_t_print (vl_api_vxlan_tunnel_dump_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1490,8 +1509,9 @@ static void *vl_api_vxlan_tunnel_dump_t_print
   FINISH;
 }
 
-static void *vl_api_vxlan_gbp_tunnel_add_del_t_print
-  (vl_api_vxlan_gbp_tunnel_add_del_t * mp, void *handle)
+static void *
+vl_api_vxlan_gbp_tunnel_add_del_t_print (vl_api_vxlan_gbp_tunnel_add_del_t *mp,
+					 void *handle)
 {
   u8 *s;
   s = format (0, "SCRIPT: vxlan_gbp_tunnel_add_del ");
@@ -1512,8 +1532,9 @@ static void *vl_api_vxlan_gbp_tunnel_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_vxlan_gbp_tunnel_dump_t_print
-  (vl_api_vxlan_gbp_tunnel_dump_t * mp, void *handle)
+static void *
+vl_api_vxlan_gbp_tunnel_dump_t_print (vl_api_vxlan_gbp_tunnel_dump_t *mp,
+				      void *handle)
 {
   u8 *s;
 
@@ -1524,8 +1545,9 @@ static void *vl_api_vxlan_gbp_tunnel_dump_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_set_vxlan_gbp_bypass_t_print
-  (vl_api_sw_interface_set_vxlan_gbp_bypass_t * mp, void *handle)
+static void *
+vl_api_sw_interface_set_vxlan_gbp_bypass_t_print (
+  vl_api_sw_interface_set_vxlan_gbp_bypass_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1538,8 +1560,9 @@ static void *vl_api_sw_interface_set_vxlan_gbp_bypass_t_print
   FINISH;
 }
 
-static void *vl_api_l2_fib_clear_table_t_print
-  (vl_api_l2_fib_clear_table_t * mp, void *handle)
+static void *
+vl_api_l2_fib_clear_table_t_print (vl_api_l2_fib_clear_table_t *mp,
+				   void *handle)
 {
   u8 *s;
 
@@ -1548,8 +1571,9 @@ static void *vl_api_l2_fib_clear_table_t_print
   FINISH;
 }
 
-static void *vl_api_l2_interface_efp_filter_t_print
-  (vl_api_l2_interface_efp_filter_t * mp, void *handle)
+static void *
+vl_api_l2_interface_efp_filter_t_print (vl_api_l2_interface_efp_filter_t *mp,
+					void *handle)
 {
   u8 *s;
 
@@ -1564,8 +1588,9 @@ static void *vl_api_l2_interface_efp_filter_t_print
   FINISH;
 }
 
-static void *vl_api_l2_interface_vlan_tag_rewrite_t_print
-  (vl_api_l2_interface_vlan_tag_rewrite_t * mp, void *handle)
+static void *
+vl_api_l2_interface_vlan_tag_rewrite_t_print (
+  vl_api_l2_interface_vlan_tag_rewrite_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1580,8 +1605,9 @@ static void *vl_api_l2_interface_vlan_tag_rewrite_t_print
   FINISH;
 }
 
-static void *vl_api_create_vhost_user_if_t_print
-  (vl_api_create_vhost_user_if_t * mp, void *handle)
+static void *
+vl_api_create_vhost_user_if_t_print (vl_api_create_vhost_user_if_t *mp,
+				     void *handle)
 {
   u8 *s;
 
@@ -1606,8 +1632,9 @@ static void *vl_api_create_vhost_user_if_t_print
   FINISH;
 }
 
-static void *vl_api_modify_vhost_user_if_t_print
-  (vl_api_modify_vhost_user_if_t * mp, void *handle)
+static void *
+vl_api_modify_vhost_user_if_t_print (vl_api_modify_vhost_user_if_t *mp,
+				     void *handle)
 {
   u8 *s;
 
@@ -1627,8 +1654,9 @@ static void *vl_api_modify_vhost_user_if_t_print
   FINISH;
 }
 
-static void *vl_api_create_vhost_user_if_v2_t_print
-  (vl_api_create_vhost_user_if_v2_t * mp, void *handle)
+static void *
+vl_api_create_vhost_user_if_v2_t_print (vl_api_create_vhost_user_if_v2_t *mp,
+					void *handle)
 {
   u8 *s;
 
@@ -1655,8 +1683,9 @@ static void *vl_api_create_vhost_user_if_v2_t_print
   FINISH;
 }
 
-static void *vl_api_modify_vhost_user_if_v2_t_print
-  (vl_api_modify_vhost_user_if_v2_t * mp, void *handle)
+static void *
+vl_api_modify_vhost_user_if_v2_t_print (vl_api_modify_vhost_user_if_v2_t *mp,
+					void *handle)
 {
   u8 *s;
 
@@ -1678,8 +1707,9 @@ static void *vl_api_modify_vhost_user_if_v2_t_print
   FINISH;
 }
 
-static void *vl_api_delete_vhost_user_if_t_print
-  (vl_api_delete_vhost_user_if_t * mp, void *handle)
+static void *
+vl_api_delete_vhost_user_if_t_print (vl_api_delete_vhost_user_if_t *mp,
+				     void *handle)
 {
   u8 *s;
 
@@ -1689,8 +1719,9 @@ static void *vl_api_delete_vhost_user_if_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_vhost_user_dump_t_print
-  (vl_api_sw_interface_vhost_user_dump_t * mp, void *handle)
+static void *
+vl_api_sw_interface_vhost_user_dump_t_print (
+  vl_api_sw_interface_vhost_user_dump_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1701,8 +1732,8 @@ static void *vl_api_sw_interface_vhost_user_dump_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_dump_t_print
-  (vl_api_sw_interface_dump_t * mp, void *handle)
+static void *
+vl_api_sw_interface_dump_t_print (vl_api_sw_interface_dump_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1720,8 +1751,8 @@ static void *vl_api_sw_interface_dump_t_print
   FINISH;
 }
 
-static void *vl_api_l2_fib_table_dump_t_print
-  (vl_api_l2_fib_table_dump_t * mp, void *handle)
+static void *
+vl_api_l2_fib_table_dump_t_print (vl_api_l2_fib_table_dump_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1732,8 +1763,8 @@ static void *vl_api_l2_fib_table_dump_t_print
   FINISH;
 }
 
-static void *vl_api_control_ping_t_print
-  (vl_api_control_ping_t * mp, void *handle)
+static void *
+vl_api_control_ping_t_print (vl_api_control_ping_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1742,19 +1773,20 @@ static void *vl_api_control_ping_t_print
   FINISH;
 }
 
-static void *vl_api_want_interface_events_t_print
-  (vl_api_want_interface_events_t * mp, void *handle)
+static void *
+vl_api_want_interface_events_t_print (vl_api_want_interface_events_t *mp,
+				      void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: want_interface_events pid %d enable %d ",
-	      (mp->pid), ntohl (mp->enable_disable));
+  s = format (0, "SCRIPT: want_interface_events pid %d enable %d ", (mp->pid),
+	      ntohl (mp->enable_disable));
 
   FINISH;
 }
 
 static void *
-vl_api_cli_t_print (vl_api_cli_t * mp, void *handle)
+vl_api_cli_t_print (vl_api_cli_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1763,8 +1795,8 @@ vl_api_cli_t_print (vl_api_cli_t * mp, void *handle)
   FINISH;
 }
 
-static void *vl_api_cli_inband_t_print
-  (vl_api_cli_inband_t * mp, void *handle)
+static void *
+vl_api_cli_inband_t_print (vl_api_cli_inband_t *mp, void *handle)
 {
   u8 *s;
   u8 *cmd = 0;
@@ -1777,8 +1809,8 @@ static void *vl_api_cli_inband_t_print
   FINISH;
 }
 
-static void *vl_api_memclnt_create_t_print
-  (vl_api_memclnt_create_t * mp, void *handle)
+static void *
+vl_api_memclnt_create_t_print (vl_api_memclnt_create_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1787,8 +1819,8 @@ static void *vl_api_memclnt_create_t_print
   FINISH;
 }
 
-static void *vl_api_sockclnt_create_t_print
-  (vl_api_sockclnt_create_t * mp, void *handle)
+static void *
+vl_api_sockclnt_create_t_print (vl_api_sockclnt_create_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1797,8 +1829,8 @@ static void *vl_api_sockclnt_create_t_print
   FINISH;
 }
 
-static void *vl_api_show_version_t_print
-  (vl_api_show_version_t * mp, void *handle)
+static void *
+vl_api_show_version_t_print (vl_api_show_version_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1807,9 +1839,8 @@ static void *vl_api_show_version_t_print
   FINISH;
 }
 
-__clib_unused
-  static void *vl_api_show_threads_t_print
-  (vl_api_show_threads_t * mp, void *handle)
+__clib_unused static void *
+vl_api_show_threads_t_print (vl_api_show_threads_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1818,8 +1849,9 @@ __clib_unused
   FINISH;
 }
 
-static void *vl_api_vxlan_gpe_add_del_tunnel_t_print
-  (vl_api_vxlan_gpe_add_del_tunnel_t * mp, void *handle)
+static void *
+vl_api_vxlan_gpe_add_del_tunnel_t_print (vl_api_vxlan_gpe_add_del_tunnel_t *mp,
+					 void *handle)
 {
   u8 *s;
 
@@ -1834,8 +1866,8 @@ static void *vl_api_vxlan_gpe_add_del_tunnel_t_print
   char *remote_name = is_grp ? "group" : "remote";
 
   s = format (s, "local %U ", format_ip46_address, &local, IP46_TYPE_ANY);
-  s = format (s, "%s %U ", remote_name, format_ip46_address,
-	      &remote, IP46_TYPE_ANY);
+  s = format (s, "%s %U ", remote_name, format_ip46_address, &remote,
+	      IP46_TYPE_ANY);
 
   if (is_grp)
     s = format (s, "mcast_sw_if_index %d ", (mp->mcast_sw_if_index));
@@ -1855,8 +1887,9 @@ static void *vl_api_vxlan_gpe_add_del_tunnel_t_print
   FINISH;
 }
 
-static void *vl_api_vxlan_gpe_tunnel_dump_t_print
-  (vl_api_vxlan_gpe_tunnel_dump_t * mp, void *handle)
+static void *
+vl_api_vxlan_gpe_tunnel_dump_t_print (vl_api_vxlan_gpe_tunnel_dump_t *mp,
+				      void *handle)
 {
   u8 *s;
 
@@ -1867,8 +1900,9 @@ static void *vl_api_vxlan_gpe_tunnel_dump_t_print
   FINISH;
 }
 
-static void *vl_api_interface_name_renumber_t_print
-  (vl_api_interface_name_renumber_t * mp, void *handle)
+static void *
+vl_api_interface_name_renumber_t_print (vl_api_interface_name_renumber_t *mp,
+					void *handle)
 {
   u8 *s;
 
@@ -1881,8 +1915,9 @@ static void *vl_api_interface_name_renumber_t_print
   FINISH;
 }
 
-static void *vl_api_want_l2_macs_events_t_print
-  (vl_api_want_l2_macs_events_t * mp, void *handle)
+static void *
+vl_api_want_l2_macs_events_t_print (vl_api_want_l2_macs_events_t *mp,
+				    void *handle)
 {
   u8 *s;
 
@@ -1896,8 +1931,9 @@ static void *vl_api_want_l2_macs_events_t_print
   FINISH;
 }
 
-static void *vl_api_input_acl_set_interface_t_print
-  (vl_api_input_acl_set_interface_t * mp, void *handle)
+static void *
+vl_api_input_acl_set_interface_t_print (vl_api_input_acl_set_interface_t *mp,
+					void *handle)
 {
   u8 *s;
 
@@ -1914,8 +1950,9 @@ static void *vl_api_input_acl_set_interface_t_print
   FINISH;
 }
 
-static void *vl_api_output_acl_set_interface_t_print
-  (vl_api_output_acl_set_interface_t * mp, void *handle)
+static void *
+vl_api_output_acl_set_interface_t_print (vl_api_output_acl_set_interface_t *mp,
+					 void *handle)
 {
   u8 *s;
 
@@ -1932,8 +1969,8 @@ static void *vl_api_output_acl_set_interface_t_print
   FINISH;
 }
 
-static void *vl_api_ip_address_dump_t_print
-  (vl_api_ip_address_dump_t * mp, void *handle)
+static void *
+vl_api_ip_address_dump_t_print (vl_api_ip_address_dump_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1945,7 +1982,7 @@ static void *vl_api_ip_address_dump_t_print
 }
 
 static void *
-vl_api_ip_dump_t_print (vl_api_ip_dump_t * mp, void *handle)
+vl_api_ip_dump_t_print (vl_api_ip_dump_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1955,8 +1992,9 @@ vl_api_ip_dump_t_print (vl_api_ip_dump_t * mp, void *handle)
   FINISH;
 }
 
-static void *vl_api_cop_interface_enable_disable_t_print
-  (vl_api_cop_interface_enable_disable_t * mp, void *handle)
+static void *
+vl_api_cop_interface_enable_disable_t_print (
+  vl_api_cop_interface_enable_disable_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1970,8 +2008,9 @@ static void *vl_api_cop_interface_enable_disable_t_print
   FINISH;
 }
 
-static void *vl_api_cop_whitelist_enable_disable_t_print
-  (vl_api_cop_whitelist_enable_disable_t * mp, void *handle)
+static void *
+vl_api_cop_whitelist_enable_disable_t_print (
+  vl_api_cop_whitelist_enable_disable_t *mp, void *handle)
 {
   u8 *s;
 
@@ -1988,8 +2027,8 @@ static void *vl_api_cop_whitelist_enable_disable_t_print
   FINISH;
 }
 
-static void *vl_api_af_packet_create_t_print
-  (vl_api_af_packet_create_t * mp, void *handle)
+static void *
+vl_api_af_packet_create_t_print (vl_api_af_packet_create_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2003,8 +2042,8 @@ static void *vl_api_af_packet_create_t_print
   FINISH;
 }
 
-static void *vl_api_af_packet_delete_t_print
-  (vl_api_af_packet_delete_t * mp, void *handle)
+static void *
+vl_api_af_packet_delete_t_print (vl_api_af_packet_delete_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2014,8 +2053,8 @@ static void *vl_api_af_packet_delete_t_print
   FINISH;
 }
 
-static void *vl_api_af_packet_dump_t_print
-  (vl_api_af_packet_dump_t * mp, void *handle)
+static void *
+vl_api_af_packet_dump_t_print (vl_api_af_packet_dump_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2025,7 +2064,7 @@ static void *vl_api_af_packet_dump_t_print
 }
 
 static u8 *
-format_policer_action (u8 * s, va_list * va)
+format_policer_action (u8 *s, va_list *va)
 {
   u32 action = va_arg (*va, u32);
   u32 dscp = va_arg (*va, u32);
@@ -2049,8 +2088,8 @@ format_policer_action (u8 * s, va_list * va)
   return s;
 }
 
-static void *vl_api_policer_add_del_t_print
-  (vl_api_policer_add_del_t * mp, void *handle)
+static void *
+vl_api_policer_add_del_t_print (vl_api_policer_add_del_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2124,8 +2163,8 @@ static void *vl_api_policer_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_policer_dump_t_print
-  (vl_api_policer_dump_t * mp, void *handle)
+static void *
+vl_api_policer_dump_t_print (vl_api_policer_dump_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2136,8 +2175,9 @@ static void *vl_api_policer_dump_t_print
   FINISH;
 }
 
-static void *vl_api_policer_classify_set_interface_t_print
-  (vl_api_policer_classify_set_interface_t * mp, void *handle)
+static void *
+vl_api_policer_classify_set_interface_t_print (
+  vl_api_policer_classify_set_interface_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2155,8 +2195,9 @@ static void *vl_api_policer_classify_set_interface_t_print
   FINISH;
 }
 
-static void *vl_api_policer_classify_dump_t_print
-  (vl_api_policer_classify_dump_t * mp, void *handle)
+static void *
+vl_api_policer_classify_dump_t_print (vl_api_policer_classify_dump_t *mp,
+				      void *handle)
 {
   u8 *s;
 
@@ -2179,8 +2220,9 @@ static void *vl_api_policer_classify_dump_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_clear_stats_t_print
-  (vl_api_sw_interface_clear_stats_t * mp, void *handle)
+static void *
+vl_api_sw_interface_clear_stats_t_print (vl_api_sw_interface_clear_stats_t *mp,
+					 void *handle)
 {
   u8 *s;
 
@@ -2191,8 +2233,8 @@ static void *vl_api_sw_interface_clear_stats_t_print
   FINISH;
 }
 
-static void *vl_api_mpls_tunnel_dump_t_print
-  (vl_api_mpls_tunnel_dump_t * mp, void *handle)
+static void *
+vl_api_mpls_tunnel_dump_t_print (vl_api_mpls_tunnel_dump_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2202,8 +2244,8 @@ static void *vl_api_mpls_tunnel_dump_t_print
   FINISH;
 }
 
-static void *vl_api_mpls_table_dump_t_print
-  (vl_api_mpls_table_dump_t * mp, void *handle)
+static void *
+vl_api_mpls_table_dump_t_print (vl_api_mpls_table_dump_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2212,8 +2254,8 @@ static void *vl_api_mpls_table_dump_t_print
   FINISH;
 }
 
-static void *vl_api_mpls_route_dump_t_print
-  (vl_api_mpls_route_dump_t * mp, void *handle)
+static void *
+vl_api_mpls_route_dump_t_print (vl_api_mpls_route_dump_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2222,8 +2264,9 @@ static void *vl_api_mpls_route_dump_t_print
   FINISH;
 }
 
-static void *vl_api_classify_table_ids_t_print
-  (vl_api_classify_table_ids_t * mp, void *handle)
+static void *
+vl_api_classify_table_ids_t_print (vl_api_classify_table_ids_t *mp,
+				   void *handle)
 {
   u8 *s;
 
@@ -2232,8 +2275,9 @@ static void *vl_api_classify_table_ids_t_print
   FINISH;
 }
 
-static void *vl_api_classify_table_by_interface_t_print
-  (vl_api_classify_table_by_interface_t * mp, void *handle)
+static void *
+vl_api_classify_table_by_interface_t_print (
+  vl_api_classify_table_by_interface_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2244,8 +2288,9 @@ static void *vl_api_classify_table_by_interface_t_print
   FINISH;
 }
 
-static void *vl_api_classify_table_info_t_print
-  (vl_api_classify_table_info_t * mp, void *handle)
+static void *
+vl_api_classify_table_info_t_print (vl_api_classify_table_info_t *mp,
+				    void *handle)
 {
   u8 *s;
 
@@ -2256,8 +2301,9 @@ static void *vl_api_classify_table_info_t_print
   FINISH;
 }
 
-static void *vl_api_classify_session_dump_t_print
-  (vl_api_classify_session_dump_t * mp, void *handle)
+static void *
+vl_api_classify_session_dump_t_print (vl_api_classify_session_dump_t *mp,
+				      void *handle)
 {
   u8 *s;
 
@@ -2268,8 +2314,9 @@ static void *vl_api_classify_session_dump_t_print
   FINISH;
 }
 
-static void *vl_api_set_ipfix_exporter_t_print
-  (vl_api_set_ipfix_exporter_t * mp, void *handle)
+static void *
+vl_api_set_ipfix_exporter_t_print (vl_api_set_ipfix_exporter_t *mp,
+				   void *handle)
 {
   u8 *s;
 
@@ -2288,8 +2335,9 @@ static void *vl_api_set_ipfix_exporter_t_print
   FINISH;
 }
 
-static void *vl_api_ipfix_exporter_dump_t_print
-  (vl_api_ipfix_exporter_dump_t * mp, void *handle)
+static void *
+vl_api_ipfix_exporter_dump_t_print (vl_api_ipfix_exporter_dump_t *mp,
+				    void *handle)
 {
   u8 *s;
 
@@ -2298,8 +2346,9 @@ static void *vl_api_ipfix_exporter_dump_t_print
   FINISH;
 }
 
-static void *vl_api_set_ipfix_classify_stream_t_print
-  (vl_api_set_ipfix_classify_stream_t * mp, void *handle)
+static void *
+vl_api_set_ipfix_classify_stream_t_print (
+  vl_api_set_ipfix_classify_stream_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2311,8 +2360,9 @@ static void *vl_api_set_ipfix_classify_stream_t_print
   FINISH;
 }
 
-static void *vl_api_ipfix_classify_stream_dump_t_print
-  (vl_api_ipfix_classify_stream_dump_t * mp, void *handle)
+static void *
+vl_api_ipfix_classify_stream_dump_t_print (
+  vl_api_ipfix_classify_stream_dump_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2321,8 +2371,9 @@ static void *vl_api_ipfix_classify_stream_dump_t_print
   FINISH;
 }
 
-static void *vl_api_ipfix_classify_table_add_del_t_print
-  (vl_api_ipfix_classify_table_add_del_t * mp, void *handle)
+static void *
+vl_api_ipfix_classify_table_add_del_t_print (
+  vl_api_ipfix_classify_table_add_del_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2335,8 +2386,9 @@ static void *vl_api_ipfix_classify_table_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_ipfix_classify_table_dump_t_print
-  (vl_api_ipfix_classify_table_dump_t * mp, void *handle)
+static void *
+vl_api_ipfix_classify_table_dump_t_print (
+  vl_api_ipfix_classify_table_dump_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2345,8 +2397,9 @@ static void *vl_api_ipfix_classify_table_dump_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_span_enable_disable_t_print
-  (vl_api_sw_interface_span_enable_disable_t * mp, void *handle)
+static void *
+vl_api_sw_interface_span_enable_disable_t_print (
+  vl_api_sw_interface_span_enable_disable_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2378,7 +2431,7 @@ static void *vl_api_sw_interface_span_enable_disable_t_print
 }
 
 static void *
-vl_api_sw_interface_span_dump_t_print (vl_api_sw_interface_span_dump_t * mp,
+vl_api_sw_interface_span_dump_t_print (vl_api_sw_interface_span_dump_t *mp,
 				       void *handle)
 {
   u8 *s;
@@ -2391,8 +2444,8 @@ vl_api_sw_interface_span_dump_t_print (vl_api_sw_interface_span_dump_t * mp,
   FINISH;
 }
 
-static void *vl_api_get_next_index_t_print
-  (vl_api_get_next_index_t * mp, void *handle)
+static void *
+vl_api_get_next_index_t_print (vl_api_get_next_index_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2403,8 +2456,9 @@ static void *vl_api_get_next_index_t_print
   FINISH;
 }
 
-static void *vl_api_pg_create_interface_t_print
-  (vl_api_pg_create_interface_t * mp, void *handle)
+static void *
+vl_api_pg_create_interface_t_print (vl_api_pg_create_interface_t *mp,
+				    void *handle)
 {
   u8 *s;
 
@@ -2416,8 +2470,8 @@ static void *vl_api_pg_create_interface_t_print
   FINISH;
 }
 
-static void *vl_api_pg_capture_t_print
-  (vl_api_pg_capture_t * mp, void *handle)
+static void *
+vl_api_pg_capture_t_print (vl_api_pg_capture_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2432,24 +2486,24 @@ static void *vl_api_pg_capture_t_print
   FINISH;
 }
 
-static void *vl_api_pg_enable_disable_t_print
-  (vl_api_pg_enable_disable_t * mp, void *handle)
+static void *
+vl_api_pg_enable_disable_t_print (vl_api_pg_enable_disable_t *mp, void *handle)
 {
   u8 *s;
 
   s = format (0, "SCRIPT: pg_enable_disable ");
   if (vl_api_string_len (&mp->stream_name) > 0)
-    s =
-      format (s, "stream %s",
-	      vl_api_from_api_to_new_c_string (&mp->stream_name));
+    s = format (s, "stream %s",
+		vl_api_from_api_to_new_c_string (&mp->stream_name));
   if (!mp->is_enabled)
     s = format (s, "disable");
 
   FINISH;
 }
 
-static void *vl_api_pg_interface_enable_disable_coalesce_t_print
-  (vl_api_pg_interface_enable_disable_coalesce_t * mp, void *handle)
+static void *
+vl_api_pg_interface_enable_disable_coalesce_t_print (
+  vl_api_pg_interface_enable_disable_coalesce_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2462,9 +2516,9 @@ static void *vl_api_pg_interface_enable_disable_coalesce_t_print
   FINISH;
 }
 
-
-static void *vl_api_ip_source_and_port_range_check_add_del_t_print
-  (vl_api_ip_source_and_port_range_check_add_del_t * mp, void *handle)
+static void *
+vl_api_ip_source_and_port_range_check_add_del_t_print (
+  vl_api_ip_source_and_port_range_check_add_del_t *mp, void *handle)
 {
   u8 *s;
   int i;
@@ -2485,9 +2539,9 @@ static void *vl_api_ip_source_and_port_range_check_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_ip_source_and_port_range_check_interface_add_del_t_print
-  (vl_api_ip_source_and_port_range_check_interface_add_del_t * mp,
-   void *handle)
+static void *
+vl_api_ip_source_and_port_range_check_interface_add_del_t_print (
+  vl_api_ip_source_and_port_range_check_interface_add_del_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2517,7 +2571,8 @@ static void *vl_api_ip_source_and_port_range_check_interface_add_del_t_print
 /* format_nsh_address_vat (u8 * s, va_list * args) */
 /* { */
 /*   nsh_t *a = va_arg (*args, nsh_t *); */
-/*   return format (s, "SPI:%d SI:%d", clib_net_to_host_u32 (a->spi), a->si); */
+/*   return format (s, "SPI:%d SI:%d", clib_net_to_host_u32 (a->spi), a->si);
+ */
 /* } */
 
 static const char *policy_strs[] = {
@@ -2528,45 +2583,30 @@ static const char *policy_strs[] = {
 };
 
 static const char *algo_strs[] = {
-  "NONE",
-  "AES_CBC_128",
-  "AES_CBC_192",
-  "AES_CBC_256",
-  "AES_CTR_128",
-  "AES_CTR_192",
-  "AES_CTR_256",
-  "AES_GCM_128",
-  "AES_GCM_192",
-  "AES_GCM_256",
-  "DES_CBC",
-  "3DES_CBC",
+  "NONE",	 "AES_CBC_128", "AES_CBC_192", "AES_CBC_256",
+  "AES_CTR_128", "AES_CTR_192", "AES_CTR_256", "AES_GCM_128",
+  "AES_GCM_192", "AES_GCM_256", "DES_CBC",     "3DES_CBC",
 };
-
 
 static const char *integ_strs[] = {
-  "NONE",
-  "MD5_96",
-  "SHA1_96",
-  "SHA_256_96",
-  "SHA_256_128",
-  "SHA_384_192",
-  "SHA_512_256",
+  "NONE",	 "MD5_96",	"SHA1_96",     "SHA_256_96",
+  "SHA_256_128", "SHA_384_192", "SHA_512_256",
 };
 
-static void *vl_api_ipsec_spd_entry_add_del_t_print
-  (vl_api_ipsec_spd_entry_add_del_t * mp, void *handle)
+static void *
+vl_api_ipsec_spd_entry_add_del_t_print (vl_api_ipsec_spd_entry_add_del_t *mp,
+					void *handle)
 {
   u8 *s;
   const char *str;
   vl_api_ipsec_spd_entry_t *ep;
   int policy_host_byte_order;
 
-  ep = (vl_api_ipsec_spd_entry_t *) & mp->entry;
+  ep = (vl_api_ipsec_spd_entry_t *) &mp->entry;
 
   s = format (0, "SCRIPT: ipsec_spd_entry ");
   s = format (s, "is_add %d spd_id %u priority %d is_outbound %d sa_id %u\n",
-	      mp->is_add,
-	      (ep->spd_id), ntohl (ep->priority), ep->is_outbound,
+	      mp->is_add, (ep->spd_id), ntohl (ep->priority), ep->is_outbound,
 	      (ep->sa_id));
 
   policy_host_byte_order = (ep->policy);
@@ -2579,13 +2619,11 @@ static void *vl_api_ipsec_spd_entry_add_del_t_print
   s = format (s, "  policy: %s protocol %d\n", str, ep->protocol);
 
   s = format (s, "  remote_address_start %U remote_address_stop %U\n",
-	      format_vl_api_address,
-	      &ep->remote_address_start,
+	      format_vl_api_address, &ep->remote_address_start,
 	      format_vl_api_address, &ep->remote_address_stop);
 
   s = format (s, "  local_address_start %U local_address_stop %U\n",
-	      format_vl_api_address,
-	      &ep->local_address_start,
+	      format_vl_api_address, &ep->local_address_start,
 	      format_vl_api_address, &ep->local_address_stop);
 
   s = format (s, "  remote_port_start %d remote_port_stop %d\n",
@@ -2597,19 +2635,20 @@ static void *vl_api_ipsec_spd_entry_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_ipsec_interface_add_del_spd_t_print
-  (vl_api_ipsec_interface_add_del_spd_t * mp, void *handle)
+static void *
+vl_api_ipsec_interface_add_del_spd_t_print (
+  vl_api_ipsec_interface_add_del_spd_t *mp, void *handle)
 {
   u8 *s;
 
   s = format (0, "SCRIPT: ipsec_interface_add_del_spd ");
-  s = format (s, "is_add %d sw_if_index %d spd_id %u ",
-	      mp->is_add, (mp->sw_if_index), ntohl (mp->spd_id));
+  s = format (s, "is_add %d sw_if_index %d spd_id %u ", mp->is_add,
+	      (mp->sw_if_index), ntohl (mp->spd_id));
   FINISH;
 }
 
-static void *vl_api_ipsec_spd_add_del_t_print
-  (vl_api_ipsec_spd_add_del_t * mp, void *handle)
+static void *
+vl_api_ipsec_spd_add_del_t_print (vl_api_ipsec_spd_add_del_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2618,8 +2657,9 @@ static void *vl_api_ipsec_spd_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_ipsec_sad_entry_add_del_t_print
-  (vl_api_ipsec_sad_entry_add_del_t * mp, void *handle)
+static void *
+vl_api_ipsec_sad_entry_add_del_t_print (vl_api_ipsec_sad_entry_add_del_t *mp,
+					void *handle)
 {
   u8 *s;
   int tmp;
@@ -2630,7 +2670,7 @@ static void *vl_api_ipsec_sad_entry_add_del_t_print
   algo_str = "BOGUS crypto_algorithm!";
   integ_str = "BOGUS integrity_algorithm!";
 
-  ep = (vl_api_ipsec_sad_entry_t *) & mp->entry;
+  ep = (vl_api_ipsec_sad_entry_t *) &mp->entry;
 
   s = format (0, "SCRIPT: ipsec_sad_entry_add_del is_add %d ", mp->is_add);
 
@@ -2648,27 +2688,26 @@ static void *vl_api_ipsec_sad_entry_add_del_t_print
   if (tmp < ARRAY_LEN (integ_strs))
     integ_str = integ_strs[tmp];
 
-  s = format (s, "proto %s crypto alg %s integ alg %s\n",
-	      protocol_str, algo_str, integ_str);
-  s = format (s, " crypto_key len %d value %U\n",
-	      ep->crypto_key.length, format_hex_bytes, ep->crypto_key.data,
+  s = format (s, "proto %s crypto alg %s integ alg %s\n", protocol_str,
+	      algo_str, integ_str);
+  s = format (s, " crypto_key len %d value %U\n", ep->crypto_key.length,
+	      format_hex_bytes, ep->crypto_key.data,
 	      (int) (ep->crypto_key.length));
-  s = format (s, " integ_key len %d value %U\n",
-	      ep->integrity_key.length, format_hex_bytes,
-	      ep->integrity_key.data, (int) (ep->integrity_key.length));
+  s = format (s, " integ_key len %d value %U\n", ep->integrity_key.length,
+	      format_hex_bytes, ep->integrity_key.data,
+	      (int) (ep->integrity_key.length));
   s = format (s, " flags 0x%x ", (ep->flags));
 
-  s = format (s, "tunnel_src %U tunnel_dst %U\n",
-	      format_vl_api_address,
+  s = format (s, "tunnel_src %U tunnel_dst %U\n", format_vl_api_address,
 	      &ep->tunnel_src, format_vl_api_address, &ep->tunnel_dst);
-  s = format (s, " tx_table_id %u salt %u ",
-	      (ep->tx_table_id), ntohl (ep->salt));
+  s = format (s, " tx_table_id %u salt %u ", (ep->tx_table_id),
+	      ntohl (ep->salt));
   FINISH;
 }
 
-
-static void *vl_api_l2_interface_pbb_tag_rewrite_t_print
-  (vl_api_l2_interface_pbb_tag_rewrite_t * mp, void *handle)
+static void *
+vl_api_l2_interface_pbb_tag_rewrite_t_print (
+  vl_api_l2_interface_pbb_tag_rewrite_t *mp, void *handle)
 {
   u8 *s;
   u32 vtr_op = (mp->vtr_op);
@@ -2689,8 +2728,9 @@ static void *vl_api_l2_interface_pbb_tag_rewrite_t_print
   FINISH;
 }
 
-static void *vl_api_flow_classify_set_interface_t_print
-  (vl_api_flow_classify_set_interface_t * mp, void *handle)
+static void *
+vl_api_flow_classify_set_interface_t_print (
+  vl_api_flow_classify_set_interface_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2707,7 +2747,7 @@ static void *vl_api_flow_classify_set_interface_t_print
 }
 
 static void *
-vl_api_set_punt_t_print (vl_api_set_punt_t * mp, void *handle)
+vl_api_set_punt_t_print (vl_api_set_punt_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2720,12 +2760,11 @@ vl_api_set_punt_t_print (vl_api_set_punt_t * mp, void *handle)
 
       s = format (s, "protocol %d ", mp->punt.punt.l4.protocol);
 
-      if (mp->punt.punt.l4.port != (u16) ~ 0)
+      if (mp->punt.punt.l4.port != (u16) ~0)
 	s = format (s, "port %d ", (mp->punt.punt.l4.port));
       break;
     default:
       break;
-
     }
 
   if (!mp->is_add)
@@ -2734,8 +2773,9 @@ vl_api_set_punt_t_print (vl_api_set_punt_t * mp, void *handle)
   FINISH;
 }
 
-static void *vl_api_flow_classify_dump_t_print
-  (vl_api_flow_classify_dump_t * mp, void *handle)
+static void *
+vl_api_flow_classify_dump_t_print (vl_api_flow_classify_dump_t *mp,
+				   void *handle)
 {
   u8 *s;
 
@@ -2755,8 +2795,8 @@ static void *vl_api_flow_classify_dump_t_print
   FINISH;
 }
 
-static void *vl_api_get_first_msg_id_t_print
-  (vl_api_get_first_msg_id_t * mp, void *handle)
+static void *
+vl_api_get_first_msg_id_t_print (vl_api_get_first_msg_id_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2765,8 +2805,8 @@ static void *vl_api_get_first_msg_id_t_print
   FINISH;
 }
 
-static void *vl_api_ioam_enable_t_print
-  (vl_api_ioam_enable_t * mp, void *handle)
+static void *
+vl_api_ioam_enable_t_print (vl_api_ioam_enable_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2787,8 +2827,8 @@ static void *vl_api_ioam_enable_t_print
   FINISH;
 }
 
-static void *vl_api_ioam_disable_t_print
-  (vl_api_ioam_disable_t * mp, void *handle)
+static void *
+vl_api_ioam_disable_t_print (vl_api_ioam_disable_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2801,8 +2841,9 @@ static void *vl_api_ioam_disable_t_print
   FINISH;
 }
 
-static void *vl_api_feature_enable_disable_t_print
-  (vl_api_feature_enable_disable_t * mp, void *handle)
+static void *
+vl_api_feature_enable_disable_t_print (vl_api_feature_enable_disable_t *mp,
+				       void *handle)
 {
   u8 *s;
 
@@ -2816,8 +2857,9 @@ static void *vl_api_feature_enable_disable_t_print
   FINISH;
 }
 
-static void *vl_api_feature_gso_enable_disable_t_print
-  (vl_api_feature_gso_enable_disable_t * mp, void *handle)
+static void *
+vl_api_feature_gso_enable_disable_t_print (
+  vl_api_feature_gso_enable_disable_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2831,8 +2873,9 @@ static void *vl_api_feature_gso_enable_disable_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_tag_add_del_t_print
-  (vl_api_sw_interface_tag_add_del_t * mp, void *handle)
+static void *
+vl_api_sw_interface_tag_add_del_t_print (vl_api_sw_interface_tag_add_del_t *mp,
+					 void *handle)
 {
   u8 *s;
 
@@ -2846,8 +2889,9 @@ static void *vl_api_sw_interface_tag_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_hw_interface_set_mtu_t_print
-  (vl_api_hw_interface_set_mtu_t * mp, void *handle)
+static void *
+vl_api_hw_interface_set_mtu_t_print (vl_api_hw_interface_set_mtu_t *mp,
+				     void *handle)
 {
   u8 *s;
 
@@ -2858,8 +2902,8 @@ static void *vl_api_hw_interface_set_mtu_t_print
   FINISH;
 }
 
-static void *vl_api_p2p_ethernet_add_t_print
-  (vl_api_p2p_ethernet_add_t * mp, void *handle)
+static void *
+vl_api_p2p_ethernet_add_t_print (vl_api_p2p_ethernet_add_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2870,8 +2914,8 @@ static void *vl_api_p2p_ethernet_add_t_print
   FINISH;
 }
 
-static void *vl_api_p2p_ethernet_del_t_print
-  (vl_api_p2p_ethernet_del_t * mp, void *handle)
+static void *
+vl_api_p2p_ethernet_del_t_print (vl_api_p2p_ethernet_del_t *mp, void *handle)
 {
   u8 *s;
 
@@ -2882,14 +2926,14 @@ static void *vl_api_p2p_ethernet_del_t_print
   FINISH;
 }
 
-static void *vl_api_tcp_configure_src_addresses_t_print
-  (vl_api_tcp_configure_src_addresses_t * mp, void *handle)
+static void *
+vl_api_tcp_configure_src_addresses_t_print (
+  vl_api_tcp_configure_src_addresses_t *mp, void *handle)
 {
   u8 *s;
 
   s = format (0, "SCRIPT: tcp_configure_src_addresses ");
-  s = format (s, "%U - %U ",
-	      format_vl_api_address, &mp->first_address,
+  s = format (s, "%U - %U ", format_vl_api_address, &mp->first_address,
 	      format_vl_api_address, &mp->last_address);
 
   if (mp->vrf_id)
@@ -2898,22 +2942,24 @@ static void *vl_api_tcp_configure_src_addresses_t_print
   FINISH;
 }
 
-static void *vl_api_app_namespace_add_del_t_print
-  (vl_api_app_namespace_add_del_t * mp, void *handle)
+static void *
+vl_api_app_namespace_add_del_t_print (vl_api_app_namespace_add_del_t *mp,
+				      void *handle)
 {
   u8 *s;
 
   s = format (0, "SCRIPT: app_namespace_add_del ");
-  s = format (s, "ns-id %s secret %lu sw_if_index %d ipv4_fib_id %d "
+  s = format (s,
+	      "ns-id %s secret %lu sw_if_index %d ipv4_fib_id %d "
 	      "ipv6_fib_id %d",
-	      vl_api_from_api_to_new_c_string (&mp->namespace_id),
-	      mp->secret, (mp->sw_if_index), (mp->ip4_fib_id),
-	      (mp->ip6_fib_id));
+	      vl_api_from_api_to_new_c_string (&mp->namespace_id), mp->secret,
+	      (mp->sw_if_index), (mp->ip4_fib_id), (mp->ip6_fib_id));
   FINISH;
 }
 
-static void *vl_api_session_rule_add_del_t_print
-  (vl_api_session_rule_add_del_t * mp, void *handle)
+static void *
+vl_api_session_rule_add_del_t_print (vl_api_session_rule_add_del_t *mp,
+				     void *handle)
 {
   u8 *s;
   fib_prefix_t lcl, rmt;
@@ -2926,39 +2972,38 @@ static void *vl_api_session_rule_add_del_t_print
   if (lcl.fp_proto == FIB_PROTOCOL_IP4)
     s = format (s, "appns %d scope %d %s %U/%d %d %U/%d %d action %u tag %s",
 		mp->appns_index, mp->scope, proto, format_ip4_address,
-		&lcl.fp_addr.ip4, lcl.fp_len,
-		format_ip4_address, &rmt.fp_addr.ip4,
-		rmt.fp_len, mp->action_index, mp->tag);
+		&lcl.fp_addr.ip4, lcl.fp_len, format_ip4_address,
+		&rmt.fp_addr.ip4, rmt.fp_len, mp->action_index, mp->tag);
   else
     s = format (s, "appns %d scope %d %s %U/%d %d %U/%d %d action %u tag %s",
 		mp->appns_index, mp->scope, proto, format_ip6_address,
-		&lcl.fp_addr.ip6, lcl.fp_len,
-		format_ip6_address, &rmt.fp_addr.ip6,
-		rmt.fp_len, mp->action_index, mp->tag);
+		&lcl.fp_addr.ip6, lcl.fp_len, format_ip6_address,
+		&rmt.fp_addr.ip6, rmt.fp_len, mp->action_index, mp->tag);
   FINISH;
 }
 
-__clib_unused
-  static void *vl_api_ip_container_proxy_add_del_t_print
-  (vl_api_ip_container_proxy_add_del_t * mp, void *handle)
+__clib_unused static void *
+vl_api_ip_container_proxy_add_del_t_print (
+  vl_api_ip_container_proxy_add_del_t *mp, void *handle)
 {
   u8 *s;
   s = format (0, "SCRIPT: ip_container_proxy_add_del ");
-  s = format (s, "is_add %d prefix %U sw_if_index %d",
-	      mp->is_add, format_vl_api_prefix, mp->sw_if_index);
+  s = format (s, "is_add %d prefix %U sw_if_index %d", mp->is_add,
+	      format_vl_api_prefix, mp->sw_if_index);
 
   FINISH;
 }
 
-static void *vl_api_qos_record_enable_disable_t_print
-  (vl_api_qos_record_enable_disable_t * mp, void *handle)
+static void *
+vl_api_qos_record_enable_disable_t_print (
+  vl_api_qos_record_enable_disable_t *mp, void *handle)
 {
   u8 *s;
 
   s = format (0, "SCRIPT: qos_record_enable_disable ");
   s = format (s, "sw_if_index %d ", (mp->record.sw_if_index));
-  s = format (s, "input_source %U ", format_qos_source,
-	      mp->record.input_source);
+  s =
+    format (s, "input_source %U ", format_qos_source, mp->record.input_source);
 
   if (!mp->enable)
     s = format (s, "disable ");
@@ -2966,174 +3011,173 @@ static void *vl_api_qos_record_enable_disable_t_print
   FINISH;
 }
 
-#define foreach_no_print_function               \
-_(memclnt_keepalive_reply)
+#define foreach_no_print_function _ (memclnt_keepalive_reply)
 
-#define _(f)                                    \
-static void * vl_api_ ## f ## _t_print          \
-  (vl_api_ ## f ## _t * mp, void * handle)      \
-{                                               \
-  return handle;                                \
-}
+#define _(f)                                                                  \
+  static void *vl_api_##f##_t_print (vl_api_##f##_t *mp, void *handle)        \
+  {                                                                           \
+    return handle;                                                            \
+  }
 foreach_no_print_function;
 #undef _
 
-#define foreach_custom_print_function                                   \
-_(CREATE_LOOPBACK, create_loopback)                                     \
-_(CREATE_LOOPBACK_INSTANCE, create_loopback_instance)                   \
-_(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
-_(SW_INTERFACE_EVENT, sw_interface_event)                               \
-_(SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)           \
-_(SW_INTERFACE_SET_TABLE, sw_interface_set_table)                       \
-_(SW_INTERFACE_SET_MPLS_ENABLE, sw_interface_set_mpls_enable)           \
-_(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)                       \
-_(SW_INTERFACE_SET_VXLAN_BYPASS, sw_interface_set_vxlan_bypass)         \
-_(BOND_CREATE, bond_create)                                             \
-_(BOND_CREATE2, bond_create2)                                           \
-_(BOND_DELETE, bond_delete)                                             \
-_(BOND_ADD_MEMBER, bond_add_member)                                     \
-_(BOND_DETACH_MEMBER, bond_detach_member)                               \
-_(SW_INTERFACE_SET_BOND_WEIGHT, sw_interface_set_bond_weight)           \
-_(SW_MEMBER_INTERFACE_DUMP, sw_member_interface_dump)                   \
-_(SW_BOND_INTERFACE_DUMP, sw_bond_interface_dump)                       \
-_(SW_INTERFACE_RX_PLACEMENT_DUMP, sw_interface_rx_placement_dump)       \
-_(TAP_CREATE_V2, tap_create_v2)                                         \
-_(TAP_DELETE_V2, tap_delete_v2)                                         \
-_(SW_INTERFACE_TAP_V2_DUMP, sw_interface_tap_v2_dump)                   \
-_(IP_TABLE_ADD_DEL, ip_table_add_del)                                   \
-_(MPLS_ROUTE_ADD_DEL, mpls_route_add_del)                               \
-_(MPLS_TABLE_ADD_DEL, mpls_table_add_del)                               \
-_(IP_ROUTE_ADD_DEL, ip_route_add_del)                                   \
-_(MPLS_TUNNEL_ADD_DEL, mpls_tunnel_add_del)		                \
-_(SR_MPLS_POLICY_ADD, sr_mpls_policy_add)		                \
-_(SR_MPLS_POLICY_DEL, sr_mpls_policy_del)		                \
-_(SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)             \
-_(CREATE_VLAN_SUBIF, create_vlan_subif)                                 \
-_(CREATE_SUBIF, create_subif)                                           \
-_(IP_TABLE_REPLACE_BEGIN, ip_table_replace_begin)                       \
-_(IP_TABLE_FLUSH, ip_table_flush)                                       \
-_(IP_TABLE_REPLACE_END, ip_table_replace_end)                           \
-_(SET_IP_FLOW_HASH, set_ip_flow_hash)                                   \
-_(L2_PATCH_ADD_DEL, l2_patch_add_del)                                   \
-_(SR_LOCALSID_ADD_DEL, sr_localsid_add_del)                             \
-_(SR_STEERING_ADD_DEL, sr_steering_add_del)                             \
-_(SR_POLICY_ADD, sr_policy_add)                                         \
-_(SR_POLICY_MOD, sr_policy_mod)                                         \
-_(SR_POLICY_DEL, sr_policy_del)                                         \
-_(SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)           \
-_(L2FIB_ADD_DEL, l2fib_add_del)                                         \
-_(L2FIB_FLUSH_ALL, l2fib_flush_all)                                     \
-_(L2FIB_FLUSH_BD, l2fib_flush_bd)                                       \
-_(L2FIB_FLUSH_INT, l2fib_flush_int)                                     \
-_(L2_FLAGS, l2_flags)                                                   \
-_(BRIDGE_FLAGS, bridge_flags)                                           \
-_(CLASSIFY_ADD_DEL_TABLE, classify_add_del_table)			\
-_(CLASSIFY_ADD_DEL_SESSION, classify_add_del_session)			\
-_(SW_INTERFACE_SET_L2_BRIDGE, sw_interface_set_l2_bridge)		\
-_(BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)                         \
-_(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                               \
-_(BRIDGE_DOMAIN_SET_MAC_AGE, bridge_domain_set_mac_age)                 \
-_(CLASSIFY_SET_INTERFACE_IP_TABLE, classify_set_interface_ip_table)	\
-_(CLASSIFY_SET_INTERFACE_L2_TABLES, classify_set_interface_l2_tables)	\
-_(ADD_NODE_NEXT, add_node_next)						\
-_(VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel)                           \
-_(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
-_(VXLAN_OFFLOAD_RX, vxlan_offload_rx)                                   \
-_(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                               \
-_(L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)                     \
-_(L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite)         \
-_(CREATE_VHOST_USER_IF, create_vhost_user_if)				\
-_(MODIFY_VHOST_USER_IF, modify_vhost_user_if)				\
-_(CREATE_VHOST_USER_IF_V2, create_vhost_user_if_v2)			\
-_(MODIFY_VHOST_USER_IF_V2, modify_vhost_user_if_v2)     		\
-_(DELETE_VHOST_USER_IF, delete_vhost_user_if)				\
-_(SW_INTERFACE_DUMP, sw_interface_dump)					\
-_(CONTROL_PING, control_ping)						\
-_(WANT_INTERFACE_EVENTS, want_interface_events)				\
-_(CLI, cli)								\
-_(CLI_INBAND, cli_inband)						\
-_(MEMCLNT_CREATE, memclnt_create)					\
-_(SOCKCLNT_CREATE, sockclnt_create)					\
-_(SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump)           \
-_(SHOW_VERSION, show_version)                                           \
-_(L2_FIB_TABLE_DUMP, l2_fib_table_dump)                                 \
-_(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel) 			\
-_(VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump)                         \
-_(VXLAN_GBP_TUNNEL_ADD_DEL, vxlan_gbp_tunnel_add_del) 			\
-_(VXLAN_GBP_TUNNEL_DUMP, vxlan_gbp_tunnel_dump)                         \
-_(SW_INTERFACE_SET_VXLAN_GBP_BYPASS, sw_interface_set_vxlan_gbp_bypass) \
-_(INTERFACE_NAME_RENUMBER, interface_name_renumber)			\
-_(WANT_L2_MACS_EVENTS, want_l2_macs_events)                             \
-_(INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                     \
-_(IP_ADDRESS_DUMP, ip_address_dump)                                     \
-_(IP_DUMP, ip_dump)                                                     \
-_(DELETE_LOOPBACK, delete_loopback)                                     \
-_(BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)					\
-_(BD_IP_MAC_FLUSH, bd_ip_mac_flush)					\
-_(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable) 		\
-_(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)           \
-_(AF_PACKET_CREATE, af_packet_create)					\
-_(AF_PACKET_DELETE, af_packet_delete)					\
-_(AF_PACKET_DUMP, af_packet_dump)                                       \
-_(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                   \
-_(MPLS_TABLE_DUMP, mpls_table_dump)                                     \
-_(MPLS_ROUTE_DUMP, mpls_route_dump)                                     \
-_(MPLS_TUNNEL_DUMP, mpls_tunnel_dump)                                   \
-_(CLASSIFY_TABLE_IDS,classify_table_ids)                                \
-_(CLASSIFY_TABLE_BY_INTERFACE, classify_table_by_interface)             \
-_(CLASSIFY_TABLE_INFO,classify_table_info)                              \
-_(CLASSIFY_SESSION_DUMP,classify_session_dump)                          \
-_(SET_IPFIX_EXPORTER, set_ipfix_exporter)                               \
-_(IPFIX_EXPORTER_DUMP, ipfix_exporter_dump)                             \
-_(SET_IPFIX_CLASSIFY_STREAM, set_ipfix_classify_stream)                 \
-_(IPFIX_CLASSIFY_STREAM_DUMP, ipfix_classify_stream_dump)               \
-_(IPFIX_CLASSIFY_TABLE_ADD_DEL, ipfix_classify_table_add_del)           \
-_(IPFIX_CLASSIFY_TABLE_DUMP, ipfix_classify_table_dump)                 \
-_(SW_INTERFACE_SPAN_ENABLE_DISABLE, sw_interface_span_enable_disable)   \
-_(SW_INTERFACE_SPAN_DUMP, sw_interface_span_dump)                       \
-_(GET_NEXT_INDEX, get_next_index)                                       \
-_(PG_CREATE_INTERFACE,pg_create_interface)                              \
-_(PG_CAPTURE, pg_capture)                                               \
-_(PG_ENABLE_DISABLE, pg_enable_disable)                                 \
-_(PG_INTERFACE_ENABLE_DISABLE_COALESCE, pg_interface_enable_disable_coalesce) \
-_(POLICER_ADD_DEL, policer_add_del)                                     \
-_(POLICER_DUMP, policer_dump)                                           \
-_(POLICER_CLASSIFY_SET_INTERFACE, policer_classify_set_interface)       \
-_(POLICER_CLASSIFY_DUMP, policer_classify_dump)                         \
-_(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
-  ip_source_and_port_range_check_add_del)                               \
-_(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
-  ip_source_and_port_range_check_interface_add_del)                     \
-_(IPSEC_INTERFACE_ADD_DEL_SPD, ipsec_interface_add_del_spd)		\
-_(IPSEC_SAD_ENTRY_ADD_DEL, ipsec_sad_entry_add_del)			\
-_(IPSEC_SPD_ADD_DEL, ipsec_spd_add_del)					\
-_(IPSEC_SPD_ENTRY_ADD_DEL, ipsec_spd_entry_add_del)			\
-_(DELETE_SUBIF, delete_subif)                                           \
-_(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)           \
-_(SET_PUNT, set_punt)                                                   \
-_(FLOW_CLASSIFY_SET_INTERFACE, flow_classify_set_interface)             \
-_(FLOW_CLASSIFY_DUMP, flow_classify_dump)				\
-_(GET_FIRST_MSG_ID, get_first_msg_id)                                   \
-_(IOAM_ENABLE, ioam_enable)                                             \
-_(IOAM_DISABLE, ioam_disable)                                           \
-_(FEATURE_ENABLE_DISABLE, feature_enable_disable)			\
-_(FEATURE_GSO_ENABLE_DISABLE, feature_gso_enable_disable)		\
-_(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)			\
-_(HW_INTERFACE_SET_MTU, hw_interface_set_mtu)                           \
-_(P2P_ETHERNET_ADD, p2p_ethernet_add)                                   \
-_(P2P_ETHERNET_DEL, p2p_ethernet_del)					\
-_(TCP_CONFIGURE_SRC_ADDRESSES, tcp_configure_src_addresses)		\
-_(APP_NAMESPACE_ADD_DEL, app_namespace_add_del)                         \
-_(SESSION_RULE_ADD_DEL, session_rule_add_del)                           \
-_(OUTPUT_ACL_SET_INTERFACE, output_acl_set_interface)                   \
-_(QOS_RECORD_ENABLE_DISABLE, qos_record_enable_disable)			\
-_(MEMCLNT_KEEPALIVE_REPLY, memclnt_keepalive_reply)
+#define foreach_custom_print_function                                         \
+  _ (CREATE_LOOPBACK, create_loopback)                                        \
+  _ (CREATE_LOOPBACK_INSTANCE, create_loopback_instance)                      \
+  _ (SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                          \
+  _ (SW_INTERFACE_EVENT, sw_interface_event)                                  \
+  _ (SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)              \
+  _ (SW_INTERFACE_SET_TABLE, sw_interface_set_table)                          \
+  _ (SW_INTERFACE_SET_MPLS_ENABLE, sw_interface_set_mpls_enable)              \
+  _ (SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)                          \
+  _ (SW_INTERFACE_SET_VXLAN_BYPASS, sw_interface_set_vxlan_bypass)            \
+  _ (BOND_CREATE, bond_create)                                                \
+  _ (BOND_CREATE2, bond_create2)                                              \
+  _ (BOND_DELETE, bond_delete)                                                \
+  _ (BOND_ADD_MEMBER, bond_add_member)                                        \
+  _ (BOND_DETACH_MEMBER, bond_detach_member)                                  \
+  _ (SW_INTERFACE_SET_BOND_WEIGHT, sw_interface_set_bond_weight)              \
+  _ (SW_MEMBER_INTERFACE_DUMP, sw_member_interface_dump)                      \
+  _ (SW_BOND_INTERFACE_DUMP, sw_bond_interface_dump)                          \
+  _ (SW_INTERFACE_RX_PLACEMENT_DUMP, sw_interface_rx_placement_dump)          \
+  _ (TAP_CREATE_V2, tap_create_v2)                                            \
+  _ (TAP_DELETE_V2, tap_delete_v2)                                            \
+  _ (SW_INTERFACE_TAP_V2_DUMP, sw_interface_tap_v2_dump)                      \
+  _ (IP_TABLE_ADD_DEL, ip_table_add_del)                                      \
+  _ (MPLS_ROUTE_ADD_DEL, mpls_route_add_del)                                  \
+  _ (MPLS_TABLE_ADD_DEL, mpls_table_add_del)                                  \
+  _ (IP_ROUTE_ADD_DEL, ip_route_add_del)                                      \
+  _ (MPLS_TUNNEL_ADD_DEL, mpls_tunnel_add_del)                                \
+  _ (SR_MPLS_POLICY_ADD, sr_mpls_policy_add)                                  \
+  _ (SR_MPLS_POLICY_DEL, sr_mpls_policy_del)                                  \
+  _ (SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)                \
+  _ (CREATE_VLAN_SUBIF, create_vlan_subif)                                    \
+  _ (CREATE_SUBIF, create_subif)                                              \
+  _ (IP_TABLE_REPLACE_BEGIN, ip_table_replace_begin)                          \
+  _ (IP_TABLE_FLUSH, ip_table_flush)                                          \
+  _ (IP_TABLE_REPLACE_END, ip_table_replace_end)                              \
+  _ (SET_IP_FLOW_HASH, set_ip_flow_hash)                                      \
+  _ (L2_PATCH_ADD_DEL, l2_patch_add_del)                                      \
+  _ (SR_LOCALSID_ADD_DEL, sr_localsid_add_del)                                \
+  _ (SR_STEERING_ADD_DEL, sr_steering_add_del)                                \
+  _ (SR_POLICY_ADD, sr_policy_add)                                            \
+  _ (SR_POLICY_MOD, sr_policy_mod)                                            \
+  _ (SR_POLICY_DEL, sr_policy_del)                                            \
+  _ (SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)              \
+  _ (L2FIB_ADD_DEL, l2fib_add_del)                                            \
+  _ (L2FIB_FLUSH_ALL, l2fib_flush_all)                                        \
+  _ (L2FIB_FLUSH_BD, l2fib_flush_bd)                                          \
+  _ (L2FIB_FLUSH_INT, l2fib_flush_int)                                        \
+  _ (L2_FLAGS, l2_flags)                                                      \
+  _ (BRIDGE_FLAGS, bridge_flags)                                              \
+  _ (CLASSIFY_ADD_DEL_TABLE, classify_add_del_table)                          \
+  _ (CLASSIFY_ADD_DEL_SESSION, classify_add_del_session)                      \
+  _ (SW_INTERFACE_SET_L2_BRIDGE, sw_interface_set_l2_bridge)                  \
+  _ (BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)                            \
+  _ (BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                                  \
+  _ (BRIDGE_DOMAIN_SET_MAC_AGE, bridge_domain_set_mac_age)                    \
+  _ (CLASSIFY_SET_INTERFACE_IP_TABLE, classify_set_interface_ip_table)        \
+  _ (CLASSIFY_SET_INTERFACE_L2_TABLES, classify_set_interface_l2_tables)      \
+  _ (ADD_NODE_NEXT, add_node_next)                                            \
+  _ (VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel)                              \
+  _ (VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                    \
+  _ (VXLAN_OFFLOAD_RX, vxlan_offload_rx)                                      \
+  _ (L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                                  \
+  _ (L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)                        \
+  _ (L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite)            \
+  _ (CREATE_VHOST_USER_IF, create_vhost_user_if)                              \
+  _ (MODIFY_VHOST_USER_IF, modify_vhost_user_if)                              \
+  _ (CREATE_VHOST_USER_IF_V2, create_vhost_user_if_v2)                        \
+  _ (MODIFY_VHOST_USER_IF_V2, modify_vhost_user_if_v2)                        \
+  _ (DELETE_VHOST_USER_IF, delete_vhost_user_if)                              \
+  _ (SW_INTERFACE_DUMP, sw_interface_dump)                                    \
+  _ (CONTROL_PING, control_ping)                                              \
+  _ (WANT_INTERFACE_EVENTS, want_interface_events)                            \
+  _ (CLI, cli)                                                                \
+  _ (CLI_INBAND, cli_inband)                                                  \
+  _ (MEMCLNT_CREATE, memclnt_create)                                          \
+  _ (SOCKCLNT_CREATE, sockclnt_create)                                        \
+  _ (SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump)              \
+  _ (SHOW_VERSION, show_version)                                              \
+  _ (L2_FIB_TABLE_DUMP, l2_fib_table_dump)                                    \
+  _ (VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel)                      \
+  _ (VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump)                            \
+  _ (VXLAN_GBP_TUNNEL_ADD_DEL, vxlan_gbp_tunnel_add_del)                      \
+  _ (VXLAN_GBP_TUNNEL_DUMP, vxlan_gbp_tunnel_dump)                            \
+  _ (SW_INTERFACE_SET_VXLAN_GBP_BYPASS, sw_interface_set_vxlan_gbp_bypass)    \
+  _ (INTERFACE_NAME_RENUMBER, interface_name_renumber)                        \
+  _ (WANT_L2_MACS_EVENTS, want_l2_macs_events)                                \
+  _ (INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                        \
+  _ (IP_ADDRESS_DUMP, ip_address_dump)                                        \
+  _ (IP_DUMP, ip_dump)                                                        \
+  _ (DELETE_LOOPBACK, delete_loopback)                                        \
+  _ (BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)                                    \
+  _ (BD_IP_MAC_FLUSH, bd_ip_mac_flush)                                        \
+  _ (COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable)              \
+  _ (COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)              \
+  _ (AF_PACKET_CREATE, af_packet_create)                                      \
+  _ (AF_PACKET_DELETE, af_packet_delete)                                      \
+  _ (AF_PACKET_DUMP, af_packet_dump)                                          \
+  _ (SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                      \
+  _ (MPLS_TABLE_DUMP, mpls_table_dump)                                        \
+  _ (MPLS_ROUTE_DUMP, mpls_route_dump)                                        \
+  _ (MPLS_TUNNEL_DUMP, mpls_tunnel_dump)                                      \
+  _ (CLASSIFY_TABLE_IDS, classify_table_ids)                                  \
+  _ (CLASSIFY_TABLE_BY_INTERFACE, classify_table_by_interface)                \
+  _ (CLASSIFY_TABLE_INFO, classify_table_info)                                \
+  _ (CLASSIFY_SESSION_DUMP, classify_session_dump)                            \
+  _ (SET_IPFIX_EXPORTER, set_ipfix_exporter)                                  \
+  _ (IPFIX_EXPORTER_DUMP, ipfix_exporter_dump)                                \
+  _ (SET_IPFIX_CLASSIFY_STREAM, set_ipfix_classify_stream)                    \
+  _ (IPFIX_CLASSIFY_STREAM_DUMP, ipfix_classify_stream_dump)                  \
+  _ (IPFIX_CLASSIFY_TABLE_ADD_DEL, ipfix_classify_table_add_del)              \
+  _ (IPFIX_CLASSIFY_TABLE_DUMP, ipfix_classify_table_dump)                    \
+  _ (SW_INTERFACE_SPAN_ENABLE_DISABLE, sw_interface_span_enable_disable)      \
+  _ (SW_INTERFACE_SPAN_DUMP, sw_interface_span_dump)                          \
+  _ (GET_NEXT_INDEX, get_next_index)                                          \
+  _ (PG_CREATE_INTERFACE, pg_create_interface)                                \
+  _ (PG_CAPTURE, pg_capture)                                                  \
+  _ (PG_ENABLE_DISABLE, pg_enable_disable)                                    \
+  _ (PG_INTERFACE_ENABLE_DISABLE_COALESCE,                                    \
+     pg_interface_enable_disable_coalesce)                                    \
+  _ (POLICER_ADD_DEL, policer_add_del)                                        \
+  _ (POLICER_DUMP, policer_dump)                                              \
+  _ (POLICER_CLASSIFY_SET_INTERFACE, policer_classify_set_interface)          \
+  _ (POLICER_CLASSIFY_DUMP, policer_classify_dump)                            \
+  _ (IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                                  \
+     ip_source_and_port_range_check_add_del)                                  \
+  _ (IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                        \
+     ip_source_and_port_range_check_interface_add_del)                        \
+  _ (IPSEC_INTERFACE_ADD_DEL_SPD, ipsec_interface_add_del_spd)                \
+  _ (IPSEC_SAD_ENTRY_ADD_DEL, ipsec_sad_entry_add_del)                        \
+  _ (IPSEC_SPD_ADD_DEL, ipsec_spd_add_del)                                    \
+  _ (IPSEC_SPD_ENTRY_ADD_DEL, ipsec_spd_entry_add_del)                        \
+  _ (DELETE_SUBIF, delete_subif)                                              \
+  _ (L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)              \
+  _ (SET_PUNT, set_punt)                                                      \
+  _ (FLOW_CLASSIFY_SET_INTERFACE, flow_classify_set_interface)                \
+  _ (FLOW_CLASSIFY_DUMP, flow_classify_dump)                                  \
+  _ (GET_FIRST_MSG_ID, get_first_msg_id)                                      \
+  _ (IOAM_ENABLE, ioam_enable)                                                \
+  _ (IOAM_DISABLE, ioam_disable)                                              \
+  _ (FEATURE_ENABLE_DISABLE, feature_enable_disable)                          \
+  _ (FEATURE_GSO_ENABLE_DISABLE, feature_gso_enable_disable)                  \
+  _ (SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)                      \
+  _ (HW_INTERFACE_SET_MTU, hw_interface_set_mtu)                              \
+  _ (P2P_ETHERNET_ADD, p2p_ethernet_add)                                      \
+  _ (P2P_ETHERNET_DEL, p2p_ethernet_del)                                      \
+  _ (TCP_CONFIGURE_SRC_ADDRESSES, tcp_configure_src_addresses)                \
+  _ (APP_NAMESPACE_ADD_DEL, app_namespace_add_del)                            \
+  _ (SESSION_RULE_ADD_DEL, session_rule_add_del)                              \
+  _ (OUTPUT_ACL_SET_INTERFACE, output_acl_set_interface)                      \
+  _ (QOS_RECORD_ENABLE_DISABLE, qos_record_enable_disable)                    \
+  _ (MEMCLNT_KEEPALIVE_REPLY, memclnt_keepalive_reply)
 
 void
-vl_msg_api_custom_dump_configure (api_main_t * am)
+vl_msg_api_custom_dump_configure (api_main_t *am)
 {
-#define _(n,f) am->msg_print_handlers[VL_API_##n]       \
-    = (void *) vl_api_##f##_t_print;
+#define _(n, f)                                                               \
+  am->msg_print_handlers[VL_API_##n] = (void *) vl_api_##f##_t_print;
   foreach_custom_print_function;
 #undef _
 }

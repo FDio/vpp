@@ -31,7 +31,7 @@ typedef struct udp6_encap_trace_t_
 extern vlib_combined_counter_main_t udp_encap_counters;
 
 static u8 *
-format_udp4_encap_trace (u8 * s, va_list * args)
+format_udp4_encap_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -39,14 +39,13 @@ format_udp4_encap_trace (u8 * s, va_list * args)
 
   t = va_arg (*args, udp4_encap_trace_t *);
 
-  s = format (s, "%U\n  %U",
-	      format_ip4_header, &t->ip, sizeof (t->ip),
+  s = format (s, "%U\n  %U", format_ip4_header, &t->ip, sizeof (t->ip),
 	      format_udp_header, &t->udp, sizeof (t->udp));
   return (s);
 }
 
 static u8 *
-format_udp6_encap_trace (u8 * s, va_list * args)
+format_udp6_encap_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -54,16 +53,14 @@ format_udp6_encap_trace (u8 * s, va_list * args)
 
   t = va_arg (*args, udp6_encap_trace_t *);
 
-  s = format (s, "%U\n  %U",
-	      format_ip6_header, &t->ip, sizeof (t->ip),
+  s = format (s, "%U\n  %U", format_ip6_header, &t->ip, sizeof (t->ip),
 	      format_udp_header, &t->udp, sizeof (t->udp));
   return (s);
 }
 
 always_inline uword
-udp_encap_inline (vlib_main_t * vm,
-		  vlib_node_runtime_t * node,
-		  vlib_frame_t * frame, int is_encap_v6)
+udp_encap_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		  vlib_frame_t *frame, int is_encap_v6)
 {
   vlib_combined_counter_main_t *cm = &udp_encap_counters;
   u32 *from = vlib_frame_vector_args (frame);
@@ -109,12 +106,10 @@ udp_encap_inline (vlib_main_t * vm,
 	  uei0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
 	  uei1 = vnet_buffer (b1)->ip.adj_index[VLIB_TX];
 
-	  vlib_increment_combined_counter (cm, thread_index, uei0, 1,
-					   vlib_buffer_length_in_chain (vm,
-									b0));
-	  vlib_increment_combined_counter (cm, thread_index, uei1, 1,
-					   vlib_buffer_length_in_chain (vm,
-									b1));
+	  vlib_increment_combined_counter (
+	    cm, thread_index, uei0, 1, vlib_buffer_length_in_chain (vm, b0));
+	  vlib_increment_combined_counter (
+	    cm, thread_index, uei1, 1, vlib_buffer_length_in_chain (vm, b1));
 
 	  /* Rewrite packet header and updates lengths. */
 	  ue0 = udp_encap_get (uei0);
@@ -123,10 +118,9 @@ udp_encap_inline (vlib_main_t * vm,
 	  /* Paint */
 	  if (is_encap_v6)
 	    {
-	      const u8 n_bytes =
-		sizeof (udp_header_t) + sizeof (ip6_header_t);
-	      ip_udp_encap_two (vm, b0, b1, (u8 *) & ue0->ue_hdrs,
-				(u8 *) & ue1->ue_hdrs, n_bytes, 0);
+	      const u8 n_bytes = sizeof (udp_header_t) + sizeof (ip6_header_t);
+	      ip_udp_encap_two (vm, b0, b1, (u8 *) &ue0->ue_hdrs,
+				(u8 *) &ue1->ue_hdrs, n_bytes, 0);
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{
 		  udp6_encap_trace_t *tr =
@@ -144,12 +138,10 @@ udp_encap_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      const u8 n_bytes =
-		sizeof (udp_header_t) + sizeof (ip4_header_t);
+	      const u8 n_bytes = sizeof (udp_header_t) + sizeof (ip4_header_t);
 
-	      ip_udp_encap_two (vm, b0, b1,
-				(u8 *) & ue0->ue_hdrs,
-				(u8 *) & ue1->ue_hdrs, n_bytes, 1);
+	      ip_udp_encap_two (vm, b0, b1, (u8 *) &ue0->ue_hdrs,
+				(u8 *) &ue1->ue_hdrs, n_bytes, 1);
 
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{
@@ -172,9 +164,9 @@ udp_encap_inline (vlib_main_t * vm,
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ue0->ue_dpo.dpoi_index;
 	  vnet_buffer (b1)->ip.adj_index[VLIB_TX] = ue1->ue_dpo.dpoi_index;
 
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -197,17 +189,14 @@ udp_encap_inline (vlib_main_t * vm,
 	  /* Rewrite packet header and updates lengths. */
 	  ue0 = udp_encap_get (uei0);
 
-	  vlib_increment_combined_counter (cm, thread_index, uei0, 1,
-					   vlib_buffer_length_in_chain (vm,
-									b0));
+	  vlib_increment_combined_counter (
+	    cm, thread_index, uei0, 1, vlib_buffer_length_in_chain (vm, b0));
 
 	  /* Paint */
 	  if (is_encap_v6)
 	    {
-	      const u8 n_bytes =
-		sizeof (udp_header_t) + sizeof (ip6_header_t);
-	      ip_udp_encap_one (vm, b0, (u8 *) & ue0->ue_hdrs.ip6, n_bytes,
-				0);
+	      const u8 n_bytes = sizeof (udp_header_t) + sizeof (ip6_header_t);
+	      ip_udp_encap_one (vm, b0, (u8 *) &ue0->ue_hdrs.ip6, n_bytes, 0);
 
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{
@@ -219,11 +208,9 @@ udp_encap_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      const u8 n_bytes =
-		sizeof (udp_header_t) + sizeof (ip4_header_t);
+	      const u8 n_bytes = sizeof (udp_header_t) + sizeof (ip4_header_t);
 
-	      ip_udp_encap_one (vm, b0, (u8 *) & ue0->ue_hdrs.ip4, n_bytes,
-				1);
+	      ip_udp_encap_one (vm, b0, (u8 *) &ue0->ue_hdrs.ip4, n_bytes, 1);
 
 	      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 		{
@@ -237,9 +224,8 @@ udp_encap_inline (vlib_main_t * vm,
 	  next0 = ue0->ue_dpo.dpoi_next_node;
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ue0->ue_dpo.dpoi_index;
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -248,21 +234,18 @@ udp_encap_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (udp4_encap_node) (vlib_main_t * vm,
-				vlib_node_runtime_t * node,
-				vlib_frame_t * frame)
+VLIB_NODE_FN (udp4_encap_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return udp_encap_inline (vm, node, frame, 0);
 }
 
-VLIB_NODE_FN (udp6_encap_node) (vlib_main_t * vm,
-				vlib_node_runtime_t * node,
-				vlib_frame_t * frame)
+VLIB_NODE_FN (udp6_encap_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return udp_encap_inline (vm, node, frame, 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp4_encap_node) = {
   .name = "udp4-encap",
   .vector_size = sizeof (u32),
@@ -280,7 +263,6 @@ VLIB_REGISTER_NODE (udp6_encap_node) = {
 
   .n_next_nodes = 0,
 };
-/* *INDENT-ON* */
 
 
 /*

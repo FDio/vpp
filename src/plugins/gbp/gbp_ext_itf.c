@@ -35,16 +35,14 @@ index_t *gbp_ext_itf_db;
  */
 vlib_log_class_t gx_logger;
 
-#define GBP_EXT_ITF_DBG(...)                           \
-    vlib_log_debug (gx_logger, __VA_ARGS__);
+#define GBP_EXT_ITF_DBG(...) vlib_log_debug (gx_logger, __VA_ARGS__);
 
 u8 *
-format_gbp_ext_itf (u8 * s, va_list * args)
+format_gbp_ext_itf (u8 *s, va_list *args)
 {
   gbp_ext_itf_t *gx = va_arg (*args, gbp_ext_itf_t *);
 
-  return (format (s, "%U%s in %U",
-		  format_gbp_itf_hdl, gx->gx_itf,
+  return (format (s, "%U%s in %U", format_gbp_itf_hdl, gx->gx_itf,
 		  (gx->gx_flags & GBP_EXT_ITF_F_ANON) ? " [anon]" : "",
 		  format_gbp_bridge_domain, gx->gx_bd));
 }
@@ -101,7 +99,7 @@ gbp_ext_itf_add (u32 sw_if_index, u32 bd_id, u32 rd_id, u32 flags)
 	  /* setup GBP L2 features on this interface */
 	  gbp_itf_l2_set_input_feature (gx->gx_itf,
 					L2INPUT_FEAT_GBP_LPM_ANON_CLASSIFY |
-					L2INPUT_FEAT_LEARN);
+					  L2INPUT_FEAT_LEARN);
 	  gbp_itf_l2_set_output_feature (gx->gx_itf,
 					 L2OUTPUT_FEAT_GBP_POLICY_LPM);
 	}
@@ -148,8 +146,8 @@ gbp_ext_itf_delete (u32 sw_if_index)
 }
 
 static clib_error_t *
-gbp_ext_itf_add_del_cli (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+gbp_ext_itf_add_del_cli (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0, bd_id = ~0, rd_id = ~0, flags = 0;
@@ -164,10 +162,8 @@ gbp_ext_itf_add_del_cli (vlib_main_t * vm,
     {
       if (unformat (line_input, "del"))
 	add = 0;
-      else
-	if (unformat
-	    (line_input, "%U", unformat_vnet_sw_interface, vnet_get_main (),
-	     &sw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
+			 vnet_get_main (), &sw_if_index))
 	;
       else if (unformat (line_input, "bd %d", &bd_id))
 	;
@@ -201,7 +197,7 @@ gbp_ext_itf_add_del_cli (vlib_main_t * vm,
       return 0;
     case VNET_API_ERROR_ENTRY_ALREADY_EXISTS:
       return clib_error_return (0, "interface already exists");
-    case VNET_API_ERROR_NO_SUCH_ENTRY:	/* fallthrough */
+    case VNET_API_ERROR_NO_SUCH_ENTRY: /* fallthrough */
     case VNET_API_ERROR_INVALID_SW_IF_INDEX:
       return clib_error_return (0, "unknown interface");
     default:
@@ -219,30 +215,28 @@ gbp_ext_itf_add_del_cli (vlib_main_t * vm,
  * @cliexstart{gbp interface [del] anon-l3out <interface> bd <ID>}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (gbp_itf_anon_l3out_add_del_node, static) = {
   .path = "gbp ext-itf",
-  .short_help = "gbp ext-itf [del] <interface> bd <ID> rd <ID> [anon-l3-out]\n",
+  .short_help =
+    "gbp ext-itf [del] <interface> bd <ID> rd <ID> [anon-l3-out]\n",
   .function = gbp_ext_itf_add_del_cli,
 };
-/* *INDENT-ON* */
 
 void
 gbp_ext_itf_walk (gbp_ext_itf_cb_t cb, void *ctx)
 {
   gbp_ext_itf_t *ge;
 
-  /* *INDENT-OFF* */
   pool_foreach (ge, gbp_ext_itf_pool)
-  {
-    if (!cb(ge, ctx))
-      break;
-  }
-  /* *INDENT-ON* */
+    {
+      if (!cb (ge, ctx))
+	break;
+    }
 }
 
 static walk_rc_t
-gbp_ext_itf_show_one (gbp_ext_itf_t * gx, void *ctx)
+gbp_ext_itf_show_one (gbp_ext_itf_t *gx, void *ctx)
 {
   vlib_cli_output (ctx, "  %U", format_gbp_ext_itf, gx);
 
@@ -250,8 +244,8 @@ gbp_ext_itf_show_one (gbp_ext_itf_t * gx, void *ctx)
 }
 
 static clib_error_t *
-gbp_ext_itf_show (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+gbp_ext_itf_show (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd)
 {
   vlib_cli_output (vm, "External-Interfaces:");
   gbp_ext_itf_walk (gbp_ext_itf_show_one, vm);
@@ -266,16 +260,15 @@ gbp_ext_itf_show (vlib_main_t * vm,
  * @cliexstart{show gbp ext-itf}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (gbp_ext_itf_show_node, static) = {
   .path = "show gbp ext-itf",
   .short_help = "show gbp ext-itf\n",
   .function = gbp_ext_itf_show,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-gbp_ext_itf_init (vlib_main_t * vm)
+gbp_ext_itf_init (vlib_main_t *vm)
 {
   gx_logger = vlib_log_register_class ("gbp", "ext-itf");
 

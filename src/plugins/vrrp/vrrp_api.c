@@ -25,7 +25,7 @@
 
 /* API message handlers */
 static void
-vl_api_vrrp_vr_add_del_t_handler (vl_api_vrrp_vr_add_del_t * mp)
+vl_api_vrrp_vr_add_del_t_handler (vl_api_vrrp_vr_add_del_t *mp)
 {
   vl_api_vrrp_vr_add_del_reply_t *rmp;
   vrrp_vr_config_t vr_conf;
@@ -125,8 +125,7 @@ vrrp_vr_state_encode (vrrp_vr_state_t vr_state)
 }
 
 static void
-send_vrrp_vr_details (vrrp_vr_t * vr, vl_api_registration_t * reg,
-		      u32 context)
+send_vrrp_vr_details (vrrp_vr_t *vr, vl_api_registration_t *reg, u32 context)
 {
   vrrp_main_t *vmp = &vrrp_main;
   vl_api_vrrp_vr_details_t *mp;
@@ -176,33 +175,33 @@ send_vrrp_vr_details (vrrp_vr_t * vr, vl_api_registration_t * reg,
   mp->n_addrs = vec_len (vr->config.vr_addrs);
   api_addr = mp->addrs;
   vec_foreach (addr, vr->config.vr_addrs)
-  {
-    void *src, *dst;
-    size_t len;
+    {
+      void *src, *dst;
+      size_t len;
 
-    if (vrrp_vr_is_ipv6 (vr))
-      {
-	api_addr->af = ADDRESS_IP6;
-	dst = &api_addr->un.ip6;
-	src = &addr->ip6;
-	len = sizeof (addr->ip6);
-      }
-    else
-      {
-	api_addr->af = ADDRESS_IP4;
-	dst = &api_addr->un.ip4;
-	src = &addr->ip4;
-	len = sizeof (addr->ip4);
-      }
-    clib_memcpy (dst, src, len);
-    api_addr++;
-  }
+      if (vrrp_vr_is_ipv6 (vr))
+	{
+	  api_addr->af = ADDRESS_IP6;
+	  dst = &api_addr->un.ip6;
+	  src = &addr->ip6;
+	  len = sizeof (addr->ip6);
+	}
+      else
+	{
+	  api_addr->af = ADDRESS_IP4;
+	  dst = &api_addr->un.ip4;
+	  src = &addr->ip4;
+	  len = sizeof (addr->ip4);
+	}
+      clib_memcpy (dst, src, len);
+      api_addr++;
+    }
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
-vl_api_vrrp_vr_dump_t_handler (vl_api_vrrp_vr_dump_t * mp)
+vl_api_vrrp_vr_dump_t_handler (vl_api_vrrp_vr_dump_t *mp)
 {
   vrrp_main_t *vmp = &vrrp_main;
   vl_api_registration_t *reg;
@@ -215,20 +214,19 @@ vl_api_vrrp_vr_dump_t_handler (vl_api_vrrp_vr_dump_t * mp)
 
   sw_if_index = htonl (mp->sw_if_index);
 
-  /* *INDENT-OFF* */
-  pool_foreach (vr, vmp->vrs)  {
+  pool_foreach (vr, vmp->vrs)
+    {
 
-    if (sw_if_index && (sw_if_index != ~0) &&
-	(sw_if_index != vr->config.sw_if_index))
-      continue;
+      if (sw_if_index && (sw_if_index != ~0) &&
+	  (sw_if_index != vr->config.sw_if_index))
+	continue;
 
-    send_vrrp_vr_details (vr, reg, mp->context);
-  }
-  /* *INDENT-ON* */
+      send_vrrp_vr_details (vr, reg, mp->context);
+    }
 }
 
 static void
-vl_api_vrrp_vr_start_stop_t_handler (vl_api_vrrp_vr_start_stop_t * mp)
+vl_api_vrrp_vr_start_stop_t_handler (vl_api_vrrp_vr_start_stop_t *mp)
 {
   vl_api_vrrp_vr_start_stop_reply_t *rmp;
   vrrp_vr_key_t vr_key;
@@ -246,7 +244,7 @@ vl_api_vrrp_vr_start_stop_t_handler (vl_api_vrrp_vr_start_stop_t * mp)
 }
 
 static void
-vl_api_vrrp_vr_set_peers_t_handler (vl_api_vrrp_vr_set_peers_t * mp)
+vl_api_vrrp_vr_set_peers_t_handler (vl_api_vrrp_vr_set_peers_t *mp)
 {
   vl_api_vrrp_vr_set_peers_reply_t *rmp;
   vrrp_vr_key_t vr_key;
@@ -279,7 +277,7 @@ vl_api_vrrp_vr_set_peers_t_handler (vl_api_vrrp_vr_set_peers_t * mp)
 }
 
 static void
-send_vrrp_vr_peer_details (vrrp_vr_t * vr, vl_api_registration_t * reg,
+send_vrrp_vr_peer_details (vrrp_vr_t *vr, vl_api_registration_t *reg,
 			   u32 context)
 {
   vrrp_main_t *vmp = &vrrp_main;
@@ -305,33 +303,33 @@ send_vrrp_vr_peer_details (vrrp_vr_t * vr, vl_api_registration_t * reg,
   mp->n_peer_addrs = n_addrs;
   api_addr = mp->peer_addrs;
   vec_foreach (addr, vr->config.peer_addrs)
-  {
-    void *src, *dst;
-    size_t len;
+    {
+      void *src, *dst;
+      size_t len;
 
-    if (vrrp_vr_is_ipv6 (vr))
-      {
-	api_addr->af = ADDRESS_IP6;
-	dst = &api_addr->un.ip6;
-	src = &addr->ip6;
-	len = sizeof (addr->ip6);
-      }
-    else
-      {
-	api_addr->af = ADDRESS_IP4;
-	dst = &api_addr->un.ip4;
-	src = &addr->ip4;
-	len = sizeof (addr->ip4);
-      }
-    clib_memcpy (dst, src, len);
-    api_addr++;
-  }
+      if (vrrp_vr_is_ipv6 (vr))
+	{
+	  api_addr->af = ADDRESS_IP6;
+	  dst = &api_addr->un.ip6;
+	  src = &addr->ip6;
+	  len = sizeof (addr->ip6);
+	}
+      else
+	{
+	  api_addr->af = ADDRESS_IP4;
+	  dst = &api_addr->un.ip4;
+	  src = &addr->ip4;
+	  len = sizeof (addr->ip4);
+	}
+      clib_memcpy (dst, src, len);
+      api_addr++;
+    }
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
-vl_api_vrrp_vr_peer_dump_t_handler (vl_api_vrrp_vr_peer_dump_t * mp)
+vl_api_vrrp_vr_peer_dump_t_handler (vl_api_vrrp_vr_peer_dump_t *mp)
 {
   vrrp_main_t *vmp = &vrrp_main;
   vl_api_registration_t *reg;
@@ -363,21 +361,19 @@ vl_api_vrrp_vr_peer_dump_t_handler (vl_api_vrrp_vr_peer_dump_t * mp)
       return;
     }
 
-  /* *INDENT-OFF* */
-  pool_foreach (vr, vmp->vrs)  {
+  pool_foreach (vr, vmp->vrs)
+    {
 
-    if (!vec_len (vr->config.peer_addrs))
-      continue;
+      if (!vec_len (vr->config.peer_addrs))
+	continue;
 
-    send_vrrp_vr_details (vr, reg, mp->context);
-
-  }
-  /* *INDENT-ON* */
+      send_vrrp_vr_details (vr, reg, mp->context);
+    }
 }
 
 static void
-  vl_api_vrrp_vr_track_if_add_del_t_handler
-  (vl_api_vrrp_vr_track_if_add_del_t * mp)
+vl_api_vrrp_vr_track_if_add_del_t_handler (
+  vl_api_vrrp_vr_track_if_add_del_t *mp)
 {
   vl_api_vrrp_vr_track_if_add_del_reply_t *rmp;
   vrrp_vr_t *vr;
@@ -385,8 +381,7 @@ static void
   int rv = 0, i;
 
   /* lookup VR and return error if it does not exist */
-  vr =
-    vrrp_vr_lookup (ntohl (mp->sw_if_index), mp->vr_id, (mp->is_ipv6 != 0));
+  vr = vrrp_vr_lookup (ntohl (mp->sw_if_index), mp->vr_id, (mp->is_ipv6 != 0));
   if (!vr)
     {
       rv = VNET_API_ERROR_INVALID_VALUE;
@@ -410,7 +405,7 @@ done:
 }
 
 static void
-send_vrrp_vr_track_if_details (vrrp_vr_t * vr, vl_api_registration_t * reg,
+send_vrrp_vr_track_if_details (vrrp_vr_t *vr, vl_api_registration_t *reg,
 			       u32 context)
 {
   vrrp_main_t *vmp = &vrrp_main;
@@ -439,17 +434,17 @@ send_vrrp_vr_track_if_details (vrrp_vr_t * vr, vl_api_registration_t * reg,
   mp->n_ifs = n_ifs;
   api_track_if = mp->ifs;
   vec_foreach (track_if, vr->tracking.interfaces)
-  {
-    api_track_if->sw_if_index = htonl (track_if->sw_if_index);
-    api_track_if->priority = track_if->priority;
-    api_track_if += 1;
-  }
+    {
+      api_track_if->sw_if_index = htonl (track_if->sw_if_index);
+      api_track_if->priority = track_if->priority;
+      api_track_if += 1;
+    }
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
-vl_api_vrrp_vr_track_if_dump_t_handler (vl_api_vrrp_vr_track_if_dump_t * mp)
+vl_api_vrrp_vr_track_if_dump_t_handler (vl_api_vrrp_vr_track_if_dump_t *mp)
 {
   vrrp_main_t *vmp = &vrrp_main;
   vl_api_registration_t *reg;
@@ -467,22 +462,20 @@ vl_api_vrrp_vr_track_if_dump_t_handler (vl_api_vrrp_vr_track_if_dump_t * mp)
       return;
     }
 
-  /* *INDENT-OFF* */
-  pool_foreach (vr, vmp->vrs)  {
+  pool_foreach (vr, vmp->vrs)
+    {
 
-    if (!vec_len (vr->tracking.interfaces))
-      continue;
+      if (!vec_len (vr->tracking.interfaces))
+	continue;
 
-    send_vrrp_vr_track_if_details (vr, reg, mp->context);
-
-  }
-  /* *INDENT-ON* */
+      send_vrrp_vr_track_if_details (vr, reg, mp->context);
+    }
 }
 
 static void
-send_vrrp_vr_event (vpe_client_registration_t * reg,
-		    vl_api_registration_t * vl_reg,
-		    vrrp_vr_t * vr, vrrp_vr_state_t new_state)
+send_vrrp_vr_event (vpe_client_registration_t *reg,
+		    vl_api_registration_t *vl_reg, vrrp_vr_t *vr,
+		    vrrp_vr_state_t new_state)
 {
   vrrp_main_t *vmp = &vrrp_main;
   vl_api_vrrp_vr_event_t *mp;
@@ -504,20 +497,18 @@ send_vrrp_vr_event (vpe_client_registration_t * reg,
 }
 
 void
-vrrp_vr_event (vrrp_vr_t * vr, vrrp_vr_state_t new_state)
+vrrp_vr_event (vrrp_vr_t *vr, vrrp_vr_state_t new_state)
 {
   vpe_api_main_t *vam = &vpe_api_main;
   vpe_client_registration_t *reg;
   vl_api_registration_t *vl_reg;
 
-  /* *INDENT-OFF* */
   pool_foreach (reg, vam->vrrp_vr_events_registrations)
-   {
-    vl_reg = vl_api_client_index_to_registration (reg->client_index);
-    if (vl_reg)
-      send_vrrp_vr_event (reg, vl_reg, vr, new_state);
-  }
-  /* *INDENT-ON* */
+    {
+      vl_reg = vl_api_client_index_to_registration (reg->client_index);
+      if (vl_reg)
+	send_vrrp_vr_event (reg, vl_reg, vr, new_state);
+    }
 }
 
 pub_sub_handler (vrrp_vr_events, VRRP_VR_EVENTS);
@@ -525,7 +516,7 @@ pub_sub_handler (vrrp_vr_events, VRRP_VR_EVENTS);
 /* Set up the API message handling tables */
 #include <vrrp/vrrp.api.c>
 clib_error_t *
-vrrp_plugin_api_hookup (vlib_main_t * vm)
+vrrp_plugin_api_hookup (vlib_main_t *vm)
 {
   vrrp_main_t *vmp = &vrrp_main;
 
@@ -534,8 +525,6 @@ vrrp_plugin_api_hookup (vlib_main_t * vm)
 
   return 0;
 }
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

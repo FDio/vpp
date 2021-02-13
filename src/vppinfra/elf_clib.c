@@ -24,7 +24,7 @@ typedef struct
 } path_search_t;
 
 always_inline void
-path_search_free (path_search_t * p)
+path_search_free (path_search_t *p)
 {
   uword i;
   for (i = 0; i < vec_len (p->path); i++)
@@ -63,9 +63,8 @@ file_exists_and_is_executable (char *dir, char *file)
   struct stat s;
   uword yes;
 
-  yes = (stat (path, &s) >= 0
-	 && S_ISREG (s.st_mode)
-	 && 0 != (s.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)));
+  yes = (stat (path, &s) >= 0 && S_ISREG (s.st_mode) &&
+	 0 != (s.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)));
 
   vec_free (path);
 
@@ -102,8 +101,7 @@ path_search (char *file)
 }
 
 static clib_error_t *
-clib_elf_parse_file (clib_elf_main_t * cem,
-		     char *file_name, void *link_address)
+clib_elf_parse_file (clib_elf_main_t *cem, char *file_name, void *link_address)
 {
   elf_main_t *em;
   elf_section_t *s;
@@ -146,34 +144,34 @@ clib_elf_parse_file (clib_elf_main_t * cem,
     uword section_name_start_len = strlen (section_name_start);
 
     vec_foreach (s, em->sections)
-    {
-      u8 *name = elf_section_name (em, s);
-      uword *p;
-      clib_elf_section_t *vs;
-      clib_elf_section_bounds_t *b;
+      {
+	u8 *name = elf_section_name (em, s);
+	uword *p;
+	clib_elf_section_t *vs;
+	clib_elf_section_bounds_t *b;
 
-      /* Section name must begin with CLIB_ELF_SECTION key. */
-      if (strcmp ((char *) name, section_name_start))
-	continue;
+	/* Section name must begin with CLIB_ELF_SECTION key. */
+	if (strcmp ((char *) name, section_name_start))
+	  continue;
 
-      name += section_name_start_len;
-      p = hash_get_mem (cem->section_by_name, name);
-      if (p)
-	vs = vec_elt_at_index (cem->sections, p[0]);
-      else
-	{
-	  name = format (0, "%s%c", name, 0);
-	  if (!cem->section_by_name)
-	    cem->section_by_name = hash_create_string (0, sizeof (uword));
-	  hash_set_mem (cem->section_by_name, name, vec_len (cem->sections));
-	  vec_add2 (cem->sections, vs, 1);
-	  vs->name = name;
-	}
+	name += section_name_start_len;
+	p = hash_get_mem (cem->section_by_name, name);
+	if (p)
+	  vs = vec_elt_at_index (cem->sections, p[0]);
+	else
+	  {
+	    name = format (0, "%s%c", name, 0);
+	    if (!cem->section_by_name)
+	      cem->section_by_name = hash_create_string (0, sizeof (uword));
+	    hash_set_mem (cem->section_by_name, name, vec_len (cem->sections));
+	    vec_add2 (cem->sections, vs, 1);
+	    vs->name = name;
+	  }
 
-      vec_add2 (vs->bounds, b, 1);
-      b->lo = link_address + s->header.exec_address;
-      b->hi = b->lo + s->header.file_size;
-    }
+	vec_add2 (vs->bounds, b, 1);
+	b->lo = link_address + s->header.exec_address;
+	b->hi = b->lo + s->header.file_size;
+      }
   }
 
   /* Parse symbols for this file. */
@@ -183,22 +181,22 @@ clib_elf_parse_file (clib_elf_main_t * cem,
 
     elf_parse_symbols (em);
     vec_foreach (t, em->symbol_tables)
-    {
-      vec_foreach (s, t->symbols)
       {
-	s->value += pointer_to_uword (link_address);
+	vec_foreach (s, t->symbols)
+	  {
+	    s->value += pointer_to_uword (link_address);
+	  }
       }
-    }
   }
 
   /* No need to keep section contents around. */
   {
     elf_section_t *s;
     vec_foreach (s, em->sections)
-    {
-      if (s->header.type != ELF_SECTION_STRING_TABLE)
-	vec_free (s->contents);
-    }
+      {
+	if (s->header.type != ELF_SECTION_STRING_TABLE)
+	  vec_free (s->contents);
+      }
   }
 
 done:
@@ -278,61 +276,62 @@ clib_elf_get_section_bounds (char *name)
 }
 
 static uword
-symbol_by_address_or_name (char *by_name,
-			   uword by_address, clib_elf_symbol_t * s)
+symbol_by_address_or_name (char *by_name, uword by_address,
+			   clib_elf_symbol_t *s)
 {
   clib_elf_main_t *cem = &clib_elf_main;
   elf_main_t *em;
 
   vec_foreach (em, cem->elf_mains)
-  {
-    elf_symbol_table_t *t;
-    s->elf_main_index = em - cem->elf_mains;
-    vec_foreach (t, em->symbol_tables)
     {
-      s->symbol_table_index = t - em->symbol_tables;
-      if (by_name)
+      elf_symbol_table_t *t;
+      s->elf_main_index = em - cem->elf_mains;
+      vec_foreach (t, em->symbol_tables)
 	{
-	  uword *p = hash_get (t->symbol_by_name, by_name);
-	  if (p)
+	  s->symbol_table_index = t - em->symbol_tables;
+	  if (by_name)
 	    {
-	      s->symbol = vec_elt (t->symbols, p[0]);
-	      return 1;
+	      uword *p = hash_get (t->symbol_by_name, by_name);
+	      if (p)
+		{
+		  s->symbol = vec_elt (t->symbols, p[0]);
+		  return 1;
+		}
+	    }
+	  else
+	    {
+	      elf64_symbol_t *x;
+	      /* FIXME linear search. */
+	      vec_foreach (x, t->symbols)
+		{
+		  if (by_address >= x->value &&
+		      by_address < x->value + x->size)
+		    {
+		      s->symbol = x[0];
+		      return 1;
+		    }
+		}
 	    }
 	}
-      else
-	{
-	  elf64_symbol_t *x;
-	  /* FIXME linear search. */
-	  vec_foreach (x, t->symbols)
-	  {
-	    if (by_address >= x->value && by_address < x->value + x->size)
-	      {
-		s->symbol = x[0];
-		return 1;
-	      }
-	  }
-	}
     }
-  }
 
   return 0;
 }
 
 uword
-clib_elf_symbol_by_name (char *by_name, clib_elf_symbol_t * s)
+clib_elf_symbol_by_name (char *by_name, clib_elf_symbol_t *s)
 {
   return symbol_by_address_or_name (by_name, /* by_address */ 0, s);
 }
 
 uword
-clib_elf_symbol_by_address (uword by_address, clib_elf_symbol_t * s)
+clib_elf_symbol_by_address (uword by_address, clib_elf_symbol_t *s)
 {
-  return symbol_by_address_or_name ( /* by_name */ 0, by_address, s);
+  return symbol_by_address_or_name (/* by_name */ 0, by_address, s);
 }
 
 u8 *
-format_clib_elf_symbol (u8 * s, va_list * args)
+format_clib_elf_symbol (u8 *s, va_list *args)
 {
   clib_elf_main_t *cem = &clib_elf_main;
   clib_elf_symbol_t *sym = va_arg (*args, clib_elf_symbol_t *);
@@ -352,7 +351,7 @@ format_clib_elf_symbol (u8 * s, va_list * args)
 }
 
 __clib_export u8 *
-format_clib_elf_symbol_with_address (u8 * s, va_list * args)
+format_clib_elf_symbol_with_address (u8 *s, va_list *args)
 {
   uword address = va_arg (*args, uword);
   clib_elf_main_t *cem = &clib_elf_main;
@@ -364,8 +363,7 @@ format_clib_elf_symbol_with_address (u8 * s, va_list * args)
     {
       em = vec_elt_at_index (cem->elf_mains, sym.elf_main_index);
       t = vec_elt_at_index (em->symbol_tables, sym.symbol_table_index);
-      s = format (s, "%s + 0x%wx",
-		  elf_symbol_name (t, &sym.symbol),
+      s = format (s, "%s + 0x%wx", elf_symbol_name (t, &sym.symbol),
 		  address - sym.symbol.value);
     }
   else

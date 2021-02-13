@@ -27,9 +27,10 @@ typedef enum lldp_cfg_err
   lldp_internal_error,
 } lldp_cfg_err_t;
 
-lldp_cfg_err_t lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc,
-                u8 **mgmt_ip4, u8 **mgmt_ip6, u8 **mgmt_oid, int enable);
-lldp_cfg_err_t lldp_cfg_set (u8 ** host, int hold_time, int tx_interval);
+lldp_cfg_err_t lldp_cfg_intf_set (u32 hw_if_index, u8 **port_desc,
+				  u8 **mgmt_ip4, u8 **mgmt_ip6, u8 **mgmt_oid,
+				  int enable);
+lldp_cfg_err_t lldp_cfg_set (u8 **host, int hold_time, int tx_interval);
 
 extern const u8 lldp_mac_addr[6];
 

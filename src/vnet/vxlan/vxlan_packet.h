@@ -53,7 +53,7 @@ typedef struct
 #define VXLAN_FLAGS_I 0x08
 
 static inline u32
-vnet_get_vni (vxlan_header_t * h)
+vnet_get_vni (vxlan_header_t *h)
 {
   u32 vni_reserved_host_byte_order;
 
@@ -62,7 +62,7 @@ vnet_get_vni (vxlan_header_t * h)
 }
 
 static inline void
-vnet_set_vni_and_flags (vxlan_header_t * h, u32 vni)
+vnet_set_vni_and_flags (vxlan_header_t *h, u32 vni)
 {
   h->vni_reserved = clib_host_to_net_u32 (vni << 8);
   *(u32 *) h = 0;

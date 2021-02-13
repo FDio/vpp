@@ -45,12 +45,13 @@
 #error "unix only"
 #endif
 
-typedef struct {
+typedef struct
+{
   elf_main_t elf_main;
-  char * input_file;
-  char * output_file;
-  char * set_interpreter;
-  char * set_rpath;
+  char *input_file;
+  char *output_file;
+  char *set_interpreter;
+  char *set_rpath;
   int unset_rpath;
   int verbose;
   int quiet;
@@ -61,13 +62,13 @@ typedef struct {
   u64 rpath_offset;
 } elf_tool_main_t;
 
-static clib_error_t * elf_set_interpreter (elf_main_t * em,
-                                           elf_tool_main_t * tm)
+static clib_error_t *
+elf_set_interpreter (elf_main_t *em, elf_tool_main_t *tm)
 {
-  elf_segment_t * g;
-  elf_section_t * s;
-  clib_error_t * error;
-  char * interp = tm->set_interpreter;
+  elf_segment_t *g;
+  elf_section_t *s;
+  clib_error_t *error;
+  char *interp = tm->set_interpreter;
 
   switch (em->first_header.file_type)
     {
@@ -76,7 +77,7 @@ static clib_error_t * elf_set_interpreter (elf_main_t * em,
 
     case ELF_SHARED:
       if (tm->allow_elf_shared)
-        break;
+	break;
       /* Note flowthrough */
     default:
       return clib_error_return (0, "unacceptable file_type");
@@ -92,7 +93,9 @@ static clib_error_t * elf_set_interpreter (elf_main_t * em,
     return clib_error_return (0, "interpreter not found");
 
   if (g->header.memory_size < 1 + strlen (interp))
-    return clib_error_return (0, "given interpreter does not fit; must be less than %d bytes (`%s' given)",
+    return clib_error_return (0,
+			      "given interpreter does not fit; must be less "
+			      "than %d bytes (`%s' given)",
 			      g->header.memory_size, interp);
 
   error = elf_get_section_by_start_address (em, g->header.virtual_address, &s);
@@ -107,10 +110,10 @@ static clib_error_t * elf_set_interpreter (elf_main_t * em,
 }
 
 static void
-delete_rpath_for_section (elf_main_t * em, elf_section_t * s)
+delete_rpath_for_section (elf_main_t *em, elf_section_t *s)
 {
-  elf64_dynamic_entry_t * e;
-  elf64_dynamic_entry_t * new_es = 0;
+  elf64_dynamic_entry_t *e;
+  elf64_dynamic_entry_t *new_es = 0;
 
   vec_foreach (e, em->dynamic_entries)
     {
@@ -141,9 +144,10 @@ delete_rpath_for_section (elf_main_t * em, elf_section_t * s)
   elf_set_dynamic_entries (em);
 }
 
-static void delete_rpath (elf_main_t * em)
+static void
+delete_rpath (elf_main_t *em)
 {
-  elf_section_t * s;
+  elf_section_t *s;
 
   vec_foreach (s, em->sections)
     {
@@ -160,12 +164,12 @@ static void delete_rpath (elf_main_t * em)
 }
 
 static clib_error_t *
-set_rpath_for_section (elf_main_t * em, elf_section_t * s, char * new_rpath)
+set_rpath_for_section (elf_main_t *em, elf_section_t *s, char *new_rpath)
 {
-  elf64_dynamic_entry_t * e;
-  char * old_rpath;
+  elf64_dynamic_entry_t *e;
+  char *old_rpath;
   int old_len, new_len = strlen (new_rpath);
-  u8 * new_string_table = vec_dup (em->dynamic_string_table);
+  u8 *new_string_table = vec_dup (em->dynamic_string_table);
 
   vec_foreach (e, em->dynamic_entries)
     {
@@ -176,9 +180,10 @@ set_rpath_for_section (elf_main_t * em, elf_section_t * s, char * new_rpath)
 	  old_rpath = (char *) new_string_table + e->data;
 	  old_len = strlen (old_rpath);
 	  if (old_len < new_len)
-	    return clib_error_return (0, "rpath of `%s' does not fit (old rpath `%s')",
-				      new_rpath, old_rpath);
-	  strcpy (old_rpath, new_rpath); //NOSONAR
+	    return clib_error_return (
+	      0, "rpath of `%s' does not fit (old rpath `%s')", new_rpath,
+	      old_rpath);
+	  strcpy (old_rpath, new_rpath); // NOSONAR
 	  break;
 
 	default:
@@ -187,17 +192,16 @@ set_rpath_for_section (elf_main_t * em, elf_section_t * s, char * new_rpath)
     }
 
   elf_set_section_contents (em, em->dynamic_string_table_section_index,
-			    new_string_table,
-			    vec_bytes (new_string_table));
+			    new_string_table, vec_bytes (new_string_table));
 
   return 0;
 }
 
 static clib_error_t *
-set_rpath (elf_main_t * em, char * rpath)
+set_rpath (elf_main_t *em, char *rpath)
 {
-  clib_error_t * error = 0;
-  elf_section_t * s;
+  clib_error_t *error = 0;
+  elf_section_t *s;
 
   vec_foreach (s, em->sections)
     {
@@ -218,16 +222,16 @@ set_rpath (elf_main_t * em, char * rpath)
 }
 
 static clib_error_t *
-set_interpreter_rpath (elf_tool_main_t * tm)
+set_interpreter_rpath (elf_tool_main_t *tm)
 {
   int ifd = -1, ofd = -1;
   struct stat fd_stat;
-  u8 *idp = 0;                  /* warning be gone */
+  u8 *idp = 0; /* warning be gone */
   u64 mmap_length = 0, i;
   u32 run_length;
   u8 in_run;
   u64 offset0 = 0, offset1 = 0;
-  clib_error_t * error = 0;
+  clib_error_t *error = 0;
   int fix_in_place = 0;
 
   if (!strcmp (tm->input_file, tm->output_file))
@@ -248,7 +252,8 @@ set_interpreter_rpath (elf_tool_main_t * tm)
 
   if (!(fd_stat.st_mode & S_IFREG))
     {
-      error = clib_error_return (0, "%s is not a regular file", tm->input_file);
+      error =
+	clib_error_return (0, "%s is not a regular file", tm->input_file);
       goto done;
     }
 
@@ -261,11 +266,11 @@ set_interpreter_rpath (elf_tool_main_t * tm)
 
   /* COW-mapping, since we intend to write the fixups */
   if (fix_in_place)
-    idp = mmap (0, mmap_length, PROT_READ | PROT_WRITE, MAP_SHARED,
-              ifd, /* offset */ 0);
+    idp = mmap (0, mmap_length, PROT_READ | PROT_WRITE, MAP_SHARED, ifd,
+		/* offset */ 0);
   else
-    idp = mmap (0, mmap_length, PROT_READ | PROT_WRITE, MAP_PRIVATE,
-              ifd, /* offset */ 0);
+    idp = mmap (0, mmap_length, PROT_READ | PROT_WRITE, MAP_PRIVATE, ifd,
+		/* offset */ 0);
   if (~pointer_to_uword (idp) == 0)
     {
       mmap_length = 0;
@@ -285,43 +290,42 @@ set_interpreter_rpath (elf_tool_main_t * tm)
   for (i = 0; i < mmap_length; i++)
     {
       if (idp[i] == '/')
-        {
-          if (in_run)
-            run_length++;
-          else
-            {
-              in_run = 1;
-              run_length = 1;
-            }
-        }
+	{
+	  if (in_run)
+	    run_length++;
+	  else
+	    {
+	      in_run = 1;
+	      run_length = 1;
+	    }
+	}
       else
-        {
-          if (in_run && run_length >= 16)
-            {
-              if (offset0 == 0)
-                  offset0 = (i - run_length);
-              else if (offset1 == 0)
-                {
-                  offset1 = (i - run_length);
-                  goto found_both;
-                }
-            }
-          in_run = 0;
-          run_length = 0;
-        }
+	{
+	  if (in_run && run_length >= 16)
+	    {
+	      if (offset0 == 0)
+		offset0 = (i - run_length);
+	      else if (offset1 == 0)
+		{
+		  offset1 = (i - run_length);
+		  goto found_both;
+		}
+	    }
+	  in_run = 0;
+	  run_length = 0;
+	}
     }
 
   if (offset0 == 0)
     {
-      error = clib_error_return (0, "no fixup markers in %s",
-                                 tm->input_file);
+      error = clib_error_return (0, "no fixup markers in %s", tm->input_file);
       goto done;
     }
 
- found_both:
+found_both:
   if (0)
-    clib_warning ("offset0 %lld (0x%llx), offset1 %lld (0x%llx)",
-                  offset0, offset0, offset1, offset1);
+    clib_warning ("offset0 %lld (0x%llx), offset1 %lld (0x%llx)", offset0,
+		  offset0, offset1, offset1);
 
   /* Executable file case */
   if (offset0 && offset1)
@@ -337,27 +341,27 @@ set_interpreter_rpath (elf_tool_main_t * tm)
 
   if (tm->interpreter_offset)
     clib_memcpy (&idp[tm->interpreter_offset], tm->set_interpreter,
-            strlen (tm->set_interpreter)+1);
+		 strlen (tm->set_interpreter) + 1);
 
   if (tm->rpath_offset)
     clib_memcpy (&idp[tm->rpath_offset], tm->set_rpath,
-            strlen (tm->set_rpath)+1);
+		 strlen (tm->set_rpath) + 1);
 
   /* Write the output file... */
   if (fix_in_place == 0)
     {
       ofd = open (tm->output_file, O_RDWR | O_CREAT | O_TRUNC, 0644);
       if (ofd < 0)
-        {
-          error = clib_error_return_unix (0, "create `%s'", tm->output_file);
-          goto done;
-        }
+	{
+	  error = clib_error_return_unix (0, "create `%s'", tm->output_file);
+	  goto done;
+	}
 
       if (write (ofd, idp, mmap_length) != mmap_length)
-        error = clib_error_return_unix (0, "write `%s'", tm->output_file);
+	error = clib_error_return_unix (0, "write `%s'", tm->output_file);
     }
 
- done:
+done:
   if (mmap_length > 0 && idp)
     munmap (idp, mmap_length);
   if (ifd >= 0)
@@ -367,13 +371,13 @@ set_interpreter_rpath (elf_tool_main_t * tm)
   return error;
 }
 
-
-int main (int argc, char * argv[])
+int
+main (int argc, char *argv[])
 {
-  elf_tool_main_t _tm, * tm = &_tm;
-  elf_main_t * em = &tm->elf_main;
+  elf_tool_main_t _tm, *tm = &_tm;
+  elf_main_t *em = &tm->elf_main;
   unformat_input_t i;
-  clib_error_t * error = 0;
+  clib_error_t *error = 0;
 
   clib_memset (tm, 0, sizeof (tm[0]));
   unformat_init_command_line (&i, argv);
@@ -401,7 +405,7 @@ int main (int argc, char * argv[])
       else if (unformat (&i, "quiet"))
 	tm->quiet = 1;
       else if (unformat (&i, "allow-elf-shared"))
-        tm->allow_elf_shared = 1;
+	tm->allow_elf_shared = 1;
       else
 	{
 	  error = unformat_parse_error (&i);
@@ -409,7 +413,7 @@ int main (int argc, char * argv[])
 	}
     }
 
-  if (! tm->input_file)
+  if (!tm->input_file)
     {
       error = clib_error_return (0, "no input file");
       goto done;
@@ -452,11 +456,11 @@ int main (int argc, char * argv[])
 
   elf_main_free (em);
 
- done:
+done:
   if (error)
     {
       if (tm->quiet == 0)
-        clib_error_report (error);
+	clib_error_report (error);
       return 1;
     }
   else

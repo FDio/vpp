@@ -24,10 +24,10 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/bfd/bfd_api.h>
 
-/* *INDENT-OFF* */
 /** identifier of BFD session based on UDP transport only */
 typedef CLIB_PACKED (struct {
-  union {
+  union
+  {
     /** interface to which the session is tied - single-hop */
     u32 sw_if_index;
     /** the FIB index the peer is in - multi-hop*/
@@ -38,7 +38,6 @@ typedef CLIB_PACKED (struct {
   /** peer address */
   ip46_address_t peer_addr;
 }) bfd_udp_key_t;
-/* *INDENT-ON* */
 
 /** UDP transport specific data embedded in bfd_session's union */
 typedef struct
@@ -66,7 +65,7 @@ struct bfd_session_s;
  *
  * @return 1 on success, 0 on failure
  */
-int bfd_add_udp4_transport (vlib_main_t * vm, u32 bi,
+int bfd_add_udp4_transport (vlib_main_t *vm, u32 bi,
 			    const struct bfd_session_s *bs, int is_echo);
 
 /**
@@ -76,7 +75,7 @@ int bfd_add_udp4_transport (vlib_main_t * vm, u32 bi,
  *
  * @return 1 on success, 0 on failure
  */
-int bfd_add_udp6_transport (vlib_main_t * vm, u32 bi,
+int bfd_add_udp6_transport (vlib_main_t *vm, u32 bi,
 			    const struct bfd_session_s *bs, int is_echo);
 
 /**
@@ -86,7 +85,7 @@ int bfd_add_udp6_transport (vlib_main_t * vm, u32 bi,
  *
  * @return 1 on success, 0 on failure
  */
-int bfd_transport_udp4 (vlib_main_t * vm, u32 bi,
+int bfd_transport_udp4 (vlib_main_t *vm, u32 bi,
 			const struct bfd_session_s *bs);
 
 /**
@@ -96,7 +95,7 @@ int bfd_transport_udp4 (vlib_main_t * vm, u32 bi,
  *
  * @return 1 on success, 0 on failure
  */
-int bfd_transport_udp6 (vlib_main_t * vm, u32 bi,
+int bfd_transport_udp6 (vlib_main_t *vm, u32 bi,
 			const struct bfd_session_s *bs);
 
 /**
@@ -109,9 +108,9 @@ int bfd_udp_is_echo_available (bfd_transport_e transport);
 /**
  * @brief get echo source information - used by CLI
  */
-void bfd_udp_get_echo_source (int *is_set, u32 * sw_if_index,
-			      int *have_usable_ip4, ip4_address_t * ip4,
-			      int *have_usable_ip6, ip6_address_t * ip6);
+void bfd_udp_get_echo_source (int *is_set, u32 *sw_if_index,
+			      int *have_usable_ip4, ip4_address_t *ip4,
+			      int *have_usable_ip6, ip6_address_t *ip6);
 
 #endif /* __included_bfd_udp_h__ */
 

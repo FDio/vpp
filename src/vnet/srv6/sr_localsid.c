@@ -49,7 +49,7 @@ static dpo_type_t sr_localsid_un_dpo_type;
 static dpo_type_t sr_localsid_un_perf_dpo_type;
 
 static void
-sr_localsid_key_create (sr_localsid_key_t * key, ip6_address_t * addr,
+sr_localsid_key_create (sr_localsid_key_t *key, ip6_address_t *addr,
 			u16 pref_len)
 {
   clib_memset (key, 0, sizeof (sr_localsid_key_t));
@@ -66,7 +66,8 @@ sr_localsid_key_create (sr_localsid_key_t * key, ip6_address_t * addr,
  * @param localsid_addr IPv6 address of the localsid
  * @param is_decap Boolean of whether decapsulation is allowed in this function
  * @param behavior Type of behavior (function) for this localsid
- * @param sw_if_index Only for L2/L3 xconnect. OIF. In VRF variant the fib_table.
+ * @param sw_if_index Only for L2/L3 xconnect. OIF. In VRF variant the
+ * fib_table.
  * @param vlan_index Only for L2 xconnect. Outgoing VLAN tag.
  * @param fib_table  FIB table in which we should install the localsid entry
  * @param nh_addr Next Hop IPv4/IPv6 address. Only for L2/L3 xconnect.
@@ -74,10 +75,10 @@ sr_localsid_key_create (sr_localsid_key_t * key, ip6_address_t * addr,
  * @return 0 on success, error otherwise.
  */
 int
-sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
+sr_cli_localsid (char is_del, ip6_address_t *localsid_addr,
 		 u16 localsid_prefix_len, char end_psp, u8 behavior,
 		 u32 sw_if_index, u32 vlan_index, u32 fib_table,
-		 ip46_address_t * nh_addr, int usid_len, void *ls_plugin_mem)
+		 ip46_address_t *nh_addr, int usid_len, void *ls_plugin_mem)
 {
   ip6_sr_main_t *sm = &sr_main;
   uword *p;
@@ -113,21 +114,19 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 	    }
 
 	  /* Delete FIB entry */
-	  fib_prefix_t pfx = {
-	    .fp_proto = FIB_PROTOCOL_IP6,
-	    .fp_len = pref_length,
-	    .fp_addr = {
-			.ip6 = *localsid_addr,
-			}
-	  };
+	  fib_prefix_t pfx = { .fp_proto = FIB_PROTOCOL_IP6,
+			       .fp_len = pref_length,
+			       .fp_addr = {
+				 .ip6 = *localsid_addr,
+			       } };
 
-	  fib_table_entry_delete (fib_table_find
-				  (FIB_PROTOCOL_IP6, fib_table), &pfx,
-				  FIB_SOURCE_SR);
+	  fib_table_entry_delete (fib_table_find (FIB_PROTOCOL_IP6, fib_table),
+				  &pfx, FIB_SOURCE_SR);
 
 	  /* In case it is a Xconnect iface remove the (OIF, NHOP) adj */
-	  if (ls->behavior == SR_BEHAVIOR_X || ls->behavior == SR_BEHAVIOR_DX6
-	      || ls->behavior == SR_BEHAVIOR_DX4)
+	  if (ls->behavior == SR_BEHAVIOR_X ||
+	      ls->behavior == SR_BEHAVIOR_DX6 ||
+	      ls->behavior == SR_BEHAVIOR_DX4)
 	    adj_unlock (ls->nh_adj);
 
 	  if (ls->behavior >= SR_BEHAVIOR_LAST)
@@ -141,12 +140,12 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 	  mhash_unset (&sm->sr_localsids_index_hash, &key, NULL);
 	  return 0;
 	}
-      else			/* create with function already existing; complain */
+      else /* create with function already existing; complain */
 	return -1;
     }
   else
     /* delete; localsid does not exist; complain */
-  if (is_del)
+    if (is_del)
     return -2;
 
   if (behavior >= SR_BEHAVIOR_LAST)
@@ -180,7 +179,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
   /* Lookup the localsid in such FIB table */
   fib_node_index_t fei = fib_table_lookup_exact_match (fib_index, &pfx);
   if (FIB_NODE_INDEX_INVALID != fei)
-    return -4;			//There is an entry for such address (the localsid addr)
+    return -4; // There is an entry for such address (the localsid addr)
 
   /* Create a new localsid registry */
   pool_get (sm->localsids, ls);
@@ -190,7 +189,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
   ls->localsid_prefix_len = pref_length;
   ls->end_psp = end_psp;
   ls->behavior = behavior;
-  ls->nh_adj = (u32) ~ 0;
+  ls->nh_adj = (u32) ~0;
   ls->fib_table = fib_table;
   switch (behavior)
     {
@@ -201,8 +200,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
       if (usid_len)
 	{
 	  int usid_width;
-	  clib_memcpy (&ls->usid_block, localsid_addr,
-		       sizeof (ip6_address_t));
+	  clib_memcpy (&ls->usid_block, localsid_addr, sizeof (ip6_address_t));
 
 	  usid_width = pref_length - usid_len;
 	  ip6_address_mask_from_width (&ls->usid_block_mask, usid_width);
@@ -241,8 +239,8 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
     }
 
   /* Figure out the adjacency magic for Xconnect variants */
-  if (ls->behavior == SR_BEHAVIOR_X || ls->behavior == SR_BEHAVIOR_DX4
-      || ls->behavior == SR_BEHAVIOR_DX6)
+  if (ls->behavior == SR_BEHAVIOR_X || ls->behavior == SR_BEHAVIOR_DX4 ||
+      ls->behavior == SR_BEHAVIOR_DX6)
     {
       adj_index_t nh_adj_index = ADJ_INDEX_INVALID;
 
@@ -266,17 +264,16 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
     }
 
   /* Set DPO */
-  if (ls->behavior == SR_BEHAVIOR_END || ls->behavior == SR_BEHAVIOR_X
-      || ls->behavior == SR_BEHAVIOR_T)
+  if (ls->behavior == SR_BEHAVIOR_END || ls->behavior == SR_BEHAVIOR_X ||
+      ls->behavior == SR_BEHAVIOR_T)
     dpo_set (&dpo, sr_localsid_dpo_type, DPO_PROTO_IP6, ls - sm->localsids);
   else if (ls->behavior == SR_BEHAVIOR_END_UN)
-    dpo_set (&dpo, sr_localsid_un_dpo_type, DPO_PROTO_IP6,
-	     ls - sm->localsids);
+    dpo_set (&dpo, sr_localsid_un_dpo_type, DPO_PROTO_IP6, ls - sm->localsids);
   else if (ls->behavior == SR_BEHAVIOR_END_UN_PERF)
     dpo_set (&dpo, sr_localsid_un_perf_dpo_type, DPO_PROTO_IP6,
 	     ls - sm->localsids);
-  else if (ls->behavior > SR_BEHAVIOR_D_FIRST
-	   && ls->behavior < SR_BEHAVIOR_LAST)
+  else if (ls->behavior > SR_BEHAVIOR_D_FIRST &&
+	   ls->behavior < SR_BEHAVIOR_LAST)
     dpo_set (&dpo, sr_localsid_d_dpo_type, DPO_PROTO_IP6, ls - sm->localsids);
   else if (ls->behavior >= SR_BEHAVIOR_LAST)
     {
@@ -308,8 +305,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
   vlib_validate_combined_counter (&(sm->sr_ls_invalid_counters),
 				  ls - sm->localsids);
 
-  vlib_zero_combined_counter (&(sm->sr_ls_valid_counters),
-			      ls - sm->localsids);
+  vlib_zero_combined_counter (&(sm->sr_ls_valid_counters), ls - sm->localsids);
   vlib_zero_combined_counter (&(sm->sr_ls_invalid_counters),
 			      ls - sm->localsids);
 
@@ -322,12 +318,12 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
  * @see sr_cli_localsid
  */
 static clib_error_t *
-sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+sr_cli_localsid_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip6_sr_main_t *sm = &sr_main;
-  u32 sw_if_index = (u32) ~ 0, vlan_index = (u32) ~ 0, fib_index = 0;
+  u32 sw_if_index = (u32) ~0, vlan_index = (u32) ~0, fib_index = 0;
   int prefix_len = 0;
   int is_del = 0;
   int end_psp = 0;
@@ -347,26 +343,27 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (input, "del"))
 	is_del = 1;
-      else if (!address_set
-	       && unformat (input, "prefix %U/%u", unformat_ip6_address,
-			    &resulting_address, &prefix_len))
+      else if (!address_set &&
+	       unformat (input, "prefix %U/%u", unformat_ip6_address,
+			 &resulting_address, &prefix_len))
 	address_set = 1;
-      else if (!address_set
-	       && unformat (input, "address %U", unformat_ip6_address,
-			    &resulting_address))
+      else if (!address_set &&
+	       unformat (input, "address %U", unformat_ip6_address,
+			 &resulting_address))
 	address_set = 1;
-      else if (!address_set
-	       && unformat (input, "addr %U", unformat_ip6_address,
-			    &resulting_address))
+      else if (!address_set &&
+	       unformat (input, "addr %U", unformat_ip6_address,
+			 &resulting_address))
 	address_set = 1;
-      else if (unformat (input, "fib-table %u", &fib_index));
-      else if (vlan_index == (u32) ~ 0
-	       && unformat (input, "vlan %u", &vlan_index));
+      else if (unformat (input, "fib-table %u", &fib_index))
+	;
+      else if (vlan_index == (u32) ~0 &&
+	       unformat (input, "vlan %u", &vlan_index))
+	;
       else if (!behavior && unformat (input, "behavior"))
 	{
-	  if (unformat (input, "end.x %U %U",
-			unformat_vnet_sw_interface, vnm, &sw_if_index,
-			unformat_ip6_address, &next_hop.ip6))
+	  if (unformat (input, "end.x %U %U", unformat_vnet_sw_interface, vnm,
+			&sw_if_index, unformat_ip6_address, &next_hop.ip6))
 	    behavior = SR_BEHAVIOR_X;
 	  else if (unformat (input, "end.t %u", &sw_if_index))
 	    behavior = SR_BEHAVIOR_T;
@@ -378,8 +375,8 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			     unformat_vnet_sw_interface, vnm, &sw_if_index,
 			     unformat_ip4_address, &next_hop.ip4))
 	    behavior = SR_BEHAVIOR_DX4;
-	  else if (unformat (input, "end.dx2 %U",
-			     unformat_vnet_sw_interface, vnm, &sw_if_index))
+	  else if (unformat (input, "end.dx2 %U", unformat_vnet_sw_interface,
+			     vnm, &sw_if_index))
 	    behavior = SR_BEHAVIOR_DX2;
 	  else if (unformat (input, "end.dt6 %u", &sw_if_index))
 	    behavior = SR_BEHAVIOR_DT6;
@@ -396,22 +393,22 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	      sr_localsid_fn_registration_t **plugin_it = 0;
 
 	      /* Create a vector out of the plugin pool as recommended */
-              /* *INDENT-OFF* */
-              pool_foreach (plugin, sm->plugin_functions)
-                {
-                  vec_add1 (vec_plugins, plugin);
-                }
-              /* *INDENT-ON* */
+	      /* *INDENT-OFF* */
+	      pool_foreach (plugin, sm->plugin_functions)
+		{
+		  vec_add1 (vec_plugins, plugin);
+		}
+	      /* *INDENT-ON* */
 
 	      vec_foreach (plugin_it, vec_plugins)
-	      {
-		if (unformat
-		    (input, "%U", (*plugin_it)->ls_unformat, &ls_plugin_mem))
-		  {
-		    behavior = (*plugin_it)->sr_localsid_function_number;
-		    break;
-		  }
-	      }
+		{
+		  if (unformat (input, "%U", (*plugin_it)->ls_unformat,
+				&ls_plugin_mem))
+		    {
+		      behavior = (*plugin_it)->sr_localsid_function_number;
+		      break;
+		    }
+		}
 	    }
 
 	  if (!behavior)
@@ -434,36 +431,32 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (usid_size)
     {
       if (prefix_len < usid_size)
-	return clib_error_return (0,
-				  "Error: Prefix length must be greater"
-				  " than uSID length.");
+	return clib_error_return (0, "Error: Prefix length must be greater"
+				     " than uSID length.");
 
       if (usid_size != 16 && usid_size != 32)
-	return clib_error_return (0,
-				  "Error: Invalid uSID length (16 or 32).");
+	return clib_error_return (0, "Error: Invalid uSID length (16 or 32).");
 
       if ((prefix_len - usid_size) & 0x7)
-	return clib_error_return (0,
-				  "Error: Prefix Length must be multiple of 8.");
+	return clib_error_return (
+	  0, "Error: Prefix Length must be multiple of 8.");
     }
 
   if (!address_set)
-    return clib_error_return (0,
-			      "Error: SRv6 LocalSID address is mandatory.");
+    return clib_error_return (0, "Error: SRv6 LocalSID address is mandatory.");
   if (!is_del && !behavior)
     return clib_error_return (0,
 			      "Error: SRv6 LocalSID behavior is mandatory.");
-  if (vlan_index != (u32) ~ 0)
-    return clib_error_return (0,
-			      "Error: SRv6 End.DX2 with rewrite VLAN tag not supported by now.");
+  if (vlan_index != (u32) ~0)
+    return clib_error_return (
+      0, "Error: SRv6 End.DX2 with rewrite VLAN tag not supported by now.");
   if (end_psp && !(behavior == SR_BEHAVIOR_END || behavior == SR_BEHAVIOR_X))
-    return clib_error_return (0,
-			      "Error: SRv6 PSP only compatible with End and End.X");
+    return clib_error_return (
+      0, "Error: SRv6 PSP only compatible with End and End.X");
 
-  rv =
-    sr_cli_localsid (is_del, &resulting_address, prefix_len, end_psp,
-		     behavior, sw_if_index, vlan_index, fib_index, &next_hop,
-		     usid_size, ls_plugin_mem);
+  rv = sr_cli_localsid (is_del, &resulting_address, prefix_len, end_psp,
+			behavior, sw_if_index, vlan_index, fib_index,
+			&next_hop, usid_size, ls_plugin_mem);
 
   if (behavior == SR_BEHAVIOR_END_UN_PERF)
     {
@@ -484,22 +477,25 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
     case 1:
       return 0;
     case -1:
-      return clib_error_return (0,
-				"Identical localsid already exists. Requested localsid not created.");
+      return clib_error_return (
+	0,
+	"Identical localsid already exists. Requested localsid not created.");
     case -2:
-      return clib_error_return (0,
-				"The requested localsid could not be deleted. SR localsid not found");
+      return clib_error_return (
+	0,
+	"The requested localsid could not be deleted. SR localsid not found");
     case -3:
       return clib_error_return (0, "FIB table %u does not exist", fib_index);
     case -4:
-      return clib_error_return (0, "There is already one FIB entry for the"
-				"requested localsid non segment routing related");
+      return clib_error_return (
+	0, "There is already one FIB entry for the"
+	   "requested localsid non segment routing related");
     case -5:
-      return clib_error_return (0,
-				"Could not create ARP/ND entry for such next_hop. Internal error.");
+      return clib_error_return (
+	0, "Could not create ARP/ND entry for such next_hop. Internal error.");
     case -6:
-      return clib_error_return (0,
-				"Error on the plugin based localsid creation.");
+      return clib_error_return (
+	0, "Error on the plugin based localsid creation.");
     default:
       return clib_error_return (0, "BUG: sr localsid returns %d", rv);
     }
@@ -510,12 +506,13 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (sr_localsid_command, static) = {
   .path = "sr localsid",
   .short_help = "sr localsid (del) address XX:XX::YY:YY"
-      "(fib-table 8) behavior STRING",
+		"(fib-table 8) behavior STRING",
   .long_help =
     "Create SR LocalSID and binds it to a particular behavior\n"
     "Arguments:\n"
     "\tlocalSID IPv6_addr(128b)   LocalSID IPv6 address\n"
-    "\t(fib-table X)              Optional. VRF where to install SRv6 localsid\n"
+    "\t(fib-table X)              Optional. VRF where to install SRv6 "
+    "localsid\n"
     "\tbehavior STRING            Specifies the behavior\n"
     "\n\tBehaviors:\n"
     "\tEnd\t-> Endpoint.\n"
@@ -528,9 +525,11 @@ VLIB_CLI_COMMAND (sr_localsid_command, static) = {
     "\t\tParameters: '<iface> <ip6_next_hop>'\n"
     "\tEnd.DX4\t-> Endpoint with decapsulation and IPv4 cross-connect.\n"
     "\t\tParameters: '<iface> <ip4_next_hop>'\n"
-    "\tEnd.DT6\t-> Endpoint with decapsulation and specific IPv6 table lookup.\n"
+    "\tEnd.DT6\t-> Endpoint with decapsulation and specific IPv6 table "
+    "lookup.\n"
     "\t\tParameters: '<ip6_fib_table>'\n"
-    "\tEnd.DT4\t-> Endpoint with decapsulation and specific IPv4 table lookup.\n"
+    "\tEnd.DT4\t-> Endpoint with decapsulation and specific IPv4 table "
+    "lookup.\n"
     "\t\tParameters: '<ip4_fib_table>'\n",
   .function = sr_cli_localsid_command_fn,
 };
@@ -540,8 +539,8 @@ VLIB_CLI_COMMAND (sr_localsid_command, static) = {
  * @brief CLI function to 'show' all SR LocalSIDs on console.
  */
 static clib_error_t *
-show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+show_sr_localsid_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip6_sr_main_t *sm = &sr_main;
@@ -552,7 +551,10 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "SRv6 - My LocalSID Table:");
   vlib_cli_output (vm, "=========================");
   /* *INDENT-OFF* */
-  pool_foreach (ls, sm->localsids)  { vec_add1 (localsid_list, ls); }
+  pool_foreach (ls, sm->localsids)
+    {
+      vec_add1 (localsid_list, ls);
+    }
   /* *INDENT-ON* */
   for (i = 0; i < vec_len (localsid_list); i++)
     {
@@ -565,21 +567,23 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  break;
 	case SR_BEHAVIOR_END_UN:
 	  vlib_cli_output (vm,
-			   "\tAddress: \t%U\n\tBehavior: \tEnd (flex) [uSID:\t%U/%d, length: %d]",
+			   "\tAddress: \t%U\n\tBehavior: \tEnd (flex) "
+			   "[uSID:\t%U/%d, length: %d]",
 			   format_ip6_address, &ls->localsid,
 			   format_ip6_address, &ls->usid_block,
 			   ls->usid_index * 8, ls->usid_len * 8);
 	  break;
 	case SR_BEHAVIOR_END_UN_PERF:
-	  vlib_cli_output (vm,
-			   "\tAddress: \t%U\n\tBehavior: \tEnd [uSID:\t%U/%d, length: %d]",
-			   format_ip6_address, &ls->localsid,
-			   format_ip6_address, &ls->usid_block,
-			   ls->usid_index * 8, ls->usid_len * 8);
+	  vlib_cli_output (
+	    vm,
+	    "\tAddress: \t%U\n\tBehavior: \tEnd [uSID:\t%U/%d, length: %d]",
+	    format_ip6_address, &ls->localsid, format_ip6_address,
+	    &ls->usid_block, ls->usid_index * 8, ls->usid_len * 8);
 	  break;
 	case SR_BEHAVIOR_X:
 	  vlib_cli_output (vm,
-			   "\tAddress: \t%U/%u\n\tBehavior: \tX (Endpoint with Layer-3 cross-connect)"
+			   "\tAddress: \t%U/%u\n\tBehavior: \tX (Endpoint "
+			   "with Layer-3 cross-connect)"
 			   "\n\tIface:  \t%U\n\tNext hop: \t%U",
 			   format_ip6_address, &ls->localsid,
 			   ls->localsid_prefix_len,
@@ -587,17 +591,18 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			   format_ip6_address, &ls->next_hop.ip6);
 	  break;
 	case SR_BEHAVIOR_T:
-	  vlib_cli_output (vm,
-			   "\tAddress: \t%U/%u\n\tBehavior: \tT (Endpoint with specific IPv6 table lookup)"
-			   "\n\tTable:  \t%u",
-			   format_ip6_address, &ls->localsid,
-			   ls->localsid_prefix_len,
-			   fib_table_get_table_id (ls->vrf_index,
-						   FIB_PROTOCOL_IP6));
+	  vlib_cli_output (
+	    vm,
+	    "\tAddress: \t%U/%u\n\tBehavior: \tT (Endpoint with specific IPv6 "
+	    "table lookup)"
+	    "\n\tTable:  \t%u",
+	    format_ip6_address, &ls->localsid, ls->localsid_prefix_len,
+	    fib_table_get_table_id (ls->vrf_index, FIB_PROTOCOL_IP6));
 	  break;
 	case SR_BEHAVIOR_DX4:
 	  vlib_cli_output (vm,
-			   "\tAddress: \t%U/%u\n\tBehavior: \tDX4 (Endpoint with decapsulation and IPv4 cross-connect)"
+			   "\tAddress: \t%U/%u\n\tBehavior: \tDX4 (Endpoint "
+			   "with decapsulation and IPv4 cross-connect)"
 			   "\n\tIface:  \t%U\n\tNext hop: \t%U",
 			   format_ip6_address, &ls->localsid,
 			   ls->localsid_prefix_len,
@@ -606,7 +611,8 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  break;
 	case SR_BEHAVIOR_DX6:
 	  vlib_cli_output (vm,
-			   "\tAddress: \t%U/%u\n\tBehavior: \tDX6 (Endpoint with decapsulation and IPv6 cross-connect)"
+			   "\tAddress: \t%U/%u\n\tBehavior: \tDX6 (Endpoint "
+			   "with decapsulation and IPv6 cross-connect)"
 			   "\n\tIface:  \t%U\n\tNext hop: \t%U",
 			   format_ip6_address, &ls->localsid,
 			   ls->localsid_prefix_len,
@@ -614,41 +620,44 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			   format_ip6_address, &ls->next_hop.ip6);
 	  break;
 	case SR_BEHAVIOR_DX2:
-	  if (ls->vlan_index == (u32) ~ 0)
-	    vlib_cli_output (vm,
-			     "\tAddress: \t%U/%u\n\tBehavior: \tDX2 (Endpoint with decapulation and Layer-2 cross-connect)"
-			     "\n\tIface:  \t%U", format_ip6_address,
-			     &ls->localsid, ls->localsid_prefix_len,
-			     format_vnet_sw_if_index_name, vnm,
-			     ls->sw_if_index);
+	  if (ls->vlan_index == (u32) ~0)
+	    vlib_cli_output (
+	      vm,
+	      "\tAddress: \t%U/%u\n\tBehavior: \tDX2 (Endpoint with "
+	      "decapulation and Layer-2 cross-connect)"
+	      "\n\tIface:  \t%U",
+	      format_ip6_address, &ls->localsid, ls->localsid_prefix_len,
+	      format_vnet_sw_if_index_name, vnm, ls->sw_if_index);
 	  else
-	    vlib_cli_output (vm,
-			     "Unsupported yet. (DX2 with egress VLAN rewrite)");
+	    vlib_cli_output (
+	      vm, "Unsupported yet. (DX2 with egress VLAN rewrite)");
 	  break;
 	case SR_BEHAVIOR_DT6:
-	  vlib_cli_output (vm,
-			   "\tAddress: \t%U/%u\n\tBehavior: \tDT6 (Endpoint with decapsulation and specific IPv6 table lookup)"
-			   "\n\tTable: %u", format_ip6_address, &ls->localsid,
-			   ls->localsid_prefix_len,
-			   fib_table_get_table_id (ls->vrf_index,
-						   FIB_PROTOCOL_IP6));
+	  vlib_cli_output (
+	    vm,
+	    "\tAddress: \t%U/%u\n\tBehavior: \tDT6 (Endpoint with "
+	    "decapsulation and specific IPv6 table lookup)"
+	    "\n\tTable: %u",
+	    format_ip6_address, &ls->localsid, ls->localsid_prefix_len,
+	    fib_table_get_table_id (ls->vrf_index, FIB_PROTOCOL_IP6));
 	  break;
 	case SR_BEHAVIOR_DT4:
-	  vlib_cli_output (vm,
-			   "\tAddress: \t%U/%u\n\tBehavior: \tDT4 (Endpoint with decapsulation and specific IPv4 table lookup)"
-			   "\n\tTable: \t%u", format_ip6_address,
-			   &ls->localsid, ls->localsid_prefix_len,
-			   fib_table_get_table_id (ls->vrf_index,
-						   FIB_PROTOCOL_IP4));
+	  vlib_cli_output (
+	    vm,
+	    "\tAddress: \t%U/%u\n\tBehavior: \tDT4 (Endpoint with "
+	    "decapsulation and specific IPv4 table lookup)"
+	    "\n\tTable: \t%u",
+	    format_ip6_address, &ls->localsid, ls->localsid_prefix_len,
+	    fib_table_get_table_id (ls->vrf_index, FIB_PROTOCOL_IP4));
 	  break;
 	default:
 	  if (ls->behavior >= SR_BEHAVIOR_LAST)
 	    {
-	      sr_localsid_fn_registration_t *plugin =
-		pool_elt_at_index (sm->plugin_functions,
-				   ls->behavior - SR_BEHAVIOR_LAST);
+	      sr_localsid_fn_registration_t *plugin = pool_elt_at_index (
+		sm->plugin_functions, ls->behavior - SR_BEHAVIOR_LAST);
 
-	      vlib_cli_output (vm, "\tAddress: \t%U/%u\n"
+	      vlib_cli_output (vm,
+			       "\tAddress: \t%U/%u\n"
 			       "\tBehavior: \t%s (%s)\n\t%U",
 			       format_ip6_address, &ls->localsid,
 			       ls->localsid_prefix_len, plugin->keyword_str,
@@ -656,7 +665,7 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			       ls->plugin_mem);
 	    }
 	  else
-	    //Should never get here...
+	    // Should never get here...
 	    vlib_cli_output (vm, "Internal error");
 	  break;
 	}
@@ -688,9 +697,9 @@ VLIB_CLI_COMMAND (show_sr_localsid_command, static) = {
  * @brief Function to 'clear' ALL SR localsid counters
  */
 static clib_error_t *
-clear_sr_localsid_counters_command_fn (vlib_main_t * vm,
-				       unformat_input_t * input,
-				       vlib_cli_command_t * cmd)
+clear_sr_localsid_counters_command_fn (vlib_main_t *vm,
+				       unformat_input_t *input,
+				       vlib_cli_command_t *cmd)
 {
   ip6_sr_main_t *sm = &sr_main;
 
@@ -721,39 +730,39 @@ typedef struct
   u8 segments_left;
 } sr_localsid_trace_t;
 
-#define foreach_sr_localsid_error                                   \
-_(NO_INNER_HEADER, "(SR-Error) No inner IP header")                 \
-_(NO_MORE_SEGMENTS, "(SR-Error) No more segments")                  \
-_(NO_SRH, "(SR-Error) No SR header")                                \
-_(NO_PSP, "(SR-Error) PSP Not available (segments left > 0)")       \
-_(NOT_LS, "(SR-Error) Decaps not available (segments left > 0)")    \
-_(L2, "(SR-Error) SRv6 decapsulated a L2 frame without dest")
+#define foreach_sr_localsid_error                                             \
+  _ (NO_INNER_HEADER, "(SR-Error) No inner IP header")                        \
+  _ (NO_MORE_SEGMENTS, "(SR-Error) No more segments")                         \
+  _ (NO_SRH, "(SR-Error) No SR header")                                       \
+  _ (NO_PSP, "(SR-Error) PSP Not available (segments left > 0)")              \
+  _ (NOT_LS, "(SR-Error) Decaps not available (segments left > 0)")           \
+  _ (L2, "(SR-Error) SRv6 decapsulated a L2 frame without dest")
 
 typedef enum
 {
-#define _(sym,str) SR_LOCALSID_ERROR_##sym,
+#define _(sym, str) SR_LOCALSID_ERROR_##sym,
   foreach_sr_localsid_error
 #undef _
     SR_LOCALSID_N_ERROR,
 } sr_localsid_error_t;
 
 static char *sr_localsid_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_sr_localsid_error
 #undef _
 };
 
-#define foreach_sr_localsid_next        \
-_(ERROR, "error-drop")                  \
-_(IP6_LOOKUP, "ip6-lookup")             \
-_(IP4_LOOKUP, "ip4-lookup")             \
-_(IP6_REWRITE, "ip6-rewrite")           \
-_(IP4_REWRITE, "ip4-rewrite")           \
-_(INTERFACE_OUTPUT, "interface-output")
+#define foreach_sr_localsid_next                                              \
+  _ (ERROR, "error-drop")                                                     \
+  _ (IP6_LOOKUP, "ip6-lookup")                                                \
+  _ (IP4_LOOKUP, "ip4-lookup")                                                \
+  _ (IP6_REWRITE, "ip6-rewrite")                                              \
+  _ (IP4_REWRITE, "ip4-rewrite")                                              \
+  _ (INTERFACE_OUTPUT, "interface-output")
 
 typedef enum
 {
-#define _(s,n) SR_LOCALSID_NEXT_##s,
+#define _(s, n) SR_LOCALSID_NEXT_##s,
   foreach_sr_localsid_next
 #undef _
     SR_LOCALSID_N_NEXT,
@@ -765,15 +774,14 @@ typedef enum
  * @see sr_localsid
  */
 u8 *
-format_sr_localsid_trace (u8 * s, va_list * args)
+format_sr_localsid_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   sr_localsid_trace_t *t = va_arg (*args, sr_localsid_trace_t *);
 
-  s =
-    format (s, "SR-LOCALSID:\n\tLocalsid: %U\n", format_ip6_address,
-	    &t->localsid);
+  s = format (s, "SR-LOCALSID:\n\tLocalsid: %U\n", format_ip6_address,
+	      &t->localsid);
   switch (t->behavior)
     {
     case SR_BEHAVIOR_END:
@@ -807,7 +815,7 @@ format_sr_localsid_trace (u8 * s, va_list * args)
       s = format (s, "\tBehavior: Decapsulation with L2 xconnect\n");
       break;
     default:
-      s = format (s, "\tBehavior: defined in plugin\n");	//TODO
+      s = format (s, "\tBehavior: defined in plugin\n"); // TODO
       break;
     }
   if (t->num_segments != 0xFF)
@@ -819,9 +827,9 @@ format_sr_localsid_trace (u8 * s, va_list * args)
 	  int i = 0;
 	  for (i = 0; i < t->num_segments; i++)
 	    {
-	      s = format (s, "\n\t-> %U", format_ip6_address,
-			  (ip6_address_t *) & t->sr[i *
-						    sizeof (ip6_address_t)]);
+	      s =
+		format (s, "\n\t-> %U", format_ip6_address,
+			(ip6_address_t *) &t->sr[i * sizeof (ip6_address_t)]);
 	    }
 	}
     }
@@ -832,12 +840,10 @@ format_sr_localsid_trace (u8 * s, va_list * args)
  * @brief Function doing End processing.
  */
 static_always_inline void
-end_srh_processing (vlib_node_runtime_t * node,
-		    vlib_buffer_t * b0,
-		    ip6_header_t * ip0,
-		    ip6_sr_header_t * sr0,
-		    ip6_sr_localsid_t * ls0,
-		    u32 * next0, u8 psp, ip6_ext_header_t * prev0)
+end_srh_processing (vlib_node_runtime_t *node, vlib_buffer_t *b0,
+		    ip6_header_t *ip0, ip6_sr_header_t *sr0,
+		    ip6_sr_localsid_t *ls0, u32 *next0, u8 psp,
+		    ip6_ext_header_t *prev0)
 {
   ip6_address_t *new_dst0;
 
@@ -865,9 +871,9 @@ end_srh_processing (vlib_node_runtime_t * node,
 	  copy_src0 = (u64 *) ip0;
 	  copy_dst0 = copy_src0 + (sr0->length + 1);
 	  /* number of 8 octet units to copy
-	   * By default in absence of extension headers it is equal to length of ip6 header
-	   * With extension headers it number of 8 octet units of ext headers preceding
-	   * SR header
+	   * By default in absence of extension headers it is equal to length
+	   * of ip6 header With extension headers it number of 8 octet units of
+	   * ext headers preceding SR header
 	   */
 	  copy_len_u64s0 =
 	    (((u8 *) sr0 - (u8 *) ip0) - sizeof (ip6_header_t)) >> 3;
@@ -929,12 +935,10 @@ end_srh_processing (vlib_node_runtime_t * node,
  * @brief Function doing End uN processing.
  */
 static_always_inline void
-end_un_srh_processing (vlib_node_runtime_t * node,
-		       vlib_buffer_t * b0,
-		       ip6_header_t * ip0,
-		       ip6_sr_header_t * sr0,
-		       ip6_sr_localsid_t * ls0,
-		       u32 * next0, u8 psp, ip6_ext_header_t * prev0)
+end_un_srh_processing (vlib_node_runtime_t *node, vlib_buffer_t *b0,
+		       ip6_header_t *ip0, ip6_sr_header_t *sr0,
+		       ip6_sr_localsid_t *ls0, u32 *next0, u8 psp,
+		       ip6_ext_header_t *prev0)
 {
   ip6_address_t *new_dst0;
   bool next_usid = false;
@@ -1000,9 +1004,9 @@ end_un_srh_processing (vlib_node_runtime_t * node,
 	  copy_src0 = (u64 *) ip0;
 	  copy_dst0 = copy_src0 + (sr0->length + 1);
 	  /* number of 8 octet units to copy
-	   * By default in absence of extension headers it is equal to length of ip6 header
-	   * With extension headers it number of 8 octet units of ext headers preceding
-	   * SR header
+	   * By default in absence of extension headers it is equal to length
+	   * of ip6 header With extension headers it number of 8 octet units of
+	   * ext headers preceding SR header
 	   */
 	  copy_len_u64s0 =
 	    (((u8 *) sr0 - (u8 *) ip0) - sizeof (ip6_header_t)) >> 3;
@@ -1041,7 +1045,7 @@ end_un_srh_processing (vlib_node_runtime_t * node,
 }
 
 static_always_inline void
-end_un_processing (ip6_header_t * ip0, ip6_sr_localsid_t * ls0)
+end_un_processing (ip6_header_t *ip0, ip6_sr_localsid_t *ls0)
 {
   u8 next_usid_index;
   u8 index;
@@ -1070,11 +1074,9 @@ end_un_processing (ip6_header_t * ip0, ip6_sr_localsid_t * ls0)
  * @brief Function doing SRH processing for D* variants
  */
 static_always_inline void
-end_decaps_srh_processing (vlib_node_runtime_t * node,
-			   vlib_buffer_t * b0,
-			   ip6_header_t * ip0,
-			   ip6_sr_header_t * sr0,
-			   ip6_sr_localsid_t * ls0, u32 * next0)
+end_decaps_srh_processing (vlib_node_runtime_t *node, vlib_buffer_t *b0,
+			   ip6_header_t *ip0, ip6_sr_header_t *sr0,
+			   ip6_sr_localsid_t *ls0, u32 *next0)
 {
   /* Compute the size of the IPv6 header with all Ext. headers */
   u8 next_proto;
@@ -1151,11 +1153,12 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
 }
 
 /**
- * @brief SR LocalSID graph node. Supports all default SR Endpoint variants with decaps
+ * @brief SR LocalSID graph node. Supports all default SR Endpoint variants
+ * with decaps
  */
 static uword
-sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		  vlib_frame_t * from_frame)
+sr_localsid_d_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		  vlib_frame_t *from_frame)
 {
   u32 n_left_from, next_index, *from, *to_next;
   ip6_sr_main_t *sm = &sr_main;
@@ -1189,7 +1192,8 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    p6 = vlib_get_buffer (vm, from[6]);
 	    p7 = vlib_get_buffer (vm, from[7]);
 
-	    /* Prefetch the buffer header and packet for the N+4 loop iteration */
+	    /* Prefetch the buffer header and packet for the N+4 loop iteration
+	     */
 	    vlib_prefetch_buffer_header (p4, LOAD);
 	    vlib_prefetch_buffer_header (p5, LOAD);
 	    vlib_prefetch_buffer_header (p6, LOAD);
@@ -1215,18 +1219,14 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b2 = vlib_get_buffer (vm, bi2);
 	  b3 = vlib_get_buffer (vm, bi3);
 
-	  ls0 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
-	  ls1 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
-	  ls2 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
-	  ls3 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+	  ls0 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	  ls1 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
+	  ls2 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
+	  ls3 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
 
 	  ip0 = vlib_buffer_get_current (b0);
 	  ip1 = vlib_buffer_get_current (b1);
@@ -1257,8 +1257,8 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls0->behavior;
 	      if (ip0 == vlib_buffer_get_current (b0))
 		{
-		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr0->type == ROUTING_HEADER_TYPE_SR)
+		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE &&
+		      sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
 		      tr->num_segments =
@@ -1280,8 +1280,8 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls1->behavior;
 	      if (ip1 == vlib_buffer_get_current (b1))
 		{
-		  if (ip1->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr1->type == ROUTING_HEADER_TYPE_SR)
+		  if (ip1->protocol == IP_PROTOCOL_IPV6_ROUTE &&
+		      sr1->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr1->segments, sr1->length * 8);
 		      tr->num_segments =
@@ -1303,8 +1303,8 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls2->behavior;
 	      if (ip2 == vlib_buffer_get_current (b2))
 		{
-		  if (ip2->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr2->type == ROUTING_HEADER_TYPE_SR)
+		  if (ip2->protocol == IP_PROTOCOL_IPV6_ROUTE &&
+		      sr2->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr2->segments, sr2->length * 8);
 		      tr->num_segments =
@@ -1326,8 +1326,8 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls3->behavior;
 	      if (ip3 == vlib_buffer_get_current (b3))
 		{
-		  if (ip3->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr3->type == ROUTING_HEADER_TYPE_SR)
+		  if (ip3->protocol == IP_PROTOCOL_IPV6_ROUTE &&
+		      sr3->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr3->segments, sr3->length * 8);
 		      tr->num_segments =
@@ -1339,29 +1339,33 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		tr->num_segments = 0xFF;
 	    }
 
-	  vlib_increment_combined_counter
-	    (((next0 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls0 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b0));
+	  vlib_increment_combined_counter (
+	    ((next0 == SR_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    thread_index, ls0 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b0));
 
-	  vlib_increment_combined_counter
-	    (((next1 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls1 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b1));
+	  vlib_increment_combined_counter (
+	    ((next1 == SR_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    thread_index, ls1 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b1));
 
-	  vlib_increment_combined_counter
-	    (((next2 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls2 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b2));
+	  vlib_increment_combined_counter (
+	    ((next2 == SR_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    thread_index, ls2 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b2));
 
-	  vlib_increment_combined_counter
-	    (((next3 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls3 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b3));
+	  vlib_increment_combined_counter (
+	    ((next3 == SR_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    thread_index, ls3 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b3));
 
 	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, bi1, bi2, bi3,
@@ -1389,9 +1393,8 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip0 = vlib_buffer_get_current (b0);
 
 	  /* Lookup the SR End behavior based on IP DA (adj) */
-	  ls0 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	  ls0 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 
 	  /* Find SRH as well as previous header */
 	  sr0 =
@@ -1410,8 +1413,8 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls0->behavior;
 	      if (ip0 == vlib_buffer_get_current (b0))
 		{
-		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr0->type == ROUTING_HEADER_TYPE_SR)
+		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE &&
+		      sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
 		      tr->num_segments =
@@ -1424,11 +1427,12 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* Increase the counters */
-	  vlib_increment_combined_counter
-	    (((next0 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls0 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b0));
+	  vlib_increment_combined_counter (
+	    ((next0 == SR_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    thread_index, ls0 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b0));
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -1449,7 +1453,7 @@ VLIB_REGISTER_NODE (sr_localsid_d_node) = {
   .error_strings = sr_localsid_error_strings,
   .n_next_nodes = SR_LOCALSID_N_NEXT,
   .next_nodes = {
-#define _(s,n) [SR_LOCALSID_NEXT_##s] = n,
+#define _(s, n) [SR_LOCALSID_NEXT_##s] = n,
     foreach_sr_localsid_next
 #undef _
   },
@@ -1457,11 +1461,12 @@ VLIB_REGISTER_NODE (sr_localsid_d_node) = {
 /* *INDENT-ON* */
 
 /**
- * @brief SR LocalSID graph node. Supports all default SR Endpoint without decaps
+ * @brief SR LocalSID graph node. Supports all default SR Endpoint without
+ * decaps
  */
 static uword
-sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		vlib_frame_t * from_frame)
+sr_localsid_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		vlib_frame_t *from_frame)
 {
   u32 n_left_from, next_index, *from, *to_next;
   ip6_sr_main_t *sm = &sr_main;
@@ -1496,7 +1501,8 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    p6 = vlib_get_buffer (vm, from[6]);
 	    p7 = vlib_get_buffer (vm, from[7]);
 
-	    /* Prefetch the buffer header and packet for the N+2 loop iteration */
+	    /* Prefetch the buffer header and packet for the N+2 loop iteration
+	     */
 	    vlib_prefetch_buffer_header (p4, LOAD);
 	    vlib_prefetch_buffer_header (p5, LOAD);
 	    vlib_prefetch_buffer_header (p6, LOAD);
@@ -1536,18 +1542,14 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  sr3 =
 	    ip6_ext_header_find (vm, b3, ip3, IP_PROTOCOL_IPV6_ROUTE, &prev3);
 
-	  ls0 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
-	  ls1 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
-	  ls2 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
-	  ls3 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+	  ls0 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	  ls1 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
+	  ls2 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
+	  ls3 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
 
 	  end_srh_processing (node, b0, ip0, sr0, ls0, &next0, ls0->end_psp,
 			      prev0);
@@ -1568,8 +1570,8 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls0->behavior;
 	      if (ip0 == vlib_buffer_get_current (b0))
 		{
-		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr0->type == ROUTING_HEADER_TYPE_SR)
+		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE &&
+		      sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
 		      tr->num_segments =
@@ -1591,8 +1593,8 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls1->behavior;
 	      if (ip1 == vlib_buffer_get_current (b1))
 		{
-		  if (ip1->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr1->type == ROUTING_HEADER_TYPE_SR)
+		  if (ip1->protocol == IP_PROTOCOL_IPV6_ROUTE &&
+		      sr1->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr1->segments, sr1->length * 8);
 		      tr->num_segments =
@@ -1614,8 +1616,8 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls2->behavior;
 	      if (ip2 == vlib_buffer_get_current (b2))
 		{
-		  if (ip2->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr2->type == ROUTING_HEADER_TYPE_SR)
+		  if (ip2->protocol == IP_PROTOCOL_IPV6_ROUTE &&
+		      sr2->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr2->segments, sr2->length * 8);
 		      tr->num_segments =
@@ -1637,8 +1639,8 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls3->behavior;
 	      if (ip3 == vlib_buffer_get_current (b3))
 		{
-		  if (ip3->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr3->type == ROUTING_HEADER_TYPE_SR)
+		  if (ip3->protocol == IP_PROTOCOL_IPV6_ROUTE &&
+		      sr3->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr3->segments, sr3->length * 8);
 		      tr->num_segments =
@@ -1650,29 +1652,33 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		tr->num_segments = 0xFF;
 	    }
 
-	  vlib_increment_combined_counter
-	    (((next0 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls0 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b0));
+	  vlib_increment_combined_counter (
+	    ((next0 == SR_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    thread_index, ls0 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b0));
 
-	  vlib_increment_combined_counter
-	    (((next1 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls1 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b1));
+	  vlib_increment_combined_counter (
+	    ((next1 == SR_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    thread_index, ls1 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b1));
 
-	  vlib_increment_combined_counter
-	    (((next2 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls2 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b2));
+	  vlib_increment_combined_counter (
+	    ((next2 == SR_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    thread_index, ls2 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b2));
 
-	  vlib_increment_combined_counter
-	    (((next3 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls3 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b3));
+	  vlib_increment_combined_counter (
+	    ((next3 == SR_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    thread_index, ls3 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b3));
 
 	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, bi1, bi2, bi3,
@@ -1703,9 +1709,8 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    ip6_ext_header_find (vm, b0, ip0, IP_PROTOCOL_IPV6_ROUTE, &prev0);
 
 	  /* Lookup the SR End behavior based on IP DA (adj) */
-	  ls0 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	  ls0 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 
 	  /* SRH processing */
 	  end_srh_processing (node, b0, ip0, sr0, ls0, &next0, ls0->end_psp,
@@ -1721,8 +1726,8 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls0->behavior;
 	      if (ip0 == vlib_buffer_get_current (b0))
 		{
-		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr0->type == ROUTING_HEADER_TYPE_SR)
+		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE &&
+		      sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
 		      tr->num_segments =
@@ -1734,11 +1739,12 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		tr->num_segments = 0xFF;
 	    }
 
-	  vlib_increment_combined_counter
-	    (((next0 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls0 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b0));
+	  vlib_increment_combined_counter (
+	    ((next0 == SR_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    thread_index, ls0 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b0));
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -1759,7 +1765,7 @@ VLIB_REGISTER_NODE (sr_localsid_node) = {
   .error_strings = sr_localsid_error_strings,
   .n_next_nodes = SR_LOCALSID_N_NEXT,
   .next_nodes = {
-#define _(s,n) [SR_LOCALSID_NEXT_##s] = n,
+#define _(s, n) [SR_LOCALSID_NEXT_##s] = n,
     foreach_sr_localsid_next
 #undef _
   },
@@ -1767,11 +1773,12 @@ VLIB_REGISTER_NODE (sr_localsid_node) = {
 /* *INDENT-ON* */
 
 /**
- * @brief SR LocalSID uN graph node. Supports all default SR Endpoint without decaps
+ * @brief SR LocalSID uN graph node. Supports all default SR Endpoint without
+ * decaps
  */
 static uword
-sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		   vlib_frame_t * from_frame)
+sr_localsid_un_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *from_frame)
 {
   u32 n_left_from, next_index, *from, *to_next;
   ip6_sr_main_t *sm = &sr_main;
@@ -1806,7 +1813,8 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    p6 = vlib_get_buffer (vm, from[6]);
 	    p7 = vlib_get_buffer (vm, from[7]);
 
-	    /* Prefetch the buffer header and packet for the N+2 loop iteration */
+	    /* Prefetch the buffer header and packet for the N+2 loop iteration
+	     */
 	    vlib_prefetch_buffer_header (p4, LOAD);
 	    vlib_prefetch_buffer_header (p5, LOAD);
 	    vlib_prefetch_buffer_header (p6, LOAD);
@@ -1846,27 +1854,23 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  sr3 =
 	    ip6_ext_header_find (vm, b3, ip3, IP_PROTOCOL_IPV6_ROUTE, &prev3);
 
-	  ls0 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
-	  ls1 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
-	  ls2 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
-	  ls3 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+	  ls0 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	  ls1 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
+	  ls2 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
+	  ls3 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
 
-	  end_un_srh_processing (node, b0, ip0, sr0, ls0, &next0,
-				 ls0->end_psp, prev0);
-	  end_un_srh_processing (node, b1, ip1, sr1, ls1, &next1,
-				 ls1->end_psp, prev1);
-	  end_un_srh_processing (node, b2, ip2, sr2, ls2, &next2,
-				 ls2->end_psp, prev2);
-	  end_un_srh_processing (node, b3, ip3, sr3, ls3, &next3,
-				 ls3->end_psp, prev3);
+	  end_un_srh_processing (node, b0, ip0, sr0, ls0, &next0, ls0->end_psp,
+				 prev0);
+	  end_un_srh_processing (node, b1, ip1, sr1, ls1, &next1, ls1->end_psp,
+				 prev1);
+	  end_un_srh_processing (node, b2, ip2, sr2, ls2, &next2, ls2->end_psp,
+				 prev2);
+	  end_un_srh_processing (node, b3, ip3, sr3, ls3, &next3, ls3->end_psp,
+				 prev3);
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -1878,8 +1882,8 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls0->behavior;
 	      if (ip0 == vlib_buffer_get_current (b0))
 		{
-		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr0->type == ROUTING_HEADER_TYPE_SR)
+		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE &&
+		      sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
 		      tr->num_segments =
@@ -1901,8 +1905,8 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls1->behavior;
 	      if (ip1 == vlib_buffer_get_current (b1))
 		{
-		  if (ip1->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr1->type == ROUTING_HEADER_TYPE_SR)
+		  if (ip1->protocol == IP_PROTOCOL_IPV6_ROUTE &&
+		      sr1->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr1->segments, sr1->length * 8);
 		      tr->num_segments =
@@ -1924,8 +1928,8 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls2->behavior;
 	      if (ip2 == vlib_buffer_get_current (b2))
 		{
-		  if (ip2->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr2->type == ROUTING_HEADER_TYPE_SR)
+		  if (ip2->protocol == IP_PROTOCOL_IPV6_ROUTE &&
+		      sr2->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr2->segments, sr2->length * 8);
 		      tr->num_segments =
@@ -1947,8 +1951,8 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls3->behavior;
 	      if (ip3 == vlib_buffer_get_current (b3))
 		{
-		  if (ip3->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr3->type == ROUTING_HEADER_TYPE_SR)
+		  if (ip3->protocol == IP_PROTOCOL_IPV6_ROUTE &&
+		      sr3->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr3->segments, sr3->length * 8);
 		      tr->num_segments =
@@ -1960,29 +1964,33 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		tr->num_segments = 0xFF;
 	    }
 
-	  vlib_increment_combined_counter
-	    (((next0 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls0 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b0));
+	  vlib_increment_combined_counter (
+	    ((next0 == SR_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    thread_index, ls0 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b0));
 
-	  vlib_increment_combined_counter
-	    (((next1 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls1 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b1));
+	  vlib_increment_combined_counter (
+	    ((next1 == SR_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    thread_index, ls1 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b1));
 
-	  vlib_increment_combined_counter
-	    (((next2 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls2 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b2));
+	  vlib_increment_combined_counter (
+	    ((next2 == SR_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    thread_index, ls2 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b2));
 
-	  vlib_increment_combined_counter
-	    (((next3 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls3 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b3));
+	  vlib_increment_combined_counter (
+	    ((next3 == SR_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    thread_index, ls3 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b3));
 
 	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, bi1, bi2, bi3,
@@ -2013,13 +2021,12 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    ip6_ext_header_find (vm, b0, ip0, IP_PROTOCOL_IPV6_ROUTE, &prev0);
 
 	  /* Lookup the SR End behavior based on IP DA (adj) */
-	  ls0 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	  ls0 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 
 	  /* SRH processing */
-	  end_un_srh_processing (node, b0, ip0, sr0, ls0, &next0,
-				 ls0->end_psp, prev0);
+	  end_un_srh_processing (node, b0, ip0, sr0, ls0, &next0, ls0->end_psp,
+				 prev0);
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -2031,8 +2038,8 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls0->behavior;
 	      if (ip0 == vlib_buffer_get_current (b0))
 		{
-		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE
-		      && sr0->type == ROUTING_HEADER_TYPE_SR)
+		  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE &&
+		      sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
 		      tr->num_segments =
@@ -2044,11 +2051,12 @@ sr_localsid_un_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		tr->num_segments = 0xFF;
 	    }
 
-	  vlib_increment_combined_counter
-	    (((next0 ==
-	       SR_LOCALSID_NEXT_ERROR) ? &(sm->sr_ls_invalid_counters) :
-	      &(sm->sr_ls_valid_counters)), thread_index, ls0 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b0));
+	  vlib_increment_combined_counter (
+	    ((next0 == SR_LOCALSID_NEXT_ERROR) ?
+	       &(sm->sr_ls_invalid_counters) :
+	       &(sm->sr_ls_valid_counters)),
+	    thread_index, ls0 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b0));
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -2069,7 +2077,7 @@ VLIB_REGISTER_NODE (sr_localsid_un_node) = {
   .error_strings = sr_localsid_error_strings,
   .n_next_nodes = SR_LOCALSID_N_NEXT,
   .next_nodes = {
-#define _(s,n) [SR_LOCALSID_NEXT_##s] = n,
+#define _(s, n) [SR_LOCALSID_NEXT_##s] = n,
     foreach_sr_localsid_next
 #undef _
   },
@@ -2077,8 +2085,8 @@ VLIB_REGISTER_NODE (sr_localsid_un_node) = {
 /* *INDENT-ON* */
 
 static uword
-sr_localsid_un_perf_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			vlib_frame_t * from_frame)
+sr_localsid_un_perf_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+			vlib_frame_t *from_frame)
 {
   u32 n_left_from, next_index, *from, *to_next;
   ip6_sr_main_t *sm = &sr_main;
@@ -2111,7 +2119,8 @@ sr_localsid_un_perf_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    p6 = vlib_get_buffer (vm, from[6]);
 	    p7 = vlib_get_buffer (vm, from[7]);
 
-	    /* Prefetch the buffer header and packet for the N+2 loop iteration */
+	    /* Prefetch the buffer header and packet for the N+2 loop iteration
+	     */
 	    vlib_prefetch_buffer_header (p4, LOAD);
 	    vlib_prefetch_buffer_header (p5, LOAD);
 	    vlib_prefetch_buffer_header (p6, LOAD);
@@ -2142,18 +2151,14 @@ sr_localsid_un_perf_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip2 = vlib_buffer_get_current (b2);
 	  ip3 = vlib_buffer_get_current (b3);
 
-	  ls0 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
-	  ls1 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
-	  ls2 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
-	  ls3 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
+	  ls0 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	  ls1 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b1)->ip.adj_index[VLIB_TX]);
+	  ls2 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b2)->ip.adj_index[VLIB_TX]);
+	  ls3 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b3)->ip.adj_index[VLIB_TX]);
 
 	  end_un_processing (ip0, ls0);
 	  end_un_processing (ip1, ls1);
@@ -2200,21 +2205,21 @@ sr_localsid_un_perf_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls3->behavior;
 	    }
 
-	  vlib_increment_combined_counter
-	    (&(sm->sr_ls_valid_counters), thread_index, ls0 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b0));
+	  vlib_increment_combined_counter (
+	    &(sm->sr_ls_valid_counters), thread_index, ls0 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b0));
 
-	  vlib_increment_combined_counter
-	    (&(sm->sr_ls_valid_counters), thread_index, ls1 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b1));
+	  vlib_increment_combined_counter (
+	    &(sm->sr_ls_valid_counters), thread_index, ls1 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b1));
 
-	  vlib_increment_combined_counter
-	    (&(sm->sr_ls_valid_counters), thread_index, ls2 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b2));
+	  vlib_increment_combined_counter (
+	    &(sm->sr_ls_valid_counters), thread_index, ls2 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b2));
 
-	  vlib_increment_combined_counter
-	    (&(sm->sr_ls_valid_counters), thread_index, ls3 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b3));
+	  vlib_increment_combined_counter (
+	    &(sm->sr_ls_valid_counters), thread_index, ls3 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b3));
 
 	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, bi1, bi2, bi3,
@@ -2241,9 +2246,8 @@ sr_localsid_un_perf_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip0 = vlib_buffer_get_current (b0);
 
 	  /* Lookup the SR End behavior based on IP DA (adj) */
-	  ls0 =
-	    pool_elt_at_index (sm->localsids,
-			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	  ls0 = pool_elt_at_index (sm->localsids,
+				   vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 
 	  /* SRH processing */
 	  end_un_processing (ip0, ls0);
@@ -2258,9 +2262,9 @@ sr_localsid_un_perf_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->behavior = ls0->behavior;
 	    }
 
-	  vlib_increment_combined_counter
-	    (&(sm->sr_ls_valid_counters), thread_index, ls0 - sm->localsids,
-	     1, vlib_buffer_length_in_chain (vm, b0));
+	  vlib_increment_combined_counter (
+	    &(sm->sr_ls_valid_counters), thread_index, ls0 - sm->localsids, 1,
+	    vlib_buffer_length_in_chain (vm, b0));
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -2281,7 +2285,7 @@ VLIB_REGISTER_NODE (sr_localsid_un_perf_node) = {
   .error_strings = sr_localsid_error_strings,
   .n_next_nodes = SR_LOCALSID_N_NEXT,
   .next_nodes = {
-#define _(s,n) [SR_LOCALSID_NEXT_##s] = n,
+#define _(s, n) [SR_LOCALSID_NEXT_##s] = n,
     foreach_sr_localsid_next
 #undef _
   },
@@ -2289,7 +2293,7 @@ VLIB_REGISTER_NODE (sr_localsid_un_perf_node) = {
 /* *INDENT-ON* */
 
 static u8 *
-format_sr_dpo (u8 * s, va_list * args)
+format_sr_dpo (u8 *s, va_list *args)
 {
   index_t index = va_arg (*args, index_t);
   CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
@@ -2339,19 +2343,18 @@ const static char *const *const sr_loc_un_perf_nodes[DPO_PROTO_NUM] = {
   [DPO_PROTO_IP6] = sr_loc_un_perf_ip6_nodes,
 };
 
-/*************************** SR LocalSID plugins ******************************/
+/*************************** SR LocalSID plugins
+ * ******************************/
 /**
  * @brief SR LocalSID plugin registry
  */
 int
-sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
-			       u8 * keyword_str, u8 * def_str,
-			       u8 * params_str, u8 prefix_length,
-			       dpo_type_t * dpo,
-			       format_function_t * ls_format,
-			       unformat_function_t * ls_unformat,
-			       sr_plugin_callback_t * creation_fn,
-			       sr_plugin_callback_t * removal_fn)
+sr_localsid_register_function (vlib_main_t *vm, u8 *fn_name, u8 *keyword_str,
+			       u8 *def_str, u8 *params_str, u8 prefix_length,
+			       dpo_type_t *dpo, format_function_t *ls_format,
+			       unformat_function_t *ls_unformat,
+			       sr_plugin_callback_t *creation_fn,
+			       sr_plugin_callback_t *removal_fn)
 {
   ip6_sr_main_t *sm = &sr_main;
   uword *p;
@@ -2394,40 +2397,45 @@ sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
  * @brief CLI function to 'show' all available SR LocalSID behaviors
  */
 static clib_error_t *
-show_sr_localsid_behaviors_command_fn (vlib_main_t * vm,
-				       unformat_input_t * input,
-				       vlib_cli_command_t * cmd)
+show_sr_localsid_behaviors_command_fn (vlib_main_t *vm,
+				       unformat_input_t *input,
+				       vlib_cli_command_t *cmd)
 {
   ip6_sr_main_t *sm = &sr_main;
   sr_localsid_fn_registration_t *plugin;
   sr_localsid_fn_registration_t **plugins_vec = 0;
   int i;
 
-  vlib_cli_output (vm,
-		   "SR LocalSIDs behaviors:\n-----------------------\n\n");
+  vlib_cli_output (vm, "SR LocalSIDs behaviors:\n-----------------------\n\n");
 
   /* *INDENT-OFF* */
   pool_foreach (plugin, sm->plugin_functions)
-    { vec_add1 (plugins_vec, plugin); }
+    {
+      vec_add1 (plugins_vec, plugin);
+    }
   /* *INDENT-ON* */
 
   /* Print static behaviors */
-  vlib_cli_output (vm, "Default behaviors:\n"
-		   "\tEnd\t-> Endpoint.\n"
-		   "\tEnd.X\t-> Endpoint with Layer-3 cross-connect.\n"
-		   "\t\tParameters: '<iface> <ip6_next_hop>'\n"
-		   "\tEnd.T\t-> Endpoint with specific IPv6 table lookup.\n"
-		   "\t\tParameters: '<fib_table>'\n"
-		   "\tEnd.DX2\t-> Endpoint with decapsulation and Layer-2 cross-connect.\n"
-		   "\t\tParameters: '<iface>'\n"
-		   "\tEnd.DX6\t-> Endpoint with decapsulation and IPv6 cross-connect.\n"
-		   "\t\tParameters: '<iface> <ip6_next_hop>'\n"
-		   "\tEnd.DX4\t-> Endpoint with decapsulation and IPv4 cross-connect.\n"
-		   "\t\tParameters: '<iface> <ip4_next_hop>'\n"
-		   "\tEnd.DT6\t-> Endpoint with decapsulation and specific IPv6 table lookup.\n"
-		   "\t\tParameters: '<ip6_fib_table>'\n"
-		   "\tEnd.DT4\t-> Endpoint with decapsulation and specific IPv4 table lookup.\n"
-		   "\t\tParameters: '<ip4_fib_table>'\n");
+  vlib_cli_output (
+    vm,
+    "Default behaviors:\n"
+    "\tEnd\t-> Endpoint.\n"
+    "\tEnd.X\t-> Endpoint with Layer-3 cross-connect.\n"
+    "\t\tParameters: '<iface> <ip6_next_hop>'\n"
+    "\tEnd.T\t-> Endpoint with specific IPv6 table lookup.\n"
+    "\t\tParameters: '<fib_table>'\n"
+    "\tEnd.DX2\t-> Endpoint with decapsulation and Layer-2 cross-connect.\n"
+    "\t\tParameters: '<iface>'\n"
+    "\tEnd.DX6\t-> Endpoint with decapsulation and IPv6 cross-connect.\n"
+    "\t\tParameters: '<iface> <ip6_next_hop>'\n"
+    "\tEnd.DX4\t-> Endpoint with decapsulation and IPv4 cross-connect.\n"
+    "\t\tParameters: '<iface> <ip4_next_hop>'\n"
+    "\tEnd.DT6\t-> Endpoint with decapsulation and specific IPv6 table "
+    "lookup.\n"
+    "\t\tParameters: '<ip6_fib_table>'\n"
+    "\tEnd.DT4\t-> Endpoint with decapsulation and specific IPv4 table "
+    "lookup.\n"
+    "\t\tParameters: '<ip4_fib_table>'\n");
   vlib_cli_output (vm, "Plugin behaviors:\n");
   for (i = 0; i < vec_len (plugins_vec); i++)
     {
@@ -2451,7 +2459,7 @@ VLIB_CLI_COMMAND (show_sr_localsid_behaviors_command, static) = {
  * @brief SR LocalSID initialization
  */
 clib_error_t *
-sr_localsids_init (vlib_main_t * vm)
+sr_localsids_init (vlib_main_t *vm)
 {
   /* Init memory for function keys */
   ip6_sr_main_t *sm = &sr_main;
@@ -2460,23 +2468,7 @@ sr_localsids_init (vlib_main_t * vm)
   /* Init SR behaviors DPO type */
   sr_localsid_dpo_type = dpo_register_new_type (&sr_loc_vft, sr_loc_nodes);
   /* Init SR behaviors DPO type */
-  sr_localsid_d_dpo_type =
-    dpo_register_new_type (&sr_loc_vft, sr_loc_d_nodes);
+  sr_localsid_d_dpo_type = dpo_register_new_type (&sr_loc_vft, sr_loc_d_nodes);
   /* Init SR bhaviors DPO type */
   sr_localsid_un_dpo_type =
-    dpo_register_new_type (&sr_loc_vft, sr_loc_un_nodes);
-  sr_localsid_un_perf_dpo_type =
-    dpo_register_new_type (&sr_loc_vft, sr_loc_un_perf_nodes);
-  /* Init memory for localsid plugins */
-  sm->plugin_functions_by_key = hash_create_string (0, sizeof (uword));
-  return 0;
-}
-
-VLIB_INIT_FUNCTION (sr_localsids_init);
-/*
-* fd.io coding-style-patch-verification: ON
-*
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*/
+    dpo_register_new_type (

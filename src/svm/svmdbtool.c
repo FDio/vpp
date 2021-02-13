@@ -63,7 +63,7 @@ map_arg_setup (char *chroot_path)
 }
 
 static void
-get_string (char *chroot_path, u8 * vbl)
+get_string (char *chroot_path, u8 *vbl)
 {
   svmdb_client_t *c;
   char *rv;
@@ -81,7 +81,7 @@ get_string (char *chroot_path, u8 * vbl)
 }
 
 static void
-set_string (char *chroot_path, u8 * vbl, u8 * value)
+set_string (char *chroot_path, u8 *vbl, u8 *value)
 {
   svmdb_client_t *c;
   svmdb_map_args_t *ma;
@@ -94,7 +94,7 @@ set_string (char *chroot_path, u8 * vbl, u8 * value)
 }
 
 static void
-unset_string (char *chroot_path, u8 * vbl)
+unset_string (char *chroot_path, u8 *vbl)
 {
   svmdb_client_t *c;
   svmdb_map_args_t *ma;
@@ -165,10 +165,8 @@ test_vlib_vec_rate (char *chroot_path, f64 vr)
   vec_free (tv);
 }
 
-
-
 static void
-test_vec (char *chroot_path, u8 * vbl)
+test_vec (char *chroot_path, u8 *vbl)
 {
   svmdb_client_t *c;
   u64 *tv = 0;
@@ -192,7 +190,7 @@ test_vec (char *chroot_path, u8 * vbl)
 }
 
 static void
-fake_install (char *chroot_path, u8 * add_value)
+fake_install (char *chroot_path, u8 *add_value)
 {
   svmdb_client_t *c;
   u8 *v = 0;
@@ -245,7 +243,7 @@ fake_install (char *chroot_path, u8 * add_value)
 }
 
 static void
-sigaction_handler (int signum, siginfo_t * i, void *notused)
+sigaction_handler (int signum, siginfo_t *i, void *notused)
 {
   u32 action, opaque;
 
@@ -258,7 +256,7 @@ sigaction_handler (int signum, siginfo_t * i, void *notused)
 }
 
 static void
-test_reg (char *chroot_path, u8 * vbl)
+test_reg (char *chroot_path, u8 *vbl)
 {
   svmdb_client_t *c;
   svmdb_notification_args_t args;
@@ -281,7 +279,7 @@ test_reg (char *chroot_path, u8 * vbl)
 
   c = svmdb_map (ma);
 
-  a->add_del = 1 /* add */ ;
+  a->add_del = 1 /* add */;
   a->nspace = SVMDB_NAMESPACE_STRING;
   a->var = (char *) vbl;
   a->elsize = 1;
@@ -293,16 +291,14 @@ test_reg (char *chroot_path, u8 * vbl)
 
   (void) svmdb_local_get_string_variable (c, (char *) vbl);
 
-  a->add_del = 0;		/* del */
+  a->add_del = 0; /* del */
   svmdb_local_add_del_notification (c, a);
-
-
 
   svmdb_unmap (c);
 }
 
 static void
-unset_vec (char *chroot_path, u8 * vbl)
+unset_vec (char *chroot_path, u8 *vbl)
 {
   svmdb_client_t *c;
   svmdb_map_args_t *ma;

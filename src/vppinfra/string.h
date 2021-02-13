@@ -44,7 +44,7 @@
 #ifndef included_clib_string_h
 #define included_clib_string_h
 
-#include <vppinfra/clib.h>	/* for CLIB_LINUX_KERNEL */
+#include <vppinfra/clib.h> /* for CLIB_LINUX_KERNEL */
 #include <vppinfra/vector.h>
 #include <vppinfra/error_bootstrap.h>
 
@@ -192,7 +192,7 @@ memcpy_s_inline (void *__restrict__ dest, rsize_t dmax,
  * attempt to provide a real destination buffer size
  * argument...
  */
-#define clib_memcpy(d,s,n) memcpy_s_inline(d,n,s,n)
+#define clib_memcpy(d, s, n) memcpy_s_inline (d, n, s, n)
 
 errno_t memset_s (void *s, rsize_t smax, int c, rsize_t n);
 
@@ -226,16 +226,16 @@ memset_s_inline (void *s, rsize_t smax, int c, rsize_t n)
  * (n > smax) test. TBH the NULL pointer check isn't
  * so useful in this case, but so be it.
  */
-#define clib_memset(s,c,n) memset_s_inline(s,n,c,n)
+#define clib_memset(s, c, n) memset_s_inline (s, n, c, n)
 
 static_always_inline void
-clib_memcpy_le (u8 * dst, u8 * src, u8 len, u8 max_len)
+clib_memcpy_le (u8 *dst, u8 *src, u8 len, u8 max_len)
 {
-#if defined (CLIB_HAVE_VEC256)
+#if defined(CLIB_HAVE_VEC256)
   u8x32 s0, s1, d0, d1;
-  u8x32 mask = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
-    18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
-  };
+  u8x32 mask = { 0,  1,	 2,  3,	 4,  5,	 6,  7,	 8,  9,	 10,
+		 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+		 22, 23, 24, 25, 26, 27, 28, 29, 30, 31 };
   u8x32 lv = u8x32_splat (len);
   u8x32 add = u8x32_splat (32);
 
@@ -254,7 +254,7 @@ clib_memcpy_le (u8 * dst, u8 * src, u8 len, u8 max_len)
   d1 = u8x32_blend (d1, s1, u8x32_is_greater (lv, mask));
   u8x32_store_unaligned (d1, dst + 32);
 
-#elif defined (CLIB_HAVE_VEC128)
+#elif defined(CLIB_HAVE_VEC128)
   u8x16 s0, s1, s2, s3, d0, d1, d2, d3;
   u8x16 mask = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
   u8x16 lv = u8x16_splat (len);
@@ -295,13 +295,13 @@ clib_memcpy_le (u8 * dst, u8 * src, u8 len, u8 max_len)
 }
 
 static_always_inline void
-clib_memcpy_le64 (u8 * dst, u8 * src, u8 len)
+clib_memcpy_le64 (u8 *dst, u8 *src, u8 len)
 {
   clib_memcpy_le (dst, src, len, 64);
 }
 
 static_always_inline void
-clib_memcpy_le32 (u8 * dst, u8 * src, u8 len)
+clib_memcpy_le32 (u8 *dst, u8 *src, u8 len)
 {
   clib_memcpy_le (dst, src, len, 32);
 }
@@ -482,7 +482,7 @@ clib_memset_u8 (void *p, u8 val, uword count)
 }
 
 static_always_inline uword
-clib_count_equal_u64 (u64 * data, uword max_count)
+clib_count_equal_u64 (u64 *data, uword max_count)
 {
   uword count;
   u64 first;
@@ -513,9 +513,8 @@ clib_count_equal_u64 (u64 * data, uword max_count)
 #else
   count += 2;
   data += 2;
-  while (count + 3 < max_count &&
-	 ((data[0] ^ first) | (data[1] ^ first) |
-	  (data[2] ^ first) | (data[3] ^ first)) == 0)
+  while (count + 3 < max_count && ((data[0] ^ first) | (data[1] ^ first) |
+				   (data[2] ^ first) | (data[3] ^ first)) == 0)
     {
       data += 4;
       count += 4;
@@ -530,7 +529,7 @@ clib_count_equal_u64 (u64 * data, uword max_count)
 }
 
 static_always_inline uword
-clib_count_equal_u32 (u32 * data, uword max_count)
+clib_count_equal_u32 (u32 *data, uword max_count)
 {
   uword count;
   u32 first;
@@ -576,9 +575,8 @@ clib_count_equal_u32 (u32 * data, uword max_count)
 #else
   count += 2;
   data += 2;
-  while (count + 3 < max_count &&
-	 ((data[0] ^ first) | (data[1] ^ first) |
-	  (data[2] ^ first) | (data[3] ^ first)) == 0)
+  while (count + 3 < max_count && ((data[0] ^ first) | (data[1] ^ first) |
+				   (data[2] ^ first) | (data[3] ^ first)) == 0)
     {
       data += 4;
       count += 4;
@@ -593,7 +591,7 @@ clib_count_equal_u32 (u32 * data, uword max_count)
 }
 
 static_always_inline uword
-clib_count_equal_u16 (u16 * data, uword max_count)
+clib_count_equal_u16 (u16 *data, uword max_count)
 {
   uword count;
   u16 first;
@@ -639,9 +637,8 @@ clib_count_equal_u16 (u16 * data, uword max_count)
 #else
   count += 2;
   data += 2;
-  while (count + 3 < max_count &&
-	 ((data[0] ^ first) | (data[1] ^ first) |
-	  (data[2] ^ first) | (data[3] ^ first)) == 0)
+  while (count + 3 < max_count && ((data[0] ^ first) | (data[1] ^ first) |
+				   (data[2] ^ first) | (data[3] ^ first)) == 0)
     {
       data += 4;
       count += 4;
@@ -656,7 +653,7 @@ clib_count_equal_u16 (u16 * data, uword max_count)
 }
 
 static_always_inline uword
-clib_count_equal_u8 (u8 * data, uword max_count)
+clib_count_equal_u8 (u8 *data, uword max_count)
 {
   uword count;
   u8 first;
@@ -702,9 +699,8 @@ clib_count_equal_u8 (u8 * data, uword max_count)
 #else
   count += 2;
   data += 2;
-  while (count + 3 < max_count &&
-	 ((data[0] ^ first) | (data[1] ^ first) |
-	  (data[2] ^ first) | (data[3] ^ first)) == 0)
+  while (count + 3 < max_count && ((data[0] ^ first) | (data[1] ^ first) |
+				   (data[2] ^ first) | (data[3] ^ first)) == 0)
     {
       data += 4;
       count += 4;
@@ -732,14 +728,15 @@ clib_count_equal_u8 (u8 * data, uword max_count)
  * Applications are encouraged to use the cool C11 memcmp_s API to get the
  * maximum benefit out of it.
  */
-#define clib_memcmp(s1,s2,m1) \
-  ({ int __diff = 0;				       \
-    memcmp_s_inline (s1, m1, s2, m1, &__diff);	\
-    __diff; \
+#define clib_memcmp(s1, s2, m1)                                               \
+  ({                                                                          \
+    int __diff = 0;                                                           \
+    memcmp_s_inline (s1, m1, s2, m1, &__diff);                                \
+    __diff;                                                                   \
   })
 
-errno_t memcmp_s (const void *s1, rsize_t s1max, const void *s2,
-		  rsize_t s2max, int *diff);
+errno_t memcmp_s (const void *s1, rsize_t s1max, const void *s2, rsize_t s2max,
+		  int *diff);
 
 always_inline errno_t
 memcmp_s_inline (const void *s1, rsize_t s1max, const void *s2, rsize_t s2max,
@@ -748,7 +745,7 @@ memcmp_s_inline (const void *s1, rsize_t s1max, const void *s2, rsize_t s2max,
   u8 bad;
 
   bad = (s1 == 0) + (s2 == 0) + (diff == 0) + (s2max > s1max) + (s2max == 0) +
-    (s1max == 0);
+	(s1max == 0);
 
   if (PREDICT_FALSE (bad != 0))
     {
@@ -780,7 +777,7 @@ memcmp_s_inline (const void *s1, rsize_t s1max, const void *s2, rsize_t s2max,
 /*
  * This macro is to provide smooth mapping from strnlen to strnlen_s
  */
-#define clib_strnlen(s,m) strnlen_s_inline(s,m)
+#define clib_strnlen(s, m) strnlen_s_inline (s, m)
 
 size_t strnlen_s (const char *s, size_t maxsize);
 
@@ -821,23 +818,23 @@ strnlen_s_inline (const char *s, size_t maxsize)
  * Applications are encouraged to use the cool C11 strcmp_s API to get the
  * maximum benefit out of it.
  */
-#define clib_strcmp(s1,s2) \
-  ({ int __indicator = 0; \
-    strcmp_s_inline (s1, CLIB_STRING_MACRO_MAX, s2, &__indicator);	\
-    __indicator;			\
+#define clib_strcmp(s1, s2)                                                   \
+  ({                                                                          \
+    int __indicator = 0;                                                      \
+    strcmp_s_inline (s1, CLIB_STRING_MACRO_MAX, s2, &__indicator);            \
+    __indicator;                                                              \
   })
 
 errno_t strcmp_s (const char *s1, rsize_t s1max, const char *s2,
 		  int *indicator);
 
 always_inline errno_t
-strcmp_s_inline (const char *s1, rsize_t s1max, const char *s2,
-		 int *indicator)
+strcmp_s_inline (const char *s1, rsize_t s1max, const char *s2, int *indicator)
 {
   u8 bad;
 
   bad = (indicator == 0) + (s1 == 0) + (s2 == 0) + (s1max == 0) +
-    (s1 && s1max && s1[clib_strnlen (s1, s1max)] != '\0');
+	(s1 && s1max && s1[clib_strnlen (s1, s1max)] != '\0');
 
   if (PREDICT_FALSE (bad != 0))
     {
@@ -875,10 +872,11 @@ strcmp_s_inline (const char *s1, rsize_t s1max, const char *s2,
  * Applications are encouraged to use the cool C11 strncmp_s API to get the
  * maximum benefit out of it.
  */
-#define clib_strncmp(s1,s2,n) \
-  ({ int __indicator = 0; \
-    strncmp_s_inline (s1, CLIB_STRING_MACRO_MAX, s2, n, &__indicator);	\
-    __indicator;			\
+#define clib_strncmp(s1, s2, n)                                               \
+  ({                                                                          \
+    int __indicator = 0;                                                      \
+    strncmp_s_inline (s1, CLIB_STRING_MACRO_MAX, s2, n, &__indicator);        \
+    __indicator;                                                              \
   })
 
 errno_t strncmp_s (const char *s1, rsize_t s1max, const char *s2, rsize_t n,
@@ -904,7 +902,8 @@ strncmp_s_inline (const char *s1, rsize_t s1max, const char *s2, rsize_t n,
     }
 
   bad = (s1 == 0) + (s2 == 0) + (indicator == 0) + (s1max == 0) +
-    (s1 && s1max && s1[clib_strnlen (s1, s1max)] != '\0') + s1_greater_s1max;
+	(s1 && s1max && s1[clib_strnlen (s1, s1max)] != '\0') +
+	s1_greater_s1max;
 
   if (PREDICT_FALSE (bad != 0))
     {
@@ -929,11 +928,11 @@ strncmp_s_inline (const char *s1, rsize_t s1max, const char *s2, rsize_t n,
 
 /*
  * This macro is provided for smooth migration from strcpy. It is not perfect
- * because we don't know the size of the destination buffer to pass to strcpy_s.
- * We improvise dmax with CLIB_STRING_MACRO_MAX.
- * Applications are encouraged to move to the C11 strcpy_s API.
+ * because we don't know the size of the destination buffer to pass to
+ * strcpy_s. We improvise dmax with CLIB_STRING_MACRO_MAX. Applications are
+ * encouraged to move to the C11 strcpy_s API.
  */
-#define clib_strcpy(d,s) strcpy_s_inline(d,CLIB_STRING_MACRO_MAX,s)
+#define clib_strcpy(d, s) strcpy_s_inline (d, CLIB_STRING_MACRO_MAX, s)
 
 errno_t strcpy_s (char *__restrict__ dest, rsize_t dmax,
 		  const char *__restrict__ src);
@@ -990,11 +989,10 @@ strcpy_s_inline (char *__restrict__ dest, rsize_t dmax,
  * Applications are encouraged to move to the C11 strncpy_s API and provide
  * the correct dmax for better error checking.
  */
-#define clib_strncpy(d,s,n) strncpy_s_inline(d,CLIB_STRING_MACRO_MAX,s,n)
+#define clib_strncpy(d, s, n) strncpy_s_inline (d, CLIB_STRING_MACRO_MAX, s, n)
 
-errno_t
-strncpy_s (char *__restrict__ dest, rsize_t dmax,
-	   const char *__restrict__ src, rsize_t n);
+errno_t strncpy_s (char *__restrict__ dest, rsize_t dmax,
+		   const char *__restrict__ src, rsize_t n);
 
 always_inline errno_t
 strncpy_s_inline (char *__restrict__ dest, rsize_t dmax,
@@ -1069,7 +1067,7 @@ strncpy_s_inline (char *__restrict__ dest, rsize_t dmax,
  * Applications are encouraged to use C11 API to provide the actual dmax
  * for proper checking and protection.
  */
-#define clib_strcat(d,s) strcat_s_inline(d,CLIB_STRING_MACRO_MAX,s)
+#define clib_strcat(d, s) strcat_s_inline (d, CLIB_STRING_MACRO_MAX, s)
 
 errno_t strcat_s (char *__restrict__ dest, rsize_t dmax,
 		  const char *__restrict__ src);
@@ -1130,7 +1128,7 @@ strcat_s_inline (char *__restrict__ dest, rsize_t dmax,
  * Applications are encouraged to move to C11 strncat_s which requires dmax
  * from the caller and provides checking to safeguard the memory corruption.
  */
-#define clib_strncat(d,s,n) strncat_s_inline(d,CLIB_STRING_MACRO_MAX,s,n)
+#define clib_strncat(d, s, n) strncat_s_inline (d, CLIB_STRING_MACRO_MAX, s, n)
 
 errno_t strncat_s (char *__restrict__ dest, rsize_t dmax,
 		   const char *__restrict__ src, rsize_t n);
@@ -1209,16 +1207,17 @@ strncat_s_inline (char *__restrict__ dest, rsize_t dmax,
  * Applications are encouraged to use the cool C11 strtok_s API to avoid
  * these problems.
  */
-#define clib_strtok(s1,s2,p)		   \
-  ({ rsize_t __s1max = CLIB_STRING_MACRO_MAX;	\
-    strtok_s_inline (s1, &__s1max, s2, p);		\
+#define clib_strtok(s1, s2, p)                                                \
+  ({                                                                          \
+    rsize_t __s1max = CLIB_STRING_MACRO_MAX;                                  \
+    strtok_s_inline (s1, &__s1max, s2, p);                                    \
   })
 
-char *strtok_s (char *__restrict__ s1, rsize_t * __restrict__ s1max,
+char *strtok_s (char *__restrict__ s1, rsize_t *__restrict__ s1max,
 		const char *__restrict__ s2, char **__restrict__ ptr);
 
 always_inline char *
-strtok_s_inline (char *__restrict__ s1, rsize_t * __restrict__ s1max,
+strtok_s_inline (char *__restrict__ s1, rsize_t *__restrict__ s1max,
 		 const char *__restrict__ s2, char **__restrict__ ptr)
 {
 #define STRTOK_DELIM_MAX_LEN 16
@@ -1227,8 +1226,8 @@ strtok_s_inline (char *__restrict__ s1, rsize_t * __restrict__ s1max,
   char *ptoken;
   uword dlen, slen;
 
-  bad = (s1max == 0) + (s2 == 0) + (ptr == 0) +
-    ((s1 == 0) && ptr && (*ptr == 0));
+  bad =
+    (s1max == 0) + (s2 == 0) + (ptr == 0) + ((s1 == 0) && ptr && (*ptr == 0));
   if (PREDICT_FALSE (bad != 0))
     {
       if (s2 == NULL)
@@ -1330,8 +1329,8 @@ strtok_s_inline (char *__restrict__ s1, rsize_t * __restrict__ s1max,
 	       * and return context ptr to next char
 	       */
 	      *s1 = '\0';
-	      *ptr = (s1 + 1);	/* return pointer for next scan */
-	      *s1max = dlen - 1;	/* account for the nulled delimiter */
+	      *ptr = (s1 + 1);	 /* return pointer for next scan */
+	      *s1max = dlen - 1; /* account for the nulled delimiter */
 	      return (ptoken);
 	    }
 	  else
@@ -1361,11 +1360,12 @@ strtok_s_inline (char *__restrict__ s1, rsize_t * __restrict__ s1max,
  * Applications are encouraged to use the cool C11 strstr_s API to avoid
  * this problem.
  */
-#define clib_strstr(s1,s2) \
-  ({ char * __substring = 0; \
-    strstr_s_inline (s1, CLIB_STRING_MACRO_MAX, s2, CLIB_STRING_MACRO_MAX, \
-		     &__substring);		 \
-    __substring;				 \
+#define clib_strstr(s1, s2)                                                   \
+  ({                                                                          \
+    char *__substring = 0;                                                    \
+    strstr_s_inline (s1, CLIB_STRING_MACRO_MAX, s2, CLIB_STRING_MACRO_MAX,    \
+		     &__substring);                                           \
+    __substring;                                                              \
   })
 
 errno_t strstr_s (char *s1, rsize_t s1max, const char *s2, rsize_t s2max,
@@ -1378,10 +1378,10 @@ strstr_s_inline (char *s1, rsize_t s1max, const char *s2, rsize_t s2max,
   u8 bad;
   size_t s1_size, s2_size;
 
-  bad =
-    (s1 == 0) + (s2 == 0) + (substring == 0) + (s1max == 0) + (s2max == 0) +
-    (s1 && s1max && (s1[clib_strnlen (s1, s1max)] != '\0')) +
-    (s2 && s2max && (s2[clib_strnlen (s2, s2max)] != '\0'));
+  bad = (s1 == 0) + (s2 == 0) + (substring == 0) + (s1max == 0) +
+	(s2max == 0) +
+	(s1 && s1max && (s1[clib_strnlen (s1, s1max)] != '\0')) +
+	(s2 && s2max && (s2[clib_strnlen (s2, s2max)] != '\0'));
   if (PREDICT_FALSE (bad != 0))
     {
       if (s1 == 0)

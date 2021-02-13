@@ -22,13 +22,12 @@
 vnet_device_main_t vnet_device_main;
 
 static uword
-device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		 vlib_frame_t * frame)
+device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		 vlib_frame_t *frame)
 {
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (device_input_node) = {
   .function = device_input_fn,
   .name = "device-input",
@@ -42,29 +41,28 @@ VLIB_REGISTER_NODE (device_input_node) = {
 /* Table defines how much we need to advance current data pointer
    in the buffer if we shortcut to l3 nodes */
 
-const u32 __attribute__((aligned (CLIB_CACHE_LINE_BYTES)))
-device_input_next_node_advance[((VNET_DEVICE_INPUT_N_NEXT_NODES /
-				CLIB_CACHE_LINE_BYTES) +1) * CLIB_CACHE_LINE_BYTES] =
-{
-      [VNET_DEVICE_INPUT_NEXT_IP4_INPUT] = sizeof (ethernet_header_t),
-      [VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT] = sizeof (ethernet_header_t),
-      [VNET_DEVICE_INPUT_NEXT_IP6_INPUT] = sizeof (ethernet_header_t),
-      [VNET_DEVICE_INPUT_NEXT_MPLS_INPUT] = sizeof (ethernet_header_t),
-};
+const u32 __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES)))
+device_input_next_node_advance
+  [((VNET_DEVICE_INPUT_N_NEXT_NODES / CLIB_CACHE_LINE_BYTES) + 1) *
+   CLIB_CACHE_LINE_BYTES] = {
+    [VNET_DEVICE_INPUT_NEXT_IP4_INPUT] = sizeof (ethernet_header_t),
+    [VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT] = sizeof (ethernet_header_t),
+    [VNET_DEVICE_INPUT_NEXT_IP6_INPUT] = sizeof (ethernet_header_t),
+    [VNET_DEVICE_INPUT_NEXT_MPLS_INPUT] = sizeof (ethernet_header_t),
+  };
 
-const u32 __attribute__((aligned (CLIB_CACHE_LINE_BYTES)))
-device_input_next_node_flags[((VNET_DEVICE_INPUT_N_NEXT_NODES /
-				CLIB_CACHE_LINE_BYTES) +1) * CLIB_CACHE_LINE_BYTES] =
-{
-      [VNET_DEVICE_INPUT_NEXT_IP4_INPUT] = VNET_BUFFER_F_L3_HDR_OFFSET_VALID,
-      [VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT] = VNET_BUFFER_F_L3_HDR_OFFSET_VALID,
-      [VNET_DEVICE_INPUT_NEXT_IP6_INPUT] = VNET_BUFFER_F_L3_HDR_OFFSET_VALID,
-      [VNET_DEVICE_INPUT_NEXT_MPLS_INPUT] = VNET_BUFFER_F_L3_HDR_OFFSET_VALID,
-};
+const u32 __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES)))
+device_input_next_node_flags
+  [((VNET_DEVICE_INPUT_N_NEXT_NODES / CLIB_CACHE_LINE_BYTES) + 1) *
+   CLIB_CACHE_LINE_BYTES] = {
+    [VNET_DEVICE_INPUT_NEXT_IP4_INPUT] = VNET_BUFFER_F_L3_HDR_OFFSET_VALID,
+    [VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT] = VNET_BUFFER_F_L3_HDR_OFFSET_VALID,
+    [VNET_DEVICE_INPUT_NEXT_IP6_INPUT] = VNET_BUFFER_F_L3_HDR_OFFSET_VALID,
+    [VNET_DEVICE_INPUT_NEXT_MPLS_INPUT] = VNET_BUFFER_F_L3_HDR_OFFSET_VALID,
+  };
 
-VNET_FEATURE_ARC_INIT (device_input, static) =
-{
-  .arc_name  = "device-input",
+VNET_FEATURE_ARC_INIT (device_input, static) = {
+  .arc_name = "device-input",
   .start_nodes = VNET_FEATURES ("device-input"),
   .last_in_arc = "ethernet-input",
   .arc_index_ptr = &feature_main.device_input_feature_arc_index,
@@ -99,10 +97,9 @@ VNET_FEATURE_INIT (ethernet_input, static) = {
   .node_name = "ethernet-input",
   .runs_before = 0, /* not before any other features */
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-vnet_device_init (vlib_main_t * vm)
+vnet_device_init (vlib_main_t *vm)
 {
   vnet_device_main_t *vdm = &vnet_device_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();

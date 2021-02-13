@@ -41,7 +41,7 @@ typedef struct
 } sched_event_t;
 
 void
-kelog_init (elog_main_t * em, char *kernel_tracer, u32 n_events)
+kelog_init (elog_main_t *em, char *kernel_tracer, u32 n_events)
 {
   int enable_fd, current_tracer_fd, data_fd;
   int len;
@@ -129,20 +129,19 @@ kelog_init (elog_main_t * em, char *kernel_tracer, u32 n_events)
   close (enable_fd);
 }
 
-
 u8 *
-format_sched_event (u8 * s, va_list * va)
+format_sched_event (u8 *s, va_list *va)
 {
   sched_event_t *e = va_arg (*va, sched_event_t *);
 
-  s = format (s, "cpu %d task %10s type %s timestamp %12.6f\n",
-	      e->cpu, e->task, e->type ? "WAKEUP " : "RUNNING", e->timestamp);
+  s = format (s, "cpu %d task %10s type %s timestamp %12.6f\n", e->cpu,
+	      e->task, e->type ? "WAKEUP " : "RUNNING", e->timestamp);
 
   return s;
 }
 
 sched_event_t *
-parse_sched_switch_trace (u8 * tdata, u32 * index)
+parse_sched_switch_trace (u8 *tdata, u32 *index)
 {
   u8 *cp = tdata + *index;
   u8 *limit = tdata + vec_len (tdata);
@@ -298,7 +297,7 @@ again:
 }
 
 static u32
-elog_id_for_pid (elog_main_t * em, u8 * name, u32 pid)
+elog_id_for_pid (elog_main_t *em, u8 *name, u32 pid)
 {
   uword *p, r;
   mhash_t *h = &em->string_table_hash;
@@ -315,7 +314,7 @@ elog_id_for_pid (elog_main_t * em, u8 * name, u32 pid)
 }
 
 void
-kelog_collect_sched_switch_trace (elog_main_t * em)
+kelog_collect_sched_switch_trace (elog_main_t *em)
 {
   int enable_fd, data_fd;
   char *trace_enable = "/debug/tracing/tracing_enabled";
@@ -393,7 +392,7 @@ kelog_collect_sched_switch_trace (elog_main_t * em)
 	struct
 	{
 	  u32 cpu, string_table_offset, which;
-	} *ed;
+	} * ed;
 
 	ed = elog_event_data_not_inline (em, &__ELOG_TYPE_VAR (e),
 					 &em->default_track, fake_cpu_clock);

@@ -45,14 +45,14 @@
 ip6_hop_by_hop_ioam_main_t ip6_hop_by_hop_ioam_main;
 #endif /* CLIB_MARCH_VARIANT */
 
-#define foreach_ip6_hbyh_ioam_input_next	\
-  _(IP6_REWRITE, "ip6-rewrite")			\
-  _(IP6_LOOKUP, "ip6-lookup")			\
-  _(DROP, "ip6-drop")
+#define foreach_ip6_hbyh_ioam_input_next                                      \
+  _ (IP6_REWRITE, "ip6-rewrite")                                              \
+  _ (IP6_LOOKUP, "ip6-lookup")                                                \
+  _ (DROP, "ip6-drop")
 
 typedef enum
 {
-#define _(s,n) IP6_HBYH_IOAM_INPUT_NEXT_##s,
+#define _(s, n) IP6_HBYH_IOAM_INPUT_NEXT_##s,
   foreach_ip6_hbyh_ioam_input_next
 #undef _
     IP6_HBYH_IOAM_INPUT_N_NEXT,
@@ -60,7 +60,7 @@ typedef enum
 
 #ifndef CLIB_MARCH_VARIANT
 static uword
-unformat_opaque_ioam (unformat_input_t * input, va_list * args)
+unformat_opaque_ioam (unformat_input_t *input, va_list *args)
 {
   u64 *opaquep = va_arg (*args, u64 *);
   u8 *flow_name = NULL;
@@ -99,10 +99,9 @@ get_flow_name_from_flow_ctx (u32 flow_ctx)
 
 /* The main h-b-h tracer will be invoked, no need to do much here */
 int
-ip6_hbh_add_register_option (u8 option,
-			     u8 size,
-			     int rewrite_options (u8 * rewrite_string,
-						  u8 * rewrite_size))
+ip6_hbh_add_register_option (u8 option, u8 size,
+			     int rewrite_options (u8 *rewrite_string,
+						  u8 *rewrite_size))
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
 
@@ -208,12 +207,11 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_ip6_add_hop_by_hop_trace (u8 * s, va_list * args)
+format_ip6_add_hop_by_hop_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  ip6_add_hop_by_hop_trace_t *t = va_arg (*args,
-					  ip6_add_hop_by_hop_trace_t *);
+  ip6_add_hop_by_hop_trace_t *t = va_arg (*args, ip6_add_hop_by_hop_trace_t *);
 
   s = format (s, "IP6_ADD_HOP_BY_HOP: next index %d", t->next_index);
   return s;
@@ -221,26 +219,25 @@ format_ip6_add_hop_by_hop_trace (u8 * s, va_list * args)
 
 extern vlib_node_registration_t ip6_add_hop_by_hop_node;
 
-#define foreach_ip6_add_hop_by_hop_error \
-_(PROCESSED, "Pkts w/ added ip6 hop-by-hop options")
+#define foreach_ip6_add_hop_by_hop_error                                      \
+  _ (PROCESSED, "Pkts w/ added ip6 hop-by-hop options")
 
 typedef enum
 {
-#define _(sym,str) IP6_ADD_HOP_BY_HOP_ERROR_##sym,
+#define _(sym, str) IP6_ADD_HOP_BY_HOP_ERROR_##sym,
   foreach_ip6_add_hop_by_hop_error
 #undef _
     IP6_ADD_HOP_BY_HOP_N_ERROR,
 } ip6_add_hop_by_hop_error_t;
 
 static char *ip6_add_hop_by_hop_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ip6_add_hop_by_hop_error
 #undef _
 };
 
-VLIB_NODE_FN (ip6_add_hop_by_hop_node) (vlib_main_t * vm,
-					vlib_node_runtime_t * node,
-					vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_add_hop_by_hop_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
   u32 n_left_from, *from, *to_next;
@@ -332,17 +329,14 @@ VLIB_NODE_FN (ip6_add_hop_by_hop_node) (vlib_main_t * vm,
 	  hbh1->protocol = ip1->protocol;
 	  ip0->protocol = 0;
 	  ip1->protocol = 0;
-	  new_l0 =
-	    clib_net_to_host_u16 (ip0->payload_length) + rewrite_length;
-	  new_l1 =
-	    clib_net_to_host_u16 (ip1->payload_length) + rewrite_length;
+	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) + rewrite_length;
+	  new_l1 = clib_net_to_host_u16 (ip1->payload_length) + rewrite_length;
 	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
 	  ip1->payload_length = clib_host_to_net_u16 (new_l1);
 
 	  /* Populate the (first) h-b-h list elt */
 	  next0 = IP6_HBYH_IOAM_INPUT_NEXT_IP6_LOOKUP;
 	  next1 = IP6_HBYH_IOAM_INPUT_NEXT_IP6_LOOKUP;
-
 
 	  /* $$$$$ End of processing 2 x packets $$$$$ */
 
@@ -363,9 +357,9 @@ VLIB_NODE_FN (ip6_add_hop_by_hop_node) (vlib_main_t * vm,
 	    }
 	  processed += 2;
 	  /* verify speculative enqueues, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
@@ -407,15 +401,14 @@ VLIB_NODE_FN (ip6_add_hop_by_hop_node) (vlib_main_t * vm,
 	  /* Patch the protocol chain, insert the h-b-h (type 0) header */
 	  hbh0->protocol = ip0->protocol;
 	  ip0->protocol = 0;
-	  new_l0 =
-	    clib_net_to_host_u16 (ip0->payload_length) + rewrite_length;
+	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) + rewrite_length;
 	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
 
 	  /* Populate the (first) h-b-h list elt */
 	  next0 = IP6_HBYH_IOAM_INPUT_NEXT_IP6_LOOKUP;
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      ip6_add_hop_by_hop_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -425,9 +418,8 @@ VLIB_NODE_FN (ip6_add_hop_by_hop_node) (vlib_main_t * vm,
 	  processed++;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -450,7 +442,7 @@ VLIB_REGISTER_NODE (ip6_add_hop_by_hop_node) =	/* *INDENT-OFF* */
   /* See ip/lookup.h */
   .n_next_nodes = IP6_HBYH_IOAM_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [IP6_HBYH_IOAM_INPUT_NEXT_##s] = n,
+#define _(s, n) [IP6_HBYH_IOAM_INPUT_NEXT_##s] = n,
     foreach_ip6_hbyh_ioam_input_next
 #undef _
   },
@@ -465,12 +457,11 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_ip6_pop_hop_by_hop_trace (u8 * s, va_list * args)
+format_ip6_pop_hop_by_hop_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  ip6_pop_hop_by_hop_trace_t *t =
-    va_arg (*args, ip6_pop_hop_by_hop_trace_t *);
+  ip6_pop_hop_by_hop_trace_t *t = va_arg (*args, ip6_pop_hop_by_hop_trace_t *);
 
   s = format (s, "IP6_POP_HOP_BY_HOP: next index %d", t->next_index);
   return s;
@@ -479,9 +470,8 @@ format_ip6_pop_hop_by_hop_trace (u8 * s, va_list * args)
 #ifndef CLIB_MARCH_VARIANT
 int
 ip6_hbh_pop_register_option (u8 option,
-			     int options (vlib_buffer_t * b,
-					  ip6_header_t * ip,
-					  ip6_hop_by_hop_option_t * opt))
+			     int options (vlib_buffer_t *b, ip6_header_t *ip,
+					  ip6_hop_by_hop_option_t *opt))
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
 
@@ -514,30 +504,29 @@ ip6_hbh_pop_unregister_option (u8 option)
 
 extern vlib_node_registration_t ip6_pop_hop_by_hop_node;
 
-#define foreach_ip6_pop_hop_by_hop_error                \
-_(PROCESSED, "Pkts w/ removed ip6 hop-by-hop options")  \
-_(NO_HOHO, "Pkts w/ no ip6 hop-by-hop options")         \
-_(OPTION_FAILED, "ip6 pop hop-by-hop failed to process")
+#define foreach_ip6_pop_hop_by_hop_error                                      \
+  _ (PROCESSED, "Pkts w/ removed ip6 hop-by-hop options")                     \
+  _ (NO_HOHO, "Pkts w/ no ip6 hop-by-hop options")                            \
+  _ (OPTION_FAILED, "ip6 pop hop-by-hop failed to process")
 
 typedef enum
 {
-#define _(sym,str) IP6_POP_HOP_BY_HOP_ERROR_##sym,
+#define _(sym, str) IP6_POP_HOP_BY_HOP_ERROR_##sym,
   foreach_ip6_pop_hop_by_hop_error
 #undef _
     IP6_POP_HOP_BY_HOP_N_ERROR,
 } ip6_pop_hop_by_hop_error_t;
 
 static char *ip6_pop_hop_by_hop_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ip6_pop_hop_by_hop_error
 #undef _
 };
 
 static inline void
-ioam_pop_hop_by_hop_processing (vlib_main_t * vm,
-				ip6_header_t * ip0,
-				ip6_hop_by_hop_header_t * hbh0,
-				vlib_buffer_t * b)
+ioam_pop_hop_by_hop_processing (vlib_main_t *vm, ip6_header_t *ip0,
+				ip6_hop_by_hop_header_t *hbh0,
+				vlib_buffer_t *b)
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
   ip6_hop_by_hop_option_t *opt0, *limit0;
@@ -547,8 +536,8 @@ ioam_pop_hop_by_hop_processing (vlib_main_t * vm,
     return;
 
   opt0 = (ip6_hop_by_hop_option_t *) (hbh0 + 1);
-  limit0 = (ip6_hop_by_hop_option_t *)
-    ((u8 *) hbh0 + ((hbh0->length + 1) << 3));
+  limit0 =
+    (ip6_hop_by_hop_option_t *) ((u8 *) hbh0 + ((hbh0->length + 1) << 3));
 
   /* Scan the set of h-b-h options, process ones that we understand */
   while (opt0 < limit0)
@@ -556,32 +545,29 @@ ioam_pop_hop_by_hop_processing (vlib_main_t * vm,
       type0 = opt0->type;
       switch (type0)
 	{
-	case 0:		/* Pad1 */
+	case 0: /* Pad1 */
 	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0) + 1;
 	  continue;
-	case 1:		/* PadN */
+	case 1: /* PadN */
 	  break;
 	default:
 	  if (hm->pop_options[type0])
 	    {
 	      if ((*hm->pop_options[type0]) (b, ip0, opt0) < 0)
 		{
-		  vlib_node_increment_counter (vm,
-					       ip6_pop_hop_by_hop_node.index,
-					       IP6_POP_HOP_BY_HOP_ERROR_OPTION_FAILED,
-					       1);
+		  vlib_node_increment_counter (
+		    vm, ip6_pop_hop_by_hop_node.index,
+		    IP6_POP_HOP_BY_HOP_ERROR_OPTION_FAILED, 1);
 		}
 	    }
 	}
-      opt0 =
-	(ip6_hop_by_hop_option_t *) (((u8 *) opt0) + opt0->length +
-				     sizeof (ip6_hop_by_hop_option_t));
+      opt0 = (ip6_hop_by_hop_option_t *) (((u8 *) opt0) + opt0->length +
+					  sizeof (ip6_hop_by_hop_option_t));
     }
 }
 
-VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
-					vlib_node_runtime_t * node,
-					vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_pop_hop_by_hop_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   ip_lookup_next_t next_index;
@@ -656,9 +642,9 @@ VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
 	  vlib_buffer_advance (b1, (hbh1->length + 1) << 3);
 
 	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) -
-	    ((hbh0->length + 1) << 3);
+		   ((hbh0->length + 1) << 3);
 	  new_l1 = clib_net_to_host_u16 (ip1->payload_length) -
-	    ((hbh1->length + 1) << 3);
+		   ((hbh1->length + 1) << 3);
 
 	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
 	  ip1->payload_length = clib_host_to_net_u16 (new_l1);
@@ -700,9 +686,9 @@ VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueues, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -737,12 +723,13 @@ VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
 	  /* Perfectly normal to end up here w/ out h-b-h header */
 	  hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
 
-	  /* TODO:Temporarily doing it here.. do this validation in end_of_path_cb */
+	  /* TODO:Temporarily doing it here.. do this validation in
+	   * end_of_path_cb */
 	  ioam_pop_hop_by_hop_processing (vm, ip0, hbh0, b0);
 	  /* Pop the trace data */
 	  vlib_buffer_advance (b0, (hbh0->length + 1) << 3);
 	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) -
-	    ((hbh0->length + 1) << 3);
+		   ((hbh0->length + 1) << 3);
 	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
 	  ip0->protocol = hbh0->protocol;
 	  copy_src0 = (u64 *) ip0;
@@ -754,8 +741,8 @@ VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
 	  copy_dst0[0] = copy_src0[0];
 	  processed++;
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      ip6_pop_hop_by_hop_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -763,9 +750,8 @@ VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -779,8 +765,7 @@ VLIB_NODE_FN (ip6_pop_hop_by_hop_node) (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_pop_hop_by_hop_node) =
-{
+VLIB_REGISTER_NODE (ip6_pop_hop_by_hop_node) = {
   .name = "ip6-pop-hop-by-hop",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_pop_hop_by_hop_trace,
@@ -803,7 +788,7 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_ip6_local_hop_by_hop_trace (u8 * s, va_list * args)
+format_ip6_local_hop_by_hop_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -819,13 +804,13 @@ vlib_node_registration_t ip6_local_hop_by_hop_node;
 
 #endif /* CLIB_MARCH_VARIANT */
 
-#define foreach_ip6_local_hop_by_hop_error                      \
-_(UNKNOWN, "Unknown protocol ip6 local h-b-h packets dropped")  \
-_(OK, "Good ip6 local h-b-h packets")
+#define foreach_ip6_local_hop_by_hop_error                                    \
+  _ (UNKNOWN, "Unknown protocol ip6 local h-b-h packets dropped")             \
+  _ (OK, "Good ip6 local h-b-h packets")
 
 typedef enum
 {
-#define _(sym,str) IP6_LOCAL_HOP_BY_HOP_ERROR_##sym,
+#define _(sym, str) IP6_LOCAL_HOP_BY_HOP_ERROR_##sym,
   foreach_ip6_local_hop_by_hop_error
 #undef _
     IP6_LOCAL_HOP_BY_HOP_N_ERROR,
@@ -833,7 +818,7 @@ typedef enum
 
 #ifndef CLIB_MARCH_VARIANT
 static char *ip6_local_hop_by_hop_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ip6_local_hop_by_hop_error
 #undef _
 };
@@ -846,9 +831,8 @@ typedef enum
 } ip6_local_hop_by_hop_next_t;
 
 always_inline uword
-ip6_local_hop_by_hop_inline (vlib_main_t * vm,
-			     vlib_node_runtime_t * node, vlib_frame_t * frame,
-			     int is_trace)
+ip6_local_hop_by_hop_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			     vlib_frame_t *frame, int is_trace)
 {
   u32 n_left_from, *from;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
@@ -995,14 +979,13 @@ ip6_local_hop_by_hop_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (ip6_local_hop_by_hop_node) (vlib_main_t * vm,
-					  vlib_node_runtime_t * node,
-					  vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_local_hop_by_hop_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-    return ip6_local_hop_by_hop_inline (vm, node, frame, 1 /* is_trace */ );
+    return ip6_local_hop_by_hop_inline (vm, node, frame, 1 /* is_trace */);
   else
-    return ip6_local_hop_by_hop_inline (vm, node, frame, 0 /* is_trace */ );
+    return ip6_local_hop_by_hop_inline (vm, node, frame, 0 /* is_trace */);
 }
 
 #ifndef CLIB_MARCH_VARIANT
@@ -1028,8 +1011,8 @@ VLIB_REGISTER_NODE (ip6_local_hop_by_hop_node) =
 /* *INDENT-ON* */
 
 clib_error_t *
-show_ip6_hbh_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+show_ip6_hbh_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   int i;
   u32 next_index;
@@ -1067,13 +1050,11 @@ VLIB_CLI_COMMAND (show_ip6_hbh, static) = {
 };
 /* *INDENT-ON* */
 
-
 #endif /* CLIB_MARCH_VARIANT */
-
 
 #ifndef CLIB_MARCH_VARIANT
 static clib_error_t *
-ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
+ip6_hop_by_hop_ioam_init (vlib_main_t *vm)
 {
   clib_error_t *error;
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
@@ -1086,7 +1067,7 @@ ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
 
   hm->vlib_main = vm;
   hm->vnet_main = vnet_get_main ();
-  hm->unix_time_0 = (u32) time (0);	/* Store starting time */
+  hm->unix_time_0 = (u32) time (0); /* Store starting time */
   hm->vlib_time_0 = vlib_time_now (vm);
   hm->ioam_flag = IOAM_HBYH_MOD;
   clib_memset (hm->add_options, 0, sizeof (hm->add_options));
@@ -1094,8 +1075,8 @@ ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
   clib_memset (hm->options_size, 0, sizeof (hm->options_size));
 
   vnet_classify_register_unformat_opaque_index_fn (unformat_opaque_ioam);
-  hm->ip6_local_hbh_runtime = clib_mem_alloc_aligned
-    (sizeof (ip6_local_hop_by_hop_runtime_t), CLIB_CACHE_LINE_BYTES);
+  hm->ip6_local_hbh_runtime = clib_mem_alloc_aligned (
+    sizeof (ip6_local_hop_by_hop_runtime_t), CLIB_CACHE_LINE_BYTES);
 
   memset (hm->ip6_local_hbh_runtime, 0,
 	  sizeof (ip6_local_hop_by_hop_runtime_t));
@@ -1106,9 +1087,8 @@ ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
 }
 
 /* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (ip6_hop_by_hop_ioam_init) =
-{
-  .runs_after = VLIB_INITS("ip_main_init", "ip6_lookup_init"),
+VLIB_INIT_FUNCTION (ip6_hop_by_hop_ioam_init) = {
+  .runs_after = VLIB_INITS ("ip_main_init", "ip6_lookup_init"),
 };
 /* *INDENT-ON* */
 
@@ -1117,8 +1097,8 @@ ip6_local_hop_by_hop_register_protocol (u32 protocol, u32 node_index)
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
   vlib_main_t *vm = hm->vlib_main;
-  ip6_local_hop_by_hop_runtime_t *local_hbh_runtime
-    = hm->ip6_local_hbh_runtime;
+  ip6_local_hop_by_hop_runtime_t *local_hbh_runtime =
+    hm->ip6_local_hbh_runtime;
   u32 old_next_index;
 
   ASSERT (protocol < ARRAY_LEN (local_hbh_runtime->next_index_by_protocol));
@@ -1135,8 +1115,8 @@ ip6_local_hop_by_hop_register_protocol (u32 protocol, u32 node_index)
 }
 
 int
-ip6_ioam_set_rewrite (u8 ** rwp, int has_trace_option,
-		      int has_pot_option, int has_seqno_option)
+ip6_ioam_set_rewrite (u8 **rwp, int has_trace_option, int has_pot_option,
+		      int has_seqno_option)
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
   u8 *rewrite = NULL;
@@ -1154,14 +1134,15 @@ ip6_ioam_set_rewrite (u8 ** rwp, int has_trace_option,
   /* Work out how much space we need */
   size = sizeof (ip6_hop_by_hop_header_t);
 
-  //if (has_trace_option && hm->get_sizeof_options[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] != 0)
-  if (has_trace_option
-      && hm->options_size[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] != 0)
+  // if (has_trace_option &&
+  // hm->get_sizeof_options[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] != 0)
+  if (has_trace_option &&
+      hm->options_size[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] != 0)
     {
       size += hm->options_size[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST];
     }
-  if (has_pot_option
-      && hm->add_options[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT] != 0)
+  if (has_pot_option &&
+      hm->add_options[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT] != 0)
     {
       size += hm->options_size[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT];
     }
@@ -1182,37 +1163,33 @@ ip6_ioam_set_rewrite (u8 ** rwp, int has_trace_option,
   hbh->length = (rnd_size >> 3) - 1;
   current = (u8 *) (hbh + 1);
 
-  if (has_trace_option
-      && hm->add_options[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] != 0)
+  if (has_trace_option &&
+      hm->add_options[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] != 0)
     {
       if (0 != (hm->options_size[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST]))
 	{
 	  trace_data_size =
 	    &hm->options_size[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST];
-	  if (0 ==
-	      hm->add_options[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] (current,
-								     trace_data_size))
+	  if (0 == hm->add_options[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST](
+		     current, trace_data_size))
 	    current += *trace_data_size;
 	}
     }
-  if (has_pot_option
-      && hm->add_options[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT] != 0)
+  if (has_pot_option &&
+      hm->add_options[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT] != 0)
     {
-      pot_data_size =
-	&hm->options_size[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT];
-      if (0 ==
-	  hm->add_options[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT] (current,
-								  pot_data_size))
+      pot_data_size = &hm->options_size[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT];
+      if (0 == hm->add_options[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT](
+		 current, pot_data_size))
 	current += *pot_data_size;
     }
 
   if (has_seqno_option &&
       (hm->add_options[HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE] != 0))
     {
-      if (0 == hm->add_options[HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE] (current,
-								   &
-								   (hm->options_size
-								    [HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE])))
+      if (0 ==
+	  hm->add_options[HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE](
+	    current, &(hm->options_size[HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE])))
 	current += hm->options_size[HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE];
     }
 
@@ -1232,25 +1209,23 @@ clear_ioam_rewrite_fn (void)
   hm->has_seqno_option = 0;
   hm->has_analyse_option = 0;
   if (hm->config_handler[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST])
-    hm->config_handler[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] (NULL, 1);
+    hm->config_handler[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST](NULL, 1);
 
   if (hm->config_handler[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT])
-    hm->config_handler[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT] (NULL, 1);
+    hm->config_handler[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT](NULL, 1);
 
   if (hm->config_handler[HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE])
     {
-      hm->config_handler[HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE] ((void *)
-							     &hm->has_analyse_option,
-							     1);
+      hm->config_handler[HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE](
+	(void *) &hm->has_analyse_option, 1);
     }
 
   return 0;
 }
 
 clib_error_t *
-clear_ioam_rewrite_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+clear_ioam_rewrite_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   return (clear_ioam_rewrite_fn ());
 }
@@ -1278,8 +1253,8 @@ ip6_ioam_enable (int has_trace_option, int has_pot_option,
 {
   int rv;
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
-  rv = ip6_ioam_set_rewrite (&hm->rewrite, has_trace_option,
-			     has_pot_option, has_seqno_option);
+  rv = ip6_ioam_set_rewrite (&hm->rewrite, has_trace_option, has_pot_option,
+			     has_seqno_option);
 
   switch (rv)
     {
@@ -1288,16 +1263,14 @@ ip6_ioam_enable (int has_trace_option, int has_pot_option,
 	{
 	  hm->has_trace_option = has_trace_option;
 	  if (hm->config_handler[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST])
-	    hm->config_handler[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST] (NULL,
-								      0);
+	    hm->config_handler[HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST](NULL, 0);
 	}
 
       if (has_pot_option)
 	{
 	  hm->has_pot_option = has_pot_option;
 	  if (hm->config_handler[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT])
-	    hm->config_handler[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT] (NULL,
-								       0);
+	    hm->config_handler[HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT](NULL, 0);
 	}
       hm->has_analyse_option = has_analyse_option;
       if (has_seqno_option)
@@ -1305,9 +1278,8 @@ ip6_ioam_enable (int has_trace_option, int has_pot_option,
 	  hm->has_seqno_option = has_seqno_option;
 	  if (hm->config_handler[HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE])
 	    {
-	      hm->config_handler[HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE] ((void *)
-								     &has_analyse_option,
-								     0);
+	      hm->config_handler[HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE](
+		(void *) &has_analyse_option, 0);
 	    }
 	}
       break;
@@ -1320,11 +1292,9 @@ ip6_ioam_enable (int has_trace_option, int has_pot_option,
   return 0;
 }
 
-
 static clib_error_t *
-ip6_set_ioam_rewrite_command_fn (vlib_main_t * vm,
-				 unformat_input_t * input,
-				 vlib_cli_command_t * cmd)
+ip6_set_ioam_rewrite_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				 vlib_cli_command_t *cmd)
 {
   int has_trace_option = 0;
   int has_pot_option = 0;
@@ -1346,16 +1316,16 @@ ip6_set_ioam_rewrite_command_fn (vlib_main_t * vm,
 	break;
     }
 
-
-  rv = ip6_ioam_enable (has_trace_option, has_pot_option,
-			has_seqno_option, has_analyse_option);
+  rv = ip6_ioam_enable (has_trace_option, has_pot_option, has_seqno_option,
+			has_analyse_option);
 
   return rv;
 }
 
 /*?
  * This command is used to enable In-band OAM (iOAM) features on IPv6.
- * '<em>trace</em>' is used to enable iOAM trace feature. '<em>pot</em>' is used to
+ * '<em>trace</em>' is used to enable iOAM trace feature. '<em>pot</em>' is
+used to
  * enable the Proof Of Transit feature. '<em>ppc</em>' is used to indicate the
  * Per Packet Counter feature for Edge to Edge processing. '<em>ppc</em>' is
  * used to indicate if this node is an '<em>encap</em>' node (iOAM edge node
@@ -1380,48 +1350,41 @@ VLIB_CLI_COMMAND (ip6_set_ioam_rewrite_cmd, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
-ip6_show_ioam_summary_cmd_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+ip6_show_ioam_summary_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
   u8 *s = 0;
-
 
   if (!is_zero_ip6_address (&hm->adj))
     {
       s = format (s, "              REWRITE FLOW CONFIGS - \n");
       s = format (s, "               Destination Address : %U\n",
 		  format_ip6_address, &hm->adj, sizeof (ip6_address_t));
-      s =
-	format (s, "                    Flow operation : %d (%s)\n",
-		hm->ioam_flag,
-		(hm->ioam_flag ==
-		 IOAM_HBYH_ADD) ? "Add" : ((hm->ioam_flag ==
-					    IOAM_HBYH_MOD) ? "Mod" : "Pop"));
+      s = format (s, "                    Flow operation : %d (%s)\n",
+		  hm->ioam_flag,
+		  (hm->ioam_flag == IOAM_HBYH_ADD) ?
+		    "Add" :
+		    ((hm->ioam_flag == IOAM_HBYH_MOD) ? "Mod" : "Pop"));
     }
   else
     {
       s = format (s, "              REWRITE FLOW CONFIGS - Not configured\n");
     }
 
-
   s = format (s, "                        TRACE OPTION - %d (%s)\n",
 	      hm->has_trace_option,
 	      (hm->has_trace_option ? "Enabled" : "Disabled"));
   if (hm->has_trace_option)
-    s =
-      format (s,
-	      "Try 'show ioam trace and show ioam-trace profile' for more information\n");
+    s = format (s, "Try 'show ioam trace and show ioam-trace profile' for "
+		   "more information\n");
 
-
-  s = format (s, "                        POT OPTION - %d (%s)\n",
-	      hm->has_pot_option,
-	      (hm->has_pot_option ? "Enabled" : "Disabled"));
+  s =
+    format (s, "                        POT OPTION - %d (%s)\n",
+	    hm->has_pot_option, (hm->has_pot_option ? "Enabled" : "Disabled"));
   if (hm->has_pot_option)
-    s =
-      format (s,
-	      "Try 'show ioam pot and show pot profile' for more information\n");
+    s = format (
+      s, "Try 'show ioam pot and show pot profile' for more information\n");
 
   s = format (s, "         EDGE TO EDGE - SeqNo OPTION - %d (%s)\n",
 	      hm->has_seqno_option,
@@ -1463,19 +1426,4 @@ VLIB_CLI_COMMAND (ip6_show_ioam_run_cmd, static) = {
 };
 /* *INDENT-ON* */
 
-void
-vnet_register_ioam_end_of_path_callback (void *cb)
-{
-  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
-
-  hm->ioam_end_of_path_cb = cb;
-}
-
-#endif /* CLIB_MARCH_VARIANT */
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+v

@@ -30,40 +30,35 @@
  * The files contains the API and CLI code for managing IPv6 RAs
  */
 
-/* *INDENT-OFF* */
 /* Router solicitation packet format for ethernet. */
-typedef CLIB_PACKED (struct
-{
-    ip6_header_t ip;
-    icmp6_neighbor_discovery_header_t neighbor;
-    icmp6_neighbor_discovery_ethernet_link_layer_address_option_t
+typedef CLIB_PACKED (struct {
+  ip6_header_t ip;
+  icmp6_neighbor_discovery_header_t neighbor;
+  icmp6_neighbor_discovery_ethernet_link_layer_address_option_t
     link_layer_option;
 }) icmp6_router_solicitation_header_t;
 
 /* router advertisement packet format for ethernet. */
-typedef CLIB_PACKED (struct
-{
+typedef CLIB_PACKED (struct {
   ip6_header_t ip;
   icmp6_router_advertisement_header_t router;
   icmp6_neighbor_discovery_ethernet_link_layer_address_option_t
-  link_layer_option;
+    link_layer_option;
   icmp6_neighbor_discovery_mtu_option_t mtu_option;
-  icmp6_neighbor_discovery_prefix_information_option_t
-  prefix[0];
+  icmp6_neighbor_discovery_prefix_information_option_t prefix[0];
 }) icmp6_router_advertisement_packet_t;
-/* *INDENT-ON* */
 
 #define DEF_MAX_RADV_INTERVAL 200
 #define DEF_MIN_RADV_INTERVAL .75 * DEF_MAX_RADV_INTERVAL
-#define DEF_CURR_HOP_LIMIT  64
-#define DEF_DEF_RTR_LIFETIME   3 * DEF_MAX_RADV_INTERVAL
-#define MAX_DEF_RTR_LIFETIME   9000
+#define DEF_CURR_HOP_LIMIT    64
+#define DEF_DEF_RTR_LIFETIME  3 * DEF_MAX_RADV_INTERVAL
+#define MAX_DEF_RTR_LIFETIME  9000
 
-#define MAX_INITIAL_RTR_ADVERT_INTERVAL   16	/* seconds */
-#define MAX_INITIAL_RTR_ADVERTISEMENTS        3	/*transmissions */
-#define MIN_DELAY_BETWEEN_RAS                              3	/* seconds */
-#define MAX_DELAY_BETWEEN_RAS                    1800	/* seconds */
-#define MAX_RA_DELAY_TIME                                          .5	/* seconds */
+#define MAX_INITIAL_RTR_ADVERT_INTERVAL 16   /* seconds */
+#define MAX_INITIAL_RTR_ADVERTISEMENTS	3    /*transmissions */
+#define MIN_DELAY_BETWEEN_RAS		3    /* seconds */
+#define MAX_DELAY_BETWEEN_RAS		1800 /* seconds */
+#define MAX_RA_DELAY_TIME		.5   /* seconds */
 
 /* advertised prefix option */
 typedef struct
@@ -85,9 +80,9 @@ typedef struct
   int deprecated_prefix_flag;
   int decrement_lifetime_flag;
 
-#define MIN_ADV_VALID_LIFETIME 7203	/* seconds */
-#define DEF_ADV_VALID_LIFETIME  2592000
-#define DEF_ADV_PREF_LIFETIME 604800
+#define MIN_ADV_VALID_LIFETIME 7203 /* seconds */
+#define DEF_ADV_VALID_LIFETIME 2592000
+#define DEF_ADV_PREF_LIFETIME  604800
 
   /* extensions are added here, mobile, DNS etc.. */
 } ip6_radv_prefix_t;
@@ -107,8 +102,8 @@ typedef struct ip6_ra_t_
 
   /* local information */
   u32 sw_if_index;
-  int send_radv;		/* radv on/off on this interface -  set by config */
-  int cease_radv;		/* we are ceasing  to send  - set byf config */
+  int send_radv;  /* radv on/off on this interface -  set by config */
+  int cease_radv; /* we are ceasing  to send  - set byf config */
   int send_unicast;
   int adv_link_layer_address;
   int prefix_option;
@@ -118,7 +113,8 @@ typedef struct ip6_ra_t_
   /* prefix option */
   ip6_radv_prefix_t *adv_prefixes_pool;
 
-  /* Hash table mapping address to index in interface advertised  prefix pool. */
+  /* Hash table mapping address to index in interface advertised  prefix pool.
+   */
   mhash_t address_to_prefix_index;
 
   f64 max_radv_interval;
@@ -131,7 +127,6 @@ typedef struct ip6_ra_t_
   f64 last_multicast_time;
   f64 next_multicast_time;
 
-
   u32 initial_adverts_count;
   f64 initial_adverts_interval;
   u32 initial_adverts_sent;
@@ -142,7 +137,7 @@ typedef struct ip6_ra_t_
   u32 n_solicitations_dropped;
 
   /* router solicitations sending state */
-  u8 keep_sending_rs;		/* when true then next fields are valid */
+  u8 keep_sending_rs; /* when true then next fields are valid */
   icmp6_send_router_solicitation_params_t params;
   f64 sleep_interval;
   f64 due_time;
@@ -157,21 +152,20 @@ typedef struct ip6_ra_t_
 static ip6_link_delegate_id_t ip6_ra_delegate_id;
 static ip6_ra_t *ip6_ra_pool;
 
-
 /* vector of registered RA report listeners */
 static ip6_ra_report_notify_t *ip6_ra_listeners;
 
-static int ip6_ra_publish (ip6_ra_report_t * r);
+static int ip6_ra_publish (ip6_ra_report_t *r);
 
 void
 ip6_ra_report_register (ip6_ra_report_notify_t fn)
 {
   ip6_ra_report_notify_t *listener;
   vec_foreach (listener, ip6_ra_listeners)
-  {
-    if (*listener == fn)
-      return;
-  }
+    {
+      if (*listener == fn)
+	return;
+    }
 
   vec_add1 (ip6_ra_listeners, fn);
 }
@@ -182,13 +176,13 @@ ip6_ra_report_unregister (ip6_ra_report_notify_t fn)
   u32 ii;
 
   vec_foreach_index (ii, ip6_ra_listeners)
-  {
-    if (ip6_ra_listeners[ii] == fn)
-      {
-	vec_del1 (ip6_ra_listeners, ii);
-	break;
-      }
-  }
+    {
+      if (ip6_ra_listeners[ii] == fn)
+	{
+	  vec_del1 (ip6_ra_listeners, ii);
+	  break;
+	}
+    }
 }
 
 static inline ip6_ra_t *
@@ -205,25 +199,25 @@ ip6_ra_get_itf (u32 sw_if_index)
 }
 
 /* for "syslogging" - use elog for now */
-#define foreach_log_level	     \
-  _ (DEBUG, "DEBUG")                 \
-  _ (INFO, "INFORMATION")	     \
-  _ (NOTICE, "NOTICE")		     \
-  _ (WARNING, "WARNING")             \
-  _ (ERR, "ERROR")	             \
-  _ (CRIT, "CRITICAL")               \
-  _ (ALERT, "ALERT")                 \
-  _ (EMERG,  "EMERGENCY")
+#define foreach_log_level                                                     \
+  _ (DEBUG, "DEBUG")                                                          \
+  _ (INFO, "INFORMATION")                                                     \
+  _ (NOTICE, "NOTICE")                                                        \
+  _ (WARNING, "WARNING")                                                      \
+  _ (ERR, "ERROR")                                                            \
+  _ (CRIT, "CRITICAL")                                                        \
+  _ (ALERT, "ALERT")                                                          \
+  _ (EMERG, "EMERGENCY")
 
 typedef enum
 {
-#define _(f,s) LOG_##f,
+#define _(f, s) LOG_##f,
   foreach_log_level
 #undef _
 } log_level_t;
 
 static char *log_level_strings[] = {
-#define _(f,s) s,
+#define _(f, s) s,
   foreach_log_level
 #undef _
 };
@@ -231,7 +225,7 @@ static char *log_level_strings[] = {
 static int logmask = 1 << LOG_DEBUG;
 
 static void
-ip6_neighbor_syslog (vlib_main_t * vm, int priority, char *fmt, ...)
+ip6_neighbor_syslog (vlib_main_t *vm, int priority, char *fmt, ...)
 {
   /* just use elog for now */
   u8 *what;
@@ -245,13 +239,14 @@ ip6_neighbor_syslog (vlib_main_t * vm, int priority, char *fmt, ...)
     {
       what = va_format (0, fmt, &va);
 
-      ELOG_TYPE_DECLARE (e) =
-      {
-      .format = "ip6 nd:  (%s): %s",.format_args = "T4T4",};
+      ELOG_TYPE_DECLARE (e) = {
+	.format = "ip6 nd:  (%s): %s",
+	.format_args = "T4T4",
+      };
       struct
       {
 	u32 s[2];
-      } *ed;
+      } * ed;
       ed = ELOG_DATA (&vm->elog_main, e);
       ed->s[0] = elog_string (&vm->elog_main, log_level_strings[priority]);
       ed->s[1] = elog_string (&vm->elog_main, (char *) what);
@@ -270,8 +265,8 @@ typedef enum
 } icmp6_router_solicitation_or_advertisement_next_t;
 
 static_always_inline uword
-icmp6_router_solicitation (vlib_main_t * vm,
-			   vlib_node_runtime_t * node, vlib_frame_t * frame)
+icmp6_router_solicitation (vlib_main_t *vm, vlib_node_runtime_t *node,
+			   vlib_frame_t *frame)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip6_main_t *im = &ip6_main;
@@ -338,7 +333,8 @@ icmp6_router_solicitation (vlib_main_t * vm,
 	  if (ip6_address_is_unspecified (&ip0->dst_address))
 	    is_solicitation = 0;
 
-	  /* Check that source address is unspecified, link-local or else on-link. */
+	  /* Check that source address is unspecified, link-local or else
+	   * on-link. */
 	  if (!is_unspecified && !is_link_local)
 	    {
 	      u32 src_adj_index0 = ip6_src_lookup_for_packet (im, p0, ip0);
@@ -347,10 +343,10 @@ icmp6_router_solicitation (vlib_main_t * vm,
 		{
 		  ip_adjacency_t *adj0 = adj_get (src_adj_index0);
 
-		  error0 = (adj0->rewrite_header.sw_if_index != sw_if_index0
-			    ?
-			    ICMP6_ERROR_ROUTER_SOLICITATION_SOURCE_NOT_ON_LINK
-			    : error0);
+		  error0 =
+		    (adj0->rewrite_header.sw_if_index != sw_if_index0 ?
+		       ICMP6_ERROR_ROUTER_SOLICITATION_SOURCE_NOT_ON_LINK :
+		       error0);
 		}
 	      else
 		{
@@ -360,15 +356,16 @@ icmp6_router_solicitation (vlib_main_t * vm,
 
 	  /* check for source LL option and process */
 	  o0 = (void *) (h0 + 1);
-	  o0 = ((options_len0 == 8
-		 && o0->header.type == option_type
-		 && o0->header.n_data_u64s == 1) ? o0 : 0);
+	  o0 = ((options_len0 == 8 && o0->header.type == option_type &&
+		 o0->header.n_data_u64s == 1) ?
+		  o0 :
+		  0);
 
 	  /* if src address unspecified IGNORE any options */
 	  if (PREDICT_TRUE (error0 == ICMP6_ERROR_NONE && o0 != 0 &&
 			    !is_unspecified && !is_link_local))
 	    {
-              /* *INDENT-OFF* */
+
 	      ip_neighbor_learn_t learn = {
 		.sw_if_index = sw_if_index0,
 		.ip = {
@@ -376,7 +373,7 @@ icmp6_router_solicitation (vlib_main_t * vm,
                   .version = AF_IP6,
                 },
 	      };
-              /* *INDENT-ON* */
+
 	      memcpy (&learn.mac, o0->ethernet_address, sizeof (learn.mac));
 	      ip_neighbor_learn_dp (&learn);
 	    }
@@ -396,13 +393,14 @@ icmp6_router_solicitation (vlib_main_t * vm,
 		ethernet_get_interface (&ethernet_main, sw_if0->hw_if_index);
 
 	      /* only support ethernet interface type for now */
-	      error0 =
-		(!eth_if0) ? ICMP6_ERROR_ROUTER_SOLICITATION_UNSUPPORTED_INTF
-		: error0;
+	      error0 = (!eth_if0) ?
+			 ICMP6_ERROR_ROUTER_SOLICITATION_UNSUPPORTED_INTF :
+			 error0;
 
 	      if (error0 == ICMP6_ERROR_NONE)
 		{
-		  /* adjust the sizeof the buffer to just include the ipv6 header */
+		  /* adjust the sizeof the buffer to just include the ipv6
+		   * header */
 		  p0->current_length -=
 		    (options_len0 +
 		     sizeof (icmp6_neighbor_discovery_header_t));
@@ -410,8 +408,8 @@ icmp6_router_solicitation (vlib_main_t * vm,
 		  radv_info = ip6_ra_get_itf (sw_if_index0);
 
 		  error0 = ((!radv_info) ?
-			    ICMP6_ERROR_ROUTER_SOLICITATION_RADV_NOT_CONFIG :
-			    error0);
+			      ICMP6_ERROR_ROUTER_SOLICITATION_RADV_NOT_CONFIG :
+			      error0);
 
 		  if (error0 == ICMP6_ERROR_NONE)
 		    {
@@ -422,7 +420,7 @@ icmp6_router_solicitation (vlib_main_t * vm,
 			{
 			  if (0 != radv_info->last_radv_time &&
 			      (now - radv_info->last_radv_time) <
-			      MIN_DELAY_BETWEEN_RAS)
+				MIN_DELAY_BETWEEN_RAS)
 			    is_dropped = 1;
 			  else
 			    radv_info->last_radv_time = now;
@@ -436,34 +434,31 @@ icmp6_router_solicitation (vlib_main_t * vm,
 		      rh.icmp.checksum = 0;
 
 		      rh.current_hop_limit = radv_info->curr_hop_limit;
-		      rh.router_lifetime_in_sec =
-			clib_host_to_net_u16
-			(radv_info->adv_router_lifetime_in_sec);
-		      rh.
-			time_in_msec_between_retransmitted_neighbor_solicitations
-			=
-			clib_host_to_net_u32 (radv_info->
-					      adv_time_in_msec_between_retransmitted_neighbor_solicitations);
+		      rh.router_lifetime_in_sec = clib_host_to_net_u16 (
+			radv_info->adv_router_lifetime_in_sec);
+		      rh.time_in_msec_between_retransmitted_neighbor_solicitations =
+			clib_host_to_net_u32 (
+			  radv_info
+			    ->adv_time_in_msec_between_retransmitted_neighbor_solicitations);
 		      rh.neighbor_reachable_time_in_msec =
-			clib_host_to_net_u32 (radv_info->
-					      adv_neighbor_reachable_time_in_msec);
+			clib_host_to_net_u32 (
+			  radv_info->adv_neighbor_reachable_time_in_msec);
 
 		      rh.flags =
 			(radv_info->adv_managed_flag) ?
-			ICMP6_ROUTER_DISCOVERY_FLAG_ADDRESS_CONFIG_VIA_DHCP :
-			0;
+			  ICMP6_ROUTER_DISCOVERY_FLAG_ADDRESS_CONFIG_VIA_DHCP :
+			  0;
 		      rh.flags |=
 			((radv_info->adv_other_flag) ?
-			 ICMP6_ROUTER_DISCOVERY_FLAG_OTHER_CONFIG_VIA_DHCP :
-			 0);
-
+			   ICMP6_ROUTER_DISCOVERY_FLAG_OTHER_CONFIG_VIA_DHCP :
+			   0);
 
 		      u16 payload_length =
 			sizeof (icmp6_router_advertisement_header_t);
 
-		      if (vlib_buffer_add_data
-			  (vm, &bi0, (void *) &rh,
-			   sizeof (icmp6_router_advertisement_header_t)))
+		      if (vlib_buffer_add_data (
+			    vm, &bi0, (void *) &rh,
+			    sizeof (icmp6_router_advertisement_header_t)))
 			{
 			  /* buffer allocation failed, drop the pkt */
 			  error0 = ICMP6_ERROR_ALLOC_FAILURE;
@@ -483,18 +478,18 @@ icmp6_router_solicitation (vlib_main_t * vm,
 			  clib_memcpy (&h.ethernet_address[0],
 				       &eth_if0->address, 6);
 
-			  if (vlib_buffer_add_data
-			      (vm, &bi0, (void *) &h,
-			       sizeof
-			       (icmp6_neighbor_discovery_ethernet_link_layer_address_option_t)))
+			  if (
+			    vlib_buffer_add_data (
+			      vm, &bi0, (void *) &h,
+			      sizeof (
+				icmp6_neighbor_discovery_ethernet_link_layer_address_option_t)))
 			    {
 			      error0 = ICMP6_ERROR_ALLOC_FAILURE;
 			      goto drop0;
 			    }
 
-			  payload_length +=
-			    sizeof
-			    (icmp6_neighbor_discovery_ethernet_link_layer_address_option_t);
+			  payload_length += sizeof (
+			    icmp6_neighbor_discovery_ethernet_link_layer_address_option_t);
 			}
 
 		      /* add MTU option */
@@ -511,10 +506,10 @@ icmp6_router_solicitation (vlib_main_t * vm,
 			  payload_length +=
 			    sizeof (icmp6_neighbor_discovery_mtu_option_t);
 
-			  if (vlib_buffer_add_data
-			      (vm, &bi0, (void *) &h,
-			       sizeof
-			       (icmp6_neighbor_discovery_mtu_option_t)))
+			  if (vlib_buffer_add_data (
+				vm, &bi0, (void *) &h,
+				sizeof (
+				  icmp6_neighbor_discovery_mtu_option_t)))
 			    {
 			      error0 = ICMP6_ERROR_ALLOC_FAILURE;
 			      goto drop0;
@@ -524,73 +519,98 @@ icmp6_router_solicitation (vlib_main_t * vm,
 		      /* add advertised prefix options  */
 		      ip6_radv_prefix_t *pr_info;
 
-		      /* *INDENT-OFF* */
 		      pool_foreach (pr_info, radv_info->adv_prefixes_pool)
-                       {
-                        if(pr_info->enabled &&
-                           (!pr_info->decrement_lifetime_flag
-                            || (pr_info->pref_lifetime_expires >0)))
-                          {
-                            /* advertise this prefix */
-                            icmp6_neighbor_discovery_prefix_information_option_t h;
+			{
+			  if (pr_info->enabled &&
+			      (!pr_info->decrement_lifetime_flag ||
+			       (pr_info->pref_lifetime_expires > 0)))
+			    {
+			      /* advertise this prefix */
+			      icmp6_neighbor_discovery_prefix_information_option_t
+				h;
 
-                            h.header.type = ICMP6_NEIGHBOR_DISCOVERY_OPTION_prefix_information;
-                            h.header.n_data_u64s  =  (sizeof(icmp6_neighbor_discovery_prefix_information_option_t) >> 3);
+			      h.header.type =
+				ICMP6_NEIGHBOR_DISCOVERY_OPTION_prefix_information;
+			      h.header.n_data_u64s =
+				(sizeof (
+				   icmp6_neighbor_discovery_prefix_information_option_t) >>
+				 3);
 
-                            h.dst_address_length  = pr_info->prefix_len;
+			      h.dst_address_length = pr_info->prefix_len;
 
-                            h.flags  = (pr_info->adv_on_link_flag) ? ICMP6_NEIGHBOR_DISCOVERY_PREFIX_INFORMATION_FLAG_ON_LINK : 0;
-                            h.flags |= (pr_info->adv_autonomous_flag) ?  ICMP6_NEIGHBOR_DISCOVERY_PREFIX_INFORMATION_AUTO :  0;
+			      h.flags =
+				(pr_info->adv_on_link_flag) ?
+				  ICMP6_NEIGHBOR_DISCOVERY_PREFIX_INFORMATION_FLAG_ON_LINK :
+				  0;
+			      h.flags |=
+				(pr_info->adv_autonomous_flag) ?
+				  ICMP6_NEIGHBOR_DISCOVERY_PREFIX_INFORMATION_AUTO :
+				  0;
 
-                            if(radv_info->cease_radv && pr_info->deprecated_prefix_flag)
-                              {
-                                h.valid_time = clib_host_to_net_u32(MIN_ADV_VALID_LIFETIME);
-                                h.preferred_time  = 0;
-                              }
-                            else
-                              {
-                                if(pr_info->decrement_lifetime_flag)
-                                  {
-                                    pr_info->adv_valid_lifetime_in_secs = ((pr_info->valid_lifetime_expires  > now)) ?
-                                      (pr_info->valid_lifetime_expires  - now) : 0;
+			      if (radv_info->cease_radv &&
+				  pr_info->deprecated_prefix_flag)
+				{
+				  h.valid_time = clib_host_to_net_u32 (
+				    MIN_ADV_VALID_LIFETIME);
+				  h.preferred_time = 0;
+				}
+			      else
+				{
+				  if (pr_info->decrement_lifetime_flag)
+				    {
+				      pr_info->adv_valid_lifetime_in_secs =
+					((pr_info->valid_lifetime_expires >
+					  now)) ?
+					  (pr_info->valid_lifetime_expires -
+					   now) :
+					  0;
 
-                                    pr_info->adv_pref_lifetime_in_secs = ((pr_info->pref_lifetime_expires  > now)) ?
-                                      (pr_info->pref_lifetime_expires  - now) : 0;
-                                  }
+				      pr_info->adv_pref_lifetime_in_secs =
+					((pr_info->pref_lifetime_expires >
+					  now)) ?
+					  (pr_info->pref_lifetime_expires -
+					   now) :
+					  0;
+				    }
 
-                                h.valid_time = clib_host_to_net_u32(pr_info->adv_valid_lifetime_in_secs);
-                                h.preferred_time  = clib_host_to_net_u32(pr_info->adv_pref_lifetime_in_secs) ;
-                              }
-                            h.unused  = 0;
+				  h.valid_time = clib_host_to_net_u32 (
+				    pr_info->adv_valid_lifetime_in_secs);
+				  h.preferred_time = clib_host_to_net_u32 (
+				    pr_info->adv_pref_lifetime_in_secs);
+				}
+			      h.unused = 0;
 
-                            /* Handy for debugging, but too noisy... */
-                            if (0 && CLIB_DEBUG > 0)
-                              clib_warning
-                                ("send RA for prefix %U/%d "
-                                 "sw_if_index %d valid %u preferred %u",
-                                 format_ip6_address, &pr_info->prefix,
-                                 pr_info->prefix_len, sw_if_index0,
-                                 clib_net_to_host_u32 (h.valid_time),
-                                 clib_net_to_host_u32 (h.preferred_time));
+			      /* Handy for debugging, but too noisy... */
+			      if (0 && CLIB_DEBUG > 0)
+				clib_warning (
+				  "send RA for prefix %U/%d "
+				  "sw_if_index %d valid %u preferred %u",
+				  format_ip6_address, &pr_info->prefix,
+				  pr_info->prefix_len, sw_if_index0,
+				  clib_net_to_host_u32 (h.valid_time),
+				  clib_net_to_host_u32 (h.preferred_time));
 
-                            if (h.valid_time == 0)
-                              clib_warning ("BUG: send RA with valid_time 0");
+			      if (h.valid_time == 0)
+				clib_warning (
+				  "BUG: send RA with valid_time 0");
 
-                            clib_memcpy(&h.dst_address, &pr_info->prefix,  sizeof(ip6_address_t));
+			      clib_memcpy (&h.dst_address, &pr_info->prefix,
+					   sizeof (ip6_address_t));
 
-                            payload_length += sizeof( icmp6_neighbor_discovery_prefix_information_option_t);
+			      payload_length += sizeof (
+				icmp6_neighbor_discovery_prefix_information_option_t);
 
-                            if (vlib_buffer_add_data
-				(vm, &bi0, (void *)&h,
-				 sizeof(icmp6_neighbor_discovery_prefix_information_option_t)))
-                              {
-                                error0 = ICMP6_ERROR_ALLOC_FAILURE;
-                                goto drop0;
-                              }
-
-                          }
-                      }
-		      /* *INDENT-ON* */
+			      if (
+				vlib_buffer_add_data (
+				  vm, &bi0, (void *) &h,
+				  sizeof (
+				    icmp6_neighbor_discovery_prefix_information_option_t)))
+				{
+				  error0 = ICMP6_ERROR_ALLOC_FAILURE;
+				  goto drop0;
+				}
+			    }
+			}
 
 		      /* add additional options before here */
 
@@ -602,16 +622,15 @@ icmp6_router_solicitation (vlib_main_t * vm,
 		      else
 			{
 			  /* target address is all-nodes mcast addr */
-			  ip6_set_reserved_multicast_address
-			    (&ip0->dst_address,
-			     IP6_MULTICAST_SCOPE_link_local,
-			     IP6_MULTICAST_GROUP_ID_all_hosts);
+			  ip6_set_reserved_multicast_address (
+			    &ip0->dst_address, IP6_MULTICAST_SCOPE_link_local,
+			    IP6_MULTICAST_GROUP_ID_all_hosts);
 			}
 
 		      /* source address MUST be the link-local address */
-		      ip6_address_copy (&ip0->src_address,
-					ip6_get_link_local_address
-					(radv_info->sw_if_index));
+		      ip6_address_copy (
+			&ip0->src_address,
+			ip6_get_link_local_address (radv_info->sw_if_index));
 
 		      ip0->hop_limit = 255;
 		      ip0->payload_length =
@@ -619,9 +638,8 @@ icmp6_router_solicitation (vlib_main_t * vm,
 
 		      icmp6_router_advertisement_header_t *rh0 =
 			(icmp6_router_advertisement_header_t *) (ip0 + 1);
-		      rh0->icmp.checksum =
-			ip6_tcp_udp_icmp_compute_checksum (vm, p0, ip0,
-							   &bogus_length);
+		      rh0->icmp.checksum = ip6_tcp_udp_icmp_compute_checksum (
+			vm, p0, ip0, &bogus_length);
 		      ASSERT (bogus_length == 0);
 
 		      /* setup output if and adjacency */
@@ -639,9 +657,9 @@ icmp6_router_solicitation (vlib_main_t * vm,
 				       6);
 			  clib_memcpy (eth0->src_address, &eth_if0->address,
 				       6);
-			  next0 =
-			    is_dropped ? next0 :
-			    ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_TX;
+			  next0 = is_dropped ?
+				    next0 :
+				    ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_TX;
 			  vnet_buffer (p0)->sw_if_index[VLIB_TX] =
 			    sw_if_index0;
 			}
@@ -653,8 +671,9 @@ icmp6_router_solicitation (vlib_main_t * vm,
 			  else
 			    {
 			      next0 =
-				is_dropped ? next0 :
-				ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_RW;
+				is_dropped ?
+				  next0 :
+				  ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_RW;
 			      vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
 				adj_index0;
 			    }
@@ -679,10 +698,8 @@ icmp6_router_solicitation (vlib_main_t * vm,
 	  if (error0 != ICMP6_ERROR_NONE)
 	    vlib_error_count (vm, error_node->node_index, error0, 1);
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
-
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -696,7 +713,6 @@ icmp6_router_solicitation (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_icmp_router_solicitation_node,static) =
 {
   .function = icmp6_router_solicitation,
@@ -713,12 +729,12 @@ VLIB_REGISTER_NODE (ip6_icmp_router_solicitation_node,static) =
     [ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_TX] = "interface-output",
   },
 };
-/* *INDENT-ON* */
 
- /* validate advertised info for consistancy (see RFC-4861 section 6.2.7) - log any inconsistencies, packet will always  be dropped  */
+/* validate advertised info for consistancy (see RFC-4861 section 6.2.7) - log
+ * any inconsistencies, packet will always  be dropped  */
 static_always_inline uword
-icmp6_router_advertisement (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame)
+icmp6_router_advertisement (vlib_main_t *vm, vlib_node_runtime_t *node,
+			    vlib_frame_t *frame)
 {
   vnet_main_t *vnm = vnet_get_main ();
   uword n_packets = frame->n_vectors;
@@ -768,7 +784,8 @@ icmp6_router_advertisement (vlib_main_t * vm,
 
 	  /* Check that source address is link-local */
 	  error0 = (!ip6_address_is_link_local_unicast (&ip0->src_address)) ?
-	    ICMP6_ERROR_ROUTER_ADVERTISEMENT_SOURCE_NOT_LINK_LOCAL : error0;
+		     ICMP6_ERROR_ROUTER_ADVERTISEMENT_SOURCE_NOT_LINK_LOCAL :
+		     error0;
 
 	  /* default is to drop */
 	  next0 = ICMP6_ROUTER_SOLICITATION_NEXT_DROP;
@@ -786,9 +803,9 @@ icmp6_router_advertisement (vlib_main_t * vm,
 		ethernet_get_interface (&ethernet_main, sw_if0->hw_if_index);
 
 	      /* only support ethernet interface type for now */
-	      error0 =
-		(!eth_if0) ? ICMP6_ERROR_ROUTER_SOLICITATION_UNSUPPORTED_INTF
-		: error0;
+	      error0 = (!eth_if0) ?
+			 ICMP6_ERROR_ROUTER_SOLICITATION_UNSUPPORTED_INTF :
+			 error0;
 
 	      if (error0 == ICMP6_ERROR_NONE)
 		{
@@ -796,8 +813,8 @@ icmp6_router_advertisement (vlib_main_t * vm,
 		  radv_info = ip6_ra_get_itf (sw_if_index0);
 
 		  error0 = ((!radv_info) ?
-			    ICMP6_ERROR_ROUTER_SOLICITATION_RADV_NOT_CONFIG :
-			    error0);
+			      ICMP6_ERROR_ROUTER_SOLICITATION_RADV_NOT_CONFIG :
+			      error0);
 
 		  if (error0 == ICMP6_ERROR_NONE)
 		    {
@@ -812,78 +829,77 @@ icmp6_router_advertisement (vlib_main_t * vm,
 		      r.router_lifetime_in_sec =
 			clib_net_to_host_u16 (h0->router_lifetime_in_sec);
 		      r.neighbor_reachable_time_in_msec =
-			clib_net_to_host_u32
-			(h0->neighbor_reachable_time_in_msec);
-		      r.time_in_msec_between_retransmitted_neighbor_solicitations = clib_net_to_host_u32 (h0->time_in_msec_between_retransmitted_neighbor_solicitations);
+			clib_net_to_host_u32 (
+			  h0->neighbor_reachable_time_in_msec);
+		      r.time_in_msec_between_retransmitted_neighbor_solicitations =
+			clib_net_to_host_u32 (
+			  h0->time_in_msec_between_retransmitted_neighbor_solicitations);
 		      r.prefixes = 0;
 
 		      /* validate advertised information */
-		      if ((h0->current_hop_limit && radv_info->curr_hop_limit)
-			  && (h0->current_hop_limit !=
-			      radv_info->curr_hop_limit))
+		      if ((h0->current_hop_limit &&
+			   radv_info->curr_hop_limit) &&
+			  (h0->current_hop_limit != radv_info->curr_hop_limit))
 			{
-			  ip6_neighbor_syslog (vm, LOG_WARNING,
-					       "our AdvCurHopLimit on %U doesn't agree with %U",
-					       format_vnet_sw_if_index_name,
-					       vnm, sw_if_index0,
-					       format_ip6_address,
-					       &ip0->src_address);
+			  ip6_neighbor_syslog (
+			    vm, LOG_WARNING,
+			    "our AdvCurHopLimit on %U doesn't agree with %U",
+			    format_vnet_sw_if_index_name, vnm, sw_if_index0,
+			    format_ip6_address, &ip0->src_address);
 			}
 
-		      if ((h0->flags &
-			   ICMP6_ROUTER_DISCOVERY_FLAG_ADDRESS_CONFIG_VIA_DHCP)
-			  != radv_info->adv_managed_flag)
+		      if (
+			(h0->flags &
+			 ICMP6_ROUTER_DISCOVERY_FLAG_ADDRESS_CONFIG_VIA_DHCP) !=
+			radv_info->adv_managed_flag)
 			{
-			  ip6_neighbor_syslog (vm, LOG_WARNING,
-					       "our AdvManagedFlag on %U doesn't agree with %U",
-					       format_vnet_sw_if_index_name,
-					       vnm, sw_if_index0,
-					       format_ip6_address,
-					       &ip0->src_address);
+			  ip6_neighbor_syslog (
+			    vm, LOG_WARNING,
+			    "our AdvManagedFlag on %U doesn't agree with %U",
+			    format_vnet_sw_if_index_name, vnm, sw_if_index0,
+			    format_ip6_address, &ip0->src_address);
 			}
 
-		      if ((h0->flags &
-			   ICMP6_ROUTER_DISCOVERY_FLAG_OTHER_CONFIG_VIA_DHCP)
-			  != radv_info->adv_other_flag)
+		      if (
+			(h0->flags &
+			 ICMP6_ROUTER_DISCOVERY_FLAG_OTHER_CONFIG_VIA_DHCP) !=
+			radv_info->adv_other_flag)
 			{
-			  ip6_neighbor_syslog (vm, LOG_WARNING,
-					       "our AdvOtherConfigFlag on %U doesn't agree with %U",
-					       format_vnet_sw_if_index_name,
-					       vnm, sw_if_index0,
-					       format_ip6_address,
-					       &ip0->src_address);
+			  ip6_neighbor_syslog (
+			    vm, LOG_WARNING,
+			    "our AdvOtherConfigFlag on %U doesn't agree with "
+			    "%U",
+			    format_vnet_sw_if_index_name, vnm, sw_if_index0,
+			    format_ip6_address, &ip0->src_address);
 			}
 
-		      if ((h0->
-			   time_in_msec_between_retransmitted_neighbor_solicitations
-			   && radv_info->
-			   adv_time_in_msec_between_retransmitted_neighbor_solicitations)
-			  && (h0->
-			      time_in_msec_between_retransmitted_neighbor_solicitations
-			      !=
-			      clib_host_to_net_u32 (radv_info->
-						    adv_time_in_msec_between_retransmitted_neighbor_solicitations)))
+		      if (
+			(h0->time_in_msec_between_retransmitted_neighbor_solicitations &&
+			 radv_info
+			   ->adv_time_in_msec_between_retransmitted_neighbor_solicitations) &&
+			(h0->time_in_msec_between_retransmitted_neighbor_solicitations !=
+			 clib_host_to_net_u32 (
+			   radv_info
+			     ->adv_time_in_msec_between_retransmitted_neighbor_solicitations)))
 			{
-			  ip6_neighbor_syslog (vm, LOG_WARNING,
-					       "our AdvRetransTimer on %U doesn't agree with %U",
-					       format_vnet_sw_if_index_name,
-					       vnm, sw_if_index0,
-					       format_ip6_address,
-					       &ip0->src_address);
+			  ip6_neighbor_syslog (
+			    vm, LOG_WARNING,
+			    "our AdvRetransTimer on %U doesn't agree with %U",
+			    format_vnet_sw_if_index_name, vnm, sw_if_index0,
+			    format_ip6_address, &ip0->src_address);
 			}
 
 		      if ((h0->neighbor_reachable_time_in_msec &&
 			   radv_info->adv_neighbor_reachable_time_in_msec) &&
 			  (h0->neighbor_reachable_time_in_msec !=
-			   clib_host_to_net_u32
-			   (radv_info->adv_neighbor_reachable_time_in_msec)))
+			   clib_host_to_net_u32 (
+			     radv_info->adv_neighbor_reachable_time_in_msec)))
 			{
-			  ip6_neighbor_syslog (vm, LOG_WARNING,
-					       "our AdvReachableTime on %U doesn't agree with %U",
-					       format_vnet_sw_if_index_name,
-					       vnm, sw_if_index0,
-					       format_ip6_address,
-					       &ip0->src_address);
+			  ip6_neighbor_syslog (
+			    vm, LOG_WARNING,
+			    "our AdvReachableTime on %U doesn't agree with %U",
+			    format_vnet_sw_if_index_name, vnm, sw_if_index0,
+			    format_ip6_address, &ip0->src_address);
 			}
 
 		      /* check for MTU or prefix options or .. */
@@ -892,40 +908,41 @@ icmp6_router_advertisement (vlib_main_t * vm,
 			{
 			  icmp6_neighbor_discovery_option_header_t *o0 =
 			    (icmp6_neighbor_discovery_option_header_t *)
-			    opt_hdr;
+			      opt_hdr;
 			  int opt_len = o0->n_data_u64s << 3;
 			  icmp6_neighbor_discovery_option_type_t option_type =
 			    o0->type;
 
 			  if (options_len0 < 2)
 			    {
-			      ip6_neighbor_syslog (vm, LOG_ERR,
-						   "malformed RA packet on %U from %U",
-						   format_vnet_sw_if_index_name,
-						   vnm, sw_if_index0,
-						   format_ip6_address,
-						   &ip0->src_address);
+			      ip6_neighbor_syslog (
+				vm, LOG_ERR,
+				"malformed RA packet on %U from %U",
+				format_vnet_sw_if_index_name, vnm,
+				sw_if_index0, format_ip6_address,
+				&ip0->src_address);
 			      break;
 			    }
 
 			  if (opt_len == 0)
 			    {
-			      ip6_neighbor_syslog (vm, LOG_ERR,
-						   " zero length option in RA on %U from %U",
-						   format_vnet_sw_if_index_name,
-						   vnm, sw_if_index0,
-						   format_ip6_address,
-						   &ip0->src_address);
+			      ip6_neighbor_syslog (
+				vm, LOG_ERR,
+				" zero length option in RA on %U from %U",
+				format_vnet_sw_if_index_name, vnm,
+				sw_if_index0, format_ip6_address,
+				&ip0->src_address);
 			      break;
 			    }
 			  else if (opt_len > options_len0)
 			    {
-			      ip6_neighbor_syslog (vm, LOG_ERR,
-						   "option length in RA packet  greater than total length on %U from %U",
-						   format_vnet_sw_if_index_name,
-						   vnm, sw_if_index0,
-						   format_ip6_address,
-						   &ip0->src_address);
+			      ip6_neighbor_syslog (
+				vm, LOG_ERR,
+				"option length in RA packet  greater than "
+				"total length on %U from %U",
+				format_vnet_sw_if_index_name, vnm,
+				sw_if_index0, format_ip6_address,
+				&ip0->src_address);
 			      break;
 			    }
 
@@ -937,9 +954,9 @@ icmp6_router_advertisement (vlib_main_t * vm,
 			    case ICMP6_NEIGHBOR_DISCOVERY_OPTION_source_link_layer_address:
 			      {
 				icmp6_neighbor_discovery_ethernet_link_layer_address_option_t
-				  * h =
-				  (icmp6_neighbor_discovery_ethernet_link_layer_address_option_t
-				   *) (o0);
+				  *h =
+				    (icmp6_neighbor_discovery_ethernet_link_layer_address_option_t
+				       *) (o0);
 
 				if (opt_len < sizeof (*h))
 				  break;
@@ -952,7 +969,7 @@ icmp6_router_advertisement (vlib_main_t * vm,
 			      {
 				icmp6_neighbor_discovery_mtu_option_t *h =
 				  (icmp6_neighbor_discovery_mtu_option_t
-				   *) (o0);
+				     *) (o0);
 
 				if (opt_len < sizeof (*h))
 				  break;
@@ -960,16 +977,16 @@ icmp6_router_advertisement (vlib_main_t * vm,
 				r.mtu = clib_net_to_host_u32 (h->mtu);
 
 				if ((h->mtu && radv_info->adv_link_mtu) &&
-				    (h->mtu !=
-				     clib_host_to_net_u32
-				     (radv_info->adv_link_mtu)))
+				    (h->mtu != clib_host_to_net_u32 (
+						 radv_info->adv_link_mtu)))
 				  {
-				    ip6_neighbor_syslog (vm, LOG_WARNING,
-							 "our AdvLinkMTU on %U doesn't agree with %U",
-							 format_vnet_sw_if_index_name,
-							 vnm, sw_if_index0,
-							 format_ip6_address,
-							 &ip0->src_address);
+				    ip6_neighbor_syslog (
+				      vm, LOG_WARNING,
+				      "our AdvLinkMTU on %U doesn't agree "
+				      "with %U",
+				      format_vnet_sw_if_index_name, vnm,
+				      sw_if_index0, format_ip6_address,
+				      &ip0->src_address);
 				  }
 			      }
 			      break;
@@ -977,9 +994,9 @@ icmp6_router_advertisement (vlib_main_t * vm,
 			    case ICMP6_NEIGHBOR_DISCOVERY_OPTION_prefix_information:
 			      {
 				icmp6_neighbor_discovery_prefix_information_option_t
-				  * h =
-				  (icmp6_neighbor_discovery_prefix_information_option_t
-				   *) (o0);
+				  *h =
+				    (icmp6_neighbor_discovery_prefix_information_option_t
+				       *) (o0);
 
 				/* validate advertised prefix options  */
 				ip6_radv_prefix_t *pr_info;
@@ -1005,39 +1022,64 @@ icmp6_router_advertisement (vlib_main_t * vm,
 				prefix->prefix.fp_addr.ip6 = h->dst_address;
 				prefix->prefix.fp_proto = FIB_PROTOCOL_IP6;
 
-				/* look for matching prefix - if we our advertising it, it better be consistant */
-				/* *INDENT-OFF* */
-				pool_foreach (pr_info, radv_info->adv_prefixes_pool)
-                                 {
+				/* look for matching prefix - if we our
+				 * advertising it, it better be consistant */
 
-                                  ip6_address_t mask;
-                                  ip6_address_mask_from_width(&mask, pr_info->prefix_len);
+				pool_foreach (pr_info,
+					      radv_info->adv_prefixes_pool)
+				  {
 
-                                  if(pr_info->enabled &&
-                                     (pr_info->prefix_len == h->dst_address_length) &&
-                                     ip6_address_is_equal_masked (&pr_info->prefix,  &h->dst_address, &mask))
-                                    {
-                                      /* found it */
-                                      if(!pr_info->decrement_lifetime_flag &&
-                                         valid != pr_info->adv_valid_lifetime_in_secs)
-                                        {
-                                          ip6_neighbor_syslog(vm,  LOG_WARNING,
-                                                              "our ADV validlifetime on  %U for %U does not  agree with %U",
-                                                              format_vnet_sw_if_index_name, vnm, sw_if_index0,format_ip6_address, &pr_info->prefix,
-                                                              format_ip6_address, &h->dst_address);
-                                        }
-                                      if(!pr_info->decrement_lifetime_flag &&
-                                         preferred != pr_info->adv_pref_lifetime_in_secs)
-                                        {
-                                          ip6_neighbor_syslog(vm,  LOG_WARNING,
-                                                              "our ADV preferredlifetime on  %U for %U does not  agree with %U",
-                                                              format_vnet_sw_if_index_name, vnm, sw_if_index0,format_ip6_address, &pr_info->prefix,
-                                                              format_ip6_address, &h->dst_address);
-                                        }
-                                    }
-                                  break;
-                                }
-				/* *INDENT-ON* */
+				    ip6_address_t mask;
+				    ip6_address_mask_from_width (
+				      &mask, pr_info->prefix_len);
+
+				    if (pr_info->enabled &&
+					(pr_info->prefix_len ==
+					 h->dst_address_length) &&
+					ip6_address_is_equal_masked (
+					  &pr_info->prefix, &h->dst_address,
+					  &mask))
+				      {
+					/* found it */
+					if (!pr_info
+					       ->decrement_lifetime_flag &&
+					    valid !=
+					      pr_info
+						->adv_valid_lifetime_in_secs)
+					  {
+					    ip6_neighbor_syslog (
+					      vm, LOG_WARNING,
+					      "our ADV validlifetime on  %U "
+					      "for %U does not  agree with %U",
+					      format_vnet_sw_if_index_name,
+					      vnm, sw_if_index0,
+					      format_ip6_address,
+					      &pr_info->prefix,
+					      format_ip6_address,
+					      &h->dst_address);
+					  }
+					if (!pr_info
+					       ->decrement_lifetime_flag &&
+					    preferred !=
+					      pr_info
+						->adv_pref_lifetime_in_secs)
+					  {
+					    ip6_neighbor_syslog (
+					      vm, LOG_WARNING,
+					      "our ADV preferredlifetime on  "
+					      "%U for %U does not  agree with "
+					      "%U",
+					      format_vnet_sw_if_index_name,
+					      vnm, sw_if_index0,
+					      format_ip6_address,
+					      &pr_info->prefix,
+					      format_ip6_address,
+					      &h->dst_address);
+					  }
+				      }
+				    break;
+				  }
+
 				break;
 			      }
 			    default:
@@ -1055,9 +1097,8 @@ icmp6_router_advertisement (vlib_main_t * vm,
 	  if (error0 != ICMP6_ERROR_NONE)
 	    vlib_error_count (vm, error_node->node_index, error0, 1);
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -1071,7 +1112,6 @@ icmp6_router_advertisement (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_icmp_router_advertisement_node,static) =
 {
   .function = icmp6_router_advertisement,
@@ -1086,7 +1126,6 @@ VLIB_REGISTER_NODE (ip6_icmp_router_advertisement_node,static) =
     [0] = "ip6-drop",
   },
 };
-/* *INDENT-ON* */
 
 static inline f64
 random_f64_from_to (f64 from, f64 to)
@@ -1102,7 +1141,7 @@ random_f64_from_to (f64 from, f64 to)
 }
 
 static inline u8
-get_mac_address (u32 sw_if_index, u8 * address)
+get_mac_address (u32 sw_if_index, u8 *address)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hw_if = vnet_get_sup_hw_interface (vnm, sw_if_index);
@@ -1113,7 +1152,7 @@ get_mac_address (u32 sw_if_index, u8 * address)
 }
 
 static inline vlib_buffer_t *
-create_buffer_for_rs (vlib_main_t * vm, ip6_ra_t * radv_info)
+create_buffer_for_rs (vlib_main_t *vm, ip6_ra_t *radv_info)
 {
   u32 bi0;
   vlib_buffer_t *p0;
@@ -1150,8 +1189,8 @@ create_buffer_for_rs (vlib_main_t * vm, ip6_ra_t * radv_info)
 
   rh->link_layer_option.header.type =
     ICMP6_NEIGHBOR_DISCOVERY_OPTION_source_link_layer_address;
-  if (0 != get_mac_address (sw_if_index,
-			    rh->link_layer_option.ethernet_address))
+  if (0 !=
+      get_mac_address (sw_if_index, rh->link_layer_option.ethernet_address))
     {
       clib_warning ("interface with sw_if_index %u has no mac address",
 		    sw_if_index);
@@ -1173,15 +1212,14 @@ create_buffer_for_rs (vlib_main_t * vm, ip6_ra_t * radv_info)
   rh->ip.dst_address.as_u64[0] = clib_host_to_net_u64 (0xff02ULL << 48);
   rh->ip.dst_address.as_u64[1] = clib_host_to_net_u64 (2);
 
-  rh->neighbor.icmp.checksum = ip6_tcp_udp_icmp_compute_checksum (vm, p0,
-								  &rh->ip,
-								  &bogus_length);
+  rh->neighbor.icmp.checksum =
+    ip6_tcp_udp_icmp_compute_checksum (vm, p0, &rh->ip, &bogus_length);
 
   return p0;
 }
 
 static inline void
-stop_sending_rs (vlib_main_t * vm, ip6_ra_t * ra)
+stop_sending_rs (vlib_main_t *vm, ip6_ra_t *ra)
 {
   u32 bi0;
 
@@ -1195,8 +1233,8 @@ stop_sending_rs (vlib_main_t * vm, ip6_ra_t * ra)
 }
 
 static inline bool
-check_send_rs (vlib_main_t * vm, ip6_ra_t * radv_info, f64 current_time,
-	       f64 * due_time)
+check_send_rs (vlib_main_t *vm, ip6_ra_t *radv_info, f64 current_time,
+	       f64 *due_time)
 {
   vlib_buffer_t *p0;
   vlib_frame_t *f;
@@ -1246,8 +1284,8 @@ check_send_rs (vlib_main_t * vm, ip6_ra_t * radv_info, f64 current_time,
 
       radv_info->due_time = current_time + radv_info->sleep_interval;
 
-      if (params->mrd != 0
-	  && current_time > radv_info->start_time + params->mrd)
+      if (params->mrd != 0 &&
+	  current_time > radv_info->start_time + params->mrd)
 	stop_sending_rs (vm, radv_info);
       else
 	*due_time = radv_info->due_time;
@@ -1257,8 +1295,7 @@ check_send_rs (vlib_main_t * vm, ip6_ra_t * radv_info, f64 current_time,
 }
 
 static uword
-send_rs_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
-		 vlib_frame_t * f0)
+send_rs_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f0)
 {
   uword *event_data = NULL;
   f64 sleep_time = 1e9;
@@ -1277,14 +1314,14 @@ send_rs_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       do
 	{
 	  due_time = current_time + 1e9;
-        /* *INDENT-OFF* */
-        pool_foreach (radv_info, ip6_ra_pool)
-         {
-	    if (check_send_rs (vm, radv_info, current_time, &dt)
-		&& (dt < due_time))
-	      due_time = dt;
-        }
-        /* *INDENT-ON* */
+
+	  pool_foreach (radv_info, ip6_ra_pool)
+	    {
+	      if (check_send_rs (vm, radv_info, current_time, &dt) &&
+		  (dt < due_time))
+		due_time = dt;
+	    }
+
 	  current_time = vlib_time_now (vm);
 	}
       while (due_time < current_time);
@@ -1295,18 +1332,16 @@ send_rs_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_rs_process_node) = {
-    .function = send_rs_process,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "ip6-rs-process",
+  .function = send_rs_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "ip6-rs-process",
 };
-/* *INDENT-ON* */
 
 void
-icmp6_send_router_solicitation (vlib_main_t * vm, u32 sw_if_index, u8 stop,
-				const icmp6_send_router_solicitation_params_t
-				* params)
+icmp6_send_router_solicitation (
+  vlib_main_t *vm, u32 sw_if_index, u8 stop,
+  const icmp6_send_router_solicitation_params_t *params)
 {
   ip6_ra_t *ra;
 
@@ -1326,7 +1361,7 @@ icmp6_send_router_solicitation (vlib_main_t * vm, u32 sw_if_index, u8 stop,
       ra->n_left = params->mrc;
       ra->start_time = vlib_time_now (vm);
       ra->sleep_interval = (1 + random_f64_from_to (-0.1, 0.1)) * params->irt;
-      ra->due_time = 0;		/* send first packet ASAP */
+      ra->due_time = 0; /* send first packet ASAP */
       ra->buffer = create_buffer_for_rs (vm, ra);
       if (!ra->buffer)
 	ra->keep_sending_rs = 0;
@@ -1364,8 +1399,8 @@ ip6_ra_link_enable (u32 sw_if_index)
   if (NULL == eth)
     return;
 
-  ASSERT (INDEX_INVALID == ip6_link_delegate_get (sw_if_index,
-						  ip6_ra_delegate_id));
+  ASSERT (INDEX_INVALID ==
+	  ip6_link_delegate_get (sw_if_index, ip6_ra_delegate_id));
 
   pool_get_zero (ip6_ra_pool, radv_info);
 
@@ -1412,12 +1447,10 @@ ip6_ra_delegate_disable (index_t rai)
   radv_info = pool_elt_at_index (ip6_ra_pool, rai);
 
   /* clean up prefix and MDP pools */
-  /* *INDENT-OFF* */
-  pool_flush(p, radv_info->adv_prefixes_pool,
-  ({
-    mhash_unset (&radv_info->address_to_prefix_index, &p->prefix, 0);
-  }));
-  /* *INDENT-ON* */
+
+  pool_flush (
+    p, radv_info->adv_prefixes_pool,
+    ({ mhash_unset (&radv_info->address_to_prefix_index, &p->prefix, 0); }));
 
   pool_free (radv_info->adv_prefixes_pool);
 
@@ -1427,9 +1460,9 @@ ip6_ra_delegate_disable (index_t rai)
 }
 
 void
-ip6_ra_update_secondary_radv_info (ip6_address_t * address, u8 prefix_len,
-				   u32 primary_sw_if_index,
-				   u32 valid_time, u32 preferred_time)
+ip6_ra_update_secondary_radv_info (ip6_address_t *address, u8 prefix_len,
+				   u32 primary_sw_if_index, u32 valid_time,
+				   u32 preferred_time)
 {
   vlib_main_t *vm = vlib_get_main ();
   static u32 *radv_indices;
@@ -1439,12 +1472,11 @@ ip6_ra_update_secondary_radv_info (ip6_address_t * address, u8 prefix_len,
   ip6_address_mask_from_width (&mask, prefix_len);
 
   vec_reset_length (radv_indices);
-  /* *INDENT-OFF* */
+
   pool_foreach (radv_info, ip6_ra_pool)
-   {
-    vec_add1 (radv_indices, radv_info - ip6_ra_pool);
-  }
-  /* *INDENT-ON* */
+    {
+      vec_add1 (radv_indices, radv_info - ip6_ra_pool);
+    }
 
   /*
    * If we have another customer for this prefix,
@@ -1459,37 +1491,28 @@ ip6_ra_update_secondary_radv_info (ip6_address_t * address, u8 prefix_len,
       if (radv_info->sw_if_index == primary_sw_if_index)
 	continue;
 
-      /* *INDENT-OFF* */
       pool_foreach (this_prefix, radv_info->adv_prefixes_pool)
-       {
-        if (this_prefix->prefix_len == prefix_len
-            && ip6_address_is_equal_masked (&this_prefix->prefix, address,
-                                            &mask))
-          {
-            int rv = ip6_ra_prefix (vm,
-                                    radv_info->sw_if_index,
-                                    address,
-                                    prefix_len,
-                                    0 /* use_default */,
-                                    valid_time,
-                                    preferred_time,
-                                    0 /* no_advertise */,
-                                    0 /* off_link */,
-                                    0 /* no_autoconfig */,
-                                    0 /* no_onlink */,
-                                    0 /* is_no */);
-            if (rv != 0)
-              clib_warning ("ip6_neighbor_ra_prefix returned %d", rv);
-          }
-      }
-      /* *INDENT-ON*/
+	{
+	  if (this_prefix->prefix_len == prefix_len &&
+	      ip6_address_is_equal_masked (&this_prefix->prefix, address,
+					   &mask))
+	    {
+	      int rv = ip6_ra_prefix (
+		vm, radv_info->sw_if_index, address, prefix_len,
+		0 /* use_default */, valid_time, preferred_time,
+		0 /* no_advertise */, 0 /* off_link */, 0 /* no_autoconfig */,
+		0 /* no_onlink */, 0 /* is_no */);
+	      if (rv != 0)
+		clib_warning ("ip6_neighbor_ra_prefix returned %d", rv);
+	    }
+	}
     }
 }
 
 /* send a RA or update the timer info etc.. */
 static uword
-ip6_ra_process_timer_event (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame)
+ip6_ra_process_timer_event (vlib_main_t *vm, vlib_node_runtime_t *node,
+			    vlib_frame_t *frame)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip6_ra_t *radv_info;
@@ -1503,97 +1526,105 @@ ip6_ra_process_timer_event (vlib_main_t * vm,
   f64 now = vlib_time_now (vm);
 
   /* Interface ip6 radv info list */
-  /* *INDENT-OFF* */
+
   pool_foreach (radv_info, ip6_ra_pool)
-   {
-    if( !vnet_sw_interface_is_admin_up (vnm, radv_info->sw_if_index))
-      {
-        radv_info->initial_adverts_sent = radv_info->initial_adverts_count-1;
-        radv_info->next_multicast_time = now;
-        radv_info->last_multicast_time = now;
-        radv_info->last_radv_time = 0;
-        continue;
-      }
+    {
+      if (!vnet_sw_interface_is_admin_up (vnm, radv_info->sw_if_index))
+	{
+	  radv_info->initial_adverts_sent =
+	    radv_info->initial_adverts_count - 1;
+	  radv_info->next_multicast_time = now;
+	  radv_info->last_multicast_time = now;
+	  radv_info->last_radv_time = 0;
+	  continue;
+	}
 
-    /* is it time to send a multicast  RA on this interface? */
-    if(radv_info->send_radv && (now >=  radv_info->next_multicast_time))
-      {
-        u32 n_to_alloc = 1;
-        u32 n_allocated;
+      /* is it time to send a multicast  RA on this interface? */
+      if (radv_info->send_radv && (now >= radv_info->next_multicast_time))
+	{
+	  u32 n_to_alloc = 1;
+	  u32 n_allocated;
 
-        f64 rfn = (radv_info->max_radv_interval - radv_info->min_radv_interval) *
-          random_f64 (&radv_info->seed) + radv_info->min_radv_interval;
+	  f64 rfn =
+	    (radv_info->max_radv_interval - radv_info->min_radv_interval) *
+	      random_f64 (&radv_info->seed) +
+	    radv_info->min_radv_interval;
 
-        /* multicast send - compute next multicast send time */
-        if( radv_info->initial_adverts_sent > 0)
-          {
-            radv_info->initial_adverts_sent--;
-            if(rfn > radv_info->initial_adverts_interval)
-              rfn =  radv_info->initial_adverts_interval;
+	  /* multicast send - compute next multicast send time */
+	  if (radv_info->initial_adverts_sent > 0)
+	    {
+	      radv_info->initial_adverts_sent--;
+	      if (rfn > radv_info->initial_adverts_interval)
+		rfn = radv_info->initial_adverts_interval;
 
-            /* check to see if we are ceasing to send */
-            if( radv_info->initial_adverts_sent  == 0)
-              if(radv_info->cease_radv)
-                radv_info->send_radv = 0;
-          }
+	      /* check to see if we are ceasing to send */
+	      if (radv_info->initial_adverts_sent == 0)
+		if (radv_info->cease_radv)
+		  radv_info->send_radv = 0;
+	    }
 
-        radv_info->next_multicast_time =  rfn + now;
-        radv_info->last_multicast_time = now;
+	  radv_info->next_multicast_time = rfn + now;
+	  radv_info->last_multicast_time = now;
 
-        /* send advert now - build a "solicted" router advert with unspecified source address */
-        n_allocated = vlib_buffer_alloc (vm, &bo0, n_to_alloc);
+	  /* send advert now - build a "solicted" router advert with
+	   * unspecified source address */
+	  n_allocated = vlib_buffer_alloc (vm, &bo0, n_to_alloc);
 
-        if (PREDICT_FALSE(n_allocated == 0))
-          {
-            clib_warning ("buffer allocation failure");
-            continue;
-          }
-        b0 = vlib_get_buffer (vm, bo0);
-        b0->current_length = sizeof( icmp6_router_solicitation_header_t);
-        b0->error = ICMP6_ERROR_NONE;
-        vnet_buffer (b0)->sw_if_index[VLIB_RX] = radv_info->sw_if_index;
+	  if (PREDICT_FALSE (n_allocated == 0))
+	    {
+	      clib_warning ("buffer allocation failure");
+	      continue;
+	    }
+	  b0 = vlib_get_buffer (vm, bo0);
+	  b0->current_length = sizeof (icmp6_router_solicitation_header_t);
+	  b0->error = ICMP6_ERROR_NONE;
+	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = radv_info->sw_if_index;
 
-        h0 =  vlib_buffer_get_current (b0);
+	  h0 = vlib_buffer_get_current (b0);
 
-        clib_memset (h0, 0, sizeof (icmp6_router_solicitation_header_t));
+	  clib_memset (h0, 0, sizeof (icmp6_router_solicitation_header_t));
 
-        h0->ip.ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (0x6 << 28);
-        h0->ip.payload_length = clib_host_to_net_u16 (sizeof (icmp6_router_solicitation_header_t)
-                                                      - STRUCT_OFFSET_OF (icmp6_router_solicitation_header_t, neighbor));
-        h0->ip.protocol = IP_PROTOCOL_ICMP6;
-        h0->ip.hop_limit = 255;
+	  h0->ip.ip_version_traffic_class_and_flow_label =
+	    clib_host_to_net_u32 (0x6 << 28);
+	  h0->ip.payload_length = clib_host_to_net_u16 (
+	    sizeof (icmp6_router_solicitation_header_t) -
+	    STRUCT_OFFSET_OF (icmp6_router_solicitation_header_t, neighbor));
+	  h0->ip.protocol = IP_PROTOCOL_ICMP6;
+	  h0->ip.hop_limit = 255;
 
-        /* set src/dst address as "unspecified" this marks this packet as internally generated rather than recieved */
-        h0->ip.src_address.as_u64[0] = 0;
-        h0->ip.src_address.as_u64[1] = 0;
+	  /* set src/dst address as "unspecified" this marks this packet as
+	   * internally generated rather than recieved */
+	  h0->ip.src_address.as_u64[0] = 0;
+	  h0->ip.src_address.as_u64[1] = 0;
 
-        h0->ip.dst_address.as_u64[0] = 0;
-        h0->ip.dst_address.as_u64[1] = 0;
+	  h0->ip.dst_address.as_u64[0] = 0;
+	  h0->ip.dst_address.as_u64[1] = 0;
 
-        h0->neighbor.icmp.type = ICMP6_router_solicitation;
+	  h0->neighbor.icmp.type = ICMP6_router_solicitation;
 
-        if (PREDICT_FALSE(f == 0))
-          {
-            f = vlib_get_frame_to_node (vm, ip6_icmp_router_solicitation_node.index);
-            to_next = vlib_frame_vector_args (f);
-            n_left_to_next = VLIB_FRAME_SIZE;
-            n_this_frame = 0;
-          }
+	  if (PREDICT_FALSE (f == 0))
+	    {
+	      f = vlib_get_frame_to_node (
+		vm, ip6_icmp_router_solicitation_node.index);
+	      to_next = vlib_frame_vector_args (f);
+	      n_left_to_next = VLIB_FRAME_SIZE;
+	      n_this_frame = 0;
+	    }
 
-        n_this_frame++;
-        n_left_to_next--;
-        to_next[0] = bo0;
-        to_next += 1;
+	  n_this_frame++;
+	  n_left_to_next--;
+	  to_next[0] = bo0;
+	  to_next += 1;
 
-        if (PREDICT_FALSE(n_left_to_next == 0))
-          {
-            f->n_vectors = n_this_frame;
-            vlib_put_frame_to_node (vm, ip6_icmp_router_solicitation_node.index, f);
-            f = 0;
-          }
-      }
-  }
-  /* *INDENT-ON* */
+	  if (PREDICT_FALSE (n_left_to_next == 0))
+	    {
+	      f->n_vectors = n_this_frame;
+	      vlib_put_frame_to_node (
+		vm, ip6_icmp_router_solicitation_node.index, f);
+	      f = 0;
+	    }
+	}
+    }
 
   if (f)
     {
@@ -1605,18 +1636,19 @@ ip6_ra_process_timer_event (vlib_main_t * vm,
 }
 
 static void
-ip6_ra_handle_report (ip6_ra_report_t * rap)
+ip6_ra_handle_report (ip6_ra_report_t *rap)
 {
   u32 ii;
 
-  vec_foreach_index (ii, ip6_ra_listeners) ip6_ra_listeners[ii] (rap);
+  vec_foreach_index (ii, ip6_ra_listeners)
+    ip6_ra_listeners[ii](rap);
   vec_free (rap->prefixes);
   clib_mem_free (rap);
 }
 
 static uword
-ip6_ra_event_process (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+ip6_ra_event_process (vlib_main_t *vm, vlib_node_runtime_t *node,
+		      vlib_frame_t *frame)
 {
   ip6_ra_report_t *r;
   uword event_type;
@@ -1627,14 +1659,15 @@ ip6_ra_event_process (vlib_main_t * vm,
 
   while (1)
     {
-      vlib_process_wait_for_event_or_clock (vm, 1. /* seconds */ );
+      vlib_process_wait_for_event_or_clock (vm, 1. /* seconds */);
 
       event_type = vlib_process_get_events (vm, &event_data);
 
       if (event_type == ~0)
 	{
 	  /* No events found: timer expired. */
-	  /* process interface list and send RAs as appropriate, update timer info */
+	  /* process interface list and send RAs as appropriate, update timer
+	   * info */
 	  ip6_ra_process_timer_event (vm, node, frame);
 	}
       else
@@ -1650,17 +1683,14 @@ ip6_ra_event_process (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_ra_process_node) =
-{
- .function = ip6_ra_event_process,
- .name = "ip6-ra-process",
- .type = VLIB_NODE_TYPE_PROCESS,
+VLIB_REGISTER_NODE (ip6_ra_process_node) = {
+  .function = ip6_ra_event_process,
+  .name = "ip6-ra-process",
+  .type = VLIB_NODE_TYPE_PROCESS,
 };
-/* *INDENT-ON* */
 
 static void
-ip6_ra_signal_report (ip6_ra_report_t * r)
+ip6_ra_signal_report (ip6_ra_report_t *r)
 {
   vlib_main_t *vm = vlib_get_main ();
   ip6_ra_report_t *q;
@@ -1675,21 +1705,20 @@ ip6_ra_signal_report (ip6_ra_report_t * r)
 }
 
 static int
-ip6_ra_publish (ip6_ra_report_t * r)
+ip6_ra_publish (ip6_ra_report_t *r)
 {
-  void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
+  void vl_api_rpc_call_main_thread (void *fp, u8 *data, u32 data_length);
   vl_api_rpc_call_main_thread (ip6_ra_signal_report, (u8 *) r, sizeof *r);
   return 0;
 }
 
 /* API support functions */
 int
-ip6_ra_config (vlib_main_t * vm, u32 sw_if_index,
-	       u8 suppress, u8 managed, u8 other,
-	       u8 ll_option, u8 send_unicast, u8 cease,
-	       u8 use_lifetime, u32 lifetime,
-	       u32 initial_count, u32 initial_interval,
-	       u32 max_interval, u32 min_interval, u8 is_no)
+ip6_ra_config (vlib_main_t *vm, u32 sw_if_index, u8 suppress, u8 managed,
+	       u8 other, u8 ll_option, u8 send_unicast, u8 cease,
+	       u8 use_lifetime, u32 lifetime, u32 initial_count,
+	       u32 initial_interval, u32 max_interval, u32 min_interval,
+	       u8 is_no)
 {
   ip6_ra_t *radv_info;
 
@@ -1702,18 +1731,15 @@ ip6_ra_config (vlib_main_t * vm, u32 sw_if_index,
   if ((max_interval != 0) && (min_interval == 0))
     min_interval = .75 * max_interval;
 
-  max_interval =
-    (max_interval !=
-     0) ? ((is_no) ? DEF_MAX_RADV_INTERVAL : max_interval) :
-    radv_info->max_radv_interval;
-  min_interval =
-    (min_interval !=
-     0) ? ((is_no) ? DEF_MIN_RADV_INTERVAL : min_interval) :
-    radv_info->min_radv_interval;
-  lifetime =
-    (use_lifetime !=
-     0) ? ((is_no) ? DEF_DEF_RTR_LIFETIME : lifetime) :
-    radv_info->adv_router_lifetime_in_sec;
+  max_interval = (max_interval != 0) ?
+		   ((is_no) ? DEF_MAX_RADV_INTERVAL : max_interval) :
+		   radv_info->max_radv_interval;
+  min_interval = (min_interval != 0) ?
+		   ((is_no) ? DEF_MIN_RADV_INTERVAL : min_interval) :
+		   radv_info->min_radv_interval;
+  lifetime = (use_lifetime != 0) ?
+	       ((is_no) ? DEF_DEF_RTR_LIFETIME : lifetime) :
+	       radv_info->adv_router_lifetime_in_sec;
 
   if (lifetime)
     {
@@ -1735,8 +1761,9 @@ ip6_ra_config (vlib_main_t * vm, u32 sw_if_index,
     return VNET_API_ERROR_INVALID_VALUE;
 
   /*
-     if "flag" is set and is_no is true then restore default value else set value corresponding to "flag"
-     if "flag" is clear  don't change corresponding value
+     if "flag" is set and is_no is true then restore default value else set
+     value corresponding to "flag" if "flag" is clear  don't change
+     corresponding value
    */
   radv_info->send_radv =
     (suppress != 0) ? ((is_no != 0) ? 1 : 0) : radv_info->send_radv;
@@ -1756,13 +1783,13 @@ ip6_ra_config (vlib_main_t * vm, u32 sw_if_index,
   radv_info->adv_router_lifetime_in_sec = lifetime;
 
   radv_info->initial_adverts_count =
-    (initial_count !=
-     0) ? ((is_no) ? MAX_INITIAL_RTR_ADVERTISEMENTS : initial_count) :
-    radv_info->initial_adverts_count;
+    (initial_count != 0) ?
+      ((is_no) ? MAX_INITIAL_RTR_ADVERTISEMENTS : initial_count) :
+      radv_info->initial_adverts_count;
   radv_info->initial_adverts_interval =
-    (initial_interval !=
-     0) ? ((is_no) ? MAX_INITIAL_RTR_ADVERT_INTERVAL : initial_interval) :
-    radv_info->initial_adverts_interval;
+    (initial_interval != 0) ?
+      ((is_no) ? MAX_INITIAL_RTR_ADVERT_INTERVAL : initial_interval) :
+      radv_info->initial_adverts_interval;
 
   /* restart */
   if ((cease != 0) && (is_no))
@@ -1776,13 +1803,11 @@ ip6_ra_config (vlib_main_t * vm, u32 sw_if_index,
   return (0);
 }
 
-
 int
-ip6_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
-	       ip6_address_t * prefix_addr, u8 prefix_len,
-	       u8 use_default, u32 val_lifetime, u32 pref_lifetime,
-	       u8 no_advertise, u8 off_link, u8 no_autoconfig,
-	       u8 no_onlink, u8 is_no)
+ip6_ra_prefix (vlib_main_t *vm, u32 sw_if_index, ip6_address_t *prefix_addr,
+	       u8 prefix_len, u8 use_default, u32 val_lifetime,
+	       u32 pref_lifetime, u8 no_advertise, u8 off_link,
+	       u8 no_autoconfig, u8 no_onlink, u8 is_no)
 {
   ip6_ra_t *radv_info;
 
@@ -1806,7 +1831,7 @@ ip6_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
     {
       /* delete */
       if (!prefix)
-	return VNET_API_ERROR_INVALID_VALUE;	/* invalid prefix */
+	return VNET_API_ERROR_INVALID_VALUE; /* invalid prefix */
 
       if (prefix->prefix_len != prefix_len)
 	return VNET_API_ERROR_INVALID_VALUE_2;
@@ -1842,8 +1867,8 @@ ip6_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
       clib_memcpy (&prefix->prefix, prefix_addr, sizeof (ip6_address_t));
 
       /* initialize default values */
-      prefix->adv_on_link_flag = 1;	/* L bit set */
-      prefix->adv_autonomous_flag = 1;	/* A bit set */
+      prefix->adv_on_link_flag = 1;    /* L bit set */
+      prefix->adv_autonomous_flag = 1; /* A bit set */
       prefix->adv_valid_lifetime_in_secs = DEF_ADV_VALID_LIFETIME;
       prefix->adv_pref_lifetime_in_secs = DEF_ADV_PREF_LIFETIME;
       prefix->enabled = 1;
@@ -1880,7 +1905,8 @@ ip6_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
     }
   else
     {
-      prefix->adv_valid_lifetime_in_secs = val_lifetime;;
+      prefix->adv_valid_lifetime_in_secs = val_lifetime;
+      ;
       prefix->adv_pref_lifetime_in_secs = pref_lifetime;
     }
 
@@ -1904,8 +1930,8 @@ restart:
 }
 
 clib_error_t *
-ip6_ra_cmd (vlib_main_t * vm,
-	    unformat_input_t * main_input, vlib_cli_command_t * cmd)
+ip6_ra_cmd (vlib_main_t *vm, unformat_input_t *main_input,
+	    vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
@@ -1913,8 +1939,8 @@ ip6_ra_cmd (vlib_main_t * vm,
   u8 suppress = 0, managed = 0, other = 0;
   u8 suppress_ll_option = 0, send_unicast = 0, cease = 0;
   u8 use_lifetime = 0;
-  u32 sw_if_index, ra_lifetime = 0, ra_initial_count =
-    0, ra_initial_interval = 0;
+  u32 sw_if_index, ra_lifetime = 0, ra_initial_count = 0,
+		   ra_initial_interval = 0;
   u32 ra_max_interval = 0, ra_min_interval = 0;
 
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -1922,7 +1948,6 @@ ip6_ra_cmd (vlib_main_t * vm,
   int add_radv_info = 1;
   ip6_address_t ip6_addr;
   u32 addr_len;
-
 
   /* Get a line of input. */
   if (!unformat_user (main_input, unformat_line_input, line_input))
@@ -1932,8 +1957,8 @@ ip6_ra_cmd (vlib_main_t * vm,
   if (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
 
-      if (unformat_user (line_input,
-			 unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat_user (line_input, unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	{
 	  if (!ip6_ra_get_eth_itf (sw_if_index))
 	    {
@@ -1962,8 +1987,8 @@ ip6_ra_cmd (vlib_main_t * vm,
     {
       if (unformat (line_input, "no"))
 	is_no = 1;
-      else if (unformat (line_input, "prefix %U/%d",
-			 unformat_ip6_address, &ip6_addr, &addr_len))
+      else if (unformat (line_input, "prefix %U/%d", unformat_ip6_address,
+			 &ip6_addr, &addr_len))
 	{
 	  add_radv_info = 0;
 	}
@@ -2000,8 +2025,8 @@ ip6_ra_cmd (vlib_main_t * vm,
 	}
       else if (unformat (line_input, "ra-initial"))
 	{
-	  if (!unformat
-	      (line_input, "%d %d", &ra_initial_count, &ra_initial_interval))
+	  if (!unformat (line_input, "%d %d", &ra_initial_count,
+			 &ra_initial_interval))
 	    {
 	      error = unformat_parse_error (line_input);
 	      goto done;
@@ -2031,11 +2056,9 @@ ip6_ra_cmd (vlib_main_t * vm,
 
   if (add_radv_info)
     {
-      ip6_ra_config (vm, sw_if_index,
-		     suppress, managed, other,
-		     suppress_ll_option, send_unicast, cease,
-		     use_lifetime, ra_lifetime,
-		     ra_initial_count, ra_initial_interval,
+      ip6_ra_config (vm, sw_if_index, suppress, managed, other,
+		     suppress_ll_option, send_unicast, cease, use_lifetime,
+		     ra_lifetime, ra_initial_count, ra_initial_interval,
 		     ra_max_interval, ra_min_interval, is_no);
     }
   else
@@ -2069,7 +2092,6 @@ ip6_ra_cmd (vlib_main_t * vm,
 	    break;
 	}
 
-
       /* get the rest of the command */
       while (!use_prefix_default_values &&
 	     unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
@@ -2089,12 +2111,10 @@ ip6_ra_cmd (vlib_main_t * vm,
 	    }
 	}
 
-      ip6_ra_prefix (vm, sw_if_index,
-		     &ip6_addr, addr_len,
-		     use_prefix_default_values,
-		     valid_lifetime_in_secs,
-		     pref_lifetime_in_secs,
-		     no_advertise, off_link, no_autoconfig, no_onlink, is_no);
+      ip6_ra_prefix (vm, sw_if_index, &ip6_addr, addr_len,
+		     use_prefix_default_values, valid_lifetime_in_secs,
+		     pref_lifetime_in_secs, no_advertise, off_link,
+		     no_autoconfig, no_onlink, is_no);
     }
 
 done:
@@ -2104,7 +2124,7 @@ done:
 }
 
 static u8 *
-format_ip6_ra (u8 * s, va_list * args)
+format_ip6_ra (u8 *s, va_list *args)
 {
   index_t rai = va_arg (*args, index_t);
   u32 indent = va_arg (*args, u32);
@@ -2117,59 +2137,48 @@ format_ip6_ra (u8 * s, va_list * args)
 
   indent += 2;
 
-  /* *INDENT-OFF* */
   pool_foreach (p, radv_info->adv_prefixes_pool)
-   {
-    s = format (s, "%Uprefix %U, length %d\n",
-                format_white_space, indent+2,
-                format_ip6_address, &p->prefix, p->prefix_len);
-  }
-  /* *INDENT-ON* */
+    {
+      s = format (s, "%Uprefix %U, length %d\n", format_white_space,
+		  indent + 2, format_ip6_address, &p->prefix, p->prefix_len);
+    }
 
-  s = format (s, "%UMTU is %d\n",
-	      format_white_space, indent, radv_info->adv_link_mtu);
-  s = format (s, "%UICMP error messages are unlimited\n",
-	      format_white_space, indent);
-  s = format (s, "%UICMP redirects are disabled\n",
-	      format_white_space, indent);
-  s = format (s, "%UICMP unreachables are not sent\n",
-	      format_white_space, indent);
-  s = format (s, "%UND DAD is disabled\n", format_white_space, indent);
-  //s = format (s, "%UND reachable time is %d milliseconds\n",);
-  s = format (s, "%UND advertised reachable time is %d\n",
-	      format_white_space, indent,
-	      radv_info->adv_neighbor_reachable_time_in_msec);
-  s = format (s,
-	      "%UND advertised retransmit interval is %d (msec)\n",
-	      format_white_space, indent,
-	      radv_info->
-	      adv_time_in_msec_between_retransmitted_neighbor_solicitations);
+  s = format (s, "%UMTU is %d\n", format_white_space, indent,
+	      radv_info->adv_link_mtu);
+  s = format (s, "%UICMP error messages are unlimited\n", format_white_space,
+	      indent);
   s =
-    format (s,
-	    "%UND router advertisements are sent every %0.1f seconds (min interval is %0.1f)\n",
-	    format_white_space, indent, radv_info->max_radv_interval,
-	    radv_info->min_radv_interval);
+    format (s, "%UICMP redirects are disabled\n", format_white_space, indent);
+  s = format (s, "%UICMP unreachables are not sent\n", format_white_space,
+	      indent);
+  s = format (s, "%UND DAD is disabled\n", format_white_space, indent);
+  // s = format (s, "%UND reachable time is %d milliseconds\n",);
+  s = format (s, "%UND advertised reachable time is %d\n", format_white_space,
+	      indent, radv_info->adv_neighbor_reachable_time_in_msec);
+  s = format (
+    s, "%UND advertised retransmit interval is %d (msec)\n",
+    format_white_space, indent,
+    radv_info->adv_time_in_msec_between_retransmitted_neighbor_solicitations);
+  s = format (s,
+	      "%UND router advertisements are sent every %0.1f seconds (min "
+	      "interval is %0.1f)\n",
+	      format_white_space, indent, radv_info->max_radv_interval,
+	      radv_info->min_radv_interval);
   s =
     format (s, "%UND router advertisements live for %d seconds\n",
-	    format_white_space, indent,
-	    radv_info->adv_router_lifetime_in_sec);
-  s =
-    format (s, "%UHosts %s stateless autoconfig for addresses\n",
-	    format_white_space, indent,
-	    (radv_info->adv_managed_flag) ? "use" : " don't use");
-  s =
-    format (s, "%UND router advertisements sent %d\n", format_white_space,
-	    indent, radv_info->n_advertisements_sent);
-  s =
-    format (s, "%UND router solicitations received %d\n", format_white_space,
-	    indent, radv_info->n_solicitations_rcvd);
-  s =
-    format (s, "%UND router solicitations dropped %d\n", format_white_space,
-	    indent, radv_info->n_solicitations_dropped);
+	    format_white_space, indent, radv_info->adv_router_lifetime_in_sec);
+  s = format (s, "%UHosts %s stateless autoconfig for addresses\n",
+	      format_white_space, indent,
+	      (radv_info->adv_managed_flag) ? "use" : " don't use");
+  s = format (s, "%UND router advertisements sent %d\n", format_white_space,
+	      indent, radv_info->n_advertisements_sent);
+  s = format (s, "%UND router solicitations received %d\n", format_white_space,
+	      indent, radv_info->n_solicitations_rcvd);
+  s = format (s, "%UND router solicitations dropped %d\n", format_white_space,
+	      indent, radv_info->n_solicitations_dropped);
 
   return (s);
 }
-
 
 /*?
  * This command is used to configure the neighbor discovery
@@ -2178,9 +2187,13 @@ format_ip6_ra (u8 * s, va_list * args)
  * on a given interface. This command has three formats:
  *
  *
- * <b>Format 1 - Router Advertisement Options:</b> (Only one can be entered in a single command)
+ * <b>Format 1 - Router Advertisement Options:</b> (Only one can be entered in
+a single command)
  *
- * '<em><b>ip6 nd <interface> [no] [ra-managed-config-flag] | [ra-other-config-flag] | [ra-suppress] | [ra-suppress-link-layer] | [ra-send-unicast] | [ra-lifetime <lifetime>] | [ra-initial <cnt> <interval>] | [ra-interval <max-interval> [<min-interval>]] | [ra-cease]</b></em>'
+ * '<em><b>ip6 nd <interface> [no] [ra-managed-config-flag] |
+[ra-other-config-flag] | [ra-suppress] | [ra-suppress-link-layer] |
+[ra-send-unicast] | [ra-lifetime <lifetime>] | [ra-initial <cnt> <interval>] |
+[ra-interval <max-interval> [<min-interval>]] | [ra-cease]</b></em>'
  *
  * Where:
  *
@@ -2237,44 +2250,63 @@ format_ip6_ra (u8 * s, va_list * args)
  *
  * <b>Format 2 - Prefix Options:</b>
  *
- * '<em><b>ip6 nd <interface> [no] prefix <ip6-address>/<width> [<valid-lifetime> <pref-lifetime> | infinite] [no-advertise] [off-link] [no-autoconfig] [no-onlink]</b></em>'
+ * '<em><b>ip6 nd <interface> [no] prefix <ip6-address>/<width>
+[<valid-lifetime> <pref-lifetime> | infinite] [no-advertise] [off-link]
+[no-autoconfig] [no-onlink]</b></em>'
  *
  * Where:
  *
  * <em>no</em> - All additional flags are ignored and the prefix is deleted.
  *
- * <em><valid-lifetime> <pref-lifetime></em> - '<em><valid-lifetime></em>' is the
+ * <em><valid-lifetime> <pref-lifetime></em> - '<em><valid-lifetime></em>' is
+the
  * length of time in seconds during what the prefix is valid for the purpose of
- * on-link determination. Range is 7203 to 2592000 seconds and default is 2592000
- * seconds (30 days). '<em><pref-lifetime></em>' is the prefered-lifetime and is the
- * length of time in seconds during what addresses generated from the prefix remain
- * preferred. Range is 0 to 604800 seconds and default is 604800 seconds (7 days).
+ * on-link determination. Range is 7203 to 2592000 seconds and default is
+2592000
+ * seconds (30 days). '<em><pref-lifetime></em>' is the prefered-lifetime and
+is the
+ * length of time in seconds during what addresses generated from the prefix
+remain
+ * preferred. Range is 0 to 604800 seconds and default is 604800 seconds (7
+days).
  *
- * <em>infinite</em> - Both '<em><valid-lifetime></em>' and '<em><<pref-lifetime></em>'
+ * <em>infinite</em> - Both '<em><valid-lifetime></em>' and
+'<em><<pref-lifetime></em>'
  * are inifinte, no timeout.
  *
  * <em>no-advertise</em> - Do not send full router address in prefix
  * advertisement. Default is to advertise (i.e. - This flag is off by default).
  *
- * <em>off-link</em> - Prefix is off-link, clear L-bit in packet. Default is on-link
- * (i.e. - This flag is off and L-bit in packet is set by default and this prefix can
- * be used for on-link determination). '<em>no-onlink</em>' also controls the L-bit.
+ * <em>off-link</em> - Prefix is off-link, clear L-bit in packet. Default is
+on-link
+ * (i.e. - This flag is off and L-bit in packet is set by default and this
+prefix can
+ * be used for on-link determination). '<em>no-onlink</em>' also controls the
+L-bit.
  *
- * <em>no-autoconfig</em> - Do not use prefix for autoconfiguration, clear A-bit in packet.
- * Default is autoconfig (i.e. - This flag is off and A-bit in packet is set by default.
+ * <em>no-autoconfig</em> - Do not use prefix for autoconfiguration, clear
+A-bit in packet.
+ * Default is autoconfig (i.e. - This flag is off and A-bit in packet is set by
+default.
  *
- * <em>no-onlink</em> - Do not use prefix for onlink determination, clear L-bit in packet.
- * Default is on-link (i.e. - This flag is off and L-bit in packet is set by default and
- * this prefix can be used for on-link determination). '<em>off-link</em>' also controls
+ * <em>no-onlink</em> - Do not use prefix for onlink determination, clear L-bit
+in packet.
+ * Default is on-link (i.e. - This flag is off and L-bit in packet is set by
+default and
+ * this prefix can be used for on-link determination). '<em>off-link</em>' also
+controls
  * the L-bit.
  *
  *
  * <b>Format 3: - Default of Prefix:</b>
  *
- * '<em><b>ip6 nd <interface> [no] prefix <ip6-address>/<width> default</b></em>'
+ * '<em><b>ip6 nd <interface> [no] prefix <ip6-address>/<width>
+default</b></em>'
  *
- * When a new prefix is added (or existing one is being overwritten) <em>default</em>
- * uses default values for the prefix. If <em>no</em> is used, the <em>default</em>
+ * When a new prefix is added (or existing one is being overwritten)
+<em>default</em>
+ * uses default values for the prefix. If <em>no</em> is used, the
+<em>default</em>
  * is ignored and the prefix is deleted.
  *
  *
@@ -2282,18 +2314,17 @@ format_ip6_ra (u8 * s, va_list * args)
  * Example of how set a router advertisement option:
  * @cliexcmd{ip6 nd GigabitEthernet2/0/0 ra-interval 100 20}
  * Example of how to add a prefix:
- * @cliexcmd{ip6 nd GigabitEthernet2/0/0 prefix fe80::fe:28ff:fe9c:75b3/64 infinite no-advertise}
+ * @cliexcmd{ip6 nd GigabitEthernet2/0/0 prefix fe80::fe:28ff:fe9c:75b3/64
+infinite no-advertise}
  * Example of how to delete a prefix:
  * @cliexcmd{ip6 nd GigabitEthernet2/0/0 no prefix fe80::fe:28ff:fe9c:75b3/64}
 ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (ip6_nd_command, static) =
-{
+
+VLIB_CLI_COMMAND (ip6_nd_command, static) = {
   .path = "ip6 nd",
   .short_help = "ip6 nd <interface> ...",
   .function = ip6_ra_cmd,
 };
-/* *INDENT-ON* */
 
 /**
  * VFT for registering as a delegate to an IP6 link
@@ -2305,7 +2336,7 @@ const static ip6_link_delegate_vft_t ip6_ra_delegate_vft = {
 };
 
 static clib_error_t *
-ip6_ra_init (vlib_main_t * vm)
+ip6_ra_init (vlib_main_t *vm)
 {
   vlib_call_init_function (vm, icmp6_init);
 
@@ -2319,12 +2350,9 @@ ip6_ra_init (vlib_main_t * vm)
   return (NULL);
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (ip6_ra_init) =
-{
-  .runs_after = VLIB_INITS("icmp6_init"),
+VLIB_INIT_FUNCTION (ip6_ra_init) = {
+  .runs_after = VLIB_INITS ("icmp6_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -90,13 +90,10 @@ typedef struct gbp_endpoint_group_db_t_
   uword *gg_hash_sclass;
 } gbp_endpoint_group_db_t;
 
-extern int gbp_endpoint_group_add_and_lock (vnid_t vnid,
-					    u16 sclass,
-					    u32 bd_id,
-					    u32 rd_id,
-					    u32 uplink_sw_if_index,
-					    const gbp_endpoint_retention_t *
-					    retention);
+extern int
+gbp_endpoint_group_add_and_lock (vnid_t vnid, u16 sclass, u32 bd_id, u32 rd_id,
+				 u32 uplink_sw_if_index,
+				 const gbp_endpoint_retention_t *retention);
 extern index_t gbp_endpoint_group_find (sclass_t sclass);
 extern int gbp_endpoint_group_delete (sclass_t sclass);
 extern void gbp_endpoint_group_unlock (index_t index);
@@ -104,15 +101,14 @@ extern void gbp_endpoint_group_lock (index_t index);
 extern u32 gbp_endpoint_group_get_bd_id (const gbp_endpoint_group_t *);
 
 extern gbp_endpoint_group_t *gbp_endpoint_group_get (index_t i);
-extern index_t gbp_endpoint_group_get_fib_index (const gbp_endpoint_group_t *
-						 gg, fib_protocol_t fproto);
+extern index_t
+gbp_endpoint_group_get_fib_index (const gbp_endpoint_group_t *gg,
+				  fib_protocol_t fproto);
 
-typedef int (*gbp_endpoint_group_cb_t) (gbp_endpoint_group_t * gbpe,
-					void *ctx);
+typedef int (*gbp_endpoint_group_cb_t) (gbp_endpoint_group_t *gbpe, void *ctx);
 extern void gbp_endpoint_group_walk (gbp_endpoint_group_cb_t bgpe, void *ctx);
 
-
-extern u8 *format_gbp_endpoint_group (u8 * s, va_list * args);
+extern u8 *format_gbp_endpoint_group (u8 *s, va_list *args);
 
 /**
  * DP functions and databases

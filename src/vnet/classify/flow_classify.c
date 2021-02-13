@@ -19,8 +19,7 @@
 flow_classify_main_t flow_classify_main;
 
 static void
-vnet_flow_classify_feature_enable (vlib_main_t * vnm,
-				   flow_classify_main_t * fcm,
+vnet_flow_classify_feature_enable (vlib_main_t *vnm, flow_classify_main_t *fcm,
 				   u32 sw_if_index,
 				   flow_classify_table_id_t tid,
 				   int feature_enable)
@@ -46,7 +45,7 @@ vnet_flow_classify_feature_enable (vlib_main_t * vnm,
 }
 
 int
-vnet_set_flow_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
+vnet_set_flow_classify_intfc (vlib_main_t *vm, u32 sw_if_index,
 			      u32 ip4_table_index, u32 ip6_table_index,
 			      u32 is_add)
 {
@@ -65,17 +64,17 @@ vnet_set_flow_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
       if (pool_is_free_index (vcm->tables, pct[ti]))
 	return VNET_API_ERROR_NO_SUCH_TABLE;
 
-      vec_validate_init_empty
-	(fcm->classify_table_index_by_sw_if_index[ti], sw_if_index, ~0);
+      vec_validate_init_empty (fcm->classify_table_index_by_sw_if_index[ti],
+			       sw_if_index, ~0);
 
       /* Reject any DEL operation with wrong sw_if_index */
       if (!is_add &&
 	  (pct[ti] !=
 	   fcm->classify_table_index_by_sw_if_index[ti][sw_if_index]))
 	{
-	  clib_warning
-	    ("Non-existent intf_idx=%d with table_index=%d for delete",
-	     sw_if_index, pct[ti]);
+	  clib_warning (
+	    "Non-existent intf_idx=%d with table_index=%d for delete",
+	    sw_if_index, pct[ti]);
 	  return VNET_API_ERROR_NO_SUCH_TABLE;
 	}
 
@@ -92,14 +91,12 @@ vnet_set_flow_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 	fcm->classify_table_index_by_sw_if_index[ti][sw_if_index] = ~0;
     }
 
-
   return 0;
 }
 
 static clib_error_t *
-set_flow_classify_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+set_flow_classify_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index = ~0;
@@ -111,8 +108,8 @@ set_flow_classify_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "interface %U", unformat_vnet_sw_interface,
-		    vnm, &sw_if_index))
+      if (unformat (input, "interface %U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (input, "ip4-table %d", &ip4_table_index))
 	idx_cnt++;
@@ -150,18 +147,15 @@ set_flow_classify_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_input_acl_command, static) = {
-    .path = "set flow classify",
-    .short_help =
-    "set flow classify interface <int> [ip4-table <index>]\n"
-    "  [ip6-table <index>] [del]",
-    .function = set_flow_classify_command_fn,
+  .path = "set flow classify",
+  .short_help = "set flow classify interface <int> [ip4-table <index>]\n"
+		"  [ip6-table <index>] [del]",
+  .function = set_flow_classify_command_fn,
 };
-/* *INDENT-ON* */
 
 static uword
-unformat_table_type (unformat_input_t * input, va_list * va)
+unformat_table_type (unformat_input_t *input, va_list *va)
 {
   u32 *r = va_arg (*va, u32 *);
   u32 tid;
@@ -178,9 +172,8 @@ unformat_table_type (unformat_input_t * input, va_list * va)
 }
 
 static clib_error_t *
-show_flow_classify_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+show_flow_classify_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   flow_classify_main_t *fcm = &flow_classify_main;
   u32 type = FLOW_CLASSIFY_N_TABLES;
@@ -190,7 +183,8 @@ show_flow_classify_command_fn (vlib_main_t * vm,
   if (unformat (input, "type %U", unformat_table_type, &type))
     ;
   else
-    return clib_error_return (0, "Type must be specified.");;
+    return clib_error_return (0, "Type must be specified.");
+  ;
 
   if (type == FLOW_CLASSIFY_N_TABLES)
     return clib_error_return (0, "Invalid table type.");
@@ -215,13 +209,11 @@ show_flow_classify_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_flow_classify_command, static) = {
-    .path = "show classify flow",
-    .short_help = "show classify flow type [ip4|ip6]",
-    .function = show_flow_classify_command_fn,
+  .path = "show classify flow",
+  .short_help = "show classify flow type [ip4|ip6]",
+  .function = show_flow_classify_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

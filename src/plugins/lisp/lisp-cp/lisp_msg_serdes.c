@@ -17,30 +17,30 @@
 #include <lisp/lisp-cp/packets.h>
 #include <vppinfra/time.h>
 
-void *lisp_msg_put_gid (vlib_buffer_t * b, gid_address_t * gid);
+void *lisp_msg_put_gid (vlib_buffer_t *b, gid_address_t *gid);
 
 static void
-lisp_msg_put_locators (vlib_buffer_t * b, locator_t * locators)
+lisp_msg_put_locators (vlib_buffer_t *b, locator_t *locators)
 {
   locator_t *loc;
 
   vec_foreach (loc, locators)
-  {
-    u8 *p = vlib_buffer_put_uninit (b, sizeof (locator_hdr_t));
-    clib_memset (p, 0, sizeof (locator_hdr_t));
-    LOC_PRIORITY (p) = loc->priority;
-    LOC_MPRIORITY (p) = loc->mpriority;
-    LOC_WEIGHT (p) = loc->weight;
-    LOC_MWEIGHT (p) = loc->mweight;
-    LOC_LOCAL (p) = loc->local;
-    LOC_PROBED (p) = loc->probed ? 1 : 0;
-    LOC_REACHABLE (p) = loc->state ? 1 : 0;
-    lisp_msg_put_gid (b, &loc->address);
-  }
+    {
+      u8 *p = vlib_buffer_put_uninit (b, sizeof (locator_hdr_t));
+      clib_memset (p, 0, sizeof (locator_hdr_t));
+      LOC_PRIORITY (p) = loc->priority;
+      LOC_MPRIORITY (p) = loc->mpriority;
+      LOC_WEIGHT (p) = loc->weight;
+      LOC_MWEIGHT (p) = loc->mweight;
+      LOC_LOCAL (p) = loc->local;
+      LOC_PROBED (p) = loc->probed ? 1 : 0;
+      LOC_REACHABLE (p) = loc->state ? 1 : 0;
+      lisp_msg_put_gid (b, &loc->address);
+    }
 }
 
 static void
-lisp_msg_put_mapping_record (vlib_buffer_t * b, mapping_t * record)
+lisp_msg_put_mapping_record (vlib_buffer_t *b, mapping_t *record)
 {
   mapping_record_hdr_t *p =
     vlib_buffer_put_uninit (b, sizeof (mapping_record_hdr_t));
@@ -57,7 +57,7 @@ lisp_msg_put_mapping_record (vlib_buffer_t * b, mapping_t * record)
 }
 
 static void
-lisp_msg_put_mreg_records (vlib_buffer_t * b, mapping_t * records)
+lisp_msg_put_mreg_records (vlib_buffer_t *b, mapping_t *records)
 {
   u32 i;
   for (i = 0; i < vec_len (records); i++)
@@ -65,7 +65,7 @@ lisp_msg_put_mreg_records (vlib_buffer_t * b, mapping_t * records)
 }
 
 void *
-lisp_msg_put_gid (vlib_buffer_t * b, gid_address_t * gid)
+lisp_msg_put_gid (vlib_buffer_t *b, gid_address_t *gid)
 {
   u8 *p = 0;
   if (!gid)
@@ -83,8 +83,8 @@ lisp_msg_put_gid (vlib_buffer_t * b, gid_address_t * gid)
 }
 
 static void *
-lisp_msg_put_itr_rlocs (lisp_cp_main_t * lcm, vlib_buffer_t * b,
-			gid_address_t * rlocs, u8 * locs_put)
+lisp_msg_put_itr_rlocs (lisp_cp_main_t *lcm, vlib_buffer_t *b,
+			gid_address_t *rlocs, u8 *locs_put)
 {
   u8 *bp, count = 0;
   u32 i;
@@ -101,7 +101,7 @@ lisp_msg_put_itr_rlocs (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 }
 
 void *
-lisp_msg_put_eid_rec (vlib_buffer_t * b, gid_address_t * eid)
+lisp_msg_put_eid_rec (vlib_buffer_t *b, gid_address_t *eid)
 {
   eid_record_hdr_t *h = vlib_buffer_put_uninit (b, sizeof (*h));
 
@@ -135,7 +135,7 @@ nonce_build (u32 seed)
 }
 
 void *
-lisp_msg_put_map_reply (vlib_buffer_t * b, mapping_t * records, u64 nonce,
+lisp_msg_put_map_reply (vlib_buffer_t *b, mapping_t *records, u64 nonce,
 			u8 probe_bit)
 {
   map_reply_hdr_t *h = vlib_buffer_put_uninit (b, sizeof (h[0]));
@@ -151,9 +151,9 @@ lisp_msg_put_map_reply (vlib_buffer_t * b, mapping_t * records, u64 nonce,
 }
 
 void *
-lisp_msg_put_map_register (vlib_buffer_t * b, mapping_t * records,
-			   u8 want_map_notify, u16 auth_data_len, u64 * nonce,
-			   u32 * msg_len)
+lisp_msg_put_map_register (vlib_buffer_t *b, mapping_t *records,
+			   u8 want_map_notify, u16 auth_data_len, u64 *nonce,
+			   u32 *msg_len)
 {
   u8 *auth_data = 0;
 
@@ -178,10 +178,9 @@ lisp_msg_put_map_register (vlib_buffer_t * b, mapping_t * records,
 }
 
 void *
-lisp_msg_put_mreq (lisp_cp_main_t * lcm, vlib_buffer_t * b,
-		   gid_address_t * seid, gid_address_t * deid,
-		   gid_address_t * rlocs, u8 is_smr_invoked,
-		   u8 rloc_probe_set, u64 * nonce)
+lisp_msg_put_mreq (lisp_cp_main_t *lcm, vlib_buffer_t *b, gid_address_t *seid,
+		   gid_address_t *deid, gid_address_t *rlocs,
+		   u8 is_smr_invoked, u8 rloc_probe_set, u64 *nonce)
 {
   u8 loc_count = 0;
 
@@ -212,8 +211,8 @@ lisp_msg_put_mreq (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 }
 
 void *
-lisp_msg_push_ecm (vlib_main_t * vm, vlib_buffer_t * b, int lp, int rp,
-		   gid_address_t * la, gid_address_t * ra)
+lisp_msg_push_ecm (vlib_main_t *vm, vlib_buffer_t *b, int lp, int rp,
+		   gid_address_t *la, gid_address_t *ra)
 {
   ecm_hdr_t *h;
   ip_address_t _src_ip, *src_ip = &_src_ip, _dst_ip, *dst_ip = &_dst_ip;
@@ -253,13 +252,13 @@ msg_type_to_hdr_len (lisp_msg_type_e type)
 }
 
 void *
-lisp_msg_pull_hdr (vlib_buffer_t * b, lisp_msg_type_e type)
+lisp_msg_pull_hdr (vlib_buffer_t *b, lisp_msg_type_e type)
 {
   return vlib_buffer_pull (b, msg_type_to_hdr_len (type));
 }
 
 u32
-lisp_msg_parse_addr (vlib_buffer_t * b, gid_address_t * eid)
+lisp_msg_parse_addr (vlib_buffer_t *b, gid_address_t *eid)
 {
   u32 len;
   clib_memset (eid, 0, sizeof (*eid));
@@ -270,7 +269,7 @@ lisp_msg_parse_addr (vlib_buffer_t * b, gid_address_t * eid)
 }
 
 u32
-lisp_msg_parse_eid_rec (vlib_buffer_t * b, gid_address_t * eid)
+lisp_msg_parse_eid_rec (vlib_buffer_t *b, gid_address_t *eid)
 {
   eid_record_hdr_t *h = vlib_buffer_get_current (b);
   u32 len;
@@ -286,13 +285,13 @@ lisp_msg_parse_eid_rec (vlib_buffer_t * b, gid_address_t * eid)
 }
 
 u32
-lisp_msg_parse_itr_rlocs (vlib_buffer_t * b, gid_address_t ** rlocs,
+lisp_msg_parse_itr_rlocs (vlib_buffer_t *b, gid_address_t **rlocs,
 			  u8 rloc_count)
 {
   gid_address_t tloc;
   u32 i, len = 0, tlen = 0;
 
-  //MREQ_ITR_RLOC_COUNT(mreq_hdr) + 1
+  // MREQ_ITR_RLOC_COUNT(mreq_hdr) + 1
   for (i = 0; i < rloc_count; i++)
     {
       len = lisp_msg_parse_addr (b, &tloc);
@@ -305,7 +304,7 @@ lisp_msg_parse_itr_rlocs (vlib_buffer_t * b, gid_address_t ** rlocs,
 }
 
 u32
-lisp_msg_parse_loc (vlib_buffer_t * b, locator_t * loc)
+lisp_msg_parse_loc (vlib_buffer_t *b, locator_t *loc)
 {
   int len;
 
@@ -321,8 +320,8 @@ lisp_msg_parse_loc (vlib_buffer_t * b, locator_t * loc)
 }
 
 u32
-lisp_msg_parse_mapping_record (vlib_buffer_t * b, gid_address_t * eid,
-			       locator_t ** locs, locator_t * probed_)
+lisp_msg_parse_mapping_record (vlib_buffer_t *b, gid_address_t *eid,
+			       locator_t **locs, locator_t *probed_)
 {
   void *h = 0, *loc_hdr = 0;
   locator_t loc, *probed = 0;
@@ -359,8 +358,7 @@ lisp_msg_parse_mapping_record (vlib_buffer_t * b, gid_address_t * eid,
       if (LOC_PROBED (loc_hdr))
 	{
 	  if (probed != 0)
-	    clib_warning
-	      ("Multiple locators probed! Probing only the first!");
+	    clib_warning ("Multiple locators probed! Probing only the first!");
 	  else
 	    probed = &loc;
 	}

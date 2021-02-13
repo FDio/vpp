@@ -16,7 +16,7 @@
 #include <vnet/session/session.h>
 
 u8 *
-format_session_fifos (u8 * s, va_list * args)
+format_session_fifos (u8 *s, va_list *args)
 {
   session_t *ss = va_arg (*args, session_t *);
   int verbose = va_arg (*args, int);
@@ -30,15 +30,15 @@ format_session_fifos (u8 * s, va_list * args)
   if (verbose > 2 && ss->rx_fifo->shr->has_event)
     {
       found = session_node_lookup_fifo_event (ss->rx_fifo, e);
-      s = format (s, " session node event: %s\n",
-		  found ? "found" : "not found");
+      s =
+	format (s, " session node event: %s\n", found ? "found" : "not found");
     }
   s = format (s, " Tx fifo: %U", format_svm_fifo, ss->tx_fifo, verbose);
   if (verbose > 2 && ss->tx_fifo->shr->has_event)
     {
       found = session_node_lookup_fifo_event (ss->tx_fifo, e);
-      s = format (s, " session node event: %s\n",
-		  found ? "found" : "not found");
+      s =
+	format (s, " session node event: %s\n", found ? "found" : "not found");
     }
   return s;
 }
@@ -50,7 +50,7 @@ const char *session_state_str[] = {
 };
 
 u8 *
-format_session_state (u8 * s, va_list * args)
+format_session_state (u8 *s, va_list *args)
 {
   session_t *ss = va_arg (*args, session_t *);
 
@@ -69,7 +69,7 @@ const char *session_flags_str[] = {
 };
 
 u8 *
-format_session_flags (u8 * s, va_list * args)
+format_session_flags (u8 *s, va_list *args)
 {
   session_t *ss = va_arg (*args, session_t *);
   int i, last = -1;
@@ -98,7 +98,7 @@ format_session_flags (u8 * s, va_list * args)
  *   "Connection"
  */
 u8 *
-format_session (u8 * s, va_list * args)
+format_session (u8 *s, va_list *args)
 {
   session_t *ss = va_arg (*args, session_t *);
   int verbose = va_arg (*args, int);
@@ -120,8 +120,8 @@ format_session (u8 * s, va_list * args)
       str = format (0, "%-10u%-10u", rxf, txf);
     }
 
-  if (ss->session_state >= SESSION_STATE_ACCEPTING
-      || ss->session_state == SESSION_STATE_CREATED)
+  if (ss->session_state >= SESSION_STATE_ACCEPTING ||
+      ss->session_state == SESSION_STATE_CREATED)
     {
       s = format (s, "%U", format_transport_connection, tp,
 		  ss->connection_index, ss->thread_index, verbose);
@@ -137,15 +137,15 @@ format_session (u8 * s, va_list * args)
     }
   else if (ss->session_state == SESSION_STATE_LISTENING)
     {
-      s = format (s, "%U%v", format_transport_listen_connection,
-		  tp, ss->connection_index, ss->thread_index, verbose, str);
+      s = format (s, "%U%v", format_transport_listen_connection, tp,
+		  ss->connection_index, ss->thread_index, verbose, str);
       if (verbose > 1)
 	s = format (s, "\n%U", format_session_fifos, ss, verbose);
     }
   else if (ss->session_state == SESSION_STATE_CONNECTING)
     {
-      s = format (s, "%-40U%v", format_transport_half_open_connection,
-		  tp, ss->connection_index, ss->thread_index, str);
+      s = format (s, "%-40U%v", format_transport_half_open_connection, tp,
+		  ss->connection_index, ss->thread_index, str);
     }
   else
     {
@@ -157,7 +157,7 @@ format_session (u8 * s, va_list * args)
 }
 
 uword
-unformat_stream_session_id (unformat_input_t * input, va_list * args)
+unformat_stream_session_id (unformat_input_t *input, va_list *args)
 {
   u8 *proto = va_arg (*args, u8 *);
   u32 *fib_index = va_arg (*args, u32 *);
@@ -210,28 +210,27 @@ unformat_stream_session_id (unformat_input_t * input, va_list * args)
 }
 
 uword
-unformat_session_state (unformat_input_t * input, va_list * args)
+unformat_session_state (unformat_input_t *input, va_list *args)
 {
   session_state_t *state = va_arg (*args, session_state_t *);
   u8 *state_vec = 0;
   int rv = 0;
 
-#define _(sym, str)					\
-  if (unformat (input, str))				\
-    {							\
-      *state = SESSION_STATE_ ## sym;			\
-      rv = 1;						\
-      goto done;					\
+#define _(sym, str)                                                           \
+  if (unformat (input, str))                                                  \
+    {                                                                         \
+      *state = SESSION_STATE_##sym;                                           \
+      rv = 1;                                                                 \
+      goto done;                                                              \
     }
   foreach_session_state
 #undef _
-done:
-  vec_free (state_vec);
+    done : vec_free (state_vec);
   return rv;
 }
 
 uword
-unformat_session (unformat_input_t * input, va_list * args)
+unformat_session (unformat_input_t *input, va_list *args)
 {
   session_t **result = va_arg (*args, session_t **);
   u32 lcl_port = 0, rmt_port = 0, fib_index = 0;
@@ -262,7 +261,7 @@ unformat_session (unformat_input_t * input, va_list * args)
 }
 
 uword
-unformat_transport_connection (unformat_input_t * input, va_list * args)
+unformat_transport_connection (unformat_input_t *input, va_list *args)
 {
   transport_connection_t **result = va_arg (*args, transport_connection_t **);
   u32 suggested_proto = va_arg (*args, u32);
@@ -276,8 +275,8 @@ unformat_transport_connection (unformat_input_t * input, va_list * args)
 		 &lcl, &rmt, &lcl_port, &rmt_port, &is_ip4))
     return 0;
 
-  proto = (proto == (u8) ~ 0) ? suggested_proto : proto;
-  if (proto == (u8) ~ 0)
+  proto = (proto == (u8) ~0) ? suggested_proto : proto;
+  if (proto == (u8) ~0)
     return 0;
   if (is_ip4)
     tc = session_lookup_connection4 (fib_index, &lcl.ip4, &rmt.ip4,
@@ -297,7 +296,7 @@ unformat_transport_connection (unformat_input_t * input, va_list * args)
 }
 
 static void
-session_cli_show_all_sessions (vlib_main_t * vm, int verbose)
+session_cli_show_all_sessions (vlib_main_t *vm, int verbose)
 {
   session_main_t *smm = &session_main;
   u32 n_closed, thread_index;
@@ -322,30 +321,30 @@ session_cli_show_all_sessions (vlib_main_t * vm, int verbose)
 
       if (pool_elts (pool) > 50)
 	{
-	  vlib_cli_output (vm, "Thread %u: %d sessions. Verbose output "
+	  vlib_cli_output (vm,
+			   "Thread %u: %d sessions. Verbose output "
 			   "suppressed. For more details use filters.",
 			   thread_index, pool_elts (pool));
 	  continue;
 	}
 
       if (verbose == 1)
-	vlib_cli_output (vm, "%s%-" SESSION_CLI_ID_LEN "s%-"
-			 SESSION_CLI_STATE_LEN "s%-10s%-10s",
-			 thread_index ? "\n" : "",
-			 "Connection", "State", "Rx-f", "Tx-f");
+	vlib_cli_output (
+	  vm,
+	  "%s%-" SESSION_CLI_ID_LEN "s%-" SESSION_CLI_STATE_LEN "s%-10s%-10s",
+	  thread_index ? "\n" : "", "Connection", "State", "Rx-f", "Tx-f");
 
       n_closed = 0;
 
-      /* *INDENT-OFF* */
-      pool_foreach (s, pool)  {
-        if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
-          {
-            n_closed += 1;
-            continue;
-          }
-        vlib_cli_output (vm, "%U", format_session, s, verbose);
-      }
-      /* *INDENT-ON* */
+      pool_foreach (s, pool)
+	{
+	  if (s->session_state >= SESSION_STATE_TRANSPORT_DELETED)
+	    {
+	      n_closed += 1;
+	      continue;
+	    }
+	  vlib_cli_output (vm, "%U", format_session, s, verbose);
+	}
 
       if (!n_closed)
 	vlib_cli_output (vm, "Thread %d: active sessions %u", thread_index,
@@ -357,14 +356,15 @@ session_cli_show_all_sessions (vlib_main_t * vm, int verbose)
 }
 
 static int
-session_cli_filter_check (session_t * s, session_state_t * states,
+session_cli_filter_check (session_t *s, session_state_t *states,
 			  transport_proto_t tp)
 {
   if (states)
     {
       session_state_t *state;
-      vec_foreach (state, states) if (s->session_state == *state)
-	goto check_transport;
+      vec_foreach (state, states)
+	if (s->session_state == *state)
+	  goto check_transport;
       return 0;
     }
 
@@ -377,8 +377,8 @@ check_transport:
 }
 
 static void
-session_cli_show_session_filter (vlib_main_t * vm, u32 thread_index,
-				 u32 start, u32 end, session_state_t * states,
+session_cli_show_session_filter (vlib_main_t *vm, u32 thread_index, u32 start,
+				 u32 end, session_state_t *states,
 				 transport_proto_t tp, int verbose)
 {
   u8 output_suppressed = 0;
@@ -396,8 +396,8 @@ session_cli_show_session_filter (vlib_main_t * vm, u32 thread_index,
 
   pool = wrk->sessions;
 
-  if (tp == TRANSPORT_PROTO_INVALID && states == 0 && !verbose
-      && (start == 0 && end == ~0))
+  if (tp == TRANSPORT_PROTO_INVALID && states == 0 && !verbose &&
+      (start == 0 && end == ~0))
     {
       vlib_cli_output (vm, "Thread %d: %u sessions", thread_index,
 		       pool_elts (pool));
@@ -429,16 +429,17 @@ session_cli_show_session_filter (vlib_main_t * vm, u32 thread_index,
     }
 
   if (!output_suppressed)
-    vlib_cli_output (vm, "Thread %d: %u sessions matched filter",
-		     thread_index, count);
-  else
-    vlib_cli_output (vm, "Thread %d: %u sessions matched filter. Not all"
-		     " shown. Use finer grained filter.", thread_index,
+    vlib_cli_output (vm, "Thread %d: %u sessions matched filter", thread_index,
 		     count);
+  else
+    vlib_cli_output (vm,
+		     "Thread %d: %u sessions matched filter. Not all"
+		     " shown. Use finer grained filter.",
+		     thread_index, count);
 }
 
 void
-session_cli_show_events_thread (vlib_main_t * vm, u32 thread_index)
+session_cli_show_events_thread (vlib_main_t *vm, u32 thread_index)
 {
   session_worker_t *wrk;
 
@@ -450,14 +451,13 @@ session_cli_show_events_thread (vlib_main_t * vm, u32 thread_index)
     }
 
   vlib_cli_output (vm, "Thread %d:\n", thread_index);
-  vlib_cli_output (vm, " evt elements alloc: %u",
-		   pool_elts (wrk->event_elts));
+  vlib_cli_output (vm, " evt elements alloc: %u", pool_elts (wrk->event_elts));
   vlib_cli_output (vm, " ctrl evt elt data alloc: %d",
 		   pool_elts (wrk->ctrl_evts_data));
 }
 
 static void
-session_cli_show_events (vlib_main_t * vm, u32 thread_index)
+session_cli_show_events (vlib_main_t *vm, u32 thread_index)
 {
   session_main_t *smm = &session_main;
   if (!thread_index)
@@ -471,7 +471,7 @@ session_cli_show_events (vlib_main_t * vm, u32 thread_index)
 }
 
 static void
-session_cli_print_session_states (vlib_main_t * vm)
+session_cli_print_session_states (vlib_main_t *vm)
 {
 #define _(sym, str) vlib_cli_output (vm, str);
   foreach_session_state
@@ -479,8 +479,8 @@ session_cli_print_session_states (vlib_main_t * vm)
 }
 
 static clib_error_t *
-show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			 vlib_cli_command_t * cmd)
+show_session_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   u8 one_session = 0, do_listeners = 0, sst, do_elog = 0, do_filter = 0;
   u32 track_index, thread_index = 0, start = 0, end = ~0, session_index;
@@ -532,8 +532,8 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	{
 	  do_filter = 1;
 	}
-      else
-	if (unformat (line_input, "state %U", unformat_session_state, &state))
+      else if (unformat (line_input, "state %U", unformat_session_state,
+			 &state))
 	{
 	  vec_add1 (states, state);
 	  do_filter = 1;
@@ -547,16 +547,19 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 					 thread_index);
 	  if (!tc)
 	    {
-	      vlib_cli_output (vm, "transport connection %u thread %u is not"
-			       " allocated", transport_index, thread_index);
+	      vlib_cli_output (vm,
+			       "transport connection %u thread %u is not"
+			       " allocated",
+			       transport_index, thread_index);
 	      goto done;
 	    }
 	  s = session_get_if_valid (tc->s_index, thread_index);
 	  if (!s)
 	    {
-	      vlib_cli_output (vm, "session for transport connection %u "
-			       "thread %u does not exist", transport_index,
-			       thread_index);
+	      vlib_cli_output (vm,
+			       "session for transport connection %u "
+			       "thread %u does not exist",
+			       transport_index, thread_index);
 	      goto done;
 	    }
 	  one_session = 1;
@@ -604,11 +607,11 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 	  tc = session_get_transport (s);
 	  track_index = transport_elog_track_index (tc);
-	  dt = (em->init_time.cpu - vm->clib_time.init_cpu_time)
-	    * vm->clib_time.seconds_per_clock;
+	  dt = (em->init_time.cpu - vm->clib_time.init_cpu_time) *
+	       vm->clib_time.seconds_per_clock;
 	  if (track_index != ~0)
-	    str = format (str, " session elog:\n%U", format_elog_track, em,
-			  dt, track_index);
+	    str = format (str, " session elog:\n%U", format_elog_track, em, dt,
+			  track_index);
 	}
       vlib_cli_output (vm, "%v", str);
       vec_free (str);
@@ -621,17 +624,16 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
       vlib_cli_output (vm, "%-" SESSION_CLI_ID_LEN "s%-24s", "Listener",
 		       "App");
 
-      /* *INDENT-OFF* */
-      pool_foreach (s, smm->wrk[0].sessions)  {
-	if (s->session_state != SESSION_STATE_LISTENING
-	    || s->session_type != sst)
-	  continue;
-	app_wrk = app_worker_get (s->app_wrk_index);
-	app_name = application_name_from_index (app_wrk->app_index);
-	vlib_cli_output (vm, "%U%-25v%", format_session, s, 0,
-			 app_name);
-      }
-      /* *INDENT-ON* */
+      pool_foreach (s, smm->wrk[0].sessions)
+	{
+	  if (s->session_state != SESSION_STATE_LISTENING ||
+	      s->session_type != sst)
+	    continue;
+	  app_wrk = app_worker_get (s->app_wrk_index);
+	  app_name = application_name_from_index (app_wrk->app_index);
+	  vlib_cli_output (vm, "%U%-25v%", format_session, s, 0, app_name);
+	}
+
       goto done;
     }
 
@@ -662,9 +664,7 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (vlib_cli_show_session_command) =
-{
+VLIB_CLI_COMMAND (vlib_cli_show_session_command) = {
   .path = "show session",
   .short_help = "show session [verbose [n]] [listeners <proto>] "
 		"[<session-id> [elog]] [thread <n> [index <n>] "
@@ -672,10 +672,9 @@ VLIB_CLI_COMMAND (vlib_cli_show_session_command) =
 		"[protos] [states] ",
   .function = show_session_command_fn,
 };
-/* *INDENT-ON* */
 
 static int
-clear_session (session_t * s)
+clear_session (session_t *s)
 {
   app_worker_t *server_wrk = app_worker_get (s->app_wrk_index);
   app_worker_close_notify (server_wrk, s);
@@ -683,8 +682,8 @@ clear_session (session_t * s)
 }
 
 static clib_error_t *
-clear_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			  vlib_cli_command_t * cmd)
+clear_session_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   session_main_t *smm = &session_main;
   u32 thread_index = 0, clear_all = 0;
@@ -724,32 +723,28 @@ clear_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (clear_all)
     {
-      /* *INDENT-OFF* */
+
       vec_foreach (wrk, smm->wrk)
 	{
-	  pool_foreach (session, wrk->sessions)  {
-	    clear_session (session);
-	  }
+	  pool_foreach (session, wrk->sessions)
+	    {
+	      clear_session (session);
+	    }
 	};
-      /* *INDENT-ON* */
     }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (clear_session_command, static) =
-{
+VLIB_CLI_COMMAND (clear_session_command, static) = {
   .path = "clear session",
   .short_help = "clear session thread <thread> session <index>",
   .function = clear_session_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_session_fifo_trace_command_fn (vlib_main_t * vm,
-				    unformat_input_t * input,
-				    vlib_cli_command_t * cmd)
+show_session_fifo_trace_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				    vlib_cli_command_t *cmd)
 {
   session_t *s = 0;
   u8 is_rx = 0, *str = 0;
@@ -779,26 +774,22 @@ show_session_fifo_trace_command_fn (vlib_main_t * vm,
       return 0;
     }
 
-  str = is_rx ?
-    svm_fifo_dump_trace (str, s->rx_fifo) :
-    svm_fifo_dump_trace (str, s->tx_fifo);
+  str = is_rx ? svm_fifo_dump_trace (str, s->rx_fifo) :
+		svm_fifo_dump_trace (str, s->tx_fifo);
 
   vlib_cli_output (vm, "%v", str);
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_session_fifo_trace_command, static) =
-{
+VLIB_CLI_COMMAND (show_session_fifo_trace_command, static) = {
   .path = "show session fifo trace",
   .short_help = "show session fifo trace <session>",
   .function = show_session_fifo_trace_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-session_replay_fifo_command_fn (vlib_main_t * vm, unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+session_replay_fifo_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
 {
   session_t *s = 0;
   u8 is_rx = 0, *str = 0;
@@ -826,26 +817,22 @@ session_replay_fifo_command_fn (vlib_main_t * vm, unformat_input_t * input,
       return 0;
     }
 
-  str = is_rx ?
-    svm_fifo_replay (str, s->rx_fifo, 0, 1) :
-    svm_fifo_replay (str, s->tx_fifo, 0, 1);
+  str = is_rx ? svm_fifo_replay (str, s->rx_fifo, 0, 1) :
+		svm_fifo_replay (str, s->tx_fifo, 0, 1);
 
   vlib_cli_output (vm, "%v", str);
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (session_replay_fifo_trace_command, static) =
-{
+VLIB_CLI_COMMAND (session_replay_fifo_trace_command, static) = {
   .path = "session replay fifo",
   .short_help = "session replay fifo <session>",
   .function = session_replay_fifo_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-session_enable_disable_fn (vlib_main_t * vm, unformat_input_t * input,
-			   vlib_cli_command_t * cmd)
+session_enable_disable_fn (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_en = 1;
@@ -873,14 +860,11 @@ session_enable_disable_fn (vlib_main_t * vm, unformat_input_t * input,
   return vnet_session_enable_disable (vm, is_en);
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (session_enable_disable_command, static) =
-{
+VLIB_CLI_COMMAND (session_enable_disable_command, static) = {
   .path = "session",
   .short_help = "session [enable|disable]",
   .function = session_enable_disable_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

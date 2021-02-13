@@ -30,86 +30,87 @@
 #define REPLY_MSG_ID_BASE sm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = SAMPLE_PLUGIN_BUILD_VER,
-    .description = "Sample of VPP Plugin",
+  .version = SAMPLE_PLUGIN_BUILD_VER,
+  .description = "Sample of VPP Plugin",
 };
-/* *INDENT-ON* */
 
 sample_main_t sample_main;
 
 /**
- * @brief Enable/disable the macswap plugin. 
+ * @brief Enable/disable the macswap plugin.
  *
  * Action function shared between message handler and debug CLI.
  */
 
-int sample_macswap_enable_disable (sample_main_t * sm, u32 sw_if_index,
-                                   int enable_disable)
+int
+sample_macswap_enable_disable (sample_main_t *sm, u32 sw_if_index,
+			       int enable_disable)
 {
-  vnet_sw_interface_t * sw;
+  vnet_sw_interface_t *sw;
   int rv = 0;
 
   /* Utterly wrong? */
-  if (pool_is_free_index (sm->vnet_main->interface_main.sw_interfaces, 
-                          sw_if_index))
+  if (pool_is_free_index (sm->vnet_main->interface_main.sw_interfaces,
+			  sw_if_index))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   /* Not a physical port? */
   sw = vnet_get_sw_interface (sm->vnet_main, sw_if_index);
   if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
-  
-  vnet_feature_enable_disable ("device-input", "sample",
-                               sw_if_index, enable_disable, 0, 0);
+
+  vnet_feature_enable_disable ("device-input", "sample", sw_if_index,
+			       enable_disable, 0, 0);
 
   return rv;
 }
 
 static clib_error_t *
-macswap_enable_disable_command_fn (vlib_main_t * vm,
-                                   unformat_input_t * input,
-                                   vlib_cli_command_t * cmd)
+macswap_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
 {
-  sample_main_t * sm = &sample_main;
+  sample_main_t *sm = &sample_main;
   u32 sw_if_index = ~0;
   int enable_disable = 1;
-    
+
   int rv;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
-    if (unformat (input, "disable"))
-      enable_disable = 0;
-    else if (unformat (input, "%U", unformat_vnet_sw_interface,
-                       sm->vnet_main, &sw_if_index))
-      ;
-    else
-      break;
-  }
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "disable"))
+	enable_disable = 0;
+      else if (unformat (input, "%U", unformat_vnet_sw_interface,
+			 sm->vnet_main, &sw_if_index))
+	;
+      else
+	break;
+    }
 
   if (sw_if_index == ~0)
     return clib_error_return (0, "Please specify an interface...");
-    
+
   rv = sample_macswap_enable_disable (sm, sw_if_index, enable_disable);
 
-  switch(rv) {
-  case 0:
-    break;
+  switch (rv)
+    {
+    case 0:
+      break;
 
-  case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-    return clib_error_return 
-      (0, "Invalid interface, only works on physical ports");
-    break;
+    case VNET_API_ERROR_INVALID_SW_IF_INDEX:
+      return clib_error_return (
+	0, "Invalid interface, only works on physical ports");
+      break;
 
-  case VNET_API_ERROR_UNIMPLEMENTED:
-    return clib_error_return (0, "Device driver doesn't support redirection");
-    break;
+    case VNET_API_ERROR_UNIMPLEMENTED:
+      return clib_error_return (0,
+				"Device driver doesn't support redirection");
+      break;
 
-  default:
-    return clib_error_return (0, "sample_macswap_enable_disable returned %d",
-                              rv);
-  }
+    default:
+      return clib_error_return (0, "sample_macswap_enable_disable returned %d",
+				rv);
+    }
   return 0;
 }
 
@@ -117,26 +118,26 @@ macswap_enable_disable_command_fn (vlib_main_t * vm,
  * @brief CLI command to enable/disable the sample macswap plugin.
  */
 VLIB_CLI_COMMAND (sr_content_command, static) = {
-    .path = "sample macswap",
-    .short_help = 
-    "sample macswap <interface-name> [disable]",
-    .function = macswap_enable_disable_command_fn,
+  .path = "sample macswap",
+  .short_help = "sample macswap <interface-name> [disable]",
+  .function = macswap_enable_disable_command_fn,
 };
 
 /**
  * @brief Plugin API message handler.
  */
-static void vl_api_sample_macswap_enable_disable_t_handler
-(vl_api_sample_macswap_enable_disable_t * mp)
+static void
+vl_api_sample_macswap_enable_disable_t_handler (
+  vl_api_sample_macswap_enable_disable_t *mp)
 {
-  vl_api_sample_macswap_enable_disable_reply_t * rmp;
-  sample_main_t * sm = &sample_main;
+  vl_api_sample_macswap_enable_disable_reply_t *rmp;
+  sample_main_t *sm = &sample_main;
   int rv;
 
-  rv = sample_macswap_enable_disable (sm, ntohl(mp->sw_if_index), 
-                                      (int) (mp->enable_disable));
-  
-  REPLY_MACRO(VL_API_SAMPLE_MACSWAP_ENABLE_DISABLE_REPLY);
+  rv = sample_macswap_enable_disable (sm, ntohl (mp->sw_if_index),
+				      (int) (mp->enable_disable));
+
+  REPLY_MACRO (VL_API_SAMPLE_MACSWAP_ENABLE_DISABLE_REPLY);
 }
 
 /* API definitions */
@@ -145,11 +146,12 @@ static void vl_api_sample_macswap_enable_disable_t_handler
 /**
  * @brief Initialize the sample plugin.
  */
-static clib_error_t * sample_init (vlib_main_t * vm)
+static clib_error_t *
+sample_init (vlib_main_t *vm)
 {
-  sample_main_t * sm = &sample_main;
+  sample_main_t *sm = &sample_main;
 
-  sm->vnet_main =  vnet_get_main ();
+  sm->vnet_main = vnet_get_main ();
 
   /* Add our API messages to the global name_crc hash table */
   sm->msg_id_base = setup_message_id_table ();
@@ -162,8 +164,7 @@ VLIB_INIT_FUNCTION (sample_init);
 /**
  * @brief Hook the sample plugin into the VPP graph hierarchy.
  */
-VNET_FEATURE_INIT (sample, static) = 
-{
+VNET_FEATURE_INIT (sample, static) = {
   .arc_name = "device-input",
   .node_name = "sample",
   .runs_before = VNET_FEATURES ("ethernet-input"),

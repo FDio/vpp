@@ -30,7 +30,8 @@ typedef enum
 typedef struct
 {
   stat_directory_type_t type;
-  union {
+  union
+  {
     uint64_t index;
     uint64_t value;
     void *data;

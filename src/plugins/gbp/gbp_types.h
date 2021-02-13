@@ -19,11 +19,11 @@
 #include <vnet/vnet.h>
 
 typedef u32 vnid_t;
-#define VNID_INVALID ((u16)~0)
+#define VNID_INVALID ((u16) ~0)
 
 typedef u16 gbp_scope_t;
 typedef u16 sclass_t;
-#define SCLASS_INVALID ((u16)~0)
+#define SCLASS_INVALID ((u16) ~0)
 
 #endif
 

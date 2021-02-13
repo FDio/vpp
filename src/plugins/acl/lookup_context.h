@@ -16,7 +16,8 @@
 #ifndef included_acl_lookup_context_h
 #define included_acl_lookup_context_h
 
-typedef struct {
+typedef struct
+{
   /* A name of the portion of the code using the ACL infra */
   char *user_module_name;
   /* text label for the first u32 user value assigned to context */
@@ -27,7 +28,8 @@ typedef struct {
   u32 *lookup_contexts;
 } acl_lookup_context_user_t;
 
-typedef struct {
+typedef struct
+{
   /* vector of acl #s within this context */
   u32 *acl_indices;
   /* index of corresponding acl_lookup_context_user_t */
@@ -38,7 +40,7 @@ typedef struct {
   u32 user_val2;
 } acl_lookup_context_t;
 
-void acl_plugin_lookup_context_notify_acl_change(u32 acl_num);
+void acl_plugin_lookup_context_notify_acl_change (u32 acl_num);
 
 void acl_plugin_show_lookup_context (u32 lc_index);
 void acl_plugin_show_lookup_user (u32 user_index);
@@ -50,4 +52,3 @@ void acl_plugin_show_tables_applied_info (u32 sw_if_index);
 void acl_plugin_show_tables_bihash (u32 show_bihash_verbose);
 
 #endif
-

@@ -25,7 +25,7 @@
 #include <vnet/dpo/drop_dpo.h>
 
 char *gbp_contract_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_gbp_contract_error
 #undef _
 };
@@ -44,8 +44,7 @@ fib_node_type_t gbp_next_hop_fib_type;
 gbp_rule_t *gbp_rule_pool;
 gbp_next_hop_t *gbp_next_hop_pool;
 
-#define GBP_CONTRACT_DBG(...)                           \
-    vlib_log_notice (gc_logger, __VA_ARGS__);
+#define GBP_CONTRACT_DBG(...) vlib_log_notice (gc_logger, __VA_ARGS__);
 
 /* Adjacency packet/byte counters indexed by adjacency index. */
 vlib_combined_counter_main_t gbp_contract_permit_counters = {
@@ -59,8 +58,8 @@ vlib_combined_counter_main_t gbp_contract_drop_counters = {
 };
 
 index_t
-gbp_rule_alloc (gbp_rule_action_t action,
-		gbp_hash_mode_t hash_mode, index_t * nhs)
+gbp_rule_alloc (gbp_rule_action_t action, gbp_hash_mode_t hash_mode,
+		index_t *nhs)
 {
   gbp_rule_t *gu;
 
@@ -80,8 +79,8 @@ gbp_rule_free (index_t gui)
 }
 
 index_t
-gbp_next_hop_alloc (const ip46_address_t * ip,
-		    index_t grd, const mac_address_t * mac, index_t gbd)
+gbp_next_hop_alloc (const ip46_address_t *ip, index_t grd,
+		    const mac_address_t *mac, index_t gbd)
 {
   fib_protocol_t fproto;
   gbp_next_hop_t *gnh;
@@ -108,73 +107,74 @@ gbp_next_hop_get (index_t gui)
 }
 
 static void
-gbp_contract_rules_free (index_t * rules)
+gbp_contract_rules_free (index_t *rules)
 {
   index_t *gui, *gnhi;
 
   vec_foreach (gui, rules)
-  {
-    gbp_policy_node_t pnode;
-    fib_protocol_t fproto;
-    gbp_next_hop_t *gnh;
-    gbp_rule_t *gu;
-
-    gu = gbp_rule_get (*gui);
-
-    FOR_EACH_GBP_POLICY_NODE (pnode)
     {
-      FOR_EACH_FIB_IP_PROTOCOL (fproto)
-      {
-	dpo_reset (&gu->gu_dpo[pnode][fproto]);
-	dpo_reset (&gu->gu_dpo[pnode][fproto]);
-      }
-    }
-
-    vec_foreach (gnhi, gu->gu_nhs)
-    {
+      gbp_policy_node_t pnode;
       fib_protocol_t fproto;
+      gbp_next_hop_t *gnh;
+      gbp_rule_t *gu;
 
-      gnh = gbp_next_hop_get (*gnhi);
-      gbp_bridge_domain_unlock (gnh->gnh_bd);
-      gbp_route_domain_unlock (gnh->gnh_rd);
-      gbp_endpoint_child_remove (gnh->gnh_ge, gnh->gnh_sibling);
-      gbp_endpoint_unlock (GBP_ENDPOINT_SRC_RR, gnh->gnh_ge);
+      gu = gbp_rule_get (*gui);
 
-      FOR_EACH_FIB_IP_PROTOCOL (fproto)
+      FOR_EACH_GBP_POLICY_NODE (pnode)
       {
-	adj_unlock (gnh->gnh_ai[fproto]);
+	FOR_EACH_FIB_IP_PROTOCOL (fproto)
+	{
+	  dpo_reset (&gu->gu_dpo[pnode][fproto]);
+	  dpo_reset (&gu->gu_dpo[pnode][fproto]);
+	}
       }
-    }
 
-    gbp_rule_free (*gui);
-  }
+      vec_foreach (gnhi, gu->gu_nhs)
+	{
+	  fib_protocol_t fproto;
+
+	  gnh = gbp_next_hop_get (*gnhi);
+	  gbp_bridge_domain_unlock (gnh->gnh_bd);
+	  gbp_route_domain_unlock (gnh->gnh_rd);
+	  gbp_endpoint_child_remove (gnh->gnh_ge, gnh->gnh_sibling);
+	  gbp_endpoint_unlock (GBP_ENDPOINT_SRC_RR, gnh->gnh_ge);
+
+	  FOR_EACH_FIB_IP_PROTOCOL (fproto)
+	  {
+	    adj_unlock (gnh->gnh_ai[fproto]);
+	  }
+	}
+
+      gbp_rule_free (*gui);
+    }
   vec_free (rules);
 }
 
 static u8 *
-format_gbp_next_hop (u8 * s, va_list * args)
+format_gbp_next_hop (u8 *s, va_list *args)
 {
   index_t gnhi = va_arg (*args, index_t);
   gbp_next_hop_t *gnh;
 
   gnh = gbp_next_hop_get (gnhi);
 
-  s = format (s, "%U, %U, %U EP:%d",
-	      format_mac_address_t, &gnh->gnh_mac,
-	      format_gbp_bridge_domain, gnh->gnh_bd,
-	      format_ip46_address, &gnh->gnh_ip, IP46_TYPE_ANY, gnh->gnh_ge);
+  s = format (s, "%U, %U, %U EP:%d", format_mac_address_t, &gnh->gnh_mac,
+	      format_gbp_bridge_domain, gnh->gnh_bd, format_ip46_address,
+	      &gnh->gnh_ip, IP46_TYPE_ANY, gnh->gnh_ge);
 
   return (s);
 }
 
 u8 *
-format_gbp_rule_action (u8 * s, va_list * args)
+format_gbp_rule_action (u8 *s, va_list *args)
 {
   gbp_rule_action_t action = va_arg (*args, gbp_rule_action_t);
 
   switch (action)
     {
-#define _(v,a) case GBP_RULE_##v: return (format (s, "%s", a));
+#define _(v, a)                                                               \
+  case GBP_RULE_##v:                                                          \
+    return (format (s, "%s", a));
       foreach_gbp_rule_action
 #undef _
     }
@@ -183,13 +183,15 @@ format_gbp_rule_action (u8 * s, va_list * args)
 }
 
 static u8 *
-format_gbp_hash_mode (u8 * s, va_list * args)
+format_gbp_hash_mode (u8 *s, va_list *args)
 {
   gbp_hash_mode_t hash_mode = va_arg (*args, gbp_hash_mode_t);
 
   switch (hash_mode)
     {
-#define _(v,a) case GBP_HASH_MODE_##v: return (format (s, "%s", a));
+#define _(v, a)                                                               \
+  case GBP_HASH_MODE_##v:                                                     \
+    return (format (s, "%s", a));
       foreach_gbp_hash_mode
 #undef _
     }
@@ -198,13 +200,15 @@ format_gbp_hash_mode (u8 * s, va_list * args)
 }
 
 static u8 *
-format_gbp_policy_node (u8 * s, va_list * args)
+format_gbp_policy_node (u8 *s, va_list *args)
 {
   gbp_policy_node_t action = va_arg (*args, gbp_policy_node_t);
 
   switch (action)
     {
-#define _(v,a) case GBP_POLICY_NODE_##v: return (format (s, "%s", a));
+#define _(v, a)                                                               \
+  case GBP_POLICY_NODE_##v:                                                   \
+    return (format (s, "%s", a));
       foreach_gbp_policy_node
 #undef _
     }
@@ -213,7 +217,7 @@ format_gbp_policy_node (u8 * s, va_list * args)
 }
 
 static u8 *
-format_gbp_rule (u8 * s, va_list * args)
+format_gbp_rule (u8 *s, va_list *args)
 {
   index_t gui = va_arg (*args, index_t);
   gbp_policy_node_t pnode;
@@ -235,9 +239,9 @@ format_gbp_rule (u8 * s, va_list * args)
     }
 
   vec_foreach (gnhi, gu->gu_nhs)
-  {
-    s = format (s, "\n        [%U]", format_gbp_next_hop, *gnhi);
-  }
+    {
+      s = format (s, "\n        [%U]", format_gbp_next_hop, *gnhi);
+    }
 
   FOR_EACH_GBP_POLICY_NODE (pnode)
   {
@@ -247,9 +251,8 @@ format_gbp_rule (u8 * s, va_list * args)
     {
       if (dpo_id_is_valid (&gu->gu_dpo[pnode][fproto]))
 	{
-	  s =
-	    format (s, "\n        %U", format_dpo_id,
-		    &gu->gu_dpo[pnode][fproto], 8);
+	  s = format (s, "\n        %U", format_dpo_id,
+		      &gu->gu_dpo[pnode][fproto], 8);
 	}
     }
   }
@@ -258,7 +261,7 @@ format_gbp_rule (u8 * s, va_list * args)
 }
 
 static void
-gbp_contract_mk_adj (gbp_next_hop_t * gnh, fib_protocol_t fproto)
+gbp_contract_mk_adj (gbp_next_hop_t *gnh, fib_protocol_t fproto)
 {
   ethernet_header_t *eth;
   gbp_endpoint_t *ge;
@@ -275,18 +278,14 @@ gbp_contract_mk_adj (gbp_next_hop_t * gnh, fib_protocol_t fproto)
 
   ge = gbp_endpoint_get (gnh->gnh_ge);
 
-  eth->type = clib_host_to_net_u16 ((fproto == FIB_PROTOCOL_IP4 ?
-				     ETHERNET_TYPE_IP4 : ETHERNET_TYPE_IP6));
+  eth->type = clib_host_to_net_u16 (
+    (fproto == FIB_PROTOCOL_IP4 ? ETHERNET_TYPE_IP4 : ETHERNET_TYPE_IP6));
   mac_address_to_bytes (gbp_route_domain_get_local_mac (), eth->src_address);
   mac_address_to_bytes (&gnh->gnh_mac, eth->dst_address);
 
-  gnh->gnh_ai[fproto] =
-    adj_nbr_add_or_lock_w_rewrite (fproto,
-				   fib_proto_to_link (fproto),
-				   &gnh->gnh_ip,
-				   gbp_itf_get_sw_if_index (ge->
-							    ge_fwd.gef_itf),
-				   rewrite);
+  gnh->gnh_ai[fproto] = adj_nbr_add_or_lock_w_rewrite (
+    fproto, fib_proto_to_link (fproto), &gnh->gnh_ip,
+    gbp_itf_get_sw_if_index (ge->ge_fwd.gef_itf), rewrite);
 
   adj_unlock (old_ai);
 }
@@ -333,43 +332,42 @@ gbp_contract_mk_lb (index_t gui, fib_protocol_t fproto)
     return;
 
   vec_foreach_index (ii, gu->gu_nhs)
-  {
-    gnh = gbp_next_hop_get (gu->gu_nhs[ii]);
+    {
+      gnh = gbp_next_hop_get (gu->gu_nhs[ii]);
 
-    gbp_contract_mk_adj (gnh, FIB_PROTOCOL_IP4);
-    gbp_contract_mk_adj (gnh, FIB_PROTOCOL_IP6);
-  }
+      gbp_contract_mk_adj (gnh, FIB_PROTOCOL_IP4);
+      gbp_contract_mk_adj (gnh, FIB_PROTOCOL_IP6);
+    }
 
   FOR_EACH_GBP_POLICY_NODE (pnode)
   {
     vec_validate (paths, vec_len (gu->gu_nhs) - 1);
 
     vec_foreach_index (ii, gu->gu_nhs)
-    {
-      gnh = gbp_next_hop_get (gu->gu_nhs[ii]);
+      {
+	gnh = gbp_next_hop_get (gu->gu_nhs[ii]);
 
-      paths[ii].path_index = FIB_NODE_INDEX_INVALID;
-      paths[ii].path_weight = 1;
-      dpo_set (&paths[ii].path_dpo, DPO_ADJACENCY,
-	       dproto, gnh->gnh_ai[fproto]);
-    }
+	paths[ii].path_index = FIB_NODE_INDEX_INVALID;
+	paths[ii].path_weight = 1;
+	dpo_set (&paths[ii].path_dpo, DPO_ADJACENCY, dproto,
+		 gnh->gnh_ai[fproto]);
+      }
 
     if (!dpo_id_is_valid (&gu->gu_dpo[pnode][fproto]))
       {
 	dpo_id_t dpo = DPO_INVALID;
 
-	dpo_set (&dpo, DPO_LOAD_BALANCE, dproto,
-		 load_balance_create (vec_len (paths),
-				      dproto,
-				      gbp_contract_mk_lb_hp
-				      (gu->gu_hash_mode)));
+	dpo_set (
+	  &dpo, DPO_LOAD_BALANCE, dproto,
+	  load_balance_create (vec_len (paths), dproto,
+			       gbp_contract_mk_lb_hp (gu->gu_hash_mode)));
 	dpo_stack_from_node (policy_nodes[pnode], &gu->gu_dpo[pnode][fproto],
 			     &dpo);
 	dpo_reset (&dpo);
       }
 
-    load_balance_multipath_update (&gu->gu_dpo[pnode][fproto],
-				   paths, LOAD_BALANCE_FLAG_NONE);
+    load_balance_multipath_update (&gu->gu_dpo[pnode][fproto], paths,
+				   LOAD_BALANCE_FLAG_NONE);
     vec_free (paths);
   }
 }
@@ -402,18 +400,15 @@ gbp_contract_next_hop_resolve (index_t gui, index_t gnhi)
    * to us, then since we source here with a low priority, the learned
    * info will take precedenc.
    */
-  rv = gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_RR,
-				     gbd->gb_uu_fwd_sw_if_index,
-				     ips,
-				     &gnh->gnh_mac,
-				     gnh->gnh_bd, gnh->gnh_rd, SCLASS_INVALID,
-				     GBP_ENDPOINT_FLAG_NONE, NULL, NULL,
-				     &gnh->gnh_ge);
+  rv = gbp_endpoint_update_and_lock (
+    GBP_ENDPOINT_SRC_RR, gbd->gb_uu_fwd_sw_if_index, ips, &gnh->gnh_mac,
+    gnh->gnh_bd, gnh->gnh_rd, SCLASS_INVALID, GBP_ENDPOINT_FLAG_NONE, NULL,
+    NULL, &gnh->gnh_ge);
 
   if (0 == rv)
     {
-      gnh->gnh_sibling = gbp_endpoint_child_add (gnh->gnh_ge,
-						 gbp_next_hop_fib_type, gnhi);
+      gnh->gnh_sibling =
+	gbp_endpoint_child_add (gnh->gnh_ge, gbp_next_hop_fib_type, gnhi);
     }
 
   GBP_CONTRACT_DBG ("..resolve: %d: %d: %U", gui, gnhi, format_gbp_next_hop,
@@ -434,40 +429,37 @@ gbp_contract_rule_resolve (index_t gui)
   GBP_CONTRACT_DBG ("..resolve: %U", format_gbp_rule, gui);
 
   vec_foreach (gnhi, gu->gu_nhs)
-  {
-    gbp_contract_next_hop_resolve (gui, *gnhi);
-  }
+    {
+      gbp_contract_next_hop_resolve (gui, *gnhi);
+    }
 }
 
 static void
-gbp_contract_resolve (index_t * guis)
+gbp_contract_resolve (index_t *guis)
 {
   index_t *gui;
 
   vec_foreach (gui, guis)
-  {
-    gbp_contract_rule_resolve (*gui);
-  }
+    {
+      gbp_contract_rule_resolve (*gui);
+    }
 }
 
 static void
-gbp_contract_mk_lbs (index_t * guis)
+gbp_contract_mk_lbs (index_t *guis)
 {
   index_t *gui;
 
   vec_foreach (gui, guis)
-  {
-    gbp_contract_mk_one_lb (*gui);
-  }
+    {
+      gbp_contract_mk_one_lb (*gui);
+    }
 }
 
 int
-gbp_contract_update (gbp_scope_t scope,
-		     sclass_t sclass,
-		     sclass_t dclass,
-		     u32 acl_index,
-		     index_t * rules,
-		     u16 * allowed_ethertypes, u32 * stats_index)
+gbp_contract_update (gbp_scope_t scope, sclass_t sclass, sclass_t dclass,
+		     u32 acl_index, index_t *rules, u16 *allowed_ethertypes,
+		     u32 *stats_index)
 {
   gbp_main_t *gm = &gbp_main;
   u32 *acl_vec = NULL;
@@ -519,9 +511,8 @@ gbp_contract_update (gbp_scope_t scope,
   gbp_contract_mk_lbs (gc->gc_rules);
 
   gc->gc_acl_index = acl_index;
-  gc->gc_lc_index =
-    gm->acl_plugin.get_lookup_context_index (gm->gbp_acl_user_id,
-					     sclass, dclass);
+  gc->gc_lc_index = gm->acl_plugin.get_lookup_context_index (
+    gm->gbp_acl_user_id, sclass, dclass);
 
   vec_add1 (acl_vec, gc->gc_acl_index);
   gm->acl_plugin.set_acl_vec_for_context (gc->gc_lc_index, acl_vec);
@@ -566,18 +557,16 @@ gbp_contract_walk (gbp_contract_cb_t cb, void *ctx)
 {
   gbp_contract_t *gc;
 
-  /* *INDENT-OFF* */
   pool_foreach (gc, gbp_contract_pool)
-   {
-    if (!cb(gc, ctx))
-      break;
-  }
-  /* *INDENT-ON* */
+    {
+      if (!cb (gc, ctx))
+	break;
+    }
 }
 
 static clib_error_t *
-gbp_contract_cli (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+gbp_contract_cli (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd)
 {
   sclass_t sclass = SCLASS_INVALID, dclass = SCLASS_INVALID;
   u32 acl_index = ~0, stats_index, scope;
@@ -608,8 +597,8 @@ gbp_contract_cli (vlib_main_t * vm,
 
   if (add)
     {
-      gbp_contract_update (scope, sclass, dclass, acl_index,
-			   NULL, NULL, &stats_index);
+      gbp_contract_update (scope, sclass, dclass, acl_index, NULL, NULL,
+			   &stats_index);
     }
   else
     {
@@ -623,21 +612,19 @@ gbp_contract_cli (vlib_main_t * vm,
  * Configure a GBP Contract
  *
  * @cliexpar
- * @cliexstart{set gbp contract [del] src-epg <ID> dst-epg <ID> acl-index <ACL>}
+ * @cliexstart{set gbp contract [del] src-epg <ID> dst-epg <ID> acl-index
+ <ACL>}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (gbp_contract_cli_node, static) =
-{
+
+VLIB_CLI_COMMAND (gbp_contract_cli_node, static) = {
   .path = "gbp contract",
-  .short_help =
-    "gbp contract [del] src-epg <ID> dst-epg <ID> acl-index <ACL>",
+  .short_help = "gbp contract [del] src-epg <ID> dst-epg <ID> acl-index <ACL>",
   .function = gbp_contract_cli,
 };
-/* *INDENT-ON* */
 
 static u8 *
-format_gbp_contract_key (u8 * s, va_list * args)
+format_gbp_contract_key (u8 *s, va_list *args)
 {
   gbp_contract_key_t *gck = va_arg (*args, gbp_contract_key_t *);
 
@@ -647,7 +634,7 @@ format_gbp_contract_key (u8 * s, va_list * args)
 }
 
 u8 *
-format_gbp_contract (u8 * s, va_list * args)
+format_gbp_contract (u8 *s, va_list *args)
 {
   index_t gci = va_arg (*args, index_t);
   vlib_counter_t counts;
@@ -657,23 +644,23 @@ format_gbp_contract (u8 * s, va_list * args)
 
   gc = gbp_contract_get (gci);
 
-  s = format (s, "[%d] %U: acl-index:%d",
-	      gci, format_gbp_contract_key, &gc->gc_key, gc->gc_acl_index);
+  s = format (s, "[%d] %U: acl-index:%d", gci, format_gbp_contract_key,
+	      &gc->gc_key, gc->gc_acl_index);
 
   s = format (s, "\n    rules:");
   vec_foreach (gui, gc->gc_rules)
-  {
-    s = format (s, "\n      %d: %U", *gui, format_gbp_rule, *gui);
-  }
+    {
+      s = format (s, "\n      %d: %U", *gui, format_gbp_rule, *gui);
+    }
 
   s = format (s, "\n    allowed-ethertypes:");
   s = format (s, "\n      [");
   vec_foreach (et, gc->gc_allowed_ethertypes)
-  {
-    int host_et = clib_net_to_host_u16 (*et);
-    if (0 != host_et)
-      s = format (s, "0x%x, ", host_et);
-  }
+    {
+      int host_et = clib_net_to_host_u16 (*et);
+      if (0 != host_et)
+	s = format (s, "0x%x, ", host_et);
+    }
   s = format (s, "]");
 
   s = format (s, "\n    stats:");
@@ -688,8 +675,8 @@ format_gbp_contract (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-gbp_contract_show (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+gbp_contract_show (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   gbp_contract_t *gc;
   u32 src, dst;
@@ -709,31 +696,28 @@ gbp_contract_show (vlib_main_t * vm,
 
   vlib_cli_output (vm, "Contracts:");
 
-  /* *INDENT-OFF* */
   pool_foreach (gc, gbp_contract_pool)
-   {
-    gci = gc - gbp_contract_pool;
+    {
+      gci = gc - gbp_contract_pool;
 
-    if (SCLASS_INVALID != src && SCLASS_INVALID != dst)
-      {
-        if (gc->gc_key.gck_src == src &&
-            gc->gc_key.gck_dst == dst)
-          vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
-      }
-    else if (SCLASS_INVALID != src)
-      {
-        if (gc->gc_key.gck_src == src)
-          vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
-      }
-    else if (SCLASS_INVALID != dst)
-      {
-        if (gc->gc_key.gck_dst == dst)
-          vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
-      }
-    else
-      vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
-  }
-  /* *INDENT-ON* */
+      if (SCLASS_INVALID != src && SCLASS_INVALID != dst)
+	{
+	  if (gc->gc_key.gck_src == src && gc->gc_key.gck_dst == dst)
+	    vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
+	}
+      else if (SCLASS_INVALID != src)
+	{
+	  if (gc->gc_key.gck_src == src)
+	    vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
+	}
+      else if (SCLASS_INVALID != dst)
+	{
+	  if (gc->gc_key.gck_dst == dst)
+	    vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
+	}
+      else
+	vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
+    }
 
   return (NULL);
 }
@@ -745,13 +729,12 @@ gbp_contract_show (vlib_main_t * vm,
  * @cliexstart{show gbp contract}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (gbp_contract_show_node, static) = {
   .path = "show gbp contract",
   .short_help = "show gbp contract [src <SRC>] [dst <DST>]\n",
   .function = gbp_contract_show,
 };
-/* *INDENT-ON* */
 
 static fib_node_t *
 gbp_next_hop_get_node (fib_node_index_t index)
@@ -764,21 +747,20 @@ gbp_next_hop_get_node (fib_node_index_t index)
 }
 
 static void
-gbp_next_hop_last_lock_gone (fib_node_t * node)
+gbp_next_hop_last_lock_gone (fib_node_t *node)
 {
   ASSERT (0);
 }
 
 static gbp_next_hop_t *
-gbp_next_hop_from_fib_node (fib_node_t * node)
+gbp_next_hop_from_fib_node (fib_node_t *node)
 {
   ASSERT (gbp_next_hop_fib_type == node->fn_type);
   return ((gbp_next_hop_t *) node);
 }
 
 static fib_node_back_walk_rc_t
-gbp_next_hop_back_walk_notify (fib_node_t * node,
-			       fib_node_back_walk_ctx_t * ctx)
+gbp_next_hop_back_walk_notify (fib_node_t *node, fib_node_back_walk_ctx_t *ctx)
 {
   gbp_next_hop_t *gnh;
 
@@ -800,7 +782,7 @@ static const fib_node_vft_t gbp_next_hop_vft = {
 };
 
 static clib_error_t *
-gbp_contract_init (vlib_main_t * vm)
+gbp_contract_init (vlib_main_t *vm)
 {
   gc_logger = vlib_log_register_class ("gbp", "con");
   gbp_next_hop_fib_type = fib_node_register_new_type (&gbp_next_hop_vft);

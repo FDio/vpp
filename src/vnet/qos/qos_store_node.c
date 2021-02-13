@@ -32,7 +32,7 @@ typedef struct qos_store_trace_t_
 
 /* packet trace format function */
 static u8 *
-format_qos_store_trace (u8 * s, va_list * args)
+format_qos_store_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -44,9 +44,8 @@ format_qos_store_trace (u8 * s, va_list * args)
 }
 
 static inline uword
-qos_store_inline (vlib_main_t * vm,
-		  vlib_node_runtime_t * node,
-		  vlib_frame_t * frame, qos_source_t qos_src)
+qos_store_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		  vlib_frame_t *frame, qos_source_t qos_src)
 {
   u32 n_left_from, *from, *to_next, next_index;
 
@@ -76,9 +75,8 @@ qos_store_inline (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  qos0 =
-	    *(qos_bits_t *) vnet_feature_next_with_data (&next0, b0,
-							 sizeof (qos_bits_t));
+	  qos0 = *(qos_bits_t *) vnet_feature_next_with_data (
+	    &next0, b0, sizeof (qos_bits_t));
 
 	  vnet_buffer2 (b0)->qos.bits = qos0;
 	  vnet_buffer2 (b0)->qos.source = qos_src;
@@ -92,11 +90,9 @@ qos_store_inline (vlib_main_t * vm,
 	      t->bits = qos0;
 	    }
 
-
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -105,23 +101,19 @@ qos_store_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-
-VLIB_NODE_FN (ip4_qos_store_node) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_qos_store_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (qos_store_inline (vm, node, frame, QOS_SOURCE_IP));
 }
 
-VLIB_NODE_FN (ip6_qos_store_node) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_qos_store_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return (qos_store_inline (vm, node, frame, QOS_SOURCE_IP));
 }
 
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_qos_store_node) = {
   .name = "ip4-qos-store",
   .vector_size = sizeof (u32),
@@ -137,12 +129,12 @@ VLIB_REGISTER_NODE (ip4_qos_store_node) = {
 };
 
 VNET_FEATURE_INIT (ip4_qos_store_node, static) = {
-    .arc_name = "ip4-unicast",
-    .node_name = "ip4-qos-store",
+  .arc_name = "ip4-unicast",
+  .node_name = "ip4-qos-store",
 };
 VNET_FEATURE_INIT (ip4m_qos_store_node, static) = {
-    .arc_name = "ip4-multicast",
-    .node_name = "ip4-qos-store",
+  .arc_name = "ip4-multicast",
+  .node_name = "ip4-qos-store",
 };
 
 VLIB_REGISTER_NODE (ip6_qos_store_node) = {
@@ -160,15 +152,13 @@ VLIB_REGISTER_NODE (ip6_qos_store_node) = {
 };
 
 VNET_FEATURE_INIT (ip6_qos_store_node, static) = {
-    .arc_name = "ip6-unicast",
-    .node_name = "ip6-qos-store",
+  .arc_name = "ip6-unicast",
+  .node_name = "ip6-qos-store",
 };
 VNET_FEATURE_INIT (ip6m_qos_store_node, static) = {
-    .arc_name = "ip6-multicast",
-    .node_name = "ip6-qos-store",
+  .arc_name = "ip6-multicast",
+  .node_name = "ip6-qos-store",
 };
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -16,9 +16,9 @@
 #ifndef __VOM_NEIGHBOUR_CMDS_H__
 #define __VOM_NEIGHBOUR_CMDS_H__
 
+#include "neighbour.hpp"
 #include "vom/dump_cmd.hpp"
 #include "vom/srpc_cmd.hpp"
-#include "neighbour.hpp"
 
 #include <vapi/ip_neighbor.api.vapi.hpp>
 
@@ -38,7 +38,7 @@ public:
              handle_t itf,
              const mac_address_t& mac,
              const boost::asio::ip::address& ip_addr,
-             const neighbour::flags_t &flags);
+             const neighbour::flags_t& flags);
 
   /**
    * Issue the command to VPP/HW
@@ -59,7 +59,7 @@ private:
   handle_t m_itf;
   mac_address_t m_mac;
   boost::asio::ip::address m_ip_addr;
-  const neighbour::flags_t &m_flags;
+  const neighbour::flags_t& m_flags;
 };
 
 /**
@@ -75,7 +75,7 @@ public:
              handle_t itf,
              const mac_address_t& mac,
              const boost::asio::ip::address& ip_addr,
-             const neighbour::flags_t &flags);
+             const neighbour::flags_t& flags);
 
   /**
    * Issue the command to VPP/HW
@@ -96,7 +96,7 @@ private:
   handle_t m_itf;
   mac_address_t m_mac;
   boost::asio::ip::address m_ip_addr;
-  const neighbour::flags_t &m_flags;
+  const neighbour::flags_t& m_flags;
 };
 
 /**
@@ -145,4 +145,3 @@ private:
 }; // namespace neighbour_cmds
 }; // namespace vom
 #endif
-

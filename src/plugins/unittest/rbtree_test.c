@@ -15,28 +15,30 @@
 #include <vppinfra/rbtree.h>
 #include <vlib/vlib.h>
 
-#define RBTREE_TEST_I(_cond, _comment, _args...)		\
-({								\
-  int _evald = (_cond);						\
-  if (!(_evald)) {						\
-    fformat(stderr, "FAIL:%d: " _comment "\n",			\
-	    __LINE__, ##_args);					\
-  } else {							\
-    fformat(stderr, "PASS:%d: " _comment "\n",			\
-	    __LINE__, ##_args);					\
-  }								\
-  _evald;							\
-})
+#define RBTREE_TEST_I(_cond, _comment, _args...)                              \
+  ({                                                                          \
+    int _evald = (_cond);                                                     \
+    if (!(_evald))                                                            \
+      {                                                                       \
+	fformat (stderr, "FAIL:%d: " _comment "\n", __LINE__, ##_args);       \
+      }                                                                       \
+    else                                                                      \
+      {                                                                       \
+	fformat (stderr, "PASS:%d: " _comment "\n", __LINE__, ##_args);       \
+      }                                                                       \
+    _evald;                                                                   \
+  })
 
-#define RBTREE_TEST(_cond, _comment, _args...)			\
-{								\
-    if (!RBTREE_TEST_I(_cond, _comment, ##_args)) {		\
-	return 1;                                               \
-    }								\
-}
+#define RBTREE_TEST(_cond, _comment, _args...)                                \
+  {                                                                           \
+    if (!RBTREE_TEST_I (_cond, _comment, ##_args))                            \
+      {                                                                       \
+	return 1;                                                             \
+      }                                                                       \
+  }
 
 static int
-rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
+rbtree_test_basic (vlib_main_t *vm, unformat_input_t *input)
 {
   int __clib_unused verbose, n_keys = 1e3, i;
   u32 *test_keys = 0, search_key;
@@ -79,8 +81,7 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
   RBTREE_TEST (n->key == 0, "min should be %u", 0);
 
   n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), n_keys / 2);
-  RBTREE_TEST (n->key == n_keys / 2, "search result should be %u",
-	       n_keys / 2);
+  RBTREE_TEST (n->key == n_keys / 2, "search result should be %u", n_keys / 2);
 
   aux = rb_tree_successor (rt, n);
   RBTREE_TEST (aux->key == n_keys / 2 + 1, "successor should be %u is %u",
@@ -112,8 +113,7 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
 
   search_key += 1;
   n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), search_key);
-  RBTREE_TEST (n->key == search_key, "search result should be %u",
-	       search_key);
+  RBTREE_TEST (n->key == search_key, "search result should be %u", search_key);
 
   aux = rb_tree_successor (rt, n);
   RBTREE_TEST (aux->key == search_key + 2, "successor should be %u is %u",
@@ -140,13 +140,11 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
 
   search_key = 2 * ((n_keys - 1) / 4);
   n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), search_key);
-  RBTREE_TEST (n->key == search_key, "search result should be %u",
-	       search_key);
+  RBTREE_TEST (n->key == search_key, "search result should be %u", search_key);
 
   search_key += 1;
   n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), search_key);
-  RBTREE_TEST (n->key == search_key, "search result should be %u",
-	       search_key);
+  RBTREE_TEST (n->key == search_key, "search result should be %u", search_key);
 
   aux = rb_tree_successor (rt, n);
   RBTREE_TEST (aux->key == search_key + 1, "successor should be %u is %u",
@@ -166,8 +164,8 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
 	RBTREE_TEST (0, "tnil should be black");
     }
 
-  RBTREE_TEST (rb_tree_n_nodes (rt) == 1, "number nodes %u is %u",
-	       1, rb_tree_n_nodes (rt));
+  RBTREE_TEST (rb_tree_n_nodes (rt) == 1, "number nodes %u is %u", 1,
+	       rb_tree_n_nodes (rt));
 
   n = rb_tree_min_subtree (rt, rb_node (rt, rt->root));
   RBTREE_TEST (rb_node_is_tnil (rt, n), "min should be tnil");
@@ -188,8 +186,7 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
 
   search_key = 13;
   n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), search_key);
-  RBTREE_TEST (n->key == search_key, "search result should be %u",
-	       search_key);
+  RBTREE_TEST (n->key == search_key, "search result should be %u", search_key);
 
   aux = rb_tree_successor (rt, n);
   RBTREE_TEST (aux->key == 15, "successor should be %u is %u", 15, aux->key);
@@ -205,15 +202,15 @@ rbtree_test_basic (vlib_main_t * vm, unformat_input_t * input)
    * Cleanup
    */
   rb_tree_free_nodes (rt);
-  RBTREE_TEST (rb_tree_n_nodes (rt) == 0, "number nodes %u is %u",
-	       0, rb_tree_n_nodes (rt));
+  RBTREE_TEST (rb_tree_n_nodes (rt) == 0, "number nodes %u is %u", 0,
+	       rb_tree_n_nodes (rt));
 
   return 0;
 }
 
 static clib_error_t *
-rbtree_test (vlib_main_t * vm,
-	     unformat_input_t * input, vlib_cli_command_t * cmd_arg)
+rbtree_test (vlib_main_t *vm, unformat_input_t *input,
+	     vlib_cli_command_t *cmd_arg)
 {
   int res = 0;
 
@@ -238,14 +235,11 @@ done:
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (rbtree_test_command, static) =
-{
+VLIB_CLI_COMMAND (rbtree_test_command, static) = {
   .path = "test rbtree",
   .short_help = "internal rbtree unit tests",
   .function = rbtree_test,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

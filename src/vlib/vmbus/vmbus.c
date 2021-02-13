@@ -44,7 +44,7 @@ unformat_vlib_vmbus_addr (unformat_input_t *input, va_list *args)
 }
 
 clib_error_t *
-vmbus_bus_init (vlib_main_t * vm)
+vmbus_bus_init (vlib_main_t *vm)
 {
   return 0;
 }

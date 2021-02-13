@@ -29,11 +29,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -45,14 +45,14 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                             \
-_(SW_INTERFACE_SET_VXLAN_GBP_BYPASS, sw_interface_set_vxlan_gbp_bypass)         \
-_(VXLAN_GBP_TUNNEL_ADD_DEL, vxlan_gbp_tunnel_add_del)                           \
-_(VXLAN_GBP_TUNNEL_DUMP, vxlan_gbp_tunnel_dump)
+#define foreach_vpe_api_msg                                                   \
+  _ (SW_INTERFACE_SET_VXLAN_GBP_BYPASS, sw_interface_set_vxlan_gbp_bypass)    \
+  _ (VXLAN_GBP_TUNNEL_ADD_DEL, vxlan_gbp_tunnel_add_del)                      \
+  _ (VXLAN_GBP_TUNNEL_DUMP, vxlan_gbp_tunnel_dump)
 
 static void
-  vl_api_sw_interface_set_vxlan_gbp_bypass_t_handler
-  (vl_api_sw_interface_set_vxlan_gbp_bypass_t * mp)
+vl_api_sw_interface_set_vxlan_gbp_bypass_t_handler (
+  vl_api_sw_interface_set_vxlan_gbp_bypass_t *mp)
 {
   vl_api_sw_interface_set_vxlan_gbp_bypass_reply_t *rmp;
   int rv = 0;
@@ -68,7 +68,7 @@ static void
 
 static int
 vxlan_gbp_tunnel_mode_decode (vl_api_vxlan_gbp_api_tunnel_mode_t in,
-			      vxlan_gbp_tunnel_mode_t * out)
+			      vxlan_gbp_tunnel_mode_t *out)
 {
   in = clib_net_to_host_u32 (in);
 
@@ -84,8 +84,9 @@ vxlan_gbp_tunnel_mode_decode (vl_api_vxlan_gbp_api_tunnel_mode_t in,
   return (VNET_API_ERROR_INVALID_VALUE);
 }
 
-static void vl_api_vxlan_gbp_tunnel_add_del_t_handler
-  (vl_api_vxlan_gbp_tunnel_add_del_t * mp)
+static void
+vl_api_vxlan_gbp_tunnel_add_del_t_handler (
+  vl_api_vxlan_gbp_tunnel_add_del_t *mp)
 {
   vl_api_vxlan_gbp_tunnel_add_del_reply_t *rmp;
   vxlan_gbp_tunnel_mode_t mode;
@@ -139,20 +140,18 @@ static void vl_api_vxlan_gbp_tunnel_add_del_t_handler
   rv = vnet_vxlan_gbp_tunnel_add_del (&a, &sw_if_index);
 
 out:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_VXLAN_GBP_TUNNEL_ADD_DEL_REPLY,
-  ({
-    rmp->sw_if_index = ntohl (sw_if_index);
-  }));
-  /* *INDENT-ON* */
+
+  REPLY_MACRO2 (VL_API_VXLAN_GBP_TUNNEL_ADD_DEL_REPLY,
+		({ rmp->sw_if_index = ntohl (sw_if_index); }));
 }
 
-static void send_vxlan_gbp_tunnel_details
-  (vxlan_gbp_tunnel_t * t, vl_api_registration_t * reg, u32 context)
+static void
+send_vxlan_gbp_tunnel_details (vxlan_gbp_tunnel_t *t,
+			       vl_api_registration_t *reg, u32 context)
 {
   vl_api_vxlan_gbp_tunnel_details_t *rmp;
-  ip46_type_t itype = (ip46_address_is_ip4 (&t->dst) ?
-		       IP46_TYPE_IP4 : IP46_TYPE_IP6);
+  ip46_type_t itype =
+    (ip46_address_is_ip4 (&t->dst) ? IP46_TYPE_IP4 : IP46_TYPE_IP6);
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
@@ -172,8 +171,8 @@ static void send_vxlan_gbp_tunnel_details
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
-static void vl_api_vxlan_gbp_tunnel_dump_t_handler
-  (vl_api_vxlan_gbp_tunnel_dump_t * mp)
+static void
+vl_api_vxlan_gbp_tunnel_dump_t_handler (vl_api_vxlan_gbp_tunnel_dump_t *mp)
 {
   vl_api_registration_t *reg;
   vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
@@ -188,12 +187,11 @@ static void vl_api_vxlan_gbp_tunnel_dump_t_handler
 
   if (~0 == sw_if_index)
     {
-      /* *INDENT-OFF* */
+
       pool_foreach (t, vxm->tunnels)
-       {
-        send_vxlan_gbp_tunnel_details(t, reg, mp->context);
-      }
-      /* *INDENT-ON* */
+	{
+	  send_vxlan_gbp_tunnel_details (t, reg, mp->context);
+	}
     }
   else
     {
@@ -219,25 +217,22 @@ static void vl_api_vxlan_gbp_tunnel_dump_t_handler
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_vxlan_gbp;
 #undef _
 }
 
 static clib_error_t *
-vxlan_gbp_api_hookup (vlib_main_t * vm)
+vxlan_gbp_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_vpe_api_msg;
 #undef _
 

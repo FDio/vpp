@@ -44,21 +44,20 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_snat_out2in_trace (u8 * s, va_list * args)
+format_snat_out2in_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   snat_out2in_trace_t *t = va_arg (*args, snat_out2in_trace_t *);
 
   s =
-    format (s,
-	    "NAT44_OUT2IN: sw_if_index %d, next index %d, session index %d",
+    format (s, "NAT44_OUT2IN: sw_if_index %d, next index %d, session index %d",
 	    t->sw_if_index, t->next_index, t->session_index);
   return s;
 }
 
 static u8 *
-format_snat_out2in_fast_trace (u8 * s, va_list * args)
+format_snat_out2in_fast_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -69,24 +68,24 @@ format_snat_out2in_fast_trace (u8 * s, va_list * args)
   return s;
 }
 
-#define foreach_snat_out2in_error                       \
-_(UNSUPPORTED_PROTOCOL, "unsupported protocol")         \
-_(OUT_OF_PORTS, "out of ports")                         \
-_(BAD_ICMP_TYPE, "unsupported ICMP type")               \
-_(NO_TRANSLATION, "no translation")                     \
-_(MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")   \
-_(CANNOT_CREATE_USER, "cannot create NAT user")
+#define foreach_snat_out2in_error                                             \
+  _ (UNSUPPORTED_PROTOCOL, "unsupported protocol")                            \
+  _ (OUT_OF_PORTS, "out of ports")                                            \
+  _ (BAD_ICMP_TYPE, "unsupported ICMP type")                                  \
+  _ (NO_TRANSLATION, "no translation")                                        \
+  _ (MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")                      \
+  _ (CANNOT_CREATE_USER, "cannot create NAT user")
 
 typedef enum
 {
-#define _(sym,str) SNAT_OUT2IN_ERROR_##sym,
+#define _(sym, str) SNAT_OUT2IN_ERROR_##sym,
   foreach_snat_out2in_error
 #undef _
     SNAT_OUT2IN_N_ERROR,
 } snat_out2in_error_t;
 
 static char *snat_out2in_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_snat_out2in_error
 #undef _
 };
@@ -101,14 +100,14 @@ typedef enum
 
 #ifndef CLIB_MARCH_VARIANT
 int
-nat44_o2i_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg)
+nat44_o2i_is_idle_session_cb (clib_bihash_kv_8_8_t *kv, void *arg)
 {
   snat_main_t *sm = &snat_main;
   nat44_is_idle_session_ctx_t *ctx = arg;
   snat_session_t *s;
   u64 sess_timeout_time;
-  snat_main_per_thread_data_t *tsm = vec_elt_at_index (sm->per_thread_data,
-						       ctx->thread_index);
+  snat_main_per_thread_data_t *tsm =
+    vec_elt_at_index (sm->per_thread_data, ctx->thread_index);
   clib_bihash_kv_8_8_t s_kv;
 
   s = pool_elt_at_index (tsm->sessions, kv->value);
@@ -119,13 +118,9 @@ nat44_o2i_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg)
       if (clib_bihash_add_del_8_8 (&sm->in2out, &s_kv, 0))
 	nat_elog_warn ("out2in key del failed");
 
-      nat_ipfix_logging_nat44_ses_delete (ctx->thread_index,
-					  s->in2out.addr.as_u32,
-					  s->out2in.addr.as_u32,
-					  s->nat_proto,
-					  s->in2out.port,
-					  s->out2in.port,
-					  s->in2out.fib_index);
+      nat_ipfix_logging_nat44_ses_delete (
+	ctx->thread_index, s->in2out.addr.as_u32, s->out2in.addr.as_u32,
+	s->nat_proto, s->in2out.port, s->out2in.port, s->in2out.fib_index);
 
       nat_syslog_nat44_apmdel (s->user_index, s->in2out.fib_index,
 			       &s->in2out.addr, s->in2out.port,
@@ -163,17 +158,10 @@ nat44_o2i_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg)
  * @returns SNAT session if successfully created otherwise 0.
  */
 static inline snat_session_t *
-create_session_for_static_mapping (snat_main_t * sm,
-				   vlib_buffer_t * b0,
-				   ip4_address_t i2o_addr,
-				   u16 i2o_port,
-				   u32 i2o_fib_index,
-				   ip4_address_t o2i_addr,
-				   u16 o2i_port,
-				   u32 o2i_fib_index,
-				   nat_protocol_t proto,
-				   vlib_node_runtime_t * node,
-				   u32 thread_index, f64 now)
+create_session_for_static_mapping (
+  snat_main_t *sm, vlib_buffer_t *b0, ip4_address_t i2o_addr, u16 i2o_port,
+  u32 i2o_fib_index, ip4_address_t o2i_addr, u16 o2i_port, u32 o2i_fib_index,
+  nat_protocol_t proto, vlib_node_runtime_t *node, u32 thread_index, f64 now)
 {
   snat_user_t *u;
   snat_session_t *s;
@@ -210,7 +198,7 @@ create_session_for_static_mapping (snat_main_t * sm,
   s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
   s->ext_host_addr.as_u32 = ip0->src_address.as_u32;
   s->ext_host_port = udp0->src_port;
-  user_session_increment (sm, u, 1 /* static */ );
+  user_session_increment (sm, u, 1 /* static */);
   s->in2out.addr = i2o_addr;
   s->in2out.port = i2o_port;
   s->in2out.fib_index = i2o_fib_index;
@@ -235,29 +223,26 @@ create_session_for_static_mapping (snat_main_t * sm,
     nat_elog_notice ("out2in key add failed");
 
   /* log NAT event */
-  nat_ipfix_logging_nat44_ses_create (thread_index,
-				      s->in2out.addr.as_u32,
-				      s->out2in.addr.as_u32,
-				      s->nat_proto,
-				      s->in2out.port,
-				      s->out2in.port, s->in2out.fib_index);
+  nat_ipfix_logging_nat44_ses_create (
+    thread_index, s->in2out.addr.as_u32, s->out2in.addr.as_u32, s->nat_proto,
+    s->in2out.port, s->out2in.port, s->in2out.fib_index);
 
-  nat_syslog_nat44_apmadd (s->user_index, s->in2out.fib_index,
-			   &s->in2out.addr, s->in2out.port, &s->out2in.addr,
-			   s->out2in.port, s->nat_proto);
+  nat_syslog_nat44_apmadd (s->user_index, s->in2out.fib_index, &s->in2out.addr,
+			   s->in2out.port, &s->out2in.addr, s->out2in.port,
+			   s->nat_proto);
 
   nat_ha_sadd (&s->in2out.addr, s->in2out.port, &s->out2in.addr,
 	       s->out2in.port, &s->ext_host_addr, s->ext_host_port,
-	       &s->ext_host_nat_addr, s->ext_host_nat_port,
-	       s->nat_proto, s->in2out.fib_index, s->flags, thread_index, 0);
+	       &s->ext_host_nat_addr, s->ext_host_nat_port, s->nat_proto,
+	       s->in2out.fib_index, s->flags, thread_index, 0);
 
   return s;
 }
 
 #ifndef CLIB_MARCH_VARIANT
 static_always_inline snat_out2in_error_t
-icmp_get_key (vlib_buffer_t * b, ip4_header_t * ip0,
-	      ip4_address_t * addr, u16 * port, nat_protocol_t * nat_proto)
+icmp_get_key (vlib_buffer_t *b, ip4_header_t *ip0, ip4_address_t *addr,
+	      u16 *port, nat_protocol_t *nat_proto)
 {
   icmp46_header_t *icmp0;
   icmp_echo_header_t *echo0, *inner_echo0 = 0;
@@ -268,8 +253,8 @@ icmp_get_key (vlib_buffer_t * b, ip4_header_t * ip0,
   icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
   echo0 = (icmp_echo_header_t *) (icmp0 + 1);
 
-  if (!icmp_type_is_error_message
-      (vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags))
+  if (!icmp_type_is_error_message (
+	vnet_buffer (b)->ip.reass.icmp_type_or_tcp_flags))
     {
       *nat_proto = NAT_PROTOCOL_ICMP;
       *addr = ip0->dst_address;
@@ -296,7 +281,7 @@ icmp_get_key (vlib_buffer_t * b, ip4_header_t * ip0,
 	  return SNAT_OUT2IN_ERROR_UNSUPPORTED_PROTOCOL;
 	}
     }
-  return -1;			/* success */
+  return -1; /* success */
 }
 
 /**
@@ -353,7 +338,7 @@ icmp_match_out2in_slow (snat_main_t *sm, vlib_node_runtime_t *node,
   if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
     {
       /* Try to match static mapping by external address and port,
-         destination address and port in packet */
+	 destination address and port in packet */
       if (nat44_ei_static_mapping_match (
 	    *addr, *port, *fib_index, *proto, &mapping_addr, &mapping_port,
 	    &mapping_fib_index, 1, &is_addr_only, &identity_nat))
@@ -378,11 +363,11 @@ icmp_match_out2in_slow (snat_main_t *sm, vlib_node_runtime_t *node,
 	    }
 	}
 
-      if (PREDICT_FALSE
-	  (vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags !=
-	   ICMP4_echo_reply
-	   && (vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags !=
-	       ICMP4_echo_request || !is_addr_only)))
+      if (PREDICT_FALSE (vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags !=
+			   ICMP4_echo_reply &&
+			 (vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags !=
+			    ICMP4_echo_request ||
+			  !is_addr_only)))
 	{
 	  b0->error = node->errors[SNAT_OUT2IN_ERROR_BAD_ICMP_TYPE];
 	  next0 = SNAT_OUT2IN_NEXT_DROP;
@@ -395,11 +380,9 @@ icmp_match_out2in_slow (snat_main_t *sm, vlib_node_runtime_t *node,
 	  goto out;
 	}
       /* Create session initiated by host from external network */
-      s0 =
-	create_session_for_static_mapping (sm, b0, mapping_addr, mapping_port,
-					   mapping_fib_index, *addr, *port,
-					   *fib_index, *proto, node,
-					   thread_index, vlib_time_now (vm));
+      s0 = create_session_for_static_mapping (
+	sm, b0, mapping_addr, mapping_port, mapping_fib_index, *addr, *port,
+	*fib_index, *proto, node, thread_index, vlib_time_now (vm));
 
       if (!s0)
 	{
@@ -409,13 +392,12 @@ icmp_match_out2in_slow (snat_main_t *sm, vlib_node_runtime_t *node,
     }
   else
     {
-      if (PREDICT_FALSE
-	  (vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags !=
-	   ICMP4_echo_reply
-	   && vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags !=
-	   ICMP4_echo_request
-	   && !icmp_type_is_error_message (vnet_buffer (b0)->ip.
-					   reass.icmp_type_or_tcp_flags)))
+      if (PREDICT_FALSE (vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags !=
+			   ICMP4_echo_reply &&
+			 vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags !=
+			   ICMP4_echo_request &&
+			 !icmp_type_is_error_message (
+			   vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags)))
 	{
 	  b0->error = node->errors[SNAT_OUT2IN_ERROR_BAD_ICMP_TYPE];
 	  next0 = SNAT_OUT2IN_NEXT_DROP;
@@ -495,12 +477,13 @@ icmp_match_out2in_fast (snat_main_t *sm, vlib_node_runtime_t *node,
       goto out;
     }
 
-  if (PREDICT_FALSE
-      (vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags != ICMP4_echo_reply
-       && (vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags !=
-	   ICMP4_echo_request || !is_addr_only)
-       && !icmp_type_is_error_message (vnet_buffer (b0)->ip.
-				       reass.icmp_type_or_tcp_flags)))
+  if (PREDICT_FALSE (vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags !=
+		       ICMP4_echo_reply &&
+		     (vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags !=
+			ICMP4_echo_request ||
+		      !is_addr_only) &&
+		     !icmp_type_is_error_message (
+		       vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags)))
     {
       b0->error = node->errors[SNAT_OUT2IN_ERROR_BAD_ICMP_TYPE];
       next0 = SNAT_OUT2IN_NEXT_DROP;
@@ -552,12 +535,9 @@ icmp_out2in (snat_main_t *sm, vlib_buffer_t *b0, ip4_header_t *ip0,
 
   if (PREDICT_TRUE (!ip4_is_fragment (ip0)))
     {
-      sum0 =
-	ip_incremental_checksum_buffer (vm, b0,
-					(u8 *) icmp0 -
-					(u8 *) vlib_buffer_get_current (b0),
-					ntohs (ip0->length) -
-					ip4_header_bytes (ip0), 0);
+      sum0 = ip_incremental_checksum_buffer (
+	vm, b0, (u8 *) icmp0 - (u8 *) vlib_buffer_get_current (b0),
+	ntohs (ip0->length) - ip4_header_bytes (ip0), 0);
       checksum0 = ~ip_csum_fold (sum0);
       if (checksum0 != 0 && checksum0 != 0xffff)
 	{
@@ -572,9 +552,8 @@ icmp_out2in (snat_main_t *sm, vlib_buffer_t *b0, ip4_header_t *ip0,
 
   sum0 = ip0->checksum;
   sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
-			 dst_address /* changed member */ );
+			 dst_address /* changed member */);
   ip0->checksum = ip_csum_fold (sum0);
-
 
   if (!vnet_buffer (b0)->ip.reass.is_non_first_fragment)
     {
@@ -593,7 +572,7 @@ icmp_out2in (snat_main_t *sm, vlib_buffer_t *b0, ip4_header_t *ip0,
 	      sum0 = icmp0->checksum;
 	      sum0 =
 		ip_csum_update (sum0, old_id0, new_id0, icmp_echo_header_t,
-				identifier /* changed member */ );
+				identifier /* changed member */);
 	      icmp0->checksum = ip_csum_fold (sum0);
 	    }
 	}
@@ -614,7 +593,7 @@ icmp_out2in (snat_main_t *sm, vlib_buffer_t *b0, ip4_header_t *ip0,
 
 	  sum0 = icmp0->checksum;
 	  sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
-				 src_address /* changed member */ );
+				 src_address /* changed member */);
 	  icmp0->checksum = ip_csum_fold (sum0);
 
 	  switch (proto)
@@ -628,9 +607,8 @@ icmp_out2in (snat_main_t *sm, vlib_buffer_t *b0, ip4_header_t *ip0,
 	      inner_echo0->identifier = new_id0;
 
 	      sum0 = icmp0->checksum;
-	      sum0 =
-		ip_csum_update (sum0, old_id0, new_id0, icmp_echo_header_t,
-				identifier);
+	      sum0 = ip_csum_update (sum0, old_id0, new_id0,
+				     icmp_echo_header_t, identifier);
 	      icmp0->checksum = ip_csum_fold (sum0);
 	      break;
 	    case NAT_PROTOCOL_UDP:
@@ -656,15 +634,10 @@ out:
 #endif
 
 static inline u32
-icmp_out2in_slow_path (snat_main_t * sm,
-		       vlib_buffer_t * b0,
-		       ip4_header_t * ip0,
-		       icmp46_header_t * icmp0,
-		       u32 sw_if_index0,
-		       u32 rx_fib_index0,
-		       vlib_node_runtime_t * node,
-		       u32 next0, f64 now,
-		       u32 thread_index, snat_session_t ** p_s0)
+icmp_out2in_slow_path (snat_main_t *sm, vlib_buffer_t *b0, ip4_header_t *ip0,
+		       icmp46_header_t *icmp0, u32 sw_if_index0,
+		       u32 rx_fib_index0, vlib_node_runtime_t *node, u32 next0,
+		       f64 now, u32 thread_index, snat_session_t **p_s0)
 {
   vlib_main_t *vm = vlib_get_main ();
 
@@ -683,9 +656,8 @@ icmp_out2in_slow_path (snat_main_t * sm,
 }
 
 static int
-nat_out2in_sm_unknown_proto (snat_main_t * sm,
-			     vlib_buffer_t * b,
-			     ip4_header_t * ip, u32 rx_fib_index)
+nat_out2in_sm_unknown_proto (snat_main_t *sm, vlib_buffer_t *b,
+			     ip4_header_t *ip, u32 rx_fib_index)
 {
   clib_bihash_kv_8_8_t kv, value;
   snat_static_mapping_t *m;
@@ -708,9 +680,8 @@ nat_out2in_sm_unknown_proto (snat_main_t * sm,
   return 0;
 }
 
-VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
-				 vlib_node_runtime_t * node,
-				 vlib_frame_t * frame)
+VLIB_NODE_FN (snat_out2in_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from;
   snat_main_t *sm = &snat_main;
@@ -778,15 +749,15 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
       icmp0 = (icmp46_header_t *) udp0;
 
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-      rx_fib_index0 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index,
-			       sw_if_index0);
+      rx_fib_index0 =
+	vec_elt (sm->ip4_main->fib_index_by_sw_if_index, sw_if_index0);
 
       if (PREDICT_FALSE (ip0->ttl == 1))
 	{
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	  icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
-				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
-				       0);
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~0;
+	  icmp4_error_set_vnet_buffer (
+	    b0, ICMP4_time_exceeded,
+	    ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
 	  next0 = SNAT_OUT2IN_NEXT_ICMP_ERROR;
 	  goto trace0;
 	}
@@ -812,9 +783,9 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 
       if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
 	{
-	  next0 = icmp_out2in_slow_path
-	    (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
-	     next0, now, thread_index, &s0);
+	  next0 = icmp_out2in_slow_path (sm, b0, ip0, icmp0, sw_if_index0,
+					 rx_fib_index0, node, next0, now,
+					 thread_index, &s0);
 	  vlib_increment_simple_counter (&sm->counters.slowpath.out2in.icmp,
 					 thread_index, sw_if_index0, 1);
 	  goto trace0;
@@ -836,10 +807,10 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	       * Send DHCP packets to the ipv4 stack, or we won't
 	       * be able to use dhcp client on the outside interface
 	       */
-	      if (PREDICT_FALSE
-		  (proto0 == NAT_PROTOCOL_UDP
-		   && (vnet_buffer (b0)->ip.reass.l4_dst_port ==
-		       clib_host_to_net_u16 (UDP_DST_PORT_dhcp_to_client))))
+	      if (PREDICT_FALSE (
+		    proto0 == NAT_PROTOCOL_UDP &&
+		    (vnet_buffer (b0)->ip.reass.l4_dst_port ==
+		     clib_host_to_net_u16 (UDP_DST_PORT_dhcp_to_client))))
 		{
 		  vnet_feature_next (&next0, b0);
 		  goto trace0;
@@ -857,14 +828,10 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	    goto trace0;
 
 	  /* Create session initiated by host from external network */
-	  s0 = create_session_for_static_mapping (sm, b0,
-						  sm_addr0, sm_port0,
-						  sm_fib_index0,
-						  ip0->dst_address,
-						  vnet_buffer (b0)->ip.
-						  reass.l4_dst_port,
-						  rx_fib_index0, proto0, node,
-						  thread_index, now);
+	  s0 = create_session_for_static_mapping (
+	    sm, b0, sm_addr0, sm_port0, sm_fib_index0, ip0->dst_address,
+	    vnet_buffer (b0)->ip.reass.l4_dst_port, rx_fib_index0, proto0,
+	    node, thread_index, now);
 	  if (!s0)
 	    {
 	      next0 = SNAT_OUT2IN_NEXT_DROP;
@@ -881,8 +848,8 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
 
       sum0 = ip0->checksum;
-      sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-			     ip4_header_t, dst_address /* changed member */ );
+      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+			     dst_address /* changed member */);
       ip0->checksum = ip_csum_fold (sum0);
 
       if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
@@ -892,13 +859,12 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	      old_port0 = vnet_buffer (b0)->ip.reass.l4_dst_port;
 	      new_port0 = udp0->dst_port = s0->in2out.port;
 	      sum0 = tcp0->checksum;
-	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-				     ip4_header_t,
-				     dst_address /* changed member */ );
+	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+				     dst_address /* changed member */);
 
 	      sum0 = ip_csum_update (sum0, old_port0, new_port0,
-				     ip4_header_t /* cheat */ ,
-				     length /* changed member */ );
+				     ip4_header_t /* cheat */,
+				     length /* changed member */);
 	      tcp0->checksum = ip_csum_fold (sum0);
 	    }
 	  vlib_increment_simple_counter (&sm->counters.slowpath.out2in.tcp,
@@ -913,12 +879,13 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	      if (PREDICT_FALSE (udp0->checksum))
 		{
 		  sum0 = udp0->checksum;
-		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t, dst_address	/* changed member */
-		    );
 		  sum0 =
-		    ip_csum_update (sum0, old_port0, new_port0,
-				    ip4_header_t /* cheat */ ,
-				    length /* changed member */ );
+		    ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+				    dst_address /* changed member */
+		    );
+		  sum0 = ip_csum_update (sum0, old_port0, new_port0,
+					 ip4_header_t /* cheat */,
+					 length /* changed member */);
 		  udp0->checksum = ip_csum_fold (sum0);
 		}
 	    }
@@ -933,16 +900,15 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
       nat44_session_update_lru (sm, s0, thread_index);
     trace0:
 
-      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			 (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	{
 	  snat_out2in_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	  t->sw_if_index = sw_if_index0;
 	  t->next_index = next0;
 	  t->session_index = ~0;
 	  if (s0)
-	    t->session_index =
-	      s0 - sm->per_thread_data[thread_index].sessions;
+	    t->session_index = s0 - sm->per_thread_data[thread_index].sessions;
 	}
 
       if (next0 == SNAT_OUT2IN_NEXT_DROP)
@@ -951,22 +917,21 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 					 thread_index, sw_if_index0, 1);
 	}
 
-
       ip1 = vlib_buffer_get_current (b1);
       udp1 = ip4_next_header (ip1);
       tcp1 = (tcp_header_t *) udp1;
       icmp1 = (icmp46_header_t *) udp1;
 
       sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
-      rx_fib_index1 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index,
-			       sw_if_index1);
+      rx_fib_index1 =
+	vec_elt (sm->ip4_main->fib_index_by_sw_if_index, sw_if_index1);
 
       if (PREDICT_FALSE (ip1->ttl == 1))
 	{
-	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	  icmp4_error_set_vnet_buffer (b1, ICMP4_time_exceeded,
-				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
-				       0);
+	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~0;
+	  icmp4_error_set_vnet_buffer (
+	    b1, ICMP4_time_exceeded,
+	    ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
 	  next1 = SNAT_OUT2IN_NEXT_ICMP_ERROR;
 	  goto trace1;
 	}
@@ -991,9 +956,9 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 
       if (PREDICT_FALSE (proto1 == NAT_PROTOCOL_ICMP))
 	{
-	  next1 = icmp_out2in_slow_path
-	    (sm, b1, ip1, icmp1, sw_if_index1, rx_fib_index1, node,
-	     next1, now, thread_index, &s1);
+	  next1 = icmp_out2in_slow_path (sm, b1, ip1, icmp1, sw_if_index1,
+					 rx_fib_index1, node, next1, now,
+					 thread_index, &s1);
 	  vlib_increment_simple_counter (&sm->counters.slowpath.out2in.icmp,
 					 thread_index, sw_if_index1, 1);
 	  goto trace1;
@@ -1015,10 +980,10 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	       * Send DHCP packets to the ipv4 stack, or we won't
 	       * be able to use dhcp client on the outside interface
 	       */
-	      if (PREDICT_FALSE
-		  (proto1 == NAT_PROTOCOL_UDP
-		   && (vnet_buffer (b1)->ip.reass.l4_dst_port ==
-		       clib_host_to_net_u16 (UDP_DST_PORT_dhcp_to_client))))
+	      if (PREDICT_FALSE (
+		    proto1 == NAT_PROTOCOL_UDP &&
+		    (vnet_buffer (b1)->ip.reass.l4_dst_port ==
+		     clib_host_to_net_u16 (UDP_DST_PORT_dhcp_to_client))))
 		{
 		  vnet_feature_next (&next1, b1);
 		  goto trace1;
@@ -1036,14 +1001,10 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	    goto trace1;
 
 	  /* Create session initiated by host from external network */
-	  s1 =
-	    create_session_for_static_mapping (sm, b1, sm_addr1, sm_port1,
-					       sm_fib_index1,
-					       ip1->dst_address,
-					       vnet_buffer (b1)->ip.
-					       reass.l4_dst_port,
-					       rx_fib_index1, proto1, node,
-					       thread_index, now);
+	  s1 = create_session_for_static_mapping (
+	    sm, b1, sm_addr1, sm_port1, sm_fib_index1, ip1->dst_address,
+	    vnet_buffer (b1)->ip.reass.l4_dst_port, rx_fib_index1, proto1,
+	    node, thread_index, now);
 	  if (!s1)
 	    {
 	      next1 = SNAT_OUT2IN_NEXT_DROP;
@@ -1060,8 +1021,8 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
       vnet_buffer (b1)->sw_if_index[VLIB_TX] = s1->in2out.fib_index;
 
       sum1 = ip1->checksum;
-      sum1 = ip_csum_update (sum1, old_addr1, new_addr1,
-			     ip4_header_t, dst_address /* changed member */ );
+      sum1 = ip_csum_update (sum1, old_addr1, new_addr1, ip4_header_t,
+			     dst_address /* changed member */);
       ip1->checksum = ip_csum_fold (sum1);
 
       if (PREDICT_TRUE (proto1 == NAT_PROTOCOL_TCP))
@@ -1072,13 +1033,12 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	      new_port1 = udp1->dst_port = s1->in2out.port;
 
 	      sum1 = tcp1->checksum;
-	      sum1 = ip_csum_update (sum1, old_addr1, new_addr1,
-				     ip4_header_t,
-				     dst_address /* changed member */ );
+	      sum1 = ip_csum_update (sum1, old_addr1, new_addr1, ip4_header_t,
+				     dst_address /* changed member */);
 
 	      sum1 = ip_csum_update (sum1, old_port1, new_port1,
-				     ip4_header_t /* cheat */ ,
-				     length /* changed member */ );
+				     ip4_header_t /* cheat */,
+				     length /* changed member */);
 	      tcp1->checksum = ip_csum_fold (sum1);
 	    }
 	  vlib_increment_simple_counter (&sm->counters.slowpath.out2in.tcp,
@@ -1095,13 +1055,11 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 
 		  sum1 = udp1->checksum;
 		  sum1 =
-		    ip_csum_update (sum1, old_addr1, new_addr1,
-				    ip4_header_t,
-				    dst_address /* changed member */ );
-		  sum1 =
-		    ip_csum_update (sum1, old_port1, new_port1,
-				    ip4_header_t /* cheat */ ,
-				    length /* changed member */ );
+		    ip_csum_update (sum1, old_addr1, new_addr1, ip4_header_t,
+				    dst_address /* changed member */);
+		  sum1 = ip_csum_update (sum1, old_port1, new_port1,
+					 ip4_header_t /* cheat */,
+					 length /* changed member */);
 		  udp1->checksum = ip_csum_fold (sum1);
 		}
 	    }
@@ -1116,16 +1074,15 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
       nat44_session_update_lru (sm, s1, thread_index);
     trace1:
 
-      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			 && (b1->flags & VLIB_BUFFER_IS_TRACED)))
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			 (b1->flags & VLIB_BUFFER_IS_TRACED)))
 	{
 	  snat_out2in_trace_t *t = vlib_add_trace (vm, node, b1, sizeof (*t));
 	  t->sw_if_index = sw_if_index1;
 	  t->next_index = next1;
 	  t->session_index = ~0;
 	  if (s1)
-	    t->session_index =
-	      s1 - sm->per_thread_data[thread_index].sessions;
+	    t->session_index = s1 - sm->per_thread_data[thread_index].sessions;
 	}
 
       if (next1 == SNAT_OUT2IN_NEXT_DROP)
@@ -1172,8 +1129,8 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
       icmp0 = (icmp46_header_t *) udp0;
 
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-      rx_fib_index0 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index,
-			       sw_if_index0);
+      rx_fib_index0 =
+	vec_elt (sm->ip4_main->fib_index_by_sw_if_index, sw_if_index0);
 
       proto0 = ip_proto_to_nat_proto (ip0->protocol);
 
@@ -1195,19 +1152,19 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 
       if (PREDICT_FALSE (ip0->ttl == 1))
 	{
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	  icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
-				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
-				       0);
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~0;
+	  icmp4_error_set_vnet_buffer (
+	    b0, ICMP4_time_exceeded,
+	    ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
 	  next0 = SNAT_OUT2IN_NEXT_ICMP_ERROR;
 	  goto trace00;
 	}
 
       if (PREDICT_FALSE (proto0 == NAT_PROTOCOL_ICMP))
 	{
-	  next0 = icmp_out2in_slow_path
-	    (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
-	     next0, now, thread_index, &s0);
+	  next0 = icmp_out2in_slow_path (sm, b0, ip0, icmp0, sw_if_index0,
+					 rx_fib_index0, node, next0, now,
+					 thread_index, &s0);
 	  vlib_increment_simple_counter (&sm->counters.slowpath.out2in.icmp,
 					 thread_index, sw_if_index0, 1);
 	  goto trace00;
@@ -1230,10 +1187,10 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	       * Send DHCP packets to the ipv4 stack, or we won't
 	       * be able to use dhcp client on the outside interface
 	       */
-	      if (PREDICT_FALSE
-		  (proto0 == NAT_PROTOCOL_UDP
-		   && (vnet_buffer (b0)->ip.reass.l4_dst_port ==
-		       clib_host_to_net_u16 (UDP_DST_PORT_dhcp_to_client))))
+	      if (PREDICT_FALSE (
+		    proto0 == NAT_PROTOCOL_UDP &&
+		    (vnet_buffer (b0)->ip.reass.l4_dst_port ==
+		     clib_host_to_net_u16 (UDP_DST_PORT_dhcp_to_client))))
 		{
 		  vnet_feature_next (&next0, b0);
 		  goto trace00;
@@ -1251,14 +1208,10 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	    goto trace00;
 
 	  /* Create session initiated by host from external network */
-	  s0 = create_session_for_static_mapping (sm, b0,
-						  sm_addr0, sm_port0,
-						  sm_fib_index0,
-						  ip0->dst_address,
-						  vnet_buffer (b0)->ip.
-						  reass.l4_dst_port,
-						  rx_fib_index0, proto0, node,
-						  thread_index, now);
+	  s0 = create_session_for_static_mapping (
+	    sm, b0, sm_addr0, sm_port0, sm_fib_index0, ip0->dst_address,
+	    vnet_buffer (b0)->ip.reass.l4_dst_port, rx_fib_index0, proto0,
+	    node, thread_index, now);
 	  if (!s0)
 	    {
 	      next0 = SNAT_OUT2IN_NEXT_DROP;
@@ -1275,8 +1228,8 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
 
       sum0 = ip0->checksum;
-      sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-			     ip4_header_t, dst_address /* changed member */ );
+      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+			     dst_address /* changed member */);
       ip0->checksum = ip_csum_fold (sum0);
 
       if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
@@ -1287,13 +1240,12 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	      new_port0 = udp0->dst_port = s0->in2out.port;
 
 	      sum0 = tcp0->checksum;
-	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-				     ip4_header_t,
-				     dst_address /* changed member */ );
+	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+				     dst_address /* changed member */);
 
 	      sum0 = ip_csum_update (sum0, old_port0, new_port0,
-				     ip4_header_t /* cheat */ ,
-				     length /* changed member */ );
+				     ip4_header_t /* cheat */,
+				     length /* changed member */);
 	      tcp0->checksum = ip_csum_fold (sum0);
 	    }
 	  vlib_increment_simple_counter (&sm->counters.slowpath.out2in.tcp,
@@ -1308,12 +1260,13 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
 	      if (PREDICT_FALSE (udp0->checksum))
 		{
 		  sum0 = udp0->checksum;
-		  sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t, dst_address	/* changed member */
-		    );
 		  sum0 =
-		    ip_csum_update (sum0, old_port0, new_port0,
-				    ip4_header_t /* cheat */ ,
-				    length /* changed member */ );
+		    ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+				    dst_address /* changed member */
+		    );
+		  sum0 = ip_csum_update (sum0, old_port0, new_port0,
+					 ip4_header_t /* cheat */,
+					 length /* changed member */);
 		  udp0->checksum = ip_csum_fold (sum0);
 		}
 	    }
@@ -1328,16 +1281,15 @@ VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
       nat44_session_update_lru (sm, s0, thread_index);
     trace00:
 
-      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			 (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	{
 	  snat_out2in_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	  t->sw_if_index = sw_if_index0;
 	  t->next_index = next0;
 	  t->session_index = ~0;
 	  if (s0)
-	    t->session_index =
-	      s0 - sm->per_thread_data[thread_index].sessions;
+	    t->session_index = s0 - sm->per_thread_data[thread_index].sessions;
 	}
 
       if (next0 == SNAT_OUT2IN_NEXT_DROP)
@@ -1380,9 +1332,8 @@ VLIB_REGISTER_NODE (snat_out2in_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FN (snat_out2in_fast_node) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * frame)
+VLIB_NODE_FN (snat_out2in_fast_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from;
   snat_main_t *sm = &snat_main;
@@ -1426,10 +1377,10 @@ VLIB_NODE_FN (snat_out2in_fast_node) (vlib_main_t * vm,
 
       if (PREDICT_FALSE (ip0->ttl == 1))
 	{
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	  icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
-				       ICMP4_time_exceeded_ttl_exceeded_in_transit,
-				       0);
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~0;
+	  icmp4_error_set_vnet_buffer (
+	    b0, ICMP4_time_exceeded,
+	    ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
 	  next0 = SNAT_OUT2IN_NEXT_ICMP_ERROR;
 	  goto trace00;
 	}
@@ -1461,8 +1412,8 @@ VLIB_NODE_FN (snat_out2in_fast_node) (vlib_main_t * vm,
       ip0->dst_address.as_u32 = new_addr0;
 
       sum0 = ip0->checksum;
-      sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-			     ip4_header_t, dst_address /* changed member */ );
+      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+			     dst_address /* changed member */);
       ip0->checksum = ip_csum_fold (sum0);
 
       if (PREDICT_FALSE (new_port0 != udp0->dst_port))
@@ -1473,23 +1424,21 @@ VLIB_NODE_FN (snat_out2in_fast_node) (vlib_main_t * vm,
 	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
 	    {
 	      sum0 = tcp0->checksum;
-	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-				     ip4_header_t,
-				     dst_address /* changed member */ );
+	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+				     dst_address /* changed member */);
 	      sum0 = ip_csum_update (sum0, old_port0, new_port0,
-				     ip4_header_t /* cheat */ ,
-				     length /* changed member */ );
+				     ip4_header_t /* cheat */,
+				     length /* changed member */);
 	      tcp0->checksum = ip_csum_fold (sum0);
 	    }
 	  else if (udp0->checksum)
 	    {
 	      sum0 = udp0->checksum;
-	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-				     ip4_header_t,
-				     dst_address /* changed member */ );
+	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+				     dst_address /* changed member */);
 	      sum0 = ip_csum_update (sum0, old_port0, new_port0,
-				     ip4_header_t /* cheat */ ,
-				     length /* changed member */ );
+				     ip4_header_t /* cheat */,
+				     length /* changed member */);
 	      udp0->checksum = ip_csum_fold (sum0);
 	    }
 	}
@@ -1498,25 +1447,23 @@ VLIB_NODE_FN (snat_out2in_fast_node) (vlib_main_t * vm,
 	  if (PREDICT_TRUE (proto0 == NAT_PROTOCOL_TCP))
 	    {
 	      sum0 = tcp0->checksum;
-	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-				     ip4_header_t,
-				     dst_address /* changed member */ );
+	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+				     dst_address /* changed member */);
 	      tcp0->checksum = ip_csum_fold (sum0);
 	    }
 	  else if (udp0->checksum)
 	    {
 	      sum0 = udp0->checksum;
-	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-				     ip4_header_t,
-				     dst_address /* changed member */ );
+	      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+				     dst_address /* changed member */);
 	      udp0->checksum = ip_csum_fold (sum0);
 	    }
 	}
 
     trace00:
 
-      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			 (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	{
 	  snat_out2in_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	  t->sw_if_index = sw_if_index0;
@@ -1564,9 +1511,4 @@ VLIB_REGISTER_NODE (snat_out2in_fast_node) = {
 /* *INDENT-ON* */
 
 /*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+ * fd.io coding-style-patch-verificatio

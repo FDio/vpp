@@ -41,8 +41,8 @@ static u32 crypto_sw_scheduler_base_msg_id;
 #include <vlibapi/api_helper_macros.h>
 
 static void
-  vl_api_crypto_sw_scheduler_set_worker_t_handler
-  (vl_api_crypto_sw_scheduler_set_worker_t * mp)
+vl_api_crypto_sw_scheduler_set_worker_t_handler (
+  vl_api_crypto_sw_scheduler_set_worker_t *mp)
 {
   vl_api_crypto_sw_scheduler_set_worker_reply_t *rmp;
   u32 worker_index;
@@ -60,7 +60,7 @@ static void
 #include <crypto_sw_scheduler/crypto_sw_scheduler.api.c>
 
 clib_error_t *
-crypto_sw_scheduler_api_init (vlib_main_t * vm)
+crypto_sw_scheduler_api_init (vlib_main_t *vm)
 {
   /* Ask for a correctly-sized block of API message decode slots */
   crypto_sw_scheduler_base_msg_id = setup_message_id_table ();

@@ -31,23 +31,23 @@ typedef struct
 vlib_node_registration_t mactime_node;
 vlib_node_registration_t mactime_tx_node;
 
-#define foreach_mactime_error                   \
-_(OK, "Permitted packets")			\
-_(STATIC_DROP, "Static drop packets")           \
-_(RANGE_DROP, "Range drop packets")             \
-_(QUOTA_DROP, "Data quota drop packets")	\
-_(DROP_10001, "Dropped UDP DST-port 10001")
+#define foreach_mactime_error                                                 \
+  _ (OK, "Permitted packets")                                                 \
+  _ (STATIC_DROP, "Static drop packets")                                      \
+  _ (RANGE_DROP, "Range drop packets")                                        \
+  _ (QUOTA_DROP, "Data quota drop packets")                                   \
+  _ (DROP_10001, "Dropped UDP DST-port 10001")
 
 typedef enum
 {
-#define _(sym,str) MACTIME_ERROR_##sym,
+#define _(sym, str) MACTIME_ERROR_##sym,
   foreach_mactime_error
 #undef _
     MACTIME_N_ERROR,
 } mactime_error_t;
 
 static char *mactime_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_mactime_error
 #undef _
 };
@@ -61,7 +61,7 @@ typedef enum
 
 /* packet trace format function */
 static u8 *
-format_mactime_trace (u8 * s, va_list * args)
+format_mactime_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -75,9 +75,8 @@ format_mactime_trace (u8 * s, va_list * args)
 }
 
 static uword
-mactime_node_inline (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame,
-		     int is_tx)
+mactime_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     vlib_frame_t *frame, int is_tx)
 {
   u32 n_left_from, *from, *to_next;
   mactime_next_t next_index;
@@ -134,8 +133,8 @@ mactime_node_inline (vlib_main_t * vm,
 
 	  /* Set next0 to e.g. interface-tx */
 	  if (is_tx)
-	    vnet_get_config_data (&fcm->config_main,
-				  &b0->current_config_index, &next0,
+	    vnet_get_config_data (&fcm->config_main, &b0->current_config_index,
+				  &next0,
 				  /* # bytes of config data */ 0);
 	  else
 	    next0 = MACTIME_NEXT_ETHERNET_INPUT;
@@ -154,8 +153,8 @@ mactime_node_inline (vlib_main_t * vm,
 	  if (clib_bihash_search_8_8 (lut, &kv, &kv) < 0)
 	    {
 	      /* Create a table entry... */
-	      mactime_send_create_entry_message
-		(is_tx ? en0->dst_address : en0->src_address);
+	      mactime_send_create_entry_message (is_tx ? en0->dst_address :
+							 en0->src_address);
 
 	      /* and let this packet pass */
 	      device_index0 = ~0;
@@ -169,46 +168,43 @@ mactime_node_inline (vlib_main_t * vm,
 	  dp = pool_elt_at_index (mm->devices, device_index0);
 
 	  /* Known device, check for an always-on traffic quota */
-	  if ((dp->flags & MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW)
-	      && PREDICT_FALSE (dp->data_quota))
+	  if ((dp->flags & MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW) &&
+	      PREDICT_FALSE (dp->data_quota))
 	    {
 	      vlib_counter_t device_current_count;
-	      vlib_get_combined_counter (&mm->allow_counters,
-					 dp - mm->devices,
+	      vlib_get_combined_counter (&mm->allow_counters, dp - mm->devices,
 					 &device_current_count);
 	      if (device_current_count.bytes >= dp->data_quota)
 		{
 		  next0 = MACTIME_NEXT_DROP;
 		  b0->error = node->errors[MACTIME_ERROR_QUOTA_DROP];
-		  vlib_increment_combined_counter
-		    (&mm->drop_counters, thread_index, dp - mm->devices, 1,
-		     len0);
+		  vlib_increment_combined_counter (&mm->drop_counters,
+						   thread_index,
+						   dp - mm->devices, 1, len0);
 		  goto trace0;
 		}
 	    }
 
 	  /* Static drop / allow? */
-	  if (PREDICT_FALSE
-	      (dp->flags &
-	       (MACTIME_DEVICE_FLAG_STATIC_DROP
-		| MACTIME_DEVICE_FLAG_STATIC_ALLOW)))
+	  if (PREDICT_FALSE (dp->flags & (MACTIME_DEVICE_FLAG_STATIC_DROP |
+					  MACTIME_DEVICE_FLAG_STATIC_ALLOW)))
 	    {
 	      if (dp->flags & MACTIME_DEVICE_FLAG_STATIC_DROP)
 		{
 		  next0 = MACTIME_NEXT_DROP;
 		  b0->error = node->errors[MACTIME_ERROR_STATIC_DROP];
-		  vlib_increment_combined_counter
-		    (&mm->drop_counters, thread_index, dp - mm->devices, 1,
-		     len0);
+		  vlib_increment_combined_counter (&mm->drop_counters,
+						   thread_index,
+						   dp - mm->devices, 1, len0);
 		}
-	      else		/* note next0 set to allow */
+	      else /* note next0 set to allow */
 		{
 		  /*
 		   * Special-case mini-ACL for a certain species of
 		   * home security DVR which likes to "call home."
 		   */
-		  if (PREDICT_FALSE
-		      (dp->flags & MACTIME_DEVICE_FLAG_DROP_UDP_10001))
+		  if (PREDICT_FALSE (dp->flags &
+				     MACTIME_DEVICE_FLAG_DROP_UDP_10001))
 		    {
 		      ip4_header_t *ip = (void *) (((u8 *) en0) + 14);
 		      udp_header_t *udp = (udp_header_t *) (ip + 1);
@@ -226,9 +222,9 @@ mactime_node_inline (vlib_main_t * vm,
 		  else
 		    {
 		    pass:
-		      vlib_increment_combined_counter
-			(&mm->allow_counters, thread_index, dp - mm->devices,
-			 1, len0);
+		      vlib_increment_combined_counter (
+			&mm->allow_counters, thread_index, dp - mm->devices, 1,
+			len0);
 		      packets_ok++;
 		    }
 		}
@@ -252,9 +248,9 @@ mactime_node_inline (vlib_main_t * vm,
 		  /* And it's a drop range, drop it */
 		  if (dp->flags & MACTIME_DEVICE_FLAG_DYNAMIC_DROP)
 		    {
-		      vlib_increment_combined_counter
-			(&mm->drop_counters, thread_index,
-			 dp - mm->devices, 1, len0);
+		      vlib_increment_combined_counter (
+			&mm->drop_counters, thread_index, dp - mm->devices, 1,
+			len0);
 		      next0 = MACTIME_NEXT_DROP;
 		      b0->error = node->errors[MACTIME_ERROR_RANGE_DROP];
 		      goto trace0;
@@ -266,9 +262,9 @@ mactime_node_inline (vlib_main_t * vm,
 			{
 			  next0 = MACTIME_NEXT_DROP;
 			  b0->error = node->errors[MACTIME_ERROR_QUOTA_DROP];
-			  vlib_increment_combined_counter
-			    (&mm->drop_counters, thread_index,
-			     dp - mm->devices, 1, len0);
+			  vlib_increment_combined_counter (
+			    &mm->drop_counters, thread_index, dp - mm->devices,
+			    1, len0);
 			  goto trace0;
 			}
 		      else
@@ -278,11 +274,11 @@ mactime_node_inline (vlib_main_t * vm,
 			}
 		    }
 		  else
-		    {		/* it's an allow range, allow it */
+		    { /* it's an allow range, allow it */
 		    allow0:
-		      vlib_increment_combined_counter
-			(&mm->allow_counters, thread_index,
-			 dp - mm->devices, 1, len0);
+		      vlib_increment_combined_counter (
+			&mm->allow_counters, thread_index, dp - mm->devices, 1,
+			len0);
 		      packets_ok++;
 		      goto trace0;
 		    }
@@ -296,22 +292,21 @@ mactime_node_inline (vlib_main_t * vm,
 	    {
 	      next0 = MACTIME_NEXT_DROP;
 	      b0->error = node->errors[MACTIME_ERROR_STATIC_DROP];
-	      vlib_increment_combined_counter
-		(&mm->drop_counters, thread_index, dp - mm->devices, 1, len0);
+	      vlib_increment_combined_counter (
+		&mm->drop_counters, thread_index, dp - mm->devices, 1, len0);
 	    }
-	  else			/* DYNAMIC_DROP, DYNAMIC_RANGE_ALLOW_QUOTA */
+	  else /* DYNAMIC_DROP, DYNAMIC_RANGE_ALLOW_QUOTA */
 	    {
-	      vlib_increment_combined_counter
-		(&mm->allow_counters, thread_index, dp - mm->devices, 1,
-		 len0);
+	      vlib_increment_combined_counter (
+		&mm->allow_counters, thread_index, dp - mm->devices, 1, len0);
 	      /* Clear the data quota accumulater */
 	      dp->data_used_in_range = 0;
 	      packets_ok++;
 	    }
 
 	trace0:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      mactime_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      clib_memcpy_fast (t->src_mac, en0->src_address,
@@ -329,27 +324,25 @@ mactime_node_inline (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, node->node_index,
-			       MACTIME_ERROR_OK, packets_ok);
+  vlib_node_increment_counter (vm, node->node_index, MACTIME_ERROR_OK,
+			       packets_ok);
   return frame->n_vectors;
 }
 
 static uword
-mactime_node_fn (vlib_main_t * vm,
-		 vlib_node_runtime_t * node, vlib_frame_t * frame)
+mactime_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		 vlib_frame_t *frame)
 {
-  return mactime_node_inline (vm, node, frame, 0 /* is_tx */ );
+  return mactime_node_inline (vm, node, frame, 0 /* is_tx */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (mactime_node) =
 {
   .function = mactime_node_fn,
@@ -370,16 +363,14 @@ VLIB_REGISTER_NODE (mactime_node) =
     [MACTIME_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 static uword
-mactime_tx_node_fn (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
+mactime_tx_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *frame)
 {
-  return mactime_node_inline (vm, node, frame, 1 /* is_tx */ );
+  return mactime_node_inline (vm, node, frame, 1 /* is_tx */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (mactime_tx_node) =
 {
   .function = mactime_tx_node_fn,
@@ -400,7 +391,6 @@ VLIB_REGISTER_NODE (mactime_tx_node) =
     [MACTIME_NEXT_ETHERNET_INPUT] = "ethernet-input", /* notused */
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

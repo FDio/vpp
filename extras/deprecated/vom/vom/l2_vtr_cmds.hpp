@@ -26,8 +26,9 @@ namespace l2_vtr_cmds {
 /**
  * A cmd class sets the VTR operation
  */
-class set_cmd : public rpc_cmd<HW::item<l2_vtr::option_t>,
-                               vapi::L2_interface_vlan_tag_rewrite>
+class set_cmd
+  : public rpc_cmd<HW::item<l2_vtr::option_t>,
+                   vapi::L2_interface_vlan_tag_rewrite>
 {
 public:
   /**

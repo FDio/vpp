@@ -37,14 +37,14 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_syn_filter4_trace (u8 * s, va_list * args)
+format_syn_filter4_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   syn_filter4_trace_t *t = va_arg (*args, syn_filter4_trace_t *);
 
-  s = format (s, "SYN_FILTER4: next index %d, %s",
-	      t->next_index, t->not_a_syn ? "not a syn" : "syn");
+  s = format (s, "SYN_FILTER4: next index %d, %s", t->next_index,
+	      t->not_a_syn ? "not a syn" : "syn");
   if (t->not_a_syn == 0)
     s = format (s, ", filter value %d\n", t->filter_value);
   else
@@ -54,20 +54,20 @@ format_syn_filter4_trace (u8 * s, va_list * args)
 
 extern vlib_node_registration_t syn_filter4_node;
 
-#define foreach_syn_filter_error                \
-_(THROTTLED, "TCP SYN packet throttle drops")   \
-_(OK, "TCP SYN packets passed")
+#define foreach_syn_filter_error                                              \
+  _ (THROTTLED, "TCP SYN packet throttle drops")                              \
+  _ (OK, "TCP SYN packets passed")
 
 typedef enum
 {
-#define _(sym,str) SYN_FILTER_ERROR_##sym,
+#define _(sym, str) SYN_FILTER_ERROR_##sym,
   foreach_syn_filter_error
 #undef _
     SYN_FILTER_N_ERROR,
 } syn_filter_error_t;
 
 static char *syn_filter4_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_syn_filter_error
 #undef _
 };
@@ -80,9 +80,8 @@ typedef enum
 
 extern vnet_feature_arc_registration_t vnet_feat_arc_ip4_local;
 
-VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
-				 vlib_node_runtime_t * node,
-				 vlib_frame_t * frame)
+VLIB_NODE_FN (syn_filter4_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   syn_filter_next_t next_index;
@@ -156,18 +155,14 @@ VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
 	  b2 = vlib_get_buffer (vm, bi2);
 	  b3 = vlib_get_buffer (vm, bi3);
 
-	  vnet_get_config_data
-	    (&cm->config_main, &b0->current_config_index,
-	     &next0, 0 /* sizeof (c0[0]) */ );
-	  vnet_get_config_data
-	    (&cm->config_main, &b1->current_config_index,
-	     &next1, 0 /* sizeof (c0[0]) */ );
-	  vnet_get_config_data
-	    (&cm->config_main, &b2->current_config_index,
-	     &next2, 0 /* sizeof (c0[0]) */ );
-	  vnet_get_config_data
-	    (&cm->config_main, &b3->current_config_index,
-	     &next3, 0 /* sizeof (c0[0]) */ );
+	  vnet_get_config_data (&cm->config_main, &b0->current_config_index,
+				&next0, 0 /* sizeof (c0[0]) */);
+	  vnet_get_config_data (&cm->config_main, &b1->current_config_index,
+				&next1, 0 /* sizeof (c0[0]) */);
+	  vnet_get_config_data (&cm->config_main, &b2->current_config_index,
+				&next2, 0 /* sizeof (c0[0]) */);
+	  vnet_get_config_data (&cm->config_main, &b3->current_config_index,
+				&next3, 0 /* sizeof (c0[0]) */);
 
 	  /* Not TCP? */
 	  ip0 = vlib_buffer_get_current (b0);
@@ -196,8 +191,8 @@ VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
 	  ok_syn_packets++;
 
 	trace00:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      syn_filter4_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -233,8 +228,8 @@ VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
 	  ok_syn_packets++;
 
 	trace01:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b1->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b1->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      syn_filter4_trace_t *t =
 		vlib_add_trace (vm, node, b1, sizeof (*t));
@@ -270,8 +265,8 @@ VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
 	  ok_syn_packets++;
 
 	trace02:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b2->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b2->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      syn_filter4_trace_t *t =
 		vlib_add_trace (vm, node, b2, sizeof (*t));
@@ -307,8 +302,8 @@ VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
 	  ok_syn_packets++;
 
 	trace03:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b3->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b3->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      syn_filter4_trace_t *t =
 		vlib_add_trace (vm, node, b3, sizeof (*t));
@@ -316,9 +311,8 @@ VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
 	      t->next_index = next3;
 	      t->filter_value = not_a_syn3 ? 0 : *c3;
 	    }
-	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, bi2, bi3,
+	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, bi2, bi3,
 					   next0, next1, next2, next3);
 	}
 
@@ -343,9 +337,8 @@ VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  vnet_get_config_data
-	    (&cm->config_main, &b0->current_config_index,
-	     &next0, 0 /* sizeof (c0[0]) */ );
+	  vnet_get_config_data (&cm->config_main, &b0->current_config_index,
+				&next0, 0 /* sizeof (c0[0]) */);
 
 	  /* Not TCP? */
 	  ip0 = vlib_buffer_get_current (b0);
@@ -375,8 +368,8 @@ VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
 
 	trace0:
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      syn_filter4_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -386,20 +379,18 @@ VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, syn_filter4_node.index,
-			       SYN_FILTER_ERROR_OK, ok_syn_packets);
+  vlib_node_increment_counter (vm, syn_filter4_node.index, SYN_FILTER_ERROR_OK,
+			       ok_syn_packets);
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (syn_filter4_node) =
 {
   .name = "syn-filter-4",
@@ -418,16 +409,12 @@ VLIB_REGISTER_NODE (syn_filter4_node) =
     [SYN_FILTER_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
-VNET_FEATURE_INIT (syn_filter_4, static) =
-{
+VNET_FEATURE_INIT (syn_filter_4, static) = {
   .arc_name = "ip4-local",
   .node_name = "syn-filter-4",
-  .runs_before = VNET_FEATURES("ip4-local-end-of-arc"),
+  .runs_before = VNET_FEATURES ("ip4-local-end-of-arc"),
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 int
@@ -450,9 +437,9 @@ syn_filter_enable_disable (u32 sw_if_index, int enable_disable)
     {
       syn_filter4_runtime_t *rt;
 
-      /* *INDENT-OFF* */
       foreach_vlib_main ({
-	rt = vlib_node_get_runtime_data (this_vlib_main, syn_filter4_node.index);
+	rt =
+	  vlib_node_get_runtime_data (this_vlib_main, syn_filter4_node.index);
 	vec_validate (rt->syn_counts, 1023);
 	/*
 	 * Given perfect disperson / optimal hashing results:
@@ -460,21 +447,19 @@ syn_filter_enable_disable (u32 sw_if_index, int enable_disable)
 	 * absorb 128 syns before filtering. Reset table once a second.
 	 * Reality bites, lets try resetting once every 100ms.
 	 */
-	rt->reset_interval = 0.1;	/* reset interval in seconds */
+	rt->reset_interval = 0.1; /* reset interval in seconds */
       });
-      /* *INDENT-ON* */
     }
 
-  rv = vnet_feature_enable_disable ("ip4-local", "syn-filter-4",
-				    sw_if_index, enable_disable, 0, 0);
+  rv = vnet_feature_enable_disable ("ip4-local", "syn-filter-4", sw_if_index,
+				    enable_disable, 0, 0);
 
   return rv;
 }
 
 static clib_error_t *
-syn_filter_enable_disable_command_fn (vlib_main_t * vm,
-				      unformat_input_t * input,
-				      vlib_cli_command_t * cmd)
+syn_filter_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				      vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index = ~0;
@@ -485,8 +470,8 @@ syn_filter_enable_disable_command_fn (vlib_main_t * vm,
     {
       if (unformat (input, "disable"))
 	enable_disable = 0;
-      else if (unformat (input, "%U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
+      else if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else
 	break;
@@ -503,8 +488,8 @@ syn_filter_enable_disable_command_fn (vlib_main_t * vm,
       break;
 
     case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-      return clib_error_return
-	(0, "Invalid interface, only works on physical ports");
+      return clib_error_return (
+	0, "Invalid interface, only works on physical ports");
       break;
 
     case VNET_API_ERROR_UNIMPLEMENTED:
@@ -525,14 +510,12 @@ syn_filter_enable_disable_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (sr_content_command, static) =
-{
+VLIB_CLI_COMMAND (sr_content_command, static) = {
   .path = "ip syn filter",
   .short_help = "ip syn filter <interface-name> [disable]",
   .function = syn_filter_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
+
 #endif /* CLIB_MARCH_VARIANT */
 
 /*

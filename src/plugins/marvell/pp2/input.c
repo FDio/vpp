@@ -28,35 +28,35 @@
 
 #include <marvell/pp2/pp2.h>
 
-#define foreach_mrvl_pp2_input_error \
-  _(PPIO_RECV, "pp2_ppio_recv error") \
-  _(BPOOL_GET_NUM_BUFFS, "pp2_bpool_get_num_buffs error") \
-  _(BPOOL_PUT_BUFFS, "pp2_bpool_put_buffs error") \
-  _(BUFFER_ALLOC, "buffer alloc error") \
-  _(MAC_CE, "MAC error (CRC error)") \
-  _(MAC_OR, "overrun error") \
-  _(MAC_RSVD, "unknown MAC error") \
-  _(MAC_RE, "resource error") \
-  _(IP_HDR, "ip4 header error")
+#define foreach_mrvl_pp2_input_error                                          \
+  _ (PPIO_RECV, "pp2_ppio_recv error")                                        \
+  _ (BPOOL_GET_NUM_BUFFS, "pp2_bpool_get_num_buffs error")                    \
+  _ (BPOOL_PUT_BUFFS, "pp2_bpool_put_buffs error")                            \
+  _ (BUFFER_ALLOC, "buffer alloc error")                                      \
+  _ (MAC_CE, "MAC error (CRC error)")                                         \
+  _ (MAC_OR, "overrun error")                                                 \
+  _ (MAC_RSVD, "unknown MAC error")                                           \
+  _ (MAC_RE, "resource error")                                                \
+  _ (IP_HDR, "ip4 header error")
 
 typedef enum
 {
-#define _(f,s) MRVL_PP2_INPUT_ERROR_##f,
+#define _(f, s) MRVL_PP2_INPUT_ERROR_##f,
   foreach_mrvl_pp2_input_error
 #undef _
     MRVL_PP2_INPUT_N_ERROR,
 } mrvl_pp2_input_error_t;
 
 static __clib_unused char *mrvl_pp2_input_error_strings[] = {
-#define _(n,s) s,
+#define _(n, s) s,
   foreach_mrvl_pp2_input_error
 #undef _
 };
 
 static_always_inline void
-mrvl_pp2_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node, u32 next0,
-		      vlib_buffer_t * b0, uword * n_trace,
-		      mrvl_pp2_if_t * ppif, struct pp2_ppio_desc *d)
+mrvl_pp2_input_trace (vlib_main_t *vm, vlib_node_runtime_t *node, u32 next0,
+		      vlib_buffer_t *b0, uword *n_trace, mrvl_pp2_if_t *ppif,
+		      struct pp2_ppio_desc *d)
 {
   mrvl_pp2_input_trace_t *tr;
   vlib_trace_buffer (vm, node, next0, b0,
@@ -69,7 +69,7 @@ mrvl_pp2_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node, u32 next0,
 }
 
 static_always_inline u16
-mrvl_pp2_set_buf_data_len_flags (vlib_buffer_t * b, struct pp2_ppio_desc *d,
+mrvl_pp2_set_buf_data_len_flags (vlib_buffer_t *b, struct pp2_ppio_desc *d,
 				 u32 add_flags)
 {
   u16 len;
@@ -94,15 +94,15 @@ mrvl_pp2_set_buf_data_len_flags (vlib_buffer_t * b, struct pp2_ppio_desc *d,
     }
 
   if (add_flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID)
-    vnet_buffer (b)->l4_hdr_offset = vnet_buffer (b)->l3_hdr_offset +
-      DM_RXD_GET_IPHDR_LEN (d) * 4;
+    vnet_buffer (b)->l4_hdr_offset =
+      vnet_buffer (b)->l3_hdr_offset + DM_RXD_GET_IPHDR_LEN (d) * 4;
 
   return len;
 }
 
 static_always_inline u16
-mrvl_pp2_next_from_desc (vlib_node_runtime_t * node, struct pp2_ppio_desc * d,
-			 vlib_buffer_t * b, u32 * next)
+mrvl_pp2_next_from_desc (vlib_node_runtime_t *node, struct pp2_ppio_desc *d,
+			 vlib_buffer_t *b, u32 *next)
 {
   u8 l3_info;
   /* ES bit set means MAC error  - drop and count */
@@ -132,22 +132,20 @@ mrvl_pp2_next_from_desc (vlib_node_runtime_t * node, struct pp2_ppio_desc * d,
 	  return mrvl_pp2_set_buf_data_len_flags (b, d, 0);
 	}
       *next = VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT;
-      return mrvl_pp2_set_buf_data_len_flags
-	(b, d,
-	 VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
-	 VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
-	 VNET_BUFFER_F_L4_HDR_OFFSET_VALID | VNET_BUFFER_F_IS_IP4);
+      return mrvl_pp2_set_buf_data_len_flags (
+	b, d,
+	VNET_BUFFER_F_L2_HDR_OFFSET_VALID | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+	  VNET_BUFFER_F_L4_HDR_OFFSET_VALID | VNET_BUFFER_F_IS_IP4);
     }
 
   /* ipv4 packet can be value 4 or 5 */
   if (PREDICT_TRUE ((l3_info - 4) < 2))
     {
       *next = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
-      return mrvl_pp2_set_buf_data_len_flags
-	(b, d,
-	 VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
-	 VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
-	 VNET_BUFFER_F_L4_HDR_OFFSET_VALID | VNET_BUFFER_F_IS_IP6);
+      return mrvl_pp2_set_buf_data_len_flags (
+	b, d,
+	VNET_BUFFER_F_L2_HDR_OFFSET_VALID | VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+	  VNET_BUFFER_F_L4_HDR_OFFSET_VALID | VNET_BUFFER_F_IS_IP6);
     }
 
   *next = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
@@ -156,8 +154,8 @@ mrvl_pp2_next_from_desc (vlib_node_runtime_t * node, struct pp2_ppio_desc * d,
 }
 
 static_always_inline uword
-mrvl_pp2_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			      vlib_frame_t * frame, mrvl_pp2_if_t * ppif,
+mrvl_pp2_device_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			      vlib_frame_t *frame, mrvl_pp2_if_t *ppif,
 			      u16 qid)
 {
   vnet_main_t *vnm = vnet_get_main ();
@@ -193,7 +191,7 @@ mrvl_pp2_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   d = ptd->descs;
   buffers = ptd->buffers;
   sw_if_index[VLIB_RX] = ppif->sw_if_index;
-  sw_if_index[VLIB_TX] = (u32) ~ 0;
+  sw_if_index[VLIB_TX] = (u32) ~0;
   while (n_desc)
     {
       u32 n_left_to_next;
@@ -251,7 +249,6 @@ mrvl_pp2_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, bi1, next0,
 					   next1);
-
 	}
       while (n_desc && n_left_to_next)
 	{
@@ -291,11 +288,9 @@ mrvl_pp2_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_increment_combined_counter (vnm->
-				   interface_main.combined_sw_if_counters +
-				   VNET_INTERFACE_COUNTER_RX, thread_index,
-				   ppif->hw_if_index, n_rx_packets,
-				   n_rx_bytes);
+  vlib_increment_combined_counter (
+    vnm->interface_main.combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
+    thread_index, ppif->hw_if_index, n_rx_packets, n_rx_bytes);
 
   if (PREDICT_FALSE (pp2_bpool_get_num_buffs (inq->bpool, &n_bufs)))
     {
@@ -352,8 +347,8 @@ done:
 }
 
 uword
-mrvl_pp2_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		   vlib_frame_t * frame)
+mrvl_pp2_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame)
 {
   u32 n_rx = 0;
   mrvl_pp2_main_t *ppm = &mrvl_pp2_main;
@@ -372,7 +367,6 @@ mrvl_pp2_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_rx;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (mrvl_pp2_input_node) = {
   .function = mrvl_pp2_input_fn,
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
@@ -385,7 +379,6 @@ VLIB_REGISTER_NODE (mrvl_pp2_input_node) = {
   .error_strings = mrvl_pp2_input_error_strings,
 };
 
-/* *INDENT-ON* */
 
 
 /*

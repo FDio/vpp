@@ -62,7 +62,7 @@ u32 standalone_random_default_seed = 1;
  */
 
 f64
-clib_chisquare (u64 * values)
+clib_chisquare (u64 *values)
 {
   u32 i, len;
   f64 d, delta_d, actual_frequency, expected_frequency;
@@ -86,9 +86,9 @@ clib_chisquare (u64 * values)
   for (i = 0; i < len; i++)
     {
       actual_frequency = ((f64) values[i]);
-      delta_d = ((actual_frequency - expected_frequency)
-		 * (actual_frequency - expected_frequency))
-	/ expected_frequency;
+      delta_d = ((actual_frequency - expected_frequency) *
+		 (actual_frequency - expected_frequency)) /
+		expected_frequency;
       d += delta_d;
     }
   return d;

@@ -31,15 +31,15 @@ typedef enum vlib_punt_reason_t_
 /**
  * Walk each punt reason
  */
-typedef int (*punt_reason_walk_cb_t) (vlib_punt_reason_t id,
-				      const u8 * name, void *ctx);
+typedef int (*punt_reason_walk_cb_t) (vlib_punt_reason_t id, const u8 *name,
+				      void *ctx);
 
 extern void punt_reason_walk (punt_reason_walk_cb_t cb, void *cxt);
 
 /**
  * @brief Format a punt reason
  */
-extern u8 *format_vlib_punt_reason (u8 * s, va_list * args);
+extern u8 *format_vlib_punt_reason (u8 *s, va_list *args);
 
 /**
  * Typedef for a client handle
@@ -67,8 +67,8 @@ typedef void (*punt_interested_listener_t) (vlib_enable_or_disable_t i,
  */
 extern int vlib_punt_reason_alloc (vlib_punt_hdl_t client,
 				   const char *reason_name,
-				   punt_interested_listener_t fn,
-				   void *data, vlib_punt_reason_t * reason);
+				   punt_interested_listener_t fn, void *data,
+				   vlib_punt_reason_t *reason);
 
 /**
  * Validate that a punt reason is assigned
@@ -84,8 +84,8 @@ extern int vlib_punt_reason_validate (vlib_punt_reason_t reason);
  */
 extern int vlib_punt_register (vlib_punt_hdl_t client,
 			       vlib_punt_reason_t reason, const char *node);
-extern int vlib_punt_unregister (vlib_punt_hdl_t client,
-				 vlib_punt_reason_t pr, const char *node);
+extern int vlib_punt_unregister (vlib_punt_hdl_t client, vlib_punt_reason_t pr,
+				 const char *node);
 
 /**
  * FOR USE IN THE DP ONLY

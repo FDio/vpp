@@ -43,21 +43,21 @@ typedef struct
 } graph_dir_t;
 
 always_inline void
-graph_dir_free (graph_dir_t * d)
+graph_dir_free (graph_dir_t *d)
 {
   vec_free (d->links);
   hash_free (d->link_index_by_node_index);
 }
 
 always_inline graph_link_t *
-graph_dir_get_link_to_node (graph_dir_t * d, u32 node_index)
+graph_dir_get_link_to_node (graph_dir_t *d, u32 node_index)
 {
   uword *p = hash_get (d->link_index_by_node_index, node_index);
   return p ? vec_elt_at_index (d->links, p[0]) : 0;
 }
 
 always_inline uword
-graph_dir_add_link (graph_dir_t * d, u32 node_index, u32 distance)
+graph_dir_add_link (graph_dir_t *d, u32 node_index, u32 distance)
 {
   graph_link_t *l;
   ASSERT (!graph_dir_get_link_to_node (d, node_index));
@@ -69,7 +69,7 @@ graph_dir_add_link (graph_dir_t * d, u32 node_index, u32 distance)
 }
 
 always_inline void
-graph_dir_del_link (graph_dir_t * d, u32 node_index)
+graph_dir_del_link (graph_dir_t *d, u32 node_index)
 {
   graph_link_t *l = graph_dir_get_link_to_node (d, node_index);
   uword li = l - d->links;
@@ -100,17 +100,17 @@ typedef struct
 } graph_t;
 
 /* Set link distance, creating link if not found. */
-u32 graph_set_link (graph_t * g, u32 src, u32 dst, u32 distance);
+u32 graph_set_link (graph_t *g, u32 src, u32 dst, u32 distance);
 
 always_inline void
-graph_set_bidirectional_link (graph_t * g, u32 src, u32 dst, u32 distance)
+graph_set_bidirectional_link (graph_t *g, u32 src, u32 dst, u32 distance)
 {
   graph_set_link (g, src, dst, distance);
   graph_set_link (g, dst, src, distance);
 }
 
-void graph_del_link (graph_t * g, u32 src, u32 dst);
-uword graph_del_node (graph_t * g, u32 src);
+void graph_del_link (graph_t *g, u32 src, u32 dst);
+uword graph_del_node (graph_t *g, u32 src);
 
 unformat_function_t unformat_graph;
 format_function_t format_graph;

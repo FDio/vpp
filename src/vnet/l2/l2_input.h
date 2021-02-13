@@ -102,7 +102,7 @@ extern l2input_main_t l2input_main;
 extern vlib_node_registration_t l2input_node;
 
 static_always_inline l2_bridge_domain_t *
-l2input_bd_config_from_index (l2input_main_t * l2im, u32 bd_index)
+l2input_bd_config_from_index (l2input_main_t *l2im, u32 bd_index)
 {
   l2_bridge_domain_t *bd_config;
 
@@ -122,45 +122,45 @@ l2input_bd_config (u32 bd_index)
 }
 
 /* L2 input indication packet is from BVI, using -2 */
-#define L2INPUT_BVI ((u32) (~0-1))
+#define L2INPUT_BVI ((u32) (~0 - 1))
 
 /* L2 input features */
 
 /* Mappings from feature ID to graph node name in reverse order */
-#define foreach_l2input_feat                    \
- _(DROP,          "feature-bitmap-drop")        \
- _(XCONNECT,      "l2-output")                  \
- _(FLOOD,         "l2-flood")                   \
- _(ARP_UFWD,      "l2-uu-fwd")                  \
- _(ARP_TERM,      "arp-term-l2bd")              \
- _(UU_FLOOD,      "l2-flood")                   \
- _(GBP_FWD,       "gbp-fwd")                    \
- _(UU_FWD,        "l2-uu-fwd")                  \
- _(FWD,           "l2-fwd")                     \
- _(RW,            "l2-rw")                      \
- _(LEARN,         "l2-learn")                   \
- _(L2_EMULATION,  "l2-emulation")               \
- _(GBP_LEARN,     "gbp-learn-l2")               \
- _(GBP_LPM_ANON_CLASSIFY, "l2-gbp-lpm-anon-classify") \
- _(GBP_NULL_CLASSIFY, "gbp-null-classify")      \
- _(GBP_SRC_CLASSIFY,  "gbp-src-classify")       \
- _(GBP_LPM_CLASSIFY,  "l2-gbp-lpm-classify")    \
- _(VTR,           "l2-input-vtr")               \
- _(L2_IP_QOS_RECORD, "l2-ip-qos-record")        \
- _(VPATH,         "vpath-input-l2")             \
- _(ACL,           "l2-input-acl")               \
- _(POLICER_CLAS,  "l2-policer-classify")	\
- _(INPUT_FEAT_ARC, "l2-input-feat-arc")         \
- _(INPUT_CLASSIFY, "l2-input-classify")         \
- _(SPAN,          "span-l2-input")
+#define foreach_l2input_feat                                                  \
+  _ (DROP, "feature-bitmap-drop")                                             \
+  _ (XCONNECT, "l2-output")                                                   \
+  _ (FLOOD, "l2-flood")                                                       \
+  _ (ARP_UFWD, "l2-uu-fwd")                                                   \
+  _ (ARP_TERM, "arp-term-l2bd")                                               \
+  _ (UU_FLOOD, "l2-flood")                                                    \
+  _ (GBP_FWD, "gbp-fwd")                                                      \
+  _ (UU_FWD, "l2-uu-fwd")                                                     \
+  _ (FWD, "l2-fwd")                                                           \
+  _ (RW, "l2-rw")                                                             \
+  _ (LEARN, "l2-learn")                                                       \
+  _ (L2_EMULATION, "l2-emulation")                                            \
+  _ (GBP_LEARN, "gbp-learn-l2")                                               \
+  _ (GBP_LPM_ANON_CLASSIFY, "l2-gbp-lpm-anon-classify")                       \
+  _ (GBP_NULL_CLASSIFY, "gbp-null-classify")                                  \
+  _ (GBP_SRC_CLASSIFY, "gbp-src-classify")                                    \
+  _ (GBP_LPM_CLASSIFY, "l2-gbp-lpm-classify")                                 \
+  _ (VTR, "l2-input-vtr")                                                     \
+  _ (L2_IP_QOS_RECORD, "l2-ip-qos-record")                                    \
+  _ (VPATH, "vpath-input-l2")                                                 \
+  _ (ACL, "l2-input-acl")                                                     \
+  _ (POLICER_CLAS, "l2-policer-classify")                                     \
+  _ (INPUT_FEAT_ARC, "l2-input-feat-arc")                                     \
+  _ (INPUT_CLASSIFY, "l2-input-classify")                                     \
+  _ (SPAN, "span-l2-input")
 
 /* Feature bitmap positions */
 typedef enum
 {
-#define _(sym,str) L2INPUT_FEAT_##sym##_BIT,
+#define _(sym, str) L2INPUT_FEAT_##sym##_BIT,
   foreach_l2input_feat
 #undef _
-  L2INPUT_N_FEAT
+    L2INPUT_N_FEAT
 } l2input_feat_t;
 
 STATIC_ASSERT (L2INPUT_N_FEAT <= 32, "too many l2 input features");
@@ -169,12 +169,12 @@ STATIC_ASSERT (L2INPUT_N_FEAT <= 32, "too many l2 input features");
 typedef enum
 {
   L2INPUT_FEAT_NONE = 0,
-#define _(sym,str) L2INPUT_FEAT_##sym = (1<<L2INPUT_FEAT_##sym##_BIT),
+#define _(sym, str) L2INPUT_FEAT_##sym = (1 << L2INPUT_FEAT_##sym##_BIT),
   foreach_l2input_feat
 #undef _
     L2INPUT_VALID_MASK =
-#define _(sym,str) L2INPUT_FEAT_##sym |
-    foreach_l2input_feat
+#define _(sym, str) L2INPUT_FEAT_##sym |
+      foreach_l2input_feat
 #undef _
   0
 } l2input_feat_masks_t;
@@ -185,65 +185,65 @@ STATIC_ASSERT ((u64) L2INPUT_VALID_MASK == (1ull << L2INPUT_N_FEAT) - 1, "");
 char **l2input_get_feat_names (void);
 
 /* arg0 - u32 feature_bitmap, arg1 - u32 verbose */
-u8 *format_l2_input_feature_bitmap (u8 * s, va_list * args);
-u8 *format_l2_input_features (u8 * s, va_list * args);
-u8 *format_l2_input (u8 * s, va_list * args);
+u8 *format_l2_input_feature_bitmap (u8 *s, va_list *args);
+u8 *format_l2_input_features (u8 *s, va_list *args);
+u8 *format_l2_input (u8 *s, va_list *args);
 
 static_always_inline u8
-bd_feature_flood (l2_bridge_domain_t * bd_config)
+bd_feature_flood (l2_bridge_domain_t *bd_config)
 {
   return ((bd_config->feature_bitmap & L2INPUT_FEAT_FLOOD) ==
 	  L2INPUT_FEAT_FLOOD);
 }
 
 static_always_inline u8
-bd_feature_uu_flood (l2_bridge_domain_t * bd_config)
+bd_feature_uu_flood (l2_bridge_domain_t *bd_config)
 {
   return ((bd_config->feature_bitmap & L2INPUT_FEAT_UU_FLOOD) ==
 	  L2INPUT_FEAT_UU_FLOOD);
 }
 
 static_always_inline u8
-bd_feature_forward (l2_bridge_domain_t * bd_config)
+bd_feature_forward (l2_bridge_domain_t *bd_config)
 {
   return ((bd_config->feature_bitmap & L2INPUT_FEAT_FWD) == L2INPUT_FEAT_FWD);
 }
 
 static_always_inline u8
-bd_feature_learn (l2_bridge_domain_t * bd_config)
+bd_feature_learn (l2_bridge_domain_t *bd_config)
 {
   return ((bd_config->feature_bitmap & L2INPUT_FEAT_LEARN) ==
 	  L2INPUT_FEAT_LEARN);
 }
 
 static_always_inline u8
-bd_feature_arp_term (l2_bridge_domain_t * bd_config)
+bd_feature_arp_term (l2_bridge_domain_t *bd_config)
 {
   return ((bd_config->feature_bitmap & L2INPUT_FEAT_ARP_TERM) ==
 	  L2INPUT_FEAT_ARP_TERM);
 }
 
 static_always_inline u8
-bd_feature_arp_ufwd (l2_bridge_domain_t * bd_config)
+bd_feature_arp_ufwd (l2_bridge_domain_t *bd_config)
 {
   return ((bd_config->feature_bitmap & L2INPUT_FEAT_ARP_UFWD) ==
 	  L2INPUT_FEAT_ARP_UFWD);
 }
 
 static inline bool
-l2_input_is_bridge (const l2_input_config_t * input)
+l2_input_is_bridge (const l2_input_config_t *input)
 {
   return (input->flags & L2_INPUT_FLAG_BRIDGE);
 }
 
 static inline bool
-l2_input_is_xconnect (const l2_input_config_t * input)
+l2_input_is_xconnect (const l2_input_config_t *input)
 {
   return (input->flags & L2_INPUT_FLAG_XCONNECT);
 }
 
 static inline bool
-l2_input_is_bvi (const l2_input_config_t * input)
+l2_input_is_bvi (const l2_input_config_t *input)
 {
   return (input->flags & L2_INPUT_FLAG_BVI);
 }
@@ -258,7 +258,6 @@ l2_input_seq_num (u32 sw_if_index)
   return input->seq_num;
 }
 
-
 /** Masks for eliminating features that do not apply to a packet */
 
 /** Get a pointer to the config for the given interface */
@@ -272,27 +271,23 @@ u32 l2input_intf_bitmap_enable (u32 sw_if_index,
 /* Sets modifies flags from a bridge domain */
 u32 l2input_set_bridge_features (u32 bd_index, u32 feat_mask, u32 feat_value);
 
-void l2input_interface_mac_change (u32 sw_if_index,
-				   const u8 * old_address,
-				   const u8 * new_address);
+void l2input_interface_mac_change (u32 sw_if_index, const u8 *old_address,
+				   const u8 *new_address);
 
 void l2_input_seq_num_inc (u32 sw_if_index);
 walk_rc_t l2input_recache (u32 bd_index, u32 sw_if_index);
 
-#define MODE_L3        0
-#define MODE_L2_BRIDGE 1
-#define MODE_L2_XC     2
+#define MODE_L3		 0
+#define MODE_L2_BRIDGE	 1
+#define MODE_L2_XC	 2
 #define MODE_L2_CLASSIFY 3
 
-#define MODE_ERROR_ETH        1
-#define MODE_ERROR_BVI_DEF    2
+#define MODE_ERROR_ETH	   1
+#define MODE_ERROR_BVI_DEF 2
 
-u32 set_int_l2_mode (vlib_main_t * vm,
-		     vnet_main_t * vnet_main,
-		     u32 mode,
-		     u32 sw_if_index,
-		     u32 bd_index, l2_bd_port_type_t port_type,
-		     u32 shg, u32 xc_sw_if_index);
+u32 set_int_l2_mode (vlib_main_t *vm, vnet_main_t *vnet_main, u32 mode,
+		     u32 sw_if_index, u32 bd_index,
+		     l2_bd_port_type_t port_type, u32 shg, u32 xc_sw_if_index);
 
 static inline u16
 vnet_update_l2_len (vlib_buffer_t *b)
@@ -337,7 +332,7 @@ vnet_update_l2_len (vlib_buffer_t *b)
  * and vnet l2.l2_len is expected to be setup already.
  */
 static inline u32
-vnet_l2_compute_flow_hash (vlib_buffer_t * b)
+vnet_l2_compute_flow_hash (vlib_buffer_t *b)
 {
   ethernet_header_t *eh = vlib_buffer_get_current (b);
   u8 *l3h = (u8 *) eh + vnet_buffer (b)->l2.l2_len;
@@ -350,8 +345,8 @@ vnet_l2_compute_flow_hash (vlib_buffer_t * b)
   else
     {
       u32 a, b, c;
-      u32 *ap = (u32 *) & eh->dst_address[2];
-      u32 *bp = (u32 *) & eh->src_address[2];
+      u32 *ap = (u32 *) &eh->dst_address[2];
+      u32 *bp = (u32 *) &eh->src_address[2];
       a = *ap;
       b = *bp;
       c = ethertype;
@@ -362,7 +357,6 @@ vnet_l2_compute_flow_hash (vlib_buffer_t * b)
 }
 
 #endif
-
 
 /*
  * fd.io coding-style-patch-verification: ON

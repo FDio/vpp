@@ -28,21 +28,20 @@
  */
 
 /** The image version string */
-char *vpe_version_string =
-  "vpp v" VPP_BUILD_VER
-  " built by " VPP_BUILD_USER " on " VPP_BUILD_HOST " at " VPP_BUILD_DATE;
+char *vpe_version_string = "vpp v" VPP_BUILD_VER " built by " VPP_BUILD_USER
+			   " on " VPP_BUILD_HOST " at " VPP_BUILD_DATE;
 
 /** The name of the compiler */
 static char *vpe_compiler =
 #if defined(__INTEL_COMPILER)
 #define __(x) #x
-#define _(x) __(x)
-  "icc " _(__INTEL_COMPILER) " (" __VERSION__ ")";
+#define _(x)  __ (x)
+  "icc " _ (__INTEL_COMPILER) " (" __VERSION__ ")";
 #undef _
 #undef __
 #elif defined(__clang__)
   "Clang/LLVM " __clang_version__;
-#elif defined (__GNUC__)
+#elif defined(__GNUC__)
   "GCC " __VERSION__;
 #else
   "unknown compiler";
@@ -51,9 +50,8 @@ static char *vpe_compiler =
 /** \brief Display image version info, a debug CLI command function
  */
 static clib_error_t *
-show_vpe_version_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+show_vpe_version_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   int i;
   int verbose = 0;
@@ -73,14 +71,14 @@ show_vpe_version_command_fn (vlib_main_t * vm,
 
   if (verbose)
     {
-#define _(a,b,c) vlib_cli_output (vm, "%-25s " b, a ":", c);
-      _("Version", "%s", "v" VPP_BUILD_VER);
-      _("Compiled by", "%s", VPP_BUILD_USER);
-      _("Compile host", "%s", VPP_BUILD_HOST);
-      _("Compile date", "%s", VPP_BUILD_DATE);
-      _("Compile location", "%s", VPP_BUILD_TOPDIR);
-      _("Compiler", "%s", vpe_compiler);
-      _("Current PID", "%d", getpid ());
+#define _(a, b, c) vlib_cli_output (vm, "%-25s " b, a ":", c);
+      _ ("Version", "%s", "v" VPP_BUILD_VER);
+      _ ("Compiled by", "%s", VPP_BUILD_USER);
+      _ ("Compile host", "%s", VPP_BUILD_HOST);
+      _ ("Compile date", "%s", VPP_BUILD_DATE);
+      _ ("Compile location", "%s", VPP_BUILD_TOPDIR);
+      _ ("Compiler", "%s", vpe_compiler);
+      _ ("Current PID", "%d", getpid ());
 #undef _
     }
   if (cmdline)
@@ -133,14 +131,12 @@ show_vpe_version_command_fn (vlib_main_t * vm,
  * @cliexend
 ?*/
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_vpe_version_command, static) = {
   .path = "show version",
   .short_help = "show version [verbose] [cmdline]",
   .function = show_vpe_version_command_fn,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 /** Return the image build directory name */
 char *

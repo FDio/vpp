@@ -27,7 +27,7 @@ l2t_main_t l2t_main;
 
 /* packet trace format function */
 u8 *
-format_l2t_trace (u8 * s, va_list * args)
+format_l2t_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -35,30 +35,30 @@ format_l2t_trace (u8 * s, va_list * args)
 
   if (t->is_user_to_network)
     s = format (s, "L2T: %U (client) -> %U (our) session %d",
-		format_ip6_address, &t->client_address,
-		format_ip6_address, &t->our_address, t->session_index);
+		format_ip6_address, &t->client_address, format_ip6_address,
+		&t->our_address, t->session_index);
   else
     s = format (s, "L2T: %U (our) -> %U (client) session %d)",
-		format_ip6_address, &t->our_address,
-		format_ip6_address, &t->client_address, t->session_index);
+		format_ip6_address, &t->our_address, format_ip6_address,
+		&t->client_address, t->session_index);
   return s;
 }
 
 u8 *
-format_l2t_session (u8 * s, va_list * args)
+format_l2t_session (u8 *s, va_list *args)
 {
   l2t_session_t *session = va_arg (*args, l2t_session_t *);
   l2t_main_t *lm = &l2t_main;
   u32 counter_index;
   vlib_counter_t v;
 
-  s = format (s, "[%d] %U (our) %U (client) %U (sw_if_index %d)\n",
-	      session - lm->sessions,
-	      format_ip6_address, &session->our_address,
-	      format_ip6_address, &session->client_address,
-	      format_vnet_sw_interface_name, lm->vnet_main,
-	      vnet_get_sw_interface (lm->vnet_main, session->sw_if_index),
-	      session->sw_if_index);
+  s =
+    format (s, "[%d] %U (our) %U (client) %U (sw_if_index %d)\n",
+	    session - lm->sessions, format_ip6_address, &session->our_address,
+	    format_ip6_address, &session->client_address,
+	    format_vnet_sw_interface_name, lm->vnet_main,
+	    vnet_get_sw_interface (lm->vnet_main, session->sw_if_index),
+	    session->sw_if_index);
 
   s = format (s, "   local cookies %016llx %016llx remote cookie %016llx\n",
 	      clib_net_to_host_u64 (session->local_cookie[0]),
@@ -72,26 +72,25 @@ format_l2t_session (u8 * s, va_list * args)
   s = format (s, "   l2 specific sublayer %s\n",
 	      session->l2_sublayer_present ? "preset" : "absent");
 
-  counter_index =
-    session_index_to_counter_index (session - lm->sessions,
-				    SESSION_COUNTER_USER_TO_NETWORK);
+  counter_index = session_index_to_counter_index (
+    session - lm->sessions, SESSION_COUNTER_USER_TO_NETWORK);
 
   vlib_get_combined_counter (&lm->counter_main, counter_index, &v);
   if (v.packets != 0)
-    s = format (s, "   user-to-net: %llu pkts %llu bytes\n",
-		v.packets, v.bytes);
+    s =
+      format (s, "   user-to-net: %llu pkts %llu bytes\n", v.packets, v.bytes);
 
   vlib_get_combined_counter (&lm->counter_main, counter_index + 1, &v);
 
   if (v.packets != 0)
-    s = format (s, "   net-to-user: %llu pkts %llu bytes\n",
-		v.packets, v.bytes);
+    s =
+      format (s, "   net-to-user: %llu pkts %llu bytes\n", v.packets, v.bytes);
   return s;
 }
 
 static clib_error_t *
-show_l2tp_command_fn (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+show_l2tp_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
 {
   l2t_session_t *session;
   l2t_main_t *lm = &l2t_main;
@@ -129,28 +128,24 @@ show_l2tp_command_fn (vlib_main_t * vm,
 
       vlib_cli_output (vm, "L2tp session lookup on %s", keystr);
 
-      /* *INDENT-OFF* */
       pool_foreach (session, lm->sessions)
-       {
-        vlib_cli_output (vm, "%U", format_l2t_session, session);
-      }
-      /* *INDENT-ON* */
+	{
+	  vlib_cli_output (vm, "%U", format_l2t_session, session);
+	}
     }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_session_detail_command, static) = {
   .path = "show l2tpv3",
   .short_help = "show l2tpv3 [verbose]",
   .function = show_l2tp_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-test_counters_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+test_counters_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   l2t_session_t *session;
   l2t_main_t *lm = &l2t_main;
@@ -159,41 +154,34 @@ test_counters_command_fn (vlib_main_t * vm,
   u32 nincr = 0;
   u32 thread_index = vm->thread_index;
 
-  /* *INDENT-OFF* */
   pool_foreach (session, lm->sessions)
-   {
-    session_index = session - lm->sessions;
-    counter_index =
-      session_index_to_counter_index (session_index,
-                                      SESSION_COUNTER_USER_TO_NETWORK);
-    vlib_increment_combined_counter (&lm->counter_main,
-                                     thread_index,
-                                     counter_index,
-                                     1/*pkt*/, 1111 /*bytes*/);
-    vlib_increment_combined_counter (&lm->counter_main,
-                                     thread_index,
-                                     counter_index+1,
-                                     1/*pkt*/, 2222 /*bytes*/);
-    nincr++;
+    {
+      session_index = session - lm->sessions;
+      counter_index = session_index_to_counter_index (
+	session_index, SESSION_COUNTER_USER_TO_NETWORK);
+      vlib_increment_combined_counter (&lm->counter_main, thread_index,
+				       counter_index, 1 /*pkt*/,
+				       1111 /*bytes*/);
+      vlib_increment_combined_counter (&lm->counter_main, thread_index,
+				       counter_index + 1, 1 /*pkt*/,
+				       2222 /*bytes*/);
+      nincr++;
+    }
 
-  }
-  /* *INDENT-ON* */
   vlib_cli_output (vm, "Incremented %d active counters\n", nincr);
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_counters_command, static) = {
-    .path = "test lt2p counters",
-    .short_help = "increment all active counters",
-    .function = test_counters_command_fn,
+  .path = "test lt2p counters",
+  .short_help = "increment all active counters",
+  .function = test_counters_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-clear_counters_command_fn (vlib_main_t * vm,
-			   unformat_input_t * input, vlib_cli_command_t * cmd)
+clear_counters_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   l2t_session_t *session;
   l2t_main_t *lm = &l2t_main;
@@ -201,33 +189,29 @@ clear_counters_command_fn (vlib_main_t * vm,
   u32 counter_index;
   u32 nincr = 0;
 
-  /* *INDENT-OFF* */
   pool_foreach (session, lm->sessions)
-   {
-    session_index = session - lm->sessions;
-    counter_index =
-      session_index_to_counter_index (session_index,
-                                      SESSION_COUNTER_USER_TO_NETWORK);
-    vlib_zero_combined_counter (&lm->counter_main, counter_index);
-    vlib_zero_combined_counter (&lm->counter_main, counter_index+1);
-    nincr++;
-  }
-  /* *INDENT-ON* */
+    {
+      session_index = session - lm->sessions;
+      counter_index = session_index_to_counter_index (
+	session_index, SESSION_COUNTER_USER_TO_NETWORK);
+      vlib_zero_combined_counter (&lm->counter_main, counter_index);
+      vlib_zero_combined_counter (&lm->counter_main, counter_index + 1);
+      nincr++;
+    }
+
   vlib_cli_output (vm, "Cleared %d active counters\n", nincr);
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (clear_counters_command, static) = {
   .path = "clear l2tp counters",
   .short_help = "clear all active counters",
   .function = clear_counters_command_fn,
 };
-/* *INDENT-ON* */
 
 static u8 *
-format_l2tpv3_name (u8 * s, va_list * args)
+format_l2tpv3_name (u8 *s, va_list *args)
 {
   l2t_main_t *lm = &l2t_main;
   u32 i = va_arg (*args, u32);
@@ -243,7 +227,7 @@ format_l2tpv3_name (u8 * s, va_list * args)
 }
 
 static int
-l2tpv3_name_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
+l2tpv3_name_renumber (vnet_hw_interface_t *hi, u32 new_dev_instance)
 {
   l2t_main_t *lm = &l2t_main;
 
@@ -254,46 +238,38 @@ l2tpv3_name_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
   return 0;
 }
 
-/* *INDENT-OFF* */
-VNET_DEVICE_CLASS (l2tpv3_device_class,static) = {
+VNET_DEVICE_CLASS (l2tpv3_device_class, static) = {
   .name = "L2TPv3",
   .format_device_name = format_l2tpv3_name,
   .name_renumber = l2tpv3_name_renumber,
 };
-/* *INDENT-ON* */
 
 static u8 *
-format_l2tp_header_with_length (u8 * s, va_list * args)
+format_l2tp_header_with_length (u8 *s, va_list *args)
 {
   u32 dev_instance = va_arg (*args, u32);
   s = format (s, "unimplemented dev %u", dev_instance);
   return s;
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (l2tpv3_hw_class) = {
   .name = "L2TPV3",
   .format_header = format_l2tp_header_with_length,
   .build_rewrite = default_build_rewrite,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
-/* *INDENT-ON* */
 
 int
-create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
-			   ip6_address_t * client_address,
-			   ip6_address_t * our_address,
-			   u32 local_session_id,
-			   u32 remote_session_id,
-			   u64 local_cookie,
-			   u64 remote_cookie,
-			   int l2_sublayer_present,
-			   u32 encap_fib_index, u32 * sw_if_index)
+create_l2tpv3_ipv6_tunnel (l2t_main_t *lm, ip6_address_t *client_address,
+			   ip6_address_t *our_address, u32 local_session_id,
+			   u32 remote_session_id, u64 local_cookie,
+			   u64 remote_cookie, int l2_sublayer_present,
+			   u32 encap_fib_index, u32 *sw_if_index)
 {
   l2t_session_t *s = 0;
   vnet_main_t *vnm = lm->vnet_main;
   vnet_hw_interface_t *hi;
-  uword *p = (uword *) ~ 0;
+  uword *p = (uword *) ~0;
   u32 hw_if_index;
   l2tpv3_header_t l2tp_hdr;
   ip6_address_t *dst_address_copy, *src_address_copy;
@@ -327,17 +303,17 @@ create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
   pool_get (lm->sessions, s);
   clib_memset (s, 0, sizeof (*s));
   clib_memcpy (&s->our_address, our_address, sizeof (s->our_address));
-  clib_memcpy (&s->client_address, client_address,
-	       sizeof (s->client_address));
+  clib_memcpy (&s->client_address, client_address, sizeof (s->client_address));
   s->local_cookie[0] = clib_host_to_net_u64 (local_cookie);
   s->remote_cookie = clib_host_to_net_u64 (remote_cookie);
   s->local_session_id = local_session_id;
   s->remote_session_id = remote_session_id;
   s->l2_sublayer_present = l2_sublayer_present;
   /* precompute l2tp header size */
-  s->l2tp_hdr_size = l2_sublayer_present ?
-    sizeof (l2tpv3_header_t) :
-    sizeof (l2tpv3_header_t) - sizeof (l2tp_hdr.l2_specific_sublayer);
+  s->l2tp_hdr_size =
+    l2_sublayer_present ?
+      sizeof (l2tpv3_header_t) :
+      sizeof (l2tpv3_header_t) - sizeof (l2tp_hdr.l2_specific_sublayer);
   s->admin_up = 0;
   s->encap_fib_index = encap_fib_index;
 
@@ -358,8 +334,7 @@ create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
 		    s - lm->sessions);
       break;
     case L2T_LOOKUP_SESSION_ID:
-      hash_set (lm->session_by_session_id, local_session_id,
-		s - lm->sessions);
+      hash_set (lm->session_by_session_id, local_session_id, s - lm->sessions);
       break;
 
     default:
@@ -367,16 +342,15 @@ create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
     }
 
   /* validate counters */
-  counter_index =
-    session_index_to_counter_index (s - lm->sessions,
-				    SESSION_COUNTER_USER_TO_NETWORK);
+  counter_index = session_index_to_counter_index (
+    s - lm->sessions, SESSION_COUNTER_USER_TO_NETWORK);
   vlib_validate_combined_counter (&lm->counter_main, counter_index);
   vlib_validate_combined_counter (&lm->counter_main, counter_index + 1);
 
   if (vec_len (lm->free_l2tpv3_tunnel_hw_if_indices) > 0)
     {
       hw_if_index = lm->free_l2tpv3_tunnel_hw_if_indices
-	[vec_len (lm->free_l2tpv3_tunnel_hw_if_indices) - 1];
+		      [vec_len (lm->free_l2tpv3_tunnel_hw_if_indices) - 1];
       _vec_len (lm->free_l2tpv3_tunnel_hw_if_indices) -= 1;
 
       hi = vnet_get_hw_interface (vnm, hw_if_index);
@@ -385,9 +359,9 @@ create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
     }
   else
     {
-      hw_if_index = vnet_register_interface
-	(vnm, l2tpv3_device_class.index, s - lm->sessions,
-	 l2tpv3_hw_class.index, s - lm->sessions);
+      hw_if_index = vnet_register_interface (
+	vnm, l2tpv3_device_class.index, s - lm->sessions,
+	l2tpv3_hw_class.index, s - lm->sessions);
       hi = vnet_get_hw_interface (vnm, hw_if_index);
       hi->output_node_index = l2t_encap_node.index;
       /* $$$$ initialize custom dispositions, if needed */
@@ -409,14 +383,13 @@ create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
 }
 
 static clib_error_t *
-create_l2tpv3_tunnel_command_fn (vlib_main_t * vm,
-				 unformat_input_t * input,
-				 vlib_cli_command_t * cmd)
+create_l2tpv3_tunnel_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				 vlib_cli_command_t *cmd)
 {
   ip6_address_t client_address, our_address;
   unformat_input_t _line_input, *line_input = &_line_input;
   l2t_main_t *lm = &l2t_main;
-  u64 local_cookie = (u64) ~ 0, remote_cookie = (u64) ~ 0;
+  u64 local_cookie = (u64) ~0, remote_cookie = (u64) ~0;
   u32 local_session_id = 1, remote_session_id = 1;
   int our_address_set = 0, client_address_set = 0;
   int l2_sublayer_present = 0;
@@ -432,18 +405,17 @@ create_l2tpv3_tunnel_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "client %U",
-		    unformat_ip6_address, &client_address))
+      if (unformat (line_input, "client %U", unformat_ip6_address,
+		    &client_address))
 	client_address_set = 1;
-      else if (unformat (line_input, "our %U",
-			 unformat_ip6_address, &our_address))
+      else if (unformat (line_input, "our %U", unformat_ip6_address,
+			 &our_address))
 	our_address_set = 1;
       else if (unformat (line_input, "local-cookie %llx", &local_cookie))
 	;
       else if (unformat (line_input, "remote-cookie %llx", &remote_cookie))
 	;
-      else if (unformat (line_input, "local-session-id %d",
-			 &local_session_id))
+      else if (unformat (line_input, "local-session-id %d", &local_session_id))
 	;
       else if (unformat (line_input, "remote-session-id %d",
 			 &remote_session_id))
@@ -487,11 +459,10 @@ create_l2tpv3_tunnel_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  rv = create_l2tpv3_ipv6_tunnel (lm, &client_address, &our_address,
-				  local_session_id, remote_session_id,
-				  local_cookie, remote_cookie,
-				  l2_sublayer_present,
-				  encap_fib_index, &sw_if_index);
+  rv = create_l2tpv3_ipv6_tunnel (
+    lm, &client_address, &our_address, local_session_id, remote_session_id,
+    local_cookie, remote_cookie, l2_sublayer_present, encap_fib_index,
+    &sw_if_index);
   switch (rv)
     {
     case 0:
@@ -517,19 +488,16 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (create_l2tpv3_tunnel_command, static) =
-{
+VLIB_CLI_COMMAND (create_l2tpv3_tunnel_command, static) = {
   .path = "create l2tpv3 tunnel",
   .short_help =
-  "create l2tpv3 tunnel client <ip6> our <ip6> local-cookie <hex> remote-cookie <hex> local-session <dec> remote-session <dec>",
+    "create l2tpv3 tunnel client <ip6> our <ip6> local-cookie <hex> "
+    "remote-cookie <hex> local-session <dec> remote-session <dec>",
   .function = create_l2tpv3_tunnel_command_fn,
 };
-/* *INDENT-ON* */
 
 int
-l2tpv3_set_tunnel_cookies (l2t_main_t * lm,
-			   u32 sw_if_index,
+l2tpv3_set_tunnel_cookies (l2t_main_t *lm, u32 sw_if_index,
 			   u64 new_local_cookie, u64 new_remote_cookie)
 {
   l2t_session_t *s;
@@ -549,16 +517,14 @@ l2tpv3_set_tunnel_cookies (l2t_main_t * lm,
   return 0;
 }
 
-
 static clib_error_t *
-set_l2tp_tunnel_cookie_command_fn (vlib_main_t * vm,
-				   unformat_input_t * input,
-				   vlib_cli_command_t * cmd)
+set_l2tp_tunnel_cookie_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
 {
   l2t_main_t *lm = &l2t_main;
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index = ~0;
-  u64 local_cookie = (u64) ~ 0, remote_cookie = (u64) ~ 0;
+  u64 local_cookie = (u64) ~0, remote_cookie = (u64) ~0;
 
   int rv;
 
@@ -581,8 +547,8 @@ set_l2tp_tunnel_cookie_command_fn (vlib_main_t * vm,
   if (remote_cookie == ~0)
     return clib_error_return (0, "remote cookie required");
 
-  rv = l2tpv3_set_tunnel_cookies (lm, sw_if_index,
-				  local_cookie, remote_cookie);
+  rv =
+    l2tpv3_set_tunnel_cookies (lm, sw_if_index, local_cookie, remote_cookie);
 
   switch (rv)
     {
@@ -593,26 +559,21 @@ set_l2tp_tunnel_cookie_command_fn (vlib_main_t * vm,
       return clib_error_return (0, "invalid interface");
 
     default:
-      return clib_error_return (0, "l2tp_session_set_cookies returned %d",
-				rv);
+      return clib_error_return (0, "l2tp_session_set_cookies returned %d", rv);
     }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_l2tp_tunnel_cookie_command, static) =
-{
+VLIB_CLI_COMMAND (set_l2tp_tunnel_cookie_command, static) = {
   .path = "set l2tpv3 tunnel cookie",
-  .short_help =
-  "set l2tpv3 tunnel cookie <intfc> local <hex> remote <hex>",
+  .short_help = "set l2tpv3 tunnel cookie <intfc> local <hex> remote <hex>",
   .function = set_l2tp_tunnel_cookie_command_fn,
 };
-/* *INDENT-ON* */
 
 int
-l2tpv3_interface_enable_disable (vnet_main_t * vnm,
-				 u32 sw_if_index, int enable_disable)
+l2tpv3_interface_enable_disable (vnet_main_t *vnm, u32 sw_if_index,
+				 int enable_disable)
 {
 
   if (pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index))
@@ -625,8 +586,8 @@ l2tpv3_interface_enable_disable (vnet_main_t * vnm,
 
 /* Enable/disable L2TPv3 intercept on IP6 forwarding path */
 static clib_error_t *
-set_ip6_l2tpv3 (vlib_main_t * vm,
-		unformat_input_t * input, vlib_cli_command_t * cmd)
+set_ip6_l2tpv3 (vlib_main_t *vm, unformat_input_t *input,
+		vlib_cli_command_t *cmd)
 {
   u32 sw_if_index = ~0;
   int is_add = 1;
@@ -658,24 +619,20 @@ set_ip6_l2tpv3 (vlib_main_t * vm,
       return clib_error_return (0, "invalid interface");
 
     default:
-      return clib_error_return (0,
-				"l2tp_interface_enable_disable returned %d",
+      return clib_error_return (0, "l2tp_interface_enable_disable returned %d",
 				rv);
     }
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_interface_ip6_l2tpv3, static) =
-{
+VLIB_CLI_COMMAND (set_interface_ip6_l2tpv3, static) = {
   .path = "set interface ip6 l2tpv3",
   .function = set_ip6_l2tpv3,
   .short_help = "set interface ip6 l2tpv3 <intfc> [del]",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-l2tp_config (vlib_main_t * vm, unformat_input_t * input)
+l2tp_config (vlib_main_t *vm, unformat_input_t *input)
 {
   l2t_main_t *lm = &l2t_main;
 
@@ -696,9 +653,8 @@ l2tp_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_CONFIG_FUNCTION (l2tp_config, "l2tp");
 
-
 clib_error_t *
-l2tp_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
+l2tp_sw_interface_up_down (vnet_main_t *vnm, u32 sw_if_index, u32 flags)
 {
   l2t_main_t *lm = &l2t_main;
   vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
@@ -707,14 +663,14 @@ l2tp_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 
   u32 session_index = hi->dev_instance;
   l2t_session_t *s = pool_elt_at_index (lm->sessions, session_index);
-  s->admin_up = ! !(flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+  s->admin_up = !!(flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP);
   return 0;
 }
 
 VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (l2tp_sw_interface_up_down);
 
 clib_error_t *
-l2tp_init (vlib_main_t * vm)
+l2tp_init (vlib_main_t *vm)
 {
   l2t_main_t *lm = &l2t_main;
   ip_main_t *im = &ip_main;
@@ -724,12 +680,10 @@ l2tp_init (vlib_main_t * vm)
   lm->vlib_main = vm;
   lm->lookup_type = L2T_LOOKUP_DST_ADDRESS;
 
-  lm->session_by_src_address = hash_create_mem
-    (0, sizeof (ip6_address_t) /* key bytes */ ,
-     sizeof (u32) /* value bytes */ );
-  lm->session_by_dst_address = hash_create_mem
-    (0, sizeof (ip6_address_t) /* key bytes */ ,
-     sizeof (u32) /* value bytes */ );
+  lm->session_by_src_address = hash_create_mem (
+    0, sizeof (ip6_address_t) /* key bytes */, sizeof (u32) /* value bytes */);
+  lm->session_by_dst_address = hash_create_mem (
+    0, sizeof (ip6_address_t) /* key bytes */, sizeof (u32) /* value bytes */);
   lm->session_by_session_id = hash_create (0, sizeof (uword));
 
   pi = ip_get_protocol_info (im, IP_PROTOCOL_L2TP);
@@ -746,7 +700,7 @@ l2tp_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (l2tp_init);
 
 clib_error_t *
-l2tp_worker_init (vlib_main_t * vm)
+l2tp_worker_init (vlib_main_t *vm)
 {
   l2tp_encap_init (vm);
 

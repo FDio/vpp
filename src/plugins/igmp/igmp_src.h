@@ -73,16 +73,16 @@ typedef struct igmp_src_t_
   u8 *referance_by_config_index;
 } igmp_src_t;
 
-extern void igmp_src_free (igmp_src_t * src);
+extern void igmp_src_free (igmp_src_t *src);
 
-extern igmp_src_t *igmp_src_alloc (u32 group_index,
-				   const igmp_key_t * skey, igmp_mode_t mode);
+extern igmp_src_t *igmp_src_alloc (u32 group_index, const igmp_key_t *skey,
+				   igmp_mode_t mode);
 
-extern u32 igmp_src_index (igmp_src_t * src);
+extern u32 igmp_src_index (igmp_src_t *src);
 
-extern void igmp_src_refresh (igmp_src_t * src);
-extern void igmp_src_blocked (igmp_src_t * src);
-extern u8 *format_igmp_src (u8 * s, va_list * args);
+extern void igmp_src_refresh (igmp_src_t *src);
+extern void igmp_src_blocked (igmp_src_t *src);
+extern u8 *format_igmp_src (u8 *s, va_list *args);
 
 #endif
 

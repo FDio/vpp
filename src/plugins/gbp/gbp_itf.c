@@ -19,13 +19,13 @@
 
 #include <vnet/ip/ip.h>
 
-#define foreach_gbp_itf_mode  \
-  _(L2, "l2")                 \
-  _(L3, "L3")
+#define foreach_gbp_itf_mode                                                  \
+  _ (L2, "l2")                                                                \
+  _ (L3, "L3")
 
 typedef enum gbp_ift_mode_t_
 {
-#define _(s,v)  GBP_ITF_MODE_##s,
+#define _(s, v) GBP_ITF_MODE_##s,
   foreach_gbp_itf_mode
 #undef _
 } gbp_itf_mode_t;
@@ -82,24 +82,24 @@ static gbp_itf_t *gbp_itf_pool;
 static uword *gbp_itf_db;
 
 static const char *gbp_itf_feat_bit_pos_to_arc[] = {
-#define _(s,v,a) [GBP_ITF_L3_FEAT_POS_##s] = a,
+#define _(s, v, a) [GBP_ITF_L3_FEAT_POS_##s] = a,
   foreach_gdb_l3_feature
 #undef _
 };
 
 static const char *gbp_itf_feat_bit_pos_to_feat[] = {
-#define _(s,v,a) [GBP_ITF_L3_FEAT_POS_##s] = v,
+#define _(s, v, a) [GBP_ITF_L3_FEAT_POS_##s] = v,
   foreach_gdb_l3_feature
 #undef _
 };
 
 u8 *
-format_gbp_itf_l3_feat (u8 * s, va_list * args)
+format_gbp_itf_l3_feat (u8 *s, va_list *args)
 {
   gbp_itf_l3_feat_t flags = va_arg (*args, gbp_itf_l3_feat_t);
 
-#define _(a, b, c)                              \
-  if (flags & GBP_ITF_L3_FEAT_##a)              \
+#define _(a, b, c)                                                            \
+  if (flags & GBP_ITF_L3_FEAT_##a)                                            \
     s = format (s, "%s ", b);
   foreach_gdb_l3_feature
 #undef _
@@ -107,7 +107,7 @@ format_gbp_itf_l3_feat (u8 * s, va_list * args)
 }
 
 void
-gbp_itf_hdl_reset (gbp_itf_hdl_t * gh)
+gbp_itf_hdl_reset (gbp_itf_hdl_t *gh)
 {
   *gh = GBP_ITF_HDL_INVALID;
 }
@@ -153,7 +153,7 @@ gbp_itf_get_sw_if_index (gbp_itf_hdl_t hdl)
 }
 
 static gbp_itf_hdl_t
-gbp_itf_mk_hdl (gbp_itf_t * gi)
+gbp_itf_mk_hdl (gbp_itf_t *gi)
 {
   gbp_itf_hdl_t gh;
   u32 *useri;
@@ -201,8 +201,8 @@ gbp_itf_l2_add_and_lock (u32 sw_if_index, index_t gbi)
 }
 
 gbp_itf_hdl_t
-gbp_itf_l2_add_and_lock_w_free (u32 sw_if_index,
-				index_t gbi, gbp_itf_free_fn_t ff)
+gbp_itf_l2_add_and_lock_w_free (u32 sw_if_index, index_t gbi,
+				gbp_itf_free_fn_t ff)
 {
   return (gbp_itf_l2_add_and_lock_i (sw_if_index, gbi, ff));
 }
@@ -232,8 +232,7 @@ gbp_itf_l3_add_and_lock_i (u32 sw_if_index, index_t gri, gbp_itf_free_fn_t ff)
       ip6_sw_interface_enable_disable (gi->gi_sw_if_index, 1);
 
       FOR_EACH_FIB_IP_PROTOCOL (fproto)
-	ip_table_bind (fproto, gi->gi_sw_if_index,
-		       grd->grd_table_id[fproto], 1);
+      ip_table_bind (fproto, gi->gi_sw_if_index, grd->grd_table_id[fproto], 1);
 
       hash_set (gbp_itf_db, gi->gi_sw_if_index, gi - gbp_itf_pool);
     }
@@ -250,8 +249,8 @@ gbp_itf_l3_add_and_lock (u32 sw_if_index, index_t gri)
 }
 
 gbp_itf_hdl_t
-gbp_itf_l3_add_and_lock_w_free (u32 sw_if_index,
-				index_t gri, gbp_itf_free_fn_t ff)
+gbp_itf_l3_add_and_lock_w_free (u32 sw_if_index, index_t gri,
+				gbp_itf_free_fn_t ff)
 {
   return (gbp_itf_l3_add_and_lock_i (sw_if_index, gri, ff));
 }
@@ -285,7 +284,7 @@ gbp_itf_clone_and_lock (gbp_itf_hdl_t gh)
 }
 
 void
-gbp_itf_unlock (gbp_itf_hdl_t * gh)
+gbp_itf_unlock (gbp_itf_hdl_t *gh)
 {
   gbp_itf_t *gi;
 
@@ -302,8 +301,7 @@ gbp_itf_unlock (gbp_itf_hdl_t * gh)
 	{
 	  gbp_itf_l2_set_input_feature (*gh, L2INPUT_FEAT_NONE);
 	  gbp_itf_l2_set_output_feature (*gh, L2OUTPUT_FEAT_NONE);
-	  gbp_bridge_domain_itf_del (gi->gi_gbi,
-				     gi->gi_sw_if_index,
+	  gbp_bridge_domain_itf_del (gi->gi_gbi, gi->gi_sw_if_index,
 				     L2_BD_PORT_TYPE_NORMAL);
 	}
       else
@@ -312,7 +310,7 @@ gbp_itf_unlock (gbp_itf_hdl_t * gh)
 
 	  gbp_itf_l3_set_input_feature (*gh, GBP_ITF_L3_FEAT_NONE);
 	  FOR_EACH_FIB_IP_PROTOCOL (fproto)
-	    ip_table_bind (fproto, gi->gi_sw_if_index, 0, 0);
+	  ip_table_bind (fproto, gi->gi_sw_if_index, 0, 0);
 
 	  ip4_sw_interface_enable_disable (gi->gi_sw_if_index, 0);
 	  ip6_sw_interface_enable_disable (gi->gi_sw_if_index, 0);
@@ -349,33 +347,29 @@ gbp_itf_l3_set_input_feature (gbp_itf_hdl_t gh, gbp_itf_l3_feat_t feats)
 
   new_fb = 0;
   vec_foreach (fb, gi->gi_input_fbs)
-  {
-    new_fb |= *fb;
-  }
+    {
+      new_fb |= *fb;
+    }
 
   /* add new features */
   diff_fb = (gi->gi_input_fb ^ new_fb) & new_fb;
 
-  /* *INDENT-OFF* */
-  foreach_set_bit (feat, diff_fb,
-  ({
-    vnet_feature_enable_disable (gbp_itf_feat_bit_pos_to_arc[feat],
-                                 gbp_itf_feat_bit_pos_to_feat[feat],
-                                 gi->gi_sw_if_index, 1, 0, 0);
-  }));
-  /* *INDENT-ON* */
+  foreach_set_bit (feat, diff_fb, ({
+		     vnet_feature_enable_disable (
+		       gbp_itf_feat_bit_pos_to_arc[feat],
+		       gbp_itf_feat_bit_pos_to_feat[feat], gi->gi_sw_if_index,
+		       1, 0, 0);
+		   }));
 
   /* remove unneeded features */
   diff_fb = (gi->gi_input_fb ^ new_fb) & gi->gi_input_fb;
 
-  /* *INDENT-OFF* */
-  foreach_set_bit (feat, diff_fb,
-  ({
-    vnet_feature_enable_disable (gbp_itf_feat_bit_pos_to_arc[feat],
-                                 gbp_itf_feat_bit_pos_to_feat[feat],
-                                 gi->gi_sw_if_index, 0, 0, 0);
-  }));
-  /* *INDENT-ON* */
+  foreach_set_bit (feat, diff_fb, ({
+		     vnet_feature_enable_disable (
+		       gbp_itf_feat_bit_pos_to_arc[feat],
+		       gbp_itf_feat_bit_pos_to_feat[feat], gi->gi_sw_if_index,
+		       0, 0, 0);
+		   }));
 
   gi->gi_input_fb = new_fb;
 }
@@ -399,29 +393,23 @@ gbp_itf_l2_set_input_feature (gbp_itf_hdl_t gh, l2input_feat_masks_t feats)
 
   new_fb = 0;
   vec_foreach (fb, gi->gi_input_fbs)
-  {
-    new_fb |= *fb;
-  }
+    {
+      new_fb |= *fb;
+    }
 
   /* add new features */
   diff_fb = (gi->gi_input_fb ^ new_fb) & new_fb;
 
-  /* *INDENT-OFF* */
-  foreach_set_bit (feat, diff_fb,
-  ({
-    l2input_intf_bitmap_enable (gi->gi_sw_if_index, (1 << feat), 1);
-  }));
-  /* *INDENT-ON* */
+  foreach_set_bit (
+    feat, diff_fb,
+    ({ l2input_intf_bitmap_enable (gi->gi_sw_if_index, (1 << feat), 1); }));
 
   /* remove unneeded features */
   diff_fb = (gi->gi_input_fb ^ new_fb) & gi->gi_input_fb;
 
-  /* *INDENT-OFF* */
-  foreach_set_bit (feat, diff_fb,
-  ({
-    l2input_intf_bitmap_enable (gi->gi_sw_if_index, (1 << feat), 0);
-  }));
-  /* *INDENT-ON* */
+  foreach_set_bit (
+    feat, diff_fb,
+    ({ l2input_intf_bitmap_enable (gi->gi_sw_if_index, (1 << feat), 0); }));
 
   gi->gi_input_fb = new_fb;
 }
@@ -445,43 +433,37 @@ gbp_itf_l2_set_output_feature (gbp_itf_hdl_t gh, l2output_feat_masks_t feats)
 
   new_fb = 0;
   vec_foreach (fb, gi->gi_output_fbs)
-  {
-    new_fb |= *fb;
-  }
+    {
+      new_fb |= *fb;
+    }
 
   /* add new features */
   diff_fb = (gi->gi_output_fb ^ new_fb) & new_fb;
 
-  /* *INDENT-OFF* */
-  foreach_set_bit (feat, diff_fb,
-  ({
-    l2output_intf_bitmap_enable (gi->gi_sw_if_index, (1 << feat), 1);
-  }));
-  /* *INDENT-ON* */
+  foreach_set_bit (
+    feat, diff_fb,
+    ({ l2output_intf_bitmap_enable (gi->gi_sw_if_index, (1 << feat), 1); }));
 
   /* remove unneeded features */
   diff_fb = (gi->gi_output_fb ^ new_fb) & gi->gi_output_fb;
 
-  /* *INDENT-OFF* */
-  foreach_set_bit (feat, diff_fb,
-  ({
-    l2output_intf_bitmap_enable (gi->gi_sw_if_index, (1 << feat), 0);
-  }));
-  /* *INDENT-ON* */
+  foreach_set_bit (
+    feat, diff_fb,
+    ({ l2output_intf_bitmap_enable (gi->gi_sw_if_index, (1 << feat), 0); }));
 
   gi->gi_output_fb = new_fb;
 }
 
 static u8 *
-format_gbp_itf_mode (u8 * s, va_list * args)
+format_gbp_itf_mode (u8 *s, va_list *args)
 {
   gbp_itf_mode_t mode = va_arg (*args, gbp_itf_mode_t);
 
   switch (mode)
     {
-#define _(a,v)                                  \
-    case GBP_ITF_MODE_##a:                      \
-      return format(s, "%s", v);
+#define _(a, v)                                                               \
+  case GBP_ITF_MODE_##a:                                                      \
+    return format (s, "%s", v);
       foreach_gbp_itf_mode
 #undef _
     }
@@ -489,7 +471,7 @@ format_gbp_itf_mode (u8 * s, va_list * args)
 }
 
 static u8 *
-format_gbp_itf (u8 * s, va_list * args)
+format_gbp_itf (u8 *s, va_list *args)
 {
   index_t gii = va_arg (*args, index_t);
   gbp_itf_t *gi;
@@ -499,19 +481,16 @@ format_gbp_itf (u8 * s, va_list * args)
 
   gi = gbp_itf_get (gii);
 
-  s = format (s, "%U locks:%d mode:%U ",
-	      format_vnet_sw_if_index_name, vnet_get_main (),
-	      gi->gi_sw_if_index, gi->gi_locks,
+  s = format (s, "%U locks:%d mode:%U ", format_vnet_sw_if_index_name,
+	      vnet_get_main (), gi->gi_sw_if_index, gi->gi_locks,
 	      format_gbp_itf_mode, gi->gi_mode);
 
   if (GBP_ITF_MODE_L2 == gi->gi_mode)
-    s = format (s, "gbp-bd:%d input-feats:[%U] output-feats:[%U]",
-		gi->gi_gbi,
+    s = format (s, "gbp-bd:%d input-feats:[%U] output-feats:[%U]", gi->gi_gbi,
 		format_l2_input_features, gi->gi_input_fb, 0,
 		format_l2_output_features, gi->gi_output_fb, 0);
   else
-    s = format (s, "gbp-rd:%d input-feats:[%U] output-feats:[%U]",
-		gi->gi_gbi,
+    s = format (s, "gbp-rd:%d input-feats:[%U] output-feats:[%U]", gi->gi_gbi,
 		format_gbp_itf_l3_feat, gi->gi_input_fb,
 		format_gbp_itf_l3_feat, gi->gi_output_fb);
 
@@ -519,7 +498,7 @@ format_gbp_itf (u8 * s, va_list * args)
 }
 
 u8 *
-format_gbp_itf_hdl (u8 * s, va_list * args)
+format_gbp_itf_hdl (u8 *s, va_list *args)
 {
   gbp_itf_hdl_t gh = va_arg (*args, gbp_itf_hdl_t);
   gbp_itf_t *gi;
@@ -533,19 +512,17 @@ format_gbp_itf_hdl (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-gbp_itf_show (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+gbp_itf_show (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd)
 {
   u32 gii;
 
   vlib_cli_output (vm, "Interfaces:");
 
-  /* *INDENT-OFF* */
   pool_foreach_index (gii, gbp_itf_pool)
-   {
-    vlib_cli_output (vm, "  [%d] %U", gii, format_gbp_itf, gii);
-  }
-  /* *INDENT-ON* */
+    {
+      vlib_cli_output (vm, "  [%d] %U", gii, format_gbp_itf, gii);
+    }
 
   return (NULL);
 }
@@ -557,13 +534,12 @@ gbp_itf_show (vlib_main_t * vm,
  * @cliexstart{show gbp contract}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (gbp_contract_show_node, static) = {
   .path = "show gbp interface",
   .short_help = "show gbp interface\n",
   .function = gbp_itf_show,
 };
-/* *INDENT-ON* */
 
 
 /*

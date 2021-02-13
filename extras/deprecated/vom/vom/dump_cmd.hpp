@@ -39,7 +39,7 @@ typedef unsigned int (*get_msg_size_t)(void*);
  * 'pop'
  * the records from the command object
  */
-template <typename MSG>
+template<typename MSG>
 class dump_cmd : public cmd
 {
 public:
@@ -54,8 +54,7 @@ public:
    */
   dump_cmd()
     : cmd()
-  {
-  }
+  {}
 
   /**
    * Destructor

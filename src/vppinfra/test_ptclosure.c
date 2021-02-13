@@ -32,9 +32,7 @@ static char *items[] = {
 };
 
 char *constraints[] = {
-  "a,b",
-  "b,c",
-  "d,b",
+  "a,b", "b,c", "d,b",
   //    "c,a", /* no partial order possible */
 };
 
@@ -45,7 +43,7 @@ vl (void *p)
 }
 
 static void
-dump_closure (test_main_t * tm, char *s, u8 ** orig)
+dump_closure (test_main_t *tm, char *s, u8 **orig)
 {
   int i, j;
 
@@ -61,7 +59,7 @@ dump_closure (test_main_t * tm, char *s, u8 ** orig)
 }
 
 int
-comma_split (u8 * s, u8 ** a, u8 ** b)
+comma_split (u8 *s, u8 **a, u8 **b)
 {
   *a = s;
 
@@ -78,7 +76,7 @@ comma_split (u8 * s, u8 ** a, u8 ** b)
 }
 
 int
-test_ptclosure_main (unformat_input_t * input)
+test_ptclosure_main (unformat_input_t *input)
 {
   test_main_t *tm = &test_main;
   u8 *item_name;
@@ -162,8 +160,7 @@ again:
 	closure[i][i] = 1;
 	goto again;
       }
-    item_constrained:
-      ;
+    item_constrained:;
     }
 
   if (vec_len (result) != n)

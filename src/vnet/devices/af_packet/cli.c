@@ -17,12 +17,12 @@
  *------------------------------------------------------------------
  */
 
-#include <fcntl.h>		/* for open */
+#include <fcntl.h> /* for open */
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/uio.h>		/* for iovec */
+#include <sys/uio.h> /* for iovec */
 #include <netinet/in.h>
 
 #include <vlib/vlib.h>
@@ -40,8 +40,8 @@
  */
 
 static clib_error_t *
-af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+af_packet_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 *host_if_name = NULL;
@@ -59,9 +59,8 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "name %s", &host_if_name))
 	;
-      else
-	if (unformat
-	    (line_input, "hw-addr %U", unformat_ethernet_address, hwaddr))
+      else if (unformat (line_input, "hw-addr %U", unformat_ethernet_address,
+			 hwaddr))
 	hw_addr_ptr = hwaddr;
       else
 	{
@@ -129,17 +128,16 @@ done:
  * Once the host interface is created, enable the interface using:
  * @cliexcmd{set interface state host-vpp1 up}
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (af_packet_create_command, static) = {
   .path = "create host-interface",
   .short_help = "create host-interface name <ifname> [hw-addr <mac-addr>]",
   .function = af_packet_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-af_packet_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+af_packet_delete_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 *host_if_name = NULL;
@@ -186,18 +184,17 @@ done:
  * Example of how to delete a host interface named host-vpp1:
  * @cliexcmd{delete host-interface name vpp1}
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (af_packet_delete_command, static) = {
   .path = "delete host-interface",
   .short_help = "delete host-interface name <ifname>",
   .function = af_packet_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-af_packet_set_l4_cksum_offload_command_fn (vlib_main_t * vm,
-					   unformat_input_t * input,
-					   vlib_cli_command_t * cmd)
+af_packet_set_l4_cksum_offload_command_fn (vlib_main_t *vm,
+					   unformat_input_t *input,
+					   vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 set = 0;
@@ -210,8 +207,8 @@ af_packet_set_l4_cksum_offload_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (line_input, "on"))
 	set = 1;
@@ -243,16 +240,15 @@ done:
  * @cliexcmd{set host-interface l4-cksum-offload host-vpp0 off}
  * @cliexcmd{set host-interface l4-cksum-offload host-vpp0 on}
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (af_packet_set_l4_cksum_offload_command, static) = {
   .path = "set host-interface l4-cksum-offload",
   .short_help = "set host-interface l4-cksum-offload <host-if-name> <on|off>",
   .function = af_packet_set_l4_cksum_offload_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-af_packet_cli_init (vlib_main_t * vm)
+af_packet_cli_init (vlib_main_t *vm)
 {
   return 0;
 }

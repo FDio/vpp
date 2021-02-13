@@ -5,41 +5,42 @@
 #include <vnet/session/segment_manager.h>
 #include <vnet/session/application.h>
 
-#define SEG_MGR_TEST_I(_cond, _comment, _args...)               \
-({                                                              \
-  int _evald = (_cond);                                         \
-  if (!(_evald)) {                                              \
-    fformat(stderr, "FAIL:%d: " _comment "\n",                  \
-            __LINE__, ##_args);                                 \
-  } else {                                                      \
-    fformat(stderr, "PASS:%d: " _comment "\n",                  \
-            __LINE__, ##_args);                                 \
-  }                                                             \
-  _evald;                                                       \
-})
+#define SEG_MGR_TEST_I(_cond, _comment, _args...)                             \
+  ({                                                                          \
+    int _evald = (_cond);                                                     \
+    if (!(_evald))                                                            \
+      {                                                                       \
+	fformat (stderr, "FAIL:%d: " _comment "\n", __LINE__, ##_args);       \
+      }                                                                       \
+    else                                                                      \
+      {                                                                       \
+	fformat (stderr, "PASS:%d: " _comment "\n", __LINE__, ##_args);       \
+      }                                                                       \
+    _evald;                                                                   \
+  })
 
-#define SEG_MGR_TEST(_cond, _comment, _args...)                 \
-{                                                               \
-    if (!SEG_MGR_TEST_I(_cond, _comment, ##_args)) {            \
-        return 1;                                               \
-    }                                                           \
-}
+#define SEG_MGR_TEST(_cond, _comment, _args...)                               \
+  {                                                                           \
+    if (!SEG_MGR_TEST_I (_cond, _comment, ##_args))                           \
+      {                                                                       \
+	return 1;                                                             \
+      }                                                                       \
+  }
 
-#define ST_DBG(_comment, _args...)                              \
-    fformat(stderr,  _comment "\n",  ##_args);                  \
+#define ST_DBG(_comment, _args...) fformat (stderr, _comment "\n", ##_args);
 
 #define SEGMENT_MANAGER_GET_INDEX_FROM_HANDLE(x) (x >> 32)
 
 /* placeholder callback functions */
 static void
-placeholder_session_reset_callback (session_t * s)
+placeholder_session_reset_callback (session_t *s)
 {
   clib_warning ("called...");
 }
 
 static int
 placeholder_session_connected_callback (u32 app_index, u32 api_context,
-					session_t * s, session_error_t err)
+					session_t *s, session_error_t err)
 {
   clib_warning ("called...");
   return 0;
@@ -60,26 +61,25 @@ placeholder_del_segment_callback (u32 client_index, u64 segment_handle)
 }
 
 static void
-placeholder_session_disconnect_callback (session_t * s)
+placeholder_session_disconnect_callback (session_t *s)
 {
   clib_warning ("called...");
 }
 
 static int
-placeholder_session_accept_callback (session_t * s)
+placeholder_session_accept_callback (session_t *s)
 {
   clib_warning ("called...");
   return 0;
 }
 
 static int
-placeholder_server_rx_callback (session_t * s)
+placeholder_server_rx_callback (session_t *s)
 {
   clib_warning ("called...");
   return -1;
 }
 
-/* *INDENT-OFF* */
 static session_cb_vft_t placeholder_session_cbs = {
   .session_reset_callback = placeholder_session_reset_callback,
   .session_connected_callback = placeholder_session_connected_callback,
@@ -89,10 +89,9 @@ static session_cb_vft_t placeholder_session_cbs = {
   .add_segment_callback = placeholder_add_segment_callback,
   .del_segment_callback = placeholder_del_segment_callback,
 };
-/* *INDENT-ON* */
 
 static char *states_str[] = {
-#define _(sym,str) str,
+#define _(sym, str) str,
   foreach_segment_mem_status
 #undef _
 };
@@ -109,9 +108,8 @@ static u32 size_128KB = 128 << 10;
 static u32 size_1MB = 1 << 20;
 static u32 size_2MB = 2 << 20;
 
-
 static int
-segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
+segment_manager_test_pressure_1 (vlib_main_t *vm, unformat_input_t *input)
 {
   int rv;
   segment_manager_t *sm;
@@ -139,9 +137,8 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   rv = vnet_application_attach (&attach_args);
   SEG_MGR_TEST ((rv == 0), "vnet_application_attach %d", rv);
 
-  sm =
-    segment_manager_get (SEGMENT_MANAGER_GET_INDEX_FROM_HANDLE
-			 (attach_args.segment_handle));
+  sm = segment_manager_get (
+    SEGMENT_MANAGER_GET_INDEX_FROM_HANDLE (attach_args.segment_handle));
   SEG_MGR_TEST ((sm != 0), "segment_manager_get %p", sm);
 
   /* initial status : (0 / 2MB) */
@@ -150,10 +147,8 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
 
-
   /* allocate a fifo : 128KB x2 */
-  rv = segment_manager_alloc_session_fifos (sm,
-					    vlib_get_thread_index (),
+  rv = segment_manager_alloc_session_fifos (sm, vlib_get_thread_index (),
 					    &rx_fifo, &tx_fifo);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
 
@@ -205,7 +200,6 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_HIGH_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
 
-
   /* shrink fifos */
   svm_fifo_dequeue_drop (rx_fifo, fifo_size);
   svm_fifo_dequeue_drop (rx_fifo, fifo_size);
@@ -216,7 +210,6 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   rv = fifo_segment_get_mem_status (fs);
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_LOW_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
-
 
   /* grow fifos */
   svm_fifo_enqueue (rx_fifo, fifo_size, data);
@@ -233,7 +226,6 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   svm_fifo_dequeue_drop (rx_fifo, fifo_size);
   svm_fifo_dequeue_drop (tx_fifo, fifo_size);
   svm_fifo_dequeue_drop (tx_fifo, fifo_size);
-
 
   /* 10 chunks : 61% */
   rv = fifo_segment_get_mem_status (fs);
@@ -255,7 +247,6 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
 
-
   vnet_app_detach_args_t detach_args = {
     .app_index = attach_args.app_index,
     .api_client_index = ~0,
@@ -267,7 +258,7 @@ segment_manager_test_pressure_1 (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
+segment_manager_test_pressure_2 (vlib_main_t *vm, unformat_input_t *input)
 {
   int rv, i;
   segment_manager_t *sm;
@@ -295,9 +286,8 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
   rv = vnet_application_attach (&attach_args);
   SEG_MGR_TEST ((rv == 0), "vnet_application_attach %d", rv);
 
-  sm =
-    segment_manager_get (SEGMENT_MANAGER_GET_INDEX_FROM_HANDLE
-			 (attach_args.segment_handle));
+  sm = segment_manager_get (
+    SEGMENT_MANAGER_GET_INDEX_FROM_HANDLE (attach_args.segment_handle));
   SEG_MGR_TEST ((sm != 0), "segment_manager_get %p", sm);
 
   /* initial status : (0 / 2MB) */
@@ -306,10 +296,8 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
 
-
   /* allocate fifos : 4KB x2 */
-  rv = segment_manager_alloc_session_fifos (sm,
-					    vlib_get_thread_index (),
+  rv = segment_manager_alloc_session_fifos (sm, vlib_get_thread_index (),
 					    &rx_fifo, &tx_fifo);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
 
@@ -378,7 +366,6 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
   SEG_MGR_TEST ((rv == MEMORY_PRESSURE_NO_PRESSURE),
 		"fifo_segment_get_mem_status %s", states_str[rv]);
 
-
   vnet_app_detach_args_t detach_args = {
     .app_index = attach_args.app_index,
     .api_client_index = ~0,
@@ -390,8 +377,8 @@ segment_manager_test_pressure_2 (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
-					  unformat_input_t * input)
+segment_manager_test_fifo_balanced_alloc (vlib_main_t *vm,
+					  unformat_input_t *input)
 {
   int rv, i, fs_index;
   segment_manager_t *sm;
@@ -419,9 +406,8 @@ segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
   rv = vnet_application_attach (&attach_args);
   SEG_MGR_TEST ((rv == 0), "vnet_application_attach %d", rv);
 
-  sm =
-    segment_manager_get (SEGMENT_MANAGER_GET_INDEX_FROM_HANDLE
-			 (attach_args.segment_handle));
+  sm = segment_manager_get (
+    SEGMENT_MANAGER_GET_INDEX_FROM_HANDLE (attach_args.segment_handle));
   SEG_MGR_TEST ((sm != 0), "segment_manager_get %p", sm);
 
   /* initial status : (0 / 2MB) */
@@ -431,14 +417,13 @@ segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
 		"fifo_segment_get_mem_status %s", states_str[rv]);
 
   /* allocate fifos : 4KB x2 */
-  rv = segment_manager_alloc_session_fifos (sm,
-					    vlib_get_thread_index (),
+  rv = segment_manager_alloc_session_fifos (sm, vlib_get_thread_index (),
 					    &rx_fifo[0], &tx_fifo[0]);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
-  SEG_MGR_TEST ((rx_fifo[0]->segment_index == 0),
-		"segment_index %d", rx_fifo[0]->segment_index);
-  SEG_MGR_TEST ((tx_fifo[0]->segment_index == 0),
-		"segment_index %d", tx_fifo[0]->segment_index);
+  SEG_MGR_TEST ((rx_fifo[0]->segment_index == 0), "segment_index %d",
+		rx_fifo[0]->segment_index);
+  SEG_MGR_TEST ((tx_fifo[0]->segment_index == 0), "segment_index %d",
+		tx_fifo[0]->segment_index);
 
   /* grow fifos */
   svm_fifo_set_size (rx_fifo[0], size_1MB);
@@ -455,26 +440,24 @@ segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
    * expected to be allocated on the newer segment,
    * because the usage of the first segment is high.
    */
-  rv = segment_manager_alloc_session_fifos (sm,
-					    vlib_get_thread_index (),
+  rv = segment_manager_alloc_session_fifos (sm, vlib_get_thread_index (),
 					    &rx_fifo[1], &tx_fifo[1]);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
-  SEG_MGR_TEST ((rx_fifo[1]->segment_index == 1),
-		"segment_index %d", rx_fifo[1]->segment_index);
-  SEG_MGR_TEST ((tx_fifo[1]->segment_index == 1),
-		"segment_index %d", tx_fifo[1]->segment_index);
+  SEG_MGR_TEST ((rx_fifo[1]->segment_index == 1), "segment_index %d",
+		rx_fifo[1]->segment_index);
+  SEG_MGR_TEST ((tx_fifo[1]->segment_index == 1), "segment_index %d",
+		tx_fifo[1]->segment_index);
 
   /* allocate fifos : 4KB x2
    * expected to be allocated on the newer segment.
    */
-  rv = segment_manager_alloc_session_fifos (sm,
-					    vlib_get_thread_index (),
+  rv = segment_manager_alloc_session_fifos (sm, vlib_get_thread_index (),
 					    &rx_fifo[2], &tx_fifo[2]);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
-  SEG_MGR_TEST ((rx_fifo[2]->segment_index == 1),
-		"segment_index %d", rx_fifo[2]->segment_index);
-  SEG_MGR_TEST ((tx_fifo[2]->segment_index == 1),
-		"segment_index %d", tx_fifo[2]->segment_index);
+  SEG_MGR_TEST ((rx_fifo[2]->segment_index == 1), "segment_index %d",
+		rx_fifo[2]->segment_index);
+  SEG_MGR_TEST ((tx_fifo[2]->segment_index == 1), "segment_index %d",
+		tx_fifo[2]->segment_index);
 
   /* grow fifos, so the usage of the secong segment becomes
    * higher than the first one.
@@ -488,16 +471,13 @@ segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
   /* allocate fifos : 4KB x2
    * expected to be allocated on the first segment.
    */
-  rv = segment_manager_alloc_session_fifos (sm,
-					    vlib_get_thread_index (),
+  rv = segment_manager_alloc_session_fifos (sm, vlib_get_thread_index (),
 					    &rx_fifo[3], &tx_fifo[3]);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
-  SEG_MGR_TEST ((rx_fifo[3]->segment_index == 0),
-		"segment_index %d", rx_fifo[3]->segment_index);
-  SEG_MGR_TEST ((tx_fifo[3]->segment_index == 0),
-		"segment_index %d", tx_fifo[3]->segment_index);
-
-
+  SEG_MGR_TEST ((rx_fifo[3]->segment_index == 0), "segment_index %d",
+		rx_fifo[3]->segment_index);
+  SEG_MGR_TEST ((tx_fifo[3]->segment_index == 0), "segment_index %d",
+		tx_fifo[3]->segment_index);
 
   vnet_app_detach_args_t detach_args = {
     .app_index = attach_args.app_index,
@@ -510,7 +490,7 @@ segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
 }
 
 static int
-segment_manager_test_fifo_ops (vlib_main_t * vm, unformat_input_t * input)
+segment_manager_test_fifo_ops (vlib_main_t *vm, unformat_input_t *input)
 {
   int rv, i;
   segment_manager_t *sm;
@@ -539,9 +519,8 @@ segment_manager_test_fifo_ops (vlib_main_t * vm, unformat_input_t * input)
   rv = vnet_application_attach (&attach_args);
   SEG_MGR_TEST ((rv == 0), "vnet_application_attach %d", rv);
 
-  sm =
-    segment_manager_get (SEGMENT_MANAGER_GET_INDEX_FROM_HANDLE
-			 (attach_args.segment_handle));
+  sm = segment_manager_get (
+    SEGMENT_MANAGER_GET_INDEX_FROM_HANDLE (attach_args.segment_handle));
   SEG_MGR_TEST ((sm != 0), "segment_manager_get %p", sm);
 
   /* initial status : (0 / 2MB) */
@@ -551,8 +530,7 @@ segment_manager_test_fifo_ops (vlib_main_t * vm, unformat_input_t * input)
 		"fifo_segment_get_mem_status %s", states_str[rv]);
 
   /* allocate fifos : 4KB x2 */
-  rv = segment_manager_alloc_session_fifos (sm,
-					    vlib_get_thread_index (),
+  rv = segment_manager_alloc_session_fifos (sm, vlib_get_thread_index (),
 					    &rx_fifo, &tx_fifo);
   SEG_MGR_TEST ((rv == 0), "segment_manager_alloc_session_fifos %d", rv);
 
@@ -684,8 +662,7 @@ segment_manager_test_fifo_ops (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-segment_manager_test_prealloc_hdrs (vlib_main_t * vm,
-				    unformat_input_t * input)
+segment_manager_test_prealloc_hdrs (vlib_main_t *vm, unformat_input_t *input)
 {
   u32 fifo_size = size_4KB, prealloc_hdrs, sm_index, fs_index;
   u64 options[APP_OPTIONS_N_OPTIONS];
@@ -737,8 +714,8 @@ segment_manager_test_prealloc_hdrs (vlib_main_t * vm,
 }
 
 static clib_error_t *
-segment_manager_test (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd_arg)
+segment_manager_test (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd_arg)
 {
   int res = 0;
 
@@ -780,12 +757,10 @@ done:
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (tcp_test_command, static) =
-{
+VLIB_CLI_COMMAND (tcp_test_command, static) = {
   .path = "test segment-manager",
   .short_help = "test segment manager [pressure_levels_1]"
-                "[pressure_level_2][alloc][fifo_ops][prealloc_hdrs][all]",
+		"[pressure_level_2][alloc][fifo_ops][prealloc_hdrs][all]",
   .function = segment_manager_test,
 };
 

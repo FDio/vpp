@@ -47,7 +47,7 @@ typedef struct
 } ipip_rx_trace_t;
 
 static u8 *
-format_ipip_rx_trace (u8 * s, va_list * args)
+format_ipip_rx_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -60,8 +60,8 @@ format_ipip_rx_trace (u8 * s, va_list * args)
 }
 
 always_inline uword
-ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-	    vlib_frame_t * from_frame, bool is_ipv6)
+ipip_input (vlib_main_t *vm, vlib_node_runtime_t *node,
+	    vlib_frame_t *from_frame, bool is_ipv6)
 {
   ipip_main_t *gm = &ipip_main;
   u32 n_left_from, next_index, *from, *to_next, n_left_to_next;
@@ -163,16 +163,16 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      if (is_ipv6)
 		tunnel_decap_fixup_6o6 (t0->flags, (ip60 + 1), ip60);
 	      else
-		tunnel_decap_fixup_6o4 (t0->flags,
-					(ip6_header_t *) (ip40 + 1), ip40);
+		tunnel_decap_fixup_6o4 (t0->flags, (ip6_header_t *) (ip40 + 1),
+					ip40);
 	    }
 	  else if (inner_protocol0 == IP_PROTOCOL_IP_IN_IP)
 	    {
 	      next0 = IPIP_INPUT_NEXT_IP4_INPUT;
 
 	      if (is_ipv6)
-		tunnel_decap_fixup_4o6 (t0->flags,
-					(ip4_header_t *) (ip60 + 1), ip60);
+		tunnel_decap_fixup_4o6 (t0->flags, (ip4_header_t *) (ip60 + 1),
+					ip60);
 	      else
 		tunnel_decap_fixup_4o4 (t0->flags, ip40 + 1, ip40);
 	    }
@@ -188,12 +188,12 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  t0->flags, (mpls_unicast_header_t *) ip40 + 1, ip40);
 	    }
 
-	  if (!is_ipv6 && t0->mode == IPIP_MODE_6RD
-	      && t0->sixrd.security_check)
+	  if (!is_ipv6 && t0->mode == IPIP_MODE_6RD &&
+	      t0->sixrd.security_check)
 	    {
 	      ip6_header_t *inner_ip60 = vlib_buffer_get_current (b0);
-	      if (sixrd_get_addr_net (t0, inner_ip60->src_address.as_u64[0])
-		  != ip40->src_address.as_u32)
+	      if (sixrd_get_addr_net (t0, inner_ip60->src_address.as_u64[0]) !=
+		  ip40->src_address.as_u32)
 		{
 		  next0 = IPIP_INPUT_NEXT_DROP;
 		  b0->error = node->errors[IPIP_ERROR_NO_TUNNEL];
@@ -202,10 +202,9 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  vlib_increment_combined_counter (im->combined_sw_if_counters +
-					   VNET_INTERFACE_COUNTER_RX,
+					     VNET_INTERFACE_COUNTER_RX,
 					   thread_index, tunnel_sw_if_index,
-					   1 /* packets */ ,
-					   len /* bytes */ );
+					   1 /* packets */, len /* bytes */);
 
 	drop:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -235,32 +234,30 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm,
-			       !is_ipv6 ? ipip4_input_node.index :
-			       ipip6_input_node.index, IPIP_ERROR_DECAP_PKTS,
-			       from_frame->n_vectors);
+  vlib_node_increment_counter (
+    vm, !is_ipv6 ? ipip4_input_node.index : ipip6_input_node.index,
+    IPIP_ERROR_DECAP_PKTS, from_frame->n_vectors);
   return from_frame->n_vectors;
 }
 
-VLIB_NODE_FN (ipip4_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-				 vlib_frame_t * from_frame)
+VLIB_NODE_FN (ipip4_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return ipip_input (vm, node, from_frame, /* is_ip6 */ false);
 }
 
-VLIB_NODE_FN (ipip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-				 vlib_frame_t * from_frame)
+VLIB_NODE_FN (ipip6_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return ipip_input (vm, node, from_frame, /* is_ip6 */ true);
 }
 
 static char *ipip_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ipip_error
 #undef _
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE(ipip4_input_node) = {
     .name = "ipip4-input",
     /* Takes a vector of packets. */
@@ -292,8 +289,6 @@ VLIB_REGISTER_NODE(ipip6_input_node) = {
         },
     .format_trace = format_ipip_rx_trace,
 };
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

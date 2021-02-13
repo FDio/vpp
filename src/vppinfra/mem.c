@@ -39,8 +39,8 @@ clib_mem_vm_map (void *base, uword size, clib_mem_page_sz_t log2_page_sz,
 }
 
 __clib_export void *
-clib_mem_vm_map_stack (uword size, clib_mem_page_sz_t log2_page_sz,
-		       char *fmt, ...)
+clib_mem_vm_map_stack (uword size, clib_mem_page_sz_t log2_page_sz, char *fmt,
+		       ...)
 {
   va_list va;
   void *rv;
@@ -72,24 +72,24 @@ clib_mem_vm_map_shared (void *base, uword size, int fd, uword offset,
 }
 
 u8 *
-format_clib_mem_page_stats (u8 * s, va_list * va)
+format_clib_mem_page_stats (u8 *s, va_list *va)
 {
   clib_mem_page_stats_t *stats = va_arg (*va, clib_mem_page_stats_t *);
   u32 indent = format_get_indent (s) + 2;
 
-  s = format (s, "page stats: page-size %U, total %lu, mapped %lu, "
-	      "not-mapped %lu", format_log2_page_size, stats->log2_page_sz,
-	      stats->total, stats->mapped, stats->not_mapped);
+  s = format (s,
+	      "page stats: page-size %U, total %lu, mapped %lu, "
+	      "not-mapped %lu",
+	      format_log2_page_size, stats->log2_page_sz, stats->total,
+	      stats->mapped, stats->not_mapped);
 
   if (stats->unknown)
     s = format (s, ", unknown %lu", stats->unknown);
 
   for (int i = 0; i < CLIB_MAX_NUMAS; i++)
     if (stats->per_numa[i])
-      s = format (s, "\n%Unuma %u: %lu pages, %U bytes",
-		  format_white_space, indent, i,
-		  stats->per_numa[i],
-		  format_memory_size,
+      s = format (s, "\n%Unuma %u: %lu pages, %U bytes", format_white_space,
+		  indent, i, stats->per_numa[i], format_memory_size,
 		  stats->per_numa[i] << stats->log2_page_sz);
 
   return s;

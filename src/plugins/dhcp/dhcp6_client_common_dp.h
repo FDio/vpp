@@ -46,12 +46,11 @@ extern dhcp6_client_common_main_t dhcp6_client_common_main;
 
 typedef union
 {
-  CLIB_PACKED (struct
-	       {
-	       u16 duid_type;
-	       u16 hardware_type;
-	       u8 lla[6];
-	       });
+  CLIB_PACKED (struct {
+    u16 duid_type;
+    u16 hardware_type;
+    u8 lla[6];
+  });
   char bin_string[10];
 } dhcpv6_duid_ll_string_t;
 
@@ -60,7 +59,7 @@ extern dhcpv6_duid_ll_string_t client_duid;
 #define DHCPV6_CLIENT_IAID 1
 
 void dhcp6_clients_enable_disable (u8 enable);
-u32 server_index_get_or_create (u8 * data, u16 len);
+u32 server_index_get_or_create (u8 *data, u16 len);
 
 extern dhcpv6_duid_ll_string_t client_duid;
 
@@ -78,9 +77,8 @@ random_f64_from_to (f64 from, f64 to)
 }
 
 static const ip6_address_t all_dhcp6_relay_agents_and_servers = {
-  .as_u8 = {
-	    0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02}
+  .as_u8 = { 0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	     0x00, 0x00, 0x01, 0x00, 0x02 }
 };
 
 #endif /* included_vnet_dhcp6_client_common_dp_h */

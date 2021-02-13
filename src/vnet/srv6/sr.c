@@ -35,7 +35,7 @@ ip6_sr_main_t sr_main;
  * The lifetime of the SR entry is managed by the control plane
  */
 void
-sr_dpo_lock (dpo_id_t * dpo)
+sr_dpo_lock (dpo_id_t *dpo)
 {
 }
 
@@ -44,14 +44,14 @@ sr_dpo_lock (dpo_id_t * dpo)
  * The lifetime of the SR entry is managed by the control plane
  */
 void
-sr_dpo_unlock (dpo_id_t * dpo)
+sr_dpo_unlock (dpo_id_t *dpo)
 {
 }
 
 /*
-* fd.io coding-style-patch-verification: ON
-*
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*/
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

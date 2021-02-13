@@ -38,16 +38,16 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 #include <vppinfra/mem.h>
-#include <vppinfra/byte_order.h>	/* for clib_arch_is_big_endian */
+#include <vppinfra/byte_order.h> /* for clib_arch_is_big_endian */
 
 always_inline void
-zero_pair (hash_t * h, hash_pair_t * p)
+zero_pair (hash_t *h, hash_pair_t *p)
 {
   clib_memset (p, 0, hash_pair_bytes (h));
 }
 
 always_inline void
-init_pair (hash_t * h, hash_pair_t * p)
+init_pair (hash_t *h, hash_pair_t *p)
 {
   clib_memset (p->value, ~0, hash_value_bytes (h));
 }
@@ -75,19 +75,19 @@ set_is_user (void *v, uword i, uword is_user)
     h->is_user[i0] &= ~i1;
 }
 
-static u8 *hash_format_pair_default (u8 * s, va_list * args);
+static u8 *hash_format_pair_default (u8 *s, va_list *args);
 
 #if uword_bits == 64
 
 static inline u64
 zap64 (u64 x, word n)
 {
-#define _(n) (((u64) 1 << (u64) (8*(n))) - (u64) 1)
+#define _(n) (((u64) 1 << (u64) (8 * (n))) - (u64) 1)
   static u64 masks_little_endian[] = {
-    0, _(1), _(2), _(3), _(4), _(5), _(6), _(7),
+    0, _ (1), _ (2), _ (3), _ (4), _ (5), _ (6), _ (7),
   };
   static u64 masks_big_endian[] = {
-    0, ~_(7), ~_(6), ~_(5), ~_(4), ~_(3), ~_(2), ~_(1),
+    0, ~_ (7), ~_ (6), ~_ (5), ~_ (4), ~_ (3), ~_ (2), ~_ (1),
   };
 #undef _
   if (clib_arch_is_big_endian)
@@ -153,10 +153,10 @@ hash_memory64 (void *p, word n_bytes, u64 state)
       if (n % sizeof (u64))
 	{
 	  if (PREDICT_TRUE (page_boundary_crossing == 0))
-	    c +=
-	      zap64 (CLIB_MEM_OVERFLOW
-		     (clib_mem_unaligned (q + 2, u64), q + 2, sizeof (u64)),
-		     n % sizeof (u64)) << 8;
+	    c += zap64 (CLIB_MEM_OVERFLOW (clib_mem_unaligned (q + 2, u64),
+					   q + 2, sizeof (u64)),
+			n % sizeof (u64))
+		 << 8;
 	  else
 	    {
 	      clib_memcpy_fast (tmp.as_u8, q + 2, n % sizeof (u64));
@@ -170,10 +170,9 @@ hash_memory64 (void *p, word n_bytes, u64 state)
       if (n % sizeof (u64))
 	{
 	  if (PREDICT_TRUE (page_boundary_crossing == 0))
-	    b +=
-	      zap64 (CLIB_MEM_OVERFLOW
-		     (clib_mem_unaligned (q + 1, u64), q + 1, sizeof (u64)),
-		     n % sizeof (u64));
+	    b += zap64 (CLIB_MEM_OVERFLOW (clib_mem_unaligned (q + 1, u64),
+					   q + 1, sizeof (u64)),
+			n % sizeof (u64));
 	  else
 	    {
 	      clib_memcpy_fast (tmp.as_u8, q + 1, n % sizeof (u64));
@@ -186,10 +185,9 @@ hash_memory64 (void *p, word n_bytes, u64 state)
       if (n % sizeof (u64))
 	{
 	  if (PREDICT_TRUE (page_boundary_crossing == 0))
-	    a +=
-	      zap64 (CLIB_MEM_OVERFLOW
-		     (clib_mem_unaligned (q + 0, u64), q + 0, sizeof (u64)),
-		     n % sizeof (u64));
+	    a += zap64 (CLIB_MEM_OVERFLOW (clib_mem_unaligned (q + 0, u64),
+					   q + 0, sizeof (u64)),
+			n % sizeof (u64));
 	  else
 	    {
 	      clib_memcpy_fast (tmp.as_u8, q, n % sizeof (u64));
@@ -209,12 +207,18 @@ hash_memory64 (void *p, word n_bytes, u64 state)
 static inline u32
 zap32 (u32 x, word n)
 {
-#define _(n) (((u32) 1 << (u32) (8*(n))) - (u32) 1)
+#define _(n) (((u32) 1 << (u32) (8 * (n))) - (u32) 1)
   static u32 masks_little_endian[] = {
-    0, _(1), _(2), _(3),
+    0,
+    _ (1),
+    _ (2),
+    _ (3),
   };
   static u32 masks_big_endian[] = {
-    0, ~_(3), ~_(2), ~_(1),
+    0,
+    ~_ (3),
+    ~_ (2),
+    ~_ (1),
   };
 #undef _
   if (clib_arch_is_big_endian)
@@ -312,7 +316,7 @@ hash_uword (uword x)
 /* Call sum function.  Hash code will be sum function value
    modulo the prime length of the hash table. */
 always_inline uword
-key_sum (hash_t * h, uword key)
+key_sum (hash_t *h, uword key)
 {
   uword sum;
   switch (pointer_to_uword ((void *) h->key_sum))
@@ -346,7 +350,7 @@ key_sum (hash_t * h, uword key)
 }
 
 always_inline uword
-key_equal1 (hash_t * h, uword key1, uword key2, uword e)
+key_equal1 (hash_t *h, uword key1, uword key2, uword e)
 {
   switch (pointer_to_uword ((void *) h->key_equal))
     {
@@ -355,8 +359,7 @@ key_equal1 (hash_t * h, uword key1, uword key2, uword e)
 
     case KEY_FUNC_POINTER_UWORD:
       e =
-	*uword_to_pointer (key1, uword *) == *uword_to_pointer (key2,
-								uword *);
+	*uword_to_pointer (key1, uword *) == *uword_to_pointer (key2, uword *);
       break;
 
     case KEY_FUNC_POINTER_U32:
@@ -380,7 +383,7 @@ key_equal1 (hash_t * h, uword key1, uword key2, uword e)
 
 /* Compares two keys: returns 1 if equal, 0 if not. */
 always_inline uword
-key_equal (hash_t * h, uword key1, uword key2)
+key_equal (hash_t *h, uword key1, uword key2)
 {
   uword e = key1 == key2;
   if (CLIB_DEBUG > 0 && key1 == key2)
@@ -391,7 +394,7 @@ key_equal (hash_t * h, uword key1, uword key2)
 }
 
 static hash_pair_union_t *
-get_indirect (void *v, hash_pair_indirect_t * pi, uword key)
+get_indirect (void *v, hash_pair_indirect_t *pi, uword key)
 {
   hash_t *h = hash_header (v);
   hash_pair_t *p0, *p1;
@@ -413,7 +416,7 @@ get_indirect (void *v, hash_pair_indirect_t * pi, uword key)
 }
 
 static hash_pair_union_t *
-set_indirect_is_user (void *v, uword i, hash_pair_union_t * p, uword key)
+set_indirect_is_user (void *v, uword i, hash_pair_union_t *p, uword key)
 {
   hash_t *h = hash_header (v);
   hash_pair_t *q;
@@ -443,8 +446,7 @@ set_indirect_is_user (void *v, uword i, hash_pair_union_t * p, uword key)
 }
 
 static hash_pair_union_t *
-set_indirect (void *v, hash_pair_indirect_t * pi, uword key,
-	      uword * found_key)
+set_indirect (void *v, hash_pair_indirect_t *pi, uword key, uword *found_key)
 {
   hash_t *h = hash_header (v);
   hash_pair_t *new_pair;
@@ -469,8 +471,7 @@ set_indirect (void *v, hash_pair_indirect_t * pi, uword key,
       new_len = len + 1;
       if (new_len * hash_pair_bytes (h) > (1ULL << log2_bytes))
 	{
-	  pi->pairs = clib_mem_realloc (pi->pairs,
-					1ULL << (log2_bytes + 1),
+	  pi->pairs = clib_mem_realloc (pi->pairs, 1ULL << (log2_bytes + 1),
 					1ULL << log2_bytes);
 	  log2_bytes++;
 	}
@@ -485,7 +486,7 @@ set_indirect (void *v, hash_pair_indirect_t * pi, uword key,
 }
 
 static void
-unset_indirect (void *v, uword i, hash_pair_t * q)
+unset_indirect (void *v, uword i, hash_pair_t *q)
 {
   hash_t *h = hash_header (v);
   hash_pair_union_t *p = get_pair (v, i);
@@ -542,8 +543,8 @@ enum lookup_opcode
 };
 
 static hash_pair_t *
-lookup (void *v, uword key, enum lookup_opcode op,
-	void *new_value, void *old_value)
+lookup (void *v, uword key, enum lookup_opcode op, void *new_value,
+	void *old_value)
 {
   hash_t *h = hash_header (v);
   hash_pair_union_t *p = 0;
@@ -605,7 +606,7 @@ lookup (void *v, uword key, enum lookup_opcode op,
 	      unset_indirect (v, i, &p->direct);
 
 	      /* Nullify p (since it's just been deleted).
-	         Otherwise we might be tempted to play with it. */
+		 Otherwise we might be tempted to play with it. */
 	      p = 0;
 	    }
 	}
@@ -654,7 +655,7 @@ _hash_get_pair (void *v, uword key)
 }
 
 hash_pair_t *
-hash_next (void *v, hash_next_t * hn)
+hash_next (void *v, hash_next_t *hn)
 {
   hash_t *h = hash_header (v);
   hash_pair_t *p;
@@ -667,9 +668,8 @@ hash_next (void *v, hash_next_t * hn)
 	  hn->f = h->flags;
 
 	  /* Prevent others from re-sizing hash table. */
-	  h->flags |=
-	    (HASH_FLAG_NO_AUTO_GROW
-	     | HASH_FLAG_NO_AUTO_SHRINK | HASH_FLAG_HASH_NEXT_IN_PROGRESS);
+	  h->flags |= (HASH_FLAG_NO_AUTO_GROW | HASH_FLAG_NO_AUTO_SHRINK |
+		       HASH_FLAG_HASH_NEXT_IN_PROGRESS);
 	}
       else if (hn->i >= hash_capacity (v))
 	{
@@ -729,7 +729,7 @@ _hash_unset (void *v, uword key, void *old_value)
 }
 
 __clib_export void *
-_hash_create (uword elts, hash_t * h_user)
+_hash_create (uword elts, hash_t *h_user)
 {
   hash_t *h;
   uword log2_pair_size;
@@ -750,7 +750,7 @@ _hash_create (uword elts, hash_t * h_user)
 		   (elts << log2_pair_size) * sizeof (hash_pair_t),
 		   /* header bytes: */
 		   sizeof (h[0]) +
-		   (elts / BITS (h->is_user[0])) * sizeof (h->is_user[0]),
+		     (elts / BITS (h->is_user[0])) * sizeof (h->is_user[0]),
 		   /* alignment */ sizeof (hash_pair_t));
   h = hash_header (v);
 
@@ -812,11 +812,9 @@ hash_resize_internal (void *old, uword new_size, uword free_old)
     {
       hash_t *h = old ? hash_header (old) : 0;
       new = _hash_create (new_size, h);
-      /* *INDENT-OFF* */
-      hash_foreach_pair (p, old, {
-	new = _hash_set3 (new, p->key, &p->value[0], 0);
-      });
-      /* *INDENT-ON* */
+
+      hash_foreach_pair (p, old,
+			 { new = _hash_set3 (new, p->key, &p->value[0], 0); });
     }
 
   if (free_old)
@@ -858,14 +856,14 @@ _hash_set3 (void *v, uword key, void *value, void *old_value)
 }
 
 __clib_export uword
-vec_key_sum (hash_t * h, uword key)
+vec_key_sum (hash_t *h, uword key)
 {
   void *v = uword_to_pointer (key, void *);
   return hash_memory (v, vec_len (v) * h->user, 0);
 }
 
 __clib_export uword
-vec_key_equal (hash_t * h, uword key1, uword key2)
+vec_key_equal (hash_t *h, uword key1, uword key2)
 {
   void *v1 = uword_to_pointer (key1, void *);
   void *v2 = uword_to_pointer (key2, void *);
@@ -875,7 +873,7 @@ vec_key_equal (hash_t * h, uword key1, uword key2)
 }
 
 __clib_export u8 *
-vec_key_format_pair (u8 * s, va_list * args)
+vec_key_format_pair (u8 *s, va_list *args)
 {
   void *CLIB_UNUSED (user_arg) = va_arg (*args, void *);
   void *v = va_arg (*args, void *);
@@ -926,14 +924,14 @@ vec_key_format_pair (u8 * s, va_list * args)
 }
 
 __clib_export uword
-mem_key_sum (hash_t * h, uword key)
+mem_key_sum (hash_t *h, uword key)
 {
   uword *v = uword_to_pointer (key, void *);
   return hash_memory (v, h->user, 0);
 }
 
 __clib_export uword
-mem_key_equal (hash_t * h, uword key1, uword key2)
+mem_key_equal (hash_t *h, uword key1, uword key2)
 {
   void *v1 = uword_to_pointer (key1, void *);
   void *v2 = uword_to_pointer (key2, void *);
@@ -941,14 +939,14 @@ mem_key_equal (hash_t * h, uword key1, uword key2)
 }
 
 uword
-string_key_sum (hash_t * h, uword key)
+string_key_sum (hash_t *h, uword key)
 {
   char *v = uword_to_pointer (key, char *);
   return hash_memory (v, strlen (v), 0);
 }
 
 uword
-string_key_equal (hash_t * h, uword key1, uword key2)
+string_key_equal (hash_t *h, uword key1, uword key2)
 {
   void *v1 = uword_to_pointer (key1, void *);
   void *v2 = uword_to_pointer (key2, void *);
@@ -956,7 +954,7 @@ string_key_equal (hash_t * h, uword key1, uword key2)
 }
 
 u8 *
-string_key_format_pair (u8 * s, va_list * args)
+string_key_format_pair (u8 *s, va_list *args)
 {
   void *CLIB_UNUSED (user_arg) = va_arg (*args, void *);
   void *v = va_arg (*args, void *);
@@ -967,15 +965,14 @@ string_key_format_pair (u8 * s, va_list * args)
   s = format (s, "%s", u);
 
   if (hash_value_bytes (h) > 0)
-    s =
-      format (s, " -> 0x%8U", format_hex_bytes, &p->value[0],
-	      hash_value_bytes (h));
+    s = format (s, " -> 0x%8U", format_hex_bytes, &p->value[0],
+		hash_value_bytes (h));
 
   return s;
 }
 
 static u8 *
-hash_format_pair_default (u8 * s, va_list * args)
+hash_format_pair_default (u8 *s, va_list *args)
 {
   void *CLIB_UNUSED (user_arg) = va_arg (*args, void *);
   void *v = va_arg (*args, void *);
@@ -984,9 +981,8 @@ hash_format_pair_default (u8 * s, va_list * args)
 
   s = format (s, "0x%08x", p->key);
   if (hash_value_bytes (h) > 0)
-    s =
-      format (s, " -> 0x%8U", format_hex_bytes, &p->value[0],
-	      hash_value_bytes (h));
+    s = format (s, " -> 0x%8U", format_hex_bytes, &p->value[0],
+		hash_value_bytes (h));
   return s;
 }
 
@@ -1016,7 +1012,7 @@ hash_bytes (void *v)
 }
 
 u8 *
-format_hash (u8 * s, va_list * va)
+format_hash (u8 *s, va_list *va)
 {
   void *v = va_arg (*va, void *);
   int verbose = va_arg (*va, int);
@@ -1024,8 +1020,8 @@ format_hash (u8 * s, va_list * va)
   hash_t *h = hash_header (v);
   uword i;
 
-  s = format (s, "hash %p, %wd elts, capacity %wd, %wd bytes used,\n",
-	      v, hash_elts (v), hash_capacity (v), hash_bytes (v));
+  s = format (s, "hash %p, %wd elts, capacity %wd, %wd bytes used,\n", v,
+	      hash_elts (v), hash_capacity (v), hash_bytes (v));
 
   {
     uword *occupancy = 0;
@@ -1068,19 +1064,18 @@ format_hash (u8 * s, va_list * va)
 
   if (verbose)
     {
-      /* *INDENT-OFF* */
+
       hash_foreach_pair (p, v, {
 	s = format (s, "  %U\n", h->format_pair, h->format_pair_arg, v, p);
       });
-      /* *INDENT-ON* */
     }
 
   return s;
 }
 
 static uword
-unformat_hash_string_internal (unformat_input_t * input,
-			       va_list * va, int is_vec)
+unformat_hash_string_internal (unformat_input_t *input, va_list *va,
+			       int is_vec)
 {
   uword *hash = va_arg (*va, uword *);
   int *result = va_arg (*va, int *);
@@ -1099,13 +1094,13 @@ unformat_hash_string_internal (unformat_input_t * input,
 }
 
 __clib_export uword
-unformat_hash_vec_string (unformat_input_t * input, va_list * va)
+unformat_hash_vec_string (unformat_input_t *input, va_list *va)
 {
   return unformat_hash_string_internal (input, va, /* is_vec */ 1);
 }
 
 __clib_export uword
-unformat_hash_string (unformat_input_t * input, va_list * va)
+unformat_hash_string (unformat_input_t *input, va_list *va)
 {
   return unformat_hash_string_internal (input, va, /* is_vec */ 0);
 }
@@ -1118,7 +1113,9 @@ hash_validate (void *v)
   uword *keys = 0;
   clib_error_t *error = 0;
 
-#define CHECK(x) if ((error = ERROR_ASSERT (x))) goto done;
+#define CHECK(x)                                                              \
+  if ((error = ERROR_ASSERT (x)))                                             \
+    goto done;
 
   for (i = 0; i < hash_capacity (v); i++)
     {
@@ -1135,8 +1132,8 @@ hash_validate (void *v)
 	  hash_pair_indirect_t *pi = &pu->indirect;
 	  uword n;
 
-	  n = h->log2_pair_size > 0
-	    ? indirect_pair_get_len (pi) : vec_len (pi->pairs);
+	  n = h->log2_pair_size > 0 ? indirect_pair_get_len (pi) :
+				      vec_len (pi->pairs);
 
 	  for (p = pi->pairs; n-- > 0; p = hash_forward1 (h, p))
 	    {

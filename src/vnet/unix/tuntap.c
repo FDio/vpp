@@ -30,12 +30,12 @@
  * By default, we select punt/inject mode.
  */
 
-#include <fcntl.h>		/* for open */
+#include <fcntl.h> /* for open */
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/uio.h>		/* for iovec */
+#include <sys/uio.h> /* for iovec */
 #include <netinet/in.h>
 
 #include <linux/if_arp.h>
@@ -54,12 +54,10 @@
 static vnet_device_class_t tuntap_dev_class;
 static vnet_hw_interface_class_t tuntap_interface_class;
 
-static void tuntap_punt_frame (vlib_main_t * vm,
-			       vlib_node_runtime_t * node,
-			       vlib_frame_t * frame);
-static void tuntap_nopunt_frame (vlib_main_t * vm,
-				 vlib_node_runtime_t * node,
-				 vlib_frame_t * frame);
+static void tuntap_punt_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+			       vlib_frame_t *frame);
+static void tuntap_nopunt_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+				 vlib_frame_t *frame);
 
 typedef struct
 {
@@ -144,7 +142,7 @@ static tuntap_main_t tuntap_main = {
  *
  */
 static uword
-tuntap_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+tuntap_tx (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 *buffers = vlib_frame_vector_args (frame);
   uword n_packets = frame->n_vectors;
@@ -166,8 +164,7 @@ tuntap_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
       if (tm->is_ether && (!tm->have_normal_interface))
 	{
 	  vlib_buffer_reset (b);
-	  clib_memcpy_fast (vlib_buffer_get_current (b), tm->ether_dst_mac,
-			    6);
+	  clib_memcpy_fast (vlib_buffer_get_current (b), tm->ether_dst_mac, 6);
 	}
 
       /* Re-set iovecs if present. */
@@ -202,11 +199,9 @@ tuntap_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
     }
 
   /* Update tuntap interface output stats. */
-  vlib_increment_combined_counter (im->combined_sw_if_counters
-				   + VNET_INTERFACE_COUNTER_TX,
-				   vm->thread_index,
-				   tm->sw_if_index, n_packets, n_bytes);
-
+  vlib_increment_combined_counter (
+    im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX, vm->thread_index,
+    tm->sw_if_index, n_packets, n_bytes);
 
   /** The normal interface path flattens the buffer chain */
   if (tm->have_normal_interface)
@@ -217,14 +212,12 @@ tuntap_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   return n_packets;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (tuntap_tx_node,static) = {
+VLIB_REGISTER_NODE (tuntap_tx_node, static) = {
   .function = tuntap_tx,
   .name = "tuntap-tx",
   .type = VLIB_NODE_TYPE_INTERNAL,
   .vector_size = 4,
 };
-/* *INDENT-ON* */
 
 /**
  * @brief TUNTAP receive node
@@ -238,7 +231,7 @@ VLIB_REGISTER_NODE (tuntap_tx_node,static) = {
  *
  */
 static uword
-tuntap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+tuntap_rx (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   tuntap_main_t *tm = &tuntap_main;
   vlib_buffer_t *b;
@@ -257,8 +250,7 @@ tuntap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  vec_alloc (tm->threads[thread_index].rx_buffers, VLIB_FRAME_SIZE);
 
 	n_alloc =
-	  vlib_buffer_alloc (vm,
-			     tm->threads[thread_index].rx_buffers + n_left,
+	  vlib_buffer_alloc (vm, tm->threads[thread_index].rx_buffers + n_left,
 			     VLIB_FRAME_SIZE - n_left);
 	_vec_len (tm->threads[thread_index].rx_buffers) = n_left + n_alloc;
       }
@@ -272,22 +264,19 @@ tuntap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
     word i, n_bytes_left, n_bytes_in_packet;
 
     /** We should have enough buffers left for an MTU sized packet. */
-    ASSERT (vec_len (tm->threads[thread_index].rx_buffers) >=
-	    tm->mtu_buffers);
+    ASSERT (vec_len (tm->threads[thread_index].rx_buffers) >= tm->mtu_buffers);
 
     vec_validate (tm->threads[thread_index].iovecs, tm->mtu_buffers - 1);
     for (i = 0; i < tm->mtu_buffers; i++)
       {
 	b =
-	  vlib_get_buffer (vm,
-			   tm->threads[thread_index].rx_buffers[i_rx - i]);
+	  vlib_get_buffer (vm, tm->threads[thread_index].rx_buffers[i_rx - i]);
 	tm->threads[thread_index].iovecs[i].iov_base = b->data;
 	tm->threads[thread_index].iovecs[i].iov_len = buffer_size;
       }
 
-    n_bytes_left =
-      readv (tm->dev_net_tun_fd, tm->threads[thread_index].iovecs,
-	     tm->mtu_buffers);
+    n_bytes_left = readv (tm->dev_net_tun_fd, tm->threads[thread_index].iovecs,
+			  tm->mtu_buffers);
     n_bytes_in_packet = n_bytes_left;
     if (n_bytes_left <= 0)
       {
@@ -319,10 +308,10 @@ tuntap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
       }
 
     /** Interface counters for tuntap interface. */
-    vlib_increment_combined_counter
-      (vnet_main.interface_main.combined_sw_if_counters
-       + VNET_INTERFACE_COUNTER_RX,
-       thread_index, tm->sw_if_index, 1, n_bytes_in_packet);
+    vlib_increment_combined_counter (
+      vnet_main.interface_main.combined_sw_if_counters +
+	VNET_INTERFACE_COUNTER_RX,
+      thread_index, tm->sw_if_index, 1, n_bytes_in_packet);
 
     _vec_len (tm->threads[thread_index].rx_buffers) = i_rx;
   }
@@ -334,7 +323,7 @@ tuntap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
     uword n_trace = vlib_get_trace_count (vm, node);
 
     vnet_buffer (b)->sw_if_index[VLIB_RX] = tm->sw_if_index;
-    vnet_buffer (b)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+    vnet_buffer (b)->sw_if_index[VLIB_TX] = (u32) ~0;
 
     /*
      * Turn this on if you run into
@@ -378,7 +367,8 @@ tuntap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
     vlib_set_next_frame_buffer (vm, node, next_index, bi);
 
-    if (PREDICT_FALSE (n_trace > 0 && vlib_trace_buffer (vm, node, next_index, b,	/* follow_chain */
+    if (PREDICT_FALSE (n_trace > 0 && vlib_trace_buffer (vm, node, next_index,
+							 b, /* follow_chain */
 							 1)))
       vlib_set_trace_count (vm, node, n_trace - 1);
   }
@@ -393,8 +383,7 @@ static char *tuntap_rx_error_strings[] = {
   "unknown packet type",
 };
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (tuntap_rx_node,static) = {
+VLIB_REGISTER_NODE (tuntap_rx_node, static) = {
   .function = tuntap_rx,
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .name = "tuntap-rx",
@@ -405,7 +394,6 @@ VLIB_REGISTER_NODE (tuntap_rx_node,static) = {
   .n_errors = 1,
   .error_strings = tuntap_rx_error_strings,
 };
-/* *INDENT-ON* */
 
 /**
  * @brief Gets called when file descriptor is ready from epoll.
@@ -415,7 +403,7 @@ VLIB_REGISTER_NODE (tuntap_rx_node,static) = {
  * @return error - clib_error_t
  */
 static clib_error_t *
-tuntap_read_ready (clib_file_t * uf)
+tuntap_read_ready (clib_file_t *uf)
 {
   vlib_main_t *vm = vlib_get_main ();
   vlib_node_set_interrupt_pending (vm, tuntap_rx_node.index);
@@ -431,7 +419,7 @@ tuntap_read_ready (clib_file_t * uf)
  *
  */
 static clib_error_t *
-tuntap_exit (vlib_main_t * vm)
+tuntap_exit (vlib_main_t *vm)
 {
   tuntap_main_t *tm = &tuntap_main;
   struct ifreq ifr;
@@ -481,7 +469,7 @@ VLIB_MAIN_LOOP_EXIT_FUNCTION (tuntap_exit);
  *
  */
 static clib_error_t *
-tuntap_config (vlib_main_t * vm, unformat_input_t * input)
+tuntap_config (vlib_main_t *vm, unformat_input_t *input)
 {
   tuntap_main_t *tm = &tuntap_main;
   clib_error_t *error = 0;
@@ -632,10 +620,10 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
   if (have_normal_interface)
     {
       vnet_main_t *vnm = vnet_get_main ();
-      error = ethernet_register_interface
-	(vnm, tuntap_dev_class.index, 0 /* device instance */ ,
-	 tm->ether_dst_mac /* ethernet address */ ,
-	 &tm->hw_if_index, 0 /* flag change */ );
+      error = ethernet_register_interface (
+	vnm, tuntap_dev_class.index, 0 /* device instance */,
+	tm->ether_dst_mac /* ethernet address */, &tm->hw_if_index,
+	0 /* flag change */);
       if (error)
 	clib_error_report (error);
       tm->sw_if_index = tm->hw_if_index;
@@ -648,9 +636,9 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
 
       vm->os_punt_frame = tuntap_punt_frame;
 
-      tm->hw_if_index = vnet_register_interface
-	(vnm, tuntap_dev_class.index, 0 /* device instance */ ,
-	 tuntap_interface_class.index, 0);
+      tm->hw_if_index = vnet_register_interface (
+	vnm, tuntap_dev_class.index, 0 /* device instance */,
+	tuntap_interface_class.index, 0);
       hi = vnet_get_hw_interface (vnm, tm->hw_if_index);
       tm->sw_if_index = hi->sw_if_index;
 
@@ -694,12 +682,10 @@ VLIB_CONFIG_FUNCTION (tuntap_config, "tuntap");
  *
  */
 void
-tuntap_ip4_add_del_interface_address (ip4_main_t * im,
-				      uword opaque,
-				      u32 sw_if_index,
-				      ip4_address_t * address,
-				      u32 address_length,
-				      u32 if_address_index, u32 is_delete)
+tuntap_ip4_add_del_interface_address (ip4_main_t *im, uword opaque,
+				      u32 sw_if_index, ip4_address_t *address,
+				      u32 address_length, u32 if_address_index,
+				      u32 is_delete)
 {
   tuntap_main_t *tm = &tuntap_main;
   struct ifreq ifr;
@@ -714,8 +700,7 @@ tuntap_ip4_add_del_interface_address (ip4_main_t * im,
    * the same table/VRF as this tap, then ignore it.
    * If we don't do this overlapping address spaces in the different tables
    * breaks the linux host's routing tables */
-  if (fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
-					   sw_if_index) !=
+  if (fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index) !=
       fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, tm->sw_if_index))
     return;
 
@@ -737,8 +722,8 @@ tuntap_ip4_add_del_interface_address (ip4_main_t * im,
 
   /* Use subif pool index to select alias device. */
   clib_memset (&ifr, 0, sizeof (ifr));
-  snprintf (ifr.ifr_name, sizeof (ifr.ifr_name),
-	    "%s:%d", tm->tun_name, (int) (ap - tm->subifs));
+  snprintf (ifr.ifr_name, sizeof (ifr.ifr_name), "%s:%d", tm->tun_name,
+	    (int) (ap - tm->subifs));
 
   /* the tuntap punt/inject is enabled for IPv4 RX so long as
    * any vpp interface has an IPv4 address.
@@ -764,7 +749,7 @@ tuntap_ip4_add_del_interface_address (ip4_main_t * im,
     }
   else
     {
-      mhash_unset (&tm->subif_mhash, &subif_addr, 0 /* old value ptr */ );
+      mhash_unset (&tm->subif_mhash, &subif_addr, 0 /* old value ptr */);
       pool_put (tm->subifs, ap);
     }
 
@@ -809,12 +794,10 @@ struct in6_ifreq
  * @param is_delete - u32
  */
 void
-tuntap_ip6_add_del_interface_address (ip6_main_t * im,
-				      uword opaque,
-				      u32 sw_if_index,
-				      ip6_address_t * address,
-				      u32 address_length,
-				      u32 if_address_index, u32 is_delete)
+tuntap_ip6_add_del_interface_address (ip6_main_t *im, uword opaque,
+				      u32 sw_if_index, ip6_address_t *address,
+				      u32 address_length, u32 if_address_index,
+				      u32 is_delete)
 {
   tuntap_main_t *tm = &tuntap_main;
   struct ifreq ifr;
@@ -830,8 +813,7 @@ tuntap_ip6_add_del_interface_address (ip6_main_t * im,
    * the same table/VRF as this tap, then ignore it.
    * If we don't do this overlapping address spaces in the different tables
    * breaks the linux host's routing tables */
-  if (fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6,
-					   sw_if_index) !=
+  if (fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6, sw_if_index) !=
       fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6, tm->sw_if_index))
     return;
 
@@ -855,8 +837,8 @@ tuntap_ip6_add_del_interface_address (ip6_main_t * im,
   /* Use subif pool index to select alias device. */
   clib_memset (&ifr, 0, sizeof (ifr));
   clib_memset (&ifr6, 0, sizeof (ifr6));
-  snprintf (ifr.ifr_name, sizeof (ifr.ifr_name),
-	    "%s:%d", tm->tun_name, (int) (ap - tm->subifs));
+  snprintf (ifr.ifr_name, sizeof (ifr.ifr_name), "%s:%d", tm->tun_name,
+	    (int) (ap - tm->subifs));
 
   /* the tuntap punt/inject is enabled for IPv6 RX so long as
    * any vpp interface has an IPv6 address.
@@ -902,7 +884,7 @@ tuntap_ip6_add_del_interface_address (ip6_main_t * im,
       if (sockfd >= 0)
 	close (sockfd);
 
-      mhash_unset (&tm->subif_mhash, &subif_addr, 0 /* old value ptr */ );
+      mhash_unset (&tm->subif_mhash, &subif_addr, 0 /* old value ptr */);
       pool_put (tm->subifs, ap);
     }
 }
@@ -916,8 +898,8 @@ tuntap_ip6_add_del_interface_address (ip6_main_t * im,
  *
  */
 static void
-tuntap_punt_frame (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+tuntap_punt_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *frame)
 {
   tuntap_tx (vm, node, frame);
   vlib_frame_free (vm, node, frame);
@@ -932,8 +914,8 @@ tuntap_punt_frame (vlib_main_t * vm,
  *
  */
 static void
-tuntap_nopunt_frame (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+tuntap_nopunt_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     vlib_frame_t *frame)
 {
   u32 *buffers = vlib_frame_vector_args (frame);
   uword n_packets = frame->n_vectors;
@@ -941,12 +923,10 @@ tuntap_nopunt_frame (vlib_main_t * vm,
   vlib_frame_free (vm, node, frame);
 }
 
-/* *INDENT-OFF* */
-VNET_HW_INTERFACE_CLASS (tuntap_interface_class,static) = {
+VNET_HW_INTERFACE_CLASS (tuntap_interface_class, static) = {
   .name = "tuntap",
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
-/* *INDENT-ON* */
 
 /**
  * @brief Format tun/tap interface name
@@ -958,7 +938,7 @@ VNET_HW_INTERFACE_CLASS (tuntap_interface_class,static) = {
  *
  */
 static u8 *
-format_tuntap_interface_name (u8 * s, va_list * args)
+format_tuntap_interface_name (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
 
@@ -977,8 +957,8 @@ format_tuntap_interface_name (u8 * s, va_list * args)
  *
  */
 static uword
-tuntap_intfc_tx (vlib_main_t * vm,
-		 vlib_node_runtime_t * node, vlib_frame_t * frame)
+tuntap_intfc_tx (vlib_main_t *vm, vlib_node_runtime_t *node,
+		 vlib_frame_t *frame)
 {
   tuntap_main_t *tm = &tuntap_main;
   u32 *buffers = vlib_frame_vector_args (frame);
@@ -992,13 +972,11 @@ tuntap_intfc_tx (vlib_main_t * vm,
   return n_buffers;
 }
 
-/* *INDENT-OFF* */
-VNET_DEVICE_CLASS (tuntap_dev_class,static) = {
+VNET_DEVICE_CLASS (tuntap_dev_class, static) = {
   .name = "tuntap",
   .tx_function = tuntap_intfc_tx,
   .format_device_name = format_tuntap_interface_name,
 };
-/* *INDENT-ON* */
 
 /**
  * @brief tun/tap node init
@@ -1009,7 +987,7 @@ VNET_DEVICE_CLASS (tuntap_dev_class,static) = {
  *
  */
 static clib_error_t *
-tuntap_init (vlib_main_t * vm)
+tuntap_init (vlib_main_t *vm)
 {
   ip4_main_t *im4 = &ip4_main;
   ip6_main_t *im6 = &ip6_main;
@@ -1033,12 +1011,9 @@ tuntap_init (vlib_main_t * vm)
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (tuntap_init) =
-{
-  .runs_after = VLIB_INITS("ip4_init"),
+VLIB_INIT_FUNCTION (tuntap_init) = {
+  .runs_after = VLIB_INITS ("ip4_init"),
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

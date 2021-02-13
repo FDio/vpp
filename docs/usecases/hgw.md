@@ -417,14 +417,12 @@ restart isc-dhcp-server" and \"service restart vpp\" commands:
       return 0;
     }
 
-    /* *INDENT-OFF* */
     VLIB_CLI_COMMAND (restart_isc_dhcp_server_command, static) =
     {
       .path = "service restart isc-dhcp-server",
       .short_help = "restarts the isc-dhcp-server",
       .function = restart_isc_dhcp_server_command_fn,
     };
-    /* *INDENT-ON* */
 
     static clib_error_t *
     restart_dora_tunnels_command_fn (vlib_main_t * vm,
@@ -442,14 +440,12 @@ restart isc-dhcp-server" and \"service restart vpp\" commands:
       return 0;
     }
 
-    /* *INDENT-OFF* */
     VLIB_CLI_COMMAND (restart_dora_tunnels_command, static) =
     {
       .path = "service restart dora",
       .short_help = "restarts the dora tunnel service",
       .function = restart_dora_tunnels_command_fn,
     };
-    /* *INDENT-ON* */
 
     static clib_error_t *
     restart_vpp_service_command_fn (vlib_main_t * vm,
@@ -460,14 +456,12 @@ restart isc-dhcp-server" and \"service restart vpp\" commands:
       return 0;
     }
 
-    /* *INDENT-OFF* */
     VLIB_CLI_COMMAND (restart_vpp_service_command, static) =
     {
       .path = "service restart vpp",
       .short_help = "restarts the vpp service, be careful what you wish for",
       .function = restart_vpp_service_command_fn,
     };
-    /* *INDENT-ON* */
 
 Using the time-based mac filter plugin
 --------------------------------------

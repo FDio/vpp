@@ -41,12 +41,14 @@
 #include <vnet/tcp/tcp.h>
 
 u8 *
-format_tcp_flags (u8 * s, va_list * args)
+format_tcp_flags (u8 *s, va_list *args)
 {
   int flags = va_arg (*args, int);
 
   s = format (s, "0x%02x", flags);
-#define _(f) if (flags & TCP_FLAG_##f) s = format (s, " %s", #f);
+#define _(f)                                                                  \
+  if (flags & TCP_FLAG_##f)                                                   \
+    s = format (s, " %s", #f);
   foreach_tcp_flag
 #undef _
     return s;
@@ -54,7 +56,7 @@ format_tcp_flags (u8 * s, va_list * args)
 
 /* Format TCP header. */
 u8 *
-format_tcp_header (u8 * s, va_list * args)
+format_tcp_header (u8 *s, va_list *args)
 {
   tcp_header_t *tcp = va_arg (*args, tcp_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
@@ -82,7 +84,6 @@ format_tcp_header (u8 * s, va_list * args)
   s = format (s, "\n%Uwindow %d, checksum 0x%04x", format_white_space, indent,
 	      clib_net_to_host_u16 (tcp->window),
 	      clib_net_to_host_u16 (tcp->checksum));
-
 
 #if 0
   /* Format TCP options. */

@@ -41,9 +41,7 @@ typedef struct
   };
 } nat_affinity_key_t;
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED(struct
-{
+typedef CLIB_PACKED (struct {
   nat_affinity_key_t key;
   u32 sticky_time;
   u32 ref_cnt;
@@ -51,7 +49,6 @@ typedef CLIB_PACKED(struct
   u8 backend_index;
   f64 expire;
 }) nat_affinity_t;
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -95,7 +92,7 @@ void nat_affinity_disable ();
  *
  * @return error code.
  */
-clib_error_t *nat_affinity_init (vlib_main_t * vm);
+clib_error_t *nat_affinity_init (vlib_main_t *vm);
 
 /**
  * @brief Find service backend index for client-IP and take a reference
@@ -111,7 +108,7 @@ clib_error_t *nat_affinity_init (vlib_main_t * vm);
  */
 int nat_affinity_find_and_lock (ip4_address_t client_addr,
 				ip4_address_t service_addr, u8 proto,
-				u16 service_port, u8 * backend_index);
+				u16 service_port, u8 *backend_index);
 
 /**
  * @brief Create affinity record and take reference counting lock.

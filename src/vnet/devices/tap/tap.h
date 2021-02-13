@@ -19,17 +19,17 @@
 #define _VNET_DEVICES_VIRTIO_TAP_H_
 
 #ifndef MIN
-#define MIN(x,y) (((x)<(y))?(x):(y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #endif
 
-#define foreach_tapv2_flags  \
-  _ (GSO, 0)                 \
-  _ (CSUM_OFFLOAD, 1)        \
-  _ (PERSIST, 2)             \
-  _ (ATTACH, 3)              \
-  _ (TUN, 4)                 \
-  _ (GRO_COALESCE, 5)        \
-  _ (PACKED, 6)              \
+#define foreach_tapv2_flags                                                   \
+  _ (GSO, 0)                                                                  \
+  _ (CSUM_OFFLOAD, 1)                                                         \
+  _ (PERSIST, 2)                                                              \
+  _ (ATTACH, 3)                                                               \
+  _ (TUN, 4)                                                                  \
+  _ (GRO_COALESCE, 5)                                                         \
+  _ (PACKED, 6)                                                               \
   _ (IN_ORDER, 7)
 
 typedef enum
@@ -100,14 +100,13 @@ typedef struct
   int host_mtu_size;
 } tap_main_t;
 
-void tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args);
-int tap_delete_if (vlib_main_t * vm, u32 sw_if_index);
-int tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index,
+void tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args);
+int tap_delete_if (vlib_main_t *vm, u32 sw_if_index);
+int tap_gso_enable_disable (vlib_main_t *vm, u32 sw_if_index,
 			    int enable_disable, int packet_coalesce);
-int
-tap_csum_offload_enable_disable (vlib_main_t * vm, u32 sw_if_index,
-				 int enable_disable);
-int tap_dump_ifs (tap_interface_details_t ** out_tapids);
+int tap_csum_offload_enable_disable (vlib_main_t *vm, u32 sw_if_index,
+				     int enable_disable);
+int tap_dump_ifs (tap_interface_details_t **out_tapids);
 int tap_set_carrier (u32 hw_if_index, u32 carrier_up);
 int tap_set_speed (u32 hw_if_index, u32 speed);
 

@@ -34,7 +34,7 @@
 
 /* SR policy types */
 #define SR_POLICY_TYPE_DEFAULT 0
-#define SR_POLICY_TYPE_SPRAY 1
+#define SR_POLICY_TYPE_SPRAY   1
 
 #define SR_SEGMENT_LIST_WEIGHT_DEFAULT 1
 
@@ -61,18 +61,18 @@ typedef struct
 
 typedef struct
 {
-  u32 *segments_lists;			/**< Pool of SID lists indexes */
+  u32 *segments_lists; /**< Pool of SID lists indexes */
 
-  mpls_label_t bsid;		/**< BindingSID (key) */
+  mpls_label_t bsid; /**< BindingSID (key) */
 
-  u8 type;			/**< Type (default is 0) */
+  u8 type; /**< Type (default is 0) */
   /* SR Policy specific DPO                                       */
   /* IF Type = DEFAULT Then Load Balancer DPO among SID lists     */
   /* IF Type = SPRAY then Spray DPO with all SID lists            */
 
-  ip46_address_t endpoint;		/**< Optional NH for SR TE */
+  ip46_address_t endpoint; /**< Optional NH for SR TE */
   u8 endpoint_type;
-  u32 color;			/**< Optional color for SR TE */
+  u32 color; /**< Optional color for SR TE */
 } mpls_sr_policy_t;
 
 /**
@@ -82,21 +82,21 @@ typedef struct
  */
 typedef struct
 {
-  ip46_address_t prefix;	/**< IP address of the prefix */
-  u32 mask_width;			/**< Mask width of the prefix */
-  u32 fib_table;			/**< VRF of the prefix */
-  u8 traffic_type;			/**< Traffic type (IPv4, IPv6, L2) */
+  ip46_address_t prefix; /**< IP address of the prefix */
+  u32 mask_width;	 /**< Mask width of the prefix */
+  u32 fib_table;	 /**< VRF of the prefix */
+  u8 traffic_type;	 /**< Traffic type (IPv4, IPv6, L2) */
   u8 padding[3];
 } sr_mpls_steering_key_t;
 
 typedef struct
 {
-  sr_mpls_steering_key_t classify;		/**< Traffic classification */
-  mpls_label_t bsid;		/**< SR Policy index */
-  ip46_address_t next_hop;		/**< SR TE NH */
+  sr_mpls_steering_key_t classify; /**< Traffic classification */
+  mpls_label_t bsid;		   /**< SR Policy index */
+  ip46_address_t next_hop;	   /**< SR TE NH */
   char nh_type;
-  u32 *color;			/**< Vector of SR TE colors */
-  char co_bits;			/**< Color-Only bits */
+  u32 *color;	/**< Vector of SR TE colors */
+  char co_bits; /**< Color-Only bits */
   mpls_label_t vpn_label;
 } mpls_sr_steering_policy_t;
 
@@ -135,32 +135,29 @@ typedef struct
 
 extern mpls_sr_main_t sr_mpls_main;
 
-extern int
-sr_mpls_policy_add (mpls_label_t bsid, mpls_label_t * segments,
-		    u8 behavior, u32 weight);
+extern int sr_mpls_policy_add (mpls_label_t bsid, mpls_label_t *segments,
+			       u8 behavior, u32 weight);
 
-extern int
-sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
-		    mpls_label_t * segments, u32 sl_index, u32 weight);
+extern int sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
+			       mpls_label_t *segments, u32 sl_index,
+			       u32 weight);
 
 extern int sr_mpls_policy_del (mpls_label_t bsid);
 
-extern int
-sr_mpls_policy_assign_endpoint_color (mpls_label_t bsid,
-				      ip46_address_t * endpoint,
-				      u8 endpoint_type, u32 color);
+extern int sr_mpls_policy_assign_endpoint_color (mpls_label_t bsid,
+						 ip46_address_t *endpoint,
+						 u8 endpoint_type, u32 color);
 
-extern int
-sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
-			     ip46_address_t * prefix, u32 mask_width,
-			     u8 traffic_type, ip46_address_t * next_hop,
-			     u8 nh_type, u32 color, char co_bits,
-			     mpls_label_t vpn_label);
+extern int sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
+					ip46_address_t *prefix, u32 mask_width,
+					u8 traffic_type,
+					ip46_address_t *next_hop, u8 nh_type,
+					u32 color, char co_bits,
+					mpls_label_t vpn_label);
 
-extern int
-sr_mpls_steering_policy_del (ip46_address_t * prefix,
-			     u32 mask_width, u8 traffic_type, u32 table_id,
-			     u32 color);
+extern int sr_mpls_steering_policy_del (ip46_address_t *prefix, u32 mask_width,
+					u8 traffic_type, u32 table_id,
+					u32 color);
 
 extern u32 find_or_create_internal_label (ip46_address_t endpoint, u32 color);
 

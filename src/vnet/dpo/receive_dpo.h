@@ -25,36 +25,35 @@
 
 typedef struct receive_dpo_t_
 {
-    /**
-     * required for pool_get_aligned.
-     *  memebers used in the switch path come first!
-     */
-    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+  /**
+   * required for pool_get_aligned.
+   *  memebers used in the switch path come first!
+   */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
-    /**
-     * The Software interface index on which traffic is received
-     */
-    u32 rd_sw_if_index;
+  /**
+   * The Software interface index on which traffic is received
+   */
+  u32 rd_sw_if_index;
 
-    /**
-     * The address on the receive interface. packet are destined to this address
-     */
-    ip46_address_t rd_addr;
+  /**
+   * The address on the receive interface. packet are destined to this address
+   */
+  ip46_address_t rd_addr;
 
-    /**
-     * number oflocks.
-     */
-    u16 rd_locks;
+  /**
+   * number oflocks.
+   */
+  u16 rd_locks;
 } receive_dpo_t;
 
-extern int dpo_is_receive(const dpo_id_t *dpo);
+extern int dpo_is_receive (const dpo_id_t *dpo);
 
-extern void receive_dpo_add_or_lock (dpo_proto_t proto,
-                                     u32 sw_if_index,
-                                     const ip46_address_t *nh_addr,
-                                     dpo_id_t *dpo);
+extern void receive_dpo_add_or_lock (dpo_proto_t proto, u32 sw_if_index,
+				     const ip46_address_t *nh_addr,
+				     dpo_id_t *dpo);
 
-extern void receive_dpo_module_init(void);
+extern void receive_dpo_module_init (void);
 
 /**
  * @brief pool of all receive DPOs
@@ -64,7 +63,7 @@ extern receive_dpo_t *receive_dpo_pool;
 static inline receive_dpo_t *
 receive_dpo_get (index_t index)
 {
-    return (pool_elt_at_index(receive_dpo_pool, index));
+  return (pool_elt_at_index (receive_dpo_pool, index));
 }
 
 #endif

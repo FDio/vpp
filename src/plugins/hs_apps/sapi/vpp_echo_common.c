@@ -31,14 +31,14 @@ char *echo_fail_code_str[] = {
  */
 
 u8 *
-format_ip4_address (u8 * s, va_list * args)
+format_ip4_address (u8 *s, va_list *args)
 {
   u8 *a = va_arg (*args, u8 *);
   return format (s, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
 }
 
 u8 *
-format_ip6_address (u8 * s, va_list * args)
+format_ip6_address (u8 *s, va_list *args)
 {
   ip6_address_t *a = va_arg (*args, ip6_address_t *);
   u32 i, i_max_n_zero, max_n_zeros, i_first_zero, n_zeros, last_double_colon;
@@ -56,8 +56,8 @@ format_ip6_address (u8 * s, va_list * args)
 	  n_zeros = 0;
 	}
       n_zeros += is_zero;
-      if ((!is_zero && n_zeros > max_n_zeros)
-	  || (i + 1 >= ARRAY_LEN (a->as_u16) && n_zeros > max_n_zeros))
+      if ((!is_zero && n_zeros > max_n_zeros) ||
+	  (i + 1 >= ARRAY_LEN (a->as_u16) && n_zeros > max_n_zeros))
 	{
 	  i_max_n_zero = i_first_zero;
 	  max_n_zeros = n_zeros;
@@ -77,8 +77,7 @@ format_ip6_address (u8 * s, va_list * args)
 	}
       else
 	{
-	  s = format (s, "%s%x",
-		      (last_double_colon || i == 0) ? "" : ":",
+	  s = format (s, "%s%x", (last_double_colon || i == 0) ? "" : ":",
 		      clib_net_to_host_u16 (a->as_u16[i]));
 	  last_double_colon = 0;
 	}
@@ -89,7 +88,7 @@ format_ip6_address (u8 * s, va_list * args)
 
 /* Format an IP46 address. */
 u8 *
-format_ip46_address (u8 * s, va_list * args)
+format_ip46_address (u8 *s, va_list *args)
 {
   ip46_address_t *ip46 = va_arg (*args, ip46_address_t *);
   ip46_type_t type = va_arg (*args, ip46_type_t);
@@ -108,13 +107,12 @@ format_ip46_address (u8 * s, va_list * args)
       break;
     }
 
-  return is_ip4 ?
-    format (s, "%U", format_ip4_address, &ip46->ip4) :
-    format (s, "%U", format_ip6_address, &ip46->ip6);
+  return is_ip4 ? format (s, "%U", format_ip4_address, &ip46->ip4) :
+		  format (s, "%U", format_ip6_address, &ip46->ip6);
 }
 
 u8 *
-format_api_error (u8 * s, va_list * args)
+format_api_error (u8 *s, va_list *args)
 {
   echo_main_t *em = &echo_main;
   i32 error = va_arg (*args, u32);
@@ -135,7 +133,7 @@ init_error_string_table ()
   echo_main_t *em = &echo_main;
   em->error_string_by_error_number = hash_create (0, sizeof (uword));
 
-#define _(n,v,s) hash_set (em->error_string_by_error_number, -v, s);
+#define _(n, v, s) hash_set (em->error_string_by_error_number, -v, s);
   foreach_vnet_api_error;
 #undef _
 
@@ -143,7 +141,7 @@ init_error_string_table ()
 }
 
 u8 *
-echo_format_session (u8 * s, va_list * args)
+echo_format_session (u8 *s, va_list *args)
 {
   echo_session_t *session = va_arg (*args, echo_session_t *);
 
@@ -153,7 +151,7 @@ echo_format_session (u8 * s, va_list * args)
 }
 
 u8 *
-echo_format_session_type (u8 * s, va_list * args)
+echo_format_session_type (u8 *s, va_list *args)
 {
   u32 session_type = va_arg (*args, u32);
   switch (session_type)
@@ -171,7 +169,7 @@ echo_format_session_type (u8 * s, va_list * args)
 }
 
 u8 *
-echo_format_session_state (u8 * s, va_list * args)
+echo_format_session_state (u8 *s, va_list *args)
 {
   u32 session_state = va_arg (*args, u32);
   switch (session_state)
@@ -196,7 +194,7 @@ echo_format_session_state (u8 * s, va_list * args)
 }
 
 u8 *
-echo_format_app_state (u8 * s, va_list * args)
+echo_format_app_state (u8 *s, va_list *args)
 {
   u32 state = va_arg (*args, u32);
   if (state == STATE_START)
@@ -220,7 +218,7 @@ echo_format_app_state (u8 * s, va_list * args)
 }
 
 uword
-echo_unformat_close (unformat_input_t * input, va_list * args)
+echo_unformat_close (unformat_input_t *input, va_list *args)
 {
   u8 *a = va_arg (*args, u8 *);
   if (unformat (input, "Y"))
@@ -235,7 +233,7 @@ echo_unformat_close (unformat_input_t * input, va_list * args)
 }
 
 uword
-echo_unformat_timing_event (unformat_input_t * input, va_list * args)
+echo_unformat_timing_event (unformat_input_t *input, va_list *args)
 {
   u8 *a = va_arg (*args, u8 *);
   if (unformat (input, "start"))
@@ -258,7 +256,7 @@ echo_unformat_timing_event (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-echo_format_bytes_per_sec (u8 * s, va_list * args)
+echo_format_bytes_per_sec (u8 *s, va_list *args)
 {
   f64 bps = va_arg (*args, f64) * 8;
   if (bps > 1e9)
@@ -272,7 +270,7 @@ echo_format_bytes_per_sec (u8 * s, va_list * args)
 }
 
 u8 *
-echo_format_timing_event (u8 * s, va_list * args)
+echo_format_timing_event (u8 *s, va_list *args)
 {
   u32 timing_event = va_arg (*args, u32);
   if (timing_event == ECHO_EVT_START)
@@ -294,7 +292,7 @@ echo_format_timing_event (u8 * s, va_list * args)
 }
 
 uword
-unformat_transport_proto (unformat_input_t * input, va_list * args)
+unformat_transport_proto (unformat_input_t *input, va_list *args)
 {
   u32 *proto = va_arg (*args, u32 *);
   if (unformat (input, "tcp"))
@@ -319,7 +317,7 @@ unformat_transport_proto (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_transport_proto (u8 * s, va_list * args)
+format_transport_proto (u8 *s, va_list *args)
 {
   u32 transport_proto = va_arg (*args, u32);
   switch (transport_proto)
@@ -350,7 +348,7 @@ format_transport_proto (u8 * s, va_list * args)
 }
 
 uword
-unformat_ip4_address (unformat_input_t * input, va_list * args)
+unformat_ip4_address (unformat_input_t *input, va_list *args)
 {
   u8 *result = va_arg (*args, u8 *);
   unsigned a[4];
@@ -370,7 +368,7 @@ unformat_ip4_address (unformat_input_t * input, va_list * args)
 }
 
 uword
-unformat_ip6_address (unformat_input_t * input, va_list * args)
+unformat_ip6_address (unformat_input_t *input, va_list *args)
 {
   ip6_address_t *result = va_arg (*args, ip6_address_t *);
   u16 hex_quads[8];
@@ -461,7 +459,7 @@ unformat_ip6_address (unformat_input_t * input, va_list * args)
 }
 
 uword
-unformat_ip46_address (unformat_input_t * input, va_list * args)
+unformat_ip46_address (unformat_input_t *input, va_list *args)
 {
   ip46_address_t *ip = va_arg (*args, ip46_address_t *);
 
@@ -475,7 +473,7 @@ unformat_ip46_address (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-echo_format_crypto_engine (u8 * s, va_list * args)
+echo_format_crypto_engine (u8 *s, va_list *args)
 {
   u32 state = va_arg (*args, u32);
   if (state == CRYPTO_ENGINE_MBEDTLS)
@@ -491,7 +489,7 @@ echo_format_crypto_engine (u8 * s, va_list * args)
 }
 
 uword
-echo_unformat_crypto_engine (unformat_input_t * input, va_list * args)
+echo_unformat_crypto_engine (unformat_input_t *input, va_list *args)
 {
   u8 *a = va_arg (*args, u8 *);
   if (unformat (input, "mbedtls"))
@@ -507,7 +505,6 @@ echo_unformat_crypto_engine (unformat_input_t * input, va_list * args)
   return 1;
 }
 
-
 /*
  *
  *  End of format functions
@@ -515,7 +512,7 @@ echo_unformat_crypto_engine (unformat_input_t * input, va_list * args)
  */
 
 void
-echo_session_handle_add_del (echo_main_t * em, u64 handle, u32 sid)
+echo_session_handle_add_del (echo_main_t *em, u64 handle, u32 sid)
 {
   clib_spinlock_lock (&em->sid_vpp_handles_lock);
   if (sid == SESSION_INVALID_INDEX)
@@ -532,17 +529,16 @@ echo_session_handle_add_del (echo_main_t * em, u64 handle, u32 sid)
 }
 
 echo_session_t *
-echo_session_new (echo_main_t * em)
+echo_session_new (echo_main_t *em)
 {
   /* thread safe new prealloced session
    * see echo_session_prealloc */
-  return pool_elt_at_index (em->sessions,
-			    clib_atomic_fetch_add (&em->nxt_available_sidx,
-						   1));
+  return pool_elt_at_index (
+    em->sessions, clib_atomic_fetch_add (&em->nxt_available_sidx, 1));
 }
 
 int
-echo_send_rpc (echo_main_t * em, void *fp, echo_rpc_args_t * args)
+echo_send_rpc (echo_main_t *em, void *fp, echo_rpc_args_t *args)
 {
   svm_msg_q_msg_t msg;
   echo_rpc_msg_t *evt;
@@ -567,7 +563,7 @@ echo_send_rpc (echo_main_t * em, void *fp, echo_rpc_args_t * args)
 }
 
 echo_session_t *
-echo_get_session_from_handle (echo_main_t * em, u64 handle)
+echo_get_session_from_handle (echo_main_t *em, u64 handle)
 {
   uword *p;
   clib_spinlock_lock (&em->sid_vpp_handles_lock);
@@ -582,8 +578,7 @@ echo_get_session_from_handle (echo_main_t * em, u64 handle)
 }
 
 int
-wait_for_state_change (echo_main_t * em, connection_state_t state,
-		       f64 timeout)
+wait_for_state_change (echo_main_t *em, connection_state_t state, f64 timeout)
 {
   f64 end_time = clib_time_now (&em->clib_time) + timeout;
   while (!timeout || clib_time_now (&em->clib_time) < end_time)
@@ -598,7 +593,7 @@ wait_for_state_change (echo_main_t * em, connection_state_t state,
 }
 
 void
-echo_notify_event (echo_main_t * em, echo_test_evt_t e)
+echo_notify_event (echo_main_t *em, echo_test_evt_t e)
 {
   if (em->timing.events_sent & e)
     return;
@@ -610,7 +605,7 @@ echo_notify_event (echo_main_t * em, echo_test_evt_t e)
 }
 
 void
-echo_session_print_stats (echo_main_t * em, echo_session_t * session)
+echo_session_print_stats (echo_main_t *em, echo_session_t *session)
 {
   f64 deltat = clib_time_now (&em->clib_time) - session->start;
   ECHO_LOG (1, "Session 0x%x done in %.6fs RX[%.4f] TX[%.4f] Gbit/s\n",

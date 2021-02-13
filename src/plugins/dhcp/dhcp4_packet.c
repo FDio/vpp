@@ -19,7 +19,7 @@
 #include <vnet/ip/format.h>
 
 u8 *
-format_dhcp_packet_type (u8 * s, va_list * args)
+format_dhcp_packet_type (u8 *s, va_list *args)
 {
   dhcp_packet_type_t pt = va_arg (*args, dhcp_packet_type_t);
 
@@ -45,7 +45,7 @@ format_dhcp_packet_type (u8 * s, va_list * args)
 }
 
 u8 *
-format_dhcp_header (u8 * s, va_list * args)
+format_dhcp_header (u8 *s, va_list *args)
 {
   dhcp_header_t *d = va_arg (*args, dhcp_header_t *);
   u32 max_bytes = va_arg (*args, u32);
@@ -53,10 +53,9 @@ format_dhcp_header (u8 * s, va_list * args)
   u32 tmp;
 
   s = format (s, "opcode:%s", (d->opcode == 1 ? "request" : "reply"));
-  s = format (s, " hw[type:%d addr-len:%d addr:%U]",
-	      d->hardware_type, d->hardware_address_length,
-	      format_hex_bytes, d->client_hardware_address,
-	      d->hardware_address_length);
+  s = format (s, " hw[type:%d addr-len:%d addr:%U]", d->hardware_type,
+	      d->hardware_address_length, format_hex_bytes,
+	      d->client_hardware_address, d->hardware_address_length);
   s = format (s, " hops%d", d->hops);
   s = format (s, " transaction-ID:0x%x", d->transaction_identifier);
   s = format (s, " seconds:%d", d->seconds);
@@ -69,39 +68,38 @@ format_dhcp_header (u8 * s, va_list * args)
 
   o = (dhcp_option_t *) d->options;
 
-  while (o->option != 0xFF /* end of options */  &&
+  while (o->option != 0xFF /* end of options */ &&
 	 (u8 *) o < (u8 *) d + max_bytes)
     {
       switch (o->option)
 	{
-	case 53:		/* dhcp message type */
+	case 53: /* dhcp message type */
 	  tmp = o->data[0];
-	  s =
-	    format (s, ", option-53: type:%U", format_dhcp_packet_type, tmp);
+	  s = format (s, ", option-53: type:%U", format_dhcp_packet_type, tmp);
 	  break;
-	case 54:		/* dhcp server address */
-	  s = format (s, ", option-54: server:%U",
-		      format_ip4_address, &o->data_as_u32[0]);
+	case 54: /* dhcp server address */
+	  s = format (s, ", option-54: server:%U", format_ip4_address,
+		      &o->data_as_u32[0]);
 	  break;
-	case 58:		/* lease renew time in seconds */
+	case 58: /* lease renew time in seconds */
 	  s = format (s, ", option-58: renewal:%d",
 		      clib_host_to_net_u32 (o->data_as_u32[0]));
 	  break;
-	case 1:		/* subnet mask */
+	case 1: /* subnet mask */
 	  s = format (s, ", option-1: subnet-mask:%d",
 		      clib_host_to_net_u32 (o->data_as_u32[0]));
 	  break;
-	case 3:		/* router address */
-	  s = format (s, ", option-3: router:%U",
-		      format_ip4_address, &o->data_as_u32[0]);
+	case 3: /* router address */
+	  s = format (s, ", option-3: router:%U", format_ip4_address,
+		      &o->data_as_u32[0]);
 	  break;
-	case 6:		/* domain server address */
-	  s = format (s, ", option-6: domian-server:%U",
-		      format_hex_bytes, o->data, o->length);
+	case 6: /* domain server address */
+	  s = format (s, ", option-6: domian-server:%U", format_hex_bytes,
+		      o->data, o->length);
 	  break;
-	case 12:		/* hostname */
-	  s = format (s, ", option-12: hostname:%U",
-		      format_hex_bytes, o->data, o->length);
+	case 12: /* hostname */
+	  s = format (s, ", option-12: hostname:%U", format_hex_bytes, o->data,
+		      o->length);
 	  break;
 	default:
 	  tmp = o->option;

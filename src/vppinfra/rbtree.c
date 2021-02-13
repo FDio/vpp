@@ -21,7 +21,7 @@
 #include <vppinfra/rbtree.h>
 
 static inline void
-rb_tree_rotate_left (rb_tree_t * rt, rb_node_t * x)
+rb_tree_rotate_left (rb_tree_t *rt, rb_node_t *x)
 {
   rb_node_t *y, *tmp, *xp;
   rb_node_index_t xi, yi;
@@ -48,7 +48,7 @@ rb_tree_rotate_left (rb_tree_t * rt, rb_node_t * x)
 }
 
 static inline void
-rb_tree_rotate_right (rb_tree_t * rt, rb_node_t * y)
+rb_tree_rotate_right (rb_tree_t *rt, rb_node_t *y)
 {
   rb_node_index_t yi, xi;
   rb_node_t *x, *yp;
@@ -75,7 +75,7 @@ rb_tree_rotate_right (rb_tree_t * rt, rb_node_t * y)
 }
 
 static inline void
-rb_tree_fixup_inline (rb_tree_t * rt, rb_node_t * y, rb_node_t * z)
+rb_tree_fixup_inline (rb_tree_t *rt, rb_node_t *y, rb_node_t *z)
 {
   rb_node_t *zpp, *zp;
   rb_node_index_t zi;
@@ -138,7 +138,7 @@ rb_tree_fixup_inline (rb_tree_t * rt, rb_node_t * y, rb_node_t * z)
 }
 
 static void
-rb_tree_insert (rb_tree_t * rt, rb_node_t * z)
+rb_tree_insert (rb_tree_t *rt, rb_node_t *z)
 {
   rb_node_index_t yi = 0, xi = rt->root;
   rb_node_t *y, *x;
@@ -167,7 +167,7 @@ rb_tree_insert (rb_tree_t * rt, rb_node_t * z)
 }
 
 __clib_export rb_node_index_t
-rb_tree_add (rb_tree_t * rt, u32 key)
+rb_tree_add (rb_tree_t *rt, u32 key)
 {
   rb_node_t *n;
 
@@ -179,7 +179,7 @@ rb_tree_add (rb_tree_t * rt, u32 key)
 }
 
 __clib_export rb_node_index_t
-rb_tree_add2 (rb_tree_t * rt, u32 key, uword opaque)
+rb_tree_add2 (rb_tree_t *rt, u32 key, uword opaque)
 {
   rb_node_t *n;
 
@@ -192,7 +192,7 @@ rb_tree_add2 (rb_tree_t * rt, u32 key, uword opaque)
 }
 
 __clib_export rb_node_index_t
-rb_tree_add_custom (rb_tree_t * rt, u32 key, uword opaque, rb_tree_lt_fn ltfn)
+rb_tree_add_custom (rb_tree_t *rt, u32 key, uword opaque, rb_tree_lt_fn ltfn)
 {
   rb_node_index_t yi = 0, xi = rt->root;
   rb_node_t *z, *y, *x;
@@ -228,7 +228,7 @@ rb_tree_add_custom (rb_tree_t * rt, u32 key, uword opaque, rb_tree_lt_fn ltfn)
 }
 
 __clib_export rb_node_t *
-rb_tree_search_subtree (rb_tree_t * rt, rb_node_t * x, u32 key)
+rb_tree_search_subtree (rb_tree_t *rt, rb_node_t *x, u32 key)
 {
   while (rb_node_index (rt, x) != RBTREE_TNIL_INDEX && key != x->key)
     if (key < x->key)
@@ -239,7 +239,7 @@ rb_tree_search_subtree (rb_tree_t * rt, rb_node_t * x, u32 key)
 }
 
 __clib_export rb_node_t *
-rb_tree_search_subtree_custom (rb_tree_t * rt, rb_node_t * x, u32 key,
+rb_tree_search_subtree_custom (rb_tree_t *rt, rb_node_t *x, u32 key,
 			       rb_tree_lt_fn ltfn)
 {
   while (rb_node_index (rt, x) != RBTREE_TNIL_INDEX && key != x->key)
@@ -251,7 +251,7 @@ rb_tree_search_subtree_custom (rb_tree_t * rt, rb_node_t * x, u32 key,
 }
 
 __clib_export rb_node_t *
-rb_tree_min_subtree (rb_tree_t * rt, rb_node_t * x)
+rb_tree_min_subtree (rb_tree_t *rt, rb_node_t *x)
 {
   while (x->left != RBTREE_TNIL_INDEX)
     x = rb_node_left (rt, x);
@@ -259,7 +259,7 @@ rb_tree_min_subtree (rb_tree_t * rt, rb_node_t * x)
 }
 
 __clib_export rb_node_t *
-rb_tree_max_subtree (rb_tree_t * rt, rb_node_t * x)
+rb_tree_max_subtree (rb_tree_t *rt, rb_node_t *x)
 {
   while (x->right != RBTREE_TNIL_INDEX)
     x = rb_node_right (rt, x);
@@ -267,7 +267,7 @@ rb_tree_max_subtree (rb_tree_t * rt, rb_node_t * x)
 }
 
 __clib_export rb_node_t *
-rb_tree_successor (rb_tree_t * rt, rb_node_t * x)
+rb_tree_successor (rb_tree_t *rt, rb_node_t *x)
 {
   rb_node_t *y;
 
@@ -284,7 +284,7 @@ rb_tree_successor (rb_tree_t * rt, rb_node_t * x)
 }
 
 __clib_export rb_node_t *
-rb_tree_predecessor (rb_tree_t * rt, rb_node_t * x)
+rb_tree_predecessor (rb_tree_t *rt, rb_node_t *x)
 {
   rb_node_t *y;
 
@@ -301,7 +301,7 @@ rb_tree_predecessor (rb_tree_t * rt, rb_node_t * x)
 }
 
 static inline void
-rb_tree_transplant (rb_tree_t * rt, rb_node_t * u, rb_node_t * v)
+rb_tree_transplant (rb_tree_t *rt, rb_node_t *u, rb_node_t *v)
 {
   rb_node_t *up;
 
@@ -316,7 +316,7 @@ rb_tree_transplant (rb_tree_t * rt, rb_node_t * u, rb_node_t * v)
 }
 
 static void
-rb_tree_del_node_internal (rb_tree_t * rt, rb_node_t * z)
+rb_tree_del_node_internal (rb_tree_t *rt, rb_node_t *z)
 {
   rb_node_color_t y_original_color;
   rb_node_t *x, *y, *yr, *yl, *xp, *w, *wl, *wr;
@@ -442,14 +442,14 @@ rb_tree_del_node_internal (rb_tree_t * rt, rb_node_t * z)
 }
 
 __clib_export void
-rb_tree_del_node (rb_tree_t * rt, rb_node_t * z)
+rb_tree_del_node (rb_tree_t *rt, rb_node_t *z)
 {
   rb_tree_del_node_internal (rt, z);
   pool_put (rt->nodes, z);
 }
 
 __clib_export void
-rb_tree_del (rb_tree_t * rt, u32 key)
+rb_tree_del (rb_tree_t *rt, u32 key)
 {
   rb_node_t *n;
   n = rb_tree_search_subtree (rt, rb_node (rt, rt->root), key);
@@ -458,7 +458,7 @@ rb_tree_del (rb_tree_t * rt, u32 key)
 }
 
 __clib_export void
-rb_tree_del_custom (rb_tree_t * rt, u32 key, rb_tree_lt_fn ltfn)
+rb_tree_del_custom (rb_tree_t *rt, u32 key, rb_tree_lt_fn ltfn)
 {
   rb_node_t *n;
   n = rb_tree_search_subtree_custom (rt, rb_node (rt, rt->root), key, ltfn);
@@ -467,20 +467,20 @@ rb_tree_del_custom (rb_tree_t * rt, u32 key, rb_tree_lt_fn ltfn)
 }
 
 __clib_export u32
-rb_tree_n_nodes (rb_tree_t * rt)
+rb_tree_n_nodes (rb_tree_t *rt)
 {
   return pool_elts (rt->nodes);
 }
 
 __clib_export void
-rb_tree_free_nodes (rb_tree_t * rt)
+rb_tree_free_nodes (rb_tree_t *rt)
 {
   pool_free (rt->nodes);
   rt->root = RBTREE_TNIL_INDEX;
 }
 
 __clib_export void
-rb_tree_init (rb_tree_t * rt)
+rb_tree_init (rb_tree_t *rt)
 {
   rb_node_t *tnil;
 
@@ -493,7 +493,7 @@ rb_tree_init (rb_tree_t * rt)
 }
 
 __clib_export int
-rb_tree_is_init (rb_tree_t * rt)
+rb_tree_is_init (rb_tree_t *rt)
 {
   if (pool_elts (rt->nodes) == 0)
     return 0;

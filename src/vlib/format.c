@@ -40,7 +40,7 @@
 #include <vlib/vlib.h>
 
 u8 *
-format_vlib_rx_tx (u8 * s, va_list * args)
+format_vlib_rx_tx (u8 *s, va_list *args)
 {
   vlib_rx_or_tx_t r = va_arg (*args, vlib_rx_or_tx_t);
   char *t;
@@ -63,7 +63,7 @@ format_vlib_rx_tx (u8 * s, va_list * args)
 }
 
 u8 *
-format_vlib_read_write (u8 * s, va_list * args)
+format_vlib_read_write (u8 *s, va_list *args)
 {
   vlib_rx_or_tx_t r = va_arg (*args, vlib_rx_or_tx_t);
   char *t;
@@ -87,7 +87,7 @@ format_vlib_read_write (u8 * s, va_list * args)
 
 /* Formats buffer data as printable ascii or as hex. */
 u8 *
-format_vlib_buffer_data (u8 * s, va_list * args)
+format_vlib_buffer_data (u8 *s, va_list *args)
 {
   u8 *data = va_arg (*args, u8 *);
   u32 n_data_bytes = va_arg (*args, u32);
@@ -113,7 +113,7 @@ format_vlib_buffer_data (u8 * s, va_list * args)
 
 /* Enable/on => 1; disable/off => 0. */
 uword
-unformat_vlib_enable_disable (unformat_input_t * input, va_list * args)
+unformat_vlib_enable_disable (unformat_input_t *input, va_list *args)
 {
   int *result = va_arg (*args, int *);
   int enable;
@@ -131,7 +131,7 @@ unformat_vlib_enable_disable (unformat_input_t * input, va_list * args)
 
 /* rx/tx => VLIB_RX/VLIB_TX. */
 uword
-unformat_vlib_rx_tx (unformat_input_t * input, va_list * args)
+unformat_vlib_rx_tx (unformat_input_t *input, va_list *args)
 {
   int *result = va_arg (*args, int *);
   if (unformat (input, "rx"))
@@ -145,7 +145,7 @@ unformat_vlib_rx_tx (unformat_input_t * input, va_list * args)
 
 /* Parse an int either %d or 0x%x. */
 uword
-unformat_vlib_number (unformat_input_t * input, va_list * args)
+unformat_vlib_number (unformat_input_t *input, va_list *args)
 {
   int *result = va_arg (*args, int *);
 
@@ -154,7 +154,7 @@ unformat_vlib_number (unformat_input_t * input, va_list * args)
 
 /* Parse a-zA-Z0-9_ token and hash to value. */
 uword
-unformat_vlib_number_by_name (unformat_input_t * input, va_list * args)
+unformat_vlib_number_by_name (unformat_input_t *input, va_list *args)
 {
   uword *hash = va_arg (*args, uword *);
   int *result = va_arg (*args, int *);
@@ -189,7 +189,7 @@ done:
 
 /* Parse a filename to dump debug info */
 uword
-unformat_vlib_tmpfile (unformat_input_t * input, va_list * args)
+unformat_vlib_tmpfile (unformat_input_t *input, va_list *args)
 {
   u8 **chroot_filename = va_arg (*args, u8 **);
   u8 *filename;
@@ -211,7 +211,7 @@ unformat_vlib_tmpfile (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_vlib_thread_name (u8 * s, va_list * args)
+format_vlib_thread_name (u8 *s, va_list *args)
 {
   u32 thread_index = va_arg (*args, u32);
 
@@ -224,7 +224,7 @@ format_vlib_thread_name (u8 * s, va_list * args)
 }
 
 u8 *
-format_vlib_thread_name_and_index (u8 * s, va_list * args)
+format_vlib_thread_name_and_index (u8 *s, va_list *args)
 {
   u32 thread_index = va_arg (*args, u32);
 

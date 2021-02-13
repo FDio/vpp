@@ -24,23 +24,24 @@
 #include <vppinfra/types.h>
 #include <vppinfra/error.h>
 /* CQE flags - bits 16-31 of qword at offset 0x1c */
-#define CQE_FLAG_L4_OK			10
-#define CQE_FLAG_L3_OK			9
-#define CQE_FLAG_L2_OK			8
-#define CQE_FLAG_IP_FRAG		7
-#define CQE_FLAG_L4_HDR_TYPE(f)		(((f) >> 4) & 7)
-#define CQE_FLAG_L3_HDR_TYPE_SHIFT	(2)
-#define CQE_FLAG_L3_HDR_TYPE_MASK	(3 << CQE_FLAG_L3_HDR_TYPE_SHIFT)
-#define CQE_FLAG_L3_HDR_TYPE(f)		(((f) & CQE_FLAG_L3_HDR_TYPE_MASK)  >> CQE_FLAG_L3_HDR_TYPE_SHIFT)
-#define CQE_FLAG_L3_HDR_TYPE_IP4	1
-#define CQE_FLAG_L3_HDR_TYPE_IP6	2
-#define CQE_FLAG_IP_EXT_OPTS		1
+#define CQE_FLAG_L4_OK		   10
+#define CQE_FLAG_L3_OK		   9
+#define CQE_FLAG_L2_OK		   8
+#define CQE_FLAG_IP_FRAG	   7
+#define CQE_FLAG_L4_HDR_TYPE(f)	   (((f) >> 4) & 7)
+#define CQE_FLAG_L3_HDR_TYPE_SHIFT (2)
+#define CQE_FLAG_L3_HDR_TYPE_MASK  (3 << CQE_FLAG_L3_HDR_TYPE_SHIFT)
+#define CQE_FLAG_L3_HDR_TYPE(f)                                               \
+  (((f) &CQE_FLAG_L3_HDR_TYPE_MASK) >> CQE_FLAG_L3_HDR_TYPE_SHIFT)
+#define CQE_FLAG_L3_HDR_TYPE_IP4 1
+#define CQE_FLAG_L3_HDR_TYPE_IP6 2
+#define CQE_FLAG_IP_EXT_OPTS	 1
 
 /* CQE byte count (Striding RQ) */
-#define CQE_BC_FILLER_MASK (1 << 31)
+#define CQE_BC_FILLER_MASK	      (1 << 31)
 #define CQE_BC_CONSUMED_STRIDES_SHIFT (16)
-#define CQE_BC_CONSUMED_STRIDES_MASK (0x3fff << CQE_BC_CONSUMED_STRIDES_SHIFT)
-#define CQE_BC_BYTE_COUNT_MASK (0xffff)
+#define CQE_BC_CONSUMED_STRIDES_MASK  (0x3fff << CQE_BC_CONSUMED_STRIDES_SHIFT)
+#define CQE_BC_BYTE_COUNT_MASK	      (0xffff)
 typedef struct
 {
   struct
@@ -76,7 +77,7 @@ typedef struct
 {
   u64 dsz_and_lkey;
   u64 addr;
-} mlx5dv_wqe_ds_t;		/* a WQE data segment */
+} mlx5dv_wqe_ds_t; /* a WQE data segment */
 
 typedef struct
 {
@@ -86,26 +87,25 @@ typedef struct
   u8 rsvd1[11];
 } mlx5dv_wqe_srq_next_t;
 
-#define foreach_cqe_rx_field \
-  _(0x1c, 26, 26, l4_ok)	\
-  _(0x1c, 25, 25, l3_ok)	\
-  _(0x1c, 24, 24, l2_ok)	\
-  _(0x1c, 23, 23, ip_frag)	\
-  _(0x1c, 22, 20, l4_hdr_type)	\
-  _(0x1c, 19, 18, l3_hdr_type)	\
-  _(0x1c, 17, 17, ip_ext_opts)	\
-  _(0x1c, 16, 16, cv)	\
-  _(0x2c, 31,  0, byte_cnt)	\
-  _(0x30, 63,  0, timestamp)	\
-  _(0x38, 31, 24, rx_drop_counter)	\
-  _(0x38, 23,  0, flow_tag)	\
-  _(0x3c, 31, 16, wqe_counter)	\
-  _(0x3c, 15,  8, signature)	\
-  _(0x3c,  7,  4, opcode)	\
-  _(0x3c,  3,  2, cqe_format)	\
-  _(0x3c,  1,  1, sc)	\
-  _(0x3c,  0,  0, owner)
-
+#define foreach_cqe_rx_field                                                  \
+  _ (0x1c, 26, 26, l4_ok)                                                     \
+  _ (0x1c, 25, 25, l3_ok)                                                     \
+  _ (0x1c, 24, 24, l2_ok)                                                     \
+  _ (0x1c, 23, 23, ip_frag)                                                   \
+  _ (0x1c, 22, 20, l4_hdr_type)                                               \
+  _ (0x1c, 19, 18, l3_hdr_type)                                               \
+  _ (0x1c, 17, 17, ip_ext_opts)                                               \
+  _ (0x1c, 16, 16, cv)                                                        \
+  _ (0x2c, 31, 0, byte_cnt)                                                   \
+  _ (0x30, 63, 0, timestamp)                                                  \
+  _ (0x38, 31, 24, rx_drop_counter)                                           \
+  _ (0x38, 23, 0, flow_tag)                                                   \
+  _ (0x3c, 31, 16, wqe_counter)                                               \
+  _ (0x3c, 15, 8, signature)                                                  \
+  _ (0x3c, 7, 4, opcode)                                                      \
+  _ (0x3c, 3, 2, cqe_format)                                                  \
+  _ (0x3c, 1, 1, sc)                                                          \
+  _ (0x3c, 0, 0, owner)
 
 /* inline functions */
 
@@ -159,7 +159,6 @@ mlx5_get_bits (void *start, int offset, int first, int last)
   value &= (1 << (first - last + 1)) - 1;
   return value;
 }
-
 
 #endif /* RDMA_MLX5DV_H */
 

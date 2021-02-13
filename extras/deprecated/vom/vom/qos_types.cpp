@@ -25,8 +25,7 @@ const source_t source_t::IP(3, "IP");
 
 source_t::source_t(int v, const std::string& s)
   : enum_base<source_t>(v, s)
-{
-}
+{}
 }; // namespace QoS
 }; // namespace VOM
 

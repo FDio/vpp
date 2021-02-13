@@ -39,7 +39,7 @@ typedef struct
     {
       ip4_address_t addr;
       u16 port;
-      u16 protocol:3, fib_index:13;
+      u16 protocol : 3, fib_index : 13;
     };
     u64 as_u64;
   };
@@ -61,9 +61,7 @@ typedef struct
   };
 } dslite_session_key_t;
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED (struct
-{
+typedef CLIB_PACKED (struct {
   nat_session_key_t out2in;
   dslite_session_key_t in2out;
   u32 per_b4_index;
@@ -72,7 +70,6 @@ typedef CLIB_PACKED (struct
   u64 total_bytes;
   u32 total_pkts;
 }) dslite_session_t;
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -142,21 +139,21 @@ typedef struct
   u32 next_index;
 } dslite_ce_trace_t;
 
-#define foreach_dslite_error                    \
-_(IN2OUT, "valid in2out DS-Lite packets")       \
-_(OUT2IN, "valid out2in DS-Lite packets")       \
-_(CE_ENCAP, "valid CE encap DS-Lite packets")   \
-_(CE_DECAP, "valid CE decap DS-Lite packets")   \
-_(NO_TRANSLATION, "no translation")             \
-_(BAD_IP6_PROTOCOL, "bad ip6 protocol")         \
-_(OUT_OF_PORTS, "out of ports")                 \
-_(UNSUPPORTED_PROTOCOL, "unsupported protocol") \
-_(BAD_ICMP_TYPE, "unsupported icmp type")       \
-_(UNKNOWN, "unknown")
+#define foreach_dslite_error                                                  \
+  _ (IN2OUT, "valid in2out DS-Lite packets")                                  \
+  _ (OUT2IN, "valid out2in DS-Lite packets")                                  \
+  _ (CE_ENCAP, "valid CE encap DS-Lite packets")                              \
+  _ (CE_DECAP, "valid CE decap DS-Lite packets")                              \
+  _ (NO_TRANSLATION, "no translation")                                        \
+  _ (BAD_IP6_PROTOCOL, "bad ip6 protocol")                                    \
+  _ (OUT_OF_PORTS, "out of ports")                                            \
+  _ (UNSUPPORTED_PROTOCOL, "unsupported protocol")                            \
+  _ (BAD_ICMP_TYPE, "unsupported icmp type")                                  \
+  _ (UNKNOWN, "unknown")
 
 typedef enum
 {
-#define _(sym,str) DSLITE_ERROR_##sym,
+#define _(sym, str) DSLITE_ERROR_##sym,
   foreach_dslite_error
 #undef _
     DSLITE_N_ERROR,
@@ -169,15 +166,15 @@ extern vlib_node_registration_t dslite_out2in_node;
 extern vlib_node_registration_t dslite_ce_encap_node;
 extern vlib_node_registration_t dslite_ce_decap_node;
 
-void dslite_set_ce (dslite_main_t * dm, u8 set);
-int dslite_set_aftr_ip6_addr (dslite_main_t * dm, ip6_address_t * addr);
-int dslite_set_b4_ip6_addr (dslite_main_t * dm, ip6_address_t * addr);
-int dslite_set_aftr_ip4_addr (dslite_main_t * dm, ip4_address_t * addr);
-int dslite_set_b4_ip4_addr (dslite_main_t * dm, ip4_address_t * addr);
-int dslite_add_del_pool_addr (dslite_main_t * dm, ip4_address_t * addr,
+void dslite_set_ce (dslite_main_t *dm, u8 set);
+int dslite_set_aftr_ip6_addr (dslite_main_t *dm, ip6_address_t *addr);
+int dslite_set_b4_ip6_addr (dslite_main_t *dm, ip6_address_t *addr);
+int dslite_set_aftr_ip4_addr (dslite_main_t *dm, ip4_address_t *addr);
+int dslite_set_b4_ip4_addr (dslite_main_t *dm, ip4_address_t *addr);
+int dslite_add_del_pool_addr (dslite_main_t *dm, ip4_address_t *addr,
 			      u8 is_add);
-u8 *format_dslite_trace (u8 * s, va_list * args);
-u8 *format_dslite_ce_trace (u8 * s, va_list * args);
+u8 *format_dslite_trace (u8 *s, va_list *args);
+u8 *format_dslite_ce_trace (u8 *s, va_list *args);
 
 #endif /* __included_dslite_h__ */
 

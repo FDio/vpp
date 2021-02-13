@@ -23,19 +23,16 @@ main (int argc, char *argv[])
 }
 
 static clib_error_t *
-main_stub_init (vlib_main_t * vm)
+main_stub_init (vlib_main_t *vm)
 {
   clib_error_t *error = 0;
 
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (main_stub_init) =
-{
-  .runs_after = VLIB_INITS("unix_physmem_init", "unix_cli_init"),
+VLIB_INIT_FUNCTION (main_stub_init) = {
+  .runs_after = VLIB_INITS ("unix_physmem_init", "unix_cli_init"),
 };
-/* *INDENT-ON* */
 
 #if 0
 /* Node test code. */
@@ -105,7 +102,7 @@ my_func (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   return i;
 }
 
-/* *INDENT-OFF* */
+
 VLIB_REGISTER_NODE (my_node1,static) = {
   .function = my_func,
   .type = VLIB_NODE_TYPE_INPUT,
@@ -117,16 +114,15 @@ VLIB_REGISTER_NODE (my_node1,static) = {
     [0] = "my-node2",
   },
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
+
+
 VLIB_REGISTER_NODE (my_node2,static) = {
   .function = my_func,
   .name = "my-node2",
   .scalar_size = sizeof (my_frame_t),
   .vector_size = STRUCT_SIZE_OF (my_frame_t, vector[0]),
 };
-/* *INDENT-ON* */
 
 #endif
 
@@ -209,13 +205,13 @@ my_proc (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   return i;
 }
 
-/* *INDENT-OFF* */
+
 VLIB_REGISTER_NODE (my_proc_node,static) = {
   .function = my_proc,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "my-proc",
 };
-/* *INDENT-ON* */
+
 
 static uword
 my_proc_input (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
@@ -250,13 +246,13 @@ my_proc_input (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   return 0;
 }
 
-/* *INDENT-OFF* */
+
 VLIB_REGISTER_NODE (my_proc_input_node,static) = {
   .function = my_proc_input,
   .type = VLIB_NODE_TYPE_INPUT,
   .name = "my-proc-input",
 };
-/* *INDENT-ON* */
+
 
 static uword
 _unformat_farith (unformat_input_t * i, va_list * args)
@@ -384,7 +380,7 @@ bar_command (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (bar_command2, static) = {
   .path = "bar %decimal_integer",
   .short_help = "bar1 command",
@@ -403,7 +399,6 @@ VLIB_CLI_COMMAND (bar_command3, static) = {
   .function = bar_command,
   .function_arg = 3,
 };
-/* *INDENT-ON* */
 
 #endif
 

@@ -48,7 +48,7 @@ typedef struct qos_egress_map_t_
   qos_bits_t qem_output[QOS_N_SOURCES][256];
 } qos_egress_map_t;
 
-extern u8 *format_qos_egress_map (u8 * s, va_list * args);
+extern u8 *format_qos_egress_map (u8 *s, va_list *args);
 
 /**
  * Add a qos-egress map to an interface. If sw_if_index = ~0
@@ -59,7 +59,7 @@ extern u8 *format_qos_egress_map (u8 * s, va_list * args);
  */
 extern void qos_egress_map_update (qos_egress_map_id_t tid,
 				   qos_source_t input_source,
-				   qos_bits_t * values);
+				   qos_bits_t *values);
 extern void qos_egress_map_delete (qos_egress_map_id_t tid);
 
 /**
@@ -72,7 +72,7 @@ extern qos_egress_map_id_t qos_egress_map_get_id (index_t qemi);
  * Walk each of the configured maps
  */
 typedef walk_rc_t (*qos_egress_map_walk_cb_t) (qos_egress_map_id_t id,
-					       const qos_egress_map_t * m,
+					       const qos_egress_map_t *m,
 					       void *c);
 void qos_egress_map_walk (qos_egress_map_walk_cb_t fn, void *c);
 

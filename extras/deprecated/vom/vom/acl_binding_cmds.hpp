@@ -28,7 +28,7 @@ namespace binding_cmds {
 /**
  * A command class that binds the ACL to the interface
  */
-template <typename BIND>
+template<typename BIND>
 class bind_cmd : public rpc_cmd<HW::item<bool>, BIND>
 {
 public:
@@ -43,8 +43,7 @@ public:
     , m_direction(direction)
     , m_itf(itf)
     , m_acl(acl)
-  {
-  }
+  {}
 
   /**
    * Issue the command to VPP/HW
@@ -84,7 +83,7 @@ private:
 /**
  * A command class that binds the ACL to the interface
  */
-template <typename BIND>
+template<typename BIND>
 class unbind_cmd : public rpc_cmd<HW::item<bool>, BIND>
 {
 public:
@@ -99,8 +98,7 @@ public:
     , m_direction(direction)
     , m_itf(itf)
     , m_acl(acl)
-  {
-  }
+  {}
 
   /**
    * Issue the command to VPP/HW
@@ -140,7 +138,7 @@ private:
 /**
  * A cmd class that Dumps all the ACLs
  */
-template <typename DUMP>
+template<typename DUMP>
 class dump_cmd : public VOM::dump_cmd<DUMP>
 {
 public:

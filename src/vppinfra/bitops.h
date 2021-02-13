@@ -88,7 +88,7 @@ typedef struct
 } compress_main_t;
 
 always_inline void
-compress_init (compress_main_t * cm, uword mask)
+compress_init (compress_main_t *cm, uword mask)
 {
   uword q, m, zm, n, i;
 
@@ -115,7 +115,7 @@ compress_init (compress_main_t * cm, uword mask)
 }
 
 always_inline uword
-compress_bits (compress_main_t * cm, uword x)
+compress_bits (compress_main_t *cm, uword x)
 {
   uword q, r;
 
@@ -163,18 +163,24 @@ next_with_same_number_of_set_bits (uword x)
   return ripple | ones;
 }
 
-#define foreach_set_bit(var,mask,body)					\
-do {									\
-  uword _foreach_set_bit_m_##var = (mask);				\
-  uword _foreach_set_bit_f_##var;					\
-  while (_foreach_set_bit_m_##var != 0)					\
-    {									\
-      _foreach_set_bit_f_##var = first_set (_foreach_set_bit_m_##var);	\
-      _foreach_set_bit_m_##var ^= _foreach_set_bit_f_##var;		\
-      (var) = min_log2 (_foreach_set_bit_f_##var);			\
-      do { body; } while (0);						\
-    }									\
-} while (0)
+#define foreach_set_bit(var, mask, body)                                      \
+  do                                                                          \
+    {                                                                         \
+      uword _foreach_set_bit_m_##var = (mask);                                \
+      uword _foreach_set_bit_f_##var;                                         \
+      while (_foreach_set_bit_m_##var != 0)                                   \
+	{                                                                     \
+	  _foreach_set_bit_f_##var = first_set (_foreach_set_bit_m_##var);    \
+	  _foreach_set_bit_m_##var ^= _foreach_set_bit_f_##var;               \
+	  (var) = min_log2 (_foreach_set_bit_f_##var);                        \
+	  do                                                                  \
+	    {                                                                 \
+	      body;                                                           \
+	    }                                                                 \
+	  while (0);                                                          \
+	}                                                                     \
+    }                                                                         \
+  while (0)
 
 #endif /* included_clib_bitops_h */
 

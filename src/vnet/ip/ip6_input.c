@@ -48,22 +48,22 @@ typedef struct
 } ip6_input_trace_t;
 
 static u8 *
-format_ip6_input_trace (u8 * s, va_list * va)
+format_ip6_input_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
   ip6_input_trace_t *t = va_arg (*va, ip6_input_trace_t *);
 
-  s = format (s, "%U",
-	      format_ip6_header, t->packet_data, sizeof (t->packet_data));
+  s = format (s, "%U", format_ip6_header, t->packet_data,
+	      sizeof (t->packet_data));
 
   return s;
 }
 
 /* Validate IP v6 packets and pass them either to forwarding code
    or drop exception packets. */
-VLIB_NODE_FN (ip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			       vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip6_main_t *im = &ip6_main;
@@ -81,8 +81,7 @@ VLIB_NODE_FN (ip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     vlib_trace_frame_buffers_only (vm, node, from, frame->n_vectors,
-				   /* stride */ 1,
-				   sizeof (ip6_input_trace_t));
+				   /* stride */ 1, sizeof (ip6_input_trace_t));
 
   cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
 			 VNET_INTERFACE_COUNTER_IP6);
@@ -164,12 +163,12 @@ VLIB_NODE_FN (ip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  vlib_increment_simple_counter (cm, thread_index, sw_if_index0, 1);
 	  vlib_increment_simple_counter (cm, thread_index, sw_if_index1, 1);
-	  ip6_input_check_x2 (vm, error_node,
-			      p0, p1, ip0, ip1, &next0, &next1);
+	  ip6_input_check_x2 (vm, error_node, p0, p1, ip0, ip1, &next0,
+			      &next1);
 
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   pi0, pi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, pi0, pi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -207,9 +206,8 @@ VLIB_NODE_FN (ip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_increment_simple_counter (cm, thread_index, sw_if_index0, 1);
 	  ip6_input_check_x1 (vm, error_node, p0, ip0, &next0);
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   pi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, pi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -220,13 +218,12 @@ VLIB_NODE_FN (ip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 #ifndef CLIB_MARCH_VARIANT
 char *ip6_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ip6_error
 #undef _
 };
 #endif /* CLIB_MARCH_VARIANT */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_input_node) = {
   .name = "ip6-input",
   .vector_size = sizeof (u32),
@@ -245,10 +242,9 @@ VLIB_REGISTER_NODE (ip6_input_node) = {
   .format_buffer = format_ip6_header,
   .format_trace = format_ip6_input_trace,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-ip6_init (vlib_main_t * vm)
+ip6_init (vlib_main_t *vm)
 {
   ethernet_register_input_type (vm, ETHERNET_TYPE_IP6, ip6_input_node.index);
   ppp_register_input_protocol (vm, PPP_PROTOCOL_ip6, ip6_input_node.index);
@@ -266,12 +262,10 @@ ip6_init (vlib_main_t * vm)
   /* Default hop limit for packets we generate. */
   ip6_main.host_config.ttl = 64;
 
-
   uword *u = hash_get (ip_main.protocol_info_by_name, "IPV6_FRAGMENTATION");
   if (u)
     {
-      ip_protocol_info_t *info =
-	vec_elt_at_index (ip_main.protocol_infos, *u);
+      ip_protocol_info_t *info = vec_elt_at_index (ip_main.protocol_infos, *u);
       ASSERT (NULL == info->format_header);
       info->format_header = format_ip6_frag_hdr;
     }

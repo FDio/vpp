@@ -48,8 +48,8 @@ typedef struct
 
 extern wg_main_t wg_main;
 
-#define WG_START_EVENT	1
-void wg_feature_init (wg_main_t * wmp);
+#define WG_START_EVENT 1
+void wg_feature_init (wg_main_t *wmp);
 
 #endif /* __included_wg_h__ */
 

@@ -59,13 +59,12 @@ typedef struct
   {
     struct
     {
-      u8 push_bytes;		/* number of bytes to push for up to 2 vlans (0,4,8) */
-      u8 pop_bytes;		/* number of bytes to pop for up to 2 vlans (0,4,8) */
+      u8 push_bytes; /* number of bytes to push for up to 2 vlans (0,4,8) */
+      u8 pop_bytes;  /* number of bytes to pop for up to 2 vlans (0,4,8) */
     };
-    u16 push_and_pop_bytes;	/* if 0 then the feature is disabled */
+    u16 push_and_pop_bytes; /* if 0 then the feature is disabled */
   };
 } vtr_config_t;
-
 
 /**
  * Perform the configured tag rewrite on the packet.
@@ -73,7 +72,7 @@ typedef struct
  * too many tags)
  */
 always_inline u32
-l2_vtr_process (vlib_buffer_t * b0, vtr_config_t * config)
+l2_vtr_process (vlib_buffer_t *b0, vtr_config_t *config)
 {
   u64 temp_8;
   u32 temp_4;
@@ -113,9 +112,8 @@ l2_vtr_process (vlib_buffer_t * b0, vtr_config_t * config)
     (word) config->push_bytes - (word) config->pop_bytes;
 
   /* Update vlan tag count */
-  ethernet_buffer_adjust_vlan_count_by_bytes (b0,
-					      (word) config->push_bytes -
-					      (word) config->pop_bytes);
+  ethernet_buffer_adjust_vlan_count_by_bytes (b0, (word) config->push_bytes -
+						    (word) config->pop_bytes);
 
   /* Update packet len */
   vlib_buffer_advance (b0,
@@ -123,7 +121,6 @@ l2_vtr_process (vlib_buffer_t * b0, vtr_config_t * config)
 
   return 0;
 }
-
 
 /*
  *  Perform the egress pre-vlan tag rewrite EFP Filter check.
@@ -139,7 +136,7 @@ l2_vtr_process (vlib_buffer_t * b0, vtr_config_t * config)
  * This function should be passed the input vtr config for the interface.
  */
 always_inline u8
-l2_efp_filter_process (vlib_buffer_t * b0, vtr_config_t * in_config)
+l2_efp_filter_process (vlib_buffer_t *b0, vtr_config_t *in_config)
 {
   u8 *eth;
   u64 packet_tags;
@@ -157,9 +154,8 @@ l2_efp_filter_process (vlib_buffer_t * b0, vtr_config_t * in_config)
   /* mask for two vlan id and ethertypes, no cos bits */
   tag_mask = clib_net_to_host_u64 (0xFFFF0FFFFFFF0FFF);
   /* mask for one vlan id and ethertype, no cos bits */
-  tag_mask =
-    (in_config->push_bytes ==
-     4) ? clib_net_to_host_u64 (0xFFFF0FFF) : tag_mask;
+  tag_mask = (in_config->push_bytes == 4) ? clib_net_to_host_u64 (0xFFFF0FFF) :
+					    tag_mask;
   /* mask for always match */
   tag_mask = (in_config->push_bytes == 0) ? 0 : tag_mask;
 
@@ -191,15 +187,15 @@ typedef struct
   {
     struct
     {
-      u8 push_bytes;		/* number of bytes to push pbb tags */
-      u8 pop_bytes;		/* number of bytes to pop pbb tags */
+      u8 push_bytes; /* number of bytes to push pbb tags */
+      u8 pop_bytes;  /* number of bytes to pop pbb tags */
     };
-    u16 push_and_pop_bytes;	/* if 0 then the feature is disabled */
+    u16 push_and_pop_bytes; /* if 0 then the feature is disabled */
   };
 } ptr_config_t;
 
 always_inline u32
-l2_pbb_process (vlib_buffer_t * b0, ptr_config_t * config)
+l2_pbb_process (vlib_buffer_t *b0, ptr_config_t *config)
 {
   u8 *eth = vlib_buffer_get_current (b0);
 
@@ -209,9 +205,9 @@ l2_pbb_process (vlib_buffer_t * b0, ptr_config_t * config)
 
       // drop packet without PBB header or with wrong I-tag or B-tag
       if (clib_net_to_host_u16 (ph->priority_dei_id) !=
-	  clib_net_to_host_u16 (config->macs_tags.priority_dei_id)
-	  || clib_net_to_host_u32 (ph->priority_dei_uca_res_sid) !=
-	  clib_net_to_host_u32 (config->macs_tags.priority_dei_uca_res_sid))
+	    clib_net_to_host_u16 (config->macs_tags.priority_dei_id) ||
+	  clib_net_to_host_u32 (ph->priority_dei_uca_res_sid) !=
+	    clib_net_to_host_u32 (config->macs_tags.priority_dei_uca_res_sid))
 	return 1;
 
       eth += config->pop_bytes;
@@ -237,43 +233,34 @@ l2_pbb_process (vlib_buffer_t * b0, ptr_config_t * config)
   return 0;
 }
 
-u32 l2pbb_configure (vlib_main_t * vlib_main,
-		     vnet_main_t * vnet_main, u32 sw_if_index, u32 vtr_op,
-		     u8 * b_dmac, u8 * b_smac,
+u32 l2pbb_configure (vlib_main_t *vlib_main, vnet_main_t *vnet_main,
+		     u32 sw_if_index, u32 vtr_op, u8 *b_dmac, u8 *b_smac,
 		     u16 b_vlanid, u32 i_sid, u16 vlan_outer_tag);
 
 /**
  * Configure vtag tag rewrite on the given interface.
  * Return 1 if there is an error, 0 if ok
  */
-u32 l2vtr_configure (vlib_main_t * vlib_main,
-		     vnet_main_t * vnet_main,
-		     u32 sw_if_index,
-		     u32 vtr_op, u32 push_dot1q, u32 vtr_tag1, u32 vtr_tag2);
+u32 l2vtr_configure (vlib_main_t *vlib_main, vnet_main_t *vnet_main,
+		     u32 sw_if_index, u32 vtr_op, u32 push_dot1q, u32 vtr_tag1,
+		     u32 vtr_tag2);
 
 /**
  * Get vtag tag rewrite on the given interface.
  * Return 1 if there is an error, 0 if ok
  */
-u32 l2vtr_get (vlib_main_t * vlib_main,
-	       vnet_main_t * vnet_main,
-	       u32 sw_if_index,
-	       u32 * vtr_op,
-	       u32 * push_dot1q, u32 * vtr_tag1, u32 * vtr_tag2);
+u32 l2vtr_get (vlib_main_t *vlib_main, vnet_main_t *vnet_main, u32 sw_if_index,
+	       u32 *vtr_op, u32 *push_dot1q, u32 *vtr_tag1, u32 *vtr_tag2);
 
 /**
  * Get pbb tag rewrite on the given interface.
  * Return 1 if there is an error, 0 if ok
  */
-u32 l2pbb_get (vlib_main_t * vlib_main,
-	       vnet_main_t * vnet_main,
-	       u32 sw_if_index,
-	       u32 * vtr_op,
-	       u16 * outer_tag,
-	       ethernet_header_t * eth_hdr, u16 * b_vlanid, u32 * i_sid);
+u32 l2pbb_get (vlib_main_t *vlib_main, vnet_main_t *vnet_main, u32 sw_if_index,
+	       u32 *vtr_op, u16 *outer_tag, ethernet_header_t *eth_hdr,
+	       u16 *b_vlanid, u32 *i_sid);
 
 #endif /* included_vnet_l2_vtr_h */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

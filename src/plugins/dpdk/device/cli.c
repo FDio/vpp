@@ -39,32 +39,31 @@
  * Abstraction Layer and pcap Tx Trace.
  */
 
-
 static clib_error_t *
-show_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
-		  vlib_cli_command_t * cmd)
+show_dpdk_buffer (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_pool_t *bp;
 
   vec_foreach (bp, bm->buffer_pools)
-  {
-    struct rte_mempool *rmp = dpdk_mempool_by_buffer_pool_index[bp->index];
-    if (rmp)
-      {
-	unsigned count = rte_mempool_avail_count (rmp);
-	unsigned free_count = rte_mempool_in_use_count (rmp);
+    {
+      struct rte_mempool *rmp = dpdk_mempool_by_buffer_pool_index[bp->index];
+      if (rmp)
+	{
+	  unsigned count = rte_mempool_avail_count (rmp);
+	  unsigned free_count = rte_mempool_in_use_count (rmp);
 
-	vlib_cli_output (vm,
-			 "name=\"%s\"  available = %7d allocated = %7d total = %7d\n",
-			 rmp->name, (u32) count, (u32) free_count,
-			 (u32) (count + free_count));
-      }
-    else
-      {
-	vlib_cli_output (vm, "rte_mempool is NULL (!)\n");
-      }
-  }
+	  vlib_cli_output (
+	    vm, "name=\"%s\"  available = %7d allocated = %7d total = %7d\n",
+	    rmp->name, (u32) count, (u32) free_count,
+	    (u32) (count + free_count));
+	}
+      else
+	{
+	  vlib_cli_output (vm, "rte_mempool is NULL (!)\n");
+	}
+    }
   return 0;
 }
 
@@ -74,21 +73,21 @@ show_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
  * @cliexpar
  * Example of how to display DPDK buffer data:
  * @cliexstart{show dpdk buffer}
- * name="mbuf_pool_socket0"  available =   15104 allocated =    1280 total =   16384
+ * name="mbuf_pool_socket0"  available =   15104 allocated =    1280 total =
+16384
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cmd_show_dpdk_buffer,static) = {
-    .path = "show dpdk buffer",
-    .short_help = "show dpdk buffer",
-    .function = show_dpdk_buffer,
-    .is_mp_safe = 1,
+
+VLIB_CLI_COMMAND (cmd_show_dpdk_buffer, static) = {
+  .path = "show dpdk buffer",
+  .short_help = "show dpdk buffer",
+  .function = show_dpdk_buffer,
+  .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_dpdk_physmem (vlib_main_t * vm, unformat_input_t * input,
-		   vlib_cli_command_t * cmd)
+show_dpdk_physmem (vlib_main_t *vm, unformat_input_t *input,
+		   vlib_cli_command_t *cmd)
 {
   clib_error_t *err = 0;
   u32 pipe_max_size;
@@ -106,7 +105,7 @@ show_dpdk_physmem (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return_unix (0, "pipe");
 
 #ifndef F_SETPIPE_SZ
-#define F_SETPIPE_SZ	(1024 + 7)
+#define F_SETPIPE_SZ (1024 + 7)
 #endif
 
   if (fcntl (fds[1], F_SETPIPE_SZ, pipe_max_size) == -1)
@@ -162,18 +161,17 @@ error:
  * @cliexstart{show dpdk physmem}
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cmd_show_dpdk_physmem,static) = {
-    .path = "show dpdk physmem",
-    .short_help = "show dpdk physmem",
-    .function = show_dpdk_physmem,
-    .is_mp_safe = 1,
+
+VLIB_CLI_COMMAND (cmd_show_dpdk_physmem, static) = {
+  .path = "show dpdk physmem",
+  .short_help = "show dpdk physmem",
+  .function = show_dpdk_physmem,
+  .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-test_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
-		  vlib_cli_command_t * cmd)
+test_dpdk_buffer (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd)
 {
   static u32 *allocated_buffers;
   u32 n_alloc = 0;
@@ -206,8 +204,8 @@ test_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
       vec_validate (allocated_buffers,
 		    vec_len (allocated_buffers) + n_alloc - 1);
 
-      actual_alloc = vlib_buffer_alloc (vm, allocated_buffers + first,
-					n_alloc);
+      actual_alloc =
+	vlib_buffer_alloc (vm, allocated_buffers + first, n_alloc);
       _vec_len (allocated_buffers) = first + actual_alloc;
 
       if (actual_alloc < n_alloc)
@@ -250,26 +248,25 @@ test_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
  * @cliexend
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cmd_test_dpdk_buffer,static) = {
-    .path = "test dpdk buffer",
-    .short_help = "test dpdk buffer [allocate <nn>] [free <nn>]",
-    .function = test_dpdk_buffer,
-    .is_mp_safe = 1,
+
+VLIB_CLI_COMMAND (cmd_test_dpdk_buffer, static) = {
+  .path = "test dpdk buffer",
+  .short_help = "test dpdk buffer [allocate <nn>] [free <nn>]",
+  .function = test_dpdk_buffer,
+  .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
-		  vlib_cli_command_t * cmd)
+set_dpdk_if_desc (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   dpdk_main_t *dm = &dpdk_main;
   vnet_hw_interface_t *hw;
   dpdk_device_t *xd;
-  u32 hw_if_index = (u32) ~ 0;
-  u32 nb_rx_desc = (u32) ~ 0;
-  u32 nb_tx_desc = (u32) ~ 0;
+  u32 hw_if_index = (u32) ~0;
+  u32 nb_rx_desc = (u32) ~0;
+  u32 nb_tx_desc = (u32) ~0;
   clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -277,9 +274,8 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (line_input, "%U", unformat_vnet_hw_interface, dm->vnet_main,
-	   &hw_if_index))
+      if (unformat (line_input, "%U", unformat_vnet_hw_interface,
+		    dm->vnet_main, &hw_if_index))
 	;
       else if (unformat (line_input, "tx %d", &nb_tx_desc))
 	;
@@ -293,7 +289,7 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
 	}
     }
 
-  if (hw_if_index == (u32) ~ 0)
+  if (hw_if_index == (u32) ~0)
     {
       error = clib_error_return (0, "please specify valid interface name");
       goto done;
@@ -305,23 +301,22 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
   if ((xd->flags & DPDK_DEVICE_FLAG_PMD) == 0)
     {
       error =
-	clib_error_return (0,
-			   "number of descriptors can be set only for "
-			   "physical devices");
+	clib_error_return (0, "number of descriptors can be set only for "
+			      "physical devices");
       goto done;
     }
 
-  if ((nb_rx_desc == (u32) ~ 0 || nb_rx_desc == xd->nb_rx_desc) &&
-      (nb_tx_desc == (u32) ~ 0 || nb_tx_desc == xd->nb_tx_desc))
+  if ((nb_rx_desc == (u32) ~0 || nb_rx_desc == xd->nb_rx_desc) &&
+      (nb_tx_desc == (u32) ~0 || nb_tx_desc == xd->nb_tx_desc))
     {
       error = clib_error_return (0, "nothing changed");
       goto done;
     }
 
-  if (nb_rx_desc != (u32) ~ 0)
+  if (nb_rx_desc != (u32) ~0)
     xd->nb_rx_desc = nb_rx_desc;
 
-  if (nb_tx_desc != (u32) ~ 0)
+  if (nb_tx_desc != (u32) ~0)
     xd->nb_tx_desc = nb_tx_desc;
 
   dpdk_device_setup (xd);
@@ -345,22 +340,21 @@ done:
  * Example of how to set the DPDK interface descriptors:
  * @cliexcmd{set dpdk interface descriptors GigabitEthernet0/8/0 rx 512 tx 512}
 ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cmd_set_dpdk_if_desc,static) = {
-    .path = "set dpdk interface descriptors",
-    .short_help = "set dpdk interface descriptors <interface> [rx <nn>] [tx <nn>]",
-    .function = set_dpdk_if_desc,
+
+VLIB_CLI_COMMAND (cmd_set_dpdk_if_desc, static) = {
+  .path = "set dpdk interface descriptors",
+  .short_help =
+    "set dpdk interface descriptors <interface> [rx <nn>] [tx <nn>]",
+  .function = set_dpdk_if_desc,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_dpdk_version_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+show_dpdk_version_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
-#define _(a,b,c) vlib_cli_output (vm, "%-25s " b, a ":", c);
-  _("DPDK Version", "%s", rte_version ());
-  _("DPDK EAL init args", "%s", dpdk_config_main.eal_init_args_str);
+#define _(a, b, c) vlib_cli_output (vm, "%-25s " b, a ":", c);
+  _ ("DPDK Version", "%s", rte_version ());
+  _ ("DPDK EAL init args", "%s", dpdk_config_main.eal_init_args_str);
 #undef _
   return 0;
 }
@@ -373,16 +367,16 @@ show_dpdk_version_command_fn (vlib_main_t * vm,
  * Example of how to display how many DPDK buffer test command has allocated:
  * @cliexstart{show dpdk version}
  * DPDK Version:        DPDK 16.11.0
- * DPDK EAL init args:  -c 1 -n 4 --huge-dir /run/vpp/hugepages --file-prefix vpp -w 0000:00:08.0 -w 0000:00:09.0 --master-lcore 0 --socket-mem 256
+ * DPDK EAL init args:  -c 1 -n 4 --huge-dir /run/vpp/hugepages --file-prefix
+vpp -w 0000:00:08.0 -w 0000:00:09.0 --master-lcore 0 --socket-mem 256
  * @cliexend
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (show_vpe_version_command, static) = {
   .path = "show dpdk version",
   .short_help = "show dpdk version",
   .function = show_dpdk_version_command_fn,
 };
-/* *INDENT-ON* */
 
 /* Dummy function to get us linked in. */
 void
@@ -391,7 +385,7 @@ dpdk_cli_reference (void)
 }
 
 clib_error_t *
-dpdk_cli_init (vlib_main_t * vm)
+dpdk_cli_init (vlib_main_t *vm)
 {
   return 0;
 }

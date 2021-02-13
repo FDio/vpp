@@ -26,8 +26,8 @@ namespace VOM {
 namespace ip_punt_redirect_cmds {
 
 /**
-*A command class that configures the IP punt_redirect
-*/
+ *A command class that configures the IP punt_redirect
+ */
 class config_cmd : public rpc_cmd<HW::item<bool>, vapi::Ip_punt_redirect>
 {
 public:

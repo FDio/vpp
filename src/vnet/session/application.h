@@ -81,15 +81,15 @@ typedef struct app_worker_map_
 
 typedef struct app_listener_
 {
-  clib_bitmap_t *workers;	/**< workers accepting connections */
-  u32 accept_rotor;		/**< last worker to accept a connection */
-  u32 al_index;			/**< app listener index in app pool */
-  u32 app_index;		/**< owning app index */
-  u32 local_index;		/**< local listening session index */
-  u32 session_index;		/**< global listening session index */
-  session_handle_t ls_handle;	/**< session handle of the local or global
-				     listening session that also identifies
-				     the app listener */
+  clib_bitmap_t *workers;     /**< workers accepting connections */
+  u32 accept_rotor;	      /**< last worker to accept a connection */
+  u32 al_index;		      /**< app listener index in app pool */
+  u32 app_index;	      /**< owning app index */
+  u32 local_index;	      /**< local listening session index */
+  u32 session_index;	      /**< global listening session index */
+  session_handle_t ls_handle; /**< session handle of the local or global
+				   listening session that also identifies
+				   the app listener */
 } app_listener_t;
 
 typedef struct application_
@@ -166,27 +166,27 @@ typedef struct app_init_args_
 
 typedef struct _vnet_app_worker_add_del_args
 {
-  u32 app_index;		/**< App for which a new worker is requested */
-  u32 wrk_map_index;		/**< Index to delete or return value if add */
-  u32 api_client_index;		/**< Binary API client index */
-  ssvm_private_t *segment;	/**< First segment in segment manager */
-  u64 segment_handle;		/**< Handle for the segment */
-  svm_msg_q_t *evt_q;		/**< Worker message queue */
-  u8 is_add;			/**< Flag set if addition */
+  u32 app_index;	   /**< App for which a new worker is requested */
+  u32 wrk_map_index;	   /**< Index to delete or return value if add */
+  u32 api_client_index;	   /**< Binary API client index */
+  ssvm_private_t *segment; /**< First segment in segment manager */
+  u64 segment_handle;	   /**< Handle for the segment */
+  svm_msg_q_t *evt_q;	   /**< Worker message queue */
+  u8 is_add;		   /**< Flag set if addition */
 } vnet_app_worker_add_del_args_t;
 
-#define APP_INVALID_INDEX ((u32)~0)
-#define APP_NS_INVALID_INDEX ((u32)~0)
+#define APP_INVALID_INDEX		  ((u32) ~0)
+#define APP_NS_INVALID_INDEX		  ((u32) ~0)
 #define APP_INVALID_SEGMENT_MANAGER_INDEX ((u32) ~0)
 
-app_listener_t *app_listener_get (application_t * app, u32 al_index);
-int app_listener_alloc_and_init (application_t * app,
-				 session_endpoint_cfg_t * sep,
-				 app_listener_t ** listener);
-void app_listener_cleanup (app_listener_t * app_listener);
-session_handle_t app_listener_handle (app_listener_t * app_listener);
-app_listener_t *app_listener_lookup (application_t * app,
-				     session_endpoint_cfg_t * sep);
+app_listener_t *app_listener_get (application_t *app, u32 al_index);
+int app_listener_alloc_and_init (application_t *app,
+				 session_endpoint_cfg_t *sep,
+				 app_listener_t **listener);
+void app_listener_cleanup (app_listener_t *app_listener);
+session_handle_t app_listener_handle (app_listener_t *app_listener);
+app_listener_t *app_listener_lookup (application_t *app,
+				     session_endpoint_cfg_t *sep);
 
 /**
  * Get app listener handle for listening session
@@ -198,7 +198,7 @@ app_listener_t *app_listener_lookup (application_t * app,
  * @param ls		listening session
  * @return		app listener or listening session handle
  */
-session_handle_t app_listen_session_handle (session_t * ls);
+session_handle_t app_listen_session_handle (session_t *ls);
 /**
  * Get app listener for listener session handle
  *
@@ -210,103 +210,99 @@ session_handle_t app_listen_session_handle (session_t * ls);
  * @return		pointer to app listener or 0
  */
 app_listener_t *app_listener_get_w_handle (session_handle_t handle);
-app_listener_t *app_listener_get_w_session (session_t * ls);
-session_t *app_listener_get_session (app_listener_t * al);
-session_t *app_listener_get_local_session (app_listener_t * al);
+app_listener_t *app_listener_get_w_session (session_t *ls);
+session_t *app_listener_get_session (app_listener_t *al);
+session_t *app_listener_get_local_session (app_listener_t *al);
 
 application_t *application_get (u32 index);
 application_t *application_get_if_valid (u32 index);
 application_t *application_lookup (u32 api_client_index);
-application_t *application_lookup_name (const u8 * name);
-app_worker_t *application_get_worker (application_t * app, u32 wrk_index);
-app_worker_t *application_get_default_worker (application_t * app);
-app_worker_t *application_listener_select_worker (session_t * ls);
-int application_change_listener_owner (session_t * s, app_worker_t * app_wrk);
-int application_is_proxy (application_t * app);
-int application_is_builtin (application_t * app);
-int application_is_builtin_proxy (application_t * app);
-u32 application_session_table (application_t * app, u8 fib_proto);
-u32 application_local_session_table (application_t * app);
+application_t *application_lookup_name (const u8 *name);
+app_worker_t *application_get_worker (application_t *app, u32 wrk_index);
+app_worker_t *application_get_default_worker (application_t *app);
+app_worker_t *application_listener_select_worker (session_t *ls);
+int application_change_listener_owner (session_t *s, app_worker_t *app_wrk);
+int application_is_proxy (application_t *app);
+int application_is_builtin (application_t *app);
+int application_is_builtin_proxy (application_t *app);
+u32 application_session_table (application_t *app, u8 fib_proto);
+u32 application_local_session_table (application_t *app);
 const u8 *application_name_from_index (u32 app_or_wrk);
-u8 application_has_local_scope (application_t * app);
-u8 application_has_global_scope (application_t * app);
-void application_setup_proxy (application_t * app);
-void application_remove_proxy (application_t * app);
+u8 application_has_local_scope (application_t *app);
+u8 application_has_global_scope (application_t *app);
+void application_setup_proxy (application_t *app);
+void application_remove_proxy (application_t *app);
 
-segment_manager_props_t *application_get_segment_manager_properties (u32
-								     app_index);
+segment_manager_props_t *
+application_get_segment_manager_properties (u32 app_index);
 
-segment_manager_props_t
-  * application_segment_manager_properties (application_t * app);
+segment_manager_props_t *
+application_segment_manager_properties (application_t *app);
 
 /*
  * App worker
  */
 
-app_worker_t *app_worker_alloc (application_t * app);
-int application_alloc_worker_and_init (application_t * app,
-				       app_worker_t ** wrk);
+app_worker_t *app_worker_alloc (application_t *app);
+int application_alloc_worker_and_init (application_t *app, app_worker_t **wrk);
 app_worker_t *app_worker_get (u32 wrk_index);
 app_worker_t *app_worker_get_if_valid (u32 wrk_index);
 application_t *app_worker_get_app (u32 wrk_index);
-int app_worker_own_session (app_worker_t * app_wrk, session_t * s);
-void app_worker_free (app_worker_t * app_wrk);
-int app_worker_connect_session (app_worker_t * app, session_endpoint_t * tep,
+int app_worker_own_session (app_worker_t *app_wrk, session_t *s);
+void app_worker_free (app_worker_t *app_wrk);
+int app_worker_connect_session (app_worker_t *app, session_endpoint_t *tep,
 				u32 api_context);
-int app_worker_start_listen (app_worker_t * app_wrk, app_listener_t * lstnr);
-int app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al);
-int app_worker_init_accepted (session_t * s);
-int app_worker_accept_notify (app_worker_t * app_wrk, session_t * s);
-int app_worker_init_connected (app_worker_t * app_wrk, session_t * s);
-int app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
+int app_worker_start_listen (app_worker_t *app_wrk, app_listener_t *lstnr);
+int app_worker_stop_listen (app_worker_t *app_wrk, app_listener_t *al);
+int app_worker_init_accepted (session_t *s);
+int app_worker_accept_notify (app_worker_t *app_wrk, session_t *s);
+int app_worker_init_connected (app_worker_t *app_wrk, session_t *s);
+int app_worker_connect_notify (app_worker_t *app_wrk, session_t *s,
 			       session_error_t err, u32 opaque);
-int app_worker_add_half_open (app_worker_t * app_wrk, transport_proto_t tp,
+int app_worker_add_half_open (app_worker_t *app_wrk, transport_proto_t tp,
 			      session_handle_t ho_handle,
 			      session_handle_t wrk_handle);
-int app_worker_del_half_open (app_worker_t * app_wrk, transport_proto_t tp,
+int app_worker_del_half_open (app_worker_t *app_wrk, transport_proto_t tp,
 			      session_handle_t ho_handle);
-u64 app_worker_lookup_half_open (app_worker_t * app_wrk, transport_proto_t tp,
+u64 app_worker_lookup_half_open (app_worker_t *app_wrk, transport_proto_t tp,
 				 session_handle_t ho_handle);
-int app_worker_close_notify (app_worker_t * app_wrk, session_t * s);
-int app_worker_transport_closed_notify (app_worker_t * app_wrk,
-					session_t * s);
-int app_worker_reset_notify (app_worker_t * app_wrk, session_t * s);
-int app_worker_cleanup_notify (app_worker_t * app_wrk, session_t * s,
+int app_worker_close_notify (app_worker_t *app_wrk, session_t *s);
+int app_worker_transport_closed_notify (app_worker_t *app_wrk, session_t *s);
+int app_worker_reset_notify (app_worker_t *app_wrk, session_t *s);
+int app_worker_cleanup_notify (app_worker_t *app_wrk, session_t *s,
 			       session_cleanup_ntf_t ntf);
-int app_worker_migrate_notify (app_worker_t * app_wrk, session_t * s,
+int app_worker_migrate_notify (app_worker_t *app_wrk, session_t *s,
 			       session_handle_t new_sh);
-int app_worker_builtin_rx (app_worker_t * app_wrk, session_t * s);
-int app_worker_builtin_tx (app_worker_t * app_wrk, session_t * s);
-int app_worker_session_fifo_tuning (app_worker_t * app_wrk, session_t * s,
-				    svm_fifo_t * f,
-				    session_ft_action_t act, u32 len);
+int app_worker_builtin_rx (app_worker_t *app_wrk, session_t *s);
+int app_worker_builtin_tx (app_worker_t *app_wrk, session_t *s);
+int app_worker_session_fifo_tuning (app_worker_t *app_wrk, session_t *s,
+				    svm_fifo_t *f, session_ft_action_t act,
+				    u32 len);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
 							  session_t *);
 segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
-segment_manager_t
-  * app_worker_get_or_alloc_connect_segment_manager (app_worker_t *);
-int app_worker_alloc_connects_segment_manager (app_worker_t * app);
-int app_worker_add_segment_notify (app_worker_t * app_wrk,
-				   u64 segment_handle);
-int app_worker_del_segment_notify (app_worker_t * app_wrk,
-				   u64 segment_handle);
-u32 app_worker_n_listeners (app_worker_t * app);
-session_t *app_worker_first_listener (app_worker_t * app,
-				      u8 fib_proto, u8 transport_proto);
-int app_worker_send_event (app_worker_t * app, session_t * s, u8 evt);
-int app_worker_lock_and_send_event (app_worker_t * app, session_t * s,
-				    u8 evt_type);
-session_t *app_worker_proxy_listener (app_worker_t * app, u8 fib_proto,
+segment_manager_t *
+app_worker_get_or_alloc_connect_segment_manager (app_worker_t *);
+int app_worker_alloc_connects_segment_manager (app_worker_t *app);
+int app_worker_add_segment_notify (app_worker_t *app_wrk, u64 segment_handle);
+int app_worker_del_segment_notify (app_worker_t *app_wrk, u64 segment_handle);
+u32 app_worker_n_listeners (app_worker_t *app);
+session_t *app_worker_first_listener (app_worker_t *app, u8 fib_proto,
 				      u8 transport_proto);
-void app_worker_del_detached_sm (app_worker_t * app_wrk, u32 sm_index);
-u8 *format_app_worker (u8 * s, va_list * args);
-u8 *format_app_worker_listener (u8 * s, va_list * args);
-u8 *format_crypto_engine (u8 * s, va_list * args);
-u8 *format_crypto_context (u8 * s, va_list * args);
-void app_worker_format_connects (app_worker_t * app_wrk, int verbose);
-int vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
+int app_worker_send_event (app_worker_t *app, session_t *s, u8 evt);
+int app_worker_lock_and_send_event (app_worker_t *app, session_t *s,
+				    u8 evt_type);
+session_t *app_worker_proxy_listener (app_worker_t *app, u8 fib_proto,
+				      u8 transport_proto);
+void app_worker_del_detached_sm (app_worker_t *app_wrk, u32 sm_index);
+u8 *format_app_worker (u8 *s, va_list *args);
+u8 *format_app_worker_listener (u8 *s, va_list *args);
+u8 *format_crypto_engine (u8 *s, va_list *args);
+u8 *format_crypto_context (u8 *s, va_list *args);
+void app_worker_format_connects (app_worker_t *app_wrk, int verbose);
+int vnet_app_worker_add_del (vnet_app_worker_add_del_args_t *a);
 
-uword unformat_application_proto (unformat_input_t * input, va_list * args);
+uword unformat_application_proto (unformat_input_t *input, va_list *args);
 
 app_cert_key_pair_t *app_cert_key_pair_get (u32 index);
 app_cert_key_pair_t *app_cert_key_pair_get_if_valid (u32 index);
@@ -316,8 +312,8 @@ app_cert_key_pair_t *app_cert_key_pair_get_default ();
 int mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 			      session_handle_t handle, int rv);
 int mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
-				  session_t * s, session_error_t err);
-void mq_send_unlisten_reply (app_worker_t * app_wrk, session_handle_t sh,
+				  session_t *s, session_error_t err);
+void mq_send_unlisten_reply (app_worker_t *app_wrk, session_handle_t sh,
 			     u32 context, int rv);
 
 crypto_engine_type_t app_crypto_engine_type_add (void);

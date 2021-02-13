@@ -83,22 +83,22 @@ print_packet (void *pck)
   icmp = (struct icmphdr *) (pck + sizeof (struct iphdr));
   printf ("received packet:\n");
   printf ("\tiphdr:\n");
-  printf ("\t\tihl: %u\n\t\tversion: %u\n\t\tlen: %u\n\t\tid: %u\n",
-	  ip->ihl, ip->version, __bswap_16 (ip->tot_len), ip->id);
+  printf ("\t\tihl: %u\n\t\tversion: %u\n\t\tlen: %u\n\t\tid: %u\n", ip->ihl,
+	  ip->version, __bswap_16 (ip->tot_len), ip->id);
   printf ("\t\tprotocol: %u\n", ip->protocol);
 
   printf ("\t\tsaddr: ");
   int i;
   for (i = 0; i < 4; i++)
     {
-      printf ("%u.", ((uint8_t *) & ip->saddr)[i]);
+      printf ("%u.", ((uint8_t *) &ip->saddr)[i]);
     }
   printf ("\n");
 
   printf ("\t\tdaddr: ");
   for (i = 0; i < 4; i++)
     {
-      printf ("%u.", ((uint8_t *) & ip->daddr)[i]);
+      printf ("%u.", ((uint8_t *) &ip->daddr)[i]);
     }
   printf ("\n");
   printf ("\ticmphdr:\n");
@@ -136,11 +136,11 @@ resolve_eth_arp (struct ether_arp *eth_arp, void *eth_arp_resp,
   memcpy (resp->arp_tha, eth_arp->arp_sha, 6);
   memcpy (resp->arp_tpa, eth_arp->arp_spa, 4);
 
-  memcpy (resp->arp_sha,
-	  (((struct ether_header *) (eth_arp_resp -
-				     sizeof (struct
-					     ether_header)))->ether_shost),
-	  6);
+  memcpy (
+    resp->arp_sha,
+    (((struct ether_header *) (eth_arp_resp - sizeof (struct ether_header)))
+       ->ether_shost),
+    6);
 
   memcpy (resp->arp_spa, ip_addr, 4);
 
@@ -179,10 +179,10 @@ resolve_ip (struct iphdr *ip, void *ip_resp, uint8_t ip_addr[4])
   resp->frag_off = 0;
   resp->ttl = 0x40;
   resp->protocol = 1;
-  ((uint8_t *) & resp->saddr)[0] = ip_addr[0];
-  ((uint8_t *) & resp->saddr)[1] = ip_addr[1];
-  ((uint8_t *) & resp->saddr)[2] = ip_addr[2];
-  ((uint8_t *) & resp->saddr)[3] = ip_addr[3];
+  ((uint8_t *) &resp->saddr)[0] = ip_addr[0];
+  ((uint8_t *) &resp->saddr)[1] = ip_addr[1];
+  ((uint8_t *) &resp->saddr)[2] = ip_addr[2];
+  ((uint8_t *) &resp->saddr)[3] = ip_addr[3];
   resp->daddr = ip->saddr;
 
   /* resp->check =  cksum (resp, sizeof (struct iphdr)); */
@@ -205,8 +205,8 @@ resolve_icmp (struct icmphdr *icmp, void *icmp_resp)
 }
 
 int
-resolve_packet (void *in_pck, ssize_t in_size,
-		void *out_pck, uint32_t * out_size, uint8_t ip_addr[4])
+resolve_packet (void *in_pck, ssize_t in_size, void *out_pck,
+		uint32_t *out_size, uint8_t ip_addr[4])
 {
   struct ether_header *eh;
   struct ether_arp *eah;
@@ -224,7 +224,6 @@ resolve_packet (void *in_pck, ssize_t in_size,
     {
       eah = (struct ether_arp *) (in_pck + *out_size);
       *out_size += resolve_eth_arp (eah, out_pck + *out_size, ip_addr);
-
     }
   else if (eh->ether_type == 0x0008)
     {
@@ -238,10 +237,9 @@ resolve_packet (void *in_pck, ssize_t in_size,
 	{
 	  icmp = (struct icmphdr *) (in_pck + *out_size);
 	  *out_size += resolve_icmp (icmp, out_pck + *out_size);
-	  ((struct icmphdr *) (out_pck + *out_size -
-			       sizeof (struct icmphdr)))->checksum =
-	    cksum (out_pck + *out_size - sizeof (struct icmphdr),
-		   sizeof (struct icmphdr));
+	  ((struct icmphdr *) (out_pck + *out_size - sizeof (struct icmphdr)))
+	    ->checksum = cksum (out_pck + *out_size - sizeof (struct icmphdr),
+				sizeof (struct icmphdr));
 	  /* payload */
 	  memcpy (out_pck + *out_size, in_pck + *out_size,
 		  in_size - *out_size);
@@ -284,15 +282,15 @@ generate_ip (struct iphdr *ip, uint8_t saddr[4], uint8_t daddr[4])
   ip->ttl = 0x40;
   ip->protocol = 1;
   /* saddr */
-  ((uint8_t *) & ip->saddr)[0] = saddr[0];
-  ((uint8_t *) & ip->saddr)[1] = saddr[1];
-  ((uint8_t *) & ip->saddr)[2] = saddr[2];
-  ((uint8_t *) & ip->saddr)[3] = saddr[3];
+  ((uint8_t *) &ip->saddr)[0] = saddr[0];
+  ((uint8_t *) &ip->saddr)[1] = saddr[1];
+  ((uint8_t *) &ip->saddr)[2] = saddr[2];
+  ((uint8_t *) &ip->saddr)[3] = saddr[3];
   /* daddr */
-  ((uint8_t *) & ip->daddr)[0] = daddr[0];
-  ((uint8_t *) & ip->daddr)[1] = daddr[1];
-  ((uint8_t *) & ip->daddr)[2] = daddr[2];
-  ((uint8_t *) & ip->daddr)[3] = daddr[3];
+  ((uint8_t *) &ip->daddr)[0] = daddr[0];
+  ((uint8_t *) &ip->daddr)[1] = daddr[1];
+  ((uint8_t *) &ip->daddr)[2] = daddr[2];
+  ((uint8_t *) &ip->daddr)[3] = daddr[3];
 
   ip->check = cksum (ip, sizeof (struct iphdr));
 
@@ -311,8 +309,8 @@ generate_icmp (struct icmphdr *icmp, uint32_t seq)
 }
 
 int
-generate_packet (void *pck, uint32_t * size, uint8_t saddr[4],
-		 uint8_t daddr[4], uint8_t hw_daddr[6], uint32_t seq)
+generate_packet (void *pck, uint32_t *size, uint8_t saddr[4], uint8_t daddr[4],
+		 uint8_t hw_daddr[6], uint32_t seq)
 {
   struct ether_header *eh;
   struct iphdr *ip;
@@ -340,7 +338,7 @@ generate_packet (void *pck, uint32_t * size, uint8_t saddr[4],
 }
 
 int
-generate_packet2 (void *pck, uint32_t * size, uint8_t saddr[4],
+generate_packet2 (void *pck, uint32_t *size, uint8_t saddr[4],
 		  uint8_t daddr[4], uint8_t hw_daddr[6], uint32_t seq,
 		  icmpr_flow_mode_t mode)
 {
@@ -372,13 +370,16 @@ generate_packet2 (void *pck, uint32_t * size, uint8_t saddr[4],
   return 0;
 }
 
-#define GET_HEADER(out,hdr,src,off) do {	\
-					out = (hdr*)(src + off); \
-					off += sizeof (hdr); \
-				} while (0)
+#define GET_HEADER(out, hdr, src, off)                                        \
+  do                                                                          \
+    {                                                                         \
+      out = (hdr *) (src + off);                                              \
+      off += sizeof (hdr);                                                    \
+    }                                                                         \
+  while (0)
 
 int
-resolve_packet2 (void *pck, uint32_t * size, uint8_t ip_addr[4])
+resolve_packet2 (void *pck, uint32_t *size, uint8_t ip_addr[4])
 {
   struct ether_header *eh;
   struct ether_arp *eah;
@@ -430,10 +431,10 @@ resolve_packet2 (void *pck, uint32_t * size, uint8_t ip_addr[4])
 	  ip->protocol = 1;
 	  ip->check = 0x0000;
 	  ip->daddr = ip->saddr;
-	  ((uint8_t *) & ip->saddr)[0] = ip_addr[0];
-	  ((uint8_t *) & ip->saddr)[1] = ip_addr[1];
-	  ((uint8_t *) & ip->saddr)[2] = ip_addr[2];
-	  ((uint8_t *) & ip->saddr)[3] = ip_addr[3];
+	  ((uint8_t *) &ip->saddr)[0] = ip_addr[0];
+	  ((uint8_t *) &ip->saddr)[1] = ip_addr[1];
+	  ((uint8_t *) &ip->saddr)[2] = ip_addr[2];
+	  ((uint8_t *) &ip->saddr)[3] = ip_addr[3];
 
 	  GET_HEADER (icmp, struct icmphdr, pck, offset);
 
@@ -453,9 +454,8 @@ resolve_packet2 (void *pck, uint32_t * size, uint8_t ip_addr[4])
   return 0;
 }
 
-
 int
-resolve_packet3 (void **pck_, uint32_t * size, uint8_t ip_addr[4])
+resolve_packet3 (void **pck_, uint32_t *size, uint8_t ip_addr[4])
 {
   struct ether_header *eh;
   struct iphdr *ip;
@@ -493,10 +493,10 @@ resolve_packet3 (void **pck_, uint32_t * size, uint8_t ip_addr[4])
 	  ip->protocol = 1;
 	  ip->check = 0x0000;
 	  ip->daddr = ip->saddr;
-	  ((uint8_t *) & ip->saddr)[0] = ip_addr[0];
-	  ((uint8_t *) & ip->saddr)[1] = ip_addr[1];
-	  ((uint8_t *) & ip->saddr)[2] = ip_addr[2];
-	  ((uint8_t *) & ip->saddr)[3] = ip_addr[3];
+	  ((uint8_t *) &ip->saddr)[0] = ip_addr[0];
+	  ((uint8_t *) &ip->saddr)[1] = ip_addr[1];
+	  ((uint8_t *) &ip->saddr)[2] = ip_addr[2];
+	  ((uint8_t *) &ip->saddr)[3] = ip_addr[3];
 
 	  GET_HEADER (icmp, struct icmphdr, pck, offset);
 

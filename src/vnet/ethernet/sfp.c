@@ -16,7 +16,7 @@
 #include <vnet/ethernet/sfp.h>
 
 static u8 *
-format_space_terminated (u8 * s, va_list * args)
+format_space_terminated (u8 *s, va_list *args)
 {
   u32 l = va_arg (*args, u32);
   u8 *v = va_arg (*args, u8 *);
@@ -29,46 +29,53 @@ format_space_terminated (u8 * s, va_list * args)
 }
 
 static u8 *
-format_sfp_id (u8 * s, va_list * args)
+format_sfp_id (u8 *s, va_list *args)
 {
   u32 id = va_arg (*args, u32);
   char *t = 0;
   switch (id)
     {
-#define _(f,str) case SFP_ID_##f: t = str; break;
+#define _(f, str)                                                             \
+  case SFP_ID_##f:                                                            \
+    t = str;                                                                  \
+    break;
       foreach_sfp_id
 #undef _
-    default:
-      return format (s, "unknown 0x%x", id);
+	default : return format (s, "unknown 0x%x", id);
     }
   return format (s, "%s", t);
 }
 
 static u8 *
-format_sfp_compatibility (u8 * s, va_list * args)
+format_sfp_compatibility (u8 *s, va_list *args)
 {
   u32 c = va_arg (*args, u32);
   char *t = 0;
   switch (c)
     {
-#define _(a,b,f) case SFP_COMPATIBILITY_##f: t = #f; break;
+#define _(a, b, f)                                                            \
+  case SFP_COMPATIBILITY_##f:                                                 \
+    t = #f;                                                                   \
+    break;
       foreach_sfp_compatibility
 #undef _
-    default:
-      return format (s, "unknown 0x%x", c);
+	default : return format (s, "unknown 0x%x", c);
     }
   return format (s, "%s", t);
 }
 
 u32
-sfp_is_comatible (sfp_eeprom_t * e, sfp_compatibility_t c)
+sfp_is_comatible (sfp_eeprom_t *e, sfp_compatibility_t c)
 {
   static struct
   {
     u8 byte, bit;
-  } t[] =
-  {
-#define _(a,b,f) { .byte = a, .bit = b, },
+  } t[] = {
+#define _(a, b, f)                                                            \
+  {                                                                           \
+    .byte = a,                                                                \
+    .bit = b,                                                                 \
+  },
     foreach_sfp_compatibility
 #undef _
   };
@@ -78,7 +85,7 @@ sfp_is_comatible (sfp_eeprom_t * e, sfp_compatibility_t c)
 }
 
 u8 *
-format_sfp_eeprom (u8 * s, va_list * args)
+format_sfp_eeprom (u8 *s, va_list *args)
 {
   sfp_eeprom_t *e = va_arg (*args, sfp_eeprom_t *);
   u32 indent = format_get_indent (s);
@@ -91,18 +98,16 @@ format_sfp_eeprom (u8 * s, va_list * args)
     if (sfp_is_comatible (e, i))
       s = format (s, " %U", format_sfp_compatibility, i);
 
-  s = format (s, "\n%Uvendor: %U, part %U",
-	      format_white_space, indent,
-	      format_space_terminated, sizeof (e->vendor_name),
-	      e->vendor_name, format_space_terminated,
-	      sizeof (e->vendor_part_number), e->vendor_part_number);
-  s =
-    format (s, "\n%Urevision: %U, serial: %U, date code: %U",
-	    format_white_space, indent, format_space_terminated,
-	    sizeof (e->vendor_revision), e->vendor_revision,
-	    format_space_terminated, sizeof (e->vendor_serial_number),
-	    e->vendor_serial_number, format_space_terminated,
-	    sizeof (e->vendor_date_code), e->vendor_date_code);
+  s = format (s, "\n%Uvendor: %U, part %U", format_white_space, indent,
+	      format_space_terminated, sizeof (e->vendor_name), e->vendor_name,
+	      format_space_terminated, sizeof (e->vendor_part_number),
+	      e->vendor_part_number);
+  s = format (s, "\n%Urevision: %U, serial: %U, date code: %U",
+	      format_white_space, indent, format_space_terminated,
+	      sizeof (e->vendor_revision), e->vendor_revision,
+	      format_space_terminated, sizeof (e->vendor_serial_number),
+	      e->vendor_serial_number, format_space_terminated,
+	      sizeof (e->vendor_date_code), e->vendor_date_code);
 
   if (e->length[4])
     s = format (s, "\n%Ucable length: %um", format_white_space, indent,

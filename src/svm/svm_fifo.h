@@ -25,16 +25,16 @@
 #include <vppinfra/format.h>
 #include <svm/fifo_types.h>
 
-#define OOO_SEGMENT_INVALID_INDEX 	((u32)~0)
-#define SVM_FIFO_INVALID_SESSION_INDEX 	((u32)~0)
-#define SVM_FIFO_INVALID_INDEX		((u32)~0)
+#define OOO_SEGMENT_INVALID_INDEX      ((u32) ~0)
+#define SVM_FIFO_INVALID_SESSION_INDEX ((u32) ~0)
+#define SVM_FIFO_INVALID_INDEX	       ((u32) ~0)
 
 typedef enum svm_fifo_deq_ntf_
 {
   SVM_FIFO_NO_DEQ_NOTIF = 0,		/**< No notification requested */
   SVM_FIFO_WANT_DEQ_NOTIF = 1,		/**< Notify on dequeue */
   SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL = 2,	/**< Notify on transition from full */
-  SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY = 4,	/**< Notify on transition to empty */
+  SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY = 4, /**< Notify on transition to empty */
 } svm_fifo_deq_ntf_t;
 
 typedef enum svm_fifo_flag_
@@ -56,20 +56,20 @@ typedef struct svm_fifo_seg_
 } svm_fifo_seg_t;
 
 #if SVM_FIFO_TRACE
-#define svm_fifo_trace_add(_f, _s, _l, _t)		\
-{							\
-  svm_fifo_trace_elem_t *trace_elt;			\
-  vec_add2(_f->trace, trace_elt, 1);			\
-  trace_elt->offset = _s;				\
-  trace_elt->len = _l;					\
-  trace_elt->action = _t;				\
-}
+#define svm_fifo_trace_add(_f, _s, _l, _t)                                    \
+  {                                                                           \
+    svm_fifo_trace_elem_t *trace_elt;                                         \
+    vec_add2 (_f->trace, trace_elt, 1);                                       \
+    trace_elt->offset = _s;                                                   \
+    trace_elt->len = _l;                                                      \
+    trace_elt->action = _t;                                                   \
+  }
 #else
 #define svm_fifo_trace_add(_f, _s, _l, _t)
 #endif
 
-u8 *svm_fifo_dump_trace (u8 * s, svm_fifo_t * f);
-u8 *svm_fifo_replay (u8 * s, svm_fifo_t * f, u8 no_read, u8 verbose);
+u8 *svm_fifo_dump_trace (u8 *s, svm_fifo_t *f);
+u8 *svm_fifo_replay (u8 *s, svm_fifo_t *f, u8 no_read, u8 verbose);
 
 /**
  * Load head and tail optimized for consumer
@@ -77,7 +77,7 @@ u8 *svm_fifo_replay (u8 * s, svm_fifo_t * f, u8 no_read, u8 verbose);
  * Internal function.
  */
 static inline void
-f_load_head_tail_cons (svm_fifo_t * f, u32 * head, u32 * tail)
+f_load_head_tail_cons (svm_fifo_t *f, u32 *head, u32 *tail)
 {
   /* load-relaxed: consumer owned index */
   *head = f->shr->head;
@@ -90,7 +90,7 @@ f_load_head_tail_cons (svm_fifo_t * f, u32 * head, u32 * tail)
  * Internal function
  */
 static inline void
-f_load_head_tail_prod (svm_fifo_t * f, u32 * head, u32 * tail)
+f_load_head_tail_prod (svm_fifo_t *f, u32 *head, u32 *tail)
 {
   /* load relaxed: producer owned index */
   *tail = f->shr->tail;
@@ -104,7 +104,7 @@ f_load_head_tail_prod (svm_fifo_t * f, u32 * head, u32 * tail)
  * Internal function.
  */
 static inline void
-f_load_head_tail_all_acq (svm_fifo_t * f, u32 * head, u32 * tail)
+f_load_head_tail_all_acq (svm_fifo_t *f, u32 *head, u32 *tail)
 {
   /* load-acq : consumer foreign index (paired with store-rel) */
   *tail = clib_atomic_load_acq_n (&f->shr->tail);
@@ -118,7 +118,7 @@ f_load_head_tail_all_acq (svm_fifo_t * f, u32 * head, u32 * tail)
  * Internal function.
  */
 static inline u32
-f_cursize (svm_fifo_t * f, u32 head, u32 tail)
+f_cursize (svm_fifo_t *f, u32 head, u32 tail)
 {
   return tail - head;
 }
@@ -129,13 +129,13 @@ f_cursize (svm_fifo_t * f, u32 head, u32 tail)
  * Internal function
  */
 static inline u32
-f_free_count (svm_fifo_t * f, u32 head, u32 tail)
+f_free_count (svm_fifo_t *f, u32 head, u32 tail)
 {
   return (f->shr->size - f_cursize (f, head, tail));
 }
 
 always_inline u32
-f_chunk_end (svm_fifo_chunk_t * c)
+f_chunk_end (svm_fifo_chunk_t *c)
 {
   return c->start_byte + c->length;
 }
@@ -165,10 +165,10 @@ f_pos_geq (u32 a, u32 b)
 }
 
 always_inline u8
-f_chunk_includes_pos (svm_fifo_chunk_t * c, u32 pos)
+f_chunk_includes_pos (svm_fifo_chunk_t *c, u32 pos)
 {
-  return (f_pos_geq (pos, c->start_byte)
-	  && f_pos_lt (pos, c->start_byte + c->length));
+  return (f_pos_geq (pos, c->start_byte) &&
+	  f_pos_lt (pos, c->start_byte + c->length));
 }
 
 always_inline svm_fifo_chunk_t *
@@ -229,7 +229,7 @@ svm_fifo_t *svm_fifo_alloc (u32 size);
  * @param f		fifo
  * @param size		size for fifo
  */
-void svm_fifo_init (svm_fifo_t * f, u32 size);
+void svm_fifo_init (svm_fifo_t *f, u32 size);
 /**
  * Allocate a fifo chunk on heap
  *
@@ -248,7 +248,7 @@ svm_fifo_chunk_t *svm_fifo_chunk_alloc (u32 size);
  *
  * @param f	fifo
  */
-int svm_fifo_fill_chunk_list (svm_fifo_t * f);
+int svm_fifo_fill_chunk_list (svm_fifo_t *f);
 /**
  * Provision and return chunks for number of bytes requested
  *
@@ -270,13 +270,13 @@ int svm_fifo_provision_chunks (svm_fifo_t *f, svm_fifo_seg_t *fs, u32 n_segs,
  * @param f		fifo
  * @param ooo_type	type of ooo operation (0 enqueue, 1 dequeue)
  */
-void svm_fifo_init_ooo_lookup (svm_fifo_t * f, u8 ooo_type);
+void svm_fifo_init_ooo_lookup (svm_fifo_t *f, u8 ooo_type);
 /**
  * Free fifo and associated state
  *
  * @param f	fifo
  */
-void svm_fifo_free (svm_fifo_t * f);
+void svm_fifo_free (svm_fifo_t *f);
 /**
  * Cleanup fifo chunk lookup rb tree
  *
@@ -285,7 +285,7 @@ void svm_fifo_free (svm_fifo_t * f);
  *
  * @param f 	fifo to cleanup
  */
-void svm_fifo_free_chunk_lookup (svm_fifo_t * f);
+void svm_fifo_free_chunk_lookup (svm_fifo_t *f);
 /**
  * Cleanup fifo ooo data
  *
@@ -294,7 +294,7 @@ void svm_fifo_free_chunk_lookup (svm_fifo_t * f);
  *
  * @param f	fifo to cleanup
  */
-void svm_fifo_free_ooo_data (svm_fifo_t * f);
+void svm_fifo_free_ooo_data (svm_fifo_t *f);
 /**
  * Init fifo head and tail
  *
@@ -302,14 +302,14 @@ void svm_fifo_free_ooo_data (svm_fifo_t * f);
  * @param head	head value that will be matched to a chunk
  * @param tail	tail value that will be matched to a chunk
  */
-void svm_fifo_init_pointers (svm_fifo_t * f, u32 head, u32 tail);
+void svm_fifo_init_pointers (svm_fifo_t *f, u32 head, u32 tail);
 /**
  * Clone fifo
  *
  * Clones single/default chunk fifo. It does not work for fifos with
  * multiple chunks.
  */
-void svm_fifo_clone (svm_fifo_t * df, svm_fifo_t * sf);
+void svm_fifo_clone (svm_fifo_t *df, svm_fifo_t *sf);
 /**
  * Enqueue data to fifo
  *
@@ -322,7 +322,7 @@ void svm_fifo_clone (svm_fifo_t * df, svm_fifo_t * sf);
  * @param src	buffer from where to copy the data
  * @return	number of contiguous bytes that can be consumed or error
  */
-int svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src);
+int svm_fifo_enqueue (svm_fifo_t *f, u32 len, const u8 *src);
 /**
  * Enqueue data to fifo with offset
  *
@@ -336,8 +336,7 @@ int svm_fifo_enqueue (svm_fifo_t * f, u32 len, const u8 * src);
  * @param src		buffer from where to copy the data
  * @return		0 if enqueue was successful, error otherwise
  */
-int svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len,
-				  u8 * src);
+int svm_fifo_enqueue_with_offset (svm_fifo_t *f, u32 offset, u32 len, u8 *src);
 
 /**
  * Advance tail pointer
@@ -347,7 +346,7 @@ int svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset, u32 len,
  * @param f		fifo
  * @param len		number of bytes to add to tail
  */
-void svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len);
+void svm_fifo_enqueue_nocopy (svm_fifo_t *f, u32 len);
 /**
  * Enqueue array of @ref svm_fifo_seg_t in order
  *
@@ -357,7 +356,7 @@ void svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 len);
  * @param allow_partial	if set partial enqueues are allowed
  * @return		len if enqueue was successful, error otherwise
  */
-int svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
+int svm_fifo_enqueue_segments (svm_fifo_t *f, const svm_fifo_seg_t segs[],
 			       u32 n_segs, u8 allow_partial);
 /**
  * Overwrite fifo head with new data
@@ -370,7 +369,7 @@ int svm_fifo_enqueue_segments (svm_fifo_t * f, const svm_fifo_seg_t segs[],
  * @param src		src of new data
  * @param len		length of new data
  */
-void svm_fifo_overwrite_head (svm_fifo_t * f, u8 * src, u32 len);
+void svm_fifo_overwrite_head (svm_fifo_t *f, u8 *src, u32 len);
 /**
  * Dequeue data from fifo
  *
@@ -384,7 +383,7 @@ void svm_fifo_overwrite_head (svm_fifo_t * f, u8 * src, u32 len);
  * @param dst		buffer to where to dequeue the data
  * @return		number of bytes dequeued or error
  */
-int svm_fifo_dequeue (svm_fifo_t * f, u32 len, u8 * dst);
+int svm_fifo_dequeue (svm_fifo_t *f, u32 len, u8 *dst);
 /**
  * Peek data from fifo
  *
@@ -397,7 +396,7 @@ int svm_fifo_dequeue (svm_fifo_t * f, u32 len, u8 * dst);
  * @param dst		buffer to where to dequeue the data
  * @return		number of bytes peeked
  */
-int svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 len, u8 * dst);
+int svm_fifo_peek (svm_fifo_t *f, u32 offset, u32 len, u8 *dst);
 /**
  * Dequeue and drop bytes from fifo
  *
@@ -407,7 +406,7 @@ int svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 len, u8 * dst);
  * @param len		number of bytes to drop
  * @return		number of bytes dropped
  */
-int svm_fifo_dequeue_drop (svm_fifo_t * f, u32 len);
+int svm_fifo_dequeue_drop (svm_fifo_t *f, u32 len);
 /**
  * Dequeue and drop all bytes from fifo
  *
@@ -415,7 +414,7 @@ int svm_fifo_dequeue_drop (svm_fifo_t * f, u32 len);
  *
  * @param f		fifo
  */
-void svm_fifo_dequeue_drop_all (svm_fifo_t * f);
+void svm_fifo_dequeue_drop_all (svm_fifo_t *f);
 /**
  * Get pointers to fifo chunks data in @ref svm_fifo_seg_t array
  *
@@ -431,7 +430,7 @@ void svm_fifo_dequeue_drop_all (svm_fifo_t * f);
  * @param max_bytes	max bytes to be mapped to fifo segments
  * @return 		number of bytes in fifo segments or SVM_FIFO_EEMPTY
  */
-int svm_fifo_segments (svm_fifo_t * f, u32 offset, svm_fifo_seg_t * fs,
+int svm_fifo_segments (svm_fifo_t *f, u32 offset, svm_fifo_seg_t *fs,
 		       u32 n_segs, u32 max_bytes);
 /**
  * Add io events subscriber to list
@@ -439,42 +438,42 @@ int svm_fifo_segments (svm_fifo_t * f, u32 offset, svm_fifo_seg_t * fs,
  * @param f	fifo
  * @param sub	subscriber opaque index (typically app worker index)
  */
-void svm_fifo_add_subscriber (svm_fifo_t * f, u8 sub);
+void svm_fifo_add_subscriber (svm_fifo_t *f, u8 sub);
 /**
  * Remove io events subscriber form list
  *
  * @param f	fifo
  * @param sub	subscriber index to be removed
  */
-void svm_fifo_del_subscriber (svm_fifo_t * f, u8 subscriber);
+void svm_fifo_del_subscriber (svm_fifo_t *f, u8 subscriber);
 /**
  * Number of out-of-order segments for fifo
  *
  * @param f	fifo
  * @return	number of out of order segments
  */
-u32 svm_fifo_n_ooo_segments (svm_fifo_t * f);
+u32 svm_fifo_n_ooo_segments (svm_fifo_t *f);
 /**
  * First out-of-order segment for fifo
  *
  * @param f	fifo
  * @return	first out-of-order segment for fifo
  */
-ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t * f);
+ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t *f);
 /**
  * Check if fifo is sane. Debug only.
  *
  * @param f	fifo
  * @return 	1 if sane, 0 otherwise
  */
-u8 svm_fifo_is_sane (svm_fifo_t * f);
+u8 svm_fifo_is_sane (svm_fifo_t *f);
 /**
  * Number of chunks linked into the fifo
  *
  * @param f	fifo
  * @return 	number of chunks in fifo linked list
  */
-u32 svm_fifo_n_chunks (svm_fifo_t * f);
+u32 svm_fifo_n_chunks (svm_fifo_t *f);
 format_function_t format_svm_fifo;
 
 /**
@@ -484,7 +483,7 @@ format_function_t format_svm_fifo;
  * @return	max number of bytes that can be dequeued
  */
 static inline u32
-svm_fifo_max_dequeue_cons (svm_fifo_t * f)
+svm_fifo_max_dequeue_cons (svm_fifo_t *f)
 {
   u32 tail, head;
   f_load_head_tail_cons (f, &head, &tail);
@@ -498,7 +497,7 @@ svm_fifo_max_dequeue_cons (svm_fifo_t * f)
  * @return	max number of bytes that can be dequeued
  */
 static inline u32
-svm_fifo_max_dequeue_prod (svm_fifo_t * f)
+svm_fifo_max_dequeue_prod (svm_fifo_t *f)
 {
   u32 tail, head;
   f_load_head_tail_prod (f, &head, &tail);
@@ -513,7 +512,7 @@ svm_fifo_max_dequeue_prod (svm_fifo_t * f)
  * @ref svm_fifo_max_dequeue_prod (svm_fifo_t *f)
  */
 static inline u32
-svm_fifo_max_dequeue (svm_fifo_t * f)
+svm_fifo_max_dequeue (svm_fifo_t *f)
 {
   u32 tail, head;
   f_load_head_tail_all_acq (f, &head, &tail);
@@ -527,7 +526,7 @@ svm_fifo_max_dequeue (svm_fifo_t * f)
  * @return	1 if fifo is full 0 otherwise
  */
 static inline int
-svm_fifo_is_full_prod (svm_fifo_t * f)
+svm_fifo_is_full_prod (svm_fifo_t *f)
 {
   return (svm_fifo_max_dequeue_prod (f) == f->shr->size);
 }
@@ -539,7 +538,7 @@ svm_fifo_is_full_prod (svm_fifo_t * f)
  * add cons version if needed
  */
 static inline int
-svm_fifo_is_full (svm_fifo_t * f)
+svm_fifo_is_full (svm_fifo_t *f)
 {
   return (svm_fifo_max_dequeue (f) == f->shr->size);
 }
@@ -551,7 +550,7 @@ svm_fifo_is_full (svm_fifo_t * f)
  * @return	1 if fifo is empty 0 otherwise
  */
 static inline int
-svm_fifo_is_empty_cons (svm_fifo_t * f)
+svm_fifo_is_empty_cons (svm_fifo_t *f)
 {
   return (svm_fifo_max_dequeue_cons (f) == 0);
 }
@@ -563,7 +562,7 @@ svm_fifo_is_empty_cons (svm_fifo_t * f)
  * @return	1 if fifo is empty 0 otherwise
  */
 static inline int
-svm_fifo_is_empty_prod (svm_fifo_t * f)
+svm_fifo_is_empty_prod (svm_fifo_t *f)
 {
   return (svm_fifo_max_dequeue_prod (f) == 0);
 }
@@ -576,7 +575,7 @@ svm_fifo_is_empty_prod (svm_fifo_t * f)
  * @ref svm_fifo_is_empty_prod (svm_fifo_t * f)
  */
 static inline int
-svm_fifo_is_empty (svm_fifo_t * f)
+svm_fifo_is_empty (svm_fifo_t *f)
 {
   return (svm_fifo_max_dequeue (f) == 0);
 }
@@ -588,7 +587,7 @@ svm_fifo_is_empty (svm_fifo_t * f)
  * @return 	1 if 'normalized' head is ahead of tail
  */
 static inline u8
-svm_fifo_is_wrapped (svm_fifo_t * f)
+svm_fifo_is_wrapped (svm_fifo_t *f)
 {
   u32 head, tail;
   f_load_head_tail_all_acq (f, &head, &tail);
@@ -604,7 +603,7 @@ svm_fifo_is_wrapped (svm_fifo_t * f)
  * @return	max number of bytes that can be enqueued into fifo
  */
 static inline u32
-svm_fifo_max_enqueue_prod (svm_fifo_t * f)
+svm_fifo_max_enqueue_prod (svm_fifo_t *f)
 {
   u32 head, tail;
   f_load_head_tail_prod (f, &head, &tail);
@@ -618,7 +617,7 @@ svm_fifo_max_enqueue_prod (svm_fifo_t * f)
  * add consumer specific version if needed.
  */
 static inline u32
-svm_fifo_max_enqueue (svm_fifo_t * f)
+svm_fifo_max_enqueue (svm_fifo_t *f)
 {
   u32 head, tail;
   f_load_head_tail_all_acq (f, &head, &tail);
@@ -630,14 +629,14 @@ svm_fifo_max_enqueue (svm_fifo_t * f)
  *
  * Should only be called by consumers.
  */
-u32 svm_fifo_max_read_chunk (svm_fifo_t * f);
+u32 svm_fifo_max_read_chunk (svm_fifo_t *f);
 
 /**
  * Max contiguous chunk of data that can be written
  *
  * Should only be called by producers
  */
-u32 svm_fifo_max_write_chunk (svm_fifo_t * f);
+u32 svm_fifo_max_write_chunk (svm_fifo_t *f);
 
 /**
  * Fifo head chunk getter
@@ -646,7 +645,7 @@ u32 svm_fifo_max_write_chunk (svm_fifo_t * f);
  * @return	head chunk pointer
  */
 static inline svm_fifo_chunk_t *
-svm_fifo_head_chunk (svm_fifo_t * f)
+svm_fifo_head_chunk (svm_fifo_t *f)
 {
   return f_head_cptr (f);
 }
@@ -658,7 +657,7 @@ svm_fifo_head_chunk (svm_fifo_t * f)
  * @return	head pointer
  */
 static inline u8 *
-svm_fifo_head (svm_fifo_t * f)
+svm_fifo_head (svm_fifo_t *f)
 {
   svm_fifo_chunk_t *head_chunk;
   if (!f->shr->head_chunk)
@@ -675,7 +674,7 @@ svm_fifo_head (svm_fifo_t * f)
  * @return	tail chunk pointer
  */
 static inline svm_fifo_chunk_t *
-svm_fifo_tail_chunk (svm_fifo_t * f)
+svm_fifo_tail_chunk (svm_fifo_t *f)
 {
   return f_tail_cptr (f);
 }
@@ -687,7 +686,7 @@ svm_fifo_tail_chunk (svm_fifo_t * f)
  * @return	tail pointer
  */
 static inline u8 *
-svm_fifo_tail (svm_fifo_t * f)
+svm_fifo_tail (svm_fifo_t *f)
 {
   svm_fifo_chunk_t *tail_chunk;
 
@@ -703,7 +702,7 @@ svm_fifo_tail (svm_fifo_t * f)
  * @return	number of subscribers
  */
 static inline u8
-svm_fifo_n_subscribers (svm_fifo_t * f)
+svm_fifo_n_subscribers (svm_fifo_t *f)
 {
   return f->shr->n_subscribers;
 }
@@ -715,13 +714,13 @@ svm_fifo_n_subscribers (svm_fifo_t * f)
  * @return	1 if fifo has ooo data, 0 otherwise
  */
 static inline u8
-svm_fifo_has_ooo_data (svm_fifo_t * f)
+svm_fifo_has_ooo_data (svm_fifo_t *f)
 {
   return f->ooos_list_head != OOO_SEGMENT_INVALID_INDEX;
 }
 
 static inline ooo_segment_t *
-svm_fifo_newest_ooo_segment (svm_fifo_t * f)
+svm_fifo_newest_ooo_segment (svm_fifo_t *f)
 {
   if (f->ooos_newest == OOO_SEGMENT_INVALID_INDEX)
     return 0;
@@ -729,13 +728,13 @@ svm_fifo_newest_ooo_segment (svm_fifo_t * f)
 }
 
 static inline void
-svm_fifo_newest_ooo_segment_reset (svm_fifo_t * f)
+svm_fifo_newest_ooo_segment_reset (svm_fifo_t *f)
 {
   f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
 }
 
 static inline u32
-ooo_segment_offset_prod (svm_fifo_t * f, ooo_segment_t * s)
+ooo_segment_offset_prod (svm_fifo_t *f, ooo_segment_t *s)
 {
   u32 tail;
   /* load-relaxed: producer owned index */
@@ -745,19 +744,19 @@ ooo_segment_offset_prod (svm_fifo_t * f, ooo_segment_t * s)
 }
 
 static inline u32
-ooo_segment_length (svm_fifo_t * f, ooo_segment_t * s)
+ooo_segment_length (svm_fifo_t *f, ooo_segment_t *s)
 {
   return s->length;
 }
 
 static inline u32
-svm_fifo_size (svm_fifo_t * f)
+svm_fifo_size (svm_fifo_t *f)
 {
   return f->shr->size;
 }
 
 static inline void
-svm_fifo_set_size (svm_fifo_t * f, u32 size)
+svm_fifo_set_size (svm_fifo_t *f, u32 size)
 {
   if (size > (1 << f->fs_hdr->max_log2_fifo_size))
     return;
@@ -773,7 +772,7 @@ svm_fifo_set_size (svm_fifo_t * f, u32 size)
  * @return	1 if fifo has event, 0 otherwise
  */
 static inline int
-svm_fifo_has_event (svm_fifo_t * f)
+svm_fifo_has_event (svm_fifo_t *f)
 {
   return f->shr->has_event;
 }
@@ -787,7 +786,7 @@ svm_fifo_has_event (svm_fifo_t * f)
  * @return 	1 if flag was not set, 0 otherwise
  */
 always_inline u8
-svm_fifo_set_event (svm_fifo_t * f)
+svm_fifo_set_event (svm_fifo_t *f)
 {
   return !clib_atomic_swap_rel_n (&f->shr->has_event, 1);
 }
@@ -800,7 +799,7 @@ svm_fifo_set_event (svm_fifo_t * f)
  * @param f	fifo
  */
 always_inline void
-svm_fifo_unset_event (svm_fifo_t * f)
+svm_fifo_unset_event (svm_fifo_t *f)
 {
   clib_atomic_swap_acq_n (&f->shr->has_event, 0);
 }
@@ -814,7 +813,7 @@ svm_fifo_unset_event (svm_fifo_t * f)
  * @param ntf_type	type of notification requested
  */
 static inline void
-svm_fifo_add_want_deq_ntf (svm_fifo_t * f, u8 ntf_type)
+svm_fifo_add_want_deq_ntf (svm_fifo_t *f, u8 ntf_type)
 {
   f->shr->want_deq_ntf |= ntf_type;
 }
@@ -828,7 +827,7 @@ svm_fifo_add_want_deq_ntf (svm_fifo_t * f, u8 ntf_type)
  * @param ntf_type	type of notification to be cleared
  */
 static inline void
-svm_fifo_del_want_deq_ntf (svm_fifo_t * f, u8 ntf_type)
+svm_fifo_del_want_deq_ntf (svm_fifo_t *f, u8 ntf_type)
 {
   f->shr->want_deq_ntf &= ~ntf_type;
 }
@@ -845,7 +844,7 @@ svm_fifo_del_want_deq_ntf (svm_fifo_t * f, u8 ntf_type)
  * @param f	fifo
  */
 static inline void
-svm_fifo_clear_deq_ntf (svm_fifo_t * f)
+svm_fifo_clear_deq_ntf (svm_fifo_t *f)
 {
   /* Set the flag if want_notif_if_full was the only ntf requested */
   f->shr->has_deq_ntf =
@@ -863,7 +862,7 @@ svm_fifo_clear_deq_ntf (svm_fifo_t * f)
  * @param f	fifo
  */
 static inline void
-svm_fifo_reset_has_deq_ntf (svm_fifo_t * f)
+svm_fifo_reset_has_deq_ntf (svm_fifo_t *f)
 {
   f->shr->has_deq_ntf = 0;
 }
@@ -879,7 +878,7 @@ svm_fifo_reset_has_deq_ntf (svm_fifo_t * f)
  * @return		1 if event should be generated, 0 otherwise
  */
 static inline u8
-svm_fifo_needs_deq_ntf (svm_fifo_t * f, u32 n_last_deq)
+svm_fifo_needs_deq_ntf (svm_fifo_t *f, u32 n_last_deq)
 {
   u8 want_ntf = f->shr->want_deq_ntf;
 

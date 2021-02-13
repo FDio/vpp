@@ -22,7 +22,7 @@
 #include <vnet/ip/ip.h>
 #include <vppinfra/vec.h>
 
-#define VAT_TAB_WIDTH               2
+#define VAT_TAB_WIDTH 2
 
 typedef struct vat_print_ctx_s
 {
@@ -32,7 +32,7 @@ typedef struct vat_print_ctx_s
 
 /* Format an IP4 address. */
 static u8 *
-vat_json_format_ip4_address (u8 * s, va_list * args)
+vat_json_format_ip4_address (u8 *s, va_list *args)
 {
   u8 *a = va_arg (*args, u8 *);
   return format (s, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
@@ -40,7 +40,7 @@ vat_json_format_ip4_address (u8 * s, va_list * args)
 
 /* Format an IP6 address. */
 static u8 *
-vat_json_format_ip6_address (u8 * s, va_list * args)
+vat_json_format_ip6_address (u8 *s, va_list *args)
 {
   ip6_address_t *a = va_arg (*args, ip6_address_t *);
   u32 i, i_max_n_zero, max_n_zeros, i_first_zero, n_zeros, last_double_colon;
@@ -58,8 +58,8 @@ vat_json_format_ip6_address (u8 * s, va_list * args)
 	  n_zeros = 0;
 	}
       n_zeros += is_zero;
-      if ((!is_zero && n_zeros > max_n_zeros)
-	  || (i + 1 >= ARRAY_LEN (a->as_u16) && n_zeros > max_n_zeros))
+      if ((!is_zero && n_zeros > max_n_zeros) ||
+	  (i + 1 >= ARRAY_LEN (a->as_u16) && n_zeros > max_n_zeros))
 	{
 	  i_max_n_zero = i_first_zero;
 	  max_n_zeros = n_zeros;
@@ -79,8 +79,7 @@ vat_json_format_ip6_address (u8 * s, va_list * args)
 	}
       else
 	{
-	  s = format (s, "%s%x",
-		      (last_double_colon || i == 0) ? "" : ":",
+	  s = format (s, "%s%x", (last_double_colon || i == 0) ? "" : ":",
 		      clib_net_to_host_u16 (a->as_u16[i]));
 	  last_double_colon = 0;
 	}
@@ -90,7 +89,7 @@ vat_json_format_ip6_address (u8 * s, va_list * args)
 }
 
 static void
-vat_json_indent_print (vat_print_ctx_t * ctx)
+vat_json_indent_print (vat_print_ctx_t *ctx)
 {
   int i;
   for (i = 0; i < ctx->indent * VAT_TAB_WIDTH; i++)
@@ -100,7 +99,7 @@ vat_json_indent_print (vat_print_ctx_t * ctx)
 }
 
 static void
-vat_json_indent_line (vat_print_ctx_t * ctx, char *fmt, ...)
+vat_json_indent_line (vat_print_ctx_t *ctx, char *fmt, ...)
 {
   va_list va;
 
@@ -111,28 +110,28 @@ vat_json_indent_line (vat_print_ctx_t * ctx, char *fmt, ...)
 }
 
 static u8
-is_num_only (vat_json_node_t * p)
+is_num_only (vat_json_node_t *p)
 {
   vat_json_node_t *elem;
   vec_foreach (elem, p)
-  {
-    if (VAT_JSON_INT != elem->type && VAT_JSON_UINT != elem->type)
-      {
-	return 0;
-      }
-  }
+    {
+      if (VAT_JSON_INT != elem->type && VAT_JSON_UINT != elem->type)
+	{
+	  return 0;
+	}
+    }
   return 1;
 }
 
 static void
-vat_json_print_internal (vat_print_ctx_t * ctx, vat_json_node_t * node)
+vat_json_print_internal (vat_print_ctx_t *ctx, vat_json_node_t *node)
 {
-#define P(fmt,...) fformat(ctx->ofp, fmt, ##__VA_ARGS__)
-#define PL(fmt,...) fformat(ctx->ofp, fmt"\n", ##__VA_ARGS__)
-#define PPL(fmt,...) vat_json_indent_line(ctx, fmt"\n", ##__VA_ARGS__)
-#define PP(fmt,...) vat_json_indent_line(ctx, fmt, ##__VA_ARGS__)
-#define INCR (ctx->indent++)
-#define DECR (ctx->indent--)
+#define P(fmt, ...)   fformat (ctx->ofp, fmt, ##__VA_ARGS__)
+#define PL(fmt, ...)  fformat (ctx->ofp, fmt "\n", ##__VA_ARGS__)
+#define PPL(fmt, ...) vat_json_indent_line (ctx, fmt "\n", ##__VA_ARGS__)
+#define PP(fmt, ...)  vat_json_indent_line (ctx, fmt, ##__VA_ARGS__)
+#define INCR	      (ctx->indent++)
+#define DECR	      (ctx->indent--)
 
   vat_json_pair_t *pair;
   u32 i, count;
@@ -242,7 +241,7 @@ vat_json_print_internal (vat_print_ctx_t * ctx, vat_json_node_t * node)
 }
 
 void
-vat_json_print (FILE * ofp, vat_json_node_t * node)
+vat_json_print (FILE *ofp, vat_json_node_t *node)
 {
   vat_print_ctx_t ctx;
   clib_memset (&ctx, 0, sizeof ctx);
@@ -254,7 +253,7 @@ vat_json_print (FILE * ofp, vat_json_node_t * node)
 }
 
 void
-vat_json_free (vat_json_node_t * node)
+vat_json_free (vat_json_node_t *node)
 {
   int i = 0;
 

@@ -35,7 +35,7 @@ ct6_main_t ct6_main;
 /* Action function shared between message handler and debug CLI */
 
 static void
-ct6_feature_init (ct6_main_t * cmp)
+ct6_feature_init (ct6_main_t *cmp)
 {
   u32 nworkers = vlib_num_workers ();
 
@@ -51,7 +51,7 @@ ct6_feature_init (ct6_main_t * cmp)
 }
 
 int
-ct6_in2out_enable_disable (ct6_main_t * cmp, u32 sw_if_index,
+ct6_in2out_enable_disable (ct6_main_t *cmp, u32 sw_if_index,
 			   int enable_disable)
 {
   vnet_sw_interface_t *sw;
@@ -69,14 +69,14 @@ ct6_in2out_enable_disable (ct6_main_t * cmp, u32 sw_if_index,
   if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
-  vnet_feature_enable_disable ("interface-output", "ct6-in2out",
-			       sw_if_index, enable_disable, 0, 0);
+  vnet_feature_enable_disable ("interface-output", "ct6-in2out", sw_if_index,
+			       enable_disable, 0, 0);
 
   return rv;
 }
 
 int
-ct6_out2in_enable_disable (ct6_main_t * cmp, u32 sw_if_index,
+ct6_out2in_enable_disable (ct6_main_t *cmp, u32 sw_if_index,
 			   int enable_disable)
 {
   vnet_sw_interface_t *sw;
@@ -94,16 +94,15 @@ ct6_out2in_enable_disable (ct6_main_t * cmp, u32 sw_if_index,
   if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
-  vnet_feature_enable_disable ("ip6-unicast", "ct6-out2in",
-			       sw_if_index, enable_disable, 0, 0);
+  vnet_feature_enable_disable ("ip6-unicast", "ct6-out2in", sw_if_index,
+			       enable_disable, 0, 0);
 
   return rv;
 }
 
 static clib_error_t *
-set_ct6_enable_disable_command_fn (vlib_main_t * vm,
-				   unformat_input_t * input,
-				   vlib_cli_command_t * cmd)
+set_ct6_enable_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
 {
   ct6_main_t *cmp = &ct6_main;
   u32 sw_if_index = ~0;
@@ -143,8 +142,8 @@ set_ct6_enable_disable_command_fn (vlib_main_t * vm,
       break;
 
     case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-      return clib_error_return
-	(0, "Invalid interface, only works on physical ports");
+      return clib_error_return (
+	0, "Invalid interface, only works on physical ports");
       break;
 
     default:
@@ -153,19 +152,15 @@ set_ct6_enable_disable_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_ct6_command, static) =
-{
+VLIB_CLI_COMMAND (set_ct6_command, static) = {
   .path = "set ct6",
-  .short_help =
-  "set ct6 [inside|outside] <interface-name> [disable]",
+  .short_help = "set ct6 [inside|outside] <interface-name> [disable]",
   .function = set_ct6_enable_disable_command_fn,
 };
-/* *INDENT-ON* */
 
 /* API message handler */
-static void vl_api_ct6_enable_disable_t_handler
-  (vl_api_ct6_enable_disable_t * mp)
+static void
+vl_api_ct6_enable_disable_t_handler (vl_api_ct6_enable_disable_t *mp)
 {
   vl_api_ct6_enable_disable_reply_t *rmp;
   ct6_main_t *cmp = &ct6_main;
@@ -186,7 +181,7 @@ static void vl_api_ct6_enable_disable_t_handler
 
 #include <ct6/ct6.api.c>
 static clib_error_t *
-ct6_init (vlib_main_t * vm)
+ct6_init (vlib_main_t *vm)
 {
   ct6_main_t *cmp = &ct6_main;
   clib_error_t *error = 0;
@@ -216,34 +211,25 @@ ct6_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ct6_init);
 
-/* *INDENT-OFF* */
-VNET_FEATURE_INIT (ct6out2in, static) =
-{
+VNET_FEATURE_INIT (ct6out2in, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "ct6-out2in",
   .runs_before = VNET_FEATURES ("ip6-lookup"),
 };
-/* *INDENT-ON */
 
-/* *INDENT-OFF* */
-VNET_FEATURE_INIT (ct6in2out, static) =
-{
+VNET_FEATURE_INIT (ct6in2out, static) = {
   .arc_name = "interface-output",
   .node_name = "ct6-in2out",
   .runs_before = VNET_FEATURES ("interface-tx"),
 };
-/* *INDENT-ON */
 
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () =
-{
+VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "IPv6 Connection Tracker",
 };
-/* *INDENT-ON* */
 
 u8 *
-format_ct6_session (u8 * s, va_list * args)
+format_ct6_session (u8 *s, va_list *args)
 {
   ct6_main_t *cmp = va_arg (*args, ct6_main_t *);
   int i = va_arg (*args, int);
@@ -253,17 +239,15 @@ format_ct6_session (u8 * s, va_list * args)
 
   if (s0 == 0)
     {
-      s = format (s, "\n%6s%6s%40s%6s%40s%6s",
-		  "Sess", "Prot", "Src", "Sport", "Dst", "Dport");
+      s = format (s, "\n%6s%6s%40s%6s%40s%6s", "Sess", "Prot", "Src", "Sport",
+		  "Dst", "Dport");
       return s;
     }
 
-  s = format (s, "\n%6d%6d%40U%6u%40U%6u",
-	      s0 - cmp->sessions[i], s0->key.proto,
-	      format_ip6_address, &s0->key.src,
-	      clib_net_to_host_u16 (s0->key.sport),
-	      format_ip6_address, &s0->key.dst,
-	      clib_net_to_host_u16 (s0->key.dport));
+  s = format (s, "\n%6d%6d%40U%6u%40U%6u", s0 - cmp->sessions[i],
+	      s0->key.proto, format_ip6_address, &s0->key.src,
+	      clib_net_to_host_u16 (s0->key.sport), format_ip6_address,
+	      &s0->key.dst, clib_net_to_host_u16 (s0->key.dport));
 
   clib_memcpy_fast (&kvp0, s0, sizeof (ct6_session_key_t));
 
@@ -278,8 +262,8 @@ format_ct6_session (u8 * s, va_list * args)
 	  s = format (s, " OK");
 	  if (verbose > 1)
 	    {
-	      s = format (s, " next %d prev %d", s0->next_index,
-			  s0->prev_index);
+	      s =
+		format (s, " next %d prev %d", s0->next_index, s0->prev_index);
 	      s = format (s, " hits %d expires %.2f", s0->hits, s0->expires);
 	    }
 	}
@@ -291,9 +275,8 @@ format_ct6_session (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-show_ct6_command_fn_command_fn (vlib_main_t * vm,
-				unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+show_ct6_command_fn_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
 {
   ct6_main_t *cmp = &ct6_main;
   ct6_session_t *s0;
@@ -317,33 +300,27 @@ show_ct6_command_fn_command_fn (vlib_main_t * vm,
       if (verbose == 0)
 	continue;
 
-      s =
-	format (s, "%U", format_ct6_session, cmp,
-		0 /* pool */ , 0 /* header */ , verbose);
+      s = format (s, "%U", format_ct6_session, cmp, 0 /* pool */,
+		  0 /* header */, verbose);
 
-      /* *INDENT-OFF* */
       pool_foreach (s0, cmp->sessions[i])
-       {
-        s = format (s, "%U", format_ct6_session, cmp, i, s0, verbose);
-      }
-      /* *INDENT-ON* */
+	{
+	  s = format (s, "%U", format_ct6_session, cmp, i, s0, verbose);
+	}
     }
   vlib_cli_output (cmp->vlib_main, "%v", s);
   vec_free (s);
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_ct6_command_fn_command, static) =
-{
+VLIB_CLI_COMMAND (show_ct6_command_fn_command, static) = {
   .path = "show ip6 connection-tracker",
   .short_help = "show ip6 connection-tracker",
   .function = show_ct6_command_fn_command_fn,
 };
-/* *INDENT-ON* */
 
 static void
-increment_v6_address (ip6_address_t * a)
+increment_v6_address (ip6_address_t *a)
 {
   u64 v0, v1;
 
@@ -357,11 +334,9 @@ increment_v6_address (ip6_address_t * a)
   a->as_u64[1] = clib_net_to_host_u64 (v1);
 }
 
-
 static clib_error_t *
-test_ct6_command_fn_command_fn (vlib_main_t * vm,
-				unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+test_ct6_command_fn_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
 {
   ct6_main_t *cmp = &ct6_main;
   clib_bihash_kv_48_8_t kvp0;
@@ -379,9 +354,8 @@ test_ct6_command_fn_command_fn (vlib_main_t * vm,
     {
       if (unformat (input, "num-sessions %d", &num_sessions))
 	;
-      else
-	if (unformat
-	    (input, "max-sessions %d", &cmp->max_sessions_per_worker))
+      else if (unformat (input, "max-sessions %d",
+			 &cmp->max_sessions_per_worker))
 	;
       else
 	break;
@@ -403,7 +377,7 @@ test_ct6_command_fn_command_fn (vlib_main_t * vm,
    * See if we know about this flow.
    * Key set up for the out2in path, the performant case
    */
-  key0 = (ct6_session_key_t *) & kvp0;
+  key0 = (ct6_session_key_t *) &kvp0;
   memset (&kvp0, 0, sizeof (kvp0));
 
   for (i = 0; i < num_sessions; i++)
@@ -414,15 +388,14 @@ test_ct6_command_fn_command_fn (vlib_main_t * vm,
       key0->as_u64[5] = 0;
       key0->sport = clib_host_to_net_u16 (1234);
       key0->dport = clib_host_to_net_u16 (4321);
-      key0->proto = 17;		/* udp, fwiw */
+      key0->proto = 17; /* udp, fwiw */
 
-      s0 = ct6_create_or_recycle_session
-	(cmp, &kvp0, 3.0 /* now */ , 0 /* thread index */ ,
-	 &recycled, &created);
+      s0 = ct6_create_or_recycle_session (
+	cmp, &kvp0, 3.0 /* now */, 0 /* thread index */, &recycled, &created);
 
-      s = format (s, "%U (%d, %d)", format_ct6_session, cmp,
-		  0 /* thread index */ , s0, 1 /* verbose */ ,
-		  recycled, created);
+      s =
+	format (s, "%U (%d, %d)", format_ct6_session, cmp,
+		0 /* thread index */, s0, 1 /* verbose */, recycled, created);
       vlib_cli_output (vm, "%v", s);
       vec_free (s);
       increment_v6_address ((ip6_address_t *) src);
@@ -430,12 +403,10 @@ test_ct6_command_fn_command_fn (vlib_main_t * vm,
       created = 0;
     }
 
-  /* *INDENT-OFF* */
   pool_foreach (s0, cmp->sessions[0])
-   {
-    s = format (s, "%U", format_ct6_session, cmp, 0, s0, 1 /* verbose */);
-  }
-  /* *INDENT-ON* */
+    {
+      s = format (s, "%U", format_ct6_session, cmp, 0, s0, 1 /* verbose */);
+    }
 
   vlib_cli_output (vm, "\nEnd state: first index %d last index %d\n%v",
 		   cmp->first_index[0], cmp->last_index[0], s);
@@ -450,12 +421,10 @@ test_ct6_command_fn_command_fn (vlib_main_t * vm,
 
   ct6_update_session_hit (cmp, s0, 234.0);
 
-  /* *INDENT-OFF* */
   pool_foreach (s0, cmp->sessions[0])
-   {
-    s = format (s, "%U", format_ct6_session, cmp, 0, s0, 1 /* verbose */);
-  }
-  /* *INDENT-ON* */
+    {
+      s = format (s, "%U", format_ct6_session, cmp, 0, s0, 1 /* verbose */);
+    }
 
   vlib_cli_output (vm, "\nEnd state: first index %d last index %d\n%v",
 		   cmp->first_index[0], cmp->last_index[0], s);
@@ -465,17 +434,14 @@ test_ct6_command_fn_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_ct6_command_fn_command, static) =
-{
+VLIB_CLI_COMMAND (test_ct6_command_fn_command, static) = {
   .path = "test ip6 connection-tracker",
   .short_help = "test ip6 connection-tracker",
   .function = test_ct6_command_fn_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-ct6_config (vlib_main_t * vm, unformat_input_t * input)
+ct6_config (vlib_main_t *vm, unformat_input_t *input)
 {
   ct6_main_t *cmp = &ct6_main;
 
@@ -484,8 +450,8 @@ ct6_config (vlib_main_t * vm, unformat_input_t * input)
       if (unformat (input, "session-hash-buckets %u",
 		    &cmp->session_hash_buckets))
 	;
-      else if (unformat (input, "session-hash-memory %U",
-			 unformat_memory_size, &cmp->session_hash_memory))
+      else if (unformat (input, "session-hash-memory %U", unformat_memory_size,
+			 &cmp->session_hash_memory))
 	;
       else if (unformat (input, "session-timeout %f",
 			 &cmp->session_timeout_interval))

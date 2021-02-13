@@ -21,18 +21,16 @@
 
 #include <vnet/fib/fib_types.h>
 
-extern int ip6_ra_config (vlib_main_t * vm, u32 sw_if_index,
-			  u8 suppress, u8 managed, u8 other,
-			  u8 ll_option, u8 send_unicast, u8 cease,
-			  u8 use_lifetime, u32 lifetime,
+extern int ip6_ra_config (vlib_main_t *vm, u32 sw_if_index, u8 suppress,
+			  u8 managed, u8 other, u8 ll_option, u8 send_unicast,
+			  u8 cease, u8 use_lifetime, u32 lifetime,
 			  u32 initial_count, u32 initial_interval,
 			  u32 max_interval, u32 min_interval, u8 is_no);
 
-extern int ip6_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
-			  ip6_address_t * prefix_addr, u8 prefix_len,
-			  u8 use_default, u32 val_lifetime,
-			  u32 pref_lifetime, u8 no_advertise,
-			  u8 off_link, u8 no_autoconfig,
+extern int ip6_ra_prefix (vlib_main_t *vm, u32 sw_if_index,
+			  ip6_address_t *prefix_addr, u8 prefix_len,
+			  u8 use_default, u32 val_lifetime, u32 pref_lifetime,
+			  u8 no_advertise, u8 off_link, u8 no_autoconfig,
 			  u8 no_onlink, u8 is_no);
 
 typedef struct
@@ -43,12 +41,9 @@ typedef struct
   u32 mrd;
 } icmp6_send_router_solicitation_params_t;
 
-extern void icmp6_send_router_solicitation (vlib_main_t * vm,
-					    u32 sw_if_index,
-					    u8 stop,
-					    const
-					    icmp6_send_router_solicitation_params_t
-					    * params);
+extern void icmp6_send_router_solicitation (
+  vlib_main_t *vm, u32 sw_if_index, u8 stop,
+  const icmp6_send_router_solicitation_params_t *params);
 
 typedef struct
 {
@@ -72,12 +67,11 @@ typedef struct
   ra_report_prefix_info_t *prefixes;
 } ip6_ra_report_t;
 
-
-typedef void (*ip6_ra_report_notify_t) (const ip6_ra_report_t * rap);
+typedef void (*ip6_ra_report_notify_t) (const ip6_ra_report_t *rap);
 
 extern void ip6_ra_report_register (ip6_ra_report_notify_t fn);
 extern void ip6_ra_report_unregister (ip6_ra_report_notify_t fn);
-extern void ip6_ra_update_secondary_radv_info (ip6_address_t * address,
+extern void ip6_ra_update_secondary_radv_info (ip6_address_t *address,
 					       u8 prefix_len,
 					       u32 primary_sw_if_index,
 					       u32 valid_time,

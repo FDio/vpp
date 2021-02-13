@@ -30,8 +30,7 @@ tap_interface::tap_interface(const std::string& name,
   : interface(name, type_t::TAPV2, state)
   , m_prefix(prefix)
   , m_l2_address(l2_address_t::ZERO)
-{
-}
+{}
 
 tap_interface::tap_interface(const std::string& name,
                              const admin_state_t& state,
@@ -40,8 +39,7 @@ tap_interface::tap_interface(const std::string& name,
   : interface(name, type_t::TAPV2, state)
   , m_prefix(prefix)
   , m_l2_address(l2_address)
-{
-}
+{}
 
 tap_interface::~tap_interface()
 {
@@ -53,14 +51,13 @@ tap_interface::tap_interface(const tap_interface& o)
   : interface(o)
   , m_prefix(o.m_prefix)
   , m_l2_address(o.m_l2_address)
-{
-}
+{}
 
 std::queue<cmd*>&
 tap_interface::mk_create_cmd(std::queue<cmd*>& q)
 {
-  q.push(new tap_interface_cmds::tapv2_create_cmd(m_hdl, name(), m_prefix,
-                                                  m_l2_address));
+  q.push(new tap_interface_cmds::tapv2_create_cmd(
+    m_hdl, name(), m_prefix, m_l2_address));
 
   return (q);
 }

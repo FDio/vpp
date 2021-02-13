@@ -24,14 +24,14 @@
 #include <vpp/app/version.h>
 #include <vnet/tls/tls.h>
 
-#define TLSO_CTRL_BYTES 1000
+#define TLSO_CTRL_BYTES	   1000
 #define TLSO_MIN_ENQ_SPACE (1 << 16)
 
 #define DTLSO_MAX_DGRAM 2000
 
 typedef struct tls_ctx_openssl_
 {
-  tls_ctx_t ctx;			/**< First */
+  tls_ctx_t ctx; /**< First */
   u32 openssl_ctx_index;
   SSL_CTX *ssl_ctx;
   SSL *ssl;
@@ -65,21 +65,20 @@ typedef struct openssl_main_
   int async;
 } openssl_main_t;
 
-typedef int openssl_resume_handler (tls_ctx_t * ctx, session_t * tls_session);
+typedef int openssl_resume_handler (tls_ctx_t *ctx, session_t *tls_session);
 
 tls_ctx_t *openssl_ctx_get_w_thread (u32 ctx_index, u8 thread_index);
-int vpp_tls_async_init_event (tls_ctx_t * ctx,
-			      openssl_resume_handler * handler,
-			      session_t * session);
-int vpp_tls_async_update_event (tls_ctx_t * ctx, int eagain);
-int tls_async_openssl_callback (SSL * s, void *evt);
+int vpp_tls_async_init_event (tls_ctx_t *ctx, openssl_resume_handler *handler,
+			      session_t *session);
+int vpp_tls_async_update_event (tls_ctx_t *ctx, int eagain);
+int tls_async_openssl_callback (SSL *s, void *evt);
 int openssl_evt_free (int event_idx, u8 thread_index);
-void openssl_polling_start (ENGINE * engine);
+void openssl_polling_start (ENGINE *engine);
 int openssl_engine_register (char *engine, char *alg, int async);
 void openssl_async_node_enable_disable (u8 is_en);
-clib_error_t *tls_openssl_api_init (vlib_main_t * vm);
+clib_error_t *tls_openssl_api_init (vlib_main_t *vm);
 int tls_openssl_set_ciphers (char *ciphers);
-int vpp_openssl_is_inflight (tls_ctx_t * ctx);
+int vpp_openssl_is_inflight (tls_ctx_t *ctx);
 
 #endif /* SRC_PLUGINS_TLSOPENSSL_TLS_OPENSSL_H_ */
 

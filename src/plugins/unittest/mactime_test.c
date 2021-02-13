@@ -16,7 +16,7 @@
 #include <vppinfra/time_range.h>
 
 static int
-test_time_range_main (unformat_input_t * input)
+test_time_range_main (unformat_input_t *input)
 {
   vlib_main_t *vm = vlib_get_main ();
   clib_timebase_t _tb, *tb = &_tb;
@@ -31,7 +31,7 @@ test_time_range_main (unformat_input_t * input)
   f64 timezone_offset;
 
   /* Init time base */
-  clib_timebase_init (tb, -5 /* EST */ , CLIB_TIMEBASE_DAYLIGHT_USA,
+  clib_timebase_init (tb, -5 /* EST */, CLIB_TIMEBASE_DAYLIGHT_USA,
 		      &vm->clib_time);
 
   /* Set up summer time cache */
@@ -123,19 +123,17 @@ test_time_range_main (unformat_input_t * input)
 
   test_range_string = "Mon 11 - 17 Tue 7 - 11 Wed - Fri 8 - 18";
 
-  unformat_init_string (input2, test_range_string,
-			strlen (test_range_string));
+  unformat_init_string (input2, test_range_string, strlen (test_range_string));
 
   if (unformat (input2, "%U", unformat_clib_timebase_range_vector, &rp))
     {
       vec_foreach (this_rp, rp)
-      {
-	start_time = sunday_midnight + this_rp->start;
-	end_time = sunday_midnight + this_rp->end;
-	fformat (stdout, "range: %U - %U\n",
-		 format_clib_timebase_time, start_time,
-		 format_clib_timebase_time, end_time);
-      }
+	{
+	  start_time = sunday_midnight + this_rp->start;
+	  end_time = sunday_midnight + this_rp->end;
+	  fformat (stdout, "range: %U - %U\n", format_clib_timebase_time,
+		   start_time, format_clib_timebase_time, end_time);
+	}
       vec_free (rp);
     }
   else
@@ -149,11 +147,9 @@ test_time_range_main (unformat_input_t * input)
   return 0;
 }
 
-
 static clib_error_t *
-test_time_range_command_fn (vlib_main_t * vm,
-			    unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+test_time_range_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd)
 {
   int rv;
 
@@ -165,14 +161,11 @@ test_time_range_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_time_range_command, static) =
-{
+VLIB_CLI_COMMAND (test_time_range_command, static) = {
   .path = "test time-range",
   .short_help = "test time-range",
   .function = test_time_range_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

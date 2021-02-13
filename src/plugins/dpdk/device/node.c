@@ -31,18 +31,18 @@
 #include <dpdk/device/dpdk_priv.h>
 
 static char *dpdk_error_strings[] = {
-#define _(n,s) s,
+#define _(n, s) s,
   foreach_dpdk_error
 #undef _
 };
 
 /* make sure all flags we need are stored in lower 8 bits */
-STATIC_ASSERT ((PKT_RX_IP_CKSUM_BAD | PKT_RX_FDIR) <
-	       256, "dpdk flags not un lower byte, fix needed");
+STATIC_ASSERT ((PKT_RX_IP_CKSUM_BAD | PKT_RX_FDIR) < 256,
+	       "dpdk flags not un lower byte, fix needed");
 
 static_always_inline uword
-dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
-			  struct rte_mbuf *mb, vlib_buffer_t * bt)
+dpdk_process_subseq_segs (vlib_main_t *vm, vlib_buffer_t *b,
+			  struct rte_mbuf *mb, vlib_buffer_t *bt)
 {
   u8 nb_seg = 1;
   struct rte_mbuf *mb_seg = 0;
@@ -125,18 +125,18 @@ dpdk_prefetch_buffer_x4 (struct rte_mbuf *mb[])
 
     @em Uses:
     - <code>struct rte_mbuf mb->ol_flags</code>
-        - PKT_RX_IP_CKSUM_BAD
+	- PKT_RX_IP_CKSUM_BAD
 
     @em Sets:
     - <code>b->error</code> if the packet is to be dropped immediately
     - <code>b->current_data, b->current_length</code>
-        - adjusted as needed to skip the L2 header in  direct-dispatch cases
+	- adjusted as needed to skip the L2 header in  direct-dispatch cases
     - <code>vnet_buffer(b)->sw_if_index[VLIB_RX]</code>
-        - rx interface sw_if_index
+	- rx interface sw_if_index
     - <code>vnet_buffer(b)->sw_if_index[VLIB_TX] = ~0</code>
-        - required by ipX-lookup
+	- required by ipX-lookup
     - <code>b->flags</code>
-        - to indicate multi-segment pkts (VLIB_BUFFER_NEXT_PRESENT), etc.
+	- to indicate multi-segment pkts (VLIB_BUFFER_NEXT_PRESENT), etc.
 
     <em>Next Nodes:</em>
     - Static arcs to: error-drop, ethernet-input,
@@ -146,14 +146,14 @@ dpdk_prefetch_buffer_x4 (struct rte_mbuf *mb[])
 */
 
 static_always_inline u16
-dpdk_ol_flags_extract (struct rte_mbuf **mb, u16 * flags, int count)
+dpdk_ol_flags_extract (struct rte_mbuf **mb, u16 *flags, int count)
 {
   u16 rv = 0;
   int i;
   for (i = 0; i < count; i++)
     {
       /* all flags we are interested in are in lower 8 bits but
-         that might change */
+	 that might change */
       flags[i] = (u16) mb[i]->ol_flags;
       rv |= flags[i];
     }
@@ -161,9 +161,8 @@ dpdk_ol_flags_extract (struct rte_mbuf **mb, u16 * flags, int count)
 }
 
 static_always_inline uword
-dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
-		       uword n_rx_packets, int maybe_multiseg,
-		       u16 * or_flagsp)
+dpdk_process_rx_burst (vlib_main_t *vm, dpdk_per_thread_data_t *ptd,
+		       uword n_rx_packets, int maybe_multiseg, u16 *or_flagsp)
 {
   u32 n_left = n_rx_packets;
   vlib_buffer_t *b[4];
@@ -250,7 +249,7 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
 }
 
 static_always_inline void
-dpdk_process_flow_offload (dpdk_device_t * xd, dpdk_per_thread_data_t * ptd,
+dpdk_process_flow_offload (dpdk_device_t *xd, dpdk_per_thread_data_t *ptd,
 			   uword n_rx_packets)
 {
   uword n;
@@ -266,7 +265,7 @@ dpdk_process_flow_offload (dpdk_device_t * xd, dpdk_per_thread_data_t * ptd,
       fle = pool_elt_at_index (xd->flow_lookup_entries,
 			       ptd->mbufs[n]->hash.fdir.hi);
 
-      if (fle->next_index != (u16) ~ 0)
+      if (fle->next_index != (u16) ~0)
 	ptd->next[n] = fle->next_index;
 
       if (fle->flow_id != ~0)
@@ -284,8 +283,8 @@ dpdk_process_flow_offload (dpdk_device_t * xd, dpdk_per_thread_data_t * ptd,
 }
 
 static_always_inline u32
-dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
-		   vlib_node_runtime_t * node, u32 thread_index, u16 queue_id)
+dpdk_device_input (vlib_main_t *vm, dpdk_main_t *dm, dpdk_device_t *xd,
+		   vlib_node_runtime_t *node, u32 thread_index, u16 queue_id)
 {
   uword n_rx_packets = 0, n_rx_bytes;
   dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, queue_id);
@@ -299,8 +298,8 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   u32 n;
   int single_next = 0;
 
-  dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data,
-						  thread_index);
+  dpdk_per_thread_data_t *ptd =
+    vec_elt_at_index (dm->per_thread_data, thread_index);
   vlib_buffer_t *bt = &ptd->buffer_template;
 
   if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
@@ -309,8 +308,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   /* get up to DPDK_RX_BURST_SZ buffers from PMD */
   while (n_rx_packets < DPDK_RX_BURST_SZ)
     {
-      n = rte_eth_rx_burst (xd->port_id, queue_id,
-			    ptd->mbufs + n_rx_packets,
+      n = rte_eth_rx_burst (xd->port_id, queue_id, ptd->mbufs + n_rx_packets,
 			    DPDK_RX_BURST_SZ - n_rx_packets);
       n_rx_packets += n;
 
@@ -352,7 +350,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 	ptd->next[n] = next_index;
 
       /* flow offload - process if rx flow offload enabled and at least one
-         packet is marked */
+	 packet is marked */
       if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) &&
 			 (or_flags & PKT_RX_FDIR)))
 	dpdk_process_flow_offload (xd, ptd, n_rx_packets);
@@ -419,9 +417,8 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 	  if (single_next == 0)
 	    next_index = next[0];
 
-	  if (PREDICT_TRUE
-	      (vlib_trace_buffer
-	       (vm, node, next_index, b0, /* follow_chain */ 0)))
+	  if (PREDICT_TRUE (vlib_trace_buffer (vm, node, next_index, b0,
+					       /* follow_chain */ 0)))
 	    {
 
 	      dpdk_rx_trace_t *t0 =
@@ -448,18 +445,18 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
       vlib_set_trace_count (vm, node, n_trace);
     }
 
-  vlib_increment_combined_counter
-    (vnet_get_main ()->interface_main.combined_sw_if_counters
-     + VNET_INTERFACE_COUNTER_RX, thread_index, xd->sw_if_index,
-     n_rx_packets, n_rx_bytes);
+  vlib_increment_combined_counter (
+    vnet_get_main ()->interface_main.combined_sw_if_counters +
+      VNET_INTERFACE_COUNTER_RX,
+    thread_index, xd->sw_if_index, n_rx_packets, n_rx_bytes);
 
   vnet_device_increment_rx_packets (thread_index, n_rx_packets);
 
   return n_rx_packets;
 }
 
-VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-				vlib_frame_t * f)
+VLIB_NODE_FN (dpdk_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f)
 {
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd;
@@ -482,7 +479,6 @@ VLIB_NODE_FN (dpdk_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_rx_packets;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_input_node) = {
   .type = VLIB_NODE_TYPE_INPUT,
   .name = "dpdk-input",
@@ -498,7 +494,6 @@ VLIB_REGISTER_NODE (dpdk_input_node) = {
   .n_errors = DPDK_N_ERROR,
   .error_strings = dpdk_error_strings,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

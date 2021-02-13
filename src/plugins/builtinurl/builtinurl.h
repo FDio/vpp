@@ -44,7 +44,7 @@ typedef struct
 
 extern builtinurl_main_t builtinurl_main;
 
-void builtinurl_handler_init (builtinurl_main_t * bm);
+void builtinurl_handler_init (builtinurl_main_t *bm);
 
 #endif /* __included_builtinurl_h__ */
 

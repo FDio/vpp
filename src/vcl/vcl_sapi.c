@@ -16,7 +16,7 @@
 #include <vcl/vcl_private.h>
 
 static int
-vcl_api_connect_app_socket (vcl_worker_t * wrk)
+vcl_api_connect_app_socket (vcl_worker_t *wrk)
 {
   clib_socket_t *cs = &wrk->app_api_sock;
   clib_error_t *err;
@@ -42,7 +42,7 @@ done:
 }
 
 static int
-vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t * mp, int *fds)
+vcl_api_attach_reply_handler (app_sapi_attach_reply_msg_t *mp, int *fds)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   int i, rv, n_fds_used = 0;
@@ -108,15 +108,15 @@ failed:
 }
 
 static int
-vcl_api_send_attach (clib_socket_t * cs)
+vcl_api_send_attach (clib_socket_t *cs)
 {
   app_sapi_msg_t msg = { 0 };
   app_sapi_attach_msg_t *mp = &msg.attach;
   u8 app_is_proxy, tls_engine;
   clib_error_t *err;
 
-  app_is_proxy = (vcm->cfg.app_proxy_transport_tcp ||
-		  vcm->cfg.app_proxy_transport_udp);
+  app_is_proxy =
+    (vcm->cfg.app_proxy_transport_tcp || vcm->cfg.app_proxy_transport_udp);
   tls_engine = CRYPTO_ENGINE_OPENSSL;
 
   clib_memcpy (&mp->name, vcm->app_name, vec_len (vcm->app_name));
@@ -185,8 +185,8 @@ vcl_sapi_attach (void)
 }
 
 static int
-vcl_api_add_del_worker_reply_handler (app_sapi_worker_add_del_reply_msg_t *
-				      mp, int *fds)
+vcl_api_add_del_worker_reply_handler (app_sapi_worker_add_del_reply_msg_t *mp,
+				      int *fds)
 {
   int n_fds = 0, i, rv;
   u64 segment_handle;
@@ -307,7 +307,7 @@ vcl_sapi_app_worker_add (void)
 }
 
 void
-vcl_sapi_app_worker_del (vcl_worker_t * wrk)
+vcl_sapi_app_worker_del (vcl_worker_t *wrk)
 {
   app_sapi_worker_add_del_msg_t *mp;
   app_sapi_msg_t msg = { 0 };
@@ -329,14 +329,14 @@ vcl_sapi_app_worker_del (vcl_worker_t * wrk)
 }
 
 void
-vcl_sapi_detach (vcl_worker_t * wrk)
+vcl_sapi_detach (vcl_worker_t *wrk)
 {
   clib_socket_t *cs = &wrk->app_api_sock;
   clib_socket_close (cs);
 }
 
 int
-vcl_sapi_recv_fds (vcl_worker_t * wrk, int *fds, int n_fds)
+vcl_sapi_recv_fds (vcl_worker_t *wrk, int *fds, int n_fds)
 {
   app_sapi_msg_t _msg, *msg = &_msg;
   clib_socket_t *cs;

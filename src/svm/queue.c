@@ -17,7 +17,6 @@
  *------------------------------------------------------------------
  */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -75,8 +74,8 @@ svm_queue_alloc_and_init (int nels, int elsize, int consumer_pid)
 {
   svm_queue_t *q;
 
-  q = clib_mem_alloc_aligned (sizeof (svm_queue_t)
-			      + nels * elsize, CLIB_CACHE_LINE_BYTES);
+  q = clib_mem_alloc_aligned (sizeof (svm_queue_t) + nels * elsize,
+			      CLIB_CACHE_LINE_BYTES);
   clib_memset (q, 0, sizeof (*q));
   q = svm_queue_init (q, nels, elsize);
   q->consumer_pid = consumer_pid;
@@ -88,7 +87,7 @@ svm_queue_alloc_and_init (int nels, int elsize, int consumer_pid)
  * svm_queue_free
  */
 void
-svm_queue_free (svm_queue_t * q)
+svm_queue_free (svm_queue_t *q)
 {
   (void) pthread_mutex_destroy (&q->mutex);
   (void) pthread_cond_destroy (&q->condvar);
@@ -96,7 +95,7 @@ svm_queue_free (svm_queue_t * q)
 }
 
 void
-svm_queue_lock (svm_queue_t * q)
+svm_queue_lock (svm_queue_t *q)
 {
   int rv = pthread_mutex_lock (&q->mutex);
   if (PREDICT_FALSE (rv == EOWNERDEAD))
@@ -104,7 +103,7 @@ svm_queue_lock (svm_queue_t * q)
 }
 
 static int
-svm_queue_trylock (svm_queue_t * q)
+svm_queue_trylock (svm_queue_t *q)
 {
   int rv = pthread_mutex_trylock (&q->mutex);
   if (PREDICT_FALSE (rv == EOWNERDEAD))
@@ -113,19 +112,19 @@ svm_queue_trylock (svm_queue_t * q)
 }
 
 void
-svm_queue_unlock (svm_queue_t * q)
+svm_queue_unlock (svm_queue_t *q)
 {
   pthread_mutex_unlock (&q->mutex);
 }
 
 int
-svm_queue_is_full (svm_queue_t * q)
+svm_queue_is_full (svm_queue_t *q)
 {
   return q->cursize == q->maxsize;
 }
 
 static inline void
-svm_queue_send_signal_inline (svm_queue_t * q, u8 is_prod)
+svm_queue_send_signal_inline (svm_queue_t *q, u8 is_prod)
 {
   if (q->producer_evtfd == -1)
     {
@@ -144,13 +143,13 @@ svm_queue_send_signal_inline (svm_queue_t * q, u8 is_prod)
 }
 
 void
-svm_queue_send_signal (svm_queue_t * q, u8 is_prod)
+svm_queue_send_signal (svm_queue_t *q, u8 is_prod)
 {
   svm_queue_send_signal_inline (q, is_prod);
 }
 
 static inline void
-svm_queue_wait_inline (svm_queue_t * q)
+svm_queue_wait_inline (svm_queue_t *q)
 {
   if (q->producer_evtfd == -1)
     {
@@ -169,13 +168,13 @@ svm_queue_wait_inline (svm_queue_t * q)
 }
 
 void
-svm_queue_wait (svm_queue_t * q)
+svm_queue_wait (svm_queue_t *q)
 {
   svm_queue_wait_inline (q);
 }
 
 static inline int
-svm_queue_timedwait_inline (svm_queue_t * q, double timeout)
+svm_queue_timedwait_inline (svm_queue_t *q, double timeout)
 {
   struct timespec ts;
   ts.tv_sec = unix_time_now () + (u32) timeout;
@@ -201,7 +200,7 @@ svm_queue_timedwait_inline (svm_queue_t * q, double timeout)
 }
 
 int
-svm_queue_timedwait (svm_queue_t * q, double timeout)
+svm_queue_timedwait (svm_queue_t *q, double timeout)
 {
   return svm_queue_timedwait_inline (q, timeout);
 }
@@ -210,7 +209,7 @@ svm_queue_timedwait (svm_queue_t * q, double timeout)
  * svm_queue_add_nolock
  */
 int
-svm_queue_add_nolock (svm_queue_t * q, u8 * elem)
+svm_queue_add_nolock (svm_queue_t *q, u8 *elem)
 {
   i8 *tailp;
   int need_broadcast = 0;
@@ -238,7 +237,7 @@ svm_queue_add_nolock (svm_queue_t * q, u8 * elem)
 }
 
 void
-svm_queue_add_raw (svm_queue_t * q, u8 * elem)
+svm_queue_add_raw (svm_queue_t *q, u8 *elem)
 {
   i8 *tailp;
 
@@ -252,12 +251,11 @@ svm_queue_add_raw (svm_queue_t * q, u8 * elem)
     svm_queue_send_signal_inline (q, 1);
 }
 
-
 /*
  * svm_queue_add
  */
 int
-svm_queue_add (svm_queue_t * q, u8 * elem, int nowait)
+svm_queue_add (svm_queue_t *q, u8 *elem, int nowait)
 {
   i8 *tailp;
   int need_broadcast = 0;
@@ -307,7 +305,7 @@ svm_queue_add (svm_queue_t * q, u8 * elem, int nowait)
  * svm_queue_add2
  */
 int
-svm_queue_add2 (svm_queue_t * q, u8 * elem, u8 * elem2, int nowait)
+svm_queue_add2 (svm_queue_t *q, u8 *elem, u8 *elem2, int nowait)
 {
   i8 *tailp;
   int need_broadcast = 0;
@@ -366,7 +364,7 @@ svm_queue_add2 (svm_queue_t * q, u8 * elem, u8 * elem2, int nowait)
  * svm_queue_sub
  */
 int
-svm_queue_sub (svm_queue_t * q, u8 * elem, svm_q_conditional_wait_t cond,
+svm_queue_sub (svm_queue_t *q, u8 *elem, svm_q_conditional_wait_t cond,
 	       u32 time)
 {
   i8 *headp;
@@ -431,7 +429,7 @@ svm_queue_sub (svm_queue_t * q, u8 * elem, svm_q_conditional_wait_t cond,
 }
 
 int
-svm_queue_sub2 (svm_queue_t * q, u8 * elem)
+svm_queue_sub2 (svm_queue_t *q, u8 *elem)
 {
   int need_broadcast;
   i8 *headp;
@@ -461,7 +459,7 @@ svm_queue_sub2 (svm_queue_t * q, u8 * elem)
 }
 
 int
-svm_queue_sub_raw (svm_queue_t * q, u8 * elem)
+svm_queue_sub_raw (svm_queue_t *q, u8 *elem)
 {
   int need_broadcast;
   i8 *headp;
@@ -487,13 +485,13 @@ svm_queue_sub_raw (svm_queue_t * q, u8 * elem)
 }
 
 void
-svm_queue_set_producer_event_fd (svm_queue_t * q, int fd)
+svm_queue_set_producer_event_fd (svm_queue_t *q, int fd)
 {
   q->producer_evtfd = fd;
 }
 
 void
-svm_queue_set_consumer_event_fd (svm_queue_t * q, int fd)
+svm_queue_set_consumer_event_fd (svm_queue_t *q, int fd)
 {
   q->consumer_evtfd = fd;
 }

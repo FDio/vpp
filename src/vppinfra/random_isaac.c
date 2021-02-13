@@ -59,17 +59,17 @@
 
 #if uword_bits == 32
 
-#define ind32(mm,x)  (*(u32 *)((u8 *)(mm) + ((x) & ((ISAAC_SIZE-1)<<2))))
-#define rngstep32(mix,a,b,mm,m,m2,r,x,y)		\
-{							\
-  x = *m;						\
-  a = (a^(mix)) + *(m2++);				\
-  *(m++) = y = ind32(mm,x) + a + b;			\
-  *(r++) = b = ind32(mm,y>>ISAAC_LOG2_SIZE) + x;	\
-}
+#define ind32(mm, x) (*(u32 *) ((u8 *) (mm) + ((x) & ((ISAAC_SIZE - 1) << 2))))
+#define rngstep32(mix, a, b, mm, m, m2, r, x, y)                              \
+  {                                                                           \
+    x = *m;                                                                   \
+    a = (a ^ (mix)) + *(m2++);                                                \
+    *(m++) = y = ind32 (mm, x) + a + b;                                       \
+    *(r++) = b = ind32 (mm, y >> ISAAC_LOG2_SIZE) + x;                        \
+  }
 
 void
-isaac (isaac_t * ctx, uword * results)
+isaac (isaac_t *ctx, uword *results)
 {
   u32 a, b, c, x, y, *m, *mm, *m2, *r, *mend;
 
@@ -106,30 +106,32 @@ isaac (isaac_t * ctx, uword * results)
 
 /* Perform 2 isaac runs with different contexts simultaneously. */
 void
-isaac2 (isaac_t * ctx, uword * results)
+isaac2 (isaac_t *ctx, uword *results)
 {
-#define _(n) \
-  u32 a##n, b##n, c##n, x##n, y##n, * m##n, * mm##n, * m2##n, * r##n, * mend##n
+#define _(n)                                                                  \
+  u32 a##n, b##n, c##n, x##n, y##n, *m##n, *mm##n, *m2##n, *r##n, *mend##n
 
-  _(0);
-  _(1);
-  (void) mend1;			/* "set but unused variable" error on mend1 with gcc 4.9  */
+  _ (0);
+  _ (1);
+  (void) mend1; /* "set but unused variable" error on mend1 with gcc 4.9  */
 #undef _
 
-#define _(n)							\
-do {								\
-  mm##n = ctx[(n)].memory;					\
-  r##n = results + (n) * ISAAC_SIZE;				\
-  a##n = ctx[(n)].a;						\
-  b##n = ctx[(n)].b;						\
-  c##n = ctx[(n)].c;						\
-  b##n += ++c##n;						\
-  mend##n = m2##n = mm##n + ARRAY_LEN (ctx[(n)].memory) / 2;	\
-  m##n = mm##n;							\
-} while (0)
+#define _(n)                                                                  \
+  do                                                                          \
+    {                                                                         \
+      mm##n = ctx[(n)].memory;                                                \
+      r##n = results + (n) *ISAAC_SIZE;                                       \
+      a##n = ctx[(n)].a;                                                      \
+      b##n = ctx[(n)].b;                                                      \
+      c##n = ctx[(n)].c;                                                      \
+      b##n += ++c##n;                                                         \
+      mend##n = m2##n = mm##n + ARRAY_LEN (ctx[(n)].memory) / 2;              \
+      m##n = mm##n;                                                           \
+    }                                                                         \
+  while (0)
 
-  _(0);
-  _(1);
+  _ (0);
+  _ (1);
 
 #undef _
 
@@ -167,20 +169,36 @@ do {								\
   ctx[1].c = c1;
 }
 
-#define mix32(a,b,c,d,e,f,g,h)			\
-{						\
-   a^=b<<11; d+=a; b+=c;			\
-   b^=c>>2;  e+=b; c+=d;			\
-   c^=d<<8;  f+=c; d+=e;			\
-   d^=e>>16; g+=d; e+=f;			\
-   e^=f<<10; h+=e; f+=g;			\
-   f^=g>>4;  a+=f; g+=h;			\
-   g^=h<<8;  b+=g; h+=a;			\
-   h^=a>>9;  c+=h; a+=b;			\
-}
+#define mix32(a, b, c, d, e, f, g, h)                                         \
+  {                                                                           \
+    a ^= b << 11;                                                             \
+    d += a;                                                                   \
+    b += c;                                                                   \
+    b ^= c >> 2;                                                              \
+    e += b;                                                                   \
+    c += d;                                                                   \
+    c ^= d << 8;                                                              \
+    f += c;                                                                   \
+    d += e;                                                                   \
+    d ^= e >> 16;                                                             \
+    g += d;                                                                   \
+    e += f;                                                                   \
+    e ^= f << 10;                                                             \
+    h += e;                                                                   \
+    f += g;                                                                   \
+    f ^= g >> 4;                                                              \
+    a += f;                                                                   \
+    g += h;                                                                   \
+    g ^= h << 8;                                                              \
+    b += g;                                                                   \
+    h += a;                                                                   \
+    h ^= a >> 9;                                                              \
+    c += h;                                                                   \
+    a += b;                                                                   \
+  }
 
 void
-isaac_init (isaac_t * ctx, uword * seeds)
+isaac_init (isaac_t *ctx, uword *seeds)
 {
   word i;
   u32 a, b, c, d, e, f, g, h, *m, *r;
@@ -189,9 +207,9 @@ isaac_init (isaac_t * ctx, uword * seeds)
   m = ctx->memory;
   r = seeds;
 
-  a = b = c = d = e = f = g = h = 0x9e3779b9;	/* the golden ratio */
+  a = b = c = d = e = f = g = h = 0x9e3779b9; /* the golden ratio */
 
-  for (i = 0; i < 4; ++i)	/* scramble it */
+  for (i = 0; i < 4; ++i) /* scramble it */
     mix32 (a, b, c, d, e, f, g, h);
 
   /* initialize using the contents of r[] as the seed */
@@ -242,17 +260,17 @@ isaac_init (isaac_t * ctx, uword * seeds)
 
 #if uword_bits == 64
 
-#define ind64(mm,x)  (*(u64 *)((u8 *)(mm) + ((x) & ((ISAAC_SIZE-1)<<3))))
-#define rngstep64(mix,a,b,mm,m,m2,r,x,y)		\
-{							\
-  x = *m;						\
-  a = (mix) + *(m2++);					\
-  *(m++) = y = ind64(mm,x) + a + b;			\
-  *(r++) = b = ind64(mm,y>>ISAAC_LOG2_SIZE) + x;	\
-}
+#define ind64(mm, x) (*(u64 *) ((u8 *) (mm) + ((x) & ((ISAAC_SIZE - 1) << 3))))
+#define rngstep64(mix, a, b, mm, m, m2, r, x, y)                              \
+  {                                                                           \
+    x = *m;                                                                   \
+    a = (mix) + *(m2++);                                                      \
+    *(m++) = y = ind64 (mm, x) + a + b;                                       \
+    *(r++) = b = ind64 (mm, y >> ISAAC_LOG2_SIZE) + x;                        \
+  }
 
 void
-isaac (isaac_t * ctx, uword * results)
+isaac (isaac_t *ctx, uword *results)
 {
   u64 a, b, c, x, y, *m, *mm, *m2, *r, *mend;
 
@@ -289,34 +307,36 @@ isaac (isaac_t * ctx, uword * results)
 
 /* Perform 2 isaac runs with different contexts simultaneously. */
 void
-isaac2 (isaac_t * ctx, uword * results)
+isaac2 (isaac_t *ctx, uword *results)
 {
-#define _(n) \
-  u64 a##n, b##n, c##n, x##n, y##n, * m##n, * mm##n, * m2##n, * r##n, * mend##n
+#define _(n)                                                                  \
+  u64 a##n, b##n, c##n, x##n, y##n, *m##n, *mm##n, *m2##n, *r##n, *mend##n
 
-  _(0);
-  _(1);
-
-#undef _
-
-#define _(n)							\
-do {								\
-  mm##n = ctx[(n)].memory;					\
-  r##n = results + (n) * ISAAC_SIZE;				\
-  a##n = ctx[(n)].a;						\
-  b##n = ctx[(n)].b;						\
-  c##n = ctx[(n)].c;						\
-  b##n += ++c##n;						\
-  mend##n = m2##n = mm##n + ARRAY_LEN (ctx[(n)].memory) / 2;	\
-  m##n = mm##n;							\
-} while (0)
-
-  _(0);
-  _(1);
+  _ (0);
+  _ (1);
 
 #undef _
 
-  (void) mend1;			/* compiler warning */
+#define _(n)                                                                  \
+  do                                                                          \
+    {                                                                         \
+      mm##n = ctx[(n)].memory;                                                \
+      r##n = results + (n) *ISAAC_SIZE;                                       \
+      a##n = ctx[(n)].a;                                                      \
+      b##n = ctx[(n)].b;                                                      \
+      c##n = ctx[(n)].c;                                                      \
+      b##n += ++c##n;                                                         \
+      mend##n = m2##n = mm##n + ARRAY_LEN (ctx[(n)].memory) / 2;              \
+      m##n = mm##n;                                                           \
+    }                                                                         \
+  while (0)
+
+  _ (0);
+  _ (1);
+
+#undef _
+
+  (void) mend1; /* compiler warning */
 
   while (m0 < mend0)
     {
@@ -352,20 +372,36 @@ do {								\
   ctx[1].c = c1;
 }
 
-#define mix64(a,b,c,d,e,f,g,h)			\
-{						\
-   a-=e; f^=h>>9;  h+=a;			\
-   b-=f; g^=a<<9;  a+=b;			\
-   c-=g; h^=b>>23; b+=c;			\
-   d-=h; a^=c<<15; c+=d;			\
-   e-=a; b^=d>>14; d+=e;			\
-   f-=b; c^=e<<20; e+=f;			\
-   g-=c; d^=f>>17; f+=g;			\
-   h-=d; e^=g<<14; g+=h;			\
-}
+#define mix64(a, b, c, d, e, f, g, h)                                         \
+  {                                                                           \
+    a -= e;                                                                   \
+    f ^= h >> 9;                                                              \
+    h += a;                                                                   \
+    b -= f;                                                                   \
+    g ^= a << 9;                                                              \
+    a += b;                                                                   \
+    c -= g;                                                                   \
+    h ^= b >> 23;                                                             \
+    b += c;                                                                   \
+    d -= h;                                                                   \
+    a ^= c << 15;                                                             \
+    c += d;                                                                   \
+    e -= a;                                                                   \
+    b ^= d >> 14;                                                             \
+    d += e;                                                                   \
+    f -= b;                                                                   \
+    c ^= e << 20;                                                             \
+    e += f;                                                                   \
+    g -= c;                                                                   \
+    d ^= f >> 17;                                                             \
+    f += g;                                                                   \
+    h -= d;                                                                   \
+    e ^= g << 14;                                                             \
+    g += h;                                                                   \
+  }
 
 void
-isaac_init (isaac_t * ctx, uword * seeds)
+isaac_init (isaac_t *ctx, uword *seeds)
 {
   word i;
   u64 a, b, c, d, e, f, g, h, *m, *r;
@@ -374,12 +410,12 @@ isaac_init (isaac_t * ctx, uword * seeds)
   m = ctx->memory;
   r = seeds;
 
-  a = b = c = d = e = f = g = h = 0x9e3779b97f4a7c13LL;	/* the golden ratio */
+  a = b = c = d = e = f = g = h = 0x9e3779b97f4a7c13LL; /* the golden ratio */
 
-  for (i = 0; i < 4; ++i)	/* scramble it */
+  for (i = 0; i < 4; ++i) /* scramble it */
     mix64 (a, b, c, d, e, f, g, h);
 
-  for (i = 0; i < ISAAC_SIZE; i += 8)	/* fill in mm[] with messy stuff */
+  for (i = 0; i < ISAAC_SIZE; i += 8) /* fill in mm[] with messy stuff */
     {
       a += r[i];
       b += r[i + 1];
@@ -423,7 +459,6 @@ isaac_init (isaac_t * ctx, uword * seeds)
     }
 }
 #endif /* uword_bits == 64 */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

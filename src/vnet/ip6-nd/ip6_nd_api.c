@@ -44,9 +44,8 @@ static u32 ip6_nd_base_msg_id;
 #include <vlibapi/api_helper_macros.h>
 
 static void
-send_ip6nd_proxy_details (vl_api_registration_t * reg,
-			  u32 context,
-			  const ip46_address_t * addr, u32 sw_if_index)
+send_ip6nd_proxy_details (vl_api_registration_t *reg, u32 context,
+			  const ip46_address_t *addr, u32 sw_if_index)
 {
   vl_api_ip6nd_proxy_details_t *mp;
 
@@ -80,7 +79,7 @@ api_ip6nd_proxy_fib_table_walk (fib_node_index_t fei, void *arg)
 }
 
 static void
-vl_api_ip6nd_proxy_dump_t_handler (vl_api_ip6nd_proxy_dump_t * mp)
+vl_api_ip6nd_proxy_dump_t_handler (vl_api_ip6nd_proxy_dump_t *mp)
 {
   ip6_main_t *im6 = &ip6_main;
   fib_table_t *fib_table;
@@ -95,33 +94,27 @@ vl_api_ip6nd_proxy_dump_t_handler (vl_api_ip6nd_proxy_dump_t * mp)
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (fib_table, im6->fibs)
-   {
-    fib_table_walk(fib_table->ft_index,
-                   FIB_PROTOCOL_IP6,
-                   api_ip6nd_proxy_fib_table_walk,
-                   &ctx);
-  }
-  /* *INDENT-ON* */
+    {
+      fib_table_walk (fib_table->ft_index, FIB_PROTOCOL_IP6,
+		      api_ip6nd_proxy_fib_table_walk, &ctx);
+    }
 
   vec_sort_with_function (ctx.indices, fib_entry_cmp_for_sort);
 
   vec_foreach (feip, ctx.indices)
-  {
-    pfx = fib_entry_get_prefix (*feip);
+    {
+      pfx = fib_entry_get_prefix (*feip);
 
-    send_ip6nd_proxy_details (reg,
-			      mp->context,
-			      &pfx->fp_addr,
-			      fib_entry_get_resolving_interface (*feip));
-  }
+      send_ip6nd_proxy_details (reg, mp->context, &pfx->fp_addr,
+				fib_entry_get_resolving_interface (*feip));
+    }
 
   vec_free (ctx.indices);
 }
 
 static void
-vl_api_ip6nd_proxy_add_del_t_handler (vl_api_ip6nd_proxy_add_del_t * mp)
+vl_api_ip6nd_proxy_add_del_t_handler (vl_api_ip6nd_proxy_add_del_t *mp)
 {
   vl_api_ip6nd_proxy_add_del_reply_t *rmp;
   ip6_address_t ip6;
@@ -140,8 +133,8 @@ vl_api_ip6nd_proxy_add_del_t_handler (vl_api_ip6nd_proxy_add_del_t * mp)
 }
 
 static void
-  vl_api_sw_interface_ip6nd_ra_config_t_handler
-  (vl_api_sw_interface_ip6nd_ra_config_t * mp)
+vl_api_sw_interface_ip6nd_ra_config_t_handler (
+  vl_api_sw_interface_ip6nd_ra_config_t *mp)
 {
   vl_api_sw_interface_ip6nd_ra_config_reply_t *rmp;
   vlib_main_t *vm = vlib_get_main ();
@@ -160,13 +153,10 @@ static void
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv = ip6_ra_config (vm, ntohl (mp->sw_if_index),
-		      suppress, managed, other,
-		      ll_option, send_unicast, cease,
-		      default_router, ntohl (mp->lifetime),
-		      ntohl (mp->initial_count),
-		      ntohl (mp->initial_interval),
-		      ntohl (mp->max_interval),
+  rv = ip6_ra_config (vm, ntohl (mp->sw_if_index), suppress, managed, other,
+		      ll_option, send_unicast, cease, default_router,
+		      ntohl (mp->lifetime), ntohl (mp->initial_count),
+		      ntohl (mp->initial_interval), ntohl (mp->max_interval),
 		      ntohl (mp->min_interval), is_no);
 
   BAD_SW_IF_INDEX_LABEL;
@@ -175,8 +165,8 @@ static void
 }
 
 static void
-  vl_api_sw_interface_ip6nd_ra_prefix_t_handler
-  (vl_api_sw_interface_ip6nd_ra_prefix_t * mp)
+vl_api_sw_interface_ip6nd_ra_prefix_t_handler (
+  vl_api_sw_interface_ip6nd_ra_prefix_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_sw_interface_ip6nd_ra_prefix_reply_t *rmp;
@@ -194,20 +184,18 @@ static void
   no_autoconfig = mp->no_autoconfig == 1;
   no_onlink = mp->no_onlink == 1;
 
-  rv = ip6_ra_prefix (vm, ntohl (mp->sw_if_index),
-		      &pfx.fp_addr.ip6,
-		      pfx.fp_len, use_default,
-		      ntohl (mp->val_lifetime),
-		      ntohl (mp->pref_lifetime), no_advertise,
-		      off_link, no_autoconfig, no_onlink, is_no);
+  rv = ip6_ra_prefix (vm, ntohl (mp->sw_if_index), &pfx.fp_addr.ip6,
+		      pfx.fp_len, use_default, ntohl (mp->val_lifetime),
+		      ntohl (mp->pref_lifetime), no_advertise, off_link,
+		      no_autoconfig, no_onlink, is_no);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_IP6ND_RA_PREFIX_REPLY);
 }
 
 static void
-  vl_api_ip6nd_send_router_solicitation_t_handler
-  (vl_api_ip6nd_send_router_solicitation_t * mp)
+vl_api_ip6nd_send_router_solicitation_t_handler (
+  vl_api_ip6nd_send_router_solicitation_t *mp)
 {
   vl_api_ip6nd_send_router_solicitation_reply_t *rmp;
   icmp6_send_router_solicitation_params_t params;
@@ -232,67 +220,66 @@ static void
 }
 
 static void
-ip6_ra_handle_report (const ip6_ra_report_t * rap)
+ip6_ra_handle_report (const ip6_ra_report_t *rap)
 {
-  /* *INDENT-OFF* */
+
   vpe_client_registration_t *rp;
 
   pool_foreach (rp, vpe_api_main.ip6_ra_events_registrations)
-   {
-    vl_api_registration_t *vl_reg;
+    {
+      vl_api_registration_t *vl_reg;
 
-    vl_reg = vl_api_client_index_to_registration (rp->client_index);
+      vl_reg = vl_api_client_index_to_registration (rp->client_index);
 
-    if (vl_reg && vl_api_can_send_msg (vl_reg))
-      {
-        vl_api_ip6_ra_prefix_info_t *prefix;
-        vl_api_ip6_ra_event_t *event;
+      if (vl_reg && vl_api_can_send_msg (vl_reg))
+	{
+	  vl_api_ip6_ra_prefix_info_t *prefix;
+	  vl_api_ip6_ra_event_t *event;
 
-        u32 event_size = (sizeof (vl_api_ip6_ra_event_t) +
-                          vec_len (rap->prefixes) *
-                          sizeof (vl_api_ip6_ra_prefix_info_t));
-        event = vl_msg_api_alloc_zero (event_size);
+	  u32 event_size =
+	    (sizeof (vl_api_ip6_ra_event_t) +
+	     vec_len (rap->prefixes) * sizeof (vl_api_ip6_ra_prefix_info_t));
+	  event = vl_msg_api_alloc_zero (event_size);
 
-        event->_vl_msg_id = htons (VL_API_IP6_RA_EVENT + REPLY_MSG_ID_BASE);
-        event->client_index = rp->client_index;
-        event->pid = rp->client_pid;
-        event->sw_if_index = clib_host_to_net_u32 (rap->sw_if_index);
+	  event->_vl_msg_id = htons (VL_API_IP6_RA_EVENT + REPLY_MSG_ID_BASE);
+	  event->client_index = rp->client_index;
+	  event->pid = rp->client_pid;
+	  event->sw_if_index = clib_host_to_net_u32 (rap->sw_if_index);
 
-        ip6_address_encode (&rap->router_address,
-                            event->router_addr);
+	  ip6_address_encode (&rap->router_address, event->router_addr);
 
-        event->current_hop_limit = rap->current_hop_limit;
-        event->flags = rap->flags;
-        event->router_lifetime_in_sec =
-          clib_host_to_net_u16 (rap->router_lifetime_in_sec);
-        event->neighbor_reachable_time_in_msec =
-          clib_host_to_net_u32 (rap->neighbor_reachable_time_in_msec);
-        event->time_in_msec_between_retransmitted_neighbor_solicitations =
-          clib_host_to_net_u32 (rap->time_in_msec_between_retransmitted_neighbor_solicitations);
-        event->n_prefixes = clib_host_to_net_u32 (vec_len (rap->prefixes));
+	  event->current_hop_limit = rap->current_hop_limit;
+	  event->flags = rap->flags;
+	  event->router_lifetime_in_sec =
+	    clib_host_to_net_u16 (rap->router_lifetime_in_sec);
+	  event->neighbor_reachable_time_in_msec =
+	    clib_host_to_net_u32 (rap->neighbor_reachable_time_in_msec);
+	  event->time_in_msec_between_retransmitted_neighbor_solicitations =
+	    clib_host_to_net_u32 (
+	      rap->time_in_msec_between_retransmitted_neighbor_solicitations);
+	  event->n_prefixes = clib_host_to_net_u32 (vec_len (rap->prefixes));
 
-        prefix = event->prefixes;
-          // (typeof (prefix)) event->prefixes;
-        u32 j;
-        for (j = 0; j < vec_len (rap->prefixes); j++)
-          {
-            ra_report_prefix_info_t *info = &rap->prefixes[j];
-            ip_prefix_encode(&info->prefix, &prefix->prefix);
-            prefix->flags = info->flags;
-            prefix->valid_time = clib_host_to_net_u32 (info->valid_time);
-            prefix->preferred_time =
-              clib_host_to_net_u32 (info->preferred_time);
-            prefix++;
-          }
+	  prefix = event->prefixes;
+	  // (typeof (prefix)) event->prefixes;
+	  u32 j;
+	  for (j = 0; j < vec_len (rap->prefixes); j++)
+	    {
+	      ra_report_prefix_info_t *info = &rap->prefixes[j];
+	      ip_prefix_encode (&info->prefix, &prefix->prefix);
+	      prefix->flags = info->flags;
+	      prefix->valid_time = clib_host_to_net_u32 (info->valid_time);
+	      prefix->preferred_time =
+		clib_host_to_net_u32 (info->preferred_time);
+	      prefix++;
+	    }
 
-        vl_api_send_msg (vl_reg, (u8 *) event);
-      }
-  }
-  /* *INDENT-ON* */
+	  vl_api_send_msg (vl_reg, (u8 *) event);
+	}
+    }
 }
 
 static void
-vl_api_want_ip6_ra_events_t_handler (vl_api_want_ip6_ra_events_t * mp)
+vl_api_want_ip6_ra_events_t_handler (vl_api_want_ip6_ra_events_t *mp)
 {
   vpe_api_main_t *am = &vpe_api_main;
   vl_api_want_ip6_ra_events_reply_t *rmp;
@@ -363,7 +350,7 @@ VL_MSG_API_REAPER_FUNCTION (want_ip6_ra_events_reaper);
 #include <vnet/ip6-nd/ip6_nd.api.c>
 
 static clib_error_t *
-ip6_nd_api_init (vlib_main_t * vm)
+ip6_nd_api_init (vlib_main_t *vm)
 {
   /* Ask for a correctly-sized block of API message decode slots */
   ip6_nd_base_msg_id = setup_message_id_table ();

@@ -21,28 +21,28 @@
 #include <vppinfra/bihash_24_8.h>
 #include <vppinfra/bihash_template.h>
 
-#define GID_LOOKUP_MISS ((u32)~0)
-#define GID_LOOKUP_MISS_L2 ((u64)~0)
+#define GID_LOOKUP_MISS	   ((u32) ~0)
+#define GID_LOOKUP_MISS_L2 ((u64) ~0)
 
 /* Default size of the ip4 hash table */
 #define IP4_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
-#define IP4_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+#define IP4_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32 << 20)
 
 /* Default size of the ip6 hash table */
 #define IP6_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
-#define IP6_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+#define IP6_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32 << 20)
 
 /* Default size of the MAC hash table */
 #define MAC_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
-#define MAC_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+#define MAC_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32 << 20)
 
 /* Default size of the ARP/NDP hash table */
 #define ARP_NDP_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
-#define ARP_NDP_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+#define ARP_NDP_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32 << 20)
 
 /* Default size of the NSH hash table */
 #define NSH_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
-#define NSH_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+#define NSH_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32 << 20)
 
 typedef void (*foreach_subprefix_match_cb_t) (u32, void *);
 
@@ -131,24 +131,21 @@ typedef struct
 
 } gid_dictionary_t;
 
-u32
-gid_dictionary_add_del (gid_dictionary_t * db, gid_address_t * key, u64 value,
-			u8 is_add);
+u32 gid_dictionary_add_del (gid_dictionary_t *db, gid_address_t *key,
+			    u64 value, u8 is_add);
 
-u64 gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t * key);
-u32 gid_dictionary_sd_lookup (gid_dictionary_t * db, gid_address_t * dst,
-			      gid_address_t * src);
+u64 gid_dictionary_lookup (gid_dictionary_t *db, gid_address_t *key);
+u32 gid_dictionary_sd_lookup (gid_dictionary_t *db, gid_address_t *dst,
+			      gid_address_t *src);
 
-void gid_dictionary_init (gid_dictionary_t * db);
+void gid_dictionary_init (gid_dictionary_t *db);
 
-void
-gid_dict_foreach_subprefix (gid_dictionary_t * db, gid_address_t * eid,
-			    foreach_subprefix_match_cb_t cb, void *arg);
+void gid_dict_foreach_subprefix (gid_dictionary_t *db, gid_address_t *eid,
+				 foreach_subprefix_match_cb_t cb, void *arg);
 
-void
-gid_dict_foreach_l2_arp_ndp_entry (gid_dictionary_t * db,
-				   BV (clib_bihash_foreach_key_value_pair_cb)
-				   cb, void *ht);
+void gid_dict_foreach_l2_arp_ndp_entry (
+  gid_dictionary_t *db, BV (clib_bihash_foreach_key_value_pair_cb) cb,
+  void *ht);
 
 #endif /* VNET_LISP_GPE_GID_DICTIONARY_H_ */
 

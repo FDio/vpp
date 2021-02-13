@@ -20,7 +20,7 @@
 ip_punt_redirect_cfg_t ip_punt_redirect_cfg;
 
 u8 *
-format_ip_punt_redirect_trace (u8 * s, va_list * args)
+format_ip_punt_redirect_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -35,13 +35,12 @@ format_ip_punt_redirect_trace (u8 * s, va_list * args)
 }
 
 static void
-ip_punt_redirect_stack (ip_punt_redirect_rx_t * ipr)
+ip_punt_redirect_stack (ip_punt_redirect_rx_t *ipr)
 {
   dpo_id_t dpo = DPO_INVALID;
   vlib_node_t *pnode;
 
-  fib_path_list_contribute_forwarding (ipr->pl,
-				       ipr->payload_type,
+  fib_path_list_contribute_forwarding (ipr->pl, ipr->payload_type,
 				       FIB_PATH_LIST_FWD_FLAG_COLLAPSE, &dpo);
 
   if (FIB_PROTOCOL_IP4 == ipr->fproto)
@@ -69,9 +68,8 @@ ip_punt_redirect_find (fib_protocol_t fproto, u32 rx_sw_if_index)
 }
 
 void
-ip_punt_redirect_add (fib_protocol_t fproto,
-		      u32 rx_sw_if_index,
-		      fib_forward_chain_type_t ct, fib_route_path_t * rpaths)
+ip_punt_redirect_add (fib_protocol_t fproto, u32 rx_sw_if_index,
+		      fib_forward_chain_type_t ct, fib_route_path_t *rpaths)
 {
   ip_punt_redirect_rx_t *ipr;
   index_t ipri;
@@ -79,8 +77,9 @@ ip_punt_redirect_add (fib_protocol_t fproto,
   if (~0 == rx_sw_if_index)
     rx_sw_if_index = 0;
 
-  vec_validate_init_empty (ip_punt_redirect_cfg.redirect_by_rx_sw_if_index
-			   [fproto], rx_sw_if_index, INDEX_INVALID);
+  vec_validate_init_empty (
+    ip_punt_redirect_cfg.redirect_by_rx_sw_if_index[fproto], rx_sw_if_index,
+    INDEX_INVALID);
 
   pool_get (ip_punt_redirect_cfg.pool, ipr);
   ipri = ipr - ip_punt_redirect_cfg.pool;
@@ -94,9 +93,8 @@ ip_punt_redirect_add (fib_protocol_t fproto,
 
   ipr->pl = fib_path_list_create (FIB_PATH_LIST_FLAG_NO_URPF, rpaths);
 
-  ipr->sibling = fib_path_list_child_add (ipr->pl,
-					  FIB_NODE_TYPE_IP_PUNT_REDIRECT,
-					  ipri);
+  ipr->sibling =
+    fib_path_list_child_add (ipr->pl, FIB_NODE_TYPE_IP_PUNT_REDIRECT, ipri);
 
   ip_punt_redirect_stack (ipr);
 }
@@ -126,7 +124,7 @@ ip_punt_redirect_del (fib_protocol_t fproto, u32 rx_sw_if_index)
 }
 
 u8 *
-format_ip_punt_redirect (u8 * s, va_list * args)
+format_ip_punt_redirect (u8 *s, va_list *args)
 {
   fib_protocol_t fproto = va_arg (*args, int);
   ip_punt_redirect_rx_t *rx;
@@ -137,26 +135,25 @@ format_ip_punt_redirect (u8 * s, va_list * args)
   rxs = ip_punt_redirect_cfg.redirect_by_rx_sw_if_index[fproto];
 
   vec_foreach_index (rx_sw_if_index, rxs)
-  {
-    if (INDEX_INVALID == rxs[rx_sw_if_index])
-      continue;
+    {
+      if (INDEX_INVALID == rxs[rx_sw_if_index])
+	continue;
 
-    rx = ip_punt_redirect_get (rxs[rx_sw_if_index]);
+      rx = ip_punt_redirect_get (rxs[rx_sw_if_index]);
 
-    s = format (s, " rx %U via:\n",
-		format_vnet_sw_interface_name, vnm,
-		vnet_get_sw_interface (vnm, rx_sw_if_index));
-    s = format (s, " %U", format_fib_path_list, rx->pl, 2);
-    s = format (s, " forwarding\n", format_dpo_id, &rx->dpo, 0);
-    s = format (s, "  %U\n", format_dpo_id, &rx->dpo, 0);
-  }
+      s = format (s, " rx %U via:\n", format_vnet_sw_interface_name, vnm,
+		  vnet_get_sw_interface (vnm, rx_sw_if_index));
+      s = format (s, " %U", format_fib_path_list, rx->pl, 2);
+      s = format (s, " forwarding\n", format_dpo_id, &rx->dpo, 0);
+      s = format (s, "  %U\n", format_dpo_id, &rx->dpo, 0);
+    }
 
   return (s);
 }
 
 void
-ip_punt_redirect_walk (fib_protocol_t fproto,
-		       ip_punt_redirect_walk_cb_t cb, void *ctx)
+ip_punt_redirect_walk (fib_protocol_t fproto, ip_punt_redirect_walk_cb_t cb,
+		       void *ctx)
 {
   ip_punt_redirect_rx_t *rx;
   u32 ii, rx_sw_if_index;
@@ -165,15 +162,15 @@ ip_punt_redirect_walk (fib_protocol_t fproto,
   rxs = ip_punt_redirect_cfg.redirect_by_rx_sw_if_index[fproto];
 
   vec_foreach_index (ii, rxs)
-  {
-    if (INDEX_INVALID == rxs[ii])
-      continue;
+    {
+      if (INDEX_INVALID == rxs[ii])
+	continue;
 
-    rx = ip_punt_redirect_get (rxs[ii]);
+      rx = ip_punt_redirect_get (rxs[ii]);
 
-    rx_sw_if_index = (ii == 0 ? ~0 : ii);
-    cb (rx_sw_if_index, rx, ctx);
-  }
+      rx_sw_if_index = (ii == 0 ? ~0 : ii);
+      cb (rx_sw_if_index, rx, ctx);
+    }
 }
 
 static fib_node_t *
@@ -184,15 +181,15 @@ ip_punt_redirect_get_node (fib_node_index_t index)
 }
 
 static ip_punt_redirect_rx_t *
-ip_punt_redirect_get_from_node (fib_node_t * node)
+ip_punt_redirect_get_from_node (fib_node_t *node)
 {
-  return ((ip_punt_redirect_rx_t *) (((char *) node) -
-				     STRUCT_OFFSET_OF (ip_punt_redirect_rx_t,
-						       node)));
+  return ((
+    ip_punt_redirect_rx_t *) (((char *) node) -
+			      STRUCT_OFFSET_OF (ip_punt_redirect_rx_t, node)));
 }
 
 static void
-ip_punt_redirect_last_lock_gone (fib_node_t * node)
+ip_punt_redirect_last_lock_gone (fib_node_t *node)
 {
   /*
    * the lifetime of the entry is managed by the table.
@@ -204,8 +201,8 @@ ip_punt_redirect_last_lock_gone (fib_node_t * node)
  * A back walk has reached this BIER entry
  */
 static fib_node_back_walk_rc_t
-ip_punt_redirect_back_walk_notify (fib_node_t * node,
-				   fib_node_back_walk_ctx_t * ctx)
+ip_punt_redirect_back_walk_notify (fib_node_t *node,
+				   fib_node_back_walk_ctx_t *ctx)
 {
   /*
    * re-populate the ECMP tables with new choices
@@ -230,7 +227,7 @@ static const fib_node_vft_t ip_punt_redirect_vft = {
 };
 
 static clib_error_t *
-ip_punt_drop_init (vlib_main_t * vm)
+ip_punt_drop_init (vlib_main_t *vm)
 {
   fib_node_register_type (FIB_NODE_TYPE_IP_PUNT_REDIRECT,
 			  &ip_punt_redirect_vft);

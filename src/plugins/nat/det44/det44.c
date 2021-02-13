@@ -29,28 +29,26 @@
 
 det44_main_t det44_main;
 
-/* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip4_det44_in2out, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "det44-in2out",
   .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
-                               "ip4-sv-reassembly-feature"),
+			       "ip4-sv-reassembly-feature"),
 };
 VNET_FEATURE_INIT (ip4_det44_out2in, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "det44-out2in",
   .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
-                               "ip4-sv-reassembly-feature",
-                               "ip4-dhcp-client-detect"),
+			       "ip4-sv-reassembly-feature",
+			       "ip4-dhcp-client-detect"),
 };
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Deterministic NAT (CGN)",
+  .version = VPP_BUILD_VER,
+  .description = "Deterministic NAT (CGN)",
 };
-/* *INDENT-ON* */
 
 void
-det44_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
+det44_add_del_addr_to_fib (ip4_address_t *addr, u8 p_len, u32 sw_if_index,
 			   int is_add)
 {
   det44_main_t *dm = &det44_main;
@@ -65,16 +63,12 @@ det44_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
 
   if (is_add)
     {
-      fib_table_entry_update_one_path (fib_index,
-				       &prefix,
-				       dm->fib_src_low,
+      fib_table_entry_update_one_path (fib_index, &prefix, dm->fib_src_low,
 				       (FIB_ENTRY_FLAG_CONNECTED |
 					FIB_ENTRY_FLAG_LOCAL |
 					FIB_ENTRY_FLAG_EXCLUSIVE),
-				       DPO_PROTO_IP4,
-				       NULL,
-				       sw_if_index,
-				       ~0, 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+				       DPO_PROTO_IP4, NULL, sw_if_index, ~0, 1,
+				       NULL, FIB_ROUTE_PATH_FLAG_NONE);
     }
   else
     {
@@ -96,8 +90,8 @@ det44_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
  * @param is_add   If 0 delete, otherwise add.
  */
 int
-snat_det_add_map (ip4_address_t * in_addr, u8 in_plen,
-		  ip4_address_t * out_addr, u8 out_plen, int is_add)
+snat_det_add_map (ip4_address_t *in_addr, u8 in_plen, ip4_address_t *out_addr,
+		  u8 out_plen, int is_add)
 {
   static snat_det_session_t empty_snat_det_session = { 0 };
   det44_main_t *dm = &det44_main;
@@ -109,16 +103,15 @@ snat_det_add_map (ip4_address_t * in_addr, u8 in_plen,
   in_cmp.as_u32 = in_addr->as_u32 & ip4_main.fib_masks[in_plen];
   out_cmp.as_u32 = out_addr->as_u32 & ip4_main.fib_masks[out_plen];
   vec_foreach (mp, dm->det_maps)
-  {
-    /* Checking for overlapping addresses to be added here */
-    if (mp->in_addr.as_u32 == in_cmp.as_u32 &&
-	mp->in_plen == in_plen &&
-	mp->out_addr.as_u32 == out_cmp.as_u32 && mp->out_plen == out_plen)
-      {
-	found = 1;
-	break;
-      }
-  }
+    {
+      /* Checking for overlapping addresses to be added here */
+      if (mp->in_addr.as_u32 == in_cmp.as_u32 && mp->in_plen == in_plen &&
+	  mp->out_addr.as_u32 == out_cmp.as_u32 && mp->out_plen == out_plen)
+	{
+	  found = 1;
+	  break;
+	}
+    }
 
   /* If found, don't add again */
   if (found && is_add)
@@ -140,8 +133,8 @@ snat_det_add_map (ip4_address_t * in_addr, u8 in_plen,
       mp->ports_per_host = (65535 - 1023) / mp->sharing_ratio;
 
       vec_validate_init_empty (mp->sessions,
-			       DET44_SES_PER_USER * (1 << (32 - in_plen)) -
-			       1, empty_snat_det_session);
+			       DET44_SES_PER_USER * (1 << (32 - in_plen)) - 1,
+			       empty_snat_det_session);
     }
   else
     {
@@ -150,20 +143,21 @@ snat_det_add_map (ip4_address_t * in_addr, u8 in_plen,
     }
 
   /* Add/del external address range to FIB */
-  /* *INDENT-OFF* */
-  pool_foreach (i, dm->interfaces)  {
-    if (det44_interface_is_inside(i))
-      continue;
-    det44_add_del_addr_to_fib(out_addr, out_plen, i->sw_if_index, is_add);
-    goto out;
-  }
-  /* *INDENT-ON* */
+
+  pool_foreach (i, dm->interfaces)
+    {
+      if (det44_interface_is_inside (i))
+	continue;
+      det44_add_del_addr_to_fib (out_addr, out_plen, i->sw_if_index, is_add);
+      goto out;
+    }
+
 out:
   return 0;
 }
 
 int
-det44_set_timeouts (nat_timeouts_t * timeouts)
+det44_set_timeouts (nat_timeouts_t *timeouts)
 {
   det44_main_t *dm = &det44_main;
   if (timeouts->udp)
@@ -203,15 +197,15 @@ det44_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
   // rather make a structure and when enable call is used
   // then register nodes
 
-  /* *INDENT-OFF* */
-  pool_foreach (tmp, dm->interfaces)  {
-    if (tmp->sw_if_index == sw_if_index)
-      {
-        i = tmp;
-        goto out;
-      }
-  }
-  /* *INDENT-ON* */
+  pool_foreach (tmp, dm->interfaces)
+    {
+      if (tmp->sw_if_index == sw_if_index)
+	{
+	  i = tmp;
+	  goto out;
+	}
+    }
+
 out:
 
   feature_name = is_inside ? "det44-in2out" : "det44-out2in";
@@ -265,34 +259,34 @@ out:
 
   if (!is_inside)
     {
-      u32 fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
-							   sw_if_index);
+      u32 fib_index =
+	fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index);
       // add/del outside interface fib to registry
       u8 found = 0;
       det44_fib_t *outside_fib;
-      /* *INDENT-OFF* */
+
       vec_foreach (outside_fib, dm->outside_fibs)
-        {
-          if (outside_fib->fib_index == fib_index)
-            {
-              if (!is_del)
-                {
-                  outside_fib->refcount++;
-                }
-              else
-                {
-                  outside_fib->refcount--;
-                  if (!outside_fib->refcount)
-                    {
-                      vec_del1 (dm->outside_fibs,
-                                outside_fib - dm->outside_fibs);
-                    }
-                }
-              found = 1;
-              break;
-            }
-        }
-      /* *INDENT-ON* */
+	{
+	  if (outside_fib->fib_index == fib_index)
+	    {
+	      if (!is_del)
+		{
+		  outside_fib->refcount++;
+		}
+	      else
+		{
+		  outside_fib->refcount--;
+		  if (!outside_fib->refcount)
+		    {
+		      vec_del1 (dm->outside_fibs,
+				outside_fib - dm->outside_fibs);
+		    }
+		}
+	      found = 1;
+	      break;
+	    }
+	}
+
       if (!is_del && !found)
 	{
 	  vec_add2 (dm->outside_fibs, outside_fib, 1);
@@ -301,12 +295,12 @@ out:
 	}
       // add/del outside address to FIB
       snat_det_map_t *mp;
-      /* *INDENT-OFF* */
-      pool_foreach (mp, dm->det_maps)  {
-        det44_add_del_addr_to_fib(&mp->out_addr,
-                                  mp->out_plen, sw_if_index, !is_del);
-      }
-      /* *INDENT-ON* */
+
+      pool_foreach (mp, dm->det_maps)
+	{
+	  det44_add_del_addr_to_fib (&mp->out_addr, mp->out_plen, sw_if_index,
+				     !is_del);
+	}
     }
   return 0;
 }
@@ -317,8 +311,8 @@ out:
  * Check expire time for active sessions.
  */
 static uword
-det44_expire_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
-		      vlib_frame_t * f)
+det44_expire_walk_fn (vlib_main_t *vm, vlib_node_runtime_t *rt,
+		      vlib_frame_t *f)
 {
   det44_main_t *dm = &det44_main;
   snat_det_session_t *ses;
@@ -327,16 +321,17 @@ det44_expire_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
   vlib_process_wait_for_event_or_clock (vm, 10.0);
   vlib_process_get_events (vm, NULL);
   u32 now = (u32) vlib_time_now (vm);
-  /* *INDENT-OFF* */
-  pool_foreach (mp, dm->det_maps)  {
-    vec_foreach(ses, mp->sessions)
-      {
-        /* Delete if session expired */
-        if (ses->in_port && (ses->expire < now))
-          snat_det_ses_close (mp, ses);
-      }
-  }
-  /* *INDENT-ON* */
+
+  pool_foreach (mp, dm->det_maps)
+    {
+      vec_foreach (ses, mp->sessions)
+	{
+	  /* Delete if session expired */
+	  if (ses->in_port && (ses->expire < now))
+	    snat_det_ses_close (mp, ses);
+	}
+    }
+
   return 0;
 }
 
@@ -348,10 +343,9 @@ det44_create_expire_walk_process ()
   if (dm->expire_walk_node_index)
     return;
 
-  dm->expire_walk_node_index = vlib_process_create (vlib_get_main (),
-						    "det44-expire-walk",
-						    det44_expire_walk_fn,
-						    16 /* stack_bytes */ );
+  dm->expire_walk_node_index =
+    vlib_process_create (vlib_get_main (), "det44-expire-walk",
+			 det44_expire_walk_fn, 16 /* stack_bytes */);
 }
 
 int
@@ -367,12 +361,10 @@ det44_plugin_enable (det44_config_t c)
 
   det44_log_err ("inside %u, outside %u", c.inside_vrf_id, c.outside_vrf_id);
 
-  dm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
-							     c.outside_vrf_id,
-							     dm->fib_src_hi);
-  dm->inside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
-							    c.inside_vrf_id,
-							    dm->fib_src_hi);
+  dm->outside_fib_index = fib_table_find_or_create_and_lock (
+    FIB_PROTOCOL_IP4, c.outside_vrf_id, dm->fib_src_hi);
+  dm->inside_fib_index = fib_table_find_or_create_and_lock (
+    FIB_PROTOCOL_IP4, c.inside_vrf_id, dm->fib_src_hi);
 
   det44_create_expire_walk_process ();
   dm->mss_clamping = 0;
@@ -402,38 +394,35 @@ det44_plugin_disable ()
 
   interfaces = vec_dup (dm->interfaces);
   vec_foreach (i, interfaces)
-  {
-    vnet_main_t *vnm = vnet_get_main ();
+    {
+      vnet_main_t *vnm = vnet_get_main ();
 
-    if (i->flags & DET44_INTERFACE_FLAG_IS_INSIDE)
-      {
-	rv = det44_interface_add_del (i->sw_if_index, i->flags, 1);
-	if (rv)
-	  {
-	    det44_log_err ("inside interface %U del failed",
-			   unformat_vnet_sw_interface, vnm, i->sw_if_index);
-	  }
-      }
+      if (i->flags & DET44_INTERFACE_FLAG_IS_INSIDE)
+	{
+	  rv = det44_interface_add_del (i->sw_if_index, i->flags, 1);
+	  if (rv)
+	    {
+	      det44_log_err ("inside interface %U del failed",
+			     unformat_vnet_sw_interface, vnm, i->sw_if_index);
+	    }
+	}
 
-    if (i->flags & DET44_INTERFACE_FLAG_IS_OUTSIDE)
-      {
-	rv = det44_interface_add_del (i->sw_if_index, i->flags, 1);
-	if (rv)
-	  {
-	    det44_log_err ("outside interface %U del failed",
-			   unformat_vnet_sw_interface, vnm, i->sw_if_index);
-	  }
-
-      }
-  }
+      if (i->flags & DET44_INTERFACE_FLAG_IS_OUTSIDE)
+	{
+	  rv = det44_interface_add_del (i->sw_if_index, i->flags, 1);
+	  if (rv)
+	    {
+	      det44_log_err ("outside interface %U del failed",
+			     unformat_vnet_sw_interface, vnm, i->sw_if_index);
+	    }
+	}
+    }
   vec_free (interfaces);
 
-  /* *INDENT-OFF* */
   pool_foreach (mp, dm->det_maps)
-   {
-    vec_free (mp->sessions);
-  }
-  /* *INDENT-ON* */
+    {
+      vec_free (mp->sessions);
+    }
 
   det44_reset_timeouts ();
   dm->enabled = 0;
@@ -445,10 +434,8 @@ det44_plugin_disable ()
 }
 
 static void
-det44_update_outside_fib (ip4_main_t * im,
-			  uword opaque,
-			  u32 sw_if_index, u32 new_fib_index,
-			  u32 old_fib_index)
+det44_update_outside_fib (ip4_main_t *im, uword opaque, u32 sw_if_index,
+			  u32 new_fib_index, u32 old_fib_index)
 {
   det44_main_t *dm = &det44_main;
 
@@ -467,41 +454,39 @@ det44_update_outside_fib (ip4_main_t * im,
   if (!vec_len (dm->outside_fibs))
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (i, dm->interfaces)
-     {
+    {
       if (i->sw_if_index == sw_if_index)
-        {
-          if (!(det44_interface_is_outside (i)))
+	{
+	  if (!(det44_interface_is_outside (i)))
 	    return;
-          match = 1;
-        }
+	  match = 1;
+	}
     }
-  /* *INDENT-ON* */
 
   if (!match)
     return;
 
   vec_foreach (outside_fib, dm->outside_fibs)
-  {
-    if (outside_fib->fib_index == old_fib_index)
-      {
-	outside_fib->refcount--;
-	if (!outside_fib->refcount)
-	  vec_del1 (dm->outside_fibs, outside_fib - dm->outside_fibs);
-	break;
-      }
-  }
+    {
+      if (outside_fib->fib_index == old_fib_index)
+	{
+	  outside_fib->refcount--;
+	  if (!outside_fib->refcount)
+	    vec_del1 (dm->outside_fibs, outside_fib - dm->outside_fibs);
+	  break;
+	}
+    }
 
   vec_foreach (outside_fib, dm->outside_fibs)
-  {
-    if (outside_fib->fib_index == new_fib_index)
-      {
-	outside_fib->refcount++;
-	is_add = 0;
-	break;
-      }
-  }
+    {
+      if (outside_fib->fib_index == new_fib_index)
+	{
+	  outside_fib->refcount++;
+	  is_add = 0;
+	  break;
+	}
+    }
 
   if (is_add)
     {
@@ -512,7 +497,7 @@ det44_update_outside_fib (ip4_main_t * im,
 }
 
 static clib_error_t *
-det44_init (vlib_main_t * vm)
+det44_init (vlib_main_t *vm)
 {
   det44_main_t *dm = &det44_main;
   ip4_table_bind_callback_t cb;
@@ -528,11 +513,9 @@ det44_init (vlib_main_t * vm)
   node = vlib_get_node_by_name (vm, (u8 *) "det44-out2in");
   dm->out2in_node_index = node->index;
 
-  dm->fib_src_hi = fib_source_allocate ("det44-hi",
-					FIB_SOURCE_PRIORITY_HI,
+  dm->fib_src_hi = fib_source_allocate ("det44-hi", FIB_SOURCE_PRIORITY_HI,
 					FIB_SOURCE_BH_SIMPLE);
-  dm->fib_src_low = fib_source_allocate ("det44-low",
-					 FIB_SOURCE_PRIORITY_LOW,
+  dm->fib_src_low = fib_source_allocate ("det44-low", FIB_SOURCE_PRIORITY_LOW,
 					 FIB_SOURCE_BH_SIMPLE);
 
   cb.function = det44_update_outside_fib;
@@ -546,25 +529,27 @@ det44_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (det44_init);
 
 u8 *
-format_det44_session_state (u8 * s, va_list * args)
+format_det44_session_state (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
   u8 *t = 0;
 
   switch (i)
     {
-#define _(v, N, str) case DET44_SESSION_##N: t = (u8 *) str; break;
+#define _(v, N, str)                                                          \
+  case DET44_SESSION_##N:                                                     \
+    t = (u8 *) str;                                                           \
+    break;
       foreach_det44_session_state
 #undef _
-    default:
-      t = format (t, "unknown");
+	default : t = format (t, "unknown");
     }
   s = format (s, "%s", t);
   return s;
 }
 
 u8 *
-format_det_map_ses (u8 * s, va_list * args)
+format_det_map_ses (u8 *s, va_list *args)
 {
   snat_det_map_t *det_map = va_arg (*args, snat_det_map_t *);
   ip4_address_t in_addr, out_addr;
@@ -573,25 +558,20 @@ format_det_map_ses (u8 * s, va_list * args)
   u32 *i = va_arg (*args, u32 *);
 
   u32 user_index = *i / DET44_SES_PER_USER;
-  in_addr.as_u32 =
-    clib_host_to_net_u32 (clib_net_to_host_u32 (det_map->in_addr.as_u32) +
-			  user_index);
-  in_offset =
-    clib_net_to_host_u32 (in_addr.as_u32) -
-    clib_net_to_host_u32 (det_map->in_addr.as_u32);
+  in_addr.as_u32 = clib_host_to_net_u32 (
+    clib_net_to_host_u32 (det_map->in_addr.as_u32) + user_index);
+  in_offset = clib_net_to_host_u32 (in_addr.as_u32) -
+	      clib_net_to_host_u32 (det_map->in_addr.as_u32);
   out_offset = in_offset / det_map->sharing_ratio;
-  out_addr.as_u32 =
-    clib_host_to_net_u32 (clib_net_to_host_u32 (det_map->out_addr.as_u32) +
-			  out_offset);
-  s =
-    format (s,
-	    "in %U:%d out %U:%d external host %U:%d state: %U expire: %d\n",
-	    format_ip4_address, &in_addr, clib_net_to_host_u16 (ses->in_port),
-	    format_ip4_address, &out_addr,
-	    clib_net_to_host_u16 (ses->out.out_port), format_ip4_address,
-	    &ses->out.ext_host_addr,
-	    clib_net_to_host_u16 (ses->out.ext_host_port),
-	    format_det44_session_state, ses->state, ses->expire);
+  out_addr.as_u32 = clib_host_to_net_u32 (
+    clib_net_to_host_u32 (det_map->out_addr.as_u32) + out_offset);
+  s = format (
+    s, "in %U:%d out %U:%d external host %U:%d state: %U expire: %d\n",
+    format_ip4_address, &in_addr, clib_net_to_host_u16 (ses->in_port),
+    format_ip4_address, &out_addr, clib_net_to_host_u16 (ses->out.out_port),
+    format_ip4_address, &ses->out.ext_host_addr,
+    clib_net_to_host_u16 (ses->out.ext_host_port), format_det44_session_state,
+    ses->state, ses->expire);
 
   return s;
 }

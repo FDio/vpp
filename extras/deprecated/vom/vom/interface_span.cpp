@@ -32,16 +32,14 @@ interface_span::interface_span(const interface& itf_from,
   , m_itf_to(itf_to.singular())
   , m_state(state)
   , m_config(true)
-{
-}
+{}
 
 interface_span::interface_span(const interface_span& o)
   : m_itf_from(o.m_itf_from)
   , m_itf_to(o.m_itf_to)
   , m_state(o.m_state)
   , m_config(o.m_config)
-{
-}
+{}
 
 interface_span::~interface_span()
 {
@@ -120,8 +118,8 @@ interface_span::singular() const
 interface_span::event_handler::event_handler()
 {
   OM::register_listener(this);
-  inspect::register_handler({ "itf-span" }, "interface span configurations",
-                            this);
+  inspect::register_handler(
+    { "itf-span" }, "interface span configurations", this);
 }
 
 void
@@ -146,18 +144,18 @@ interface_span::event_handler::handle_populate(const client_db::key_t& key)
       interface::find(payload.sw_if_index_from);
     std::shared_ptr<interface> itf_to = interface::find(payload.sw_if_index_to);
 
-    interface_span itf_span(*itf_from, *itf_to,
-                            state_t::from_int(payload.state));
+    interface_span itf_span(
+      *itf_from, *itf_to, state_t::from_int(payload.state));
 
-    VOM_LOG(log_level_t::DEBUG) << "span-dump: " << itf_from->to_string()
-                                << itf_to->to_string()
-                                << state_t::from_int(payload.state).to_string();
+    VOM_LOG(log_level_t::DEBUG)
+      << "span-dump: " << itf_from->to_string() << itf_to->to_string()
+      << state_t::from_int(payload.state).to_string();
 
     /*
- * Write each of the discovered interfaces into the OM,
- * but disable the HW Command q whilst we do, so that no
- * commands are sent to VPP
- */
+     * Write each of the discovered interfaces into the OM,
+     * but disable the HW Command q whilst we do, so that no
+     * commands are sent to VPP
+     */
     OM::commit(key, itf_span);
   }
 }
@@ -185,8 +183,7 @@ const interface_span::state_t interface_span::state_t::TX_RX_ENABLED(
 
 interface_span::state_t::state_t(int v, const std::string& s)
   : enum_base<interface_span::state_t>(v, s)
-{
-}
+{}
 
 interface_span::state_t
 interface_span::state_t::from_int(uint8_t i)

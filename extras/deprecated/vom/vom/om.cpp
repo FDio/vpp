@@ -36,9 +36,9 @@ void
 OM::mark(const client_db::key_t& key)
 {
   /*
- * Find if the object already stored on behalf of this key.
- * and mark them stale
- */
+   * Find if the object already stored on behalf of this key.
+   * and mark them stale
+   */
   object_ref_list& objs = m_db->find(key);
 
   auto mark_obj = [](const object_ref& oref) { oref.mark(); };

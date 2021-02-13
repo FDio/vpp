@@ -73,16 +73,15 @@ extern af_packet_main_t af_packet_main;
 extern vnet_device_class_t af_packet_device_class;
 extern vlib_node_registration_t af_packet_input_node;
 
-int af_packet_create_if (vlib_main_t * vm, u8 * host_if_name,
-			 u8 * hw_addr_set, u32 * sw_if_index);
-int af_packet_delete_if (vlib_main_t * vm, u8 * host_if_name);
-int af_packet_set_l4_cksum_offload (vlib_main_t * vm, u32 sw_if_index,
-				    u8 set);
-int af_packet_dump_ifs (af_packet_if_detail_t ** out_af_packet_ifs);
+int af_packet_create_if (vlib_main_t *vm, u8 *host_if_name, u8 *hw_addr_set,
+			 u32 *sw_if_index);
+int af_packet_delete_if (vlib_main_t *vm, u8 *host_if_name);
+int af_packet_set_l4_cksum_offload (vlib_main_t *vm, u32 sw_if_index, u8 set);
+int af_packet_dump_ifs (af_packet_if_detail_t **out_af_packet_ifs);
 
 format_function_t format_af_packet_device_name;
 
-#define MIN(x,y) (((x)<(y))?(x):(y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
 /*
  * fd.io coding-style-patch-verification: ON

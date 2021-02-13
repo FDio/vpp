@@ -15,32 +15,34 @@
 #include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_inlines.h>
 
-#define TCP_TEST_I(_cond, _comment, _args...)			\
-({								\
-  int _evald = (_cond);						\
-  if (!(_evald)) {						\
-    fformat(stderr, "FAIL:%d: " _comment "\n",			\
-	    __LINE__, ##_args);					\
-  } else {							\
-    fformat(stderr, "PASS:%d: " _comment "\n",			\
-	    __LINE__, ##_args);					\
-  }								\
-  _evald;							\
-})
+#define TCP_TEST_I(_cond, _comment, _args...)                                 \
+  ({                                                                          \
+    int _evald = (_cond);                                                     \
+    if (!(_evald))                                                            \
+      {                                                                       \
+	fformat (stderr, "FAIL:%d: " _comment "\n", __LINE__, ##_args);       \
+      }                                                                       \
+    else                                                                      \
+      {                                                                       \
+	fformat (stderr, "PASS:%d: " _comment "\n", __LINE__, ##_args);       \
+      }                                                                       \
+    _evald;                                                                   \
+  })
 
-#define TCP_TEST(_cond, _comment, _args...)			\
-{								\
-    if (!TCP_TEST_I(_cond, _comment, ##_args)) {		\
-	return 1;                                               \
-    }								\
-}
+#define TCP_TEST(_cond, _comment, _args...)                                   \
+  {                                                                           \
+    if (!TCP_TEST_I (_cond, _comment, ##_args))                               \
+      {                                                                       \
+	return 1;                                                             \
+      }                                                                       \
+  }
 
 /* *INDENT-OFF* */
 scoreboard_trace_elt_t sb_trace[] = {};
 /* *INDENT-ON* */
 
 static int
-tcp_test_scoreboard_replay (vlib_main_t * vm, unformat_input_t * input)
+tcp_test_scoreboard_replay (vlib_main_t *vm, unformat_input_t *input)
 {
   int verbose = 0;
   tcp_connection_t _tc, *tc = &_tc;
@@ -52,8 +54,8 @@ tcp_test_scoreboard_replay (vlib_main_t * vm, unformat_input_t * input)
 	verbose = 1;
       else
 	{
-	  clib_error_t *e = clib_error_return
-	    (0, "unknown input `%U'", format_unformat_error, input);
+	  clib_error_t *e = clib_error_return (0, "unknown input `%U'",
+					       format_unformat_error, input);
 	  clib_error_report (e);
 	  return -1;
 	}
@@ -68,7 +70,7 @@ tcp_test_scoreboard_replay (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
+tcp_test_sack_rx (vlib_main_t *vm, unformat_input_t *input)
 {
   tcp_connection_t _tc, *tc = &_tc;
   sack_scoreboard_t *sb = &tc->sack_sb;
@@ -112,11 +114,11 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tcp_rcv_sacks (tc, 0);
 
   if (verbose)
-    vlib_cli_output (vm, "sb after even blocks (mss %u):\n%U",
-		     tc->snd_mss, format_tcp_scoreboard, sb, tc);
+    vlib_cli_output (vm, "sb after even blocks (mss %u):\n%U", tc->snd_mss,
+		     format_tcp_scoreboard, sb, tc);
 
-  TCP_TEST ((pool_elts (sb->holes) == 5),
-	    "scoreboard has %d elements", pool_elts (sb->holes));
+  TCP_TEST ((pool_elts (sb->holes) == 5), "scoreboard has %d elements",
+	    pool_elts (sb->holes));
 
   /* First SACK block should be rejected */
   hole = scoreboard_first_hole (sb);
@@ -127,8 +129,8 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 	    "last hole start %u end %u", hole->start, hole->end);
   TCP_TEST ((sb->sacked_bytes == 400), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((!sb->is_reneging), "is not reneging");
-  TCP_TEST ((sb->last_sacked_bytes == 400),
-	    "last sacked bytes %d", sb->last_sacked_bytes);
+  TCP_TEST ((sb->last_sacked_bytes == 400), "last sacked bytes %d",
+	    sb->last_sacked_bytes);
   TCP_TEST ((sb->high_sacked == 900), "high sacked %u", sb->high_sacked);
   TCP_TEST ((sb->lost_bytes == 300), "lost bytes %u", sb->lost_bytes);
 
@@ -150,15 +152,15 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 		     sb, tc);
 
   hole = scoreboard_first_hole (sb);
-  TCP_TEST ((pool_elts (sb->holes) == 2),
-	    "scoreboard has %d holes", pool_elts (sb->holes));
+  TCP_TEST ((pool_elts (sb->holes) == 2), "scoreboard has %d holes",
+	    pool_elts (sb->holes));
   TCP_TEST ((hole->start == 0 && hole->end == 100),
 	    "first hole start %u end %u", hole->start, hole->end);
   TCP_TEST ((sb->sacked_bytes == 800), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((!sb->is_reneging), "is not reneging");
   TCP_TEST ((sb->high_sacked == 900), "high sacked %u", sb->high_sacked);
-  TCP_TEST ((sb->last_sacked_bytes == 400),
-	    "last sacked bytes %d", sb->last_sacked_bytes);
+  TCP_TEST ((sb->last_sacked_bytes == 400), "last sacked bytes %d",
+	    sb->last_sacked_bytes);
   TCP_TEST ((sb->lost_bytes == 100), "lost bytes %u", sb->lost_bytes);
 
   /*
@@ -198,8 +200,8 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tcp_rcv_sacks (tc, 950);
   TCP_TEST ((sb->high_sacked == 950), "max sacked byte %u", sb->high_sacked);
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->last_sacked_bytes == 0),
-	    "last sacked bytes %d", sb->last_sacked_bytes);
+  TCP_TEST ((sb->last_sacked_bytes == 0), "last sacked bytes %d",
+	    sb->last_sacked_bytes);
   TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
   TCP_TEST ((!sb->is_reneging), "is not reneging");
 
@@ -221,8 +223,8 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tcp_rcv_sacks (tc, 950);
   TCP_TEST ((sb->high_sacked == 990), "max sacked byte %u", sb->high_sacked);
   TCP_TEST ((sb->sacked_bytes == 20), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->last_sacked_bytes == 20),
-	    "last sacked bytes %d", sb->last_sacked_bytes);
+  TCP_TEST ((sb->last_sacked_bytes == 20), "last sacked bytes %d",
+	    sb->last_sacked_bytes);
   TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
   TCP_TEST ((!sb->is_reneging), "is not reneging");
   TCP_TEST ((sb->rxt_sacked == 15), "last rxt sacked bytes %d",
@@ -238,8 +240,8 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 
   TCP_TEST ((sb->is_reneging), "is reneging");
   TCP_TEST ((sb->sacked_bytes == 21), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->last_sacked_bytes == 1),
-	    "last sacked bytes %d", sb->last_sacked_bytes);
+  TCP_TEST ((sb->last_sacked_bytes == 1), "last sacked bytes %d",
+	    sb->last_sacked_bytes);
   TCP_TEST ((sb->rxt_sacked == 11), "last rxt sacked bytes %d",
 	    sb->rxt_sacked);
   TCP_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
@@ -256,10 +258,9 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 
   TCP_TEST ((sb->is_reneging), "is reneging");
   TCP_TEST ((sb->sacked_bytes == 30), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->last_sacked_bytes == 9),
-	    "last sacked bytes %d", sb->last_sacked_bytes);
-  TCP_TEST ((sb->rxt_sacked == 9), "last rxt sacked bytes %d",
-	    sb->rxt_sacked);
+  TCP_TEST ((sb->last_sacked_bytes == 9), "last sacked bytes %d",
+	    sb->last_sacked_bytes);
+  TCP_TEST ((sb->rxt_sacked == 9), "last rxt sacked bytes %d", sb->rxt_sacked);
 
   /*
    * Sack remaining bytes [990 1000]
@@ -271,10 +272,9 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 
   TCP_TEST ((sb->is_reneging), "is reneging");
   TCP_TEST ((sb->sacked_bytes == 40), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->last_sacked_bytes == 10),
-	    "last sacked bytes %d", sb->last_sacked_bytes);
-  TCP_TEST ((sb->rxt_sacked == 0), "last rxt sacked bytes %d",
-	    sb->rxt_sacked);
+  TCP_TEST ((sb->last_sacked_bytes == 10), "last sacked bytes %d",
+	    sb->last_sacked_bytes);
+  TCP_TEST ((sb->rxt_sacked == 0), "last rxt sacked bytes %d", sb->rxt_sacked);
   TCP_TEST (pool_elts (sb->holes) == 0, "no holes left");
 
   /*
@@ -286,10 +286,9 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 
   TCP_TEST ((sb->is_reneging), "is reneging");
   TCP_TEST ((sb->sacked_bytes == 30), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((sb->last_sacked_bytes == 0),
-	    "last sacked bytes %d", sb->last_sacked_bytes);
-  TCP_TEST ((sb->rxt_sacked == 0), "last rxt sacked bytes %d",
-	    sb->rxt_sacked);
+  TCP_TEST ((sb->last_sacked_bytes == 0), "last sacked bytes %d",
+	    sb->last_sacked_bytes);
+  TCP_TEST ((sb->rxt_sacked == 0), "last rxt sacked bytes %d", sb->rxt_sacked);
 
   /*
    * Ack all up to 1000
@@ -300,8 +299,8 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST (sb->last_bytes_delivered == 30, "last bytes delivered %d",
 	    sb->last_bytes_delivered);
-  TCP_TEST ((sb->last_sacked_bytes == 0),
-	    "last sacked bytes %d", sb->last_sacked_bytes);
+  TCP_TEST ((sb->last_sacked_bytes == 0), "last sacked bytes %d",
+	    sb->last_sacked_bytes);
   TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
   TCP_TEST ((!sb->is_reneging), "is not reneging");
 
@@ -321,12 +320,14 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tcp_rcv_sacks (tc, 1000);
 
   if (verbose)
-    vlib_cli_output (vm, "\nadd [1200, 1300] snd_una_max 1500, snd_una 1000:"
-		     " \n%U", format_tcp_scoreboard, sb, tc);
+    vlib_cli_output (vm,
+		     "\nadd [1200, 1300] snd_una_max 1500, snd_una 1000:"
+		     " \n%U",
+		     format_tcp_scoreboard, sb, tc);
 
   TCP_TEST ((!sb->is_reneging), "is not reneging");
-  TCP_TEST ((pool_elts (sb->holes) == 2),
-	    "scoreboard has %d holes", pool_elts (sb->holes));
+  TCP_TEST ((pool_elts (sb->holes) == 2), "scoreboard has %d holes",
+	    pool_elts (sb->holes));
   hole = scoreboard_first_hole (sb);
   TCP_TEST ((hole->start == 1000 && hole->end == 1200),
 	    "first hole start %u end %u", hole->start, hole->end);
@@ -350,8 +351,8 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 		     format_tcp_scoreboard, sb, tc);
 
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
-  TCP_TEST ((pool_elts (sb->holes) == 1),
-	    "scoreboard has %d elements", pool_elts (sb->holes));
+  TCP_TEST ((pool_elts (sb->holes) == 1), "scoreboard has %d elements",
+	    pool_elts (sb->holes));
   TCP_TEST ((sb->last_bytes_delivered == 100), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
   TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
@@ -378,8 +379,8 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "\nsb cleared all:\n%U", format_tcp_scoreboard, sb,
 		     tc);
 
-  TCP_TEST ((pool_elts (sb->holes) == 0),
-	    "number of holes %d", pool_elts (sb->holes));
+  TCP_TEST ((pool_elts (sb->holes) == 0), "number of holes %d",
+	    pool_elts (sb->holes));
   TCP_TEST ((sb->head == TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
   TCP_TEST ((sb->tail == TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
 
@@ -397,10 +398,12 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
   tcp_rcv_sacks (tc, 0);
   if (verbose)
-    vlib_cli_output (vm, "\nsb added odd blocks snd_una 0 snd_una_max 1000:"
-		     "\n%U", format_tcp_scoreboard, sb, tc);
-  TCP_TEST ((pool_elts (sb->holes) == 5),
-	    "scoreboard has %d elements", pool_elts (sb->holes));
+    vlib_cli_output (vm,
+		     "\nsb added odd blocks snd_una 0 snd_una_max 1000:"
+		     "\n%U",
+		     format_tcp_scoreboard, sb, tc);
+  TCP_TEST ((pool_elts (sb->holes) == 5), "scoreboard has %d elements",
+	    pool_elts (sb->holes));
   TCP_TEST ((sb->lost_bytes == 300), "lost bytes %u", sb->lost_bytes);
   hole = scoreboard_last_hole (sb);
   TCP_TEST ((hole->end == 900), "last hole end %u", hole->end);
@@ -412,8 +415,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tcp_rcv_sacks (tc, 950);
 
   if (verbose)
-    vlib_cli_output (vm, "\nack [0, 950]:\n%U", format_tcp_scoreboard, sb,
-		     tc);
+    vlib_cli_output (vm, "\nack [0, 950]:\n%U", format_tcp_scoreboard, sb, tc);
 
   TCP_TEST ((pool_elts (sb->holes) == 0), "scoreboard has %d elements",
 	    pool_elts (sb->holes));
@@ -441,8 +443,10 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tcp_rcv_sacks (tc, 0);
 
   if (verbose)
-    vlib_cli_output (vm, "\nsb added [100, 500] snd_una 0 snd_una_max 1000:"
-		     "\n%U", format_tcp_scoreboard, sb, tc);
+    vlib_cli_output (vm,
+		     "\nsb added [100, 500] snd_una 0 snd_una_max 1000:"
+		     "\n%U",
+		     format_tcp_scoreboard, sb, tc);
 
   tcp_rcv_sacks (tc, 800);
 
@@ -450,14 +454,14 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "\nsb ack [0, 800]:\n%U", format_tcp_scoreboard, sb,
 		     tc);
 
-  TCP_TEST ((pool_elts (sb->holes) == 1),
-	    "scoreboard has %d elements", pool_elts (sb->holes));
+  TCP_TEST ((pool_elts (sb->holes) == 1), "scoreboard has %d elements",
+	    pool_elts (sb->holes));
   TCP_TEST ((!sb->is_reneging), "is not reneging");
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((sb->last_sacked_bytes == 0), "last sacked bytes %d",
 	    sb->last_sacked_bytes);
-  TCP_TEST ((sb->last_bytes_delivered == 400),
-	    "last bytes delivered %d", sb->last_bytes_delivered);
+  TCP_TEST ((sb->last_bytes_delivered == 400), "last bytes delivered %d",
+	    sb->last_bytes_delivered);
   TCP_TEST ((sb->lost_bytes == 0), "lost bytes %u", sb->lost_bytes);
   TCP_TEST ((sb->head != TCP_INVALID_SACK_HOLE_INDEX), "head %u", sb->head);
   TCP_TEST ((sb->tail != TCP_INVALID_SACK_HOLE_INDEX), "tail %u", sb->tail);
@@ -477,8 +481,8 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 
   tcp_rcv_sacks (tc, 0);
   if (verbose)
-    vlib_cli_output (vm, "\nsb added [500, 1000]:\n%U",
-		     format_tcp_scoreboard, sb, tc);
+    vlib_cli_output (vm, "\nsb added [500, 1000]:\n%U", format_tcp_scoreboard,
+		     sb, tc);
   TCP_TEST ((sb->sacked_bytes == 500), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((sb->last_sacked_bytes == 500), "last sacked bytes %d",
 	    sb->last_sacked_bytes);
@@ -493,8 +497,8 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "\nsb added [0, 100] [300, 400]:\n%U",
 		     format_tcp_scoreboard, sb, tc);
-  TCP_TEST ((pool_elts (sb->holes) == 2),
-	    "scoreboard has %d elements", pool_elts (sb->holes));
+  TCP_TEST ((pool_elts (sb->holes) == 2), "scoreboard has %d elements",
+	    pool_elts (sb->holes));
   TCP_TEST ((sb->sacked_bytes == 600), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((sb->last_sacked_bytes == 100), "last sacked bytes %d",
 	    sb->last_sacked_bytes);
@@ -540,8 +544,8 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   if (verbose)
     vlib_cli_output (vm, "\nacked [400, 500]:\n%U", format_tcp_scoreboard, sb,
 		     tc);
-  TCP_TEST ((pool_elts (sb->holes) == 0),
-	    "scoreboard has %d elements", pool_elts (sb->holes));
+  TCP_TEST ((pool_elts (sb->holes) == 0), "scoreboard has %d elements",
+	    pool_elts (sb->holes));
   TCP_TEST ((sb->sacked_bytes == 500), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((sb->last_sacked_bytes == 0), "last sacked bytes %d",
 	    sb->last_sacked_bytes);
@@ -665,7 +669,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
+tcp_test_sack_tx (vlib_main_t *vm, unformat_input_t *input)
 {
   tcp_connection_t _tc, *tc = &_tc;
   sack_block_t *sacks;
@@ -706,8 +710,8 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
 
   tcp_update_sack_list (tc, 1100, 1200);
   if (verbose)
-    vlib_cli_output (vm, "add new segment [1100, 1200]\n%U",
-		     format_tcp_sacks, tc);
+    vlib_cli_output (vm, "add new segment [1100, 1200]\n%U", format_tcp_sacks,
+		     tc);
   expected = 5 < TCP_MAX_SACK_BLOCKS ? 6 : 5;
   TCP_TEST ((vec_len (tc->snd_sacks) == expected),
 	    "sack blocks %d expected %d", vec_len (tc->snd_sacks), expected);
@@ -725,8 +729,8 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   tc->rcv_nxt = 300;
   tcp_update_sack_list (tc, 300, 300);
   if (verbose)
-    vlib_cli_output (vm, "overlap first 2 segments:\n%U",
-		     format_tcp_sacks, tc);
+    vlib_cli_output (vm, "overlap first 2 segments:\n%U", format_tcp_sacks,
+		     tc);
   TCP_TEST ((vec_len (tc->snd_sacks) == 3), "sack blocks %d expected %d",
 	    vec_len (tc->snd_sacks), 3);
   TCP_TEST ((tc->snd_sacks[0].start == 900),
@@ -738,8 +742,8 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
    */
   tcp_update_sack_list (tc, 1100, 1200);
   if (verbose)
-    vlib_cli_output (vm, "add new segment [1100, 1200]\n%U",
-		     format_tcp_sacks, tc);
+    vlib_cli_output (vm, "add new segment [1100, 1200]\n%U", format_tcp_sacks,
+		     tc);
   TCP_TEST ((vec_len (tc->snd_sacks) == 4), "sack blocks %d expected %d",
 	    vec_len (tc->snd_sacks), 4);
   TCP_TEST ((tc->snd_sacks[0].start == 1100),
@@ -770,7 +774,6 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((vec_len (tc->snd_sacks) == 0), "sack blocks %d expected %d",
 	    vec_len (tc->snd_sacks), 0);
 
-
   /*
    * Add 2 blocks, overwrite first and update rcv_nxt to also remove it
    */
@@ -782,10 +785,10 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   tcp_update_sack_list (tc, 300, 400);
 
   if (verbose)
-    vlib_cli_output (vm, "add [100, 200] [300, 400]\n%U",
-		     format_tcp_sacks, tc);
-  TCP_TEST ((vec_len (tc->snd_sacks) == 2),
-	    "sack blocks %d expected %d", vec_len (tc->snd_sacks), 2);
+    vlib_cli_output (vm, "add [100, 200] [300, 400]\n%U", format_tcp_sacks,
+		     tc);
+  TCP_TEST ((vec_len (tc->snd_sacks) == 2), "sack blocks %d expected %d",
+	    vec_len (tc->snd_sacks), 2);
   TCP_TEST ((tc->snd_sacks[0].start == 300),
 	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
 	    300);
@@ -793,10 +796,10 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   tc->rcv_nxt = 100;
   tcp_update_sack_list (tc, 100, 100);
   if (verbose)
-    vlib_cli_output (vm, "add [100, 200] rcv_nxt = 100\n%U",
-		     format_tcp_sacks, tc);
-  TCP_TEST ((vec_len (tc->snd_sacks) == 1),
-	    "sack blocks %d expected %d", vec_len (tc->snd_sacks), 1);
+    vlib_cli_output (vm, "add [100, 200] rcv_nxt = 100\n%U", format_tcp_sacks,
+		     tc);
+  TCP_TEST ((vec_len (tc->snd_sacks) == 1), "sack blocks %d expected %d",
+	    vec_len (tc->snd_sacks), 1);
   TCP_TEST ((tc->snd_sacks[0].start == 300),
 	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
 	    300);
@@ -804,7 +807,7 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-tcp_test_sack (vlib_main_t * vm, unformat_input_t * input)
+tcp_test_sack (vlib_main_t *vm, unformat_input_t *input)
 {
   int res = 0;
 
@@ -837,7 +840,7 @@ tcp_test_sack (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
+tcp_test_lookup (vlib_main_t *vm, unformat_input_t *input)
 {
   session_main_t *smm = &session_main;
   transport_connection_t _tc1, *tc1 = &_tc1, _tc2, *tc2 = &_tc2, *tconn;
@@ -890,23 +893,21 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
 
   s1 = pool_elt_at_index (smm->wrk[0].sessions, sidx);
   session_lookup_add_connection (tc1, session_handle (s1));
-  tconn = session_lookup_connection_wt4 (0, &tc1->lcl_ip.ip4,
-					 &tc1->rmt_ip.ip4,
+  tconn = session_lookup_connection_wt4 (0, &tc1->lcl_ip.ip4, &tc1->rmt_ip.ip4,
 					 tc1->lcl_port, tc1->rmt_port,
 					 tc1->proto, 0, &is_filtered);
 
   TCP_TEST ((tconn != 0), "connection exists");
   cmp = (memcmp (&tconn->rmt_ip, &tc1->rmt_ip, sizeof (tc1->rmt_ip)) == 0);
   TCP_TEST ((cmp), "rmt ip is identical %d", cmp);
-  TCP_TEST ((tconn->lcl_port == tc1->lcl_port),
-	    "rmt port is identical %d", tconn->lcl_port == tc1->lcl_port);
+  TCP_TEST ((tconn->lcl_port == tc1->lcl_port), "rmt port is identical %d",
+	    tconn->lcl_port == tc1->lcl_port);
 
   /*
    * Non-existing connection lookup should not work
    */
 
-  tconn = session_lookup_connection_wt4 (0, &tc2->lcl_ip.ip4,
-					 &tc2->rmt_ip.ip4,
+  tconn = session_lookup_connection_wt4 (0, &tc2->lcl_ip.ip4, &tc2->rmt_ip.ip4,
 					 tc2->lcl_port, tc2->rmt_port,
 					 tc2->proto, 0, &is_filtered);
   TCP_TEST ((tconn == 0), "lookup result should be null");
@@ -915,13 +916,11 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
    * Delete and lookup again
    */
   session_lookup_del_connection (tc1);
-  tconn = session_lookup_connection_wt4 (0, &tc1->lcl_ip.ip4,
-					 &tc1->rmt_ip.ip4,
+  tconn = session_lookup_connection_wt4 (0, &tc1->lcl_ip.ip4, &tc1->rmt_ip.ip4,
 					 tc1->lcl_port, tc1->rmt_port,
 					 tc1->proto, 0, &is_filtered);
   TCP_TEST ((tconn == 0), "lookup result should be null");
-  tconn = session_lookup_connection_wt4 (0, &tc2->lcl_ip.ip4,
-					 &tc2->rmt_ip.ip4,
+  tconn = session_lookup_connection_wt4 (0, &tc2->lcl_ip.ip4, &tc2->rmt_ip.ip4,
 					 tc2->lcl_port, tc2->rmt_port,
 					 tc2->proto, 0, &is_filtered);
   TCP_TEST ((tconn == 0), "lookup result should be null");
@@ -930,8 +929,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
    * Re-add and lookup tc2
    */
   session_lookup_add_connection (tc1, tc1->s_index);
-  tconn = session_lookup_connection_wt4 (0, &tc2->lcl_ip.ip4,
-					 &tc2->rmt_ip.ip4,
+  tconn = session_lookup_connection_wt4 (0, &tc2->lcl_ip.ip4, &tc2->rmt_ip.ip4,
 					 tc2->lcl_port, tc2->rmt_port,
 					 tc2->proto, 0, &is_filtered);
   TCP_TEST ((tconn == 0), "lookup result should be null");
@@ -940,14 +938,13 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-tcp_test_session (vlib_main_t * vm, unformat_input_t * input)
+tcp_test_session (vlib_main_t *vm, unformat_input_t *input)
 {
   int rv = 0;
   tcp_connection_t *tc0;
   ip4_address_t local, remote;
   u16 local_port, remote_port;
   int is_add = 1;
-
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -981,15 +978,15 @@ tcp_test_session (vlib_main_t * vm, unformat_input_t * input)
 
       TCP_EVT (TCP_EVT_OPEN, tc0);
 
-      if (session_stream_accept (&tc0->connection, 0 /* listener index */ ,
-				 0 /* thread index */ , 0 /* notify */ ))
+      if (session_stream_accept (&tc0->connection, 0 /* listener index */,
+				 0 /* thread index */, 0 /* notify */))
 	clib_warning ("stream_session_accept failed");
 
       session_stream_accept_notify (&tc0->connection);
     }
   else
     {
-      tc0 = tcp_connection_get (0 /* connection index */ , 0 /* thread */ );
+      tc0 = tcp_connection_get (0 /* connection index */, 0 /* thread */);
       tc0->state = TCP_STATE_CLOSED;
       session_transport_closing_notify (&tc0->connection);
     }
@@ -1004,7 +1001,7 @@ tbt_seq_lt (u32 a, u32 b)
 }
 
 static int
-tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
+tcp_test_delivery (vlib_main_t *vm, unformat_input_t *input)
 {
   u32 thread_index = 0, snd_una, *min_seqs = 0;
   tcp_rate_sample_t _rs = { 0 }, *rs = &_rs;
@@ -1174,8 +1171,8 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (rs->interval_time == 4, "ack time should be 4 is %.2f",
 	    rs->interval_time);
   TCP_TEST (rs->delivered == 30, "delivered should be 30");
-  TCP_TEST (rs->prior_delivered == 3 * burst,
-	    "sample delivered should be %u", 3 * burst);
+  TCP_TEST (rs->prior_delivered == 3 * burst, "sample delivered should be %u",
+	    3 * burst);
   TCP_TEST (!(rs->flags & TCP_BTS_IS_RXT), "not retransmitted");
   TCP_TEST (!(rs->flags & TCP_BTS_IS_APP_LIMITED), "not app limited");
   /* All 3 samples have the same delivered number of bytes. The first
@@ -1272,7 +1269,6 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (tc->app_limited, "app limited should be set");
   TCP_TEST (tc->first_tx_time == 9, "first_tx_time %u", tc->first_tx_time);
 
-
   /*
    * 8) check delivery rate at time 11
    */
@@ -1330,7 +1326,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
-tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
+tcp_test_bt (vlib_main_t *vm, unformat_input_t *input)
 {
   u32 thread_index = 0;
   tcp_rate_sample_t _rs = { 0 }, *rs = &_rs;
@@ -1541,8 +1537,8 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static clib_error_t *
-tcp_test (vlib_main_t * vm,
-	  unformat_input_t * input, vlib_cli_command_t * cmd_arg)
+tcp_test (vlib_main_t *vm, unformat_input_t *input,
+	  vlib_cli_command_t *cmd_arg)
 {
   int res = 0;
 
@@ -1590,8 +1586,7 @@ done:
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (tcp_test_command, static) =
-{
+VLIB_CLI_COMMAND (tcp_test_command, static) = {
   .path = "test tcp",
   .short_help = "internal tcp unit tests",
   .function = tcp_test,
@@ -1599,9 +1594,4 @@ VLIB_CLI_COMMAND (tcp_test_command, static) =
 /* *INDENT-ON* */
 
 /*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+ * fd.io coding-style-patch-verificatio

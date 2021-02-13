@@ -43,23 +43,23 @@
 #include <vnet/ip/ip_flow_hash.h>
 #include <vnet/ip/ip4_packet.h>
 
-#define IP_DF 0x4000		/* don't fragment */
+#define IP_DF 0x4000 /* don't fragment */
 
 /* Compute flow hash.  We'll use it to select which adjacency to use for this
    flow.  And other things. */
 always_inline u32
-ip4_compute_flow_hash (const ip4_header_t * ip,
+ip4_compute_flow_hash (const ip4_header_t *ip,
 		       flow_hash_config_t flow_hash_config)
 {
   tcp_header_t *tcp = (void *) (ip + 1);
   u32 a, b, c, t1, t2;
-  uword is_tcp_udp = (ip->protocol == IP_PROTOCOL_TCP
-		      || ip->protocol == IP_PROTOCOL_UDP);
+  uword is_tcp_udp =
+    (ip->protocol == IP_PROTOCOL_TCP || ip->protocol == IP_PROTOCOL_UDP);
 
-  t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR)
-    ? ip->src_address.data_u32 : 0;
-  t2 = (flow_hash_config & IP_FLOW_HASH_DST_ADDR)
-    ? ip->dst_address.data_u32 : 0;
+  t1 =
+    (flow_hash_config & IP_FLOW_HASH_SRC_ADDR) ? ip->src_address.data_u32 : 0;
+  t2 =
+    (flow_hash_config & IP_FLOW_HASH_DST_ADDR) ? ip->dst_address.data_u32 : 0;
 
   a = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t2 : t1;
   b = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t1 : t2;
@@ -87,8 +87,8 @@ ip4_compute_flow_hash (const ip4_header_t * ip,
     }
 
   b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? ip->protocol : 0;
-  c = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ?
-    (t1 << 16) | t2 : (t2 << 16) | t1;
+  c = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? (t1 << 16) | t2 :
+							  (t2 << 16) | t1;
   a ^= ip_flow_hash_router_id;
 
   hash_v3_mix32 (a, b, c);
@@ -98,9 +98,9 @@ ip4_compute_flow_hash (const ip4_header_t * ip,
 }
 
 always_inline void *
-vlib_buffer_push_ip4_custom (vlib_main_t * vm, vlib_buffer_t * b,
-			     ip4_address_t * src, ip4_address_t * dst,
-			     int proto, u8 csum_offload, u8 is_df)
+vlib_buffer_push_ip4_custom (vlib_main_t *vm, vlib_buffer_t *b,
+			     ip4_address_t *src, ip4_address_t *dst, int proto,
+			     u8 csum_offload, u8 is_df)
 {
   ip4_header_t *ih;
 
@@ -147,12 +147,11 @@ vlib_buffer_push_ip4_custom (vlib_main_t * vm, vlib_buffer_t * b,
  * @return - pointer to start of IP header
  */
 always_inline void *
-vlib_buffer_push_ip4 (vlib_main_t * vm, vlib_buffer_t * b,
-		      ip4_address_t * src, ip4_address_t * dst, int proto,
-		      u8 csum_offload)
+vlib_buffer_push_ip4 (vlib_main_t *vm, vlib_buffer_t *b, ip4_address_t *src,
+		      ip4_address_t *dst, int proto, u8 csum_offload)
 {
   return vlib_buffer_push_ip4_custom (vm, b, src, dst, proto, csum_offload,
-				      1 /* is_df */ );
+				      1 /* is_df */);
 }
 
 #endif /* included_ip_ip4_inlines_h */

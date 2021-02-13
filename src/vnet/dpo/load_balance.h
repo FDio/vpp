@@ -16,16 +16,16 @@
  * \brief
  * The load-balance object represents an ECMP choice. The buckets of a load
  * balance object point to the sub-graph after the choice is made.
- * THe load-balance object is also object type returned from a FIB table lookup.
- * As such it needs to represent the case where there is only one coice. It may
- * seem like overkill to use a load-balance object in this case, but the reason
- * is for performance. If the load-balance object were not the result of the FIB
- * lookup, then some other object would be. The case where there was ECMP
- * this other object would need a load-balance as a parent and hence just add
- * an unnecessary indirection.
+ * THe load-balance object is also object type returned from a FIB table
+ * lookup. As such it needs to represent the case where there is only one
+ * coice. It may seem like overkill to use a load-balance object in this case,
+ * but the reason is for performance. If the load-balance object were not the
+ * result of the FIB lookup, then some other object would be. The case where
+ * there was ECMP this other object would need a load-balance as a parent and
+ * hence just add an unnecessary indirection.
  *
- * It is also the object in the DP that represents a via-fib-entry in a recursive
- * route.
+ * It is also the object in the DP that represents a via-fib-entry in a
+ * recursive route.
  *
  */
 
@@ -43,8 +43,8 @@
  */
 typedef struct load_balance_main_t_
 {
-    vlib_combined_counter_main_t lbm_to_counters;
-    vlib_combined_counter_main_t lbm_via_counters;
+  vlib_combined_counter_main_t lbm_to_counters;
+  vlib_combined_counter_main_t lbm_via_counters;
 } load_balance_main_t;
 
 extern load_balance_main_t load_balance_main;
@@ -59,188 +59,190 @@ extern load_balance_main_t load_balance_main;
  * @brief One path from an [EU]CMP set that the client wants to add to a
  * load-balance object
  */
-typedef struct load_balance_path_t_ {
-    /**
-     * ID of the Data-path object.
-     */
-    dpo_id_t path_dpo;
+typedef struct load_balance_path_t_
+{
+  /**
+   * ID of the Data-path object.
+   */
+  dpo_id_t path_dpo;
 
-    /**
-     * The index of the FIB path
-     */
-    fib_node_index_t path_index;
+  /**
+   * The index of the FIB path
+   */
+  fib_node_index_t path_index;
 
-    /**
-     * weight for the path.
-     */
-    u32 path_weight;
+  /**
+   * weight for the path.
+   */
+  u32 path_weight;
 } load_balance_path_t;
 
 /**
  * Flags controlling load-balance creation and modification
  */
-typedef enum load_balance_attr_t_ {
-    LOAD_BALANCE_ATTR_USES_MAP = 0,
-    LOAD_BALANCE_ATTR_STICKY = 1,
+typedef enum load_balance_attr_t_
+{
+  LOAD_BALANCE_ATTR_USES_MAP = 0,
+  LOAD_BALANCE_ATTR_STICKY = 1,
 } load_balance_attr_t;
 
-#define LOAD_BALANCE_ATTR_NAMES  {                  \
-    [LOAD_BALANCE_ATTR_USES_MAP] = "uses-map",      \
-    [LOAD_BALANCE_ATTR_STICKY] = "sticky",          \
-}
+#define LOAD_BALANCE_ATTR_NAMES                                               \
+  {                                                                           \
+    [LOAD_BALANCE_ATTR_USES_MAP] = "uses-map",                                \
+    [LOAD_BALANCE_ATTR_STICKY] = "sticky",                                    \
+  }
 
-#define FOR_EACH_LOAD_BALANCE_ATTR(_attr)                       \
-    for (_attr = 0; _attr <= LOAD_BALANCE_ATTR_STICKY; _attr++)
+#define FOR_EACH_LOAD_BALANCE_ATTR(_attr)                                     \
+  for (_attr = 0; _attr <= LOAD_BALANCE_ATTR_STICKY; _attr++)
 
-typedef enum load_balance_flags_t_ {
-    LOAD_BALANCE_FLAG_NONE = 0,
-    LOAD_BALANCE_FLAG_USES_MAP = (1 << 0),
-    LOAD_BALANCE_FLAG_STICKY = (1 << 1),
-} __attribute__((packed)) load_balance_flags_t;
+typedef enum load_balance_flags_t_
+{
+  LOAD_BALANCE_FLAG_NONE = 0,
+  LOAD_BALANCE_FLAG_USES_MAP = (1 << 0),
+  LOAD_BALANCE_FLAG_STICKY = (1 << 1),
+} __attribute__ ((packed)) load_balance_flags_t;
 
 /**
  * The FIB DPO provieds;
  *  - load-balancing over the next DPOs in the chain/graph
  *  - per-route counters
  */
-typedef struct load_balance_t_ {
-    /**
-     * required for pool_get_aligned.
-     *  memebers used in the switch path come first!
-     */
-    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+typedef struct load_balance_t_
+{
+  /**
+   * required for pool_get_aligned.
+   *  memebers used in the switch path come first!
+   */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
-    /**
-     * number of buckets in the load-balance. always a power of 2.
-     */
-    u16 lb_n_buckets;
-    /**
-     * number of buckets in the load-balance - 1. used in the switch path
-     * as part of the hash calculation.
-     */
-    u16 lb_n_buckets_minus_1;
+  /**
+   * number of buckets in the load-balance. always a power of 2.
+   */
+  u16 lb_n_buckets;
+  /**
+   * number of buckets in the load-balance - 1. used in the switch path
+   * as part of the hash calculation.
+   */
+  u16 lb_n_buckets_minus_1;
 
-   /**
-     * The protocol of packets that traverse this LB.
-     * need in combination with the flow hash config to determine how to hash.
-     * u8.
-     */
-    dpo_proto_t lb_proto;
+  /**
+   * The protocol of packets that traverse this LB.
+   * need in combination with the flow hash config to determine how to hash.
+   * u8.
+   */
+  dpo_proto_t lb_proto;
 
-    /**
-     * Flags concenring the LB's creation and modification
-     */
-    load_balance_flags_t lb_flags;
+  /**
+   * Flags concenring the LB's creation and modification
+   */
+  load_balance_flags_t lb_flags;
 
-    /**
-     * Flags from the load-balance's associated fib_entry_t
-     */
-    fib_entry_flag_t lb_fib_entry_flags;
+  /**
+   * Flags from the load-balance's associated fib_entry_t
+   */
+  fib_entry_flag_t lb_fib_entry_flags;
 
-    /**
-     * The number of locks, which is approximately the number of users,
-     * of this load-balance.
-     * Load-balance objects of via-entries are heavily shared by recursives,
-     * so the lock count is a u32.
-     */
-    u32 lb_locks;
+  /**
+   * The number of locks, which is approximately the number of users,
+   * of this load-balance.
+   * Load-balance objects of via-entries are heavily shared by recursives,
+   * so the lock count is a u32.
+   */
+  u32 lb_locks;
 
-    /**
-     * index of the load-balance map, INVALID if this LB does not use one
-     */
-    index_t lb_map;
+  /**
+   * index of the load-balance map, INVALID if this LB does not use one
+   */
+  index_t lb_map;
 
-    /**
-     * This is the index of the uRPF list for this LB
-     */
-    index_t lb_urpf;
+  /**
+   * This is the index of the uRPF list for this LB
+   */
+  index_t lb_urpf;
 
-    /**
-     * the hash config to use when selecting a bucket. this is a u16
-     */
-    flow_hash_config_t lb_hash_config;
+  /**
+   * the hash config to use when selecting a bucket. this is a u16
+   */
+  flow_hash_config_t lb_hash_config;
 
-    /**
-     * Vector of buckets containing the next DPOs, sized as lbo_num
-     */
-    dpo_id_t *lb_buckets;
+  /**
+   * Vector of buckets containing the next DPOs, sized as lbo_num
+   */
+  dpo_id_t *lb_buckets;
 
-    /**
-     * The rest of the cache line is used for buckets. In the common case
-     * where there there are less than 4 buckets, then the buckets are
-     * on the same cachlie and we save ourselves a pointer dereferance in 
-     * the data-path.
-     */
-    dpo_id_t lb_buckets_inline[LB_NUM_INLINE_BUCKETS];
+  /**
+   * The rest of the cache line is used for buckets. In the common case
+   * where there there are less than 4 buckets, then the buckets are
+   * on the same cachlie and we save ourselves a pointer dereferance in
+   * the data-path.
+   */
+  dpo_id_t lb_buckets_inline[LB_NUM_INLINE_BUCKETS];
 } load_balance_t;
 
-STATIC_ASSERT(sizeof(load_balance_t) <= CLIB_CACHE_LINE_BYTES,
-	      "A load_balance object size exceeds one cacheline");
+STATIC_ASSERT (sizeof (load_balance_t) <= CLIB_CACHE_LINE_BYTES,
+	       "A load_balance object size exceeds one cacheline");
 
 /**
  * Flags controlling load-balance formatting/display
  */
-typedef enum load_balance_format_flags_t_ {
-    LOAD_BALANCE_FORMAT_NONE,
-    LOAD_BALANCE_FORMAT_DETAIL = (1 << 0),
+typedef enum load_balance_format_flags_t_
+{
+  LOAD_BALANCE_FORMAT_NONE,
+  LOAD_BALANCE_FORMAT_DETAIL = (1 << 0),
 } load_balance_format_flags_t;
 
-extern index_t load_balance_create(u32 num_buckets,
-				   dpo_proto_t lb_proto,
-				   flow_hash_config_t fhc);
-extern flow_hash_config_t load_balance_get_default_flow_hash(dpo_proto_t lb_proto);
-extern void load_balance_multipath_update(
-    const dpo_id_t *dpo,
-    const load_balance_path_t * raw_next_hops,
-    load_balance_flags_t flags);
+extern index_t load_balance_create (u32 num_buckets, dpo_proto_t lb_proto,
+				    flow_hash_config_t fhc);
+extern flow_hash_config_t
+load_balance_get_default_flow_hash (dpo_proto_t lb_proto);
+extern void
+load_balance_multipath_update (const dpo_id_t *dpo,
+			       const load_balance_path_t *raw_next_hops,
+			       load_balance_flags_t flags);
 
-extern void load_balance_set_bucket(index_t lbi,
-				    u32 bucket,
-				    const dpo_id_t *next);
-extern void load_balance_set_urpf(index_t lbi,
-				  index_t urpf);
-extern void load_balance_set_fib_entry_flags(index_t lbi,
-                                             fib_entry_flag_t flags);
-extern index_t load_balance_get_urpf(index_t lbi);
+extern void load_balance_set_bucket (index_t lbi, u32 bucket,
+				     const dpo_id_t *next);
+extern void load_balance_set_urpf (index_t lbi, index_t urpf);
+extern void load_balance_set_fib_entry_flags (index_t lbi,
+					      fib_entry_flag_t flags);
+extern index_t load_balance_get_urpf (index_t lbi);
 
-extern u8* format_load_balance(u8 * s, va_list * args);
+extern u8 *format_load_balance (u8 *s, va_list *args);
 
-extern const dpo_id_t *load_balance_get_bucket(index_t lbi,
-					       u32 bucket);
-extern int load_balance_is_drop(const dpo_id_t *dpo);
-extern u16 load_balance_n_buckets(index_t lbi);
+extern const dpo_id_t *load_balance_get_bucket (index_t lbi, u32 bucket);
+extern int load_balance_is_drop (const dpo_id_t *dpo);
+extern u16 load_balance_n_buckets (index_t lbi);
 
-extern f64 load_balance_get_multipath_tolerance(void);
+extern f64 load_balance_get_multipath_tolerance (void);
 
 /**
  * The encapsulation breakages are for fast DP access
  */
 extern load_balance_t *load_balance_pool;
-static inline load_balance_t*
+static inline load_balance_t *
 load_balance_get (index_t lbi)
 {
-    return (pool_elt_at_index(load_balance_pool, lbi));
+  return (pool_elt_at_index (load_balance_pool, lbi));
 }
 
-#define LB_HAS_INLINE_BUCKETS(_lb)		\
-    ((_lb)->lb_n_buckets <= LB_NUM_INLINE_BUCKETS)
+#define LB_HAS_INLINE_BUCKETS(_lb)                                            \
+  ((_lb)->lb_n_buckets <= LB_NUM_INLINE_BUCKETS)
 
 static inline const dpo_id_t *
-load_balance_get_bucket_i (const load_balance_t *lb,
-			   u32 bucket)
+load_balance_get_bucket_i (const load_balance_t *lb, u32 bucket)
 {
-    ASSERT(bucket < lb->lb_n_buckets);
+  ASSERT (bucket < lb->lb_n_buckets);
 
-    if (PREDICT_TRUE(LB_HAS_INLINE_BUCKETS(lb)))
+  if (PREDICT_TRUE (LB_HAS_INLINE_BUCKETS (lb)))
     {
-	return (&lb->lb_buckets_inline[bucket]);
+      return (&lb->lb_buckets_inline[bucket]);
     }
-    else
+  else
     {
-	return (&lb->lb_buckets[bucket]);
+      return (&lb->lb_buckets[bucket]);
     }
 }
 
-extern void load_balance_module_init(void);
+extern void load_balance_module_init (void);
 
 #endif

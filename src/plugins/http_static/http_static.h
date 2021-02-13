@@ -77,7 +77,6 @@ typedef enum
   HTTP_BUILTIN_METHOD_POST,
 } http_builtin_method_type_t;
 
-
 /** \brief Application session
  */
 typedef struct
@@ -87,8 +86,8 @@ typedef struct
 #define _(type, name) type name;
   foreach_app_session_field
 #undef _
-  /** rx thread index */
-  u32 thread_index;
+    /** rx thread index */
+    u32 thread_index;
   /** rx buffer */
   u8 *rx_buf;
   /** vpp session index, handle */
@@ -149,7 +148,7 @@ typedef struct
   /** Unified file data cache pool */
   file_data_cache_t *cache_pool;
   /** Hash table which maps file name to file data */
-    BVT (clib_bihash) name_to_data;
+  BVT (clib_bihash) name_to_data;
 
   /** Hash tables for built-in GET and POST handlers */
   uword *get_url_handlers;
@@ -206,11 +205,11 @@ extern http_static_server_main_t http_static_server_main;
 
 int http_static_server_enable_api (u32 fifo_size, u32 cache_limit,
 				   u32 prealloc_fifos,
-				   u32 private_segment_size,
-				   u8 * www_root, u8 * uri);
+				   u32 private_segment_size, u8 *www_root,
+				   u8 *uri);
 
-void http_static_server_register_builtin_handler
-  (void *fp, char *url, int type);
+void http_static_server_register_builtin_handler (void *fp, char *url,
+						  int type);
 
 #endif /* __included_http_static_h__ */
 

@@ -26,7 +26,6 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/cache.h>
 
-
 typedef struct
 {
 
@@ -49,70 +48,62 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_l2_in_out_feat_arc_trace (u8 * s, u32 is_output, va_list * args)
+format_l2_in_out_feat_arc_trace (u8 *s, u32 is_output, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  l2_in_out_feat_arc_trace_t *t =
-    va_arg (*args, l2_in_out_feat_arc_trace_t *);
+  l2_in_out_feat_arc_trace_t *t = va_arg (*args, l2_in_out_feat_arc_trace_t *);
 
-  s =
-    format (s,
-	    "%s: head %d feature_bitmap %x ethertype %x sw_if_index %d, next_index %d",
-	    is_output ? "OUT-FEAT-ARC" : "IN-FEAT-ARC", t->arc_head,
-	    t->feature_bitmap, t->ethertype, t->sw_if_index, t->next_index);
+  s = format (
+    s,
+    "%s: head %d feature_bitmap %x ethertype %x sw_if_index %d, next_index %d",
+    is_output ? "OUT-FEAT-ARC" : "IN-FEAT-ARC", t->arc_head, t->feature_bitmap,
+    t->ethertype, t->sw_if_index, t->next_index);
   return s;
 }
 
 static u8 *
-format_l2_in_feat_arc_trace (u8 * s, va_list * args)
+format_l2_in_feat_arc_trace (u8 *s, va_list *args)
 {
-  return format_l2_in_out_feat_arc_trace (s,
-					  IN_OUT_FEAT_ARC_INPUT_TABLE_GROUP,
+  return format_l2_in_out_feat_arc_trace (s, IN_OUT_FEAT_ARC_INPUT_TABLE_GROUP,
 					  args);
 }
 
 static u8 *
-format_l2_out_feat_arc_trace (u8 * s, va_list * args)
+format_l2_out_feat_arc_trace (u8 *s, va_list *args)
 {
-  return format_l2_in_out_feat_arc_trace (s,
-					  IN_OUT_FEAT_ARC_OUTPUT_TABLE_GROUP,
-					  args);
+  return format_l2_in_out_feat_arc_trace (
+    s, IN_OUT_FEAT_ARC_OUTPUT_TABLE_GROUP, args);
 }
 
+#define foreach_l2_in_feat_arc_error _ (DEFAULT, "in default")
 
-#define foreach_l2_in_feat_arc_error                   \
-_(DEFAULT, "in default")                         \
-
-
-#define foreach_l2_out_feat_arc_error                   \
-_(DEFAULT, "out default")                         \
-
+#define foreach_l2_out_feat_arc_error _ (DEFAULT, "out default")
 
 typedef enum
 {
-#define _(sym,str) L2_IN_FEAT_ARC_ERROR_##sym,
+#define _(sym, str) L2_IN_FEAT_ARC_ERROR_##sym,
   foreach_l2_in_feat_arc_error
 #undef _
     L2_IN_FEAT_ARC_N_ERROR,
 } l2_in_feat_arc_error_t;
 
 static char *l2_in_feat_arc_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_l2_in_feat_arc_error
 #undef _
 };
 
 typedef enum
 {
-#define _(sym,str) L2_OUT_FEAT_ARC_ERROR_##sym,
+#define _(sym, str) L2_OUT_FEAT_ARC_ERROR_##sym,
   foreach_l2_out_feat_arc_error
 #undef _
     L2_OUT_FEAT_ARC_N_ERROR,
 } l2_out_feat_arc_error_t;
 
 static char *l2_out_feat_arc_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_l2_out_feat_arc_error
 #undef _
 };
@@ -123,11 +114,11 @@ extern l2_in_out_feat_arc_main_t l2_in_out_feat_arc_main;
 l2_in_out_feat_arc_main_t l2_in_out_feat_arc_main;
 #endif /* CLIB_MARCH_VARIANT */
 
-#define get_u16(addr) ( *((u16 *)(addr)) )
+#define get_u16(addr)	     (*((u16 *) (addr)))
 #define L2_FEAT_ARC_VEC_SIZE 2
 
 static_always_inline void
-buffer_prefetch_xN (int vector_sz, vlib_buffer_t ** b)
+buffer_prefetch_xN (int vector_sz, vlib_buffer_t **b)
 {
   int ii;
   for (ii = 0; ii < vector_sz; ii++)
@@ -135,8 +126,8 @@ buffer_prefetch_xN (int vector_sz, vlib_buffer_t ** b)
 }
 
 static_always_inline void
-get_sw_if_index_xN (int vector_sz, int is_output, vlib_buffer_t ** b,
-		    u32 * out_sw_if_index)
+get_sw_if_index_xN (int vector_sz, int is_output, vlib_buffer_t **b,
+		    u32 *out_sw_if_index)
 {
   int ii;
   for (ii = 0; ii < vector_sz; ii++)
@@ -147,8 +138,8 @@ get_sw_if_index_xN (int vector_sz, int is_output, vlib_buffer_t ** b,
 }
 
 static_always_inline void
-get_ethertype_xN (int vector_sz, int is_output, vlib_buffer_t ** b,
-		  u16 * out_ethertype)
+get_ethertype_xN (int vector_sz, int is_output, vlib_buffer_t **b,
+		  u16 *out_ethertype)
 {
   int ii;
   for (ii = 0; ii < vector_sz; ii++)
@@ -159,12 +150,10 @@ get_ethertype_xN (int vector_sz, int is_output, vlib_buffer_t ** b,
     }
 }
 
-
 static_always_inline void
-set_next_in_arc_head_xN (int vector_sz, int is_output, u32 * next_nodes,
-			 vlib_buffer_t ** b, u32 * sw_if_index,
-			 u16 * ethertype, u8 ip4_arc, u8 ip6_arc,
-			 u8 nonip_arc, u16 * out_next)
+set_next_in_arc_head_xN (int vector_sz, int is_output, u32 *next_nodes,
+			 vlib_buffer_t **b, u32 *sw_if_index, u16 *ethertype,
+			 u8 ip4_arc, u8 ip6_arc, u8 nonip_arc, u16 *out_next)
 {
   int ii;
   for (ii = 0; ii < vector_sz; ii++)
@@ -183,21 +172,21 @@ set_next_in_arc_head_xN (int vector_sz, int is_output, u32 * next_nodes,
 	  feature_arc = nonip_arc;
 	}
       if (PREDICT_TRUE (vnet_have_features (feature_arc, sw_if_index[ii])))
-	vnet_feature_arc_start (feature_arc,
-				sw_if_index[ii], &next_index, b[ii]);
+	vnet_feature_arc_start (feature_arc, sw_if_index[ii], &next_index,
+				b[ii]);
       else
 	next_index =
 	  vnet_l2_feature_next (b[ii], next_nodes,
 				is_output ? L2OUTPUT_FEAT_OUTPUT_FEAT_ARC :
-				L2INPUT_FEAT_INPUT_FEAT_ARC);
+					    L2INPUT_FEAT_INPUT_FEAT_ARC);
 
       out_next[ii] = next_index;
     }
 }
 
 static_always_inline void
-set_next_in_arc_tail_xN (int vector_sz, int is_output, u32 * next_nodes,
-			 vlib_buffer_t ** b, u16 * out_next)
+set_next_in_arc_tail_xN (int vector_sz, int is_output, u32 *next_nodes,
+			 vlib_buffer_t **b, u16 *out_next)
 {
   int ii;
   for (ii = 0; ii < vector_sz; ii++)
@@ -205,16 +194,14 @@ set_next_in_arc_tail_xN (int vector_sz, int is_output, u32 * next_nodes,
       out_next[ii] =
 	vnet_l2_feature_next (b[ii], next_nodes,
 			      is_output ? L2OUTPUT_FEAT_OUTPUT_FEAT_ARC :
-			      L2INPUT_FEAT_INPUT_FEAT_ARC);
+					  L2INPUT_FEAT_INPUT_FEAT_ARC);
     }
-
 }
 
-
 static_always_inline void
-maybe_trace_xN (int vector_sz, int arc_head, vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_buffer_t ** b,
-		u32 * sw_if_index, u16 * ethertype, u16 * next)
+maybe_trace_xN (int vector_sz, int arc_head, vlib_main_t *vm,
+		vlib_node_runtime_t *node, vlib_buffer_t **b, u32 *sw_if_index,
+		u16 *ethertype, u16 *next)
 {
   int ii;
   for (ii = 0; ii < vector_sz; ii++)
@@ -231,10 +218,10 @@ maybe_trace_xN (int vector_sz, int arc_head, vlib_main_t * vm,
 }
 
 always_inline uword
-l2_in_out_feat_arc_node_fn (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame,
-			    int is_output, vlib_node_registration_t * fa_node,
-			    int arc_head, int do_trace)
+l2_in_out_feat_arc_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+			    vlib_frame_t *frame, int is_output,
+			    vlib_node_registration_t *fa_node, int arc_head,
+			    int do_trace)
 {
   u32 n_left, *from;
   u16 nexts[VLIB_FRAME_SIZE], *next;
@@ -324,9 +311,8 @@ l2_in_out_feat_arc_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (l2_in_feat_arc_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
+VLIB_NODE_FN (l2_in_feat_arc_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
     return l2_in_out_feat_arc_node_fn (vm, node, frame,
@@ -338,9 +324,8 @@ VLIB_NODE_FN (l2_in_feat_arc_node) (vlib_main_t * vm,
 				       &l2_in_feat_arc_node, 1, 0);
 }
 
-VLIB_NODE_FN (l2_out_feat_arc_node) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * frame)
+VLIB_NODE_FN (l2_out_feat_arc_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
     return l2_in_out_feat_arc_node_fn (vm, node, frame,
@@ -352,9 +337,8 @@ VLIB_NODE_FN (l2_out_feat_arc_node) (vlib_main_t * vm,
 				       &l2_out_feat_arc_node, 1, 0);
 }
 
-VLIB_NODE_FN (l2_in_feat_arc_end_node) (vlib_main_t * vm,
-					vlib_node_runtime_t * node,
-					vlib_frame_t * frame)
+VLIB_NODE_FN (l2_in_feat_arc_end_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
     return l2_in_out_feat_arc_node_fn (vm, node, frame,
@@ -366,9 +350,8 @@ VLIB_NODE_FN (l2_in_feat_arc_end_node) (vlib_main_t * vm,
 				       &l2_in_feat_arc_end_node, 0, 0);
 }
 
-VLIB_NODE_FN (l2_out_feat_arc_end_node) (vlib_main_t * vm,
-					 vlib_node_runtime_t * node,
-					 vlib_frame_t * frame)
+VLIB_NODE_FN (l2_out_feat_arc_end_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
     return l2_in_out_feat_arc_node_fn (vm, node, frame,
@@ -379,7 +362,6 @@ VLIB_NODE_FN (l2_out_feat_arc_end_node) (vlib_main_t * vm,
 				       IN_OUT_FEAT_ARC_OUTPUT_TABLE_GROUP,
 				       &l2_out_feat_arc_end_node, 0, 0);
 }
-
 
 #ifndef CLIB_MARCH_VARIANT
 void
@@ -395,59 +377,54 @@ vnet_l2_in_out_feat_arc_enable_disable (u32 sw_if_index, int is_output,
 }
 #endif /* CLIB_MARCH_VARIANT */
 
-/* *INDENT-OFF* */
-VNET_FEATURE_ARC_INIT (l2_in_ip4_arc, static) =
-{
-  .arc_name  = "l2-input-ip4",
+VNET_FEATURE_ARC_INIT (l2_in_ip4_arc, static) = {
+  .arc_name = "l2-input-ip4",
   .start_nodes = VNET_FEATURES ("l2-input-feat-arc"),
-  .arc_index_ptr = &l2_in_out_feat_arc_main.ip4_feat_arc_index[IN_OUT_FEAT_ARC_INPUT_TABLE_GROUP],
+  .arc_index_ptr = &l2_in_out_feat_arc_main
+		      .ip4_feat_arc_index[IN_OUT_FEAT_ARC_INPUT_TABLE_GROUP],
 };
 
-VNET_FEATURE_ARC_INIT (l2_out_ip4_arc, static) =
-{
-  .arc_name  = "l2-output-ip4",
+VNET_FEATURE_ARC_INIT (l2_out_ip4_arc, static) = {
+  .arc_name = "l2-output-ip4",
   .start_nodes = VNET_FEATURES ("l2-output-feat-arc"),
-  .arc_index_ptr = &l2_in_out_feat_arc_main.ip4_feat_arc_index[IN_OUT_FEAT_ARC_OUTPUT_TABLE_GROUP],
+  .arc_index_ptr = &l2_in_out_feat_arc_main
+		      .ip4_feat_arc_index[IN_OUT_FEAT_ARC_OUTPUT_TABLE_GROUP],
 };
 
-VNET_FEATURE_ARC_INIT (l2_out_ip6_arc, static) =
-{
-  .arc_name  = "l2-input-ip6",
+VNET_FEATURE_ARC_INIT (l2_out_ip6_arc, static) = {
+  .arc_name = "l2-input-ip6",
   .start_nodes = VNET_FEATURES ("l2-input-feat-arc"),
-  .arc_index_ptr = &l2_in_out_feat_arc_main.ip6_feat_arc_index[IN_OUT_FEAT_ARC_INPUT_TABLE_GROUP],
+  .arc_index_ptr = &l2_in_out_feat_arc_main
+		      .ip6_feat_arc_index[IN_OUT_FEAT_ARC_INPUT_TABLE_GROUP],
 };
-VNET_FEATURE_ARC_INIT (l2_in_ip6_arc, static) =
-{
-  .arc_name  = "l2-output-ip6",
+VNET_FEATURE_ARC_INIT (l2_in_ip6_arc, static) = {
+  .arc_name = "l2-output-ip6",
   .start_nodes = VNET_FEATURES ("l2-output-feat-arc"),
-  .arc_index_ptr = &l2_in_out_feat_arc_main.ip6_feat_arc_index[IN_OUT_FEAT_ARC_OUTPUT_TABLE_GROUP],
+  .arc_index_ptr = &l2_in_out_feat_arc_main
+		      .ip6_feat_arc_index[IN_OUT_FEAT_ARC_OUTPUT_TABLE_GROUP],
 };
 
-VNET_FEATURE_ARC_INIT (l2_out_nonip_arc, static) =
-{
-  .arc_name  = "l2-input-nonip",
+VNET_FEATURE_ARC_INIT (l2_out_nonip_arc, static) = {
+  .arc_name = "l2-input-nonip",
   .start_nodes = VNET_FEATURES ("l2-input-feat-arc"),
-  .arc_index_ptr = &l2_in_out_feat_arc_main.nonip_feat_arc_index[IN_OUT_FEAT_ARC_INPUT_TABLE_GROUP],
+  .arc_index_ptr = &l2_in_out_feat_arc_main
+		      .nonip_feat_arc_index[IN_OUT_FEAT_ARC_INPUT_TABLE_GROUP],
 };
-VNET_FEATURE_ARC_INIT (l2_in_nonip_arc, static) =
-{
-  .arc_name  = "l2-output-nonip",
+VNET_FEATURE_ARC_INIT (l2_in_nonip_arc, static) = {
+  .arc_name = "l2-output-nonip",
   .start_nodes = VNET_FEATURES ("l2-output-feat-arc"),
-  .arc_index_ptr = &l2_in_out_feat_arc_main.nonip_feat_arc_index[IN_OUT_FEAT_ARC_OUTPUT_TABLE_GROUP],
+  .arc_index_ptr =
+    &l2_in_out_feat_arc_main
+       .nonip_feat_arc_index[IN_OUT_FEAT_ARC_OUTPUT_TABLE_GROUP],
 };
 
-
-/* *INDENT-ON* */
-
-
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_in_feat_arc_node) = {
   .name = "l2-input-feat-arc",
   .vector_size = sizeof (u32),
   .format_trace = format_l2_in_feat_arc_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(l2_in_feat_arc_error_strings),
+  .n_errors = ARRAY_LEN (l2_in_feat_arc_error_strings),
   .error_strings = l2_in_feat_arc_error_strings,
 
 };
@@ -458,7 +435,7 @@ VLIB_REGISTER_NODE (l2_out_feat_arc_node) = {
   .format_trace = format_l2_out_feat_arc_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(l2_out_feat_arc_error_strings),
+  .n_errors = ARRAY_LEN (l2_out_feat_arc_error_strings),
   .error_strings = l2_out_feat_arc_error_strings,
 
 };
@@ -477,72 +454,59 @@ VLIB_REGISTER_NODE (l2_out_feat_arc_end_node) = {
   .sibling_of = "l2-output-feat-arc",
 };
 
-VNET_FEATURE_INIT (l2_in_ip4_arc_end, static) =
-{
+VNET_FEATURE_INIT (l2_in_ip4_arc_end, static) = {
   .arc_name = "l2-input-ip4",
   .node_name = "l2-input-feat-arc-end",
-  .runs_before = 0,     /* not before any other features */
+  .runs_before = 0, /* not before any other features */
 };
 
-VNET_FEATURE_INIT (l2_out_ip4_arc_end, static) =
-{
+VNET_FEATURE_INIT (l2_out_ip4_arc_end, static) = {
   .arc_name = "l2-output-ip4",
   .node_name = "l2-output-feat-arc-end",
-  .runs_before = 0,     /* not before any other features */
+  .runs_before = 0, /* not before any other features */
 };
 
-VNET_FEATURE_INIT (l2_in_ip6_arc_end, static) =
-{
+VNET_FEATURE_INIT (l2_in_ip6_arc_end, static) = {
   .arc_name = "l2-input-ip6",
   .node_name = "l2-input-feat-arc-end",
-  .runs_before = 0,     /* not before any other features */
+  .runs_before = 0, /* not before any other features */
 };
 
-
-VNET_FEATURE_INIT (l2_out_ip6_arc_end, static) =
-{
+VNET_FEATURE_INIT (l2_out_ip6_arc_end, static) = {
   .arc_name = "l2-output-ip6",
   .node_name = "l2-output-feat-arc-end",
-  .runs_before = 0,     /* not before any other features */
+  .runs_before = 0, /* not before any other features */
 };
 
-VNET_FEATURE_INIT (l2_in_nonip_arc_end, static) =
-{
+VNET_FEATURE_INIT (l2_in_nonip_arc_end, static) = {
   .arc_name = "l2-input-nonip",
   .node_name = "l2-input-feat-arc-end",
-  .runs_before = 0,     /* not before any other features */
+  .runs_before = 0, /* not before any other features */
 };
 
-
-VNET_FEATURE_INIT (l2_out_nonip_arc_end, static) =
-{
+VNET_FEATURE_INIT (l2_out_nonip_arc_end, static) = {
   .arc_name = "l2-output-nonip",
   .node_name = "l2-output-feat-arc-end",
-  .runs_before = 0,     /* not before any other features */
+  .runs_before = 0, /* not before any other features */
 };
-/* *INDENT-ON* */
-
 
 #ifndef CLIB_MARCH_VARIANT
 clib_error_t *
-l2_in_out_feat_arc_init (vlib_main_t * vm)
+l2_in_out_feat_arc_init (vlib_main_t *vm)
 {
   l2_in_out_feat_arc_main_t *mp = &l2_in_out_feat_arc_main;
 
   /* Initialize the feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2_in_feat_arc_end_node.index,
-			       L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       mp->feat_next_node_index
-			       [IN_OUT_FEAT_ARC_INPUT_TABLE_GROUP]);
-  feat_bitmap_init_next_nodes (vm, l2_out_feat_arc_end_node.index,
-			       L2OUTPUT_N_FEAT, l2output_get_feat_names (),
-			       mp->feat_next_node_index
-			       [IN_OUT_FEAT_ARC_OUTPUT_TABLE_GROUP]);
+  feat_bitmap_init_next_nodes (
+    vm, l2_in_feat_arc_end_node.index, L2INPUT_N_FEAT,
+    l2input_get_feat_names (),
+    mp->feat_next_node_index[IN_OUT_FEAT_ARC_INPUT_TABLE_GROUP]);
+  feat_bitmap_init_next_nodes (
+    vm, l2_out_feat_arc_end_node.index, L2OUTPUT_N_FEAT,
+    l2output_get_feat_names (),
+    mp->feat_next_node_index[IN_OUT_FEAT_ARC_OUTPUT_TABLE_GROUP]);
   return 0;
 }
-
 
 static int
 l2_has_features (u32 sw_if_index, int is_output)
@@ -563,9 +527,9 @@ l2_is_output_arc (u8 arc_index)
 {
   l2_in_out_feat_arc_main_t *mp = &l2_in_out_feat_arc_main;
   int idx = IN_OUT_FEAT_ARC_OUTPUT_TABLE_GROUP;
-  return (mp->ip4_feat_arc_index[idx] == arc_index
-	  || mp->ip6_feat_arc_index[idx] == arc_index
-	  || mp->nonip_feat_arc_index[idx] == arc_index);
+  return (mp->ip4_feat_arc_index[idx] == arc_index ||
+	  mp->ip6_feat_arc_index[idx] == arc_index ||
+	  mp->nonip_feat_arc_index[idx] == arc_index);
 }
 
 static int
@@ -573,9 +537,9 @@ l2_is_input_arc (u8 arc_index)
 {
   l2_in_out_feat_arc_main_t *mp = &l2_in_out_feat_arc_main;
   int idx = IN_OUT_FEAT_ARC_INPUT_TABLE_GROUP;
-  return (mp->ip4_feat_arc_index[idx] == arc_index
-	  || mp->ip6_feat_arc_index[idx] == arc_index
-	  || mp->nonip_feat_arc_index[idx] == arc_index);
+  return (mp->ip4_feat_arc_index[idx] == arc_index ||
+	  mp->ip6_feat_arc_index[idx] == arc_index ||
+	  mp->nonip_feat_arc_index[idx] == arc_index);
 }
 
 int
@@ -585,7 +549,7 @@ vnet_l2_feature_enable_disable (const char *arc_name, const char *node_name,
 				u32 n_feature_config_bytes)
 {
   u8 arc_index = vnet_get_feature_arc_index (arc_name);
-  if (arc_index == (u8) ~ 0)
+  if (arc_index == (u8) ~0)
     return VNET_API_ERROR_INVALID_VALUE;
 
   /* check the state before we tried to enable/disable */
@@ -603,20 +567,17 @@ vnet_l2_feature_enable_disable (const char *arc_name, const char *node_name,
     {
       if (l2_is_output_arc (arc_index))
 	{
-	  vnet_l2_in_out_feat_arc_enable_disable (sw_if_index, 1,
-						  l2_has_features
-						  (sw_if_index, 1));
+	  vnet_l2_in_out_feat_arc_enable_disable (
+	    sw_if_index, 1, l2_has_features (sw_if_index, 1));
 	}
       if (l2_is_input_arc (arc_index))
 	{
-	  vnet_l2_in_out_feat_arc_enable_disable (sw_if_index, 0,
-						  l2_has_features
-						  (sw_if_index, 0));
+	  vnet_l2_in_out_feat_arc_enable_disable (
+	    sw_if_index, 0, l2_has_features (sw_if_index, 0));
 	}
     }
   return 0;
 }
-
 
 VLIB_INIT_FUNCTION (l2_in_out_feat_arc_init);
 #endif /* CLIB_MARCH_VARIANT */

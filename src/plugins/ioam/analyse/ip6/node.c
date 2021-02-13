@@ -36,20 +36,20 @@ typedef struct
 vlib_node_registration_t analyse_node_local;
 vlib_node_registration_t analyse_node_remote;
 
-#define foreach_analyse_error \
-_(ANALYSED, "Packets analysed for summarization") \
-_(FAILED, "Packets analysis failed") \
+#define foreach_analyse_error                                                 \
+  _ (ANALYSED, "Packets analysed for summarization")                          \
+  _ (FAILED, "Packets analysis failed")
 
 typedef enum
 {
-#define _(sym,str) ANALYSE_ERROR_##sym,
+#define _(sym, str) ANALYSE_ERROR_##sym,
   foreach_analyse_error
 #undef _
     ANALYSE_N_ERROR,
 } analyse_error_t;
 
 static char *analyse_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_analyse_error
 #undef _
 };
@@ -65,22 +65,21 @@ ip6_ioam_analyser_main_t ioam_analyser_main;
 
 /* packet trace format function */
 static u8 *
-format_analyse_trace (u8 * s, va_list * args)
+format_analyse_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   analyse_trace_t *t = va_arg (*args, analyse_trace_t *);
 
-  s = format (s, "IP6-ioam-analyse: flow_id %d, next index %d",
-	      t->flow_id, t->next_index);
+  s = format (s, "IP6-ioam-analyse: flow_id %d, next index %d", t->flow_id,
+	      t->next_index);
   return s;
 }
 
 always_inline u8
-ioam_analyse_hbh (u32 flow_id,
-		  ip6_hop_by_hop_header_t * hbh0,
-		  ip6_hop_by_hop_option_t * opt0,
-		  ip6_hop_by_hop_option_t * limit0, u16 len)
+ioam_analyse_hbh (u32 flow_id, ip6_hop_by_hop_header_t *hbh0,
+		  ip6_hop_by_hop_option_t *opt0,
+		  ip6_hop_by_hop_option_t *limit0, u16 len)
 {
   ip6_ioam_analyser_main_t *am = &ioam_analyser_main;
   u8 type0;
@@ -91,26 +90,24 @@ ioam_analyse_hbh (u32 flow_id,
       type0 = opt0->type;
       switch (type0)
 	{
-	case 0:		/* Pad1 */
+	case 0: /* Pad1 */
 	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0) + 1;
 	  continue;
-	case 1:		/* PadN */
+	case 1: /* PadN */
 	  break;
 	default:
 	  if (am->analyse_hbh_handler[type0])
 	    {
-	      if (PREDICT_TRUE
-		  ((*am->analyse_hbh_handler[type0]) (flow_id, opt0,
-						      len) < 0))
+	      if (PREDICT_TRUE ((*am->analyse_hbh_handler[type0]) (
+				  flow_id, opt0, len) < 0))
 		{
 		  error0 = ANALYSE_ERROR_FAILED;
 		  return (error0);
 		}
 	    }
 	}
-      opt0 =
-	(ip6_hop_by_hop_option_t *) (((u8 *) opt0) + opt0->length +
-				     sizeof (ip6_hop_by_hop_option_t));
+      opt0 = (ip6_hop_by_hop_option_t *) (((u8 *) opt0) + opt0->length +
+					  sizeof (ip6_hop_by_hop_option_t));
     }
   return (error0);
 }
@@ -134,13 +131,13 @@ ioam_analyse_hbh (u32 flow_id,
  *       store the statistics.
  *
  * <em>Next Index:</em>
- * - Dispatches the packet to ip4-lookup if executed under ip6-hbh-analyse-local
- *   node context and to ip4-drop if executed under ip6-hbh-analyse-remote node
- *   context.
+ * - Dispatches the packet to ip4-lookup if executed under
+ * ip6-hbh-analyse-local node context and to ip4-drop if executed under
+ * ip6-hbh-analyse-remote node context.
  */
 static uword
-ip6_ioam_analyse_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * frame)
+ip6_ioam_analyse_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+			  vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   analyse_next_t next_index;
@@ -184,17 +181,17 @@ ip6_ioam_analyse_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  p0 = vlib_get_buffer (vm, bi0);
 	  if (PREDICT_FALSE (remote))
 	    {
-	      vlib_buffer_advance (p0, -(word) (sizeof (udp_header_t) +
-						sizeof (ip4_header_t) +
-						sizeof
-						(ipfix_message_header_t) +
-						sizeof (ipfix_set_header_t)));
+	      vlib_buffer_advance (
+		p0, -(word) (sizeof (udp_header_t) + sizeof (ip4_header_t) +
+			     sizeof (ipfix_message_header_t) +
+			     sizeof (ipfix_set_header_t)));
 	    }
 	  data = (u8 *) vlib_buffer_get_current (p0);
 	  ip40 = (ip4_header_t *) vlib_buffer_get_current (p0);
 	  limit = data + clib_net_to_host_u16 (ip40->length);
-	  data += sizeof (ip4_header_t) + sizeof (udp_header_t)
-	    + sizeof (ipfix_message_header_t) + sizeof (ipfix_set_header_t);
+	  data += sizeof (ip4_header_t) + sizeof (udp_header_t) +
+		  sizeof (ipfix_message_header_t) +
+		  sizeof (ipfix_set_header_t);
 
 	  num_ioam_records = (limit - data) / DEFAULT_EXPORT_SIZE;
 
@@ -229,27 +226,23 @@ ip6_ioam_analyse_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      opt0 = (ip6_hop_by_hop_option_t *) (hbh0 + 1);
 	      opt1 = (ip6_hop_by_hop_option_t *) (hbh1 + 1);
 
-	      limit0 =
-		(ip6_hop_by_hop_option_t *) ((u8 *) hbh0 +
-					     ((hbh0->length + 1) << 3));
-	      limit1 =
-		(ip6_hop_by_hop_option_t *) ((u8 *) hbh1 +
-					     ((hbh1->length + 1) << 3));
+	      limit0 = (ip6_hop_by_hop_option_t *) ((u8 *) hbh0 +
+						    ((hbh0->length + 1) << 3));
+	      limit1 = (ip6_hop_by_hop_option_t *) ((u8 *) hbh1 +
+						    ((hbh1->length + 1) << 3));
 
-	      flow_id0 =
-		clib_net_to_host_u32
-		(ip60->ip_version_traffic_class_and_flow_label) & 0xFFFFF;
-	      flow_id1 =
-		clib_net_to_host_u32
-		(ip61->ip_version_traffic_class_and_flow_label) & 0xFFFFF;
+	      flow_id0 = clib_net_to_host_u32 (
+			   ip60->ip_version_traffic_class_and_flow_label) &
+			 0xFFFFF;
+	      flow_id1 = clib_net_to_host_u32 (
+			   ip61->ip_version_traffic_class_and_flow_label) &
+			 0xFFFFF;
 
 	      p_len0 = clib_net_to_host_u16 (ip60->payload_length);
 	      p_len1 = clib_net_to_host_u16 (ip61->payload_length);
 
-	      error0 =
-		ioam_analyse_hbh (flow_id0, hbh0, opt0, limit0, p_len0);
-	      error1 =
-		ioam_analyse_hbh (flow_id1, hbh1, opt1, limit1, p_len0);
+	      error0 = ioam_analyse_hbh (flow_id0, hbh0, opt0, limit0, p_len0);
+	      error1 = ioam_analyse_hbh (flow_id1, hbh1, opt1, limit1, p_len0);
 
 	      if (PREDICT_TRUE ((error0 == 0) && (error1 == 0)))
 		{
@@ -309,16 +302,14 @@ ip6_ioam_analyse_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      data += (1 * DEFAULT_EXPORT_SIZE);
 	      hbh0 = (ip6_hop_by_hop_header_t *) (ip60 + 1);
 	      opt0 = (ip6_hop_by_hop_option_t *) (hbh0 + 1);
-	      limit0 =
-		(ip6_hop_by_hop_option_t *) ((u8 *) hbh0 +
-					     ((hbh0->length + 1) << 3));
+	      limit0 = (ip6_hop_by_hop_option_t *) ((u8 *) hbh0 +
+						    ((hbh0->length + 1) << 3));
 
-	      flow_id0 =
-		clib_net_to_host_u32
-		(ip60->ip_version_traffic_class_and_flow_label) & 0xFFFFF;
+	      flow_id0 = clib_net_to_host_u32 (
+			   ip60->ip_version_traffic_class_and_flow_label) &
+			 0xFFFFF;
 	      p_len0 = clib_net_to_host_u16 (ip60->payload_length);
-	      error0 =
-		ioam_analyse_hbh (flow_id0, hbh0, opt0, limit0, p_len0);
+	      error0 = ioam_analyse_hbh (flow_id0, hbh0, opt0, limit0, p_len0);
 
 	      if (PREDICT_TRUE (error0 == 0))
 		{
@@ -353,8 +344,8 @@ ip6_ioam_analyse_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 int
-ip6_ioam_analyse_hbh_trace_internal (u32 flow_id,
-				     ip6_hop_by_hop_option_t * opt, u16 len)
+ip6_ioam_analyse_hbh_trace_internal (u32 flow_id, ip6_hop_by_hop_option_t *opt,
+				     u16 len)
 {
   ioam_analyser_data_t *data;
   ioam_trace_option_t *trace = (ioam_trace_option_t *) opt;
@@ -365,13 +356,12 @@ ip6_ioam_analyse_hbh_trace_internal (u32 flow_id,
   (void) ip6_ioam_analyse_hbh_trace (data, &trace->trace_hdr, len,
 				     (trace->hdr.length - 2)
 				     /*ioam_trace_type,data_list_elts_left */
-    );
+  );
   return 0;
 }
 
 int
-ip6_ioam_analyse_hbh_pot (u32 flow_id, ip6_hop_by_hop_option_t * opt0,
-			  u16 len)
+ip6_ioam_analyse_hbh_pot (u32 flow_id, ip6_hop_by_hop_option_t *opt0, u16 len)
 {
 
   ioam_pot_option_t *pot0;
@@ -392,14 +382,14 @@ ip6_ioam_analyse_hbh_pot (u32 flow_id, ip6_hop_by_hop_option_t * opt0,
   clib_spinlock_lock (&data->writer_lock);
 
   (0 == ret) ? (data->pot_data.sfc_validated_count++) :
-    (data->pot_data.sfc_invalidated_count++);
+	       (data->pot_data.sfc_invalidated_count++);
 
   clib_spinlock_unlock (&data->writer_lock);
   return 0;
 }
 
 int
-ip6_ioam_analyse_hbh_e2e_internal (u32 flow_id, ip6_hop_by_hop_option_t * opt,
+ip6_ioam_analyse_hbh_e2e_internal (u32 flow_id, ip6_hop_by_hop_option_t *opt,
 				   u16 len)
 {
   ioam_analyser_data_t *data;
@@ -412,10 +402,8 @@ ip6_ioam_analyse_hbh_e2e_internal (u32 flow_id, ip6_hop_by_hop_option_t * opt,
 }
 
 int
-ip6_ioam_analyse_register_hbh_handler (u8 option,
-				       int options (u32 flow_id,
-						    ip6_hop_by_hop_option_t *
-						    opt, u16 len))
+ip6_ioam_analyse_register_hbh_handler (
+  u8 option, int options (u32 flow_id, ip6_hop_by_hop_option_t *opt, u16 len))
 {
   ip6_ioam_analyser_main_t *am = &ioam_analyser_main;
 
@@ -450,8 +438,8 @@ ip6_ioam_analyse_register_handlers ()
 {
   ip6_ioam_analyse_register_hbh_handler (HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST,
 					 ip6_ioam_analyse_hbh_trace_internal);
-  ip6_ioam_analyse_register_hbh_handler
-    (HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT, ip6_ioam_analyse_hbh_pot);
+  ip6_ioam_analyse_register_hbh_handler (HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT,
+					 ip6_ioam_analyse_hbh_pot);
   ip6_ioam_analyse_register_hbh_handler (HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE,
 					 ip6_ioam_analyse_hbh_e2e_internal);
 }
@@ -459,14 +447,12 @@ ip6_ioam_analyse_register_handlers ()
 void
 ip6_ioam_analyse_unregister_handlers ()
 {
-  ip6_ioam_analyse_unregister_hbh_handler
-    (HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST);
-  ip6_ioam_analyse_unregister_hbh_handler
-    (HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT);
+  ip6_ioam_analyse_unregister_hbh_handler (
+    HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST);
+  ip6_ioam_analyse_unregister_hbh_handler (
+    HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT);
   ip6_ioam_analyse_unregister_hbh_handler (HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE);
 }
-
-/* *INDENT-OFF* */
 
 /*
  * Node for IP6 analyse - packets
@@ -506,8 +492,6 @@ VLIB_REGISTER_NODE (analyse_node_remote) =
     [ANALYSE_NEXT_IP4_DROP] = "ip4-drop",
   },
 };
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

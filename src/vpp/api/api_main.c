@@ -3,13 +3,13 @@
 vat_main_t vat_main;
 
 void
-vat_suspend (vlib_main_t * vm, f64 interval)
+vat_suspend (vlib_main_t *vm, f64 interval)
 {
   vlib_process_suspend (vm, interval);
 }
 
 static u8 *
-format_api_error (u8 * s, va_list * args)
+format_api_error (u8 *s, va_list *args)
 {
   vat_main_t *vam = va_arg (*args, vat_main_t *);
   i32 error = va_arg (*args, u32);
@@ -24,14 +24,13 @@ format_api_error (u8 * s, va_list * args)
   return s;
 }
 
-
 static void
-init_error_string_table (vat_main_t * vam)
+init_error_string_table (vat_main_t *vam)
 {
 
   vam->error_string_by_error_number = hash_create (0, sizeof (uword));
 
-#define _(n,v,s) hash_set (vam->error_string_by_error_number, -v, s);
+#define _(n, v, s) hash_set (vam->error_string_by_error_number, -v, s);
   foreach_vnet_api_error;
 #undef _
 
@@ -60,14 +59,14 @@ load_features (void)
 }
 
 clib_error_t *
-vat_builtin_main_init (vlib_main_t * vm)
+vat_builtin_main_init (vlib_main_t *vm)
 {
   vat_main_t *vam = &vat_main;
   int rv;
   int vat_plugin_init (vat_main_t * vam);
 
   vam->vlib_main = vm;
-  vam->my_client_index = (u32) ~ 0;
+  vam->my_client_index = (u32) ~0;
   /* Ensure that vam->inbuf is never NULL */
   vec_validate (vam->inbuf, 0);
   vec_validate (vam->cmd_reply, 0);
@@ -94,7 +93,7 @@ vat_plugin_hash_create (void)
 }
 
 static void
-maybe_register_api_client (vat_main_t * vam)
+maybe_register_api_client (vat_main_t *vam)
 {
   vl_api_registration_t **regpp;
   vl_api_registration_t *regp;
@@ -125,17 +124,16 @@ maybe_register_api_client (vat_main_t * vam)
 
   vl_msg_pop_heap (oldheap);
 
-  vam->my_client_index = vl_msg_api_handle_from_index_and_epoch
-    (regp->vl_api_registration_pool_index,
-     am->shmem_hdr->application_restarts);
+  vam->my_client_index = vl_msg_api_handle_from_index_and_epoch (
+    regp->vl_api_registration_pool_index, am->shmem_hdr->application_restarts);
 
   vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
   api_sw_interface_dump (vam);
 }
 
 static clib_error_t *
-api_command_fn (vlib_main_t * vm,
-		unformat_input_t * input, vlib_cli_command_t * cmd)
+api_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		vlib_cli_command_t *cmd)
 {
   vat_main_t *vam = &vat_main;
   unformat_input_t _input;
@@ -226,10 +224,8 @@ api_command_fn (vlib_main_t * vm,
   if (rv < 0)
     {
       unformat_free (vam->input);
-      return clib_error_return (0,
-				"%s error: %U\n", cmdp,
-				format_api_error, vam, rv);
-
+      return clib_error_return (0, "%s error: %U\n", cmdp, format_api_error,
+				vam, rv);
     }
   if (vam->regenerate_interface_table)
     {
@@ -240,15 +236,12 @@ api_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (api_command, static) =
-{
+VLIB_CLI_COMMAND (api_command, static) = {
   .path = "binary-api",
   .short_help = "binary-api [help] <name> [<args>]",
   .function = api_command_fn,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 void
 api_cli_output (void *notused, const char *fmt, ...)
@@ -292,7 +285,7 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
 }
 
 uword
-unformat_sw_if_index (unformat_input_t * input, va_list * args)
+unformat_sw_if_index (unformat_input_t *input, va_list *args)
 {
   void *vam_unused = va_arg (*args, void *);
   (void) (vam_unused);

@@ -38,7 +38,7 @@ ptls_compare_separator_line (const char *line, const char *begin_or_end,
 }
 
 int
-ptls_get_bio_pem_object (BIO * bio, const char *label, ptls_buffer_t * buf)
+ptls_get_bio_pem_object (BIO *bio, const char *label, ptls_buffer_t *buf)
 {
   int ret = PTLS_ERROR_PEM_LABEL_NOT_FOUND;
   char line[256];
@@ -59,9 +59,9 @@ ptls_get_bio_pem_object (BIO * bio, const char *label, ptls_buffer_t * buf)
     {
       if (ptls_compare_separator_line (line, "END", label) == 0)
 	{
-	  if (state.status == PTLS_BASE64_DECODE_DONE
-	      || (state.status == PTLS_BASE64_DECODE_IN_PROGRESS
-		  && state.nbc == 0))
+	  if (state.status == PTLS_BASE64_DECODE_DONE ||
+	      (state.status == PTLS_BASE64_DECODE_IN_PROGRESS &&
+	       state.nbc == 0))
 	    {
 	      ret = 0;
 	    }
@@ -81,8 +81,8 @@ ptls_get_bio_pem_object (BIO * bio, const char *label, ptls_buffer_t * buf)
 }
 
 int
-ptls_load_bio_pem_objects (BIO * bio, const char *label, ptls_iovec_t * list,
-			   size_t list_max, size_t * nb_objects)
+ptls_load_bio_pem_objects (BIO *bio, const char *label, ptls_iovec_t *list,
+			   size_t list_max, size_t *nb_objects)
 {
   int ret = 0;
   size_t count = 0;
@@ -133,13 +133,12 @@ ptls_load_bio_pem_objects (BIO * bio, const char *label, ptls_iovec_t * list,
 #define PTLS_MAX_CERTS_IN_CONTEXT 16
 
 int
-ptls_load_bio_certificates (ptls_context_t * ctx, BIO * bio)
+ptls_load_bio_certificates (ptls_context_t *ctx, BIO *bio)
 {
   int ret = 0;
 
-  ctx->certificates.list =
-    (ptls_iovec_t *) malloc (PTLS_MAX_CERTS_IN_CONTEXT *
-			     sizeof (ptls_iovec_t));
+  ctx->certificates.list = (ptls_iovec_t *) malloc (PTLS_MAX_CERTS_IN_CONTEXT *
+						    sizeof (ptls_iovec_t));
 
   if (ctx->certificates.list == NULL)
     {
@@ -147,17 +146,16 @@ ptls_load_bio_certificates (ptls_context_t * ctx, BIO * bio)
     }
   else
     {
-      ret =
-	ptls_load_bio_pem_objects (bio, "CERTIFICATE", ctx->certificates.list,
-				   PTLS_MAX_CERTS_IN_CONTEXT,
-				   &ctx->certificates.count);
+      ret = ptls_load_bio_pem_objects (
+	bio, "CERTIFICATE", ctx->certificates.list, PTLS_MAX_CERTS_IN_CONTEXT,
+	&ctx->certificates.count);
     }
 
   return ret;
 }
 
 int
-load_bio_certificate_chain (ptls_context_t * ctx, const char *cert_data)
+load_bio_certificate_chain (ptls_context_t *ctx, const char *cert_data)
 {
   BIO *cert_bio;
   cert_bio = BIO_new_mem_buf (cert_data, -1);
@@ -171,7 +169,7 @@ load_bio_certificate_chain (ptls_context_t * ctx, const char *cert_data)
 }
 
 int
-load_bio_private_key (ptls_context_t * ctx, const char *pk_data)
+load_bio_private_key (ptls_context_t *ctx, const char *pk_data)
 {
   static ptls_openssl_sign_certificate_t sc;
   EVP_PKEY *pkey;

@@ -26,8 +26,7 @@ create_cmd::create_cmd(HW::item<uint32_t>& item,
   , m_scope(scope)
   , m_ip4_uu_fwd(ip4_uu_fwd)
   , m_ip6_uu_fwd(ip6_uu_fwd)
-{
-}
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
@@ -69,8 +68,7 @@ create_cmd::to_string() const
 
 delete_cmd::delete_cmd(HW::item<uint32_t>& item)
   : rpc_cmd(item)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const

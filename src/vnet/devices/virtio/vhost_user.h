@@ -20,83 +20,86 @@
 
 /* vhost-user data structures */
 
-#define VHOST_MEMORY_MAX_NREGIONS       8
-#define VHOST_USER_MSG_HDR_SZ           12
-#define VHOST_VRING_INIT_MQ_PAIR_SZ     8	//8TX + 8RX
+#define VHOST_MEMORY_MAX_NREGIONS   8
+#define VHOST_USER_MSG_HDR_SZ	    12
+#define VHOST_VRING_INIT_MQ_PAIR_SZ 8 // 8TX + 8RX
 
 /*
  * qid is one byte in size in the spec. Please see VHOST_USER_SET_VRING_CALL,
  * VHOST_USER_SET_VRING_KICK, and VHOST_USER_SET_VRING_ERR.
  * The max number for q pair is naturally 128.
  */
-#define VHOST_VRING_MAX_MQ_PAIR_SZ      128
-#define VHOST_VRING_IDX_RX(qid)         (2*qid)
-#define VHOST_VRING_IDX_TX(qid)         (2*qid + 1)
+#define VHOST_VRING_MAX_MQ_PAIR_SZ 128
+#define VHOST_VRING_IDX_RX(qid)	   (2 * qid)
+#define VHOST_VRING_IDX_TX(qid)	   (2 * qid + 1)
 
-#define VHOST_USER_VRING_NOFD_MASK      0x100
+#define VHOST_USER_VRING_NOFD_MASK 0x100
 
-#define VHOST_USER_PROTOCOL_F_MQ   0
-#define VHOST_USER_PROTOCOL_F_LOG_SHMFD	1
-#define VHOST_VRING_F_LOG 0
+#define VHOST_USER_PROTOCOL_F_MQ	0
+#define VHOST_USER_PROTOCOL_F_LOG_SHMFD 1
+#define VHOST_VRING_F_LOG		0
 
-#define VHOST_USER_PROTOCOL_FEATURES   ((1ULL << VHOST_USER_PROTOCOL_F_MQ) |	\
-					(1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD))
+#define VHOST_USER_PROTOCOL_FEATURES                                          \
+  ((1ULL << VHOST_USER_PROTOCOL_F_MQ) |                                       \
+   (1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD))
 
-#define vu_log_debug(dev, f, ...) \
-{                                                                             \
-  vlib_log(VLIB_LOG_LEVEL_DEBUG, vhost_user_main.log_default, "%U: " f,       \
-	   format_vnet_hw_if_index_name, vnet_get_main(),                     \
-	   dev->hw_if_index, ##__VA_ARGS__);                                  \
-};
+#define vu_log_debug(dev, f, ...)                                             \
+  {                                                                           \
+    vlib_log (VLIB_LOG_LEVEL_DEBUG, vhost_user_main.log_default, "%U: " f,    \
+	      format_vnet_hw_if_index_name, vnet_get_main (),                 \
+	      dev->hw_if_index, ##__VA_ARGS__);                               \
+  };
 
-#define vu_log_warn(dev, f, ...) \
-{                                                                             \
-  vlib_log(VLIB_LOG_LEVEL_WARNING, vhost_user_main.log_default, "%U: " f,     \
-	   format_vnet_hw_if_index_name, vnet_get_main(),                     \
-	   dev->hw_if_index, ##__VA_ARGS__);                                  \
-};
-#define vu_log_err(dev, f, ...) \
-{                                                                             \
-  vlib_log(VLIB_LOG_LEVEL_ERR, vhost_user_main.log_default, "%U: " f,         \
-	   format_vnet_hw_if_index_name, vnet_get_main(),                     \
-	   dev->hw_if_index, ##__VA_ARGS__);                                  \
-};
+#define vu_log_warn(dev, f, ...)                                              \
+  {                                                                           \
+    vlib_log (VLIB_LOG_LEVEL_WARNING, vhost_user_main.log_default, "%U: " f,  \
+	      format_vnet_hw_if_index_name, vnet_get_main (),                 \
+	      dev->hw_if_index, ##__VA_ARGS__);                               \
+  };
+#define vu_log_err(dev, f, ...)                                               \
+  {                                                                           \
+    vlib_log (VLIB_LOG_LEVEL_ERR, vhost_user_main.log_default, "%U: " f,      \
+	      format_vnet_hw_if_index_name, vnet_get_main (),                 \
+	      dev->hw_if_index, ##__VA_ARGS__);                               \
+  };
 
-#define UNIX_GET_FD(unixfd_idx) ({ \
-    typeof(unixfd_idx) __unixfd_idx = (unixfd_idx); \
-    (__unixfd_idx != ~0) ? \
-        pool_elt_at_index (file_main.file_pool, \
-                           __unixfd_idx)->file_descriptor : -1; })
+#define UNIX_GET_FD(unixfd_idx)                                               \
+  ({                                                                          \
+    typeof (unixfd_idx) __unixfd_idx = (unixfd_idx);                          \
+    (__unixfd_idx != ~0) ?                                                    \
+      pool_elt_at_index (file_main.file_pool, __unixfd_idx)                   \
+	->file_descriptor :                                                   \
+      -1;                                                                     \
+  })
 
-#define foreach_virtio_trace_flags \
-  _ (SIMPLE_CHAINED, 0, "Simple descriptor chaining") \
-  _ (SINGLE_DESC,  1, "Single descriptor packet") \
-  _ (INDIRECT, 2, "Indirect descriptor") \
+#define foreach_virtio_trace_flags                                            \
+  _ (SIMPLE_CHAINED, 0, "Simple descriptor chaining")                         \
+  _ (SINGLE_DESC, 1, "Single descriptor packet")                              \
+  _ (INDIRECT, 2, "Indirect descriptor")                                      \
   _ (MAP_ERROR, 4, "Memory mapping error")
 
 typedef enum
 {
-#define _(n,i,s) VIRTIO_TRACE_F_##n,
+#define _(n, i, s) VIRTIO_TRACE_F_##n,
   foreach_virtio_trace_flags
 #undef _
 } virtio_trace_flag_t;
 
-#define FEATURE_VIRTIO_NET_F_HOST_TSO_FEATURE_BITS \
-  (VIRTIO_FEATURE (VIRTIO_NET_F_CSUM) |		   \
-   VIRTIO_FEATURE (VIRTIO_NET_F_HOST_UFO) |	   \
-   VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO4) |	   \
+#define FEATURE_VIRTIO_NET_F_HOST_TSO_FEATURE_BITS                            \
+  (VIRTIO_FEATURE (VIRTIO_NET_F_CSUM) |                                       \
+   VIRTIO_FEATURE (VIRTIO_NET_F_HOST_UFO) |                                   \
+   VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO4) |                                  \
    VIRTIO_FEATURE (VIRTIO_NET_F_HOST_TSO6))
 
-#define FEATURE_VIRTIO_NET_F_GUEST_TSO_FEATURE_BITS \
-  (VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_CSUM) |	    \
-   VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_UFO) |	    \
-   VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO4) |	    \
+#define FEATURE_VIRTIO_NET_F_GUEST_TSO_FEATURE_BITS                           \
+  (VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_CSUM) |                                 \
+   VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_UFO) |                                  \
+   VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO4) |                                 \
    VIRTIO_FEATURE (VIRTIO_NET_F_GUEST_TSO6))
 
-#define FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS \
-  (FEATURE_VIRTIO_NET_F_HOST_TSO_FEATURE_BITS |		 \
+#define FEATURE_VIRTIO_NET_F_HOST_GUEST_TSO_FEATURE_BITS                      \
+  (FEATURE_VIRTIO_NET_F_HOST_TSO_FEATURE_BITS |                               \
    FEATURE_VIRTIO_NET_F_GUEST_TSO_FEATURE_BITS)
-
 
 typedef struct
 {
@@ -115,14 +118,12 @@ typedef struct
   u32 sw_if_index;
 } vhost_user_create_if_args_t;
 
-int vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
-			  vhost_user_create_if_args_t * args);
-int vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
-			  vhost_user_create_if_args_t * args);
-int vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm,
-			  u32 sw_if_index);
+int vhost_user_create_if (vnet_main_t *vnm, vlib_main_t *vm,
+			  vhost_user_create_if_args_t *args);
+int vhost_user_modify_if (vnet_main_t *vnm, vlib_main_t *vm,
+			  vhost_user_create_if_args_t *args);
+int vhost_user_delete_if (vnet_main_t *vnm, vlib_main_t *vm, u32 sw_if_index);
 
-/* *INDENT-OFF* */
 typedef struct vhost_user_memory_region
 {
   u64 guest_phys_addr;
@@ -162,20 +163,20 @@ typedef enum vhost_user_req
   VHOST_USER_MAX
 } vhost_user_req_t;
 
-typedef struct vhost_user_msg {
+typedef struct vhost_user_msg
+{
   vhost_user_req_t request;
   u32 flags;
   u32 size;
   union
-    {
-      u64 u64;
-      vhost_vring_state_t state;
-      vhost_vring_addr_t addr;
-      vhost_user_memory_t memory;
-      vhost_user_log_t log;
-    };
+  {
+    u64 u64;
+    vhost_vring_state_t state;
+    vhost_vring_addr_t addr;
+    vhost_user_memory_t memory;
+    vhost_user_log_t log;
+  };
 } __attribute ((packed)) vhost_user_msg_t;
-/* *INDENT-ON* */
 
 typedef struct
 {
@@ -208,8 +209,8 @@ typedef struct
   u8 log_used;
   clib_spinlock_t vring_lock;
 
-  //Put non-runtime in a different cache line
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  // Put non-runtime in a different cache line
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   int errfd;
   u32 callfd_idx;
   u32 kickfd_idx;
@@ -248,12 +249,12 @@ typedef struct
   uword if_index;
   u32 hw_if_index, sw_if_index;
 
-  //Feature negotiation
+  // Feature negotiation
   u64 features;
   u64 feature_mask;
   u64 protocol_features;
 
-  //Memory region information
+  // Memory region information
   u32 nregions;
   vhost_user_memory_region_t regions[VHOST_MEMORY_MAX_NREGIONS];
   void *region_mmap_addr[VHOST_MEMORY_MAX_NREGIONS];
@@ -261,7 +262,7 @@ typedef struct
   u64 region_guest_addr_hi[VHOST_MEMORY_MAX_NREGIONS];
   u32 region_mmap_fd[VHOST_MEMORY_MAX_NREGIONS];
 
-  //Virtual rings
+  // Virtual rings
   vhost_user_vring_t *vrings;
 
   /*
@@ -299,10 +300,10 @@ typedef struct
 
 typedef struct
 {
-  u16 qid; /** The interface queue index (Not the virtio vring idx) */
+  u16 qid;	    /** The interface queue index (Not the virtio vring idx) */
   u16 device_index; /** The device index */
-  u32 virtio_ring_flags; /** Runtime queue flags  **/
-  u16 first_desc_len; /** Length of the first data descriptor **/
+  u32 virtio_ring_flags;	  /** Runtime queue flags  **/
+  u16 first_desc_len;		  /** Length of the first data descriptor **/
   virtio_net_hdr_mrg_rxbuf_t hdr; /** Virtio header **/
 } vhost_trace_t;
 
@@ -363,8 +364,8 @@ typedef struct
   int sock_errno;
 } vhost_user_intf_details_t;
 
-int vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
-			 vhost_user_intf_details_t ** out_vuids);
+int vhost_user_dump_ifs (vnet_main_t *vnm, vlib_main_t *vm,
+			 vhost_user_intf_details_t **out_vuids);
 
 extern vlib_node_registration_t vhost_user_send_interrupt_node;
 extern vnet_device_class_t vhost_user_device_class;

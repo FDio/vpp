@@ -142,8 +142,10 @@ clib_sysfs_set_nr_hugepages (int numa_node, int log2_page_size, int nr)
       p = format (p, "/sys/kernel/mm%c", 0);
       if (stat ((char *) p, &sb) < 0 || S_ISDIR (sb.st_mode) == 0)
 	{
-	  error = clib_error_return (0, "'%s' does not exist or it is not "
-				     "directory", p);
+	  error = clib_error_return (0,
+				     "'%s' does not exist or it is not "
+				     "directory",
+				     p);
 	  goto done;
 	}
     }
@@ -162,10 +164,9 @@ done:
   return error;
 }
 
-
 static clib_error_t *
-clib_sysfs_get_xxx_hugepages (char *type, int numa_node,
-			      int log2_page_size, int *val)
+clib_sysfs_get_xxx_hugepages (char *type, int numa_node, int log2_page_size,
+			      int *val)
 {
   clib_error_t *error = 0;
   struct stat sb;
@@ -177,7 +178,6 @@ clib_sysfs_get_xxx_hugepages (char *type, int numa_node,
     log2_page_size = min_log2 (clib_mem_get_default_hugepage_size ());
 
   page_size = 1ULL << (log2_page_size - 10);
-
 
   p = format (p, "/sys/devices/system/node/node%u%c", numa_node, 0);
 
@@ -195,8 +195,10 @@ clib_sysfs_get_xxx_hugepages (char *type, int numa_node,
       p = format (p, "/sys/kernel/mm%c", 0);
       if (stat ((char *) p, &sb) < 0 || S_ISDIR (sb.st_mode) == 0)
 	{
-	  error = clib_error_return (0, "'%s' does not exist or it is not "
-				     "directory", p);
+	  error = clib_error_return (0,
+				     "'%s' does not exist or it is not "
+				     "directory",
+				     p);
 	  goto done;
 	}
     }
@@ -207,8 +209,8 @@ clib_sysfs_get_xxx_hugepages (char *type, int numa_node,
     }
 
   _vec_len (p) -= 1;
-  p = format (p, "/hugepages/hugepages-%ukB/%s_hugepages%c", page_size,
-	      type, 0);
+  p =
+    format (p, "/hugepages/hugepages-%ukB/%s_hugepages%c", page_size, type, 0);
   error = clib_sysfs_read ((char *) p, "%d", val);
 
 done:
@@ -261,7 +263,6 @@ clib_sysfs_prealloc_hugepages (int numa_node, int log2_page_size, int nr)
 		needed, page_size, numa_node);
   return clib_sysfs_set_nr_hugepages (numa_node, log2_page_size, n + needed);
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

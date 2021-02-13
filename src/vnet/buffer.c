@@ -16,21 +16,20 @@
 #include <vlib/vlib.h>
 #include <vnet/buffer.h>
 
-
 u8 *
-format_vnet_buffer (u8 * s, va_list * args)
+format_vnet_buffer (u8 *s, va_list *args)
 {
   vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
   u32 indent = format_get_indent (s);
   u8 *a = 0;
 
-#define _(bit,name,ss,v)                      \
-  if (v && (b->flags & VNET_BUFFER_F_##name)) \
+#define _(bit, name, ss, v)                                                   \
+  if (v && (b->flags & VNET_BUFFER_F_##name))                                 \
     a = format (a, "%s ", ss);
   foreach_vnet_buffer_flag
 #undef _
-    if (b->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID)
-    a = format (a, "l2-hdr-offset %d ", vnet_buffer (b)->l2_hdr_offset);
+    if (b->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID) a =
+      format (a, "l2-hdr-offset %d ", vnet_buffer (b)->l2_hdr_offset);
 
   if (b->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID)
     a = format (a, "l3-hdr-offset %d ", vnet_buffer (b)->l3_hdr_offset);
@@ -39,8 +38,8 @@ format_vnet_buffer (u8 * s, va_list * args)
     a = format (a, "l4-hdr-offset %d ", vnet_buffer (b)->l4_hdr_offset);
 
   if (b->flags & VNET_BUFFER_F_QOS_DATA_VALID)
-    a = format (a, "qos %d.%d ",
-		vnet_buffer2 (b)->qos.bits, vnet_buffer2 (b)->qos.source);
+    a = format (a, "qos %d.%d ", vnet_buffer2 (b)->qos.bits,
+		vnet_buffer2 (b)->qos.source);
 
   if (b->flags & VNET_BUFFER_F_LOOP_COUNTER_VALID)
     a = format (a, "loop-counter %d ", vnet_buffer2 (b)->loop_counter);
@@ -52,7 +51,6 @@ format_vnet_buffer (u8 * s, va_list * args)
 
   return s;
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

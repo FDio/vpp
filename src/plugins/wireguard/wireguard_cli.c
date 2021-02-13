@@ -20,8 +20,8 @@
 #include <wireguard/wireguard_if.h>
 
 static clib_error_t *
-wg_if_create_cli (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+wg_if_create_cli (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd)
 {
   wg_main_t *wmp = &wg_main;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -48,8 +48,8 @@ wg_if_create_cli (vlib_main_t * vm,
 	    ;
 	  else if (unformat (line_input, "private-key %s", &private_key_64))
 	    {
-	      if (!(key_from_base64 (private_key_64,
-				     NOISE_KEY_LEN_BASE64, private_key)))
+	      if (!(key_from_base64 (private_key_64, NOISE_KEY_LEN_BASE64,
+				     private_key)))
 		{
 		  error = clib_error_return (0, "Error parsing private key");
 		  break;
@@ -61,8 +61,8 @@ wg_if_create_cli (vlib_main_t * vm,
 	    ;
 	  else if (unformat (line_input, "generate-key"))
 	    generate_key = 1;
-	  else
-	    if (unformat (line_input, "src %U", unformat_ip_address, &src_ip))
+	  else if (unformat (line_input, "src %U", unformat_ip_address,
+			     &src_ip))
 	    ;
 	  else
 	    {
@@ -94,18 +94,17 @@ wg_if_create_cli (vlib_main_t * vm,
 /*?
  * Create a Wireguard interface.
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (wg_if_create_command, static) = {
   .path = "wireguard create",
   .short_help = "wireguard create listen-port <port> "
-    "private-key <key> src <IP> [generate-key]",
+		"private-key <key> src <IP> [generate-key]",
   .function = wg_if_create_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-wg_if_delete_cli (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+wg_if_delete_cli (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd)
 {
   wg_main_t *wmp = &wg_main;
   vnet_main_t *vnm;
@@ -119,8 +118,8 @@ wg_if_delete_cli (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else
 	break;
@@ -143,18 +142,16 @@ wg_if_delete_cli (vlib_main_t * vm,
 /*?
  * Delete a Wireguard interface.
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (wg_if_delete_command, static) = {
   .path = "wireguard delete",
   .short_help = "wireguard delete <interface>",
   .function = wg_if_delete_cli,
 };
-/* *INDENT-ON* */
-
 
 static clib_error_t *
-wg_peer_add_command_fn (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+wg_peer_add_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   wg_main_t *wmp = &wg_main;
@@ -181,8 +178,8 @@ wg_peer_add_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "public-key %s", &public_key_64))
 	{
-	  if (!(key_from_base64 (public_key_64,
-				 NOISE_KEY_LEN_BASE64, public_key)))
+	  if (!(key_from_base64 (public_key_64, NOISE_KEY_LEN_BASE64,
+				 public_key)))
 	    {
 	      error = clib_error_return (0, "Error parsing private key");
 	      goto done;
@@ -197,14 +194,14 @@ wg_peer_add_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "persistent-keepalive %d",
 			 &persistent_keepalive))
 	;
-      else if (unformat (line_input, "allowed-ip %U",
-			 unformat_ip_prefix, &pfx))
+      else if (unformat (line_input, "allowed-ip %U", unformat_ip_prefix,
+			 &pfx))
 	{
 	  ip_prefix_to_fib_prefix (&pfx, &allowed_ip);
 	  vec_add1 (allowed_ips, allowed_ip);
 	}
-      else if (unformat (line_input, "%U",
-			 unformat_vnet_sw_interface, vnm, &tun_sw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &tun_sw_if_index))
 	;
       else
 	{
@@ -217,12 +214,8 @@ wg_peer_add_command_fn (vlib_main_t * vm,
       FIB_PROTOCOL_IP6 == allowed_ip.fp_proto)
     rv = VNET_API_ERROR_INVALID_PROTOCOL;
   else
-    rv = wg_peer_add (tun_sw_if_index,
-		      public_key,
-		      table_id,
-		      &ip_addr_46 (&ip),
-		      allowed_ips,
-		      portDst, persistent_keepalive, &peer_index);
+    rv = wg_peer_add (tun_sw_if_index, public_key, table_id, &ip_addr_46 (&ip),
+		      allowed_ips, portDst, persistent_keepalive, &peer_index);
 
   switch (rv)
     {
@@ -253,20 +246,18 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (wg_peer_add_command, static) =
-{
+VLIB_CLI_COMMAND (wg_peer_add_command, static) = {
   .path = "wireguard peer add",
-  .short_help = "wireguard peer add <wg_int> public-key <pub_key_other>"
-  "endpoint <ip4_dst> allowed-ip <prefix>"
-  "dst-port [port_dst] persistent-keepalive [keepalive_interval]",
+  .short_help =
+    "wireguard peer add <wg_int> public-key <pub_key_other>"
+    "endpoint <ip4_dst> allowed-ip <prefix>"
+    "dst-port [port_dst] persistent-keepalive [keepalive_interval]",
   .function = wg_peer_add_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-wg_peer_remove_command_fn (vlib_main_t * vm,
-			   unformat_input_t * input, vlib_cli_command_t * cmd)
+wg_peer_remove_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			   vlib_cli_command_t *cmd)
 {
   wg_main_t *wmp = &wg_main;
   clib_error_t *error = NULL;
@@ -301,14 +292,11 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (wg_peer_remove_command, static) =
-{
+VLIB_CLI_COMMAND (wg_peer_remove_command, static) = {
   .path = "wireguard peer remove",
   .short_help = "wireguard peer remove <index>",
   .function = wg_peer_remove_command_fn,
 };
-/* *INDENT-ON* */
 
 static walk_rc_t
 wg_peer_show_one (index_t peeri, void *arg)
@@ -319,22 +307,19 @@ wg_peer_show_one (index_t peeri, void *arg)
 }
 
 static clib_error_t *
-wg_show_peer_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+wg_show_peer_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   wg_peer_walk (wg_peer_show_one, vm);
 
   return NULL;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (wg_show_peers_command, static) =
-{
+VLIB_CLI_COMMAND (wg_show_peers_command, static) = {
   .path = "show wireguard peer",
   .short_help = "show wireguard peer",
   .function = wg_show_peer_command_fn,
 };
-/* *INDENT-ON* */
 
 static walk_rc_t
 wg_if_show_one (index_t itfi, void *arg)
@@ -345,8 +330,8 @@ wg_if_show_one (index_t itfi, void *arg)
 }
 
 static clib_error_t *
-wg_show_if_command_fn (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+wg_show_if_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   wg_main_t *wmp = &wg_main;
 
@@ -357,14 +342,11 @@ wg_show_if_command_fn (vlib_main_t * vm,
   return NULL;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (wg_show_itfs_command, static) =
-{
+VLIB_CLI_COMMAND (wg_show_itfs_command, static) = {
   .path = "show wireguard interface",
   .short_help = "show wireguard",
   .function = wg_show_if_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

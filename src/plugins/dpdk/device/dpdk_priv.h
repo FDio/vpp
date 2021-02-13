@@ -13,44 +13,44 @@
  * limitations under the License.
  */
 
-#define DPDK_NB_RX_DESC_DEFAULT   1024
-#define DPDK_NB_TX_DESC_DEFAULT   1024
-#define DPDK_NB_RX_DESC_VIRTIO    256
-#define DPDK_NB_TX_DESC_VIRTIO    256
+#define DPDK_NB_RX_DESC_DEFAULT 1024
+#define DPDK_NB_TX_DESC_DEFAULT 1024
+#define DPDK_NB_RX_DESC_VIRTIO	256
+#define DPDK_NB_TX_DESC_VIRTIO	256
 
-#define I40E_DEV_ID_SFP_XL710           0x1572
-#define I40E_DEV_ID_QSFP_A              0x1583
-#define I40E_DEV_ID_QSFP_B              0x1584
-#define I40E_DEV_ID_QSFP_C              0x1585
-#define I40E_DEV_ID_10G_BASE_T          0x1586
-#define I40E_DEV_ID_VF                  0x154C
+#define I40E_DEV_ID_SFP_XL710  0x1572
+#define I40E_DEV_ID_QSFP_A     0x1583
+#define I40E_DEV_ID_QSFP_B     0x1584
+#define I40E_DEV_ID_QSFP_C     0x1585
+#define I40E_DEV_ID_10G_BASE_T 0x1586
+#define I40E_DEV_ID_VF	       0x154C
 
 /* These args appear by themselves */
-#define foreach_eal_double_hyphen_predicate_arg \
-_(no-shconf)                                    \
-_(no-hpet)                                      \
-_(no-huge)                                      \
-_(vmware-tsc-map)
+#define foreach_eal_double_hyphen_predicate_arg                               \
+  _ (no - shconf)                                                             \
+  _ (no - hpet)                                                               \
+  _ (no - huge)                                                               \
+  _ (vmware - tsc - map)
 
-#define foreach_eal_single_hyphen_mandatory_arg \
-_(coremask, c)                                  \
-_(nchannels, n)                                 \
+#define foreach_eal_single_hyphen_mandatory_arg                               \
+  _ (coremask, c)                                                             \
+  _ (nchannels, n)
 
-#define foreach_eal_single_hyphen_arg           \
-_(mem-alloc-request, m)                         \
-_(force-ranks, r)
+#define foreach_eal_single_hyphen_arg                                         \
+  _ (mem - alloc - request, m)                                                \
+  _ (force - ranks, r)
 
 /* These args are preceded by "--" and followed by a single string */
-#define foreach_eal_double_hyphen_arg           \
-_(huge-dir)                                     \
-_(proc-type)                                    \
-_(file-prefix)                                  \
-_(vdev)                                         \
-_(log-level)                                    \
-_(iova-mode)
+#define foreach_eal_double_hyphen_arg                                         \
+  _ (huge - dir)                                                              \
+  _ (proc - type)                                                             \
+  _ (file - prefix)                                                           \
+  _ (vdev)                                                                    \
+  _ (log - level)                                                             \
+  _ (iova - mode)
 
 static inline void
-dpdk_get_xstats (dpdk_device_t * xd)
+dpdk_get_xstats (dpdk_device_t *xd)
 {
   int len, ret;
 
@@ -79,20 +79,20 @@ dpdk_get_xstats (dpdk_device_t * xd)
       u64 _v = (xd)->stats.stat;                                              \
       u64 _lv = (xd)->last_stats.stat;                                        \
       if (PREDICT_FALSE (_v != _lv))                                          \
-        {                                                                     \
-          if (PREDICT_FALSE (_v < _lv))                                       \
-            dpdk_log_warn ("%v: %s counter decreased (before %lu after %lu)", \
-                           xd->name, #stat, _lv, _v);                         \
-          else                                                                \
-            vlib_increment_simple_counter (                                   \
-                vec_elt_at_index ((vnm)->interface_main.sw_if_counters, cnt), \
-                (tidx), (xd)->sw_if_index, _v - _lv);                         \
-        }                                                                     \
+	{                                                                     \
+	  if (PREDICT_FALSE (_v < _lv))                                       \
+	    dpdk_log_warn ("%v: %s counter decreased (before %lu after %lu)", \
+			   xd->name, #stat, _lv, _v);                         \
+	  else                                                                \
+	    vlib_increment_simple_counter (                                   \
+	      vec_elt_at_index ((vnm)->interface_main.sw_if_counters, cnt),   \
+	      (tidx), (xd)->sw_if_index, _v - _lv);                           \
+	}                                                                     \
     }                                                                         \
   while (0)
 
 static inline void
-dpdk_update_counters (dpdk_device_t * xd, f64 now)
+dpdk_update_counters (dpdk_device_t *xd, f64 now)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 thread_index = vlib_get_thread_index ();

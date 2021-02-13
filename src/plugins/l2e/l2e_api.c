@@ -38,7 +38,7 @@
 #define L2E_MSG_BASE l2em->msg_id_base
 
 static void
-vl_api_l2_emulation_t_handler (vl_api_l2_emulation_t * mp)
+vl_api_l2_emulation_t_handler (vl_api_l2_emulation_t *mp)
 {
   l2_emulation_main_t *l2em = &l2_emulation_main;
   vl_api_l2_emulation_reply_t *rmp;
@@ -60,7 +60,7 @@ vl_api_l2_emulation_t_handler (vl_api_l2_emulation_t * mp)
 
 #include <l2e/l2e.api.c>
 static clib_error_t *
-l2e_init (vlib_main_t * vm)
+l2e_init (vlib_main_t *vm)
 {
   l2_emulation_main_t *l2em = &l2_emulation_main;
 
@@ -72,13 +72,10 @@ l2e_init (vlib_main_t * vm)
 
 VLIB_API_INIT_FUNCTION (l2e_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Layer 2 (L2) Emulation",
+  .version = VPP_BUILD_VER,
+  .description = "Layer 2 (L2) Emulation",
 };
-/* *INDENT-ON* */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

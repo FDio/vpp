@@ -20,14 +20,13 @@ fib_source_t cnat_fib_source;
 cnat_timestamp_t *cnat_timestamps;
 
 char *cnat_error_strings[] = {
-#define cnat_error(n,s) s,
+#define cnat_error(n, s) s,
 #include <cnat/cnat_error.def>
 #undef cnat_error
 };
 
 u8
-cnat_resolve_addr (u32 sw_if_index, ip_address_family_t af,
-		   ip_address_t * addr)
+cnat_resolve_addr (u32 sw_if_index, ip_address_family_t af, ip_address_t *addr)
 {
   /* Tries to resolve IP from sw_if_index
    * returns 1 if we need to schedule DHCP */
@@ -60,7 +59,7 @@ cnat_resolve_addr (u32 sw_if_index, ip_address_family_t af,
 }
 
 u8
-cnat_resolve_ep (cnat_endpoint_t * ep)
+cnat_resolve_ep (cnat_endpoint_t *ep)
 {
   int rv;
   rv = cnat_resolve_addr (ep->ce_sw_if_index, ep->ce_ip.version, &ep->ce_ip);
@@ -70,7 +69,7 @@ cnat_resolve_ep (cnat_endpoint_t * ep)
 }
 
 uword
-unformat_cnat_ep (unformat_input_t * input, va_list * args)
+unformat_cnat_ep (unformat_input_t *input, va_list *args)
 {
   cnat_endpoint_t *a = va_arg (*args, cnat_endpoint_t *);
   vnet_main_t *vnm = vnet_get_main ();
@@ -82,17 +81,17 @@ unformat_cnat_ep (unformat_input_t * input, va_list * args)
     ;
   else if (unformat_user (input, unformat_ip_address, &a->ce_ip))
     ;
-  else if (unformat (input, "%U v6 %d", unformat_vnet_sw_interface,
-		     vnm, &a->ce_sw_if_index, &port))
+  else if (unformat (input, "%U v6 %d", unformat_vnet_sw_interface, vnm,
+		     &a->ce_sw_if_index, &port))
     a->ce_ip.version = AF_IP6;
-  else if (unformat (input, "%U v6", unformat_vnet_sw_interface,
-		     vnm, &a->ce_sw_if_index))
+  else if (unformat (input, "%U v6", unformat_vnet_sw_interface, vnm,
+		     &a->ce_sw_if_index))
     a->ce_ip.version = AF_IP6;
-  else if (unformat (input, "%U %d", unformat_vnet_sw_interface,
-		     vnm, &a->ce_sw_if_index, &port))
+  else if (unformat (input, "%U %d", unformat_vnet_sw_interface, vnm,
+		     &a->ce_sw_if_index, &port))
     a->ce_ip.version = AF_IP4;
-  else if (unformat_user (input, unformat_vnet_sw_interface,
-			  vnm, &a->ce_sw_if_index))
+  else if (unformat_user (input, unformat_vnet_sw_interface, vnm,
+			  &a->ce_sw_if_index))
     a->ce_ip.version = AF_IP4;
   else if (unformat (input, "%d", &port))
     ;
@@ -103,7 +102,7 @@ unformat_cnat_ep (unformat_input_t * input, va_list * args)
 }
 
 uword
-unformat_cnat_ep_tuple (unformat_input_t * input, va_list * args)
+unformat_cnat_ep_tuple (unformat_input_t *input, va_list *args)
 {
   cnat_endpoint_tuple_t *a = va_arg (*args, cnat_endpoint_tuple_t *);
   if (unformat (input, "%U->%U", unformat_cnat_ep, &a->src_ep,
@@ -119,7 +118,7 @@ unformat_cnat_ep_tuple (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_cnat_endpoint (u8 * s, va_list * args)
+format_cnat_endpoint (u8 *s, va_list *args)
 {
   cnat_endpoint_t *cep = va_arg (*args, cnat_endpoint_t *);
   vnet_main_t *vnm = vnet_get_main ();
@@ -132,21 +131,18 @@ format_cnat_endpoint (u8 * s, va_list * args)
 		    cep->ce_sw_if_index, format_ip_address, &cep->ce_ip,
 		    cep->ce_port);
       else
-	s =
-	  format (s, "%U (%U);%d", format_vnet_sw_if_index_name, vnm,
-		  cep->ce_sw_if_index, format_ip_address_family,
-		  cep->ce_ip.version, cep->ce_port);
+	s = format (s, "%U (%U);%d", format_vnet_sw_if_index_name, vnm,
+		    cep->ce_sw_if_index, format_ip_address_family,
+		    cep->ce_ip.version, cep->ce_port);
     }
   return (s);
 }
 
 static clib_error_t *
-cnat_types_init (vlib_main_t * vm)
+cnat_types_init (vlib_main_t *vm)
 {
-  cnat_fib_source = fib_source_allocate ("cnat",
-					 CNAT_FIB_SOURCE_PRIORITY,
+  cnat_fib_source = fib_source_allocate ("cnat", CNAT_FIB_SOURCE_PRIORITY,
 					 FIB_SOURCE_BH_SIMPLE);
-
 
   clib_rwlock_init (&cnat_main.ts_lock);
 
@@ -171,7 +167,7 @@ cnat_lazy_init ()
 }
 
 static clib_error_t *
-cnat_config (vlib_main_t * vm, unformat_input_t * input)
+cnat_config (vlib_main_t *vm, unformat_input_t *input)
 {
   cnat_main_t *cm = &cnat_main;
 
@@ -189,11 +185,10 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (input, "session-db-buckets %u", &cm->session_hash_buckets))
+      if (unformat (input, "session-db-buckets %u", &cm->session_hash_buckets))
 	;
-      else if (unformat (input, "session-db-memory %U",
-			 unformat_memory_size, &cm->session_hash_memory))
+      else if (unformat (input, "session-db-memory %U", unformat_memory_size,
+			 &cm->session_hash_memory))
 	;
       else if (unformat (input, "translation-db-buckets %u",
 			 &cm->translation_hash_buckets))
@@ -203,8 +198,8 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "snat-db-buckets %u", &cm->snat_hash_buckets))
 	;
-      else if (unformat (input, "snat-db-memory %U",
-			 unformat_memory_size, &cm->snat_hash_memory))
+      else if (unformat (input, "snat-db-memory %U", unformat_memory_size,
+			 &cm->snat_hash_memory))
 	;
       else if (unformat (input, "session-cleanup-timeout %f",
 			 &cm->scanner_timeout))

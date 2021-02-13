@@ -86,15 +86,12 @@ typedef struct gbp_bridge_domain_t_
   u32 gb_locks;
 } gbp_bridge_domain_t;
 
-extern void gbp_bridge_domain_itf_add (index_t gbdi,
-				       u32 sw_if_index,
+extern void gbp_bridge_domain_itf_add (index_t gbdi, u32 sw_if_index,
 				       l2_bd_port_type_t type);
-extern void gbp_bridge_domain_itf_del (index_t gbdi,
-				       u32 sw_if_index,
+extern void gbp_bridge_domain_itf_del (index_t gbdi, u32 sw_if_index,
 				       l2_bd_port_type_t type);
 
-extern int gbp_bridge_domain_add_and_lock (u32 bd_id,
-					   u32 rd_id,
+extern int gbp_bridge_domain_add_and_lock (u32 bd_id, u32 rd_id,
 					   gbp_bridge_domain_flags_t flags,
 					   u32 bvi_sw_if_index,
 					   u32 uu_fwd_sw_if_index,
@@ -106,11 +103,11 @@ extern int gbp_bridge_domain_delete (u32 bd_id);
 extern index_t gbp_bridge_domain_index (const gbp_bridge_domain_t *);
 extern u32 gbp_bridge_domain_get_bd_id (index_t gbdi);
 
-typedef int (*gbp_bridge_domain_cb_t) (gbp_bridge_domain_t * gb, void *ctx);
+typedef int (*gbp_bridge_domain_cb_t) (gbp_bridge_domain_t *gb, void *ctx);
 extern void gbp_bridge_domain_walk (gbp_bridge_domain_cb_t bgpe, void *ctx);
 
-extern u8 *format_gbp_bridge_domain (u8 * s, va_list * args);
-extern u8 *format_gbp_bridge_domain_flags (u8 * s, va_list * args);
+extern u8 *format_gbp_bridge_domain (u8 *s, va_list *args);
+extern u8 *format_gbp_bridge_domain_flags (u8 *s, va_list *args);
 
 /**
  * DB of bridge_domains
@@ -133,8 +130,8 @@ gbp_bridge_domain_get (index_t i)
 always_inline gbp_bridge_domain_t *
 gbp_bridge_domain_get_by_bd_index (u32 bd_index)
 {
-  return (gbp_bridge_domain_get
-	  (gbp_bridge_domain_db.gbd_by_bd_index[bd_index]));
+  return (
+    gbp_bridge_domain_get (gbp_bridge_domain_db.gbd_by_bd_index[bd_index]));
 }
 
 extern gbp_scope_t *gbp_scope_by_bd_index;

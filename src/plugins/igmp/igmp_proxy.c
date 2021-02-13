@@ -24,17 +24,15 @@
 #include <igmp/igmp_pkt.h>
 
 void
-igmp_proxy_device_mfib_path_add_del (igmp_group_t * group, u8 add)
+igmp_proxy_device_mfib_path_add_del (igmp_group_t *group, u8 add)
 {
   igmp_config_t *config;
   u32 mfib_index;
 
   config = igmp_config_get (group->config);
-  mfib_index =
-    mfib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
-					  config->sw_if_index);
+  mfib_index = mfib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
+						     config->sw_if_index);
 
-  /* *INDENT-OFF* */
   mfib_prefix_t mpfx_group_addr = {
       .fp_proto = FIB_PROTOCOL_IP4,
       .fp_len = 32,
@@ -42,16 +40,14 @@ igmp_proxy_device_mfib_path_add_del (igmp_group_t * group, u8 add)
 	.ip4 = (*group->key).ip4,
       },
     };
-  fib_route_path_t via_itf_path =
-    {
-      .frp_proto = fib_proto_to_dpo (FIB_PROTOCOL_IP4),
-      .frp_addr = zero_addr,
-      .frp_sw_if_index = config->sw_if_index,
-      .frp_fib_index = 0,
-      .frp_weight = 1,
-      .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
-    };
-  /* *INDENT-ON* */
+  fib_route_path_t via_itf_path = {
+    .frp_proto = fib_proto_to_dpo (FIB_PROTOCOL_IP4),
+    .frp_addr = zero_addr,
+    .frp_sw_if_index = config->sw_if_index,
+    .frp_fib_index = 0,
+    .frp_weight = 1,
+    .frp_mitf_flags = MFIB_ITF_FLAG_FORWARD,
+  };
 
   if (add)
     mfib_table_entry_path_update (mfib_index, &mpfx_group_addr,
@@ -117,9 +113,8 @@ igmp_proxy_device_add_del (u32 vrf_id, u32 sw_if_index, u8 add)
     {
       while (vec_len (proxy_device->downstream_ifs) > 0)
 	{
-	  igmp_proxy_device_add_del_interface (vrf_id,
-					       proxy_device->downstream_ifs
-					       [0], 0);
+	  igmp_proxy_device_add_del_interface (
+	    vrf_id, proxy_device->downstream_ifs[0], 0);
 	}
       vec_free (proxy_device->downstream_ifs);
       proxy_device->downstream_ifs = NULL;
@@ -192,8 +187,8 @@ igmp_proxy_device_add_del_interface (u32 vrf_id, u32 sw_if_index, u8 add)
 }
 
 void
-igmp_proxy_device_block_src (igmp_config_t * config, igmp_group_t * group,
-			     igmp_src_t * src)
+igmp_proxy_device_block_src (igmp_config_t *config, igmp_group_t *group,
+			     igmp_src_t *src)
 {
   igmp_proxy_device_t *proxy_device;
   igmp_config_t *proxy_config;
@@ -223,10 +218,10 @@ igmp_proxy_device_block_src (igmp_config_t * config, igmp_group_t * group,
     }
   proxy_src->referance_by_config_index[group->config] = 0;
   vec_foreach (ref, proxy_src->referance_by_config_index)
-  {
-    if ((*ref) > 0)
-      return;
-  }
+    {
+      if ((*ref) > 0)
+	return;
+    }
 
   /* build "Block Old Sources" report */
   igmp_pkt_build_report_t br;
@@ -237,7 +232,6 @@ igmp_proxy_device_block_src (igmp_config_t * config, igmp_group_t * group,
   igmp_pkt_report_v3_add_report (&br, proxy_group->key, srcaddrs,
 				 IGMP_MEMBERSHIP_GROUP_block_old_sources);
   igmp_pkt_report_v3_send (&br);
-
 
   igmp_group_src_remove (proxy_group, proxy_src);
   igmp_src_free (proxy_src);
@@ -251,8 +245,8 @@ igmp_proxy_device_block_src (igmp_config_t * config, igmp_group_t * group,
 }
 
 always_inline void
-igmp_proxy_device_merge_src (igmp_group_t ** proxy_group, igmp_src_t * src,
-			     ip46_address_t ** srcaddrs, u8 block)
+igmp_proxy_device_merge_src (igmp_group_t **proxy_group, igmp_src_t *src,
+			     ip46_address_t **srcaddrs, u8 block)
 {
   igmp_src_t *proxy_src;
   u32 d_config;
@@ -266,13 +260,12 @@ igmp_proxy_device_merge_src (igmp_group_t ** proxy_group, igmp_src_t * src,
       /* store downstream config index */
       d_config = igmp_group_get (src->group)->config;
 
-      proxy_src =
-	igmp_src_alloc (igmp_group_index (*proxy_group), src->key,
-			IGMP_MODE_HOST);
+      proxy_src = igmp_src_alloc (igmp_group_index (*proxy_group), src->key,
+				  IGMP_MODE_HOST);
 
-      hash_set_mem ((*proxy_group)->igmp_src_by_key
-		    [(*proxy_group)->router_filter_mode], proxy_src->key,
-		    igmp_src_index (proxy_src));
+      hash_set_mem (
+	(*proxy_group)->igmp_src_by_key[(*proxy_group)->router_filter_mode],
+	proxy_src->key, igmp_src_index (proxy_src));
 
       vec_validate_init_empty (proxy_src->referance_by_config_index, d_config,
 			       0);
@@ -292,10 +285,10 @@ igmp_proxy_device_merge_src (igmp_group_t ** proxy_group, igmp_src_t * src,
 	  proxy_src->referance_by_config_index[d_config] = 0;
 	  u8 *ref;
 	  vec_foreach (ref, proxy_src->referance_by_config_index)
-	  {
-	    if ((*ref) > 0)
-	      return;
-	  }
+	    {
+	      if ((*ref) > 0)
+		return;
+	    }
 
 	  vec_add1 (*srcaddrs, *proxy_src->key);
 
@@ -317,9 +310,9 @@ igmp_proxy_device_merge_src (igmp_group_t ** proxy_group, igmp_src_t * src,
 }
 
 always_inline igmp_group_t *
-igmp_proxy_device_merge_group (igmp_proxy_device_t * proxy_device,
-			       igmp_group_t * group,
-			       ip46_address_t ** srcaddrs, u8 block)
+igmp_proxy_device_merge_group (igmp_proxy_device_t *proxy_device,
+			       igmp_group_t *group, ip46_address_t **srcaddrs,
+			       u8 block)
 {
   igmp_config_t *proxy_config;
   igmp_group_t *proxy_group;
@@ -335,8 +328,7 @@ igmp_proxy_device_merge_group (igmp_proxy_device_t * proxy_device,
 	return NULL;
       u32 tmp = igmp_group_index (group);
       proxy_group =
-	igmp_group_alloc (proxy_config, group->key,
-			  group->router_filter_mode);
+	igmp_group_alloc (proxy_config, group->key, group->router_filter_mode);
       igmp_proxy_device_mfib_path_add_del (proxy_group, 1);
       group = igmp_group_get (tmp);
     }
@@ -345,17 +337,15 @@ igmp_proxy_device_merge_group (igmp_proxy_device_t * proxy_device,
       igmp_proxy_device_mfib_path_add_del (group, 0);
     }
 
-  /* *INDENT-OFF* */
-  FOR_EACH_SRC (src, group, group->router_filter_mode,
-    ({
-      igmp_proxy_device_merge_src (&proxy_group, src, srcaddrs, block);
-    }));
-  /* *INDENT-ON* */
+  FOR_EACH_SRC (
+    src, group, group->router_filter_mode,
+    ({ igmp_proxy_device_merge_src (&proxy_group, src, srcaddrs, block); }));
+
   return proxy_group;
 }
 
 void
-igmp_proxy_device_merge_config (igmp_config_t * config, u8 block)
+igmp_proxy_device_merge_config (igmp_config_t *config, u8 block)
 {
   igmp_proxy_device_t *proxy_device;
   igmp_group_t *group;
@@ -369,23 +359,21 @@ igmp_proxy_device_merge_config (igmp_config_t * config, u8 block)
 
   igmp_pkt_build_report_init (&br, proxy_device->upstream_if);
 
-  /* *INDENT-OFF* */
-  FOR_EACH_GROUP(group, config,
-    ({
-      proxy_group = igmp_proxy_device_merge_group (proxy_device, group, &srcaddrs, block);
+  FOR_EACH_GROUP (group, config, ({
+		    proxy_group = igmp_proxy_device_merge_group (
+		      proxy_device, group, &srcaddrs, block);
 
-      if ((vec_len(srcaddrs) > 0) && proxy_group)
-	{
-	  igmp_pkt_report_v3_add_report (&br, proxy_group->key, srcaddrs,
-					 block ? IGMP_MEMBERSHIP_GROUP_block_old_sources :
-					 IGMP_MEMBERSHIP_GROUP_allow_new_sources);
-	}
-      vec_free (srcaddrs);
-    }));
-  /* *INDENT-ON* */
+		    if ((vec_len (srcaddrs) > 0) && proxy_group)
+		      {
+			igmp_pkt_report_v3_add_report (
+			  &br, proxy_group->key, srcaddrs,
+			  block ? IGMP_MEMBERSHIP_GROUP_block_old_sources :
+				  IGMP_MEMBERSHIP_GROUP_allow_new_sources);
+		      }
+		    vec_free (srcaddrs);
+		  }));
 
   igmp_pkt_report_v3_send (&br);
-
 }
 
 /*

@@ -18,7 +18,6 @@
 
 #include <vnet/ethernet/ethernet.h>
 
-
 #ifndef CLIB_MARCH_VARIANT
 /**
  * The 'DB' of GBP FWD DPOs.
@@ -47,7 +46,7 @@ gbp_fwd_dpo_alloc (void)
 }
 
 static inline gbp_fwd_dpo_t *
-gbp_fwd_dpo_get_from_dpo (const dpo_id_t * dpo)
+gbp_fwd_dpo_get_from_dpo (const dpo_id_t *dpo)
 {
   ASSERT (gbp_fwd_dpo_type == dpo->dpoi_type);
 
@@ -55,13 +54,13 @@ gbp_fwd_dpo_get_from_dpo (const dpo_id_t * dpo)
 }
 
 static inline index_t
-gbp_fwd_dpo_get_index (gbp_fwd_dpo_t * gfd)
+gbp_fwd_dpo_get_index (gbp_fwd_dpo_t *gfd)
 {
   return (gfd - gbp_fwd_dpo_pool);
 }
 
 static void
-gbp_fwd_dpo_lock (dpo_id_t * dpo)
+gbp_fwd_dpo_lock (dpo_id_t *dpo)
 {
   gbp_fwd_dpo_t *gfd;
 
@@ -70,7 +69,7 @@ gbp_fwd_dpo_lock (dpo_id_t * dpo)
 }
 
 static void
-gbp_fwd_dpo_unlock (dpo_id_t * dpo)
+gbp_fwd_dpo_unlock (dpo_id_t *dpo)
 {
   gbp_fwd_dpo_t *gfd;
 
@@ -85,7 +84,7 @@ gbp_fwd_dpo_unlock (dpo_id_t * dpo)
 }
 
 void
-gbp_fwd_dpo_add_or_lock (dpo_proto_t dproto, dpo_id_t * dpo)
+gbp_fwd_dpo_add_or_lock (dpo_proto_t dproto, dpo_id_t *dpo)
 {
   gbp_fwd_dpo_t *gfd;
 
@@ -106,7 +105,7 @@ gbp_fwd_dpo_add_or_lock (dpo_proto_t dproto, dpo_id_t * dpo)
 }
 
 u8 *
-format_gbp_fwd_dpo (u8 * s, va_list * ap)
+format_gbp_fwd_dpo (u8 *s, va_list *ap)
 {
   index_t index = va_arg (*ap, index_t);
   CLIB_UNUSED (u32 indent) = va_arg (*ap, u32);
@@ -150,17 +149,14 @@ gbp_fwd_dpo_get_type (void)
 }
 
 static clib_error_t *
-gbp_fwd_dpo_module_init (vlib_main_t * vm)
+gbp_fwd_dpo_module_init (vlib_main_t *vm)
 {
   dpo_proto_t dproto;
 
-  FOR_EACH_DPO_PROTO (dproto)
-  {
-    gbp_fwd_dpo_db[dproto] = INDEX_INVALID;
-  }
+  FOR_EACH_DPO_PROTO (dproto) { gbp_fwd_dpo_db[dproto] = INDEX_INVALID; }
 
-  gbp_fwd_dpo_type = dpo_register_new_type (&gbp_fwd_dpo_vft,
-					    gbp_fwd_dpo_nodes);
+  gbp_fwd_dpo_type =
+    dpo_register_new_type (&gbp_fwd_dpo_vft, gbp_fwd_dpo_nodes);
 
   return (NULL);
 }
@@ -182,9 +178,8 @@ typedef enum
 } gbp_fwd_next_t;
 
 always_inline uword
-gbp_fwd_dpo_inline (vlib_main_t * vm,
-		    vlib_node_runtime_t * node,
-		    vlib_frame_t * from_frame, fib_protocol_t fproto)
+gbp_fwd_dpo_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *from_frame, fib_protocol_t fproto)
 {
   u32 n_left_from, next_index, *from, *to_next;
 
@@ -234,8 +229,7 @@ gbp_fwd_dpo_inline (vlib_main_t * vm,
 
 	      tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->sclass = sclass0;
-	      tr->dpo_index = (NULL != next_dpo0 ?
-			       next_dpo0->dpoi_index : ~0);
+	      tr->dpo_index = (NULL != next_dpo0 ? next_dpo0->dpoi_index : ~0);
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -247,7 +241,7 @@ gbp_fwd_dpo_inline (vlib_main_t * vm,
 }
 
 static u8 *
-format_gbp_fwd_dpo_trace (u8 * s, va_list * args)
+format_gbp_fwd_dpo_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -258,44 +252,36 @@ format_gbp_fwd_dpo_trace (u8 * s, va_list * args)
   return s;
 }
 
-VLIB_NODE_FN (ip4_gbp_fwd_dpo_node) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * from_frame)
+VLIB_NODE_FN (ip4_gbp_fwd_dpo_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return (gbp_fwd_dpo_inline (vm, node, from_frame, FIB_PROTOCOL_IP4));
 }
 
-VLIB_NODE_FN (ip6_gbp_fwd_dpo_node) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * from_frame)
+VLIB_NODE_FN (ip6_gbp_fwd_dpo_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   return (gbp_fwd_dpo_inline (vm, node, from_frame, FIB_PROTOCOL_IP6));
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip4_gbp_fwd_dpo_node) = {
-    .name = "ip4-gbp-fwd-dpo",
-    .vector_size = sizeof (u32),
-    .format_trace = format_gbp_fwd_dpo_trace,
-    .n_next_nodes = GBP_FWD_N_NEXT,
-    .next_nodes =
-    {
-        [GBP_FWD_DROP] = "ip4-drop",
-        [GBP_FWD_FWD] = "ip4-dvr-dpo",
-    }
-};
-VLIB_REGISTER_NODE (ip6_gbp_fwd_dpo_node) = {
-    .name = "ip6-gbp-fwd-dpo",
-    .vector_size = sizeof (u32),
-    .format_trace = format_gbp_fwd_dpo_trace,
-    .n_next_nodes = GBP_FWD_N_NEXT,
-    .next_nodes =
-    {
-        [GBP_FWD_DROP] = "ip6-drop",
-        [GBP_FWD_FWD] = "ip6-dvr-dpo",
-    }
-};
-/* *INDENT-ON* */
+VLIB_REGISTER_NODE (
+  ip4_gbp_fwd_dpo_node) = { .name = "ip4-gbp-fwd-dpo",
+			    .vector_size = sizeof (u32),
+			    .format_trace = format_gbp_fwd_dpo_trace,
+			    .n_next_nodes = GBP_FWD_N_NEXT,
+			    .next_nodes = {
+			      [GBP_FWD_DROP] = "ip4-drop",
+			      [GBP_FWD_FWD] = "ip4-dvr-dpo",
+			    } };
+VLIB_REGISTER_NODE (
+  ip6_gbp_fwd_dpo_node) = { .name = "ip6-gbp-fwd-dpo",
+			    .vector_size = sizeof (u32),
+			    .format_trace = format_gbp_fwd_dpo_trace,
+			    .n_next_nodes = GBP_FWD_N_NEXT,
+			    .next_nodes = {
+			      [GBP_FWD_DROP] = "ip6-drop",
+			      [GBP_FWD_FWD] = "ip6-dvr-dpo",
+			    } };
 
 /*
  * fd.io coding-style-patch-verification: ON

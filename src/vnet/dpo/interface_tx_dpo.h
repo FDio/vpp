@@ -24,10 +24,9 @@
 
 #include <vnet/dpo/dpo.h>
 
-extern void interface_tx_dpo_add_or_lock (dpo_proto_t proto,
-                                          u32 sw_if_index,
-                                          dpo_id_t *dpo);
+extern void interface_tx_dpo_add_or_lock (dpo_proto_t proto, u32 sw_if_index,
+					  dpo_id_t *dpo);
 
-extern void interface_tx_dpo_module_init(void);
+extern void interface_tx_dpo_module_init (void);
 
 #endif

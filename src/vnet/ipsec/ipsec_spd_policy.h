@@ -17,10 +17,10 @@
 
 #include <vnet/ipsec/ipsec_spd.h>
 
-#define foreach_ipsec_policy_action \
-  _ (0, BYPASS, "bypass")           \
-  _ (1, DISCARD, "discard")         \
-  _ (2, RESOLVE, "resolve")         \
+#define foreach_ipsec_policy_action                                           \
+  _ (0, BYPASS, "bypass")                                                     \
+  _ (1, DISCARD, "discard")                                                   \
+  _ (2, RESOLVE, "resolve")                                                   \
   _ (3, PROTECT, "protect")
 
 typedef enum
@@ -76,20 +76,17 @@ typedef struct ipsec_policy_t_
 /**
  * @brief Add/Delete a SPD
  */
-extern int ipsec_add_del_policy (vlib_main_t * vm,
-				 ipsec_policy_t * policy,
-				 int is_add, u32 * stat_index);
+extern int ipsec_add_del_policy (vlib_main_t *vm, ipsec_policy_t *policy,
+				 int is_add, u32 *stat_index);
 
-extern u8 *format_ipsec_policy (u8 * s, va_list * args);
-extern u8 *format_ipsec_policy_action (u8 * s, va_list * args);
-extern uword unformat_ipsec_policy_action (unformat_input_t * input,
-					   va_list * args);
+extern u8 *format_ipsec_policy (u8 *s, va_list *args);
+extern u8 *format_ipsec_policy_action (u8 *s, va_list *args);
+extern uword unformat_ipsec_policy_action (unformat_input_t *input,
+					   va_list *args);
 
-
-extern int ipsec_policy_mk_type (bool is_outbound,
-				 bool is_ipv6,
+extern int ipsec_policy_mk_type (bool is_outbound, bool is_ipv6,
 				 ipsec_policy_action_t action,
-				 ipsec_spd_policy_type_t * type);
+				 ipsec_spd_policy_type_t *type);
 
 #endif /* __IPSEC_SPD_POLICY_H__ */
 

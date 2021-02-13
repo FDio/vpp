@@ -17,19 +17,18 @@
 #include <wireguard/wireguard.h>
 #include <wireguard/wireguard_peer.h>
 
-#define foreach_wg_handoff_error  \
-_(CONGESTION_DROP, "congestion drop")
+#define foreach_wg_handoff_error _ (CONGESTION_DROP, "congestion drop")
 
 typedef enum
 {
-#define _(sym,str) WG_HANDOFF_ERROR_##sym,
+#define _(sym, str) WG_HANDOFF_ERROR_##sym,
   foreach_wg_handoff_error
 #undef _
     HANDOFF_N_ERROR,
 } ipsec_handoff_error_t;
 
 static char *wg_handoff_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_wg_handoff_error
 #undef _
 };
@@ -48,7 +47,7 @@ typedef struct wg_handoff_trace_t_
 } wg_handoff_trace_t;
 
 static u8 *
-format_wg_handoff_trace (u8 * s, va_list * args)
+format_wg_handoff_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -60,9 +59,8 @@ format_wg_handoff_trace (u8 * s, va_list * args)
 }
 
 static_always_inline uword
-wg_handoff (vlib_main_t * vm,
-	    vlib_node_runtime_t * node,
-	    vlib_frame_t * frame, u32 fq_index, wg_handoff_mode_t mode)
+wg_handoff (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+	    u32 fq_index, wg_handoff_mode_t mode)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 thread_indices[VLIB_FRAME_SIZE], *ti;
@@ -98,17 +96,15 @@ wg_handoff (vlib_main_t * vm,
 	}
       else
 	{
-	  peeri =
-	    wg_peer_get_by_adj_index (vnet_buffer (b[0])->
-				      ip.adj_index[VLIB_TX]);
+	  peeri = wg_peer_get_by_adj_index (
+	    vnet_buffer (b[0])->ip.adj_index[VLIB_TX]);
 	  peer = wg_peer_get (peeri);
 	  ti[0] = peer->output_thread_index;
 	}
 
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  wg_handoff_trace_t *t =
-	    vlib_add_trace (vm, node, b[0], sizeof (*t));
+	  wg_handoff_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
 	  t->next_worker_index = ti[0];
 	  t->peer = peeri;
 	}
@@ -118,8 +114,8 @@ wg_handoff (vlib_main_t * vm,
       b += 1;
     }
 
-  n_enq = vlib_buffer_enqueue_to_thread (vm, fq_index, from,
-					 thread_indices, frame->n_vectors, 1);
+  n_enq = vlib_buffer_enqueue_to_thread (vm, fq_index, from, thread_indices,
+					 frame->n_vectors, 1);
 
   if (n_enq < frame->n_vectors)
     vlib_node_increment_counter (vm, node->node_index,
@@ -129,9 +125,8 @@ wg_handoff (vlib_main_t * vm,
   return n_enq;
 }
 
-VLIB_NODE_FN (wg_handshake_handoff) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * from_frame)
+VLIB_NODE_FN (wg_handshake_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   wg_main_t *wmp = &wg_main;
 
@@ -139,9 +134,8 @@ VLIB_NODE_FN (wg_handshake_handoff) (vlib_main_t * vm,
 		     WG_HANDOFF_HANDSHAKE);
 }
 
-VLIB_NODE_FN (wg_input_data_handoff) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * from_frame)
+VLIB_NODE_FN (wg_input_data_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   wg_main_t *wmp = &wg_main;
 
@@ -149,9 +143,8 @@ VLIB_NODE_FN (wg_input_data_handoff) (vlib_main_t * vm,
 		     WG_HANDOFF_INP_DATA);
 }
 
-VLIB_NODE_FN (wg_output_tun_handoff) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * from_frame)
+VLIB_NODE_FN (wg_output_tun_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   wg_main_t *wmp = &wg_main;
 
@@ -159,7 +152,6 @@ VLIB_NODE_FN (wg_output_tun_handoff) (vlib_main_t * vm,
 		     WG_HANDOFF_OUT_TUN);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (wg_handshake_handoff) =
 {
   .name = "wg-handshake-handoff",
@@ -201,7 +193,6 @@ VLIB_REGISTER_NODE (wg_output_tun_handoff) =
     [0] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

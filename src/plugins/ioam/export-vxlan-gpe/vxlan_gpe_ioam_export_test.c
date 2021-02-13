@@ -41,7 +41,7 @@ typedef struct
 vxlan_gpe_ioam_export_test_main_t vxlan_gpe_ioam_export_test_main;
 
 static int
-api_vxlan_gpe_ioam_export_enable_disable (vat_main_t * vam)
+api_vxlan_gpe_ioam_export_enable_disable (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   int is_disable = 0;

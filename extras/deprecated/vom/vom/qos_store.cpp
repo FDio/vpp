@@ -31,16 +31,14 @@ store::store(const interface& itf, const source_t& src, bits_t value)
   , m_itf(itf.singular())
   , m_src(src)
   , m_value(value)
-{
-}
+{}
 
 store::store(const store& s)
   : m_config(s.m_config)
   , m_itf(s.m_itf)
   , m_src(s.m_src)
   , m_value(s.m_value)
-{
-}
+{}
 
 store::~store()
 {
@@ -155,8 +153,8 @@ store::event_handler::handle_populate(const client_db::key_t& key)
 
       VOM_LOG(log_level_t::DEBUG) << "read: " << qr.to_string();
     } else {
-      VOM_LOG(log_level_t::ERROR) << "no interface:"
-                                  << payload.store.sw_if_index;
+      VOM_LOG(log_level_t::ERROR)
+        << "no interface:" << payload.store.sw_if_index;
     }
   }
 }

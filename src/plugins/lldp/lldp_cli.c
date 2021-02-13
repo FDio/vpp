@@ -46,8 +46,8 @@ lldp_cfg_err_to_clib_err (lldp_cfg_err_t e)
 }
 
 lldp_cfg_err_t
-lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
-		   u8 ** mgmt_ip6, u8 ** mgmt_oid, int enable)
+lldp_cfg_intf_set (u32 hw_if_index, u8 **port_desc, u8 **mgmt_ip4,
+		   u8 **mgmt_ip6, u8 **mgmt_oid, int enable)
 {
   clib_error_t *error = 0;
   lldp_main_t *lm = &lldp_main;
@@ -105,11 +105,8 @@ lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
       /* Add MAC address to an interface's filter */
       if (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER)
 	{
-	  error =
-	    vnet_hw_interface_add_del_mac_address (lm->vnet_main,
-						   hw_if_index,
-						   lldp_mac_addr,
-						   1 /* is_add */ );
+	  error = vnet_hw_interface_add_del_mac_address (
+	    lm->vnet_main, hw_if_index, lldp_mac_addr, 1 /* is_add */);
 	  if (error)
 	    {
 	      clib_error_free (error);
@@ -132,11 +129,8 @@ lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
       /* Remove MAC address from the interface's filter */
       if ((n) && (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER))
 	{
-	  error =
-	    vnet_hw_interface_add_del_mac_address (lm->vnet_main,
-						   hw_if_index,
-						   lldp_mac_addr,
-						   0 /* is_add */ );
+	  error = vnet_hw_interface_add_del_mac_address (
+	    lm->vnet_main, hw_if_index, lldp_mac_addr, 0 /* is_add */);
 	  if (error)
 	    {
 	      clib_error_free (error);
@@ -148,12 +142,12 @@ lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
 }
 
 static clib_error_t *
-lldp_intf_cmd (vlib_main_t * vm, unformat_input_t * input,
-	       vlib_cli_command_t * cmd)
+lldp_intf_cmd (vlib_main_t *vm, unformat_input_t *input,
+	       vlib_cli_command_t *cmd)
 {
   lldp_main_t *lm = &lldp_main;
   vnet_main_t *vnm = lm->vnet_main;
-  u32 sw_if_index = (u32) ~ 0;
+  u32 sw_if_index = (u32) ~0;
   int enable = 1;
   u8 *port_desc = NULL;
   u8 *mgmt_ip4 = NULL, *mgmt_ip6 = NULL, *mgmt_oid = NULL;
@@ -164,21 +158,21 @@ lldp_intf_cmd (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (input, "sw_if_index %d", &sw_if_index))
 	;
-      if (unformat
-	  (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (input, "disable"))
 	enable = 0;
       else if (unformat (input, "port-desc %s", &port_desc))
 	;
-      else
-	if (unformat (input, "mgmt-ip4 %U", unformat_ip4_address, &ip4_addr))
+      else if (unformat (input, "mgmt-ip4 %U", unformat_ip4_address,
+			 &ip4_addr))
 	{
 	  vec_validate (mgmt_ip4, sizeof (ip4_address_t) - 1);
 	  clib_memcpy (mgmt_ip4, &ip4_addr, vec_len (mgmt_ip4));
 	}
-      else
-	if (unformat (input, "mgmt-ip6 %U", unformat_ip6_address, &ip6_addr))
+      else if (unformat (input, "mgmt-ip6 %U", unformat_ip6_address,
+			 &ip6_addr))
 	{
 	  vec_validate (mgmt_ip6, sizeof (ip6_address_t) - 1);
 	  clib_memcpy (mgmt_ip6, &ip6_addr, vec_len (mgmt_ip6));
@@ -189,17 +183,15 @@ lldp_intf_cmd (vlib_main_t * vm, unformat_input_t * input,
 	break;
     }
 
-  if (sw_if_index == (u32) ~ 0)
+  if (sw_if_index == (u32) ~0)
     return clib_error_return (0, "Interface name is invalid!");
 
-  return lldp_cfg_err_to_clib_err (lldp_cfg_intf_set (sw_if_index,
-						      &port_desc, &mgmt_ip4,
-						      &mgmt_ip6, &mgmt_oid,
-						      enable));
+  return lldp_cfg_err_to_clib_err (lldp_cfg_intf_set (
+    sw_if_index, &port_desc, &mgmt_ip4, &mgmt_ip6, &mgmt_oid, enable));
 }
 
 lldp_cfg_err_t
-lldp_cfg_set (u8 ** host, int hold_time, int tx_interval)
+lldp_cfg_set (u8 **host, int hold_time, int tx_interval)
 {
   lldp_main_t *lm = &lldp_main;
   int reschedule = 0;
@@ -248,8 +240,8 @@ lldp_cfg_set (u8 ** host, int hold_time, int tx_interval)
 }
 
 static clib_error_t *
-lldp_cfg_cmd (vlib_main_t * vm, unformat_input_t * input,
-	      vlib_cli_command_t * cmd)
+lldp_cfg_cmd (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd)
 {
   int hold_time = 0;
   int tx_interval = 0;
@@ -265,11 +257,9 @@ lldp_cfg_cmd (vlib_main_t * vm, unformat_input_t * input,
 	{
 	  if (hold_time < LLDP_MIN_TX_HOLD || hold_time > LLDP_MAX_TX_HOLD)
 	    {
-	      ret =
-		clib_error_return (0,
-				   "invalid tx-hold `%d' (out of range <%d,%d>)",
-				   hold_time, LLDP_MIN_TX_HOLD,
-				   LLDP_MAX_TX_HOLD);
+	      ret = clib_error_return (
+		0, "invalid tx-hold `%d' (out of range <%d,%d>)", hold_time,
+		LLDP_MIN_TX_HOLD, LLDP_MAX_TX_HOLD);
 	      goto out;
 	    }
 	}
@@ -278,11 +268,9 @@ lldp_cfg_cmd (vlib_main_t * vm, unformat_input_t * input,
 	  if (tx_interval < LLDP_MIN_TX_INTERVAL ||
 	      tx_interval > LLDP_MAX_TX_INTERVAL)
 	    {
-	      ret =
-		clib_error_return (0,
-				   "invalid tx-interval `%d' (out of range <%d,%d>)",
-				   tx_interval, LLDP_MIN_TX_INTERVAL,
-				   LLDP_MAX_TX_INTERVAL);
+	      ret = clib_error_return (
+		0, "invalid tx-interval `%d' (out of range <%d,%d>)",
+		tx_interval, LLDP_MIN_TX_INTERVAL, LLDP_MAX_TX_INTERVAL);
 	      goto out;
 	    }
 	}
@@ -298,30 +286,28 @@ out:
   return ret;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND(set_interface_lldp_cmd, static) = {
+VLIB_CLI_COMMAND (set_interface_lldp_cmd, static) = {
   .path = "set interface lldp",
   .short_help = "set interface lldp <interface> | sw_if_index <idx>"
-                " [port-desc <string>] [mgmt-ip4 <string>]"
-                " [mgmt-ip6 <string>] [mgmt-oid <string>] [disable]",
+		" [port-desc <string>] [mgmt-ip4 <string>]"
+		" [mgmt-ip6 <string>] [mgmt-oid <string>] [disable]",
   .function = lldp_intf_cmd,
 };
 
-VLIB_CLI_COMMAND(set_lldp_cmd, static) = {
+VLIB_CLI_COMMAND (set_lldp_cmd, static) = {
   .path = "set lldp",
   .short_help = "set lldp [system-name <string>] [tx-hold <value>] "
-                "[tx-interval <value>]",
+		"[tx-interval <value>]",
   .function = lldp_cfg_cmd,
 };
-/* *INDENT-ON* */
 
 static const char *
 lldp_chassis_id_subtype_str (lldp_chassis_id_subtype_t t)
 {
   switch (t)
     {
-#define F(num, val, str) \
-  case num:              \
+#define F(num, val, str)                                                      \
+  case num:                                                                   \
     return str;
       foreach_chassis_id_subtype (F)
 #undef F
@@ -334,8 +320,8 @@ lldp_port_id_subtype_str (lldp_port_id_subtype_t t)
 {
   switch (t)
     {
-#define F(num, val, str) \
-  case num:              \
+#define F(num, val, str)                                                      \
+  case num:                                                                   \
     return str;
       foreach_port_id_subtype (F)
 #undef F
@@ -352,7 +338,7 @@ lldp_port_id_subtype_str (lldp_port_id_subtype_t t)
  * @param va - 4th argument - int - 1 for detailed output, 0 for simple
  */
 u8 *
-format_lldp_port_id (u8 * s, va_list * va)
+format_lldp_port_id (u8 *s, va_list *va)
 {
   const lldp_port_id_subtype_t subtype = va_arg (*va, unsigned);
   const u8 *id = va_arg (*va, u8 *);
@@ -424,7 +410,7 @@ format_lldp_port_id (u8 * s, va_list * va)
  * @param va - 4th argument - int - 1 for detailed output, 0 for simple
  */
 u8 *
-format_lldp_chassis_id (u8 * s, va_list * va)
+format_lldp_chassis_id (u8 *s, va_list *va)
 {
   const lldp_chassis_id_subtype_t subtype =
     va_arg (*va, lldp_chassis_id_subtype_t);
@@ -496,8 +482,8 @@ lldp_tlv_code_str (lldp_tlv_code_t t)
 {
   switch (t)
     {
-#define F(n, t, s) \
-  case n:          \
+#define F(n, t, s)                                                            \
+  case n:                                                                     \
     return s;
       foreach_lldp_tlv_type (F)
 #undef F
@@ -512,7 +498,7 @@ lldp_tlv_code_str (lldp_tlv_code_t t)
  * @param va variable list - pointer to lldp_tlv_t is expected
  */
 u8 *
-format_lldp_tlv (u8 * s, va_list * va)
+format_lldp_tlv (u8 *s, va_list *va)
 {
   const lldp_tlv_t *tlv = va_arg (*va, lldp_tlv_t *);
   if (!tlv)
@@ -550,7 +536,7 @@ format_lldp_tlv (u8 * s, va_list * va)
 }
 
 static u8 *
-format_time_ago (u8 * s, va_list * va)
+format_time_ago (u8 *s, va_list *va)
 {
   f64 ago = va_arg (*va, double);
   f64 now = va_arg (*va, double);
@@ -562,7 +548,7 @@ format_time_ago (u8 * s, va_list * va)
 }
 
 static u8 *
-format_lldp_intfs_detail (u8 * s, vlib_main_t * vm, const lldp_main_t * lm)
+format_lldp_intfs_detail (u8 *s, vlib_main_t *vm, const lldp_main_t *lm)
 {
   vnet_main_t *vnm = &vnet_main;
   const lldp_intf_t *n;
@@ -580,72 +566,73 @@ format_lldp_intfs_detail (u8 * s, vlib_main_t * vm, const lldp_main_t * lm)
   s = format (s, "\nLLDP-enabled interface table:\n");
   f64 now = vlib_time_now (vm);
 
-  /* *INDENT-OFF* */
-  pool_foreach (
-      n, lm->intfs)  {
-        hw = vnet_get_hw_interface(vnm, n->hw_if_index);
-        sw = vnet_get_sw_interface(lm->vnet_main, hw->sw_if_index);
+  pool_foreach (n, lm->intfs)
+    {
+      hw = vnet_get_hw_interface (vnm, n->hw_if_index);
+      sw = vnet_get_sw_interface (lm->vnet_main, hw->sw_if_index);
 
-        s = format(s, "\nLocal Interface name: %v\n"
-                      "Local Port Description: %s\n",
-                       hw->name, n->port_desc);
-        if (n->mgmt_ip4)
-          {
-            s = format (s, "Local Management address: %U\n",
-      	                format_ip4_address, n->mgmt_ip4, vec_len (n->mgmt_ip4));
-          }
+      s = format (s,
+		  "\nLocal Interface name: %v\n"
+		  "Local Port Description: %s\n",
+		  hw->name, n->port_desc);
+      if (n->mgmt_ip4)
+	{
+	  s = format (s, "Local Management address: %U\n", format_ip4_address,
+		      n->mgmt_ip4, vec_len (n->mgmt_ip4));
+	}
 
-        if (n->mgmt_ip6)
-          {
-            s = format (s, "Local Management address IPV6: %U\n",
-                        format_ip6_address, n->mgmt_ip6, vec_len (n->mgmt_ip6));
-          }
+      if (n->mgmt_ip6)
+	{
+	  s = format (s, "Local Management address IPV6: %U\n",
+		      format_ip6_address, n->mgmt_ip6, vec_len (n->mgmt_ip6));
+	}
 
-        if (n->mgmt_oid)
-          {
-            s = format (s, "Local Management address OID: %U\n",
-                        format_ascii_bytes, n->mgmt_oid, vec_len (n->mgmt_oid));
-          }
+      if (n->mgmt_oid)
+	{
+	  s = format (s, "Local Management address OID: %U\n",
+		      format_ascii_bytes, n->mgmt_oid, vec_len (n->mgmt_oid));
+	}
 
-        /* Interface shutdown */
-        if (!(sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
-          {
-            s = format(s, "Interface/peer state: interface down\n"
-                       "Last packet sent: %U\n",
-                       format_time_ago, n->last_sent, now);
-          }
-        else if (now < n->last_heard + n->ttl)
-          {
-            s = format(s,
-                       "Interface/peer state: active\n"
-                       "Peer chassis ID: %U\nRemote port ID: %U\n"
-                       "Last packet sent: %U\nLast packet received: %U\n",
-                       format_lldp_chassis_id, n->chassis_id_subtype,
-                       n->chassis_id, vec_len(n->chassis_id), 1,
-                       format_lldp_port_id, n->port_id_subtype, n->port_id,
-                       vec_len(n->port_id), 1, format_time_ago, n->last_sent,
-                       now, format_time_ago, n->last_heard, now);
-          }
-        else
-          {
-            s = format(s,
-                       "Interface/peer state: inactive(timeout)\n"
-                       "Last known peer chassis ID: %U\n"
-                       "Last known peer port ID: %U\nLast packet sent: %U\n"
-                       "Last packet received: %U\n",
-                       format_lldp_chassis_id, n->chassis_id_subtype,
-                       n->chassis_id, vec_len(n->chassis_id), 1,
-                       format_lldp_port_id, n->port_id_subtype, n->port_id,
-                       vec_len(n->port_id), 1, format_time_ago, n->last_sent,
-                       now, format_time_ago, n->last_heard, now);
-          }
-      }
-  /* *INDENT-ON* */
+      /* Interface shutdown */
+      if (!(sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
+	{
+	  s = format (s,
+		      "Interface/peer state: interface down\n"
+		      "Last packet sent: %U\n",
+		      format_time_ago, n->last_sent, now);
+	}
+      else if (now < n->last_heard + n->ttl)
+	{
+	  s = format (s,
+		      "Interface/peer state: active\n"
+		      "Peer chassis ID: %U\nRemote port ID: %U\n"
+		      "Last packet sent: %U\nLast packet received: %U\n",
+		      format_lldp_chassis_id, n->chassis_id_subtype,
+		      n->chassis_id, vec_len (n->chassis_id), 1,
+		      format_lldp_port_id, n->port_id_subtype, n->port_id,
+		      vec_len (n->port_id), 1, format_time_ago, n->last_sent,
+		      now, format_time_ago, n->last_heard, now);
+	}
+      else
+	{
+	  s = format (s,
+		      "Interface/peer state: inactive(timeout)\n"
+		      "Last known peer chassis ID: %U\n"
+		      "Last known peer port ID: %U\nLast packet sent: %U\n"
+		      "Last packet received: %U\n",
+		      format_lldp_chassis_id, n->chassis_id_subtype,
+		      n->chassis_id, vec_len (n->chassis_id), 1,
+		      format_lldp_port_id, n->port_id_subtype, n->port_id,
+		      vec_len (n->port_id), 1, format_time_ago, n->last_sent,
+		      now, format_time_ago, n->last_heard, now);
+	}
+    }
+
   return s;
 }
 
 static u8 *
-format_lldp_intfs (u8 * s, va_list * va)
+format_lldp_intfs (u8 *s, va_list *va)
 {
   vlib_main_t *vm = va_arg (*va, vlib_main_t *);
   const lldp_main_t *lm = va_arg (*va, lldp_main_t *);
@@ -663,39 +650,38 @@ format_lldp_intfs (u8 * s, va_list * va)
 	      "Peer chassis ID", "Remote port ID", "Last heard", "Last sent",
 	      "Status");
 
-  /* *INDENT-OFF* */
-  pool_foreach (
-      n, lm->intfs)  {
-        const vnet_hw_interface_t *hw =
-            vnet_get_hw_interface(vnm, n->hw_if_index);
-        const vnet_sw_interface_t *sw =
-            vnet_get_sw_interface(lm->vnet_main, hw->sw_if_index);
-        /* Interface shutdown */
-        if (!(sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
-          continue;
-        if (now < n->last_heard + n->ttl)
-          {
-            s = format(s, "%-25v %-25U %-25U %=15U %=15U %=10s\n", hw->name,
-                       format_lldp_chassis_id, n->chassis_id_subtype,
-                       n->chassis_id, vec_len(n->chassis_id), 0,
-                       format_lldp_port_id, n->port_id_subtype, n->port_id,
-                       vec_len(n->port_id), 0, format_time_ago, n->last_heard,
-                       now, format_time_ago, n->last_sent, now, "active");
-          }
-        else
-          {
-            s = format(s, "%-25v %-25s %-25s %=15U %=15U %=10s\n", hw->name,
-                       "", "", format_time_ago, n->last_heard, now,
-                       format_time_ago, n->last_sent, now, "inactive");
-          }
-      }
-  /* *INDENT-ON* */
+  pool_foreach (n, lm->intfs)
+    {
+      const vnet_hw_interface_t *hw =
+	vnet_get_hw_interface (vnm, n->hw_if_index);
+      const vnet_sw_interface_t *sw =
+	vnet_get_sw_interface (lm->vnet_main, hw->sw_if_index);
+      /* Interface shutdown */
+      if (!(sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
+	continue;
+      if (now < n->last_heard + n->ttl)
+	{
+	  s = format (s, "%-25v %-25U %-25U %=15U %=15U %=10s\n", hw->name,
+		      format_lldp_chassis_id, n->chassis_id_subtype,
+		      n->chassis_id, vec_len (n->chassis_id), 0,
+		      format_lldp_port_id, n->port_id_subtype, n->port_id,
+		      vec_len (n->port_id), 0, format_time_ago, n->last_heard,
+		      now, format_time_ago, n->last_sent, now, "active");
+	}
+      else
+	{
+	  s = format (s, "%-25v %-25s %-25s %=15U %=15U %=10s\n", hw->name, "",
+		      "", format_time_ago, n->last_heard, now, format_time_ago,
+		      n->last_sent, now, "inactive");
+	}
+    }
+
   return s;
 }
 
 static clib_error_t *
-show_lldp (vlib_main_t * vm, unformat_input_t * input,
-	   CLIB_UNUSED (vlib_cli_command_t * lmd))
+show_lldp (vlib_main_t *vm, unformat_input_t *input,
+	   CLIB_UNUSED (vlib_cli_command_t *lmd))
 {
   lldp_main_t *lm = &lldp_main;
 
@@ -710,13 +696,11 @@ show_lldp (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND(show_lldp_command, static) = {
+VLIB_CLI_COMMAND (show_lldp_command, static) = {
   .path = "show lldp",
   .short_help = "show lldp [detail]",
   .function = show_lldp,
 };
-/* *INDENT-ON* */
 
 /*
  * packet trace format function, very similar to
@@ -724,7 +708,7 @@ VLIB_CLI_COMMAND(show_lldp_command, static) = {
  * functions instead of the per TLV processing functions
  */
 u8 *
-lldp_input_format_trace (u8 * s, va_list * args)
+lldp_input_format_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -732,8 +716,7 @@ lldp_input_format_trace (u8 * s, va_list * args)
   const u8 *cur;
   const lldp_tlv_t *tlv;
   cur = t->data;
-  while (((cur + lldp_tlv_get_length ((lldp_tlv_t *) cur)) <
-	  t->data + t->len))
+  while (((cur + lldp_tlv_get_length ((lldp_tlv_t *) cur)) < t->data + t->len))
     {
       tlv = (lldp_tlv_t *) cur;
       if (cur == t->data)

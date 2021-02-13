@@ -42,7 +42,7 @@ typedef struct
   int non_random_keys;
   uword *key_hash;
   u64 *keys;
-    CVT (clib_cuckoo) hash;
+  CVT (clib_cuckoo) hash;
   clib_time_t clib_time;
 
   unformat_input_t *input;
@@ -58,7 +58,7 @@ vl (void *v)
 }
 
 void
-do_search (test_main_t * tm, CVT (clib_cuckoo) * h)
+do_search (test_main_t *tm, CVT (clib_cuckoo) * h)
 {
   int i, j;
   CVT (clib_cuckoo_kv) kv;
@@ -72,9 +72,8 @@ do_search (test_main_t * tm, CVT (clib_cuckoo) * h)
 	      clib_warning ("[%d] search for key %llu failed unexpectedly\n",
 			    i, tm->keys[i]);
 	  if (kv.value != (u64) (i + 1))
-	    clib_warning
-	      ("[%d] search for key %llu returned %llu, not %llu\n", i,
-	       tm->keys[i], kv.value, (u64) (i + 1));
+	    clib_warning ("[%d] search for key %llu returned %llu, not %llu\n",
+			  i, tm->keys[i], kv.value, (u64) (i + 1));
 	}
     }
 }
@@ -95,7 +94,7 @@ cb (CVT (clib_cuckoo) * h, void *ctx)
 }
 
 static clib_error_t *
-test_cuckoo (test_main_t * tm)
+test_cuckoo (test_main_t *tm)
 {
   int i;
   uword *p;
@@ -138,16 +137,14 @@ test_cuckoo (test_main_t * tm)
       kv.key = tm->keys[i];
       kv.value = i + 1;
 
-      CV (clib_cuckoo_add_del) (h, &kv, 1 /* is_add */ ,
-				0 /* overwrite */ );
+      CV (clib_cuckoo_add_del) (h, &kv, 1 /* is_add */, 0 /* overwrite */);
 
       if (tm->verbose > 1)
 	{
 	  fformat (stdout, "--------------------\n");
 	  fformat (stdout, "After adding key %llu value %lld...\n",
 		   tm->keys[i], (u64) (i + 1));
-	  fformat (stdout, "%U", CV (format_cuckoo), h,
-		   2 /* very verbose */ );
+	  fformat (stdout, "%U", CV (format_cuckoo), h, 2 /* very verbose */);
 	}
 
       CVT (clib_cuckoo_kv) kv2;
@@ -155,7 +152,7 @@ test_cuckoo (test_main_t * tm)
       ASSERT (CLIB_CUCKOO_ERROR_SUCCESS == rv);
     }
 
-  fformat (stdout, "%U", CV (format_cuckoo), h, 0 /* very verbose */ );
+  fformat (stdout, "%U", CV (format_cuckoo), h, 0 /* very verbose */);
 
   fformat (stdout, "Search for items %d times...\n", tm->search_iter);
 
@@ -208,8 +205,8 @@ test_cuckoo (test_main_t * tm)
 
       kv.key = tm->keys[i];
       kv.value = (u64) (i + 1);
-      rv = CV (clib_cuckoo_add_del) (h, &kv, 0 /* is_add */ ,
-				     0 /* dont_overwrite */ );
+      rv = CV (clib_cuckoo_add_del) (h, &kv, 0 /* is_add */,
+				     0 /* dont_overwrite */);
 
       if (rv < 0)
 	clib_warning ("delete key %lld not ok but should be", tm->keys[i]);
@@ -222,14 +219,13 @@ test_cuckoo (test_main_t * tm)
 	      rv = CV (clib_cuckoo_search) (h, &kv, &kv);
 	      if (j <= i && rv >= 0)
 		{
-		  clib_warning
-		    ("i %d j %d search ok but should not be, value %lld", i,
-		     j, kv.value);
+		  clib_warning (
+		    "i %d j %d search ok but should not be, value %lld", i, j,
+		    kv.value);
 		}
 	      if (j > i && rv < 0)
 		{
-		  clib_warning ("i %d j %d search not ok but should be", i,
-				j);
+		  clib_warning ("i %d j %d search not ok but should be", i, j);
 		}
 	    }
 	}
@@ -237,12 +233,12 @@ test_cuckoo (test_main_t * tm)
 
   fformat (stdout, "After deletions, should be empty...\n");
 
-  fformat (stdout, "%U", CV (format_cuckoo), h, 0 /* very verbose */ );
+  fformat (stdout, "%U", CV (format_cuckoo), h, 0 /* very verbose */);
   return 0;
 }
 
 clib_error_t *
-test_cuckoo_main (test_main_t * tm)
+test_cuckoo_main (test_main_t *tm)
 {
   unformat_input_t *i = tm->input;
   clib_error_t *error;

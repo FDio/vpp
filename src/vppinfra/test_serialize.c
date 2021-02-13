@@ -40,20 +40,20 @@
 #include <vppinfra/serialize.h>
 #include <vppinfra/os.h>
 
-#define foreach_my_vector_type			\
-  _ (u8, a8)					\
-  _ (u16, a16)					\
+#define foreach_my_vector_type                                                \
+  _ (u8, a8)                                                                  \
+  _ (u16, a16)                                                                \
   _ (u32, a32)
 
 typedef struct
 {
-#define _(t,f) t f;
+#define _(t, f) t f;
   foreach_my_vector_type
 #undef _
 } my_vector_type_t;
 
 static void
-serialize_my_vector_type_single (serialize_main_t * m, va_list * va)
+serialize_my_vector_type_single (serialize_main_t *m, va_list *va)
 {
   my_vector_type_t *v = va_arg (*va, my_vector_type_t *);
   u32 n = va_arg (*va, u32);
@@ -61,14 +61,14 @@ serialize_my_vector_type_single (serialize_main_t * m, va_list * va)
 
   for (i = 0; i < n; i++)
     {
-#define _(t,f) serialize_integer (m, v[i].f, sizeof (v[i].f));
+#define _(t, f) serialize_integer (m, v[i].f, sizeof (v[i].f));
       foreach_my_vector_type;
     }
 #undef _
 }
 
 static void
-unserialize_my_vector_type_single (serialize_main_t * m, va_list * va)
+unserialize_my_vector_type_single (serialize_main_t *m, va_list *va)
 {
   my_vector_type_t *v = va_arg (*va, my_vector_type_t *);
   u32 n = va_arg (*va, u32);
@@ -76,25 +76,26 @@ unserialize_my_vector_type_single (serialize_main_t * m, va_list * va)
 
   for (i = 0; i < n; i++)
     {
-#define _(t,f) { u32 tmp; unserialize_integer (m, &tmp, sizeof (v[i].f)); v[i].f = tmp; }
+#define _(t, f)                                                               \
+  {                                                                           \
+    u32 tmp;                                                                  \
+    unserialize_integer (m, &tmp, sizeof (v[i].f));                           \
+    v[i].f = tmp;                                                             \
+  }
       foreach_my_vector_type;
 #undef _
     }
 }
 
 static void
-serialize_my_vector_type_multiple (serialize_main_t * m, va_list * va)
+serialize_my_vector_type_multiple (serialize_main_t *m, va_list *va)
 {
   my_vector_type_t *v = va_arg (*va, my_vector_type_t *);
   u32 n = va_arg (*va, u32);
 
-#define _(t,f)					\
-  serialize_multiple				\
-    (m,						\
-     &v[0].f,					\
-     STRUCT_SIZE_OF (my_vector_type_t, f),	\
-     STRUCT_STRIDE_OF (my_vector_type_t, f),	\
-     n);
+#define _(t, f)                                                               \
+  serialize_multiple (m, &v[0].f, STRUCT_SIZE_OF (my_vector_type_t, f),       \
+		      STRUCT_STRIDE_OF (my_vector_type_t, f), n);
 
   foreach_my_vector_type;
 
@@ -102,18 +103,14 @@ serialize_my_vector_type_multiple (serialize_main_t * m, va_list * va)
 }
 
 static void
-unserialize_my_vector_type_multiple (serialize_main_t * m, va_list * va)
+unserialize_my_vector_type_multiple (serialize_main_t *m, va_list *va)
 {
   my_vector_type_t *v = va_arg (*va, my_vector_type_t *);
   u32 n = va_arg (*va, u32);
 
-#define _(t,f)					\
-  unserialize_multiple				\
-    (m,						\
-     &v[0].f,					\
-     STRUCT_SIZE_OF (my_vector_type_t, f),	\
-     STRUCT_STRIDE_OF (my_vector_type_t, f),	\
-     n);
+#define _(t, f)                                                               \
+  unserialize_multiple (m, &v[0].f, STRUCT_SIZE_OF (my_vector_type_t, f),     \
+			STRUCT_STRIDE_OF (my_vector_type_t, f), n);
 
   foreach_my_vector_type;
 
@@ -137,7 +134,7 @@ typedef struct
 } test_serialize_main_t;
 
 int
-test_serialize_main (unformat_input_t * input)
+test_serialize_main (unformat_input_t *input)
 {
   clib_error_t *error = 0;
   test_serialize_main_t _tm, *tm = &_tm;
@@ -197,15 +194,15 @@ test_serialize_main (unformat_input_t * input)
 
       vec_resize (tm->test_vectors[i], l);
       vec_foreach (mv, tm->test_vectors[i])
-      {
-#define _(t,f) mv->f = random_u32 (&tm->seed) & pow2_mask (31);
-	foreach_my_vector_type;
+	{
+#define _(t, f) mv->f = random_u32 (&tm->seed) & pow2_mask (31);
+	  foreach_my_vector_type;
 #undef _
-      }
+	}
 
       vec_serialize (sm, tm->test_vectors[i],
 		     tm->multiple ? serialize_my_vector_type_multiple :
-		     serialize_my_vector_type_single);
+				    serialize_my_vector_type_single);
     }
 
   if (tm->verbose)
@@ -234,7 +231,7 @@ test_serialize_main (unformat_input_t * input)
 
       vec_unserialize (um, &mv0,
 		       tm->multiple ? unserialize_my_vector_type_multiple :
-		       unserialize_my_vector_type_single);
+				      unserialize_my_vector_type_single);
       mv1 = tm->test_vectors[i];
 
       if (vec_len (mv0) != vec_len (mv1))

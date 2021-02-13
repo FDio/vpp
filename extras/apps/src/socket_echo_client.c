@@ -68,8 +68,8 @@ main (int argc, char *argv[])
     }
   else
     {
-      portno = 1234;		// atoi(argv[2]);
-      server = gethostbyname ("6.0.1.1" /* argv[1] */ );
+      portno = 1234; // atoi(argv[2]);
+      server = gethostbyname ("6.0.1.1" /* argv[1] */);
       if (server == NULL)
 	{
 	  clib_unix_warning ("gethostbyname");
@@ -87,8 +87,8 @@ main (int argc, char *argv[])
 
   bzero ((char *) &serv_addr, sizeof (serv_addr));
   serv_addr.sin_family = AF_INET;
-  bcopy ((char *) server->h_addr,
-	 (char *) &serv_addr.sin_addr.s_addr, server->h_length);
+  bcopy ((char *) server->h_addr, (char *) &serv_addr.sin_addr.s_addr,
+	 server->h_length);
   serv_addr.sin_port = htons (portno);
   if (connect (sockfd, (const void *) &serv_addr, sizeof (serv_addr)) < 0)
     {
@@ -105,7 +105,7 @@ main (int argc, char *argv[])
   /*
    * Send one packet to warm up the RX pipeline
    */
-  n = send (sockfd, tx_buffer, vec_len (tx_buffer), 0 /* flags */ );
+  n = send (sockfd, tx_buffer, vec_len (tx_buffer), 0 /* flags */);
   if (n != vec_len (tx_buffer))
     {
       clib_unix_warning ("write");
@@ -118,7 +118,7 @@ main (int argc, char *argv[])
       /*
        * TX
        */
-      n = send (sockfd, tx_buffer, vec_len (tx_buffer), 0 /* flags */ );
+      n = send (sockfd, tx_buffer, vec_len (tx_buffer), 0 /* flags */);
       if (n != vec_len (tx_buffer))
 	{
 	  clib_unix_warning ("write");
@@ -136,8 +136,8 @@ main (int argc, char *argv[])
       offset = 0;
       do
 	{
-	  n = recv (sockfd, rx_buffer + offset,
-		    vec_len (rx_buffer) - offset, 0 /* flags */ );
+	  n = recv (sockfd, rx_buffer + offset, vec_len (rx_buffer) - offset,
+		    0 /* flags */);
 	  if (n < 0)
 	    {
 	      clib_unix_warning ("read");
@@ -164,13 +164,12 @@ main (int argc, char *argv[])
   gettimeofday (&end, NULL);
 
   deltat = (end.tv_sec - start.tv_sec);
-  deltat += (end.tv_usec - start.tv_usec) / 1000000.0;	// us to ms
+  deltat += (end.tv_usec - start.tv_usec) / 1000000.0; // us to ms
   clib_warning ("Finished in %.6f", deltat);
   clib_warning ("%.4f Gbit/second %s", (((f64) to_send * 8.0) / deltat / 1e9),
 		no_echo ? "half" : "full");
   return 0;
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

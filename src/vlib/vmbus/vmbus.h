@@ -37,7 +37,7 @@ void vlib_vmbus_set_private_data (vlib_vmbus_dev_handle_t h,
 
 format_function_t format_vlib_vmbus_addr;
 unformat_function_t unformat_vlib_vmbus_addr;
-clib_error_t *vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr);
+clib_error_t *vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t *addr);
 #endif /* included_vlib_vmbus_h */
 
 /*

@@ -29,14 +29,12 @@ igmp_binding::event_handler igmp_binding::m_evh;
 igmp_binding::igmp_binding(const interface& itf)
   : m_itf(itf.singular())
   , m_binding(true)
-{
-}
+{}
 
 igmp_binding::igmp_binding(const igmp_binding& o)
   : m_itf(o.m_itf)
   , m_binding(o.m_binding)
-{
-}
+{}
 
 igmp_binding::~igmp_binding()
 {

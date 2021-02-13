@@ -30,15 +30,13 @@ map::map(uint32_t id, const outputs_t& o)
   : m_config(false)
   , m_id(id)
   , m_outputs(o)
-{
-}
+{}
 
 map::map(const map& r)
   : m_config(r.m_config)
   , m_id(r.m_id)
   , m_outputs(r.m_outputs)
-{
-}
+{}
 
 map::~map()
 {
@@ -142,8 +140,8 @@ from_api(vapi_type_qos_egress_map_row rows[4])
   map::outputs_t o;
 
   for (uint32_t ii = 0; ii < 4; ii++) {
-    std::copy(std::begin(rows[ii].outputs), std::end(rows[ii].outputs),
-              o[ii].begin());
+    std::copy(
+      std::begin(rows[ii].outputs), std::end(rows[ii].outputs), o[ii].begin());
   }
 
   return o;

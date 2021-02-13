@@ -24,16 +24,16 @@
 
 #include <avf/avf.h>
 
-#define AVF_MBOX_LEN 64
+#define AVF_MBOX_LEN	64
 #define AVF_MBOX_BUF_SZ 512
-#define AVF_RXQ_SZ 512
-#define AVF_TXQ_SZ 512
-#define AVF_ITR_INT 250
+#define AVF_RXQ_SZ	512
+#define AVF_TXQ_SZ	512
+#define AVF_ITR_INT	250
 
-#define PCI_VENDOR_ID_INTEL			0x8086
-#define PCI_DEVICE_ID_INTEL_AVF			0x1889
-#define PCI_DEVICE_ID_INTEL_X710_VF		0x154c
-#define PCI_DEVICE_ID_INTEL_X722_VF		0x37cd
+#define PCI_VENDOR_ID_INTEL	    0x8086
+#define PCI_DEVICE_ID_INTEL_AVF	    0x1889
+#define PCI_DEVICE_ID_INTEL_X710_VF 0x154c
+#define PCI_DEVICE_ID_INTEL_X722_VF 0x37cd
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_LOG_CLASS (avf_log) = {
@@ -42,13 +42,15 @@ VLIB_REGISTER_LOG_CLASS (avf_log) = {
 /* *INDENT-ON* */
 
 avf_main_t avf_main;
-void avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier);
+void avf_delete_if (vlib_main_t *vm, avf_device_t *ad, int with_barrier);
 
 static pci_device_id_t avf_pci_device_ids[] = {
-  {.vendor_id = PCI_VENDOR_ID_INTEL,.device_id = PCI_DEVICE_ID_INTEL_AVF},
-  {.vendor_id = PCI_VENDOR_ID_INTEL,.device_id = PCI_DEVICE_ID_INTEL_X710_VF},
-  {.vendor_id = PCI_VENDOR_ID_INTEL,.device_id = PCI_DEVICE_ID_INTEL_X722_VF},
-  {0},
+  { .vendor_id = PCI_VENDOR_ID_INTEL, .device_id = PCI_DEVICE_ID_INTEL_AVF },
+  { .vendor_id = PCI_VENDOR_ID_INTEL,
+    .device_id = PCI_DEVICE_ID_INTEL_X710_VF },
+  { .vendor_id = PCI_VENDOR_ID_INTEL,
+    .device_id = PCI_DEVICE_ID_INTEL_X722_VF },
+  { 0 },
 };
 
 const static char *virtchnl_event_names[] = {
@@ -65,11 +67,11 @@ typedef enum
 } avf_irq_state_t;
 
 static inline void
-avf_irq_0_set_state (avf_device_t * ad, avf_irq_state_t state)
+avf_irq_0_set_state (avf_device_t *ad, avf_irq_state_t state)
 {
   u32 dyn_ctl0 = 0, icr0_ena = 0;
 
-  dyn_ctl0 |= (3 << 3);		/* 11b = No ITR update */
+  dyn_ctl0 |= (3 << 3); /* 11b = No ITR update */
 
   avf_reg_write (ad, AVFINT_ICR0_ENA1, icr0_ena);
   avf_reg_write (ad, AVFINT_DYN_CTL0, dyn_ctl0);
@@ -81,12 +83,12 @@ avf_irq_0_set_state (avf_device_t * ad, avf_irq_state_t state)
   dyn_ctl0 = 0;
   icr0_ena = 0;
 
-  icr0_ena |= (1 << 30);	/* [30] Admin Queue Enable */
+  icr0_ena |= (1 << 30); /* [30] Admin Queue Enable */
 
-  dyn_ctl0 |= (1 << 0);		/* [0] Interrupt Enable */
-  dyn_ctl0 |= (1 << 1);		/* [1] Clear PBA */
-  dyn_ctl0 |= (2 << 3);		/* [4:3] ITR Index, 11b = No ITR update */
-  dyn_ctl0 |= ((AVF_ITR_INT / 2) << 5);	/* [16:5] ITR Interval in 2us steps */
+  dyn_ctl0 |= (1 << 0); /* [0] Interrupt Enable */
+  dyn_ctl0 |= (1 << 1); /* [1] Clear PBA */
+  dyn_ctl0 |= (2 << 3); /* [4:3] ITR Index, 11b = No ITR update */
+  dyn_ctl0 |= ((AVF_ITR_INT / 2) << 5); /* [16:5] ITR Interval in 2us steps */
 
   avf_reg_write (ad, AVFINT_ICR0_ENA1, icr0_ena);
   avf_reg_write (ad, AVFINT_DYN_CTL0, dyn_ctl0);
@@ -94,7 +96,7 @@ avf_irq_0_set_state (avf_device_t * ad, avf_irq_state_t state)
 }
 
 static inline void
-avf_irq_n_set_state (avf_device_t * ad, u8 line, avf_irq_state_t state)
+avf_irq_n_set_state (avf_device_t *ad, u8 line, avf_irq_state_t state)
 {
   u32 dyn_ctln = 0;
 
@@ -105,28 +107,28 @@ avf_irq_n_set_state (avf_device_t * ad, u8 line, avf_irq_state_t state)
   if (state == AVF_IRQ_STATE_DISABLED)
     return;
 
-  dyn_ctln |= (1 << 1);		/* [1] Clear PBA */
+  dyn_ctln |= (1 << 1); /* [1] Clear PBA */
   if (state == AVF_IRQ_STATE_WB_ON_ITR)
     {
       /* minimal ITR interval, use ITR1 */
-      dyn_ctln |= (1 << 3);	/* [4:3] ITR Index */
-      dyn_ctln |= ((32 / 2) << 5);	/* [16:5] ITR Interval in 2us steps */
-      dyn_ctln |= (1 << 30);	/* [30] Writeback on ITR */
+      dyn_ctln |= (1 << 3);	   /* [4:3] ITR Index */
+      dyn_ctln |= ((32 / 2) << 5); /* [16:5] ITR Interval in 2us steps */
+      dyn_ctln |= (1 << 30);	   /* [30] Writeback on ITR */
     }
   else
     {
       /* configured ITR interval, use ITR0 */
-      dyn_ctln |= (1 << 0);	/* [0] Interrupt Enable */
-      dyn_ctln |= ((AVF_ITR_INT / 2) << 5);	/* [16:5] ITR Interval in 2us steps */
+      dyn_ctln |= (1 << 0); /* [0] Interrupt Enable */
+      dyn_ctln |=
+	((AVF_ITR_INT / 2) << 5); /* [16:5] ITR Interval in 2us steps */
     }
 
   avf_reg_write (ad, AVFINT_DYN_CTLN (line), dyn_ctln);
   avf_reg_flush (ad);
 }
 
-
 clib_error_t *
-avf_aq_desc_enq (vlib_main_t * vm, avf_device_t * ad, avf_aq_desc_t * dt,
+avf_aq_desc_enq (vlib_main_t *vm, avf_device_t *ad, avf_aq_desc_t *dt,
 		 void *data, int len)
 {
   clib_error_t *err = 0;
@@ -177,28 +179,29 @@ retry:
 
   clib_memcpy_fast (dt, d, sizeof (avf_aq_desc_t));
   if (d->flags & AVF_AQ_F_ERR)
-    return clib_error_return (0, "adminq enqueue error [opcode 0x%x, retval "
-			      "%d]", d->opcode, d->retval);
+    return clib_error_return (0,
+			      "adminq enqueue error [opcode 0x%x, retval "
+			      "%d]",
+			      d->opcode, d->retval);
 
 done:
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
       /* *INDENT-OFF* */
-      ELOG_TYPE_DECLARE (el) =
-	{
-	  .format = "avf[%d] aq enq: s_flags 0x%x r_flags 0x%x opcode 0x%x "
-	    "datalen %d retval %d",
-	  .format_args = "i4i2i2i2i2i2",
-	};
+      ELOG_TYPE_DECLARE (el) = {
+	.format = "avf[%d] aq enq: s_flags 0x%x r_flags 0x%x opcode 0x%x "
+		  "datalen %d retval %d",
+	.format_args = "i4i2i2i2i2i2",
+      };
       struct
-	{
-	  u32 dev_instance;
-	  u16 s_flags;
-	  u16 r_flags;
-	  u16 opcode;
-	  u16 datalen;
-	  u16 retval;
-	} *ed;
+      {
+	u32 dev_instance;
+	u16 s_flags;
+	u16 r_flags;
+	u16 opcode;
+	u16 datalen;
+	u16 retval;
+      } * ed;
       ed = ELOG_DATA (&vm->elog_main, el);
       ed->dev_instance = ad->dev_instance;
       ed->s_flags = dc.flags;
@@ -213,27 +216,25 @@ done:
 }
 
 clib_error_t *
-avf_cmd_rx_ctl_reg_write (vlib_main_t * vm, avf_device_t * ad, u32 reg,
-			  u32 val)
+avf_cmd_rx_ctl_reg_write (vlib_main_t *vm, avf_device_t *ad, u32 reg, u32 val)
 {
   clib_error_t *err;
-  avf_aq_desc_t d = {.opcode = 0x207,.param1 = reg,.param3 = val };
+  avf_aq_desc_t d = { .opcode = 0x207, .param1 = reg, .param3 = val };
   err = avf_aq_desc_enq (vm, ad, &d, 0, 0);
 
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
       /* *INDENT-OFF* */
-      ELOG_TYPE_DECLARE (el) =
-	{
-	  .format = "avf[%d] rx ctl reg write: reg 0x%x val 0x%x ",
-	  .format_args = "i4i4i4",
-	};
+      ELOG_TYPE_DECLARE (el) = {
+	.format = "avf[%d] rx ctl reg write: reg 0x%x val 0x%x ",
+	.format_args = "i4i4i4",
+      };
       struct
-	{
-	  u32 dev_instance;
-	  u32 reg;
-	  u32 val;
-	} *ed;
+      {
+	u32 dev_instance;
+	u32 reg;
+	u32 val;
+      } * ed;
       ed = ELOG_DATA (&vm->elog_main, el);
       ed->dev_instance = ad->dev_instance;
       ed->reg = reg;
@@ -244,7 +245,7 @@ avf_cmd_rx_ctl_reg_write (vlib_main_t * vm, avf_device_t * ad, u32 reg,
 }
 
 clib_error_t *
-avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
+avf_rxq_init (vlib_main_t *vm, avf_device_t *ad, u16 qid, u16 rxq_size)
 {
   clib_error_t *err;
   avf_rxq_t *rxq;
@@ -254,10 +255,9 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
   rxq = vec_elt_at_index (ad->rxqs, qid);
   rxq->size = rxq_size;
   rxq->next = 0;
-  rxq->descs = vlib_physmem_alloc_aligned_on_numa (vm, rxq->size *
-						   sizeof (avf_rx_desc_t),
-						   2 * CLIB_CACHE_LINE_BYTES,
-						   ad->numa_node);
+  rxq->descs = vlib_physmem_alloc_aligned_on_numa (
+    vm, rxq->size * sizeof (avf_rx_desc_t), 2 * CLIB_CACHE_LINE_BYTES,
+    ad->numa_node);
 
   rxq->buffer_pool_index =
     vlib_buffer_pool_get_default_for_numa (vm, ad->numa_node);
@@ -295,12 +295,11 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
 }
 
 clib_error_t *
-avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
+avf_txq_init (vlib_main_t *vm, avf_device_t *ad, u16 qid, u16 txq_size)
 {
   clib_error_t *err;
   avf_txq_t *txq;
-  u8 bpi = vlib_buffer_pool_get_default_for_numa (vm,
-						  ad->numa_node);
+  u8 bpi = vlib_buffer_pool_get_default_for_numa (vm, ad->numa_node);
 
   if (qid >= ad->num_queue_pairs)
     {
@@ -320,14 +319,12 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
   /* Prepare a placeholder buffer to maintain a 1-1
      relationship between bufs and descs when a context
      descriptor is added in descs */
-  if (!vlib_buffer_alloc_from_pool
-      (vm, &txq->ctx_desc_placeholder_bi, 1, bpi))
+  if (!vlib_buffer_alloc_from_pool (vm, &txq->ctx_desc_placeholder_bi, 1, bpi))
     return clib_error_return (0, "buffer allocation error");
 
-  txq->descs = vlib_physmem_alloc_aligned_on_numa (vm, txq->size *
-						   sizeof (avf_tx_desc_t),
-						   2 * CLIB_CACHE_LINE_BYTES,
-						   ad->numa_node);
+  txq->descs = vlib_physmem_alloc_aligned_on_numa (
+    vm, txq->size * sizeof (avf_tx_desc_t), 2 * CLIB_CACHE_LINE_BYTES,
+    ad->numa_node);
   if (txq->descs == 0)
     return vlib_physmem_last_error (vm);
 
@@ -351,7 +348,7 @@ typedef struct
 } virtchnl_promisc_info_t;
 
 void
-avf_arq_slot_init (avf_device_t * ad, u16 slot)
+avf_arq_slot_init (avf_device_t *ad, u16 slot)
 {
   avf_aq_desc_t *d;
   u64 pa = ad->arq_bufs_pa + slot * AVF_MBOX_BUF_SZ;
@@ -364,14 +361,14 @@ avf_arq_slot_init (avf_device_t * ad, u16 slot)
 }
 
 static inline uword
-avf_dma_addr (vlib_main_t * vm, avf_device_t * ad, void *p)
+avf_dma_addr (vlib_main_t *vm, avf_device_t *ad, void *p)
 {
-  return (ad->flags & AVF_DEVICE_F_VA_DMA) ?
-    pointer_to_uword (p) : vlib_physmem_get_pa (vm, p);
+  return (ad->flags & AVF_DEVICE_F_VA_DMA) ? pointer_to_uword (p) :
+					     vlib_physmem_get_pa (vm, p);
 }
 
 static void
-avf_adminq_init (vlib_main_t * vm, avf_device_t * ad)
+avf_adminq_init (vlib_main_t *vm, avf_device_t *ad)
 {
   u64 pa;
   int i;
@@ -381,11 +378,11 @@ avf_adminq_init (vlib_main_t * vm, avf_device_t * ad)
   ad->atq_bufs_pa = avf_dma_addr (vm, ad, ad->atq_bufs);
 
   pa = avf_dma_addr (vm, ad, ad->atq);
-  avf_reg_write (ad, AVF_ATQT, 0);	/* Tail */
-  avf_reg_write (ad, AVF_ATQH, 0);	/* Head */
-  avf_reg_write (ad, AVF_ATQLEN, AVF_MBOX_LEN | (1ULL << 31));	/* len & ena */
-  avf_reg_write (ad, AVF_ATQBAL, (u32) pa);	/* Base Address Low */
-  avf_reg_write (ad, AVF_ATQBAH, (u32) (pa >> 32));	/* Base Address High */
+  avf_reg_write (ad, AVF_ATQT, 0);			       /* Tail */
+  avf_reg_write (ad, AVF_ATQH, 0);			       /* Head */
+  avf_reg_write (ad, AVF_ATQLEN, AVF_MBOX_LEN | (1ULL << 31)); /* len & ena */
+  avf_reg_write (ad, AVF_ATQBAL, (u32) pa);	    /* Base Address Low */
+  avf_reg_write (ad, AVF_ATQBAH, (u32) (pa >> 32)); /* Base Address High */
 
   /* VF MailBox Receive */
   clib_memset (ad->arq, 0, sizeof (avf_aq_desc_t) * AVF_MBOX_LEN);
@@ -396,23 +393,23 @@ avf_adminq_init (vlib_main_t * vm, avf_device_t * ad)
 
   pa = avf_dma_addr (vm, ad, ad->arq);
 
-  avf_reg_write (ad, AVF_ARQH, 0);	/* Head */
-  avf_reg_write (ad, AVF_ARQT, 0);	/* Head */
-  avf_reg_write (ad, AVF_ARQLEN, AVF_MBOX_LEN | (1ULL << 31));	/* len & ena */
-  avf_reg_write (ad, AVF_ARQBAL, (u32) pa);	/* Base Address Low */
-  avf_reg_write (ad, AVF_ARQBAH, (u32) (pa >> 32));	/* Base Address High */
-  avf_reg_write (ad, AVF_ARQT, AVF_MBOX_LEN - 1);	/* Tail */
+  avf_reg_write (ad, AVF_ARQH, 0);			       /* Head */
+  avf_reg_write (ad, AVF_ARQT, 0);			       /* Head */
+  avf_reg_write (ad, AVF_ARQLEN, AVF_MBOX_LEN | (1ULL << 31)); /* len & ena */
+  avf_reg_write (ad, AVF_ARQBAL, (u32) pa);	    /* Base Address Low */
+  avf_reg_write (ad, AVF_ARQBAH, (u32) (pa >> 32)); /* Base Address High */
+  avf_reg_write (ad, AVF_ARQT, AVF_MBOX_LEN - 1);   /* Tail */
 
   ad->atq_next_slot = 0;
   ad->arq_next_slot = 0;
 }
 
 clib_error_t *
-avf_send_to_pf (vlib_main_t * vm, avf_device_t * ad, virtchnl_ops_t op,
-		void *in, int in_len, void *out, int out_len)
+avf_send_to_pf (vlib_main_t *vm, avf_device_t *ad, virtchnl_ops_t op, void *in,
+		int in_len, void *out, int out_len)
 {
   clib_error_t *err;
-  avf_aq_desc_t *d, dt = {.opcode = 0x801,.v_opcode = op };
+  avf_aq_desc_t *d, dt = { .opcode = 0x801, .v_opcode = op };
   u32 head;
   f64 t0, suspend_time = AVF_SEND_TO_PF_SUSPEND_TIME;
 
@@ -470,11 +467,10 @@ retry:
 
   if (d->v_opcode != op)
     {
-      err =
-	clib_error_return (0,
-			   "unexpected message receiver [v_opcode = %u, "
-			   "expected %u, v_retval %d]", d->v_opcode, op,
-			   d->v_retval);
+      err = clib_error_return (0,
+			       "unexpected message receiver [v_opcode = %u, "
+			       "expected %u, v_retval %d]",
+			       d->v_opcode, op, d->v_retval);
       goto done;
     }
 
@@ -513,12 +509,12 @@ done:
 	  },
 	};
       struct
-	{
-	  u32 dev_instance;
-	  u32 v_opcode;
-	  u32 v_opcode_val;
-	  u32 v_retval;
-	} *ed;
+      {
+	u32 dev_instance;
+	u32 v_opcode;
+	u32 v_opcode_val;
+	u32 v_retval;
+      } * ed;
       ed = ELOG_DATA (&vm->elog_main, el);
       ed->dev_instance = ad->dev_instance;
       ed->v_opcode = op;
@@ -530,8 +526,8 @@ done:
 }
 
 clib_error_t *
-avf_op_version (vlib_main_t * vm, avf_device_t * ad,
-		virtchnl_version_info_t * ver)
+avf_op_version (vlib_main_t *vm, avf_device_t *ad,
+		virtchnl_version_info_t *ver)
 {
   clib_error_t *err = 0;
   virtchnl_version_info_t myver = {
@@ -552,14 +548,14 @@ avf_op_version (vlib_main_t * vm, avf_device_t * ad,
 }
 
 clib_error_t *
-avf_op_get_vf_resources (vlib_main_t * vm, avf_device_t * ad,
-			 virtchnl_vf_resource_t * res)
+avf_op_get_vf_resources (vlib_main_t *vm, avf_device_t *ad,
+			 virtchnl_vf_resource_t *res)
 {
   clib_error_t *err = 0;
-  u32 bitmap = (VIRTCHNL_VF_OFFLOAD_L2 | VIRTCHNL_VF_OFFLOAD_RSS_PF |
-		VIRTCHNL_VF_OFFLOAD_WB_ON_ITR | VIRTCHNL_VF_OFFLOAD_VLAN |
-		VIRTCHNL_VF_OFFLOAD_RX_POLLING |
-		VIRTCHNL_VF_CAP_ADV_LINK_SPEED);
+  u32 bitmap =
+    (VIRTCHNL_VF_OFFLOAD_L2 | VIRTCHNL_VF_OFFLOAD_RSS_PF |
+     VIRTCHNL_VF_OFFLOAD_WB_ON_ITR | VIRTCHNL_VF_OFFLOAD_VLAN |
+     VIRTCHNL_VF_OFFLOAD_RX_POLLING | VIRTCHNL_VF_CAP_ADV_LINK_SPEED);
 
   avf_log_debug (ad, "get_vf_reqources: bitmap 0x%x", bitmap);
   err = avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_VF_RESOURCES, &bitmap,
@@ -568,29 +564,29 @@ avf_op_get_vf_resources (vlib_main_t * vm, avf_device_t * ad,
   if (err == 0)
     {
       int i;
-      avf_log_debug (ad, "get_vf_reqources: num_vsis %u num_queue_pairs %u "
+      avf_log_debug (ad,
+		     "get_vf_reqources: num_vsis %u num_queue_pairs %u "
 		     "max_vectors %u max_mtu %u vf_offload_flags 0x%04x "
 		     "rss_key_size %u rss_lut_size %u",
 		     res->num_vsis, res->num_queue_pairs, res->max_vectors,
 		     res->max_mtu, res->vf_offload_flags, res->rss_key_size,
 		     res->rss_lut_size);
       for (i = 0; i < res->num_vsis; i++)
-	avf_log_debug (ad, "get_vf_reqources_vsi[%u]: vsi_id %u "
-		       "num_queue_pairs %u vsi_type %u qset_handle %u "
-		       "default_mac_addr %U", i,
-		       res->vsi_res[i].vsi_id,
-		       res->vsi_res[i].num_queue_pairs,
-		       res->vsi_res[i].vsi_type,
-		       res->vsi_res[i].qset_handle,
-		       format_ethernet_address,
-		       res->vsi_res[i].default_mac_addr);
+	avf_log_debug (
+	  ad,
+	  "get_vf_reqources_vsi[%u]: vsi_id %u "
+	  "num_queue_pairs %u vsi_type %u qset_handle %u "
+	  "default_mac_addr %U",
+	  i, res->vsi_res[i].vsi_id, res->vsi_res[i].num_queue_pairs,
+	  res->vsi_res[i].vsi_type, res->vsi_res[i].qset_handle,
+	  format_ethernet_address, res->vsi_res[i].default_mac_addr);
     }
 
   return err;
 }
 
 clib_error_t *
-avf_op_config_rss_lut (vlib_main_t * vm, avf_device_t * ad)
+avf_op_config_rss_lut (vlib_main_t *vm, avf_device_t *ad)
 {
   int msg_len = sizeof (virtchnl_rss_lut_t) + ad->rss_lut_size - 1;
   int i;
@@ -613,7 +609,7 @@ avf_op_config_rss_lut (vlib_main_t * vm, avf_device_t * ad)
 }
 
 clib_error_t *
-avf_op_config_rss_key (vlib_main_t * vm, avf_device_t * ad)
+avf_op_config_rss_key (vlib_main_t *vm, avf_device_t *ad)
 {
   int msg_len = sizeof (virtchnl_rss_key_t) + ad->rss_key_size - 1;
   int i;
@@ -637,7 +633,7 @@ avf_op_config_rss_key (vlib_main_t * vm, avf_device_t * ad)
 }
 
 clib_error_t *
-avf_op_disable_vlan_stripping (vlib_main_t * vm, avf_device_t * ad)
+avf_op_disable_vlan_stripping (vlib_main_t *vm, avf_device_t *ad)
 {
   avf_log_debug (ad, "disable_vlan_stripping");
 
@@ -646,8 +642,7 @@ avf_op_disable_vlan_stripping (vlib_main_t * vm, avf_device_t * ad)
 }
 
 clib_error_t *
-avf_op_config_promisc_mode (vlib_main_t * vm, avf_device_t * ad,
-			    int is_enable)
+avf_op_config_promisc_mode (vlib_main_t *vm, avf_device_t *ad, int is_enable)
 {
   virtchnl_promisc_info_t pi = { 0 };
 
@@ -664,14 +659,13 @@ avf_op_config_promisc_mode (vlib_main_t * vm, avf_device_t * ad,
 			 sizeof (virtchnl_promisc_info_t), 0, 0);
 }
 
-
 clib_error_t *
-avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
+avf_op_config_vsi_queues (vlib_main_t *vm, avf_device_t *ad)
 {
   int i;
   int n_qp = clib_max (vec_len (ad->rxqs), vec_len (ad->txqs));
-  int msg_len = sizeof (virtchnl_vsi_queue_config_info_t) + n_qp *
-    sizeof (virtchnl_queue_pair_info_t);
+  int msg_len = sizeof (virtchnl_vsi_queue_config_info_t) +
+		n_qp * sizeof (virtchnl_queue_pair_info_t);
   u8 msg[msg_len];
   virtchnl_vsi_queue_config_info_t *ci;
 
@@ -699,10 +693,11 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
 	  rxq->dma_ring_addr = avf_dma_addr (vm, ad, (void *) q->descs);
 	  avf_reg_write (ad, AVF_QRX_TAIL (i), q->size - 1);
 	}
-      avf_log_debug (ad, "config_vsi_queues_rx[%u]: max_pkt_size %u "
+      avf_log_debug (ad,
+		     "config_vsi_queues_rx[%u]: max_pkt_size %u "
 		     "ring_len %u databuffer_size %u dma_ring_addr 0x%llx",
-		     i, rxq->max_pkt_size, rxq->ring_len,
-		     rxq->databuffer_size, rxq->dma_ring_addr);
+		     i, rxq->max_pkt_size, rxq->ring_len, rxq->databuffer_size,
+		     rxq->dma_ring_addr);
 
       txq->vsi_id = ad->vsi_id;
       txq->queue_id = i;
@@ -712,9 +707,10 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
 	  txq->ring_len = q->size;
 	  txq->dma_ring_addr = avf_dma_addr (vm, ad, (void *) q->descs);
 	}
-      avf_log_debug (ad, "config_vsi_queues_tx[%u]: ring_len %u "
-		     "dma_ring_addr 0x%llx", i, txq->ring_len,
-		     txq->dma_ring_addr);
+      avf_log_debug (ad,
+		     "config_vsi_queues_tx[%u]: ring_len %u "
+		     "dma_ring_addr 0x%llx",
+		     i, txq->ring_len, txq->dma_ring_addr);
     }
 
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_VSI_QUEUES, msg, msg_len,
@@ -722,10 +718,10 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
 }
 
 clib_error_t *
-avf_op_config_irq_map (vlib_main_t * vm, avf_device_t * ad)
+avf_op_config_irq_map (vlib_main_t *vm, avf_device_t *ad)
 {
   int msg_len = sizeof (virtchnl_irq_map_info_t) +
-    (ad->n_rx_irqs) * sizeof (virtchnl_vector_map_t);
+		(ad->n_rx_irqs) * sizeof (virtchnl_vector_map_t);
   u8 msg[msg_len];
   virtchnl_irq_map_info_t *imi;
 
@@ -740,25 +736,26 @@ avf_op_config_irq_map (vlib_main_t * vm, avf_device_t * ad)
       if (ad->n_rx_irqs == ad->n_rx_queues)
 	imi->vecmap[i].rxq_map = 1 << i;
       else
-	imi->vecmap[i].rxq_map = pow2_mask (ad->n_rx_queues);;
+	imi->vecmap[i].rxq_map = pow2_mask (ad->n_rx_queues);
+      ;
 
-      avf_log_debug (ad, "config_irq_map[%u/%u]: vsi_id %u vector_id %u "
-		     "rxq_map %u", i, ad->n_rx_irqs - 1, ad->vsi_id,
+      avf_log_debug (ad,
+		     "config_irq_map[%u/%u]: vsi_id %u vector_id %u "
+		     "rxq_map %u",
+		     i, ad->n_rx_irqs - 1, ad->vsi_id,
 		     imi->vecmap[i].vector_id, imi->vecmap[i].rxq_map);
     }
-
 
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_CONFIG_IRQ_MAP, msg, msg_len, 0,
 			 0);
 }
 
 clib_error_t *
-avf_op_add_del_eth_addr (vlib_main_t * vm, avf_device_t * ad, u8 count,
-			 u8 * macs, int is_add)
+avf_op_add_del_eth_addr (vlib_main_t *vm, avf_device_t *ad, u8 count, u8 *macs,
+			 int is_add)
 {
-  int msg_len =
-    sizeof (virtchnl_ether_addr_list_t) +
-    count * sizeof (virtchnl_ether_addr_t);
+  int msg_len = sizeof (virtchnl_ether_addr_list_t) +
+		count * sizeof (virtchnl_ether_addr_t);
   u8 msg[msg_len];
   virtchnl_ether_addr_list_t *al;
   int i;
@@ -777,12 +774,13 @@ avf_op_add_del_eth_addr (vlib_main_t * vm, avf_device_t * ad, u8 count,
       avf_log_debug (ad, "add_del_eth_addr[%u]: %U", i,
 		     format_ethernet_address, &al->list[i].addr);
     }
-  return avf_send_to_pf (vm, ad, is_add ? VIRTCHNL_OP_ADD_ETH_ADDR :
-			 VIRTCHNL_OP_DEL_ETH_ADDR, msg, msg_len, 0, 0);
+  return avf_send_to_pf (
+    vm, ad, is_add ? VIRTCHNL_OP_ADD_ETH_ADDR : VIRTCHNL_OP_DEL_ETH_ADDR, msg,
+    msg_len, 0, 0);
 }
 
 clib_error_t *
-avf_op_enable_queues (vlib_main_t * vm, avf_device_t * ad, u32 rx, u32 tx)
+avf_op_enable_queues (vlib_main_t *vm, avf_device_t *ad, u32 rx, u32 tx)
 {
   virtchnl_queue_select_t qs = { 0 };
   int i = 0;
@@ -808,21 +806,20 @@ avf_op_enable_queues (vlib_main_t * vm, avf_device_t * ad, u32 rx, u32 tx)
 }
 
 clib_error_t *
-avf_op_get_stats (vlib_main_t * vm, avf_device_t * ad,
-		  virtchnl_eth_stats_t * es)
+avf_op_get_stats (vlib_main_t *vm, avf_device_t *ad, virtchnl_eth_stats_t *es)
 {
   virtchnl_queue_select_t qs = { 0 };
   qs.vsi_id = ad->vsi_id;
 
   avf_log_debug (ad, "get_stats: vsi_id %u", ad->vsi_id);
 
-  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_STATS,
-			 &qs, sizeof (virtchnl_queue_select_t),
-			 es, sizeof (virtchnl_eth_stats_t));
+  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_STATS, &qs,
+			 sizeof (virtchnl_queue_select_t), es,
+			 sizeof (virtchnl_eth_stats_t));
 }
 
 clib_error_t *
-avf_device_reset (vlib_main_t * vm, avf_device_t * ad)
+avf_device_reset (vlib_main_t *vm, avf_device_t *ad)
 {
   avf_aq_desc_t d = { 0 };
   clib_error_t *error;
@@ -860,7 +857,7 @@ retry:
 }
 
 clib_error_t *
-avf_request_queues (vlib_main_t * vm, avf_device_t * ad, u16 num_queue_pairs)
+avf_request_queues (vlib_main_t *vm, avf_device_t *ad, u16 num_queue_pairs)
 {
   virtchnl_vf_res_request_t res_req = { 0 };
   clib_error_t *error;
@@ -909,8 +906,8 @@ done:
 }
 
 clib_error_t *
-avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
-		 avf_create_if_args_t * args)
+avf_device_init (vlib_main_t *vm, avf_main_t *am, avf_device_t *ad,
+		 avf_create_if_args_t *args)
 {
   virtchnl_version_info_t ver = { 0 };
   virtchnl_vf_resource_t res = { 0 };
@@ -920,8 +917,8 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
 
   avf_adminq_init (vm, ad);
 
-  if ((error = avf_request_queues (vm, ad, clib_max (tm->n_vlib_mains,
-						     args->rxq_num))))
+  if ((error = avf_request_queues (
+	 vm, ad, clib_max (tm->n_vlib_mains, args->rxq_num))))
     {
       /* we failed to get more queues, but still we want to proceed */
       clib_error_free (error);
@@ -940,8 +937,10 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
 
   if (ver.major != VIRTCHNL_VERSION_MAJOR ||
       ver.minor != VIRTCHNL_VERSION_MINOR)
-    return clib_error_return (0, "incompatible protocol version "
-			      "(remote %d.%d)", ver.major, ver.minor);
+    return clib_error_return (0,
+			      "incompatible protocol version "
+			      "(remote %d.%d)",
+			      ver.major, ver.minor);
 
   /*
    * OP_GET_VF_RESOURCES
@@ -979,8 +978,10 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   else if (args->rxq_num > ad->num_queue_pairs)
     {
       args->rxq_num = ad->num_queue_pairs;
-      avf_log_warn (ad, "Requested more rx queues than queue pairs available."
-		    "Using %u rx queues.", args->rxq_num);
+      avf_log_warn (ad,
+		    "Requested more rx queues than queue pairs available."
+		    "Using %u rx queues.",
+		    args->rxq_num);
     }
 
   for (i = 0; i < args->rxq_num; i++)
@@ -999,7 +1000,6 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   else
     ad->n_rx_irqs = 1;
 
-
   if ((ad->feature_bitmap & VIRTCHNL_VF_OFFLOAD_RSS_PF) &&
       (error = avf_op_config_rss_lut (vm, ad)))
     return error;
@@ -1017,10 +1017,10 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   avf_irq_0_set_state (ad, AVF_IRQ_STATE_ENABLED);
 
   for (i = 0; i < ad->n_rx_irqs; i++)
-    avf_irq_n_set_state (ad, i, wb_on_itr ? AVF_IRQ_STATE_WB_ON_ITR :
-			 AVF_IRQ_STATE_ENABLED);
+    avf_irq_n_set_state (
+      ad, i, wb_on_itr ? AVF_IRQ_STATE_WB_ON_ITR : AVF_IRQ_STATE_ENABLED);
 
-  if ((error = avf_op_add_del_eth_addr (vm, ad, 1, ad->hwaddr, 1 /* add */ )))
+  if ((error = avf_op_add_del_eth_addr (vm, ad, 1, ad->hwaddr, 1 /* add */)))
     return error;
 
   if ((error = avf_op_enable_queues (vm, ad, pow2_mask (ad->n_rx_queues),
@@ -1032,7 +1032,7 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
 }
 
 void
-avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
+avf_process_one_device (vlib_main_t *vm, avf_device_t *ad, int is_irq)
 {
   vnet_main_t *vnm = vnet_get_main ();
   virtchnl_pf_event_t *e;
@@ -1125,20 +1125,19 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 
 	  if (ad->flags & AVF_DEVICE_F_ELOG)
 	    {
-	      ELOG_TYPE_DECLARE (el) =
-		{
-		  .format = "avf[%d] link change: link_status %d "
-		    "link_speed %d mbps",
-		  .format_args = "i4i1i4",
-		};
+	      ELOG_TYPE_DECLARE (el) = {
+		.format = "avf[%d] link change: link_status %d "
+			  "link_speed %d mbps",
+		.format_args = "i4i1i4",
+	      };
 	      struct
-		{
-		  u32 dev_instance;
-		  u8 link_status;
-		  u32 link_speed;
-		} *ed;
+	      {
+		u32 dev_instance;
+		u8 link_status;
+		u32 link_speed;
+	      } * ed;
 	      ed = ELOG_DATA (&vm->elog_main, el);
-              ed->dev_instance = ad->dev_instance;
+	      ed->dev_instance = ad->dev_instance;
 	      ed->link_status = link_up;
 	      ed->link_speed = mbps;
 	    }
@@ -1147,19 +1146,18 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 	{
 	  if (ad->flags & AVF_DEVICE_F_ELOG)
 	    {
-	      ELOG_TYPE_DECLARE (el) =
-		{
-		  .format = "avf[%d] unknown event: event %d severity %d",
-		  .format_args = "i4i4i1i1",
-		};
+	      ELOG_TYPE_DECLARE (el) = {
+		.format = "avf[%d] unknown event: event %d severity %d",
+		.format_args = "i4i4i1i1",
+	      };
 	      struct
-		{
-		  u32 dev_instance;
-		  u32 event;
-		  u32 severity;
-		} *ed;
+	      {
+		u32 dev_instance;
+		u32 event;
+		u32 severity;
+	      } * ed;
 	      ed = ELOG_DATA (&vm->elog_main, el);
-              ed->dev_instance = ad->dev_instance;
+	      ed->dev_instance = ad->dev_instance;
 	      ed->event = e->event;
 	      ed->severity = e->severity;
 	    }
@@ -1177,13 +1175,13 @@ error:
 }
 
 static void
-avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
+avf_process_handle_request (vlib_main_t *vm, avf_process_req_t *req)
 {
   avf_device_t *ad = avf_get_device (req->dev_instance);
 
   if (req->type == AVF_PROCESS_REQ_ADD_DEL_ETH_ADDR)
-    req->error = avf_op_add_del_eth_addr (vm, ad, 1, req->eth_addr,
-					  req->is_add);
+    req->error =
+      avf_op_add_del_eth_addr (vm, ad, 1, req->eth_addr, req->is_add);
   else if (req->type == AVF_PROCESS_REQ_CONFIG_PROMISC_MDDE)
     req->error = avf_op_config_promisc_mode (vm, ad, req->is_enable);
   else
@@ -1194,7 +1192,7 @@ avf_process_handle_request (vlib_main_t * vm, avf_process_req_t * req)
 }
 
 static clib_error_t *
-avf_process_request (vlib_main_t * vm, avf_process_req_t * req)
+avf_process_request (vlib_main_t *vm, avf_process_req_t *req)
 {
   uword *event_data = 0;
   req->calling_process_index = vlib_get_current_process_node_index (vm);
@@ -1217,7 +1215,7 @@ avf_process_request (vlib_main_t * vm, avf_process_req_t * req)
 }
 
 static u32
-avf_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
+avf_flag_change (vnet_main_t *vnm, vnet_hw_interface_t *hw, u32 flags)
 {
   avf_process_req_t req;
   vlib_main_t *vm = vlib_get_main ();
@@ -1250,7 +1248,7 @@ avf_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hw, u32 flags)
 }
 
 static uword
-avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
+avf_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   avf_main_t *am = &avf_main;
   uword *event_data = 0, event_type;
@@ -1309,14 +1307,14 @@ avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       vec_reset_length (dev_pointers);
       /* *INDENT-OFF* */
       pool_foreach_index (i, am->devices)
-        {
+	{
 	  vec_add1 (dev_pointers, avf_get_device (i));
 	}
 
       vec_foreach_index (i, dev_pointers)
-        {
+	{
 	  avf_process_one_device (vm, dev_pointers[i], irq);
-        };
+	};
       /* *INDENT-ON* */
       last_run_duration = vlib_time_now (vm) - last_periodic_time;
     }
@@ -1324,7 +1322,7 @@ avf_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (avf_process_node)  = {
+VLIB_REGISTER_NODE (avf_process_node) = {
   .function = avf_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "avf-process",
@@ -1332,7 +1330,7 @@ VLIB_REGISTER_NODE (avf_process_node)  = {
 /* *INDENT-ON* */
 
 static void
-avf_irq_0_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
+avf_irq_0_handler (vlib_main_t *vm, vlib_pci_dev_handle_t h, u16 line)
 {
   uword pd = vlib_pci_get_private_data (vm, h);
   avf_device_t *ad = avf_get_device (pd);
@@ -1343,17 +1341,16 @@ avf_irq_0_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
       /* *INDENT-OFF* */
-      ELOG_TYPE_DECLARE (el) =
-	{
-	  .format = "avf[%d] irq 0: icr0 0x%x",
-	  .format_args = "i4i4",
-	};
+      ELOG_TYPE_DECLARE (el) = {
+	.format = "avf[%d] irq 0: icr0 0x%x",
+	.format_args = "i4i4",
+      };
       /* *INDENT-ON* */
       struct
       {
 	u32 dev_instance;
 	u32 icr0;
-      } *ed;
+      } * ed;
 
       ed = ELOG_DATA (&vm->elog_main, el);
       ed->dev_instance = ad->dev_instance;
@@ -1369,7 +1366,7 @@ avf_irq_0_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 }
 
 static void
-avf_irq_n_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
+avf_irq_n_handler (vlib_main_t *vm, vlib_pci_dev_handle_t h, u16 line)
 {
   vnet_main_t *vnm = vnet_get_main ();
   uword pd = vlib_pci_get_private_data (vm, h);
@@ -1379,17 +1376,16 @@ avf_irq_n_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
       /* *INDENT-OFF* */
-      ELOG_TYPE_DECLARE (el) =
-	{
-	  .format = "avf[%d] irq %d: received",
-	  .format_args = "i4i2",
-	};
+      ELOG_TYPE_DECLARE (el) = {
+	.format = "avf[%d] irq %d: received",
+	.format_args = "i4i2",
+      };
       /* *INDENT-ON* */
       struct
       {
 	u32 dev_instance;
 	u16 line;
-      } *ed;
+      } * ed;
 
       ed = ELOG_DATA (&vm->elog_main, el);
       ed->dev_instance = ad->dev_instance;
@@ -1404,7 +1400,7 @@ avf_irq_n_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 }
 
 void
-avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier)
+avf_delete_if (vlib_main_t *vm, avf_device_t *ad, int with_barrier)
 {
   vnet_main_t *vnm = vnet_get_main ();
   avf_main_t *am = &avf_main;
@@ -1449,12 +1445,12 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier)
       vlib_physmem_free (vm, (void *) txq->descs);
       if (txq->n_enqueued)
 	{
-	  u16 first = (txq->next - txq->n_enqueued) & (txq->size -1);
+	  u16 first = (txq->next - txq->n_enqueued) & (txq->size - 1);
 	  vlib_buffer_free_from_ring (vm, txq->bufs, first, txq->size,
 				      txq->n_enqueued);
 	}
       /* Free the placeholder buffer */
-      vlib_buffer_free_one(vm, txq->ctx_desc_placeholder_bi);
+      vlib_buffer_free_one (vm, txq->ctx_desc_placeholder_bi);
       vec_free (txq->bufs);
       clib_ring_free (txq->rs_slots);
     }
@@ -1469,29 +1465,27 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier)
 }
 
 static u8
-avf_validate_queue_size (avf_create_if_args_t * args)
+avf_validate_queue_size (avf_create_if_args_t *args)
 {
   clib_error_t *error = 0;
 
   args->rxq_size = (args->rxq_size == 0) ? AVF_RXQ_SZ : args->rxq_size;
   args->txq_size = (args->txq_size == 0) ? AVF_TXQ_SZ : args->txq_size;
 
-  if ((args->rxq_size > AVF_QUEUE_SZ_MAX)
-      || (args->txq_size > AVF_QUEUE_SZ_MAX))
+  if ((args->rxq_size > AVF_QUEUE_SZ_MAX) ||
+      (args->txq_size > AVF_QUEUE_SZ_MAX))
     {
       args->rv = VNET_API_ERROR_INVALID_VALUE;
-      args->error =
-	clib_error_return (error, "queue size must not be greater than %u",
-			   AVF_QUEUE_SZ_MAX);
+      args->error = clib_error_return (
+	error, "queue size must not be greater than %u", AVF_QUEUE_SZ_MAX);
       return 1;
     }
-  if ((args->rxq_size < AVF_QUEUE_SZ_MIN)
-      || (args->txq_size < AVF_QUEUE_SZ_MIN))
+  if ((args->rxq_size < AVF_QUEUE_SZ_MIN) ||
+      (args->txq_size < AVF_QUEUE_SZ_MIN))
     {
       args->rv = VNET_API_ERROR_INVALID_VALUE;
-      args->error =
-	clib_error_return (error, "queue size must not be smaller than %u",
-			   AVF_QUEUE_SZ_MIN);
+      args->error = clib_error_return (
+	error, "queue size must not be smaller than %u", AVF_QUEUE_SZ_MIN);
       return 1;
     }
   if ((args->rxq_size & (args->rxq_size - 1)) ||
@@ -1506,7 +1500,7 @@ avf_validate_queue_size (avf_create_if_args_t * args)
 }
 
 void
-avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
+avf_create_if (vlib_main_t *vm, avf_create_if_args_t *args)
 {
   vnet_main_t *vnm = vnet_get_main ();
   avf_main_t *am = &avf_main;
@@ -1520,21 +1514,22 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (adp, am->devices)  {
-	if ((*adp)->pci_addr.as_u32 == args->addr.as_u32)
-      {
-	args->rv = VNET_API_ERROR_ADDRESS_IN_USE;
-	args->error =
-	  clib_error_return (error, "%U: %s", format_vlib_pci_addr,
-			     &args->addr, "pci address in use");
-	return;
-      }
-  }
+  pool_foreach (adp, am->devices)
+    {
+      if ((*adp)->pci_addr.as_u32 == args->addr.as_u32)
+	{
+	  args->rv = VNET_API_ERROR_ADDRESS_IN_USE;
+	  args->error =
+	    clib_error_return (error, "%U: %s", format_vlib_pci_addr,
+			       &args->addr, "pci address in use");
+	  return;
+	}
+    }
   /* *INDENT-ON* */
 
   pool_get (am->devices, adp);
-  adp[0] = ad = clib_mem_alloc_aligned (sizeof (avf_device_t),
-					CLIB_CACHE_LINE_BYTES);
+  adp[0] = ad =
+    clib_mem_alloc_aligned (sizeof (avf_device_t), CLIB_CACHE_LINE_BYTES);
   clib_memset (ad, 0, sizeof (avf_device_t));
   ad->dev_instance = adp - am->devices;
   ad->per_interface_next_index = ~0;
@@ -1543,15 +1538,13 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if (args->enable_elog)
     ad->flags |= AVF_DEVICE_F_ELOG;
 
-  if ((error = vlib_pci_device_open (vm, &args->addr, avf_pci_device_ids,
-				     &h)))
+  if ((error = vlib_pci_device_open (vm, &args->addr, avf_pci_device_ids, &h)))
     {
       pool_put (am->devices, adp);
       clib_mem_free (ad);
       args->rv = VNET_API_ERROR_INVALID_INTERFACE;
-      args->error =
-	clib_error_return (error, "pci-addr %U", format_vlib_pci_addr,
-			   &args->addr);
+      args->error = clib_error_return (error, "pci-addr %U",
+				       format_vlib_pci_addr, &args->addr);
       return;
     }
   ad->pci_dev_handle = h;
@@ -1566,10 +1559,9 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if ((error = vlib_pci_map_region (vm, h, 0, &ad->bar0)))
     goto error;
 
-  ad->atq = vlib_physmem_alloc_aligned_on_numa (vm, sizeof (avf_aq_desc_t) *
-						AVF_MBOX_LEN,
-						CLIB_CACHE_LINE_BYTES,
-						ad->numa_node);
+  ad->atq = vlib_physmem_alloc_aligned_on_numa (
+    vm, sizeof (avf_aq_desc_t) * AVF_MBOX_LEN, CLIB_CACHE_LINE_BYTES,
+    ad->numa_node);
   if (ad->atq == 0)
     {
       error = vlib_physmem_last_error (vm);
@@ -1579,10 +1571,9 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if ((error = vlib_pci_map_dma (vm, h, ad->atq)))
     goto error;
 
-  ad->arq = vlib_physmem_alloc_aligned_on_numa (vm, sizeof (avf_aq_desc_t) *
-						AVF_MBOX_LEN,
-						CLIB_CACHE_LINE_BYTES,
-						ad->numa_node);
+  ad->arq = vlib_physmem_alloc_aligned_on_numa (
+    vm, sizeof (avf_aq_desc_t) * AVF_MBOX_LEN, CLIB_CACHE_LINE_BYTES,
+    ad->numa_node);
   if (ad->arq == 0)
     {
       error = vlib_physmem_last_error (vm);
@@ -1592,10 +1583,8 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if ((error = vlib_pci_map_dma (vm, h, ad->arq)))
     goto error;
 
-  ad->atq_bufs = vlib_physmem_alloc_aligned_on_numa (vm, AVF_MBOX_BUF_SZ *
-						     AVF_MBOX_LEN,
-						     CLIB_CACHE_LINE_BYTES,
-						     ad->numa_node);
+  ad->atq_bufs = vlib_physmem_alloc_aligned_on_numa (
+    vm, AVF_MBOX_BUF_SZ * AVF_MBOX_LEN, CLIB_CACHE_LINE_BYTES, ad->numa_node);
   if (ad->atq_bufs == 0)
     {
       error = vlib_physmem_last_error (vm);
@@ -1605,10 +1594,8 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if ((error = vlib_pci_map_dma (vm, h, ad->atq_bufs)))
     goto error;
 
-  ad->arq_bufs = vlib_physmem_alloc_aligned_on_numa (vm, AVF_MBOX_BUF_SZ *
-						     AVF_MBOX_LEN,
-						     CLIB_CACHE_LINE_BYTES,
-						     ad->numa_node);
+  ad->arq_bufs = vlib_physmem_alloc_aligned_on_numa (
+    vm, AVF_MBOX_BUF_SZ * AVF_MBOX_LEN, CLIB_CACHE_LINE_BYTES, ad->numa_node);
   if (ad->arq_bufs == 0)
     {
       error = vlib_physmem_last_error (vm);
@@ -1624,8 +1611,8 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if ((error = avf_device_init (vm, am, ad, args)))
     goto error;
 
-  if ((error = vlib_pci_register_msix_handler (vm, h, 0, 1,
-					       &avf_irq_0_handler)))
+  if ((error =
+	 vlib_pci_register_msix_handler (vm, h, 0, 1, &avf_irq_0_handler)))
     goto error;
 
   if ((error = vlib_pci_register_msix_handler (vm, h, 1, ad->n_rx_irqs,
@@ -1649,10 +1636,9 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   /* Indicate ability to support L3 DMAC filtering and
    * initialize interface to L3 non-promisc mode */
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, ad->hw_if_index);
-  hi->flags |=
-    VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER |
-    VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD |
-    VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+  hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_MAC_FILTER |
+	       VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD |
+	       VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
   ethernet_set_flags (vnm, ad->hw_if_index,
 		      ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
 
@@ -1687,13 +1673,13 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 error:
   avf_delete_if (vm, ad, /* with_barrier */ 0);
   args->rv = VNET_API_ERROR_INVALID_INTERFACE;
-  args->error = clib_error_return (error, "pci-addr %U",
-				   format_vlib_pci_addr, &args->addr);
+  args->error = clib_error_return (error, "pci-addr %U", format_vlib_pci_addr,
+				   &args->addr);
   avf_log_err (ad, "error: %U", format_clib_error, args->error);
 }
 
 static clib_error_t *
-avf_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+avf_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
 {
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
   avf_device_t *ad = avf_get_device (hi->dev_instance);
@@ -1717,7 +1703,7 @@ avf_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 }
 
 static clib_error_t *
-avf_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
+avf_interface_rx_mode_change (vnet_main_t *vnm, u32 hw_if_index, u32 qid,
 			      vnet_hw_if_rx_mode mode)
 {
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
@@ -1748,8 +1734,7 @@ avf_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
 }
 
 static void
-avf_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
-			     u32 node_index)
+avf_set_interface_next_node (vnet_main_t *vnm, u32 hw_if_index, u32 node_index)
 {
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   avf_device_t *ad = avf_get_device (hw->dev_instance);
@@ -1766,8 +1751,7 @@ avf_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
 }
 
 static clib_error_t *
-avf_add_del_mac_address (vnet_hw_interface_t * hw,
-			 const u8 * address, u8 is_add)
+avf_add_del_mac_address (vnet_hw_interface_t *hw, const u8 *address, u8 is_add)
 {
   vlib_main_t *vm = vlib_get_main ();
   avf_process_req_t req;
@@ -1781,7 +1765,7 @@ avf_add_del_mac_address (vnet_hw_interface_t * hw,
 }
 
 static char *avf_tx_func_error_strings[] = {
-#define _(n,s) s,
+#define _(n, s) s,
   foreach_avf_tx_func_error
 #undef _
 };
@@ -1790,13 +1774,12 @@ static void
 avf_clear_hw_interface_counters (u32 instance)
 {
   avf_device_t *ad = avf_get_device (instance);
-  clib_memcpy_fast (&ad->last_cleared_eth_stats,
-		    &ad->eth_stats, sizeof (ad->eth_stats));
+  clib_memcpy_fast (&ad->last_cleared_eth_stats, &ad->eth_stats,
+		    sizeof (ad->eth_stats));
 }
 
 /* *INDENT-OFF* */
-VNET_DEVICE_CLASS (avf_device_class,) =
-{
+VNET_DEVICE_CLASS (avf_device_class, ) = {
   .name = "Adaptive Virtual Function (AVF) interface",
   .clear_counters = avf_clear_hw_interface_counters,
   .format_device = format_avf_device,
@@ -1805,34 +1788,4 @@ VNET_DEVICE_CLASS (avf_device_class,) =
   .rx_mode_change_function = avf_interface_rx_mode_change,
   .rx_redirect_to_node = avf_set_interface_next_node,
   .mac_addr_add_del_function = avf_add_del_mac_address,
-  .tx_function_n_errors = AVF_TX_N_ERROR,
-  .tx_function_error_strings = avf_tx_func_error_strings,
-};
-/* *INDENT-ON* */
-
-clib_error_t *
-avf_init (vlib_main_t * vm)
-{
-  avf_main_t *am = &avf_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-
-  vec_validate_aligned (am->per_thread_data, tm->n_vlib_mains - 1,
-			CLIB_CACHE_LINE_BYTES);
-
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (avf_init) =
-{
-  .runs_after = VLIB_INITS ("pci_bus_init"),
-};
-/* *INDENT-OFF* */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+  .tx_functio

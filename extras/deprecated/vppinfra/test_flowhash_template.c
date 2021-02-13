@@ -46,7 +46,7 @@ typedef struct
 test_main_t test_main;
 
 static clib_error_t *
-test_flowhash (test_main_t * tm)
+test_flowhash (test_main_t *tm)
 {
   f64 before, delta;
   u64 total;
@@ -60,8 +60,8 @@ test_flowhash (test_main_t * tm)
   fformat (stdout, "Allocated hash memory size: %llu\n",
 	   flowhash_memory_size (tm->hash));
 
-  fformat (stdout, "Pick %lld unique %s keys...\n",
-	   tm->nitems, tm->non_random_keys ? "non-random" : "random");
+  fformat (stdout, "Pick %lld unique %s keys...\n", tm->nitems,
+	   tm->non_random_keys ? "non-random" : "random");
 
   for (i = 0; i < tm->nitems; i++)
     {
@@ -180,7 +180,7 @@ test_flowhash (test_main_t * tm)
 }
 
 clib_error_t *
-test_flowhash_main (test_main_t * tm)
+test_flowhash_main (test_main_t *tm)
 {
   unformat_input_t *i = tm->input;
   clib_error_t *error;
@@ -246,7 +246,6 @@ main (int argc, char *argv[])
   return 0;
 }
 #endif /* CLIB_UNIX */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

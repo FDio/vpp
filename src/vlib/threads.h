@@ -60,11 +60,11 @@ typedef struct vlib_thread_registration_
 #error Please increase number of per-cpu mheaps
 #endif
 
-#define VLIB_CPU_MASK (VLIB_MAX_CPUS - 1)	/* 0x3f, max */
+#define VLIB_CPU_MASK	 (VLIB_MAX_CPUS - 1) /* 0x3f, max */
 #define VLIB_OFFSET_MASK (~VLIB_CPU_MASK)
 
 #define VLIB_LOG2_THREAD_STACK_SIZE (21)
-#define VLIB_THREAD_STACK_SIZE (1<<VLIB_LOG2_THREAD_STACK_SIZE)
+#define VLIB_THREAD_STACK_SIZE	    (1 << VLIB_LOG2_THREAD_STACK_SIZE)
 
 typedef enum
 {
@@ -81,8 +81,7 @@ typedef struct
 
   /* 256 * 4 = 1024 bytes, even mult of cache line size */
   u32 buffer_index[VLIB_FRAME_SIZE];
-}
-vlib_frame_queue_elt_t;
+} vlib_frame_queue_elt_t;
 
 typedef struct
 {
@@ -92,7 +91,7 @@ typedef struct
   volatile u32 *workers_at_barrier;
 
   /* Second Cache Line */
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   void *thread_mheap;
   u8 *thread_stack;
   void (*thread_function) (void *);
@@ -128,7 +127,7 @@ typedef struct
   u32 enqueue_full_events;
 
   /* dequeue side */
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   volatile u64 head;
   u64 dequeues;
   u64 dequeue_ticks;
@@ -137,15 +136,14 @@ typedef struct
   u64 vector_threshold;
 
   /* dequeue hint to enqueue side */
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
   volatile u64 head_hint;
 
   /* read-only, constant, shared */
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline3);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline3);
   vlib_frame_queue_elt_t *elts;
   u32 nelts;
-}
-vlib_frame_queue_t;
+} vlib_frame_queue_t;
 
 typedef struct
 {
@@ -175,21 +173,20 @@ typedef struct
 } vlib_process_signal_event_mt_args_t;
 
 /* Called early, in thread 0's context */
-clib_error_t *vlib_thread_init (vlib_main_t * vm);
+clib_error_t *vlib_thread_init (vlib_main_t *vm);
 
-int vlib_frame_queue_enqueue (vlib_main_t * vm, u32 node_runtime_index,
-			      u32 frame_queue_index, vlib_frame_t * frame,
+int vlib_frame_queue_enqueue (vlib_main_t *vm, u32 node_runtime_index,
+			      u32 frame_queue_index, vlib_frame_t *frame,
 			      vlib_frame_queue_msg_type_t type);
 
-int
-vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm);
+int vlib_frame_queue_dequeue (vlib_main_t *vm, vlib_frame_queue_main_t *fqm);
 
 void vlib_worker_thread_node_runtime_update (void);
 
-void vlib_create_worker_threads (vlib_main_t * vm, int n,
+void vlib_create_worker_threads (vlib_main_t *vm, int n,
 				 void (*thread_function) (void *));
 
-void vlib_worker_thread_init (vlib_worker_thread_t * w);
+void vlib_worker_thread_init (vlib_worker_thread_t *w);
 u32 vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts);
 
 /* Check for a barrier sync request every 30ms */
@@ -202,13 +199,16 @@ u32 vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts);
 #define BARRIER_SYNC_TIMEOUT (1.0)
 #endif
 
-#define vlib_worker_thread_barrier_sync(X) {vlib_worker_thread_barrier_sync_int(X, __FUNCTION__);}
+#define vlib_worker_thread_barrier_sync(X)                                    \
+  {                                                                           \
+    vlib_worker_thread_barrier_sync_int (X, __FUNCTION__);                    \
+  }
 
-void vlib_worker_thread_barrier_sync_int (vlib_main_t * vm,
+void vlib_worker_thread_barrier_sync_int (vlib_main_t *vm,
 					  const char *func_name);
-void vlib_worker_thread_barrier_release (vlib_main_t * vm);
+void vlib_worker_thread_barrier_release (vlib_main_t *vm);
 u8 vlib_worker_thread_barrier_held (void);
-void vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t * vm);
+void vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t *vm);
 void vlib_worker_thread_node_refork (void);
 /**
  * Wait until each of the workers has been once around the track
@@ -239,39 +239,40 @@ typedef enum
 
 void vlib_worker_thread_fork_fixup (vlib_fork_fixup_t which);
 
-#define foreach_vlib_main(body)                         \
-do {                                                    \
-  vlib_main_t ** __vlib_mains = 0, *this_vlib_main;     \
-  int ii;                                               \
-                                                        \
-  for (ii = 0; ii < vec_len (vlib_mains); ii++)         \
-    {                                                   \
-      this_vlib_main = vlib_mains[ii];                  \
-      ASSERT (ii == 0 ||                                \
-	      this_vlib_main->parked_at_barrier == 1);  \
-      if (this_vlib_main)                               \
-        vec_add1 (__vlib_mains, this_vlib_main);        \
-    }                                                   \
-                                                        \
-  for (ii = 0; ii < vec_len (__vlib_mains); ii++)       \
-    {                                                   \
-      this_vlib_main = __vlib_mains[ii];                \
-      /* body uses this_vlib_main... */                 \
-      (body);                                           \
-    }                                                   \
-  vec_free (__vlib_mains);                              \
-} while (0);
+#define foreach_vlib_main(body)                                               \
+  do                                                                          \
+    {                                                                         \
+      vlib_main_t **__vlib_mains = 0, *this_vlib_main;                        \
+      int ii;                                                                 \
+                                                                              \
+      for (ii = 0; ii < vec_len (vlib_mains); ii++)                           \
+	{                                                                     \
+	  this_vlib_main = vlib_mains[ii];                                    \
+	  ASSERT (ii == 0 || this_vlib_main->parked_at_barrier == 1);         \
+	  if (this_vlib_main)                                                 \
+	    vec_add1 (__vlib_mains, this_vlib_main);                          \
+	}                                                                     \
+                                                                              \
+      for (ii = 0; ii < vec_len (__vlib_mains); ii++)                         \
+	{                                                                     \
+	  this_vlib_main = __vlib_mains[ii];                                  \
+	  /* body uses this_vlib_main... */                                   \
+	  (body);                                                             \
+	}                                                                     \
+      vec_free (__vlib_mains);                                                \
+    }                                                                         \
+  while (0);
 
-#define foreach_sched_policy \
-  _(SCHED_OTHER, OTHER, "other") \
-  _(SCHED_BATCH, BATCH, "batch") \
-  _(SCHED_IDLE, IDLE, "idle")   \
-  _(SCHED_FIFO, FIFO, "fifo")   \
-  _(SCHED_RR, RR, "rr")
+#define foreach_sched_policy                                                  \
+  _ (SCHED_OTHER, OTHER, "other")                                             \
+  _ (SCHED_BATCH, BATCH, "batch")                                             \
+  _ (SCHED_IDLE, IDLE, "idle")                                                \
+  _ (SCHED_FIFO, FIFO, "fifo")                                                \
+  _ (SCHED_RR, RR, "rr")
 
 typedef enum
 {
-#define _(v,f,s) SCHED_POLICY_##f = v,
+#define _(v, f, s) SCHED_POLICY_##f = v,
   foreach_sched_policy
 #undef _
     SCHED_POLICY_N,
@@ -279,7 +280,7 @@ typedef enum
 
 typedef struct
 {
-  clib_error_t *(*vlib_launch_thread_cb) (void *fp, vlib_worker_thread_t * w,
+  clib_error_t *(*vlib_launch_thread_cb) (void *fp, vlib_worker_thread_t *w,
 					  unsigned cpu_id);
   clib_error_t *(*vlib_thread_set_lcore_cb) (u32 thread, u16 cpu);
 } vlib_thread_callbacks_t;
@@ -354,24 +355,24 @@ extern vlib_thread_main_t vlib_thread_main;
 
 #include <vlib/global_funcs.h>
 
-#define VLIB_REGISTER_THREAD(x,...)                     \
-  __VA_ARGS__ vlib_thread_registration_t x;             \
-static void __vlib_add_thread_registration_##x (void)   \
-  __attribute__((__constructor__)) ;                    \
-static void __vlib_add_thread_registration_##x (void)   \
-{                                                       \
-  vlib_thread_main_t * tm = &vlib_thread_main;          \
-  x.next = tm->next;                                    \
-  tm->next = &x;                                        \
-}                                                       \
-static void __vlib_rm_thread_registration_##x (void)    \
-  __attribute__((__destructor__)) ;                     \
-static void __vlib_rm_thread_registration_##x (void)    \
-{                                                       \
-  vlib_thread_main_t * tm = &vlib_thread_main;          \
-  VLIB_REMOVE_FROM_LINKED_LIST (tm->next, &x, next);    \
-}                                                       \
-__VA_ARGS__ vlib_thread_registration_t x
+#define VLIB_REGISTER_THREAD(x, ...)                                          \
+  __VA_ARGS__ vlib_thread_registration_t x;                                   \
+  static void __vlib_add_thread_registration_##x (void)                       \
+    __attribute__ ((__constructor__));                                        \
+  static void __vlib_add_thread_registration_##x (void)                       \
+  {                                                                           \
+    vlib_thread_main_t *tm = &vlib_thread_main;                               \
+    x.next = tm->next;                                                        \
+    tm->next = &x;                                                            \
+  }                                                                           \
+  static void __vlib_rm_thread_registration_##x (void)                        \
+    __attribute__ ((__destructor__));                                         \
+  static void __vlib_rm_thread_registration_##x (void)                        \
+  {                                                                           \
+    vlib_thread_main_t *tm = &vlib_thread_main;                               \
+    VLIB_REMOVE_FROM_LINKED_LIST (tm->next, &x, next);                        \
+  }                                                                           \
+  __VA_ARGS__ vlib_thread_registration_t x
 
 always_inline u32
 vlib_num_workers ()
@@ -408,25 +409,23 @@ vlib_worker_thread_barrier_check (void)
 
       if (PREDICT_FALSE (vec_len (vm->barrier_perf_callbacks) != 0))
 	clib_call_callbacks (vm->barrier_perf_callbacks, vm,
-			     vm->clib_time.last_cpu_time, 0 /* enter */ );
+			     vm->clib_time.last_cpu_time, 0 /* enter */);
 
       if (PREDICT_FALSE (vlib_worker_threads->barrier_elog_enabled))
 	{
 	  vlib_worker_thread_t *w = vlib_worker_threads + thread_index;
-	  /* *INDENT-OFF* */
+
 	  ELOG_TYPE_DECLARE (e) = {
 	    .format = "barrier-wait-thread-%d",
 	    .format_args = "i4",
 	  };
-	  /* *INDENT-ON* */
 
 	  struct
 	  {
 	    u32 thread_index;
 	  } __clib_packed *ed;
 
-	  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
-				w->elog_track);
+	  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
 	  ed->thread_index = thread_index;
 	}
 
@@ -463,12 +462,11 @@ vlib_worker_thread_barrier_check (void)
 	    {
 	      t = vlib_time_now (vm) - t;
 	      vlib_worker_thread_t *w = vlib_worker_threads + thread_index;
-              /* *INDENT-OFF* */
-              ELOG_TYPE_DECLARE (e) = {
-                .format = "barrier-refork-thread-%d",
-                .format_args = "i4",
-              };
-              /* *INDENT-ON* */
+
+	      ELOG_TYPE_DECLARE (e) = {
+		.format = "barrier-refork-thread-%d",
+		.format_args = "i4",
+	      };
 
 	      struct
 	      {
@@ -490,12 +488,11 @@ vlib_worker_thread_barrier_check (void)
 	{
 	  t = vlib_time_now (vm) - t;
 	  vlib_worker_thread_t *w = vlib_worker_threads + thread_index;
-	  /* *INDENT-OFF* */
+
 	  ELOG_TYPE_DECLARE (e) = {
 	    .format = "barrier-released-thread-%d: %dus",
 	    .format_args = "i4i4",
 	  };
-	  /* *INDENT-ON* */
 
 	  struct
 	  {
@@ -503,15 +500,14 @@ vlib_worker_thread_barrier_check (void)
 	    u32 duration;
 	  } __clib_packed *ed;
 
-	  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
-				w->elog_track);
+	  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
 	  ed->thread_index = thread_index;
 	  ed->duration = (int) (1000000.0 * t);
 	}
 
       if (PREDICT_FALSE (vec_len (vm->barrier_perf_callbacks) != 0))
 	clib_call_callbacks (vm->barrier_perf_callbacks, vm,
-			     vm->clib_time.last_cpu_time, 1 /* leave */ );
+			     vm->clib_time.last_cpu_time, 1 /* leave */);
     }
 }
 
@@ -529,13 +525,12 @@ vlib_get_worker_vlib_main (u32 worker_index)
 static inline u8
 vlib_thread_is_main_w_barrier (void)
 {
-  return (!vlib_num_workers ()
-	  || ((vlib_get_thread_index () == 0
-	       && vlib_worker_threads->wait_at_barrier[0])));
+  return (!vlib_num_workers () || ((vlib_get_thread_index () == 0 &&
+				    vlib_worker_threads->wait_at_barrier[0])));
 }
 
 static inline void
-vlib_put_frame_queue_elt (vlib_frame_queue_elt_t * hf)
+vlib_put_frame_queue_elt (vlib_frame_queue_elt_t *hf)
 {
   CLIB_MEMORY_BARRIER ();
   hf->valid = 1;
@@ -573,11 +568,9 @@ vlib_get_frame_queue_elt (u32 frame_queue_index, u32 index)
 }
 
 static inline vlib_frame_queue_t *
-is_vlib_frame_queue_congested (u32 frame_queue_index,
-			       u32 index,
-			       u32 queue_hi_thresh,
-			       vlib_frame_queue_t **
-			       handoff_queue_by_worker_index)
+is_vlib_frame_queue_congested (
+  u32 frame_queue_index, u32 index, u32 queue_hi_thresh,
+  vlib_frame_queue_t **handoff_queue_by_worker_index)
 {
   vlib_frame_queue_t *fq;
   vlib_thread_main_t *tm = &vlib_thread_main;
@@ -605,10 +598,9 @@ is_vlib_frame_queue_congested (u32 frame_queue_index,
 }
 
 static inline vlib_frame_queue_elt_t *
-vlib_get_worker_handoff_queue_elt (u32 frame_queue_index,
-				   u32 vlib_worker_index,
-				   vlib_frame_queue_elt_t **
-				   handoff_queue_elt_by_worker_index)
+vlib_get_worker_handoff_queue_elt (
+  u32 frame_queue_index, u32 vlib_worker_index,
+  vlib_frame_queue_elt_t **handoff_queue_elt_by_worker_index)
 {
   vlib_frame_queue_elt_t *elt;
 
@@ -624,14 +616,13 @@ vlib_get_worker_handoff_queue_elt (u32 frame_queue_index,
 
 u8 *vlib_thread_stack_init (uword thread_index);
 int vlib_thread_cb_register (struct vlib_main_t *vm,
-			     vlib_thread_callbacks_t * cb);
+			     vlib_thread_callbacks_t *cb);
 extern void *rpc_call_main_thread_cb_fn;
 
-void
-vlib_process_signal_event_mt_helper (vlib_process_signal_event_mt_args_t *
-				     args);
-void vlib_rpc_call_main_thread (void *function, u8 * args, u32 size);
-void vlib_get_thread_core_numa (vlib_worker_thread_t * w, unsigned cpu_id);
+void vlib_process_signal_event_mt_helper (
+  vlib_process_signal_event_mt_args_t *args);
+void vlib_rpc_call_main_thread (void *function, u8 *args, u32 size);
+void vlib_get_thread_core_numa (vlib_worker_thread_t *w, unsigned cpu_id);
 vlib_thread_main_t *vlib_get_thread_main_not_inline (void);
 
 #endif /* included_vlib_threads_h */

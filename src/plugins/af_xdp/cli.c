@@ -27,14 +27,14 @@
 #include <af_xdp/af_xdp.h>
 
 static clib_error_t *
-af_xdp_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			  vlib_cli_command_t * cmd)
+af_xdp_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   af_xdp_create_if_args_t args;
 
   if (!unformat_user (input, unformat_af_xdp_create_if_args, &args))
-    return clib_error_return (0, "unknown input `%U'",
-			      format_unformat_error, input);
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
+			      input);
 
   af_xdp_create_if (vm, &args);
 
@@ -44,17 +44,17 @@ af_xdp_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return args.error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (af_xdp_create_command, static) = {
   .path = "create interface af_xdp",
-  .short_help = "create interface af_xdp <host-if linux-ifname> [name ifname] [rx-queue-size size] [tx-queue-size size] [num-rx-queues <num|all>] [prog pathname] [zero-copy|no-zero-copy]",
+  .short_help = "create interface af_xdp <host-if linux-ifname> [name ifname] "
+		"[rx-queue-size size] [tx-queue-size size] [num-rx-queues "
+		"<num|all>] [prog pathname] [zero-copy|no-zero-copy]",
   .function = af_xdp_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-af_xdp_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			  vlib_cli_command_t * cmd)
+af_xdp_delete_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
@@ -71,8 +71,8 @@ af_xdp_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "sw_if_index %d", &sw_if_index))
 	;
-      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
@@ -95,17 +95,15 @@ af_xdp_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (af_xdp_delete_command, static) = {
   .path = "delete interface af_xdp",
   .short_help = "delete interface af_xdp "
-    "{<interface> | sw_if_index <sw_idx>}",
+		"{<interface> | sw_if_index <sw_idx>}",
   .function = af_xdp_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-af_xdp_cli_init (vlib_main_t * vm)
+af_xdp_cli_init (vlib_main_t *vm)
 {
   return 0;
 }

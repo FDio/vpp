@@ -19,7 +19,7 @@
 #include <vlibmemory/api.h>
 #include <vppinfra/error.h>
 
-uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
+uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
 
 /* Declare message IDs */
 #include <cdp/cdp.api_enum.h>
@@ -41,11 +41,11 @@ cdp_test_main_t cdp_test_main;
  * Table of message reply handlers, must include boilerplate handlers
  * we just generated
  */
-#define foreach_vpe_api_reply_msg                                       \
-_(CDP_ENABLE_DISABLE_REPLY, cdp_enable_disable_reply)
+#define foreach_vpe_api_reply_msg                                             \
+  _ (CDP_ENABLE_DISABLE_REPLY, cdp_enable_disable_reply)
 
 static int
-api_cdp_enable_disable (vat_main_t * vam)
+api_cdp_enable_disable (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   int enable_disable = 1;

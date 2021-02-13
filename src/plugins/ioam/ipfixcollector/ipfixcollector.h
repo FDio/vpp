@@ -23,10 +23,10 @@
 #define IPFIX_COLLECTOR_CLIENT_NAME_MAX 64
 
 #define IPFIX_COLLECTOR_ERR_INVALID_PARAM -1
-#define IPFIX_COLLECTOR_ERR_REG_EXISTS -2
+#define IPFIX_COLLECTOR_ERR_REG_EXISTS	  -2
 
 /** @brief Structure other nodes to use for registering with IP-FIX collector.
-*/
+ */
 typedef struct
 {
   /** String containing name of the client interested in getting
@@ -49,7 +49,7 @@ typedef struct
 typedef struct
 {
   /** String containing name of the client interested in getting
-        ip-fix packets. */
+	ip-fix packets. */
   u8 *client_name;
 
   /** Node index where packets have to be redirected. */
@@ -94,14 +94,13 @@ extern ipfix_collector_main_t ipfix_collector_main;
  * @param vm Vlib main of the graph node which is interested in
  *                    getting IP-Fix packet.
  * @param info Structure describing the client node which
- *                               is interested in getting the IP-Fix packets for
- *                               a SetID.
+ *                               is interested in getting the IP-Fix packets
+ * for a SetID.
  *
  * @returns 0 on success.
  * @returns Error codes(<0) otherwise.
  */
-int
-ipfix_collector_reg_setid (vlib_main_t * vm, ipfix_client_add_del_t * info);
+int ipfix_collector_reg_setid (vlib_main_t *vm, ipfix_client_add_del_t *info);
 
 always_inline ipfix_client *
 ipfix_collector_get_client (u16 set_id)

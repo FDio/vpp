@@ -46,7 +46,7 @@ cj_log (u32 type, void *data0, void *data1)
 
   new_tail = clib_atomic_add_fetch (&cjm->tail, 1);
 
-  r = (cj_record_t *) & (cjm->records[new_tail & (cjm->num_records - 1)]);
+  r = (cj_record_t *) &(cjm->records[new_tail & (cjm->num_records - 1)]);
   r->time = vlib_time_now (cjm->vlib_main);
   r->thread_index = vlib_get_thread_index ();
   r->type = type;
@@ -62,9 +62,8 @@ cj_stop (void)
   cjm->enable = 0;
 }
 
-
 clib_error_t *
-cj_init (vlib_main_t * vm)
+cj_init (vlib_main_t *vm)
 {
   cj_main_t *cjm = &cj_main;
 
@@ -75,7 +74,7 @@ cj_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (cj_init);
 
 static clib_error_t *
-cj_config (vlib_main_t * vm, unformat_input_t * input)
+cj_config (vlib_main_t *vm, unformat_input_t *input)
 {
   cj_main_t *cjm = &cj_main;
   int matched = 0;
@@ -130,17 +129,16 @@ cj_enable_disable (int is_enable)
 }
 
 static inline void
-cj_dump_one_record (cj_record_t * r)
+cj_dump_one_record (cj_record_t *r)
 {
-  fprintf (stderr, "[%d]: %10.6f T%02d %llx %llx\n",
-	   r->thread_index, r->time, r->type,
-	   (long long unsigned int) r->data[0],
+  fprintf (stderr, "[%d]: %10.6f T%02d %llx %llx\n", r->thread_index, r->time,
+	   r->type, (long long unsigned int) r->data[0],
 	   (long long unsigned int) r->data[1]);
 }
 
 static void
-cj_dump_internal (u8 filter0_enable, u64 filter0,
-		  u8 filter1_enable, u64 filter1)
+cj_dump_internal (u8 filter0_enable, u64 filter0, u8 filter1_enable,
+		  u64 filter1)
 {
   cj_main_t *cjm = &cj_main;
   cj_record_t *r;
@@ -152,7 +150,7 @@ cj_dump_internal (u8 filter0_enable, u64 filter0,
       return;
     }
 
-  if (cjm->tail == (u64) ~ 0)
+  if (cjm->tail == (u64) ~0)
     {
       fprintf (stderr, "No data collected...\n");
       return;
@@ -162,7 +160,7 @@ cj_dump_internal (u8 filter0_enable, u64 filter0,
   index = (cjm->tail + 1) & (cjm->num_records - 1);
   r = &(cjm->records[index]);
 
-  if (r->thread_index != (u32) ~ 0)
+  if (r->thread_index != (u32) ~0)
     {
       /* Yes, dump from tail + 1 to the end */
       for (i = index; i < cjm->num_records; i++)
@@ -199,13 +197,13 @@ cj_dump (void)
 void
 cj_dump_filter_data0 (u64 filter0)
 {
-  cj_dump_internal (1 /* enable f0 */ , filter0, 0, 0);
+  cj_dump_internal (1 /* enable f0 */, filter0, 0, 0);
 }
 
 void
 cj_dump_filter_data1 (u64 filter1)
 {
-  cj_dump_internal (0, 0, 1 /* enable f1 */ , filter1);
+  cj_dump_internal (0, 0, 1 /* enable f1 */, filter1);
 }
 
 void
@@ -215,8 +213,8 @@ cj_dump_filter_data12 (u64 filter0, u64 filter1)
 }
 
 static clib_error_t *
-cj_command_fn (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+cj_command_fn (vlib_main_t *vm, unformat_input_t *input,
+	       vlib_cli_command_t *cmd)
 {
   int is_enable = -1;
   int is_dump = -1;
@@ -231,8 +229,8 @@ cj_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "enable") || unformat (line_input, "on"))
 	is_enable = 1;
-      else if (unformat (line_input, "disable")
-	       || unformat (line_input, "off"))
+      else if (unformat (line_input, "disable") ||
+	       unformat (line_input, "off"))
 	is_enable = 0;
       else if (unformat (line_input, "dump"))
 	is_dump = 1;
@@ -266,14 +264,11 @@ done:
  * this is typically the same place as the Debug CLI.
 ?*/
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cj_command,static) = {
+VLIB_CLI_COMMAND (cj_command, static) = {
   .path = "cj",
   .short_help = "cj <enable | disable | dump>",
   .function = cj_command_fn,
 };
-/* *INDENT-ON* */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

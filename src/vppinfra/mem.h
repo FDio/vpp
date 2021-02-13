@@ -42,17 +42,17 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
-#include <vppinfra/clib.h>	/* uword, etc */
+#include <vppinfra/clib.h> /* uword, etc */
 #include <vppinfra/clib_error.h>
 
 #include <vppinfra/os.h>
-#include <vppinfra/string.h>	/* memcpy, clib_memset */
+#include <vppinfra/string.h> /* memcpy, clib_memset */
 #include <vppinfra/sanitizer.h>
 
-#define CLIB_MAX_MHEAPS 256
-#define CLIB_MAX_NUMAS 16
+#define CLIB_MAX_MHEAPS	       256
+#define CLIB_MAX_NUMAS	       16
 #define CLIB_MEM_VM_MAP_FAILED ((void *) ~0)
-#define CLIB_MEM_ERROR (-1)
+#define CLIB_MEM_ERROR	       (-1)
 
 typedef enum
 {
@@ -93,9 +93,9 @@ typedef struct _clib_mem_vm_map_hdr
   struct _clib_mem_vm_map_hdr *prev, *next;
 } clib_mem_vm_map_hdr_t;
 
-#define foreach_clib_mem_heap_flag \
-  _(0, LOCKED, "locked") \
-  _(1, UNMAP_ON_DESTROY, "unmap-on-destroy")
+#define foreach_clib_mem_heap_flag                                            \
+  _ (0, LOCKED, "locked")                                                     \
+  _ (1, UNMAP_ON_DESTROY, "unmap-on-destroy")
 
 typedef enum
 {
@@ -116,10 +116,10 @@ typedef struct
   uword size;
 
   /* page size (log2) */
-  clib_mem_page_sz_t log2_page_sz:8;
+  clib_mem_page_sz_t log2_page_sz : 8;
 
   /* flags */
-  clib_mem_heap_flag_t flags:8;
+  clib_mem_heap_flag_t flags : 8;
 
   /* name - _MUST_ be last */
   char name[0];
@@ -201,8 +201,8 @@ clib_mem_set_thread_index (void)
   if (__os_thread_index != 0)
     return;
   for (i = 0; i < ARRAY_LEN (clib_mem_main.per_cpu_mheaps); i++)
-    if (clib_atomic_bool_cmp_and_swap (&clib_mem_main.per_cpu_mheaps[i],
-				       0, clib_mem_main.per_cpu_mheaps[0]))
+    if (clib_atomic_bool_cmp_and_swap (&clib_mem_main.per_cpu_mheaps[i], 0,
+				       clib_mem_main.per_cpu_mheaps[0]))
       {
 	os_set_thread_index (i);
 	break;
@@ -280,24 +280,23 @@ clib_mem_alloc_aligned_or_null (uword size, uword align)
 					   /* os_out_of_memory */ 0);
 }
 
-
-
 /* Memory allocator which panics when it fails.
    Use macro so that clib_panic macro can expand __FUNCTION__ and __LINE__. */
-#define clib_mem_alloc_aligned_no_fail(size,align)				\
-({										\
-  uword _clib_mem_alloc_size = (size);						\
-  void * _clib_mem_alloc_p;							\
-  _clib_mem_alloc_p = clib_mem_alloc_aligned (_clib_mem_alloc_size, (align));	\
-  if (! _clib_mem_alloc_p)							\
-    clib_panic ("failed to allocate %d bytes", _clib_mem_alloc_size);		\
-  _clib_mem_alloc_p;								\
-})
+#define clib_mem_alloc_aligned_no_fail(size, align)                           \
+  ({                                                                          \
+    uword _clib_mem_alloc_size = (size);                                      \
+    void *_clib_mem_alloc_p;                                                  \
+    _clib_mem_alloc_p =                                                       \
+      clib_mem_alloc_aligned (_clib_mem_alloc_size, (align));                 \
+    if (!_clib_mem_alloc_p)                                                   \
+      clib_panic ("failed to allocate %d bytes", _clib_mem_alloc_size);       \
+    _clib_mem_alloc_p;                                                        \
+  })
 
-#define clib_mem_alloc_no_fail(size) clib_mem_alloc_aligned_no_fail(size,1)
+#define clib_mem_alloc_no_fail(size) clib_mem_alloc_aligned_no_fail (size, 1)
 
 /* Alias to stack allocator for naming consistency. */
-#define clib_mem_alloc_stack(bytes) __builtin_alloca(bytes)
+#define clib_mem_alloc_stack(bytes) __builtin_alloca (bytes)
 
 always_inline uword
 clib_mem_is_heap_object (void *p)
@@ -362,12 +361,12 @@ clib_mem_get_heap (void)
 }
 
 always_inline clib_mem_heap_t *
-clib_mem_set_heap (clib_mem_heap_t * heap)
+clib_mem_set_heap (clib_mem_heap_t *heap)
 {
   return clib_mem_set_per_cpu_heap (heap);
 }
 
-void clib_mem_destroy_heap (clib_mem_heap_t * heap);
+void clib_mem_destroy_heap (clib_mem_heap_t *heap);
 clib_mem_heap_t *clib_mem_create_heap (void *base, uword size, int is_locked,
 				       char *fmt, ...);
 
@@ -408,16 +407,15 @@ typedef struct
   uword bytes_max;
 } clib_mem_usage_t;
 
-void clib_mem_get_heap_usage (clib_mem_heap_t * heap,
-			      clib_mem_usage_t * usage);
+void clib_mem_get_heap_usage (clib_mem_heap_t *heap, clib_mem_usage_t *usage);
 
-void *clib_mem_get_heap_base (clib_mem_heap_t * heap);
-uword clib_mem_get_heap_size (clib_mem_heap_t * heap);
-uword clib_mem_get_heap_free_space (clib_mem_heap_t * heap);
+void *clib_mem_get_heap_base (clib_mem_heap_t *heap);
+uword clib_mem_get_heap_size (clib_mem_heap_t *heap);
+uword clib_mem_get_heap_free_space (clib_mem_heap_t *heap);
 
-u8 *format_clib_mem_usage (u8 * s, va_list * args);
-u8 *format_clib_mem_heap (u8 * s, va_list * va);
-u8 *format_clib_mem_page_stats (u8 * s, va_list * va);
+u8 *format_clib_mem_usage (u8 *s, va_list *args);
+u8 *format_clib_mem_heap (u8 *s, va_list *va);
+u8 *format_clib_mem_page_stats (u8 *s, va_list *va);
 
 /* Allocate virtual address space. */
 always_inline void *
@@ -455,8 +453,8 @@ void *clib_mem_vm_map_stack (uword size, clib_mem_page_sz_t log2_page_size,
 void *clib_mem_vm_map_shared (void *start, uword size, int fd, uword offset,
 			      char *fmt, ...);
 int clib_mem_vm_unmap (void *base);
-clib_mem_vm_map_hdr_t *clib_mem_vm_get_next_map_hdr (clib_mem_vm_map_hdr_t *
-						     hdr);
+clib_mem_vm_map_hdr_t *
+clib_mem_vm_get_next_map_hdr (clib_mem_vm_map_hdr_t *hdr);
 
 static_always_inline clib_mem_page_sz_t
 clib_mem_get_log2_page_size (void)
@@ -487,9 +485,9 @@ u64 *clib_mem_vm_get_paddr (void *mem, clib_mem_page_sz_t log2_page_size,
 void clib_mem_destroy (void);
 int clib_mem_set_numa_affinity (u8 numa_node, int force);
 int clib_mem_set_default_numa_affinity ();
-void clib_mem_vm_randomize_va (uword * requested_va,
+void clib_mem_vm_randomize_va (uword *requested_va,
 			       clib_mem_page_sz_t log2_page_size);
-void mheap_trace (clib_mem_heap_t * v, int enable);
+void mheap_trace (clib_mem_heap_t *v, int enable);
 uword clib_mem_trace_enable_disable (uword enable);
 void clib_mem_trace (int enable);
 
@@ -517,7 +515,7 @@ typedef struct
 } clib_mem_page_stats_t;
 
 void clib_mem_get_page_stats (void *start, clib_mem_page_sz_t log2_page_size,
-			      uword n_pages, clib_mem_page_stats_t * stats);
+			      uword n_pages, clib_mem_page_stats_t *stats);
 
 static_always_inline int
 vlib_mem_get_next_numa_node (int numa)
@@ -565,7 +563,7 @@ void *clib_mem_bulk_alloc (clib_mem_bulk_handle_t h);
 void clib_mem_bulk_free (clib_mem_bulk_handle_t h, void *p);
 u8 *format_clib_mem_bulk (u8 *s, va_list *args);
 
-#include <vppinfra/error.h>	/* clib_panic */
+#include <vppinfra/error.h> /* clib_panic */
 
 #endif /* _included_clib_mem_h */
 

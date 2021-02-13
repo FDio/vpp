@@ -41,15 +41,15 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/uio.h>		/* writev */
+#include <sys/uio.h> /* writev */
 #include <fcntl.h>
-#include <stdio.h>		/* for sprintf */
+#include <stdio.h> /* for sprintf */
 
 __clib_export __thread uword __os_thread_index = 0;
 __clib_export __thread uword __os_numa_index = 0;
 
 clib_error_t *
-clib_file_n_bytes (char *file, uword * result)
+clib_file_n_bytes (char *file, uword *result)
 {
   struct stat s;
 
@@ -65,7 +65,7 @@ clib_file_n_bytes (char *file, uword * result)
 }
 
 clib_error_t *
-clib_file_read_contents (char *file, u8 * result, uword n_bytes)
+clib_file_read_contents (char *file, u8 *result, uword n_bytes)
 {
   int fd = -1;
   uword n_done, n_left;
@@ -96,10 +96,9 @@ clib_file_read_contents (char *file, u8 * result, uword n_bytes)
 
   if (n_left > 0)
     {
-      error =
-	clib_error_return (0,
-			   " `%s' expected to read %wd bytes; read only %wd",
-			   file, n_bytes, n_bytes - n_left);
+      error = clib_error_return (
+	0, " `%s' expected to read %wd bytes; read only %wd", file, n_bytes,
+	n_bytes - n_left);
       goto done;
     }
 
@@ -109,7 +108,7 @@ done:
 }
 
 __clib_export clib_error_t *
-clib_file_contents (char *file, u8 ** result)
+clib_file_contents (char *file, u8 **result)
 {
   uword n_bytes;
   clib_error_t *error = 0;
@@ -132,7 +131,7 @@ clib_file_contents (char *file, u8 ** result)
 }
 
 clib_error_t *
-unix_proc_file_contents (char *file, u8 ** result)
+unix_proc_file_contents (char *file, u8 **result)
 {
   u8 *rv = 0;
   uword pos;
@@ -185,11 +184,11 @@ os_exit (int code)
   exit (code);
 }
 
-void os_puts (u8 * string, uword string_length, uword is_error)
+void os_puts (u8 *string, uword string_length, uword is_error)
   __attribute__ ((weak));
 
 void
-os_puts (u8 * string, uword string_length, uword is_error)
+os_puts (u8 *string, uword string_length, uword is_error)
 {
   int cpu = os_get_thread_index ();
   int nthreads = os_get_nthreads ();

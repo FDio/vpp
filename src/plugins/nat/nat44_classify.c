@@ -24,21 +24,21 @@
 #include <nat/nat_inlines.h>
 #include <nat/nat44/ed_inlines.h>
 
-#define foreach_nat44_classify_error                      \
-_(NEXT_IN2OUT, "next in2out")                             \
-_(NEXT_OUT2IN, "next out2in")                             \
-_(FRAG_CACHED, "fragment cached")
+#define foreach_nat44_classify_error                                          \
+  _ (NEXT_IN2OUT, "next in2out")                                              \
+  _ (NEXT_OUT2IN, "next out2in")                                              \
+  _ (FRAG_CACHED, "fragment cached")
 
 typedef enum
 {
-#define _(sym,str) NAT44_CLASSIFY_ERROR_##sym,
+#define _(sym, str) NAT44_CLASSIFY_ERROR_##sym,
   foreach_nat44_classify_error
 #undef _
     NAT44_CLASSIFY_N_ERROR,
 } nat44_classify_error_t;
 
 static char *nat44_classify_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_nat44_classify_error
 #undef _
 };
@@ -58,7 +58,7 @@ typedef struct
 } nat44_classify_trace_t;
 
 static u8 *
-format_nat44_classify_trace (u8 * s, va_list * args)
+format_nat44_classify_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -77,9 +77,8 @@ format_nat44_classify_trace (u8 * s, va_list * args)
 }
 
 static inline uword
-nat44_classify_node_fn_inline (vlib_main_t * vm,
-			       vlib_node_runtime_t * node,
-			       vlib_frame_t * frame)
+nat44_classify_node_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+			       vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   nat44_classify_next_t next_index;
@@ -117,16 +116,14 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ip0 = vlib_buffer_get_current (b0);
 
-          /* *INDENT-OFF* */
-          vec_foreach (ap, sm->addresses)
-            {
-              if (ip0->dst_address.as_u32 == ap->addr.as_u32)
-                {
-                  next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
-                  goto enqueue0;
-                }
-            }
-          /* *INDENT-ON* */
+	  vec_foreach (ap, sm->addresses)
+	    {
+	      if (ip0->dst_address.as_u32 == ap->addr.as_u32)
+		{
+		  next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
+		  goto enqueue0;
+		}
+	    }
 
 	  if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
 	    {
@@ -143,8 +140,8 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 	      init_nat_k (&kv0, ip0->dst_address,
 			  vnet_buffer (b0)->ip.reass.l4_dst_port, 0,
 			  ip_proto_to_nat_proto (ip0->protocol));
-	      if (!clib_bihash_search_8_8
-		  (&sm->static_mapping_by_external, &kv0, &value0))
+	      if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external,
+					   &kv0, &value0))
 		{
 		  m = pool_elt_at_index (sm->static_mappings, value0.value);
 		  if (m->local_addr.as_u32 != m->external_addr.as_u32)
@@ -153,8 +150,8 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 	    }
 
 	enqueue0:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      nat44_classify_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -166,9 +163,8 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 	  next_out2in += next0 == NAT44_CLASSIFY_NEXT_OUT2IN;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -182,9 +178,9 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 }
 
 static inline uword
-nat44_handoff_classify_node_fn_inline (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * frame)
+nat44_handoff_classify_node_fn_inline (vlib_main_t *vm,
+				       vlib_node_runtime_t *node,
+				       vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   nat44_classify_next_t next_index;
@@ -222,16 +218,14 @@ nat44_handoff_classify_node_fn_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ip0 = vlib_buffer_get_current (b0);
 
-          /* *INDENT-OFF* */
-          vec_foreach (ap, sm->addresses)
-            {
-              if (ip0->dst_address.as_u32 == ap->addr.as_u32)
-                {
-                  next0 = NAT_NEXT_OUT2IN_CLASSIFY;
-                  goto enqueue0;
-                }
-            }
-          /* *INDENT-ON* */
+	  vec_foreach (ap, sm->addresses)
+	    {
+	      if (ip0->dst_address.as_u32 == ap->addr.as_u32)
+		{
+		  next0 = NAT_NEXT_OUT2IN_CLASSIFY;
+		  goto enqueue0;
+		}
+	    }
 
 	  if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
 	    {
@@ -248,8 +242,8 @@ nat44_handoff_classify_node_fn_inline (vlib_main_t * vm,
 	      init_nat_k (&kv0, ip0->dst_address,
 			  vnet_buffer (b0)->ip.reass.l4_dst_port, 0,
 			  ip_proto_to_nat_proto (ip0->protocol));
-	      if (!clib_bihash_search_8_8
-		  (&sm->static_mapping_by_external, &kv0, &value0))
+	      if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external,
+					   &kv0, &value0))
 		{
 		  m = pool_elt_at_index (sm->static_mappings, value0.value);
 		  if (m->local_addr.as_u32 != m->external_addr.as_u32)
@@ -258,8 +252,8 @@ nat44_handoff_classify_node_fn_inline (vlib_main_t * vm,
 	    }
 
 	enqueue0:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      nat44_classify_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -271,9 +265,8 @@ nat44_handoff_classify_node_fn_inline (vlib_main_t * vm,
 	  next_out2in += next0 == NAT_NEXT_OUT2IN_CLASSIFY;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -287,9 +280,8 @@ nat44_handoff_classify_node_fn_inline (vlib_main_t * vm,
 }
 
 static inline uword
-nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * frame)
+nat44_ed_classify_node_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+				  vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   nat44_classify_next_t next_index;
@@ -337,14 +329,13 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	    {
 	      /* process leading fragment/whole packet (with L4 header) */
 	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	      rx_fib_index0 =
-		fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
-						     sw_if_index0);
+	      rx_fib_index0 = fib_table_get_index_for_sw_if_index (
+		FIB_PROTOCOL_IP4, sw_if_index0);
 	      init_ed_k (&ed_kv0, ip0->src_address,
 			 vnet_buffer (b0)->ip.reass.l4_src_port,
 			 ip0->dst_address,
-			 vnet_buffer (b0)->ip.reass.l4_dst_port,
-			 rx_fib_index0, ip0->protocol);
+			 vnet_buffer (b0)->ip.reass.l4_dst_port, rx_fib_index0,
+			 ip0->protocol);
 	      /* process whole packet */
 	      if (!clib_bihash_search_16_8 (&sm->flow_hash, &ed_kv0,
 					    &ed_value0))
@@ -374,16 +365,14 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	      /* session doesn't exist so continue in code */
 	    }
 
-          /* *INDENT-OFF* */
-          vec_foreach (ap, sm->addresses)
-            {
-              if (ip0->dst_address.as_u32 == ap->addr.as_u32)
-                {
-                  next0 = NAT_NEXT_OUT2IN_ED_FAST_PATH;
-                  goto enqueue0;
-                }
-            }
-          /* *INDENT-ON* */
+	  vec_foreach (ap, sm->addresses)
+	    {
+	      if (ip0->dst_address.as_u32 == ap->addr.as_u32)
+		{
+		  next0 = NAT_NEXT_OUT2IN_ED_FAST_PATH;
+		  goto enqueue0;
+		}
+	    }
 
 	  if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
 	    {
@@ -400,8 +389,8 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	      init_nat_k (&kv0, ip0->dst_address,
 			  vnet_buffer (b0)->ip.reass.l4_dst_port, 0,
 			  ip_proto_to_nat_proto (ip0->protocol));
-	      if (!clib_bihash_search_8_8
-		  (&sm->static_mapping_by_external, &kv0, &value0))
+	      if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external,
+					   &kv0, &value0))
 		{
 		  m = pool_elt_at_index (sm->static_mappings, value0.value);
 		  if (m->local_addr.as_u32 != m->external_addr.as_u32)
@@ -410,8 +399,8 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	    }
 
 	enqueue0:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      nat44_classify_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -423,9 +412,8 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
 	  next_out2in += next0 == NAT_NEXT_OUT2IN_ED_FAST_PATH;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -438,14 +426,12 @@ nat44_ed_classify_node_fn_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (nat44_classify_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return nat44_classify_node_fn_inline (vm, node, frame);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_classify_node) = {
   .name = "nat44-classify",
   .vector_size = sizeof (u32),
@@ -460,16 +446,13 @@ VLIB_REGISTER_NODE (nat44_classify_node) = {
     [NAT44_CLASSIFY_NEXT_DROP] = "error-drop",
   },
 };
-/* *INDENT-ON* */
 
-VLIB_NODE_FN (nat44_ed_classify_node) (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_ed_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return nat44_ed_classify_node_fn_inline (vm, node, frame);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_ed_classify_node) = {
   .name = "nat44-ed-classify",
   .vector_size = sizeof (u32),
@@ -477,16 +460,13 @@ VLIB_REGISTER_NODE (nat44_ed_classify_node) = {
   .format_trace = format_nat44_classify_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 };
-/* *INDENT-ON* */
 
-VLIB_NODE_FN (nat44_handoff_classify_node) (vlib_main_t * vm,
-					    vlib_node_runtime_t * node,
-					    vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_handoff_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   return nat44_handoff_classify_node_fn_inline (vm, node, frame);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_handoff_classify_node) = {
   .name = "nat44-handoff-classify",
   .vector_size = sizeof (u32),
@@ -494,8 +474,6 @@ VLIB_REGISTER_NODE (nat44_handoff_classify_node) = {
   .format_trace = format_nat44_classify_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 };
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

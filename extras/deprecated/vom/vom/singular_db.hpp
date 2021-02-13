@@ -29,7 +29,7 @@ namespace VOM {
  * The instances are stored as weak pointers. So the DB does not own these
  * objects, they are owned by object in the client_db.
  */
-template <typename KEY, typename OBJ>
+template<typename KEY, typename OBJ>
 class singular_db
 {
 public:
@@ -61,7 +61,7 @@ public:
    * passed, which may be drrived from, the object type stored. this
    * prevents slicing during the make_shared construction.
    */
-  template <typename DERIVED>
+  template<typename DERIVED>
   std::shared_ptr<OBJ> find_or_add(const KEY& key, const DERIVED& obj)
   {
     auto search = m_map.find(key);

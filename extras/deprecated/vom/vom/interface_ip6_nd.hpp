@@ -31,7 +31,7 @@ namespace VOM {
 /**
  * A representation of L3 configuration on an interface
  */
-template <typename CLASS, typename CMD>
+template<typename CLASS, typename CMD>
 class interface_ip6_nd : public object_base
 {
 public:
@@ -43,8 +43,7 @@ public:
     : m_itf(itf.singular())
     , m_cls(cls)
     , m_config(true)
-  {
-  }
+  {}
 
   /**
    * Copy Constructor
@@ -53,8 +52,7 @@ public:
     : m_itf(o.m_itf)
     , m_cls(o.m_cls)
     , m_config(o.m_config)
-  {
-  }
+  {}
 
   /**
    * Destructor
@@ -68,7 +66,7 @@ public:
   /**
    * Return the 'singular instance' of the interface ip6nd that matches
    * this object
- */
+   */
   std::shared_ptr<interface_ip6_nd> singular() const
   {
     return find_or_add(*this);
@@ -141,8 +139,7 @@ public:
       : rpc_cmd<HW::item<bool>, CMD>(item)
       , m_itf(itf)
       , m_cls(cls)
-    {
-    }
+    {}
 
     /**
      * Issue the command to VPP/HW
@@ -194,8 +191,7 @@ public:
       : rpc_cmd<HW::item<bool>, CMD>(item)
       , m_itf(itf)
       , m_cls(cls)
-    {
-    }
+    {}
 
     /**
      * Issue the command to VPP/HW
@@ -238,7 +234,9 @@ private:
   /**
    * Class definition for listeners to OM events
    */
-  class event_handler : public OM::listener, public inspect::command_handler
+  class event_handler
+    : public OM::listener
+    , public inspect::command_handler
   {
   public:
     event_handler()
@@ -336,7 +334,7 @@ private:
   /**
    * HW configuration for the binding. The bool representing the
    * do/don't bind.
- */
+   */
   HW::item<bool> m_config;
 
   /**
@@ -361,12 +359,12 @@ typedef interface_ip6_nd<ra_prefix, vapi::Sw_interface_ip6nd_ra_prefix>
 /**
  * Definition of the static singular_db for ACL Lists
  */
-template <typename CLASS, typename CMD>
+template<typename CLASS, typename CMD>
 singular_db<typename interface_ip6_nd<CLASS, CMD>::key_t,
             interface_ip6_nd<CLASS, CMD>>
   interface_ip6_nd<CLASS, CMD>::m_db;
 
-template <typename CLASS, typename CMD>
+template<typename CLASS, typename CMD>
 typename interface_ip6_nd<CLASS, CMD>::event_handler
   interface_ip6_nd<CLASS, CMD>::m_evh;
 };

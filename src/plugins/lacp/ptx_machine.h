@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-#ifndef	___LACP_PTX_MACHINE_H__
-#define	___LACP_PTX_MACHINE_H__
+#ifndef ___LACP_PTX_MACHINE_H__
+#define ___LACP_PTX_MACHINE_H__
 
 #include <stdint.h>
 #include <lacp/machine.h>
 
-#define foreach_lacp_ptx_event          \
-  _(0, NO_PERIODIC, "no periodic")      \
-  _(1, LONG_TIMEOUT, "long tiemout")    \
-  _(2, TIMER_EXPIRED, "timer expired")  \
-  _(3, SHORT_TIMEOUT, "short timeout")
+#define foreach_lacp_ptx_event                                                \
+  _ (0, NO_PERIODIC, "no periodic")                                           \
+  _ (1, LONG_TIMEOUT, "long tiemout")                                         \
+  _ (2, TIMER_EXPIRED, "timer expired")                                       \
+  _ (3, SHORT_TIMEOUT, "short timeout")
 
 typedef enum
 {
@@ -32,11 +32,11 @@ typedef enum
 #undef _
 } lacp_ptx_event_t;
 
-#define foreach_lacp_ptx_sm_state       \
-  _(0, NO_PERIODIC, "no periodic")      \
-  _(1, FAST_PERIODIC, "fast periodic")  \
-  _(2, SLOW_PERIODIC, "slow periodic")  \
-  _(3, PERIODIC_TX, "periodic transmission")
+#define foreach_lacp_ptx_sm_state                                             \
+  _ (0, NO_PERIODIC, "no periodic")                                           \
+  _ (1, FAST_PERIODIC, "fast periodic")                                       \
+  _ (2, SLOW_PERIODIC, "slow periodic")                                       \
+  _ (3, PERIODIC_TX, "periodic transmission")
 
 typedef enum
 {
@@ -51,43 +51,43 @@ int lacp_ptx_action_no_periodic (void *p1, void *p2);
 int lacp_ptx_action_slow_periodic (void *p1, void *p2);
 int lacp_ptx_action_fast_periodic (void *p1, void *p2);
 int lacp_ptx_action_timer_expired (void *p1, void *p2);
-void lacp_ptx_debug_func (member_if_t * mif, int event, int state,
-			  lacp_fsm_state_t * transition);
+void lacp_ptx_debug_func (member_if_t *mif, int event, int state,
+			  lacp_fsm_state_t *transition);
 
-#define LACP_ACTION_NO_PERIODIC \
-  LACP_ACTION_ROUTINE(lacp_ptx_action_no_periodic)
-#define LACP_ACTION_SLOW_PERIODIC \
-  LACP_ACTION_ROUTINE(lacp_ptx_action_slow_periodic)
-#define LACP_ACTION_FAST_PERIODIC \
-  LACP_ACTION_ROUTINE(lacp_ptx_action_fast_periodic)
-#define LACP_ACTION_TIMER_EXPIRED \
-  LACP_ACTION_ROUTINE(lacp_ptx_action_timer_expired)
+#define LACP_ACTION_NO_PERIODIC                                               \
+  LACP_ACTION_ROUTINE (lacp_ptx_action_no_periodic)
+#define LACP_ACTION_SLOW_PERIODIC                                             \
+  LACP_ACTION_ROUTINE (lacp_ptx_action_slow_periodic)
+#define LACP_ACTION_FAST_PERIODIC                                             \
+  LACP_ACTION_ROUTINE (lacp_ptx_action_fast_periodic)
+#define LACP_ACTION_TIMER_EXPIRED                                             \
+  LACP_ACTION_ROUTINE (lacp_ptx_action_timer_expired)
 
 static inline void
-lacp_start_periodic_timer (vlib_main_t * vm, member_if_t * mif, u8 expiration)
+lacp_start_periodic_timer (vlib_main_t *vm, member_if_t *mif, u8 expiration)
 {
   mif->periodic_timer = vlib_time_now (vm) + expiration;
 }
 
 static inline void
-lacp_schedule_periodic_timer (vlib_main_t * vm, member_if_t * mif)
+lacp_schedule_periodic_timer (vlib_main_t *vm, member_if_t *mif)
 {
   // do fast rate if partner is in short timeout or
   // we are not yet synchronized
   if ((mif->partner.state & LACP_STATE_LACP_TIMEOUT) ||
-      (((mif->actor.state & (LACP_STATE_SYNCHRONIZATION |
-			     LACP_STATE_COLLECTING |
-			     LACP_STATE_DISTRIBUTING)) !=
+      (((mif->actor.state &
+	 (LACP_STATE_SYNCHRONIZATION | LACP_STATE_COLLECTING |
+	  LACP_STATE_DISTRIBUTING)) !=
 	(LACP_STATE_SYNCHRONIZATION | LACP_STATE_COLLECTING |
-	 LACP_STATE_DISTRIBUTING))
-       && (mif->partner.state & LACP_STATE_AGGREGATION)))
+	 LACP_STATE_DISTRIBUTING)) &&
+       (mif->partner.state & LACP_STATE_AGGREGATION)))
     lacp_start_periodic_timer (vm, mif, LACP_FAST_PERIODIC_TIMER);
   else
     lacp_start_periodic_timer (vm, mif, LACP_SLOW_PERIODIC_TIMER);
 }
 
 static inline void
-lacp_ptx_post_short_timeout_event (vlib_main_t * vm, member_if_t * mif)
+lacp_ptx_post_short_timeout_event (vlib_main_t *vm, member_if_t *mif)
 {
   if (mif->lacp_enabled && mif->port_enabled &&
       ((mif->partner.state & LACP_STATE_LACP_ACTIVITY) ||

@@ -32,77 +32,77 @@
   vlib_log_info (vnet_policer_main.log_class, msg, ##args);
 
 #ifndef MIN
-#define MIN(x,y)            (((x)<(y))?(x):(y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #endif
 
 #ifndef MAX
-#define MAX(x,y)            (((x)>(y))?(x):(y))
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #endif
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_M40AH_OFFSET                   0
-#define IPE_POLICER_FULL_WRITE_REQUEST_M40AH_MASK                     8
-#define IPE_POLICER_FULL_WRITE_REQUEST_M40AH_SHIFT                   24
+#define IPE_POLICER_FULL_WRITE_REQUEST_M40AH_OFFSET 0
+#define IPE_POLICER_FULL_WRITE_REQUEST_M40AH_MASK   8
+#define IPE_POLICER_FULL_WRITE_REQUEST_M40AH_SHIFT  24
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_TYPE_OFFSET                    2
-#define IPE_POLICER_FULL_WRITE_REQUEST_TYPE_MASK                      2
-#define IPE_POLICER_FULL_WRITE_REQUEST_TYPE_SHIFT                    10
+#define IPE_POLICER_FULL_WRITE_REQUEST_TYPE_OFFSET 2
+#define IPE_POLICER_FULL_WRITE_REQUEST_TYPE_MASK   2
+#define IPE_POLICER_FULL_WRITE_REQUEST_TYPE_SHIFT  10
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_CMD_OFFSET                     3
-#define IPE_POLICER_FULL_WRITE_REQUEST_CMD_MASK                       2
-#define IPE_POLICER_FULL_WRITE_REQUEST_CMD_SHIFT                      0
+#define IPE_POLICER_FULL_WRITE_REQUEST_CMD_OFFSET 3
+#define IPE_POLICER_FULL_WRITE_REQUEST_CMD_MASK	  2
+#define IPE_POLICER_FULL_WRITE_REQUEST_CMD_SHIFT  0
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_M40AL_OFFSET                   4
-#define IPE_POLICER_FULL_WRITE_REQUEST_M40AL_MASK                    32
-#define IPE_POLICER_FULL_WRITE_REQUEST_M40AL_SHIFT                    0
+#define IPE_POLICER_FULL_WRITE_REQUEST_M40AL_OFFSET 4
+#define IPE_POLICER_FULL_WRITE_REQUEST_M40AL_MASK   32
+#define IPE_POLICER_FULL_WRITE_REQUEST_M40AL_SHIFT  0
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_RFC_OFFSET                     8
-#define IPE_POLICER_FULL_WRITE_REQUEST_RFC_MASK                       2
-#define IPE_POLICER_FULL_WRITE_REQUEST_RFC_SHIFT                     30
+#define IPE_POLICER_FULL_WRITE_REQUEST_RFC_OFFSET 8
+#define IPE_POLICER_FULL_WRITE_REQUEST_RFC_MASK	  2
+#define IPE_POLICER_FULL_WRITE_REQUEST_RFC_SHIFT  30
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_AN_OFFSET                      8
-#define IPE_POLICER_FULL_WRITE_REQUEST_AN_MASK                        1
-#define IPE_POLICER_FULL_WRITE_REQUEST_AN_SHIFT                      29
+#define IPE_POLICER_FULL_WRITE_REQUEST_AN_OFFSET 8
+#define IPE_POLICER_FULL_WRITE_REQUEST_AN_MASK	 1
+#define IPE_POLICER_FULL_WRITE_REQUEST_AN_SHIFT	 29
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_REXP_OFFSET                    8
-#define IPE_POLICER_FULL_WRITE_REQUEST_REXP_MASK                      4
-#define IPE_POLICER_FULL_WRITE_REQUEST_REXP_SHIFT                    22
+#define IPE_POLICER_FULL_WRITE_REQUEST_REXP_OFFSET 8
+#define IPE_POLICER_FULL_WRITE_REQUEST_REXP_MASK   4
+#define IPE_POLICER_FULL_WRITE_REQUEST_REXP_SHIFT  22
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_ARM_OFFSET                     9
-#define IPE_POLICER_FULL_WRITE_REQUEST_ARM_MASK                      11
-#define IPE_POLICER_FULL_WRITE_REQUEST_ARM_SHIFT                     11
+#define IPE_POLICER_FULL_WRITE_REQUEST_ARM_OFFSET 9
+#define IPE_POLICER_FULL_WRITE_REQUEST_ARM_MASK	  11
+#define IPE_POLICER_FULL_WRITE_REQUEST_ARM_SHIFT  11
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_PRM_OFFSET                    10
-#define IPE_POLICER_FULL_WRITE_REQUEST_PRM_MASK                      11
-#define IPE_POLICER_FULL_WRITE_REQUEST_PRM_SHIFT                      0
+#define IPE_POLICER_FULL_WRITE_REQUEST_PRM_OFFSET 10
+#define IPE_POLICER_FULL_WRITE_REQUEST_PRM_MASK	  11
+#define IPE_POLICER_FULL_WRITE_REQUEST_PRM_SHIFT  0
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_CBLE_OFFSET                   12
-#define IPE_POLICER_FULL_WRITE_REQUEST_CBLE_MASK                      5
-#define IPE_POLICER_FULL_WRITE_REQUEST_CBLE_SHIFT                    27
+#define IPE_POLICER_FULL_WRITE_REQUEST_CBLE_OFFSET 12
+#define IPE_POLICER_FULL_WRITE_REQUEST_CBLE_MASK   5
+#define IPE_POLICER_FULL_WRITE_REQUEST_CBLE_SHIFT  27
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_CBLM_OFFSET                   12
-#define IPE_POLICER_FULL_WRITE_REQUEST_CBLM_MASK                      7
-#define IPE_POLICER_FULL_WRITE_REQUEST_CBLM_SHIFT                    20
+#define IPE_POLICER_FULL_WRITE_REQUEST_CBLM_OFFSET 12
+#define IPE_POLICER_FULL_WRITE_REQUEST_CBLM_MASK   7
+#define IPE_POLICER_FULL_WRITE_REQUEST_CBLM_SHIFT  20
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_EBLE_OFFSET                   13
-#define IPE_POLICER_FULL_WRITE_REQUEST_EBLE_MASK                      5
-#define IPE_POLICER_FULL_WRITE_REQUEST_EBLE_SHIFT                    15
+#define IPE_POLICER_FULL_WRITE_REQUEST_EBLE_OFFSET 13
+#define IPE_POLICER_FULL_WRITE_REQUEST_EBLE_MASK   5
+#define IPE_POLICER_FULL_WRITE_REQUEST_EBLE_SHIFT  15
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_EBLM_OFFSET                   14
-#define IPE_POLICER_FULL_WRITE_REQUEST_EBLM_MASK                      7
-#define IPE_POLICER_FULL_WRITE_REQUEST_EBLM_SHIFT                     8
+#define IPE_POLICER_FULL_WRITE_REQUEST_EBLM_OFFSET 14
+#define IPE_POLICER_FULL_WRITE_REQUEST_EBLM_MASK   7
+#define IPE_POLICER_FULL_WRITE_REQUEST_EBLM_SHIFT  8
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_CB_OFFSET                     16
-#define IPE_POLICER_FULL_WRITE_REQUEST_CB_MASK                       31
-#define IPE_POLICER_FULL_WRITE_REQUEST_CB_SHIFT                       0
+#define IPE_POLICER_FULL_WRITE_REQUEST_CB_OFFSET 16
+#define IPE_POLICER_FULL_WRITE_REQUEST_CB_MASK	 31
+#define IPE_POLICER_FULL_WRITE_REQUEST_CB_SHIFT	 0
 
-#define IPE_POLICER_FULL_WRITE_REQUEST_EB_OFFSET                     20
-#define IPE_POLICER_FULL_WRITE_REQUEST_EB_MASK                       31
-#define IPE_POLICER_FULL_WRITE_REQUEST_EB_SHIFT                       0
+#define IPE_POLICER_FULL_WRITE_REQUEST_EB_OFFSET 20
+#define IPE_POLICER_FULL_WRITE_REQUEST_EB_MASK	 31
+#define IPE_POLICER_FULL_WRITE_REQUEST_EB_SHIFT	 0
 
-#define IPE_RFC_RFC2697           0x00000000
-#define IPE_RFC_RFC2698           0x00000001
-#define IPE_RFC_RFC4115           0x00000002
-#define IPE_RFC_MEF5CF1           0x00000003
+#define IPE_RFC_RFC2697 0x00000000
+#define IPE_RFC_RFC2698 0x00000001
+#define IPE_RFC_RFC4115 0x00000002
+#define IPE_RFC_MEF5CF1 0x00000003
 
 /* End of constants copied from sse_ipe_desc_fmt.h */
 
@@ -718,7 +718,6 @@ pol_convert_cfg_burst_to_hw (qos_pol_cfg_params_st *cfg,
   return (0);
 }
 
-
 /*
  * Input: configured parameter values in 'cfg'.
  * Output: h/w programmable parameter values in 'hw'.
@@ -799,7 +798,6 @@ qos_convert_burst_ms_to_bytes (u32 burst_ms, u32 rate_kbps)
 
   return ((u32) rnd_value);
 }
-
 
 /*
  * Input: configured parameters in 'cfg'.
@@ -939,7 +937,6 @@ compute_policer_params (u64 hz,	      /* CPU speed in clocks per second */
   return 0;
 }
 
-
 /*
  * Input: configured parameters in 'cfg'.
  * Output: h/w parameters are returned in 'hw',
@@ -972,8 +969,8 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
     (cfg->rb.kbps.eb_bytes > 0xFFFFFFFF) ? 0xFFFFFFFF : cfg->rb.kbps.eb_bytes;
   hw->extended_limit = cap;
 
-  if ((cfg->rb.kbps.cir_kbps == 0) && (cfg->rb.kbps.cb_bytes == 0)
-      && (cfg->rb.kbps.eb_bytes == 0))
+  if ((cfg->rb.kbps.cir_kbps == 0) && (cfg->rb.kbps.cb_bytes == 0) &&
+      (cfg->rb.kbps.eb_bytes == 0))
     {
       /* This is a uninitialized, always-violate policer */
       hw->single_rate = 1;
@@ -993,8 +990,7 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
 	  return (-1);
 	}
 
-      if ((cfg->rb.kbps.cir_kbps == 0) ||
-	  (cfg->rb.kbps.eir_kbps != 0) ||
+      if ((cfg->rb.kbps.cir_kbps == 0) || (cfg->rb.kbps.eir_kbps != 0) ||
 	  ((cfg->rb.kbps.cb_bytes == 0) && (cfg->rb.kbps.eb_bytes == 0)))
 	{
 	  QOS_DEBUG_ERROR ("Policer parameter validation failed -- 1R.");
@@ -1002,42 +998,36 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
 	}
 
       if (compute_policer_params (hz,
-				  (u64) cfg->rb.kbps.cir_kbps *
-				  BYTES_PER_KBIT, 0, &hw->current_limit,
-				  &hw->extended_limit,
+				  (u64) cfg->rb.kbps.cir_kbps * BYTES_PER_KBIT,
+				  0, &hw->current_limit, &hw->extended_limit,
 				  &hw->cir_tokens_per_period,
 				  &hw->pir_tokens_per_period, &hw->scale))
 	{
 	  QOS_DEBUG_ERROR ("Policer parameter computation failed.");
 	  return (-1);
 	}
-
     }
   else if ((cfg->rfc == QOS_POLICER_TYPE_2R3C_RFC_2698) ||
 	   (cfg->rfc == QOS_POLICER_TYPE_2R3C_RFC_4115))
     {
       /* Two-rate policer */
-      if ((cfg->rb.kbps.cir_kbps == 0) || (cfg->rb.kbps.eir_kbps == 0)
-	  || (cfg->rb.kbps.eir_kbps < cfg->rb.kbps.cir_kbps)
-	  || (cfg->rb.kbps.cb_bytes == 0) || (cfg->rb.kbps.eb_bytes == 0))
+      if ((cfg->rb.kbps.cir_kbps == 0) || (cfg->rb.kbps.eir_kbps == 0) ||
+	  (cfg->rb.kbps.eir_kbps < cfg->rb.kbps.cir_kbps) ||
+	  (cfg->rb.kbps.cb_bytes == 0) || (cfg->rb.kbps.eb_bytes == 0))
 	{
 	  QOS_DEBUG_ERROR ("Config parameter validation failed.");
 	  return (-1);
 	}
 
-      if (compute_policer_params (hz,
-				  (u64) cfg->rb.kbps.cir_kbps *
-				  BYTES_PER_KBIT,
-				  (u64) cfg->rb.kbps.eir_kbps *
-				  BYTES_PER_KBIT, &hw->current_limit,
-				  &hw->extended_limit,
-				  &hw->cir_tokens_per_period,
-				  &hw->pir_tokens_per_period, &hw->scale))
+      if (compute_policer_params (
+	    hz, (u64) cfg->rb.kbps.cir_kbps * BYTES_PER_KBIT,
+	    (u64) cfg->rb.kbps.eir_kbps * BYTES_PER_KBIT, &hw->current_limit,
+	    &hw->extended_limit, &hw->cir_tokens_per_period,
+	    &hw->pir_tokens_per_period, &hw->scale))
 	{
 	  QOS_DEBUG_ERROR ("Policer parameter computation failed.");
 	  return (-1);
 	}
-
     }
   else
     {
@@ -1189,10 +1179,10 @@ pol_convert_hw_to_cfg_params (qos_pol_hw_params_st *hw,
     1000;
   cfg->rb.kbps.eir_kbps = (u32) temp_rate;
 
-  cfg->rb.kbps.cb_bytes = ((u64) hw->comm_bkt_limit_man <<
-			   (u64) hw->comm_bkt_limit_exp);
-  cfg->rb.kbps.eb_bytes = ((u64) hw->extd_bkt_limit_man <<
-			   (u64) hw->extd_bkt_limit_exp);
+  cfg->rb.kbps.cb_bytes =
+    ((u64) hw->comm_bkt_limit_man << (u64) hw->comm_bkt_limit_exp);
+  cfg->rb.kbps.eb_bytes =
+    ((u64) hw->extd_bkt_limit_man << (u64) hw->extd_bkt_limit_exp);
 
   if (cfg->rfc == QOS_POLICER_TYPE_1R3C_RFC_2697)
     {

@@ -30,7 +30,7 @@
 #include <vppinfra/macros.h>
 
 int
-restart_main_fn (unformat_input_t * i)
+restart_main_fn (unformat_input_t *i)
 {
   int verbose = 0;
   int old_pid;
@@ -70,8 +70,8 @@ restart_main_fn (unformat_input_t * i)
 
   svmdb_client = svmdb_map (ma);
 
-  pidp = svmdb_local_get_variable_reference (svmdb_client,
-					     SVMDB_NAMESPACE_VEC, "vpp_pid");
+  pidp = svmdb_local_get_variable_reference (svmdb_client, SVMDB_NAMESPACE_VEC,
+					     "vpp_pid");
   if (pidp == 0)
     {
       clib_error ("'vpp_pid' svm variable not found, vpp has never run?");
@@ -82,7 +82,7 @@ restart_main_fn (unformat_input_t * i)
   for (wait = 0; wait < 1000; wait++)
     {
       req->tv_sec = 0;
-      req->tv_nsec = 10000 * 1000;	/* 10 ms */
+      req->tv_nsec = 10000 * 1000; /* 10 ms */
       while (nanosleep (req, rem) < 0)
 	*req = *rem;
 
@@ -151,11 +151,10 @@ found2:
    */
   for (wait = 0; wait < 150; wait++)
     {
-      if ((stat ("/dev/shm/vpe-api", &statb) < 0)
-	  || statb.st_ino == old_inode)
+      if ((stat ("/dev/shm/vpe-api", &statb) < 0) || statb.st_ino == old_inode)
 	{
 	  req->tv_sec = 0;
-	  req->tv_nsec = 100000 * 1000;	/* 100 ms */
+	  req->tv_nsec = 100000 * 1000; /* 100 ms */
 	  while (nanosleep (req, rem) < 0)
 	    *req = *rem;
 	  sleeps++;
@@ -179,8 +178,8 @@ new_inode:
    */
   svmdb_client = svmdb_map (ma);
 
-  pidp = svmdb_local_get_variable_reference (svmdb_client,
-					     SVMDB_NAMESPACE_VEC, "vpp_pid");
+  pidp = svmdb_local_get_variable_reference (svmdb_client, SVMDB_NAMESPACE_VEC,
+					     "vpp_pid");
   if (pidp == 0)
     {
       clib_error ("post_restart: 'vpp_pid' svm variable not found,"
@@ -200,7 +199,7 @@ new_inode:
       if (*pidp && (*pidp != old_pid))
 	goto restarted;
       req->tv_sec = 0;
-      req->tv_nsec = 100000 * 1000;	/* 100 ms */
+      req->tv_nsec = 100000 * 1000; /* 100 ms */
       while (nanosleep (req, rem) < 0)
 	*req = *rem;
       sleeps++;

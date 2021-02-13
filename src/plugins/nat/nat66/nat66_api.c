@@ -28,8 +28,7 @@
 /*************/
 
 static void
-vl_api_nat66_add_del_interface_t_handler (vl_api_nat66_add_del_interface_t *
-					  mp)
+vl_api_nat66_add_del_interface_t_handler (vl_api_nat66_add_del_interface_t *mp)
 {
   nat66_main_t *nm = &nat66_main;
   vl_api_nat66_add_del_interface_reply_t *rmp;
@@ -37,9 +36,8 @@ vl_api_nat66_add_del_interface_t_handler (vl_api_nat66_add_del_interface_t *
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv =
-    nat66_interface_add_del (ntohl (mp->sw_if_index),
-			     mp->flags & NAT_IS_INSIDE, mp->is_add);
+  rv = nat66_interface_add_del (ntohl (mp->sw_if_index),
+				mp->flags & NAT_IS_INSIDE, mp->is_add);
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -47,8 +45,8 @@ vl_api_nat66_add_del_interface_t_handler (vl_api_nat66_add_del_interface_t *
 }
 
 static void
-  vl_api_nat66_add_del_static_mapping_t_handler
-  (vl_api_nat66_add_del_static_mapping_t * mp)
+vl_api_nat66_add_del_static_mapping_t_handler (
+  vl_api_nat66_add_del_static_mapping_t *mp)
 {
   nat66_main_t *nm = &nat66_main;
   vl_api_nat66_add_del_static_mapping_reply_t *rmp;
@@ -58,10 +56,8 @@ static void
   memcpy (&l_addr.as_u8, mp->local_ip_address, 16);
   memcpy (&e_addr.as_u8, mp->external_ip_address, 16);
 
-  rv =
-    nat66_static_mapping_add_del (&l_addr, &e_addr,
-				  clib_net_to_host_u32 (mp->vrf_id),
-				  mp->is_add);
+  rv = nat66_static_mapping_add_del (
+    &l_addr, &e_addr, clib_net_to_host_u32 (mp->vrf_id), mp->is_add);
 
   REPLY_MACRO (VL_API_NAT66_ADD_DEL_STATIC_MAPPING_REPLY);
 }
@@ -73,7 +69,7 @@ typedef struct nat66_api_walk_ctx_t_
 } nat66_api_walk_ctx_t;
 
 static int
-nat66_api_interface_walk (nat66_interface_t * i, void *arg)
+nat66_api_interface_walk (nat66_interface_t *i, void *arg)
 {
   vl_api_nat66_interface_details_t *rmp;
   nat66_main_t *nm = &nat66_main;
@@ -93,7 +89,7 @@ nat66_api_interface_walk (nat66_interface_t * i, void *arg)
 }
 
 static void
-vl_api_nat66_interface_dump_t_handler (vl_api_nat66_interface_dump_t * mp)
+vl_api_nat66_interface_dump_t_handler (vl_api_nat66_interface_dump_t *mp)
 {
   vl_api_registration_t *rp;
 
@@ -110,7 +106,7 @@ vl_api_nat66_interface_dump_t_handler (vl_api_nat66_interface_dump_t * mp)
 }
 
 static int
-nat66_api_static_mapping_walk (nat66_static_mapping_t * m, void *arg)
+nat66_api_static_mapping_walk (nat66_static_mapping_t *m, void *arg)
 {
   vl_api_nat66_static_mapping_details_t *rmp;
   nat66_main_t *nm = &nat66_main;
@@ -141,8 +137,8 @@ nat66_api_static_mapping_walk (nat66_static_mapping_t * m, void *arg)
 }
 
 static void
-vl_api_nat66_static_mapping_dump_t_handler (vl_api_nat66_static_mapping_dump_t
-					    * mp)
+vl_api_nat66_static_mapping_dump_t_handler (
+  vl_api_nat66_static_mapping_dump_t *mp)
 {
   vl_api_registration_t *rp;
 
@@ -164,7 +160,7 @@ vl_api_nat66_static_mapping_dump_t_handler (vl_api_nat66_static_mapping_dump_t
 
 /* Set up the API message handling tables */
 clib_error_t *
-nat66_plugin_api_hookup (vlib_main_t * vm)
+nat66_plugin_api_hookup (vlib_main_t *vm)
 {
   nat66_main_t *nm = &nat66_main;
 

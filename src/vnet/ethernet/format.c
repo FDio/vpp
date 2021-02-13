@@ -41,27 +41,27 @@
 #include <vnet/ethernet/ethernet.h>
 
 u8 *
-format_ethernet_address (u8 * s, va_list * args)
+format_ethernet_address (u8 *s, va_list *args)
 {
   ethernet_main_t *em = &ethernet_main;
   u8 *a = va_arg (*args, u8 *);
 
   if (em->format_ethernet_address_16bit)
-    return format (s, "%02x%02x.%02x%02x.%02x%02x",
-		   a[0], a[1], a[2], a[3], a[4], a[5]);
+    return format (s, "%02x%02x.%02x%02x.%02x%02x", a[0], a[1], a[2], a[3],
+		   a[4], a[5]);
   else
-    return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
-		   a[0], a[1], a[2], a[3], a[4], a[5]);
+    return format (s, "%02x:%02x:%02x:%02x:%02x:%02x", a[0], a[1], a[2], a[3],
+		   a[4], a[5]);
 }
 
 u8 *
-format_mac_address (u8 * s, va_list * args)
+format_mac_address (u8 *s, va_list *args)
 {
   return (format_ethernet_address (s, args));
 }
 
 u8 *
-format_ethernet_type (u8 * s, va_list * args)
+format_ethernet_type (u8 *s, va_list *args)
 {
   ethernet_type_t type = va_arg (*args, u32);
   ethernet_main_t *em = &ethernet_main;
@@ -76,7 +76,7 @@ format_ethernet_type (u8 * s, va_list * args)
 }
 
 u8 *
-format_ethernet_vlan_tci (u8 * s, va_list * va)
+format_ethernet_vlan_tci (u8 *s, va_list *va)
 {
   u32 vlan_tci = va_arg (*va, u32);
 
@@ -94,7 +94,7 @@ format_ethernet_vlan_tci (u8 * s, va_list * va)
 }
 
 u8 *
-format_ethernet_header_with_length (u8 * s, va_list * args)
+format_ethernet_header_with_length (u8 *s, va_list *args)
 {
   ethernet_pbb_header_packed_t *ph =
     va_arg (*args, ethernet_pbb_header_packed_t *);
@@ -108,8 +108,9 @@ format_ethernet_header_with_length (u8 * s, va_list * args)
   u32 n_vlan = 0, i, header_bytes;
   u32 indent;
 
-  while ((type == ETHERNET_TYPE_VLAN || type == ETHERNET_TYPE_DOT1AD
-	  || type == ETHERNET_TYPE_DOT1AH) && n_vlan < ARRAY_LEN (m->vlan))
+  while ((type == ETHERNET_TYPE_VLAN || type == ETHERNET_TYPE_DOT1AD ||
+	  type == ETHERNET_TYPE_DOT1AH) &&
+	 n_vlan < ARRAY_LEN (m->vlan))
     {
       vlan_type[n_vlan] = type;
       if (type != ETHERNET_TYPE_DOT1AH)
@@ -126,10 +127,9 @@ format_ethernet_header_with_length (u8 * s, va_list * args)
 
   indent = format_get_indent (s);
 
-  s = format (s, "%U: %U -> %U",
-	      format_ethernet_type, type,
-	      format_ethernet_address, e->src_address,
-	      format_ethernet_address, e->dst_address);
+  s = format (s, "%U: %U -> %U", format_ethernet_type, type,
+	      format_ethernet_address, e->src_address, format_ethernet_address,
+	      e->dst_address);
 
   if (type != ETHERNET_TYPE_DOT1AH)
     {
@@ -151,31 +151,30 @@ format_ethernet_header_with_length (u8 * s, va_list * args)
 	  if (ti && ti->node_index != ~0)
 	    node = vlib_get_node (em->vlib_main, ti->node_index);
 	  if (node && node->format_buffer)
-	    s = format (s, "\n%U%U",
-			format_white_space, indent,
+	    s = format (s, "\n%U%U", format_white_space, indent,
 			node->format_buffer, (void *) m + header_bytes,
 			max_header_bytes - header_bytes);
 	}
     }
   else
     {
-      s =
-	format (s, " %s b-tag %04X",
-		(clib_net_to_host_u16 (ph->b_type) ==
-		 ETHERNET_TYPE_DOT1AD) ? "802.1ad" : "",
-		clib_net_to_host_u16 (ph->priority_dei_id));
-      s =
-	format (s, " %s i-tag %08X",
-		(clib_net_to_host_u16 (ph->i_type) ==
-		 ETHERNET_TYPE_DOT1AH) ? "802.1ah" : "",
-		clib_net_to_host_u32 (ph->priority_dei_uca_res_sid));
+      s = format (s, " %s b-tag %04X",
+		  (clib_net_to_host_u16 (ph->b_type) == ETHERNET_TYPE_DOT1AD) ?
+		    "802.1ad" :
+		    "",
+		  clib_net_to_host_u16 (ph->priority_dei_id));
+      s = format (s, " %s i-tag %08X",
+		  (clib_net_to_host_u16 (ph->i_type) == ETHERNET_TYPE_DOT1AH) ?
+		    "802.1ah" :
+		    "",
+		  clib_net_to_host_u32 (ph->priority_dei_uca_res_sid));
     }
 
   return s;
 }
 
 u8 *
-format_ethernet_header (u8 * s, va_list * args)
+format_ethernet_header (u8 *s, va_list *args)
 {
   ethernet_max_header_t *m = va_arg (*args, ethernet_max_header_t *);
   return format (s, "%U", format_ethernet_header_with_length, m, 0);
@@ -183,13 +182,13 @@ format_ethernet_header (u8 * s, va_list * args)
 
 /* Parse X:X:X:X:X:X unix style ethernet address. */
 static uword
-unformat_ethernet_address_unix (unformat_input_t * input, va_list * args)
+unformat_ethernet_address_unix (unformat_input_t *input, va_list *args)
 {
   u8 *result = va_arg (*args, u8 *);
   u32 i, a[6];
 
-  if (!unformat (input, "%_%x:%x:%x:%x:%x:%x%_",
-		 &a[0], &a[1], &a[2], &a[3], &a[4], &a[5]))
+  if (!unformat (input, "%_%x:%x:%x:%x:%x:%x%_", &a[0], &a[1], &a[2], &a[3],
+		 &a[4], &a[5]))
     return 0;
 
   /* Check range. */
@@ -205,7 +204,7 @@ unformat_ethernet_address_unix (unformat_input_t * input, va_list * args)
 
 /* Parse X.X.X cisco style ethernet address. */
 static uword
-unformat_ethernet_address_cisco (unformat_input_t * input, va_list * args)
+unformat_ethernet_address_cisco (unformat_input_t *input, va_list *args)
 {
   u8 *result = va_arg (*args, u8 *);
   u32 i, a[3];
@@ -230,24 +229,22 @@ unformat_ethernet_address_cisco (unformat_input_t * input, va_list * args)
 
 /* Parse ethernet address; accept either unix or style addresses. */
 uword
-unformat_ethernet_address (unformat_input_t * input, va_list * args)
+unformat_ethernet_address (unformat_input_t *input, va_list *args)
 {
   u8 *result = va_arg (*args, u8 *);
-  return (unformat_user (input, unformat_ethernet_address_unix, result)
-	  || unformat_user (input, unformat_ethernet_address_cisco, result));
+  return (unformat_user (input, unformat_ethernet_address_unix, result) ||
+	  unformat_user (input, unformat_ethernet_address_cisco, result));
 }
 
 uword
-unformat_mac_address (unformat_input_t * input, va_list * args)
+unformat_mac_address (unformat_input_t *input, va_list *args)
 {
   return (unformat_ethernet_address (input, args));
 }
 
-
 /* Returns ethernet type as an int in host byte order. */
 uword
-unformat_ethernet_type_host_byte_order (unformat_input_t * input,
-					va_list * args)
+unformat_ethernet_type_host_byte_order (unformat_input_t *input, va_list *args)
 {
   u16 *result = va_arg (*args, u16 *);
   ethernet_main_t *em = &ethernet_main;
@@ -275,19 +272,18 @@ unformat_ethernet_type_host_byte_order (unformat_input_t * input,
 }
 
 uword
-unformat_ethernet_type_net_byte_order (unformat_input_t * input,
-				       va_list * args)
+unformat_ethernet_type_net_byte_order (unformat_input_t *input, va_list *args)
 {
   u16 *result = va_arg (*args, u16 *);
   if (!unformat_user (input, unformat_ethernet_type_host_byte_order, result))
     return 0;
 
-  *result = clib_host_to_net_u16 ((u16) * result);
+  *result = clib_host_to_net_u16 ((u16) *result);
   return 1;
 }
 
 uword
-unformat_ethernet_header (unformat_input_t * input, va_list * args)
+unformat_ethernet_header (unformat_input_t *input, va_list *args)
 {
   u8 **result = va_arg (*args, u8 **);
   ethernet_max_header_t _m, *m = &_m;
@@ -295,9 +291,8 @@ unformat_ethernet_header (unformat_input_t * input, va_list * args)
   u16 type;
   u32 n_vlan;
 
-  if (!unformat (input, "%U: %U -> %U",
-		 unformat_ethernet_type_host_byte_order, &type,
-		 unformat_ethernet_address, &e->src_address,
+  if (!unformat (input, "%U: %U -> %U", unformat_ethernet_type_host_byte_order,
+		 &type, unformat_ethernet_address, &e->src_address,
 		 unformat_ethernet_address, &e->dst_address))
     return 0;
 
@@ -306,8 +301,8 @@ unformat_ethernet_header (unformat_input_t * input, va_list * args)
     {
       u32 id, priority;
 
-      if (!unformat_user (input, unformat_vlib_number, &id)
-	  || id >= ETHERNET_N_VLAN)
+      if (!unformat_user (input, unformat_vlib_number, &id) ||
+	  id >= ETHERNET_N_VLAN)
 	return 0;
 
       if (unformat (input, "priority %d", &priority))

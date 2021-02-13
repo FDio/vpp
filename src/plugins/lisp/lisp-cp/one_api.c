@@ -41,83 +41,87 @@ static u32 one_base_msg_id;
 
 #include <vlibapi/api_helper_macros.h>
 
-#define REPLY_DETAILS(t, body)                                  	\
-do {                                                            	\
-    vl_api_registration_t * reg;                             		\
-    rv = vl_msg_api_pd_handler (mp, rv);                        	\
-    reg = vl_api_client_index_to_registration (mp->client_index);	\
-    if (!reg)								\
-      return;								\
-								  \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     	\
-    rmp->_vl_msg_id = ntohs((t));                               	\
-    rmp->context = mp->context;                                 	\
-    do {body;} while (0);                                       	\
-    vl_api_send_msg (reg, (u8 *)&rmp);                      		\
-} while(0);
+#define REPLY_DETAILS(t, body)                                                \
+  do                                                                          \
+    {                                                                         \
+      vl_api_registration_t *reg;                                             \
+      rv = vl_msg_api_pd_handler (mp, rv);                                    \
+      reg = vl_api_client_index_to_registration (mp->client_index);           \
+      if (!reg)                                                               \
+	return;                                                               \
+                                                                              \
+      rmp = vl_msg_api_alloc (sizeof (*rmp));                                 \
+      rmp->_vl_msg_id = ntohs ((t));                                          \
+      rmp->context = mp->context;                                             \
+      do                                                                      \
+	{                                                                     \
+	  body;                                                               \
+	}                                                                     \
+      while (0);                                                              \
+      vl_api_send_msg (reg, (u8 *) &rmp);                                     \
+    }                                                                         \
+  while (0);
 
-#define foreach_vpe_api_msg                             			\
-_(ONE_ADD_DEL_LOCATOR_SET, one_add_del_locator_set)                     \
-_(ONE_ADD_DEL_LOCATOR, one_add_del_locator)                             \
-_(ONE_ADD_DEL_LOCAL_EID, one_add_del_local_eid)                         \
-_(ONE_ADD_DEL_MAP_RESOLVER, one_add_del_map_resolver)                   \
-_(ONE_ADD_DEL_MAP_SERVER, one_add_del_map_server)                       \
-_(ONE_ENABLE_DISABLE, one_enable_disable)                               \
-_(ONE_RLOC_PROBE_ENABLE_DISABLE, one_rloc_probe_enable_disable)         \
-_(ONE_MAP_REGISTER_ENABLE_DISABLE, one_map_register_enable_disable)     \
-_(ONE_MAP_REGISTER_FALLBACK_THRESHOLD,                                  \
-  one_map_register_fallback_threshold)                                  \
-_(ONE_ADD_DEL_REMOTE_MAPPING, one_add_del_remote_mapping)               \
-_(ONE_ADD_DEL_ADJACENCY, one_add_del_adjacency)                         \
-_(ONE_PITR_SET_LOCATOR_SET, one_pitr_set_locator_set)                   \
-_(ONE_NSH_SET_LOCATOR_SET, one_nsh_set_locator_set)                     \
-_(ONE_MAP_REQUEST_MODE, one_map_request_mode)                           \
-_(ONE_EID_TABLE_ADD_DEL_MAP, one_eid_table_add_del_map)                 \
-_(ONE_LOCATOR_SET_DUMP, one_locator_set_dump)                           \
-_(ONE_LOCATOR_DUMP, one_locator_dump)                                   \
-_(ONE_EID_TABLE_DUMP, one_eid_table_dump)                               \
-_(ONE_MAP_RESOLVER_DUMP, one_map_resolver_dump)                         \
-_(ONE_MAP_SERVER_DUMP, one_map_server_dump)                             \
-_(ONE_EID_TABLE_MAP_DUMP, one_eid_table_map_dump)                       \
-_(ONE_EID_TABLE_VNI_DUMP, one_eid_table_vni_dump)                       \
-_(ONE_ADJACENCIES_GET, one_adjacencies_get)                             \
-_(ONE_MAP_REGISTER_SET_TTL, one_map_register_set_ttl)                   \
-_(SHOW_ONE_NSH_MAPPING, show_one_nsh_mapping)                           \
-_(SHOW_ONE_RLOC_PROBE_STATE, show_one_rloc_probe_state)                 \
-_(SHOW_ONE_MAP_REGISTER_STATE, show_one_map_register_state)             \
-_(SHOW_ONE_MAP_REGISTER_TTL, show_one_map_register_ttl)                 \
-_(SHOW_ONE_MAP_REGISTER_FALLBACK_THRESHOLD,                             \
-  show_one_map_register_fallback_threshold)                             \
-_(SHOW_ONE_STATUS, show_one_status)                                     \
-_(ONE_ADD_DEL_MAP_REQUEST_ITR_RLOCS,                                    \
-  one_add_del_map_request_itr_rlocs)                                    \
-_(ONE_GET_MAP_REQUEST_ITR_RLOCS, one_get_map_request_itr_rlocs)         \
-_(SHOW_ONE_PITR, show_one_pitr)                                         \
-_(SHOW_ONE_MAP_REQUEST_MODE, show_one_map_request_mode)                 \
-_(ONE_USE_PETR, one_use_petr)                                           \
-_(SHOW_ONE_USE_PETR, show_one_use_petr)                                 \
-_(SHOW_ONE_STATS_ENABLE_DISABLE, show_one_stats_enable_disable)         \
-_(ONE_STATS_ENABLE_DISABLE, one_stats_enable_disable)                   \
-_(ONE_STATS_DUMP, one_stats_dump)                                       \
-_(ONE_STATS_FLUSH, one_stats_flush)                                     \
-_(ONE_L2_ARP_BD_GET, one_l2_arp_bd_get)                                 \
-_(ONE_L2_ARP_ENTRIES_GET, one_l2_arp_entries_get)                       \
-_(ONE_ADD_DEL_L2_ARP_ENTRY, one_add_del_l2_arp_entry)                   \
-_(ONE_ADD_DEL_NDP_ENTRY, one_add_del_ndp_entry)                         \
-_(ONE_NDP_BD_GET, one_ndp_bd_get)                                       \
-_(ONE_NDP_ENTRIES_GET, one_ndp_entries_get)                             \
-_(ONE_SET_TRANSPORT_PROTOCOL, one_set_transport_protocol)               \
-_(ONE_GET_TRANSPORT_PROTOCOL, one_get_transport_protocol)               \
-_(ONE_ENABLE_DISABLE_XTR_MODE, one_enable_disable_xtr_mode)             \
-_(ONE_SHOW_XTR_MODE, one_show_xtr_mode)                                 \
-_(ONE_ENABLE_DISABLE_PITR_MODE, one_enable_disable_pitr_mode)           \
-_(ONE_SHOW_PITR_MODE, one_show_pitr_mode)                               \
-_(ONE_ENABLE_DISABLE_PETR_MODE, one_enable_disable_petr_mode)           \
-_(ONE_SHOW_PETR_MODE, one_show_petr_mode)                               \
-
+#define foreach_vpe_api_msg                                                   \
+  _ (ONE_ADD_DEL_LOCATOR_SET, one_add_del_locator_set)                        \
+  _ (ONE_ADD_DEL_LOCATOR, one_add_del_locator)                                \
+  _ (ONE_ADD_DEL_LOCAL_EID, one_add_del_local_eid)                            \
+  _ (ONE_ADD_DEL_MAP_RESOLVER, one_add_del_map_resolver)                      \
+  _ (ONE_ADD_DEL_MAP_SERVER, one_add_del_map_server)                          \
+  _ (ONE_ENABLE_DISABLE, one_enable_disable)                                  \
+  _ (ONE_RLOC_PROBE_ENABLE_DISABLE, one_rloc_probe_enable_disable)            \
+  _ (ONE_MAP_REGISTER_ENABLE_DISABLE, one_map_register_enable_disable)        \
+  _ (ONE_MAP_REGISTER_FALLBACK_THRESHOLD,                                     \
+     one_map_register_fallback_threshold)                                     \
+  _ (ONE_ADD_DEL_REMOTE_MAPPING, one_add_del_remote_mapping)                  \
+  _ (ONE_ADD_DEL_ADJACENCY, one_add_del_adjacency)                            \
+  _ (ONE_PITR_SET_LOCATOR_SET, one_pitr_set_locator_set)                      \
+  _ (ONE_NSH_SET_LOCATOR_SET, one_nsh_set_locator_set)                        \
+  _ (ONE_MAP_REQUEST_MODE, one_map_request_mode)                              \
+  _ (ONE_EID_TABLE_ADD_DEL_MAP, one_eid_table_add_del_map)                    \
+  _ (ONE_LOCATOR_SET_DUMP, one_locator_set_dump)                              \
+  _ (ONE_LOCATOR_DUMP, one_locator_dump)                                      \
+  _ (ONE_EID_TABLE_DUMP, one_eid_table_dump)                                  \
+  _ (ONE_MAP_RESOLVER_DUMP, one_map_resolver_dump)                            \
+  _ (ONE_MAP_SERVER_DUMP, one_map_server_dump)                                \
+  _ (ONE_EID_TABLE_MAP_DUMP, one_eid_table_map_dump)                          \
+  _ (ONE_EID_TABLE_VNI_DUMP, one_eid_table_vni_dump)                          \
+  _ (ONE_ADJACENCIES_GET, one_adjacencies_get)                                \
+  _ (ONE_MAP_REGISTER_SET_TTL, one_map_register_set_ttl)                      \
+  _ (SHOW_ONE_NSH_MAPPING, show_one_nsh_mapping)                              \
+  _ (SHOW_ONE_RLOC_PROBE_STATE, show_one_rloc_probe_state)                    \
+  _ (SHOW_ONE_MAP_REGISTER_STATE, show_one_map_register_state)                \
+  _ (SHOW_ONE_MAP_REGISTER_TTL, show_one_map_register_ttl)                    \
+  _ (SHOW_ONE_MAP_REGISTER_FALLBACK_THRESHOLD,                                \
+     show_one_map_register_fallback_threshold)                                \
+  _ (SHOW_ONE_STATUS, show_one_status)                                        \
+  _ (ONE_ADD_DEL_MAP_REQUEST_ITR_RLOCS, one_add_del_map_request_itr_rlocs)    \
+  _ (ONE_GET_MAP_REQUEST_ITR_RLOCS, one_get_map_request_itr_rlocs)            \
+  _ (SHOW_ONE_PITR, show_one_pitr)                                            \
+  _ (SHOW_ONE_MAP_REQUEST_MODE, show_one_map_request_mode)                    \
+  _ (ONE_USE_PETR, one_use_petr)                                              \
+  _ (SHOW_ONE_USE_PETR, show_one_use_petr)                                    \
+  _ (SHOW_ONE_STATS_ENABLE_DISABLE, show_one_stats_enable_disable)            \
+  _ (ONE_STATS_ENABLE_DISABLE, one_stats_enable_disable)                      \
+  _ (ONE_STATS_DUMP, one_stats_dump)                                          \
+  _ (ONE_STATS_FLUSH, one_stats_flush)                                        \
+  _ (ONE_L2_ARP_BD_GET, one_l2_arp_bd_get)                                    \
+  _ (ONE_L2_ARP_ENTRIES_GET, one_l2_arp_entries_get)                          \
+  _ (ONE_ADD_DEL_L2_ARP_ENTRY, one_add_del_l2_arp_entry)                      \
+  _ (ONE_ADD_DEL_NDP_ENTRY, one_add_del_ndp_entry)                            \
+  _ (ONE_NDP_BD_GET, one_ndp_bd_get)                                          \
+  _ (ONE_NDP_ENTRIES_GET, one_ndp_entries_get)                                \
+  _ (ONE_SET_TRANSPORT_PROTOCOL, one_set_transport_protocol)                  \
+  _ (ONE_GET_TRANSPORT_PROTOCOL, one_get_transport_protocol)                  \
+  _ (ONE_ENABLE_DISABLE_XTR_MODE, one_enable_disable_xtr_mode)                \
+  _ (ONE_SHOW_XTR_MODE, one_show_xtr_mode)                                    \
+  _ (ONE_ENABLE_DISABLE_PITR_MODE, one_enable_disable_pitr_mode)              \
+  _ (ONE_SHOW_PITR_MODE, one_show_pitr_mode)                                  \
+  _ (ONE_ENABLE_DISABLE_PETR_MODE, one_enable_disable_petr_mode)              \
+  _ (ONE_SHOW_PETR_MODE, one_show_petr_mode)
 
 static locator_t *
-unformat_one_locs (vl_api_remote_locator_t * rmt_locs, u32 rloc_num)
+unformat_one_locs (vl_api_remote_locator_t *rmt_locs, u32 rloc_num)
 {
   u32 i;
   locator_t *locs = 0, loc;
@@ -141,8 +145,8 @@ unformat_one_locs (vl_api_remote_locator_t * rmt_locs, u32 rloc_num)
 }
 
 static void
-vl_api_one_map_register_set_ttl_t_handler (vl_api_one_map_register_set_ttl_t *
-					   mp)
+vl_api_one_map_register_set_ttl_t_handler (
+  vl_api_one_map_register_set_ttl_t *mp)
 {
   vl_api_one_map_register_set_ttl_reply_t *rmp;
   int rv = 0;
@@ -154,8 +158,8 @@ vl_api_one_map_register_set_ttl_t_handler (vl_api_one_map_register_set_ttl_t *
 }
 
 static void
-  vl_api_show_one_map_register_ttl_t_handler
-  (vl_api_show_one_map_register_ttl_t * mp)
+vl_api_show_one_map_register_ttl_t_handler (
+  vl_api_show_one_map_register_ttl_t *mp)
 {
   vl_api_show_one_map_register_ttl_reply_t *rmp;
   int rv = 0;
@@ -163,15 +167,12 @@ static void
   u32 ttl = vnet_lisp_map_register_get_ttl ();
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_SHOW_ONE_MAP_REGISTER_TTL_REPLY,
-  ({
-    rmp->ttl = clib_host_to_net_u32 (ttl);
-  }));
+		({ rmp->ttl = clib_host_to_net_u32 (ttl); }));
   /* *INDENT-ON* */
 }
 
 static void
-vl_api_one_add_del_locator_set_t_handler (vl_api_one_add_del_locator_set_t *
-					  mp)
+vl_api_one_add_del_locator_set_t_handler (vl_api_one_add_del_locator_set_t *mp)
 {
   vl_api_one_add_del_locator_set_reply_t *rmp;
   int rv = 0;
@@ -215,14 +216,12 @@ vl_api_one_add_del_locator_set_t_handler (vl_api_one_add_del_locator_set_t *
 
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_ONE_ADD_DEL_LOCATOR_SET_REPLY,
-  ({
-    rmp->ls_index = clib_host_to_net_u32 (ls_index);
-  }));
+		({ rmp->ls_index = clib_host_to_net_u32 (ls_index); }));
   /* *INDENT-ON* */
 }
 
 static void
-vl_api_one_add_del_locator_t_handler (vl_api_one_add_del_locator_t * mp)
+vl_api_one_add_del_locator_t_handler (vl_api_one_add_del_locator_t *mp)
 {
   vl_api_one_add_del_locator_reply_t *rmp;
   int rv = 0;
@@ -264,7 +263,7 @@ typedef struct
 } __attribute__ ((__packed__)) lisp_nsh_api_t;
 
 static int
-unformat_one_eid_api (gid_address_t * dst, u32 vni, vl_api_eid_t * eid)
+unformat_one_eid_api (gid_address_t *dst, u32 vni, vl_api_eid_t *eid)
 {
   fib_prefix_t prefix;
 
@@ -283,7 +282,7 @@ unformat_one_eid_api (gid_address_t * dst, u32 vni, vl_api_eid_t * eid)
     case EID_TYPE_API_MAC:
       gid_address_type (dst) = GID_ADDR_MAC;
       mac_address_decode (eid->address.mac,
-			  (mac_address_t *) & gid_address_mac (dst));
+			  (mac_address_t *) &gid_address_mac (dst));
       break;
     case EID_TYPE_API_NSH:
       gid_address_type (dst) = GID_ADDR_NSH;
@@ -301,7 +300,7 @@ unformat_one_eid_api (gid_address_t * dst, u32 vni, vl_api_eid_t * eid)
 }
 
 static void
-fid_to_api_eid (fid_address_t * fid, vl_api_eid_t * eid)
+fid_to_api_eid (fid_address_t *fid, vl_api_eid_t *eid)
 {
   fib_prefix_t fib_prefix;
   u32 eid_type;
@@ -327,7 +326,7 @@ fid_to_api_eid (fid_address_t * fid, vl_api_eid_t * eid)
 }
 
 static void
-vl_api_one_add_del_local_eid_t_handler (vl_api_one_add_del_local_eid_t * mp)
+vl_api_one_add_del_local_eid_t_handler (vl_api_one_add_del_local_eid_t *mp)
 {
   vl_api_one_add_del_local_eid_reply_t *rmp;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -383,18 +382,19 @@ out:
 }
 
 static void
-  vl_api_one_eid_table_add_del_map_t_handler
-  (vl_api_one_eid_table_add_del_map_t * mp)
+vl_api_one_eid_table_add_del_map_t_handler (
+  vl_api_one_eid_table_add_del_map_t *mp)
 {
   vl_api_one_eid_table_add_del_map_reply_t *rmp;
   int rv = 0;
   rv = vnet_lisp_eid_table_map (clib_net_to_host_u32 (mp->vni),
-				clib_net_to_host_u32 (mp->dp_table),
-				mp->is_l2, mp->is_add);
-REPLY_MACRO (VL_API_ONE_EID_TABLE_ADD_DEL_MAP_REPLY)}
+				clib_net_to_host_u32 (mp->dp_table), mp->is_l2,
+				mp->is_add);
+  REPLY_MACRO (VL_API_ONE_EID_TABLE_ADD_DEL_MAP_REPLY)
+}
 
 static void
-vl_api_one_add_del_map_server_t_handler (vl_api_one_add_del_map_server_t * mp)
+vl_api_one_add_del_map_server_t_handler (vl_api_one_add_del_map_server_t *mp)
 {
   vl_api_one_add_del_map_server_reply_t *rmp;
   int rv = 0;
@@ -410,8 +410,8 @@ vl_api_one_add_del_map_server_t_handler (vl_api_one_add_del_map_server_t * mp)
 }
 
 static void
-vl_api_one_add_del_map_resolver_t_handler (vl_api_one_add_del_map_resolver_t
-					   * mp)
+vl_api_one_add_del_map_resolver_t_handler (
+  vl_api_one_add_del_map_resolver_t *mp)
 {
   vl_api_one_add_del_map_resolver_reply_t *rmp;
   int rv = 0;
@@ -429,8 +429,8 @@ vl_api_one_add_del_map_resolver_t_handler (vl_api_one_add_del_map_resolver_t
 }
 
 static void
-  vl_api_one_map_register_enable_disable_t_handler
-  (vl_api_one_map_register_enable_disable_t * mp)
+vl_api_one_map_register_enable_disable_t_handler (
+  vl_api_one_map_register_enable_disable_t *mp)
 {
   vl_api_one_map_register_enable_disable_reply_t *rmp;
   int rv = 0;
@@ -440,8 +440,8 @@ static void
 }
 
 static void
-  vl_api_one_rloc_probe_enable_disable_t_handler
-  (vl_api_one_rloc_probe_enable_disable_t * mp)
+vl_api_one_rloc_probe_enable_disable_t_handler (
+  vl_api_one_rloc_probe_enable_disable_t *mp)
 {
   vl_api_one_rloc_probe_enable_disable_reply_t *rmp;
   int rv = 0;
@@ -451,7 +451,7 @@ static void
 }
 
 static void
-vl_api_one_enable_disable_t_handler (vl_api_one_enable_disable_t * mp)
+vl_api_one_enable_disable_t_handler (vl_api_one_enable_disable_t *mp)
 {
   vl_api_one_enable_disable_reply_t *rmp;
   int rv = 0;
@@ -461,22 +461,20 @@ vl_api_one_enable_disable_t_handler (vl_api_one_enable_disable_t * mp)
 }
 
 static void
-  vl_api_show_one_map_request_mode_t_handler
-  (vl_api_show_one_map_request_mode_t * mp)
+vl_api_show_one_map_request_mode_t_handler (
+  vl_api_show_one_map_request_mode_t *mp)
 {
   int rv = 0;
   vl_api_show_one_map_request_mode_reply_t *rmp;
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_SHOW_ONE_MAP_REQUEST_MODE_REPLY,
-  ({
-    rmp->mode = vnet_lisp_get_map_request_mode ();
-  }));
+  REPLY_MACRO2 (VL_API_SHOW_ONE_MAP_REQUEST_MODE_REPLY,
+		({ rmp->mode = vnet_lisp_get_map_request_mode (); }));
   /* *INDENT-ON* */
 }
 
 static void
-vl_api_one_map_request_mode_t_handler (vl_api_one_map_request_mode_t * mp)
+vl_api_one_map_request_mode_t_handler (vl_api_one_map_request_mode_t *mp)
 {
   vl_api_one_map_request_mode_reply_t *rmp;
   int rv = 0;
@@ -487,8 +485,7 @@ vl_api_one_map_request_mode_t_handler (vl_api_one_map_request_mode_t * mp)
 }
 
 static void
-vl_api_one_nsh_set_locator_set_t_handler (vl_api_one_nsh_set_locator_set_t
-					  * mp)
+vl_api_one_nsh_set_locator_set_t_handler (vl_api_one_nsh_set_locator_set_t *mp)
 {
   vl_api_one_nsh_set_locator_set_reply_t *rmp;
   int rv = 0;
@@ -504,8 +501,8 @@ vl_api_one_nsh_set_locator_set_t_handler (vl_api_one_nsh_set_locator_set_t
 }
 
 static void
-vl_api_one_pitr_set_locator_set_t_handler (vl_api_one_pitr_set_locator_set_t
-					   * mp)
+vl_api_one_pitr_set_locator_set_t_handler (
+  vl_api_one_pitr_set_locator_set_t *mp)
 {
   vl_api_one_pitr_set_locator_set_reply_t *rmp;
   int rv = 0;
@@ -521,7 +518,7 @@ vl_api_one_pitr_set_locator_set_t_handler (vl_api_one_pitr_set_locator_set_t
 }
 
 static void
-vl_api_one_use_petr_t_handler (vl_api_one_use_petr_t * mp)
+vl_api_one_use_petr_t_handler (vl_api_one_use_petr_t *mp)
 {
   vl_api_one_use_petr_reply_t *rmp;
   int rv = 0;
@@ -535,7 +532,7 @@ vl_api_one_use_petr_t_handler (vl_api_one_use_petr_t * mp)
 }
 
 static void
-vl_api_show_one_use_petr_t_handler (vl_api_show_one_use_petr_t * mp)
+vl_api_show_one_use_petr_t_handler (vl_api_show_one_use_petr_t *mp)
 {
   vl_api_show_one_use_petr_reply_t *rmp = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -553,16 +550,14 @@ vl_api_show_one_use_petr_t_handler (vl_api_show_one_use_petr_t * mp)
       m = pool_elt_at_index (lcm->mapping_pool, lcm->petr_map_index);
       if (~0 != m->locator_set_index)
 	{
-	  ls =
-	    pool_elt_at_index (lcm->locator_set_pool, m->locator_set_index);
+	  ls = pool_elt_at_index (lcm->locator_set_pool, m->locator_set_index);
 	  loc = pool_elt_at_index (lcm->locator_pool, ls->locator_indices[0]);
 	  gid_address_copy (&addr, &loc->address);
 	}
     }
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_SHOW_ONE_USE_PETR_REPLY,
-  {
+  REPLY_MACRO2 (VL_API_SHOW_ONE_USE_PETR_REPLY, {
     rmp->status = status;
     ip_address_t *ip = &gid_address_ip (&addr);
 
@@ -572,8 +567,8 @@ vl_api_show_one_use_petr_t_handler (vl_api_show_one_use_petr_t * mp)
 }
 
 static void
-  vl_api_one_add_del_map_request_itr_rlocs_t_handler
-  (vl_api_one_add_del_map_request_itr_rlocs_t * mp)
+vl_api_one_add_del_map_request_itr_rlocs_t_handler (
+  vl_api_one_add_del_map_request_itr_rlocs_t *mp)
 {
   vl_api_one_add_del_map_request_itr_rlocs_reply_t *rmp;
   int rv = 0;
@@ -595,8 +590,8 @@ static void
 }
 
 static void
-  vl_api_one_add_del_remote_mapping_t_handler
-  (vl_api_one_add_del_remote_mapping_t * mp)
+vl_api_one_add_del_remote_mapping_t_handler (
+  vl_api_one_add_del_remote_mapping_t *mp)
 {
   locator_t *rlocs = 0;
   vl_api_one_add_del_remote_mapping_reply_t *rmp;
@@ -651,7 +646,7 @@ send_reply:
 }
 
 static void
-vl_api_one_add_del_adjacency_t_handler (vl_api_one_add_del_adjacency_t * mp)
+vl_api_one_add_del_adjacency_t_handler (vl_api_one_add_del_adjacency_t *mp)
 {
   vl_api_one_add_del_adjacency_reply_t *rmp;
   vnet_lisp_add_del_adjacency_args_t _a, *a = &_a;
@@ -660,11 +655,9 @@ vl_api_one_add_del_adjacency_t_handler (vl_api_one_add_del_adjacency_t * mp)
   clib_memset (a, 0, sizeof (a[0]));
 
   rv =
-    unformat_one_eid_api (&a->leid, clib_net_to_host_u32 (mp->vni),
-			  &mp->leid);
+    unformat_one_eid_api (&a->leid, clib_net_to_host_u32 (mp->vni), &mp->leid);
   rv |=
-    unformat_one_eid_api (&a->reid, clib_net_to_host_u32 (mp->vni),
-			  &mp->reid);
+    unformat_one_eid_api (&a->reid, clib_net_to_host_u32 (mp->vni), &mp->reid);
 
   if (rv)
     goto send_reply;
@@ -677,9 +670,8 @@ send_reply:
 }
 
 static void
-send_one_locator_details (lisp_cp_main_t * lcm,
-			  locator_t * loc, vl_api_registration_t * reg,
-			  u32 context)
+send_one_locator_details (lisp_cp_main_t *lcm, locator_t *loc,
+			  vl_api_registration_t *reg, u32 context)
 {
   vl_api_one_locator_details_t *rmp;
 
@@ -704,7 +696,7 @@ send_one_locator_details (lisp_cp_main_t * lcm,
 }
 
 static void
-vl_api_one_locator_dump_t_handler (vl_api_one_locator_dump_t * mp)
+vl_api_one_locator_dump_t_handler (vl_api_one_locator_dump_t *mp)
 {
   u8 *ls_name = 0;
   vl_api_registration_t *reg;
@@ -738,18 +730,17 @@ vl_api_one_locator_dump_t_handler (vl_api_one_locator_dump_t * mp)
   lsit = pool_elt_at_index (lcm->locator_set_pool, ls_index);
 
   vec_foreach (locit, lsit->locator_indices)
-  {
-    loc = pool_elt_at_index (lcm->locator_pool, locit[0]);
-    send_one_locator_details (lcm, loc, reg, mp->context);
-  };
+    {
+      loc = pool_elt_at_index (lcm->locator_pool, locit[0]);
+      send_one_locator_details (lcm, loc, reg, mp->context);
+    };
 out:
   vec_free (ls_name);
 }
 
 static void
-send_one_locator_set_details (lisp_cp_main_t * lcm,
-			      locator_set_t * lsit,
-			      vl_api_registration_t * reg, u32 context,
+send_one_locator_set_details (lisp_cp_main_t *lcm, locator_set_t *lsit,
+			      vl_api_registration_t *reg, u32 context,
 			      u32 ls_index)
 {
   vl_api_one_locator_set_details_t *rmp;
@@ -778,7 +769,7 @@ send_one_locator_set_details (lisp_cp_main_t * lcm,
 }
 
 static void
-vl_api_one_locator_set_dump_t_handler (vl_api_one_locator_set_dump_t * mp)
+vl_api_one_locator_set_dump_t_handler (vl_api_one_locator_set_dump_t *mp)
 {
   vl_api_registration_t *reg;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -792,22 +783,21 @@ vl_api_one_locator_set_dump_t_handler (vl_api_one_locator_set_dump_t * mp)
   filter = mp->filter;
   /* *INDENT-OFF* */
   pool_foreach (lsit, lcm->locator_set_pool)
-   {
-    if (filter && !((1 == filter && lsit->local) ||
-                    (2 == filter && !lsit->local)))
-      {
-        continue;
-      }
-    send_one_locator_set_details (lcm, lsit, reg, mp->context,
-                                   lsit - lcm->locator_set_pool);
-  }
+    {
+      if (filter &&
+	  !((1 == filter && lsit->local) || (2 == filter && !lsit->local)))
+	{
+	  continue;
+	}
+      send_one_locator_set_details (lcm, lsit, reg, mp->context,
+				    lsit - lcm->locator_set_pool);
+    }
   /* *INDENT-ON* */
 }
 
 static void
-send_one_eid_table_details (mapping_t * mapit,
-			    vl_api_registration_t * reg, u32 context,
-			    u8 filter)
+send_one_eid_table_details (mapping_t *mapit, vl_api_registration_t *reg,
+			    u32 context, u8 filter)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   locator_set_t *ls = 0;
@@ -821,14 +811,14 @@ send_one_eid_table_details (mapping_t * mapit,
 
   switch (filter)
     {
-    case ONE_FILTER_API_ALL:	/* all mappings */
+    case ONE_FILTER_API_ALL: /* all mappings */
       break;
 
-    case ONE_FILTER_API_LOCAL:	/* local only */
+    case ONE_FILTER_API_LOCAL: /* local only */
       if (!mapit->local)
 	return;
       break;
-    case ONE_FILTER_API_REMOTE:	/* remote only */
+    case ONE_FILTER_API_REMOTE: /* remote only */
       if (mapit->local)
 	return;
       break;
@@ -892,7 +882,7 @@ send_one_eid_table_details (mapping_t * mapit,
 }
 
 static void
-vl_api_one_eid_table_dump_t_handler (vl_api_one_eid_table_dump_t * mp)
+vl_api_one_eid_table_dump_t_handler (vl_api_one_eid_table_dump_t *mp)
 {
   u32 mi;
   vl_api_registration_t *reg;
@@ -911,27 +901,26 @@ vl_api_one_eid_table_dump_t_handler (vl_api_one_eid_table_dump_t * mp)
       unformat_one_eid_api (eid, clib_net_to_host_u32 (mp->vni), &mp->eid);
 
       mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, eid);
-      if ((u32) ~ 0 == mi)
+      if ((u32) ~0 == mi)
 	return;
 
       mapit = pool_elt_at_index (lcm->mapping_pool, mi);
       send_one_eid_table_details (mapit, reg, mp->context,
-				  0 /* ignore filter */ );
+				  0 /* ignore filter */);
     }
   else
     {
       /* *INDENT-OFF* */
       pool_foreach (mapit, lcm->mapping_pool)
-       {
-        send_one_eid_table_details(mapit, reg, mp->context,
-                                    mp->filter);
-      }
+	{
+	  send_one_eid_table_details (mapit, reg, mp->context, mp->filter);
+	}
       /* *INDENT-ON* */
     }
 }
 
 static void
-send_one_map_server_details (ip_address_t * ip, vl_api_registration_t * reg,
+send_one_map_server_details (ip_address_t *ip, vl_api_registration_t *reg,
 			     u32 context)
 {
   vl_api_one_map_server_details_t *rmp = NULL;
@@ -939,7 +928,6 @@ send_one_map_server_details (ip_address_t * ip, vl_api_registration_t * reg,
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_ONE_MAP_SERVER_DETAILS);
-
 
   ip_address_encode2 (ip, &rmp->ip_address);
 
@@ -949,7 +937,7 @@ send_one_map_server_details (ip_address_t * ip, vl_api_registration_t * reg,
 }
 
 static void
-vl_api_one_map_server_dump_t_handler (vl_api_one_map_server_dump_t * mp)
+vl_api_one_map_server_dump_t_handler (vl_api_one_map_server_dump_t *mp)
 {
   vl_api_registration_t *reg;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -960,14 +948,14 @@ vl_api_one_map_server_dump_t_handler (vl_api_one_map_server_dump_t * mp)
     return;
 
   vec_foreach (mr, lcm->map_servers)
-  {
-    send_one_map_server_details (&mr->address, reg, mp->context);
-  }
+    {
+      send_one_map_server_details (&mr->address, reg, mp->context);
+    }
 }
 
 static void
-send_one_map_resolver_details (ip_address_t * ip,
-			       vl_api_registration_t * reg, u32 context)
+send_one_map_resolver_details (ip_address_t *ip, vl_api_registration_t *reg,
+			       u32 context)
 {
   vl_api_one_map_resolver_details_t *rmp = NULL;
 
@@ -982,7 +970,7 @@ send_one_map_resolver_details (ip_address_t * ip,
 }
 
 static void
-vl_api_one_map_resolver_dump_t_handler (vl_api_one_map_resolver_dump_t * mp)
+vl_api_one_map_resolver_dump_t_handler (vl_api_one_map_resolver_dump_t *mp)
 {
   vl_api_registration_t *reg;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -993,13 +981,13 @@ vl_api_one_map_resolver_dump_t_handler (vl_api_one_map_resolver_dump_t * mp)
     return;
 
   vec_foreach (mr, lcm->map_resolvers)
-  {
-    send_one_map_resolver_details (&mr->address, reg, mp->context);
-  }
+    {
+      send_one_map_resolver_details (&mr->address, reg, mp->context);
+    }
 }
 
 static void
-send_eid_table_map_pair (hash_pair_t * p, vl_api_registration_t * reg,
+send_eid_table_map_pair (hash_pair_t *p, vl_api_registration_t *reg,
 			 u32 context)
 {
   vl_api_one_eid_table_map_details_t *rmp = NULL;
@@ -1015,7 +1003,7 @@ send_eid_table_map_pair (hash_pair_t * p, vl_api_registration_t * reg,
 }
 
 static void
-vl_api_one_eid_table_map_dump_t_handler (vl_api_one_eid_table_map_dump_t * mp)
+vl_api_one_eid_table_map_dump_t_handler (vl_api_one_eid_table_map_dump_t *mp)
 {
   vl_api_registration_t *reg;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -1037,14 +1025,12 @@ vl_api_one_eid_table_map_dump_t_handler (vl_api_one_eid_table_map_dump_t * mp)
 
   /* *INDENT-OFF* */
   hash_foreach_pair (p, vni_table,
-  ({
-    send_eid_table_map_pair (p, reg, mp->context);
-  }));
+		     ({ send_eid_table_map_pair (p, reg, mp->context); }));
   /* *INDENT-ON* */
 }
 
 static void
-send_eid_table_vni (u32 vni, vl_api_registration_t * reg, u32 context)
+send_eid_table_vni (u32 vni, vl_api_registration_t *reg, u32 context)
 {
   vl_api_one_eid_table_vni_details_t *rmp = 0;
 
@@ -1057,7 +1043,7 @@ send_eid_table_vni (u32 vni, vl_api_registration_t * reg, u32 context)
 }
 
 static void
-one_adjacency_copy (vl_api_one_adjacency_t * dst, lisp_adjacency_t * adjs)
+one_adjacency_copy (vl_api_one_adjacency_t *dst, lisp_adjacency_t *adjs)
 {
   lisp_adjacency_t *adj;
   vl_api_one_adjacency_t a;
@@ -1107,37 +1093,33 @@ one_adjacency_copy (vl_api_one_adjacency_t * dst, lisp_adjacency_t * adjs)
 }
 
 static void
-  vl_api_show_one_rloc_probe_state_t_handler
-  (vl_api_show_one_rloc_probe_state_t * mp)
+vl_api_show_one_rloc_probe_state_t_handler (
+  vl_api_show_one_rloc_probe_state_t *mp)
 {
   vl_api_show_one_rloc_probe_state_reply_t *rmp = 0;
   int rv = 0;
 
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_SHOW_ONE_RLOC_PROBE_STATE_REPLY,
-  {
-    rmp->is_enable = vnet_lisp_rloc_probe_state_get ();
-  });
+		{ rmp->is_enable = vnet_lisp_rloc_probe_state_get (); });
   /* *INDENT-ON* */
 }
 
 static void
-  vl_api_show_one_map_register_state_t_handler
-  (vl_api_show_one_map_register_state_t * mp)
+vl_api_show_one_map_register_state_t_handler (
+  vl_api_show_one_map_register_state_t *mp)
 {
   vl_api_show_one_map_register_state_reply_t *rmp = 0;
   int rv = 0;
 
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_SHOW_ONE_MAP_REGISTER_STATE_REPLY,
-  {
-    rmp->is_enable = vnet_lisp_map_register_state_get ();
-  });
+		{ rmp->is_enable = vnet_lisp_map_register_state_get (); });
   /* *INDENT-ON* */
 }
 
 static void
-vl_api_one_adjacencies_get_t_handler (vl_api_one_adjacencies_get_t * mp)
+vl_api_one_adjacencies_get_t_handler (vl_api_one_adjacencies_get_t *mp)
 {
   vl_api_one_adjacencies_get_reply_t *rmp = 0;
   lisp_adjacency_t *adjs = 0;
@@ -1149,8 +1131,7 @@ vl_api_one_adjacencies_get_t_handler (vl_api_one_adjacencies_get_t * mp)
   size = vec_len (adjs) * sizeof (vl_api_one_adjacency_t);
 
   /* *INDENT-OFF* */
-  REPLY_MACRO4 (VL_API_ONE_ADJACENCIES_GET_REPLY, size,
-  {
+  REPLY_MACRO4 (VL_API_ONE_ADJACENCIES_GET_REPLY, size, {
     rmp->count = clib_host_to_net_u32 (vec_len (adjs));
     one_adjacency_copy (rmp->adjacencies, adjs);
   });
@@ -1160,7 +1141,7 @@ vl_api_one_adjacencies_get_t_handler (vl_api_one_adjacencies_get_t * mp)
 }
 
 static void
-vl_api_one_eid_table_vni_dump_t_handler (vl_api_one_eid_table_vni_dump_t * mp)
+vl_api_one_eid_table_vni_dump_t_handler (vl_api_one_eid_table_vni_dump_t *mp)
 {
   hash_pair_t *p;
   u32 *vnis = 0;
@@ -1173,42 +1154,34 @@ vl_api_one_eid_table_vni_dump_t_handler (vl_api_one_eid_table_vni_dump_t * mp)
 
   /* *INDENT-OFF* */
   hash_foreach_pair (p, lcm->table_id_by_vni,
-  ({
-    hash_set (vnis, p->key, 0);
-  }));
+		     ({ hash_set (vnis, p->key, 0); }));
 
-  hash_foreach_pair (p, lcm->bd_id_by_vni,
-  ({
-    hash_set (vnis, p->key, 0);
-  }));
+  hash_foreach_pair (p, lcm->bd_id_by_vni, ({ hash_set (vnis, p->key, 0); }));
 
   hash_foreach_pair (p, vnis,
-  ({
-    send_eid_table_vni (p->key, reg, mp->context);
-  }));
+		     ({ send_eid_table_vni (p->key, reg, mp->context); }));
   /* *INDENT-ON* */
 
   hash_free (vnis);
 }
 
 static void
-vl_api_show_one_status_t_handler (vl_api_show_one_status_t * mp)
+vl_api_show_one_status_t_handler (vl_api_show_one_status_t *mp)
 {
   vl_api_show_one_status_reply_t *rmp = NULL;
   int rv = 0;
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_SHOW_ONE_STATUS_REPLY,
-  ({
-    rmp->gpe_status = vnet_lisp_gpe_enable_disable_status ();
-    rmp->feature_status = vnet_lisp_enable_disable_status ();
-  }));
+  REPLY_MACRO2 (VL_API_SHOW_ONE_STATUS_REPLY, ({
+		  rmp->gpe_status = vnet_lisp_gpe_enable_disable_status ();
+		  rmp->feature_status = vnet_lisp_enable_disable_status ();
+		}));
   /* *INDENT-ON* */
 }
 
 static void
-  vl_api_one_get_map_request_itr_rlocs_t_handler
-  (vl_api_one_get_map_request_itr_rlocs_t * mp)
+vl_api_one_get_map_request_itr_rlocs_t_handler (
+  vl_api_one_get_map_request_itr_rlocs_t *mp)
 {
   vl_api_one_get_map_request_itr_rlocs_reply_t *rmp = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -1222,24 +1195,22 @@ static void
     }
   else
     {
-      loc_set =
-	pool_elt_at_index (lcm->locator_set_pool, lcm->mreq_itr_rlocs);
+      loc_set = pool_elt_at_index (lcm->locator_set_pool, lcm->mreq_itr_rlocs);
       tmp_str = format (0, "%s", loc_set->name);
     }
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_ONE_GET_MAP_REQUEST_ITR_RLOCS_REPLY,
-  ({
-    strncpy((char *) rmp->locator_set_name, (char *) tmp_str,
-            ARRAY_LEN(rmp->locator_set_name) - 1);
-  }));
+  REPLY_MACRO2 (VL_API_ONE_GET_MAP_REQUEST_ITR_RLOCS_REPLY, ({
+		  strncpy ((char *) rmp->locator_set_name, (char *) tmp_str,
+			   ARRAY_LEN (rmp->locator_set_name) - 1);
+		}));
   /* *INDENT-ON* */
 
   vec_free (tmp_str);
 }
 
 static void
-vl_api_show_one_nsh_mapping_t_handler (vl_api_show_one_nsh_mapping_t * mp)
+vl_api_show_one_nsh_mapping_t_handler (vl_api_show_one_nsh_mapping_t *mp)
 {
   vl_api_show_one_nsh_mapping_reply_t *rmp = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -1249,7 +1220,7 @@ vl_api_show_one_nsh_mapping_t_handler (vl_api_show_one_nsh_mapping_t * mp)
   u8 is_set = 0;
   int rv = 0;
 
-  if (lcm->nsh_map_index == (u32) ~ 0)
+  if (lcm->nsh_map_index == (u32) ~0)
     {
       tmp_str = format (0, "N/A");
     }
@@ -1258,8 +1229,7 @@ vl_api_show_one_nsh_mapping_t_handler (vl_api_show_one_nsh_mapping_t * mp)
       m = pool_elt_at_index (lcm->mapping_pool, lcm->nsh_map_index);
       if (~0 != m->locator_set_index)
 	{
-	  ls =
-	    pool_elt_at_index (lcm->locator_set_pool, m->locator_set_index);
+	  ls = pool_elt_at_index (lcm->locator_set_pool, m->locator_set_index);
 	  tmp_str = format (0, "%s", ls->name);
 	  is_set = 1;
 	}
@@ -1271,17 +1241,16 @@ vl_api_show_one_nsh_mapping_t_handler (vl_api_show_one_nsh_mapping_t * mp)
   vec_add1 (tmp_str, 0);
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_SHOW_ONE_NSH_MAPPING_REPLY,
-  ({
-    rmp->is_set = is_set;
-    strncpy((char *) rmp->locator_set_name, (char *) tmp_str,
-            ARRAY_LEN(rmp->locator_set_name) - 1);
-  }));
+  REPLY_MACRO2 (VL_API_SHOW_ONE_NSH_MAPPING_REPLY, ({
+		  rmp->is_set = is_set;
+		  strncpy ((char *) rmp->locator_set_name, (char *) tmp_str,
+			   ARRAY_LEN (rmp->locator_set_name) - 1);
+		}));
   /* *INDENT-ON* */
 }
 
 static void
-vl_api_show_one_pitr_t_handler (vl_api_show_one_pitr_t * mp)
+vl_api_show_one_pitr_t_handler (vl_api_show_one_pitr_t *mp)
 {
   vl_api_show_one_pitr_reply_t *rmp = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -1290,8 +1259,8 @@ vl_api_show_one_pitr_t_handler (vl_api_show_one_pitr_t * mp)
   u8 *tmp_str = 0;
   int rv = 0;
 
-  u8 is_enable = (lcm->flags & LISP_FLAG_PITR_MODE)
-    && lcm->pitr_map_index != ~0;
+  u8 is_enable =
+    (lcm->flags & LISP_FLAG_PITR_MODE) && lcm->pitr_map_index != ~0;
 
   if (!is_enable)
     {
@@ -1302,8 +1271,7 @@ vl_api_show_one_pitr_t_handler (vl_api_show_one_pitr_t * mp)
       m = pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
       if (~0 != m->locator_set_index)
 	{
-	  ls =
-	    pool_elt_at_index (lcm->locator_set_pool, m->locator_set_index);
+	  ls = pool_elt_at_index (lcm->locator_set_pool, m->locator_set_index);
 	  tmp_str = format (0, "%s", ls->name);
 	}
       else
@@ -1314,33 +1282,31 @@ vl_api_show_one_pitr_t_handler (vl_api_show_one_pitr_t * mp)
   vec_add1 (tmp_str, 0);
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_SHOW_ONE_PITR_REPLY,
-  ({
-    rmp->status = lcm->flags & LISP_FLAG_PITR_MODE;
-    strncpy((char *) rmp->locator_set_name, (char *) tmp_str,
-            ARRAY_LEN(rmp->locator_set_name) - 1);
-  }));
+  REPLY_MACRO2 (VL_API_SHOW_ONE_PITR_REPLY, ({
+		  rmp->status = lcm->flags & LISP_FLAG_PITR_MODE;
+		  strncpy ((char *) rmp->locator_set_name, (char *) tmp_str,
+			   ARRAY_LEN (rmp->locator_set_name) - 1);
+		}));
   /* *INDENT-ON* */
 }
 
 static void
-  vl_api_show_one_stats_enable_disable_t_handler
-  (vl_api_show_one_stats_enable_disable_t * mp)
+vl_api_show_one_stats_enable_disable_t_handler (
+  vl_api_show_one_stats_enable_disable_t *mp)
 {
   vl_api_show_one_stats_enable_disable_reply_t *rmp = NULL;
   vnet_api_error_t rv = 0;
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_SHOW_ONE_STATS_ENABLE_DISABLE_REPLY,
-  ({
-    rmp->is_enable = vnet_lisp_stats_enable_disable_state ();
-  }));
+  REPLY_MACRO2 (VL_API_SHOW_ONE_STATS_ENABLE_DISABLE_REPLY, ({
+		  rmp->is_enable = vnet_lisp_stats_enable_disable_state ();
+		}));
   /* *INDENT-ON* */
 }
 
 static void
-  vl_api_one_stats_enable_disable_t_handler
-  (vl_api_one_stats_enable_disable_t * mp)
+vl_api_one_stats_enable_disable_t_handler (
+  vl_api_one_stats_enable_disable_t *mp)
 {
   vl_api_one_enable_disable_reply_t *rmp = NULL;
 
@@ -1349,7 +1315,7 @@ static void
 }
 
 static void
-vl_api_one_stats_flush_t_handler (vl_api_one_stats_flush_t * mp)
+vl_api_one_stats_flush_t_handler (vl_api_one_stats_flush_t *mp)
 {
   vl_api_one_stats_flush_reply_t *rmp;
   u8 rv;
@@ -1359,7 +1325,7 @@ vl_api_one_stats_flush_t_handler (vl_api_one_stats_flush_t * mp)
 }
 
 static void
-vl_api_one_stats_dump_t_handler (vl_api_one_stats_dump_t * mp)
+vl_api_one_stats_dump_t_handler (vl_api_one_stats_dump_t *mp)
 {
   vl_api_one_stats_details_t *rmp;
   lisp_api_stats_t *stats, *stat;
@@ -1367,27 +1333,28 @@ vl_api_one_stats_dump_t_handler (vl_api_one_stats_dump_t * mp)
 
   stats = vnet_lisp_get_stats ();
   vec_foreach (stat, stats)
-  {
+    {
       /* *INDENT-OFF* */
-      REPLY_DETAILS (VL_API_ONE_STATS_DETAILS,
-      ({
-        fid_to_api_eid (&stat->deid, &rmp->deid);
-        fid_to_api_eid (&stat->seid, &rmp->seid);
-        rmp->vni = clib_host_to_net_u32 (stat->vni);
+      REPLY_DETAILS (VL_API_ONE_STATS_DETAILS, ({
+		       fid_to_api_eid (&stat->deid, &rmp->deid);
+		       fid_to_api_eid (&stat->seid, &rmp->seid);
+		       rmp->vni = clib_host_to_net_u32 (stat->vni);
 
-        ip_address_encode2 (&stat->rmt_rloc, &rmp->rloc);
-        ip_address_encode2 (&stat->loc_rloc, &rmp->lloc);
+		       ip_address_encode2 (&stat->rmt_rloc, &rmp->rloc);
+		       ip_address_encode2 (&stat->loc_rloc, &rmp->lloc);
 
-        rmp->pkt_count = clib_host_to_net_u32 (stat->counters.packets);
-        rmp->bytes = clib_host_to_net_u32 (stat->counters.bytes);
-      }));
+		       rmp->pkt_count =
+			 clib_host_to_net_u32 (stat->counters.packets);
+		       rmp->bytes =
+			 clib_host_to_net_u32 (stat->counters.bytes);
+		     }));
       /* *INDENT-ON* */
-  }
+    }
 }
 
 static void
-  vl_api_one_add_del_l2_arp_entry_t_handler
-  (vl_api_one_add_del_l2_arp_entry_t * mp)
+vl_api_one_add_del_l2_arp_entry_t_handler (
+  vl_api_one_add_del_l2_arp_entry_t *mp)
 {
   vl_api_one_add_del_l2_arp_entry_reply_t *rmp;
   int rv = 0;
@@ -1409,7 +1376,7 @@ static void
 }
 
 static void
-vl_api_one_add_del_ndp_entry_t_handler (vl_api_one_add_del_ndp_entry_t * mp)
+vl_api_one_add_del_ndp_entry_t_handler (vl_api_one_add_del_ndp_entry_t *mp)
 {
   vl_api_one_add_del_ndp_entry_reply_t *rmp;
   int rv = 0;
@@ -1431,7 +1398,7 @@ vl_api_one_add_del_ndp_entry_t_handler (vl_api_one_add_del_ndp_entry_t * mp)
 }
 
 static void
-vl_api_one_ndp_bd_get_t_handler (vl_api_one_ndp_bd_get_t * mp)
+vl_api_one_ndp_bd_get_t_handler (vl_api_one_ndp_bd_get_t *mp)
 {
   vl_api_one_ndp_bd_get_reply_t *rmp;
   int rv = 0;
@@ -1442,13 +1409,10 @@ vl_api_one_ndp_bd_get_t_handler (vl_api_one_ndp_bd_get_t * mp)
   u32 size = hash_elts (bds) * sizeof (u32);
 
   /* *INDENT-OFF* */
-  REPLY_MACRO4 (VL_API_ONE_NDP_BD_GET_REPLY, size,
-  {
+  REPLY_MACRO4 (VL_API_ONE_NDP_BD_GET_REPLY, size, {
     rmp->count = clib_host_to_net_u32 (hash_elts (bds));
-    hash_foreach_pair (p, bds,
-    ({
-      rmp->bridge_domains[i++] = clib_host_to_net_u32 (p->key);
-    }));
+    hash_foreach_pair (
+      p, bds, ({ rmp->bridge_domains[i++] = clib_host_to_net_u32 (p->key); }));
   });
   /* *INDENT-ON* */
 
@@ -1456,7 +1420,7 @@ vl_api_one_ndp_bd_get_t_handler (vl_api_one_ndp_bd_get_t * mp)
 }
 
 static void
-vl_api_one_l2_arp_bd_get_t_handler (vl_api_one_l2_arp_bd_get_t * mp)
+vl_api_one_l2_arp_bd_get_t_handler (vl_api_one_l2_arp_bd_get_t *mp)
 {
   vl_api_one_l2_arp_bd_get_reply_t *rmp;
   int rv = 0;
@@ -1467,13 +1431,10 @@ vl_api_one_l2_arp_bd_get_t_handler (vl_api_one_l2_arp_bd_get_t * mp)
   u32 size = hash_elts (bds) * sizeof (u32);
 
   /* *INDENT-OFF* */
-  REPLY_MACRO4 (VL_API_ONE_L2_ARP_BD_GET_REPLY, size,
-  {
+  REPLY_MACRO4 (VL_API_ONE_L2_ARP_BD_GET_REPLY, size, {
     rmp->count = clib_host_to_net_u32 (hash_elts (bds));
-    hash_foreach_pair (p, bds,
-    ({
-      rmp->bridge_domains[i++] = clib_host_to_net_u32 (p->key);
-    }));
+    hash_foreach_pair (
+      p, bds, ({ rmp->bridge_domains[i++] = clib_host_to_net_u32 (p->key); }));
   });
   /* *INDENT-ON* */
 
@@ -1481,7 +1442,7 @@ vl_api_one_l2_arp_bd_get_t_handler (vl_api_one_l2_arp_bd_get_t * mp)
 }
 
 static void
-vl_api_one_l2_arp_entries_get_t_handler (vl_api_one_l2_arp_entries_get_t * mp)
+vl_api_one_l2_arp_entries_get_t_handler (vl_api_one_l2_arp_entries_get_t *mp)
 {
   vl_api_one_l2_arp_entries_get_reply_t *rmp;
   lisp_api_l2_arp_entry_t *entries = 0, *e;
@@ -1494,14 +1455,13 @@ vl_api_one_l2_arp_entries_get_t_handler (vl_api_one_l2_arp_entries_get_t * mp)
   u32 size = vec_len (entries) * sizeof (vl_api_one_l2_arp_entry_t);
 
   /* *INDENT-OFF* */
-  REPLY_MACRO4 (VL_API_ONE_L2_ARP_ENTRIES_GET_REPLY, size,
-  {
+  REPLY_MACRO4 (VL_API_ONE_L2_ARP_ENTRIES_GET_REPLY, size, {
     rmp->count = clib_host_to_net_u32 (vec_len (entries));
     vec_foreach (e, entries)
       {
 	mac_address_encode ((mac_address_t *) e->mac, rmp->entries[i].mac);
 	ip4_address_encode ((ip4_address_t *) &e->ip4, rmp->entries[i].ip4);
-        i++;
+	i++;
       }
   });
   /* *INDENT-ON* */
@@ -1510,8 +1470,8 @@ vl_api_one_l2_arp_entries_get_t_handler (vl_api_one_l2_arp_entries_get_t * mp)
 }
 
 static void
-  vl_api_one_map_register_fallback_threshold_t_handler
-  (vl_api_one_map_register_fallback_threshold_t * mp)
+vl_api_one_map_register_fallback_threshold_t_handler (
+  vl_api_one_map_register_fallback_threshold_t *mp)
 {
   vl_api_one_map_register_fallback_threshold_reply_t *rmp;
   int rv = 0;
@@ -1522,8 +1482,8 @@ static void
 }
 
 static void
-  vl_api_show_one_map_register_fallback_threshold_t_handler
-  (vl_api_show_one_map_register_fallback_threshold_t * mp)
+vl_api_show_one_map_register_fallback_threshold_t_handler (
+  vl_api_show_one_map_register_fallback_threshold_t *mp)
 {
   vl_api_show_one_map_register_fallback_threshold_reply_t *rmp;
   int rv = 0;
@@ -1532,15 +1492,13 @@ static void
 
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_SHOW_ONE_MAP_REGISTER_FALLBACK_THRESHOLD_REPLY,
-  ({
-    rmp->value = clib_host_to_net_u32 (value);
-  }));
+		({ rmp->value = clib_host_to_net_u32 (value); }));
   /* *INDENT-ON* */
 }
 
 static void
-  vl_api_one_set_transport_protocol_t_handler
-  (vl_api_one_set_transport_protocol_t * mp)
+vl_api_one_set_transport_protocol_t_handler (
+  vl_api_one_set_transport_protocol_t *mp)
 {
   vl_api_one_set_transport_protocol_reply_t *rmp;
   int rv = 0;
@@ -1551,8 +1509,8 @@ static void
 }
 
 static void
-  vl_api_one_get_transport_protocol_t_handler
-  (vl_api_one_get_transport_protocol_t * mp)
+vl_api_one_get_transport_protocol_t_handler (
+  vl_api_one_get_transport_protocol_t *mp)
 {
   vl_api_one_get_transport_protocol_reply_t *rmp;
   int rv = 0;
@@ -1560,14 +1518,12 @@ static void
 
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_ONE_GET_TRANSPORT_PROTOCOL_REPLY,
-  ({
-    rmp->protocol = proto;
-  }));
+		({ rmp->protocol = proto; }));
   /* *INDENT-ON* */
 }
 
 static void
-vl_api_one_ndp_entries_get_t_handler (vl_api_one_ndp_entries_get_t * mp)
+vl_api_one_ndp_entries_get_t_handler (vl_api_one_ndp_entries_get_t *mp)
 {
   vl_api_one_ndp_entries_get_reply_t *rmp = 0;
   lisp_api_ndp_entry_t *entries = 0, *e;
@@ -1580,14 +1536,13 @@ vl_api_one_ndp_entries_get_t_handler (vl_api_one_ndp_entries_get_t * mp)
   u32 size = vec_len (entries) * sizeof (vl_api_one_ndp_entry_t);
 
   /* *INDENT-OFF* */
-  REPLY_MACRO4 (VL_API_ONE_NDP_ENTRIES_GET_REPLY, size,
-  {
+  REPLY_MACRO4 (VL_API_ONE_NDP_ENTRIES_GET_REPLY, size, {
     rmp->count = clib_host_to_net_u32 (vec_len (entries));
     vec_foreach (e, entries)
       {
 	mac_address_encode ((mac_address_t *) e->mac, rmp->entries[i].mac);
 	ip6_address_encode ((ip6_address_t *) &e->ip6, rmp->entries[i].ip6);
-        i++;
+	i++;
       }
   });
   /* *INDENT-ON* */
@@ -1596,8 +1551,8 @@ vl_api_one_ndp_entries_get_t_handler (vl_api_one_ndp_entries_get_t * mp)
 }
 
 static void
-  vl_api_one_enable_disable_xtr_mode_t_handler
-  (vl_api_one_enable_disable_xtr_mode_t * mp)
+vl_api_one_enable_disable_xtr_mode_t_handler (
+  vl_api_one_enable_disable_xtr_mode_t *mp)
 {
   vl_api_one_enable_disable_xtr_mode_reply_t *rmp = 0;
   int rv = vnet_lisp_enable_disable_xtr_mode (mp->is_enable);
@@ -1606,22 +1561,20 @@ static void
 }
 
 static void
-vl_api_one_show_xtr_mode_t_handler (vl_api_one_show_xtr_mode_t * mp)
+vl_api_one_show_xtr_mode_t_handler (vl_api_one_show_xtr_mode_t *mp)
 {
   vl_api_one_show_xtr_mode_reply_t *rmp = 0;
   int rv = 0;
 
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_ONE_SHOW_XTR_MODE_REPLY,
-  {
-    rmp->is_enable = vnet_lisp_get_xtr_mode ();
-  });
+		{ rmp->is_enable = vnet_lisp_get_xtr_mode (); });
   /* *INDENT-ON* */
 }
 
 static void
-  vl_api_one_enable_disable_pitr_mode_t_handler
-  (vl_api_one_enable_disable_pitr_mode_t * mp)
+vl_api_one_enable_disable_pitr_mode_t_handler (
+  vl_api_one_enable_disable_pitr_mode_t *mp)
 {
   vl_api_one_enable_disable_pitr_mode_reply_t *rmp = 0;
   int rv = vnet_lisp_enable_disable_pitr_mode (mp->is_enable);
@@ -1630,76 +1583,22 @@ static void
 }
 
 static void
-vl_api_one_show_pitr_mode_t_handler (vl_api_one_show_pitr_mode_t * mp)
+vl_api_one_show_pitr_mode_t_handler (vl_api_one_show_pitr_mode_t *mp)
 {
   vl_api_one_show_pitr_mode_reply_t *rmp = 0;
   int rv = 0;
 
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_ONE_SHOW_PITR_MODE_REPLY,
-  {
-    rmp->is_enable = vnet_lisp_get_pitr_mode ();
-  });
+		{ rmp->is_enable = vnet_lisp_get_pitr_mode (); });
   /* *INDENT-ON* */
 }
 
 static void
-  vl_api_one_enable_disable_petr_mode_t_handler
-  (vl_api_one_enable_disable_petr_mode_t * mp)
+vl_api_one_enable_disable_petr_mode_t_handler (
+  vl_api_one_enable_disable_petr_mode_t *mp)
 {
   vl_api_one_enable_disable_petr_mode_reply_t *rmp = 0;
   int rv = vnet_lisp_enable_disable_petr_mode (mp->is_enable);
 
-  REPLY_MACRO (VL_API_ONE_ENABLE_DISABLE_PETR_MODE_REPLY);
-}
-
-static void
-vl_api_one_show_petr_mode_t_handler (vl_api_one_show_petr_mode_t * mp)
-{
-  vl_api_one_show_petr_mode_reply_t *rmp = 0;
-  int rv = 0;
-
-  /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_ONE_SHOW_PETR_MODE_REPLY,
-  {
-    rmp->is_enable = vnet_lisp_get_petr_mode ();
-  });
-  /* *INDENT-ON* */
-}
-
-/*
- * one_api_hookup
- * Add vpe's API message handlers to the table.
- * vlib has already mapped shared memory and
- * added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
- */
-#include <lisp/lisp-cp/one.api.c>
-
-static clib_error_t *
-one_api_hookup (vlib_main_t * vm)
-{
-  one_base_msg_id = setup_message_id_table ();
-
-  return 0;
-}
-
-VLIB_API_INIT_FUNCTION (one_api_hookup);
-
-#include <vlib/unix/plugin.h>
-#include <vpp/app/version.h>
-
-/* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Locator ID Separation Protocol (LISP)",
-};
-/* *INDENT-ON* */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+  REPLY_MACRO (VL_API_ONE_ENABLE_DISA

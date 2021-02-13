@@ -35,7 +35,7 @@
 #include <vlibapi/api_helper_macros.h>
 
 static void
-vl_api_gtpu_offload_rx_t_handler (vl_api_gtpu_offload_rx_t * mp)
+vl_api_gtpu_offload_rx_t_handler (vl_api_gtpu_offload_rx_t *mp)
 {
   vl_api_gtpu_offload_rx_reply_t *rmp;
   int rv = 0;
@@ -95,8 +95,8 @@ err:
 }
 
 static void
-  vl_api_sw_interface_set_gtpu_bypass_t_handler
-  (vl_api_sw_interface_set_gtpu_bypass_t * mp)
+vl_api_sw_interface_set_gtpu_bypass_t_handler (
+  vl_api_sw_interface_set_gtpu_bypass_t *mp)
 {
   vl_api_sw_interface_set_gtpu_bypass_reply_t *rmp;
   int rv = 0;
@@ -111,8 +111,8 @@ static void
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_GTPU_BYPASS_REPLY);
 }
 
-static void vl_api_gtpu_add_del_tunnel_t_handler
-  (vl_api_gtpu_add_del_tunnel_t * mp)
+static void
+vl_api_gtpu_add_del_tunnel_t_handler (vl_api_gtpu_add_del_tunnel_t *mp)
 {
   vl_api_gtpu_add_del_tunnel_reply_t *rmp;
   int rv = 0;
@@ -129,8 +129,8 @@ static void vl_api_gtpu_add_del_tunnel_t_handler
   ip_address_decode (&mp->src_address, &a.src);
 
   u8 is_ipv6 = !ip46_address_is_ip4 (&a.dst);
-  a.encap_fib_index = fib_table_find (fib_ip_proto (is_ipv6),
-				      ntohl (mp->encap_vrf_id));
+  a.encap_fib_index =
+    fib_table_find (fib_ip_proto (is_ipv6), ntohl (mp->encap_vrf_id));
   if (a.encap_fib_index == ~0)
     {
       rv = VNET_API_ERROR_NO_SUCH_FIB;
@@ -154,16 +154,14 @@ static void vl_api_gtpu_add_del_tunnel_t_handler
   rv = vnet_gtpu_add_mod_del_tunnel (&a, &sw_if_index);
 
 out:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_GTPU_ADD_DEL_TUNNEL_REPLY,
-  ({
-    rmp->sw_if_index = ntohl (sw_if_index);
-  }));
-  /* *INDENT-ON* */
+
+  REPLY_MACRO2 (VL_API_GTPU_ADD_DEL_TUNNEL_REPLY,
+		({ rmp->sw_if_index = ntohl (sw_if_index); }));
 }
 
-static void vl_api_gtpu_tunnel_update_tteid_t_handler
-  (vl_api_gtpu_tunnel_update_tteid_t * mp)
+static void
+vl_api_gtpu_tunnel_update_tteid_t_handler (
+  vl_api_gtpu_tunnel_update_tteid_t *mp)
 {
   vl_api_gtpu_tunnel_update_tteid_reply_t *rmp;
   int rv = 0;
@@ -177,8 +175,8 @@ static void vl_api_gtpu_tunnel_update_tteid_t_handler
   ip_address_decode (&mp->dst_address, &a.dst);
 
   u8 is_ipv6 = !ip46_address_is_ip4 (&a.dst);
-  a.encap_fib_index = fib_table_find (fib_ip_proto (is_ipv6),
-				      ntohl (mp->encap_vrf_id));
+  a.encap_fib_index =
+    fib_table_find (fib_ip_proto (is_ipv6), ntohl (mp->encap_vrf_id));
   if (a.encap_fib_index == ~0)
     {
       rv = VNET_API_ERROR_NO_SUCH_FIB;
@@ -191,8 +189,9 @@ out:
   REPLY_MACRO (VL_API_GTPU_TUNNEL_UPDATE_TTEID_REPLY);
 }
 
-static void send_gtpu_tunnel_details
-  (gtpu_tunnel_t * t, vl_api_registration_t * reg, u32 context)
+static void
+send_gtpu_tunnel_details (gtpu_tunnel_t *t, vl_api_registration_t *reg,
+			  u32 context)
 {
   vl_api_gtpu_tunnel_details_t *rmp;
   gtpu_main_t *gtm = &gtpu_main;
@@ -209,9 +208,9 @@ static void send_gtpu_tunnel_details
   ip_address_encode (&t->dst, is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
 		     &rmp->dst_address);
 
-  rmp->encap_vrf_id =
-    is_ipv6 ? htonl (im6->fibs[t->encap_fib_index].ft_table_id) :
-    htonl (im4->fibs[t->encap_fib_index].ft_table_id);
+  rmp->encap_vrf_id = is_ipv6 ?
+			htonl (im6->fibs[t->encap_fib_index].ft_table_id) :
+			htonl (im4->fibs[t->encap_fib_index].ft_table_id);
   rmp->mcast_sw_if_index = htonl (t->mcast_sw_if_index);
   rmp->teid = htonl (t->teid);
   rmp->tteid = htonl (t->tteid);
@@ -223,7 +222,7 @@ static void send_gtpu_tunnel_details
 }
 
 static void
-vl_api_gtpu_tunnel_dump_t_handler (vl_api_gtpu_tunnel_dump_t * mp)
+vl_api_gtpu_tunnel_dump_t_handler (vl_api_gtpu_tunnel_dump_t *mp)
 {
   vl_api_registration_t *reg;
   gtpu_main_t *gtm = &gtpu_main;
@@ -238,12 +237,11 @@ vl_api_gtpu_tunnel_dump_t_handler (vl_api_gtpu_tunnel_dump_t * mp)
 
   if (~0 == sw_if_index)
     {
-      /* *INDENT-OFF* */
+
       pool_foreach (t, gtm->tunnels)
-       {
-        send_gtpu_tunnel_details(t, reg, mp->context);
-      }
-      /* *INDENT-ON* */
+	{
+	  send_gtpu_tunnel_details (t, reg, mp->context);
+	}
     }
   else
     {
@@ -259,7 +257,7 @@ vl_api_gtpu_tunnel_dump_t_handler (vl_api_gtpu_tunnel_dump_t * mp)
 
 #include <gtpu/gtpu.api.c>
 static clib_error_t *
-gtpu_api_hookup (vlib_main_t * vm)
+gtpu_api_hookup (vlib_main_t *vm)
 {
   gtpu_main_t *gtm = &gtpu_main;
 

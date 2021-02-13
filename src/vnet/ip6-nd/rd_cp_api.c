@@ -31,10 +31,9 @@ static u32 rd_cp_base_msg_id;
 
 #include <vlibapi/api_helper_macros.h>
 
-
 static void
-vl_api_ip6_nd_address_autoconfig_t_handler (vl_api_ip6_nd_address_autoconfig_t
-					    * mp)
+vl_api_ip6_nd_address_autoconfig_t_handler (
+  vl_api_ip6_nd_address_autoconfig_t *mp)
 {
   vl_api_ip6_nd_address_autoconfig_reply_t *rmp;
   u32 sw_if_index;
@@ -44,8 +43,8 @@ vl_api_ip6_nd_address_autoconfig_t_handler (vl_api_ip6_nd_address_autoconfig_t
 
   sw_if_index = ntohl (mp->sw_if_index);
 
-  rv = rd_cp_set_address_autoconfig (sw_if_index,
-				     mp->enable, mp->install_default_routes);
+  rv = rd_cp_set_address_autoconfig (sw_if_index, mp->enable,
+				     mp->install_default_routes);
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -55,7 +54,7 @@ vl_api_ip6_nd_address_autoconfig_t_handler (vl_api_ip6_nd_address_autoconfig_t
 #include <vnet/ip6-nd/rd_cp.api.c>
 
 static clib_error_t *
-rd_cp_api_init (vlib_main_t * vm)
+rd_cp_api_init (vlib_main_t *vm)
 {
   rd_cp_base_msg_id = setup_message_id_table ();
 

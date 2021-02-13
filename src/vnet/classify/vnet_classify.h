@@ -16,7 +16,7 @@
 #define __included_vnet_classify_h__
 
 #include <vnet/vnet.h>
-#include <vnet/api_errno.h>	/* for API error numbers */
+#include <vnet/api_errno.h> /* for API error numbers */
 
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
@@ -60,12 +60,12 @@ typedef enum vnet_classify_action_t_
 struct _vnet_classify_main;
 typedef struct _vnet_classify_main vnet_classify_main_t;
 
-#define foreach_size_in_u32x4                   \
-_(1)                                            \
-_(2)                                            \
-_(3)                                            \
-_(4)                                            \
-_(5)
+#define foreach_size_in_u32x4                                                 \
+  _ (1)                                                                       \
+  _ (2)                                                                       \
+  _ (3)                                                                       \
+  _ (4)                                                                       \
+  _ (5)
 
 typedef struct _vnet_classify_entry
 {
@@ -91,7 +91,7 @@ typedef struct _vnet_classify_entry
 
   /* Really only need 1 bit */
   u8 flags;
-#define VNET_CLASSIFY_ENTRY_FREE	(1<<0)
+#define VNET_CLASSIFY_ENTRY_FREE (1 << 0)
 
   vnet_classify_action_t action;
   u16 metadata;
@@ -108,13 +108,13 @@ typedef struct _vnet_classify_entry
 STATIC_ASSERT_OFFSET_OF (vnet_classify_entry_t, key, 32);
 
 static inline int
-vnet_classify_entry_is_free (vnet_classify_entry_t * e)
+vnet_classify_entry_is_free (vnet_classify_entry_t *e)
 {
   return e->flags & VNET_CLASSIFY_ENTRY_FREE;
 }
 
 static inline int
-vnet_classify_entry_is_busy (vnet_classify_entry_t * e)
+vnet_classify_entry_is_busy (vnet_classify_entry_t *e)
 {
   return ((e->flags & VNET_CLASSIFY_ENTRY_FREE) == 0);
 }
@@ -233,10 +233,10 @@ struct _vnet_classify_main
 
 extern vnet_classify_main_t vnet_classify_main;
 
-u8 *format_classify_table (u8 * s, va_list * args);
+u8 *format_classify_table (u8 *s, va_list *args);
 u8 *format_vnet_classify_table (u8 *s, va_list *args);
 
-u64 vnet_classify_hash_packet (vnet_classify_table_t * t, u8 * h);
+u64 vnet_classify_hash_packet (vnet_classify_table_t *t, u8 *h);
 
 static_always_inline vnet_classify_table_t *
 vnet_classify_table_get (u32 table_index)
@@ -313,14 +313,14 @@ vnet_classify_hash_packet_inline (vnet_classify_table_t *t, const u8 *h)
 #endif /* CLIB_HAVE_VEC128 */
 
 #ifdef clib_crc32c_uses_intrinsics
-  return clib_crc32c ((u8 *) & xor_sum, sizeof (xor_sum));
+  return clib_crc32c ((u8 *) &xor_sum, sizeof (xor_sum));
 #else
   return clib_xxhash (xor_sum.as_u64[0] ^ xor_sum.as_u64[1]);
 #endif
 }
 
 static inline void
-vnet_classify_prefetch_bucket (vnet_classify_table_t * t, u64 hash)
+vnet_classify_prefetch_bucket (vnet_classify_table_t *t, u64 hash)
 {
   u32 bucket_index;
 
@@ -332,7 +332,7 @@ vnet_classify_prefetch_bucket (vnet_classify_table_t * t, u64 hash)
 }
 
 static inline vnet_classify_entry_t *
-vnet_classify_get_entry (vnet_classify_table_t * t, uword offset)
+vnet_classify_get_entry (vnet_classify_table_t *t, uword offset)
 {
   u8 *hp = clib_mem_get_heap_base (t->mheap);
   u8 *vp = hp + offset;
@@ -341,8 +341,7 @@ vnet_classify_get_entry (vnet_classify_table_t * t, uword offset)
 }
 
 static inline uword
-vnet_classify_get_offset (vnet_classify_table_t * t,
-			  vnet_classify_entry_t * v)
+vnet_classify_get_offset (vnet_classify_table_t *t, vnet_classify_entry_t *v)
 {
   u8 *hp, *vp;
 
@@ -354,8 +353,8 @@ vnet_classify_get_offset (vnet_classify_table_t * t,
 }
 
 static inline vnet_classify_entry_t *
-vnet_classify_entry_at_index (vnet_classify_table_t * t,
-			      vnet_classify_entry_t * e, u32 index)
+vnet_classify_entry_at_index (vnet_classify_table_t *t,
+			      vnet_classify_entry_t *e, u32 index)
 {
   u8 *eu8;
 
@@ -368,7 +367,7 @@ vnet_classify_entry_at_index (vnet_classify_table_t * t,
 }
 
 static inline void
-vnet_classify_prefetch_entry (vnet_classify_table_t * t, u64 hash)
+vnet_classify_prefetch_entry (vnet_classify_table_t *t, u64 hash)
 {
   u32 bucket_index;
   u32 value_index;
@@ -392,8 +391,8 @@ vnet_classify_prefetch_entry (vnet_classify_table_t * t, u64 hash)
   CLIB_PREFETCH (e, CLIB_CACHE_LINE_BYTES, LOAD);
 }
 
-vnet_classify_entry_t *vnet_classify_find_entry (vnet_classify_table_t * t,
-						 u8 * h, u64 hash, f64 now);
+vnet_classify_entry_t *vnet_classify_find_entry (vnet_classify_table_t *t,
+						 u8 *h, u64 hash, f64 now);
 
 static inline vnet_classify_entry_t *
 vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
@@ -563,31 +562,29 @@ unformat_function_t unformat_vlan_tag;
 unformat_function_t unformat_l2_match;
 unformat_function_t unformat_classify_match;
 
-void vnet_classify_register_unformat_ip_next_index_fn
-  (unformat_function_t * fn);
+void
+vnet_classify_register_unformat_ip_next_index_fn (unformat_function_t *fn);
 
-void vnet_classify_register_unformat_l2_next_index_fn
-  (unformat_function_t * fn);
+void
+vnet_classify_register_unformat_l2_next_index_fn (unformat_function_t *fn);
 
-void vnet_classify_register_unformat_acl_next_index_fn
-  (unformat_function_t * fn);
+void
+vnet_classify_register_unformat_acl_next_index_fn (unformat_function_t *fn);
 
-void vnet_classify_register_unformat_policer_next_index_fn
-  (unformat_function_t * fn);
+void vnet_classify_register_unformat_policer_next_index_fn (
+  unformat_function_t *fn);
 
-void vnet_classify_register_unformat_opaque_index_fn (unformat_function_t *
-						      fn);
+void vnet_classify_register_unformat_opaque_index_fn (unformat_function_t *fn);
 
-u32 classify_get_pcap_chain (vnet_classify_main_t * cm, u32 sw_if_index);
-void classify_set_pcap_chain (vnet_classify_main_t * cm,
-			      u32 sw_if_index, u32 table_index);
+u32 classify_get_pcap_chain (vnet_classify_main_t *cm, u32 sw_if_index);
+void classify_set_pcap_chain (vnet_classify_main_t *cm, u32 sw_if_index,
+			      u32 table_index);
 
 u32 classify_get_trace_chain (void);
-void classify_set_trace_chain (vnet_classify_main_t * cm, u32 table_index);
+void classify_set_trace_chain (vnet_classify_main_t *cm, u32 table_index);
 
-u32 classify_sort_table_chain (vnet_classify_main_t * cm, u32 table_index);
-u32 classify_lookup_chain (u32 table_index,
-			   u8 * mask, u32 n_skip, u32 n_match);
+u32 classify_sort_table_chain (vnet_classify_main_t *cm, u32 table_index);
+u32 classify_lookup_chain (u32 table_index, u8 *mask, u32 n_skip, u32 n_match);
 
 #endif /* __included_vnet_classify_h__ */
 

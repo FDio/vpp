@@ -42,8 +42,7 @@ uword *gbp_epg_sclass_db;
 
 vlib_log_class_t gg_logger;
 
-#define GBP_EPG_DBG(...)                           \
-    vlib_log_debug (gg_logger, __VA_ARGS__);
+#define GBP_EPG_DBG(...) vlib_log_debug (gg_logger, __VA_ARGS__);
 
 gbp_endpoint_group_t *
 gbp_endpoint_group_get (index_t i)
@@ -77,12 +76,9 @@ gbp_endpoint_group_find (sclass_t sclass)
 }
 
 int
-gbp_endpoint_group_add_and_lock (vnid_t vnid,
-				 u16 sclass,
-				 u32 bd_id,
-				 u32 rd_id,
+gbp_endpoint_group_add_and_lock (vnid_t vnid, u16 sclass, u32 bd_id, u32 rd_id,
 				 u32 uplink_sw_if_index,
-				 const gbp_endpoint_retention_t * retention)
+				 const gbp_endpoint_retention_t *retention)
 {
   gbp_endpoint_group_t *gg;
   index_t ggi;
@@ -130,8 +126,7 @@ gbp_endpoint_group_add_and_lock (vnid_t vnid,
 	{
 	  FOR_EACH_FIB_IP_PROTOCOL (fproto)
 	  {
-	    dvr_dpo_add_or_lock (uplink_sw_if_index,
-				 fib_proto_to_dpo (fproto),
+	    dvr_dpo_add_or_lock (uplink_sw_if_index, fib_proto_to_dpo (fproto),
 				 &gg->gg_dpo[fproto]);
 	  }
 
@@ -146,8 +141,8 @@ gbp_endpoint_group_add_and_lock (vnid_t vnid,
 					L2INPUT_FEAT_GBP_NULL_CLASSIFY);
 	}
 
-      hash_set (gbp_endpoint_group_db.gg_hash_sclass,
-		gg->gg_sclass, gg - gbp_endpoint_group_pool);
+      hash_set (gbp_endpoint_group_db.gg_hash_sclass, gg->gg_sclass,
+		gg - gbp_endpoint_group_pool);
     }
   else
     {
@@ -180,10 +175,7 @@ gbp_endpoint_group_unlock (index_t ggi)
 
       gbp_itf_unlock (&gg->gg_uplink_itf);
 
-      FOR_EACH_FIB_IP_PROTOCOL (fproto)
-      {
-	dpo_reset (&gg->gg_dpo[fproto]);
-      }
+      FOR_EACH_FIB_IP_PROTOCOL (fproto) { dpo_reset (&gg->gg_dpo[fproto]); }
       gbp_bridge_domain_unlock (gg->gg_gbd);
       gbp_route_domain_unlock (gg->gg_rd);
 
@@ -215,7 +207,7 @@ gbp_endpoint_group_delete (sclass_t sclass)
 }
 
 u32
-gbp_endpoint_group_get_bd_id (const gbp_endpoint_group_t * gg)
+gbp_endpoint_group_get_bd_id (const gbp_endpoint_group_t *gg)
 {
   const gbp_bridge_domain_t *gb;
 
@@ -225,7 +217,7 @@ gbp_endpoint_group_get_bd_id (const gbp_endpoint_group_t * gg)
 }
 
 index_t
-gbp_endpoint_group_get_fib_index (const gbp_endpoint_group_t * gg,
+gbp_endpoint_group_get_fib_index (const gbp_endpoint_group_t *gg,
 				  fib_protocol_t fproto)
 {
   const gbp_route_domain_t *grd;
@@ -240,18 +232,16 @@ gbp_endpoint_group_walk (gbp_endpoint_group_cb_t cb, void *ctx)
 {
   gbp_endpoint_group_t *gbpe;
 
-  /* *INDENT-OFF* */
   pool_foreach (gbpe, gbp_endpoint_group_pool)
-  {
-    if (!cb(gbpe, ctx))
-      break;
-  }
-  /* *INDENT-ON* */
+    {
+      if (!cb (gbpe, ctx))
+	break;
+    }
 }
 
 static clib_error_t *
-gbp_endpoint_group_cli (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+gbp_endpoint_group_cli (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   gbp_endpoint_retention_t retention = { 0 };
   vnid_t vnid = VNID_INVALID, sclass;
@@ -263,8 +253,8 @@ gbp_endpoint_group_cli (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_vnet_sw_interface,
-		    vnm, &uplink_sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &uplink_sw_if_index))
 	;
       else if (unformat (input, "add"))
 	add = 1;
@@ -305,20 +295,22 @@ gbp_endpoint_group_cli (vlib_main_t * vm,
  * Configure a GBP Endpoint Group
  *
  * @cliexpar
- * @cliexstart{gbp endpoint-group [del] epg <ID> bd <ID> rd <ID> [sclass <ID>] [<interface>]}
+ * @cliexstart{gbp endpoint-group [del] epg <ID> bd <ID> rd <ID> [sclass <ID>]
+ [<interface>]}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (gbp_endpoint_group_cli_node, static) = {
   .path = "gbp endpoint-group",
-  .short_help = "gbp endpoint-group [del] epg <ID> bd <ID> rd <ID> [sclass <ID>] [<interface>]",
+  .short_help = "gbp endpoint-group [del] epg <ID> bd <ID> rd <ID> [sclass "
+		"<ID>] [<interface>]",
   .function = gbp_endpoint_group_cli,
 };
 
 static u8 *
-format_gbp_endpoint_retention (u8 * s, va_list * args)
+format_gbp_endpoint_retention (u8 *s, va_list *args)
 {
-  gbp_endpoint_retention_t *rt = va_arg (*args, gbp_endpoint_retention_t*);
+  gbp_endpoint_retention_t *rt = va_arg (*args, gbp_endpoint_retention_t *);
 
   s = format (s, "[remote-EP-timeout:%d]", rt->remote_ep_timeout);
 
@@ -326,20 +318,16 @@ format_gbp_endpoint_retention (u8 * s, va_list * args)
 }
 
 u8 *
-format_gbp_endpoint_group (u8 * s, va_list * args)
+format_gbp_endpoint_group (u8 *s, va_list *args)
 {
-  gbp_endpoint_group_t *gg = va_arg (*args, gbp_endpoint_group_t*);
+  gbp_endpoint_group_t *gg = va_arg (*args, gbp_endpoint_group_t *);
 
   if (NULL != gg)
-    s = format (s, "[%d] %d, sclass:%d bd:%d rd:%d uplink:%U retention:%U locks:%d",
-                gg - gbp_endpoint_group_pool,
-                gg->gg_vnid,
-                gg->gg_sclass,
-                gg->gg_gbd,
-                gg->gg_rd,
-                format_gbp_itf_hdl, gg->gg_uplink_itf,
-                format_gbp_endpoint_retention, &gg->gg_retention,
-                gg->gg_locks);
+    s = format (
+      s, "[%d] %d, sclass:%d bd:%d rd:%d uplink:%U retention:%U locks:%d",
+      gg - gbp_endpoint_group_pool, gg->gg_vnid, gg->gg_sclass, gg->gg_gbd,
+      gg->gg_rd, format_gbp_itf_hdl, gg->gg_uplink_itf,
+      format_gbp_endpoint_retention, &gg->gg_retention, gg->gg_locks);
   else
     s = format (s, "NULL");
 
@@ -352,21 +340,20 @@ gbp_endpoint_group_show_one (gbp_endpoint_group_t *gg, void *ctx)
   vlib_main_t *vm;
 
   vm = ctx;
-  vlib_cli_output (vm, "  %U",format_gbp_endpoint_group, gg);
+  vlib_cli_output (vm, "  %U", format_gbp_endpoint_group, gg);
 
   return (1);
 }
 
 static clib_error_t *
-gbp_endpoint_group_show (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+gbp_endpoint_group_show (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   vlib_cli_output (vm, "Endpoint-Groups:");
   gbp_endpoint_group_walk (gbp_endpoint_group_show_one, vm);
 
   return (NULL);
 }
-
 
 /*?
  * Show Group Based Policy Endpoint_Groups and derived information
@@ -375,16 +362,15 @@ gbp_endpoint_group_show (vlib_main_t * vm,
  * @cliexstart{show gbp endpoint_group}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (gbp_endpoint_group_show_node, static) = {
   .path = "show gbp endpoint-group",
   .short_help = "show gbp endpoint-group\n",
   .function = gbp_endpoint_group_show,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-gbp_endpoint_group_init (vlib_main_t * vm)
+gbp_endpoint_group_init (vlib_main_t *vm)
 {
   gg_logger = vlib_log_register_class ("gbp", "epg");
 

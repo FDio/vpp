@@ -56,17 +56,17 @@
 #error CLIB_CUCKOO_BFS_MAX_PATH_LENGTH not defined
 #endif
 
-STATIC_ASSERT (CLIB_CUCKOO_KVP_PER_BUCKET ==
-	       (1 << CLIB_CUCKOO_LOG2_KVP_PER_BUCKET),
-	       "CLIB_CUCKOO_KVP_PER_BUCKET != (1 << CLIB_CUCKOO_LOG2_KVP_PER_BUCKET");
+STATIC_ASSERT (
+  CLIB_CUCKOO_KVP_PER_BUCKET == (1 << CLIB_CUCKOO_LOG2_KVP_PER_BUCKET),
+  "CLIB_CUCKOO_KVP_PER_BUCKET != (1 << CLIB_CUCKOO_LOG2_KVP_PER_BUCKET");
 
-#define _cv(a, b) a##b
+#define _cv(a, b)  a##b
 #define __cv(a, b) _cv (a, b)
-#define CV(a) __cv (a, CLIB_CUCKOO_TYPE)
+#define CV(a)	   __cv (a, CLIB_CUCKOO_TYPE)
 
-#define _cvt(a, b) a##b##_t
+#define _cvt(a, b)  a##b##_t
 #define __cvt(a, b) _cvt (a, b)
-#define CVT(a) __cvt (a, CLIB_CUCKOO_TYPE)
+#define CVT(a)	    __cvt (a, CLIB_CUCKOO_TYPE)
 
 typedef u64 clib_cuckoo_bucket_aux_t;
 
@@ -95,7 +95,7 @@ always_inline clib_cuckoo_bucket_aux_t
 clib_cuckoo_bucket_aux_pack (u64 version, int use_count, int writer_flag)
 {
   return (version << (1 + CLIB_CUCKOO_USE_COUNT_BIT_WIDTH)) +
-    (use_count << 1) + writer_flag;
+	 (use_count << 1) + writer_flag;
 }
 
 always_inline clib_cuckoo_bucket_aux_t
@@ -124,7 +124,7 @@ clib_cuckoo_bucket_aux_set_writer_flag (clib_cuckoo_bucket_aux_t aux,
   return clib_cuckoo_bucket_aux_pack (version, use_count, writer_flag);
 }
 
-#define PATH_BITS_REQ \
+#define PATH_BITS_REQ                                                         \
   (CLIB_CUCKOO_BFS_MAX_PATH_LENGTH * CLIB_CUCKOO_LOG2_KVP_PER_BUCKET)
 
 #if PATH_BITS_REQ <= 8
@@ -162,86 +162,80 @@ typedef struct
   volatile clib_cuckoo_bucket_aux_t aux;
 
   /** cuckoo elements in this bucket */
-    CVT (clib_cuckoo_kv) elts[CLIB_CUCKOO_KVP_PER_BUCKET];
+  CVT (clib_cuckoo_kv) elts[CLIB_CUCKOO_KVP_PER_BUCKET];
 } CVT (clib_cuckoo_bucket);
 
-#define clib_cuckoo_bucket_foreach_idx(var) \
+#define clib_cuckoo_bucket_foreach_idx(var)                                   \
   for (var = 0; var < CLIB_CUCKOO_KVP_PER_BUCKET; var++)
 
 #if CLIB_CUCKOO_OPTIMIZE_UNROLL
 #if CLIB_CUCKOO_KVP_PER_BUCKET == 2
-#define clib_cuckoo_bucket_foreach_idx_unrolled(var, body) \
-  do                                                       \
-    {                                                      \
-      var = 0;                                             \
-      body;                                                \
-      var = 1;                                             \
-      body;                                                \
-    }                                                      \
+#define clib_cuckoo_bucket_foreach_idx_unrolled(var, body)                    \
+  do                                                                          \
+    {                                                                         \
+      var = 0;                                                                \
+      body;                                                                   \
+      var = 1;                                                                \
+      body;                                                                   \
+    }                                                                         \
   while (0);
 #elif CLIB_CUCKOO_KVP_PER_BUCKET == 4
-#define clib_cuckoo_bucket_foreach_idx_unrolled(var, body) \
-  do                                                       \
-    {                                                      \
-      var = 0;                                             \
-      body;                                                \
-      var = 1;                                             \
-      body;                                                \
-      var = 2;                                             \
-      body;                                                \
-      var = 3;                                             \
-      body;                                                \
-    }                                                      \
+#define clib_cuckoo_bucket_foreach_idx_unrolled(var, body)                    \
+  do                                                                          \
+    {                                                                         \
+      var = 0;                                                                \
+      body;                                                                   \
+      var = 1;                                                                \
+      body;                                                                   \
+      var = 2;                                                                \
+      body;                                                                   \
+      var = 3;                                                                \
+      body;                                                                   \
+    }                                                                         \
   while (0);
 #elif CLIB_CUCKOO_KVP_PER_BUCKET == 8
-#define clib_cuckoo_bucket_foreach_idx_unrolled(var, body) \
-  do                                                       \
-    {                                                      \
-      var = 0;                                             \
-      body;                                                \
-      var = 1;                                             \
-      body;                                                \
-      var = 2;                                             \
-      body;                                                \
-      var = 3;                                             \
-      body;                                                \
-      var = 4;                                             \
-      body;                                                \
-      var = 5;                                             \
-      body;                                                \
-      var = 6;                                             \
-      body;                                                \
-      var = 7;                                             \
-      body;                                                \
-    }                                                      \
+#define clib_cuckoo_bucket_foreach_idx_unrolled(var, body)                    \
+  do                                                                          \
+    {                                                                         \
+      var = 0;                                                                \
+      body;                                                                   \
+      var = 1;                                                                \
+      body;                                                                   \
+      var = 2;                                                                \
+      body;                                                                   \
+      var = 3;                                                                \
+      body;                                                                   \
+      var = 4;                                                                \
+      body;                                                                   \
+      var = 5;                                                                \
+      body;                                                                   \
+      var = 6;                                                                \
+      body;                                                                   \
+      var = 7;                                                                \
+      body;                                                                   \
+    }                                                                         \
   while (0);
 #else
-#define clib_cuckoo_bucket_foreach_idx_unrolled(var, body) \
-  clib_cuckoo_bucket_foreach_idx (var)                     \
-  {                                                        \
-    body;                                                  \
-  }
+#define clib_cuckoo_bucket_foreach_idx_unrolled(var, body)                    \
+  clib_cuckoo_bucket_foreach_idx (var) { body; }
 #endif
 #else /* CLIB_CUCKOO_OPTIMIZE_UNROLL */
-#define clib_cuckoo_bucket_foreach_idx_unrolled(var, body) \
-  clib_cuckoo_bucket_foreach_idx (var)                     \
-  {                                                        \
-    body;                                                  \
-  }
+#define clib_cuckoo_bucket_foreach_idx_unrolled(var, body)                    \
+  clib_cuckoo_bucket_foreach_idx (var) { body; }
 #endif /* CLIB_CUCKOO_OPTIMIZE_UNROLL */
 
-#define clib_cuckoo_bucket_foreach_elt_index(var, bucket) \
+#define clib_cuckoo_bucket_foreach_elt_index(var, bucket)                     \
   for (var = 0; var < CLIB_CUCKOO_KVP_PER_BUCKET; ++i)
 
-#define clib_cuckoo_foreach_bucket(var, h, body)        \
-  do                                                    \
-    {                                                   \
-      CVT (clib_cuckoo_bucket) *__buckets = h->buckets; \
-      vec_foreach (var, __buckets)                      \
-      {                                                 \
-        body;                                           \
-      }                                                 \
-    }                                                   \
+#define clib_cuckoo_foreach_bucket(var, h, body)                              \
+  do                                                                          \
+    {                                                                         \
+      CVT (clib_cuckoo_bucket) *__buckets = h->buckets;                       \
+      vec_foreach (var, __buckets)                                            \
+	{                                                                     \
+	  body;                                                               \
+	}                                                                     \
+    }                                                                         \
   while (0)
 
 typedef struct CV (clib_cuckoo)
@@ -289,11 +283,9 @@ typedef struct CV (clib_cuckoo)
 
 } CVT (clib_cuckoo);
 
-void CV (clib_cuckoo_init) (CVT (clib_cuckoo) * h, const char *name,
-			    uword nbuckets,
-			    void (*garbage_callback) (CVT (clib_cuckoo) *,
-						      void *),
-			    void *garbage_ctx);
+void CV (clib_cuckoo_init) (
+  CVT (clib_cuckoo) * h, const char *name, uword nbuckets,
+  void (*garbage_callback) (CVT (clib_cuckoo) *, void *), void *garbage_ctx);
 
 void CV (clib_cuckoo_garbage_collect) (CVT (clib_cuckoo) * h);
 
@@ -331,22 +323,22 @@ clib_cuckoo_get_other_bucket (u64 nbuckets, u64 bucket, u8 reduced_hash)
 }
 
 always_inline clib_cuckoo_lookup_info_t
-CV (clib_cuckoo_calc_lookup) (CVT (clib_cuckoo_bucket) * buckets, u64 hash)
+  CV (clib_cuckoo_calc_lookup) (CVT (clib_cuckoo_bucket) * buckets, u64 hash)
 {
   clib_cuckoo_lookup_info_t lookup;
   u64 nbuckets = vec_len (buckets);
   u64 mask = (nbuckets - 1);
   lookup.bucket1 = hash & mask;
 #if CLIB_CUCKOO_OPTIMIZE_PREFETCH
-  CLIB_PREFETCH (vec_elt_at_index (buckets, lookup.bucket1),
-		 sizeof (*buckets), LOAD);
+  CLIB_PREFETCH (vec_elt_at_index (buckets, lookup.bucket1), sizeof (*buckets),
+		 LOAD);
 #endif
   u8 reduced_hash = clib_cuckoo_reduce_hash (hash);
   lookup.bucket2 =
     clib_cuckoo_get_other_bucket (nbuckets, lookup.bucket1, reduced_hash);
 #if CLIB_CUCKOO_OPTIMIZE_PREFETCH
-  CLIB_PREFETCH (vec_elt_at_index (buckets, lookup.bucket2),
-		 sizeof (*buckets), LOAD);
+  CLIB_PREFETCH (vec_elt_at_index (buckets, lookup.bucket2), sizeof (*buckets),
+		 LOAD);
 #endif
   lookup.reduced_hash = reduced_hash;
   ASSERT (lookup.bucket1 < nbuckets);
@@ -357,8 +349,7 @@ CV (clib_cuckoo_calc_lookup) (CVT (clib_cuckoo_bucket) * buckets, u64 hash)
 /**
  * search for key within bucket
  */
-always_inline int CV (clib_cuckoo_bucket_search) (CVT (clib_cuckoo_bucket) *
-						  b,
+always_inline int CV (clib_cuckoo_bucket_search) (CVT (clib_cuckoo_bucket) * b,
 						  CVT (clib_cuckoo_kv) * kvp,
 						  u8 reduced_hash)
 {
@@ -369,46 +360,46 @@ always_inline int CV (clib_cuckoo_bucket_search) (CVT (clib_cuckoo_bucket) *
       bucket_aux = b->aux;
       writer_flag = clib_cuckoo_bucket_aux_get_writer_flag (bucket_aux);
     }
-  while (PREDICT_FALSE (writer_flag));	/* loop while writer flag is set */
+  while (PREDICT_FALSE (writer_flag)); /* loop while writer flag is set */
 
   int i;
 #if CLIB_CUCKOO_OPTIMIZE_USE_COUNT_LIMITS_SEARCH
   const int use_count = clib_cuckoo_bucket_aux_get_use_count (bucket_aux);
 #endif
-  /* *INDENT-OFF* */
+
   clib_cuckoo_bucket_foreach_idx_unrolled (i, {
 #if CLIB_CUCKOO_OPTIMIZE_USE_COUNT_LIMITS_SEARCH
     if (i > use_count)
       {
-        break;
+	break;
       }
 #endif
     if (CV (clib_cuckoo_key_compare) (kvp->key, b->elts[i].key))
       {
-        kvp->value = b->elts[i].value;
-        clib_cuckoo_bucket_aux_t bucket_aux2 = b->aux;
-        if (PREDICT_TRUE (clib_cuckoo_bucket_aux_get_version (bucket_aux) ==
-                          clib_cuckoo_bucket_aux_get_version (bucket_aux2)))
-          {
-            /* yay, fresh data */
-            return CLIB_CUCKOO_ERROR_SUCCESS;
-          }
-        else
-          {
-            /* oops, modification detected */
-            return CLIB_CUCKOO_ERROR_AGAIN;
-          }
+	kvp->value = b->elts[i].value;
+	clib_cuckoo_bucket_aux_t bucket_aux2 = b->aux;
+	if (PREDICT_TRUE (clib_cuckoo_bucket_aux_get_version (bucket_aux) ==
+			  clib_cuckoo_bucket_aux_get_version (bucket_aux2)))
+	  {
+	    /* yay, fresh data */
+	    return CLIB_CUCKOO_ERROR_SUCCESS;
+	  }
+	else
+	  {
+	    /* oops, modification detected */
+	    return CLIB_CUCKOO_ERROR_AGAIN;
+	  }
       }
   });
-  /* *INDENT-ON* */
+
   return CLIB_CUCKOO_ERROR_NOT_FOUND;
 }
 
 always_inline int
-CV (clib_cuckoo_search_inline_with_hash) (CVT (clib_cuckoo) * h, u64 hash,
-					  CVT (clib_cuckoo_kv) * kvp)
+  CV (clib_cuckoo_search_inline_with_hash) (CVT (clib_cuckoo) * h, u64 hash,
+					    CVT (clib_cuckoo_kv) * kvp)
 {
-  CVT (clib_cuckoo_bucket) * buckets = h->buckets;
+  CVT (clib_cuckoo_bucket) *buckets = h->buckets;
   uword bucket1, bucket2;
   u8 reduced_hash;
   u64 nbuckets = vec_len (buckets);

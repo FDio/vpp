@@ -108,9 +108,9 @@
 static_always_inline u8x16
 gmul_lo_lo (u8x16 a, u8x16 b)
 {
-#if defined (__PCLMUL__)
+#if defined(__PCLMUL__)
   return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x00);
-#elif defined (__ARM_FEATURE_CRYPTO)
+#elif defined(__ARM_FEATURE_CRYPTO)
   return (u8x16) vmull_p64 ((poly64_t) vget_low_p64 ((poly64x2_t) a),
 			    (poly64_t) vget_low_p64 ((poly64x2_t) b));
 #endif
@@ -119,9 +119,9 @@ gmul_lo_lo (u8x16 a, u8x16 b)
 static_always_inline u8x16
 gmul_hi_lo (u8x16 a, u8x16 b)
 {
-#if defined (__PCLMUL__)
+#if defined(__PCLMUL__)
   return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x01);
-#elif defined (__ARM_FEATURE_CRYPTO)
+#elif defined(__ARM_FEATURE_CRYPTO)
   return (u8x16) vmull_p64 ((poly64_t) vget_high_p64 ((poly64x2_t) a),
 			    (poly64_t) vget_low_p64 ((poly64x2_t) b));
 #endif
@@ -130,9 +130,9 @@ gmul_hi_lo (u8x16 a, u8x16 b)
 static_always_inline u8x16
 gmul_lo_hi (u8x16 a, u8x16 b)
 {
-#if defined (__PCLMUL__)
+#if defined(__PCLMUL__)
   return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x10);
-#elif defined (__ARM_FEATURE_CRYPTO)
+#elif defined(__ARM_FEATURE_CRYPTO)
   return (u8x16) vmull_p64 ((poly64_t) vget_low_p64 ((poly64x2_t) a),
 			    (poly64_t) vget_high_p64 ((poly64x2_t) b));
 #endif
@@ -141,9 +141,9 @@ gmul_lo_hi (u8x16 a, u8x16 b)
 static_always_inline u8x16
 gmul_hi_hi (u8x16 a, u8x16 b)
 {
-#if defined (__PCLMUL__)
+#if defined(__PCLMUL__)
   return (u8x16) _mm_clmulepi64_si128 ((__m128i) a, (__m128i) b, 0x11);
-#elif defined (__ARM_FEATURE_CRYPTO)
+#elif defined(__ARM_FEATURE_CRYPTO)
   return (u8x16) vmull_high_p64 ((poly64x2_t) a, (poly64x2_t) b);
 #endif
 }
@@ -154,18 +154,16 @@ typedef struct
   int pending;
 } ghash_data_t;
 
-static const u8x16 ghash_poly = {
-  0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2
-};
+static const u8x16 ghash_poly = { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+				  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				  0x00, 0x00, 0x00, 0xc2 };
 
-static const u8x16 ghash_poly2 = {
-  0x00, 0x00, 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2
-};
+static const u8x16 ghash_poly2 = { 0x00, 0x00, 0x00, 0xc2, 0x01, 0x00,
+				   0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				   0x00, 0x00, 0x00, 0xc2 };
 
 static_always_inline void
-ghash_mul_first (ghash_data_t * gd, u8x16 a, u8x16 b)
+ghash_mul_first (ghash_data_t *gd, u8x16 a, u8x16 b)
 {
   /* a1 * b1 */
   gd->hi = gmul_hi_hi (a, b);
@@ -180,7 +178,7 @@ ghash_mul_first (ghash_data_t * gd, u8x16 a, u8x16 b)
 }
 
 static_always_inline void
-ghash_mul_next (ghash_data_t * gd, u8x16 a, u8x16 b)
+ghash_mul_next (ghash_data_t *gd, u8x16 a, u8x16 b)
 {
   /* a1 * b1 */
   u8x16 hi = gmul_hi_hi (a, b);
@@ -209,7 +207,7 @@ ghash_mul_next (ghash_data_t * gd, u8x16 a, u8x16 b)
 }
 
 static_always_inline void
-ghash_reduce (ghash_data_t * gd)
+ghash_reduce (ghash_data_t *gd)
 {
   u8x16 r;
 
@@ -234,14 +232,14 @@ ghash_reduce (ghash_data_t * gd)
 }
 
 static_always_inline void
-ghash_reduce2 (ghash_data_t * gd)
+ghash_reduce2 (ghash_data_t *gd)
 {
   gd->tmp_lo = gmul_lo_lo (ghash_poly2, gd->lo);
   gd->tmp_hi = gmul_lo_hi (ghash_poly2, gd->lo);
 }
 
 static_always_inline u8x16
-ghash_final (ghash_data_t * gd)
+ghash_final (ghash_data_t *gd)
 {
   return u8x16_xor3 (gd->hi, u8x16_word_shift_right (gd->tmp_lo, 4),
 		     u8x16_word_shift_left (gd->tmp_hi, 4));
@@ -260,14 +258,11 @@ ghash_mul (u8x16 a, u8x16 b)
 #ifdef __VPCLMULQDQ__
 
 static const u8x64 ghash4_poly2 = {
-  0x00, 0x00, 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2,
-  0x00, 0x00, 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2,
-  0x00, 0x00, 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2,
-  0x00, 0x00, 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2,
+  0x00, 0x00, 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0xc2, 0x00, 0x00, 0x00, 0xc2, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0xc2, 0x00, 0x00, 0x00, 0xc2, 0x01, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2, 0x00, 0x00, 0x00, 0xc2,
+  0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc2,
 };
 
 typedef struct
@@ -300,9 +295,8 @@ gmul4_hi_hi (u8x64 a, u8x64 b)
   return (u8x64) _mm512_clmulepi64_epi128 ((__m512i) a, (__m512i) b, 0x11);
 }
 
-
 static_always_inline void
-ghash4_mul_first (ghash4_data_t * gd, u8x64 a, u8x64 b)
+ghash4_mul_first (ghash4_data_t *gd, u8x64 a, u8x64 b)
 {
   gd->hi = gmul4_hi_hi (a, b);
   gd->lo = gmul4_lo_lo (a, b);
@@ -311,7 +305,7 @@ ghash4_mul_first (ghash4_data_t * gd, u8x64 a, u8x64 b)
 }
 
 static_always_inline void
-ghash4_mul_next (ghash4_data_t * gd, u8x64 a, u8x64 b)
+ghash4_mul_next (ghash4_data_t *gd, u8x64 a, u8x64 b)
 {
   u8x64 hi = gmul4_hi_hi (a, b);
   u8x64 lo = gmul4_lo_lo (a, b);
@@ -334,7 +328,7 @@ ghash4_mul_next (ghash4_data_t * gd, u8x64 a, u8x64 b)
 }
 
 static_always_inline void
-ghash4_reduce (ghash4_data_t * gd)
+ghash4_reduce (ghash4_data_t *gd)
 {
   u8x64 r;
 
@@ -358,18 +352,17 @@ ghash4_reduce (ghash4_data_t * gd)
 
   r = gmul4_hi_lo (ghash4_poly2, gd->lo);
   gd->lo ^= u8x64_word_shift_left (r, 8);
-
 }
 
 static_always_inline void
-ghash4_reduce2 (ghash4_data_t * gd)
+ghash4_reduce2 (ghash4_data_t *gd)
 {
   gd->tmp_lo = gmul4_lo_lo (ghash4_poly2, gd->lo);
   gd->tmp_hi = gmul4_lo_hi (ghash4_poly2, gd->lo);
 }
 
 static_always_inline u8x16
-ghash4_final (ghash4_data_t * gd)
+ghash4_final (ghash4_data_t *gd)
 {
   u8x64 r;
   u8x32 t;
@@ -384,7 +377,7 @@ ghash4_final (ghash4_data_t * gd)
 #endif
 
 static_always_inline void
-ghash_precompute (u8x16 H, u8x16 * Hi, int n)
+ghash_precompute (u8x16 H, u8x16 *Hi, int n)
 {
   u8x16 r8;
   u32x4 r32;
@@ -398,9 +391,9 @@ ghash_precompute (u8x16 H, u8x16 * Hi, int n)
 #else
   r32[3] = r32[0];
 #endif
-  /* *INDENT-OFF* */
-  r32 = r32 == (u32x4) {1, 0, 0, 1};
-  /* *INDENT-ON* */
+
+  r32 = r32 == (u32x4){ 1, 0, 0, 1 };
+
   Hi[n - 1] = H = H ^ ((u8x16) r32 & ghash_poly);
 
   /* calculate H^(i + 1) */

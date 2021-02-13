@@ -24,11 +24,11 @@
 #include <vnet/ipsec/ah.h>
 #include <vnet/ipsec/ipsec_io.h>
 
-#define foreach_ah_decrypt_next                 \
-  _(DROP, "error-drop")                         \
-  _(IP4_INPUT, "ip4-input")                     \
-  _(IP6_INPUT, "ip6-input")                     \
-  _(HANDOFF, "handoff")
+#define foreach_ah_decrypt_next                                               \
+  _ (DROP, "error-drop")                                                      \
+  _ (IP4_INPUT, "ip4-input")                                                  \
+  _ (IP6_INPUT, "ip6-input")                                                  \
+  _ (HANDOFF, "handoff")
 
 #define _(v, s) AH_DECRYPT_NEXT_##v,
 typedef enum
@@ -38,24 +38,24 @@ typedef enum
     AH_DECRYPT_N_NEXT,
 } ah_decrypt_next_t;
 
-#define foreach_ah_decrypt_error                \
-  _ (RX_PKTS, "AH pkts received")               \
-  _ (DECRYPTION_FAILED, "AH decryption failed") \
-  _ (INTEG_ERROR, "Integrity check failed")     \
-  _ (NO_TAIL_SPACE, "not enough buffer tail space (dropped)")     \
-  _ (DROP_FRAGMENTS, "IP fragments drop")       \
+#define foreach_ah_decrypt_error                                              \
+  _ (RX_PKTS, "AH pkts received")                                             \
+  _ (DECRYPTION_FAILED, "AH decryption failed")                               \
+  _ (INTEG_ERROR, "Integrity check failed")                                   \
+  _ (NO_TAIL_SPACE, "not enough buffer tail space (dropped)")                 \
+  _ (DROP_FRAGMENTS, "IP fragments drop")                                     \
   _ (REPLAY, "SA replayed packet")
 
 typedef enum
 {
-#define _(sym,str) AH_DECRYPT_ERROR_##sym,
+#define _(sym, str) AH_DECRYPT_ERROR_##sym,
   foreach_ah_decrypt_error
 #undef _
     AH_DECRYPT_N_ERROR,
 } ah_decrypt_error_t;
 
 static char *ah_decrypt_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_ah_decrypt_error
 #undef _
 };
@@ -68,14 +68,14 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_ah_decrypt_trace (u8 * s, va_list * args)
+format_ah_decrypt_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ah_decrypt_trace_t *t = va_arg (*args, ah_decrypt_trace_t *);
 
-  s = format (s, "ah: integrity %U seq-num %d",
-	      format_ipsec_integ_alg, t->integ_alg, t->seq_num);
+  s = format (s, "ah: integrity %U seq-num %d", format_ipsec_integ_alg,
+	      t->integ_alg, t->seq_num);
   return s;
 }
 
@@ -106,8 +106,8 @@ typedef struct
 } ah_decrypt_packet_data_t;
 
 static_always_inline void
-ah_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
-		vnet_crypto_op_t * ops, vlib_buffer_t * b[], u16 * nexts)
+ah_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node,
+		vnet_crypto_op_t *ops, vlib_buffer_t *b[], u16 *nexts)
 {
   u32 n_fail, n_ops = vec_len (ops);
   vnet_crypto_op_t *op = ops;
@@ -133,9 +133,8 @@ ah_process_ops (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 always_inline uword
-ah_decrypt_inline (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * from_frame,
-		   int is_ip6)
+ah_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_frame_t *from_frame, int is_ip6)
 {
   u32 n_left, *from;
   u32 thread_index = vm->thread_index;
@@ -165,15 +164,14 @@ ah_decrypt_inline (vlib_main_t * vm,
 	{
 	  if (current_sa_index != ~0)
 	    vlib_increment_combined_counter (&ipsec_sa_counters, thread_index,
-					     current_sa_index,
-					     current_sa_pkts,
+					     current_sa_index, current_sa_pkts,
 					     current_sa_bytes);
 	  current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
 	  sa0 = pool_elt_at_index (im->sad, current_sa_index);
 
 	  current_sa_bytes = current_sa_pkts = 0;
-	  vlib_prefetch_combined_counter (&ipsec_sa_counters,
-					  thread_index, current_sa_index);
+	  vlib_prefetch_combined_counter (&ipsec_sa_counters, thread_index,
+					  current_sa_index);
 	}
 
       if (PREDICT_FALSE (~0 == sa0->thread_index))
@@ -236,8 +234,9 @@ ah_decrypt_inline (vlib_main_t * vm,
       if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	{
 	  if (PREDICT_FALSE (ipsec_sa_is_set_USE_ESN (sa0) &&
-			     pd->current_data + b[0]->current_length
-			     + sizeof (u32) > buffer_data_size))
+			     pd->current_data + b[0]->current_length +
+				 sizeof (u32) >
+			       buffer_data_size))
 	    {
 	      b[0]->error = node->errors[AH_DECRYPT_ERROR_NO_TAIL_SPACE];
 	      next[0] = AH_DECRYPT_NEXT_DROP;
@@ -275,7 +274,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 	      ih6->hop_limit = 0;
 	      pd->nexthdr = ah0->nexthdr;
 	      pd->icv_padding_len =
-		ah_calc_icv_padding_len (pd->icv_size, 1 /* is_ipv6 */ );
+		ah_calc_icv_padding_len (pd->icv_size, 1 /* is_ipv6 */);
 	    }
 	  else
 	    {
@@ -285,7 +284,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 	      ih4->ttl = 0;
 	      ih4->checksum = 0;
 	      pd->icv_padding_len =
-		ah_calc_icv_padding_len (pd->icv_size, 0 /* is_ipv6 */ );
+		ah_calc_icv_padding_len (pd->icv_size, 0 /* is_ipv6 */);
 	    }
 	}
 
@@ -331,13 +330,13 @@ ah_decrypt_inline (vlib_main_t * vm,
 	  ipsec_sa_anti_replay_advance (sa0, pd->seq);
 	}
 
-      u16 ah_hdr_len = sizeof (ah_header_t) + pd->icv_size
-	+ pd->icv_padding_len;
+      u16 ah_hdr_len =
+	sizeof (ah_header_t) + pd->icv_size + pd->icv_padding_len;
       vlib_buffer_advance (b[0], pd->ip_hdr_size + ah_hdr_len);
       b[0]->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
       if (PREDICT_TRUE (ipsec_sa_is_set_IS_TUNNEL (sa0)))
-	{			/* tunnel mode */
+	{ /* tunnel mode */
 	  if (PREDICT_TRUE (pd->nexthdr_cached == IP_PROTOCOL_IP_IN_IP))
 	    next[0] = AH_DECRYPT_NEXT_IP4_INPUT;
 	  else if (pd->nexthdr_cached == IP_PROTOCOL_IPV6)
@@ -350,7 +349,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 	    }
 	}
       else
-	{			/* transport mode */
+	{ /* transport mode */
 	  if (is_ip6)
 	    {
 	      vlib_buffer_advance (b[0], -sizeof (ip6_header_t));
@@ -368,8 +367,8 @@ ah_decrypt_inline (vlib_main_t * vm,
 	      oh6->ip_version_traffic_class_and_flow_label =
 		pd->ip_version_traffic_class_and_flow_label;
 	      oh6->payload_length =
-		clib_host_to_net_u16 (vlib_buffer_length_in_chain
-				      (vm, b[0]) - sizeof (ip6_header_t));
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b[0]) -
+				      sizeof (ip6_header_t));
 	    }
 	  else
 	    {
@@ -395,12 +394,12 @@ ah_decrypt_inline (vlib_main_t * vm,
 	    }
 	}
 
-      vnet_buffer (b[0])->sw_if_index[VLIB_TX] = (u32) ~ 0;
+      vnet_buffer (b[0])->sw_if_index[VLIB_TX] = (u32) ~0;
     trace:
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  sa0 = pool_elt_at_index (im->sad,
-				   vnet_buffer (b[0])->ipsec.sad_index);
+	  sa0 =
+	    pool_elt_at_index (im->sad, vnet_buffer (b[0])->ipsec.sad_index);
 	  ah_decrypt_trace_t *tr =
 	    vlib_add_trace (vm, node, b[0], sizeof (*tr));
 	  tr->integ_alg = sa0->integ_alg;
@@ -419,14 +418,12 @@ ah_decrypt_inline (vlib_main_t * vm,
   return n_left;
 }
 
-VLIB_NODE_FN (ah4_decrypt_node) (vlib_main_t * vm,
-				 vlib_node_runtime_t * node,
-				 vlib_frame_t * from_frame)
+VLIB_NODE_FN (ah4_decrypt_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return ah_decrypt_inline (vm, node, from_frame, 0 /* is_ip6 */ );
+  return ah_decrypt_inline (vm, node, from_frame, 0 /* is_ip6 */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ah4_decrypt_node) = {
   .name = "ah4-decrypt",
   .vector_size = sizeof (u32),
@@ -444,16 +441,13 @@ VLIB_REGISTER_NODE (ah4_decrypt_node) = {
     [AH_DECRYPT_NEXT_HANDOFF] = "ah4-decrypt-handoff",
   },
 };
-/* *INDENT-ON* */
 
-VLIB_NODE_FN (ah6_decrypt_node) (vlib_main_t * vm,
-				 vlib_node_runtime_t * node,
-				 vlib_frame_t * from_frame)
+VLIB_NODE_FN (ah6_decrypt_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return ah_decrypt_inline (vm, node, from_frame, 1 /* is_ip6 */ );
+  return ah_decrypt_inline (vm, node, from_frame, 1 /* is_ip6 */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ah6_decrypt_node) = {
   .name = "ah6-decrypt",
   .vector_size = sizeof (u32),
@@ -471,7 +465,6 @@ VLIB_REGISTER_NODE (ah6_decrypt_node) = {
     [AH_DECRYPT_NEXT_HANDOFF] = "ah6-decrypt-handoff",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

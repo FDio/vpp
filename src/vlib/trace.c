@@ -45,10 +45,8 @@ u8 *vnet_trace_placeholder;
 
 /* Helper function for nodes which only trace buffer data. */
 void
-vlib_trace_frame_buffers_only (vlib_main_t * vm,
-			       vlib_node_runtime_t * node,
-			       u32 * buffers,
-			       uword n_buffers,
+vlib_trace_frame_buffers_only (vlib_main_t *vm, vlib_node_runtime_t *node,
+			       u32 *buffers, uword n_buffers,
 			       uword next_buffer_stride,
 			       uword n_buffer_data_bytes_in_trace)
 {
@@ -117,29 +115,25 @@ clear_trace_buffer (void)
   int i;
   vlib_trace_main_t *tm;
 
-  /* *INDENT-OFF* */
-  foreach_vlib_main (
-  ({
+  foreach_vlib_main (({
     tm = &this_vlib_main->trace_main;
 
     tm->trace_enable = 0;
     vec_free (tm->nodes);
   }));
 
-  foreach_vlib_main (
-  ({
+  foreach_vlib_main (({
     tm = &this_vlib_main->trace_main;
 
     for (i = 0; i < vec_len (tm->trace_buffer_pool); i++)
-      if (! pool_is_free_index (tm->trace_buffer_pool, i))
-        vec_free (tm->trace_buffer_pool[i]);
+      if (!pool_is_free_index (tm->trace_buffer_pool, i))
+	vec_free (tm->trace_buffer_pool[i]);
     pool_free (tm->trace_buffer_pool);
   }));
-  /* *INDENT-ON* */
 }
 
 u8 *
-format_vlib_trace (u8 * s, va_list * va)
+format_vlib_trace (u8 *s, va_list *va)
 {
   vlib_main_t *vm = va_arg (*va, vlib_main_t *);
   vlib_trace_header_t *h = va_arg (*va, vlib_trace_header_t *);
@@ -155,11 +149,9 @@ format_vlib_trace (u8 * s, va_list * va)
 
       if (node != prev_node)
 	{
-	  t =
-	    (h->time - vm->cpu_time_main_loop_start) * ct->seconds_per_clock;
-	  s =
-	    format (s, "\n%U: %v", format_time_interval, "h:m:s:u", t,
-		    node->name);
+	  t = (h->time - vm->cpu_time_main_loop_start) * ct->seconds_per_clock;
+	  s = format (s, "\n%U: %v", format_time_interval, "h:m:s:u", t,
+		      node->name);
 	}
       prev_node = node;
 
@@ -175,12 +167,11 @@ format_vlib_trace (u8 * s, va_list * va)
 }
 
 /* Root of all trace cli commands. */
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (trace_cli_command,static) = {
+
+VLIB_CLI_COMMAND (trace_cli_command, static) = {
   .path = "trace",
   .short_help = "Packet tracer commands",
 };
-/* *INDENT-ON* */
 
 int
 trace_time_cmp (void *a1, void *a2)
@@ -195,7 +186,7 @@ trace_time_cmp (void *a1, void *a2)
  * Return 1 if this packet passes the trace filter, or 0 otherwise
  */
 u32
-filter_accept (vlib_trace_main_t * tm, vlib_trace_header_t * h)
+filter_accept (vlib_trace_main_t *tm, vlib_trace_header_t *h)
 {
   vlib_trace_header_t *e = vec_end (h);
 
@@ -221,7 +212,7 @@ filter_accept (vlib_trace_main_t * tm, vlib_trace_header_t * h)
 	}
       return 0;
     }
-  else				/* FILTER_FLAG_EXCLUDE */
+  else /* FILTER_FLAG_EXCLUDE */
     {
       while (h < e)
 	{
@@ -239,7 +230,7 @@ filter_accept (vlib_trace_main_t * tm, vlib_trace_header_t * h)
  * Remove traces from the trace buffer pool that don't pass the filter
  */
 void
-trace_apply_filter (vlib_main_t * vm)
+trace_apply_filter (vlib_main_t *vm)
 {
   vlib_trace_main_t *tm = &vm->trace_main;
   vlib_trace_header_t **h;
@@ -258,17 +249,16 @@ trace_apply_filter (vlib_main_t * vm)
    * of any N traces.
    */
   n_accepted = 0;
-  /* *INDENT-OFF* */
+
   pool_foreach (h, tm->trace_buffer_pool)
     {
-      accept = filter_accept(tm, h[0]);
+      accept = filter_accept (tm, h[0]);
 
       if ((n_accepted == tm->filter_count) || !accept)
-          vec_add1 (traces_to_remove, h);
+	vec_add1 (traces_to_remove, h);
       else
-          n_accepted++;
-  }
-  /* *INDENT-ON* */
+	n_accepted++;
+    }
 
   /* remove all traces that we don't want to keep */
   for (index = 0; index < vec_len (traces_to_remove); index++)
@@ -282,8 +272,8 @@ trace_apply_filter (vlib_main_t * vm)
 }
 
 static clib_error_t *
-cli_show_trace_buffer (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+cli_show_trace_buffer (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   vlib_trace_main_t *tm;
   vlib_trace_header_t **h, **traces;
@@ -306,29 +296,26 @@ cli_show_trace_buffer (vlib_main_t * vm,
 				  format_unformat_error, input);
     }
 
-
   /* Get active traces from pool. */
 
-  /* *INDENT-OFF* */
-  foreach_vlib_main (
-  ({
+  foreach_vlib_main (({
     fmt = "------------------- Start of thread %d %s -------------------\n";
     s = format (s, fmt, index, vlib_worker_threads[index].name);
 
     tm = &this_vlib_main->trace_main;
 
-    trace_apply_filter(this_vlib_main);
+    trace_apply_filter (this_vlib_main);
 
     traces = 0;
     pool_foreach (h, tm->trace_buffer_pool)
-     {
-      vec_add1 (traces, h[0]);
-    }
+      {
+	vec_add1 (traces, h[0]);
+      }
 
     if (vec_len (traces) == 0)
       {
-        s = format (s, "No packets in trace buffer\n");
-        goto done;
+	s = format (s, "No packets in trace buffer\n");
+	goto done;
       }
 
     /* Sort them by increasing time. */
@@ -336,17 +323,17 @@ cli_show_trace_buffer (vlib_main_t * vm,
 
     for (i = 0; i < vec_len (traces); i++)
       {
-        if (i == max)
-          {
-            char *warn = "Limiting display to %d packets."
-                               " To display more specify max.";
-            vlib_cli_output (vm, warn, max);
-            s = format (s, warn, max);
-            goto done;
-          }
+	if (i == max)
+	  {
+	    char *warn = "Limiting display to %d packets."
+			 " To display more specify max.";
+	    vlib_cli_output (vm, warn, max);
+	    s = format (s, warn, max);
+	    goto done;
+	  }
 
-        s = format (s, "Packet %d\n%U\n\n", i + 1,
-                         format_vlib_trace, vm, traces[i]);
+	s = format (s, "Packet %d\n%U\n\n", i + 1, format_vlib_trace, vm,
+		    traces[i]);
       }
 
   done:
@@ -354,20 +341,17 @@ cli_show_trace_buffer (vlib_main_t * vm,
 
     index++;
   }));
-  /* *INDENT-ON* */
 
   vlib_cli_output (vm, "%v", s);
   vec_free (s);
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_trace_cli,static) = {
+VLIB_CLI_COMMAND (show_trace_cli, static) = {
   .path = "show trace",
   .short_help = "Show trace buffer [max COUNT]",
   .function = cli_show_trace_buffer,
 };
-/* *INDENT-ON* */
 
 int vlib_enable_disable_pkt_trace_filter (int enable) __attribute__ ((weak));
 
@@ -380,10 +364,9 @@ vlib_enable_disable_pkt_trace_filter (int enable)
 void
 vlib_trace_stop_and_clear (void)
 {
-  vlib_enable_disable_pkt_trace_filter (0);	/* disble tracing */
+  vlib_enable_disable_pkt_trace_filter (0); /* disble tracing */
   clear_trace_buffer ();
 }
-
 
 void
 trace_update_capture_options (u32 add, u32 node_index, u32 filter, u8 verbose)
@@ -394,38 +377,34 @@ trace_update_capture_options (u32 add, u32 node_index, u32 filter, u8 verbose)
   if (add == ~0)
     add = 50;
 
-  /* *INDENT-OFF* */
-  foreach_vlib_main ((
-    {
-      tm = &this_vlib_main->trace_main;
-      tm->verbose = verbose;
-      vec_validate (tm->nodes, node_index);
-      tn = tm->nodes + node_index;
+  foreach_vlib_main (({
+    tm = &this_vlib_main->trace_main;
+    tm->verbose = verbose;
+    vec_validate (tm->nodes, node_index);
+    tn = tm->nodes + node_index;
 
-      /*
-       * Adding 0 makes no real sense, and there wa no other way
-       * to explicilty zero-out the limits and count, so make
-       * an "add 0" request really be "set to 0".
-       */
-      if (add == 0)
-	  tn->limit = tn->count = 0;
-      else
-	  tn->limit += add;
-    }));
+    /*
+     * Adding 0 makes no real sense, and there wa no other way
+     * to explicilty zero-out the limits and count, so make
+     * an "add 0" request really be "set to 0".
+     */
+    if (add == 0)
+      tn->limit = tn->count = 0;
+    else
+      tn->limit += add;
+  }));
 
-  foreach_vlib_main ((
-    {
-      tm = &this_vlib_main->trace_main;
-      tm->trace_enable = 1;
-    }));
-  /* *INDENT-ON* */
+  foreach_vlib_main (({
+    tm = &this_vlib_main->trace_main;
+    tm->trace_enable = 1;
+  }));
 
-  vlib_enable_disable_pkt_trace_filter (! !filter);
+  vlib_enable_disable_pkt_trace_filter (!!filter);
 }
 
 static clib_error_t *
-cli_add_trace_buffer (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+cli_add_trace_buffer (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vlib_node_t *node;
@@ -438,13 +417,12 @@ cli_add_trace_buffer (vlib_main_t * vm,
     return 0;
 
   if (vnet_trace_placeholder == 0)
-    vec_validate_aligned (vnet_trace_placeholder, 2048,
-			  CLIB_CACHE_LINE_BYTES);
+    vec_validate_aligned (vnet_trace_placeholder, 2048, CLIB_CACHE_LINE_BYTES);
 
   while (unformat_check_input (line_input) != (uword) UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%U %d",
-		    unformat_vlib_node, vm, &node_index, &add))
+      if (unformat (line_input, "%U %d", unformat_vlib_node, vm, &node_index,
+		    &add))
 	;
       else if (unformat (line_input, "verbose"))
 	verbose = 1;
@@ -484,13 +462,12 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (add_trace_cli,static) = {
+VLIB_CLI_COMMAND (add_trace_cli, static) = {
   .path = "trace add",
-  .short_help = "trace add <input-graph-node> <add'l-pkts-for-node-> [filter] [verbose]",
+  .short_help =
+    "trace add <input-graph-node> <add'l-pkts-for-node-> [filter] [verbose]",
   .function = cli_add_trace_buffer,
 };
-/* *INDENT-ON* */
 
 /*
  * Configure a filter for packet traces.
@@ -533,9 +510,8 @@ VLIB_CLI_COMMAND (add_trace_cli,static) = {
 void
 trace_filter_set (u32 node_index, u32 flag, u32 count)
 {
-  /* *INDENT-OFF* */
-  foreach_vlib_main (
-  ({
+
+  foreach_vlib_main (({
     vlib_trace_main_t *tm;
 
     tm = &this_vlib_main->trace_main;
@@ -550,26 +526,23 @@ trace_filter_set (u32 node_index, u32 flag, u32 count)
      */
     vec_free (tm->nodes);
   }));
-  /* *INDENT-ON* */
 }
 
-
 static clib_error_t *
-cli_filter_trace (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+cli_filter_trace (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd)
 {
   u32 filter_node_index;
   u32 filter_flag;
   u32 filter_count;
 
-  if (unformat (input, "include %U %d",
-		unformat_vlib_node, vm, &filter_node_index, &filter_count))
+  if (unformat (input, "include %U %d", unformat_vlib_node, vm,
+		&filter_node_index, &filter_count))
     {
       filter_flag = FILTER_FLAG_INCLUDE;
     }
-  else if (unformat (input, "exclude %U %d",
-		     unformat_vlib_node, vm, &filter_node_index,
-		     &filter_count))
+  else if (unformat (input, "exclude %U %d", unformat_vlib_node, vm,
+		     &filter_node_index, &filter_count))
     {
       filter_flag = FILTER_FLAG_EXCLUDE;
     }
@@ -580,39 +553,34 @@ cli_filter_trace (vlib_main_t * vm,
       filter_count = 0;
     }
   else
-    return
-      clib_error_create
-      ("expected 'include NODE COUNT' or 'exclude NODE COUNT' or 'none', got `%U'",
-       format_unformat_error, input);
+    return clib_error_create ("expected 'include NODE COUNT' or 'exclude NODE "
+			      "COUNT' or 'none', got `%U'",
+			      format_unformat_error, input);
 
   trace_filter_set (filter_node_index, filter_flag, filter_count);
 
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (filter_trace_cli,static) = {
+VLIB_CLI_COMMAND (filter_trace_cli, static) = {
   .path = "trace filter",
   .short_help = "trace filter none | [include|exclude] NODE COUNT",
   .function = cli_filter_trace,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-cli_clear_trace_buffer (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+cli_clear_trace_buffer (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   vlib_trace_stop_and_clear ();
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (clear_trace_cli,static) = {
+VLIB_CLI_COMMAND (clear_trace_cli, static) = {
   .path = "clear trace",
   .short_help = "Clear trace buffer and free memory",
   .function = cli_clear_trace_buffer,
 };
-/* *INDENT-ON* */
 
 /* Placeholder function to get us linked in. */
 void
@@ -620,26 +588,22 @@ vlib_trace_cli_reference (void)
 {
 }
 
-int
-vnet_is_packet_traced (vlib_buffer_t * b,
-		       u32 classify_table_index, int func)
-__attribute__ ((weak));
+int vnet_is_packet_traced (vlib_buffer_t *b, u32 classify_table_index,
+			   int func) __attribute__ ((weak));
 
 int
-vnet_is_packet_traced (vlib_buffer_t * b, u32 classify_table_index, int func)
+vnet_is_packet_traced (vlib_buffer_t *b, u32 classify_table_index, int func)
 {
   clib_warning ("BUG: STUB called");
   return 1;
 }
 
 void *
-vlib_add_trace (vlib_main_t * vm,
-		vlib_node_runtime_t * r, vlib_buffer_t * b, u32 n_data_bytes)
+vlib_add_trace (vlib_main_t *vm, vlib_node_runtime_t *r, vlib_buffer_t *b,
+		u32 n_data_bytes)
 {
   return vlib_add_trace_inline (vm, r, b, n_data_bytes);
 }
-
-
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -24,19 +24,24 @@
  * onto the routed uu-fwd interfaces.
  * Magic values - origin lost to the mists of time...
  */
-/* *INDENT-OFF* */
-const static mac_address_t GBP_ROUTED_SRC_MAC = {
-  .bytes = {
-    0x0, 0x22, 0xBD, 0xF8, 0x19, 0xFF,
-  }
-};
 
-const static mac_address_t GBP_ROUTED_DST_MAC = {
-  .bytes = {
-    00, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c,
-  }
-};
-/* *INDENT-ON* */
+const static mac_address_t GBP_ROUTED_SRC_MAC = { .bytes = {
+						    0x0,
+						    0x22,
+						    0xBD,
+						    0xF8,
+						    0x19,
+						    0xFF,
+						  } };
+
+const static mac_address_t GBP_ROUTED_DST_MAC = { .bytes = {
+						    00,
+						    0x0c,
+						    0x0c,
+						    0x0c,
+						    0x0c,
+						    0x0c,
+						  } };
 
 /**
  * Pool of GBP route_domains
@@ -59,11 +64,10 @@ static fib_source_t gbp_fib_source;
  */
 vlib_log_class_t grd_logger;
 
-#define GBP_BD_DBG(...)                           \
-    vlib_log_debug (grd_logger, __VA_ARGS__);
+#define GBP_BD_DBG(...) vlib_log_debug (grd_logger, __VA_ARGS__);
 
 index_t
-gbp_route_domain_index (const gbp_route_domain_t * grd)
+gbp_route_domain_index (const gbp_route_domain_t *grd)
 {
   return (grd - gbp_route_domain_pool);
 }
@@ -111,7 +115,7 @@ gbp_route_domain_find_and_lock (u32 rd_id)
 }
 
 static void
-gbp_route_domain_db_add (gbp_route_domain_t * grd)
+gbp_route_domain_db_add (gbp_route_domain_t *grd)
 {
   index_t grdi = grd - gbp_route_domain_pool;
 
@@ -119,17 +123,15 @@ gbp_route_domain_db_add (gbp_route_domain_t * grd)
 }
 
 static void
-gbp_route_domain_db_remove (gbp_route_domain_t * grd)
+gbp_route_domain_db_remove (gbp_route_domain_t *grd)
 {
   hash_unset (gbp_route_domain_db.gbd_by_rd_id, grd->grd_id);
 }
 
 int
-gbp_route_domain_add_and_lock (u32 rd_id,
-			       gbp_scope_t scope,
-			       u32 ip4_table_id,
-			       u32 ip6_table_id,
-			       u32 ip4_uu_sw_if_index, u32 ip6_uu_sw_if_index)
+gbp_route_domain_add_and_lock (u32 rd_id, gbp_scope_t scope, u32 ip4_table_id,
+			       u32 ip6_table_id, u32 ip4_uu_sw_if_index,
+			       u32 ip6_uu_sw_if_index)
 {
   gbp_route_domain_t *grd;
   index_t grdi;
@@ -151,10 +153,8 @@ gbp_route_domain_add_and_lock (u32 rd_id,
 
       FOR_EACH_FIB_IP_PROTOCOL (fproto)
       {
-	grd->grd_fib_index[fproto] =
-	  fib_table_find_or_create_and_lock (fproto,
-					     grd->grd_table_id[fproto],
-					     gbp_fib_source);
+	grd->grd_fib_index[fproto] = fib_table_find_or_create_and_lock (
+	  fproto, grd->grd_table_id[fproto], gbp_fib_source);
 
 	if (~0 != grd->grd_uu_sw_if_index[fproto])
 	  {
@@ -166,8 +166,8 @@ gbp_route_domain_add_and_lock (u32 rd_id,
 	    eth = (ethernet_header_t *) rewrite;
 
 	    eth->type = clib_host_to_net_u16 ((fproto == FIB_PROTOCOL_IP4 ?
-					       ETHERNET_TYPE_IP4 :
-					       ETHERNET_TYPE_IP6));
+						 ETHERNET_TYPE_IP4 :
+						 ETHERNET_TYPE_IP6));
 
 	    mac_address_to_bytes (gbp_route_domain_get_local_mac (),
 				  eth->src_address);
@@ -178,12 +178,9 @@ gbp_route_domain_add_and_lock (u32 rd_id,
 	     * create an adjacency out of the uu-fwd interfaces that will
 	     * be used when adding subnet routes.
 	     */
-	    grd->grd_adj[fproto] =
-	      adj_nbr_add_or_lock_w_rewrite (fproto,
-					     fib_proto_to_link (fproto),
-					     &ADJ_BCAST_ADDR,
-					     grd->grd_uu_sw_if_index[fproto],
-					     rewrite);
+	    grd->grd_adj[fproto] = adj_nbr_add_or_lock_w_rewrite (
+	      fproto, fib_proto_to_link (fproto), &ADJ_BCAST_ADDR,
+	      grd->grd_uu_sw_if_index[fproto], rewrite);
 	  }
 	else
 	  {
@@ -289,18 +286,16 @@ gbp_route_domain_walk (gbp_route_domain_cb_t cb, void *ctx)
 {
   gbp_route_domain_t *gbpe;
 
-  /* *INDENT-OFF* */
   pool_foreach (gbpe, gbp_route_domain_pool)
-  {
-    if (!cb(gbpe, ctx))
-      break;
-  }
-  /* *INDENT-ON* */
+    {
+      if (!cb (gbpe, ctx))
+	break;
+    }
 }
 
 static clib_error_t *
-gbp_route_domain_cli (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+gbp_route_domain_cli (vlib_main_t *vm, unformat_input_t *input,
+		      vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 ip4_uu_sw_if_index = ~0;
@@ -313,11 +308,11 @@ gbp_route_domain_cli (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "ip4-uu %U", unformat_vnet_sw_interface,
-		    vnm, &ip4_uu_sw_if_index))
+      if (unformat (input, "ip4-uu %U", unformat_vnet_sw_interface, vnm,
+		    &ip4_uu_sw_if_index))
 	;
-      else if (unformat (input, "ip6-uu %U", unformat_vnet_sw_interface,
-			 vnm, &ip6_uu_sw_if_index))
+      else if (unformat (input, "ip6-uu %U", unformat_vnet_sw_interface, vnm,
+			 &ip6_uu_sw_if_index))
 	;
       else if (unformat (input, "ip4-table-id %d", &ip4_table_id))
 	;
@@ -345,9 +340,7 @@ gbp_route_domain_cli (vlib_main_t * vm,
       if (~0 == ip6_table_id)
 	return clib_error_return (0, "IP6 table-ID must be specified");
 
-      gbp_route_domain_add_and_lock (rd_id, scope,
-				     ip4_table_id,
-				     ip6_table_id,
+      gbp_route_domain_add_and_lock (rd_id, scope, ip4_table_id, ip6_table_id,
 				     ip4_uu_sw_if_index, ip6_uu_sw_if_index);
     }
   else
@@ -360,29 +353,31 @@ gbp_route_domain_cli (vlib_main_t * vm,
  * Configure a GBP route-domain
  *
  * @cliexpar
- * @cliexstart{gbp route-domain [del] rd <ID> ip4-table-id <ID> ip6-table-id <ID> [ip4-uu <interface>] [ip6-uu <interface>]}
+ * @cliexstart{gbp route-domain [del] rd <ID> ip4-table-id <ID> ip6-table-id
+ <ID> [ip4-uu <interface>] [ip6-uu <interface>]}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (gbp_route_domain_cli_node, static) = {
   .path = "gbp route-domain",
-  .short_help = "gbp route-domain [del] rd <ID> ip4-table-id <ID> ip6-table-id <ID> [ip4-uu <interface>] [ip6-uu <interface>]",
+  .short_help = "gbp route-domain [del] rd <ID> ip4-table-id <ID> "
+		"ip6-table-id <ID> [ip4-uu <interface>] [ip6-uu <interface>]",
   .function = gbp_route_domain_cli,
 };
 
 u8 *
-format_gbp_route_domain (u8 * s, va_list * args)
+format_gbp_route_domain (u8 *s, va_list *args)
 {
-  gbp_route_domain_t *grd = va_arg (*args, gbp_route_domain_t*);
+  gbp_route_domain_t *grd = va_arg (*args, gbp_route_domain_t *);
   vnet_main_t *vnm = vnet_get_main ();
 
   if (NULL != grd)
     s = format (s, "[%d] rd:%d ip4-uu:%U ip6-uu:%U locks:%d",
-                grd - gbp_route_domain_pool,
-                grd->grd_id,
-                format_vnet_sw_if_index_name, vnm, grd->grd_uu_sw_if_index[FIB_PROTOCOL_IP4],
-                format_vnet_sw_if_index_name, vnm, grd->grd_uu_sw_if_index[FIB_PROTOCOL_IP6],
-                grd->grd_locks);
+		grd - gbp_route_domain_pool, grd->grd_id,
+		format_vnet_sw_if_index_name, vnm,
+		grd->grd_uu_sw_if_index[FIB_PROTOCOL_IP4],
+		format_vnet_sw_if_index_name, vnm,
+		grd->grd_uu_sw_if_index[FIB_PROTOCOL_IP6], grd->grd_locks);
   else
     s = format (s, "NULL");
 
@@ -395,14 +390,14 @@ gbp_route_domain_show_one (gbp_route_domain_t *gb, void *ctx)
   vlib_main_t *vm;
 
   vm = ctx;
-  vlib_cli_output (vm, "  %U",format_gbp_route_domain, gb);
+  vlib_cli_output (vm, "  %U", format_gbp_route_domain, gb);
 
   return (1);
 }
 
 static clib_error_t *
-gbp_route_domain_show (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+gbp_route_domain_show (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   vlib_cli_output (vm, "Route-Domains:");
   gbp_route_domain_walk (gbp_route_domain_show_one, vm);
@@ -417,21 +412,19 @@ gbp_route_domain_show (vlib_main_t * vm,
  * @cliexstart{show gbp route_domain}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (gbp_route_domain_show_node, static) = {
   .path = "show gbp route-domain",
   .short_help = "show gbp route-domain\n",
   .function = gbp_route_domain_show,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-gbp_route_domain_init (vlib_main_t * vm)
+gbp_route_domain_init (vlib_main_t *vm)
 {
   grd_logger = vlib_log_register_class ("gbp", "rd");
-  gbp_fib_source = fib_source_allocate ("gbp-rd",
-					FIB_SOURCE_PRIORITY_HI,
-					FIB_SOURCE_BH_DROP);
+  gbp_fib_source =
+    fib_source_allocate ("gbp-rd", FIB_SOURCE_PRIORITY_HI, FIB_SOURCE_BH_DROP);
 
   return (NULL);
 }

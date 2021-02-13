@@ -32,10 +32,10 @@
  */
 typedef struct replicate_main_t_
 {
-    vlib_combined_counter_main_t repm_counters;
+  vlib_combined_counter_main_t repm_counters;
 
-    /* per-cpu vector of cloned packets */
-    u32 **clones;
+  /* per-cpu vector of cloned packets */
+  u32 **clones;
 } replicate_main_t;
 
 extern replicate_main_t replicate_main;
@@ -51,8 +51,8 @@ extern replicate_main_t replicate_main;
  */
 typedef enum replicate_flags_t_
 {
-    REPLICATE_FLAGS_NONE,
-    REPLICATE_FLAGS_HAS_LOCAL,
+  REPLICATE_FLAGS_NONE,
+  REPLICATE_FLAGS_HAS_LOCAL,
 } __clib_packed replicate_flags_t;
 
 /**
@@ -60,114 +60,110 @@ typedef enum replicate_flags_t_
  *  - load-balancing over the next DPOs in the chain/graph
  *  - per-route counters
  */
-typedef struct replicate_t_ {
-    /**
-     * required for pool_get_aligned.
-     *  memebers used in the switch path come first!
-     */
-    CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+typedef struct replicate_t_
+{
+  /**
+   * required for pool_get_aligned.
+   *  memebers used in the switch path come first!
+   */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
-    /**
-     * number of buckets in the replicate.
-     */
-    u16 rep_n_buckets;
+  /**
+   * number of buckets in the replicate.
+   */
+  u16 rep_n_buckets;
 
-   /**
-     * The protocol of packets that traverse this REP.
-     * need in combination with the flow hash config to determine how to hash.
-     * u8.
-     */
-    dpo_proto_t rep_proto;
+  /**
+   * The protocol of packets that traverse this REP.
+   * need in combination with the flow hash config to determine how to hash.
+   * u8.
+   */
+  dpo_proto_t rep_proto;
 
-    /**
-     * Flags specifying the replicate properties/behaviour
-     */
-    replicate_flags_t rep_flags;
+  /**
+   * Flags specifying the replicate properties/behaviour
+   */
+  replicate_flags_t rep_flags;
 
-    /**
-     * The number of locks, which is approximately the number of users,
-     * of this load-balance.
-     * Load-balance objects of via-entries are heavily shared by recursives,
-     * so the lock count is a u32.
-     */
-    u32 rep_locks;
+  /**
+   * The number of locks, which is approximately the number of users,
+   * of this load-balance.
+   * Load-balance objects of via-entries are heavily shared by recursives,
+   * so the lock count is a u32.
+   */
+  u32 rep_locks;
 
-    /**
-     * Vector of buckets containing the next DPOs, sized as repo_num
-     */
-    dpo_id_t *rep_buckets;
+  /**
+   * Vector of buckets containing the next DPOs, sized as repo_num
+   */
+  dpo_id_t *rep_buckets;
 
-    /**
-     * The rest of the cache line is used for buckets. In the common case
-     * where there there are less than 4 buckets, then the buckets are
-     * on the same cachlie and we save ourselves a pointer dereferance in 
-     * the data-path.
-     */
-    dpo_id_t rep_buckets_inline[REP_NUM_INLINE_BUCKETS];
+  /**
+   * The rest of the cache line is used for buckets. In the common case
+   * where there there are less than 4 buckets, then the buckets are
+   * on the same cachlie and we save ourselves a pointer dereferance in
+   * the data-path.
+   */
+  dpo_id_t rep_buckets_inline[REP_NUM_INLINE_BUCKETS];
 } replicate_t;
 
-STATIC_ASSERT(sizeof(replicate_t) <= CLIB_CACHE_LINE_BYTES,
-	      "A replicate object size exceeds one cacheline");
+STATIC_ASSERT (sizeof (replicate_t) <= CLIB_CACHE_LINE_BYTES,
+	       "A replicate object size exceeds one cacheline");
 
 /**
  * Flags controlling load-balance formatting/display
  */
-typedef enum replicate_format_flags_t_ {
-    REPLICATE_FORMAT_NONE,
-    REPLICATE_FORMAT_DETAIL = (1 << 0),
+typedef enum replicate_format_flags_t_
+{
+  REPLICATE_FORMAT_NONE,
+  REPLICATE_FORMAT_DETAIL = (1 << 0),
 } replicate_format_flags_t;
 
-extern index_t replicate_create(u32 num_buckets,
-                                dpo_proto_t rep_proto);
-extern void replicate_multipath_update(
-    const dpo_id_t *dpo,
-    load_balance_path_t *next_hops);
+extern index_t replicate_create (u32 num_buckets, dpo_proto_t rep_proto);
+extern void replicate_multipath_update (const dpo_id_t *dpo,
+					load_balance_path_t *next_hops);
 
-extern void replicate_set_bucket(index_t repi,
-                                 u32 bucket,
-                                 const dpo_id_t *next);
+extern void replicate_set_bucket (index_t repi, u32 bucket,
+				  const dpo_id_t *next);
 
-extern u8* format_replicate(u8 * s, va_list * args);
+extern u8 *format_replicate (u8 *s, va_list *args);
 
-extern const dpo_id_t *replicate_get_bucket(index_t repi,
-                                            u32 bucket);
-extern int replicate_is_drop(const dpo_id_t *dpo);
+extern const dpo_id_t *replicate_get_bucket (index_t repi, u32 bucket);
+extern int replicate_is_drop (const dpo_id_t *dpo);
 
-extern u16 replicate_n_buckets(index_t repi);
+extern u16 replicate_n_buckets (index_t repi);
 
-extern index_t replicate_dup(replicate_flags_t flags,
-                             index_t repi);
+extern index_t replicate_dup (replicate_flags_t flags, index_t repi);
 
 /**
  * The encapsulation breakages are for fast DP access
  */
 extern replicate_t *replicate_pool;
-static inline replicate_t*
+static inline replicate_t *
 replicate_get (index_t repi)
 {
-    repi &= ~MPLS_IS_REPLICATE;
-    return (pool_elt_at_index(replicate_pool, repi));
+  repi &= ~MPLS_IS_REPLICATE;
+  return (pool_elt_at_index (replicate_pool, repi));
 }
 
-#define REP_HAS_INLINE_BUCKETS(_rep)		\
-    ((_rep)->rep_n_buckets <= REP_NUM_INLINE_BUCKETS)
+#define REP_HAS_INLINE_BUCKETS(_rep)                                          \
+  ((_rep)->rep_n_buckets <= REP_NUM_INLINE_BUCKETS)
 
 static inline const dpo_id_t *
-replicate_get_bucket_i (const replicate_t *rep,
-			   u32 bucket)
+replicate_get_bucket_i (const replicate_t *rep, u32 bucket)
 {
-    ASSERT(bucket < rep->rep_n_buckets);
+  ASSERT (bucket < rep->rep_n_buckets);
 
-    if (PREDICT_TRUE(REP_HAS_INLINE_BUCKETS(rep)))
+  if (PREDICT_TRUE (REP_HAS_INLINE_BUCKETS (rep)))
     {
-	return (&rep->rep_buckets_inline[bucket]);
+      return (&rep->rep_buckets_inline[bucket]);
     }
-    else
+  else
     {
-	return (&rep->rep_buckets[bucket]);
+      return (&rep->rep_buckets[bucket]);
     }
 }
 
-extern void replicate_module_init(void);
+extern void replicate_module_init (void);
 
 #endif

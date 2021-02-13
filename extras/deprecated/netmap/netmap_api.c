@@ -26,11 +26,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -42,12 +42,12 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                             \
-_(NETMAP_CREATE, netmap_create)                                         \
-_(NETMAP_DELETE, netmap_delete)                                         \
+#define foreach_vpe_api_msg                                                   \
+  _ (NETMAP_CREATE, netmap_create)                                            \
+  _ (NETMAP_DELETE, netmap_delete)
 
 static void
-vl_api_netmap_create_t_handler (vl_api_netmap_create_t * mp)
+vl_api_netmap_create_t_handler (vl_api_netmap_create_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_netmap_create_reply_t *rmp;
@@ -57,9 +57,8 @@ vl_api_netmap_create_t_handler (vl_api_netmap_create_t * mp)
   if_name = format (0, "%s", mp->netmap_if_name);
   vec_add1 (if_name, 0);
 
-  rv =
-    netmap_create_if (vm, if_name, mp->use_random_hw_addr ? 0 : mp->hw_addr,
-		      mp->is_pipe, mp->is_master, 0);
+  rv = netmap_create_if (vm, if_name, mp->use_random_hw_addr ? 0 : mp->hw_addr,
+			 mp->is_pipe, mp->is_master, 0);
 
   vec_free (if_name);
 
@@ -67,7 +66,7 @@ vl_api_netmap_create_t_handler (vl_api_netmap_create_t * mp)
 }
 
 static void
-vl_api_netmap_delete_t_handler (vl_api_netmap_delete_t * mp)
+vl_api_netmap_delete_t_handler (vl_api_netmap_delete_t *mp)
 {
   vlib_main_t *vm = vlib_get_main ();
   vl_api_netmap_delete_reply_t *rmp;
@@ -96,25 +95,22 @@ vl_api_netmap_delete_t_handler (vl_api_netmap_delete_t * mp)
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_netmap;
 #undef _
 }
 
 static clib_error_t *
-netmap_api_hookup (vlib_main_t * vm)
+netmap_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_vpe_api_msg;
 #undef _
 

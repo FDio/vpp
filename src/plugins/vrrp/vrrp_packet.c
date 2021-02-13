@@ -29,7 +29,7 @@ static const u8 vrrp6_dst_mac[6] = { 0x33, 0x33, 0x0, 0x0, 0x0, 0x12 };
 static const u8 vrrp_src_mac_prefix[4] = { 0x0, 0x0, 0x5e, 0x0 };
 
 static int
-vrrp_adv_l2_build_multicast (vrrp_vr_t * vr, vlib_buffer_t * b)
+vrrp_adv_l2_build_multicast (vrrp_vr_t *vr, vlib_buffer_t *b)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_link_t link_type;
@@ -54,13 +54,13 @@ vrrp_adv_l2_build_multicast (vrrp_vr_t * vr, vlib_buffer_t * b)
       mac_byte_ipver = 0x1;
     }
 
-  rewrite = ethernet_build_rewrite (vnm, vr->config.sw_if_index, link_type,
-				    dst_mac);
+  rewrite =
+    ethernet_build_rewrite (vnm, vr->config.sw_if_index, link_type, dst_mac);
   clib_memcpy (eth, rewrite, vec_len (rewrite));
 
   /* change the source mac from the HW addr to the VRRP virtual MAC */
-  clib_memcpy
-    (eth->src_address, vrrp_src_mac_prefix, sizeof (vrrp_src_mac_prefix));
+  clib_memcpy (eth->src_address, vrrp_src_mac_prefix,
+	       sizeof (vrrp_src_mac_prefix));
   eth->src_address[4] = mac_byte_ipver;
   eth->src_address[5] = vr->config.vr_id;
 
@@ -74,9 +74,14 @@ vrrp_adv_l2_build_multicast (vrrp_vr_t * vr, vlib_buffer_t * b)
   return n_bytes;
 }
 
-#define VRRP4_MCAST_ADDR_AS_U8 { 224, 0, 0, 18 }
-#define VRRP6_MCAST_ADDR_AS_U8 \
-{ 0xff, 0x2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x12 }
+#define VRRP4_MCAST_ADDR_AS_U8                                                \
+  {                                                                           \
+    224, 0, 0, 18                                                             \
+  }
+#define VRRP6_MCAST_ADDR_AS_U8                                                \
+  {                                                                           \
+    0xff, 0x2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x12                    \
+  }
 
 static const ip46_address_t vrrp4_mcast_addr = {
   .ip4 = {.as_u8 = VRRP4_MCAST_ADDR_AS_U8,},
@@ -88,7 +93,7 @@ static const ip46_address_t vrrp6_mcast_addr = {
 
 /* size of static parts of header + (# addrs * addr length) */
 always_inline u16
-vrrp_adv_payload_len (vrrp_vr_t * vr)
+vrrp_adv_payload_len (vrrp_vr_t *vr)
 {
   u16 addr_len = vrrp_vr_is_ipv6 (vr) ? 16 : 4;
 
@@ -96,10 +101,9 @@ vrrp_adv_payload_len (vrrp_vr_t * vr)
 }
 
 static int
-vrrp_adv_l3_build (vrrp_vr_t * vr, vlib_buffer_t * b,
-		   const ip46_address_t * dst)
+vrrp_adv_l3_build (vrrp_vr_t *vr, vlib_buffer_t *b, const ip46_address_t *dst)
 {
-  if (!vrrp_vr_is_ipv6 (vr))	/* IPv4 */
+  if (!vrrp_vr_is_ipv6 (vr)) /* IPv4 */
     {
       ip4_header_t *ip4 = vlib_buffer_get_current (b);
 
@@ -109,8 +113,8 @@ vrrp_adv_l3_build (vrrp_vr_t * vr, vlib_buffer_t * b,
       ip4->protocol = IP_PROTOCOL_VRRP;
       clib_memcpy (&ip4->dst_address, &dst->ip4, sizeof (dst->ip4));
       fib_sas4_get (vr->config.sw_if_index, NULL, &ip4->src_address);
-      ip4->length = clib_host_to_net_u16 (sizeof (*ip4) +
-					  vrrp_adv_payload_len (vr));
+      ip4->length =
+	clib_host_to_net_u16 (sizeof (*ip4) + vrrp_adv_payload_len (vr));
       ip4->checksum = ip4_header_checksum (ip4);
 
       vlib_buffer_chain_increase_length (b, b, sizeof (*ip4));
@@ -137,7 +141,6 @@ vrrp_adv_l3_build (vrrp_vr_t * vr, vlib_buffer_t * b,
       return sizeof (*ip6);
     }
 }
-
 
 u16
 vrrp_adv_csum (void *l3_hdr, void *payload, u8 is_ipv6, u16 len)
@@ -170,8 +173,7 @@ vrrp_adv_csum (void *l3_hdr, void *payload, u8 is_ipv6, u16 len)
 	  ip_csum_with_carry (csum, clib_mem_unaligned (src_addr + i, u32));
     }
 
-  csum = ip_csum_with_carry (csum,
-			     clib_host_to_net_u32 (len + (proto << 16)));
+  csum = ip_csum_with_carry (csum, clib_host_to_net_u32 (len + (proto << 16)));
 
   /* now do the payload */
   csum = ip_incremental_checksum (csum, payload, len);
@@ -182,7 +184,7 @@ vrrp_adv_csum (void *l3_hdr, void *payload, u8 is_ipv6, u16 len)
 }
 
 static int
-vrrp_adv_payload_build (vrrp_vr_t * vr, vlib_buffer_t * b, int shutdown)
+vrrp_adv_payload_build (vrrp_vr_t *vr, vlib_buffer_t *b, int shutdown)
 {
   vrrp_header_t *vrrp = vlib_buffer_get_current (b);
   void *l3_hdr;
@@ -199,7 +201,8 @@ vrrp_adv_payload_build (vrrp_vr_t * vr, vlib_buffer_t * b, int shutdown)
     {
       ip6_header_t *ip6;
 
-      len = sizeof (*vrrp) + n_addrs * sizeof (ip6_address_t);;
+      len = sizeof (*vrrp) + n_addrs * sizeof (ip6_address_t);
+      ;
       l3_hdr = vlib_buffer_get_current (b) - sizeof (ip6_header_t);
       ip6 = l3_hdr;
       ip6->payload_length = clib_host_to_net_u16 (len);
@@ -220,18 +223,18 @@ vrrp_adv_payload_build (vrrp_vr_t * vr, vlib_buffer_t * b, int shutdown)
   hdr_addr = (void *) (vrrp + 1);
 
   vec_foreach (vr_addr, vr->config.vr_addrs)
-  {
-    if (is_ipv6)
-      {
-	clib_memcpy (hdr_addr, &vr_addr->ip6, 16);
-	hdr_addr += 16;
-      }
-    else
-      {
-	clib_memcpy (hdr_addr, &vr_addr->ip4, 4);
-	hdr_addr += 4;
-      }
-  }
+    {
+      if (is_ipv6)
+	{
+	  clib_memcpy (hdr_addr, &vr_addr->ip6, 16);
+	  hdr_addr += 16;
+	}
+      else
+	{
+	  clib_memcpy (hdr_addr, &vr_addr->ip4, 4);
+	  hdr_addr += 4;
+	}
+    }
 
   vlib_buffer_chain_increase_length (b, b, vrrp_adv_payload_len (vr));
 
@@ -242,7 +245,7 @@ vrrp_adv_payload_build (vrrp_vr_t * vr, vlib_buffer_t * b, int shutdown)
 }
 
 static_always_inline u32
-vrrp_adv_next_node (vrrp_vr_t * vr)
+vrrp_adv_next_node (vrrp_vr_t *vr)
 {
   if (vrrp_vr_is_unicast (vr))
     {
@@ -260,7 +263,7 @@ vrrp_adv_next_node (vrrp_vr_t * vr)
 }
 
 static_always_inline const ip46_address_t *
-vrrp_adv_mcast_addr (vrrp_vr_t * vr)
+vrrp_adv_mcast_addr (vrrp_vr_t *vr)
 {
   if (vrrp_vr_is_ipv6 (vr))
     return &vrrp6_mcast_addr;
@@ -269,7 +272,7 @@ vrrp_adv_mcast_addr (vrrp_vr_t * vr)
 }
 
 int
-vrrp_adv_send (vrrp_vr_t * vr, int shutdown)
+vrrp_adv_send (vrrp_vr_t *vr, int shutdown)
 {
   vlib_main_t *vm = vlib_get_main ();
   vlib_frame_t *to_frame;
@@ -295,8 +298,7 @@ vrrp_adv_send (vrrp_vr_t * vr, int shutdown)
   vec_validate (bi, n_buffers - 1);
   if (vlib_buffer_alloc (vm, bi, n_buffers) != n_buffers)
     {
-      clib_warning ("Buffer allocation failed for %U", format_vrrp_vr_key,
-		    vr);
+      clib_warning ("Buffer allocation failed for %U", format_vrrp_vr_key, vr);
       vec_free (bi);
       return -1;
     }
@@ -344,7 +346,7 @@ vrrp_adv_send (vrrp_vr_t * vr, int shutdown)
 }
 
 static void
-vrrp6_na_pkt_build (vrrp_vr_t * vr, vlib_buffer_t * b, ip6_address_t * addr6)
+vrrp6_na_pkt_build (vrrp_vr_t *vr, vlib_buffer_t *b, ip6_address_t *addr6)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
@@ -361,9 +363,8 @@ vrrp6_na_pkt_build (vrrp_vr_t * vr, vlib_buffer_t * b, ip6_address_t * addr6)
   eth = vlib_buffer_get_current (b);
 
   ip6_multicast_ethernet_address (dst_mac, IP6_MULTICAST_GROUP_ID_all_hosts);
-  rewrite =
-    ethernet_build_rewrite (vnm, vr->config.sw_if_index, VNET_LINK_IP6,
-			    dst_mac);
+  rewrite = ethernet_build_rewrite (vnm, vr->config.sw_if_index, VNET_LINK_IP6,
+				    dst_mac);
   rewrite_bytes += vec_len (rewrite);
   clib_memcpy (eth, rewrite, vec_len (rewrite));
   vec_free (rewrite);
@@ -386,22 +387,20 @@ vrrp6_na_pkt_build (vrrp_vr_t * vr, vlib_buffer_t * b, ip6_address_t * addr6)
   ip6_address_copy (&ip6->src_address,
 		    ip6_get_link_local_address (vr->config.sw_if_index));
 
-
   /* ICMPv6 */
   na = (icmp6_neighbor_solicitation_or_advertisement_header_t *) (ip6 + 1);
   ll_opt =
-    (icmp6_neighbor_discovery_ethernet_link_layer_address_option_t *) (na +
-								       1);
+    (icmp6_neighbor_discovery_ethernet_link_layer_address_option_t *) (na + 1);
 
   payload_length = sizeof (*na) + sizeof (*ll_opt);
   b->current_length += payload_length;
   clib_memset (na, 0, payload_length);
 
-  na->icmp.type = ICMP6_neighbor_advertisement;	/* icmp code, csum are 0 */
+  na->icmp.type = ICMP6_neighbor_advertisement; /* icmp code, csum are 0 */
   na->target_address = *addr6;
-  na->advertisement_flags = clib_host_to_net_u32
-    (ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE
-     | ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_ROUTER);
+  na->advertisement_flags =
+    clib_host_to_net_u32 (ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE |
+			  ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_ROUTER);
 
   ll_opt->header.type =
     ICMP6_NEIGHBOR_DISCOVERY_OPTION_target_link_layer_address;
@@ -419,7 +418,7 @@ const mac_address_t broadcast_mac = {
 };
 
 static void
-vrrp4_garp_pkt_build (vrrp_vr_t * vr, vlib_buffer_t * b, ip4_address_t * ip4)
+vrrp4_garp_pkt_build (vrrp_vr_t *vr, vlib_buffer_t *b, ip4_address_t *ip4)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ethernet_header_t *eth;
@@ -429,9 +428,8 @@ vrrp4_garp_pkt_build (vrrp_vr_t * vr, vlib_buffer_t * b, ip4_address_t * ip4)
 
   eth = vlib_buffer_get_current (b);
 
-  rewrite =
-    ethernet_build_rewrite (vnm, vr->config.sw_if_index, VNET_LINK_ARP,
-			    broadcast_mac.bytes);
+  rewrite = ethernet_build_rewrite (vnm, vr->config.sw_if_index, VNET_LINK_ARP,
+				    broadcast_mac.bytes);
   rewrite_bytes = vec_len (rewrite);
   clib_memcpy (eth, rewrite, rewrite_bytes);
   vec_free (rewrite);
@@ -456,7 +454,7 @@ vrrp4_garp_pkt_build (vrrp_vr_t * vr, vlib_buffer_t * b, ip4_address_t * ip4)
 }
 
 int
-vrrp_garp_or_na_send (vrrp_vr_t * vr)
+vrrp_garp_or_na_send (vrrp_vr_t *vr)
 {
   vlib_main_t *vm = vlib_get_main ();
   vrrp_main_t *vmp = &vrrp_main;
@@ -467,7 +465,7 @@ vrrp_garp_or_na_send (vrrp_vr_t * vr)
   int i;
 
   if (vec_len (vr->config.peer_addrs))
-    return 0;			/* unicast is used in routed environments - don't garp */
+    return 0; /* unicast is used in routed environments - don't garp */
 
   n_buffers = vec_len (vr->config.vr_addrs);
   if (!n_buffers)
@@ -482,8 +480,7 @@ vrrp_garp_or_na_send (vrrp_vr_t * vr)
 
   if (vlib_buffer_alloc (vm, bi, n_buffers) != n_buffers)
     {
-      clib_warning ("Buffer allocation failed for %U", format_vrrp_vr_key,
-		    vr);
+      clib_warning ("Buffer allocation failed for %U", format_vrrp_vr_key, vr);
       vec_free (bi);
       return -1;
     }
@@ -521,7 +518,10 @@ vrrp_garp_or_na_send (vrrp_vr_t * vr)
   return 0;
 }
 
-#define IGMP4_MCAST_ADDR_AS_U8 { 224, 0, 0, 22 }
+#define IGMP4_MCAST_ADDR_AS_U8                                                \
+  {                                                                           \
+    224, 0, 0, 22                                                             \
+  }
 
 static const ip4_header_t igmp_ip4_mcast = {
   .ip_version_and_header_length = 0x46,	/* there's options! */
@@ -532,7 +532,7 @@ static const ip4_header_t igmp_ip4_mcast = {
 };
 
 static void
-vrrp_igmp_pkt_build (vrrp_vr_t * vr, vlib_buffer_t * b)
+vrrp_igmp_pkt_build (vrrp_vr_t *vr, vlib_buffer_t *b)
 {
   ip4_header_t *ip4;
   u8 *ip4_options;
@@ -547,10 +547,10 @@ vrrp_igmp_pkt_build (vrrp_vr_t * vr, vlib_buffer_t * b)
   vlib_buffer_advance (b, sizeof (*ip4));
 
   ip4_options = (u8 *) (ip4 + 1);
-  ip4_options[0] = 0x94;	/* 10010100 == the router alert option */
-  ip4_options[1] = 0x04;	/* length == 4 bytes */
-  ip4_options[2] = 0x0;		/* value == Router shall examine packet */
-  ip4_options[3] = 0x0;		/* reserved */
+  ip4_options[0] = 0x94; /* 10010100 == the router alert option */
+  ip4_options[1] = 0x04; /* length == 4 bytes */
+  ip4_options[2] = 0x0;	 /* value == Router shall examine packet */
+  ip4_options[3] = 0x0;	 /* reserved */
 
   vlib_buffer_chain_increase_length (b, b, 4);
   vlib_buffer_advance (b, 4);
@@ -586,19 +586,18 @@ vrrp_igmp_pkt_build (vrrp_vr_t * vr, vlib_buffer_t * b)
 }
 
 /* multicast listener report packet format for ethernet. */
-typedef CLIB_PACKED (struct
-		     {
-		     ip6_hop_by_hop_ext_t ext_hdr;
-		     ip6_router_alert_option_t alert;
-		     ip6_padN_option_t pad;
-		     icmp46_header_t icmp;
-		     u16 rsvd;
-		     u16 num_addr_records;
-		     icmp6_multicast_address_record_t records[0];
-		     }) icmp6_multicast_listener_report_header_t;
+typedef CLIB_PACKED (struct {
+  ip6_hop_by_hop_ext_t ext_hdr;
+  ip6_router_alert_option_t alert;
+  ip6_padN_option_t pad;
+  icmp46_header_t icmp;
+  u16 rsvd;
+  u16 num_addr_records;
+  icmp6_multicast_address_record_t records[0];
+}) icmp6_multicast_listener_report_header_t;
 
 static void
-vrrp_icmp6_mlr_pkt_build (vrrp_vr_t * vr, vlib_buffer_t * b)
+vrrp_icmp6_mlr_pkt_build (vrrp_vr_t *vr, vlib_buffer_t *b)
 {
   vlib_main_t *vm = vlib_get_main ();
   ip6_header_t *ip6;
@@ -655,30 +654,29 @@ vrrp_icmp6_mlr_pkt_build (vrrp_vr_t * vr, vlib_buffer_t * b)
   rr->type = 4;
   rr->aux_data_len_u32s = 0;
   rr->num_sources = 0;
-  clib_memcpy
-    (&rr->mcast_addr, &vrrp6_mcast_addr.ip6, sizeof (ip6_address_t));
+  clib_memcpy (&rr->mcast_addr, &vrrp6_mcast_addr.ip6, sizeof (ip6_address_t));
 
   /* solicited node multicast addresses for VR addrs */
   vec_foreach (vr_addr, vr->config.vr_addrs)
-  {
-    u32 id;
+    {
+      u32 id;
 
-    rr++;
-    rr->type = 4;
-    rr->aux_data_len_u32s = 0;
-    rr->num_sources = 0;
+      rr++;
+      rr->type = 4;
+      rr->aux_data_len_u32s = 0;
+      rr->num_sources = 0;
 
-    id = clib_net_to_host_u32 (vr_addr->ip6.as_u32[3]) & 0x00ffffff;
-    ip6_set_solicited_node_multicast_address (&rr->mcast_addr, id);
-  }
+      id = clib_net_to_host_u32 (vr_addr->ip6.as_u32[3]) & 0x00ffffff;
+      ip6_set_solicited_node_multicast_address (&rr->mcast_addr, id);
+    }
 
   ip6->payload_length = clib_host_to_net_u16 (payload_length);
-  rh->icmp.checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6,
-							 &bogus_length);
+  rh->icmp.checksum =
+    ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus_length);
 }
 
 int
-vrrp_vr_multicast_group_join (vrrp_vr_t * vr)
+vrrp_vr_multicast_group_join (vrrp_vr_t *vr)
 {
   vlib_main_t *vm = vlib_get_main ();
   vlib_buffer_t *b;
@@ -695,8 +693,7 @@ vrrp_vr_multicast_group_join (vrrp_vr_t * vr)
 
   if (vlib_buffer_alloc (vm, &bi, n_buffers) != n_buffers)
     {
-      clib_warning ("Buffer allocation failed for %U", format_vrrp_vr_key,
-		    vr);
+      clib_warning ("Buffer allocation failed for %U", format_vrrp_vr_key, vr);
       return -1;
     }
 
@@ -733,7 +730,6 @@ vrrp_vr_multicast_group_join (vrrp_vr_t * vr)
 
   return f->n_vectors;
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

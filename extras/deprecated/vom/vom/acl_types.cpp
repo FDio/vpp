@@ -23,8 +23,7 @@ const action_t action_t::DENY(0, "deny");
 
 action_t::action_t(int v, const std::string s)
   : enum_base(v, s)
-{
-}
+{}
 
 const action_t&
 action_t::from_int(uint8_t i)

@@ -18,19 +18,18 @@
 #include <vnet/l2/l2_bd.h>
 #include <vnet/l2/l2_input.h>
 
-#define foreach_l2_uu_fwd_error					\
-_(L2_UU_FWD,           "L2 UU fwd")
+#define foreach_l2_uu_fwd_error _ (L2_UU_FWD, "L2 UU fwd")
 
 typedef enum
 {
-#define _(sym,str) L2_UU_FWD_ERROR_##sym,
+#define _(sym, str) L2_UU_FWD_ERROR_##sym,
   foreach_l2_uu_fwd_error
 #undef _
     L2_UU_FWD_N_ERROR,
 } l2_uu_fwd_error_t;
 
 static char *l2_uu_fwd_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_l2_uu_fwd_error
 #undef _
 };
@@ -49,7 +48,7 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_l2_uu_fwd_trace (u8 * s, va_list * args)
+format_l2_uu_fwd_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -59,9 +58,8 @@ format_l2_uu_fwd_trace (u8 * s, va_list * args)
   return s;
 }
 
-VLIB_NODE_FN (l2_uu_fwd_node) (vlib_main_t * vm,
-			       vlib_node_runtime_t * node,
-			       vlib_frame_t * frame)
+VLIB_NODE_FN (l2_uu_fwd_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   l2_uu_fwd_next_t next_index;
@@ -161,9 +159,8 @@ VLIB_NODE_FN (l2_uu_fwd_node) (vlib_main_t * vm,
 	      t = vlib_add_trace (vm, node, b3, sizeof (*t));
 	      t->sw_if_index = bdc3->uu_fwd_sw_if_index;
 	    }
-	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, bi2, bi3,
+	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, bi2, bi3,
 					   next0, next1, next2, next3);
 	}
 
@@ -197,21 +194,19 @@ VLIB_NODE_FN (l2_uu_fwd_node) (vlib_main_t * vm,
 	      t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->sw_if_index = bdc0->uu_fwd_sw_if_index;
 	    }
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, node->node_index,
-			       L2_UU_FWD_ERROR_L2_UU_FWD, frame->n_vectors);
+  vlib_node_increment_counter (vm, node->node_index, L2_UU_FWD_ERROR_L2_UU_FWD,
+			       frame->n_vectors);
 
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_uu_fwd_node) = {
   .name = "l2-uu-fwd",
   .vector_size = sizeof (u32),
@@ -228,7 +223,6 @@ VLIB_REGISTER_NODE (l2_uu_fwd_node) = {
         [L2_UU_FWD_NEXT_L2_OUTPUT] = "l2-output",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

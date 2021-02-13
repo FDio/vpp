@@ -37,7 +37,7 @@
 #endif
 
 static inline clib_pmalloc_chunk_t *
-get_chunk (clib_pmalloc_page_t * pp, u32 index)
+get_chunk (clib_pmalloc_page_t *pp, u32 index)
 {
   return pool_elt_at_index (pp->chunks, index);
 }
@@ -49,7 +49,7 @@ pmalloc_size2pages (uword size, u32 log2_page_sz)
 }
 
 static inline int
-pmalloc_validate_numa_node (u32 * numa_node)
+pmalloc_validate_numa_node (u32 *numa_node)
 {
   if (*numa_node == CLIB_PMALLOC_NUMA_LOCAL)
     {
@@ -61,7 +61,7 @@ pmalloc_validate_numa_node (u32 * numa_node)
 }
 
 __clib_export int
-clib_pmalloc_init (clib_pmalloc_main_t * pm, uword base_addr, uword size)
+clib_pmalloc_init (clib_pmalloc_main_t *pm, uword base_addr, uword size)
 {
   uword base, pagesize;
   u64 *pt = 0;
@@ -86,8 +86,8 @@ clib_pmalloc_init (clib_pmalloc_main_t * pm, uword base_addr, uword size)
 
   if (base == ~0)
     {
-      pm->error = clib_error_return (0, "failed to reserve %u pages",
-				     pm->max_pages);
+      pm->error =
+	clib_error_return (0, "failed to reserve %u pages", pm->max_pages);
       return -1;
     }
 
@@ -96,7 +96,7 @@ clib_pmalloc_init (clib_pmalloc_main_t * pm, uword base_addr, uword size)
 }
 
 static inline void *
-alloc_chunk_from_page (clib_pmalloc_main_t * pm, clib_pmalloc_page_t * pp,
+alloc_chunk_from_page (clib_pmalloc_main_t *pm, clib_pmalloc_page_t *pp,
 		       u32 n_blocks, u32 block_align, u32 numa_node)
 {
   clib_pmalloc_chunk_t *c = 0;
@@ -188,7 +188,7 @@ next_chunk:
 
   c = get_chunk (pp, alloc_chunk_index);
   va = pm->base + ((pp - pm->pages) << pm->def_log2_page_sz) +
-    (c->start << PMALLOC_LOG2_BLOCK_SZ);
+       (c->start << PMALLOC_LOG2_BLOCK_SZ);
   hash_set (pm->chunk_index_by_va, pointer_to_uword (va), alloc_chunk_index);
   pp->n_free_blocks -= n_blocks;
   pp->n_free_chunks--;
@@ -196,22 +196,23 @@ next_chunk:
 }
 
 static void
-pmalloc_update_lookup_table (clib_pmalloc_main_t * pm, u32 first, u32 count)
+pmalloc_update_lookup_table (clib_pmalloc_main_t *pm, u32 first, u32 count)
 {
   uword seek, va, pa, p;
   int fd;
   u32 elts_per_page = 1U << (pm->def_log2_page_sz - pm->lookup_log2_page_sz);
 
-  vec_validate_aligned (pm->lookup_table, vec_len (pm->pages) *
-			elts_per_page - 1, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (pm->lookup_table,
+			vec_len (pm->pages) * elts_per_page - 1,
+			CLIB_CACHE_LINE_BYTES);
 
-  p = (uword) first *elts_per_page;
+  p = (uword) first * elts_per_page;
   if (pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP)
     {
       while (p < (uword) elts_per_page * count)
 	{
-	  pm->lookup_table[p] = pointer_to_uword (pm->base) +
-	    (p << pm->lookup_log2_page_sz);
+	  pm->lookup_table[p] =
+	    pointer_to_uword (pm->base) + (p << pm->lookup_log2_page_sz);
 	  p++;
 	}
       return;
@@ -225,7 +226,7 @@ pmalloc_update_lookup_table (clib_pmalloc_main_t * pm, u32 first, u32 count)
       seek = (va >> clib_mem_get_log2_page_size ()) * sizeof (pa);
       if (fd != -1 && lseek (fd, seek, SEEK_SET) == seek &&
 	  read (fd, &pa, sizeof (pa)) == (sizeof (pa)) &&
-	  pa & (1ULL << 63) /* page present bit */ )
+	  pa & (1ULL << 63) /* page present bit */)
 	{
 	  pa = (pa & pow2_mask (55)) << clib_mem_get_log2_page_size ();
 	}
@@ -238,7 +239,7 @@ pmalloc_update_lookup_table (clib_pmalloc_main_t * pm, u32 first, u32 count)
 }
 
 static inline clib_pmalloc_page_t *
-pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
+pmalloc_map_pages (clib_pmalloc_main_t *pm, clib_pmalloc_arena_t *a,
 		   u32 numa_node, u32 n_pages)
 {
   clib_pmalloc_page_t *pp = 0;
@@ -259,8 +260,8 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 
   if (a->log2_subpage_sz != clib_mem_get_log2_page_size ())
     {
-      pm->error = clib_sysfs_prealloc_hugepages (numa_node,
-						 a->log2_subpage_sz, n_pages);
+      pm->error =
+	clib_sysfs_prealloc_hugepages (numa_node, a->log2_subpage_sz, n_pages);
 
       if (pm->error)
 	return 0;
@@ -278,8 +279,10 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
   rv = set_mempolicy (MPOL_BIND, mask, sizeof (mask) * 8 + 1);
   if (rv == -1 && numa_node != 0)
     {
-      pm->error = clib_error_return_unix (0, "failed to set mempolicy for "
-					  "numa node %u", numa_node);
+      pm->error = clib_error_return_unix (0,
+					  "failed to set mempolicy for "
+					  "numa node %u",
+					  numa_node);
       return 0;
     }
 
@@ -307,9 +310,11 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
   if (mmap (va, size, PROT_READ | PROT_WRITE, mmap_flags, a->fd, 0) ==
       MAP_FAILED)
     {
-      pm->error = clib_error_return_unix (0, "failed to mmap %u pages at %p "
-					  "fd %d numa %d flags 0x%x", n_pages,
-					  va, a->fd, numa_node, mmap_flags);
+      pm->error =
+	clib_error_return_unix (0,
+				"failed to mmap %u pages at %p "
+				"fd %d numa %d flags 0x%x",
+				n_pages, va, a->fd, numa_node, mmap_flags);
       va = MAP_FAILED;
       goto error;
     }
@@ -335,11 +340,16 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
   rv = move_pages (0, 1, &va, 0, &status, 0);
   if ((rv == 0 && status != numa_node) || (rv != 0 && numa_node != 0))
     {
-      pm->error = rv == -1 ?
-	clib_error_return_unix (0, "page allocated on wrong node, numa node "
-				"%u status %d", numa_node, status) :
-	clib_error_return (0, "page allocated on wrong node, numa node "
-			   "%u status %d", numa_node, status);
+      pm->error =
+	rv == -1 ?
+	  clib_error_return_unix (0,
+				  "page allocated on wrong node, numa node "
+				  "%u status %d",
+				  numa_node, status) :
+	  clib_error_return (0,
+			     "page allocated on wrong node, numa node "
+			     "%u status %d",
+			     numa_node, status);
 
       goto error;
     }
@@ -354,14 +364,12 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
       a->n_pages++;
     }
 
-
   /* if new arena is using smaller page size, we need to rebuild whole
      lookup table */
   if (a->log2_subpage_sz < pm->lookup_log2_page_sz)
     {
       pm->lookup_log2_page_sz = a->log2_subpage_sz;
-      pmalloc_update_lookup_table (pm, vec_len (pm->pages) - n_pages,
-				   n_pages);
+      pmalloc_update_lookup_table (pm, vec_len (pm->pages) - n_pages, n_pages);
     }
   else
     pmalloc_update_lookup_table (pm, 0, vec_len (pm->pages));
@@ -374,8 +382,8 @@ error:
     {
       /* unmap & reserve */
       munmap (va, size);
-      mmap (va, size, PROT_NONE, MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
-	    -1, 0);
+      mmap (va, size, PROT_NONE, MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS, -1,
+	    0);
     }
   if (a->fd != -1)
     close (a->fd);
@@ -383,7 +391,7 @@ error:
 }
 
 __clib_export void *
-clib_pmalloc_create_shared_arena (clib_pmalloc_main_t * pm, char *name,
+clib_pmalloc_create_shared_arena (clib_pmalloc_main_t *pm, char *name,
 				  uword size, u32 log2_page_sz, u32 numa_node)
 {
   clib_pmalloc_arena_t *a;
@@ -430,7 +438,7 @@ clib_pmalloc_create_shared_arena (clib_pmalloc_main_t * pm, char *name,
 }
 
 static inline void *
-clib_pmalloc_alloc_inline (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
+clib_pmalloc_alloc_inline (clib_pmalloc_main_t *pm, clib_pmalloc_arena_t *a,
 			   uword size, uword align, u32 numa_node)
 {
   clib_pmalloc_page_t *pp;
@@ -446,8 +454,7 @@ clib_pmalloc_alloc_inline (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
       if (size > 1ULL << pm->def_log2_page_sz)
 	return 0;
 
-      vec_validate_init_empty (pm->default_arena_for_numa_node,
-			       numa_node, ~0);
+      vec_validate_init_empty (pm->default_arena_for_numa_node, numa_node, ~0);
       if (pm->default_arena_for_numa_node[numa_node] == ~0)
 	{
 	  pool_get (pm->arenas, a);
@@ -468,14 +475,14 @@ clib_pmalloc_alloc_inline (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
   block_align = align >> PMALLOC_LOG2_BLOCK_SZ;
 
   vec_foreach (page_index, a->page_indices)
-  {
-    pp = vec_elt_at_index (pm->pages, *page_index);
-    void *rv = alloc_chunk_from_page (pm, pp, n_blocks, block_align,
-				      numa_node);
+    {
+      pp = vec_elt_at_index (pm->pages, *page_index);
+      void *rv =
+	alloc_chunk_from_page (pm, pp, n_blocks, block_align, numa_node);
 
-    if (rv)
-      return rv;
-  }
+      if (rv)
+	return rv;
+    }
 
   if ((a->flags & CLIB_PMALLOC_ARENA_F_SHARED_MEM) == 0 &&
       (pp = pmalloc_map_pages (pm, a, numa_node, 1)))
@@ -485,21 +492,21 @@ clib_pmalloc_alloc_inline (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 }
 
 __clib_export void *
-clib_pmalloc_alloc_aligned_on_numa (clib_pmalloc_main_t * pm, uword size,
+clib_pmalloc_alloc_aligned_on_numa (clib_pmalloc_main_t *pm, uword size,
 				    uword align, u32 numa_node)
 {
   return clib_pmalloc_alloc_inline (pm, 0, size, align, numa_node);
 }
 
 void *
-clib_pmalloc_alloc_aligned (clib_pmalloc_main_t * pm, uword size, uword align)
+clib_pmalloc_alloc_aligned (clib_pmalloc_main_t *pm, uword size, uword align)
 {
   return clib_pmalloc_alloc_inline (pm, 0, size, align,
 				    CLIB_PMALLOC_NUMA_LOCAL);
 }
 
 void *
-clib_pmalloc_alloc_from_arena (clib_pmalloc_main_t * pm, void *arena_va,
+clib_pmalloc_alloc_from_arena (clib_pmalloc_main_t *pm, void *arena_va,
 			       uword size, uword align)
 {
   clib_pmalloc_arena_t *a = clib_pmalloc_get_arena (pm, arena_va);
@@ -507,7 +514,7 @@ clib_pmalloc_alloc_from_arena (clib_pmalloc_main_t * pm, void *arena_va,
 }
 
 static inline int
-pmalloc_chunks_mergeable (clib_pmalloc_arena_t * a, clib_pmalloc_page_t * pp,
+pmalloc_chunks_mergeable (clib_pmalloc_arena_t *a, clib_pmalloc_page_t *pp,
 			  u32 ci1, u32 ci2)
 {
   clib_pmalloc_chunk_t *c1, *c2;
@@ -529,7 +536,7 @@ pmalloc_chunks_mergeable (clib_pmalloc_arena_t * a, clib_pmalloc_page_t * pp,
 }
 
 __clib_export void
-clib_pmalloc_free (clib_pmalloc_main_t * pm, void *va)
+clib_pmalloc_free (clib_pmalloc_main_t *pm, void *va)
 {
   clib_pmalloc_page_t *pp;
   clib_pmalloc_chunk_t *c;
@@ -581,7 +588,7 @@ clib_pmalloc_free (clib_pmalloc_main_t * pm, void *va)
 }
 
 static u8 *
-format_pmalloc_page (u8 * s, va_list * va)
+format_pmalloc_page (u8 *s, va_list *va)
 {
   clib_pmalloc_page_t *pp = va_arg (*va, clib_pmalloc_page_t *);
   int verbose = va_arg (*va, int);
@@ -598,16 +605,14 @@ format_pmalloc_page (u8 * s, va_list * va)
     {
       clib_pmalloc_chunk_t *c;
       c = pool_elt_at_index (pp->chunks, pp->first_chunk_index);
-      s = format (s, "\n%U%12s%12s%8s%8s%8s%8s",
-		  format_white_space, indent + 2,
-		  "chunk offset", "size", "used", "index", "prev", "next");
+      s =
+	format (s, "\n%U%12s%12s%8s%8s%8s%8s", format_white_space, indent + 2,
+		"chunk offset", "size", "used", "index", "prev", "next");
       while (1)
 	{
-	  s = format (s, "\n%U%12u%12u%8s%8d%8d%8d",
-		      format_white_space, indent + 2,
-		      c->start << PMALLOC_LOG2_BLOCK_SZ,
-		      c->size << PMALLOC_LOG2_BLOCK_SZ,
-		      c->used ? "yes" : "no",
+	  s = format (s, "\n%U%12u%12u%8s%8d%8d%8d", format_white_space,
+		      indent + 2, c->start << PMALLOC_LOG2_BLOCK_SZ,
+		      c->size << PMALLOC_LOG2_BLOCK_SZ, c->used ? "yes" : "no",
 		      c - pp->chunks, c->prev, c->next);
 	  if (c->next == ~0)
 	    break;
@@ -618,7 +623,7 @@ format_pmalloc_page (u8 * s, va_list * va)
 }
 
 __clib_export u8 *
-format_pmalloc (u8 * s, va_list * va)
+format_pmalloc (u8 *s, va_list *va)
 {
   clib_pmalloc_main_t *pm = va_arg (*va, clib_pmalloc_main_t *);
   int verbose = va_arg (*va, int);
@@ -627,12 +632,13 @@ format_pmalloc (u8 * s, va_list * va)
   clib_pmalloc_page_t *pp;
   clib_pmalloc_arena_t *a;
 
-  s = format (s, "used-pages %u reserved-pages %u default-page-size %U "
-	      "lookup-page-size %U%s", vec_len (pm->pages), pm->max_pages,
-	      format_log2_page_size, pm->def_log2_page_sz,
-	      format_log2_page_size, pm->lookup_log2_page_sz,
+  s = format (s,
+	      "used-pages %u reserved-pages %u default-page-size %U "
+	      "lookup-page-size %U%s",
+	      vec_len (pm->pages), pm->max_pages, format_log2_page_size,
+	      pm->def_log2_page_sz, format_log2_page_size,
+	      pm->lookup_log2_page_sz,
 	      pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP ? " no-pagemap" : "");
-
 
   if (verbose >= 2)
     s = format (s, " va-start %p", pm->base);
@@ -642,7 +648,6 @@ format_pmalloc (u8 * s, va_list * va)
 		format_clib_error, pm->error);
 
 
-  /* *INDENT-OFF* */
   pool_foreach (a, pm->arenas)
     {
       u32 *page_index;
@@ -651,7 +656,7 @@ format_pmalloc (u8 * s, va_list * va)
 		  vec_len (a->page_indices), format_log2_page_size,
 		  a->log2_subpage_sz, a->numa_node);
       if (a->fd != -1)
-        s = format (s, " shared fd %d", a->fd);
+	s = format (s, " shared fd %d", a->fd);
       if (verbose >= 1)
 	vec_foreach (page_index, a->page_indices)
 	  {
@@ -660,31 +665,28 @@ format_pmalloc (u8 * s, va_list * va)
 			format_pmalloc_page, pp, verbose);
 	  }
     }
-  /* *INDENT-ON* */
 
   return s;
 }
 
 __clib_export u8 *
-format_pmalloc_map (u8 * s, va_list * va)
+format_pmalloc_map (u8 *s, va_list *va)
 {
   clib_pmalloc_main_t *pm = va_arg (*va, clib_pmalloc_main_t *);
 
   u32 index;
   s = format (s, "%16s %13s %8s", "virtual-addr", "physical-addr", "size");
   vec_foreach_index (index, pm->lookup_table)
-  {
-    uword *lookup_val, pa, va;
-    lookup_val = vec_elt_at_index (pm->lookup_table, index);
-    va =
-      pointer_to_uword (pm->base) +
-      ((uword) index << pm->lookup_log2_page_sz);
-    pa = va - *lookup_val;
-    s =
-      format (s, "\n %16p %13p %8U", uword_to_pointer (va, u64),
-	      uword_to_pointer (pa, u64), format_log2_page_size,
-	      pm->lookup_log2_page_sz);
-  }
+    {
+      uword *lookup_val, pa, va;
+      lookup_val = vec_elt_at_index (pm->lookup_table, index);
+      va = pointer_to_uword (pm->base) +
+	   ((uword) index << pm->lookup_log2_page_sz);
+      pa = va - *lookup_val;
+      s = format (s, "\n %16p %13p %8U", uword_to_pointer (va, u64),
+		  uword_to_pointer (pa, u64), format_log2_page_size,
+		  pm->lookup_log2_page_sz);
+    }
   return s;
 }
 

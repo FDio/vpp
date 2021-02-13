@@ -43,14 +43,14 @@
 #include <vppinfra/unix.h>
 
 void
-g2_test_pattern (elog_main_t * em, int g2_test, char *dump_file)
+g2_test_pattern (elog_main_t *em, int g2_test, char *dump_file)
 {
   int i, j;
   clib_error_t *error;
   elog_track_t *tracks = 0;
 
   elog_init (em, 100000);
-  elog_enable_disable (em, 1 /* enable */ );
+  elog_enable_disable (em, 1 /* enable */);
 
   for (i = 0; i < 100; i++)
     {
@@ -65,17 +65,19 @@ g2_test_pattern (elog_main_t * em, int g2_test, char *dump_file)
     {
       for (j = 0; j < 100; j++)
 	{
-	  ELOG_TYPE_DECLARE (e) =
-	  {
-	  .format = "0: t%d event %d",.format_args = "i4i4",};
-	  ELOG_TYPE_DECLARE (e2) =
-	  {
-	  .format = "1: t%d event %d",.format_args = "i4i4",};
+	  ELOG_TYPE_DECLARE (e) = {
+	    .format = "0: t%d event %d",
+	    .format_args = "i4i4",
+	  };
+	  ELOG_TYPE_DECLARE (e2) = {
+	    .format = "1: t%d event %d",
+	    .format_args = "i4i4",
+	  };
 
 	  struct
 	  {
 	    int track, event;
-	  } *ed;
+	  } * ed;
 
 	  ed = ELOG_TRACK_DATA (em, e, tracks[j]);
 	  ed->track = j + 1;
@@ -89,15 +91,14 @@ g2_test_pattern (elog_main_t * em, int g2_test, char *dump_file)
   if (dump_file == 0)
     dump_file = "/tmp/g2_test.elog";
 
-  error = elog_write_file (em, dump_file, 1 /* flush ring */ );
+  error = elog_write_file (em, dump_file, 1 /* flush ring */);
 
   if (error)
     clib_error_report (error);
 }
 
-
 int
-test_elog_main (unformat_input_t * input)
+test_elog_main (unformat_input_t *input)
 {
   clib_error_t *error = 0;
   u32 i, n_iter, seed, max_events;
@@ -183,8 +184,7 @@ test_elog_main (unformat_input_t * input)
       elog_init (em, max_events);
       for (i = 0; i < vec_len (ems); i++)
 	{
-	  if ((error =
-	       elog_read_file (i == 0 ? em : &ems[i], merge_files[i])))
+	  if ((error = elog_read_file (i == 0 ? em : &ems[i], merge_files[i])))
 	    goto done;
 	  if (i > 0)
 	    {
@@ -230,7 +230,7 @@ test_elog_main (unformat_input_t * input)
 	    {
 	      u32 string_index;
 	      f32 f;
-	    } *d;
+	    } * d;
 	    ELOG_TYPE_DECLARE (e) =
 	    {
 	      .format = "fumble %s %.9f",.format_args =
@@ -245,9 +245,10 @@ test_elog_main (unformat_input_t * input)
 	  }
 
 	  {
-	    ELOG_TYPE_DECLARE (e) =
-	    {
-	    .format = "bar %d.%d.%d.%d",.format_args = "i1i1i1i1",};
+	    ELOG_TYPE_DECLARE (e) = {
+	      .format = "bar %d.%d.%d.%d",
+	      .format_args = "i1i1i1i1",
+	    };
 	    ELOG_TRACK (my_track);
 	    u8 *d = ELOG_TRACK_DATA (em, e, my_track);
 	    d[0] = i + 0;
@@ -257,13 +258,14 @@ test_elog_main (unformat_input_t * input)
 	  }
 
 	  {
-	    ELOG_TYPE_DECLARE (e) =
-	    {
-	    .format = "bar `%s'",.format_args = "s20",};
+	    ELOG_TYPE_DECLARE (e) = {
+	      .format = "bar `%s'",
+	      .format_args = "s20",
+	    };
 	    struct
 	    {
 	      char s[20];
-	    } *d;
+	    } * d;
 	    u8 *v;
 
 	    d = ELOG_DATA (em, e);
@@ -272,13 +274,14 @@ test_elog_main (unformat_input_t * input)
 	  }
 
 	  {
-	    ELOG_TYPE_DECLARE (e) =
-	    {
-	    .format = "bar `%s'",.format_args = "T4",};
+	    ELOG_TYPE_DECLARE (e) = {
+	      .format = "bar `%s'",
+	      .format_args = "T4",
+	    };
 	    struct
 	    {
 	      u32 offset;
-	    } *d;
+	    } * d;
 
 	    d = ELOG_DATA (em, e);
 	    d->offset = elog_string (em, "string table %d", i);
@@ -295,8 +298,7 @@ test_elog_main (unformat_input_t * input)
 #ifdef CLIB_UNIX
   if (dump_file)
     {
-      if ((error =
-	   elog_write_file (em, dump_file, 0 /* do not flush ring */ )))
+      if ((error = elog_write_file (em, dump_file, 0 /* do not flush ring */)))
 	goto done;
     }
 #endif
@@ -306,11 +308,10 @@ test_elog_main (unformat_input_t * input)
       elog_event_t *e, *es;
       es = elog_get_events (em);
       vec_foreach (e, es)
-      {
-	clib_warning ("%18.9f: %12U %U\n", e->time,
-		      format_elog_track_name, em, e, format_elog_event, em,
-		      e);
-      }
+	{
+	  clib_warning ("%18.9f: %12U %U\n", e->time, format_elog_track_name,
+			em, e, format_elog_event, em, e);
+	}
     }
 
 done:
@@ -350,7 +351,8 @@ vl (void *p)
 }
 
 /**
- * @brief GDB callable function: pe - call pool_elts - number of elements in a pool
+ * @brief GDB callable function: pe - call pool_elts - number of elements in a
+ * pool
  *
  * @param *v - void - address of pool
  *

@@ -43,9 +43,8 @@ uword *lisp_gpe_sub_interfaces_sw_if_index;
  */
 static u32 lisp_gpe_sub_interface_id;
 
-
 static index_t
-lisp_gpe_sub_interface_db_find (const ip_address_t * lrloc, u32 vni)
+lisp_gpe_sub_interface_db_find (const ip_address_t *lrloc, u32 vni)
 {
   uword *p;
 
@@ -63,16 +62,16 @@ lisp_gpe_sub_interface_db_find (const ip_address_t * lrloc, u32 vni)
 }
 
 static void
-lisp_gpe_sub_interface_db_insert (const lisp_gpe_sub_interface_t * l3s)
+lisp_gpe_sub_interface_db_insert (const lisp_gpe_sub_interface_t *l3s)
 {
-  hash_set_mem (lisp_gpe_sub_interfaces,
-		l3s->key, l3s - lisp_gpe_sub_interface_pool);
-  hash_set_mem (lisp_gpe_sub_interfaces_sw_if_index,
-		l3s->key, l3s->sw_if_index);
+  hash_set_mem (lisp_gpe_sub_interfaces, l3s->key,
+		l3s - lisp_gpe_sub_interface_pool);
+  hash_set_mem (lisp_gpe_sub_interfaces_sw_if_index, l3s->key,
+		l3s->sw_if_index);
 }
 
 static void
-lisp_gpe_sub_interface_db_remove (const lisp_gpe_sub_interface_t * l3s)
+lisp_gpe_sub_interface_db_remove (const lisp_gpe_sub_interface_t *l3s)
 {
   hash_unset_mem (lisp_gpe_sub_interfaces, l3s->key);
   hash_unset_mem (lisp_gpe_sub_interfaces_sw_if_index, l3s->key);
@@ -119,7 +118,7 @@ lisp_gpe_sub_interface_unset_table (u32 sw_if_index, u32 table_id)
 }
 
 index_t
-lisp_gpe_sub_interface_find_or_create_and_lock (const ip_address_t * lrloc,
+lisp_gpe_sub_interface_find_or_create_and_lock (const ip_address_t *lrloc,
 						u32 overlay_table_id, u32 vni)
 {
   lisp_gpe_sub_interface_t *l3s;
@@ -134,9 +133,8 @@ lisp_gpe_sub_interface_find_or_create_and_lock (const ip_address_t * lrloc,
       /*
        * find the main interface from the VNI
        */
-      main_sw_if_index =
-	lisp_gpe_tenant_l3_iface_add_or_lock (vni, overlay_table_id,
-					      1 /* with_default_route */ );
+      main_sw_if_index = lisp_gpe_tenant_l3_iface_add_or_lock (
+	vni, overlay_table_id, 1 /* with_default_route */);
 
       vnet_sw_interface_t sub_itf_template = {
 	.type = VNET_SW_INTERFACE_TYPE_SUB,
@@ -145,9 +143,8 @@ lisp_gpe_sub_interface_find_or_create_and_lock (const ip_address_t * lrloc,
 	.sub.id = lisp_gpe_sub_interface_id++,
       };
 
-      if (NULL != vnet_create_sw_interface (vnet_get_main (),
-					    &sub_itf_template,
-					    &sub_sw_if_index))
+      if (NULL != vnet_create_sw_interface (
+		    vnet_get_main (), &sub_itf_template, &sub_sw_if_index))
 	return (INDEX_INVALID);
 
       pool_get (lisp_gpe_sub_interface_pool, l3s);
@@ -167,8 +164,7 @@ lisp_gpe_sub_interface_find_or_create_and_lock (const ip_address_t * lrloc,
       ip6_sw_interface_enable_disable (l3s->sw_if_index, 1);
       ip4_sw_interface_enable_disable (l3s->sw_if_index, 1);
 
-      vnet_sw_interface_set_flags (vnet_get_main (),
-				   l3s->sw_if_index,
+      vnet_sw_interface_set_flags (vnet_get_main (), l3s->sw_if_index,
 				   VNET_SW_INTERFACE_FLAG_ADMIN_UP);
 
       lisp_gpe_sub_interface_db_insert (l3s);
@@ -197,8 +193,7 @@ lisp_gpe_sub_interface_unlock (index_t l3si)
 
   if (0 == l3s->locks)
     {
-      lisp_gpe_sub_interface_unset_table (l3s->sw_if_index,
-					  l3s->eid_table_id);
+      lisp_gpe_sub_interface_unset_table (l3s->sw_if_index, l3s->eid_table_id);
 
       lisp_gpe_tenant_l3_iface_unlock (l3s->key->vni);
       vnet_sw_interface_set_flags (vnet_get_main (), l3s->sw_if_index, 0);
@@ -218,14 +213,13 @@ lisp_gpe_sub_interface_get (index_t l3si)
 }
 
 u8 *
-format_lisp_gpe_sub_interface (u8 * s, va_list * ap)
+format_lisp_gpe_sub_interface (u8 *s, va_list *ap)
 {
   lisp_gpe_sub_interface_t *l3s = va_arg (*ap, lisp_gpe_sub_interface_t *);
   vnet_main_t *vnm = vnet_get_main ();
 
-  s = format (s, "%-16U",
-	      format_vnet_sw_interface_name,
-	      vnm, vnet_get_sw_interface (vnm, l3s->sw_if_index));
+  s = format (s, "%-16U", format_vnet_sw_interface_name, vnm,
+	      vnet_get_sw_interface (vnm, l3s->sw_if_index));
   s = format (s, "%=8d", l3s->key->vni);
   s = format (s, "%=15d", l3s->sw_if_index);
   s = format (s, "%U", format_ip_address, &l3s->key->local_rloc);
@@ -235,42 +229,35 @@ format_lisp_gpe_sub_interface (u8 * s, va_list * ap)
 
 /** CLI command to show LISP-GPE interfaces. */
 static clib_error_t *
-lisp_gpe_sub_interface_show (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+lisp_gpe_sub_interface_show (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   lisp_gpe_sub_interface_t *l3s;
 
   vlib_cli_output (vm, "%-16s%=8s%=15s%s", "Name", "VNI", "sw_if_index",
 		   "local RLOC");
 
-  /* *INDENT-OFF* */
   pool_foreach (l3s, lisp_gpe_sub_interface_pool)
-   {
-    vlib_cli_output (vm, "%U", format_lisp_gpe_sub_interface, l3s);
-  }
-  /* *INDENT-ON* */
+    {
+      vlib_cli_output (vm, "%U", format_lisp_gpe_sub_interface, l3s);
+    }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_gpe_sub_interface_command) = {
   .path = "show gpe sub-interface",
   .short_help = "show gpe sub-interface",
   .function = lisp_gpe_sub_interface_show,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-lisp_gpe_sub_interface_module_init (vlib_main_t * vm)
+lisp_gpe_sub_interface_module_init (vlib_main_t *vm)
 {
   lisp_gpe_sub_interfaces =
-    hash_create_mem (0,
-		     sizeof (lisp_gpe_sub_interface_key_t), sizeof (uword));
+    hash_create_mem (0, sizeof (lisp_gpe_sub_interface_key_t), sizeof (uword));
   lisp_gpe_sub_interfaces_sw_if_index =
-    hash_create_mem (0,
-		     sizeof (lisp_gpe_sub_interface_key_t), sizeof (uword));
+    hash_create_mem (0, sizeof (lisp_gpe_sub_interface_key_t), sizeof (uword));
 
   return (NULL);
 }

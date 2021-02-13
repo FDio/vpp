@@ -36,46 +36,42 @@
 
 #define SUPPORT_OPTIONS_HEADER 0
 
-typedef CLIB_PACKED (struct
-		     {
-		     ip4_header_t ip4;	/* 20 bytes */
-		     udp_header_t udp;	/* 8 bytes */
-		     geneve_header_t geneve;	/* Min 8 bytes, Max 260 bytes */
-		     }) ip4_geneve_header_t;
+typedef CLIB_PACKED (struct {
+  ip4_header_t ip4;	  /* 20 bytes */
+  udp_header_t udp;	  /* 8 bytes */
+  geneve_header_t geneve; /* Min 8 bytes, Max 260 bytes */
+}) ip4_geneve_header_t;
 
-typedef CLIB_PACKED (struct
-		     {
-		     ip6_header_t ip6;	/* 40 bytes */
-		     udp_header_t udp;	/* 8 bytes */
-		     geneve_header_t geneve;	/* Min 8 bytes, Max 260 bytes */
-		     }) ip6_geneve_header_t;
+typedef CLIB_PACKED (struct {
+  ip6_header_t ip6;	  /* 40 bytes */
+  udp_header_t udp;	  /* 8 bytes */
+  geneve_header_t geneve; /* Min 8 bytes, Max 260 bytes */
+}) ip6_geneve_header_t;
 
-typedef CLIB_PACKED (struct
-		     {
-		     /*
-		      * Key fields: ip source and geneve vni on incoming GENEVE packet
-		      * all fields in NET byte order
-		      */
-		     union
-		     {
-		     struct
-		     {
-		     u32 remote;
-		     u32 vni;	/* shifted left 8 bits */
-		     };
-		     u64 as_u64;
-		     };
-		     }) geneve4_tunnel_key_t;
+typedef CLIB_PACKED (struct {
+  /*
+   * Key fields: ip source and geneve vni on incoming GENEVE packet
+   * all fields in NET byte order
+   */
+  union
+  {
+    struct
+    {
+      u32 remote;
+      u32 vni; /* shifted left 8 bits */
+    };
+    u64 as_u64;
+  };
+}) geneve4_tunnel_key_t;
 
-typedef CLIB_PACKED (struct
-		     {
-		     /*
-		      * Key fields: ip source and geneve vni on incoming GENEVE packet
-		      * all fields in NET byte order
-		      */
-		     ip6_address_t remote;
-		     u32 vni;	/* shifted left 8 bits */
-		     }) geneve6_tunnel_key_t;
+typedef CLIB_PACKED (struct {
+  /*
+   * Key fields: ip source and geneve vni on incoming GENEVE packet
+   * all fields in NET byte order
+   */
+  ip6_address_t remote;
+  u32 vni; /* shifted left 8 bits */
+}) geneve6_tunnel_key_t;
 
 typedef struct
 {
@@ -98,7 +94,7 @@ typedef struct
   u32 vni;
 
   /* geneve OPTIONS LEN in HOST byte order */
-#if SUPPORT_OPTIONS_HEADER==1
+#if SUPPORT_OPTIONS_HEADER == 1
   u8 options_len;
 #endif
 
@@ -142,13 +138,13 @@ typedef struct
   u8 l3_mode;
 } geneve_tunnel_t;
 
-#define foreach_geneve_input_next        \
-_(DROP, "error-drop")                   \
-_(L2_INPUT, "l2-input")
+#define foreach_geneve_input_next                                             \
+  _ (DROP, "error-drop")                                                      \
+  _ (L2_INPUT, "l2-input")
 
 typedef enum
 {
-#define _(s,n) GENEVE_INPUT_NEXT_##s,
+#define _(s, n) GENEVE_INPUT_NEXT_##s,
   foreach_geneve_input_next
 #undef _
     GENEVE_INPUT_N_NEXT,
@@ -156,7 +152,7 @@ typedef enum
 
 typedef enum
 {
-#define geneve_error(n,s) GENEVE_ERROR_##n,
+#define geneve_error(n, s) GENEVE_ERROR_##n,
 #include <geneve/geneve_error.def>
 #undef geneve_error
   GENEVE_N_ERROR,
@@ -168,15 +164,15 @@ typedef struct
   geneve_tunnel_t *tunnels;
 
   /* lookup tunnel by key */
-  uword *geneve4_tunnel_by_key;	/* keyed on ipv4.remote + vni */
-  uword *geneve6_tunnel_by_key;	/* keyed on ipv6.remote + vni */
+  uword *geneve4_tunnel_by_key; /* keyed on ipv4.remote + vni */
+  uword *geneve6_tunnel_by_key; /* keyed on ipv6.remote + vni */
 
   /* local VTEP IPs ref count used by geneve-bypass node to check if
      received GENEVE packet DIP matches any local VTEP address */
   vtep_table_t vtep_table;
 
   /* mcast shared info */
-  uword *mcast_shared;		/* keyed on mcast ip46 addr */
+  uword *mcast_shared; /* keyed on mcast ip46 addr */
 
   /* Mapping from sw_if_index to tunnel index */
   u32 *tunnel_index_by_sw_if_index;
@@ -195,7 +191,7 @@ extern vlib_node_registration_t geneve6_input_node;
 extern vlib_node_registration_t geneve4_encap_node;
 extern vlib_node_registration_t geneve6_encap_node;
 
-u8 *format_geneve_encap_trace (u8 * s, va_list * args);
+u8 *format_geneve_encap_trace (u8 *s, va_list *args);
 
 typedef struct
 {
@@ -212,8 +208,8 @@ typedef struct
   u8 l3_mode;
 } vnet_geneve_add_del_tunnel_args_t;
 
-int vnet_geneve_add_del_tunnel
-  (vnet_geneve_add_del_tunnel_args_t * a, u32 * sw_if_indexp);
+int vnet_geneve_add_del_tunnel (vnet_geneve_add_del_tunnel_args_t *a,
+				u32 *sw_if_indexp);
 
 void vnet_int_geneve_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable);
 #endif /* included_vnet_geneve_h */

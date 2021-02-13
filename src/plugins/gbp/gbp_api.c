@@ -73,7 +73,6 @@ gbp_endpoint_flags_encode (gbp_endpoint_flags_t f)
 {
   vl_api_gbp_endpoint_flags_t v = 0;
 
-
   if (f & GBP_ENDPOINT_FLAG_BOUNCE)
     v |= GBP_API_ENDPOINT_FLAG_BOUNCE;
   if (f & GBP_ENDPOINT_FLAG_REMOTE)
@@ -89,7 +88,7 @@ gbp_endpoint_flags_encode (gbp_endpoint_flags_t f)
 }
 
 static void
-vl_api_gbp_endpoint_add_t_handler (vl_api_gbp_endpoint_add_t * mp)
+vl_api_gbp_endpoint_add_t_handler (vl_api_gbp_endpoint_add_t *mp)
 {
   vl_api_gbp_endpoint_add_reply_t *rmp;
   gbp_endpoint_flags_t gef;
@@ -110,9 +109,9 @@ vl_api_gbp_endpoint_add_t_handler (vl_api_gbp_endpoint_add_t * mp)
       vec_validate (ips, mp->endpoint.n_ips - 1);
 
       vec_foreach_index (ii, ips)
-      {
-	ip_address_decode (&mp->endpoint.ips[ii], &ips[ii]);
-      }
+	{
+	  ip_address_decode (&mp->endpoint.ips[ii], &ips[ii]);
+	}
     }
   mac_address_decode (mp->endpoint.mac, &mac);
 
@@ -123,33 +122,26 @@ vl_api_gbp_endpoint_add_t_handler (vl_api_gbp_endpoint_add_t * mp)
       ip_address_decode (&mp->endpoint.tun.src, &tun_src);
       ip_address_decode (&mp->endpoint.tun.dst, &tun_dst);
 
-      rv = gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_CP,
-					 sw_if_index, ips, &mac,
-					 INDEX_INVALID, INDEX_INVALID,
-					 ntohs (mp->endpoint.sclass),
-					 gef, &tun_src, &tun_dst, &handle);
+      rv = gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_CP, sw_if_index, ips,
+					 &mac, INDEX_INVALID, INDEX_INVALID,
+					 ntohs (mp->endpoint.sclass), gef,
+					 &tun_src, &tun_dst, &handle);
     }
   else
     {
-      rv = gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_CP,
-					 sw_if_index, ips, &mac,
-					 INDEX_INVALID, INDEX_INVALID,
-					 ntohs (mp->endpoint.sclass),
-					 gef, NULL, NULL, &handle);
+      rv = gbp_endpoint_update_and_lock (
+	GBP_ENDPOINT_SRC_CP, sw_if_index, ips, &mac, INDEX_INVALID,
+	INDEX_INVALID, ntohs (mp->endpoint.sclass), gef, NULL, NULL, &handle);
     }
   vec_free (ips);
   BAD_SW_IF_INDEX_LABEL;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_GBP_ENDPOINT_ADD_REPLY + GBP_MSG_BASE,
-  ({
-    rmp->handle = htonl (handle);
-  }));
-  /* *INDENT-ON* */
+		({ rmp->handle = htonl (handle); }));
 }
 
 static void
-vl_api_gbp_endpoint_del_t_handler (vl_api_gbp_endpoint_del_t * mp)
+vl_api_gbp_endpoint_del_t_handler (vl_api_gbp_endpoint_del_t *mp)
 {
   vl_api_gbp_endpoint_del_reply_t *rmp;
   int rv = 0;
@@ -208,15 +200,14 @@ gbp_endpoint_send_details (index_t gei, void *args)
   mp->endpoint.flags = gbp_endpoint_flags_encode (gef->gef_flags);
   mp->handle = htonl (gei);
   mp->age =
-    clib_host_to_net_f64 (vlib_time_now (vlib_get_main ()) -
-			  ge->ge_last_time);
+    clib_host_to_net_f64 (vlib_time_now (vlib_get_main ()) - ge->ge_last_time);
   mac_address_encode (&ge->ge_key.gek_mac, mp->endpoint.mac);
 
   vec_foreach_index (ii, ge->ge_key.gek_ips)
-  {
-    ip_address_encode (&ge->ge_key.gek_ips[ii].fp_addr,
-		       IP46_TYPE_ANY, &mp->endpoint.ips[ii]);
-  }
+    {
+      ip_address_encode (&ge->ge_key.gek_ips[ii].fp_addr, IP46_TYPE_ANY,
+			 &mp->endpoint.ips[ii]);
+    }
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
@@ -224,7 +215,7 @@ gbp_endpoint_send_details (index_t gei, void *args)
 }
 
 static void
-vl_api_gbp_endpoint_dump_t_handler (vl_api_gbp_endpoint_dump_t * mp)
+vl_api_gbp_endpoint_dump_t_handler (vl_api_gbp_endpoint_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -241,15 +232,14 @@ vl_api_gbp_endpoint_dump_t_handler (vl_api_gbp_endpoint_dump_t * mp)
 }
 
 static void
-gbp_retention_decode (const vl_api_gbp_endpoint_retention_t * in,
-		      gbp_endpoint_retention_t * out)
+gbp_retention_decode (const vl_api_gbp_endpoint_retention_t *in,
+		      gbp_endpoint_retention_t *out)
 {
   out->remote_ep_timeout = ntohl (in->remote_ep_timeout);
 }
 
 static void
-  vl_api_gbp_endpoint_group_add_t_handler
-  (vl_api_gbp_endpoint_group_add_t * mp)
+vl_api_gbp_endpoint_group_add_t_handler (vl_api_gbp_endpoint_group_add_t *mp)
 {
   vl_api_gbp_endpoint_group_add_reply_t *rmp;
   gbp_endpoint_retention_t retention;
@@ -257,19 +247,15 @@ static void
 
   gbp_retention_decode (&mp->epg.retention, &retention);
 
-  rv = gbp_endpoint_group_add_and_lock (ntohl (mp->epg.vnid),
-					ntohs (mp->epg.sclass),
-					ntohl (mp->epg.bd_id),
-					ntohl (mp->epg.rd_id),
-					ntohl (mp->epg.uplink_sw_if_index),
-					&retention);
+  rv = gbp_endpoint_group_add_and_lock (
+    ntohl (mp->epg.vnid), ntohs (mp->epg.sclass), ntohl (mp->epg.bd_id),
+    ntohl (mp->epg.rd_id), ntohl (mp->epg.uplink_sw_if_index), &retention);
 
   REPLY_MACRO (VL_API_GBP_ENDPOINT_GROUP_ADD_REPLY + GBP_MSG_BASE);
 }
 
 static void
-  vl_api_gbp_endpoint_group_del_t_handler
-  (vl_api_gbp_endpoint_group_del_t * mp)
+vl_api_gbp_endpoint_group_del_t_handler (vl_api_gbp_endpoint_group_del_t *mp)
 {
   vl_api_gbp_endpoint_group_del_reply_t *rmp;
   int rv = 0;
@@ -300,24 +286,22 @@ gbp_bridge_domain_flags_from_api (vl_api_gbp_bridge_domain_flags_t a)
 }
 
 static void
-vl_api_gbp_bridge_domain_add_t_handler (vl_api_gbp_bridge_domain_add_t * mp)
+vl_api_gbp_bridge_domain_add_t_handler (vl_api_gbp_bridge_domain_add_t *mp)
 {
   vl_api_gbp_bridge_domain_add_reply_t *rmp;
   int rv = 0;
 
-  rv = gbp_bridge_domain_add_and_lock (ntohl (mp->bd.bd_id),
-				       ntohl (mp->bd.rd_id),
-				       gbp_bridge_domain_flags_from_api
-				       (mp->bd.flags),
-				       ntohl (mp->bd.bvi_sw_if_index),
-				       ntohl (mp->bd.uu_fwd_sw_if_index),
-				       ntohl (mp->bd.bm_flood_sw_if_index));
+  rv = gbp_bridge_domain_add_and_lock (
+    ntohl (mp->bd.bd_id), ntohl (mp->bd.rd_id),
+    gbp_bridge_domain_flags_from_api (mp->bd.flags),
+    ntohl (mp->bd.bvi_sw_if_index), ntohl (mp->bd.uu_fwd_sw_if_index),
+    ntohl (mp->bd.bm_flood_sw_if_index));
 
   REPLY_MACRO (VL_API_GBP_BRIDGE_DOMAIN_ADD_REPLY + GBP_MSG_BASE);
 }
 
 static void
-vl_api_gbp_bridge_domain_del_t_handler (vl_api_gbp_bridge_domain_del_t * mp)
+vl_api_gbp_bridge_domain_del_t_handler (vl_api_gbp_bridge_domain_del_t *mp)
 {
   vl_api_gbp_bridge_domain_del_reply_t *rmp;
   int rv = 0;
@@ -328,23 +312,21 @@ vl_api_gbp_bridge_domain_del_t_handler (vl_api_gbp_bridge_domain_del_t * mp)
 }
 
 static void
-vl_api_gbp_route_domain_add_t_handler (vl_api_gbp_route_domain_add_t * mp)
+vl_api_gbp_route_domain_add_t_handler (vl_api_gbp_route_domain_add_t *mp)
 {
   vl_api_gbp_route_domain_add_reply_t *rmp;
   int rv = 0;
 
-  rv = gbp_route_domain_add_and_lock (ntohl (mp->rd.rd_id),
-				      ntohs (mp->rd.scope),
-				      ntohl (mp->rd.ip4_table_id),
-				      ntohl (mp->rd.ip6_table_id),
-				      ntohl (mp->rd.ip4_uu_sw_if_index),
-				      ntohl (mp->rd.ip6_uu_sw_if_index));
+  rv = gbp_route_domain_add_and_lock (
+    ntohl (mp->rd.rd_id), ntohs (mp->rd.scope), ntohl (mp->rd.ip4_table_id),
+    ntohl (mp->rd.ip6_table_id), ntohl (mp->rd.ip4_uu_sw_if_index),
+    ntohl (mp->rd.ip6_uu_sw_if_index));
 
   REPLY_MACRO (VL_API_GBP_ROUTE_DOMAIN_ADD_REPLY + GBP_MSG_BASE);
 }
 
 static void
-vl_api_gbp_route_domain_del_t_handler (vl_api_gbp_route_domain_del_t * mp)
+vl_api_gbp_route_domain_del_t_handler (vl_api_gbp_route_domain_del_t *mp)
 {
   vl_api_gbp_route_domain_del_reply_t *rmp;
   int rv = 0;
@@ -355,7 +337,7 @@ vl_api_gbp_route_domain_del_t_handler (vl_api_gbp_route_domain_del_t * mp)
 }
 
 static int
-gub_subnet_type_from_api (vl_api_gbp_subnet_type_t a, gbp_subnet_type_t * t)
+gub_subnet_type_from_api (vl_api_gbp_subnet_type_t a, gbp_subnet_type_t *t)
 {
   a = clib_net_to_host_u32 (a);
 
@@ -382,7 +364,7 @@ gub_subnet_type_from_api (vl_api_gbp_subnet_type_t a, gbp_subnet_type_t * t)
 }
 
 static void
-vl_api_gbp_subnet_add_del_t_handler (vl_api_gbp_subnet_add_del_t * mp)
+vl_api_gbp_subnet_add_del_t_handler (vl_api_gbp_subnet_add_del_t *mp)
 {
   vl_api_gbp_subnet_add_del_reply_t *rmp;
   gbp_subnet_type_t type;
@@ -397,8 +379,7 @@ vl_api_gbp_subnet_add_del_t_handler (vl_api_gbp_subnet_add_del_t * mp)
     goto out;
 
   if (mp->is_add)
-    rv = gbp_subnet_add (ntohl (mp->subnet.rd_id),
-			 &pfx, type,
+    rv = gbp_subnet_add (ntohl (mp->subnet.rd_id), &pfx, type,
 			 ntohl (mp->subnet.sw_if_index),
 			 ntohs (mp->subnet.sclass));
   else
@@ -438,10 +419,9 @@ gub_subnet_type_to_api (gbp_subnet_type_t t)
 }
 
 static walk_rc_t
-gbp_subnet_send_details (u32 rd_id,
-			 const fib_prefix_t * pfx,
-			 gbp_subnet_type_t type,
-			 u32 sw_if_index, sclass_t sclass, void *args)
+gbp_subnet_send_details (u32 rd_id, const fib_prefix_t *pfx,
+			 gbp_subnet_type_t type, u32 sw_if_index,
+			 sclass_t sclass, void *args)
 {
   vl_api_gbp_subnet_details_t *mp;
   gbp_walk_ctx_t *ctx;
@@ -467,7 +447,7 @@ gbp_subnet_send_details (u32 rd_id,
 }
 
 static void
-vl_api_gbp_subnet_dump_t_handler (vl_api_gbp_subnet_dump_t * mp)
+vl_api_gbp_subnet_dump_t_handler (vl_api_gbp_subnet_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -484,7 +464,7 @@ vl_api_gbp_subnet_dump_t_handler (vl_api_gbp_subnet_dump_t * mp)
 }
 
 static int
-gbp_endpoint_group_send_details (gbp_endpoint_group_t * gg, void *args)
+gbp_endpoint_group_send_details (gbp_endpoint_group_t *gg, void *args)
 {
   vl_api_gbp_endpoint_group_details_t *mp;
   gbp_walk_ctx_t *ctx;
@@ -510,8 +490,7 @@ gbp_endpoint_group_send_details (gbp_endpoint_group_t * gg, void *args)
 }
 
 static void
-vl_api_gbp_endpoint_group_dump_t_handler (vl_api_gbp_endpoint_group_dump_t *
-					  mp)
+vl_api_gbp_endpoint_group_dump_t_handler (vl_api_gbp_endpoint_group_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -528,7 +507,7 @@ vl_api_gbp_endpoint_group_dump_t_handler (vl_api_gbp_endpoint_group_dump_t *
 }
 
 static int
-gbp_bridge_domain_send_details (gbp_bridge_domain_t * gb, void *args)
+gbp_bridge_domain_send_details (gbp_bridge_domain_t *gb, void *args)
 {
   vl_api_gbp_bridge_domain_details_t *mp;
   gbp_route_domain_t *gr;
@@ -558,7 +537,7 @@ gbp_bridge_domain_send_details (gbp_bridge_domain_t * gb, void *args)
 }
 
 static void
-vl_api_gbp_bridge_domain_dump_t_handler (vl_api_gbp_bridge_domain_dump_t * mp)
+vl_api_gbp_bridge_domain_dump_t_handler (vl_api_gbp_bridge_domain_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -575,7 +554,7 @@ vl_api_gbp_bridge_domain_dump_t_handler (vl_api_gbp_bridge_domain_dump_t * mp)
 }
 
 static int
-gbp_route_domain_send_details (gbp_route_domain_t * grd, void *args)
+gbp_route_domain_send_details (gbp_route_domain_t *grd, void *args)
 {
   vl_api_gbp_route_domain_details_t *mp;
   gbp_walk_ctx_t *ctx;
@@ -601,7 +580,7 @@ gbp_route_domain_send_details (gbp_route_domain_t * grd, void *args)
 }
 
 static void
-vl_api_gbp_route_domain_dump_t_handler (vl_api_gbp_route_domain_dump_t * mp)
+vl_api_gbp_route_domain_dump_t_handler (vl_api_gbp_route_domain_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -618,7 +597,7 @@ vl_api_gbp_route_domain_dump_t_handler (vl_api_gbp_route_domain_dump_t * mp)
 }
 
 static void
-vl_api_gbp_recirc_add_del_t_handler (vl_api_gbp_recirc_add_del_t * mp)
+vl_api_gbp_recirc_add_del_t_handler (vl_api_gbp_recirc_add_del_t *mp)
 {
   vl_api_gbp_recirc_add_del_reply_t *rmp;
   u32 sw_if_index;
@@ -629,8 +608,8 @@ vl_api_gbp_recirc_add_del_t_handler (vl_api_gbp_recirc_add_del_t * mp)
     goto bad_sw_if_index;
 
   if (mp->is_add)
-    rv = gbp_recirc_add (sw_if_index,
-			 ntohs (mp->recirc.sclass), mp->recirc.is_ext);
+    rv = gbp_recirc_add (sw_if_index, ntohs (mp->recirc.sclass),
+			 mp->recirc.is_ext);
   else
     rv = gbp_recirc_delete (sw_if_index);
 
@@ -640,7 +619,7 @@ vl_api_gbp_recirc_add_del_t_handler (vl_api_gbp_recirc_add_del_t * mp)
 }
 
 static walk_rc_t
-gbp_recirc_send_details (gbp_recirc_t * gr, void *args)
+gbp_recirc_send_details (gbp_recirc_t *gr, void *args)
 {
   vl_api_gbp_recirc_details_t *mp;
   gbp_walk_ctx_t *ctx;
@@ -664,7 +643,7 @@ gbp_recirc_send_details (gbp_recirc_t * gr, void *args)
 }
 
 static void
-vl_api_gbp_recirc_dump_t_handler (vl_api_gbp_recirc_dump_t * mp)
+vl_api_gbp_recirc_dump_t_handler (vl_api_gbp_recirc_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -681,7 +660,7 @@ vl_api_gbp_recirc_dump_t_handler (vl_api_gbp_recirc_dump_t * mp)
 }
 
 static void
-vl_api_gbp_ext_itf_add_del_t_handler (vl_api_gbp_ext_itf_add_del_t * mp)
+vl_api_gbp_ext_itf_add_del_t_handler (vl_api_gbp_ext_itf_add_del_t *mp)
 {
   vl_api_gbp_ext_itf_add_del_reply_t *rmp;
   u32 sw_if_index = ~0;
@@ -696,9 +675,8 @@ vl_api_gbp_ext_itf_add_del_t_handler (vl_api_gbp_ext_itf_add_del_t * mp)
     goto bad_sw_if_index;
 
   if (mp->is_add)
-    rv = gbp_ext_itf_add (sw_if_index,
-			  ntohl (ext_itf->bd_id), ntohl (ext_itf->rd_id),
-			  ntohl (ext_itf->flags));
+    rv = gbp_ext_itf_add (sw_if_index, ntohl (ext_itf->bd_id),
+			  ntohl (ext_itf->rd_id), ntohl (ext_itf->flags));
   else
     rv = gbp_ext_itf_delete (sw_if_index);
 
@@ -708,7 +686,7 @@ vl_api_gbp_ext_itf_add_del_t_handler (vl_api_gbp_ext_itf_add_del_t * mp)
 }
 
 static walk_rc_t
-gbp_ext_itf_send_details (gbp_ext_itf_t * gx, void *args)
+gbp_ext_itf_send_details (gbp_ext_itf_t *gx, void *args)
 {
   vl_api_gbp_ext_itf_details_t *mp;
   gbp_walk_ctx_t *ctx;
@@ -733,7 +711,7 @@ gbp_ext_itf_send_details (gbp_ext_itf_t * gx, void *args)
 }
 
 static void
-vl_api_gbp_ext_itf_dump_t_handler (vl_api_gbp_ext_itf_dump_t * mp)
+vl_api_gbp_ext_itf_dump_t_handler (vl_api_gbp_ext_itf_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -751,7 +729,7 @@ vl_api_gbp_ext_itf_dump_t_handler (vl_api_gbp_ext_itf_dump_t * mp)
 
 static int
 gbp_contract_rule_action_deocde (vl_api_gbp_rule_action_t in,
-				 gbp_rule_action_t * out)
+				 gbp_rule_action_t *out)
 {
   in = clib_net_to_host_u32 (in);
 
@@ -772,7 +750,7 @@ gbp_contract_rule_action_deocde (vl_api_gbp_rule_action_t in,
 }
 
 static int
-gbp_hash_mode_decode (vl_api_gbp_hash_mode_t in, gbp_hash_mode_t * out)
+gbp_hash_mode_decode (vl_api_gbp_hash_mode_t in, gbp_hash_mode_t *out)
 {
   in = clib_net_to_host_u32 (in);
 
@@ -793,7 +771,7 @@ gbp_hash_mode_decode (vl_api_gbp_hash_mode_t in, gbp_hash_mode_t * out)
 }
 
 static int
-gbp_next_hop_decode (const vl_api_gbp_next_hop_t * in, index_t * gnhi)
+gbp_next_hop_decode (const vl_api_gbp_next_hop_t *in, index_t *gnhi)
 {
   ip46_address_t ip;
   mac_address_t mac;
@@ -818,8 +796,8 @@ gbp_next_hop_decode (const vl_api_gbp_next_hop_t * in, index_t * gnhi)
 }
 
 static int
-gbp_next_hop_set_decode (const vl_api_gbp_next_hop_set_t * in,
-			 gbp_hash_mode_t * hash_mode, index_t ** out)
+gbp_next_hop_set_decode (const vl_api_gbp_next_hop_set_t *in,
+			 gbp_hash_mode_t *hash_mode, index_t **out)
 {
 
   index_t *gnhis = NULL;
@@ -849,7 +827,7 @@ gbp_next_hop_set_decode (const vl_api_gbp_next_hop_set_t * in,
 }
 
 static int
-gbp_contract_rule_decode (const vl_api_gbp_rule_t * in, index_t * gui)
+gbp_contract_rule_decode (const vl_api_gbp_rule_t *in, index_t *gui)
 {
   gbp_hash_mode_t hash_mode;
   gbp_rule_action_t action;
@@ -879,8 +857,8 @@ gbp_contract_rule_decode (const vl_api_gbp_rule_t * in, index_t * gui)
 }
 
 static int
-gbp_contract_rules_decode (u8 n_rules,
-			   const vl_api_gbp_rule_t * rules, index_t ** out)
+gbp_contract_rules_decode (u8 n_rules, const vl_api_gbp_rule_t *rules,
+			   index_t **out)
 {
   index_t *guis = NULL;
   int rv;
@@ -901,7 +879,8 @@ gbp_contract_rules_decode (u8 n_rules,
       if (0 != rv)
 	{
 	  index_t *gui;
-	  vec_foreach (gui, guis) gbp_rule_free (*gui);
+	  vec_foreach (gui, guis)
+	    gbp_rule_free (*gui);
 	  vec_free (guis);
 	  return (rv);
 	}
@@ -912,7 +891,7 @@ gbp_contract_rules_decode (u8 n_rules,
 }
 
 static void
-vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t * mp)
+vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t *mp)
 {
   vl_api_gbp_contract_add_del_reply_t *rmp;
   u16 *allowed_ethertypes;
@@ -923,8 +902,8 @@ vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t * mp)
 
   if (mp->is_add)
     {
-      rv = gbp_contract_rules_decode (mp->contract.n_rules,
-				      mp->contract.rules, &rules);
+      rv = gbp_contract_rules_decode (mp->contract.n_rules, mp->contract.rules,
+				      &rules);
       if (0 != rv)
 	goto out;
 
@@ -942,11 +921,10 @@ vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t * mp)
 	  allowed_ethertypes[ii] = mp->contract.allowed_ethertypes[ii];
 	}
 
-      rv = gbp_contract_update (ntohs (mp->contract.scope),
-				ntohs (mp->contract.sclass),
-				ntohs (mp->contract.dclass),
-				ntohl (mp->contract.acl_index),
-				rules, allowed_ethertypes, &stats_index);
+      rv = gbp_contract_update (
+	ntohs (mp->contract.scope), ntohs (mp->contract.sclass),
+	ntohs (mp->contract.dclass), ntohl (mp->contract.acl_index), rules,
+	allowed_ethertypes, &stats_index);
     }
   else
     rv = gbp_contract_delete (ntohs (mp->contract.scope),
@@ -954,16 +932,13 @@ vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t * mp)
 			      ntohs (mp->contract.dclass));
 
 out:
-  /* *INDENT-OFF* */
+
   REPLY_MACRO2 (VL_API_GBP_CONTRACT_ADD_DEL_REPLY + GBP_MSG_BASE,
-  ({
-    rmp->stats_index = htonl (stats_index);
-  }));
-  /* *INDENT-ON* */
+		({ rmp->stats_index = htonl (stats_index); }));
 }
 
 static int
-gbp_contract_send_details (gbp_contract_t * gbpc, void *args)
+gbp_contract_send_details (gbp_contract_t *gbpc, void *args)
 {
   vl_api_gbp_contract_details_t *mp;
   gbp_walk_ctx_t *ctx;
@@ -988,7 +963,7 @@ gbp_contract_send_details (gbp_contract_t * gbpc, void *args)
 }
 
 static void
-vl_api_gbp_contract_dump_t_handler (vl_api_gbp_contract_dump_t * mp)
+vl_api_gbp_contract_dump_t_handler (vl_api_gbp_contract_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -1006,7 +981,7 @@ vl_api_gbp_contract_dump_t_handler (vl_api_gbp_contract_dump_t * mp)
 
 static int
 gbp_vxlan_tunnel_mode_2_layer (vl_api_gbp_vxlan_tunnel_mode_t mode,
-			       gbp_vxlan_tunnel_layer_t * l)
+			       gbp_vxlan_tunnel_layer_t *l)
 {
   mode = clib_net_to_host_u32 (mode);
 
@@ -1023,7 +998,7 @@ gbp_vxlan_tunnel_mode_2_layer (vl_api_gbp_vxlan_tunnel_mode_t mode,
 }
 
 static void
-vl_api_gbp_vxlan_tunnel_add_t_handler (vl_api_gbp_vxlan_tunnel_add_t * mp)
+vl_api_gbp_vxlan_tunnel_add_t_handler (vl_api_gbp_vxlan_tunnel_add_t *mp)
 {
   vl_api_gbp_vxlan_tunnel_add_reply_t *rmp;
   gbp_vxlan_tunnel_layer_t layer;
@@ -1037,21 +1012,17 @@ vl_api_gbp_vxlan_tunnel_add_t_handler (vl_api_gbp_vxlan_tunnel_add_t * mp)
   if (0 != rv)
     goto out;
 
-  rv = gbp_vxlan_tunnel_add (ntohl (mp->tunnel.vni),
-			     layer,
+  rv = gbp_vxlan_tunnel_add (ntohl (mp->tunnel.vni), layer,
 			     ntohl (mp->tunnel.bd_rd_id), &src, &sw_if_index);
 
 out:
-  /* *INDENT-OFF* */
+
   REPLY_MACRO2 (VL_API_GBP_VXLAN_TUNNEL_ADD_REPLY + GBP_MSG_BASE,
-  ({
-    rmp->sw_if_index = htonl (sw_if_index);
-  }));
-  /* *INDENT-ON* */
+		({ rmp->sw_if_index = htonl (sw_if_index); }));
 }
 
 static void
-vl_api_gbp_vxlan_tunnel_del_t_handler (vl_api_gbp_vxlan_tunnel_add_t * mp)
+vl_api_gbp_vxlan_tunnel_del_t_handler (vl_api_gbp_vxlan_tunnel_add_t *mp)
 {
   vl_api_gbp_vxlan_tunnel_del_reply_t *rmp;
   int rv = 0;
@@ -1081,7 +1052,7 @@ gbp_vxlan_tunnel_layer_2_mode (gbp_vxlan_tunnel_layer_t layer)
 }
 
 static walk_rc_t
-gbp_vxlan_tunnel_send_details (gbp_vxlan_tunnel_t * gt, void *args)
+gbp_vxlan_tunnel_send_details (gbp_vxlan_tunnel_t *gt, void *args)
 {
   vl_api_gbp_vxlan_tunnel_details_t *mp;
   gbp_walk_ctx_t *ctx;
@@ -1105,7 +1076,7 @@ gbp_vxlan_tunnel_send_details (gbp_vxlan_tunnel_t * gt, void *args)
 }
 
 static void
-vl_api_gbp_vxlan_tunnel_dump_t_handler (vl_api_gbp_vxlan_tunnel_dump_t * mp)
+vl_api_gbp_vxlan_tunnel_dump_t_handler (vl_api_gbp_vxlan_tunnel_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
@@ -1123,7 +1094,7 @@ vl_api_gbp_vxlan_tunnel_dump_t_handler (vl_api_gbp_vxlan_tunnel_dump_t * mp)
 
 #include <gbp/gbp.api.c>
 static clib_error_t *
-gbp_init (vlib_main_t * vm)
+gbp_init (vlib_main_t *vm)
 {
   gbp_main_t *gbpm = &gbp_main;
 
@@ -1137,13 +1108,10 @@ gbp_init (vlib_main_t * vm)
 
 VLIB_API_INIT_FUNCTION (gbp_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
-    .version = VPP_BUILD_VER,
-    .description = "Group Based Policy (GBP)",
+  .version = VPP_BUILD_VER,
+  .description = "Group Based Policy (GBP)",
 };
-/* *INDENT-ON* */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

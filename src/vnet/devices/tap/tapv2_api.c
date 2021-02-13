@@ -30,11 +30,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -47,13 +47,13 @@
 #include <vlibapi/api_helper_macros.h>
 #include <vnet/devices/tap/tap.h>
 
-#define foreach_tapv2_api_msg                     \
-_(TAP_CREATE_V2, tap_create_v2)                   \
-_(TAP_DELETE_V2, tap_delete_v2)                   \
-_(SW_INTERFACE_TAP_V2_DUMP, sw_interface_tap_v2_dump)
+#define foreach_tapv2_api_msg                                                 \
+  _ (TAP_CREATE_V2, tap_create_v2)                                            \
+  _ (TAP_DELETE_V2, tap_delete_v2)                                            \
+  _ (SW_INTERFACE_TAP_V2_DUMP, sw_interface_tap_v2_dump)
 
 static void
-vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
+vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t *mp)
 {
   vl_api_registration_t *reg;
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -76,7 +76,7 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
     }
   ap->rx_ring_sz = ntohs (mp->rx_ring_sz);
   ap->tx_ring_sz = ntohs (mp->tx_ring_sz);
-  ap->sw_if_index = (u32) ~ 0;
+  ap->sw_if_index = (u32) ~0;
   ap->num_rx_queues = 1;
 
   if (mp->num_rx_queues > 1)
@@ -128,27 +128,26 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
 
   STATIC_ASSERT (((int) TAP_API_FLAG_GSO == (int) TAP_FLAG_GSO),
 		 "tap gso api flag mismatch");
-  STATIC_ASSERT (((int) TAP_API_FLAG_CSUM_OFFLOAD ==
-		  (int) TAP_FLAG_CSUM_OFFLOAD),
-		 "tap checksum offload api flag mismatch");
+  STATIC_ASSERT (
+    ((int) TAP_API_FLAG_CSUM_OFFLOAD == (int) TAP_FLAG_CSUM_OFFLOAD),
+    "tap checksum offload api flag mismatch");
   STATIC_ASSERT (((int) TAP_API_FLAG_PERSIST == (int) TAP_FLAG_PERSIST),
 		 "tap persist api flag mismatch");
   STATIC_ASSERT (((int) TAP_API_FLAG_ATTACH == (int) TAP_FLAG_ATTACH),
 		 "tap attach api flag mismatch");
   STATIC_ASSERT (((int) TAP_API_FLAG_TUN == (int) TAP_FLAG_TUN),
 		 "tap tun api flag mismatch");
-  STATIC_ASSERT (((int) TAP_API_FLAG_GRO_COALESCE ==
-		  (int) TAP_FLAG_GRO_COALESCE),
-		 "tap gro coalesce api flag mismatch");
+  STATIC_ASSERT (
+    ((int) TAP_API_FLAG_GRO_COALESCE == (int) TAP_FLAG_GRO_COALESCE),
+    "tap gro coalesce api flag mismatch");
   STATIC_ASSERT (((int) TAP_API_FLAG_PACKED == (int) TAP_FLAG_PACKED),
 		 "tap packed api flag mismatch");
-  STATIC_ASSERT (((int) TAP_API_FLAG_IN_ORDER ==
-		  (int) TAP_FLAG_IN_ORDER), "tap in-order api flag mismatch");
+  STATIC_ASSERT (((int) TAP_API_FLAG_IN_ORDER == (int) TAP_FLAG_IN_ORDER),
+		 "tap in-order api flag mismatch");
 
   ap->tap_flags = ntohl (mp->tap_flags);
 
   tap_create_if (vm, ap);
-
 
   /* If a tag was supplied... */
   if (vl_api_string_len (&mp->tag))
@@ -168,11 +167,10 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
   vec_free (ap->host_if_name);
   vec_free (ap->host_namespace);
   vec_free (ap->host_bridge);
-
 }
 
 static void
-vl_api_tap_delete_v2_t_handler (vl_api_tap_delete_v2_t * mp)
+vl_api_tap_delete_v2_t_handler (vl_api_tap_delete_v2_t *mp)
 {
   vl_api_registration_t *reg;
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -200,9 +198,8 @@ vl_api_tap_delete_v2_t_handler (vl_api_tap_delete_v2_t * mp)
 }
 
 static void
-tap_send_sw_interface_details (vpe_api_main_t * am,
-			       vl_api_registration_t * reg,
-			       tap_interface_details_t * tap_if, u32 context)
+tap_send_sw_interface_details (vpe_api_main_t *am, vl_api_registration_t *reg,
+			       tap_interface_details_t *tap_if, u32 context)
 {
   vl_api_sw_interface_tap_v2_details_t *mp;
   mp = vl_msg_api_alloc (sizeof (*mp));
@@ -241,8 +238,8 @@ tap_send_sw_interface_details (vpe_api_main_t * am,
 }
 
 static void
-vl_api_sw_interface_tap_v2_dump_t_handler (vl_api_sw_interface_tap_v2_dump_t *
-					   mp)
+vl_api_sw_interface_tap_v2_dump_t_handler (
+  vl_api_sw_interface_tap_v2_dump_t *mp)
 {
   int rv;
   vpe_api_main_t *am = &vpe_api_main;
@@ -264,11 +261,11 @@ vl_api_sw_interface_tap_v2_dump_t_handler (vl_api_sw_interface_tap_v2_dump_t *
     return;
 
   vec_foreach (tap_if, tapifs)
-  {
-    if ((filter_sw_if_index == ~0)
-	|| (tap_if->sw_if_index == filter_sw_if_index))
-      tap_send_sw_interface_details (am, reg, tap_if, mp->context);
-  }
+    {
+      if ((filter_sw_if_index == ~0) ||
+	  (tap_if->sw_if_index == filter_sw_if_index))
+	tap_send_sw_interface_details (am, reg, tap_if, mp->context);
+    }
   BAD_SW_IF_INDEX_LABEL;
   vec_free (tapifs);
 }
@@ -278,25 +275,22 @@ vl_api_sw_interface_tap_v2_dump_t_handler (vl_api_sw_interface_tap_v2_dump_t *
 #undef vl_msg_name_crc_list
 
 static void
-tap_setup_message_id_table (api_main_t * am)
+tap_setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_tapv2;
 #undef _
 }
 
 static clib_error_t *
-tapv2_api_hookup (vlib_main_t * vm)
+tapv2_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_tapv2_api_msg;
 #undef _
 

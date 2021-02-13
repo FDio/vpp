@@ -36,8 +36,7 @@ l2_xconnect::l2_xconnect(const interface& east_itf, const interface& west_itf)
   , m_xconnect_west(0)
   , m_vtr_op(l2_vtr::option_t::DISABLED, rc_t::UNSET)
   , m_vtr_op_tag(0)
-{
-}
+{}
 
 l2_xconnect::l2_xconnect(const l2_xconnect& o)
   : m_east_itf(o.m_east_itf)
@@ -46,8 +45,7 @@ l2_xconnect::l2_xconnect(const l2_xconnect& o)
   , m_xconnect_west(o.m_xconnect_west)
   , m_vtr_op(o.m_vtr_op)
   , m_vtr_op_tag(o.m_vtr_op_tag)
-{
-}
+{}
 
 const l2_xconnect::key_t
 l2_xconnect::key() const

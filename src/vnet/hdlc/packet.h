@@ -40,18 +40,18 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#define foreach_hdlc_protocol			\
-  _ (0x0800, ip4)				\
-  _ (0x2000, cdp)				\
-  _ (0x8035, slarp)				\
-  _ (0x8847, mpls_unicast)			\
-  _ (0x8848, mpls_multicast)			\
-  _ (0x86dd, ip6)				\
+#define foreach_hdlc_protocol                                                 \
+  _ (0x0800, ip4)                                                             \
+  _ (0x2000, cdp)                                                             \
+  _ (0x8035, slarp)                                                           \
+  _ (0x8847, mpls_unicast)                                                    \
+  _ (0x8848, mpls_multicast)                                                  \
+  _ (0x86dd, ip6)                                                             \
   _ (0xfefe, osi)
 
 typedef enum
 {
-#define _(n,f) HDLC_PROTOCOL_##f = n,
+#define _(n, f) HDLC_PROTOCOL_##f = n,
   foreach_hdlc_protocol
 #undef _
 } hdlc_protocol_t;

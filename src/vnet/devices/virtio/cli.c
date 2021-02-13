@@ -24,12 +24,12 @@
 #include <vnet/devices/virtio/pci.h>
 
 static clib_error_t *
-virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+virtio_pci_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   virtio_pci_create_if_args_t args;
-  u64 feature_mask = (u64) ~ (0ULL);
+  u64 feature_mask = (u64) ~(0ULL);
   u32 buffering_size = 0;
 
   /* Get a line of input. */
@@ -66,19 +66,17 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return args.error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (virtio_pci_create_command, static) = {
   .path = "create interface virtio",
   .short_help = "create interface virtio <pci-address> "
-                "[feature-mask <hex-mask>] [gso-enabled] [csum-enabled] "
+		"[feature-mask <hex-mask>] [gso-enabled] [csum-enabled] "
 		"[buffering [size <buffering-szie>]] [packed]",
   .function = virtio_pci_create_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-virtio_pci_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+virtio_pci_delete_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
@@ -95,8 +93,8 @@ virtio_pci_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "sw_if_index %d", &sw_if_index))
 	;
-      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
@@ -120,18 +118,16 @@ virtio_pci_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (virtio_pci_delete_command, static) = {
   .path = "delete interface virtio",
   .short_help = "delete interface virtio "
-    "{<interface> | sw_if_index <sw_idx>}",
+		"{<interface> | sw_if_index <sw_idx>}",
   .function = virtio_pci_delete_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-virtio_pci_enable_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+virtio_pci_enable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
@@ -150,8 +146,8 @@ virtio_pci_enable_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "sw_if_index %d", &sw_if_index))
 	;
-      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
+			 &sw_if_index))
 	;
       else if (unformat (line_input, "gso-enabled"))
 	gso_enabled = 1;
@@ -175,25 +171,23 @@ virtio_pci_enable_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   vif = pool_elt_at_index (vim->interfaces, hw->dev_instance);
 
-  if (virtio_pci_enable_disable_offloads
-      (vm, vif, gso_enabled, checksum_offload_enabled, offloads_disabled) < 0)
+  if (virtio_pci_enable_disable_offloads (
+	vm, vif, gso_enabled, checksum_offload_enabled, offloads_disabled) < 0)
     return clib_error_return (0, "not able to enable/disable offloads");
 
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (virtio_pci_enable_command, static) = {
   .path = "set virtio pci",
   .short_help = "set virtio pci {<interface> | sw_if_index <sw_idx>}"
-                " [gso-enabled | csum-offload-enabled | offloads-disabled]",
+		" [gso-enabled | csum-offload-enabled | offloads-disabled]",
   .function = virtio_pci_enable_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-show_virtio_pci_fn (vlib_main_t * vm, unformat_input_t * input,
-		    vlib_cli_command_t * cmd)
+show_virtio_pci_fn (vlib_main_t *vm, unformat_input_t *input,
+		    vlib_cli_command_t *cmd)
 {
   virtio_main_t *vim = &virtio_main;
   vnet_main_t *vnm = &vnet_main;
@@ -205,8 +199,8 @@ show_virtio_pci_fn (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat
-	  (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+      if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
+		    &hw_if_index))
 	{
 	  hi = vnet_get_hw_interface (vnm, hw_if_index);
 	  if (virtio_device_class.index != hi->dev_class_index)
@@ -248,16 +242,15 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_virtio_pci_command, static) = {
   .path = "show virtio pci",
-  .short_help = "show virtio pci [<interface>] [descriptors | desc] [debug-device]",
+  .short_help =
+    "show virtio pci [<interface>] [descriptors | desc] [debug-device]",
   .function = show_virtio_pci_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-virtio_pci_cli_init (vlib_main_t * vm)
+virtio_pci_cli_init (vlib_main_t *vm)
 {
   return 0;
 }

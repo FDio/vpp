@@ -28,18 +28,18 @@ u8 *qos_record_configs[QOS_N_SOURCES];
 u32 l2_qos_input_next[QOS_N_SOURCES][32];
 
 static void
-qos_record_feature_config (u32 sw_if_index,
-			   qos_source_t input_source, u8 enable)
+qos_record_feature_config (u32 sw_if_index, qos_source_t input_source,
+			   u8 enable)
 {
   switch (input_source)
     {
     case QOS_SOURCE_IP:
       ip_feature_enable_disable (AF_IP6, N_SAFI, IP_FEATURE_INPUT,
-				 "ip6-qos-record",
-				 sw_if_index, enable, NULL, 0);
+				 "ip6-qos-record", sw_if_index, enable, NULL,
+				 0);
       ip_feature_enable_disable (AF_IP4, N_SAFI, IP_FEATURE_INPUT,
-				 "ip4-qos-record",
-				 sw_if_index, enable, NULL, 0);
+				 "ip4-qos-record", sw_if_index, enable, NULL,
+				 0);
       l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_L2_IP_QOS_RECORD,
 				  enable);
       break;
@@ -49,11 +49,11 @@ qos_record_feature_config (u32 sw_if_index,
       break;
     case QOS_SOURCE_VLAN:
       ip_feature_enable_disable (AF_IP6, N_SAFI, IP_FEATURE_INPUT,
-				 "vlan-ip6-qos-record",
-				 sw_if_index, enable, NULL, 0);
+				 "vlan-ip6-qos-record", sw_if_index, enable,
+				 NULL, 0);
       ip_feature_enable_disable (AF_IP4, N_SAFI, IP_FEATURE_INPUT,
-				 "vlan-ip4-qos-record",
-				 sw_if_index, enable, NULL, 0);
+				 "vlan-ip4-qos-record", sw_if_index, enable,
+				 NULL, 0);
       vnet_feature_enable_disable ("mpls-input", "vlan-mpls-qos-record",
 				   sw_if_index, enable, NULL, 0);
       break;
@@ -106,10 +106,10 @@ qos_record_walk (qos_record_walk_cb_t fn, void *c)
     u32 sw_if_index;
 
     vec_foreach_index (sw_if_index, qos_record_configs[qs])
-    {
-      if (0 != qos_record_configs[qs][sw_if_index])
-	fn (sw_if_index, qs, c);
-    }
+      {
+	if (0 != qos_record_configs[qs][sw_if_index])
+	  fn (sw_if_index, qs, c);
+      }
   }
 }
 
@@ -118,8 +118,7 @@ qos_record_walk (qos_record_walk_cb_t fn, void *c)
  * is deleted
  */
 static clib_error_t *
-qos_record_ip_interface_add_del (vnet_main_t * vnm,
-				 u32 sw_if_index, u32 is_add)
+qos_record_ip_interface_add_del (vnet_main_t *vnm, u32 sw_if_index, u32 is_add)
 {
   if (!is_add)
     {
@@ -127,7 +126,8 @@ qos_record_ip_interface_add_del (vnet_main_t * vnm,
 
       FOR_EACH_QOS_SOURCE (qs)
       {
-	while (qos_record_disable (sw_if_index, qs) == 0);
+	while (qos_record_disable (sw_if_index, qs) == 0)
+	  ;
       }
     }
 
@@ -137,26 +137,24 @@ qos_record_ip_interface_add_del (vnet_main_t * vnm,
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (qos_record_ip_interface_add_del);
 
 clib_error_t *
-qos_record_init (vlib_main_t * vm)
+qos_record_init (vlib_main_t *vm)
 {
   qos_source_t qs;
   vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "l2-ip-qos-record");
 
   /* Initialize the feature next-node indexes */
   FOR_EACH_QOS_SOURCE (qs)
-    feat_bitmap_init_next_nodes (vm,
-				 node->index,
-				 L2INPUT_N_FEAT,
-				 l2input_get_feat_names (),
-				 l2_qos_input_next[qs]);
+  feat_bitmap_init_next_nodes (vm, node->index, L2INPUT_N_FEAT,
+			       l2input_get_feat_names (),
+			       l2_qos_input_next[qs]);
   return 0;
 }
 
 VLIB_INIT_FUNCTION (qos_record_init);
 
 static clib_error_t *
-qos_record_cli (vlib_main_t * vm,
-		unformat_input_t * input, vlib_cli_command_t * cmd)
+qos_record_cli (vlib_main_t *vm, unformat_input_t *input,
+		vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index, qs;
@@ -168,8 +166,8 @@ qos_record_cli (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_vnet_sw_interface,
-		    vnm, &sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
       else if (unformat (input, "%U", unformat_qos_source, &qs))
 	;
@@ -203,19 +201,18 @@ qos_record_cli (vlib_main_t * vm,
  * @cliexpar
  * @cliexcmd{qos record ip GigEthernet0/1/0}
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (qos_record_command, static) = {
   .path = "qos record",
   .short_help = "qos record <record-source> <INTERFACE> [disable]",
   .function = qos_record_cli,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 static void
-qos_record_show_one_interface (vlib_main_t * vm, u32 sw_if_index)
+qos_record_show_one_interface (vlib_main_t *vm, u32 sw_if_index)
 {
-  u8 n_cfgs[QOS_N_SOURCES] = { };
+  u8 n_cfgs[QOS_N_SOURCES] = {};
   qos_source_t qs;
   bool set;
 
@@ -243,8 +240,8 @@ qos_record_show_one_interface (vlib_main_t * vm, u32 sw_if_index)
 }
 
 static clib_error_t *
-qos_record_show (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+qos_record_show (vlib_main_t *vm, unformat_input_t *input,
+		 vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   qos_source_t qs;
@@ -254,8 +251,8 @@ qos_record_show (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "%U", unformat_vnet_sw_interface,
-		    vnm, &sw_if_index))
+      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
+		    &sw_if_index))
 	;
     }
 
@@ -285,14 +282,13 @@ qos_record_show (vlib_main_t * vm,
  * @cliexpar
  * @cliexcmd{show qos egress map}
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (qos_record_show_command, static) = {
   .path = "show qos record",
   .short_help = "show qos record [interface]",
   .function = qos_record_show,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

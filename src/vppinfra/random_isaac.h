@@ -51,12 +51,12 @@
 #ifndef included_random_isaac_h
 #define included_random_isaac_h
 
-#include <vppinfra/clib.h>	/* for u32/u64 */
-#include <vppinfra/format.h>	/* for unformat_input_t */
+#include <vppinfra/clib.h>   /* for u32/u64 */
+#include <vppinfra/format.h> /* for unformat_input_t */
 
 /* Bob recommends 8 for crypto, 4 for simulations */
-#define ISAAC_LOG2_SIZE   (4)
-#define ISAAC_SIZE (1 << ISAAC_LOG2_SIZE)
+#define ISAAC_LOG2_SIZE (4)
+#define ISAAC_SIZE	(1 << ISAAC_LOG2_SIZE)
 
 typedef struct
 {
@@ -64,11 +64,11 @@ typedef struct
   uword a, b, c;
 } isaac_t;
 
-void isaac (isaac_t * ctx, uword * results);
-void isaac2 (isaac_t * ctx, uword * results);
-void isaac_init (isaac_t * ctx, uword * results);
+void isaac (isaac_t *ctx, uword *results);
+void isaac2 (isaac_t *ctx, uword *results);
+void isaac_init (isaac_t *ctx, uword *results);
 
-int test_isaac_main (unformat_input_t * input);
+int test_isaac_main (unformat_input_t *input);
 
 #endif /* included_random_isaac_h */
 

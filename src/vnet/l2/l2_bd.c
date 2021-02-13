@@ -48,7 +48,7 @@ bd_main_t bd_main;
   For feature bitmap, set all bits except ARP termination
 */
 void
-bd_validate (l2_bridge_domain_t * bd_config)
+bd_validate (l2_bridge_domain_t *bd_config)
 {
   if (bd_is_valid (bd_config))
     return;
@@ -62,12 +62,12 @@ bd_validate (l2_bridge_domain_t * bd_config)
   bd_config->tun_normal_count = 0;
   bd_config->no_flood_count = 0;
   bd_config->mac_by_ip4 = 0;
-  bd_config->mac_by_ip6 = hash_create_mem (0, sizeof (ip6_address_t),
-					   sizeof (uword));
+  bd_config->mac_by_ip6 =
+    hash_create_mem (0, sizeof (ip6_address_t), sizeof (uword));
 }
 
 u32
-bd_find_index (bd_main_t * bdm, u32 bd_id)
+bd_find_index (bd_main_t *bdm, u32 bd_id)
 {
   u32 *p = (u32 *) hash_get (bdm->bd_index_by_bd_id, bd_id);
   if (!p)
@@ -76,7 +76,7 @@ bd_find_index (bd_main_t * bdm, u32 bd_id)
 }
 
 u32
-bd_add_bd_index (bd_main_t * bdm, u32 bd_id)
+bd_add_bd_index (bd_main_t *bdm, u32 bd_id)
 {
   ASSERT (!hash_get (bdm->bd_index_by_bd_id, bd_id));
   u32 rv = clib_bitmap_first_clear (bdm->bd_index_bitmap);
@@ -96,23 +96,23 @@ bd_add_bd_index (bd_main_t * bdm, u32 bd_id)
 }
 
 static inline void
-bd_free_ip_mac_tables (l2_bridge_domain_t * bd)
+bd_free_ip_mac_tables (l2_bridge_domain_t *bd)
 {
   u64 mac_addr;
   ip6_address_t *ip6_addr_key;
 
   hash_free (bd->mac_by_ip4);
   /* *INDENT-OFF* */
-  hash_foreach_mem (ip6_addr_key, mac_addr, bd->mac_by_ip6,
-  ({
-    clib_mem_free (ip6_addr_key); /* free memory used for ip6 addr key */
-  }));
+  hash_foreach_mem (ip6_addr_key, mac_addr, bd->mac_by_ip6, ({
+		      clib_mem_free (
+			ip6_addr_key); /* free memory used for ip6 addr key */
+		    }));
   /* *INDENT-ON* */
   hash_free (bd->mac_by_ip6);
 }
 
 static int
-bd_delete (bd_main_t * bdm, u32 bd_index)
+bd_delete (bd_main_t *bdm, u32 bd_index)
 {
   l2_bridge_domain_t *bd = &l2input_main.bd_configs[bd_index];
   u32 bd_id = bd->bd_id;
@@ -141,20 +141,20 @@ bd_delete (bd_main_t * bdm, u32 bd_index)
 }
 
 static void
-update_flood_count (l2_bridge_domain_t * bd_config)
+update_flood_count (l2_bridge_domain_t *bd_config)
 {
-  bd_config->flood_count = (vec_len (bd_config->members) -
-			    (bd_config->tun_master_count ?
-			     bd_config->tun_normal_count : 0));
+  bd_config->flood_count =
+    (vec_len (bd_config->members) -
+     (bd_config->tun_master_count ? bd_config->tun_normal_count : 0));
   bd_config->flood_count -= bd_config->no_flood_count;
 }
 
 void
-bd_add_member (l2_bridge_domain_t * bd_config, l2_flood_member_t * member)
+bd_add_member (l2_bridge_domain_t *bd_config, l2_flood_member_t *member)
 {
   u32 ix = 0;
-  vnet_sw_interface_t *sw_if = vnet_get_sw_interface
-    (vnet_get_main (), member->sw_if_index);
+  vnet_sw_interface_t *sw_if =
+    vnet_get_sw_interface (vnet_get_main (), member->sw_if_index);
 
   /*
    * Add one element to the vector
@@ -178,8 +178,8 @@ bd_add_member (l2_bridge_domain_t * bd_config, l2_flood_member_t * member)
       bd_config->tun_master_count++;
       /* Fall through */
     case VNET_FLOOD_CLASS_NORMAL:
-      ix = (vec_len (bd_config->members) -
-	    bd_config->tun_normal_count - bd_config->no_flood_count);
+      ix = (vec_len (bd_config->members) - bd_config->tun_normal_count -
+	    bd_config->no_flood_count);
       break;
     case VNET_FLOOD_CLASS_TUNNEL_NORMAL:
       ix = (vec_len (bd_config->members) - bd_config->no_flood_count);
@@ -191,45 +191,44 @@ bd_add_member (l2_bridge_domain_t * bd_config, l2_flood_member_t * member)
   update_flood_count (bd_config);
 }
 
-#define BD_REMOVE_ERROR_OK        0
+#define BD_REMOVE_ERROR_OK	  0
 #define BD_REMOVE_ERROR_NOT_FOUND 1
 
 u32
-bd_remove_member (l2_bridge_domain_t * bd_config, u32 sw_if_index)
+bd_remove_member (l2_bridge_domain_t *bd_config, u32 sw_if_index)
 {
   u32 ix;
 
   /* Find and delete the member */
   vec_foreach_index (ix, bd_config->members)
-  {
-    l2_flood_member_t *m = vec_elt_at_index (bd_config->members, ix);
-    if (m->sw_if_index == sw_if_index)
-      {
-	vnet_sw_interface_t *sw_if = vnet_get_sw_interface
-	  (vnet_get_main (), sw_if_index);
+    {
+      l2_flood_member_t *m = vec_elt_at_index (bd_config->members, ix);
+      if (m->sw_if_index == sw_if_index)
+	{
+	  vnet_sw_interface_t *sw_if =
+	    vnet_get_sw_interface (vnet_get_main (), sw_if_index);
 
-	if (sw_if->flood_class != VNET_FLOOD_CLASS_NORMAL)
-	  {
-	    if (sw_if->flood_class == VNET_FLOOD_CLASS_TUNNEL_MASTER)
-	      bd_config->tun_master_count--;
-	    else if (sw_if->flood_class == VNET_FLOOD_CLASS_TUNNEL_NORMAL)
-	      bd_config->tun_normal_count--;
-	    else if (sw_if->flood_class == VNET_FLOOD_CLASS_NO_FLOOD)
-	      bd_config->no_flood_count--;
-	  }
-	vec_delete (bd_config->members, 1, ix);
-	update_flood_count (bd_config);
+	  if (sw_if->flood_class != VNET_FLOOD_CLASS_NORMAL)
+	    {
+	      if (sw_if->flood_class == VNET_FLOOD_CLASS_TUNNEL_MASTER)
+		bd_config->tun_master_count--;
+	      else if (sw_if->flood_class == VNET_FLOOD_CLASS_TUNNEL_NORMAL)
+		bd_config->tun_normal_count--;
+	      else if (sw_if->flood_class == VNET_FLOOD_CLASS_NO_FLOOD)
+		bd_config->no_flood_count--;
+	    }
+	  vec_delete (bd_config->members, 1, ix);
+	  update_flood_count (bd_config);
 
-	return BD_REMOVE_ERROR_OK;
-      }
-  }
+	  return BD_REMOVE_ERROR_OK;
+	}
+    }
 
   return BD_REMOVE_ERROR_NOT_FOUND;
 }
 
-
 clib_error_t *
-l2bd_init (vlib_main_t * vm)
+l2bd_init (vlib_main_t *vm)
 {
   bd_main_t *bdm = &bd_main;
   bdm->bd_index_by_bd_id = hash_create (0, sizeof (uword));
@@ -269,13 +268,13 @@ bd_input_walk (u32 bd_index, bd_input_walk_fn_t fn, void *data)
   ASSERT (bd);
 
   vec_foreach (member, bd->members)
-  {
-    if (WALK_STOP == fn (bd_index, member->sw_if_index))
-      {
-	sw_if_index = member->sw_if_index;
-	break;
-      }
-  }
+    {
+      if (WALK_STOP == fn (bd_index, member->sw_if_index))
+	{
+	  sw_if_index = member->sw_if_index;
+	  break;
+	}
+    }
 
   return (sw_if_index);
 }
@@ -291,7 +290,7 @@ b2_input_recache (u32 bd_index)
     Return 0 if ok, non-zero if for an error.
 */
 u32
-bd_set_flags (vlib_main_t * vm, u32 bd_index, bd_flags_t flags, u32 enable)
+bd_set_flags (vlib_main_t *vm, u32 bd_index, bd_flags_t flags, u32 enable)
 {
 
   l2_bridge_domain_t *bd_config = l2input_bd_config (bd_index);
@@ -341,7 +340,7 @@ bd_set_flags (vlib_main_t * vm, u32 bd_index, bd_flags_t flags, u32 enable)
     Set the mac age for the bridge domain.
 */
 void
-bd_set_mac_age (vlib_main_t * vm, u32 bd_index, u8 age)
+bd_set_mac_age (vlib_main_t *vm, u32 bd_index, u8 age)
 {
   l2_bridge_domain_t *bd_config;
   int enable = 0;
@@ -357,7 +356,8 @@ bd_set_mac_age (vlib_main_t * vm, u32 bd_index, u8 age)
 
   vlib_process_signal_event (vm, l2fib_mac_age_scanner_process_node.index,
 			     enable ? L2_MAC_AGE_PROCESS_EVENT_START :
-			     L2_MAC_AGE_PROCESS_EVENT_STOP, 0);
+				      L2_MAC_AGE_PROCESS_EVENT_STOP,
+			     0);
 }
 
 /**
@@ -376,7 +376,7 @@ bd_set_learn_limit (vlib_main_t *vm, u32 bd_index, u32 learn_limit)
     Set the tag for the bridge domain.
 */
 static void
-bd_set_bd_tag (vlib_main_t * vm, u32 bd_index, u8 * bd_tag)
+bd_set_bd_tag (vlib_main_t *vm, u32 bd_index, u8 *bd_tag)
 {
   u8 *old;
   l2_bridge_domain_t *bd_config;
@@ -403,8 +403,7 @@ bd_set_bd_tag (vlib_main_t * vm, u32 bd_index, u8 * bd_tag)
    set bridge-domain learn <bd_id> [disable]
 */
 static clib_error_t *
-bd_learn (vlib_main_t * vm,
-	  unformat_input_t * input, vlib_cli_command_t * cmd)
+bd_learn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   bd_main_t *bdm = &bd_main;
   clib_error_t *error = 0;
@@ -420,8 +419,8 @@ bd_learn (vlib_main_t * vm,
     }
 
   if (bd_id == 0)
-    return clib_error_return (0,
-			      "No operations on the default bridge domain are supported");
+    return clib_error_return (
+      0, "No operations on the default bridge domain are supported");
 
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
 
@@ -496,7 +495,7 @@ VLIB_CLI_COMMAND (bd_default_learn_limit_cli, static) = {
     set bridge-domain forward <bd_index> [disable]
 */
 static clib_error_t *
-bd_fwd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
+bd_fwd (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   bd_main_t *bdm = &bd_main;
   clib_error_t *error = 0;
@@ -512,8 +511,8 @@ bd_fwd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
     }
 
   if (bd_id == 0)
-    return clib_error_return (0,
-			      "No operations on the default bridge domain are supported");
+    return clib_error_return (
+      0, "No operations on the default bridge domain are supported");
 
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
 
@@ -534,7 +533,6 @@ bd_fwd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 done:
   return error;
 }
-
 
 /*?
  * Layer 2 unicast forwarding can be enabled and disabled on each
@@ -561,8 +559,7 @@ VLIB_CLI_COMMAND (bd_fwd_cli, static) = {
     set bridge-domain flood <bd_index> [disable]
 */
 static clib_error_t *
-bd_flood (vlib_main_t * vm,
-	  unformat_input_t * input, vlib_cli_command_t * cmd)
+bd_flood (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   bd_main_t *bdm = &bd_main;
   clib_error_t *error = 0;
@@ -578,8 +575,8 @@ bd_flood (vlib_main_t * vm,
     }
 
   if (bd_id == 0)
-    return clib_error_return (0,
-			      "No operations on the default bridge domain are supported");
+    return clib_error_return (
+      0, "No operations on the default bridge domain are supported");
 
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
 
@@ -626,8 +623,7 @@ VLIB_CLI_COMMAND (bd_flood_cli, static) = {
     set bridge-domain uu-flood <bd_index> [disable]
 */
 static clib_error_t *
-bd_uu_flood (vlib_main_t * vm,
-	     unformat_input_t * input, vlib_cli_command_t * cmd)
+bd_uu_flood (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   bd_main_t *bdm = &bd_main;
   clib_error_t *error = 0;
@@ -643,8 +639,8 @@ bd_uu_flood (vlib_main_t * vm,
     }
 
   if (bd_id == 0)
-    return clib_error_return (0,
-			      "No operations on the default bridge domain are supported");
+    return clib_error_return (
+      0, "No operations on the default bridge domain are supported");
 
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
 
@@ -674,7 +670,8 @@ done:
  * Example of how to enable unknown-unicast flooding (where 200 is the
  * bridge-domain-id):
  * @cliexcmd{set bridge-domain uu-flood 200}
- * Example of how to disable unknown-unicast flooding (where 200 is the bridge-domain-id):
+ * Example of how to disable unknown-unicast flooding (where 200 is the
+bridge-domain-id):
  * @cliexcmd{set bridge-domain uu-flood 200 disable}
 ?*/
 /* *INDENT-OFF* */
@@ -691,8 +688,7 @@ VLIB_CLI_COMMAND (bd_uu_flood_cli, static) = {
     set bridge-domain arp-ufwd <bd_index> [disable]
 */
 static clib_error_t *
-bd_arp_ufwd (vlib_main_t * vm,
-	     unformat_input_t * input, vlib_cli_command_t * cmd)
+bd_arp_ufwd (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   bd_main_t *bdm = &bd_main;
   clib_error_t *error = 0;
@@ -708,8 +704,8 @@ bd_arp_ufwd (vlib_main_t * vm,
     }
 
   if (bd_id == 0)
-    return clib_error_return (0,
-			      "No operations on the default bridge domain are supported");
+    return clib_error_return (
+      0, "No operations on the default bridge domain are supported");
 
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
 
@@ -739,7 +735,8 @@ done:
  * Example of how to enable arp-unicast forwarding (where 200 is the
  * bridge-domain-id):
  * @cliexcmd{set bridge-domain arp-ufwd 200}
- * Example of how to disable arp-unicast forwarding (where 200 is the bridge-domain-id):
+ * Example of how to disable arp-unicast forwarding (where 200 is the
+bridge-domain-id):
  * @cliexcmd{set bridge-domain arp-ufwd 200 disable}
 ?*/
 /* *INDENT-OFF* */
@@ -756,8 +753,7 @@ VLIB_CLI_COMMAND (bd_arp_ufwd_cli, static) = {
     set bridge-domain arp term <bridge-domain-id> [disable]
 */
 static clib_error_t *
-bd_arp_term (vlib_main_t * vm,
-	     unformat_input_t * input, vlib_cli_command_t * cmd)
+bd_arp_term (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   bd_main_t *bdm = &bd_main;
   clib_error_t *error = 0;
@@ -773,8 +769,8 @@ bd_arp_term (vlib_main_t * vm,
     }
 
   if (bd_id == 0)
-    return clib_error_return (0,
-			      "No operations on the default bridge domain are supported");
+    return clib_error_return (
+      0, "No operations on the default bridge domain are supported");
 
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
   if (p)
@@ -794,8 +790,7 @@ done:
 }
 
 static clib_error_t *
-bd_mac_age (vlib_main_t * vm,
-	    unformat_input_t * input, vlib_cli_command_t * cmd)
+bd_mac_age (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   bd_main_t *bdm = &bd_main;
   clib_error_t *error = 0;
@@ -811,8 +806,8 @@ bd_mac_age (vlib_main_t * vm,
     }
 
   if (bd_id == 0)
-    return clib_error_return (0,
-			      "No operations on the default bridge domain are supported");
+    return clib_error_return (
+      0, "No operations on the default bridge domain are supported");
 
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
 
@@ -916,9 +911,11 @@ VLIB_CLI_COMMAND (bd_learn_limit_cli, static) = {
  * to ARP Requests. ARP Termination is disabled by default.
  *
  * @cliexpar
- * Example of how to enable ARP termination (where 200 is the bridge-domain-id):
+ * Example of how to enable ARP termination (where 200 is the
+bridge-domain-id):
  * @cliexcmd{set bridge-domain arp term 200}
- * Example of how to disable ARP termination (where 200 is the bridge-domain-id):
+ * Example of how to disable ARP termination (where 200 is the
+bridge-domain-id):
  * @cliexcmd{set bridge-domain arp term 200 disable}
 ?*/
 /* *INDENT-OFF* */
@@ -928,7 +925,6 @@ VLIB_CLI_COMMAND (bd_arp_term_cli, static) = {
   .function = bd_arp_term,
 };
 /* *INDENT-ON* */
-
 
 /**
  * Add/delete IP address to MAC address mapping.
@@ -942,10 +938,8 @@ VLIB_CLI_COMMAND (bd_arp_term_cli, static) = {
  * 4-byte uword.
  */
 u32
-bd_add_del_ip_mac (u32 bd_index,
-		   ip46_type_t type,
-		   const ip46_address_t * ip,
-		   const mac_address_t * mac, u8 is_add)
+bd_add_del_ip_mac (u32 bd_index, ip46_type_t type, const ip46_address_t *ip,
+		   const mac_address_t *mac, u8 is_add)
 {
   l2_bridge_domain_t *bd_cfg = l2input_bd_config (bd_index);
   u64 new_mac = mac_address_as_u64 (mac);
@@ -1025,8 +1019,7 @@ bd_flush_ip_mac (u32 bd_index)
   ASSERT (bd_is_valid (bd));
   bd_free_ip_mac_tables (bd);
   bd->mac_by_ip4 = 0;
-  bd->mac_by_ip6 =
-    hash_create_mem (0, sizeof (ip6_address_t), sizeof (uword));
+  bd->mac_by_ip6 = hash_create_mem (0, sizeof (ip6_address_t), sizeof (uword));
 }
 
 /**
@@ -1035,8 +1028,8 @@ bd_flush_ip_mac (u32 bd_index)
     set bridge-domain arp entry <bridge-domain-id> <ip-addr> <mac-addr> [del]
 */
 static clib_error_t *
-bd_arp_entry (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+bd_arp_entry (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd)
 {
   ip46_address_t ip_addr = ip46_address_initializer;
   ip46_type_t type = IP46_TYPE_IP4;
@@ -1055,8 +1048,8 @@ bd_arp_entry (vlib_main_t * vm,
     }
 
   if (bd_id == 0)
-    return clib_error_return (0,
-			      "No operations on the default bridge domain are supported");
+    return clib_error_return (
+      0, "No operations on the default bridge domain are supported");
 
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
 
@@ -1101,9 +1094,9 @@ bd_arp_entry (vlib_main_t * vm,
   if (bd_add_del_ip_mac (bd_index, type, &ip_addr, &mac, is_add))
     {
       error = clib_error_return (0, "MAC %s for IP %U and MAC %U failed",
-				 is_add ? "add" : "del",
-				 format_ip46_address, &ip_addr, IP46_TYPE_ANY,
-				 format_mac_address_t, &mac);
+				 is_add ? "add" : "del", format_ip46_address,
+				 &ip_addr, IP46_TYPE_ANY, format_mac_address_t,
+				 &mac);
     }
 
 done:
@@ -1117,18 +1110,20 @@ done:
  * Example of how to add an ARP entry (where 200 is the bridge-domain-id):
  * @cliexcmd{set bridge-domain arp entry 200 192.168.72.45 52:54:00:3b:83:1a}
  * Example of how to delete an ARP entry (where 200 is the bridge-domain-id):
- * @cliexcmd{set bridge-domain arp entry 200 192.168.72.45 52:54:00:3b:83:1a del}
+ * @cliexcmd{set bridge-domain arp entry 200 192.168.72.45 52:54:00:3b:83:1a
+del}
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_arp_entry_cli, static) = {
   .path = "set bridge-domain arp entry",
-  .short_help = "set bridge-domain arp entry <bridge-domain-id> [<ip-addr> <mac-addr> [del] | del-all]",
+  .short_help = "set bridge-domain arp entry <bridge-domain-id> [<ip-addr> "
+		"<mac-addr> [del] | del-all]",
   .function = bd_arp_entry,
 };
 /* *INDENT-ON* */
 
 static u8 *
-format_uu_cfg (u8 * s, va_list * args)
+format_uu_cfg (u8 *s, va_list *args)
 {
   l2_bridge_domain_t *bd_config = va_arg (*args, l2_bridge_domain_t *);
 
@@ -1147,7 +1142,7 @@ format_uu_cfg (u8 * s, va_list * args)
    show bridge-domain [<bd_index>]
 */
 static clib_error_t *
-bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
+bd_show (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   bd_main_t *bdm = &bd_main;
@@ -1179,8 +1174,8 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	bd_tag = 1;
 
       if (bd_id == 0)
-	return clib_error_return (0,
-				  "No operations on the default bridge domain are supported");
+	return clib_error_return (
+	  0, "No operations on the default bridge domain are supported");
 
       p = hash_get (bdm->bd_index_by_bd_id, bd_id);
       if (p)
@@ -1250,34 +1245,33 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	      /* Show all member interfaces */
 	      int i;
 	      vec_foreach_index (i, bd_config->members)
-	      {
-		l2_flood_member_t *member =
-		  vec_elt_at_index (bd_config->members, i);
-		u8 swif_seq_num = l2_input_seq_num (member->sw_if_index);
-		u32 vtr_opr, dot1q, tag1, tag2;
-		if (i == 0)
-		  {
-		    vlib_cli_output (vm, "\n%=30s%=7s%=5s%=5s%=5s%=9s%=30s",
-				     "Interface", "If-idx", "ISN", "SHG",
-				     "BVI", "TxFlood", "VLAN-Tag-Rewrite");
-		  }
-		l2vtr_get (vm, vnm, member->sw_if_index, &vtr_opr, &dot1q,
-			   &tag1, &tag2);
-		vlib_cli_output (vm, "%=30U%=7d%=5d%=5d%=5s%=9s%=30U",
-				 format_vnet_sw_if_index_name, vnm,
-				 member->sw_if_index, member->sw_if_index,
-				 swif_seq_num, member->shg,
-				 member->flags & L2_FLOOD_MEMBER_BVI ? "*" :
-				 "-", i < bd_config->flood_count ? "*" : "-",
-				 format_vtr, vtr_opr, dot1q, tag1, tag2);
-	      }
+		{
+		  l2_flood_member_t *member =
+		    vec_elt_at_index (bd_config->members, i);
+		  u8 swif_seq_num = l2_input_seq_num (member->sw_if_index);
+		  u32 vtr_opr, dot1q, tag1, tag2;
+		  if (i == 0)
+		    {
+		      vlib_cli_output (vm, "\n%=30s%=7s%=5s%=5s%=5s%=9s%=30s",
+				       "Interface", "If-idx", "ISN", "SHG",
+				       "BVI", "TxFlood", "VLAN-Tag-Rewrite");
+		    }
+		  l2vtr_get (vm, vnm, member->sw_if_index, &vtr_opr, &dot1q,
+			     &tag1, &tag2);
+		  vlib_cli_output (
+		    vm, "%=30U%=7d%=5d%=5d%=5s%=9s%=30U",
+		    format_vnet_sw_if_index_name, vnm, member->sw_if_index,
+		    member->sw_if_index, swif_seq_num, member->shg,
+		    member->flags & L2_FLOOD_MEMBER_BVI ? "*" : "-",
+		    i < bd_config->flood_count ? "*" : "-", format_vtr,
+		    vtr_opr, dot1q, tag1, tag2);
+		}
 	      if (~0 != bd_config->uu_fwd_sw_if_index)
 		vlib_cli_output (vm, "%=30U%=7d%=5d%=5d%=5s%=9s%=30s",
 				 format_vnet_sw_if_index_name, vnm,
 				 bd_config->uu_fwd_sw_if_index,
-				 bd_config->uu_fwd_sw_if_index,
-				 0, 0, "uu", "-", "None");
-
+				 bd_config->uu_fwd_sw_if_index, 0, 0, "uu",
+				 "-", "None");
 	    }
 
 	  if ((detail || arp) &&
@@ -1289,27 +1283,25 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	      vlib_cli_output (vm,
 			       "\n  IP4/IP6 to MAC table for ARP Termination");
 
-              /* *INDENT-OFF* */
-              hash_foreach (ip4_addr, mac_addr, bd_config->mac_by_ip4,
-              ({
-                vlib_cli_output (vm, "%=40U => %=20U",
-                                 format_ip4_address, &ip4_addr,
-                                 format_ethernet_address, &mac_addr);
-              }));
+	      /* *INDENT-OFF* */
+	      hash_foreach (ip4_addr, mac_addr, bd_config->mac_by_ip4, ({
+			      vlib_cli_output (
+				vm, "%=40U => %=20U", format_ip4_address,
+				&ip4_addr, format_ethernet_address, &mac_addr);
+			    }));
 
-              hash_foreach_mem (ip6_addr, mac_addr, bd_config->mac_by_ip6,
-              ({
-		vlib_cli_output (vm, "%=40U => %=20U",
-				 format_ip6_address, ip6_addr,
-				 format_ethernet_address, &mac_addr);
-              }));
-              /* *INDENT-ON* */
+	      hash_foreach_mem (ip6_addr, mac_addr, bd_config->mac_by_ip6, ({
+				  vlib_cli_output (
+				    vm, "%=40U => %=20U", format_ip6_address,
+				    ip6_addr, format_ethernet_address,
+				    &mac_addr);
+				}));
+	      /* *INDENT-ON* */
 	    }
 
 	  if ((detail || bd_tag) && (bd_config->bd_tag))
 	    {
 	      vlib_cli_output (vm, "\n  BD-Tag: %s", bd_config->bd_tag);
-
 	    }
 	}
     }
@@ -1333,15 +1325,15 @@ done:
  * @parblock
  * Example of displaying all bridge-domains:
  * @cliexstart{show bridge-domain}
- *  ID   Index   Learning   U-Forwrd   UU-Flood   Flooding   ARP-Term     BVI-Intf
- *  0      0        off        off        off        off        off        local0
- * 200     1        on         on         on         on         off          N/A
+ *  ID   Index   Learning   U-Forwrd   UU-Flood   Flooding   ARP-Term BVI-Intf
+ *  0      0        off        off        off        off        off local0
+ * 200     1        on         on         on         on         off N/A
  * @cliexend
  *
  * Example of displaying details of a single bridge-domains:
  * @cliexstart{show bridge-domain 200 detail}
- *  ID   Index   Learning   U-Forwrd   UU-Flood   Flooding   ARP-Term     BVI-Intf
- * 200     1        on         on         on         on         off          N/A
+ *  ID   Index   Learning   U-Forwrd   UU-Flood   Flooding   ARP-Term BVI-Intf
+ * 200     1        on         on         on         on         off N/A
  *
  *          Interface           Index  SHG  BVI        VLAN-Tag-Rewrite
  *  GigabitEthernet0/8/0.200      3     0    -               none
@@ -1352,13 +1344,14 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_show_cli, static) = {
   .path = "show bridge-domain",
-  .short_help = "show bridge-domain [bridge-domain-id [detail|int|arp|bd-tag]]",
+  .short_help =
+    "show bridge-domain [bridge-domain-id [detail|int|arp|bd-tag]]",
   .function = bd_show,
 };
 /* *INDENT-ON* */
 
 int
-bd_add_del (l2_bridge_domain_add_del_args_t * a)
+bd_add_del (l2_bridge_domain_add_del_args_t *a)
 {
   bd_main_t *bdm = &bd_main;
   l2fib_main_t *fm = &l2fib_main;
@@ -1409,10 +1402,10 @@ bd_add_del (l2_bridge_domain_add_del_args_t * a)
 	disable_flags |= L2_ARP_UFWD;
 
       if (enable_flags)
-	bd_set_flags (vm, bd_index, enable_flags, 1 /* enable */ );
+	bd_set_flags (vm, bd_index, enable_flags, 1 /* enable */);
 
       if (disable_flags)
-	bd_set_flags (vm, bd_index, disable_flags, 0 /* disable */ );
+	bd_set_flags (vm, bd_index, disable_flags, 0 /* disable */);
 
       bd_set_mac_age (vm, bd_index, a->mac_age);
 
@@ -1439,20 +1432,20 @@ bd_add_del (l2_bridge_domain_add_del_args_t * a)
 /**
    Create or delete bridge-domain.
    The CLI format:
-   create bridge-domain <bd_index> [learn <0|1>] [forward <0|1>] [uu-flood <0|1>] [flood <0|1>]
-					[arp-term <0|1>] [mac-age <nn>] [bd-tag <tag>] [del]
+   create bridge-domain <bd_index> [learn <0|1>] [forward <0|1>] [uu-flood
+   <0|1>] [flood <0|1>] [arp-term <0|1>] [mac-age <nn>] [bd-tag <tag>] [del]
 */
 
 static clib_error_t *
-bd_add_del_command_fn (vlib_main_t * vm, unformat_input_t * input,
-		       vlib_cli_command_t * cmd)
+bd_add_del_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
   u8 is_add = 1;
   u32 bd_id = ~0;
-  u32 flood = 1, forward = 1, learn = 1, uu_flood = 1, arp_term =
-    0, arp_ufwd = 0;
+  u32 flood = 1, forward = 1, learn = 1, uu_flood = 1, arp_term = 0,
+      arp_ufwd = 0;
   u32 mac_age = 0;
   u8 *bd_tag = NULL;
   l2_bridge_domain_add_del_args_t _a, *a = &_a;
@@ -1558,7 +1551,6 @@ done:
   return error;
 }
 
-
 /*?
  * Create/Delete bridge-domain instance
  *
@@ -1574,10 +1566,14 @@ done:
  * bridge-domain 2
  *
  * vpp# show bridge-domain
- *   ID   Index   BSN  Age(min)  Learning  U-Forwrd  UU-Flood  Flooding  ARP-Term  BVI-Intf
- *   0      0      0     off       off       off       off       off       off      local0
- *   1      1      0     off        on        on       off        on       off       N/A
- *   2      2      0      60        on        on       off        on        on       N/A
+ *   ID   Index   BSN  Age(min)  Learning  U-Forwrd  UU-Flood  Flooding
+ARP-Term  BVI-Intf
+ *   0      0      0     off       off       off       off       off       off
+local0
+ *   1      1      0     off        on        on       off        on       off
+N/A
+ *   2      2      0      60        on        on       off        on        on
+N/A
  *
  * @cliexend
  *
@@ -1588,21 +1584,4 @@ done:
 ?*/
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (bd_create_cli, static) = {
-  .path = "create bridge-domain",
-  .short_help = "create bridge-domain <bridge-domain-id>"
-                " [learn <0|1>] [forward <0|1>] [uu-flood <0|1>] [flood <0|1>] [arp-term <0|1>]"
-                " [arp-ufwd <0|1>] [mac-age <nn>] [bd-tag <tag>] [del]",
-  .function = bd_add_del_command_fn,
-};
-/* *INDENT-ON* */
-
-
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+VLIB_CLI_COMMAND

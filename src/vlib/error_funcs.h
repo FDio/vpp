@@ -43,7 +43,7 @@
 #include <vlib/node_funcs.h>
 
 always_inline void
-vlib_error_elog_count (vlib_main_t * vm, uword counter, uword increment)
+vlib_error_elog_count (vlib_main_t *vm, uword counter, uword increment)
 {
   if (VLIB_ELOG_MAIN_LOOP > 0 && increment > 0)
     {
@@ -54,8 +54,8 @@ vlib_error_elog_count (vlib_main_t * vm, uword counter, uword increment)
 }
 
 always_inline void
-vlib_error_count (vlib_main_t * vm, uword node_index,
-		  uword counter, uword increment)
+vlib_error_count (vlib_main_t *vm, uword node_index, uword counter,
+		  uword increment)
 {
   vlib_node_t *n = vlib_get_node (vm, node_index);
   vlib_error_main_t *em = &vm->error_main;
@@ -70,14 +70,10 @@ vlib_error_count (vlib_main_t * vm, uword node_index,
 }
 
 /* Drop all buffers in frame with given error code. */
-uword
-vlib_error_drop_buffers (vlib_main_t * vm,
-			 vlib_node_runtime_t * node,
-			 u32 * buffers,
-			 u32 next_buffer_stride,
-			 u32 n_buffers,
-			 u32 error_next_index,
-			 u32 error_node, u32 error_code);
+uword vlib_error_drop_buffers (vlib_main_t *vm, vlib_node_runtime_t *node,
+			       u32 *buffers, u32 next_buffer_stride,
+			       u32 n_buffers, u32 error_next_index,
+			       u32 error_node, u32 error_code);
 
 #endif /* included_vlib_error_funcs_h */
 

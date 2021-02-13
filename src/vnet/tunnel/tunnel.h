@@ -21,9 +21,9 @@
 #include <vnet/ip/ip_types.h>
 #include <vnet/fib/fib_node.h>
 
-#define foreach_tunnel_mode     \
-  _(P2P, "point-to-point")      \
-  _(MP, "multi-point")          \
+#define foreach_tunnel_mode                                                   \
+  _ (P2P, "point-to-point")                                                   \
+  _ (MP, "multi-point")
 
 typedef enum tunnel_mode_t_
 {
@@ -32,8 +32,8 @@ typedef enum tunnel_mode_t_
 #undef _
 } __clib_packed tunnel_mode_t;
 
-extern u8 *format_tunnel_mode (u8 * s, va_list * args);
-extern uword unformat_tunnel_mode (unformat_input_t * input, va_list * args);
+extern u8 *format_tunnel_mode (u8 *s, va_list *args);
+extern uword unformat_tunnel_mode (unformat_input_t *input, va_list *args);
 
 /**
  * Keep these idenitical to those in ipip.api
@@ -51,14 +51,14 @@ extern uword unformat_tunnel_mode (unformat_input_t * input, va_list * args);
 
 typedef enum tunnel_encap_decap_flags_t_
 {
-#define _(a,b,c) TUNNEL_ENCAP_DECAP_FLAG_##a = c,
+#define _(a, b, c) TUNNEL_ENCAP_DECAP_FLAG_##a = c,
   foreach_tunnel_encap_decap_flag
 #undef _
 } __clib_packed tunnel_encap_decap_flags_t;
 
 extern const u8 TUNNEL_ENCAP_DECAP_FLAG_MASK;
 
-extern u8 *format_tunnel_encap_decap_flags (u8 * s, va_list * args);
+extern u8 *format_tunnel_encap_decap_flags (u8 *s, va_list *args);
 extern uword unformat_tunnel_encap_decap_flags (unformat_input_t *input,
 						va_list *args);
 

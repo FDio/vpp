@@ -20,7 +20,7 @@
 #include <vppinfra/error.h>
 #include <stdbool.h>
 
-uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
+uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
 
 /* Declare message IDs */
 #include <oddbuf/oddbuf.api_enum.h>
@@ -39,7 +39,7 @@ oddbuf_test_main_t oddbuf_test_main;
 #include <vlibapi/vat_helper_macros.h>
 
 static int
-api_oddbuf_enable_disable (vat_main_t * vam)
+api_oddbuf_enable_disable (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   int enable_disable = 1;

@@ -25,15 +25,14 @@ typedef enum
   AES_KEY_256 = 2,
 } aes_key_size_t;
 
-#define AES_KEY_ROUNDS(x)		(10 + x * 2)
-#define AES_KEY_BYTES(x)		(16 + x * 8)
+#define AES_KEY_ROUNDS(x) (10 + x * 2)
+#define AES_KEY_BYTES(x)  (16 + x * 8)
 
-static const u8x16 byte_mask_scale = {
-  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
-};
+static const u8x16 byte_mask_scale = { 0, 1, 2,	 3,  4,	 5,  6,	 7,
+				       8, 9, 10, 11, 12, 13, 14, 15 };
 
 static_always_inline u8x16
-aes_block_load (u8 * p)
+aes_block_load (u8 *p)
 {
   return *(u8x16u *) p;
 }
@@ -41,14 +40,14 @@ aes_block_load (u8 * p)
 static_always_inline u8x16
 aes_enc_round (u8x16 a, u8x16 k)
 {
-#if defined (__AES__)
+#if defined(__AES__)
   return (u8x16) _mm_aesenc_si128 ((__m128i) a, (__m128i) k);
-#elif defined (__ARM_FEATURE_CRYPTO)
+#elif defined(__ARM_FEATURE_CRYPTO)
   return vaesmcq_u8 (vaeseq_u8 (a, u8x16_splat (0))) ^ k;
 #endif
 }
 
-#if defined (__VAES__)
+#if defined(__VAES__)
 static_always_inline u8x64
 aes_enc_round_x4 (u8x64 a, u8x64 k)
 {
@@ -77,9 +76,9 @@ aes_dec_last_round_x4 (u8x64 a, u8x64 k)
 static_always_inline u8x16
 aes_enc_last_round (u8x16 a, u8x16 k)
 {
-#if defined (__AES__)
+#if defined(__AES__)
   return (u8x16) _mm_aesenclast_si128 ((__m128i) a, (__m128i) k);
-#elif defined (__ARM_FEATURE_CRYPTO)
+#elif defined(__ARM_FEATURE_CRYPTO)
   return vaeseq_u8 (a, u8x16_splat (0)) ^ k;
 #endif
 }
@@ -100,7 +99,7 @@ aes_dec_last_round (u8x16 a, u8x16 k)
 #endif
 
 static_always_inline void
-aes_block_store (u8 * p, u8x16 r)
+aes_block_store (u8 *p, u8x16 r)
 {
   *(u8x16u *) p = r;
 }
@@ -112,11 +111,11 @@ aes_byte_mask (u8x16 x, u8 n_bytes)
 }
 
 static_always_inline u8x16
-aes_load_partial (u8x16u * p, int n_bytes)
+aes_load_partial (u8x16u *p, int n_bytes)
 {
   ASSERT (n_bytes <= 16);
 #ifdef __AVX512F__
-  __m128i zero = { };
+  __m128i zero = {};
   return (u8x16) _mm_mask_loadu_epi8 (zero, (1 << n_bytes) - 1, p);
 #else
   return aes_byte_mask (CLIB_MEM_OVERFLOW_LOAD (*, p), n_bytes);
@@ -138,9 +137,8 @@ aes_store_partial (void *p, u8x16 r, int n_bytes)
 #endif
 }
 
-
 static_always_inline u8x16
-aes_encrypt_block (u8x16 block, const u8x16 * round_keys, aes_key_size_t ks)
+aes_encrypt_block (u8x16 block, const u8x16 *round_keys, aes_key_size_t ks)
 {
   int rounds = AES_KEY_ROUNDS (ks);
   block ^= round_keys[0];
@@ -152,23 +150,23 @@ aes_encrypt_block (u8x16 block, const u8x16 * round_keys, aes_key_size_t ks)
 static_always_inline u8x16
 aes_inv_mix_column (u8x16 a)
 {
-#if defined (__AES__)
+#if defined(__AES__)
   return (u8x16) _mm_aesimc_si128 ((__m128i) a);
-#elif defined (__ARM_FEATURE_CRYPTO)
+#elif defined(__ARM_FEATURE_CRYPTO)
   return vaesimcq_u8 (a);
 #endif
 }
 
 #ifdef __x86_64__
-#define aes_keygen_assist(a, b) \
-  (u8x16) _mm_aeskeygenassist_si128((__m128i) a, b)
+#define aes_keygen_assist(a, b)                                               \
+  (u8x16) _mm_aeskeygenassist_si128 ((__m128i) a, b)
 
 /* AES-NI based AES key expansion based on code samples from
    Intel(r) Advanced Encryption Standard (AES) New Instructions White Paper
    (323641-001) */
 
 static_always_inline void
-aes128_key_assist (u8x16 * rk, u8x16 r)
+aes128_key_assist (u8x16 *rk, u8x16 r)
 {
   u8x16 t = rk[-1];
   t ^= u8x16_word_shift_left (t, 4);
@@ -178,7 +176,7 @@ aes128_key_assist (u8x16 * rk, u8x16 r)
 }
 
 static_always_inline void
-aes128_key_expand (u8x16 * rk, u8x16 const *k)
+aes128_key_expand (u8x16 *rk, u8x16 const *k)
 {
   rk[0] = k[0];
   aes128_key_assist (rk + 1, aes_keygen_assist (rk[0], 0x01));
@@ -194,7 +192,7 @@ aes128_key_expand (u8x16 * rk, u8x16 const *k)
 }
 
 static_always_inline void
-aes192_key_assist (u8x16 * r1, u8x16 * r2, u8x16 key_assist)
+aes192_key_assist (u8x16 *r1, u8x16 *r2, u8x16 key_assist)
 {
   u8x16 t;
   r1[0] ^= t = u8x16_word_shift_left (r1[0], 4);
@@ -206,14 +204,13 @@ aes192_key_assist (u8x16 * r1, u8x16 * r2, u8x16 key_assist)
 }
 
 static_always_inline void
-aes192_key_expand (u8x16 * rk, u8x16u const *k)
+aes192_key_expand (u8x16 *rk, u8x16u const *k)
 {
   u8x16 r1, r2;
 
   rk[0] = r1 = k[0];
-  /* *INDENT-OFF* */
-  rk[1] = r2 = (u8x16) (u64x2) { *(u64 *) (k + 1), 0 };
-  /* *INDENT-ON* */
+
+  rk[1] = r2 = (u8x16) (u64x2){ *(u64 *) (k + 1), 0 };
 
   aes192_key_assist (&r1, &r2, aes_keygen_assist (r2, 0x1));
   rk[1] = (u8x16) _mm_shuffle_pd ((__m128d) rk[1], (__m128d) r1, 0);
@@ -248,7 +245,7 @@ aes192_key_expand (u8x16 * rk, u8x16u const *k)
 }
 
 static_always_inline void
-aes256_key_assist (u8x16 * rk, int i, u8x16 key_assist)
+aes256_key_assist (u8x16 *rk, int i, u8x16 key_assist)
 {
   u8x16 r, t;
   rk += i;
@@ -272,7 +269,7 @@ aes256_key_assist (u8x16 * rk, int i, u8x16 key_assist)
 }
 
 static_always_inline void
-aes256_key_expand (u8x16 * rk, u8x16u const *k)
+aes256_key_expand (u8x16 *rk, u8x16u const *k)
 {
   rk[0] = k[0];
   rk[1] = k[1];
@@ -288,15 +285,15 @@ aes256_key_expand (u8x16 * rk, u8x16u const *k)
 
 #ifdef __aarch64__
 
-static const u8x16 aese_prep_mask1 =
-  { 13, 14, 15, 12, 13, 14, 15, 12, 13, 14, 15, 12, 13, 14, 15, 12 };
-static const u8x16 aese_prep_mask2 =
-  { 12, 13, 14, 15, 12, 13, 14, 15, 12, 13, 14, 15, 12, 13, 14, 15 };
+static const u8x16 aese_prep_mask1 = { 13, 14, 15, 12, 13, 14, 15, 12,
+				       13, 14, 15, 12, 13, 14, 15, 12 };
+static const u8x16 aese_prep_mask2 = { 12, 13, 14, 15, 12, 13, 14, 15,
+				       12, 13, 14, 15, 12, 13, 14, 15 };
 
 static_always_inline void
-aes128_key_expand_round_neon (u8x16 * rk, u32 rcon)
+aes128_key_expand_round_neon (u8x16 *rk, u32 rcon)
 {
-  u8x16 r, t, last_round = rk[-1], z = { };
+  u8x16 r, t, last_round = rk[-1], z = {};
   r = vqtbl1q_u8 (last_round, aese_prep_mask1);
   r = vaeseq_u8 (r, z);
   r ^= (u8x16) vdupq_n_u32 (rcon);
@@ -308,7 +305,7 @@ aes128_key_expand_round_neon (u8x16 * rk, u32 rcon)
 }
 
 static_always_inline void
-aes128_key_expand (u8x16 * rk, const u8x16 * k)
+aes128_key_expand (u8x16 *rk, const u8x16 *k)
 {
   rk[0] = k[0];
   aes128_key_expand_round_neon (rk + 1, 0x01);
@@ -324,10 +321,10 @@ aes128_key_expand (u8x16 * rk, const u8x16 * k)
 }
 
 static_always_inline void
-aes192_key_expand_round_neon (u8x8 * rk, u32 rcon)
+aes192_key_expand_round_neon (u8x8 *rk, u32 rcon)
 {
-  u8x8 r, last_round = rk[-1], z = { };
-  u8x16 r2, z2 = { };
+  u8x8 r, last_round = rk[-1], z = {};
+  u8x16 r2, z2 = {};
 
   r2 = (u8x16) vdupq_lane_u64 ((uint64x1_t) last_round, 0);
   r2 = vqtbl1q_u8 (r2, aese_prep_mask1);
@@ -352,7 +349,7 @@ aes192_key_expand_round_neon (u8x8 * rk, u32 rcon)
 }
 
 static_always_inline void
-aes192_key_expand (u8x16 * ek, const u8x16u * k)
+aes192_key_expand (u8x16 *ek, const u8x16u *k)
 {
   u8x8 *rk = (u8x8 *) ek;
   ek[0] = k[0];
@@ -367,11 +364,10 @@ aes192_key_expand (u8x16 * ek, const u8x16u * k)
   aes192_key_expand_round_neon (rk + 24, 0x80);
 }
 
-
 static_always_inline void
-aes256_key_expand_round_neon (u8x16 * rk, u32 rcon)
+aes256_key_expand_round_neon (u8x16 *rk, u32 rcon)
 {
-  u8x16 r, t, z = { };
+  u8x16 r, t, z = {};
 
   r = vqtbl1q_u8 (rk[-1], rcon ? aese_prep_mask1 : aese_prep_mask2);
   r = vaeseq_u8 (r, z);
@@ -385,7 +381,7 @@ aes256_key_expand_round_neon (u8x16 * rk, u32 rcon)
 }
 
 static_always_inline void
-aes256_key_expand (u8x16 * rk, u8x16 const *k)
+aes256_key_expand (u8x16 *rk, u8x16 const *k)
 {
   rk[0] = k[0];
   rk[1] = k[1];
@@ -407,7 +403,7 @@ aes256_key_expand (u8x16 * rk, u8x16 const *k)
 #endif
 
 static_always_inline void
-aes_key_expand (u8x16 * key_schedule, u8 const *key, aes_key_size_t ks)
+aes_key_expand (u8x16 *key_schedule, u8 const *key, aes_key_size_t ks)
 {
   switch (ks)
     {
@@ -424,7 +420,7 @@ aes_key_expand (u8x16 * key_schedule, u8 const *key, aes_key_size_t ks)
 }
 
 static_always_inline void
-aes_key_enc_to_dec (u8x16 * ke, u8x16 * kd, aes_key_size_t ks)
+aes_key_enc_to_dec (u8x16 *ke, u8x16 *kd, aes_key_size_t ks)
 {
   int rounds = AES_KEY_ROUNDS (ks);
 

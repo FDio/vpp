@@ -28,8 +28,7 @@ create_cmd::create_cmd(HW::item<handle_t>& item,
   : interface::create_cmd<vapi::Create_vlan_subif>(item, name)
   , m_parent(parent)
   , m_vlan(vlan)
-{
-}
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
@@ -69,8 +68,7 @@ create_cmd::to_string() const
 
 delete_cmd::delete_cmd(HW::item<handle_t>& item)
   : interface::delete_cmd<vapi::Delete_subif>(item)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
@@ -106,10 +104,10 @@ delete_cmd::to_string() const
 }
 } // namespace sub_interface_cmds
 } // namespace VOM
-  /*
-   * fd.io coding-style-patch-verification: OFF
-   *
-   * Local Variables:
-   * eval: (c-set-style "mozilla")
-   * End:
-   */
+/*
+ * fd.io coding-style-patch-verification: OFF
+ *
+ * Local Variables:
+ * eval: (c-set-style "mozilla")
+ * End:
+ */

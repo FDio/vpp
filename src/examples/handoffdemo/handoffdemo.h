@@ -29,7 +29,6 @@ typedef struct
 {
   u32 frame_queue_index;
 
-
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;

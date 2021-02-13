@@ -39,7 +39,7 @@ typedef struct
   u32 l2_sw_if_index;
 
   /* Tunnel interface */
-  u32 tunnel_sw_if_index;	/* This field remains set in freed pool elts */
+  u32 tunnel_sw_if_index; /* This field remains set in freed pool elts */
 
 } l2_xcrw_tunnel_t;
 
@@ -67,13 +67,13 @@ typedef enum
   L2_XCRW_N_NEXT,
 } l2_xcrw_next_t;
 
-#define foreach_l2_xcrw_error                   \
-_(DROP, "Packets dropped")                      \
-_(FWD, "Packets forwarded")
+#define foreach_l2_xcrw_error                                                 \
+  _ (DROP, "Packets dropped")                                                 \
+  _ (FWD, "Packets forwarded")
 
 typedef enum
 {
-#define _(sym,str) L2_XCRW_ERROR_##sym,
+#define _(sym, str) L2_XCRW_ERROR_##sym,
   foreach_l2_xcrw_error
 #undef _
     L2_XCRW_N_ERROR,

@@ -68,7 +68,7 @@ gbp_subnet_t *gbp_subnet_pool;
 static fib_source_t gbp_fib_source;
 
 static index_t
-gbp_subnet_db_find (u32 fib_index, const fib_prefix_t * pfx)
+gbp_subnet_db_find (u32 fib_index, const fib_prefix_t *pfx)
 {
   gbp_subnet_key_t key = {
     .gsk_pfx = *pfx,
@@ -85,7 +85,7 @@ gbp_subnet_db_find (u32 fib_index, const fib_prefix_t * pfx)
 }
 
 static void
-gbp_subnet_db_add (u32 fib_index, const fib_prefix_t * pfx, gbp_subnet_t * gs)
+gbp_subnet_db_add (u32 fib_index, const fib_prefix_t *pfx, gbp_subnet_t *gs)
 {
   gbp_subnet_key_t *key;
 
@@ -100,7 +100,7 @@ gbp_subnet_db_add (u32 fib_index, const fib_prefix_t * pfx, gbp_subnet_t * gs)
 }
 
 static void
-gbp_subnet_db_del (gbp_subnet_t * gs)
+gbp_subnet_db_del (gbp_subnet_t *gs)
 {
   hash_unset_mem (gbp_subnet_db, gs->gs_key);
 
@@ -108,9 +108,8 @@ gbp_subnet_db_del (gbp_subnet_t * gs)
   gs->gs_key = NULL;
 }
 
-
 static int
-gbp_subnet_transport_add (gbp_subnet_t * gs)
+gbp_subnet_transport_add (gbp_subnet_t *gs)
 {
   dpo_id_t gfd = DPO_INVALID;
   gbp_route_domain_t *grd;
@@ -122,15 +121,10 @@ gbp_subnet_transport_add (gbp_subnet_t * gs)
   if (~0 == grd->grd_uu_sw_if_index[fproto])
     return (VNET_API_ERROR_INVALID_SW_IF_INDEX);
 
-  gs->gs_fei = fib_table_entry_update_one_path (gs->gs_key->gsk_fib_index,
-						&gs->gs_key->gsk_pfx,
-						gbp_fib_source,
-						FIB_ENTRY_FLAG_NONE,
-						fib_proto_to_dpo (fproto),
-						&ADJ_BCAST_ADDR,
-						grd->grd_uu_sw_if_index
-						[fproto], ~0, 1, NULL,
-						FIB_ROUTE_PATH_FLAG_NONE);
+  gs->gs_fei = fib_table_entry_update_one_path (
+    gs->gs_key->gsk_fib_index, &gs->gs_key->gsk_pfx, gbp_fib_source,
+    FIB_ENTRY_FLAG_NONE, fib_proto_to_dpo (fproto), &ADJ_BCAST_ADDR,
+    grd->grd_uu_sw_if_index[fproto], ~0, 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
 
   dpo_reset (&gfd);
 
@@ -138,18 +132,16 @@ gbp_subnet_transport_add (gbp_subnet_t * gs)
 }
 
 static int
-gbp_subnet_internal_add (gbp_subnet_t * gs)
+gbp_subnet_internal_add (gbp_subnet_t *gs)
 {
   dpo_id_t gfd = DPO_INVALID;
 
   gbp_fwd_dpo_add_or_lock (fib_proto_to_dpo (gs->gs_key->gsk_pfx.fp_proto),
 			   &gfd);
 
-  gs->gs_fei = fib_table_entry_special_dpo_update (gs->gs_key->gsk_fib_index,
-						   &gs->gs_key->gsk_pfx,
-						   gbp_fib_source,
-						   FIB_ENTRY_FLAG_EXCLUSIVE,
-						   &gfd);
+  gs->gs_fei = fib_table_entry_special_dpo_update (
+    gs->gs_key->gsk_fib_index, &gs->gs_key->gsk_pfx, gbp_fib_source,
+    FIB_ENTRY_FLAG_EXCLUSIVE, &gfd);
 
   dpo_reset (&gfd);
 
@@ -157,7 +149,7 @@ gbp_subnet_internal_add (gbp_subnet_t * gs)
 }
 
 static int
-gbp_subnet_external_add (gbp_subnet_t * gs, u32 sw_if_index, sclass_t sclass)
+gbp_subnet_external_add (gbp_subnet_t *gs, u32 sw_if_index, sclass_t sclass)
 {
   dpo_id_t gpd = DPO_INVALID;
 
@@ -169,12 +161,9 @@ gbp_subnet_external_add (gbp_subnet_t * gs, u32 sw_if_index, sclass_t sclass)
 			      gs->gs_stitched_external.gs_sclass,
 			      gs->gs_stitched_external.gs_sw_if_index, &gpd);
 
-  gs->gs_fei = fib_table_entry_special_dpo_update (gs->gs_key->gsk_fib_index,
-						   &gs->gs_key->gsk_pfx,
-						   gbp_fib_source,
-						   (FIB_ENTRY_FLAG_EXCLUSIVE |
-						    FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT),
-						   &gpd);
+  gs->gs_fei = fib_table_entry_special_dpo_update (
+    gs->gs_key->gsk_fib_index, &gs->gs_key->gsk_pfx, gbp_fib_source,
+    (FIB_ENTRY_FLAG_EXCLUSIVE | FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT), &gpd);
 
   dpo_reset (&gpd);
 
@@ -182,7 +171,7 @@ gbp_subnet_external_add (gbp_subnet_t * gs, u32 sw_if_index, sclass_t sclass)
 }
 
 static int
-gbp_subnet_l3_out_add (gbp_subnet_t * gs, sclass_t sclass, int is_anon)
+gbp_subnet_l3_out_add (gbp_subnet_t *gs, sclass_t sclass, int is_anon)
 {
   fib_entry_flag_t flags;
   dpo_id_t gpd = DPO_INVALID;
@@ -197,10 +186,9 @@ gbp_subnet_l3_out_add (gbp_subnet_t * gs, sclass_t sclass, int is_anon)
   if (is_anon)
     flags |= FIB_ENTRY_FLAG_COVERED_INHERIT;
 
-  gs->gs_fei = fib_table_entry_special_dpo_add (gs->gs_key->gsk_fib_index,
-						&gs->gs_key->gsk_pfx,
-						FIB_SOURCE_SPECIAL,
-						flags, &gpd);
+  gs->gs_fei = fib_table_entry_special_dpo_add (
+    gs->gs_key->gsk_fib_index, &gs->gs_key->gsk_pfx, FIB_SOURCE_SPECIAL, flags,
+    &gpd);
 
   dpo_reset (&gpd);
 
@@ -215,10 +203,10 @@ gbp_subnet_del_i (index_t gsi)
   gs = pool_elt_at_index (gbp_subnet_pool, gsi);
 
   fib_table_entry_delete_index (gs->gs_fei,
-				(GBP_SUBNET_L3_OUT == gs->gs_type
-				 || GBP_SUBNET_ANON_L3_OUT ==
-				 gs->gs_type) ? FIB_SOURCE_SPECIAL :
-				gbp_fib_source);
+				(GBP_SUBNET_L3_OUT == gs->gs_type ||
+				 GBP_SUBNET_ANON_L3_OUT == gs->gs_type) ?
+				  FIB_SOURCE_SPECIAL :
+				  gbp_fib_source);
 
   gbp_subnet_db_del (gs);
   gbp_route_domain_unlock (gs->gs_rd);
@@ -227,7 +215,7 @@ gbp_subnet_del_i (index_t gsi)
 }
 
 int
-gbp_subnet_del (u32 rd_id, const fib_prefix_t * pfx)
+gbp_subnet_del (u32 rd_id, const fib_prefix_t *pfx)
 {
   gbp_route_domain_t *grd;
   index_t gsi, grdi;
@@ -252,9 +240,8 @@ gbp_subnet_del (u32 rd_id, const fib_prefix_t * pfx)
 }
 
 int
-gbp_subnet_add (u32 rd_id,
-		const fib_prefix_t * pfx,
-		gbp_subnet_type_t type, u32 sw_if_index, sclass_t sclass)
+gbp_subnet_add (u32 rd_id, const fib_prefix_t *pfx, gbp_subnet_type_t type,
+		u32 sw_if_index, sclass_t sclass)
 {
   gbp_route_domain_t *grd;
   index_t grdi, gsi;
@@ -310,10 +297,10 @@ gbp_subnet_add (u32 rd_id,
       rv = gbp_subnet_transport_add (gs);
       break;
     case GBP_SUBNET_L3_OUT:
-      rv = gbp_subnet_l3_out_add (gs, sclass, 0 /* is_anon */ );
+      rv = gbp_subnet_l3_out_add (gs, sclass, 0 /* is_anon */);
       break;
     case GBP_SUBNET_ANON_L3_OUT:
-      rv = gbp_subnet_l3_out_add (gs, sclass, 1 /* is_anon */ );
+      rv = gbp_subnet_l3_out_add (gs, sclass, 1 /* is_anon */);
       break;
     }
 
@@ -321,12 +308,12 @@ gbp_subnet_add (u32 rd_id,
 }
 
 static clib_error_t *
-gbp_subnet_add_del_cli (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+gbp_subnet_add_del_cli (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
-  fib_prefix_t pfx = {.fp_addr = ip46_address_initializer };
+  fib_prefix_t pfx = { .fp_addr = ip46_address_initializer };
   int length;
   u32 rd_id = ~0;
   u32 sw_if_index = ~0;
@@ -345,15 +332,11 @@ gbp_subnet_add_del_cli (vlib_main_t * vm,
 	is_add = 0;
       else if (unformat (line_input, "rd %d", &rd_id))
 	;
-      else
-	if (unformat
-	    (line_input, "prefix %U/%d", unformat_ip4_address,
-	     &pfx.fp_addr.ip4, &length))
+      else if (unformat (line_input, "prefix %U/%d", unformat_ip4_address,
+			 &pfx.fp_addr.ip4, &length))
 	pfx.fp_proto = FIB_PROTOCOL_IP4;
-      else
-	if (unformat
-	    (line_input, "prefix %U/%d", unformat_ip6_address,
-	     &pfx.fp_addr.ip6, &length))
+      else if (unformat (line_input, "prefix %U/%d", unformat_ip6_address,
+			 &pfx.fp_addr.ip6, &length))
 	pfx.fp_proto = FIB_PROTOCOL_IP6;
       else if (unformat (line_input, "type transport"))
 	type = GBP_SUBNET_TRANSPORT;
@@ -365,9 +348,8 @@ gbp_subnet_add_del_cli (vlib_main_t * vm,
 	type = GBP_SUBNET_ANON_L3_OUT;
       else if (unformat (line_input, "type l3-out"))
 	type = GBP_SUBNET_L3_OUT;
-      else
-	if (unformat_user
-	    (line_input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+      else if (unformat_user (line_input, unformat_vnet_sw_interface, vnm,
+			      &sw_if_index))
 	;
       else if (unformat (line_input, "sclass %u", &sclass))
 	;
@@ -399,18 +381,17 @@ gbp_subnet_add_del_cli (vlib_main_t * vm,
  * Add Group Based Policy Subnets
  *
  * @cliexpar
- * @cliexstart{gbp subnet [del] rd <ID> prefix <prefix> type <type> [<interface>] [sclass <sclass>]}
+ * @cliexstart{gbp subnet [del] rd <ID> prefix <prefix> type <type>
+ [<interface>] [sclass <sclass>]}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (gbp_subnet_add_del, static) = {
   .path = "gbp subnet",
-  .short_help = "gbp subnet [del] rd <ID> prefix <prefix> type <type> [<interface>] [sclass <sclass>]\n",
+  .short_help = "gbp subnet [del] rd <ID> prefix <prefix> type <type> "
+		"[<interface>] [sclass <sclass>]\n",
   .function = gbp_subnet_add_del_cli,
 };
-/* *INDENT-ON* */
-
-
 
 void
 gbp_subnet_walk (gbp_subnet_cb_t cb, void *ctx)
@@ -423,32 +404,30 @@ gbp_subnet_walk (gbp_subnet_cb_t cb, void *ctx)
   sclass = SCLASS_INVALID;
   sw_if_index = ~0;
 
-  /* *INDENT-OFF* */
   pool_foreach (gs, gbp_subnet_pool)
-   {
-    grd = gbp_route_domain_get(gs->gs_rd);
+    {
+      grd = gbp_route_domain_get (gs->gs_rd);
 
-    switch (gs->gs_type)
-      {
-      case GBP_SUBNET_STITCHED_INTERNAL:
-      case GBP_SUBNET_TRANSPORT:
-        /* use defaults above */
-        break;
-      case GBP_SUBNET_STITCHED_EXTERNAL:
-        sw_if_index = gs->gs_stitched_external.gs_sw_if_index;
-        sclass = gs->gs_stitched_external.gs_sclass;
-        break;
-      case GBP_SUBNET_L3_OUT:
-      case GBP_SUBNET_ANON_L3_OUT:
-        sclass = gs->gs_l3_out.gs_sclass;
-        break;
-      }
+      switch (gs->gs_type)
+	{
+	case GBP_SUBNET_STITCHED_INTERNAL:
+	case GBP_SUBNET_TRANSPORT:
+	  /* use defaults above */
+	  break;
+	case GBP_SUBNET_STITCHED_EXTERNAL:
+	  sw_if_index = gs->gs_stitched_external.gs_sw_if_index;
+	  sclass = gs->gs_stitched_external.gs_sclass;
+	  break;
+	case GBP_SUBNET_L3_OUT:
+	case GBP_SUBNET_ANON_L3_OUT:
+	  sclass = gs->gs_l3_out.gs_sclass;
+	  break;
+	}
 
-    if (WALK_STOP == cb (grd->grd_id, &gs->gs_key->gsk_pfx,
-                         gs->gs_type, sw_if_index, sclass, ctx))
-      break;
-  }
-  /* *INDENT-ON* */
+      if (WALK_STOP == cb (grd->grd_id, &gs->gs_key->gsk_pfx, gs->gs_type,
+			   sw_if_index, sclass, ctx))
+	break;
+    }
 }
 
 typedef enum gsb_subnet_show_flags_t_
@@ -458,7 +437,7 @@ typedef enum gsb_subnet_show_flags_t_
 } gsb_subnet_show_flags_t;
 
 static u8 *
-format_gbp_subnet_type (u8 * s, va_list * args)
+format_gbp_subnet_type (u8 *s, va_list *args)
 {
   gbp_subnet_type_t type = va_arg (*args, gbp_subnet_type_t);
 
@@ -480,7 +459,7 @@ format_gbp_subnet_type (u8 * s, va_list * args)
 }
 
 u8 *
-format_gbp_subnet (u8 * s, va_list * args)
+format_gbp_subnet (u8 *s, va_list *args)
 {
   index_t gsi = va_arg (*args, index_t);
   gsb_subnet_show_flags_t flags = va_arg (*args, gsb_subnet_show_flags_t);
@@ -492,9 +471,8 @@ format_gbp_subnet (u8 * s, va_list * args)
   table_id = fib_table_get_table_id (gs->gs_key->gsk_fib_index,
 				     gs->gs_key->gsk_pfx.fp_proto);
 
-  s = format (s, "[%d] tbl:%d %U %U", gsi, table_id,
-	      format_fib_prefix, &gs->gs_key->gsk_pfx,
-	      format_gbp_subnet_type, gs->gs_type);
+  s = format (s, "[%d] tbl:%d %U %U", gsi, table_id, format_fib_prefix,
+	      &gs->gs_key->gsk_pfx, format_gbp_subnet_type, gs->gs_type);
 
   switch (gs->gs_type)
     {
@@ -503,8 +481,8 @@ format_gbp_subnet (u8 * s, va_list * args)
       break;
     case GBP_SUBNET_STITCHED_EXTERNAL:
       s = format (s, " {sclass:%d %U}", gs->gs_stitched_external.gs_sclass,
-		  format_vnet_sw_if_index_name,
-		  vnet_get_main (), gs->gs_stitched_external.gs_sw_if_index);
+		  format_vnet_sw_if_index_name, vnet_get_main (),
+		  gs->gs_stitched_external.gs_sw_if_index);
       break;
     case GBP_SUBNET_L3_OUT:
     case GBP_SUBNET_ANON_L3_OUT:
@@ -526,8 +504,8 @@ format_gbp_subnet (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-gbp_subnet_show (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+gbp_subnet_show (vlib_main_t *vm, unformat_input_t *input,
+		 vlib_cli_command_t *cmd)
 {
   u32 gsi;
 
@@ -548,13 +526,12 @@ gbp_subnet_show (vlib_main_t * vm,
     }
   else
     {
-      /* *INDENT-OFF* */
+
       pool_foreach_index (gsi, gbp_subnet_pool)
-       {
-        vlib_cli_output (vm, "%U", format_gbp_subnet, gsi,
-                         GBP_SUBNET_SHOW_BRIEF);
-      }
-      /* *INDENT-ON* */
+	{
+	  vlib_cli_output (vm, "%U", format_gbp_subnet, gsi,
+			   GBP_SUBNET_SHOW_BRIEF);
+	}
     }
 
   return (NULL);
@@ -567,21 +544,18 @@ gbp_subnet_show (vlib_main_t * vm,
  * @cliexstart{show gbp subnet}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (gbp_subnet_show_node, static) = {
   .path = "show gbp subnet",
   .short_help = "show gbp subnet\n",
   .function = gbp_subnet_show,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-gbp_subnet_init (vlib_main_t * vm)
+gbp_subnet_init (vlib_main_t *vm)
 {
-  gbp_subnet_db = hash_create_mem (0,
-				   sizeof (gbp_subnet_key_t), sizeof (u32));
-  gbp_fib_source = fib_source_allocate ("gbp-subnet",
-					FIB_SOURCE_PRIORITY_HI,
+  gbp_subnet_db = hash_create_mem (0, sizeof (gbp_subnet_key_t), sizeof (u32));
+  gbp_fib_source = fib_source_allocate ("gbp-subnet", FIB_SOURCE_PRIORITY_HI,
 					FIB_SOURCE_BH_SIMPLE);
 
   return (NULL);

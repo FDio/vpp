@@ -22,14 +22,13 @@ typedef enum
 } dslite_ce_encap_next_t;
 
 static char *dslite_ce_encap_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_dslite_error
 #undef _
 };
 
-VLIB_NODE_FN (dslite_ce_encap_node) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * frame)
+VLIB_NODE_FN (dslite_ce_encap_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   dslite_ce_encap_next_t next_index;
@@ -88,8 +87,8 @@ VLIB_NODE_FN (dslite_ce_encap_node) (vlib_main_t * vm,
 	  ip60->src_address.as_u64[1] = dm->b4_ip6_addr.as_u64[1];
 
 	trace0:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      dslite_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->next_index = next0;
@@ -107,7 +106,6 @@ VLIB_NODE_FN (dslite_ce_encap_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dslite_ce_encap_node) = {
   .name = "dslite-ce-encap",
   .vector_size = sizeof (u32),
@@ -122,7 +120,6 @@ VLIB_REGISTER_NODE (dslite_ce_encap_node) = {
     [DSLITE_CE_ENCAP_NEXT_IP6_LOOKUP] = "ip6-lookup",
   },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

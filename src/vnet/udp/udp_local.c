@@ -40,30 +40,28 @@ typedef struct
 
 #ifndef CLIB_MARCH_VARIANT
 u8 *
-format_udp_rx_trace (u8 * s, va_list * args)
+format_udp_rx_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   udp_local_rx_trace_t *t = va_arg (*args, udp_local_rx_trace_t *);
 
-  s = format (s, "UDP: src-port %d dst-port %d%s",
-	      clib_net_to_host_u16 (t->src_port),
-	      clib_net_to_host_u16 (t->dst_port),
-	      t->bound ? "" : " (no listener)");
+  s = format (
+    s, "UDP: src-port %d dst-port %d%s", clib_net_to_host_u16 (t->src_port),
+    clib_net_to_host_u16 (t->dst_port), t->bound ? "" : " (no listener)");
   return s;
 }
 #endif /* CLIB_MARCH_VARIANT */
 
 always_inline uword
-udp46_local_inline (vlib_main_t * vm,
-		    vlib_node_runtime_t * node,
-		    vlib_frame_t * from_frame, int is_ip4)
+udp46_local_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *from_frame, int is_ip4)
 {
   udp_main_t *um = &udp_main;
   __attribute__ ((unused)) u32 n_left_from, next_index, *from, *to_next;
   u8 punt_unknown = is_ip4 ? um->punt_unknown4 : um->punt_unknown6;
-  u16 *next_by_dst_port = (is_ip4 ?
-			   um->next_by_dst_port4 : um->next_by_dst_port6);
+  u16 *next_by_dst_port =
+    (is_ip4 ? um->next_by_dst_port4 : um->next_by_dst_port6);
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
 
@@ -163,8 +161,7 @@ udp46_local_inline (vlib_main_t * vm,
 	  /* Index sparse array with network byte order. */
 	  dst_port0 = (error0 == 0) ? h0->dst_port : 0;
 	  dst_port1 = (error1 == 0) ? h1->dst_port : 0;
-	  sparse_vec_index2 (next_by_dst_port, dst_port0, dst_port1, &i0,
-			     &i1);
+	  sparse_vec_index2 (next_by_dst_port, dst_port0, dst_port1, &i0, &i1);
 	  next0 = (error0 == 0) ? vec_elt (next_by_dst_port, i0) : next0;
 	  next1 = (error1 == 0) ? vec_elt (next_by_dst_port, i1) : next1;
 
@@ -182,19 +179,17 @@ udp46_local_inline (vlib_main_t * vm,
 		}
 	      else if (is_ip4)
 		{
-		  icmp4_error_set_vnet_buffer (b0,
-					       ICMP4_destination_unreachable,
-					       ICMP4_destination_unreachable_port_unreachable,
-					       0);
+		  icmp4_error_set_vnet_buffer (
+		    b0, ICMP4_destination_unreachable,
+		    ICMP4_destination_unreachable_port_unreachable, 0);
 		  b0->error = node->errors[UDP_ERROR_NO_LISTENER];
 		  next0 = UDP_LOCAL_NEXT_ICMP;
 		}
 	      else
 		{
-		  icmp6_error_set_vnet_buffer (b0,
-					       ICMP6_destination_unreachable,
-					       ICMP6_destination_unreachable_port_unreachable,
-					       0);
+		  icmp6_error_set_vnet_buffer (
+		    b0, ICMP6_destination_unreachable,
+		    ICMP6_destination_unreachable_port_unreachable, 0);
 		  b0->error = node->errors[UDP_ERROR_NO_LISTENER];
 		  next0 = UDP_LOCAL_NEXT_ICMP;
 		}
@@ -220,19 +215,17 @@ udp46_local_inline (vlib_main_t * vm,
 		}
 	      else if (is_ip4)
 		{
-		  icmp4_error_set_vnet_buffer (b1,
-					       ICMP4_destination_unreachable,
-					       ICMP4_destination_unreachable_port_unreachable,
-					       0);
+		  icmp4_error_set_vnet_buffer (
+		    b1, ICMP4_destination_unreachable,
+		    ICMP4_destination_unreachable_port_unreachable, 0);
 		  b1->error = node->errors[UDP_ERROR_NO_LISTENER];
 		  next1 = UDP_LOCAL_NEXT_ICMP;
 		}
 	      else
 		{
-		  icmp6_error_set_vnet_buffer (b1,
-					       ICMP6_destination_unreachable,
-					       ICMP6_destination_unreachable_port_unreachable,
-					       0);
+		  icmp6_error_set_vnet_buffer (
+		    b1, ICMP6_destination_unreachable,
+		    ICMP6_destination_unreachable_port_unreachable, 0);
 		  b1->error = node->errors[UDP_ERROR_NO_LISTENER];
 		  next1 = UDP_LOCAL_NEXT_ICMP;
 		}
@@ -246,8 +239,8 @@ udp46_local_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      udp_local_rx_trace_t *tr = vlib_add_trace (vm, node,
-							 b0, sizeof (*tr));
+	      udp_local_rx_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      if (b0->error != node->errors[UDP_ERROR_LENGTH_ERROR])
 		{
 		  tr->src_port = h0 ? h0->src_port : 0;
@@ -257,8 +250,8 @@ udp46_local_inline (vlib_main_t * vm,
 	    }
 	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      udp_local_rx_trace_t *tr = vlib_add_trace (vm, node,
-							 b1, sizeof (*tr));
+	      udp_local_rx_trace_t *tr =
+		vlib_add_trace (vm, node, b1, sizeof (*tr));
 	      if (b1->error != node->errors[UDP_ERROR_LENGTH_ERROR])
 		{
 		  tr->src_port = h1 ? h1->src_port : 0;
@@ -267,9 +260,9 @@ udp46_local_inline (vlib_main_t * vm,
 		}
 	    }
 
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, bi1, next0,
+					   next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -326,19 +319,17 @@ udp46_local_inline (vlib_main_t * vm,
 		    }
 		  else if (is_ip4)
 		    {
-		      icmp4_error_set_vnet_buffer (b0,
-						   ICMP4_destination_unreachable,
-						   ICMP4_destination_unreachable_port_unreachable,
-						   0);
+		      icmp4_error_set_vnet_buffer (
+			b0, ICMP4_destination_unreachable,
+			ICMP4_destination_unreachable_port_unreachable, 0);
 		      b0->error = node->errors[UDP_ERROR_NO_LISTENER];
 		      next0 = UDP_LOCAL_NEXT_ICMP;
 		    }
 		  else
 		    {
-		      icmp6_error_set_vnet_buffer (b0,
-						   ICMP6_destination_unreachable,
-						   ICMP6_destination_unreachable_port_unreachable,
-						   0);
+		      icmp6_error_set_vnet_buffer (
+			b0, ICMP6_destination_unreachable,
+			ICMP6_destination_unreachable_port_unreachable, 0);
 		      b0->error = node->errors[UDP_ERROR_NO_LISTENER];
 		      next0 = UDP_LOCAL_NEXT_ICMP;
 		    }
@@ -359,8 +350,8 @@ udp46_local_inline (vlib_main_t * vm,
 	trace_x1:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      udp_local_rx_trace_t *tr = vlib_add_trace (vm, node,
-							 b0, sizeof (*tr));
+	      udp_local_rx_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      if (b0->error != node->errors[UDP_ERROR_LENGTH_ERROR])
 		{
 		  tr->src_port = h0->src_port;
@@ -369,9 +360,8 @@ udp46_local_inline (vlib_main_t * vm,
 		}
 	    }
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -380,26 +370,23 @@ udp46_local_inline (vlib_main_t * vm,
 }
 
 static char *udp_error_strings[] = {
-#define udp_error(n,s) s,
+#define udp_error(n, s) s,
 #include "udp_error.def"
 #undef udp_error
 };
 
-VLIB_NODE_FN (udp4_local_node) (vlib_main_t * vm,
-				vlib_node_runtime_t * node,
-				vlib_frame_t * from_frame)
+VLIB_NODE_FN (udp4_local_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return udp46_local_inline (vm, node, from_frame, 1 /* is_ip4 */ );
+  return udp46_local_inline (vm, node, from_frame, 1 /* is_ip4 */);
 }
 
-VLIB_NODE_FN (udp6_local_node) (vlib_main_t * vm,
-				vlib_node_runtime_t * node,
-				vlib_frame_t * from_frame)
+VLIB_NODE_FN (udp6_local_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return udp46_local_inline (vm, node, from_frame, 0 /* is_ip4 */ );
+  return udp46_local_inline (vm, node, from_frame, 0 /* is_ip4 */);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp4_local_node) = {
   .name = "ip4-udp-lookup",
   /* Takes a vector of packets. */
@@ -419,9 +406,7 @@ VLIB_REGISTER_NODE (udp4_local_node) = {
   .format_trace = format_udp_rx_trace,
   .unformat_buffer = unformat_udp_header,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp6_local_node) = {
   .name = "ip6-udp-lookup",
   /* Takes a vector of packets. */
@@ -441,12 +426,11 @@ VLIB_REGISTER_NODE (udp6_local_node) = {
   .format_trace = format_udp_rx_trace,
   .unformat_buffer = unformat_udp_header,
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 void
-udp_add_dst_port (udp_main_t * um, udp_dst_port_t dst_port,
-		  char *dst_port_name, u8 is_ip4)
+udp_add_dst_port (udp_main_t *um, udp_dst_port_t dst_port, char *dst_port_name,
+		  u8 is_ip4)
 {
   udp_dst_port_info_t *pi;
   u32 i;
@@ -465,8 +449,8 @@ udp_add_dst_port (udp_main_t * um, udp_dst_port_t dst_port,
 }
 
 void
-udp_register_dst_port (vlib_main_t * vm,
-		       udp_dst_port_t dst_port, u32 node_index, u8 is_ip4)
+udp_register_dst_port (vlib_main_t *vm, udp_dst_port_t dst_port,
+		       u32 node_index, u8 is_ip4)
 {
   udp_main_t *um = &udp_main;
   udp_dst_port_info_t *pi;
@@ -487,9 +471,8 @@ udp_register_dst_port (vlib_main_t * vm,
     }
 
   pi->node_index = node_index;
-  pi->next_index = vlib_node_add_next (vm,
-				       is_ip4 ? udp4_local_node.index
-				       : udp6_local_node.index, node_index);
+  pi->next_index = vlib_node_add_next (
+    vm, is_ip4 ? udp4_local_node.index : udp6_local_node.index, node_index);
 
   /* Setup udp protocol -> next index sparse vector mapping. */
   if (is_ip4)
@@ -503,7 +486,7 @@ udp_register_dst_port (vlib_main_t * vm,
 }
 
 void
-udp_unregister_dst_port (vlib_main_t * vm, udp_dst_port_t dst_port, u8 is_ip4)
+udp_unregister_dst_port (vlib_main_t *vm, udp_dst_port_t dst_port, u8 is_ip4)
 {
   udp_main_t *um = &udp_main;
   udp_dst_port_info_t *pi;
@@ -542,7 +525,7 @@ udp_is_valid_dst_port (udp_dst_port_t dst_port, u8 is_ip4)
 }
 
 void
-udp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add)
+udp_punt_unknown (vlib_main_t *vm, u8 is_ip4, u8 is_add)
 {
   udp_main_t *um = &udp_main;
   {
@@ -559,7 +542,7 @@ udp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add)
 
 /* Parse a UDP header. */
 uword
-unformat_udp_header (unformat_input_t * input, va_list * args)
+unformat_udp_header (unformat_input_t *input, va_list *args)
 {
   u8 **result = va_arg (*args, u8 **);
   udp_header_t *udp;
@@ -586,7 +569,7 @@ unformat_udp_header (unformat_input_t * input, va_list * args)
 }
 
 static void
-udp_setup_node (vlib_main_t * vm, u32 node_index)
+udp_setup_node (vlib_main_t *vm, u32 node_index)
 {
   vlib_node_t *n = vlib_get_node (vm, node_index);
   pg_node_t *pn = pg_get_node (node_index);
@@ -597,7 +580,7 @@ udp_setup_node (vlib_main_t * vm, u32 node_index)
 }
 
 clib_error_t *
-udp_local_init (vlib_main_t * vm)
+udp_local_init (vlib_main_t *vm)
 {
   udp_main_t *um = &udp_main;
   int i;
@@ -608,7 +591,6 @@ udp_local_init (vlib_main_t * vm)
     if (error)
       clib_error_report (error);
   }
-
 
   for (i = 0; i < 2; i++)
     {
@@ -622,21 +604,21 @@ udp_local_init (vlib_main_t * vm)
   um->punt_unknown4 = 0;
   um->punt_unknown6 = 0;
 
-  um->next_by_dst_port4 = sparse_vec_new
-    ( /* elt bytes */ sizeof (um->next_by_dst_port4[0]),
-     /* bits in index */ BITS (((udp_header_t *) 0)->dst_port));
+  um->next_by_dst_port4 =
+    sparse_vec_new (/* elt bytes */ sizeof (um->next_by_dst_port4[0]),
+		    /* bits in index */ BITS (((udp_header_t *) 0)->dst_port));
 
-  um->next_by_dst_port6 = sparse_vec_new
-    ( /* elt bytes */ sizeof (um->next_by_dst_port6[0]),
-     /* bits in index */ BITS (((udp_header_t *) 0)->dst_port));
+  um->next_by_dst_port6 =
+    sparse_vec_new (/* elt bytes */ sizeof (um->next_by_dst_port6[0]),
+		    /* bits in index */ BITS (((udp_header_t *) 0)->dst_port));
 
-#define _(n,s) udp_add_dst_port (um, UDP_DST_PORT_##s, #s, 1 /* is_ip4 */);
+#define _(n, s) udp_add_dst_port (um, UDP_DST_PORT_##s, #s, 1 /* is_ip4 */);
   foreach_udp4_dst_port
 #undef _
-#define _(n,s) udp_add_dst_port (um, UDP_DST_PORT_##s, #s, 0 /* is_ip4 */);
+#define _(n, s) udp_add_dst_port (um, UDP_DST_PORT_##s, #s, 0 /* is_ip4 */);
     foreach_udp6_dst_port
 #undef _
-    ip4_register_protocol (IP_PROTOCOL_UDP, udp4_local_node.index);
+      ip4_register_protocol (IP_PROTOCOL_UDP, udp4_local_node.index);
   /* Note: ip6 differs from ip4, UDP is hotwired to ip6-udp-lookup */
   return 0;
 }

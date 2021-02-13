@@ -46,7 +46,7 @@
 
 typedef enum ip_protocol
 {
-#define ip_protocol(n,s) IP_PROTOCOL_##s = n,
+#define ip_protocol(n, s) IP_PROTOCOL_##s = n,
 #include "protocols.def"
 #undef ip_protocol
 } __clib_packed ip_protocol_t;
@@ -54,7 +54,7 @@ typedef enum ip_protocol
 /* TCP/UDP ports. */
 typedef enum
 {
-#define ip_port(s,n) IP_PORT_##s = n,
+#define ip_port(s, n) IP_PORT_##s = n,
 #include "ports.def"
 #undef ip_port
 } ip_port_t;
@@ -67,59 +67,58 @@ typedef enum
   IP_BUILTIN_PROTOCOL_UNKNOWN,
 } ip_builtin_protocol_t;
 
-#define foreach_ip_builtin_multicast_group	\
-  _ (1, all_hosts_on_subnet)			\
-  _ (2, all_routers_on_subnet)			\
-  _ (4, dvmrp)					\
-  _ (5, ospf_all_routers)			\
-  _ (6, ospf_designated_routers)		\
-  _ (13, pim)					\
-  _ (18, vrrp)					\
-  _ (102, hsrp)					\
+#define foreach_ip_builtin_multicast_group                                    \
+  _ (1, all_hosts_on_subnet)                                                  \
+  _ (2, all_routers_on_subnet)                                                \
+  _ (4, dvmrp)                                                                \
+  _ (5, ospf_all_routers)                                                     \
+  _ (6, ospf_designated_routers)                                              \
+  _ (13, pim)                                                                 \
+  _ (18, vrrp)                                                                \
+  _ (102, hsrp)                                                               \
   _ (22, igmp_v3)
 
 typedef enum
 {
-#define _(n,f) IP_MULTICAST_GROUP_##f = n,
+#define _(n, f) IP_MULTICAST_GROUP_##f = n,
   foreach_ip_builtin_multicast_group
 #undef _
 } ip_multicast_group_t;
 
-
 /**
  * The set of RFC defined DSCP values.
  */
-#define foreach_ip_dscp                       \
-  _(0, CS0)                                   \
-  _(8, CS1)                                   \
-  _(10, AF11)                                 \
-  _(12, AF12)                                 \
-  _(14, AF13)                                 \
-  _(16, CS2)                                  \
-  _(18, AF21)                                 \
-  _(20, AF22)                                 \
-  _(22, AF23)                                 \
-  _(24, CS3)                                  \
-  _(26, AF31)                                 \
-  _(28, AF32)                                 \
-  _(30, AF33)                                 \
-  _(32, CS4)                                  \
-  _(34, AF41)                                 \
-  _(36, AF42)                                 \
-  _(38, AF43)                                 \
-  _(40, CS5)                                  \
-  _(46, EF)                                   \
-  _(48, CS6)                                  \
-  _(50, CS7)
+#define foreach_ip_dscp                                                       \
+  _ (0, CS0)                                                                  \
+  _ (8, CS1)                                                                  \
+  _ (10, AF11)                                                                \
+  _ (12, AF12)                                                                \
+  _ (14, AF13)                                                                \
+  _ (16, CS2)                                                                 \
+  _ (18, AF21)                                                                \
+  _ (20, AF22)                                                                \
+  _ (22, AF23)                                                                \
+  _ (24, CS3)                                                                 \
+  _ (26, AF31)                                                                \
+  _ (28, AF32)                                                                \
+  _ (30, AF33)                                                                \
+  _ (32, CS4)                                                                 \
+  _ (34, AF41)                                                                \
+  _ (36, AF42)                                                                \
+  _ (38, AF43)                                                                \
+  _ (40, CS5)                                                                 \
+  _ (46, EF)                                                                  \
+  _ (48, CS6)                                                                 \
+  _ (50, CS7)
 
 typedef enum ip_dscp_t_
 {
-#define _(n,f) IP_DSCP_##f = n,
+#define _(n, f) IP_DSCP_##f = n,
   foreach_ip_dscp
 #undef _
 } __clib_packed ip_dscp_t;
 
-extern u8 *format_ip_dscp (u8 * s, va_list * va);
+extern u8 *format_ip_dscp (u8 *s, va_list *va);
 unformat_function_t unformat_ip_dscp;
 
 /**
@@ -127,27 +126,27 @@ unformat_function_t unformat_ip_dscp;
  *  The ECN occupies the 2 least significant bits of the TC field
  */
 #define IP_PACKET_TC_FIELD_DSCP_BIT_SHIFT 2
-#define IP_PACKET_TC_FIELD_ECN_MASK 0x03
+#define IP_PACKET_TC_FIELD_ECN_MASK	  0x03
 
 /**
  * The set of RFC defined DSCP values.
  */
-#define foreach_ip_ecn                        \
-  _(0, NON_ECN)                               \
-  _(1, ECT_0)                                 \
-  _(2, ECT_1)                                 \
-  _(3, CE)
+#define foreach_ip_ecn                                                        \
+  _ (0, NON_ECN)                                                              \
+  _ (1, ECT_0)                                                                \
+  _ (2, ECT_1)                                                                \
+  _ (3, CE)
 
 typedef enum ip_ecn_t_
 {
-#define _(n,f) IP_ECN_##f = n,
+#define _(n, f) IP_ECN_##f = n,
   foreach_ip_ecn
 #undef _
 } __clib_packed ip_ecn_t;
 
 STATIC_ASSERT_SIZEOF (ip_ecn_t, 1);
 
-extern u8 *format_ip_ecn (u8 * s, va_list * va);
+extern u8 *format_ip_ecn (u8 *s, va_list *va);
 
 /* IP checksum support. */
 
@@ -280,10 +279,10 @@ always_inline ip_csum_t
 ip_csum_update_inline (ip_csum_t sum, ip_csum_t old, ip_csum_t new,
 		       u32 field_byte_offset, u32 field_n_bytes)
 {
-  /* For even 1-byte fields on big-endian and odd 1-byte fields on little endian
-     we need to shift byte into place for checksum. */
-  if ((field_n_bytes % 2)
-      && (field_byte_offset % 2) == CLIB_ARCH_IS_LITTLE_ENDIAN)
+  /* For even 1-byte fields on big-endian and odd 1-byte fields on little
+     endian we need to shift byte into place for checksum. */
+  if ((field_n_bytes % 2) &&
+      (field_byte_offset % 2) == CLIB_ARCH_IS_LITTLE_ENDIAN)
     {
       old = old << 8;
       new = new << 8;
@@ -293,9 +292,8 @@ ip_csum_update_inline (ip_csum_t sum, ip_csum_t old, ip_csum_t new,
   return sum;
 }
 
-#define ip_csum_update(sum,old,new,type,field)			\
-  ip_csum_update_inline ((sum), (old), (new),			\
-			 STRUCT_OFFSET_OF (type, field),	\
+#define ip_csum_update(sum, old, new, type, field)                            \
+  ip_csum_update_inline ((sum), (old), (new), STRUCT_OFFSET_OF (type, field), \
 			 STRUCT_SIZE_OF (type, field))
 
 always_inline u16

@@ -40,58 +40,56 @@ struct bier_fmask_db_t_;
 /**
  * The BIER entry
  *
- * the BIER entry is the representation of a BIER forwarding egress router (BFER)
- * (or the egress PE) that is assigned a bit position.
+ * the BIER entry is the representation of a BIER forwarding egress router
+ * (BFER) (or the egress PE) that is assigned a bit position.
  */
-typedef struct bier_entry_t_ {
-    /**
-     * linkage into the FIB graph
-     */
-    fib_node_t be_node;
+typedef struct bier_entry_t_
+{
+  /**
+   * linkage into the FIB graph
+   */
+  fib_node_t be_node;
 
-    /**
-     * The index of the BIER table in which this entry resides
-     */
-    index_t be_bti;
+  /**
+   * The index of the BIER table in which this entry resides
+   */
+  index_t be_bti;
 
-    /**
-     * the bit position this entry represents.
-     *  this is the key table insertion
-     */
-    bier_bp_t be_bp;
+  /**
+   * the bit position this entry represents.
+   *  this is the key table insertion
+   */
+  bier_bp_t be_bp;
 
-    /**
-     * the FIB path-list this entry resolves through.
-     * the path-list is itself resoved on the entry's fmasks
-     */
-    fib_node_index_t be_path_list;
-    /**
-     * sibling index on the path list
-     */
-    fib_node_index_t be_sibling_index;
+  /**
+   * the FIB path-list this entry resolves through.
+   * the path-list is itself resoved on the entry's fmasks
+   */
+  fib_node_index_t be_path_list;
+  /**
+   * sibling index on the path list
+   */
+  fib_node_index_t be_sibling_index;
 } bier_entry_t;
 
-extern index_t bier_entry_create(index_t bti,
-                                 bier_bp_t bp);
-extern void bier_entry_delete(index_t bei);
+extern index_t bier_entry_create (index_t bti, bier_bp_t bp);
+extern void bier_entry_delete (index_t bei);
 
 extern void bier_entry_path_update (index_t bei,
-                                    const fib_route_path_t *rpaths);
+				    const fib_route_path_t *rpaths);
 
-extern void bier_entry_path_add(index_t bei,
-                                const fib_route_path_t *brp);
+extern void bier_entry_path_add (index_t bei, const fib_route_path_t *brp);
 
-extern int bier_entry_path_remove(index_t bei,
-                                  const fib_route_path_t *brp);
+extern int bier_entry_path_remove (index_t bei, const fib_route_path_t *brp);
 
-extern u8* format_bier_entry(u8* s, va_list *ap);
+extern u8 *format_bier_entry (u8 *s, va_list *ap);
 
-extern void bier_entry_contribute_forwarding(index_t bei,
-                                             dpo_id_t *dpo);
+extern void bier_entry_contribute_forwarding (index_t bei, dpo_id_t *dpo);
 
 extern bier_entry_t *bier_entry_pool;
-always_inline bier_entry_t* bier_entry_get(index_t bei)
+always_inline bier_entry_t *
+bier_entry_get (index_t bei)
 {
-    return (&bier_entry_pool[bei]);
+  return (&bier_entry_pool[bei]);
 }
 #endif

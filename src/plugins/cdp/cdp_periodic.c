@@ -29,9 +29,9 @@
  */
 
 static void
-add_device_name_tlv (vnet_hw_interface_t * hw, u8 ** t0p)
+add_device_name_tlv (vnet_hw_interface_t *hw, u8 **t0p)
 {
-  cdp_tlv_t *t = (cdp_tlv_t *) * t0p;
+  cdp_tlv_t *t = (cdp_tlv_t *) *t0p;
 
   t->t = htons (CDP_TLV_device_name);
   t->l = htons (3 + sizeof (*t));
@@ -41,9 +41,9 @@ add_device_name_tlv (vnet_hw_interface_t * hw, u8 ** t0p)
 }
 
 static void
-add_port_id_tlv (vnet_hw_interface_t * hw, u8 ** t0p)
+add_port_id_tlv (vnet_hw_interface_t *hw, u8 **t0p)
 {
-  cdp_tlv_t *t = (cdp_tlv_t *) * t0p;
+  cdp_tlv_t *t = (cdp_tlv_t *) *t0p;
 
   t->t = htons (CDP_TLV_port_id);
   t->l = htons (vec_len (hw->name) + sizeof (*t));
@@ -52,9 +52,9 @@ add_port_id_tlv (vnet_hw_interface_t * hw, u8 ** t0p)
 }
 
 static void
-add_version_tlv (vnet_hw_interface_t * hw, u8 ** t0p)
+add_version_tlv (vnet_hw_interface_t *hw, u8 **t0p)
 {
-  cdp_tlv_t *t = (cdp_tlv_t *) * t0p;
+  cdp_tlv_t *t = (cdp_tlv_t *) *t0p;
 
   t->t = htons (CDP_TLV_version);
   t->l = htons (12 + sizeof (*t));
@@ -63,9 +63,9 @@ add_version_tlv (vnet_hw_interface_t * hw, u8 ** t0p)
 }
 
 static void
-add_platform_tlv (vnet_hw_interface_t * hw, u8 ** t0p)
+add_platform_tlv (vnet_hw_interface_t *hw, u8 **t0p)
 {
-  cdp_tlv_t *t = (cdp_tlv_t *) * t0p;
+  cdp_tlv_t *t = (cdp_tlv_t *) *t0p;
 
   t->t = htons (CDP_TLV_platform);
   t->l = htons (2 + sizeof (*t));
@@ -74,9 +74,9 @@ add_platform_tlv (vnet_hw_interface_t * hw, u8 ** t0p)
 }
 
 static void
-add_capability_tlv (vnet_hw_interface_t * hw, u8 ** t0p)
+add_capability_tlv (vnet_hw_interface_t *hw, u8 **t0p)
 {
-  cdp_tlv_t *t = (cdp_tlv_t *) * t0p;
+  cdp_tlv_t *t = (cdp_tlv_t *) *t0p;
   u32 capabilities;
 
   t->t = htons (CDP_TLV_capabilities);
@@ -88,7 +88,7 @@ add_capability_tlv (vnet_hw_interface_t * hw, u8 ** t0p)
 }
 
 static void
-add_tlvs (cdp_main_t * cm, vnet_hw_interface_t * hw, u8 ** t0p)
+add_tlvs (cdp_main_t *cm, vnet_hw_interface_t *hw, u8 **t0p)
 {
   add_device_name_tlv (hw, t0p);
   add_port_id_tlv (hw, t0p);
@@ -101,7 +101,7 @@ add_tlvs (cdp_main_t * cm, vnet_hw_interface_t * hw, u8 ** t0p)
  * send a cdp pkt on an ethernet interface
  */
 static void
-send_ethernet_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
+send_ethernet_hello (cdp_main_t *cm, cdp_neighbor_t *n, int count)
 {
   u32 *to_next;
   ethernet_llc_snap_and_cdp_header_t *h0;
@@ -122,8 +122,8 @@ send_ethernet_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
        * see cdp_periodic_init() to understand what's already painted
        * into the buffer by the packet template mechanism
        */
-      h0 = vlib_packet_template_get_packet
-	(vm, &cm->packet_templates[n->packet_template_index], &bi0);
+      h0 = vlib_packet_template_get_packet (
+	vm, &cm->packet_templates[n->packet_template_index], &bi0);
 
       if (!h0)
 	break;
@@ -134,27 +134,27 @@ send_ethernet_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
       clib_memcpy (h0->ethernet.src_address, hw->hw_address,
 		   vec_len (hw->hw_address));
 
-      t0 = (u8 *) & h0->cdp.data;
+      t0 = (u8 *) &h0->cdp.data;
 
       /* add TLVs */
       add_tlvs (cm, hw, &t0);
 
       /* add the cdp packet checksum */
-      nbytes_to_checksum = t0 - (u8 *) & h0->cdp;
+      nbytes_to_checksum = t0 - (u8 *) &h0->cdp;
       checksum = cdp_checksum (&h0->cdp, nbytes_to_checksum);
       h0->cdp.checksum = htons (checksum);
 
       /* Set the outbound packet length */
       b0 = vlib_get_buffer (vm, bi0);
-      b0->current_length = nbytes_to_checksum + sizeof (*h0)
-	- sizeof (cdp_hdr_t);
+      b0->current_length =
+	nbytes_to_checksum + sizeof (*h0) - sizeof (cdp_hdr_t);
 
       /* And the outbound interface */
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = hw->sw_if_index;
 
       /* Set the 802.3 ethernet length */
-      h0->ethernet.len = htons (b0->current_length
-				- sizeof (ethernet_802_3_header_t));
+      h0->ethernet.len =
+	htons (b0->current_length - sizeof (ethernet_802_3_header_t));
 
       /* And output the packet on the correct interface */
       f = vlib_get_frame_to_node (vm, hw->output_node_index);
@@ -171,7 +171,7 @@ send_ethernet_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
  * send a cdp pkt on an hdlc interface
  */
 static void
-send_hdlc_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
+send_hdlc_hello (cdp_main_t *cm, cdp_neighbor_t *n, int count)
 {
   u32 *to_next;
   hdlc_and_cdp_header_t *h0;
@@ -192,28 +192,28 @@ send_hdlc_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
        * see cdp_periodic_init() to understand what's already painted
        * into the buffer by the packet template mechanism
        */
-      h0 = vlib_packet_template_get_packet
-	(vm, &cm->packet_templates[n->packet_template_index], &bi0);
+      h0 = vlib_packet_template_get_packet (
+	vm, &cm->packet_templates[n->packet_template_index], &bi0);
 
       if (!h0)
 	break;
 
       hw = vnet_get_sup_hw_interface (vnm, n->sw_if_index);
 
-      t0 = (u8 *) & h0->cdp.data;
+      t0 = (u8 *) &h0->cdp.data;
 
       /* add TLVs */
       add_tlvs (cm, hw, &t0);
 
       /* add the cdp packet checksum */
-      nbytes_to_checksum = t0 - (u8 *) & h0->cdp;
+      nbytes_to_checksum = t0 - (u8 *) &h0->cdp;
       checksum = cdp_checksum (&h0->cdp, nbytes_to_checksum);
       h0->cdp.checksum = htons (checksum);
 
       /* Set the outbound packet length */
       b0 = vlib_get_buffer (vm, bi0);
-      b0->current_length = nbytes_to_checksum + sizeof (*h0)
-	- sizeof (cdp_hdr_t);
+      b0->current_length =
+	nbytes_to_checksum + sizeof (*h0) - sizeof (cdp_hdr_t);
 
       /* And output the packet on the correct interface */
       f = vlib_get_frame_to_node (vm, hw->output_node_index);
@@ -230,7 +230,7 @@ send_hdlc_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
  * send a cdp pkt on an srp interface
  */
 static void
-send_srp_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
+send_srp_hello (cdp_main_t *cm, cdp_neighbor_t *n, int count)
 {
   u32 *to_next;
   srp_and_cdp_header_t *h0;
@@ -251,15 +251,15 @@ send_srp_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
        * see cdp_periodic_init() to understand what's already painted
        * into the buffer by the packet template mechanism
        */
-      h0 = vlib_packet_template_get_packet
-	(vm, &cm->packet_templates[n->packet_template_index], &bi0);
+      h0 = vlib_packet_template_get_packet (
+	vm, &cm->packet_templates[n->packet_template_index], &bi0);
 
       if (!h0)
 	break;
 
       hw = vnet_get_sup_hw_interface (vnm, n->sw_if_index);
 
-      t0 = (u8 *) & h0->cdp.data;
+      t0 = (u8 *) &h0->cdp.data;
 
       /* add TLVs */
       add_tlvs (cm, hw, &t0);
@@ -269,14 +269,14 @@ send_srp_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
 		   vec_len (hw->hw_address));
 
       /* add the cdp packet checksum */
-      nbytes_to_checksum = t0 - (u8 *) & h0->cdp;
+      nbytes_to_checksum = t0 - (u8 *) &h0->cdp;
       checksum = cdp_checksum (&h0->cdp, nbytes_to_checksum);
       h0->cdp.checksum = htons (checksum);
 
       /* Set the outbound packet length */
       b0 = vlib_get_buffer (vm, bi0);
-      b0->current_length = nbytes_to_checksum + sizeof (*h0)
-	- sizeof (cdp_hdr_t);
+      b0->current_length =
+	nbytes_to_checksum + sizeof (*h0) - sizeof (cdp_hdr_t);
 
       /* And output the packet on the correct interface */
       f = vlib_get_frame_to_node (vm, hw->output_node_index);
@@ -293,7 +293,7 @@ send_srp_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
  * Decide which cdp packet template to use
  */
 static int
-pick_packet_template (cdp_main_t * cm, cdp_neighbor_t * n)
+pick_packet_template (cdp_main_t *cm, cdp_neighbor_t *n)
 {
   n->packet_template_index = CDP_PACKET_TEMPLATE_ETHERNET;
 
@@ -302,9 +302,9 @@ pick_packet_template (cdp_main_t * cm, cdp_neighbor_t * n)
 
 /* Send a cdp neighbor announcement */
 static void
-send_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
+send_hello (cdp_main_t *cm, cdp_neighbor_t *n, int count)
 {
-  if (n->packet_template_index == (u8) ~ 0)
+  if (n->packet_template_index == (u8) ~0)
     {
       /* If we don't know how to talk to this peer, don't try again */
       if (pick_packet_template (cm, n))
@@ -335,7 +335,7 @@ send_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
 }
 
 static void
-delete_neighbor (cdp_main_t * cm, cdp_neighbor_t * n, int want_broadcast)
+delete_neighbor (cdp_main_t *cm, cdp_neighbor_t *n, int want_broadcast)
 {
   hash_unset (cm->neighbor_by_sw_if_index, n->sw_if_index);
   vec_free (n->device_name);
@@ -347,7 +347,7 @@ delete_neighbor (cdp_main_t * cm, cdp_neighbor_t * n, int want_broadcast)
 }
 
 void
-cdp_periodic (vlib_main_t * vm)
+cdp_periodic (vlib_main_t *vm)
 {
   cdp_main_t *cm = &cdp_main;
   cdp_neighbor_t *n;
@@ -357,12 +357,10 @@ cdp_periodic (vlib_main_t * vm)
   int i;
   static cdp_neighbor_t **n_list = 0;
 
-  /* *INDENT-OFF* */
   pool_foreach (n, cm->neighbors)
-   {
-    vec_add1 (n_list, n);
-  }
-  /* *INDENT-ON* */
+    {
+      vec_add1 (n_list, n);
+    }
 
   /* Across all cdp neighbors known to the system */
   for (i = 0; i < vec_len (n_list); i++)
@@ -376,16 +374,16 @@ cdp_periodic (vlib_main_t * vm)
       sw = vnet_get_sw_interface (cm->vnet_main, n->sw_if_index);
 
       /* Interface shutdown or rx timeout? */
-      if (!(sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
-	  || (now > (n->last_heard + (f64) n->ttl_in_seconds)))
+      if (!(sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ||
+	  (now > (n->last_heard + (f64) n->ttl_in_seconds)))
 	/* add to list of neighbors to delete */
 	vec_add1 (delete_list, n - cm->neighbors);
       else if (n->last_sent == 0.0)
 	/* First time, send 3 hellos */
-	send_hello (cm, n, 3 /* three to begin with */ );
+	send_hello (cm, n, 3 /* three to begin with */);
       else if (now > (n->last_sent + (((f64) n->ttl_in_seconds) / 6.0)))
 	/* Normal keepalive, send one */
-	send_hello (cm, n, 1 /* one as a keepalive */ );
+	send_hello (cm, n, 1 /* one as a keepalive */);
     }
 
   for (i = 0; i < vec_len (delete_list); i++)
@@ -400,7 +398,7 @@ cdp_periodic (vlib_main_t * vm)
 }
 
 static clib_error_t *
-cdp_periodic_init (vlib_main_t * vm)
+cdp_periodic_init (vlib_main_t *vm)
 {
   cdp_main_t *cm = &cdp_main;
 
@@ -423,28 +421,26 @@ cdp_periodic_init (vlib_main_t * vm)
     /* leave length blank (fill in at send time) */
 
     /* LLC */
-    h.llc.dst_sap = h.llc.src_sap = 0xAA;	/* SNAP */
-    h.llc.control = 0x03;	/* UI (no extended control bytes) */
+    h.llc.dst_sap = h.llc.src_sap = 0xAA; /* SNAP */
+    h.llc.control = 0x03;		  /* UI (no extended control bytes) */
 
     /* SNAP */
     /* h.snap.oui[0] = 0x00; (clib_memset) */
     /* h.snap.oui[1] = 0x00; (clib_memset) */
-    h.snap.oui[2] = 0x0C;	/* Cisco = 0x00000C */
-    h.snap.protocol = htons (0x2000);	/* CDP = 0x2000 */
+    h.snap.oui[2] = 0x0C;	      /* Cisco = 0x00000C */
+    h.snap.protocol = htons (0x2000); /* CDP = 0x2000 */
 
     /* CDP */
     h.cdp.version = 2;
     h.cdp.ttl = 180;
 
-    vlib_packet_template_init
-      (vm, &cm->packet_templates[CDP_PACKET_TEMPLATE_ETHERNET],
-       /* data */ &h,
-       sizeof (h),
-       /* alloc chunk size */ 8,
-       "cdp-ethernet");
+    vlib_packet_template_init (
+      vm, &cm->packet_templates[CDP_PACKET_TEMPLATE_ETHERNET],
+      /* data */ &h, sizeof (h),
+      /* alloc chunk size */ 8, "cdp-ethernet");
   }
 
-#if 0				/* retain for reference */
+#if 0 /* retain for reference */
 
   /* Create the hdlc cdp hello packet template */
   {

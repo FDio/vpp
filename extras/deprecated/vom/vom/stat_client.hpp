@@ -20,7 +20,8 @@
 #include <string>
 #include <vector>
 
-extern "C" {
+extern "C"
+{
 #include <vpp-api/client/stat_client.h>
 }
 

@@ -30,9 +30,9 @@
 extern int svs_table_add (fib_protocol_t fproto, u32 table_id);
 extern int svs_table_delete (fib_protocol_t fproto, u32 table_id);
 
-extern int svs_route_add (u32 table_id,
-			  const fib_prefix_t * pfx, u32 source_table_id);
-extern int svs_route_delete (u32 table_id, const fib_prefix_t * pfx);
+extern int svs_route_add (u32 table_id, const fib_prefix_t *pfx,
+			  u32 source_table_id);
+extern int svs_route_delete (u32 table_id, const fib_prefix_t *pfx);
 
 extern int svs_enable (fib_protocol_t fproto, u32 table_id, u32 sw_if_index);
 extern int svs_disable (fib_protocol_t fproto, u32 table_id, u32 sw_if_index);

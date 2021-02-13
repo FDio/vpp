@@ -48,13 +48,12 @@ barrier_trace_sync (f64 t_entry, f64 t_open, f64 t_closed)
   if (!vlib_worker_threads->barrier_elog_enabled)
     return;
 
-    /* *INDENT-OFF* */
-    ELOG_TYPE_DECLARE (e) =
-      {
-        .format = "bar-trace-%s-#%d",
-        .format_args = "T4i4",
-      };
-    /* *INDENT-ON* */
+  /* *INDENT-OFF* */
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "bar-trace-%s-#%d",
+    .format_args = "T4i4",
+  };
+  /* *INDENT-ON* */
   struct
   {
     u32 caller, count, t_entry, t_open, t_closed;
@@ -75,13 +74,12 @@ barrier_trace_sync_rec (f64 t_entry)
   if (!vlib_worker_threads->barrier_elog_enabled)
     return;
 
-    /* *INDENT-OFF* */
-    ELOG_TYPE_DECLARE (e) =
-      {
-        .format = "bar-syncrec-%s-#%d",
-        .format_args = "T4i4",
-      };
-    /* *INDENT-ON* */
+  /* *INDENT-OFF* */
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "bar-syncrec-%s-#%d",
+    .format_args = "T4i4",
+  };
+  /* *INDENT-ON* */
   struct
   {
     u32 caller, depth;
@@ -99,13 +97,12 @@ barrier_trace_release_rec (f64 t_entry)
   if (!vlib_worker_threads->barrier_elog_enabled)
     return;
 
-    /* *INDENT-OFF* */
-    ELOG_TYPE_DECLARE (e) =
-      {
-        .format = "bar-relrrec-#%d",
-        .format_args = "i4",
-      };
-    /* *INDENT-ON* */
+  /* *INDENT-OFF* */
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "bar-relrrec-#%d",
+    .format_args = "i4",
+  };
+  /* *INDENT-ON* */
   struct
   {
     u32 depth;
@@ -121,13 +118,12 @@ barrier_trace_release (f64 t_entry, f64 t_closed_total, f64 t_update_main)
   if (!vlib_worker_threads->barrier_elog_enabled)
     return;
 
-    /* *INDENT-OFF* */
-    ELOG_TYPE_DECLARE (e) =
-      {
-        .format = "bar-rel-#%d-e%d-u%d-t%d",
-        .format_args = "i4i4i4i4",
-      };
-    /* *INDENT-ON* */
+  /* *INDENT-OFF* */
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "bar-rel-#%d-e%d-u%d-t%d",
+    .format_args = "i4i4i4i4",
+  };
+  /* *INDENT-ON* */
   struct
   {
     u32 count, t_entry, t_update_main, t_closed_total;
@@ -170,8 +166,8 @@ sort_registrations_by_no_clone (void *a0, void *a1)
   vlib_thread_registration_t **tr0 = a0;
   vlib_thread_registration_t **tr1 = a1;
 
-  return ((i32) ((*tr0)->no_data_structure_clone)
-	  - ((i32) ((*tr1)->no_data_structure_clone)));
+  return ((i32) ((*tr0)->no_data_structure_clone) -
+	  ((i32) ((*tr1)->no_data_structure_clone)));
 }
 
 static uword *
@@ -201,11 +197,10 @@ clib_sysfs_list_to_bitmap (char *filename)
   return r;
 }
 
-
 /* Called early in the init sequence */
 
 clib_error_t *
-vlib_thread_init (vlib_main_t * vm)
+vlib_thread_init (vlib_main_t *vm)
 {
   vlib_thread_main_t *tm = &vlib_thread_main;
   vlib_worker_thread_t *w;
@@ -241,15 +236,17 @@ vlib_thread_init (vlib_main_t * vm)
 	tm->main_lcore = 1;
       else
 	tm->main_lcore = clib_bitmap_first_set (avail_cpu);
-      if (tm->main_lcore == (u8) ~ 0)
+      if (tm->main_lcore == (u8) ~0)
 	return clib_error_return (0, "no available cpus to be used for the"
-				  " main thread");
+				     " main thread");
     }
   else
     {
       if (clib_bitmap_get (avail_cpu, tm->main_lcore) == 0)
-	return clib_error_return (0, "cpu %u is not available to be used"
-				  " for the main thread", tm->main_lcore);
+	return clib_error_return (0,
+				  "cpu %u is not available to be used"
+				  " for the main thread",
+				  tm->main_lcore);
     }
   avail_cpu = clib_bitmap_set (avail_cpu, tm->main_lcore, 0);
 
@@ -320,15 +317,18 @@ vlib_thread_init (vlib_main_t * vm)
       if (tr->coremask)
 	{
 	  uword c;
-          /* *INDENT-OFF* */
-          clib_bitmap_foreach (c, tr->coremask)  {
-            if (clib_bitmap_get(avail_cpu, c) == 0)
-              return clib_error_return (0, "cpu %u is not available to be used"
-                                        " for the '%s' thread",c, tr->name);
+	  /* *INDENT-OFF* */
+	  clib_bitmap_foreach (c, tr->coremask)
+	    {
+	      if (clib_bitmap_get (avail_cpu, c) == 0)
+		return clib_error_return (0,
+					  "cpu %u is not available to be used"
+					  " for the '%s' thread",
+					  c, tr->name);
 
-            avail_cpu = clib_bitmap_set(avail_cpu, c, 0);
-          }
-          /* *INDENT-ON* */
+	      avail_cpu = clib_bitmap_set (avail_cpu, c, 0);
+	    }
+	  /* *INDENT-ON* */
 	}
       else
 	{
@@ -349,7 +349,8 @@ vlib_thread_init (vlib_main_t * vm)
 	      if (c == ~0)
 		return clib_error_return (0,
 					  "no available cpus to be used for"
-					  " the '%s' thread", tr->name);
+					  " the '%s' thread",
+					  tr->name);
 
 	      avail_cpu = clib_bitmap_set (avail_cpu, 0, avail_c0);
 	      avail_cpu = clib_bitmap_set (avail_cpu, c, 0);
@@ -381,14 +382,14 @@ vlib_frame_queue_alloc (int nelts)
   fq = clib_mem_alloc_aligned (sizeof (*fq), CLIB_CACHE_LINE_BYTES);
   clib_memset (fq, 0, sizeof (*fq));
   fq->nelts = nelts;
-  fq->vector_threshold = 128;	// packets
+  fq->vector_threshold = 128; // packets
   vec_validate_aligned (fq->elts, nelts - 1, CLIB_CACHE_LINE_BYTES);
 
   if (1)
     {
-      if (((uword) & fq->tail) & (CLIB_CACHE_LINE_BYTES - 1))
+      if (((uword) &fq->tail) & (CLIB_CACHE_LINE_BYTES - 1))
 	fformat (stderr, "WARNING: fq->tail unaligned\n");
-      if (((uword) & fq->head) & (CLIB_CACHE_LINE_BYTES - 1))
+      if (((uword) &fq->head) & (CLIB_CACHE_LINE_BYTES - 1))
 	fformat (stderr, "WARNING: fq->head unaligned\n");
       if (((uword) fq->elts) & (CLIB_CACHE_LINE_BYTES - 1))
 	fformat (stderr, "WARNING: fq->elts unaligned\n");
@@ -535,7 +536,7 @@ vlib_frame_queue_enqueue (vlib_main_t * vm, u32 node_runtime_index,
 
 /* To be called by vlib worker threads upon startup */
 void
-vlib_worker_thread_init (vlib_worker_thread_t * w)
+vlib_worker_thread_init (vlib_worker_thread_t *w)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
@@ -583,15 +584,15 @@ vlib_worker_thread_bootstrap_fn (void *arg)
   __os_thread_index = w - vlib_worker_threads;
 
   vlib_process_start_switch_stack (vlib_mains[__os_thread_index], 0);
-  rv = (void *) clib_calljmp
-    ((uword (*)(uword)) w->thread_function,
-     (uword) arg, w->thread_stack + VLIB_THREAD_STACK_SIZE);
+  rv =
+    (void *) clib_calljmp ((uword (*) (uword)) w->thread_function, (uword) arg,
+			   w->thread_stack + VLIB_THREAD_STACK_SIZE);
   /* NOTREACHED, we hope */
   return rv;
 }
 
 void
-vlib_get_thread_core_numa (vlib_worker_thread_t * w, unsigned cpu_id)
+vlib_get_thread_core_numa (vlib_worker_thread_t *w, unsigned cpu_id)
 {
   const char *sys_cpu_path = "/sys/devices/system/cpu/cpu";
   const char *sys_node_path = "/sys/devices/system/node/node";
@@ -606,15 +607,16 @@ vlib_get_thread_core_numa (vlib_worker_thread_t * w, unsigned cpu_id)
 
   /* *INDENT-OFF* */
   clib_sysfs_read ("/sys/devices/system/node/online", "%U",
-        unformat_bitmap_list, &nbmp);
-  clib_bitmap_foreach (node, nbmp)  {
-    p = format (p, "%s%u/cpulist%c", sys_node_path, node, 0);
-    clib_sysfs_read ((char *) p, "%U", unformat_bitmap_list, &cbmp);
-    if (clib_bitmap_get (cbmp, cpu_id))
-      numa_id = node;
-    vec_reset_length (cbmp);
-    vec_reset_length (p);
-  }
+		   unformat_bitmap_list, &nbmp);
+  clib_bitmap_foreach (node, nbmp)
+    {
+      p = format (p, "%s%u/cpulist%c", sys_node_path, node, 0);
+      clib_sysfs_read ((char *) p, "%U", unformat_bitmap_list, &cbmp);
+      if (clib_bitmap_get (cbmp, cpu_id))
+	numa_id = node;
+      vec_reset_length (cbmp);
+      vec_reset_length (p);
+    }
   /* *INDENT-ON* */
   vec_free (nbmp);
   vec_free (cbmp);
@@ -625,7 +627,7 @@ vlib_get_thread_core_numa (vlib_worker_thread_t * w, unsigned cpu_id)
 }
 
 static clib_error_t *
-vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
+vlib_launch_thread_int (void *fp, vlib_worker_thread_t *w, unsigned cpu_id)
 {
   clib_mem_main_t *mm = &clib_mem_main;
   vlib_thread_main_t *tm = &vlib_thread_main;
@@ -641,10 +643,10 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
       /* If the user requested a NUMA heap, create it... */
       if (tm->numa_heap_size)
 	{
-	  clib_mem_set_numa_affinity (w->numa_id, 1 /* force */ );
-	  numa_heap = clib_mem_create_heap (0 /* DIY */ , tm->numa_heap_size,
-					    1 /* is_locked */ ,
-					    "numa %u heap", w->numa_id);
+	  clib_mem_set_numa_affinity (w->numa_id, 1 /* force */);
+	  numa_heap = clib_mem_create_heap (0 /* DIY */, tm->numa_heap_size,
+					    1 /* is_locked */, "numa %u heap",
+					    w->numa_id);
 	  clib_mem_set_default_numa_affinity ();
 	  mm->per_numa_mheaps[w->numa_id] = numa_heap;
 	}
@@ -664,7 +666,7 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
       CPU_ZERO (&cpuset);
       CPU_SET (cpu_id, &cpuset);
 
-      if (pthread_create (&worker, NULL /* attr */ , fp_arg, (void *) w))
+      if (pthread_create (&worker, NULL /* attr */, fp_arg, (void *) w))
 	return clib_error_return_unix (0, "pthread_create");
 
       if (pthread_setaffinity_np (worker, sizeof (cpu_set_t), &cpuset))
@@ -675,7 +677,7 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
 }
 
 static clib_error_t *
-start_workers (vlib_main_t * vm)
+start_workers (vlib_main_t *vm)
 {
   int i, j;
   vlib_worker_thread_t *w;
@@ -760,10 +762,9 @@ start_workers (vlib_main_t * vm)
 	      vec_add2 (vlib_worker_threads, w, 1);
 	      /* Currently unused, may not really work */
 	      if (tr->mheap_size)
-		w->thread_mheap = clib_mem_create_heap (0, tr->mheap_size,
-							/* unlocked */ 0,
-							"%s%d heap",
-							tr->name, k);
+		w->thread_mheap = clib_mem_create_heap (
+		  0, tr->mheap_size,
+		  /* unlocked */ 0, "%s%d heap", tr->name, k);
 	      else
 		w->thread_mheap = main_heap;
 
@@ -791,8 +792,8 @@ start_workers (vlib_main_t * vm)
 
 	      vm_clone->thread_index = worker_thread_index;
 	      vm_clone->heap_base = w->thread_mheap;
-	      vm_clone->heap_aligned_base = (void *)
-		(((uword) w->thread_mheap) & ~(VLIB_FRAME_ALIGN - 1));
+	      vm_clone->heap_aligned_base =
+		(void *) (((uword) w->thread_mheap) & ~(VLIB_FRAME_ALIGN - 1));
 	      vm_clone->init_functions_called =
 		hash_create (0, /* value bytes */ 0);
 	      vm_clone->pending_rpc_requests = 0;
@@ -800,17 +801,17 @@ start_workers (vlib_main_t * vm)
 	      _vec_len (vm_clone->pending_rpc_requests) = 0;
 	      clib_memset (&vm_clone->random_buffer, 0,
 			   sizeof (vm_clone->random_buffer));
-	      clib_spinlock_init
-		(&vm_clone->worker_thread_main_loop_callback_lock);
-	      clib_callback_data_init
-		(&vm_clone->vlib_node_runtime_perf_callbacks,
-		 &vm_clone->worker_thread_main_loop_callback_lock);
+	      clib_spinlock_init (
+		&vm_clone->worker_thread_main_loop_callback_lock);
+	      clib_callback_data_init (
+		&vm_clone->vlib_node_runtime_perf_callbacks,
+		&vm_clone->worker_thread_main_loop_callback_lock);
 
 	      nm = &vlib_mains[0]->node_main;
 	      nm_clone = &vm_clone->node_main;
 	      /* fork next frames array, preserving node runtime indices */
-	      nm_clone->next_frames = vec_dup_aligned (nm->next_frames,
-						       CLIB_CACHE_LINE_BYTES);
+	      nm_clone->next_frames =
+		vec_dup_aligned (nm->next_frames, CLIB_CACHE_LINE_BYTES);
 	      for (j = 0; j < vec_len (nm_clone->next_frames); j++)
 		{
 		  vlib_next_frame_t *nf = &nm_clone->next_frames[j];
@@ -851,15 +852,15 @@ start_workers (vlib_main_t * vm)
 				 CLIB_CACHE_LINE_BYTES);
 	      vec_foreach (rt,
 			   nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL])
-	      {
-		vlib_node_t *n = vlib_get_node (vm, rt->node_index);
-		rt->thread_index = vm_clone->thread_index;
-		/* copy initial runtime_data from node */
-		if (n->runtime_data && n->runtime_data_bytes > 0)
-		  clib_memcpy (rt->runtime_data, n->runtime_data,
-			       clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
-					 n->runtime_data_bytes));
-	      }
+		{
+		  vlib_node_t *n = vlib_get_node (vm, rt->node_index);
+		  rt->thread_index = vm_clone->thread_index;
+		  /* copy initial runtime_data from node */
+		  if (n->runtime_data && n->runtime_data_bytes > 0)
+		    clib_memcpy (rt->runtime_data, n->runtime_data,
+				 clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
+					   n->runtime_data_bytes));
+		}
 
 	      nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT] =
 		vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
@@ -868,33 +869,33 @@ start_workers (vlib_main_t * vm)
 		&nm_clone->interrupts,
 		vec_len (nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT]));
 	      vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
-	      {
-		vlib_node_t *n = vlib_get_node (vm, rt->node_index);
-		rt->thread_index = vm_clone->thread_index;
-		/* copy initial runtime_data from node */
-		if (n->runtime_data && n->runtime_data_bytes > 0)
-		  clib_memcpy (rt->runtime_data, n->runtime_data,
-			       clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
-					 n->runtime_data_bytes));
-	      }
+		{
+		  vlib_node_t *n = vlib_get_node (vm, rt->node_index);
+		  rt->thread_index = vm_clone->thread_index;
+		  /* copy initial runtime_data from node */
+		  if (n->runtime_data && n->runtime_data_bytes > 0)
+		    clib_memcpy (rt->runtime_data, n->runtime_data,
+				 clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
+					   n->runtime_data_bytes));
+		}
 
 	      nm_clone->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT] =
 		vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT],
 				 CLIB_CACHE_LINE_BYTES);
 	      vec_foreach (rt,
 			   nm_clone->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT])
-	      {
-		vlib_node_t *n = vlib_get_node (vm, rt->node_index);
-		rt->thread_index = vm_clone->thread_index;
-		/* copy initial runtime_data from node */
-		if (n->runtime_data && n->runtime_data_bytes > 0)
-		  clib_memcpy (rt->runtime_data, n->runtime_data,
-			       clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
-					 n->runtime_data_bytes));
-	      }
+		{
+		  vlib_node_t *n = vlib_get_node (vm, rt->node_index);
+		  rt->thread_index = vm_clone->thread_index;
+		  /* copy initial runtime_data from node */
+		  if (n->runtime_data && n->runtime_data_bytes > 0)
+		    clib_memcpy (rt->runtime_data, n->runtime_data,
+				 clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
+					   n->runtime_data_bytes));
+		}
 
-	      nm_clone->processes = vec_dup_aligned (nm->processes,
-						     CLIB_CACHE_LINE_BYTES);
+	      nm_clone->processes =
+		vec_dup_aligned (nm->processes, CLIB_CACHE_LINE_BYTES);
 
 	      /* Create per-thread frame freelist */
 	      nm_clone->frame_sizes = vec_new (vlib_frame_size_t, 1);
@@ -903,21 +904,22 @@ start_workers (vlib_main_t * vm)
 #endif
 	      nm_clone->node_by_error = nm->node_by_error;
 
-	      /* Packet trace buffers are guaranteed to be empty, nothing to do here */
+	      /* Packet trace buffers are guaranteed to be empty, nothing to do
+	       * here */
 
 	      clib_mem_set_heap (oldheap);
 	      vec_add1_aligned (vlib_mains, vm_clone, CLIB_CACHE_LINE_BYTES);
 
 	      /* Switch to the stats segment ... */
 	      void *oldheap = vlib_stats_push_heap (0);
-	      vm_clone->error_main.counters = vec_dup_aligned
-		(vlib_mains[0]->error_main.counters, CLIB_CACHE_LINE_BYTES);
+	      vm_clone->error_main.counters = vec_dup_aligned (
+		vlib_mains[0]->error_main.counters, CLIB_CACHE_LINE_BYTES);
 	      vlib_stats_pop_heap2 (vm_clone->error_main.counters,
 				    worker_thread_index, oldheap, 1);
 
-	      vm_clone->error_main.counters_last_clear = vec_dup_aligned
-		(vlib_mains[0]->error_main.counters_last_clear,
-		 CLIB_CACHE_LINE_BYTES);
+	      vm_clone->error_main.counters_last_clear =
+		vec_dup_aligned (vlib_mains[0]->error_main.counters_last_clear,
+				 CLIB_CACHE_LINE_BYTES);
 
 	      worker_thread_index++;
 	    }
@@ -935,10 +937,9 @@ start_workers (vlib_main_t * vm)
 	      vec_add2 (vlib_worker_threads, w, 1);
 	      if (tr->mheap_size)
 		{
-		  w->thread_mheap = clib_mem_create_heap (0, tr->mheap_size,
-							  /* locked */ 0,
-							  "%s%d heap",
-							  tr->name, j);
+		  w->thread_mheap = clib_mem_create_heap (
+		    0, tr->mheap_size,
+		    /* locked */ 0, "%s%d heap", tr->name, j);
 		}
 	      else
 		w->thread_mheap = main_heap;
@@ -970,8 +971,8 @@ start_workers (vlib_main_t * vm)
 	  for (j = 0; j < tr->count; j++)
 	    {
 	      w = vlib_worker_threads + worker_thread_index++;
-	      err = vlib_launch_thread_int (vlib_worker_thread_bootstrap_fn,
-					    w, 0);
+	      err =
+		vlib_launch_thread_int (vlib_worker_thread_bootstrap_fn, w, 0);
 	      if (err)
 		clib_error_report (err);
 	    }
@@ -979,15 +980,16 @@ start_workers (vlib_main_t * vm)
       else
 	{
 	  uword c;
-          /* *INDENT-OFF* */
-          clib_bitmap_foreach (c, tr->coremask)  {
-            w = vlib_worker_threads + worker_thread_index++;
-	    err = vlib_launch_thread_int (vlib_worker_thread_bootstrap_fn,
-					  w, c);
-	    if (err)
-	      clib_error_report (err);
-          }
-          /* *INDENT-ON* */
+	  /* *INDENT-OFF* */
+	  clib_bitmap_foreach (c, tr->coremask)
+	    {
+	      w = vlib_worker_threads + worker_thread_index++;
+	      err =
+		vlib_launch_thread_int (vlib_worker_thread_bootstrap_fn, w, c);
+	      if (err)
+		clib_error_report (err);
+	    }
+	  /* *INDENT-ON* */
 	}
     }
   vlib_worker_thread_barrier_sync (vm);
@@ -997,7 +999,6 @@ start_workers (vlib_main_t * vm)
 
 VLIB_MAIN_LOOP_ENTER_FUNCTION (start_workers);
 
-
 static inline void
 worker_thread_node_runtime_update_internal (void)
 {
@@ -1006,11 +1007,9 @@ worker_thread_node_runtime_update_internal (void)
   vlib_node_main_t *nm, *nm_clone;
   vlib_main_t *vm_clone;
   vlib_node_runtime_t *rt;
-  never_inline void
-    vlib_node_runtime_sync_stats (vlib_main_t * vm,
-				  vlib_node_runtime_t * r,
-				  uword n_calls,
-				  uword n_vectors, uword n_clocks);
+  never_inline void vlib_node_runtime_sync_stats (
+    vlib_main_t * vm, vlib_node_runtime_t * r, uword n_calls, uword n_vectors,
+    uword n_clocks);
 
   ASSERT (vlib_get_thread_index () == 0);
 
@@ -1049,7 +1048,6 @@ worker_thread_node_runtime_update_internal (void)
   /* Per-worker clone rebuilds are now done on each thread */
 }
 
-
 void
 vlib_worker_thread_node_refork (void)
 {
@@ -1087,8 +1085,8 @@ vlib_worker_thread_node_refork (void)
 
   nm_clone = &vm_clone->node_main;
   vec_free (nm_clone->next_frames);
-  nm_clone->next_frames = vec_dup_aligned (nm->next_frames,
-					   CLIB_CACHE_LINE_BYTES);
+  nm_clone->next_frames =
+    vec_dup_aligned (nm->next_frames, CLIB_CACHE_LINE_BYTES);
 
   for (j = 0; j < vec_len (nm_clone->next_frames); j++)
     {
@@ -1149,23 +1147,21 @@ vlib_worker_thread_node_refork (void)
 
   vec_free (old_nodes_clone);
 
-
   /* re-clone internal nodes */
   old_rt = nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL];
-  nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL] =
-    vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL],
-		     CLIB_CACHE_LINE_BYTES);
+  nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL] = vec_dup_aligned (
+    nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL], CLIB_CACHE_LINE_BYTES);
 
   vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL])
-  {
-    vlib_node_t *n = vlib_get_node (vm, rt->node_index);
-    rt->thread_index = vm_clone->thread_index;
-    /* copy runtime_data, will be overwritten later for existing rt */
-    if (n->runtime_data && n->runtime_data_bytes > 0)
-      clib_memcpy_fast (rt->runtime_data, n->runtime_data,
-			clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
-				  n->runtime_data_bytes));
-  }
+    {
+      vlib_node_t *n = vlib_get_node (vm, rt->node_index);
+      rt->thread_index = vm_clone->thread_index;
+      /* copy runtime_data, will be overwritten later for existing rt */
+      if (n->runtime_data && n->runtime_data_bytes > 0)
+	clib_memcpy_fast (
+	  rt->runtime_data, n->runtime_data,
+	  clib_min (VLIB_NODE_RUNTIME_DATA_SIZE, n->runtime_data_bytes));
+    }
 
   for (j = 0; j < vec_len (old_rt); j++)
     {
@@ -1179,23 +1175,22 @@ vlib_worker_thread_node_refork (void)
 
   /* re-clone input nodes */
   old_rt = nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT];
-  nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT] =
-    vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
-		     CLIB_CACHE_LINE_BYTES);
+  nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT] = vec_dup_aligned (
+    nm->nodes_by_type[VLIB_NODE_TYPE_INPUT], CLIB_CACHE_LINE_BYTES);
   clib_interrupt_resize (
     &nm_clone->interrupts,
     vec_len (nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT]));
 
   vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
-  {
-    vlib_node_t *n = vlib_get_node (vm, rt->node_index);
-    rt->thread_index = vm_clone->thread_index;
-    /* copy runtime_data, will be overwritten later for existing rt */
-    if (n->runtime_data && n->runtime_data_bytes > 0)
-      clib_memcpy_fast (rt->runtime_data, n->runtime_data,
-			clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
-				  n->runtime_data_bytes));
-  }
+    {
+      vlib_node_t *n = vlib_get_node (vm, rt->node_index);
+      rt->thread_index = vm_clone->thread_index;
+      /* copy runtime_data, will be overwritten later for existing rt */
+      if (n->runtime_data && n->runtime_data_bytes > 0)
+	clib_memcpy_fast (
+	  rt->runtime_data, n->runtime_data,
+	  clib_min (VLIB_NODE_RUNTIME_DATA_SIZE, n->runtime_data_bytes));
+    }
 
   for (j = 0; j < vec_len (old_rt); j++)
     {
@@ -1209,20 +1204,19 @@ vlib_worker_thread_node_refork (void)
 
   /* re-clone pre-input nodes */
   old_rt = nm_clone->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT];
-  nm_clone->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT] =
-    vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT],
-		     CLIB_CACHE_LINE_BYTES);
+  nm_clone->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT] = vec_dup_aligned (
+    nm->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT], CLIB_CACHE_LINE_BYTES);
 
   vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT])
-  {
-    vlib_node_t *n = vlib_get_node (vm, rt->node_index);
-    rt->thread_index = vm_clone->thread_index;
-    /* copy runtime_data, will be overwritten later for existing rt */
-    if (n->runtime_data && n->runtime_data_bytes > 0)
-      clib_memcpy_fast (rt->runtime_data, n->runtime_data,
-			clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
-				  n->runtime_data_bytes));
-  }
+    {
+      vlib_node_t *n = vlib_get_node (vm, rt->node_index);
+      rt->thread_index = vm_clone->thread_index;
+      /* copy runtime_data, will be overwritten later for existing rt */
+      if (n->runtime_data && n->runtime_data_bytes > 0)
+	clib_memcpy_fast (
+	  rt->runtime_data, n->runtime_data,
+	  clib_min (VLIB_NODE_RUNTIME_DATA_SIZE, n->runtime_data_bytes));
+    }
 
   for (j = 0; j < vec_len (old_rt); j++)
     {
@@ -1234,8 +1228,7 @@ vlib_worker_thread_node_refork (void)
 
   vec_free (old_rt);
 
-  nm_clone->processes = vec_dup_aligned (nm->processes,
-					 CLIB_CACHE_LINE_BYTES);
+  nm_clone->processes = vec_dup_aligned (nm->processes, CLIB_CACHE_LINE_BYTES);
   nm_clone->node_by_error = nm->node_by_error;
 }
 
@@ -1250,21 +1243,21 @@ vlib_worker_thread_node_runtime_update (void)
 }
 
 u32
-unformat_sched_policy (unformat_input_t * input, va_list * args)
+unformat_sched_policy (unformat_input_t *input, va_list *args)
 {
   u32 *r = va_arg (*args, u32 *);
 
-  if (0);
-#define _(v,f,s) else if (unformat (input, s)) *r = SCHED_POLICY_##f;
+  if (0)
+    ;
+#define _(v, f, s) else if (unformat (input, s)) *r = SCHED_POLICY_##f;
   foreach_sched_policy
 #undef _
-    else
-    return 0;
+    else return 0;
   return 1;
 }
 
 static clib_error_t *
-cpu_config (vlib_main_t * vm, unformat_input_t * input)
+cpu_config (vlib_main_t *vm, unformat_input_t *input)
 {
   vlib_thread_registration_t *tr;
   uword *p;
@@ -1275,7 +1268,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 
   tm->thread_registrations_by_name = hash_create_string (0, sizeof (uword));
 
-  tm->n_thread_stacks = 1;	/* account for main thread */
+  tm->n_thread_stacks = 1; /* account for main thread */
   tm->sched_policy = ~0;
   tm->sched_priority = ~0;
   tm->main_lcore = ~0;
@@ -1298,13 +1291,13 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "skip-cores %u", &tm->skip_cores))
 	;
-      else if (unformat (input, "numa-heap-size %U",
-			 unformat_memory_size, &tm->numa_heap_size))
+      else if (unformat (input, "numa-heap-size %U", unformat_memory_size,
+			 &tm->numa_heap_size))
 	;
-      else if (unformat (input, "coremask-%s %U", &name,
-			 unformat_bitmap_mask, &bitmap) ||
-	       unformat (input, "corelist-%s %U", &name,
-			 unformat_bitmap_list, &bitmap))
+      else if (unformat (input, "coremask-%s %U", &name, unformat_bitmap_mask,
+			 &bitmap) ||
+	       unformat (input, "corelist-%s %U", &name, unformat_bitmap_list,
+			 &bitmap))
 	{
 	  p = hash_get_mem (tm->thread_registrations_by_name, name);
 	  if (p == 0)
@@ -1313,21 +1306,17 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	  tr = (vlib_thread_registration_t *) p[0];
 
 	  if (tr->use_pthreads)
-	    return clib_error_return (0,
-				      "corelist cannot be set for '%s' threads",
-				      name);
+	    return clib_error_return (
+	      0, "corelist cannot be set for '%s' threads", name);
 	  if (tr->count)
-	    return clib_error_return
-	      (0, "core placement of '%s' threads is already configured",
-	       name);
+	    return clib_error_return (
+	      0, "core placement of '%s' threads is already configured", name);
 
 	  tr->coremask = bitmap;
 	  tr->count = clib_bitmap_count_set_bits (tr->coremask);
 	}
-      else
-	if (unformat
-	    (input, "scheduler-policy %U", unformat_sched_policy,
-	     &tm->sched_policy))
+      else if (unformat (input, "scheduler-policy %U", unformat_sched_policy,
+			 &tm->sched_policy))
 	;
       else if (unformat (input, "scheduler-priority %u", &tm->sched_priority))
 	;
@@ -1340,11 +1329,11 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	  tr = (vlib_thread_registration_t *) p[0];
 
 	  if (tr->fixed_count)
-	    return clib_error_return
-	      (0, "number of '%s' threads not configurable", name);
+	    return clib_error_return (
+	      0, "number of '%s' threads not configurable", name);
 	  if (tr->count)
-	    return clib_error_return
-	      (0, "number of '%s' threads is already configured", name);
+	    return clib_error_return (
+	      0, "number of '%s' threads is already configured", name);
 
 	  tr->count = count;
 	}
@@ -1365,10 +1354,10 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	}
       else
 	{
-	  return clib_error_return
-	    (0,
-	     "scheduling priority (%d) is not allowed for `normal` scheduling policy",
-	     tm->sched_priority);
+	  return clib_error_return (0,
+				    "scheduling priority (%d) is not allowed "
+				    "for `normal` scheduling policy",
+				    tm->sched_priority);
 	}
     }
   tr = tm->next;
@@ -1418,12 +1407,12 @@ vlib_worker_thread_fork_fixup (vlib_fork_fixup_t which)
   vlib_worker_thread_barrier_release (vm);
 }
 
-  /*
-   * Enforce minimum open time to minimize packet loss due to Rx overflow,
-   * based on a test based heuristic that barrier should be open for at least
-   * 3 time as long as it is closed (with an upper bound of 1ms because by that
-   *  point it is probably too late to make a difference)
-   */
+/*
+ * Enforce minimum open time to minimize packet loss due to Rx overflow,
+ * based on a test based heuristic that barrier should be open for at least
+ * 3 time as long as it is closed (with an upper bound of 1ms because by that
+ *  point it is probably too late to make a difference)
+ */
 
 #ifndef BARRIER_MINIMUM_OPEN_LIMIT
 #define BARRIER_MINIMUM_OPEN_LIMIT 0.001
@@ -1434,7 +1423,7 @@ vlib_worker_thread_fork_fixup (vlib_fork_fixup_t which)
 #endif
 
 void
-vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t * vm)
+vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t *vm)
 {
   f64 deadline;
   f64 now = vlib_time_now (vm);
@@ -1471,7 +1460,7 @@ vlib_worker_thread_barrier_held (void)
 }
 
 void
-vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
+vlib_worker_thread_barrier_sync_int (vlib_main_t *vm, const char *func_name)
 {
   f64 deadline;
   f64 now;
@@ -1503,7 +1492,7 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
 
   if (PREDICT_FALSE (vec_len (vm->barrier_perf_callbacks) != 0))
     clib_call_callbacks (vm->barrier_perf_callbacks, vm,
-			 vm->clib_time.last_cpu_time, 0 /* enter */ );
+			 vm->clib_time.last_cpu_time, 0 /* enter */);
 
   /*
    * Need data to decide if we're working hard enough to honor
@@ -1511,9 +1500,8 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
    */
   max_vector_rate = 0.0;
   for (i = 1; i < vec_len (vlib_mains); i++)
-    max_vector_rate =
-      clib_max (max_vector_rate,
-		(f64) vlib_last_vectors_per_main_loop (vlib_mains[i]));
+    max_vector_rate = clib_max (
+      max_vector_rate, (f64) vlib_last_vectors_per_main_loop (vlib_mains[i]));
 
   vlib_worker_threads[0].barrier_sync_count++;
 
@@ -1532,12 +1520,11 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
 	  /* Barrier hold-down timer expired? */
 	  if (now >= vm->barrier_no_close_before)
 	    break;
-	  if ((vm->barrier_no_close_before - now)
-	      > (2.0 * BARRIER_MINIMUM_OPEN_LIMIT))
+	  if ((vm->barrier_no_close_before - now) >
+	      (2.0 * BARRIER_MINIMUM_OPEN_LIMIT))
 	    {
-	      clib_warning
-		("clock change: would have waited for %.4f seconds",
-		 (vm->barrier_no_close_before - now));
+	      clib_warning ("clock change: would have waited for %.4f seconds",
+			    (vm->barrier_no_close_before - now));
 	      break;
 	    }
 	}
@@ -1561,11 +1548,10 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
   t_closed = now - vm->barrier_epoch;
 
   barrier_trace_sync (t_entry, t_open, t_closed);
-
 }
 
 void
-vlib_worker_thread_barrier_release (vlib_main_t * vm)
+vlib_worker_thread_barrier_release (vlib_main_t *vm)
 {
   f64 deadline;
   f64 now;
@@ -1579,7 +1565,6 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
     return;
 
   ASSERT (vlib_get_thread_index () == 0);
-
 
   now = vlib_time_now (vm);
   t_entry = now - vm->barrier_epoch;
@@ -1670,7 +1655,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 
   if (PREDICT_FALSE (vec_len (vm->barrier_perf_callbacks) != 0))
     clib_call_callbacks (vm->barrier_perf_callbacks, vm,
-			 vm->clib_time.last_cpu_time, 1 /* leave */ );
+			 vm->clib_time.last_cpu_time, 1 /* leave */);
 }
 
 /**
@@ -1714,7 +1699,7 @@ vlib_worker_wait_one_loop (void)
  * the handoff node.
  */
 int
-vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm)
+vlib_frame_queue_dequeue (vlib_main_t *vm, vlib_frame_queue_main_t *fqm)
 {
   u32 thread_id = vm->thread_index;
   vlib_frame_queue_t *fq = fqm->vlib_frame_queues[thread_id];
@@ -1863,8 +1848,8 @@ vlib_worker_thread_fn (void *arg)
   clib_time_init (&vm->clib_time);
   clib_mem_set_heap (w->thread_mheap);
 
-  e = vlib_call_init_exit_functions_no_sort
-    (vm, &vm->worker_init_function_registrations, 1 /* call_once */ );
+  e = vlib_call_init_exit_functions_no_sort (
+    vm, &vm->worker_init_function_registrations, 1 /* call_once */);
   if (e)
     clib_error_report (e);
 
@@ -1895,7 +1880,7 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
   if (frame_queue_nelts == 0)
     frame_queue_nelts = FRAME_QUEUE_MAX_NELTS;
 
-  num_threads = 1 /* main thread */  + tm->n_threads;
+  num_threads = 1 /* main thread */ + tm->n_threads;
   ASSERT (frame_queue_nelts >= 8 + num_threads);
 
   vec_add2 (tm->frame_queue_mains, fqm, 1);
@@ -1925,7 +1910,7 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
 }
 
 int
-vlib_thread_cb_register (struct vlib_main_t *vm, vlib_thread_callbacks_t * cb)
+vlib_thread_cb_register (struct vlib_main_t *vm, vlib_thread_callbacks_t *cb)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
@@ -1938,8 +1923,7 @@ vlib_thread_cb_register (struct vlib_main_t *vm, vlib_thread_callbacks_t * cb)
 }
 
 void
-vlib_process_signal_event_mt_helper (vlib_process_signal_event_mt_args_t *
-				     args)
+vlib_process_signal_event_mt_helper (vlib_process_signal_event_mt_args_t *args)
 {
   ASSERT (vlib_get_thread_index () == 0);
   vlib_process_signal_event (vlib_get_main (), args->node_index,
@@ -1949,7 +1933,7 @@ vlib_process_signal_event_mt_helper (vlib_process_signal_event_mt_args_t *
 void *rpc_call_main_thread_cb_fn;
 
 void
-vlib_rpc_call_main_thread (void *callback, u8 * args, u32 arg_size)
+vlib_rpc_call_main_thread (void *callback, u8 *args, u32 arg_size)
 {
   if (rpc_call_main_thread_cb_fn)
     {
@@ -1961,17 +1945,16 @@ vlib_rpc_call_main_thread (void *callback, u8 * args, u32 arg_size)
 }
 
 clib_error_t *
-threads_init (vlib_main_t * vm)
+threads_init (vlib_main_t *vm)
 {
   return 0;
 }
 
 VLIB_INIT_FUNCTION (threads_init);
 
-
 static clib_error_t *
-show_clock_command_fn (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+show_clock_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   int i;
   int verbose = 0;
@@ -1979,12 +1962,11 @@ show_clock_command_fn (vlib_main_t * vm,
 
   (void) unformat (input, "verbose %=", &verbose, 1);
 
-  clib_timebase_init (tb, 0 /* GMT */ , CLIB_TIMEBASE_DAYLIGHT_NONE,
+  clib_timebase_init (tb, 0 /* GMT */, CLIB_TIMEBASE_DAYLIGHT_NONE,
 		      &vm->clib_time);
 
-  vlib_cli_output (vm, "%U, %U GMT", format_clib_time, &vm->clib_time,
-		   verbose, format_clib_timebase_time,
-		   clib_timebase_now (tb));
+  vlib_cli_output (vm, "%U, %U GMT", format_clib_time, &vm->clib_time, verbose,
+		   format_clib_timebase_time, clib_timebase_now (tb));
 
   if (vec_len (vlib_mains) == 1)
     return 0;
@@ -2003,30 +1985,10 @@ show_clock_command_fn (vlib_main_t * vm,
       vlib_cli_output (vm, "Thread %d offset %.9f error %.9f", i,
 		       vlib_mains[i]->time_offset,
 		       vm->time_last_barrier_release -
-		       vlib_mains[i]->time_last_barrier_release);
+			 vlib_mains[i]->time_last_barrier_release);
     }
   return 0;
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (f_command, static) =
-{
-  .path = "show clock",
-  .short_help = "show clock",
-  .function = show_clock_command_fn,
-};
-/* *INDENT-ON* */
-
-vlib_thread_main_t *
-vlib_get_thread_main_not_inline (void)
-{
-  return vlib_get_thread_main ();
-}
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+VLIB_CLI_COMMAND (

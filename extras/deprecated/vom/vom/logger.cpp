@@ -30,8 +30,7 @@ const log_level_t log_level_t::DEBUG(0, "debug");
 
 log_level_t::log_level_t(int v, const std::string& s)
   : enum_base<log_level_t>(v, s)
-{
-}
+{}
 
 static log_t slog;
 
@@ -44,8 +43,7 @@ logger()
 log_t::log_t()
   : m_level(log_level_t::ERROR)
   , m_handler(new cout_handler())
-{
-}
+{}
 
 void
 log_t::set(const log_level_t& level)
@@ -95,8 +93,7 @@ log_t::entry::entry(const char* file,
   , m_function(function)
   , m_level(level)
   , m_line(line)
-{
-}
+{}
 
 log_t::entry::~entry()
 {

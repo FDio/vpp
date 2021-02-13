@@ -23,8 +23,8 @@
 
 typedef struct certificate_
 {
-  u32 *app_interests;		/* vec of application index asking for deletion cb */
-  u32 cert_key_index;		/* index in cert & key pool */
+  u32 *app_interests; /* vec of application index asking for deletion cb */
+  u32 cert_key_index; /* index in cert & key pool */
   u8 *key;
   u8 *cert;
 } app_cert_key_pair_t;
@@ -38,57 +38,57 @@ typedef struct session_cb_vft_
   int (*del_segment_callback) (u32 app_wrk_index, u64 segment_handle);
 
   /** Notify server of newly accepted session */
-  int (*session_accept_callback) (session_t * new_session);
+  int (*session_accept_callback) (session_t *new_session);
 
   /** Connection request callback */
   int (*session_connected_callback) (u32 app_wrk_index, u32 opaque,
-				     session_t * s, session_error_t code);
+				     session_t *s, session_error_t code);
 
   /** Notify app that session is closing */
-  void (*session_disconnect_callback) (session_t * s);
+  void (*session_disconnect_callback) (session_t *s);
 
   /** Notify app that transport is closed */
-  void (*session_transport_closed_callback) (session_t * s);
+  void (*session_transport_closed_callback) (session_t *s);
 
   /** Notify app that session or transport are about to be removed */
-  void (*session_cleanup_callback) (session_t * s, session_cleanup_ntf_t ntf);
+  void (*session_cleanup_callback) (session_t *s, session_cleanup_ntf_t ntf);
 
   /** Notify app that session was reset */
-  void (*session_reset_callback) (session_t * s);
+  void (*session_reset_callback) (session_t *s);
 
   /** Notify app that session pool migration happened */
-  void (*session_migrate_callback) (session_t * s, session_handle_t new_sh);
+  void (*session_migrate_callback) (session_t *s, session_handle_t new_sh);
 
   /** Direct RX callback for built-in application */
-  int (*builtin_app_rx_callback) (session_t * session);
+  int (*builtin_app_rx_callback) (session_t *session);
 
   /** Direct TX callback for built-in application */
-  int (*builtin_app_tx_callback) (session_t * session);
+  int (*builtin_app_tx_callback) (session_t *session);
 
   /** Cert and key pair delete notification */
-  int (*app_cert_key_pair_delete_callback) (app_cert_key_pair_t * ckpair);
+  int (*app_cert_key_pair_delete_callback) (app_cert_key_pair_t *ckpair);
 
   /** Delegate fifo-tuning-logic to application */
-  int (*fifo_tuning_callback) (session_t * s, svm_fifo_t * f,
+  int (*fifo_tuning_callback) (session_t *s, svm_fifo_t *f,
 			       session_ft_action_t act, u32 bytes);
 
 } session_cb_vft_t;
 
-#define foreach_app_init_args			\
-  _(u32, api_client_index)			\
-  _(u8 *, name)					\
-  _(u64 *, options)				\
-  _(u8 *, namespace_id)				\
-  _(session_cb_vft_t *, session_cb_vft)		\
-  _(u32, app_index)				\
-  _(u8, use_sock_api)				\
+#define foreach_app_init_args                                                 \
+  _ (u32, api_client_index)                                                   \
+  _ (u8 *, name)                                                              \
+  _ (u64 *, options)                                                          \
+  _ (u8 *, namespace_id)                                                      \
+  _ (session_cb_vft_t *, session_cb_vft)                                      \
+  _ (u32, app_index)                                                          \
+  _ (u8, use_sock_api)
 
 typedef struct _vnet_app_attach_args_t
 {
 #define _(_type, _name) _type _name;
   foreach_app_init_args
 #undef _
-  ssvm_private_t * segment;
+    ssvm_private_t *segment;
   svm_msg_q_t *app_evt_q;
   u64 segment_handle;
 } vnet_app_attach_args_t;
@@ -125,10 +125,10 @@ typedef struct _vnet_unlisten_args_t
   union
   {
     char *uri;
-    u64 handle;			/**< Session handle */
+    u64 handle; /**< Session handle */
   };
-  u32 app_index;		/**< Owning application index */
-  u32 wrk_map_index;		/**< App's local pool worker index */
+  u32 app_index;     /**< Owning application index */
+  u32 wrk_map_index; /**< App's local pool worker index */
 } vnet_unlisten_args_t;
 
 typedef struct _vnet_connect_args
@@ -185,11 +185,11 @@ typedef struct _vnet_app_add_cert_key_pair_args_
 
 typedef struct crypto_ctx_
 {
-  u32 ctx_index;		/**< index in crypto context pool */
-  u32 n_subscribers;		/**< refcount of sessions using said context */
-  u32 ckpair_index;		/**< certificate & key */
+  u32 ctx_index;     /**< index in crypto context pool */
+  u32 n_subscribers; /**< refcount of sessions using said context */
+  u32 ckpair_index;  /**< certificate & key */
   u8 crypto_engine;
-  void *data;			/**< protocol specific data */
+  void *data; /**< protocol specific data */
 } crypto_context_t;
 
 /* Application attach options */
@@ -216,15 +216,15 @@ typedef enum
   APP_OPTIONS_N_OPTIONS
 } app_attach_options_index_t;
 
-#define foreach_app_options_flags				\
-  _(ACCEPT_REDIRECT, "Use FIFO with redirects")			\
-  _(ADD_SEGMENT, "Add segment and signal app if needed")	\
-  _(IS_BUILTIN, "Application is builtin")			\
-  _(IS_TRANSPORT_APP, "Application is a transport proto")	\
-  _(IS_PROXY, "Application is proxying")			\
-  _(USE_GLOBAL_SCOPE, "App can use global session scope")	\
-  _(USE_LOCAL_SCOPE, "App can use local session scope")		\
-  _(EVT_MQ_USE_EVENTFD, "Use eventfds for signaling")		\
+#define foreach_app_options_flags                                             \
+  _ (ACCEPT_REDIRECT, "Use FIFO with redirects")                              \
+  _ (ADD_SEGMENT, "Add segment and signal app if needed")                     \
+  _ (IS_BUILTIN, "Application is builtin")                                    \
+  _ (IS_TRANSPORT_APP, "Application is a transport proto")                    \
+  _ (IS_PROXY, "Application is proxying")                                     \
+  _ (USE_GLOBAL_SCOPE, "App can use global session scope")                    \
+  _ (USE_LOCAL_SCOPE, "App can use local session scope")                      \
+  _ (EVT_MQ_USE_EVENTFD, "Use eventfds for signaling")
 
 typedef enum _app_options
 {
@@ -240,18 +240,18 @@ typedef enum _app_options_flags
 #undef _
 } app_options_flags_t;
 
-#define foreach_fd_type						\
-  _(VPP_MQ_SEGMENT, "Fd for vpp's event mq segment")		\
-  _(MEMFD_SEGMENT, "Fd for memfd segment")			\
-  _(MQ_EVENTFD, "Event fd used by message queue")		\
-  _(VPP_MQ_EVENTFD, "Event fd used by vpp's message queue")	\
+#define foreach_fd_type                                                       \
+  _ (VPP_MQ_SEGMENT, "Fd for vpp's event mq segment")                         \
+  _ (MEMFD_SEGMENT, "Fd for memfd segment")                                   \
+  _ (MQ_EVENTFD, "Event fd used by message queue")                            \
+  _ (VPP_MQ_EVENTFD, "Event fd used by vpp's message queue")
 
 typedef enum session_fd_type_
 {
 #define _(sym, str) SESSION_FD_##sym,
   foreach_fd_type
 #undef _
-  SESSION_N_FD_TYPE
+    SESSION_N_FD_TYPE
 } session_fd_type_t;
 
 typedef enum session_fd_flag_
@@ -261,41 +261,41 @@ typedef enum session_fd_flag_
 #undef _
 } session_fd_flag_t;
 
-int parse_uri (char *uri, session_endpoint_cfg_t * sep);
+int parse_uri (char *uri, session_endpoint_cfg_t *sep);
 int vnet_bind_uri (vnet_listen_args_t *);
-int vnet_unbind_uri (vnet_unlisten_args_t * a);
-int vnet_connect_uri (vnet_connect_args_t * a);
+int vnet_unbind_uri (vnet_unlisten_args_t *a);
+int vnet_connect_uri (vnet_connect_args_t *a);
 
-int vnet_application_attach (vnet_app_attach_args_t * a);
-int vnet_application_detach (vnet_app_detach_args_t * a);
-int vnet_listen (vnet_listen_args_t * a);
-int vnet_connect (vnet_connect_args_t * a);
-int vnet_unlisten (vnet_unlisten_args_t * a);
-int vnet_disconnect_session (vnet_disconnect_args_t * a);
+int vnet_application_attach (vnet_app_attach_args_t *a);
+int vnet_application_detach (vnet_app_detach_args_t *a);
+int vnet_listen (vnet_listen_args_t *a);
+int vnet_connect (vnet_connect_args_t *a);
+int vnet_unlisten (vnet_unlisten_args_t *a);
+int vnet_disconnect_session (vnet_disconnect_args_t *a);
 
-int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t * a);
+int vnet_app_add_cert_key_pair (vnet_app_add_cert_key_pair_args_t *a);
 int vnet_app_del_cert_key_pair (u32 index);
 /** Ask for app cb on pair deletion */
 int vnet_app_add_cert_key_interest (u32 index, u32 app_index);
 
 typedef struct app_session_transport_
 {
-  ip46_address_t rmt_ip;	/**< remote ip */
-  ip46_address_t lcl_ip;	/**< local ip */
-  u16 rmt_port;			/**< remote port (network order) */
-  u16 lcl_port;			/**< local port (network order) */
-  u8 is_ip4;			/**< set if uses ip4 networking */
+  ip46_address_t rmt_ip; /**< remote ip */
+  ip46_address_t lcl_ip; /**< local ip */
+  u16 rmt_port;		 /**< remote port (network order) */
+  u16 lcl_port;		 /**< local port (network order) */
+  u8 is_ip4;		 /**< set if uses ip4 networking */
 } app_session_transport_t;
 
-#define foreach_app_session_field					\
-  _(svm_fifo_t, *rx_fifo)		/**< rx fifo */			\
-  _(svm_fifo_t, *tx_fifo)		/**< tx fifo */			\
-  _(session_type_t, session_type)	/**< session type */		\
-  _(volatile u8, session_state)		/**< session state */		\
-  _(u32, session_index)			/**< index in owning pool */	\
-  _(app_session_transport_t, transport)	/**< transport info */		\
-  _(svm_msg_q_t, *vpp_evt_q)		/**< vpp event queue  */	\
-  _(u8, is_dgram)			/**< flag for dgram mode */	\
+#define foreach_app_session_field                                             \
+  _ (svm_fifo_t, *rx_fifo)		 /**< rx fifo */                      \
+  _ (svm_fifo_t, *tx_fifo)		 /**< tx fifo */                      \
+  _ (session_type_t, session_type)	 /**< session type */                 \
+  _ (volatile u8, session_state)	 /**< session state */                \
+  _ (u32, session_index)		 /**< index in owning pool */         \
+  _ (app_session_transport_t, transport) /**< transport info */               \
+  _ (svm_msg_q_t, *vpp_evt_q)		 /**< vpp event queue  */             \
+  _ (u8, is_dgram)			 /**< flag for dgram mode */
 
 typedef struct
 {
@@ -307,7 +307,7 @@ typedef struct
 typedef struct session_listen_msg_
 {
   u32 client_index;
-  u32 context;			/* Not needed but keeping it for compatibility with bapi */
+  u32 context; /* Not needed but keeping it for compatibility with bapi */
   u32 wrk_index;
   u32 vrf;
   u16 port;
@@ -412,8 +412,8 @@ typedef struct session_connect_uri_msg_
   u8 uri[56];
 } __clib_packed session_connect_uri_msg_t;
 
-STATIC_ASSERT (sizeof (session_connect_uri_msg_t) <=
-	       SESSION_CTRL_MSG_MAX_SIZE, "msg too large");
+STATIC_ASSERT (sizeof (session_connect_uri_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,
+	       "msg too large");
 
 typedef struct session_connected_msg_
 {
@@ -530,9 +530,9 @@ typedef struct session_cleanup_msg_
 
 typedef struct session_app_wrk_rpc_msg_
 {
-  u32 client_index;	/**< app client index */
-  u32 wrk_index;	/**< dst worker index */
-  u8 data[64];		/**< rpc data */
+  u32 client_index; /**< app client index */
+  u32 wrk_index;    /**< dst worker index */
+  u8 data[64];	    /**< rpc data */
 } __clib_packed session_app_wrk_rpc_msg_t;
 
 typedef struct app_session_event_
@@ -542,11 +542,10 @@ typedef struct app_session_event_
 } __clib_packed app_session_evt_t;
 
 static inline void
-app_alloc_ctrl_evt_to_vpp (svm_msg_q_t * mq, app_session_evt_t * app_evt,
+app_alloc_ctrl_evt_to_vpp (svm_msg_q_t *mq, app_session_evt_t *app_evt,
 			   u8 evt_type)
 {
-  svm_msg_q_lock_and_alloc_msg_w_ring (mq,
-				       SESSION_MQ_CTRL_EVT_RING,
+  svm_msg_q_lock_and_alloc_msg_w_ring (mq, SESSION_MQ_CTRL_EVT_RING,
 				       SVM_Q_WAIT, &app_evt->msg);
   app_evt->evt = svm_msg_q_msg_data (mq, &app_evt->msg);
   clib_memset (app_evt->evt, 0, sizeof (*app_evt->evt));
@@ -554,7 +553,7 @@ app_alloc_ctrl_evt_to_vpp (svm_msg_q_t * mq, app_session_evt_t * app_evt,
 }
 
 static inline void
-app_send_ctrl_evt_to_vpp (svm_msg_q_t * mq, app_session_evt_t * app_evt)
+app_send_ctrl_evt_to_vpp (svm_msg_q_t *mq, app_session_evt_t *app_evt)
 {
   svm_msg_q_add_and_unlock (mq, &app_evt->msg);
 }
@@ -572,7 +571,7 @@ app_send_ctrl_evt_to_vpp (svm_msg_q_t * mq, app_session_evt_t * app_evt)
  * @return		0 if success, negative integer otherwise
  */
 static inline int
-app_send_io_evt_to_vpp (svm_msg_q_t * mq, u32 session_index, u8 evt_type,
+app_send_io_evt_to_vpp (svm_msg_q_t *mq, u32 session_index, u8 evt_type,
 			u8 noblock)
 {
   session_event_t *evt;
@@ -582,8 +581,8 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, u32 session_index, u8 evt_type,
     {
       if (svm_msg_q_try_lock (mq))
 	return -1;
-      if (PREDICT_FALSE (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)
-			 || svm_msg_q_is_full (mq)))
+      if (PREDICT_FALSE (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING) ||
+			 svm_msg_q_is_full (mq)))
 	{
 	  svm_msg_q_unlock (mq);
 	  return -2;
@@ -598,8 +597,8 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, u32 session_index, u8 evt_type,
   else
     {
       svm_msg_q_lock (mq);
-      while (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)
-	     || svm_msg_q_is_full (mq))
+      while (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING) ||
+	     svm_msg_q_is_full (mq))
 	svm_msg_q_wait (mq, SVM_MQ_WAIT_FULL);
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
@@ -611,8 +610,8 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, u32 session_index, u8 evt_type,
 }
 
 always_inline int
-app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
-		    svm_msg_q_t * vpp_evt_q, u8 * data, u32 len, u8 evt_type,
+app_send_dgram_raw (svm_fifo_t *f, app_session_transport_t *at,
+		    svm_msg_q_t *vpp_evt_q, u8 *data, u32 len, u8 evt_type,
 		    u8 do_evt, u8 noblock)
 {
   session_dgram_hdr_t hdr;
@@ -629,11 +628,9 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
   clib_memcpy_fast (&hdr.lcl_ip, &at->lcl_ip, sizeof (ip46_address_t));
   hdr.lcl_port = at->lcl_port;
 
-  /* *INDENT-OFF* */
-  svm_fifo_seg_t segs[2] = {{ (u8 *) &hdr, sizeof (hdr) }, { data, len }};
-  /* *INDENT-ON* */
+  svm_fifo_seg_t segs[2] = { { (u8 *) &hdr, sizeof (hdr) }, { data, len } };
 
-  rv = svm_fifo_enqueue_segments (f, segs, 2, 0 /* allow partial */ );
+  rv = svm_fifo_enqueue_segments (f, segs, 2, 0 /* allow partial */);
   if (PREDICT_FALSE (rv < 0))
     return 0;
 
@@ -647,16 +644,15 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
 }
 
 always_inline int
-app_send_dgram (app_session_t * s, u8 * data, u32 len, u8 noblock)
+app_send_dgram (app_session_t *s, u8 *data, u32 len, u8 noblock)
 {
   return app_send_dgram_raw (s->tx_fifo, &s->transport, s->vpp_evt_q, data,
-			     len, SESSION_IO_EVT_TX, 1 /* do_evt */ ,
-			     noblock);
+			     len, SESSION_IO_EVT_TX, 1 /* do_evt */, noblock);
 }
 
 always_inline int
-app_send_stream_raw (svm_fifo_t * f, svm_msg_q_t * vpp_evt_q, u8 * data,
-		     u32 len, u8 evt_type, u8 do_evt, u8 noblock)
+app_send_stream_raw (svm_fifo_t *f, svm_msg_q_t *vpp_evt_q, u8 *data, u32 len,
+		     u8 evt_type, u8 do_evt, u8 noblock)
 {
   int rv;
 
@@ -671,14 +667,14 @@ app_send_stream_raw (svm_fifo_t * f, svm_msg_q_t * vpp_evt_q, u8 * data,
 }
 
 always_inline int
-app_send_stream (app_session_t * s, u8 * data, u32 len, u8 noblock)
+app_send_stream (app_session_t *s, u8 *data, u32 len, u8 noblock)
 {
   return app_send_stream_raw (s->tx_fifo, s->vpp_evt_q, data, len,
-			      SESSION_IO_EVT_TX, 1 /* do_evt */ , noblock);
+			      SESSION_IO_EVT_TX, 1 /* do_evt */, noblock);
 }
 
 always_inline int
-app_send (app_session_t * s, u8 * data, u32 len, u8 noblock)
+app_send (app_session_t *s, u8 *data, u32 len, u8 noblock)
 {
   if (s->is_dgram)
     return app_send_dgram (s, data, len, noblock);
@@ -686,8 +682,8 @@ app_send (app_session_t * s, u8 * data, u32 len, u8 noblock)
 }
 
 always_inline int
-app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
-		    app_session_transport_t * at, u8 clear_evt, u8 peek)
+app_recv_dgram_raw (svm_fifo_t *f, u8 *buf, u32 len,
+		    app_session_transport_t *at, u8 clear_evt, u8 peek)
 {
   session_dgram_pre_hdr_t ph;
   u32 max_deq;
@@ -704,12 +700,12 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
   if (clear_evt)
     svm_fifo_unset_event (f);
 
-  svm_fifo_peek (f, 0, sizeof (ph), (u8 *) & ph);
+  svm_fifo_peek (f, 0, sizeof (ph), (u8 *) &ph);
   ASSERT (ph.data_length >= ph.data_offset);
 
   /* Check if we have the full dgram */
-  if (max_deq < (ph.data_length + SESSION_CONN_HDR_LEN)
-      && len >= ph.data_length)
+  if (max_deq < (ph.data_length + SESSION_CONN_HDR_LEN) &&
+      len >= ph.data_length)
     return 0;
 
   svm_fifo_peek (f, sizeof (ph), sizeof (*at), (u8 *) at);
@@ -725,13 +721,13 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
 }
 
 always_inline int
-app_recv_dgram (app_session_t * s, u8 * buf, u32 len)
+app_recv_dgram (app_session_t *s, u8 *buf, u32 len)
 {
   return app_recv_dgram_raw (s->rx_fifo, buf, len, &s->transport, 1, 0);
 }
 
 always_inline int
-app_recv_stream_raw (svm_fifo_t * f, u8 * buf, u32 len, u8 clear_evt, u8 peek)
+app_recv_stream_raw (svm_fifo_t *f, u8 *buf, u32 len, u8 clear_evt, u8 peek)
 {
   if (clear_evt)
     svm_fifo_unset_event (f);
@@ -743,29 +739,27 @@ app_recv_stream_raw (svm_fifo_t * f, u8 * buf, u32 len, u8 clear_evt, u8 peek)
 }
 
 always_inline int
-app_recv_stream (app_session_t * s, u8 * buf, u32 len)
+app_recv_stream (app_session_t *s, u8 *buf, u32 len)
 {
   return app_recv_stream_raw (s->rx_fifo, buf, len, 1, 0);
 }
 
 always_inline int
-app_recv (app_session_t * s, u8 * data, u32 len)
+app_recv (app_session_t *s, u8 *data, u32 len)
 {
   if (s->is_dgram)
     return app_recv_dgram (s, data, len);
   return app_recv_stream (s, data, len);
 }
 
-/* *INDENT-OFF* */
 static char *session_error_str[] = {
 #define _(sym, str) str,
-    foreach_session_error
+  foreach_session_error
 #undef _
 };
-/* *INDENT-ON* */
 
 static inline u8 *
-format_session_error (u8 * s, va_list * args)
+format_session_error (u8 *s, va_list *args)
 {
   session_error_t error = va_arg (*args, session_error_t);
   if (-error >= 0 && -error < SESSION_N_ERRORS)
@@ -796,7 +790,7 @@ typedef struct app_sapi_attach_msg_
 } __clib_packed app_sapi_attach_msg_t;
 
 STATIC_ASSERT (sizeof (u64) * APP_OPTIONS_N_OPTIONS <=
-	       sizeof (((app_sapi_attach_msg_t *) 0)->options),
+		 sizeof (((app_sapi_attach_msg_t *) 0)->options),
 	       "Out of options, fix message definition");
 
 typedef struct app_sapi_attach_reply_msg_

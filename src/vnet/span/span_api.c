@@ -26,11 +26,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -42,13 +42,13 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                             \
-_(SW_INTERFACE_SPAN_ENABLE_DISABLE, sw_interface_span_enable_disable)   \
-_(SW_INTERFACE_SPAN_DUMP, sw_interface_span_dump)                       \
+#define foreach_vpe_api_msg                                                   \
+  _ (SW_INTERFACE_SPAN_ENABLE_DISABLE, sw_interface_span_enable_disable)      \
+  _ (SW_INTERFACE_SPAN_DUMP, sw_interface_span_dump)
 
 static void
-  vl_api_sw_interface_span_enable_disable_t_handler
-  (vl_api_sw_interface_span_enable_disable_t * mp)
+vl_api_sw_interface_span_enable_disable_t_handler (
+  vl_api_sw_interface_span_enable_disable_t *mp)
 {
   vl_api_sw_interface_span_enable_disable_reply_t *rmp;
   int rv;
@@ -63,7 +63,7 @@ static void
 }
 
 static void
-vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
+vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t *mp)
 {
 
   vl_api_registration_t *reg;
@@ -76,35 +76,35 @@ vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
     return;
 
   span_feat_t sf = mp->is_l2 ? SPAN_FEAT_L2 : SPAN_FEAT_DEVICE;
-  /* *INDENT-OFF* */
+
   vec_foreach (si, sm->interfaces)
-  {
-    span_mirror_t * rxm = &si->mirror_rxtx[sf][VLIB_RX];
-    span_mirror_t * txm = &si->mirror_rxtx[sf][VLIB_TX];
-    if (rxm->num_mirror_ports || txm->num_mirror_ports)
     {
-      clib_bitmap_t *b;
-      u32 i;
-      b = clib_bitmap_dup_or (rxm->mirror_ports, txm->mirror_ports);
-      clib_bitmap_foreach (i, b)
-        {
-          rmp = vl_msg_api_alloc (sizeof (*rmp));
-          clib_memset (rmp, 0, sizeof (*rmp));
-          rmp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_SPAN_DETAILS);
-          rmp->context = mp->context;
+      span_mirror_t *rxm = &si->mirror_rxtx[sf][VLIB_RX];
+      span_mirror_t *txm = &si->mirror_rxtx[sf][VLIB_TX];
+      if (rxm->num_mirror_ports || txm->num_mirror_ports)
+	{
+	  clib_bitmap_t *b;
+	  u32 i;
+	  b = clib_bitmap_dup_or (rxm->mirror_ports, txm->mirror_ports);
+	  clib_bitmap_foreach (i, b)
+	    {
+	      rmp = vl_msg_api_alloc (sizeof (*rmp));
+	      clib_memset (rmp, 0, sizeof (*rmp));
+	      rmp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_SPAN_DETAILS);
+	      rmp->context = mp->context;
 
-          rmp->sw_if_index_from = htonl (si - sm->interfaces);
-          rmp->sw_if_index_to = htonl (i);
-          rmp->state = htonl ((clib_bitmap_get (rxm->mirror_ports, i) +
-                             clib_bitmap_get (txm->mirror_ports, i) * 2));
-	  rmp->is_l2 = mp->is_l2;
+	      rmp->sw_if_index_from = htonl (si - sm->interfaces);
+	      rmp->sw_if_index_to = htonl (i);
+	      rmp->state =
+		htonl ((clib_bitmap_get (rxm->mirror_ports, i) +
+			clib_bitmap_get (txm->mirror_ports, i) * 2));
+	      rmp->is_l2 = mp->is_l2;
 
-          vl_api_send_msg (reg, (u8 *) rmp);
-        }
-      clib_bitmap_free (b);
+	      vl_api_send_msg (reg, (u8 *) rmp);
+	    }
+	  clib_bitmap_free (b);
+	}
     }
-    }
-  /* *INDENT-ON* */
 }
 
 /*
@@ -119,25 +119,22 @@ vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_span;
 #undef _
 }
 
 static clib_error_t *
-span_api_hookup (vlib_main_t * vm)
+span_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_vpe_api_msg;
 #undef _
 

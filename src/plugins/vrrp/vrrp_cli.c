@@ -15,11 +15,9 @@
 #include <vlibmemory/api.h>
 #include <vpp/app/version.h>
 
-
 static clib_error_t *
-vrrp_vr_add_del_command_fn (vlib_main_t * vm,
-			    unformat_input_t * input,
-			    vlib_cli_command_t * cmd, u8 is_add)
+vrrp_vr_add_del_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			    vlib_cli_command_t *cmd, u8 is_add)
 {
   vrrp_main_t *vmp = &vrrp_main;
   vrrp_vr_config_t vr_conf;
@@ -93,7 +91,7 @@ vrrp_vr_add_del_command_fn (vlib_main_t * vm,
 	ret = clib_error_return (0, "Mismatched address families");
     }
 
-  if (ret)			/* data validation failed */
+  if (ret) /* data validation failed */
     goto done;
 
   vr_conf.sw_if_index = sw_if_index;
@@ -121,8 +119,9 @@ vrrp_vr_add_del_command_fn (vlib_main_t * vm,
       break;
 
     case VNET_API_ERROR_ADDRESS_NOT_FOUND_FOR_INTERFACE:
-      ret = clib_error_return (0, "Failed to add VR with priority 255 - "
-			       "VR IP addresses not configured on interface");
+      ret =
+	clib_error_return (0, "Failed to add VR with priority 255 - "
+			      "VR IP addresses not configured on interface");
       goto done;
       break;
 
@@ -145,41 +144,36 @@ done:
 }
 
 static clib_error_t *
-vrrp_vr_add_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			vlib_cli_command_t * cmd)
+vrrp_vr_add_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
-  return vrrp_vr_add_del_command_fn (vm, input, cmd, 1 /* is_add */ );
+  return vrrp_vr_add_del_command_fn (vm, input, cmd, 1 /* is_add */);
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (vrrp_vr_add_command, static) =
-{
+VLIB_CLI_COMMAND (vrrp_vr_add_command, static) = {
   .path = "vrrp vr add",
   .short_help =
-  "vrrp vr add <interface> [vr_id <n>] [ipv6] [priority <value>] [interval <value>] [no_preempt] [accept_mode] [unicast] [<ip_addr> ...]",
+    "vrrp vr add <interface> [vr_id <n>] [ipv6] [priority <value>] [interval "
+    "<value>] [no_preempt] [accept_mode] [unicast] [<ip_addr> ...]",
   .function = vrrp_vr_add_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-vrrp_vr_del_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			vlib_cli_command_t * cmd)
+vrrp_vr_del_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
-  return vrrp_vr_add_del_command_fn (vm, input, cmd, 0 /* is_add */ );
+  return vrrp_vr_add_del_command_fn (vm, input, cmd, 0 /* is_add */);
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (vrrp_vr_del_command, static) =
-{
+VLIB_CLI_COMMAND (vrrp_vr_del_command, static) = {
   .path = "vrrp vr del",
   .short_help = "vrrp vr del <interface> [vr_id <n>] [ipv6]",
   .function = vrrp_vr_del_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-vrrp_show_vr_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+vrrp_show_vr_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   vrrp_main_t *vmp = &vrrp_main;
   vrrp_vr_t *vr;
@@ -197,31 +191,26 @@ vrrp_show_vr_command_fn (vlib_main_t * vm,
     }
 
   pool_foreach (vr, vmp->vrs)
-  {
+    {
 
-    if (sw_if_index && (sw_if_index != ~0) &&
-	(sw_if_index != vr->config.sw_if_index))
-      continue;
-    vlib_cli_output (vm, "%U", format_vrrp_vr, vr);
-  }
+      if (sw_if_index && (sw_if_index != ~0) &&
+	  (sw_if_index != vr->config.sw_if_index))
+	continue;
+      vlib_cli_output (vm, "%U", format_vrrp_vr, vr);
+    }
 
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (vrrp_show_vr_command, static) =
-{
+VLIB_CLI_COMMAND (vrrp_show_vr_command, static) = {
   .path = "show vrrp vr",
-  .short_help =
-  "show vrrp vr [(<intf_name>|sw_if_index <n>)]",
+  .short_help = "show vrrp vr [(<intf_name>|sw_if_index <n>)]",
   .function = vrrp_show_vr_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-vrrp_proto_start_stop_command_fn (vlib_main_t * vm,
-				  unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
+vrrp_proto_start_stop_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				  vlib_cli_command_t *cmd)
 {
   vrrp_main_t *vmp = &vrrp_main;
   vrrp_vr_key_t vr_key;
@@ -284,8 +273,8 @@ vrrp_proto_start_stop_command_fn (vlib_main_t * vm,
 }
 
 static clib_error_t *
-vrrp_peers_command_fn (vlib_main_t * vm, unformat_input_t * input,
-		       vlib_cli_command_t * cmd)
+vrrp_peers_command_fn (vlib_main_t *vm, unformat_input_t *input,
+		       vlib_cli_command_t *cmd)
 {
   vrrp_main_t *vmp = &vrrp_main;
   vrrp_vr_key_t vr_key;
@@ -340,7 +329,7 @@ vrrp_peers_command_fn (vlib_main_t * vm, unformat_input_t * input,
   else if (n_addrs4 && (n_addrs6 || is_ipv6))
     ret = clib_error_return (0, "Mismatched address families");
 
-  if (ret)			/* data validation failed */
+  if (ret) /* data validation failed */
     goto done;
 
   vr_key.sw_if_index = sw_if_index;
@@ -373,30 +362,23 @@ done:
   return ret;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (vrrp_proto_start_stop_command, static) =
-{
+VLIB_CLI_COMMAND (vrrp_proto_start_stop_command, static) = {
   .path = "vrrp proto",
   .short_help =
-  "vrrp proto (start|stop) (<intf_name>|sw_if_index <n>) vr_id <n> [ipv6]",
+    "vrrp proto (start|stop) (<intf_name>|sw_if_index <n>) vr_id <n> [ipv6]",
   .function = vrrp_proto_start_stop_command_fn,
 };
-/* *INDENT-ON* */
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (vrrp_peers_command, static) =
-{
+VLIB_CLI_COMMAND (vrrp_peers_command, static) = {
   .path = "vrrp peers",
-  .short_help =
-  "vrrp peers (<intf_name>|sw_if_index <n>) vr_id <n> [ipv6] <peer1_addr> [<peer2_addr> ...]",
+  .short_help = "vrrp peers (<intf_name>|sw_if_index <n>) vr_id <n> [ipv6] "
+		"<peer1_addr> [<peer2_addr> ...]",
   .function = vrrp_peers_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-vrrp_vr_track_if_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+vrrp_vr_track_if_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			     vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vrrp_main_t *vmp = &vrrp_main;
@@ -429,7 +411,8 @@ vrrp_vr_track_if_command_fn (vlib_main_t * vm,
       else if (unformat (input, "track-index %u priority %u", &track_if_index,
 			 &priority))
 	{
-	  vec_add2 (track_intfs, track_intf, 1);;
+	  vec_add2 (track_intfs, track_intf, 1);
+	  ;
 	  track_intf->sw_if_index = track_if_index;
 	  track_intf->priority = priority;
 	}
@@ -455,31 +438,32 @@ vrrp_vr_track_if_command_fn (vlib_main_t * vm,
     }
 
   vec_foreach (track_intf, track_intfs)
-  {
-    if (!vnet_sw_interface_is_valid (vnm, track_intf->sw_if_index))
-      {
-	ret = clib_error_return (0, "tracked intf sw_if_index %u invalid",
-				 track_intf->sw_if_index);
-	goto done;
-      }
-    if (!track_intf->priority)
-      {
-	ret = clib_error_return (0, "tracked intf priority must be > 0");
-	goto done;
-      }
-    if (track_intf->priority >= vr->config.priority)
-      {
-	ret = clib_error_return (0, "tracked intf priority must be less "
-				 "than VR priority (%u)",
-				 vr->config.priority);
-	goto done;
-      }
-  }
+    {
+      if (!vnet_sw_interface_is_valid (vnm, track_intf->sw_if_index))
+	{
+	  ret = clib_error_return (0, "tracked intf sw_if_index %u invalid",
+				   track_intf->sw_if_index);
+	  goto done;
+	}
+      if (!track_intf->priority)
+	{
+	  ret = clib_error_return (0, "tracked intf priority must be > 0");
+	  goto done;
+	}
+      if (track_intf->priority >= vr->config.priority)
+	{
+	  ret = clib_error_return (0,
+				   "tracked intf priority must be less "
+				   "than VR priority (%u)",
+				   vr->config.priority);
+	  goto done;
+	}
+    }
 
   rv = vrrp_vr_tracking_ifs_add_del (vr, track_intfs, is_add);
   if (rv)
-    ret = clib_error_return (0, "vrrp_vr_tracking_ifs_add_del returned %d",
-			     rv);
+    ret =
+      clib_error_return (0, "vrrp_vr_tracking_ifs_add_del returned %d", rv);
 
 done:
   vec_free (track_intfs);
@@ -487,15 +471,13 @@ done:
   return ret;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (vrrp_vr_track_if_command, static) =
-{
+VLIB_CLI_COMMAND (vrrp_vr_track_if_command, static) = {
   .path = "vrrp vr track-if",
   .short_help =
-  "vrrp vr track-if (add|del) (<intf_name>|sw_if_index <n>) vr_id <n> [ipv6] track-index <n> priority <n> [ track-index <n> priority <n> ...]",
+    "vrrp vr track-if (add|del) (<intf_name>|sw_if_index <n>) vr_id <n> "
+    "[ipv6] track-index <n> priority <n> [ track-index <n> priority <n> ...]",
   .function = vrrp_vr_track_if_command_fn,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

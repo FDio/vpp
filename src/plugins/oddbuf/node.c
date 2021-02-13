@@ -30,7 +30,7 @@ typedef struct
 
 /* packet trace format function */
 static u8 *
-format_oddbuf_trace (u8 * s, va_list * args)
+format_oddbuf_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -45,12 +45,11 @@ vlib_node_registration_t oddbuf_node;
 
 #endif /* CLIB_MARCH_VARIANT */
 
-#define foreach_oddbuf_error \
-_(SWAPPED, "Mac swap packets processed")
+#define foreach_oddbuf_error _ (SWAPPED, "Mac swap packets processed")
 
 typedef enum
 {
-#define _(sym,str) ODDBUF_ERROR_##sym,
+#define _(sym, str) ODDBUF_ERROR_##sym,
   foreach_oddbuf_error
 #undef _
     ODDBUF_N_ERROR,
@@ -58,7 +57,7 @@ typedef enum
 
 #ifndef CLIB_MARCH_VARIANT
 static char *oddbuf_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_oddbuf_error
 #undef _
 };
@@ -70,10 +69,8 @@ typedef enum
   ODDBUF_N_NEXT,
 } oddbuf_next_t;
 
-
 always_inline uword
-oddbuf_inline (vlib_main_t * vm,
-	       vlib_node_runtime_t * node, vlib_frame_t * frame,
+oddbuf_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	       int is_ip4, int is_trace)
 {
   oddbuf_main_t *om = &oddbuf_main;
@@ -89,7 +86,6 @@ oddbuf_inline (vlib_main_t * vm,
   ethernet_header_t *eh;
   ip4_header_t *ip;
   udp_header_t *udp;
-
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -130,8 +126,8 @@ oddbuf_inline (vlib_main_t * vm,
 	  b0->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	  b0->next_buffer = bi;
 
-	  src = b0->data + b0->current_data + b0->current_length -
-	    om->n_to_copy;
+	  src =
+	    b0->data + b0->current_data + b0->current_length - om->n_to_copy;
 	  b0next->current_data = om->second_chunk_offset;
 	  b0next->current_length = om->n_to_copy;
 	  dst = b0next->data + b0next->current_data;
@@ -153,8 +149,7 @@ oddbuf_inline (vlib_main_t * vm,
 	{
 	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
 	    {
-	      oddbuf_trace_t *t =
-		vlib_add_trace (vm, node, b[0], sizeof (*t));
+	      oddbuf_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
 	      t->next_index = next[0];
 	      t->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
 	      t->udp_checksum = clib_net_to_host_u16 (udp->checksum);
@@ -172,18 +167,15 @@ oddbuf_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_NODE_FN (oddbuf_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    vlib_frame_t * frame)
+VLIB_NODE_FN (oddbuf_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-    return oddbuf_inline (vm, node, frame, 1 /* is_ip4 */ ,
-			  1 /* is_trace */ );
+    return oddbuf_inline (vm, node, frame, 1 /* is_ip4 */, 1 /* is_trace */);
   else
-    return oddbuf_inline (vm, node, frame, 1 /* is_ip4 */ ,
-			  0 /* is_trace */ );
+    return oddbuf_inline (vm, node, frame, 1 /* is_ip4 */, 0 /* is_trace */);
 }
 
-/* *INDENT-OFF* */
 #ifndef CLIB_MARCH_VARIANT
 VLIB_REGISTER_NODE (oddbuf_node) =
 {
@@ -203,7 +195,6 @@ VLIB_REGISTER_NODE (oddbuf_node) =
   },
 };
 #endif /* CLIB_MARCH_VARIANT */
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -23,10 +23,10 @@
 nat_affinity_main_t nat_affinity_main;
 
 #define AFFINITY_HASH_BUCKETS 65536
-#define AFFINITY_HASH_MEMORY (2 << 25)
+#define AFFINITY_HASH_MEMORY  (2 << 25)
 
 u8 *
-format_affinity_kvp (u8 * s, va_list * args)
+format_affinity_kvp (u8 *s, va_list *args)
 {
   clib_bihash_kv_16_8_t *v = va_arg (*args, clib_bihash_kv_16_8_t *);
   nat_affinity_key_t k;
@@ -35,9 +35,8 @@ format_affinity_kvp (u8 * s, va_list * args)
   k.as_u64[1] = v->key[1];
 
   s = format (s, "client %U backend %U:%d proto %U index %llu",
-	      format_ip4_address, &k.client_addr,
-	      format_ip4_address, &k.service_addr,
-	      clib_net_to_host_u16 (k.service_port),
+	      format_ip4_address, &k.client_addr, format_ip4_address,
+	      &k.service_addr, clib_net_to_host_u16 (k.service_port),
 	      format_nat_protocol, k.proto);
 
   return s;
@@ -69,7 +68,7 @@ nat_affinity_disable ()
 }
 
 clib_error_t *
-nat_affinity_init (vlib_main_t * vm)
+nat_affinity_init (vlib_main_t *vm)
 {
   nat_affinity_main_t *nam = &nat_affinity_main;
   nam->vlib_main = vm;
@@ -77,7 +76,7 @@ nat_affinity_init (vlib_main_t * vm)
 }
 
 static_always_inline void
-make_affinity_kv (clib_bihash_kv_16_8_t * kv, ip4_address_t client_addr,
+make_affinity_kv (clib_bihash_kv_16_8_t *kv, ip4_address_t client_addr,
 		  ip4_address_t service_addr, u8 proto, u16 service_port)
 {
   nat_affinity_key_t *key = (nat_affinity_key_t *) kv->key;
@@ -117,10 +116,8 @@ nat_affinity_flush_service (u32 affinity_per_service_list_head_index)
 
   clib_spinlock_lock_if_init (&nam->affinity_lock);
 
-  while ((elt_index =
-	  clib_dlist_remove_head (nam->list_pool,
-				  affinity_per_service_list_head_index)) !=
-	 ~0)
+  while ((elt_index = clib_dlist_remove_head (
+	    nam->list_pool, affinity_per_service_list_head_index)) != ~0)
     {
       elt = pool_elt_at_index (nam->list_pool, elt_index);
       a = pool_elt_at_index (nam->affinity_pool, elt->value);
@@ -139,7 +136,7 @@ nat_affinity_flush_service (u32 affinity_per_service_list_head_index)
 int
 nat_affinity_find_and_lock (ip4_address_t client_addr,
 			    ip4_address_t service_addr, u8 proto,
-			    u16 service_port, u8 * backend_index)
+			    u16 service_port, u8 *backend_index)
 {
   nat_affinity_main_t *nam = &nat_affinity_main;
   clib_bihash_kv_16_8_t kv, value;
@@ -178,7 +175,7 @@ unlock:
 }
 
 static int
-affinity_is_expired_cb (clib_bihash_kv_16_8_t * kv, void *arg)
+affinity_is_expired_cb (clib_bihash_kv_16_8_t *kv, void *arg)
 {
   nat_affinity_main_t *nam = &nat_affinity_main;
   nat_affinity_t *a;
@@ -224,9 +221,8 @@ nat_affinity_create_and_lock (ip4_address_t client_addr,
 
   pool_get (nam->affinity_pool, a);
   kv.value = a - nam->affinity_pool;
-  rv =
-    clib_bihash_add_or_overwrite_stale_16_8 (&nam->affinity_hash, &kv,
-					     affinity_is_expired_cb, NULL);
+  rv = clib_bihash_add_or_overwrite_stale_16_8 (&nam->affinity_hash, &kv,
+						affinity_is_expired_cb, NULL);
   if (rv)
     {
       nat_elog_notice ("affinity key add failed");

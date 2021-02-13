@@ -1,17 +1,17 @@
 /*
-* Copyright (c) 2017-2019 Cisco and/or its affiliates.
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at:
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright (c) 2017-2019 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
@@ -20,9 +20,9 @@
 #include <vnet/session/session.h>
 
 #define ECHO_SERVER_DBG (0)
-#define DBG(_fmt, _args...)			\
-    if (ECHO_SERVER_DBG) 				\
-      clib_warning (_fmt, ##_args)
+#define DBG(_fmt, _args...)                                                   \
+  if (ECHO_SERVER_DBG)                                                        \
+  clib_warning (_fmt, ##_args)
 
 typedef struct
 {
@@ -30,34 +30,34 @@ typedef struct
    * Server app parameters
    */
   svm_msg_q_t **vpp_queue;
-  svm_queue_t *vl_input_queue;	/**< Sever's event queue */
+  svm_queue_t *vl_input_queue; /**< Sever's event queue */
 
-  u32 app_index;		/**< Server app index */
-  u32 my_client_index;		/**< API client handle */
-  u32 node_index;		/**< process node index for event scheduling */
+  u32 app_index;       /**< Server app index */
+  u32 my_client_index; /**< API client handle */
+  u32 node_index;      /**< process node index for event scheduling */
 
   /*
    * Config params
    */
-  u8 no_echo;			/**< Don't echo traffic */
-  u32 fifo_size;		/**< Fifo size */
-  u32 rcv_buffer_size;		/**< Rcv buffer size */
-  u32 prealloc_fifos;		/**< Preallocate fifos */
-  u32 private_segment_count;	/**< Number of private segments  */
-  u32 private_segment_size;	/**< Size of private segments  */
-  char *server_uri;		/**< Server URI */
-  u32 tls_engine;		/**< TLS engine: mbedtls/openssl */
-  u32 ckpair_index;		/**< Cert and key for tls/quic */
-  u8 is_dgram;			/**< set if transport is dgram */
+  u8 no_echo;		     /**< Don't echo traffic */
+  u32 fifo_size;	     /**< Fifo size */
+  u32 rcv_buffer_size;	     /**< Rcv buffer size */
+  u32 prealloc_fifos;	     /**< Preallocate fifos */
+  u32 private_segment_count; /**< Number of private segments  */
+  u32 private_segment_size;  /**< Size of private segments  */
+  char *server_uri;	     /**< Server URI */
+  u32 tls_engine;	     /**< TLS engine: mbedtls/openssl */
+  u32 ckpair_index;	     /**< Cert and key for tls/quic */
+  u8 is_dgram;		     /**< set if transport is dgram */
 
   /*
    * Test state
    */
-  u8 **rx_buf;			/**< Per-thread RX buffer */
+  u8 **rx_buf; /**< Per-thread RX buffer */
   u64 byte_index;
   u32 **rx_retries;
   u8 transport_proto;
-  u64 listener_handle;		/**< Session handle of the root listener */
+  u64 listener_handle; /**< Session handle of the root listener */
 
   vlib_main_t *vlib_main;
 } echo_server_main_t;
@@ -65,14 +65,14 @@ typedef struct
 echo_server_main_t echo_server_main;
 
 int
-quic_echo_server_qsession_accept_callback (session_t * s)
+quic_echo_server_qsession_accept_callback (session_t *s)
 {
   DBG ("QSession %u accept w/opaque %d", s->session_index, s->opaque);
   return 0;
 }
 
 int
-quic_echo_server_session_accept_callback (session_t * s)
+quic_echo_server_session_accept_callback (session_t *s)
 {
   echo_server_main_t *esm = &echo_server_main;
   if (s->listener_handle == esm->listener_handle)
@@ -90,7 +90,7 @@ quic_echo_server_session_accept_callback (session_t * s)
 }
 
 int
-echo_server_session_accept_callback (session_t * s)
+echo_server_session_accept_callback (session_t *s)
 {
   echo_server_main_t *esm = &echo_server_main;
   esm->vpp_queue[s->thread_index] =
@@ -104,7 +104,7 @@ echo_server_session_accept_callback (session_t * s)
 }
 
 void
-echo_server_session_disconnect_callback (session_t * s)
+echo_server_session_disconnect_callback (session_t *s)
 {
   echo_server_main_t *esm = &echo_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
@@ -115,7 +115,7 @@ echo_server_session_disconnect_callback (session_t * s)
 }
 
 void
-echo_server_session_reset_callback (session_t * s)
+echo_server_session_reset_callback (session_t *s)
 {
   echo_server_main_t *esm = &echo_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
@@ -127,7 +127,7 @@ echo_server_session_reset_callback (session_t * s)
 
 int
 echo_server_session_connected_callback (u32 app_index, u32 api_context,
-					session_t * s, session_error_t err)
+					session_t *s, session_error_t err)
 {
   clib_warning ("called...");
   return -1;
@@ -148,7 +148,7 @@ echo_server_redirect_connect_callback (u32 client_index, void *mp)
 }
 
 void
-test_bytes (echo_server_main_t * esm, int actual_transfer)
+test_bytes (echo_server_main_t *esm, int actual_transfer)
 {
   int i;
   u32 my_thread_id = vlib_get_thread_index ();
@@ -169,7 +169,7 @@ test_bytes (echo_server_main_t * esm, int actual_transfer)
  * If no-echo, just drop the data and be done with it.
  */
 int
-echo_server_builtin_server_rx_callback_no_echo (session_t * s)
+echo_server_builtin_server_rx_callback_no_echo (session_t *s)
 {
   svm_fifo_t *rx_fifo = s->rx_fifo;
   svm_fifo_dequeue_drop (rx_fifo, svm_fifo_max_dequeue_cons (rx_fifo));
@@ -177,7 +177,7 @@ echo_server_builtin_server_rx_callback_no_echo (session_t * s)
 }
 
 int
-echo_server_rx_callback (session_t * s)
+echo_server_rx_callback (session_t *s)
 {
   u32 n_written, max_dequeue, max_enqueue, max_transfer;
   int actual_transfer;
@@ -202,7 +202,7 @@ echo_server_rx_callback (session_t * s)
   else
     {
       session_dgram_pre_hdr_t ph;
-      svm_fifo_peek (rx_fifo, 0, sizeof (ph), (u8 *) & ph);
+      svm_fifo_peek (rx_fifo, 0, sizeof (ph), (u8 *) &ph);
       max_dequeue = ph.data_length - ph.data_offset;
       if (!esm->vpp_queue[s->thread_index])
 	{
@@ -247,19 +247,15 @@ echo_server_rx_callback (session_t * s)
   vec_validate (esm->rx_buf[thread_index], max_transfer);
   if (!esm->is_dgram)
     {
-      actual_transfer = app_recv_stream_raw (rx_fifo,
-					     esm->rx_buf[thread_index],
-					     max_transfer,
-					     0 /* don't clear event */ ,
-					     0 /* peek */ );
+      actual_transfer =
+	app_recv_stream_raw (rx_fifo, esm->rx_buf[thread_index], max_transfer,
+			     0 /* don't clear event */, 0 /* peek */);
     }
   else
     {
-      actual_transfer = app_recv_dgram_raw (rx_fifo,
-					    esm->rx_buf[thread_index],
-					    max_transfer, &at,
-					    0 /* don't clear event */ ,
-					    0 /* peek */ );
+      actual_transfer =
+	app_recv_dgram_raw (rx_fifo, esm->rx_buf[thread_index], max_transfer,
+			    &at, 0 /* don't clear event */, 0 /* peek */);
     }
   ASSERT (actual_transfer == max_transfer);
   /* test_bytes (esm, actual_transfer); */
@@ -270,19 +266,16 @@ echo_server_rx_callback (session_t * s)
 
   if (!esm->is_dgram)
     {
-      n_written = app_send_stream_raw (tx_fifo,
-				       esm->vpp_queue[thread_index],
-				       esm->rx_buf[thread_index],
-				       actual_transfer, SESSION_IO_EVT_TX,
-				       1 /* do_evt */ , 0);
+      n_written = app_send_stream_raw (
+	tx_fifo, esm->vpp_queue[thread_index], esm->rx_buf[thread_index],
+	actual_transfer, SESSION_IO_EVT_TX, 1 /* do_evt */, 0);
     }
   else
     {
-      n_written = app_send_dgram_raw (tx_fifo, &at,
-				      esm->vpp_queue[s->thread_index],
-				      esm->rx_buf[thread_index],
-				      actual_transfer, SESSION_IO_EVT_TX,
-				      1 /* do_evt */ , 0);
+      n_written =
+	app_send_dgram_raw (tx_fifo, &at, esm->vpp_queue[s->thread_index],
+			    esm->rx_buf[thread_index], actual_transfer,
+			    SESSION_IO_EVT_TX, 1 /* do_evt */, 0);
     }
 
   if (n_written != max_transfer)
@@ -304,7 +297,7 @@ static session_cb_vft_t echo_server_session_cb_vft = {
 };
 
 static int
-echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
+echo_server_attach (u8 *appns_id, u64 appns_flags, u64 appns_secret)
 {
   vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
   echo_server_main_t *esm = &echo_server_main;
@@ -410,7 +403,7 @@ echo_server_listen ()
 }
 
 static int
-echo_server_create (vlib_main_t * vm, u8 * appns_id, u64 appns_flags,
+echo_server_create (vlib_main_t *vm, u8 *appns_id, u64 appns_flags,
 		    u64 appns_secret)
 {
   echo_server_main_t *esm = &echo_server_main;
@@ -418,7 +411,7 @@ echo_server_create (vlib_main_t * vm, u8 * appns_id, u64 appns_flags,
   u32 num_threads;
   int i;
 
-  num_threads = 1 /* main thread */  + vtm->n_threads;
+  num_threads = 1 /* main thread */ + vtm->n_threads;
   vec_validate (echo_server_main.vpp_queue, num_threads - 1);
   vec_validate (esm->rx_buf, num_threads - 1);
   vec_validate (esm->rx_retries, num_threads - 1);
@@ -445,8 +438,8 @@ echo_server_create (vlib_main_t * vm, u8 * appns_id, u64 appns_flags,
 }
 
 static clib_error_t *
-echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+echo_server_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   echo_server_main_t *esm = &echo_server_main;
   u8 server_uri_set = 0, *appns_id = 0;
@@ -483,15 +476,15 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 unformat_memory_size, &tmp))
 	{
 	  if (tmp >= 0x100000000ULL)
-	    return clib_error_return
-	      (0, "private segment size %lld (%llu) too large", tmp, tmp);
+	    return clib_error_return (
+	      0, "private segment size %lld (%llu) too large", tmp, tmp);
 	  esm->private_segment_size = tmp;
 	}
       else if (unformat (input, "appns %_%v%_", &appns_id))
 	;
       else if (unformat (input, "all-scope"))
-	appns_flags |= (APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE
-			| APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE);
+	appns_flags |= (APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE |
+			APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE);
       else if (unformat (input, "local-scope"))
 	appns_flags |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
       else if (unformat (input, "global-scope"))
@@ -509,7 +502,7 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (is_stop)
     {
-      if (esm->app_index == (u32) ~ 0)
+      if (esm->app_index == (u32) ~0)
 	{
 	  clib_warning ("server not running");
 	  return clib_error_return (0, "failed: server not running");
@@ -523,7 +516,7 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       return 0;
     }
 
-  vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
+  vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */);
 
   if (!server_uri_set)
     {
@@ -547,20 +540,18 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (echo_server_create_command, static) =
-{
+VLIB_CLI_COMMAND (echo_server_create_command, static) = {
   .path = "test echo server",
-  .short_help = "test echo server proto <proto> [no echo][fifo-size <mbytes>]"
-      "[rcv-buf-size <bytes>][prealloc-fifos <count>]"
-      "[private-segment-count <count>][private-segment-size <bytes[m|g]>]"
-      "[uri <tcp://ip/port>]",
+  .short_help =
+    "test echo server proto <proto> [no echo][fifo-size <mbytes>]"
+    "[rcv-buf-size <bytes>][prealloc-fifos <count>]"
+    "[private-segment-count <count>][private-segment-size <bytes[m|g]>]"
+    "[uri <tcp://ip/port>]",
   .function = echo_server_create_command_fn,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-echo_server_main_init (vlib_main_t * vm)
+echo_server_main_init (vlib_main_t *vm)
 {
   echo_server_main_t *esm = &echo_server_main;
   esm->my_client_index = ~0;
@@ -570,9 +561,9 @@ echo_server_main_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (echo_server_main_init);
 
 /*
-* fd.io coding-style-patch-verification: ON
-*
-* Local Variables:
-* eval: (c-set-style "gnu")
-* End:
-*/
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

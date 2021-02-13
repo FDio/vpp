@@ -28,16 +28,16 @@
 #include <vppinfra/error.h>
 
 void
-dpdk_device_error (dpdk_device_t * xd, char *str, int rv)
+dpdk_device_error (dpdk_device_t *xd, char *str, int rv)
 {
-  dpdk_log_err ("Interface %U error %d: %s",
-		format_dpdk_device_name, xd->port_id, rv, rte_strerror (rv));
-  xd->errors = clib_error_return (xd->errors, "%s[port:%d, errno:%d]: %s",
-				  str, xd->port_id, rv, rte_strerror (rv));
+  dpdk_log_err ("Interface %U error %d: %s", format_dpdk_device_name,
+		xd->port_id, rv, rte_strerror (rv));
+  xd->errors = clib_error_return (xd->errors, "%s[port:%d, errno:%d]: %s", str,
+				  xd->port_id, rv, rte_strerror (rv));
 }
 
 void
-dpdk_device_setup (dpdk_device_t * xd)
+dpdk_device_setup (dpdk_device_t *xd)
 {
   dpdk_main_t *dm = &dpdk_main;
   vlib_main_t *vm = vlib_get_main ();
@@ -88,8 +88,8 @@ dpdk_device_setup (dpdk_device_t * xd)
       xd->port_conf.rxmode.offloads ^= bitmap;
     }
 
-  rv = rte_eth_dev_configure (xd->port_id, xd->rx_q_used,
-			      xd->tx_q_used, &xd->port_conf);
+  rv = rte_eth_dev_configure (xd->port_id, xd->rx_q_used, xd->tx_q_used,
+			      &xd->port_conf);
 
   if (rv < 0)
     {
@@ -101,16 +101,13 @@ dpdk_device_setup (dpdk_device_t * xd)
 			CLIB_CACHE_LINE_BYTES);
   for (j = 0; j < xd->tx_q_used; j++)
     {
-      rv =
-	rte_eth_tx_queue_setup (xd->port_id, j, xd->nb_tx_desc,
-				xd->cpu_socket, &xd->tx_conf);
+      rv = rte_eth_tx_queue_setup (xd->port_id, j, xd->nb_tx_desc,
+				   xd->cpu_socket, &xd->tx_conf);
 
       /* retry with any other CPU socket */
       if (rv < 0)
-	rv =
-	  rte_eth_tx_queue_setup (xd->port_id, j,
-				  xd->nb_tx_desc, SOCKET_ID_ANY,
-				  &xd->tx_conf);
+	rv = rte_eth_tx_queue_setup (xd->port_id, j, xd->nb_tx_desc,
+				     SOCKET_ID_ANY, &xd->tx_conf);
       if (rv < 0)
 	dpdk_device_error (xd, "rte_eth_tx_queue_setup", rv);
 
@@ -161,7 +158,7 @@ error:
 }
 
 void
-dpdk_device_start (dpdk_device_t * xd)
+dpdk_device_start (dpdk_device_t *xd)
 {
   int rv;
 
@@ -190,12 +187,11 @@ dpdk_device_start (dpdk_device_t * xd)
 
   rte_eth_allmulticast_enable (xd->port_id);
 
-  dpdk_log_info ("Interface %U started",
-		 format_dpdk_device_name, xd->port_id);
+  dpdk_log_info ("Interface %U started", format_dpdk_device_name, xd->port_id);
 }
 
 void
-dpdk_device_stop (dpdk_device_t * xd)
+dpdk_device_stop (dpdk_device_t *xd)
 {
   if (xd->flags & DPDK_DEVICE_FLAG_PMD_INIT_FAIL)
     return;
@@ -204,11 +200,10 @@ dpdk_device_stop (dpdk_device_t * xd)
   rte_eth_dev_stop (xd->port_id);
   clib_memset (&xd->link, 0, sizeof (struct rte_eth_link));
 
-  dpdk_log_info ("Interface %U stopped",
-		 format_dpdk_device_name, xd->port_id);
+  dpdk_log_info ("Interface %U stopped", format_dpdk_device_name, xd->port_id);
 }
 
-void vl_api_force_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
+void vl_api_force_rpc_call_main_thread (void *fp, u8 *data, u32 data_length);
 
 always_inline int
 dpdk_port_state_callback_inline (dpdk_portid_t port_id,
@@ -226,10 +221,10 @@ dpdk_port_state_callback_inline (dpdk_portid_t port_id,
   rte_eth_link_get_nowait (port_id, &link);
   u8 link_up = link.link_status;
   if (link_up)
-    dpdk_log_info ("Port %d Link Up - speed %u Mbps - %s",
-		   port_id, (unsigned) link.link_speed,
-		   (link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
-		   "full-duplex" : "half-duplex");
+    dpdk_log_info ("Port %d Link Up - speed %u Mbps - %s", port_id,
+		   (unsigned) link.link_speed,
+		   (link.link_duplex == ETH_LINK_FULL_DUPLEX) ? "full-duplex" :
+								"half-duplex");
   else
     dpdk_log_info ("Port %d Link Down\n\n", port_id);
 
@@ -237,8 +232,7 @@ dpdk_port_state_callback_inline (dpdk_portid_t port_id,
 }
 
 int
-dpdk_port_state_callback (dpdk_portid_t port_id,
-			  enum rte_eth_event_type type,
+dpdk_port_state_callback (dpdk_portid_t port_id, enum rte_eth_event_type type,
 			  void *param,
 			  void *ret_param __attribute__ ((unused)))
 {

@@ -21,17 +21,14 @@
 #include <tracedump/graph.api_enum.h>
 #include <tracedump/graph.api_types.h>
 
-#define REPLY_MSG_ID_BASE	gmp->msg_id_base
+#define REPLY_MSG_ID_BASE gmp->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
 #include <tracedump/graph.h>
 
-
 graph_main_t graph_main;
 
-
-#define MIN(x,y)	(((x) < (y)) ? (x) : (y))
-
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
 /*
  * If ever the graph or set of nodes changes, this cache of
@@ -45,7 +42,6 @@ graph_node_invalid_cache (void)
   vec_free (gmp->sorted_node_vec);
 }
 
-
 static clib_error_t *
 graph_node_cache_reaper (u32 client_index)
 {
@@ -55,10 +51,9 @@ graph_node_cache_reaper (u32 client_index)
 
 VL_MSG_API_REAPER_FUNCTION (graph_node_cache_reaper);
 
-
 static void
-send_graph_node_reply (vl_api_registration_t * rp,
-		       u32 context, u32 retval, u32 cursor)
+send_graph_node_reply (vl_api_registration_t *rp, u32 context, u32 retval,
+		       u32 cursor)
 {
   graph_main_t *gmp = &graph_main;
   vl_api_graph_node_get_reply_t *rmp;
@@ -72,11 +67,9 @@ send_graph_node_reply (vl_api_registration_t * rp,
   vl_api_send_msg (rp, (u8 *) rmp);
 }
 
-
 static void
-send_graph_node_details (vlib_node_main_t * nm,
-			 vl_api_registration_t * reg,
-			 u32 context, vlib_node_t * n, bool want_arcs)
+send_graph_node_details (vlib_node_main_t *nm, vl_api_registration_t *reg,
+			 u32 context, vlib_node_t *n, bool want_arcs)
 {
   graph_main_t *gmp = &graph_main;
   vl_api_graph_node_details_t *mp;
@@ -114,7 +107,6 @@ send_graph_node_details (vlib_node_main_t * nm,
   vl_api_send_msg (reg, (u8 *) mp);
 }
 
-
 static int
 node_cmp (void *a1, void *a2)
 {
@@ -123,7 +115,6 @@ node_cmp (void *a1, void *a2)
 
   return vec_cmp (n1[0]->name, n2[0]->name);
 }
-
 
 /*
  * When cursor == ~0, it begins a request:
@@ -138,7 +129,7 @@ node_cmp (void *a1, void *a2)
  *    The next results resume from cursor.
  */
 static void
-vl_api_graph_node_get_t_handler (vl_api_graph_node_get_t * mp)
+vl_api_graph_node_get_t_handler (vl_api_graph_node_get_t *mp)
 {
   vl_api_registration_t *rp;
 
@@ -154,7 +145,7 @@ vl_api_graph_node_get_t_handler (vl_api_graph_node_get_t * mp)
   u32 node_index;
   bool want_arcs;
 
-  want_arcs = ! !mp->want_arcs;
+  want_arcs = !!mp->want_arcs;
   cursor = ntohl (mp->cursor);
   n = 0;
 
@@ -168,8 +159,8 @@ vl_api_graph_node_get_t_handler (vl_api_graph_node_get_t * mp)
 	n = vlib_get_node (vm, node_index);
       if (!n)
 	{
-	  send_graph_node_reply (rp, mp->context,
-				 VNET_API_ERROR_NO_SUCH_ENTRY, ~0);
+	  send_graph_node_reply (rp, mp->context, VNET_API_ERROR_NO_SUCH_ENTRY,
+				 ~0);
 	  return;
 	}
       send_graph_node_details (nm, rp, mp->context, n, want_arcs);
@@ -185,8 +176,8 @@ vl_api_graph_node_get_t_handler (vl_api_graph_node_get_t * mp)
       n = vlib_get_node_by_name (vm, (u8 *) mp->name);
       if (!n)
 	{
-	  send_graph_node_reply (rp, mp->context,
-				 VNET_API_ERROR_NO_SUCH_ENTRY, ~0);
+	  send_graph_node_reply (rp, mp->context, VNET_API_ERROR_NO_SUCH_ENTRY,
+				 ~0);
 	  return;
 	}
 
@@ -240,12 +231,11 @@ vl_api_graph_node_get_t_handler (vl_api_graph_node_get_t * mp)
   send_graph_node_reply (rp, mp->context, 0, ~0);
 }
 
-
 #include <vnet/format_fns.h>
 #include <tracedump/graph.api.c>
 
 static clib_error_t *
-graph_api_hookup (vlib_main_t * vm)
+graph_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
   graph_main_t *gmp = &graph_main;

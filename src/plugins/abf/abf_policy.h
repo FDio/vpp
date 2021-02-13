@@ -84,8 +84,8 @@ extern fib_node_type_t abf_policy_fib_node_type;
  * @param rpaths The set of paths to add to the forwarding set
  * @return error code
  */
-extern int abf_policy_update (u32 policy_id,
-			      u32 acl_index, const fib_route_path_t * rpaths);
+extern int abf_policy_update (u32 policy_id, u32 acl_index,
+			      const fib_route_path_t *rpaths);
 
 /**
  * Delete paths from an ABF Policy. If no more paths exist, the policy
@@ -94,7 +94,7 @@ extern int abf_policy_update (u32 policy_id,
  * @param policy_id User defined Policy ID
  * @param rpaths The set of paths to forward remove
  */
-extern int abf_policy_delete (u32 policy_id, const fib_route_path_t * rpaths);
+extern int abf_policy_delete (u32 policy_id, const fib_route_path_t *rpaths);
 
 /**
  * Callback function invoked during a walk of all policies
@@ -105,7 +105,6 @@ typedef int (*abf_policy_walk_cb_t) (index_t index, void *ctx);
  * Walk/visit each of the ABF policies
  */
 extern void abf_policy_walk (abf_policy_walk_cb_t cb, void *ctx);
-
 
 /*
  * fd.io coding-style-patch-verification: ON

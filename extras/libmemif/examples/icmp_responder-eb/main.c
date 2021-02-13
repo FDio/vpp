@@ -54,27 +54,32 @@
 #include <libmemif.h>
 #include <icmp_proto.h>
 
-#define APP_NAME	"ICMP_Responder"
-#define IF_NAME		"memif_connection"
+#define APP_NAME "ICMP_Responder"
+#define IF_NAME	 "memif_connection"
 
 #ifdef ICMP_DBG
-#define DBG(...) do {						\
-			printf(APP_NAME":%s:%d",__func__,__LINE__);	\
-			printf(__VA_ARGS__);				\
-			printf("\n");					\
-		} while (0)
+#define DBG(...)                                                              \
+  do                                                                          \
+    {                                                                         \
+      printf (APP_NAME ":%s:%d", __func__, __LINE__);                         \
+      printf (__VA_ARGS__);                                                   \
+      printf ("\n");                                                          \
+    }                                                                         \
+  while (0)
 #else
 #define DBG(...)
 #endif /* ICMP_DBG */
 
-#define INFO(...) do {					\
-			printf("INFO: "__VA_ARGS__);	\
-			printf("\n");			\
-		} while (0)
+#define INFO(...)                                                             \
+  do                                                                          \
+    {                                                                         \
+      printf ("INFO: " __VA_ARGS__);                                          \
+      printf ("\n");                                                          \
+    }                                                                         \
+  while (0)
 
-#define MAX_MEMIF_BUFS	256
-#define MAX_CONNS	50
-
+#define MAX_MEMIF_BUFS 256
+#define MAX_CONNS      50
 
 #ifndef __NR_memfd_create
 #if defined __x86_64__
@@ -101,17 +106,17 @@ memfd_create (const char *name, unsigned int flags)
 #endif
 
 #ifndef MFD_ALLOW_SEALING
-#define MFD_ALLOW_SEALING       0x0002U
+#define MFD_ALLOW_SEALING 0x0002U
 #endif
 
 #ifndef F_ADD_SEALS
 #define F_ADD_SEALS (F_LINUX_SPECIFIC_BASE + 9)
 #define F_GET_SEALS (F_LINUX_SPECIFIC_BASE + 10)
 
-#define F_SEAL_SEAL     0x0001	/* prevent further seals from being set */
-#define F_SEAL_SHRINK   0x0002	/* prevent file from shrinking */
-#define F_SEAL_GROW     0x0004	/* prevent file from growing */
-#define F_SEAL_WRITE    0x0008	/* prevent writes */
+#define F_SEAL_SEAL   0x0001 /* prevent further seals from being set */
+#define F_SEAL_SHRINK 0x0002 /* prevent file from shrinking */
+#define F_SEAL_GROW   0x0004 /* prevent file from growing */
+#define F_SEAL_WRITE  0x0008 /* prevent writes */
 #endif
 
 typedef struct
@@ -162,8 +167,9 @@ print_help ()
   printf ("commands:\n");
   printf ("\thelp - prints this help\n");
   printf ("\texit - exit app\n");
-  printf
-    ("\tconn <index> <mode> <interrupt> - create memif. index used as interface id. mode: 0 = slave | 1 = master. interrupt: none = default | 1 = handle ARP only\n");
+  printf ("\tconn <index> <mode> <interrupt> - create memif. index used as "
+	  "interface id. mode: 0 = slave | 1 = master. interrupt: none = "
+	  "default | 1 = handle ARP only\n");
   printf ("\tdel <index> - delete memif\n");
   printf ("\tshow - show connection details\n");
   printf ("\tsend <index> <tx> <ip> <mac> - send icmp\n");
@@ -197,8 +203,8 @@ print_memif_details ()
 
       printf ("interface index: %d\n", i);
 
-      printf ("\tinterface ip: %u.%u.%u.%u\n",
-	      c->ip_addr[0], c->ip_addr[1], c->ip_addr[2], c->ip_addr[3]);
+      printf ("\tinterface ip: %u.%u.%u.%u\n", c->ip_addr[0], c->ip_addr[1],
+	      c->ip_addr[2], c->ip_addr[3]);
       printf ("\tinterface name: %s\n", (char *) md.if_name);
       printf ("\tapp name: %s\n", (char *) md.inst_name);
       printf ("\tremote interface name: %s\n", (char *) md.remote_if_name);
@@ -448,7 +454,7 @@ icmpr_free ()
 }
 
 int
-icmpr_add_external_region (void * *addr, uint32_t size, int *fd,
+icmpr_add_external_region (void **addr, uint32_t size, int *fd,
 			   void *private_ctx)
 {
 
@@ -600,8 +606,7 @@ on_interrupt1 (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
 	  if (((struct ether_header *) (c->rx_bufs + i)->data)->ether_type ==
 	      0x0608)
 	    {
-	      err =
-		memif_buffer_alloc (c->conn, qid, c->tx_bufs, 1, &tx, 128);
+	      err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, 1, &tx, 128);
 	      if ((err != MEMIF_ERR_SUCCESS) && (err != MEMIF_ERR_NOBUF_RING))
 		{
 		  INFO ("memif_buffer_alloc: %s", memif_strerror (err));
@@ -624,8 +629,6 @@ on_interrupt1 (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
       if (err != MEMIF_ERR_SUCCESS)
 	INFO ("memif_buffer_free: %s", memif_strerror (err));
       c->rx_buf_num -= rx;
-
-
     }
   while (ret_val == MEMIF_ERR_NOBUF);
 
@@ -636,8 +639,8 @@ error:
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_buffer_free: %s", memif_strerror (err));
   c->rx_buf_num -= rx;
-  DBG ("freed %d buffers. %u/%u alloc/free buffers",
-       rx, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
+  DBG ("freed %d buffers. %u/%u alloc/free buffers", rx, c->rx_buf_num,
+       MAX_MEMIF_BUFS - c->rx_buf_num);
   return 0;
 }
 
@@ -670,9 +673,8 @@ icmpr_memif_create (long index, long mode, char *s)
   int err;
   if (s == NULL)
     {
-      err = memif_create (&c->conn,
-			  &args, on_connect, on_disconnect, on_interrupt,
-			  &ctx[index]);
+      err = memif_create (&c->conn, &args, on_connect, on_disconnect,
+			  on_interrupt, &ctx[index]);
       if (err != MEMIF_ERR_SUCCESS)
 	{
 	  INFO ("memif_create: %s", memif_strerror (err));
@@ -683,9 +685,8 @@ icmpr_memif_create (long index, long mode, char *s)
     {
       if (strncmp (s, "1", 1) == 0)
 	{
-	  err = memif_create (&c->conn,
-			      &args, on_connect, on_disconnect, on_interrupt1,
-			      &ctx[index]);
+	  err = memif_create (&c->conn, &args, on_connect, on_disconnect,
+			      on_interrupt1, &ctx[index]);
 	  if (err != MEMIF_ERR_SUCCESS)
 	    {
 	      INFO ("memif_create: %s", memif_strerror (err));
@@ -739,10 +740,9 @@ icmpr_send_proc (void *data)
   while (count)
     {
       i = 0;
-      err =
-	memif_buffer_alloc (c->conn, 0, c->tx_bufs,
-			    MAX_MEMIF_BUFS > count ? count : MAX_MEMIF_BUFS,
-			    &tx, 128);
+      err = memif_buffer_alloc (
+	c->conn, 0, c->tx_bufs,
+	MAX_MEMIF_BUFS > count ? count : MAX_MEMIF_BUFS, &tx, 128);
 
       if ((err != MEMIF_ERR_SUCCESS) && (err != MEMIF_ERR_NOBUF_RING))
 	{
@@ -755,18 +755,17 @@ icmpr_send_proc (void *data)
 	{
 	  while (tx > 4)
 	    {
-	      generate_packet ((void *) c->tx_bufs[i].data,
-			       &c->tx_bufs[i].len, c->ip_addr, d->ip_daddr,
-			       d->hw_daddr, seq++);
+	      generate_packet ((void *) c->tx_bufs[i].data, &c->tx_bufs[i].len,
+			       c->ip_addr, d->ip_daddr, d->hw_daddr, seq++);
 	      generate_packet ((void *) c->tx_bufs[i + 1].data,
-			       &c->tx_bufs[i + 1].len, c->ip_addr,
-			       d->ip_daddr, d->hw_daddr, seq++);
+			       &c->tx_bufs[i + 1].len, c->ip_addr, d->ip_daddr,
+			       d->hw_daddr, seq++);
 	      generate_packet ((void *) c->tx_bufs[i + 2].data,
-			       &c->tx_bufs[i + 2].len, c->ip_addr,
-			       d->ip_daddr, d->hw_daddr, seq++);
+			       &c->tx_bufs[i + 2].len, c->ip_addr, d->ip_daddr,
+			       d->hw_daddr, seq++);
 	      generate_packet ((void *) c->tx_bufs[i + 3].data,
-			       &c->tx_bufs[i + 3].len, c->ip_addr,
-			       d->ip_daddr, d->hw_daddr, seq++);
+			       &c->tx_bufs[i + 3].len, c->ip_addr, d->ip_daddr,
+			       d->hw_daddr, seq++);
 	      i += 4;
 	      tx -= 4;
 	    }
@@ -811,7 +810,6 @@ error:
   INFO ("Thread exiting...");
   pthread_exit (NULL);
 }
-
 
 int
 icmpr_send (long index, long packet_num, char *hw, char *ip)
@@ -990,7 +988,8 @@ poll_event (int timeout)
     }
   if (en > 0)
     {
-      /* this app does not use any other file descriptors than stds and memif control fds */
+      /* this app does not use any other file descriptors than stds and memif
+       * control fds */
       if (evt.data.fd > 2)
 	{
 	  /* event of memif control fd */
@@ -1035,8 +1034,9 @@ main ()
 
   /* initialize memory interface */
   int err, i;
-  /* if valid callback is passed as argument, fd event polling will be done by user
-     all file descriptors and events will be passed to user in this callback */
+  /* if valid callback is passed as argument, fd event polling will be done by
+     user all file descriptors and events will be passed to user in this
+     callback */
   /* if callback is set to NULL libmemif will handle fd event polling */
   err = memif_init (control_fd_update, APP_NAME, NULL, NULL, NULL);
   if (err != MEMIF_ERR_SUCCESS)

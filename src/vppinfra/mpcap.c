@@ -53,7 +53,7 @@
  *
  */
 __clib_export clib_error_t *
-mpcap_close (mpcap_main_t * pm)
+mpcap_close (mpcap_main_t *pm)
 {
   u64 actual_size = pm->current_va - pm->file_baseva;
 
@@ -82,7 +82,7 @@ mpcap_close (mpcap_main_t * pm)
  *
  */
 __clib_export clib_error_t *
-mpcap_init (mpcap_main_t * pm)
+mpcap_init (mpcap_main_t *pm)
 {
   mpcap_file_header_t *fh;
   u8 zero = 0;
@@ -112,7 +112,7 @@ mpcap_init (mpcap_main_t * pm)
   pm->max_file_size &= ~(u64) clib_mem_get_page_size ();
 
   /* Set file size. */
-  if (lseek (fd, pm->max_file_size - 1, SEEK_SET) == (off_t) - 1)
+  if (lseek (fd, pm->max_file_size - 1, SEEK_SET) == (off_t) -1)
     {
       close (fd);
       (void) unlink (pm->file_name);
@@ -126,8 +126,8 @@ mpcap_init (mpcap_main_t * pm)
       return clib_error_return_unix (0, "file size write");
     }
 
-  pm->file_baseva = mmap (0, pm->max_file_size,
-			  PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  pm->file_baseva =
+    mmap (0, pm->max_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (pm->file_baseva == (u8 *) MAP_FAILED)
     {
       clib_error_t *error = clib_error_return_unix (0, "mmap");
@@ -154,14 +154,13 @@ mpcap_init (mpcap_main_t * pm)
   return 0;
 }
 
-
 /**
  * @brief mmap a mapped pcap file, e.g. to read from another process
  * @param pcap_main_t *pm
  * @return rc - clib_error_t
  */
 clib_error_t *
-mpcap_map (mpcap_main_t * pm)
+mpcap_map (mpcap_main_t *pm)
 {
   clib_error_t *error = 0;
   int fd = -1;
@@ -187,8 +186,8 @@ mpcap_map (mpcap_main_t * pm)
 
   if ((statb.st_mode & S_IFREG) == 0)
     {
-      error = clib_error_return (0, "'%s' is not a regular file",
-				 pm->file_name);
+      error =
+	clib_error_return (0, "'%s' is not a regular file", pm->file_name);
       goto done;
     }
 
@@ -225,17 +224,15 @@ mpcap_map (mpcap_main_t * pm)
 	break;
 
       packets_read++;
-      min_packet_bytes =
-	ph->n_packet_bytes_stored_in_file <
-	min_packet_bytes ? ph->n_packet_bytes_stored_in_file :
-	min_packet_bytes;
-      max_packet_bytes =
-	ph->n_packet_bytes_stored_in_file >
-	max_packet_bytes ? ph->n_packet_bytes_stored_in_file :
-	max_packet_bytes;
+      min_packet_bytes = ph->n_packet_bytes_stored_in_file < min_packet_bytes ?
+			   ph->n_packet_bytes_stored_in_file :
+			   min_packet_bytes;
+      max_packet_bytes = ph->n_packet_bytes_stored_in_file > max_packet_bytes ?
+			   ph->n_packet_bytes_stored_in_file :
+			   max_packet_bytes;
 
-      ph = (mpcap_packet_header_t *)
-	(((u8 *) (ph)) + sizeof (*ph) + ph->n_packet_bytes_stored_in_file);
+      ph = (mpcap_packet_header_t *) (((u8 *) (ph)) + sizeof (*ph) +
+				      ph->n_packet_bytes_stored_in_file);
     }
   pm->packets_read = packets_read;
   pm->min_packet_bytes = min_packet_bytes;

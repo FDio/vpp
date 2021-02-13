@@ -45,11 +45,11 @@ static const int response_queue_size = 32;
 /* centos has ancient check so we hack our way around here
  * to make it work somehow */
 #ifndef ck_assert_ptr_eq
-#define ck_assert_ptr_eq(X,Y) ck_assert_int_eq((long)X, (long)Y)
+#define ck_assert_ptr_eq(X, Y) ck_assert_int_eq ((long) X, (long) Y)
 #endif
 
 #ifndef ck_assert_ptr_ne
-#define ck_assert_ptr_ne(X,Y) ck_assert_int_ne((long)X, (long)Y)
+#define ck_assert_ptr_ne(X, Y) ck_assert_int_ne ((long) X, (long) Y)
 #endif
 
 START_TEST (test_invalid_values)
@@ -107,18 +107,18 @@ START_TEST (test_hton_2)
 
 END_TEST;
 
-#define verify_hton_swap(expr, value)           \
-  if (4 == sizeof (expr))                       \
-    {                                           \
-      ck_assert_int_eq (expr, htobe32 (value)); \
-    }                                           \
-  else if (2 == sizeof (expr))                  \
-    {                                           \
-      ck_assert_int_eq (expr, htobe16 (value)); \
-    }                                           \
-  else                                          \
-    {                                           \
-      ck_assert_int_eq (expr, value);           \
+#define verify_hton_swap(expr, value)                                         \
+  if (4 == sizeof (expr))                                                     \
+    {                                                                         \
+      ck_assert_int_eq (expr, htobe32 (value));                               \
+    }                                                                         \
+  else if (2 == sizeof (expr))                                                \
+    {                                                                         \
+      ck_assert_int_eq (expr, htobe16 (value));                               \
+    }                                                                         \
+  else                                                                        \
+    {                                                                         \
+      ck_assert_int_eq (expr, value);                                         \
     }
 
 START_TEST (test_hton_4)
@@ -219,18 +219,18 @@ START_TEST (test_ntoh_2)
 
 END_TEST;
 
-#define verify_ntoh_swap(expr, value)           \
-  if (4 == sizeof (expr))                       \
-    {                                           \
-      ck_assert_int_eq (expr, be32toh (value)); \
-    }                                           \
-  else if (2 == sizeof (expr))                  \
-    {                                           \
-      ck_assert_int_eq (expr, be16toh (value)); \
-    }                                           \
-  else                                          \
-    {                                           \
-      ck_assert_int_eq (expr, value);           \
+#define verify_ntoh_swap(expr, value)                                         \
+  if (4 == sizeof (expr))                                                     \
+    {                                                                         \
+      ck_assert_int_eq (expr, be32toh (value));                               \
+    }                                                                         \
+  else if (2 == sizeof (expr))                                                \
+    {                                                                         \
+      ck_assert_int_eq (expr, be16toh (value));                               \
+    }                                                                         \
+  else                                                                        \
+    {                                                                         \
+      ck_assert_int_eq (expr, value);                                         \
     }
 
 START_TEST (test_ntoh_4)
@@ -306,17 +306,15 @@ START_TEST (test_ntoh_4)
 END_TEST;
 
 vapi_error_e
-show_version_cb (vapi_ctx_t ctx, void *caller_ctx,
-		 vapi_error_e rv, bool is_last,
-		 vapi_payload_show_version_reply * p)
+show_version_cb (vapi_ctx_t ctx, void *caller_ctx, vapi_error_e rv,
+		 bool is_last, vapi_payload_show_version_reply *p)
 {
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_eq (true, is_last);
   ck_assert_str_eq ("vpe", (char *) p->program);
-  printf
-    ("show_version_reply: program: `%s', version: `%s', build directory: "
-     "`%s', build date: `%s'\n", p->program, p->version, p->build_directory,
-     p->build_date);
+  printf ("show_version_reply: program: `%s', version: `%s', build directory: "
+	  "`%s', build date: `%s'\n",
+	  p->program, p->version, p->build_directory, p->build_date);
   ++*(int *) caller_ctx;
   return VAPI_OK;
 }
@@ -329,9 +327,8 @@ typedef struct
 } test_create_loopback_ctx_t;
 
 vapi_error_e
-loopback_create_cb (vapi_ctx_t ctx, void *caller_ctx,
-		    vapi_error_e rv, bool is_last,
-		    vapi_payload_create_loopback_reply * p)
+loopback_create_cb (vapi_ctx_t ctx, void *caller_ctx, vapi_error_e rv,
+		    bool is_last, vapi_payload_create_loopback_reply *p)
 {
   test_create_loopback_ctx_t *clc = caller_ctx;
   ck_assert_int_eq (clc->expected_retval, p->retval);
@@ -348,9 +345,8 @@ typedef struct
 } test_delete_loopback_ctx_t;
 
 vapi_error_e
-loopback_delete_cb (vapi_ctx_t ctx, void *caller_ctx,
-		    vapi_error_e rv, bool is_last,
-		    vapi_payload_delete_loopback_reply * p)
+loopback_delete_cb (vapi_ctx_t ctx, void *caller_ctx, vapi_error_e rv,
+		    bool is_last, vapi_payload_delete_loopback_reply *p)
 {
   test_delete_loopback_ctx_t *dlc = caller_ctx;
   ck_assert_int_eq (dlc->expected_retval, p->retval);
@@ -451,7 +447,7 @@ typedef struct
 vapi_error_e
 sw_interface_dump_cb (struct vapi_ctx_s *ctx, void *callback_ctx,
 		      vapi_error_e rv, bool is_last,
-		      vapi_payload_sw_interface_details * reply)
+		      vapi_payload_sw_interface_details *reply)
 {
   sw_interface_dump_ctx *dctx = callback_ctx;
   ck_assert_int_eq (false, dctx->last_called);
@@ -526,10 +522,8 @@ START_TEST (test_loopbacks_1)
       dctx.last_called = false;
       clib_memset (&seen, 0, sizeof (seen));
       dump = vapi_alloc_sw_interface_dump (ctx);
-      while (VAPI_EAGAIN ==
-	     (rv =
-	      vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb,
-				      &dctx)))
+      while (VAPI_EAGAIN == (rv = vapi_sw_interface_dump (
+			       ctx, dump, sw_interface_dump_cb, &dctx)))
 	;
       ck_assert_int_eq (true, dctx.last_called);
       int j = 0;
@@ -555,9 +549,8 @@ START_TEST (test_loopbacks_1)
   dctx.last_called = false;
   clib_memset (&seen, 0, sizeof (seen));
   dump = vapi_alloc_sw_interface_dump (ctx);
-  while (VAPI_EAGAIN ==
-	 (rv =
-	  vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb, &dctx)))
+  while (VAPI_EAGAIN == (rv = vapi_sw_interface_dump (
+			   ctx, dump, sw_interface_dump_cb, &dctx)))
     ;
   ck_assert_int_eq (true, dctx.last_called);
   for (i = 0; i < num_ifs; ++i)
@@ -604,8 +597,7 @@ START_TEST (test_show_version_4)
       vapi_msg_show_version *sv = vapi_alloc_show_version (ctx);
       ck_assert_ptr_ne (NULL, sv);
       while (VAPI_EAGAIN ==
-	     (rv =
-	      vapi_show_version (ctx, sv, show_version_cb, &contexts[i])))
+	     (rv = vapi_show_version (ctx, sv, show_version_cb, &contexts[i])))
 	;
       ck_assert_int_eq (VAPI_OK, rv);
       int j;
@@ -656,9 +648,8 @@ START_TEST (test_loopbacks_2)
       vapi_msg_create_loopback *cl = vapi_alloc_create_loopback (ctx);
       memcpy (cl->payload.mac_address, mac_addresses[i],
 	      sizeof (cl->payload.mac_address));
-      while (VAPI_EAGAIN ==
-	     (rv =
-	      vapi_create_loopback (ctx, cl, loopback_create_cb, &clcs[i])))
+      while (VAPI_EAGAIN == (rv = vapi_create_loopback (
+			       ctx, cl, loopback_create_cb, &clcs[i])))
 	;
       ck_assert_int_eq (VAPI_OK, rv);
     }
@@ -677,9 +668,8 @@ START_TEST (test_loopbacks_2)
   clib_memset (&seen, 0, sizeof (seen));
   sw_interface_dump_ctx dctx = { false, num_ifs, sw_if_indexes, seen, 0 };
   vapi_msg_sw_interface_dump *dump = vapi_alloc_sw_interface_dump (ctx);
-  while (VAPI_EAGAIN ==
-	 (rv =
-	  vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb, &dctx)))
+  while (VAPI_EAGAIN == (rv = vapi_sw_interface_dump (
+			   ctx, dump, sw_interface_dump_cb, &dctx)))
     ;
   for (i = 0; i < num_ifs; ++i)
     {
@@ -699,9 +689,8 @@ START_TEST (test_loopbacks_2)
     {
       vapi_msg_delete_loopback *dl = vapi_alloc_delete_loopback (ctx);
       dl->payload.sw_if_index = sw_if_indexes[i];
-      while (VAPI_EAGAIN ==
-	     (rv =
-	      vapi_delete_loopback (ctx, dl, loopback_delete_cb, &dlcs[i])))
+      while (VAPI_EAGAIN == (rv = vapi_delete_loopback (
+			       ctx, dl, loopback_delete_cb, &dlcs[i])))
 	;
       ck_assert_int_eq (VAPI_OK, rv);
     }
@@ -715,9 +704,8 @@ START_TEST (test_loopbacks_2)
   clib_memset (&seen, 0, sizeof (seen));
   dctx.last_called = false;
   dump = vapi_alloc_sw_interface_dump (ctx);
-  while (VAPI_EAGAIN ==
-	 (rv =
-	  vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb, &dctx)))
+  while (VAPI_EAGAIN == (rv = vapi_sw_interface_dump (
+			   ctx, dump, sw_interface_dump_cb, &dctx)))
     ;
   rv = vapi_dispatch (ctx);
   ck_assert_int_eq (VAPI_OK, rv);
@@ -770,15 +758,14 @@ START_TEST (test_show_version_5)
   vapi_clear_generic_event_cb (ctx);
   rv = vapi_dispatch_one (ctx);
   ck_assert_int_eq (VAPI_OK, rv);
-  ck_assert_int_eq (1, called);	/* needs to remain unchanged */
+  ck_assert_int_eq (1, called); /* needs to remain unchanged */
 }
 
 END_TEST;
 
 vapi_error_e
-show_version_no_cb (vapi_ctx_t ctx, void *caller_ctx,
-		    vapi_error_e rv, bool is_last,
-		    vapi_payload_show_version_reply * p)
+show_version_no_cb (vapi_ctx_t ctx, void *caller_ctx, vapi_error_e rv,
+		    bool is_last, vapi_payload_show_version_reply *p)
 {
   ck_assert_int_eq (VAPI_ENORESP, rv);
   ck_assert_int_eq (true, is_last);
@@ -793,7 +780,7 @@ START_TEST (test_no_response_1)
   vapi_error_e rv;
   vapi_msg_show_version *sv = vapi_alloc_show_version (ctx);
   ck_assert_ptr_ne (NULL, sv);
-  sv->header._vl_msg_id = ~0;	/* malformed ID causes vpp to drop the msg */
+  sv->header._vl_msg_id = ~0; /* malformed ID causes vpp to drop the msg */
   int called = 0;
   while (VAPI_EAGAIN ==
 	 (rv = vapi_show_version (ctx, sv, show_version_no_cb, &called)))
@@ -813,9 +800,8 @@ START_TEST (test_no_response_1)
 END_TEST;
 
 vapi_error_e
-no_msg_cb (struct vapi_ctx_s *ctx, void *callback_ctx,
-	   vapi_error_e rv, bool is_last,
-	   vapi_payload_sw_interface_details * reply)
+no_msg_cb (struct vapi_ctx_s *ctx, void *callback_ctx, vapi_error_e rv,
+	   bool is_last, vapi_payload_sw_interface_details *reply)
 {
   int *called = callback_ctx;
   ++*called;
@@ -830,7 +816,7 @@ START_TEST (test_no_response_2)
   printf ("--- Simulate no response to dump message ---\n");
   vapi_error_e rv;
   vapi_msg_sw_interface_dump *dump = vapi_alloc_sw_interface_dump (ctx);
-  dump->header._vl_msg_id = ~0;	/* malformed ID causes vpp to drop the msg */
+  dump->header._vl_msg_id = ~0; /* malformed ID causes vpp to drop the msg */
   int no_called = 0;
   while (VAPI_EAGAIN ==
 	 (rv = vapi_sw_interface_dump (ctx, dump, no_msg_cb, &no_called)))
@@ -880,7 +866,7 @@ START_TEST (test_api_strings)
   ck_assert_int_eq (strlen (str), strlen (cstr));
   vec_free (cstr);
 
-  vstr = vl_api_from_api_to_new_vec (0 /* not really an API message */ ,
+  vstr = vl_api_from_api_to_new_vec (0 /* not really an API message */,
 				     &dump->payload.name_filter);
   ck_assert_ptr_ne (vstr, NULL);
   /* Assert nul terminator NOT present */
@@ -904,7 +890,7 @@ START_TEST (test_api_strings)
   ck_assert_int_eq (strlen (str), strlen (cstr));
   vec_free (cstr);
 
-  vstr = vl_api_from_api_to_new_vec (0 /* not a real api msg */ ,
+  vstr = vl_api_from_api_to_new_vec (0 /* not a real api msg */,
 				     &dump->payload.name_filter);
   ck_assert_ptr_ne (vstr, NULL);
   /* Assert nul terminator NOT present */

@@ -29,42 +29,42 @@
 #define CLIB_CUCKOO_DEBUG_GC (0)
 
 #if CLIB_CUCKOO_DEBUG
-#define CLIB_CUCKOO_DEBUG_FILE_DEF    \
-  static const char *__file = NULL;   \
-  {                                   \
-    __file = strrchr (__FILE__, '/'); \
-    if (__file)                       \
-      {                               \
-        ++__file;                     \
-      }                               \
-    else                              \
-      {                               \
-        __file = __FILE__;            \
-      }                               \
+#define CLIB_CUCKOO_DEBUG_FILE_DEF                                            \
+  static const char *__file = NULL;                                           \
+  {                                                                           \
+    __file = strrchr (__FILE__, '/');                                         \
+    if (__file)                                                               \
+      {                                                                       \
+	++__file;                                                             \
+      }                                                                       \
+    else                                                                      \
+      {                                                                       \
+	__file = __FILE__;                                                    \
+      }                                                                       \
   }
 
-#define CLIB_CUCKOO_DBG(fmt, ...)                                         \
-  do                                                                      \
-    {                                                                     \
-      CLIB_CUCKOO_DEBUG_FILE_DEF                                          \
-      static u8 *_s = NULL;                                               \
-      _s = format (_s, "DBG:%s:%d:%s():" fmt, __file, __LINE__, __func__, \
-                   ##__VA_ARGS__);                                        \
-      printf ("%.*s\n", vec_len (_s), _s);                                \
-      vec_reset_length (_s);                                              \
-    }                                                                     \
+#define CLIB_CUCKOO_DBG(fmt, ...)                                             \
+  do                                                                          \
+    {                                                                         \
+      CLIB_CUCKOO_DEBUG_FILE_DEF                                              \
+      static u8 *_s = NULL;                                                   \
+      _s = format (_s, "DBG:%s:%d:%s():" fmt, __file, __LINE__, __func__,     \
+		   ##__VA_ARGS__);                                            \
+      printf ("%.*s\n", vec_len (_s), _s);                                    \
+      vec_reset_length (_s);                                                  \
+    }                                                                         \
   while (0);
 
-#define CLIB_CUCKOO_ERR(fmt, ...)                                         \
-  do                                                                      \
-    {                                                                     \
-      CLIB_CUCKOO_DEBUG_FILE_DEF                                          \
-      static u8 *_s = NULL;                                               \
-      _s = format (_s, "ERR:%s:%d:%s():" fmt, __file, __LINE__, __func__, \
-                   ##__VA_ARGS__);                                        \
-      printf ("%.*s\n", vec_len (_s), _s);                                \
-      vec_reset_length (_s);                                              \
-    }                                                                     \
+#define CLIB_CUCKOO_ERR(fmt, ...)                                             \
+  do                                                                          \
+    {                                                                         \
+      CLIB_CUCKOO_DEBUG_FILE_DEF                                              \
+      static u8 *_s = NULL;                                                   \
+      _s = format (_s, "ERR:%s:%d:%s():" fmt, __file, __LINE__, __func__,     \
+		   ##__VA_ARGS__);                                            \
+      printf ("%.*s\n", vec_len (_s), _s);                                    \
+      vec_reset_length (_s);                                                  \
+    }                                                                         \
   while (0);
 
 #else

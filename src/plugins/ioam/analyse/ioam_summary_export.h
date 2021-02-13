@@ -18,39 +18,38 @@
 #include <ioam/analyse/ioam_analyse.h>
 #include <vnet/ipfix-export/flow_report.h>
 
-#define foreach_ioam_ipfix_info_element           \
-_(ioamPacketSent, 5239, u32)                     \
-_(ioamPacketCount, 5237, u32)                     \
-_(ioamByteCount, 5238, u32)                       \
-_(ioamPathMap, 5262, u32)                         \
-_(ioamNumberOfPaths, 5264, u16)                   \
-_(ioamSfcValidatedCount, 5278, u32)               \
-_(ioamSfcInValidatedCount, 5279, u32)             \
-_(ioamSeqnoRxCount, 5280, u32)                    \
-_(ioamSeqnoLostCount, 5281, u32)                  \
-_(ioamSeqnoReorderedCount, 5282, u32)             \
-_(ioamSeqnoDupCount, 5283, u32)
-
+#define foreach_ioam_ipfix_info_element                                       \
+  _ (ioamPacketSent, 5239, u32)                                               \
+  _ (ioamPacketCount, 5237, u32)                                              \
+  _ (ioamByteCount, 5238, u32)                                                \
+  _ (ioamPathMap, 5262, u32)                                                  \
+  _ (ioamNumberOfPaths, 5264, u16)                                            \
+  _ (ioamSfcValidatedCount, 5278, u32)                                        \
+  _ (ioamSfcInValidatedCount, 5279, u32)                                      \
+  _ (ioamSeqnoRxCount, 5280, u32)                                             \
+  _ (ioamSeqnoLostCount, 5281, u32)                                           \
+  _ (ioamSeqnoReorderedCount, 5282, u32)                                      \
+  _ (ioamSeqnoDupCount, 5283, u32)
 
 typedef enum
 {
-#define _(n,v,t) n = v,
+#define _(n, v, t) n = v,
   foreach_ioam_ipfix_info_element
 #undef _
 } ioam_ipfix_info_element_id_t;
 
-#define foreach_ioam_ipfix_field                                          \
-_(pkt_sent, 0xffffffff, ioamPacketSent, 4)                      \
-_(pkt_counter, 0xffffffff, ioamPacketCount, 4)                      \
-_(bytes_counter, 0xffffffff, ioamByteCount, 4)                      \
-_(pot_data.sfc_validated_count, 0xffffffff, ioamSfcValidatedCount, 4)     \
-_(pot_data.sfc_invalidated_count, 0xffffffff, ioamSfcInValidatedCount, 4) \
-_(seqno_data.rx_packets, 0xffffffff, ioamSeqnoRxCount, 4) \
-_(seqno_data.lost_packets, 0xffffffff, ioamSeqnoLostCount, 4) \
-_(seqno_data.reordered_packets, 0xffffffff, ioamSeqnoReorderedCount, 4) \
-_(seqno_data.dup_packets, 0xffffffff, ioamSeqnoDupCount, 4)
+#define foreach_ioam_ipfix_field                                              \
+  _ (pkt_sent, 0xffffffff, ioamPacketSent, 4)                                 \
+  _ (pkt_counter, 0xffffffff, ioamPacketCount, 4)                             \
+  _ (bytes_counter, 0xffffffff, ioamByteCount, 4)                             \
+  _ (pot_data.sfc_validated_count, 0xffffffff, ioamSfcValidatedCount, 4)      \
+  _ (pot_data.sfc_invalidated_count, 0xffffffff, ioamSfcInValidatedCount, 4)  \
+  _ (seqno_data.rx_packets, 0xffffffff, ioamSeqnoRxCount, 4)                  \
+  _ (seqno_data.lost_packets, 0xffffffff, ioamSeqnoLostCount, 4)              \
+  _ (seqno_data.reordered_packets, 0xffffffff, ioamSeqnoReorderedCount, 4)    \
+  _ (seqno_data.dup_packets, 0xffffffff, ioamSeqnoDupCount, 4)
 
-clib_error_t *ioam_flow_report_init (vlib_main_t * vm);
+clib_error_t *ioam_flow_report_init (vlib_main_t *vm);
 
 typedef struct
 {
@@ -65,16 +64,16 @@ typedef struct
 
 clib_error_t *ioam_flow_create (u8 del);
 
-u8 *ioam_template_rewrite (flow_report_main_t * frm, flow_report_t * fr,
-			   ip4_address_t * collector_address,
-			   ip4_address_t * src_address, u16 collector_port,
-			   ipfix_report_element_t * elts,
-			   u32 n_elts, u32 * stream_index);
+u8 *ioam_template_rewrite (flow_report_main_t *frm, flow_report_t *fr,
+			   ip4_address_t *collector_address,
+			   ip4_address_t *src_address, u16 collector_port,
+			   ipfix_report_element_t *elts, u32 n_elts,
+			   u32 *stream_index);
 
-u16 ioam_analyse_add_ipfix_record (flow_report_t * fr,
-				   ioam_analyser_data_t * record,
-				   vlib_buffer_t * b0, u16 offset,
-				   ip6_address_t * src, ip6_address_t * dst,
+u16 ioam_analyse_add_ipfix_record (flow_report_t *fr,
+				   ioam_analyser_data_t *record,
+				   vlib_buffer_t *b0, u16 offset,
+				   ip6_address_t *src, ip6_address_t *dst,
 				   u16 src_port, u16 dst_port);
 
 #endif /* __included_ip6_ioam_flow_report_h__ */

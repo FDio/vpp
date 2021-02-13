@@ -25,8 +25,8 @@ namespace VOM {
 namespace gbp_endpoint_group_cmds {
 
 /**
-* A command class that creates or updates the GBP endpoint_group
-*/
+ * A command class that creates or updates the GBP endpoint_group
+ */
 class create_cmd : public rpc_cmd<HW::item<bool>, vapi::Gbp_endpoint_group_add>
 {
 public:

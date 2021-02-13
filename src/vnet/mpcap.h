@@ -31,8 +31,8 @@
  *
  */
 static inline void *
-mpcap_add_packet (mpcap_main_t * pm,
-		  f64 time_now, u32 n_bytes_in_trace, u32 n_bytes_in_packet)
+mpcap_add_packet (mpcap_main_t *pm, f64 time_now, u32 n_bytes_in_trace,
+		  u32 n_bytes_in_packet)
 {
   mpcap_packet_header_t *h;
   u8 *d;
@@ -67,9 +67,8 @@ mpcap_add_packet (mpcap_main_t * pm,
  *
  */
 static inline void
-mpcap_add_buffer (mpcap_main_t * pm,
-		  vlib_main_t * vm,
-		  f64 time_now, u32 buffer_index, u32 n_bytes_in_trace)
+mpcap_add_buffer (mpcap_main_t *pm, vlib_main_t *vm, f64 time_now,
+		  u32 buffer_index, u32 n_bytes_in_trace)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, buffer_index);
   u32 n = vlib_buffer_length_in_chain (vm, b);

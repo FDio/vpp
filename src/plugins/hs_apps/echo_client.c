@@ -23,9 +23,9 @@
 echo_client_main_t echo_client_main;
 
 #define ECHO_CLIENT_DBG (0)
-#define DBG(_fmt, _args...)			\
-    if (ECHO_CLIENT_DBG) 				\
-      clib_warning (_fmt, ##_args)
+#define DBG(_fmt, _args...)                                                   \
+  if (ECHO_CLIENT_DBG)                                                        \
+  clib_warning (_fmt, ##_args)
 
 static void
 signal_evt_to_cli_i (int *code)
@@ -39,14 +39,14 @@ static void
 signal_evt_to_cli (int code)
 {
   if (vlib_get_thread_index () != 0)
-    vl_api_rpc_call_main_thread (signal_evt_to_cli_i, (u8 *) & code,
+    vl_api_rpc_call_main_thread (signal_evt_to_cli_i, (u8 *) &code,
 				 sizeof (code));
   else
     signal_evt_to_cli_i (&code);
 }
 
 static void
-send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
+send_data_chunk (echo_client_main_t *ecm, eclient_session_t *s)
 {
   u8 *test_data = ecm->connect_test_data;
   int test_buf_len, test_buf_offset, rv;
@@ -55,8 +55,8 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
   test_buf_len = vec_len (test_data);
   ASSERT (test_buf_len > 0);
   test_buf_offset = s->bytes_sent % test_buf_len;
-  bytes_this_chunk = clib_min (test_buf_len - test_buf_offset,
-			       s->bytes_to_send);
+  bytes_this_chunk =
+    clib_min (test_buf_len - test_buf_offset, s->bytes_to_send);
 
   if (!ecm->is_dgram)
     {
@@ -91,14 +91,12 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 
 	  hdr.data_length = rv;
 	  hdr.data_offset = 0;
-	  clib_memcpy_fast (&hdr.rmt_ip, &at->rmt_ip,
-			    sizeof (ip46_address_t));
+	  clib_memcpy_fast (&hdr.rmt_ip, &at->rmt_ip, sizeof (ip46_address_t));
 	  hdr.is_ip4 = at->is_ip4;
 	  hdr.rmt_port = at->rmt_port;
-	  clib_memcpy_fast (&hdr.lcl_ip, &at->lcl_ip,
-			    sizeof (ip46_address_t));
+	  clib_memcpy_fast (&hdr.lcl_ip, &at->lcl_ip, sizeof (ip46_address_t));
 	  hdr.lcl_port = at->lcl_port;
-	  svm_fifo_enqueue (f, sizeof (hdr), (u8 *) & hdr);
+	  svm_fifo_enqueue (f, sizeof (hdr), (u8 *) &hdr);
 	  svm_fifo_enqueue_nocopy (f, rv);
 	  session_send_io_evt_to_thread_custom (
 	    &f->shr->master_session_index, s->thread_index, SESSION_IO_EVT_TX);
@@ -120,17 +118,16 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 
       if (ECHO_CLIENT_DBG)
 	{
-          /* *INDENT-OFF* */
-          ELOG_TYPE_DECLARE (e) =
-            {
-              .format = "tx-enq: xfer %d bytes, sent %u remain %u",
-              .format_args = "i4i4i4",
-            };
-          /* *INDENT-ON* */
+
+	  ELOG_TYPE_DECLARE (e) = {
+	    .format = "tx-enq: xfer %d bytes, sent %u remain %u",
+	    .format_args = "i4i4i4",
+	  };
+
 	  struct
 	  {
 	    u32 data[3];
-	  } *ed;
+	  } * ed;
 	  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
 	  ed->data[0] = rv;
 	  ed->data[1] = s->bytes_sent;
@@ -140,7 +137,7 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 }
 
 static void
-receive_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
+receive_data_chunk (echo_client_main_t *ecm, eclient_session_t *s)
 {
   svm_fifo_t *rx_fifo = s->data.rx_fifo;
   u32 thread_index = vlib_get_thread_index ();
@@ -165,17 +162,16 @@ receive_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
     {
       if (ECHO_CLIENT_DBG)
 	{
-          /* *INDENT-OFF* */
-          ELOG_TYPE_DECLARE (e) =
-            {
-              .format = "rx-deq: %d bytes",
-              .format_args = "i4",
-            };
-          /* *INDENT-ON* */
+
+	  ELOG_TYPE_DECLARE (e) = {
+	    .format = "rx-deq: %d bytes",
+	    .format_args = "i4",
+	  };
+
 	  struct
 	  {
 	    u32 data[1];
-	  } *ed;
+	  } * ed;
 	  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
 	  ed->data[0] = n_read;
 	}
@@ -184,8 +180,8 @@ receive_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 	{
 	  for (i = 0; i < n_read; i++)
 	    {
-	      if (ecm->rx_buf[thread_index][i]
-		  != ((s->bytes_received + i) & 0xff))
+	      if (ecm->rx_buf[thread_index][i] !=
+		  ((s->bytes_received + i) & 0xff))
 		{
 		  clib_warning ("read %d error at byte %lld, 0x%x not 0x%x",
 				n_read, s->bytes_received + i,
@@ -202,8 +198,8 @@ receive_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 }
 
 static uword
-echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		     vlib_frame_t * frame)
+echo_client_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		     vlib_frame_t *frame)
 {
   echo_client_main_t *ecm = &echo_client_main;
   int my_thread_index = vlib_get_thread_index ();
@@ -219,8 +215,8 @@ echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
     ecm->connections_this_batch_by_thread[my_thread_index];
 
   if ((ecm->run_test != ECHO_CLIENTS_RUNNING) ||
-      ((vec_len (connection_indices) == 0)
-       && vec_len (connections_this_batch) == 0))
+      ((vec_len (connection_indices) == 0) &&
+       vec_len (connections_this_batch) == 0))
     return 0;
 
   /* Grab another pile of connections */
@@ -232,14 +228,14 @@ echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       ASSERT (nconnections_this_batch > 0);
       vec_validate (connections_this_batch, nconnections_this_batch - 1);
       clib_memcpy_fast (connections_this_batch,
-			connection_indices + vec_len (connection_indices)
-			- nconnections_this_batch,
+			connection_indices + vec_len (connection_indices) -
+			  nconnections_this_batch,
 			nconnections_this_batch * sizeof (u32));
       _vec_len (connection_indices) -= nconnections_this_batch;
     }
 
-  if (PREDICT_FALSE (ecm->prev_conns != ecm->connections_per_batch
-		     && ecm->prev_conns == vec_len (connections_this_batch)))
+  if (PREDICT_FALSE (ecm->prev_conns != ecm->connections_per_batch &&
+		     ecm->prev_conns == vec_len (connections_this_batch)))
     {
       ecm->repeats++;
       ecm->prev_conns = vec_len (connections_this_batch);
@@ -308,25 +304,22 @@ echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (echo_clients_node) =
-{
+VLIB_REGISTER_NODE (echo_clients_node) = {
   .function = echo_client_node_fn,
   .name = "echo-clients",
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_DISABLED,
 };
-/* *INDENT-ON* */
 
 static int
-echo_clients_init (vlib_main_t * vm)
+echo_clients_init (vlib_main_t *vm)
 {
   echo_client_main_t *ecm = &echo_client_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads;
   int i;
 
-  num_threads = 1 /* main thread */  + vtm->n_threads;
+  num_threads = 1 /* main thread */ + vtm->n_threads;
 
   /* Init test data. Big buffer */
   vec_validate (ecm->connect_test_data, 4 * 1024 * 1024 - 1);
@@ -349,7 +342,7 @@ echo_clients_init (vlib_main_t * vm)
 
 static int
 quic_echo_clients_qsession_connected_callback (u32 app_index, u32 api_context,
-					       session_t * s,
+					       session_t *s,
 					       session_error_t err)
 {
   echo_client_main_t *ecm = &echo_client_main;
@@ -394,7 +387,7 @@ quic_echo_clients_qsession_connected_callback (u32 app_index, u32 api_context,
 
 static int
 quic_echo_clients_session_connected_callback (u32 app_index, u32 api_context,
-					      session_t * s,
+					      session_t *s,
 					      session_error_t err)
 {
   echo_client_main_t *ecm = &echo_client_main;
@@ -415,13 +408,12 @@ quic_echo_clients_session_connected_callback (u32 app_index, u32 api_context,
 
   if (s->listener_handle == SESSION_INVALID_HANDLE)
     return quic_echo_clients_qsession_connected_callback (app_index,
-							  api_context, s,
-							  err);
+							  api_context, s, err);
   DBG ("STREAM Connection callback %d", api_context);
 
   thread_index = s->thread_index;
-  ASSERT (thread_index == vlib_get_thread_index ()
-	  || session_transport_service_type (s) == TRANSPORT_SERVICE_CL);
+  ASSERT (thread_index == vlib_get_thread_index () ||
+	  session_transport_service_type (s) == TRANSPORT_SERVICE_CL);
 
   if (!ecm->vpp_event_queue[thread_index])
     ecm->vpp_event_queue[thread_index] =
@@ -468,7 +460,7 @@ quic_echo_clients_session_connected_callback (u32 app_index, u32 api_context,
 
 static int
 echo_clients_session_connected_callback (u32 app_index, u32 api_context,
-					 session_t * s, session_error_t err)
+					 session_t *s, session_error_t err)
 {
   echo_client_main_t *ecm = &echo_client_main;
   eclient_session_t *session;
@@ -487,8 +479,8 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
     }
 
   thread_index = s->thread_index;
-  ASSERT (thread_index == vlib_get_thread_index ()
-	  || session_transport_service_type (s) == TRANSPORT_SERVICE_CL);
+  ASSERT (thread_index == vlib_get_thread_index () ||
+	  session_transport_service_type (s) == TRANSPORT_SERVICE_CL);
 
   if (!ecm->vpp_event_queue[thread_index])
     ecm->vpp_event_queue[thread_index] =
@@ -534,7 +526,7 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
 }
 
 static void
-echo_clients_session_reset_callback (session_t * s)
+echo_clients_session_reset_callback (session_t *s)
 {
   echo_client_main_t *ecm = &echo_client_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
@@ -549,13 +541,13 @@ echo_clients_session_reset_callback (session_t * s)
 }
 
 static int
-echo_clients_session_create_callback (session_t * s)
+echo_clients_session_create_callback (session_t *s)
 {
   return 0;
 }
 
 static void
-echo_clients_session_disconnect_callback (session_t * s)
+echo_clients_session_disconnect_callback (session_t *s)
 {
   echo_client_main_t *ecm = &echo_client_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
@@ -566,7 +558,7 @@ echo_clients_session_disconnect_callback (session_t * s)
 }
 
 void
-echo_clients_session_disconnect (session_t * s)
+echo_clients_session_disconnect (session_t *s)
 {
   echo_client_main_t *ecm = &echo_client_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
@@ -576,7 +568,7 @@ echo_clients_session_disconnect (session_t * s)
 }
 
 static int
-echo_clients_rx_callback (session_t * s)
+echo_clients_rx_callback (session_t *s)
 {
   echo_client_main_t *ecm = &echo_client_main;
   eclient_session_t *sp;
@@ -606,7 +598,6 @@ echo_client_add_segment_callback (u32 client_index, u64 segment_handle)
   return 0;
 }
 
-/* *INDENT-OFF* */
 static session_cb_vft_t echo_clients = {
   .session_reset_callback = echo_clients_session_reset_callback,
   .session_connected_callback = echo_clients_session_connected_callback,
@@ -615,10 +606,9 @@ static session_cb_vft_t echo_clients = {
   .builtin_app_rx_callback = echo_clients_rx_callback,
   .add_segment_callback = echo_client_add_segment_callback
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
+echo_clients_attach (u8 *appns_id, u64 appns_flags, u64 appns_secret)
 {
   vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
   u32 prealloc_fifos, segment_size = 256 << 20;
@@ -702,12 +692,11 @@ echo_client_thread_fn (void *arg)
 
 /** Start a transmit thread */
 int
-echo_clients_start_tx_pthread (echo_client_main_t * ecm)
+echo_clients_start_tx_pthread (echo_client_main_t *ecm)
 {
   if (ecm->client_thread_handle == 0)
     {
-      int rv = pthread_create (&ecm->client_thread_handle,
-			       NULL /*attr */ ,
+      int rv = pthread_create (&ecm->client_thread_handle, NULL /*attr */,
 			       echo_client_thread_fn, 0);
       if (rv)
 	{
@@ -719,7 +708,7 @@ echo_clients_start_tx_pthread (echo_client_main_t * ecm)
 }
 
 clib_error_t *
-echo_clients_connect (vlib_main_t * vm, u32 n_clients)
+echo_clients_connect (vlib_main_t *vm, u32 n_clients)
 {
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   echo_client_main_t *ecm = &echo_client_main;
@@ -756,13 +745,13 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
   return 0;
 }
 
-#define ec_cli_output(_fmt, _args...) 			\
-  if (!ecm->no_output)  				\
-    vlib_cli_output(vm, _fmt, ##_args)
+#define ec_cli_output(_fmt, _args...)                                         \
+  if (!ecm->no_output)                                                        \
+  vlib_cli_output (vm, _fmt, ##_args)
 
 static clib_error_t *
-echo_clients_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+echo_clients_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
 {
   echo_client_main_t *ecm = &echo_client_main;
   vlib_thread_main_t *thread_main = vlib_get_thread_main ();
@@ -828,22 +817,22 @@ echo_clients_command_fn (vlib_main_t * vm,
 			 unformat_memory_size, &tmp))
 	{
 	  if (tmp >= 0x100000000ULL)
-	    return clib_error_return
-	      (0, "private segment size %lld (%llu) too large", tmp, tmp);
+	    return clib_error_return (
+	      0, "private segment size %lld (%llu) too large", tmp, tmp);
 	  ecm->private_segment_size = tmp;
 	}
       else if (unformat (input, "preallocate-fifos"))
 	ecm->prealloc_fifos = 1;
       else if (unformat (input, "preallocate-sessions"))
 	preallocate_sessions = 1;
-      else
-	if (unformat (input, "client-batch %d", &ecm->connections_per_batch))
+      else if (unformat (input, "client-batch %d",
+			 &ecm->connections_per_batch))
 	;
       else if (unformat (input, "appns %_%v%_", &appns_id))
 	;
       else if (unformat (input, "all-scope"))
-	appns_flags |= (APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE
-			| APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE);
+	appns_flags |= (APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE |
+			APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE);
       else if (unformat (input, "local-scope"))
 	appns_flags = APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
       else if (unformat (input, "global-scope"))
@@ -862,15 +851,13 @@ echo_clients_command_fn (vlib_main_t * vm,
     }
 
   /* Store cli process node index for signalling */
-  ecm->cli_node_index =
-    vlib_get_current_process (vm)->node_runtime.node_index;
+  ecm->cli_node_index = vlib_get_current_process (vm)->node_runtime.node_index;
 
   if (ecm->is_init == 0)
     {
       if (echo_clients_init (vm))
 	return clib_error_return (0, "failed init");
     }
-
 
   ecm->ready_connections = 0;
   ecm->expected_connections = n_clients * ecm->quic_streams;
@@ -893,7 +880,7 @@ echo_clients_command_fn (vlib_main_t * vm,
 #endif
 
   vlib_worker_thread_barrier_sync (vm);
-  vnet_session_enable_disable (vm, 1 /* turn on session and transports */ );
+  vnet_session_enable_disable (vm, 1 /* turn on session and transports */);
   vlib_worker_thread_barrier_release (vm);
 
   if (ecm->test_client_attached == 0)
@@ -947,8 +934,8 @@ echo_clients_command_fn (vlib_main_t * vm,
 
     default:
       ec_cli_output ("unexpected event(1): %d", event_type);
-      error = clib_error_return (0, "failed: unexpected event(1): %d",
-				 event_type);
+      error =
+	clib_error_return (0, "failed: unexpected event(1): %d", event_type);
       goto cleanup;
     }
 
@@ -971,8 +958,8 @@ echo_clients_command_fn (vlib_main_t * vm,
 
     default:
       ec_cli_output ("unexpected event(2): %d", event_type);
-      error = clib_error_return (0, "failed: unexpected event(2): %d",
-				 event_type);
+      error =
+	clib_error_return (0, "failed: unexpected event(2): %d", event_type);
       goto cleanup;
     }
 
@@ -987,8 +974,7 @@ echo_clients_command_fn (vlib_main_t * vm,
       ec_cli_output ("%.2f bytes/second %s", ((f64) total_bytes) / (delta),
 		     transfer_type);
       ec_cli_output ("%.4f gbit/second %s",
-		     (((f64) total_bytes * 8.0) / delta / 1e9),
-		     transfer_type);
+		     (((f64) total_bytes * 8.0) / delta / 1e9), transfer_type);
     }
   else
     {
@@ -1027,22 +1013,20 @@ cleanup:
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (echo_clients_command, static) =
-{
+VLIB_CLI_COMMAND (echo_clients_command, static) = {
   .path = "test echo clients",
-  .short_help = "test echo clients [nclients %d][[m|g]bytes <bytes>]"
-      "[test-timeout <time>][syn-timeout <time>][no-return][fifo-size <size>]"
-      "[private-segment-count <count>][private-segment-size <bytes>[m|g]]"
-      "[preallocate-fifos][preallocate-sessions][client-batch <batch-size>]"
-      "[uri <tcp://ip/port>][test-bytes][no-output]",
+  .short_help =
+    "test echo clients [nclients %d][[m|g]bytes <bytes>]"
+    "[test-timeout <time>][syn-timeout <time>][no-return][fifo-size <size>]"
+    "[private-segment-count <count>][private-segment-size <bytes>[m|g]]"
+    "[preallocate-fifos][preallocate-sessions][client-batch <batch-size>]"
+    "[uri <tcp://ip/port>][test-bytes][no-output]",
   .function = echo_clients_command_fn,
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 clib_error_t *
-echo_clients_main_init (vlib_main_t * vm)
+echo_clients_main_init (vlib_main_t *vm)
 {
   echo_client_main_t *ecm = &echo_client_main;
   ecm->is_init = 0;

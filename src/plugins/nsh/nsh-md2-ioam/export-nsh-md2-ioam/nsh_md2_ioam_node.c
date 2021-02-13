@@ -31,32 +31,31 @@ extern ioam_export_main_t nsh_md2_ioam_export_main;
 vlib_node_registration_t export_node;
 /* packet trace format function */
 static u8 *
-format_export_trace (u8 * s, va_list * args)
+format_export_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   export_trace_t *t = va_arg (*args, export_trace_t *);
 
-  s = format (s, "EXPORT: flow_label %d, next index %d",
-	      t->flow_label, t->next_index);
+  s = format (s, "EXPORT: flow_label %d, next index %d", t->flow_label,
+	      t->next_index);
   return s;
 }
 
 vlib_node_registration_t nsh_md2_ioam_export_node;
 
-#define foreach_export_error \
-_(RECORDED, "Packets recorded for export")
+#define foreach_export_error _ (RECORDED, "Packets recorded for export")
 
 typedef enum
 {
-#define _(sym,str) EXPORT_ERROR_##sym,
+#define _(sym, str) EXPORT_ERROR_##sym,
   foreach_export_error
 #undef _
     EXPORT_N_ERROR,
 } export_error_t;
 
 static char *export_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_export_error
 #undef _
 };
@@ -108,30 +107,28 @@ copy3cachelines (void *dst, const void *src, size_t n)
 }
 
 static void
-nsh_md2_ioam_export_fixup_func (vlib_buffer_t * export_buf,
-				vlib_buffer_t * pak_buf)
+nsh_md2_ioam_export_fixup_func (vlib_buffer_t *export_buf,
+				vlib_buffer_t *pak_buf)
 {
   /* Todo: on implementing analyse */
 }
 
 static uword
-nsh_md2_ioam_export_node_fn (vlib_main_t * vm,
-			     vlib_node_runtime_t * node, vlib_frame_t * frame)
+nsh_md2_ioam_export_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+			     vlib_frame_t *frame)
 {
   ioam_export_main_t *em = &nsh_md2_ioam_export_main;
-  ioam_export_node_common (em, vm, node, frame, ip4_header_t, length,
-			   ip_version_and_header_length,
-			   EXPORT_NEXT_NSH_MD2_IOAM_INPUT,
-			   nsh_md2_ioam_export_fixup_func);
+  ioam_export_node_common (
+    em, vm, node, frame, ip4_header_t, length, ip_version_and_header_length,
+    EXPORT_NEXT_NSH_MD2_IOAM_INPUT, nsh_md2_ioam_export_fixup_func);
   return frame->n_vectors;
 }
 
 /*
  * Node for iOAM export
  */
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (nsh_md2_ioam_export_node) =
-{
+
+VLIB_REGISTER_NODE (nsh_md2_ioam_export_node) = {
   .function = nsh_md2_ioam_export_node_fn,
   .name = "nsh-md2-ioam-export",
   .vector_size = sizeof (u32),
@@ -140,11 +137,9 @@ VLIB_REGISTER_NODE (nsh_md2_ioam_export_node) =
   .n_errors = ARRAY_LEN (export_error_strings),
   .error_strings = export_error_strings,
   .n_next_nodes = EXPORT_N_NEXT,
-    /* edit / add dispositions here */
-    .next_nodes =
-  {[EXPORT_NEXT_NSH_MD2_IOAM_INPUT] = "nsh-pop"},
+  /* edit / add dispositions here */
+  .next_nodes = { [EXPORT_NEXT_NSH_MD2_IOAM_INPUT] = "nsh-pop" },
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

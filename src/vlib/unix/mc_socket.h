@@ -94,8 +94,8 @@ typedef struct mc_socket_main_t
 always_inline u32
 mc_socket_peer_id_get_address (mc_peer_id_t i)
 {
-  u32 a = ((i.as_u8[0] << 24)
-	   | (i.as_u8[1] << 16) | (i.as_u8[2] << 8) | (i.as_u8[3] << 0));
+  u32 a = ((i.as_u8[0] << 24) | (i.as_u8[1] << 16) | (i.as_u8[2] << 8) |
+	   (i.as_u8[3] << 0));
   return clib_host_to_net_u32 (a);
 }
 
@@ -122,11 +122,10 @@ mc_socket_set_peer_id (u32 address_net_byte_order, u32 port_host_byte_order)
   return i;
 }
 
-clib_error_t *mc_socket_main_init (mc_socket_main_t * msm,
+clib_error_t *mc_socket_main_init (mc_socket_main_t *msm,
 				   char **intfc_probe_list,
 				   int n_intfcs_to_probe);
 #endif /* __included_mc_socket_h__ */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

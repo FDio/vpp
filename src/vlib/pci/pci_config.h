@@ -178,66 +178,68 @@ typedef struct
   u16 device_id;
 
   u16 command;
-#define PCI_COMMAND_IO		(1 << 0)	/* Enable response in I/O space */
-#define PCI_COMMAND_MEMORY	(1 << 1)	/* Enable response in Memory space */
-#define PCI_COMMAND_BUS_MASTER	(1 << 2)	/* Enable bus mastering */
-#define PCI_COMMAND_SPECIAL	(1 << 3)	/* Enable response to special cycles */
-#define PCI_COMMAND_WRITE_INVALIDATE (1 << 4)	/* Use memory write and invalidate */
-#define PCI_COMMAND_VGA_PALETTE_SNOOP (1 << 5)
-#define PCI_COMMAND_PARITY	(1 << 6)
-#define PCI_COMMAND_WAIT 	(1 << 7)	/* Enable address/data stepping */
-#define PCI_COMMAND_SERR	(1 << 8)	/* Enable SERR */
+#define PCI_COMMAND_IO	       (1 << 0) /* Enable response in I/O space */
+#define PCI_COMMAND_MEMORY     (1 << 1) /* Enable response in Memory space */
+#define PCI_COMMAND_BUS_MASTER (1 << 2) /* Enable bus mastering */
+#define PCI_COMMAND_SPECIAL    (1 << 3) /* Enable response to special cycles */
+#define PCI_COMMAND_WRITE_INVALIDATE                                          \
+  (1 << 4) /* Use memory write and invalidate */
+#define PCI_COMMAND_VGA_PALETTE_SNOOP  (1 << 5)
+#define PCI_COMMAND_PARITY	       (1 << 6)
+#define PCI_COMMAND_WAIT	       (1 << 7) /* Enable address/data stepping */
+#define PCI_COMMAND_SERR	       (1 << 8) /* Enable SERR */
 #define PCI_COMMAND_BACK_TO_BACK_WRITE (1 << 9)
-#define PCI_COMMAND_INTX_DISABLE (1 << 10)	/* INTx Emulation Disable */
+#define PCI_COMMAND_INTX_DISABLE       (1 << 10) /* INTx Emulation Disable */
 
   u16 status;
-#define PCI_STATUS_INTX_PENDING (1 << 3)
+#define PCI_STATUS_INTX_PENDING	   (1 << 3)
 #define PCI_STATUS_CAPABILITY_LIST (1 << 4)
-#define PCI_STATUS_66MHZ	(1 << 5)	/* Support 66 Mhz PCI 2.1 bus */
-#define PCI_STATUS_UDF		(1 << 6)	/* Support User Definable Features (obsolete) */
-#define PCI_STATUS_BACK_TO_BACK_WRITE (1 << 7)	/* Accept fast-back to back */
-#define PCI_STATUS_PARITY_ERROR	(1 << 8)	/* Detected parity error */
-#define PCI_STATUS_DEVSEL_GET(x) ((x >> 9) & 3)	/* DEVSEL timing */
-#define PCI_STATUS_DEVSEL_FAST (0 << 9)
-#define PCI_STATUS_DEVSEL_MEDIUM (1 << 9)
-#define PCI_STATUS_DEVSEL_SLOW (2 << 9)
-#define PCI_STATUS_SIG_TARGET_ABORT (1 << 11)	/* Set on target abort */
-#define PCI_STATUS_REC_TARGET_ABORT (1 << 12)	/* Master ack of " */
-#define PCI_STATUS_REC_MASTER_ABORT (1 << 13)	/* Set on master abort */
-#define PCI_STATUS_SIG_SYSTEM_ERROR (1 << 14)	/* Set when we drive SERR */
+#define PCI_STATUS_66MHZ	   (1 << 5) /* Support 66 Mhz PCI 2.1 bus */
+#define PCI_STATUS_UDF                                                        \
+  (1 << 6) /* Support User Definable Features (obsolete) */
+#define PCI_STATUS_BACK_TO_BACK_WRITE	 (1 << 7) /* Accept fast-back to back */
+#define PCI_STATUS_PARITY_ERROR		 (1 << 8) /* Detected parity error */
+#define PCI_STATUS_DEVSEL_GET(x)	 ((x >> 9) & 3) /* DEVSEL timing */
+#define PCI_STATUS_DEVSEL_FAST		 (0 << 9)
+#define PCI_STATUS_DEVSEL_MEDIUM	 (1 << 9)
+#define PCI_STATUS_DEVSEL_SLOW		 (2 << 9)
+#define PCI_STATUS_SIG_TARGET_ABORT	 (1 << 11) /* Set on target abort */
+#define PCI_STATUS_REC_TARGET_ABORT	 (1 << 12) /* Master ack of " */
+#define PCI_STATUS_REC_MASTER_ABORT	 (1 << 13) /* Set on master abort */
+#define PCI_STATUS_SIG_SYSTEM_ERROR	 (1 << 14) /* Set when we drive SERR */
 #define PCI_STATUS_DETECTED_PARITY_ERROR (1 << 15)
 
   u8 revision_id;
-  u8 programming_interface_class;	/* Reg. Level Programming Interface */
+  u8 programming_interface_class; /* Reg. Level Programming Interface */
 
-  pci_device_class_t device_class:16;
+  pci_device_class_t device_class : 16;
 
   u8 cache_size;
   u8 latency_timer;
 
   u8 header_type;
 #define PCI_HEADER_TYPE_NORMAL	0
-#define PCI_HEADER_TYPE_BRIDGE 1
+#define PCI_HEADER_TYPE_BRIDGE	1
 #define PCI_HEADER_TYPE_CARDBUS 2
 
   u8 bist;
-#define PCI_BIST_CODE_MASK	0x0f	/* Return result */
-#define PCI_BIST_START		0x40	/* 1 to start BIST, 2 secs or less */
-#define PCI_BIST_CAPABLE	0x80	/* 1 if BIST capable */
+#define PCI_BIST_CODE_MASK 0x0f /* Return result */
+#define PCI_BIST_START	   0x40 /* 1 to start BIST, 2 secs or less */
+#define PCI_BIST_CAPABLE   0x80 /* 1 if BIST capable */
 } pci_config_header_t;
 
 /* Byte swap config header. */
 always_inline void
-pci_config_header_little_to_host (pci_config_header_t * r)
+pci_config_header_little_to_host (pci_config_header_t *r)
 {
   if (!CLIB_ARCH_IS_BIG_ENDIAN)
     return;
-#define _(f,t) r->f = clib_byte_swap_##t (r->f)
-  _(vendor_id, u16);
-  _(device_id, u16);
-  _(command, u16);
-  _(status, u16);
-  _(device_class, u16);
+#define _(f, t) r->f = clib_byte_swap_##t (r->f)
+  _ (vendor_id, u16);
+  _ (device_id, u16);
+  _ (command, u16);
+  _ (status, u16);
+  _ (device_class, u16);
 #undef _
 }
 
@@ -260,12 +262,12 @@ typedef struct
   u16 subsystem_id;
 
   u32 rom_address;
-#define PCI_ROM_ADDRESS		0x30	/* Bits 31..11 are address, 10..1 reserved */
-#define PCI_ROM_ADDRESS_ENABLE	0x01
-#define PCI_ROM_ADDRESS_MASK	(~0x7ffUL)
+#define PCI_ROM_ADDRESS	       0x30 /* Bits 31..11 are address, 10..1 reserved */
+#define PCI_ROM_ADDRESS_ENABLE 0x01
+#define PCI_ROM_ADDRESS_MASK   (~0x7ffUL)
 
   u8 first_capability_offset;
-    CLIB_PAD_FROM_TO (0x35, 0x3c);
+  CLIB_PAD_FROM_TO (0x35, 0x3c);
 
   u8 interrupt_line;
   u8 interrupt_pin;
@@ -276,19 +278,19 @@ typedef struct
 } pci_config_type0_regs_t;
 
 always_inline void
-pci_config_type0_little_to_host (pci_config_type0_regs_t * r)
+pci_config_type0_little_to_host (pci_config_type0_regs_t *r)
 {
   int i;
   if (!CLIB_ARCH_IS_BIG_ENDIAN)
     return;
   pci_config_header_little_to_host (&r->header);
-#define _(f,t) r->f = clib_byte_swap_##t (r->f)
+#define _(f, t) r->f = clib_byte_swap_##t (r->f)
   for (i = 0; i < ARRAY_LEN (r->base_address); i++)
-    _(base_address[i], u32);
-  _(cardbus_cis, u16);
-  _(subsystem_vendor_id, u16);
-  _(subsystem_id, u16);
-  _(rom_address, u32);
+    _ (base_address[i], u32);
+  _ (cardbus_cis, u16);
+  _ (subsystem_vendor_id, u16);
+  _ (subsystem_id, u16);
+  _ (rom_address, u32);
 #undef _
 }
 
@@ -317,13 +319,13 @@ typedef struct
   /* Memory range behind bridge in units of 64k bytes. */
   u16 memory_base, memory_limit;
 #define PCI_MEMORY_RANGE_TYPE_MASK 0x0fUL
-#define PCI_MEMORY_RANGE_MASK	(~0x0fUL)
+#define PCI_MEMORY_RANGE_MASK	   (~0x0fUL)
 
   u16 prefetchable_memory_base, prefetchable_memory_limit;
 #define PCI_PREF_RANGE_TYPE_MASK 0x0fUL
-#define PCI_PREF_RANGE_TYPE_32	0x00
-#define PCI_PREF_RANGE_TYPE_64	0x01
-#define PCI_PREF_RANGE_MASK	(~0x0fUL)
+#define PCI_PREF_RANGE_TYPE_32	 0x00
+#define PCI_PREF_RANGE_TYPE_64	 0x01
+#define PCI_PREF_RANGE_MASK	 (~0x0fUL)
 
   u32 prefetchable_memory_base_upper_32bits;
   u32 prefetchable_memory_limit_upper_32bits;
@@ -332,44 +334,46 @@ typedef struct
 
   /* Same as for type 0. */
   u8 capability_list_offset;
-    CLIB_PAD_FROM_TO (0x35, 0x37);
+  CLIB_PAD_FROM_TO (0x35, 0x37);
 
   u32 rom_address;
-    CLIB_PAD_FROM_TO (0x3c, 0x3e);
+  CLIB_PAD_FROM_TO (0x3c, 0x3e);
 
   u16 bridge_control;
-#define PCI_BRIDGE_CTL_PARITY	0x01	/* Enable parity detection on secondary interface */
-#define PCI_BRIDGE_CTL_SERR	0x02	/* The same for SERR forwarding */
-#define PCI_BRIDGE_CTL_NO_ISA	0x04	/* Disable bridging of ISA ports */
-#define PCI_BRIDGE_CTL_VGA	0x08	/* Forward VGA addresses */
-#define PCI_BRIDGE_CTL_MASTER_ABORT 0x20	/* Report master aborts */
-#define PCI_BRIDGE_CTL_BUS_RESET 0x40	/* Secondary bus reset */
-#define PCI_BRIDGE_CTL_FAST_BACK 0x80	/* Fast Back2Back enabled on secondary interface */
+#define PCI_BRIDGE_CTL_PARITY                                                 \
+  0x01 /* Enable parity detection on secondary interface */
+#define PCI_BRIDGE_CTL_SERR	    0x02 /* The same for SERR forwarding */
+#define PCI_BRIDGE_CTL_NO_ISA	    0x04 /* Disable bridging of ISA ports */
+#define PCI_BRIDGE_CTL_VGA	    0x08 /* Forward VGA addresses */
+#define PCI_BRIDGE_CTL_MASTER_ABORT 0x20 /* Report master aborts */
+#define PCI_BRIDGE_CTL_BUS_RESET    0x40 /* Secondary bus reset */
+#define PCI_BRIDGE_CTL_FAST_BACK                                              \
+  0x80 /* Fast Back2Back enabled on secondary interface */
 
   u8 capability_data[0];
 } pci_config_type1_regs_t;
 
 always_inline void
-pci_config_type1_little_to_host (pci_config_type1_regs_t * r)
+pci_config_type1_little_to_host (pci_config_type1_regs_t *r)
 {
   int i;
   if (!CLIB_ARCH_IS_BIG_ENDIAN)
     return;
   pci_config_header_little_to_host (&r->header);
-#define _(f,t) r->f = clib_byte_swap_##t (r->f)
+#define _(f, t) r->f = clib_byte_swap_##t (r->f)
   for (i = 0; i < ARRAY_LEN (r->base_address); i++)
-    _(base_address[i], u32);
-  _(secondary_status, u16);
-  _(memory_base, u16);
-  _(memory_limit, u16);
-  _(prefetchable_memory_base, u16);
-  _(prefetchable_memory_limit, u16);
-  _(prefetchable_memory_base_upper_32bits, u32);
-  _(prefetchable_memory_limit_upper_32bits, u32);
-  _(io_base_upper_16bits, u16);
-  _(io_limit_upper_16bits, u16);
-  _(rom_address, u32);
-  _(bridge_control, u16);
+    _ (base_address[i], u32);
+  _ (secondary_status, u16);
+  _ (memory_base, u16);
+  _ (memory_limit, u16);
+  _ (prefetchable_memory_base, u16);
+  _ (prefetchable_memory_limit, u16);
+  _ (prefetchable_memory_base_upper_32bits, u32);
+  _ (prefetchable_memory_limit_upper_32bits, u32);
+  _ (io_base_upper_16bits, u16);
+  _ (io_limit_upper_16bits, u16);
+  _ (rom_address, u32);
+  _ (bridge_control, u16);
 #undef _
 }
 
@@ -413,12 +417,12 @@ typedef enum pci_capability_type
 /* Common header for capabilities. */
 typedef struct
 {
-  enum pci_capability_type type:8;
+  enum pci_capability_type type : 8;
   u8 next_offset;
 } __clib_packed pci_capability_regs_t;
 
 always_inline void *
-pci_config_find_capability (pci_config_type0_regs_t * t, int cap_type)
+pci_config_find_capability (pci_config_type0_regs_t *t, int cap_type)
 {
   pci_capability_regs_t *c;
   u32 next_offset;
@@ -445,29 +449,29 @@ typedef struct
 {
   pci_capability_regs_t header;
   u16 capabilities;
-#define PCI_PM_CAP_VER_MASK	0x0007	/* Version */
-#define PCI_PM_CAP_PME_CLOCK	0x0008	/* PME clock required */
-#define PCI_PM_CAP_RESERVED  0x0010	/* Reserved field */
-#define PCI_PM_CAP_DSI		0x0020	/* Device specific initialization */
-#define PCI_PM_CAP_AUX_POWER	0x01C0	/* Auxilliary power support mask */
-#define PCI_PM_CAP_D1		0x0200	/* D1 power state support */
-#define PCI_PM_CAP_D2		0x0400	/* D2 power state support */
-#define PCI_PM_CAP_PME		0x0800	/* PME pin supported */
-#define PCI_PM_CAP_PME_MASK  0xF800	/* PME Mask of all supported states */
-#define PCI_PM_CAP_PME_D0   0x0800	/* PME# from D0 */
-#define PCI_PM_CAP_PME_D1   0x1000	/* PME# from D1 */
-#define PCI_PM_CAP_PME_D2   0x2000	/* PME# from D2 */
-#define PCI_PM_CAP_PME_D3   0x4000	/* PME# from D3 (hot) */
-#define PCI_PM_CAP_PME_D3cold 0x8000	/* PME# from D3 (cold) */
+#define PCI_PM_CAP_VER_MASK   0x0007 /* Version */
+#define PCI_PM_CAP_PME_CLOCK  0x0008 /* PME clock required */
+#define PCI_PM_CAP_RESERVED   0x0010 /* Reserved field */
+#define PCI_PM_CAP_DSI	      0x0020 /* Device specific initialization */
+#define PCI_PM_CAP_AUX_POWER  0x01C0 /* Auxilliary power support mask */
+#define PCI_PM_CAP_D1	      0x0200 /* D1 power state support */
+#define PCI_PM_CAP_D2	      0x0400 /* D2 power state support */
+#define PCI_PM_CAP_PME	      0x0800 /* PME pin supported */
+#define PCI_PM_CAP_PME_MASK   0xF800 /* PME Mask of all supported states */
+#define PCI_PM_CAP_PME_D0     0x0800 /* PME# from D0 */
+#define PCI_PM_CAP_PME_D1     0x1000 /* PME# from D1 */
+#define PCI_PM_CAP_PME_D2     0x2000 /* PME# from D2 */
+#define PCI_PM_CAP_PME_D3     0x4000 /* PME# from D3 (hot) */
+#define PCI_PM_CAP_PME_D3cold 0x8000 /* PME# from D3 (cold) */
   u16 control;
-#define PCI_PM_CTRL_STATE_MASK	0x0003	/* Current power state (D0 to D3) */
-#define PCI_PM_CTRL_PME_ENABLE	0x0100	/* PME pin enable */
-#define PCI_PM_CTRL_DATA_SEL_MASK	0x1e00	/* Data select (??) */
-#define PCI_PM_CTRL_DATA_SCALE_MASK	0x6000	/* Data scale (??) */
-#define PCI_PM_CTRL_PME_STATUS	0x8000	/* PME pin status */
+#define PCI_PM_CTRL_STATE_MASK	    0x0003 /* Current power state (D0 to D3) */
+#define PCI_PM_CTRL_PME_ENABLE	    0x0100 /* PME pin enable */
+#define PCI_PM_CTRL_DATA_SEL_MASK   0x1e00 /* Data select (??) */
+#define PCI_PM_CTRL_DATA_SCALE_MASK 0x6000 /* Data scale (??) */
+#define PCI_PM_CTRL_PME_STATUS	    0x8000 /* PME pin status */
   u8 extensions;
-#define PCI_PM_PPB_B2_B3	0x40	/* Stop clock when in D3hot (??) */
-#define PCI_PM_BPCC_ENABLE	0x80	/* Bus power/clock control enable (??) */
+#define PCI_PM_PPB_B2_B3   0x40 /* Stop clock when in D3hot (??) */
+#define PCI_PM_BPCC_ENABLE 0x80 /* Bus power/clock control enable (??) */
   u8 data;
 } __clib_packed pci_power_management_regs_t;
 
@@ -480,14 +484,15 @@ typedef struct
   u32 status;
   u32 command;
   /* Command & status common bits. */
-#define PCI_AGP_RQ_MASK	0xff000000	/* Maximum number of requests - 1 */
-#define PCI_AGP_SBA	0x0200	/* Sideband addressing supported */
-#define PCI_AGP_64BIT	0x0020	/* 64-bit addressing supported */
-#define PCI_AGP_ALLOW_TRANSACTIONS 0x0100	/* Allow processing of AGP transactions */
-#define PCI_AGP_FW	0x0010	/* FW transfers supported/forced */
-#define PCI_AGP_RATE4	0x0004	/* 4x transfer rate supported */
-#define PCI_AGP_RATE2	0x0002	/* 2x transfer rate supported */
-#define PCI_AGP_RATE1	0x0001	/* 1x transfer rate supported */
+#define PCI_AGP_RQ_MASK 0xff000000 /* Maximum number of requests - 1 */
+#define PCI_AGP_SBA	0x0200	   /* Sideband addressing supported */
+#define PCI_AGP_64BIT	0x0020	   /* 64-bit addressing supported */
+#define PCI_AGP_ALLOW_TRANSACTIONS                                            \
+  0x0100		     /* Allow processing of AGP transactions */
+#define PCI_AGP_FW    0x0010 /* FW transfers supported/forced */
+#define PCI_AGP_RATE4 0x0004 /* 4x transfer rate supported */
+#define PCI_AGP_RATE2 0x0002 /* 2x transfer rate supported */
+#define PCI_AGP_RATE1 0x0001 /* 1x transfer rate supported */
 } __clib_packed pci_agp_regs_t;
 
 /* Vital Product Data */
@@ -495,8 +500,8 @@ typedef struct
 {
   pci_capability_regs_t header;
   u16 address;
-#define PCI_VPD_ADDR_MASK	0x7fff	/* Address mask */
-#define PCI_VPD_ADDR_F		0x8000	/* Write 0, 1 indicates completion */
+#define PCI_VPD_ADDR_MASK 0x7fff /* Address mask */
+#define PCI_VPD_ADDR_F	  0x8000 /* Write 0, 1 indicates completion */
   u32 data;
 } __clib_packed pci_vpd_regs_t;
 
@@ -505,8 +510,8 @@ typedef struct
 {
   pci_capability_regs_t header;
   u8 esr;
-#define PCI_SID_ESR_NSLOTS	0x1f	/* Number of expansion slots available */
-#define PCI_SID_ESR_FIC	0x20	/* First In Chassis Flag */
+#define PCI_SID_ESR_NSLOTS 0x1f /* Number of expansion slots available */
+#define PCI_SID_ESR_FIC	   0x20 /* First In Chassis Flag */
   u8 chassis;
 } __clib_packed pci_sid_regs_t;
 
@@ -515,13 +520,13 @@ typedef struct
 {
   pci_capability_regs_t header;
   u16 flags;
-#define PCI_MSI_FLAGS_ENABLE	(1 << 0)	/* MSI feature enabled */
+#define PCI_MSI_FLAGS_ENABLE		    (1 << 0) /* MSI feature enabled */
 #define PCI_MSI_FLAGS_GET_MAX_QUEUE_SIZE(x) ((x >> 1) & 0x7)
-#define PCI_MSI_FLAGS_MAX_QUEUE_SIZE(x)     (((x) & 0x7) << 1)
-#define PCI_MSI_FLAGS_GET_QUEUE_SIZE(x) ((x >> 4) & 0x7)
-#define PCI_MSI_FLAGS_QUEUE_SIZE(x)     (((x) & 0x7) << 4)
-#define PCI_MSI_FLAGS_64BIT	(1 << 7)	/* 64-bit addresses allowed */
-#define PCI_MSI_FLAGS_MASKBIT	(1 << 8)	/* 64-bit mask bits allowed */
+#define PCI_MSI_FLAGS_MAX_QUEUE_SIZE(x)	    (((x) &0x7) << 1)
+#define PCI_MSI_FLAGS_GET_QUEUE_SIZE(x)	    ((x >> 4) & 0x7)
+#define PCI_MSI_FLAGS_QUEUE_SIZE(x)	    (((x) &0x7) << 4)
+#define PCI_MSI_FLAGS_64BIT		    (1 << 7) /* 64-bit addresses allowed */
+#define PCI_MSI_FLAGS_MASKBIT		    (1 << 8) /* 64-bit mask bits allowed */
   u32 address;
   u32 data;
   u32 mask_bits;
@@ -541,13 +546,13 @@ typedef struct
 {
   pci_capability_regs_t header;
   u16 control_status;
-#define PCI_CHSWP_DHA		0x01	/* Device Hiding Arm */
-#define PCI_CHSWP_EIM		0x02	/* ENUM# Signal Mask */
-#define PCI_CHSWP_PIE		0x04	/* Pending Insert or Extract */
-#define PCI_CHSWP_LOO		0x08	/* LED On / Off */
-#define PCI_CHSWP_PI		0x30	/* Programming Interface */
-#define PCI_CHSWP_EXT		0x40	/* ENUM# status - extraction */
-#define PCI_CHSWP_INS		0x80	/* ENUM# status - insertion */
+#define PCI_CHSWP_DHA 0x01 /* Device Hiding Arm */
+#define PCI_CHSWP_EIM 0x02 /* ENUM# Signal Mask */
+#define PCI_CHSWP_PIE 0x04 /* Pending Insert or Extract */
+#define PCI_CHSWP_LOO 0x08 /* LED On / Off */
+#define PCI_CHSWP_PI  0x30 /* Programming Interface */
+#define PCI_CHSWP_EXT 0x40 /* ENUM# status - extraction */
+#define PCI_CHSWP_INS 0x80 /* ENUM# status - insertion */
 } __clib_packed pci_chswp_regs_t;
 
 /* PCIX registers */
@@ -555,25 +560,28 @@ typedef struct
 {
   pci_capability_regs_t header;
   u16 command;
-#define PCIX_CMD_DPERR_E	0x0001	/* Data Parity Error Recovery Enable */
-#define PCIX_CMD_ERO		0x0002	/* Enable Relaxed Ordering */
-#define PCIX_CMD_MAX_READ	0x000c	/* Max Memory Read Byte Count */
-#define PCIX_CMD_MAX_SPLIT	0x0070	/* Max Outstanding Split Transactions */
-#define PCIX_CMD_VERSION(x) 	(((x) >> 12) & 3)	/* Version */
+#define PCIX_CMD_DPERR_E    0x0001 /* Data Parity Error Recovery Enable */
+#define PCIX_CMD_ERO	    0x0002 /* Enable Relaxed Ordering */
+#define PCIX_CMD_MAX_READ   0x000c /* Max Memory Read Byte Count */
+#define PCIX_CMD_MAX_SPLIT  0x0070 /* Max Outstanding Split Transactions */
+#define PCIX_CMD_VERSION(x) (((x) >> 12) & 3) /* Version */
   u32 status;
-#define PCIX_STATUS_DEVFN	0x000000ff	/* A copy of devfn */
-#define PCIX_STATUS_BUS	0x0000ff00	/* A copy of bus nr */
-#define PCIX_STATUS_64BIT	0x00010000	/* 64-bit device */
-#define PCIX_STATUS_133MHZ	0x00020000	/* 133 MHz capable */
-#define PCIX_STATUS_SPL_DISC	0x00040000	/* Split Completion Discarded */
-#define PCIX_STATUS_UNX_SPL	0x00080000	/* Unexpected Split Completion */
-#define PCIX_STATUS_COMPLEX	0x00100000	/* Device Complexity */
-#define PCIX_STATUS_MAX_READ	0x00600000	/* Designed Max Memory Read Count */
-#define PCIX_STATUS_MAX_SPLIT	0x03800000	/* Designed Max Outstanding Split Transactions */
-#define PCIX_STATUS_MAX_CUM	0x1c000000	/* Designed Max Cumulative Read Size */
-#define PCIX_STATUS_SPL_ERR	0x20000000	/* Rcvd Split Completion Error Msg */
-#define PCIX_STATUS_266MHZ	0x40000000	/* 266 MHz capable */
-#define PCIX_STATUS_533MHZ	0x80000000	/* 533 MHz capable */
+#define PCIX_STATUS_DEVFN    0x000000ff /* A copy of devfn */
+#define PCIX_STATUS_BUS	     0x0000ff00 /* A copy of bus nr */
+#define PCIX_STATUS_64BIT    0x00010000 /* 64-bit device */
+#define PCIX_STATUS_133MHZ   0x00020000 /* 133 MHz capable */
+#define PCIX_STATUS_SPL_DISC 0x00040000 /* Split Completion Discarded */
+#define PCIX_STATUS_UNX_SPL  0x00080000 /* Unexpected Split Completion */
+#define PCIX_STATUS_COMPLEX  0x00100000 /* Device Complexity */
+#define PCIX_STATUS_MAX_READ 0x00600000 /* Designed Max Memory Read Count */
+#define PCIX_STATUS_MAX_SPLIT                                                 \
+  0x03800000 /* Designed Max Outstanding Split Transactions */
+#define PCIX_STATUS_MAX_CUM                                                   \
+  0x1c000000			       /* Designed Max Cumulative Read Size   \
+					*/
+#define PCIX_STATUS_SPL_ERR 0x20000000 /* Rcvd Split Completion Error Msg */
+#define PCIX_STATUS_266MHZ  0x40000000 /* 266 MHz capable */
+#define PCIX_STATUS_533MHZ  0x80000000 /* 533 MHz capable */
 } __clib_packed pcix_config_regs_t;
 
 static inline int
@@ -597,47 +605,47 @@ typedef struct
 {
   pci_capability_regs_t header;
   u16 pcie_capabilities;
-#define PCIE_CAP_VERSION(x)	(((x) >> 0) & 0xf)
-#define PCIE_CAP_DEVICE_TYPE(x)	(((x) >> 4) & 0xf)
-#define PCIE_DEVICE_TYPE_ENDPOINT 0
+#define PCIE_CAP_VERSION(x)		 (((x) >> 0) & 0xf)
+#define PCIE_CAP_DEVICE_TYPE(x)		 (((x) >> 4) & 0xf)
+#define PCIE_DEVICE_TYPE_ENDPOINT	 0
 #define PCIE_DEVICE_TYPE_LEGACY_ENDPOINT 1
-#define PCIE_DEVICE_TYPE_ROOT_PORT 4
+#define PCIE_DEVICE_TYPE_ROOT_PORT	 4
   /* Upstream/downstream port of PCI Express switch. */
-#define PCIE_DEVICE_TYPE_SWITCH_UPSTREAM 5
-#define PCIE_DEVICE_TYPE_SWITCH_DOWNSTREAM 6
+#define PCIE_DEVICE_TYPE_SWITCH_UPSTREAM    5
+#define PCIE_DEVICE_TYPE_SWITCH_DOWNSTREAM  6
 #define PCIE_DEVICE_TYPE_PCIE_TO_PCI_BRIDGE 7
 #define PCIE_DEVICE_TYPE_PCI_TO_PCIE_BRIDGE 8
   /* Root complex integrated endpoint. */
-#define PCIE_DEVICE_TYPE_ROOT_COMPLEX_ENDPOINT 9
+#define PCIE_DEVICE_TYPE_ROOT_COMPLEX_ENDPOINT	      9
 #define PCIE_DEVICE_TYPE_ROOT_COMPLEX_EVENT_COLLECTOR 10
-#define PCIE_CAP_SLOW_IMPLEMENTED (1 << 8)
-#define PCIE_CAP_MSI_IRQ(x) (((x) >> 9) & 0x1f)
+#define PCIE_CAP_SLOW_IMPLEMENTED		      (1 << 8)
+#define PCIE_CAP_MSI_IRQ(x)			      (((x) >> 9) & 0x1f)
   u32 dev_capabilities;
-#define PCIE_DEVCAP_MAX_PAYLOAD(x) (128 << (((x) >> 0) & 0x7))
+#define PCIE_DEVCAP_MAX_PAYLOAD(x)  (128 << (((x) >> 0) & 0x7))
 #define PCIE_DEVCAP_PHANTOM_BITS(x) (((x) >> 3) & 0x3)
-#define PCIE_DEVCAP_EXTENTED_TAG (1 << 5)
-#define PCIE_DEVCAP_L0S	0x1c0	/* L0s Acceptable Latency */
-#define PCIE_DEVCAP_L1	0xe00	/* L1 Acceptable Latency */
-#define PCIE_DEVCAP_ATN_BUT	0x1000	/* Attention Button Present */
-#define PCIE_DEVCAP_ATN_IND	0x2000	/* Attention Indicator Present */
-#define PCIE_DEVCAP_PWR_IND	0x4000	/* Power Indicator Present */
-#define PCIE_DEVCAP_PWR_VAL	0x3fc0000	/* Slot Power Limit Value */
-#define PCIE_DEVCAP_PWR_SCL	0xc000000	/* Slot Power Limit Scale */
+#define PCIE_DEVCAP_EXTENTED_TAG    (1 << 5)
+#define PCIE_DEVCAP_L0S		    0x1c0     /* L0s Acceptable Latency */
+#define PCIE_DEVCAP_L1		    0xe00     /* L1 Acceptable Latency */
+#define PCIE_DEVCAP_ATN_BUT	    0x1000    /* Attention Button Present */
+#define PCIE_DEVCAP_ATN_IND	    0x2000    /* Attention Indicator Present */
+#define PCIE_DEVCAP_PWR_IND	    0x4000    /* Power Indicator Present */
+#define PCIE_DEVCAP_PWR_VAL	    0x3fc0000 /* Slot Power Limit Value */
+#define PCIE_DEVCAP_PWR_SCL	    0xc000000 /* Slot Power Limit Scale */
   u16 dev_control;
-#define PCIE_CTRL_CERE	0x0001	/* Correctable Error Reporting En. */
-#define PCIE_CTRL_NFERE	0x0002	/* Non-Fatal Error Reporting Enable */
-#define PCIE_CTRL_FERE	0x0004	/* Fatal Error Reporting Enable */
-#define PCIE_CTRL_URRE	0x0008	/* Unsupported Request Reporting En. */
-#define PCIE_CTRL_RELAX_EN 0x0010	/* Enable relaxed ordering */
-#define PCIE_CTRL_MAX_PAYLOAD(n) (((n) & 7) << 5)
-#define PCIE_CTRL_EXT_TAG	0x0100	/* Extended Tag Field Enable */
-#define PCIE_CTRL_PHANTOM	0x0200	/* Phantom Functions Enable */
-#define PCIE_CTRL_AUX_PME	0x0400	/* Auxiliary Power PM Enable */
-#define PCIE_CTRL_NOSNOOP_EN	0x0800	/* Enable No Snoop */
-#define PCIE_CTRL_MAX_READ_REQUEST(n) (((n) & 7) << 12)
+#define PCIE_CTRL_CERE		      0x0001 /* Correctable Error Reporting En. */
+#define PCIE_CTRL_NFERE		      0x0002 /* Non-Fatal Error Reporting Enable */
+#define PCIE_CTRL_FERE		      0x0004 /* Fatal Error Reporting Enable */
+#define PCIE_CTRL_URRE		      0x0008 /* Unsupported Request Reporting En. */
+#define PCIE_CTRL_RELAX_EN	      0x0010 /* Enable relaxed ordering */
+#define PCIE_CTRL_MAX_PAYLOAD(n)      (((n) &7) << 5)
+#define PCIE_CTRL_EXT_TAG	      0x0100 /* Extended Tag Field Enable */
+#define PCIE_CTRL_PHANTOM	      0x0200 /* Phantom Functions Enable */
+#define PCIE_CTRL_AUX_PME	      0x0400 /* Auxiliary Power PM Enable */
+#define PCIE_CTRL_NOSNOOP_EN	      0x0800 /* Enable No Snoop */
+#define PCIE_CTRL_MAX_READ_REQUEST(n) (((n) &7) << 12)
   u16 dev_status;
-#define PCIE_DEVSTA_AUXPD	0x10	/* AUX Power Detected */
-#define PCIE_DEVSTA_TRPND	0x20	/* Transactions Pending */
+#define PCIE_DEVSTA_AUXPD 0x10 /* AUX Power Detected */
+#define PCIE_DEVSTA_TRPND 0x20 /* Transactions Pending */
   u32 link_capabilities;
   u16 link_control;
   u16 link_status;
@@ -645,11 +653,11 @@ typedef struct
   u16 slot_control;
   u16 slot_status;
   u16 root_control;
-#define PCIE_RTCTL_SECEE	0x01	/* System Error on Correctable Error */
-#define PCIE_RTCTL_SENFEE	0x02	/* System Error on Non-Fatal Error */
-#define PCIE_RTCTL_SEFEE	0x04	/* System Error on Fatal Error */
-#define PCIE_RTCTL_PMEIE	0x08	/* PME Interrupt Enable */
-#define PCIE_RTCTL_CRSSVE	0x10	/* CRS Software Visibility Enable */
+#define PCIE_RTCTL_SECEE  0x01 /* System Error on Correctable Error */
+#define PCIE_RTCTL_SENFEE 0x02 /* System Error on Non-Fatal Error */
+#define PCIE_RTCTL_SEFEE  0x04 /* System Error on Fatal Error */
+#define PCIE_RTCTL_PMEIE  0x08 /* PME Interrupt Enable */
+#define PCIE_RTCTL_CRSSVE 0x10 /* CRS Software Visibility Enable */
   u16 root_capabilities;
   u32 root_status;
   u32 dev_capabilities2;
@@ -675,36 +683,36 @@ typedef enum pcie_capability_type
 /* Common header for capabilities. */
 typedef struct
 {
-  enum pcie_capability_type type:16;
-  u16 version:4;
-  u16 next_capability:12;
+  enum pcie_capability_type type : 16;
+  u16 version : 4;
+  u16 next_capability : 12;
 } __clib_packed pcie_capability_regs_t;
 
 typedef struct
 {
   pcie_capability_regs_t header;
   u32 uncorrectable_status;
-#define PCIE_ERROR_UNC_LINK_TRAINING 		(1 << 0)
-#define PCIE_ERROR_UNC_DATA_LINK_PROTOCOL 	(1 << 4)
-#define PCIE_ERROR_UNC_SURPRISE_DOWN		(1 << 5)
-#define PCIE_ERROR_UNC_POISONED_TLP		(1 << 12)
-#define PCIE_ERROR_UNC_FLOW_CONTROL		(1 << 13)
-#define PCIE_ERROR_UNC_COMPLETION_TIMEOUT	(1 << 14)
-#define PCIE_ERROR_UNC_COMPLETER_ABORT		(1 << 15)
-#define PCIE_ERROR_UNC_UNEXPECTED_COMPLETION	(1 << 16)
-#define PCIE_ERROR_UNC_RX_OVERFLOW		(1 << 17)
-#define PCIE_ERROR_UNC_MALFORMED_TLP		(1 << 18)
-#define PCIE_ERROR_UNC_CRC_ERROR		(1 << 19)
-#define PCIE_ERROR_UNC_UNSUPPORTED_REQUEST	(1 << 20)
+#define PCIE_ERROR_UNC_LINK_TRAINING	     (1 << 0)
+#define PCIE_ERROR_UNC_DATA_LINK_PROTOCOL    (1 << 4)
+#define PCIE_ERROR_UNC_SURPRISE_DOWN	     (1 << 5)
+#define PCIE_ERROR_UNC_POISONED_TLP	     (1 << 12)
+#define PCIE_ERROR_UNC_FLOW_CONTROL	     (1 << 13)
+#define PCIE_ERROR_UNC_COMPLETION_TIMEOUT    (1 << 14)
+#define PCIE_ERROR_UNC_COMPLETER_ABORT	     (1 << 15)
+#define PCIE_ERROR_UNC_UNEXPECTED_COMPLETION (1 << 16)
+#define PCIE_ERROR_UNC_RX_OVERFLOW	     (1 << 17)
+#define PCIE_ERROR_UNC_MALFORMED_TLP	     (1 << 18)
+#define PCIE_ERROR_UNC_CRC_ERROR	     (1 << 19)
+#define PCIE_ERROR_UNC_UNSUPPORTED_REQUEST   (1 << 20)
   u32 uncorrectable_mask;
   u32 uncorrectable_severity;
   u32 correctable_status;
-#define PCIE_ERROR_COR_RX_ERROR		(1 << 0)
-#define PCIE_ERROR_COR_BAD_TLP		(1 << 6)
-#define PCIE_ERROR_COR_BAD_DLLP		(1 << 7)
-#define PCIE_ERROR_COR_REPLAY_ROLLOVER	(1 << 8)
-#define PCIE_ERROR_COR_REPLAY_TIMER	(1 << 12)
-#define PCIE_ERROR_COR_ADVISORY		(1 << 13)
+#define PCIE_ERROR_COR_RX_ERROR	       (1 << 0)
+#define PCIE_ERROR_COR_BAD_TLP	       (1 << 6)
+#define PCIE_ERROR_COR_BAD_DLLP	       (1 << 7)
+#define PCIE_ERROR_COR_REPLAY_ROLLOVER (1 << 8)
+#define PCIE_ERROR_COR_REPLAY_TIMER    (1 << 12)
+#define PCIE_ERROR_COR_ADVISORY	       (1 << 13)
   u32 correctable_mask;
   u32 control;
   u32 log[4];
@@ -715,25 +723,25 @@ typedef struct
 } __clib_packed pcie_advanced_error_regs_t;
 
 /* Virtual Channel */
-#define PCI_VC_PORT_REG1	4
-#define PCI_VC_PORT_REG2	8
-#define PCI_VC_PORT_CTRL	12
-#define PCI_VC_PORT_STATUS	14
-#define PCI_VC_RES_CAP		16
-#define PCI_VC_RES_CTRL		20
-#define PCI_VC_RES_STATUS	26
+#define PCI_VC_PORT_REG1   4
+#define PCI_VC_PORT_REG2   8
+#define PCI_VC_PORT_CTRL   12
+#define PCI_VC_PORT_STATUS 14
+#define PCI_VC_RES_CAP	   16
+#define PCI_VC_RES_CTRL	   20
+#define PCI_VC_RES_STATUS  26
 
 /* Power Budgeting */
-#define PCI_PWR_DSR		4	/* Data Select Register */
-#define PCI_PWR_DATA		8	/* Data Register */
-#define PCI_PWR_DATA_BASE(x)	((x) & 0xff)	/* Base Power */
-#define PCI_PWR_DATA_SCALE(x)	(((x) >> 8) & 3)	/* Data Scale */
-#define PCI_PWR_DATA_PM_SUB(x)	(((x) >> 10) & 7)	/* PM Sub State */
-#define PCI_PWR_DATA_PM_STATE(x) (((x) >> 13) & 3)	/* PM State */
-#define PCI_PWR_DATA_TYPE(x)	(((x) >> 15) & 7)	/* Type */
-#define PCI_PWR_DATA_RAIL(x)	(((x) >> 18) & 7)	/* Power Rail */
-#define PCI_PWR_CAP		12	/* Capability */
-#define PCI_PWR_CAP_BUDGET(x)	((x) & 1)	/* Included in system budget */
+#define PCI_PWR_DSR		 4		   /* Data Select Register */
+#define PCI_PWR_DATA		 8		   /* Data Register */
+#define PCI_PWR_DATA_BASE(x)	 ((x) &0xff)	   /* Base Power */
+#define PCI_PWR_DATA_SCALE(x)	 (((x) >> 8) & 3)  /* Data Scale */
+#define PCI_PWR_DATA_PM_SUB(x)	 (((x) >> 10) & 7) /* PM Sub State */
+#define PCI_PWR_DATA_PM_STATE(x) (((x) >> 13) & 3) /* PM State */
+#define PCI_PWR_DATA_TYPE(x)	 (((x) >> 15) & 7) /* Type */
+#define PCI_PWR_DATA_RAIL(x)	 (((x) >> 18) & 7) /* Power Rail */
+#define PCI_PWR_CAP		 12		   /* Capability */
+#define PCI_PWR_CAP_BUDGET(x)	 ((x) &1) /* Included in system budget */
 
 #endif /* included_vlib_pci_config_h */
 

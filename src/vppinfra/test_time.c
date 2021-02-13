@@ -37,14 +37,17 @@
 
 #include <vppinfra/format.h>
 #include <vppinfra/time.h>
-#include <vppinfra/math.h>	/* for sqrt */
+#include <vppinfra/math.h> /* for sqrt */
 
 static int verbose;
-#define if_verbose(format,args...) \
-  if (verbose) { clib_warning(format, ## args); }
+#define if_verbose(format, args...)                                           \
+  if (verbose)                                                                \
+    {                                                                         \
+      clib_warning (format, ##args);                                          \
+    }
 
 static int
-test_time_main (unformat_input_t * input)
+test_time_main (unformat_input_t *input)
 {
   f64 wait, error;
   f64 t, tu[3], ave, rms;
@@ -73,8 +76,8 @@ test_time_main (unformat_input_t * input)
   rms = sqrt (rms / n - ave * ave);
 
   error = ((tu[2] - tu[1]) - 2 * (tu[1] - tu[0]) - n * wait) / n;
-  if_verbose ("tested %d x %.6e sec waits, error %.6e loops %.6e +- %.6e\n",
-	      n, wait, error, ave, rms);
+  if_verbose ("tested %d x %.6e sec waits, error %.6e loops %.6e +- %.6e\n", n,
+	      wait, error, ave, rms);
 
   return 0;
 }

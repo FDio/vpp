@@ -30,8 +30,7 @@ l2_rule::l2_rule(uint32_t priority,
   , m_src_ip(ip)
   , m_mac(mac)
   , m_mac_mask(mac_mask)
-{
-}
+{}
 
 bool
 l2_rule::operator<(const l2_rule& other) const

@@ -23,11 +23,11 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_typedefs		/* define message structures */
+#define vl_typedefs /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
+#define vl_endianfun /* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
@@ -39,21 +39,20 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_feature_gso_api_msg                                              \
-_(FEATURE_GSO_ENABLE_DISABLE, feature_gso_enable_disable)
+#define foreach_feature_gso_api_msg                                           \
+  _ (FEATURE_GSO_ENABLE_DISABLE, feature_gso_enable_disable)
 
 static void
-  vl_api_feature_gso_enable_disable_t_handler
-  (vl_api_feature_gso_enable_disable_t * mp)
+vl_api_feature_gso_enable_disable_t_handler (
+  vl_api_feature_gso_enable_disable_t *mp)
 {
   vl_api_feature_gso_enable_disable_reply_t *rmp;
   int rv = 0;
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  rv =
-    vnet_sw_interface_gso_enable_disable (ntohl (mp->sw_if_index),
-					  mp->enable_disable);
+  rv = vnet_sw_interface_gso_enable_disable (ntohl (mp->sw_if_index),
+					     mp->enable_disable);
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -65,25 +64,22 @@ static void
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (api_main_t * am)
+setup_message_id_table (api_main_t *am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_gso;
 #undef _
 }
 
 static clib_error_t *
-feature_gso_api_hookup (vlib_main_t * vm)
+feature_gso_api_hookup (vlib_main_t *vm)
 {
   api_main_t *am = vlibapi_get_main ();
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                               \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler,            \
+			   vl_noop_handler, vl_api_##n##_t_endian,            \
+			   vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_feature_gso_api_msg;
 #undef _
 

@@ -30,21 +30,21 @@
 #define always_inline static inline __attribute__ ((__always_inline__))
 #endif
 
-#define DPDK_CRYPTO_N_QUEUE_DESC  2048
-#define DPDK_CRYPTO_NB_SESS_OBJS  20000
+#define DPDK_CRYPTO_N_QUEUE_DESC 2048
+#define DPDK_CRYPTO_NB_SESS_OBJS 20000
 
-#define foreach_dpdk_crypto_input_next		\
-  _(DROP, "error-drop")				\
-  _(IP4_LOOKUP, "ip4-lookup")                   \
-  _(IP6_LOOKUP, "ip6-lookup")                   \
-  _(INTERFACE_OUTPUT, "interface-output")	\
-  _(MIDCHAIN, "adj-midchain-tx")                 \
-  _(DECRYPT4_POST, "dpdk-esp4-decrypt-post")     \
-  _(DECRYPT6_POST, "dpdk-esp6-decrypt-post")
+#define foreach_dpdk_crypto_input_next                                        \
+  _ (DROP, "error-drop")                                                      \
+  _ (IP4_LOOKUP, "ip4-lookup")                                                \
+  _ (IP6_LOOKUP, "ip6-lookup")                                                \
+  _ (INTERFACE_OUTPUT, "interface-output")                                    \
+  _ (MIDCHAIN, "adj-midchain-tx")                                             \
+  _ (DECRYPT4_POST, "dpdk-esp4-decrypt-post")                                 \
+  _ (DECRYPT6_POST, "dpdk-esp6-decrypt-post")
 
 typedef enum
 {
-#define _(f,s) DPDK_CRYPTO_INPUT_NEXT_##f,
+#define _(f, s) DPDK_CRYPTO_INPUT_NEXT_##f,
   foreach_dpdk_crypto_input_next
 #undef _
     DPDK_CRYPTO_INPUT_N_NEXT,
@@ -64,10 +64,10 @@ typedef struct
   u32 next;
   u32 bi;
   u8 encrypt;
-    CLIB_ALIGN_MARK (mark0, 16);
+  CLIB_ALIGN_MARK (mark0, 16);
   dpdk_gcm_cnt_blk cb;
   u8 aad[16];
-  u8 icv[32];			/* XXX last 16B in next cache line */
+  u8 icv[32]; /* XXX last 16B in next cache line */
 } dpdk_op_priv_t;
 
 typedef struct
@@ -76,12 +76,12 @@ typedef struct
   struct rte_crypto_op **ops;
   u16 cipher_resource_idx[IPSEC_CRYPTO_N_ALG];
   u16 auth_resource_idx[IPSEC_INTEG_N_ALG];
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 } crypto_worker_main_t;
 
 typedef struct
 {
-  CLIB_ALIGN_MARK (pad, 8);	/* align up to 8 bytes for 32bit builds */
+  CLIB_ALIGN_MARK (pad, 8); /* align up to 8 bytes for 32bit builds */
   char *name;
   enum rte_crypto_sym_xform_type type;
   u32 alg;
@@ -126,7 +126,7 @@ typedef struct
   u16 __unused;
   struct rte_crypto_op *ops[VLIB_FRAME_SIZE];
   u32 bi[VLIB_FRAME_SIZE];
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 } crypto_resource_t;
 
 typedef struct
@@ -139,7 +139,7 @@ typedef struct
 {
   struct rte_cryptodev_sym_session *session;
   u64 dev_mask;
-    CLIB_ALIGN_MARK (pad, 16);	/* align up to 16 bytes for 32bit builds */
+  CLIB_ALIGN_MARK (pad, 16); /* align up to 16 bytes for 32bit builds */
 } crypto_session_by_drv_t;
 
 typedef struct
@@ -155,7 +155,7 @@ typedef struct
   crypto_session_by_drv_t *session_by_drv_id_and_sa_index;
   clib_spinlock_t lockp;
   /* Required for vec_validate_aligned */
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 } crypto_data_t;
 
 typedef struct
@@ -167,20 +167,20 @@ typedef struct
   crypto_alg_t *auth_algs;
   crypto_data_t *data;
   crypto_drv_t *drv;
-  u64 session_timeout;		/* nsec */
+  u64 session_timeout; /* nsec */
   u8 enabled;
 } dpdk_crypto_main_t;
 
 extern dpdk_crypto_main_t dpdk_crypto_main;
 
-static const u8 pad_data[] =
-  { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0 };
+static const u8 pad_data[] = { 1, 2,  3,  4,  5,  6,  7,  8,
+			       9, 10, 11, 12, 13, 14, 15, 0 };
 
 void crypto_auto_placement (void);
 
 clib_error_t *create_sym_session (struct rte_cryptodev_sym_session **session,
-				  u32 sa_idx, crypto_resource_t * res,
-				  crypto_worker_main_t * cwm, u8 is_outbound);
+				  u32 sa_idx, crypto_resource_t *res,
+				  crypto_worker_main_t *cwm, u8 is_outbound);
 
 static_always_inline u32
 crypto_op_len (void)
@@ -205,15 +205,14 @@ crypto_op_get_priv_offset (void)
 }
 
 static_always_inline dpdk_op_priv_t *
-crypto_op_get_priv (struct rte_crypto_op * op)
+crypto_op_get_priv (struct rte_crypto_op *op)
 {
   return (dpdk_op_priv_t *) (((u8 *) op) + crypto_op_get_priv_offset ());
 }
 
-
 static_always_inline void
 add_session_by_drv_and_sa_idx (struct rte_cryptodev_sym_session *session,
-			       crypto_data_t * data, u32 drv_id, u32 sa_idx)
+			       crypto_data_t *data, u32 drv_id, u32 sa_idx)
 {
   crypto_session_by_drv_t *sbd;
   vec_validate_aligned (data->session_by_drv_id_and_sa_index, sa_idx,
@@ -224,21 +223,19 @@ add_session_by_drv_and_sa_idx (struct rte_cryptodev_sym_session *session,
 }
 
 static_always_inline struct rte_cryptodev_sym_session *
-get_session_by_drv_and_sa_idx (crypto_data_t * data, u32 drv_id, u32 sa_idx)
+get_session_by_drv_and_sa_idx (crypto_data_t *data, u32 drv_id, u32 sa_idx)
 {
   crypto_session_by_drv_t *sess_by_sa;
   if (_vec_len (data->session_by_drv_id_and_sa_index) <= sa_idx)
     return NULL;
-  sess_by_sa =
-    vec_elt_at_index (data->session_by_drv_id_and_sa_index, sa_idx);
+  sess_by_sa = vec_elt_at_index (data->session_by_drv_id_and_sa_index, sa_idx);
   return (sess_by_sa->dev_mask & (1L << drv_id)) ? sess_by_sa->session : NULL;
 }
 
 static_always_inline clib_error_t *
-crypto_get_session (struct rte_cryptodev_sym_session ** session,
-		    u32 sa_idx,
-		    crypto_resource_t * res,
-		    crypto_worker_main_t * cwm, u8 is_outbound)
+crypto_get_session (struct rte_cryptodev_sym_session **session, u32 sa_idx,
+		    crypto_resource_t *res, crypto_worker_main_t *cwm,
+		    u8 is_outbound)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_data_t *data;
@@ -256,7 +253,7 @@ crypto_get_session (struct rte_cryptodev_sym_session ** session,
 }
 
 static_always_inline u16
-get_resource (crypto_worker_main_t * cwm, ipsec_sa_t * sa)
+get_resource (crypto_worker_main_t *cwm, ipsec_sa_t *sa)
 {
   u16 cipher_res = cwm->cipher_resource_idx[sa->crypto_alg];
   u16 auth_res = cwm->auth_resource_idx[sa->integ_alg];
@@ -277,11 +274,11 @@ get_resource (crypto_worker_main_t * cwm, ipsec_sa_t * sa)
   if (is_aead)
     return cipher_res;
 
-  return (u16) ~ 0;
+  return (u16) ~0;
 }
 
 static_always_inline i32
-crypto_alloc_ops (u8 numa, struct rte_crypto_op ** ops, u32 n)
+crypto_alloc_ops (u8 numa, struct rte_crypto_op **ops, u32 n)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_data_t *data = vec_elt_at_index (dcm->data, numa);
@@ -289,9 +286,7 @@ crypto_alloc_ops (u8 numa, struct rte_crypto_op ** ops, u32 n)
 
   ret = rte_mempool_get_bulk (data->crypto_op, (void **) ops, n);
 
-  /* *INDENT-OFF* */
-  data->crypto_op_get_failed += ! !ret;
-  /* *INDENT-ON* */
+  data->crypto_op_get_failed += !!ret;
 
   return ret;
 }
@@ -309,14 +304,13 @@ crypto_free_ops (u8 numa, struct rte_crypto_op **ops, u32 n)
 }
 
 static_always_inline void
-crypto_enqueue_ops (vlib_main_t * vm, crypto_worker_main_t * cwm,
-		    u32 node_index, u32 error, u8 numa, u8 encrypt)
+crypto_enqueue_ops (vlib_main_t *vm, crypto_worker_main_t *cwm, u32 node_index,
+		    u32 error, u8 numa, u8 encrypt)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_resource_t *res;
   u16 *res_idx;
 
-  /* *INDENT-OFF* */
   vec_foreach (res_idx, cwm->resource_idx)
     {
       u16 enq, n_ops;
@@ -327,8 +321,8 @@ crypto_enqueue_ops (vlib_main_t * vm, crypto_worker_main_t * cwm,
 
       n_ops = (DPDK_CRYPTO_N_QUEUE_DESC / 2) - res->inflights[encrypt];
       n_ops = res->n_ops < n_ops ? res->n_ops : n_ops;
-      enq = rte_cryptodev_enqueue_burst (res->dev_id, res->qp_id,
-					 res->ops, n_ops);
+      enq =
+	rte_cryptodev_enqueue_burst (res->dev_id, res->qp_id, res->ops, n_ops);
       ASSERT (n_ops == enq);
       res->inflights[encrypt] += enq;
 
@@ -337,16 +331,15 @@ crypto_enqueue_ops (vlib_main_t * vm, crypto_worker_main_t * cwm,
 	  crypto_free_ops (numa, &res->ops[enq], res->n_ops - enq);
 	  vlib_buffer_free (vm, &res->bi[enq], res->n_ops - enq);
 
-          vlib_node_increment_counter (vm, node_index, error,
+	  vlib_node_increment_counter (vm, node_index, error,
 				       res->n_ops - enq);
-        }
+	}
       res->n_ops = 0;
     }
-  /* *INDENT-ON* */
 }
 
 static_always_inline void
-crypto_set_icb (dpdk_gcm_cnt_blk * icb, u32 salt, u32 seq, u32 seq_hi)
+crypto_set_icb (dpdk_gcm_cnt_blk *icb, u32 salt, u32 seq, u32 seq_hi)
 {
   icb->salt = salt;
   icb->iv[0] = seq;
@@ -354,11 +347,9 @@ crypto_set_icb (dpdk_gcm_cnt_blk * icb, u32 salt, u32 seq, u32 seq_hi)
 }
 
 static_always_inline void
-crypto_op_setup (u8 is_aead, struct rte_mbuf *mb0,
-		 struct rte_crypto_op *op, void *session,
-		 u32 cipher_off, u32 cipher_len,
-		 u32 auth_off, u32 auth_len,
-		 u8 * aad, u8 * digest, u64 digest_paddr)
+crypto_op_setup (u8 is_aead, struct rte_mbuf *mb0, struct rte_crypto_op *op,
+		 void *session, u32 cipher_off, u32 cipher_len, u32 auth_off,
+		 u32 auth_len, u8 *aad, u8 *digest, u64 digest_paddr)
 {
   struct rte_crypto_sym_op *sym_op;
 

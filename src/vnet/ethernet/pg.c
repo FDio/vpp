@@ -49,7 +49,7 @@ typedef struct
 } pg_ethernet_header_t;
 
 static inline void
-pg_ethernet_header_init (pg_ethernet_header_t * e)
+pg_ethernet_header_init (pg_ethernet_header_t *e)
 {
   pg_edit_init (&e->type, ethernet_header_t, type);
   pg_edit_init (&e->src_address, ethernet_header_t, src_address);
@@ -65,7 +65,7 @@ typedef struct
 } pg_ethernet_vlan_header_t;
 
 static inline void
-pg_ethernet_vlan_header_init (pg_ethernet_vlan_header_t * v, int vlan_index)
+pg_ethernet_vlan_header_init (pg_ethernet_vlan_header_t *v, int vlan_index)
 {
   ASSERT (vlan_index < ARRAY_LEN (((ethernet_max_header_t *) 0)->vlan));
   pg_edit_init (&v->type, ethernet_max_header_t, vlan[vlan_index].type);
@@ -79,7 +79,7 @@ pg_ethernet_vlan_header_init (pg_ethernet_vlan_header_t * v, int vlan_index)
 }
 
 uword
-unformat_pg_ethernet_header (unformat_input_t * input, va_list * args)
+unformat_pg_ethernet_header (unformat_input_t *input, va_list *args)
 {
   pg_stream_t *s = va_arg (*args, pg_stream_t *);
   pg_ethernet_header_t *e;
@@ -92,13 +92,10 @@ unformat_pg_ethernet_header (unformat_input_t * input, va_list * args)
   pg_ethernet_header_init (e);
   error = 1;
 
-  if (!unformat (input, "%U: %U -> %U",
-		 unformat_pg_edit,
+  if (!unformat (input, "%U: %U -> %U", unformat_pg_edit,
 		 unformat_ethernet_type_net_byte_order, &e->type,
-		 unformat_pg_edit,
-		 unformat_ethernet_address, &e->src_address,
-		 unformat_pg_edit,
-		 unformat_ethernet_address, &e->dst_address))
+		 unformat_pg_edit, unformat_ethernet_address, &e->src_address,
+		 unformat_pg_edit, unformat_ethernet_address, &e->dst_address))
     goto done;
 
   n_vlan = 0;
@@ -108,16 +105,15 @@ unformat_pg_ethernet_header (unformat_input_t * input, va_list * args)
 			group_index);
       pg_ethernet_vlan_header_init (v, n_vlan);
 
-      if (!unformat_user (input, unformat_pg_edit,
-			  unformat_pg_number, &v->id))
+      if (!unformat_user (input, unformat_pg_edit, unformat_pg_number, &v->id))
 	goto done;
 
       if (!unformat (input, "priority %U", unformat_pg_edit,
 		     unformat_pg_number, &v->priority))
 	pg_edit_set_fixed (&v->priority, 0);
 
-      if (!unformat (input, "cfi %U", unformat_pg_edit,
-		     unformat_pg_number, &v->cfi))
+      if (!unformat (input, "cfi %U", unformat_pg_edit, unformat_pg_number,
+		     &v->cfi))
 	pg_edit_set_fixed (&v->cfi, 0);
 
       /* Too many vlans given. */
@@ -158,8 +154,8 @@ unformat_pg_ethernet_header (unformat_input_t * input, va_list * args)
 	  pg_node = pg_get_node (ti->node_index);
       }
 
-    if (pg_node && pg_node->unformat_edit
-	&& unformat_user (input, pg_node->unformat_edit, s))
+    if (pg_node && pg_node->unformat_edit &&
+	unformat_user (input, pg_node->unformat_edit, s))
       ;
     else if (!unformat_user (input, unformat_pg_payload, s))
       goto done;
@@ -172,7 +168,6 @@ done:
     pg_free_edit_group (s);
   return error == 0;
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON

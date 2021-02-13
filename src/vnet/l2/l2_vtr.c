@@ -36,14 +36,14 @@
  * VLAN tag rewrite provides the ability to change the VLAN tags on a packet.
  * Existing tags can be popped, new tags can be pushed, and existing tags can
  * be swapped with new tags. The rewrite feature is attached to a subinterface
- * as input and output operations. The input operation is explicitly configured.
- * The output operation is the symmetric opposite and is automatically derived
- * from the input operation.
+ * as input and output operations. The input operation is explicitly
+ * configured. The output operation is the symmetric opposite and is
+ * automatically derived from the input operation.
  */
 
 /** Just a placeholder; ensures file is not eliminated by linker. */
 clib_error_t *
-l2_vtr_init (vlib_main_t * vm)
+l2_vtr_init (vlib_main_t *vm)
 {
   return 0;
 }
@@ -51,9 +51,8 @@ l2_vtr_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (l2_vtr_init);
 
 u32
-l2pbb_configure (vlib_main_t * vlib_main,
-		 vnet_main_t * vnet_main, u32 sw_if_index, u32 vtr_op,
-		 u8 * b_dmac, u8 * b_smac,
+l2pbb_configure (vlib_main_t *vlib_main, vnet_main_t *vnet_main,
+		 u32 sw_if_index, u32 vtr_op, u8 *b_dmac, u8 *b_smac,
 		 u16 b_vlanid, u32 i_sid, u16 vlan_outer_tag)
 {
   u32 error = 0;
@@ -133,9 +132,11 @@ done:
  * Return 1 if there is an error, 0 if ok
  */
 u32
-l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_index, u32 vtr_op, u32 push_dot1q,	/* ethertype of first pushed tag is dot1q/dot1ad */
-		 u32 vtr_tag1,	/* first pushed tag */
-		 u32 vtr_tag2)	/* second pushed tag */
+l2vtr_configure (
+  vlib_main_t *vlib_main, vnet_main_t *vnet_main, u32 sw_if_index, u32 vtr_op,
+  u32 push_dot1q, /* ethertype of first pushed tag is dot1q/dot1ad */
+  u32 vtr_tag1,	  /* first pushed tag */
+  u32 vtr_tag2)	  /* second pushed tag */
 {
   vnet_hw_interface_t *hi;
   vnet_sw_interface_t *si;
@@ -152,7 +153,7 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
   hi = vnet_get_sup_hw_interface_api_visible_or_null (vnet_main, sw_if_index);
   if (!hi || (hi->hw_class_index != ethernet_hw_interface_class.index))
     {
-      error = VNET_API_ERROR_INVALID_INTERFACE;	/* non-ethernet interface */
+      error = VNET_API_ERROR_INVALID_INTERFACE; /* non-ethernet interface */
       goto done;
     }
 
@@ -170,9 +171,8 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
 
   /* Construct the input tag-rewrite config */
 
-  push_outer_et =
-    clib_net_to_host_u16 (push_dot1q ? ETHERNET_TYPE_VLAN :
-			  ETHERNET_TYPE_DOT1AD);
+  push_outer_et = clib_net_to_host_u16 (push_dot1q ? ETHERNET_TYPE_VLAN :
+						     ETHERNET_TYPE_DOT1AD);
   push_inner_et = clib_net_to_host_u16 (ETHERNET_TYPE_VLAN);
   vtr_tag1 = clib_net_to_host_u16 (vtr_tag1);
   vtr_tag2 = clib_net_to_host_u16 (vtr_tag2);
@@ -224,7 +224,7 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
     case L2_VTR_POP_2:
       if (cfg_tags < 2)
 	{
-	  error = VNET_API_ERROR_INVALID_VLAN_TAG_COUNT;	/* Need two tags */
+	  error = VNET_API_ERROR_INVALID_VLAN_TAG_COUNT; /* Need two tags */
 	  goto done;
 	}
       in_config->pop_bytes = 8;
@@ -250,7 +250,8 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
     case L2_VTR_TRANSLATE_1_1:
       if (cfg_tags < 1)
 	{
-	  error = VNET_API_ERROR_INVALID_VLAN_TAG_COUNT;	/* Need one or two tags */
+	  error =
+	    VNET_API_ERROR_INVALID_VLAN_TAG_COUNT; /* Need one or two tags */
 	  goto done;
 	}
       in_config->pop_bytes = 4;
@@ -262,7 +263,8 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
     case L2_VTR_TRANSLATE_1_2:
       if (cfg_tags < 1)
 	{
-	  error = VNET_API_ERROR_INVALID_VLAN_TAG_COUNT;	/* Need one or two tags */
+	  error =
+	    VNET_API_ERROR_INVALID_VLAN_TAG_COUNT; /* Need one or two tags */
 	  goto done;
 	}
       in_config->pop_bytes = 4;
@@ -276,7 +278,7 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
     case L2_VTR_TRANSLATE_2_1:
       if (cfg_tags < 2)
 	{
-	  error = VNET_API_ERROR_INVALID_VLAN_TAG_COUNT;	/* Need two tags */
+	  error = VNET_API_ERROR_INVALID_VLAN_TAG_COUNT; /* Need two tags */
 	  goto done;
 	}
       in_config->pop_bytes = 8;
@@ -288,7 +290,7 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
     case L2_VTR_TRANSLATE_2_2:
       if (cfg_tags < 2)
 	{
-	  error = VNET_API_ERROR_INVALID_VLAN_TAG_COUNT;	/* Need two tags */
+	  error = VNET_API_ERROR_INVALID_VLAN_TAG_COUNT; /* Need two tags */
 	  goto done;
 	}
       in_config->pop_bytes = 8;
@@ -309,9 +311,8 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
   out_config->pop_bytes = in_config->push_bytes;
 
   /* Any pushed tags are derived from the subinterface config */
-  push_outer_et =
-    clib_net_to_host_u16 (si->sub.eth.flags.dot1ad ? ETHERNET_TYPE_DOT1AD :
-			  ETHERNET_TYPE_VLAN);
+  push_outer_et = clib_net_to_host_u16 (
+    si->sub.eth.flags.dot1ad ? ETHERNET_TYPE_DOT1AD : ETHERNET_TYPE_VLAN);
   push_inner_et = clib_net_to_host_u16 (ETHERNET_TYPE_VLAN);
   vtr_tag1 = clib_net_to_host_u16 (si->sub.eth.outer_vlan_id);
   vtr_tag2 = clib_net_to_host_u16 (si->sub.eth.inner_vlan_id);
@@ -344,9 +345,11 @@ done:
  * Return 1 if there is an error, 0 if ok
  */
 u32
-l2vtr_get (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_index, u32 * vtr_op, u32 * push_dot1q,	/* ethertype of first pushed tag is dot1q/dot1ad */
-	   u32 * vtr_tag1,	/* first pushed tag */
-	   u32 * vtr_tag2)	/* second pushed tag */
+l2vtr_get (vlib_main_t *vlib_main, vnet_main_t *vnet_main, u32 sw_if_index,
+	   u32 *vtr_op,
+	   u32 *push_dot1q, /* ethertype of first pushed tag is dot1q/dot1ad */
+	   u32 *vtr_tag1,   /* first pushed tag */
+	   u32 *vtr_tag2)   /* second pushed tag */
 {
   vnet_hw_interface_t *hi;
   u32 error = 0;
@@ -400,9 +403,8 @@ l2vtr_get (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_index, u3
 	  *vtr_op = L2_VTR_PUSH_1;
 	  *vtr_tag1 =
 	    clib_host_to_net_u16 (in_config->tags[1].priority_cfi_and_id);
-	  *push_dot1q =
-	    (ETHERNET_TYPE_VLAN ==
-	     clib_host_to_net_u16 (in_config->tags[1].type));
+	  *push_dot1q = (ETHERNET_TYPE_VLAN ==
+			 clib_host_to_net_u16 (in_config->tags[1].type));
 	  break;
 	case 8:
 	  *vtr_op = L2_VTR_PUSH_2;
@@ -410,13 +412,11 @@ l2vtr_get (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_index, u3
 	    clib_host_to_net_u16 (in_config->tags[0].priority_cfi_and_id);
 	  *vtr_tag2 =
 	    clib_host_to_net_u16 (in_config->tags[1].priority_cfi_and_id);
-	  *push_dot1q =
-	    (ETHERNET_TYPE_VLAN ==
-	     clib_host_to_net_u16 (in_config->tags[0].type));
+	  *push_dot1q = (ETHERNET_TYPE_VLAN ==
+			 clib_host_to_net_u16 (in_config->tags[0].type));
 	  break;
 	default:
-	  clib_warning ("invalid push_bytes count: %d",
-			in_config->push_bytes);
+	  clib_warning ("invalid push_bytes count: %d", in_config->push_bytes);
 	  error = VNET_API_ERROR_UNEXPECTED_INTF_STATE;
 	  goto done;
 	}
@@ -432,9 +432,8 @@ l2vtr_get (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_index, u3
 	  *vtr_op = L2_VTR_TRANSLATE_1_1;
 	  *vtr_tag1 =
 	    clib_host_to_net_u16 (in_config->tags[1].priority_cfi_and_id);
-	  *push_dot1q =
-	    (ETHERNET_TYPE_VLAN ==
-	     clib_host_to_net_u16 (in_config->tags[1].type));
+	  *push_dot1q = (ETHERNET_TYPE_VLAN ==
+			 clib_host_to_net_u16 (in_config->tags[1].type));
 	  break;
 	case 8:
 	  *vtr_op = L2_VTR_TRANSLATE_1_2;
@@ -442,13 +441,11 @@ l2vtr_get (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_index, u3
 	    clib_host_to_net_u16 (in_config->tags[0].priority_cfi_and_id);
 	  *vtr_tag2 =
 	    clib_host_to_net_u16 (in_config->tags[1].priority_cfi_and_id);
-	  *push_dot1q =
-	    (ETHERNET_TYPE_VLAN ==
-	     clib_host_to_net_u16 (in_config->tags[0].type));
+	  *push_dot1q = (ETHERNET_TYPE_VLAN ==
+			 clib_host_to_net_u16 (in_config->tags[0].type));
 	  break;
 	default:
-	  clib_warning ("invalid push_bytes count: %d",
-			in_config->push_bytes);
+	  clib_warning ("invalid push_bytes count: %d", in_config->push_bytes);
 	  error = VNET_API_ERROR_UNEXPECTED_INTF_STATE;
 	  goto done;
 	}
@@ -464,9 +461,8 @@ l2vtr_get (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_index, u3
 	  *vtr_op = L2_VTR_TRANSLATE_2_1;
 	  *vtr_tag1 =
 	    clib_host_to_net_u16 (in_config->tags[1].priority_cfi_and_id);
-	  *push_dot1q =
-	    (ETHERNET_TYPE_VLAN ==
-	     clib_host_to_net_u16 (in_config->tags[1].type));
+	  *push_dot1q = (ETHERNET_TYPE_VLAN ==
+			 clib_host_to_net_u16 (in_config->tags[1].type));
 	  break;
 	case 8:
 	  *vtr_op = L2_VTR_TRANSLATE_2_2;
@@ -474,13 +470,11 @@ l2vtr_get (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_index, u3
 	    clib_host_to_net_u16 (in_config->tags[0].priority_cfi_and_id);
 	  *vtr_tag2 =
 	    clib_host_to_net_u16 (in_config->tags[1].priority_cfi_and_id);
-	  *push_dot1q =
-	    (ETHERNET_TYPE_VLAN ==
-	     clib_host_to_net_u16 (in_config->tags[0].type));
+	  *push_dot1q = (ETHERNET_TYPE_VLAN ==
+			 clib_host_to_net_u16 (in_config->tags[0].type));
 	  break;
 	default:
-	  clib_warning ("invalid push_bytes count: %d",
-			in_config->push_bytes);
+	  clib_warning ("invalid push_bytes count: %d", in_config->push_bytes);
 	  error = VNET_API_ERROR_UNEXPECTED_INTF_STATE;
 	  goto done;
 	}
@@ -499,13 +493,13 @@ done:
 /**
  * Set subinterface vtr enable/disable.
  * The CLI format is:
- *    set interface l2 tag-rewrite <interface> [disable | pop 1 | pop 2 | push {dot1q|dot1ad} <tag> [<tag>]]
+ *    set interface l2 tag-rewrite <interface> [disable | pop 1 | pop 2 | push
+ * {dot1q|dot1ad} <tag> [<tag>]]
  *
  *  "push" can also be replaced by "translate-{1|2}-{1|2}"
  */
 static clib_error_t *
-int_l2_vtr (vlib_main_t * vm,
-	    unformat_input_t * input, vlib_cli_command_t * cmd)
+int_l2_vtr (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
@@ -534,7 +528,6 @@ int_l2_vtr (vlib_main_t * vm,
   else if (unformat (input, "pop 2"))
     {
       vtr_op = L2_VTR_POP_2;
-
     }
   else if (unformat (input, "push dot1q %d %d", &tag1, &tag2))
     {
@@ -544,7 +537,6 @@ int_l2_vtr (vlib_main_t * vm,
   else if (unformat (input, "push dot1ad %d %d", &tag1, &tag2))
     {
       vtr_op = L2_VTR_PUSH_2;
-
     }
   else if (unformat (input, "push dot1q %d", &tag1))
     {
@@ -554,7 +546,6 @@ int_l2_vtr (vlib_main_t * vm,
   else if (unformat (input, "push dot1ad %d", &tag1))
     {
       vtr_op = L2_VTR_PUSH_1;
-
     }
   else if (unformat (input, "translate 1-1 dot1q %d", &tag1))
     {
@@ -564,7 +555,6 @@ int_l2_vtr (vlib_main_t * vm,
   else if (unformat (input, "translate 1-1 dot1ad %d", &tag1))
     {
       vtr_op = L2_VTR_TRANSLATE_1_1;
-
     }
   else if (unformat (input, "translate 2-1 dot1q %d", &tag1))
     {
@@ -574,7 +564,6 @@ int_l2_vtr (vlib_main_t * vm,
   else if (unformat (input, "translate 2-1 dot1ad %d", &tag1))
     {
       vtr_op = L2_VTR_TRANSLATE_2_1;
-
     }
   else if (unformat (input, "translate 2-2 dot1q %d %d", &tag1, &tag2))
     {
@@ -584,7 +573,6 @@ int_l2_vtr (vlib_main_t * vm,
   else if (unformat (input, "translate 2-2 dot1ad %d %d", &tag1, &tag2))
     {
       vtr_op = L2_VTR_TRANSLATE_2_2;
-
     }
   else if (unformat (input, "translate 1-2 dot1q %d %d", &tag1, &tag2))
     {
@@ -594,23 +582,22 @@ int_l2_vtr (vlib_main_t * vm,
   else if (unformat (input, "translate 1-2 dot1ad %d %d", &tag1, &tag2))
     {
       vtr_op = L2_VTR_TRANSLATE_1_2;
-
     }
   else
     {
-      error =
-	clib_error_return (0,
-			   "expecting [disable | pop 1 | pop 2 | push {dot1q|dot1ah} <tag> [<tag>]\n"
-			   " | translate {1|2}-{1|2} {dot1q|dot1ah} <tag> [<tag>]] but got `%U'",
-			   format_unformat_error, input);
+      error = clib_error_return (
+	0,
+	"expecting [disable | pop 1 | pop 2 | push {dot1q|dot1ah} <tag> "
+	"[<tag>]\n"
+	" | translate {1|2}-{1|2} {dot1q|dot1ah} <tag> [<tag>]] but got `%U'",
+	format_unformat_error, input);
       goto done;
     }
 
   if (l2vtr_configure (vm, vnm, sw_if_index, vtr_op, push_dot1q, tag1, tag2))
     {
-      error =
-	clib_error_return (0,
-			   "vlan tag rewrite is not compatible with interface");
+      error = clib_error_return (
+	0, "vlan tag rewrite is not compatible with interface");
       goto done;
     }
 
@@ -622,13 +609,15 @@ done:
  * VLAN tag rewrite provides the ability to change the VLAN tags on a packet.
  * Existing tags can be popped, new tags can be pushed, and existing tags can
  * be swapped with new tags. The rewrite feature is attached to a subinterface
- * as input and output operations. The input operation is explicitly configured.
+ * as input and output operations. The input operation is explicitly
+configured.
  * The output operation is the symmetric opposite and is automatically derived
  * from the input operation.
  *
  * <b>POP:</b> For pop operations, the subinterface encapsulation (the vlan
  * tags specified when it was created) must have at least the number of popped
- * tags. e.g. the \"pop 2\" operation would be rejected on a single-vlan interface.
+ * tags. e.g. the \"pop 2\" operation would be rejected on a single-vlan
+interface.
  * The output tag-rewrite operation for pops is to push the specified number of
  * vlan tags onto the packet. The pushed tag values are the ones in the
  * subinterface encapsulation.
@@ -649,19 +638,26 @@ done:
  * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 pop 2}
  *
  * To push one or two vlan tags onto packets received from an interface, use:
- * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 push dot1q 100}
- * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 push dot1ad 100 150}
+ * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 push dot1q
+100}
+ * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 push dot1ad
+100 150}
  *
- * Tags can also be translated, which is basically a combination of a pop and push.
- * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 translate 1-1 dot1ad 100}
- * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 translate 2-2 dot1ad 100 150}
- * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 translate 1-2 dot1q 100}
- * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 translate 2-1 dot1q 100 150}
+ * Tags can also be translated, which is basically a combination of a pop and
+push.
+ * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 translate
+1-1 dot1ad 100}
+ * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 translate
+2-2 dot1ad 100 150}
+ * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 translate
+1-2 dot1q 100}
+ * @cliexcmd{set interface l2 tag-rewrite GigabitEthernet0/8/0.200 translate
+2-1 dot1q 100 150}
  *
  * To display the VLAN Tag settings, show the associate bridge-domain:
  * @cliexstart{show bridge-domain 200 detail}
- *  ID   Index   Learning   U-Forwrd   UU-Flood   Flooding   ARP-Term     BVI-Intf
- * 200     1        on         on         on         on         off          N/A
+ *  ID   Index   Learning   U-Forwrd   UU-Flood   Flooding   ARP-Term BVI-Intf
+ * 200     1        on         on         on         on         off N/A
  *
  *          Interface           Index  SHG  BVI        VLAN-Tag-Rewrite
  *  GigabitEthernet0/8/0.200      5     0    -       trans-1-1 dot1ad 100
@@ -670,22 +666,22 @@ done:
  * @cliexend
  * @endparblock
 ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (int_l2_vtr_cli, static) = {
   .path = "set interface l2 tag-rewrite",
-  .short_help = "set interface l2 tag-rewrite <interface> [disable | pop {1|2} | push {dot1q|dot1ad} <tag> <tag>]",
+  .short_help = "set interface l2 tag-rewrite <interface> [disable | pop "
+		"{1|2} | push {dot1q|dot1ad} <tag> <tag>]",
   .function = int_l2_vtr,
 };
-/* *INDENT-ON* */
 
 /**
  * Get pbb tag rewrite on the given interface.
  * Return 1 if there is an error, 0 if ok
  */
 u32
-l2pbb_get (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_index,
-	   u32 * vtr_op, u16 * outer_tag, ethernet_header_t * eth_hdr,
-	   u16 * b_vlanid, u32 * i_sid)
+l2pbb_get (vlib_main_t *vlib_main, vnet_main_t *vnet_main, u32 sw_if_index,
+	   u32 *vtr_op, u16 *outer_tag, ethernet_header_t *eth_hdr,
+	   u16 *b_vlanid, u32 *i_sid)
 {
   u32 error = 1;
   ptr_config_t *in_config;
@@ -736,8 +732,8 @@ l2pbb_get (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_index,
       *b_vlanid =
 	clib_host_to_net_u16 (in_config->macs_tags.priority_dei_id) & 0xFFF;
       *i_sid =
-	clib_host_to_net_u32 (in_config->macs_tags.
-			      priority_dei_uca_res_sid) & 0xFFFFF;
+	clib_host_to_net_u32 (in_config->macs_tags.priority_dei_uca_res_sid) &
+	0xFFFFF;
       error = 0;
     }
 done:
@@ -747,11 +743,13 @@ done:
 /**
  * Set subinterface pbb vtr enable/disable.
  * The CLI format is:
- *    set interface l2 pbb-tag-rewrite <interface> [disable | pop | push | translate_pbb_stag <outer_tag> dmac <address> smac <address> s_id <nn> [b_vlanid <nn>]]
+ *    set interface l2 pbb-tag-rewrite <interface> [disable | pop | push |
+ * translate_pbb_stag <outer_tag> dmac <address> smac <address> s_id <nn>
+ * [b_vlanid <nn>]]
  */
 static clib_error_t *
-int_l2_pbb_vtr (vlib_main_t * vm,
-		unformat_input_t * input, vlib_cli_command_t * cmd)
+int_l2_pbb_vtr (vlib_main_t *vm, unformat_input_t *input,
+		vlib_cli_command_t *cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
@@ -766,8 +764,7 @@ int_l2_pbb_vtr (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat_user
-	  (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+      if (unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
 	;
       else if (unformat (input, "disable"))
 	vtr_op = L2_VTR_DISABLED;
@@ -775,8 +772,8 @@ int_l2_pbb_vtr (vlib_main_t * vm,
 	vtr_op = L2_VTR_POP_2;
       else if (vtr_op == L2_VTR_DISABLED && unformat (input, "push"))
 	vtr_op = L2_VTR_PUSH_2;
-      else if (vtr_op == L2_VTR_DISABLED
-	       && unformat (input, "translate_pbb_stag %d", &outer_tag))
+      else if (vtr_op == L2_VTR_DISABLED &&
+	       unformat (input, "translate_pbb_stag %d", &outer_tag))
 	vtr_op = L2_VTR_TRANSLATE_2_1;
       else if (unformat (input, "dmac %U", unformat_ethernet_address, dmac))
 	dmac_set = 1;
@@ -788,27 +785,28 @@ int_l2_pbb_vtr (vlib_main_t * vm,
 	;
       else
 	{
-	  error = clib_error_return (0,
-				     "expecting [disable | pop | push | translate_pbb_stag <outer_tag>\n"
-				     "dmac <address> smac <address> s_id <nn> [b_vlanid <nn>]]");
+	  error = clib_error_return (
+	    0, "expecting [disable | pop | push | translate_pbb_stag "
+	       "<outer_tag>\n"
+	       "dmac <address> smac <address> s_id <nn> [b_vlanid <nn>]]");
 	  goto done;
 	}
     }
 
-  if ((vtr_op == L2_VTR_PUSH_2 || vtr_op == L2_VTR_TRANSLATE_2_1)
-      && (!dmac_set || !smac_set || s_id == ~0))
+  if ((vtr_op == L2_VTR_PUSH_2 || vtr_op == L2_VTR_TRANSLATE_2_1) &&
+      (!dmac_set || !smac_set || s_id == ~0))
     {
-      error = clib_error_return (0,
-				 "expecting dmac <address> smac <address> s_id <nn> [b_vlanid <nn>]");
+      error = clib_error_return (
+	0,
+	"expecting dmac <address> smac <address> s_id <nn> [b_vlanid <nn>]");
       goto done;
     }
 
-  if (l2pbb_configure
-      (vm, vnm, sw_if_index, vtr_op, dmac, smac, b_vlanid, s_id, outer_tag))
+  if (l2pbb_configure (vm, vnm, sw_if_index, vtr_op, dmac, smac, b_vlanid,
+		       s_id, outer_tag))
     {
-      error =
-	clib_error_return (0,
-			   "pbb tag rewrite is not compatible with interface");
+      error = clib_error_return (
+	0, "pbb tag rewrite is not compatible with interface");
       goto done;
     }
 
@@ -816,13 +814,13 @@ done:
   return error;
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (int_l2_pbb_vtr_cli, static) = {
   .path = "set interface l2 pbb-tag-rewrite",
-  .short_help = "set interface l2 pbb-tag-rewrite <interface> [disable | pop | push | translate_pbb_stag <outer_tag> dmac <address> smac <address> s_id <nn> [b_vlanid <nn>]]",
+  .short_help = "set interface l2 pbb-tag-rewrite <interface> [disable | pop "
+		"| push | translate_pbb_stag <outer_tag> dmac <address> smac "
+		"<address> s_id <nn> [b_vlanid <nn>]]",
   .function = int_l2_pbb_vtr,
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

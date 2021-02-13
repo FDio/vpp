@@ -23,7 +23,7 @@
 #define __plugin_msg_base adl_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
 
-uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
+uword unformat_sw_if_index (unformat_input_t *input, va_list *args);
 
 /* Declare message IDs */
 #include <adl/adl.api_enum.h>
@@ -39,7 +39,7 @@ typedef struct
 adl_test_main_t adl_test_main;
 
 static int
-api_adl_interface_enable_disable (vat_main_t * vam)
+api_adl_interface_enable_disable (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   int enable_disable = 1;
@@ -80,7 +80,7 @@ api_adl_interface_enable_disable (vat_main_t * vam)
 }
 
 static int
-api_adl_allowlist_enable_disable (vat_main_t * vam)
+api_adl_allowlist_enable_disable (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   u32 sw_if_index = ~0;

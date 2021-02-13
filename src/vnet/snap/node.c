@@ -56,7 +56,7 @@ typedef struct
 } snap_input_trace_t;
 
 static u8 *
-format_snap_input_trace (u8 * s, va_list * va)
+format_snap_input_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
@@ -68,8 +68,8 @@ format_snap_input_trace (u8 * s, va_list * va)
 }
 
 static uword
-snap_input (vlib_main_t * vm,
-	    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+snap_input (vlib_main_t *vm, vlib_node_runtime_t *node,
+	    vlib_frame_t *from_frame)
 {
   snap_main_t *sm = &snap_main;
   u32 n_left_from, next_index, *from, *to_next;
@@ -78,9 +78,7 @@ snap_input (vlib_main_t * vm,
   n_left_from = from_frame->n_vectors;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    vlib_trace_frame_buffers_only (vm, node,
-				   from,
-				   n_left_from,
+    vlib_trace_frame_buffers_only (vm, node, from, n_left_from,
 				   sizeof (from[0]),
 				   sizeof (snap_input_trace_t));
 
@@ -240,8 +238,8 @@ snap_input (vlib_main_t * vm,
 
 	      /* Send to correct next. */
 	      next_index = next0;
-	      vlib_get_next_frame (vm, node, next_index,
-				   to_next, n_left_to_next);
+	      vlib_get_next_frame (vm, node, next_index, to_next,
+				   n_left_to_next);
 
 	      to_next[0] = bi0;
 	      to_next += 1;
@@ -256,12 +254,11 @@ snap_input (vlib_main_t * vm,
 }
 
 static char *snap_error_strings[] = {
-#define _(f,s) s,
+#define _(f, s) s,
   foreach_snap_error
 #undef _
 };
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snap_input_node) = {
   .function = snap_input,
   .name = "snap-input",
@@ -282,10 +279,9 @@ VLIB_REGISTER_NODE (snap_input_node) = {
   .format_trace = format_snap_input_trace,
   .unformat_buffer = unformat_snap_header,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-snap_input_init (vlib_main_t * vm)
+snap_input_init (vlib_main_t *vm)
 {
   {
     clib_error_t *error = vlib_call_init_function (vm, snap_init);
@@ -303,9 +299,8 @@ snap_input_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (snap_input_init);
 
 void
-snap_register_input_protocol (vlib_main_t * vm,
-			      char *name,
-			      u32 ieee_oui, u16 protocol, u32 node_index)
+snap_register_input_protocol (vlib_main_t *vm, char *name, u32 ieee_oui,
+			      u16 protocol, u32 node_index)
 {
   snap_main_t *sm = &snap_main;
   snap_protocol_info_t *pi;

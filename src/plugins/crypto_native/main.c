@@ -23,7 +23,7 @@
 crypto_native_main_t crypto_native_main;
 
 static void
-crypto_native_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
+crypto_native_key_handler (vlib_main_t *vm, vnet_crypto_key_op_t kop,
 			   vnet_crypto_key_index_t idx)
 {
   vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
@@ -56,11 +56,11 @@ crypto_native_key_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
       clib_mem_free_s (cm->key_data[idx]);
     }
 
-  cm->key_data[idx] = cm->key_fn[key->alg] (key);
+  cm->key_data[idx] = cm->key_fn[key->alg](key);
 }
 
 clib_error_t *
-crypto_native_init (vlib_main_t * vm)
+crypto_native_init (vlib_main_t *vm)
 {
   crypto_native_main_t *cm = &crypto_native_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -73,11 +73,11 @@ crypto_native_init (vlib_main_t * vm)
   vec_validate_aligned (cm->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-  cm->crypto_engine_index =
-    vnet_crypto_register_engine (vm, "native", 100,
-				 "Native ISA Optimized Crypto");
+  cm->crypto_engine_index = vnet_crypto_register_engine (
+    vm, "native", 100, "Native ISA Optimized Crypto");
 
-  if (0);
+  if (0)
+    ;
 #if __x86_64__
   else if (crypto_native_aes_cbc_init_icl && clib_cpu_supports_vaes ())
     error = crypto_native_aes_cbc_init_icl (vm);
@@ -129,7 +129,6 @@ crypto_native_init (vlib_main_t * vm)
   vnet_crypto_register_key_handler (vm, cm->crypto_engine_index,
 				    crypto_native_key_handler);
 
-
 error:
   if (error)
     vec_free (cm->per_thread_data);
@@ -137,21 +136,16 @@ error:
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (crypto_native_init) =
-{
+VLIB_INIT_FUNCTION (crypto_native_init) = {
   .runs_after = VLIB_INITS ("vnet_crypto_init"),
 };
-/* *INDENT-ON* */
 
 #include <vpp/app/version.h>
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Intel IA32 Software Crypto Engine",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

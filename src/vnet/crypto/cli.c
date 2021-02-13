@@ -18,9 +18,8 @@
 #include <vnet/crypto/crypto.h>
 
 static clib_error_t *
-show_crypto_engines_command_fn (vlib_main_t * vm,
-				unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+show_crypto_engines_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_crypto_main_t *cm = &crypto_main;
@@ -36,25 +35,23 @@ show_crypto_engines_command_fn (vlib_main_t * vm,
     }
 
   vlib_cli_output (vm, "%-20s%-8s%s", "Name", "Prio", "Description");
-  /* *INDENT-OFF* */
+
   vec_foreach (p, cm->engines)
     {
       vlib_cli_output (vm, "%-20s%-8u%s", p->name, p->priority, p->desc);
     }
-  /* *INDENT-ON* */
+
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_crypto_engines_command, static) =
-{
+VLIB_CLI_COMMAND (show_crypto_engines_command, static) = {
   .path = "show crypto engines",
   .short_help = "show crypto engines",
   .function = show_crypto_engines_command_fn,
 };
 
 static u8 *
-format_vnet_crypto_engine_candidates (u8 * s, va_list * args)
+format_vnet_crypto_engine_candidates (u8 *s, va_list *args)
 {
   vnet_crypto_engine_t *e;
   vnet_crypto_main_t *cm = &crypto_main;
@@ -83,8 +80,8 @@ format_vnet_crypto_engine_candidates (u8 * s, va_list * args)
     {
       vec_foreach (e, cm->engines)
 	{
-	  void * h = is_chained ? (void *) e->chained_ops_handlers[id]
-	    : (void *) e->ops_handlers[id];
+	  void *h = is_chained ? (void *) e->chained_ops_handlers[id] :
+				 (void *) e->ops_handlers[id];
 
 	  if (h)
 	    {
@@ -100,7 +97,7 @@ format_vnet_crypto_engine_candidates (u8 * s, va_list * args)
 }
 
 static u8 *
-format_vnet_crypto_handlers (u8 * s, va_list * args)
+format_vnet_crypto_handlers (u8 *s, va_list *args)
 {
   vnet_crypto_alg_t alg = va_arg (*args, vnet_crypto_alg_t);
   vnet_crypto_main_t *cm = &crypto_main;
@@ -118,22 +115,21 @@ format_vnet_crypto_handlers (u8 * s, va_list * args)
 
       od = cm->opt_data + id;
       if (first == 0)
-        s = format (s, "\n%U", format_white_space, indent);
+	s = format (s, "\n%U", format_white_space, indent);
       s = format (s, "%-16U", format_vnet_crypto_op_type, od->type);
 
       s = format (s, "%-28U", format_vnet_crypto_engine_candidates, id,
-          od->active_engine_index_simple, 0, 0);
+		  od->active_engine_index_simple, 0, 0);
       s = format (s, "%U", format_vnet_crypto_engine_candidates, id,
-          od->active_engine_index_chained, 1, 0);
+		  od->active_engine_index_chained, 1, 0);
       first = 0;
     }
   return s;
 }
 
-
 static clib_error_t *
-show_crypto_handlers_command_fn (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+show_crypto_handlers_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				 vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   int i;
@@ -142,7 +138,7 @@ show_crypto_handlers_command_fn (vlib_main_t * vm,
     unformat_free (line_input);
 
   vlib_cli_output (vm, "%-16s%-16s%-28s%s", "Algo", "Type", "Simple",
-      "Chained");
+		   "Chained");
 
   for (i = 0; i < VNET_CRYPTO_N_ALGS; i++)
     vlib_cli_output (vm, "%-16U%U", format_vnet_crypto_alg, i,
@@ -151,19 +147,15 @@ show_crypto_handlers_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_crypto_handlers_command, static) =
-{
+VLIB_CLI_COMMAND (show_crypto_handlers_command, static) = {
   .path = "show crypto handlers",
   .short_help = "show crypto handlers",
   .function = show_crypto_handlers_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-set_crypto_handler_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+set_crypto_handler_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_crypto_main_t *cm = &crypto_main;
@@ -209,13 +201,10 @@ set_crypto_handler_command_fn (vlib_main_t * vm,
       char *key;
       u8 *value;
 
-      /* *INDENT-OFF* */
-      hash_foreach_mem (key, value, cm->alg_index_by_name,
-      ({
-        (void) value;
-        rc += vnet_crypto_set_handler2 (key, engine, oct);
-      }));
-      /* *INDENT-ON* */
+      hash_foreach_mem (key, value, cm->alg_index_by_name, ({
+			  (void) value;
+			  rc += vnet_crypto_set_handler2 (key, engine, oct);
+			}));
 
       if (rc)
 	vlib_cli_output (vm, "failed to set crypto engine!");
@@ -223,36 +212,34 @@ set_crypto_handler_command_fn (vlib_main_t * vm,
   else
     {
       vec_foreach (arg, args)
-      {
-	rc = vnet_crypto_set_handler2 (arg[0], engine, oct);
-	if (rc)
-	  {
-	    vlib_cli_output (vm, "failed to set engine %s for %s!",
-			     engine, arg[0]);
-	  }
-      }
+	{
+	  rc = vnet_crypto_set_handler2 (arg[0], engine, oct);
+	  if (rc)
+	    {
+	      vlib_cli_output (vm, "failed to set engine %s for %s!", engine,
+			       arg[0]);
+	    }
+	}
     }
 
 done:
   vec_free (engine);
-  vec_foreach (arg, args) vec_free (arg[0]);
+  vec_foreach (arg, args)
+    vec_free (arg[0]);
   vec_free (args);
   unformat_free (line_input);
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_crypto_handler_command, static) =
-{
+VLIB_CLI_COMMAND (set_crypto_handler_command, static) = {
   .path = "set crypto handler",
   .short_help = "set crypto handler cipher [cipher2 cipher3 ...] engine"
-    " [simple|chained]",
+		" [simple|chained]",
   .function = set_crypto_handler_command_fn,
 };
-/* *INDENT-ON* */
 
 static u8 *
-format_vnet_crypto_async_handlers (u8 * s, va_list * args)
+format_vnet_crypto_async_handlers (u8 *s, va_list *args)
 {
   vnet_crypto_async_alg_t alg = va_arg (*args, vnet_crypto_async_alg_t);
   vnet_crypto_main_t *cm = &crypto_main;
@@ -281,9 +268,9 @@ format_vnet_crypto_async_handlers (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-show_crypto_async_handlers_command_fn (vlib_main_t * vm,
-				       unformat_input_t * input,
-				       vlib_cli_command_t * cmd)
+show_crypto_async_handlers_command_fn (vlib_main_t *vm,
+				       unformat_input_t *input,
+				       vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   int i;
@@ -300,20 +287,15 @@ show_crypto_async_handlers_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_crypto_async_handlers_command, static) =
-{
+VLIB_CLI_COMMAND (show_crypto_async_handlers_command, static) = {
   .path = "show crypto async handlers",
   .short_help = "show crypto async handlers",
   .function = show_crypto_async_handlers_command_fn,
 };
-/* *INDENT-ON* */
-
 
 static clib_error_t *
-show_crypto_async_status_command_fn (vlib_main_t * vm,
-				     unformat_input_t * input,
-				     vlib_cli_command_t * cmd)
+show_crypto_async_status_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				     vlib_cli_command_t *cmd)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   u32 skip_master = vlib_num_workers () > 0;
@@ -325,9 +307,9 @@ show_crypto_async_status_command_fn (vlib_main_t * vm,
     unformat_free (line_input);
 
   vlib_cli_output (vm, "Crypto async dispatch mode: %s",
-		   cm->dispatch_mode ==
-		   VNET_CRYPTO_ASYNC_DISPATCH_POLLING ? "POLLING" :
-		   "INTERRUPT");
+		   cm->dispatch_mode == VNET_CRYPTO_ASYNC_DISPATCH_POLLING ?
+		     "POLLING" :
+		     "INTERRUPT");
 
   for (i = skip_master; i < tm->n_vlib_mains; i++)
     {
@@ -343,19 +325,15 @@ show_crypto_async_status_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_crypto_async_status_command, static) =
-{
+VLIB_CLI_COMMAND (show_crypto_async_status_command, static) = {
   .path = "show crypto async status",
   .short_help = "show crypto async status",
   .function = show_crypto_async_status_command_fn,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
-set_crypto_async_handler_command_fn (vlib_main_t * vm,
-				     unformat_input_t * input,
-				     vlib_cli_command_t * cmd)
+set_crypto_async_handler_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				     vlib_cli_command_t *cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_crypto_main_t *cm = &crypto_main;
@@ -394,13 +372,10 @@ set_crypto_async_handler_command_fn (vlib_main_t * vm,
       char *key;
       u8 *value;
 
-      /* *INDENT-OFF* */
-      hash_foreach_mem (key, value, cm->async_alg_index_by_name,
-      ({
-        (void) value;
-        rc += vnet_crypto_set_async_handler2 (key, engine);
-      }));
-      /* *INDENT-ON* */
+      hash_foreach_mem (key, value, cm->async_alg_index_by_name, ({
+			  (void) value;
+			  rc += vnet_crypto_set_async_handler2 (key, engine);
+			}));
 
       if (rc)
 	vlib_cli_output (vm, "failed to set crypto engine!");
@@ -408,46 +383,44 @@ set_crypto_async_handler_command_fn (vlib_main_t * vm,
   else
     {
       vec_foreach (arg, args)
-      {
-	rc = vnet_crypto_set_async_handler2 (arg[0], engine);
-	if (rc)
-	  {
-	    vlib_cli_output (vm, "failed to set engine %s for %s!",
-			     engine, arg[0]);
-	  }
-      }
+	{
+	  rc = vnet_crypto_set_async_handler2 (arg[0], engine);
+	  if (rc)
+	    {
+	      vlib_cli_output (vm, "failed to set engine %s for %s!", engine,
+			       arg[0]);
+	    }
+	}
     }
 
 done:
   vec_free (engine);
-  vec_foreach (arg, args) vec_free (arg[0]);
+  vec_foreach (arg, args)
+    vec_free (arg[0]);
   vec_free (args);
   unformat_free (line_input);
   return error;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_crypto_async_handler_command, static) =
-{
+VLIB_CLI_COMMAND (set_crypto_async_handler_command, static) = {
   .path = "set crypto async handler",
   .short_help = "set crypto async handler type [type2 type3 ...] engine",
   .function = set_crypto_async_handler_command_fn,
 };
-/* *INDENT-ON* */
 
 static inline void
 print_crypto_async_dispatch_warning ()
 {
   clib_warning ("Switching dispatch mode might not work is some situations.");
-  clib_warning
-    ("Use 'show crypto async status' to verify that the nodes' states were set");
+  clib_warning ("Use 'show crypto async status' to verify that the nodes' "
+		"states were set");
   clib_warning ("and if not, set 'crypto async dispatch' mode again.");
 }
 
 static clib_error_t *
-set_crypto_async_dispatch_polling_command_fn (vlib_main_t * vm,
-					      unformat_input_t * input,
-					      vlib_cli_command_t * cmd)
+set_crypto_async_dispatch_polling_command_fn (vlib_main_t *vm,
+					      unformat_input_t *input,
+					      vlib_cli_command_t *cmd)
 {
   print_crypto_async_dispatch_warning ();
   vnet_crypto_set_async_dispatch_mode (VNET_CRYPTO_ASYNC_DISPATCH_POLLING);
@@ -455,24 +428,21 @@ set_crypto_async_dispatch_polling_command_fn (vlib_main_t * vm,
 }
 
 static clib_error_t *
-set_crypto_async_dispatch_interrupt_command_fn (vlib_main_t * vm,
-						unformat_input_t * input,
-						vlib_cli_command_t * cmd)
+set_crypto_async_dispatch_interrupt_command_fn (vlib_main_t *vm,
+						unformat_input_t *input,
+						vlib_cli_command_t *cmd)
 {
   print_crypto_async_dispatch_warning ();
   vnet_crypto_set_async_dispatch_mode (VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT);
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_crypto_async_dispatch_polling_command, static) =
-{
+VLIB_CLI_COMMAND (set_crypto_async_dispatch_polling_command, static) = {
   .path = "set crypto async dispatch polling",
   .short_help = "set crypto async dispatch polling|interrupt",
   .function = set_crypto_async_dispatch_polling_command_fn,
 };
-VLIB_CLI_COMMAND (set_crypto_async_dispatch_interrupt_command, static) =
-{
+VLIB_CLI_COMMAND (set_crypto_async_dispatch_interrupt_command, static) = {
   .path = "set crypto async dispatch interrupt",
   .short_help = "set crypto async dispatch polling|interrupt",
   .function = set_crypto_async_dispatch_interrupt_command_fn,

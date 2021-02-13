@@ -41,11 +41,14 @@
 #include <vppinfra/random_isaac.h>
 
 static int verbose;
-#define if_verbose(format,args...) \
-  if (verbose) { clib_warning(format, ## args); }
+#define if_verbose(format, args...)                                           \
+  if (verbose)                                                                \
+    {                                                                         \
+      clib_warning (format, ##args);                                          \
+    }
 
 int
-test_isaac_main (unformat_input_t * input)
+test_isaac_main (unformat_input_t *input)
 {
   uword n_iterations, seed;
   uword i, repeat_count;
@@ -61,9 +64,9 @@ test_isaac_main (unformat_input_t * input)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (0 == unformat (input, "iter %d", &n_iterations)
-	  && 0 == unformat (input, "print %d", &print)
-	  && 0 == unformat (input, "seed %d", &seed))
+      if (0 == unformat (input, "iter %d", &n_iterations) &&
+	  0 == unformat (input, "print %d", &print) &&
+	  0 == unformat (input, "seed %d", &seed))
 	clib_error ("unknown input `%U'", format_unformat_error, input);
     }
 
@@ -133,7 +136,6 @@ main (int argc, char *argv[])
   return ret;
 }
 #endif /* CLIB_UNIX */
-
 
 /*
  * fd.io coding-style-patch-verification: ON

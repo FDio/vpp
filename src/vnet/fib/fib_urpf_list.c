@@ -218,7 +218,7 @@ show_fib_urpf_list_command (vlib_main_t * vm,
     return (NULL);
 }
 
-/* *INDENT-OFF* */
+
 /*?
  * The '<em>sh fib uRPF [index] </em>' command displays the uRPF lists
  *
@@ -236,4 +236,4 @@ VLIB_CLI_COMMAND (show_fib_urpf_list, static) = {
   .function = show_fib_urpf_list_command,
   .short_help = "show fib uRPF",
 };
-/* *INDENT-OFF* */
+

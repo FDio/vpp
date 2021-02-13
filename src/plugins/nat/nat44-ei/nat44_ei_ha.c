@@ -23,17 +23,17 @@
 /* number of retries */
 #define NAT_HA_RETRIES 3
 
-#define foreach_nat_ha_counter           \
-_(RECV_ADD, "add-event-recv", 0)         \
-_(RECV_DEL, "del-event-recv", 1)         \
-_(RECV_REFRESH, "refresh-event-recv", 2) \
-_(SEND_ADD, "add-event-send", 3)         \
-_(SEND_DEL, "del-event-send", 4)         \
-_(SEND_REFRESH, "refresh-event-send", 5) \
-_(RECV_ACK, "ack-recv", 6)               \
-_(SEND_ACK, "ack-send", 7)               \
-_(RETRY_COUNT, "retry-count", 8)         \
-_(MISSED_COUNT, "missed-count", 9)
+#define foreach_nat_ha_counter                                                \
+  _ (RECV_ADD, "add-event-recv", 0)                                           \
+  _ (RECV_DEL, "del-event-recv", 1)                                           \
+  _ (RECV_REFRESH, "refresh-event-recv", 2)                                   \
+  _ (SEND_ADD, "add-event-send", 3)                                           \
+  _ (SEND_DEL, "del-event-send", 4)                                           \
+  _ (SEND_REFRESH, "refresh-event-send", 5)                                   \
+  _ (RECV_ACK, "ack-recv", 6)                                                 \
+  _ (SEND_ACK, "ack-send", 7)                                                 \
+  _ (RETRY_COUNT, "retry-count", 8)                                           \
+  _ (MISSED_COUNT, "missed-count", 9)
 
 /* NAT HA protocol version */
 #define NAT_HA_VERSION 0x01
@@ -90,7 +90,7 @@ typedef enum
 #define _(N, s, v) NAT_HA_COUNTER_##N = v,
   foreach_nat_ha_counter
 #undef _
-  NAT_HA_N_COUNTERS
+    NAT_HA_N_COUNTERS
 } nat_ha_counter_t;
 
 /* data waiting for ACK */
@@ -326,7 +326,7 @@ nat_ha_resync_fin (void)
 
 /* cache HA NAT data waiting for ACK */
 static int
-nat_ha_resend_queue_add (u32 seq, u8 * data, u8 data_len, u8 is_resync,
+nat_ha_resend_queue_add (u32 seq, u8 *data, u8 data_len, u8 is_resync,
 			 u32 thread_index)
 {
   nat_ha_main_t *ha = &nat_ha_main;
@@ -352,25 +352,25 @@ nat_ha_ack_recv (u32 seq, u32 thread_index)
   u32 i;
 
   vec_foreach_index (i, td->resend_queue)
-  {
-    if (td->resend_queue[i].seq != seq)
-      continue;
+    {
+      if (td->resend_queue[i].seq != seq)
+	continue;
 
-    vlib_increment_simple_counter (&ha->counters[NAT_HA_COUNTER_RECV_ACK],
-				   thread_index, 0, 1);
-    /* ACK received remove cached data */
-    if (td->resend_queue[i].is_resync)
-      {
-	clib_atomic_fetch_sub (&ha->resync_ack_count, 1);
-	nat_ha_resync_fin ();
-      }
-    vec_free (td->resend_queue[i].data);
-    vec_del1 (td->resend_queue, i);
-    nat_elog_debug_X1 ("ACK for seq %d received", "i4",
-		       clib_net_to_host_u32 (seq));
+      vlib_increment_simple_counter (&ha->counters[NAT_HA_COUNTER_RECV_ACK],
+				     thread_index, 0, 1);
+      /* ACK received remove cached data */
+      if (td->resend_queue[i].is_resync)
+	{
+	  clib_atomic_fetch_sub (&ha->resync_ack_count, 1);
+	  nat_ha_resync_fin ();
+	}
+      vec_free (td->resend_queue[i].data);
+      vec_del1 (td->resend_queue, i);
+      nat_elog_debug_X1 ("ACK for seq %d received", "i4",
+			 clib_net_to_host_u32 (seq));
 
-    return;
-  }
+      return;
+    }
 }
 
 /* scan non-ACKed HA NAT for retry */
@@ -387,61 +387,60 @@ nat_ha_resend_scan (f64 now, u32 thread_index)
   ip4_header_t *ip;
 
   vec_foreach_index (i, td->resend_queue)
-  {
-    if (td->resend_queue[i].retry_timer > now)
-      continue;
-
-    /* maximum retry reached delete cached data */
-    if (td->resend_queue[i].retry_count >= NAT_HA_RETRIES)
-      {
-	nat_elog_notice_X1 ("seq %d missed", "i4",
-			    clib_net_to_host_u32 (td->resend_queue[i].seq));
-	if (td->resend_queue[i].is_resync)
-	  {
-	    clib_atomic_fetch_add (&ha->resync_ack_missed, 1);
-	    clib_atomic_fetch_sub (&ha->resync_ack_count, 1);
-	    nat_ha_resync_fin ();
-	  }
-	vec_add1 (to_delete, i);
-	vlib_increment_simple_counter (&ha->counters
-				       [NAT_HA_COUNTER_MISSED_COUNT],
-				       thread_index, 0, 1);
+    {
+      if (td->resend_queue[i].retry_timer > now)
 	continue;
-      }
 
-    /* retry to send non-ACKed data */
-    nat_elog_debug_X1 ("state sync seq %d resend", "i4",
-		       clib_net_to_host_u32 (td->resend_queue[i].seq));
-    td->resend_queue[i].retry_count++;
-    vlib_increment_simple_counter (&ha->counters[NAT_HA_COUNTER_RETRY_COUNT],
-				   thread_index, 0, 1);
-    if (vlib_buffer_alloc (vm, &bi, 1) != 1)
-      {
-	nat_elog_warn ("HA NAT state sync can't allocate buffer");
-	return;
-      }
-    b = vlib_get_buffer (vm, bi);
-    b->current_length = vec_len (td->resend_queue[i].data);
-    b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
-    b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
-    vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
-    vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
-    ip = vlib_buffer_get_current (b);
-    clib_memcpy (ip, td->resend_queue[i].data,
-		 vec_len (td->resend_queue[i].data));
-    f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
-    to_next = vlib_frame_vector_args (f);
-    to_next[0] = bi;
-    f->n_vectors = 1;
-    vlib_put_frame_to_node (vm, ip4_lookup_node.index, f);
-    td->resend_queue[i].retry_timer = now + 2.0;
-  }
+      /* maximum retry reached delete cached data */
+      if (td->resend_queue[i].retry_count >= NAT_HA_RETRIES)
+	{
+	  nat_elog_notice_X1 ("seq %d missed", "i4",
+			      clib_net_to_host_u32 (td->resend_queue[i].seq));
+	  if (td->resend_queue[i].is_resync)
+	    {
+	      clib_atomic_fetch_add (&ha->resync_ack_missed, 1);
+	      clib_atomic_fetch_sub (&ha->resync_ack_count, 1);
+	      nat_ha_resync_fin ();
+	    }
+	  vec_add1 (to_delete, i);
+	  vlib_increment_simple_counter (
+	    &ha->counters[NAT_HA_COUNTER_MISSED_COUNT], thread_index, 0, 1);
+	  continue;
+	}
+
+      /* retry to send non-ACKed data */
+      nat_elog_debug_X1 ("state sync seq %d resend", "i4",
+			 clib_net_to_host_u32 (td->resend_queue[i].seq));
+      td->resend_queue[i].retry_count++;
+      vlib_increment_simple_counter (&ha->counters[NAT_HA_COUNTER_RETRY_COUNT],
+				     thread_index, 0, 1);
+      if (vlib_buffer_alloc (vm, &bi, 1) != 1)
+	{
+	  nat_elog_warn ("HA NAT state sync can't allocate buffer");
+	  return;
+	}
+      b = vlib_get_buffer (vm, bi);
+      b->current_length = vec_len (td->resend_queue[i].data);
+      b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+      b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+      vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
+      vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
+      ip = vlib_buffer_get_current (b);
+      clib_memcpy (ip, td->resend_queue[i].data,
+		   vec_len (td->resend_queue[i].data));
+      f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
+      to_next = vlib_frame_vector_args (f);
+      to_next[0] = bi;
+      f->n_vectors = 1;
+      vlib_put_frame_to_node (vm, ip4_lookup_node.index, f);
+      td->resend_queue[i].retry_timer = now + 2.0;
+    }
 
   vec_foreach (del, to_delete)
-  {
-    vec_free (td->resend_queue[*del].data);
-    vec_del1 (td->resend_queue, *del);
-  }
+    {
+      vec_free (td->resend_queue[*del].data);
+      vec_del1 (td->resend_queue, *del);
+    }
   vec_free (to_delete);
 }
 
@@ -476,7 +475,7 @@ nat_ha_set_node_indexes (nat_ha_main_t *ha, vlib_main_t *vm)
 }
 
 void
-nat_ha_init (vlib_main_t * vm, u32 num_workers, u32 num_threads)
+nat_ha_init (vlib_main_t *vm, u32 num_workers, u32 num_threads)
 {
   nat_ha_main_t *ha = &nat_ha_main;
   clib_memset (ha, 0, sizeof (*ha));
@@ -489,16 +488,17 @@ nat_ha_init (vlib_main_t * vm, u32 num_workers, u32 num_threads)
   ha->num_workers = num_workers;
   vec_validate (ha->per_thread_data, num_threads);
 
-#define _(N, s, v) ha->counters[v].name = s;          \
-  ha->counters[v].stat_segment_name = "/nat44/ha/" s; \
-  vlib_validate_simple_counter(&ha->counters[v], 0);  \
-  vlib_zero_simple_counter(&ha->counters[v], 0);
+#define _(N, s, v)                                                            \
+  ha->counters[v].name = s;                                                   \
+  ha->counters[v].stat_segment_name = "/nat44/ha/" s;                         \
+  vlib_validate_simple_counter (&ha->counters[v], 0);                         \
+  vlib_zero_simple_counter (&ha->counters[v], 0);
   foreach_nat_ha_counter
 #undef _
 }
 
 int
-nat_ha_set_listener (ip4_address_t * addr, u16 port, u32 path_mtu)
+nat_ha_set_listener (ip4_address_t *addr, u16 port, u32 path_mtu)
 {
   nat_ha_main_t *ha = &nat_ha_main;
 
@@ -531,7 +531,7 @@ nat_ha_set_listener (ip4_address_t * addr, u16 port, u32 path_mtu)
 }
 
 void
-nat_ha_get_listener (ip4_address_t * addr, u16 * port, u32 * path_mtu)
+nat_ha_get_listener (ip4_address_t *addr, u16 *port, u32 *path_mtu)
 {
   nat_ha_main_t *ha = &nat_ha_main;
 
@@ -541,7 +541,7 @@ nat_ha_get_listener (ip4_address_t * addr, u16 * port, u32 * path_mtu)
 }
 
 int
-nat_ha_set_failover (ip4_address_t * addr, u16 port,
+nat_ha_set_failover (ip4_address_t *addr, u16 port,
 		     u32 session_refresh_interval)
 {
   nat_ha_main_t *ha = &nat_ha_main;
@@ -556,8 +556,8 @@ nat_ha_set_failover (ip4_address_t * addr, u16 port,
 }
 
 void
-nat_ha_get_failover (ip4_address_t * addr, u16 * port,
-		     u32 * session_refresh_interval)
+nat_ha_get_failover (ip4_address_t *addr, u16 *port,
+		     u32 *session_refresh_interval)
 {
   nat_ha_main_t *ha = &nat_ha_main;
 
@@ -567,7 +567,7 @@ nat_ha_get_failover (ip4_address_t * addr, u16 * port,
 }
 
 static_always_inline void
-nat_ha_recv_add (nat_ha_event_t * event, f64 now, u32 thread_index)
+nat_ha_recv_add (nat_ha_event_t *event, f64 now, u32 thread_index)
 {
   nat_ha_main_t *ha = &nat_ha_main;
   ip4_address_t in_addr, out_addr, eh_addr, ehn_addr;
@@ -590,7 +590,7 @@ nat_ha_recv_add (nat_ha_event_t * event, f64 now, u32 thread_index)
 }
 
 static_always_inline void
-nat_ha_recv_del (nat_ha_event_t * event, u32 thread_index)
+nat_ha_recv_del (nat_ha_event_t *event, u32 thread_index)
 {
   nat_ha_main_t *ha = &nat_ha_main;
   ip4_address_t out_addr, eh_addr;
@@ -608,7 +608,7 @@ nat_ha_recv_del (nat_ha_event_t * event, u32 thread_index)
 }
 
 static_always_inline void
-nat_ha_recv_refresh (nat_ha_event_t * event, f64 now, u32 thread_index)
+nat_ha_recv_refresh (nat_ha_event_t *event, f64 now, u32 thread_index)
 {
   nat_ha_main_t *ha = &nat_ha_main;
   ip4_address_t out_addr, eh_addr;
@@ -631,7 +631,7 @@ nat_ha_recv_refresh (nat_ha_event_t * event, f64 now, u32 thread_index)
 
 /* process received NAT HA event */
 static_always_inline void
-nat_ha_event_process (nat_ha_event_t * event, f64 now, u32 thread_index)
+nat_ha_event_process (nat_ha_event_t *event, f64 now, u32 thread_index)
 {
   switch (event->event_type)
     {
@@ -652,7 +652,7 @@ nat_ha_event_process (nat_ha_event_t * event, f64 now, u32 thread_index)
 }
 
 static inline void
-nat_ha_header_create (vlib_buffer_t * b, u32 * offset, u32 thread_index)
+nat_ha_header_create (vlib_buffer_t *b, u32 *offset, u32 thread_index)
 {
   nat_ha_main_t *ha = &nat_ha_main;
   nat_ha_message_header_t *h;
@@ -691,14 +691,12 @@ nat_ha_header_create (vlib_buffer_t * b, u32 * offset, u32 thread_index)
   sequence_number = clib_atomic_fetch_add (&ha->sequence_number, 1);
   h->sequence_number = clib_host_to_net_u32 (sequence_number);
 
-  *offset =
-    sizeof (ip4_header_t) + sizeof (udp_header_t) +
-    sizeof (nat_ha_message_header_t);
+  *offset = sizeof (ip4_header_t) + sizeof (udp_header_t) +
+	    sizeof (nat_ha_message_header_t);
 }
 
 static inline void
-nat_ha_send (vlib_frame_t * f, vlib_buffer_t * b, u8 is_resync,
-	     u32 thread_index)
+nat_ha_send (vlib_frame_t *f, vlib_buffer_t *b, u8 is_resync, u32 thread_index)
 {
   nat_ha_main_t *ha = &nat_ha_main;
   nat_ha_per_thread_data_t *td = &ha->per_thread_data[thread_index];
@@ -725,7 +723,7 @@ nat_ha_send (vlib_frame_t * f, vlib_buffer_t * b, u8 is_resync,
 
 /* add NAT HA protocol event */
 static_always_inline void
-nat_ha_event_add (nat_ha_event_t * event, u8 do_flush, u32 thread_index,
+nat_ha_event_add (nat_ha_event_t *event, u8 do_flush, u32 thread_index,
 		  u8 is_resync)
 {
   nat_ha_main_t *ha = &nat_ha_main;
@@ -783,27 +781,24 @@ nat_ha_event_add (nat_ha_event_t * event, u8 do_flush, u32 thread_index,
       switch (event->event_type)
 	{
 	case NAT_HA_ADD:
-	  vlib_increment_simple_counter (&ha->counters
-					 [NAT_HA_COUNTER_SEND_ADD],
-					 thread_index, 0, 1);
+	  vlib_increment_simple_counter (
+	    &ha->counters[NAT_HA_COUNTER_SEND_ADD], thread_index, 0, 1);
 	  break;
 	case NAT_HA_DEL:
-	  vlib_increment_simple_counter (&ha->counters
-					 [NAT_HA_COUNTER_SEND_DEL],
-					 thread_index, 0, 1);
+	  vlib_increment_simple_counter (
+	    &ha->counters[NAT_HA_COUNTER_SEND_DEL], thread_index, 0, 1);
 	  break;
 	case NAT_HA_REFRESH:
-	  vlib_increment_simple_counter (&ha->counters
-					 [NAT_HA_COUNTER_SEND_REFRESH],
-					 thread_index, 0, 1);
+	  vlib_increment_simple_counter (
+	    &ha->counters[NAT_HA_COUNTER_SEND_REFRESH], thread_index, 0, 1);
 	  break;
 	default:
 	  break;
 	}
     }
 
-  if (PREDICT_FALSE
-      (do_flush || offset + (sizeof (*event)) > ha->state_sync_path_mtu))
+  if (PREDICT_FALSE (do_flush ||
+		     offset + (sizeof (*event)) > ha->state_sync_path_mtu))
     {
       nat_ha_send (f, b, is_resync, thread_index);
       td->state_sync_buffer = 0;
@@ -820,12 +815,14 @@ nat_ha_event_add (nat_ha_event_t * event, u8 do_flush, u32 thread_index,
   td->state_sync_next_event_offset = offset;
 }
 
-#define skip_if_disabled()          \
-do {                                \
-  nat_ha_main_t *ha = &nat_ha_main; \
-  if (PREDICT_TRUE (!ha->dst_port)) \
-    return;                         \
-} while (0)
+#define skip_if_disabled()                                                    \
+  do                                                                          \
+    {                                                                         \
+      nat_ha_main_t *ha = &nat_ha_main;                                       \
+      if (PREDICT_TRUE (!ha->dst_port))                                       \
+	return;                                                               \
+    }                                                                         \
+  while (0)
 
 void
 nat_ha_flush (u8 is_resync)
@@ -835,9 +832,9 @@ nat_ha_flush (u8 is_resync)
 }
 
 void
-nat_ha_sadd (ip4_address_t * in_addr, u16 in_port, ip4_address_t * out_addr,
-	     u16 out_port, ip4_address_t * eh_addr, u16 eh_port,
-	     ip4_address_t * ehn_addr, u16 ehn_port, u8 proto, u32 fib_index,
+nat_ha_sadd (ip4_address_t *in_addr, u16 in_port, ip4_address_t *out_addr,
+	     u16 out_port, ip4_address_t *eh_addr, u16 eh_port,
+	     ip4_address_t *ehn_addr, u16 ehn_port, u8 proto, u32 fib_index,
 	     u16 flags, u32 thread_index, u8 is_resync)
 {
   nat_ha_event_t event;
@@ -861,7 +858,7 @@ nat_ha_sadd (ip4_address_t * in_addr, u16 in_port, ip4_address_t * out_addr,
 }
 
 void
-nat_ha_sdel (ip4_address_t * out_addr, u16 out_port, ip4_address_t * eh_addr,
+nat_ha_sdel (ip4_address_t *out_addr, u16 out_port, ip4_address_t *eh_addr,
 	     u16 eh_port, u8 proto, u32 fib_index, u32 thread_index)
 {
   nat_ha_event_t event;
@@ -880,9 +877,9 @@ nat_ha_sdel (ip4_address_t * out_addr, u16 out_port, ip4_address_t * eh_addr,
 }
 
 void
-nat_ha_sref (ip4_address_t * out_addr, u16 out_port, ip4_address_t * eh_addr,
+nat_ha_sref (ip4_address_t *out_addr, u16 out_port, ip4_address_t *eh_addr,
 	     u16 eh_port, u8 proto, u32 fib_index, u32 total_pkts,
-	     u64 total_bytes, u32 thread_index, f64 * last_refreshed, f64 now)
+	     u64 total_bytes, u32 thread_index, f64 *last_refreshed, f64 now)
 {
   nat_ha_main_t *ha = &nat_ha_main;
   nat_ha_event_t event;
@@ -915,8 +912,7 @@ plugin_enabled ()
 
 /* per thread process waiting for interrupt */
 static uword
-nat_ha_worker_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
-		  vlib_frame_t * f)
+nat_ha_worker_fn (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   u32 thread_index = vm->thread_index;
 
@@ -932,16 +928,16 @@ nat_ha_worker_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat_ha_worker_node) = {
-    .function = nat_ha_worker_fn,
-    .type = VLIB_NODE_TYPE_INPUT,
-    .state = VLIB_NODE_STATE_INTERRUPT,
-    .name = "nat-ha-worker",
+  .function = nat_ha_worker_fn,
+  .type = VLIB_NODE_TYPE_INPUT,
+  .state = VLIB_NODE_STATE_INTERRUPT,
+  .name = "nat-ha-worker",
 };
 /* *INDENT-ON* */
 
 /* periodically send interrupt to each thread */
 static uword
-nat_ha_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
+nat_ha_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
 {
   nat_ha_main_t *ha = &nat_ha_main;
   uword event_type;
@@ -974,14 +970,14 @@ nat_ha_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat_ha_process_node) = {
-    .function = nat_ha_process,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "nat-ha-process",
+  .function = nat_ha_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "nat-ha-process",
 };
 /* *INDENT-ON* */
 
 void
-nat_ha_get_resync_status (u8 * in_resync, u32 * resync_ack_missed)
+nat_ha_get_resync_status (u8 *in_resync, u32 *resync_ack_missed)
 {
   nat_ha_main_t *ha = &nat_ha_main;
 
@@ -996,15 +992,14 @@ typedef struct
 } nat_ha_trace_t;
 
 static u8 *
-format_nat_ha_trace (u8 * s, va_list * args)
+format_nat_ha_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   nat_ha_trace_t *t = va_arg (*args, nat_ha_trace_t *);
 
-  s =
-    format (s, "nat-ha: %u events from %U", t->event_count,
-	    format_ip4_address, &t->addr);
+  s = format (s, "nat-ha: %u events from %U", t->event_count,
+	      format_ip4_address, &t->addr);
 
   return s;
 }
@@ -1016,9 +1011,9 @@ typedef enum
   NAT_HA_N_NEXT,
 } nat_ha_next_t;
 
-#define foreach_nat_ha_error   \
-_(PROCESSED, "pkts-processed") \
-_(BAD_VERSION, "bad-version")
+#define foreach_nat_ha_error                                                  \
+  _ (PROCESSED, "pkts-processed")                                             \
+  _ (BAD_VERSION, "bad-version")
 
 typedef enum
 {
@@ -1036,8 +1031,8 @@ static char *nat_ha_error_strings[] = {
 
 /* process received HA NAT protocol messages */
 static uword
-nat_ha_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		vlib_frame_t * frame)
+nat_ha_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		vlib_frame_t *frame)
 {
   u32 n_left_from, *from, next_index, *to_next;
   f64 now = vlib_time_now (vm);
@@ -1059,7 +1054,8 @@ nat_ha_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 bi0, next0, src_addr0, dst_addr0;;
+	  u32 bi0, next0, src_addr0, dst_addr0;
+	  ;
 	  vlib_buffer_t *b0;
 	  nat_ha_message_header_t *h0;
 	  nat_ha_event_t *e0;
@@ -1123,12 +1119,11 @@ nat_ha_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip0->length = clib_host_to_net_u16 (b0->current_length);
 
 	  sum0 = ip0->checksum;
-	  sum0 = ip_csum_update (sum0, ip0->ttl, host_config_ttl,
-				 ip4_header_t, ttl);
+	  sum0 = ip_csum_update (sum0, ip0->ttl, host_config_ttl, ip4_header_t,
+				 ttl);
 	  ip0->ttl = host_config_ttl;
 	  sum0 =
-	    ip_csum_update (sum0, old_len0, ip0->length, ip4_header_t,
-			    length);
+	    ip_csum_update (sum0, old_len0, ip0->length, ip4_header_t, length);
 	  ip0->checksum = ip_csum_fold (sum0);
 
 	  udp0->checksum = 0;
@@ -1141,13 +1136,12 @@ nat_ha_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  h0->flags = NAT_HA_FLAG_ACK;
 	  h0->count = 0;
-	  vlib_increment_simple_counter (&ha->counters
-					 [NAT_HA_COUNTER_SEND_ACK],
-					 thread_index, 0, 1);
+	  vlib_increment_simple_counter (
+	    &ha->counters[NAT_HA_COUNTER_SEND_ACK], thread_index, 0, 1);
 
 	done0:
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      nat_ha_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      ip4_header_t *ip =
@@ -1156,9 +1150,8 @@ nat_ha_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      t->addr.as_u32 = ip->src_address.data_u32;
 	    }
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -1193,27 +1186,27 @@ typedef struct
   u8 in2out;
 } nat_ha_handoff_trace_t;
 
-#define foreach_nat_ha_handoff_error  \
-_(CONGESTION_DROP, "congestion drop") \
-_(SAME_WORKER, "same worker")         \
-_(DO_HANDOFF, "do handoff")
+#define foreach_nat_ha_handoff_error                                          \
+  _ (CONGESTION_DROP, "congestion drop")                                      \
+  _ (SAME_WORKER, "same worker")                                              \
+  _ (DO_HANDOFF, "do handoff")
 
 typedef enum
 {
-#define _(sym,str) NAT_HA_HANDOFF_ERROR_##sym,
+#define _(sym, str) NAT_HA_HANDOFF_ERROR_##sym,
   foreach_nat_ha_handoff_error
 #undef _
     NAT_HA_HANDOFF_N_ERROR,
 } nat_ha_handoff_error_t;
 
 static char *nat_ha_handoff_error_strings[] = {
-#define _(sym,string) string,
+#define _(sym, string) string,
   foreach_nat_ha_handoff_error
 #undef _
 };
 
 static u8 *
-format_nat_ha_handoff_trace (u8 * s, va_list * args)
+format_nat_ha_handoff_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -1227,8 +1220,8 @@ format_nat_ha_handoff_trace (u8 * s, va_list * args)
 
 /* do worker handoff based on thread_index in NAT HA protcol header */
 static uword
-nat_ha_handoff_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			vlib_frame_t * frame)
+nat_ha_handoff_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+			vlib_frame_t *frame)
 {
   nat_ha_main_t *ha = &nat_ha_main;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
@@ -1256,8 +1249,8 @@ nat_ha_handoff_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       else
 	same_worker++;
 
-      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			 && (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
+			 (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
 	{
 	  nat_ha_handoff_trace_t *t =
 	    vlib_add_trace (vm, node, b[0], sizeof (*t));
@@ -1269,9 +1262,8 @@ nat_ha_handoff_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       b += 1;
     }
 
-  n_enq =
-    vlib_buffer_enqueue_to_thread (vm, ha->fq_index, from, thread_indices,
-				   frame->n_vectors, 1);
+  n_enq = vlib_buffer_enqueue_to_thread (vm, ha->fq_index, from,
+					 thread_indices, frame->n_vectors, 1);
 
   if (n_enq < frame->n_vectors)
     vlib_node_increment_counter (vm, node->node_index,
@@ -1298,19 +1290,7 @@ VLIB_REGISTER_NODE (nat_ha_handoff_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_nat_ha_handoff_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(nat_ha_handoff_error_strings),
+  .n_errors = ARRAY_LEN (nat_ha_handoff_error_strings),
   .error_strings = nat_ha_handoff_error_strings,
   .n_next_nodes = 1,
-  .next_nodes = {
-    [0] = "error-drop",
-  },
-};
-/* *INDENT-ON* */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+  .next_nodes = { [0] = "error-drop",

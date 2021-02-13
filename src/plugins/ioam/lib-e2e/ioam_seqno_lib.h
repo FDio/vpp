@@ -18,9 +18,9 @@
 
 #include <vppinfra/types.h>
 
-#define SEQ_CHECK_VALUE 0x80000000	/* for seq number wraparound detection */
+#define SEQ_CHECK_VALUE 0x80000000 /* for seq number wraparound detection */
 
-#define SEQNO_WINDOW_SIZE 2048
+#define SEQNO_WINDOW_SIZE	2048
 #define SEQNO_WINDOW_ARRAY_SIZE 64
 
 typedef struct seqno_bitmap_
@@ -30,7 +30,7 @@ typedef struct seqno_bitmap_
   u32 mask;
   u32 pad;
   u64 highest;
-  u64 array[SEQNO_WINDOW_ARRAY_SIZE];	/* Will be alloc to array_size */
+  u64 array[SEQNO_WINDOW_ARRAY_SIZE]; /* Will be alloc to array_size */
 } seqno_bitmap;
 
 typedef struct seqno_rx_info_
@@ -47,25 +47,25 @@ typedef struct ioam_seqno_data_
 {
   union
   {
-    u32 seq_num;		/* Useful only for encap node */
+    u32 seq_num; /* Useful only for encap node */
     seqno_rx_info seqno_rx;
   };
 } ioam_seqno_data;
 
 static inline void
-BIT_SET (u64 * p, u32 n)
+BIT_SET (u64 *p, u32 n)
 {
   p[n >> 5] |= (1 << (n & 31));
 }
 
 static inline int
-BIT_TEST (u64 * p, u32 n)
+BIT_TEST (u64 *p, u32 n)
 {
   return p[n >> 5] & (1 << (n & 31));
 }
 
 static void
-BIT_CLEAR (u64 * p, u64 start, int num_bits, u32 mask)
+BIT_CLEAR (u64 *p, u64 start, int num_bits, u32 mask)
 {
   int n, t;
   int start_index = (start >> 5);
@@ -114,7 +114,7 @@ seqno_check_wraparound (u32 a, u32 b)
  *     - counts the received/lost/duplicate/reordered packets
  */
 inline static void
-ioam_analyze_seqno (seqno_rx_info * seqno_rx, u64 seqno)
+ioam_analyze_seqno (seqno_rx_info *seqno_rx, u64 seqno)
 {
   int diff;
   static int peer_dead_count;
@@ -123,13 +123,13 @@ ioam_analyze_seqno (seqno_rx_info * seqno_rx, u64 seqno)
   seqno_rx->rx_packets++;
 
   if (seqno > bitmap->highest)
-    {				/* new larger sequence number */
+    { /* new larger sequence number */
       peer_dead_count = 0;
       diff = seqno - bitmap->highest;
       if (diff < bitmap->window_size)
 	{
 	  if (diff > 1)
-	    {			/* diff==1 is *such* a common case it's a win to optimize it */
+	    { /* diff==1 is *such* a common case it's a win to optimize it */
 	      BIT_CLEAR (bitmap->array, bitmap->highest + 1, diff - 1,
 			 bitmap->mask);
 	      seqno_rx->lost_packets += diff - 1;
@@ -167,7 +167,7 @@ ioam_analyze_seqno (seqno_rx_info * seqno_rx, u64 seqno)
 	      BIT_SET (bitmap->array, seqno & bitmap->mask);
 	      bitmap->highest = seqno;
 	    }
-	  //ppc_rx->reordered_packets++;
+	  // ppc_rx->reordered_packets++;
 	}
       return;
     }
@@ -175,7 +175,7 @@ ioam_analyze_seqno (seqno_rx_info * seqno_rx, u64 seqno)
   if (BIT_TEST (bitmap->array, seqno & bitmap->mask))
     {
       seqno_rx->dup_packets++;
-      return;			/* Already seen */
+      return; /* Already seen */
     }
   seqno_rx->reordered_packets++;
   seqno_rx->lost_packets--;
@@ -183,13 +183,13 @@ ioam_analyze_seqno (seqno_rx_info * seqno_rx, u64 seqno)
   return;
 }
 
-u8 *show_ioam_seqno_analyse_data_fn (u8 * s, seqno_rx_info * rx);
+u8 *show_ioam_seqno_analyse_data_fn (u8 *s, seqno_rx_info *rx);
 
-u8 *show_ioam_seqno_cmd_fn (u8 * s, ioam_seqno_data * seqno_data, u8 enc);
+u8 *show_ioam_seqno_cmd_fn (u8 *s, ioam_seqno_data *seqno_data, u8 enc);
 
-void ioam_seqno_init_data (ioam_seqno_data * data);
+void ioam_seqno_init_data (ioam_seqno_data *data);
 
-void ioam_seqno_init_rx_info (seqno_rx_info * data);
+void ioam_seqno_init_rx_info (seqno_rx_info *data);
 
 #endif /* PLUGINS_IOAM_PLUGIN_IOAM_LIB_E2E_IOAM_SEQNO_LIB_H_ */
 

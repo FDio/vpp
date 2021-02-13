@@ -42,9 +42,7 @@
 #include <vppinfra/random_isaac.h>
 #include <vppinfra/warnings.h>
 
-/* *INDENT-OFF* */
-WARN_OFF(array-bounds)
-/* *INDENT-ON* */
+WARN_OFF (array - bounds)
 
 typedef struct
 {
@@ -63,24 +61,23 @@ typedef struct
     u8 cached_bytes[sizeof (uword)];
     uword cached_word;
   };
-}
-clib_random_buffer_t;
+} clib_random_buffer_t;
 
 always_inline void
-clib_random_buffer_free (clib_random_buffer_t * b)
+clib_random_buffer_free (clib_random_buffer_t *b)
 {
   vec_free (b->buffer);
 }
 
 /* Fill random buffer. */
-void clib_random_buffer_fill (clib_random_buffer_t * b, uword n_words);
+void clib_random_buffer_fill (clib_random_buffer_t *b, uword n_words);
 
 /* Initialize random buffer. */
-void clib_random_buffer_init (clib_random_buffer_t * b, uword seed);
+void clib_random_buffer_init (clib_random_buffer_t *b, uword seed);
 
 /* Returns word aligned random data, possibly filling buffer. */
 always_inline void *
-clib_random_buffer_get_data (clib_random_buffer_t * b, uword n_bytes)
+clib_random_buffer_get_data (clib_random_buffer_t *b, uword n_bytes)
 {
   uword n_words, i, l;
 
@@ -112,9 +109,7 @@ clib_random_buffer_get_data (clib_random_buffer_t * b, uword n_bytes)
     return b->buffer + i;
 }
 
-/* *INDENT-OFF* */
-WARN_ON(array-bounds)
-/* *INDENT-ON* */
+WARN_ON (array - bounds)
 
 #endif /* included_clib_random_buffer_h */
 

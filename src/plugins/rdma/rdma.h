@@ -25,13 +25,13 @@
 #include <vnet/ethernet/mac_address.h>
 #include <rdma/rdma_mlx5dv.h>
 
-#define foreach_rdma_device_flags \
-  _(0, ERROR, "error") \
-  _(1, ADMIN_UP, "admin-up") \
-  _(2, LINK_UP, "link-up") \
-  _(3, PROMISC, "promiscuous") \
-  _(4, MLX5DV, "mlx5dv") \
-  _(5, STRIDING_RQ, "striding-rq")
+#define foreach_rdma_device_flags                                             \
+  _ (0, ERROR, "error")                                                       \
+  _ (1, ADMIN_UP, "admin-up")                                                 \
+  _ (2, LINK_UP, "link-up")                                                   \
+  _ (3, PROMISC, "promiscuous")                                               \
+  _ (4, MLX5DV, "mlx5dv")                                                     \
+  _ (5, STRIDING_RQ, "striding-rq")
 
 enum
 {
@@ -41,7 +41,7 @@ enum
 };
 
 #ifndef MLX5_ETH_L2_INLINE_HEADER_SIZE
-#define MLX5_ETH_L2_INLINE_HEADER_SIZE  18
+#define MLX5_ETH_L2_INLINE_HEADER_SIZE 18
 #endif
 
 typedef struct
@@ -61,10 +61,10 @@ typedef struct
   struct mlx5_wqe_eth_seg eseg;
   struct mlx5_wqe_data_seg dseg;
 } rdma_mlx5_wqe_t;
-#define RDMA_MLX5_WQE_SZ        sizeof(rdma_mlx5_wqe_t)
-#define RDMA_MLX5_WQE_DS        (RDMA_MLX5_WQE_SZ/sizeof(struct mlx5_wqe_data_seg))
+#define RDMA_MLX5_WQE_SZ sizeof (rdma_mlx5_wqe_t)
+#define RDMA_MLX5_WQE_DS (RDMA_MLX5_WQE_SZ / sizeof (struct mlx5_wqe_data_seg))
 STATIC_ASSERT (RDMA_MLX5_WQE_SZ == MLX5_SEND_WQE_BB &&
-	       RDMA_MLX5_WQE_SZ % sizeof (struct mlx5_wqe_data_seg) == 0,
+		 RDMA_MLX5_WQE_SZ % sizeof (struct mlx5_wqe_data_seg) == 0,
 	       "bad size");
 
 typedef struct
@@ -83,7 +83,7 @@ typedef struct
   u16 last_cqe_flags;
   mlx5dv_cqe_t *cqes;
   mlx5dv_wqe_ds_t *wqes;
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   volatile u32 *wq_db;
   volatile u32 *cq_db;
   u32 cqn;
@@ -95,23 +95,26 @@ typedef struct
   {
     struct
     {
-      u32 striding_wqe_tail;	/* Striding RQ: number of released whole WQE */
-      u8 log_stride_per_wqe;	/* Striding RQ: number of strides in a single WQE */
+      u32 striding_wqe_tail; /* Striding RQ: number of released whole WQE */
+      u8 log_stride_per_wqe; /* Striding RQ: number of strides in a single WQE
+			      */
     };
 
     struct
     {
-      u8 *n_used_per_chain;	/* Legacy RQ: for each buffer chain, how many additional segments are needed */
+      u8 *n_used_per_chain; /* Legacy RQ: for each buffer chain, how many
+			       additional segments are needed */
 
-      u32 *second_bufs;		/* Legacy RQ: ring of second buffers of each chain */
-      u32 incomplete_tail;	/* Legacy RQ: tail index in bufs,
-				   corresponds to buffer chains with recycled valid head buffer,
-				   but whose other buffers are not yet recycled (due to pool exhaustion). */
+      u32 *second_bufs; /* Legacy RQ: ring of second buffers of each chain */
+      u32 incomplete_tail; /* Legacy RQ: tail index in bufs,
+			      corresponds to buffer chains with recycled valid
+			      head buffer, but whose other buffers are not yet
+			      recycled (due to pool exhaustion). */
       u16 n_total_additional_segs;
-      u8 n_ds_per_wqe;		/* Legacy RQ: number of nonnull data segs per WQE */
+      u8 n_ds_per_wqe; /* Legacy RQ: number of nonnull data segs per WQE */
     };
   };
-  u8 log_wqe_sz;		/* log-size of a single WQE (in data segments) */
+  u8 log_wqe_sz; /* log-size of a single WQE (in data segments) */
 } rdma_rxq_t;
 
 typedef struct
@@ -140,20 +143,20 @@ typedef struct
     };
   };
 
-  u32 *bufs;			/* vlib_buffer ring buffer */
+  u32 *bufs; /* vlib_buffer ring buffer */
   u16 head;
   u16 tail;
-  u16 dv_cq_idx;		/* monotonic CQE index (valid only for direct verbs) */
-  u8 bufs_log2sz;		/* log2 vlib_buffer entries */
-  u8 dv_sq_log2sz:4;		/* log2 SQ WQE entries (valid only for direct verbs) */
-  u8 dv_cq_log2sz:4;		/* log2 CQ CQE entries (valid only for direct verbs) */
-    STRUCT_MARK (cacheline1);
+  u16 dv_cq_idx;       /* monotonic CQE index (valid only for direct verbs) */
+  u8 bufs_log2sz;      /* log2 vlib_buffer entries */
+  u8 dv_sq_log2sz : 4; /* log2 SQ WQE entries (valid only for direct verbs) */
+  u8 dv_cq_log2sz : 4; /* log2 CQ CQE entries (valid only for direct verbs) */
+  STRUCT_MARK (cacheline1);
 
   /* WQE template (valid only for direct verbs) */
   u8 dv_wqe_tmpl[64];
 
   /* end of 2nd 64-bytes cacheline (or 1st 128-bytes cacheline) */
-    STRUCT_MARK (cacheline2);
+  STRUCT_MARK (cacheline2);
 
   /* fields below are not accessed in datapath */
   struct ibv_cq *cq;
@@ -163,16 +166,17 @@ typedef struct
 STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline1, 64);
 STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline2, 128);
 
-#define RDMA_TXQ_DV_INVALID_ID  0xffffffff
+#define RDMA_TXQ_DV_INVALID_ID 0xffffffff
 
-#define RDMA_TXQ_BUF_SZ(txq)    (1U << (txq)->bufs_log2sz)
-#define RDMA_TXQ_DV_SQ_SZ(txq)  (1U << (txq)->dv_sq_log2sz)
-#define RDMA_TXQ_DV_CQ_SZ(txq)  (1U << (txq)->dv_cq_log2sz)
+#define RDMA_TXQ_BUF_SZ(txq)   (1U << (txq)->bufs_log2sz)
+#define RDMA_TXQ_DV_SQ_SZ(txq) (1U << (txq)->dv_sq_log2sz)
+#define RDMA_TXQ_DV_CQ_SZ(txq) (1U << (txq)->dv_cq_log2sz)
 
-#define RDMA_TXQ_USED_SZ(head, tail)            ((u16)((u16)(tail) - (u16)(head)))
-#define RDMA_TXQ_AVAIL_SZ(txq, head, tail)      ((u16)(RDMA_TXQ_BUF_SZ (txq) - RDMA_TXQ_USED_SZ (head, tail)))
-#define RDMA_RXQ_MAX_CHAIN_LOG_SZ 3	/* This should NOT be lower than 3! */
-#define RDMA_RXQ_MAX_CHAIN_SZ (1U << RDMA_RXQ_MAX_CHAIN_LOG_SZ)
+#define RDMA_TXQ_USED_SZ(head, tail) ((u16) ((u16) (tail) - (u16) (head)))
+#define RDMA_TXQ_AVAIL_SZ(txq, head, tail)                                    \
+  ((u16) (RDMA_TXQ_BUF_SZ (txq) - RDMA_TXQ_USED_SZ (head, tail)))
+#define RDMA_RXQ_MAX_CHAIN_LOG_SZ	  3 /* This should NOT be lower than 3! */
+#define RDMA_RXQ_MAX_CHAIN_SZ		  (1U << RDMA_RXQ_MAX_CHAIN_LOG_SZ)
 #define RDMA_RXQ_LEGACY_MODE_MAX_CHAIN_SZ 5
 typedef struct
 {
@@ -185,8 +189,8 @@ typedef struct
   u32 per_interface_next_index;
   u32 sw_if_index;
   u32 hw_if_index;
-  u32 lkey;			/* cache of mr->lkey */
-  u8 pool;			/* buffer pool index */
+  u32 lkey; /* cache of mr->lkey */
+  u8 pool;  /* buffer pool index */
 
   /* fields below are not accessed in datapath */
   vlib_pci_device_info_t *pci;
@@ -225,12 +229,12 @@ typedef struct
     {
       u32 current_segs[VLIB_FRAME_SIZE];
       u32 to_free_buffers[VLIB_FRAME_SIZE];
-    };				/* Specific to STRIDING RQ mode */
+    }; /* Specific to STRIDING RQ mode */
     struct
     {
       u32 tmp_bi[VLIB_FRAME_SIZE];
       vlib_buffer_t *tmp_bufs[VLIB_FRAME_SIZE];
-    };				/* Specific to LEGACY RQ mode */
+    }; /* Specific to LEGACY RQ mode */
   };
 
   vlib_buffer_t buffer_template;
@@ -271,8 +275,8 @@ typedef struct
   clib_error_t *error;
 } rdma_create_if_args_t;
 
-void rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args);
-void rdma_delete_if (vlib_main_t * vm, rdma_device_t * rd);
+void rdma_create_if (vlib_main_t *vm, rdma_create_if_args_t *args);
+void rdma_delete_if (vlib_main_t *vm, rdma_device_t *rd);
 
 extern vlib_node_registration_t rdma_input_node;
 extern vnet_device_class_t rdma_device_class;
@@ -290,15 +294,15 @@ typedef struct
   u16 cqe_flags;
 } rdma_input_trace_t;
 
-#define foreach_rdma_tx_func_error \
-_(SEGMENT_SIZE_EXCEEDED, "segment size exceeded") \
-_(NO_FREE_SLOTS, "no free tx slots") \
-_(SUBMISSION, "tx submission errors") \
-_(COMPLETION, "tx completion errors")
+#define foreach_rdma_tx_func_error                                            \
+  _ (SEGMENT_SIZE_EXCEEDED, "segment size exceeded")                          \
+  _ (NO_FREE_SLOTS, "no free tx slots")                                       \
+  _ (SUBMISSION, "tx submission errors")                                      \
+  _ (COMPLETION, "tx completion errors")
 
 typedef enum
 {
-#define _(f,s) RDMA_TX_ERROR_##f,
+#define _(f, s) RDMA_TX_ERROR_##f,
   foreach_rdma_tx_func_error
 #undef _
     RDMA_TX_N_ERROR,

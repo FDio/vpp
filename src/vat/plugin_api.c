@@ -16,7 +16,7 @@
 #include <vnet/ip/ip.h>
 
 uword
-unformat_sw_if_index (unformat_input_t * input, va_list * args)
+unformat_sw_if_index (unformat_input_t *input, va_list *args)
 {
   vat_main_t *vam = va_arg (*args, vat_main_t *);
   u32 *result = va_arg (*args, u32 *);
@@ -35,7 +35,7 @@ unformat_sw_if_index (unformat_input_t * input, va_list * args)
 
 /* Parse an IP4 address %d.%d.%d.%d. */
 uword
-unformat_ip4_address (unformat_input_t * input, va_list * args)
+unformat_ip4_address (unformat_input_t *input, va_list *args)
 {
   u8 *result = va_arg (*args, u8 *);
   unsigned a[4];
@@ -55,13 +55,13 @@ unformat_ip4_address (unformat_input_t * input, va_list * args)
 }
 
 uword
-unformat_ethernet_address (unformat_input_t * input, va_list * args)
+unformat_ethernet_address (unformat_input_t *input, va_list *args)
 {
   u8 *result = va_arg (*args, u8 *);
   u32 i, a[6];
 
-  if (!unformat (input, "%_%x:%x:%x:%x:%x:%x%_",
-		 &a[0], &a[1], &a[2], &a[3], &a[4], &a[5]))
+  if (!unformat (input, "%_%x:%x:%x:%x:%x:%x%_", &a[0], &a[1], &a[2], &a[3],
+		 &a[4], &a[5]))
     return 0;
 
   /* Check range. */
@@ -77,8 +77,7 @@ unformat_ethernet_address (unformat_input_t * input, va_list * args)
 
 /* Returns ethernet type as an int in host byte order. */
 uword
-unformat_ethernet_type_host_byte_order (unformat_input_t * input,
-					va_list * args)
+unformat_ethernet_type_host_byte_order (unformat_input_t *input, va_list *args)
 {
   u16 *result = va_arg (*args, u16 *);
   int type;
@@ -96,7 +95,7 @@ unformat_ethernet_type_host_byte_order (unformat_input_t * input,
 
 /* Parse an IP6 address. */
 uword
-unformat_ip6_address (unformat_input_t * input, va_list * args)
+unformat_ip6_address (unformat_input_t *input, va_list *args)
 {
   ip6_address_t *result = va_arg (*args, ip6_address_t *);
   u16 hex_quads[8];
@@ -187,14 +186,14 @@ unformat_ip6_address (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_ip4_address (u8 * s, va_list * args)
+format_ip4_address (u8 *s, va_list *args)
 {
   u8 *a = va_arg (*args, u8 *);
   return format (s, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
 }
 
 u8 *
-format_ip6_address (u8 * s, va_list * args)
+format_ip6_address (u8 *s, va_list *args)
 {
   ip6_address_t *a = va_arg (*args, ip6_address_t *);
   u32 i, i_max_n_zero, max_n_zeros, i_first_zero, n_zeros, last_double_colon;
@@ -212,8 +211,8 @@ format_ip6_address (u8 * s, va_list * args)
 	  n_zeros = 0;
 	}
       n_zeros += is_zero;
-      if ((!is_zero && n_zeros > max_n_zeros)
-	  || (i + 1 >= ARRAY_LEN (a->as_u16) && n_zeros > max_n_zeros))
+      if ((!is_zero && n_zeros > max_n_zeros) ||
+	  (i + 1 >= ARRAY_LEN (a->as_u16) && n_zeros > max_n_zeros))
 	{
 	  i_max_n_zero = i_first_zero;
 	  max_n_zeros = n_zeros;
@@ -233,8 +232,7 @@ format_ip6_address (u8 * s, va_list * args)
 	}
       else
 	{
-	  s = format (s, "%s%x",
-		      (last_double_colon || i == 0) ? "" : ":",
+	  s = format (s, "%s%x", (last_double_colon || i == 0) ? "" : ":",
 		      clib_net_to_host_u16 (a->as_u16[i]));
 	  last_double_colon = 0;
 	}
@@ -245,7 +243,7 @@ format_ip6_address (u8 * s, va_list * args)
 
 /* Format an IP46 address. */
 u8 *
-format_ip46_address (u8 * s, va_list * args)
+format_ip46_address (u8 *s, va_list *args)
 {
   ip46_address_t *ip46 = va_arg (*args, ip46_address_t *);
   ip46_type_t type = va_arg (*args, ip46_type_t);
@@ -264,18 +262,17 @@ format_ip46_address (u8 * s, va_list * args)
       break;
     }
 
-  return is_ip4 ?
-    format (s, "%U", format_ip4_address, &ip46->ip4) :
-    format (s, "%U", format_ip6_address, &ip46->ip6);
+  return is_ip4 ? format (s, "%U", format_ip4_address, &ip46->ip4) :
+		  format (s, "%U", format_ip6_address, &ip46->ip6);
 }
 
 u8 *
-format_ethernet_address (u8 * s, va_list * args)
+format_ethernet_address (u8 *s, va_list *args)
 {
   u8 *a = va_arg (*args, u8 *);
 
-  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
-		 a[0], a[1], a[2], a[3], a[4], a[5]);
+  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x", a[0], a[1], a[2], a[3],
+		 a[4], a[5]);
 }
 
 void

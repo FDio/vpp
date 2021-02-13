@@ -34,20 +34,19 @@ typedef struct
 } mc_test_main_t;
 
 always_inline u32
-choose_msg_size (mc_test_main_t * tm)
+choose_msg_size (mc_test_main_t *tm)
 {
   u32 r = tm->min_n_msg_bytes;
   if (tm->max_n_msg_bytes > tm->min_n_msg_bytes)
     r +=
-      random_u32 (&tm->seed) % (1 + tm->max_n_msg_bytes -
-				tm->min_n_msg_bytes);
+      random_u32 (&tm->seed) % (1 + tm->max_n_msg_bytes - tm->min_n_msg_bytes);
   return r;
 }
 
 static mc_test_main_t mc_test_main;
 
 static void
-serialize_test_msg (serialize_main_t * m, va_list * va)
+serialize_test_msg (serialize_main_t *m, va_list *va)
 {
   mc_test_main_t *tm = &mc_test_main;
   u32 n_bytes = choose_msg_size (tm);
@@ -61,7 +60,7 @@ serialize_test_msg (serialize_main_t * m, va_list * va)
 }
 
 static void
-unserialize_test_msg (serialize_main_t * m, va_list * va)
+unserialize_test_msg (serialize_main_t *m, va_list *va)
 {
   mc_test_main_t *tm = &mc_test_main;
   u32 i, n_bytes, dump_msg = tm->verbose;
@@ -81,20 +80,20 @@ unserialize_test_msg (serialize_main_t * m, va_list * va)
   tm->rx_serial += n_bytes;
 }
 
-MC_SERIALIZE_MSG (test_msg, static) =
-{
-.name = "test_msg",.serialize = serialize_test_msg,.unserialize =
-    unserialize_test_msg,};
+MC_SERIALIZE_MSG (test_msg, static) = {
+  .name = "test_msg",
+  .serialize = serialize_test_msg,
+  .unserialize = unserialize_test_msg,
+};
 
 #define SERIALIZE 1
 
-#define EVENT_JOIN_STREAM 	10
-#define EVENT_SEND_DATA 	11
+#define EVENT_JOIN_STREAM 10
+#define EVENT_SEND_DATA	  11
 
 static void
-test_rx_callback (mc_main_t * mcm,
-		  mc_stream_t * stream,
-		  mc_peer_id_t peer_id, u32 buffer_index)
+test_rx_callback (mc_main_t *mcm, mc_stream_t *stream, mc_peer_id_t peer_id,
+		  u32 buffer_index)
 {
   if (SERIALIZE)
     {
@@ -107,17 +106,16 @@ test_rx_callback (mc_main_t * mcm,
       vlib_buffer_t *b = vlib_get_buffer (vm, buffer_index);
       u8 *dp = vlib_buffer_get_current (b);
 
-      fformat (stdout, "RX from %U %U\n",
-	       stream->transport->format_peer_id, peer_id,
-	       format_hex_bytes, dp, tm->n_msg_bytes);
+      fformat (stdout, "RX from %U %U\n", stream->transport->format_peer_id,
+	       peer_id, format_hex_bytes, dp, tm->n_msg_bytes);
 
 #endif
     }
 }
 
 static u8 *
-test_snapshot_callback (mc_main_t * mcm,
-			u8 * data_vector, u32 last_global_sequence_processed)
+test_snapshot_callback (mc_main_t *mcm, u8 *data_vector,
+			u32 last_global_sequence_processed)
 {
   if (SERIALIZE)
     {
@@ -130,13 +128,12 @@ test_snapshot_callback (mc_main_t * mcm,
       return serialize_close_vector (&m);
     }
   else
-    return format (data_vector,
-		   "snapshot, last global seq 0x%x",
+    return format (data_vector, "snapshot, last global seq 0x%x",
 		   last_global_sequence_processed);
 }
 
 static void
-test_handle_snapshot_callback (mc_main_t * mcm, u8 * data, u32 n_data_bytes)
+test_handle_snapshot_callback (mc_main_t *mcm, u8 *data, u32 n_data_bytes)
 {
   if (SERIALIZE)
     {
@@ -150,8 +147,7 @@ test_handle_snapshot_callback (mc_main_t * mcm, u8 * data, u32 n_data_bytes)
 static mc_socket_main_t mc_socket_main;
 
 static uword
-mc_test_process (vlib_main_t * vm,
-		 vlib_node_runtime_t * node, vlib_frame_t * f)
+mc_test_process (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f)
 {
   mc_test_main_t *tm = &mc_test_main;
   mc_socket_main_t *msm = &mc_socket_main;
@@ -220,17 +216,14 @@ mc_test_process (vlib_main_t * vm,
 		  }
 		if (tm->min_delay > 0)
 		  {
-		    delay =
-		      tm->min_delay +
-		      random_f64 (&tm->seed) * (tm->max_delay -
-						tm->min_delay);
+		    delay = tm->min_delay + random_f64 (&tm->seed) *
+					      (tm->max_delay - tm->min_delay);
 		    vlib_process_suspend (vm, delay);
 		  }
 		data_serial++;
 	      }
 	    times[1] = vlib_time_now (vm);
-	    clib_warning ("done sending %d; %.4e per sec",
-			  event_data[0],
+	    clib_warning ("done sending %d; %.4e per sec", event_data[0],
 			  (f64) event_data[0] / (times[1] - times[0]));
 	    break;
 	  }
@@ -245,16 +238,15 @@ mc_test_process (vlib_main_t * vm,
     }
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (mc_test_process_node, static) =
-{
-.function = mc_test_process,.type = VLIB_NODE_TYPE_PROCESS,.name =
-    "mc-test-process",};
-/* *INDENT-ON* */
+VLIB_REGISTER_NODE (mc_test_process_node, static) = {
+  .function = mc_test_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "mc-test-process",
+};
 
 static clib_error_t *
-mc_test_command (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+mc_test_command (vlib_main_t *vm, unformat_input_t *input,
+		 vlib_cli_command_t *cmd)
 {
   f64 npkts = 10;
 
@@ -277,47 +269,44 @@ mc_test_command (vlib_main_t * vm,
     return unformat_parse_error (input);
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_mc_command, static) =
-{
-.path = "test mc",.short_help = "Test mc command",.function =
-    mc_test_command,};
-/* *INDENT-ON* */
+VLIB_CLI_COMMAND (test_mc_command, static) = {
+  .path = "test mc",
+  .short_help = "Test mc command",
+  .function = mc_test_command,
+};
 
 static clib_error_t *
-mc_show_command (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+mc_show_command (vlib_main_t *vm, unformat_input_t *input,
+		 vlib_cli_command_t *cmd)
 {
   mc_main_t *mcm = &mc_socket_main.mc_main;
   vlib_cli_output (vm, "%U", format_mc_main, mcm);
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_mc_command, static) =
-{
-.path = "show mc",.short_help = "Show mc command",.function =
-    mc_show_command,};
-/* *INDENT-ON* */
+VLIB_CLI_COMMAND (show_mc_command, static) = {
+  .path = "show mc",
+  .short_help = "Show mc command",
+  .function = mc_show_command,
+};
 
 static clib_error_t *
-mc_clear_command (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+mc_clear_command (vlib_main_t *vm, unformat_input_t *input,
+		  vlib_cli_command_t *cmd)
 {
   mc_main_t *mcm = &mc_socket_main.mc_main;
   mc_clear_stream_stats (mcm);
   return 0;
 }
 
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (clear_mc_command, static) =
-{
-.path = "clear mc",.short_help = "Clear mc command",.function =
-    mc_clear_command,};
-/* *INDENT-ON* */
+VLIB_CLI_COMMAND (clear_mc_command, static) = {
+  .path = "clear mc",
+  .short_help = "Clear mc command",
+  .function = mc_clear_command,
+};
 
 static clib_error_t *
-mc_config (vlib_main_t * vm, unformat_input_t * input)
+mc_config (vlib_main_t *vm, unformat_input_t *input)
 {
   mc_test_main_t *tm = &mc_test_main;
   mc_socket_main_t *msm = &mc_socket_main;
@@ -366,8 +355,7 @@ mc_config (vlib_main_t * vm, unformat_input_t * input)
     }
 
   if (tm->n_packets_to_send > 0)
-    vlib_process_signal_event (vm, mc_test_process_node.index,
-			       EVENT_SEND_DATA,
+    vlib_process_signal_event (vm, mc_test_process_node.index, EVENT_SEND_DATA,
 			       (uword) tm->n_packets_to_send);
 
   return error;

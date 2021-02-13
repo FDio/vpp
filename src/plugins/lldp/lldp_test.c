@@ -40,14 +40,14 @@ lldp_test_main_t lldp_test_main;
 
 /* Macro to finish up custom dump fns */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define FINISH                                  \
-    vec_add1 (s, 0);                            \
-    vl_print (handle, (char *)s);               \
-    vec_free (s);                               \
-    return handle;
+#define FINISH                                                                \
+  vec_add1 (s, 0);                                                            \
+  vl_print (handle, (char *) s);                                              \
+  vec_free (s);                                                               \
+  return handle;
 
 static int
-api_lldp_config (vat_main_t * vam)
+api_lldp_config (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_lldp_config_t *mp;
@@ -85,7 +85,7 @@ api_lldp_config (vat_main_t * vam)
 }
 
 static int
-api_sw_interface_set_lldp (vat_main_t * vam)
+api_sw_interface_set_lldp (vat_main_t *vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_lldp_t *mp;
@@ -103,8 +103,7 @@ api_sw_interface_set_lldp (vat_main_t * vam)
     {
       if (unformat (i, "disable"))
 	enable = 0;
-      else
-	if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+      else if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
 	;
       else if (unformat (i, "sw_if_index %d", &sw_if_index))
 	;

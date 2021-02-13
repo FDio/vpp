@@ -39,17 +39,17 @@
 #ifndef _NET_NETMAP_H_
 #define _NET_NETMAP_H_
 
-#define	NETMAP_API	11		/* current API version */
+#define NETMAP_API 11 /* current API version */
 
-#define	NETMAP_MIN_API	11		/* min and max versions accepted */
-#define	NETMAP_MAX_API	15
+#define NETMAP_MIN_API 11 /* min and max versions accepted */
+#define NETMAP_MAX_API 15
 /*
  * Some fields should be cache-aligned to reduce contention.
  * The alignment is architecture and OS dependent, but rather than
  * digging into OS headers to find the exact value we use an estimate
  * that should cover most architectures.
  */
-#define NM_CACHE_ALIGN	128
+#define NM_CACHE_ALIGN 128
 
 /*
  * --- Netmap data structures ---
@@ -62,10 +62,10 @@
    KERNEL (opaque, obviously)
 
   ====================================================================
-                                         |
+					 |
    USERSPACE                             |      struct netmap_ring
-                                         +---->+---------------+
-                                             / | head,cur,tail |
+					 +---->+---------------+
+					     / | head,cur,tail |
    struct netmap_if (nifp, 1 per fd)        /  | buf_ofs       |
     +---------------+                      /   | other fields  |
     | ni_tx_rings   |                     /    +===============+
@@ -142,78 +142,78 @@
 /*
  * struct netmap_slot is a buffer descriptor
  */
-struct netmap_slot {
-	uint32_t buf_idx;	/* buffer index */
-	uint16_t len;		/* length for this slot */
-	uint16_t flags;		/* buf changed, etc. */
-	uint64_t ptr;		/* pointer for indirect buffers */
+struct netmap_slot
+{
+  uint32_t buf_idx; /* buffer index */
+  uint16_t len;	    /* length for this slot */
+  uint16_t flags;   /* buf changed, etc. */
+  uint64_t ptr;	    /* pointer for indirect buffers */
 };
 
 /*
  * The following flags control how the slot is used
  */
 
-#define	NS_BUF_CHANGED	0x0001	/* buf_idx changed */
-	/*
-	 * must be set whenever buf_idx is changed (as it might be
-	 * necessary to recompute the physical address and mapping)
-	 *
-	 * It is also set by the kernel whenever the buf_idx is
-	 * changed internally (e.g., by pipes). Applications may
-	 * use this information to know when they can reuse the
-	 * contents of previously prepared buffers.
-	 */
+#define NS_BUF_CHANGED 0x0001 /* buf_idx changed */
+			      /*
+			       * must be set whenever buf_idx is changed (as it might be
+			       * necessary to recompute the physical address and mapping)
+			       *
+			       * It is also set by the kernel whenever the buf_idx is
+			       * changed internally (e.g., by pipes). Applications may
+			       * use this information to know when they can reuse the
+			       * contents of previously prepared buffers.
+			       */
 
-#define	NS_REPORT	0x0002	/* ask the hardware to report results */
-	/*
-	 * Request notification when slot is used by the hardware.
-	 * Normally transmit completions are handled lazily and
-	 * may be unreported. This flag lets us know when a slot
-	 * has been sent (e.g. to terminate the sender).
-	 */
+#define NS_REPORT 0x0002 /* ask the hardware to report results */
+			 /*
+			  * Request notification when slot is used by the hardware.
+			  * Normally transmit completions are handled lazily and
+			  * may be unreported. This flag lets us know when a slot
+			  * has been sent (e.g. to terminate the sender).
+			  */
 
-#define	NS_FORWARD	0x0004	/* pass packet 'forward' */
-	/*
-	 * (Only for physical ports, rx rings with NR_FORWARD set).
-	 * Slot released to the kernel (i.e. before ring->head) with
-	 * this flag set are passed to the peer ring (host/NIC),
-	 * thus restoring the host-NIC connection for these slots.
-	 * This supports efficient traffic monitoring or firewalling.
-	 */
+#define NS_FORWARD 0x0004 /* pass packet 'forward' */
+			  /*
+			   * (Only for physical ports, rx rings with NR_FORWARD set).
+			   * Slot released to the kernel (i.e. before ring->head) with
+			   * this flag set are passed to the peer ring (host/NIC),
+			   * thus restoring the host-NIC connection for these slots.
+			   * This supports efficient traffic monitoring or firewalling.
+			   */
 
-#define	NS_NO_LEARN	0x0008	/* disable bridge learning */
- 	/*
-	 * On a VALE switch, do not 'learn' the source port for
- 	 * this buffer.
-	 */
+#define NS_NO_LEARN 0x0008 /* disable bridge learning */
+/*
+ * On a VALE switch, do not 'learn' the source port for
+ * this buffer.
+ */
 
-#define	NS_INDIRECT	0x0010	/* userspace buffer */
- 	/*
-	 * (VALE tx rings only) data is in a userspace buffer,
-	 * whose address is in the 'ptr' field in the slot.
-	 */
+#define NS_INDIRECT 0x0010 /* userspace buffer */
+/*
+ * (VALE tx rings only) data is in a userspace buffer,
+ * whose address is in the 'ptr' field in the slot.
+ */
 
-#define	NS_MOREFRAG	0x0020	/* packet has more fragments */
- 	/*
-	 * (VALE ports only)
-	 * Set on all but the last slot of a multi-segment packet.
-	 * The 'len' field refers to the individual fragment.
-	 */
+#define NS_MOREFRAG 0x0020 /* packet has more fragments */
+/*
+ * (VALE ports only)
+ * Set on all but the last slot of a multi-segment packet.
+ * The 'len' field refers to the individual fragment.
+ */
 
-#define	NS_PORT_SHIFT	8
-#define	NS_PORT_MASK	(0xff << NS_PORT_SHIFT)
-	/*
- 	 * The high 8 bits of the flag, if not zero, indicate the
-	 * destination port for the VALE switch, overriding
- 	 * the lookup table.
- 	 */
+#define NS_PORT_SHIFT 8
+#define NS_PORT_MASK  (0xff << NS_PORT_SHIFT)
+/*
+ * The high 8 bits of the flag, if not zero, indicate the
+ * destination port for the VALE switch, overriding
+ * the lookup table.
+ */
 
-#define	NS_RFRAGS(_slot)	( ((_slot)->flags >> 8) & 0xff)
-	/*
-	 * (VALE rx rings only) the high 8 bits
-	 *  are the number of fragments.
-	 */
-
+#define NS_RFRAGS(_slot) (((_slot)->flags >> 8) & 0xff)
+/*
+ * (VALE rx rings only) the high 8 bits
+ *  are the number of fragments.
+ */
 
 /*
  * struct netmap_ring
@@ -256,53 +256,52 @@ struct netmap_slot {
  *
  *	Other slots and buffers are reserved for use by the kernel
  */
-struct netmap_ring {
-	/*
-	 * buf_ofs is meant to be used through macros.
-	 * It contains the offset of the buffer region from this
-	 * descriptor.
-	 */
-	const int64_t	buf_ofs;
-	const uint32_t	num_slots;	/* number of slots in the ring. */
-	const uint32_t	nr_buf_size;
-	const uint16_t	ringid;
-	const uint16_t	dir;		/* 0: tx, 1: rx */
+struct netmap_ring
+{
+  /*
+   * buf_ofs is meant to be used through macros.
+   * It contains the offset of the buffer region from this
+   * descriptor.
+   */
+  const int64_t buf_ofs;
+  const uint32_t num_slots; /* number of slots in the ring. */
+  const uint32_t nr_buf_size;
+  const uint16_t ringid;
+  const uint16_t dir; /* 0: tx, 1: rx */
 
-	uint32_t        head;		/* (u) first user slot */
-	uint32_t        cur;		/* (u) wakeup point */
-	uint32_t	tail;		/* (k) first kernel slot */
+  uint32_t head; /* (u) first user slot */
+  uint32_t cur;	 /* (u) wakeup point */
+  uint32_t tail; /* (k) first kernel slot */
 
-	uint32_t	flags;
+  uint32_t flags;
 
-	struct timeval	ts;		/* (k) time of last *sync() */
+  struct timeval ts; /* (k) time of last *sync() */
 
-	/* opaque room for a mutex or similar object */
+  /* opaque room for a mutex or similar object */
 #if !defined(_WIN32) || defined(__CYGWIN__)
-	uint8_t	__attribute__((__aligned__(NM_CACHE_ALIGN))) sem[128];
+  uint8_t __attribute__ ((__aligned__ (NM_CACHE_ALIGN))) sem[128];
 #else
-	uint8_t	__declspec(align(NM_CACHE_ALIGN)) sem[128];
+  uint8_t __declspec(align (NM_CACHE_ALIGN)) sem[128];
 #endif
 
-	/* the slots follow. This struct has variable size */
-	struct netmap_slot slot[0];	/* array of slots. */
+  /* the slots follow. This struct has variable size */
+  struct netmap_slot slot[0]; /* array of slots. */
 };
-
 
 /*
  * RING FLAGS
  */
-#define	NR_TIMESTAMP	0x0002		/* set timestamp on *sync() */
-	/*
-	 * updates the 'ts' field on each netmap syscall. This saves
-	 * saves a separate gettimeofday(), and is not much worse than
-	 * software timestamps generated in the interrupt handler.
-	 */
+#define NR_TIMESTAMP 0x0002 /* set timestamp on *sync() */
+			    /*
+			     * updates the 'ts' field on each netmap syscall. This saves
+			     * saves a separate gettimeofday(), and is not much worse than
+			     * software timestamps generated in the interrupt handler.
+			     */
 
-#define	NR_FORWARD	0x0004		/* enable NS_FORWARD for ring */
- 	/*
-	 * Enables the NS_FORWARD slot flag for the ring.
-	 */
-
+#define NR_FORWARD 0x0004 /* enable NS_FORWARD for ring */
+/*
+ * Enables the NS_FORWARD slot flag for the ring.
+ */
 
 /*
  * Netmap representation of an interface and its queue(s).
@@ -315,36 +314,36 @@ struct netmap_ring {
  * select/poll operates on one or all pairs depending on the value of
  * nmr_queueid passed on the ioctl.
  */
-struct netmap_if {
-	char		ni_name[IFNAMSIZ]; /* name of the interface. */
-	const uint32_t	ni_version;	/* API version, currently unused */
-	const uint32_t	ni_flags;	/* properties */
-#define	NI_PRIV_MEM	0x1		/* private memory region */
+struct netmap_if
+{
+  char ni_name[IFNAMSIZ];    /* name of the interface. */
+  const uint32_t ni_version; /* API version, currently unused */
+  const uint32_t ni_flags;   /* properties */
+#define NI_PRIV_MEM 0x1	     /* private memory region */
 
-	/*
-	 * The number of packet rings available in netmap mode.
-	 * Physical NICs can have different numbers of tx and rx rings.
-	 * Physical NICs also have a 'host' ring pair.
-	 * Additionally, clients can request additional ring pairs to
-	 * be used for internal communication.
-	 */
-	const uint32_t	ni_tx_rings;	/* number of HW tx rings */
-	const uint32_t	ni_rx_rings;	/* number of HW rx rings */
+  /*
+   * The number of packet rings available in netmap mode.
+   * Physical NICs can have different numbers of tx and rx rings.
+   * Physical NICs also have a 'host' ring pair.
+   * Additionally, clients can request additional ring pairs to
+   * be used for internal communication.
+   */
+  const uint32_t ni_tx_rings; /* number of HW tx rings */
+  const uint32_t ni_rx_rings; /* number of HW rx rings */
 
-	uint32_t	ni_bufs_head;	/* head index for extra bufs */
-	uint32_t	ni_spare1[5];
-	/*
-	 * The following array contains the offset of each netmap ring
-	 * from this structure, in the following order:
-	 * NIC tx rings (ni_tx_rings); host tx ring (1); extra tx rings;
-	 * NIC rx rings (ni_rx_rings); host tx ring (1); extra rx rings.
-	 *
-	 * The area is filled up by the kernel on NIOCREGIF,
-	 * and then only read by userspace code.
-	 */
-	const ssize_t	ring_ofs[0];
+  uint32_t ni_bufs_head; /* head index for extra bufs */
+  uint32_t ni_spare1[5];
+  /*
+   * The following array contains the offset of each netmap ring
+   * from this structure, in the following order:
+   * NIC tx rings (ni_tx_rings); host tx ring (1); extra tx rings;
+   * NIC rx rings (ni_rx_rings); host tx ring (1); extra rx rings.
+   *
+   * The area is filled up by the kernel on NIOCREGIF,
+   * and then only read by userspace code.
+   */
+  const ssize_t ring_ofs[0];
 };
-
 
 #ifndef NIOCREGIF
 /*
@@ -467,81 +466,82 @@ struct netmap_if {
  *
  */
 
-
 /*
  * struct nmreq overlays a struct ifreq (just the name)
  */
-struct nmreq {
-	char		nr_name[IFNAMSIZ];
-	uint32_t	nr_version;	/* API version */
-	uint32_t	nr_offset;	/* nifp offset in the shared region */
-	uint32_t	nr_memsize;	/* size of the shared region */
-	uint32_t	nr_tx_slots;	/* slots in tx rings */
-	uint32_t	nr_rx_slots;	/* slots in rx rings */
-	uint16_t	nr_tx_rings;	/* number of tx rings */
-	uint16_t	nr_rx_rings;	/* number of rx rings */
+struct nmreq
+{
+  char nr_name[IFNAMSIZ];
+  uint32_t nr_version;	/* API version */
+  uint32_t nr_offset;	/* nifp offset in the shared region */
+  uint32_t nr_memsize;	/* size of the shared region */
+  uint32_t nr_tx_slots; /* slots in tx rings */
+  uint32_t nr_rx_slots; /* slots in rx rings */
+  uint16_t nr_tx_rings; /* number of tx rings */
+  uint16_t nr_rx_rings; /* number of rx rings */
 
-	uint16_t	nr_ringid;	/* ring(s) we care about */
-#define NETMAP_HW_RING		0x4000	/* single NIC ring pair */
-#define NETMAP_SW_RING		0x2000	/* only host ring pair */
+  uint16_t nr_ringid;	      /* ring(s) we care about */
+#define NETMAP_HW_RING 0x4000 /* single NIC ring pair */
+#define NETMAP_SW_RING 0x2000 /* only host ring pair */
 
-#define NETMAP_RING_MASK	0x0fff	/* the ring number */
+#define NETMAP_RING_MASK 0x0fff /* the ring number */
 
-#define NETMAP_NO_TX_POLL	0x1000	/* no automatic txsync on poll */
+#define NETMAP_NO_TX_POLL 0x1000 /* no automatic txsync on poll */
 
-#define NETMAP_DO_RX_POLL	0x8000	/* DO automatic rxsync on poll */
+#define NETMAP_DO_RX_POLL 0x8000 /* DO automatic rxsync on poll */
 
-	uint16_t	nr_cmd;
-#define NETMAP_BDG_ATTACH	1	/* attach the NIC */
-#define NETMAP_BDG_DETACH	2	/* detach the NIC */
-#define NETMAP_BDG_REGOPS	3	/* register bridge callbacks */
-#define NETMAP_BDG_LIST		4	/* get bridge's info */
-#define NETMAP_BDG_VNET_HDR     5       /* set the port virtio-net-hdr length */
-#define NETMAP_BDG_OFFSET	NETMAP_BDG_VNET_HDR	/* deprecated alias */
-#define NETMAP_BDG_NEWIF	6	/* create a virtual port */
-#define NETMAP_BDG_DELIF	7	/* destroy a virtual port */
-#define NETMAP_PT_HOST_CREATE	8	/* create ptnetmap kthreads */
-#define NETMAP_PT_HOST_DELETE	9	/* delete ptnetmap kthreads */
-#define NETMAP_BDG_POLLING_ON	10	/* delete polling kthread */
-#define NETMAP_BDG_POLLING_OFF	11	/* delete polling kthread */
-#define NETMAP_VNET_HDR_GET	12      /* get the port virtio-net-hdr length */
-	uint16_t	nr_arg1;	/* reserve extra rings in NIOCREGIF */
-#define NETMAP_BDG_HOST		1	/* attach the host stack on ATTACH */
+  uint16_t nr_cmd;
+#define NETMAP_BDG_ATTACH      1 /* attach the NIC */
+#define NETMAP_BDG_DETACH      2 /* detach the NIC */
+#define NETMAP_BDG_REGOPS      3 /* register bridge callbacks */
+#define NETMAP_BDG_LIST	       4 /* get bridge's info */
+#define NETMAP_BDG_VNET_HDR    5 /* set the port virtio-net-hdr length */
+#define NETMAP_BDG_OFFSET      NETMAP_BDG_VNET_HDR /* deprecated alias */
+#define NETMAP_BDG_NEWIF       6		   /* create a virtual port */
+#define NETMAP_BDG_DELIF       7		   /* destroy a virtual port */
+#define NETMAP_PT_HOST_CREATE  8  /* create ptnetmap kthreads */
+#define NETMAP_PT_HOST_DELETE  9  /* delete ptnetmap kthreads */
+#define NETMAP_BDG_POLLING_ON  10 /* delete polling kthread */
+#define NETMAP_BDG_POLLING_OFF 11 /* delete polling kthread */
+#define NETMAP_VNET_HDR_GET    12 /* get the port virtio-net-hdr length */
+  uint16_t nr_arg1;		  /* reserve extra rings in NIOCREGIF */
+#define NETMAP_BDG_HOST 1	  /* attach the host stack on ATTACH */
 
-	uint16_t	nr_arg2;
-	uint32_t	nr_arg3;	/* req. extra buffers in NIOCREGIF */
-	uint32_t	nr_flags;
-	/* various modes, extends nr_ringid */
-	uint32_t	spare2[1];
+  uint16_t nr_arg2;
+  uint32_t nr_arg3; /* req. extra buffers in NIOCREGIF */
+  uint32_t nr_flags;
+  /* various modes, extends nr_ringid */
+  uint32_t spare2[1];
 };
 
-#define NR_REG_MASK		0xf /* values for nr_flags */
-enum {	NR_REG_DEFAULT	= 0,	/* backward compat, should not be used. */
-	NR_REG_ALL_NIC	= 1,
-	NR_REG_SW	= 2,
-	NR_REG_NIC_SW	= 3,
-	NR_REG_ONE_NIC	= 4,
-	NR_REG_PIPE_MASTER = 5,
-	NR_REG_PIPE_SLAVE = 6,
+#define NR_REG_MASK 0xf /* values for nr_flags */
+enum
+{
+  NR_REG_DEFAULT = 0, /* backward compat, should not be used. */
+  NR_REG_ALL_NIC = 1,
+  NR_REG_SW = 2,
+  NR_REG_NIC_SW = 3,
+  NR_REG_ONE_NIC = 4,
+  NR_REG_PIPE_MASTER = 5,
+  NR_REG_PIPE_SLAVE = 6,
 };
 /* monitor uses the NR_REG to select the rings to monitor */
-#define NR_MONITOR_TX	0x100
-#define NR_MONITOR_RX	0x200
-#define NR_ZCOPY_MON	0x400
+#define NR_MONITOR_TX 0x100
+#define NR_MONITOR_RX 0x200
+#define NR_ZCOPY_MON  0x400
 /* request exclusive access to the selected rings */
-#define NR_EXCLUSIVE	0x800
+#define NR_EXCLUSIVE 0x800
 /* request ptnetmap host support */
-#define NR_PASSTHROUGH_HOST	NR_PTNETMAP_HOST /* deprecated */
-#define NR_PTNETMAP_HOST	0x1000
-#define NR_RX_RINGS_ONLY	0x2000
-#define NR_TX_RINGS_ONLY	0x4000
+#define NR_PASSTHROUGH_HOST NR_PTNETMAP_HOST /* deprecated */
+#define NR_PTNETMAP_HOST    0x1000
+#define NR_RX_RINGS_ONLY    0x2000
+#define NR_TX_RINGS_ONLY    0x4000
 /* Applications set this flag if they are able to deal with virtio-net headers,
  * that is send/receive frames that start with a virtio-net header.
  * If not set, NIOCREGIF will fail with netmap ports that require applications
  * to use those headers. If the flag is set, the application can use the
  * NETMAP_VNET_HDR_GET command to figure out the header length. */
-#define NR_ACCEPT_VNET_HDR	0x8000
-
+#define NR_ACCEPT_VNET_HDR 0x8000
 
 /*
  * Windows does not have _IOWR(). _IO(), _IOW() and _IOR() are defined
@@ -550,37 +550,40 @@ enum {	NR_REG_DEFAULT	= 0,	/* backward compat, should not be used. */
  * in a convenient way to use for DeviceIoControl signatures
  */
 #ifdef _WIN32
-#undef _IO	// ws2def.h
+#undef _IO // ws2def.h
 #define _WIN_NM_IOCTL_TYPE 40000
-#define _IO(_c, _n)	CTL_CODE(_WIN_NM_IOCTL_TYPE, ((_n) + 0x800) , \
-		METHOD_BUFFERED, FILE_ANY_ACCESS  )
-#define _IO_direct(_c, _n)	CTL_CODE(_WIN_NM_IOCTL_TYPE, ((_n) + 0x800) , \
-		METHOD_OUT_DIRECT, FILE_ANY_ACCESS  )
+#define _IO(_c, _n)                                                           \
+  CTL_CODE (_WIN_NM_IOCTL_TYPE, ((_n) + 0x800), METHOD_BUFFERED,              \
+	    FILE_ANY_ACCESS)
+#define _IO_direct(_c, _n)                                                    \
+  CTL_CODE (_WIN_NM_IOCTL_TYPE, ((_n) + 0x800), METHOD_OUT_DIRECT,            \
+	    FILE_ANY_ACCESS)
 
-#define _IOWR(_c, _n, _s)	_IO(_c, _n)
+#define _IOWR(_c, _n, _s) _IO (_c, _n)
 
 /* We havesome internal sysctl in addition to the externally visible ones */
-#define NETMAP_MMAP _IO_direct('i', 160)	// note METHOD_OUT_DIRECT
-#define NETMAP_POLL _IO('i', 162)
+#define NETMAP_MMAP _IO_direct ('i', 160) // note METHOD_OUT_DIRECT
+#define NETMAP_POLL _IO ('i', 162)
 
 /* and also two setsockopt for sysctl emulation */
-#define NETMAP_SETSOCKOPT _IO('i', 140)
-#define NETMAP_GETSOCKOPT _IO('i', 141)
+#define NETMAP_SETSOCKOPT _IO ('i', 140)
+#define NETMAP_GETSOCKOPT _IO ('i', 141)
 
+// These linknames are for the Netmap Core Driver
+#define NETMAP_NT_DEVICE_NAME  L"\\Device\\NETMAP"
+#define NETMAP_DOS_DEVICE_NAME L"\\DosDevices\\netmap"
 
-//These linknames are for the Netmap Core Driver
-#define NETMAP_NT_DEVICE_NAME			L"\\Device\\NETMAP"
-#define NETMAP_DOS_DEVICE_NAME			L"\\DosDevices\\netmap"
-
-//Definition of a structure used to pass a virtual address within an IOCTL
-typedef struct _MEMORY_ENTRY {
-	PVOID       pUsermodeVirtualAddress;
+// Definition of a structure used to pass a virtual address within an IOCTL
+typedef struct _MEMORY_ENTRY
+{
+  PVOID pUsermodeVirtualAddress;
 } MEMORY_ENTRY, *PMEMORY_ENTRY;
 
-typedef struct _POLL_REQUEST_DATA {
-	int events;
-	int timeout;
-	int revents;
+typedef struct _POLL_REQUEST_DATA
+{
+  int events;
+  int timeout;
+  int revents;
 } POLL_REQUEST_DATA;
 
 #endif /* _WIN32 */
@@ -591,13 +594,12 @@ typedef struct _POLL_REQUEST_DATA {
  * data structure we pass. We put some spares in the structure
  * to ease compatibility with other versions
  */
-#define NIOCGINFO	_IOWR('i', 145, struct nmreq) /* return IF info */
-#define NIOCREGIF	_IOWR('i', 146, struct nmreq) /* interface register */
-#define NIOCTXSYNC	_IO('i', 148) /* sync tx queues */
-#define NIOCRXSYNC	_IO('i', 149) /* sync rx queues */
-#define NIOCCONFIG	_IOWR('i',150, struct nm_ifreq) /* for ext. modules */
-#endif /* !NIOCREGIF */
-
+#define NIOCGINFO  _IOWR ('i', 145, struct nmreq)    /* return IF info */
+#define NIOCREGIF  _IOWR ('i', 146, struct nmreq)    /* interface register */
+#define NIOCTXSYNC _IO ('i', 148)		     /* sync tx queues */
+#define NIOCRXSYNC _IO ('i', 149)		     /* sync rx queues */
+#define NIOCCONFIG _IOWR ('i', 150, struct nm_ifreq) /* for ext. modules */
+#endif						     /* !NIOCREGIF */
 
 /*
  * Helper functions for kernel and userspace
@@ -607,9 +609,9 @@ typedef struct _POLL_REQUEST_DATA {
  * check if space is available in the ring.
  */
 static inline int
-nm_ring_empty(struct netmap_ring *ring)
+nm_ring_empty (struct netmap_ring *ring)
 {
-	return (ring->cur == ring->tail);
+  return (ring->cur == ring->tail);
 }
 
 /*
@@ -618,33 +620,39 @@ nm_ring_empty(struct netmap_ring *ring)
  * bridge port (at this point ephemeral VALE interface).
  */
 #define NM_IFRDATA_LEN 256
-struct nm_ifreq {
-	char nifr_name[IFNAMSIZ];
-	char data[NM_IFRDATA_LEN];
+struct nm_ifreq
+{
+  char nifr_name[IFNAMSIZ];
+  char data[NM_IFRDATA_LEN];
 };
 
 /*
  * netmap kernel thread configuration
  */
 /* bhyve/vmm.ko MSIX parameters for IOCTL */
-struct ptn_vmm_ioctl_msix {
-	uint64_t        msg;
-	uint64_t        addr;
+struct ptn_vmm_ioctl_msix
+{
+  uint64_t msg;
+  uint64_t addr;
 };
 
 /* IOCTL parameters */
-struct nm_kth_ioctl {
-	u_long				com;
-	/* TODO: use union */
-	union {
-		struct ptn_vmm_ioctl_msix msix;
-	} data;
+struct nm_kth_ioctl
+{
+  u_long com;
+  /* TODO: use union */
+  union
+  {
+    struct ptn_vmm_ioctl_msix msix;
+  } data;
 };
 
 /* Configuration of a ptnetmap ring */
-struct ptnet_ring_cfg {
-	uint64_t ioeventfd;		/* eventfd in linux, tsleep() parameter in FreeBSD */
-	uint64_t irqfd;			/* eventfd in linux, ioctl fd in FreeBSD */
-	struct nm_kth_ioctl ioctl;	/* ioctl parameter to send irq (only used in bhyve/FreeBSD) */
+struct ptnet_ring_cfg
+{
+  uint64_t ioeventfd; /* eventfd in linux, tsleep() parameter in FreeBSD */
+  uint64_t irqfd;     /* eventfd in linux, ioctl fd in FreeBSD */
+  struct nm_kth_ioctl
+    ioctl; /* ioctl parameter to send irq (only used in bhyve/FreeBSD) */
 };
 #endif /* _NET_NETMAP_H_ */

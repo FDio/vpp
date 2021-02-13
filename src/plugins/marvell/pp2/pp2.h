@@ -15,10 +15,10 @@
  *------------------------------------------------------------------
  */
 
-#define MVCONF_DBG_LEVEL 0
-#define MVCONF_PP2_BPOOL_COOKIE_SIZE 32
+#define MVCONF_DBG_LEVEL	       0
+#define MVCONF_PP2_BPOOL_COOKIE_SIZE   32
 #define MVCONF_PP2_BPOOL_DMA_ADDR_SIZE 64
-#define MVCONF_DMA_PHYS_ADDR_T_SIZE 64
+#define MVCONF_DMA_PHYS_ADDR_T_SIZE    64
 #define MVCONF_SYS_DMA_UIO
 #define MVCONF_TYPES_PUBLIC
 #define MVCONF_DMA_PHYS_ADDR_T_PUBLIC
@@ -99,27 +99,27 @@ typedef struct
   clib_error_t *error;
 } mrvl_pp2_create_if_args_t;
 
-void mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args);
-void mrvl_pp2_delete_if (mrvl_pp2_if_t * dfif);
-clib_error_t *mrvl_pp2_plugin_api_hookup (vlib_main_t * vm);
+void mrvl_pp2_create_if (mrvl_pp2_create_if_args_t *args);
+void mrvl_pp2_delete_if (mrvl_pp2_if_t *dfif);
+clib_error_t *mrvl_pp2_plugin_api_hookup (vlib_main_t *vm);
 
 /* output.c */
 
-#define foreach_mrvl_pp2_tx_func_error \
-  _(NO_FREE_SLOTS, "no free tx slots")			\
-  _(PPIO_SEND, "pp2_ppio_send errors")			\
-  _(PPIO_GET_NUM_OUTQ_DONE, "pp2_ppio_get_num_outq_done errors")
+#define foreach_mrvl_pp2_tx_func_error                                        \
+  _ (NO_FREE_SLOTS, "no free tx slots")                                       \
+  _ (PPIO_SEND, "pp2_ppio_send errors")                                       \
+  _ (PPIO_GET_NUM_OUTQ_DONE, "pp2_ppio_get_num_outq_done errors")
 
 typedef enum
 {
-#define _(f,s) MRVL_PP2_TX_ERROR_##f,
+#define _(f, s) MRVL_PP2_TX_ERROR_##f,
   foreach_mrvl_pp2_tx_func_error
 #undef _
     MRVL_PP2_TX_N_ERROR,
 } mrvl_pp2_tx_func_error_t;
 
-uword mrvl_pp2_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
-			     vlib_frame_t * frame);
+uword mrvl_pp2_interface_tx (vlib_main_t *vm, vlib_node_runtime_t *node,
+			     vlib_frame_t *frame);
 
 /* input.c */
 
@@ -136,7 +136,6 @@ extern vlib_node_registration_t mrvl_pp2_input_node;
 format_function_t format_mrvl_pp2_input_trace;
 format_function_t format_mrvl_pp2_interface;
 format_function_t format_mrvl_pp2_interface_name;
-
 
 /*
  * fd.io coding-style-patch-verification: ON

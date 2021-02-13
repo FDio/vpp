@@ -35,8 +35,8 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
   mq = session_main_get_vpp_event_queue (thread_index);
   if (PREDICT_FALSE (svm_msg_q_lock (mq)))
     return -1;
-  if (PREDICT_FALSE (svm_msg_q_is_full (mq)
-		     || svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
+  if (PREDICT_FALSE (svm_msg_q_is_full (mq) ||
+		     svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
     {
       svm_msg_q_unlock (mq);
       return -2;
@@ -76,7 +76,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
 }
 
 int
-session_send_io_evt_to_thread (svm_fifo_t * f, session_evt_type_t evt_type)
+session_send_io_evt_to_thread (svm_fifo_t *f, session_evt_type_t evt_type)
 {
   return session_send_evt_to_thread (&f->shr->master_session_index, 0,
 				     f->master_thread_index, evt_type);
@@ -90,11 +90,11 @@ session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
 }
 
 int
-session_send_ctrl_evt_to_thread (session_t * s, session_evt_type_t evt_type)
+session_send_ctrl_evt_to_thread (session_t *s, session_evt_type_t evt_type)
 {
   /* only events supported are disconnect and reset */
-  ASSERT (evt_type == SESSION_CTRL_EVT_CLOSE
-	  || evt_type == SESSION_CTRL_EVT_RESET);
+  ASSERT (evt_type == SESSION_CTRL_EVT_CLOSE ||
+	  evt_type == SESSION_CTRL_EVT_RESET);
   return session_send_evt_to_thread (s, 0, s->thread_index, evt_type);
 }
 
@@ -119,7 +119,7 @@ session_send_rpc_evt_to_thread (u32 thread_index, void *fp, void *rpc_args)
 }
 
 void
-session_add_self_custom_tx_evt (transport_connection_t * tc, u8 has_prio)
+session_add_self_custom_tx_evt (transport_connection_t *tc, u8 has_prio)
 {
   session_t *s;
 
@@ -129,8 +129,8 @@ session_add_self_custom_tx_evt (transport_connection_t * tc, u8 has_prio)
   if (!(s->flags & SESSION_F_CUSTOM_TX))
     {
       s->flags |= SESSION_F_CUSTOM_TX;
-      if (svm_fifo_set_event (s->tx_fifo)
-	  || transport_connection_is_descheduled (tc))
+      if (svm_fifo_set_event (s->tx_fifo) ||
+	  transport_connection_is_descheduled (tc))
 	{
 	  session_worker_t *wrk;
 	  session_evt_elt_t *elt;
@@ -147,7 +147,7 @@ session_add_self_custom_tx_evt (transport_connection_t * tc, u8 has_prio)
 }
 
 void
-sesssion_reschedule_tx (transport_connection_t * tc)
+sesssion_reschedule_tx (transport_connection_t *tc)
 {
   session_worker_t *wrk = session_main_get_worker (tc->thread_index);
   session_evt_elt_t *elt;
@@ -160,7 +160,7 @@ sesssion_reschedule_tx (transport_connection_t * tc)
 }
 
 static void
-session_program_transport_ctrl_evt (session_t * s, session_evt_type_t evt)
+session_program_transport_ctrl_evt (session_t *s, session_evt_type_t evt)
 {
   u32 thread_index = vlib_get_thread_index ();
   session_evt_elt_t *elt;
@@ -207,7 +207,7 @@ session_alloc (u32 thread_index)
 }
 
 void
-session_free (session_t * s)
+session_free (session_t *s)
 {
   if (CLIB_DEBUG)
     {
@@ -234,20 +234,20 @@ session_is_valid (u32 si, u8 thread_index)
   if (s->thread_index != thread_index || s->session_index != si)
     return 0;
 
-  if (s->session_state == SESSION_STATE_TRANSPORT_DELETED
-      || s->session_state <= SESSION_STATE_LISTENING)
+  if (s->session_state == SESSION_STATE_TRANSPORT_DELETED ||
+      s->session_state <= SESSION_STATE_LISTENING)
     return 1;
 
   tc = session_get_transport (s);
-  if (s->connection_index != tc->c_index
-      || s->thread_index != tc->thread_index || tc->s_index != si)
+  if (s->connection_index != tc->c_index ||
+      s->thread_index != tc->thread_index || tc->s_index != si)
     return 0;
 
   return 1;
 }
 
 static void
-session_cleanup_notify (session_t * s, session_cleanup_ntf_t ntf)
+session_cleanup_notify (session_t *s, session_cleanup_ntf_t ntf)
 {
   app_worker_t *app_wrk;
 
@@ -258,7 +258,7 @@ session_cleanup_notify (session_t * s, session_cleanup_ntf_t ntf)
 }
 
 void
-session_free_w_fifos (session_t * s)
+session_free_w_fifos (session_t *s)
 {
   session_cleanup_notify (s, SESSION_CLEANUP_SESSION);
   segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
@@ -271,7 +271,7 @@ session_free_w_fifos (session_t * s)
  * Transport connection must still be valid.
  */
 static void
-session_delete (session_t * s)
+session_delete (session_t *s)
 {
   int rv;
 
@@ -297,13 +297,13 @@ session_half_open_delete_notify (transport_proto_t tp,
 }
 
 session_t *
-session_alloc_for_connection (transport_connection_t * tc)
+session_alloc_for_connection (transport_connection_t *tc)
 {
   session_t *s;
   u32 thread_index = tc->thread_index;
 
-  ASSERT (thread_index == vlib_get_thread_index ()
-	  || transport_protocol_is_cl (tc->proto));
+  ASSERT (thread_index == vlib_get_thread_index () ||
+	  transport_protocol_is_cl (tc->proto));
 
   s = session_alloc (thread_index);
   s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
@@ -321,8 +321,8 @@ session_alloc_for_connection (transport_connection_t * tc)
  * It discards n_bytes_to_drop starting at first buffer after chain_b
  */
 always_inline void
-session_enqueue_discard_chain_bytes (vlib_main_t * vm, vlib_buffer_t * b,
-				     vlib_buffer_t ** chain_b,
+session_enqueue_discard_chain_bytes (vlib_main_t *vm, vlib_buffer_t *b,
+				     vlib_buffer_t **chain_b,
 				     u32 n_bytes_to_drop)
 {
   vlib_buffer_t *next = *chain_b;
@@ -352,8 +352,8 @@ session_enqueue_discard_chain_bytes (vlib_main_t * vm, vlib_buffer_t * b,
  * Enqueue buffer chain tail
  */
 always_inline int
-session_enqueue_chain_tail (session_t * s, vlib_buffer_t * b,
-			    u32 offset, u8 is_in_order)
+session_enqueue_chain_tail (session_t *s, vlib_buffer_t *b, u32 offset,
+			    u8 is_in_order)
 {
   vlib_buffer_t *chain_b;
   u32 chain_bi, len, diff;
@@ -415,8 +415,9 @@ session_enqueue_chain_tail (session_t * s, vlib_buffer_t * b,
 	  offset += len;
 	}
     }
-  while ((chain_bi = (chain_b->flags & VLIB_BUFFER_NEXT_PRESENT)
-	  ? chain_b->next_buffer : 0));
+  while ((chain_bi = (chain_b->flags & VLIB_BUFFER_NEXT_PRESENT) ?
+		       chain_b->next_buffer :
+		       0));
 
   if (is_in_order)
     return written;
@@ -425,8 +426,8 @@ session_enqueue_chain_tail (session_t * s, vlib_buffer_t * b,
 }
 
 void
-session_fifo_tuning (session_t * s, svm_fifo_t * f,
-		     session_ft_action_t act, u32 len)
+session_fifo_tuning (session_t *s, svm_fifo_t *f, session_ft_action_t act,
+		     u32 len)
 {
   if (s->flags & SESSION_F_CUSTOM_FIFO_TUNING)
     {
@@ -457,8 +458,8 @@ session_fifo_tuning (session_t * s, svm_fifo_t * f,
  * @return Number of bytes enqueued or a negative value if enqueueing failed.
  */
 int
-session_enqueue_stream_connection (transport_connection_t * tc,
-				   vlib_buffer_t * b, u32 offset,
+session_enqueue_stream_connection (transport_connection_t *tc,
+				   vlib_buffer_t *b, u32 offset,
 				   u8 queue_event, u8 is_in_order)
 {
   session_t *s;
@@ -468,11 +469,10 @@ session_enqueue_stream_connection (transport_connection_t * tc,
 
   if (is_in_order)
     {
-      enqueued = svm_fifo_enqueue (s->rx_fifo,
-				   b->current_length,
+      enqueued = svm_fifo_enqueue (s->rx_fifo, b->current_length,
 				   vlib_buffer_get_current (b));
-      if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT)
-			 && enqueued >= 0))
+      if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) &&
+			 enqueued >= 0))
 	{
 	  in_order_off = enqueued > b->current_length ? enqueued : 0;
 	  rv = session_enqueue_chain_tail (s, b, in_order_off, 1);
@@ -482,8 +482,7 @@ session_enqueue_stream_connection (transport_connection_t * tc,
     }
   else
     {
-      rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset,
-					 b->current_length,
+      rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset, b->current_length,
 					 vlib_buffer_get_current (b));
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && !rv))
 	session_enqueue_chain_tail (s, b, offset + b->current_length, 0);
@@ -512,26 +511,24 @@ session_enqueue_stream_connection (transport_connection_t * tc,
 }
 
 int
-session_enqueue_dgram_connection (session_t * s,
-				  session_dgram_hdr_t * hdr,
-				  vlib_buffer_t * b, u8 proto, u8 queue_event)
+session_enqueue_dgram_connection (session_t *s, session_dgram_hdr_t *hdr,
+				  vlib_buffer_t *b, u8 proto, u8 queue_event)
 {
   int rv;
 
-  ASSERT (svm_fifo_max_enqueue_prod (s->rx_fifo)
-	  >= b->current_length + sizeof (*hdr));
+  ASSERT (svm_fifo_max_enqueue_prod (s->rx_fifo) >=
+	  b->current_length + sizeof (*hdr));
 
   if (PREDICT_TRUE (!(b->flags & VLIB_BUFFER_NEXT_PRESENT)))
     {
       /* *INDENT-OFF* */
-      svm_fifo_seg_t segs[2] = {
-	  { (u8 *) hdr, sizeof (*hdr) },
-	  { vlib_buffer_get_current (b), b->current_length }
-      };
+      svm_fifo_seg_t segs[2] = { { (u8 *) hdr, sizeof (*hdr) },
+				 { vlib_buffer_get_current (b),
+				   b->current_length } };
       /* *INDENT-ON* */
 
-      rv = svm_fifo_enqueue_segments (s->rx_fifo, segs, 2,
-				      0 /* allow_partial */ );
+      rv =
+	svm_fifo_enqueue_segments (s->rx_fifo, segs, 2, 0 /* allow_partial */);
     }
   else
     {
@@ -554,7 +551,7 @@ session_enqueue_dgram_connection (session_t * s,
 	  it = vlib_get_buffer (vm, it->next_buffer);
 	}
       rv = svm_fifo_enqueue_segments (s->rx_fifo, segs, n_segs,
-				      0 /* allow partial */ );
+				      0 /* allow partial */);
       vec_free (segs);
     }
 
@@ -577,15 +574,15 @@ session_enqueue_dgram_connection (session_t * s,
 }
 
 int
-session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
-			    u32 offset, u32 max_bytes)
+session_tx_fifo_peek_bytes (transport_connection_t *tc, u8 *buffer, u32 offset,
+			    u32 max_bytes)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
   return svm_fifo_peek (s->tx_fifo, offset, max_bytes, buffer);
 }
 
 u32
-session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
+session_tx_fifo_dequeue_drop (transport_connection_t *tc, u32 max_bytes)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
   u32 rv;
@@ -600,8 +597,8 @@ session_tx_fifo_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
 }
 
 static inline int
-session_notify_subscribers (u32 app_index, session_t * s,
-			    svm_fifo_t * f, session_evt_type_t evt_type)
+session_notify_subscribers (u32 app_index, session_t *s, svm_fifo_t *f,
+			    session_evt_type_t evt_type)
 {
   app_worker_t *app_wrk;
   application_t *app;
@@ -632,7 +629,7 @@ session_notify_subscribers (u32 app_index, session_t * s,
  * @return 0 on success or negative number if failed to send notification.
  */
 static inline int
-session_enqueue_notify_inline (session_t * s)
+session_enqueue_notify_inline (session_t *s)
 {
   app_worker_t *app_wrk;
   u32 session_index;
@@ -656,22 +653,22 @@ session_enqueue_notify_inline (session_t * s)
   if (PREDICT_FALSE (s->session_state == SESSION_STATE_ACCEPTING))
     return 0;
 
-  if (PREDICT_FALSE (app_worker_lock_and_send_event (app_wrk, s,
-						     SESSION_IO_EVT_RX)))
+  if (PREDICT_FALSE (
+	app_worker_lock_and_send_event (app_wrk, s, SESSION_IO_EVT_RX)))
     return -1;
 
   if (PREDICT_FALSE (n_subscribers))
     {
       s = session_get (session_index, vlib_get_thread_index ());
-      return session_notify_subscribers (app_wrk->app_index, s,
-					 s->rx_fifo, SESSION_IO_EVT_RX);
+      return session_notify_subscribers (app_wrk->app_index, s, s->rx_fifo,
+					 SESSION_IO_EVT_RX);
     }
 
   return 0;
 }
 
 int
-session_enqueue_notify (session_t * s)
+session_enqueue_notify (session_t *s)
 {
   return session_enqueue_notify_inline (s);
 }
@@ -703,13 +700,12 @@ session_enqueue_notify_thread (session_handle_t sh)
    * Pass session index (u32) as opposed to handle (u64) in case pointers
    * are not 64-bit.
    */
-  session_send_rpc_evt_to_thread (thread_index,
-				  session_enqueue_notify_rpc,
+  session_send_rpc_evt_to_thread (thread_index, session_enqueue_notify_rpc,
 				  uword_to_pointer (session_index, void *));
 }
 
 int
-session_dequeue_notify (session_t * s)
+session_dequeue_notify (session_t *s)
 {
   app_worker_t *app_wrk;
 
@@ -719,13 +715,13 @@ session_dequeue_notify (session_t * s)
   if (PREDICT_FALSE (!app_wrk))
     return -1;
 
-  if (PREDICT_FALSE (app_worker_lock_and_send_event (app_wrk, s,
-						     SESSION_IO_EVT_TX)))
+  if (PREDICT_FALSE (
+	app_worker_lock_and_send_event (app_wrk, s, SESSION_IO_EVT_TX)))
     return -1;
 
   if (PREDICT_FALSE (s->tx_fifo->shr->n_subscribers))
-    return session_notify_subscribers (app_wrk->app_index, s,
-				       s->tx_fifo, SESSION_IO_EVT_TX);
+    return session_notify_subscribers (app_wrk->app_index, s, s->tx_fifo,
+				       SESSION_IO_EVT_TX);
 
   return 0;
 }
@@ -758,7 +754,7 @@ session_main_flush_enqueue_events (u8 transport_proto, u32 thread_index)
 	}
 
       session_fifo_tuning (s, s->rx_fifo, SESSION_FT_ACTION_ENQUEUED,
-			   0 /* TODO/not needed */ );
+			   0 /* TODO/not needed */);
 
       if (PREDICT_FALSE (session_enqueue_notify_inline (s)))
 	errors++;
@@ -781,8 +777,7 @@ session_main_flush_all_enqueue_events (u8 transport_proto)
 }
 
 int
-session_stream_connect_notify (transport_connection_t * tc,
-			       session_error_t err)
+session_stream_connect_notify (transport_connection_t *tc, session_error_t err)
 {
   session_handle_t ho_handle, wrk_handle;
   u32 opaque = 0, new_ti, new_si;
@@ -891,8 +886,8 @@ session_switch_pool (void *cb_args)
   transport_cleanup (session_get_transport_proto (s), s->connection_index,
 		     s->thread_index);
 
-  new_sh = session_make_handle (args->new_session_index,
-				args->new_thread_index);
+  new_sh =
+    session_make_handle (args->new_session_index, args->new_thread_index);
 
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (app_wrk)
@@ -919,8 +914,8 @@ session_switch_pool (void *cb_args)
  * Move dgram session to the right thread
  */
 int
-session_dgram_connect_notify (transport_connection_t * tc,
-			      u32 old_thread_index, session_t ** new_session)
+session_dgram_connect_notify (transport_connection_t *tc, u32 old_thread_index,
+			      session_t **new_session)
 {
   session_t *new_s;
   session_switch_pool_args_t *rpc_args;
@@ -973,7 +968,7 @@ session_dgram_connect_notify (transport_connection_t * tc,
  * Ultimately this leads to close being called on transport (passive close).
  */
 void
-session_transport_closing_notify (transport_connection_t * tc)
+session_transport_closing_notify (transport_connection_t *tc)
 {
   app_worker_t *app_wrk;
   session_t *s;
@@ -995,7 +990,7 @@ session_transport_closing_notify (transport_connection_t * tc)
  * failed.
  */
 void
-session_transport_delete_notify (transport_connection_t * tc)
+session_transport_delete_notify (transport_connection_t *tc)
 {
   session_t *s;
 
@@ -1061,7 +1056,7 @@ session_transport_delete_notify (transport_connection_t * tc)
  * can be delayed a long time, e.g., tcp time-wait.
  */
 void
-session_transport_closed_notify (transport_connection_t * tc)
+session_transport_closed_notify (transport_connection_t *tc)
 {
   app_worker_t *app_wrk;
   session_t *s;
@@ -1096,7 +1091,7 @@ session_transport_closed_notify (transport_connection_t * tc)
  * Notify application that connection has been reset.
  */
 void
-session_transport_reset_notify (transport_connection_t * tc)
+session_transport_reset_notify (transport_connection_t *tc)
 {
   app_worker_t *app_wrk;
   session_t *s;
@@ -1111,7 +1106,7 @@ session_transport_reset_notify (transport_connection_t * tc)
 }
 
 int
-session_stream_accept_notify (transport_connection_t * tc)
+session_stream_accept_notify (transport_connection_t *tc)
 {
   app_worker_t *app_wrk;
   session_t *s;
@@ -1135,7 +1130,7 @@ session_stream_accept_notify (transport_connection_t * tc)
  * Accept a stream session. Optionally ping the server by callback.
  */
 int
-session_stream_accept (transport_connection_t * tc, u32 listener_index,
+session_stream_accept (transport_connection_t *tc, u32 listener_index,
 		       u32 thread_index, u8 notify)
 {
   session_t *s;
@@ -1170,7 +1165,7 @@ session_stream_accept (transport_connection_t * tc, u32 listener_index,
 }
 
 int
-session_dgram_accept (transport_connection_t * tc, u32 listener_index,
+session_dgram_accept (transport_connection_t *tc, u32 listener_index,
 		      u32 thread_index)
 {
   app_worker_t *app_wrk;
@@ -1203,7 +1198,7 @@ session_dgram_accept (transport_connection_t * tc, u32 listener_index,
 }
 
 int
-session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
+session_open_cl (u32 app_wrk_index, session_endpoint_t *rmt, u32 opaque)
 {
   transport_connection_t *tc;
   transport_endpoint_cfg_t *tep;
@@ -1239,7 +1234,7 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 }
 
 int
-session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
+session_open_vc (u32 app_wrk_index, session_endpoint_t *rmt, u32 opaque)
 {
   transport_connection_t *tc;
   transport_endpoint_cfg_t *tep;
@@ -1282,7 +1277,7 @@ session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 }
 
 int
-session_open_app (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
+session_open_app (u32 app_wrk_index, session_endpoint_t *rmt, u32 opaque)
 {
   session_endpoint_cfg_t *sep = (session_endpoint_cfg_t *) rmt;
   transport_endpoint_cfg_t *tep_cfg = session_endpoint_to_transport_cfg (sep);
@@ -1317,11 +1312,11 @@ static session_open_service_fn session_open_srv_fns[TRANSPORT_N_SERVICES] = {
  * 		 on open completion.
  */
 int
-session_open (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
+session_open (u32 app_wrk_index, session_endpoint_t *rmt, u32 opaque)
 {
   transport_service_type_t tst;
   tst = transport_protocol_service_type (rmt->transport_proto);
-  return session_open_srv_fns[tst] (app_wrk_index, rmt, opaque);
+  return session_open_srv_fns[tst](app_wrk_index, rmt, opaque);
 }
 
 /**
@@ -1333,7 +1328,7 @@ session_open (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
  * @param sep Local endpoint to be listened on.
  */
 int
-session_listen (session_t * ls, session_endpoint_cfg_t * sep)
+session_listen (session_t *ls, session_endpoint_cfg_t *sep)
 {
   transport_endpoint_t *tep;
   int tc_index;
@@ -1342,8 +1337,8 @@ session_listen (session_t * ls, session_endpoint_cfg_t * sep)
   /* Transport bind/listen */
   tep = session_endpoint_to_transport (sep);
   s_index = ls->session_index;
-  tc_index = transport_start_listen (session_get_transport_proto (ls),
-				     s_index, tep);
+  tc_index =
+    transport_start_listen (session_get_transport_proto (ls), s_index, tep);
 
   if (tc_index < 0)
     return tc_index;
@@ -1362,7 +1357,7 @@ session_listen (session_t * ls, session_endpoint_cfg_t * sep)
  * @param s Session to stop listening on. It must be in state LISTENING.
  */
 int
-session_stop_listen (session_t * s)
+session_stop_listen (session_t *s)
 {
   transport_proto_t tp = session_get_transport_proto (s);
   transport_connection_t *tc;
@@ -1390,7 +1385,7 @@ session_stop_listen (session_t * s)
  * requests are served before transport is notified.
  */
 void
-session_close (session_t * s)
+session_close (session_t *s)
 {
   if (!s)
     return;
@@ -1399,8 +1394,8 @@ session_close (session_t * s)
     {
       /* Session will only be removed once both app and transport
        * acknowledge the close */
-      if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED
-	  || s->session_state == SESSION_STATE_TRANSPORT_DELETED)
+      if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED ||
+	  s->session_state == SESSION_STATE_TRANSPORT_DELETED)
 	session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_CLOSE);
       return;
     }
@@ -1413,7 +1408,7 @@ session_close (session_t * s)
  * Force a close without waiting for data to be flushed
  */
 void
-session_reset (session_t * s)
+session_reset (session_t *s)
 {
   if (s->session_state >= SESSION_STATE_CLOSING)
     return;
@@ -1431,7 +1426,7 @@ session_reset (session_t * s)
  * Must be called from the session's thread.
  */
 void
-session_transport_close (session_t * s)
+session_transport_close (session_t *s)
 {
   if (s->session_state >= SESSION_STATE_APP_CLOSED)
     {
@@ -1459,7 +1454,7 @@ session_transport_close (session_t * s)
  * Force transport close
  */
 void
-session_transport_reset (session_t * s)
+session_transport_reset (session_t *s)
 {
   if (s->session_state >= SESSION_STATE_APP_CLOSED)
     {
@@ -1483,7 +1478,7 @@ session_transport_reset (session_t * s)
  * closed.
  */
 void
-session_transport_cleanup (session_t * s)
+session_transport_cleanup (session_t *s)
 {
   /* Delete from main lookup table before we axe the the transport */
   session_lookup_del_session (s);
@@ -1503,7 +1498,7 @@ session_transport_cleanup (session_t * s)
  * mapped by all apps/stack users.
  */
 void
-session_vpp_event_queues_allocate (session_main_t * smm)
+session_vpp_event_queues_allocate (session_main_t *smm)
 {
   u32 evt_q_length = 2048, evt_size = sizeof (session_event_t);
   fifo_segment_t *eqs = &smm->evt_qs_segment;
@@ -1538,9 +1533,7 @@ session_vpp_event_queues_allocate (session_main_t * smm)
     {
       svm_msg_q_cfg_t _cfg, *cfg = &_cfg;
       svm_msg_q_ring_cfg_t rc[SESSION_MQ_N_RINGS] = {
-	{evt_q_length, evt_size, 0}
-	,
-	{evt_q_length >> 1, 256, 0}
+	{ evt_q_length, evt_size, 0 }, { evt_q_length >> 1, 256, 0 }
       };
       cfg->consumer_pid = 0;
       cfg->n_rings = 2;
@@ -1558,7 +1551,7 @@ session_main_get_evt_q_segment (void)
 }
 
 u64
-session_segment_handle (session_t * s)
+session_segment_handle (session_t *s)
 {
   svm_fifo_t *f;
 
@@ -1572,16 +1565,14 @@ session_segment_handle (session_t * s)
 
 /* *INDENT-OFF* */
 static session_fifo_rx_fn *session_tx_fns[TRANSPORT_TX_N_FNS] = {
-    session_tx_fifo_peek_and_snd,
-    session_tx_fifo_dequeue_and_snd,
-    session_tx_fifo_dequeue_internal,
-    session_tx_fifo_dequeue_and_snd
+  session_tx_fifo_peek_and_snd, session_tx_fifo_dequeue_and_snd,
+  session_tx_fifo_dequeue_internal, session_tx_fifo_dequeue_and_snd
 };
 /* *INDENT-ON* */
 
 void
 session_register_transport (transport_proto_t transport_proto,
-			    const transport_proto_vft_t * vft, u8 is_ip4,
+			    const transport_proto_vft_t *vft, u8 is_ip4,
 			    u32 output_node)
 {
   session_main_t *smm = &session_main;
@@ -1597,9 +1588,8 @@ session_register_transport (transport_proto_t transport_proto,
   if (output_node != ~0)
     {
       foreach_vlib_main (({
-          next_index = vlib_node_add_next (this_vlib_main,
-                                           session_queue_node.index,
-                                           output_node);
+	next_index = vlib_node_add_next (
+	  this_vlib_main, session_queue_node.index, output_node);
       }));
     }
   /* *INDENT-ON* */
@@ -1628,7 +1618,7 @@ session_add_transport_proto (void)
 }
 
 transport_connection_t *
-session_get_transport (session_t * s)
+session_get_transport (session_t *s)
 {
   if (s->session_state != SESSION_STATE_LISTENING)
     return transport_get_connection (session_get_transport_proto (s),
@@ -1639,7 +1629,7 @@ session_get_transport (session_t * s)
 }
 
 void
-session_get_endpoint (session_t * s, transport_endpoint_t * tep, u8 is_lcl)
+session_get_endpoint (session_t *s, transport_endpoint_t *tep, u8 is_lcl)
 {
   if (s->session_state != SESSION_STATE_LISTENING)
     return transport_get_endpoint (session_get_transport_proto (s),
@@ -1651,14 +1641,14 @@ session_get_endpoint (session_t * s, transport_endpoint_t * tep, u8 is_lcl)
 }
 
 transport_connection_t *
-listen_session_get_transport (session_t * s)
+listen_session_get_transport (session_t *s)
 {
   return transport_get_listener (session_get_transport_proto (s),
 				 s->connection_index);
 }
 
 void
-session_queue_run_on_main_thread (vlib_main_t * vm)
+session_queue_run_on_main_thread (vlib_main_t *vm)
 {
   ASSERT (vlib_get_thread_index () == 0);
   vlib_process_signal_event_mt (vm, session_queue_process_node.index,
@@ -1666,7 +1656,7 @@ session_queue_run_on_main_thread (vlib_main_t * vm)
 }
 
 static clib_error_t *
-session_manager_main_enable (vlib_main_t * vm)
+session_manager_main_enable (vlib_main_t *vm)
 {
   session_main_t *smm = &session_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
@@ -1678,7 +1668,7 @@ session_manager_main_enable (vlib_main_t * vm)
   if (smm->is_initialized)
     goto done;
 
-  num_threads = 1 /* main thread */  + vtm->n_threads;
+  num_threads = 1 /* main thread */ + vtm->n_threads;
 
   if (num_threads < 1)
     return clib_error_return (0, "n_thread_stacks not set");
@@ -1718,8 +1708,7 @@ session_manager_main_enable (vlib_main_t * vm)
 	{
 	  int j;
 	  preallocated_sessions_per_worker =
-	    (1.1 * (f64) smm->preallocated_sessions /
-	     (f64) (num_threads - 1));
+	    (1.1 * (f64) smm->preallocated_sessions / (f64) (num_threads - 1));
 
 	  for (j = 1; j < num_threads; j++)
 	    {
@@ -1746,9 +1735,9 @@ done:
 }
 
 static void
-session_manager_main_disable (vlib_main_t * vm)
+session_manager_main_disable (vlib_main_t *vm)
 {
-  transport_enable_disable (vm, 0 /* is_en */ );
+  transport_enable_disable (vm, 0 /* is_en */);
 }
 
 void
@@ -1765,28 +1754,27 @@ session_node_enable_disable (u8 is_en)
 	if (is_en)
 	  {
 	    vlib_node_set_state (this_vlib_main,
-	                         session_queue_process_node.index, state);
-	    vlib_node_t *n = vlib_get_node (this_vlib_main,
-	                                    session_queue_process_node.index);
+				 session_queue_process_node.index, state);
+	    vlib_node_t *n =
+	      vlib_get_node (this_vlib_main, session_queue_process_node.index);
 	    vlib_start_process (this_vlib_main, n->runtime_index);
 	  }
 	else
 	  {
 	    vlib_process_signal_event_mt (this_vlib_main,
-	                                  session_queue_process_node.index,
-	                                  SESSION_Q_PROCESS_STOP, 0);
+					  session_queue_process_node.index,
+					  SESSION_Q_PROCESS_STOP, 0);
 	  }
 	if (!session_main.poll_main)
 	  continue;
       }
-    vlib_node_set_state (this_vlib_main, session_queue_node.index,
-                         state);
+    vlib_node_set_state (this_vlib_main, session_queue_node.index, state);
   }));
   /* *INDENT-ON* */
 }
 
 clib_error_t *
-vnet_session_enable_disable (vlib_main_t * vm, u8 is_en)
+vnet_session_enable_disable (vlib_main_t *vm, u8 is_en)
 {
   clib_error_t *error = 0;
   if (is_en)
@@ -1808,7 +1796,7 @@ vnet_session_enable_disable (vlib_main_t * vm, u8 is_en)
 }
 
 clib_error_t *
-session_main_init (vlib_main_t * vm)
+session_main_init (vlib_main_t *vm)
 {
   session_main_t *smm = &session_main;
 
@@ -1831,13 +1819,13 @@ session_main_init (vlib_main_t * vm)
 }
 
 static clib_error_t *
-session_main_loop_init (vlib_main_t * vm)
+session_main_loop_init (vlib_main_t *vm)
 {
   session_main_t *smm = &session_main;
   if (smm->session_enable_asap)
     {
       vlib_worker_thread_barrier_sync (vm);
-      vnet_session_enable_disable (vm, 1 /* is_en */ );
+      vnet_session_enable_disable (vm, 1 /* is_en */);
       vlib_worker_thread_barrier_release (vm);
     }
   return 0;
@@ -1847,7 +1835,7 @@ VLIB_INIT_FUNCTION (session_main_init);
 VLIB_MAIN_LOOP_ENTER_FUNCTION (session_main_loop_init);
 
 static clib_error_t *
-session_config_fn (vlib_main_t * vm, unformat_input_t * input)
+session_config_fn (vlib_main_t *vm, unformat_input_t *input)
 {
   session_main_t *smm = &session_main;
   u32 nitems;
@@ -1936,17 +1924,4 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	smm->poll_main = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
-  return 0;
-}
-
-VLIB_CONFIG_FUNCTION (session_config_fn, "session");
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+				  format_unformat_error,

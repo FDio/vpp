@@ -26,7 +26,7 @@
 #include <vnet/vnet.h>
 
 static_always_inline u8
-gro_is_bad_packet (vlib_buffer_t * b, u8 flags, i16 l234_sz)
+gro_is_bad_packet (vlib_buffer_t *b, u8 flags, i16 l234_sz)
 {
   if (((b->current_length - l234_sz) <= 0) || ((flags &= ~TCP_FLAG_ACK) != 0))
     return 1;
@@ -34,9 +34,9 @@ gro_is_bad_packet (vlib_buffer_t * b, u8 flags, i16 l234_sz)
 }
 
 static_always_inline void
-gro_get_ip4_flow_from_packet (u32 * sw_if_index,
-			      ip4_header_t * ip4, tcp_header_t * tcp,
-			      gro_flow_key_t * flow_key, int is_l2)
+gro_get_ip4_flow_from_packet (u32 *sw_if_index, ip4_header_t *ip4,
+			      tcp_header_t *tcp, gro_flow_key_t *flow_key,
+			      int is_l2)
 {
   flow_key->sw_if_index[VLIB_RX] = sw_if_index[VLIB_RX];
   flow_key->sw_if_index[VLIB_TX] = sw_if_index[VLIB_TX];
@@ -47,9 +47,9 @@ gro_get_ip4_flow_from_packet (u32 * sw_if_index,
 }
 
 static_always_inline void
-gro_get_ip6_flow_from_packet (u32 * sw_if_index,
-			      ip6_header_t * ip6, tcp_header_t * tcp,
-			      gro_flow_key_t * flow_key, int is_l2)
+gro_get_ip6_flow_from_packet (u32 *sw_if_index, ip6_header_t *ip6,
+			      tcp_header_t *tcp, gro_flow_key_t *flow_key,
+			      int is_l2)
 {
   flow_key->sw_if_index[VLIB_RX] = sw_if_index[VLIB_RX];
   flow_key->sw_if_index[VLIB_TX] = sw_if_index[VLIB_TX];
@@ -60,7 +60,7 @@ gro_get_ip6_flow_from_packet (u32 * sw_if_index,
 }
 
 static_always_inline u32
-gro_is_ip4_or_ip6_packet (vlib_buffer_t * b0, int is_l2)
+gro_is_ip4_or_ip6_packet (vlib_buffer_t *b0, int is_l2)
 {
   if (b0->flags & VNET_BUFFER_F_IS_IP4)
     return VNET_BUFFER_F_IS_IP4;
@@ -107,7 +107,7 @@ typedef enum
 } gro_packet_action_t;
 
 static_always_inline gro_packet_action_t
-gro_tcp_sequence_check (tcp_header_t * tcp0, tcp_header_t * tcp1,
+gro_tcp_sequence_check (tcp_header_t *tcp0, tcp_header_t *tcp1,
 			u32 payload_len0)
 {
   u32 next_tcp_seq0 = clib_net_to_host_u32 (tcp0->seq_number);
@@ -122,9 +122,8 @@ gro_tcp_sequence_check (tcp_header_t * tcp0, tcp_header_t * tcp1,
 }
 
 static_always_inline void
-gro_merge_buffers (vlib_main_t * vm, vlib_buffer_t * b0,
-		   vlib_buffer_t * b1, u32 bi1, u32 payload_len1,
-		   u16 l234_sz1)
+gro_merge_buffers (vlib_main_t *vm, vlib_buffer_t *b0, vlib_buffer_t *b1,
+		   u32 bi1, u32 payload_len1, u16 l234_sz1)
 {
   vlib_buffer_t *pb = b0;
 
@@ -142,8 +141,8 @@ gro_merge_buffers (vlib_main_t * vm, vlib_buffer_t * b0,
 }
 
 static_always_inline u32
-gro_validate_checksum (vlib_main_t * vm, vlib_buffer_t * b0,
-		       generic_header_offset_t * gho0, int is_ip4)
+gro_validate_checksum (vlib_main_t *vm, vlib_buffer_t *b0,
+		       generic_header_offset_t *gho0, int is_ip4)
 {
   u32 flags = 0;
 
@@ -159,9 +158,9 @@ gro_validate_checksum (vlib_main_t * vm, vlib_buffer_t * b0,
 }
 
 static_always_inline u32
-gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
-		     generic_header_offset_t * gho0,
-		     gro_flow_key_t * flow_key0, int is_l2)
+gro_get_packet_data (vlib_main_t *vm, vlib_buffer_t *b0,
+		     generic_header_offset_t *gho0, gro_flow_key_t *flow_key0,
+		     int is_l2)
 {
   ip4_header_t *ip4_0 = 0;
   ip6_header_t *ip6_0 = 0;
@@ -174,11 +173,11 @@ gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
   u32 is_ip0 = gro_is_ip4_or_ip6_packet (b0, is_l2);
 
   if (is_ip0 & VNET_BUFFER_F_IS_IP4)
-    vnet_generic_header_offset_parser (b0, gho0, is_l2, 1 /* is_ip4 */ ,
-				       0 /* is_ip6 */ );
+    vnet_generic_header_offset_parser (b0, gho0, is_l2, 1 /* is_ip4 */,
+				       0 /* is_ip6 */);
   else if (is_ip0 & VNET_BUFFER_F_IS_IP6)
-    vnet_generic_header_offset_parser (b0, gho0, is_l2, 0 /* is_ip4 */ ,
-				       1 /* is_ip6 */ );
+    vnet_generic_header_offset_parser (b0, gho0, is_l2, 0 /* is_ip4 */,
+				       1 /* is_ip6 */);
   else
     return 0;
 
@@ -189,8 +188,7 @@ gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
     (ip4_header_t *) (vlib_buffer_get_current (b0) + gho0->l3_hdr_offset);
   ip6_0 =
     (ip6_header_t *) (vlib_buffer_get_current (b0) + gho0->l3_hdr_offset);
-  tcp0 =
-    (tcp_header_t *) (vlib_buffer_get_current (b0) + gho0->l4_hdr_offset);
+  tcp0 = (tcp_header_t *) (vlib_buffer_get_current (b0) + gho0->l4_hdr_offset);
 
   l234_sz0 = gho0->hdr_sz;
   if (PREDICT_FALSE (gro_is_bad_packet (b0, tcp0->flags, l234_sz0)))
@@ -225,8 +223,8 @@ gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
 }
 
 static_always_inline u32
-gro_coalesce_buffers (vlib_main_t * vm, vlib_buffer_t * b0,
-		      vlib_buffer_t * b1, u32 bi1, int is_l2)
+gro_coalesce_buffers (vlib_main_t *vm, vlib_buffer_t *b0, vlib_buffer_t *b1,
+		      u32 bi1, int is_l2)
 {
   generic_header_offset_t gho0 = { 0 };
   generic_header_offset_t gho1 = { 0 };
@@ -243,38 +241,34 @@ gro_coalesce_buffers (vlib_main_t * vm, vlib_buffer_t * b0,
   u32 is_ip1 = gro_is_ip4_or_ip6_packet (b1, is_l2);
 
   if (is_ip0 & VNET_BUFFER_F_IS_IP4)
-    vnet_generic_header_offset_parser (b0, &gho0, is_l2, 1 /* is_ip4 */ ,
-				       0 /* is_ip6 */ );
+    vnet_generic_header_offset_parser (b0, &gho0, is_l2, 1 /* is_ip4 */,
+				       0 /* is_ip6 */);
   else if (is_ip0 & VNET_BUFFER_F_IS_IP6)
-    vnet_generic_header_offset_parser (b0, &gho0, is_l2, 0 /* is_ip4 */ ,
-				       1 /* is_ip6 */ );
+    vnet_generic_header_offset_parser (b0, &gho0, is_l2, 0 /* is_ip4 */,
+				       1 /* is_ip6 */);
   else
     return 0;
 
   if (is_ip1 & VNET_BUFFER_F_IS_IP4)
-    vnet_generic_header_offset_parser (b1, &gho1, is_l2, 1 /* is_ip4 */ ,
-				       0 /* is_ip6 */ );
+    vnet_generic_header_offset_parser (b1, &gho1, is_l2, 1 /* is_ip4 */,
+				       0 /* is_ip6 */);
   else if (is_ip1 & VNET_BUFFER_F_IS_IP6)
-    vnet_generic_header_offset_parser (b1, &gho1, is_l2, 0 /* is_ip4 */ ,
-				       1 /* is_ip6 */ );
+    vnet_generic_header_offset_parser (b1, &gho1, is_l2, 0 /* is_ip4 */,
+				       1 /* is_ip6 */);
   else
     return 0;
 
   pkt_len0 = vlib_buffer_length_in_chain (vm, b0);
   pkt_len1 = vlib_buffer_length_in_chain (vm, b1);
 
-  if (((gho0.gho_flags & GHO_F_TCP) == 0)
-      || ((gho1.gho_flags & GHO_F_TCP) == 0))
+  if (((gho0.gho_flags & GHO_F_TCP) == 0) ||
+      ((gho1.gho_flags & GHO_F_TCP) == 0))
     return 0;
 
-  ip4_0 =
-    (ip4_header_t *) (vlib_buffer_get_current (b0) + gho0.l3_hdr_offset);
-  ip4_1 =
-    (ip4_header_t *) (vlib_buffer_get_current (b1) + gho1.l3_hdr_offset);
-  ip6_0 =
-    (ip6_header_t *) (vlib_buffer_get_current (b0) + gho0.l3_hdr_offset);
-  ip6_1 =
-    (ip6_header_t *) (vlib_buffer_get_current (b1) + gho1.l3_hdr_offset);
+  ip4_0 = (ip4_header_t *) (vlib_buffer_get_current (b0) + gho0.l3_hdr_offset);
+  ip4_1 = (ip4_header_t *) (vlib_buffer_get_current (b1) + gho1.l3_hdr_offset);
+  ip6_0 = (ip6_header_t *) (vlib_buffer_get_current (b0) + gho0.l3_hdr_offset);
+  ip6_1 = (ip6_header_t *) (vlib_buffer_get_current (b1) + gho1.l3_hdr_offset);
 
   tcp0 = (tcp_header_t *) (vlib_buffer_get_current (b0) + gho0.l4_hdr_offset);
   tcp1 = (tcp_header_t *) (vlib_buffer_get_current (b1) + gho1.l4_hdr_offset);
@@ -282,8 +276,8 @@ gro_coalesce_buffers (vlib_main_t * vm, vlib_buffer_t * b0,
   l234_sz0 = gho0.hdr_sz;
   l234_sz1 = gho1.hdr_sz;
 
-  if (gro_is_bad_packet (b0, tcp0->flags, l234_sz0)
-      || gro_is_bad_packet (b1, tcp1->flags, l234_sz1))
+  if (gro_is_bad_packet (b0, tcp0->flags, l234_sz0) ||
+      gro_is_bad_packet (b1, tcp1->flags, l234_sz1))
     return 0;
 
   sw_if_index0[VLIB_RX] = vnet_buffer (b0)->sw_if_index[VLIB_RX];
@@ -315,8 +309,8 @@ gro_coalesce_buffers (vlib_main_t * vm, vlib_buffer_t * b0,
   payload_len0 = pkt_len0 - l234_sz0;
   payload_len1 = pkt_len1 - l234_sz1;
 
-  if (pkt_len0 >= TCP_MAX_GSO_SZ || pkt_len1 >= TCP_MAX_GSO_SZ
-      || (pkt_len0 + payload_len1) >= TCP_MAX_GSO_SZ)
+  if (pkt_len0 >= TCP_MAX_GSO_SZ || pkt_len1 >= TCP_MAX_GSO_SZ ||
+      (pkt_len0 + payload_len1) >= TCP_MAX_GSO_SZ)
     return 0;
 
   if (gro_tcp_sequence_check (tcp0, tcp1, payload_len0) ==
@@ -330,7 +324,7 @@ gro_coalesce_buffers (vlib_main_t * vm, vlib_buffer_t * b0,
 }
 
 static_always_inline void
-gro_fixup_header (vlib_main_t * vm, vlib_buffer_t * b0, u32 ack_number,
+gro_fixup_header (vlib_main_t *vm, vlib_buffer_t *b0, u32 ack_number,
 		  int is_l2)
 {
   generic_header_offset_t gho0 = { 0 };
@@ -338,11 +332,11 @@ gro_fixup_header (vlib_main_t * vm, vlib_buffer_t * b0, u32 ack_number,
   u32 is_ip0 = gro_is_ip4_or_ip6_packet (b0, is_l2);
 
   if (is_ip0 & VNET_BUFFER_F_IS_IP4)
-    vnet_generic_header_offset_parser (b0, &gho0, is_l2, 1 /* is_ip4 */ ,
-				       0 /* is_ip6 */ );
+    vnet_generic_header_offset_parser (b0, &gho0, is_l2, 1 /* is_ip4 */,
+				       0 /* is_ip6 */);
   else if (is_ip0 & VNET_BUFFER_F_IS_IP6)
-    vnet_generic_header_offset_parser (b0, &gho0, is_l2, 0 /* is_ip4 */ ,
-				       1 /* is_ip6 */ );
+    vnet_generic_header_offset_parser (b0, &gho0, is_l2, 0 /* is_ip4 */,
+				       1 /* is_ip6 */);
 
   vnet_buffer2 (b0)->gso_size = b0->current_length - gho0.hdr_sz;
 
@@ -350,9 +344,8 @@ gro_fixup_header (vlib_main_t * vm, vlib_buffer_t * b0, u32 ack_number,
     {
       ip4_header_t *ip4 =
 	(ip4_header_t *) (vlib_buffer_get_current (b0) + gho0.l3_hdr_offset);
-      ip4->length =
-	clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
-			      gho0.l3_hdr_offset);
+      ip4->length = clib_host_to_net_u16 (
+	vlib_buffer_length_in_chain (vm, b0) - gho0.l3_hdr_offset);
       b0->flags |=
 	(VNET_BUFFER_F_GSO | VNET_BUFFER_F_IS_IP4 |
 	 VNET_BUFFER_F_OFFLOAD_TCP_CKSUM | VNET_BUFFER_F_OFFLOAD_IP_CKSUM);
@@ -361,12 +354,10 @@ gro_fixup_header (vlib_main_t * vm, vlib_buffer_t * b0, u32 ack_number,
     {
       ip6_header_t *ip6 =
 	(ip6_header_t *) (vlib_buffer_get_current (b0) + gho0.l3_hdr_offset);
-      ip6->payload_length =
-	clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
-			      gho0.l4_hdr_offset);
-      b0->flags |=
-	(VNET_BUFFER_F_GSO | VNET_BUFFER_F_IS_IP6 |
-	 VNET_BUFFER_F_OFFLOAD_TCP_CKSUM);
+      ip6->payload_length = clib_host_to_net_u16 (
+	vlib_buffer_length_in_chain (vm, b0) - gho0.l4_hdr_offset);
+      b0->flags |= (VNET_BUFFER_F_GSO | VNET_BUFFER_F_IS_IP6 |
+		    VNET_BUFFER_F_OFFLOAD_TCP_CKSUM);
     }
 
   tcp_header_t *tcp0 =
@@ -376,8 +367,8 @@ gro_fixup_header (vlib_main_t * vm, vlib_buffer_t * b0, u32 ack_number,
 }
 
 static_always_inline u32
-vnet_gro_flow_table_flush (vlib_main_t * vm, gro_flow_table_t * flow_table,
-			   u32 * to)
+vnet_gro_flow_table_flush (vlib_main_t *vm, gro_flow_table_t *flow_table,
+			   u32 *to)
 {
   if (flow_table->flow_table_size > 0)
     {
@@ -389,8 +380,7 @@ vnet_gro_flow_table_flush (vlib_main_t * vm, gro_flow_table_t * flow_table,
 	  if (gro_flow->n_buffers && gro_flow_is_timeout (vm, gro_flow))
 	    {
 	      // flush the packet
-	      vlib_buffer_t *b0 =
-		vlib_get_buffer (vm, gro_flow->buffer_index);
+	      vlib_buffer_t *b0 = vlib_get_buffer (vm, gro_flow->buffer_index);
 	      gro_fixup_header (vm, b0, gro_flow->last_ack_number,
 				flow_table->is_l2);
 	      to[j] = gro_flow->buffer_index;
@@ -407,9 +397,8 @@ vnet_gro_flow_table_flush (vlib_main_t * vm, gro_flow_table_t * flow_table,
 }
 
 static_always_inline void
-vnet_gro_flow_table_schedule_node_on_dispatcher (vlib_main_t * vm,
-						 gro_flow_table_t *
-						 flow_table)
+vnet_gro_flow_table_schedule_node_on_dispatcher (vlib_main_t *vm,
+						 gro_flow_table_t *flow_table)
 {
   if (gro_flow_table_is_timeout (vm, flow_table))
     {
@@ -436,13 +425,13 @@ vnet_gro_flow_table_schedule_node_on_dispatcher (vlib_main_t * vm,
 }
 
 static_always_inline u32
-vnet_gro_flow_table_inline (vlib_main_t * vm, gro_flow_table_t * flow_table,
-			    u32 bi0, u32 * to)
+vnet_gro_flow_table_inline (vlib_main_t *vm, gro_flow_table_t *flow_table,
+			    u32 bi0, u32 *to)
 {
   vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
   generic_header_offset_t gho0 = { 0 };
   gro_flow_t *gro_flow = 0;
-  gro_flow_key_t flow_key0 = { };
+  gro_flow_key_t flow_key0 = {};
   tcp_header_t *tcp0 = 0;
   u32 pkt_len0 = 0;
   int is_l2 = flow_table->is_l2;
@@ -496,15 +485,14 @@ vnet_gro_flow_table_inline (vlib_main_t * vm, gro_flow_table_t * flow_table,
       vlib_buffer_t *b_s = vlib_get_buffer (vm, bi_s);
       u32 is_ip_s = gro_is_ip4_or_ip6_packet (b_s, is_l2);
       if (is_ip_s & VNET_BUFFER_F_IS_IP4)
-	vnet_generic_header_offset_parser (b_s, &gho_s, is_l2,
-					   1 /* is_ip4 */ , 0 /* is_ip6 */ );
+	vnet_generic_header_offset_parser (b_s, &gho_s, is_l2, 1 /* is_ip4 */,
+					   0 /* is_ip6 */);
       else if (is_ip_s & VNET_BUFFER_F_IS_IP6)
-	vnet_generic_header_offset_parser (b_s, &gho_s, is_l2,
-					   0 /* is_ip4 */ , 1 /* is_ip6 */ );
+	vnet_generic_header_offset_parser (b_s, &gho_s, is_l2, 0 /* is_ip4 */,
+					   1 /* is_ip6 */);
 
       tcp_s =
-	(tcp_header_t *) (vlib_buffer_get_current (b_s) +
-			  gho_s.l4_hdr_offset);
+	(tcp_header_t *) (vlib_buffer_get_current (b_s) + gho_s.l4_hdr_offset);
       pkt_len_s = vlib_buffer_length_in_chain (vm, b_s);
       l234_sz0 = gho0.hdr_sz;
       l234_sz_s = gho_s.hdr_sz;
@@ -556,8 +544,8 @@ vnet_gro_flow_table_inline (vlib_main_t * vm, gro_flow_table_t * flow_table,
  * coalesce buffers with flow tables
  */
 static_always_inline u32
-vnet_gro_inline (vlib_main_t * vm, gro_flow_table_t * flow_table, u32 * from,
-		 u16 n_left_from, u32 * to)
+vnet_gro_inline (vlib_main_t *vm, gro_flow_table_t *flow_table, u32 *from,
+		 u16 n_left_from, u32 *to)
 {
   u16 count = 0, i = 0;
 
@@ -571,8 +559,7 @@ vnet_gro_inline (vlib_main_t * vm, gro_flow_table_t * flow_table, u32 * from,
  * coalesce buffers in opportunistic way without flow tables
  */
 static_always_inline u32
-vnet_gro_simple_inline (vlib_main_t * vm, u32 * from, u16 n_left_from,
-			int is_l2)
+vnet_gro_simple_inline (vlib_main_t *vm, u32 *from, u16 n_left_from, int is_l2)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   vlib_get_buffers (vm, from, b, n_left_from);
@@ -584,9 +571,8 @@ vnet_gro_simple_inline (vlib_main_t * vm, u32 * from, u16 n_left_from,
 	  if (PREDICT_TRUE (((b[bi]->flags & VNET_BUFFER_F_GSO) == 0)))
 	    {
 	      u32 ret;
-	      if ((ret =
-		   gro_coalesce_buffers (vm, b[0], b[bi], from[bi],
-					 is_l2)) != 0)
+	      if ((ret = gro_coalesce_buffers (vm, b[0], b[bi], from[bi],
+					       is_l2)) != 0)
 		{
 		  n_left_from -= 1;
 		  bi += 1;

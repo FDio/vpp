@@ -50,7 +50,7 @@
 /*? %%clicmd:group_label Init functions %% ?*/
 
 static int
-comma_split (u8 * s, u8 ** a, u8 ** b)
+comma_split (u8 *s, u8 **a, u8 **b)
 {
   *a = s;
 
@@ -72,8 +72,8 @@ comma_split (u8 * s, u8 ** a, u8 ** b)
  * @returns 0 on success, otherwise a clib_error_t *.
  */
 
-clib_error_t *vlib_sort_init_exit_functions
-  (_vlib_init_function_list_elt_t ** head)
+clib_error_t *
+vlib_sort_init_exit_functions (_vlib_init_function_list_elt_t **head)
 {
   uword *index_by_name;
   uword *reg_by_index;
@@ -120,8 +120,8 @@ clib_error_t *vlib_sort_init_exit_functions
 	{
 	  this_constraint_c = these_constraints[0];
 
-	  constraint_tuple = format (0, "%s,%s%c", init_f_name,
-				     this_constraint_c, 0);
+	  constraint_tuple =
+	    format (0, "%s,%s%c", init_f_name, this_constraint_c, 0);
 	  vec_add1 (constraints, constraint_tuple);
 	  these_constraints++;
 	}
@@ -131,8 +131,8 @@ clib_error_t *vlib_sort_init_exit_functions
 	{
 	  this_constraint_c = these_constraints[0];
 
-	  constraint_tuple = format (0, "%s,%s%c",
-				     this_constraint_c, init_f_name, 0);
+	  constraint_tuple =
+	    format (0, "%s,%s%c", this_constraint_c, init_f_name, 0);
 	  vec_add1 (constraints, constraint_tuple);
 	  these_constraints++;
 	}
@@ -157,8 +157,8 @@ clib_error_t *vlib_sort_init_exit_functions
 	  p = hash_get_mem (index_by_name, this_constraint_c);
 	  if (p == 0)
 	    {
-	      clib_warning
-		("order constraint fcn '%s' not found", this_constraint_c);
+	      clib_warning ("order constraint fcn '%s' not found",
+			    this_constraint_c);
 	      these_constraints++;
 	      continue;
 	    }
@@ -170,8 +170,8 @@ clib_error_t *vlib_sort_init_exit_functions
 	      continue;
 	    }
 
-	  constraint_tuple = format (0, "%s,%s%c", prev_name,
-				     this_constraint_c, 0);
+	  constraint_tuple =
+	    format (0, "%s,%s%c", prev_name, this_constraint_c, 0);
 	  vec_add1 (constraints, constraint_tuple);
 	  prev_name = this_constraint_c;
 	  these_constraints++;
@@ -197,8 +197,8 @@ clib_error_t *vlib_sort_init_exit_functions
        */
       if (p == 0)
 	{
-	  clib_warning ("init function '%s' not found (before '%s')",
-			a_name, b_name);
+	  clib_warning ("init function '%s' not found (before '%s')", a_name,
+			b_name);
 	  continue;
 	}
       a_index = p[0];
@@ -206,8 +206,8 @@ clib_error_t *vlib_sort_init_exit_functions
       p = hash_get_mem (index_by_name, b_name);
       if (p == 0)
 	{
-	  clib_warning ("init function '%s' not found (after '%s')",
-			b_name, a_name);
+	  clib_warning ("init function '%s' not found (after '%s')", b_name,
+			a_name);
 	  continue;
 	}
       b_index = p[0];
@@ -241,14 +241,13 @@ again:
 	closure[i][i] = 1;
 	goto again;
       }
-    item_constrained:
-      ;
+    item_constrained:;
     }
 
   /* see if we got a partial order... */
   if (vec_len (result) != n_init_fns)
-    return clib_error_return
-      (0, "Failed to find a suitable init function order!");
+    return clib_error_return (
+      0, "Failed to find a suitable init function order!");
 
   /*
    * We win.
@@ -270,12 +269,10 @@ again:
     }
 
   /* Finally, clean up all the fine data we allocated */
-  /* *INDENT-OFF* */
+
   hash_foreach_pair (hp, index_by_name,
-  ({
-    vec_add1 (keys_to_delete, (u8 *)hp->key);
-  }));
-  /* *INDENT-ON* */
+		     ({ vec_add1 (keys_to_delete, (u8 *) hp->key); }));
+
   hash_free (index_by_name);
   for (i = 0; i < vec_len (keys_to_delete); i++)
     vec_free (keys_to_delete[i]);
@@ -330,8 +327,8 @@ again:
  */
 
 static inline clib_error_t *
-call_init_exit_functions_internal (vlib_main_t * vm,
-				   _vlib_init_function_list_elt_t ** headp,
+call_init_exit_functions_internal (vlib_main_t *vm,
+				   _vlib_init_function_list_elt_t **headp,
 				   int call_once, int do_sort)
 {
   clib_error_t *error = 0;
@@ -357,25 +354,25 @@ call_init_exit_functions_internal (vlib_main_t * vm,
 }
 
 clib_error_t *
-vlib_call_init_exit_functions (vlib_main_t * vm,
-			       _vlib_init_function_list_elt_t ** headp,
+vlib_call_init_exit_functions (vlib_main_t *vm,
+			       _vlib_init_function_list_elt_t **headp,
 			       int call_once)
 {
   return call_init_exit_functions_internal (vm, headp, call_once,
-					    1 /* do_sort */ );
+					    1 /* do_sort */);
 }
 
 clib_error_t *
-vlib_call_init_exit_functions_no_sort (vlib_main_t * vm,
-				       _vlib_init_function_list_elt_t **
-				       headp, int call_once)
+vlib_call_init_exit_functions_no_sort (vlib_main_t *vm,
+				       _vlib_init_function_list_elt_t **headp,
+				       int call_once)
 {
   return call_init_exit_functions_internal (vm, headp, call_once,
-					    0 /* do_sort */ );
+					    0 /* do_sort */);
 }
 
 clib_error_t *
-vlib_call_all_init_functions (vlib_main_t * vm)
+vlib_call_all_init_functions (vlib_main_t *vm)
 {
   /* Call placeholder functions to make sure purely static modules are
      linked in. */
@@ -383,27 +380,27 @@ vlib_call_all_init_functions (vlib_main_t * vm)
   foreach_vlib_module_reference;
 #undef _
 
-  return vlib_call_init_exit_functions
-    (vm, &vm->init_function_registrations, 1 /* call_once */ );
+  return vlib_call_init_exit_functions (vm, &vm->init_function_registrations,
+					1 /* call_once */);
 }
 
 clib_error_t *
-vlib_call_all_main_loop_enter_functions (vlib_main_t * vm)
+vlib_call_all_main_loop_enter_functions (vlib_main_t *vm)
 {
-  return vlib_call_init_exit_functions
-    (vm, &vm->main_loop_enter_function_registrations, 1 /* call_once */ );
+  return vlib_call_init_exit_functions (
+    vm, &vm->main_loop_enter_function_registrations, 1 /* call_once */);
 }
 
 clib_error_t *
-vlib_call_all_main_loop_exit_functions (vlib_main_t * vm)
+vlib_call_all_main_loop_exit_functions (vlib_main_t *vm)
 {
-  return vlib_call_init_exit_functions
-    (vm, &vm->main_loop_exit_function_registrations, 1 /* call_once */ );
+  return vlib_call_init_exit_functions (
+    vm, &vm->main_loop_exit_function_registrations, 1 /* call_once */);
 }
 
 clib_error_t *
-vlib_call_all_config_functions (vlib_main_t * vm,
-				unformat_input_t * input, int is_early)
+vlib_call_all_config_functions (vlib_main_t *vm, unformat_input_t *input,
+				int is_early)
 {
   clib_error_t *error = 0;
   vlib_config_function_runtime_t *c, **all;
@@ -488,9 +485,8 @@ vlib_init_dump (void)
 }
 
 static clib_error_t *
-show_init_function_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+show_init_function_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			       vlib_cli_command_t *cmd)
 {
   int which = 1;
   int verbose = 0;
@@ -589,8 +585,8 @@ show_init_function_command_fn (vlib_main_t * vm,
 	    p = hash_get (reg_by_index, p[0]);
 	    ASSERT (p != 0);
 	    successor = (_vlib_init_function_list_elt_t *) p[0];
-	    vlib_cli_output (vm, "  before '%s' [%lld]",
-			     successor->name, successor_index);
+	    vlib_cli_output (vm, "  before '%s' [%lld]", successor->name,
+			     successor_index);
 	    runs_before++;
 	  }
 	runs_after = this_reg->runs_after;
@@ -601,8 +597,7 @@ show_init_function_command_fn (vlib_main_t * vm,
 	    p = hash_get_mem (index_by_name, runs_after[0]);
 	    if (p == 0)
 	      {
-		clib_warning ("couldn't find predecessor '%s'",
-			      runs_after[0]);
+		clib_warning ("couldn't find predecessor '%s'", runs_after[0]);
 		runs_after++;
 		continue;
 	      }
@@ -610,8 +605,8 @@ show_init_function_command_fn (vlib_main_t * vm,
 	    p = hash_get (reg_by_index, p[0]);
 	    ASSERT (p != 0);
 	    predecessor = (_vlib_init_function_list_elt_t *) p[0];
-	    vlib_cli_output (vm, "  after '%s' [%lld]",
-			     predecessor->name, predecessor_index);
+	    vlib_cli_output (vm, "  after '%s' [%lld]", predecessor->name,
+			     predecessor_index);
 	    runs_after++;
 	  }
 	init_order = this_reg->init_order;
@@ -631,18 +626,16 @@ show_init_function_command_fn (vlib_main_t * vm,
 	    p = hash_get (reg_by_index, p[0]);
 	    ASSERT (p != 0);
 	    inorder = (_vlib_init_function_list_elt_t *) p[0];
-	    vlib_cli_output (vm, "  in order '%s' [%lld]",
-			     inorder->name, inorder_index);
+	    vlib_cli_output (vm, "  in order '%s' [%lld]", inorder->name,
+			     inorder_index);
 	    init_order++;
 	  }
       }
     }
-  /* *INDENT-OFF* */
+
   hash_foreach_pair (hp, index_by_name,
-  ({
-    vec_add1 (keys_to_delete, (u8 *)hp->key);
-  }));
-  /* *INDENT-ON* */
+		     ({ vec_add1 (keys_to_delete, (u8 *) hp->key); }));
+
   hash_free (index_by_name);
   for (i = 0; i < vec_len (keys_to_delete); i++)
     vec_free (keys_to_delete[i]);
@@ -659,13 +652,12 @@ show_init_function_command_fn (vlib_main_t * vm,
  * @cliexstart{show init-function [init | enter | exit] [verbose [nn]]}
  * @cliexend
  ?*/
-/* *INDENT-OFF* */
+
 VLIB_CLI_COMMAND (show_init_function, static) = {
   .path = "show init-function",
   .short_help = "show init-function [init | enter | exit][verbose [nn]]",
   .function = show_init_function_command_fn,
 };
-/* *INDENT-ON* */
 
 
 /*

@@ -27,8 +27,7 @@ create_cmd::create_cmd(HW::item<bool>& item,
   , m_bd(bd)
   , m_tx_itf(tx_itf)
   , m_is_bvi(is_bvi)
-{
-}
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
@@ -73,8 +72,7 @@ delete_cmd::delete_cmd(HW::item<bool>& item,
   , m_mac(mac)
   , m_bd(bd)
   , m_is_bvi(is_bvi)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
@@ -113,9 +111,7 @@ delete_cmd::to_string() const
   return (s.str());
 }
 
-dump_cmd::dump_cmd()
-{
-}
+dump_cmd::dump_cmd() {}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const

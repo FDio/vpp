@@ -32,7 +32,7 @@ typedef struct
   int non_random_keys;
   uword *key_hash;
   u8 **keys;
-    BVT (clib_bihash) hash;
+  BVT (clib_bihash) hash;
   clib_time_t clib_time;
 
   unformat_input_t *input;
@@ -48,7 +48,7 @@ vl (void *v)
 }
 
 static clib_error_t *
-test_bihash (test_main_t * tm)
+test_bihash (test_main_t *tm)
 {
   int i, j;
   uword *p;
@@ -61,8 +61,8 @@ test_bihash (test_main_t * tm)
 
   BV (clib_bihash_init) (h, "test", tm->nbuckets, 3ULL << 30);
 
-  fformat (stdout, "Pick %lld unique %s keys...\n",
-	   tm->nitems, tm->non_random_keys ? "non-random" : "random");
+  fformat (stdout, "Pick %lld unique %s keys...\n", tm->nitems,
+	   tm->non_random_keys ? "non-random" : "random");
 
   for (i = 0; i < tm->nitems; i++)
     {
@@ -102,19 +102,18 @@ test_bihash (test_main_t * tm)
       kv.key = (u64) tm->keys[i];
       kv.value = i + 1;
 
-      BV (clib_bihash_add_del) (h, &kv, 1 /* is_add */ );
+      BV (clib_bihash_add_del) (h, &kv, 1 /* is_add */);
 
       if (tm->verbose > 1)
 	{
 	  fformat (stdout, "--------------------\n");
 	  fformat (stdout, "After adding key %llu value %lld...\n",
 		   tm->keys[i], (u64) (i + 1));
-	  fformat (stdout, "%U", BV (format_bihash), h,
-		   2 /* very verbose */ );
+	  fformat (stdout, "%U", BV (format_bihash), h, 2 /* very verbose */);
 	}
     }
 
-  fformat (stdout, "%U", BV (format_bihash), h, 0 /* very verbose */ );
+  fformat (stdout, "%U", BV (format_bihash), h, 0 /* very verbose */);
 
   fformat (stdout, "Search for items %d times...\n", tm->search_iter);
 
@@ -130,9 +129,8 @@ test_bihash (test_main_t * tm)
 	      clib_warning ("[%d] search for key %lld failed unexpectedly\n",
 			    i, tm->keys[i]);
 	  if (kv.value != (u64) (i + 1))
-	    clib_warning
-	      ("[%d] search for key %lld returned %lld, not %lld\n", i,
-	       tm->keys, kv.value, (u64) (i + 1));
+	    clib_warning ("[%d] search for key %lld returned %lld, not %lld\n",
+			  i, tm->keys, kv.value, (u64) (i + 1));
 	}
     }
 
@@ -178,7 +176,7 @@ test_bihash (test_main_t * tm)
 
       kv.key = (u64) tm->keys[i];
       kv.value = (u64) (i + 1);
-      rv = BV (clib_bihash_add_del) (h, &kv, 0 /* is_add */ );
+      rv = BV (clib_bihash_add_del) (h, &kv, 0 /* is_add */);
 
       if (rv < 0)
 	clib_warning ("delete key %lld not ok but should be", tm->keys[i]);
@@ -191,14 +189,13 @@ test_bihash (test_main_t * tm)
 	      rv = BV (clib_bihash_search) (h, &kv, &kv);
 	      if (j <= i && rv >= 0)
 		{
-		  clib_warning
-		    ("i %d j %d search ok but should not be, value %lld",
-		     i, j, kv.value);
+		  clib_warning (
+		    "i %d j %d search ok but should not be, value %lld", i, j,
+		    kv.value);
 		}
 	      if (j > i && rv < 0)
 		{
-		  clib_warning ("i %d j %d search not ok but should be",
-				i, j);
+		  clib_warning ("i %d j %d search not ok but should be", i, j);
 		}
 	    }
 	}
@@ -206,12 +203,12 @@ test_bihash (test_main_t * tm)
 
   fformat (stdout, "After deletions, should be empty...\n");
 
-  fformat (stdout, "%U", BV (format_bihash), h, 0 /* very verbose */ );
+  fformat (stdout, "%U", BV (format_bihash), h, 0 /* very verbose */);
   return 0;
 }
 
 clib_error_t *
-test_bihash_main (test_main_t * tm)
+test_bihash_main (test_main_t *tm)
 {
   unformat_input_t *i = tm->input;
   clib_error_t *error;

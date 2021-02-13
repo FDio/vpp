@@ -18,7 +18,7 @@
 #include <vnet/ip/ip.h>
 
 u8 *
-format_ip_address (u8 * s, va_list * args)
+format_ip_address (u8 *s, va_list *args)
 {
   ip_address_t *a = va_arg (*args, ip_address_t *);
   u8 ver = ip_addr_version (a);
@@ -38,7 +38,7 @@ format_ip_address (u8 * s, va_list * args)
 }
 
 uword
-unformat_ip_address (unformat_input_t * input, va_list * args)
+unformat_ip_address (unformat_input_t *input, va_list *args)
 {
   ip_address_t *a = va_arg (*args, ip_address_t *);
 
@@ -53,7 +53,7 @@ unformat_ip_address (unformat_input_t * input, va_list * args)
 }
 
 u8 *
-format_ip_prefix (u8 * s, va_list * args)
+format_ip_prefix (u8 *s, va_list *args)
 {
   ip_prefix_t *a = va_arg (*args, ip_prefix_t *);
   return format (s, "%U/%d", format_ip_address, &ip_prefix_addr (a),
@@ -61,7 +61,7 @@ format_ip_prefix (u8 * s, va_list * args)
 }
 
 uword
-unformat_ip_prefix (unformat_input_t * input, va_list * args)
+unformat_ip_prefix (unformat_input_t *input, va_list *args)
 {
   ip_prefix_t *a = va_arg (*args, ip_prefix_t *);
   /* %d writes more than a u8 */
@@ -84,7 +84,7 @@ unformat_ip_prefix (unformat_input_t * input, va_list * args)
 }
 
 u16
-ip_address_size (const ip_address_t * a)
+ip_address_size (const ip_address_t *a)
 {
   switch (ip_addr_version (a))
     {
@@ -99,7 +99,7 @@ ip_address_size (const ip_address_t * a)
 }
 
 bool
-ip_address_is_zero (const ip_address_t * ip)
+ip_address_is_zero (const ip_address_t *ip)
 {
   switch (ip_addr_version (ip))
     {
@@ -114,7 +114,7 @@ ip_address_is_zero (const ip_address_t * ip)
 }
 
 int
-ip_address_cmp (const ip_address_t * ip1, const ip_address_t * ip2)
+ip_address_cmp (const ip_address_t *ip1, const ip_address_t *ip2)
 {
   int res = 0;
   if (ip_addr_version (ip1) != ip_addr_version (ip2))
@@ -130,7 +130,7 @@ ip_address_cmp (const ip_address_t * ip1, const ip_address_t * ip2)
 }
 
 void
-ip_address_copy (ip_address_t * dst, const ip_address_t * src)
+ip_address_copy (ip_address_t *dst, const ip_address_t *src)
 {
   if (AF_IP4 == ip_addr_version (src))
     {
@@ -146,14 +146,14 @@ ip_address_copy (ip_address_t * dst, const ip_address_t * src)
 }
 
 u8 *
-ip_addr_bytes (ip_address_t * ip)
+ip_addr_bytes (ip_address_t *ip)
 {
   switch (ip->version)
     {
     case AF_IP4:
-      return (u8 *) & ip_addr_v4 (ip);
+      return (u8 *) &ip_addr_v4 (ip);
     case AF_IP6:
-      return (u8 *) & ip_addr_v6 (ip);
+      return (u8 *) &ip_addr_v6 (ip);
       break;
     }
   ASSERT (0);
@@ -161,7 +161,7 @@ ip_addr_bytes (ip_address_t * ip)
 }
 
 void
-ip_address_copy_addr (void *dst, const ip_address_t * src)
+ip_address_copy_addr (void *dst, const ip_address_t *src)
 {
   switch (src->version)
     {
@@ -203,9 +203,8 @@ ip_address_family_to_link_type (ip_address_family_t af)
   return (VNET_LINK_IP4);
 }
 
-
 void
-ip_address_set (ip_address_t * dst, const void *src, u8 version)
+ip_address_set (ip_address_t *dst, const void *src, u8 version)
 {
   ip_addr_version (dst) = version;
 
@@ -250,22 +249,22 @@ ip_address_family_from_fib_proto (fib_protocol_t fp)
 }
 
 fib_protocol_t
-ip_address_to_46 (const ip_address_t * addr, ip46_address_t * a)
+ip_address_to_46 (const ip_address_t *addr, ip46_address_t *a)
 {
   *a = ip_addr_46 (addr);
   return (ip_address_family_to_fib_proto (ip_addr_version (addr)));
 }
 
 void
-ip_address_from_46 (const ip46_address_t * nh,
-		    fib_protocol_t fproto, ip_address_t * ip)
+ip_address_from_46 (const ip46_address_t *nh, fib_protocol_t fproto,
+		    ip_address_t *ip)
 {
   ip_addr_46 (ip) = *nh;
   ip_addr_version (ip) = ip_address_family_from_fib_proto (fproto);
 }
 
 static void
-ip_prefix_normalize_ip4 (ip4_address_t * ip4, u8 preflen)
+ip_prefix_normalize_ip4 (ip4_address_t *ip4, u8 preflen)
 {
   u32 mask = ~0;
 
@@ -282,7 +281,7 @@ ip_prefix_normalize_ip4 (ip4_address_t * ip4, u8 preflen)
 }
 
 static void
-ip_prefix_normalize_ip6 (ip6_address_t * ip6, u8 preflen)
+ip_prefix_normalize_ip6 (ip6_address_t *ip6, u8 preflen)
 {
   u8 mask_6[16];
   u32 *m;
@@ -299,7 +298,7 @@ ip_prefix_normalize_ip6 (ip6_address_t * ip6, u8 preflen)
 
   i1 = preflen % 32;
   i0 = preflen / 32;
-  m = (u32 *) & mask_6[0];
+  m = (u32 *) &mask_6[0];
 
   for (j = 0; j < i0; j++)
     {
@@ -318,7 +317,7 @@ ip_prefix_normalize_ip6 (ip6_address_t * ip6, u8 preflen)
 }
 
 void
-ip_prefix_normalize (ip_prefix_t * a)
+ip_prefix_normalize (ip_prefix_t *a)
 {
   u8 preflen = ip_prefix_len (a);
 
@@ -344,7 +343,7 @@ ip_prefix_copy (void *dst, void *src)
 }
 
 int
-ip_prefix_cmp (ip_prefix_t * p1, ip_prefix_t * p2)
+ip_prefix_cmp (ip_prefix_t *p1, ip_prefix_t *p2)
 {
   int cmp = 0;
 
@@ -368,7 +367,7 @@ ip_prefix_cmp (ip_prefix_t * p1, ip_prefix_t * p2)
 }
 
 static bool
-ip4_prefix_validate (const ip_prefix_t * ip)
+ip4_prefix_validate (const ip_prefix_t *ip)
 {
   ip4_address_t ip4_addr, ip4_mask;
 
@@ -382,7 +381,7 @@ ip4_prefix_validate (const ip_prefix_t * ip)
 }
 
 static bool
-ip6_prefix_validate (const ip_prefix_t * ip)
+ip6_prefix_validate (const ip_prefix_t *ip)
 {
   ip6_address_t ip6_addr, ip6_mask;
 
@@ -397,7 +396,7 @@ ip6_prefix_validate (const ip_prefix_t * ip)
 }
 
 bool
-ip_prefix_validate (const ip_prefix_t * ip)
+ip_prefix_validate (const ip_prefix_t *ip)
 {
   switch (ip_prefix_version (ip))
     {
@@ -411,7 +410,7 @@ ip_prefix_validate (const ip_prefix_t * ip)
 }
 
 void
-ip4_address_normalize (ip4_address_t * ip4, u8 preflen)
+ip4_address_normalize (ip4_address_t *ip4, u8 preflen)
 {
   ASSERT (preflen <= 32);
   if (preflen == 0)
@@ -421,7 +420,7 @@ ip4_address_normalize (ip4_address_t * ip4, u8 preflen)
 }
 
 void
-ip6_address_normalize (ip6_address_t * ip6, u8 preflen)
+ip6_address_normalize (ip6_address_t *ip6, u8 preflen)
 {
   ASSERT (preflen <= 128);
   if (preflen == 0)
@@ -441,7 +440,7 @@ ip6_address_normalize (ip6_address_t * ip6, u8 preflen)
 }
 
 void
-ip4_preflen_to_mask (u8 pref_len, ip4_address_t * ip)
+ip4_preflen_to_mask (u8 pref_len, ip4_address_t *ip)
 {
   if (pref_len == 0)
     ip->as_u32 = 0;
@@ -450,7 +449,7 @@ ip4_preflen_to_mask (u8 pref_len, ip4_address_t * ip)
 }
 
 u32
-ip4_mask_to_preflen (ip4_address_t * mask)
+ip4_mask_to_preflen (ip4_address_t *mask)
 {
   if (mask->as_u32 == 0)
     return 0;
@@ -458,8 +457,8 @@ ip4_mask_to_preflen (ip4_address_t * mask)
 }
 
 void
-ip4_prefix_max_address_host_order (ip4_address_t * ip, u8 plen,
-				   ip4_address_t * res)
+ip4_prefix_max_address_host_order (ip4_address_t *ip, u8 plen,
+				   ip4_address_t *res)
 {
   u32 not_mask;
   not_mask = (1 << (32 - plen)) - 1;
@@ -467,7 +466,7 @@ ip4_prefix_max_address_host_order (ip4_address_t * ip, u8 plen,
 }
 
 void
-ip6_preflen_to_mask (u8 pref_len, ip6_address_t * mask)
+ip6_preflen_to_mask (u8 pref_len, ip6_address_t *mask)
 {
   if (pref_len == 0)
     {
@@ -489,8 +488,8 @@ ip6_preflen_to_mask (u8 pref_len, ip6_address_t * mask)
 }
 
 void
-ip6_prefix_max_address_host_order (ip6_address_t * ip, u8 plen,
-				   ip6_address_t * res)
+ip6_prefix_max_address_host_order (ip6_address_t *ip, u8 plen,
+				   ip6_address_t *res)
 {
   u64 not_mask;
   if (plen == 0)
@@ -512,7 +511,7 @@ ip6_prefix_max_address_host_order (ip6_address_t * ip, u8 plen,
 }
 
 u32
-ip6_mask_to_preflen (ip6_address_t * mask)
+ip6_mask_to_preflen (ip6_address_t *mask)
 {
   if (mask->as_u64[1] != 0)
     return 128 - log2_first_set (clib_net_to_host_u64 (mask->as_u64[1]));

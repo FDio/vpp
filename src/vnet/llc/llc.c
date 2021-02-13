@@ -44,7 +44,7 @@
 llc_main_t llc_main;
 
 u8 *
-format_llc_protocol (u8 * s, va_list * args)
+format_llc_protocol (u8 *s, va_list *args)
 {
   llc_protocol_t p = va_arg (*args, u32);
   llc_main_t *pm = &llc_main;
@@ -59,7 +59,7 @@ format_llc_protocol (u8 * s, va_list * args)
 }
 
 u8 *
-format_llc_header_with_length (u8 * s, va_list * args)
+format_llc_header_with_length (u8 *s, va_list *args)
 {
   llc_main_t *pm = &llc_main;
   llc_header_t *h = va_arg (*args, llc_header_t *);
@@ -73,8 +73,7 @@ format_llc_header_with_length (u8 * s, va_list * args)
 
   indent = format_get_indent (s);
 
-  s = format (s, "LLC %U -> %U",
-	      format_llc_protocol, h->src_sap,
+  s = format (s, "LLC %U -> %U", format_llc_protocol, h->src_sap,
 	      format_llc_protocol, h->dst_sap);
 
   if (h->control != 0x03)
@@ -85,17 +84,16 @@ format_llc_header_with_length (u8 * s, va_list * args)
       llc_protocol_info_t *pi = llc_get_protocol_info (pm, p);
       vlib_node_t *node = vlib_get_node (pm->vlib_main, pi->node_index);
       if (node->format_buffer)
-	s = format (s, "\n%U%U",
-		    format_white_space, indent,
-		    node->format_buffer, (void *) (h + 1),
-		    max_header_bytes - header_bytes);
+	s =
+	  format (s, "\n%U%U", format_white_space, indent, node->format_buffer,
+		  (void *) (h + 1), max_header_bytes - header_bytes);
     }
 
   return s;
 }
 
 u8 *
-format_llc_header (u8 * s, va_list * args)
+format_llc_header (u8 *s, va_list *args)
 {
   llc_header_t *h = va_arg (*args, llc_header_t *);
   return format (s, "%U", format_llc_header_with_length, h, 0);
@@ -103,7 +101,7 @@ format_llc_header (u8 * s, va_list * args)
 
 /* Returns llc protocol as an int in host byte order. */
 uword
-unformat_llc_protocol (unformat_input_t * input, va_list * args)
+unformat_llc_protocol (unformat_input_t *input, va_list *args)
 {
   u8 *result = va_arg (*args, u8 *);
   llc_main_t *pm = &llc_main;
@@ -131,7 +129,7 @@ unformat_llc_protocol (unformat_input_t * input, va_list * args)
 }
 
 uword
-unformat_llc_header (unformat_input_t * input, va_list * args)
+unformat_llc_header (unformat_input_t *input, va_list *args)
 {
   u8 **result = va_arg (*args, u8 **);
   llc_header_t _h, *h = &_h;
@@ -156,9 +154,8 @@ unformat_llc_header (unformat_input_t * input, va_list * args)
 }
 
 static u8 *
-llc_build_rewrite (vnet_main_t * vnm,
-		   u32 sw_if_index,
-		   vnet_link_t link_type, const void *dst_address)
+llc_build_rewrite (vnet_main_t *vnm, u32 sw_if_index, vnet_link_t link_type,
+		   const void *dst_address)
 {
   llc_header_t *h;
   u8 *rewrite = NULL;
@@ -166,8 +163,11 @@ llc_build_rewrite (vnet_main_t * vnm,
 
   switch (link_type)
     {
-#define _(a,b) case VNET_LINK_##a: protocol = LLC_PROTOCOL_##b; break
-      _(IP4, ip4);
+#define _(a, b)                                                               \
+  case VNET_LINK_##a:                                                         \
+    protocol = LLC_PROTOCOL_##b;                                              \
+    break
+      _ (IP4, ip4);
 #undef _
     default:
       return (NULL);
@@ -181,17 +181,15 @@ llc_build_rewrite (vnet_main_t * vnm,
   return (rewrite);
 }
 
-/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (llc_hw_interface_class) = {
   .name = "LLC",
   .format_header = format_llc_header_with_length,
   .unformat_header = unformat_llc_header,
   .build_rewrite = llc_build_rewrite,
 };
-/* *INDENT-ON* */
 
 static void
-add_protocol (llc_main_t * pm, llc_protocol_t protocol, char *protocol_name)
+add_protocol (llc_main_t *pm, llc_protocol_t protocol, char *protocol_name)
 {
   llc_protocol_info_t *pi;
   u32 i;
@@ -208,7 +206,7 @@ add_protocol (llc_main_t * pm, llc_protocol_t protocol, char *protocol_name)
 }
 
 static clib_error_t *
-llc_init (vlib_main_t * vm)
+llc_init (vlib_main_t *vm)
 {
   clib_error_t *error;
   llc_main_t *pm = &llc_main;
@@ -219,7 +217,7 @@ llc_init (vlib_main_t * vm)
   pm->protocol_info_by_name = hash_create_string (0, sizeof (uword));
   pm->protocol_info_by_protocol = hash_create (0, sizeof (uword));
 
-#define _(f,n) add_protocol (pm, LLC_PROTOCOL_##f, #f);
+#define _(f, n) add_protocol (pm, LLC_PROTOCOL_##f, #f);
   foreach_llc_protocol;
 #undef _
 
@@ -230,7 +228,6 @@ llc_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (llc_init);
-
 
 /*
  * fd.io coding-style-patch-verification: ON

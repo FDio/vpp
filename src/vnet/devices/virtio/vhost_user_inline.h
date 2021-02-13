@@ -18,7 +18,7 @@
 #include <vppinfra/elog.h>
 
 static_always_inline void *
-map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
+map_guest_mem (vhost_user_intf_t *vui, uword addr, u32 *hint)
 {
   int i = *hint;
   if (PREDICT_TRUE ((vui->regions[i].guest_phys_addr <= addr) &&
@@ -33,27 +33,27 @@ map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
   al = _mm_set1_epi64x (addr + 1);
   ah = _mm_set1_epi64x (addr);
 
-  rl = _mm_loadu_si128 ((__m128i *) & vui->region_guest_addr_lo[0]);
+  rl = _mm_loadu_si128 ((__m128i *) &vui->region_guest_addr_lo[0]);
   rl = _mm_cmpgt_epi64 (al, rl);
-  rh = _mm_loadu_si128 ((__m128i *) & vui->region_guest_addr_hi[0]);
+  rh = _mm_loadu_si128 ((__m128i *) &vui->region_guest_addr_hi[0]);
   rh = _mm_cmpgt_epi64 (rh, ah);
   r = _mm_and_si128 (rl, rh);
 
-  rl = _mm_loadu_si128 ((__m128i *) & vui->region_guest_addr_lo[2]);
+  rl = _mm_loadu_si128 ((__m128i *) &vui->region_guest_addr_lo[2]);
   rl = _mm_cmpgt_epi64 (al, rl);
-  rh = _mm_loadu_si128 ((__m128i *) & vui->region_guest_addr_hi[2]);
+  rh = _mm_loadu_si128 ((__m128i *) &vui->region_guest_addr_hi[2]);
   rh = _mm_cmpgt_epi64 (rh, ah);
   r = _mm_blend_epi16 (r, _mm_and_si128 (rl, rh), 0x22);
 
-  rl = _mm_loadu_si128 ((__m128i *) & vui->region_guest_addr_lo[4]);
+  rl = _mm_loadu_si128 ((__m128i *) &vui->region_guest_addr_lo[4]);
   rl = _mm_cmpgt_epi64 (al, rl);
-  rh = _mm_loadu_si128 ((__m128i *) & vui->region_guest_addr_hi[4]);
+  rh = _mm_loadu_si128 ((__m128i *) &vui->region_guest_addr_hi[4]);
   rh = _mm_cmpgt_epi64 (rh, ah);
   r = _mm_blend_epi16 (r, _mm_and_si128 (rl, rh), 0x44);
 
-  rl = _mm_loadu_si128 ((__m128i *) & vui->region_guest_addr_lo[6]);
+  rl = _mm_loadu_si128 ((__m128i *) &vui->region_guest_addr_lo[6]);
   rl = _mm_cmpgt_epi64 (al, rl);
-  rh = _mm_loadu_si128 ((__m128i *) & vui->region_guest_addr_hi[6]);
+  rh = _mm_loadu_si128 ((__m128i *) &vui->region_guest_addr_hi[6]);
   rh = _mm_cmpgt_epi64 (rh, ah);
   r = _mm_blend_epi16 (r, _mm_and_si128 (rl, rh), 0x88);
 
@@ -135,17 +135,16 @@ vhost_map_guest_mem_done:
 	}
     }
 #endif
-  /* *INDENT-OFF* */
-  ELOG_TYPE_DECLARE (el) =
-  {
+
+  ELOG_TYPE_DECLARE (el) = {
     .format = "failed to map guest mem addr %lx",
     .format_args = "i8",
   };
-  /* *INDENT-ON* */
+
   struct
   {
     uword addr;
-  } *ed;
+  } * ed;
   ed = ELOG_DATA (&vlib_global_main.elog_main, el);
   ed->addr = addr;
   *hint = 0;
@@ -153,7 +152,7 @@ vhost_map_guest_mem_done:
 }
 
 static_always_inline void *
-map_user_mem (vhost_user_intf_t * vui, uword addr)
+map_user_mem (vhost_user_intf_t *vui, uword addr)
 {
   int i;
   for (i = 0; i < vui->nregions; i++)
@@ -172,11 +171,11 @@ map_user_mem (vhost_user_intf_t * vui, uword addr)
 #define VHOST_LOG_PAGE 0x1000
 
 static_always_inline void
-vhost_user_log_dirty_pages_2 (vhost_user_intf_t * vui,
-			      u64 addr, u64 len, u8 is_host_address)
+vhost_user_log_dirty_pages_2 (vhost_user_intf_t *vui, u64 addr, u64 len,
+			      u8 is_host_address)
 {
-  if (PREDICT_TRUE (vui->log_base_addr == 0
-		    || !(vui->features & VIRTIO_FEATURE (VHOST_F_LOG_ALL))))
+  if (PREDICT_TRUE (vui->log_base_addr == 0 ||
+		    !(vui->features & VIRTIO_FEATURE (VHOST_F_LOG_ALL))))
     {
       return;
     }
@@ -199,15 +198,16 @@ vhost_user_log_dirty_pages_2 (vhost_user_intf_t * vui,
     }
 }
 
-
-#define vhost_user_log_dirty_ring(vui, vq, member) \
-  if (PREDICT_FALSE(vq->log_used)) { \
-    vhost_user_log_dirty_pages_2(vui, vq->log_guest_addr + STRUCT_OFFSET_OF(vring_used_t, member), \
-                             sizeof(vq->used->member), 0); \
-  }
+#define vhost_user_log_dirty_ring(vui, vq, member)                            \
+  if (PREDICT_FALSE (vq->log_used))                                           \
+    {                                                                         \
+      vhost_user_log_dirty_pages_2 (                                          \
+	vui, vq->log_guest_addr + STRUCT_OFFSET_OF (vring_used_t, member),    \
+	sizeof (vq->used->member), 0);                                        \
+    }
 
 static_always_inline u8 *
-format_vhost_trace (u8 * s, va_list * va)
+format_vhost_trace (u8 *s, va_list *va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
@@ -229,39 +229,38 @@ format_vhost_trace (u8 * s, va_list * va)
 	      format_vnet_sw_interface_name, vnm, sw, t->qid);
 
   s = format (s, "%U virtio flags:\n", format_white_space, indent);
-#define _(n,i,st) \
-          if (t->virtio_ring_flags & (1 << VIRTIO_TRACE_F_##n)) \
-            s = format (s, "%U  %s %s\n", format_white_space, indent, #n, st);
+#define _(n, i, st)                                                           \
+  if (t->virtio_ring_flags & (1 << VIRTIO_TRACE_F_##n))                       \
+    s = format (s, "%U  %s %s\n", format_white_space, indent, #n, st);
   foreach_virtio_trace_flags
 #undef _
-    s = format (s, "%U virtio_net_hdr first_desc_len %u\n",
-		format_white_space, indent, t->first_desc_len);
+    s = format (s, "%U virtio_net_hdr first_desc_len %u\n", format_white_space,
+		indent, t->first_desc_len);
 
-  s = format (s, "%U   flags 0x%02x gso_type %u\n",
-	      format_white_space, indent,
+  s = format (s, "%U   flags 0x%02x gso_type %u\n", format_white_space, indent,
 	      t->hdr.hdr.flags, t->hdr.hdr.gso_type);
 
   if (vui->virtio_net_hdr_sz == 12)
-    s = format (s, "%U   num_buff %u",
-		format_white_space, indent, t->hdr.num_buffers);
+    s = format (s, "%U   num_buff %u", format_white_space, indent,
+		t->hdr.num_buffers);
 
   return s;
 }
 
 static_always_inline u64
-vhost_user_is_packed_ring_supported (vhost_user_intf_t * vui)
+vhost_user_is_packed_ring_supported (vhost_user_intf_t *vui)
 {
   return (vui->features & VIRTIO_FEATURE (VIRTIO_F_RING_PACKED));
 }
 
 static_always_inline u64
-vhost_user_is_event_idx_supported (vhost_user_intf_t * vui)
+vhost_user_is_event_idx_supported (vhost_user_intf_t *vui)
 {
   return (vui->features & VIRTIO_FEATURE (VIRTIO_RING_F_EVENT_IDX));
 }
 
 static_always_inline void
-vhost_user_kick (vlib_main_t * vm, vhost_user_vring_t * vq)
+vhost_user_kick (vlib_main_t *vm, vhost_user_vring_t *vq)
 {
   vhost_user_main_t *vum = &vhost_user_main;
   u64 x = 1;
@@ -271,8 +270,8 @@ vhost_user_kick (vlib_main_t * vm, vhost_user_vring_t * vq)
   rv = write (fd, &x, sizeof (x));
   if (PREDICT_FALSE (rv <= 0))
     {
-      clib_unix_warning
-	("Error: Could not write to unix socket for callfd %d", fd);
+      clib_unix_warning ("Error: Could not write to unix socket for callfd %d",
+			 fd);
       return;
     }
 
@@ -281,17 +280,17 @@ vhost_user_kick (vlib_main_t * vm, vhost_user_vring_t * vq)
 }
 
 static_always_inline u16
-vhost_user_avail_event_idx (vhost_user_vring_t * vq)
+vhost_user_avail_event_idx (vhost_user_vring_t *vq)
 {
-  volatile u16 *event_idx = (u16 *) & (vq->used->ring[vq->qsz_mask + 1]);
+  volatile u16 *event_idx = (u16 *) &(vq->used->ring[vq->qsz_mask + 1]);
 
   return *event_idx;
 }
 
 static_always_inline u16
-vhost_user_used_event_idx (vhost_user_vring_t * vq)
+vhost_user_used_event_idx (vhost_user_vring_t *vq)
 {
-  volatile u16 *event_idx = (u16 *) & (vq->avail->ring[vq->qsz_mask + 1]);
+  volatile u16 *event_idx = (u16 *) &(vq->avail->ring[vq->qsz_mask + 1]);
 
   return *event_idx;
 }
@@ -303,7 +302,7 @@ vhost_user_need_event (u16 event_idx, u16 new_idx, u16 old_idx)
 }
 
 static_always_inline void
-vhost_user_send_call_event_idx (vlib_main_t * vm, vhost_user_vring_t * vq)
+vhost_user_send_call_event_idx (vlib_main_t *vm, vhost_user_vring_t *vq)
 {
   vhost_user_main_t *vum = &vhost_user_main;
   u8 first_kick = vq->first_kick;
@@ -324,8 +323,7 @@ vhost_user_send_call_event_idx (vlib_main_t * vm, vhost_user_vring_t * vq)
 }
 
 static_always_inline void
-vhost_user_send_call_event_idx_packed (vlib_main_t * vm,
-				       vhost_user_vring_t * vq)
+vhost_user_send_call_event_idx_packed (vlib_main_t *vm, vhost_user_vring_t *vq)
 {
   vhost_user_main_t *vum = &vhost_user_main;
   u8 first_kick = vq->first_kick;
@@ -361,8 +359,8 @@ vhost_user_send_call_event_idx_packed (vlib_main_t * vm,
 }
 
 static_always_inline void
-vhost_user_send_call (vlib_main_t * vm, vhost_user_intf_t * vui,
-		      vhost_user_vring_t * vq)
+vhost_user_send_call (vlib_main_t *vm, vhost_user_intf_t *vui,
+		      vhost_user_vring_t *vq)
 {
   if (vhost_user_is_event_idx_supported (vui))
     {
@@ -376,13 +374,13 @@ vhost_user_send_call (vlib_main_t * vm, vhost_user_intf_t * vui,
 }
 
 static_always_inline u8
-vui_is_link_up (vhost_user_intf_t * vui)
+vui_is_link_up (vhost_user_intf_t *vui)
 {
   return vui->admin_up && vui->is_ready;
 }
 
 static_always_inline void
-vhost_user_update_gso_interface_count (vhost_user_intf_t * vui, u8 add)
+vhost_user_update_gso_interface_count (vhost_user_intf_t *vui, u8 add)
 {
   vhost_user_main_t *vum = &vhost_user_main;
 
@@ -401,14 +399,14 @@ vhost_user_update_gso_interface_count (vhost_user_intf_t * vui, u8 add)
 }
 
 static_always_inline u8
-vhost_user_packed_desc_available (vhost_user_vring_t * vring, u16 idx)
+vhost_user_packed_desc_available (vhost_user_vring_t *vring, u16 idx)
 {
   return (((vring->packed_desc[idx].flags & VRING_DESC_F_AVAIL) ==
 	   vring->avail_wrap_counter));
 }
 
 static_always_inline void
-vhost_user_advance_last_avail_idx (vhost_user_vring_t * vring)
+vhost_user_advance_last_avail_idx (vhost_user_vring_t *vring)
 {
   vring->last_avail_idx++;
   if (PREDICT_FALSE ((vring->last_avail_idx & vring->qsz_mask) == 0))
@@ -419,9 +417,8 @@ vhost_user_advance_last_avail_idx (vhost_user_vring_t * vring)
 }
 
 static_always_inline void
-vhost_user_advance_last_avail_table_idx (vhost_user_intf_t * vui,
-					 vhost_user_vring_t * vring,
-					 u8 chained)
+vhost_user_advance_last_avail_table_idx (vhost_user_intf_t *vui,
+					 vhost_user_vring_t *vring, u8 chained)
 {
   if (chained)
     {
@@ -437,7 +434,7 @@ vhost_user_advance_last_avail_table_idx (vhost_user_intf_t * vui,
 }
 
 static_always_inline void
-vhost_user_undo_advanced_last_avail_idx (vhost_user_vring_t * vring)
+vhost_user_undo_advanced_last_avail_idx (vhost_user_vring_t *vring)
 {
   if (PREDICT_FALSE ((vring->last_avail_idx & vring->qsz_mask) == 0))
     vring->avail_wrap_counter ^= VRING_DESC_F_AVAIL;
@@ -449,9 +446,9 @@ vhost_user_undo_advanced_last_avail_idx (vhost_user_vring_t * vring)
 }
 
 static_always_inline void
-vhost_user_dequeue_descs (vhost_user_vring_t * rxvq,
-			  virtio_net_hdr_mrg_rxbuf_t * hdr,
-			  u16 * n_descs_processed)
+vhost_user_dequeue_descs (vhost_user_vring_t *rxvq,
+			  virtio_net_hdr_mrg_rxbuf_t *hdr,
+			  u16 *n_descs_processed)
 {
   u16 i;
 
@@ -461,8 +458,8 @@ vhost_user_dequeue_descs (vhost_user_vring_t * rxvq,
 }
 
 static_always_inline void
-vhost_user_dequeue_chained_descs (vhost_user_vring_t * rxvq,
-				  u16 * n_descs_processed)
+vhost_user_dequeue_chained_descs (vhost_user_vring_t *rxvq,
+				  u16 *n_descs_processed)
 {
   while (*n_descs_processed)
     {
@@ -472,7 +469,7 @@ vhost_user_dequeue_chained_descs (vhost_user_vring_t * rxvq,
 }
 
 static_always_inline void
-vhost_user_advance_last_used_idx (vhost_user_vring_t * vring)
+vhost_user_advance_last_used_idx (vhost_user_vring_t *vring)
 {
   vring->last_used_idx++;
   if (PREDICT_FALSE ((vring->last_used_idx & vring->qsz_mask) == 0))
