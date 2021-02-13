@@ -25,18 +25,18 @@ clang-format${SUFFIX} --version
 in=$(mktemp)
 git diff ${GIT_DIFF_ARGS} ':!*.patch' > ${in}
 
-line_count=$(sed -n '/^+.*\*INDENT-O[NF][F]\{0,1\}\*/p' ${in} | wc -l)
-if [ ${line_count} -gt 0 ] ; then
-    echo
-    sed -n '/^+++ /{h}; /^+.*\*INDENT-O[NF][F]\{0,1\}\*/{x;p;x;p;}' ${in}
-    echo
-    echo "*******************************************************************"
-    echo "* CHECKSTYLE FAILED"
-    echo "* Please remove INDENT-ON and INDENT-OFF from modified lines."
-    echo "*******************************************************************"
-    rm ${in}
-    exit 1
-fi
+# line_count=$(sed -n '/^+.*\*INDENT-O[NF][F]\{0,1\}\*/p' ${in} | wc -l)
+# if [ ${line_count} -gt 0 ] ; then
+#     echo
+#     sed -n '/^+++ /{h}; /^+.*\*INDENT-O[NF][F]\{0,1\}\*/{x;p;x;p;}' ${in}
+#     echo
+#     echo "*******************************************************************"
+#     echo "* CHECKSTYLE FAILED"
+#     echo "* Please remove INDENT-ON and INDENT-OFF from modified lines."
+#     echo "*******************************************************************"
+#     rm ${in}
+#     exit 1
+# fi
 
 if [ "${1}" == "--fix" ]; then
   cat ${in} | clang-format-diff${SUFFIX} ${CLANG_FORMAT_DIFF_ARGS} -i
