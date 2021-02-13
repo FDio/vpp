@@ -24,6 +24,7 @@
 #include "fib_entry_cover.h"
 #include "fib_entry.h"
 #include "fib_table.h"
+#include "fib_path_ext.h"
 
 /*
  * fib_entry_src_rr_resolve_via_connected
@@ -93,6 +94,7 @@ fib_entry_src_rr_use_covers_pl (fib_entry_src_t *src,
 {
     fib_node_index_t *entries = NULL;
     dpo_proto_t proto;
+    fib_entry_src_t *s;
 
     proto = fib_proto_to_dpo(fib_entry->fe_prefix.fp_proto);
     vec_add1(entries, fib_entry_get_index(fib_entry));
@@ -107,6 +109,14 @@ fib_entry_src_rr_use_covers_pl (fib_entry_src_t *src,
     else
     {
         src->fes_pl = cover->fe_parent;
+        vec_foreach (s,cover->fe_srcs)
+          {
+            if (s->fes_pl != cover->fe_parent)
+              continue;
+
+            src->fes_path_exts.fpel_exts = vec_dup (s->fes_path_exts.fpel_exts);
+            break;
+          }
     }
     vec_free(entries);
 }
@@ -195,6 +205,7 @@ fib_entry_src_rr_deactivate (fib_entry_src_t *src,
 
     fib_path_list_unlock(src->fes_pl);
     src->fes_pl = FIB_NODE_INDEX_INVALID;
+    vec_free (src->fes_path_exts.fpel_exts);
     src->fes_entry_flags = FIB_ENTRY_FLAG_NONE;
 }
 
