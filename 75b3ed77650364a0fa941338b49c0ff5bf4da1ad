@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa8a5600_8ccea6dd",
+        "filename": "src/vpp-api/vapi/vapi_c_gen.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 812,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-02-13T15:14:10Z",
+      "side": 1,
+      "message": "Please do not raise Exception.  Raise something more specific.\nThe reason it is a pep8 violation is that it violates the open/closed principle.\nIf someone wants to add new functionality in the future, they would have to modify your code.",
+      "range": {
+        "startLine": 812,
+        "startChar": 8,
+        "endLine": 812,
+        "endChar": 50
+      },
+      "revId": "75b3ed77650364a0fa941338b49c0ff5bf4da1ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
