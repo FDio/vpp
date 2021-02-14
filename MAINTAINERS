@@ -340,6 +340,11 @@ M:	Dave Barach <vpp@barachs.net>
 M:	Neale Ranns <neale@graphiant.com>
 F:	src/plugins/arp/
 
+Plugin - ARPing CLI
+I:	arping
+M:	Steven Luong <sluong@cisco.com>
+F:	src/plugins/arping/
+
 Plugin - IP6 Neighbor Discovery
 I:	ip6-nd
 M:	Dave Barach <vpp@barachs.net>
