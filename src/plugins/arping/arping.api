@@ -1,0 +1,61 @@
+/*
+ *------------------------------------------------------------------
+ * Copyright (c) 2021 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *------------------------------------------------------------------
+ */
+
+option version = "1.0.0";
+import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
+
+/** \brief
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param address - address to send arp request or gratuitous arp.
+    @param sw_if_index - interface to send
+    @param repeat - number of packets to send
+    @param interval - if more than 1 packet is sent, the delay between send
+    @param is_garp - is garp or arp request
+*/
+
+define arping
+{
+  u32 client_index;
+  u32 context;
+  vl_api_address_t address;
+  vl_api_interface_index_t sw_if_index;
+  bool is_garp;
+  u32 repeat [default=1];
+  f64 interval [default=1.0];
+  option vat_help = "<address> <interface> [gratuitouss] [repeat <count>] [interval <sec>]";
+};
+
+/** \brief
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+    @reply_count - return value for reply count
+*/
+
+define arping_reply
+{
+  u32 context;
+  i32 retval;
+  u32 reply_count;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

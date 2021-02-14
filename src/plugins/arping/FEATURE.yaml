@@ -1,0 +1,9 @@
+---
+name: arping command
+maintainer: Steven Luong <sluong@cisco.com>
+features:
+  - arping command to send either gratuitous or ARP request to the remote
+  - support both IPv4 and IPv6
+description: "arping command"
+state: production
+properties: [API, CLI, STATS, MULTITHREAD]
