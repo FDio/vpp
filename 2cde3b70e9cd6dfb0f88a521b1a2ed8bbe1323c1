@@ -16,6 +16,24 @@
       "revId": "2cde3b70e9cd6dfb0f88a521b1a2ed8bbe1323c1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5c49bf9d_596cf290",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 526,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2021-02-15T09:54:17Z",
+      "side": 1,
+      "message": "I intentionally use where we initialize the drivers with capabilities to express the supported capabilities. While other places where either testing or removing, I use grouped macro for group of interface capabilities (i.e. L4_TX_CKSUM).",
+      "parentUuid": "cf9347f7_ee2c9b43",
+      "revId": "2cde3b70e9cd6dfb0f88a521b1a2ed8bbe1323c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
