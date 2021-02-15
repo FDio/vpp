@@ -228,9 +228,6 @@ session_is_valid (u32 si, u8 thread_index)
 
   s = pool_elt_at_index (session_main.wrk[thread_index].sessions, si);
 
-  if (!s)
-    return 1;
-
   if (s->thread_index != thread_index || s->session_index != si)
     return 0;
 
