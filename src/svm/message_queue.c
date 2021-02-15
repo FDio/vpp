@@ -570,8 +570,13 @@ svm_msg_q_timedwait (svm_msg_q_t *mq, double timeout)
 
       tv.tv_sec = (u64) timeout;
       tv.tv_usec = ((u64) timeout - (u64) timeout) * 1e9;
-      setsockopt (mq->q.evtfd, SOL_SOCKET, SO_RCVTIMEO, (const char *) &tv,
-		  sizeof tv);
+      rv = setsockopt (mq->q.evtfd, SOL_SOCKET, SO_RCVTIMEO,
+		       (const char *) &tv, sizeof tv);
+      if (rv < 0)
+	{
+	  clib_unix_warning ("setsockopt");
+	  return -1;
+	}
 
       rv = read (mq->q.evtfd, &buf, sizeof (buf));
       if (rv < 0)
