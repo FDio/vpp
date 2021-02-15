@@ -30,10 +30,12 @@ policer_test (vlib_main_t *vm, unformat_input_t *input,
   policer_t *pol;
   vnet_policer_main_t *pm = &vnet_policer_main;
 
-  unformat (input, "index %d", &policer_index); /* policer to use */
-  unformat (input, "rate %u", &rate_kbps);	/* rate to send at in kbps */
-  unformat (input, "burst %u", &burst);		/* burst to send in ms */
-  unformat (input, "colour %u", &input_colour); /* input colour if aware */
+  if (!unformat (input, "index %d", &policer_index) || /* policer to use */
+      !unformat (input, "rate %u", &rate_kbps) || /* rate to send at in kbps */
+      !unformat (input, "burst %u", &burst) ||	  /* burst to send in ms */
+      !unformat (input, "colour %u",
+		 &input_colour)) /* input colour if aware */
+    return clib_error_return (0, "Policer test failed to parse params");
 
   total_bytes = (rate_kbps * burst) / 8;
   num_pkts = total_bytes / PKT_LEN;
