@@ -54,8 +54,8 @@ policer_add_del (vlib_main_t *vm, u8 *name, qos_pol_cfg_params_st *cfg,
 		 u32 *policer_index, u8 is_add)
 {
   vnet_policer_main_t *pm = &vnet_policer_main;
-  policer_read_response_type_st test_policer;
-  policer_read_response_type_st *policer;
+  policer_t test_policer;
+  policer_t *policer;
   uword *p;
   u32 pi;
   int rv;
@@ -99,7 +99,7 @@ policer_add_del (vlib_main_t *vm, u8 *name, qos_pol_cfg_params_st *cfg,
 
   if (rv == 0)
     {
-      policer_read_response_type_st *pp;
+      policer_t *pp;
       qos_pol_cfg_params_st *cp;
       int i;
 
@@ -138,7 +138,7 @@ int
 policer_bind_worker (u8 *name, u32 worker, bool bind)
 {
   vnet_policer_main_t *pm = &vnet_policer_main;
-  policer_read_response_type_st *policer;
+  policer_t *policer;
   uword *p;
 
   p = hash_get_mem (pm->policer_index_by_name, name);
@@ -168,8 +168,7 @@ policer_bind_worker (u8 *name, u32 worker, bool bind)
 u8 *
 format_policer_instance (u8 * s, va_list * va)
 {
-  policer_read_response_type_st *i
-    = va_arg (*va, policer_read_response_type_st *);
+  policer_t *i = va_arg (*va, policer_t *);
   uword pi = va_arg (*va, uword);
   int result;
   vlib_counter_t counts[NUM_POLICE_RESULTS];
@@ -533,7 +532,7 @@ show_policer_command_fn (vlib_main_t * vm,
   u8 *name;
   uword *pi;
   qos_pol_cfg_params_st *config;
-  policer_read_response_type_st *templ;
+  policer_t *templ;
 
   (void) unformat (input, "name %s", &match_name);
 

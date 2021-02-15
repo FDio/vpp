@@ -73,7 +73,7 @@ ip_punt_policer (vlib_main_t * vm,
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc_index];
   vnet_policer_main_t *pm = &vnet_policer_main;
-  policer_read_response_type_st *pol = &pm->policers[policer_index];
+  policer_t *pol = &pm->policers[policer_index];
   u32 pol_thread_index = pol->thread_index;
   u32 this_thread_index = vm->thread_index;
 
