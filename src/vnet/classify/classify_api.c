@@ -101,11 +101,9 @@ static void vl_api_classify_pcap_lookup_table_t_handler
   u32 mask_len = ntohl (mp->mask_len);
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
-  if (n_skip > 5
-      || 0 <= n_match || n_match > 5
-      || mask_len != n_match * sizeof (u32x4)
-      || sw_if_index == ~0
-      || sw_if_index >= vec_len (cm->classify_table_index_by_sw_if_index))
+  if (n_skip > 5 || n_match == 0 || n_match > 5 ||
+      mask_len != n_match * sizeof (u32x4) || sw_if_index == ~0 ||
+      sw_if_index >= vec_len (cm->classify_table_index_by_sw_if_index))
     {
       rv = VNET_API_ERROR_INVALID_VALUE;
       goto out;

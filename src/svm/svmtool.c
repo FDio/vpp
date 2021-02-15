@@ -265,6 +265,7 @@ svm_existing_region_map_nolock (void *root_arg, svm_map_region_args_t * a)
       svm_pop_heap (oldheap);
       return rp;
     }
+  region_unlock (root_rp);
   return 0;
 
 }
