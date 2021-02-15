@@ -42,7 +42,8 @@ int vl_api_u8_string_fromjson(cJSON *o, u8 *s, int len)
     unformat_input_t input;
     char *p = cJSON_GetStringValue(o);
     unformat_init_string (&input, p, strlen(p));
-    unformat(&input, "0x%U", unformat_hex_string, s);
+    if (!unformat (&input, "0x%U", unformat_hex_string, s))
+      return -1;
     return 0;
 }
 
@@ -59,7 +60,8 @@ u8string_fromjson(cJSON *o, char *fieldname)
 
     char *p = cJSON_GetStringValue(item);
     unformat_init_string (&input, p, strlen(p));
-    unformat(&input, "0x%U", unformat_hex_string, &s);
+    if (!unformat (&input, "0x%U", unformat_hex_string, &s))
+      return 0;
     return s;
 }
 
