@@ -65,7 +65,7 @@ vnet_policer_police (vlib_main_t * vm,
   qos_action_type_en act;
   u32 len;
   u32 col;
-  policer_read_response_type_st *pol;
+  policer_t *pol;
   vnet_policer_main_t *pm = &vnet_policer_main;
 
   /* Speculative prefetch assuming a conform result */
@@ -107,7 +107,7 @@ policer_handoff (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 thread_indices[VLIB_FRAME_SIZE], *ti;
   u32 n_enq, n_left_from, *from;
   vnet_policer_main_t *pm;
-  policer_read_response_type_st *policer;
+  policer_t *policer;
   u32 this_thread, policer_thread;
 
   pm = &vnet_policer_main;

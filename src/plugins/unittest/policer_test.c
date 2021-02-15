@@ -27,7 +27,7 @@ policer_test (vlib_main_t *vm, unformat_input_t *input,
   policer_result_e result, input_colour = POLICE_CONFORM;
   uint64_t policer_time;
 
-  policer_read_response_type_st *pol;
+  policer_t *pol;
   vnet_policer_main_t *pm = &vnet_policer_main;
 
   unformat (input, "index %d", &policer_index); /* policer to use */
