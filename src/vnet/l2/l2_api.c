@@ -1207,30 +1207,27 @@ l2_arp_term_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	    last_event = *event;
 	    last = now;
 
-            /* *INDENT-OFF* */
             pool_foreach (reg, vpe_api_main.l2_arp_term_events_registrations)
-             {
-              vl_api_registration_t *vl_reg;
-              vl_reg = vl_api_client_index_to_registration (reg->client_index);
-              ALWAYS_ASSERT (vl_reg != NULL);
+	      {
+		vl_api_registration_t *vl_reg;
+		vl_reg =
+		  vl_api_client_index_to_registration (reg->client_index);
+		ALWAYS_ASSERT (vl_reg != NULL);
 
-              if (reg && vl_api_can_send_msg (vl_reg))
-                {
-                  vl_api_l2_arp_term_event_t * vevent;
-                  vevent = vl_msg_api_alloc (sizeof *vevent);
-                  clib_memset (vevent, 0, sizeof *vevent);
-                  vevent->_vl_msg_id = htons (VL_API_L2_ARP_TERM_EVENT);
-                  vevent->client_index = reg->client_index;
-                  vevent->pid = reg->client_pid;
-                  ip_address_encode(&event->ip,
-                                    event->type,
-                                    &vevent->ip);
-                  vevent->sw_if_index = htonl(event->sw_if_index);
-                  mac_address_encode(&event->mac, vevent->mac);
-                  vl_api_send_msg (vl_reg, (u8 *) vevent);
-                }
-            }
-            /* *INDENT-ON* */
+		if (vl_reg && vl_api_can_send_msg (vl_reg))
+		  {
+		    vl_api_l2_arp_term_event_t *vevent;
+		    vevent = vl_msg_api_alloc (sizeof *vevent);
+		    clib_memset (vevent, 0, sizeof *vevent);
+		    vevent->_vl_msg_id = htons (VL_API_L2_ARP_TERM_EVENT);
+		    vevent->client_index = reg->client_index;
+		    vevent->pid = reg->client_pid;
+		    ip_address_encode (&event->ip, event->type, &vevent->ip);
+		    vevent->sw_if_index = htonl (event->sw_if_index);
+		    mac_address_encode (&event->mac, vevent->mac);
+		    vl_api_send_msg (vl_reg, (u8 *) vevent);
+		  }
+	      }
 	  }
 	  vec_reset_length (l2am->publish_events);
 	}
