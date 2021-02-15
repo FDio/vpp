@@ -118,8 +118,8 @@ vl_api_policer_bind_t_handler (vl_api_policer_bind_t *mp)
 
 static void
 send_policer_details (u8 *name, qos_pol_cfg_params_st *config,
-		      policer_read_response_type_st *templ,
-		      vl_api_registration_t *reg, u32 context)
+		      policer_t *templ, vl_api_registration_t *reg,
+		      u32 context)
 {
   vl_api_policer_details_t *mp;
 
@@ -170,7 +170,7 @@ vl_api_policer_dump_t_handler (vl_api_policer_dump_t * mp)
   u8 *match_name = 0;
   u8 *name;
   qos_pol_cfg_params_st *config;
-  policer_read_response_type_st *templ;
+  policer_t *templ;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)

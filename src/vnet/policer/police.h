@@ -71,7 +71,7 @@ typedef enum
 
 typedef struct
 {
-
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 lock;			// for exclusive access to the struct
 
   u32 single_rate;		// 1 = single rate policer, 0 = two rate policer
@@ -97,11 +97,12 @@ typedef struct
   u32 thread_index;		// Tie policer to a thread, rather than lock
   u32 pad32;
 
-} policer_read_response_type_st;
+} policer_t;
+
+STATIC_ASSERT_SIZEOF (policer_t, CLIB_CACHE_LINE_BYTES);
 
 static inline policer_result_e
-vnet_police_packet (policer_read_response_type_st * policer,
-		    u32 packet_length,
+vnet_police_packet (policer_t *policer, u32 packet_length,
 		    policer_result_e packet_color, u64 time)
 {
   u64 n_periods;

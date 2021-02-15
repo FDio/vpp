@@ -946,8 +946,7 @@ compute_policer_params (u64 hz,	      /* CPU speed in clocks per second */
  * Return: Status, success or failure code.
  */
 int
-x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg,
-			   policer_read_response_type_st *hw)
+x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg, policer_t *hw)
 {
   const int BYTES_PER_KBIT = (1000 / 8);
   u64 hz;
@@ -1059,13 +1058,12 @@ x86_pol_compute_hw_params (qos_pol_cfg_params_st *cfg,
  * Return: Status, success or failure code.
  */
 int
-pol_logical_2_physical (qos_pol_cfg_params_st *cfg,
-			policer_read_response_type_st *phys)
+pol_logical_2_physical (qos_pol_cfg_params_st *cfg, policer_t *phys)
 {
   int rc;
   qos_pol_cfg_params_st kbps_cfg;
 
-  clib_memset (phys, 0, sizeof (policer_read_response_type_st));
+  clib_memset (phys, 0, sizeof (policer_t));
   clib_memset (&kbps_cfg, 0, sizeof (qos_pol_cfg_params_st));
 
   if (!cfg)
@@ -1131,8 +1129,7 @@ pol_logical_2_physical (qos_pol_cfg_params_st *cfg,
 }
 
 static void
-qos_convert_pol_bucket_to_hw_fmt (policer_read_response_type_st *bkt,
-				  qos_pol_hw_params_st *hw_fmt)
+qos_convert_pol_bucket_to_hw_fmt (policer_t *bkt, qos_pol_hw_params_st *hw_fmt)
 {
   clib_memset (hw_fmt, 0, sizeof (qos_pol_hw_params_st));
 }
@@ -1261,8 +1258,7 @@ qos_convert_burst_bytes_to_ms (u64 burst_bytes, u32 rate_kbps)
  * Return: Status, success or failure code.
  */
 int
-pol_physical_2_logical (policer_read_response_type_st *phys,
-			qos_pol_cfg_params_st *cfg)
+pol_physical_2_logical (policer_t *phys, qos_pol_cfg_params_st *cfg)
 {
   int rc;
   qos_pol_hw_params_st pol_hw;

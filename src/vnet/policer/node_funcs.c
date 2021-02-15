@@ -332,8 +332,8 @@ int
 test_policer_add_del (u32 rx_sw_if_index, u8 * config_name, int is_add)
 {
   vnet_policer_main_t *pm = &vnet_policer_main;
-  policer_read_response_type_st *template;
-  policer_read_response_type_st *policer;
+  policer_t *template;
+  policer_t *policer;
   vnet_hw_interface_t *rxhi;
   uword *p;
 
@@ -421,7 +421,7 @@ test_policer_command_fn (vlib_main_t * vm,
   if (is_show)
     {
       u32 pi = pm->policer_index_by_sw_if_index[rx_sw_if_index];
-      policer_read_response_type_st *policer;
+      policer_t *policer;
       policer = pool_elt_at_index (pm->policers, pi);
 
       vlib_cli_output (vm, "%U", format_policer_instance, policer);

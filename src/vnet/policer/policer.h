@@ -26,11 +26,11 @@
 typedef struct
 {
   /* policer pool, aligned */
-  policer_read_response_type_st *policers;
+  policer_t *policers;
 
   /* config + template h/w policer instance parallel pools */
   qos_pol_cfg_params_st *configs;
-  policer_read_response_type_st *policer_templates;
+  policer_t *policer_templates;
 
   /* Config by name hash */
   uword *policer_config_by_name;
