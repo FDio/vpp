@@ -1331,7 +1331,7 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
 				&sep->ip, sep->is_ip4);
   vec_terminate_c_string (ctx->srv_hostname);
 
-  clib_memcpy (&cargs->sep, sep, sizeof (session_endpoint_cfg_t));
+  clib_memcpy (&cargs->sep_ext, sep, sizeof (session_endpoint_cfg_t));
   cargs->sep.transport_proto = TRANSPORT_PROTO_UDP;
   cargs->app_index = qm->app_index;
   cargs->api_context = ctx_index;
