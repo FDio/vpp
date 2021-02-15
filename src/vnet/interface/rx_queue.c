@@ -122,10 +122,11 @@ void
 vnet_hw_if_unregister_all_rx_queues (vnet_main_t *vnm, u32 hw_if_index)
 {
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+  u32 vlen = vec_len (hi->rx_queue_indices);
 
   log_debug ("unregister_all: interface %v", hi->name);
 
-  for (int i = 0; i < vec_len (hi->rx_queue_indices); i++)
+  for (int i = 0; i < vlen; i++)
     vnet_hw_if_unregister_rx_queue (vnm, hi->rx_queue_indices[i]);
 
   vec_free (hi->rx_queue_indices);
