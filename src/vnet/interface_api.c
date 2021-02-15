@@ -1103,7 +1103,7 @@ static void vl_api_sw_interface_rx_placement_dump_t_handler
       vnet_hw_if_rx_queue_t **all_queues = 0;
       vnet_hw_if_rx_queue_t **qptr;
       vnet_hw_if_rx_queue_t *q;
-      vec_foreach (q, vnm->interface_main.hw_if_rx_queues)
+      pool_foreach (q, vnm->interface_main.hw_if_rx_queues)
 	vec_add1 (all_queues, q);
       vec_sort_with_function (all_queues, vnet_hw_if_rxq_cmp_cli_api);
 
