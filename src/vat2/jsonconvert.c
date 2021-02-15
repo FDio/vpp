@@ -258,78 +258,98 @@ format_ip6_address (u8 * s, va_list * args)
   return s;
 }
 
-void *vl_api_ip4_address_t_fromjson(void *mp, int *len, cJSON *o, vl_api_ip4_address_t *a)
+int
+vl_api_ip4_address_t_fromjson (void **mp, int *len, cJSON *o,
+			       vl_api_ip4_address_t *a)
 {
     unformat_input_t input;
     char *p = cJSON_GetStringValue(o);
-    if (!p) return 0;
+    if (!p)
+      return -1;
     unformat_init_string (&input, p, strlen(p));
     unformat(&input, "%U", unformat_ip4_address, a);
-    return mp;
+    return 0;
 }
 
-void *vl_api_ip4_prefix_t_fromjson(void *mp, int *len, cJSON *o, vl_api_ip4_prefix_t *a)
+int
+vl_api_ip4_prefix_t_fromjson (void **mp, int *len, cJSON *o,
+			      vl_api_ip4_prefix_t *a)
 {
     unformat_input_t input;
     char *p = cJSON_GetStringValue(o);
-    if (!p) return 0;
+    if (!p)
+      return -1;
     unformat_init_string (&input, p, strlen(p));
     unformat(&input, "%U/%d", unformat_ip4_address, &a->address, &a->len);
-    return mp;
+    return 0;
 }
 
-void *vl_api_ip4_address_with_prefix_t_fromjson(void *mp, int *len, cJSON *o, vl_api_ip4_prefix_t *a)
+int
+vl_api_ip4_address_with_prefix_t_fromjson (void **mp, int *len, cJSON *o,
+					   vl_api_ip4_prefix_t *a)
 {
   return vl_api_ip4_prefix_t_fromjson(mp, len, o, a);
 }
-void *vl_api_ip6_address_t_fromjson(void *mp, int *len, cJSON *o, vl_api_ip6_address_t *a)
+int
+vl_api_ip6_address_t_fromjson (void **mp, int *len, cJSON *o,
+			       vl_api_ip6_address_t *a)
 {
     unformat_input_t input;
     char *p = cJSON_GetStringValue(o);
-    if (!p) return 0;
+    if (!p)
+      return -1;
     unformat_init_string (&input, p, strlen(p));
     unformat(&input, "%U", unformat_ip6_address, a);
-    return mp;
+    return 0;
 }
 
-void *vl_api_ip6_prefix_t_fromjson(void *mp, int *len, cJSON *o, vl_api_ip6_prefix_t *a)
+int
+vl_api_ip6_prefix_t_fromjson (void **mp, int *len, cJSON *o,
+			      vl_api_ip6_prefix_t *a)
 {
   unformat_input_t input;
   char *p = cJSON_GetStringValue(o);
-  if (!p) return 0;
+  if (!p)
+    return -1;
   unformat_init_string (&input, p, strlen(p));
   unformat(&input, "%U/%d", unformat_ip6_address, &a->address, &a->len);
-  return mp;
+  return 0;
 }
 
-void *vl_api_ip6_address_with_prefix_t_fromjson(void *mp, int *len, cJSON *o, vl_api_ip6_prefix_t *a)
+int
+vl_api_ip6_address_with_prefix_t_fromjson (void **mp, int *len, cJSON *o,
+					   vl_api_ip6_prefix_t *a)
 {
   return vl_api_ip6_prefix_t_fromjson(mp, len, o, a);
 }
 
-void *vl_api_address_t_fromjson(void *mp, int *len, cJSON *o, vl_api_address_t *a)
+int
+vl_api_address_t_fromjson (void **mp, int *len, cJSON *o, vl_api_address_t *a)
 {
   unformat_input_t input;
 
   char *p = cJSON_GetStringValue(o);
-  if (!p) return 0;
+  if (!p)
+    return -1;
   unformat_init_string (&input, p, strlen(p));
   if (unformat (&input, "%U", unformat_ip4_address, &a->un.ip4))
     a->af = ADDRESS_IP4;
   else if (unformat (&input, "%U", unformat_ip6_address, &a->un.ip6))
     a->af = ADDRESS_IP6;
   else
-    return (0);
-  return mp;
+    return -1;
+  return 0;
 }
 
-void *vl_api_prefix_t_fromjson(void *mp, int *len, cJSON *o, vl_api_prefix_t *a)
+int
+vl_api_prefix_t_fromjson (void **mp, int *len, cJSON *o, vl_api_prefix_t *a)
 {
   unformat_input_t input;
 
   char *p = cJSON_GetStringValue(o);
 
-  if (!p) return 0;
+  if (!p)
+    return -1;
   unformat_init_string (&input, p, strlen(p));
   int plen;
   if (unformat (&input, "%U/%d", unformat_ip4_address, &a->address.un.ip4, &plen))
@@ -337,12 +357,14 @@ void *vl_api_prefix_t_fromjson(void *mp, int *len, cJSON *o, vl_api_prefix_t *a)
   else if (unformat (&input, "%U/%d", unformat_ip6_address, &a->address.un.ip6, &plen))
     a->address.af = ADDRESS_IP6;
   else
-    return (0);
+    return -1;
   a->len = plen;
-  return mp;
+  return 0;
 }
 
-void *vl_api_address_with_prefix_t_fromjson(void *mp, int *len, cJSON *o, vl_api_prefix_t *a)
+int
+vl_api_address_with_prefix_t_fromjson (void **mp, int *len, cJSON *o,
+				       vl_api_prefix_t *a)
 {
   return vl_api_prefix_t_fromjson(mp, len, o, a);
 }
@@ -375,14 +397,16 @@ unformat_mac_address (unformat_input_t * input, va_list * args)
   return (0);
 }
 
-void *vl_api_mac_address_t_fromjson(void *mp, int *len, cJSON *o, vl_api_mac_address_t *a)
+int
+vl_api_mac_address_t_fromjson (void **mp, int *len, cJSON *o,
+			       vl_api_mac_address_t *a)
 {
   unformat_input_t input;
 
   char *p = cJSON_GetStringValue(o);
   unformat_init_string (&input, p, strlen(p));
   unformat(&input, "%U", unformat_mac_address, a);
-  return mp;
+  return 0;
 }
 
 /* Format an IP4 address. */

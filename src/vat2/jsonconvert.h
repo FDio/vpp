@@ -39,37 +39,50 @@
 #undef _
 
 int vl_api_bool_fromjson(cJSON *o, bool *d);
-void *vl_api_ip4_address_t_fromjson(void *mp, int *len, cJSON *o, vl_api_ip4_address_t *a);
-void *vl_api_ip4_prefix_t_fromjson(void *mp, int *len, cJSON *o, vl_api_ip4_prefix_t *a);
-void *vl_api_ip4_address_with_prefix_t_fromjson(void *mp, int *len, cJSON *o, vl_api_ip4_prefix_t *a);
-void *vl_api_ip6_address_t_fromjson(void *mp, int *len, cJSON *o, vl_api_ip6_address_t *a);
-void *vl_api_ip6_prefix_t_fromjson(void *mp, int *len, cJSON *o, vl_api_ip6_prefix_t *a);
-void *vl_api_ip6_address_with_prefix_t_fromjson(void *mp, int *len, cJSON *o, vl_api_ip6_prefix_t *a);
-void *vl_api_address_t_fromjson(void *mp, int *len, cJSON *o, vl_api_address_t *a);
-void *vl_api_prefix_t_fromjson(void *mp, int *len, cJSON *o, vl_api_prefix_t *a);
-void *vl_api_address_with_prefix_t_fromjson(void *mp, int *len, cJSON *o, vl_api_prefix_t *a);
-void *vl_api_mac_address_t_fromjson(void *mp, int *len, cJSON *o, vl_api_mac_address_t *a);
+  int vl_api_ip4_address_t_fromjson (void **mp, int *len, cJSON *o,
+				     vl_api_ip4_address_t *a);
+  int vl_api_ip4_prefix_t_fromjson (void **mp, int *len, cJSON *o,
+				    vl_api_ip4_prefix_t *a);
+  int vl_api_ip4_address_with_prefix_t_fromjson (void **mp, int *len, cJSON *o,
+						 vl_api_ip4_prefix_t *a);
+  int vl_api_ip6_address_t_fromjson (void **mp, int *len, cJSON *o,
+				     vl_api_ip6_address_t *a);
+  int vl_api_ip6_prefix_t_fromjson (void **mp, int *len, cJSON *o,
+				    vl_api_ip6_prefix_t *a);
+  int vl_api_ip6_address_with_prefix_t_fromjson (void **mp, int *len, cJSON *o,
+						 vl_api_ip6_prefix_t *a);
+  int vl_api_address_t_fromjson (void **mp, int *len, cJSON *o,
+				 vl_api_address_t *a);
+  int vl_api_prefix_t_fromjson (void **mp, int *len, cJSON *o,
+				vl_api_prefix_t *a);
+  int vl_api_address_with_prefix_t_fromjson (void **mp, int *len, cJSON *o,
+					     vl_api_prefix_t *a);
+  int vl_api_mac_address_t_fromjson (void **mp, int *len, cJSON *o,
+				     vl_api_mac_address_t *a);
 
-uword unformat_ip4_address(unformat_input_t * input, va_list * args);
-uword unformat_ip6_address(unformat_input_t * input, va_list * args);
-u8 *format_ip6_address(u8 * s, va_list * args);
-uword unformat_mac_address(unformat_input_t * input, va_list * args);
-u8 *format_ip4_address(u8 * s, va_list * args);
-u8 *format_vl_api_interface_index_t(u8 *s, va_list *args);
-uword unformat_vl_api_interface_index_t(unformat_input_t * input, va_list * args);
-u8 *format_vl_api_timestamp_t(u8 * s, va_list * args);
-u8 *format_vl_api_timedelta_t(u8 * s, va_list * args);
-uword unformat_vl_api_timedelta_t(unformat_input_t * input, va_list * args);
-uword unformat_vl_api_timestamp_t(unformat_input_t * input, va_list * args);
-u8 *format_vl_api_gbp_scope_t(u8 * s, va_list * args);
-uword unformat_vl_api_gbp_scope_t(unformat_input_t * input, va_list * args);
+  uword unformat_ip4_address (unformat_input_t *input, va_list *args);
+  uword unformat_ip6_address (unformat_input_t *input, va_list *args);
+  u8 *format_ip6_address (u8 *s, va_list *args);
+  uword unformat_mac_address (unformat_input_t *input, va_list *args);
+  u8 *format_ip4_address (u8 *s, va_list *args);
+  u8 *format_vl_api_interface_index_t (u8 *s, va_list *args);
+  uword unformat_vl_api_interface_index_t (unformat_input_t *input,
+					   va_list *args);
+  u8 *format_vl_api_timestamp_t (u8 *s, va_list *args);
+  u8 *format_vl_api_timedelta_t (u8 *s, va_list *args);
+  uword unformat_vl_api_timedelta_t (unformat_input_t *input, va_list *args);
+  uword unformat_vl_api_timestamp_t (unformat_input_t *input, va_list *args);
+  u8 *format_vl_api_gbp_scope_t (u8 *s, va_list *args);
+  uword unformat_vl_api_gbp_scope_t (unformat_input_t *input, va_list *args);
 
-int vl_api_c_string_to_api_string(const char *buf, vl_api_string_t * str);
-void vl_api_string_cJSON_AddToObject(cJSON * const object, const char * const name, vl_api_string_t *astr);
+  int vl_api_c_string_to_api_string (const char *buf, vl_api_string_t *str);
+  void vl_api_string_cJSON_AddToObject (cJSON *const object,
+					const char *const name,
+					vl_api_string_t *astr);
 
-u8 *u8string_fromjson(cJSON *o, char *fieldname);
-int u8string_fromjson2(cJSON *o, char *fieldname, u8 *data);
-int vl_api_u8_string_fromjson(cJSON *o, u8 *s, int len);
+  u8 *u8string_fromjson (cJSON *o, char *fieldname);
+  int u8string_fromjson2 (cJSON *o, char *fieldname, u8 *data);
+  int vl_api_u8_string_fromjson (cJSON *o, u8 *s, int len);
 
 #define foreach_vat2_tojson                     \
   _(ip4_address)                                \

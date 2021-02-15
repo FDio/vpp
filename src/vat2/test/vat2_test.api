@@ -77,3 +77,7 @@ autoreply define test_vla5 {
   vl_api_test_vlatype3_t data;
 };
 
+/* Addresses */
+autoreply define test_addresses {
+  vl_api_address_t a;
+};
