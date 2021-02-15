@@ -104,7 +104,7 @@ vnet_hw_if_unregister_rx_queue (vnet_main_t *vnm, u32 queue_index)
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, rxq->hw_if_index);
   u64 key;
 
-  key = ((u64) rxq->hw_if_index << 32) | rxq->queue_id;
+  key = rx_queue_key (rxq->hw_if_index, rxq->queue_id);
   hash_unset_mem_free (&im->rxq_index_by_hw_if_index_and_queue_id, &key);
 
   for (int i = 0; i < vec_len (hi->rx_queue_indices); i++)
@@ -122,11 +122,20 @@ void
 vnet_hw_if_unregister_all_rx_queues (vnet_main_t *vnm, u32 hw_if_index)
 {
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+  vnet_interface_main_t *im = &vnm->interface_main;
+  vnet_hw_if_rx_queue_t *rxq;
+  u64 key;
 
   log_debug ("unregister_all: interface %v", hi->name);
 
   for (int i = 0; i < vec_len (hi->rx_queue_indices); i++)
-    vnet_hw_if_unregister_rx_queue (vnm, hi->rx_queue_indices[i]);
+    {
+      rxq = vnet_hw_if_get_rx_queue (vnm, hi->rx_queue_indices[i]);
+      key = rx_queue_key (rxq->hw_if_index, rxq->queue_id);
+      hash_unset_mem_free (&im->rxq_index_by_hw_if_index_and_queue_id, &key);
+
+      pool_put_index (im->hw_if_rx_queues, hi->rx_queue_indices[i]);
+    }
 
   vec_free (hi->rx_queue_indices);
 }
