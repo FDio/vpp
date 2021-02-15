@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "09b14e0a_c42e7ff1",
+        "filename": "src/vnet/interface_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1615,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-15T14:07:50Z",
+      "side": 1,
+      "message": "can you also fix the same issue in src/vnet/interface_api.c:vl_api_sw_interface_rx_placement_dump_t_handler() ?",
+      "revId": "094eba2b8e359869d00a2655148e5699fc6bfe9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
