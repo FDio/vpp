@@ -532,7 +532,7 @@ F:	src/plugins/mdata/
 Plugin - Unit Tests
 I:	unittest
 M:	Dave Barach <vpp@barachs.net>
-M:	Florin Coras <fcoras@cisco.com
+M:	Florin Coras <fcoras@cisco.com>
 F:	src/plugins/unittest/
 
 Test Infrastructure
