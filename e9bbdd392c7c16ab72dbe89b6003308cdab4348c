@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2a0f1baf_717f1b4d",
+        "filename": "src/vnet/interface/rx_queue.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-15T14:05:42Z",
+      "side": 1,
+      "message": "I think we should copy the vector to iterate on the copy here: vec_del1() in vnet_hw_if_unregister_rx_queue() will move data accross the vectors",
+      "revId": "e9bbdd392c7c16ab72dbe89b6003308cdab4348c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
