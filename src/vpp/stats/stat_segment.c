@@ -335,7 +335,10 @@ vlib_map_stat_segment_init (void)
 			      format_clib_error, clib_mem_get_last_error ());
   /* Set size */
   if ((ftruncate (mfd, memory_size)) == -1)
-    return clib_error_return (0, "stat segment ftruncate failure");
+    {
+      close (mfd);
+      return clib_error_return (0, "stat segment ftruncate failure");
+    }
 
   memaddr = clib_mem_vm_map_shared (0, memory_size, mfd, 0, mem_name);
 
