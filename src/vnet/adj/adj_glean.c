@@ -258,8 +258,8 @@ adj_glean_get_src (fib_protocol_t proto,
                    u32 sw_if_index,
                    const ip46_address_t *nh)
 {
+    const ip46_address_t *conn, *source;
     const ip_adjacency_t *adj;
-    ip46_address_t *conn;
     adj_index_t ai;
 
     if (vec_len(adj_gleans[proto]) <= sw_if_index ||
@@ -274,23 +274,33 @@ adj_glean_get_src (fib_protocol_t proto,
     if (nh)
         pfx.fp_addr = *nh;
 
+    /*
+     * An interface can have more than one glean address. Where
+     * possible we want to return a source address from the same
+     * subnet as the destination. If this is not possible then any address
+     * will do.
+     */
+    source = NULL;
+
     hash_foreach_mem(conn, ai, adj_gleans[proto][sw_if_index],
     ({
         adj = adj_get(ai);
 
         if (adj->sub_type.glean.rx_pfx.fp_len > 0)
         {
+            source = &adj->sub_type.glean.rx_pfx.fp_addr;
+
             /* if no destination is specified use the just glean */
             if (NULL == nh)
-                return (&adj->sub_type.glean.rx_pfx.fp_addr);
+                return (source);
 
             /* check the clean covers the desintation */
             if (fib_prefix_is_cover(&adj->sub_type.glean.rx_pfx, &pfx))
-                return (&adj->sub_type.glean.rx_pfx.fp_addr);
+                return (source);
         }
     }));
 
-    return (NULL);
+    return (source);
 }
 
 void

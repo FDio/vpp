@@ -7,7 +7,7 @@ from scapy.packet import Raw
 
 from framework import VppTestCase
 from util import ppp
-from vpp_ip_route import VppIpInterfaceAddress
+from vpp_ip_route import VppIpInterfaceAddress, VppIpRoute, VppRoutePath
 from vpp_neighbor import VppNeighbor
 
 """ TestPing is a subclass of  VPPTestCase classes.
@@ -150,3 +150,27 @@ class TestPing(VppTestCase):
         for p in out:
             icmp = self.verify_ping_request(p, "10.0.0.1", nbr_addr, icmp_seq)
             icmp_seq = icmp_seq + 1
+
+    def test_ping_fib_routed_dst(self):
+        """ ping destination routed according to FIB table """
+
+        try:
+            self.pg1.generate_remote_hosts(1)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            routed_dst = "10.0.2.0"
+            self.logger.info(self.vapi.cli("show ip4 neighbors"))
+            VppIpRoute(self, routed_dst, 24,
+                       [VppRoutePath(self.pg1.remote_hosts[0].ip4,
+                                     self.pg1.sw_if_index)]).add_vpp_config()
+            ping_cmd = "ping %s interval 0.01 repeat 3" % routed_dst
+            ret = self.vapi.cli(ping_cmd)
+            self.logger.info(ret)
+            out = self.pg1.get_capture(3)
+            icmp_seq = 1
+            for p in out:
+                self.verify_ping_request(p, self.pg1.local_ip4, routed_dst,
+                                         icmp_seq)
+                icmp_seq = icmp_seq + 1
+        finally:
+            self.vapi.cli("show error")
