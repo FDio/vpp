@@ -1481,6 +1481,16 @@ fib_entry_get_resolving_interface (fib_node_index_t entry_index)
 }
 
 u32
+fib_entry_get_nh (fib_node_index_t entry_index, ip46_address_t *nh_out)
+{
+    fib_entry_t *fib_entry;
+
+    fib_entry = fib_entry_get(entry_index);
+
+    return fib_path_list_get_nh(fib_entry->fe_parent, nh_out);
+}
+
+u32
 fib_entry_get_any_resolving_interface (fib_node_index_t entry_index)
 {
     const fib_entry_src_t *src;

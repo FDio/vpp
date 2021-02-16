@@ -606,7 +606,6 @@ fib_path_list_get_n_paths (fib_node_index_t path_list_index)
     return (vec_len(path_list->fpl_paths));
 }
 
-
 u32
 fib_path_list_get_resolving_interface (fib_node_index_t path_list_index)
 {
@@ -627,6 +626,25 @@ fib_path_list_get_resolving_interface (fib_node_index_t path_list_index)
     }
 
     return (sw_if_index);
+}
+
+u32
+fib_path_list_get_nh (fib_node_index_t path_list_index, ip46_address_t *nh_out)
+{
+    fib_node_index_t *path_index;
+    fib_path_list_t *path_list;
+    u32 found_nh = 0;
+
+    path_list = fib_path_list_get(path_list_index);
+
+    vec_foreach (path_index, path_list->fpl_paths)
+    {
+        found_nh = fib_path_get_nh(*path_index, nh_out);
+        if (found_nh)
+            break;
+    }
+
+    return found_nh;
 }
 
 dpo_proto_t

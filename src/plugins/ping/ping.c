@@ -682,6 +682,15 @@ ip46_get_resolving_interface (u32 fib_index, ip46_address_t * pa46,
 }
 
 static u32
+ip46_fib_get_nh (u32 fib_index, ip46_address_t *pa46, int is_ip6,
+		 ip46_address_t *nh_out)
+{
+  fib_node_index_t fib_entry_index;
+  fib_entry_index = ip46_fib_table_lookup_host (fib_index, pa46, is_ip6);
+  return fib_entry_get_nh (fib_entry_index, nh_out);
+}
+
+static u32
 ip46_fib_table_get_index_for_sw_if_index (u32 sw_if_index, int is_ip6)
 {
   u32 fib_table_index = is_ip6 ?
@@ -727,7 +736,8 @@ ip46_fill_l3_header (ip46_address_t * pa46, vlib_buffer_t * b0, int is_ip6)
 }
 
 static bool
-ip46_set_src_address (u32 sw_if_index, vlib_buffer_t * b0, int is_ip6)
+ip46_set_src_address (u32 sw_if_index, vlib_buffer_t *b0, int is_ip6,
+		      ip46_address_t nh)
 {
   bool res = false;
 
@@ -735,13 +745,13 @@ ip46_set_src_address (u32 sw_if_index, vlib_buffer_t * b0, int is_ip6)
     {
       ip6_header_t *ip6 = vlib_buffer_get_current (b0);
 
-      res = fib_sas6_get (sw_if_index, &ip6->dst_address, &ip6->src_address);
+      res = fib_sas6_get (sw_if_index, &nh.ip6, &ip6->src_address);
     }
   else
     {
       ip4_header_t *ip4 = vlib_buffer_get_current (b0);
 
-      res = fib_sas4_get (sw_if_index, &ip4->dst_address, &ip4->src_address);
+      res = fib_sas4_get (sw_if_index, &nh.ip4, &ip4->src_address);
     }
   return res;
 }
@@ -958,6 +968,8 @@ send_ip46_ping (vlib_main_t * vm,
   u32 bi0 = 0;
   int n_buf0 = 0;
   vlib_buffer_t *b0;
+  ip46_address_t nh;
+  u32 found_nh = 0;
 
   n_buf0 = vlib_buffer_alloc (vm, &bi0, 1);
   if (n_buf0 < 1)
@@ -986,13 +998,17 @@ send_ip46_ping (vlib_main_t * vm,
   if (~0 == sw_if_index)
     ERROR_OUT (SEND_PING_NO_INTERFACE);
 
+  found_nh = ip46_fib_get_nh (fib_index, pa46, is_ip6, &nh);
+  if (!found_nh)
+    ERROR_OUT (SEND_PING_NO_NH_FOUND);
+
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = sw_if_index;
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = fib_index;
 
   int l4_header_offset = ip46_fill_l3_header (pa46, b0, is_ip6);
 
   /* set the src address in the buffer */
-  if (!ip46_set_src_address (sw_if_index, b0, is_ip6))
+  if (!ip46_set_src_address (sw_if_index, b0, is_ip6, nh))
     ERROR_OUT (SEND_PING_NO_SRC_ADDRESS);
   if (verbose)
     ip46_print_buffer_src_address (vm, b0, is_ip6);

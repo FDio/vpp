@@ -26,13 +26,14 @@ typedef enum
   PING_RESPONSE_IP4,
 } ping_response_type_t;
 
-#define foreach_ip46_ping_result                                      \
-  _ (OK, "OK")                                                        \
-  _ (ALLOC_FAIL, "packet allocation failed")                          \
-  _ (NO_INTERFACE, "no egress interface")                             \
-  _ (NO_TABLE, "no FIB table for lookup")                            \
-  _ (NO_SRC_ADDRESS, "no source address for egress interface")        \
-  _ (NO_BUFFERS, "could not allocate a new buffer")                   \
+#define foreach_ip46_ping_result                                              \
+  _ (OK, "OK")                                                                \
+  _ (ALLOC_FAIL, "packet allocation failed")                                  \
+  _ (NO_INTERFACE, "no egress interface")                                     \
+  _ (NO_TABLE, "no FIB table for lookup")                                     \
+  _ (NO_SRC_ADDRESS, "no source address for egress interface")                \
+  _ (NO_NH_FOUND, "no next hop ip found")                                     \
+  _ (NO_BUFFERS, "could not allocate a new buffer")
 
 typedef enum
 {

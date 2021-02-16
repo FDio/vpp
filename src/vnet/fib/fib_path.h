@@ -205,6 +205,8 @@ extern adj_index_t fib_path_get_adj(fib_node_index_t path_index);
 extern int fib_path_recursive_loop_detect(fib_node_index_t path_index,
 					  fib_node_index_t **entry_indicies);
 extern u32 fib_path_get_resolving_interface(fib_node_index_t fib_entry_index);
+extern u32 fib_path_get_nh (fib_node_index_t path_list_index,
+				 ip46_address_t *nh_out);
 extern index_t fib_path_get_resolving_index(fib_node_index_t path_index);
 extern u16 fib_path_get_weight(fib_node_index_t path_index);
 extern u16 fib_path_get_preference(fib_node_index_t path_index);

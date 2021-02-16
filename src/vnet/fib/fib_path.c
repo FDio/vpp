@@ -2182,6 +2182,30 @@ fib_path_get_resolving_interface (fib_node_index_t path_index)
     return (dpo_get_urpf(&path->fp_dpo));
 }
 
+u32
+fib_path_get_nh (fib_node_index_t path_index, ip46_address_t *nh_out)
+{
+    fib_path_t *path;
+
+    path = fib_path_get(path_index);
+
+    switch (path->fp_type)
+    {
+    case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
+        *nh_out = path->attached_next_hop.fp_nh;
+	return 1;
+    case FIB_PATH_TYPE_RECURSIVE:
+        if (fib_path_is_resolved(path_index))
+        {
+            return fib_entry_get_nh(path->fp_via_fib, nh_out);
+        }
+        break;
+    default:
+	break;
+    }
+    return 0;
+}
+
 index_t
 fib_path_get_resolving_index (fib_node_index_t path_index)
 {
