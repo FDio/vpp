@@ -72,6 +72,12 @@ lcp_itf_pair_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   unformat_free (line_input);
 
+  if (!host_if_name)
+    {
+      vec_free (ns);
+      return clib_error_return (0, "host interface name required");
+    }
+
   if (sw_if_index == ~0)
     {
       vec_free (host_if_name);
