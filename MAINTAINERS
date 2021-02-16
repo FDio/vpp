@@ -728,6 +728,11 @@ M:	neale@graphiant.com
 M:	Matthew Smith <mgsmith@netgate.com>
 F:	src/plugins/linux-cp/
 
+cJSON
+I:	cjson
+M:	Ole Troan <ot@cisco.com>
+F:	src/vppinfra/cJSON.[ch]
+
 THE REST
 I:	misc
 M:	vpp-dev Mailing List <vpp-dev@fd.io>
