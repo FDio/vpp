@@ -1621,33 +1621,16 @@ ikev2_sa_match_ts (ikev2_sa_t * sa)
     }
 }
 
-static void
-ikev2_sa_auth (ikev2_sa_t * sa)
+static ikev2_profile_t *
+ikev2_select_profile (ikev2_main_t *km, ikev2_sa_t *sa,
+		      ikev2_sa_transform_t *tr_prf, u8 *key_pad)
 {
-  ikev2_main_t *km = &ikev2_main;
-  ikev2_profile_t *p, *sel_p = 0;
-  u8 *authmsg, *key_pad, *psk = 0, *auth = 0;
-  ikev2_sa_transform_t *tr_prf;
-
-  tr_prf =
-    ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
-
-  /* only shared key and rsa signature */
-  if (!(sa->i_auth.method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC ||
-	sa->i_auth.method == IKEV2_AUTH_METHOD_RSA_SIG))
-    {
-      ikev2_elog_uint (IKEV2_LOG_ERROR,
-		       "unsupported authentication method %u",
-		       sa->i_auth.method);
-      ikev2_set_state (sa, IKEV2_STATE_AUTH_FAILED);
-      return;
-    }
-
-  key_pad = format (0, "%s", IKEV2_KEY_PAD);
-  authmsg = ikev2_sa_generate_authmsg (sa, sa->is_initiator);
-
+  ikev2_profile_t *ret = 0, *p;
   ikev2_id_t *id_rem, *id_loc;
   ikev2_auth_t *sa_auth;
+  u8 *authmsg, *psk = 0, *auth = 0;
+
+  authmsg = ikev2_sa_generate_authmsg (sa, sa->is_initiator);
 
   if (sa->is_initiator)
     {
@@ -1662,68 +1645,87 @@ ikev2_sa_auth (ikev2_sa_t * sa)
       sa_auth = &sa->i_auth;
     }
 
-  /* *INDENT-OFF* */
-  pool_foreach (p, km->profiles)  {
+  pool_foreach (p, km->profiles)
+    {
+      /* check id */
+      if (!ikev2_is_id_equal (&p->rem_id, id_rem) ||
+	  !ikev2_is_id_equal (&p->loc_id, id_loc))
+	continue;
 
-    /* check id */
-    if (!ikev2_is_id_equal (&p->rem_id, id_rem)
-          || !ikev2_is_id_equal (&p->loc_id, id_loc))
-      continue;
+      if (sa_auth->method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
+	{
+	  if (!p->auth.data ||
+	      p->auth.method != IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
+	    continue;
 
-    if (sa_auth->method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
-      {
-        if (!p->auth.data ||
-             p->auth.method != IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
-          continue;
+	  psk = ikev2_calc_prf (tr_prf, p->auth.data, key_pad);
+	  auth = ikev2_calc_prf (tr_prf, psk, authmsg);
 
-        psk = ikev2_calc_prf(tr_prf, p->auth.data, key_pad);
-        auth = ikev2_calc_prf(tr_prf, psk, authmsg);
+	  if (!clib_memcmp (auth, sa_auth->data, vec_len (sa_auth->data)))
+	    {
+	      ikev2_set_state (sa, IKEV2_STATE_AUTHENTICATED);
+	      vec_free (auth);
+	      ret = p;
+	      break;
+	    }
+	  else
+	    {
+	      ikev2_elog_uint (IKEV2_LOG_ERROR,
+			       "shared key mismatch! ispi %lx", sa->ispi);
+	    }
+	}
+      else if (sa_auth->method == IKEV2_AUTH_METHOD_RSA_SIG)
+	{
+	  if (p->auth.method != IKEV2_AUTH_METHOD_RSA_SIG)
+	    continue;
 
-        if (!clib_memcmp(auth, sa_auth->data, vec_len(sa_auth->data)))
-          {
-            ikev2_set_state(sa, IKEV2_STATE_AUTHENTICATED);
-            vec_free(auth);
-            sel_p = p;
-            break;
-          }
-	else
-	  {
-	    ikev2_elog_uint (IKEV2_LOG_ERROR, "shared key mismatch! ispi %lx",
-			     sa->ispi);
-	  }
-      }
-    else if (sa_auth->method == IKEV2_AUTH_METHOD_RSA_SIG)
-      {
-        if (p->auth.method != IKEV2_AUTH_METHOD_RSA_SIG)
-          continue;
+	  if (ikev2_verify_sign (p->auth.key, sa_auth->data, authmsg) == 1)
+	    {
+	      ikev2_set_state (sa, IKEV2_STATE_AUTHENTICATED);
+	      ret = p;
+	      break;
+	    }
+	  else
+	    {
+	      ikev2_elog_uint (IKEV2_LOG_ERROR,
+			       "cert verification failed! ispi %lx", sa->ispi);
+	    }
+	}
+    }
+  vec_free (authmsg);
+  return ret;
+}
 
-        if (ikev2_verify_sign(p->auth.key, sa_auth->data, authmsg) == 1)
-          {
-            ikev2_set_state(sa, IKEV2_STATE_AUTHENTICATED);
-            sel_p = p;
-            break;
-          }
-	else
-	  {
-	    ikev2_elog_uint (IKEV2_LOG_ERROR,
-			     "cert verification failed! ispi %lx", sa->ispi);
-	  }
-      }
+static void
+ikev2_sa_auth (ikev2_sa_t *sa)
+{
+  ikev2_main_t *km = &ikev2_main;
+  ikev2_profile_t *sel_p = 0;
+  ikev2_sa_transform_t *tr_prf;
+  u8 *psk, *authmsg, *key_pad;
 
-    vec_free(auth);
-    vec_free(psk);
-  }
-  /* *INDENT-ON* */
+  tr_prf =
+    ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
+
+  /* only shared key and rsa signature */
+  if (!(sa->i_auth.method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC ||
+	sa->i_auth.method == IKEV2_AUTH_METHOD_RSA_SIG))
+    {
+      ikev2_elog_uint (IKEV2_LOG_ERROR, "unsupported authentication method %u",
+		       sa->i_auth.method);
+      ikev2_set_state (sa, IKEV2_STATE_AUTH_FAILED);
+      return;
+    }
+
+  key_pad = format (0, "%s", IKEV2_KEY_PAD);
+  sel_p = ikev2_select_profile (km, sa, tr_prf, key_pad);
 
   if (sel_p)
     {
+      ASSERT (sa->state == IKEV2_STATE_AUTHENTICATED);
       sa->udp_encap = sel_p->udp_encap;
       sa->ipsec_over_udp_port = sel_p->ipsec_over_udp_port;
-    }
-  vec_free (authmsg);
 
-  if (sa->state == IKEV2_STATE_AUTHENTICATED)
-    {
       if (!sa->is_initiator)
 	{
 	  vec_free (sa->r_id.data);
@@ -1737,8 +1739,10 @@ ikev2_sa_auth (ikev2_sa_t * sa)
 	  if (sel_p->auth.method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
 	    {
 	      vec_free (sa->r_auth.data);
+	      psk = ikev2_calc_prf (tr_prf, sel_p->auth.data, key_pad);
 	      sa->r_auth.data = ikev2_calc_prf (tr_prf, psk, authmsg);
 	      sa->r_auth.method = IKEV2_AUTH_METHOD_SHARED_KEY_MIC;
+	      vec_free (psk);
 	    }
 	  else if (sel_p->auth.method == IKEV2_AUTH_METHOD_RSA_SIG)
 	    {
@@ -1767,10 +1771,8 @@ ikev2_sa_auth (ikev2_sa_t * sa)
 		       "profile found! ispi %lx", sa->ispi);
       ikev2_set_state (sa, IKEV2_STATE_AUTH_FAILED);
     }
-  vec_free (psk);
   vec_free (key_pad);
 }
-
 
 static void
 ikev2_sa_auth_init (ikev2_sa_t * sa)
@@ -1793,15 +1795,17 @@ ikev2_sa_auth_init (ikev2_sa_t * sa)
       return;
     }
 
-  key_pad = format (0, "%s", IKEV2_KEY_PAD);
   authmsg = ikev2_sa_generate_authmsg (sa, 0);
-  psk = ikev2_calc_prf (tr_prf, sa->i_auth.data, key_pad);
 
   if (sa->i_auth.method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
     {
       vec_free (sa->i_auth.data);
+      key_pad = format (0, "%s", IKEV2_KEY_PAD);
+      psk = ikev2_calc_prf (tr_prf, sa->i_auth.data, key_pad);
       sa->i_auth.data = ikev2_calc_prf (tr_prf, psk, authmsg);
       sa->i_auth.method = IKEV2_AUTH_METHOD_SHARED_KEY_MIC;
+      vec_free (psk);
+      vec_free (key_pad);
     }
   else if (sa->i_auth.method == IKEV2_AUTH_METHOD_RSA_SIG)
     {
@@ -1809,9 +1813,6 @@ ikev2_sa_auth_init (ikev2_sa_t * sa)
       sa->i_auth.data = ikev2_calc_sign (km->pkey, authmsg);
       sa->i_auth.method = IKEV2_AUTH_METHOD_RSA_SIG;
     }
-
-  vec_free (psk);
-  vec_free (key_pad);
   vec_free (authmsg);
 }
 
@@ -2890,6 +2891,9 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node,
   ikev2_main_per_thread_data_t *ptd = ikev2_get_per_thread_data ();
   ikev2_stats_t _stats, *stats = &_stats;
   int res;
+
+  /* no NAT traversal for ip6 */
+  ASSERT (!natt || is_ip4);
 
   clib_memset_u16 (stats, 0, sizeof (stats[0]) / sizeof (u16));
   from = vlib_frame_vector_args (frame);

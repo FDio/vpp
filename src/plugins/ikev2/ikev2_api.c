@@ -43,6 +43,8 @@ extern ikev2_main_t ikev2_main;
 #define REPLY_MSG_ID_BASE ikev2_main.msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
+#define IKEV2_MAX_DATA_LEN (1 << 10)
+
 static u32
 ikev2_encode_sa_index (u32 sai, u32 ti)
 {
@@ -542,18 +544,24 @@ static void
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
   int data_len = ntohl (mp->data_len);
-  u8 *tmp = format (0, "%s", mp->name);
-  u8 *data = vec_new (u8, data_len);
-  clib_memcpy (data, mp->data, data_len);
-  error = ikev2_set_profile_auth (vm, tmp, mp->auth_method, data, mp->is_hex);
-  vec_free (tmp);
-  vec_free (data);
-  if (error)
+  if (data_len > 0 && data_len <= IKEV2_MAX_DATA_LEN)
     {
-      ikev2_log_error ("%U", format_clib_error, error);
-      clib_error_free (error);
-      rv = VNET_API_ERROR_UNSPECIFIED;
+      u8 *tmp = format (0, "%s", mp->name);
+      u8 *data = vec_new (u8, data_len);
+      clib_memcpy (data, mp->data, data_len);
+      error =
+	ikev2_set_profile_auth (vm, tmp, mp->auth_method, data, mp->is_hex);
+      vec_free (tmp);
+      vec_free (data);
+      if (error)
+	{
+	  ikev2_log_error ("%U", format_clib_error, error);
+	  clib_error_free (error);
+	  rv = VNET_API_ERROR_UNSPECIFIED;
+	}
     }
+  else
+    rv = VNET_API_ERROR_INVALID_VALUE;
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -572,17 +580,22 @@ vl_api_ikev2_profile_set_id_t_handler (vl_api_ikev2_profile_set_id_t * mp)
   clib_error_t *error;
   u8 *tmp = format (0, "%s", mp->name);
   int data_len = ntohl (mp->data_len);
-  u8 *data = vec_new (u8, data_len);
-  clib_memcpy (data, mp->data, data_len);
-  error = ikev2_set_profile_id (vm, tmp, mp->id_type, data, mp->is_local);
-  vec_free (tmp);
-  vec_free (data);
-  if (error)
+  if (data_len > 0 && data_len <= IKEV2_MAX_DATA_LEN)
     {
-      ikev2_log_error ("%U", format_clib_error, error);
-      clib_error_free (error);
-      rv = VNET_API_ERROR_UNSPECIFIED;
+      u8 *data = vec_new (u8, data_len);
+      clib_memcpy (data, mp->data, data_len);
+      error = ikev2_set_profile_id (vm, tmp, mp->id_type, data, mp->is_local);
+      vec_free (tmp);
+      vec_free (data);
+      if (error)
+	{
+	  ikev2_log_error ("%U", format_clib_error, error);
+	  clib_error_free (error);
+	  rv = VNET_API_ERROR_UNSPECIFIED;
+	}
     }
+  else
+    rv = VNET_API_ERROR_INVALID_VALUE;
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
