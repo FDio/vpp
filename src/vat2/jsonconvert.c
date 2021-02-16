@@ -69,7 +69,8 @@ int
 u8string_fromjson2(cJSON *o, char *fieldname, u8 *data)
 {
     u8 *s = u8string_fromjson(o, fieldname);
-    if (!s) return 0;
+    if (!s)
+      return -1;
     memcpy(data, s, vec_len(s));
     vec_free(s);
     return 0;
