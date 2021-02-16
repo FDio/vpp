@@ -377,6 +377,7 @@ echo_server_detach (void)
   int rv;
 
   da->app_index = esm->app_index;
+  da->api_client_index = ~0;
   rv = vnet_application_detach (da);
   esm->app_index = ~0;
   vnet_app_del_cert_key_pair (esm->ckpair_index);
