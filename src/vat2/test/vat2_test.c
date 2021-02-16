@@ -147,6 +147,21 @@ struct msgs msgs[] = {
     .tojson = (tojson_fn_t) vl_api_test_addresses_t_tojson,
     .fromjson = (fromjson_fn_t) vl_api_test_addresses_t_fromjson,
   },
+  {
+    .name = "test_addresses2",
+    .tojson = (tojson_fn_t) vl_api_test_addresses2_t_tojson,
+    .fromjson = (fromjson_fn_t) vl_api_test_addresses2_t_fromjson,
+  },
+  {
+    .name = "test_addresses3",
+    .tojson = (tojson_fn_t) vl_api_test_addresses3_t_tojson,
+    .fromjson = (fromjson_fn_t) vl_api_test_addresses3_t_fromjson,
+  },
+  {
+    .name = "test_empty",
+    .tojson = (tojson_fn_t) vl_api_test_empty_t_tojson,
+    .fromjson = (fromjson_fn_t) vl_api_test_empty_t_fromjson,
+  },
 };
 
 struct tests tests[] = {
@@ -170,6 +185,11 @@ struct tests tests[] = {
 	 "\"0xaabbccddee\" }}" },
   { .s = "{\"_msgname\": \"test_addresses\", \"a\": \"1.2.3.4\" }" },
   { .s = "{\"_msgname\": \"test_addresses\", \"a\": \"2001:db8::23\" }" },
+  { .s = "{\"_msgname\": \"test_addresses2\", \"a\": [\"2001:db8::23\", "
+	 "\"2001:db8::23\"] }" },
+  { .s = "{\"_msgname\": \"test_addresses3\", \"n\": 2, \"a\": "
+	 "[\"2001:db8::23\", \"2001:db8::23\"] }" },
+  { .s = "{\"_msgname\": \"test_empty\"}" },
 };
 
 int main (int argc, char **argv)

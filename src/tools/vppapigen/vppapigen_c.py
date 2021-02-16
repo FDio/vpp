@@ -416,7 +416,7 @@ class FromJSON():
             if o.lengthfield:
                 write('    s = u8string_fromjson(o, "{}");\n'
                       .format(o.fieldname))
-                write('    if (!s) return 0;\n')
+                write('    if (!s) goto error;\n')
                 write('    {} = vec_len(s);\n'.format(lfield))
 
                 write('    {realloc} = realloc({realloc}, {msgsize} + '
@@ -427,7 +427,7 @@ class FromJSON():
 
                 write('    vec_free(s);\n')
             else:
-                write('    u8string_fromjson2(o, "{n}", a->{n});\n'
+                write('    if (u8string_fromjson2(o, "{n}", a->{n}) < 0) goto error;\n'
                       .format(n=o.fieldname))
             return
 
@@ -438,7 +438,7 @@ class FromJSON():
                 call = ('vl_api_{t}_fromjson(e, &d[i]);'
                         .format(t=o.fieldtype))
             else:
-                call = ('{t}_fromjson({msgvar}, len, e, &d[i]); '
+                call = ('if ({t}_fromjson({msgvar}, len, e, &d[i]) < 0) goto error; '
                         .format(t=o.fieldtype, msgvar=msgvar))
             write(forloop_vla.format(lfield=lfield,
                                      t=o.fieldtype,
@@ -547,6 +547,7 @@ class FromJSON():
     def print_define(self, o):
         '''Convert JSON object to VPP API message'''
         write = self.stream.write
+        error = 0
         write('static inline vl_api_{name}_t *vl_api_{name}_t_fromjson '
               '(cJSON *o, int *len) {{\n'.format(name=o.name))
         write('    cJSON *item __attribute__ ((unused));\n')
@@ -563,14 +564,17 @@ class FromJSON():
             write('    item = cJSON_GetObjectItem(o, "{}");\n'
                   .format(t.fieldname))
             write('    if (!item) goto error;\n')
+            error += 1
             self._dispatch[t.type](self, t, toplevel=True)
             write('\n')
 
         write('    *len = l;\n')
         write('    return a;\n')
-        write('\n  error:\n')
-        write('    free(a);\n')
-        write('    return 0;\n')
+
+        if error:
+            write('\n  error:\n')
+            write('    free(a);\n')
+            write('    return 0;\n')
         write('}\n')
 
     def print_using(self, o):

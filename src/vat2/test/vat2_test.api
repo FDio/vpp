@@ -81,3 +81,16 @@ autoreply define test_vla5 {
 autoreply define test_addresses {
   vl_api_address_t a;
 };
+autoreply define test_addresses2 {
+  vl_api_address_t a[2];
+};
+autoreply define test_addresses3 {
+  u32 n;
+  vl_api_address_t a[n];
+};
+
+/* Empty */
+autoreply define test_empty {
+  u32 client_index;
+  u32 context;
+};
