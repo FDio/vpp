@@ -15,6 +15,7 @@
 
 option version = "2.0.0";
 
+import "vnet/interface_types.api";
 import "vnet/policer/policer_types.api";
 
 /** \brief policer bind: Associate/disassociate a policer with a worker thread.
@@ -32,6 +33,23 @@ autoreply define policer_bind
   string name[64];
   u32 worker_index;
   bool bind_enable;
+};
+
+/** \brief policer input: Apply policer as an input feature.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param name - policer name
+    @param sw_if_index - interface to apply the policer
+    @param apply - Apply/remove
+*/
+autoreply define policer_input
+{
+  u32 client_index;
+  u32 context;
+
+  string name[64];
+  vl_api_interface_index_t sw_if_index;
+  bool apply;
 };
 
 /** \brief Add/del policer
