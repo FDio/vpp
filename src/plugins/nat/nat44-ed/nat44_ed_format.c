@@ -17,8 +17,8 @@
  * @brief NAT formatting
  */
 
-#include <nat/nat.h>
-#include <nat/nat_inlines.h>
+#include <nat/nat44-ed/nat44_ed.h>
+#include <nat/nat44-ed/nat44_ed_inlines.h>
 
 uword
 unformat_nat_protocol (unformat_input_t * input, va_list * args)
@@ -171,49 +171,6 @@ format_snat_session (u8 * s, va_list * args)
     s = format (s, "       load-balancing\n");
   if (is_twice_nat_session (sess))
     s = format (s, "       twice-nat\n");
-
-  return s;
-}
-
-u8 *
-format_snat_user (u8 * s, va_list * args)
-{
-  snat_main_per_thread_data_t *tsm =
-    va_arg (*args, snat_main_per_thread_data_t *);
-  snat_user_t *u = va_arg (*args, snat_user_t *);
-  int verbose = va_arg (*args, int);
-  dlist_elt_t *head, *elt;
-  u32 elt_index, head_index;
-  u32 session_index;
-  snat_session_t *sess;
-
-  s = format (s, "%U: %d dynamic translations, %d static translations\n",
-	      format_ip4_address, &u->addr, u->nsessions, u->nstaticsessions);
-
-  if (verbose == 0)
-    return s;
-
-  if (u->nsessions || u->nstaticsessions)
-    {
-      head_index = u->sessions_per_user_list_head_index;
-      head = pool_elt_at_index (tsm->list_pool, head_index);
-
-      elt_index = head->next;
-      elt = pool_elt_at_index (tsm->list_pool, elt_index);
-      session_index = elt->value;
-
-      while (session_index != ~0)
-	{
-	  sess = pool_elt_at_index (tsm->sessions, session_index);
-
-	  s = format (s, "  %U\n", format_snat_session, tsm, sess);
-
-	  elt_index = elt->next;
-	  elt = pool_elt_at_index (tsm->list_pool, elt_index);
-	  session_index = elt->value;
-	}
-    }
-
   return s;
 }
 
