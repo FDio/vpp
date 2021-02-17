@@ -17,8 +17,10 @@
  * @brief NAT plugin client-IP based session affinity for load-balancing
  */
 
-#include <nat/nat_affinity.h>
-#include <nat/nat.h>
+#include <nat/lib/log.h>
+
+#include <nat/nat44-ed/nat44_ed.h>
+#include <nat/nat44-ed/nat44_ed_affinity.h>
 
 nat_affinity_main_t nat_affinity_main;
 
@@ -109,6 +111,7 @@ nat_affinity_get_per_service_list_head_index (void)
 void
 nat_affinity_flush_service (u32 affinity_per_service_list_head_index)
 {
+  snat_main_t *sm = &snat_main;
   nat_affinity_main_t *nam = &nat_affinity_main;
   u32 elt_index;
   dlist_elt_t *elt;
@@ -128,7 +131,7 @@ nat_affinity_flush_service (u32 affinity_per_service_list_head_index)
       kv.key[1] = a->key.as_u64[1];
       pool_put_index (nam->affinity_pool, elt->value);
       if (clib_bihash_add_del_16_8 (&nam->affinity_hash, &kv, 0))
-	nat_elog_warn ("affinity key del failed");
+	nat_elog_warn (sm, "affinity key del failed");
       pool_put_index (nam->list_pool, elt_index);
     }
   pool_put_index (nam->list_pool, affinity_per_service_list_head_index);
@@ -141,6 +144,7 @@ nat_affinity_find_and_lock (ip4_address_t client_addr,
 			    ip4_address_t service_addr, u8 proto,
 			    u16 service_port, u8 * backend_index)
 {
+  snat_main_t *sm = &snat_main;
   nat_affinity_main_t *nam = &nat_affinity_main;
   clib_bihash_kv_16_8_t kv, value;
   nat_affinity_t *a;
@@ -164,7 +168,7 @@ nat_affinity_find_and_lock (ip4_address_t client_addr,
 	  pool_put_index (nam->list_pool, a->per_service_index);
 	  pool_put_index (nam->affinity_pool, value.value);
 	  if (clib_bihash_add_del_16_8 (&nam->affinity_hash, &kv, 0))
-	    nat_elog_warn ("affinity key del failed");
+	    nat_elog_warn (sm, "affinity key del failed");
 	  rv = 1;
 	  goto unlock;
 	}
@@ -180,6 +184,7 @@ unlock:
 static int
 affinity_is_expired_cb (clib_bihash_kv_16_8_t * kv, void *arg)
 {
+  snat_main_t *sm = &snat_main;
   nat_affinity_main_t *nam = &nat_affinity_main;
   nat_affinity_t *a;
 
@@ -192,7 +197,7 @@ affinity_is_expired_cb (clib_bihash_kv_16_8_t * kv, void *arg)
 	  pool_put_index (nam->list_pool, a->per_service_index);
 	  pool_put_index (nam->affinity_pool, kv->value);
 	  if (clib_bihash_add_del_16_8 (&nam->affinity_hash, kv, 0))
-	    nat_elog_warn ("affinity key del failed");
+	    nat_elog_warn (sm, "affinity key del failed");
 	  return 1;
 	}
     }
@@ -207,6 +212,7 @@ nat_affinity_create_and_lock (ip4_address_t client_addr,
 			      u32 sticky_time,
 			      u32 affinity_per_service_list_head_index)
 {
+  snat_main_t *sm = &snat_main;
   nat_affinity_main_t *nam = &nat_affinity_main;
   clib_bihash_kv_16_8_t kv, value;
   nat_affinity_t *a;
@@ -218,7 +224,7 @@ nat_affinity_create_and_lock (ip4_address_t client_addr,
   if (!clib_bihash_search_16_8 (&nam->affinity_hash, &kv, &value))
     {
       rv = 1;
-      nat_elog_notice ("affinity key already exist");
+      nat_elog_notice (sm, "affinity key already exist");
       goto unlock;
     }
 
@@ -229,7 +235,7 @@ nat_affinity_create_and_lock (ip4_address_t client_addr,
 					     affinity_is_expired_cb, NULL);
   if (rv)
     {
-      nat_elog_notice ("affinity key add failed");
+      nat_elog_notice (sm, "affinity key add failed");
       pool_put (nam->affinity_pool, a);
       goto unlock;
     }
