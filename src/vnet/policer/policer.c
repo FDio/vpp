@@ -592,9 +592,6 @@ clib_error_t *
 policer_init (vlib_main_t * vm)
 {
   vnet_policer_main_t *pm = &vnet_policer_main;
-  void vnet_policer_node_funcs_reference (void);
-
-  vnet_policer_node_funcs_reference ();
 
   pm->vlib_main = vm;
   pm->vnet_main = vnet_get_main ();
