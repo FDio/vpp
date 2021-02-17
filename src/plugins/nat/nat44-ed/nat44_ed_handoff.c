@@ -22,8 +22,9 @@
 #include <vnet/handoff.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vppinfra/error.h>
-#include <nat/nat.h>
-#include <nat/nat_inlines.h>
+
+#include <nat/nat44-ed/nat44_ed.h>
+#include <nat/nat44-ed/nat44_ed_inlines.h>
 
 typedef struct
 {
