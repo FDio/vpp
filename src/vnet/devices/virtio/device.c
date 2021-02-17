@@ -54,6 +54,46 @@ static char *virtio_tx_func_error_strings[] = {
 #undef _
 };
 
+typedef struct virtio_ip4_psh
+{
+  ip4_address_t src;
+  ip4_address_t dst;
+  u8 zero;
+  u8 proto;
+  u16 l4len;
+} virtio_ip4_psh;
+
+typedef struct virtio_ip6_psh
+{
+  ip6_address_t src;
+  ip6_address_t dst;
+  u32 l4len;
+  u32 proto;
+} virtio_ip6_psh;
+
+static_always_inline u16
+virtio_ip4_pseudo_header_cksum (ip4_header_t *ip4)
+{
+  virtio_ip4_psh psh;
+  psh.src = ip4->src_address;
+  psh.dst = ip4->dst_address;
+  psh.zero = 0;
+  psh.proto = ip4->protocol;
+  psh.l4len = ip4->length;
+  return ip_csum (&psh, sizeof (psh));
+}
+
+static_always_inline u16
+virtio_ip6_pseudo_header_cksum (ip6_header_t *ip6)
+{
+  virtio_ip6_psh psh;
+  psh.src = ip6->src_address;
+  psh.dst = ip6->dst_address;
+  psh.l4len = ip6->payload_length;
+  psh.proto = clib_host_to_net_u32 ((u32) ip6->protocol);
+  return ip_csum (&psh, sizeof (psh));
+}
+
 static u8 *
 format_virtio_device (u8 * s, va_list * args)
 {
@@ -292,37 +332,57 @@ set_checksum_offsets (vlib_buffer_t * b, virtio_net_hdr_v1_t * hdr,
 					 0 /* ip6 */ );
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
       hdr->csum_start = gho.l4_hdr_offset;	// 0x22;
+      /*
+       * virtio devices do not support IP4 checksum offload. So driver takes
+       * care of it while doing tx.
+       */
+      ip4 = (ip4_header_t *) (vlib_buffer_get_current (b) + gho.l3_hdr_offset);
+      if (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)
+	ip4->checksum = ip4_header_checksum (ip4);
+      /*
+       * virtio devices assume the l4 header is set to the checksum of the
+       * l3 pseudo-header, so we compute it before tx-ing
+       */
       if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
 	{
+	  tcp_header_t *tcp =
+	    (tcp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
+	  tcp->checksum = virtio_ip4_pseudo_header_cksum (ip4);
 	  hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
 	}
       else if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
 	{
+	  udp_header_t *udp =
+	    (udp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
+	  udp->checksum = virtio_ip4_pseudo_header_cksum (ip4);
 	  hdr->csum_offset = STRUCT_OFFSET_OF (udp_header_t, checksum);
 	}
-
-      /*
-       * virtio devices do not support IP4 checksum offload. So driver takes care
-       * of it while doing tx.
-       */
-      ip4 =
-	(ip4_header_t *) (vlib_buffer_get_current (b) + gho.l3_hdr_offset);
-      if (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)
-	ip4->checksum = ip4_header_checksum (ip4);
     }
   else if (b->flags & VNET_BUFFER_F_IS_IP6)
     {
+      ip6_header_t *ip6;
       generic_header_offset_t gho = { 0 };
       vnet_generic_header_offset_parser (b, &gho, is_l2, 0 /* ip4 */ ,
 					 1 /* ip6 */ );
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
       hdr->csum_start = gho.l4_hdr_offset;	// 0x36;
+      /*
+       * virtio devices assume the l4 header is set to the checksum of the
+       * l3 pseudo-header, so we compute it before tx-ing
+       */
+      ip6 = (ip6_header_t *) (vlib_buffer_get_current (b) + gho.l3_hdr_offset);
       if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
 	{
+	  tcp_header_t *tcp =
+	    (tcp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
+	  tcp->checksum = virtio_ip6_pseudo_header_cksum (ip6);
 	  hdr->csum_offset = STRUCT_OFFSET_OF (tcp_header_t, checksum);
 	}
       else if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
 	{
+	  udp_header_t *udp =
+	    (udp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
+	  udp->checksum = virtio_ip6_pseudo_header_cksum (ip6);
 	  hdr->csum_offset = STRUCT_OFFSET_OF (udp_header_t, checksum);
 	}
     }
