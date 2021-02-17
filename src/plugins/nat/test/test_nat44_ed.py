@@ -1906,7 +1906,6 @@ class TestNAT44ED(NAT44EDTestCase):
             raise
 
 
-@tag_fixme_vpp_workers
 class TestNAT44EDMW(TestNAT44ED):
     """ NAT44ED MW Test Case """
     worker_config = "workers 1"
