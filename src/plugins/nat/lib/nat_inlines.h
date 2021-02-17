@@ -77,6 +77,20 @@ mss_clamping (u16 mss_clamping, tcp_header_t * tcp, ip_csum_t * sum)
     }
 }
 
+static_always_inline u16
+nat_random_port (u32 *random_seed, u16 min, u16 max)
+{
+  u32 rwide;
+  u16 r;
+
+  rwide = random_u32 (random_seed);
+  r = rwide & 0xFFFF;
+  if (r >= min && r <= max)
+    return r;
+
+  return min + (rwide % (max - min + 1));
+}
+
 #endif /* __included_lib_nat_inlines_h__ */
 
 /*

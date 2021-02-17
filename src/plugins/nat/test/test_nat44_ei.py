@@ -70,11 +70,7 @@ class MethodHolder(VppTestCase):
 
     @property
     def config_flags(self):
-        return VppEnum.vl_api_nat_config_flags_t
-
-    @property
-    def nat44_config_flags(self):
-        return VppEnum.vl_api_nat44_config_flags_t
+        return VppEnum.vl_api_nat44_ei_config_flags_t
 
     @property
     def SYSLOG_SEVERITY(self):
@@ -100,9 +96,9 @@ class MethodHolder(VppTestCase):
         """
 
         if not (local_port and external_port):
-            flags |= self.config_flags.NAT_IS_ADDR_ONLY
+            flags |= self.config_flags.NAT44_EI_ADDR_ONLY_MAPPING
 
-        self.vapi.nat44_add_del_static_mapping(
+        self.vapi.nat44_ei_add_del_static_mapping(
             is_add=is_add,
             local_ip_address=local_ip,
             external_ip_address=external_ip,
@@ -113,20 +109,17 @@ class MethodHolder(VppTestCase):
             flags=flags,
             tag=tag)
 
-    def nat44_add_address(self, ip, is_add=1, vrf_id=0xFFFFFFFF, twice_nat=0):
+    def nat44_add_address(self, ip, is_add=1, vrf_id=0xFFFFFFFF):
         """
         Add/delete NAT44EI address
 
         :param ip: IP address
         :param is_add: 1 if add, 0 if delete (Default add)
-        :param twice_nat: twice NAT address for external hosts
         """
-        flags = self.config_flags.NAT_IS_TWICE_NAT if twice_nat else 0
-        self.vapi.nat44_add_del_address_range(first_ip_address=ip,
-                                              last_ip_address=ip,
-                                              vrf_id=vrf_id,
-                                              is_add=is_add,
-                                              flags=flags)
+        self.vapi.nat44_ei_add_del_address_range(first_ip_address=ip,
+                                                 last_ip_address=ip,
+                                                 vrf_id=vrf_id,
+                                                 is_add=is_add)
 
     def create_routes_and_neigbors(self):
         r1 = VppIpRoute(self, self.pg7.remote_ip4, 32,
@@ -637,11 +630,11 @@ class MethodHolder(VppTestCase):
 
     def verify_no_nat44_user(self):
         """ Verify that there is no NAT44EI user """
-        users = self.vapi.nat44_user_dump()
+        users = self.vapi.nat44_ei_user_dump()
         self.assertEqual(len(users), 0)
-        users = self.statistics.get_counter('/nat44/total-users')
+        users = self.statistics.get_counter('/nat44-ei/total-users')
         self.assertEqual(users[0][0], 0)
-        sessions = self.statistics.get_counter('/nat44/total-sessions')
+        sessions = self.statistics.get_counter('/nat44-ei/total-sessions')
         self.assertEqual(sessions[0][0], 0)
 
     def verify_syslog_apmap(self, data, is_add=True):
@@ -859,33 +852,6 @@ class MethodHolder(VppTestCase):
             self.assertEqual(data, p[Raw].load)
 
 
-class TestNAT44EIAPI(MethodHolder):
-    """ NAT44EI API Test Cases """
-
-    fq_nelts = 512
-
-    def setUp(self):
-        super(TestNAT44EIAPI, self).setUp()
-        self.vapi.nat_set_fq_options(frame_queue_nelts=self.fq_nelts)
-        self.vapi.nat44_plugin_enable_disable(enable=1)
-
-    def tearDown(self):
-        super(TestNAT44EIAPI, self).tearDown()
-        if not self.vpp_dead:
-            self.vapi.nat44_plugin_enable_disable(enable=0)
-            self.vapi.cli("clear logging")
-
-    def test_show_frame_queue_nelts(self):
-        """ API test - worker handoff frame queue elements """
-        nat_config = self.vapi.nat_show_fq_options()
-        self.assertEqual(self.fq_nelts, nat_config.frame_queue_nelts)
-        self.vapi.nat44_plugin_enable_disable(enable=0)
-        self.vapi.cli("set nat frame-queue-nelts 256")
-        self.vapi.nat44_plugin_enable_disable(enable=1)
-        nat_config = self.vapi.nat_show_fq_options()
-        self.assertEqual(256, nat_config.frame_queue_nelts)
-
-
 @tag_fixme_vpp_workers
 class TestNAT44EI(MethodHolder):
     """ NAT44EI Test Cases """
@@ -896,7 +862,7 @@ class TestNAT44EI(MethodHolder):
     @classmethod
     def setUpClass(cls):
         super(TestNAT44EI, cls).setUpClass()
-        cls.vapi.cli("set log class nat level debug")
+        cls.vapi.cli("set log class nat44-ei level debug")
 
         cls.tcp_port_in = 6303
         cls.tcp_port_out = 6303
@@ -957,38 +923,38 @@ class TestNAT44EI(MethodHolder):
         cls.pg4._remote_ip4 = cls.pg9._remote_hosts[0]._ip4 = "10.0.0.2"
         cls.pg9.resolve_arp()
 
-    def setUp(self):
-        super(TestNAT44EI, self).setUp()
-        self.vapi.nat44_plugin_enable_disable(
+    def plugin_enable(self):
+        self.vapi.nat44_ei_plugin_enable_disable(
             sessions=self.max_translations,
             users=self.max_users, enable=1)
+
+    def setUp(self):
+        super(TestNAT44EI, self).setUp()
+        self.plugin_enable()
 
     def tearDown(self):
         super(TestNAT44EI, self).tearDown()
         if not self.vpp_dead:
-            self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
-                                               src_port=self.ipfix_src_port,
-                                               enable=0)
+            self.vapi.nat44_ei_ipfix_enable_disable(
+                domain_id=self.ipfix_domain_id, src_port=self.ipfix_src_port,
+                enable=0)
             self.ipfix_src_port = 4739
             self.ipfix_domain_id = 1
 
-            self.vapi.nat44_plugin_enable_disable(enable=0)
+            self.vapi.nat44_ei_plugin_enable_disable(enable=0)
             self.vapi.cli("clear logging")
 
     def test_clear_sessions(self):
         """ NAT44EI session clearing test """
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
-
-        nat_config = self.vapi.nat_show_config()
-        self.assertEqual(0, nat_config.endpoint_dependent)
 
         pkts = self.create_stream_in(self.pg0, self.pg1)
         self.pg0.add_stream(pkts)
@@ -997,32 +963,34 @@ class TestNAT44EI(MethodHolder):
         capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out(capture)
 
-        sessions = self.statistics.get_counter('/nat44/total-sessions')
+        sessions = self.statistics.get_counter('/nat44-ei/total-sessions')
         self.assertTrue(sessions[0][0] > 0)
         self.logger.info("sessions before clearing: %s" % sessions[0][0])
 
-        self.vapi.cli("clear nat44 sessions")
+        self.vapi.cli("clear nat44 ei sessions")
 
-        sessions = self.statistics.get_counter('/nat44/total-sessions')
+        sessions = self.statistics.get_counter('/nat44-ei/total-sessions')
         self.assertEqual(sessions[0][0], 0)
         self.logger.info("sessions after clearing: %s" % sessions[0][0])
 
     def test_dynamic(self):
         """ NAT44EI dynamic translation test """
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
         # in2out
-        tcpn = self.statistics.get_counter('/nat44/in2out/slowpath/tcp')[0]
-        udpn = self.statistics.get_counter('/nat44/in2out/slowpath/udp')[0]
-        icmpn = self.statistics.get_counter('/nat44/in2out/slowpath/icmp')[0]
-        drops = self.statistics.get_counter('/nat44/in2out/slowpath/drops')[0]
+        tcpn = self.statistics.get_counter('/nat44-ei/in2out/slowpath/tcp')[0]
+        udpn = self.statistics.get_counter('/nat44-ei/in2out/slowpath/udp')[0]
+        icmpn = self.statistics.get_counter(
+            '/nat44-ei/in2out/slowpath/icmp')[0]
+        drops = self.statistics.get_counter(
+            '/nat44-ei/in2out/slowpath/drops')[0]
 
         pkts = self.create_stream_in(self.pg0, self.pg1)
         self.pg0.add_stream(pkts)
@@ -1032,20 +1000,22 @@ class TestNAT44EI(MethodHolder):
         self.verify_capture_out(capture)
 
         if_idx = self.pg0.sw_if_index
-        cnt = self.statistics.get_counter('/nat44/in2out/slowpath/tcp')[0]
+        cnt = self.statistics.get_counter('/nat44-ei/in2out/slowpath/tcp')[0]
         self.assertEqual(cnt[if_idx] - tcpn[if_idx], 2)
-        cnt = self.statistics.get_counter('/nat44/in2out/slowpath/udp')[0]
+        cnt = self.statistics.get_counter('/nat44-ei/in2out/slowpath/udp')[0]
         self.assertEqual(cnt[if_idx] - udpn[if_idx], 1)
-        cnt = self.statistics.get_counter('/nat44/in2out/slowpath/icmp')[0]
+        cnt = self.statistics.get_counter('/nat44-ei/in2out/slowpath/icmp')[0]
         self.assertEqual(cnt[if_idx] - icmpn[if_idx], 1)
-        cnt = self.statistics.get_counter('/nat44/in2out/slowpath/drops')[0]
+        cnt = self.statistics.get_counter('/nat44-ei/in2out/slowpath/drops')[0]
         self.assertEqual(cnt[if_idx] - drops[if_idx], 0)
 
         # out2in
-        tcpn = self.statistics.get_counter('/nat44/out2in/slowpath/tcp')[0]
-        udpn = self.statistics.get_counter('/nat44/out2in/slowpath/udp')[0]
-        icmpn = self.statistics.get_counter('/nat44/out2in/slowpath/icmp')[0]
-        drops = self.statistics.get_counter('/nat44/out2in/slowpath/drops')[0]
+        tcpn = self.statistics.get_counter('/nat44-ei/out2in/slowpath/tcp')[0]
+        udpn = self.statistics.get_counter('/nat44-ei/out2in/slowpath/udp')[0]
+        icmpn = self.statistics.get_counter(
+            '/nat44-ei/out2in/slowpath/icmp')[0]
+        drops = self.statistics.get_counter(
+            '/nat44-ei/out2in/slowpath/drops')[0]
 
         pkts = self.create_stream_out(self.pg1)
         self.pg1.add_stream(pkts)
@@ -1055,29 +1025,29 @@ class TestNAT44EI(MethodHolder):
         self.verify_capture_in(capture, self.pg0)
 
         if_idx = self.pg1.sw_if_index
-        cnt = self.statistics.get_counter('/nat44/out2in/slowpath/tcp')[0]
+        cnt = self.statistics.get_counter('/nat44-ei/out2in/slowpath/tcp')[0]
         self.assertEqual(cnt[if_idx] - tcpn[if_idx], 2)
-        cnt = self.statistics.get_counter('/nat44/out2in/slowpath/udp')[0]
+        cnt = self.statistics.get_counter('/nat44-ei/out2in/slowpath/udp')[0]
         self.assertEqual(cnt[if_idx] - udpn[if_idx], 1)
-        cnt = self.statistics.get_counter('/nat44/out2in/slowpath/icmp')[0]
+        cnt = self.statistics.get_counter('/nat44-ei/out2in/slowpath/icmp')[0]
         self.assertEqual(cnt[if_idx] - icmpn[if_idx], 1)
-        cnt = self.statistics.get_counter('/nat44/out2in/slowpath/drops')[0]
+        cnt = self.statistics.get_counter('/nat44-ei/out2in/slowpath/drops')[0]
         self.assertEqual(cnt[if_idx] - drops[if_idx], 0)
 
-        users = self.statistics.get_counter('/nat44/total-users')
+        users = self.statistics.get_counter('/nat44-ei/total-users')
         self.assertEqual(users[0][0], 1)
-        sessions = self.statistics.get_counter('/nat44/total-sessions')
+        sessions = self.statistics.get_counter('/nat44-ei/total-sessions')
         self.assertEqual(sessions[0][0], 3)
 
     def test_dynamic_icmp_errors_in2out_ttl_1(self):
         """ NAT44EI handling of client packets with TTL=1 """
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -1095,11 +1065,11 @@ class TestNAT44EI(MethodHolder):
         """ NAT44EI handling of server packets with TTL=1 """
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -1127,11 +1097,11 @@ class TestNAT44EI(MethodHolder):
         """
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -1159,11 +1129,11 @@ class TestNAT44EI(MethodHolder):
         """
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -1198,11 +1168,11 @@ class TestNAT44EI(MethodHolder):
         """ NAT44EI ping out interface from outside network """
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -1229,11 +1199,11 @@ class TestNAT44EI(MethodHolder):
         """ NAT44EI ping internal host from outside network """
 
         self.nat44_add_static_mapping(self.pg0.remote_ip4, self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -1262,23 +1232,23 @@ class TestNAT44EI(MethodHolder):
     def test_forwarding(self):
         """ NAT44EI forwarding test """
 
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
-        self.vapi.nat44_forwarding_enable_disable(enable=1)
+        self.vapi.nat44_ei_forwarding_enable_disable(enable=1)
 
         real_ip = self.pg0.remote_ip4
         alias_ip = self.nat_addr
-        flags = self.config_flags.NAT_IS_ADDR_ONLY
-        self.vapi.nat44_add_del_static_mapping(is_add=1,
-                                               local_ip_address=real_ip,
-                                               external_ip_address=alias_ip,
-                                               external_sw_if_index=0xFFFFFFFF,
-                                               flags=flags)
+        flags = self.config_flags.NAT44_EI_ADDR_ONLY_MAPPING
+        self.vapi.nat44_ei_add_del_static_mapping(
+            is_add=1, local_ip_address=real_ip,
+            external_ip_address=alias_ip,
+            external_sw_if_index=0xFFFFFFFF,
+            flags=flags)
 
         try:
             # static mapping match
@@ -1322,9 +1292,9 @@ class TestNAT44EI(MethodHolder):
                 self.pg0.remote_hosts[0] = host0
 
         finally:
-            self.vapi.nat44_forwarding_enable_disable(enable=0)
-            flags = self.config_flags.NAT_IS_ADDR_ONLY
-            self.vapi.nat44_add_del_static_mapping(
+            self.vapi.nat44_ei_forwarding_enable_disable(enable=0)
+            flags = self.config_flags.NAT44_EI_ADDR_ONLY_MAPPING
+            self.vapi.nat44_ei_add_del_static_mapping(
                 is_add=0,
                 local_ip_address=real_ip,
                 external_ip_address=alias_ip,
@@ -1340,14 +1310,14 @@ class TestNAT44EI(MethodHolder):
         self.icmp_id_out = 6305
 
         self.nat44_add_static_mapping(self.pg0.remote_ip4, nat_ip)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
-        sm = self.vapi.nat44_static_mapping_dump()
+        sm = self.vapi.nat44_ei_static_mapping_dump()
         self.assertEqual(len(sm), 1)
         self.assertEqual(sm[0].tag, '')
         self.assertEqual(sm[0].protocol, 0)
@@ -1380,14 +1350,14 @@ class TestNAT44EI(MethodHolder):
         tag = "testTAG"
 
         self.nat44_add_static_mapping(self.pg0.remote_ip4, nat_ip, tag=tag)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
-        sm = self.vapi.nat44_static_mapping_dump()
+        sm = self.vapi.nat44_ei_static_mapping_dump()
         self.assertEqual(len(sm), 1)
         self.assertEqual(sm[0].tag, tag)
 
@@ -1424,11 +1394,11 @@ class TestNAT44EI(MethodHolder):
         self.nat44_add_static_mapping(self.pg0.remote_ip4, self.nat_addr,
                                       self.icmp_id_in, self.icmp_id_out,
                                       proto=IP_PROTOS.icmp)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -1465,11 +1435,11 @@ class TestNAT44EI(MethodHolder):
         self.nat44_add_static_mapping(self.pg0.remote_ip4, self.nat_addr,
                                       self.icmp_id_in, self.icmp_id_out,
                                       proto=IP_PROTOS.icmp)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -1502,14 +1472,14 @@ class TestNAT44EI(MethodHolder):
                                       vrf_id=10)
         self.nat44_add_static_mapping(self.pg0.remote_ip4, nat_ip2,
                                       vrf_id=10)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg3.sw_if_index,
             is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg4.sw_if_index,
             flags=flags, is_add=1)
 
@@ -1537,11 +1507,11 @@ class TestNAT44EI(MethodHolder):
         self.icmp_id_out = 6305
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -1555,7 +1525,7 @@ class TestNAT44EI(MethodHolder):
 
         # 1:1NAT
         self.nat44_add_static_mapping(self.pg0.remote_ip4, nat_ip)
-        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
+        sessions = self.vapi.nat44_ei_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions), 0)
         pkts = self.create_stream_in(self.pg0, self.pg1)
         self.pg0.add_stream(pkts)
@@ -1566,15 +1536,15 @@ class TestNAT44EI(MethodHolder):
 
     def test_identity_nat(self):
         """ NAT44EI Identity NAT """
-        flags = self.config_flags.NAT_IS_ADDR_ONLY
-        self.vapi.nat44_add_del_identity_mapping(
+        flags = self.config_flags.NAT44_EI_ADDR_ONLY_MAPPING
+        self.vapi.nat44_ei_add_del_identity_mapping(
             ip_address=self.pg0.remote_ip4, sw_if_index=0xFFFFFFFF,
             flags=flags, is_add=1)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -1598,13 +1568,13 @@ class TestNAT44EI(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
+        sessions = self.vapi.nat44_ei_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions), 0)
-        flags = self.config_flags.NAT_IS_ADDR_ONLY
-        self.vapi.nat44_add_del_identity_mapping(
+        flags = self.config_flags.NAT44_EI_ADDR_ONLY_MAPPING
+        self.vapi.nat44_ei_add_del_identity_mapping(
             ip_address=self.pg0.remote_ip4, sw_if_index=0xFFFFFFFF,
             flags=flags, vrf_id=1, is_add=1)
-        identity_mappings = self.vapi.nat44_identity_mapping_dump()
+        identity_mappings = self.vapi.nat44_ei_identity_mapping_dump()
         self.assertEqual(len(identity_mappings), 2)
 
     def test_multiple_inside_interfaces(self):
@@ -1612,14 +1582,14 @@ class TestNAT44EI(MethodHolder):
         """
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg3.sw_if_index,
             is_add=1)
 
@@ -1677,17 +1647,17 @@ class TestNAT44EI(MethodHolder):
 
         static_nat_ip = "10.0.0.10"
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg3.sw_if_index,
             is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg4.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg5.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg6.sw_if_index,
             flags=flags, is_add=1)
         self.nat44_add_static_mapping(self.pg6.remote_ip4, static_nat_ip,
@@ -1754,12 +1724,14 @@ class TestNAT44EI(MethodHolder):
         self.verify_capture_in(capture, self.pg5)
 
         # pg5 session dump
-        addresses = self.vapi.nat44_address_dump()
+        addresses = self.vapi.nat44_ei_address_dump()
         self.assertEqual(len(addresses), 1)
-        sessions = self.vapi.nat44_user_session_dump(self.pg5.remote_ip4, 10)
+        sessions = self.vapi.nat44_ei_user_session_dump(
+            self.pg5.remote_ip4, 10)
         self.assertEqual(len(sessions), 3)
         for session in sessions:
-            self.assertFalse(session.flags & self.config_flags.NAT_IS_STATIC)
+            self.assertFalse(session.flags &
+                             self.config_flags.NAT44_EI_STATIC_MAPPING)
             self.assertEqual(str(session.inside_ip_address),
                              self.pg5.remote_ip4)
             self.assertEqual(session.outside_ip_address,
@@ -1791,37 +1763,39 @@ class TestNAT44EI(MethodHolder):
         self.verify_capture_in(capture, self.pg6)
 
         # general user and session dump verifications
-        users = self.vapi.nat44_user_dump()
+        users = self.vapi.nat44_ei_user_dump()
         self.assertGreaterEqual(len(users), 3)
-        addresses = self.vapi.nat44_address_dump()
+        addresses = self.vapi.nat44_ei_address_dump()
         self.assertEqual(len(addresses), 1)
         for user in users:
-            sessions = self.vapi.nat44_user_session_dump(user.ip_address,
-                                                         user.vrf_id)
+            sessions = self.vapi.nat44_ei_user_session_dump(user.ip_address,
+                                                            user.vrf_id)
             for session in sessions:
                 self.assertEqual(user.ip_address, session.inside_ip_address)
                 self.assertTrue(session.total_bytes > session.total_pkts > 0)
                 self.assertTrue(session.protocol in
                                 [IP_PROTOS.tcp, IP_PROTOS.udp,
                                  IP_PROTOS.icmp])
-                self.assertFalse(session.flags &
-                                 self.config_flags.NAT_IS_EXT_HOST_VALID)
 
         # pg4 session dump
-        sessions = self.vapi.nat44_user_session_dump(self.pg4.remote_ip4, 10)
+        sessions = self.vapi.nat44_ei_user_session_dump(
+            self.pg4.remote_ip4, 10)
         self.assertGreaterEqual(len(sessions), 4)
         for session in sessions:
-            self.assertFalse(session.flags & self.config_flags.NAT_IS_STATIC)
+            self.assertFalse(
+                session.flags & self.config_flags.NAT44_EI_STATIC_MAPPING)
             self.assertEqual(str(session.inside_ip_address),
                              self.pg4.remote_ip4)
             self.assertEqual(session.outside_ip_address,
                              addresses[0].ip_address)
 
         # pg6 session dump
-        sessions = self.vapi.nat44_user_session_dump(self.pg6.remote_ip4, 20)
+        sessions = self.vapi.nat44_ei_user_session_dump(
+            self.pg6.remote_ip4, 20)
         self.assertGreaterEqual(len(sessions), 3)
         for session in sessions:
-            self.assertTrue(session.flags & self.config_flags.NAT_IS_STATIC)
+            self.assertTrue(
+                session.flags & self.config_flags.NAT44_EI_STATIC_MAPPING)
             self.assertEqual(str(session.inside_ip_address),
                              self.pg6.remote_ip4)
             self.assertEqual(str(session.outside_ip_address),
@@ -1841,11 +1815,11 @@ class TestNAT44EI(MethodHolder):
         server_out_port = 8765
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -1854,7 +1828,7 @@ class TestNAT44EI(MethodHolder):
                                       server_in_port, server_out_port,
                                       proto=IP_PROTOS.tcp)
 
-        cnt = self.statistics.get_counter('/nat44/hairpinning')[0]
+        cnt = self.statistics.get_counter('/nat44-ei/hairpinning')[0]
         # send packet from host to server
         p = (Ether(src=host.mac, dst=self.pg0.local_mac) /
              IP(src=host.ip4, dst=self.nat_addr) /
@@ -1877,7 +1851,7 @@ class TestNAT44EI(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        after = self.statistics.get_counter('/nat44/hairpinning')[0]
+        after = self.statistics.get_counter('/nat44-ei/hairpinning')[0]
         if_idx = self.pg0.sw_if_index
         self.assertEqual(after[if_idx] - cnt[if_idx], 1)
 
@@ -1902,7 +1876,7 @@ class TestNAT44EI(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        after = self.statistics.get_counter('/nat44/hairpinning')[0]
+        after = self.statistics.get_counter('/nat44-ei/hairpinning')[0]
         if_idx = self.pg0.sw_if_index
         self.assertEqual(after[if_idx] - cnt[if_idx], 2)
 
@@ -1918,11 +1892,11 @@ class TestNAT44EI(MethodHolder):
         server_udp_port = 20
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -2077,7 +2051,7 @@ class TestNAT44EI(MethodHolder):
                 raise
 
     def test_hairpinning_avoid_inf_loop(self):
-        """ NAT44 hairpinning - 1:1 NAPT avoid infinite loop """
+        """ NAT44EI hairpinning - 1:1 NAPT avoid infinite loop """
 
         host = self.pg0.remote_hosts[0]
         server = self.pg0.remote_hosts[1]
@@ -2087,11 +2061,11 @@ class TestNAT44EI(MethodHolder):
         server_out_port = 8765
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -2112,7 +2086,7 @@ class TestNAT44EI(MethodHolder):
         self.pg_start()
         # Here VPP used to crash due to an infinite loop
 
-        cnt = self.statistics.get_counter('/nat44/hairpinning')[0]
+        cnt = self.statistics.get_counter('/nat44-ei/hairpinning')[0]
         # send packet from host to server
         p = (Ether(src=host.mac, dst=self.pg0.local_mac) /
              IP(src=host.ip4, dst=self.nat_addr) /
@@ -2135,7 +2109,7 @@ class TestNAT44EI(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        after = self.statistics.get_counter('/nat44/hairpinning')[0]
+        after = self.statistics.get_counter('/nat44-ei/hairpinning')[0]
         if_idx = self.pg0.sw_if_index
         self.assertEqual(after[if_idx] - cnt[if_idx], 1)
 
@@ -2160,36 +2134,36 @@ class TestNAT44EI(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        after = self.statistics.get_counter('/nat44/hairpinning')[0]
+        after = self.statistics.get_counter('/nat44-ei/hairpinning')[0]
         if_idx = self.pg0.sw_if_index
         self.assertEqual(after[if_idx] - cnt[if_idx], 2)
 
     def test_interface_addr(self):
         """ NAT44EI acquire addresses from interface """
-        self.vapi.nat44_add_del_interface_addr(
+        self.vapi.nat44_ei_add_del_interface_addr(
             is_add=1,
             sw_if_index=self.pg7.sw_if_index)
 
         # no address in NAT pool
-        addresses = self.vapi.nat44_address_dump()
+        addresses = self.vapi.nat44_ei_address_dump()
         self.assertEqual(0, len(addresses))
 
         # configure interface address and check NAT address pool
         self.pg7.config_ip4()
-        addresses = self.vapi.nat44_address_dump()
+        addresses = self.vapi.nat44_ei_address_dump()
         self.assertEqual(1, len(addresses))
         self.assertEqual(str(addresses[0].ip_address), self.pg7.local_ip4)
 
         # remove interface address and check NAT address pool
         self.pg7.unconfig_ip4()
-        addresses = self.vapi.nat44_address_dump()
+        addresses = self.vapi.nat44_ei_address_dump()
         self.assertEqual(0, len(addresses))
 
     def test_interface_addr_static_mapping(self):
         """ NAT44EI Static mapping with addresses from interface """
         tag = "testTAG"
 
-        self.vapi.nat44_add_del_interface_addr(
+        self.vapi.nat44_ei_add_del_interface_addr(
             is_add=1,
             sw_if_index=self.pg7.sw_if_index)
         self.nat44_add_static_mapping(
@@ -2198,7 +2172,7 @@ class TestNAT44EI(MethodHolder):
             tag=tag)
 
         # static mappings with external interface
-        static_mappings = self.vapi.nat44_static_mapping_dump()
+        static_mappings = self.vapi.nat44_ei_static_mapping_dump()
         self.assertEqual(1, len(static_mappings))
         self.assertEqual(self.pg7.sw_if_index,
                          static_mappings[0].external_sw_if_index)
@@ -2206,7 +2180,7 @@ class TestNAT44EI(MethodHolder):
 
         # configure interface address and check static mappings
         self.pg7.config_ip4()
-        static_mappings = self.vapi.nat44_static_mapping_dump()
+        static_mappings = self.vapi.nat44_ei_static_mapping_dump()
         self.assertEqual(2, len(static_mappings))
         resolved = False
         for sm in static_mappings:
@@ -2219,7 +2193,7 @@ class TestNAT44EI(MethodHolder):
 
         # remove interface address and check static mappings
         self.pg7.unconfig_ip4()
-        static_mappings = self.vapi.nat44_static_mapping_dump()
+        static_mappings = self.vapi.nat44_ei_static_mapping_dump()
         self.assertEqual(1, len(static_mappings))
         self.assertEqual(self.pg7.sw_if_index,
                          static_mappings[0].external_sw_if_index)
@@ -2227,7 +2201,7 @@ class TestNAT44EI(MethodHolder):
 
         # configure interface address again and check static mappings
         self.pg7.config_ip4()
-        static_mappings = self.vapi.nat44_static_mapping_dump()
+        static_mappings = self.vapi.nat44_ei_static_mapping_dump()
         self.assertEqual(2, len(static_mappings))
         resolved = False
         for sm in static_mappings:
@@ -2244,17 +2218,17 @@ class TestNAT44EI(MethodHolder):
             external_sw_if_index=self.pg7.sw_if_index,
             tag=tag,
             is_add=0)
-        static_mappings = self.vapi.nat44_static_mapping_dump()
+        static_mappings = self.vapi.nat44_ei_static_mapping_dump()
         self.assertEqual(0, len(static_mappings))
 
     def test_interface_addr_identity_nat(self):
         """ NAT44EI Identity NAT with addresses from interface """
 
         port = 53053
-        self.vapi.nat44_add_del_interface_addr(
+        self.vapi.nat44_ei_add_del_interface_addr(
             is_add=1,
             sw_if_index=self.pg7.sw_if_index)
-        self.vapi.nat44_add_del_identity_mapping(
+        self.vapi.nat44_ei_add_del_identity_mapping(
             ip_address=b'0',
             sw_if_index=self.pg7.sw_if_index,
             port=port,
@@ -2262,14 +2236,14 @@ class TestNAT44EI(MethodHolder):
             is_add=1)
 
         # identity mappings with external interface
-        identity_mappings = self.vapi.nat44_identity_mapping_dump()
+        identity_mappings = self.vapi.nat44_ei_identity_mapping_dump()
         self.assertEqual(1, len(identity_mappings))
         self.assertEqual(self.pg7.sw_if_index,
                          identity_mappings[0].sw_if_index)
 
         # configure interface address and check identity mappings
         self.pg7.config_ip4()
-        identity_mappings = self.vapi.nat44_identity_mapping_dump()
+        identity_mappings = self.vapi.nat44_ei_identity_mapping_dump()
         resolved = False
         self.assertEqual(2, len(identity_mappings))
         for sm in identity_mappings:
@@ -2283,7 +2257,7 @@ class TestNAT44EI(MethodHolder):
 
         # remove interface address and check identity mappings
         self.pg7.unconfig_ip4()
-        identity_mappings = self.vapi.nat44_identity_mapping_dump()
+        identity_mappings = self.vapi.nat44_ei_identity_mapping_dump()
         self.assertEqual(1, len(identity_mappings))
         self.assertEqual(self.pg7.sw_if_index,
                          identity_mappings[0].sw_if_index)
@@ -2295,11 +2269,11 @@ class TestNAT44EI(MethodHolder):
         collector_port = 30303
         bind_layers(UDP, IPFIX, dport=30303)
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
         self.vapi.set_ipfix_exporter(collector_address=self.pg3.remote_ip4,
@@ -2307,9 +2281,9 @@ class TestNAT44EI(MethodHolder):
                                      path_mtu=512,
                                      template_interval=10,
                                      collector_port=collector_port)
-        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
-                                           src_port=self.ipfix_src_port,
-                                           enable=1)
+        self.vapi.nat44_ei_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
+                                                src_port=self.ipfix_src_port,
+                                                enable=1)
 
         pkts = self.create_stream_in(self.pg0, self.pg1)
         self.pg0.add_stream(pkts)
@@ -2340,20 +2314,20 @@ class TestNAT44EI(MethodHolder):
 
     def test_ipfix_addr_exhausted(self):
         """ NAT44EI IPFIX logging NAT addresses exhausted """
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
         self.vapi.set_ipfix_exporter(collector_address=self.pg3.remote_ip4,
                                      src_address=self.pg3.local_ip4,
                                      path_mtu=512,
                                      template_interval=10)
-        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
-                                           src_port=self.ipfix_src_port,
-                                           enable=1)
+        self.vapi.nat44_ei_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
+                                                src_port=self.ipfix_src_port,
+                                                enable=1)
 
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
@@ -2386,11 +2360,11 @@ class TestNAT44EI(MethodHolder):
     def test_ipfix_max_sessions(self):
         """ NAT44EI IPFIX logging maximum session entries exceeded """
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -2412,9 +2386,9 @@ class TestNAT44EI(MethodHolder):
                                      src_address=self.pg3.local_ip4,
                                      path_mtu=512,
                                      template_interval=10)
-        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
-                                           src_port=self.ipfix_src_port,
-                                           enable=1)
+        self.vapi.nat44_ei_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
+                                                src_port=self.ipfix_src_port,
+                                                enable=1)
 
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
@@ -2450,11 +2424,11 @@ class TestNAT44EI(MethodHolder):
             self.SYSLOG_SEVERITY.SYSLOG_API_SEVERITY_INFO)
         self.vapi.syslog_set_sender(self.pg3.local_ip4, self.pg3.remote_ip4)
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -2479,11 +2453,11 @@ class TestNAT44EI(MethodHolder):
         """ NAT44EI add pool addresses to FIB """
         static_addr = '10.0.0.10'
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
         self.nat44_add_static_mapping(self.pg0.remote_ip4, static_addr)
@@ -2561,14 +2535,14 @@ class TestNAT44EI(MethodHolder):
 
         self.nat44_add_address(nat_ip1, vrf_id=vrf_id1)
         self.nat44_add_address(nat_ip2, vrf_id=vrf_id2)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg2.sw_if_index,
             is_add=1)
 
@@ -2609,14 +2583,14 @@ class TestNAT44EI(MethodHolder):
 
         self.nat44_add_address(nat_ip1)
         self.nat44_add_address(nat_ip2, vrf_id=99)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg2.sw_if_index,
             is_add=1)
 
@@ -2640,11 +2614,11 @@ class TestNAT44EI(MethodHolder):
         """ NAT44EI interfaces without configured IP address """
         self.create_routes_and_neigbors()
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg7.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg8.sw_if_index,
             is_add=1)
 
@@ -2669,11 +2643,11 @@ class TestNAT44EI(MethodHolder):
 
         self.create_routes_and_neigbors()
         self.nat44_add_static_mapping(self.pg7.remote_ip4, self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg7.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg8.sw_if_index,
             is_add=1)
 
@@ -2711,11 +2685,11 @@ class TestNAT44EI(MethodHolder):
         self.nat44_add_static_mapping(self.pg7.remote_ip4, self.nat_addr,
                                       self.icmp_id_in, self.icmp_id_out,
                                       proto=IP_PROTOS.icmp)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg7.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg8.sw_if_index,
             is_add=1)
 
@@ -2739,11 +2713,11 @@ class TestNAT44EI(MethodHolder):
         """ NAT44EI 1:1 translate packet with unknown protocol """
         nat_ip = "10.0.0.10"
         self.nat44_add_static_mapping(self.pg0.remote_ip4, nat_ip)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -2799,11 +2773,11 @@ class TestNAT44EI(MethodHolder):
 
         self.nat44_add_static_mapping(host.ip4, host_nat_ip)
         self.nat44_add_static_mapping(server.ip4, server_nat_ip)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -2850,14 +2824,14 @@ class TestNAT44EI(MethodHolder):
     def test_output_feature(self):
         """ NAT44EI output feature (in2out postrouting) """
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_output_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_output_feature(
             is_add=1, flags=flags,
             sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat44_interface_add_del_output_feature(
+        self.vapi.nat44_ei_interface_add_del_output_feature(
             is_add=1, flags=flags,
             sw_if_index=self.pg1.sw_if_index)
-        self.vapi.nat44_interface_add_del_output_feature(
+        self.vapi.nat44_ei_interface_add_del_output_feature(
             is_add=1,
             sw_if_index=self.pg3.sw_if_index)
 
@@ -2903,14 +2877,14 @@ class TestNAT44EI(MethodHolder):
 
         self.nat44_add_address(nat_ip_vrf10, vrf_id=10)
         self.nat44_add_address(nat_ip_vrf20, vrf_id=20)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_output_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_output_feature(
             is_add=1, flags=flags,
             sw_if_index=self.pg4.sw_if_index)
-        self.vapi.nat44_interface_add_del_output_feature(
+        self.vapi.nat44_ei_interface_add_del_output_feature(
             is_add=1, flags=flags,
             sw_if_index=self.pg6.sw_if_index)
-        self.vapi.nat44_interface_add_del_output_feature(
+        self.vapi.nat44_ei_interface_add_del_output_feature(
             is_add=1,
             sw_if_index=self.pg3.sw_if_index)
 
@@ -2956,11 +2930,11 @@ class TestNAT44EI(MethodHolder):
         server_out_port = 8765
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_output_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_output_feature(
             is_add=1, flags=flags,
             sw_if_index=self.pg0.sw_if_index)
-        self.vapi.nat44_interface_add_del_output_feature(
+        self.vapi.nat44_ei_interface_add_del_output_feature(
             is_add=1,
             sw_if_index=self.pg1.sw_if_index)
 
@@ -3019,11 +2993,11 @@ class TestNAT44EI(MethodHolder):
         external_port = 0
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg9.sw_if_index,
             is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg9.sw_if_index,
             flags=flags, is_add=1)
 
@@ -3071,20 +3045,20 @@ class TestNAT44EI(MethodHolder):
             raise
 
         err = self.statistics.get_err_counter(
-            '/err/nat44-classify/next in2out')
+            '/err/nat44-ei-classify/next in2out')
         self.assertEqual(err, 1)
         err = self.statistics.get_err_counter(
-            '/err/nat44-classify/next out2in')
+            '/err/nat44-ei-classify/next out2in')
         self.assertEqual(err, 1)
 
     def test_del_session(self):
         """ NAT44EI delete session """
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -3094,24 +3068,28 @@ class TestNAT44EI(MethodHolder):
         self.pg_start()
         self.pg1.get_capture(len(pkts))
 
-        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
+        sessions = self.vapi.nat44_ei_user_session_dump(self.pg0.remote_ip4, 0)
         nsessions = len(sessions)
 
-        self.vapi.nat44_del_session(address=sessions[0].inside_ip_address,
-                                    port=sessions[0].inside_port,
-                                    protocol=sessions[0].protocol,
-                                    flags=self.config_flags.NAT_IS_INSIDE)
-        self.vapi.nat44_del_session(address=sessions[1].outside_ip_address,
-                                    port=sessions[1].outside_port,
-                                    protocol=sessions[1].protocol)
+        self.vapi.nat44_ei_del_session(
+            address=sessions[0].inside_ip_address,
+            port=sessions[0].inside_port,
+            protocol=sessions[0].protocol,
+            flags=self.config_flags.NAT44_EI_IF_INSIDE)
 
-        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
+        self.vapi.nat44_ei_del_session(
+            address=sessions[1].outside_ip_address,
+            port=sessions[1].outside_port,
+            protocol=sessions[1].protocol)
+
+        sessions = self.vapi.nat44_ei_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(nsessions - len(sessions), 2)
 
-        self.vapi.nat44_del_session(address=sessions[0].inside_ip_address,
-                                    port=sessions[0].inside_port,
-                                    protocol=sessions[0].protocol,
-                                    flags=self.config_flags.NAT_IS_INSIDE)
+        self.vapi.nat44_ei_del_session(
+            address=sessions[0].inside_ip_address,
+            port=sessions[0].inside_port,
+            protocol=sessions[0].protocol,
+            flags=self.config_flags.NAT44_EI_IF_INSIDE)
 
         self.verify_no_nat44_user()
 
@@ -3119,11 +3097,11 @@ class TestNAT44EI(MethodHolder):
         """ NAT44EI translate fragments arriving in order """
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -3133,17 +3111,17 @@ class TestNAT44EI(MethodHolder):
 
     def test_frag_forwarding(self):
         """ NAT44EI forwarding fragment test """
-        self.vapi.nat44_add_del_interface_addr(
+        self.vapi.nat44_ei_add_del_interface_addr(
             is_add=1,
             sw_if_index=self.pg1.sw_if_index)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
-        self.vapi.nat44_forwarding_enable_disable(enable=1)
+        self.vapi.nat44_ei_forwarding_enable_disable(enable=1)
 
         data = b"A" * 16 + b"B" * 16 + b"C" * 3
         pkts = self.create_stream_frag(self.pg1,
@@ -3172,11 +3150,11 @@ class TestNAT44EI(MethodHolder):
         server_out_port = random.randint(1025, 65535)
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
         # add static mapping for server
@@ -3201,11 +3179,11 @@ class TestNAT44EI(MethodHolder):
         """ NAT44EI translate fragments arriving out of order """
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -3216,17 +3194,17 @@ class TestNAT44EI(MethodHolder):
     def test_port_restricted(self):
         """ NAT44EI Port restricted NAT44EI (MAP-E CE) """
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
-        self.vapi.nat_set_addr_and_port_alloc_alg(alg=1,
-                                                  psid_offset=6,
-                                                  psid_length=6,
-                                                  psid=10)
+        self.vapi.nat44_ei_set_addr_and_port_alloc_alg(alg=1,
+                                                       psid_offset=6,
+                                                       psid_length=6,
+                                                       psid=10)
 
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
@@ -3252,16 +3230,16 @@ class TestNAT44EI(MethodHolder):
     def test_port_range(self):
         """ NAT44EI External address port range """
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
-        self.vapi.nat_set_addr_and_port_alloc_alg(alg=2,
-                                                  start_port=1025,
-                                                  end_port=1027)
+        self.vapi.nat44_ei_set_addr_and_port_alloc_alg(alg=2,
+                                                       start_port=1025,
+                                                       end_port=1027)
 
         pkts = []
         for port in range(0, 5):
@@ -3295,14 +3273,14 @@ class TestNAT44EI(MethodHolder):
         self.pg2.resolve_arp()
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg2.sw_if_index,
             is_add=1)
 
@@ -3355,11 +3333,11 @@ class TestNAT44EI(MethodHolder):
     def test_mss_clamping(self):
         """ NAT44EI TCP MSS clamping """
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -3368,7 +3346,7 @@ class TestNAT44EI(MethodHolder):
              TCP(sport=self.tcp_port_in, dport=self.tcp_external_port,
                  flags="S", options=[('MSS', 1400)]))
 
-        self.vapi.nat_set_mss_clamping(enable=1, mss_value=1000)
+        self.vapi.nat44_ei_set_mss_clamping(enable=1, mss_value=1000)
         self.pg0.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -3376,7 +3354,7 @@ class TestNAT44EI(MethodHolder):
         # Negotiated MSS value greater than configured - changed
         self.verify_mss_value(capture[0], 1000)
 
-        self.vapi.nat_set_mss_clamping(enable=0, mss_value=1500)
+        self.vapi.nat44_ei_set_mss_clamping(enable=0, mss_value=1500)
         self.pg0.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -3384,7 +3362,7 @@ class TestNAT44EI(MethodHolder):
         # MSS clamping disabled - negotiated MSS unchanged
         self.verify_mss_value(capture[0], 1400)
 
-        self.vapi.nat_set_mss_clamping(enable=1, mss_value=1500)
+        self.vapi.nat44_ei_set_mss_clamping(enable=1, mss_value=1500)
         self.pg0.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -3394,20 +3372,20 @@ class TestNAT44EI(MethodHolder):
 
     def test_ha_send(self):
         """ NAT44EI Send HA session synchronization events (active) """
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
         self.nat44_add_address(self.nat_addr)
 
-        self.vapi.nat_ha_set_listener(ip_address=self.pg3.local_ip4,
-                                      port=12345,
-                                      path_mtu=512)
-        self.vapi.nat_ha_set_failover(ip_address=self.pg3.remote_ip4,
-                                      port=12346, session_refresh_interval=10)
+        self.vapi.nat44_ei_ha_set_listener(
+            ip_address=self.pg3.local_ip4, port=12345, path_mtu=512)
+        self.vapi.nat44_ei_ha_set_failover(
+            ip_address=self.pg3.remote_ip4, port=12346,
+            session_refresh_interval=10)
         bind_layers(UDP, HANATStateSync, sport=12345)
 
         # create sessions
@@ -3418,8 +3396,8 @@ class TestNAT44EI(MethodHolder):
         capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out(capture)
         # active send HA events
-        self.vapi.nat_ha_flush()
-        stats = self.statistics.get_counter('/nat44/ha/add-event-send')
+        self.vapi.nat44_ei_ha_flush()
+        stats = self.statistics.get_counter('/nat44-ei/ha/add-event-send')
         self.assertEqual(stats[0][0], 3)
         capture = self.pg3.get_capture(1)
         p = capture[0]
@@ -3453,17 +3431,16 @@ class TestNAT44EI(MethodHolder):
                HANATStateSync(sequence_number=seq, flags='ACK'))
         self.pg3.add_stream(ack)
         self.pg_start()
-        stats = self.statistics.get_counter('/nat44/ha/ack-recv')
+        stats = self.statistics.get_counter('/nat44-ei/ha/ack-recv')
         self.assertEqual(stats[0][0], 1)
 
         # delete one session
         self.pg_enable_capture(self.pg_interfaces)
-        self.vapi.nat44_del_session(address=self.pg0.remote_ip4,
-                                    port=self.tcp_port_in,
-                                    protocol=IP_PROTOS.tcp,
-                                    flags=self.config_flags.NAT_IS_INSIDE)
-        self.vapi.nat_ha_flush()
-        stats = self.statistics.get_counter('/nat44/ha/del-event-send')
+        self.vapi.nat44_ei_del_session(
+            address=self.pg0.remote_ip4, port=self.tcp_port_in,
+            protocol=IP_PROTOS.tcp, flags=self.config_flags.NAT44_EI_IF_INSIDE)
+        self.vapi.nat44_ei_ha_flush()
+        stats = self.statistics.get_counter('/nat44-ei/ha/del-event-send')
         self.assertEqual(stats[0][0], 1)
         capture = self.pg3.get_capture(1)
         p = capture[0]
@@ -3478,9 +3455,9 @@ class TestNAT44EI(MethodHolder):
         # do not send ACK, active retry send HA event again
         self.pg_enable_capture(self.pg_interfaces)
         sleep(12)
-        stats = self.statistics.get_counter('/nat44/ha/retry-count')
+        stats = self.statistics.get_counter('/nat44-ei/ha/retry-count')
         self.assertEqual(stats[0][0], 3)
-        stats = self.statistics.get_counter('/nat44/ha/missed-count')
+        stats = self.statistics.get_counter('/nat44-ei/ha/missed-count')
         self.assertEqual(stats[0][0], 1)
         capture = self.pg3.get_capture(3)
         for packet in capture:
@@ -3492,8 +3469,8 @@ class TestNAT44EI(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         self.pg0.get_capture(2)
-        self.vapi.nat_ha_flush()
-        stats = self.statistics.get_counter('/nat44/ha/refresh-event-send')
+        self.vapi.nat44_ei_ha_flush()
+        stats = self.statistics.get_counter('/nat44-ei/ha/refresh-event-send')
         self.assertEqual(stats[0][0], 2)
         capture = self.pg3.get_capture(1)
         p = capture[0]
@@ -3526,22 +3503,21 @@ class TestNAT44EI(MethodHolder):
                HANATStateSync(sequence_number=seq, flags='ACK'))
         self.pg3.add_stream(ack)
         self.pg_start()
-        stats = self.statistics.get_counter('/nat44/ha/ack-recv')
+        stats = self.statistics.get_counter('/nat44-ei/ha/ack-recv')
         self.assertEqual(stats[0][0], 2)
 
     def test_ha_recv(self):
         """ NAT44EI Receive HA session synchronization events (passive) """
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
-        self.vapi.nat_ha_set_listener(ip_address=self.pg3.local_ip4,
-                                      port=12345,
-                                      path_mtu=512)
+        self.vapi.nat44_ei_ha_set_listener(ip_address=self.pg3.local_ip4,
+                                           port=12345, path_mtu=512)
         bind_layers(UDP, HANATStateSync, sport=12345)
 
         self.tcp_port_out = random.randint(1025, 65535)
@@ -3583,21 +3559,21 @@ class TestNAT44EI(MethodHolder):
             self.assertEqual(hanat.flags, 'ACK')
             self.assertEqual(hanat.version, 1)
             self.assertEqual(hanat.thread_index, 0)
-        stats = self.statistics.get_counter('/nat44/ha/ack-send')
+        stats = self.statistics.get_counter('/nat44-ei/ha/ack-send')
         self.assertEqual(stats[0][0], 1)
-        stats = self.statistics.get_counter('/nat44/ha/add-event-recv')
+        stats = self.statistics.get_counter('/nat44-ei/ha/add-event-recv')
         self.assertEqual(stats[0][0], 2)
-        users = self.statistics.get_counter('/nat44/total-users')
+        users = self.statistics.get_counter('/nat44-ei/total-users')
         self.assertEqual(users[0][0], 1)
-        sessions = self.statistics.get_counter('/nat44/total-sessions')
+        sessions = self.statistics.get_counter('/nat44-ei/total-sessions')
         self.assertEqual(sessions[0][0], 2)
-        users = self.vapi.nat44_user_dump()
+        users = self.vapi.nat44_ei_user_dump()
         self.assertEqual(len(users), 1)
         self.assertEqual(str(users[0].ip_address),
                          self.pg0.remote_ip4)
         # there should be 2 sessions created by HA
-        sessions = self.vapi.nat44_user_session_dump(users[0].ip_address,
-                                                     users[0].vrf_id)
+        sessions = self.vapi.nat44_ei_user_session_dump(
+            users[0].ip_address, users[0].vrf_id)
         self.assertEqual(len(sessions), 2)
         for session in sessions:
             self.assertEqual(str(session.inside_ip_address),
@@ -3638,18 +3614,19 @@ class TestNAT44EI(MethodHolder):
             self.assertEqual(hanat.sequence_number, 2)
             self.assertEqual(hanat.flags, 'ACK')
             self.assertEqual(hanat.version, 1)
-        users = self.vapi.nat44_user_dump()
+        users = self.vapi.nat44_ei_user_dump()
         self.assertEqual(len(users), 1)
         self.assertEqual(str(users[0].ip_address),
                          self.pg0.remote_ip4)
         # now we should have only 1 session, 1 deleted by HA
-        sessions = self.vapi.nat44_user_session_dump(users[0].ip_address,
-                                                     users[0].vrf_id)
+        sessions = self.vapi.nat44_ei_user_session_dump(users[0].ip_address,
+                                                        users[0].vrf_id)
         self.assertEqual(len(sessions), 1)
-        stats = self.statistics.get_counter('/nat44/ha/del-event-recv')
+        stats = self.statistics.get_counter('/nat44-ei/ha/del-event-recv')
         self.assertEqual(stats[0][0], 1)
 
-        stats = self.statistics.get_err_counter('/err/nat-ha/pkts-processed')
+        stats = self.statistics.get_err_counter(
+            '/err/nat44-ei-ha/pkts-processed')
         self.assertEqual(stats, 2)
 
         # send HA session refresh event to failover/passive
@@ -3680,20 +3657,22 @@ class TestNAT44EI(MethodHolder):
             self.assertEqual(hanat.sequence_number, 3)
             self.assertEqual(hanat.flags, 'ACK')
             self.assertEqual(hanat.version, 1)
-        users = self.vapi.nat44_user_dump()
+        users = self.vapi.nat44_ei_user_dump()
         self.assertEqual(len(users), 1)
         self.assertEqual(str(users[0].ip_address),
                          self.pg0.remote_ip4)
-        sessions = self.vapi.nat44_user_session_dump(users[0].ip_address,
-                                                     users[0].vrf_id)
+        sessions = self.vapi.nat44_ei_user_session_dump(
+            users[0].ip_address, users[0].vrf_id)
         self.assertEqual(len(sessions), 1)
         session = sessions[0]
         self.assertEqual(session.total_bytes, 1024)
         self.assertEqual(session.total_pkts, 2)
-        stats = self.statistics.get_counter('/nat44/ha/refresh-event-recv')
+        stats = self.statistics.get_counter(
+            '/nat44-ei/ha/refresh-event-recv')
         self.assertEqual(stats[0][0], 1)
 
-        stats = self.statistics.get_err_counter('/err/nat-ha/pkts-processed')
+        stats = self.statistics.get_err_counter(
+            '/err/nat44-ei-ha/pkts-processed')
         self.assertEqual(stats, 3)
 
         # send packet to test session created by HA
@@ -3717,17 +3696,28 @@ class TestNAT44EI(MethodHolder):
             self.assertEqual(tcp.sport, self.tcp_external_port)
             self.assertEqual(tcp.dport, self.tcp_port_in)
 
+    def reconfigure_frame_queue_nelts(self, frame_queue_nelts):
+        self.vapi.nat44_ei_plugin_enable_disable(enable=0)
+        self.vapi.nat44_ei_set_fq_options(frame_queue_nelts=frame_queue_nelts)
+        # keep plugin configuration persistent
+        self.plugin_enable()
+        return self.vapi.nat44_ei_show_fq_options().frame_queue_nelts
+
+    def test_set_frame_queue_nelts(self):
+        """ NAT44 EI API test - worker handoff frame queue elements """
+        self.assertEqual(self.reconfigure_frame_queue_nelts(512), 512)
+
     def show_commands_at_teardown(self):
-        self.logger.info(self.vapi.cli("show nat44 addresses"))
-        self.logger.info(self.vapi.cli("show nat44 interfaces"))
-        self.logger.info(self.vapi.cli("show nat44 static mappings"))
-        self.logger.info(self.vapi.cli("show nat44 interface address"))
-        self.logger.info(self.vapi.cli("show nat44 sessions detail"))
-        self.logger.info(self.vapi.cli("show nat44 hash tables detail"))
-        self.logger.info(self.vapi.cli("show nat timeouts"))
+        self.logger.info(self.vapi.cli("show nat44 ei timeouts"))
+        self.logger.info(self.vapi.cli("show nat44 ei addresses"))
+        self.logger.info(self.vapi.cli("show nat44 ei interfaces"))
+        self.logger.info(self.vapi.cli("show nat44 ei static mappings"))
+        self.logger.info(self.vapi.cli("show nat44 ei interface address"))
+        self.logger.info(self.vapi.cli("show nat44 ei sessions detail"))
+        self.logger.info(self.vapi.cli("show nat44 ei hash tables detail"))
+        self.logger.info(self.vapi.cli("show nat44 ei ha"))
         self.logger.info(
-            self.vapi.cli("show nat addr-port-assignment-alg"))
-        self.logger.info(self.vapi.cli("show nat ha"))
+            self.vapi.cli("show nat44 ei addr-port-assignment-alg"))
 
 
 class TestNAT44Out2InDPO(MethodHolder):
@@ -3736,7 +3726,7 @@ class TestNAT44Out2InDPO(MethodHolder):
     @classmethod
     def setUpClass(cls):
         super(TestNAT44Out2InDPO, cls).setUpClass()
-        cls.vapi.cli("set log class nat level debug")
+        cls.vapi.cli("set log class nat44-ei level debug")
 
         cls.tcp_port_in = 6303
         cls.tcp_port_out = 6303
@@ -3765,13 +3755,13 @@ class TestNAT44Out2InDPO(MethodHolder):
 
     def setUp(self):
         super(TestNAT44Out2InDPO, self).setUp()
-        flags = self.nat44_config_flags.NAT44_API_IS_OUT2IN_DPO
-        self.vapi.nat44_plugin_enable_disable(enable=1, flags=flags)
+        flags = self.config_flags.NAT44_EI_OUT2IN_DPO
+        self.vapi.nat44_ei_plugin_enable_disable(enable=1, flags=flags)
 
     def tearDown(self):
         super(TestNAT44Out2InDPO, self).tearDown()
         if not self.vpp_dead:
-            self.vapi.nat44_plugin_enable_disable(enable=0)
+            self.vapi.nat44_ei_plugin_enable_disable(enable=0)
             self.vapi.cli("clear logging")
 
     def configure_xlat(self):
@@ -3791,18 +3781,16 @@ class TestNAT44Out2InDPO(MethodHolder):
     def test_464xlat_ce(self):
         """ Test 464XLAT CE with NAT44EI """
 
-        nat_config = self.vapi.nat_show_config()
-        self.assertEqual(1, nat_config.out2in_dpo)
-
         self.configure_xlat()
 
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_add_del_address_range(first_ip_address=self.nat_addr_n,
-                                              last_ip_address=self.nat_addr_n,
-                                              vrf_id=0xFFFFFFFF, is_add=1)
+        self.vapi.nat44_ei_add_del_address_range(
+            first_ip_address=self.nat_addr_n,
+            last_ip_address=self.nat_addr_n,
+            vrf_id=0xFFFFFFFF, is_add=1)
 
         out_src_ip6 = self.compose_ip6(self.dst_ip4, self.dst_ip6_pfx,
                                        self.dst_ip6_pfx_len)
@@ -3826,10 +3814,10 @@ class TestNAT44Out2InDPO(MethodHolder):
             capture = self.pg0.get_capture(len(pkts))
             self.verify_capture_in(capture, self.pg0)
         finally:
-            self.vapi.nat44_interface_add_del_feature(
+            self.vapi.nat44_ei_interface_add_del_feature(
                 sw_if_index=self.pg0.sw_if_index,
                 flags=flags)
-            self.vapi.nat44_add_del_address_range(
+            self.vapi.nat44_ei_add_del_address_range(
                 first_ip_address=self.nat_addr_n,
                 last_ip_address=self.nat_addr_n,
                 vrf_id=0xFFFFFFFF)
@@ -3935,20 +3923,21 @@ class TestNAT44EIMW(MethodHolder):
 
     def setUp(self):
         super(TestNAT44EIMW, self).setUp()
-        self.vapi.nat44_plugin_enable_disable(
+        self.vapi.nat44_ei_plugin_enable_disable(
             sessions=self.max_translations,
             users=self.max_users, enable=1)
 
     def tearDown(self):
         super(TestNAT44EIMW, self).tearDown()
         if not self.vpp_dead:
-            self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
-                                               src_port=self.ipfix_src_port,
-                                               enable=0)
+            self.vapi.nat44_ei_ipfix_enable_disable(
+                domain_id=self.ipfix_domain_id,
+                src_port=self.ipfix_src_port,
+                enable=0)
             self.ipfix_src_port = 4739
             self.ipfix_domain_id = 1
 
-            self.vapi.nat44_plugin_enable_disable(enable=0)
+            self.vapi.nat44_ei_plugin_enable_disable(enable=0)
             self.vapi.cli("clear logging")
 
     def test_hairpinning(self):
@@ -3964,11 +3953,11 @@ class TestNAT44EIMW(MethodHolder):
         worker_2 = 2
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -3977,7 +3966,7 @@ class TestNAT44EIMW(MethodHolder):
                                       server_in_port, server_out_port,
                                       proto=IP_PROTOS.tcp)
 
-        cnt = self.statistics.get_counter('/nat44/hairpinning')
+        cnt = self.statistics.get_counter('/nat44-ei/hairpinning')
         # send packet from host to server
         p = (Ether(src=host.mac, dst=self.pg0.local_mac) /
              IP(src=host.ip4, dst=self.nat_addr) /
@@ -4000,7 +3989,7 @@ class TestNAT44EIMW(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        after = self.statistics.get_counter('/nat44/hairpinning')
+        after = self.statistics.get_counter('/nat44-ei/hairpinning')
 
         if_idx = self.pg0.sw_if_index
         self.assertEqual(after[worker_2][if_idx] - cnt[worker_1][if_idx], 1)
@@ -4026,7 +4015,7 @@ class TestNAT44EIMW(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        after = self.statistics.get_counter('/nat44/hairpinning')
+        after = self.statistics.get_counter('/nat44-ei/hairpinning')
         if_idx = self.pg0.sw_if_index
         self.assertEqual(after[worker_1][if_idx] - cnt[worker_1][if_idx], 1)
         self.assertEqual(after[worker_2][if_idx] - cnt[worker_2][if_idx], 2)
@@ -4043,11 +4032,11 @@ class TestNAT44EIMW(MethodHolder):
         server_udp_port = 20
 
         self.nat44_add_address(self.nat_addr)
-        flags = self.config_flags.NAT_IS_INSIDE
-        self.vapi.nat44_interface_add_del_feature(
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg0.sw_if_index,
             flags=flags, is_add=1)
-        self.vapi.nat44_interface_add_del_feature(
+        self.vapi.nat44_ei_interface_add_del_feature(
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
@@ -4200,6 +4189,7 @@ class TestNAT44EIMW(MethodHolder):
             except:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
