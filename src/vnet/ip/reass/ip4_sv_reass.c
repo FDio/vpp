@@ -1334,6 +1334,10 @@ show_ip4_reass (vlib_main_t * vm,
 		   "Maximum configured concurrent shallow virtual IP4 reassemblies per worker-thread: %lu\n",
 		   (long unsigned) rm->max_reass_n);
   vlib_cli_output (vm,
+		   "Maximum configured amount of fragments per shallow "
+		   "virtual IP4 reassembly: %lu\n",
+		   (long unsigned) rm->max_reass_len);
+  vlib_cli_output (vm,
 		   "Maximum configured shallow virtual IP4 reassembly timeout: %lums\n",
 		   (long unsigned) rm->timeout_ms);
   vlib_cli_output (vm,

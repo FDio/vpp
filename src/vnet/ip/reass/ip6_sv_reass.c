@@ -1158,6 +1158,10 @@ show_ip6_sv_reass (vlib_main_t * vm, unformat_input_t * input,
 		   "Maximum configured concurrent shallow virtual IP6 reassemblies per worker-thread: %lu\n",
 		   (long unsigned) rm->max_reass_n);
   vlib_cli_output (vm,
+		   "Maximum configured amount of fragments per shallow "
+		   "virtual IP6 reassembly: %lu\n",
+		   (long unsigned) rm->max_reass_len);
+  vlib_cli_output (vm,
 		   "Maximum configured shallow virtual IP6 reassembly timeout: %lums\n",
 		   (long unsigned) rm->timeout_ms);
   vlib_cli_output (vm,
