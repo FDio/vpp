@@ -54,14 +54,6 @@ extern vlib_combined_counter_main_t policer_counters[];
 
 typedef enum
 {
-  VNET_POLICER_INDEX_BY_SW_IF_INDEX,
-  VNET_POLICER_INDEX_BY_OPAQUE,
-  VNET_POLICER_INDEX_BY_EITHER,
-} vnet_policer_index_t;
-
-typedef enum
-{
-  VNET_POLICER_NEXT_TRANSMIT,
   VNET_POLICER_NEXT_DROP,
   VNET_POLICER_N_NEXT,
 } vnet_policer_next_t;
