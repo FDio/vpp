@@ -162,6 +162,11 @@ struct msgs msgs[] = {
     .tojson = (tojson_fn_t) vl_api_test_empty_t_tojson,
     .fromjson = (fromjson_fn_t) vl_api_test_empty_t_fromjson,
   },
+  {
+    .name = "test_interface",
+    .tojson = (tojson_fn_t) vl_api_test_interface_t_tojson,
+    .fromjson = (fromjson_fn_t) vl_api_test_interface_t_fromjson,
+  },
 };
 
 struct tests tests[] = {
@@ -190,6 +195,7 @@ struct tests tests[] = {
   { .s = "{\"_msgname\": \"test_addresses3\", \"n\": 2, \"a\": "
 	 "[\"2001:db8::23\", \"2001:db8::23\"] }" },
   { .s = "{\"_msgname\": \"test_empty\"}" },
+  { .s = "{\"_msgname\": \"test_interface\", \"sw_if_index\": 100 }" },
 };
 
 int main (int argc, char **argv)
