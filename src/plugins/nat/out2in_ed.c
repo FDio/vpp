@@ -793,16 +793,11 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
       clib_bihash_kv_16_8_t kv0, value0;
       nat_translation_error_e translation_error = NAT_ED_TRNSL_ERR_SUCCESS;
       nat_6t_flow_t *f = 0;
-      ip4_address_t lookup_saddr, lookup_daddr;
-      u16 lookup_sport, lookup_dport;
-      u8 lookup_protocol;
+      nat_6t_t lookup;
       int lookup_skipped = 0;
 
       b0 = *b;
       b++;
-
-      lookup_sport = vnet_buffer (b0)->ip.reass.l4_src_port;
-      lookup_dport = vnet_buffer (b0)->ip.reass.l4_dst_port;
 
       /* Prefetch next iteration. */
       if (PREDICT_TRUE (n_left_from >= 2))
@@ -818,12 +813,17 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 
       next[0] = vnet_buffer2 (b0)->nat.arc_next;
 
+      lookup.sport = vnet_buffer (b0)->ip.reass.l4_src_port;
+      lookup.dport = vnet_buffer (b0)->ip.reass.l4_dst_port;
+
       vnet_buffer (b0)->snat.flags = 0;
       ip0 = vlib_buffer_get_current (b0);
 
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
       rx_fib_index0 =
 	fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index0);
+
+      lookup.fib_index = rx_fib_index0;
 
       if (PREDICT_FALSE (ip0->ttl == 1))
 	{
@@ -851,8 +851,8 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	      goto trace0;
 	    }
 	  int err = nat_get_icmp_session_lookup_values (
-	    b0, ip0, &lookup_saddr, &lookup_sport, &lookup_daddr,
-	    &lookup_dport, &lookup_protocol);
+	    b0, ip0, &lookup.saddr, &lookup.sport, &lookup.daddr,
+	    &lookup.dport, &lookup.proto);
 	  if (err != 0)
 	    {
 	      b0->error = node->errors[err];
@@ -862,26 +862,22 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	}
       else
 	{
-	  lookup_saddr.as_u32 = ip0->src_address.as_u32;
-	  lookup_daddr.as_u32 = ip0->dst_address.as_u32;
-	  lookup_protocol = ip0->protocol;
+	  lookup.saddr.as_u32 = ip0->src_address.as_u32;
+	  lookup.daddr.as_u32 = ip0->dst_address.as_u32;
+	  lookup.proto = ip0->protocol;
 	}
 
       /* there might be a stashed index in vnet_buffer2 from handoff or
        * classify node, see if it can be used */
-      if (!pool_is_free_index (tsm->sessions,
+      if (is_multi_worker &&
+	  !pool_is_free_index (tsm->sessions,
 			       vnet_buffer2 (b0)->nat.cached_session_index))
 	{
 	  s0 = pool_elt_at_index (tsm->sessions,
 				  vnet_buffer2 (b0)->nat.cached_session_index);
-	  if (PREDICT_TRUE (
-		nat_6t_flow_match (&s0->o2i, b0, lookup_saddr, lookup_sport,
-				   lookup_daddr, lookup_dport, lookup_protocol,
-				   rx_fib_index0) ||
-		(s0->flags & SNAT_SESSION_FLAG_TWICE_NAT &&
-		 nat_6t_flow_match (&s0->i2o, b0, lookup_saddr, lookup_sport,
-				    lookup_daddr, lookup_dport,
-				    lookup_protocol, rx_fib_index0))))
+	  if (PREDICT_TRUE (nat_6t_t_eq (&s0->o2i.match, &lookup)) ||
+	      (s0->flags & SNAT_SESSION_FLAG_TWICE_NAT &&
+	       nat_6t_t_eq (&s0->i2o.match, &lookup)))
 	    {
 	      /* yes, this is the droid we're looking for */
 	      lookup_skipped = 1;
@@ -890,8 +886,8 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	  s0 = NULL;
 	}
 
-      init_ed_k (&kv0, lookup_saddr, lookup_sport, lookup_daddr, lookup_dport,
-		 rx_fib_index0, lookup_protocol);
+      init_ed_k (&kv0, lookup.saddr, lookup.sport, lookup.daddr, lookup.dport,
+		 lookup.fib_index, lookup.proto);
 
       // lookup flow
       if (clib_bihash_search_16_8 (&sm->flow_hash, &kv0, &value0))
@@ -944,16 +940,12 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	  goto trace0;
 	}
 
-      if (nat_6t_flow_match (&s0->o2i, b0, lookup_saddr, lookup_sport,
-			     lookup_daddr, lookup_dport, lookup_protocol,
-			     rx_fib_index0))
+      if (nat_6t_t_eq (&s0->o2i.match, &lookup))
 	{
 	  f = &s0->o2i;
 	}
       else if (s0->flags & SNAT_SESSION_FLAG_TWICE_NAT &&
-	       nat_6t_flow_match (&s0->i2o, b0, lookup_saddr, lookup_sport,
-				  lookup_daddr, lookup_dport, lookup_protocol,
-				  rx_fib_index0))
+	       nat_6t_t_eq (&s0->i2o.match, &lookup))
 	{
 	  f = &s0->i2o;
 	}
@@ -979,9 +971,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      if (nat_6t_flow_match (&s0->i2o, b0, lookup_saddr, lookup_sport,
-				     lookup_daddr, lookup_dport,
-				     lookup_protocol, rx_fib_index0))
+	      if (nat_6t_t_eq (&s0->i2o.match, &lookup))
 		{
 		  f = &s0->i2o;
 		}
