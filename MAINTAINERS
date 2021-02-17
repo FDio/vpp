@@ -733,6 +733,11 @@ I:	cjson
 M:	Ole Troan <ot@cisco.com>
 F:	src/vppinfra/cJSON.[ch]
 
+VAT2
+I:	vat2
+M:	Ole Troan <ot@cisco.com>
+F:	src/vat2/
+
 THE REST
 I:	misc
 M:	vpp-dev Mailing List <vpp-dev@fd.io>
