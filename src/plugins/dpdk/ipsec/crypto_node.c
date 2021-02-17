@@ -20,7 +20,7 @@
 #include <vlib/vlib.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/ipsec/ipsec.h>
+#include <ipsec/ipsec.h>
 
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>

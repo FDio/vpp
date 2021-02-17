@@ -14,27 +14,55 @@
 add_definitions (-DWITH_LIBSSL=1)
 include_directories(${OPENSSL_INCLUDE_DIR})
 
-add_vpp_plugin(ikev2
+add_vpp_plugin(ipsec
   SOURCES
-  ikev2.c
-  ikev2_api.c
-  ikev2_cli.c
-  ikev2_crypto.c
-  ikev2_format.c
-  ikev2_payload.c
-  ikev2_ipsec_wrapper.c
+  ipsec.c
+  ipsec_cli.c
+  ipsec_format.c
+  ipsec_handoff.c
+  ipsec_input.c
+  ipsec_itf.c
+  ipsec_punt.c
+  ipsec_sa.c
+  ipsec_spd.c
+  ipsec_spd_policy.c
+  ipsec_tun.c
+  ipsec_tun_in.c
+  esp_format.c
+  esp_encrypt.c
+  esp_decrypt.c
+  ah_decrypt.c
+  ah_encrypt.c
+  ipsec_api.c
+  ipsec_types_api.c
+  ipsec_output.c
+  ipsec_input.c
+  ipsec_tun_in.c
+  ipsec_test.c
+  plugin.c
+
+  MULTIARCH_SOURCES
+  esp_encrypt.c
+  esp_decrypt.c
+  ah_decrypt.c
+  ah_encrypt.c
+  ipsec_handoff.c
+  ipsec_output.c
+  ipsec_input.c
+  ipsec_tun_in.c
 
   API_FILES
-  ikev2_types.api
-  ikev2.api
-
-  API_TEST_SOURCES
-  ikev2_test.c
+  ipsec_types.api
+  ipsec.api
 
   INSTALL_HEADERS
-  ikev2.h
-  ikev2_priv.h
-
-  LINK_LIBRARIES
-  ${OPENSSL_LIBRARIES}
+  ipsec.h
+  ipsec_spd.h
+  ipsec_spd_policy.h
+  ipsec_sa.h
+  ipsec_tun.h
+  ipsec_types_api.h
+  ipsec_punt.h
+  esp.h
+  ah.h
 )

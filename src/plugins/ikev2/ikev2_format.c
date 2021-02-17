@@ -17,7 +17,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/interface.h>
 
-#include <vnet/ipsec/ipsec.h>
+#include <ipsec/ipsec.h>
 #include <plugins/ikev2/ikev2.h>
 #include <plugins/ikev2/ikev2_priv.h>
 

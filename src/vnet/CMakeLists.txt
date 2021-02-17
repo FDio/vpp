@@ -550,57 +550,57 @@ list(APPEND VNET_API_FILES crypto/crypto.api)
 ##############################################################################
 # Layer 3 protocol: IPSec
 ##############################################################################
-list(APPEND VNET_SOURCES
-  ipsec/ipsec.c
-  ipsec/ipsec_cli.c
-  ipsec/ipsec_format.c
-  ipsec/ipsec_handoff.c
-  ipsec/ipsec_input.c
-  ipsec/ipsec_itf.c
-  ipsec/ipsec_punt.c
-  ipsec/ipsec_sa.c
-  ipsec/ipsec_spd.c
-  ipsec/ipsec_spd_policy.c
-  ipsec/ipsec_tun.c
-  ipsec/ipsec_tun_in.c
-  ipsec/esp_format.c
-  ipsec/esp_encrypt.c
-  ipsec/esp_decrypt.c
-  ipsec/ah_decrypt.c
-  ipsec/ah_encrypt.c
-  ipsec/ipsec_api.c
-  ipsec/ipsec_types_api.c
-)
+#list(APPEND VNET_SOURCES
+#  ipsec/ipsec.c
+#  ipsec/ipsec_cli.c
+#  ipsec/ipsec_format.c
+#  ipsec/ipsec_handoff.c
+#  ipsec/ipsec_input.c
+#  ipsec/ipsec_itf.c
+#  ipsec/ipsec_punt.c
+#  ipsec/ipsec_sa.c
+#  ipsec/ipsec_spd.c
+#  ipsec/ipsec_spd_policy.c
+#  ipsec/ipsec_tun.c
+#  ipsec/ipsec_tun_in.c
+#  ipsec/esp_format.c
+#  ipsec/esp_encrypt.c
+#  ipsec/esp_decrypt.c
+#  ipsec/ah_decrypt.c
+#  ipsec/ah_encrypt.c
+#  ipsec/ipsec_api.c
+#  ipsec/ipsec_types_api.c
+#)
 
-list(APPEND VNET_MULTIARCH_SOURCES
-  ipsec/esp_encrypt.c
-  ipsec/esp_decrypt.c
-  ipsec/ah_decrypt.c
-  ipsec/ah_encrypt.c
-  ipsec/ipsec_handoff.c
-  ipsec/ipsec_output.c
-  ipsec/ipsec_input.c
-  ipsec/ipsec_tun_in.c
-)
-
-list(APPEND VNET_API_FILES ipsec/ipsec_types.api)
-list(APPEND VNET_API_FILES ipsec/ipsec.api)
-
-list(APPEND VNET_SOURCES
-  ipsec/ipsec_output.c
-)
-
-list(APPEND VNET_HEADERS
-  ipsec/ipsec.h
-  ipsec/ipsec_spd.h
-  ipsec/ipsec_spd_policy.h
-  ipsec/ipsec_sa.h
-  ipsec/ipsec_tun.h
-  ipsec/ipsec_types_api.h
-  ipsec/ipsec_punt.h
-  ipsec/esp.h
-  ipsec/ah.h
-)
+#list(APPEND VNET_MULTIARCH_SOURCES
+#  ipsec/esp_encrypt.c
+#  ipsec/esp_decrypt.c
+#  ipsec/ah_decrypt.c
+#  ipsec/ah_encrypt.c
+#  ipsec/ipsec_handoff.c
+#  ipsec/ipsec_output.c
+#  ipsec/ipsec_input.c
+#  ipsec/ipsec_tun_in.c
+#)
+#
+#list(APPEND VNET_API_FILES ipsec/ipsec_types.api)
+#list(APPEND VNET_API_FILES ipsec/ipsec.api)
+#
+#list(APPEND VNET_SOURCES
+#  ipsec/ipsec_output.c
+#)
+#
+#list(APPEND VNET_HEADERS
+#  ipsec/ipsec.h
+#  ipsec/ipsec_spd.h
+#  ipsec/ipsec_spd_policy.h
+#  ipsec/ipsec_sa.h
+#  ipsec/ipsec_tun.h
+#  ipsec/ipsec_types_api.h
+#  ipsec/ipsec_punt.h
+#  ipsec/esp.h
+#  ipsec/ah.h
+#)
 
 ##############################################################################
 # Layer 3 protocol: osi

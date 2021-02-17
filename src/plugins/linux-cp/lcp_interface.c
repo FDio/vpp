@@ -35,7 +35,7 @@
 #include <vnet/devices/virtio/virtio.h>
 #include <vnet/devices/netlink.h>
 #include <vlibapi/api_helper_macros.h>
-#include <vnet/ipsec/ipsec_punt.h>
+#include <ipsec/ipsec_punt.h>
 
 static vlib_log_class_t lcp_itf_pair_logger;
 

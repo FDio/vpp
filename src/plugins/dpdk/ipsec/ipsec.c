@@ -15,13 +15,14 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/api_errno.h>
-#include <vnet/ipsec/ipsec.h>
+#include <ipsec/ipsec.h>
 #include <vlib/node_funcs.h>
 #include <vlib/log.h>
 
 #include <dpdk/device/dpdk.h>
 #include <dpdk/buffer.h>
 #include <dpdk/ipsec/ipsec.h>
+#include <dpdk/ipsec/dpdk_ipsec_wrapper.h>
 
 dpdk_crypto_main_t dpdk_crypto_main;
 
@@ -325,7 +326,7 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
 		    crypto_worker_main_t * cwm, u8 is_outbound)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
-  ipsec_main_t *im = &ipsec_main;
+  ipsec_main_t *im = dpdk_ipsec_main;
   crypto_data_t *data;
   ipsec_sa_t *sa;
   struct rte_crypto_sym_xform cipher_xform = { 0 };
@@ -552,21 +553,22 @@ dpdk_ipsec_check_support (ipsec_sa_t * sa)
 	break;
       default:
 	return clib_error_return (0, "unsupported integ-alg %U crypto-alg %U",
-				  format_ipsec_integ_alg, sa->integ_alg,
-				  format_ipsec_crypto_alg, sa->crypto_alg);
+				  dpdk_ipsec_format_integ_alg, sa->integ_alg,
+				  dpdk_ipsec_format_crypto_alg,
+				  sa->crypto_alg);
       }
 
   /* XXX do we need the NONE check? */
   if (sa->crypto_alg != IPSEC_CRYPTO_ALG_NONE &&
       dcm->cipher_algs[sa->crypto_alg].disabled)
     return clib_error_return (0, "disabled crypto-alg %U",
-			      format_ipsec_crypto_alg, sa->crypto_alg);
+			      dpdk_ipsec_format_crypto_alg, sa->crypto_alg);
 
   /* XXX do we need the NONE check? */
   if (sa->integ_alg != IPSEC_INTEG_ALG_NONE &&
       dcm->auth_algs[sa->integ_alg].disabled)
     return clib_error_return (0, "disabled integ-alg %U",
-			      format_ipsec_integ_alg, sa->integ_alg);
+			      dpdk_ipsec_format_integ_alg, sa->integ_alg);
   return NULL;
 }
 
@@ -1013,7 +1015,7 @@ dpdk_ipsec_enable_disable (int is_enable)
 static clib_error_t *
 dpdk_ipsec_main_init (vlib_main_t * vm)
 {
-  ipsec_main_t *im = &ipsec_main;
+  ipsec_main_t *im = dpdk_ipsec_main;
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   crypto_worker_main_t *cwm;
@@ -1063,7 +1065,7 @@ dpdk_ipsec_main_init (vlib_main_t * vm)
       return 0;
     }
 
-  u32 idx = ipsec_register_esp_backend (
+  u32 idx = dpdk_ipsec_register_esp_backend (
     vm, im, "dpdk backend", "dpdk-esp4-encrypt", "dpdk-esp4-encrypt-tun",
     "dpdk-esp4-decrypt", "dpdk-esp4-decrypt", "dpdk-esp6-encrypt",
     "dpdk-esp6-encrypt-tun", "dpdk-esp6-decrypt", "dpdk-esp6-decrypt",
@@ -1072,7 +1074,7 @@ dpdk_ipsec_main_init (vlib_main_t * vm)
   int rv;
   if (im->esp_current_backend == ~0)
     {
-      rv = ipsec_select_esp_backend (im, idx);
+      rv = dpdk_ipsec_select_esp_backend (im, idx);
       ASSERT (rv == 0);
     }
   return 0;

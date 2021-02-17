@@ -21,7 +21,7 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vppinfra/error.h>
-#include <vnet/ipsec/ipsec_sa.h>
+#include <ipsec/ipsec_sa.h>
 #include <plugins/ikev2/ikev2.h>
 #include <vnet/ip/ip_types_api.h>
 

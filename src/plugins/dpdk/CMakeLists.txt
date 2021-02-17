@@ -139,6 +139,7 @@ add_vpp_plugin(dpdk
   ipsec/esp_decrypt.c
   ipsec/esp_encrypt.c
   ipsec/ipsec.c
+  ipsec/dpdk_ipsec_wrapper.c
   cryptodev/${DPDK_CRYPTODEV_SOURCE}.c
 
   MULTIARCH_SOURCES
