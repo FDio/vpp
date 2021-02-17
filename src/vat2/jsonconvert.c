@@ -270,7 +270,8 @@ vl_api_ip4_address_t_fromjson (void **mp, int *len, cJSON *o,
     if (!p)
       return -1;
     unformat_init_string (&input, p, strlen(p));
-    unformat(&input, "%U", unformat_ip4_address, a);
+    if (!unformat (&input, "%U", unformat_ip4_address, a))
+      return -1;
     return 0;
 }
 
@@ -283,7 +284,9 @@ vl_api_ip4_prefix_t_fromjson (void **mp, int *len, cJSON *o,
     if (!p)
       return -1;
     unformat_init_string (&input, p, strlen(p));
-    unformat(&input, "%U/%d", unformat_ip4_address, &a->address, &a->len);
+    if (!unformat (&input, "%U/%d", unformat_ip4_address, &a->address,
+		   &a->len))
+      return -1;
     return 0;
 }
 
@@ -302,7 +305,8 @@ vl_api_ip6_address_t_fromjson (void **mp, int *len, cJSON *o,
     if (!p)
       return -1;
     unformat_init_string (&input, p, strlen(p));
-    unformat(&input, "%U", unformat_ip6_address, a);
+    if (!unformat (&input, "%U", unformat_ip6_address, a))
+      return -1;
     return 0;
 }
 
@@ -315,7 +319,8 @@ vl_api_ip6_prefix_t_fromjson (void **mp, int *len, cJSON *o,
   if (!p)
     return -1;
   unformat_init_string (&input, p, strlen(p));
-  unformat(&input, "%U/%d", unformat_ip6_address, &a->address, &a->len);
+  if (!unformat (&input, "%U/%d", unformat_ip6_address, &a->address, &a->len))
+    return -1;
   return 0;
 }
 
@@ -408,7 +413,8 @@ vl_api_mac_address_t_fromjson (void **mp, int *len, cJSON *o,
 
   char *p = cJSON_GetStringValue(o);
   unformat_init_string (&input, p, strlen(p));
-  unformat(&input, "%U", unformat_mac_address, a);
+  if (!unformat (&input, "%U", unformat_mac_address, a))
+    return -1;
   return 0;
 }
 
@@ -436,16 +442,6 @@ format_vl_api_interface_index_t (u8 *s, va_list *args)
 {
   u32 *a = va_arg (*args, u32 *);
   return format (s, "%u", *a);
-}
-
-uword
-unformat_vl_api_interface_index_t (unformat_input_t * input, va_list * args)
-{
-    u32 *a = va_arg (*args, u32 *);
-
-    if (!unformat (input, "%u", a))
-        return 0;
-    return 1;
 }
 
 void
