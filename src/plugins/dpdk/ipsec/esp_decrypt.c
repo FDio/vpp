@@ -19,10 +19,11 @@
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
 
-#include <vnet/ipsec/ipsec.h>
-#include <vnet/ipsec/esp.h>
+#include <ipsec/ipsec.h>
+#include <ipsec/esp.h>
 #include <dpdk/buffer.h>
 #include <dpdk/ipsec/ipsec.h>
+#include <dpdk/ipsec/dpdk_ipsec_wrapper.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>
 
@@ -84,11 +85,10 @@ format_esp_decrypt_trace (u8 * s, va_list * args)
   esp_decrypt_trace_t *t = va_arg (*args, esp_decrypt_trace_t *);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "cipher %U auth %U\n",
-	      format_ipsec_crypto_alg, t->crypto_alg,
-	      format_ipsec_integ_alg, t->integ_alg);
-  s = format (s, "%U%U",
-	      format_white_space, indent, format_esp_header, t->packet_data);
+  s = format (s, "cipher %U auth %U\n", dpdk_ipsec_format_crypto_alg,
+	      t->crypto_alg, dpdk_ipsec_format_integ_alg, t->integ_alg);
+  s = format (s, "%U%U", format_white_space, indent,
+	      dpdk_ipsec_format_esp_header, t->packet_data);
   return s;
 }
 
@@ -98,7 +98,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 			 vlib_frame_t * from_frame, int is_ip6)
 {
   u32 n_left_from, *from, *to_next, next_index, thread_index;
-  ipsec_main_t *im = &ipsec_main;
+  ipsec_main_t *im = dpdk_ipsec_main;
   u32 thread_idx = vlib_get_thread_index ();
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_resource_t *res = 0;
@@ -176,8 +176,8 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	  CLIB_PREFETCH (op, op_len, STORE);
 
 	  sa_index0 = vnet_buffer (b0)->ipsec.sad_index;
-	  vlib_prefetch_combined_counter (&ipsec_sa_counters,
-					  thread_index, sa_index0);
+	  vlib_prefetch_combined_counter (dpdk_ipsec_sa_counters, thread_index,
+					  sa_index0);
 
 	  if (sa_index0 != last_sa_index)
 	    {
@@ -259,9 +259,9 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	    }
 
 	  /* FIXME multi-seg */
-	  vlib_increment_combined_counter
-	    (&ipsec_sa_counters, thread_index, sa_index0,
-	     1, b0->current_length);
+	  vlib_increment_combined_counter (dpdk_ipsec_sa_counters,
+					   thread_index, sa_index0, 1,
+					   b0->current_length);
 
 	  res->ops[res->n_ops] = op;
 	  res->bi[res->n_ops] = bi0;
@@ -475,9 +475,8 @@ format_esp_decrypt_post_trace (u8 * s, va_list * args)
   esp_decrypt_trace_t *t = va_arg (*args, esp_decrypt_trace_t *);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "cipher %U auth %U\n",
-	      format_ipsec_crypto_alg, t->crypto_alg,
-	      format_ipsec_integ_alg, t->integ_alg);
+  s = format (s, "cipher %U auth %U\n", dpdk_ipsec_format_crypto_alg,
+	      t->crypto_alg, dpdk_ipsec_format_integ_alg, t->integ_alg);
 
   ip4_header_t *ih4 = (ip4_header_t *) t->packet_data;
   if ((ih4->ip_version_and_header_length & 0xF0) == 0x60)
@@ -498,7 +497,7 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next = 0, next_index;
   ipsec_sa_t *sa0;
   u32 sa_index0 = ~0;
-  ipsec_main_t *im = &ipsec_main;
+  ipsec_main_t *im = dpdk_ipsec_main;
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
 
   from = vlib_frame_vector_args (from_frame);
