@@ -1687,6 +1687,10 @@ show_ip6_full_reass (vlib_main_t * vm, unformat_input_t * input,
 		   "Maximum configured concurrent full IP6 reassemblies per worker-thread: %lu\n",
 		   (long unsigned) rm->max_reass_n);
   vlib_cli_output (vm,
+		   "Maximum configured amount of fragments "
+		   "per full IP6 reassembly: %lu\n",
+		   (long unsigned) rm->max_reass_len);
+  vlib_cli_output (vm,
 		   "Maximum configured full IP6 reassembly timeout: %lums\n",
 		   (long unsigned) rm->timeout_ms);
   vlib_cli_output (vm,
