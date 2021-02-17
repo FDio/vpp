@@ -724,7 +724,7 @@ F:	src/plugins/geneve/
 
 Plugin - linux-cp
 I:	linux-cp
-M:	neale@graphiant.com
+M:	Neale Ranns <neale@graphiant.com>
 M:	Matthew Smith <mgsmith@netgate.com>
 F:	src/plugins/linux-cp/
 
