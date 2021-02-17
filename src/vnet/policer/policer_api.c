@@ -45,6 +45,7 @@
 #define foreach_vpe_api_msg                                                   \
   _ (POLICER_ADD_DEL, policer_add_del)                                        \
   _ (POLICER_BIND, policer_bind)                                              \
+  _ (POLICER_INPUT, policer_input)                                            \
   _ (POLICER_DUMP, policer_dump)
 
 static void
@@ -114,6 +115,30 @@ vl_api_policer_bind_t_handler (vl_api_policer_bind_t *mp)
   rv = policer_bind_worker (name, worker_index, bind_enable);
   vec_free (name);
   REPLY_MACRO (VL_API_POLICER_BIND_REPLY);
+}
+
+static void
+vl_api_policer_input_t_handler (vl_api_policer_input_t *mp)
+{
+  vl_api_policer_bind_reply_t *rmp;
+  u8 *name;
+  u32 sw_if_index;
+  u8 apply;
+  int rv;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  name = format (0, "%s", mp->name);
+  vec_terminate_c_string (name);
+
+  sw_if_index = ntohl (mp->sw_if_index);
+  apply = mp->apply;
+
+  rv = policer_input (name, sw_if_index, apply);
+  vec_free (name);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_POLICER_INPUT_REPLY);
 }
 
 static void
