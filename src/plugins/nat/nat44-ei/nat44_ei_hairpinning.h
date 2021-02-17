@@ -1,48 +1,48 @@
-#ifndef __included_nat44_hairpinning_h__
-#define __included_nat44_hairpinning_h__
+#ifndef __included_nat44_ei_hairpinning_h__
+#define __included_nat44_ei_hairpinning_h__
 
-#include <nat/nat.h>
+#include <nat/nat44-ei/nat44_ei.h>
 
-#define foreach_nat44_hairpinning_handoff_error                               \
+#define foreach_nat44_ei_hairpinning_handoff_error                            \
   _ (CONGESTION_DROP, "congestion drop")
 
 typedef enum
 {
-#define _(sym, str) NAT44_HAIRPINNING_HANDOFF_ERROR_##sym,
-  foreach_nat44_hairpinning_handoff_error
+#define _(sym, str) NAT44_EI_HAIRPINNING_HANDOFF_ERROR_##sym,
+  foreach_nat44_ei_hairpinning_handoff_error
 #undef _
-    NAT44_HAIRPINNING_HANDOFF_N_ERROR,
-} nat44_hairpinning_handoff_error_t;
+    NAT44_EI_HAIRPINNING_HANDOFF_N_ERROR,
+} nat44_ei_hairpinning_handoff_error_t;
 
-static char *nat44_hairpinning_handoff_error_strings[] = {
+static char *nat44_ei_hairpinning_handoff_error_strings[] = {
 #define _(sym, string) string,
-  foreach_nat44_hairpinning_handoff_error
+  foreach_nat44_ei_hairpinning_handoff_error
 #undef _
 };
 
 typedef struct
 {
   u32 next_worker_index;
-} nat44_hairpinning_handoff_trace_t;
+} nat44_ei_hairpinning_handoff_trace_t;
 
 static u8 *
-format_nat44_hairpinning_handoff_trace (u8 *s, va_list *args)
+format_nat44_ei_hairpinning_handoff_trace (u8 *s, va_list *args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  nat44_hairpinning_handoff_trace_t *t =
-    va_arg (*args, nat44_hairpinning_handoff_trace_t *);
+  nat44_ei_hairpinning_handoff_trace_t *t =
+    va_arg (*args, nat44_ei_hairpinning_handoff_trace_t *);
 
-  s = format (s, "nat-hairpinning-handoff: next-worker %d",
+  s = format (s, "nat44-ei-hairpinning-handoff: next-worker %d",
 	      t->next_worker_index);
 
   return s;
 }
 
 always_inline uword
-nat44_hairpinning_handoff_fn_inline (vlib_main_t *vm,
-				     vlib_node_runtime_t *node,
-				     vlib_frame_t *frame, u32 fq_index)
+nat44_ei_hairpinning_handoff_fn_inline (vlib_main_t *vm,
+					vlib_node_runtime_t *node,
+					vlib_frame_t *frame, u32 fq_index)
 {
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u32 n_enq, n_left_from, *from;
@@ -62,7 +62,7 @@ nat44_hairpinning_handoff_fn_inline (vlib_main_t *vm,
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
 			 (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
 	{
-	  nat44_hairpinning_handoff_trace_t *t =
+	  nat44_ei_hairpinning_handoff_trace_t *t =
 	    vlib_add_trace (vm, node, b[0], sizeof (*t));
 	  t->next_worker_index = ti[0];
 	}
@@ -76,12 +76,12 @@ nat44_hairpinning_handoff_fn_inline (vlib_main_t *vm,
 
   if (n_enq < frame->n_vectors)
     vlib_node_increment_counter (
-      vm, node->node_index, NAT44_HAIRPINNING_HANDOFF_ERROR_CONGESTION_DROP,
+      vm, node->node_index, NAT44_EI_HAIRPINNING_HANDOFF_ERROR_CONGESTION_DROP,
       frame->n_vectors - n_enq);
   return frame->n_vectors;
 }
 
-#endif // __included_nat44_hairpinning_h__
+#endif // __included_nat44_ei_hairpinning_h__
 
 /*
  * fd.io coding-style-patch-verification: ON
