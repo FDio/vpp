@@ -1534,6 +1534,7 @@ api_{n} (cJSON *o)
   char *p;
   int l;
   vac_read(&p, &l, 5); // XXX: Fix timeout
+  if (p == 0 || l == 0) return 0;
     // XXX Will fail in case of event received. Do loop
   if (ntohs(*((u16 *)p)) != vac_get_msg_index(VL_API_{R}_CRC)) {{
     fprintf(stderr, "Mismatched reply\\n");
@@ -1573,6 +1574,10 @@ api_{n} (cJSON *o)
     char *p;
     int l;
     vac_read(&p, &l, 5); // XXX: Fix timeout
+    if (p == 0 || l == 0) {{
+      cJSON_free(reply);
+      return 0;
+    }}
 
     /* Message can be one of [_details, control_ping_reply
      * or unrelated event]
@@ -1583,6 +1588,10 @@ api_{n} (cJSON *o)
     }}
 
     if (reply_msg_id == details_msg_id) {{
+        if (l < sizeof(vl_api_{r}_t)) {{
+            cJSON_free(reply);
+            return 0;
+        }}
         vl_api_{r}_t *rmp = (vl_api_{r}_t *)p;
         vl_api_{r}_t_endian(rmp);
         cJSON_AddItemToArray(reply, vl_api_{r}_t_tojson(rmp));
