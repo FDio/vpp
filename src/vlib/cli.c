@@ -472,6 +472,23 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
       vec_free (string);
     }
 
+  else if (unformat (input, "vpplog %v", &string))
+    {
+      int i;
+      /*
+       * Delete leading whitespace, so "vpplog { this and that }"
+       * and "vpplog this" line up nicely.
+       */
+      for (i = 0; i < vec_len (string); i++)
+	if (string[i] != ' ')
+	  break;
+      if (i > 0)
+	vec_delete (string, i, 0);
+
+      vlib_log_notice (cm->log, "CLI: %v", string);
+      vec_free (string);
+    }
+
   else if (unformat (input, "uncomment %U",
 		     unformat_vlib_cli_sub_input, &sub_input))
     {
@@ -1817,6 +1834,9 @@ vlib_cli_init (vlib_main_t * vm)
 	return error;
       cmd = cmd->next_cli_command;
     }
+
+  cm->log = vlib_log_register_class_rate_limit (
+    "cli", "log", 0x7FFFFFFF /* aka no rate limit */);
   return error;
 }
 
