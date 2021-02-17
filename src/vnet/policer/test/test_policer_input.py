@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+# Copyright (c) 2021 Graphiant, Inc.
+
+import unittest
+import scapy.compat
+from scapy.layers.inet import IP, UDP
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
+from framework import VppTestCase, VppTestRunner
+from vpp_papi import VppEnum
+from vpp_policer import VppPolicer, PolicerAction
+
+NUM_PKTS = 67
+
+
+class TestPolicerInput(VppTestCase):
+    """ Policer on an input interface """
+
+    def setUp(self):
+        super(TestPolicerInput, self).setUp()
+
+        self.create_pg_interfaces(range(2))
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+        self.pkt = (Ether(src=self.pg0.remote_mac,
+                          dst=self.pg0.local_mac) /
+                    IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+                    UDP(sport=1234, dport=1234) /
+                    Raw(b'\xa5' * 100))
+
+    def tearDown(self):
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+        super(TestPolicerInput, self).tearDown()
+
+    def test_policer_input(self):
+        action_tx = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_TRANSMIT,
+            0)
+        policer = VppPolicer(self, "pol1", 80, 0, 1000, 0,
+                             conform_action=action_tx,
+                             exceed_action=action_tx,
+                             violate_action=action_tx)
+        policer.add_vpp_config()
+
+        # Start policing on pg0
+        policer.apply_vpp_config(self.pg0.sw_if_index, True)
+
+        rx = self.send_and_expect(self.pg0, self.pkt * NUM_PKTS, self.pg1)
+        stats = policer.get_stats()
+
+        # Single rate, 2 colour policer - expect conform, violate but no exceed
+        self.assertGreater(stats['conform_packets'], 0)
+        self.assertEqual(stats['exceed_packets'], 0)
+        self.assertGreater(stats['violate_packets'], 0)
+
+        # Stop policing on pg0
+        policer.apply_vpp_config(self.pg0.sw_if_index, False)
+
+        rx = self.send_and_expect(self.pg0, self.pkt * NUM_PKTS, self.pg1)
+        statsnew = policer.get_stats()
+
+        # No new packets counted
+        self.assertEqual(stats, statsnew)
+
+        policer.remove_vpp_config()
+
+
+if __name__ == '__main__':
+    unittest.main(testRunner=VppTestRunner)
