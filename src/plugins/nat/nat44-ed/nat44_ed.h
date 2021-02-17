@@ -204,14 +204,21 @@ typedef CLIB_PACKED(struct
 }) per_vrf_sessions_t;
 /* *INDENT-ON* */
 
-typedef struct
+typedef union
 {
-  ip4_address_t saddr, daddr;
-  u32 fib_index;
-  u16 sport, dport;
-  u16 icmp_id;
-  u8 proto;
+  struct
+  {
+    ip4_address_t saddr, daddr;
+    u16 sport; // ICMP id for ICMP case
+    u16 dport;
+    u32 fib_index : 24;
+    u8 proto;
+  };
+  u64 as_u64[2];
+  u64x2u as_u128;
 } nat_6t_t;
+
+STATIC_ASSERT_SIZEOF (nat_6t_t, 2 * sizeof (u64));
 
 typedef struct
 {
@@ -223,7 +230,15 @@ typedef struct
 #define NAT_FLOW_OP_TXFIB_REWRITE   (1 << 6)
   int ops;
   nat_6t_t match;
-  nat_6t_t rewrite;
+  struct
+  {
+    ip4_address_t saddr, daddr;
+    u16 sport;
+    u16 dport;
+    u32 fib_index;
+    u8 proto;
+    u16 icmp_id;
+  } rewrite;
   uword l3_csum_delta;
   uword l4_csum_delta;
 } nat_6t_flow_t;

@@ -592,15 +592,9 @@ nat_6t_o2i_flow_init (snat_main_t *sm, u32 thread_idx, snat_session_t *s,
 }
 
 static_always_inline int
-nat_6t_flow_match (nat_6t_flow_t *f, vlib_buffer_t *b, ip4_address_t saddr,
-		   u16 sport, ip4_address_t daddr, u16 dport, u8 protocol,
-		   u32 fib_index)
+nat_6t_t_eq (nat_6t_t *t1, nat_6t_t *t2)
 {
-  return f->match.daddr.as_u32 == daddr.as_u32 &&
-	 f->match.dport == vnet_buffer (b)->ip.reass.l4_dst_port &&
-	 f->match.proto == protocol && f->match.fib_index == fib_index &&
-	 f->match.saddr.as_u32 == saddr.as_u32 &&
-	 f->match.sport == vnet_buffer (b)->ip.reass.l4_src_port;
+  return t1->as_u64[0] == t2->as_u64[0] && t1->as_u64[1] == t2->as_u64[1];
 }
 
 static inline uword

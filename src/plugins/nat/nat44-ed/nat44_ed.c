@@ -3318,15 +3318,15 @@ nat_6t_l3_l4_csum_calc (nat_6t_flow_t *f)
       f->rewrite.dport = f->match.dport;
     }
   if (f->ops & NAT_FLOW_OP_ICMP_ID_REWRITE &&
-      f->rewrite.icmp_id != f->match.icmp_id)
+      f->rewrite.icmp_id != f->match.sport)
     {
       f->l4_csum_delta =
 	ip_csum_add_even (f->l4_csum_delta, f->rewrite.icmp_id);
-      f->l4_csum_delta = ip_csum_sub_even (f->l4_csum_delta, f->match.icmp_id);
+      f->l4_csum_delta = ip_csum_sub_even (f->l4_csum_delta, f->match.sport);
     }
   else
     {
-      f->rewrite.icmp_id = f->match.icmp_id;
+      f->rewrite.icmp_id = f->match.sport;
     }
   if (f->ops & NAT_FLOW_OP_TXFIB_REWRITE)
     {
