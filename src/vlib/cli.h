@@ -41,6 +41,7 @@
 #define included_vlib_cli_h
 
 #include <vppinfra/format.h>
+#include <vlib/log.h>
 
 struct vlib_cli_command_t;
 
@@ -152,6 +153,10 @@ typedef struct vlib_cli_main_t
     (struct vlib_cli_main_t *, u32 id, int before_or_after);
   void (**perf_counter_cbs_tmp)
     (struct vlib_cli_main_t *, u32 id, int before_or_after);
+
+  /* cli log */
+  vlib_log_class_t log;
+
 } vlib_cli_main_t;
 
 #ifndef CLIB_MARCH_VARIANT
