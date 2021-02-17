@@ -26,12 +26,6 @@ EBURST = 200000     # Excess burst in bytes
 class TestPolicer(VppTestCase):
     """ Policer Test Case """
 
-    def setUp(self):
-        super(TestPolicer, self).setUp()
-
-    def tearDown(self):
-        super(TestPolicer, self).tearDown()
-
     def run_policer_test(self, type, cir, cb, eir, eb, rate=8000, burst=10000,
                          colour=0):
         """
