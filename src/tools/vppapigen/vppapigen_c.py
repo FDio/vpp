@@ -380,7 +380,7 @@ class FromJSON():
         int i;
         cJSON *array = cJSON_GetObjectItem(o, "{n}");
         int size = cJSON_GetArraySize(array);
-        if (size != {lfield}) return 0;
+        if (size != {lfield}) goto error;
         for (i = 0; i < size; i++) {{
             cJSON *e = cJSON_GetArrayItem(array, i);
             {call}
