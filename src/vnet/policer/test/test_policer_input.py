@@ -15,6 +15,7 @@ NUM_PKTS = 67
 
 class TestPolicerInput(VppTestCase):
     """ Policer on an input interface """
+    worker_config = "workers 2"
 
     def setUp(self):
         super(TestPolicerInput, self).setUp()
@@ -38,6 +39,9 @@ class TestPolicerInput(VppTestCase):
         super(TestPolicerInput, self).tearDown()
 
     def test_policer_input(self):
+        """ Input Policing """
+        pkts = self.pkt * NUM_PKTS
+
         action_tx = PolicerAction(
             VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_TRANSMIT,
             0)
@@ -50,7 +54,7 @@ class TestPolicerInput(VppTestCase):
         # Start policing on pg0
         policer.apply_vpp_config(self.pg0.sw_if_index, True)
 
-        rx = self.send_and_expect(self.pg0, self.pkt * NUM_PKTS, self.pg1)
+        rx = self.send_and_expect(self.pg0, pkts, self.pg1, worker=0)
         stats = policer.get_stats()
 
         # Single rate, 2 colour policer - expect conform, violate but no exceed
@@ -61,7 +65,8 @@ class TestPolicerInput(VppTestCase):
         # Stop policing on pg0
         policer.apply_vpp_config(self.pg0.sw_if_index, False)
 
-        rx = self.send_and_expect(self.pg0, self.pkt * NUM_PKTS, self.pg1)
+        rx = self.send_and_expect(self.pg0, pkts, self.pg1, worker=0)
+
         statsnew = policer.get_stats()
 
         # No new packets counted
@@ -69,6 +74,73 @@ class TestPolicerInput(VppTestCase):
 
         policer.remove_vpp_config()
 
+    def test_policer_handoff(self):
+        """ Worker thread handoff """
+        pkts = self.pkt * NUM_PKTS
+
+        action_tx = PolicerAction(
+            VppEnum.vl_api_sse2_qos_action_type_t.SSE2_QOS_ACTION_API_TRANSMIT,
+            0)
+        policer = VppPolicer(self, "pol2", 80, 0, 1000, 0,
+                             conform_action=action_tx,
+                             exceed_action=action_tx,
+                             violate_action=action_tx)
+        policer.add_vpp_config()
+
+        # Bind the policer to worker 1
+        policer.bind_vpp_config(1, True)
+
+        # Start policing on pg0
+        policer.apply_vpp_config(self.pg0.sw_if_index, True)
+
+        for worker in [0, 1]:
+            self.send_and_expect(self.pg0, pkts, self.pg1, worker=worker)
+            self.logger.debug(self.vapi.cli("show trace max 100"))
+
+        stats = policer.get_stats()
+        stats0 = policer.get_stats(worker=0)
+        stats1 = policer.get_stats(worker=1)
+
+        # Worker 1, should have done all the policing
+        self.assertEqual(stats, stats1)
+
+        # Worker 0, should have handed everything off
+        self.assertEqual(stats0['conform_packets'], 0)
+        self.assertEqual(stats0['exceed_packets'], 0)
+        self.assertEqual(stats0['violate_packets'], 0)
+
+        # Unbind the policer from worker 1 and repeat
+        policer.bind_vpp_config(1, False)
+        for worker in [0, 1]:
+            self.send_and_expect(self.pg0, pkts, self.pg1, worker=worker)
+            self.logger.debug(self.vapi.cli("show trace max 100"))
+
+        # The policer should auto-bind to worker 0 when packets arrive
+        stats = policer.get_stats()
+
+        # The 2 workers should now have policed the same amount
+        stats = policer.get_stats()
+        stats0 = policer.get_stats(worker=0)
+        stats1 = policer.get_stats(worker=1)
+
+        self.assertGreater(stats0['conform_packets'], 0)
+        self.assertEqual(stats0['exceed_packets'], 0)
+        self.assertGreater(stats0['violate_packets'], 0)
+
+        self.assertGreater(stats1['conform_packets'], 0)
+        self.assertEqual(stats1['exceed_packets'], 0)
+        self.assertGreater(stats1['violate_packets'], 0)
+
+        self.assertEqual(stats0['conform_packets'] + stats1['conform_packets'],
+                         stats['conform_packets'])
+
+        self.assertEqual(stats0['violate_packets'] + stats1['violate_packets'],
+                         stats['violate_packets'])
+
+        # Stop policing on pg0
+        policer.apply_vpp_config(self.pg0.sw_if_index, False)
+
+        policer.remove_vpp_config()
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
