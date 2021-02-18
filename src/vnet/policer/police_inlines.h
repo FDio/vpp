@@ -124,10 +124,14 @@ policer_handoff (vlib_main_t *vm, vlib_node_runtime_t *node,
   vnet_policer_main_t *pm;
   policer_t *policer;
   u32 this_thread, policer_thread;
+  bool single_policer_node = (policer_index != ~0);
 
   pm = &vnet_policer_main;
-  policer = &pm->policers[policer_index];
-  policer_thread = policer->thread_index;
+  if (single_policer_node)
+    {
+      policer = &pm->policers[policer_index];
+      policer_thread = policer->thread_index;
+    }
 
   this_thread = vm->thread_index;
   from = vlib_frame_vector_args (frame);
@@ -139,7 +143,16 @@ policer_handoff (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   while (n_left_from > 0)
     {
-      ti[0] = policer_thread;
+      if (!single_policer_node)
+	{
+	  policer_index = vnet_buffer (b[0])->policer.index;
+	  policer = &pm->policers[policer_index];
+	  ti[0] = policer->thread_index;
+	}
+      else
+	{
+	  ti[0] = policer_thread;
+	}
 
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
 			 b[0]->flags & VLIB_BUFFER_IS_TRACED))
@@ -147,7 +160,7 @@ policer_handoff (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  policer_handoff_trace_t *t =
 	    vlib_add_trace (vm, node, b[0], sizeof (*t));
 	  t->current_worker_index = this_thread;
-	  t->next_worker_index = policer_thread;
+	  t->next_worker_index = ti[0];
 	  t->policer_index = policer_index;
 	}
 

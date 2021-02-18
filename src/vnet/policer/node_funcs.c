@@ -127,28 +127,38 @@ vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  pi1 = pm->policer_index_by_sw_if_index[sw_if_index1];
 
 	  act0 = vnet_policer_police (vm, b0, pi0, time_in_policer_periods,
-				      POLICE_CONFORM /* no chaining */, false);
+				      POLICE_CONFORM /* no chaining */, true);
 
 	  act1 = vnet_policer_police (vm, b1, pi1, time_in_policer_periods,
-				      POLICE_CONFORM /* no chaining */, false);
+				      POLICE_CONFORM /* no chaining */, true);
 
-	  if (PREDICT_FALSE (act0 == QOS_ACTION_DROP)) /* drop action */
+	  if (PREDICT_FALSE (act0 == QOS_ACTION_HANDOFF))
+	    {
+	      next0 = VNET_POLICER_NEXT_HANDOFF;
+	      vnet_buffer (b0)->policer.index = pi0;
+	    }
+	  else if (PREDICT_FALSE (act0 == QOS_ACTION_DROP))
 	    {
 	      next0 = VNET_POLICER_NEXT_DROP;
 	      b0->error = node->errors[VNET_POLICER_ERROR_DROP];
 	    }
-	  else			/* transmit or mark-and-transmit action */
+	  else /* transmit or mark-and-transmit action */
 	    {
 	      transmitted++;
 	      vnet_feature_next (&next0, b0);
 	    }
 
-	  if (PREDICT_FALSE (act1 == QOS_ACTION_DROP)) /* drop action */
+	  if (PREDICT_FALSE (act1 == QOS_ACTION_HANDOFF))
+	    {
+	      next1 = VNET_POLICER_NEXT_HANDOFF;
+	      vnet_buffer (b1)->policer.index = pi1;
+	    }
+	  else if (PREDICT_FALSE (act1 == QOS_ACTION_DROP)) /* drop action */
 	    {
 	      next1 = VNET_POLICER_NEXT_DROP;
 	      b1->error = node->errors[VNET_POLICER_ERROR_DROP];
 	    }
-	  else			/* transmit or mark-and-transmit action */
+	  else /* transmit or mark-and-transmit action */
 	    {
 	      transmitted++;
 	      vnet_feature_next (&next1, b1);
@@ -201,14 +211,19 @@ vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  pi0 = pm->policer_index_by_sw_if_index[sw_if_index0];
 
 	  act0 = vnet_policer_police (vm, b0, pi0, time_in_policer_periods,
-				      POLICE_CONFORM /* no chaining */, false);
+				      POLICE_CONFORM /* no chaining */, true);
 
-	  if (PREDICT_FALSE (act0 == QOS_ACTION_DROP)) /* drop action */
+	  if (PREDICT_FALSE (act0 == QOS_ACTION_HANDOFF))
+	    {
+	      next0 = VNET_POLICER_NEXT_HANDOFF;
+	      vnet_buffer (b0)->policer.index = pi0;
+	    }
+	  else if (PREDICT_FALSE (act0 == QOS_ACTION_DROP))
 	    {
 	      next0 = VNET_POLICER_NEXT_DROP;
 	      b0->error = node->errors[VNET_POLICER_ERROR_DROP];
 	    }
-	  else			/* transmit or mark-and-transmit action */
+	  else /* transmit or mark-and-transmit action */
 	    {
 	      transmitted++;
 	      vnet_feature_next (&next0, b0);
@@ -254,6 +269,7 @@ VLIB_REGISTER_NODE (policer_input_node) = {
   .n_next_nodes = VNET_POLICER_N_NEXT,
   .next_nodes = {
 		 [VNET_POLICER_NEXT_DROP] = "error-drop",
+		 [VNET_POLICER_NEXT_HANDOFF] = "policer-input-handoff",
 		 },
 };
 
@@ -261,6 +277,28 @@ VNET_FEATURE_INIT (policer_input_node, static) = {
   .arc_name = "device-input",
   .node_name = "policer-input",
   .runs_before = VNET_FEATURES ("ethernet-input"),
+};
+
+static char *policer_input_handoff_error_strings[] = { "congestion drop" };
+
+VLIB_NODE_FN (policer_input_handoff_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return policer_handoff (vm, node, frame, vnet_policer_main.fq_index, ~0);
+}
+
+VLIB_REGISTER_NODE (policer_input_handoff_node) = {
+  .name = "policer-input-handoff",
+  .vector_size = sizeof (u32),
+  .format_trace = format_policer_handoff_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(policer_input_handoff_error_strings),
+  .error_strings = policer_input_handoff_error_strings,
+
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
 };
 
 typedef struct
