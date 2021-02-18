@@ -916,7 +916,6 @@ class NAT44EDTestCase(VppTestCase):
                              "%d" % self.tcp_external_port)
 
 
-@tag_fixme_vpp_workers
 class TestNAT44ED(NAT44EDTestCase):
     """ NAT44ED Test Case """
 
