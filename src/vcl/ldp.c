@@ -989,7 +989,7 @@ socket (int domain, int type, int protocol)
       u8 proto;
       if (ldp->transparent_tls)
 	{
-	  proto = VPPCOM_PROTO_TLS;
+	  proto = sock_type == SOCK_STREAM ? VPPCOM_PROTO_TLS : VPPCOM_PROTO_DTLS;
 	}
       else
 	proto = ((sock_type == SOCK_DGRAM) ?

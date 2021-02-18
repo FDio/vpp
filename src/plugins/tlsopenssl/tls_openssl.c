@@ -435,6 +435,7 @@ openssl_ctx_write_dtls (tls_ctx_t *ctx, session_t *app_session,
       ASSERT (rv == hdr.data_length);
       svm_fifo_dequeue_drop (app_session->tx_fifo, dgram_sz);
 
+      clib_warning ("writing %u", rv);
       wrote = SSL_write (oc->ssl, buf, rv);
       ASSERT (wrote > 0);
 
@@ -496,6 +497,8 @@ openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session)
   return wrote;
 }
 
+static int openssl_ctx_init_server (tls_ctx_t * ctx);
+
 static inline int
 openssl_ctx_read_dtls (tls_ctx_t *ctx, session_t *us)
 {
@@ -506,6 +509,9 @@ openssl_ctx_read_dtls (tls_ctx_t *ctx, session_t *us)
   u32 wrote = 0;
   int read, rv;
   u8 *buf;
+
+  if (!oc->ssl)
+    openssl_ctx_init_server (ctx);
 
   if (PREDICT_FALSE (SSL_in_init (oc->ssl)))
     {

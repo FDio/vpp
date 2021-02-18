@@ -400,7 +400,7 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
   session->listener_index = listen_session->session_index;
   listen_session->n_accepted_sessions++;
 
-  VDBG (1, "session %u [0x%llx]: client accept request from %s address %U"
+  VDBG (0, "session %u [0x%llx]: client accept request from %s address %U"
 	" port %d queue %p!", session->session_index, mp->handle,
 	mp->rmt.is_ip4 ? "IPv4" : "IPv6", format_ip46_address, &mp->rmt.ip,
 	mp->rmt.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
@@ -1440,7 +1440,7 @@ vppcom_session_bind (uint32_t session_handle, vppcom_endpt_t * ep)
 	vppcom_proto_str (session->session_type));
   vcl_evt (VCL_EVT_BIND, session);
 
-  if (session->session_type == VPPCOM_PROTO_UDP)
+  if (session->session_type == VPPCOM_PROTO_UDP || session->session_type == VPPCOM_PROTO_DTLS)
     vppcom_session_listen (session_handle, 10);
 
   return VPPCOM_OK;
@@ -1676,6 +1676,7 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
   /* Attempt to connect a connectionless listener */
   if (PREDICT_FALSE (session->session_state == VCL_STATE_LISTEN))
     {
+      clib_warning ("CALLED");
       if (session->session_type != VPPCOM_PROTO_UDP)
 	return VPPCOM_EINVAL;
       vcl_send_session_unlisten (wrk, session);
@@ -1887,6 +1888,7 @@ read_again:
   VDBG (2, "session %u[0x%llx]: read %d bytes from (%p)", s->session_index,
 	s->vpp_handle, n_read, rx_fifo);
 
+  clib_warning ("read %u", n_read);
   return n_read;
 }
 
@@ -2076,6 +2078,7 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
   VDBG (2, "session %u [0x%llx]: wrote %d bytes", s->session_index,
 	s->vpp_handle, n_write);
 
+  clib_warning ("wrote %u", n_write);
   return n_write;
 }
 

@@ -78,6 +78,7 @@ bio_dtls_read (BIO *b, char *out, int outl)
       errno = EAGAIN;
       return -1;
     }
+  clib_warning("read %u", rv);
 
   if (svm_fifo_is_empty_cons (s->rx_fifo))
     svm_fifo_unset_event (s->rx_fifo);
@@ -116,6 +117,7 @@ bio_dtls_write (BIO *b, const char *in, int inl)
       errno = EAGAIN;
       return -1;
     }
+  clib_warning("wrote %u", rv);
 
   BIO_clear_retry_flags (b);
 
