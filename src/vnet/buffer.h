@@ -524,8 +524,17 @@ format_function_t format_vnet_buffer_offload;
 static_always_inline void
 vnet_buffer_offload_flags_set (vlib_buffer_t *b, u32 oflags)
 {
-  vnet_buffer2 (b)->oflags |= oflags;
-  b->flags |= VNET_BUFFER_F_OFFLOAD;
+  if (b->flags & VNET_BUFFER_F_OFFLOAD)
+    {
+      /* add a flag to existing offload */
+      vnet_buffer2 (b)->oflags |= oflags;
+    }
+  else
+    {
+      /* no offload yet: reset offload flags to new value */
+      vnet_buffer2 (b)->oflags = oflags;
+      b->flags |= VNET_BUFFER_F_OFFLOAD;
+    }
 }
 
 static_always_inline void
