@@ -1200,6 +1200,12 @@ void vlib_start_process (vlib_main_t * vm, uword process_index);
 
 /* Sync up runtime and main node stats. */
 void vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n);
+void vlib_node_runtime_sync_stats (vlib_main_t *vm, vlib_node_runtime_t *r,
+				   uword n_calls, uword n_vectors,
+				   uword n_clocks);
+void vlib_node_runtime_sync_stats_node (vlib_node_t *n, vlib_node_runtime_t *r,
+					uword n_calls, uword n_vectors,
+					uword n_clocks);
 
 /* Node graph initialization function. */
 clib_error_t *vlib_node_main_init (vlib_main_t * vm);
