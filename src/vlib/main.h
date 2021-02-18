@@ -476,8 +476,6 @@ extern u8 **vlib_thread_stacks;
 /* Number of thread stacks that the application needs */
 u32 vlib_app_num_thread_stacks_needed (void) __attribute__ ((weak));
 
-extern void vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n);
-
 #define VLIB_PCAP_MAJOR_VERSION 1
 #define VLIB_PCAP_MINOR_VERSION 0
 
