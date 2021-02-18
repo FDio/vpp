@@ -56,11 +56,9 @@ vnet_policer_mark (vlib_buffer_t *b, ip_dscp_t dscp)
 }
 
 static_always_inline u8
-vnet_policer_police (vlib_main_t * vm,
-		     vlib_buffer_t * b,
-		     u32 policer_index,
+vnet_policer_police (vlib_main_t *vm, vlib_buffer_t *b, u32 policer_index,
 		     u64 time_in_policer_periods,
-		     policer_result_e packet_color)
+		     policer_result_e packet_color, bool handoff)
 {
   qos_action_type_en act;
   u32 len;
@@ -72,8 +70,25 @@ vnet_policer_police (vlib_main_t * vm,
   vlib_prefetch_combined_counter (&policer_counters[POLICE_CONFORM],
 				  vm->thread_index, policer_index);
 
-  len = vlib_buffer_length_in_chain (vm, b);
   pol = &pm->policers[policer_index];
+
+  if (handoff)
+    {
+      if (PREDICT_FALSE (pol->thread_index == ~0))
+	/*
+	 * This is the first packet to use this policer. Set the
+	 * thread index in the policer to this thread and any
+	 * packets seen by this node on other threads will
+	 * be handed off to this one.
+	 *
+	 * This could happen simultaneously on another thread.
+	 */
+	clib_atomic_cmp_and_swap (&pol->thread_index, ~0, vm->thread_index);
+      else if (PREDICT_FALSE (pol->thread_index != vm->thread_index))
+	return QOS_ACTION_HANDOFF;
+    }
+
+  len = vlib_buffer_length_in_chain (vm, b);
   col = vnet_police_packet (pol, len, packet_color, time_in_policer_periods);
   act = pol->action[col];
   vlib_increment_combined_counter (&policer_counters[col], vm->thread_index,
