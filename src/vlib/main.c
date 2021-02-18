@@ -570,13 +570,11 @@ vlib_put_next_frame (vlib_main_t * vm,
 }
 
 /* Sync up runtime (32 bit counters) and main node stats (64 bit counters). */
-never_inline void
-vlib_node_runtime_sync_stats (vlib_main_t * vm,
-			      vlib_node_runtime_t * r,
-			      uword n_calls, uword n_vectors, uword n_clocks)
+void
+vlib_node_runtime_sync_stats_node (vlib_node_t *n, vlib_node_runtime_t *r,
+				   uword n_calls, uword n_vectors,
+				   uword n_clocks)
 {
-  vlib_node_t *n = vlib_get_node (vm, r->node_index);
-
   n->stats_total.calls += n_calls + r->calls_since_last_overflow;
   n->stats_total.vectors += n_vectors + r->vectors_since_last_overflow;
   n->stats_total.clocks += n_clocks + r->clocks_since_last_overflow;
@@ -586,6 +584,14 @@ vlib_node_runtime_sync_stats (vlib_main_t * vm,
   r->calls_since_last_overflow = 0;
   r->vectors_since_last_overflow = 0;
   r->clocks_since_last_overflow = 0;
+}
+
+void
+vlib_node_runtime_sync_stats (vlib_main_t *vm, vlib_node_runtime_t *r,
+			      uword n_calls, uword n_vectors, uword n_clocks)
+{
+  vlib_node_t *n = vlib_get_node (vm, r->node_index);
+  vlib_node_runtime_sync_stats_node (n, r, n_calls, n_vectors, n_clocks);
 }
 
 always_inline void __attribute__ ((unused))

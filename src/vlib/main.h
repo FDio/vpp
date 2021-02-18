@@ -450,7 +450,6 @@ extern u8 **vlib_thread_stacks;
 /* Number of thread stacks that the application needs */
 u32 vlib_app_num_thread_stacks_needed (void) __attribute__ ((weak));
 
-extern void vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n);
 void vlib_add_del_post_mortem_callback (void *cb, int is_add);
 
 vlib_main_t *vlib_get_main_not_inline (void);
