@@ -171,6 +171,7 @@ mq_send_session_accepted_cb (session_t * s)
       mp->handle = session_handle (s);
 
       session_get_endpoint (s, &mp->rmt, 0 /* is_lcl */ );
+      clib_warning ("got %U", format_ip46_address, &mp->rmt.ip, 1);
     }
   else
     {
@@ -391,7 +392,8 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
   eq_seg = session_main_get_evt_q_segment ();
   mp->vpp_evt_q = fifo_segment_msg_q_offset (eq_seg, ls->thread_index);
 
-  if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
+  if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL
+      || session_get_transport_proto (ls) == TRANSPORT_PROTO_DTLS)
     {
       mp->rx_fifo = fifo_segment_fifo_offset (ls->rx_fifo);
       mp->tx_fifo = fifo_segment_fifo_offset (ls->tx_fifo);

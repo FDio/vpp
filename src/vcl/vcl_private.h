@@ -535,7 +535,7 @@ vcl_session_is_cl (vcl_session_t * s)
 {
   if (s->session_type == VPPCOM_PROTO_UDP)
     return !(s->flags & VCL_SESSION_F_CONNECTED);
-  return 0;
+  return s->session_type == VPPCOM_PROTO_DTLS;
 }
 
 static inline u8

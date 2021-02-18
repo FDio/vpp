@@ -485,7 +485,10 @@ tls_app_rx_callback (session_t * tls_session)
   if (PREDICT_FALSE (tls_session->flags & SESSION_F_IS_MIGRATING))
     return 0;
 
-  ctx = tls_ctx_get (tls_session->opaque);
+  if (tls_session->session_state == SESSION_STATE_LISTENING)
+    ctx = tls_listener_ctx_get (tls_session->opaque);
+  else
+    ctx = tls_ctx_get (tls_session->opaque);
   tls_ctx_read (ctx, tls_session);
   return 0;
 }
@@ -754,7 +757,8 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   if (sep->transport_proto == TRANSPORT_PROTO_DTLS)
     {
       args->sep_ext.transport_proto = TRANSPORT_PROTO_UDP;
-      args->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
+      if (sep->transport_flags & TRANSPORT_CFG_F_CONNECTED)
+	args->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
     }
   if (vnet_listen (args))
     return -1;
@@ -787,6 +791,16 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
 	clib_warning ("unlisten returned");
       tls_listener_ctx_free (lctx);
       lctx_index = SESSION_INVALID_INDEX;
+    }
+
+  if (sep->transport_proto == TRANSPORT_PROTO_DTLS)
+    {
+      if (sep->transport_flags & TRANSPORT_CFG_F_CONNECTED)
+	{
+//	lctx->flags |= UDP_CONN_F_CONNECTED;
+	}
+      else
+	lctx->c_flags |= TRANSPORT_CONNECTION_F_CLESS;
     }
 
   TLS_DBG (1, "Started listening %d, engine type %d", lctx_index,
