@@ -787,6 +787,9 @@ fs_fifo_free (fifo_segment_t *fs, svm_fifo_t *f)
   u32 slice_index = f->shr->slice_index;
   fifo_slice_private_t *pfss;
 
+  if (CLIB_DEBUG)
+    clib_memset (f, 0xfc, sizeof (*f));
+
   pfss = &fs->slices[slice_index];
   clib_mem_bulk_free (pfss->fifos, f);
 }
@@ -976,6 +979,7 @@ fifo_segment_attach_fifo (fifo_segment_t *fs, svm_fifo_t **f, u32 slice_index)
   fss = fsh_slice_get (fs->h, slice_index);
   pfss = fs_slice_private_get (fs, slice_index);
   fss->virtual_mem += svm_fifo_size (nf);
+  nf->next = nf->prev = 0;
   if (nf->flags & SVM_FIFO_F_LL_TRACKED)
     pfss_fifo_add_active_list (pfss, nf);
 
