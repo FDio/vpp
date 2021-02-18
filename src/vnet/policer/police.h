@@ -28,7 +28,8 @@ typedef enum
 {
   QOS_ACTION_DROP = 0,
   QOS_ACTION_TRANSMIT,
-  QOS_ACTION_MARK_AND_TRANSMIT
+  QOS_ACTION_MARK_AND_TRANSMIT,
+  QOS_ACTION_HANDOFF
 } __clib_packed qos_action_type_en;
 
 // This is the hardware representation of the policer.

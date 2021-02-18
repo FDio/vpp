@@ -127,10 +127,10 @@ vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  pi1 = pm->policer_index_by_sw_if_index[sw_if_index1];
 
 	  act0 = vnet_policer_police (vm, b0, pi0, time_in_policer_periods,
-				      POLICE_CONFORM /* no chaining */ );
+				      POLICE_CONFORM /* no chaining */, false);
 
 	  act1 = vnet_policer_police (vm, b1, pi1, time_in_policer_periods,
-				      POLICE_CONFORM /* no chaining */ );
+				      POLICE_CONFORM /* no chaining */, false);
 
 	  if (PREDICT_FALSE (act0 == QOS_ACTION_DROP)) /* drop action */
 	    {
@@ -201,7 +201,7 @@ vnet_policer_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  pi0 = pm->policer_index_by_sw_if_index[sw_if_index0];
 
 	  act0 = vnet_policer_police (vm, b0, pi0, time_in_policer_periods,
-				      POLICE_CONFORM /* no chaining */ );
+				      POLICE_CONFORM /* no chaining */, false);
 
 	  if (PREDICT_FALSE (act0 == QOS_ACTION_DROP)) /* drop action */
 	    {
@@ -496,11 +496,9 @@ policer_classify_inline (vlib_main_t * vm,
 
 	      if (e0)
 		{
-		  act0 = vnet_policer_police (vm,
-					      b0,
-					      e0->next_index,
+		  act0 = vnet_policer_police (vm, b0, e0->next_index,
 					      time_in_policer_periods,
-					      e0->opaque_index);
+					      e0->opaque_index, false);
 		  if (PREDICT_FALSE (act0 == QOS_ACTION_DROP))
 		    {
 		      next0 = POLICER_CLASSIFY_NEXT_INDEX_DROP;
@@ -530,11 +528,9 @@ policer_classify_inline (vlib_main_t * vm,
 			vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
 		      if (e0)
 			{
-			  act0 = vnet_policer_police (vm,
-						      b0,
-						      e0->next_index,
+			  act0 = vnet_policer_police (vm, b0, e0->next_index,
 						      time_in_policer_periods,
-						      e0->opaque_index);
+						      e0->opaque_index, false);
 			  if (PREDICT_FALSE (act0 == QOS_ACTION_DROP))
 			    {
 			      next0 = POLICER_CLASSIFY_NEXT_INDEX_DROP;
