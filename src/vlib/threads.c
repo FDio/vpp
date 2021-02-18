@@ -998,11 +998,6 @@ worker_thread_node_runtime_update_internal (void)
   vlib_node_main_t *nm, *nm_clone;
   vlib_main_t *vm_clone;
   vlib_node_runtime_t *rt;
-  never_inline void
-    vlib_node_runtime_sync_stats (vlib_main_t * vm,
-				  vlib_node_runtime_t * r,
-				  uword n_calls,
-				  uword n_vectors, uword n_clocks);
 
   ASSERT (vlib_get_thread_index () == 0);
 

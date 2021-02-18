@@ -42,6 +42,7 @@
 #include <fcntl.h>
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
+#include <math.h>
 
 static int
 node_cmp (void *a1, void *a2)
@@ -97,20 +98,41 @@ show_node_graphviz (vlib_main_t * vm,
 {
   clib_error_t *error = 0;
   vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_t **nodes = nm->nodes;
   u8 *chroot_filename = 0;
   int fd;
-  vlib_node_t **nodes = 0;
-  uword i, j;
+  uword *active = 0;
+  u32 i, j;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u8 filter = 0, calls_filter = 0, vectors_filter = 0, both = 0;
 
-  if (!unformat_user (input, unformat_vlib_tmpfile, &chroot_filename))
+  fd = -1;
+  /* Get a line of input. */
+  if (unformat_user (input, unformat_line_input, line_input))
     {
-      fd = -1;
+      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+	{
+	  if (unformat (line_input, "filter"))
+	    filter = 1;
+	  else if (unformat (line_input, "calls") && filter)
+	    calls_filter = 1;
+	  else if (unformat (line_input, "vectors") && filter)
+	    vectors_filter = 1;
+	  else if (unformat (line_input, "file %U", unformat_vlib_tmpfile,
+			     &chroot_filename))
+	    {
+	      fd = open ((char *) chroot_filename,
+			 O_CREAT | O_TRUNC | O_WRONLY, 0664);
+	    }
+	  else
+	    return clib_error_return (0, "unknown input `%U'",
+				      format_unformat_error, input);
+	}
+      unformat_free (line_input);
     }
-  else
-    {
-      fd =
-	open ((char *) chroot_filename, O_CREAT | O_TRUNC | O_WRONLY, 0664);
-    }
+
+  /*both is set to true if calls_filter and vectors_filter are, or neither */
+  both = filter & (!(calls_filter ^ vectors_filter));
 
 #define format__(vm__, fd__, ...) \
   if ((fd) < 0) \
@@ -124,45 +146,189 @@ show_node_graphviz (vlib_main_t * vm,
 
   format__ (vm, fd, "%s", "digraph {\n");
 
-  nodes = vec_dup (nm->nodes);
-  vec_sort_with_function (nodes, node_cmp);
-
-  for (i = 0; i < vec_len (nodes); i++)
+  clib_bitmap_alloc (active, vec_len (nodes));
+  clib_bitmap_set_region (active, 0, 1, vec_len (nodes));
+  if (filter)
     {
-      for (j = 0; j < vec_len (nodes[i]->next_nodes); j++)
+      /*Adding the legend to the dot file*/
+      format__ (vm, fd, "%s",
+		"  rankdir=\"LR\"\n  nodesep=2\n  subgraph cluster_legend {\n "
+		"   label=\"Legend\"\n    style=\"solid\"\n    labelloc = b\n "
+		"   subgraph cluster_colors {\n      label=\"Packets/Call\"\n "
+		"     style=\"solid\"\n      labelloc = b\n");
+      format__ (vm, fd, "%s",
+		"      0 [label=\"No packet\", fixedsize=true shape=circle "
+		"width=2 fontsize=17]\n"
+		"      1 [label=\"1-32\", fillcolor=1 style=filled "
+		"colorscheme=ylorrd8 fixedsize=true shape=circle width=2 "
+		"fontsize=17]\n"
+		"      2 [label=\"33-64\", fillcolor=2 style=filled "
+		"colorscheme=ylorrd8 fixedsize=true shape=circle width=2 "
+		"fontsize=17]\n"
+		"      3 [label=\"65-96\", fillcolor=3 style=filled "
+		"colorscheme=ylorrd8 fixedsize=true shape=circle width=2 "
+		"fontsize=17]\n"
+		"      4 [label=\"97-128\", fillcolor=4 style=filled "
+		"colorscheme=ylorrd8 fixedsize=true shape=circle width=2 "
+		"fontsize=17]\n"
+		"      5 [label=\"129-160\", fillcolor=5 style=filled "
+		"colorscheme=ylorrd8 fixedsize=true shape=circle width=2 "
+		"fontsize=17]\n"
+		"      6 [label=\"161-192\", fillcolor=6 style=filled "
+		"colorscheme=ylorrd8 fixedsize=true shape=circle width=2 "
+		"fontsize=17]\n"
+		"      7 [label=\"193-224\", fillcolor=7 style=filled "
+		"colorscheme=ylorrd8 fixedsize=true shape=circle width=2 "
+		"fontsize=17]\n"
+		"      8 [label=\"224+\", fillcolor=8 style=filled "
+		"colorscheme=ylorrd8 fixedsize=true shape=circle width=2 "
+		"fontsize=17]\n");
+      format__ (vm, fd, "%s",
+		"      0 -> 1 -> 2 -> 3 -> 4 [style=\"invis\",weight =100]\n  "
+		"    5 -> 6 -> 7 -> 8 [style=\"invis\",weight =100]\n    }\n  "
+		"  subgraph cluster_size {\n      label=\"Cycles/Packet\"\n   "
+		"   style=\"solid\"\n      labelloc = b\n");
+      format__ (
+	vm, fd, "%s",
+	"      a[label=\"0\",fixedsize=true shape=circle width=1] \n"
+	"      b[label=\"10\",fixedsize=true shape=circle width=2 "
+	"fontsize=17]\n"
+	"      c[label=\"100\",fixedsize=true shape=circle width=3 "
+	"fontsize=20]\n"
+	"      d[label=\"1000\",fixedsize=true shape=circle width=4 "
+	"fontsize=23]\n"
+	"      a -> b -> c -> d  [style=\"invis\",weight =100]\n    }\n  }\n");
+
+      vlib_worker_thread_barrier_sync (vm);
+      for (j = 0; j < vec_len (nm->nodes); j++)
 	{
-	  vlib_node_t *x;
+	  vlib_node_t *n;
+	  n = nm->nodes[j];
+	  vlib_node_sync_stats (vm, n);
+	}
 
-	  if (nodes[i]->next_nodes[j] == VLIB_INVALID_NODE_INDEX)
-	    continue;
+      /* Updating the stats for multithreaded use cases.
+       * We need to dup the nodes to sum the stats from all threads.*/
+      nodes = vec_dup (nm->nodes);
+      for (i = 1; i < vec_len (vlib_mains); i++)
+	{
+	  vlib_node_main_t *nm_clone;
+	  vlib_main_t *vm_clone;
+	  vlib_node_runtime_t *rt;
+	  vlib_node_t *n;
 
-	  x = vec_elt (nm->nodes, nodes[i]->next_nodes[j]);
-	  format__ (vm, fd, "  \"%v\" -> \"%v\"\n", nodes[i]->name, x->name);
+	  vm_clone = vlib_mains[i];
+	  nm_clone = &vm_clone->node_main;
+
+	  for (j = 0; j < vec_len (nm_clone->nodes); j++)
+	    {
+	      n = nm_clone->nodes[j];
+
+	      rt = vlib_node_get_runtime (vm_clone, n->index);
+	      /* Sync the stats directly in the duplicated node.*/
+	      vlib_node_runtime_sync_stats_node (nodes[j], rt, 0, 0, 0);
+	    }
+	}
+      vlib_worker_thread_barrier_release (vm);
+
+      for (i = 0; i < vec_len (nodes); i++)
+	{
+	  u64 p, c, l;
+	  c = nodes[i]->stats_total.calls - nodes[i]->stats_last_clear.calls;
+	  p =
+	    nodes[i]->stats_total.vectors - nodes[i]->stats_last_clear.vectors;
+	  l = nodes[i]->stats_total.clocks - nodes[i]->stats_last_clear.clocks;
+
+	  if ((both && c > 0 && p > 0) || (calls_filter && c > 0) ||
+	      (vectors_filter && p > 0))
+	    {
+	      format__ (vm, fd, "  \"%v\" [shape=circle", nodes[i]->name);
+	      /*Changing the size and the font of nodes that receive packets*/
+	      if (p > 0)
+		{
+		  f64 x = (f64) l / (f64) p;
+		  f64 size_ratio = (1 + log10 (x + 1));
+		  format__ (vm, fd, " width=%.2f fontsize=%.2f fixedsize=true",
+			    size_ratio, 11 + 3 * size_ratio);
+		  /*Coloring nodes that are indeed called*/
+		  if (c > 0)
+		    {
+		      u64 color = ((p - 1) / (32 * c)) + 1;
+		      color = clib_min (color, 8);
+		      format__ (
+			vm, fd,
+			" fillcolor=%u style=filled colorscheme=ylorrd8",
+			color);
+		    }
+		}
+	      format__ (vm, fd, "]\n");
+	    }
+	  else
+	    {
+	      clib_bitmap_set (active, i, 0);
+	    }
 	}
     }
 
-  format__ (vm, fd, "%s", "}");
+  clib_bitmap_foreach (i, active)
+    {
+      for (j = 0; j < vec_len (nodes[i]->next_nodes); j++)
+	{
+	  if (nodes[i]->next_nodes[j] == VLIB_INVALID_NODE_INDEX)
+	    continue;
+
+	  if (!filter || clib_bitmap_get (active, nodes[i]->next_nodes[j]))
+	    {
+	      format__ (vm, fd, "  \"%v\" -> \"%v\"\n", nodes[i]->name,
+			nodes[nodes[i]->next_nodes[j]]->name);
+	    }
+	}
+    }
+
+  format__ (vm, fd, "}\n");
 
   if (fd >= 0)
     {
-      vlib_cli_output (vm,
-		       "vlib graph dumped into `%s'. Run eg. `fdp -Tsvg -O %s'.",
-		       chroot_filename, chroot_filename);
+      /*Dumping all the nodes saturates dot capacities to render a directed
+       * graph. In this case, prefer using he fdp command to generate an
+       * undirected graph. */
+      const char *soft = filter ? "dot" : "fdp";
+      vlib_cli_output (
+	vm, "vlib graph dumped into `%s'. Run eg. `%s -Tsvg -O %s'.",
+	chroot_filename, soft, chroot_filename);
     }
 
-  vec_free (nodes);
+  clib_bitmap_free (active);
   vec_free (chroot_filename);
-  vec_free (nodes);
+  if (filter)
+    vec_free (nodes);
   if (fd >= 0)
     close (fd);
   return error;
 }
 
+/*?
+ * Dump dot files data to draw a graph of all the nodes.
+ * If the argument 'filter' is provided, only the active nodes (since the last
+ * "clear run" comand) are selected and they are scaled and colored according
+ * to their utilization. You can choose to filter nodes that are called,
+ * nodes that receive vectors or both (default).
+ * The 'file' option allows to save data in a temp file.
+ *
+ * @cliexpar
+ * @clistart
+ * show vlib graphviz
+ * show vlib graphviz filter file tmpfile
+ * show vlib graphviz filter calls file tmpfile
+ * @cliend
+ * @cliexcmd{show vlib graphviz [filter][calls][vectors][file <filename>]}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_node_graphviz_command, static) = {
   .path = "show vlib graphviz",
   .short_help = "Dump packet processing node graph as a graphviz dotfile",
   .function = show_node_graphviz,
+  .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 
