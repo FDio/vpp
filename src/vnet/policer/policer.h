@@ -46,15 +46,21 @@ typedef struct
   vnet_main_t *vnet_main;
 
   vlib_log_class_t log_class;
+
+  /* frame queue for thread handoff */
+  u32 fq_index;
 } vnet_policer_main_t;
 
 extern vnet_policer_main_t vnet_policer_main;
 
 extern vlib_combined_counter_main_t policer_counters[];
 
+extern vlib_node_registration_t policer_input_node;
+
 typedef enum
 {
   VNET_POLICER_NEXT_DROP,
+  VNET_POLICER_NEXT_HANDOFF,
   VNET_POLICER_N_NEXT,
 } vnet_policer_next_t;
 

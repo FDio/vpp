@@ -628,6 +628,7 @@ policer_init (vlib_main_t * vm)
   pm->vlib_main = vm;
   pm->vnet_main = vnet_get_main ();
   pm->log_class = vlib_log_register_class ("policer", 0);
+  pm->fq_index = vlib_frame_queue_main_init (policer_input_node.index, 0);
 
   pm->policer_config_by_name = hash_create_string (0, sizeof (uword));
   pm->policer_index_by_name = hash_create_string (0, sizeof (uword));
