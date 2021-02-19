@@ -1799,9 +1799,9 @@ ikev2_sa_auth_init (ikev2_sa_t * sa)
 
   if (sa->i_auth.method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC)
     {
-      vec_free (sa->i_auth.data);
       key_pad = format (0, "%s", IKEV2_KEY_PAD);
       psk = ikev2_calc_prf (tr_prf, sa->i_auth.data, key_pad);
+      vec_free (sa->i_auth.data);
       sa->i_auth.data = ikev2_calc_prf (tr_prf, psk, authmsg);
       sa->i_auth.method = IKEV2_AUTH_METHOD_SHARED_KEY_MIC;
       vec_free (psk);
