@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "333de51b_4cda5df1",
+        "filename": "src/vlib/node_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-19T10:19:10Z",
+      "side": 1,
+      "message": "I think it would be better to declare p, c, l, color, x and size_ratio in the if (filter) block on line 158 instead",
+      "revId": "bebc0f949b7eb1ae4a821f3c272db3e2276065ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0e5fe1c1_01a05488",
+        "filename": "src/vlib/node_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-19T10:19:10Z",
+      "side": 1,
+      "message": "Thinking about it I think this is not enough in case of VPP multi-worker setup, we should go other each vlib_main instance see src/vlib/threads.c:1033",
+      "revId": "bebc0f949b7eb1ae4a821f3c272db3e2276065ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c3679514_da12b404",
+        "filename": "src/vlib/node_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-19T10:19:10Z",
+      "side": 1,
+      "message": "maybe we should remove the test against !filter here as we marked all nodes are active in that case anyway. We are going to do more lookups but I do not think it is a big issue",
+      "revId": "bebc0f949b7eb1ae4a821f3c272db3e2276065ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "93dd7433_1bb35064",
+        "filename": "src/vlib/node_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 207,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-19T10:19:10Z",
+      "side": 1,
+      "message": "can we merge all this block with the previous if(filter) block on line 158?",
+      "revId": "bebc0f949b7eb1ae4a821f3c272db3e2276065ef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
