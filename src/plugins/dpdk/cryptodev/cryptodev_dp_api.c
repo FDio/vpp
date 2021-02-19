@@ -472,7 +472,6 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
   u32 n_elts;
   cryptodev_key_t *key;
   u32 last_key_index = ~0;
-  union rte_crypto_sym_ofs cofs;
   i16 min_ofs;
   u32 max_end;
   int status;
@@ -490,13 +489,11 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
 
   vec = cet->vec;
   b = cet->b;
-
   fe = frame->elts;
-
-  cofs.raw = compute_ofs_linked_alg (fe, &min_ofs, &max_end);
 
   while (n_elts)
     {
+      union rte_crypto_sym_ofs cofs;
       u16 n_seg = 1;
 
       if (n_elts > 2)
@@ -509,8 +506,6 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
 
       if (PREDICT_FALSE (last_key_index != fe->key_index))
 	{
-	  cofs.raw = compute_ofs_linked_alg (fe, &min_ofs, &max_end);
-
 	  key = pool_elt_at_index (cmt->keys, fe->key_index);
 	  last_key_index = fe->key_index;
 
@@ -527,11 +522,13 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
 	    }
 	}
 
+      cofs.raw = compute_ofs_linked_alg (fe, &min_ofs, &max_end);
+
       vec->len = max_end - min_ofs;
       if (cmt->iova_mode == RTE_IOVA_VA)
 	{
-	  vec->base = (void *) (b[0]->data + min_ofs);
-	  vec->iova = pointer_to_uword (b[0]->data) + min_ofs;
+	  vec[0].base = (void *) (b[0]->data + min_ofs);
+	  vec[0].iova = pointer_to_uword (b[0]->data) + min_ofs;
 	  iv_vec.va = (void *) fe->iv;
 	  iv_vec.iova = pointer_to_uword (fe->iv);
 	  digest_vec.va = (void *) fe->tag;
@@ -539,8 +536,8 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
 	}
       else
 	{
-	  vec->base = (void *) (b[0]->data + min_ofs);
-	  vec->iova = vlib_buffer_get_pa (vm, b[0]) + min_ofs;
+	  vec[0].base = (void *) (b[0]->data + min_ofs);
+	  vec[0].iova = vlib_buffer_get_pa (vm, b[0]) + min_ofs;
 	  iv_vec.va = (void *) fe->iv;
 	  iv_vec.iova = vlib_physmem_get_pa (vm, fe->iv);
 	  digest_vec.va = (void *) fe->tag;
@@ -549,7 +546,7 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
 
       if (PREDICT_FALSE (fe->flags & VNET_CRYPTO_OP_FLAG_CHAINED_BUFFERS))
 	{
-	  vec->len = b[0]->current_data + b[0]->current_length - min_ofs;
+	  vec[0].len = b[0]->current_data + b[0]->current_length - min_ofs;
 	  if (cryptodev_frame_build_sgl
 	      (vm, cmt->iova_mode, vec, &n_seg, b[0],
 	       max_end - min_ofs - vec->len) < 0)
