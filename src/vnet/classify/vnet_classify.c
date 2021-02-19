@@ -1886,13 +1886,13 @@ classify_filter_command_fn (vlib_main_t * vm,
 	break;
     }
 
-  if (is_add && mask == 0 && table_index == ~0)
+  if (is_add && mask == 0)
     err = clib_error_return (0, "Mask required");
 
-  else if (is_add && skip == ~0 && table_index == ~0)
+  else if (is_add && skip == ~0)
     err = clib_error_return (0, "skip count required");
 
-  else if (is_add && match == ~0 && table_index == ~0)
+  else if (is_add && match == ~0)
     err = clib_error_return (0, "match count required");
 
   else if (sw_if_index == ~0 && pkt_trace == 0 && pcap == 0)
@@ -1936,7 +1936,18 @@ classify_filter_command_fn (vlib_main_t * vm,
     table_index = classify_get_pcap_chain (cm, sw_if_index);
 
   if (table_index != ~0)
-    table_index = classify_lookup_chain (table_index, mask, skip, match);
+    {
+      /*
+       * look for a compatible table in the existing chain
+       *  - if a compatible table is found, table_index is updated with it
+       *  - if not, table_index is updated to ~0 (aka nil) and because of that
+       *    we are going to create one (see below). We save the original head
+       *    in next_table_index so we can chain it with the newly created
+       *    table
+       */
+      next_table_index = table_index;
+      table_index = classify_lookup_chain (table_index, mask, skip, match);
+    }
 
   /*
    * When no table is found, make one.
@@ -1947,9 +1958,6 @@ classify_filter_command_fn (vlib_main_t * vm,
        * Matching table wasn't found, so create a new one at the
        * head of the next_table_index chain.
        */
-      next_table_index = table_index;
-      table_index = ~0;
-
       rv = vnet_classify_add_del_table (cm, mask, nbuckets, memory_size,
 					skip, match, next_table_index,
 					miss_next_index, &table_index,
