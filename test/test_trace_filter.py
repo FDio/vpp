@@ -26,10 +26,12 @@ class TestTracefilter(VppTestCase):
 
     def setUp(self):
         super(TestTracefilter, self).setUp()
-        self.create_pg_interfaces(range(1))
+        self.create_pg_interfaces(range(2))
+        self.pg0.generate_remote_hosts(11)
         for i in self.pg_interfaces:
             i.admin_up()
             i.config_ip4()
+            i.resolve_arp()
 
     def tearDown(self):
         super(TestTracefilter, self).tearDown()
@@ -40,74 +42,70 @@ class TestTracefilter(VppTestCase):
     def cli(self, cmd):
         r = self.vapi.cli_return_response(cmd)
         if r.retval != 0:
-            if hasattr(r, 'reply'):
-                self.logger.info(cmd + " FAIL reply " + r.reply)
-            else:
-                self.logger.info(cmd + " FAIL retval " + str(r.retval))
+            s = "reply '%s'" % r.reply if hasattr(
+                r, "reply") else "retval '%s'" % r.retval
+            raise RuntimeError("cli command '%s' FAIL with %s" % (cmd, s))
         return r
 
     # check number of hits for classifier
     def assert_hits(self, n):
         r = self.cli("show classify table verbose 2")
-        self.assertTrue(r.retval == 0)
-        self.assertTrue(hasattr(r, 'reply'))
         self.assertTrue(r.reply.find("hits %i" % n) != -1)
 
-    def test_mactime_unitTest(self):
+    def add_filter(self, mask, match):
+        r = self.cli("classify filter trace mask %s match %s" % (mask, match))
+        self.vapi.cli("clear trace")
+        r = self.cli("trace add pg-input 1000 filter")
+
+    def del_all_filters(self):
+        self.cli("classify filter trace del")
+        r = self.cli("show classify filter")
+        s = "packet tracer:                 first table none"
+        self.assertTrue(r.reply.find(s) != -1)
+
+    def test_basic(self):
         """ Packet Tracer Filter Test """
-        cmds = ["loopback create",
-                "set int ip address loop0 192.168.1.1/24",
-                "set int state loop0 up",
-                "packet-generator new {\n"
-                " name classifyme\n"
-                " limit 100\n"
-                " size 300-300\n"
-                " interface loop0\n"
-                " node ethernet-input\n"
-                " data { \n"
-                "      IP4: 1.2.3 -> 4.5.6\n"
-                "      UDP: 192.168.1.10 - 192.168.1.20 -> 192.168.2.10\n"
-                "      UDP: 1234 -> 2345\n"
-                "      incrementing 286\n"
-                "     }\n"
-                "}\n",
-                "classify filter trace mask l3 ip4 src"
-                " match l3 ip4 src 192.168.1.15",
-                "trace add pg-input 100 filter",
-                "pa en classifyme"]
+        self.add_filter(
+            "l3 ip4 src",
+            "l3 ip4 src %s" %
+            self.pg0.remote_hosts[5].ip4)
+        self.add_filter(
+            "l3 ip4 proto l4 src_port",
+            "l3 ip4 proto 17 l4 src_port 2345")
+        # the packet we are trying to match
+        p = list()
+        for i in range(100):
+            src = self.pg0.remote_hosts[i % len(self.pg0.remote_hosts)].ip4
+            p.append((Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                      IP(src=src, dst=self.pg1.remote_ip4) /
+                      UDP(sport=1234, dport=2345) / Raw('\xa5' * 100)))
+        for i in range(17):
+            p.append((Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                      IP(src=self.pg0.remote_hosts[0].ip4,
+                         dst=self.pg1.remote_ip4) /
+                      UDP(sport=2345, dport=1234) / Raw('\xa5' * 100)))
 
-        for cmd in cmds:
-            self.cli(cmd)
+        self.send_and_expect(self.pg0, p, self.pg1, trace=False)
 
-        # Check for 9 classifier hits, which is the right answer
+        # Check for 9 and 17 classifier hits, which is the right answer
         self.assert_hits(9)
+        self.assert_hits(17)
 
-        # cleanup
-        self.cli("pa de classifyme")
-        self.cli("classify filter trace del mask l3 ip4 src")
+        self.del_all_filters()
 
     # install a classify rule, inject traffic and check for hits
     def assert_classify(self, mask, match, packets, n=None):
-        r = self.cli(
-            "classify filter trace mask hex %s match hex %s" %
-            (mask, match))
-        self.assertTrue(r.retval == 0)
-        r = self.cli("trace add pg-input %i filter" % len(packets))
-        self.assertTrue(r.retval == 0)
-        self.pg0.add_stream(packets)
-        self.cli("pa en")
+        self.add_filter("hex %s" % mask, "hex %s" % match)
+        self.send_and_expect(self.pg0, packets, self.pg1, trace=False)
         self.assert_hits(n if n is not None else len(packets))
-        self.cli("clear trace")
-        self.cli(
-            "classify filter trace del mask hex %s" %
-            (mask))
+        self.del_all_filters()
 
     def test_encap(self):
         """ Packet Tracer Filter Test with encap """
 
         # the packet we are trying to match
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-             IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
              UDP() /
              VXLAN() /
              Ether() /
