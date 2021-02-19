@@ -911,7 +911,7 @@ unformat_l4_mask (unformat_input_t * input, va_list * args)
       else if (unformat (input, "dst_port"))
 	dst_port = 0xFFFF;
       else
-	return 0;
+	break;
     }
 
   if (!src_port && !dst_port)
@@ -980,6 +980,7 @@ unformat_ip4_mask (unformat_input_t * input, va_list * args)
 	break;
     }
 
+  found_something = version + hdr_length;
 #define _(a) found_something += a;
   foreach_ip4_proto_field;
 #undef _
@@ -1886,13 +1887,13 @@ classify_filter_command_fn (vlib_main_t * vm,
 	break;
     }
 
-  if (is_add && mask == 0 && table_index == ~0)
+  if (is_add && mask == 0)
     err = clib_error_return (0, "Mask required");
 
-  else if (is_add && skip == ~0 && table_index == ~0)
+  else if (is_add && skip == ~0)
     err = clib_error_return (0, "skip count required");
 
-  else if (is_add && match == ~0 && table_index == ~0)
+  else if (is_add && match == ~0)
     err = clib_error_return (0, "match count required");
 
   else if (sw_if_index == ~0 && pkt_trace == 0 && pcap == 0)
@@ -1936,20 +1937,30 @@ classify_filter_command_fn (vlib_main_t * vm,
     table_index = classify_get_pcap_chain (cm, sw_if_index);
 
   if (table_index != ~0)
-    table_index = classify_lookup_chain (table_index, mask, skip, match);
+    {
+      /*
+       * look for a compatible table in the existing chain
+       *  - if a compatible table is found, table_index is updated with it
+       *  - if not, table_index is updated to ~0 (aka nil) and because of that
+       *    we are going to create one (see below). We save the original head
+       *    in next_table_index so we can chain it with the newly created
+       *    table
+       */
+      next_table_index = table_index;
+      table_index = classify_lookup_chain (table_index, mask, skip, match);
+    }
 
   /*
    * When no table is found, make one.
    */
   if (table_index == ~0)
     {
+      u32 new_head_index;
+
       /*
        * Matching table wasn't found, so create a new one at the
        * head of the next_table_index chain.
        */
-      next_table_index = table_index;
-      table_index = ~0;
-
       rv = vnet_classify_add_del_table (cm, mask, nbuckets, memory_size,
 					skip, match, next_table_index,
 					miss_next_index, &table_index,
@@ -1968,16 +1979,16 @@ classify_filter_command_fn (vlib_main_t * vm,
       /*
        * Reorder tables such that masks are most-specify to least-specific.
        */
-      table_index = classify_sort_table_chain (cm, table_index);
+      new_head_index = classify_sort_table_chain (cm, table_index);
 
       /*
        * Put first classifier table in chain in a place where
        * other data structures expect to find and use it.
        */
       if (pkt_trace)
-	classify_set_trace_chain (cm, table_index);
+	classify_set_trace_chain (cm, new_head_index);
       else
-	classify_set_pcap_chain (cm, sw_if_index, table_index);
+	classify_set_pcap_chain (cm, sw_if_index, new_head_index);
     }
 
   vec_free (mask);

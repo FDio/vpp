@@ -824,9 +824,11 @@ class VppTestCase(unittest.TestCase):
             cls.sleep(0.1)
 
     @classmethod
-    def pg_start(cls):
+    def pg_start(cls, trace=True):
         """ Enable the PG, wait till it is done, then clean up """
-        cls.vapi.cli("trace add pg-input 1000")
+        if trace:
+            cls.vapi.cli("clear trace")
+            cls.vapi.cli("trace add pg-input 1000")
         cls.vapi.cli('packet-generator enable')
         # PG, when starts, runs to completion -
         # so let's avoid a race condition,
@@ -1192,11 +1194,10 @@ class VppTestCase(unittest.TestCase):
                 "Finished sleep (%s) - slept %es (wanted %es)",
                 remark, after - before, timeout)
 
-    def pg_send(self, intf, pkts, worker=None):
-        self.vapi.cli("clear trace")
+    def pg_send(self, intf, pkts, worker=None, trace=True):
         intf.add_stream(pkts, worker=worker)
         self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
+        self.pg_start(trace=trace)
 
     def send_and_assert_no_replies(self, intf, pkts, remark="", timeout=None):
         self.pg_send(intf, pkts)
@@ -1207,10 +1208,11 @@ class VppTestCase(unittest.TestCase):
             i.assert_nothing_captured(remark=remark)
             timeout = 0.1
 
-    def send_and_expect(self, intf, pkts, output, n_rx=None, worker=None):
+    def send_and_expect(self, intf, pkts, output, n_rx=None, worker=None,
+                        trace=True):
         if not n_rx:
             n_rx = len(pkts)
-        self.pg_send(intf, pkts, worker=worker)
+        self.pg_send(intf, pkts, worker=worker, trace=trace)
         rx = output.get_capture(n_rx)
         return rx
 
