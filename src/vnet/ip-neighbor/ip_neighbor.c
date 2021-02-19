@@ -23,6 +23,7 @@
 #include <vnet/ip-neighbor/ip_neighbor_watch.h>
 
 #include <vnet/ip/ip6_ll_table.h>
+#include <vnet/ip/ip46_address.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/adj/adj_mcast.h>
 
@@ -1717,11 +1718,64 @@ ip_neighbor_config_show (vlib_main_t * vm,
   return (NULL);
 }
 
+static clib_error_t *
+ip_neighbor_config_set (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = NULL;
+  ip_address_family_t af;
+  u32 limit, age;
+  bool recycle;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  if (!unformat (line_input, "%U", unformat_ip_address_family, &af))
+    {
+      error = unformat_parse_error (line_input);
+      goto done;
+    }
+
+  limit = ip_neighbor_db[af].ipndb_limit;
+  age = ip_neighbor_db[af].ipndb_age;
+  recycle = ip_neighbor_db[af].ipndb_recycle;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "limit %u", &limit))
+	;
+      else if (unformat (line_input, "age %u", &age))
+	;
+      else if (unformat (line_input, "recycle"))
+	recycle = true;
+      else if (unformat (line_input, "norecycle"))
+	recycle = false;
+      else
+	{
+	  error = unformat_parse_error (line_input);
+	  goto done;
+	}
+    }
+
+  ip_neighbor_config (af, limit, age, recycle);
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ip_neighbor_cfg_cmd_node, static) = {
   .path = "show ip neighbor-config",
   .function = ip_neighbor_config_show,
   .short_help = "show ip neighbor-config",
+};
+VLIB_CLI_COMMAND (set_ip_neighbor_cfg_cmd_node, static) = {
+  .path = "set ip neighbor-config",
+  .function = ip_neighbor_config_set,
+  .short_help = "set ip neighbor-config ip4|ip6 [limit <limit>] [age <age>] "
+		"[recycle|norecycle]",
 };
 /* *INDENT-ON* */
 
