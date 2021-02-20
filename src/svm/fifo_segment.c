@@ -418,6 +418,14 @@ fifo_segment_get_segment (fifo_segment_main_t * sm, u32 segment_index)
   return pool_elt_at_index (sm->segments, segment_index);
 }
 
+fifo_segment_t *
+fifo_segment_get_segment_if_valid (fifo_segment_main_t *sm, u32 segment_index)
+{
+  if (pool_is_free_index (sm->segments, segment_index))
+    return 0;
+  return pool_elt_at_index (sm->segments, segment_index);
+}
+
 void
 fifo_segment_info (fifo_segment_t * seg, char **address, size_t * size)
 {
@@ -783,9 +791,8 @@ fs_fifo_alloc (fifo_segment_t *fs, u32 slice_index)
 }
 
 void
-fs_fifo_free (fifo_segment_t *fs, svm_fifo_t *f)
+fs_fifo_free (fifo_segment_t *fs, svm_fifo_t *f, u32 slice_index)
 {
-  u32 slice_index = f->shr->slice_index;
   fifo_slice_private_t *pfss;
 
   if (CLIB_DEBUG)
@@ -932,9 +939,15 @@ fifo_segment_free_fifo (fifo_segment_t * fs, svm_fifo_t * f)
   f->ooo_enq = f->ooo_deq = 0;
   f->prev = 0;
 
-  fs_fifo_free (fs, f);
+  fs_fifo_free (fs, f, f->shr->slice_index);
 
   fsh_active_fifos_update (fsh, -1);
+}
+
+void
+fifo_segment_free_client_fifo (fifo_segment_t *fs, svm_fifo_t *f)
+{
+  fs_fifo_free (fs, f, 0 /* clients attach fifos in slice 0 */);
 }
 
 void
