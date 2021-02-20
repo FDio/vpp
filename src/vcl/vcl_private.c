@@ -404,6 +404,8 @@ vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
   fs = fifo_segment_get_segment (&vcm->segment_main, fs_index);
   rxf = fifo_segment_alloc_fifo_w_offset (fs, rxf_offset);
   txf = fifo_segment_alloc_fifo_w_offset (fs, txf_offset);
+  rxf->segment_index = fs_index;
+  txf->segment_index = fs_index;
 
   if (!is_ct && mq_offset != (uword) ~0)
     {
@@ -430,6 +432,35 @@ vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
     }
 
   return 0;
+}
+
+void
+vcl_session_detach_fifos (vcl_session_t *s)
+{
+  fifo_segment_t *fs;
+
+  if (!s->rx_fifo)
+    return;
+
+  clib_rwlock_reader_lock (&vcm->segment_table_lock);
+
+  fs = fifo_segment_get_segment_if_valid (&vcm->segment_main,
+					  s->rx_fifo->segment_index);
+  if (!fs)
+    goto done;
+
+  fifo_segment_free_client_fifo (fs, s->rx_fifo);
+  fifo_segment_free_client_fifo (fs, s->tx_fifo);
+  if (s->ct_rx_fifo)
+    {
+      fs = fifo_segment_get_segment (&vcm->segment_main,
+				     s->ct_rx_fifo->segment_index);
+      fifo_segment_free_client_fifo (fs, s->ct_rx_fifo);
+      fifo_segment_free_client_fifo (fs, s->ct_tx_fifo);
+    }
+
+done:
+  clib_rwlock_reader_unlock (&vcm->segment_table_lock);
 }
 
 int

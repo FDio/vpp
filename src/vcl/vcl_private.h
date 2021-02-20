@@ -364,6 +364,8 @@ extern vppcom_main_t _vppcom_main;
 #define VCL_INVALID_SEGMENT_INDEX ((u32)~0)
 #define VCL_INVALID_SEGMENT_HANDLE ((u64)~0)
 
+void vcl_session_detach_fifos (vcl_session_t *s);
+
 static inline vcl_session_t *
 vcl_session_alloc (vcl_worker_t * wrk)
 {
@@ -380,6 +382,7 @@ vcl_session_free (vcl_worker_t * wrk, vcl_session_t * s)
 {
   /* Debug level set to 1 to avoid debug messages while ldp is cleaning up */
   VDBG (1, "session %u [0x%llx] removed", s->session_index, s->vpp_handle);
+  vcl_session_detach_fifos (s);
   pool_put (wrk->sessions, s);
 }
 
