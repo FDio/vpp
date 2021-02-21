@@ -212,6 +212,30 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	node->input_main_loops_per_call = 1024;
       }
 
+    if (is_main || em->epoll_fd != -1)
+      {
+	/* Do not fall asleep for longer than since the last time
+	 * we had a signal raised - as there might be another pending,
+	 * e.g. active API interaction, even with no or little traffic.
+	 */
+	now = vlib_time_now (vm);
+	if ((now - vm->last_queue_signal_pending_set) * 10e3 < timeout_ms)
+	  {
+	    timeout = (now - vm->last_queue_signal_pending_set);
+	    if (timeout < 10e-3)
+	      {
+		timeout_ms = 0;
+		/* Do not come back for some barely respectable number of loops
+		 */
+		node->input_main_loops_per_call = 256;
+	      }
+	    else
+	      {
+		timeout_ms = timeout * 1e3;
+	      }
+	  }
+      }
+
     /* Allow any signal to wakeup our sleep. */
     if (is_main || em->epoll_fd != -1)
       {
