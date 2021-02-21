@@ -96,6 +96,7 @@ memclnt_queue_callback (vlib_main_t * vm)
       if (*vl_api_queue_cursizes[i])
 	{
 	  vm->queue_signal_pending = 1;
+	  vm->last_queue_signal_pending_set = vlib_time_now (vm);
 	  vm->api_queue_nonempty = 1;
 	  vlib_process_signal_event (vm, vl_api_clnt_node.index,
 				     /* event_type */ QUEUE_SIGNAL_EVENT,
@@ -106,6 +107,7 @@ memclnt_queue_callback (vlib_main_t * vm)
   if (vec_len (vm->pending_rpc_requests))
     {
       vm->queue_signal_pending = 1;
+      vm->last_queue_signal_pending_set = vlib_time_now (vm);
       vm->api_queue_nonempty = 1;
       vlib_process_signal_event (vm, vl_api_clnt_node.index,
 				 /* event_type */ QUEUE_SIGNAL_EVENT,

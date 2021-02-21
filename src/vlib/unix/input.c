@@ -216,6 +216,52 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     if (is_main || em->epoll_fd != -1)
       {
 	static sigset_t unblock_all_signals;
+	/* Before falling asleep for possibly up to 10ms, see if we need
+	 * to make an adjustment... Even with no little traffic there can be
+	 * intensive API exchanges, and waiting for 10ms completely kills
+	 * the blocking API request rate processing.
+	 *
+	 * The heuristic is to measure the time since the last time
+	 * the signal was raised and "now", and not sleep longer than that
+	 * time interval (let's denote it as T0). This T0 being
+	 * a rough approximation of the order of magnitude of how often
+	 * the events arrive.
+	 *
+	 * The worst case is that when we fall asleep in the poll/epoll
+	 * call below, and something immediately arrives over the shared
+	 * memory queue. That makes the raising of the signal (which will
+	 * happen upon the next node processing cycle) delayed by about T0,
+	 * and when we  arrive to this place in the next time soon after,
+	 * measuring the new interval (denote it as T1) being pretty close
+	 * to zero, so we will overcompensate and be very awake for a little
+	 * while - so if there is something sent over the shared memory again
+	 * in close succession, we will not delay it anymore - this takes
+	 * care of quickly adapting to high rate of the shared memory event
+	 * arrival - the ramp-up might delay the very first message up to 10ms,
+	 * but after that it goes fast.
+	 *
+	 * Let's take another extreme case - that this next event was on its
+	 * own. In the absence of new events the formula for the next sleep
+	 * time is roughly Tnext = Tprev + Tall_node_processing_time, so we
+	 * will spend some extra cycles spinning in vain with gradually
+	 * increasing sleep, but eventually go down to 10ms sleep as before.
+	 *
+	 * With different other rates of shared memory messages arriving we
+	 * will be delaying the processing roughly proportionally to their rate
+	 * of arrival - the faster they arrive, the less their processing is
+	 * delayed.
+	 *
+	 * This seemed like a simple way to get a tradeoff between message
+	 * processing responsiveness and simplicity.
+	 */
+
+	now = vlib_time_now (vm);
+	if ((now - vm->last_queue_signal_pending_set) * 10e3 < timeout_ms)
+	  {
+	    timeout = (now - vm->last_queue_signal_pending_set);
+	    timeout_ms = timeout * 1e3;
+	  }
+
 	n_fds_ready = epoll_pwait (em->epoll_fd,
 				   em->epoll_events,
 				   vec_len (em->epoll_events),
