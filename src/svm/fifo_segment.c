@@ -956,6 +956,7 @@ fifo_segment_detach_fifo (fifo_segment_t *fs, svm_fifo_t **f)
   fsh_slice_collect_chunks (fs->h, fss, of->chunks_at_attach);
   of->chunks_at_attach = 0;
 
+  fss_fifo_free_list_push (fs->h, fss, of->shr);
   clib_mem_bulk_free (pfss->fifos, *f);
   *f = 0;
 }
@@ -981,6 +982,7 @@ fifo_segment_attach_fifo (fifo_segment_t *fs, svm_fifo_t **f, u32 slice_index)
   /* Update allocated chunks for fifo segment and build list of
    * chunks to be freed, i.e, returned to old slice at detach */
   of = *f;
+  of->shr = fsh_try_alloc_fifo_hdr (fs->h, fss);
 
   c = fs_chunk_ptr (fs->h, nf->shr->start_chunk);
   of->chunks_at_attach = pc = fsh_try_alloc_chunk (fs->h, fss, c->length);
@@ -1541,8 +1543,8 @@ format_fifo_segment (u8 * s, va_list * args)
 	      format_memory_size, chunk_bytes, chunk_bytes,
 	      format_memory_size, est_chunk_bytes, est_chunk_bytes,
 	      format_memory_size, tracked_cached_bytes, tracked_cached_bytes);
-  s = format (s, "%Ufifo active: %u hdr free bytes: %U (%u) \n",
-	      format_white_space, indent + 2, fsh->n_active_fifos,
+  s = format (s, "%Ufifo active: %u hdr free: %u bytes: %U (%u) \n",
+	      format_white_space, indent + 2, fsh->n_active_fifos, free_fifos,
 	      format_memory_size, fifo_hdr, fifo_hdr);
   s = format (s, "%Usegment usage: %.2f%% (%U / %U) virt: %U status: %s\n",
 	      format_white_space, indent + 2, usage, format_memory_size,
