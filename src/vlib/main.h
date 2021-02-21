@@ -264,6 +264,7 @@ typedef struct vlib_main_t
   /* control-plane API queue signal pending, length indication */
   volatile u32 queue_signal_pending;
   volatile u32 api_queue_nonempty;
+  volatile f64 last_queue_signal_pending_set;
   void (*queue_signal_callback) (struct vlib_main_t *);
   u8 **argv;
 
