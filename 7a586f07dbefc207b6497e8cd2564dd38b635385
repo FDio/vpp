@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6e7e1c04_cad02b79",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 215,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-02-22T12:47:52Z",
+      "side": 1,
+      "message": "this condition is the same as the next block, combine them?",
+      "revId": "7a586f07dbefc207b6497e8cd2564dd38b635385",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dee2b6d6_c3a2aa99",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-02-22T12:47:52Z",
+      "side": 1,
+      "message": "s/since//;",
+      "revId": "7a586f07dbefc207b6497e8cd2564dd38b635385",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d3eba1aa_04f02033",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-02-22T12:47:52Z",
+      "side": 1,
+      "message": "i think you could simplify this a bit (and maybe remove a bug in the use of 10e3 v. 1e3).\n\nlast_sleep_time_ms \u003d (now - vm-\u003elast_queue_signal_pending_set) * 1e3;\n\nand use instead of \u0027timeout\u0027",
+      "revId": "7a586f07dbefc207b6497e8cd2564dd38b635385",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
