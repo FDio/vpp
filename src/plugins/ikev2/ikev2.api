@@ -331,6 +331,17 @@ autoreply define ikev2_set_responder
   option status="in_progress";
 };
 
+autoreply define ikev2_set_responder_hostname
+{
+  u32 client_index;
+  u32 context;
+
+  string name[64];
+  string hostname[64];
+  vl_api_interface_index_t sw_if_index;
+  option status="in_progress";
+};
+
 /** \brief IKEv2: Set IKEv2 IKE transforms in SA_INIT proposal (RFC 7296)
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

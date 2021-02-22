@@ -39,6 +39,11 @@ typedef struct
   u8 *name;
 } dns_pending_request_t;
 
+typedef struct
+{
+  ip_address_t address;
+} dns_resolve_name_t;
+
 typedef enum
 {
   DNS_API_PENDING_NAME_TO_IP = 1,
@@ -223,6 +228,9 @@ dns_cache_unlock (dns_main_t * dm)
     }
 }
 
+extern int dns_resolve_name (u8 *name, dns_cache_entry_t **ep,
+			     dns_pending_request_t *t0,
+			     dns_resolve_name_t *rn);
 #endif /* included_dns_h */
 
 /*

@@ -82,6 +82,9 @@ class Profile(VppObject):
                           'start_addr': start_addr,
                           'end_addr': end_addr}
 
+    def add_responder_hostname(self, hn):
+        self.responder_hostname = hn
+
     def add_responder(self, responder):
         self.responder = responder
 
@@ -137,6 +140,11 @@ class Profile(VppObject):
         if hasattr(self, 'responder'):
             self.vapi.ikev2_set_responder(name=self.profile_name,
                                           responder=self.responder)
+
+        if hasattr(self, 'responder_hostname'):
+            print(self.responder_hostname)
+            self.vapi.ikev2_set_responder_hostname(name=self.profile_name,
+                                                   **self.responder_hostname)
 
         if hasattr(self, 'ike_transforms'):
             self.vapi.ikev2_set_ike_transforms(name=self.profile_name,

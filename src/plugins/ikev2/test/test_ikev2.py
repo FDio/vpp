@@ -1422,6 +1422,20 @@ class Ikev2Params(object):
         if udp_encap:
             self.p.set_udp_encap(True)
 
+        if 'responder_hostname' in params:
+            hn = params['responder_hostname']
+            self.p.add_responder_hostname(hn)
+
+            # configure static dns record
+            self.vapi.dns_name_server_add_del(
+                is_ip6=0, is_add=1,
+                server_address=IPv4Address(u'8.8.8.8').packed)
+            self.vapi.dns_enable_disable(enable=1)
+
+            cmd = "dns cache add {} {}".format(hn['hostname'],
+                                               self.pg0.remote_ip4)
+            self.vapi.cli(cmd)
+
         self.sa = IKEv2SA(self, i_id=idi['data'], r_id=idr['data'],
                           is_initiator=is_init,
                           id_type=self.p.local_id['id_type'],
@@ -1683,8 +1697,6 @@ class TestInitiatorPsk(TemplateInitiator, Ikev2Params):
         self.config_params({
             'is_initiator': False,  # seen from test case perspective
                                     # thus vpp is initiator
-            'responder': {'sw_if_index': self.pg0.sw_if_index,
-                           'addr': self.pg0.remote_ip4},
             'ike-crypto': ('AES-GCM-16ICV', 32),
             'ike-integ': 'NULL',
             'ike-dh': '3072MODPgr',
@@ -1697,7 +1709,9 @@ class TestInitiatorPsk(TemplateInitiator, Ikev2Params):
                 'crypto_alg': 12,  # "aes-cbc"
                 'crypto_key_size': 256,
                 # "hmac-sha2-256-128"
-                'integ_alg': 12}})
+                'integ_alg': 12},
+            'responder_hostname': {'hostname': 'vpp.responder.org',
+                                   'sw_if_index': self.pg0.sw_if_index}})
 
 
 @tag_fixme_vpp_workers

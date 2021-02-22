@@ -26,6 +26,7 @@
 #include <vnet/ipip/ipip.h>
 #include <plugins/ikev2/ikev2.h>
 #include <plugins/ikev2/ikev2_priv.h>
+#include <plugins/dns/dns.h>
 #include <openssl/sha.h>
 #include <vnet/ipsec/ipsec_punt.h>
 #include <plugins/ikev2/ikev2.api_enum.h>
@@ -3857,6 +3858,12 @@ ikev2_cleanup_profile_sessions (ikev2_main_t * km, ikev2_profile_t * p)
 }
 
 static void
+ikev2_profile_responder_free (ikev2_responder_t *r)
+{
+  vec_free (r->hostname);
+}
+
+static void
 ikev2_profile_free (ikev2_profile_t * p)
 {
   vec_free (p->name);
@@ -3864,6 +3871,8 @@ ikev2_profile_free (ikev2_profile_t * p)
   vec_free (p->auth.data);
   if (p->auth.key)
     EVP_PKEY_free (p->auth.key);
+
+  ikev2_profile_responder_free (&p->responder);
 
   vec_free (p->loc_id.data);
   vec_free (p->rem_id.data);
@@ -4042,6 +4051,27 @@ ikev2_set_profile_ts (vlib_main_t * vm, u8 * name, u8 protocol_id,
   return 0;
 }
 
+clib_error_t *
+ikev2_set_profile_responder_hostname (vlib_main_t *vm, u8 *name, u8 *hostname,
+				      u32 sw_if_index)
+{
+  ikev2_profile_t *p;
+  clib_error_t *r;
+
+  p = ikev2_profile_index_by_name (name);
+
+  if (!p)
+    {
+      r = clib_error_return (0, "unknown profile %v", name);
+      return r;
+    }
+
+  p->responder.is_resolved = 0;
+  p->responder.sw_if_index = sw_if_index;
+  p->responder.hostname = vec_dup (hostname);
+
+  return 0;
+}
 
 clib_error_t *
 ikev2_set_profile_responder (vlib_main_t * vm, u8 * name,
@@ -4058,6 +4088,7 @@ ikev2_set_profile_responder (vlib_main_t * vm, u8 * name,
       return r;
     }
 
+  p->responder.is_resolved = 1;
   p->responder.sw_if_index = sw_if_index;
   ip_address_copy (&p->responder.addr, &addr);
 
@@ -4226,6 +4257,31 @@ ikev2_get_if_address (u32 sw_if_index, ip_address_family_t af,
   return 0;
 }
 
+static clib_error_t *
+ikev2_resolve_responder_hostname (vlib_main_t *vm, ikev2_responder_t *r)
+{
+  ikev2_main_t *km = &ikev2_main;
+  dns_cache_entry_t *ep = 0;
+  dns_pending_request_t _t0, *t0 = &_t0;
+  dns_resolve_name_t _rn, *rn = &_rn;
+  int rv;
+
+  if (!km->dns_resolve_name)
+    return clib_error_return (0, "cannot load symbols from dns plugin");
+
+  t0->request_type = DNS_API_PENDING_NAME_TO_IP;
+  rv = km->dns_resolve_name (r->hostname, &ep, t0, rn);
+  if (rv < 0)
+    return clib_error_return (0, "dns lookup failure");
+
+  if (ep == 0)
+    return 0;
+
+  ip_address_copy (&r->addr, &rn->address);
+  r->is_resolved = 1;
+  return 0;
+}
+
 clib_error_t *
 ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
 {
@@ -4236,7 +4292,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
   ike_header_t *ike0;
   u32 bi0 = 0;
   int len = sizeof (ike_header_t), valid_ip = 0;
-  ip_address_t if_ip = ip_address_initializer;
+  ip_address_t src_if_ip = ip_address_initializer;
 
   p = ikev2_profile_index_by_name (name);
 
@@ -4246,15 +4302,26 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
       return r;
     }
 
-  if (p->responder.sw_if_index == ~0
-      || ip_address_is_zero (&p->responder.addr))
+  if (p->responder.sw_if_index == ~0 ||
+      (ip_address_is_zero (&p->responder.addr) &&
+       vec_len (p->responder.hostname) == 0))
     {
       r = clib_error_return (0, "responder not set for profile %v", name);
       return r;
     }
 
-  if (ikev2_get_if_address (p->responder.sw_if_index,
-			    ip_addr_version (&p->responder.addr), &if_ip))
+  if (!p->responder.is_resolved)
+    {
+      /* try to resolve using dns plugin
+       * success does not mean we have resolved the name */
+      r = ikev2_resolve_responder_hostname (vm, &p->responder);
+      if (r)
+	return r;
+    }
+
+  if (p->responder.is_resolved &&
+      ikev2_get_if_address (p->responder.sw_if_index,
+			    ip_addr_version (&p->responder.addr), &src_if_ip))
     {
       valid_ip = 1;
     }
@@ -4308,10 +4375,9 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
 	      sizeof (sa.childs[0].i_proposals[0].spi));
 
   /* Add NAT detection notification messages (mandatory) */
-  u8 *nat_detection_sha1 =
-    ikev2_compute_nat_sha1 (clib_host_to_net_u64 (sa.ispi),
-			    clib_host_to_net_u64 (sa.rspi),
-			    &if_ip, clib_host_to_net_u16 (IKEV2_PORT));
+  u8 *nat_detection_sha1 = ikev2_compute_nat_sha1 (
+    clib_host_to_net_u64 (sa.ispi), clib_host_to_net_u64 (sa.rspi), &src_if_ip,
+    clib_host_to_net_u16 (IKEV2_PORT));
 
   ikev2_payload_add_notify (chain, IKEV2_NOTIFY_MSG_NAT_DETECTION_SOURCE_IP,
 			    nat_detection_sha1);
@@ -4365,7 +4431,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
   vec_add (sa.last_sa_init_req_packet_data, ike0, len);
 
   /* add data to the SA then add it to the pool */
-  ip_address_copy (&sa.iaddr, &if_ip);
+  ip_address_copy (&sa.iaddr, &src_if_ip);
   ip_address_copy (&sa.raddr, &p->responder.addr);
   sa.i_id.type = p->loc_id.type;
   sa.i_id.data = vec_dup (p->loc_id.data);
@@ -4388,22 +4454,14 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
 
   if (valid_ip)
     {
-      ikev2_send_ike (vm, &if_ip, &p->responder.addr, bi0, len,
-		      IKEV2_PORT, sa.dst_port, sa.sw_if_index);
+      ikev2_send_ike (vm, &src_if_ip, &p->responder.addr, bi0, len, IKEV2_PORT,
+		      sa.dst_port, sa.sw_if_index);
 
       ikev2_elog_exchange
 	("ispi %lx rspi %lx IKEV2_EXCHANGE_SA_INIT sent to ",
 	 clib_host_to_net_u64 (sa0->ispi), 0,
 	 ip_addr_v4 (&p->responder.addr).as_u32,
 	 ip_addr_version (&p->responder.addr) == AF_IP4);
-    }
-  else
-    {
-      r =
-	clib_error_return (0, "interface  %U does not have any IP address!",
-			   format_vnet_sw_if_index_name, vnet_get_main (),
-			   p->responder.sw_if_index);
-      return r;
     }
 
   return 0;
@@ -4732,15 +4790,19 @@ ikev2_init (vlib_main_t * vm)
 		      "ikev2-ip4-natt");
   ikev2_cli_reference ();
 
+  km->dns_resolve_name =
+    vlib_get_plugin_symbol ("dns_plugin.so", "dns_resolve_name");
+  if (!km->dns_resolve_name)
+    ikev2_log_error ("cannot load symbols from dns plugin");
+
   km->log_level = IKEV2_LOG_ERROR;
   km->log_class = vlib_log_register_class ("ikev2", 0);
   return 0;
 }
 
 /* *INDENT-OFF* */
-VLIB_INIT_FUNCTION (ikev2_init) =
-{
-  .runs_after = VLIB_INITS("ipsec_init", "ipsec_punt_init"),
+VLIB_INIT_FUNCTION (ikev2_init) = {
+  .runs_after = VLIB_INITS ("ipsec_init", "ipsec_punt_init", "dns_init"),
 };
 /* *INDENT-ON* */
 
@@ -4928,15 +4990,44 @@ ikev2_mngr_process_ipsec_sa (ipsec_sa_t * ipsec_sa)
 }
 
 static void
-ikev2_process_pending_sa_init_one (ikev2_main_t * km, ikev2_sa_t * sa)
+ikev2_process_pending_sa_init_one (vlib_main_t *vm, ikev2_main_t *km,
+				   ikev2_sa_t *sa)
 {
   ikev2_profile_t *p;
   u32 bi0;
   u8 *nat_sha, *np;
+  p = pool_elt_at_index (km->profiles, sa->profile_index);
+
+  if (!p->responder.is_resolved)
+    {
+      clib_error_t *r = ikev2_resolve_responder_hostname (vm, &p->responder);
+      if (r)
+	{
+	  clib_error_free (r);
+	  return;
+	}
+
+      if (!p->responder.is_resolved)
+	return;
+
+      ip_address_copy (&sa->raddr, &p->responder.addr);
+
+      /* update nat detection destination hash */
+      np = ikev2_find_ike_notify_payload (
+	(ike_header_t *) sa->last_sa_init_req_packet_data,
+	IKEV2_NOTIFY_MSG_NAT_DETECTION_DESTINATION_IP);
+      if (np)
+	{
+	  nat_sha = ikev2_compute_nat_sha1 (
+	    clib_host_to_net_u64 (sa->ispi), clib_host_to_net_u64 (sa->rspi),
+	    &sa->raddr, clib_host_to_net_u16 (sa->dst_port));
+	  clib_memcpy_fast (np, nat_sha, vec_len (nat_sha));
+	  vec_free (nat_sha);
+	}
+    }
 
   if (ip_address_is_zero (&sa->iaddr))
     {
-      p = pool_elt_at_index (km->profiles, sa->profile_index);
       if (!ikev2_get_if_address (p->responder.sw_if_index,
 				 ip_addr_version (&p->responder.addr),
 				 &sa->iaddr))
@@ -4973,7 +5064,7 @@ ikev2_process_pending_sa_init_one (ikev2_main_t * km, ikev2_sa_t * sa)
 }
 
 static void
-ikev2_process_pending_sa_init (ikev2_main_t * km)
+ikev2_process_pending_sa_init (vlib_main_t *vm, ikev2_main_t *km)
 {
   u32 sai;
   u64 ispi;
@@ -4986,7 +5077,7 @@ ikev2_process_pending_sa_init (ikev2_main_t * km)
     if (sa->init_response_received)
       continue;
 
-    ikev2_process_pending_sa_init_one (km, sa);
+    ikev2_process_pending_sa_init_one (vm, km, sa);
   }));
   /* *INDENT-ON* */
 }
@@ -5153,7 +5244,7 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	}
       /* *INDENT-ON* */
 
-      ikev2_process_pending_sa_init (km);
+      ikev2_process_pending_sa_init (vm, km);
     }
   return 0;
 }

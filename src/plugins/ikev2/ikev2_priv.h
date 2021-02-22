@@ -257,6 +257,8 @@ typedef struct
 {
   u32 sw_if_index;
   ip_address_t addr;
+  u8 *hostname;
+  u8 is_resolved;
 } ikev2_responder_t;
 
 typedef struct
@@ -526,6 +528,9 @@ typedef struct
 
   /* dead peer detection */
   u8 dpd_disabled;
+
+  /* pointer to name resolver function in dns plugin */
+  int (*dns_resolve_name) ();
 } ikev2_main_t;
 
 extern ikev2_main_t ikev2_main;

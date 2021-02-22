@@ -444,6 +444,15 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 	    ikev2_set_profile_responder (vm, name, responder_sw_if_index, ip);
 	  goto done;
 	}
+      else if (unformat (line_input, "set %U responder %U %v",
+			 unformat_ikev2_token, &name,
+			 unformat_vnet_sw_interface, vnm,
+			 &responder_sw_if_index, &data))
+	{
+	  r = ikev2_set_profile_responder_hostname (vm, name, data,
+						    responder_sw_if_index);
+	  goto done;
+	}
       else if (unformat (line_input, "set %U tunnel %U",
 			 unformat_ikev2_token, &name,
 			 unformat_vnet_sw_interface, vnm, &tun_sw_if_index))
@@ -615,9 +624,10 @@ show_ikev2_profile_command_fn (vlib_main_t * vm,
       vlib_cli_output(vm, "  protected tunnel %U",
                       format_vnet_sw_if_index_name, vnet_get_main(), p->tun_itf);
     if (~0 != p->responder.sw_if_index)
-      vlib_cli_output(vm, "  responder %U %U",
-                      format_vnet_sw_if_index_name, vnet_get_main(), p->responder.sw_if_index,
-                      format_ip_address, &p->responder.addr);
+      vlib_cli_output (vm, "  responder %U %U %v",
+		       format_vnet_sw_if_index_name, vnet_get_main (),
+		       p->responder.sw_if_index, format_ip_address,
+		       &p->responder.addr, p->responder.hostname);
     if (p->udp_encap)
       vlib_cli_output(vm, "  udp-encap");
 

@@ -1159,9 +1159,8 @@ found_last_request:
 }
 
 int
-vnet_dns_response_to_reply (u8 * response,
-			    vl_api_dns_resolve_name_reply_t * rmp,
-			    u32 * min_ttlp)
+vnet_dns_response_to_reply (u8 *response, dns_resolve_name_t *rn,
+			    u32 *min_ttlp)
 {
   dns_header_t *h;
   dns_query_t *qp;
@@ -1172,7 +1171,7 @@ vnet_dns_response_to_reply (u8 * response,
   u16 flags;
   u16 rcode;
   u32 ttl;
-  int pointer_chase;
+  int pointer_chase, addr_set = 0;
 
   h = (dns_header_t *) response;
   flags = clib_net_to_host_u16 (h->flags);
@@ -1269,32 +1268,32 @@ vnet_dns_response_to_reply (u8 * response,
 	{
 	case DNS_TYPE_A:
 	  /* Collect an ip4 address. Do not pass go. Do not collect $200 */
-	  memcpy (rmp->ip4_address, rr->rdata, sizeof (ip4_address_t));
-	  rmp->ip4_set = 1;
+	  ip_address_set (&rn->address, rr->rdata, AF_IP4);
 	  ttl = clib_net_to_host_u32 (rr->ttl);
+	  addr_set += 1;
 	  if (min_ttlp && *min_ttlp > ttl)
 	    *min_ttlp = ttl;
 	  break;
 	case DNS_TYPE_AAAA:
 	  /* Collect an ip6 address. Do not pass go. Do not collect $200 */
-	  memcpy (rmp->ip6_address, rr->rdata, sizeof (ip6_address_t));
+	  ip_address_set (&rn->address, rr->rdata, AF_IP6);
 	  ttl = clib_net_to_host_u32 (rr->ttl);
 	  if (min_ttlp && *min_ttlp > ttl)
 	    *min_ttlp = ttl;
-	  rmp->ip6_set = 1;
+	  addr_set += 1;
 	  break;
 
 	default:
 	  break;
 	}
       /* Might as well stop ASAP */
-      if (rmp->ip4_set && rmp->ip6_set)
+      if (addr_set > 1)
 	break;
       pos += sizeof (*rr) + clib_net_to_host_u16 (rr->rdlength);
       curpos = pos;
     }
 
-  if ((rmp->ip4_set + rmp->ip6_set) == 0)
+  if (addr_set == 0)
     return VNET_API_ERROR_NAME_SERVER_NO_ADDRESSES;
   return 0;
 }
@@ -1435,15 +1434,35 @@ vnet_dns_response_to_name (u8 * response,
   return 0;
 }
 
+__clib_export int
+dns_resolve_name (u8 *name, dns_cache_entry_t **ep, dns_pending_request_t *t0,
+		  dns_resolve_name_t *rn)
+{
+  dns_main_t *dm = &dns_main;
+  vlib_main_t *vm = vlib_get_main ();
+
+  int rv = vnet_dns_resolve_name (vm, dm, name, t0, ep);
+
+  /* Error, e.g. not enabled? Tell the user */
+  if (rv < 0)
+    return rv;
+
+  /* Resolution pending? Don't reply... */
+  if (ep[0] == 0)
+    return 0;
+
+  return vnet_dns_response_to_reply (ep[0]->dns_response, rn, 0 /* ttl-ptr */);
+}
+
 static void
 vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
 {
-  vlib_main_t *vm = vlib_get_main ();
   dns_main_t *dm = &dns_main;
   vl_api_dns_resolve_name_reply_t *rmp;
-  dns_cache_entry_t *ep;
+  dns_cache_entry_t *ep = 0;
   dns_pending_request_t _t0, *t0 = &_t0;
   int rv;
+  dns_resolve_name_t rn;
 
   /* Sanitize the name slightly */
   mp->name[ARRAY_LEN (mp->name) - 1] = 0;
@@ -1452,7 +1471,7 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
   t0->client_index = mp->client_index;
   t0->client_context = mp->context;
 
-  rv = vnet_dns_resolve_name (vm, dm, mp->name, t0, &ep);
+  rv = dns_resolve_name (mp->name, &ep, t0, &rn);
 
   /* Error, e.g. not enabled? Tell the user */
   if (rv < 0)
@@ -1466,11 +1485,13 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
     return;
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_DNS_RESOLVE_NAME_REPLY,
-  ({
-    rv = vnet_dns_response_to_reply (ep->dns_response, rmp, 0 /* ttl-ptr */);
-    rmp->retval = clib_host_to_net_u32 (rv);
-  }));
+  REPLY_MACRO2 (VL_API_DNS_RESOLVE_NAME_REPLY, ({
+		  ip_address_copy_addr (rmp->ip4_address, &rn.address);
+		  if (ip_addr_version (&rn.address) == AF_IP4)
+		    rmp->ip4_set = 1;
+		  else
+		    rmp->ip6_set = 1;
+		}));
   /* *INDENT-ON* */
 }
 
@@ -2568,6 +2589,7 @@ static clib_error_t *
 test_dns_fmt_command_fn (vlib_main_t * vm,
 			 unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  dns_resolve_name_t _rn, *rn = &_rn;
   u8 *dns_reply_data = 0;
   int verbose = 0;
   int rv;
@@ -2593,7 +2615,7 @@ test_dns_fmt_command_fn (vlib_main_t * vm,
 
   clib_memset (rmp, 0, sizeof (*rmp));
 
-  rv = vnet_dns_response_to_reply (dns_reply_data, rmp, 0 /* ttl-ptr */ );
+  rv = vnet_dns_response_to_reply (dns_reply_data, rn, 0 /* ttl-ptr */);
 
   switch (rv)
     {
@@ -2606,12 +2628,7 @@ test_dns_fmt_command_fn (vlib_main_t * vm,
       break;
 
     case 0:
-      if (rmp->ip4_set)
-	vlib_cli_output (vm, "ip4 address: %U", format_ip4_address,
-			 (ip4_address_t *) rmp->ip4_address);
-      if (rmp->ip6_set)
-	vlib_cli_output (vm, "ip6 address: %U", format_ip6_address,
-			 (ip6_address_t *) rmp->ip6_address);
+      vlib_cli_output (vm, "ip address: %U", format_ip_address, &rn->address);
       break;
     }
 
@@ -2746,7 +2763,8 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
   u32 *to_next;
   u8 *dns_response;
   u8 *reply;
-  vl_api_dns_resolve_name_reply_t _rnr, *rnr = &_rnr;
+  /* vl_api_dns_resolve_name_reply_t _rnr, *rnr = &_rnr; */
+  dns_resolve_name_t _rn, *rn = &_rn;
   vl_api_dns_resolve_ip_reply_t _rir, *rir = &_rir;
   u32 ttl = 64, tmp;
   u32 qp_offset;
@@ -2761,13 +2779,13 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
   if (pr->request_type == DNS_PEER_PENDING_NAME_TO_IP)
     {
       /* Quick and dirty way to dig up the A-record address. $$ FIXME */
-      clib_memset (rnr, 0, sizeof (*rnr));
-      if (vnet_dns_response_to_reply (ep->dns_response, rnr, &ttl))
+      clib_memset (rn, 0, sizeof (*rn));
+      if (vnet_dns_response_to_reply (ep->dns_response, rn, &ttl))
 	{
 	  /* clib_warning ("response_to_reply failed..."); */
 	  is_fail = 1;
 	}
-      if (rnr->ip4_set == 0)
+      else if (ip_addr_version (&rn->address) != AF_IP4)
 	{
 	  /* clib_warning ("No A-record..."); */
 	  is_fail = 1;
@@ -2927,7 +2945,7 @@ found_src_address:
 	  rr->class = clib_host_to_net_u16 (1 /* internet */ );
 	  rr->ttl = clib_host_to_net_u32 (ttl);
 	  rr->rdlength = clib_host_to_net_u16 (sizeof (ip4_address_t));
-	  clib_memcpy (rr->rdata, rnr->ip4_address, sizeof (ip4_address_t));
+	  ip_address_copy_addr (rr->rdata, &rn->address);
 	}
       else
 	{
