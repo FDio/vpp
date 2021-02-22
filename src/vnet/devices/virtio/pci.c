@@ -1451,10 +1451,12 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
       vif->support_int_mode = 1;
       virtio_log_debug (vif, "device supports msix interrupts");
     }
-  else if (interrupt_count == 1)
+  else
     {
       /*
-       * if msix table-size is 1, fall back to intX.
+       * WARN: performance will be sub-optimal.
+       * Fall back to intX, if msix table-size is 1 or
+       * if UIO driver is being used.
        */
       if ((error =
 	   vlib_pci_register_intx_handler (vm, h, &virtio_pci_irq_handler)))
@@ -1465,15 +1467,6 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 	}
       vif->support_int_mode = 1;
       virtio_log_debug (vif, "pci register interrupt handler");
-    }
-  else
-    {
-      /*
-       * WARN: intX is showing some weird behaviour.
-       * Please don't use interrupt mode with UIO driver.
-       */
-      vif->support_int_mode = 0;
-      virtio_log_debug (vif, "driver is configured in poll mode only");
     }
 
   if ((error = vlib_pci_intr_enable (vm, h)))
