@@ -1469,11 +1469,18 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   else
     {
       /*
-       * WARN: intX is showing some weird behaviour.
+       * WARN: performance will be sub-optimal.
        * Please don't use interrupt mode with UIO driver.
        */
-      vif->support_int_mode = 0;
-      virtio_log_debug (vif, "driver is configured in poll mode only");
+      if ((error =
+	     vlib_pci_register_intx_handler (vm, h, &virtio_pci_irq_handler)))
+	{
+	  virtio_log_error (
+	    vif, "error encountered on pci register interrupt handler");
+	  goto error;
+	}
+      vif->support_int_mode = 1;
+      virtio_log_debug (vif, "pci register interrupt handler for uio driver");
     }
 
   if ((error = vlib_pci_intr_enable (vm, h)))
