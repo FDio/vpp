@@ -1952,8 +1952,14 @@ getsockopt (int fd, int level, int optname,
 	    case SO_REUSEADDR:
 	      rv = vls_attr (vlsh, VPPCOM_ATTR_GET_REUSEADDR, optval, optlen);
 	      break;
+	    case SO_REUSEPORT:
+	      rv = vls_attr (vlsh, VPPCOM_ATTR_GET_REUSEPORT, optval, optlen);
+	      break;
 	    case SO_BROADCAST:
 	      rv = vls_attr (vlsh, VPPCOM_ATTR_GET_BROADCAST, optval, optlen);
+	      break;
+	    case SO_DOMAIN:
+	      rv = vls_attr (vlsh, VPPCOM_ATTR_GET_DOMAIN, optval, optlen);
 	      break;
 	    case SO_ERROR:
 	      rv = vls_attr (vlsh, VPPCOM_ATTR_GET_ERROR, optval, optlen);
@@ -2052,6 +2058,10 @@ setsockopt (int fd, int level, int optname,
 	    case SO_REUSEADDR:
 	      rv = vls_attr (vlsh, VPPCOM_ATTR_SET_REUSEADDR,
 			     (void *) optval, &optlen);
+	      break;
+	    case SO_REUSEPORT:
+	      rv = vls_attr (vlsh, VPPCOM_ATTR_SET_REUSEPORT, (void *) optval,
+			     &optlen);
 	      break;
 	    case SO_BROADCAST:
 	      rv = vls_attr (vlsh, VPPCOM_ATTR_SET_BROADCAST,
