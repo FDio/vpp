@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "6ca09efd_ba216432",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 215,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2021-02-22T19:00:32Z",
+      "side": 1,
+      "message": "I intentionally kept it separate (hopefully the compiler is smart enough to notice?), but yeah you are right, probably it is better to fold it into the next block...",
+      "parentUuid": "6e7e1c04_cad02b79",
+      "revId": "7a586f07dbefc207b6497e8cd2564dd38b635385",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "dee2b6d6_c3a2aa99",
         "filename": "src/vlib/unix/input.c",
         "patchSetId": 2
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "9b546607_3bbe3733",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2021-02-22T19:00:32Z",
+      "side": 1,
+      "message": "Well, maybe my runglish is not right, but I think removing the \"since\" isn\u0027t describing the intended behavior in this context either, so let me write long prose to doublecheck the intended behavior - and maybe I should copy it with some modifications into the comments...\n\n--- cut ---\n\nThe heuristic is to measure the time since the last time the signal was raised and \"now\", and not sleep longer than that time interval (let\u0027s denote it as T0). This T0 being the first rough approximation of the order of magnitude of how often the events arrive. \n\nThe worst case is that when we fall asleep in the poll/epoll call below, and something immediately arrives over the shared memory socket. That makes the raising of the signal (which will happen upon the next node processing cycle) delayed by about T0, and when we  arrive to this place in the next time soon after, measuring the new interval (denote it as T1) being pretty close to zero, so we will overcompensate and be very awake for a little while - so if there is something sent over the shared memory again in close succession, we will not delay it anymore - this takes care of quickly adapting to high rate of the shared memory event arrival - the startup might delay the very first message up to 10ms, but after that it goes fast.\n\nLet\u0027s take another extreme case - that this next event was on its own.\nIn the absence of new events the formula for the next sleep time is roughly Tnext \u003d Tprev + Tall_node_processing_time, so we will spend some extra cycles spinning in vain with gradually increasing sleep, but eventually go down to 10ms sleep as before.\n\nWith different other rates of shared memory messages arriving we will be delaying the processing roughly proportionally to their rate of arrival - the faster they arrive, the less their processing is delayed.\n\nThis seemed like a simple way to get a tradeoff between message processing time and simplicity. If we could get the timestamp of when the actual messages in shared memory were posted, we could have been a good bit smarter here...\n\nOne concern I have is that it provably increase the \"background\" CPU usage, but eyeballing it with just \"top\" does not show much...\n\n--- cut ---\n\nSo what do you think ?",
+      "parentUuid": "dee2b6d6_c3a2aa99",
+      "revId": "7a586f07dbefc207b6497e8cd2564dd38b635385",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d3eba1aa_04f02033",
         "filename": "src/vlib/unix/input.c",
         "patchSetId": 2
@@ -47,6 +83,24 @@
       "writtenOn": "2021-02-22T12:47:52Z",
       "side": 1,
       "message": "i think you could simplify this a bit (and maybe remove a bug in the use of 10e3 v. 1e3).\n\nlast_sleep_time_ms \u003d (now - vm-\u003elast_queue_signal_pending_set) * 1e3;\n\nand use instead of \u0027timeout\u0027",
+      "revId": "7a586f07dbefc207b6497e8cd2564dd38b635385",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "13aa9f7c_90d3afd1",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2021-02-22T19:00:32Z",
+      "side": 1,
+      "message": "Oh, yes, thank you for the catch! It was clearly late yesterday and I was sleepy :-) It might be that it does what I hoped it would do by accident :-) Let me clean it up and do some more testing with the code which would work with the way I think it needs to work to see what I thought was the right idea is :-) Thanks again for the catch!",
+      "parentUuid": "d3eba1aa_04f02033",
       "revId": "7a586f07dbefc207b6497e8cd2564dd38b635385",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
