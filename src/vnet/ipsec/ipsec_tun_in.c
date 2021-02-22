@@ -103,7 +103,7 @@ ipsec_ip4_if_no_tunnel (vlib_node_runtime_t * node,
       b->error = node->errors[IPSEC_TUN_PROTECT_INPUT_ERROR_NO_TUNNEL];
       b->punt_reason = ipsec_punt_reason[IPSEC_PUNT_IP4_NO_SUCH_TUNNEL];
     }
-  return IPSEC_INPUT_NEXT_PUNT;
+  return VNET_DEVICE_INPUT_NEXT_PUNT;
 }
 
 always_inline u16
@@ -113,7 +113,7 @@ ipsec_ip6_if_no_tunnel (vlib_node_runtime_t * node,
   b->error = node->errors[IPSEC_TUN_PROTECT_INPUT_ERROR_NO_TUNNEL];
   b->punt_reason = ipsec_punt_reason[IPSEC_PUNT_IP6_NO_SUCH_TUNNEL];
 
-  return (IPSEC_INPUT_NEXT_PUNT);
+  return VNET_DEVICE_INPUT_NEXT_PUNT;
 }
 
 always_inline uword
@@ -138,7 +138,9 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   b = bufs;
   next = nexts;
 
-  clib_memset_u16 (nexts, im->esp4_decrypt_next_index, n_left_from);
+  clib_memset_u16 (
+    nexts, is_ip6 ? im->esp6_decrypt_next_index : im->esp4_decrypt_next_index,
+    n_left_from);
 
   u64 n_bytes = 0, n_packets = 0;
   u32 n_disabled = 0, n_no_tunnel = 0;
@@ -218,7 +220,8 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    b[0]->error =
 	      node->errors[IPSEC_TUN_PROTECT_INPUT_ERROR_TOO_SHORT];
 
-	  next[0] = IPSEC_INPUT_NEXT_DROP;
+	  next[0] = is_ip6 ? VNET_DEVICE_INPUT_NEXT_IP6_DROP :
+			     VNET_DEVICE_INPUT_NEXT_IP4_DROP;
 	  goto trace00;
 	}
 
@@ -294,7 +297,8 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    (drop_counter, thread_index, sw_if_index0, 1, len0);
 	  n_disabled++;
 	  b[0]->error = node->errors[IPSEC_TUN_PROTECT_INPUT_ERROR_DISABLED];
-	  next[0] = IPSEC_INPUT_NEXT_DROP;
+	  next[0] = is_ip6 ? VNET_DEVICE_INPUT_NEXT_IP6_DROP :
+			     VNET_DEVICE_INPUT_NEXT_IP4_DROP;
 	  goto trace00;
 	}
       else
@@ -319,7 +323,18 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  //IPSEC_TUN_PROTECT_NEXT_DECRYPT;
-	  next[0] = im->esp4_decrypt_tun_next_index;
+	  next[0] = is_ip6 ? im->esp6_decrypt_tun_next_index :
+			     im->esp4_decrypt_tun_next_index;
+
+	  if (itr0.flags & IPSEC_PROTECT_FEAT)
+	    {
+	      u32 next32;
+	      u8 arc = feature_main.device_input_feature_arc_index;
+
+	      next32 = next[0];
+	      vnet_feature_arc_start (arc, sw_if_index0, &next32, b[0]);
+	      next[0] = next32;
+	    }
 	}
     trace00:
       if (PREDICT_FALSE (is_trace))
@@ -375,13 +390,9 @@ VLIB_REGISTER_NODE (ipsec4_tun_input_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_tun_protect_input_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(ipsec_tun_protect_input_error_strings),
+  .n_errors = ARRAY_LEN (ipsec_tun_protect_input_error_strings),
   .error_strings = ipsec_tun_protect_input_error_strings,
-  .n_next_nodes = IPSEC_TUN_PROTECT_N_NEXT,
-  .next_nodes = {
-    [IPSEC_TUN_PROTECT_NEXT_DROP] = "ip4-drop",
-    [IPSEC_TUN_PROTECT_NEXT_PUNT] = "punt-dispatch",
-  }
+  .sibling_of = "device-input",
 };
 /* *INDENT-ON* */
 
@@ -398,13 +409,9 @@ VLIB_REGISTER_NODE (ipsec6_tun_input_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_tun_protect_input_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(ipsec_tun_protect_input_error_strings),
+  .n_errors = ARRAY_LEN (ipsec_tun_protect_input_error_strings),
   .error_strings = ipsec_tun_protect_input_error_strings,
-  .n_next_nodes = IPSEC_TUN_PROTECT_N_NEXT,
-  .next_nodes = {
-    [IPSEC_TUN_PROTECT_NEXT_DROP] = "ip6-drop",
-    [IPSEC_TUN_PROTECT_NEXT_PUNT] = "punt-dispatch",
-  }
+  .sibling_of = "device-input",
 };
 /* *INDENT-ON* */
 

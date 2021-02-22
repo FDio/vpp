@@ -1202,6 +1202,9 @@ class IpsecTun6HandoffTests(IpsecTun6):
 
     def test_tun_handoff_66(self):
         """ ipsec 6o6 tunnel worker hand-off test """
+        self.vapi.cli("clear errors")
+        self.vapi.cli("clear ipsec sa")
+
         N_PKTS = 15
         p = self.params[socket.AF_INET6]
 
@@ -1233,6 +1236,9 @@ class IpsecTun4HandoffTests(IpsecTun4):
 
     def test_tun_handooff_44(self):
         """ ipsec 4o4 tunnel worker hand-off test """
+        self.vapi.cli("clear errors")
+        self.vapi.cli("clear ipsec sa")
+
         N_PKTS = 15
         p = self.params[socket.AF_INET]
 
