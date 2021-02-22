@@ -225,6 +225,7 @@ vl_api_cli_inband_t_handler (vl_api_cli_inband_t * mp)
   unformat_init_string (&input, (char *) cmd_vec,
 			vl_api_string_len (&mp->cmd));
   rv = vlib_cli_input (vm, &input, inband_cli_output, (uword) & out_vec);
+  unformat_free (&input);
 
 error:
   /* *INDENT-OFF* */
