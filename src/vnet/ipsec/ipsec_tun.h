@@ -17,10 +17,11 @@
 
 #include <vnet/ipsec/ipsec.h>
 
-#define foreach_ipsec_protect_flags \
-  _(L2, 1, "l2")                    \
-  _(ENCAPED, 2, "encapped")         \
-  _(ITF, 4, "itf")                  \
+#define foreach_ipsec_protect_flags                                           \
+  _ (L2, 1, "l2")                                                             \
+  _ (ENCAPED, 2, "encapped")                                                  \
+  _ (ITF, 4, "itf")                                                           \
+  _ (FEAT, 8, "feat")
 
 typedef enum ipsec_protect_flags_t_
 {
