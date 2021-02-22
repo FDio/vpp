@@ -1561,6 +1561,11 @@ static void
 vls_incercept_sigchld ()
 {
   struct sigaction sa;
+  if (old_sa.sa_sigaction)
+    {
+      VDBG (0, "have intercepted sigchld");
+      return;
+    }
   clib_memset (&sa, 0, sizeof (sa));
   sa.sa_sigaction = vls_intercept_sigchld_handler;
   sa.sa_flags = SA_SIGINFO;
