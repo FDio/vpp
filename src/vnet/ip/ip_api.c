@@ -1793,12 +1793,6 @@ ip_api_hookup (vlib_main_t * vm)
 #undef _
 
   /*
-   * Mark the route add/del API as MP safe
-   */
-  am->is_mp_safe[VL_API_IP_ROUTE_ADD_DEL] = 1;
-  am->is_mp_safe[VL_API_IP_ROUTE_ADD_DEL_REPLY] = 1;
-
-  /*
    * Set up the (msg_name, crc, message-id) table
    */
   setup_message_id_table (am);

@@ -1344,8 +1344,10 @@ def generate_c_boilerplate(services, defines, counters, file_crc,
               '   .cleanup = vl_noop_handler,\n'
               '   .endian = vl_api_{n}_t_endian,\n'
               '   .print = vl_api_{n}_t_print,\n'
+              '   .is_mp_safe = {mp},\n'
               '   .is_autoendian = {auto}}};\n'
               .format(n=s.caller, ID=s.caller.upper(),
+                      mp=d.mpsafe,
                       auto=d.autoendian))
         write('   vl_msg_api_config (&c);\n')
         try:
@@ -1357,8 +1359,10 @@ def generate_c_boilerplate(services, defines, counters, file_crc,
                   '  .cleanup = vl_noop_handler,\n'
                   '  .endian = vl_api_{n}_t_endian,\n'
                   '  .print = vl_api_{n}_t_print,\n'
+                  '  .is_mp_safe = {mp},\n'
                   '  .is_autoendian = {auto}}};\n'
                   .format(n=s.reply, ID=s.reply.upper(),
+                          mp=d.mpsafe,
                           auto=d.autoendian))
             write('   vl_msg_api_config (&c);\n')
         except KeyError:
