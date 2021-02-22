@@ -686,6 +686,38 @@ vl_api_ikev2_set_local_key_t_handler (vl_api_ikev2_set_local_key_t * mp)
 }
 
 static void
+vl_api_ikev2_set_responder_hostname_t_handler (
+  vl_api_ikev2_set_responder_hostname_t *mp)
+{
+  vl_api_ikev2_set_responder_hostname_reply_t *rmp;
+  int rv = 0;
+
+#if WITH_LIBSSL > 0
+  vlib_main_t *vm = vlib_get_main ();
+  clib_error_t *error;
+
+  u8 *tmp = format (0, "%s", mp->name);
+  u8 *hn = format (0, "%s", mp->hostname);
+  u32 sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
+
+  error = ikev2_set_profile_responder_hostname (vm, tmp, hn, sw_if_index);
+  vec_free (tmp);
+  vec_free (hn);
+
+  if (error)
+    {
+      ikev2_log_error ("%U", format_clib_error, error);
+      clib_error_free (error);
+      rv = VNET_API_ERROR_UNSPECIFIED;
+    }
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  REPLY_MACRO (VL_API_IKEV2_SET_RESPONDER_HOSTNAME_REPLY);
+}
+
+static void
 vl_api_ikev2_set_responder_t_handler (vl_api_ikev2_set_responder_t * mp)
 {
   vl_api_ikev2_set_responder_reply_t *rmp;

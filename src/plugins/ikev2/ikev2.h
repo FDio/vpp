@@ -395,6 +395,9 @@ clib_error_t *ikev2_set_profile_ts (vlib_main_t * vm, u8 * name,
 clib_error_t *ikev2_set_profile_responder (vlib_main_t * vm, u8 * name,
 					   u32 sw_if_index,
 					   ip_address_t addr);
+clib_error_t *ikev2_set_profile_responder_hostname (vlib_main_t *vm, u8 *name,
+						    u8 *hostname,
+						    u32 sw_if_index);
 clib_error_t *ikev2_set_profile_ike_transforms (vlib_main_t * vm, u8 * name,
 						ikev2_transform_encr_type_t
 						crypto_alg,
