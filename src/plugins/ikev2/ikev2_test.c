@@ -1017,7 +1017,7 @@ static int
 api_ikev2_profile_set_udp_encap (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  vl_api_ikev2_set_responder_t *mp;
+  vl_api_ikev2_profile_set_udp_encap_t *mp;
   int ret;
   u8 *name = 0;
 
