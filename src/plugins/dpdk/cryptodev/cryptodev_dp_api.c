@@ -46,34 +46,35 @@
 #define CRYPTODEV_MAX_AAD_SIZE	16
 #define CRYPTODEV_MAX_N_SGL	8 /**< maximum number of segments */
 
-/* VNET_CRYPTO_ALGO, TYPE, DPDK_CRYPTO_ALGO, IV_LEN, TAG_LEN, AAD_LEN */
-#define foreach_vnet_aead_crypto_conversion \
-  _(AES_128_GCM, AEAD, AES_GCM, 12, 16, 8)  \
-  _(AES_128_GCM, AEAD, AES_GCM, 12, 16, 12) \
-  _(AES_192_GCM, AEAD, AES_GCM, 12, 16, 8)  \
-  _(AES_192_GCM, AEAD, AES_GCM, 12, 16, 12) \
-  _(AES_256_GCM, AEAD, AES_GCM, 12, 16, 8)  \
-  _(AES_256_GCM, AEAD, AES_GCM, 12, 16, 12)
+/* VNET_CRYPTO_ALGO, TYPE, DPDK_CRYPTO_ALGO, IV_LEN, TAG_LEN, AAD_LEN, KEY_LEN
+ */
+#define foreach_vnet_aead_crypto_conversion                                   \
+  _ (AES_128_GCM, AEAD, AES_GCM, 12, 16, 8, 16)                               \
+  _ (AES_128_GCM, AEAD, AES_GCM, 12, 16, 12, 16)                              \
+  _ (AES_192_GCM, AEAD, AES_GCM, 12, 16, 8, 24)                               \
+  _ (AES_192_GCM, AEAD, AES_GCM, 12, 16, 12, 24)                              \
+  _ (AES_256_GCM, AEAD, AES_GCM, 12, 16, 8, 32)                               \
+  _ (AES_256_GCM, AEAD, AES_GCM, 12, 16, 12, 32)
 
 /**
- * crypto (alg, cryptodev_alg), hash (alg, digest-size)
+ * crypto (alg, cryptodev_alg, key_size), hash (alg, digest-size)
  **/
-#define foreach_cryptodev_link_async_alg	\
-  _ (AES_128_CBC, AES_CBC, SHA1, 12)		\
-  _ (AES_192_CBC, AES_CBC, SHA1, 12)		\
-  _ (AES_256_CBC, AES_CBC, SHA1, 12)		\
-  _ (AES_128_CBC, AES_CBC, SHA224, 14)		\
-  _ (AES_192_CBC, AES_CBC, SHA224, 14)		\
-  _ (AES_256_CBC, AES_CBC, SHA224, 14)		\
-  _ (AES_128_CBC, AES_CBC, SHA256, 16)		\
-  _ (AES_192_CBC, AES_CBC, SHA256, 16)		\
-  _ (AES_256_CBC, AES_CBC, SHA256, 16)		\
-  _ (AES_128_CBC, AES_CBC, SHA384, 24)		\
-  _ (AES_192_CBC, AES_CBC, SHA384, 24)		\
-  _ (AES_256_CBC, AES_CBC, SHA384, 24)		\
-  _ (AES_128_CBC, AES_CBC, SHA512, 32)		\
-  _ (AES_192_CBC, AES_CBC, SHA512, 32)		\
-  _ (AES_256_CBC, AES_CBC, SHA512, 32)
+#define foreach_cryptodev_link_async_alg                                      \
+  _ (AES_128_CBC, AES_CBC, 16, SHA1, 12)                                      \
+  _ (AES_192_CBC, AES_CBC, 24, SHA1, 12)                                      \
+  _ (AES_256_CBC, AES_CBC, 32, SHA1, 12)                                      \
+  _ (AES_128_CBC, AES_CBC, 16, SHA224, 14)                                    \
+  _ (AES_192_CBC, AES_CBC, 24, SHA224, 14)                                    \
+  _ (AES_256_CBC, AES_CBC, 32, SHA224, 14)                                    \
+  _ (AES_128_CBC, AES_CBC, 16, SHA256, 16)                                    \
+  _ (AES_192_CBC, AES_CBC, 24, SHA256, 16)                                    \
+  _ (AES_256_CBC, AES_CBC, 32, SHA256, 16)                                    \
+  _ (AES_128_CBC, AES_CBC, 16, SHA384, 24)                                    \
+  _ (AES_192_CBC, AES_CBC, 24, SHA384, 24)                                    \
+  _ (AES_256_CBC, AES_CBC, 32, SHA384, 24)                                    \
+  _ (AES_128_CBC, AES_CBC, 16, SHA512, 32)                                    \
+  _ (AES_192_CBC, AES_CBC, 24, SHA512, 32)                                    \
+  _ (AES_256_CBC, AES_CBC, 32, SHA512, 32)
 
 typedef enum
 {
@@ -86,6 +87,33 @@ typedef struct
 {
   union rte_cryptodev_session_ctx **keys;
 } cryptodev_key_t;
+
+/* Replicate DPDK rte_cryptodev_sym_capability structure with key size ranges
+ * in favor of vpp vector */
+typedef struct
+{
+  enum rte_crypto_sym_xform_type xform_type;
+  union
+  {
+    struct
+    {
+      enum rte_crypto_auth_algorithm algo; /*auth algo */
+      u32 *digest_sizes;		   /* vector of auth digest sizes */
+    } auth;
+    struct
+    {
+      enum rte_crypto_cipher_algorithm algo; /* cipher algo */
+      u32 *key_sizes;			     /* vector of cipher key sizes */
+    } cipher;
+    struct
+    {
+      enum rte_crypto_aead_algorithm algo; /* aead algo */
+      u32 *key_sizes;			   /*vector of aead key sizes */
+      u32 *aad_sizes;			   /*vector of aad sizes */
+      u32 *digest_sizes;		   /* vector of aead digest sizes */
+    } aead;
+  };
+} cryptodev_capability_t;
 
 typedef struct
 {
@@ -125,6 +153,7 @@ typedef struct
   cryptodev_inst_t *cryptodev_inst;
   clib_bitmap_t *active_cdev_inst_mask;
   clib_spinlock_t tlock;
+  cryptodev_capability_t *supported_caps;
 } cryptodev_main_t;
 
 cryptodev_main_t cryptodev_main;
@@ -194,11 +223,11 @@ prepare_linked_xform (struct rte_crypto_sym_xform *xforms,
 
   switch (key->async_alg)
     {
-#define _(a, b, c, d) \
-  case VNET_CRYPTO_ALG_##a##_##c##_TAG##d:\
-    cipher_algo = RTE_CRYPTO_CIPHER_##b; \
-    auth_algo = RTE_CRYPTO_AUTH_##c##_HMAC; \
-    digest_len = d; \
+#define _(a, b, c, d, e)                                                      \
+  case VNET_CRYPTO_ALG_##a##_##d##_TAG##e:                                    \
+    cipher_algo = RTE_CRYPTO_CIPHER_##b;                                      \
+    auth_algo = RTE_CRYPTO_AUTH_##d##_HMAC;                                   \
+    digest_len = e;                                                           \
     break;
 
       foreach_cryptodev_link_async_alg
@@ -324,6 +353,51 @@ clear_key:
 }
 
 static int
+cryptodev_supports_param_value (u32 *params, u32 param_value)
+{
+  u32 *value;
+  vec_foreach (value, params)
+    {
+      if (*value == param_value)
+	return 1;
+    }
+  return 0;
+}
+
+static int
+cryptodev_check_cap_support (struct rte_cryptodev_sym_capability_idx *idx,
+			     u32 key_size, u32 digest_size, u32 aad_size)
+{
+  cryptodev_main_t *cmt = &cryptodev_main;
+  cryptodev_capability_t *cap;
+  vec_foreach (cap, cmt->supported_caps)
+    {
+
+      if (cap->xform_type != idx->type)
+	continue;
+
+      if (idx->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+	  cap->auth.algo == idx->algo.auth &&
+	  cryptodev_supports_param_value (cap->auth.digest_sizes, digest_size))
+	return 1;
+
+      if (idx->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+	  cap->cipher.algo == idx->algo.cipher &&
+	  cryptodev_supports_param_value (cap->cipher.key_sizes, key_size))
+	return 1;
+
+      if (idx->type == RTE_CRYPTO_SYM_XFORM_AEAD &&
+	  cap->aead.algo == idx->algo.aead &&
+	  cryptodev_supports_param_value (cap->aead.key_sizes, key_size) &&
+	  cryptodev_supports_param_value (cap->aead.digest_sizes,
+					  digest_size) &&
+	  cryptodev_supports_param_value (cap->aead.aad_sizes, aad_size))
+	return 1;
+    }
+  return 0;
+}
+
+static int
 cryptodev_check_supported_vnet_alg (vnet_crypto_key_t * key)
 {
   vnet_crypto_alg_t alg;
@@ -332,8 +406,8 @@ cryptodev_check_supported_vnet_alg (vnet_crypto_key_t * key)
 
   alg = key->alg;
 
-#define _(a, b, c, d, e, f)	\
-  if (alg == VNET_CRYPTO_ALG_##a) \
+#define _(a, b, c, d, e, f, g)                                                \
+  if (alg == VNET_CRYPTO_ALG_##a)                                             \
     return 0;
 
   foreach_vnet_aead_crypto_conversion
@@ -1162,48 +1236,6 @@ VLIB_CLI_COMMAND (set_cryptodev_assignment, static) = {
     .function = cryptodev_set_assignment_fn,
 };
 
-static int
-check_cryptodev_alg_support (u32 dev_id)
-{
-  const struct rte_cryptodev_symmetric_capability *cap;
-  struct rte_cryptodev_sym_capability_idx cap_idx;
-
-#define _(a, b, c, d, e, f) \
-  cap_idx.type = RTE_CRYPTO_SYM_XFORM_##b; \
-  cap_idx.algo.aead = RTE_CRYPTO_##b##_##c; \
-  cap = rte_cryptodev_sym_capability_get (dev_id, &cap_idx); \
-  if (!cap) \
-    return -RTE_CRYPTO_##b##_##c; \
-  else \
-    { \
-      if (cap->aead.digest_size.min > e || cap->aead.digest_size.max < e) \
-	return -RTE_CRYPTO_##b##_##c; \
-      if (cap->aead.aad_size.min > f || cap->aead.aad_size.max < f) \
-	return -RTE_CRYPTO_##b##_##c; \
-      if (cap->aead.iv_size.min > d || cap->aead.iv_size.max < d) \
-	return -RTE_CRYPTO_##b##_##c; \
-    }
-
-  foreach_vnet_aead_crypto_conversion
-#undef _
-
-#define _(a, b, c, d) \
-  cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER; \
-  cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_##b; \
-  cap = rte_cryptodev_sym_capability_get (dev_id, &cap_idx); \
-  if (!cap) \
-    return -RTE_CRYPTO_CIPHER_##b; \
-  cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH; \
-  cap_idx.algo.auth = RTE_CRYPTO_AUTH_##c##_HMAC; \
-  cap = rte_cryptodev_sym_capability_get (dev_id, &cap_idx); \
-  if (!cap) \
-    return -RTE_CRYPTO_AUTH_##c;
-
-  foreach_cryptodev_link_async_alg
-#undef _
-    return 0;
-}
-
 static u32
 cryptodev_count_queue (u32 numa)
 {
@@ -1233,15 +1265,6 @@ cryptodev_configure (vlib_main_t *vm, u32 cryptodev_id)
 
   if (!(info.feature_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))
     return -1;
-
-  ret = check_cryptodev_alg_support (cryptodev_id);
-  if (ret != 0)
-    {
-      clib_warning (
-	"Cryptodev: device %u does not support required algorithms",
-	cryptodev_id);
-      return ret;
-    }
 
   cfg.socket_id = info.device->numa_node;
   cfg.nb_queue_pairs = info.max_nb_queue_pairs;
@@ -1300,24 +1323,257 @@ cryptodev_cmp (void *v1, void *v2)
   return 0;
 }
 
+static void
+remove_unsupported_param_size (u32 **param_sizes, u32 param_size_min,
+			       u32 param_size_max, u32 increment)
+{
+  u32 i = 0;
+  u32 cap_param_size;
+
+  while (i < vec_len (*param_sizes))
+    {
+      u32 found_param = 0;
+      for (cap_param_size = param_size_min; cap_param_size <= param_size_max;
+	   cap_param_size += increment)
+	{
+	  if ((*param_sizes)[i] == cap_param_size)
+	    {
+	      found_param = 1;
+	      break;
+	    }
+	  if (increment == 0)
+	    break;
+	}
+      if (!found_param)
+	/* no such param_size in cap so delete  this size in temp_cap params */
+	vec_delete (*param_sizes, 1, i);
+      else
+	i++;
+    }
+}
+
+static void
+cryptodev_delete_cap (cryptodev_capability_t **temp_caps, u32 temp_cap_id)
+{
+  cryptodev_capability_t temp_cap = (*temp_caps)[temp_cap_id];
+
+  switch (temp_cap.xform_type)
+    {
+    case RTE_CRYPTO_SYM_XFORM_AUTH:
+      vec_free (temp_cap.auth.digest_sizes);
+      break;
+    case RTE_CRYPTO_SYM_XFORM_CIPHER:
+      vec_free (temp_cap.cipher.key_sizes);
+      break;
+    case RTE_CRYPTO_SYM_XFORM_AEAD:
+      vec_free (temp_cap.aead.key_sizes);
+      vec_free (temp_cap.aead.aad_sizes);
+      vec_free (temp_cap.aead.digest_sizes);
+      break;
+    default:
+      break;
+    }
+  vec_delete (*temp_caps, 1, temp_cap_id);
+}
+
+static u32
+cryptodev_remove_unsupported_param_sizes (
+  cryptodev_capability_t *temp_cap,
+  const struct rte_cryptodev_capabilities *dev_caps)
+{
+  u32 cap_found = 0;
+  const struct rte_cryptodev_capabilities *cap = &dev_caps[0];
+
+  while (cap->op != RTE_CRYPTO_OP_TYPE_UNDEFINED)
+    {
+      if (cap->sym.xform_type == temp_cap->xform_type)
+	switch (cap->sym.xform_type)
+	  {
+	  case RTE_CRYPTO_SYM_XFORM_CIPHER:
+	    if (cap->sym.cipher.algo == temp_cap->cipher.algo)
+	      {
+		remove_unsupported_param_size (
+		  &temp_cap->cipher.key_sizes, cap->sym.cipher.key_size.min,
+		  cap->sym.cipher.key_size.max,
+		  cap->sym.cipher.key_size.increment);
+		if (vec_len (temp_cap->cipher.key_sizes) > 0)
+		  cap_found = 1;
+	      }
+	    break;
+	  case RTE_CRYPTO_SYM_XFORM_AUTH:
+	    if (cap->sym.auth.algo == temp_cap->auth.algo)
+	      {
+		remove_unsupported_param_size (
+		  &temp_cap->auth.digest_sizes, cap->sym.auth.digest_size.min,
+		  cap->sym.auth.digest_size.max,
+		  cap->sym.auth.digest_size.increment);
+		if (vec_len (temp_cap->auth.digest_sizes) > 0)
+		  cap_found = 1;
+	      }
+	    break;
+	  case RTE_CRYPTO_SYM_XFORM_AEAD:
+	    if (cap->sym.aead.algo == temp_cap->aead.algo)
+	      {
+		remove_unsupported_param_size (
+		  &temp_cap->aead.key_sizes, cap->sym.aead.key_size.min,
+		  cap->sym.aead.key_size.max,
+		  cap->sym.aead.key_size.increment);
+		remove_unsupported_param_size (
+		  &temp_cap->aead.aad_sizes, cap->sym.aead.aad_size.min,
+		  cap->sym.aead.aad_size.max,
+		  cap->sym.aead.aad_size.increment);
+		remove_unsupported_param_size (
+		  &temp_cap->aead.digest_sizes, cap->sym.aead.digest_size.min,
+		  cap->sym.aead.digest_size.max,
+		  cap->sym.aead.digest_size.increment);
+		if (vec_len (temp_cap->aead.key_sizes) > 0 &&
+		    vec_len (temp_cap->aead.aad_sizes) > 0 &&
+		    vec_len (temp_cap->aead.digest_sizes) > 0)
+		  cap_found = 1;
+	      }
+	    break;
+	  default:
+	    break;
+	  }
+      if (cap_found)
+	break;
+      cap++;
+    }
+
+  return cap_found;
+}
+
+static void
+cryptodev_get_common_capabilities ()
+{
+  cryptodev_main_t *cmt = &cryptodev_main;
+  cryptodev_inst_t *dev_inst;
+  struct rte_cryptodev_info dev_info;
+  u32 previous_dev_id, dev_id;
+  u32 cap_id = 0;
+  u32 param;
+  cryptodev_capability_t tmp_cap;
+  const struct rte_cryptodev_capabilities *cap;
+  const struct rte_cryptodev_capabilities *dev_caps;
+
+  if (vec_len (cmt->cryptodev_inst) == 0)
+    return;
+  dev_inst = vec_elt_at_index (cmt->cryptodev_inst, 0);
+  rte_cryptodev_info_get (dev_inst->dev_id, &dev_info);
+  cap = &dev_info.capabilities[0];
+
+  /*init capabilities vector*/
+  while (cap->op != RTE_CRYPTO_OP_TYPE_UNDEFINED)
+    {
+      ASSERT (cap->op == RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+      tmp_cap.xform_type = cap->sym.xform_type;
+      switch (cap->sym.xform_type)
+	{
+	case RTE_CRYPTO_SYM_XFORM_CIPHER:
+	  tmp_cap.cipher.key_sizes = 0;
+	  tmp_cap.cipher.algo = cap->sym.cipher.algo;
+	  for (param = cap->sym.cipher.key_size.min;
+	       param <= cap->sym.cipher.key_size.max;
+	       param += cap->sym.cipher.key_size.increment)
+	    {
+	      vec_add1 (tmp_cap.cipher.key_sizes, param);
+	      if (cap->sym.cipher.key_size.increment == 0)
+		break;
+	    }
+	  break;
+	case RTE_CRYPTO_SYM_XFORM_AUTH:
+	  tmp_cap.auth.algo = cap->sym.auth.algo;
+	  tmp_cap.auth.digest_sizes = 0;
+	  for (param = cap->sym.auth.digest_size.min;
+	       param <= cap->sym.auth.digest_size.max;
+	       param += cap->sym.auth.digest_size.increment)
+	    {
+	      vec_add1 (tmp_cap.auth.digest_sizes, param);
+	      if (cap->sym.auth.digest_size.increment == 0)
+		break;
+	    }
+	  break;
+	case RTE_CRYPTO_SYM_XFORM_AEAD:
+	  tmp_cap.aead.key_sizes = 0;
+	  tmp_cap.aead.aad_sizes = 0;
+	  tmp_cap.aead.digest_sizes = 0;
+	  tmp_cap.aead.algo = cap->sym.aead.algo;
+	  for (param = cap->sym.aead.key_size.min;
+	       param <= cap->sym.aead.key_size.max;
+	       param += cap->sym.aead.key_size.increment)
+	    {
+	      vec_add1 (tmp_cap.aead.key_sizes, param);
+	      if (cap->sym.aead.key_size.increment == 0)
+		break;
+	    }
+	  for (param = cap->sym.aead.aad_size.min;
+	       param <= cap->sym.aead.aad_size.max;
+	       param += cap->sym.aead.aad_size.increment)
+	    {
+	      vec_add1 (tmp_cap.aead.aad_sizes, param);
+	      if (cap->sym.aead.aad_size.increment == 0)
+		break;
+	    }
+	  for (param = cap->sym.aead.digest_size.min;
+	       param <= cap->sym.aead.digest_size.max;
+	       param += cap->sym.aead.digest_size.increment)
+	    {
+	      vec_add1 (tmp_cap.aead.digest_sizes, param);
+	      if (cap->sym.aead.digest_size.increment == 0)
+		break;
+	    }
+	  break;
+	default:
+	  break;
+	}
+
+      vec_add1 (cmt->supported_caps, tmp_cap);
+      cap++;
+    }
+
+  while (cap_id < vec_len (cmt->supported_caps))
+    {
+      u32 cap_is_supported = 1;
+      previous_dev_id = cmt->cryptodev_inst->dev_id;
+
+      vec_foreach (dev_inst, cmt->cryptodev_inst)
+	{
+	  dev_id = dev_inst->dev_id;
+	  if (previous_dev_id != dev_id)
+	    {
+	      previous_dev_id = dev_id;
+	      rte_cryptodev_info_get (dev_id, &dev_info);
+	      dev_caps = &dev_info.capabilities[0];
+	      cap_is_supported = cryptodev_remove_unsupported_param_sizes (
+		&cmt->supported_caps[cap_id], dev_caps);
+	      if (!cap_is_supported)
+		{
+		  cryptodev_delete_cap (&cmt->supported_caps, cap_id);
+		  /*no need to check other devices as this one doesn't support
+		   * this temp_cap*/
+		  break;
+		}
+	    }
+	}
+      if (cap_is_supported)
+	cap_id++;
+    }
+}
+
 static int
 cryptodev_probe (vlib_main_t *vm, u32 n_workers)
 {
   cryptodev_main_t *cmt = &cryptodev_main;
   u32 n_queues = cryptodev_count_queue (vm->numa_node);
   u32 i;
-  int ret;
 
   if (n_queues < n_workers)
     return -1;
 
   for (i = 0; i < rte_cryptodev_count (); i++)
-    {
-      ret = cryptodev_configure (vm, i);
-      if (ret)
-	continue;
-    }
+    cryptodev_configure (vm, i);
 
+  cryptodev_get_common_capabilities ();
   vec_sort_with_function(cmt->cryptodev_inst, cryptodev_cmp);
 
   /* if there is not enough device stop cryptodev */
@@ -1454,6 +1710,9 @@ dpdk_cryptodev_init (vlib_main_t * vm)
   u32 i;
   u8 *name = 0;
   clib_error_t *error;
+  struct rte_cryptodev_sym_capability_idx cap_auth_idx;
+  struct rte_cryptodev_sym_capability_idx cap_cipher_idx;
+  struct rte_cryptodev_sym_capability_idx cap_aead_idx;
 
   cmt->iova_mode = rte_eal_iova_mode ();
 
@@ -1558,33 +1817,43 @@ dpdk_cryptodev_init (vlib_main_t * vm)
   eidx = vnet_crypto_register_engine (vm, "dpdk_cryptodev", 100,
 				      "DPDK Cryptodev Engine");
 
-#define _(a, b, c, d, e, f) \
-  vnet_crypto_register_async_handler \
-    (vm, eidx, VNET_CRYPTO_OP_##a##_TAG##e##_AAD##f##_ENC, \
-	cryptodev_enqueue_gcm_aad_##f##_enc,\
-	cryptodev_frame_dequeue); \
-  vnet_crypto_register_async_handler \
-    (vm, eidx, VNET_CRYPTO_OP_##a##_TAG##e##_AAD##f##_DEC, \
-	cryptodev_enqueue_gcm_aad_##f##_dec, \
-	cryptodev_frame_dequeue);
+#define _(a, b, c, d, e, f, g)                                                \
+  cap_aead_idx.type = RTE_CRYPTO_SYM_XFORM_AEAD;                              \
+  cap_aead_idx.algo.aead = RTE_CRYPTO_##b##_##c;                              \
+  if (cryptodev_check_cap_support (&cap_aead_idx, g, e, f))                   \
+    {                                                                         \
+      vnet_crypto_register_async_handler (                                    \
+	vm, eidx, VNET_CRYPTO_OP_##a##_TAG##e##_AAD##f##_ENC,                 \
+	cryptodev_enqueue_gcm_aad_##f##_enc, cryptodev_frame_dequeue);        \
+      vnet_crypto_register_async_handler (                                    \
+	vm, eidx, VNET_CRYPTO_OP_##a##_TAG##e##_AAD##f##_DEC,                 \
+	cryptodev_enqueue_gcm_aad_##f##_dec, cryptodev_frame_dequeue);        \
+    }
 
   foreach_vnet_aead_crypto_conversion
 #undef _
-
-#define _(a, b, c, d) \
-  vnet_crypto_register_async_handler \
-    (vm, eidx, VNET_CRYPTO_OP_##a##_##c##_TAG##d##_ENC, \
-	cryptodev_enqueue_linked_alg_enc, \
-	cryptodev_frame_dequeue); \
-  vnet_crypto_register_async_handler \
-    (vm, eidx, VNET_CRYPTO_OP_##a##_##c##_TAG##d##_DEC, \
-	cryptodev_enqueue_linked_alg_dec, \
-	cryptodev_frame_dequeue);
+/* clang-format off */
+#define _(a, b, c, d, e)                                                      \
+  cap_auth_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;                              \
+  cap_auth_idx.algo.auth = RTE_CRYPTO_AUTH_##d##_HMAC;                        \
+  cap_cipher_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;                          \
+  cap_cipher_idx.algo.cipher = RTE_CRYPTO_CIPHER_##b;                         \
+  if (cryptodev_check_cap_support (&cap_cipher_idx, c, -1, -1) &&             \
+      cryptodev_check_cap_support (&cap_auth_idx, -1, e, -1))                 \
+    {                                                                         \
+      vnet_crypto_register_async_handler (                                    \
+	vm, eidx, VNET_CRYPTO_OP_##a##_##d##_TAG##e##_ENC,                    \
+	cryptodev_enqueue_linked_alg_enc, cryptodev_frame_dequeue);           \
+      vnet_crypto_register_async_handler (                                    \
+	vm, eidx, VNET_CRYPTO_OP_##a##_##d##_TAG##e##_DEC,                    \
+	cryptodev_enqueue_linked_alg_dec, cryptodev_frame_dequeue);           \
+    }
 
     foreach_cryptodev_link_async_alg
 #undef _
 
   vnet_crypto_register_key_handler (vm, eidx, cryptodev_key_handler);
+  /* clang-format on */
 
   /* this engine is only enabled when cryptodev device(s) are presented in
    * startup.conf. Assume it is wanted to be used, turn on async mode here.
