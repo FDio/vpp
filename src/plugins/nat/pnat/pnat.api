@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "0.0.1";
+option version = "0.1.1";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -24,6 +24,8 @@ enum pnat_mask
     PNAT_DA = 0x2,
     PNAT_SPORT = 0x4,
     PNAT_DPORT = 0x8,
+    PNAT_COPY_BYTE = 0x10,
+    PNAT_CLEAR_BYTE = 0x20,
 };
 
 enum pnat_attachment_point
@@ -33,7 +35,7 @@ enum pnat_attachment_point
     PNAT_ATTACHMENT_POINT_MAX,
 };
 
-typedef pnat_5tuple
+typedef pnat_match_tuple
 {
     vl_api_ip4_address_t src;
     vl_api_ip4_address_t dst;
@@ -43,12 +45,24 @@ typedef pnat_5tuple
     vl_api_pnat_mask_t mask;
 };
 
+typedef pnat_rewrite_tuple
+{
+    vl_api_ip4_address_t src;
+    vl_api_ip4_address_t dst;
+    u16 sport;
+    u16 dport;
+    vl_api_pnat_mask_t mask; // needed?
+    u8 from_offset;
+    u8 to_offset;
+    u8 clear_offset;
+};
+
 autoendian define pnat_binding_add
 {
     u32 client_index;
     u32 context;
-    vl_api_pnat_5tuple_t match;
-    vl_api_pnat_5tuple_t rewrite;
+    vl_api_pnat_match_tuple_t match;
+    vl_api_pnat_rewrite_tuple_t rewrite;
 };
 
 autoendian define pnat_binding_add_reply
@@ -107,8 +121,8 @@ define pnat_bindings_get_reply
 define pnat_bindings_details
 {
   u32 context;
-  vl_api_pnat_5tuple_t match;
-  vl_api_pnat_5tuple_t rewrite;
+  vl_api_pnat_match_tuple_t match;
+  vl_api_pnat_rewrite_tuple_t rewrite;
 };
 
 define pnat_interfaces_get
@@ -146,6 +160,12 @@ counters pnat {
     type counter64;
     units "packets";
     description "rewrite failed";
+  };
+  tooshort {
+    severity info;
+    type counter64;
+    units "packets";
+    description "packet too short for rewrite";
   };
 };
 
