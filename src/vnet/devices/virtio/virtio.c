@@ -225,6 +225,7 @@ virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif)
 {
   vnet_main_t *vnm = vnet_get_main ();
   virtio_vring_t *vring;
+  u32 i = 0;
 
   vnet_hw_if_set_input_node (vnm, vif->hw_if_index, virtio_input_node.index);
 
@@ -250,6 +251,16 @@ virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif)
 	  vring->call_file_index = clib_file_add (&file_main, &f);
 	  vnet_hw_if_set_rx_queue_file_index (vnm, vring->queue_index,
 					      vring->call_file_index);
+	}
+      else if ((vif->type == VIRTIO_IF_TYPE_PCI) && (vif->support_int_mode) &&
+	       (vif->msix_enabled == VIRTIO_MSIX_ENABLED))
+	{
+	  u32 file_index;
+	  file_index =
+	    vlib_pci_get_msix_file_index (vm, vif->pci_dev_handle, i + 1);
+	  vnet_hw_if_set_rx_queue_file_index (vnm, vring->queue_index,
+					      file_index);
+	  i++;
 	}
     }
   vnet_hw_if_update_runtime_data (vnm, vif->hw_if_index);
