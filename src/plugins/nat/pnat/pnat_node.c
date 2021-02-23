@@ -74,12 +74,10 @@ VLIB_REGISTER_NODE(pnat_output_node) = {
 VNET_FEATURE_INIT(pnat_input, static) = {
     .arc_name = "ip4-unicast",
     .node_name = "pnat-input",
-    .runs_after = VNET_FEATURES("acl-plugin-in-ip4-fa",
-                                "ip4-sv-reassembly-feature"),
+    .runs_after = VNET_FEATURES("ip4-sv-reassembly-feature"),
 };
 VNET_FEATURE_INIT(pnat_output, static) = {
     .arc_name = "ip4-output",
     .node_name = "pnat-output",
-    .runs_after = VNET_FEATURES("acl-plugin-out-ip4-fa",
-                                "ip4-sv-reassembly-output-feature"),
+    .runs_after = VNET_FEATURES("ip4-sv-reassembly-output-feature"),
 };
