@@ -334,7 +334,7 @@ vcl_segment_attach (u64 segment_handle, char *name, ssvm_segment_type_t type,
 
   clib_rwlock_writer_unlock (&vcm->segment_table_lock);
 
-  vec_reset_length (a->new_segment_indices);
+  vec_free (a->new_segment_indices);
   return 0;
 }
 
