@@ -145,7 +145,7 @@ static void send_interfaces_details(u32 index, vl_api_registration_t *rp,
             rmp->sw_if_index = i->sw_if_index;
             clib_memcpy(rmp->enabled, i->enabled, PNAT_ATTACHMENT_POINT_MAX);
             clib_memcpy(rmp->lookup_mask, i->lookup_mask,
-                        sizeof(i->lookup_mask) * PNAT_ATTACHMENT_POINT_MAX);
+                        sizeof(vl_api_pnat_mask_t) * PNAT_ATTACHMENT_POINT_MAX);
 
             /* Endian hack until apigen registers _details
              * endian functions */
