@@ -1,0 +1,69 @@
+[
+    (
+        "da rewritten",
+        IP(src='1.1.1.1', dst='2.2.2.2')/UDP(sport=80, dport=6871),
+        IP(src='1.1.1.1', dst='1.2.3.4')/UDP(sport=80, dport=6871),
+        4242
+    ),
+    (
+        "unchanged",
+        IP(src='1.1.1.1', dst='2.2.2.2')/UDP(sport=80, dport=8080),
+        IP(src='1.1.1.1', dst='2.2.2.2')/UDP(sport=80, dport=8080),
+        4242
+    ),
+    (
+        "tcp da",
+        IP(src='1.1.1.1', dst='2.2.2.2')/TCP(sport=80, dport=6871),
+        IP(src='1.1.1.1', dst='1.2.3.4')/TCP(sport=80, dport=6871),
+        4242
+    ),
+    (
+        "tcp da ports",
+        IP(src='1.1.1.1', dst='2.2.2.2')/TCP(sport=80, dport=6872),
+        IP(src='1.1.1.1', dst='1.2.3.4')/TCP(sport=53, dport=8000),
+        4242
+    ),
+    (
+        "tcp da ports -- fragmented packet",
+        IP(src='1.1.1.1', dst='2.2.2.2', flags='MF', frag=100)/Raw('X' * 40),
+        IP(src='1.1.1.1', dst='2.2.2.2', flags='MF', frag=100)/Raw('X' * 40),
+        4242
+    ),
+    (
+        "short packet",
+        IP(src='1.1.1.1', dst='2.2.2.2'),
+        IP(src='1.1.1.1', dst='2.2.2.2'),
+        4242
+    ),
+    (
+        "copy byte",
+        IP(src='1.1.1.234', dst='2.2.2.2')/UDP(chksum=0, sport=80, dport=6874),
+        IP(src='1.1.1.234', dst='2.2.2.234')/UDP(chksum=0, sport=80, dport=6874),
+        4242
+    ),
+    (
+        "copy byte into Geneve reserved field",
+        IP(src='1.1.1.1', dst='2.2.2.2')/UDP(chksum=0, sport=80, dport=6877)/GENEVE(vni=4040),
+        IP(src='1.1.1.1', dst='1.2.3.4')/UDP(chksum=0, sport=80, dport=6877)/Raw(b'\x00\x00\x00\x00\x00\x0F\xC8\x01'),
+        4242
+    ),
+    (
+        "copy byte overrun",
+        IP(src='1.1.1.234', dst='2.2.2.2')/UDP(chksum=0, sport=80, dport=6875),
+        IP(src='1.1.1.234', dst='2.2.2.2')/UDP(chksum=0, sport=80, dport=6875),
+        0
+    ),
+    (
+        "clear byte",
+        IP(src='1.1.1.234', dst='2.2.2.2')/UDP(chksum=0, sport=80, dport=6876),
+        IP(src='1.1.1.234', dst='2.2.2.2')/UDP(chksum=0, sport=80, dport=220),
+        4242
+    ),
+    (
+        "packet with options",
+        IP(src='1.1.1.1', dst='2.2.2.2', options=[IPOption('\x07')])/TCP(sport=80, dport=6872),
+        IP(src='1.1.1.1', dst='1.2.3.4', options=[IPOption('\x07')])/TCP(sport=53, dport=8000),
+        4242
+    ),
+
+]
