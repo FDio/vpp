@@ -1,0 +1,8 @@
+[
+    (
+        "hit missing rule",
+        IP(src='1.1.1.1', dst='123.123.123.123')/UDP(chksum=0, sport=80, dport=6871),
+        IP(src='1.1.1.1', dst='123.123.123.123')/UDP(chksum=0, sport=80, dport=6871),
+        0
+    ),
+]
