@@ -106,19 +106,13 @@ vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
 	    {
 	      if (rx_comp->flags & VMXNET3_RXCF_TCP)
 		{
-		  tcp_header_t *tcp =
-		    (tcp_header_t *) (hb->data +
-				      vnet_buffer (hb)->l4_hdr_offset);
-		  oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
-		  tcp->checksum = 0;
+		  oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM |
+			    VNET_BUFFER_OFFLOAD_F_PARTIAL_CKSUM;
 		}
 	      else if (rx_comp->flags & VMXNET3_RXCF_UDP)
 		{
-		  udp_header_t *udp =
-		    (udp_header_t *) (hb->data +
-				      vnet_buffer (hb)->l4_hdr_offset);
-		  oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
-		  udp->checksum = 0;
+		  oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM |
+			    VNET_BUFFER_OFFLOAD_F_PARTIAL_CKSUM;
 		}
 	    }
 	}

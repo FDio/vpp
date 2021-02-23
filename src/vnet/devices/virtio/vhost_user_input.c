@@ -294,12 +294,14 @@ vhost_user_handle_rx_offload (vlib_buffer_t * b0, u8 * b0_data,
       tcp_header_t *tcp = (tcp_header_t *)
 	(b0_data + vnet_buffer (b0)->l4_hdr_offset);
       l4_hdr_sz = tcp_header_bytes (tcp);
-      oflags |= VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
+      oflags |=
+	VNET_BUFFER_OFFLOAD_F_TCP_CKSUM | VNET_BUFFER_OFFLOAD_F_PARTIAL_CKSUM;
     }
   else if (l4_proto == IP_PROTOCOL_UDP)
     {
       l4_hdr_sz = sizeof (udp_header_t);
-      oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
+      oflags |=
+	VNET_BUFFER_OFFLOAD_F_UDP_CKSUM | VNET_BUFFER_OFFLOAD_F_PARTIAL_CKSUM;
     }
 
   if (hdr->gso_type == VIRTIO_NET_HDR_GSO_UDP)

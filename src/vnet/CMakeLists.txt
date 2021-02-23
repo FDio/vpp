@@ -456,6 +456,7 @@ list(APPEND VNET_HEADERS
   ip/ip_table.h
   ip/ip_interface.h
   ip/ip_packet.h
+  ip/ip_psh_cksum.h
   ip/ip_source_and_port_range_check.h
   ip/ip_types.h
   ip/lookup.h
