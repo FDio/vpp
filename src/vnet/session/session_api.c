@@ -128,14 +128,58 @@ mq_send_session_accepted_cb (session_t * s)
 {
   app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
   svm_msg_q_msg_t _msg, *msg = &_msg;
+  session_accepted_msg_t *mp, m;
   svm_msg_q_t *app_mq;
   fifo_segment_t *eq_seg;
   session_t *listener;
-  session_accepted_msg_t *mp;
   session_event_t *evt;
   application_t *app;
 
   app = application_get (app_wrk->app_index);
+
+  clib_memset (&m, 0, sizeof (m));
+  m.context = app->app_index;
+  m.server_rx_fifo = fifo_segment_fifo_offset (s->rx_fifo);
+  m.server_tx_fifo = fifo_segment_fifo_offset (s->tx_fifo);
+  m.segment_handle = session_segment_handle (s);
+  m.flags = s->flags;
+
+  eq_seg = session_main_get_evt_q_segment ();
+
+  if (session_has_transport (s))
+    {
+      listener = listen_session_get_from_handle (s->listener_handle);
+      m.listener_handle = app_listen_session_handle (listener);
+      if (application_is_proxy (app))
+	{
+	  listener =
+	    app_worker_first_listener (app_wrk, session_get_fib_proto (s),
+				       session_get_transport_proto (s));
+	  if (listener)
+	    m.listener_handle = listen_session_get_handle (listener);
+	}
+      m.vpp_event_queue_address =
+	fifo_segment_msg_q_offset (eq_seg, s->thread_index);
+      m.mq_index = s->thread_index;
+      m.handle = session_handle (s);
+
+      session_get_endpoint (s, &m.rmt, 0 /* is_lcl */);
+    }
+  else
+    {
+      ct_connection_t *ct;
+
+      ct = (ct_connection_t *) session_get_transport (s);
+      listener = listen_session_get_from_handle (s->listener_handle);
+      m.listener_handle = app_listen_session_handle (listener);
+      m.rmt.is_ip4 = session_type_is_ip4 (listener->session_type);
+      m.rmt.port = ct->c_rmt_port;
+      m.handle = session_handle (s);
+      m.vpp_event_queue_address =
+	fifo_segment_msg_q_offset (eq_seg, s->thread_index);
+      m.mq_index = s->thread_index;
+    }
+
   app_mq = app_wrk->event_queue;
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
     return SESSION_E_MQ_MSG_ALLOC;
@@ -144,48 +188,7 @@ mq_send_session_accepted_cb (session_t * s)
   clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_ACCEPTED;
   mp = (session_accepted_msg_t *) evt->data;
-  clib_memset (mp, 0, sizeof (*mp));
-  mp->context = app->app_index;
-  mp->server_rx_fifo = fifo_segment_fifo_offset (s->rx_fifo);
-  mp->server_tx_fifo = fifo_segment_fifo_offset (s->tx_fifo);
-  mp->segment_handle = session_segment_handle (s);
-  mp->flags = s->flags;
-
-  eq_seg = session_main_get_evt_q_segment ();
-
-  if (session_has_transport (s))
-    {
-      listener = listen_session_get_from_handle (s->listener_handle);
-      mp->listener_handle = app_listen_session_handle (listener);
-      if (application_is_proxy (app))
-	{
-	  listener =
-	    app_worker_first_listener (app_wrk, session_get_fib_proto (s),
-				       session_get_transport_proto (s));
-	  if (listener)
-	    mp->listener_handle = listen_session_get_handle (listener);
-	}
-      mp->vpp_event_queue_address =
-	fifo_segment_msg_q_offset (eq_seg, s->thread_index);
-      mp->mq_index = s->thread_index;
-      mp->handle = session_handle (s);
-
-      session_get_endpoint (s, &mp->rmt, 0 /* is_lcl */ );
-    }
-  else
-    {
-      ct_connection_t *ct;
-
-      ct = (ct_connection_t *) session_get_transport (s);
-      listener = listen_session_get_from_handle (s->listener_handle);
-      mp->listener_handle = app_listen_session_handle (listener);
-      mp->rmt.is_ip4 = session_type_is_ip4 (listener->session_type);
-      mp->rmt.port = ct->c_rmt_port;
-      mp->handle = session_handle (s);
-      mp->vpp_event_queue_address =
-	fifo_segment_msg_q_offset (eq_seg, s->thread_index);
-      mp->mq_index = s->thread_index;
-    }
+  clib_memcpy_fast (mp, &m, sizeof (m));
   svm_msg_q_add_and_unlock (app_mq, msg);
 
   return 0;
@@ -264,34 +267,19 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 			      session_t * s, session_error_t err)
 {
   svm_msg_q_msg_t _msg, *msg = &_msg;
-  session_connected_msg_t *mp;
+  session_connected_msg_t *mp, m;
   svm_msg_q_t *app_mq;
   transport_connection_t *tc;
   fifo_segment_t *eq_seg;
   app_worker_t *app_wrk;
   session_event_t *evt;
 
-  app_wrk = app_worker_get (app_wrk_index);
-  app_mq = app_wrk->event_queue;
-  if (!app_mq)
-    {
-      clib_warning ("app %u with api index: %u not attached",
-		    app_wrk->app_index, app_wrk->api_client_index);
-      return -1;
-    }
-
-  if (mq_try_lock_and_alloc_msg (app_mq, msg))
-    return SESSION_E_MQ_MSG_ALLOC;
-
-  evt = svm_msg_q_msg_data (app_mq, msg);
-  clib_memset (evt, 0, sizeof (*evt));
-  evt->event_type = SESSION_CTRL_EVT_CONNECTED;
-  mp = (session_connected_msg_t *) evt->data;
-  clib_memset (mp, 0, sizeof (*mp));
-  mp->context = api_context;
+  clib_memset (&m, 0, sizeof (m));
+  m.context = api_context;
+  m.retval = err;
 
   if (err)
-    goto done;
+    goto snd_msg;
 
   eq_seg = session_main_get_evt_q_segment ();
 
@@ -301,19 +289,19 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       if (!tc)
 	{
 	  clib_warning ("failed to retrieve transport!");
-	  err = SESSION_E_REFUSED;
-	  goto done;
+	  m.retval = SESSION_E_REFUSED;
+	  goto snd_msg;
 	}
 
-      mp->handle = session_handle (s);
-      mp->vpp_event_queue_address =
+      m.handle = session_handle (s);
+      m.vpp_event_queue_address =
 	fifo_segment_msg_q_offset (eq_seg, s->thread_index);
 
-      session_get_endpoint (s, &mp->lcl, 1 /* is_lcl */ );
+      session_get_endpoint (s, &m.lcl, 1 /* is_lcl */);
 
-      mp->server_rx_fifo = fifo_segment_fifo_offset (s->rx_fifo);
-      mp->server_tx_fifo = fifo_segment_fifo_offset (s->tx_fifo);
-      mp->segment_handle = session_segment_handle (s);
+      m.server_rx_fifo = fifo_segment_fifo_offset (s->rx_fifo);
+      m.server_tx_fifo = fifo_segment_fifo_offset (s->tx_fifo);
+      m.segment_handle = session_segment_handle (s);
     }
   else
     {
@@ -321,22 +309,33 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       session_t *ss;
 
       cct = (ct_connection_t *) session_get_transport (s);
-      mp->handle = session_handle (s);
-      mp->lcl.port = cct->c_lcl_port;
-      mp->lcl.is_ip4 = cct->c_is_ip4;
-      mp->vpp_event_queue_address =
+      m.handle = session_handle (s);
+      m.lcl.port = cct->c_lcl_port;
+      m.lcl.is_ip4 = cct->c_is_ip4;
+      m.vpp_event_queue_address =
 	fifo_segment_msg_q_offset (eq_seg, s->thread_index);
-      mp->server_rx_fifo = fifo_segment_fifo_offset (s->rx_fifo);
-      mp->server_tx_fifo = fifo_segment_fifo_offset (s->tx_fifo);
-      mp->segment_handle = session_segment_handle (s);
+      m.server_rx_fifo = fifo_segment_fifo_offset (s->rx_fifo);
+      m.server_tx_fifo = fifo_segment_fifo_offset (s->tx_fifo);
+      m.segment_handle = session_segment_handle (s);
       ss = ct_session_get_peer (s);
-      mp->ct_rx_fifo = fifo_segment_fifo_offset (ss->tx_fifo);
-      mp->ct_tx_fifo = fifo_segment_fifo_offset (ss->rx_fifo);
-      mp->ct_segment_handle = session_segment_handle (ss);
+      m.ct_rx_fifo = fifo_segment_fifo_offset (ss->tx_fifo);
+      m.ct_tx_fifo = fifo_segment_fifo_offset (ss->rx_fifo);
+      m.ct_segment_handle = session_segment_handle (ss);
     }
 
-done:
-  mp->retval = err;
+snd_msg:
+
+  app_wrk = app_worker_get (app_wrk_index);
+  app_mq = app_wrk->event_queue;
+
+  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+    return SESSION_E_MQ_MSG_ALLOC;
+
+  evt = svm_msg_q_msg_data (app_mq, msg);
+  clib_memset (evt, 0, sizeof (*evt));
+  evt->event_type = SESSION_CTRL_EVT_CONNECTED;
+  mp = (session_connected_msg_t *) evt->data;
+  clib_memcpy_fast (mp, &m, sizeof (m));
 
   svm_msg_q_add_and_unlock (app_mq, msg);
   return 0;
@@ -349,20 +348,46 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
   svm_msg_q_msg_t _msg, *msg = &_msg;
   svm_msg_q_t *app_mq;
   transport_endpoint_t tep;
-  session_bound_msg_t *mp;
+  session_bound_msg_t *mp, m;
   fifo_segment_t *eq_seg;
   app_worker_t *app_wrk;
   session_event_t *evt;
   app_listener_t *al;
   session_t *ls = 0;
+
+  clib_memset (&m, 0, sizeof (m));
+  m.context = api_context;
+  m.retval = rv;
+
+  if (rv)
+    goto snd_msg;
+
+  m.handle = handle;
+  al = app_listener_get_w_handle (handle);
+  if (al->session_index != SESSION_INVALID_INDEX)
+    ls = app_listener_get_session (al);
+  else
+    ls = app_listener_get_local_session (al);
+
+  session_get_endpoint (ls, &tep, 1 /* is_lcl */);
+  m.lcl_port = tep.port;
+  m.lcl_is_ip4 = tep.is_ip4;
+  clib_memcpy_fast (m.lcl_ip, &tep.ip, sizeof (tep.ip));
+
+  eq_seg = session_main_get_evt_q_segment ();
+  m.vpp_evt_q = fifo_segment_msg_q_offset (eq_seg, ls->thread_index);
+
+  if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
+    {
+      m.rx_fifo = fifo_segment_fifo_offset (ls->rx_fifo);
+      m.tx_fifo = fifo_segment_fifo_offset (ls->tx_fifo);
+      m.segment_handle = session_segment_handle (ls);
+    }
+
+snd_msg:
+
   app_wrk = app_worker_get (app_wrk_index);
   app_mq = app_wrk->event_queue;
-  if (!app_mq)
-    {
-      clib_warning ("app %u with api index: %u not attached",
-		    app_wrk->app_index, app_wrk->api_client_index);
-      return -1;
-    }
 
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
     return SESSION_E_MQ_MSG_ALLOC;
@@ -371,35 +396,8 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
   clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_BOUND;
   mp = (session_bound_msg_t *) evt->data;
-  mp->context = api_context;
+  clib_memcpy_fast (mp, &m, sizeof (m));
 
-  if (rv)
-    goto done;
-
-  mp->handle = handle;
-  al = app_listener_get_w_handle (handle);
-  if (al->session_index != SESSION_INVALID_INDEX)
-    ls = app_listener_get_session (al);
-  else
-    ls = app_listener_get_local_session (al);
-
-  session_get_endpoint (ls, &tep, 1 /* is_lcl */ );
-  mp->lcl_port = tep.port;
-  mp->lcl_is_ip4 = tep.is_ip4;
-  clib_memcpy_fast (mp->lcl_ip, &tep.ip, sizeof (tep.ip));
-
-  eq_seg = session_main_get_evt_q_segment ();
-  mp->vpp_evt_q = fifo_segment_msg_q_offset (eq_seg, ls->thread_index);
-
-  if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
-    {
-      mp->rx_fifo = fifo_segment_fifo_offset (ls->rx_fifo);
-      mp->tx_fifo = fifo_segment_fifo_offset (ls->tx_fifo);
-      mp->segment_handle = session_segment_handle (ls);
-    }
-
-done:
-  mp->retval = rv;
   svm_msg_q_add_and_unlock (app_mq, msg);
   return 0;
 }
