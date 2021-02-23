@@ -26,8 +26,8 @@
 /*
  * This file contains the handlers for the (unsupported) VPP debug CLI.
  */
-u8 *format_pnat_5tuple(u8 *s, va_list *args) {
-    pnat_5tuple_t *t = va_arg(*args, pnat_5tuple_t *);
+u8 *format_pnat_match_tuple(u8 *s, va_list *args) {
+    pnat_match_tuple_t *t = va_arg(*args, pnat_match_tuple_t *);
     s = format(s, "{");
     if (t->mask & PNAT_SA)
         s = format(s, "%U", format_ip4_address, &t->src);
@@ -52,12 +52,38 @@ u8 *format_pnat_5tuple(u8 *s, va_list *args) {
     s = format(s, "}");
     return s;
 }
+u8 *format_pnat_rewrite_tuple(u8 *s, va_list *args) {
+    pnat_rewrite_tuple_t *t = va_arg(*args, pnat_rewrite_tuple_t *);
+    s = format(s, "{");
+    if (t->mask & PNAT_SA)
+        s = format(s, "%U", format_ip4_address, &t->src);
+    else
+        s = format(s, "*");
+    if (t->mask & PNAT_SPORT)
+        s = format(s, ":%u,", t->sport);
+    else
+        s = format(s, ":*,");
+    if (t->mask & PNAT_DA)
+        s = format(s, "%U", format_ip4_address, &t->dst);
+    else
+        s = format(s, "*");
+    if (t->mask & PNAT_DPORT)
+        s = format(s, ":%u", t->dport);
+    else
+        s = format(s, ":*");
+    if (t->mask & PNAT_COPY_BYTE)
+        s = format(s, " copy byte@[%d->%d]", t->from_offset, t->to_offset);
+    if (t->mask & PNAT_CLEAR_BYTE)
+        s = format(s, " clear byte@[%d]", t->clear_offset);
+    s = format(s, "}");
+    return s;
+}
 
 u8 *format_pnat_translation(u8 *s, va_list *args) {
     u32 index = va_arg(*args, u32);
     pnat_translation_t *t = va_arg(*args, pnat_translation_t *);
-    s = format(s, "[%d] match: %U rewrite: %U", index, format_pnat_5tuple,
-               &t->match, format_pnat_5tuple, &t->rewrite);
+    s = format(s, "[%d] match: %U rewrite: %U", index, format_pnat_match_tuple,
+               &t->match, format_pnat_rewrite_tuple, &t->rewrite);
     return s;
 }
 
@@ -88,8 +114,8 @@ static u8 *format_pnat_interface(u8 *s, va_list *args) {
     return s;
 }
 
-uword unformat_pnat_5tuple(unformat_input_t *input, va_list *args) {
-    pnat_5tuple_t *t = va_arg(*args, pnat_5tuple_t *);
+uword unformat_pnat_match_tuple(unformat_input_t *input, va_list *args) {
+    pnat_match_tuple_t *t = va_arg(*args, pnat_match_tuple_t *);
     u32 dport, sport;
     while (1) {
         if (unformat(input, "src %U", unformat_ip4_address, &t->src))
@@ -114,6 +140,45 @@ uword unformat_pnat_5tuple(unformat_input_t *input, va_list *args) {
     return 1;
 }
 
+uword unformat_pnat_rewrite_tuple(unformat_input_t *input, va_list *args) {
+    pnat_rewrite_tuple_t *t = va_arg(*args, pnat_rewrite_tuple_t *);
+    u32 dport, sport;
+    u32 to_offset, from_offset, clear_offset;
+
+    while (1) {
+        if (unformat(input, "src %U", unformat_ip4_address, &t->src))
+            t->mask |= PNAT_SA;
+        else if (unformat(input, "dst %U", unformat_ip4_address, &t->dst))
+            t->mask |= PNAT_DA;
+        else if (unformat(input, "sport %d", &sport)) {
+            if (sport == 0 || sport > 65535)
+                return 0;
+            t->mask |= PNAT_SPORT;
+            t->sport = sport;
+        } else if (unformat(input, "dport %d", &dport)) {
+            if (dport == 0 || dport > 65535)
+                return 0;
+            t->mask |= PNAT_DPORT;
+            t->dport = dport;
+        } else if (unformat(input, "copy-byte-at-offset %d %d", &from_offset,
+                            &to_offset)) {
+            if (from_offset == to_offset || to_offset > 255 ||
+                from_offset > 255)
+                return 0;
+            t->mask |= PNAT_COPY_BYTE;
+            t->from_offset = from_offset;
+            t->to_offset = to_offset;
+        } else if (unformat(input, "clear-byte-at-offset %d", &clear_offset)) {
+            if (clear_offset > 255)
+                return 0;
+            t->mask |= PNAT_CLEAR_BYTE;
+            t->clear_offset = clear_offset;
+        } else
+            break;
+    }
+    return 1;
+}
+
 static clib_error_t *set_pnat_translation_command_fn(vlib_main_t *vm,
                                                      unformat_input_t *input,
                                                      vlib_cli_command_t *cmd) {
@@ -123,17 +188,17 @@ static clib_error_t *set_pnat_translation_command_fn(vlib_main_t *vm,
     bool match_set = false, rewrite_set = false;
     bool add = true;
     u32 sw_if_index = ~0;
-    pnat_5tuple_t match = {0};
-    pnat_5tuple_t rewrite = {0};
+    pnat_match_tuple_t match = {0};
+    pnat_rewrite_tuple_t rewrite = {0};
 
     /* Get a line of input. */
     if (!unformat_user(input, unformat_line_input, line_input))
         return 0;
 
     while (unformat_check_input(line_input) != UNFORMAT_END_OF_INPUT) {
-        if (unformat(line_input, "match %U", unformat_pnat_5tuple, &match))
+        if (unformat(line_input, "match %U", unformat_pnat_match_tuple, &match))
             match_set = true;
-        else if (unformat(line_input, "rewrite %U", unformat_pnat_5tuple,
+        else if (unformat(line_input, "rewrite %U", unformat_pnat_rewrite_tuple,
                           &rewrite))
             rewrite_set = true;
         else if (unformat(line_input, "interface %U",
@@ -228,7 +293,7 @@ done:
 VLIB_CLI_COMMAND(set_pnat_translation_command, static) = {
     .path = "set pnat translation",
     .short_help = "set pnat translation interface <name> match <5-tuple> "
-                  "rewrite <5-tuple> {in|out} [del]",
+                  "rewrite <tuple> {in|out} [del]",
     .function = set_pnat_translation_command_fn,
 };
 
