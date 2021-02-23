@@ -5,6 +5,7 @@ This captures some considerations and design decisions that I have made,
 both for my own memory later on ("what the hell was I thinking?!?"),
 and for anyone interested to criticize/improve/hack on this code.
 
+
 One of the factors taken into account while making these decisions,
 was the relative emphasis on the multi-thread vs. single-thread
 use cases: the latter is the vastly more prevalent. But,
