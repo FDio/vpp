@@ -475,7 +475,11 @@ test-wipe-all:
 
 .PHONY: test-checkstyle
 test-checkstyle:
+	@echo "Git repo before running test-checkstyle:"
+	@git --no-pager diff
 	@make -C test checkstyle
+	@echo "Git repo after running test-checkstyle:"
+	@git --no-pager diff
 
 .PHONY: test-refresh-deps
 test-refresh-deps:

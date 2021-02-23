@@ -27,17 +27,27 @@ typedef enum
   VNET_DEVICE_INPUT_NEXT_MPLS_INPUT,
   VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT,
   VNET_DEVICE_INPUT_NEXT_DROP,
+
+  /* For tunnels */
+  VNET_DEVICE_INPUT_NEXT_IP4_DROP,
+  VNET_DEVICE_INPUT_NEXT_IP6_DROP,
+  VNET_DEVICE_INPUT_NEXT_PUNT,
+
   VNET_DEVICE_INPUT_N_NEXT_NODES,
 } vnet_device_input_next_t;
 
-#define VNET_DEVICE_INPUT_NEXT_NODES {					\
-    [VNET_DEVICE_INPUT_NEXT_DROP] = "error-drop",			\
-    [VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT] = "ethernet-input",		\
-    [VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT] = "ip4-input-no-checksum",	\
-    [VNET_DEVICE_INPUT_NEXT_IP4_INPUT] = "ip4-input",			\
-    [VNET_DEVICE_INPUT_NEXT_IP6_INPUT] = "ip6-input",			\
-    [VNET_DEVICE_INPUT_NEXT_MPLS_INPUT] = "mpls-input",			\
-}
+#define VNET_DEVICE_INPUT_NEXT_NODES                                          \
+  {                                                                           \
+    [VNET_DEVICE_INPUT_NEXT_DROP] = "error-drop",                             \
+    [VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT] = "ethernet-input",               \
+    [VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT] = "ip4-input-no-checksum",         \
+    [VNET_DEVICE_INPUT_NEXT_IP4_INPUT] = "ip4-input",                         \
+    [VNET_DEVICE_INPUT_NEXT_IP6_INPUT] = "ip6-input",                         \
+    [VNET_DEVICE_INPUT_NEXT_MPLS_INPUT] = "mpls-input",                       \
+    [VNET_DEVICE_INPUT_NEXT_IP4_DROP] = "ip4-drop",                           \
+    [VNET_DEVICE_INPUT_NEXT_IP6_DROP] = "ip6-drop",                           \
+    [VNET_DEVICE_INPUT_NEXT_PUNT] = "punt-dispatch",                          \
+  }
 
 typedef struct
 {
