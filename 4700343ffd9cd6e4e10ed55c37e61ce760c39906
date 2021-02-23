@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b797131e_7634c3b5",
+        "filename": "test/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2021-02-23T15:27:49Z",
+      "side": 1,
+      "message": "What is the test criteria for changing the pip version?\n\nI\u0027ve been using pip 21.0.1 on a personal project but am not comfortable using anecdotal evidence for decision making.",
+      "range": {
+        "startLine": 102,
+        "startChar": 0,
+        "endLine": 102,
+        "endChar": 18
+      },
+      "revId": "4700343ffd9cd6e4e10ed55c37e61ce760c39906",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
