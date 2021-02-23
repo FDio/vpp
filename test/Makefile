@@ -99,7 +99,7 @@ PYTHON_INTERP=$(PYTHON)
 endif
 
 PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
-PIP_VERSION=20.1.1
+PIP_VERSION=21.0.1
 # Keep in sync with requirements.txt
 PIP_TOOLS_VERSION=5.1.2
 PYTHON_DEPENDS=requirements-$(PYTHON_VERSION).txt
