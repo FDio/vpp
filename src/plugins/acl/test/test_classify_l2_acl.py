@@ -20,7 +20,7 @@ from template_classifier import TestClassifier
 
 
 class TestClassifyAcl(TestClassifier):
-    """ Classifier-based L2 input and output ACL Test Case """
+    """ Classifier-based L2 Input and Output ACL Test Case """
 
     # traffic types
     IP = 0
