@@ -1,4 +1,4 @@
-# PNAT: 1:1 match and rewrite programmable NAT
+# PNAT: 1:1 match and rewrite programmable NAT {#pnat_doc}
 
 PNAT is a stateless statically configured, match and rewrite plugin.
 It uses a set of match and rewrite rules that are applied on the IP
