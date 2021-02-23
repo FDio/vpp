@@ -175,6 +175,7 @@ cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
       vnet_buffer (b)->ip.adj_index[VLIB_TX] = session->value.cs_lbi;
     }
 
+  vnet_buffer_offload_flags_clear (b, VNET_BUFFER_OFFLOAD_F_PARTIAL_CKSUM);
   if (AF_IP4 == ctx->af)
     cnat_translation_ip4 (session, ip4, udp0);
   else

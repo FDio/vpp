@@ -114,7 +114,8 @@ STATIC_ASSERT (((VNET_BUFFER_FLAGS_ALL_AVAIL & VLIB_BUFFER_FLAGS_ALL) == 0),
   _ (3, OUTER_IP_CKSUM, "offload-outer-ip-cksum", 1)                          \
   _ (4, OUTER_UDP_CKSUM, "offload-outer-udp-cksum", 1)                        \
   _ (5, TNL_VXLAN, "offload-vxlan-tunnel", 1)                                 \
-  _ (6, TNL_IPIP, "offload-ipip-tunnel", 1)
+  _ (6, TNL_IPIP, "offload-ipip-tunnel", 1)                                   \
+  _ (7, PARTIAL_CKSUM, "offload-partial-cksum", 1)
 
 typedef enum
 {
