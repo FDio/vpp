@@ -25,8 +25,8 @@
 /* PNAT next-nodes */
 typedef enum { PNAT_NEXT_DROP, PNAT_N_NEXT } pnat_next_t;
 
-// u8 *format_pnat_key(u8 *s, va_list *args);
-u8 *format_pnat_5tuple(u8 *s, va_list *args);
+u8 *format_pnat_match_tuple(u8 *s, va_list *args);
+u8 *format_pnat_rewrite_tuple(u8 *s, va_list *args);
 static inline u8 *format_pnat_trace(u8 *s, va_list *args) {
     CLIB_UNUSED(vlib_main_t * vm) = va_arg(*args, vlib_main_t *);
     CLIB_UNUSED(vlib_node_t * node) = va_arg(*args, vlib_node_t *);
@@ -34,8 +34,10 @@ static inline u8 *format_pnat_trace(u8 *s, va_list *args) {
 
     s = format(s, "pnat: index %d\n", t->pool_index);
     if (t->pool_index != ~0) {
-        s = format(s, "        match: %U\n", format_pnat_5tuple, &t->match);
-        s = format(s, "        rewrite: %U", format_pnat_5tuple, &t->rewrite);
+        s = format(s, "        match: %U\n", format_pnat_match_tuple,
+                   &t->match);
+        s = format(s, "        rewrite: %U", format_pnat_rewrite_tuple,
+                   &t->rewrite);
     }
     return s;
 }
@@ -43,6 +45,7 @@ static inline u8 *format_pnat_trace(u8 *s, va_list *args) {
 /*
  * Given a packet and rewrite instructions from a translation modify packet.
  */
+// TODO: Generalize to write with mask
 static u32 pnat_rewrite_ip4(u32 pool_index, ip4_header_t *ip) {
     pnat_main_t *pm = &pnat_main;
     if (pool_is_free_index(pm->translations, pool_index))
@@ -65,10 +68,22 @@ static u32 pnat_rewrite_ip4(u32 pool_index, ip4_header_t *ip) {
     ip_csum_t csum = ip->checksum;
     csum = ip_csum_sub_even(csum, csumd);
     ip->checksum = ip_csum_fold(csum);
+    if (ip->checksum == 0xffff)
+        ip->checksum = 0;
     ASSERT(ip->checksum == ip4_header_checksum(ip));
+
+    u16 plen = clib_net_to_host_u16(ip->length);
+
+    /* Nothing more to do if this is a fragment. */
+    if (ip4_is_fragment(ip))
+        return PNAT_ERROR_NONE;
 
     /* L4 ports */
     if (ip->protocol == IP_PROTOCOL_TCP) {
+        /* Assume IP4 header is 20 bytes */
+        if (plen < sizeof(ip4_header_t) + sizeof(tcp_header_t))
+            return PNAT_ERROR_TOOSHORT;
+
         tcp_header_t *tcp = ip4_next_header(ip);
         ip_csum_t l4csum = tcp->checksum;
         if (t->instructions & PNAT_INSTR_DESTINATION_PORT) {
@@ -84,6 +99,8 @@ static u32 pnat_rewrite_ip4(u32 pool_index, ip4_header_t *ip) {
         l4csum = ip_csum_sub_even(l4csum, csumd);
         tcp->checksum = ip_csum_fold(l4csum);
     } else if (ip->protocol == IP_PROTOCOL_UDP) {
+        if (plen < sizeof(ip4_header_t) + sizeof(udp_header_t))
+            return PNAT_ERROR_TOOSHORT;
         udp_header_t *udp = ip4_next_header(ip);
         ip_csum_t l4csum = udp->checksum;
         if (t->instructions & PNAT_INSTR_DESTINATION_PORT) {
@@ -101,6 +118,25 @@ static u32 pnat_rewrite_ip4(u32 pool_index, ip4_header_t *ip) {
             udp->checksum = ip_csum_fold(l4csum);
         }
     }
+    if (t->instructions & PNAT_INSTR_COPY_BYTE) {
+        /* Copy byte from somewhere in packet to elsewhere */
+
+        if (t->to_offset >= plen || t->from_offset > plen) {
+            return PNAT_ERROR_TOOSHORT;
+        }
+        u8 *p = (u8 *)ip;
+        p[t->to_offset] = p[t->from_offset];
+        ip->checksum = ip4_header_checksum(ip);
+        // TODO: L4 checksum
+    }
+    if (t->instructions & PNAT_INSTR_CLEAR_BYTE) {
+        /* Clear byte at offset */
+        u8 *p = (u8 *)ip;
+        p[t->clear_offset] = 0;
+        ip->checksum = ip4_header_checksum(ip);
+        // TODO: L4 checksum
+    }
+
     return PNAT_ERROR_NONE;
 }
 
@@ -109,6 +145,7 @@ static u32 pnat_rewrite_ip4(u32 pool_index, ip4_header_t *ip) {
  * If a binding is found, rewrite the packet according to instructions,
  * otherwise follow configured default action (forward, punt or drop)
  */
+// TODO: Make use of SVR configurable
 static_always_inline uword pnat_node_inline(vlib_main_t *vm,
                                             vlib_node_runtime_t *node,
                                             vlib_frame_t *frame,
@@ -156,9 +193,9 @@ static_always_inline uword pnat_node_inline(vlib_main_t *vm,
             /* Cache miss */
             *pi = ~0;
         }
-        next += 1;
 
         /*next: */
+        next += 1;
         n_left_from -= 1;
         b += 1;
         pi += 1;

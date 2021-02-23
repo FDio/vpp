@@ -155,14 +155,34 @@ add_vpp_plugin(pnat
 )
 
 # Unit tests
+set (PACKET_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/pnat/tests/test_packets.h)
+set (PACKET_DEFS
+  ${CMAKE_CURRENT_SOURCE_DIR}/pnat/tests/packets.def
+  ${CMAKE_CURRENT_SOURCE_DIR}/pnat/tests/missing_rule.def)
+set (PACKET_TESTGET ${CMAKE_CURRENT_SOURCE_DIR}/pnat/tests/test_genpackets.py)
+
+add_custom_command(
+  OUTPUT ${PACKET_HEADER}
+  COMMAND ${PACKET_TESTGET} ${PACKET_DEFS} > ${PACKET_HEADER}
+  COMMENT "Generating packet test definitions ${PACKET_DEFS}"
+  DEPENDS ${PACKET_DEFS}
+)
+
 add_vpp_executable(test_pnat
   SOURCES
-  pnat/pnat_test.c
+  pnat/tests/pnat_test.c
   pnat/pnat_node.c
   pnat/pnat.c
   ../../vnet/ip/ip_checksum.c
+  ${PACKET_HEADER}
+
   LINK_LIBRARIES vppinfra vlib
   NO_INSTALL
+)
+
+add_custom_target(test_pnat-run
+  COMMAND test_pnat
+  DEPENDS test_pnat
 )
 
 if("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.13" AND "${CMAKE_C_COMPILER_ID}" MATCHES "(Apple)?[Cc]lang")
