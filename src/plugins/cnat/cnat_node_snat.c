@@ -133,7 +133,7 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 			   CNAT_SESSION_FLAG_HAS_SNAT);
     }
 
-
+  vnet_buffer_offload_flags_clear (b, VNET_BUFFER_OFFLOAD_F_PARTIAL_CKSUM);
   if (AF_IP4 == ctx->af)
     cnat_translation_ip4 (session, ip4, udp0);
   else

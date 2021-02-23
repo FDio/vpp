@@ -37,6 +37,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
+#include <vnet/ip/ip_psh_cksum.h>
 
 #include <vnet/devices/virtio/vhost_user.h>
 #include <vnet/devices/virtio/vhost_user_inline.h>
@@ -226,27 +227,52 @@ vhost_user_handle_tx_offload (vhost_user_intf_t * vui, vlib_buffer_t * b,
   int is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
   int is_ip6 = b->flags & VNET_BUFFER_F_IS_IP6;
   u32 oflags = vnet_buffer (b)->oflags;
+  u16 psh_cksum = 0;
+  ip4_header_t *ip4 = 0;
 
   ASSERT (!(is_ip4 && is_ip6));
   vnet_generic_header_offset_parser (b, &gho, 1 /* l2 */ , is_ip4, is_ip6);
   if (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)
     {
-      ip4_header_t *ip4;
-
       ip4 =
 	(ip4_header_t *) (vlib_buffer_get_current (b) + gho.l3_hdr_offset);
       ip4->checksum = ip4_header_checksum (ip4);
     }
 
+  if ((oflags & VNET_BUFFER_OFFLOAD_F_PARTIAL_CKSUM) == 0)
+    {
+      if (is_ip4)
+	psh_cksum =
+	  ip4_pseudo_header_cksum (ip4, gho.l4_hdr_offset - gho.l3_hdr_offset);
+      else if (is_ip6)
+	{
+	  ip6_header_t *ip6 =
+	    (ip6_header_t *) (vlib_buffer_get_current (b) + gho.l3_hdr_offset);
+	  psh_cksum = ip6_pseudo_header_cksum (ip6);
+	}
+    }
+
   /* checksum offload */
   if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
     {
+      if (psh_cksum)
+	{
+	  udp_header_t *udp =
+	    (udp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
+	  udp->checksum = psh_cksum;
+	}
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
       hdr->csum_start = gho.l4_hdr_offset;
       hdr->csum_offset = offsetof (udp_header_t, checksum);
     }
   else if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
     {
+      if (psh_cksum)
+	{
+	  tcp_header_t *tcp =
+	    (tcp_header_t *) (vlib_buffer_get_current (b) + gho.l4_hdr_offset);
+	  tcp->checksum = psh_cksum;
+	}
       hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
       hdr->csum_start = gho.l4_hdr_offset;
       hdr->csum_offset = offsetof (tcp_header_t, checksum);

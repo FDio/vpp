@@ -427,7 +427,8 @@ STATIC_ASSERT (sizeof (vnet_buffer_opaque_t) <=
   _ (2, UDP_CKSUM, "offload-udp-cksum", 1)                                    \
   _ (3, OUTER_IP_CKSUM, "offload-outer-ip-cksum", 1)                          \
   _ (4, OUTER_TCP_CKSUM, "offload-outer-tcp-cksum", 1)                        \
-  _ (5, OUTER_UDP_CKSUM, "offload-outer-udp-cksum", 1)
+  _ (5, OUTER_UDP_CKSUM, "offload-outer-udp-cksum", 1)                        \
+  _ (6, PARTIAL_CKSUM, "offload-partial-cksum", 1)
 
 enum
 {
