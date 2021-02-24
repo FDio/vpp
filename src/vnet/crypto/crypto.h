@@ -300,13 +300,6 @@ typedef struct
 
 typedef struct
 {
-  vnet_crypto_op_status_t status:8;
-  u32 key_index;
-  i16 crypto_start_offset;	/* first buffer offset */
-  i16 integ_start_offset;
-  u32 crypto_total_length;
-  /* adj total_length for integ, e.g.4 bytes for IPSec ESN */
-  u16 integ_length_adj;
   u8 *iv;
   union
   {
@@ -314,18 +307,33 @@ typedef struct
     u8 *tag;
   };
   u8 *aad;
+  u32 key_index;
+  u32 crypto_total_length;
+  i16 crypto_start_offset; /* first buffer offset */
+  i16 integ_start_offset;
+  /* adj total_length for integ, e.g.4 bytes for IPSec ESN */
+  u16 integ_length_adj;
+  vnet_crypto_op_status_t status : 8;
   u8 flags; /**< share same VNET_CRYPTO_OP_FLAG_* values */
 } vnet_crypto_async_frame_elt_t;
+
+/* Assert the size so the compiler will warn us when it changes */
+STATIC_ASSERT_SIZEOF (vnet_crypto_async_frame_elt_t, 5 * sizeof (u64));
+
+typedef enum vnet_crypto_async_frame_state_t_
+{
+  VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED,
+  /* frame waiting to be processed */
+  VNET_CRYPTO_FRAME_STATE_PENDING,
+  VNET_CRYPTO_FRAME_STATE_WORK_IN_PROGRESS,
+  VNET_CRYPTO_FRAME_STATE_SUCCESS,
+  VNET_CRYPTO_FRAME_STATE_ELT_ERROR
+} __clib_packed vnet_crypto_async_frame_state_t;
 
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-#define VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED 0
-#define VNET_CRYPTO_FRAME_STATE_PENDING 1	/* frame waiting to be processed */
-#define VNET_CRYPTO_FRAME_STATE_WORK_IN_PROGRESS 2
-#define VNET_CRYPTO_FRAME_STATE_SUCCESS 3
-#define VNET_CRYPTO_FRAME_STATE_ELT_ERROR 4
-  u8 state;
+  vnet_crypto_async_frame_state_t state;
   vnet_crypto_async_op_id_t op:8;
   u16 n_elts;
   vnet_crypto_async_frame_elt_t elts[VNET_CRYPTO_FRAME_SIZE];
@@ -339,7 +347,7 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   vnet_crypto_async_frame_t *frames[VNET_CRYPTO_ASYNC_OP_N_IDS];
   vnet_crypto_async_frame_t *frame_pool;
-  u32 *buffer_indice;
+  u32 *buffer_indices;
   u16 *nexts;
 } vnet_crypto_thread_t;
 
