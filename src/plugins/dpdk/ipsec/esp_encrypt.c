@@ -116,8 +116,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 			 vlib_frame_t * from_frame, int is_ip6, int is_tun)
 {
   u32 n_left_from, *from, *to_next, next_index, thread_index;
-  ipsec_main_t *im = &ipsec_main;
-  vnet_main_t *vnm = im->vnet_main;
+  vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *vim = &vnm->interface_main;
   u32 thread_idx = vlib_get_thread_index ();
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
@@ -229,7 +228,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 
 	  if (sa_index0 != last_sa_index)
 	    {
-	      sa0 = pool_elt_at_index (im->sad, sa_index0);
+	      sa0 = ipsec_sa_get (sa_index0);
 
 	      cipher_alg =
 		vec_elt_at_index (dcm->cipher_algs, sa0->crypto_alg);

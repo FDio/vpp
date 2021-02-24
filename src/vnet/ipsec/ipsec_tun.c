@@ -140,8 +140,8 @@ ipsec_tun_protect_get_adj_next (vnet_link_t linkt,
 				const ipsec_tun_protect_t * itp)
 {
   ipsec_main_t *im;
+  const char *name;
   ipsec_sa_t *sa;
-  u32 next;
 
   if (!(itp->itp_flags & IPSEC_PROTECT_ITF))
     {
@@ -153,28 +153,26 @@ ipsec_tun_protect_get_adj_next (vnet_link_t linkt,
 
   sa = ipsec_sa_get (itp->itp_out_sa);
   im = &ipsec_main;
-  next = 0;
+  name = "error-drop";
 
   if ((sa->crypto_alg == IPSEC_CRYPTO_ALG_NONE &&
        sa->integ_alg == IPSEC_INTEG_ALG_NONE) &&
       !(itp->itp_flags & IPSEC_PROTECT_ITF))
-    next = (VNET_LINK_IP4 == linkt ? im->esp4_no_crypto_tun_node_index :
-				     im->esp6_no_crypto_tun_node_index);
+    name = (VNET_LINK_IP4 == linkt ? "esp4-no-crypto" : "esp6-no-crypto");
   else if (itp->itp_flags & IPSEC_PROTECT_L2)
-    next = (VNET_LINK_IP4 == linkt ? im->esp4_encrypt_l2_tun_node_index :
-				     im->esp6_encrypt_l2_tun_node_index);
+    name = (VNET_LINK_IP4 == linkt ? "esp4-encrypt-tun" : "esp6-encrypt-tun");
   else
     {
       switch (linkt)
 	{
 	case VNET_LINK_IP4:
-	  next = im->esp4_encrypt_tun_node_index;
+	  name = "esp4-encrypt-tun";
 	  break;
 	case VNET_LINK_IP6:
-	  next = im->esp6_encrypt_tun_node_index;
+	  name = "esp6-encrypt-tun";
 	  break;
 	case VNET_LINK_MPLS:
-	  next = im->esp_mpls_encrypt_tun_node_index;
+	  name = "esp-mpls-encrypt-tun";
 	  break;
 	case VNET_LINK_ARP:
 	case VNET_LINK_NSH:
@@ -183,7 +181,7 @@ ipsec_tun_protect_get_adj_next (vnet_link_t linkt,
 	  break;
 	}
     }
-  return (next);
+  return (vlib_get_node_by_name (vlib_get_main (), (u8 *) name)->index);
 }
 
 static void
@@ -911,16 +909,6 @@ ipsec_tunnel_protect_init (vlib_main_t *vm)
 			 "IPSec IPv4 tunnels",
 			 IPSEC_TUN_DEFAULT_HASH_NUM_BUCKETS,
 			 IPSEC_TUN_DEFAULT_HASH_MEMORY_SIZE);
-
-  /* set up feature nodes to drop outbound packets with no crypto alg set */
-  im->esp4_no_crypto_tun_node_index =
-    vlib_get_node_by_name (vm, (u8 *) "esp4-no-crypto")->index;
-  im->esp6_no_crypto_tun_node_index =
-    vlib_get_node_by_name (vm, (u8 *) "esp6-no-crypto")->index;
-  im->esp6_encrypt_l2_tun_node_index =
-    vlib_get_node_by_name (vm, (u8 *) "esp6-encrypt-tun")->index;
-  im->esp4_encrypt_l2_tun_node_index =
-    vlib_get_node_by_name (vm, (u8 *) "esp4-encrypt-tun")->index;
 
   ipsec_tun_adj_delegate_type =
     adj_delegate_register_new_type (&ipsec_tun_adj_delegate_vft);

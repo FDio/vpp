@@ -223,6 +223,8 @@ typedef struct
 STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline1, CLIB_CACHE_LINE_BYTES);
 STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline2, 2 * CLIB_CACHE_LINE_BYTES);
 
+extern ipsec_sa_t *ipsec_sa_pool;
+
 /*
  * Ensure that the IPsec data does not overlap with the IP data in
  * the buffer meta data
@@ -230,6 +232,12 @@ STATIC_ASSERT_OFFSET_OF (ipsec_sa_t, cacheline2, 2 * CLIB_CACHE_LINE_BYTES);
 STATIC_ASSERT (STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ipsec.sad_index) ==
 		 STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip.save_protocol),
 	       "IPSec data is overlapping with IP data");
+
+always_inline ipsec_sa_t *
+ipsec_sa_get (u32 sa_index)
+{
+  return (pool_elt_at_index (ipsec_sa_pool, sa_index));
+}
 
 #define _(a,v,s)                                                        \
   always_inline int                                                     \
@@ -279,6 +287,7 @@ extern void ipsec_sa_set_integ_alg (ipsec_sa_t * sa,
 typedef walk_rc_t (*ipsec_sa_walk_cb_t) (ipsec_sa_t * sa, void *ctx);
 extern void ipsec_sa_walk (ipsec_sa_walk_cb_t cd, void *ctx);
 
+extern u8 *format_ipsec_replay_window (u8 *s, va_list *args);
 extern u8 *format_ipsec_crypto_alg (u8 * s, va_list * args);
 extern u8 *format_ipsec_integ_alg (u8 * s, va_list * args);
 extern u8 *format_ipsec_sa (u8 * s, va_list * args);

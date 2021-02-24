@@ -14,6 +14,7 @@
  */
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_sa.h>
 
 /**
  * @brief

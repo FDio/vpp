@@ -50,10 +50,15 @@ typedef enum
     IPSEC_TUN_PROTECT_INPUT_N_ERROR,
 } ipsec_tun_protect_input_error_t;
 
+#define foreach_ipsec_tun_input_next                                          \
+  _ (PUNT, "punt-dispatch")                                                   \
+  _ (DROP, "error-drop")                                                      \
+  _ (ESP, "esp-decrypt")
+
 typedef enum ipsec_tun_next_t_
 {
 #define _(v, s) IPSEC_TUN_PROTECT_NEXT_##v,
-  foreach_ipsec_input_next
+  foreach_ipsec_tun_input_next
 #undef _
     IPSEC_TUN_PROTECT_N_NEXT,
 } ipsec_tun_next_t;
@@ -121,7 +126,7 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				vlib_frame_t * from_frame, int is_ip6)
 {
   ipsec_main_t *im = &ipsec_main;
-  vnet_main_t *vnm = im->vnet_main;
+  vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *vim = &vnm->interface_main;
 
   int is_trace = node->flags & VLIB_NODE_FLAG_TRACE;
@@ -138,7 +143,7 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   b = bufs;
   next = nexts;
 
-  clib_memset_u16 (nexts, im->esp4_decrypt_next_index, n_left_from);
+  clib_memset_u16 (nexts, IPSEC_INPUT_NEXT_ESP, n_left_from);
 
   u64 n_bytes = 0, n_packets = 0;
   u32 n_disabled = 0, n_no_tunnel = 0;
@@ -319,7 +324,7 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  //IPSEC_TUN_PROTECT_NEXT_DECRYPT;
-	  next[0] = im->esp4_decrypt_tun_next_index;
+	  next[0] = IPSEC_INPUT_NEXT_ESP;
 	}
     trace00:
       if (PREDICT_FALSE (is_trace))
@@ -362,6 +367,8 @@ ipsec_tun_protect_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
+// clang-format off
+
 VLIB_NODE_FN (ipsec4_tun_input_node) (vlib_main_t * vm,
 				      vlib_node_runtime_t * node,
 				      vlib_frame_t * from_frame)
@@ -369,7 +376,6 @@ VLIB_NODE_FN (ipsec4_tun_input_node) (vlib_main_t * vm,
   return ipsec_tun_protect_input_inline (vm, node, from_frame, 0);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec4_tun_input_node) = {
   .name = "ipsec4-tun-input",
   .vector_size = sizeof (u32),
@@ -381,9 +387,9 @@ VLIB_REGISTER_NODE (ipsec4_tun_input_node) = {
   .next_nodes = {
     [IPSEC_TUN_PROTECT_NEXT_DROP] = "ip4-drop",
     [IPSEC_TUN_PROTECT_NEXT_PUNT] = "punt-dispatch",
+    [IPSEC_TUN_PROTECT_NEXT_ESP] = "esp4-decrypt-tun",
   }
 };
-/* *INDENT-ON* */
 
 VLIB_NODE_FN (ipsec6_tun_input_node) (vlib_main_t * vm,
 				      vlib_node_runtime_t * node,
@@ -392,7 +398,6 @@ VLIB_NODE_FN (ipsec6_tun_input_node) (vlib_main_t * vm,
   return ipsec_tun_protect_input_inline (vm, node, from_frame, 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec6_tun_input_node) = {
   .name = "ipsec6-tun-input",
   .vector_size = sizeof (u32),
@@ -404,9 +409,11 @@ VLIB_REGISTER_NODE (ipsec6_tun_input_node) = {
   .next_nodes = {
     [IPSEC_TUN_PROTECT_NEXT_DROP] = "ip6-drop",
     [IPSEC_TUN_PROTECT_NEXT_PUNT] = "punt-dispatch",
+    [IPSEC_TUN_PROTECT_NEXT_ESP] = "esp6-decrypt-tun",
   }
 };
-/* *INDENT-ON* */
+
+// clang-format on
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -18,7 +18,7 @@
 #include <vlib/vlib.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/crypto/crypto.h>
-#include <vnet/vnet.h>
+#include <vnet/ipsec/ipsec.h>
 #include <vpp/app/version.h>
 
 #include <dpdk/buffer.h>
@@ -1488,7 +1488,7 @@ dpdk_cryptodev_init (vlib_main_t * vm)
 
   /* register handler */
   eidx = vnet_crypto_register_engine (vm, "dpdk_cryptodev", 79,
-                                      "DPDK Cryptodev Engine");
+				      "DPDK Cryptodev Engine");
 
 #define _(a, b, c, d, e, f) \
   vnet_crypto_register_async_handler \
@@ -1517,6 +1517,10 @@ dpdk_cryptodev_init (vlib_main_t * vm)
 #undef _
 
   vnet_crypto_register_key_handler (vm, eidx, cryptodev_key_handler);
+
+  /* this engine requires Async mode on */
+  vnet_crypto_request_async_mode (1);
+  ipsec_set_async_mode (1);
 
   return 0;
 

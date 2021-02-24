@@ -38,6 +38,7 @@
 #include <vnet/classify/policer_classify.h>
 #include <vnet/classify/flow_classify.h>
 #include <vnet/mpls/mpls.h>
+#include <vnet/ipsec/ipsec_sa.h>
 #include <vnet/ipsec/ipsec.h>
 #include <inttypes.h>
 #include <vnet/ip/ip6_hop_by_hop.h>

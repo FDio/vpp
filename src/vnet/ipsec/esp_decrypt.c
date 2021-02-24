@@ -750,8 +750,7 @@ esp_decrypt_post_crypto (vlib_main_t * vm, vlib_node_runtime_t * node,
 			 esp_decrypt_packet_data2_t * pd2, vlib_buffer_t * b,
 			 u16 * next, int is_ip6, int is_tun, int is_async)
 {
-  ipsec_main_t *im = &ipsec_main;
-  ipsec_sa_t *sa0 = vec_elt_at_index (im->sad, pd->sa_index);
+  ipsec_sa_t *sa0 = ipsec_sa_get (pd->sa_index);
   vlib_buffer_t *lb = b;
   const u8 esp_sz = sizeof (esp_header_t);
   const u8 tun_flags = IPSEC_SA_FLAG_IS_TUNNEL | IPSEC_SA_FLAG_IS_TUNNEL_V6;
@@ -1086,7 +1085,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  current_sa_bytes = current_sa_pkts = 0;
 
 	  current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
-	  sa0 = pool_elt_at_index (im->sad, current_sa_index);
+	  sa0 = ipsec_sa_get (current_sa_index);
 
 	  /* fetch the second cacheline ASAP */
 	  CLIB_PREFETCH (sa0->cacheline1, CLIB_CACHE_LINE_BYTES, LOAD);
@@ -1234,7 +1233,8 @@ esp_decrypt_inline (vlib_main_t * vm,
 
       /* no post process in async */
       vlib_node_increment_counter (vm, node->node_index,
-				   ESP_DECRYPT_ERROR_RX_PKTS, n_left);
+				   ESP_DECRYPT_ERROR_RX_PKTS,
+				   from_frame->n_vectors);
       if (n_async_drop)
 	vlib_buffer_enqueue_to_next (vm, node, from, nexts, n_async_drop);
 
@@ -1294,7 +1294,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	{
 	  esp_decrypt_trace_t *tr;
 	  tr = vlib_add_trace (vm, node, b[0], sizeof (*tr));
-	  sa0 = pool_elt_at_index (im->sad, current_sa_index);
+	  sa0 = ipsec_sa_get (current_sa_index);
 	  tr->crypto_alg = sa0->crypto_alg;
 	  tr->integ_alg = sa0->integ_alg;
 	  tr->seq = pd->seq;
@@ -1324,7 +1324,6 @@ esp_decrypt_post_inline (vlib_main_t * vm,
 			 vlib_node_runtime_t * node,
 			 vlib_frame_t * from_frame, int is_ip6, int is_tun)
 {
-  ipsec_main_t *im = &ipsec_main;
   u32 *from = vlib_frame_vector_args (from_frame);
   u32 n_left = from_frame->n_vectors;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
@@ -1354,12 +1353,12 @@ esp_decrypt_post_inline (vlib_main_t * vm,
       /*trace: */
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  ipsec_sa_t *sa0 = pool_elt_at_index (im->sad, pd->sa_index);
+	  ipsec_sa_t *sa0 = ipsec_sa_get (pd->sa_index);
 	  esp_decrypt_trace_t *tr;
 	  esp_decrypt_packet_data_t *async_pd =
 	    &(esp_post_data (b[0]))->decrypt_data;
 	  tr = vlib_add_trace (vm, node, b[0], sizeof (*tr));
-	  sa0 = pool_elt_at_index (im->sad, async_pd->sa_index);
+	  sa0 = ipsec_sa_get (async_pd->sa_index);
 
 	  tr->crypto_alg = sa0->crypto_alg;
 	  tr->integ_alg = sa0->integ_alg;
@@ -1567,6 +1566,29 @@ VLIB_REGISTER_NODE (esp6_decrypt_tun_post_node) = {
   .sibling_of = "esp6-decrypt-tun",
 };
 /* *INDENT-ON* */
+
+#ifndef CLIB_MARCH_VARIANT
+
+static clib_error_t *
+esp_decrypt_init (vlib_main_t *vm)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  im->esp4_dec_fq_index =
+    vlib_frame_queue_main_init (esp4_decrypt_node.index, 0);
+  im->esp6_dec_fq_index =
+    vlib_frame_queue_main_init (esp6_decrypt_node.index, 0);
+  im->esp4_dec_tun_fq_index =
+    vlib_frame_queue_main_init (esp4_decrypt_tun_node.index, 0);
+  im->esp6_dec_tun_fq_index =
+    vlib_frame_queue_main_init (esp6_decrypt_tun_node.index, 0);
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (esp_decrypt_init);
+
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON

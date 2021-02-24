@@ -20,6 +20,7 @@
 #define __IPSEC_TYPES_API_H__
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_sa.h>
 #include <vnet/ipsec/ipsec.api_types.h>
 
 extern int ipsec_proto_decode (vl_api_ipsec_proto_t in,
