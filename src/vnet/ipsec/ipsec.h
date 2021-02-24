@@ -24,58 +24,10 @@
 
 #include <vnet/ipsec/ipsec_spd.h>
 #include <vnet/ipsec/ipsec_spd_policy.h>
-#include <vnet/ipsec/ipsec_sa.h>
 
 #include <vppinfra/bihash_8_16.h>
 
 #include <vppinfra/bihash_24_16.h>
-
-typedef clib_error_t *(*add_del_sa_sess_cb_t) (u32 sa_index, u8 is_add);
-typedef clib_error_t *(*check_support_cb_t) (ipsec_sa_t * sa);
-typedef clib_error_t *(*enable_disable_cb_t) (int is_enable);
-
-typedef struct
-{
-  u8 *name;
-  /* add/del callback */
-  add_del_sa_sess_cb_t add_del_sa_sess_cb;
-  /* check support function */
-  check_support_cb_t check_support_cb;
-  u32 ah4_encrypt_node_index;
-  u32 ah4_decrypt_node_index;
-  u32 ah4_encrypt_next_index;
-  u32 ah4_decrypt_next_index;
-  u32 ah6_encrypt_node_index;
-  u32 ah6_decrypt_node_index;
-  u32 ah6_encrypt_next_index;
-  u32 ah6_decrypt_next_index;
-} ipsec_ah_backend_t;
-
-typedef struct
-{
-  u8 *name;
-  /* add/del callback */
-  add_del_sa_sess_cb_t add_del_sa_sess_cb;
-  /* check support function */
-  check_support_cb_t check_support_cb;
-  /* enable or disable function */
-  enable_disable_cb_t enable_disable_cb;
-  u32 esp4_encrypt_node_index;
-  u32 esp4_decrypt_node_index;
-  u32 esp4_encrypt_next_index;
-  u32 esp4_decrypt_next_index;
-  u32 esp6_encrypt_node_index;
-  u32 esp6_decrypt_node_index;
-  u32 esp6_encrypt_next_index;
-  u32 esp6_decrypt_next_index;
-  u32 esp4_decrypt_tun_node_index;
-  u32 esp4_decrypt_tun_next_index;
-  u32 esp4_encrypt_tun_node_index;
-  u32 esp6_decrypt_tun_node_index;
-  u32 esp6_decrypt_tun_next_index;
-  u32 esp6_encrypt_tun_node_index;
-  u32 esp_mpls_encrypt_tun_node_index;
-} ipsec_esp_backend_t;
 
 typedef struct
 {
@@ -117,10 +69,6 @@ typedef struct
 
   uword *tunnel_index_by_key;
 
-  /* convenience */
-  vlib_main_t *vlib_main;
-  vnet_main_t *vnet_main;
-
   /* hashes */
   uword *spd_index_by_spd_id;
   uword *spd_index_by_sw_if_index;
@@ -132,54 +80,6 @@ typedef struct
 
   clib_bihash_8_16_t tun4_protect_by_key;
   clib_bihash_24_16_t tun6_protect_by_key;
-
-  /* node indices */
-  u32 error_drop_node_index;
-  u32 esp4_encrypt_node_index;
-  u32 esp4_decrypt_node_index;
-  u32 esp4_decrypt_tun_node_index;
-  u32 esp4_encrypt_tun_node_index;
-  u32 ah4_encrypt_node_index;
-  u32 ah4_decrypt_node_index;
-  u32 esp6_encrypt_node_index;
-  u32 esp6_decrypt_node_index;
-  u32 esp6_decrypt_tun_node_index;
-  u32 esp6_encrypt_tun_node_index;
-  u32 esp_mpls_encrypt_tun_node_index;
-  u32 ah6_encrypt_node_index;
-  u32 ah6_decrypt_node_index;
-  /* next node indices */
-  u32 esp4_encrypt_next_index;
-  u32 esp4_decrypt_next_index;
-  u32 esp4_decrypt_tun_next_index;
-  u32 ah4_encrypt_next_index;
-  u32 ah4_decrypt_next_index;
-  u32 esp6_encrypt_next_index;
-  u32 esp6_decrypt_next_index;
-  u32 esp6_decrypt_tun_next_index;
-  u32 ah6_encrypt_next_index;
-  u32 ah6_decrypt_next_index;
-
-  /* tun nodes to drop packets when no crypto alg set on outbound SA */
-  u32 esp4_no_crypto_tun_node_index;
-  u32 esp6_no_crypto_tun_node_index;
-
-  /* tun nodes for encrypt on L2 interfaces */
-  u32 esp4_encrypt_l2_tun_node_index;
-  u32 esp6_encrypt_l2_tun_node_index;
-
-  /* pool of ah backends */
-  ipsec_ah_backend_t *ah_backends;
-  /* pool of esp backends */
-  ipsec_esp_backend_t *esp_backends;
-  /* index of current ah backend */
-  u32 ah_current_backend;
-  /* index of current esp backend */
-  u32 esp_current_backend;
-  /* index of default ah backend */
-  u32 ah_default_backend;
-  /* index of default esp backend */
-  u32 esp_default_backend;
 
   /* crypto alg data */
   ipsec_main_crypto_alg_t *crypto_algs;
@@ -218,60 +118,10 @@ typedef enum ipsec_format_flags_t_
 
 extern ipsec_main_t ipsec_main;
 
-clib_error_t *ipsec_add_del_sa_sess_cb (ipsec_main_t * im, u32 sa_index,
-					u8 is_add);
-
-clib_error_t *ipsec_check_support_cb (ipsec_main_t * im, ipsec_sa_t * sa);
-
 extern vlib_node_registration_t ipsec4_tun_input_node;
 extern vlib_node_registration_t ipsec6_tun_input_node;
 
-/*
- * functions
- */
-
-/*
- *  inline functions
- */
-
-static_always_inline u32
-get_next_output_feature_node_index (vlib_buffer_t * b,
-				    vlib_node_runtime_t * nr)
-{
-  u32 next;
-  vlib_main_t *vm = vlib_get_main ();
-  vlib_node_t *node = vlib_get_node (vm, nr->node_index);
-
-  vnet_feature_next (&next, b);
-  return node->next_nodes[next];
-}
-
-u32 ipsec_register_ah_backend (vlib_main_t * vm, ipsec_main_t * im,
-			       const char *name,
-			       const char *ah4_encrypt_node_name,
-			       const char *ah4_decrypt_node_name,
-			       const char *ah6_encrypt_node_name,
-			       const char *ah6_decrypt_node_name,
-			       check_support_cb_t ah_check_support_cb,
-			       add_del_sa_sess_cb_t ah_add_del_sa_sess_cb);
-
-u32 ipsec_register_esp_backend (
-  vlib_main_t *vm, ipsec_main_t *im, const char *name,
-  const char *esp4_encrypt_node_name, const char *esp4_encrypt_tun_node_name,
-  const char *esp4_decrypt_node_name, const char *esp4_decrypt_tun_node_name,
-  const char *esp6_encrypt_node_name, const char *esp6_encrypt_tun_node_name,
-  const char *esp6_decrypt_node_name, const char *esp6_decrypt_tun_node_name,
-  const char *esp_mpls_encrypt_tun_node_name,
-  check_support_cb_t esp_check_support_cb,
-  add_del_sa_sess_cb_t esp_add_del_sa_sess_cb,
-  enable_disable_cb_t enable_disable_cb);
-
-int ipsec_select_ah_backend (ipsec_main_t * im, u32 ah_backend_idx);
-int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);
-
-clib_error_t *ipsec_rsc_in_use (ipsec_main_t * im);
-void ipsec_set_async_mode (u32 is_enabled);
-
+extern void ipsec_set_async_mode (u32 is_enabled);
 extern void ipsec_register_udp_port (u16 udp_port);
 extern void ipsec_unregister_udp_port (u16 udp_port);
 

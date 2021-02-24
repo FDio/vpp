@@ -275,7 +275,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 		 thread_index, pi0, 1, clib_net_to_host_u16 (ip0->length));
 
 	      vnet_buffer (b[0])->ipsec.sad_index = p0->sa_index;
-	      next[0] = im->esp4_decrypt_next_index;
+	      next[0] = IPSEC_INPUT_NEXT_ESP;
 	      vlib_buffer_advance (b[0], ((u8 *) esp0 - (u8 *) ip0));
 	      goto trace0;
 	    }
@@ -362,7 +362,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 		 thread_index, pi0, 1, clib_net_to_host_u16 (ip0->length));
 
 	      vnet_buffer (b[0])->ipsec.sad_index = p0->sa_index;
-	      next[0] = im->ah4_decrypt_next_index;
+	      next[0] = IPSEC_INPUT_NEXT_AH;
 	      goto trace1;
 	    }
 	  else
@@ -466,9 +466,10 @@ VLIB_REGISTER_NODE (ipsec4_input_node) = {
   .error_strings = ipsec_input_error_strings,
   .n_next_nodes = IPSEC_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [IPSEC_INPUT_NEXT_##s] = n,
-    foreach_ipsec_input_next
-#undef _
+    [IPSEC_INPUT_NEXT_PUNT] = "punt-dispatch",
+    [IPSEC_INPUT_NEXT_DROP] = "error-drop",
+    [IPSEC_INPUT_NEXT_ESP] = "esp4-decrypt",
+    [IPSEC_INPUT_NEXT_AH] = "ah4-decrypt",
   },
 };
 /* *INDENT-ON* */
@@ -554,7 +555,7 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 		     header_size);
 
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
-		  next0 = im->esp6_decrypt_next_index;
+		  next0 = IPSEC_INPUT_NEXT_ESP;
 		  vlib_buffer_advance (b0, header_size);
 		  goto trace0;
 		}
@@ -582,7 +583,7 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 		     header_size);
 
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
-		  next0 = im->ah6_decrypt_next_index;
+		  next0 = IPSEC_INPUT_NEXT_AH;
 		  goto trace0;
 		}
 	      else
@@ -638,9 +639,10 @@ VLIB_REGISTER_NODE (ipsec6_input_node) = {
   .error_strings = ipsec_input_error_strings,
   .n_next_nodes = IPSEC_INPUT_N_NEXT,
   .next_nodes = {
-#define _(s,n) [IPSEC_INPUT_NEXT_##s] = n,
-    foreach_ipsec_input_next
-#undef _
+    [IPSEC_INPUT_NEXT_PUNT] = "punt-dispatch",
+    [IPSEC_INPUT_NEXT_DROP] = "error-drop",
+    [IPSEC_INPUT_NEXT_ESP] = "esp6-decrypt",
+    [IPSEC_INPUT_NEXT_AH] = "ah6-decrypt",
   },
 };
 /* *INDENT-ON* */

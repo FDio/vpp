@@ -1068,83 +1068,14 @@ vl_api_ipsec_sa_v3_dump_t_handler (vl_api_ipsec_sa_v3_dump_t *mp)
 static void
 vl_api_ipsec_backend_dump_t_handler (vl_api_ipsec_backend_dump_t * mp)
 {
-  vl_api_registration_t *rp;
-  ipsec_main_t *im = &ipsec_main;
-  u32 context = mp->context;
-
-  rp = vl_api_client_index_to_registration (mp->client_index);
-
-  if (rp == 0)
-    {
-      clib_warning ("Client %d AWOL", mp->client_index);
-      return;
-    }
-
-  ipsec_ah_backend_t *ab;
-  ipsec_esp_backend_t *eb;
-  /* *INDENT-OFF* */
-  pool_foreach (ab, im->ah_backends) {
-    vl_api_ipsec_backend_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
-    clib_memset (mp, 0, sizeof (*mp));
-    mp->_vl_msg_id = ntohs (VL_API_IPSEC_BACKEND_DETAILS);
-    mp->context = context;
-    snprintf ((char *)mp->name, sizeof (mp->name), "%.*s", vec_len (ab->name),
-              ab->name);
-    mp->protocol = ntohl (IPSEC_API_PROTO_AH);
-    mp->index = ab - im->ah_backends;
-    mp->active = mp->index == im->ah_current_backend ? 1 : 0;
-    vl_api_send_msg (rp, (u8 *)mp);
-  }
-  pool_foreach (eb, im->esp_backends) {
-    vl_api_ipsec_backend_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
-    clib_memset (mp, 0, sizeof (*mp));
-    mp->_vl_msg_id = ntohs (VL_API_IPSEC_BACKEND_DETAILS);
-    mp->context = context;
-    snprintf ((char *)mp->name, sizeof (mp->name), "%.*s", vec_len (eb->name),
-              eb->name);
-    mp->protocol = ntohl (IPSEC_API_PROTO_ESP);
-    mp->index = eb - im->esp_backends;
-    mp->active = mp->index == im->esp_current_backend ? 1 : 0;
-    vl_api_send_msg (rp, (u8 *)mp);
-  }
-  /* *INDENT-ON* */
 }
 
 static void
 vl_api_ipsec_select_backend_t_handler (vl_api_ipsec_select_backend_t * mp)
 {
-  ipsec_main_t *im = &ipsec_main;
   vl_api_ipsec_select_backend_reply_t *rmp;
-  ipsec_protocol_t protocol;
   int rv = 0;
-  if (pool_elts (ipsec_sa_pool) > 0)
-    {
-      rv = VNET_API_ERROR_INSTANCE_IN_USE;
-      goto done;
-    }
 
-  rv = ipsec_proto_decode (mp->protocol, &protocol);
-
-  if (rv)
-    goto done;
-
-#if WITH_LIBSSL > 0
-  switch (protocol)
-    {
-    case IPSEC_PROTOCOL_ESP:
-      rv = ipsec_select_esp_backend (im, mp->index);
-      break;
-    case IPSEC_PROTOCOL_AH:
-      rv = ipsec_select_ah_backend (im, mp->index);
-      break;
-    default:
-      rv = VNET_API_ERROR_INVALID_PROTOCOL;
-      break;
-    }
-#else
-  clib_warning ("unimplemented");	/* FIXME */
-#endif
-done:
   REPLY_MACRO (VL_API_IPSEC_SELECT_BACKEND_REPLY);
 }
 

@@ -184,6 +184,9 @@ ipsec_tun_protect_get_sa_out (adj_index_t ai)
   return (ipsec_tun_protect_sa_by_adj_index[ai]);
 }
 
+extern u16 ipsec_tun_in_edge4;
+extern u16 ipsec_tun_in_edge6;
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

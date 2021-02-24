@@ -23,6 +23,7 @@
 #include <vnet/ipip/ipip.h>
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_sa.h>
 #include <vnet/ipsec/ipsec_tun.h>
 
 static clib_error_t *
@@ -31,7 +32,6 @@ set_interface_spd_command_fn (vlib_main_t * vm,
 			      vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  ipsec_main_t *im = &ipsec_main;
   u32 sw_if_index = (u32) ~ 0;
   u32 spd_id;
   int is_add = 1;
@@ -41,9 +41,8 @@ set_interface_spd_command_fn (vlib_main_t * vm,
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  if (unformat
-      (line_input, "%U %u", unformat_vnet_sw_interface, im->vnet_main,
-       &sw_if_index, &spd_id))
+  if (unformat (line_input, "%U %u", unformat_vnet_sw_interface,
+		vnet_get_main (), &sw_if_index, &spd_id))
     ;
   else if (unformat (line_input, "del"))
     is_add = 0;
@@ -447,9 +446,8 @@ ipsec_spd_bindings_show_all (vlib_main_t * vm, ipsec_main_t * im)
   /* *INDENT-OFF* */
   hash_foreach(sw_if_index, spd_id, im->spd_index_by_sw_if_index, ({
     spd = pool_elt_at_index (im->spds, spd_id);
-    vlib_cli_output (vm, "  %d -> %U", spd->id,
-                     format_vnet_sw_if_index_name, im->vnet_main,
-                     sw_if_index);
+    vlib_cli_output (vm, "  %d -> %U", spd->id, format_vnet_sw_if_index_name,
+		     vnet_get_main (), sw_if_index);
   }));
   /* *INDENT-ON* */
 }
@@ -623,142 +621,6 @@ VLIB_CLI_COMMAND (show_ipsec_tunnel_command, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
-ipsec_show_backends_command_fn (vlib_main_t * vm,
-				unformat_input_t * input,
-				vlib_cli_command_t * cmd)
-{
-  ipsec_main_t *im = &ipsec_main;
-  u32 verbose = 0;
-
-  (void) unformat (input, "verbose %u", &verbose);
-
-  vlib_cli_output (vm, "IPsec AH backends available:");
-  u8 *s = format (NULL, "%=25s %=25s %=10s\n", "Name", "Index", "Active");
-  ipsec_ah_backend_t *ab;
-  /* *INDENT-OFF* */
-  pool_foreach (ab, im->ah_backends) {
-    s = format (s, "%=25s %=25u %=10s\n", ab->name, ab - im->ah_backends,
-                ab - im->ah_backends == im->ah_current_backend ? "yes" : "no");
-    if (verbose) {
-        vlib_node_t *n;
-        n = vlib_get_node (vm, ab->ah4_encrypt_node_index);
-        s = format (s, "     enc4 %s (next %d)\n", n->name, ab->ah4_encrypt_next_index);
-        n = vlib_get_node (vm, ab->ah4_decrypt_node_index);
-        s = format (s, "     dec4 %s (next %d)\n", n->name, ab->ah4_decrypt_next_index);
-        n = vlib_get_node (vm, ab->ah6_encrypt_node_index);
-        s = format (s, "     enc6 %s (next %d)\n", n->name, ab->ah6_encrypt_next_index);
-        n = vlib_get_node (vm, ab->ah6_decrypt_node_index);
-        s = format (s, "     dec6 %s (next %d)\n", n->name, ab->ah6_decrypt_next_index);
-    }
-  }
-  /* *INDENT-ON* */
-  vlib_cli_output (vm, "%v", s);
-  _vec_len (s) = 0;
-  vlib_cli_output (vm, "IPsec ESP backends available:");
-  s = format (s, "%=25s %=25s %=10s\n", "Name", "Index", "Active");
-  ipsec_esp_backend_t *eb;
-  /* *INDENT-OFF* */
-  pool_foreach (eb, im->esp_backends) {
-    s = format (s, "%=25s %=25u %=10s\n", eb->name, eb - im->esp_backends,
-                eb - im->esp_backends == im->esp_current_backend ? "yes"
-                                                                 : "no");
-    if (verbose) {
-        vlib_node_t *n;
-        n = vlib_get_node (vm, eb->esp4_encrypt_node_index);
-        s = format (s, "     enc4 %s (next %d)\n", n->name, eb->esp4_encrypt_next_index);
-        n = vlib_get_node (vm, eb->esp4_decrypt_node_index);
-        s = format (s, "     dec4 %s (next %d)\n", n->name, eb->esp4_decrypt_next_index);
-        n = vlib_get_node (vm, eb->esp6_encrypt_node_index);
-        s = format (s, "     enc6 %s (next %d)\n", n->name, eb->esp6_encrypt_next_index);
-        n = vlib_get_node (vm, eb->esp6_decrypt_node_index);
-        s = format (s, "     dec6 %s (next %d)\n", n->name, eb->esp6_decrypt_next_index);
-    }
-  }
-  /* *INDENT-ON* */
-  vlib_cli_output (vm, "%v", s);
-
-  vec_free (s);
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (ipsec_show_backends_command, static) = {
-    .path = "show ipsec backends",
-    .short_help = "show ipsec backends",
-    .function = ipsec_show_backends_command_fn,
-};
-/* *INDENT-ON* */
-
-static clib_error_t *
-ipsec_select_backend_command_fn (vlib_main_t * vm,
-				 unformat_input_t * input,
-				 vlib_cli_command_t * cmd)
-{
-  unformat_input_t _line_input, *line_input = &_line_input;
-  ipsec_main_t *im = &ipsec_main;
-  clib_error_t *error;
-  u32 backend_index;
-
-  error = ipsec_rsc_in_use (im);
-
-  if (error)
-    return error;
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  if (unformat (line_input, "ah"))
-    {
-      if (unformat (line_input, "%u", &backend_index))
-	{
-	  if (ipsec_select_ah_backend (im, backend_index) < 0)
-	    {
-	      return clib_error_return (0, "Invalid AH backend index `%u'",
-					backend_index);
-	    }
-	}
-      else
-	{
-	  return clib_error_return (0, "Invalid backend index `%U'",
-				    format_unformat_error, line_input);
-	}
-    }
-  else if (unformat (line_input, "esp"))
-    {
-      if (unformat (line_input, "%u", &backend_index))
-	{
-	  if (ipsec_select_esp_backend (im, backend_index) < 0)
-	    {
-	      return clib_error_return (0, "Invalid ESP backend index `%u'",
-					backend_index);
-	    }
-	}
-      else
-	{
-	  return clib_error_return (0, "Invalid backend index `%U'",
-				    format_unformat_error, line_input);
-	}
-    }
-  else
-    {
-      return clib_error_return (0, "Unknown input `%U'",
-				format_unformat_error, line_input);
-    }
-
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (ipsec_select_backend_command, static) = {
-    .path = "ipsec select backend",
-    .short_help = "ipsec select backend <ah|esp> <backend index>",
-    .function = ipsec_select_backend_command_fn,
-};
-
-/* *INDENT-ON* */
-
-static clib_error_t *
 clear_ipsec_counters_command_fn (vlib_main_t * vm,
 				 unformat_input_t * input,
 				 vlib_cli_command_t * cmd)
@@ -912,14 +774,6 @@ VLIB_CLI_COMMAND (ipsec_tun_protect_hash_show_node, static) =
   .short_help =  "show ipsec protect-hash",
 };
 /* *INDENT-ON* */
-
-clib_error_t *
-ipsec_cli_init (vlib_main_t * vm)
-{
-  return 0;
-}
-
-VLIB_INIT_FUNCTION (ipsec_cli_init);
 
 static clib_error_t *
 set_async_mode_command_fn (vlib_main_t * vm, unformat_input_t * input,

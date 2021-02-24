@@ -414,7 +414,7 @@ static void __attribute__ ((unused)) clear_and_free_obj (void *obj)
 }
 
 /* This is from rte_cryptodev_pmd.h */
-static inline void *
+/* static inline void * */
 get_session_private_data (const struct rte_cryptodev_sym_session *sess,
 			  uint8_t driver_id)
 {
@@ -535,38 +535,6 @@ add_del_sa_session (u32 sa_index, u8 is_add)
   return 0;
 }
 
-static clib_error_t *
-dpdk_ipsec_check_support (ipsec_sa_t * sa)
-{
-  dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
-
-  if (sa->integ_alg == IPSEC_INTEG_ALG_NONE)
-    switch (sa->crypto_alg)
-      {
-      case IPSEC_CRYPTO_ALG_NONE:
-      case IPSEC_CRYPTO_ALG_AES_GCM_128:
-      case IPSEC_CRYPTO_ALG_AES_GCM_192:
-      case IPSEC_CRYPTO_ALG_AES_GCM_256:
-	break;
-      default:
-	return clib_error_return (0, "unsupported integ-alg %U crypto-alg %U",
-				  format_ipsec_integ_alg, sa->integ_alg,
-				  format_ipsec_crypto_alg, sa->crypto_alg);
-      }
-
-  /* XXX do we need the NONE check? */
-  if (sa->crypto_alg != IPSEC_CRYPTO_ALG_NONE &&
-      dcm->cipher_algs[sa->crypto_alg].disabled)
-    return clib_error_return (0, "disabled crypto-alg %U",
-			      format_ipsec_crypto_alg, sa->crypto_alg);
-
-  /* XXX do we need the NONE check? */
-  if (sa->integ_alg != IPSEC_INTEG_ALG_NONE &&
-      dcm->auth_algs[sa->integ_alg].disabled)
-    return clib_error_return (0, "disabled integ-alg %U",
-			      format_ipsec_integ_alg, sa->integ_alg);
-  return NULL;
-}
 
 static void
 crypto_parse_capabilities (crypto_dev_t * dev,
@@ -990,28 +958,29 @@ crypto_disable (void)
   vec_free (dcm->auth_algs);
 }
 
-static clib_error_t *
-dpdk_ipsec_enable_disable (int is_enable)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "dpdk-crypto-input");
-  u32 skip_master = vlib_num_workers () > 0;
-  u32 n_mains = tm->n_vlib_mains;
-  u32 i;
+/* static clib_error_t * */
+/* dpdk_ipsec_enable_disable (int is_enable) */
+/* { */
+/*   vlib_main_t *vm = vlib_get_main (); */
+/*   vlib_thread_main_t *tm = vlib_get_thread_main (); */
+/*   vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *)
+ * "dpdk-crypto-input"); */
+/*   u32 skip_master = vlib_num_workers () > 0; */
+/*   u32 n_mains = tm->n_vlib_mains; */
+/*   u32 i; */
 
-  ASSERT (node);
-  for (i = skip_master; i < n_mains; i++)
-    vlib_node_set_state (vlib_mains[i], node->index, is_enable != 0 ?
-			 VLIB_NODE_STATE_POLLING : VLIB_NODE_STATE_DISABLED);
+/*   ASSERT (node); */
+/*   for (i = skip_master; i < n_mains; i++) */
+/*     vlib_node_set_state (vlib_mains[i], node->index, is_enable != 0 ? */
+/* 			 VLIB_NODE_STATE_POLLING : VLIB_NODE_STATE_DISABLED);
+ */
 
-  return 0;
-}
+/*   return 0; */
+/* } */
 
 static clib_error_t *
 dpdk_ipsec_main_init (vlib_main_t * vm)
 {
-  ipsec_main_t *im = &ipsec_main;
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   crypto_worker_main_t *cwm;
@@ -1061,18 +1030,18 @@ dpdk_ipsec_main_init (vlib_main_t * vm)
       return 0;
     }
 
-  u32 idx = ipsec_register_esp_backend (
-    vm, im, "dpdk backend", "dpdk-esp4-encrypt", "dpdk-esp4-encrypt-tun",
-    "dpdk-esp4-decrypt", "dpdk-esp4-decrypt", "dpdk-esp6-encrypt",
-    "dpdk-esp6-encrypt-tun", "dpdk-esp6-decrypt", "dpdk-esp6-decrypt",
-    "error-drop", dpdk_ipsec_check_support, add_del_sa_session,
-    dpdk_ipsec_enable_disable);
-  int rv;
-  if (im->esp_current_backend == ~0)
-    {
-      rv = ipsec_select_esp_backend (im, idx);
-      ASSERT (rv == 0);
-    }
+  /* u32 idx = ipsec_register_esp_backend ( */
+  /*   vm, im, "dpdk backend", "dpdk-esp4-encrypt", "dpdk-esp4-encrypt-tun", */
+  /*   "dpdk-esp4-decrypt", "dpdk-esp4-decrypt", "dpdk-esp6-encrypt", */
+  /*   "dpdk-esp6-encrypt-tun", "dpdk-esp6-decrypt", "dpdk-esp6-decrypt", */
+  /*   "error-drop", dpdk_ipsec_check_support, add_del_sa_session, */
+  /*   dpdk_ipsec_enable_disable); */
+  /* int rv; */
+  /* if (im->esp_current_backend == ~0) */
+  /*   { */
+  /*     rv = ipsec_select_esp_backend (im, idx); */
+  /*     ASSERT (rv == 0); */
+  /*   } */
   return 0;
 }
 

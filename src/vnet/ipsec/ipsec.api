@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "5.0.1";
+option version = "5.1.0";
 
 import "vnet/ipsec/ipsec_types.api";
 import "vnet/interface_types.api";
@@ -466,6 +466,7 @@ define ipsec_sa_v3_details {
     @param context - sender context, to match reply w/ request
 */
 define ipsec_backend_dump {
+  option deprecated;
   u32 client_index;
   u32 context;
 };
@@ -477,6 +478,7 @@ define ipsec_backend_dump {
     @param active - set to 1 if the backend is active, otherwise 0
 */
 define ipsec_backend_details {
+  option deprecated;
   u32 context;
   string name[128];
   vl_api_ipsec_proto_t protocol;
@@ -491,6 +493,7 @@ define ipsec_backend_details {
     @param index - backend index
 */
 autoreply define ipsec_select_backend {
+  option deprecated;
   u32 client_index;
   u32 context;
   vl_api_ipsec_proto_t protocol;

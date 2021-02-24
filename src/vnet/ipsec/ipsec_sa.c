@@ -31,28 +31,6 @@ vlib_combined_counter_main_t ipsec_sa_counters = {
 
 ipsec_sa_t *ipsec_sa_pool;
 
-static clib_error_t *
-ipsec_call_add_del_callbacks (ipsec_main_t * im, ipsec_sa_t * sa,
-			      u32 sa_index, int is_add)
-{
-  ipsec_ah_backend_t *ab;
-  ipsec_esp_backend_t *eb;
-  switch (sa->protocol)
-    {
-    case IPSEC_PROTOCOL_AH:
-      ab = pool_elt_at_index (im->ah_backends, im->ah_current_backend);
-      if (ab->add_del_sa_sess_cb)
-	return ab->add_del_sa_sess_cb (sa_index, is_add);
-      break;
-    case IPSEC_PROTOCOL_ESP:
-      eb = pool_elt_at_index (im->esp_backends, im->esp_current_backend);
-      if (eb->add_del_sa_sess_cb)
-	return eb->add_del_sa_sess_cb (sa_index, is_add);
-      break;
-    }
-  return 0;
-}
-
 void
 ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len)
 {
@@ -72,19 +50,20 @@ ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len)
 static void
 ipsec_sa_stack (ipsec_sa_t * sa)
 {
-  ipsec_main_t *im = &ipsec_main;
   dpo_id_t tmp = DPO_INVALID;
+  const char *name;
 
   tunnel_contribute_forwarding (&sa->tunnel, &tmp);
 
   if (IPSEC_PROTOCOL_AH == sa->protocol)
-    dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
-			  im->ah6_encrypt_node_index :
-			  im->ah4_encrypt_node_index), &sa->dpo, &tmp);
+    name = (ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ? "ah6-encrypt" : "ah4-encrypt");
   else
-    dpo_stack_from_node ((ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ?
-			  im->esp6_encrypt_node_index :
-			  im->esp4_encrypt_node_index), &sa->dpo, &tmp);
+    name =
+      (ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ? "esp6-encrypt" : "esp4-encrypt");
+
+  dpo_stack_from_node (
+    vlib_get_node_by_name (vlib_get_main (), (u8 *) name)->index, &sa->dpo,
+    &tmp);
   dpo_reset (&tmp);
 }
 
@@ -164,6 +143,55 @@ ipsec_sa_set_async_op_ids (ipsec_sa_t * sa)
   foreach_crypto_link_async_alg
 #undef _
   /* *INDENT-ON* */
+}
+
+static clib_error_t *
+ipsec_check_ah_support (ipsec_sa_t *sa)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  if (sa->integ_alg == IPSEC_INTEG_ALG_NONE)
+    return clib_error_return (0, "unsupported none integ-alg");
+
+  if (!vnet_crypto_is_set_handler (im->integ_algs[sa->integ_alg].alg))
+    return clib_error_return (0, "No crypto engine support for %U",
+			      format_ipsec_integ_alg, sa->integ_alg);
+
+  return 0;
+}
+
+static clib_error_t *
+ipsec_check_esp_support (ipsec_sa_t *sa)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  if (IPSEC_INTEG_ALG_NONE != sa->integ_alg)
+    {
+      if (!vnet_crypto_is_set_handler (im->integ_algs[sa->integ_alg].alg))
+	return clib_error_return (0, "No crypto engine support for %U",
+				  format_ipsec_integ_alg, sa->integ_alg);
+    }
+  if (IPSEC_CRYPTO_ALG_NONE != sa->crypto_alg)
+    {
+      if (!vnet_crypto_is_set_handler (im->crypto_algs[sa->crypto_alg].alg))
+	return clib_error_return (0, "No crypto engine support for %U",
+				  format_ipsec_crypto_alg, sa->crypto_alg);
+    }
+
+  return (0);
+}
+
+static clib_error_t *
+ipsec_check_support_cb (ipsec_main_t *im, ipsec_sa_t *sa)
+{
+  clib_error_t *error = 0;
+
+  if (PREDICT_FALSE (sa->protocol == IPSEC_PROTOCOL_AH))
+    return (ipsec_check_ah_support (sa));
+  else
+    return (ipsec_check_esp_support (sa));
+
+  return error;
 }
 
 int
@@ -263,13 +291,6 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
       return VNET_API_ERROR_UNIMPLEMENTED;
     }
 
-  err = ipsec_call_add_del_callbacks (im, sa, sa_index, 1);
-  if (err)
-    {
-      pool_put (ipsec_sa_pool, sa);
-      return VNET_API_ERROR_SYSCALL_ERROR_1;
-    }
-
   if (ipsec_sa_is_set_IS_TUNNEL (sa) && !ipsec_sa_is_set_IS_INBOUND (sa))
     {
       sa->tunnel_flags = sa->tunnel.t_encap_decap_flags;
@@ -336,9 +357,6 @@ ipsec_sa_del (ipsec_sa_t * sa)
   sa_index = sa - ipsec_sa_pool;
   hash_unset (im->sa_index_by_sa_id, sa->id);
   tunnel_unresolve (&sa->tunnel);
-
-  /* no recovery possible when deleting an SA */
-  (void) ipsec_call_add_del_callbacks (im, sa, sa_index, 0);
 
   if (ipsec_sa_is_set_IS_ASYNC (sa))
     vnet_crypto_request_async_mode (0);
