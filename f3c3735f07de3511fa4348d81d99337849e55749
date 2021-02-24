@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d0803e9e_671e7d53",
+        "filename": "src/plugins/dns/dns.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2021-02-24T16:15:58Z",
+      "side": 1,
+      "message": "Maybe something like this?\n\n#define foreach_query_type \\\n_(A, \"_A\", 2) \\\n_(AAAA, \"_AAAA\", 5) \\\n\u003cetc\u003e \n\n  switch(qtype)\n    {\n#define _(type,str,len)                         \\\n    case DNS_TYPE_##type:                       \\\n      int l\u003dvec_len(*name);                     \\\n      vec_validate(*name, l+len);               \\\n      memcpy(*name,str,len);                    \\\n      break;\n   foreach_query_type;\n#undef _\n    }",
+      "revId": "f3c3735f07de3511fa4348d81d99337849e55749",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
