@@ -175,8 +175,7 @@ int vnet_dns_cname_indirection_nolock (vlib_main_t * vm, dns_main_t * dm,
 
 int vnet_dns_delete_entry_by_index_nolock (dns_main_t * dm, u32 index);
 
-void
-vnet_dns_format_name (u8 ** name, u8 qtype);
+void vnet_dns_format_name (u8 **name, u8 qtype);
 
 int
 vnet_dns_resolve_name (vlib_main_t * vm, dns_main_t * dm, u8 * name,

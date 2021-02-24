@@ -41,67 +41,30 @@
 
 dns_main_t dns_main;
 
+#define foreach_query_type                                                    \
+  _ (A, "_A", 2)                                                              \
+  _ (AAAA, "_AAAA", 5)                                                        \
+  _ (NAMESERVER, "_NS", 3)                                                    \
+  _ (CNAME, "_CNAME", 6)                                                      \
+  _ (MAIL_EXCHANGE, "_MX", 3)                                                 \
+  _ (PTR, "_PTR", 4)
+
 void
-vnet_dns_format_name (u8 ** name, u8 qtype)
+vnet_dns_format_name (u8 **name, u8 qtype)
 {
-   switch (qtype)
-   {
-       case DNS_TYPE_A:
-           vec_add1 (*name, '_');
-           vec_add1 (*name, 'A');
-           vec_add1 (*name, 0);
-           _vec_len (*name) -= 1;
-           break;
-       case DNS_TYPE_AAAA:
-           vec_add1 (*name, '_');
-           vec_add1 (*name, 'A');
-           vec_add1 (*name, 'A');
-           vec_add1 (*name, 'A');
-           vec_add1 (*name, 'A');
-           vec_add1 (*name, 0);
-           _vec_len (*name) -= 1;
-           break;
-       case DNS_TYPE_NAMESERVER:
-	 vec_add1 (*name, '_');
-	 vec_add1 (*name, 'N');
-	 vec_add1 (*name, 'S');
-	 vec_add1 (*name, 0);
-	 _vec_len (*name) -= 1;
-	 break;
-       case DNS_TYPE_CNAME:
-	 vec_add1 (*name, '_');
-	 vec_add1 (*name, 'C');
-	 vec_add1 (*name, 'N');
-	 vec_add1 (*name, 'A');
-	 vec_add1 (*name, 'M');
-	 vec_add1 (*name, 'E');
-	 vec_add1 (*name, 0);
-	 _vec_len (*name) -= 1;
-	 break;
-       case DNS_TYPE_MAIL_EXCHANGE:
-	 vec_add1 (*name, '_');
-	 vec_add1 (*name, 'M');
-	 vec_add1 (*name, 'X');
-	 vec_add1 (*name, 0);
-	 _vec_len (*name) -= 1;
-	 break;
-       case DNS_TYPE_PTR:
-	 vec_add1 (*name, '_');
-	 vec_add1 (*name, 'P');
-	 vec_add1 (*name, 'T');
-	 vec_add1 (*name, 'R');
-	 vec_add1 (*name, 0);
-	 _vec_len (*name) -= 1;
-	 break;
-       // ... other request api_types
-       default :
-           vec_add1 (*name, '_');
-           vec_add1 (*name, '?');
-           vec_add1 (*name, '?');
-           vec_add1 (*name, '?');
-           vec_add1 (*name, 0);
-           _vec_len (*name) -= 1;
-   }
+  int l;
+
+  switch (qtype)
+    {
+#define _(type, str, len)                                                     \
+  case DNS_TYPE_##type:                                                       \
+    l = vec_len (*name);                                                      \
+    vec_validate (*name, l + len);                                            \
+    memcpy (*name + l, str, len);                                             \
+    break;
+      foreach_query_type;
+#undef _
+    }
 }
 
 static int
@@ -1765,22 +1728,27 @@ format_dns_query (u8 * s, va_list * args)
 
   qp = (dns_query_t *) pos;
 
-      switch (clib_net_to_host_u16 (qp->type))
-	{
-	case DNS_TYPE_A:
-	  s = format (s, "type A    ");
-	  break;
-	case DNS_TYPE_AAAA:
-	  s = format (s, "type AAAA ");
-	  break;
-	case DNS_TYPE_ALL:
-	  s = format (s, "type ALL  ");
-	  break;
+#define foreach_query_type1                                                   \
+  _ (A, "type A     ")                                                        \
+  _ (AAAA, "type AAAA  ")                                                     \
+  _ (NAMESERVER, "type NS    ")                                               \
+  _ (CNAME, "type CNAME ")                                                    \
+  _ (MAIL_EXCHANGE, "type MX    ")                                            \
+  _ (PTR, "type PTR   ")                                                      \
+  _ (ALL, "type ALL   ")
 
-	default:
-	  s = format (s, "type %-4d ", clib_net_to_host_u16 (qp->type));
-	  break;
-	}
+  switch (clib_net_to_host_u16 (qp->type))
+    {
+#define _(type, str)                                                          \
+  case DNS_TYPE_##type:                                                       \
+    s = format (s, "foo " str);                                               \
+    break;
+      foreach_query_type1;
+#undef _
+    default:
+      s = format (s, "type %-5d ", clib_net_to_host_u16 (qp->type));
+      break;
+    }
 
   pos += sizeof (*qp);
 
@@ -2186,7 +2154,8 @@ format_dns_cache (u8 * s, va_list * args)
 		ss = "    ";
 
 	      if (verbose < 2 && ep->flags & DNS_CACHE_ENTRY_FLAG_CNAME)
-		s = format (s, "%s%s -> %s", ss, ep->pending_requests->name, ep->cname);
+		s = format (s, "%s%s -> %s", ss, ep->pending_requests->name,
+			    ep->cname);
 	      else
 		s = format (s, "%s%s -> %U", ss, ep->pending_requests->name,
 			    format_dns_reply, ep->dns_response, verbose);
@@ -2231,8 +2200,8 @@ format_dns_cache (u8 * s, va_list * args)
 	      s = format (s, "%s%s -> %U", ss, ep->name, format_dns_reply,
 			  ep->dns_response, verbose);
 	    if (!(ep->flags & DNS_CACHE_ENTRY_FLAG_STATIC))
-              {
-                f64 time_left = ep->expiration_time - now;
+	      {
+		f64 time_left = ep->expiration_time - now;
                 if (time_left > 0.0)
                   s = format (s, "  TTL left %.1f", time_left);
                 else
@@ -2241,8 +2210,8 @@ format_dns_cache (u8 * s, va_list * args)
                 if (verbose > 2)
                   s = format (s, "    %d client notifications pending\n",
                               vec_len(ep->pending_requests));
-              }
-          }
+	      }
+	  }
         else
           {
             ASSERT (ep->dns_request);
@@ -2971,28 +2940,32 @@ found_src_address:
       /* Now, add single A-rec RR */
       if (pr->request_type == DNS_PEER_PENDING_NAME_TO_IP)
 	{
-        if (rnr->ip4_set)
-            {
-            vec_add2 (reply, rrptr, sizeof (dns_rr_t) + sizeof (ip4_address_t));
-            rr = (dns_rr_t *) rrptr;
+	  if (rnr->ip4_set)
+	    {
+	      vec_add2 (reply, rrptr,
+			sizeof (dns_rr_t) + sizeof (ip4_address_t));
+	      rr = (dns_rr_t *) rrptr;
 
-            rr->type = clib_host_to_net_u16 (DNS_TYPE_A);
-            rr->class = clib_host_to_net_u16 (1 /* internet */ );
-            rr->ttl = clib_host_to_net_u32 (ttl);
-            rr->rdlength = clib_host_to_net_u16 (sizeof (ip4_address_t));
-            clib_memcpy (rr->rdata, rnr->ip4_address, sizeof (ip4_address_t));
-            }
-        else if (rnr->ip6_set)
-            {
-            vec_add2 (reply, rrptr, sizeof (dns_rr_t) + sizeof (ip6_address_t));
-            rr = (dns_rr_t *) rrptr;
+	      rr->type = clib_host_to_net_u16 (DNS_TYPE_A);
+	      rr->class = clib_host_to_net_u16 (1 /* internet */);
+	      rr->ttl = clib_host_to_net_u32 (ttl);
+	      rr->rdlength = clib_host_to_net_u16 (sizeof (ip4_address_t));
+	      clib_memcpy (rr->rdata, rnr->ip4_address,
+			   sizeof (ip4_address_t));
+	    }
+	  else if (rnr->ip6_set)
+	    {
+	      vec_add2 (reply, rrptr,
+			sizeof (dns_rr_t) + sizeof (ip6_address_t));
+	      rr = (dns_rr_t *) rrptr;
 
-            rr->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
-            rr->class = clib_host_to_net_u16 (1 /* internet */ );
-            rr->ttl = clib_host_to_net_u32 (ttl);
-            rr->rdlength = clib_host_to_net_u16 (sizeof (ip6_address_t));
-            clib_memcpy (rr->rdata, rnr->ip6_address, sizeof (ip6_address_t));
-            }
+	      rr->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
+	      rr->class = clib_host_to_net_u16 (1 /* internet */);
+	      rr->ttl = clib_host_to_net_u32 (ttl);
+	      rr->rdlength = clib_host_to_net_u16 (sizeof (ip6_address_t));
+	      clib_memcpy (rr->rdata, rnr->ip6_address,
+			   sizeof (ip6_address_t));
+	    }
 	}
       else
 	{
