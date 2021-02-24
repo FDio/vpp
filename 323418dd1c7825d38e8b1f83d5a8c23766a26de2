@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "abd101fb_a1be6d13",
+        "filename": "src/vppinfra/unix-formats.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 320,
+      "author": {
+        "id": 1964
+      },
+      "writtenOn": "2021-02-24T08:02:21Z",
+      "side": 1,
+      "message": "I encountered the error of building VPP image on CentOS 7 and found the root cause is the incompatible udphdr field names. It seems if glibc version is less than 2.19, struct updhdr in netinet/udp.h is declared in the following format, which will not adopt uh_sport/uh_dport as member if macro __FAVOR_BSD is not defined. \n\n/* UDP header as specified by RFC 768, August 1980. */\n#ifdef __FAVOR_BSD\n\nstruct udphdr\n{\n  u_int16_t uh_sport;           /* source port */\n  u_int16_t uh_dport;           /* destination port */\n  u_int16_t uh_ulen;            /* udp length */\n  u_int16_t uh_sum;             /* udp checksum */\n};\n\n#else\n\nstruct udphdr\n{\n  u_int16_t source;\n  u_int16_t dest;\n  u_int16_t len;\n  u_int16_t check;\n};\n#endif\n\nBut for newer version of glibc, udphdr is declared in the following way that will not have this issue.\n\n/* UDP header as specified by RFC 768, August 1980. */\n\nstruct udphdr\n{\n  __extension__ union\n  {\n    struct\n    {\n      uint16_t uh_sport;    /* source port */\n      uint16_t uh_dport;    /* destination port */\n      uint16_t uh_ulen;     /* udp length */\n      uint16_t uh_sum;      /* udp checksum */\n    };\n    struct\n    {\n      uint16_t source;\n      uint16_t dest;\n      uint16_t len;\n      uint16_t check;\n    };\n  };\n};\n\nSo I reverted the code back to the previous version in the patch https://gerrit.fd.io/r/c/vpp/+/31421 for compatibility consideration. Could you guys take time to review it?",
+      "range": {
+        "startLine": 320,
+        "startChar": 18,
+        "endLine": 320,
+        "endChar": 26
+      },
+      "revId": "323418dd1c7825d38e8b1f83d5a8c23766a26de2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
