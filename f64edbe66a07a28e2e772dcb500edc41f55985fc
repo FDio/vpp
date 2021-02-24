@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c34d396d_0c11b3df",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 419,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-02-24T09:56:36Z",
+      "side": 1,
+      "message": "do we need this?",
+      "range": {
+        "startLine": 417,
+        "startChar": 8,
+        "endLine": 419,
+        "endChar": 13
+      },
+      "revId": "f64edbe66a07a28e2e772dcb500edc41f55985fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7b0b7483_2b62847b",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 507,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-02-24T09:56:36Z",
+      "side": 1,
+      "message": "do we need this?",
+      "range": {
+        "startLine": 500,
+        "startChar": 2,
+        "endLine": 507,
+        "endChar": 2
+      },
+      "revId": "f64edbe66a07a28e2e772dcb500edc41f55985fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5999bfc2_aefce3fe",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei_api.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2021-02-24T09:56:36Z",
+      "side": 1,
+      "message": "do we need this?",
+      "range": {
+        "startLine": 35,
+        "startChar": 4,
+        "endLine": 46,
+        "endChar": 9
+      },
+      "revId": "f64edbe66a07a28e2e772dcb500edc41f55985fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
