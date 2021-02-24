@@ -87,9 +87,9 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       if (cf)
 	{
-	  vec_validate (ct->buffer_indice, n_cache + cf->n_elts);
+	  vec_validate (ct->buffer_indices, n_cache + cf->n_elts);
 	  vec_validate (ct->nexts, n_cache + cf->n_elts);
-	  clib_memcpy_fast (ct->buffer_indice + n_cache, cf->buffer_indices,
+	  clib_memcpy_fast (ct->buffer_indices + n_cache, cf->buffer_indices,
 			    sizeof (u32) * cf->n_elts);
 	  if (cf->state == VNET_CRYPTO_FRAME_STATE_SUCCESS)
 	    {
@@ -114,7 +114,7 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  n_cache += cf->n_elts;
 	  if (n_cache >= VLIB_FRAME_SIZE)
 	    {
-	      vlib_buffer_enqueue_to_next (vm, node, ct->buffer_indice,
+	      vlib_buffer_enqueue_to_next (vm, node, ct->buffer_indices,
 					   ct->nexts, n_cache);
 	      n_cache = 0;
 	    }
@@ -167,7 +167,7 @@ VLIB_NODE_FN (crypto_dispatch_node) (vlib_main_t * vm,
   }
   /* *INDENT-ON* */
   if (n_cache)
-    vlib_buffer_enqueue_to_next (vm, node, ct->buffer_indice, ct->nexts,
+    vlib_buffer_enqueue_to_next (vm, node, ct->buffer_indices, ct->nexts,
 				 n_cache);
 
   return n_dispatched;
