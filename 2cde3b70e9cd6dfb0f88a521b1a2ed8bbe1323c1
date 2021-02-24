@@ -34,6 +34,24 @@
       "revId": "2cde3b70e9cd6dfb0f88a521b1a2ed8bbe1323c1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3daac202_9246512c",
+        "filename": "src/vnet/devices/virtio/vhost_user.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 526,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-02-24T09:37:38Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "5c49bf9d_596cf290",
+      "revId": "2cde3b70e9cd6dfb0f88a521b1a2ed8bbe1323c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
