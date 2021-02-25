@@ -98,7 +98,11 @@ vlib_decrement_simple_counter (vlib_simple_counter_main_t * cm,
 
   my_counters = cm->counters[thread_index];
 
-  ASSERT (my_counters[index] >= decrement);
+  if (my_counters[index] < decrement)
+    {
+      ASSERT (0);
+      return;
+    }
 
   my_counters[index] -= decrement;
 }
