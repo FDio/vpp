@@ -27,6 +27,8 @@ unformat_cnat_snat_interface_map_type (unformat_input_t *input, va_list *args)
     *a = CNAT_SNAT_IF_MAP_INCLUDE_V4;
   else if (unformat (input, "include-v6"))
     *a = CNAT_SNAT_IF_MAP_INCLUDE_V6;
+  else if (unformat (input, "k8s"))
+    *a = CNAT_SNAT_IF_MAP_INCLUDE_POD;
   else
     return 0;
   return 1;
@@ -43,6 +45,9 @@ format_cnat_snat_interface_map_type (u8 *s, va_list *args)
       break;
     case CNAT_SNAT_IF_MAP_INCLUDE_V6:
       s = format (s, "Included v6");
+      break;
+    case CNAT_SNAT_IF_MAP_INCLUDE_POD:
+      s = format (s, "k8s pod");
       break;
     default:
       s = format (s, "(unknown)");
@@ -135,7 +140,7 @@ cnat_snat_policy_add_del_if_command_fn (vlib_main_t *vm,
 VLIB_CLI_COMMAND (cnat_snat_policy_add_del_if_command, static) = {
   .path = "set cnat snat-policy if",
   .short_help = "set cnat snat-policy if [del]"
-		"[table [include-v4 include-v6]] [interface]",
+		"[table [include-v4 include-v6 k8s]] [interface]",
   .function = cnat_snat_policy_add_del_if_command_fn,
 };
 
@@ -277,6 +282,48 @@ cnat_snat_policy_if_pfx (vlib_buffer_t *b, cnat_session_t *session)
     if (cnat_search_snat_prefix (dst_addr, af))
       /* Destination is not in the prefixes that don't require snat */
       return 1;
+  return 0;
+}
+
+int
+cnat_snat_policy_k8s (vlib_buffer_t *b, cnat_session_t *session)
+{
+  cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
+  ip_address_family_t af = session->key.cs_af;
+
+  ip46_address_t *src_addr = &session->key.cs_ip[VLIB_RX];
+  ip46_address_t *dst_addr = &session->key.cs_ip[VLIB_TX];
+  u32 in_if = vnet_buffer (b)->sw_if_index[VLIB_RX];
+  u32 out_if = vnet_buffer (b)->sw_if_index[VLIB_TX];
+
+  /* source nat for outgoing connections */
+  if (cnat_snat_policy_interface_enabled (in_if, af))
+    if (cnat_search_snat_prefix (dst_addr, af))
+      /* Destination is not in the prefixes that don't require snat */
+      return 1;
+
+  /* source nat for translations that come from the outside:
+     src not not a pod interface, dst not a pod interface */
+  if (!clib_bitmap_get (cpm->interface_maps[CNAT_SNAT_IF_MAP_INCLUDE_POD],
+			in_if) &&
+      !clib_bitmap_get (cpm->interface_maps[CNAT_SNAT_IF_MAP_INCLUDE_POD],
+			out_if))
+    {
+      if (AF_IP6 == af &&
+	  ip6_address_is_equal (&src_addr->ip6,
+				&ip_addr_v6 (&cpm->snat_ip6.ce_ip)))
+	return 0;
+      if (AF_IP4 == af &&
+	  ip4_address_is_equal (&src_addr->ip4,
+				&ip_addr_v4 (&cpm->snat_ip4.ce_ip)))
+	return 0;
+      return 1;
+    }
+
+  /* handle the case where a container is connecting to itself via a service */
+  if (ip46_address_is_equal (src_addr, dst_addr))
+    return 1;
+
   return 0;
 }
 
@@ -434,6 +481,9 @@ cnat_set_snat_policy (cnat_snat_policy_type_t policy)
     case CNAT_SNAT_POLICY_IF_PFX:
       cpm->snat_policy = cnat_snat_policy_if_pfx;
       break;
+    case CNAT_SNAT_POLICY_K8S:
+      cpm->snat_policy = cnat_snat_policy_k8s;
+      break;
     default:
       return 1;
     }
@@ -451,6 +501,8 @@ cnat_snat_policy_set_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (input, "if-pfx"))
 	policy = CNAT_SNAT_POLICY_IF_PFX;
+      else if (unformat (input, "k8s"))
+	policy = CNAT_SNAT_POLICY_K8S;
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);
@@ -462,7 +514,7 @@ cnat_snat_policy_set_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (cnat_snat_policy_set_cmd, static) = {
   .path = "set cnat snat-policy",
-  .short_help = "set cnat snat-policy [none][if-pfx]",
+  .short_help = "set cnat snat-policy [none][if-pfx][k8s]",
   .function = cnat_snat_policy_set_cmd_fn,
 };
 
