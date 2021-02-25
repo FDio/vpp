@@ -1234,7 +1234,8 @@ esp_decrypt_inline (vlib_main_t * vm,
 
       /* no post process in async */
       vlib_node_increment_counter (vm, node->node_index,
-				   ESP_DECRYPT_ERROR_RX_PKTS, n_left);
+				   ESP_DECRYPT_ERROR_RX_PKTS,
+				   from_frame->n_vectors);
       if (n_async_drop)
 	vlib_buffer_enqueue_to_next (vm, node, from, nexts, n_async_drop);
 

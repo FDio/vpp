@@ -43,13 +43,13 @@ class ConfigIpsecAH(TemplateIpsec):
     encryption_type = AH
     net_objs = []
     tra4_encrypt_node_name = "ah4-encrypt"
-    tra4_decrypt_node_name = "ah4-decrypt"
+    tra4_decrypt_node_name = ["ah4-decrypt", "ah4-decrypt"]
     tra6_encrypt_node_name = "ah6-encrypt"
-    tra6_decrypt_node_name = "ah6-decrypt"
+    tra6_decrypt_node_name = ["ah6-decrypt", "ah6-decrypt"]
     tun4_encrypt_node_name = "ah4-encrypt"
-    tun4_decrypt_node_name = "ah4-decrypt"
+    tun4_decrypt_node_name = ["ah4-decrypt", "ah4-decrypt"]
     tun6_encrypt_node_name = "ah6-encrypt"
-    tun6_decrypt_node_name = "ah6-decrypt"
+    tun6_decrypt_node_name = ["ah6-decrypt", "ah6-decrypt"]
 
     @classmethod
     def setUpClass(cls):
