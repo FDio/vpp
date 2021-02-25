@@ -117,8 +117,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 {
   u32 n_left_from, *from, *to_next, next_index, thread_index;
   ipsec_main_t *im = &ipsec_main;
-  vnet_main_t *vnm = im->vnet_main;
-  vnet_interface_main_t *vim = &vnm->interface_main;
+  vnet_main_t *vnm = vnet_get_main ();
   u32 thread_idx = vlib_get_thread_index ();
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_resource_t *res = 0;
