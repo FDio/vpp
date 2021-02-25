@@ -4007,7 +4007,6 @@ nat_6t_flow_ip4_translate (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
   ip_csum_t ip_sum = ip->checksum;
   ip_sum = ip_csum_sub_even (ip_sum, f->l3_csum_delta);
   ip->checksum = ip_csum_fold (ip_sum);
-  ASSERT (ip->checksum == ip4_header_checksum (ip));
 }
 
 static_always_inline int
