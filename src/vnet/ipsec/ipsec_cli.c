@@ -161,6 +161,8 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	flags |= IPSEC_SA_FLAG_USE_ESN;
       else if (unformat (line_input, "udp-encap"))
 	flags |= IPSEC_SA_FLAG_UDP_ENCAP;
+      else if (unformat (line_input, "async"))
+	flags |= IPSEC_SA_FLAG_IS_ASYNC;
       else
 	{
 	  error = clib_error_return (0, "parse error: '%U'",
@@ -940,7 +942,6 @@ set_async_mode_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				   format_unformat_error, line_input));
     }
 
-  vnet_crypto_request_async_mode (async_enable);
   ipsec_set_async_mode (async_enable);
 
   unformat_free (line_input);
