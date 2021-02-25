@@ -2202,23 +2202,23 @@ format_dns_cache (u8 * s, va_list * args)
 	    if (!(ep->flags & DNS_CACHE_ENTRY_FLAG_STATIC))
 	      {
 		f64 time_left = ep->expiration_time - now;
-                if (time_left > 0.0)
-                  s = format (s, "  TTL left %.1f", time_left);
-                else
-                  s = format (s, "  EXPIRED");
+		if (time_left > 0.0)
+		  s = format (s, "  TTL left %.1f", time_left);
+		else
+		  s = format (s, "  EXPIRED");
 
-                if (verbose > 2)
-                  s = format (s, "    %d client notifications pending\n",
-                              vec_len(ep->pending_requests));
+		if (verbose > 2)
+		  s = format (s, "    %d client notifications pending\n",
+			      vec_len (ep->pending_requests));
 	      }
 	  }
-        else
-          {
-            ASSERT (ep->dns_request);
-            s = format (s, "[P] %U", format_dns_reply, ep->dns_request,
-                        verbose);
-          }
-        vec_add1 (s, '\n');
+	else
+	  {
+	    ASSERT (ep->dns_request);
+	    s =
+	      format (s, "[P] %U", format_dns_reply, ep->dns_request, verbose);
+	  }
+	vec_add1 (s, '\n');
       }
       /* *INDENT-ON* */
     }
