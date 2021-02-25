@@ -167,6 +167,17 @@ autoreply define cnat_add_del_snat_prefix
   vl_api_prefix_t prefix;
 };
 
+enum cnat_snat_policies:u32
+{
+  CNAT_SNAT_POLICY_NONE = 1,
+};
+
+autoreply define cnat_set_snat_policy
+{
+  u32 client_index;
+  u32 context;
+  vl_api_cnat_snat_policies_t policy;
+};
 /*
  * fd.io coding-style-patch-verification: ON
  *
