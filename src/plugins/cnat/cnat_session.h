@@ -122,6 +122,8 @@ typedef enum cnat_session_flag_t_
    * This session doesn't have a client, do not attempt to free it
    */
   CNAT_SESSION_FLAG_NO_CLIENT = (1 << 2),
+
+  CNAT_SESSION_FLAG_NO_NAT = (1 << 3),
 } cnat_session_flag_t;
 
 typedef enum cnat_session_location_t_

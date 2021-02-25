@@ -803,6 +803,35 @@ error:
   return;
 }
 
+static_always_inline cnat_ep_trk_t *
+cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af,
+		   ip4_header_t *ip4, ip6_header_t *ip6, u32 *dpoi_index)
+{
+  cnat_main_t *cm = &cnat_main;
+  const load_balance_t *lb0;
+  const dpo_id_t *dpo0;
+  u32 hash_c0, bucket0;
+
+  lb0 = load_balance_get (ct->ct_lb.dpoi_index);
+  if (PREDICT_FALSE (!lb0->lb_n_buckets))
+    return (NULL);
+
+  /* session table miss */
+  hash_c0 = (AF_IP4 == af ? ip4_compute_flow_hash (ip4, lb0->lb_hash_config) :
+			    ip6_compute_flow_hash (ip6, lb0->lb_hash_config));
+
+  if (PREDICT_FALSE (ct->lb_type == CNAT_LB_MAGLEV))
+    bucket0 = ct->lb_maglev[hash_c0 % cm->maglev_len];
+  else
+    bucket0 = hash_c0 % lb0->lb_n_buckets;
+
+  dpo0 = load_balance_get_fwd_bucket (lb0, bucket0);
+
+  *dpoi_index = dpo0->dpoi_index;
+
+  return &ct->ct_active_paths[bucket0];
+}
+
 /**
  * Create NAT sessions
  * rsession_location is the location the (return) session will be
