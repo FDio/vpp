@@ -229,7 +229,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 
 	  if (sa_index0 != last_sa_index)
 	    {
-	      sa0 = pool_elt_at_index (im->sad, sa_index0);
+	      sa0 = ipsec_sa_get (sa_index0);
 
 	      cipher_alg =
 		vec_elt_at_index (dcm->cipher_algs, sa0->crypto_alg);

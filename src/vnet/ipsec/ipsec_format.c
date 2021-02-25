@@ -271,17 +271,16 @@ format_ipsec_sa (u8 * s, va_list * args)
 {
   u32 sai = va_arg (*args, u32);
   ipsec_format_flags_t flags = va_arg (*args, ipsec_format_flags_t);
-  ipsec_main_t *im = &ipsec_main;
   vlib_counter_t counts;
   ipsec_sa_t *sa;
 
-  if (pool_is_free_index (im->sad, sai))
+  if (pool_is_free_index (ipsec_sa_pool, sai))
     {
       s = format (s, "No such SA index: %d", sai);
       goto done;
     }
 
-  sa = pool_elt_at_index (im->sad, sai);
+  sa = ipsec_sa_get (sai);
 
   s = format (s, "[%d] sa %u (0x%x) spi %u (0x%08x) protocol:%s flags:[%U]",
 	      sai, sa->id, sa->id, sa->spi, sa->spi,

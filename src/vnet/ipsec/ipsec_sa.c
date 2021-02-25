@@ -29,6 +29,7 @@ vlib_combined_counter_main_t ipsec_sa_counters = {
   .stat_segment_name = "/net/ipsec/sa",
 };
 
+ipsec_sa_t *ipsec_sa_pool;
 
 static clib_error_t *
 ipsec_call_add_del_callbacks (ipsec_main_t * im, ipsec_sa_t * sa,
@@ -184,11 +185,11 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   if (p)
     return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
 
-  pool_get_aligned_zero (im->sad, sa, CLIB_CACHE_LINE_BYTES);
+  pool_get_aligned_zero (ipsec_sa_pool, sa, CLIB_CACHE_LINE_BYTES);
 
   fib_node_init (&sa->node, FIB_NODE_TYPE_IPSEC_SA);
   fib_node_lock (&sa->node);
-  sa_index = sa - im->sad;
+  sa_index = sa - ipsec_sa_pool;
 
   vlib_validate_combined_counter (&ipsec_sa_counters, sa_index);
   vlib_zero_combined_counter (&ipsec_sa_counters, sa_index);
@@ -216,7 +217,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 					      (u8 *) ck->data, ck->len);
   if (~0 == sa->crypto_key_index)
     {
-      pool_put (im->sad, sa);
+      pool_put (ipsec_sa_pool, sa);
       return VNET_API_ERROR_KEY_LENGTH;
     }
 
@@ -228,7 +229,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 						 (u8 *) ik->data, ik->len);
       if (~0 == sa->integ_key_index)
 	{
-	  pool_put (im->sad, sa);
+	  pool_put (ipsec_sa_pool, sa);
 	  return VNET_API_ERROR_KEY_LENGTH;
 	}
     }
@@ -250,14 +251,14 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
   if (err)
     {
       clib_warning ("%s", err->what);
-      pool_put (im->sad, sa);
+      pool_put (ipsec_sa_pool, sa);
       return VNET_API_ERROR_UNIMPLEMENTED;
     }
 
   err = ipsec_call_add_del_callbacks (im, sa, sa_index, 1);
   if (err)
     {
-      pool_put (im->sad, sa);
+      pool_put (ipsec_sa_pool, sa);
       return VNET_API_ERROR_SYSCALL_ERROR_1;
     }
 
@@ -269,7 +270,7 @@ ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,
 
       if (rv)
 	{
-	  pool_put (im->sad, sa);
+	  pool_put (ipsec_sa_pool, sa);
 	  return rv;
 	}
       ipsec_sa_stack (sa);
@@ -324,7 +325,7 @@ ipsec_sa_del (ipsec_sa_t * sa)
   ipsec_main_t *im = &ipsec_main;
   u32 sa_index;
 
-  sa_index = sa - im->sad;
+  sa_index = sa - ipsec_sa_pool;
   hash_unset (im->sa_index_by_sa_id, sa->id);
   tunnel_unresolve (&sa->tunnel);
 
@@ -339,19 +340,18 @@ ipsec_sa_del (ipsec_sa_t * sa)
   vnet_crypto_key_del (vm, sa->crypto_key_index);
   if (sa->integ_alg != IPSEC_INTEG_ALG_NONE)
     vnet_crypto_key_del (vm, sa->integ_key_index);
-  pool_put (im->sad, sa);
+  pool_put (ipsec_sa_pool, sa);
 }
 
 void
 ipsec_sa_unlock (index_t sai)
 {
-  ipsec_main_t *im = &ipsec_main;
   ipsec_sa_t *sa;
 
   if (INDEX_INVALID == sai)
     return;
 
-  sa = pool_elt_at_index (im->sad, sai);
+  sa = ipsec_sa_get (sai);
 
   fib_node_unlock (&sa->node);
 }
@@ -359,13 +359,12 @@ ipsec_sa_unlock (index_t sai)
 void
 ipsec_sa_lock (index_t sai)
 {
-  ipsec_main_t *im = &ipsec_main;
   ipsec_sa_t *sa;
 
   if (INDEX_INVALID == sai)
     return;
 
-  sa = pool_elt_at_index (im->sad, sai);
+  sa = ipsec_sa_get (sai);
 
   fib_node_lock (&sa->node);
 }
@@ -382,7 +381,7 @@ ipsec_sa_find_and_lock (u32 id)
   if (!p)
     return INDEX_INVALID;
 
-  sa = pool_elt_at_index (im->sad, p[0]);
+  sa = ipsec_sa_get (p[0]);
 
   fib_node_lock (&sa->node);
 
@@ -414,15 +413,14 @@ ipsec_sa_clear (index_t sai)
 void
 ipsec_sa_walk (ipsec_sa_walk_cb_t cb, void *ctx)
 {
-  ipsec_main_t *im = &ipsec_main;
   ipsec_sa_t *sa;
 
   /* *INDENT-OFF* */
-  pool_foreach (sa, im->sad)
-   {
-    if (WALK_CONTINUE != cb(sa, ctx))
-      break;
-  }
+  pool_foreach (sa, ipsec_sa_pool)
+    {
+      if (WALK_CONTINUE != cb (sa, ctx))
+	break;
+    }
   /* *INDENT-ON* */
 }
 
@@ -432,11 +430,9 @@ ipsec_sa_walk (ipsec_sa_walk_cb_t cb, void *ctx)
 static fib_node_t *
 ipsec_sa_fib_node_get (fib_node_index_t index)
 {
-  ipsec_main_t *im;
   ipsec_sa_t *sa;
 
-  im = &ipsec_main;
-  sa = pool_elt_at_index (im->sad, index);
+  sa = ipsec_sa_get (index);
 
   return (&sa->node);
 }

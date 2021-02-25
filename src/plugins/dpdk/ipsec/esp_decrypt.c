@@ -98,7 +98,6 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 			 vlib_frame_t * from_frame, int is_ip6)
 {
   u32 n_left_from, *from, *to_next, next_index, thread_index;
-  ipsec_main_t *im = &ipsec_main;
   u32 thread_idx = vlib_get_thread_index ();
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_resource_t *res = 0;
@@ -181,7 +180,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 
 	  if (sa_index0 != last_sa_index)
 	    {
-	      sa0 = pool_elt_at_index (im->sad, sa_index0);
+	      sa0 = ipsec_sa_get (sa_index0);
 
 	      cipher_alg =
 		vec_elt_at_index (dcm->cipher_algs, sa0->crypto_alg);
@@ -498,7 +497,6 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next = 0, next_index;
   ipsec_sa_t *sa0;
   u32 sa_index0 = ~0;
-  ipsec_main_t *im = &ipsec_main;
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
 
   from = vlib_frame_vector_args (from_frame);
@@ -535,7 +533,7 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 	  esp0 = vlib_buffer_get_current (b0);
 
 	  sa_index0 = vnet_buffer (b0)->ipsec.sad_index;
-	  sa0 = pool_elt_at_index (im->sad, sa_index0);
+	  sa0 = ipsec_sa_get (sa_index0);
 
 	  to_next[0] = bi0;
 	  to_next += 1;

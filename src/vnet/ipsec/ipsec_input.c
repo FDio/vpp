@@ -111,7 +111,7 @@ ipsec_input_protect_policy_match (ipsec_spd_t * spd, u32 sa, u32 da, u32 spi)
   vec_foreach (i, spd->policies[IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT])
   {
     p = pool_elt_at_index (im->policies, *i);
-    s = pool_elt_at_index (im->sad, p->sa_index);
+    s = ipsec_sa_get (p->sa_index);
 
     if (spi != s->spi)
       continue;
@@ -167,7 +167,7 @@ ipsec6_input_protect_policy_match (ipsec_spd_t * spd,
   vec_foreach (i, spd->policies[IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT])
   {
     p = pool_elt_at_index (im->policies, *i);
-    s = pool_elt_at_index (im->sad, p->sa_index);
+    s = ipsec_sa_get (p->sa_index);
 
     if (spi != s->spi)
       continue;
