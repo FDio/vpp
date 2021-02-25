@@ -1905,6 +1905,39 @@ class TestNAT44ED(NAT44EDTestCase):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
+    def test_outside_address_distribution(self):
+
+        x = 100
+        nat_addresses = []
+
+        # start with 2, because pg0.remote_hosts[] starts with index 2
+        for i in range(2, 2+x):
+            a = "10.0.0.%d" % i
+            nat_addresses.append(a)
+            self.nat_add_address(a)
+
+        self.pg0.generate_remote_hosts(x)
+
+        pkts = []
+        for i in range(x):
+            p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+                 IP(src=self.pg0.remote_hosts[i].ip4,
+                     dst=self.pg1.remote_ip4) /
+                 UDP(sport=7000, dport=80))
+            pkts.append(p)
+
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        pkts = self.pg1.get_capture(len(pkts))
+        for (p, a) in zip(pkts, nat_addresses):
+            # compare the last byte of ip4 address - should be same
+            self.assertEqual(
+                str(p[IP].src).split(".")[-1],
+                a.split(".")[-1],
+                "IPv4 - last byte mismatch while comparing packet address %s "
+                "with host addresss %s" % (p[IP].src, a))
+
 
 class TestNAT44EDMW(TestNAT44ED):
     """ NAT44ED MW Test Case """
