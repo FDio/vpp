@@ -805,7 +805,6 @@ send_ipsec_sa_details (ipsec_sa_t * sa, void *arg)
 {
   ipsec_dump_walk_ctx_t *ctx = arg;
   vl_api_ipsec_sa_details_t *mp;
-  ipsec_main_t *im = &ipsec_main;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
@@ -829,8 +828,8 @@ send_ipsec_sa_details (ipsec_sa_t * sa, void *arg)
   if (ipsec_sa_is_set_IS_PROTECT (sa))
     {
       ipsec_sa_dump_match_ctx_t ctx = {
-        .sai = sa - im->sad,
-        .sw_if_index = ~0,
+	.sai = sa - ipsec_sa_pool,
+	.sw_if_index = ~0,
       };
       ipsec_tun_protect_walk (ipsec_sa_dump_match_sa, &ctx);
 
@@ -894,7 +893,6 @@ send_ipsec_sa_v2_details (ipsec_sa_t * sa, void *arg)
 {
   ipsec_dump_walk_ctx_t *ctx = arg;
   vl_api_ipsec_sa_v2_details_t *mp;
-  ipsec_main_t *im = &ipsec_main;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
@@ -918,8 +916,8 @@ send_ipsec_sa_v2_details (ipsec_sa_t * sa, void *arg)
   if (ipsec_sa_is_set_IS_PROTECT (sa))
     {
       ipsec_sa_dump_match_ctx_t ctx = {
-        .sai = sa - im->sad,
-        .sw_if_index = ~0,
+	.sai = sa - ipsec_sa_pool,
+	.sw_if_index = ~0,
       };
       ipsec_tun_protect_walk (ipsec_sa_dump_match_sa, &ctx);
 
@@ -987,7 +985,6 @@ send_ipsec_sa_v3_details (ipsec_sa_t *sa, void *arg)
 {
   ipsec_dump_walk_ctx_t *ctx = arg;
   vl_api_ipsec_sa_v3_details_t *mp;
-  ipsec_main_t *im = &ipsec_main;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
@@ -1010,7 +1007,7 @@ send_ipsec_sa_v3_details (ipsec_sa_t *sa, void *arg)
   if (ipsec_sa_is_set_IS_PROTECT (sa))
     {
       ipsec_sa_dump_match_ctx_t ctx = {
-	.sai = sa - im->sad,
+	.sai = sa - ipsec_sa_pool,
 	.sw_if_index = ~0,
       };
       ipsec_tun_protect_walk (ipsec_sa_dump_match_sa, &ctx);
@@ -1120,7 +1117,7 @@ vl_api_ipsec_select_backend_t_handler (vl_api_ipsec_select_backend_t * mp)
   vl_api_ipsec_select_backend_reply_t *rmp;
   ipsec_protocol_t protocol;
   int rv = 0;
-  if (pool_elts (im->sad) > 0)
+  if (pool_elts (ipsec_sa_pool) > 0)
     {
       rv = VNET_API_ERROR_INSTANCE_IN_USE;
       goto done;

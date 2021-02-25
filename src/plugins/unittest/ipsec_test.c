@@ -38,12 +38,11 @@ test_ipsec_command_fn (vlib_main_t * vm,
 
   if (~0 != sa_id)
     {
-      ipsec_main_t *im = &ipsec_main;
       ipsec_sa_t *sa;
       u32 sa_index;
 
       sa_index = ipsec_sa_find_and_lock (sa_id);
-      sa = pool_elt_at_index (im->sad, sa_index);
+      sa = ipsec_sa_get (sa_index);
 
       sa->seq = seq_num & 0xffffffff;
       sa->seq_hi = seq_num >> 32;

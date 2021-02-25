@@ -246,10 +246,9 @@ clib_error_t *
 ipsec_rsc_in_use (ipsec_main_t * im)
 {
   /* return an error is crypto resource are in use */
-  if (pool_elts (im->sad) > 0)
-    return clib_error_return (0,
-			      "%d SA entries configured",
-			      pool_elts (im->sad));
+  if (pool_elts (ipsec_sa_pool) > 0)
+    return clib_error_return (0, "%d SA entries configured",
+			      pool_elts (ipsec_sa_pool));
 
   return (NULL);
 }
@@ -331,20 +330,20 @@ ipsec_set_async_mode (u32 is_enabled)
   ipsec_sa_t *sa;
 
   /* lock all SAs before change im->async_mode */
-  pool_foreach (sa, im->sad)
-  {
-    fib_node_lock (&sa->node);
-  }
+  pool_foreach (sa, ipsec_sa_pool)
+    {
+      fib_node_lock (&sa->node);
+    }
 
   im->async_mode = is_enabled;
 
   /* change SA crypto op data before unlock them */
-  pool_foreach (sa, im->sad)
-  {
-    sa->crypto_op_data = is_enabled ?
-      sa->async_op_data.data : sa->sync_op_data.data;
-    fib_node_unlock (&sa->node);
-  }
+  pool_foreach (sa, ipsec_sa_pool)
+    {
+      sa->crypto_op_data =
+	is_enabled ? sa->async_op_data.data : sa->sync_op_data.data;
+      fib_node_unlock (&sa->node);
+    }
 }
 
 static void
