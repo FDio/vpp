@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ab760767_8a737dec",
+        "filename": "src/vlib/counter.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-02-25T07:59:26Z",
+      "side": 1,
+      "message": "Doesn’t this do the opposite of what you want?",
+      "revId": "554eade2f9cf5047fadfc2a18fa9bed21bd656a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
