@@ -176,9 +176,9 @@ cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
     }
 
   if (AF_IP4 == ctx->af)
-    cnat_translation_ip4 (session, ip4, udp0);
+    cnat_translation_ip4 (session, ip4, udp0, vnet_buffer (b)->oflags);
   else
-    cnat_translation_ip6 (session, ip6, udp0);
+    cnat_translation_ip6 (session, ip6, udp0, vnet_buffer (b)->oflags);
 
   if (NULL != ct)
     {
