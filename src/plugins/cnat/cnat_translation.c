@@ -26,9 +26,6 @@
 cnat_translation_t *cnat_translation_pool;
 clib_bihash_8_8_t cnat_translation_db;
 addr_resolution_t *tr_resolutions;
-
-typedef void (*cnat_if_addr_add_cb_t) (addr_resolution_t * ar,
-				       ip_address_t * address, u8 is_del);
 cnat_if_addr_add_cb_t *cnat_if_addr_add_cbs;
 
 static fib_node_type_t cnat_translation_fib_node_type;
@@ -775,32 +772,6 @@ cnat_if_addr_add_del_backend_cb (addr_resolution_t * ar,
 }
 
 static void
-cnat_if_addr_add_del_snat_cb (addr_resolution_t * ar, ip_address_t * address,
-			      u8 is_del)
-{
-  cnat_endpoint_t *ep;
-  ep = AF_IP4 == ar->af ? &cnat_main.snat_ip4 : &cnat_main.snat_ip6;
-
-  if (!is_del && ep->ce_flags & CNAT_EP_FLAG_RESOLVED)
-    return;
-
-  if (is_del)
-    {
-      ep->ce_flags &= ~CNAT_EP_FLAG_RESOLVED;
-      /* Are there remaining addresses ? */
-      if (0 == cnat_resolve_addr (ar->sw_if_index, ar->af, address))
-	is_del = 0;
-    }
-
-  if (!is_del)
-    {
-      ip_address_copy (&ep->ce_ip, address);
-      ep->ce_flags |= CNAT_EP_FLAG_RESOLVED;
-    }
-
-}
-
-static void
 cnat_if_addr_add_del_callback (u32 sw_if_index, ip_address_t * address,
 			       u8 is_del)
 {
@@ -839,6 +810,14 @@ cnat_ip4_if_addr_add_del_callback (struct ip4_main_t *im,
   cnat_if_addr_add_del_callback (sw_if_index, &addr, is_del);
 }
 
+void
+cnat_translation_register_addr_add_cb (cnat_addr_resol_type_t typ,
+				       cnat_if_addr_add_cb_t fn)
+{
+  vec_validate (cnat_if_addr_add_cbs, CNAT_ADDR_N_RESOLUTIONS);
+  cnat_if_addr_add_cbs[typ] = fn;
+}
+
 static clib_error_t *
 cnat_translation_init (vlib_main_t * vm)
 {
@@ -860,12 +839,11 @@ cnat_translation_init (vlib_main_t * vm)
   cb6.function = cnat_ip6_if_addr_add_del_callback;
   vec_add1 (i6m->add_del_interface_address_callbacks, cb6);
 
-  vec_validate (cnat_if_addr_add_cbs, CNAT_ADDR_N_RESOLUTIONS);
-  cnat_if_addr_add_cbs[CNAT_RESOLV_ADDR_BACKEND] =
-    cnat_if_addr_add_del_backend_cb;
-  cnat_if_addr_add_cbs[CNAT_RESOLV_ADDR_SNAT] = cnat_if_addr_add_del_snat_cb;
-  cnat_if_addr_add_cbs[CNAT_RESOLV_ADDR_TRANSLATION] =
-    cnat_if_addr_add_del_translation_cb;
+  cnat_translation_register_addr_add_cb (CNAT_RESOLV_ADDR_BACKEND,
+					 cnat_if_addr_add_del_backend_cb);
+  cnat_translation_register_addr_add_cb (CNAT_RESOLV_ADDR_TRANSLATION,
+					 cnat_if_addr_add_del_translation_cb);
+
   return (NULL);
 }
 
