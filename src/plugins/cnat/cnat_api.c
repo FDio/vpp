@@ -337,6 +337,23 @@ static void
   REPLY_MACRO (VL_API_CNAT_ADD_DEL_SNAT_PREFIX_REPLY);
 }
 
+static void
+vl_api_cnat_set_snat_policy_t_handler (vl_api_cnat_set_snat_policy_t *mp)
+{
+  vl_api_cnat_set_snat_policy_reply_t *rmp;
+  int rv = 0;
+  vl_api_cnat_snat_policies_t policy = clib_net_to_host_u32 (mp->policy);
+  switch (policy)
+    {
+    case CNAT_SNAT_POLICY_NONE:
+      cnat_set_snat_policy (NULL);
+      break;
+    default:
+      rv = 1;
+    }
+
+  REPLY_MACRO (VL_API_CNAT_SET_SNAT_POLICY_REPLY);
+}
 #include <cnat/cnat.api.c>
 
 static clib_error_t *
