@@ -81,8 +81,8 @@ clib_error_t *nat44_ei_api_hookup (vlib_main_t *vm);
 /* NAT address and port allocation function */
 typedef int (nat44_ei_alloc_out_addr_and_port_function_t) (
   nat44_ei_address_t *addresses, u32 fib_index, u32 thread_index,
-  nat_protocol_t proto, ip4_address_t *addr, u16 *port, u16 port_per_thread,
-  u32 snat_thread_index);
+  nat_protocol_t proto, ip4_address_t s_addr, ip4_address_t *addr, u16 *port,
+  u16 port_per_thread, u32 snat_thread_index);
 
 typedef struct
 {
