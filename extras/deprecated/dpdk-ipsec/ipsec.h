@@ -18,6 +18,7 @@
 #include <vnet/vnet.h>
 #include <vppinfra/cache.h>
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_sa.h>
 
 #undef always_inline
 #include <rte_config.h>
