@@ -20,8 +20,7 @@
 
 #include <cnat/cnat_types.h>
 #include <cnat/cnat_client.h>
-#include <cnat/bihash_40_48.h>
-
+#include <cnat/cnat_bihash.h>
 
 /**
  * A session represents the memory of a translation.
@@ -63,9 +62,11 @@ typedef struct cnat_session_t_
     u8 cs_af;
 
     /**
-     * spare space
+     * input / output / fib session
      */
-    u8 __cs_pad[2];
+    u8 cs_loc;
+
+    u8 __cs_pad;
   } key;
   /**
    * this value sits in the same memory location a 'value' in the bihash kvp
@@ -88,22 +89,21 @@ typedef struct cnat_session_t_
     index_t cs_lbi;
 
     /**
+     * Persist translation->ct_lb.dpoi_next_node
+     */
+    u32 dpoi_next_node;
+
+    /**
      * Timestamp index this session was last used
      */
     u32 cs_ts_index;
 
-    union
-    {
-	/**
-	 * session flags if cs_lbi == INDEX_INVALID
-	 */
-      u32 flags;
-	/**
-	 * Persist translation->ct_lb.dpoi_next_node
-	 * when cs_lbi != INDEX_INVALID
-	 */
-      u32 dpoi_next_node;
-    };
+    /**
+     * session flags
+     */
+    u32 flags;
+
+    u32 __pad;
   } value;
 } cnat_session_t;
 
@@ -124,24 +124,31 @@ typedef enum cnat_session_flag_t_
   CNAT_SESSION_FLAG_NO_CLIENT = (1 << 2),
 } cnat_session_flag_t;
 
+typedef enum cnat_session_location_t_
+{
+  CNAT_LOCATION_INPUT = 0,
+  CNAT_LOCATION_OUTPUT = 1,
+  CNAT_LOCATION_FIB = 0xff,
+} cnat_session_location_t;
+
 extern u8 *format_cnat_session (u8 * s, va_list * args);
 
 /**
  * Ensure the session object correctly overlays the bihash key/value pair
  */
 STATIC_ASSERT (STRUCT_OFFSET_OF (cnat_session_t, key) ==
-	       STRUCT_OFFSET_OF (clib_bihash_kv_40_48_t, key),
+		 STRUCT_OFFSET_OF (cnat_bihash_kv_t, key),
 	       "key overlaps");
 STATIC_ASSERT (STRUCT_OFFSET_OF (cnat_session_t, value) ==
-	       STRUCT_OFFSET_OF (clib_bihash_kv_40_48_t, value),
+		 STRUCT_OFFSET_OF (cnat_bihash_kv_t, value),
 	       "value overlaps");
-STATIC_ASSERT (sizeof (cnat_session_t) == sizeof (clib_bihash_kv_40_48_t),
+STATIC_ASSERT (sizeof (cnat_session_t) == sizeof (cnat_bihash_kv_t),
 	       "session kvp");
 
 /**
  * The DB of sessions
  */
-extern clib_bihash_40_48_t cnat_session_db;
+extern cnat_bihash_t cnat_session_db;
 
 /**
  * Callback function invoked during a walk of all translations

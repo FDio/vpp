@@ -21,14 +21,14 @@
 #undef BIHASH_LAZY_INSTANTIATE
 #undef BIHASH_BUCKET_PREFETCH_CACHE_LINES
 
-#define BIHASH_TYPE _40_48
+#define BIHASH_TYPE			   _40_56
 #define BIHASH_KVP_PER_PAGE 2
 #define BIHASH_KVP_AT_BUCKET_LEVEL 1
 #define BIHASH_LAZY_INSTANTIATE 1
 #define BIHASH_BUCKET_PREFETCH_CACHE_LINES 2
 
-#ifndef __included_bihash_40_48_h__
-#define __included_bihash_40_48_h__
+#ifndef __included_bihash_40_56_h__
+#define __included_bihash_40_56_h__
 
 #include <vppinfra/crc32.h>
 #include <vppinfra/heap.h>
@@ -39,11 +39,11 @@
 typedef struct
 {
   u64 key[5];
-  u64 value[6];
-} clib_bihash_kv_40_48_t;
+  u64 value[7];
+} clib_bihash_kv_40_56_t;
 
 static inline int
-clib_bihash_is_free_40_48 (const clib_bihash_kv_40_48_t * v)
+clib_bihash_is_free_40_56 (const clib_bihash_kv_40_56_t *v)
 {
   /* Free values are clib_memset to 0xff, check a bit... */
   if (v->key[0] == ~0ULL && v->value[0] == ~0ULL)
@@ -52,7 +52,7 @@ clib_bihash_is_free_40_48 (const clib_bihash_kv_40_48_t * v)
 }
 
 static inline u64
-clib_bihash_hash_40_48 (const clib_bihash_kv_40_48_t * v)
+clib_bihash_hash_40_56 (const clib_bihash_kv_40_56_t *v)
 {
 #ifdef clib_crc32c_uses_intrinsics
   return clib_crc32c ((u8 *) v->key, 40);
@@ -63,21 +63,21 @@ clib_bihash_hash_40_48 (const clib_bihash_kv_40_48_t * v)
 }
 
 static inline u8 *
-format_bihash_kvp_40_48 (u8 * s, va_list * args)
+format_bihash_kvp_40_56 (u8 *s, va_list *args)
 {
-  clib_bihash_kv_40_48_t *v = va_arg (*args, clib_bihash_kv_40_48_t *);
+  clib_bihash_kv_40_56_t *v = va_arg (*args, clib_bihash_kv_40_56_t *);
 
-  s =
-    format (s,
-	    "key %llu %llu %llu %llu %llu value %llu %llu %llu %llu %llu %u",
-	    v->key[0], v->key[1], v->key[2], v->key[3], v->key[4],
-	    v->value[0], v->value[1], v->value[2], v->value[3], v->value[4],
-	    v->value[5]);
+  s = format (s,
+	      "key %llu %llu %llu %llu %llu"
+	      "value %llu %llu %llu %llu %llu %llu %llu",
+	      v->key[0], v->key[1], v->key[2], v->key[3], v->key[4],
+	      v->value[0], v->value[1], v->value[2], v->value[3], v->value[4],
+	      v->value[5], v->value[6]);
   return s;
 }
 
 static inline int
-clib_bihash_key_compare_40_48 (u64 * a, u64 * b)
+clib_bihash_key_compare_40_56 (u64 *a, u64 *b)
 {
 #if defined (CLIB_HAVE_VEC512)
   u64x8 v;
@@ -101,7 +101,17 @@ clib_bihash_key_compare_40_48 (u64 * a, u64 * b)
 #undef __included_bihash_template_h__
 #include <vppinfra/bihash_template.h>
 
-#endif /* __included_bihash_40_48_h__ */
+typedef clib_bihash_kv_40_56_t cnat_bihash_kv_t;
+typedef clib_bihash_40_56_t cnat_bihash_t;
+
+#define cnat_bihash_search_i2_hash  clib_bihash_search_inline_2_with_hash_40_56
+#define cnat_bihash_search_i2	    clib_bihash_search_inline_2_40_56
+#define cnat_bihash_add_del	    clib_bihash_add_del_40_56
+#define cnat_bihash_hash	    clib_bihash_hash_40_56
+#define cnat_bihash_prefetch_bucket clib_bihash_prefetch_bucket_40_56
+#define cnat_bihash_prefetch_data   clib_bihash_prefetch_data_40_56
+
+#endif /* __included_bihash_40_56_h__ */
 
 /*
  * fd.io coding-style-patch-verification: ON

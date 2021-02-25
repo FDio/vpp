@@ -301,14 +301,12 @@ cnat_client_show (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cnat_client_show_cmd_node, static) = {
   .path = "show cnat client",
   .function = cnat_client_show,
   .short_help = "show cnat client",
   .is_mp_safe = 1,
 };
-/* *INDENT-ON* */
 
 const static char *const cnat_client_dpo_ip4_nodes[] = {
   "ip4-cnat-tx",
