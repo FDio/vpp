@@ -297,7 +297,7 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ipsec_sa_t *sa = 0;
 	      nc_protect++;
-	      sa = pool_elt_at_index (im->sad, p0->sa_index);
+	      sa = ipsec_sa_get (p0->sa_index);
 	      if (sa->protocol == IPSEC_PROTOCOL_ESP)
 		if (is_ipv6)
 		  next_node_index = im->esp6_encrypt_node_index;

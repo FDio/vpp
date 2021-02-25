@@ -325,7 +325,6 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
 		    crypto_worker_main_t * cwm, u8 is_outbound)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
-  ipsec_main_t *im = &ipsec_main;
   crypto_data_t *data;
   ipsec_sa_t *sa;
   struct rte_crypto_sym_xform cipher_xform = { 0 };
@@ -334,8 +333,7 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
   struct rte_cryptodev_sym_session **s;
   clib_error_t *error = 0;
 
-
-  sa = pool_elt_at_index (im->sad, sa_idx);
+  sa = ipsec_sa_get (sa_idx);
 
   if ((sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128) |
       (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_192) |

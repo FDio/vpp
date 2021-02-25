@@ -176,7 +176,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 					     current_sa_pkts,
 					     current_sa_bytes);
 	  current_sa_index = vnet_buffer (b[0])->ipsec.sad_index;
-	  sa0 = pool_elt_at_index (im->sad, current_sa_index);
+	  sa0 = ipsec_sa_get (current_sa_index);
 
 	  current_sa_bytes = current_sa_pkts = 0;
 	}
@@ -387,7 +387,7 @@ ah_encrypt_inline (vlib_main_t * vm,
     next:
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  sa0 = vec_elt_at_index (im->sad, pd->sa_index);
+	  sa0 = ipsec_sa_get (pd->sa_index);
 	  ah_encrypt_trace_t *tr =
 	    vlib_add_trace (vm, node, b[0], sizeof (*tr));
 	  tr->spi = sa0->spi;

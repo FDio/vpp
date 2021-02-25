@@ -5074,7 +5074,6 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		       vlib_frame_t * f)
 {
   ikev2_main_t *km = &ikev2_main;
-  ipsec_main_t *im = &ipsec_main;
   ikev2_profile_t *p;
   ikev2_child_sa_t *c;
   u32 *sai;
@@ -5148,9 +5147,10 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
       /* process ipsec sas */
       ipsec_sa_t *sa;
       /* *INDENT-OFF* */
-      pool_foreach (sa, im->sad)  {
-        ikev2_mngr_process_ipsec_sa(sa);
-      }
+      pool_foreach (sa, ipsec_sa_pool)
+	{
+	  ikev2_mngr_process_ipsec_sa (sa);
+	}
       /* *INDENT-ON* */
 
       ikev2_process_pending_sa_init (km);

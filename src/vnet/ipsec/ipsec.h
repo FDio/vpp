@@ -108,8 +108,6 @@ typedef struct
 {
   /* pool of tunnel instances */
   ipsec_spd_t *spds;
-  /* Pool of security associations */
-  ipsec_sa_t *sad;
   /* pool of policies */
   ipsec_policy_t *policies;
 
@@ -230,7 +228,6 @@ extern vlib_node_registration_t ipsec6_tun_input_node;
 /*
  * functions
  */
-u8 *format_ipsec_replay_window (u8 * s, va_list * args);
 
 /*
  *  inline functions
@@ -273,12 +270,6 @@ int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);
 
 clib_error_t *ipsec_rsc_in_use (ipsec_main_t * im);
 void ipsec_set_async_mode (u32 is_enabled);
-
-always_inline ipsec_sa_t *
-ipsec_sa_get (u32 sa_index)
-{
-  return (pool_elt_at_index (ipsec_main.sad, sa_index));
-}
 
 extern void ipsec_register_udp_port (u16 udp_port);
 extern void ipsec_unregister_udp_port (u16 udp_port);
