@@ -24,13 +24,11 @@ cnat_compute_prefix_lengths_in_search_order (cnat_snat_pfx_table_t *
   int i;
   vec_reset_length (table->meta[af].prefix_lengths_in_search_order);
   /* Note: bitmap reversed so this is in fact a longest prefix match */
-  /* *INDENT-OFF* */
   clib_bitmap_foreach (i, table->meta[af].non_empty_dst_address_length_bitmap)
      {
       int dst_address_length = 128 - i;
       vec_add1 (table->meta[af].prefix_lengths_in_search_order, dst_address_length);
     }
-  /* *INDENT-ON* */
 }
 
 int
@@ -220,14 +218,12 @@ done:
   return (e);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cnat_set_snat_command, static) =
 {
   .path = "cnat snat with",
   .short_help = "cnat snat with [<ip4-address>][<ip6-address>][sw_if_index]",
   .function = cnat_set_snat_cli,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 cnat_snat_exclude (vlib_main_t * vm,
@@ -261,14 +257,12 @@ cnat_snat_exclude (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cnat_snat_exclude_command, static) =
 {
   .path = "cnat snat exclude",
   .short_help = "cnat snat exclude [ip]",
   .function = cnat_snat_exclude,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 cnat_show_snat (vlib_main_t * vm,
@@ -283,20 +277,18 @@ cnat_show_snat (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cnat_show_snat_command, static) =
 {
   .path = "show cnat snat",
   .short_help = "show cnat snat",
   .function = cnat_show_snat,
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 cnat_snat_init (vlib_main_t * vm)
 {
-  cnat_snat_pfx_table_t *table = &cnat_main.snat_pfx_table;
   cnat_main_t *cm = &cnat_main;
+  cnat_snat_pfx_table_t *table = &cm->snat_pfx_table;
   int i;
   for (i = 0; i < ARRAY_LEN (table->ip_masks); i++)
     {

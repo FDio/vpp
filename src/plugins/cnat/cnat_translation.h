@@ -25,6 +25,11 @@
  */
 extern vlib_combined_counter_main_t cnat_translation_counters;
 
+typedef enum cnat_trk_flag_t_
+{
+  CNAT_TRK_ACTIVE = (1 << 0),
+} cnat_trk_flag_t;
+
 /**
  * Data used to track an EP in the FIB
  */
@@ -53,7 +58,7 @@ typedef struct cnat_ep_trk_t_
   /**
    * Allows to disable if not resolved yet
    */
-  u8 is_active;
+  u8 ct_flags; /* cnat_trk_flag_t */
 } cnat_ep_trk_t;
 
 typedef enum cnat_translation_flag_t_
@@ -128,6 +133,11 @@ typedef struct cnat_translation_t_
    * The vector of tracked back-ends
    */
   cnat_ep_trk_t *ct_paths;
+
+  /**
+   * The vector of active tracked back-ends
+   */
+  cnat_ep_trk_t *ct_active_paths;
 
   /**
    * The ip protocol for the translation

@@ -54,7 +54,7 @@
 typedef enum
 {
   /* Endpoint addr has been resolved */
-  CNAT_EP_FLAG_RESOLVED = 1,
+  CNAT_EP_FLAG_RESOLVED = (1 << 0),
 } cnat_ep_flag_t;
 
 typedef struct cnat_endpoint_t_

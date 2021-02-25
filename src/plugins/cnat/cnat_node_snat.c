@@ -25,44 +25,18 @@ typedef enum cnat_snat_next_
   CNAT_SNAT_N_NEXT,
 } cnat_snat_next_t;
 
-typedef struct cnat_snat_trace_
-{
-  cnat_session_t session;
-  u32 found_session;
-  u32 created_session;
-} cnat_snat_trace_t;
-
 vlib_node_registration_t cnat_snat_ip4_node;
 vlib_node_registration_t cnat_snat_ip6_node;
-
-static u8 *
-format_cnat_snat_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  cnat_snat_trace_t *t = va_arg (*args, cnat_snat_trace_t *);
-
-  if (t->found_session)
-    s = format (s, "found: %U", format_cnat_session, &t->session, 1);
-  else if (t->created_session)
-    s = format (s, "created: %U\n  tr: %U",
-		format_cnat_session, &t->session, 1);
-  else
-    s = format (s, "not found");
-  return s;
-}
 
 /* CNat sub for source NAT as a feature arc on ip[46]-unicast
    This node's sub shouldn't apply to the same flows as
    cnat_vip_inline */
 static uword
-cnat_snat_node_fn (vlib_main_t * vm,
-		   vlib_node_runtime_t * node,
-		   vlib_buffer_t * b,
-		   cnat_node_ctx_t * ctx, int rv, cnat_session_t * session)
+cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vlib_buffer_t *b, cnat_node_ctx_t *ctx,
+		   int session_not_found, cnat_session_t *session)
 {
   cnat_main_t *cm = &cnat_main;
-  int created_session = 0;
   ip4_header_t *ip4 = NULL;
   ip_protocol_t iproto;
   ip6_header_t *ip6 = NULL;
@@ -70,6 +44,8 @@ cnat_snat_node_fn (vlib_main_t * vm,
   u32 arc_next0;
   u16 next0;
   u16 sport;
+  u8 trace_flags = 0;
+  int rv;
 
   if (AF_IP4 == ctx->af)
     {
@@ -95,7 +71,7 @@ cnat_snat_node_fn (vlib_main_t * vm,
       goto trace;
     }
 
-  if (!rv)
+  if (!session_not_found)
     {
       /* session table hit */
       cnat_timestamp_update (session->value.cs_ts_index, ctx->now);
@@ -151,9 +127,10 @@ cnat_snat_node_fn (vlib_main_t * vm,
       session->value.cs_lbi = INDEX_INVALID;
       session->value.flags =
 	CNAT_SESSION_FLAG_NO_CLIENT | CNAT_SESSION_FLAG_ALLOC_PORT;
+      trace_flags |= CNAT_TRACE_SESSION_CREATED;
 
-      created_session = 1;
-      cnat_session_create (session, ctx, CNAT_SESSION_FLAG_HAS_SNAT);
+      cnat_session_create (session, ctx, CNAT_LOCATION_FIB,
+			   CNAT_SESSION_FLAG_HAS_SNAT);
     }
 
 
@@ -165,14 +142,8 @@ cnat_snat_node_fn (vlib_main_t * vm,
 trace:
   if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
     {
-      cnat_snat_trace_t *t;
-
-      t = vlib_add_trace (vm, node, b, sizeof (*t));
-
-      t->found_session = !rv;
-      t->created_session = created_session;
-      if (t->found_session || t->created_session)
-	clib_memcpy (&t->session, session, sizeof (t->session));
+      trace_flags |= session_not_found ? 0 : CNAT_TRACE_SESSION_FOUND;
+      cnat_add_trace (vm, node, b, session, NULL, trace_flags);
     }
   return next0;
 }
@@ -183,9 +154,9 @@ VLIB_NODE_FN (cnat_snat_ip4_node) (vlib_main_t * vm,
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return cnat_node_inline (vm, node, frame, cnat_snat_node_fn, AF_IP4,
-			     1 /* do_trace */ );
+			     CNAT_LOCATION_FIB, 1 /* do_trace */);
   return cnat_node_inline (vm, node, frame, cnat_snat_node_fn, AF_IP4,
-			   0 /* do_trace */ );
+			   CNAT_LOCATION_FIB, 0 /* do_trace */);
 }
 
 VLIB_NODE_FN (cnat_snat_ip6_node) (vlib_main_t * vm,
@@ -194,55 +165,46 @@ VLIB_NODE_FN (cnat_snat_ip6_node) (vlib_main_t * vm,
 {
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     return cnat_node_inline (vm, node, frame, cnat_snat_node_fn, AF_IP6,
-			     1 /* do_trace */ );
+			     CNAT_LOCATION_FIB, 1 /* do_trace */);
   return cnat_node_inline (vm, node, frame, cnat_snat_node_fn, AF_IP6,
-			   0 /* do_trace */ );
+			   CNAT_LOCATION_FIB, 0 /* do_trace */);
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (cnat_snat_ip4_node) =
-{
-  .name = "ip4-cnat-snat",
+VLIB_REGISTER_NODE (cnat_snat_ip4_node) = {
+  .name = "cnat-snat-ip4",
   .vector_size = sizeof (u32),
-  .format_trace = format_cnat_snat_trace,
+  .format_trace = format_cnat_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = CNAT_N_ERROR,
   .error_strings = cnat_error_strings,
   .n_next_nodes = CNAT_SNAT_N_NEXT,
-  .next_nodes =
-  {
-    [CNAT_SNAT_NEXT_DROP] = "ip4-drop",
-  }
+  .next_nodes = {
+      [CNAT_SNAT_NEXT_DROP] = "ip4-drop",
+  },
 };
 
-VLIB_REGISTER_NODE (cnat_snat_ip6_node) =
-{
-  .name = "ip6-cnat-snat",
+VLIB_REGISTER_NODE (cnat_snat_ip6_node) = {
+  .name = "cnat-snat-ip6",
   .vector_size = sizeof (u32),
-  .format_trace = format_cnat_snat_trace,
+  .format_trace = format_cnat_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = CNAT_N_ERROR,
   .error_strings = cnat_error_strings,
   .n_next_nodes = CNAT_SNAT_N_NEXT,
-  .next_nodes =
-  {
-    [CNAT_SNAT_NEXT_DROP] = "ip6-drop",
-  }
+  .next_nodes = {
+      [CNAT_SNAT_NEXT_DROP] = "ip6-drop",
+  },
 };
 
-VNET_FEATURE_INIT (cnat_snat_ip4_node, static) =
-{
+VNET_FEATURE_INIT (cnat_snat_ip4_node, static) = {
   .arc_name = "ip4-unicast",
-  .node_name = "ip4-cnat-snat",
+  .node_name = "cnat-snat-ip4",
 };
 
-VNET_FEATURE_INIT (cnat_snat_ip6_node, static) =
-{
+VNET_FEATURE_INIT (cnat_snat_ip6_node, static) = {
   .arc_name = "ip6-unicast",
-  .node_name = "ip6-cnat-snat",
+  .node_name = "cnat-snat-ip6",
 };
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
