@@ -22,7 +22,7 @@ add_vpp_plugin(cnat
   cnat_session.c
   cnat_translation.c
   cnat_types.c
-  cnat_snat.c
+  cnat_snat_policy.c
   cnat_src_policy.c
 
   API_FILES
