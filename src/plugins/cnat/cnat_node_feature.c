@@ -155,11 +155,10 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       goto trace;
     }
 
-  vnet_buffer_offload_flags_clear (b, VNET_BUFFER_OFFLOAD_F_PARTIAL_CKSUM);
   if (AF_IP4 == ctx->af)
-    cnat_translation_ip4 (session, ip4, udp0);
+    cnat_translation_ip4 (session, ip4, udp0, vnet_buffer (b)->oflags);
   else
-    cnat_translation_ip6 (session, ip6, udp0);
+    cnat_translation_ip6 (session, ip6, udp0, vnet_buffer (b)->oflags);
 
   if (NULL != ct)
     {
@@ -325,11 +324,10 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 			   CNAT_SESSION_FLAG_NO_CLIENT);
     }
 
-  vnet_buffer_offload_flags_clear (b, VNET_BUFFER_OFFLOAD_F_PARTIAL_CKSUM);
   if (AF_IP4 == ctx->af)
-    cnat_translation_ip4 (session, ip4, udp0);
+    cnat_translation_ip4 (session, ip4, udp0, vnet_buffer (b)->oflags);
   else
-    cnat_translation_ip6 (session, ip6, udp0);
+    cnat_translation_ip6 (session, ip6, udp0, vnet_buffer (b)->oflags);
 
 trace:
   if (PREDICT_FALSE (ctx->do_trace))
