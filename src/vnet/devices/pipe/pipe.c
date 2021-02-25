@@ -167,7 +167,7 @@ pipe_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  return n_left_from;
+  return frame->n_vectors;
 }
 
 static u8 *

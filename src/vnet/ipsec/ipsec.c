@@ -329,20 +329,15 @@ ipsec_set_async_mode (u32 is_enabled)
   ipsec_main_t *im = &ipsec_main;
   ipsec_sa_t *sa;
 
-  /* lock all SAs before change im->async_mode */
-  pool_foreach (sa, ipsec_sa_pool)
-    {
-      fib_node_lock (&sa->node);
-    }
+  vnet_crypto_request_async_mode (is_enabled);
 
   im->async_mode = is_enabled;
 
-  /* change SA crypto op data before unlock them */
+  /* change SA crypto op data */
   pool_foreach (sa, ipsec_sa_pool)
     {
       sa->crypto_op_data =
-	is_enabled ? sa->async_op_data.data : sa->sync_op_data.data;
-      fib_node_unlock (&sa->node);
+	(is_enabled ? sa->async_op_data.data : sa->sync_op_data.data);
     }
 }
 
