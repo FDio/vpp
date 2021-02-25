@@ -125,17 +125,6 @@ ipsec_add_node (vlib_main_t * vm, const char *node_name,
 }
 
 void
-ipsec_add_feature (const char *arc_name,
-		   const char *node_name, u32 * out_feature_index)
-{
-  u8 arc;
-
-  arc = vnet_get_feature_arc_index (arc_name);
-  ASSERT (arc != (u8) ~ 0);
-  *out_feature_index = vnet_get_feature_index (arc, node_name);
-}
-
-void
 ipsec_unregister_udp_port (u16 port)
 {
   ipsec_main_t *im = &ipsec_main;
@@ -557,34 +546,6 @@ ipsec_init (vlib_main_t * vm)
   i->icv_size = 32;
 
   vec_validate_aligned (im->ptd, vlib_num_workers (), CLIB_CACHE_LINE_BYTES);
-
-  im->ah4_enc_fq_index =
-    vlib_frame_queue_main_init (ah4_encrypt_node.index, 0);
-  im->ah4_dec_fq_index =
-    vlib_frame_queue_main_init (ah4_decrypt_node.index, 0);
-  im->ah6_enc_fq_index =
-    vlib_frame_queue_main_init (ah6_encrypt_node.index, 0);
-  im->ah6_dec_fq_index =
-    vlib_frame_queue_main_init (ah6_decrypt_node.index, 0);
-
-  im->esp4_enc_fq_index =
-    vlib_frame_queue_main_init (esp4_encrypt_node.index, 0);
-  im->esp4_dec_fq_index =
-    vlib_frame_queue_main_init (esp4_decrypt_node.index, 0);
-  im->esp6_enc_fq_index =
-    vlib_frame_queue_main_init (esp6_encrypt_node.index, 0);
-  im->esp6_dec_fq_index =
-    vlib_frame_queue_main_init (esp6_decrypt_node.index, 0);
-  im->esp4_enc_tun_fq_index =
-    vlib_frame_queue_main_init (esp4_encrypt_tun_node.index, 0);
-  im->esp6_enc_tun_fq_index =
-    vlib_frame_queue_main_init (esp6_encrypt_tun_node.index, 0);
-  im->esp_mpls_enc_tun_fq_index =
-    vlib_frame_queue_main_init (esp_mpls_encrypt_tun_node.index, 0);
-  im->esp4_dec_tun_fq_index =
-    vlib_frame_queue_main_init (esp4_decrypt_tun_node.index, 0);
-  im->esp6_dec_tun_fq_index =
-    vlib_frame_queue_main_init (esp6_decrypt_tun_node.index, 0);
 
   im->async_mode = 0;
   crypto_engine_backend_register_post_node (vm);

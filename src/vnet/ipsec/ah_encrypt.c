@@ -501,6 +501,25 @@ VLIB_REGISTER_NODE (ah6_encrypt_node) = {
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
+
+static clib_error_t *
+ah_encrypt_init (vlib_main_t *vm)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  im->ah4_enc_fq_index =
+    vlib_frame_queue_main_init (ah4_encrypt_node.index, 0);
+  im->ah6_enc_fq_index =
+    vlib_frame_queue_main_init (ah6_encrypt_node.index, 0);
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (ah_encrypt_init);
+
+#endif
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

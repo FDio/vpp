@@ -473,6 +473,25 @@ VLIB_REGISTER_NODE (ah6_decrypt_node) = {
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
+
+static clib_error_t *
+ah_decrypt_init (vlib_main_t *vm)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  im->ah4_dec_fq_index =
+    vlib_frame_queue_main_init (ah4_decrypt_node.index, 0);
+  im->ah6_dec_fq_index =
+    vlib_frame_queue_main_init (ah6_decrypt_node.index, 0);
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (ah_decrypt_init);
+
+#endif
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

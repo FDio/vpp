@@ -1478,6 +1478,31 @@ VLIB_REGISTER_NODE (esp6_no_crypto_tun_node) =
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
+
+static clib_error_t *
+esp_encrypt_init (vlib_main_t *vm)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  im->esp4_enc_fq_index =
+    vlib_frame_queue_main_init (esp4_encrypt_node.index, 0);
+  im->esp6_enc_fq_index =
+    vlib_frame_queue_main_init (esp6_encrypt_node.index, 0);
+  im->esp4_enc_tun_fq_index =
+    vlib_frame_queue_main_init (esp4_encrypt_tun_node.index, 0);
+  im->esp6_enc_tun_fq_index =
+    vlib_frame_queue_main_init (esp6_encrypt_tun_node.index, 0);
+  im->esp_mpls_enc_tun_fq_index =
+    vlib_frame_queue_main_init (esp_mpls_encrypt_tun_node.index, 0);
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (esp_encrypt_init);
+
+#endif
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
