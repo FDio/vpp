@@ -445,6 +445,8 @@ class VppTestCase(unittest.TestCase):
             cls.vpp_cmdline.extend(["plugin_path", plugin_path])
         if cls.test_plugin_path is not None:
             cls.vpp_cmdline.extend(["test_plugin_path", cls.test_plugin_path])
+        if hasattr(cls, "extra_vpp_config"):
+            cls.vpp_cmdline.extend([cls.extra_vpp_config])
 
         cls.logger.info("vpp_cmdline args: %s" % cls.vpp_cmdline)
         cls.logger.info("vpp_cmdline: %s" % " ".join(cls.vpp_cmdline))
