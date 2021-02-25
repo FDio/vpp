@@ -335,7 +335,7 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
   clib_error_t *error = 0;
 
 
-  sa = pool_elt_at_index (im->sad, sa_idx);
+  sa =ipsec_sa_get (sa_idx);
 
   if ((sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128) |
       (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_192) |

@@ -18,7 +18,7 @@
 #include <vlib/vlib.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/crypto/crypto.h>
-#include <vnet/vnet.h>
+#include <vnet/ipsec/ipsec.h>
 #include <vpp/app/version.h>
 
 #include <dpdk/buffer.h>
@@ -1357,7 +1357,7 @@ dpdk_cryptodev_init (vlib_main_t * vm)
     }
 
   /* register handler */
-  eidx = vnet_crypto_register_engine (vm, "dpdk_cryptodev", 79,
+  eidx = vnet_crypto_register_engine (vm, "dpdk_cryptodev", 100,
                                       "DPDK Cryptodev Engine");
 
 #define _(a, b, c, d, e, f) \
@@ -1387,6 +1387,12 @@ dpdk_cryptodev_init (vlib_main_t * vm)
 #undef _
 
   vnet_crypto_register_key_handler (vm, eidx, cryptodev_key_handler);
+
+  /* this engine is only enabled when cryptodev device(s) are presented in
+   * startup.conf. Assume it is wanted to be used, turn on async mode here.
+   */
+  vnet_crypto_request_async_mode (1);
+  ipsec_set_async_mode (1);
 
   return 0;
 
