@@ -18,7 +18,7 @@
 #include <cnat/cnat_translation.h>
 #include <cnat/cnat_inline.h>
 #include <cnat/cnat_src_policy.h>
-#include <cnat/cnat_snat.h>
+#include <cnat/cnat_snat_policy.h>
 
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/load_balance_map.h>
@@ -217,10 +217,8 @@ VLIB_REGISTER_NODE (cnat_input_feature_ip6_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = CNAT_N_ERROR,
   .error_strings = cnat_error_strings,
-  .n_next_nodes = CNAT_FEATURE_N_NEXT,
-  .next_nodes = {
-      [CNAT_FEATURE_NEXT_DROP] = "error-drop",
-  },
+  .n_next_nodes = IP6_LOOKUP_N_NEXT,
+  .next_nodes = IP6_LOOKUP_NEXT_NODES,
 };
 
 VNET_FEATURE_INIT (cnat_in_ip6_feature, static) = {
@@ -236,8 +234,7 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 			vlib_buffer_t *b, cnat_node_ctx_t *ctx,
 			int session_not_found, cnat_session_t *session)
 {
-  cnat_main_t *cm = &cnat_main;
-  cnat_snat_policy_main_t *cms = &cnat_snat_policy_main;
+  cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
   ip4_header_t *ip4 = NULL;
   ip_protocol_t iproto;
   ip6_header_t *ip6 = NULL;
@@ -275,32 +272,31 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       /* session table hit */
       cnat_timestamp_update (session->value.cs_ts_index, ctx->now);
     }
-  else if (!cms->snat_policy)
+  else if (!cpm->snat_policy)
     goto trace;
   else
     {
-      /* TODO: handle errors? */
-      cms->snat_policy (vm, b, session, ctx, &do_snat);
+      do_snat = cpm->snat_policy (b, session);
       if (do_snat != 1)
 	goto trace;
 
       if (AF_IP4 == ctx->af)
 	{
-	  if (ip_address_is_zero (&cm->snat_ip4.ce_ip))
+	  if (ip_address_is_zero (&cpm->snat_ip4.ce_ip))
 	    goto trace;
 
 	  ip46_address_set_ip4 (&session->value.cs_ip[VLIB_RX],
-				&ip_addr_v4 (&cm->snat_ip4.ce_ip));
+				&ip_addr_v4 (&cpm->snat_ip4.ce_ip));
 	  ip46_address_set_ip4 (&session->value.cs_ip[VLIB_TX],
 				&ip4->dst_address);
 	}
       else
 	{
-	  if (ip_address_is_zero (&cm->snat_ip6.ce_ip))
+	  if (ip_address_is_zero (&cpm->snat_ip6.ce_ip))
 	    goto trace;
 
 	  ip46_address_set_ip6 (&session->value.cs_ip[VLIB_RX],
-				&ip_addr_v6 (&cm->snat_ip6.ce_ip));
+				&ip_addr_v6 (&cpm->snat_ip6.ce_ip));
 	  ip46_address_set_ip6 (&session->value.cs_ip[VLIB_TX],
 				&ip6->dst_address);
 	}

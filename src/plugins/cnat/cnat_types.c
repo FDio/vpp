@@ -181,6 +181,7 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
   cm->translation_hash_buckets = CNAT_DEFAULT_TRANSLATION_BUCKETS;
   cm->snat_hash_memory = CNAT_DEFAULT_SNAT_MEMORY;
   cm->snat_hash_buckets = CNAT_DEFAULT_SNAT_BUCKETS;
+  cm->snat_if_map_length = CNAT_DEFAULT_SNAT_IF_MAP_LEN;
   cm->scanner_timeout = CNAT_DEFAULT_SCANNER_TIMEOUT;
   cm->session_max_age = CNAT_DEFAULT_SESSION_MAX_AGE;
   cm->tcp_max_age = CNAT_DEFAULT_TCP_MAX_AGE;
@@ -203,6 +204,8 @@ cnat_config (vlib_main_t * vm, unformat_input_t * input)
 			 unformat_memory_size, &cm->translation_hash_memory))
 	;
       else if (unformat (input, "snat-db-buckets %u", &cm->snat_hash_buckets))
+	;
+      else if (unformat (input, "snat-if-map-len %u", &cm->snat_if_map_length))
 	;
       else if (unformat (input, "snat-db-memory %U",
 			 unformat_memory_size, &cm->snat_hash_memory))

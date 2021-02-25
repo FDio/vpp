@@ -159,7 +159,7 @@ define cnat_get_snat_addresses_reply
   vl_api_interface_index_t sw_if_index;
 };
 
-autoreply define cnat_add_del_snat_prefix
+autoreply define cnat_snat_policy_add_del_exclude_pfx
 {
   u32 client_index;
   u32 context;
@@ -167,9 +167,29 @@ autoreply define cnat_add_del_snat_prefix
   vl_api_prefix_t prefix;
 };
 
-enum cnat_snat_policies:u32
+enum cnat_snat_policy_table:u8
 {
-  CNAT_SNAT_POLICY_NONE = 1,
+  CNAT_POLICY_INCLUDE_V4 = 0,
+  CNAT_POLICY_INCLUDE_V6 = 1,
+};
+
+autoreply define cnat_snat_policy_add_del_if
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  u8 is_add;
+  vl_api_cnat_snat_policy_table_t table;
+};
+
+/* A snat policy controls what traffic is srcNATed */
+enum cnat_snat_policies:u8
+{
+  /* No filter applied, srcNAT everything */
+  CNAT_POLICY_NONE = 0,
+  /* Filter by interface list : snat_policy_add_del_if
+   * and prefix list : snat_policy_add_del_if */
+  CNAT_POLICY_IF_PFX = 1,
 };
 
 autoreply define cnat_set_snat_policy
@@ -178,6 +198,7 @@ autoreply define cnat_set_snat_policy
   u32 context;
   vl_api_cnat_snat_policies_t policy;
 };
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

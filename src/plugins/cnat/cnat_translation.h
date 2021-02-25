@@ -231,6 +231,15 @@ extern void cnat_translation_watch_addr (index_t cti, u64 opaque,
 extern void cnat_translation_unwatch_addr (u32 cti,
 					   cnat_addr_resol_type_t type);
 
+/**
+ * Register a call back for endpoint->address resolution
+ */
+typedef void (*cnat_if_addr_add_cb_t) (addr_resolution_t *ar,
+				       ip_address_t *address, u8 is_del);
+
+extern void cnat_translation_register_addr_add_cb (cnat_addr_resol_type_t typ,
+						   cnat_if_addr_add_cb_t fn);
+
 /*
  * Data plane functions
  */
