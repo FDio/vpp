@@ -165,91 +165,112 @@ snat_not_translate_fast (snat_main_t *sm, vlib_node_runtime_t *node,
 }
 
 static int
+nat_ed_alloc_addr_and_port_with_snat_address (
+  snat_main_t *sm, u32 nat_proto, u32 thread_index, snat_address_t *a,
+  u16 port_per_thread, u32 snat_thread_index, snat_session_t *s,
+  ip4_address_t *outside_addr, u16 *outside_port)
+{
+  const u16 port_thread_offset = (port_per_thread * snat_thread_index) + 1024;
+
+  s->o2i.match.daddr = a->addr;
+  /* first try port suggested by caller */
+  u16 port = clib_net_to_host_u16 (*outside_port);
+  u16 port_offset = port - port_thread_offset;
+  if (port <= port_thread_offset ||
+      port > port_thread_offset + port_per_thread)
+    {
+      /* need to pick a different port, suggested port doesn't fit in
+       * this thread's port range */
+      port_offset = snat_random_port (0, port_per_thread - 1);
+      port = port_thread_offset + port_offset;
+    }
+  u16 attempts = ED_PORT_ALLOC_ATTEMPTS;
+  do
+    {
+      if (NAT_PROTOCOL_ICMP == nat_proto)
+	{
+	  s->o2i.match.sport = clib_host_to_net_u16 (port);
+	}
+      s->o2i.match.dport = clib_host_to_net_u16 (port);
+      if (0 == nat_ed_ses_o2i_flow_hash_add_del (sm, thread_index, s, 2))
+	{
+#define _(N, i, n, s)                                                         \
+  case NAT_PROTOCOL_##N:                                                      \
+    ++a->busy_##n##_port_refcounts[port];                                     \
+    a->busy_##n##_ports_per_thread[thread_index]++;                           \
+    a->busy_##n##_ports++;                                                    \
+    break;
+	  switch (nat_proto)
+	    {
+	      foreach_nat_protocol;
+	    default:
+	      nat_elog_info (sm, "unknown protocol");
+	      return 1;
+	    }
+#undef _
+	  *outside_addr = a->addr;
+	  *outside_port = clib_host_to_net_u16 (port);
+	  return 0;
+	}
+      port_offset = snat_random_port (0, port_per_thread - 1);
+      port = port_thread_offset + port_offset;
+      --attempts;
+    }
+  while (attempts > 0);
+  return 1;
+}
+
+static int
 nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index, u32 nat_proto,
-			    u32 thread_index, ip4_address_t r_addr, u16 r_port,
-			    u8 proto, u16 port_per_thread,
-			    u32 snat_thread_index, snat_session_t *s,
-			    ip4_address_t *outside_addr, u16 *outside_port)
+			    u32 thread_index, ip4_address_t s_addr,
+			    u16 port_per_thread, u32 snat_thread_index,
+			    snat_session_t *s, ip4_address_t *outside_addr,
+			    u16 *outside_port)
 {
   int i;
   snat_address_t *a, *ga = 0;
 
-  const u16 port_thread_offset = (port_per_thread * snat_thread_index) + 1024;
-
-  for (i = 0; i < vec_len (sm->addresses); i++)
+  if (vec_len (sm->addresses) > 0)
     {
-      a = sm->addresses + i;
-      switch (nat_proto)
-	{
-#define _(N, j, n, unused)                                                    \
-  case NAT_PROTOCOL_##N:                                                      \
-    if (a->fib_index == rx_fib_index)                                         \
-      {                                                                       \
-	s->o2i.match.daddr = a->addr;                                         \
-	/* first try port suggested by caller */                              \
-	u16 port = clib_net_to_host_u16 (*outside_port);                      \
-	u16 port_offset = port - port_thread_offset;                          \
-	if (port <= port_thread_offset ||                                     \
-	    port > port_thread_offset + port_per_thread)                      \
-	  {                                                                   \
-	    /* need to pick a different port, suggested port doesn't fit in   \
-	     * this thread's port range */                                    \
-	    port_offset = snat_random_port (0, port_per_thread - 1);          \
-	    port = port_thread_offset + port_offset;                          \
-	  }                                                                   \
-	u16 attempts = ED_PORT_ALLOC_ATTEMPTS;                                \
-	do                                                                    \
-	  {                                                                   \
-	    if (NAT_PROTOCOL_ICMP == nat_proto)                               \
-	      {                                                               \
-		s->o2i.match.sport = clib_host_to_net_u16 (port);             \
-	      }                                                               \
-	    s->o2i.match.dport = clib_host_to_net_u16 (port);                 \
-	    if (0 ==                                                          \
-		nat_ed_ses_o2i_flow_hash_add_del (sm, thread_index, s, 2))    \
-	      {                                                               \
-		++a->busy_##n##_port_refcounts[port];                         \
-		a->busy_##n##_ports_per_thread[thread_index]++;               \
-		a->busy_##n##_ports++;                                        \
-		*outside_addr = a->addr;                                      \
-		*outside_port = clib_host_to_net_u16 (port);                  \
-		return 0;                                                     \
-	      }                                                               \
-	    port_offset = snat_random_port (0, port_per_thread - 1);          \
-	    port = port_thread_offset + port_offset;                          \
-	    --attempts;                                                       \
-	  }                                                                   \
-	while (attempts > 0);                                                 \
-      }                                                                       \
-    else if (a->fib_index == ~0)                                              \
-      {                                                                       \
-	ga = a;                                                               \
-      }                                                                       \
-    break;
+      int s_addr_offset = s_addr.as_u32 % vec_len (sm->addresses);
 
-	  foreach_nat_protocol;
-	default:
-	  nat_elog_info (sm, "unknown protocol");
-	  return 1;
+      for (i = s_addr_offset; i < vec_len (sm->addresses); ++i)
+	{
+	  a = sm->addresses + i;
+	  if (a->fib_index == rx_fib_index)
+	    {
+	      return nat_ed_alloc_addr_and_port_with_snat_address (
+		sm, nat_proto, thread_index, a, port_per_thread,
+		snat_thread_index, s, outside_addr, outside_port);
+	    }
+	  else if (a->fib_index == ~0)
+	    {
+	      ga = a;
+	    }
+	}
+
+      for (i = 0; i < s_addr_offset; ++i)
+	{
+	  a = sm->addresses + i;
+	  if (a->fib_index == rx_fib_index)
+	    {
+	      return nat_ed_alloc_addr_and_port_with_snat_address (
+		sm, nat_proto, thread_index, a, port_per_thread,
+		snat_thread_index, s, outside_addr, outside_port);
+	    }
+	  else if (a->fib_index == ~0)
+	    {
+	      ga = a;
+	    }
+	}
+
+      if (ga)
+	{
+	  return nat_ed_alloc_addr_and_port_with_snat_address (
+	    sm, nat_proto, thread_index, a, port_per_thread, snat_thread_index,
+	    s, outside_addr, outside_port);
 	}
     }
-
-  if (ga)
-    {
-      /* fake fib_index to reuse macro */
-      rx_fib_index = ~0;
-      a = ga;
-      switch (nat_proto)
-	{
-	  foreach_nat_protocol;
-	default:
-	  nat_elog_info (sm, "unknown protocol");
-	  return 1;
-	}
-    }
-
-#undef _
-
   /* Totally out of translations to use... */
   nat_ipfix_logging_addresses_exhausted (thread_index, 0);
   return 1;
@@ -423,7 +444,7 @@ slow_path_ed (snat_main_t *sm, vlib_buffer_t *b, ip4_address_t l_addr,
       nat_6t_flow_txfib_rewrite_set (&s->o2i, rx_fib_index);
 
       if (nat_ed_alloc_addr_and_port (
-	    sm, rx_fib_index, nat_proto, thread_index, daddr, dport, proto,
+	    sm, rx_fib_index, nat_proto, thread_index, l_addr,
 	    sm->port_per_thread, tsm->snat_thread_index, s, &outside_addr,
 	    &outside_port))
 	{

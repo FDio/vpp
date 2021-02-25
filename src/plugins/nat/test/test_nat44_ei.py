@@ -3719,6 +3719,50 @@ class TestNAT44EI(MethodHolder):
         self.logger.info(
             self.vapi.cli("show nat44 ei addr-port-assignment-alg"))
 
+    def test_outside_address_distribution(self):
+        """ Outside address distribution based on source address """
+
+        x = 100
+        nat_addresses = []
+
+        for i in range(1, x):
+            a = "10.0.0.%d" % i
+            nat_addresses.append(a)
+
+        flags = self.config_flags.NAT44_EI_IF_INSIDE
+        self.vapi.nat44_ei_interface_add_del_feature(
+            sw_if_index=self.pg0.sw_if_index,
+            flags=flags, is_add=1)
+        self.vapi.nat44_ei_interface_add_del_feature(
+            sw_if_index=self.pg1.sw_if_index,
+            is_add=1)
+
+        self.vapi.nat44_ei_add_del_address_range(
+            first_ip_address=nat_addresses[0],
+            last_ip_address=nat_addresses[-1],
+            vrf_id=0xFFFFFFFF, is_add=1)
+
+        self.pg0.generate_remote_hosts(x)
+
+        pkts = []
+        for i in range(x):
+            p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+                 IP(src=self.pg0.remote_hosts[i].ip4,
+                     dst=self.pg1.remote_ip4) /
+                 UDP(sport=7000+i, dport=80+i))
+            pkts.append(p)
+
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        recvd = self.pg1.get_capture(len(pkts))
+        for (p_sent, p_recvd) in zip(pkts, recvd):
+            packed = socket.inet_aton(p_sent[IP].src)
+            numeric = struct.unpack("!L", packed)[0]
+            numeric = socket.htonl(numeric)
+            a = nat_addresses[(numeric-1) % len(nat_addresses)]
+            self.assertEqual(a, p_recvd[IP].src, "Packet not translated")
+
 
 class TestNAT44Out2InDPO(MethodHolder):
     """ NAT44EI Test Cases using out2in DPO """

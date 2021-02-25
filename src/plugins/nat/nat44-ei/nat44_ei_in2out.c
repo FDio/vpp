@@ -336,8 +336,8 @@ slow_path (nat44_ei_main_t *nm, vlib_buffer_t *b0, ip4_header_t *ip0,
     {
       /* Try to create dynamic translation */
       if (nm->alloc_addr_and_port (
-	    nm->addresses, rx_fib_index0, thread_index, nat_proto, &sm_addr,
-	    &sm_port, nm->port_per_thread,
+	    nm->addresses, rx_fib_index0, thread_index, nat_proto,
+	    ip0->src_address, &sm_addr, &sm_port, nm->port_per_thread,
 	    nm->per_thread_data[thread_index].snat_thread_index))
 	{
 	  b0->error = node->errors[NAT44_EI_IN2OUT_ERROR_OUT_OF_PORTS];

@@ -1468,7 +1468,8 @@ nat44_ei_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip0,
 static int
 nat44_ei_alloc_default_cb (nat44_ei_address_t *addresses, u32 fib_index,
 			   u32 thread_index, nat_protocol_t proto,
-			   ip4_address_t *addr, u16 *port, u16 port_per_thread,
+			   ip4_address_t s_addr, ip4_address_t *addr,
+			   u16 *port, u16 port_per_thread,
 			   u32 snat_thread_index)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
@@ -1476,11 +1477,16 @@ nat44_ei_alloc_default_cb (nat44_ei_address_t *addresses, u32 fib_index,
   u32 portnum;
   int i;
 
-  for (i = 0; i < vec_len (addresses); i++)
+  if (vec_len (addresses) > 0)
     {
-      a = addresses + i;
-      switch (proto)
+
+      int s_addr_offset = s_addr.as_u32 % vec_len (addresses);
+
+      for (i = s_addr_offset; i < vec_len (addresses); ++i)
 	{
+	  a = addresses + i;
+	  switch (proto)
+	    {
 #define _(N, j, n, s)                                                         \
   case NAT_PROTOCOL_##N:                                                      \
     if (a->busy_##n##_ports_per_thread[thread_index] < port_per_thread)       \
@@ -1509,41 +1515,39 @@ nat44_ei_alloc_default_cb (nat44_ei_address_t *addresses, u32 fib_index,
 	  }                                                                   \
       }                                                                       \
     break;
-	  foreach_nat_protocol
-#undef _
-	    default : nat_elog_info (nm, "unknown protocol");
-	  return 1;
+	      foreach_nat_protocol;
+	    default:
+	      nat_elog_info (nm, "unknown protocol");
+	      return 1;
+	    }
 	}
-    }
 
+      for (i = 0; i < s_addr_offset; ++i)
+	{
+	  a = addresses + i;
+	  switch (proto)
+	    {
+	      foreach_nat_protocol;
+	    default:
+	      nat_elog_info (nm, "unknown protocol");
+	      return 1;
+	    }
+	}
   if (ga)
     {
       a = ga;
+      // fake fib index to reuse macro
+      fib_index = ~0;
       switch (proto)
 	{
-#define _(N, j, n, s)                                                         \
-  case NAT_PROTOCOL_##N:                                                      \
-    while (1)                                                                 \
-      {                                                                       \
-	portnum =                                                             \
-	  (port_per_thread * snat_thread_index) +                             \
-	  nat_random_port (&nm->random_seed, 0, port_per_thread - 1) + 1024;  \
-	if (a->busy_##n##_port_refcounts[portnum])                            \
-	  continue;                                                           \
-	++a->busy_##n##_port_refcounts[portnum];                              \
-	a->busy_##n##_ports_per_thread[thread_index]++;                       \
-	a->busy_##n##_ports++;                                                \
-	*addr = a->addr;                                                      \
-	*port = clib_host_to_net_u16 (portnum);                               \
-	return 0;                                                             \
-      }
-	  break;
-	  foreach_nat_protocol
-#undef _
+	  foreach_nat_protocol;
 	    default : nat_elog_info (nm, "unknown protocol");
 	  return 1;
 	}
     }
+    }
+
+#undef _
 
   /* Totally out of translations to use... */
   nat_ipfix_logging_addresses_exhausted (thread_index, 0);
@@ -1553,8 +1557,8 @@ nat44_ei_alloc_default_cb (nat44_ei_address_t *addresses, u32 fib_index,
 static int
 nat44_ei_alloc_range_cb (nat44_ei_address_t *addresses, u32 fib_index,
 			 u32 thread_index, nat_protocol_t proto,
-			 ip4_address_t *addr, u16 *port, u16 port_per_thread,
-			 u32 snat_thread_index)
+			 ip4_address_t s_addr, ip4_address_t *addr, u16 *port,
+			 u16 port_per_thread, u32 snat_thread_index)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   nat44_ei_address_t *a = addresses;
@@ -1600,8 +1604,8 @@ exhausted:
 static int
 nat44_ei_alloc_mape_cb (nat44_ei_address_t *addresses, u32 fib_index,
 			u32 thread_index, nat_protocol_t proto,
-			ip4_address_t *addr, u16 *port, u16 port_per_thread,
-			u32 snat_thread_index)
+			ip4_address_t s_addr, ip4_address_t *addr, u16 *port,
+			u16 port_per_thread, u32 snat_thread_index)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   nat44_ei_address_t *a = addresses;
