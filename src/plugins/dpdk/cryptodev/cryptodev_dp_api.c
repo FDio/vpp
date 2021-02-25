@@ -18,7 +18,7 @@
 #include <vlib/vlib.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/crypto/crypto.h>
-#include <vnet/vnet.h>
+#include <vnet/ipsec/ipsec.h>
 #include <vpp/app/version.h>
 
 #include <dpdk/buffer.h>
@@ -84,7 +84,7 @@ typedef enum
 
 typedef struct
 {
-  union rte_cryptodev_session_ctx keys[CRYPTODEV_N_OP_TYPES];
+  union rte_cryptodev_session_ctx **keys;
 } cryptodev_key_t;
 
 typedef struct
@@ -129,10 +129,10 @@ typedef struct
 
 cryptodev_main_t cryptodev_main;
 
-static int
+static_always_inline int
 prepare_aead_xform (struct rte_crypto_sym_xform *xform,
-		    cryptodev_op_type_t op_type,
-		    const vnet_crypto_key_t * key, u32 aad_len)
+		    cryptodev_op_type_t op_type, const vnet_crypto_key_t *key,
+		    u32 aad_len)
 {
   struct rte_crypto_aead_xform *aead_xform = &xform->aead;
   memset (xform, 0, sizeof (*xform));
@@ -157,10 +157,10 @@ prepare_aead_xform (struct rte_crypto_sym_xform *xform,
   return 0;
 }
 
-static int
+static_always_inline int
 prepare_linked_xform (struct rte_crypto_sym_xform *xforms,
 		      cryptodev_op_type_t op_type,
-		      const vnet_crypto_key_t * key)
+		      const vnet_crypto_key_t *key)
 {
   struct rte_crypto_sym_xform *xform_cipher, *xform_auth;
   vnet_crypto_key_t *key_cipher, *key_auth;
@@ -221,18 +221,57 @@ prepare_linked_xform (struct rte_crypto_sym_xform *xforms,
   return 0;
 }
 
-static int
-cryptodev_session_create (vnet_crypto_key_t * const key,
-			  struct rte_mempool *sess_priv_pool,
-			  cryptodev_key_t * session_pair, u32 aad_len)
+static_always_inline void
+cryptodev_session_del (struct rte_cryptodev_sym_session *sess)
 {
-  struct rte_crypto_sym_xform xforms_enc[2] = { {0} };
-  struct rte_crypto_sym_xform xforms_dec[2] = { {0} };
+  u32 n_devs, i;
+
+  if (sess == NULL)
+    return;
+
+  n_devs = rte_cryptodev_count ();
+
+  for (i = 0; i < n_devs; i++)
+    rte_cryptodev_sym_session_clear (i, sess);
+
+  rte_cryptodev_sym_session_free (sess);
+}
+
+static_always_inline int
+cryptodev_session_create (vlib_main_t *vm, vnet_crypto_key_index_t idx,
+			  u32 aad_len)
+{
   cryptodev_main_t *cmt = &cryptodev_main;
+  cryptodev_numa_data_t *numa_data;
   cryptodev_inst_t *dev_inst;
-  struct rte_cryptodev *cdev;
+  vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
+  struct rte_mempool *sess_pool, *sess_priv_pool;
+  cryptodev_key_t *ckey = vec_elt_at_index (cmt->keys, idx);
+  struct rte_crypto_sym_xform xforms_enc[2] = { { 0 } };
+  struct rte_crypto_sym_xform xforms_dec[2] = { { 0 } };
+  struct rte_cryptodev_sym_session *sessions[CRYPTODEV_N_OP_TYPES] = { 0 };
+  u32 numa_node = vm->numa_node;
   int ret;
-  uint8_t dev_id = 0;
+
+  numa_data = vec_elt_at_index (cmt->per_numa_data, numa_node);
+  sess_pool = numa_data->sess_pool;
+  sess_priv_pool = numa_data->sess_priv_pool;
+
+  sessions[CRYPTODEV_OP_TYPE_ENCRYPT] =
+    rte_cryptodev_sym_session_create (sess_pool);
+  if (!sessions[CRYPTODEV_OP_TYPE_ENCRYPT])
+    {
+      ret = -1;
+      goto clear_key;
+    }
+
+  sessions[CRYPTODEV_OP_TYPE_DECRYPT] =
+    rte_cryptodev_sym_session_create (sess_pool);
+  if (!sessions[CRYPTODEV_OP_TYPE_DECRYPT])
+    {
+      ret = -1;
+      goto clear_key;
+    }
 
   if (key->type == VNET_CRYPTO_KEY_TYPE_LINK)
     ret = prepare_linked_xform (xforms_enc, CRYPTODEV_OP_TYPE_ENCRYPT, key);
@@ -249,44 +288,39 @@ cryptodev_session_create (vnet_crypto_key_t * const key,
 
   vec_foreach (dev_inst, cmt->cryptodev_inst)
   {
-    dev_id = dev_inst->dev_id;
-    cdev = rte_cryptodev_pmd_get_dev (dev_id);
+    u32 dev_id = dev_inst->dev_id;
+    struct rte_cryptodev *cdev = rte_cryptodev_pmd_get_dev (dev_id);
 
     /* if the session is already configured for the driver type, avoid
        configuring it again to increase the session data's refcnt */
-    if (session_pair->keys[0].crypto_sess->sess_data[cdev->driver_id].data &&
-	session_pair->keys[1].crypto_sess->sess_data[cdev->driver_id].data)
+    if (sessions[CRYPTODEV_OP_TYPE_ENCRYPT]->sess_data[cdev->driver_id].data &&
+	sessions[CRYPTODEV_OP_TYPE_DECRYPT]->sess_data[cdev->driver_id].data)
       continue;
 
-    ret = rte_cryptodev_sym_session_init (dev_id,
-					  session_pair->keys[0].crypto_sess,
-					  xforms_enc, sess_priv_pool);
-    ret = rte_cryptodev_sym_session_init (dev_id,
-					  session_pair->keys[1].crypto_sess,
-					  xforms_dec, sess_priv_pool);
+    ret = rte_cryptodev_sym_session_init (
+      dev_id, sessions[CRYPTODEV_OP_TYPE_ENCRYPT], xforms_enc, sess_priv_pool);
+    ret = rte_cryptodev_sym_session_init (
+      dev_id, sessions[CRYPTODEV_OP_TYPE_DECRYPT], xforms_dec, sess_priv_pool);
     if (ret < 0)
       return ret;
   }
-  session_pair->keys[0].crypto_sess->opaque_data = aad_len;
-  session_pair->keys[1].crypto_sess->opaque_data = aad_len;
 
-  return 0;
-}
+  sessions[CRYPTODEV_OP_TYPE_ENCRYPT]->opaque_data = aad_len;
+  sessions[CRYPTODEV_OP_TYPE_DECRYPT]->opaque_data = aad_len;
 
-static void
-cryptodev_session_del (struct rte_cryptodev_sym_session *sess)
-{
-  u32 n_devs, i;
+  CLIB_MEMORY_STORE_BARRIER ();
+  ckey->keys[numa_node][CRYPTODEV_OP_TYPE_ENCRYPT].crypto_sess =
+    sessions[CRYPTODEV_OP_TYPE_ENCRYPT];
+  ckey->keys[numa_node][CRYPTODEV_OP_TYPE_DECRYPT].crypto_sess =
+    sessions[CRYPTODEV_OP_TYPE_DECRYPT];
 
-  if (sess == NULL)
-    return;
-
-  n_devs = rte_cryptodev_count ();
-
-  for (i = 0; i < n_devs; i++)
-    rte_cryptodev_sym_session_clear (i, sess);
-
-  rte_cryptodev_sym_session_free (sess);
+clear_key:
+  if (ret != 0)
+    {
+      cryptodev_session_del (sessions[CRYPTODEV_OP_TYPE_ENCRYPT]);
+      cryptodev_session_del (sessions[CRYPTODEV_OP_TYPE_DECRYPT]);
+    }
+  return ret;
 }
 
 static int
@@ -312,72 +346,44 @@ cryptodev_sess_handler (vlib_main_t * vm, vnet_crypto_key_op_t kop,
 			vnet_crypto_key_index_t idx, u32 aad_len)
 {
   cryptodev_main_t *cmt = &cryptodev_main;
-  cryptodev_numa_data_t *numa_data;
   vnet_crypto_key_t *key = vnet_crypto_get_key (idx);
-  struct rte_mempool *sess_pool, *sess_priv_pool;
   cryptodev_key_t *ckey = 0;
-  int ret = 0;
+  u32 i;
 
-  if (kop == VNET_CRYPTO_KEY_OP_DEL)
+  vec_validate (cmt->keys, idx);
+  ckey = vec_elt_at_index (cmt->keys, idx);
+
+  if (kop == VNET_CRYPTO_KEY_OP_DEL || kop == VNET_CRYPTO_KEY_OP_MODIFY)
     {
       if (idx >= vec_len (cmt->keys))
 	return;
 
-      ckey = pool_elt_at_index (cmt->keys, idx);
-      cryptodev_session_del (ckey->keys[0].crypto_sess);
-      cryptodev_session_del (ckey->keys[1].crypto_sess);
-      ckey->keys[0].crypto_sess = 0;
-      ckey->keys[1].crypto_sess = 0;
-      pool_put (cmt->keys, ckey);
+      vec_foreach_index (i, cmt->per_numa_data)
+	{
+	  if (ckey->keys[i][CRYPTODEV_OP_TYPE_ENCRYPT].crypto_sess)
+	    {
+	      cryptodev_session_del (
+		ckey->keys[i][CRYPTODEV_OP_TYPE_ENCRYPT].crypto_sess);
+	      cryptodev_session_del (
+		ckey->keys[i][CRYPTODEV_OP_TYPE_DECRYPT].crypto_sess);
+
+	      CLIB_MEMORY_STORE_BARRIER ();
+	      ckey->keys[i][CRYPTODEV_OP_TYPE_ENCRYPT].crypto_sess = 0;
+	      ckey->keys[i][CRYPTODEV_OP_TYPE_DECRYPT].crypto_sess = 0;
+	    }
+	}
       return;
     }
-  else if (kop == VNET_CRYPTO_KEY_OP_MODIFY)
-    {
-      if (idx >= vec_len (cmt->keys))
-	return;
 
-      ckey = pool_elt_at_index (cmt->keys, idx);
-
-      cryptodev_session_del (ckey->keys[0].crypto_sess);
-      cryptodev_session_del (ckey->keys[1].crypto_sess);
-      ckey->keys[0].crypto_sess = 0;
-      ckey->keys[1].crypto_sess = 0;
-    }
-  else				/* create key */
-    pool_get_zero (cmt->keys, ckey);
+  /* create key */
 
   /* do not create session for unsupported alg */
   if (cryptodev_check_supported_vnet_alg (key))
     return;
 
-  numa_data = vec_elt_at_index (cmt->per_numa_data, vm->numa_node);
-  sess_pool = numa_data->sess_pool;
-  sess_priv_pool = numa_data->sess_priv_pool;
-
-  ckey->keys[0].crypto_sess = rte_cryptodev_sym_session_create (sess_pool);
-  if (!ckey->keys[0].crypto_sess)
-    {
-      ret = -1;
-      goto clear_key;
-    }
-
-  ckey->keys[1].crypto_sess = rte_cryptodev_sym_session_create (sess_pool);
-  if (!ckey->keys[1].crypto_sess)
-    {
-      ret = -1;
-      goto clear_key;
-    }
-
-  ret = cryptodev_session_create (key, sess_priv_pool, ckey, aad_len);
-
-clear_key:
-  if (ret != 0)
-    {
-      cryptodev_session_del (ckey->keys[0].crypto_sess);
-      cryptodev_session_del (ckey->keys[1].crypto_sess);
-      memset (ckey, 0, sizeof (*ckey));
-      pool_put (cmt->keys, ckey);
-    }
+  vec_validate (ckey->keys, vec_len (cmt->per_numa_data) - 1);
+  vec_foreach_index (i, ckey->keys)
+    vec_validate (ckey->keys[i], CRYPTODEV_N_OP_TYPES - 1);
 }
 
 /*static*/ void
@@ -470,7 +476,6 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
   struct rte_crypto_va_iova_ptr iv_vec, digest_vec;
   vlib_buffer_t **b;
   u32 n_elts;
-  cryptodev_key_t *key;
   u32 last_key_index = ~0;
   i16 min_ofs;
   u32 max_end;
@@ -506,13 +511,25 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
 
       if (PREDICT_FALSE (last_key_index != fe->key_index))
 	{
-	  key = pool_elt_at_index (cmt->keys, fe->key_index);
+	  cryptodev_key_t *key = vec_elt_at_index (cmt->keys, fe->key_index);
 	  last_key_index = fe->key_index;
 
-	  if (PREDICT_FALSE
-	      (rte_cryptodev_configure_raw_dp_ctx
-	       (cet->cryptodev_id, cet->cryptodev_q, cet->ctx,
-		RTE_CRYPTO_OP_WITH_SESSION, key->keys[op_type], 1) < 0))
+	  if (PREDICT_FALSE (key->keys[vm->numa_node][op_type].crypto_sess ==
+			     0))
+	    {
+	      if (PREDICT_FALSE (
+		    cryptodev_session_create (vm, last_key_index, 0) < 0))
+		{
+		  cryptodev_mark_frame_err_status (
+		    frame, VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
+		  return -1;
+		}
+	    }
+
+	  if (PREDICT_FALSE (rte_cryptodev_configure_raw_dp_ctx (
+			       cet->cryptodev_id, cet->cryptodev_q, cet->ctx,
+			       RTE_CRYPTO_OP_WITH_SESSION,
+			       key->keys[vm->numa_node][op_type], 1) < 0))
 	    {
 	      cryptodev_mark_frame_err_status (frame,
 					       VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
@@ -595,14 +612,11 @@ cryptodev_frame_gcm_enqueue (vlib_main_t * vm,
   vnet_crypto_async_frame_elt_t *fe;
   vlib_buffer_t **b;
   u32 n_elts;
-  cryptodev_key_t *key;
-  u32 last_key_index = ~0;
   union rte_crypto_sym_ofs cofs;
   struct rte_crypto_vec *vec;
   struct rte_crypto_va_iova_ptr iv_vec, digest_vec, aad_vec;
-  u8 sess_aad_len = 0;
+  u32 last_key_index = ~0;
   int status;
-
 
   n_elts = frame->n_elts;
 
@@ -631,21 +645,45 @@ cryptodev_frame_gcm_enqueue (vlib_main_t * vm,
 	  vlib_prefetch_buffer_header (b[1], LOAD);
 	}
 
-      if (last_key_index != fe->key_index)
+      if (PREDICT_FALSE (last_key_index != fe->key_index))
 	{
-	  key = pool_elt_at_index (cmt->keys, fe->key_index);
-	  sess_aad_len = (u8) key->keys[op_type].crypto_sess->opaque_data;
-	  if (PREDICT_FALSE (sess_aad_len != aad_len))
-	    {
-	      cryptodev_sess_handler (vm, VNET_CRYPTO_KEY_OP_MODIFY,
-				      fe->key_index, aad_len);
-	    }
+	  cryptodev_key_t *key = vec_elt_at_index (cmt->keys, fe->key_index);
 	  last_key_index = fe->key_index;
 
-	  if (PREDICT_FALSE
-	      (rte_cryptodev_configure_raw_dp_ctx
-	       (cet->cryptodev_id, cet->cryptodev_q, cet->ctx,
-		RTE_CRYPTO_OP_WITH_SESSION, key->keys[op_type], 1) < 0))
+	  if (PREDICT_FALSE (key->keys[vm->numa_node][op_type].crypto_sess ==
+			     0))
+	    {
+	      if (PREDICT_FALSE (
+		    cryptodev_session_create (vm, last_key_index, 0) < 0))
+		{
+		  cryptodev_mark_frame_err_status (
+		    frame, VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
+		  cryptodev_reset_ctx (cet->cryptodev_id, cet->cryptodev_q,
+				       cet->ctx);
+		  return -1;
+		}
+	    }
+
+	  if (PREDICT_FALSE ((u8) key->keys[vm->numa_node][op_type]
+			       .crypto_sess->opaque_data != aad_len))
+	    {
+	      cryptodev_sess_handler (vm, VNET_CRYPTO_KEY_OP_DEL,
+				      fe->key_index, aad_len);
+	      if (PREDICT_FALSE (cryptodev_session_create (vm, last_key_index,
+							   aad_len) < 0))
+		{
+		  cryptodev_mark_frame_err_status (
+		    frame, VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
+		  cryptodev_reset_ctx (cet->cryptodev_id, cet->cryptodev_q,
+				       cet->ctx);
+		  return -1;
+		}
+	    }
+
+	  if (PREDICT_FALSE (rte_cryptodev_configure_raw_dp_ctx (
+			       cet->cryptodev_id, cet->cryptodev_q, cet->ctx,
+			       RTE_CRYPTO_OP_WITH_SESSION,
+			       key->keys[vm->numa_node][op_type], 1) < 0))
 	    {
 	      cryptodev_mark_frame_err_status (frame,
 					       VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
@@ -1214,12 +1252,6 @@ cryptodev_count_queue (u32 numa)
   for (i = 0; i < n_cryptodev; i++)
     {
       rte_cryptodev_info_get (i, &info);
-      if (rte_cryptodev_socket_id (i) != numa)
-	{
-	  clib_warning ("DPDK crypto resource %s is in different numa node "
-	      "as %u, ignored", info.device->name, numa);
-	  continue;
-	}
       q_count += info.max_nb_queue_pairs;
     }
 
@@ -1232,8 +1264,6 @@ cryptodev_configure (vlib_main_t *vm, u32 cryptodev_id)
   struct rte_cryptodev_info info;
   struct rte_cryptodev *cdev;
   cryptodev_main_t *cmt = &cryptodev_main;
-  cryptodev_numa_data_t *numa_data = vec_elt_at_index (cmt->per_numa_data,
-						       vm->numa_node);
   u32 dp_size = 0;
   u32 i;
   int ret;
@@ -1246,9 +1276,12 @@ cryptodev_configure (vlib_main_t *vm, u32 cryptodev_id)
 
   ret = check_cryptodev_alg_support (cryptodev_id);
   if (ret != 0)
-    return ret;
-
-
+    {
+      clib_warning (
+	"Cryptodev: device %u does not support required algorithms",
+	cryptodev_id);
+      return ret;
+    }
 
   /** If the device is already started, we reuse it, otherwise configure
    *  both the device and queue pair.
@@ -1257,7 +1290,7 @@ cryptodev_configure (vlib_main_t *vm, u32 cryptodev_id)
     {
       struct rte_cryptodev_config cfg;
 
-      cfg.socket_id = vm->numa_node;
+      cfg.socket_id = info.device->numa_node;
       cfg.nb_queue_pairs = info.max_nb_queue_pairs;
 
       rte_cryptodev_configure (cryptodev_id, &cfg);
@@ -1266,14 +1299,19 @@ cryptodev_configure (vlib_main_t *vm, u32 cryptodev_id)
 	{
 	  struct rte_cryptodev_qp_conf qp_cfg;
 
-	  qp_cfg.mp_session = numa_data->sess_pool;
-	  qp_cfg.mp_session_private = numa_data->sess_priv_pool;
+	  qp_cfg.mp_session = 0;
+	  qp_cfg.mp_session_private = 0;
 	  qp_cfg.nb_descriptors = CRYPTODEV_NB_CRYPTO_OPS;
 
 	  ret = rte_cryptodev_queue_pair_setup (cryptodev_id, i, &qp_cfg,
-						vm->numa_node);
+						info.device->numa_node);
 	  if (ret)
-	    break;
+	    {
+	      clib_warning (
+		"Cryptodev: Configure device %u queue %u failed %d",
+		cryptodev_id, i, ret);
+	      break;
+	    }
 	}
       if (i != info.max_nb_queue_pairs)
 	return -1;
@@ -1284,7 +1322,11 @@ cryptodev_configure (vlib_main_t *vm, u32 cryptodev_id)
 
   ret = rte_cryptodev_get_raw_dp_ctx_size (cryptodev_id);
   if (ret < 0)
-    return -1;
+    {
+      clib_warning ("Cryptodev: Cannot get RAW DP CTX size for device %u",
+		    cryptodev_id);
+      return -1;
+    }
   dp_size = ret;
 
   for (i = 0; i < info.max_nb_queue_pairs; i++)
@@ -1414,36 +1456,6 @@ dpdk_cryptodev_init (vlib_main_t * vm)
     }
 
   vec_validate (cmt->per_numa_data, vm->numa_node);
-  numa_data = vec_elt_at_index (cmt->per_numa_data, numa);
-
-  /* create session pool for the numa node */
-  name = format (0, "vcryptodev_sess_pool_%u%c", numa, 0);
-  mp = rte_cryptodev_sym_session_pool_create ((char *) name,
-					      CRYPTODEV_NB_SESSION,
-					      0, 0, 0, numa);
-  if (!mp)
-    {
-      error = clib_error_return (0, "Not enough memory for mp %s", name);
-      goto err_handling;
-    }
-  vec_free (name);
-
-  numa_data->sess_pool = mp;
-
-  /* create session private pool for the numa node */
-  name = format (0, "cryptodev_sess_pool_%u%c", numa, 0);
-  mp = rte_mempool_create ((char *) name, CRYPTODEV_NB_SESSION, sess_sz, 0,
-			   0, NULL, NULL, NULL, NULL, numa, 0);
-  if (!mp)
-    {
-      error = clib_error_return (0, "Not enough memory for mp %s", name);
-      vec_free (name);
-      goto err_handling;
-    }
-
-  vec_free (name);
-
-  numa_data->sess_priv_pool = mp;
 
   /* probe all cryptodev devices and get queue info */
   if (cryptodev_probe (vm, n_workers) < 0)
@@ -1460,6 +1472,8 @@ dpdk_cryptodev_init (vlib_main_t * vm)
   for (i = skip_master; i < tm->n_vlib_mains; i++)
     {
       ptd = cmt->per_thread_data + i;
+      numa = vlib_mains[i]->numa_node;
+
       cryptodev_assign_resource (ptd, 0, CRYPTODEV_RESOURCE_ASSIGN_AUTO);
       ptd->aad_buf = rte_zmalloc_socket (0, CRYPTODEV_NB_CRYPTO_OPS *
 					 CRYPTODEV_MAX_AAD_SIZE,
@@ -1484,11 +1498,45 @@ dpdk_cryptodev_init (vlib_main_t * vm)
 	  goto err_handling;
 	}
       vec_free (name);
+
+      vec_validate (cmt->per_numa_data, numa);
+      numa_data = vec_elt_at_index (cmt->per_numa_data, numa);
+
+      if (numa_data->sess_pool)
+	continue;
+
+      /* create session pool for the numa node */
+      name = format (0, "vcryptodev_sess_pool_%u%c", numa, 0);
+      mp = rte_cryptodev_sym_session_pool_create (
+	(char *) name, CRYPTODEV_NB_SESSION, 0, 0, 0, numa);
+      if (!mp)
+	{
+	  error = clib_error_return (0, "Not enough memory for mp %s", name);
+	  goto err_handling;
+	}
+      vec_free (name);
+
+      numa_data->sess_pool = mp;
+
+      /* create session private pool for the numa node */
+      name = format (0, "cryptodev_sess_pool_%u%c", numa, 0);
+      mp = rte_mempool_create ((char *) name, CRYPTODEV_NB_SESSION, sess_sz, 0,
+			       0, NULL, NULL, NULL, NULL, numa, 0);
+      if (!mp)
+	{
+	  error = clib_error_return (0, "Not enough memory for mp %s", name);
+	  vec_free (name);
+	  goto err_handling;
+	}
+
+      vec_free (name);
+
+      numa_data->sess_priv_pool = mp;
     }
 
   /* register handler */
-  eidx = vnet_crypto_register_engine (vm, "dpdk_cryptodev", 79,
-                                      "DPDK Cryptodev Engine");
+  eidx = vnet_crypto_register_engine (vm, "dpdk_cryptodev", 100,
+				      "DPDK Cryptodev Engine");
 
 #define _(a, b, c, d, e, f) \
   vnet_crypto_register_async_handler \
@@ -1517,6 +1565,12 @@ dpdk_cryptodev_init (vlib_main_t * vm)
 #undef _
 
   vnet_crypto_register_key_handler (vm, eidx, cryptodev_key_handler);
+
+  /* this engine is only enabled when cryptodev device(s) are presented in
+   * startup.conf. Assume it is wanted to be used, turn on async mode here.
+   */
+  vnet_crypto_request_async_mode (1);
+  ipsec_set_async_mode (1);
 
   return 0;
 
