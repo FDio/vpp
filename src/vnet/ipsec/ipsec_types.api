@@ -74,6 +74,8 @@ enum ipsec_sad_flags
   IPSEC_API_SAD_FLAG_UDP_ENCAP = 0x10,
   /* IPsec SA is for inbound traffic */
   IPSEC_API_SAD_FLAG_IS_INBOUND = 0x40,
+  /* IPsec SA uses an Async driver */
+  IPSEC_API_SAD_FLAG_ASYNC = 0x80 [backwards_compatible],
 };
 
 enum ipsec_proto

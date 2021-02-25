@@ -146,38 +146,33 @@ esp_aad_fill (u8 * data, const esp_header_t * esp, const ipsec_sa_t * sa)
  * to next nodes.
  */
 always_inline void
-esp_set_next_index (int is_async, u32 * from, u16 * nexts, u32 bi,
-		    u16 * drop_index, u16 drop_next, u16 * next)
+esp_set_next_index (vlib_buffer_t *b, vlib_node_runtime_t *node, u32 err,
+		    u16 index, u16 *nexts, u16 drop_next)
 {
-  if (is_async)
-    {
-      from[*drop_index] = bi;
-      nexts[*drop_index] = drop_next;
-      *drop_index += 1;
-    }
-  else
-    next[0] = drop_next;
+  nexts[index] = drop_next;
+  b->error = node->errors[err];
 }
 
 /* when submitting a frame is failed, drop all buffers in the frame */
-always_inline void
-esp_async_recycle_failed_submit (vnet_crypto_async_frame_t * f,
-				 vlib_buffer_t ** b, u32 * from, u16 * nexts,
-				 u16 * n_dropped, u16 drop_next_index,
-				 vlib_error_t err)
+always_inline u32
+esp_async_recycle_failed_submit (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
+				 vlib_node_runtime_t *node, u32 err, u16 index,
+				 u32 *from, u16 *nexts, u16 drop_next_index)
 {
   u32 n_drop = f->n_elts;
   u32 *bi = f->buffer_indices;
-  b -= n_drop;
+
   while (n_drop--)
     {
-      b[0]->error = err;
-      esp_set_next_index (1, from, nexts, bi[0], n_dropped, drop_next_index,
-			  NULL);
+      from[index] = bi[0];
+      esp_set_next_index (vlib_get_buffer (vm, bi[0]), node, err, index, nexts,
+			  drop_next_index);
       bi++;
-      b++;
+      index++;
     }
   vnet_crypto_async_reset_frame (f);
+
+  return (f->n_elts);
 }
 
 /**
