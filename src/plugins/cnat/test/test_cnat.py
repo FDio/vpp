@@ -573,6 +573,17 @@ class TestCNatSourceNAT(VppTestCase):
             feature_name="cnat-snat-ip4",
             sw_if_index=self.pg0.sw_if_index)
 
+        policie_tbls = VppEnum.vl_api_cnat_snat_policy_table_t
+        self.vapi.cnat_set_snat_policy(
+            policy=VppEnum.vl_api_cnat_snat_policies_t.CNAT_POLICY_IF_PFX)
+        for i in self.pg_interfaces:
+            self.vapi.cnat_snat_policy_add_del_if(
+                sw_if_index=i.sw_if_index, is_add=1,
+                table=policie_tbls.CNAT_POLICY_INCLUDE_V6)
+            self.vapi.cnat_snat_policy_add_del_if(
+                sw_if_index=i.sw_if_index, is_add=1,
+                table=policie_tbls.CNAT_POLICY_INCLUDE_V4)
+
     def tearDown(self):
         self.vapi.cnat_session_purge()
         for i in self.pg_interfaces:
@@ -808,7 +819,8 @@ class TestCNatSourceNAT(VppTestCase):
                 self.assertEqual(rx[IP46].src, remote_addr)
 
             # add remote host to exclude list
-            self.vapi.cnat_add_del_snat_prefix(prefix=exclude_prefix, is_add=1)
+            self.vapi.cnat_snat_policy_add_del_exclude_pfx(
+                prefix=exclude_prefix, is_add=1)
             self.vapi.cnat_session_purge()
 
             rxs = self.send_and_expect(
@@ -822,7 +834,8 @@ class TestCNatSourceNAT(VppTestCase):
                 self.assertEqual(rx[IP46].src, client_addr)
 
             # remove remote host from exclude list
-            self.vapi.cnat_add_del_snat_prefix(prefix=exclude_prefix, is_add=0)
+            self.vapi.cnat_snat_policy_add_del_exclude_pfx(
+                prefix=exclude_prefix, is_add=0)
             self.vapi.cnat_session_purge()
 
             rxs = self.send_and_expect(

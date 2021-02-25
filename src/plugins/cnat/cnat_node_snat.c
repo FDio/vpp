@@ -15,7 +15,7 @@
 
 #include <vlibmemory/api.h>
 #include <cnat/cnat_node.h>
-#include <cnat/cnat_snat.h>
+#include <cnat/cnat_snat_policy.h>
 #include <cnat/cnat_inline.h>
 #include <cnat/cnat_src_policy.h>
 
@@ -36,7 +36,7 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		   vlib_buffer_t *b, cnat_node_ctx_t *ctx,
 		   int session_not_found, cnat_session_t *session)
 {
-  cnat_main_t *cm = &cnat_main;
+  cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
   ip4_header_t *ip4 = NULL;
   ip_protocol_t iproto;
   ip6_header_t *ip6 = NULL;
@@ -45,7 +45,7 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 next0;
   u16 sport;
   u8 trace_flags = 0;
-  int rv;
+  int rv, do_snat;
 
   if (AF_IP4 == ctx->af)
     {
@@ -80,12 +80,11 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	ip46_address_set_ip4 (&ip46_dst_address, &ip4->dst_address);
       else
 	ip46_address_set_ip6 (&ip46_dst_address, &ip6->dst_address);
-      rv = cnat_search_snat_prefix (&ip46_dst_address, ctx->af);
-      if (!rv)
-	{
-	  /* Prefix table hit, we shouldn't source NAT */
-	  goto trace;
-	}
+
+      do_snat = cpm->snat_policy (b, session);
+      if (!do_snat)
+	goto trace;
+
       /* New flow, create the sessions if necessary. session will be a snat
          session, and rsession will be a dnat session
          Note: packet going through this path are going to the outside,
@@ -93,19 +92,19 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
          a VIP) */
       if (AF_IP4 == ctx->af)
 	{
-	  if (!(cm->snat_ip4.ce_flags & CNAT_EP_FLAG_RESOLVED))
+	  if (!(cpm->snat_ip4.ce_flags & CNAT_EP_FLAG_RESOLVED))
 	    goto trace;
 	  ip46_address_set_ip4 (&session->value.cs_ip[VLIB_RX],
-				&ip_addr_v4 (&cm->snat_ip4.ce_ip));
+				&ip_addr_v4 (&cpm->snat_ip4.ce_ip));
 	  ip46_address_set_ip4 (&session->value.cs_ip[VLIB_TX],
 				&ip4->dst_address);
 	}
       else
 	{
-	  if (!(cm->snat_ip6.ce_flags & CNAT_EP_FLAG_RESOLVED))
+	  if (!(cpm->snat_ip6.ce_flags & CNAT_EP_FLAG_RESOLVED))
 	    goto trace;
 	  ip46_address_set_ip6 (&session->value.cs_ip[VLIB_RX],
-				&ip_addr_v6 (&cm->snat_ip6.ce_ip));
+				&ip_addr_v6 (&cpm->snat_ip6.ce_ip));
 	  ip46_address_set_ip6 (&session->value.cs_ip[VLIB_TX],
 				&ip6->dst_address);
 	}

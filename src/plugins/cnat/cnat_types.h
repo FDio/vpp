@@ -37,6 +37,7 @@
 #define CNAT_DEFAULT_SESSION_BUCKETS     1024
 #define CNAT_DEFAULT_TRANSLATION_BUCKETS 1024
 #define CNAT_DEFAULT_SNAT_BUCKETS        1024
+#define CNAT_DEFAULT_SNAT_IF_MAP_LEN	 4096
 
 #define CNAT_DEFAULT_SESSION_MEMORY      (1 << 20)
 #define CNAT_DEFAULT_TRANSLATION_MEMORY  (256 << 10)
@@ -81,23 +82,6 @@ typedef struct
   u16 sequence;
 } cnat_echo_header_t;
 
-typedef struct
-{
-  u32 dst_address_length_refcounts[129];
-  u16 *prefix_lengths_in_search_order;
-  uword *non_empty_dst_address_length_bitmap;
-} cnat_snat_pfx_table_meta_t;
-
-typedef struct
-{
-  /* Stores (ip family, prefix & mask) */
-  clib_bihash_24_8_t ip_hash;
-  /* family dependant cache */
-  cnat_snat_pfx_table_meta_t meta[2];
-  /* Precomputed ip masks (ip4 & ip6) */
-  ip6_address_t ip_masks[129];
-} cnat_snat_pfx_table_t;
-
 typedef struct cnat_main_
 {
   /* Memory size of the session bihash */
@@ -118,6 +102,10 @@ typedef struct cnat_main_
   /* Number of buckets of the  source NAT prefix bihash */
   u32 snat_hash_buckets;
 
+  /* Bit map for include / exclude sw_if_index
+   * so max number of expected interfaces */
+  u32 snat_if_map_length;
+
   /* Timeout after which to clear sessions (in seconds) */
   u32 session_max_age;
 
@@ -130,15 +118,6 @@ typedef struct cnat_main_
 
   /* Lock for the timestamp pool */
   clib_rwlock_t ts_lock;
-
-  /* Ip4 Address to use for source NATing */
-  cnat_endpoint_t snat_ip4;
-
-  /* Ip6 Address to use for source NATing */
-  cnat_endpoint_t snat_ip6;
-
-  /* Longest prefix Match table for source NATing */
-  cnat_snat_pfx_table_t snat_pfx_table;
 
   /* Index of the scanner process node */
   uword scanner_node_index;
