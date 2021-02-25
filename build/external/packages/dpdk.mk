@@ -45,7 +45,6 @@ DPDK_DRIVERS_DISABLED := baseband/\*,	\
 	compress/zlib,						\
 	crypto/ccp,							\
 	crypto/dpaa_sec,					\
-	crypto/openssl,						\
 	crypto/aesni_mb,						\
 	crypto/aesni_gcm,						\
 	crypto/kasumi,						\

@@ -154,3 +154,24 @@ add_vpp_plugin(dpdk
   COMPONENT
   vpp-plugin-dpdk
 )
+
+add_vpp_plugin(dpdk_crypto_unittest
+  SOURCES
+  buffer.c
+  unittest.c
+  thread.c
+  device/cli.c
+  device/common.c
+  device/device.c
+  device/flow.c
+  device/format.c
+  device/init.c
+  device/node.c
+  cryptodev/cryptodev.c
+
+  LINK_FLAGS
+  "${DPDK_LINK_FLAGS}"
+
+  LINK_LIBRARIES
+  ${DPDK_LINK_LIBRARIES}
+)

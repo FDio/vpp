@@ -850,9 +850,18 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
     @classmethod
     def setUpConstants(cls):
         test_args = str.split(cls.__doc__, " ")
-        engine = test_args[0]
-        if engine == "async":
+        cls.async_mode = False
+        cls.engine = test_args[0]
+        if cls.engine == "async":
             cls.worker_config = "workers 2"
+            cls.async_mode = True
+        if "cryptodev" in cls.engine:
+            cls.worker_config = "workers 2"
+            cls.extra_vpp_plugin_config = \
+                ["plugin dpdk_crypto_unittest_plugin.so { enable }"]
+            cls.async_mode = True
+            cls.extra_vpp_config = \
+                "dpdk { vdev crypto_openssl,max_nb_queue_pairs=2,socket_id=0 }"
         super(RunTestIpsecEspAll, cls).setUpConstants()
 
     def setUp(self):
@@ -866,9 +875,6 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
             self.flag = params.flags[1]
 
         self.algo = params.algos[test_args[2]]
-        self.async_mode = False
-        if self.engine == "async":
-            self.async_mode = True
 
     def tearDown(self):
         super(RunTestIpsecEspAll, self).tearDown()
@@ -877,12 +883,19 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
         self.run_a_test(self.engine, self.flag, self.algo)
 
     def run_a_test(self, engine, flag, algo, payload_size=None):
+        handler_type = ""
         if self.async_mode:
             self.vapi.cli("set ipsec async mode on")
-        else:
-            self.vapi.cli("set crypto handler all %s" % engine)
+            handler_type = "async"
+        if engine != "async":
+            self.vapi.cli("set crypto %s handler all %s" %
+                          (handler_type, engine))
 
+        self.logger.info(self.vapi.cli("sh crypto handlers"))
+        self.logger.info(self.vapi.cli("sh crypto async handlers"))
+        self.logger.info(self.vapi.cli("sh crypto engines"))
         self.logger.info(self.vapi.cli("show crypto async status"))
+        self.logger.error(self.vapi.cli("show thread"))
         self.ipv4_params = IPsecIPv4Params()
         self.ipv6_params = IPsecIPv6Params()
 
@@ -985,16 +998,17 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
 # GEN      echo "        self.run_test()";
 # GEN done; done; done
 #
+# GEN for ENG in async dpdk_cryptodev; do \
 # GEN   for FLG in noESN ESN; do for ALG in \
 # GEN     AES-GCM-128/NONE AES-GCM-192/NONE AES-GCM-256/NONE \
 # GEN     AES-CBC-192/SHA1-96 AES-CBC-256/SHA1-96; do \
 # GEN      [[ ${FLG} == "ESN" &&  ${ALG} == *"NONE" ]] && continue
-# GEN      echo -e "\n\nclass Test_async_${FLG}_${ALG}(RunTestIpsecEspAll):" |
+# GEN      echo -e "\n\nclass Test_${ENG}_${FLG}_${ALG}(RunTestIpsecEspAll):" |
 # GEN             sed -e 's/-/_/g' -e 's#/#_#g' ; \
-# GEN      echo '    """'async $FLG $ALG IPSec test'"""' ;
+# GEN      echo '    """'$ENG $FLG $ALG IPSec test'"""' ;
 # GEN      echo "    def test_ipsec(self):";
 # GEN      echo "        self.run_test()";
-# GEN done; done;
+# GEN done; done; done;
 
 
 class Test_native_noESN_AES_GCM_128_NONE(RunTestIpsecEspAll):
@@ -1377,5 +1391,47 @@ class Test_async_ESN_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
 
 class Test_async_ESN_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
     """async ESN AES-CBC-256/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_dpdk_cryptodev_noESN_AES_GCM_128_NONE(RunTestIpsecEspAll):
+    """dpdk_cryptodev noESN AES-GCM-128/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_dpdk_cryptodev_noESN_AES_GCM_192_NONE(RunTestIpsecEspAll):
+    """dpdk_cryptodev noESN AES-GCM-192/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_dpdk_cryptodev_noESN_AES_GCM_256_NONE(RunTestIpsecEspAll):
+    """dpdk_cryptodev noESN AES-GCM-256/NONE IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_dpdk_cryptodev_noESN_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
+    """dpdk_cryptodev noESN AES-CBC-192/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_dpdk_cryptodev_noESN_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
+    """dpdk_cryptodev noESN AES-CBC-256/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_dpdk_cryptodev_ESN_AES_CBC_192_SHA1_96(RunTestIpsecEspAll):
+    """dpdk_cryptodev ESN AES-CBC-192/SHA1-96 IPSec test"""
+    def test_ipsec(self):
+        self.run_test()
+
+
+class Test_dpdk_cryptodev_ESN_AES_CBC_256_SHA1_96(RunTestIpsecEspAll):
+    """dpdk_cryptodev ESN AES-CBC-256/SHA1-96 IPSec test"""
     def test_ipsec(self):
         self.run_test()
