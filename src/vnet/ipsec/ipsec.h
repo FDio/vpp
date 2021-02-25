@@ -224,19 +224,6 @@ clib_error_t *ipsec_add_del_sa_sess_cb (ipsec_main_t * im, u32 sa_index,
 
 clib_error_t *ipsec_check_support_cb (ipsec_main_t * im, ipsec_sa_t * sa);
 
-extern vlib_node_registration_t ah4_encrypt_node;
-extern vlib_node_registration_t ah4_decrypt_node;
-extern vlib_node_registration_t ah6_encrypt_node;
-extern vlib_node_registration_t ah6_decrypt_node;
-extern vlib_node_registration_t esp4_encrypt_node;
-extern vlib_node_registration_t esp4_decrypt_node;
-extern vlib_node_registration_t esp6_encrypt_node;
-extern vlib_node_registration_t esp6_decrypt_node;
-extern vlib_node_registration_t esp4_encrypt_tun_node;
-extern vlib_node_registration_t esp6_encrypt_tun_node;
-extern vlib_node_registration_t esp_mpls_encrypt_tun_node;
-extern vlib_node_registration_t esp4_decrypt_tun_node;
-extern vlib_node_registration_t esp6_decrypt_tun_node;
 extern vlib_node_registration_t ipsec4_tun_input_node;
 extern vlib_node_registration_t ipsec6_tun_input_node;
 
@@ -293,10 +280,6 @@ ipsec_sa_get (u32 sa_index)
   return (pool_elt_at_index (ipsec_main.sad, sa_index));
 }
 
-void ipsec_add_feature (const char *arc_name, const char *node_name,
-			u32 * out_feature_index);
-
-void ipsec_set_async_mode (u32 is_enabled);
 extern void ipsec_register_udp_port (u16 udp_port);
 extern void ipsec_unregister_udp_port (u16 udp_port);
 

@@ -1568,6 +1568,29 @@ VLIB_REGISTER_NODE (esp6_decrypt_tun_post_node) = {
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
+
+static clib_error_t *
+esp_decrypt_init (vlib_main_t *vm)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  im->esp4_dec_fq_index =
+    vlib_frame_queue_main_init (esp4_decrypt_node.index, 0);
+  im->esp6_dec_fq_index =
+    vlib_frame_queue_main_init (esp6_decrypt_node.index, 0);
+  im->esp4_dec_tun_fq_index =
+    vlib_frame_queue_main_init (esp4_decrypt_tun_node.index, 0);
+  im->esp6_dec_tun_fq_index =
+    vlib_frame_queue_main_init (esp6_decrypt_tun_node.index, 0);
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (esp_decrypt_init);
+
+#endif
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
