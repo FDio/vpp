@@ -19,7 +19,7 @@
     used to control the ABF plugin
 */
 
-option version = "0.1.0";
+option version = "0.2.0";
 import "vnet/ip/ip_types.api";
 import "vnet/fib/fib_types.api";
 import "vnet/interface_types.api";
@@ -27,6 +27,20 @@ import "vnet/interface_types.api";
 enum cnat_translation_flags:u8
 {
   CNAT_TRANSLATION_ALLOC_PORT = 1,
+};
+
+enum cnat_endpoint_tuple_flags:u8
+{
+  /* Dont translate said endpoint tuple but
+   * still forward */
+  CNAT_EPT_NO_NAT = 1,
+};
+
+
+enum cnat_lb_type:u8
+{
+  CNAT_LB_TYPE_DEFAULT = 0,
+  CNAT_LB_TYPE_MAGLEV = 1,
 };
 
 /* An enpoint is either
@@ -44,6 +58,7 @@ typedef cnat_endpoint_tuple
 {
   vl_api_cnat_endpoint_t dst_ep;
   vl_api_cnat_endpoint_t src_ep;
+  u8 flags;
 };
 
 typedef cnat_translation
@@ -53,6 +68,7 @@ typedef cnat_translation
   vl_api_ip_proto_t ip_proto;
   u8 is_real_ip;
   u8 flags;
+  vl_api_cnat_lb_type_t lb_type;
   u32 n_paths;
   vl_api_cnat_endpoint_tuple_t paths[n_paths];
 };
