@@ -65,7 +65,6 @@ static u32 pnat_rewrite_ip4(u32 pool_index, ip4_header_t *ip) {
     ip_csum_t csum = ip->checksum;
     csum = ip_csum_sub_even(csum, csumd);
     ip->checksum = ip_csum_fold(csum);
-    ASSERT(ip->checksum == ip4_header_checksum(ip));
 
     /* L4 ports */
     if (ip->protocol == IP_PROTOCOL_TCP) {
