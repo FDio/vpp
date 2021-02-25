@@ -101,7 +101,8 @@ typedef struct ipsec_key_t_
   _ (32, IS_PROTECT, "Protect")                                               \
   _ (64, IS_INBOUND, "inbound")                                               \
   _ (128, IS_AEAD, "aead")                                                    \
-  _ (256, IS_CTR, "ctr")
+  _ (256, IS_CTR, "ctr")                                                      \
+  _ (512, IS_ASYNC, "async")
 
 typedef enum ipsec_sad_flags_t_
 {

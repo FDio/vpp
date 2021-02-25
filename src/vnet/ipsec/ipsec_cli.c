@@ -940,7 +940,6 @@ set_async_mode_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				   format_unformat_error, line_input));
     }
 
-  vnet_crypto_request_async_mode (async_enable);
   ipsec_set_async_mode (async_enable);
 
   unformat_free (line_input);
