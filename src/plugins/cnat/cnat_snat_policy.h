@@ -42,14 +42,16 @@ typedef struct cnat_snat_exclude_pfx_table_t_
 
 typedef enum cnat_snat_interface_map_type_t_
 {
-  CNAT_SNAT_IF_MAP_EXCLUDE_V4 = AF_IP4,
-  CNAT_SNAT_IF_MAP_EXCLUDE_V6 = AF_IP6,
+  CNAT_SNAT_IF_MAP_INCLUDE_V4 = AF_IP4,
+  CNAT_SNAT_IF_MAP_INCLUDE_V6 = AF_IP6,
+  CNAT_SNAT_IF_MAP_INCLUDE_POD,
   CNAT_N_SNAT_IF_MAP,
 } cnat_snat_interface_map_type_t;
 
 typedef enum cnat_snat_policy_type_t_
 {
   CNAT_SNAT_POLICY_DEFAULT = 1,
+  CNAT_SNAT_POLICY_K8S = 2,
 } cnat_snat_policy_type_t;
 
 typedef struct cnat_snat_policy_main_t_
