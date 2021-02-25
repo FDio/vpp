@@ -110,6 +110,7 @@ typedef struct _svm_fifo
   struct _svm_fifo *prev; /**< prev in active chain */
 
   svm_fifo_chunk_t *chunks_at_attach; /**< chunks to be accounted at detach */
+  svm_fifo_shared_t *hdr_at_attach;   /**< hdr to be freed at detach */
 
 #if SVM_FIFO_TRACE
   svm_fifo_trace_elem_t *trace;
