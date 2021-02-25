@@ -90,7 +90,7 @@ class TemplateIpsec4TunProtect(object):
 
     encryption_type = ESP
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
     tun4_input_node = "ipsec4-tun-input"
 
     def config_sa_tra(self, p):
@@ -207,7 +207,7 @@ class TemplateIpsec4TunIfEspUdp(TemplateIpsec4TunProtect,
     """ IPsec UDP tunnel interface tests """
 
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
     encryption_type = ESP
 
     @classmethod
@@ -284,7 +284,7 @@ class TemplateIpsec4TunIfEspUdp(TemplateIpsec4TunProtect,
 class TestIpsec4TunIfEsp1(TemplateIpsec4TunIfEsp, IpsecTun4Tests):
     """ Ipsec ESP - TUN tests """
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
 
     def test_tun_basic64(self):
         """ ipsec 6o4 tunnel basic test """
@@ -451,7 +451,7 @@ class TestIpsec6TunIfEsp1(TemplateIpsec6TunIfEsp,
                           IpsecTun6Tests):
     """ Ipsec ESP - TUN tests """
     tun6_encrypt_node_name = "esp6-encrypt-tun"
-    tun6_decrypt_node_name = "esp6-decrypt-tun"
+    tun6_decrypt_node_name = ["esp6-decrypt-tun", "esp6-decrypt-tun-post"]
 
     def test_tun_basic46(self):
         """ ipsec 4o6 tunnel basic test """
@@ -468,7 +468,7 @@ class TestIpsec6TunIfEspHandoff(TemplateIpsec6TunIfEsp,
                                 IpsecTun6HandoffTests):
     """ Ipsec ESP 6 Handoff tests """
     tun6_encrypt_node_name = "esp6-encrypt-tun"
-    tun6_decrypt_node_name = "esp6-decrypt-tun"
+    tun6_decrypt_node_name = ["esp6-decrypt-tun", "esp6-decrypt-tun-post"]
 
     def test_tun_handoff_66_police(self):
         """ ESP 6o6 tunnel with policer worker hand-off test """
@@ -540,7 +540,7 @@ class TestIpsec4TunIfEspHandoff(TemplateIpsec4TunIfEsp,
                                 IpsecTun4HandoffTests):
     """ Ipsec ESP 4 Handoff tests """
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
 
     def test_tun_handoff_44_police(self):
         """ ESP 4o4 tunnel with policer worker hand-off test """
@@ -616,7 +616,7 @@ class TestIpsec4MultiTunIfEsp(TemplateIpsec4TunProtect,
 
     encryption_type = ESP
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
 
     def setUp(self):
         super(TestIpsec4MultiTunIfEsp, self).setUp()
@@ -688,7 +688,7 @@ class TestIpsec4TunIfEspAll(TemplateIpsec4TunProtect,
 
     encryption_type = ESP
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
 
     def setUp(self):
         super(TestIpsec4TunIfEspAll, self).setUp()
@@ -846,7 +846,7 @@ class TestIpsec4TunIfEspNoAlgo(TemplateIpsec4TunProtect,
 
     encryption_type = ESP
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
 
     def setUp(self):
         super(TestIpsec4TunIfEspNoAlgo, self).setUp()
@@ -891,7 +891,7 @@ class TestIpsec6MultiTunIfEsp(TemplateIpsec6TunProtect,
 
     encryption_type = ESP
     tun6_encrypt_node_name = "esp6-encrypt-tun"
-    tun6_decrypt_node_name = "esp6-decrypt-tun"
+    tun6_decrypt_node_name = ["esp6-decrypt-tun", "esp6-decrypt-tun-post"]
 
     def setUp(self):
         super(TestIpsec6MultiTunIfEsp, self).setUp()
@@ -939,7 +939,7 @@ class TestIpsecGreTebIfEsp(TemplateIpsec,
                            IpsecTun4Tests):
     """ Ipsec GRE TEB ESP - TUN tests """
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
     encryption_type = ESP
     omac = "00:11:22:33:44:55"
 
@@ -1050,7 +1050,7 @@ class TestIpsecGreTebVlanIfEsp(TemplateIpsec,
                                IpsecTun4Tests):
     """ Ipsec GRE TEB ESP - TUN tests """
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
     encryption_type = ESP
     omac = "00:11:22:33:44:55"
 
@@ -1170,7 +1170,7 @@ class TestIpsecGreTebIfEspTra(TemplateIpsec,
                               IpsecTun4Tests):
     """ Ipsec GRE TEB ESP - Tra tests """
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
     encryption_type = ESP
     omac = "00:11:22:33:44:55"
 
@@ -1275,7 +1275,7 @@ class TestIpsecGreTebUdpIfEspTra(TemplateIpsec,
                                  IpsecTun4Tests):
     """ Ipsec GRE TEB UDP ESP - Tra tests """
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
     encryption_type = ESP
     omac = "00:11:22:33:44:55"
 
@@ -1396,7 +1396,7 @@ class TestIpsecGreIfEsp(TemplateIpsec,
                         IpsecTun4Tests):
     """ Ipsec GRE ESP - TUN tests """
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
     encryption_type = ESP
 
     def gen_encrypt_pkts(self, p, sa, sw_intf, src, dst, count=1,
@@ -1499,7 +1499,7 @@ class TestIpsecGreIfEspTra(TemplateIpsec,
                            IpsecTun4Tests):
     """ Ipsec GRE ESP - TRA tests """
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
     encryption_type = ESP
 
     def gen_encrypt_pkts(self, p, sa, sw_intf, src, dst, count=1,
@@ -1605,7 +1605,7 @@ class TestIpsecGreIfEspTra(TemplateIpsec,
                                           dst=self.pg1.remote_ip6)
         self.send_and_assert_no_replies(self.tun_if, tx)
         node_name = ('/err/%s/unsupported payload' %
-                     self.tun4_decrypt_node_name)
+                     self.tun4_decrypt_node_name[0])
         self.assertEqual(1, self.statistics.get_err_counter(node_name))
 
 
@@ -1613,7 +1613,7 @@ class TestIpsecGre6IfEspTra(TemplateIpsec,
                             IpsecTun6Tests):
     """ Ipsec GRE ESP - TRA tests """
     tun6_encrypt_node_name = "esp6-encrypt-tun"
-    tun6_decrypt_node_name = "esp6-decrypt-tun"
+    tun6_decrypt_node_name = ["esp6-decrypt-tun", "esp6-decrypt-tun-post"]
     encryption_type = ESP
 
     def gen_encrypt_pkts6(self, p, sa, sw_intf, src, dst, count=1,
@@ -1711,7 +1711,7 @@ class TestIpsecGre6IfEspTra(TemplateIpsec,
 class TestIpsecMGreIfEspTra4(TemplateIpsec, IpsecTun4):
     """ Ipsec mGRE ESP v4 TRA tests """
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
     encryption_type = ESP
 
     def gen_encrypt_pkts(self, p, sa, sw_intf, src, dst, count=1,
@@ -1843,7 +1843,7 @@ class TestIpsecMGreIfEspTra4(TemplateIpsec, IpsecTun4):
 class TestIpsecMGreIfEspTra6(TemplateIpsec, IpsecTun6):
     """ Ipsec mGRE ESP v6 TRA tests """
     tun6_encrypt_node_name = "esp6-encrypt-tun"
-    tun6_decrypt_node_name = "esp6-decrypt-tun"
+    tun6_decrypt_node_name = ["esp6-decrypt-tun", "esp6-decrypt-tun-post"]
     encryption_type = ESP
 
     def gen_encrypt_pkts6(self, p, sa, sw_intf, src, dst, count=1,
@@ -2092,7 +2092,7 @@ class TestIpsec4TunProtectTun(TemplateIpsec,
 
     encryption_type = ESP
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
 
     def setUp(self):
         super(TestIpsec4TunProtectTun, self).setUp()
@@ -2206,7 +2206,7 @@ class TestIpsec4TunProtectTunDrop(TemplateIpsec,
 
     encryption_type = ESP
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
 
     def setUp(self):
         super(TestIpsec4TunProtectTunDrop, self).setUp()
@@ -2255,7 +2255,7 @@ class TestIpsec6TunProtect(TemplateIpsec,
 
     encryption_type = ESP
     tun6_encrypt_node_name = "esp6-encrypt-tun"
-    tun6_decrypt_node_name = "esp6-decrypt-tun"
+    tun6_decrypt_node_name = ["esp6-decrypt-tun", "esp6-decrypt-tun-post"]
 
     def setUp(self):
         super(TestIpsec6TunProtect, self).setUp()
@@ -2382,7 +2382,7 @@ class TestIpsec6TunProtectTun(TemplateIpsec,
 
     encryption_type = ESP
     tun6_encrypt_node_name = "esp6-encrypt-tun"
-    tun6_decrypt_node_name = "esp6-decrypt-tun"
+    tun6_decrypt_node_name = ["esp6-decrypt-tun", "esp6-decrypt-tun-post"]
 
     def setUp(self):
         super(TestIpsec6TunProtectTun, self).setUp()
@@ -2485,7 +2485,7 @@ class TestIpsec6TunProtectTunDrop(TemplateIpsec,
 
     encryption_type = ESP
     tun6_encrypt_node_name = "esp6-encrypt-tun"
-    tun6_decrypt_node_name = "esp6-decrypt-tun"
+    tun6_decrypt_node_name = ["esp6-decrypt-tun", "esp6-decrypt-tun-post"]
 
     def setUp(self):
         super(TestIpsec6TunProtectTunDrop, self).setUp()
@@ -2532,7 +2532,7 @@ class TemplateIpsecItf4(object):
 
     encryption_type = ESP
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
     tun4_input_node = "ipsec4-tun-input"
 
     def config_sa_tun(self, p, src, dst):
@@ -2843,7 +2843,7 @@ class TemplateIpsecItf6(object):
 
     encryption_type = ESP
     tun6_encrypt_node_name = "esp6-encrypt-tun"
-    tun6_decrypt_node_name = "esp6-decrypt-tun"
+    tun6_decrypt_node_name = ["esp6-decrypt-tun", "esp6-decrypt-tun-post"]
     tun6_input_node = "ipsec6-tun-input"
 
     def config_sa_tun(self, p, src, dst):
@@ -3062,7 +3062,7 @@ class TestIpsecItf6(TemplateIpsec,
 class TestIpsecMIfEsp4(TemplateIpsec, IpsecTun4):
     """ Ipsec P2MP ESP v4 tests """
     tun4_encrypt_node_name = "esp4-encrypt-tun"
-    tun4_decrypt_node_name = "esp4-decrypt-tun"
+    tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]
     encryption_type = ESP
 
     def gen_encrypt_pkts(self, p, sa, sw_intf, src, dst, count=1,

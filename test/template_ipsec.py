@@ -57,6 +57,7 @@ class IPsecIPv4Params:
         self.tun_flags = (VppEnum.vl_api_tunnel_encap_decap_flags_t.
                           TUNNEL_API_ENCAP_DECAP_FLAG_NONE)
         self.dscp = 0
+        self.async_mode = False
 
 
 class IPsecIPv6Params:
@@ -101,6 +102,7 @@ class IPsecIPv6Params:
         self.tun_flags = (VppEnum.vl_api_tunnel_encap_decap_flags_t.
                           TUNNEL_API_ENCAP_DECAP_FLAG_NONE)
         self.dscp = 0
+        self.async_mode = False
 
 
 def mk_scapy_crypt_key(p):
@@ -295,28 +297,46 @@ class IpsecTcpTests(IpsecTcp):
 
 class IpsecTra4(object):
     """ verify methods for Transport v4 """
+    def get_replay_counts(self, p):
+        replay_node_name = ('/err/%s/SA replayed packet' %
+                            self.tra4_decrypt_node_name[0])
+        count = self.statistics.get_err_counter(replay_node_name)
+
+        if p.async_mode:
+            replay_post_node_name = ('/err/%s/SA replayed packet' %
+                                     self.tra4_decrypt_node_name[p.async_mode])
+            count += self.statistics.get_err_counter(replay_post_node_name)
+
+        return count
+
+    def get_hash_failed_counts(self, p):
+        if ESP == self.encryption_type and p.crypt_algo == "AES-GCM":
+            hash_failed_node_name = ('/err/%s/ESP decryption failed' %
+                                     self.tra4_decrypt_node_name[p.async_mode])
+        else:
+            hash_failed_node_name = ('/err/%s/Integrity check failed' %
+                                     self.tra4_decrypt_node_name[p.async_mode])
+        count = self.statistics.get_err_counter(hash_failed_node_name)
+
+        if p.async_mode:
+            count += self.statistics.get_err_counter(
+                '/err/crypto-dispatch/bad-hmac')
+
+        return count
+
     def verify_tra_anti_replay(self):
         p = self.params[socket.AF_INET]
         esn_en = p.vpp_tra_sa.esn_en
 
         seq_cycle_node_name = ('/err/%s/sequence number cycled' %
                                self.tra4_encrypt_node_name)
-        replay_node_name = ('/err/%s/SA replayed packet' %
-                            self.tra4_decrypt_node_name)
-        if ESP == self.encryption_type and p.crypt_algo == "AES-GCM":
-            hash_failed_node_name = ('/err/%s/ESP decryption failed' %
-                                     self.tra4_decrypt_node_name)
-        else:
-            hash_failed_node_name = ('/err/%s/Integrity check failed' %
-                                     self.tra4_decrypt_node_name)
-        replay_count = self.statistics.get_err_counter(replay_node_name)
-        hash_failed_count = self.statistics.get_err_counter(
-            hash_failed_node_name)
+        replay_count = self.get_replay_counts(p)
+        hash_failed_count = self.get_hash_failed_counts(p)
         seq_cycle_count = self.statistics.get_err_counter(seq_cycle_node_name)
 
         if ESP == self.encryption_type:
             undersize_node_name = ('/err/%s/undersized packet' %
-                                   self.tra4_decrypt_node_name)
+                                   self.tra4_decrypt_node_name[0])
             undersize_count = self.statistics.get_err_counter(
                 undersize_node_name)
 
@@ -340,12 +360,14 @@ class IpsecTra4(object):
         # replayed packets are dropped
         self.send_and_assert_no_replies(self.tra_if, pkts)
         replay_count += len(pkts)
-        self.assert_error_counter_equal(replay_node_name, replay_count)
+        self.assertEqual(self.get_replay_counts(p), replay_count)
 
         #
         # now send a batch of packets all with the same sequence number
         # the first packet in the batch is legitimate, the rest bogus
         #
+        self.vapi.cli("clear error")
+        self.vapi.cli("clear node counters")
         pkts = (Ether(src=self.tra_if.remote_mac,
                       dst=self.tra_if.local_mac) /
                 p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
@@ -355,11 +377,12 @@ class IpsecTra4(object):
         recv_pkts = self.send_and_expect(self.tra_if, pkts * 8,
                                          self.tra_if, n_rx=1)
         replay_count += 7
-        self.assert_error_counter_equal(replay_node_name, replay_count)
+        self.assertEqual(self.get_replay_counts(p), replay_count)
 
         #
         # now move the window over to 257 (more than one byte) and into Case A
         #
+        self.vapi.cli("clear error")
         pkt = (Ether(src=self.tra_if.remote_mac,
                      dst=self.tra_if.local_mac) /
                p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
@@ -371,7 +394,7 @@ class IpsecTra4(object):
         # replayed packets are dropped
         self.send_and_assert_no_replies(self.tra_if, pkt * 3)
         replay_count += 3
-        self.assert_error_counter_equal(replay_node_name, replay_count)
+        self.assertEqual(self.get_replay_counts(p), replay_count)
 
         # the window size is 64 packets
         # in window are still accepted
@@ -399,8 +422,7 @@ class IpsecTra4(object):
         self.send_and_assert_no_replies(self.tra_if, pkt * 17)
 
         hash_failed_count += 17
-        self.assert_error_counter_equal(hash_failed_node_name,
-                                        hash_failed_count)
+        self.assertEqual(self.get_hash_failed_counts(p), hash_failed_count)
 
         # a malformed 'runt' packet
         #  created by a mis-constructed SA
@@ -445,13 +467,11 @@ class IpsecTra4(object):
             # an out of window error with ESN looks like a high sequence
             # wrap. but since it isn't then the verify will fail.
             hash_failed_count += 17
-            self.assert_error_counter_equal(hash_failed_node_name,
-                                            hash_failed_count)
+            self.assertEqual(self.get_hash_failed_counts(p), hash_failed_count)
 
         else:
             replay_count += 17
-            self.assert_error_counter_equal(replay_node_name,
-                                            replay_count)
+            self.assertEqual(self.get_replay_counts(p), replay_count)
 
         # valid packet moves the window over to 258
         pkt = (Ether(src=self.tra_if.remote_mac,
@@ -535,8 +555,7 @@ class IpsecTra4(object):
             self.send_and_assert_no_replies(self.tra_if, [pkt], self.tra_if)
 
             hash_failed_count += 1
-            self.assert_error_counter_equal(hash_failed_node_name,
-                                            hash_failed_count)
+            self.assertEqual(self.get_hash_failed_counts(p), hash_failed_count)
 
             #
             # but if we move the wondow forward to case B, then we can wrap
@@ -613,7 +632,7 @@ class IpsecTra4(object):
                          (count, pkts))
 
         self.assert_packet_counter_equal(self.tra4_encrypt_node_name, count)
-        self.assert_packet_counter_equal(self.tra4_decrypt_node_name, count)
+        self.assert_packet_counter_equal(self.tra4_decrypt_node_name[0], count)
 
 
 class IpsecTra4Tests(IpsecTra4):
@@ -667,7 +686,7 @@ class IpsecTra6(object):
                          "incorrect SA out counts: expected %d != %d" %
                          (count, pkts))
         self.assert_packet_counter_equal(self.tra6_encrypt_node_name, count)
-        self.assert_packet_counter_equal(self.tra6_decrypt_node_name, count)
+        self.assert_packet_counter_equal(self.tra6_decrypt_node_name[0], count)
 
     def gen_encrypt_pkts_ext_hdrs6(self, sa, sw_intf, src, dst, count=1,
                                    payload_size=54):
@@ -816,7 +835,7 @@ class IpsecTun4(object):
                              (count, pkts))
 
         self.assert_packet_counter_equal(self.tun4_encrypt_node_name, n_frags)
-        self.assert_packet_counter_equal(self.tun4_decrypt_node_name, count)
+        self.assert_packet_counter_equal(self.tun4_decrypt_node_name[0], count)
 
     def verify_decrypted(self, p, rxs):
         for rx in rxs:
@@ -1034,7 +1053,7 @@ class IpsecTun6(object):
                              "incorrect SA out counts: expected %d != %d" %
                              (count, pkts))
         self.assert_packet_counter_equal(self.tun6_encrypt_node_name, count)
-        self.assert_packet_counter_equal(self.tun6_decrypt_node_name, count)
+        self.assert_packet_counter_equal(self.tun6_decrypt_node_name[0], count)
 
     def verify_decrypted6(self, p, rxs):
         for rx in rxs:
