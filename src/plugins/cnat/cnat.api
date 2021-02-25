@@ -171,6 +171,7 @@ enum cnat_snat_policy_table:u8
 {
   CNAT_POLICY_INCLUDE_V4 = 0,
   CNAT_POLICY_INCLUDE_V6 = 1,
+  CNAT_POLICY_POD = 2,
 };
 
 autoreply define cnat_snat_policy_add_del_if
@@ -190,6 +191,8 @@ enum cnat_snat_policies:u8
   /* Filter by interface list : snat_policy_add_del_if
    * and prefix list : snat_policy_add_del_if */
   CNAT_POLICY_IF_PFX = 1,
+  /* Kubernetes specific policy */
+  CNAT_POLICY_K8S = 2,
 };
 
 autoreply define cnat_set_snat_policy
