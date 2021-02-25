@@ -169,8 +169,9 @@ autoreply define cnat_snat_policy_add_del_exclude_pfx
 
 enum cnat_snat_policy_table:u8
 {
-  CNAT_EXCLUDE_IF_V4 = 0,
-  CNAT_EXCLUDE_IF_V6 = 1,
+  CNAT_POLICY_INCLUDE_V4 = 0,
+  CNAT_POLICY_INCLUDE_V6 = 1,
+  CNAT_POLICY_POD = 2,
 };
 
 autoreply define cnat_snat_policy_add_del_if
@@ -185,6 +186,7 @@ autoreply define cnat_snat_policy_add_del_if
 enum cnat_snat_policies:u8
 {
   CNAT_POLICY_DEFAULT = 1,
+  CNAT_POLICY_K8S = 2,
 };
 
 autoreply define cnat_set_snat_policy
