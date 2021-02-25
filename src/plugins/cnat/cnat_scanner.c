@@ -58,13 +58,11 @@ cnat_scanner_process (vlib_main_t * vm,
   return 0;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (cnat_scanner_process_node) = {
   .function = cnat_scanner_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "cnat-scanner-process",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 cnat_scanner_cmd (vlib_main_t * vm,
@@ -89,13 +87,11 @@ cnat_scanner_cmd (vlib_main_t * vm,
   return (NULL);
 }
 
-/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cnat_scanner_cmd_node, static) = {
   .path = "test cnat scanner",
   .function = cnat_scanner_cmd,
   .short_help = "test cnat scanner",
 };
-/* *INDENT-ON* */
 
 static clib_error_t *
 cnat_scanner_init (vlib_main_t * vm)

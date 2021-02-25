@@ -124,12 +124,10 @@ vl_api_cnat_translation_update_t_handler (vl_api_cnat_translation_update_t
   vec_free (paths);
 
 done:
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_CNAT_TRANSLATION_UPDATE_REPLY,
   ({
     rmp->id = htonl (id);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -246,6 +244,7 @@ cnat_session_send_details (const cnat_session_t * session, void *args)
   cnat_endpoint_encode (&ep, &mp->session.dst);
 
   mp->session.ip_proto = ip_proto_encode (session->key.cs_proto);
+  mp->session.location = session->key.cs_loc;
 
   vl_api_send_msg (ctx->rp, (u8 *) mp);
 
@@ -289,14 +288,12 @@ vl_api_cnat_get_snat_addresses_t_handler (vl_api_cnat_get_snat_addresses_t
   vl_api_cnat_get_snat_addresses_reply_t *rmp;
   int rv = 0;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_CNAT_GET_SNAT_ADDRESSES_REPLY,
   ({
     ip6_address_encode (&ip_addr_v6(&cnat_main.snat_ip6.ce_ip), rmp->snat_ip6);
     ip4_address_encode (&ip_addr_v4(&cnat_main.snat_ip4.ce_ip), rmp->snat_ip4);
     rmp->sw_if_index = clib_host_to_net_u32 (cnat_main.snat_ip6.ce_sw_if_index);
   }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -347,12 +344,10 @@ cnat_api_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (cnat_api_init);
 
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .description = "CNat Translate",
 };
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
