@@ -3723,27 +3723,7 @@ ikev2_set_local_key (vlib_main_t * vm, u8 * file)
 static_always_inline vnet_api_error_t
 ikev2_register_udp_port (ikev2_profile_t * p, u16 port)
 {
-  ikev2_main_t *km = &ikev2_main;
-  udp_dst_port_info_t *pi;
-
-  uword *v = hash_get (km->udp_ports, port);
-  pi = udp_get_dst_port_info (&udp_main, port, UDP_IP4);
-
-  if (v)
-    {
-      /* IKE already uses this port, only increment reference counter */
-      ASSERT (pi);
-      v[0]++;
-    }
-  else
-    {
-      if (pi)
-	return VNET_API_ERROR_UDP_PORT_TAKEN;
-
-      udp_register_dst_port (km->vlib_main, port,
-			     ipsec4_tun_input_node.index, 1);
-      hash_set (km->udp_ports, port, 1);
-    }
+  ipsec_register_udp_port (port);
   p->ipsec_over_udp_port = port;
   return 0;
 }
@@ -3751,24 +3731,10 @@ ikev2_register_udp_port (ikev2_profile_t * p, u16 port)
 static_always_inline void
 ikev2_unregister_udp_port (ikev2_profile_t * p)
 {
-  ikev2_main_t *km = &ikev2_main;
-  uword *v;
-
   if (p->ipsec_over_udp_port == IPSEC_UDP_PORT_NONE)
     return;
 
-  v = hash_get (km->udp_ports, p->ipsec_over_udp_port);
-  if (!v)
-    return;
-
-  v[0]--;
-
-  if (v[0] == 0)
-    {
-      udp_unregister_dst_port (km->vlib_main, p->ipsec_over_udp_port, 1);
-      hash_unset (km->udp_ports, p->ipsec_over_udp_port);
-    }
-
+  ipsec_unregister_udp_port (p->ipsec_over_udp_port);
   p->ipsec_over_udp_port = IPSEC_UDP_PORT_NONE;
 }
 
@@ -4171,9 +4137,7 @@ ikev2_set_profile_ipsec_udp_port (vlib_main_t * vm, u8 * name, u16 port,
 				  u8 is_set)
 {
   ikev2_profile_t *p = ikev2_profile_index_by_name (name);
-  ikev2_main_t *km = &ikev2_main;
   vnet_api_error_t rv = 0;
-  uword *v;
 
   if (!p)
     return VNET_API_ERROR_INVALID_VALUE;
@@ -4187,10 +4151,6 @@ ikev2_set_profile_ipsec_udp_port (vlib_main_t * vm, u8 * name, u16 port,
     }
   else
     {
-      v = hash_get (km->udp_ports, port);
-      if (!v)
-	return VNET_API_ERROR_IKE_NO_PORT;
-
       if (p->ipsec_over_udp_port == IPSEC_UDP_PORT_NONE)
 	return VNET_API_ERROR_INVALID_VALUE;
 
@@ -4761,7 +4721,6 @@ ikev2_init (vlib_main_t * vm)
 
   km->sa_by_ispi = hash_create (0, sizeof (uword));
   km->sw_if_indices = hash_create (0, 0);
-  km->udp_ports = hash_create (0, sizeof (uword));
 
   udp_register_dst_port (vm, IKEV2_PORT, ikev2_node_ip4.index, 1);
   udp_register_dst_port (vm, IKEV2_PORT, ikev2_node_ip6.index, 0);
