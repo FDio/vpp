@@ -348,7 +348,6 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  vnet_crypto_async_frame_t *frames[VNET_CRYPTO_ASYNC_OP_N_IDS];
   vnet_crypto_async_frame_t *frame_pool;
   u32 *buffer_indices;
   u16 *nexts;
@@ -543,18 +542,15 @@ vnet_crypto_async_get_frame (vlib_main_t * vm, vnet_crypto_async_op_id_t opt)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_thread_t *ct = cm->threads + vm->thread_index;
-  vnet_crypto_async_frame_t *f = ct->frames[opt];
+  vnet_crypto_async_frame_t *f = NULL;
 
-  if (!f)
-    {
-      pool_get_aligned (ct->frame_pool, f, CLIB_CACHE_LINE_BYTES);
-      if (CLIB_DEBUG > 0)
-	clib_memset (f, 0xfe, sizeof (*f));
-      f->state = VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED;
-      f->op = opt;
-      f->n_elts = 0;
-      ct->frames[opt] = f;
-    }
+  pool_get_aligned (ct->frame_pool, f, CLIB_CACHE_LINE_BYTES);
+  if (CLIB_DEBUG > 0)
+    clib_memset (f, 0xfe, sizeof (*f));
+  f->state = VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED;
+  f->op = opt;
+  f->n_elts = 0;
+
   return f;
 }
 
@@ -573,7 +569,6 @@ vnet_crypto_async_submit_open_frame (vlib_main_t * vm,
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  vnet_crypto_thread_t *ct = cm->threads + vm->thread_index;
   vnet_crypto_async_op_id_t opt = frame->op;
   u32 i = vlib_num_workers () > 0;
 
@@ -585,56 +580,33 @@ vnet_crypto_async_submit_open_frame (vlib_main_t * vm,
   clib_bitmap_set_no_check (cm->async_active_ids, opt, 1);
   if (PREDICT_TRUE (ret == 0))
     {
-      vnet_crypto_async_frame_t *nf = 0;
-      pool_get_aligned (ct->frame_pool, nf, CLIB_CACHE_LINE_BYTES);
-      if (CLIB_DEBUG > 0)
-	clib_memset (nf, 0xfe, sizeof (*nf));
-      nf->state = VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED;
-      nf->op = opt;
-      nf->n_elts = 0;
-      ct->frames[opt] = nf;
+      if (cm->dispatch_mode == VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT)
+	{
+	  for (; i < tm->n_vlib_mains; i++)
+	    vlib_node_set_interrupt_pending (vlib_mains[i],
+					     cm->crypto_node_index);
+	}
     }
   else
     {
       frame->state = VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
     }
 
-  if (cm->dispatch_mode == VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT)
-    {
-      for (; i < tm->n_vlib_mains; i++)
-	{
-	  vlib_node_set_interrupt_pending (vlib_mains[i],
-					   cm->crypto_node_index);
-	}
-    }
   return ret;
 }
 
-static_always_inline int
-vnet_crypto_async_add_to_frame (vlib_main_t * vm,
-				vnet_crypto_async_frame_t ** frame,
-				u32 key_index,
-				u32 crypto_len, i16 integ_len_adj,
-				i16 crypto_start_offset,
-				u16 integ_start_offset,
-				u32 buffer_index,
-				u16 next_node,
-				u8 * iv, u8 * tag, u8 * aad, u8 flags)
+static_always_inline void
+vnet_crypto_async_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
+				u32 key_index, u32 crypto_len,
+				i16 integ_len_adj, i16 crypto_start_offset,
+				u16 integ_start_offset, u32 buffer_index,
+				u16 next_node, u8 *iv, u8 *tag, u8 *aad,
+				u8 flags)
 {
-  vnet_crypto_async_frame_t *f = *frame;
   vnet_crypto_async_frame_elt_t *fe;
   u16 index;
 
-  if (PREDICT_FALSE (f->n_elts == VNET_CRYPTO_FRAME_SIZE))
-    {
-      vnet_crypto_async_op_id_t opt = f->op;
-      int ret;
-      ret = vnet_crypto_async_submit_open_frame (vm, f);
-      if (PREDICT_FALSE (ret < 0))
-	return -1;
-      f = vnet_crypto_async_get_frame (vm, opt);
-      *frame = f;
-    }
+  ASSERT (f->n_elts < VNET_CRYPTO_FRAME_SIZE);
 
   index = f->n_elts;
   fe = &f->elts[index];
@@ -650,8 +622,6 @@ vnet_crypto_async_add_to_frame (vlib_main_t * vm,
   fe->flags = flags;
   f->buffer_indices[index] = buffer_index;
   f->next_node_index[index] = next_node;
-
-  return 0;
 }
 
 static_always_inline void
@@ -667,6 +637,12 @@ vnet_crypto_async_reset_frame (vnet_crypto_async_frame_t * f)
   f->state = VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED;
   f->op = opt;
   f->n_elts = 0;
+}
+
+static_always_inline u8
+vnet_crypto_async_frame_is_full (const vnet_crypto_async_frame_t *f)
+{
+  return (f->n_elts == VNET_CRYPTO_FRAME_SIZE);
 }
 
 #endif /* included_vnet_crypto_crypto_h */
