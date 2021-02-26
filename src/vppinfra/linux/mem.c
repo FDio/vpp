@@ -586,6 +586,9 @@ clib_mem_get_page_stats (void *start, clib_mem_page_sz_t log2_page_size,
       else
 	stats->unknown++;
     }
+
+  vec_free (status);
+  vec_free (ptr);
 }
 
 
