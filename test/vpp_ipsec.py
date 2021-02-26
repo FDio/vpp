@@ -128,6 +128,7 @@ class VppIpsecSpdEntry(VppObject):
             remote_port_stop=self.remote_port_stop)
         self.stat_index = rv.stat_index
         self.test.registry.register(self, self.test.logger)
+        return self
 
     def remove_vpp_config(self):
         self.test.vapi.ipsec_spd_entry_add_del(
