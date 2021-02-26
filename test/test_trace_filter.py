@@ -11,6 +11,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.compat import raw
+from scapy.utils import rdpcap
 
 
 class TestTracefilter(VppTestCase):
@@ -49,27 +50,33 @@ class TestTracefilter(VppTestCase):
 
     # check number of hits for classifier
     def assert_hits(self, n):
-        r = self.cli("show classify table verbose 2")
+        r = self.cli("show classify table verbose")
         self.assertTrue(r.reply.find("hits %i" % n) != -1)
 
-    def add_filter(self, mask, match):
-        r = self.cli("classify filter trace mask %s match %s" % (mask, match))
-        self.vapi.cli("clear trace")
-        r = self.cli("trace add pg-input 1000 filter")
+    def add_trace_filter(self, mask, match):
+        self.cli("classify filter trace mask %s match %s" % (mask, match))
+        self.cli("clear trace")
+        self.cli("trace add pg-input 1000 filter")
 
-    def del_all_filters(self):
+    def del_trace_filters(self):
         self.cli("classify filter trace del")
         r = self.cli("show classify filter")
         s = "packet tracer:                 first table none"
         self.assertTrue(r.reply.find(s) != -1)
 
+    def del_pcap_filters(self):
+        self.cli("classify filter pcap del")
+        r = self.cli("show classify filter")
+        s = "pcap rx/tx/drop:               first table none"
+        self.assertTrue(r.reply.find(s) != -1)
+
     def test_basic(self):
         """ Packet Tracer Filter Test """
-        self.add_filter(
+        self.add_trace_filter(
             "l3 ip4 src",
             "l3 ip4 src %s" %
             self.pg0.remote_hosts[5].ip4)
-        self.add_filter(
+        self.add_trace_filter(
             "l3 ip4 proto l4 src_port",
             "l3 ip4 proto 17 l4 src_port 2345")
         # the packet we are trying to match
@@ -91,14 +98,14 @@ class TestTracefilter(VppTestCase):
         self.assert_hits(9)
         self.assert_hits(17)
 
-        self.del_all_filters()
+        self.del_trace_filters()
 
     # install a classify rule, inject traffic and check for hits
     def assert_classify(self, mask, match, packets, n=None):
-        self.add_filter("hex %s" % mask, "hex %s" % match)
+        self.add_trace_filter("hex %s" % mask, "hex %s" % match)
         self.send_and_expect(self.pg0, packets, self.pg1, trace=False)
         self.assert_hits(n if n is not None else len(packets))
-        self.del_all_filters()
+        self.del_trace_filters()
 
     def test_encap(self):
         """ Packet Tracer Filter Test with encap """
@@ -155,6 +162,50 @@ class TestTracefilter(VppTestCase):
         new = raw(tmpl)
         match = "".join(("{:02x}".format(o ^ n) for o, n in zip(ori, new)))
         self.assert_classify(mask, match, [p] * 17)
+
+    def test_pcap(self):
+        """ Packet Capture Filter Test """
+        self.cli(
+            "classify filter pcap mask l3 ip4 src match l3 ip4 src %s" %
+            self.pg0.remote_hosts[5].ip4)
+        self.cli(
+            "classify filter pcap "
+            "mask l3 ip4 proto l4 src_port "
+            "match l3 ip4 proto 17 l4 src_port 2345")
+        self.cli(
+            "pcap trace rx tx max 1000 intfc pg0 "
+            "file vpp_test_trace_filter.pcap filter")
+        # the packet we are trying to match
+        p = list()
+        for i in range(100):
+            src = self.pg0.remote_hosts[i % len(self.pg0.remote_hosts)].ip4
+            p.append((Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                      IP(src=src, dst=self.pg1.remote_ip4) /
+                      UDP(sport=1234, dport=2345) / Raw('\xa5' * 100)))
+        for i in range(17):
+            p.append((Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                      IP(src=self.pg0.remote_hosts[0].ip4,
+                         dst=self.pg1.remote_ip4) /
+                      UDP(sport=2345, dport=1234) / Raw('\xa5' * 100)))
+
+        self.send_and_expect(self.pg0, p, self.pg1, trace=False)
+
+        # Check for 9 and 17 classifier hits, which is the right answer
+        self.assert_hits(9)
+        self.assert_hits(17)
+
+        self.cli("pcap trace rx tx off")
+        self.del_pcap_filters()
+
+        # check captured pcap
+        pcap = rdpcap("/tmp/vpp_test_trace_filter.pcap")
+        self.assertEqual(len(pcap), 9 + 17)
+        p_ = str(p[5])
+        for i in range(9):
+            self.assertEqual(str(pcap[i]), p_)
+        p_ = str(p[100])
+        for i in range(9, 9 + 17):
+            self.assertEqual(str(pcap[i]), p_)
 
 
 if __name__ == '__main__':
