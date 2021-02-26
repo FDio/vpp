@@ -20,6 +20,7 @@ if(VPP_USE_SYSTEM_DPDK)
     pkg_check_modules(DPDK REQUIRED libdpdk)
     message(WARNING "-- linking dpdk plugin against system libdpdk, version ${DPDK_VERSION}")
     set(DPDK_LINK_FLAGS ${DPDK_LDFLAGS})
+    include_directories (${DPDK_INCLUDE_DIRS})
 else()
     ##############################################################################
     # Find lib and include files
