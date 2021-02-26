@@ -143,10 +143,10 @@ class VppPapiProvider(object):
         # calling the constructor.
         VPPApiClient.apidir = os.getenv('VPP_INSTALL_PATH')
 
-        use_socket = False
+        use_socket = True
         try:
-            if os.environ['SOCKET'] == '1':
-                use_socket = True
+            if os.environ['VPP_TEST_USE_SHARED_MEM'] == '1':
+                use_socket = False
         except KeyError:
             pass
 
