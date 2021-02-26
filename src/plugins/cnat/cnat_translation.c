@@ -248,7 +248,8 @@ cnat_translation_init_maglev (cnat_translation_t *ct)
 	{
 	  u32 a, b, c;
 	  a = ip_addr_v4 (&trk->ct_ep[VLIB_TX].ce_ip).data_u32;
-	  b = trk->ct_ep[VLIB_TX].ce_port << 16 | trk->ct_ep[VLIB_RX].ce_port;
+	  b = (u64) trk->ct_ep[VLIB_TX].ce_port << 16 |
+	      (u64) trk->ct_ep[VLIB_RX].ce_port;
 	  c = ip_addr_v4 (&trk->ct_ep[VLIB_RX].ce_ip).data_u32;
 	  hash_v3_mix32 (a, b, c);
 	  hash_v3_finalize32 (a, b, c);
@@ -260,7 +261,8 @@ cnat_translation_init_maglev (cnat_translation_t *ct)
 	  u64 a, b, c;
 	  a = ip_addr_v6 (&trk->ct_ep[VLIB_TX].ce_ip).as_u64[0] ^
 	      ip_addr_v6 (&trk->ct_ep[VLIB_TX].ce_ip).as_u64[1];
-	  b = trk->ct_ep[VLIB_TX].ce_port << 16 | trk->ct_ep[VLIB_RX].ce_port;
+	  b = (u64) trk->ct_ep[VLIB_TX].ce_port << 16 |
+	      (u64) trk->ct_ep[VLIB_RX].ce_port;
 	  c = ip_addr_v6 (&trk->ct_ep[VLIB_RX].ce_ip).as_u64[0] ^
 	      ip_addr_v6 (&trk->ct_ep[VLIB_RX].ce_ip).as_u64[1];
 	  hash_mix64 (a, b, c);
