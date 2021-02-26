@@ -56,6 +56,7 @@ enum nat44_config_flags : u8
                         NAT44_IS_OUT2IN_DPO
 */
 autoreply define nat44_plugin_enable_disable {
+  option deprecated;
   u32 client_index;
   u32 context;
   u32 inside_vrf;
@@ -65,6 +66,29 @@ autoreply define nat44_plugin_enable_disable {
   u32 sessions;
   u32 session_memory;
   u32 user_sessions;
+  bool enable;
+  vl_api_nat44_config_flags_t flags;
+};
+
+/** \brief Enable/disable NAT44ED plugin
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param inside_vrf - inside vrf id
+    @param outside_vrf - outside vrf id
+    @param sessions - maximum number of sessions per thread
+    @param session_memory - overwrite hash allocation parameter
+    @param enable - true if enable, false if disable
+    @param flags - flag NAT44_IS_STATIC_MAPPING_ONLY,
+                        NAT44_IS_CONNECTION_TRACKING
+*/
+autoreply define nat44_ed_plugin_enable_disable {
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  u32 inside_vrf;
+  u32 outside_vrf;
+  u32 sessions;
+  u32 session_memory;
   bool enable;
   vl_api_nat44_config_flags_t flags;
 };

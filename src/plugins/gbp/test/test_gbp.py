@@ -832,7 +832,7 @@ class TestGBP(VppTestCase):
                               "10.0.2.1", "11.0.0.4",
                               "2001:10:2::1", "3001::4")]
 
-        self.vapi.nat44_plugin_enable_disable(enable=1)
+        self.vapi.nat44_ed_plugin_enable_disable(enable=1)
 
         #
         # Config related to each of the EPGs
@@ -1476,7 +1476,7 @@ class TestGBP(VppTestCase):
         #
         # cleanup
         #
-        self.vapi.nat44_plugin_enable_disable(enable=0)
+        self.vapi.nat44_ed_plugin_enable_disable(enable=0)
 
         for ep in eps:
             # del static mappings for each EP from the 10/8 to 11/8 network
