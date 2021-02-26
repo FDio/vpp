@@ -1,7 +1,7 @@
-# Marvel device plugin for VPP    {#marvel_plugin_doc}
+# Marvell device plugin for VPP    {#marvell_plugin_doc}
 
 ##Overview
-This plugins provides native device support for Marvell PP2 network device, by use of Marvel Usermode SDK ([MUSDK][1]).
+This plugins provides native device support for Marvell PP2 network device, by use of Marvell Usermode SDK ([MUSDK][1]).
 Code is developed and tested on [MACCHIATObin][2] board.
 
 ##Prerequisites
