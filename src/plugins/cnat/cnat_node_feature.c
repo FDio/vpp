@@ -72,6 +72,7 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       cc = cnat_client_ip6_find (&ip6->dst_address); /* TODO: same as above */
     }
 
+  /* Wrong session key */
   if (session->key.cs_proto == 0)
     goto trace;
 
@@ -265,6 +266,7 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       udp0 = (udp_header_t *) (ip6 + 1);
     }
 
+  /* Wrong session key */
   if (session->key.cs_proto == 0)
     goto trace;
 

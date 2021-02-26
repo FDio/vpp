@@ -64,12 +64,9 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
   vnet_feature_next (&arc_next0, b);
   next0 = arc_next0;
 
-  if (iproto != IP_PROTOCOL_UDP && iproto != IP_PROTOCOL_TCP
-      && iproto != IP_PROTOCOL_ICMP && iproto != IP_PROTOCOL_ICMP6)
-    {
-      /* Dont translate */
-      goto trace;
-    }
+  /* Wrong session key */
+  if (session->key.cs_proto == 0)
+    goto trace;
 
   if (!session_not_found)
     {
@@ -96,6 +93,8 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
          a VIP) */
       if (AF_IP4 == ctx->af)
 	{
+	  if (!(cm->snat_ip4.ce_flags & CNAT_EP_FLAG_RESOLVED))
+	    goto trace;
 	  ip46_address_set_ip4 (&session->value.cs_ip[VLIB_RX],
 				&ip_addr_v4 (&cm->snat_ip4.ce_ip));
 	  ip46_address_set_ip4 (&session->value.cs_ip[VLIB_TX],
@@ -103,6 +102,8 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       else
 	{
+	  if (!(cm->snat_ip6.ce_flags & CNAT_EP_FLAG_RESOLVED))
+	    goto trace;
 	  ip46_address_set_ip6 (&session->value.cs_ip[VLIB_RX],
 				&ip_addr_v6 (&cm->snat_ip6.ce_ip));
 	  ip46_address_set_ip6 (&session->value.cs_ip[VLIB_TX],

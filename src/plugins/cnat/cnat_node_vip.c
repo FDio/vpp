@@ -62,8 +62,8 @@ cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
 
   cc = cnat_client_get (vnet_buffer (b)->ip.adj_index[VLIB_TX]);
 
-  if (iproto != IP_PROTOCOL_UDP && iproto != IP_PROTOCOL_TCP
-      && iproto != IP_PROTOCOL_ICMP && iproto != IP_PROTOCOL_ICMP6)
+  /* Wrong session key */
+  if (session->key.cs_proto == 0)
     {
       /* Dont translate & follow the fib programming */
       next0 = cc->cc_parent.dpoi_next_node;
