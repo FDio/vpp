@@ -429,9 +429,6 @@ vnet_crypto_key_add_linked (vlib_main_t * vm,
   key_crypto = pool_elt_at_index (cm->keys, index_crypto);
   key_integ = pool_elt_at_index (cm->keys, index_integ);
 
-  if (!key_crypto || !key_integ)
-    return ~0;
-
   linked_alg = vnet_crypto_link_algs (key_crypto->alg, key_integ->alg);
   if (linked_alg == ~0)
     return ~0;
