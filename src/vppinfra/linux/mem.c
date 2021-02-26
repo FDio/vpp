@@ -571,7 +571,7 @@ clib_mem_get_page_stats (void *start, clib_mem_page_sz_t log2_page_size,
   if (move_pages (0, n_pages, ptr, 0, status, 0) != 0)
     {
       stats->unknown = n_pages;
-      return;
+      goto done;
     }
 
   for (i = 0; i < n_pages; i++)
@@ -586,6 +586,10 @@ clib_mem_get_page_stats (void *start, clib_mem_page_sz_t log2_page_size,
       else
 	stats->unknown++;
     }
+
+done:
+  vec_free (status);
+  vec_free (ptr);
 }
 
 
