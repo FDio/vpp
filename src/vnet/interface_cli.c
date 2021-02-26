@@ -1971,7 +1971,8 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
 
   /* Classify filter specified, but no classify filter configured */
   if ((a->rx_enable + a->tx_enable + a->drop_enable) && a->filter &&
-      cm->classify_table_index_by_sw_if_index[0] == ~0)
+      (!cm->classify_table_index_by_sw_if_index ||
+       cm->classify_table_index_by_sw_if_index[0] == ~0))
     return VNET_API_ERROR_NO_SUCH_LABEL;
 
   if (a->rx_enable + a->tx_enable + a->drop_enable)
