@@ -45,7 +45,7 @@
 #include <vnet/ip/ip6.h>
 #include <vnet/udp/udp_packet.h>
 #include <vnet/feature/feature.h>
-#include <vnet/classify/trace_classify.h>
+#include <vnet/classify/pcap_classify.h>
 #include <vnet/interface_output.h>
 
 typedef struct
@@ -447,36 +447,16 @@ static_always_inline void vnet_interface_pcap_tx_trace
 
   while (n_left_from > 0)
     {
-      int classify_filter_result;
       u32 bi0 = from[0];
       vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
       from++;
       n_left_from--;
 
-      if (pp->filter_classify_table_index != ~0)
-	{
-	  classify_filter_result =
-	    vnet_is_packet_traced_inline
-	    (b0, pp->filter_classify_table_index, 0 /* full classify */ );
-	  if (classify_filter_result)
-	    pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
-	  continue;
-	}
-
       if (sw_if_index_from_buffer)
 	sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
-      if (pp->pcap_sw_if_index == 0 || pp->pcap_sw_if_index == sw_if_index)
-	{
-	  vnet_main_t *vnm = vnet_get_main ();
-	  vnet_hw_interface_t *hi =
-	    vnet_get_sup_hw_interface (vnm, sw_if_index);
-	  /* Capture pkt if not filtered, or if filter hits */
-	  if (hi->trace_classify_table_index == ~0 ||
-	      vnet_is_packet_traced_inline
-	      (b0, hi->trace_classify_table_index, 0 /* full classify */ ))
-	    pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
-	}
+      if (vnet_is_packet_pcaped (pp, b0, sw_if_index))
+	pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
     }
 }
 
@@ -902,8 +882,6 @@ pcap_drop_trace (vlib_main_t * vm,
   i16 save_current_data;
   u16 save_current_length;
   vlib_error_main_t *em = &vm->error_main;
-  int do_trace = 0;
-
 
   from = vlib_frame_vector_args (f);
 
@@ -925,97 +903,86 @@ pcap_drop_trace (vlib_main_t * vm,
 	  && hash_get (im->pcap_drop_filter_hash, b0->error))
 	continue;
 
-      do_trace = (pp->pcap_sw_if_index == 0) ||
-	pp->pcap_sw_if_index == vnet_buffer (b0)->sw_if_index[VLIB_RX];
-
-      if (PREDICT_FALSE
-	  (do_trace == 0 && pp->filter_classify_table_index != ~0))
-	{
-	  do_trace = vnet_is_packet_traced_inline
-	    (b0, pp->filter_classify_table_index, 0 /* full classify */ );
-	}
+      if (!vnet_is_packet_pcaped (pp, b0, ~0))
+	continue; /* not matching, skip */
 
       /* Trace all drops, or drops received on a specific interface */
-      if (do_trace)
+      save_current_data = b0->current_data;
+      save_current_length = b0->current_length;
+
+      /*
+       * Typically, we'll need to rewind the buffer
+       * if l2_hdr_offset is valid, make sure to rewind to the start of
+       * the L2 header. This may not be the buffer start in case we pop-ed
+       * vlan tags.
+       * Otherwise, rewind to buffer start and hope for the best.
+       */
+      if (b0->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID)
 	{
-	  save_current_data = b0->current_data;
-	  save_current_length = b0->current_length;
-
-	  /*
-	   * Typically, we'll need to rewind the buffer
-	   * if l2_hdr_offset is valid, make sure to rewind to the start of
-	   * the L2 header. This may not be the buffer start in case we pop-ed
-	   * vlan tags.
-	   * Otherwise, rewind to buffer start and hope for the best.
-	   */
-	  if (b0->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID)
-	    {
-	      if (b0->current_data > vnet_buffer (b0)->l2_hdr_offset)
-		vlib_buffer_advance (b0,
-				     vnet_buffer (b0)->l2_hdr_offset -
-				     b0->current_data);
-	    }
-	  else if (b0->current_data > 0)
-	    vlib_buffer_advance (b0, (word) - b0->current_data);
-
-	  {
-	    vlib_buffer_t *last = b0;
-	    u32 error_node_index;
-	    int drop_string_len;
-	    vlib_node_t *n;
-	    /* Length of the error string */
-	    int error_string_len =
-	      clib_strnlen (em->counters_heap[b0->error].name, 128);
-
-	    /* Dig up the drop node */
-	    error_node_index = vm->node_main.node_by_error[b0->error];
-	    n = vlib_get_node (vm, error_node_index);
-
-	    /* Length of full drop string, w/ "nodename: " prepended */
-	    drop_string_len = error_string_len + vec_len (n->name) + 2;
-
-	    /* Find the last buffer in the chain */
-	    while (last->flags & VLIB_BUFFER_NEXT_PRESENT)
-	      last = vlib_get_buffer (vm, last->next_buffer);
-
-	    /*
-	     * Append <nodename>: <error-string> to the capture,
-	     * only if we can do that without allocating a new buffer.
-	     */
-	    if (PREDICT_TRUE ((last->current_data + last->current_length)
-			      < (VLIB_BUFFER_DEFAULT_DATA_SIZE
-				 - drop_string_len)))
-	      {
-		clib_memcpy_fast (last->data + last->current_data +
-				  last->current_length, n->name,
-				  vec_len (n->name));
-		clib_memcpy_fast (last->data + last->current_data +
-				  last->current_length + vec_len (n->name),
-				  ": ", 2);
-		clib_memcpy_fast (last->data + last->current_data +
-				  last->current_length + vec_len (n->name) +
-				  2, em->counters_heap[b0->error].name,
-				  error_string_len);
-		last->current_length += drop_string_len;
-		b0->flags &= ~(VLIB_BUFFER_TOTAL_LENGTH_VALID);
-		pcap_add_buffer (&pp->pcap_main, vm, bi0,
-				 pp->max_bytes_per_pkt);
-		last->current_length -= drop_string_len;
-		b0->current_data = save_current_data;
-		b0->current_length = save_current_length;
-		continue;
-	      }
-	  }
-
-	  /*
-	   * Didn't have space in the last buffer, here's the dropped
-	   * packet as-is
-	   */
-	  pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
-
-	  b0->current_data = save_current_data;
-	  b0->current_length = save_current_length;
+	  if (b0->current_data > vnet_buffer (b0)->l2_hdr_offset)
+	    vlib_buffer_advance (b0, vnet_buffer (b0)->l2_hdr_offset -
+				       b0->current_data);
 	}
+      else if (b0->current_data > 0)
+	{
+	  vlib_buffer_advance (b0, (word) -b0->current_data);
+	}
+
+      {
+	vlib_buffer_t *last = b0;
+	u32 error_node_index;
+	int drop_string_len;
+	vlib_node_t *n;
+	/* Length of the error string */
+	int error_string_len =
+	  clib_strnlen (em->counters_heap[b0->error].name, 128);
+
+	/* Dig up the drop node */
+	error_node_index = vm->node_main.node_by_error[b0->error];
+	n = vlib_get_node (vm, error_node_index);
+
+	/* Length of full drop string, w/ "nodename: " prepended */
+	drop_string_len = error_string_len + vec_len (n->name) + 2;
+
+	/* Find the last buffer in the chain */
+	while (last->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  last = vlib_get_buffer (vm, last->next_buffer);
+
+	/*
+	 * Append <nodename>: <error-string> to the capture,
+	 * only if we can do that without allocating a new buffer.
+	 */
+	if (PREDICT_TRUE ((last->current_data + last->current_length) <
+			  (VLIB_BUFFER_DEFAULT_DATA_SIZE - drop_string_len)))
+	  {
+	    clib_memcpy_fast (last->data + last->current_data +
+				last->current_length,
+			      n->name, vec_len (n->name));
+	    clib_memcpy_fast (last->data + last->current_data +
+				last->current_length + vec_len (n->name),
+			      ": ", 2);
+	    clib_memcpy_fast (last->data + last->current_data +
+				last->current_length + vec_len (n->name) + 2,
+			      em->counters_heap[b0->error].name,
+			      error_string_len);
+	    last->current_length += drop_string_len;
+	    b0->flags &= ~(VLIB_BUFFER_TOTAL_LENGTH_VALID);
+	    pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
+	    last->current_length -= drop_string_len;
+	    b0->current_data = save_current_data;
+	    b0->current_length = save_current_length;
+	    continue;
+	  }
+      }
+
+      /*
+       * Didn't have space in the last buffer, here's the dropped
+       * packet as-is
+       */
+      pcap_add_buffer (&pp->pcap_main, vm, bi0, pp->max_bytes_per_pkt);
+
+      b0->current_data = save_current_data;
+      b0->current_length = save_current_length;
     }
 }
 
