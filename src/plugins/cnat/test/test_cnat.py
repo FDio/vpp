@@ -527,8 +527,10 @@ class TestCNatTranslation(VppTestCase):
 class TestCNatSourceNAT(VppTestCase):
     """ CNat Source NAT """
     extra_vpp_punt_config = ["cnat", "{",
+                             "session-cleanup-timeout", "0.1",
                              "session-max-age", "1",
-                             "tcp-max-age", "1", "}"]
+                             "tcp-max-age", "1",
+                             "scanner", "off", "}"]
 
     @classmethod
     def setUpClass(cls):
@@ -556,10 +558,10 @@ class TestCNatSourceNAT(VppTestCase):
         self.pg1.configure_ipv4_neighbors()
         self.pg1.configure_ipv6_neighbors()
 
-        self.vapi.cli("test cnat scanner off")
         self.vapi.cnat_set_snat_addresses(
             snat_ip4=self.pg2.remote_hosts[0].ip4,
-            snat_ip6=self.pg2.remote_hosts[0].ip6)
+            snat_ip6=self.pg2.remote_hosts[0].ip6,
+            sw_if_index=INVALID_INDEX)
         self.vapi.feature_enable_disable(
             enable=1,
             arc_name="ip6-unicast",
@@ -953,6 +955,7 @@ class TestCNatDHCP(VppTestCase):
             self.pg0.sw_if_index, 1, True))
         self.config_ips([1], is_add=0, is_v6=False)
         self.config_ips([1], is_add=0, is_v6=True)
+        self.vapi.cnat_set_snat_addresses(sw_if_index=INVALID_INDEX)
 
 
 if __name__ == '__main__':
