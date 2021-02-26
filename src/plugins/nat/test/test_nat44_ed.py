@@ -47,11 +47,11 @@ class NAT44EDTestCase(VppTestCase):
             self.plugin_disable()
 
     def plugin_enable(self):
-        self.vapi.nat44_plugin_enable_disable(
+        self.vapi.nat44_ed_plugin_enable_disable(
             sessions=self.max_sessions, enable=1)
 
     def plugin_disable(self):
-        self.vapi.nat44_plugin_enable_disable(enable=0)
+        self.vapi.nat44_ed_plugin_enable_disable(enable=0)
 
     @property
     def config_flags(self):
