@@ -25,6 +25,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
+#include <vnet/interface/rx_queue_funcs.h>
 
 #include <marvell/pp2/pp2.h>
 
