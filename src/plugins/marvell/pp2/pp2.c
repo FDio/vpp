@@ -120,7 +120,6 @@ mrvl_pp2_delete_if (mrvl_pp2_if_t * ppif)
   mrvl_pp2_main_t *ppm = &mrvl_pp2_main;
   mrvl_pp2_outq_t *outq;
   mrvl_pp2_inq_t *inq;
-  int i;
 
   if (ppif->hw_if_index != ~0)
       ethernet_delete_interface (vnm, ppif->hw_if_index);
