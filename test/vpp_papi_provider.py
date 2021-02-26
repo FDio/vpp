@@ -143,10 +143,10 @@ class VppPapiProvider(object):
         # calling the constructor.
         VPPApiClient.apidir = os.getenv('VPP_INSTALL_PATH')
 
-        use_socket = False
+        use_socket = True
         try:
-            if os.environ['SOCKET'] == '1':
-                use_socket = True
+            if os.environ['VPP_TEST_USE_SHARED_MEM'] == '1':
+                use_socket = False
         except KeyError:
             pass
 
@@ -262,7 +262,16 @@ class VppPapiProvider(object):
 
     def connect(self):
         """Connect the API to VPP"""
-        self.vpp.connect(self.name, self.shm_prefix)
+        for attempt in range(60):
+            try:
+                self.vpp.connect(self.name, self.shm_prefix)
+            except:
+                # sleep a little and retry
+                time.sleep(1)
+            else:
+                break
+        else:
+            raise "We could not connect to VPP"
         self.papi = self.vpp.api
         self.vpp.register_event_callback(self)
 
