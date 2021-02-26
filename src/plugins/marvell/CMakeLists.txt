@@ -41,7 +41,7 @@ if(MUSDK_INCLUDE_DIR AND MUSDK_LIB)
     ${MUSDK_LINK_FLAGS}
   )
   include_directories(${MUSDK_INCLUDE_DIR})
-  message(STATUS "Found Marvel MUSDK in ${MUSDK_INCLUDE_DIR}")
+  message(STATUS "Found Marvell MUSDK in ${MUSDK_INCLUDE_DIR}")
 else()
   message(WARNING "Marvell MUSDK not found - marvell_plugin disabled")
 endif()
