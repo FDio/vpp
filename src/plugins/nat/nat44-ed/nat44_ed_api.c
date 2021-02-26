@@ -243,7 +243,8 @@ static void
 
   if (mp->enable)
     {
-      if (mp->flags & NAT44_API_IS_OUT2IN_DPO || mp->users ||
+      if (!(mp->flags & NAT44_API_IS_ENDPOINT_DEPENDENT) ||
+	  (mp->flags & NAT44_API_IS_OUT2IN_DPO) || mp->users ||
 	  mp->user_sessions)
 	{
 	  rv = VNET_API_ERROR_UNSUPPORTED;
@@ -267,6 +268,35 @@ static void
     }
 
   REPLY_MACRO (VL_API_NAT44_PLUGIN_ENABLE_DISABLE_REPLY);
+}
+
+static void
+vl_api_nat44_ed_plugin_enable_disable_t_handler (
+  vl_api_nat44_ed_plugin_enable_disable_t *mp)
+{
+  snat_main_t *sm = &snat_main;
+  nat44_config_t c = { 0 };
+  vl_api_nat44_ed_plugin_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  if (mp->enable)
+    {
+      c.static_mapping_only = mp->flags & NAT44_API_IS_STATIC_MAPPING_ONLY;
+      c.connection_tracking = mp->flags & NAT44_API_IS_CONNECTION_TRACKING;
+
+      c.inside_vrf = ntohl (mp->inside_vrf);
+      c.outside_vrf = ntohl (mp->outside_vrf);
+
+      c.sessions = ntohl (mp->sessions);
+
+      rv = nat44_plugin_enable (c);
+    }
+  else
+    {
+      rv = nat44_plugin_disable ();
+    }
+
+  REPLY_MACRO (VL_API_NAT44_ED_PLUGIN_ENABLE_DISABLE_REPLY);
 }
 
 static void
