@@ -466,6 +466,7 @@ segment_manager_free (segment_manager_t * sm)
   }
   /* *INDENT-ON* */
 
+  pool_free (sm->segments);
   clib_rwlock_writer_unlock (&sm->segments_rwlock);
 
   clib_rwlock_free (&sm->segments_rwlock);
@@ -611,6 +612,7 @@ segment_manager_del_sessions (segment_manager_t * sm)
     /* Avoid propagating notifications back to the app */
     session->app_wrk_index = APP_INVALID_INDEX;
   }
+  vec_free (handles);
 }
 
 int
