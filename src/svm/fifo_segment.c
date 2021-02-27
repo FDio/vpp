@@ -811,6 +811,8 @@ fifo_segment_cleanup (fifo_segment_t *fs)
   for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
     clib_mem_bulk_destroy (fs->slices[slice_index].fifos);
 
+  vec_free (fs->slices);
+
   vec_foreach (fs->mqs, mq)
     vec_free (mq->rings);
 
