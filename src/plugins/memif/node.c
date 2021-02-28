@@ -30,9 +30,10 @@
 #include <memif/memif.h>
 #include <memif/private.h>
 
-#define foreach_memif_input_error \
-  _(BUFFER_ALLOC_FAIL, "buffer allocation failed")		\
-  _(NOT_IP, "not ip packet")
+#define foreach_memif_input_error                                             \
+  _ (BUFFER_ALLOC_FAIL, "buffer allocation failed")                           \
+  _ (BAD_DESC, "bad descriptor")                                              \
+  _ (NOT_IP, "not ip packet")
 
 typedef enum
 {
@@ -199,6 +200,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   memif_packet_op_t *po;
   memif_region_index_t last_region = ~0;
   void *last_region_shm = 0;
+  void *last_region_max = 0;
 
   mq = vec_elt_at_index (mif->rx_queues, qid);
   ring = mq->ring;
@@ -249,26 +251,31 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  last_region_shm = mif->regions[d0->region].shm;
 	  last_region = d0->region;
+	  last_region_max =
+	    last_region_shm + mif->regions[last_region].region_size;
 	}
       mb0 = last_region_shm + d0->offset;
 
-      do
-	{
-	  u32 dst_free = buffer_size - dst_off;
-	  if (dst_free == 0)
-	    {
-	      dst_off = 0;
-	      dst_free = buffer_size;
-	      n_buffers++;
-	    }
-	  u32 bytes_to_copy = clib_min (dst_free, n_bytes_left);
-	  memif_add_copy_op (ptd, mb0 + src_off, bytes_to_copy, dst_off,
-			     n_buffers - 1);
-	  n_bytes_left -= bytes_to_copy;
-	  src_off += bytes_to_copy;
-	  dst_off += bytes_to_copy;
-	}
-      while (PREDICT_FALSE (n_bytes_left));
+      if (PREDICT_FALSE (mb0 + n_bytes_left > last_region_max))
+	vlib_error_count (vm, node->node_index, MEMIF_INPUT_ERROR_BAD_DESC, 1);
+      else
+	do
+	  {
+	    u32 dst_free = buffer_size - dst_off;
+	    if (dst_free == 0)
+	      {
+		dst_off = 0;
+		dst_free = buffer_size;
+		n_buffers++;
+	      }
+	    u32 bytes_to_copy = clib_min (dst_free, n_bytes_left);
+	    memif_add_copy_op (ptd, mb0 + src_off, bytes_to_copy, dst_off,
+			       n_buffers - 1);
+	    n_bytes_left -= bytes_to_copy;
+	    src_off += bytes_to_copy;
+	    dst_off += bytes_to_copy;
+	  }
+	while (PREDICT_FALSE (n_bytes_left));
 
       cur_slot++;
       n_slots--;
