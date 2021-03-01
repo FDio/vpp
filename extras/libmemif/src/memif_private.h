@@ -193,7 +193,7 @@ typedef struct
   int fd;
   uint16_t use_count;
   memif_socket_type_t type;
-  uint8_t *filename;
+  uint8_t filename[108];
   /* unique database */
   struct libmemif_main *lm;
   uint16_t interface_list_len;
