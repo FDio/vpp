@@ -948,13 +948,7 @@ memif_create_socket (memif_socket_handle_t * sock, const char *filename,
     }
   memset (ms, 0, sizeof (memif_socket_t));
   /* set filename */
-  ms->filename = lm->alloc (strlen (filename) + sizeof (char));
-  if (ms->filename == NULL)
-    {
-      err = MEMIF_ERR_NOMEM;
-      goto error;
-    }
-  memset (ms->filename, 0, strlen (filename) + sizeof (char));
+  memset (ms->filename, 0, sizeof (ms->filename));
   strlcpy ((char *) ms->filename, filename, sizeof (ms->filename));
 
   ms->type = MEMIF_SOCKET_TYPE_NONE;
@@ -977,11 +971,6 @@ memif_create_socket (memif_socket_handle_t * sock, const char *filename,
 error:
   if (ms != NULL)
     {
-      if (ms->filename != NULL)
-	{
-	  lm->free (ms->filename);
-	  ms->filename = NULL;
-	}
       if (ms->fd > 0)
 	{
 	  close (ms->fd);
@@ -1032,13 +1021,7 @@ memif_per_thread_create_socket (memif_per_thread_main_handle_t pt_main,
   memset (ms, 0, sizeof (memif_socket_t));
   ms->lm = lm;
   /* set filename */
-  ms->filename = lm->alloc (strlen (filename) + sizeof (char));
-  if (ms->filename == NULL)
-    {
-      err = MEMIF_ERR_NOMEM;
-      goto error;
-    }
-  memset (ms->filename, 0, strlen (filename) + sizeof (char));
+  memset (ms->filename, 0, sizeof (ms->filename));
   strlcpy ((char *) ms->filename, filename, sizeof (ms->filename));
 
   ms->type = MEMIF_SOCKET_TYPE_NONE;
@@ -1061,11 +1044,6 @@ memif_per_thread_create_socket (memif_per_thread_main_handle_t pt_main,
 error:
   if (ms != NULL)
     {
-      if (ms->filename != NULL)
-	{
-	  lm->free (ms->filename);
-	  ms->filename = NULL;
-	}
       if (ms->fd > 0)
 	{
 	  close (ms->fd);
@@ -1796,8 +1774,6 @@ memif_delete_socket (memif_socket_handle_t * sock)
 
   lm->free (ms->interface_list);
   ms->interface_list = NULL;
-  lm->free (ms->filename);
-  ms->filename = NULL;
   lm->free (ms);
   *sock = ms = NULL;
 
