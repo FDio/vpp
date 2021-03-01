@@ -448,26 +448,29 @@ nat44_show_lru_summary (vlib_main_t * vm, snat_main_per_thread_data_t * tsm,
   snat_session_t *s;
   u32 oldest_index;
 
-#define _(n, d)                                                          \
-  oldest_index =                                                         \
-      clib_dlist_remove_head (tsm->lru_pool, tsm->n##_lru_head_index);   \
-  if (~0 != oldest_index)                                                \
-    {                                                                    \
-      oldest_elt = pool_elt_at_index (tsm->lru_pool, oldest_index);      \
-      s = pool_elt_at_index (tsm->sessions, oldest_elt->value);          \
-      sess_timeout_time =                                                \
-          s->last_heard + (f64)nat44_session_get_timeout (sm, s);        \
-      vlib_cli_output (vm, d " LRU min session timeout %llu (now %llu)", \
-                       sess_timeout_time, now);                          \
-      clib_dlist_addhead (tsm->lru_pool, tsm->n##_lru_head_index,        \
-                          oldest_index);                                 \
+  if (tsm->lru_pool)
+    {
+#define _(n, d)                                                               \
+  oldest_index =                                                              \
+    clib_dlist_remove_head (tsm->lru_pool, tsm->n##_lru_head_index);          \
+  if (~0 != oldest_index)                                                     \
+    {                                                                         \
+      oldest_elt = pool_elt_at_index (tsm->lru_pool, oldest_index);           \
+      s = pool_elt_at_index (tsm->sessions, oldest_elt->value);               \
+      sess_timeout_time =                                                     \
+	s->last_heard + (f64) nat44_session_get_timeout (sm, s);              \
+      vlib_cli_output (vm, d " LRU min session timeout %llu (now %llu)",      \
+		       sess_timeout_time, now);                               \
+      clib_dlist_addhead (tsm->lru_pool, tsm->n##_lru_head_index,             \
+			  oldest_index);                                      \
     }
-  _(tcp_estab, "established tcp");
-  _(tcp_trans, "transitory tcp");
-  _(udp, "udp");
-  _(unk_proto, "unknown protocol");
-  _(icmp, "icmp");
+      _ (tcp_estab, "established tcp");
+      _ (tcp_trans, "transitory tcp");
+      _ (udp, "udp");
+      _ (unk_proto, "unknown protocol");
+      _ (icmp, "icmp");
 #undef _
+    }
 }
 
 static clib_error_t *
