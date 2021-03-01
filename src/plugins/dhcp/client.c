@@ -248,13 +248,16 @@ dhcp_client_reset (dhcp_client_main_t * dcm, dhcp_client_t * c)
 {
   if (c->client_detect_feature_enabled == 1)
     {
+      vlib_worker_thread_barrier_sync (dcm->vlib_main);
       vnet_feature_enable_disable ("ip4-unicast",
 				   "ip4-dhcp-client-detect",
 				   c->sw_if_index, 0, 0, 0);
+      vlib_worker_thread_barrier_release (dcm->vlib_main);
       c->client_detect_feature_enabled = 0;
     }
 
   dhcp_client_release_address (dcm, c);
+
   clib_memset (&c->learned, 0, sizeof (c->installed));
   c->state = DHCP_DISCOVER;
   c->next_transmit = vlib_time_now (dcm->vlib_main);
@@ -704,9 +707,11 @@ dhcp_discover_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
    */
   if (c->client_detect_feature_enabled == 0)
     {
+      vlib_worker_thread_barrier_sync (dcm->vlib_main);
       vnet_feature_enable_disable ("ip4-unicast",
 				   "ip4-dhcp-client-detect",
 				   c->sw_if_index, 1 /* enable */ , 0, 0);
+      vlib_worker_thread_barrier_release (dcm->vlib_main);
       c->client_detect_feature_enabled = 1;
     }
 
@@ -754,9 +759,11 @@ dhcp_bound_state (dhcp_client_main_t * dcm, dhcp_client_t * c, f64 now)
    */
   if (c->client_detect_feature_enabled == 0)
     {
+      vlib_worker_thread_barrier_sync (dcm->vlib_main);
       vnet_feature_enable_disable ("ip4-unicast",
 				   "ip4-dhcp-client-detect",
 				   c->sw_if_index, 1 /* enable */ , 0, 0);
+      vlib_worker_thread_barrier_release (dcm->vlib_main);
       c->client_detect_feature_enabled = 1;
     }
 

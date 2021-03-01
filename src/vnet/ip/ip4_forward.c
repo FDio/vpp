@@ -600,6 +600,7 @@ ip4_del_interface_routes (u32 sw_if_index,
 void
 ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
 {
+  vlib_main_t *vm = vlib_get_main ();
   ip4_main_t *im = &ip4_main;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
@@ -620,12 +621,14 @@ ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
       if (0 != --im->ip_enabled_by_sw_if_index[sw_if_index])
 	return;
     }
+  vlib_worker_thread_barrier_sync (vm);
   vnet_feature_enable_disable ("ip4-unicast", "ip4-not-enabled", sw_if_index,
 			       !is_enable, 0, 0);
 
 
   vnet_feature_enable_disable ("ip4-multicast", "ip4-not-enabled",
 			       sw_if_index, !is_enable, 0, 0);
+  vlib_worker_thread_barrier_release (vm);
 
   if (is_enable)
     hi->l3_if_count++;
