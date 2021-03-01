@@ -2496,11 +2496,12 @@ memif_tx_burst (memif_conn_handle_t conn, uint16_t qid,
 	  data_offset = b0->data - (d->offset + c->regions[d->region].addr);
 	  if (data_offset != 0)
 	    {
-	      /* verify data offset */
+	      /* verify data offset and buffer length */
 	      if ((data_offset < 0) ||
-		  (data_offset > (d->offset + offset_mask)))
+		  ((data_offset + b0->len) > c->run_args.buffer_size))
 		{
-		  printf ("%ld\n", data_offset);
+		  DBG ("slot: %d, data_offset: %d, length: %d",
+		       b0->desc_index & mask, data_offset, b0->len);
 		  err = MEMIF_ERR_INVAL_ARG;
 		  goto done;
 		}
