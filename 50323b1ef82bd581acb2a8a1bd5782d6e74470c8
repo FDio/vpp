@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "183041bc_962fbe95",
+        "filename": "src/plugins/dhcp/client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-03-02T01:36:40Z",
+      "side": 1,
+      "message": "Thank you. I was not sure about it. So I was trying to be safe than sorry. I\u0027ll remove this pair.",
+      "parentUuid": "5896b299_ad71c1b2",
+      "range": {
+        "startLine": 217,
+        "startChar": 0,
+        "endLine": 217,
+        "endChar": 25
+      },
+      "revId": "50323b1ef82bd581acb2a8a1bd5782d6e74470c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "1dd24e21_7a9f5141",
         "filename": "src/plugins/dhcp/client.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2021-03-02T00:22:04Z",
       "side": 1,
       "message": "This is called from multiple places but does everything need a worker barrier or only vnet_feature_enable_disable?",
+      "range": {
+        "startLine": 249,
+        "startChar": 0,
+        "endLine": 249,
+        "endChar": 17
+      },
+      "revId": "50323b1ef82bd581acb2a8a1bd5782d6e74470c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "601a05da_0a6a67f8",
+        "filename": "src/plugins/dhcp/client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-03-02T01:36:40Z",
+      "side": 1,
+      "message": "dhcp_client_release_address may potentially hit vnet_feature_enable_disable via these calling chains.\nip4_add_del_interface_address -\u003e ip4_add_del_interface_address_internal -\u003e  ip4_sw_interface_enable_disable -\u003e\nvnet_feature_enable_disable (\"ip4-unicast\", \"ip4-not-enabled\", sw_if_index, !is_enable, 0, 0);",
+      "parentUuid": "1dd24e21_7a9f5141",
       "range": {
         "startLine": 249,
         "startChar": 0,
