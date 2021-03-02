@@ -89,8 +89,9 @@ vl_sock_api_dump_clients (vlib_main_t * vm, api_main_t * am)
      {
         if (reg->registration_type == REGISTRATION_TYPE_SOCKET_SERVER) {
             f = vl_api_registration_file (reg);
-            vlib_cli_output (vm, "%20s %8d", reg->name, f->file_descriptor);
-        }
+	    if (f)
+	      vlib_cli_output (vm, "%20s %8d", reg->name, f->file_descriptor);
+	}
     }
 /* *INDENT-ON* */
 }
@@ -128,9 +129,9 @@ vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
   cf = vl_api_registration_file (rp);
   ASSERT (rp->registration_type > REGISTRATION_TYPE_SHMEM);
 
-  if (msg_id >= vec_len (am->api_trace_cfg))
+  if (!cf || msg_id >= vec_len (am->api_trace_cfg))
     {
-      clib_warning ("id out of range: %d", msg_id);
+      clib_warning ("cf[%p] removed or id out of range: %d", cf, msg_id);
       vl_msg_api_free ((void *) elem);
       return;
     }
@@ -147,6 +148,15 @@ vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
   vec_add (sock_rp->output_vector, elem, ntohl (mb->data_len));
   error = clib_file_write (cf);
   unix_save_error (&unix_main, error);
+
+  /* Make sure cf not removed in clib_file_write */
+  cf = vl_api_registration_file (rp);
+  if (!cf)
+    {
+      clib_warning ("cf removed");
+      vl_msg_api_free ((void *) elem);
+      return;
+    }
 
   /* If we didn't finish sending everything, wait for tx space */
   if (vec_len (sock_rp->output_vector) > 0
@@ -704,6 +714,11 @@ reply:
 
   /* Send the magic "here's your sign (aka fd)" socket message */
   cf = vl_api_registration_file (regp);
+  if (!cf)
+    {
+      clib_warning ("cf removed");
+      return;
+    }
 
   /* Wait for reply to be consumed before sending the fd */
   while (tries-- > 0)
