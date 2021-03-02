@@ -148,6 +148,15 @@ vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
   error = clib_file_write (cf);
   unix_save_error (&unix_main, error);
 
+  /* Make sure cf not removed in clib_file_write */
+  cf = vl_api_registration_file (rp);
+  if (!cf)
+    {
+      clib_warning ("cf removed");
+      vl_msg_api_free ((void *) elem);
+      return;
+    }
+
   /* If we didn't finish sending everything, wait for tx space */
   if (vec_len (sock_rp->output_vector) > 0
       && !(cf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE))
@@ -629,8 +638,8 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
     }
   if (regp->registration_type != REGISTRATION_TYPE_SOCKET_SERVER)
     {
-      rv = -31;			/* VNET_API_ERROR_INVALID_REGISTRATION */
-      goto reply;
+      clib_warning ("Invalid registration");
+      return;
     }
 
   /*
@@ -704,6 +713,11 @@ reply:
 
   /* Send the magic "here's your sign (aka fd)" socket message */
   cf = vl_api_registration_file (regp);
+  if (!cf)
+    {
+      clib_warning ("cf removed");
+      return;
+    }
 
   /* Wait for reply to be consumed before sending the fd */
   while (tries-- > 0)
