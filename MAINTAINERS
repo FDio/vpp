@@ -223,7 +223,7 @@ F:	src/plugins/crypto_ipsecmb/
 
 VNET L2
 I:	l2
-M:	John Lo <loj@cisco.com>
+M:	John Lo <lojultra2020@outlook.com>
 M:	Steven Luong <sluong@cisco.com>
 F:	src/vnet/l2/
 
@@ -288,7 +288,7 @@ F:	src/vnet/udp
 
 VNET VXLAN
 I:	vxlan
-M:	John Lo <loj@cisco.com>
+M:	John Lo <lojultra2020@outlook.com>
 M:	Steven Luong <sluong@cisco.com>
 F:	src/vnet/vxlan/
 
