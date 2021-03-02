@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c48a732c_bcf12891",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-03-02T19:54:42Z",
+      "side": 1,
+      "message": "Any idea why the cf was removed? Was one of the messages a sockclnt_delete? That\u0027s, as far as I can tell, the only path to vl_api_registration_del_file (apart from vpp exiting).",
+      "range": {
+        "startLine": 11,
+        "startChar": 30,
+        "endLine": 11,
+        "endChar": 67
+      },
+      "revId": "93e20c4d941aca386225da9135699d69033d1711",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5f38f60a_23cc5e4a",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-03-02T19:54:42Z",
+      "side": 1,
+      "message": "Is this called on main thread or on a worker? That is, was the socket removed on main while worker is preparing to write?",
+      "range": {
+        "startLine": 13,
+        "startChar": 3,
+        "endLine": 13,
+        "endChar": 25
+      },
+      "revId": "93e20c4d941aca386225da9135699d69033d1711",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
