@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7c0c138c_714d1ef9",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 624,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-03-02T02:59:04Z",
+      "side": 1,
+      "message": "I guess this is a side effect of my comment. I think the implicit assumption is that this function will always be called with the barrier held (although we should start asserting). So the answer to my question regarding the call to vlib_worker_thread_barrier_sync in dhcp_client_reset is that it is needed for more than vnet_feature_enable_disable. \n\nTherefore, could we leave dhcp_client_reset the way you had it originally?",
+      "range": {
+        "startLine": 624,
+        "startChar": 2,
+        "endLine": 624,
+        "endChar": 33
+      },
+      "revId": "b660c901868a3866c71ed6dc4a8ef92da3045ce6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
