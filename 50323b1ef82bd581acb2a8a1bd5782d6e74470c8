@@ -93,6 +93,30 @@
       "revId": "50323b1ef82bd581acb2a8a1bd5782d6e74470c8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "47c72e8f_cbb321d0",
+        "filename": "src/plugins/dhcp/client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-03-02T02:43:55Z",
+      "side": 1,
+      "message": "I moved the barrier sync further down to limit only vnet_feature_enable_disable. I think that is what you meant.",
+      "parentUuid": "601a05da_0a6a67f8",
+      "range": {
+        "startLine": 249,
+        "startChar": 0,
+        "endLine": 249,
+        "endChar": 17
+      },
+      "revId": "50323b1ef82bd581acb2a8a1bd5782d6e74470c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
