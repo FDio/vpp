@@ -117,6 +117,30 @@
       "revId": "50323b1ef82bd581acb2a8a1bd5782d6e74470c8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "db832d5b_3a0ca846",
+        "filename": "src/plugins/dhcp/client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-03-02T02:52:01Z",
+      "side": 1,
+      "message": "Yup, that\u0027s where I was going with my question. Thanks for the quick reply!",
+      "parentUuid": "47c72e8f_cbb321d0",
+      "range": {
+        "startLine": 249,
+        "startChar": 0,
+        "endLine": 249,
+        "endChar": 17
+      },
+      "revId": "50323b1ef82bd581acb2a8a1bd5782d6e74470c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
