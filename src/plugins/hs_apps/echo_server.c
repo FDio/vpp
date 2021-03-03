@@ -449,12 +449,23 @@ static clib_error_t *
 echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			       vlib_cli_command_t * cmd)
 {
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   echo_server_main_t *esm = &echo_server_main;
   u8 server_uri_set = 0, *appns_id = 0;
   u64 tmp, appns_flags = 0, appns_secret = 0;
   char *default_uri = "tcp://0.0.0.0/1234";
-  int rv, is_stop = 0;
-  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+  int rv, is_stop = 0, barrier_acq_needed = 0;
+  clib_error_t *error = 0;
+
+  /* The request came over the binary api and the inband cli handler
+   * is not mp_safe. Drop the barrier to make sure the workers are not
+   * blocked.
+   */
+  if (vlib_num_workers () && vlib_thread_is_main_w_barrier ())
+    {
+      barrier_acq_needed = 1;
+      vlib_worker_thread_barrier_release (vm);
+    }
 
   esm->no_echo = 0;
   esm->fifo_size = 64 << 10;
@@ -484,8 +495,11 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 unformat_memory_size, &tmp))
 	{
 	  if (tmp >= 0x100000000ULL)
-	    return clib_error_return
-	      (0, "private segment size %lld (%llu) too large", tmp, tmp);
+	    {
+	      error = clib_error_return (
+		0, "private segment size %lld (%llu) too large", tmp, tmp);
+	      goto cleanup;
+	    }
 	  esm->private_segment_size = tmp;
 	}
       else if (unformat (input, "appns %_%v%_", &appns_id))
@@ -504,8 +518,11 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (input, "tls-engine %d", &esm->tls_engine))
 	;
       else
-	return clib_error_return (0, "failed: unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "failed: unknown input `%U'",
+				     format_unformat_error, input);
+	  goto cleanup;
+	}
     }
 
   if (is_stop)
@@ -513,15 +530,17 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (esm->app_index == (u32) ~ 0)
 	{
 	  clib_warning ("server not running");
-	  return clib_error_return (0, "failed: server not running");
+	  error = clib_error_return (0, "failed: server not running");
+	  goto cleanup;
 	}
       rv = echo_server_detach ();
       if (rv)
 	{
 	  clib_warning ("failed: detach");
-	  return clib_error_return (0, "failed: server detach %d", rv);
+	  error = clib_error_return (0, "failed: server detach %d", rv);
+	  goto cleanup;
 	}
-      return 0;
+      goto cleanup;
     }
 
   vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
@@ -533,19 +552,28 @@ echo_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   if ((rv = parse_uri ((char *) esm->server_uri, &sep)))
-    return clib_error_return (0, "Uri parse error: %d", rv);
+    {
+      error = clib_error_return (0, "Uri parse error: %d", rv);
+      goto cleanup;
+    }
   esm->transport_proto = sep.transport_proto;
   esm->is_dgram = (sep.transport_proto == TRANSPORT_PROTO_UDP);
 
   rv = echo_server_create (vm, appns_id, appns_flags, appns_secret);
-  vec_free (appns_id);
   if (rv)
     {
       vec_free (esm->server_uri);
-      return clib_error_return (0, "failed: server_create returned %d", rv);
+      error = clib_error_return (0, "failed: server_create returned %d", rv);
+      goto cleanup;
     }
 
-  return 0;
+cleanup:
+  vec_free (appns_id);
+
+  if (barrier_acq_needed)
+    vlib_worker_thread_barrier_sync (vm);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
