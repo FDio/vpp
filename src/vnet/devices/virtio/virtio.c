@@ -32,6 +32,7 @@
 #include <vnet/devices/virtio/virtio.h>
 #include <vnet/devices/virtio/pci.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/interface/tx_queue_funcs.h>
 
 virtio_main_t virtio_main;
 
@@ -253,6 +254,24 @@ virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif)
 	}
     }
   vnet_hw_if_update_runtime_data (vnm, vif->hw_if_index);
+}
+
+void
+virtio_vring_set_tx_queues (vlib_main_t *vm, virtio_if_t *vif)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  virtio_vring_t *vring;
+
+  // vnet_hw_if_set_input_node (vnm, vif->hw_if_index,
+  // virtio_input_node.index);
+
+  vec_foreach (vring, vif->txq_vrings)
+    {
+      vnet_hw_if_register_tx_queue (vnm, vif->hw_if_index,
+				    TX_QUEUE_ACCESS (vring->queue_id),
+				    VNET_HW_IF_TXQ_THREAD_ANY);
+    }
+  // vnet_hw_if_update_runtime_data (vnm, vif->hw_if_index);
 }
 
 inline void

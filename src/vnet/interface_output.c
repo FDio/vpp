@@ -1132,6 +1132,11 @@ interface_tx_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  hw = vnet_get_sup_hw_interface (vnm, sw_if_index0);
 	  to_frame = vlib_get_frame_to_node (vm, hw->tx_node_index);
 	  to_next = vlib_frame_vector_args (to_frame);
+	  if (from_frame->scalar_size)
+	    *(u32 *) vlib_frame_scalar_args (to_frame) =
+	      *(u32 *) vlib_frame_scalar_args (from_frame);
+	  if (from_frame->flags)
+	    to_frame->flags = from_frame->flags;
 	}
 
       to_next[0] = bi0;
@@ -1147,6 +1152,7 @@ VLIB_REGISTER_NODE (interface_tx) = {
   .function = interface_tx_node_fn,
   .name = "interface-tx",
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (u32),
   .n_next_nodes = 1,
   .next_nodes = {
     [0] = "error-drop",
