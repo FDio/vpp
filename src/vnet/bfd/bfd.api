@@ -206,6 +206,11 @@ autoreply define bfd_udp_session_set_flags
   vl_api_if_status_flags_t flags;
 };
 
+service {
+  rpc want_bfd_events returns want_bfd_events_reply
+    events bfd_udp_session_event;
+};
+
 /** \brief Register for BFD events
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -218,6 +223,22 @@ autoreply define want_bfd_events
   u32 context;
   bool enable_disable;
   u32 pid;
+};
+
+define bfd_udp_session_event
+{
+  u32 client_index;
+  u32 pid;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_address_t local_addr;
+  vl_api_address_t peer_addr;
+  vl_api_bfd_state_t state;
+  bool is_authenticated;
+  u8 bfd_key_id;
+  u32 conf_key_id;
+  u32 required_min_rx;
+  u32 desired_min_tx;
+  u8 detect_mult;
 };
 
 /** \brief BFD UDP - add/replace key to configuration

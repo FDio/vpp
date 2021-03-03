@@ -85,13 +85,13 @@ autoreply autoendian define lcp_itf_pair_add_del
     @param context - sender context, to match reply w/ request
     @param sw_if_index - interface to use as filter (~0 == "all")
 */
-autoendian define lcp_itf_pair_get
+define lcp_itf_pair_get
 {
   u32 client_index;
   u32 context;
   u32 cursor;
 };
-autoendian define lcp_itf_pair_get_reply
+define lcp_itf_pair_get_reply
 {
   u32 context;
   i32 retval;

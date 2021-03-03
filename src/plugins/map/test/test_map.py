@@ -114,15 +114,16 @@ class TestMAP(VppTestCase):
 
     def test_api_map_domains_get(self):
         # Create a bunch of domains
-        domains = self.create_domains('130.67.0.0/24', '2001::/32',
+        no_domains = 4096  # This must be large enough to ensure VPP suspends
+        domains = self.create_domains('130.67.0.0/20', '2001::/32',
                                       '2001::1/128')
-        self.assertEqual(len(domains), 256)
+        self.assertEqual(len(domains), no_domains)
 
         d = []
         cursor = 0
 
         # Invalid cursor
-        rv, details = self.vapi.map_domains_get(cursor=1234)
+        rv, details = self.vapi.map_domains_get(cursor=no_domains+10)
         self.assertEqual(rv.retval, -7)
 
         # Delete a domain in the middle of walk
@@ -136,7 +137,7 @@ class TestMAP(VppTestCase):
         self.assertEqual(rv.retval, -165)
 
         d = list(self.vapi.vpp.details_iter(self.vapi.map_domains_get))
-        self.assertEqual(len(d), 255)
+        self.assertEqual(len(d), no_domains - 1)
 
         # Clean up
         for i in domains:

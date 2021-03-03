@@ -917,13 +917,8 @@ class VPPApiClient:
         while True:
             kwargs['cursor'] = cursor
             rv, details = f(**kwargs)
-            #
-            # Convert to yield from details when we only support python 3
-            #
             for d in details:
                 yield d
             if rv.retval == 0 or rv.retval != -165:
                 break
             cursor = rv.cursor
-
-# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
