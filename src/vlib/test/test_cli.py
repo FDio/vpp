@@ -5,7 +5,7 @@ import datetime
 import time
 import unittest
 
-from vpp_papi import vpp_transport_shmem
+from vpp_papi import VPPIOError
 
 from framework import VppTestCase, VppTestRunner
 
@@ -39,9 +39,8 @@ class TestCLI(VppTestCase):
         self.assertEqual(rv.retval, 0)
 
     def test_long_cli_delay(self):
-        """ Test that VppApiClient raises VppTransportShmemIOError if timeout."""  # noqa
-        with self.assertRaises(
-                vpp_transport_shmem.VppTransportShmemIOError) as ctx:
+        """ Test that VppApiClient raises VppIOError if timeout."""  # noqa
+        with self.assertRaises(VPPIOError) as ctx:
             rv = self.vapi.papi.cli_inband(cmd='wait 10')
 
     def test_long_cli_delay_override(self):

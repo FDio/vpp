@@ -90,8 +90,8 @@ class VppTransport:
         try:
             self.socket.connect(self.server_address)
         except socket.error as msg:
-            logging.error("{} on socket {}".format(msg, self.server_address))
-            raise
+            # logging.error("{} on socket {}".format(msg, self.server_address))
+            raise msg
 
         self.connected = True
 

@@ -401,8 +401,6 @@ help:
 	@echo ""
 	@echo " SKIP_AARCH64=1         - skip tests that are failing on the ARM platorm in FD.io CI"
 	@echo ""
-	@echo " SOCKET=1               - Communicate with VPP over Unix domain socket instead of SHM"
-	@echo ""
 	@echo " RND_SEED=seed          - Seed RND with given seed"
 	@echo ""
 	@echo "Creating test documentation"
