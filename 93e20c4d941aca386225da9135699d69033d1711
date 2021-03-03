@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "6b82eba8_eb01c097",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-03-03T03:16:48Z",
+      "side": 1,
+      "message": "Ow, this is much more complicated than I had imagined. Thanks a lot for the details!\n\nSo then, if I understand things correctly, the issue is that in vl_api_sock_init_shm_t_handler when we detect that \n```\nregp-\u003eregistration_type !\u003d REGISTRATION_TYPE_SOCKET_SERVER\n``` \nwe shouldn\u0027t try to reply, instead we should just drop the message. If we didn\u0027t hit that path, then vl_socket_free_registration_index did not cleanup the socket client registration correctly.",
+      "parentUuid": "a9f2b3c6_384268f4",
+      "range": {
+        "startLine": 11,
+        "startChar": 30,
+        "endLine": 11,
+        "endChar": 67
+      },
+      "revId": "93e20c4d941aca386225da9135699d69033d1711",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "5f38f60a_23cc5e4a",
         "filename": "/COMMIT_MSG",
         "patchSetId": 4
