@@ -747,7 +747,7 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
       vlib_worker_thread_barrier_release (vm);
 
       /* Crude pacing for call setups  */
-      if ((i % 16) == 0)
+      if (i && (i % 16) == 0)
 	vlib_process_suspend (vm, 100e-6);
       ASSERT (i + 1 >= ecm->ready_connections);
       while (i + 1 - ecm->ready_connections > 128)
@@ -767,18 +767,16 @@ echo_clients_command_fn (vlib_main_t * vm,
   echo_client_main_t *ecm = &echo_client_main;
   vlib_thread_main_t *thread_main = vlib_get_thread_main ();
   u64 tmp, total_bytes, appns_flags = 0, appns_secret = 0;
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   f64 test_timeout = 20.0, syn_timeout = 20.0, delta;
   char *default_uri = "tcp://6.0.1.1/1234";
+  int preallocate_sessions = 0, i, rv;
   uword *event_data = 0, event_type;
   f64 time_before_connects;
   u32 n_clients = 1;
-  int preallocate_sessions = 0;
   char *transfer_type;
   clib_error_t *error = 0;
-  u8 *appns_id = 0;
-  int i;
-  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
-  int rv;
+  u8 *appns_id = 0, barrier_acq_needed = 0;
 
   ecm->quic_streams = 1;
   ecm->bytes_to_send = 8192;
@@ -794,6 +792,26 @@ echo_clients_command_fn (vlib_main_t * vm,
   ecm->tls_engine = CRYPTO_ENGINE_OPENSSL;
   ecm->no_copy = 0;
   ecm->run_test = ECHO_CLIENTS_STARTING;
+
+  if (vlib_num_workers ())
+    {
+      /* The request came over the binary api and the inband cli handler
+       * is not mp_safe. Drop the barrier to make sure the workers are not
+       * blocked.
+       */
+      if (vlib_thread_is_main_w_barrier ())
+	{
+	  barrier_acq_needed = 1;
+	  vlib_worker_thread_barrier_release (vm);
+	}
+      /*
+       * There's a good chance that both the client and the server echo
+       * apps will be enabled so make sure the session queue node polls on
+       * the main thread as connections will probably be established on it.
+       */
+      vlib_node_set_state (vm, session_queue_node.index,
+			   VLIB_NODE_STATE_POLLING);
+    }
 
   if (thread_main->n_vlib_mains > 1)
     clib_spinlock_init (&ecm->sessions_lock);
@@ -1024,6 +1042,10 @@ cleanup:
   if (error)
     ec_cli_output ("test failed");
   vec_free (ecm->connect_uri);
+
+  if (barrier_acq_needed)
+    vlib_worker_thread_barrier_sync (vm);
+
   return error;
 }
 
