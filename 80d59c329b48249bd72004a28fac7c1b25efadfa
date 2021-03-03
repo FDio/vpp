@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "95dde201_a5e91bd4",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-03-03T08:56:25Z",
+      "side": 1,
+      "message": "This duplicates the whole free desc function. Can it be rewritten so that there is only a single common function with 2-loops? Otherwise we\u0027ll have 2 maintain 2 completely separate codepath, which makes it hard to test \u0026 maintain.\n- the 1st one processing desc 4-by-4 and the 2nd one 1-by-1\n- the 4-by-4 loop will use AVX512 if defined otherwise can ue scalar code (or even better, also have a AVX256 variant in addition to AVX512 and scalar!)\nSee https://git.fd.io/vpp/tree/src/plugins/af_xdp/output.c#n37 for an example",
+      "revId": "80d59c329b48249bd72004a28fac7c1b25efadfa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
