@@ -33,7 +33,7 @@ from vpp_bvi_interface import VppBviInterface
 from vpp_papi_provider import VppPapiProvider
 import vpp_papi
 from vpp_papi.vpp_stats import VPPStats
-from vpp_papi.vpp_transport_shmem import VppTransportShmemIOError
+from vpp_papi.vpp_transport_socket import VppTransportSocketIOError
 from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
     get_logger, colorize
 from vpp_object import VppObjectRegistry
@@ -561,10 +561,10 @@ class VppTestCase(unittest.TestCase):
         cls.logger.addHandler(cls.file_handler)
         cls.logger.debug("--- setUpClass() for %s called ---" %
                          cls.__name__)
-        cls.shm_prefix = os.path.basename(cls.tempdir)
+        cls.shm_prefix = os.path.basename(cls.tempdir)  # Only used for VAPI
         os.chdir(cls.tempdir)
-        cls.logger.info("Temporary dir is %s, shm prefix is %s",
-                        cls.tempdir, cls.shm_prefix)
+        cls.logger.info("Temporary dir is %s, api socket is %s",
+                        cls.tempdir, cls.api_sock)
         cls.logger.debug("Random seed is %s" % seed)
         cls.setUpConstants()
         cls.reset_packet_infos()
@@ -590,7 +590,7 @@ class VppTestCase(unittest.TestCase):
             cls.pump_thread.start()
             if cls.debug_gdb or cls.debug_gdbserver:
                 cls.vapi_response_timeout = 0
-            cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls,
+            cls.vapi = VppPapiProvider(cls.__name__, cls,
                                        cls.vapi_response_timeout)
             if cls.step:
                 hook = hookmodule.StepHook(cls)
@@ -608,7 +608,7 @@ class VppTestCase(unittest.TestCase):
                 raise
             try:
                 cls.vapi.connect()
-            except vpp_papi.VPPIOError as e:
+            except (vpp_papi.VPPIOError, Exception) as e:
                 cls.logger.debug("Exception connecting to vapi: %s" % e)
                 cls.vapi.disconnect()
 
@@ -616,15 +616,15 @@ class VppTestCase(unittest.TestCase):
                     print(colorize("You're running VPP inside gdbserver but "
                                    "VPP-API connection failed, did you forget "
                                    "to 'continue' VPP from within gdb?", RED))
-                raise
+                raise e
         except vpp_papi.VPPRuntimeError as e:
             cls.logger.debug("%s" % e)
             cls.quit()
-            raise
+            raise e
         except Exception as e:
             cls.logger.debug("Exception connecting to VPP: %s" % e)
             cls.quit()
-            raise
+            raise e
 
     @classmethod
     def _debug_quit(cls):
@@ -676,7 +676,11 @@ class VppTestCase(unittest.TestCase):
                 cls.logger.debug("Sending TERM to vpp")
                 cls.vpp.terminate()
                 cls.logger.debug("Waiting for vpp to die")
-                cls.vpp.communicate()
+                try:
+                    outs, errs = cls.vpp.communicate(timeout=5)
+                except subprocess.TimeoutExpired:
+                    cls.vpp.kill()
+                    outs, errs = cls.vpp.communicate()
             cls.logger.debug("Deleting class vpp attribute on %s",
                              cls.__name__)
             cls.vpp.stdout.close()
@@ -755,8 +759,8 @@ class VppTestCase(unittest.TestCase):
             os.rename(tmp_api_trace, vpp_api_trace_log)
             self.logger.info(self.vapi.ppcli("api trace custom-dump %s" %
                                              vpp_api_trace_log))
-        except VppTransportShmemIOError:
-            self.logger.debug("VppTransportShmemIOError: Vpp dead. "
+        except VppTransportSocketIOError:
+            self.logger.debug("VppTransportSocketIOError: Vpp dead. "
                               "Cannot log show commands.")
             self.vpp_dead = True
         else:
