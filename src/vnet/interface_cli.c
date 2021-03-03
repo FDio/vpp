@@ -2034,6 +2034,7 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
 	  cm->classify_table_index_by_sw_if_index[0];
       else
 	pp->filter_classify_table_index = ~0;
+      pp->pcap_error_index = a->drop_err;
       pp->pcap_rx_enable = a->rx_enable;
       pp->pcap_tx_enable = a->tx_enable;
       pp->pcap_drop_enable = a->drop_enable;
@@ -2045,6 +2046,7 @@ vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
       pp->pcap_tx_enable = 0;
       pp->pcap_drop_enable = 0;
       pp->filter_classify_table_index = ~0;
+      pp->pcap_error_index = 0;
       if (pm->n_packets_captured)
 	{
 	  clib_error_t *error;
@@ -2091,6 +2093,7 @@ pcap_trace_command_fn (vlib_main_t * vm,
   int filter = 0;
   int free_data = 0;
   u32 sw_if_index = 0;		/* default: any interface */
+  vlib_error_t drop_err = 0;	/* default: any error */
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -2124,6 +2127,9 @@ pcap_trace_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "interface %U",
 			 unformat_vnet_sw_interface, vnm, &sw_if_index))
 	;
+      else if (unformat (line_input, "error %U", unformat_error, vm,
+			 &drop_err))
+	;
       else if (unformat (line_input, "preallocate-data %=",
 			 &preallocate_data, 1))
 	;
@@ -2155,6 +2161,7 @@ pcap_trace_command_fn (vlib_main_t * vm,
   a->sw_if_index = sw_if_index;
   a->filter = filter;
   a->max_bytes_per_pkt = max_bytes_per_pkt;
+  a->drop_err = drop_err;
 
   rv = vnet_pcap_dispatch_trace_configure (a);
 
@@ -2235,6 +2242,9 @@ pcap_trace_command_fn (vlib_main_t * vm,
  *   filter. The filter will only be executed if the per-interface or
  *   any-interface tests fail.
  *
+ * - <b>error <node>.<error></b> - filter packets based on a specific error.
+ *   For example: error {ip4-udp-lookup}.{No listener for dst port}
+ *
  * - <b>file <name></b> - Used to specify the output filename. The file will
  *   be placed in the '<em>/tmp</em>' directory, so only the filename is
  *   supported. Directory should not be entered. If file already exists, file
@@ -2255,7 +2265,8 @@ pcap_trace_command_fn (vlib_main_t * vm,
  * pcap tx capture is off...
  * @cliexend
  * Example of how to start a tx packet capture:
- * @cliexstart{pcap trace tx max 35 intfc GigabitEthernet0/8/0 file vppTest.pcap}
+ * @cliexstart{pcap trace tx max 35 intfc GigabitEthernet0/8/0 file
+vppTest.pcap}
  * @cliexend
  * Example of how to display the status of a tx packet capture in progress:
  * @cliexstart{pcap trace status}
