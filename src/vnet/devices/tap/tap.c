@@ -741,6 +741,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     }
 
   virtio_vring_set_rx_queues (vm, vif);
+  virtio_vring_set_tx_queues (vm, vif);
 
   vif->per_interface_next_index = ~0;
   vif->flags |= VIRTIO_IF_FLAG_ADMIN_UP;

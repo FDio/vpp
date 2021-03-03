@@ -37,6 +37,7 @@ list(APPEND VNET_SOURCES
   interface_format.c
   interface_output.c
   interface/rx_queue.c
+  interface/tx_queue.c
   interface/runtime.c
   interface_stats.c
   misc.c
@@ -58,6 +59,8 @@ list(APPEND VNET_HEADERS
   global_funcs.h
   handoff.h
   interface/rx_queue_funcs.h
+  interface/tx_queue_funcs.h
+  interface/tx_queue.h
   interface.h
   interface_funcs.h
   interface_output.h
@@ -784,6 +787,24 @@ list(APPEND VNET_HEADERS
 )
 
 list(APPEND VNET_API_FILES mpls/mpls.api)
+
+##############################################################################
+# Multi TXQ infra
+##############################################################################
+list(APPEND VNET_SOURCES
+  multi-txq/cli.c
+  multi-txq/multi_txq.c
+  multi-txq/multi_txq_api.c
+  multi-txq/node.c
+)
+
+list(APPEND VNET_API_FILES
+  multi-txq/multi_txq.api
+)
+
+list(APPEND VNET_HEADERS
+  multi-txq/multi_txq.h
+)
 
 ##############################################################################
 # Tunnel protocol: vxlan-gbp

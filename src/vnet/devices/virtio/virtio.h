@@ -103,6 +103,8 @@ typedef struct
     };
   };
 #define VRING_TX_OUT_OF_ORDER 1
+#define VRING_TX_QUEUE_SHARED 2
+#define VRING_TX_QUEUE_UNIQUE 4
   u16 flags;
   u8 buffer_pool_index;
   vnet_hw_if_rx_mode mode;
@@ -232,6 +234,7 @@ clib_error_t *virtio_vring_free_rx (vlib_main_t * vm, virtio_if_t * vif,
 clib_error_t *virtio_vring_free_tx (vlib_main_t * vm, virtio_if_t * vif,
 				    u32 idx);
 void virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif);
+void virtio_vring_set_tx_queues (vlib_main_t *vm, virtio_if_t *vif);
 extern void virtio_free_buffers (vlib_main_t * vm, virtio_vring_t * vring);
 extern void virtio_set_net_hdr_size (virtio_if_t * vif);
 extern void virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,

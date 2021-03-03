@@ -32,6 +32,7 @@
 #include <vnet/devices/virtio/virtio.h>
 #include <vnet/devices/virtio/pci.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/interface/tx_queue_funcs.h>
 
 virtio_main_t virtio_main;
 
@@ -253,6 +254,39 @@ virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif)
 	}
     }
   vnet_hw_if_update_runtime_data (vnm, vif->hw_if_index);
+}
+
+void
+virtio_vring_set_tx_queues (vlib_main_t *vm, virtio_if_t *vif)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  virtio_vring_t *vring;
+  u32 *queue_ids = 0;
+  u32 *flags = 0;
+  u32 i = 0;
+
+  ASSERT (vif->num_txqs > 0);
+  vec_validate (flags, vif->num_txqs - 1);
+  vec_foreach (vring, vif->txq_vrings)
+    {
+      vec_add1 (queue_ids, TX_QUEUE_ACCESS (vring->queue_id));
+    }
+  vnet_hw_if_register_tx_queues (vnm, vif->hw_if_index, queue_ids, flags);
+  vec_foreach_index (i, vif->txq_vrings)
+    {
+      switch (flags[i])
+	{
+	case VNET_HW_IF_TXQ_UNIQUE:
+	  vif->txq_vrings[i].flags |= VRING_TX_QUEUE_UNIQUE;
+	  break;
+	case VNET_HW_IF_TXQ_SHARED:
+	  vif->txq_vrings[i].flags |= VRING_TX_QUEUE_SHARED;
+	  break;
+	}
+    }
+
+  vec_free (flags);
+  vec_free (queue_ids);
 }
 
 inline void

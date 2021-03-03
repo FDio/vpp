@@ -30,6 +30,8 @@
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/udp/udp_packet.h>
 #include <vnet/devices/virtio/virtio.h>
+#include <vnet/multi-txq/multi_txq.h>
+#include <vnet/interface/tx_queue_funcs.h>
 
 #define foreach_virtio_tx_func_error	       \
 _(NO_FREE_SLOTS, "no free tx slots")           \
@@ -989,7 +991,7 @@ VNET_DEVICE_CLASS_TX_FN (virtio_device_class) (vlib_main_t * vm,
   virtio_main_t *nm = &virtio_main;
   vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
   virtio_if_t *vif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
-  u16 qid = vm->thread_index % vif->num_txqs;
+  u16 qid = (u16) vnet_hw_if_get_tx_queue_id (vm, frame, vif->hw_if_index);
   virtio_vring_t *vring = vec_elt_at_index (vif->txq_vrings, qid);
   u16 n_left = frame->n_vectors;
   u32 *buffers = vlib_frame_vector_args (frame);
