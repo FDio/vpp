@@ -8,12 +8,11 @@
 import os
 import time
 from collections import deque
-
+import queue
 from six import moves, iteritems
 from vpp_papi import VPPApiClient, mac_pton
 from hook import Hook
 from vpp_ip_route import MPLS_IETF_MAX_LABEL, MPLS_LABEL_INVALID
-
 
 #
 # Dictionary keyed on message name to override default values for
@@ -131,10 +130,9 @@ class VppPapiProvider(object):
 
     _zero, _negative = range(2)
 
-    def __init__(self, name, shm_prefix, test_class, read_timeout):
+    def __init__(self, name, test_class, read_timeout):
         self.hook = Hook(test_class)
         self.name = name
-        self.shm_prefix = shm_prefix
         self.test_class = test_class
         self._expect_api_retval = self._zero
         self._expect_stack = []
@@ -143,18 +141,11 @@ class VppPapiProvider(object):
         # calling the constructor.
         VPPApiClient.apidir = os.getenv('VPP_INSTALL_PATH')
 
-        use_socket = False
-        try:
-            if os.environ['SOCKET'] == '1':
-                use_socket = True
-        except KeyError:
-            pass
-
         self.vpp = VPPApiClient(logger=test_class.logger,
                                 read_timeout=read_timeout,
-                                use_socket=use_socket,
+                                use_socket=True,
                                 server_address=test_class.api_sock)
-        self._events = deque()
+        self._events = queue.Queue()
 
     def __enter__(self):
         return self
@@ -193,9 +184,14 @@ class VppPapiProvider(object):
 
     def collect_events(self):
         """ Collect all events from the internal queue and clear the queue. """
-        e = self._events
-        self._events = deque()
-        return e
+        result = []
+        while True:
+            try:
+                e = self._events.get(block=False)
+                result.append(e)
+            except queue.Empty:
+                return result
+        return result
 
     def wait_for_event(self, timeout, name=None):
         """ Wait for and return next event. """
@@ -205,28 +201,21 @@ class VppPapiProvider(object):
         else:
             self.test_class.logger.debug("Expecting event within %ss",
                                          timeout)
-        if self._events:
-            self.test_class.logger.debug("Not waiting, event already queued")
-        limit = time.time() + timeout
-        while time.time() < limit:
-            if self._events:
-                e = self._events.popleft()
-                if name and type(e).__name__ != name:
-                    raise Exception(
-                        "Unexpected event received: %s, expected: %s" %
-                        (type(e).__name__, name))
-                self.test_class.logger.debug("Returning event %s:%s" %
-                                             (name, e))
-                return e
-            self.test_class.sleep(0)  # yield
-        raise Exception("Event did not occur within timeout")
+        try:
+            e = self._events.get(timeout=timeout)
+        except queue.Empty:
+            raise Exception("Event did not occur within timeout")
+        msgname = type(e).__name__
+        if name and msgname != name:
+            raise Exception("Unexpected event received: %s, expected: %s"
+                            % msgname)
+        self.test_class.logger.debug("Returning event %s:%s" % (name, e))
+        return e
 
     def __call__(self, name, event):
         """ Enqueue event in the internal event queue. """
-        # FIXME use the name instead of relying on type(e).__name__ ?
-        # FIXME #2 if this throws, it is eaten silently, Ole?
         self.test_class.logger.debug("New event: %s: %s" % (name, event))
-        self._events.append(event)
+        self._events.put(event)
 
     def factory(self, name, apifn):
         def f(*a, **ka):
@@ -262,7 +251,28 @@ class VppPapiProvider(object):
 
     def connect(self):
         """Connect the API to VPP"""
-        self.vpp.connect(self.name, self.shm_prefix)
+        # This might be called before VPP is prepared to listen to the socket
+        retries = 0
+        print('Trying to connect to', self.test_class.api_sock)
+        while not os.path.exists(self.test_class.api_sock):
+            time.sleep(0.5)
+            retries += 1
+            if retries > 120:
+                break
+        print('Trying to connect to retries',
+              self.test_class.api_sock, retries)
+        self.vpp.connect(self.name[:63])
+        '''
+        for attempt in range(100):
+            try:
+                self.vpp.connect(self.name[:63])
+                break
+            except socket.error as msg:
+                # sleep a little and retry
+                time.sleep(0.5)
+        else:
+            raise Exception("We could not connect to VPP...")
+        '''
         self.papi = self.vpp.api
         self.vpp.register_event_callback(self)
 
