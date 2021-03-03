@@ -982,6 +982,7 @@ typedef struct
   u8 free_data;
   u32 sw_if_index;
   int filter;
+  vlib_error_t drop_err;
 } vnet_pcap_dispatch_trace_args_t;
 
 int vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t *);

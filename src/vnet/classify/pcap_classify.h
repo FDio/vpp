@@ -33,6 +33,7 @@ vnet_is_packet_pcaped (vnet_pcap_t *pp, vlib_buffer_t *b, u32 sw_if_index)
 {
   const u32 pcap_sw_if_index = pp->pcap_sw_if_index;
   const u32 filter_classify_table_index = pp->filter_classify_table_index;
+  const vlib_error_t pcap_error_index = pp->pcap_error_index;
 
   if (pcap_sw_if_index != 0)
     {
@@ -41,6 +42,9 @@ vnet_is_packet_pcaped (vnet_pcap_t *pp, vlib_buffer_t *b, u32 sw_if_index)
       if (pcap_sw_if_index != sw_if_index)
 	return 0; /* wrong interface, skip */
     }
+
+  if (pcap_error_index != 0 && pcap_error_index != b->error)
+    return 0; /* wrong error */
 
   if (filter_classify_table_index != ~0 &&
       vnet_is_packet_traced_inline (b, filter_classify_table_index,
