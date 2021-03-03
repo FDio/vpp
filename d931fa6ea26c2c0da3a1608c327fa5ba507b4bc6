@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c8fe4ad6_dd954886",
+        "filename": "src/vlibmemory/socket_api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-03-03T07:04:48Z",
+      "side": 1,
+      "message": "A socket api registration should be cleaned up as soon as the socket is closed (or an error is detected). So, as far as I can tell, this should not be possible unless we don\u0027t correctly cleanup the file and the registration somewhere.",
+      "range": {
+        "startLine": 92,
+        "startChar": 0,
+        "endLine": 92,
+        "endChar": 11
+      },
+      "revId": "d931fa6ea26c2c0da3a1608c327fa5ba507b4bc6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3c9cd684_043546a0",
+        "filename": "src/vlibmemory/socket_api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-03-03T07:04:48Z",
+      "side": 1,
+      "message": "Same comment as above.",
+      "range": {
+        "startLine": 132,
+        "startChar": 7,
+        "endLine": 132,
+        "endChar": 9
+      },
+      "revId": "d931fa6ea26c2c0da3a1608c327fa5ba507b4bc6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "65d8dd87_f47e6344",
+        "filename": "src/vlibmemory/socket_api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-03-03T07:04:48Z",
+      "side": 1,
+      "message": "Nice catch!",
+      "range": {
+        "startLine": 152,
+        "startChar": 5,
+        "endLine": 152,
+        "endChar": 47
+      },
+      "revId": "d931fa6ea26c2c0da3a1608c327fa5ba507b4bc6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}

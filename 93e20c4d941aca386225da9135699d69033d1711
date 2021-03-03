@@ -97,6 +97,30 @@
     },
     {
       "key": {
+        "uuid": "70e30aa0_ab23f45f",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-03-03T07:04:48Z",
+      "side": 1,
+      "message": "Thanks for the quick fix! As for vl_socket_api_send, a socket api registration should never lose its fd while writing to it. More comments there.",
+      "parentUuid": "174d80cc_ca98b7d8",
+      "range": {
+        "startLine": 11,
+        "startChar": 30,
+        "endLine": 11,
+        "endChar": 67
+      },
+      "revId": "93e20c4d941aca386225da9135699d69033d1711",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "5f38f60a_23cc5e4a",
         "filename": "/COMMIT_MSG",
         "patchSetId": 4
