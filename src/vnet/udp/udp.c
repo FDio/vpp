@@ -116,7 +116,6 @@ udp_connection_alloc (u32 thread_index)
   uc->c_c_index = uc - um->connections[thread_index];
   uc->c_thread_index = thread_index;
   uc->c_proto = TRANSPORT_PROTO_UDP;
-  clib_spinlock_init (&uc->rx_lock);
   return uc;
 }
 
@@ -390,9 +389,14 @@ conn_alloc:
   uc->mss = rmt->mss ? rmt->mss : udp_default_mtu (um, uc->c_is_ip4);
   uc->flags |= UDP_CONN_F_OWNS_PORT;
   if (rmt->transport_flags & TRANSPORT_CFG_F_CONNECTED)
-    uc->flags |= UDP_CONN_F_CONNECTED;
+    {
+      uc->flags |= UDP_CONN_F_CONNECTED;
+    }
   else
-    uc->c_flags |= TRANSPORT_CONNECTION_F_CLESS;
+    {
+      clib_spinlock_init (&uc->rx_lock);
+      uc->c_flags |= TRANSPORT_CONNECTION_F_CLESS;
+    }
 
   return uc->c_c_index;
 }
