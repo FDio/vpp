@@ -935,7 +935,7 @@ vnet_register_interface (vnet_main_t * vnm,
       r.type = VLIB_NODE_TYPE_INTERNAL;
       r.runtime_data = &rt;
       r.runtime_data_bytes = sizeof (rt);
-      r.scalar_size = 0;
+      r.scalar_size = sizeof (u32);
       r.vector_size = sizeof (u32);
 
       r.flags = VLIB_NODE_FLAG_IS_OUTPUT;
@@ -1383,6 +1383,8 @@ vnet_interface_init (vlib_main_t * vm)
 						       sizeof (uword));
 
   im->rxq_index_by_hw_if_index_and_queue_id =
+    hash_create_mem (0, sizeof (u64), sizeof (u32));
+  im->txq_index_by_hw_if_index_and_thread_index =
     hash_create_mem (0, sizeof (u64), sizeof (u32));
   im->sw_if_index_by_sup_and_sub = hash_create_mem (0, sizeof (u64),
 						    sizeof (uword));

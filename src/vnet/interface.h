@@ -554,6 +554,21 @@ typedef struct
 #define VNET_HW_IF_RXQ_NO_RX_INTERRUPT ~0
 } vnet_hw_if_rx_queue_t;
 
+typedef struct
+{
+  /* hw interface index */
+  u32 hw_if_index;
+
+  /* device instance */
+  u32 dev_instance;
+
+  /* index of thread polling these queues */
+  u32 thread_index;
+
+  /* vec of hardware queues ids on given thread */
+  u32 *queue_ids;
+} vnet_hw_if_tx_queue_t;
+
 /* Hardware-interface.  This corresponds to a physical wire
    that packets flow over. */
 typedef struct vnet_hw_interface_t
@@ -636,11 +651,17 @@ typedef struct vnet_hw_interface_t
   /* rx queues */
   u32 *rx_queue_indices;
 
+  /* tx queues */
+  u32 *tx_queue_indices;
+
   /* numa node that hardware device connects to */
   u8 numa_node;
 
   /* rss queues bitmap */
   clib_bitmap_t *rss_queues;
+
+  /* tx side scaling queues bitmap */
+  clib_bitmap_t *tss_queues;
 
   /* trace */
   i32 n_trace;
@@ -899,6 +920,10 @@ typedef struct
   /* Hardware interface RX queues */
   vnet_hw_if_rx_queue_t *hw_if_rx_queues;
   uword *rxq_index_by_hw_if_index_and_queue_id;
+
+  /* Hardware interface TX queues */
+  vnet_hw_if_tx_queue_t *hw_if_tx_queues;
+  uword *txq_index_by_hw_if_index_and_thread_index;
 
   /* Hash table mapping HW interface name to index. */
   uword *hw_interface_by_name;
