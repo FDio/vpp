@@ -535,6 +535,7 @@ debug:
 .PHONY: build-coverity
 build-coverity:
 	$(call make,$(PLATFORM)_coverity,install-packages)
+	@make -C build-root PLATFORM=vpp TAG=vpp_coverity libmemif-install
 
 .PHONY: debug-release
 debug-release:
