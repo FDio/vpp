@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "174d80cc_ca98b7d8",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2021-03-03T06:07:44Z",
+      "side": 1,
+      "message": "Yes, you are right. I\u0027ve modified the code.\nBut vl_socket_api_send still need to be fixed because of other callers.",
+      "parentUuid": "6b82eba8_eb01c097",
+      "range": {
+        "startLine": 11,
+        "startChar": 30,
+        "endLine": 11,
+        "endChar": 67
+      },
+      "revId": "93e20c4d941aca386225da9135699d69033d1711",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "5f38f60a_23cc5e4a",
         "filename": "/COMMIT_MSG",
         "patchSetId": 4
