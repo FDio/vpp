@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "a9f2b3c6_384268f4",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2021-03-03T02:04:19Z",
+      "side": 1,
+      "message": "No, it is not a sockclnt_delete message.\nSocket client send sock_init_shm firstly, and then crash immediately. Then linux_epoll_input_inline may received two EPOLLIN events, one is sock_init_shm message and will be added to pending event data vectors, and another will read 0 bytes and call clib_file_del to remove cf. \n\nn \u003d read (uf-\u003efile_descriptor, socket_main.input_buffer,\n\t    vec_len (socket_main.input_buffer));\n\n  if (n \u003c\u003d 0)\n    {\n      if (errno !\u003d EAGAIN)\n\t{\n\t  /* Severe error, close the file. */\n\t  clib_file_del (fm, uf);\n\t  vl_socket_free_registration_index (reg_index);\n\t}\n      /* EAGAIN means we do not close the file, but no data to process anyway. */\n      return 0;\n    }\n\nThen the following vl_api_clnt_process-\u003evl_socket_process_api_msg-\u003evl_msg_api_socket_handler-\u003e msg_handler_internal -\u003evl_api_sock_init_shm_t_handler-\u003evl_socket_api_send call can not get cf by vl_api_registration_file.",
+      "parentUuid": "c48a732c_bcf12891",
+      "range": {
+        "startLine": 11,
+        "startChar": 30,
+        "endLine": 11,
+        "endChar": 67
+      },
+      "revId": "93e20c4d941aca386225da9135699d69033d1711",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "5f38f60a_23cc5e4a",
         "filename": "/COMMIT_MSG",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2021-03-02T19:54:42Z",
       "side": 1,
       "message": "Is this called on main thread or on a worker? That is, was the socket removed on main while worker is preparing to write?",
+      "range": {
+        "startLine": 13,
+        "startChar": 3,
+        "endLine": 13,
+        "endChar": 25
+      },
+      "revId": "93e20c4d941aca386225da9135699d69033d1711",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "97982dd5_1a42f8b1",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2021-03-03T02:04:19Z",
+      "side": 1,
+      "message": "This is called on main thread as vl_api_sock_init_shm_t_handler-\u003evl_socket_api_send-\u003eclib_file_write. If the socket client crashed, then clib_file_write will remove cf, and then vl_api_sock_init_shm_t_handler can not get cf after vl_socket_api_send called.",
+      "parentUuid": "5f38f60a_23cc5e4a",
       "range": {
         "startLine": 13,
         "startChar": 3,
