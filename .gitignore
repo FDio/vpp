@@ -113,3 +113,6 @@ compile_commands.json
 
 # extras gomemif build files
 /extras/gomemif/bazel*
+
+# debian packaging
+.pc
