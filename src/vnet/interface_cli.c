@@ -52,6 +52,7 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/interface/tx_queue_funcs.h>
 static int
 compare_interface_names (void *a1, void *a2)
 {
@@ -1674,6 +1675,55 @@ VLIB_CLI_COMMAND (show_interface_rx_placement, static) = {
   .function = show_interface_rx_placement_fn,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+show_interface_tx_placement_fn (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
+{
+  u8 *s = 0;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_if_tx_queue_t **all_queues = 0;
+  vnet_hw_if_tx_queue_t **qptr;
+  vnet_hw_if_tx_queue_t *q;
+  pool_foreach (q, vnm->interface_main.hw_if_tx_queues)
+    vec_add1 (all_queues, q);
+  vec_sort_with_function (all_queues, vnet_hw_if_txq_cmp_cli_api);
+  u32 prev_node = ~0;
+
+  vec_foreach (qptr, all_queues)
+    {
+      u32 current_thread = qptr[0]->thread_index;
+      u32 hw_if_index = qptr[0]->hw_if_index;
+      vnet_hw_interface_t *hw_if = vnet_get_hw_interface (vnm, hw_if_index);
+      u32 current_node = hw_if->tx_node_index;
+      if (current_node != prev_node)
+	s = format (s, " node %U:\n", format_vlib_node_name, vm, current_node);
+      s = format (s, "    %U queue %u\n", format_vnet_sw_if_index_name, vnm,
+		  hw_if->sw_if_index, qptr[0]->queue_ids[0]);
+      if (vec_len (qptr[0]->queue_ids) > 1)
+	for (int i = 1; i < vec_len (qptr[0]->queue_ids); i++)
+	  s = format (s, "    %U queue %u\n", format_vnet_sw_if_index_name,
+		      vnm, hw_if->sw_if_index, qptr[0]->queue_ids[i]);
+      if (qptr == all_queues + vec_len (all_queues) - 1 ||
+	  current_thread != qptr[1]->thread_index)
+	{
+	  vlib_cli_output (vm, "Thread %u (%s):\n%v", current_thread,
+			   vlib_worker_threads[current_thread].name, s);
+	  vec_reset_length (s);
+	}
+      prev_node = current_node;
+    }
+  vec_free (s);
+  vec_free (all_queues);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_interface_tx_placement, static) = {
+  .path = "show interface tx-placement",
+  .short_help = "show interface tx-placement",
+  .function = show_interface_tx_placement_fn,
+};
+
 clib_error_t *
 set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
 			       u32 thread_index, u8 is_main)

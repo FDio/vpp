@@ -19,15 +19,17 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/interface/tx_queue_funcs.h>
 #include <vlib/unix/unix.h>
 
-VLIB_REGISTER_LOG_CLASS (if_rxq_log, static) = {
+VLIB_REGISTER_LOG_CLASS (if_rx_tx_log, static) = {
   .class_name = "interface",
   .subclass_name = "runtime",
 };
 
-#define log_debug(fmt, ...) vlib_log_debug (if_rxq_log.class, fmt, __VA_ARGS__)
-#define log_err(fmt, ...)   vlib_log_err (if_rxq_log.class, fmt, __VA_ARGS__)
+#define log_debug(fmt, ...)                                                   \
+  vlib_log_debug (if_rx_tx_log.class, fmt, __VA_ARGS__)
+#define log_err(fmt, ...) vlib_log_err (if_rx_tx_log.class, fmt, __VA_ARGS__)
 
 static char *node_state_str[] = {
   [VLIB_NODE_STATE_DISABLED] = "disabled",
@@ -219,4 +221,25 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 
   vec_free (d);
   vec_free (per_thread_node_state);
+}
+
+void
+vnet_hw_if_txq_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
+{
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+  u32 node_index = hi->tx_node_index;
+  u32 n_threads = vec_len (vlib_mains);
+  u32 qid = 0;
+
+  for (u32 i = 0; i < n_threads; i++)
+    {
+      vlib_main_t *vm = vlib_mains[i];
+      vnet_interface_output_runtime_t *rt =
+	vlib_node_get_runtime_data (vm, node_index);
+      ASSERT (rt->txq_index == ~0);
+      ASSERT (rt->thread_index == ~0);
+      qid = vnet_hw_if_get_tx_queue_id_by_thread_index (vnm, hw_if_index, i);
+      rt->txq_index = qid;
+      rt->thread_index = i;
+    }
 }

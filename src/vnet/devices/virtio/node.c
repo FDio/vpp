@@ -29,6 +29,7 @@
 #include <vnet/feature/feature.h>
 #include <vnet/gso/gro_func.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/interface/tx_queue_funcs.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/udp/udp_packet.h>
@@ -572,19 +573,25 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, qid);
   const int hdr_sz = vif->virtio_net_hdr_sz;
-  u16 txq_id = vm->thread_index % vif->num_txqs;
-  virtio_vring_t *txq_vring = vec_elt_at_index (vif->txq_vrings, txq_id);
+  u32 txq_id, *txq_ids = vnet_hw_if_get_tx_queue_ids (
+		vnet_get_main (), vif->hw_if_index, vm->thread_index);
   uword rv;
 
-  if (clib_spinlock_trylock_if_init (&txq_vring->lockp))
+  vec_foreach_index (txq_id, txq_ids)
     {
-      if (vif->packet_coalesce)
-	vnet_gro_flow_table_schedule_node_on_dispatcher
-	  (vm, txq_vring->flow_table);
-      else if (vif->packet_buffering)
-	virtio_vring_buffering_schedule_node_on_dispatcher
-	  (vm, txq_vring->buffering);
-      clib_spinlock_unlock_if_init (&txq_vring->lockp);
+
+      virtio_vring_t *txq_vring =
+	vec_elt_at_index (vif->txq_vrings, txq_ids[txq_id]);
+      if (clib_spinlock_trylock_if_init (&txq_vring->lockp))
+	{
+	  if (vif->packet_coalesce)
+	    vnet_gro_flow_table_schedule_node_on_dispatcher (
+	      vm, txq_vring->flow_table);
+	  else if (vif->packet_buffering)
+	    virtio_vring_buffering_schedule_node_on_dispatcher (
+	      vm, txq_vring->buffering, txq_ids[txq_id]);
+	  clib_spinlock_unlock_if_init (&txq_vring->lockp);
+	}
     }
 
   if (vif->is_packed)

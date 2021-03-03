@@ -472,6 +472,8 @@ typedef struct
   u32 hw_if_index;
   u32 sw_if_index;
   u32 dev_instance;
+  u32 thread_index;
+  u32 txq_index;
   u32 is_deleted;
 } vnet_interface_output_runtime_t;
 

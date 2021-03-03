@@ -18,6 +18,8 @@
 #ifndef _VNET_DEVICES_VIRTIO_VIRTIO_BUFFERING_H_
 #define _VNET_DEVICES_VIRTIO_VIRTIO_BUFFERING_H_
 
+#include <vnet/interface/tx_queue_funcs.h>
+
 #define VIRTIO_BUFFERING_DEFAULT_SIZE 1024
 #define VIRTIO_BUFFERING_TIMEOUT 1e-5
 
@@ -205,15 +207,19 @@ virtio_vring_buffering_read_from_back (virtio_vring_buffering_t * buffering)
 }
 
 static_always_inline void
-virtio_vring_buffering_schedule_node_on_dispatcher (vlib_main_t * vm,
-						    virtio_vring_buffering_t *
-						    buffering)
+virtio_vring_buffering_schedule_node_on_dispatcher (
+  vlib_main_t *vm, virtio_vring_buffering_t *buffering, u32 txq_id)
 {
-  if (buffering && virtio_vring_buffering_is_timeout (vm, buffering)
-      && virtio_vring_n_buffers (buffering))
+  if (buffering && virtio_vring_buffering_is_timeout (vm, buffering) &&
+      !virtio_vring_buffering_is_empty (buffering))
     {
       vlib_frame_t *f = vlib_get_frame_to_node (vm, buffering->node_index);
       u32 *f_to = vlib_frame_vector_args (f);
+      if (f->scalar_size)
+	{
+	  *(u32 *) vlib_frame_scalar_args (f) = txq_id;
+	  f->flags = VNET_HW_TXQ_INDEX_SET;
+	}
       f_to[f->n_vectors] = virtio_vring_buffering_read_from_back (buffering);
       f->n_vectors++;
       vlib_put_frame_to_node (vm, buffering->node_index, f);
