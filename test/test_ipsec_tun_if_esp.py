@@ -509,7 +509,7 @@ class TestIpsec6TunIfEspHandoff(TemplateIpsec6TunIfEsp,
             stats0 = policer.get_stats(worker=0)
             stats1 = policer.get_stats(worker=1)
 
-            if pol_bind is 1:
+            if pol_bind == 1:
                 # First pass: Worker 1, should have done all the policing
                 self.assertEqual(stats, stats1)
 
@@ -581,7 +581,7 @@ class TestIpsec4TunIfEspHandoff(TemplateIpsec4TunIfEsp,
             stats0 = policer.get_stats(worker=0)
             stats1 = policer.get_stats(worker=1)
 
-            if pol_bind is 1:
+            if pol_bind == 1:
                 # First pass: Worker 1, should have done all the policing
                 self.assertEqual(stats, stats1)
 
