@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a7263af8_c13614b9",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-03-03T18:05:29Z",
+      "side": 1,
+      "message": "Use the now computed at the beginning of the function by removing the if (main \u003d\u003d 0)",
+      "range": {
+        "startLine": 258,
+        "startChar": 1,
+        "endLine": 258,
+        "endChar": 26
+      },
+      "revId": "bd77ac83abdeb328bf7608ae4e25441542f8092e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b0e48d9e_a484b666",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-03-03T18:05:29Z",
+      "side": 1,
+      "message": "Instead of tracking the last time we got api work, wouldn\u0027t it be better to track last time we did any work related to this node? Meaning the issue could affect all unix epoll consumers, not only the api. \n\nFor instance, we could track last time we got epoll events in the epoll_pwait lower. If it was less than timeout_ms, don\u0027t sleep yet. This line then becomes:\n\ntimeout_ms \u003d clib_min (timeout_ms, (now - em-\u003elast_time_work_done) * 10e3)\n\nAlthough, wouldn\u0027t it be better to not sleep if now - em-\u003elast_time_work_done \u003c 10ms?",
+      "range": {
+        "startLine": 259,
+        "startChar": 16,
+        "endLine": 259,
+        "endChar": 45
+      },
+      "revId": "bd77ac83abdeb328bf7608ae4e25441542f8092e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
