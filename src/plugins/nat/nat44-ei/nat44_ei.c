@@ -1407,7 +1407,7 @@ nat44_ei_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip0,
 
   proto = ip_proto_to_nat_proto (ip0->protocol);
   udp = ip4_next_header (ip0);
-  port = udp->dst_port;
+  port = vnet_buffer (b)->ip.reass.l4_dst_port;
 
   /* unknown protocol */
   if (PREDICT_FALSE (proto == NAT_PROTOCOL_OTHER))
