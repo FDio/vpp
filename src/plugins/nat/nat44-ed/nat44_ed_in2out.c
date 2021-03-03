@@ -554,15 +554,15 @@ error:
 }
 
 static_always_inline int
-nat44_ed_not_translate (snat_main_t * sm, vlib_node_runtime_t * node,
-			u32 sw_if_index, ip4_header_t * ip, u32 proto,
-			u32 rx_fib_index, u32 thread_index)
+nat44_ed_not_translate (snat_main_t *sm, vlib_node_runtime_t *node,
+			u32 sw_if_index, vlib_buffer_t *b, ip4_header_t *ip,
+			u32 proto, u32 rx_fib_index, u32 thread_index)
 {
-  udp_header_t *udp = ip4_next_header (ip);
   clib_bihash_kv_16_8_t kv, value;
 
-  init_ed_k (&kv, ip->dst_address, udp->dst_port, ip->src_address,
-	     udp->src_port, sm->outside_fib_index, ip->protocol);
+  init_ed_k (&kv, ip->dst_address, vnet_buffer (b)->ip.reass.l4_dst_port,
+	     ip->src_address, vnet_buffer (b)->ip.reass.l4_src_port,
+	     sm->outside_fib_index, ip->protocol);
 
   /* NAT packet aimed at external address if has active sessions */
   if (clib_bihash_search_16_8 (&sm->flow_hash, &kv, &value))
@@ -571,10 +571,10 @@ nat44_ed_not_translate (snat_main_t * sm, vlib_node_runtime_t * node,
       ip4_address_t placeholder_addr;
       u16 placeholder_port;
       u32 placeholder_fib_index;
-      if (!snat_static_mapping_match
-	  (sm, ip->dst_address, udp->dst_port, sm->outside_fib_index, proto,
-	   &placeholder_addr, &placeholder_port, &placeholder_fib_index, 1, 0,
-	   0, 0, 0, 0, 0))
+      if (!snat_static_mapping_match (
+	    sm, ip->dst_address, vnet_buffer (b)->ip.reass.l4_dst_port,
+	    sm->outside_fib_index, proto, &placeholder_addr, &placeholder_port,
+	    &placeholder_fib_index, 1, 0, 0, 0, 0, 0, 0))
 	return 0;
     }
   else
@@ -742,7 +742,7 @@ icmp_in2out_ed_slow_path (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
     }
   else
     {
-      if (PREDICT_FALSE (nat44_ed_not_translate (sm, node, sw_if_index, ip,
+      if (PREDICT_FALSE (nat44_ed_not_translate (sm, node, sw_if_index, b, ip,
 						 NAT_PROTOCOL_ICMP,
 						 rx_fib_index, thread_index)))
 	{
@@ -1373,9 +1373,8 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      if (PREDICT_FALSE
-		  (nat44_ed_not_translate
-		   (sm, node, sw_if_index0, ip0, proto0, rx_fib_index0,
+	      if (PREDICT_FALSE (nat44_ed_not_translate (
+		    sm, node, sw_if_index0, b0, ip0, proto0, rx_fib_index0,
 		    thread_index)))
 		goto trace0;
 	    }

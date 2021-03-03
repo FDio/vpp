@@ -372,7 +372,6 @@ create_session_for_static_mapping_ed (
 {
   snat_session_t *s;
   ip4_header_t *ip;
-  udp_header_t *udp;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
 
   if (PREDICT_FALSE
@@ -392,10 +391,10 @@ create_session_for_static_mapping_ed (
     }
 
   ip = vlib_buffer_get_current (b);
-  udp = ip4_next_header (ip);
 
   s->ext_host_addr.as_u32 = ip->src_address.as_u32;
-  s->ext_host_port = nat_proto == NAT_PROTOCOL_ICMP ? 0 : udp->src_port;
+  s->ext_host_port =
+    nat_proto == NAT_PROTOCOL_ICMP ? 0 : vnet_buffer (b)->ip.reass.l4_src_port;
   s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
   if (lb_nat)
     s->flags |= SNAT_SESSION_FLAG_LOAD_BALANCING;
@@ -574,7 +573,6 @@ create_bypass_for_fwd (snat_main_t *sm, vlib_buffer_t *b, snat_session_t *s,
 		       ip4_header_t *ip, u32 rx_fib_index, u32 thread_index)
 {
   clib_bihash_kv_16_8_t kv, value;
-  udp_header_t *udp;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   vlib_main_t *vm = vlib_get_main ();
   f64 now = vlib_time_now (vm);
@@ -593,9 +591,8 @@ create_bypass_for_fwd (snat_main_t *sm, vlib_buffer_t *b, snat_session_t *s,
     {
       if (ip->protocol == IP_PROTOCOL_UDP || ip->protocol == IP_PROTOCOL_TCP)
 	{
-	  udp = ip4_next_header (ip);
-	  lookup_sport = udp->dst_port;
-	  lookup_dport = udp->src_port;
+	  lookup_sport = vnet_buffer (b)->ip.reass.l4_dst_port;
+	  lookup_dport = vnet_buffer (b)->ip.reass.l4_src_port;
 	}
       else
 	{
