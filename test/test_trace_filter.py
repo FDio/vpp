@@ -174,7 +174,7 @@ class TestTracefilter(VppTestCase):
             "match l3 ip4 proto 17 l4 src_port 2345")
         self.cli(
             "pcap trace rx tx max 1000 intfc pg0 "
-            "file vpp_test_trace_filter.pcap filter")
+            "file vpp_test_trace_filter_test_pcap.pcap filter")
         # the packet we are trying to match
         p = list()
         for i in range(100):
@@ -198,7 +198,7 @@ class TestTracefilter(VppTestCase):
         self.del_pcap_filters()
 
         # check captured pcap
-        pcap = rdpcap("/tmp/vpp_test_trace_filter.pcap")
+        pcap = rdpcap("/tmp/vpp_test_trace_filter_test_pcap.pcap")
         self.assertEqual(len(pcap), 9 + 17)
         p_ = str(p[5])
         for i in range(9):
@@ -206,6 +206,38 @@ class TestTracefilter(VppTestCase):
         p_ = str(p[100])
         for i in range(9, 9 + 17):
             self.assertEqual(str(pcap[i]), p_)
+
+    def test_pcap_drop(self):
+        """ Drop Packet Capture Filter Test """
+        self.cli(
+            "pcap trace drop max 1000 "
+            "error {ip4-udp-lookup}.{No listener for dst port} "
+            "file vpp_test_trace_filter_test_pcap_drop.pcap")
+        # the packet we are trying to match
+        p = list()
+        for i in range(17):
+            # this packet should be forwarded
+            p.append((Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                      IP(src=self.pg0.remote_hosts[0].ip4,
+                         dst=self.pg1.remote_ip4) /
+                      UDP(sport=2345, dport=1234) / Raw('\xa5' * 100)))
+            # this packet should be captured (no listener)
+            p.append((Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                      IP(src=self.pg0.remote_hosts[0].ip4,
+                         dst=self.pg0.local_ip4) /
+                      UDP(sport=2345, dport=1234) / Raw('\xa5' * 100)))
+        # this packet will be blackholed but not captured
+        p.append((Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                  IP(src=self.pg0.remote_hosts[0].ip4, dst="0.0.0.0") /
+                  UDP(sport=2345, dport=1234) / Raw('\xa5' * 100)))
+
+        self.send_and_expect(self.pg0, p, self.pg1, n_rx=17, trace=False)
+
+        self.cli("pcap trace drop off")
+
+        # check captured pcap
+        pcap = rdpcap("/tmp/vpp_test_trace_filter_test_pcap_drop.pcap")
+        self.assertEqual(len(pcap), 17)
 
 
 if __name__ == '__main__':

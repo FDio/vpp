@@ -210,6 +210,37 @@ vlib_register_errors (vlib_main_t * vm,
   }
 }
 
+uword
+unformat_error (unformat_input_t *input, va_list *args)
+{
+  vlib_main_t *vm = va_arg (*args, vlib_main_t *);
+  const vlib_error_main_t *em = &vm->error_main;
+  vlib_error_t *error_index = va_arg (*args, vlib_error_t *);
+  const vlib_node_t *node;
+  char *error_name;
+  u32 node_index;
+  vlib_error_t i;
+
+  if (!unformat (input, "%U.%s", unformat_vlib_node, vm, &node_index,
+		 &error_name))
+    return 0;
+
+  node = vlib_get_node (vm, node_index);
+  for (i = 0; i < node->n_errors; i++)
+    {
+      vlib_error_t ei = node->error_heap_index + i;
+      if (strcmp (em->counters_heap[ei].name, error_name) == 0)
+	{
+	  *error_index = ei;
+	  vec_free (error_name);
+	  return 1;
+	}
+    }
+
+  vec_free (error_name);
+  return 0;
+}
+
 static char *
 sev2str (enum vl_counter_severity_e s)
 {

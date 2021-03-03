@@ -40,6 +40,8 @@
 #ifndef included_vlib_error_h
 #define included_vlib_error_h
 
+#include <vppinfra/format.h>
+
 typedef u16 vlib_error_t;
 
 enum vl_counter_severity_e
@@ -74,6 +76,8 @@ void vlib_register_errors (struct vlib_main_t *vm,
 			   u32 node_index,
 			   u32 n_errors, char *error_strings[],
 			   vl_counter_t counters[]);
+
+unformat_function_t unformat_error;
 
 #endif /* included_vlib_error_h */
 
