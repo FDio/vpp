@@ -190,7 +190,6 @@ typedef enum
 #define NAT_STATIC_MAPPING_FLAG_LB             8
 #define NAT_STATIC_MAPPING_FLAG_EXACT_ADDRESS  16
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
 {
   // number of sessions in this vrf
@@ -202,7 +201,6 @@ typedef CLIB_PACKED(struct
   // is this vrf expired
   u8 expired;
 }) per_vrf_sessions_t;
-/* *INDENT-ON* */
 
 typedef union
 {
@@ -287,7 +285,6 @@ nat_6t_flow_icmp_id_rewrite_set (nat_6t_flow_t *f, u16 id)
   f->rewrite.icmp_id = id;
 }
 
-/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
 {
   /* Outside network tuple */
@@ -348,20 +345,17 @@ typedef CLIB_PACKED(struct
   u32 per_vrf_sessions_index;
 
 }) snat_session_t;
-/* *INDENT-ON* */
 
 typedef struct
 {
   ip4_address_t addr;
   u32 fib_index;
-/* *INDENT-OFF* */
 #define _(N, i, n, s) \
   u32 busy_##n##_ports; \
   u32 * busy_##n##_ports_per_thread; \
   u32 busy_##n##_port_refcounts[65535];
   foreach_nat_protocol
 #undef _
-/* *INDENT-ON* */
 } snat_address_t;
 
 typedef struct
@@ -496,7 +490,8 @@ typedef struct
 struct snat_main_s;
 
 /* Return worker thread index for given packet */
-typedef u32 (snat_get_worker_in2out_function_t) (ip4_header_t * ip,
+typedef u32 (snat_get_worker_in2out_function_t) (vlib_buffer_t *b,
+						 ip4_header_t *ip,
 						 u32 rx_fib_index,
 						 u8 is_output);
 
