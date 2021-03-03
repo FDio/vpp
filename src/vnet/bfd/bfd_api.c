@@ -175,6 +175,49 @@ send_bfd_udp_session_details (vl_api_registration_t * reg, u32 context,
 }
 
 void
+send_bfd_udp_session_event (vl_api_registration_t * reg, u32 pid,
+                            bfd_session_t * bs)
+{
+  if (bs->transport != BFD_TRANSPORT_UDP4 &&
+      bs->transport != BFD_TRANSPORT_UDP6)
+    {
+      return;
+    }
+
+  vl_api_bfd_udp_session_event_t *mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_BFD_UDP_SESSION_EVENT);
+  mp->pid = pid;
+  mp->state = clib_host_to_net_u32 (bs->local_state);
+  bfd_udp_session_t *bus = &bs->udp;
+  bfd_udp_key_t *key = &bus->key;
+  mp->sw_if_index = clib_host_to_net_u32 (key->sw_if_index);
+  if ((!bs->auth.is_delayed && bs->auth.curr_key) ||
+      (bs->auth.is_delayed && bs->auth.next_key))
+    {
+      mp->is_authenticated = true;
+    }
+  if (bs->auth.is_delayed && bs->auth.next_key)
+    {
+      mp->bfd_key_id = bs->auth.next_bfd_key_id;
+      mp->conf_key_id = clib_host_to_net_u32 (bs->auth.next_key->conf_key_id);
+    }
+  else if (!bs->auth.is_delayed && bs->auth.curr_key)
+    {
+      mp->bfd_key_id = bs->auth.curr_bfd_key_id;
+      mp->conf_key_id = clib_host_to_net_u32 (bs->auth.curr_key->conf_key_id);
+    }
+  ip_address_encode (&key->local_addr, IP46_TYPE_ANY, &mp->local_addr);
+  ip_address_encode (&key->peer_addr, IP46_TYPE_ANY, &mp->peer_addr);
+
+  mp->required_min_rx =
+    clib_host_to_net_u32 (bs->config_required_min_rx_usec);
+  mp->desired_min_tx = clib_host_to_net_u32 (bs->config_desired_min_tx_usec);
+  mp->detect_mult = bs->local_detect_mult;
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+void
 bfd_event (bfd_main_t * bm, bfd_session_t * bs)
 {
   vpe_api_main_t *vam = &vpe_api_main;
@@ -190,7 +233,7 @@ bfd_event (bfd_main_t * bm, bfd_session_t * bs)
 	  case BFD_TRANSPORT_UDP4:
 	  /* fallthrough */
 	  case BFD_TRANSPORT_UDP6:
-	    send_bfd_udp_session_details (vl_reg, 0, bs);
+	    send_bfd_udp_session_event (vl_reg, 0, bs);
 	  }
       }
   }
