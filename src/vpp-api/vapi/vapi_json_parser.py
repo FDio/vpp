@@ -164,7 +164,7 @@ class Message(object):
             raise ParseError("While parsing message `%s': could not find all "
                              "common header fields" % name)
         for field in m[1:]:
-            if len(field) == 1 and 'crc' in field:
+            if isinstance(field, dict) and 'crc' in field:
                 self.crc = field['crc']
                 logger.debug("Found CRC `%s'" % self.crc)
                 continue
