@@ -426,9 +426,10 @@ static_always_inline void vnet_interface_pcap_tx_trace
   (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
    int sw_if_index_from_buffer)
 {
+  vnet_main_t *vnm = vnet_get_main ();
   u32 n_left_from, *from;
   u32 sw_if_index;
-  vnet_pcap_t *pp = &vlib_global_main.pcap;
+  vnet_pcap_t *pp = &vnm->pcap;
 
   if (PREDICT_TRUE (pp->pcap_tx_enable == 0))
     return;
@@ -1047,8 +1048,9 @@ VLIB_NODE_FN (interface_drop) (vlib_main_t * vm,
 			       vlib_node_runtime_t * node,
 			       vlib_frame_t * frame)
 {
+  vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnet_get_main ()->interface_main;
-  vnet_pcap_t *pp = &vlib_global_main.pcap;
+  vnet_pcap_t *pp = &vnm->pcap;
 
   if (PREDICT_FALSE (pp->pcap_drop_enable))
     pcap_drop_trace (vm, im, pp, frame);

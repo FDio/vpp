@@ -60,21 +60,6 @@
 
 typedef struct
 {
-  /* Trace RX pkts */
-  u8 pcap_rx_enable;
-  /* Trace TX pkts */
-  u8 pcap_tx_enable;
-  /* Trace drop pkts */
-  u8 pcap_drop_enable;
-  u8 pad1;
-  u32 max_bytes_per_pkt;
-  u32 pcap_sw_if_index;
-  pcap_main_t pcap_main;
-  u32 filter_classify_table_index;
-} vnet_pcap_t;
-
-typedef struct
-{
   u8 trace_filter_enable;
   u32 classify_table_index;
 } vlib_trace_filter_t;
@@ -201,9 +186,6 @@ typedef struct vlib_main_t
   uword dispatch_pcap_postmortem;
   u32 *dispatch_buffer_trace_nodes;
   u8 *pcap_buffer;
-
-  /* pcap rx / tx tracing */
-  vnet_pcap_t pcap;
 
   /* Packet trace capture filter */
   vlib_trace_filter_t trace_filter;
