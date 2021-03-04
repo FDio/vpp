@@ -762,8 +762,8 @@ VLIB_NODE_FN (nat44_ei_out2in_node)
 	  CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, LOAD);
 	}
 
-      vnet_buffer (b0)->snat.flags = 0;
-      vnet_buffer (b1)->snat.flags = 0;
+      snat_buffer (b0)->flags = 0;
+      snat_buffer (b1)->flags = 0;
 
       ip0 = vlib_buffer_get_current (b0);
       udp0 = ip4_next_header (ip0);
@@ -1151,7 +1151,7 @@ VLIB_NODE_FN (nat44_ei_out2in_node)
       b0 = *b;
       ++b;
 
-      vnet_buffer (b0)->snat.flags = 0;
+      snat_buffer (b0)->flags = 0;
 
       ip0 = vlib_buffer_get_current (b0);
       udp0 = ip4_next_header (ip0);

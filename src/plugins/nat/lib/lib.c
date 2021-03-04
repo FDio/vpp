@@ -14,6 +14,7 @@
  */
 
 #include <nat/lib/lib.h>
+#include <vnet/vnet.h>
 
 uword
 unformat_nat_protocol (unformat_input_t *input, va_list *args)
@@ -49,6 +50,19 @@ format_nat_protocol (u8 *s, va_list *args)
   s = format (s, "%s", t);
   return s;
 }
+
+#define VNET_BUFFER_OPAQUE_OFFSET                                             \
+  (STRUCT_OFFSET_OF (vlib_buffer_t, opaque) +                                 \
+   STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused))
+
+VLIB_BUFFER_REGISTER_FORMAT (snat) = {
+  .name = "snat",
+  .size = sizeof (snat_buffer_opaque_t),
+  .offset = VNET_BUFFER_OPAQUE_OFFSET,
+  .fields = VLIB_BUFFER_FIELDS (
+    VLIB_BUFFER_HEX_FIELD (snat_buffer_opaque_t, flags),
+    VLIB_BUFFER_FIELD (snat_buffer_opaque_t, required_thread_index)),
+};
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -71,6 +71,16 @@ format_vnet_buffer (u8 * s, va_list * args)
   return s;
 }
 
+VLIB_BUFFER_REGISTER_FORMAT (vnet) = {
+  .name = "vnet",
+  .size = STRUCT_OFFSET_OF (vnet_buffer_opaque_t, ip),
+  .offset = STRUCT_OFFSET_OF (vlib_buffer_t, opaque),
+  .fields = VLIB_BUFFER_FIELDS (
+    VLIB_BUFFER_FIELD (vnet_buffer_opaque_t, l2_hdr_offset),
+    VLIB_BUFFER_FIELD (vnet_buffer_opaque_t, l3_hdr_offset),
+    VLIB_BUFFER_FIELD (vnet_buffer_opaque_t, l4_hdr_offset),
+    VLIB_BUFFER_FIELD (vnet_buffer_opaque_t, feature_arc_index)),
+};
 
 /*
  * fd.io coding-style-patch-verification: ON

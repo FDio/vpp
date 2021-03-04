@@ -111,6 +111,50 @@ format_vlib_buffer_data (u8 * s, va_list * args)
   return s;
 }
 
+u8 *
+format_vlib_buffer_field_name (u8 *s, va_list *args)
+{
+  vlib_buffer_field_t *f = va_arg (*args, vlib_buffer_field_t *);
+
+  if (f->prefix)
+    return format (s, "%s.%s", f->prefix, f->name);
+  return format (s, "%s", f->name);
+}
+
+u8 *
+format_vlib_buffer_field_value (u8 *s, va_list *args)
+{
+  vlib_buffer_field_t *f = va_arg (*args, vlib_buffer_field_t *);
+  vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
+  void *p = ((u8 *) b) + f->offset;
+  u64 v = 0;
+
+  ASSERT (f->size <= 8);
+
+  clib_memcpy (&v, p, f->size);
+
+  if (f->is_hex)
+    {
+      char fmt[] = "0x%000lx";
+      fmt[4] += (f->size * 2) / 10;
+      fmt[5] += (f->size * 2) % 10;
+      return format (s, fmt, v);
+    }
+
+  if (f->is_signed)
+    {
+      if (f->size == 4)
+	v = (i32) v;
+      else if (f->size == 2)
+	v = (i16) v;
+      else if (f->size == 1)
+	v = (i8) v;
+      return format (s, "%ld", v);
+    }
+
+  return format (s, "%lu", v);
+}
+
 /* Enable/on => 1; disable/off => 0. */
 uword
 unformat_vlib_enable_disable (unformat_input_t * input, va_list * args)

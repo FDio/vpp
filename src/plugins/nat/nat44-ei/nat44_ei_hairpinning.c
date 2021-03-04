@@ -447,7 +447,7 @@ VLIB_NODE_FN (nat44_ei_hairpin_src_node)
 	      if ((nat44_ei_interface_is_inside (i)) &&
 		  (sw_if_index0 == i->sw_if_index))
 		{
-		  if (PREDICT_FALSE ((vnet_buffer (b0)->snat.flags) &
+		  if (PREDICT_FALSE ((snat_buffer (b0)->flags) &
 				     NAT44_EI_FLAG_HAIRPINNING))
 		    {
 		      if (PREDICT_TRUE (nm->num_workers > 1))
@@ -528,7 +528,7 @@ VLIB_NODE_FN (nat44_ei_hairpin_dst_node)
 
 	  proto0 = ip_proto_to_nat_proto (ip0->protocol);
 
-	  vnet_buffer (b0)->snat.flags = 0;
+	  snat_buffer (b0)->flags = 0;
 	  if (PREDICT_FALSE (nat44_ei_is_hairpinning (nm, &ip0->dst_address)))
 	    {
 	      if (proto0 == NAT_PROTOCOL_TCP || proto0 == NAT_PROTOCOL_UDP)
@@ -552,13 +552,12 @@ VLIB_NODE_FN (nat44_ei_hairpin_dst_node)
 		  nat44_ei_hairpinning_unknown_proto (nm, b0, ip0);
 		}
 
-	      vnet_buffer (b0)->snat.flags = NAT44_EI_FLAG_HAIRPINNING;
+	      snat_buffer (b0)->flags = NAT44_EI_FLAG_HAIRPINNING;
 	    }
 
 	  if (thread_index != required_thread_index)
 	    {
-	      vnet_buffer (b0)->snat.required_thread_index =
-		required_thread_index;
+	      snat_buffer (b0)->required_thread_index = required_thread_index;
 	      next0 = NAT44_EI_HAIRPIN_NEXT_HANDOFF;
 	    }
 
@@ -639,8 +638,7 @@ VLIB_NODE_FN (nat44_ei_hairpinning_node)
 
 	  if (thread_index != required_thread_index)
 	    {
-	      vnet_buffer (b0)->snat.required_thread_index =
-		required_thread_index;
+	      snat_buffer (b0)->required_thread_index = required_thread_index;
 	      next0 = NAT44_EI_HAIRPIN_NEXT_HANDOFF;
 	      next0_resolved = 1;
 	    }

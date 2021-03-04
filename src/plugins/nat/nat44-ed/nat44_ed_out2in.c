@@ -846,7 +846,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
       lookup.sport = vnet_buffer (b0)->ip.reass.l4_src_port;
       lookup.dport = vnet_buffer (b0)->ip.reass.l4_dst_port;
 
-      vnet_buffer (b0)->snat.flags = 0;
+      snat_buffer (b0)->flags = 0;
       ip0 = vlib_buffer_get_current (b0);
 
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
@@ -1150,7 +1150,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
       b0 = *b;
       next[0] = vnet_buffer2 (b0)->nat.arc_next;
 
-      vnet_buffer (b0)->snat.flags = 0;
+      snat_buffer (b0)->flags = 0;
       ip0 = vlib_buffer_get_current (b0);
 
       sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];

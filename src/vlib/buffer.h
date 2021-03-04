@@ -474,6 +474,16 @@ typedef struct
 
 typedef struct
 {
+  char *prefix;
+  char *name;
+  u8 size;
+  u8 offset;
+  u8 is_signed : 1;
+  u8 is_hex : 1;
+} vlib_buffer_field_t;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   /* Virtual memory address and size of buffer memory, used for calculating
      buffer index */
@@ -494,9 +504,11 @@ typedef struct
   u16 ext_hdr_size;
   u32 default_data_size;
   clib_mem_page_sz_t log2_page_size;
+  vlib_buffer_field_t *fields;
 
   /* logging */
   vlib_log_class_t log_default;
+  vlib_log_class_t log_mdata;
 } vlib_buffer_main_t;
 
 clib_error_t *vlib_buffer_main_init (struct vlib_main_t *vm);
@@ -510,6 +522,51 @@ vnet_buffer_set_ext_hdr_size() \
     clib_error ("buffer external header space already set"); \
   __vlib_buffer_external_hdr_size = CLIB_CACHE_LINE_ROUND (x); \
 }
+
+/*
+ * Buffer Fields
+ */
+
+typedef struct vlib_buffer_format_registration_
+{
+  char *name;
+  u32 flags;
+  u8 size;
+  u16 offset;
+  vlib_buffer_field_t *fields;
+  struct vlib_buffer_format_registration_ *next;
+} vlib_buffer_format_registration_t;
+
+format_function_t format_vlib_buffer_field_name;
+format_function_t format_vlib_buffer_field_value;
+
+extern vlib_buffer_format_registration_t *__vlib_buffer_format_registrations;
+
+#define VLIB_BUFFER_REGISTER_FORMAT(x)                                        \
+  vlib_buffer_format_registration_t __vlib_buffer_format_registration_##x;    \
+  static void __clib_constructor __vlib_buffer_format_register_##x (void)     \
+  {                                                                           \
+    __vlib_buffer_format_registration_##x.next =                              \
+      __vlib_buffer_format_registrations;                                     \
+    __vlib_buffer_format_registrations =                                      \
+      &__vlib_buffer_format_registration_##x;                                 \
+  }                                                                           \
+  vlib_buffer_format_registration_t __vlib_buffer_format_registration_##x
+
+#define VLIB_BUFFER_FIELD(s, e, ...)                                          \
+  {                                                                           \
+    .name = #e, .size = STRUCT_SIZE_OF (s, e),                                \
+    .offset = STRUCT_OFFSET_OF (s, e),                                        \
+    .is_signed = ((typeof (((s *) 0)->e)) - 1) < 0, __VA_ARGS__               \
+  }
+
+#define VLIB_BUFFER_HEX_FIELD(s, e) VLIB_BUFFER_FIELD (s, e, .is_hex = 1)
+
+#define VLIB_BUFFER_FIELDS(...)                                               \
+  (vlib_buffer_field_t[])                                                     \
+  {                                                                           \
+    __VA_ARGS__, {}                                                           \
+  }
 
 #endif /* included_vlib_buffer_h */
 

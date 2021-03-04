@@ -142,6 +142,14 @@ u8 *format_nat_protocol (u8 *s, va_list *args);
 
 uword unformat_nat_protocol (unformat_input_t *input, va_list *args);
 
+typedef struct
+{
+  i32 flags;
+  u32 required_thread_index;
+} snat_buffer_opaque_t;
+
+#define snat_buffer(b) ((snat_buffer_opaque_t *) vnet_buffer (b)->unused)
+
 #endif /* included_nat_lib_h__ */
 /*
  * fd.io coding-style-patch-verification: ON

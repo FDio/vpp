@@ -51,6 +51,8 @@
 #define VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA 16384
 #define VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA_UNPRIV 8192
 
+vlib_buffer_format_registration_t *__vlib_buffer_format_registrations = 0;
+
 #ifdef CLIB_HAVE_VEC128
 /* Assumptions by vlib_buffer_free_inline: */
 STATIC_ASSERT_FITS_IN (vlib_buffer_t, flags, 16);
@@ -825,6 +827,37 @@ buffer_gauges_update_cached_fn (stat_segment_directory_entry_t * e, u32 index)
   e->value = buffer_get_cached (bp);
 }
 
+void
+vlib_buffer_add_fields (vlib_main_t *vm, char *prefix, u16 offset,
+			vlib_buffer_field_t *f)
+{
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  while (f && f->name != 0)
+    {
+      f->prefix = prefix;
+      f->offset += offset;
+      vlib_log_debug (bm->log_mdata, "field %s%s%s at offset %u, %u byte(s)%s",
+		      f->prefix ? f->prefix : "", f->prefix ? "." : "",
+		      f->name, f->offset, f->size,
+		      f->is_signed ? ", signed" : "");
+      vec_add1 (bm->fields, *f);
+      f++;
+    }
+}
+
+static vlib_buffer_field_t fields[] = VLIB_BUFFER_FIELDS (
+  VLIB_BUFFER_FIELD (vlib_buffer_t, current_data),
+  VLIB_BUFFER_FIELD (vlib_buffer_t, current_length),
+  VLIB_BUFFER_HEX_FIELD (vlib_buffer_t, flags),
+  VLIB_BUFFER_FIELD (vlib_buffer_t, flow_id),
+  VLIB_BUFFER_FIELD (vlib_buffer_t, ref_count),
+  VLIB_BUFFER_FIELD (vlib_buffer_t, buffer_pool_index),
+  VLIB_BUFFER_FIELD (vlib_buffer_t, next_buffer),
+  VLIB_BUFFER_FIELD (vlib_buffer_t, current_config_index),
+  VLIB_BUFFER_FIELD (vlib_buffer_t, punt_reason),
+  VLIB_BUFFER_FIELD (vlib_buffer_t, trace_handle),
+  VLIB_BUFFER_FIELD (vlib_buffer_t, total_length_not_including_first_buffer));
+
 clib_error_t *
 vlib_buffer_main_init (struct vlib_main_t * vm)
 {
@@ -839,7 +872,32 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
 
   bm = vm->buffer_main;
   bm->log_default = vlib_log_register_class ("buffer", 0);
+  bm->log_mdata = vlib_log_register_class ("buffer", "fields");
   bm->ext_hdr_size = __vlib_buffer_external_hdr_size;
+
+  vlib_buffer_add_fields (vm, 0, 0, fields);
+
+  if (__vlib_buffer_format_registrations)
+    {
+      vlib_buffer_format_registration_t *r =
+	__vlib_buffer_format_registrations;
+      u32 flags = VLIB_BUFFER_FLAGS_ALL;
+
+      while (r)
+	{
+	  if (flags & r->flags)
+	    vlib_log_warn (bm->log_mdata,
+			   "'%s' registered overlapping buffer metadata bits "
+			   "(0x%x)",
+			   r->name, flags & r->flags);
+	  flags |= r->flags;
+
+	  vlib_buffer_add_fields (vm, r->name, r->offset, r->fields);
+
+	  /* next */
+	  r = r->next;
+	}
+    }
 
   clib_spinlock_init (&bm->buffer_known_hash_lockp);
 

@@ -502,6 +502,26 @@ VLIB_CLI_COMMAND (pcap_dispatch_trace_command, static) = {
   .function = dispatch_trace_command_fn,
 };
 
+static clib_error_t *
+foo_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  vlib_buffer_t b;
+  u8 *p = (u8 *) &b;
+
+  for (int i = 0; i < sizeof (b); i++)
+    p[i] = i;
+
+  b.current_data = -129;
+
+  vlib_cli_output (vm, "%U\n", format_vnet_buffer_opaque, &b);
+
+  return 0;
+}
+VLIB_CLI_COMMAND (foo_cmd, static) = {
+  .path = "foo",
+  .function = foo_fn,
+};
+
 VLIB_PLUGIN_REGISTER () = {
   .version = VPP_BUILD_VER,
   .description = "Dispatch Trace",

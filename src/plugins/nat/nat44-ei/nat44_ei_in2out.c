@@ -848,7 +848,7 @@ nat44_ei_icmp_in2out (vlib_buffer_t *b0, ip4_header_t *ip0,
 	vnet_buffer (b0)->sw_if_index[VLIB_TX] = fib_index;
       if (thread_index != required_thread_index)
 	{
-	  vnet_buffer (b0)->snat.required_thread_index = required_thread_index;
+	  snat_buffer (b0)->required_thread_index = required_thread_index;
 	  next0 = NAT44_EI_IN2OUT_NEXT_HAIRPINNING_HANDOFF;
 	}
     }
@@ -1935,8 +1935,7 @@ VLIB_NODE_FN (nat44_ei_in2out_fast_node)
 
 	  if (thread_index != required_thread_index)
 	    {
-	      vnet_buffer (b0)->snat.required_thread_index =
-		required_thread_index;
+	      snat_buffer (b0)->required_thread_index = required_thread_index;
 	      next0 = NAT44_EI_IN2OUT_NEXT_HAIRPINNING_HANDOFF;
 	    }
 

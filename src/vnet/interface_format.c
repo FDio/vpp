@@ -660,8 +660,20 @@ format_vnet_buffer_opaque (u8 * s, va_list * args)
 	      (u32) (o->tcp.data_len), (u32) (o->tcp.flags));
   vec_add1 (s, '\n');
 
-  s = format (s, "snat.flags: 0x%x", o->snat.flags);
-  vec_add1 (s, '\n');
+  vec_foreach_index (i, vlib_mains[0]->buffer_main->fields)
+    {
+      vlib_buffer_field_t *f =
+	vec_elt_at_index (vlib_mains[0]->buffer_main->fields, i);
+      if (i == 0)
+	;
+      else if ((f - 1)->prefix != f->prefix)
+	s = format (s, "\n");
+      else
+	s = format (s, ", ");
+
+      s = format (s, "%U: %U", format_vlib_buffer_field_name, f,
+		  format_vlib_buffer_field_value, f, b);
+    }
 
   for (i = 0; i < vec_len (im->buffer_opaque_format_helpers); i++)
     {

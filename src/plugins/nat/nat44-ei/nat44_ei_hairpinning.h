@@ -57,7 +57,7 @@ nat44_ei_hairpinning_handoff_fn_inline (vlib_main_t *vm,
 
   while (n_left_from > 0)
     {
-      ti[0] = vnet_buffer (b[0])->snat.required_thread_index;
+      ti[0] = snat_buffer (b[0])->required_thread_index;
 
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
 			 (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
