@@ -1930,7 +1930,8 @@ int
 vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t * a)
 {
   vlib_main_t *vm = vlib_get_main ();
-  vnet_pcap_t *pp = &vm->pcap;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_pcap_t *pp = &vnm->pcap;
   pcap_main_t *pm = &pp->pcap_main;
   vnet_classify_main_t *cm = &vnet_classify_main;
 
