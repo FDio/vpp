@@ -77,6 +77,7 @@ def walk_defs(s, is_message=False):
         if is_message and t.crc:
             c = {}
             c['crc'] = "{0:#0{1}x}".format(t.crc, 10)
+            c['options'] = t.options
             d.append(c)
 
         r.append(d)

@@ -164,9 +164,12 @@ class Message(object):
             raise ParseError("While parsing message `%s': could not find all "
                              "common header fields" % name)
         for field in m[1:]:
-            if len(field) == 1 and 'crc' in field:
+            if isinstance(field, dict) and 'crc' in field:
                 self.crc = field['crc']
                 logger.debug("Found CRC `%s'" % self.crc)
+                if 'options' in field:
+                    self.options = field['options']
+                    logger.debug("Found options `%s'" % self.options)
                 continue
             else:
                 field_type = json_parser.lookup_type_like_id(field[0])
