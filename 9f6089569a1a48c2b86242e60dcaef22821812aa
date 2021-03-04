@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f6da9dab_3e45dbfd",
+        "filename": "src/plugins/linux-cp/lcp.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-03-04T10:44:51Z",
+      "side": 1,
+      "message": "why is it ok to remove these? the API handlers do not byte swap.",
+      "revId": "9f6089569a1a48c2b86242e60dcaef22821812aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
