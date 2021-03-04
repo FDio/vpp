@@ -326,9 +326,6 @@ l2_rw_mod_entry (u32 * index,
       *index = e - rw->entries;
     }
 
-  if (!e)
-    return -1;
-
   if (is_del)
     {
       pool_put (rw->entries, e);
