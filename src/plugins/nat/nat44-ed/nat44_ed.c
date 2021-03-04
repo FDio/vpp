@@ -2011,10 +2011,10 @@ nat44_set_node_indexes (snat_main_t * sm, vlib_main_t * vm)
   vlib_node_t *node;
 
   node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-out2in");
-  sm->in2out_node_index = node->index;
+  sm->out2in_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-in2out");
-  sm->out2in_node_index = node->index;
+  sm->in2out_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-in2out-output");
   sm->in2out_output_node_index = node->index;
