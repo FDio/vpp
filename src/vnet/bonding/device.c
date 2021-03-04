@@ -28,10 +28,11 @@
 #include <vnet/ip-neighbor/ip4_neighbor.h>
 #include <vnet/ip-neighbor/ip6_neighbor.h>
 
-#define foreach_bond_tx_error     \
-  _(NONE, "no error")             \
-  _(IF_DOWN, "interface down")    \
-  _(NO_MEMBER, "no member")
+#define foreach_bond_tx_error                                                 \
+  _ (NONE, "no error")                                                        \
+  _ (IF_DOWN, "interface down")                                               \
+  _ (BAD_LB_MODE, "bad load balance mode")                                    \
+  _ (NO_MEMBER, "no member")
 
 typedef enum
 {
@@ -762,7 +763,15 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
   else if (bif->lb == BOND_LB_RR)
     bond_tx_inline (vm, bif, bufs, hashes, n_left, n_members, BOND_LB_RR);
   else
-    ASSERT (0);
+    {
+      vlib_buffer_free (vm, vlib_frame_vector_args (frame), frame->n_vectors);
+      vlib_increment_simple_counter (
+	vnet_main.interface_main.sw_if_counters + VNET_INTERFACE_COUNTER_DROP,
+	thread_index, bif->sw_if_index, frame->n_vectors);
+      vlib_error_count (vm, node->node_index, BOND_TX_ERROR_BAD_LB_MODE,
+			frame->n_vectors);
+      return frame->n_vectors;
+    }
 
   /* calculate port out of hash */
   h = hashes;
