@@ -16,6 +16,24 @@
       "revId": "7abf801a5b3bb0272a55ddce7fe21bf1be3d0909",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e0fa2753_60b9e768",
+        "filename": "src/vpp-api/vapi/vapi_json_parser.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2021-03-04T12:40:09Z",
+      "side": 1,
+      "message": "I am not sure what the initial intent was there tbh, it seemed like a conservative parsing \"if we have a 1-member map and its only key is CRC\" - so I changed it to be just slightly less conservative... Do you mean that there should be just no length check altogether ? i.e.\"if \u0027crc\u0027 in field\" ?",
+      "parentUuid": "1813ce19_f36a428d",
+      "revId": "7abf801a5b3bb0272a55ddce7fe21bf1be3d0909",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
