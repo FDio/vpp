@@ -1131,6 +1131,7 @@ static_always_inline void
 ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      vlib_frame_t * from_frame)
 {
+  vnet_main_t *vnm = vnet_get_main ();
   u32 *from, n_left;
   if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
     {
@@ -1159,10 +1160,10 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   /* rx pcap capture if enabled */
-  if (PREDICT_FALSE (vlib_global_main.pcap.pcap_rx_enable))
+  if (PREDICT_FALSE (vnm->pcap.pcap_rx_enable))
     {
       u32 bi0;
-      vnet_pcap_t *pp = &vlib_global_main.pcap;
+      vnet_pcap_t *pp = &vnm->pcap;
 
       from = vlib_frame_vector_args (from_frame);
       n_left = from_frame->n_vectors;
@@ -1188,7 +1189,6 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (pp->pcap_sw_if_index == 0 ||
 	      pp->pcap_sw_if_index == vnet_buffer (b0)->sw_if_index[VLIB_RX])
 	    {
-	      vnet_main_t *vnm = vnet_get_main ();
 	      vnet_hw_interface_t *hi =
 		vnet_get_sup_hw_interface
 		(vnm, vnet_buffer (b0)->sw_if_index[VLIB_RX]);

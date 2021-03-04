@@ -57,6 +57,21 @@ typedef struct _vnet_ip_table_function_list_elt
   clib_error_t *(*fp) (struct vnet_main_t * vnm, u32 table_id, u32 flags);
 } _vnet_ip_table_function_list_elt_t;
 
+typedef struct
+{
+  /* Trace RX pkts */
+  u8 pcap_rx_enable;
+  /* Trace TX pkts */
+  u8 pcap_tx_enable;
+  /* Trace drop pkts */
+  u8 pcap_drop_enable;
+  u8 pad1;
+  u32 max_bytes_per_pkt;
+  u32 pcap_sw_if_index;
+  pcap_main_t pcap_main;
+  u32 filter_classify_table_index;
+} vnet_pcap_t;
+
 typedef struct vnet_main_t
 {
   u32 local_interface_hw_if_index;
@@ -83,13 +98,16 @@ typedef struct vnet_main_t
     _vnet_ip_table_function_list_elt_t
     * ip_table_add_del_functions[VNET_ITF_FUNC_N_PRIO];
 
-  /*
-   * Last "api" error, preserved so we can issue reasonable diagnostics
-   * at or near the top of the food chain
-   */
-  vnet_api_error_t api_errno;
+    /* pcap rx / tx tracing */
+    vnet_pcap_t pcap;
 
-  vlib_main_t *vlib_main;
+    /*
+     * Last "api" error, preserved so we can issue reasonable diagnostics
+     * at or near the top of the food chain
+     */
+    vnet_api_error_t api_errno;
+
+    vlib_main_t *vlib_main;
 } vnet_main_t;
 
 extern vnet_main_t vnet_main;
