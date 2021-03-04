@@ -491,13 +491,6 @@ typedef struct
   {
     struct
     {
-#if VLIB_BUFFER_TRACE_TRAJECTORY > 0
-      /* buffer trajectory tracing */
-      u16 *trajectory_trace;
-#endif
-    };
-    struct
-    {
       u64 pad[1];
       u64 pg_replay_timestamp;
     };

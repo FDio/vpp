@@ -199,11 +199,6 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  n_rx_bytes += avf_rx_attach_tail (vm, &bt, b[3], qw1[3], tail + 3);
 	}
 
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[1]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[2]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[3]);
-
       /* next */
       qw1 += 4;
       tail += 4;
@@ -218,8 +213,6 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (maybe_multiseg)
 	n_rx_bytes += avf_rx_attach_tail (vm, &bt, b[0], qw1[0], tail + 0);
-
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
 
       /* next */
       qw1 += 1;

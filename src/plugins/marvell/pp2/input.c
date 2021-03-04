@@ -233,9 +233,6 @@ mrvl_pp2_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  clib_memcpy_fast (vnet_buffer (b1)->sw_if_index, sw_if_index,
 			    sizeof (sw_if_index));
 
-	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
-	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b1);
-
 	  if (PREDICT_FALSE (n_trace > 0))
 	    {
 	      mrvl_pp2_input_trace (vm, node, next0, b0, &n_trace, ppif, d);
@@ -276,8 +273,6 @@ mrvl_pp2_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  clib_memcpy_fast (vnet_buffer (b0)->sw_if_index, sw_if_index,
 			    sizeof (sw_if_index));
-
-	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
 	  if (PREDICT_FALSE (n_trace > 0))
 	    mrvl_pp2_input_trace (vm, node, next0, b0, &n_trace, ppif, d);

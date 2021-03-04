@@ -345,7 +345,7 @@ tcp_reuse_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   b->current_length = 0;
   b->total_length_not_including_first_buffer = 0;
   vnet_buffer (b)->tcp.flags = 0;
-
+  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
   /* Leave enough space for headers */
   return vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
 }
@@ -359,7 +359,6 @@ tcp_init_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   b->total_length_not_including_first_buffer = 0;
   b->current_data = 0;
   vnet_buffer (b)->tcp.flags = 0;
-  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
   /* Leave enough space for headers */
   return vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
 }
@@ -552,8 +551,6 @@ tcp_enqueue_to_ip_lookup (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
   vnet_buffer (b)->sw_if_index[VLIB_TX] = fib_index;
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
 
-  tcp_trajectory_add_start (b, 1);
-
   session_add_pending_tx_buffer (vm->thread_index, bi,
 				 tm->ipl_next_node[!is_ip4]);
 
@@ -630,7 +627,6 @@ tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b, u8 is_ip4)
     }
 
   tcp_reuse_buffer (vm, b);
-  tcp_trajectory_add_start (b, 4);
   th = vlib_buffer_push_tcp_net_order (b, dst_port, src_port, seq, ack,
 				       sizeof (tcp_header_t), flags, 0);
 
@@ -1015,7 +1011,6 @@ tcp_session_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
       tcp_retransmit_timer_set (&wrk->timer_wheel, tc);
       tc->rto_boff = 0;
     }
-  tcp_trajectory_add_start (b, 3);
   return 0;
 }
 

@@ -299,7 +299,6 @@ This function creates the packet header for an ipfix data packet
    	}
 
          b0 = vlib_get_buffer (vm, bi0);
-         VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
          offset = 0;
          mlm->buffers_by_thread[thread_index] = b0;
        }

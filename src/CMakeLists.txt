@@ -133,6 +133,15 @@ if (VPP_ENABLE_SANITIZE_ADDR)
 endif (VPP_ENABLE_SANITIZE_ADDR)
 
 ##############################################################################
+# trajectory trace
+##############################################################################
+
+option(VPP_ENABLE_TRAJECTORY_TRACE "Build vpp with trajectory tracing enabled" OFF)
+if(VPP_ENABLE_TRAJECTORY_TRACE)
+  set(CMAKE_C_FLAGS "-DVLIB_BUFFER_TRACE_TRAJECTORY=1 ${CMAKE_C_FLAGS}")
+endif()
+
+##############################################################################
 # install config
 ##############################################################################
 option(VPP_SET_RPATH "Set rpath for resulting binaries and libraries." ON)

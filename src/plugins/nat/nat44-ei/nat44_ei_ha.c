@@ -757,7 +757,6 @@ nat_ha_event_add (nat_ha_event_t * event, u8 do_flush, u32 thread_index,
 
       b = td->state_sync_buffer = vlib_get_buffer (vm, bi);
       clib_memset (vnet_buffer (b), 0, sizeof (*vnet_buffer (b)));
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
       offset = 0;
     }
   else

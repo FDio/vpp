@@ -1131,7 +1131,6 @@ create_buffer_for_rs (vlib_main_t * vm, ip6_ra_t * radv_info)
     }
 
   p0 = vlib_get_buffer (vm, bi0);
-  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (p0);
   p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
   vnet_buffer (p0)->sw_if_index[VLIB_RX] = sw_if_index;

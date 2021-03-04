@@ -170,7 +170,6 @@ syslog_msg_send (syslog_msg_t * syslog_msg)
     return -1;
 
   b = vlib_get_buffer (vm, bi);
-  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
 
   /* one message per UDP datagram RFC5426 3.1. */
   tmp = format (0, "%U", format_syslog_msg, syslog_msg);

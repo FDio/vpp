@@ -650,7 +650,6 @@ flowprobe_get_buffer (vlib_main_t * vm, flowprobe_variant_t which)
       /* Initialize the buffer */
       b0 = fm->context[which].buffers_per_worker[my_cpu_number] =
 	vlib_get_buffer (vm, bi0);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
       b0->current_data = 0;
       b0->current_length = flowprobe_get_headersize ();
