@@ -336,14 +336,6 @@ tuntap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
     vnet_buffer (b)->sw_if_index[VLIB_RX] = tm->sw_if_index;
     vnet_buffer (b)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
-    /*
-     * Turn this on if you run into
-     * "bad monkey" contexts, and you want to know exactly
-     * which nodes they've visited...
-     */
-    if (VLIB_BUFFER_TRACE_TRAJECTORY)
-      b->pre_data[0] = 0;
-
     b->error = node->errors[0];
 
     if (tm->is_ether)

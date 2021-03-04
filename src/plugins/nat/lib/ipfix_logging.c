@@ -613,7 +613,6 @@ nat_ipfix_logging_nat44_ses (u32 thread_index, u8 nat_event, u32 src_ip,
 	}
 
       b0 = sitd->nat44_session_buffer = vlib_get_buffer (vm, bi0);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }
   else
@@ -714,7 +713,6 @@ nat_ipfix_logging_addr_exhausted (u32 thread_index, u32 pool_id, int do_flush)
 	}
 
       b0 = sitd->addr_exhausted_buffer = vlib_get_buffer (vm, bi0);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }
   else
@@ -800,7 +798,6 @@ nat_ipfix_logging_max_entries_per_usr (u32 thread_index,
 	}
 
       b0 = sitd->max_entries_per_user_buffer = vlib_get_buffer (vm, bi0);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }
   else
@@ -891,7 +888,6 @@ nat_ipfix_logging_max_ses (u32 thread_index, u32 limit, int do_flush)
 	}
 
       b0 = sitd->max_sessions_buffer = vlib_get_buffer (vm, bi0);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }
   else
@@ -979,7 +975,6 @@ nat_ipfix_logging_max_bib (u32 thread_index, u32 limit, int do_flush)
 	}
 
       b0 = sitd->max_bibs_buffer = vlib_get_buffer (vm, bi0);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }
   else
@@ -1068,7 +1063,6 @@ nat_ipfix_logging_nat64_bibe (u32 thread_index, u8 nat_event,
 	}
 
       b0 = sitd->nat64_bib_buffer = vlib_get_buffer (vm, bi0);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }
   else
@@ -1172,7 +1166,6 @@ nat_ipfix_logging_nat64_ses (u32 thread_index, u8 nat_event,
 	}
 
       b0 = sitd->nat64_ses_buffer = vlib_get_buffer (vm, bi0);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }
   else

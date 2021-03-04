@@ -791,8 +791,6 @@ replicate_inline (vlib_main_t * vm,
                 {
                     replicate_trace_t *t;
 
-                    if (c0 != b0)
-		      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (c0);
                     t = vlib_add_trace (vm, node, c0, sizeof (*t));
                     t->rep_index = repi0;
                     t->dpo = *dpo0;

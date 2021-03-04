@@ -328,11 +328,6 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
 				    &n_rx_packets, &n_rx_bytes);
 	}
 
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[1]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[2]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[3]);
-
       /* next */
       n_left -= 4;
       b += 4;
@@ -351,8 +346,6 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
       else
 	bond_sw_if_idx_rewrite (vm, node, b[0], bond_sw_if_index,
 				&n_rx_packets, &n_rx_bytes);
-
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
 
       /* next */
       n_left -= 1;

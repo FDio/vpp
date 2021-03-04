@@ -38,7 +38,6 @@ igmp_pkt_get_buffer (igmp_pkt_build_t * bk)
     return (NULL);
 
   b = vlib_get_buffer (vm, bi);
-  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
 
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->flags |= VLIB_BUFFER_IS_TRACED;

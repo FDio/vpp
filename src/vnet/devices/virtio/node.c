@@ -522,8 +522,6 @@ virtio_device_input_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* trace */
-	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
-
 	  if (PREDICT_FALSE (n_trace > 0 && vlib_trace_buffer (vm, node, next0, b0,	/* follow_chain */
 							       1)))
 	    {

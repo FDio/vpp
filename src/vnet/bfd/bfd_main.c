@@ -924,7 +924,6 @@ bfd_send_echo (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	}
       vlib_buffer_t *b = vlib_get_buffer (vm, bi);
       ASSERT (b->current_data == 0);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
       bfd_echo_pkt_t *pkt = vlib_buffer_get_current (b);
       clib_memset (pkt, 0, sizeof (*pkt));
       pkt->discriminator = bs->local_discr;
@@ -993,7 +992,6 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	}
       vlib_buffer_t *b = vlib_get_buffer (vm, bi);
       ASSERT (b->current_data == 0);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
       bfd_init_control_frame (bm, bs, b);
       switch (bs->poll_state)
 	{

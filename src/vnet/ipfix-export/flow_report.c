@@ -119,9 +119,6 @@ send_template_packet (flow_report_main_t * frm,
 
   b0 = vlib_get_buffer (vm, bi0);
 
-  /* Initialize the buffer */
-  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
-
   ASSERT (vec_len (fr->rewrite) < vlib_buffer_get_default_data_size (vm));
 
   clib_memcpy_fast (b0->data, fr->rewrite, vec_len (fr->rewrite));

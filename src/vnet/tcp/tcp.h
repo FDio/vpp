@@ -285,15 +285,6 @@ tcp_get_worker (u32 thread_index)
   return &tcp_main.wrk_ctx[thread_index];
 }
 
-#if (VLIB_BUFFER_TRACE_TRAJECTORY)
-#define tcp_trajectory_add_start(b, start)			\
-{								\
-    (*vlib_buffer_trace_trajectory_cb) (b, start);		\
-}
-#else
-#define tcp_trajectory_add_start(b, start)
-#endif
-
 tcp_connection_t *tcp_connection_alloc (u8 thread_index);
 tcp_connection_t *tcp_connection_alloc_w_base (u8 thread_index,
 					       tcp_connection_t * base);

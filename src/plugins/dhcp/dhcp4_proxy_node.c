@@ -370,7 +370,6 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 			 DHCP_PROXY_ERROR_ALLOC_FAIL, 1);
 		      continue;
 		    }
-		  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (c0);
 		  ci0 = vlib_get_buffer_index (vm, c0);
 		  server = &proxy->dhcp_servers[ii];
 
