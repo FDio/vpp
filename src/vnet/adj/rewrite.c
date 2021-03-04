@@ -41,6 +41,21 @@
 #include <vnet/ip/lookup.h>
 
 u8 *
+format_vnet_rewrite_flags (u8 *s, va_list *ap)
+{
+  vnet_rewrite_flags_t f = va_arg (*ap, int);
+
+  if (f & VNET_REWRITE_HAS_FEATURES)
+    s = format (s, "features ");
+  if (f & VNET_REWRITE_FIXUP_IP4_O_4)
+    s = format (s, "fixup-ip4o4 ");
+  if (f & VNET_REWRITE_FIXUP_FLOW_HASH)
+    s = format (s, "fixup-flow-hash ");
+
+  return (s);
+}
+
+u8 *
 format_vnet_rewrite (u8 * s, va_list * args)
 {
   vnet_rewrite_header_t *rw = va_arg (*args, vnet_rewrite_header_t *);
@@ -61,6 +76,7 @@ format_vnet_rewrite (u8 * s, va_list * args)
     }
 
   s = format (s, " mtu:%d next:%d", rw->max_l3_packet_bytes, rw->next_index);
+  s = format (s, " flags:[%U]", format_vnet_rewrite_flags, rw->flags);
 
   /* Format rewrite string. */
   if (rw->data_bytes > 0)

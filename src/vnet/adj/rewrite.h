@@ -67,6 +67,8 @@ typedef enum vnet_rewrite_flags_t_
   VNET_REWRITE_FIXUP_FLOW_HASH = (1 << 2),
 } __attribute__ ((packed)) vnet_rewrite_flags_t;
 
+extern u8 *format_vnet_rewrite_flags (u8 *s, va_list *ap);
+
 typedef struct vnet_rewrite_header_t_
 {
   /* Interface to mark re-written packets with. */
