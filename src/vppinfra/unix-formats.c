@@ -316,8 +316,8 @@ u8 * format_udp4_packet (u8 * s, va_list * args)
   struct iphdr * ip = (void *) p;
   struct udphdr * udp = (void *) (ip + 1);
 
-  u16 source = udp->uh_sport;
-  u16 dest = udp->uh_dport;
+  u16 source = udp->source;
+  u16 dest = udp->dest;
 
   s = format (s, "udp %U:%U -> %U:%U", format_network_address, AF_INET,
 	      &ip->saddr, format_network_port, IPPROTO_UDP, ntohs (source),
