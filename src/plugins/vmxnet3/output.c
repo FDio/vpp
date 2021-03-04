@@ -175,7 +175,6 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
       for (i = 0; i < space_needed; i++)
 	{
 	  b0 = vlib_get_buffer (vm, bi0);
-	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
 	  desc_idx = txq->tx_ring.produce;
 

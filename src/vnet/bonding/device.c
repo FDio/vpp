@@ -422,11 +422,6 @@ bond_tx_inline (vlib_main_t * vm, bond_if_t * bif, vlib_buffer_t ** b,
 	  CLIB_PREFETCH (pb[3]->data, CLIB_CACHE_LINE_BYTES, LOAD);
 	}
 
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[1]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[2]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[3]);
-
       if (lb_alg == BOND_LB_L2)
 	{
 	  h[0] = bond_lb_l2 (b[0]);
@@ -474,8 +469,6 @@ bond_tx_inline (vlib_main_t * vm, bond_if_t * bif, vlib_buffer_t ** b,
 
   while (n_left > 0)
     {
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
-
       if (bif->lb == BOND_LB_L2)
 	h[0] = bond_lb_l2 (b[0]);
       else if (bif->lb == BOND_LB_L34)

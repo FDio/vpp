@@ -1073,9 +1073,6 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
       n_left -= 2;
 
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b1);
-
       vec_add1 (wrk->pending_tx_buffers, bi0);
       vec_add1 (wrk->pending_tx_buffers, bi1);
       vec_add1 (wrk->pending_tx_nexts, next_index);
@@ -1102,8 +1099,6 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       ctx->transport_vft->push_header (ctx->tc, b0);
 
       n_left -= 1;
-
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
       vec_add1 (wrk->pending_tx_buffers, bi0);
       vec_add1 (wrk->pending_tx_nexts, next_index);

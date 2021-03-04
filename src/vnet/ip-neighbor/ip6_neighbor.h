@@ -86,7 +86,6 @@ ip6_neighbor_probe (vlib_main_t * vm,
     ip6_tcp_udp_icmp_compute_checksum (vm, 0, &h0->ip, &bogus_length);
 
   ASSERT (bogus_length == 0);
-  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index;
 

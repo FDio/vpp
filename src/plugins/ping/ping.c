@@ -964,7 +964,6 @@ send_ip46_ping (vlib_main_t * vm,
     ERROR_OUT (SEND_PING_ALLOC_FAIL);
 
   b0 = vlib_get_buffer (vm, bi0);
-  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
   /*
    * if the user did not provide a source interface,

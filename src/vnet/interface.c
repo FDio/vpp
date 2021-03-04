@@ -1424,11 +1424,6 @@ vnet_interface_init (vlib_main_t * vm)
 
   vnm->interface_tag_by_sw_if_index = hash_create (0, sizeof (uword));
 
-#if VLIB_BUFFER_TRACE_TRAJECTORY > 0
-  if ((error = vlib_call_init_function (vm, trajectory_trace_init)))
-    return error;
-#endif
-
   return 0;
 }
 

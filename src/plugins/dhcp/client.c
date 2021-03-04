@@ -500,7 +500,6 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
 
   /* Build a dhcpv4 pkt from whole cloth */
   b = vlib_get_buffer (vm, bi);
-  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
 
   ASSERT (b->current_data == 0);
 
