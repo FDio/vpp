@@ -311,6 +311,7 @@ class NAT44EDTestCase(VppTestCase):
             pkts.reverse()
             self.pg1.add_stream(pkts)
             self.pg_enable_capture(self.pg_interfaces)
+            self.logger.info(self.vapi.cli("show trace"))
             self.pg_start()
             frags = self.pg0.get_capture(len(pkts))
             p = self.reass_frags_and_verify(frags,
