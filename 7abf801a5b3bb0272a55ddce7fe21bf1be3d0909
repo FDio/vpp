@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1813ce19_f36a428d",
+        "filename": "src/vpp-api/vapi/vapi_json_parser.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-03-04T10:49:41Z",
+      "side": 1,
+      "message": "Ensure this code is agnostic for when adding new fields, e.g. comments?\nIf it just needs crc, just check for crc.",
+      "revId": "7abf801a5b3bb0272a55ddce7fe21bf1be3d0909",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
