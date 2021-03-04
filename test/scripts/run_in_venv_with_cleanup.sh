@@ -2,6 +2,22 @@
 
 rv=0
 
+# Minimalist version of cleanup, used for signal handling.
+# Sends a SIGKILL to the entire process group, including ourselves.
+# Needs just two external commands, making it more
+# robust in case of resource issues.
+panic() {
+	echo "$0(pid $$): Caught a signal, emergency clean-up"
+	# use "pgid:1=" output format to get unpadded process group ID
+	group_id=`ps -p $$ -o pgid:1=`
+	echo "$0(pid $$): sending kill to process group ID:${group_id}"
+	kill -9 -- -${group_id}
+	# not reached
+}
+
+# Happy camper leisurely clean up - send the signal only to other
+# processes in the process group, and also check
+# that the processes exists before sending the signal.
 atexit() {
 	group_id=`ps -p $$ -o pgid=`
 	my_id=$$
@@ -17,7 +33,7 @@ atexit() {
 	exit ${rv}
 }
 
-trap "atexit;" SIGINT SIGTERM
+trap "panic;" SIGINT SIGTERM
 
 FORCE_FOREGROUND=$1
 shift
