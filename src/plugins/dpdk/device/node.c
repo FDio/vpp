@@ -216,11 +216,6 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
 	  n_bytes += dpdk_process_subseq_segs (vm, b[3], mb[3], &bt);
 	}
 
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[1]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[2]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[3]);
-
       /* next */
       mb += 4;
       n_left -= 4;
@@ -238,7 +233,6 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
 
       if (maybe_multiseg)
 	n_bytes += dpdk_process_subseq_segs (vm, b[0], mb[0], &bt);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
 
       /* next */
       mb += 1;

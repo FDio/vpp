@@ -934,29 +934,14 @@ vlib_elog_main_loop_event (vlib_main_t * vm,
     }
 }
 
-#if VLIB_BUFFER_TRACE_TRAJECTORY > 0
-void (*vlib_buffer_trace_trajectory_cb) (vlib_buffer_t * b, u32 node_index);
-void (*vlib_buffer_trace_trajectory_init_cb) (vlib_buffer_t * b);
-
-void
-vlib_buffer_trace_trajectory_init (vlib_buffer_t * b)
-{
-  if (PREDICT_TRUE (vlib_buffer_trace_trajectory_init_cb != 0))
-    {
-      (*vlib_buffer_trace_trajectory_init_cb) (b);
-    }
-}
-
-#endif
-
 static inline void
 add_trajectory_trace (vlib_buffer_t * b, u32 node_index)
 {
 #if VLIB_BUFFER_TRACE_TRAJECTORY > 0
-  if (PREDICT_TRUE (vlib_buffer_trace_trajectory_cb != 0))
-    {
-      (*vlib_buffer_trace_trajectory_cb) (b, node_index);
-    }
+  if (PREDICT_FALSE (b->trajectory_nb >= VLIB_BUFFER_TRACE_TRAJECTORY_MAX))
+    return;
+  b->trajectory_trace[b->trajectory_nb] = node_index;
+  b->trajectory_nb++;
 #endif
 }
 

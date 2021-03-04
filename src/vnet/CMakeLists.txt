@@ -1340,7 +1340,6 @@ list(APPEND VNET_SOURCES
   util/radix.c
   util/refcount.c
   util/throttle.c
-  util/trajectory.c
 )
 
 list(APPEND VNET_HEADERS

@@ -98,6 +98,15 @@ enum
 #define VLIB_BUFFER_FLAG_USER(n) (1 << LOG2_VLIB_BUFFER_FLAG_USER(n))
 #define VLIB_BUFFER_FLAGS_ALL (0x0f)
 
+/** \brief Compile time buffer trajectory tracing option
+    Turn this on if you run into "bad monkey" contexts,
+    and you want to know exactly which nodes they've visited...
+    See vlib/main.c...
+*/
+#ifndef VLIB_BUFFER_TRACE_TRAJECTORY
+#define VLIB_BUFFER_TRACE_TRAJECTORY 0
+#endif /* VLIB_BUFFER_TRACE_TRAJECTORY */
+
 /** VLIB buffer representation. */
 typedef union
 {
@@ -169,6 +178,20 @@ typedef union
     /**< More opaque data, see ../vnet/vnet/buffer.h */
     u32 opaque2[14];
 
+#if VLIB_BUFFER_TRACE_TRAJECTORY > 0
+    /** trace trajectory data - we use a specific cacheline for that in the
+     * buffer when it is compiled-in */
+#define VLIB_BUFFER_TRACE_TRAJECTORY_MAX     31
+#define VLIB_BUFFER_TRACE_TRAJECTORY_SZ	     64
+#define VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b) (b)->trajectory_nb = 0
+    CLIB_ALIGN_MARK (trajectory, 64);
+    u16 trajectory_nb;
+    u16 trajectory_trace[VLIB_BUFFER_TRACE_TRAJECTORY_MAX];
+#else /* VLIB_BUFFER_TRACE_TRAJECTORY */
+#define VLIB_BUFFER_TRACE_TRAJECTORY_SZ 0
+#define VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b)
+#endif /* VLIB_BUFFER_TRACE_TRAJECTORY */
+
     /** start of buffer headroom */
       CLIB_ALIGN_MARK (headroom, 64);
 
@@ -191,7 +214,8 @@ typedef union
 #endif
 } vlib_buffer_t;
 
-STATIC_ASSERT_SIZEOF (vlib_buffer_t, 128 + VLIB_BUFFER_PRE_DATA_SIZE);
+STATIC_ASSERT_SIZEOF (vlib_buffer_t, 128 + VLIB_BUFFER_TRACE_TRAJECTORY_SZ +
+				       VLIB_BUFFER_PRE_DATA_SIZE);
 STATIC_ASSERT (VLIB_BUFFER_PRE_DATA_SIZE % CLIB_CACHE_LINE_BYTES == 0,
 	       "VLIB_BUFFER_PRE_DATA_SIZE must be divisible by cache line size");
 
@@ -476,26 +500,6 @@ typedef struct
 } vlib_buffer_main_t;
 
 clib_error_t *vlib_buffer_main_init (struct vlib_main_t *vm);
-
-/*
- */
-
-/** \brief Compile time buffer trajectory tracing option
-    Turn this on if you run into "bad monkey" contexts,
-    and you want to know exactly which nodes they've visited...
-    See vlib/main.c...
-*/
-#define VLIB_BUFFER_TRACE_TRAJECTORY 0
-
-#if VLIB_BUFFER_TRACE_TRAJECTORY > 0
-extern void (*vlib_buffer_trace_trajectory_cb) (vlib_buffer_t * b, u32 index);
-extern void (*vlib_buffer_trace_trajectory_init_cb) (vlib_buffer_t * b);
-extern void vlib_buffer_trace_trajectory_init (vlib_buffer_t * b);
-#define VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b) \
-  vlib_buffer_trace_trajectory_init (b);
-#else
-#define VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b)
-#endif /* VLIB_BUFFER_TRACE_TRAJECTORY */
 
 extern u16 __vlib_buffer_external_hdr_size;
 #define VLIB_BUFFER_SET_EXT_HDR_SIZE(x) \

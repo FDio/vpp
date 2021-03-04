@@ -313,7 +313,6 @@ vrrp_adv_send (vrrp_vr_t * vr, int shutdown)
       bi0 = vec_elt (bi, i);
       b = vlib_get_buffer (vm, bi0);
 
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
       b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
       vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
       vnet_buffer (b)->sw_if_index[VLIB_TX] = vr->config.sw_if_index;
@@ -500,7 +499,6 @@ vrrp_garp_or_na_send (vrrp_vr_t * vr)
       addr = vec_elt_at_index (vr->config.vr_addrs, i);
       b = vlib_get_buffer (vm, bi[i]);
 
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
       b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
       vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
       vnet_buffer (b)->sw_if_index[VLIB_TX] = vr->config.sw_if_index;
@@ -704,7 +702,6 @@ vrrp_vr_multicast_group_join (vrrp_vr_t * vr)
 
   b = vlib_get_buffer (vm, bi);
 
-  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;

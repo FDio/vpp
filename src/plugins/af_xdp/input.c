@@ -130,17 +130,11 @@ af_xdp_device_input_refill (vlib_main_t * vm,
 
   /*
    * Note about headroom: for some reasons, there seem to be a discrepency
-   * between 0-copy and copy mode:
-   *   - 0-copy: XDP_PACKET_HEADROOM will be added to the user headroom
-   *   - copy: nothing is added to the user headroom
-   * We privileged 0-copy and set headroom to 0. As XDP_PACKET_HEADROOM ==
-   * sizeof(vlib_buffer_t), data will correctly point to vlib_buffer_t->data.
-   * In copy mode, we have to add sizeof(vlib_buffer_t) to desc offset during
-   * refill.
+   * between 0-copy and copy mode. See
+   * src/plugins/af_xdp/device.c:af_xdp_create_queue()
    */
-  STATIC_ASSERT (sizeof (vlib_buffer_t) == XDP_PACKET_HEADROOM, "wrong size");
-#define bi2addr(bi) \
-  (((bi) << CLIB_LOG2_CACHE_LINE_BYTES) + (copy ? sizeof(vlib_buffer_t) : 0))
+#define bi2addr(bi)                                                           \
+  (((bi) << CLIB_LOG2_CACHE_LINE_BYTES) + (copy ? XDP_PACKET_HEADROOM : 0))
 
 wrap_around:
 
@@ -218,8 +212,8 @@ af_xdp_device_input_bufs (vlib_main_t * vm, const af_xdp_device_t * ad,
   const u32 mask = rxq->rx.mask;
   u32 n = n_rx, *bi = bis, bytes = 0;
 
-#define addr2bi(addr) \
-  (((addr) - (copy ? sizeof(vlib_buffer_t) : 0)) >> CLIB_LOG2_CACHE_LINE_BYTES)
+#define addr2bi(addr)                                                         \
+  (((addr) - (copy ? XDP_PACKET_HEADROOM : 0)) >> CLIB_LOG2_CACHE_LINE_BYTES)
 
   while (n >= 1)
     {

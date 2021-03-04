@@ -546,8 +546,6 @@ punt_socket_rx_fd (vlib_main_t * vm, vlib_node_runtime_t * node, u32 fd)
   b->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->current_length = size - sizeof (packetdesc);
 
-  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
-
   switch (packetdesc.action)
     {
     case PUNT_L2:

@@ -77,7 +77,6 @@ frag_buffer_alloc (vlib_buffer_t * org_b, u32 * bi)
     return 0;
 
   vlib_buffer_t *b = vlib_get_buffer (vm, *bi);
-  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
   vlib_buffer_copy_trace_flag (vm, org_b, *bi);
 
   return b;

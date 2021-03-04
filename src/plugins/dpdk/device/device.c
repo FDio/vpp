@@ -311,11 +311,6 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
       or_flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
       all_or_flags |= or_flags;
 
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[1]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[2]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[3]);
-
       if (or_flags & VLIB_BUFFER_NEXT_PRESENT)
 	{
 	  dpdk_validate_rte_mbuf (vm, b[0], 1);
@@ -374,9 +369,6 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
       or_flags = b[0]->flags | b[1]->flags;
       all_or_flags |= or_flags;
 
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[1]);
-
       if (or_flags & VLIB_BUFFER_NEXT_PRESENT)
 	{
 	  dpdk_validate_rte_mbuf (vm, b[0], 1);
@@ -412,7 +404,6 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
     {
       b[0] = vlib_buffer_from_rte_mbuf (mb[0]);
       all_or_flags |= b[0]->flags;
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
 
       dpdk_validate_rte_mbuf (vm, b[0], 1);
       dpdk_buffer_tx_offload (xd, b[0], mb[0]);

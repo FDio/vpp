@@ -1468,14 +1468,6 @@ ixge_rx_queue_no_wrap (ixge_main_t * xm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  /*
-	   * Turn this on if you run into
-	   * "bad monkey" contexts, and you want to know exactly
-	   * which nodes they've visited... See main.c...
-	   */
-	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
-	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b1);
-
 	  CLIB_PREFETCH (b0->data, CLIB_CACHE_LINE_BYTES, LOAD);
 	  CLIB_PREFETCH (b1->data, CLIB_CACHE_LINE_BYTES, LOAD);
 
@@ -1679,13 +1671,6 @@ ixge_rx_queue_no_wrap (ixge_main_t * xm,
 #endif
 
 	  b0 = vlib_get_buffer (vm, bi0);
-
-	  /*
-	   * Turn this on if you run into
-	   * "bad monkey" contexts, and you want to know exactly
-	   * which nodes they've visited...
-	   */
-	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
 	  is_eop0 = (s20 & IXGE_RX_DESCRIPTOR_STATUS2_IS_END_OF_PACKET) != 0;
 	  ixge_rx_next_and_error_from_status_x1

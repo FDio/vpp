@@ -61,7 +61,6 @@ ip4_neighbor_probe (vlib_main_t * vm,
   h0->ip4_over_ethernet[0].ip4 = *src;
   h0->ip4_over_ethernet[1].ip4 = *dst;
 
-  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = adj0->rewrite_header.sw_if_index;
 
   vlib_buffer_advance (b0, -adj0->rewrite_header.data_bytes);

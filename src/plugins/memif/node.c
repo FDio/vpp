@@ -91,8 +91,6 @@ memif_trace_buffer (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    memif_if_t * mif, vlib_buffer_t * b, u32 next, u16 qid,
 		    uword * n_tracep)
 {
-  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
-
   if (PREDICT_TRUE
       (b != 0 && vlib_trace_buffer (vm, node, next, b, /* follow_chain */ 0)))
     {

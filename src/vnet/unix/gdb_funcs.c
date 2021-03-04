@@ -380,6 +380,47 @@ gdb_validate_buffer (vlib_buffer_t * b)
   return 0;
 }
 
+/**
+ * Dump a trajectory trace, reasonably easy to call from gdb
+ */
+void
+gdb_dump_trajectory_trace (u32 bi)
+{
+#if VLIB_BUFFER_TRACE_TRAJECTORY > 0
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_node_main_t *vnm = &vm->node_main;
+  vlib_buffer_t *b;
+  u16 *trace;
+  u8 i;
+
+  b = vlib_get_buffer (vm, bi);
+
+  trace = b->trajectory_trace;
+
+  fformat (stderr, "Context trace for bi %d b 0x%llx, visited %d\n", bi, b,
+	   b->trajectory_nb);
+
+  for (i = 0; i < b->trajectory_nb; i++)
+    {
+      u32 node_index;
+
+      node_index = trace[i];
+
+      if (node_index >= vec_len (vnm->nodes))
+	{
+	  fformat (stderr, "Skip bogus node index %d\n", node_index);
+	  continue;
+	}
+
+      fformat (stderr, "%v (%d)\n", vnm->nodes[node_index]->name, node_index);
+    }
+#else
+  fformat (stderr, "in vlib/buffers.h, "
+		   "#define VLIB_BUFFER_TRACE_TRAJECTORY 1\n");
+
+#endif
+}
+
 /* Cafeteria plan, maybe you don't want these functions */
 clib_error_t *
 gdb_func_init (vlib_main_t * vm)
