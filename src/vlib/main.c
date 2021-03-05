@@ -742,41 +742,9 @@ void
 vlib_post_mortem_dump (void)
 {
   vlib_main_t *vm = &vlib_global_main;
-  elog_main_t *em = &vm->elog_main;
 
-  u8 *filename;
-  clib_error_t *error;
-
-  if ((vm->elog_post_mortem_dump + vm->dispatch_pcap_postmortem) == 0)
-    return;
-
-  if (vm->dispatch_pcap_postmortem)
-    {
-      clib_error_t *error;
-      pcap_main_t *pm = &vm->dispatch_pcap_main;
-
-      pm->n_packets_to_capture = pm->n_packets_captured;
-      pm->file_name = (char *) format (0, "/tmp/dispatch_post_mortem.%d%c",
-				       getpid (), 0);
-      error = pcap_write (pm);
-      pcap_close (pm);
-      if (error)
-	clib_error_report (error);
-      /*
-       * We're in the middle of crashing. Don't try to free the filename.
-       */
-    }
-
-  if (vm->elog_post_mortem_dump)
-    {
-      filename = format (0, "/tmp/elog_post_mortem.%d%c", getpid (), 0);
-      error = elog_write_file (em, (char *) filename, 1 /* flush ring */ );
-      if (error)
-	clib_error_report (error);
-      /*
-       * We're in the middle of crashing. Don't try to free the filename.
-       */
-    }
+  for (int i = 0; i < vec_len (vm->post_mortem_callbacks); i++)
+    (vm->post_mortem_callbacks[i]) ();
 }
 
 /* *INDENT-OFF* */
@@ -986,163 +954,6 @@ add_trajectory_trace (vlib_buffer_t * b, u32 node_index)
 #endif
 }
 
-u8 *format_vnet_buffer_flags (u8 * s, va_list * args) __attribute__ ((weak));
-u8 *
-format_vnet_buffer_flags (u8 * s, va_list * args)
-{
-  s = format (s, "BUG STUB %s", __FUNCTION__);
-  return s;
-}
-
-u8 *format_vnet_buffer_opaque (u8 * s, va_list * args) __attribute__ ((weak));
-u8 *
-format_vnet_buffer_opaque (u8 * s, va_list * args)
-{
-  s = format (s, "BUG STUB %s", __FUNCTION__);
-  return s;
-}
-
-u8 *format_vnet_buffer_opaque2 (u8 * s, va_list * args)
-  __attribute__ ((weak));
-u8 *
-format_vnet_buffer_opaque2 (u8 * s, va_list * args)
-{
-  s = format (s, "BUG STUB %s", __FUNCTION__);
-  return s;
-}
-
-static u8 *
-format_buffer_metadata (u8 * s, va_list * args)
-{
-  vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
-
-  s = format (s, "flags: %U\n", format_vnet_buffer_flags, b);
-  s = format (s, "current_data: %d, current_length: %d\n",
-	      (i32) (b->current_data), (i32) (b->current_length));
-  s = format
-    (s,
-     "current_config_index/punt_reason: %d, flow_id: %x, next_buffer: %x\n",
-     b->current_config_index, b->flow_id, b->next_buffer);
-  s =
-    format (s, "error: %d, ref_count: %d, buffer_pool_index: %d\n",
-	    (u32) (b->error), (u32) (b->ref_count),
-	    (u32) (b->buffer_pool_index));
-  s =
-    format (s, "trace_handle: 0x%x, len_not_first_buf: %d\n", b->trace_handle,
-	    b->total_length_not_including_first_buffer);
-  return s;
-}
-
-#define A(x) vec_add1(vm->pcap_buffer, (x))
-
-static void
-dispatch_pcap_trace (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  int i;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **bufp, *b;
-  pcap_main_t *pm = &vlib_global_main.dispatch_pcap_main;
-  vlib_trace_main_t *tm = &vm->trace_main;
-  u32 capture_size;
-  vlib_node_t *n;
-  i32 n_left;
-  f64 time_now = vlib_time_now (vm);
-  u32 *from;
-  u8 *d;
-  u8 string_count;
-
-  /* Input nodes don't have frames yet */
-  if (frame == 0 || frame->n_vectors == 0)
-    return;
-
-  from = vlib_frame_vector_args (frame);
-  vlib_get_buffers (vm, from, bufs, frame->n_vectors);
-  bufp = bufs;
-
-  n = vlib_get_node (vm, node->node_index);
-
-  for (i = 0; i < frame->n_vectors; i++)
-    {
-      if (PREDICT_TRUE (pm->n_packets_captured < pm->n_packets_to_capture))
-	{
-	  b = bufp[i];
-
-	  vec_reset_length (vm->pcap_buffer);
-	  string_count = 0;
-
-	  /* Version, flags */
-	  A ((u8) VLIB_PCAP_MAJOR_VERSION);
-	  A ((u8) VLIB_PCAP_MINOR_VERSION);
-	  A (0 /* string_count */ );
-	  A (n->protocol_hint);
-
-	  /* Buffer index (big endian) */
-	  A ((from[i] >> 24) & 0xff);
-	  A ((from[i] >> 16) & 0xff);
-	  A ((from[i] >> 8) & 0xff);
-	  A ((from[i] >> 0) & 0xff);
-
-	  /* Node name, NULL-terminated ASCII */
-	  vm->pcap_buffer = format (vm->pcap_buffer, "%v%c", n->name, 0);
-	  string_count++;
-
-	  vm->pcap_buffer = format (vm->pcap_buffer, "%U%c",
-				    format_buffer_metadata, b, 0);
-	  string_count++;
-	  vm->pcap_buffer = format (vm->pcap_buffer, "%U%c",
-				    format_vnet_buffer_opaque, b, 0);
-	  string_count++;
-	  vm->pcap_buffer = format (vm->pcap_buffer, "%U%c",
-				    format_vnet_buffer_opaque2, b, 0);
-	  string_count++;
-
-	  /* Is this packet traced? */
-	  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      vlib_trace_header_t **h
-		= pool_elt_at_index (tm->trace_buffer_pool,
-				     vlib_buffer_get_trace_index (b));
-
-	      vm->pcap_buffer = format (vm->pcap_buffer, "%U%c",
-					format_vlib_trace, vm, h[0], 0);
-	      string_count++;
-	    }
-
-	  /* Save the string count */
-	  vm->pcap_buffer[2] = string_count;
-
-	  /* Figure out how many bytes in the pcap trace */
-	  capture_size = vec_len (vm->pcap_buffer) +
-	    +vlib_buffer_length_in_chain (vm, b);
-
-	  clib_spinlock_lock_if_init (&pm->lock);
-	  n_left = clib_min (capture_size, 16384);
-	  d = pcap_add_packet (pm, time_now, n_left, capture_size);
-
-	  /* Copy the header */
-	  clib_memcpy_fast (d, vm->pcap_buffer, vec_len (vm->pcap_buffer));
-	  d += vec_len (vm->pcap_buffer);
-
-	  n_left = clib_min
-	    (vlib_buffer_length_in_chain (vm, b),
-	     (16384 - vec_len (vm->pcap_buffer)));
-	  /* Copy the packet data */
-	  while (1)
-	    {
-	      u32 copy_length = clib_min ((u32) n_left, b->current_length);
-	      clib_memcpy_fast (d, b->data + b->current_data, copy_length);
-	      n_left -= b->current_length;
-	      if (n_left <= 0)
-		break;
-	      d += b->current_length;
-	      ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
-	      b = vlib_get_buffer (vm, b->next_buffer);
-	    }
-	  clib_spinlock_unlock_if_init (&pm->lock);
-	}
-    }
-}
-
 static_always_inline u64
 dispatch_node (vlib_main_t * vm,
 	       vlib_node_runtime_t * node,
@@ -1211,9 +1022,6 @@ dispatch_node (vlib_main_t * vm,
 	  vlib_buffer_t *b = vlib_get_buffer (vm, from[i]);
 	  add_trajectory_trace (b, node->node_index);
 	}
-      if (PREDICT_FALSE (vm->dispatch_pcap_enable))
-	dispatch_pcap_trace (vm, node, frame);
-
       if (PREDICT_TRUE (vm->dispatch_wrapper_fn == 0))
 	n = node->function (vm, node, frame);
       else
@@ -1221,9 +1029,6 @@ dispatch_node (vlib_main_t * vm,
     }
   else
     {
-      if (PREDICT_FALSE (vm->dispatch_pcap_enable))
-	dispatch_pcap_trace (vm, node, frame);
-
       if (PREDICT_TRUE (vm->dispatch_wrapper_fn == 0))
 	n = node->function (vm, node, frame);
       else
@@ -1713,19 +1518,6 @@ vl_api_send_pending_rpc_requests (vlib_main_t * vm)
 {
 }
 
-static inline void
-pcap_postmortem_reset (vlib_main_t * vm)
-{
-  pcap_main_t *pm = &vm->dispatch_pcap_main;
-
-  /* Reset the trace buffer and capture count */
-  clib_spinlock_lock_if_init (&pm->lock);
-  vec_reset_length (pm->pcap_data);
-  pm->n_packets_captured = 0;
-  clib_spinlock_unlock_if_init (&pm->lock);
-}
-
-
 static_always_inline void
 vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 {
@@ -1820,17 +1612,6 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
       if (PREDICT_FALSE (vec_len (vm->worker_thread_main_loop_callbacks)))
 	clib_call_callbacks (vm->worker_thread_main_loop_callbacks, vm,
 			     cpu_time_now);
-
-      /*
-       * When trying to understand aggravating, hard-to-reproduce
-       * bugs: reset / restart the pcap dispatch trace once per
-       * main thread dispatch cycle. All threads share the same
-       * (spinlock-protected) dispatch trace buffer. It might take
-       * a few tries to capture a good post-mortem trace of
-       * a multi-thread issue. Best we can do without a big refactor job.
-       */
-      if (is_main && PREDICT_FALSE (vm->dispatch_pcap_postmortem != 0))
-	pcap_postmortem_reset (vm);
 
       /* Process pre-input nodes. */
       cpu_time_now = clib_cpu_time_now ();
@@ -2013,6 +1794,44 @@ vlib_worker_loop (vlib_main_t * vm)
 
 vlib_main_t vlib_global_main;
 
+void
+vlib_add_del_post_mortem_callback (void *cb, int is_add)
+{
+  vlib_main_t *vm = &vlib_global_main;
+  int i;
+
+  if (is_add == 0)
+    {
+      for (i = vec_len (vm->post_mortem_callbacks) - 1; i >= 0; i--)
+	if (vm->post_mortem_callbacks[i] == cb)
+	  vec_del1 (vm->post_mortem_callbacks, i);
+      return;
+    }
+
+  for (i = 0; i < vec_len (vm->post_mortem_callbacks); i++)
+    if (vm->post_mortem_callbacks[i] == cb)
+      return;
+  vec_add1 (vm->post_mortem_callbacks, cb);
+}
+
+static void
+elog_post_mortem_dump (void)
+{
+  vlib_main_t *vm = &vlib_global_main;
+  elog_main_t *em = &vm->elog_main;
+
+  u8 *filename;
+  clib_error_t *error;
+
+  filename = format (0, "/tmp/elog_post_mortem.%d%c", getpid (), 0);
+  error = elog_write_file (em, (char *) filename, 1 /* flush ring */);
+  if (error)
+    clib_error_report (error);
+  /*
+   * We're in the middle of crashing. Don't try to free the filename.
+   */
+}
+
 static clib_error_t *
 vlib_main_configure (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -2028,7 +1847,8 @@ vlib_main_configure (vlib_main_t * vm, unformat_input_t * input)
 	vm->configured_elog_ring_size =
 	  1 << max_log2 (vm->configured_elog_ring_size);
       else if (unformat (input, "elog-post-mortem-dump"))
-	vm->elog_post_mortem_dump = 1;
+	vlib_add_del_post_mortem_callback (elog_post_mortem_dump,
+					   /* is_add */ 1);
       else if (unformat (input, "buffer-alloc-success-rate %f",
 			 &vm->buffer_alloc_success_rate))
 	{
@@ -2266,292 +2086,6 @@ done:
 
   return 0;
 }
-
-int
-vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t * a)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  pcap_main_t *pm = &vm->dispatch_pcap_main;
-  vlib_trace_main_t *tm;
-  vlib_trace_node_t *tn;
-
-  if (a->status)
-    {
-      if (vm->dispatch_pcap_enable)
-	{
-	  int i;
-	  vlib_cli_output
-	    (vm, "pcap dispatch capture enabled: %d of %d pkts...",
-	     pm->n_packets_captured, pm->n_packets_to_capture);
-	  vlib_cli_output (vm, "capture to file %s", pm->file_name);
-
-	  for (i = 0; i < vec_len (vm->dispatch_buffer_trace_nodes); i++)
-	    {
-	      vlib_cli_output (vm,
-			       "Buffer trace of %d pkts from %U enabled...",
-			       a->buffer_traces_to_capture,
-			       format_vlib_node_name, vm,
-			       vm->dispatch_buffer_trace_nodes[i]);
-	    }
-	}
-      else
-	vlib_cli_output (vm, "pcap dispatch capture disabled");
-      return 0;
-    }
-
-  /* Consistency checks */
-
-  /* Enable w/ capture already enabled not allowed */
-  if (vm->dispatch_pcap_enable && a->enable)
-    return -7;			/* VNET_API_ERROR_INVALID_VALUE */
-
-  /* Disable capture with capture already disabled, not interesting */
-  if (vm->dispatch_pcap_enable == 0 && a->enable == 0)
-    return -81;			/* VNET_API_ERROR_VALUE_EXIST */
-
-  /* Change number of packets to capture while capturing */
-  if (vm->dispatch_pcap_enable && a->enable
-      && (pm->n_packets_to_capture != a->packets_to_capture))
-    return -8;			/* VNET_API_ERROR_INVALID_VALUE_2 */
-
-  /* Independent of enable/disable, to allow buffer trace multi nodes */
-  if (a->buffer_trace_node_index != ~0)
-    {
-      /* *INDENT-OFF* */
-      foreach_vlib_main ((
-        {
-          tm = &this_vlib_main->trace_main;
-          tm->verbose = 0;  /* not sure this ever did anything... */
-          vec_validate (tm->nodes, a->buffer_trace_node_index);
-          tn = tm->nodes + a->buffer_trace_node_index;
-          tn->limit += a->buffer_traces_to_capture;
-          if (a->post_mortem)
-            {
-              tm->filter_flag = FILTER_FLAG_POST_MORTEM;
-              tm->filter_count = ~0;
-            }
-          tm->trace_enable = 1;
-        }));
-      /* *INDENT-ON* */
-      vec_add1 (vm->dispatch_buffer_trace_nodes, a->buffer_trace_node_index);
-    }
-
-  if (a->enable)
-    {
-      /* Clean up from previous run, if any */
-      vec_free (pm->file_name);
-      vec_free (pm->pcap_data);
-      memset (pm, 0, sizeof (*pm));
-
-      vec_validate_aligned (vnet_trace_placeholder, 2048,
-			    CLIB_CACHE_LINE_BYTES);
-      if (pm->lock == 0)
-	clib_spinlock_init (&(pm->lock));
-
-      if (a->filename == 0)
-	a->filename = format (0, "/tmp/dispatch.pcap%c", 0);
-
-      pm->file_name = (char *) a->filename;
-      pm->n_packets_captured = 0;
-      pm->packet_type = PCAP_PACKET_TYPE_vpp;
-      pm->n_packets_to_capture = a->packets_to_capture;
-      vm->dispatch_pcap_postmortem = a->post_mortem;
-      /* *INDENT-OFF* */
-      foreach_vlib_main (({ this_vlib_main->dispatch_pcap_enable = 1;}));
-      /* *INDENT-ON* */
-    }
-  else
-    {
-      /* *INDENT-OFF* */
-      foreach_vlib_main ((
-        {
-          this_vlib_main->dispatch_pcap_enable = 0;
-          this_vlib_main->dispatch_pcap_postmortem = 0;
-          tm = &this_vlib_main->trace_main;
-          tm->filter_flag = 0;
-          tm->filter_count = 0;
-          tm->trace_enable = 0;
-        }));
-      /* *INDENT-ON* */
-      vec_reset_length (vm->dispatch_buffer_trace_nodes);
-      if (pm->n_packets_captured)
-	{
-	  clib_error_t *error;
-	  pm->n_packets_to_capture = pm->n_packets_captured;
-	  vlib_cli_output (vm, "Write %d packets to %s, and stop capture...",
-			   pm->n_packets_captured, pm->file_name);
-	  error = pcap_write (pm);
-	  if (pm->flags & PCAP_MAIN_INIT_DONE)
-	    pcap_close (pm);
-	  /* Report I/O errors... */
-	  if (error)
-	    {
-	      clib_error_report (error);
-	      return -11;	/* VNET_API_ERROR_SYSCALL_ERROR_1 */
-	    }
-	  return 0;
-	}
-      else
-	return -6;		/* VNET_API_ERROR_NO_SUCH_ENTRY */
-    }
-
-  return 0;
-}
-
-static clib_error_t *
-dispatch_trace_command_fn (vlib_main_t * vm,
-			   unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  unformat_input_t _line_input, *line_input = &_line_input;
-  vlib_pcap_dispatch_trace_args_t _a, *a = &_a;
-  u8 *filename = 0;
-  u32 max = 1000;
-  int rv;
-  int enable = 0;
-  int status = 0;
-  int post_mortem = 0;
-  u32 node_index = ~0, buffer_traces_to_capture = 100;
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "on %=", &enable, 1))
-	;
-      else if (unformat (line_input, "enable %=", &enable, 1))
-	;
-      else if (unformat (line_input, "off %=", &enable, 0))
-	;
-      else if (unformat (line_input, "disable %=", &enable, 0))
-	;
-      else if (unformat (line_input, "max %d", &max))
-	;
-      else if (unformat (line_input, "packets-to-capture %d", &max))
-	;
-      else if (unformat (line_input, "file %U", unformat_vlib_tmpfile,
-			 &filename))
-	;
-      else if (unformat (line_input, "status %=", &status, 1))
-	;
-      else if (unformat (line_input, "buffer-trace %U %d",
-			 unformat_vlib_node, vm, &node_index,
-			 &buffer_traces_to_capture))
-	;
-      else if (unformat (line_input, "post-mortem %=", &post_mortem, 1))
-	;
-      else
-	{
-	  return clib_error_return (0, "unknown input `%U'",
-				    format_unformat_error, line_input);
-	}
-    }
-
-  unformat_free (line_input);
-
-  /* no need for memset (a, 0, sizeof (*a)), set all fields here. */
-  a->filename = filename;
-  a->enable = enable;
-  a->status = status;
-  a->packets_to_capture = max;
-  a->buffer_trace_node_index = node_index;
-  a->buffer_traces_to_capture = buffer_traces_to_capture;
-  a->post_mortem = post_mortem;
-
-  rv = vlib_pcap_dispatch_trace_configure (a);
-
-  switch (rv)
-    {
-    case 0:
-      break;
-
-    case -7:
-      return clib_error_return (0, "dispatch trace already enabled...");
-
-    case -81:
-      return clib_error_return (0, "dispatch trace already disabled...");
-
-    case -8:
-      return clib_error_return
-	(0, "can't change number of records to capture while tracing...");
-
-    case -11:
-      return clib_error_return (0, "I/O writing trace capture...");
-
-    case -6:
-      return clib_error_return (0, "No packets captured...");
-
-    default:
-      vlib_cli_output (vm, "WARNING: trace configure returned %d", rv);
-      break;
-    }
-  return 0;
-}
-
-/*?
- * This command is used to start or stop pcap dispatch trace capture, or show
- * the capture status.
- *
- * This command has the following optional parameters:
- *
- * - <b>on|off</b> - Used to start or stop capture.
- *
- * - <b>max <nn></b> - Depth of local buffer. Once '<em>nn</em>' number
- *   of packets have been received, buffer is flushed to file. Once another
- *   '<em>nn</em>' number of packets have been received, buffer is flushed
- *   to file, overwriting previous write. If not entered, value defaults
- *   to 100. Can only be updated if packet capture is off.
- *
- * - <b>file <name></b> - Used to specify the output filename. The file will
- *   be placed in the '<em>/tmp</em>' directory, so only the filename is
- *   supported. Directory should not be entered. If file already exists, file
- *   will be overwritten. If no filename is provided, '<em>/tmp/vpe.pcap</em>'
- *   will be used. Can only be updated if packet capture is off.
- *
- * - <b>status</b> - Displays the current status and configured attributes
- *   associated with a packet capture. If packet capture is in progress,
- *   '<em>status</em>' also will return the number of packets currently in
- *   the local buffer. All additional attributes entered on command line
- *   with '<em>status</em>' will be ignored and not applied.
- *
- * @cliexpar
- * Example of how to display the status of capture when off:
- * @cliexstart{pcap dispatch trace status}
- * max is 100, for any interface to file /tmp/vpe.pcap
- * pcap dispatch capture is off...
- * @cliexend
- * Example of how to start a dispatch trace capture:
- * @cliexstart{pcap dispatch trace on max 35 file dispatchTrace.pcap}
- * pcap dispatch capture on...
- * @cliexend
- * Example of how to start a dispatch trace capture with buffer tracing
- * @cliexstart{pcap dispatch trace on max 10000 file dispatchTrace.pcap buffer-trace dpdk-input 1000}
- * pcap dispatch capture on...
- * @cliexend
- * Example of how to display the status of a tx packet capture in progress:
- * @cliexstart{pcap tx trace status}
- * max is 35, dispatch trace to file /tmp/vppTest.pcap
- * pcap tx capture is on: 20 of 35 pkts...
- * @cliexend
- * Example of how to stop a tx packet capture:
- * @cliexstart{vppctl pcap dispatch trace off}
- * captured 21 pkts...
- * saved to /tmp/dispatchTrace.pcap...
- * Example of how to start a post-mortem dispatch trace:
- * pcap dispatch trace on max 20000 buffer-trace
- *     dpdk-input 3000000000 post-mortem
- * @cliexend
-?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (pcap_dispatch_trace_command, static) = {
-    .path = "pcap dispatch trace",
-    .short_help =
-    "pcap dispatch trace [on|off] [max <nn>] [file <name>] [status]\n"
-    "              [buffer-trace <input-node-name> <nn>][post-mortem]",
-    .function = dispatch_trace_command_fn,
-};
-/* *INDENT-ON* */
 
 vlib_main_t *
 vlib_get_main_not_inline (void)
