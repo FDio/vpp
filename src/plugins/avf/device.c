@@ -485,7 +485,7 @@ retry:
       goto done;
     }
 
-  if (d->flags & AVF_AQ_F_BUF)
+  if (out_len && d->flags & AVF_AQ_F_BUF)
     {
       void *buf = ad->arq_bufs + ad->arq_next_slot * AVF_MBOX_BUF_SZ;
       clib_memcpy_fast (out, buf, out_len);
