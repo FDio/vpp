@@ -414,7 +414,15 @@ dpdk_ops_vpp_dequeue_no_cache (struct rte_mempool *mp, void **obj_table,
 static unsigned
 dpdk_ops_vpp_get_count (const struct rte_mempool *mp)
 {
-  clib_warning ("");
+  vlib_main_t *vm = vlib_get_main ();
+  if (mp)
+    {
+      vlib_buffer_pool_t *pool = vlib_get_buffer_pool (vm, mp->pool_id);
+      if (pool)
+	{
+	  return pool->n_avail;
+	}
+    }
   return 0;
 }
 
