@@ -25,11 +25,6 @@
  */
 extern vlib_combined_counter_main_t cnat_translation_counters;
 
-typedef enum cnat_trk_flag_t_
-{
-  CNAT_TRK_ACTIVE = (1 << 0),
-  CNAT_TRK_FLAG_NO_NAT = (1 << 1),
-} cnat_trk_flag_t;
 
 /**
  * Data used to track an EP in the FIB
