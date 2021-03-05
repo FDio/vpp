@@ -331,10 +331,11 @@ nat44_ed_external_sm_lookup (snat_main_t *sm, ip4_address_t match_addr,
 }
 
 static u32
-slow_path_ed (snat_main_t *sm, vlib_buffer_t *b, ip4_address_t l_addr,
-	      ip4_address_t r_addr, u16 l_port, u16 r_port, u8 proto,
-	      u32 rx_fib_index, snat_session_t **sessionp,
-	      vlib_node_runtime_t *node, u32 next, u32 thread_index, f64 now)
+slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
+	      ip4_address_t l_addr, ip4_address_t r_addr, u16 l_port,
+	      u16 r_port, u8 proto, u32 rx_fib_index,
+	      snat_session_t **sessionp, vlib_node_runtime_t *node, u32 next,
+	      u32 thread_index, f64 now)
 {
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   ip4_address_t outside_addr;
@@ -392,9 +393,9 @@ slow_path_ed (snat_main_t *sm, vlib_buffer_t *b, ip4_address_t l_addr,
   u32 sm_fib_index;
   /* First try to match static mapping by local address and port */
   int is_sm;
-  if (snat_static_mapping_match (sm, l_addr, l_port, rx_fib_index, nat_proto,
-				 &sm_addr, &sm_port, &sm_fib_index, 0, 0, 0,
-				 &lb, 0, &is_identity_nat, 0))
+  if (snat_static_mapping_match (vm, sm, l_addr, l_port, rx_fib_index,
+				 nat_proto, &sm_addr, &sm_port, &sm_fib_index,
+				 0, 0, 0, &lb, 0, &is_identity_nat, 0))
     {
       is_sm = 0;
     }
@@ -554,9 +555,10 @@ error:
 }
 
 static_always_inline int
-nat44_ed_not_translate (snat_main_t *sm, vlib_node_runtime_t *node,
-			u32 sw_if_index, vlib_buffer_t *b, ip4_header_t *ip,
-			u32 proto, u32 rx_fib_index, u32 thread_index)
+nat44_ed_not_translate (vlib_main_t *vm, snat_main_t *sm,
+			vlib_node_runtime_t *node, u32 sw_if_index,
+			vlib_buffer_t *b, ip4_header_t *ip, u32 proto,
+			u32 rx_fib_index, u32 thread_index)
 {
   clib_bihash_kv_16_8_t kv, value;
 
@@ -572,7 +574,7 @@ nat44_ed_not_translate (snat_main_t *sm, vlib_node_runtime_t *node,
       u16 placeholder_port;
       u32 placeholder_fib_index;
       if (!snat_static_mapping_match (
-	    sm, ip->dst_address, vnet_buffer (b)->ip.reass.l4_dst_port,
+	    vm, sm, ip->dst_address, vnet_buffer (b)->ip.reass.l4_dst_port,
 	    sm->outside_fib_index, proto, &placeholder_addr, &placeholder_port,
 	    &placeholder_fib_index, 1, 0, 0, 0, 0, 0, 0))
 	return 0;
@@ -742,8 +744,8 @@ icmp_in2out_ed_slow_path (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
     }
   else
     {
-      if (PREDICT_FALSE (nat44_ed_not_translate (sm, node, sw_if_index, b, ip,
-						 NAT_PROTOCOL_ICMP,
+      if (PREDICT_FALSE (nat44_ed_not_translate (vm, sm, node, sw_if_index, b,
+						 ip, NAT_PROTOCOL_ICMP,
 						 rx_fib_index, thread_index)))
 	{
 	  return next;
@@ -757,9 +759,9 @@ icmp_in2out_ed_slow_path (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
       return NAT_NEXT_DROP;
     }
 
-  next = slow_path_ed (sm, b, ip->src_address, ip->dst_address, lookup_sport,
-		       lookup_dport, ip->protocol, rx_fib_index, &s, node,
-		       next, thread_index, vlib_time_now (vm));
+  next = slow_path_ed (vm, sm, b, ip->src_address, ip->dst_address,
+		       lookup_sport, lookup_dport, ip->protocol, rx_fib_index,
+		       &s, node, next, thread_index, vlib_time_now (vm));
 
   if (NAT_NEXT_DROP == next)
     goto out;
@@ -1374,17 +1376,16 @@ nat44_ed_in2out_slow_path_node_fn_inline (vlib_main_t * vm,
 	  else
 	    {
 	      if (PREDICT_FALSE (nat44_ed_not_translate (
-		    sm, node, sw_if_index0, b0, ip0, proto0, rx_fib_index0,
+		    vm, sm, node, sw_if_index0, b0, ip0, proto0, rx_fib_index0,
 		    thread_index)))
 		goto trace0;
 	    }
 
-	  next[0] =
-	    slow_path_ed (sm, b0, ip0->src_address, ip0->dst_address,
-			  vnet_buffer (b0)->ip.reass.l4_src_port,
-			  vnet_buffer (b0)->ip.reass.l4_dst_port,
-			  ip0->protocol, rx_fib_index0, &s0, node, next[0],
-			  thread_index, now);
+	  next[0] = slow_path_ed (
+	    vm, sm, b0, ip0->src_address, ip0->dst_address,
+	    vnet_buffer (b0)->ip.reass.l4_src_port,
+	    vnet_buffer (b0)->ip.reass.l4_dst_port, ip0->protocol,
+	    rx_fib_index0, &s0, node, next[0], thread_index, now);
 
 	  if (PREDICT_FALSE (next[0] == NAT_NEXT_DROP))
 	    goto trace0;

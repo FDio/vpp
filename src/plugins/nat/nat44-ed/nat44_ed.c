@@ -2405,19 +2405,14 @@ nat_set_outside_address_and_port (snat_address_t *addresses, u32 thread_index,
 }
 
 int
-snat_static_mapping_match (snat_main_t * sm,
-			   ip4_address_t match_addr,
-			   u16 match_port,
-			   u32 match_fib_index,
-			   nat_protocol_t match_protocol,
-			   ip4_address_t * mapping_addr,
-			   u16 * mapping_port,
-			   u32 * mapping_fib_index,
-			   u8 by_external,
-			   u8 * is_addr_only,
-			   twice_nat_type_t * twice_nat,
-			   lb_nat_type_t * lb, ip4_address_t * ext_host_addr,
-			   u8 * is_identity_nat, snat_static_mapping_t ** out)
+snat_static_mapping_match (vlib_main_t *vm, snat_main_t *sm,
+			   ip4_address_t match_addr, u16 match_port,
+			   u32 match_fib_index, nat_protocol_t match_protocol,
+			   ip4_address_t *mapping_addr, u16 *mapping_port,
+			   u32 *mapping_fib_index, u8 by_external,
+			   u8 *is_addr_only, twice_nat_type_t *twice_nat,
+			   lb_nat_type_t *lb, ip4_address_t *ext_host_addr,
+			   u8 *is_identity_nat, snat_static_mapping_t **out)
 {
   clib_bihash_kv_8_8_t kv, value;
   clib_bihash_8_8_t *mapping_hash;
@@ -2460,11 +2455,9 @@ snat_static_mapping_match (snat_main_t * sm,
 	{
 	  if (PREDICT_FALSE (lb != 0))
 	    *lb = m->affinity ? AFFINITY_LB_NAT : LB_NAT;
-	  if (m->affinity && !nat_affinity_find_and_lock (ext_host_addr[0],
-							  match_addr,
-							  match_protocol,
-							  match_port,
-							  &backend_index))
+	  if (m->affinity && !nat_affinity_find_and_lock (
+			       vm, ext_host_addr[0], match_addr,
+			       match_protocol, match_port, &backend_index))
 	    {
 	      local = pool_elt_at_index (m->locals, backend_index);
 	      *mapping_addr = local->addr;

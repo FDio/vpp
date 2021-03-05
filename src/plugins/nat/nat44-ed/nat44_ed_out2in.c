@@ -149,7 +149,7 @@ icmp_out2in_ed_slow_path (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
     }
 
   if (snat_static_mapping_match (
-	sm, ip->dst_address, lookup_sport, rx_fib_index,
+	vm, sm, ip->dst_address, lookup_sport, rx_fib_index,
 	ip_proto_to_nat_proto (ip->protocol), &sm_addr, &sm_port,
 	&sm_fib_index, 1, &is_addr_only, 0, 0, 0, &identity_nat, &m))
     {
@@ -1198,11 +1198,11 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 	  /* Try to match static mapping by external address and port,
 	     destination address and port in packet */
 
-	  if (snat_static_mapping_match
-	      (sm, ip0->dst_address,
-	       vnet_buffer (b0)->ip.reass.l4_dst_port, rx_fib_index0,
-	       proto0, &sm_addr, &sm_port, &sm_fib_index, 1, 0,
-	       &twice_nat0, &lb_nat0, &ip0->src_address, &identity_nat0, &m))
+	  if (snat_static_mapping_match (
+		vm, sm, ip0->dst_address,
+		vnet_buffer (b0)->ip.reass.l4_dst_port, rx_fib_index0, proto0,
+		&sm_addr, &sm_port, &sm_fib_index, 1, 0, &twice_nat0, &lb_nat0,
+		&ip0->src_address, &identity_nat0, &m))
 	    {
 	      /*
 	       * Send DHCP packets to the ipv4 stack, or we won't
