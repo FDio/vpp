@@ -1,0 +1,23 @@
+#!/bin/bash
+set -euo pipefail
+
+export PIN_FILE="vpp-apt-preferences"
+
+echo "# VPP requirements pinned on $(date) - copy to /etc/apt/preferences.d/" >"${PIN_FILE}"
+for ADEP in "$@"
+do
+    PIN_VERSION="$(apt-cache policy $ADEP | grep 'Installed: ' | sed -e 's/  Installed: //')"
+    echo "pin $ADEP to version ${PIN_VERSION}"
+    echo "Package: ${ADEP}" >>"${PIN_FILE}"
+    echo "Pin: version ${PIN_VERSION}" >>"${PIN_FILE}"
+    echo "Pin-Priority: 1001" >>"${PIN_FILE}"
+    echo "" >>"${PIN_FILE}"
+done
+
+# another thing to list all installed packages and their version
+# we could massage it to the above format... 
+apt list --installed >/tmp/apt-all-installed
+
+# or would we rather run a list of packages like this, and then later run them through the above loop...
+dpkg --get-selections | grep -v deinstall >/tmp/apt-installed-via-dpkg
+

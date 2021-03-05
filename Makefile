@@ -277,6 +277,15 @@ endif
 bootstrap:
 	@echo "'make bootstrap' is not needed anymore"
 
+.PHONY: pin-deps
+pin-deps: install-dep
+ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
+	@src/scripts/pin-deb-deps $(DEB_DEPENDS)
+else
+	$(error "This option currently works only on Ubuntu and Debian systems")
+endif
+
+
 .PHONY: install-dep
 install-dep:
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
