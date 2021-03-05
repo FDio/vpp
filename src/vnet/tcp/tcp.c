@@ -657,9 +657,10 @@ tcp_init_mss (tcp_connection_t * tc)
   /* We should have enough space for 40 bytes of options */
   ASSERT (tc->snd_mss > 45);
 
-  /* If we use timestamp option, account for it */
+  /* If we use timestamp option, account for it and make sure
+   * the options are 4-byte aligned */
   if (tcp_opts_tstamp (&tc->rcv_opts))
-    tc->snd_mss -= TCP_OPTION_LEN_TIMESTAMP;
+    tc->snd_mss -= TCP_OPTION_LEN_TIMESTAMP + 2 /* alignment */;
 }
 
 /**
