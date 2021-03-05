@@ -1079,21 +1079,13 @@ void expire_per_vrf_sessions (u32 fib_index);
  *
  * @returns 0 if match found otherwise 1.
  */
-int snat_static_mapping_match (snat_main_t * sm,
-			       ip4_address_t match_addr,
-			       u16 match_port,
-			       u32 match_fib_index,
-			       nat_protocol_t match_protocol,
-			       ip4_address_t * mapping_addr,
-			       u16 * mapping_port,
-			       u32 * mapping_fib_index,
-			       u8 by_external,
-			       u8 * is_addr_only,
-			       twice_nat_type_t * twice_nat,
-			       lb_nat_type_t * lb,
-			       ip4_address_t * ext_host_addr,
-			       u8 * is_identity_nat,
-			       snat_static_mapping_t ** out);
+int snat_static_mapping_match (
+  vlib_main_t *vm, snat_main_t *sm, ip4_address_t match_addr, u16 match_port,
+  u32 match_fib_index, nat_protocol_t match_protocol,
+  ip4_address_t *mapping_addr, u16 *mapping_port, u32 *mapping_fib_index,
+  u8 by_external, u8 *is_addr_only, twice_nat_type_t *twice_nat,
+  lb_nat_type_t *lb, ip4_address_t *ext_host_addr, u8 *is_identity_nat,
+  snat_static_mapping_t **out);
 
 /**
  * @brief Add/del NAT address to FIB.

@@ -140,9 +140,9 @@ nat_affinity_flush_service (u32 affinity_per_service_list_head_index)
 }
 
 int
-nat_affinity_find_and_lock (ip4_address_t client_addr,
+nat_affinity_find_and_lock (vlib_main_t *vm, ip4_address_t client_addr,
 			    ip4_address_t service_addr, u8 proto,
-			    u16 service_port, u8 * backend_index)
+			    u16 service_port, u8 *backend_index)
 {
   snat_main_t *sm = &snat_main;
   nat_affinity_main_t *nam = &nat_affinity_main;
@@ -162,7 +162,7 @@ nat_affinity_find_and_lock (ip4_address_t client_addr,
   /* if already expired delete */
   if (a->ref_cnt == 0)
     {
-      if (a->expire < vlib_time_now (nam->vlib_main))
+      if (a->expire < vlib_time_now (vm))
 	{
 	  clib_dlist_remove (nam->list_pool, a->per_service_index);
 	  pool_put_index (nam->list_pool, a->per_service_index);

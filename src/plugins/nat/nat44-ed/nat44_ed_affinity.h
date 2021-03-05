@@ -109,9 +109,9 @@ clib_error_t *nat_affinity_init (vlib_main_t * vm);
  *
  * @return 0 on success, non-zero value otherwise.
  */
-int nat_affinity_find_and_lock (ip4_address_t client_addr,
+int nat_affinity_find_and_lock (vlib_main_t *vm, ip4_address_t client_addr,
 				ip4_address_t service_addr, u8 proto,
-				u16 service_port, u8 * backend_index);
+				u16 service_port, u8 *backend_index);
 
 /**
  * @brief Create affinity record and take reference counting lock.
