@@ -76,7 +76,6 @@ typedef u32 vlib_log_class_t;
 #include <vlib/trace_funcs.h>
 #include <vlib/global_funcs.h>
 #include <vlib/buffer_node.h>
-#include <vppinfra/pcap_funcs.h>
 
 #endif /* included_vlib_h */
 

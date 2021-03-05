@@ -112,6 +112,7 @@ typedef struct vnet_main_t
 
 extern vnet_main_t vnet_main;
 
+#include <vppinfra/pcap_funcs.h>
 #include <vnet/interface_funcs.h>
 #include <vnet/global_funcs.h>
 
