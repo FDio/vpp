@@ -47,7 +47,6 @@
 #include <vppinfra/pool.h>
 #include <vppinfra/random_buffer.h>
 #include <vppinfra/time.h>
-#include <vppinfra/pcap.h>
 
 #include <pthread.h>
 
@@ -180,13 +179,6 @@ typedef struct vlib_main_t
   /* Packet trace buffer. */
   vlib_trace_main_t trace_main;
 
-  /* Pcap dispatch trace main */
-  pcap_main_t dispatch_pcap_main;
-  uword dispatch_pcap_enable;
-  uword dispatch_pcap_postmortem;
-  u32 *dispatch_buffer_trace_nodes;
-  u8 *pcap_buffer;
-
   /* Packet trace capture filter */
   vlib_trace_filter_t trace_filter;
 
@@ -259,8 +251,8 @@ typedef struct vlib_main_t
   /* debugging */
   volatile int parked_at_barrier;
 
-  /* Attempt to do a post-mortem elog dump */
-  int elog_post_mortem_dump;
+  /* post-mortem callbacks */
+  void (**post_mortem_callbacks) (void);
 
   /*
    * Need to call vlib_worker_thread_node_runtime_update before
@@ -459,22 +451,8 @@ extern u8 **vlib_thread_stacks;
 u32 vlib_app_num_thread_stacks_needed (void) __attribute__ ((weak));
 
 extern void vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n);
+void vlib_add_del_post_mortem_callback (void *cb, int is_add);
 
-#define VLIB_PCAP_MAJOR_VERSION 1
-#define VLIB_PCAP_MINOR_VERSION 0
-
-typedef struct
-{
-  u8 *filename;
-  int enable;
-  int status;
-  int post_mortem;
-  u32 packets_to_capture;
-  u32 buffer_trace_node_index;
-  u32 buffer_traces_to_capture;
-} vlib_pcap_dispatch_trace_args_t;
-
-int vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t *);
 vlib_main_t *vlib_get_main_not_inline (void);
 elog_main_t *vlib_get_elog_main_not_inline ();
 
