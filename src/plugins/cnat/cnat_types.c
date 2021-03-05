@@ -103,16 +103,28 @@ unformat_cnat_ep (unformat_input_t * input, va_list * args)
 }
 
 uword
+unformat_cnat_ep_flags (unformat_input_t *input, va_list *args)
+{
+  int *a = va_arg (*args, int *);
+  if (unformat (input, ":nonat"))
+    *a = CNAT_TRK_FLAG_NO_NAT;
+  return 1;
+}
+
+uword
 unformat_cnat_ep_tuple (unformat_input_t * input, va_list * args)
 {
   cnat_endpoint_tuple_t *a = va_arg (*args, cnat_endpoint_tuple_t *);
-  if (unformat (input, "%U->%U", unformat_cnat_ep, &a->src_ep,
-		unformat_cnat_ep, &a->dst_ep))
-    ;
-  else if (unformat (input, "->%U", unformat_cnat_ep, &a->dst_ep))
-    ;
-  else if (unformat (input, "%U->", unformat_cnat_ep, &a->src_ep))
-    ;
+  int flgs = 0;
+  if (unformat (input, "%U->%U%U", unformat_cnat_ep, &a->src_ep,
+		unformat_cnat_ep, &a->dst_ep, unformat_cnat_ep_flags, &flgs))
+    a->ep_flags = flgs;
+  else if (unformat (input, "->%U%U", unformat_cnat_ep, &a->dst_ep,
+		     unformat_cnat_ep_flags, &flgs))
+    a->ep_flags = flgs;
+  else if (unformat (input, "%U->%U", unformat_cnat_ep, &a->src_ep,
+		     unformat_cnat_ep_flags, &flgs))
+    a->ep_flags = flgs;
   else
     return 0;
   return 1;

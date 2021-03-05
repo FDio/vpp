@@ -55,6 +55,15 @@
 
 #define MIN_SRC_PORT ((u16) 0xC000)
 
+typedef enum cnat_trk_flag_t_
+{
+  /* Endpoint is active (static or dhcp resolved) */
+  CNAT_TRK_ACTIVE = (1 << 0),
+  /* Don't translate this endpoint, but still
+   * forward. Used by maglev for DSR */
+  CNAT_TRK_FLAG_NO_NAT = (1 << 1),
+} cnat_trk_flag_t;
+
 typedef enum
 {
   /* Endpoint addr has been resolved */

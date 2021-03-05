@@ -126,19 +126,19 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port);
       session->value.cs_port[VLIB_RX] = udp0->src_port;
 
-      const dpo_id_t *dpo0;
-      const load_balance_t *lb1;
-      fib_entry_t *fib_entry;
-      fib_entry = fib_entry_get (trk0->ct_fei);
-
-      lb1 = load_balance_get (fib_entry->fe_lb /*[fct] */.dpoi_index);
-      dpo0 = load_balance_get_bucket_i (lb1, 0);
-
-      session->value.dpoi_next_node = dpo0->dpoi_next_node;
-      session->value.cs_lbi = dpo0->dpoi_index;
-
       if (trk0->ct_flags & CNAT_TRK_FLAG_NO_NAT)
-	session->value.flags |= CNAT_SESSION_FLAG_NO_NAT;
+	{
+	  const dpo_id_t *dpo0;
+	  const load_balance_t *lb1;
+
+	  lb1 = load_balance_get (trk0->ct_dpo.dpoi_index);
+	  /* Assume backend has exactly one item in LB */
+	  dpo0 = load_balance_get_bucket_i (lb1, 0);
+
+	  session->value.dpoi_next_node = dpo0->dpoi_next_node;
+	  session->value.cs_lbi = dpo0->dpoi_index;
+	  session->value.flags = CNAT_SESSION_FLAG_NO_NAT;
+	}
 
       /* refcnt session in current client */
       cnat_client_cnt_session (cc);
@@ -146,11 +146,13 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       trace_flags |= CNAT_TRACE_SESSION_CREATED;
     }
 
-  next0 = session->value.dpoi_next_node;
-  vnet_buffer (b)->ip.adj_index[VLIB_TX] = session->value.cs_lbi;
-
   if (session->value.flags & CNAT_SESSION_FLAG_NO_NAT)
-    goto trace;
+    {
+      /* If we don't translate, directly do the lookup & bypass arc */
+      next0 = session->value.dpoi_next_node;
+      vnet_buffer (b)->ip.adj_index[VLIB_TX] = session->value.cs_lbi;
+      goto trace;
+    }
 
   if (AF_IP4 == ctx->af)
     cnat_translation_ip4 (session, ip4, udp0);
@@ -190,8 +192,7 @@ VLIB_REGISTER_NODE (cnat_input_feature_ip4_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = CNAT_N_ERROR,
   .error_strings = cnat_error_strings,
-  .n_next_nodes = IP_LOOKUP_N_NEXT,
-  .next_nodes = IP4_LOOKUP_NEXT_NODES,
+  .sibling_of = "ip4-lookup",
 };
 
 VNET_FEATURE_INIT (cnat_in_ip4_feature, static) = {
@@ -217,8 +218,7 @@ VLIB_REGISTER_NODE (cnat_input_feature_ip6_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = CNAT_N_ERROR,
   .error_strings = cnat_error_strings,
-  .n_next_nodes = IP6_LOOKUP_N_NEXT,
-  .next_nodes = IP6_LOOKUP_NEXT_NODES,
+  .sibling_of = "ip6-lookup",
 };
 
 VNET_FEATURE_INIT (cnat_in_ip6_feature, static) = {
