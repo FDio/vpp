@@ -394,6 +394,11 @@ I:	avf
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/plugins/avf/
 
+Plugin - Dispatch Trace PCAP
+I:	dispatch-trace
+M:	Dave Barach <vpp@barachs.net>
+F:	src/plugins/dispatch-trace
+
 Plugin - DPDK
 I:	dpdk
 M:	Damjan Marion <damarion@cisco.com>

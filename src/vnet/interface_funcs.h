@@ -510,6 +510,43 @@ u8 *format_vnet_interface_output_trace (u8 * s, va_list * va);
 serialize_function_t serialize_vnet_interface_state,
   unserialize_vnet_interface_state;
 
+/**
+ * @brief Add buffer (vlib_buffer_t) to the trace
+ *
+ * @param *pm - pcap_main_t
+ * @param *vm - vlib_main_t
+ * @param buffer_index - u32
+ * @param n_bytes_in_trace - u32
+ *
+ */
+static inline void
+pcap_add_buffer (pcap_main_t *pm, struct vlib_main_t *vm, u32 buffer_index,
+		 u32 n_bytes_in_trace)
+{
+  vlib_buffer_t *b = vlib_get_buffer (vm, buffer_index);
+  u32 n = vlib_buffer_length_in_chain (vm, b);
+  i32 n_left = clib_min (n_bytes_in_trace, n);
+  f64 time_now = vlib_time_now (vm);
+  void *d;
+
+  if (PREDICT_TRUE (pm->n_packets_captured < pm->n_packets_to_capture))
+    {
+      clib_spinlock_lock_if_init (&pm->lock);
+      d = pcap_add_packet (pm, time_now, n_left, n);
+      while (1)
+	{
+	  u32 copy_length = clib_min ((u32) n_left, b->current_length);
+	  clib_memcpy_fast (d, b->data + b->current_data, copy_length);
+	  n_left -= b->current_length;
+	  if (n_left <= 0)
+	    break;
+	  d += b->current_length;
+	  ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
+	  b = vlib_get_buffer (vm, b->next_buffer);
+	}
+      clib_spinlock_unlock_if_init (&pm->lock);
+    }
+}
 #endif /* included_vnet_interface_funcs_h */
 
 /*
