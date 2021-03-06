@@ -309,29 +309,6 @@ done:
   return result;
 }
 
-/*
- * Hand-craft a static vector w/ length 1, so vec_len(vlib_mains) =1
- * and vlib_mains[0] = &vlib_global_main from the beginning of time.
- *
- * The only place which should ever expand vlib_mains is start_workers()
- * in threads.c. It knows about the bootstrap vector.
- */
-/* *INDENT-OFF* */
-static struct
-{
-  vec_header_t h;
-  vlib_main_t *vm;
-} __attribute__ ((packed)) __bootstrap_vlib_main_vector
-  __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES))) =
-{
-  .h.len = 1,
-  .vm = &vlib_global_main,
-};
-/* *INDENT-ON* */
-
-vlib_main_t **vlib_mains = &__bootstrap_vlib_main_vector.vm;
-
-
 /* When debugging validate that given buffers are either known allocated
    or known free. */
 void
@@ -569,7 +546,7 @@ vlib_buffer_pool_create (vlib_main_t * vm, char *name, u32 data_size,
   bp->data_size = data_size;
   bp->numa_node = m->numa_node;
 
-  vec_validate_aligned (bp->threads, vec_len (vlib_mains) - 1,
+  vec_validate_aligned (bp->threads, vlib_get_n_mains () - 1,
 			CLIB_CACHE_LINE_BYTES);
 
   alloc_size = vlib_buffer_alloc_size (bm->ext_hdr_size, data_size);
@@ -673,7 +650,7 @@ vlib_buffer_worker_init (vlib_main_t * vm)
   vec_foreach (bp, bm->buffer_pools)
     {
       clib_spinlock_lock (&bp->lock);
-      vec_validate_aligned (bp->threads, vec_len (vlib_mains) - 1,
+      vec_validate_aligned (bp->threads, vlib_get_n_mains () - 1,
 			    CLIB_CACHE_LINE_BYTES);
       clib_spinlock_unlock (&bp->lock);
     }

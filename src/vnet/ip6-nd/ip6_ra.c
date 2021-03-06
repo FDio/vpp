@@ -233,6 +233,7 @@ static int logmask = 1 << LOG_DEBUG;
 static void
 ip6_neighbor_syslog (vlib_main_t * vm, int priority, char *fmt, ...)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   /* just use elog for now */
   u8 *what;
   va_list va;
@@ -252,9 +253,9 @@ ip6_neighbor_syslog (vlib_main_t * vm, int priority, char *fmt, ...)
       {
 	u32 s[2];
       } *ed;
-      ed = ELOG_DATA (&vm->elog_main, e);
-      ed->s[0] = elog_string (&vm->elog_main, log_level_strings[priority]);
-      ed->s[1] = elog_string (&vm->elog_main, (char *) what);
+      ed = ELOG_DATA (&vgm->elog_main, e);
+      ed->s[0] = elog_string (&vgm->elog_main, log_level_strings[priority]);
+      ed->s[1] = elog_string (&vgm->elog_main, (char *) what);
     }
   va_end (va);
   return;
