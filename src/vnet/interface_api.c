@@ -86,6 +86,13 @@ vpe_api_main_t vpe_api_main;
   _ (SW_INTERFACE_ADDRESS_REPLACE_BEGIN, sw_interface_address_replace_begin)  \
   _ (SW_INTERFACE_ADDRESS_REPLACE_END, sw_interface_address_replace_end)
 
+VLIB_REGISTER_LOG_CLASS (if_api_log, static) = {
+  .class_name = "interface",
+  .subclass_name = "api",
+};
+
+#define log_warn(fmt, ...) vlib_log_warn (if_api_log.class, fmt, __VA_ARGS__)
+
 static void
 vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t * mp)
 {
@@ -317,8 +324,8 @@ send_sw_interface_details (vpe_api_main_t * am,
     {
       // error - default to disabled
       mp->vtr_op = ntohl (L2_VTR_DISABLED);
-      clib_warning ("cannot get vlan tag rewrite for sw_if_index %d",
-		    swif->sw_if_index);
+      log_warn ("cannot get vlan tag rewrite for sw_if_index %d",
+		swif->sw_if_index);
     }
   else
     {
@@ -366,7 +373,7 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
 
   if (rp == 0)
     {
-      clib_warning ("Client %d AWOL", mp->client_index);
+      log_warn ("Client %d AWOL", mp->client_index);
       return;
     }
 
@@ -409,6 +416,12 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
     if (filter && !strcasestr((char *) name, (char *) filter))
 	continue;
 
+    rp = vl_api_client_index_to_registration (mp->client_index);
+    if (rp == 0)
+      {
+	log_warn ("Client %d AWOL", mp->client_index);
+	break;
+      }
     send_sw_interface_details (am, rp, swif, name, mp->context);
   }
   /* *INDENT-ON* */
@@ -1126,15 +1139,16 @@ static void vl_api_sw_interface_rx_placement_dump_t_handler
 
       if (!vnet_sw_if_index_is_api_valid (sw_if_index))
 	{
-	  clib_warning ("sw_if_index %u does not exist", sw_if_index);
+	  log_warn ("sw_if_index %u does not exist", sw_if_index);
 	  goto bad_sw_if_index;
 	}
 
       si = vnet_get_sw_interface (vnm, sw_if_index);
       if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
 	{
-	  clib_warning ("interface type is not HARDWARE! P2P, PIPE and SUB"
-			" interfaces are not supported");
+	  log_warn ("Subinterface is not supported for interface type %d. It "
+		    "must be HARDWARE",
+		    si->type);
 	  goto bad_sw_if_index;
 	}
 
