@@ -120,49 +120,48 @@ typedef struct vlib_config_function_runtime_t
    be called from other modules to resolve init function depend. */
 
 #ifndef CLIB_MARCH_VARIANT
-#define VLIB_DECLARE_INIT_FUNCTION(x, tag)                              \
-vlib_init_function_t * _VLIB_INIT_FUNCTION_SYMBOL (x, tag) = x;         \
-static void __vlib_add_##tag##_function_##x (void)                      \
-    __attribute__((__constructor__)) ;                                  \
-static _vlib_init_function_list_elt_t _vlib_init_function_##tag##_##x;    \
-static void __vlib_add_##tag##_function_##x (void)                      \
-{                                                                       \
- vlib_main_t * vm = vlib_get_main();                                    \
- _vlib_init_function_##tag##_##x.next_init_function                       \
-    = vm->tag##_function_registrations;                                 \
-  vm->tag##_function_registrations = &_vlib_init_function_##tag##_##x;    \
- _vlib_init_function_##tag##_##x.f = &x;                                  \
- _vlib_init_function_##tag##_##x.name = #x;                               \
-}                                                                       \
-static void __vlib_rm_##tag##_function_##x (void)                       \
-    __attribute__((__destructor__)) ;                                   \
-static void __vlib_rm_##tag##_function_##x (void)                       \
-{                                                                       \
-  vlib_main_t * vm = vlib_get_main();                                   \
-  _vlib_init_function_list_elt_t *this, *prev;                          \
-  this = vm->tag##_function_registrations;                              \
-  if (this == 0)							\
-    return;								\
-  if (this->f == &x)  				                        \
-    {                                                                   \
-      vm->tag##_function_registrations = this->next_init_function;	\
-      return;                                                           \
-    }                                                                   \
-  prev = this;								\
-  this = this->next_init_function;					\
-  while (this)								\
-    {                                                                   \
-      if (this->f == &x)		                                \
-        {                                                               \
-          prev->next_init_function =                                    \
-            this->next_init_function;					\
-          return;                                                       \
-        }                                                               \
-      prev = this;							\
-      this = this->next_init_function;                                  \
-    }                                                                   \
-}									\
-static _vlib_init_function_list_elt_t _vlib_init_function_##tag##_##x
+#define VLIB_DECLARE_INIT_FUNCTION(x, tag)                                    \
+  vlib_init_function_t *_VLIB_INIT_FUNCTION_SYMBOL (x, tag) = x;              \
+  static void __vlib_add_##tag##_function_##x (void)                          \
+    __attribute__ ((__constructor__));                                        \
+  static _vlib_init_function_list_elt_t _vlib_init_function_##tag##_##x;      \
+  static void __vlib_add_##tag##_function_##x (void)                          \
+  {                                                                           \
+    vlib_global_main_t *vgm = vlib_get_global_main ();                        \
+    _vlib_init_function_##tag##_##x.next_init_function =                      \
+      vgm->tag##_function_registrations;                                      \
+    vgm->tag##_function_registrations = &_vlib_init_function_##tag##_##x;     \
+    _vlib_init_function_##tag##_##x.f = &x;                                   \
+    _vlib_init_function_##tag##_##x.name = #x;                                \
+  }                                                                           \
+  static void __vlib_rm_##tag##_function_##x (void)                           \
+    __attribute__ ((__destructor__));                                         \
+  static void __vlib_rm_##tag##_function_##x (void)                           \
+  {                                                                           \
+    vlib_global_main_t *vgm = vlib_get_global_main ();                        \
+    _vlib_init_function_list_elt_t *this, *prev;                              \
+    this = vgm->tag##_function_registrations;                                 \
+    if (this == 0)                                                            \
+      return;                                                                 \
+    if (this->f == &x)                                                        \
+      {                                                                       \
+	vgm->tag##_function_registrations = this->next_init_function;         \
+	return;                                                               \
+      }                                                                       \
+    prev = this;                                                              \
+    this = this->next_init_function;                                          \
+    while (this)                                                              \
+      {                                                                       \
+	if (this->f == &x)                                                    \
+	  {                                                                   \
+	    prev->next_init_function = this->next_init_function;              \
+	    return;                                                           \
+	  }                                                                   \
+	prev = this;                                                          \
+	this = this->next_init_function;                                      \
+      }                                                                       \
+  }                                                                           \
+  static _vlib_init_function_list_elt_t _vlib_init_function_##tag##_##x
 #else
 /* create unused pointer to silence compiler warnings and get whole
    function optimized out */
@@ -179,35 +178,30 @@ static __clib_unused void * __clib_unused_##tag##_##x = x
 VLIB_DECLARE_INIT_FUNCTION(x,main_loop_exit)
 
 #ifndef CLIB_MARCH_VARIANT
-#define VLIB_CONFIG_FUNCTION(x,n,...)                           \
-    __VA_ARGS__ vlib_config_function_runtime_t                  \
-    VLIB_CONFIG_FUNCTION_SYMBOL(x);                             \
-static void __vlib_add_config_function_##x (void)               \
-    __attribute__((__constructor__)) ;                          \
-static void __vlib_add_config_function_##x (void)               \
-{                                                               \
-    vlib_main_t * vm = vlib_get_main();                         \
-    VLIB_CONFIG_FUNCTION_SYMBOL(x).next_registration            \
-       = vm->config_function_registrations;                     \
-    vm->config_function_registrations                           \
-       = &VLIB_CONFIG_FUNCTION_SYMBOL(x);                       \
-}                                                               \
-static void __vlib_rm_config_function_##x (void)                \
-    __attribute__((__destructor__)) ;                           \
-static void __vlib_rm_config_function_##x (void)                \
-{                                                               \
-    vlib_main_t * vm = vlib_get_main();                         \
-    vlib_config_function_runtime_t *p =                         \
-       & VLIB_CONFIG_FUNCTION_SYMBOL (x);                       \
-    VLIB_REMOVE_FROM_LINKED_LIST                                \
-      (vm->config_function_registrations, p, next_registration);\
-}                                                               \
-  vlib_config_function_runtime_t                                \
-    VLIB_CONFIG_FUNCTION_SYMBOL (x)                             \
-  = {                                                           \
-    .name = n,                                                  \
-    .function = x,                                              \
-    .is_early = 0,						\
+#define VLIB_CONFIG_FUNCTION(x, n, ...)                                       \
+  __VA_ARGS__ vlib_config_function_runtime_t VLIB_CONFIG_FUNCTION_SYMBOL (x); \
+  static void __vlib_add_config_function_##x (void)                           \
+    __attribute__ ((__constructor__));                                        \
+  static void __vlib_add_config_function_##x (void)                           \
+  {                                                                           \
+    vlib_global_main_t *vgm = vlib_get_global_main ();                        \
+    VLIB_CONFIG_FUNCTION_SYMBOL (x).next_registration =                       \
+      vgm->config_function_registrations;                                     \
+    vgm->config_function_registrations = &VLIB_CONFIG_FUNCTION_SYMBOL (x);    \
+  }                                                                           \
+  static void __vlib_rm_config_function_##x (void)                            \
+    __attribute__ ((__destructor__));                                         \
+  static void __vlib_rm_config_function_##x (void)                            \
+  {                                                                           \
+    vlib_global_main_t *vgm = vlib_get_global_main ();                        \
+    vlib_config_function_runtime_t *p = &VLIB_CONFIG_FUNCTION_SYMBOL (x);     \
+    VLIB_REMOVE_FROM_LINKED_LIST (vgm->config_function_registrations, p,      \
+				  next_registration);                         \
+  }                                                                           \
+  vlib_config_function_runtime_t VLIB_CONFIG_FUNCTION_SYMBOL (x) = {          \
+    .name = n,                                                                \
+    .function = x,                                                            \
+    .is_early = 0,                                                            \
   }
 #else
 /* create unused pointer to silence compiler warnings and get whole
@@ -223,35 +217,30 @@ static void __vlib_rm_config_function_##x (void)                \
 #endif
 
 #ifndef CLIB_MARCH_VARIANT
-#define VLIB_EARLY_CONFIG_FUNCTION(x,n,...)                     \
-    __VA_ARGS__ vlib_config_function_runtime_t                  \
-    VLIB_CONFIG_FUNCTION_SYMBOL(x);                             \
-static void __vlib_add_config_function_##x (void)               \
-    __attribute__((__constructor__)) ;                          \
-static void __vlib_add_config_function_##x (void)               \
-{                                                               \
-    vlib_main_t * vm = vlib_get_main();                         \
-    VLIB_CONFIG_FUNCTION_SYMBOL(x).next_registration            \
-       = vm->config_function_registrations;                     \
-    vm->config_function_registrations                           \
-       = &VLIB_CONFIG_FUNCTION_SYMBOL(x);                       \
-}                                                               \
-static void __vlib_rm_config_function_##x (void)                \
-    __attribute__((__destructor__)) ;                           \
-static void __vlib_rm_config_function_##x (void)                \
-{                                                               \
-    vlib_main_t * vm = vlib_get_main();                         \
-    vlib_config_function_runtime_t *p =                         \
-       & VLIB_CONFIG_FUNCTION_SYMBOL (x);                       \
-    VLIB_REMOVE_FROM_LINKED_LIST                                \
-      (vm->config_function_registrations, p, next_registration);\
-}                                                               \
-  vlib_config_function_runtime_t                                \
-    VLIB_CONFIG_FUNCTION_SYMBOL (x)                             \
-  = {                                                           \
-    .name = n,                                                  \
-    .function = x,                                              \
-    .is_early = 1,						\
+#define VLIB_EARLY_CONFIG_FUNCTION(x, n, ...)                                 \
+  __VA_ARGS__ vlib_config_function_runtime_t VLIB_CONFIG_FUNCTION_SYMBOL (x); \
+  static void __vlib_add_config_function_##x (void)                           \
+    __attribute__ ((__constructor__));                                        \
+  static void __vlib_add_config_function_##x (void)                           \
+  {                                                                           \
+    vlib_global_main_t *vgm = vlib_get_global_main ();                        \
+    VLIB_CONFIG_FUNCTION_SYMBOL (x).next_registration =                       \
+      vgm->config_function_registrations;                                     \
+    vgm->config_function_registrations = &VLIB_CONFIG_FUNCTION_SYMBOL (x);    \
+  }                                                                           \
+  static void __vlib_rm_config_function_##x (void)                            \
+    __attribute__ ((__destructor__));                                         \
+  static void __vlib_rm_config_function_##x (void)                            \
+  {                                                                           \
+    vlib_global_main_t *vgm = vlib_get_global_main ();                        \
+    vlib_config_function_runtime_t *p = &VLIB_CONFIG_FUNCTION_SYMBOL (x);     \
+    VLIB_REMOVE_FROM_LINKED_LIST (vgm->config_function_registrations, p,      \
+				  next_registration);                         \
+  }                                                                           \
+  vlib_config_function_runtime_t VLIB_CONFIG_FUNCTION_SYMBOL (x) = {          \
+    .name = n,                                                                \
+    .function = x,                                                            \
+    .is_early = 1,                                                            \
   }
 #else
 /* create unused pointer to silence compiler warnings and get whole
@@ -267,67 +256,71 @@ static void __vlib_rm_config_function_##x (void)                \
 #endif
 
 /* Call given init function: used for init function dependencies. */
-#define vlib_call_init_function(vm, x)					\
-  ({									\
-    extern vlib_init_function_t * VLIB_INIT_FUNCTION_SYMBOL (x);	\
-    vlib_init_function_t * _f = VLIB_INIT_FUNCTION_SYMBOL (x);		\
-    clib_error_t * _error = 0;						\
-    if (! hash_get (vm->init_functions_called, _f))			\
-      {									\
-	hash_set1 (vm->init_functions_called, _f);			\
-	_error = _f (vm);						\
-      }									\
-    _error;								\
+#define vlib_call_init_function(vm, x)                                        \
+  ({                                                                          \
+    vlib_global_main_t *vgm = &vlib_global_main;                              \
+    extern vlib_init_function_t *VLIB_INIT_FUNCTION_SYMBOL (x);               \
+    vlib_init_function_t *_f = VLIB_INIT_FUNCTION_SYMBOL (x);                 \
+    clib_error_t *_error = 0;                                                 \
+    if (!hash_get (vgm->init_functions_called, _f))                           \
+      {                                                                       \
+	hash_set1 (vgm->init_functions_called, _f);                           \
+	_error = _f (vm);                                                     \
+      }                                                                       \
+    _error;                                                                   \
   })
 
 /* Don't call given init function: used to suppress parts of the netstack */
-#define vlib_mark_init_function_complete(vm, x)				\
-  ({									\
-    extern vlib_init_function_t * VLIB_INIT_FUNCTION_SYMBOL (x);	\
-    vlib_init_function_t * _f = VLIB_INIT_FUNCTION_SYMBOL (x);		\
-    hash_set1 (vm->init_functions_called, _f);				\
+#define vlib_mark_init_function_complete(vm, x)                               \
+  ({                                                                          \
+    vlib_global_main_t *vgm = &vlib_global_main;                              \
+    extern vlib_init_function_t *VLIB_INIT_FUNCTION_SYMBOL (x);               \
+    vlib_init_function_t *_f = VLIB_INIT_FUNCTION_SYMBOL (x);                 \
+    hash_set1 (vgm->init_functions_called, _f);                               \
   })
 
-#define vlib_call_post_graph_init_function(vm, x)			\
-  ({									\
-    extern vlib_init_function_t * VLIB_POST_GRAPH_INIT_FUNCTION_SYMBOL (x); \
-    vlib_init_function_t * _f = VLIB_POST_GRAPH_INIT_FUNCTION_SYMBOL (x); \
-    clib_error_t * _error = 0;						\
-    if (! hash_get (vm->init_functions_called, _f))			\
-      {									\
-	hash_set1 (vm->init_functions_called, _f);			\
-	_error = _f (vm);						\
-      }									\
-    _error;								\
+#define vlib_call_post_graph_init_function(vm, x)                             \
+  ({                                                                          \
+    vlib_global_main_t *vgm = &vlib_global_main;                              \
+    extern vlib_init_function_t *VLIB_POST_GRAPH_INIT_FUNCTION_SYMBOL (x);    \
+    vlib_init_function_t *_f = VLIB_POST_GRAPH_INIT_FUNCTION_SYMBOL (x);      \
+    clib_error_t *_error = 0;                                                 \
+    if (!hash_get (vgm->init_functions_called, _f))                           \
+      {                                                                       \
+	hash_set1 (vgm->init_functions_called, _f);                           \
+	_error = _f (vm);                                                     \
+      }                                                                       \
+    _error;                                                                   \
   })
 
-#define vlib_call_config_function(vm, x)			\
-  ({								\
-    vlib_config_function_runtime_t * _r;			\
-    clib_error_t * _error = 0;					\
-    extern vlib_config_function_runtime_t			\
-      VLIB_CONFIG_FUNCTION_SYMBOL (x);				\
-								\
-    _r = &VLIB_CONFIG_FUNCTION_SYMBOL (x);			\
-    if (! hash_get (vm->init_functions_called, _r->function))	\
-      {								\
-        hash_set1 (vm->init_functions_called, _r->function);	\
-	_error = _r->function (vm, &_r->input);			\
-      }								\
-    _error;							\
+#define vlib_call_config_function(vm, x)                                      \
+  ({                                                                          \
+    vlib_global_main_t *vgm = &vlib_global_main;                              \
+    vlib_config_function_runtime_t *_r;                                       \
+    clib_error_t *_error = 0;                                                 \
+    extern vlib_config_function_runtime_t VLIB_CONFIG_FUNCTION_SYMBOL (x);    \
+                                                                              \
+    _r = &VLIB_CONFIG_FUNCTION_SYMBOL (x);                                    \
+    if (!hash_get (vgm->init_functions_called, _r->function))                 \
+      {                                                                       \
+	hash_set1 (vgm->init_functions_called, _r->function);                 \
+	_error = _r->function (vm, &_r->input);                               \
+      }                                                                       \
+    _error;                                                                   \
   })
 
-#define vlib_call_main_loop_enter_function(vm, x)			\
-  ({									\
-    extern vlib_init_function_t * VLIB_MAIN_LOOP_ENTER_FUNCTION_SYMBOL (x); \
-    vlib_init_function_t * _f = VLIB_MAIN_LOOP_ENTER_FUNCTION_SYMBOL (x); \
-    clib_error_t * _error = 0;						\
-    if (! hash_get (vm->init_functions_called, _f))			\
-      {									\
-	hash_set1 (vm->init_functions_called, _f);			\
-	_error = _f (vm);						\
-      }									\
-    _error;								\
+#define vlib_call_main_loop_enter_function(vm, x)                             \
+  ({                                                                          \
+    vlib_global_main_t *vgm = &vlib_global_main;                              \
+    extern vlib_init_function_t *VLIB_MAIN_LOOP_ENTER_FUNCTION_SYMBOL (x);    \
+    vlib_init_function_t *_f = VLIB_MAIN_LOOP_ENTER_FUNCTION_SYMBOL (x);      \
+    clib_error_t *_error = 0;                                                 \
+    if (!hash_get (vgm->init_functions_called, _f))                           \
+      {                                                                       \
+	hash_set1 (vgm->init_functions_called, _f);                           \
+	_error = _f (vm);                                                     \
+      }                                                                       \
+    _error;                                                                   \
   })
 
 /* External functions. */
@@ -338,12 +331,14 @@ clib_error_t *vlib_call_all_config_functions (struct vlib_main_t *vm,
 clib_error_t *vlib_call_all_main_loop_enter_functions (struct vlib_main_t
 						       *vm);
 clib_error_t *vlib_call_all_main_loop_exit_functions (struct vlib_main_t *vm);
-clib_error_t *vlib_call_init_exit_functions (struct vlib_main_t *vm,
-					     _vlib_init_function_list_elt_t **
-					     headp, int call_once);
-clib_error_t *vlib_call_init_exit_functions_no_sort (struct vlib_main_t *vm,
-						     _vlib_init_function_list_elt_t
-						     ** headp, int call_once);
+clib_error_t *
+vlib_call_init_exit_functions (struct vlib_main_t *vm,
+			       _vlib_init_function_list_elt_t **headp,
+			       int call_once, int is_global);
+clib_error_t *
+vlib_call_init_exit_functions_no_sort (struct vlib_main_t *vm,
+				       _vlib_init_function_list_elt_t **headp,
+				       int call_once, int is_global);
 clib_error_t *vlib_sort_init_exit_functions (_vlib_init_function_list_elt_t
 					     **);
 #define foreach_vlib_module_reference		\
