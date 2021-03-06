@@ -572,6 +572,7 @@ vlib_register_all_node_march_variants (vlib_main_t *vm)
 void
 vlib_register_all_static_nodes (vlib_main_t * vm)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   vlib_node_registration_t *r;
 
   static char *null_node_error_strings[] = {
@@ -590,7 +591,7 @@ vlib_register_all_static_nodes (vlib_main_t * vm)
      real node */
   register_node (vm, &null_node_reg);
 
-  r = vm->node_main.node_registrations;
+  r = vgm->node_registrations;
   while (r)
     {
       register_node (vm, r);
