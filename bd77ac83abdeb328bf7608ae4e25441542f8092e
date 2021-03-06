@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "c0d8a0b8_2c10474c",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-03-06T17:41:00Z",
+      "side": 1,
+      "message": "I was actually thinking about the rdtsc instruction at the end of the chain in clib_cpu_time_now. As for clarity, it\u0027ll end up being a personal choice as I like to have only one source of now per function. But this is just a nit, so feel free to ignore it ;-)",
+      "parentUuid": "241a4ac1_8b8c4e53",
+      "range": {
+        "startLine": 258,
+        "startChar": 1,
+        "endLine": 258,
+        "endChar": 26
+      },
+      "revId": "bd77ac83abdeb328bf7608ae4e25441542f8092e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b0e48d9e_a484b666",
         "filename": "src/vlib/unix/input.c",
         "patchSetId": 3
@@ -84,6 +108,30 @@
       "side": 1,
       "message": "This is explicitly not about the Unix epoll consumers but about shared memory consumers that are left hanging because there is no way to signal that we got something on the shared memory queue while we are in the epoll sleep. When I am using Unix socket for api the issue is not present because it returns immediately when there is something to be received in that socket.\n\nSo it’s really all about having received *shared memory* events while sleeping awaiting for the events in the *unix* socket.\n\nSo the heuristic is “if we got shared memory events during the last sleep, be a bit more conservative with going to sleep for long (10ms) periods in case there is more events to come, such that we can service them in a more timely fashion”\n\nMakes sense ?",
       "parentUuid": "b0e48d9e_a484b666",
+      "range": {
+        "startLine": 259,
+        "startChar": 16,
+        "endLine": 259,
+        "endChar": 45
+      },
+      "revId": "bd77ac83abdeb328bf7608ae4e25441542f8092e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e1e33da7_ce24a667",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-03-06T17:41:00Z",
+      "side": 1,
+      "message": "Yes it does, somehow I thought this is a case of us not draining the socket buffer on an EPOLLIN. \n\nBut then, isn\u0027t this a case of the logic being confused because vm-\u003eapi_queue_nonempty is ignored here [1]? \n\n[1] https://gerrit.fd.io/r/c/vpp/+/31368/3/src/vlib/unix/input.c#212",
+      "parentUuid": "e83b209f_fceb0046",
       "range": {
         "startLine": 259,
         "startChar": 16,
