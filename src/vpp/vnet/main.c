@@ -106,7 +106,6 @@ int
 main (int argc, char *argv[])
 {
   int i;
-  vlib_main_t *vm = &vlib_global_main;
   void vl_msg_api_set_first_available_msg_id (u16);
   uword main_heap_size = (1ULL << 30);
   u8 *sizep;
@@ -332,9 +331,8 @@ defaulted:
 
       /* and use the main heap as that numa's numa heap */
       clib_mem_set_per_numa_heap (main_heap);
-
-      vm->init_functions_called = hash_create (0, /* value bytes */ 0);
-      vpe_main_init (vm);
+      vlib_main_init ();
+      vpe_main_init (vlib_get_first_main ());
       return vlib_unix_main (argc, argv);
     }
   else

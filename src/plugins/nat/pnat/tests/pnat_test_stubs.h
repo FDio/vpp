@@ -55,17 +55,6 @@ int vnet_feature_enable_disable(const char *arc_name, const char *node_name,
 }
 vnet_main_t *vnet_get_main(void) { return 0; }
 
-static struct {
-    vec_header_t h;
-    vlib_main_t *vm;
-} __attribute__((packed)) __bootstrap_vlib_main_vector
-    __attribute__((aligned(CLIB_CACHE_LINE_BYTES))) = {
-        .h.len = 1,
-        .vm = &vlib_global_main,
-};
-
-vlib_main_t **vlib_mains = &__bootstrap_vlib_main_vector.vm;
-
 /* Compute TCP/UDP/ICMP4 checksum in software. */
 u16 ip4_tcp_udp_compute_checksum(vlib_main_t *vm, vlib_buffer_t *p0,
                                  ip4_header_t *ip0) {
