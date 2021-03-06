@@ -97,6 +97,30 @@
     },
     {
       "key": {
+        "uuid": "2e62a429_e65050ce",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-03-06T23:14:56Z",
+      "side": 1,
+      "message": "Hm, if we call vlib_time_now more often we gain api speed? That\u0027s a bit counter intuitive.",
+      "parentUuid": "473ef4da_fdd9169b",
+      "range": {
+        "startLine": 258,
+        "startChar": 1,
+        "endLine": 258,
+        "endChar": 26
+      },
+      "revId": "bd77ac83abdeb328bf7608ae4e25441542f8092e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b0e48d9e_a484b666",
         "filename": "src/vlib/unix/input.c",
         "patchSetId": 3
@@ -180,6 +204,30 @@
       "side": 1,
       "message": "I outright felt that attempting to muck with that logic would be \"here be dragons\" situation :)\nbut I think still the api_queue may have been processed already... because in my tests I am strictly waiting for the reply after each request - so there is never more than 1 outstanding message in the queue...",
       "parentUuid": "e1e33da7_ce24a667",
+      "range": {
+        "startLine": 259,
+        "startChar": 16,
+        "endLine": 259,
+        "endChar": 45
+      },
+      "revId": "bd77ac83abdeb328bf7608ae4e25441542f8092e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "166a9b6f_4fcc305a",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-03-06T23:14:56Z",
+      "side": 1,
+      "message": "As far as I can remember, we unset vm-\u003eapi_queue_nonempty only if the clnt_process didn\u0027t find anything in the binary api last time it tried (which could\u0027ve been this dispatch loop or some previous one). I guess this does mean that the logic here will be tempted to quickly enter sleep. To counteract that we\u0027d probably want some form of moving average ... Oh well. \n\nAs for the logic, it already feels too complex and tricky but that\u0027s probably an experiment for another time. Speaking of which, how do you test this?",
+      "parentUuid": "d37ff23a_42322e2d",
       "range": {
         "startLine": 259,
         "startChar": 16,
