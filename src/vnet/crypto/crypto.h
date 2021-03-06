@@ -583,7 +583,7 @@ vnet_crypto_async_submit_open_frame (vlib_main_t * vm,
       if (cm->dispatch_mode == VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT)
 	{
 	  for (; i < tm->n_vlib_mains; i++)
-	    vlib_node_set_interrupt_pending (vlib_mains[i],
+	    vlib_node_set_interrupt_pending (vlib_get_other_main (i),
 					     cm->crypto_node_index);
 	}
     }

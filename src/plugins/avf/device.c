@@ -183,7 +183,6 @@ retry:
 done:
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
-      /* *INDENT-OFF* */
       ELOG_TYPE_DECLARE (el) =
 	{
 	  .format = "avf[%d] aq enq: s_flags 0x%x r_flags 0x%x opcode 0x%x "
@@ -199,14 +198,13 @@ done:
 	  u16 datalen;
 	  u16 retval;
 	} *ed;
-      ed = ELOG_DATA (&vm->elog_main, el);
-      ed->dev_instance = ad->dev_instance;
-      ed->s_flags = dc.flags;
-      ed->r_flags = d->flags;
-      ed->opcode = dc.opcode;
-      ed->datalen = dc.datalen;
-      ed->retval = d->retval;
-      /* *INDENT-ON* */
+	ed = ELOG_DATA (&vlib_global_main.elog_main, el);
+	ed->dev_instance = ad->dev_instance;
+	ed->s_flags = dc.flags;
+	ed->r_flags = d->flags;
+	ed->opcode = dc.opcode;
+	ed->datalen = dc.datalen;
+	ed->retval = d->retval;
     }
 
   return err;
@@ -222,7 +220,6 @@ avf_cmd_rx_ctl_reg_write (vlib_main_t * vm, avf_device_t * ad, u32 reg,
 
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
-      /* *INDENT-OFF* */
       ELOG_TYPE_DECLARE (el) =
 	{
 	  .format = "avf[%d] rx ctl reg write: reg 0x%x val 0x%x ",
@@ -234,11 +231,10 @@ avf_cmd_rx_ctl_reg_write (vlib_main_t * vm, avf_device_t * ad, u32 reg,
 	  u32 reg;
 	  u32 val;
 	} *ed;
-      ed = ELOG_DATA (&vm->elog_main, el);
-      ed->dev_instance = ad->dev_instance;
-      ed->reg = reg;
-      ed->val = val;
-      /* *INDENT-ON* */
+	ed = ELOG_DATA (&vlib_global_main.elog_main, el);
+	ed->dev_instance = ad->dev_instance;
+	ed->reg = reg;
+	ed->val = val;
     }
   return err;
 }
@@ -500,7 +496,6 @@ done:
 
   if (ad->flags & AVF_DEVICE_F_ELOG)
     {
-      /* *INDENT-OFF* */
       ELOG_TYPE_DECLARE (el) =
 	{
 	  .format = "avf[%d] send to pf: v_opcode %s (%d) v_retval 0x%x",
@@ -519,12 +514,11 @@ done:
 	  u32 v_opcode_val;
 	  u32 v_retval;
 	} *ed;
-      ed = ELOG_DATA (&vm->elog_main, el);
-      ed->dev_instance = ad->dev_instance;
-      ed->v_opcode = op;
-      ed->v_opcode_val = op;
-      ed->v_retval = d->v_retval;
-      /* *INDENT-ON* */
+	ed = ELOG_DATA (&vlib_global_main.elog_main, el);
+	ed->dev_instance = ad->dev_instance;
+	ed->v_opcode = op;
+	ed->v_opcode_val = op;
+	ed->v_retval = d->v_retval;
     }
   return err;
 }
@@ -1137,10 +1131,10 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 		  u8 link_status;
 		  u32 link_speed;
 		} *ed;
-	      ed = ELOG_DATA (&vm->elog_main, el);
-              ed->dev_instance = ad->dev_instance;
-	      ed->link_status = link_up;
-	      ed->link_speed = mbps;
+		ed = ELOG_DATA (&vlib_global_main.elog_main, el);
+		ed->dev_instance = ad->dev_instance;
+		ed->link_status = link_up;
+		ed->link_speed = mbps;
 	    }
 	}
       else
@@ -1158,10 +1152,10 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 		  u32 event;
 		  u32 severity;
 		} *ed;
-	      ed = ELOG_DATA (&vm->elog_main, el);
-              ed->dev_instance = ad->dev_instance;
-	      ed->event = e->event;
-	      ed->severity = e->severity;
+		ed = ELOG_DATA (&vlib_global_main.elog_main, el);
+		ed->dev_instance = ad->dev_instance;
+		ed->event = e->event;
+		ed->severity = e->severity;
 	    }
 	}
     }
@@ -1355,7 +1349,7 @@ avf_irq_0_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 	u32 icr0;
       } *ed;
 
-      ed = ELOG_DATA (&vm->elog_main, el);
+      ed = ELOG_DATA (&vlib_global_main.elog_main, el);
       ed->dev_instance = ad->dev_instance;
       ed->icr0 = icr0;
     }
@@ -1391,7 +1385,7 @@ avf_irq_n_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 	u16 line;
       } *ed;
 
-      ed = ELOG_DATA (&vm->elog_main, el);
+      ed = ELOG_DATA (&vlib_global_main.elog_main, el);
       ed->dev_instance = ad->dev_instance;
       ed->line = line;
     }

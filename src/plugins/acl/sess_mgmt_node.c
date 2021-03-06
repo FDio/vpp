@@ -361,8 +361,9 @@ send_one_worker_interrupt (vlib_main_t * vm, acl_main_t * am,
   if (!pw->interrupt_is_pending)
     {
       pw->interrupt_is_pending = 1;
-      vlib_node_set_interrupt_pending (vlib_mains[thread_index],
-				       acl_fa_worker_session_cleaner_process_node.index);
+      vlib_node_set_interrupt_pending (
+	vlib_get_other_main (thread_index),
+	acl_fa_worker_session_cleaner_process_node.index);
       elog_acl_maybe_trace_X1 (am,
 			       "send_one_worker_interrupt: send interrupt to worker %u",
 			       "i4", ((u32) thread_index));
@@ -560,7 +561,7 @@ send_interrupts_to_workers (vlib_main_t * vm, acl_main_t * am)
 {
   int i;
   /* Can't use vec_len(am->per_worker_data) since the threads might not have come up yet; */
-  int n_threads = vec_len (vlib_mains);
+  int n_threads = vlib_get_n_mains ();
   for (i = 0; i < n_threads; i++)
     {
       send_one_worker_interrupt (vm, am, i);
@@ -600,7 +601,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
        *
        * Also, while we are at it, calculate the earliest we need to wake up.
        */
-      for (ti = 0; ti < vec_len (vlib_mains); ti++)
+      for (ti = 0; ti < vlib_get_n_mains (); ti++)
 	{
 	  if (ti >= vec_len (am->per_worker_data))
 	    {
@@ -746,8 +747,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
 	    /* now wait till they all complete */
 	    acl_log_info ("CLEANER mains len: %u per-worker len: %d",
-			  vec_len (vlib_mains),
-			  vec_len (am->per_worker_data));
+			  vlib_get_n_mains (), vec_len (am->per_worker_data));
 	    vec_foreach (pw0, am->per_worker_data)
 	    {
 	      CLIB_MEMORY_BARRIER ();
