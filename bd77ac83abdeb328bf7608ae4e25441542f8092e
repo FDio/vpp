@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "241a4ac1_8b8c4e53",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2021-03-06T07:23:54Z",
+      "side": 1,
+      "message": "I didn’t want to interfere with the current logic or future change thereof in https://gerrit.fd.io/r/c/vpp/+/31368/3/src/vlib/unix/input.c#168,\n\nAnd afaik it’s an inexpensive call (single value copy), which considering previously we were about to fall asleep for 10ms anyway, didn’t seem too terrible...\n\nSo it’s a bit of clarity/maintainability trade off at the expense of a few bytes copy...\n\nWhat do you think ?",
+      "parentUuid": "a7263af8_c13614b9",
+      "range": {
+        "startLine": 258,
+        "startChar": 1,
+        "endLine": 258,
+        "endChar": 26
+      },
+      "revId": "bd77ac83abdeb328bf7608ae4e25441542f8092e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b0e48d9e_a484b666",
         "filename": "src/vlib/unix/input.c",
         "patchSetId": 3
@@ -36,6 +60,30 @@
       "writtenOn": "2021-03-03T18:05:29Z",
       "side": 1,
       "message": "Instead of tracking the last time we got api work, wouldn\u0027t it be better to track last time we did any work related to this node? Meaning the issue could affect all unix epoll consumers, not only the api. \n\nFor instance, we could track last time we got epoll events in the epoll_pwait lower. If it was less than timeout_ms, don\u0027t sleep yet. This line then becomes:\n\ntimeout_ms \u003d clib_min (timeout_ms, (now - em-\u003elast_time_work_done) * 10e3)\n\nAlthough, wouldn\u0027t it be better to not sleep if now - em-\u003elast_time_work_done \u003c 10ms?",
+      "range": {
+        "startLine": 259,
+        "startChar": 16,
+        "endLine": 259,
+        "endChar": 45
+      },
+      "revId": "bd77ac83abdeb328bf7608ae4e25441542f8092e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e83b209f_fceb0046",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2021-03-06T07:23:54Z",
+      "side": 1,
+      "message": "This is explicitly not about the Unix epoll consumers but about shared memory consumers that are left hanging because there is no way to signal that we got something on the shared memory queue while we are in the epoll sleep. When I am using Unix socket for api the issue is not present because it returns immediately when there is something to be received in that socket.\n\nSo it’s really all about having received *shared memory* events while sleeping awaiting for the events in the *unix* socket.\n\nSo the heuristic is “if we got shared memory events during the last sleep, be a bit more conservative with going to sleep for long (10ms) periods in case there is more events to come, such that we can service them in a more timely fashion”\n\nMakes sense ?",
+      "parentUuid": "b0e48d9e_a484b666",
       "range": {
         "startLine": 259,
         "startChar": 16,
