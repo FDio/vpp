@@ -167,25 +167,25 @@ typedef struct _vlib_node_registration
 } vlib_node_registration_t;
 
 #ifndef CLIB_MARCH_VARIANT
-#define VLIB_REGISTER_NODE(x,...)                                       \
-    __VA_ARGS__ vlib_node_registration_t x;                             \
-static void __vlib_add_node_registration_##x (void)                     \
-    __attribute__((__constructor__)) ;                                  \
-static void __vlib_add_node_registration_##x (void)                     \
-{                                                                       \
-    vlib_main_t * vm = vlib_get_main();                                 \
-    x.next_registration = vm->node_main.node_registrations;             \
-    vm->node_main.node_registrations = &x;                              \
-}                                                                       \
-static void __vlib_rm_node_registration_##x (void)                      \
-    __attribute__((__destructor__)) ;                                   \
-static void __vlib_rm_node_registration_##x (void)                      \
-{                                                                       \
-    vlib_main_t * vm = vlib_get_main();                                 \
-    VLIB_REMOVE_FROM_LINKED_LIST (vm->node_main.node_registrations,     \
-                                  &x, next_registration);               \
-}                                                                       \
-__VA_ARGS__ vlib_node_registration_t x
+#define VLIB_REGISTER_NODE(x, ...)                                            \
+  __VA_ARGS__ vlib_node_registration_t x;                                     \
+  static void __vlib_add_node_registration_##x (void)                         \
+    __attribute__ ((__constructor__));                                        \
+  static void __vlib_add_node_registration_##x (void)                         \
+  {                                                                           \
+    vlib_global_main_t *vgm = vlib_get_global_main ();                        \
+    x.next_registration = vgm->node_registrations;                            \
+    vgm->node_registrations = &x;                                             \
+  }                                                                           \
+  static void __vlib_rm_node_registration_##x (void)                          \
+    __attribute__ ((__destructor__));                                         \
+  static void __vlib_rm_node_registration_##x (void)                          \
+  {                                                                           \
+    vlib_global_main_t *vgm = vlib_get_global_main ();                        \
+    VLIB_REMOVE_FROM_LINKED_LIST (vgm->node_registrations, &x,                \
+				  next_registration);                         \
+  }                                                                           \
+  __VA_ARGS__ vlib_node_registration_t x
 #else
 #define VLIB_REGISTER_NODE(x,...)                                       \
 STATIC_ASSERT (sizeof(# __VA_ARGS__) != 7,"node " #x " must not be declared as static"); \
@@ -721,9 +721,6 @@ typedef struct
 
   /* Time of last node runtime stats clear. */
   f64 time_last_runtime_stats_clear;
-
-  /* Node registrations added by constructors */
-  vlib_node_registration_t *node_registrations;
 
   /* Node index from error code */
   u32 *node_by_error;

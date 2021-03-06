@@ -598,7 +598,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
       u8 *str = format (0, "%U", format_session, s, 3);
       if (do_elog && s->session_state != SESSION_STATE_LISTENING)
 	{
-	  elog_main_t *em = &vm->elog_main;
+	  elog_main_t *em = &vlib_global_main.elog_main;
 	  transport_connection_t *tc;
 	  f64 dt;
 

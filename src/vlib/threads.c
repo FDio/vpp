@@ -677,6 +677,7 @@ vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned cpu_id)
 static clib_error_t *
 start_workers (vlib_main_t * vm)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   int i, j;
   vlib_worker_thread_t *w;
   vlib_main_t *vm_clone;
@@ -693,7 +694,7 @@ start_workers (vlib_main_t * vm)
   /* Set up the main thread */
   vec_add2_aligned (vlib_worker_threads, w, 1, CLIB_CACHE_LINE_BYTES);
   w->elog_track.name = "main thread";
-  elog_track_register (&vm->elog_main, &w->elog_track);
+  elog_track_register (&vgm->elog_main, &w->elog_track);
 
   if (vec_len (tm->thread_prefix))
     {
@@ -701,9 +702,9 @@ start_workers (vlib_main_t * vm)
       vlib_set_thread_name ((char *) w->name);
     }
 
-  vm->elog_main.lock =
+  vgm->elog_main.lock =
     clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
-  vm->elog_main.lock[0] = 0;
+  vgm->elog_main.lock[0] = 0;
 
   clib_callback_data_init (&vm->vlib_node_runtime_perf_callbacks,
 			   &vm->worker_thread_main_loop_callback_lock);
@@ -734,7 +735,7 @@ start_workers (vlib_main_t * vm)
 
       /* Without update or refork */
       *vlib_worker_threads->node_reforks_required = 0;
-      vm->need_vlib_worker_thread_node_runtime_update = 0;
+      vgm->need_vlib_worker_thread_node_runtime_update = 0;
 
       /* init timing */
       vm->barrier_epoch = 0;
@@ -777,7 +778,7 @@ start_workers (vlib_main_t * vm)
 	      w->elog_track.name =
 		(char *) format (0, "%s %d", tr->name, k + 1);
 	      vec_add1 (w->elog_track.name, 0);
-	      elog_track_register (&vm->elog_main, &w->elog_track);
+	      elog_track_register (&vgm->elog_main, &w->elog_track);
 
 	      if (tr->no_data_structure_clone)
 		continue;
@@ -793,8 +794,6 @@ start_workers (vlib_main_t * vm)
 	      vm_clone->heap_base = w->thread_mheap;
 	      vm_clone->heap_aligned_base = (void *)
 		(((uword) w->thread_mheap) & ~(VLIB_FRAME_ALIGN - 1));
-	      vm_clone->init_functions_called =
-		hash_create (0, /* value bytes */ 0);
 	      vm_clone->pending_rpc_requests = 0;
 	      vec_validate (vm_clone->pending_rpc_requests, 0);
 	      _vec_len (vm_clone->pending_rpc_requests) = 0;
@@ -951,7 +950,7 @@ start_workers (vlib_main_t * vm)
 		(char *) format (0, "%s %d", tr->name, j + 1);
 	      w->registration = tr;
 	      vec_add1 (w->elog_track.name, 0);
-	      elog_track_register (&vm->elog_main, &w->elog_track);
+	      elog_track_register (&vgm->elog_main, &w->elog_track);
 	    }
 	}
     }
@@ -1567,6 +1566,7 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
 void
 vlib_worker_thread_barrier_release (vlib_main_t * vm)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   f64 deadline;
   f64 now;
   f64 minimum_open;
@@ -1591,7 +1591,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
     }
 
   /* Update (all) node runtimes before releasing the barrier, if needed */
-  if (vm->need_vlib_worker_thread_node_runtime_update)
+  if (vgm->need_vlib_worker_thread_node_runtime_update)
     {
       /*
        * Lock stat segment here, so we's safe when
@@ -1602,7 +1602,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 
       /* Do stats elements on main thread */
       worker_thread_node_runtime_update_internal ();
-      vm->need_vlib_worker_thread_node_runtime_update = 0;
+      vgm->need_vlib_worker_thread_node_runtime_update = 0;
 
       /* Do per thread rebuilds in parallel */
       refork_needed = 1;
@@ -1850,6 +1850,7 @@ vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm)
 void
 vlib_worker_thread_fn (void *arg)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   vlib_worker_thread_t *w = (vlib_worker_thread_t *) arg;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_main_t *vm = vlib_get_main ();
@@ -1863,8 +1864,11 @@ vlib_worker_thread_fn (void *arg)
   clib_time_init (&vm->clib_time);
   clib_mem_set_heap (w->thread_mheap);
 
-  e = vlib_call_init_exit_functions_no_sort
-    (vm, &vm->worker_init_function_registrations, 1 /* call_once */ );
+  vm->worker_init_functions_called = hash_create (0, 0);
+
+  e = vlib_call_init_exit_functions_no_sort (
+    vm, &vgm->worker_init_function_registrations, 1 /* call_once */,
+    0 /* is_global */);
   if (e)
     clib_error_report (e);
 

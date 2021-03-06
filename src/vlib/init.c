@@ -330,10 +330,11 @@ again:
  */
 
 static inline clib_error_t *
-call_init_exit_functions_internal (vlib_main_t * vm,
-				   _vlib_init_function_list_elt_t ** headp,
-				   int call_once, int do_sort)
+call_init_exit_functions_internal (vlib_main_t *vm,
+				   _vlib_init_function_list_elt_t **headp,
+				   int call_once, int do_sort, int is_global)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   clib_error_t *error = 0;
   _vlib_init_function_list_elt_t *i;
 
@@ -343,10 +344,22 @@ call_init_exit_functions_internal (vlib_main_t * vm,
   i = *headp;
   while (i)
     {
-      if (call_once && !hash_get (vm->init_functions_called, i->f))
+      uword *h;
+
+      if (is_global)
+	h = hash_get (vgm->init_functions_called, i->f);
+      else
+	h = hash_get (vm->worker_init_functions_called, i->f);
+
+      if (call_once && !h)
 	{
 	  if (call_once)
-	    hash_set1 (vm->init_functions_called, i->f);
+	    {
+	      if (is_global)
+		hash_set1 (vgm->init_functions_called, i->f);
+	      else
+		hash_set1 (vm->worker_init_functions_called, i->f);
+	    }
 	  error = i->f (vm);
 	  if (error)
 	    return error;
@@ -357,54 +370,60 @@ call_init_exit_functions_internal (vlib_main_t * vm,
 }
 
 clib_error_t *
-vlib_call_init_exit_functions (vlib_main_t * vm,
-			       _vlib_init_function_list_elt_t ** headp,
-			       int call_once)
+vlib_call_init_exit_functions (vlib_main_t *vm,
+			       _vlib_init_function_list_elt_t **headp,
+			       int call_once, int is_global)
 {
   return call_init_exit_functions_internal (vm, headp, call_once,
-					    1 /* do_sort */ );
+					    1 /* do_sort */, is_global);
 }
 
 clib_error_t *
-vlib_call_init_exit_functions_no_sort (vlib_main_t * vm,
-				       _vlib_init_function_list_elt_t **
-				       headp, int call_once)
+vlib_call_init_exit_functions_no_sort (vlib_main_t *vm,
+				       _vlib_init_function_list_elt_t **headp,
+				       int call_once, int is_global)
 {
   return call_init_exit_functions_internal (vm, headp, call_once,
-					    0 /* do_sort */ );
+					    0 /* do_sort */, is_global);
 }
 
 clib_error_t *
 vlib_call_all_init_functions (vlib_main_t * vm)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   /* Call placeholder functions to make sure purely static modules are
      linked in. */
 #define _(f) vlib_##f##_reference ();
   foreach_vlib_module_reference;
 #undef _
 
-  return vlib_call_init_exit_functions
-    (vm, &vm->init_function_registrations, 1 /* call_once */ );
+  return vlib_call_init_exit_functions (vm, &vgm->init_function_registrations,
+					1 /* call_once */, 1 /* is_global */);
 }
 
 clib_error_t *
 vlib_call_all_main_loop_enter_functions (vlib_main_t * vm)
 {
-  return vlib_call_init_exit_functions
-    (vm, &vm->main_loop_enter_function_registrations, 1 /* call_once */ );
+  vlib_global_main_t *vgm = vlib_get_global_main ();
+  return vlib_call_init_exit_functions (
+    vm, &vgm->main_loop_enter_function_registrations, 1 /* call_once */,
+    1 /* is_global */);
 }
 
 clib_error_t *
 vlib_call_all_main_loop_exit_functions (vlib_main_t * vm)
 {
-  return vlib_call_init_exit_functions
-    (vm, &vm->main_loop_exit_function_registrations, 1 /* call_once */ );
+  vlib_global_main_t *vgm = vlib_get_global_main ();
+  return vlib_call_init_exit_functions (
+    vm, &vgm->main_loop_exit_function_registrations, 1 /* call_once */,
+    1 /* is_global */);
 }
 
 clib_error_t *
 vlib_call_all_config_functions (vlib_main_t * vm,
 				unformat_input_t * input, int is_early)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   clib_error_t *error = 0;
   vlib_config_function_runtime_t *c, **all;
   uword *hash = 0, *p;
@@ -413,7 +432,7 @@ vlib_call_all_config_functions (vlib_main_t * vm,
   hash = hash_create_string (0, sizeof (uword));
   all = 0;
 
-  c = vm->config_function_registrations;
+  c = vgm->config_function_registrations;
 
   while (c)
     {
@@ -450,9 +469,9 @@ vlib_call_all_config_functions (vlib_main_t * vm,
 	continue;
 
       /* Already called? */
-      if (hash_get (vm->init_functions_called, c->function))
+      if (hash_get (vgm->init_functions_called, c->function))
 	continue;
-      hash_set1 (vm->init_functions_called, c->function);
+      hash_set1 (vgm->init_functions_called, c->function);
 
       error = c->function (vm, &c->input);
       if (error)
@@ -473,11 +492,11 @@ done:
 void
 vlib_init_dump (void)
 {
-  vlib_main_t *vm = vlib_get_main ();
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   int i = 0;
 
   _vlib_init_function_list_elt_t *head, *this;
-  head = vm->init_function_registrations;
+  head = vgm->init_function_registrations;
 
   this = head;
   while (this)
@@ -492,6 +511,7 @@ show_init_function_command_fn (vlib_main_t * vm,
 			       unformat_input_t * input,
 			       vlib_cli_command_t * cmd)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   int which = 1;
   int verbose = 0;
   int i, n_init_fns;
@@ -524,13 +544,13 @@ show_init_function_command_fn (vlib_main_t * vm,
   switch (which)
     {
     case 1:
-      head = vm->init_function_registrations;
+      head = vgm->init_function_registrations;
       break;
     case 2:
-      head = vm->main_loop_enter_function_registrations;
+      head = vgm->main_loop_enter_function_registrations;
       break;
     case 3:
-      head = vm->main_loop_exit_function_registrations;
+      head = vgm->main_loop_exit_function_registrations;
       break;
     default:
       return clib_error_return (0, "BUG");

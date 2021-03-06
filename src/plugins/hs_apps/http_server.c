@@ -209,7 +209,7 @@ static void
 http_process_free (http_server_args * args)
 {
   vlib_node_runtime_t *rt;
-  vlib_main_t *vm = &vlib_global_main;
+  vlib_main_t *vm = vlib_mains[0];
   http_server_main_t *hsm = &http_server_main;
   vlib_node_t *n;
   u32 node_index;

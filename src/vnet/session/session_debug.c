@@ -120,7 +120,7 @@ session_debug_init (void)
 void
 dump_thread_0_event_queue (void)
 {
-  vlib_main_t *vm = &vlib_global_main;
+  vlib_main_t *vm = vlib_mains[0];
   u32 my_thread_index = vm->thread_index;
   session_event_t _e, *e = &_e;
   svm_msg_q_shared_queue_t *sq;

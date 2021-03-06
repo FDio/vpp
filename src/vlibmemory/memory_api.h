@@ -67,17 +67,22 @@ vl_msg_api_handle_is_valid (u32 handle, u32 restarts)
   return ((restarts & VL_API_EPOCH_MASK) == epoch);
 }
 
-#define VL_MEM_API_LOG_Q_LEN(fmt,qlen)			\
-if (TRACE_VLIB_MEMORY_QUEUE)				\
-  do {							\
-      ELOG_TYPE_DECLARE (e) = {				\
-        .format = fmt,					\
-        .format_args = "i4",				\
-      };							\
-      struct { u32 len; } *ed;				\
-      ed = ELOG_DATA (&vm->elog_main, e);		\
-      ed->len = qlen;					\
-  } while (0)
+#define VL_MEM_API_LOG_Q_LEN(fmt, qlen)                                       \
+  if (TRACE_VLIB_MEMORY_QUEUE)                                                \
+    do                                                                        \
+      {                                                                       \
+	ELOG_TYPE_DECLARE (e) = {                                             \
+	  .format = fmt,                                                      \
+	  .format_args = "i4",                                                \
+	};                                                                    \
+	struct                                                                \
+	{                                                                     \
+	  u32 len;                                                            \
+	} * ed;                                                               \
+	ed = ELOG_DATA (&vlib_global_main.elog_main, e);                      \
+	ed->len = qlen;                                                       \
+      }                                                                       \
+  while (0)
 
 #endif /* SRC_VLIBMEMORY_MEMORY_API_H_ */
 

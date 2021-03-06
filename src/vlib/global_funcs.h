@@ -28,6 +28,12 @@ vlib_get_main (void)
   return vm;
 }
 
+always_inline vlib_global_main_t *
+vlib_get_global_main (void)
+{
+  return &vlib_global_main;
+}
+
 always_inline vlib_thread_main_t *
 vlib_get_thread_main ()
 {

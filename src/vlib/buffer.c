@@ -309,28 +309,7 @@ done:
   return result;
 }
 
-/*
- * Hand-craft a static vector w/ length 1, so vec_len(vlib_mains) =1
- * and vlib_mains[0] = &vlib_global_main from the beginning of time.
- *
- * The only place which should ever expand vlib_mains is start_workers()
- * in threads.c. It knows about the bootstrap vector.
- */
-/* *INDENT-OFF* */
-static struct
-{
-  vec_header_t h;
-  vlib_main_t *vm;
-} __attribute__ ((packed)) __bootstrap_vlib_main_vector
-  __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES))) =
-{
-  .h.len = 1,
-  .vm = &vlib_global_main,
-};
-/* *INDENT-ON* */
-
-vlib_main_t **vlib_mains = &__bootstrap_vlib_main_vector.vm;
-
+vlib_main_t **vlib_mains = 0;
 
 /* When debugging validate that given buffers are either known allocated
    or known free. */

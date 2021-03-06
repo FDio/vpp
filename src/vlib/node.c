@@ -68,7 +68,8 @@ node_set_elog_name (vlib_main_t * vm, uword node_index)
   vec_free (t->format);
   t->format = (char *) format (0, "%v-return: %%d%c", n->name, 0);
 
-  n->name_elog_string = elog_string (&vm->elog_main, "%v%c", n->name, 0);
+  n->name_elog_string =
+    elog_string (&vlib_global_main.elog_main, "%v%c", n->name, 0);
 }
 
 void
@@ -509,6 +510,7 @@ null_node_fn (vlib_main_t * vm,
 void
 vlib_register_all_static_nodes (vlib_main_t * vm)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   vlib_node_registration_t *r;
 
   static char *null_node_error_strings[] = {
@@ -527,7 +529,7 @@ vlib_register_all_static_nodes (vlib_main_t * vm)
      real node */
   register_node (vm, &null_node_reg);
 
-  r = vm->node_main.node_registrations;
+  r = vgm->node_registrations;
   while (r)
     {
       register_node (vm, r);

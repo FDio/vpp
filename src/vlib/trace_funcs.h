@@ -164,9 +164,9 @@ vlib_trace_buffer (vlib_main_t * vm,
   if (PREDICT_FALSE (vlib_global_main.trace_filter.trace_filter_enable))
     {
       /* See if we're supposed to trace this packet... */
-      if (vnet_is_packet_traced
-	  (b, vlib_global_main.trace_filter.classify_table_index,
-	   0 /* full classify */ ) != 1)
+      if (vnet_is_packet_traced (
+	    b, vlib_global_main.trace_filter.classify_table_index,
+	    0 /* full classify */) != 1)
 	return 0;
     }
 

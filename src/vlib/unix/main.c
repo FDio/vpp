@@ -384,6 +384,7 @@ VLIB_REGISTER_NODE (startup_config_node,static) = {
 static clib_error_t *
 unix_config (vlib_main_t * vm, unformat_input_t * input)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   unix_main_t *um = &unix_main;
   clib_error_t *error = 0;
   gid_t gid;
@@ -537,7 +538,7 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 
   if (!(um->flags & (UNIX_FLAG_INTERACTIVE | UNIX_FLAG_NOSYSLOG)))
     {
-      openlog (vm->name, LOG_CONS | LOG_PERROR | LOG_PID, LOG_DAEMON);
+      openlog (vgm->name, LOG_CONS | LOG_PERROR | LOG_PID, LOG_DAEMON);
       clib_error_register_handler (unix_error_handler, um);
 
       if (!(um->flags & UNIX_FLAG_NODAEMON) && daemon ( /* chdir to / */ 0,
@@ -692,13 +693,16 @@ vlib_thread_stack_init (uword thread_index)
 int
 vlib_unix_main (int argc, char *argv[])
 {
-  vlib_main_t *vm = &vlib_global_main;	/* one and only time for this! */
+  vlib_global_main_t *vgm = vlib_get_global_main ();
+  vlib_main_t *vm = vlib_mains[0]; /* one and only time for this! */
   unformat_input_t input;
   clib_error_t *e;
   int i;
 
+  vec_validate_aligned (vlib_mains, 0, CLIB_CACHE_LINE_BYTES);
+
   vm->argv = (u8 **) argv;
-  vm->name = argv[0];
+  vgm->name = argv[0];
   vm->heap_base = clib_mem_get_heap ();
   vm->heap_aligned_base = (void *)
     (((uword) vm->heap_base) & ~(VLIB_FRAME_ALIGN - 1));
@@ -707,9 +711,9 @@ vlib_unix_main (int argc, char *argv[])
   clib_time_init (&vm->clib_time);
 
   /* Turn on the event logger at the first possible moment */
-  vm->configured_elog_ring_size = 128 << 10;
-  elog_init (&vm->elog_main, vm->configured_elog_ring_size);
-  elog_enable_disable (&vm->elog_main, 1);
+  vgm->configured_elog_ring_size = 128 << 10;
+  elog_init (&vgm->elog_main, vgm->configured_elog_ring_size);
+  elog_enable_disable (&vgm->elog_main, 1);
 
   unformat_init_command_line (&input, (char **) vm->argv);
   if ((e = vlib_plugin_config (vm, &input)))
@@ -724,8 +728,8 @@ vlib_unix_main (int argc, char *argv[])
     return i;
 
   unformat_init_command_line (&input, (char **) vm->argv);
-  if (vm->init_functions_called == 0)
-    vm->init_functions_called = hash_create (0, /* value bytes */ 0);
+  if (vgm->init_functions_called == 0)
+    vgm->init_functions_called = hash_create (0, /* value bytes */ 0);
   e = vlib_call_all_config_functions (vm, &input, 1 /* early */ );
   if (e != 0)
     {
@@ -735,7 +739,7 @@ vlib_unix_main (int argc, char *argv[])
   unformat_free (&input);
 
   /* always load symbols, for signal handler and mheap memory get/put backtrace */
-  clib_elf_main_init (vm->name);
+  clib_elf_main_init (vgm->name);
 
   vec_validate (vlib_thread_stacks, 0);
   vlib_thread_stack_init (0);

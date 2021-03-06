@@ -125,6 +125,7 @@ vlib_update_nr_variant_default (vlib_node_registration_t *nr, u8 *variant)
 static clib_error_t *
 vlib_early_node_config (vlib_main_t * vm, unformat_input_t * input)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   clib_error_t *error = 0;
   vlib_node_registration_t *nr, **all;
   unformat_input_t sub_input;
@@ -135,7 +136,7 @@ vlib_early_node_config (vlib_main_t * vm, unformat_input_t * input)
   all = 0;
   hash = hash_create_string (0, sizeof (uword));
 
-  nr = vm->node_main.node_registrations;
+  nr = vgm->node_registrations;
   while (nr)
     {
       hash_set_mem (hash, nr->name, vec_len (all));
@@ -158,7 +159,7 @@ vlib_early_node_config (vlib_main_t * vm, unformat_input_t * input)
 					  "please specify a valid node variant");
 	      vec_add1 (variant, 0);
 
-	      nr = vm->node_main.node_registrations;
+	      nr = vgm->node_registrations;
 	      while (nr)
 		{
 		  vlib_update_nr_variant_default (nr, variant);

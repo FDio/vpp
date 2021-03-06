@@ -152,9 +152,6 @@ typedef struct vlib_main_t
   /* Error marker to use when exiting main loop. */
   clib_error_t *main_loop_error;
 
-  /* Name for e.g. syslog. */
-  char *name;
-
   /* Start of the heap. */
   void *heap_base;
 
@@ -173,14 +170,8 @@ typedef struct vlib_main_t
   /* Node graph main structure. */
   vlib_node_main_t node_main;
 
-  /* Command line interface. */
-  vlib_cli_main_t cli_main;
-
   /* Packet trace buffer. */
   vlib_trace_main_t trace_main;
-
-  /* Packet trace capture filter */
-  vlib_trace_filter_t trace_filter;
 
   /* Error handling. */
   vlib_error_main_t error_main;
@@ -194,11 +185,10 @@ typedef struct vlib_main_t
   /* Stream index to use for distribution when MC is enabled. */
   u32 mc_stream_index;
 
-  vlib_one_time_waiting_process_t *procs_waiting_for_mc_stream_join;
+  /* Hash table to record which init functions have been called. */
+  uword *worker_init_functions_called;
 
-  /* Event logger. */
-  elog_main_t elog_main;
-  u32 configured_elog_ring_size;
+  vlib_one_time_waiting_process_t *procs_waiting_for_mc_stream_join;
 
   /* Event logger trace flags */
   int elog_trace_api_messages;
@@ -219,21 +209,10 @@ typedef struct vlib_main_t
   /* Buffer of random data for various uses. */
   clib_random_buffer_t random_buffer;
 
-  /* Hash table to record which init functions have been called. */
-  uword *init_functions_called;
-
   /* thread, cpu and numa_node indices */
   u32 thread_index;
   u32 cpu_id;
   u32 numa_node;
-
-  /* List of init functions to call, setup by constructors */
-  _vlib_init_function_list_elt_t *init_function_registrations;
-  _vlib_init_function_list_elt_t *worker_init_function_registrations;
-  _vlib_init_function_list_elt_t *main_loop_enter_function_registrations;
-  _vlib_init_function_list_elt_t *main_loop_exit_function_registrations;
-  _vlib_init_function_list_elt_t *api_init_function_registrations;
-  vlib_config_function_runtime_t *config_function_registrations;
 
   /* control-plane API queue signal pending, length indication */
   volatile u32 queue_signal_pending;
@@ -250,15 +229,6 @@ typedef struct vlib_main_t
 
   /* debugging */
   volatile int parked_at_barrier;
-
-  /* post-mortem callbacks */
-  void (**post_mortem_callbacks) (void);
-
-  /*
-   * Need to call vlib_worker_thread_node_runtime_update before
-   * releasing worker thread barrier. Only valid in vlib_global_main.
-   */
-  int need_vlib_worker_thread_node_runtime_update;
 
   /* Dispatch loop time accounting */
   u64 loops_this_reporting_interval;
@@ -301,8 +271,49 @@ typedef struct vlib_main_t
 #endif
 } vlib_main_t;
 
+typedef struct vlib_global_main_t
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  /* Name for e.g. syslog. */
+  char *name;
+
+  /* post-mortem callbacks */
+  void (**post_mortem_callbacks) (void);
+
+  /*
+   * Need to call vlib_worker_thread_node_runtime_update before
+   * releasing worker thread barrier.
+   */
+  int need_vlib_worker_thread_node_runtime_update;
+
+  /* Command line interface. */
+  vlib_cli_main_t cli_main;
+
+  /* Node registrations added by constructors */
+  vlib_node_registration_t *node_registrations;
+
+  /* Event logger. */
+  elog_main_t elog_main;
+  u32 configured_elog_ring_size;
+
+  /* Packet trace capture filter */
+  vlib_trace_filter_t trace_filter;
+
+  /* List of init functions to call, setup by constructors */
+  _vlib_init_function_list_elt_t *init_function_registrations;
+  _vlib_init_function_list_elt_t *main_loop_enter_function_registrations;
+  _vlib_init_function_list_elt_t *main_loop_exit_function_registrations;
+  _vlib_init_function_list_elt_t *worker_init_function_registrations;
+  _vlib_init_function_list_elt_t *api_init_function_registrations;
+  vlib_config_function_runtime_t *config_function_registrations;
+
+  /* Hash table to record which init functions have been called. */
+  uword *init_functions_called;
+
+} vlib_global_main_t;
+
 /* Global main structure. */
-extern vlib_main_t vlib_global_main;
+extern vlib_global_main_t vlib_global_main;
 
 void vlib_worker_loop (vlib_main_t * vm);
 

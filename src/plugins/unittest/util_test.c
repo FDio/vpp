@@ -29,7 +29,7 @@ test_crash_command_fn (vlib_main_t * vm,
       .format_args = "i4",
     };
   /* *INDENT-ON* */
-  elog (&vm->elog_main, &e, 0xdefec8ed);
+  elog (&vlib_global_main.elog_main, &e, 0xdefec8ed);
 
   *p = 0xdeadbeef;
 

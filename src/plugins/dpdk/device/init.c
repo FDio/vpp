@@ -1719,7 +1719,6 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 
   if (LINK_STATE_ELOGS)
     {
-      vlib_main_t *vm = vlib_get_main ();
       ELOG_TYPE_DECLARE (e) =
       {
       .format =
@@ -1733,7 +1732,7 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	u8 old_link_state;
 	u8 new_link_state;
       } *ed;
-      ed = ELOG_DATA (&vm->elog_main, e);
+      ed = ELOG_DATA (&vlib_global_main.elog_main, e);
       ed->sw_if_index = xd->sw_if_index;
       ed->admin_up = (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) != 0;
       ed->old_link_state = (u8)
@@ -1772,8 +1771,6 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
     {
       if (LINK_STATE_ELOGS)
 	{
-	  vlib_main_t *vm = vlib_get_main ();
-
 	  ELOG_TYPE_DECLARE (e) =
 	  {
 	  .format =
@@ -1785,7 +1782,7 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	    u32 sw_if_index;
 	    u32 flags;
 	  } *ed;
-	  ed = ELOG_DATA (&vm->elog_main, e);
+	  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
 	  ed->sw_if_index = xd->sw_if_index;
 	  ed->flags = hw_flags;
 	}

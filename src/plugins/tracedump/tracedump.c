@@ -224,7 +224,7 @@ vl_api_trace_dump_t_handler (vl_api_trace_dump_t * mp)
   if (vec_len (client_trace_cache) == 0
       && (iterator_thread_id != ~0 || iterator_position != ~0))
     {
-      vlib_worker_thread_barrier_sync (&vlib_global_main);
+      vlib_worker_thread_barrier_sync (vlib_mains[0]);
 
       /* Make a slot for each worker thread */
       vec_validate (client_trace_cache, vec_len (vlib_mains) - 1);
@@ -250,7 +250,7 @@ vl_api_trace_dump_t_handler (vl_api_trace_dump_t * mp)
         i++;
       }));
       /* *INDENT-ON* */
-      vlib_worker_thread_barrier_release (&vlib_global_main);
+      vlib_worker_thread_barrier_release (vlib_mains[0]);
     }
 
   /* Save the cache, one way or the other */
@@ -268,7 +268,7 @@ vl_api_trace_dump_t_handler (vl_api_trace_dump_t * mp)
 
 	  vec_reset_length (s);
 
-	  s = format (s, "%U", format_vlib_trace, &vlib_global_main, th[0]);
+	  s = format (s, "%U", format_vlib_trace, vlib_mains[0], th[0]);
 
 	  dmp = vl_msg_api_alloc (sizeof (*dmp) + vec_len (s));
 	  dmp->_vl_msg_id =

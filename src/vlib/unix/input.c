@@ -198,9 +198,9 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  }
 	node->input_main_loops_per_call = 0;
       }
-    else if (is_main == 0 && vector_rate < 2
-	     && (vlib_global_main.time_last_barrier_release + 0.5 < now)
-	     && nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
+    else if (is_main == 0 && vector_rate < 2 &&
+	     (vlib_mains[0]->time_last_barrier_release + 0.5 < now) &&
+	     nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
       {
 	timeout = 10e-3;
 	timeout_ms = max_timeout_ms;

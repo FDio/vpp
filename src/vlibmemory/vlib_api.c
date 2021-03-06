@@ -259,6 +259,7 @@ static uword
 vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
 		     vlib_frame_t * f)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   int private_segment_rotor = 0, i, rv;
   vl_socket_args_for_process_t *a;
   vl_shmem_hdr_t *shm;
@@ -289,8 +290,8 @@ vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
   shm = am->shmem_hdr;
   q = shm->vl_input_queue;
 
-  e = vlib_call_init_exit_functions
-    (vm, &vm->api_init_function_registrations, 1 /* call_once */ );
+  e = vlib_call_init_exit_functions (vm, &vgm->api_init_function_registrations,
+				     1 /* call_once */, 1 /* is_global */);
   if (e)
     clib_error_report (e);
 
@@ -561,7 +562,7 @@ vl_api_rpc_call_reply_t_handler (vl_api_rpc_call_reply_t * mp)
 void
 vl_api_send_pending_rpc_requests (vlib_main_t * vm)
 {
-  vlib_main_t *vm_global = &vlib_global_main;
+  vlib_main_t *vm_global = vlib_mains[0];
 
   ASSERT (vm != vm_global);
 
@@ -576,7 +577,7 @@ vl_api_rpc_call_main_thread_inline (void *fp, u8 * data, u32 data_length,
 				    u8 force_rpc)
 {
   vl_api_rpc_call_t *mp;
-  vlib_main_t *vm_global = &vlib_global_main;
+  vlib_main_t *vm_global = vlib_mains[0];
   vlib_main_t *vm = vlib_get_main ();
 
   /* Main thread and not a forced RPC: call the function directly */

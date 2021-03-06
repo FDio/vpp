@@ -608,7 +608,7 @@ vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n)
   if (n->type == VLIB_NODE_TYPE_PROCESS)
     {
       /* Nothing to do for PROCESS nodes except in main thread */
-      if (vm != &vlib_global_main)
+      if (vm != vlib_mains[0])
 	return;
 
       vlib_process_t *p = vlib_get_process_from_node (vm, n);
@@ -688,7 +688,7 @@ static clib_error_t *
 vlib_cli_elog_clear (vlib_main_t * vm,
 		     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  elog_reset_buffer (&vm->elog_main);
+  elog_reset_buffer (&vlib_global_main.elog_main);
   return 0;
 }
 
@@ -705,7 +705,7 @@ static clib_error_t *
 elog_save_buffer (vlib_main_t * vm,
 		  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  elog_main_t *em = &vm->elog_main;
+  elog_main_t *em = &vlib_global_main.elog_main;
   char *file, *chroot_file;
   clib_error_t *error = 0;
 
@@ -741,10 +741,10 @@ elog_save_buffer (vlib_main_t * vm,
 void
 vlib_post_mortem_dump (void)
 {
-  vlib_main_t *vm = &vlib_global_main;
+  vlib_global_main_t *vgm = vlib_get_global_main ();
 
-  for (int i = 0; i < vec_len (vm->post_mortem_callbacks); i++)
-    (vm->post_mortem_callbacks[i]) ();
+  for (int i = 0; i < vec_len (vgm->post_mortem_callbacks); i++)
+    (vgm->post_mortem_callbacks[i]) ();
 }
 
 /* *INDENT-OFF* */
@@ -759,7 +759,7 @@ static clib_error_t *
 elog_stop (vlib_main_t * vm,
 	   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  elog_main_t *em = &vm->elog_main;
+  elog_main_t *em = &vlib_global_main.elog_main;
 
   em->n_total_events_disable_limit = em->n_total_events;
 
@@ -779,7 +779,7 @@ static clib_error_t *
 elog_restart (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  elog_main_t *em = &vm->elog_main;
+  elog_main_t *em = &vlib_global_main.elog_main;
 
   em->n_total_events_disable_limit = ~0;
 
@@ -799,11 +799,11 @@ static clib_error_t *
 elog_resize_command_fn (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  elog_main_t *em = &vm->elog_main;
+  elog_main_t *em = &vlib_global_main.elog_main;
   u32 tmp;
 
   /* Stop the parade */
-  elog_reset_buffer (&vm->elog_main);
+  elog_reset_buffer (em);
 
   if (unformat (input, "%d", &tmp))
     {
@@ -830,7 +830,7 @@ VLIB_CLI_COMMAND (elog_resize_cli, static) = {
 static void
 elog_show_buffer_internal (vlib_main_t * vm, u32 n_events_to_show)
 {
-  elog_main_t *em = &vm->elog_main;
+  elog_main_t *em = &vlib_global_main.elog_main;
   elog_event_t *e, *es;
   f64 dt;
 
@@ -895,8 +895,9 @@ vlib_elog_main_loop_event (vlib_main_t * vm,
 			   u32 node_index,
 			   u64 time, u32 n_vectors, u32 is_return)
 {
-  vlib_main_t *evm = &vlib_global_main;
-  elog_main_t *em = &evm->elog_main;
+  vlib_main_t *evm = vlib_mains[0];
+  vlib_global_main_t *vgm = vlib_get_global_main ();
+  elog_main_t *em = &vgm->elog_main;
   int enabled = evm->elog_trace_graph_dispatch |
     evm->elog_trace_graph_circuit;
 
@@ -1089,7 +1090,7 @@ dispatch_node (vlib_main_t * vm,
 	  nm->input_node_counts_by_state[VLIB_NODE_STATE_INTERRUPT] -= 1;
 	  nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] += 1;
 
-	  if (PREDICT_FALSE (vlib_global_main.elog_trace_graph_dispatch))
+	  if (PREDICT_FALSE (vlib_mains[0]->elog_trace_graph_dispatch))
 	    {
 	      vlib_worker_thread_t *w = vlib_worker_threads
 		+ vm->thread_index;
@@ -1124,7 +1125,7 @@ dispatch_node (vlib_main_t * vm,
 		+ vm->thread_index;
 	      node->flags |=
 		VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE;
-	      if (PREDICT_FALSE (vlib_global_main.elog_trace_graph_dispatch))
+	      if (PREDICT_FALSE (vlib_mains[0]->elog_trace_graph_dispatch))
 		{
 		  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
 					w->elog_track);
@@ -1792,33 +1793,33 @@ vlib_worker_loop (vlib_main_t * vm)
   vlib_main_or_worker_loop (vm, /* is_main */ 0);
 }
 
-vlib_main_t vlib_global_main;
+vlib_global_main_t vlib_global_main;
 
 void
 vlib_add_del_post_mortem_callback (void *cb, int is_add)
 {
-  vlib_main_t *vm = &vlib_global_main;
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   int i;
 
   if (is_add == 0)
     {
-      for (i = vec_len (vm->post_mortem_callbacks) - 1; i >= 0; i--)
-	if (vm->post_mortem_callbacks[i] == cb)
-	  vec_del1 (vm->post_mortem_callbacks, i);
+      for (i = vec_len (vgm->post_mortem_callbacks) - 1; i >= 0; i--)
+	if (vgm->post_mortem_callbacks[i] == cb)
+	  vec_del1 (vgm->post_mortem_callbacks, i);
       return;
     }
 
-  for (i = 0; i < vec_len (vm->post_mortem_callbacks); i++)
-    if (vm->post_mortem_callbacks[i] == cb)
+  for (i = 0; i < vec_len (vgm->post_mortem_callbacks); i++)
+    if (vgm->post_mortem_callbacks[i] == cb)
       return;
-  vec_add1 (vm->post_mortem_callbacks, cb);
+  vec_add1 (vgm->post_mortem_callbacks, cb);
 }
 
 static void
 elog_post_mortem_dump (void)
 {
-  vlib_main_t *vm = &vlib_global_main;
-  elog_main_t *em = &vm->elog_main;
+  vlib_global_main_t *vgm = vlib_get_global_main ();
+  elog_main_t *em = &vgm->elog_main;
 
   u8 *filename;
   clib_error_t *error;
@@ -1835,6 +1836,7 @@ elog_post_mortem_dump (void)
 static clib_error_t *
 vlib_main_configure (vlib_main_t * vm, unformat_input_t * input)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   int turn_on_mem_trace = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1843,9 +1845,9 @@ vlib_main_configure (vlib_main_t * vm, unformat_input_t * input)
 	turn_on_mem_trace = 1;
 
       else if (unformat (input, "elog-events %d",
-			 &vm->configured_elog_ring_size))
-	vm->configured_elog_ring_size =
-	  1 << max_log2 (vm->configured_elog_ring_size);
+			 &vgm->configured_elog_ring_size))
+	vgm->configured_elog_ring_size =
+	  1 << max_log2 (vgm->configured_elog_ring_size);
       else if (unformat (input, "elog-post-mortem-dump"))
 	vlib_add_del_post_mortem_callback (elog_post_mortem_dump,
 					   /* is_add */ 1);
@@ -1922,21 +1924,22 @@ vl_api_get_elog_trace_api_messages (void)
 int
 vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   clib_error_t *volatile error;
   vlib_node_main_t *nm = &vm->node_main;
 
   vm->queue_signal_callback = placeholder_queue_signal_callback;
 
   /* Reconfigure event log which is enabled very early */
-  if (vm->configured_elog_ring_size &&
-      vm->configured_elog_ring_size != vm->elog_main.event_ring_size)
-    elog_resize (&vm->elog_main, vm->configured_elog_ring_size);
-  vl_api_set_elog_main (&vm->elog_main);
+  if (vgm->configured_elog_ring_size &&
+      vgm->configured_elog_ring_size != vgm->elog_main.event_ring_size)
+    elog_resize (&vgm->elog_main, vgm->configured_elog_ring_size);
+  vl_api_set_elog_main (&vgm->elog_main);
   (void) vl_api_set_elog_trace_api_messages (1);
 
   /* Default name. */
-  if (!vm->name)
-    vm->name = "VLIB";
+  if (!vgm->name)
+    vgm->name = "VLIB";
 
   if ((error = vlib_physmem_init (vm)))
     {
@@ -2001,8 +2004,8 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
     }
 
   /* See unix/main.c; most likely already set up */
-  if (vm->init_functions_called == 0)
-    vm->init_functions_called = hash_create (0, /* value bytes */ 0);
+  if (vgm->init_functions_called == 0)
+    vgm->init_functions_called = hash_create (0, /* value bytes */ 0);
   if ((error = vlib_call_all_init_functions (vm)))
     goto done;
 
@@ -2044,7 +2047,7 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
   vm->damping_constant = exp (-1.0 / 20.0);
 
   /* Sort per-thread init functions before we start threads */
-  vlib_sort_init_exit_functions (&vm->worker_init_function_registrations);
+  vlib_sort_init_exit_functions (&vgm->worker_init_function_registrations);
 
   /* Call all main loop enter functions. */
   {

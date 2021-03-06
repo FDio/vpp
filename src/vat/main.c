@@ -44,22 +44,8 @@ connect_to_vpe (char *name)
 
 /* *INDENT-OFF* */
 
-
-vlib_main_t vlib_global_main;
-
-static struct
-{
-  vec_header_t h;
-  vlib_main_t *vm;
-} __attribute__ ((packed)) __bootstrap_vlib_main_vector
-__attribute__ ((aligned (CLIB_CACHE_LINE_BYTES))) =
-{
-  .h.len = 1,
-  .vm = &vlib_global_main,
-};
-/* *INDENT-ON* */
-
-vlib_main_t **vlib_mains = &__bootstrap_vlib_main_vector.vm;
+vlib_global_main_t vlib_global_main;
+vlib_main_t **vlib_mains;
 
 void
 vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...)
@@ -355,12 +341,15 @@ load_features (void)
 }
 
 static inline clib_error_t *
-call_init_exit_functions_internal (vlib_main_t * vm,
-				   _vlib_init_function_list_elt_t ** headp,
-				   int call_once, int do_sort)
+call_init_exit_functions_internal (vlib_main_t *vm,
+				   _vlib_init_function_list_elt_t **headp,
+				   int call_once, int do_sort, int is_global)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   clib_error_t *error = 0;
   _vlib_init_function_list_elt_t *i;
+
+  ASSERT (is_global == 1);
 
 #if 0
   /* Not worth copying the topological sort code */
@@ -371,10 +360,10 @@ call_init_exit_functions_internal (vlib_main_t * vm,
   i = *headp;
   while (i)
     {
-      if (call_once && !hash_get (vm->init_functions_called, i->f))
+      if (call_once && !hash_get (vgm->init_functions_called, i->f))
 	{
 	  if (call_once)
-	    hash_set1 (vm->init_functions_called, i->f);
+	    hash_set1 (vgm->init_functions_called, i->f);
 	  error = i->f (vm);
 	  if (error)
 	    return error;
@@ -385,17 +374,18 @@ call_init_exit_functions_internal (vlib_main_t * vm,
 }
 
 clib_error_t *
-vlib_call_init_exit_functions (vlib_main_t * vm,
-			       _vlib_init_function_list_elt_t ** headp,
-			       int call_once)
+vlib_call_init_exit_functions (vlib_main_t *vm,
+			       _vlib_init_function_list_elt_t **headp,
+			       int call_once, int is_global)
 {
   return call_init_exit_functions_internal (vm, headp, call_once,
-					    1 /* do_sort */ );
+					    1 /* do_sort */, is_global);
 }
 
 int
 main (int argc, char **argv)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   vat_main_t *vam = &vat_main;
   unformat_input_t _argv, *a = &_argv;
   u8 **input_files = 0;
@@ -407,7 +397,7 @@ main (int argc, char **argv)
   int i;
   f64 timeout;
   clib_error_t *error;
-  vlib_main_t *vm = &vlib_global_main;
+  vlib_main_t *vm = vlib_mains[0];
 
   clib_mem_init_thread_safe (0, 128 << 20);
 
@@ -505,17 +495,18 @@ main (int argc, char **argv)
   vat_plugin_init (vam);
 
   /* Set up the init function hash table */
-  vm->init_functions_called = hash_create (0, 0);
+  vgm->init_functions_called = hash_create (0, 0);
 
   /* Execute plugin init and api_init functions */
-  error = vlib_call_init_exit_functions
-    (vm, &vm->init_function_registrations, 1 /* call once */ );
+  error = vlib_call_init_exit_functions (vm, &vgm->init_function_registrations,
+					 1 /* call once */, 1 /* is_global*/);
 
   if (error)
     clib_error_report (error);
 
-  error = vlib_call_init_exit_functions
-    (vm, &vm->api_init_function_registrations, 1 /* call_once */ );
+  error =
+    vlib_call_init_exit_functions (vm, &vgm->api_init_function_registrations,
+				   1 /* call_once */, 1 /* is_global */);
 
   if (error)
     clib_error_report (error);

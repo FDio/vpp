@@ -56,7 +56,6 @@ bool rx_thread_done;
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_endianfun
 
-vlib_main_t vlib_global_main;
 vlib_main_t **vlib_mains;
 
 typedef struct {
