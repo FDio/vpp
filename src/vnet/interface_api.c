@@ -409,6 +409,12 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
     if (filter && !strcasestr((char *) name, (char *) filter))
 	continue;
 
+    rp = vl_api_client_index_to_registration (mp->client_index);
+    if (rp == 0)
+      {
+	clib_warning ("Client %d AWOL", mp->client_index);
+	break;
+      }
     send_sw_interface_details (am, rp, swif, name, mp->context);
   }
   /* *INDENT-ON* */
