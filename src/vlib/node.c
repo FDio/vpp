@@ -68,7 +68,8 @@ node_set_elog_name (vlib_main_t * vm, uword node_index)
   vec_free (t->format);
   t->format = (char *) format (0, "%v-return: %%d%c", n->name, 0);
 
-  n->name_elog_string = elog_string (&vm->elog_main, "%v%c", n->name, 0);
+  n->name_elog_string =
+    elog_string (&vlib_global_main.elog_main, "%v%c", n->name, 0);
 }
 
 void
@@ -571,6 +572,7 @@ vlib_register_all_node_march_variants (vlib_main_t *vm)
 void
 vlib_register_all_static_nodes (vlib_main_t * vm)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   vlib_node_registration_t *r;
 
   static char *null_node_error_strings[] = {
@@ -589,7 +591,7 @@ vlib_register_all_static_nodes (vlib_main_t * vm)
      real node */
   register_node (vm, &null_node_reg);
 
-  r = vm->node_main.node_registrations;
+  r = vgm->node_registrations;
   while (r)
     {
       register_node (vm, r);
@@ -613,9 +615,9 @@ vlib_node_get_nodes (vlib_main_t * vm, u32 max_threads, int include_stats,
 
   if (vec_len (stat_vms) == 0)
     {
-      for (i = 0; i < vec_len (vlib_mains); i++)
+      for (i = 0; i < vlib_get_n_mains (); i++)
 	{
-	  stat_vm = vlib_mains[i];
+	  stat_vm = vlib_get_other_main (i);
 	  if (stat_vm)
 	    vec_add1 (stat_vms, stat_vm);
 	}
@@ -837,10 +839,10 @@ vlib_node_set_march_variant (vlib_main_t *vm, u32 node_index,
 	{
 	  n->function = fnr->function;
 
-	  for (int i = 0; i < vec_len (vlib_mains); i++)
+	  for (int i = 0; i < vlib_get_n_mains (); i++)
 	    {
 	      vlib_node_runtime_t *nrt;
-	      nrt = vlib_node_get_runtime (vlib_mains[i], n->index);
+	      nrt = vlib_node_get_runtime (vlib_get_other_main (i), n->index);
 	      nrt->function = fnr->function;
 	    }
 	  return 0;

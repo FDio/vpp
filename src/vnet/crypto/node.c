@@ -138,8 +138,8 @@ crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (cm->dispatch_mode == VNET_CRYPTO_ASYNC_DISPATCH_INTERRUPT
 	  && n_elts > 0)
 	{
-	  vlib_node_set_interrupt_pending (vlib_mains[enqueue_thread_idx],
-					   cm->crypto_node_index);
+	  vlib_node_set_interrupt_pending (
+	    vlib_get_other_main (enqueue_thread_idx), cm->crypto_node_index);
 	}
 
       n_elts = 0;
