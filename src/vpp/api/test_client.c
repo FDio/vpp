@@ -86,7 +86,6 @@ test_main_t test_main;
 /*
  * Satisfy external references when -lvlib is not available.
  */
-vlib_main_t vlib_global_main;
 vlib_main_t **vlib_mains;
 
 void

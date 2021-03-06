@@ -545,7 +545,7 @@ vlib_buffer_enqueue_to_thread (vlib_main_t * vm, u32 frame_queue_index,
 	{
 	  hf->n_vectors = VLIB_FRAME_SIZE;
 	  vlib_put_frame_queue_elt (hf);
-	  vlib_mains[current_thread_index]->check_frame_queues = 1;
+	  vlib_get_other_main (current_thread_index)->check_frame_queues = 1;
 	  current_thread_index = ~0;
 	  ptd->handoff_queue_elt_by_thread_index[next_thread_index] = 0;
 	  hf = 0;
@@ -574,7 +574,7 @@ vlib_buffer_enqueue_to_thread (vlib_main_t * vm, u32 frame_queue_index,
 	  if (1 || hf->n_vectors == hf->last_n_vectors)
 	    {
 	      vlib_put_frame_queue_elt (hf);
-	      vlib_mains[i]->check_frame_queues = 1;
+	      vlib_get_other_main (i)->check_frame_queues = 1;
 	      ptd->handoff_queue_elt_by_thread_index[i] = 0;
 	    }
 	  else

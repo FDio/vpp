@@ -42,7 +42,6 @@
 #undef vl_typedefs
 
 /* we are not linking with vlib */
-vlib_main_t vlib_global_main;
 vlib_main_t **vlib_mains;
 
 volatile int sigterm_received = 0;

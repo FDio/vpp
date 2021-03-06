@@ -45,9 +45,10 @@
 always_inline void
 vlib_error_elog_count (vlib_main_t * vm, uword counter, uword increment)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   if (VLIB_ELOG_MAIN_LOOP > 0 && increment > 0)
     {
-      elog_main_t *em = &vm->elog_main;
+      elog_main_t *em = &vgm->elog_main;
       elog (em, vec_elt_at_index (vm->error_elog_event_types, counter),
 	    increment);
     }
