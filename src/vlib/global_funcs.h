@@ -19,13 +19,37 @@
 #ifndef included_vlib_global_funcs_h_
 #define included_vlib_global_funcs_h_
 
+always_inline u32
+vlib_get_n_mains ()
+{
+  return vec_len (vlib_global_main.vlib_mains);
+}
+
+always_inline vlib_main_t *
+vlib_get_other_main (u32 thread_index)
+{
+  vlib_main_t *vm;
+  vm = vlib_global_main.vlib_mains[thread_index];
+  ASSERT (vm);
+  return vm;
+}
+
 always_inline vlib_main_t *
 vlib_get_main (void)
 {
-  vlib_main_t *vm;
-  vm = vlib_mains[vlib_get_thread_index ()];
-  ASSERT (vm);
-  return vm;
+  return vlib_get_other_main (vlib_get_thread_index ());
+}
+
+always_inline vlib_main_t *
+vlib_get_first_main (void)
+{
+  return vlib_get_other_main (0);
+}
+
+always_inline vlib_global_main_t *
+vlib_get_global_main (void)
+{
+  return &vlib_global_main;
 }
 
 always_inline vlib_thread_main_t *

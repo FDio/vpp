@@ -63,7 +63,7 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
   vnet_hw_if_rx_queue_t *rxq;
   vnet_hw_if_rxq_poll_vector_t *pv, **d = 0;
   vlib_node_state_t *per_thread_node_state = 0;
-  u32 n_threads = vec_len (vlib_mains);
+  u32 n_threads = vlib_get_n_mains ();
   u16 *per_thread_node_adaptive = 0;
   int something_changed = 0;
   clib_bitmap_t *pending_int = 0;
@@ -133,10 +133,11 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
    * unnecesary barrier */
   for (int i = 0; i < n_threads; i++)
     {
+      vlib_main_t *ovm = vlib_get_other_main (i);
       vlib_node_state_t old_state;
       vec_sort_with_function (d[i], poll_data_sort);
 
-      old_state = vlib_node_get_state (vlib_mains[i], node_index);
+      old_state = vlib_node_get_state (ovm, node_index);
       if (per_thread_node_state[i] != old_state)
 	{
 	  something_changed = 1;
@@ -150,7 +151,7 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
       if (something_changed == 0)
 	{
 	  vnet_hw_if_rx_node_runtime_t *rt;
-	  rt = vlib_node_get_runtime_data (vlib_mains[i], node_index);
+	  rt = vlib_node_get_runtime_data (ovm, node_index);
 	  if (vec_len (rt->rxq_poll_vector) != vec_len (d[i]))
 	    something_changed = 1;
 	  else if (memcmp (d[i], rt->rxq_poll_vector,
@@ -178,7 +179,7 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 
       for (int i = 0; i < n_threads; i++)
 	{
-	  vlib_main_t *vm = vlib_mains[i];
+	  vlib_main_t *vm = vlib_get_other_main (i);
 	  vnet_hw_if_rx_node_runtime_t *rt;
 	  rt = vlib_node_get_runtime_data (vm, node_index);
 	  pv = rt->rxq_poll_vector;

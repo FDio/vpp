@@ -418,7 +418,7 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 		    {
 		      trace_bitmap |= 0x80000000;
 		    }
-		  ASSERT (f_sess_id.thread_index < vec_len (vlib_mains));
+		  ASSERT (f_sess_id.thread_index < vlib_get_n_mains ());
 		  b[0]->error = no_error_existing_session;
 		  acl_check_needed = 0;
 		  pkts_exist_session += 1;

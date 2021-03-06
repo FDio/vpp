@@ -215,7 +215,7 @@ nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size,
   i = (!nsm->poll_main_thread && num_workers) ? 1 : 0;
   for (; i < num_workers + 1; i++)
     {
-      vlib_main_t *this_vm = vlib_mains[i];
+      vlib_main_t *this_vm = vlib_get_other_main (i);
 
       vlib_node_set_state (this_vm, nsim_input_node.index,
 			   VLIB_NODE_STATE_POLLING);

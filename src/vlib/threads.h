@@ -19,8 +19,6 @@
 #include <vppinfra/callback.h>
 #include <linux/sched.h>
 
-extern vlib_main_t **vlib_mains;
-
 void vlib_set_thread_name (char *name);
 
 /* arg is actually a vlib__thread_t * */
@@ -239,28 +237,29 @@ typedef enum
 
 void vlib_worker_thread_fork_fixup (vlib_fork_fixup_t which);
 
-#define foreach_vlib_main(body)                         \
-do {                                                    \
-  vlib_main_t ** __vlib_mains = 0, *this_vlib_main;     \
-  int ii;                                               \
-                                                        \
-  for (ii = 0; ii < vec_len (vlib_mains); ii++)         \
-    {                                                   \
-      this_vlib_main = vlib_mains[ii];                  \
-      ASSERT (ii == 0 ||                                \
-	      this_vlib_main->parked_at_barrier == 1);  \
-      if (this_vlib_main)                               \
-        vec_add1 (__vlib_mains, this_vlib_main);        \
-    }                                                   \
-                                                        \
-  for (ii = 0; ii < vec_len (__vlib_mains); ii++)       \
-    {                                                   \
-      this_vlib_main = __vlib_mains[ii];                \
-      /* body uses this_vlib_main... */                 \
-      (body);                                           \
-    }                                                   \
-  vec_free (__vlib_mains);                              \
-} while (0);
+#define foreach_vlib_main(body)                                               \
+  do                                                                          \
+    {                                                                         \
+      vlib_main_t **__vlib_mains = 0, *this_vlib_main;                        \
+      int ii;                                                                 \
+                                                                              \
+      for (ii = 0; ii < vec_len (vlib_global_main.vlib_mains); ii++)          \
+	{                                                                     \
+	  this_vlib_main = vlib_global_main.vlib_mains[ii];                   \
+	  ASSERT (ii == 0 || this_vlib_main->parked_at_barrier == 1);         \
+	  if (this_vlib_main)                                                 \
+	    vec_add1 (__vlib_mains, this_vlib_main);                          \
+	}                                                                     \
+                                                                              \
+      for (ii = 0; ii < vec_len (__vlib_mains); ii++)                         \
+	{                                                                     \
+	  this_vlib_main = __vlib_mains[ii];                                  \
+	  /* body uses this_vlib_main... */                                   \
+	  (body);                                                             \
+	}                                                                     \
+      vec_free (__vlib_mains);                                                \
+    }                                                                         \
+  while (0);
 
 #define foreach_sched_policy \
   _(SCHED_OTHER, OTHER, "other") \
@@ -402,6 +401,7 @@ vlib_worker_thread_barrier_check (void)
 {
   if (PREDICT_FALSE (*vlib_worker_threads->wait_at_barrier))
     {
+      vlib_global_main_t *vgm = vlib_get_global_main ();
       vlib_main_t *vm = vlib_get_main ();
       u32 thread_index = vm->thread_index;
       f64 t = vlib_time_now (vm);
@@ -425,8 +425,7 @@ vlib_worker_thread_barrier_check (void)
 	    u32 thread_index;
 	  } __clib_packed *ed;
 
-	  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
-				w->elog_track);
+	  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
 	  ed->thread_index = thread_index;
 	}
 
@@ -449,7 +448,7 @@ vlib_worker_thread_barrier_check (void)
 	f64 now;
 	vm->time_offset = 0.0;
 	now = vlib_time_now (vm);
-	vm->time_offset = vlib_global_main.time_last_barrier_release - now;
+	vm->time_offset = vgm->vlib_mains[0]->time_last_barrier_release - now;
 	vm->time_last_barrier_release = vlib_time_now (vm);
       }
 
@@ -503,8 +502,7 @@ vlib_worker_thread_barrier_check (void)
 	    u32 duration;
 	  } __clib_packed *ed;
 
-	  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
-				w->elog_track);
+	  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e, w->elog_track);
 	  ed->thread_index = thread_index;
 	  ed->duration = (int) (1000000.0 * t);
 	}
@@ -518,10 +516,11 @@ vlib_worker_thread_barrier_check (void)
 always_inline vlib_main_t *
 vlib_get_worker_vlib_main (u32 worker_index)
 {
+  vlib_global_main_t *vgm = vlib_get_global_main ();
   vlib_main_t *vm;
   vlib_thread_main_t *tm = &vlib_thread_main;
   ASSERT (worker_index < tm->n_vlib_mains - 1);
-  vm = vlib_mains[worker_index + 1];
+  vm = vgm->vlib_mains[worker_index + 1];
   ASSERT (vm);
   return vm;
 }

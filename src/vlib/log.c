@@ -249,9 +249,10 @@ vlib_log (vlib_log_level_t level, vlib_log_class_t class, char *fmt, ...)
             u32 string_index;
           } *ed;
           /* *INDENT-ON* */
-	  ed = ELOG_DATA (&vm->elog_main, ee);
+	  ed = ELOG_DATA (&vlib_global_main.elog_main, ee);
 	  ed->log_level = level;
-	  ed->string_index = elog_string (&vm->elog_main, "%v", e->string);
+	  ed->string_index =
+	    elog_string (&vlib_global_main.elog_main, "%v", e->string);
 	}
 
       lm->next = (lm->next + 1) % lm->size;
