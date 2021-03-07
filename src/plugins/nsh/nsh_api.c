@@ -555,7 +555,9 @@ nsh_add_del_entry (nsh_add_del_entry_args_t * a, u32 * entry_indexp)
 	  vec_free (a->nsh_entry.tlvs_data);
 	}
 
-      nsh_header_rewrite (nsh_entry);
+      if (nsh_entry && nsh_entry->tlvs_data) {
+          nsh_header_rewrite (nsh_entry);
+      }
 
       key_copy = clib_mem_alloc (sizeof (*key_copy));
       clib_memcpy (key_copy, &key, sizeof (*key_copy));
