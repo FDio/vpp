@@ -170,7 +170,21 @@ cryptodev_sw_scheduler_sgl (vlib_main_t * vm,
 	break;
     }
 
-  ASSERT (offset == 0 && len == 0);
+  ASSERT (offset == 0);
+  if (n_chunks && len)
+    {
+      /* Some async crypto users can use buffers in creative ways, let's allow
+       * some flexibility here...
+       * Current example is ESP decrypt with ESN in async mode: it will stash
+       * ESN at the end of the last buffer (if it can) because it must be part
+       * of the integrity check but it will not update the buffer length.
+       * Fixup the last operation chunk length if we have room.
+       */
+      ASSERT (vlib_buffer_space_left_at_end (vm, nb) >= len);
+      if (vlib_buffer_space_left_at_end (vm, nb) >= len)
+	ch->len += len;
+    }
+
   op->chunk_index = chunk_index;
   op->n_chunks = n_chunks;
 }
