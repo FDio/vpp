@@ -93,6 +93,9 @@ VLIB_NODE_FN (pppoe_input_node) (vlib_main_t * vm,
 	  u32 bucket0, bucket1;
 	  u16 type0, type1;
 
+	  result0.raw = ~0ULL << 1;
+	  result1.raw = ~0ULL << 1;
+
 	  /* Prefetch next iteration. */
 	  {
 	    vlib_buffer_t * p2, * p3;
@@ -331,6 +334,8 @@ VLIB_NODE_FN (pppoe_input_node) (vlib_main_t * vm,
 	  pppoe_entry_result_t result0;
 	  u32 bucket0;
 	  u32 type0;
+
+	  result0.raw = ~0ULL << 1;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
