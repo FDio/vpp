@@ -43,6 +43,7 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		       int session_not_found, cnat_session_t *session)
 {
   vlib_combined_counter_main_t *cntm = &cnat_translation_counters;
+  cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
   const cnat_translation_t *ct = NULL;
   ip4_header_t *ip4 = NULL;
   ip_protocol_t iproto;
@@ -95,6 +96,8 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       cnat_ep_trk_t *trk0;
       u32 rsession_flags = CNAT_SESSION_FLAG_NO_CLIENT;
       u32 dpoi_index = -1;
+      u32 in_if = vnet_buffer (b)->sw_if_index[VLIB_RX];
+      int ispod;
 
       lb0 = load_balance_get (ct->ct_lb.dpoi_index);
       if (!lb0->lb_n_buckets)
@@ -126,7 +129,10 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 	clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port);
       session->value.cs_port[VLIB_RX] = udp0->src_port;
 
-      if (trk0->ct_flags & CNAT_TRK_FLAG_NO_NAT)
+      ispod = clib_bitmap_get (
+	cpm->interface_maps[CNAT_SNAT_IF_MAP_INCLUDE_POD], in_if);
+
+      if (trk0->ct_flags & CNAT_TRK_FLAG_NO_NAT && !ispod)
 	{
 	  const dpo_id_t *dpo0;
 	  const load_balance_t *lb1;
