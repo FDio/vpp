@@ -212,7 +212,6 @@ VLIB_NODE_FN (pppoe_input_node) (vlib_main_t * vm,
                 = vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->next_index = next0;
               tr->error = error0;
-              tr->session_index = result0.fields.session_index;
               tr->session_id = clib_net_to_host_u32(pppoe0->session_id);
             }
 
@@ -306,7 +305,6 @@ VLIB_NODE_FN (pppoe_input_node) (vlib_main_t * vm,
                 = vlib_add_trace (vm, node, b1, sizeof (*tr));
               tr->next_index = next1;
               tr->error = error1;
-              tr->session_index = result1.fields.session_index;
               tr->session_id = clib_net_to_host_u32(pppoe1->session_id);
             }
 
