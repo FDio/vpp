@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2481564d_4e62a4e4",
+        "filename": "src/plugins/nsh/nsh_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 562,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2021-03-08T01:53:37Z",
+      "side": 1,
+      "message": "The logic of code is correct here, so do not need to fix the code here. \nInstead, in line 286, add code to check if nsh_entry-\u003etlvs_data is null.",
+      "range": {
+        "startLine": 562,
+        "startChar": 6,
+        "endLine": 562,
+        "endChar": 24
+      },
+      "revId": "8ae50ec1ed041717eb3bb2596eb1572ccd52e89a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
