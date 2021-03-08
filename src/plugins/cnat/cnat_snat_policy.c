@@ -91,7 +91,7 @@ cnat_snat_policy_add_del_if (u32 sw_if_index, u8 is_add,
 {
   cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
 
-  if (table > ARRAY_LEN (cpm->interface_maps))
+  if (table >= ARRAY_LEN (cpm->interface_maps))
     return VNET_API_ERROR_INVALID_VALUE;
 
   clib_bitmap_t **map = &cpm->interface_maps[table];
