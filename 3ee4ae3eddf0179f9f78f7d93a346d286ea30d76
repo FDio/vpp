@@ -16,6 +16,24 @@
       "revId": "3ee4ae3eddf0179f9f78f7d93a346d286ea30d76",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3fdd34b8_a8e22b5d",
+        "filename": "src/vnet/interface.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1301,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2021-03-08T12:04:15Z",
+      "side": 1,
+      "message": "It\u0027s the vnet-vlib dependency issue, it was a common function in the first patch that was reverted because of this.",
+      "parentUuid": "ab6d5910_d67e8dd8",
+      "revId": "3ee4ae3eddf0179f9f78f7d93a346d286ea30d76",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
