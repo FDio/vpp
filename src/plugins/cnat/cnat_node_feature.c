@@ -43,6 +43,7 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
 				    cnat_timestamp_t *ts)
 {
   vlib_combined_counter_main_t *cntm = &cnat_translation_counters;
+  cnat_snat_policy_main_t *cpm = &cnat_snat_policy_main;
   const cnat_translation_t *ct = NULL;
   cnat_timestamp_rewrite_t *rw = NULL;
   cnat_client_t *cc;
@@ -53,6 +54,9 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
   ip6_header_t *ip6 = NULL;
   udp_header_t *udp0;
   index_t cti;
+
+  u32 in_if = vnet_buffer (b)->sw_if_index[VLIB_RX];
+  int ispod;
 
   if (AF_IP4 == af)
     {
@@ -112,7 +116,9 @@ cnat_input_feature_new_flow_inline (vlib_main_t *vm, vlib_buffer_t *b,
 	    clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port) :
 	    rw->tuple.port[VLIB_TX];
 
-  if (trk0->ct_flags & CNAT_TRK_FLAG_NO_NAT)
+  ispod =
+    clib_bitmap_get (cpm->interface_maps[CNAT_SNAT_IF_MAP_INCLUDE_POD], in_if);
+  if (trk0->ct_flags & CNAT_TRK_FLAG_NO_NAT && !ispod)
     {
       const dpo_id_t *dpo0;
       const load_balance_t *lb1;
