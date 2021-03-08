@@ -121,6 +121,30 @@
     },
     {
       "key": {
+        "uuid": "93e708c5_c38beb41",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2021-03-08T08:20:29Z",
+      "side": 1,
+      "message": "You are right, I had initially thought of https://gerrit.fd.io/r/c/vpp/+/31368/3/src/vlib/unix/input.c#168 somehow playing a role,\nBut upon a look with a coffee, see that it’s impossible...\nYou are right, this is worth investigating a bit more, will look at that...",
+      "parentUuid": "2e62a429_e65050ce",
+      "range": {
+        "startLine": 258,
+        "startChar": 1,
+        "endLine": 258,
+        "endChar": 26
+      },
+      "revId": "bd77ac83abdeb328bf7608ae4e25441542f8092e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "b0e48d9e_a484b666",
         "filename": "src/vlib/unix/input.c",
         "patchSetId": 3
@@ -228,6 +252,30 @@
       "side": 1,
       "message": "As far as I can remember, we unset vm-\u003eapi_queue_nonempty only if the clnt_process didn\u0027t find anything in the binary api last time it tried (which could\u0027ve been this dispatch loop or some previous one). I guess this does mean that the logic here will be tempted to quickly enter sleep. To counteract that we\u0027d probably want some form of moving average ... Oh well. \n\nAs for the logic, it already feels too complex and tricky but that\u0027s probably an experiment for another time. Speaking of which, how do you test this?",
       "parentUuid": "d37ff23a_42322e2d",
+      "range": {
+        "startLine": 259,
+        "startChar": 16,
+        "endLine": 259,
+        "endChar": 45
+      },
+      "revId": "bd77ac83abdeb328bf7608ae4e25441542f8092e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8be1968f_637d3e01",
+        "filename": "src/vlib/unix/input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2021-03-08T08:20:29Z",
+      "side": 1,
+      "message": "Yeah this is basically attempting to predict the future here based on the past behavior... always tricky :-)\n\nI am testing with this jig:\n\nhttps://github.com/ayourtch/vpp-api-transport\n\nIt’s the lowest level of abstraction in my side project..\nTo make shared mem and Unix socket look the same -\nAnd can get to a reasonable speed. :)",
+      "parentUuid": "166a9b6f_4fcc305a",
       "range": {
         "startLine": 259,
         "startChar": 16,
