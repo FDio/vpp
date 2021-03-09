@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5e8f7a58_8355bbfd",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 542,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2021-03-09T14:10:59Z",
+      "side": 1,
+      "message": "I think your code change makes sense. The comment \"reset back to default\" here and at line 590 and in the commit message confused me though. The statements following that comment do not appear to be resetting the table back to the default, they are just unlocking the currently assigned table (if the current table is not the default table) before changing to the new one.\n\nI realize this comment was here before you touched this code, but I believe that it was describing the preceding \u0027if (0 \u003d\u003d table_id)\u0027, rather than the action being taken by the following two statements which unlock the currently assigned fib \u0026 mfib tables. I.e. it was stating that if the table_id being assigned to the interface is 0, the table is being set back to the default.\n\nSo the comment was a little difficult to understand before your patch and seems completely inaccurate now with the \u0027if (0 \u003d\u003d table_id)\u0027 removed. Can the comment be removed here and at line 590?",
+      "revId": "6d63a3cb7ed2d26955fa8f3814428c91174a074b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
