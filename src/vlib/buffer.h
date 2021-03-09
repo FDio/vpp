@@ -472,6 +472,10 @@ typedef struct
 
 #define VLIB_BUFFER_MAX_NUMA_NODES 32
 
+typedef u32 (vlib_buffer_alloc_free_callback_t) (struct vlib_main_t *vm,
+						 u8 buffer_pool_index,
+						 u32 *buffers, u32 n_buffers);
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -481,12 +485,9 @@ typedef struct
   uword buffer_mem_size;
   vlib_buffer_pool_t *buffer_pools;
 
-  /* Hash table mapping buffer index into number
-     0 => allocated but free, 1 => allocated and not-free.
-     If buffer index is not in hash table then this buffer
-     has never been allocated. */
-  uword *buffer_known_hash;
-  clib_spinlock_t buffer_known_hash_lockp;
+  vlib_buffer_alloc_free_callback_t *alloc_callback_fn;
+  vlib_buffer_alloc_free_callback_t *free_callback_fn;
+
   u8 default_buffer_pool_index_for_numa[VLIB_BUFFER_MAX_NUMA_NODES];
 
   /* config */
@@ -495,11 +496,24 @@ typedef struct
   u32 default_data_size;
   clib_mem_page_sz_t log2_page_size;
 
+  /* Hash table mapping buffer index into number
+     0 => allocated but free, 1 => allocated and not-free.
+     If buffer index is not in hash table then this buffer
+     has never been allocated. */
+  uword *buffer_known_hash;
+  clib_spinlock_t buffer_known_hash_lockp;
+
   /* logging */
   vlib_log_class_t log_default;
 } vlib_buffer_main_t;
 
 clib_error_t *vlib_buffer_main_init (struct vlib_main_t *vm);
+
+format_function_t format_vlib_buffer_pool_all;
+
+int vlib_buffer_set_alloc_free_callback (
+  struct vlib_main_t *vm, vlib_buffer_alloc_free_callback_t *alloc_callback_fn,
+  vlib_buffer_alloc_free_callback_t *free_callback_fn);
 
 extern u16 __vlib_buffer_external_hdr_size;
 #define VLIB_BUFFER_SET_EXT_HDR_SIZE(x) \

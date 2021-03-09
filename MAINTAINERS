@@ -764,6 +764,11 @@ I:	srtp
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/plugins/srtp/
 
+Plugin - bufmon
+I:	bufmon
+M:	Benoît Ganne <bganne@cisco.com>
+F:	src/plugins/bufmon/
+
 cJSON
 I:	cjson
 M:	Ole Troan <ot@cisco.com>
