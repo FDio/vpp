@@ -221,15 +221,6 @@ uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (node##_fn)
 
 unformat_function_t unformat_vlib_node_variant;
 
-always_inline vlib_node_registration_t *
-vlib_node_next_registered (vlib_node_registration_t * c)
-{
-  c =
-    clib_elf_section_data_next (c,
-				c->n_next_nodes * sizeof (c->next_nodes[0]));
-  return c;
-}
-
 typedef struct
 {
   /* Total calls, clock ticks and vector elements processed for this node. */
