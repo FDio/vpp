@@ -480,12 +480,8 @@ static_always_inline void vnet_interface_pcap_tx_trace
     }
 }
 
-static vlib_node_function_t CLIB_MULTIARCH_FN (vnet_interface_output_node);
-
-static uword
-CLIB_MULTIARCH_FN (vnet_interface_output_node) (vlib_main_t * vm,
-						vlib_node_runtime_t * node,
-						vlib_frame_t * frame)
+VLIB_NODE_FN (vnet_interface_output_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi;
@@ -503,15 +499,10 @@ CLIB_MULTIARCH_FN (vnet_interface_output_node) (vlib_main_t * vm,
 					      /* do_tx_offloads */ 1);
 }
 
-CLIB_MARCH_FN_REGISTRATION (vnet_interface_output_node);
-
-#ifndef CLIB_MARCH_VARIANT
-vlib_node_function_t *
-vnet_interface_output_node_get (void)
-{
-  return CLIB_MARCH_FN_POINTER (vnet_interface_output_node);
-}
-#endif /* CLIB_MARCH_VARIANT */
+VLIB_REGISTER_NODE (vnet_interface_output_node) = {
+  .name = "interface-output-template",
+  .vector_size = sizeof (u32),
+};
 
 /* Use buffer's sw_if_index[VNET_TX] to choose output interface. */
 VLIB_NODE_FN (vnet_per_buffer_interface_output_node) (vlib_main_t * vm,

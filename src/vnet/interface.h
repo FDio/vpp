@@ -961,8 +961,6 @@ void vnet_pcap_drop_trace_filter_add_del (u32 error_index, int is_add);
 
 int vnet_interface_name_renumber (u32 sw_if_index, u32 new_show_dev_instance);
 
-vlib_node_function_t *vnet_interface_output_node_get (void);
-
 void vnet_register_format_buffer_opaque_helper
   (vnet_buffer_opquae_formatter_t fn);
 

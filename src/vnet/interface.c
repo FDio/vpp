@@ -810,7 +810,8 @@ vnet_register_interface (vnet_main_t * vnm,
   vnet_config_main_t *cm;
   u32 hw_index, i;
   char *tx_node_name = NULL, *output_node_name = NULL;
-  vlib_node_function_t *output_node = vnet_interface_output_node_get ();
+  vlib_node_t *if_out_node =
+    vlib_get_node_by_name (vm, (u8 *) "interface-output-template");
 
   pool_get (im->hw_interfaces, hw);
   clib_memset (hw, 0, sizeof (*hw));
@@ -896,8 +897,9 @@ vnet_register_interface (vnet_main_t * vnm,
       /* The new class may differ from the old one.
        * Functions have to be updated. */
       node = vlib_get_node (vm, hw->output_node_index);
-      node->function = output_node;
+      node->function = if_out_node->function;
       node->format_trace = format_vnet_interface_output_trace;
+      node->node_fn_registrations = if_out_node->node_fn_registrations;
       /* *INDENT-OFF* */
       foreach_vlib_main ({
         nrt = vlib_node_get_runtime (this_vlib_main, hw->output_node_index);
@@ -950,8 +952,9 @@ vnet_register_interface (vnet_main_t * vnm,
 
       r.flags = 0;
       r.name = output_node_name;
-      r.function = output_node;
+      r.function = 0;
       r.format_trace = format_vnet_interface_output_trace;
+      r.node_fn_registrations = if_out_node->node_fn_registrations;
 
       {
 	static char *e[] = {
