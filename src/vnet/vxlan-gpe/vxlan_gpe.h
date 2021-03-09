@@ -220,6 +220,11 @@ typedef struct
   /** State convenience vnet_main_t */
   vnet_main_t *vnet_main;
 
+  /* cache for last 8 vxlan_gpe tunnel */
+#ifdef CLIB_HAVE_VEC512
+  vtep4_cache_t vtep4_u512;
+#endif
+
   /** List of next nodes for the decap indexed on protocol */
   uword decap_next_node_list[VXLAN_GPE_PROTOCOL_MAX];
 } vxlan_gpe_main_t;

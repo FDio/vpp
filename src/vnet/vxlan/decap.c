@@ -469,11 +469,6 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
   last_tunnel_cache4 last4;
   last_tunnel_cache6 last6;
 
-#ifdef CLIB_HAVE_VEC512
-  vtep4_cache_t vtep4_u512;
-  clib_memset (&vtep4_u512, 0, sizeof (vtep4_u512));
-#endif
-
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
@@ -584,8 +579,8 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	  if (is_ip4)
 	    {
 #ifdef CLIB_HAVE_VEC512
-	      if (!vtep4_check_vector
-		  (&vxm->vtep_table, b0, ip40, &last_vtep4, &vtep4_u512))
+	      if (!vtep4_check_vector (&vxm->vtep_table, b0, ip40, &last_vtep4,
+				       &vxm->vtep4_u512))
 #else
 	      if (!vtep4_check (&vxm->vtep_table, b0, ip40, &last_vtep4))
 #endif
@@ -672,8 +667,8 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	  if (is_ip4)
 	    {
 #ifdef CLIB_HAVE_VEC512
-	      if (!vtep4_check_vector
-		  (&vxm->vtep_table, b1, ip41, &last_vtep4, &vtep4_u512))
+	      if (!vtep4_check_vector (&vxm->vtep_table, b1, ip41, &last_vtep4,
+				       &vxm->vtep4_u512))
 #else
 	      if (!vtep4_check (&vxm->vtep_table, b1, ip41, &last_vtep4))
 #endif
@@ -799,8 +794,8 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	  if (is_ip4)
 	    {
 #ifdef CLIB_HAVE_VEC512
-	      if (!vtep4_check_vector
-		  (&vxm->vtep_table, b0, ip40, &last_vtep4, &vtep4_u512))
+	      if (!vtep4_check_vector (&vxm->vtep_table, b0, ip40, &last_vtep4,
+				       &vxm->vtep4_u512))
 #else
 	      if (!vtep4_check (&vxm->vtep_table, b0, ip40, &last_vtep4))
 #endif
