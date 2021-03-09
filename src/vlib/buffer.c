@@ -615,20 +615,26 @@ format_vlib_buffer_pool (u8 * s, va_list * va)
   return s;
 }
 
-static clib_error_t *
-show_buffers (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+u8 *
+format_vlib_buffer_pool_all (u8 *s, va_list *va)
 {
+  vlib_main_t *vm = va_arg (*va, vlib_main_t *);
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_pool_t *bp;
 
-  vlib_cli_output (vm, "%U", format_vlib_buffer_pool, vm, 0);
+  s = format (s, "%U", format_vlib_buffer_pool, vm, 0);
 
-  /* *INDENT-OFF* */
   vec_foreach (bp, bm->buffer_pools)
-    vlib_cli_output (vm, "%U", format_vlib_buffer_pool, vm, bp);
-  /* *INDENT-ON* */
+    s = format (s, "\n%U", format_vlib_buffer_pool, vm, bp);
 
+  return s;
+}
+
+static clib_error_t *
+show_buffers (vlib_main_t *vm, unformat_input_t *input,
+	      vlib_cli_command_t *cmd)
+{
+  vlib_cli_output (vm, "%U", format_vlib_buffer_pool_all, vm);
   return 0;
 }
 
@@ -970,6 +976,20 @@ vlib_buffer_alloc_may_fail (vlib_main_t * vm, u32 n_buffers)
   return n_buffers;
 }
 #endif
+
+__clib_export int
+vlib_buffer_set_alloc_free_callback (
+  vlib_main_t *vm, vlib_buffer_alloc_free_callback_t *alloc_callback_fn,
+  vlib_buffer_alloc_free_callback_t *free_callback_fn)
+{
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  if ((alloc_callback_fn && bm->alloc_callback_fn) ||
+      (free_callback_fn && bm->free_callback_fn))
+    return 1;
+  bm->alloc_callback_fn = alloc_callback_fn;
+  bm->free_callback_fn = free_callback_fn;
+  return 0;
+}
 
 /** @endcond */
 /*

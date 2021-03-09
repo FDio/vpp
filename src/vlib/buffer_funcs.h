@@ -626,11 +626,7 @@ vlib_buffer_alloc_from_pool (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
       src = bpt->cached_buffers + len - n_buffers;
       vlib_buffer_copy_indices (dst, src, n_buffers);
       bpt->n_cached -= n_buffers;
-
-      if (CLIB_DEBUG > 0)
-	vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
-					 VLIB_BUFFER_KNOWN_FREE);
-      return n_buffers;
+      goto done;
     }
 
   /* alloc bigger than cache - take buffers directly from main pool */
@@ -638,11 +634,7 @@ vlib_buffer_alloc_from_pool (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
     {
       n_buffers = vlib_buffer_pool_get (vm, buffer_pool_index, buffers,
 					n_buffers);
-
-      if (CLIB_DEBUG > 0)
-	vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
-					 VLIB_BUFFER_KNOWN_FREE);
-      return n_buffers;
+      goto done;
     }
 
   /* take everything available in the cache */
@@ -670,11 +662,13 @@ vlib_buffer_alloc_from_pool (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 
   n_buffers -= n_left;
 
+done:
   /* Verify that buffers are known free. */
   if (CLIB_DEBUG > 0)
     vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
 				     VLIB_BUFFER_KNOWN_FREE);
-
+  if (PREDICT_FALSE (bm->alloc_callback_fn != 0))
+    bm->alloc_callback_fn (vm, buffer_pool_index, buffers, n_buffers);
   return n_buffers;
 }
 
@@ -776,6 +770,7 @@ static_always_inline void
 vlib_buffer_pool_put (vlib_main_t * vm, u8 buffer_pool_index,
 		      u32 * buffers, u32 n_buffers)
 {
+  vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_pool_t *bp = vlib_get_buffer_pool (vm, buffer_pool_index);
   vlib_buffer_pool_thread_t *bpt = vec_elt_at_index (bp->threads,
 						     vm->thread_index);
@@ -784,6 +779,8 @@ vlib_buffer_pool_put (vlib_main_t * vm, u8 buffer_pool_index,
   if (CLIB_DEBUG > 0)
     vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
 				     VLIB_BUFFER_KNOWN_ALLOCATED);
+  if (PREDICT_FALSE (bm->free_callback_fn != 0))
+    bm->free_callback_fn (vm, buffer_pool_index, buffers, n_buffers);
 
   n_cached = bpt->n_cached;
   n_empty = VLIB_BUFFER_POOL_PER_THREAD_CACHE_SZ - n_cached;
