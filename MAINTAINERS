@@ -744,6 +744,11 @@ M:	Neale Ranns <neale@graphiant.com>
 M:	Matthew Smith <mgsmith@netgate.com>
 F:	src/plugins/linux-cp/
 
+Plugin - bufmon
+I:	bufmon
+M:	Benoît Ganne <bganne@cisco.com>
+F:	src/plugins/bufmon/
+
 cJSON
 I:	cjson
 M:	Ole Troan <ot@cisco.com>

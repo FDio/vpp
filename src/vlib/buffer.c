@@ -994,6 +994,17 @@ vlib_buffer_alloc_may_fail (vlib_main_t * vm, u32 n_buffers)
 }
 #endif
 
+int
+vlib_buffer_set_alloc_callback (vlib_main_t *vm,
+				vlib_buffer_alloc_callback_t *fn)
+{
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  if (fn && bm->alloc_cbak_fn)
+    return 1;
+  bm->alloc_cbak_fn = fn;
+  return 0;
+}
+
 /** @endcond */
 /*
  * fd.io coding-style-patch-verification: ON
