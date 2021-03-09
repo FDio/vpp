@@ -51,7 +51,6 @@
 #include <vnet/srmpls/sr_mpls.api.h>
 #include <vnet/classify/classify.api.h>
 #include <vnet/ipfix-export/ipfix_export.api.h>
-#include <vnet/cop/cop.api.h>
 #include <vnet/policer/policer.api.h>
 #include <vnet/ethernet/p2p_ethernet.api.h>
 #include <vnet/tcp/tcp.api.h>

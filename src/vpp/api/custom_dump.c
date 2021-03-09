@@ -1955,39 +1955,6 @@ vl_api_ip_dump_t_print (vl_api_ip_dump_t * mp, void *handle)
   FINISH;
 }
 
-static void *vl_api_cop_interface_enable_disable_t_print
-  (vl_api_cop_interface_enable_disable_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: cop_interface_enable_disable ");
-  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
-  if (mp->enable_disable)
-    s = format (s, "enable ");
-  else
-    s = format (s, "disable ");
-
-  FINISH;
-}
-
-static void *vl_api_cop_whitelist_enable_disable_t_print
-  (vl_api_cop_whitelist_enable_disable_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: cop_whitelist_enable_disable ");
-  s = format (s, "sw_if_index %d ", (mp->sw_if_index));
-  s = format (s, "fib-id %d ", (mp->fib_id));
-  if (mp->ip4)
-    s = format (s, "ip4 ");
-  if (mp->ip6)
-    s = format (s, "ip6 ");
-  if (mp->default_cop)
-    s = format (s, "default ");
-
-  FINISH;
-}
-
 static void *vl_api_af_packet_create_t_print
   (vl_api_af_packet_create_t * mp, void *handle)
 {
@@ -3070,8 +3037,6 @@ _(IP_DUMP, ip_dump)                                                     \
 _(DELETE_LOOPBACK, delete_loopback)                                     \
 _(BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)					\
 _(BD_IP_MAC_FLUSH, bd_ip_mac_flush)					\
-_(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable) 		\
-_(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)           \
 _(AF_PACKET_CREATE, af_packet_create)					\
 _(AF_PACKET_DELETE, af_packet_delete)					\
 _(AF_PACKET_DUMP, af_packet_dump)                                       \
