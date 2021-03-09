@@ -480,8 +480,11 @@ typedef struct
   struct
   {
     u32 arc_next;
-    /* cached session index from previous node */
-    u32 cached_session_index;
+    union
+    {
+      u32 cached_session_index;
+      u32 cached_dst_nat_session_index;
+    };
   } nat;
 
   union
