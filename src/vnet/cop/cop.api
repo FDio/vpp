@@ -13,49 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.0.1";
-
-import "vnet/interface_types.api";
-
- /** \brief cop: enable/disable junk filtration features on an interface
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_inded - desired interface
-    @param enable_disable - 1 => enable, 0 => disable
-*/
-
-autoreply define cop_interface_enable_disable
-{
-  option deprecated;
-  u32 client_index;
-  u32 context;
-  vl_api_interface_index_t sw_if_index;
-  bool enable_disable;
-};
-
-/** \brief cop: enable/disable whitelist filtration features on an interface
-    Note: the supplied fib_id must match in order to remove the feature!
-
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - interface handle, physical interfaces only
-    @param fib_id - fib identifier for the whitelist / blacklist fib
-    @param ip4 - 1 => enable ip4 filtration, 0=> disable ip4 filtration
-    @param ip6 - 1 => enable ip6 filtration, 0=> disable ip6 filtration
-    @param default_cop -  1 => enable non-ip4, non-ip6 filtration 0=> disable it
-*/
-
-autoreply define cop_whitelist_enable_disable
-{
-  option deprecated;
-  u32 client_index;
-  u32 context;
-  vl_api_interface_index_t sw_if_index;
-  u32 fib_id;
-  bool ip4;
-  bool ip6;
-  bool default_cop;
-};
+option version = "0.0.1";
 
  /*
  * Local Variables:

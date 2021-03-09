@@ -3294,8 +3294,6 @@ _(delete_loopback_reply)                                \
 _(bd_ip_mac_add_del_reply)                              \
 _(bd_ip_mac_flush_reply)                                \
 _(want_interface_events_reply)                          \
-_(cop_interface_enable_disable_reply)			\
-_(cop_whitelist_enable_disable_reply)                   \
 _(sw_interface_clear_stats_reply)                       \
 _(ioam_enable_reply)                                    \
 _(ioam_disable_reply)                                   \
@@ -3479,8 +3477,6 @@ _(BD_IP_MAC_FLUSH_REPLY, bd_ip_mac_flush_reply)                         \
 _(BD_IP_MAC_DETAILS, bd_ip_mac_details)                                 \
 _(WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)             \
 _(GET_FIRST_MSG_ID_REPLY, get_first_msg_id_reply)    			\
-_(COP_INTERFACE_ENABLE_DISABLE_REPLY, cop_interface_enable_disable_reply) \
-_(COP_WHITELIST_ENABLE_DISABLE_REPLY, cop_whitelist_enable_disable_reply) \
 _(GET_NODE_GRAPH_REPLY, get_node_graph_reply)                           \
 _(SW_INTERFACE_CLEAR_STATS_REPLY, sw_interface_clear_stats_reply)      \
 _(IOAM_ENABLE_REPLY, ioam_enable_reply)                   \
@@ -11321,98 +11317,6 @@ api_get_first_msg_id (vat_main_t * vam)
 }
 
 static int
-api_cop_interface_enable_disable (vat_main_t * vam)
-{
-  unformat_input_t *line_input = vam->input;
-  vl_api_cop_interface_enable_disable_t *mp;
-  u32 sw_if_index = ~0;
-  u8 enable_disable = 1;
-  int ret;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "disable"))
-	enable_disable = 0;
-      if (unformat (line_input, "enable"))
-	enable_disable = 1;
-      else if (unformat (line_input, "%U", api_unformat_sw_if_index,
-			 vam, &sw_if_index))
-	;
-      else if (unformat (line_input, "sw_if_index %d", &sw_if_index))
-	;
-      else
-	break;
-    }
-
-  if (sw_if_index == ~0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (COP_INTERFACE_ENABLE_DISABLE, mp);
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->enable_disable = enable_disable;
-
-  /* send it... */
-  S (mp);
-  /* Wait for the reply */
-  W (ret);
-  return ret;
-}
-
-static int
-api_cop_whitelist_enable_disable (vat_main_t * vam)
-{
-  unformat_input_t *line_input = vam->input;
-  vl_api_cop_whitelist_enable_disable_t *mp;
-  u32 sw_if_index = ~0;
-  u8 ip4 = 0, ip6 = 0, default_cop = 0;
-  u32 fib_id = 0;
-  int ret;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "ip4"))
-	ip4 = 1;
-      else if (unformat (line_input, "ip6"))
-	ip6 = 1;
-      else if (unformat (line_input, "default"))
-	default_cop = 1;
-      else if (unformat (line_input, "%U", api_unformat_sw_if_index,
-			 vam, &sw_if_index))
-	;
-      else if (unformat (line_input, "sw_if_index %d", &sw_if_index))
-	;
-      else if (unformat (line_input, "fib-id %d", &fib_id))
-	;
-      else
-	break;
-    }
-
-  if (sw_if_index == ~0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (COP_WHITELIST_ENABLE_DISABLE, mp);
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->fib_id = ntohl (fib_id);
-  mp->ip4 = ip4;
-  mp->ip6 = ip6;
-  mp->default_cop = default_cop;
-
-  /* send it... */
-  S (mp);
-  /* Wait for the reply */
-  W (ret);
-  return ret;
-}
-
-static int
 api_get_node_graph (vat_main_t * vam)
 {
   vl_api_get_node_graph_t *mp;
@@ -15022,9 +14926,6 @@ _(bd_ip_mac_flush, "bd_id <bridge-domain-id>")                          \
 _(bd_ip_mac_dump, "[bd_id] <bridge-domain-id>")                         \
 _(want_interface_events,  "enable|disable")                             \
 _(get_first_msg_id, "client <name>")					\
-_(cop_interface_enable_disable, "<intfc> | sw_if_index <nn> [disable]") \
-_(cop_whitelist_enable_disable, "<intfc> | sw_if_index <nn>\n"		\
-  "fib-id <nn> [ip4][ip6][default]")					\
 _(get_node_graph, " ")                                                  \
 _(sw_interface_clear_stats,"<intfc> | sw_if_index <nn>")                \
 _(ioam_enable, "[trace] [pow] [ppc <encap|decap>]")                     \
