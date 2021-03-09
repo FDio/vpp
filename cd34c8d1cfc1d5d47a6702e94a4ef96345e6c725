@@ -34,6 +34,24 @@
       "revId": "cd34c8d1cfc1d5d47a6702e94a4ef96345e6c725",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "668d01bf_651145e8",
+        "filename": "src/vppinfra/cpu.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2021-03-09T11:30:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "907b859c_38e20f9a",
+      "revId": "cd34c8d1cfc1d5d47a6702e94a4ef96345e6c725",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
