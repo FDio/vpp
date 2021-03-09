@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d6f4250b_26e3a2c6",
+        "filename": "src/vppinfra/cpu.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-03-09T09:05:19Z",
+      "side": 1,
+      "message": "looks like a convoluted way of doing strcmp(name, r-\u003ename) to me ;)",
+      "revId": "cd34c8d1cfc1d5d47a6702e94a4ef96345e6c725",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
