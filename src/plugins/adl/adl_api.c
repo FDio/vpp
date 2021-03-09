@@ -108,19 +108,10 @@ static clib_error_t *
 adl_api_init (vlib_main_t * vm)
 {
   adl_main_t *am = &adl_main;
-  void register_vl_api_cop_interface_enable_disable_callback (void *);
-  void register_vl_api_cop_whitelist_enable_disable_callback (void *);
-
   am->vlib_main = vm;
 
   /* Ask for a correctly-sized block of API message decode slots */
   am->msg_id_base = setup_message_id_table ();
-
-  /* Set up transitional API callbacks */
-  register_vl_api_cop_interface_enable_disable_callback
-    (vl_api_cop_interface_enable_disable_callback);
-  register_vl_api_cop_whitelist_enable_disable_callback
-    (vl_api_cop_whitelist_enable_disable_callback);
 
   return 0;
 }
