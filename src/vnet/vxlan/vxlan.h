@@ -189,6 +189,12 @@ typedef struct
   /* Record used instances */
   uword *instance_used;
   u32 flow_id_start;
+
+  /* cache for last 8 vxlan tunnel */
+#ifdef CLIB_HAVE_VEC512
+  vtep4_cache_t vtep4_u512;
+#endif
+
 } vxlan_main_t;
 
 extern vxlan_main_t vxlan_main;

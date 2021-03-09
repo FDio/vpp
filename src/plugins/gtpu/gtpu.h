@@ -236,6 +236,11 @@ typedef struct
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
   u32 flow_id_start;
+  /* cache for last 8 gtpu tunnel */
+#ifdef CLIB_HAVE_VEC512
+  vtep4_cache_t vtep4_u512;
+#endif
+
 } gtpu_main_t;
 
 extern gtpu_main_t gtpu_main;
