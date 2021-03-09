@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "45652ce3_8f5b9ac5",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 510,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2021-03-09T12:30:13Z",
+      "side": 1,
+      "message": "Could we create vnet_march_fn_by_name (vlib_main_t *vm, char *node_name), to avoid multiple copies of the logic appearing over time?\n\nFeed node_name to vlib_get_node_by_name(...) and use dlsym to look up \"xxx_\u003cvariant-name\u003e\".",
+      "revId": "18fab012cea30c07b4c734627627a73842f8e119",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
