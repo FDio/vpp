@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b8bc98d0_abe521c2",
+        "filename": "src/plugins/unittest/punt_test.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 325,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-03-09T13:55:17Z",
+      "side": 1,
+      "message": "6",
+      "revId": "e36ebd49fcaded31a5d6ec713c65166d098753af",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "51569a71_4a5e49db",
+        "filename": "src/vnet/ip/punt.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 501,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-03-09T13:55:17Z",
+      "side": 1,
+      "message": "can you put; unformat(input, \"reason %U\", ...) as the first condition?",
+      "revId": "e36ebd49fcaded31a5d6ec713c65166d098753af",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
