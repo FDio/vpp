@@ -1188,6 +1188,9 @@ session_tx_fifo_dequeue_internal (session_worker_t * wrk,
 	  session_evt_add_head_old (wrk, elt);
     }
 
+  if (svm_fifo_needs_deq_ntf (s->tx_fifo, n_packets))
+    session_dequeue_notify (s);
+
   return n_packets;
 }
 
