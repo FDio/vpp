@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dec1e040_4c72b2c4",
+        "filename": "src/plugins/pppoe/pppoe_decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 432,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2021-03-09T02:16:26Z",
+      "side": 1,
+      "message": "Need to remove this line of code",
+      "revId": "f9a74fe6c5032cff13f38496fbe6cc4b8b98cc42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
