@@ -159,6 +159,9 @@ openssl_read_from_ssl_into_fifo (svm_fifo_t * f, SSL * ssl)
   u32 max_enq;
 
   max_enq = svm_fifo_max_enqueue_prod (f);
+  if (!max_enq)
+    return 0;
+
   n_fs = svm_fifo_provision_chunks (f, fs, n_segs, max_enq);
   if (n_fs < 0)
     return 0;
