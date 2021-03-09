@@ -389,6 +389,11 @@ M:  Filip Varga <fivarga@cisco.com>
 M:  Klement Sekera <ksekera@cisco.com>
 F:	src/plugins/nat/
 
+Plugin - PNAT Static match and rewrite engine
+I:	pnat
+M:	Ole Troan <ot@cisco.com>
+F:	src/plugins/nat/pnat/
+
 Plugin - AVF Device driver
 I:	avf
 M:	Damjan Marion <damarion@cisco.com>

@@ -148,13 +148,15 @@ static int pnat_disable_interface(u32 sw_if_index,
         return 0;
 
     if (interface->enabled[attachment] && attachment == PNAT_IP4_INPUT) {
-        ip4_sv_reass_enable_disable_with_refcnt(sw_if_index, 0);
+        if (ip4_sv_reass_enable_disable_with_refcnt(sw_if_index, 0) != 0)
+            return -1;
         if (vnet_feature_enable_disable("ip4-unicast", "pnat-input",
                                         sw_if_index, 0, 0, 0) != 0)
             return -1;
     }
     if (interface->enabled[attachment] && attachment == PNAT_IP4_OUTPUT) {
-        ip4_sv_reass_output_enable_disable_with_refcnt(sw_if_index, 0);
+        if (ip4_sv_reass_output_enable_disable_with_refcnt(sw_if_index, 0) != 0)
+            return -1;
         if (vnet_feature_enable_disable("ip4-output", "pnat-output",
                                         sw_if_index, 0, 0, 0) != 0)
             return -1;
