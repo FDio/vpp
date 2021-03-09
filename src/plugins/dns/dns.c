@@ -818,7 +818,7 @@ dns_add_static_entry (dns_main_t * dm, u8 * name, u8 * dns_reply_data)
   ep->name = name;
   /* make sure it NULL-terminated as hash_set_mem will use strlen() */
   vec_terminate_c_string (ep->name);
-  hash_set_mem (dm->cache_entry_by_name, ep->name, ep - dm->entries);
+  hash_set_mem (dm->cache_entry_by_name, name, ep - dm->entries);
   ep->flags = DNS_CACHE_ENTRY_FLAG_VALID | DNS_CACHE_ENTRY_FLAG_STATIC;
   ep->dns_response = dns_reply_data;
 
@@ -1464,6 +1464,7 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
   vl_api_dns_resolve_name_reply_t *rmp;
   dns_cache_entry_t *ep;
   dns_pending_request_t _t0, *t0 = &_t0;
+  u8 *name_ex = 0;
   int rv;
 
   /* Sanitize the name slightly */
@@ -1472,10 +1473,18 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
   t0->request_type = DNS_API_PENDING_NAME_TO_IP;
   t0->client_index = mp->client_index;
   t0->client_context = mp->context;
-  t0->query.type = clib_host_to_net_u16 (DNS_TYPE_A);
+  t0->query.type = (mp->is_ip6) ? clib_host_to_net_u16 (DNS_TYPE_AAAA) :
+				  clib_host_to_net_u16 (DNS_TYPE_A);
   t0->query.class = clib_host_to_net_u16 (DNS_CLASS_IN);
 
-  rv = vnet_dns_resolve_name (vm, dm, mp->name, t0, &ep);
+  int len = strlen ((char *) mp->name);
+  vec_validate (name_ex, len);
+  clib_memcpy (name_ex, mp->name, len);
+  _vec_len (name_ex) -= 1;
+
+  vnet_dns_format_name (&name_ex, clib_net_to_host_u16 (t0->query.type));
+  rv = vnet_dns_resolve_name (vm, dm, name_ex, t0, &ep);
+  vec_free (name_ex);
 
   /* Error, e.g. not enabled? Tell the user */
   if (rv < 0)
@@ -1602,7 +1611,9 @@ unformat_dns_reply (unformat_input_t * input, va_list * args)
   int a4_set = 0;
   int a6_set = 0;
   u8 *name;
+  u8 *type;
   int name_set = 0;
+  int type_set = 0;
   u8 *ce;
   u32 qp_offset;
   dns_header_t *h;
@@ -1610,26 +1621,27 @@ unformat_dns_reply (unformat_input_t * input, va_list * args)
   dns_rr_t *rr;
   u8 *rru8;
 
+  /* Must have a name */
   if (unformat (input, "%v", &name))
     name_set = 1;
+  else
+    return 0;
 
-  if (unformat (input, "%U", unformat_ip4_address, &a4))
+  /* Must have a type */
+  if (unformat (input, "%v", &type))
+    type_set = 1;
+  else
+    return 0;
+
+  if ((0 != clib_memcmp (&type, "aaaa", 5)) ||
+      (0 != clib_memcmp (&type, "AAAA", 5)))
     {
-      a4_set = 1;
       if (unformat (input, "%U", unformat_ip6_address, &a6))
 	a6_set = 1;
     }
-
-  if (unformat (input, "%U", unformat_ip6_address, &a6))
-    {
-      a6_set = 1;
-      if (unformat (input, "%U", unformat_ip4_address, &a6))
-	a4_set = 1;
-    }
-
-  /* Must have a name */
-  if (!name_set)
-    return 0;
+  if ((0 != clib_memcmp (&type, "a", 2)) || (0 != clib_memcmp (&type, "A", 2)))
+    if (unformat (input, "%U", unformat_ip4_address, &a4))
+      a4_set = 1;
 
   /* Must have at least one address */
   if (!(a4_set + a6_set))
@@ -1643,8 +1655,11 @@ unformat_dns_reply (unformat_input_t * input, va_list * args)
   vec_validate (ce, qp_offset + sizeof (dns_query_t) - 1);
   qp = (dns_query_t *) (ce + qp_offset);
 
-  qp->type = clib_host_to_net_u16 (DNS_TYPE_ALL);
   qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+  if (a4_set)
+    qp->type = clib_host_to_net_u16 (DNS_TYPE_A);
+  else if (a6_set)
+    qp->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
 
   /* Punch in space for the dns_header_t */
   vec_insert (ce, sizeof (dns_header_t), 0);
@@ -1656,7 +1671,7 @@ unformat_dns_reply (unformat_input_t * input, va_list * args)
 
   h->flags = clib_host_to_net_u16 (DNS_RD | DNS_RA);
   h->qdcount = clib_host_to_net_u16 (1);
-  h->anscount = clib_host_to_net_u16 (a4_set + a6_set);
+  h->anscount = clib_host_to_net_u16 (1);
   h->nscount = 0;
   h->arcount = 0;
 
@@ -1673,6 +1688,14 @@ unformat_dns_reply (unformat_input_t * input, va_list * args)
       rr->ttl = clib_host_to_net_u32 (86400);
       rr->rdlength = clib_host_to_net_u16 (4);
       memcpy (rr->rdata, &a4, sizeof (a4));
+
+      if (namep)
+	{
+	  *namep = name;
+	  vnet_dns_format_name (namep, DNS_TYPE_A);
+	}
+      else
+	vec_free (name);
     }
   if (a6_set)
     {
@@ -1686,12 +1709,16 @@ unformat_dns_reply (unformat_input_t * input, va_list * args)
       rr->ttl = clib_host_to_net_u32 (86400);
       rr->rdlength = clib_host_to_net_u16 (16);
       memcpy (rr->rdata, &a6, sizeof (a6));
+
+      if (namep)
+	{
+	  *namep = name;
+	  vnet_dns_format_name (namep, DNS_TYPE_AAAA);
+	}
+      else
+	vec_free (name);
     }
   *result = ce;
-  if (namep)
-    *namep = name;
-  else
-    vec_free (name);
 
   return 1;
 }
@@ -1741,7 +1768,7 @@ format_dns_query (u8 * s, va_list * args)
     {
 #define _(type, str)                                                          \
   case DNS_TYPE_##type:                                                       \
-    s = format (s, "foo " str);                                               \
+    s = format (s, str);                                                      \
     break;
       foreach_query_type1;
 #undef _
@@ -2154,11 +2181,10 @@ format_dns_cache (u8 * s, va_list * args)
 		ss = "    ";
 
 	      if (verbose < 2 && ep->flags & DNS_CACHE_ENTRY_FLAG_CNAME)
-		s = format (s, "%s%s -> %s", ss, ep->pending_requests->name,
-			    ep->cname);
+		s = format (s, "%s%s -> %s", ss, ep->name, ep->cname);
 	      else
-		s = format (s, "%s%s -> %U", ss, ep->pending_requests->name,
-			    format_dns_reply, ep->dns_response, verbose);
+		s = format (s, "%s%s -> %U", ss, ep->name, format_dns_reply,
+			    ep->dns_response, verbose);
 	      if (!(ep->flags & DNS_CACHE_ENTRY_FLAG_STATIC))
 		{
 		  f64 time_left = ep->expiration_time - now;

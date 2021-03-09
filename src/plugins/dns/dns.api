@@ -50,11 +50,13 @@ autoreply define dns_name_server_add_del {
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param name - the name to resolve
+    @param is_ip6 - indicates ip6 address request
 */
 define dns_resolve_name {
     u32 client_index;
     u32 context;
     u8 name[256];
+    u8 is_ip6;
     option vat_help = "<hostname>";
  };
 
