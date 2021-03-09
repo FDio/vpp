@@ -28,6 +28,7 @@
 #define MEMIF_DEFAULT_APP_NAME "libmemif-app"
 
 #include <inttypes.h>
+#include <sys/types.h>
 #include <sys/timerfd.h>
 
 /*! Error codes */
