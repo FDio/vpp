@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4ea2ab3f_fdfcd5d6",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 612,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-03-09T15:17:02Z",
+      "side": 1,
+      "message": "what is the field pushed out of cacheline0 to cacheline1?\nit would be good to add the cacheline1 marker CLIB_CACHE_LINE_ALIGN_MARK (cacheline1); at the right place and add STATIC_ASSERT_OFFSET_OF (vnet_hw_interface_t, cacheline1, CLIB_CACHE_LINE_BYTES); ?",
+      "revId": "33a13c2c13232a3ead8f0ef9e5bdd218c979faab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
