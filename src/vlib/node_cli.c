@@ -618,13 +618,15 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
   if (n->node_fn_registrations)
     {
       vlib_node_fn_registration_t *fnr = n->node_fn_registrations;
+      vlib_node_fn_variant_t *v;
       while (fnr)
 	{
+	  v = vec_elt_at_index (vm->node_main.variants, fnr->march_variant);
 	  if (vec_len (s) == 0)
-	    s = format (s, "\n    %-15s  %=8s  %6s",
-			"Name", "Priority", "Active");
-	  s = format (s, "\n    %-15s  %8d  %=6s", fnr->name, fnr->priority,
-		      fnr->function == n->function ? "yes" : "");
+	    s = format (s, "\n    %-15s  %=8s  %6s  %s", "Name", "Priority",
+			"Active", "Description");
+	  s = format (s, "\n    %-15s  %8d  %=6s  %s", v->suffix, v->priority,
+		      fnr->function == n->function ? "yes" : "", v->desc);
 	  fnr = fnr->next_registration;
 	}
     }
@@ -712,11 +714,9 @@ static clib_error_t *
 set_node_fn(vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u32 node_index;
+  u32 node_index, march_variant;
   vlib_node_t *n;
   clib_error_t *err = 0;
-  vlib_node_fn_registration_t *fnr;
-  u8 *variant = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -727,9 +727,9 @@ set_node_fn(vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd
       goto done;
     }
 
-  if (!unformat (line_input, "%U", unformat_vlib_node_variant, &variant))
+  if (!unformat (line_input, "%U", unformat_vlib_node_variant, &march_variant))
     {
-      err = clib_error_return (0, "please specify node functional variant");
+      err = clib_error_return (0, "please specify node function variant");
       goto done;
     }
 
@@ -737,36 +737,21 @@ set_node_fn(vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd
 
   if (n->node_fn_registrations == 0)
     {
-      err = clib_error_return (0, "node doesn't have functional variants");
+      err = clib_error_return (0, "node doesn't have function variants");
       goto done;
     }
 
-  fnr = n->node_fn_registrations;
-  vec_add1 (variant, 0);
-
-  while (fnr)
+  if (vlib_node_set_march_variant (vm, node_index, march_variant))
     {
-      if (!strncmp (fnr->name, (char *) variant, vec_len (variant) - 1))
-	{
-	  int i;
-
-	  n->function = fnr->function;
-
-	  for (i = 0; i < vec_len (vlib_mains); i++)
-	    {
-	      vlib_node_runtime_t *nrt;
-	      nrt = vlib_node_get_runtime (vlib_mains[i], n->index);
-	      nrt->function = fnr->function;
-	    }
-	  goto done;
-	}
-      fnr = fnr->next_registration;
+      vlib_node_fn_variant_t *v;
+      v = vec_elt_at_index (vm->node_main.variants, march_variant);
+      err = clib_error_return (0, "node function variant '%s' not found",
+			       v->suffix);
+      goto done;
     }
 
-  err = clib_error_return (0, "node functional variant '%s' not found", variant);
 
 done:
-  vec_free (variant);
   unformat_free (line_input);
   return err;
 }
