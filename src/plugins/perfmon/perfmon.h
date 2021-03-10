@@ -164,8 +164,7 @@ extern perfmon_main_t perfmon_main;
   perfmon_bundle_t __perfmon_bundle_##x
 
 void perfmon_reset (vlib_main_t *vm);
-clib_error_t *perfmon_set (vlib_main_t *vm, perfmon_bundle_t *);
-clib_error_t *perfmon_start (vlib_main_t *vm);
+clib_error_t *perfmon_start (vlib_main_t *vm, perfmon_bundle_t *);
 clib_error_t *perfmon_stop (vlib_main_t *vm);
 
 #define PERFMON_STRINGS(...)                                                  \

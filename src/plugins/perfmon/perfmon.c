@@ -79,7 +79,7 @@ perfmon_reset (vlib_main_t *vm)
   pm->active_bundle = 0;
 }
 
-clib_error_t *
+static clib_error_t *
 perfmon_set (vlib_main_t *vm, perfmon_bundle_t *b)
 {
   clib_error_t *err = 0;
@@ -212,16 +212,19 @@ error:
 }
 
 clib_error_t *
-perfmon_start (vlib_main_t *vm)
+perfmon_start (vlib_main_t *vm, perfmon_bundle_t *b)
 {
+  clib_error_t *err = 0;
   perfmon_main_t *pm = &perfmon_main;
-  int n_groups = vec_len (pm->group_fds);
-
-  if (n_groups == 0)
-    return clib_error_return (0, "no bundle configured");
+  int n_groups;
 
   if (pm->is_running == 1)
     return clib_error_return (0, "already running");
+
+  if ((err = perfmon_set (vm, b)) != 0)
+    return err;
+
+  n_groups = vec_len (pm->group_fds);
 
   for (int i = 0; i < n_groups; i++)
     {
@@ -238,8 +241,10 @@ perfmon_start (vlib_main_t *vm)
 	vlib_node_set_dispatch_wrapper (vlib_mains[i],
 					perfmon_dispatch_wrapper);
     }
+
   pm->sample_time = vlib_time_now (vm);
   pm->is_running = 1;
+
   return 0;
 }
 
