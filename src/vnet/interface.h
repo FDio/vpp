@@ -326,8 +326,7 @@ static __clib_unused vnet_device_class_t __clib_unused_##x
     extern vnet_device_class_t devclass;                                      \
     vlib_node_fn_registration_t *r;                                           \
     r = &CLIB_MARCH_SFX (devclass##_tx_fn_registration);                      \
-    r->priority = CLIB_MARCH_FN_PRIORITY ();                                  \
-    r->name = CLIB_MARCH_VARIANT_STR;                                         \
+    r->march_variant = CLIB_MARCH_SFX (CLIB_MARCH_VARIANT_TYPE);              \
     r->next_registration = devclass.tx_fn_registrations;                      \
     devclass.tx_fn_registrations = r;                                         \
   }                                                                           \
