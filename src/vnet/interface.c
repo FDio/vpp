@@ -777,10 +777,9 @@ setup_tx_node (vlib_main_t * vm,
   n->function = dev_class->tx_function;
   n->format_trace = dev_class->format_tx_trace;
 
-  /// XXX: Update this to use counter structure
-  vlib_register_errors (vm, node_index,
-			dev_class->tx_function_n_errors,
-			dev_class->tx_function_error_strings, 0);
+  vlib_register_errors (vm, node_index, dev_class->tx_function_n_errors,
+			dev_class->tx_function_error_strings,
+			dev_class->tx_function_error_counters);
 }
 
 static void

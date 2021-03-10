@@ -229,6 +229,7 @@ typedef struct _vnet_device_class
 
   /* Error strings indexed by error code for this node. */
   char **tx_function_error_strings;
+  vl_counter_t *tx_function_error_counters;
 
   /* Number of error codes used by this node. */
   u32 tx_function_n_errors;

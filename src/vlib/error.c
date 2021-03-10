@@ -144,7 +144,7 @@ vlib_register_errors (vlib_main_t * vm,
       int i;
       for (i = 0; i < n_errors; i++)
 	{
-	  counters[i].name = error_strings[i];	// XXX Make name saner
+	  counters[i].name = error_strings[i]; // XXX Make name saner
 	  counters[i].desc = error_strings[i];
 	  counters[i].severity = VL_COUNTER_SEVERITY_ERROR;
 	}
