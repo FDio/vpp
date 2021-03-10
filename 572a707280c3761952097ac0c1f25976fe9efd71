@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0657877a_3b812645",
+        "filename": "src/plugins/avf/input.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 488,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-03-10T13:47:30Z",
+      "side": 1,
+      "message": "if (with_flows) {...}\n\nso that compiler optimises it out in the inlining",
+      "range": {
+        "startLine": 488,
+        "startChar": 6,
+        "endLine": 488,
+        "endChar": 22
+      },
+      "revId": "572a707280c3761952097ac0c1f25976fe9efd71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "890bc42f_a3ba4d45",
+        "filename": "src/plugins/avf/input.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 496,
+      "author": {
+        "id": 845
+      },
+      "writtenOn": "2021-03-10T13:47:30Z",
+      "side": 1,
+      "message": "why move the declaration outside the while?",
+      "range": {
+        "startLine": 496,
+        "startChar": 6,
+        "endLine": 496,
+        "endChar": 23
+      },
+      "revId": "572a707280c3761952097ac0c1f25976fe9efd71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
