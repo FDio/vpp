@@ -41,108 +41,15 @@
 #include <fcntl.h>
 #include <vlib/vlib.h>
 
-typedef struct _vlib_node_march_variant
-{
-  struct _vlib_node_march_variant *next_variant;
-  char *name;
-} vlib_node_march_variant_t;
-
-#define VLIB_VARIANT_REGISTER()			\
-  static vlib_node_march_variant_t			\
-  CLIB_MARCH_VARIANT##variant;				\
-							\
-  static void __clib_constructor			\
-  CLIB_MARCH_VARIANT##_register (void)			\
-  {							\
-    extern vlib_node_march_variant_t *variants;	\
-    vlib_node_march_variant_t *v;			\
-    v = & CLIB_MARCH_VARIANT##variant;			\
-    v->name = CLIB_MARCH_VARIANT_STR;			\
-    v->next_variant = variants;			\
-    variants = v;					\
-  }							\
-
-VLIB_VARIANT_REGISTER ();
-
-#ifndef CLIB_MARCH_VARIANT
-
-vlib_node_march_variant_t *variants = 0;
-
-uword
-unformat_vlib_node_variant (unformat_input_t * input, va_list * args)
-{
-  u8 **variant = va_arg (*args, u8 **);
-  vlib_node_march_variant_t *v = variants;
-
-  if (!unformat (input, "%v", variant))
-    return 0;
-
-  while (v)
-    {
-      if (!strncmp (v->name, (char *) *variant, vec_len (*variant)))
-	return 1;
-
-      v = v->next_variant;
-    }
-
-  return 0;
-}
-
-static_always_inline void
-vlib_update_nr_variant_default (vlib_node_registration_t *nr, u8 *variant)
-{
-  vlib_node_fn_registration_t *fnr = nr->node_fn_registrations;
-  vlib_node_fn_registration_t *p_reg = 0;
-  vlib_node_fn_registration_t *v_reg = 0;
-  u32 tmp;
-
-  while (fnr)
-    {
-      /* which is the highest priority registration */
-      if (!p_reg || fnr->priority > p_reg->priority)
-	p_reg = fnr;
-
-      /* which is the variant we want to prioritize */
-      if (!strncmp (fnr->name, (char *) variant, vec_len (variant) - 1))
-	v_reg = fnr;
-
-      fnr = fnr->next_registration;
-    }
-
-  /* node doesn't have the variants */
-  if (!v_reg)
-    return;
-
-  ASSERT (p_reg != 0 && v_reg != 0);
-
-  /* swap priorities */
-  tmp = p_reg->priority;
-  p_reg->priority = v_reg->priority;
-  v_reg->priority = tmp;
-
-}
-
 static clib_error_t *
-vlib_early_node_config (vlib_main_t * vm, unformat_input_t * input)
+vlib_node_config (vlib_main_t *vm, unformat_input_t *input)
 {
   clib_error_t *error = 0;
-  vlib_node_registration_t *nr, **all;
   unformat_input_t sub_input;
-  uword *hash = 0, *p;
-  u8 *variant = 0;
-  u8 *s = 0;
-
-  all = 0;
-  hash = hash_create_string (0, sizeof (uword));
-
-  nr = vm->node_main.node_registrations;
-  while (nr)
-    {
-      hash_set_mem (hash, nr->name, vec_len (all));
-      vec_add1 (all, nr);
-
-      nr = nr->next_registration;
-    }
+  u32 *march_variant_by_node = 0;
+  clib_march_variant_type_t march_variant;
+  u32 node_index;
+  int i;
 
   /* specify prioritization defaults for all graph nodes */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -153,48 +60,34 @@ vlib_early_node_config (vlib_main_t * vm, unformat_input_t * input)
 	  while (unformat_check_input (&sub_input) != UNFORMAT_END_OF_INPUT)
 	    {
 	      if (!unformat (&sub_input, "variant %U",
-			     unformat_vlib_node_variant, &variant))
+			     unformat_vlib_node_variant, &march_variant))
 		return clib_error_return (0,
 					  "please specify a valid node variant");
-	      vec_add1 (variant, 0);
 
-	      nr = vm->node_main.node_registrations;
-	      while (nr)
-		{
-		  vlib_update_nr_variant_default (nr, variant);
-		  nr = nr->next_registration;
-		}
-
-	      vec_free (variant);
+	      vec_validate_init_empty (march_variant_by_node,
+				       vec_len (vm->node_main.nodes) - 1, ~0);
+	      vec_foreach_index (i, march_variant_by_node)
+		march_variant_by_node[i] = march_variant;
+	      vm->node_main.node_fn_default_march_variant = march_variant;
+	      unformat_free (&sub_input);
 	    }
 	}
       else /* specify prioritization for an individual graph node */
-      if (unformat (input, "%s", &s))
+	if (unformat (input, "%U", unformat_vlib_node, vm, &node_index))
 	{
-	  if (!(p = hash_get_mem (hash, s)))
-	    {
-	      error = clib_error_return (0,
-					 "node variants: unknown graph node '%s'",
-					 s);
-	      break;
-	    }
-
-	  nr = vec_elt (all, p[0]);
-
 	  if (unformat (input, "%U", unformat_vlib_cli_sub_input, &sub_input))
 	    {
 	      while (unformat_check_input (&sub_input) !=
 		     UNFORMAT_END_OF_INPUT)
 		{
 		  if (!unformat (&sub_input, "variant %U",
-				 unformat_vlib_node_variant, &variant))
+				 unformat_vlib_node_variant, &march_variant))
 		    return clib_error_return (0,
 					      "please specify a valid node variant");
-		  vec_add1 (variant, 0);
-
-		  vlib_update_nr_variant_default (nr, variant);
-
-		  vec_free (variant);
+		  vec_validate_init_empty (march_variant_by_node, node_index,
+					   ~0);
+		  march_variant_by_node[node_index] = march_variant;
+		  unformat_free (&sub_input);
 		}
 	    }
 	}
@@ -204,16 +97,19 @@ vlib_early_node_config (vlib_main_t * vm, unformat_input_t * input)
 	}
     }
 
-  hash_free (hash);
-  vec_free (all);
+  if (march_variant_by_node)
+    {
+      vec_foreach_index (i, march_variant_by_node)
+	if (march_variant_by_node[i] != ~0)
+	  vlib_node_set_march_variant (vm, i, march_variant_by_node[i]);
+      vec_free (march_variant_by_node);
+    }
   unformat_free (input);
 
   return error;
 }
 
-VLIB_EARLY_CONFIG_FUNCTION (vlib_early_node_config, "node");
-
-#endif
+VLIB_CONFIG_FUNCTION (vlib_node_config, "node");
 
 /*
  * fd.io coding-style-patch-verification: ON

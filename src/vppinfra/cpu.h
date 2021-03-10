@@ -19,34 +19,37 @@
 #include <sys/syscall.h>
 #include <vppinfra/format.h>
 
-/*
- * multiarchitecture support. Adding new entry will produce
- * new graph node function variant optimized for specific cpu
- * microarchitecture.
- * Order is important for runtime selection, as 1st match wins...
- */
-
-#if __x86_64__ && CLIB_DEBUG == 0
-#define foreach_march_variant(macro, x) \
-  macro(avx2,  x, "arch=core-avx2")
+#if defined(__x86_64__)
+#define foreach_march_variant                                                 \
+  _ (hsw, "Intel Haswell")                                                    \
+  _ (trm, "Intel Tremont")                                                    \
+  _ (skx, "Intel Skylake (server) / Cascade Lake")                            \
+  _ (icl, "Intel Ice Lake")
+#elif defined(__aarch64__)
+#define foreach_march_variant                                                 \
+  _ (octeontx2, "Marvell Octeon TX2")                                         \
+  _ (thunderx2t99, "Marvell ThunderX2 T99")                                   \
+  _ (qdf24xx, "Qualcomm CentriqTM 2400")                                      \
+  _ (cortexa72, "ARM Cortex-A72")                                             \
+  _ (neoversen1, "ARM Neoverse N1")
 #else
-#define foreach_march_variant(macro, x)
+#define foreach_march_variant
 #endif
 
+typedef enum
+{
+  CLIB_MARCH_VARIANT_TYPE = 0,
+#define _(s, n) CLIB_MARCH_VARIANT_TYPE_##s,
+  foreach_march_variant
+#undef _
+    CLIB_MARCH_TYPE_N_VARIANTS
+} clib_march_variant_type_t;
 
 #if __GNUC__ > 4  && !__clang__ && CLIB_DEBUG == 0
 #define CLIB_CPU_OPTIMIZED __attribute__ ((optimize ("O3")))
 #else
 #define CLIB_CPU_OPTIMIZED
 #endif
-
-
-#define CLIB_MULTIARCH_ARCH_CHECK(arch, fn, tgt)			\
-  if (clib_cpu_supports_ ## arch())					\
-    return & fn ## _ ##arch;
-
-/* FIXME to be removed */
-#define CLIB_MULTIARCH_SELECT_FN(fn,...)
 
 #ifdef CLIB_MARCH_VARIANT
 #define __CLIB_MULTIARCH_FN(a,b) a##_##b
