@@ -872,7 +872,7 @@ class NAT44EDTestCase(VppTestCase):
                             self.config_flags.NAT_IS_EXT_HOST_VALID)
             self.assertTrue(sessions[0].flags &
                             self.config_flags.NAT_IS_TWICE_NAT)
-            self.logger.info(self.vapi.cli("show nat44 sessions"))
+            self.logger.info(self.vapi.cli("show nat44-ed sessions"))
             self.vapi.nat44_del_session(
                 address=sessions[0].inside_ip_address,
                 port=sessions[0].inside_port,
