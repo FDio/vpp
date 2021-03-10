@@ -471,8 +471,8 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
 		    sizeof (ip46_address_t));
 
   vcl_session_table_add_vpp_handle (wrk, mp->handle, session->session_index);
-  session->transport.lcl_port = listen_session->transport.lcl_port;
-  session->transport.lcl_ip = listen_session->transport.lcl_ip;
+  session->transport.lcl_port = mp->lcl.port;
+  session->transport.lcl_ip = mp->lcl.ip;
   session->session_type = listen_session->session_type;
   session->is_dgram = vcl_proto_is_dgram (session->session_type);
   session->listener_index = listen_session->session_index;
