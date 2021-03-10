@@ -5,7 +5,6 @@ from io import BytesIO
 from random import randint
 
 import scapy.compat
-from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, TCP, UDP, ICMP, GRE
