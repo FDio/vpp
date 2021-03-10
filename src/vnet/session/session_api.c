@@ -372,7 +372,8 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
   eq_seg = session_main_get_evt_q_segment ();
   m.vpp_evt_q = fifo_segment_msg_q_offset (eq_seg, ls->thread_index);
 
-  if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
+  if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL &&
+      ls->rx_fifo)
     {
       m.rx_fifo = fifo_segment_fifo_offset (ls->rx_fifo);
       m.tx_fifo = fifo_segment_fifo_offset (ls->tx_fifo);
