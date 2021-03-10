@@ -19,7 +19,7 @@ import "vnet/interface_types.api";
 import "plugins/nat/lib/nat_types.api";
 
 /**
- * @file nat44.api
+ * @file nat44_ed.api
  * @brief VPP control-plane API messages.
  *
  * This file defines VPP control-plane API messages which are generally
@@ -40,20 +40,15 @@ enum nat44_config_flags : u8
     @param context - sender context, to match reply w/ request
     @param inside_vrf - inside vrf id
     @param outside_vrf - outside vrf id
-    @param users - maximum number of users per thread
-                  (NAT44_IS_ENDPOINT_INDEPENDENT)
-    @param user_memory - overwrite hash allocation parameter
-                        (NAT44_IS_ENDPOINT_INDEPENDENT)
+    @param users - unused
+    @param user_memory - unused
     @param sessions - maximum number of sessions per thread
     @param session_memory - overwrite hash allocation parameter
-    @param user_sessions - maximum number of sessions per user
-                          (NAT44_IS_ENDPOINT_INDEPENDENT)
+    @param user_sessions - unused
     @param enable - true if enable, false if disable
-    @param flags - flag NAT44_IS_ENDPOINT_INDEPENDENT,
-                        NAT44_IS_ENDPOINT_DEPENDENT,
-                        NAT44_IS_STATIC_MAPPING_ONLY,
-                        NAT44_IS_CONNECTION_TRACKING,
-                        NAT44_IS_OUT2IN_DPO
+    @param flags - required flag: NAT44_IS_ENDPOINT_DEPENDENT,
+                   optional flags: NAT44_IS_STATIC_MAPPING_ONLY,
+                                   NAT44_IS_CONNECTION_TRACKING
 */
 autoreply define nat44_plugin_enable_disable {
   option deprecated;
@@ -66,29 +61,6 @@ autoreply define nat44_plugin_enable_disable {
   u32 sessions;
   u32 session_memory;
   u32 user_sessions;
-  bool enable;
-  vl_api_nat44_config_flags_t flags;
-};
-
-/** \brief Enable/disable NAT44ED plugin
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param inside_vrf - inside vrf id
-    @param outside_vrf - outside vrf id
-    @param sessions - maximum number of sessions per thread
-    @param session_memory - overwrite hash allocation parameter
-    @param enable - true if enable, false if disable
-    @param flags - flag NAT44_IS_STATIC_MAPPING_ONLY,
-                        NAT44_IS_CONNECTION_TRACKING
-*/
-autoreply define nat44_ed_plugin_enable_disable {
-  option in_progress;
-  u32 client_index;
-  u32 context;
-  u32 inside_vrf;
-  u32 outside_vrf;
-  u32 sessions;
-  u32 session_memory;
   bool enable;
   vl_api_nat44_config_flags_t flags;
 };
@@ -1201,6 +1173,31 @@ define nat44_forwarding_is_enabled_reply {
   bool enabled;
 };
 
+// NEW API
+
+/** \brief Enable/disable nat44-ed plugin
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param inside_vrf - inside vrf id
+    @param outside_vrf - outside vrf id
+    @param sessions - maximum number of sessions per thread
+    @param session_memory - overwrite hash allocation parameter
+    @param enable - true if enable, false if disable
+    @param flags - flag NAT44_IS_STATIC_MAPPING_ONLY,
+                        NAT44_IS_CONNECTION_TRACKING
+*/
+autoreply define nat44_ed_plugin_enable_disable {
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  u32 inside_vrf;
+  u32 outside_vrf;
+  u32 sessions;
+  u32 session_memory;
+  bool enable;
+  vl_api_nat44_config_flags_t flags;
+};
+
 /** \brief Set NAT handoff frame queue options
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -1235,4 +1232,593 @@ define nat44_ed_show_fq_options_reply
   u32 context;
   i32 retval;
   u32 frame_queue_nelts;
+};
+
+/** \brief Show NAT44 plugin running config
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_ed_show_running_config
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Show nat44-ed plugin running config reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param inside_vrf - default inside VRF id
+    @param outside_vrf - outside VRF id
+    @param sessions - maximum number of sessions per worker thread
+    @param translation_buckets - number of translation hash buckets
+    @param flags - flag NAT44_IS_STATIC_MAPPING_ONLY,
+                        NAT44_IS_CONNECTION_TRACKING
+*/
+define nat44_ed_show_running_config_reply
+{
+  option in_progress;
+  u32 context;
+  i32 retval;
+  u32 inside_vrf;
+  u32 outside_vrf;
+  u32 sessions;
+  u32 translation_buckets;
+  bool forwarding_enabled;
+  bool ipfix_logging_enabled;
+  vl_api_nat_timeouts_t timeouts;
+  vl_api_nat_log_level_t log_level;
+  vl_api_nat44_config_flags_t flags;
+};
+
+/** \brief set nat44-ed session limit
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param session_limit - session limit
+    @param vrf_id - vrf id
+*/
+autoreply define nat44_ed_set_session_limit {
+  u32 client_index;
+  u32 context;
+  u32 session_limit;
+  u32 vrf_id;
+};
+
+/** \brief set nat44-ed logging level
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param log_level - logging level
+*/
+autoreply define nat44_ed_set_log_level {
+  option deprecated;
+  u32 client_index;
+  u32 context;
+  vl_api_nat_log_level_t log_level;
+};
+
+/** \brief set nat44-ed workers
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param worker_mask - NAT workers mask
+*/
+autoreply define nat44_ed_set_workers {
+  u32 client_index;
+  u32 context;
+  u64 worker_mask;
+};
+
+/** \brief dump nat44-ed workers
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_ed_worker_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief nat44-ed workers details response
+    @param context - sender context, to match reply w/ request
+    @param worker_index - worker index
+    @param lcore_id - lcore ID
+    @param name - worker name
+*/
+define nat44_ed_worker_details {
+  u32 context;
+  u32 worker_index;
+  u32 lcore_id;
+  string name[64];
+};
+
+/** \brief enable/disable nat44-ed IPFIX logging
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param domain_id - observation domain ID
+    @param src_port - source port number
+    @param enable - true if enable, false if disable
+*/
+autoreply define nat44_ed_ipfix_enable_disable {
+  u32 client_index;
+  u32 context;
+  u32 domain_id;
+  u16 src_port;
+  bool enable;
+};
+
+/** \brief set nat44-ed values of timeouts for sessions (seconds)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param udp - UDP timeout (default 300sec)
+    @param tcp_established - TCP established timeout (default 7440sec)
+    @param tcp_transitory - TCP transitory timeout (default 240sec)
+    @param icmp - ICMP timeout (default 60sec)
+*/
+autoreply define nat44_ed_set_timeouts {
+  option deprecated;
+  u32 client_index;
+  u32 context;
+  u32 udp;
+  u32 tcp_established;
+  u32 tcp_transitory;
+  u32 icmp;
+};
+
+/** \brief get nat44-ed values of timeouts for sessions (seconds)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_ed_get_timeouts {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief get nat44-ed values of timeouts for sessions reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param udp - UDP timeout
+    @param tcp_established - TCP established timeout
+    @param tcp_transitory - TCP transitory timeout
+    @param icmp - ICMP timeout
+*/
+define nat44_ed_get_timeouts_reply {
+  u32 context;
+  i32 retval;
+  u32 udp;
+  u32 tcp_established;
+  u32 tcp_transitory;
+  u32 icmp;
+};
+
+/** \brief set nat44-ed TCP MSS rewriting configuration
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mss_value - MSS value to be used for MSS rewriting
+    @param enable - if true enable MSS rewriting feature else disable
+*/
+autoreply define nat44_ed_set_mss_clamping {
+  u32 client_index;
+  u32 context;
+  u16 mss_value;
+  bool enable;
+};
+
+/** \brief get nat44-ed TCP MSS rewriting configuration
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_ed_get_mss_clamping {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief get nat44-ed TCP MSS rewriting configuration reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param mss_value - MSS value to be used for MSS rewriting
+    @param enable - if true enable MSS rewriting feature else disable
+*/
+define nat44_ed_get_mss_clamping_reply {
+  u32 context;
+  i32 retval;
+  u16 mss_value;
+  bool enable;
+};
+
+// TODO: consider using CIDR ?? notation ??
+
+/** \brief add/del nat44-ed address range
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param first_ip_address - first IPv4 address
+    @param last_ip_address - last IPv4 address
+    @param vrf_id - VRF id of tenant, ~0 means independent of VRF
+    @param is_add - true if add, false if delete
+    @param flags - flag NAT_IS_TWICE_NAT if NAT address range for external hosts
+
+*/
+autoreply define nat44_ed_add_del_address_range {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t first_ip_address;
+  vl_api_ip4_address_t last_ip_address;
+  u32 vrf_id;
+  bool is_add;
+  vl_api_nat_config_flags_t flags;
+};
+
+/** \brief dump nat44-ed addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_ed_address_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief nat44-ed address details response
+    @param context - sender context, to match reply w/ request
+    @param ip_address - IPv4 address
+    @param flags - flag NAT_IS_TWICE_NAT if NAT address range for external hosts
+    @param vrf_id - VRF id of tenant, ~0 means independent of VRF
+*/
+define nat44_ed_address_details {
+  u32 context;
+  vl_api_ip4_address_t ip_address;
+  vl_api_nat_config_flags_t flags;
+  u32 vrf_id;
+};
+
+// TODO: combine classical feature & output feature
+
+/** \brief enable/disable nat44-ed feature on the interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param is_output - true if interface should be output feature
+    @param flags - flag NAT_IS_INSIDE if interface is inside else
+                   interface is outside
+    @param sw_if_index - software index of the interface
+*/
+autoreply define nat44_ed_interface_add_del_feature {
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  bool is_output;
+  vl_api_nat_config_flags_t flags;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief dump interfaces with nat44-ed feature
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_ed_interface_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief nat44-ed interface details response
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software index of the interface
+    @param is_output - true if interface should be output feature
+    @param flags - flag NAT_IS_INSIDE if interface is inside,
+                   flag NAT_IS_OUTSIDE if interface is outside
+                   and if both flags are set the interface is
+                   both inside and outside
+*/
+define nat44_ed_interface_details {
+  u32 context;
+  bool is_output;
+  vl_api_nat_config_flags_t flags;
+  vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief add/delete nat44-ed static mapping
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param match_pool - true if use specific pool_ip_address
+    @param flags - flag NAT_IS_ADDR_ONLY if address only mapping,
+                   flag NAT_IS_TWICE_NAT if nat address range for external hosts,
+                   flag NAT_IS_SELF_TWICE_NAT if translate external host address
+                   and port whenever external host address equals local
+                   address of internal host,
+                   flag NAT_IS_OUT2IN_ONLY if rule match only out2in direction
+    @param pool_ip_address - pool IPv4 address to match with pool
+    @param local_ip_address - local IPv4 address
+    @param external_ip_address - external IPv4 address
+    @param protocol - IP protocol, used only if addr_only=0
+    @param local_port - local port number, used only if addr_only=0
+    @param external_port - external port number, used only if addr_only=0
+    @param external_sw_if_index - external interface (if set
+                                  external_ip_address is ignored, ~0 means not
+                                  used)
+    @param vfr_id - VRF ID
+    @param tag - opaque string tag
+*/
+autoreply define nat44_ed_add_del_static_mapping {
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  bool match_pool;
+  vl_api_nat_config_flags_t flags;
+  vl_api_ip4_address_t pool_ip_address;
+  vl_api_ip4_address_t local_ip_address;
+  vl_api_ip4_address_t external_ip_address;
+  u8 protocol;
+  u16 local_port;
+  u16 external_port;
+  vl_api_interface_index_t external_sw_if_index;
+  u32 vrf_id;
+  string tag[64];
+};
+
+/** \brief dump nat44-ed static mappings
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_ed_static_mapping_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief nat44-ed static mapping details response
+    @param context - sender context, to match reply w/ request
+    @param flags - flag NAT_ADDR_ONLY if address only mapping,
+                   flag NAT_TWICE_NAT if NAT address range for external hosts,
+                   flag NAT_SELF_TWICE_NAT if translate external host address
+                   and port whenever external host address equals local
+                   address of internal host,
+                   flag NAT_OUT2IN_ONLY if rule match only out2in direction
+    @param local_ip_address - local IPv4 address
+    @param external_ip_address - external IPv4 address
+    @param protocol - IP protocol, valid only if no NAT_ADDR_ONLY flag
+    @param local_port - local port number, valid only if no NAT_ADDR_ONLY flag
+    @param external_port - external port number, valid only if no NAT_ADDR_ONLY flag
+    @param external_sw_if_index - external interface
+    @param vfr_id - VRF ID
+    @param tag - opaque string tag
+*/
+define nat44_ed_static_mapping_details {
+  u32 context;
+  vl_api_nat_config_flags_t flags;
+  vl_api_ip4_address_t local_ip_address;
+  vl_api_ip4_address_t external_ip_address;
+  u8 protocol;
+  u16 local_port;
+  u16 external_port;
+  vl_api_interface_index_t external_sw_if_index;
+  u32 vrf_id;
+  string tag[64];
+};
+
+/** \brief add/delete nat44-ed identity mapping
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param flags - flag NAT_ADDR_ONLY if address only mapping
+    @param ip_address - IPv4 address
+    @param protocol - IP protocol
+    @param port - port number
+    @param sw_if_index - interface (if set ip_address is ignored, ~0 means not
+                                    used)
+    @param vfr_id - VRF ID (if ~0 use default VRF)
+    @param tag - opaque string tag
+*/
+autoreply define nat44_ed_add_del_identity_mapping {
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_nat_config_flags_t flags;
+  vl_api_ip4_address_t ip_address;
+  u8 protocol;
+  u16 port;
+  vl_api_interface_index_t sw_if_index;
+  u32 vrf_id;
+  string tag[64];
+};
+
+/** \brief dump nat44-ed identity mappings
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_ed_identity_mapping_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief nat44-ed identity mapping details response
+    @param context - sender context, to match reply w/ request
+    @param flags - flag NAT_ADDR_ONLY if address only mapping
+    @param ip_address - IPv4 address
+    @param protocol - IP protocol
+    @param port - port number
+    @param sw_if_index - interface
+    @param vfr_id - VRF ID
+    @param tag - opaque string tag
+*/
+define nat44_ed_identity_mapping_details {
+  u32 context;
+  vl_api_nat_config_flags_t flags;
+  vl_api_ip4_address_t ip_address;
+  u8 protocol;
+  u16 port;
+  vl_api_interface_index_t sw_if_index;
+  u32 vrf_id;
+  string tag[64];
+};
+
+/** \brief add/delete nat44-ed pool address from specific interfce
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param sw_if_index - software index of the interface
+    @param flags - flag NAT_TWICE_NAT if NAT address range for external hosts
+*/
+autoreply define nat44_ed_add_del_interface_addr {
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_nat_config_flags_t flags;
+};
+
+/** \brief dump nat44-ed pool addresses interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_ed_interface_addr_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief nat44-ed pool addresses interfaces details response
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software index of the interface
+    @param flags - flag NAT_TWICE_NAT if NAT address range for external hosts
+
+*/
+define nat44_ed_interface_addr_details {
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  vl_api_nat_config_flags_t flags;
+};
+
+/** \brief nat44-ed load-balancing address and port pair
+    @param addr - IPv4 address of the internal node
+    @param port - L4 port number of the internal node
+    @param probability - probability of the internal node to be randomly matched
+    @param vrf_id - VRF id
+*/
+typedef nat44_ed_lb_addr_port {
+  vl_api_ip4_address_t addr;
+  u16 port;
+  u8 probability;
+  u32 vrf_id;
+};
+
+/** \brief add/delete nat44-ed load-balancing static mapping rule
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param flags - flag NAT_TWICE_NAT if NAT address range for external hosts,
+                   flag NAT_SELF_TWICE_NAT if translate external host address
+                   and port whenever external host address equals local
+                   address of internal host,
+                   flag NAT_OUT2IN_ONLY if rule match only out2in direction
+    @param external_addr - external IPv4 address of the service
+    @param external_port - external L4 port number of the service
+    @param protocol - IP protocol number of the service
+    @param affinity - if 0 disabled, otherwise client IP affinity sticky time
+                      in seconds
+    @param local_num - number of local network nodes
+    @param locals - local network nodes
+    @param tag - opaque string tag
+*/
+autoreply define nat44_ed_add_del_lb_static_mapping {
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_nat_config_flags_t flags;
+  vl_api_ip4_address_t external_addr;
+  u16 external_port;
+  u8 protocol;
+  u32 affinity;
+  string tag[64];
+  u32 local_num;
+  vl_api_nat44_ed_lb_addr_port_t locals[local_num];
+};
+
+/** \brief add/delete nat44-ed load-balancing static mapping rule backend
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - true if add, false if delete
+    @param external_addr - external IPv4 address of the service
+    @param external_port - external L4 port number of the service
+    @param protocol - IP protocol number of the service
+    @param local - local network node
+*/
+autoreply define nat44_ed_lb_static_mapping_add_del_local {
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_ip4_address_t external_addr;
+  u16 external_port;
+  u8 protocol;
+  vl_api_nat44_ed_lb_addr_port_t local;
+};
+
+/** \brief dump nat44-ed load-balancing static mapping rules
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_ed_lb_static_mapping_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief nat44-ed load-balancing static mapping rule details response
+    @param context - sender context, to match reply w/ request
+    @param external_addr - external IPv4 address of the service
+    @param external_port - external L4 port number of the service
+    @param protocol - IP protocol number of the service
+    @param flags - flag NAT_TWICE_NAT if NAT address range for external hosts,
+                   flag NAT_SELF_TWICE_NAT if translate external host address
+                   and port whenever external host address equals local
+                   address of internal host,
+                   flag NAT_OUT2IN_ONLY if rule match only out2in direction
+    @param affinity - if 0 disabled, otherwise client IP affinity sticky time
+                      in seconds
+    @param local_num - number of local network nodes
+    @param locals - local network nodes
+    @param tag - opaque string tag
+*/
+define nat44_ed_lb_static_mapping_details {
+  u32 context;
+  vl_api_ip4_address_t external_addr;
+  u16 external_port;
+  u8 protocol;
+  vl_api_nat_config_flags_t flags;
+  u32 affinity;
+  string tag[64];
+  u32 local_num;
+  vl_api_nat44_ed_lb_addr_port_t locals[local_num];
+};
+
+/** \brief delete nat44-ed session
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip_address - IPv4 address
+    @param protocol - IP protocol
+    @param port - port number
+    @param vfr_id - VRF ID
+    @param flags - flag NAT_IS_INSIDE if interface is inside or
+                   interface is outside,
+                   flag NAT_IS_EXT_HOST_VALID if external host address and
+                   port are valid
+    @param ext_host_address - external host IPv4 address
+    @param ext_host_port - external host port
+*/
+autoreply define nat44_ed_del_session {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t address;
+  u8 protocol;
+  u16 port;
+  u32 vrf_id;
+  vl_api_nat_config_flags_t flags;
+  vl_api_ip4_address_t ext_host_address;
+  u16 ext_host_port;
+};
+
+/** \brief enable/disable forwarding for nat44-ed
+    Forward packets which don't match existing translation
+    or static mapping instead of dropping them.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable - true for enable, false for disable
+*/
+autoreply define nat44_ed_forwarding_enable_disable {
+  u32 client_index;
+  u32 context;
+  bool enable;
 };
