@@ -28,20 +28,20 @@
 #include <memif/memif.h>
 #include <memif/private.h>
 
-#define foreach_memif_tx_func_error	       \
-_(NO_FREE_SLOTS, "no free tx slots")           \
-_(ROLLBACK, "no enough space in tx buffers")
+#define foreach_memif_tx_func_error                                           \
+  _ (NO_FREE_SLOTS, no_free_slots, ERROR, "no free tx slots")                 \
+  _ (ROLLBACK, rollback, ERROR, "no enough space in tx buffers")
 
 typedef enum
 {
-#define _(f,s) MEMIF_TX_ERROR_##f,
+#define _(f, n, s, d) MEMIF_TX_ERROR_##f,
   foreach_memif_tx_func_error
 #undef _
     MEMIF_TX_N_ERROR,
 } memif_tx_func_error_t;
 
-static char *memif_tx_func_error_strings[] = {
-#define _(n,s) s,
+static vl_counter_t memif_tx_func_error_counters[] = {
+#define _(f, n, s, d) { #n, d, VL_COUNTER_SEVERITY_##s },
   foreach_memif_tx_func_error
 #undef _
 };
@@ -490,7 +490,7 @@ VNET_DEVICE_CLASS (memif_device_class) = {
   .format_device = format_memif_device,
   .format_tx_trace = format_memif_tx_trace,
   .tx_function_n_errors = MEMIF_TX_N_ERROR,
-  .tx_function_error_strings = memif_tx_func_error_strings,
+  .tx_function_error_counters = memif_tx_func_error_counters,
   .rx_redirect_to_node = memif_set_interface_next_node,
   .clear_counters = memif_clear_hw_interface_counters,
   .admin_up_down_function = memif_interface_admin_up_down,
