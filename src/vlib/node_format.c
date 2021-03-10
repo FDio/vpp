@@ -178,6 +178,27 @@ format_vlib_cpu_time (u8 * s, va_list * va)
   return format (s, "%U", format_vlib_time, vm, dt);
 }
 
+uword
+unformat_vlib_node_variant (unformat_input_t *input, va_list *args)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  u32 *march_variant = va_arg (*args, u32 *);
+  uword *p;
+  u8 *str = 0;
+
+  if (unformat (input, "%s", &str) == 0)
+    return 0;
+
+  p = hash_get (vm->node_main.node_fn_index_by_suffix, str);
+
+  vec_free (str);
+
+  if (p)
+    *march_variant = p[0];
+
+  return p ? 1 : 0;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

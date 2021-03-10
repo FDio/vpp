@@ -1962,6 +1962,9 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
       goto done;
     }
 
+  /* Register node ifunction variants */
+  vlib_register_all_node_fn_variants (vm);
+
   /* Register static nodes so that init functions may use them. */
   vlib_register_all_static_nodes (vm);
 

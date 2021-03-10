@@ -774,7 +774,6 @@ setup_tx_node (vlib_main_t * vm,
 {
   vlib_node_t *n = vlib_get_node (vm, node_index);
 
-  n->function = dev_class->tx_function;
   n->format_trace = dev_class->format_tx_trace;
 
   /// XXX: Update this to use counter structure
@@ -911,7 +910,14 @@ vnet_register_interface (vnet_main_t * vnm,
       /* *INDENT-ON* */
 
       node = vlib_get_node (vm, hw->tx_node_index);
-      node->function = dev_class->tx_function;
+      if (dev_class->tx_fn_registrations)
+	{
+	  node->node_fn_registrations = dev_class->tx_fn_registrations;
+	  node->function = vlib_node_get_preferred_node_fn_variant (
+	    vm, dev_class->tx_fn_registrations);
+	}
+      else
+	node->function = dev_class->tx_function;
       node->format_trace = dev_class->format_tx_trace;
       /* *INDENT-OFF* */
       foreach_vlib_main ({
@@ -1380,9 +1386,12 @@ vnet_interface_init (vlib_main_t * vm)
 
 	    while (fnr)
 	      {
-		if (fnr->priority > priority)
+		vlib_node_fn_variant_t *v;
+		v = vec_elt_at_index (vm->node_main.variants,
+				      fnr->march_variant);
+		if (v->priority > priority)
 		  {
-		    priority = fnr->priority;
+		    priority = v->priority;
 		    c->tx_function = fnr->function;
 		  }
 		fnr = fnr->next_registration;
