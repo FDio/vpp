@@ -378,6 +378,7 @@ typedef struct session_accepted_msg_
   u64 segment_handle;
   uword vpp_event_queue_address;
   u32 mq_index;
+  transport_endpoint_t lcl;
   transport_endpoint_t rmt;
   u8 flags;
 } __clib_packed session_accepted_msg_t;
