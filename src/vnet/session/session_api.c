@@ -163,6 +163,7 @@ mq_send_session_accepted_cb (session_t * s)
       m.handle = session_handle (s);
 
       session_get_endpoint (s, &m.rmt, 0 /* is_lcl */);
+      session_get_endpoint (s, &m.lcl, 1 /* is_lcl */);
     }
   else
     {
@@ -173,6 +174,7 @@ mq_send_session_accepted_cb (session_t * s)
       m.listener_handle = app_listen_session_handle (listener);
       m.rmt.is_ip4 = session_type_is_ip4 (listener->session_type);
       m.rmt.port = ct->c_rmt_port;
+      m.lcl.port = ct->c_lcl_port;
       m.handle = session_handle (s);
       m.vpp_event_queue_address =
 	fifo_segment_msg_q_offset (eq_seg, s->thread_index);
