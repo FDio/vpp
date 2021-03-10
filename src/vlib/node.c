@@ -317,6 +317,43 @@ node_elog_init (vlib_main_t * vm, uword ni)
 #define STACK_ALIGN CLIB_CACHE_LINE_BYTES
 #endif
 
+vlib_node_function_t *
+vlib_node_get_preferred_node_fn_variant (vlib_main_t *vm,
+					 vlib_node_fn_registration_t *regs)
+{
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_fn_registration_t *r;
+  vlib_node_fn_variant_t *v;
+  vlib_node_function_t *fn = 0;
+  int priority = -1;
+
+  if (nm->node_fn_default_march_variant != ~0)
+    {
+      r = regs;
+      while (r)
+	{
+	  if (r->march_variant == nm->node_fn_default_march_variant)
+	    return r->function;
+	  r = r->next_registration;
+	}
+    }
+
+  r = regs;
+  while (r)
+    {
+      v = vec_elt_at_index (nm->variants, r->march_variant);
+      if (v->priority > priority)
+	{
+	  priority = v->priority;
+	  fn = r->function;
+	}
+      r = r->next_registration;
+    }
+
+  ASSERT (fn);
+  return fn;
+}
+
 static void
 register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 {
@@ -334,22 +371,12 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 
   if (r->node_fn_registrations)
     {
-      vlib_node_fn_registration_t *fnr = r->node_fn_registrations;
-      int priority = -1;
-
       /* to avoid confusion, please remove ".function " statiement from
          CLIB_NODE_REGISTRATION() if using function function candidates */
       ASSERT (r->function == 0);
 
-      while (fnr)
-	{
-	  if (fnr->priority > priority)
-	    {
-	      priority = fnr->priority;
-	      r->function = fnr->function;
-	    }
-	  fnr = fnr->next_registration;
-	}
+      r->function =
+	vlib_node_get_preferred_node_fn_variant (vm, r->node_fn_registrations);
     }
 
   ASSERT (r->function != 0);
@@ -521,6 +548,7 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 
     vec_free (n->runtime_data);
   }
+#undef _
 }
 
 /* Register new packet processing node. */
@@ -542,6 +570,40 @@ null_node_fn (vlib_main_t * vm,
   vlib_frame_free (vm, node, frame);
 
   return n_vectors;
+}
+
+void
+vlib_register_all_node_march_variants (vlib_main_t *vm)
+{
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_fn_variant_t *v;
+  int prio = -1;
+
+  nm->node_fn_default_march_variant = ~0;
+  ASSERT (nm->variants == 0);
+  vec_add2 (nm->variants, v, 1);
+  v->desc = v->suffix = "default";
+  v->index = CLIB_MARCH_VARIANT_TYPE;
+
+#define _(s, n)                                                               \
+  vec_add2 (nm->variants, v, 1);                                              \
+  v->suffix = #s;                                                             \
+  v->index = CLIB_MARCH_VARIANT_TYPE_##s;                                     \
+  v->priority = clib_cpu_march_priority_##s ();                               \
+  v->desc = n;
+
+  foreach_march_variant;
+#undef _
+
+  nm->node_fn_march_variant_by_suffix = hash_create_string (0, sizeof (u32));
+
+  vec_foreach (v, nm->variants)
+    {
+      ASSERT (v->index == v - nm->variants);
+      hash_set (nm->node_fn_march_variant_by_suffix, v->suffix, v->index);
+      if (v->priority > prio)
+	prio = v->priority;
+    }
 }
 
 void
@@ -793,6 +855,38 @@ vlib_process_create (vlib_main_t * vm, char *name,
   return (r.index);
 }
 
+int
+vlib_node_set_march_variant (vlib_main_t *vm, u32 node_index,
+			     clib_march_variant_type_t march_variant)
+{
+  vlib_node_fn_registration_t *fnr;
+  vlib_node_fn_variant_t *v;
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+
+  if (n->node_fn_registrations == 0)
+    return -1;
+
+  fnr = n->node_fn_registrations;
+  v = vec_elt_at_index (vm->node_main.variants, march_variant);
+
+  while (fnr)
+    {
+      if (fnr->march_variant == v->index)
+	{
+	  n->function = fnr->function;
+
+	  for (int i = 0; i < vec_len (vlib_mains); i++)
+	    {
+	      vlib_node_runtime_t *nrt;
+	      nrt = vlib_node_get_runtime (vlib_mains[i], n->index);
+	      nrt->function = fnr->function;
+	    }
+	  return 0;
+	}
+      fnr = fnr->next_registration;
+    }
+  return -1;
+}
 /*
  * fd.io coding-style-patch-verification: ON
  *

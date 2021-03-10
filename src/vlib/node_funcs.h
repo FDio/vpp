@@ -1125,6 +1125,9 @@ void vlib_node_rename (vlib_main_t * vm, u32 node_index, char *fmt, ...);
    macro. */
 u32 vlib_register_node (vlib_main_t * vm, vlib_node_registration_t * r);
 
+/* Register all node function variants */
+void vlib_register_all_node_march_variants (vlib_main_t *vm);
+
 /* Register all static nodes registered via VLIB_REGISTER_NODE. */
 void vlib_register_all_static_nodes (vlib_main_t * vm);
 
@@ -1166,6 +1169,25 @@ vlib_node_increment_counter (vlib_main_t * vm, u32 node_index,
 u32 vlib_process_create (vlib_main_t * vm, char *name,
 			 vlib_node_function_t * f, u32 log2_n_stack_bytes);
 
+<<<<<<< HEAD   (3e0daf misc: 19.08.3 Release Notes)
+=======
+always_inline int
+vlib_node_set_dispatch_wrapper (vlib_main_t *vm, vlib_node_function_t *fn)
+{
+  if (fn && vm->dispatch_wrapper_fn)
+    return 1;
+  vm->dispatch_wrapper_fn = fn;
+  return 0;
+}
+
+int vlib_node_set_march_variant (vlib_main_t *vm, u32 node_index,
+				 clib_march_variant_type_t march_variant);
+
+vlib_node_function_t *
+vlib_node_get_preferred_node_fn_variant (vlib_main_t *vm,
+					 vlib_node_fn_registration_t *regs);
+
+>>>>>>> CHANGE (c9a244 vlib: refactor node function variants)
 #endif /* included_vlib_node_funcs_h */
 
 /*

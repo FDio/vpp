@@ -89,9 +89,8 @@ typedef enum
 typedef struct _vlib_node_fn_registration
 {
   vlib_node_function_t *function;
-  int priority;
+  clib_march_variant_type_t march_variant;
   struct _vlib_node_fn_registration *next_registration;
-  char *name;
 } vlib_node_fn_registration_t;
 
 typedef struct _vlib_node_registration
@@ -199,24 +198,24 @@ static __clib_unused vlib_node_registration_t __clib_unused_##x
 #define CLIB_MARCH_VARIANT_STR _CLIB_MARCH_VARIANT_STR(CLIB_MARCH_VARIANT)
 #endif
 
-#define VLIB_NODE_FN(node)						\
-uword CLIB_MARCH_SFX (node##_fn)();					\
-static vlib_node_fn_registration_t					\
-  CLIB_MARCH_SFX(node##_fn_registration) =				\
-  { .function = &CLIB_MARCH_SFX (node##_fn), };				\
-									\
-static void __clib_constructor						\
-CLIB_MARCH_SFX (node##_multiarch_register) (void)			\
-{									\
-  extern vlib_node_registration_t node;					\
-  vlib_node_fn_registration_t *r;					\
-  r = & CLIB_MARCH_SFX (node##_fn_registration);			\
-  r->priority = CLIB_MARCH_FN_PRIORITY();				\
-  r->name = CLIB_MARCH_VARIANT_STR;					\
-  r->next_registration = node.node_fn_registrations;			\
-  node.node_fn_registrations = r;					\
-}									\
-uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (node##_fn)
+#define VLIB_NODE_FN(node)                                                    \
+  uword CLIB_MARCH_SFX (node##_fn) ();                                        \
+  static vlib_node_fn_registration_t CLIB_MARCH_SFX (                         \
+    node##_fn_registration) = {                                               \
+    .function = &CLIB_MARCH_SFX (node##_fn),                                  \
+  };                                                                          \
+                                                                              \
+  static void __clib_constructor CLIB_MARCH_SFX (node##_multiarch_register) ( \
+    void)                                                                     \
+  {                                                                           \
+    extern vlib_node_registration_t node;                                     \
+    vlib_node_fn_registration_t *r;                                           \
+    r = &CLIB_MARCH_SFX (node##_fn_registration);                             \
+    r->march_variant = CLIB_MARCH_SFX (CLIB_MARCH_VARIANT_TYPE);              \
+    r->next_registration = node.node_fn_registrations;                        \
+    node.node_fn_registrations = r;                                           \
+  }                                                                           \
+  uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (node##_fn)
 
 always_inline vlib_node_registration_t *
 vlib_node_next_registered (vlib_node_registration_t * c)
@@ -695,6 +694,14 @@ vlib_timing_wheel_data_get_index (u32 d)
 
 typedef struct
 {
+  clib_march_variant_type_t index;
+  int priority;
+  char *suffix;
+  char *desc;
+} vlib_node_fn_variant_t;
+
+typedef struct
+{
   /* Public nodes. */
   vlib_node_t **nodes;
 
@@ -765,6 +772,15 @@ typedef struct
 
   /* Node index from error code */
   u32 *node_by_error;
+
+  /* Node Function Variants */
+  vlib_node_fn_variant_t *variants;
+
+  /* Node Function Default Variant Index */
+  u32 node_fn_default_march_variant;
+
+  /* Node Function march Variant by Suffix Hash */
+  uword *node_fn_march_variant_by_suffix;
 } vlib_node_main_t;
 
 typedef u16 vlib_error_t;

@@ -302,6 +302,7 @@ __VA_ARGS__ vnet_device_class_t x
 static __clib_unused vnet_device_class_t __clib_unused_##x
 #endif
 
+<<<<<<< HEAD   (3e0daf misc: 19.08.3 Release Notes)
 #define VNET_DEVICE_CLASS_TX_FN(devclass)				\
 uword CLIB_MARCH_SFX (devclass##_tx_fn)();				\
 static vlib_node_fn_registration_t					\
@@ -319,6 +320,26 @@ CLIB_MARCH_SFX (devclass##_tx_fn_multiarch_register) (void)		\
   devclass.tx_fn_registrations = r;					\
 }									\
 uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (devclass##_tx_fn)
+=======
+#define VNET_DEVICE_CLASS_TX_FN(devclass)                                     \
+  uword CLIB_MARCH_SFX (devclass##_tx_fn) ();                                 \
+  static vlib_node_fn_registration_t CLIB_MARCH_SFX (                         \
+    devclass##_tx_fn_registration) = {                                        \
+    .function = &CLIB_MARCH_SFX (devclass##_tx_fn),                           \
+  };                                                                          \
+                                                                              \
+  static void __clib_constructor CLIB_MARCH_SFX (                             \
+    devclass##_tx_fn_multiarch_register) (void)                               \
+  {                                                                           \
+    extern vnet_device_class_t devclass;                                      \
+    vlib_node_fn_registration_t *r;                                           \
+    r = &CLIB_MARCH_SFX (devclass##_tx_fn_registration);                      \
+    r->march_variant = CLIB_MARCH_SFX (CLIB_MARCH_VARIANT_TYPE);              \
+    r->next_registration = devclass.tx_fn_registrations;                      \
+    devclass.tx_fn_registrations = r;                                         \
+  }                                                                           \
+  uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (devclass##_tx_fn)
+>>>>>>> CHANGE (c9a244 vlib: refactor node function variants)
 
 /**
  * Link Type: A description of the protocol of packets on the link.

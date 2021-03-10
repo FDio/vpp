@@ -740,7 +740,6 @@ setup_tx_node (vlib_main_t * vm,
 {
   vlib_node_t *n = vlib_get_node (vm, node_index);
 
-  n->function = dev_class->tx_function;
   n->format_trace = dev_class->format_tx_trace;
 
   vlib_register_errors (vm, node_index,
@@ -818,7 +817,7 @@ vnet_register_interface (vnet_main_t * vnm,
   hw->min_packet_bytes = 0;
   vnet_sw_interface_set_mtu (vnm, hw->sw_if_index, 0);
 
-  if (dev_class->tx_function == 0)
+  if (dev_class->tx_function == 0 && dev_class->tx_fn_registrations == 0)
     goto no_output_nodes;	/* No output/tx nodes to create */
 
   tx_node_name = (char *) format (0, "%v-tx", hw->name);
@@ -870,7 +869,14 @@ vnet_register_interface (vnet_main_t * vnm,
       /* *INDENT-ON* */
 
       node = vlib_get_node (vm, hw->tx_node_index);
-      node->function = dev_class->tx_function;
+      if (dev_class->tx_fn_registrations)
+	{
+	  node->node_fn_registrations = dev_class->tx_fn_registrations;
+	  node->function = vlib_node_get_preferred_node_fn_variant (
+	    vm, dev_class->tx_fn_registrations);
+	}
+      else
+	node->function = dev_class->tx_function;
       node->format_trace = dev_class->format_tx_trace;
       /* *INDENT-OFF* */
       foreach_vlib_main ({
@@ -1311,25 +1317,13 @@ vnet_interface_init (vlib_main_t * vm)
 	c->index = vec_len (im->device_classes);
 	hash_set_mem (im->device_class_by_name, c->name, c->index);
 
+	/* to avoid confusion, please remove ".tx_function" statement
+	  from VNET_DEVICE_CLASS() if using function candidates */
+	ASSERT (c->tx_fn_registrations == 0 || c->tx_function == 0);
+
 	if (c->tx_fn_registrations)
-	  {
-	    vlib_node_fn_registration_t *fnr = c->tx_fn_registrations;
-	    int priority = -1;
-
-	    /* to avoid confusion, please remove ".tx_function" statement
-	       from VNET_DEVICE_CLASS() if using function candidates */
-	    ASSERT (c->tx_function == 0);
-
-	    while (fnr)
-	      {
-		if (fnr->priority > priority)
-		  {
-		    priority = fnr->priority;
-		    c->tx_function = fnr->function;
-		  }
-		fnr = fnr->next_registration;
-	      }
-	  }
+	  c->tx_function = vlib_node_get_preferred_node_fn_variant (
+	    vm, c->tx_fn_registrations);
 
 	vec_add1 (im->device_classes, c[0]);
 	c = c->next_class_registration;
