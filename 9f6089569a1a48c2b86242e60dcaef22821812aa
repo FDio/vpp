@@ -16,6 +16,24 @@
       "revId": "9f6089569a1a48c2b86242e60dcaef22821812aa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8c3aeb2e_6d52944b",
+        "filename": "src/plugins/linux-cp/lcp.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-03-10T19:08:31Z",
+      "side": 1,
+      "message": "REPLY_AND_DETAILS macro only support big endian. \nOriginal code cannot have worked",
+      "parentUuid": "f6da9dab_3e45dbfd",
+      "revId": "9f6089569a1a48c2b86242e60dcaef22821812aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
