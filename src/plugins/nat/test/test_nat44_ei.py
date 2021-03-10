@@ -9,7 +9,6 @@ from io import BytesIO
 from time import sleep
 
 import scapy.compat
-from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from scapy.all import bind_layers, Packet, ByteEnumField, ShortField, \
@@ -864,7 +863,6 @@ def get_nat44_ei_in2out_worker_index(ip, vpp_worker_count):
     return 1 + h % vpp_worker_count
 
 
-@tag_fixme_vpp_workers
 class TestNAT44EI(MethodHolder):
     """ NAT44EI Test Cases """
 
