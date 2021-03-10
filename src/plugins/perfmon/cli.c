@@ -250,7 +250,6 @@ show_perfmon_active_bundle_command_fn (vlib_main_t *vm,
   perfmon_main_t *pm = &perfmon_main;
 
   vlib_cli_output (vm, "%U\n", format_perfmon_bundle, pm->active_bundle, 1);
-
   return 0;
 }
 
@@ -278,7 +277,7 @@ show_perfmon_stats_command_fn (vlib_main_t *vm, unformat_input_t *input,
   u8 raw = 0;
 
   if (b == 0)
-    return clib_error_return (0, "no budle selected");
+    return clib_error_return (0, "no bundle selected");
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -376,43 +375,6 @@ VLIB_CLI_COMMAND (show_perfmon_stats_command, static) = {
 };
 
 static clib_error_t *
-set_perfmon_bundle_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			       vlib_cli_command_t *cmd)
-{
-  perfmon_main_t *pm = &perfmon_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  perfmon_bundle_t *b = 0;
-
-  if (unformat_user (input, unformat_line_input, line_input) == 0)
-    return clib_error_return (0, "please specify bundle name");
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%U", unformat_perfmon_bundle_name, &b))
-	;
-      else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, line_input);
-    }
-  unformat_free (line_input);
-
-  if (b == 0)
-    return clib_error_return (0, "please specify bundle name");
-
-  if (pm->is_running)
-    return clib_error_return (0, "please stop first");
-
-  return perfmon_set (vm, b);
-}
-
-VLIB_CLI_COMMAND (set_perfmon_bundle_command, static) = {
-  .path = "set perfmon bundle",
-  .short_help = "set perfmon bundle [<bundle-name>]",
-  .function = set_perfmon_bundle_command_fn,
-  .is_mp_safe = 1,
-};
-
-static clib_error_t *
 perfmon_reset_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			  vlib_cli_command_t *cmd)
 {
@@ -431,12 +393,35 @@ static clib_error_t *
 perfmon_start_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			  vlib_cli_command_t *cmd)
 {
-  return perfmon_start (vm);
+  perfmon_main_t *pm = &perfmon_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  perfmon_bundle_t *b = 0;
+
+  if (pm->is_running)
+    return clib_error_return (0, "please stop first");
+
+  if (unformat_user (input, unformat_line_input, line_input) == 0)
+    return clib_error_return (0, "please specify bundle name");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "bundle %U", unformat_perfmon_bundle_name, &b))
+	;
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, line_input);
+    }
+  unformat_free (line_input);
+
+  if (b == 0)
+    return clib_error_return (0, "please specify bundle name");
+
+  return perfmon_start (vm, b);
 }
 
 VLIB_CLI_COMMAND (perfmon_start_command, static) = {
   .path = "perfmon start",
-  .short_help = "perfmon start",
+  .short_help = "perfmon start bundle [<bundle-name>]",
   .function = perfmon_start_command_fn,
   .is_mp_safe = 1,
 };
