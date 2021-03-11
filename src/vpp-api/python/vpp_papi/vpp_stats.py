@@ -183,13 +183,16 @@ class VPPStats():
     def refresh(self):
         '''Refresh directory vector cache (epoch changed)'''
         directory = {}
+        directory_by_idx = {}
         with self.lock:
-            for direntry in StatsVector(self, self.directory_vector, self.elementfmt):
+            for i, direntry in enumerate(StatsVector(self, self.directory_vector, self.elementfmt)):
                 path_raw = direntry[2].find(b'\x00')
                 path = direntry[2][:path_raw].decode('ascii')
                 directory[path] = StatsEntry(direntry[0], direntry[1])
+                directory_by_idx[i] = path
             self.last_epoch = self.epoch
             self.directory = directory
+            self.directory_by_idx = directory_by_idx
 
             # Cache the error index vectors
             self.error_vectors = []
@@ -377,6 +380,8 @@ class StatsEntry():
             self.function = self.error
         elif stattype == 5:
             self.function = self.name
+        elif stattype == 7:
+            self.function = self.symlink
         else:
             self.function = self.illegal
 
@@ -417,6 +422,15 @@ class StatsEntry():
         for name in StatsVector(stats, self.value, 'P'):
             counter.append(get_string(stats, name[0]))
         return counter
+
+    SYMLINK_FMT1 = Struct('II')
+    SYMLINK_FMT2 = Struct('Q')
+    def symlink(self, stats):
+        '''Symlink counter'''
+        b = self.SYMLINK_FMT2.pack(self.value)
+        index1, index2 = self.SYMLINK_FMT1.unpack(b)
+        name = stats.directory_by_idx[index1]
+        return stats[name][:,index2]
 
     def get_counter(self, stats):
         '''Return a list of counters'''
@@ -507,6 +521,11 @@ class TestStats(unittest.TestCase):
         print('COUNTERS:', counters)
         print('/sys/node', self.stat.dump(counters))
         print('/net/route/to', self.stat['/net/route/to'])
+
+    def test_symlink(self):
+        '''Symbolic links'''
+        print('/interface/local0/rx', self.stat['/interfaces/local0/rx'])
+        print('/sys/nodes/unix-epoll-input', self.stat['/nodes/unix-epoll-input/calls'])
 
 if __name__ == '__main__':
     import cProfile
