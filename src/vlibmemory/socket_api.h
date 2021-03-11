@@ -60,6 +60,10 @@ typedef struct
 
   /* Listen for API connections here */
   clib_socket_t socksvr_listen_socket;
+
+  /* vector of indices into the pool of files to clean up*/
+  u32 *zombie_socket_files;
+  u32 *zombie_socket_files_inferno;
 } socket_main_t;
 
 extern socket_main_t socket_main;

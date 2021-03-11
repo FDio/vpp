@@ -126,6 +126,13 @@ vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
   clib_file_t *cf;
 
   cf = vl_api_registration_file (rp);
+  if (!cf)
+    {
+      clib_warning ("cf removed index %d",
+		    vl_api_registration_file_index (rp));
+      vl_msg_api_free ((void *) elem);
+      return;
+    }
   ASSERT (rp->registration_type > REGISTRATION_TYPE_SHMEM);
 
   if (msg_id >= vec_len (am->api_trace_cfg))
@@ -152,7 +159,8 @@ vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
   cf = vl_api_registration_file (rp);
   if (!cf)
     {
-      clib_warning ("cf removed");
+      clib_warning ("cf removed index %d",
+		    vl_api_registration_file_index (rp));
       vl_msg_api_free ((void *) elem);
       return;
     }
@@ -213,6 +221,58 @@ vl_socket_process_api_msg (vl_api_registration_t * rp, i8 * input_v)
   socket_main.current_rp = 0;
 }
 
+int
+is_zombie_socket_file (clib_file_t *uf)
+{
+  return ((uf->flags & UNIX_FILE_ZOMBIE) != 0);
+}
+
+static void
+vl_socket_zombify_file (clib_file_t *uf)
+{
+  clib_file_main_t *fm = &file_main;
+  int file_index = uf - fm->file_pool;
+#ifdef ZOMBIE_SOCKETS_DEBUG
+  clib_warning ("thread %d: zombify via error_ready: %d",
+		vlib_get_thread_index (), file_index);
+#endif
+
+  if (is_zombie_socket_file (uf))
+    {
+#ifdef ZOMBIE_SOCKETS_DEBUG
+      clib_warning ("%d already zombified", file_index);
+#endif
+      return;
+    }
+
+  uf->flags |= UNIX_FILE_ZOMBIE;
+  vec_add1 (socket_main.zombie_socket_files, file_index);
+}
+void
+socket_cleanup_zombie_files ()
+{
+  vl_api_registration_t *rp;
+  clib_file_main_t *fm = &file_main;
+  if (vec_len (socket_main.zombie_socket_files) > 0)
+    {
+      u32 *zombie_index;
+      vec_foreach (zombie_index, socket_main.zombie_socket_files)
+	{
+	  clib_file_t *zf = fm->file_pool + *zombie_index;
+	  rp = pool_elt_at_index (socket_main.registration_pool,
+				  zf->private_data);
+#ifdef ZOMBIE_SOCKETS_DEBUG
+	  clib_warning ("thread %d: cleaning zombie %d",
+			vlib_get_thread_index (), *zombie_index);
+#endif
+	  clib_file_del (fm, zf);
+	  vl_socket_free_registration_index (rp -
+					     socket_main.registration_pool);
+	}
+      _vec_len (socket_main.zombie_socket_files) = 0;
+    }
+}
+
 /*
  * Read function for API socket.
  *
@@ -232,7 +292,6 @@ vl_socket_process_api_msg (vl_api_registration_t * rp, i8 * input_v)
 clib_error_t *
 vl_socket_read_ready (clib_file_t * uf)
 {
-  clib_file_main_t *fm = &file_main;
   vlib_main_t *vm = vlib_get_main ();
   vl_api_registration_t *rp;
   /* n is the size of data read to input_buffer */
@@ -246,6 +305,10 @@ vl_socket_read_ready (clib_file_t * uf)
   u32 save_input_buffer_length = vec_len (socket_main.input_buffer);
   vl_socket_args_for_process_t *a;
   u32 reg_index = uf->private_data;
+  if (is_zombie_socket_file (uf))
+    {
+      return 0;
+    }
 
   rp = vl_socket_get_registration (reg_index);
 
@@ -258,8 +321,7 @@ vl_socket_read_ready (clib_file_t * uf)
       if (errno != EAGAIN)
 	{
 	  /* Severe error, close the file. */
-	  clib_file_del (fm, uf);
-	  vl_socket_free_registration_index (reg_index);
+	  vl_socket_zombify_file (uf);
 	}
       /* EAGAIN means we do not close the file, but no data to process anyway. */
       return 0;
@@ -330,6 +392,10 @@ vl_socket_read_ready (clib_file_t * uf)
       a->reg_index = reg_index;
       a->data = data_for_process;
 
+#ifdef ZOMBIE_SOCKETS_DEBUG
+      clib_warning ("SOCKET_READ_EVENT for file index %d",
+		    vl_api_registration_file_index (rp));
+#endif
       vlib_process_signal_event (vm, vl_api_clnt_node.index,
 				 SOCKET_READ_EVENT,
 				 a - socket_main.process_args);
@@ -354,6 +420,14 @@ vl_socket_write_ready (clib_file_t * uf)
   vl_api_registration_t *rp;
   int n;
 
+  if (is_zombie_socket_file (uf))
+    {
+#ifdef ZOMBIE_SOCKETS_DEBUG
+      clib_warning ("writing into zombie %d", uf - fm->file_pool);
+#endif
+      return 0;
+    }
+
   rp = pool_elt_at_index (socket_main.registration_pool, uf->private_data);
 
   /* Flush output vector. */
@@ -373,9 +447,7 @@ vl_socket_write_ready (clib_file_t * uf)
 #if DEBUG > 2
 	  clib_warning ("write error, close the file...\n");
 #endif
-	  clib_file_del (fm, uf);
-	  vl_socket_free_registration_index (rp -
-					     socket_main.registration_pool);
+	  vl_socket_zombify_file (uf);
 	  return 0;
 	}
       remaining_bytes -= bytes_to_send;
@@ -396,13 +468,9 @@ vl_socket_write_ready (clib_file_t * uf)
 clib_error_t *
 vl_socket_error_ready (clib_file_t * uf)
 {
-  vl_api_registration_t *rp;
-  clib_file_main_t *fm = &file_main;
-
-  rp = pool_elt_at_index (socket_main.registration_pool, uf->private_data);
-  clib_file_del (fm, uf);
-  vl_socket_free_registration_index (rp - socket_main.registration_pool);
-
+  // vl_api_registration_t *rp;
+  // clib_file_main_t *fm = &file_main;
+  vl_socket_zombify_file (uf);
   return 0;
 }
 
@@ -425,6 +493,9 @@ socksvr_file_add (clib_file_main_t * fm, int fd)
   rp->registration_type = REGISTRATION_TYPE_SOCKET_SERVER;
   rp->vl_api_registration_pool_index = rp - socket_main.registration_pool;
   rp->clib_file_index = clib_file_add (fm, &template);
+#ifdef ZOMBIE_SOCKETS_DEBUG
+  clib_warning ("file_add: %d", rp->clib_file_index);
+#endif
 }
 
 static clib_error_t *

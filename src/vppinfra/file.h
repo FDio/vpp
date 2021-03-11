@@ -56,6 +56,7 @@ typedef struct clib_file
   u32 flags;
 #define UNIX_FILE_DATA_AVAILABLE_TO_WRITE (1 << 0)
 #define UNIX_FILE_EVENT_EDGE_TRIGGERED   (1 << 1)
+#define UNIX_FILE_ZOMBIE		  (1 << 2)
 
   /* polling thread index */
   u32 polling_thread_index;

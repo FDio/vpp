@@ -350,6 +350,10 @@ send_sw_interface_details (vpe_api_main_t * am,
   if (tag)
     strncpy ((char *) mp->tag, (char *) tag, ARRAY_LEN (mp->tag) - 1);
 
+#ifdef ZOMBIE_SOCKETS_DEBUG
+  clib_warning ("Sending message on RP %d",
+		vl_api_registration_file_index (rp));
+#endif
   vl_api_send_msg (rp, (u8 *) mp);
 }
 

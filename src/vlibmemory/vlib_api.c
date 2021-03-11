@@ -255,6 +255,8 @@ vat_builtin_main_init (vlib_main_t * vm)
   return 0;
 }
 
+extern void socket_cleanup_zombie_files ();
+
 static uword
 vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
 		     vlib_frame_t * f)
@@ -402,12 +404,17 @@ vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      regp = vl_socket_get_registration (a->reg_index);
 	      if (regp)
 		{
+#ifdef ZOMBIE_SOCKETS_DEBUG
+		  clib_warning ("process READ_EVENT for index %d",
+				vl_api_registration_file_index (regp));
+#endif
 		  vl_socket_process_api_msg (regp, (i8 *) a->data);
 		  a = pool_elt_at_index (socket_main.process_args,
 					 event_data[i]);
 		}
 	      vec_free (a->data);
 	      pool_put (socket_main.process_args, a);
+	      socket_cleanup_zombie_files ();
 	    }
 	  break;
 
