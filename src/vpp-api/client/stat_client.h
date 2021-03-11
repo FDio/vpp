@@ -36,6 +36,7 @@ typedef struct
 {
   char *name;
   stat_directory_type_t type;
+  stat_directory_type_t symlink_type;
   union
   {
     double scalar_value;
