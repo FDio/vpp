@@ -148,9 +148,9 @@ reply:
   ep->expiration_time = now + 600.0;
 
   if (0)
-    clib_warning ("resolving '%s', was %s valid",
-		  ep->name, (ep->flags & DNS_CACHE_ENTRY_FLAG_VALID) ?
-		  "already" : "not");
+    clib_warning ("resolving '%s', was %s valid", ep->name,
+		  (ep->flags & DNS_CACHE_ENTRY_FLAG_VALID) ? "already" :
+							     "not");
   /*
    * The world is a mess. A single DNS request sent to e.g. 8.8.8.8
    * may yield multiple, subtly different responses - all with the same
@@ -264,12 +264,10 @@ reply:
     case DNS_RCODE_NOT_IMPLEMENTED:
     case DNS_RCODE_REFUSED:
       if (ep->server_af == 0)
-	clib_warning ("name server %U can't resolve '%s'",
-		      format_ip4_address,
+	clib_warning ("name server %U can't resolve '%s'", format_ip4_address,
 		      dm->ip4_name_servers + ep->server_rotor, ep->name);
       else
-	clib_warning ("name server %U can't resolve '%s'",
-		      format_ip6_address,
+	clib_warning ("name server %U can't resolve '%s'", format_ip6_address,
 		      dm->ip6_name_servers + ep->server_rotor, ep->name);
       /* FALLTHROUGH */
     case DNS_RCODE_NAME_ERROR:
