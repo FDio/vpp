@@ -180,67 +180,97 @@ class VPPStats():
 
     elementfmt = 'IQ128s'
 
-    def refresh(self):
+    def refresh(self, blocking=True):
         '''Refresh directory vector cache (epoch changed)'''
         directory = {}
-        with self.lock:
-            for direntry in StatsVector(self, self.directory_vector, self.elementfmt):
-                path_raw = direntry[2].find(b'\x00')
-                path = direntry[2][:path_raw].decode('ascii')
-                directory[path] = StatsEntry(direntry[0], direntry[1])
-            self.last_epoch = self.epoch
-            self.directory = directory
+        directory_by_idx = {}
+        while True:
+            try:
+                with self.lock:
+                    for i, direntry in enumerate(StatsVector(self, self.directory_vector, self.elementfmt)):
+                        path_raw = direntry[2].find(b'\x00')
+                        path = direntry[2][:path_raw].decode('ascii')
+                        directory[path] = StatsEntry(direntry[0], direntry[1])
+                        directory_by_idx[i] = path
+                    self.last_epoch = self.epoch
+                    self.directory = directory
+                    self.directory_by_idx = directory_by_idx
 
-            # Cache the error index vectors
-            self.error_vectors = []
-            for threads in StatsVector(self, self.error_vector, 'P'):
-                self.error_vectors.append(StatsVector(self, threads[0], 'Q'))
+                    # Cache the error index vectors
+                    self.error_vectors = []
+                    for threads in StatsVector(self, self.error_vector, 'P'):
+                        self.error_vectors.append(StatsVector(self, threads[0], 'Q'))
+                    return
+            except IOError:
+                if not blocking:
+                    raise
 
-    def __getitem__(self, item):
+    def __getitem__(self, item, blocking=True):
         if not self.connected:
             self.connect()
-        if self.last_epoch != self.epoch:
-            self.refresh()
-        with self.lock:
-            return self.directory[item].get_counter(self)
+        while True:
+            try:
+                if self.last_epoch != self.epoch:
+                    self.refresh(blocking)
+                with self.lock:
+                    return self.directory[item].get_counter(self)
+            except IOError:
+                if not blocking:
+                    raise
 
     def __iter__(self):
         return iter(self.directory.items())
 
-    def set_errors(self):
+    def set_errors(self, blocking=True):
         '''Return dictionary of error counters > 0'''
         if not self.connected:
             self.connect()
 
         errors = {k:v for k, v in self.directory.items() if k.startswith("/err/")}
         result = {}
-        with self.lock:
-            for k, entry in errors.items():
-                total = 0
-                i = entry.value
-                for per_thread in self.error_vectors:
-                    total += per_thread[i]
-                if total:
-                    result[k] = total
-        return result
+        while True:
+            try:
+                if self.last_epoch != self.epoch:
+                    self.refresh(blocking)
+                with self.lock:
+                    for k, entry in errors.items():
+                        total = 0
+                        i = entry.value
+                        for per_thread in self.error_vectors:
+                            total += per_thread[i]
+                        if total:
+                            result[k] = total
+                return result
+            except IOError:
+                if not blocking:
+                    raise
 
-    def set_errors_str(self):
+    def set_errors_str(self, blocking=True):
         '''Return all errors counters > 0 pretty printed'''
         error_string = ['ERRORS:']
-        error_counters = self.set_errors()
+        error_counters = self.set_errors(blocking)
         for k in sorted(error_counters):
             error_string.append('{:<60}{:>10}'.format(k, error_counters[k]))
         return '%s\n' % '\n'.join(error_string)
 
-    def get_counter(self, name):
+    def get_counter(self, name, blocking=True):
         '''Alternative call to __getitem__'''
-        return self.__getitem__(name)
+        return self.__getitem__(name, blocking)
 
-    def get_err_counter(self, name):
+    def get_err_counter(self, name, blocking=True):
         '''Return a single value (sum of all threads)'''
         if not self.connected:
             self.connect()
-        return sum(self.directory[name].get_counter(self))
+        if name.startswith("/err/"):
+            while True:
+                try:
+                    if self.last_epoch != self.epoch:
+                        self.refresh(blocking)
+                    with self.lock:
+                        return sum(self.directory[name].get_counter(self))
+                except IOError:
+                    if not blocking:
+                        raise
 
     def ls(self, patterns):
         '''Returns list of counters matching pattern'''
@@ -253,13 +283,13 @@ class VPPStats():
         return [k for k, v in self.directory.items()
                 if any(re.match(pattern, k) for pattern in regex)]
 
-    def dump(self, counters):
+    def dump(self, counters, blocking=True):
         '''Given a list of counters return a dictionary of results'''
         if not self.connected:
             self.connect()
         result = {}
         for cnt in counters:
-            result[cnt] = self.__getitem__(cnt)
+            result[cnt] = self.__getitem__(cnt,blocking)
         return result
 
 class StatsLock():
@@ -377,6 +407,8 @@ class StatsEntry():
             self.function = self.error
         elif stattype == 5:
             self.function = self.name
+        elif stattype == 7:
+            self.function = self.symlink
         else:
             self.function = self.illegal
 
@@ -415,12 +447,23 @@ class StatsEntry():
         '''Name counter'''
         counter = []
         for name in StatsVector(stats, self.value, 'P'):
-            counter.append(get_string(stats, name[0]))
+            if name[0]:
+                counter.append(get_string(stats, name[0]))
         return counter
+
+    SYMLINK_FMT1 = Struct('II')
+    SYMLINK_FMT2 = Struct('Q')
+    def symlink(self, stats):
+        '''Symlink counter'''
+        b = self.SYMLINK_FMT2.pack(self.value)
+        index1, index2 = self.SYMLINK_FMT1.unpack(b)
+        name = stats.directory_by_idx[index1]
+        return stats[name][:,index2]
 
     def get_counter(self, stats):
         '''Return a list of counters'''
-        return self.function(stats)
+        if stats:
+            return self.function(stats)
 
 class TestStats(unittest.TestCase):
     '''Basic statseg tests'''
@@ -507,6 +550,11 @@ class TestStats(unittest.TestCase):
         print('COUNTERS:', counters)
         print('/sys/node', self.stat.dump(counters))
         print('/net/route/to', self.stat['/net/route/to'])
+
+    def test_symlink(self):
+        '''Symbolic links'''
+        print('/interface/local0/rx', self.stat['/interfaces/local0/rx'])
+        print('/sys/nodes/unix-epoll-input', self.stat['/nodes/unix-epoll-input/calls'])
 
 if __name__ == '__main__':
     import cProfile
