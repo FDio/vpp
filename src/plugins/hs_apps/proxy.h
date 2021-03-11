@@ -70,6 +70,7 @@ typedef struct
   u8 *server_uri;
   u8 *client_uri;
 
+  u32 ckpair_index;
   /*
    * Test state variables
    */

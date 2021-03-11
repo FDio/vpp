@@ -19,6 +19,7 @@
 #include <vnet/session/application_interface.h>
 #include <hs_apps/proxy.h>
 #include <vnet/tcp/tcp.h>
+#include <vnet/tls/tls.h>
 
 proxy_main_t proxy_main;
 
@@ -352,6 +353,7 @@ proxy_rx_callback (session_t * s)
 
       clib_spinlock_unlock_if_init (&pm->sessions_lock);
 
+      clib_warning ("connecting to %s", pm->client_uri);
       a->uri = (char *) pm->client_uri;
       a->api_context = proxy_index;
       a->app_index = pm->active_open_app_index;
@@ -365,10 +367,16 @@ static void
 proxy_force_ack (void *handlep)
 {
   transport_connection_t *tc;
-  session_t *ao_s;
+  session_t *s;
 
-  ao_s = session_get_from_handle (pointer_to_uword (handlep));
-  tc = session_get_transport (ao_s);
+  s = session_get_from_handle (pointer_to_uword (handlep));
+  tc = session_get_transport (s);
+  if (session_get_transport_proto (s) == TRANSPORT_PROTO_TLS)
+    {
+      tls_ctx_t *ctx = (tls_ctx_t *) tc;
+      s = session_get_from_handle (ctx->tls_session_handle);
+      tc = session_get_transport (s);
+    }
   tcp_send_ack ((tcp_connection_t *) tc);
 }
 
@@ -692,12 +700,36 @@ active_open_attach (void)
 static int
 proxy_server_listen ()
 {
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   proxy_main_t *pm = &proxy_main;
   vnet_listen_args_t _a, *a = &_a;
   clib_memset (a, 0, sizeof (*a));
+
   a->app_index = pm->server_app_index;
-  a->uri = (char *) pm->server_uri;
-  return vnet_bind_uri (a);
+
+  if (parse_uri ((char *) pm->server_uri, &sep))
+    return -1;
+
+  clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
+  a->sep_ext.ckpair_index = pm->ckpair_index;
+
+  return vnet_listen (a);
+}
+
+static void
+proxy_server_add_ckpair (void)
+{
+  vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
+  proxy_main_t *pm = &proxy_main;
+
+  clib_memset (ck_pair, 0, sizeof (*ck_pair));
+  ck_pair->cert = (u8 *) test_srv_crt_rsa;
+  ck_pair->key = (u8 *) test_srv_key_rsa;
+  ck_pair->cert_len = test_srv_crt_rsa_len;
+  ck_pair->key_len = test_srv_key_rsa_len;
+  vnet_app_add_cert_key_pair (ck_pair);
+
+  pm->ckpair_index = ck_pair->index;
 }
 
 static int
@@ -715,6 +747,8 @@ proxy_server_create (vlib_main_t * vm)
 
   for (i = 0; i < num_threads; i++)
     vec_validate (pm->rx_buf[i], pm->rcv_buffer_size);
+
+  proxy_server_add_ckpair ();
 
   if (proxy_server_attach ())
     {
