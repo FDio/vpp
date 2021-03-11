@@ -25,12 +25,18 @@ typedef enum
   STAT_DIR_TYPE_ERROR_INDEX,
   STAT_DIR_TYPE_NAME_VECTOR,
   STAT_DIR_TYPE_EMPTY,
+  STAT_DIR_TYPE_SYMLINK,
 } stat_directory_type_t;
 
 typedef struct
 {
   stat_directory_type_t type;
   union {
+    struct
+    {
+      uint32_t index1;
+      uint32_t index2;
+    };
     uint64_t index;
     uint64_t value;
     void *data;

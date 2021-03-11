@@ -25,6 +25,7 @@ stat_poll_loop (u8 ** patterns)
 {
   struct timespec ts, tsrem;
   stat_segment_data_t *res;
+  stat_directory_type_t type;
   int i, j, k, lost_connection = 0;
   f64 heartbeat, prev_heartbeat = 0;
   u32 *stats = stat_segment_ls (patterns);
@@ -61,7 +62,12 @@ stat_poll_loop (u8 ** patterns)
 	}
       for (i = 0; i < vec_len (res); i++)
 	{
-	  switch (res[i].type)
+	  type = res[i].type;
+	  if (type == STAT_DIR_TYPE_SYMLINK)
+	    {
+	      type = res[i].symlink_type;
+	    }
+	  switch (type)
 	    {
 	    case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
 	      for (k = 0; k < vec_len (res[i].simple_counter_vec); k++)
@@ -175,6 +181,7 @@ reconnect:
   u32 *dir;
   int i, j, k;
   stat_segment_data_t *res;
+  stat_directory_type_t type;
 
   dir = stat_segment_ls (patterns);
 
@@ -194,7 +201,12 @@ reconnect:
       res = stat_segment_dump (dir);
       for (i = 0; i < vec_len (res); i++)
 	{
-	  switch (res[i].type)
+	  type = res[i].type;
+	  if (type == STAT_DIR_TYPE_SYMLINK)
+	    {
+	      type = res[i].symlink_type;
+	    }
+	  switch (type)
 	    {
 	    case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
 	      if (res[i].simple_counter_vec == 0)
