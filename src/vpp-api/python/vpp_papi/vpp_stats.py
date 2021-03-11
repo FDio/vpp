@@ -72,7 +72,6 @@ def get_string(stats, ptr):
         raise ValueError('String overruns stats segment')
     return stats.statseg[namevector:namevector+namevectorlen-1].decode('ascii')
 
-
 class StatsVector:
     '''A class representing a VPP vector'''
 
@@ -106,7 +105,7 @@ class StatsVector:
 class VPPStats():
     '''Main class implementing Python access to the VPP statistics segment'''
     # pylint: disable=too-many-instance-attributes
-    shared_headerfmt = Struct('QPQQPP')
+    shared_headerfmt = Struct('QPQQPPP')
     default_socketname = '/run/vpp/stats.sock'
 
     def __init__(self, socketname=default_socketname, timeout=10):
@@ -177,6 +176,11 @@ class VPPStats():
     def error_vector(self):
         '''Get pointer of error vector'''
         return self.shared_headerfmt.unpack_from(self.statseg)[5]
+
+    @property
+    def symlink_vector(self):
+        '''Get pointer of symlink vector'''
+        return self.shared_headerfmt.unpack_from(self.statseg)[6]
 
     elementfmt = 'IQ128s'
 
@@ -375,6 +379,8 @@ class StatsEntry():
             self.function = self.error
         elif stattype == 5:
             self.function = self.name
+        elif stattype == 7:
+            self.function = self.symlink
         else:
             self.function = self.illegal
 
@@ -414,6 +420,24 @@ class StatsEntry():
         counter = []
         for name in StatsVector(stats, self.value, 'P'):
             counter.append(get_string(stats, name[0]))
+        return counter
+
+    def symlink(self, stats):
+        '''Symlink counter'''
+        symlink_index = self.value
+        symlink = StatsVector(stats, stats.symlink_vector, 'QQ')[symlink_index]
+        direntry = StatsVector(stats, stats.directory_vector, stats.elementfmt)[symlink[0]]
+        counter = None
+        if direntry[0] == 2:
+            counter = SimpleList()
+            for clist in StatsVector(stats, direntry[1], 'P'):
+                v = StatsVector(stats, clist[0], 'Q')[symlink[1]]
+                counter.append(v)
+        elif direntry[0] == 3:
+            counter = CombinedList()
+            for clist in StatsVector(stats, direntry[1], 'P'):
+                v = StatsVector(stats, clist[0], 'QQ')[symlink[1]]
+                counter.append(StatsTuple(v))
         return counter
 
     def get_counter(self, stats):
