@@ -307,6 +307,7 @@ typedef struct vlib_main_t
   /* address sanitizer stack save */
   void *asan_stack_save;
 #endif
+  int magic_marker;
 } vlib_main_t;
 
 /* Global main structure. */

@@ -563,13 +563,6 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       pool_foreach (mif, mm->interfaces)
          {
 	  memif_socket_file_t * msf = vec_elt_at_index (mm->socket_files, mif->socket_file_index);
-	  /* Allow no more than 10us without a pause */
-	  now = vlib_time_now (vm);
-	  if (now > start_time + 10e-6)
-	    {
-	      vlib_process_suspend (vm, 100e-6);	/* suspend for 100 us */
-	      start_time = vlib_time_now (vm);
-	    }
 
 	  if ((mif->flags & MEMIF_IF_FLAG_ADMIN_UP) == 0)
 	    continue;
@@ -610,6 +603,15 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
                   sock = clib_mem_alloc (sizeof(clib_socket_t));
 	        }
 	    }
+
+	  /* Allow no more than 10us without a pause */
+	  now = vlib_time_now (vm);
+	  if (now > start_time + 10e-6)
+	    {
+	      vlib_process_suspend (vm, 100e-6);	/* suspend for 100 us */
+	      start_time = vlib_time_now (vm);
+	    }
+	  /* NB: the process suspend above may have changed the addresses */
         }
       /* *INDENT-ON* */
       last_run_duration = vlib_time_now (vm) - last_run_duration;
