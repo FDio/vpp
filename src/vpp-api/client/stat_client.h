@@ -43,6 +43,8 @@ typedef struct
     counter_t **simple_counter_vec;
     vlib_counter_t **combined_counter_vec;
     uint8_t **name_vector;
+    counter_t *symlink_simple_vec;
+    vlib_counter_t *symlink_combined_vec;
   };
 } stat_segment_data_t;
 

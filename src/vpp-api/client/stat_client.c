@@ -210,6 +210,8 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
   vlib_counter_t **combined_c;	/* Combined counter */
   counter_t **simple_c;		/* Simple counter */
   uint64_t *error_vector;
+  stat_segment_directory_entry_t *directory_vector;
+  stat_segment_symlink_entry_t *symlink_vector, *symlink;
 
   assert (sm->shared_header);
 
@@ -265,6 +267,36 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
       }
       break;
 
+    case STAT_DIR_TYPE_SYMLINK_SIMPLE:
+      /* Gather info from all threads into a vector */
+      symlink_vector =
+	stat_segment_adjust (sm, (void *) sm->shared_header->symlink_vector);
+      symlink = vec_elt_at_index (symlink_vector, ep->index);
+      directory_vector = get_stat_vector_r (sm);
+      simple_c = stat_segment_adjust (
+	sm, directory_vector[symlink->counter_index].data);
+      vec_validate (result.symlink_simple_vec, vec_len (simple_c) - 1);
+      for (i = 0; i < vec_len (simple_c); i++)
+	{
+	  counter_t *cb = stat_segment_adjust (sm, simple_c[i]);
+	  result.symlink_simple_vec[i] = cb[symlink->vec_index];
+	}
+      break;
+
+    case STAT_DIR_TYPE_SYMLINK_COMBINED:
+      symlink_vector =
+	stat_segment_adjust (sm, (void *) sm->shared_header->symlink_vector);
+      symlink = vec_elt_at_index (symlink_vector, ep->index);
+      directory_vector = get_stat_vector_r (sm);
+      combined_c = stat_segment_adjust (
+	sm, directory_vector[symlink->counter_index].data);
+      vec_validate (result.symlink_combined_vec, vec_len (combined_c) - 1);
+      for (i = 0; i < vec_len (combined_c); i++)
+	{
+	  vlib_counter_t *cb = stat_segment_adjust (sm, combined_c[i]);
+	  result.symlink_combined_vec[i] = cb[symlink->vec_index];
+	}
+
     case STAT_DIR_TYPE_EMPTY:
       break;
 
@@ -299,6 +331,12 @@ stat_segment_data_free (stat_segment_data_t * res)
 	  break;
 	case STAT_DIR_TYPE_ERROR_INDEX:
 	  vec_free (res[i].error_vector);
+	  break;
+	case STAT_DIR_TYPE_SYMLINK_SIMPLE:
+	  vec_free (res[i].symlink_simple_vec);
+	  break;
+	case STAT_DIR_TYPE_SYMLINK_COMBINED:
+	  vec_free (res[i].symlink_combined_vec);
 	  break;
 	case STAT_DIR_TYPE_SCALAR_INDEX:
 	  break;
@@ -378,10 +416,6 @@ stat_segment_dump_r (uint32_t * stats, stat_client_main_t * sm)
   stat_segment_directory_entry_t *ep;
   stat_segment_data_t *res = 0;
   stat_segment_access_t sa;
-
-  /* Has directory been update? */
-  if (sm->shared_header->epoch != sm->current_epoch)
-    return 0;
 
   if (stat_segment_access_start (&sa, sm))
     return 0;
