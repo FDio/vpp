@@ -236,6 +236,19 @@ reconnect:
 			   res[i].name);
 	      break;
 
+	    case STAT_DIR_TYPE_SYMLINK_SIMPLE:
+	      for (j = 0; j < vec_len (res[i].symlink_simple_vec); j++)
+		fformat (stdout, "[@%d] %llu packets %s\n", j,
+			 res[i].symlink_simple_vec[j], res[i].name);
+	      break;
+
+	    case STAT_DIR_TYPE_SYMLINK_COMBINED:
+	      for (j = 0; j < vec_len (res[i].symlink_combined_vec); j++)
+		fformat (stdout, "[@%d] %llu packets, %llu bytes %s\n", j,
+			 res[i].symlink_combined_vec[j].packets,
+			 res[i].symlink_combined_vec[j].bytes, res[i].name);
+	      break;
+
 	    case STAT_DIR_TYPE_EMPTY:
 	      break;
 

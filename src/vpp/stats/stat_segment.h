@@ -83,6 +83,7 @@ typedef struct
   uword *directory_vector_by_name;
   stat_segment_directory_entry_t *directory_vector;
   volatile u64 **error_vector;
+  stat_segment_symlink_entry_t *symlink_vector;
   u8 **interfaces;
   u8 **nodes;
 

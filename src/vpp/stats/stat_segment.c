@@ -231,6 +231,53 @@ vlib_stats_pop_heap (void *cm_arg, void *oldheap, u32 cindex,
 }
 
 void
+vlib_stats_register_symlink (void *oldheap, u8 *name, u64 counter_index,
+			     u64 index, u64 is_simple)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  stat_segment_shared_header_t *shared_header = sm->shared_header;
+  stat_segment_directory_entry_t e;
+  stat_segment_symlink_entry_t se;
+
+  ASSERT (shared_header);
+
+  clib_mem_set_heap (oldheap); /* Exit stats segment */
+  u32 vector_index = lookup_hash_index (name);
+  /* Back to stats segment */
+  clib_mem_set_heap (sm->heap); /* Re-enter stat segment */
+
+  if (vector_index == STAT_SEGMENT_INDEX_INVALID)
+    {
+      u64 symlink_index = vec_len (sm->symlink_vector);
+      se.indexes[0] = counter_index;
+      se.indexes[1] = index;
+      vec_validate (sm->symlink_vector, symlink_index);
+      sm->symlink_vector[symlink_index] = se;
+
+      memcpy (e.name, name, vec_len (name));
+      e.name[vec_len (name)] = '\0';
+      e.type = is_simple ? STAT_DIR_TYPE_SYMLINK_SIMPLE :
+			   STAT_DIR_TYPE_SYMLINK_COMBINED;
+      e.index = symlink_index;
+      vector_index = vlib_stats_create_counter (&e, oldheap);
+    }
+  else
+    {
+      /*In case we need to update the symlink*/
+      stat_segment_directory_entry_t *entry =
+	vec_elt_at_index (sm->directory_vector, vector_index);
+      stat_segment_symlink_entry_t *symlink =
+	vec_elt_at_index (sm->symlink_vector, entry->index);
+      symlink->indexes[0] = counter_index;
+      symlink->indexes[1] = index;
+    }
+
+  /* Warn clients to refresh any pointers they might be holding */
+  shared_header->directory_vector = sm->directory_vector;
+  shared_header->symlink_vector = sm->symlink_vector;
+}
+
+void
 vlib_stats_register_error_index (void *oldheap, u8 * name, u64 * em_vec,
 				 u64 index)
 {
@@ -542,6 +589,7 @@ update_node_counters (stat_segment_main_t * sm)
       /* Update names dictionary */
       vlib_node_t **nodes = node_dups[0];
       int i;
+      u8 *symlink_name = 0;
       for (i = 0; i < vec_len (nodes); i++)
 	{
 	  vlib_node_t *n = nodes[i];
@@ -550,7 +598,32 @@ update_node_counters (stat_segment_main_t * sm)
 	  if (sm->nodes[n->index])
 	    vec_free (sm->nodes[n->index]);
 	  sm->nodes[n->index] = s;
+
+	  vec_reset_length (symlink_name);
+	  symlink_name =
+	    format (symlink_name, "/nodes/%v/clocks%c", n->name, 0);
+	  vlib_stats_register_symlink (oldheap, symlink_name,
+				       STAT_COUNTER_NODE_CLOCKS, n->index, 1);
+
+	  vec_reset_length (symlink_name);
+	  symlink_name =
+	    format (symlink_name, "/nodes/%v/vectors%c", n->name, 0);
+	  vlib_stats_register_symlink (oldheap, symlink_name,
+				       STAT_COUNTER_NODE_VECTORS, n->index, 1);
+
+	  vec_reset_length (symlink_name);
+	  symlink_name =
+	    format (symlink_name, "/nodes/%v/calls%c", n->name, 0);
+	  vlib_stats_register_symlink (oldheap, symlink_name,
+				       STAT_COUNTER_NODE_CALLS, n->index, 1);
+
+	  vec_reset_length (symlink_name);
+	  symlink_name =
+	    format (symlink_name, "/nodes/%v/suspends%c", n->name, 0);
+	  vlib_stats_register_symlink (
+	    oldheap, symlink_name, STAT_COUNTER_NODE_SUSPENDS, n->index, 1);
 	}
+      vec_free (symlink_name);
       vlib_stat_segment_unlock ();
       clib_mem_set_heap (oldheap);
       no_max_nodes = l;
@@ -953,16 +1026,39 @@ statseg_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
       vnet_sw_interface_t *si_sup =
 	vnet_get_sup_sw_interface (vnm, si->sw_if_index);
       vnet_hw_interface_t *hi_sup;
+      u8 *s = 0;
+      u8 *symlink_name = 0;
+      u32 vector_index;
 
       ASSERT (si_sup->type == VNET_SW_INTERFACE_TYPE_HARDWARE);
       hi_sup = vnet_get_hw_interface (vnm, si_sup->hw_if_index);
 
-      u8 *s = 0;
       s = format (s, "%v", hi_sup->name);
       if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
 	s = format (s, ".%d", si->sub.id);
       s = format (s, "%c", 0);
       sm->interfaces[sw_if_index] = s;
+#define _(E, n, p)                                                            \
+  clib_mem_set_heap (oldheap); /* Exit stats segment */                       \
+  vector_index = lookup_hash_index ((u8 *) "/" #p "/" #n);                    \
+  clib_mem_set_heap (sm->heap); /* Re-enter stat segment */                   \
+  vec_reset_length (symlink_name);                                            \
+  symlink_name = format (symlink_name, "/interfaces/%s/" #n "%c", s, 0);      \
+  vlib_stats_register_symlink (oldheap, symlink_name, vector_index,           \
+			       sw_if_index, 1);
+      foreach_simple_interface_counter_name
+#undef _
+#define _(E, n, p)                                                            \
+  clib_mem_set_heap (oldheap); /* Exit stats segment */                       \
+  vector_index = lookup_hash_index ((u8 *) "/" #p "/" #n);                    \
+  clib_mem_set_heap (sm->heap); /* Re-enter stat segment */                   \
+  vec_reset_length (symlink_name);                                            \
+  symlink_name = format (symlink_name, "/interfaces/%s/" #n "%c", s, 0);      \
+  vlib_stats_register_symlink (oldheap, symlink_name, vector_index,           \
+			       sw_if_index, 0);
+	foreach_combined_interface_counter_name
+#undef _
+	  vec_free (symlink_name);
     }
   else
     {
