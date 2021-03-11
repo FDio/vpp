@@ -174,7 +174,7 @@ stat_segment_heartbeat_r (stat_client_main_t * sm)
   stat_segment_access_t sa;
   stat_segment_directory_entry_t *ep;
 
-  /* Has directory been update? */
+  /* Has directory been updated? */
   if (sm->shared_header->epoch != sm->current_epoch)
     return 0;
   if (stat_segment_access_start (&sa, sm))
@@ -202,8 +202,29 @@ stat_segment_heartbeat (void)
    _v(v);                                             \
 })
 
+static counter_t *
+stat_vec_simple_init (counter_t c)
+{
+  counter_t *v = 0;
+  vec_add1 (v, c);
+  return v;
+}
+
+static vlib_counter_t *
+stat_vec_combined_init (vlib_counter_t c)
+{
+  vlib_counter_t *v = 0;
+  vec_add1 (v, c);
+  return v;
+}
+
+/*
+ * If index2 is specified copy out the column (the indexed value across all
+ * threads), otherwise copy out all values.
+ */
 static stat_segment_data_t
-copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
+copy_data (stat_segment_directory_entry_t *ep, u32 index2,
+	   char *name, stat_client_main_t *sm)
 {
   stat_segment_data_t result = { 0 };
   int i;
@@ -214,7 +235,8 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
   assert (sm->shared_header);
 
   result.type = ep->type;
-  result.name = strdup (ep->name);
+  result.name = strdup (name ? name : ep->name);
+
   switch (ep->type)
     {
     case STAT_DIR_TYPE_SCALAR_INDEX:
@@ -227,7 +249,10 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
       for (i = 0; i < vec_len (simple_c); i++)
 	{
 	  counter_t *cb = stat_segment_adjust (sm, simple_c[i]);
-	  result.simple_counter_vec[i] = stat_vec_dup (sm, cb);
+	  if (index2 != ~0)
+	    result.simple_counter_vec[i] = stat_vec_simple_init (cb[index2]);
+	  else
+	    result.simple_counter_vec[i] = stat_vec_dup (sm, cb);
 	}
       break;
 
@@ -237,7 +262,11 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
       for (i = 0; i < vec_len (combined_c); i++)
 	{
 	  vlib_counter_t *cb = stat_segment_adjust (sm, combined_c[i]);
-	  result.combined_counter_vec[i] = stat_vec_dup (sm, cb);
+	  if (index2 != ~0)
+	    result.combined_counter_vec[i] =
+	      stat_vec_combined_init (cb[index2]);
+	  else
+	    result.combined_counter_vec[i] = stat_vec_dup (sm, cb);
 	}
       break;
 
@@ -264,6 +293,14 @@ copy_data (stat_segment_directory_entry_t * ep, stat_client_main_t * sm)
 	  }
       }
       break;
+
+    case STAT_DIR_TYPE_SYMLINK:
+      /* Gather info from all threads into a vector */
+      {
+	stat_segment_directory_entry_t *ep2;
+	ep2 = vec_elt_at_index (sm->directory_vector, ep->index1);
+	return copy_data (ep2, ep->index2, ep->name, sm);
+      }
 
     case STAT_DIR_TYPE_EMPTY:
       break;
@@ -390,7 +427,7 @@ stat_segment_dump_r (uint32_t * stats, stat_client_main_t * sm)
     {
       /* Collect counter */
       ep = vec_elt_at_index (sm->directory_vector, stats[i]);
-      vec_add1 (res, copy_data (ep, sm));
+      vec_add1 (res, copy_data (ep, ~0, 0, sm));
     }
 
   if (stat_segment_access_end (&sa, sm))
@@ -440,12 +477,16 @@ stat_segment_dump_entry_r (uint32_t index, stat_client_main_t * sm)
   stat_segment_data_t *res = 0;
   stat_segment_access_t sa;
 
+  /* Has directory been update? */
+  if (sm->shared_header->epoch != sm->current_epoch)
+    return 0;
+
   if (stat_segment_access_start (&sa, sm))
     return 0;
 
   /* Collect counter */
   ep = vec_elt_at_index (sm->directory_vector, index);
-  vec_add1 (res, copy_data (ep, sm));
+  vec_add1 (res, copy_data (ep, ~0, 0, sm));
 
   if (stat_segment_access_end (&sa, sm))
     return res;
