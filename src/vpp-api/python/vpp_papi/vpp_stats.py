@@ -72,7 +72,6 @@ def get_string(stats, ptr):
         raise ValueError('String overruns stats segment')
     return stats.statseg[namevector:namevector+namevectorlen-1].decode('ascii')
 
-
 class StatsVector:
     '''A class representing a VPP vector'''
 
@@ -106,7 +105,7 @@ class StatsVector:
 class VPPStats():
     '''Main class implementing Python access to the VPP statistics segment'''
     # pylint: disable=too-many-instance-attributes
-    shared_headerfmt = Struct('QPQQPP')
+    shared_headerfmt = Struct('QPQQPPP')
     default_socketname = '/run/vpp/stats.sock'
 
     def __init__(self, socketname=default_socketname, timeout=10):
@@ -178,18 +177,26 @@ class VPPStats():
         '''Get pointer of error vector'''
         return self.shared_headerfmt.unpack_from(self.statseg)[5]
 
+    @property
+    def symlink_vector(self):
+        '''Get pointer of symlink vector'''
+        return self.shared_headerfmt.unpack_from(self.statseg)[6]
+
     elementfmt = 'IQ128s'
 
     def refresh(self):
         '''Refresh directory vector cache (epoch changed)'''
         directory = {}
+        directory_by_idx = {}
         with self.lock:
-            for direntry in StatsVector(self, self.directory_vector, self.elementfmt):
+            for i, direntry in enumerate(StatsVector(self, self.directory_vector, self.elementfmt)):
                 path_raw = direntry[2].find(b'\x00')
                 path = direntry[2][:path_raw].decode('ascii')
                 directory[path] = StatsEntry(direntry[0], direntry[1])
+                directory_by_idx[i] = path
             self.last_epoch = self.epoch
             self.directory = directory
+            self.directory_by_idx = directory_by_idx
 
             # Cache the error index vectors
             self.error_vectors = []
@@ -375,6 +382,8 @@ class StatsEntry():
             self.function = self.error
         elif stattype == 5:
             self.function = self.name
+        elif stattype == 7:
+            self.function = self.symlink
         else:
             self.function = self.illegal
 
@@ -415,6 +424,13 @@ class StatsEntry():
         for name in StatsVector(stats, self.value, 'P'):
             counter.append(get_string(stats, name[0]))
         return counter
+
+    def symlink(self, stats):
+        '''Symlink counter'''
+        symlink_index = self.value
+        symlink = StatsVector(stats, stats.symlink_vector, 'QQ')[symlink_index]
+        name = stats.directory_by_idx[symlink[0]]
+        return stats[name][:,symlink[1]]
 
     def get_counter(self, stats):
         '''Return a list of counters'''
@@ -498,6 +514,10 @@ class TestStats(unittest.TestCase):
         directory = self.stat.ls(["^/foobar"])
         data = self.stat.dump(directory)
         print(data)
+
+    def test_symlink(self):
+        '''Symbolic links'''
+        print('/interface/local0/rx', self.stat['/interfaces/local0/rx'])
 
 if __name__ == '__main__':
     import cProfile
