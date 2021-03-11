@@ -33,6 +33,7 @@ typedef struct
 
   session_handle_t vpp_server_handle;
   session_handle_t vpp_active_open_handle;
+
   volatile int active_open_establishing;
   volatile int po_disconnected;
   volatile int ao_disconnected;
@@ -70,6 +71,7 @@ typedef struct
   u8 *server_uri;
   u8 *client_uri;
 
+  u32 ckpair_index;
   /*
    * Test state variables
    */
