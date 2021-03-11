@@ -25,6 +25,8 @@ typedef enum
   STAT_DIR_TYPE_ERROR_INDEX,
   STAT_DIR_TYPE_NAME_VECTOR,
   STAT_DIR_TYPE_EMPTY,
+  STAT_DIR_TYPE_SYMLINK_SIMPLE,
+  STAT_DIR_TYPE_SYMLINK_COMBINED,
 } stat_directory_type_t;
 
 typedef struct
@@ -38,6 +40,11 @@ typedef struct
   char name[128]; // TODO change this to pointer to "somewhere"
 } stat_segment_directory_entry_t;
 
+typedef struct
+{
+  uint64_t indexes[2];
+} stat_segment_symlink_entry_t;
+
 /*
  * Shared header first in the shared memory segment.
  */
@@ -49,6 +56,7 @@ typedef struct
   volatile uint64_t in_progress;
   volatile stat_segment_directory_entry_t *directory_vector;
   volatile uint64_t **error_vector;
+  volatile stat_segment_symlink_entry_t *symlink_vector;
 } stat_segment_shared_header_t;
 
 static inline void *

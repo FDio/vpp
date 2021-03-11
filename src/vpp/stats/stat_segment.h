@@ -40,23 +40,26 @@ typedef enum
  STAT_COUNTERS
 } stat_segment_counter_t;
 
-#define foreach_stat_segment_counter_name                       \
-  _(VECTOR_RATE, SCALAR_INDEX, vector_rate, /sys)               \
-  _(VECTOR_RATE_PER_WORKER, COUNTER_VECTOR_SIMPLE,              \
-    vector_rate_per_worker, /sys)                               \
-  _(NUM_WORKER_THREADS, SCALAR_INDEX, num_worker_threads, /sys) \
-  _(INPUT_RATE, SCALAR_INDEX, input_rate, /sys)                 \
-  _(LAST_UPDATE, SCALAR_INDEX, last_update, /sys)               \
-  _(LAST_STATS_CLEAR, SCALAR_INDEX, last_stats_clear, /sys)     \
-  _(HEARTBEAT, SCALAR_INDEX, heartbeat, /sys)                   \
-  _(NODE_CLOCKS, COUNTER_VECTOR_SIMPLE, clocks, /sys/node)      \
-  _(NODE_VECTORS, COUNTER_VECTOR_SIMPLE, vectors, /sys/node)    \
-  _(NODE_CALLS, COUNTER_VECTOR_SIMPLE, calls, /sys/node)        \
-  _(NODE_SUSPENDS, COUNTER_VECTOR_SIMPLE, suspends, /sys/node)  \
-  _(INTERFACE_NAMES, NAME_VECTOR, names, /if)                   \
-  _(NODE_NAMES, NAME_VECTOR, names, /sys/node)                  \
-  _(MEM_STATSEG_TOTAL, SCALAR_INDEX, total, /mem/statseg)       \
-  _(MEM_STATSEG_USED, SCALAR_INDEX, used, /mem/statseg)
+#define foreach_stat_segment_node_counter_name                                \
+  _ (NODE_CLOCKS, COUNTER_VECTOR_SIMPLE, clocks, / sys / node)                \
+  _ (NODE_VECTORS, COUNTER_VECTOR_SIMPLE, vectors, / sys / node)              \
+  _ (NODE_CALLS, COUNTER_VECTOR_SIMPLE, calls, / sys / node)                  \
+  _ (NODE_SUSPENDS, COUNTER_VECTOR_SIMPLE, suspends, / sys / node)
+
+#define foreach_stat_segment_counter_name                                     \
+  _ (VECTOR_RATE, SCALAR_INDEX, vector_rate, / sys)                           \
+  _ (VECTOR_RATE_PER_WORKER, COUNTER_VECTOR_SIMPLE, vector_rate_per_worker,   \
+     / sys)                                                                   \
+  _ (NUM_WORKER_THREADS, SCALAR_INDEX, num_worker_threads, / sys)             \
+  _ (INPUT_RATE, SCALAR_INDEX, input_rate, / sys)                             \
+  _ (LAST_UPDATE, SCALAR_INDEX, last_update, / sys)                           \
+  _ (LAST_STATS_CLEAR, SCALAR_INDEX, last_stats_clear, / sys)                 \
+  _ (HEARTBEAT, SCALAR_INDEX, heartbeat, / sys)                               \
+  _ (INTERFACE_NAMES, NAME_VECTOR, names, / if)                               \
+  _ (NODE_NAMES, NAME_VECTOR, names, / sys / node)                            \
+  _ (MEM_STATSEG_TOTAL, SCALAR_INDEX, total, / mem / statseg)                 \
+  _ (MEM_STATSEG_USED, SCALAR_INDEX, used, / mem / statseg)                   \
+  foreach_stat_segment_node_counter_name
 
 /* Default stat segment 32m */
 #define STAT_SEGMENT_DEFAULT_SIZE	(32<<20)
@@ -83,6 +86,7 @@ typedef struct
   uword *directory_vector_by_name;
   stat_segment_directory_entry_t *directory_vector;
   volatile u64 **error_vector;
+  stat_segment_symlink_entry_t *symlink_vector;
   u8 **interfaces;
   u8 **nodes;
 
