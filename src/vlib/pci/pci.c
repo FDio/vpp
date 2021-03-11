@@ -88,7 +88,7 @@ show_pci_fn (vlib_main_t * vm,
 		   "Product Name", "Vital Product Data");
 
   addrs = vlib_pci_get_all_dev_addrs ();
-  /* *INDENT-OFF* */
+
   vec_foreach (addr, addrs)
     {
       vlib_pci_device_info_t *d;
@@ -98,22 +98,19 @@ show_pci_fn (vlib_main_t * vm,
         continue;
 
       if (d->device_class != PCI_CLASS_NETWORK_ETHERNET && !show_all)
-        continue;
+	continue;
 
-        vec_reset_length (s);
-        if (d->numa_node >= 0)
-	  s = format (s, "  %d", d->numa_node);
+      vec_reset_length (s);
+      if (d->numa_node >= 0)
+	s = format (s, "  %d", d->numa_node);
 
-        vlib_cli_output (vm, "%-13U%-5v%04x:%04x   %-14U%-16s%-32v%U",
-			 format_vlib_pci_addr, addr, s,
-			 d->vendor_id, d->device_id,
-			 format_vlib_pci_link_speed, d,
-			 d->driver_name ? (char *) d->driver_name : "",
-			 d->product_name,
-			 format_vlib_pci_vpd, d->vpd_r, (u8 *) 0);
-	vlib_pci_free_device_info (d);
+      vlib_cli_output (
+	vm, "%-13U%-5v%04x:%04x   %-14U%-16s%-32v%U", format_vlib_pci_addr,
+	addr, s, d->vendor_id, d->device_id, format_vlib_pci_link_speed, d,
+	d->driver_name ? (char *) d->driver_name : "", d->product_name,
+	format_vlib_pci_vpd, d->vpd_r, (u8 *) 0);
+      vlib_pci_free_device_info (d);
     }
-  /* *INDENT-ON* */
 
   vec_free (s);
   vec_free (addrs);
