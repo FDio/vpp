@@ -1782,8 +1782,6 @@ unformat_dns_reply (unformat_input_t * input, va_list * args)
   int a6_set = 0;
   u8 *name;
   u8 *type;
-  int name_set = 0;
-  int type_set = 0;
   u8 *ce;
   u32 qp_offset;
   dns_header_t *h;
@@ -1792,15 +1790,11 @@ unformat_dns_reply (unformat_input_t * input, va_list * args)
   u8 *rru8;
 
   /* Must have a name */
-  if (unformat (input, "%v", &name))
-    name_set = 1;
-  else
+  if (!unformat (input, "%v", &name))
     return 0;
 
   /* Must have a type */
-  if (unformat (input, "%v", &type))
-    type_set = 1;
-  else
+  if (!unformat (input, "%v", &type))
     return 0;
 
   if ((0 != clib_memcmp (&type, "aaaa", 5)) ||
@@ -1809,7 +1803,9 @@ unformat_dns_reply (unformat_input_t * input, va_list * args)
       if (unformat (input, "%U", unformat_ip6_address, &a6))
 	a6_set = 1;
     }
-  if ((0 != clib_memcmp (&type, "a", 2)) || (0 != clib_memcmp (&type, "A", 2)))
+
+  if ((0 != clib_memcmp (&type, "a", 2)) ||
+      (0 != clib_memcmp (&type, "A", 2)))
     if (unformat (input, "%U", unformat_ip4_address, &a4))
       a4_set = 1;
 
