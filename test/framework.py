@@ -283,6 +283,7 @@ class VppTestCase(unittest.TestCase):
     classes. It provides methods to create and run test case.
     """
 
+    extra_vpp_statseg_config = ""
     extra_vpp_punt_config = []
     extra_vpp_plugin_config = []
     logger = null_logger
@@ -427,7 +428,8 @@ class VppTestCase(unittest.TestCase):
                            "main-core", str(cpu_core_number),
                            cls.worker_config, "}",
                            "physmem", "{", "max-size", "32m", "}",
-                           "statseg", "{", "socket-name", cls.stats_sock, "}",
+                           "statseg", "{", "socket-name", cls.stats_sock,
+                           cls.extra_vpp_statseg_config, "}",
                            "socksvr", "{", "socket-name", cls.api_sock, "}",
                            "node { ", default_variant, "}",
                            "api-fuzz {", api_fuzzing, "}",
