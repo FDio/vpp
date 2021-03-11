@@ -240,6 +240,8 @@ typedef struct
 
   /* pool of all memory interfaces */
   memif_if_t *interfaces;
+  /* interfaces have been reallocated */
+  int interfaces_invalidate;
 
   /* pool of all unix socket files */
   memif_socket_file_t *socket_files;

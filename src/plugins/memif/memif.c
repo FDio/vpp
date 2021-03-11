@@ -558,8 +558,11 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	  ASSERT (0);
 	}
 
+start:
+
       last_run_duration = start_time = vlib_time_now (vm);
       /* *INDENT-OFF* */
+      mm->interfaces_invalidate = 0;
       pool_foreach (mif, mm->interfaces)
          {
 	  memif_socket_file_t * msf = vec_elt_at_index (mm->socket_files, mif->socket_file_index);
@@ -568,6 +571,13 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	  if (now > start_time + 10e-6)
 	    {
 	      vlib_process_suspend (vm, 100e-6);	/* suspend for 100 us */
+	      if (mm->interfaces_invalidate) {
+		      /*
+		       * if someone reallocated the pool while we were suspended,
+		       * restart. Or else it will end in tears.
+		       */
+		  goto start;
+	      }
 	      start_time = vlib_time_now (vm);
 	    }
 
@@ -859,6 +869,7 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   vnet_hw_interface_t *hw;
   memif_socket_file_t *msf = 0;
   int rv = 0;
+  void *save_mm_interfaces;
 
   p = hash_get (mm->socket_file_index_by_sock_id, args->socket_id);
   if (p == 0)
@@ -942,7 +953,11 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 	}
     }
 
+  save_mm_interfaces = mm->interfaces;
   pool_get (mm->interfaces, mif);
+  if (save_mm_interfaces != mm->interfaces) {
+	  mm->interfaces_invalidate = 1;
+  }
   clib_memset (mif, 0, sizeof (*mif));
   mif->dev_instance = mif - mm->interfaces;
   mif->socket_file_index = msf - mm->socket_files;
