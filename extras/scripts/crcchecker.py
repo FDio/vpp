@@ -23,7 +23,8 @@ def crc_from_apigen(revision, filename):
     all APIs in filename'''
     if not revision and not os.path.isfile(filename):
         print(f'skipping: {filename}', file=sys.stderr)
-        return {}
+        # Return <class 'set'> instead of <class 'dict'>
+        return {-1}
 
     if revision:
         apigen = (f'{APIGENBIN} --git-revision {revision} --includedir src '
@@ -213,10 +214,12 @@ def check_patchset():
     for filename in files:
         # Ignore files that have version < 1.0.0
         _ = crc_from_apigen(None, filename)
-        if _['_version']['major'] == '0':
-            continue
+        # Ignore removed files
+        if isinstance(_, set) == 0:
+            if isinstance(_, set) == 0 and _['_version']['major'] == '0':
+                continue
+            newcrcs.update(_)
 
-        newcrcs.update(_)
         oldcrcs.update(crc_from_apigen(revision, filename))
 
     backwards_incompatible = report(newcrcs, oldcrcs)
