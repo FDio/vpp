@@ -30,6 +30,7 @@
 #include <inttypes.h>
 #include <sys/types.h>
 #include <sys/timerfd.h>
+#include <sys/types.h>
 
 /*! Error codes */
 typedef enum
