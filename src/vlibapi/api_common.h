@@ -57,6 +57,7 @@ typedef struct vl_api_registration_
   f64 last_heard;
   int last_queue_head;
   int unanswered_pings;
+  int is_zombie;
 
   /** shared memory only: pointer to client input queue */
   svm_queue_t *vl_input_queue;
