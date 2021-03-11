@@ -19,6 +19,9 @@ typedef enum {
   STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED,
   STAT_DIR_TYPE_ERROR_INDEX,
   STAT_DIR_TYPE_NAME_VECTOR,
+  STAT_DIR_TYPE_EMPTY,
+  STAT_DIR_TYPE_SYMLINK_SIMPLE,
+  STAT_DIR_TYPE_SYMLINK_COMBINED,
 } stat_directory_type_t;
 
 typedef struct
@@ -34,6 +37,12 @@ typedef struct
 
 typedef struct
 {
+  uint64_t counter_index;
+  uint64_t vec_index;
+} stat_segment_symlink_entry_t;
+
+typedef struct
+{
   char *name;
   stat_directory_type_t type;
   union
@@ -43,6 +52,8 @@ typedef struct
     counter_t **simple_counter_vec;
     vlib_counter_t **combined_counter_vec;
     uint8_t **name_vector;
+    counter_t *symlink_simple_vec;
+    vlib_counter_t *symlink_combined_vec;
   };
 } stat_segment_data_t;
 
@@ -54,6 +65,7 @@ typedef struct
   uint64_t in_progress;
   stat_segment_directory_entry_t *directory_vector;
   uint64_t **error_vector;
+  stat_segment_symlink_entry_t *symlink_vector;
 } stat_segment_shared_header_t;
 
 typedef struct
@@ -142,6 +154,17 @@ def name_vec_list(api, e):
     return [ffi.string(e[i]).decode('utf-8') for i in
             range(api.stat_segment_vec_len(e)) if e[i] != ffi.NULL]
 
+def symlink_simple_vec_list(api,e):
+    vec = []
+    for thread in range(api.stat_segment_vec_len(e)):
+        vec.append(e[thread])
+    return vec
+
+def symlink_combined_vec_list(api,e):
+    vec = []
+    for thread in range(api.stat_segment_vec_len(e)):
+        vec.append(vlib_counter_dict(e[thread]))
+    return vec
 
 def stat_entry_to_python(api, e):
     # Scalar index
@@ -155,6 +178,12 @@ def stat_entry_to_python(api, e):
         return error_vec_list(api, e.error_vector)
     if e.type == 5:
         return name_vec_list(api, e.name_vector)
+    if e.type == 6:
+        return None
+    if e.type == 7:
+        return symlink_simple_vec_list(api, e.symlink_simple_vec)
+    if e.type == 8:
+        return symlink_combined_vec_list(api, e.symlink_combined_vec)
     raise NotImplementedError()
 
 
