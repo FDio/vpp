@@ -1783,43 +1783,58 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	cpu_time_now = dispatch_process (vm, nm->processes[i], /* frame */ 0,
 					 cpu_time_now);
     }
+  vm->magic_marker = 1;
 
   while (1)
     {
       vlib_node_runtime_t *n;
+      vm->magic_marker = 2;
 
       if (PREDICT_FALSE (_vec_len (vm->pending_rpc_requests) > 0))
 	{
+          vm->magic_marker = 3;
 	  if (!is_main)
 	    vl_api_send_pending_rpc_requests (vm);
+          vm->magic_marker = 4;
 	}
 
-      if (!is_main)
+      if (!is_main) {
+        vm->magic_marker = 5;
 	vlib_worker_thread_barrier_check ();
+        vm->magic_marker = 6;
+      }
 
       if (PREDICT_FALSE (vm->check_frame_queues + frame_queue_check_counter))
 	{
 	  u32 processed = 0;
+          vm->magic_marker = 7;
 
 	  if (vm->check_frame_queues)
 	    {
+              vm->magic_marker = 8;
 	      frame_queue_check_counter = 100;
 	      vm->check_frame_queues = 0;
 	    }
+          vm->magic_marker = 9;
 
 	  vec_foreach (fqm, tm->frame_queue_mains)
 	    processed += vlib_frame_queue_dequeue (vm, fqm);
+          vm->magic_marker = 10;
 
 	  /* No handoff queue work found? */
 	  if (processed)
 	    frame_queue_check_counter = 100;
 	  else
 	    frame_queue_check_counter--;
+          vm->magic_marker = 11;
 	}
+
+      vm->magic_marker = 11;
 
       if (PREDICT_FALSE (vec_len (vm->worker_thread_main_loop_callbacks)))
 	clib_call_callbacks (vm->worker_thread_main_loop_callbacks, vm,
 			     cpu_time_now);
+      vm->magic_marker = 12;
 
       /*
        * When trying to understand aggravating, hard-to-reproduce
@@ -1829,17 +1844,23 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
        * a few tries to capture a good post-mortem trace of
        * a multi-thread issue. Best we can do without a big refactor job.
        */
-      if (is_main && PREDICT_FALSE (vm->dispatch_pcap_postmortem != 0))
+      if (is_main && PREDICT_FALSE (vm->dispatch_pcap_postmortem != 0)) {
+        vm->magic_marker = 13;
 	pcap_postmortem_reset (vm);
+      }
+
+      vm->magic_marker = 13;
 
       /* Process pre-input nodes. */
       cpu_time_now = clib_cpu_time_now ();
+      vm->magic_marker = 14;
       vec_foreach (n, nm->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT])
 	cpu_time_now = dispatch_node (vm, n,
 				      VLIB_NODE_TYPE_PRE_INPUT,
 				      VLIB_NODE_STATE_POLLING,
 				      /* frame */ 0,
 				      cpu_time_now);
+      vm->magic_marker = 15;
 
       /* Next process input nodes. */
       vec_foreach (n, nm->nodes_by_type[VLIB_NODE_TYPE_INPUT])
@@ -1848,35 +1869,46 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 				      VLIB_NODE_STATE_POLLING,
 				      /* frame */ 0,
 				      cpu_time_now);
+      vm->magic_marker = 16;
 
-      if (PREDICT_TRUE (is_main && vm->queue_signal_pending == 0))
+      if (PREDICT_TRUE (is_main && vm->queue_signal_pending == 0)) {
+        vm->magic_marker = 17;
 	vm->queue_signal_callback (vm);
+      }
 
+      vm->magic_marker = 16;
       if (__atomic_load_n (nm->pending_interrupts, __ATOMIC_ACQUIRE))
 	{
 	  int int_num = -1;
+          vm->magic_marker = 17;
 	  *nm->pending_interrupts = 0;
 
 	  while ((int_num =
 		    clib_interrupt_get_next (nm->interrupts, int_num)) != -1)
 	    {
 	      vlib_node_runtime_t *n;
+              vm->magic_marker = 18;
 	      clib_interrupt_clear (nm->interrupts, int_num);
 	      n = vec_elt_at_index (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
 				    int_num);
+              vm->magic_marker = 19;
 	      cpu_time_now = dispatch_node (vm, n, VLIB_NODE_TYPE_INPUT,
 					    VLIB_NODE_STATE_INTERRUPT,
 					    /* frame */ 0, cpu_time_now);
+              vm->magic_marker = 20;
 	    }
 	}
 
       /* Input nodes may have added work to the pending vector.
          Process pending vector until there is nothing left.
          All pending vectors will be processed from input -> output. */
+      vm->magic_marker = 21;
       for (i = 0; i < _vec_len (nm->pending_frames); i++)
 	cpu_time_now = dispatch_pending_node (vm, i, cpu_time_now);
+      vm->magic_marker = 22;
       /* Reset pending vector for next iteration. */
       _vec_len (nm->pending_frames) = 0;
+      vm->magic_marker = 23;
 
       if (is_main)
 	{
@@ -1965,23 +1997,30 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	      _vec_len (nm->data_from_advancing_timing_wheel) = 0;
 	    }
 	}
+      vm->magic_marker = 24;
       vlib_increment_main_loop_counter (vm);
       /* Record time stamp in case there are no enabled nodes and above
          calls do not update time stamp. */
+      vm->magic_marker = 25;
       cpu_time_now = clib_cpu_time_now ();
+      vm->magic_marker = 26;
       vm->loops_this_reporting_interval++;
       now = clib_time_now_internal (&vm->clib_time, cpu_time_now);
       /* Time to update loops_per_second? */
+      vm->magic_marker = 27;
       if (PREDICT_FALSE (now >= vm->loop_interval_end))
 	{
+          vm->magic_marker = 28;
 	  /* Next sample ends in 20ms */
 	  if (vm->loop_interval_start)
 	    {
 	      f64 this_loops_per_second;
+              vm->magic_marker = 29;
 
 	      this_loops_per_second =
 		((f64) vm->loops_this_reporting_interval) / (now -
 							     vm->loop_interval_start);
+              vm->magic_marker = 30;
 
 	      vm->loops_per_second =
 		vm->loops_per_second * vm->damping_constant +
@@ -1990,8 +2029,10 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 		vm->seconds_per_loop = 1.0 / vm->loops_per_second;
 	      else
 		vm->seconds_per_loop = 0.0;
+              vm->magic_marker = 31;
 	    }
 	  /* New interval starts now, and ends in 20ms */
+          vm->magic_marker = 32;
 	  vm->loop_interval_start = now;
 	  vm->loop_interval_end = now + 2e-4;
 	  vm->loops_this_reporting_interval = 0;
