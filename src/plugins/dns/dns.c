@@ -1804,8 +1804,7 @@ unformat_dns_reply (unformat_input_t * input, va_list * args)
 	a6_set = 1;
     }
 
-  if ((0 != clib_memcmp (&type, "a", 2)) ||
-      (0 != clib_memcmp (&type, "A", 2)))
+  if ((0 != clib_memcmp (&type, "a", 2)) || (0 != clib_memcmp (&type, "A", 2)))
     if (unformat (input, "%U", unformat_ip4_address, &a4))
       a4_set = 1;
 
