@@ -26,7 +26,7 @@ proxy_main_t proxy_main;
 
 typedef struct
 {
-  char uri[128];
+  session_endpoint_cfg_t sep;
   u32 app_index;
   u32 api_context;
 } proxy_connect_args_t;
@@ -37,11 +37,11 @@ proxy_cb_fn (void *data, u32 data_len)
   proxy_connect_args_t *pa = (proxy_connect_args_t *) data;
   vnet_connect_args_t a;
 
-  memset (&a, 0, sizeof (a));
+  clib_memset (&a, 0, sizeof (a));
   a.api_context = pa->api_context;
   a.app_index = pa->app_index;
-  a.uri = pa->uri;
-  vnet_connect_uri (&a);
+  clib_memcpy (&a.sep_ext, &pa->sep, sizeof (pa->sep));
+  vnet_connect (&a);
 }
 
 static void
@@ -49,14 +49,14 @@ proxy_call_main_thread (vnet_connect_args_t * a)
 {
   if (vlib_get_thread_index () == 0)
     {
-      vnet_connect_uri (a);
+      vnet_connect (a);
     }
   else
     {
       proxy_connect_args_t args;
       args.api_context = a->api_context;
       args.app_index = a->app_index;
-      clib_memcpy (args.uri, a->uri, vec_len (a->uri));
+      clib_memcpy (&args.sep, &a->sep_ext, sizeof (a->sep_ext));
       vl_api_rpc_call_main_thread (proxy_cb_fn, (u8 *) & args, sizeof (args));
     }
 }
@@ -352,7 +352,8 @@ proxy_rx_callback (session_t * s)
 
       clib_spinlock_unlock_if_init (&pm->sessions_lock);
 
-      a->uri = (char *) pm->client_uri;
+      clib_memcpy (&a->sep_ext, &pm->client_sep, sizeof (pm->client_sep));
+      a->sep_ext.ckpair_index = pm->ckpair_index;
       a->api_context = proxy_index;
       a->app_index = pm->active_open_app_index;
       proxy_call_main_thread (a);
@@ -365,10 +366,12 @@ static void
 proxy_force_ack (void *handlep)
 {
   transport_connection_t *tc;
-  session_t *ao_s;
+  session_t *s;
 
-  ao_s = session_get_from_handle (pointer_to_uword (handlep));
-  tc = session_get_transport (ao_s);
+  s = session_get_from_handle (pointer_to_uword (handlep));
+  tc = session_get_transport (s);
+  if (session_get_transport_proto (s) != TRANSPORT_PROTO_TCP)
+    return;
   tcp_send_ack ((tcp_connection_t *) tc);
 }
 
@@ -692,12 +695,32 @@ active_open_attach (void)
 static int
 proxy_server_listen ()
 {
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   proxy_main_t *pm = &proxy_main;
   vnet_listen_args_t _a, *a = &_a;
   clib_memset (a, 0, sizeof (*a));
+
   a->app_index = pm->server_app_index;
-  a->uri = (char *) pm->server_uri;
-  return vnet_bind_uri (a);
+  clib_memcpy (&a->sep_ext, &pm->server_sep, sizeof (sep));
+  a->sep_ext.ckpair_index = pm->ckpair_index;
+
+  return vnet_listen (a);
+}
+
+static void
+proxy_server_add_ckpair (void)
+{
+  vnet_app_add_cert_key_pair_args_t _ck_pair, *ck_pair = &_ck_pair;
+  proxy_main_t *pm = &proxy_main;
+
+  clib_memset (ck_pair, 0, sizeof (*ck_pair));
+  ck_pair->cert = (u8 *) test_srv_crt_rsa;
+  ck_pair->key = (u8 *) test_srv_key_rsa;
+  ck_pair->cert_len = test_srv_crt_rsa_len;
+  ck_pair->key_len = test_srv_key_rsa_len;
+  vnet_app_add_cert_key_pair (ck_pair);
+
+  pm->ckpair_index = ck_pair->index;
 }
 
 static int
@@ -715,6 +738,8 @@ proxy_server_create (vlib_main_t * vm)
 
   for (i = 0; i < num_threads; i++)
     vec_validate (pm->rx_buf[i], pm->rcv_buffer_size);
+
+  proxy_server_add_ckpair ();
 
   if (proxy_server_attach ())
     {
@@ -751,6 +776,8 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   proxy_main_t *pm = &proxy_main;
   char *default_server_uri = "tcp://0.0.0.0/23";
   char *default_client_uri = "tcp://6.0.2.2/23";
+  u8 *server_uri = 0, *client_uri = 0;
+  clib_error_t *error = 0;
   int rv, tmp32;
   u64 tmp64;
 
@@ -762,8 +789,7 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   pm->prealloc_fifos = 0;
   pm->private_segment_count = 0;
   pm->private_segment_size = 0;
-  pm->server_uri = 0;
-  pm->client_uri = 0;
+
   if (vlib_num_workers ())
     clib_spinlock_init (&pm->sessions_lock);
 
@@ -790,30 +816,47 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 unformat_memory_size, &tmp64))
 	{
 	  if (tmp64 >= 0x100000000ULL)
-	    return clib_error_return
-	      (0, "private segment size %lld (%llu) too large", tmp64, tmp64);
+	    {
+	      error = clib_error_return (
+		0, "private segment size %lld (%llu) too large", tmp64, tmp64);
+	      goto done;
+	    }
 	  pm->private_segment_size = tmp64;
 	}
-      else if (unformat (input, "server-uri %s", &pm->server_uri))
-	vec_add1 (pm->server_uri, 0);
-      else if (unformat (input, "client-uri %s", &pm->client_uri))
-	vec_add1 (pm->client_uri, 0);
+      else if (unformat (input, "server-uri %s", &server_uri))
+	vec_add1 (server_uri, 0);
+      else if (unformat (input, "client-uri %s", &client_uri))
+	vec_add1 (client_uri, 0);
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
     }
 
-  if (!pm->server_uri)
+  if (!server_uri)
     {
       clib_warning ("No server-uri provided, Using default: %s",
 		    default_server_uri);
-      pm->server_uri = format (0, "%s%c", default_server_uri, 0);
+      server_uri = format (0, "%s%c", default_server_uri, 0);
     }
-  if (!pm->client_uri)
+  if (!client_uri)
     {
       clib_warning ("No client-uri provided, Using default: %s",
 		    default_client_uri);
-      pm->client_uri = format (0, "%s%c", default_client_uri, 0);
+      client_uri = format (0, "%s%c", default_client_uri, 0);
+    }
+
+  if (parse_uri ((char *) server_uri, &pm->server_sep))
+    {
+      error = clib_error_return (0, "Invalid server uri %v", server_uri);
+      goto done;
+    }
+  if (parse_uri ((char *) client_uri, &pm->client_sep))
+    {
+      error = clib_error_return (0, "Invalid client uri %v", server_uri);
+      goto done;
     }
 
   vnet_session_enable_disable (vm, 1 /* turn on session and transport */ );
@@ -824,10 +867,13 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     case 0:
       break;
     default:
-      return clib_error_return (0, "server_create returned %d", rv);
+      error = clib_error_return (0, "server_create returned %d", rv);
     }
 
-  return 0;
+done:
+  vec_free (client_uri);
+  vec_free (server_uri);
+  return error;
 }
 
 /* *INDENT-OFF* */
