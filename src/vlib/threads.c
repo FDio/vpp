@@ -48,13 +48,11 @@ barrier_trace_sync (f64 t_entry, f64 t_open, f64 t_closed)
   if (!vlib_worker_threads->barrier_elog_enabled)
     return;
 
-    /* *INDENT-OFF* */
-    ELOG_TYPE_DECLARE (e) =
-      {
-        .format = "bar-trace-%s-#%d",
-        .format_args = "T4i4",
-      };
-    /* *INDENT-ON* */
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "bar-trace-%s-#%d",
+    .format_args = "T4i4",
+  };
+
   struct
   {
     u32 caller, count, t_entry, t_open, t_closed;
@@ -75,13 +73,11 @@ barrier_trace_sync_rec (f64 t_entry)
   if (!vlib_worker_threads->barrier_elog_enabled)
     return;
 
-    /* *INDENT-OFF* */
-    ELOG_TYPE_DECLARE (e) =
-      {
-        .format = "bar-syncrec-%s-#%d",
-        .format_args = "T4i4",
-      };
-    /* *INDENT-ON* */
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "bar-syncrec-%s-#%d",
+    .format_args = "T4i4",
+  };
+
   struct
   {
     u32 caller, depth;
@@ -99,13 +95,11 @@ barrier_trace_release_rec (f64 t_entry)
   if (!vlib_worker_threads->barrier_elog_enabled)
     return;
 
-    /* *INDENT-OFF* */
-    ELOG_TYPE_DECLARE (e) =
-      {
-        .format = "bar-relrrec-#%d",
-        .format_args = "i4",
-      };
-    /* *INDENT-ON* */
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "bar-relrrec-#%d",
+    .format_args = "i4",
+  };
+
   struct
   {
     u32 depth;
@@ -121,13 +115,11 @@ barrier_trace_release (f64 t_entry, f64 t_closed_total, f64 t_update_main)
   if (!vlib_worker_threads->barrier_elog_enabled)
     return;
 
-    /* *INDENT-OFF* */
-    ELOG_TYPE_DECLARE (e) =
-      {
-        .format = "bar-rel-#%d-e%d-u%d-t%d",
-        .format_args = "i4i4i4i4",
-      };
-    /* *INDENT-ON* */
+  ELOG_TYPE_DECLARE (e) = {
+    .format = "bar-rel-#%d-e%d-u%d-t%d",
+    .format_args = "i4i4i4i4",
+  };
+
   struct
   {
     u32 count, t_entry, t_update_main, t_closed_total;

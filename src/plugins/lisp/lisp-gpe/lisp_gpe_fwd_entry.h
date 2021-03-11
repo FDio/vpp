@@ -212,8 +212,8 @@ vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
 
 extern void vnet_lisp_gpe_fwd_entry_flush (void);
 
-extern u32 lisp_l2_fib_lookup (lisp_gpe_main_t * lgm,
-			       u16 bd_index, u8 src_mac[8], u8 dst_mac[8]);
+extern u32 lisp_l2_fib_lookup (lisp_gpe_main_t *lgm, u16 bd_index,
+			       u8 src_mac[6], u8 dst_mac[6]);
 
 extern const dpo_id_t *lisp_nsh_fib_lookup (lisp_gpe_main_t * lgm,
 					    u32 spi_si);
