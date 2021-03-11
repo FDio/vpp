@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "85501f3c_021353cd",
+        "filename": "src/vlib/main.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-03-11T15:47:26Z",
+      "side": 1,
+      "message": "buffer_main and physmem_main below seem to be global too? Or am I confused?",
+      "revId": "67ca353dca19d37efdd37e99a5db674319560489",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
