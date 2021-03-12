@@ -106,13 +106,16 @@ class VppDiedError(Exception):
         if testcase is None and method_name is None:
             in_msg = ''
         else:
-            in_msg = 'running %s.%s ' % (testcase, method_name)
+            in_msg = ' while running %s.%s' % (testcase, method_name)
 
-        msg = "VPP subprocess died %sunexpectedly with return code: %d%s." % (
-            in_msg,
-            self.rv,
-            ' [%s]' % (self.signal_name if
-                       self.signal_name is not None else ''))
+        if self.rv:
+            msg = "VPP subprocess died unexpectedly%s with return code: %d%s."\
+                % (in_msg, self.rv, ' [%s]' %
+                   (self.signal_name if
+                    self.signal_name is not None else ''))
+        else:
+            msg = "VPP subprocess died unexpectedly%s." % in_msg
+
         super(VppDiedError, self).__init__(msg)
 
 
@@ -1191,8 +1194,8 @@ class VppTestCase(unittest.TestCase):
                              after - before, timeout)
 
         cls.logger.debug(
-                "Finished sleep (%s) - slept %es (wanted %es)",
-                remark, after - before, timeout)
+            "Finished sleep (%s) - slept %es (wanted %es)",
+            remark, after - before, timeout)
 
     def pg_send(self, intf, pkts, worker=None, trace=True):
         intf.add_stream(pkts, worker=worker)
@@ -1332,13 +1335,13 @@ class VppTestResult(unittest.TestResult):
                     os.path.basename(self.current_test_case_info.tempdir))
 
                 self.current_test_case_info.logger.debug(
-                        "creating a link to the failed test")
+                    "creating a link to the failed test")
                 self.current_test_case_info.logger.debug(
-                        "os.symlink(%s, %s)" %
-                        (self.current_test_case_info.tempdir, link_path))
+                    "os.symlink(%s, %s)" %
+                    (self.current_test_case_info.tempdir, link_path))
                 if os.path.exists(link_path):
                     self.current_test_case_info.logger.debug(
-                            'symlink already exists')
+                        'symlink already exists')
                 else:
                     os.symlink(self.current_test_case_info.tempdir, link_path)
 
