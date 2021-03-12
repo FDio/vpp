@@ -15,12 +15,54 @@
 
 set -eEo pipefail
 
+CLANG_FORMAT_VER_REGEX='([0-9]+)\.[0-9]+\.[0-9]+'
+CLANG_FORMAT_DIFF="/usr/share/clang/clang-format-diff.py"
+
 CLANG_FORMAT_VER=10
 GIT_DIFF_ARGS="-U0 --no-color --relative HEAD~1"
 CLANG_FORMAT_DIFF_ARGS="-style file -p1"
 SUFFIX="-${CLANG_FORMAT_VER}"
 
-clang-format${SUFFIX} --version
+if command -v clang-format${SUFFIX} &> /dev/null;
+then
+    CLANG_FORMAT=clang-format${SUFFIX}
+elif command -v clang-format &> /dev/null;
+then
+    CLANG_FORMAT=clang-format
+fi
+
+CLANG_FORMAT_VERSION=$(${CLANG_FORMAT} --version)
+echo $CLANG_FORMAT_VERSION
+
+if [[ ! $CLANG_FORMAT_VERSION =~ $CLANG_FORMAT_VER_REGEX ]];
+then
+    echo "*******************************************************************"
+    echo "* CHECKSTYLE VERSION REGEX CHECK FAILED"
+    echo "* $CLANG_FORMAT_VERSION"
+    echo "*******************************************************************"
+    exit 1
+fi
+
+if [[ CLANG_FORMAT_VER == "${BASH_REMATCH[1]}" ]];
+then
+    echo "*******************************************************************"
+    echo "* CHECKSTYLE VERSION CHECK FAILED"
+    echo "* Expected major version $CLANG_FORMAT_VER, found ${BASH_REMATCH[1]}"
+    echo "*******************************************************************"
+    exit 1
+fi
+
+if command -v clang-format-diff${SUFFIX} &> /dev/null;
+then
+    CLANG_FORMAT_DIFF=clang-format-diff${SUFFIX}
+elif [ ! -f $CLANG_FORMAT_DIFF ] ;
+then
+    echo "*******************************************************************"
+    echo "* CHECKSTYLE FAILED"
+    echo "* Could not locate the clang-format-diff script"
+    echo "*******************************************************************"
+    exit 1
+fi
 
 in=$(mktemp)
 git diff ${GIT_DIFF_ARGS} ':!*.patch' > ${in}
@@ -39,7 +81,7 @@ if [ ${line_count} -gt 0 ] ; then
 fi
 
 if [ "${1}" == "--fix" ]; then
-  cat ${in} | clang-format-diff${SUFFIX} ${CLANG_FORMAT_DIFF_ARGS} -i
+  cat ${in} | ${CLANG_FORMAT_DIFF} ${CLANG_FORMAT_DIFF_ARGS} -i
   filelist=$(sed -n 's/^+++ b\/\(.*\.[ch]\)/\1/p' ${in})
   git status ${filelist}
   rm ${in}
@@ -61,7 +103,7 @@ fi
 
 out=$(mktemp)
 
-cat ${in} | clang-format-diff${SUFFIX} ${CLANG_FORMAT_DIFF_ARGS} > ${out}
+cat ${in} | ${CLANG_FORMAT_DIFF} ${CLANG_FORMAT_DIFF_ARGS} > ${out}
 rm ${in}
 
 line_count=$(cat ${out} | wc -l)
