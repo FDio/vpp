@@ -71,7 +71,7 @@ DEB_DEPENDS += libffi-dev python3-ply libmbedtls-dev
 DEB_DEPENDS += cmake ninja-build uuid-dev python3-jsonschema python3-yaml
 DEB_DEPENDS += python3-venv  # ensurepip
 DEB_DEPENDS += python3-dev   # needed for python3 -m pip install psutil
-DEB_DEPENDS += libnl-3-dev libnl-route-3-dev
+DEB_DEPENDS += libnl-3-dev libnl-route-3-dev clang-format-10
 # python3.6 on 16.04 requires python36-dev
 
 LIBFFI=libffi6 # works on all but 20.04 and debian-testing
@@ -620,9 +620,6 @@ compdb:
 
 .PHONY: checkstyle
 checkstyle: checkfeaturelist
-ifeq ($(shell which clang-format-10),)
-	@sudo apt-get install -y clang-format-10
-endif
 	@extras/scripts/checkstyle.sh
 
 .PHONY: checkstyle-commit
