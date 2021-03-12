@@ -620,9 +620,6 @@ compdb:
 
 .PHONY: checkstyle
 checkstyle: checkfeaturelist
-ifeq ($(shell which clang-format-10),)
-	@sudo apt-get install -y clang-format-10
-endif
 	@extras/scripts/checkstyle.sh
 
 .PHONY: checkstyle-commit
