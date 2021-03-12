@@ -355,10 +355,20 @@ done:
   return 0;
 }
 
+extern void (*__tls_get_addr)();
+
 static uword
 linux_epoll_input (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
+  static void *tls_save = 0;
+  if (tls_save == 0) {
+	  tls_save = __tls_get_addr;
+  } else if (tls_save != __tls_get_addr) {
+	  clib_warning("panic: __tls_get_addr modified: %x vs %x which we saved", __tls_get_addr, tls_save);
+	  __tls_get_addr = tls_save;
+  }
+
   u32 thread_index = vlib_get_thread_index ();
 
   if (thread_index == 0)
