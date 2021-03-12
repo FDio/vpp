@@ -711,6 +711,7 @@ vl_mem_api_handle_msg_main (vlib_main_t * vm, vlib_node_runtime_t * node)
 int
 vl_mem_api_handle_rpc (vlib_main_t * vm, vlib_node_runtime_t * node)
 {
+  static void *barrier_sync_save = 0;
   api_main_t *am = vlibapi_get_main ();
   int i;
   uword *tmp, mp;
@@ -739,6 +740,11 @@ vl_mem_api_handle_rpc (vlib_main_t * vm, vlib_node_runtime_t * node)
    */
   if (PREDICT_TRUE (vec_len (vm->processing_rpc_requests)))
     {
+      if (barrier_sync_save == 0) {
+	      barrier_sync_save = vl_msg_api_barrier_sync;
+      } else if (barrier_sync_save != vl_msg_api_barrier_sync) {
+	      clib_warning("vl_msg_api_barrier_sync is %x, but we had it as %x", vl_msg_api_barrier_sync, barrier_sync_save);
+      }
       vl_msg_api_barrier_sync ();
       for (i = 0; i < vec_len (vm->processing_rpc_requests); i++)
 	{
