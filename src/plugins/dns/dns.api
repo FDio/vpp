@@ -45,7 +45,7 @@ autoreply define dns_name_server_add_del {
     option vat_help = "<ip-address> [del]";
 };
 
-/** \brief DNS name resolution request
+/** \brief DNS name resolution request (A) -> ip4
 
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -74,6 +74,34 @@ define dns_resolve_name_reply {
     u8 ip4_set;
     u8 ip6_set;
     u8 ip4_address[4];
+    u8 ip6_address[16];
+};
+
+/** \brief DNS name resolution request (AAAA) -> ip6
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param name - the name to resolve
+*/
+define dns_resolve_name6 {
+    u32 client_index;
+    u32 context;
+    u8 name[256];
+    option vat_help = "<hostname>";
+ };
+
+/** \brief DNS name resolution reply
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return value, 0 => success
+    @param ip6_set - indicates that the ip6 address is valid
+    @param ip6_address - the ip6 name resolution reply
+*/
+define dns_resolve_name6_reply {
+    u32 context;
+    i32 retval;
+    u8 ip6_set;
     u8 ip6_address[16];
 };
 
