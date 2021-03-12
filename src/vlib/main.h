@@ -299,6 +299,9 @@ typedef struct vlib_main_t
   /* address sanitizer stack save */
   void *asan_stack_save;
 #endif
+  int magic_marker;
+  void *magic_pointer;
+  int magic_errno_saver;
 } vlib_main_t;
 
 /* Global main structure. */

@@ -140,6 +140,7 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   struct epoll_event *e;
   int n_fds_ready;
   int is_main = (thread_index == 0);
+  vm->magic_marker = 103;
 
   {
     vlib_node_main_t *nm = &vm->node_main;
@@ -149,9 +150,12 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     int timeout_ms = 0, max_timeout_ms = 10;
     f64 vector_rate = vlib_last_vectors_per_main_loop (vm);
 
+    vm->magic_marker = 104;
+
     if (is_main == 0)
       now = vlib_time_now (vm);
 
+    vm->magic_marker = 105;
     /*
      * If we've been asked for a fixed-sleep between main loop polls,
      * do so right away.
@@ -164,6 +168,7 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	node->input_main_loops_per_call = 0;
 	ts.tv_sec = 0;
 	ts.tv_nsec = 1000 * um->poll_sleep_usec;
+        vm->magic_marker = 106;
 
 	while (nanosleep (&ts, &tsrem) < 0)
 	  {
@@ -174,6 +179,7 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     else if (is_main && vector_rate < 2 && vm->api_queue_nonempty == 0
 	     && nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
       {
+        vm->magic_marker = 107;
 	ticks_until_expiration = TW (tw_timer_first_expires_in_ticks)
 	  ((TWT (tw_timer_wheel) *) nm->timing_wheel);
 
@@ -182,10 +188,12 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  {
 	    timeout = 10e-3;
 	    timeout_ms = max_timeout_ms;
+            vm->magic_marker = 108;
 	  }
 	else
 	  {
 	    timeout = (f64) ticks_until_expiration *1e-5;
+            vm->magic_marker = 109;
 	    if (timeout < 1e-3)
 	      timeout_ms = 0;
 	    else
@@ -194,39 +202,48 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		/* Must be between 1 and 10 ms. */
 		timeout_ms = clib_max (1, timeout_ms);
 		timeout_ms = clib_min (max_timeout_ms, timeout_ms);
+                vm->magic_marker = 110;
 	      }
 	  }
 	node->input_main_loops_per_call = 0;
+        vm->magic_marker = 111;
       }
     else if (is_main == 0 && vector_rate < 2
 	     && (vlib_global_main.time_last_barrier_release + 0.5 < now)
 	     && nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] == 0)
       {
+        vm->magic_marker = 112;
 	timeout = 10e-3;
 	timeout_ms = max_timeout_ms;
 	node->input_main_loops_per_call = 0;
       }
     else			/* busy */
       {
+        vm->magic_marker = 113;
 	/* Don't come back for a respectable number of dispatch cycles */
 	node->input_main_loops_per_call = 1024;
       }
+    vm->magic_marker = 114;
 
     /* Allow any signal to wakeup our sleep. */
     if (is_main || em->epoll_fd != -1)
       {
 	static sigset_t unblock_all_signals;
+        vm->magic_marker = 115;
 	n_fds_ready = epoll_pwait (em->epoll_fd,
 				   em->epoll_events,
 				   vec_len (em->epoll_events),
 				   timeout_ms, &unblock_all_signals);
+        vm->magic_marker = 116;
 
 	/* This kludge is necessary to run over absurdly old kernels */
 	if (n_fds_ready < 0 && errno == ENOSYS)
 	  {
+            vm->magic_marker = 117;
 	    n_fds_ready = epoll_wait (em->epoll_fd,
 				      em->epoll_events,
 				      vec_len (em->epoll_events), timeout_ms);
+            vm->magic_marker = 118;
 	  }
 
       }
@@ -236,36 +253,50 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	 * Worker thread, no epoll fd's, sleep for 100us at a time
 	 * and check for a barrier sync request
 	 */
+        vm->magic_marker = 119;
 	if (timeout_ms)
 	  {
 	    struct timespec ts, tsrem;
 	    f64 limit = now + (f64) timeout_ms * 1e-3;
+            vm->magic_marker = 120;
 
 	    while (vlib_time_now (vm) < limit)
 	      {
 		/* Sleep for 100us at a time */
 		ts.tv_sec = 0;
 		ts.tv_nsec = 1000 * 100;
+                vm->magic_marker = 121;
 
 		while (nanosleep (&ts, &tsrem) < 0)
 		  ts = tsrem;
+                vm->magic_marker = 122;
 		if (*vlib_worker_threads->wait_at_barrier ||
-		    *nm->pending_interrupts)
+		    *nm->pending_interrupts) {
+                  vm->magic_marker = 123;
 		  goto done;
+		}
 	      }
 	  }
+
+        vm->magic_marker = 124;
 	goto done;
       }
+    vm->magic_marker = 125;
   }
 
   if (n_fds_ready < 0)
     {
+      vm->magic_marker = 126;
+      vm->magic_errno_saver = errno;
       if (unix_error_is_fatal (errno))
 	vlib_panic_with_error (vm, clib_error_return_unix (0, "epoll_wait"));
+      vm->magic_errno_saver = 0;
+      vm->magic_marker = 127;
 
       /* non fatal error (e.g. EINTR). */
       goto done;
     }
+  vm->magic_marker = 128;
 
   em->epoll_waits += 1;
   em->epoll_files_ready += n_fds_ready;
@@ -282,11 +313,14 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
        * deleted file descriptor. We just deal with it and throw away the
        * events for the corresponding file descriptor.
        */
+      vm->magic_marker = 129;
       f = fm->file_pool + i;
       if (PREDICT_FALSE (pool_is_free (fm->file_pool, f)))
 	{
+          vm->magic_marker = 130;
 	  if (e->events & EPOLLIN)
 	    {
+              vm->magic_marker = 131;
 	      errors[n_errors] =
 		clib_error_return (0, "epoll event EPOLLIN dropped due "
 				   "to free index %u", i);
@@ -294,6 +328,7 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  if (e->events & EPOLLOUT)
 	    {
+              vm->magic_marker = 132;
 	      errors[n_errors] =
 		clib_error_return (0, "epoll event EPOLLOUT dropped due "
 				   "to free index %u", i);
@@ -301,6 +336,7 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  if (e->events & EPOLLERR)
 	    {
+              vm->magic_marker = 133;
 	      errors[n_errors] =
 		clib_error_return (0, "epoll event EPOLLERR dropped due "
 				   "to free index %u", i);
@@ -309,8 +345,10 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       else if (PREDICT_TRUE (!(e->events & EPOLLERR)))
 	{
+          vm->magic_marker = 134;
 	  if (e->events & EPOLLIN)
 	    {
+              vm->magic_marker = 135;
 	      f->read_events++;
 	      errors[n_errors] = f->read_function (f);
 	      /* Make sure f is valid if the file pool moves */
@@ -321,6 +359,7 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  if (e->events & EPOLLOUT)
 	    {
+              vm->magic_marker = 136;
 	      f->write_events++;
 	      errors[n_errors] = f->write_function (f);
 	      n_errors += errors[n_errors] != 0;
@@ -328,26 +367,34 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       else
 	{
+          vm->magic_marker = 137;
 	  if (f->error_function)
 	    {
+              vm->magic_marker = 138;
 	      f->error_events++;
 	      errors[n_errors] = f->error_function (f);
 	      n_errors += errors[n_errors] != 0;
 	    }
-	  else
+	  else {
 	    close (f->file_descriptor);
+            vm->magic_marker = 139;
+	  }
 	}
 
+      vm->magic_marker = 140;
       ASSERT (n_errors < ARRAY_LEN (errors));
       for (i = 0; i < n_errors; i++)
 	{
+          vm->magic_marker = 141;
 	  unix_save_error (um, errors[i]);
 	}
+      vm->magic_marker = 142;
     }
 
 done:
   if (PREDICT_FALSE (vm->cpu_id != clib_get_current_cpu_id ()))
     {
+      vm->magic_marker = 143;
       vm->cpu_id = clib_get_current_cpu_id ();
       vm->numa_node = clib_get_current_numa_node ();
     }
@@ -355,11 +402,23 @@ done:
   return 0;
 }
 
+extern void (*__tls_get_addr)();
+
 static uword
 linux_epoll_input (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
+  static void *tls_save = 0;
+  vm->magic_marker = 101;
+  if (tls_save == 0) {
+	  tls_save = __tls_get_addr;
+  } else if (tls_save != __tls_get_addr) {
+	  clib_warning("panic: __tls_get_addr modified: %x vs %x which we saved", __tls_get_addr, tls_save);
+	  __tls_get_addr = tls_save;
+  }
+
   u32 thread_index = vlib_get_thread_index ();
+  vm->magic_marker = 102;
 
   if (thread_index == 0)
     return linux_epoll_input_inline (vm, node, frame, 0);
