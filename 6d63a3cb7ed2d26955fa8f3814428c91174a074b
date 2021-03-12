@@ -16,6 +16,24 @@
       "revId": "6d63a3cb7ed2d26955fa8f3814428c91174a074b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "60f30da4_01b68e44",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 542,
+      "author": {
+        "id": 1282
+      },
+      "writtenOn": "2021-03-12T09:22:03Z",
+      "side": 1,
+      "message": "Thank you for the descriptive review.\nI will change the comment message and this comment to have description.",
+      "parentUuid": "5e8f7a58_8355bbfd",
+      "revId": "6d63a3cb7ed2d26955fa8f3814428c91174a074b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
