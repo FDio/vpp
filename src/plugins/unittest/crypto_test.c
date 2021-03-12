@@ -844,7 +844,7 @@ test_crypto_perf (vlib_main_t * vm, crypto_test_main_t * tm)
   vnet_crypto_op_t *ops1 = 0, *ops2 = 0, *op1, *op2;
   vnet_crypto_alg_data_t *ad = vec_elt_at_index (cm->algs, tm->alg);
   vnet_crypto_key_index_t key_index = ~0;
-  u8 key[32];
+  u8 key[64];
   int buffer_size = vlib_buffer_get_default_data_size (vm);
   u64 seed = clib_cpu_time_now ();
   u64 t0[5], t1[5], t2[5], n_bytes = 0;
