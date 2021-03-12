@@ -673,6 +673,8 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "interface pg%u", &if_id))
 	;
+      else if (unformat (line_input, "coalesce-enabled"))
+	coalesce_enabled = 1;
       else if (unformat (line_input, "gso-enabled"))
 	{
 	  gso_enabled = 1;
@@ -683,8 +685,6 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 	      error = clib_error_create ("gso enabled but gso size missing");
 	      goto done;
 	    }
-	  if (unformat (line_input, "coalesce-enabled"))
-	    coalesce_enabled = 1;
 	}
       else
 	{
