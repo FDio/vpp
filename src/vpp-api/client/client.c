@@ -305,6 +305,8 @@ vac_connect (char * name, char * chroot_prefix, vac_callback_t cb,
   }
 
   /* Start read timeout thread */
+  timeout_in_progress = false;
+  timeout_thread_cancelled = false;
   rv = pthread_create(&pm->timeout_thread_handle, NULL,
 		      vac_timeout_thread_fn, 0);
   if (rv) {
