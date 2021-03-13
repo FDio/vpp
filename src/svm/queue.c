@@ -323,14 +323,14 @@ svm_queue_add2 (svm_queue_t * q, u8 * elem, u8 * elem2, int nowait)
   else
     svm_queue_lock (q);
 
-  if (PREDICT_FALSE (q->cursize + 1 == q->maxsize))
+  if (PREDICT_FALSE (q->cursize + 1 >= q->maxsize))
     {
       if (nowait)
 	{
 	  svm_queue_unlock (q);
 	  return (-2);
 	}
-      while (q->cursize + 1 == q->maxsize)
+      while (q->cursize + 1 >= q->maxsize)
 	svm_queue_wait_inline (q);
     }
 
