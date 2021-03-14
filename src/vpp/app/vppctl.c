@@ -291,17 +291,20 @@ main (int argc, char *argv[])
   efd = epoll_create1 (0);
 
   /* register STDIN */
-  event.events = EPOLLIN | EPOLLPRI | EPOLLERR;
-  event.data.fd = STDIN_FILENO;
-  if (epoll_ctl (efd, EPOLL_CTL_ADD, STDIN_FILENO, &event) != 0)
+  if (cmd == 0)
     {
-      /* ignore EPERM; it means stdin is something like /dev/null */
-      if (errno != EPERM)
+      event.events = EPOLLIN | EPOLLPRI | EPOLLERR;
+      event.data.fd = STDIN_FILENO;
+      if (epoll_ctl (efd, EPOLL_CTL_ADD, STDIN_FILENO, &event) != 0)
 	{
-	  error = errno;
-	  fprintf (stderr, "epoll_ctl[%d]", STDIN_FILENO);
-	  perror (0);
-	  goto done;
+	  /* ignore EPERM; it means stdin is something like /dev/null */
+	  if (errno != EPERM)
+	    {
+	      error = errno;
+	      fprintf (stderr, "epoll_ctl[%d]", STDIN_FILENO);
+	      perror (0);
+	      goto done;
+	    }
 	}
     }
 
@@ -341,7 +344,7 @@ main (int argc, char *argv[])
       if (n == 0)
 	continue;
 
-      if (event.data.fd == STDIN_FILENO)
+      if (event.data.fd == STDIN_FILENO && cmd == 0)
 	{
 	  int n;
 	  char c[100];
