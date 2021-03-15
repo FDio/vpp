@@ -37,6 +37,11 @@ ip4_neighbor_probe (vlib_main_t * vm,
   vlib_buffer_t *b0;
   u32 bi0;
 
+  hw_if0 = vnet_get_sup_hw_interface (vnm, adj0->rewrite_header.sw_if_index);
+
+  /* if (NULL == hw_if0->hw_address) */
+  /*   return (NULL); */
+
   /* Send ARP request. */
   h0 = vlib_packet_template_get_packet (vm,
 					&ip4_main.ip4_arp_request_packet_template,
@@ -49,8 +54,6 @@ ip4_neighbor_probe (vlib_main_t * vm,
 
   /* Add rewrite/encap string for ARP packet. */
   vnet_rewrite_one_header (adj0[0], h0, sizeof (ethernet_header_t));
-
-  hw_if0 = vnet_get_sup_hw_interface (vnm, adj0->rewrite_header.sw_if_index);
 
   /* Src ethernet address in ARP header. */
   mac_address_from_bytes (&h0->ip4_over_ethernet[0].mac, hw_if0->hw_address);
