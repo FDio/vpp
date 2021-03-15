@@ -1605,7 +1605,7 @@ class TestIPPunt(IPPuntSetup, VppTestCase):
 
 class TestIPPuntHandoff(IPPuntSetup, VppTestCase):
     """ IPv4 Punt Policer thread handoff """
-    worker_config = "workers 2"
+    vpp_worker_count = 2
 
     def setUp(self):
         super(TestIPPuntHandoff, self).setUp()
