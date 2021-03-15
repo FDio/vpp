@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "50d7e8c8_751e09bb",
+        "filename": "src/vlib/error.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-03-15T17:48:50Z",
+      "side": 1,
+      "message": "As we already have unformat_clib_error, unformat_vlib_error may be better choice....",
+      "range": {
+        "startLine": 214,
+        "startChar": 0,
+        "endLine": 214,
+        "endChar": 14
+      },
+      "revId": "9fa7989a8d5fda5027472e9c0974a935fe6109a7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
