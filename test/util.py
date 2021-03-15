@@ -452,3 +452,13 @@ def reassemble4_ether(listoffragments):
 
 def reassemble4(listoffragments):
     return reassemble4_core(listoffragments, True)
+
+
+def sum_stats(stats):
+    """ Return summary stats irregardles of worker index """
+    return sum([x[0] for x in stats])
+
+
+def sum_stats_for_intf(stats, if_idx):
+    """ Return summary stats irregardles of worker index """
+    return sum([x[if_idx] for x in stats])
