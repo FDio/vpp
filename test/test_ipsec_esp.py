@@ -470,7 +470,7 @@ class TestIpsecEsp2(TemplateIpsecEsp, IpsecTcpTests):
 class TestIpsecEspAsync(TemplateIpsecEsp):
     """ Ipsec ESP - Aysnc tests """
 
-    worker_config = "workers 2"
+    vpp_worker_count = 2
 
     def setUp(self):
         super(TestIpsecEspAsync, self).setUp()
@@ -852,7 +852,7 @@ class RunTestIpsecEspAll(ConfigIpsecESP,
         test_args = str.split(cls.__doc__, " ")
         engine = test_args[0]
         if engine == "async":
-            cls.worker_config = "workers 2"
+            cls.vpp_worker_count = 2
         super(RunTestIpsecEspAll, cls).setUpConstants()
 
     def setUp(self):

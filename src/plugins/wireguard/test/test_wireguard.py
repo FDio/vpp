@@ -663,7 +663,7 @@ class TestWg(VppTestCase):
 
 class WireguardHandoffTests(TestWg):
     """ Wireguard Tests in multi worker setup """
-    worker_config = "workers 2"
+    vpp_worker_count = 2
 
     def test_wg_peer_init(self):
         """ Handoff """
