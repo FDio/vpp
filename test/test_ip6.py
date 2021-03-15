@@ -2320,7 +2320,7 @@ class TestIP6Punt(IP6PuntSetup, VppTestCase):
 
 class TestIP6PuntHandoff(IP6PuntSetup, VppTestCase):
     """ IPv6 Punt Police/Redirect """
-    worker_config = "workers 2"
+    vpp_worker_count = 2
 
     def setUp(self):
         super(TestIP6PuntHandoff, self).setUp()

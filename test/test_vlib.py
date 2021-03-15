@@ -11,7 +11,7 @@ from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 class TestVlib(VppTestCase):
     """ Vlib Unit Test Cases """
-    worker_config = "workers 1"
+    vpp_worker_count = 1
 
     @classmethod
     def setUpClass(cls):
