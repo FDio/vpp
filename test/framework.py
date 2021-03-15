@@ -406,11 +406,18 @@ class VppTestCase(unittest.TestCase):
             coredump_size = "coredump-size unlimited"
 
         cpu_core_number = cls.get_least_used_cpu()
-        if not hasattr(cls, "worker_config"):
-            cls.worker_config = os.getenv("VPP_WORKER_CONFIG", "")
-            if cls.worker_config != "":
-                if cls.has_tag(TestCaseTag.FIXME_VPP_WORKERS):
-                    cls.worker_config = ""
+        if not hasattr(cls, "vpp_worker_count"):
+            cls.vpp_worker_count = 0
+            worker_config = os.getenv("VPP_WORKER_CONFIG", "")
+            if worker_config:
+                elems = worker_config.split(" ")
+                if elems[0] != "workers" or len(elems) != 2:
+                    raise ValueError("Wrong VPP_WORKER_CONFIG == '%s' value." %
+                                     worker_config)
+                cls.vpp_worker_count = int(elems[1])
+                if cls.vpp_worker_count > 0 and\
+                        cls.has_tag(TestCaseTag.FIXME_VPP_WORKERS):
+                    cls.vpp_worker_count = 0
 
         default_variant = os.getenv("VARIANT")
         if default_variant is not None:
@@ -422,25 +429,27 @@ class VppTestCase(unittest.TestCase):
         if api_fuzzing is None:
             api_fuzzing = 'off'
 
-        cls.vpp_cmdline = [cls.vpp_bin, "unix",
-                           "{", "nodaemon", debug_cli, "full-coredump",
-                           coredump_size, "runtime-dir", cls.tempdir, "}",
-                           "api-trace", "{", "on", "}", "api-segment", "{",
-                           "prefix", cls.shm_prefix, "}", "cpu", "{",
-                           "main-core", str(cpu_core_number),
-                           cls.worker_config, "}",
-                           "physmem", "{", "max-size", "32m", "}",
-                           "statseg", "{", "socket-name", cls.stats_sock, "}",
-                           "socksvr", "{", "socket-name", cls.api_sock, "}",
-                           "node { ", default_variant, "}",
-                           "api-fuzz {", api_fuzzing, "}",
-                           "plugins",
-                           "{", "plugin", "dpdk_plugin.so", "{", "disable",
-                           "}", "plugin", "rdma_plugin.so", "{", "disable",
-                           "}", "plugin", "lisp_unittest_plugin.so", "{",
-                           "enable",
-                           "}", "plugin", "unittest_plugin.so", "{", "enable",
-                           "}"] + cls.extra_vpp_plugin_config + ["}", ]
+        cls.vpp_cmdline = [
+            cls.vpp_bin,
+            "unix", "{", "nodaemon", debug_cli, "full-coredump",
+            coredump_size, "runtime-dir", cls.tempdir, "}",
+            "api-trace", "{", "on", "}",
+            "api-segment", "{", "prefix", cls.shm_prefix, "}",
+            "cpu", "{", "main-core", str(cpu_core_number), ]
+        if cls.vpp_worker_count:
+            cls.vpp_cmdline.extend(["workers", str(cls.vpp_worker_count)])
+        cls.vpp_cmdline.extend([
+            "}",
+            "physmem", "{", "max-size", "32m", "}",
+            "statseg", "{", "socket-name", cls.stats_sock, "}",
+            "socksvr", "{", "socket-name", cls.api_sock, "}",
+            "node { ", default_variant, "}",
+            "api-fuzz {", api_fuzzing, "}",
+            "plugins", "{", "plugin", "dpdk_plugin.so", "{", "disable", "}",
+            "plugin", "rdma_plugin.so", "{", "disable", "}",
+            "plugin", "lisp_unittest_plugin.so", "{", "enable", "}",
+            "plugin", "unittest_plugin.so", "{", "enable", "}"
+        ] + cls.extra_vpp_plugin_config + ["}", ])
 
         if cls.extra_vpp_punt_config is not None:
             cls.vpp_cmdline.extend(cls.extra_vpp_punt_config)
@@ -770,7 +779,6 @@ class VppTestCase(unittest.TestCase):
         super(VppTestCase, self).setUp()
         self.reporter.send_keep_alive(self)
         if self.vpp_dead:
-
             raise VppDiedError(rv=None, testcase=self.__class__.__name__,
                                method_name=self._testMethodName)
         self.sleep(.1, "during setUp")

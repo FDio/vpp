@@ -1957,7 +1957,7 @@ class TestNAT44ED(NAT44EDTestCase):
 
 class TestNAT44EDMW(TestNAT44ED):
     """ NAT44ED MW Test Case """
-    worker_config = "workers 1"
+    vpp_worker_count = 1
 
     def get_stats_counter(self, path, worker=1):
         return super(TestNAT44EDMW, self).get_stats_counter(path, worker)
