@@ -303,7 +303,8 @@ vl_api_nat44_ei_ha_set_listener_t_handler (
   int rv;
 
   memcpy (&addr, &mp->ip_address, sizeof (addr));
-  rv = nat_ha_set_listener (&addr, clib_net_to_host_u16 (mp->port),
+  rv = nat_ha_set_listener (vlib_get_main (), &addr,
+			    clib_net_to_host_u16 (mp->port),
 			    clib_net_to_host_u32 (mp->path_mtu));
 
   REPLY_MACRO (VL_API_NAT44_EI_HA_SET_LISTENER_REPLY);
@@ -339,9 +340,9 @@ vl_api_nat44_ei_ha_set_failover_t_handler (
   int rv;
 
   memcpy (&addr, &mp->ip_address, sizeof (addr));
-  rv =
-    nat_ha_set_failover (&addr, clib_net_to_host_u16 (mp->port),
-			 clib_net_to_host_u32 (mp->session_refresh_interval));
+  rv = nat_ha_set_failover (
+    vlib_get_main (), &addr, clib_net_to_host_u16 (mp->port),
+    clib_net_to_host_u32 (mp->session_refresh_interval));
 
   REPLY_MACRO (VL_API_NAT44_EI_HA_SET_FAILOVER_REPLY);
 }
