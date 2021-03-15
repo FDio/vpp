@@ -1744,26 +1744,22 @@ nat44_ei_del_session (nat44_ei_main_t *nm, ip4_address_t *addr, u16 port,
 {
   nat44_ei_main_per_thread_data_t *tnm;
   clib_bihash_kv_8_8_t kv, value;
-  ip4_header_t ip;
   u32 fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
   nat44_ei_session_t *s;
   clib_bihash_8_8_t *t;
-
-  ip.dst_address.as_u32 = ip.src_address.as_u32 = addr->as_u32;
-  if (nm->num_workers > 1)
-    tnm = vec_elt_at_index (nm->per_thread_data,
-			    nm->worker_in2out_cb (&ip, fib_index, 0));
-  else
-    tnm = vec_elt_at_index (nm->per_thread_data, nm->num_workers);
 
   init_nat_k (&kv, *addr, port, fib_index, proto);
   t = is_in ? &nm->in2out : &nm->out2in;
   if (!clib_bihash_search_8_8 (t, &kv, &value))
     {
-      if (pool_is_free_index (tnm->sessions, value.value))
+      // world is stopped here - can manipulate per-thread data with no risks
+      u32 thread_index = nat_value_get_thread_index (&value);
+      tnm = vec_elt_at_index (nm->per_thread_data, thread_index);
+      u32 session_index = nat_value_get_session_index (&value);
+      if (pool_is_free_index (tnm->sessions, session_index))
 	return VNET_API_ERROR_UNSPECIFIED;
 
-      s = pool_elt_at_index (tnm->sessions, value.value);
+      s = pool_elt_at_index (tnm->sessions, session_index);
       nat44_ei_free_session_data_v2 (nm, s, tnm - nm->per_thread_data, 0);
       nat44_ei_delete_session (nm, s, tnm - nm->per_thread_data);
       return 0;

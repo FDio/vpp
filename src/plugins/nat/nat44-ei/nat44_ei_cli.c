@@ -616,7 +616,7 @@ nat_ha_failover_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  rv = nat_ha_set_failover (&addr, (u16) port, session_refresh_interval);
+  rv = nat_ha_set_failover (vm, &addr, (u16) port, session_refresh_interval);
   if (rv)
     error = clib_error_return (0, "set HA failover failed");
 
@@ -654,7 +654,7 @@ nat_ha_listener_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	}
     }
 
-  rv = nat_ha_set_listener (&addr, (u16) port, path_mtu);
+  rv = nat_ha_set_listener (vm, &addr, (u16) port, path_mtu);
   if (rv)
     error = clib_error_return (0, "set HA listener failed");
 
