@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "68aa4c1b_5458ef14",
+        "filename": "src/plugins/avf/input.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 488,
+      "author": {
+        "id": 1692
+      },
+      "writtenOn": "2021-03-15T03:24:27Z",
+      "side": 1,
+      "message": "Hi Mohammed,\nNo, I don\u0027t think there needs an if(with_flow) condition. The single_next indicates that all the packets will go to a single next node(either ad-\u003eper_interface_next_index or VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT by default). So in this case the single_next flag should be 1.\nWhen the flow is enabled on an interface, the next node of the marked packets will be assigned by the flow while the others go to the default next node. In this case single_next won\u0027t be 1.\n\nSo you can see I put the singel_next \u003d 1 in the default else{} branch, where no need to check if(with_flows) as it must be 0. The marked case is the (with_flows \u0026\u0026 (or_qw1 \u0026 AVF_RXD_STATUS_FLM)){} branch.",
+      "parentUuid": "0657877a_3b812645",
+      "range": {
+        "startLine": 488,
+        "startChar": 6,
+        "endLine": 488,
+        "endChar": 22
+      },
+      "revId": "572a707280c3761952097ac0c1f25976fe9efd71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "890bc42f_a3ba4d45",
         "filename": "src/plugins/avf/input.c",
         "patchSetId": 18
@@ -36,6 +60,30 @@
       "writtenOn": "2021-03-10T13:47:30Z",
       "side": 1,
       "message": "why move the declaration outside the while?",
+      "range": {
+        "startLine": 496,
+        "startChar": 6,
+        "endLine": 496,
+        "endChar": 23
+      },
+      "revId": "572a707280c3761952097ac0c1f25976fe9efd71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8658179e_b6b5c085",
+        "filename": "src/plugins/avf/input.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 496,
+      "author": {
+        "id": 1692
+      },
+      "writtenOn": "2021-03-15T03:24:27Z",
+      "side": 1,
+      "message": "will move it back",
+      "parentUuid": "890bc42f_a3ba4d45",
       "range": {
         "startLine": 496,
         "startChar": 6,
