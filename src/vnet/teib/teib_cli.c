@@ -40,9 +40,9 @@ teib_add (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "peer %U", unformat_ip_address, &peer))
 	;
-      else if (unformat (line_input, "nh %U", unformat_ip_address, &nh))
-	;
       else if (unformat (line_input, "nh-table-id %d", &nh_table_id))
+	;
+      else if (unformat (line_input, "nh %U", unformat_ip_address, &nh))
 	;
       else
 	{

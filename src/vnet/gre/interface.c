@@ -156,12 +156,58 @@ gre_tunnel_stack (adj_index_t ai)
 }
 
 /**
+ * mgre_tunnel_stack
+ *
+ * 'stack' (resolve the recursion for) the tunnel's midchain adjacency
+ */
+static void
+mgre_tunnel_stack (adj_index_t ai)
+{
+  gre_main_t *gm = &gre_main;
+  const ip_adjacency_t *adj;
+  const gre_tunnel_t *gt;
+  u32 sw_if_index;
+
+  adj = adj_get (ai);
+  sw_if_index = adj->rewrite_header.sw_if_index;
+
+  if ((vec_len (gm->tunnel_index_by_sw_if_index) <= sw_if_index) ||
+      (~0 == gm->tunnel_index_by_sw_if_index[sw_if_index]))
+    return;
+
+  gt = pool_elt_at_index (gm->tunnels,
+			  gm->tunnel_index_by_sw_if_index[sw_if_index]);
+
+  if ((vnet_hw_interface_get_flags (vnet_get_main (), gt->hw_if_index) &
+       VNET_HW_INTERFACE_FLAG_LINK_UP) == 0)
+    {
+      adj_midchain_delegate_unstack (ai);
+    }
+  else
+    {
+      const teib_entry_t *ne;
+
+      ne = teib_entry_find_46 (sw_if_index, adj->ia_nh_proto,
+			       &adj->sub_type.nbr.next_hop);
+      if (NULL != ne)
+	teib_entry_adj_stack (ne, ai);
+    }
+}
+
+/**
  * @brief Call back when restacking all adjacencies on a GRE interface
  */
 static adj_walk_rc_t
 gre_adj_walk_cb (adj_index_t ai, void *ctx)
 {
   gre_tunnel_stack (ai);
+
+  return (ADJ_WALK_RC_CONTINUE);
+}
+static adj_walk_rc_t
+mgre_adj_walk_cb (adj_index_t ai, void *ctx)
+{
+  mgre_tunnel_stack (ai);
 
   return (ADJ_WALK_RC_CONTINUE);
 }
@@ -176,7 +222,13 @@ gre_tunnel_restack (gre_tunnel_t * gt)
    */
   FOR_EACH_FIB_IP_PROTOCOL (proto)
   {
-    adj_nbr_walk (gt->sw_if_index, proto, gre_adj_walk_cb, NULL);
+    switch (gt->mode)
+      {
+      case TUNNEL_MODE_P2P:
+	return (adj_nbr_walk (gt->sw_if_index, proto, gre_adj_walk_cb, NULL));
+      case TUNNEL_MODE_MP:
+	return (adj_nbr_walk (gt->sw_if_index, proto, mgre_adj_walk_cb, NULL));
+      }
   }
 }
 

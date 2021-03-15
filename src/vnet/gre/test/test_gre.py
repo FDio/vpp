@@ -1121,6 +1121,7 @@ class TestGRE(VppTestCase):
             #
             for ii in range(1, 4):
                 route_addr = "4.4.4.%d" % ii
+                tx_e = self.create_stream_ip4(self.pg0, "5.5.5.5", route_addr)
 
                 #
                 # route traffic via the peer
@@ -1130,6 +1131,15 @@ class TestGRE(VppTestCase):
                     [VppRoutePath(gre_if._remote_hosts[ii].ip4,
                                   gre_if.sw_if_index)])
                 route_via_tun.add_vpp_config()
+
+                # all packets dropped at this point
+                self.logger.error(self.vapi.cli("sh adj 19"))
+                rx = self.send_and_assert_no_replies(self.pg0, tx_e)
+
+                gre_if.admin_down()
+                gre_if.admin_up()
+                self.logger.error(self.vapi.cli("sh adj 19"))
+                rx = self.send_and_assert_no_replies(self.pg0, tx_e)
 
                 #
                 # Add a TEIB entry resolves the peer
@@ -1143,8 +1153,10 @@ class TestGRE(VppTestCase):
                 # Send a packet stream that is routed into the tunnel
                 #  - packets are GRE encapped
                 #
-                tx_e = self.create_stream_ip4(self.pg0, "5.5.5.5", route_addr)
-                rx = self.send_and_expect(self.pg0, tx_e, itf)
+                try:
+                    rx = self.send_and_expect(self.pg0, tx_e, itf)
+                finally:
+                    self.logger.error(self.vapi.cli("sh adj 19"))
                 self.verify_tunneled_4o4(self.pg0, rx, tx_e,
                                          itf.local_ip4,
                                          itf._remote_hosts[ii].ip4)
@@ -1165,6 +1177,18 @@ class TestGRE(VppTestCase):
                 self.send_and_assert_no_replies(self.pg0, tx_i)
 
                 teib.add_vpp_config()
+                rx = self.send_and_expect(self.pg0, tx_e, itf)
+                self.verify_tunneled_4o4(self.pg0, rx, tx_e,
+                                         itf.local_ip4,
+                                         itf._remote_hosts[ii].ip4)
+                rx = self.send_and_expect(self.pg0, tx_i, self.pg0)
+                self.verify_decapped_4o4(self.pg0, rx, tx_i)
+
+                #
+                # bounce the interface state and try packets again
+                #
+                gre_if.admin_down()
+                gre_if.admin_up()
                 rx = self.send_and_expect(self.pg0, tx_e, itf)
                 self.verify_tunneled_4o4(self.pg0, rx, tx_e,
                                          itf.local_ip4,
