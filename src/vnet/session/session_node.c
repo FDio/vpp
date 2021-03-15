@@ -632,16 +632,18 @@ session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
 	      svm_fifo_t *f = ctx->s->tx_fifo;
 	      session_dgram_hdr_t *hdr = &ctx->hdr;
 	      u16 deq_now;
+	      u32 offset;
+
 	      deq_now = clib_min (hdr->data_length - hdr->data_offset,
 				  len_to_deq);
-	      n_bytes_read = svm_fifo_peek (f, hdr->data_offset, deq_now,
-					    data);
+	      offset = hdr->data_offset + SESSION_CONN_HDR_LEN;
+	      n_bytes_read = svm_fifo_peek (f, offset, deq_now, data);
 	      ASSERT (n_bytes_read > 0);
 
 	      hdr->data_offset += n_bytes_read;
 	      if (hdr->data_offset == hdr->data_length)
 		{
-		  u32 offset = hdr->data_length + SESSION_CONN_HDR_LEN;
+		  offset = hdr->data_length + SESSION_CONN_HDR_LEN;
 		  svm_fifo_dequeue_drop (f, offset);
 		  if (ctx->left_to_snd > n_bytes_read)
 		    svm_fifo_peek (ctx->s->tx_fifo, 0, sizeof (ctx->hdr),
