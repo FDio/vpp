@@ -15,7 +15,7 @@ NUM_PKTS = 67
 
 class TestPolicerInput(VppTestCase):
     """ Policer on an input interface """
-    worker_config = "workers 2"
+    vpp_worker_count = 2
 
     def setUp(self):
         super(TestPolicerInput, self).setUp()
