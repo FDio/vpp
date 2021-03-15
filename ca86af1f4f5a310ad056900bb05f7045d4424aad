@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ea8583b9_6ba3a677",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 232,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-03-15T17:29:59Z",
+      "side": 1,
+      "message": "why vl_ ?",
+      "range": {
+        "startLine": 232,
+        "startChar": 2,
+        "endLine": 232,
+        "endChar": 14
+      },
+      "revId": "ca86af1f4f5a310ad056900bb05f7045d4424aad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
