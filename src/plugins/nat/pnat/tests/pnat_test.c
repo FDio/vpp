@@ -158,6 +158,11 @@ rule_t rules[] = {
         .in = true,
     },
     {
+        .match = {.dst = "5.6.7.8", .proto = 17, .dport = 6871},
+        .rewrite = {.dst = "1.2.3.4"},
+        .in = true,
+    },
+    {
         .match = {.dst = "2.2.2.2", .proto = 6, .dport = 6871},
         .rewrite = {.dst = "1.2.3.4"},
         .in = true,
@@ -174,17 +179,19 @@ rule_t rules[] = {
     },
     {
         .match = {.dst = "2.2.2.2", .proto = 17, .dport = 6874},
-        .rewrite = {.from_offset = 15, .to_offset = 19},
+        .rewrite = {.from_offset = 15, .to_offset = 18},
         .in = true,
     },
+#if 0
     {
         .match = {.dst = "2.2.2.2", .proto = 17, .dport = 6875},
         .rewrite = {.from_offset = 15, .to_offset = 50},
         .in = true,
     },
+#endif
     {
         .match = {.dst = "2.2.2.2", .proto = 17, .dport = 6877},
-        .rewrite = {.dst = "1.2.3.4", .from_offset = 15, .to_offset = 35},
+        .rewrite = {.dst = "1.2.3.4", .from_offset = 12, .to_offset = 35},
         .in = true,
     },
     {
@@ -307,6 +314,7 @@ static void validate_packet(vlib_main_t *vm, char *name, u32 bi,
         test_assert((flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0, "%s",
                     name);
     }
+
     test_assert(b->current_length == expected_b->current_length, "%s %d vs %d",
                 name, b->current_length, expected_b->current_length);
 
@@ -345,12 +353,14 @@ static void validate_packet(vlib_main_t *vm, char *name, u32 bi,
 extern vlib_node_registration_t pnat_input_node;
 
 static void test_table(test_t *t, int no_tests) {
-    // walk through table of tests
+    /* walk through table of tests */
     int i;
     vlib_main_t *vm = &vlib_global_main;
 
     /* Generate packet data */
-    for (i = 0; i < no_tests; i++) {
+    int start = 0;
+    //no_tests = 11;
+    for (i = start; i < no_tests; i++) {
         // create input buffer(s)
         fill_packets(vm, (vlib_buffer_t *)&buffers[i], t[i].nsend, t[i].send);
         fill_packets(vm, (vlib_buffer_t *)&expected[i], t[i].nexpect,
@@ -364,8 +374,9 @@ static void test_table(test_t *t, int no_tests) {
     pnat_node_inline(vm, node, &frame, PNAT_IP4_INPUT, VLIB_RX);
 
     /* verify tests */
-    for (i = 0; i < no_tests; i++) {
-        test_assert(t[i].expect_next_index == results_next[i], "%s", t[i].name);
+    for (i = start; i < no_tests; i++) {
+        test_assert(t[i].expect_next_index == results_next[i], "%s [%d != %d]", t[i].name,
+                    results_next[i], t[i].expect_next_index);
         validate_packet(vm, t[i].name, results_bi[i],
                         (vlib_buffer_t *)&expected[i]);
     }
@@ -428,7 +439,7 @@ void test_packets(void) {
     assert(pool_elts(pm->translations) == sizeof(rules) / sizeof(rules[0]));
 
     test_table(tests_packets, sizeof(tests_packets) / sizeof(tests_packets[0]));
-
+    //test_table(tests_packets, 1);
     for (i = 0; i < sizeof(rules) / sizeof(rules[0]); i++) {
         del_translation(&rules[i]);
     }
@@ -548,6 +559,46 @@ void test_checksum(void) {
     }
 }
 
+void test_rewrite_ip4(void)
+{
+    pnat_main_t *pm = &pnat_main;
+
+    rule_t rule = {
+        .match = {.dst = "2.2.2.2", .proto = 17, .dport = 6877},
+        .rewrite = {.dst = "1.2.3.4", .from_offset = 15, .to_offset = 35, .dport = 123},
+        .in = true,
+    };
+
+    struct perf_event_attr pe;
+
+    int fd;
+
+    char pkt[] = {0x45, 0x00, 0x00, 0x1c, 0x00, 0x01, 0x00, 0x00, 0x40, 0x11,
+    0x74, 0xcb, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02,
+    0x00, 0x50, 0x1a, 0xd7, 0x00, 0x08, 0xde, 0xb1};
+
+    ip4_header_t *ip = malloc(1024);
+    memcpy(ip, pkt, 28);
+
+    add_translation(&rule);
+    pnat_translation_t *t = pool_elt_at_index(pm->translations, rule.index);
+    int i;
+    int no = 10000;
+
+    /* Performance test block */
+    fd = perf_start(&pe);
+    for (i = 0; i < no; i++) {
+        pnat_rewrite_ip4(t, ip);
+    }
+    long long count1 = perf_stop(fd);
+    /* Performance test block end */
+
+    printf("%lld\n", count1/no);
+    close(fd);
+    free(ip);
+    del_translation(&rule);
+}
+
 /*
  * Unit testing:
  * 1) Table of packets and expected outcomes. Run through
@@ -576,12 +627,5 @@ int main(int argc, char **argv) {
     test_packets();
     test_checksum();
     test_performance();
+    test_rewrite_ip4();
 }
-
-/*
- * NEW TESTS:
- * - Chained buffers. Only do rewrite in first buffer
- * - No interface. Can that really happen?
- * - IP length shorter than buffer.
- * - IP length longer than buffer.
- */

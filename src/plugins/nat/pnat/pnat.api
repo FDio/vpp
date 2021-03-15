@@ -146,30 +146,3 @@ define pnat_interfaces_details
   bool enabled[2]; /* PNAT_ATTACHMENT_POINT_MAX */
   vl_api_pnat_mask_t lookup_mask[2]; /* PNAT_ATTACHMENT_POINT_MAX */
 };
-
-counters pnat {
-  none {
-    severity info;
-    type counter64;
-    units "packets";
-    description "successfully rewritten";
-  };
-
-  rewrite {
-    severity error;
-    type counter64;
-    units "packets";
-    description "rewrite failed";
-  };
-  tooshort {
-    severity info;
-    type counter64;
-    units "packets";
-    description "packet too short for rewrite";
-  };
-};
-
-paths {
-  "/err/pnat-input" "pnat";
-  "/err/pnat-output" "pnat";
-};

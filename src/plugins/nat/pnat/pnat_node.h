@@ -22,6 +22,26 @@
 #include <vnet/udp/udp_packet.h>
 #include <vnet/ip/format.h>
 
+#define foreach_pnat_errors                                         \
+  _ (NONE, none, INFO, "rewritten")                                 \
+  _ (TOOSHORT, tooshort, ERROR, "rewrite is longer than packet")    \
+  _ (REWRITE, rewrite, ERROR, "rewrite failed")                     \
+  _ (FRAGMENT, fragment, ERROR, "can't rewrite fragmented packet")  \
+  _ (OPTIONS, options, ERROR, "IP4 options not supported")
+
+typedef enum
+{
+#define _(f, n, s, d) PNAT_ERROR_##f,
+  foreach_pnat_errors
+#undef _
+    PNAT_N_ERROR,
+} pnat_error_t;
+static vl_counter_t pnat_error_counters[] = {
+#define _(f, n, s, d) { #n, d, VL_COUNTER_SEVERITY_##s },
+  foreach_pnat_errors
+#undef _
+};
+
 /* PNAT next-nodes */
 typedef enum { PNAT_NEXT_DROP, PNAT_N_NEXT } pnat_next_t;
 
@@ -43,28 +63,38 @@ static inline u8 *format_pnat_trace(u8 *s, va_list *args) {
 }
 
 /*
- * Given a packet and rewrite instructions from a translation modify packet.
+ * Rewrite u64x3 starting with IP4 header source address.
+ * SA/DA in IP4 header and first 16 octets of L4 header.
  */
-// TODO: Generalize to write with mask
-static u32 pnat_rewrite_ip4(u32 pool_index, ip4_header_t *ip) {
-    pnat_main_t *pm = &pnat_main;
-    if (pool_is_free_index(pm->translations, pool_index))
-        return PNAT_ERROR_REWRITE;
-    pnat_translation_t *t = pool_elt_at_index(pm->translations, pool_index);
+static u32 pnat_rewrite_ip4(pnat_translation_t *t, ip4_header_t *ip) {
+    /* Validity checks */
+    if (ip->ip_version_and_header_length != 0x45)
+        return PNAT_ERROR_OPTIONS;
+    if (t->max_rewrite > clib_net_to_host_u16(ip->length))
+        return PNAT_ERROR_TOOSHORT;
+    if (ip4_is_fragment(ip) && t->max_rewrite > 20)
+        return PNAT_ERROR_FRAGMENT;
 
+    int i;
+    pnat_u64x3_t *p = (pnat_u64x3_t *)(&ip->src_address);
+    pnat_u64x3_t old = {0};
+
+    /* Special handling for the copy instructions */
+    u8 *q = (u8 *)ip;
+    if (t->instructions & PNAT_INSTR_COPY_BYTE)
+        t->post.as_u8[t->to_offset - 12] = q[t->from_offset];
+
+    /* Copy out the old values given the mask and overwrite with new */
+    for (i = 0; i < 3; i++) {
+        old.as_u64[i] = p->as_u64[i] & t->pre_mask.as_u64[i];
+        p->as_u64[i] &= ~t->post_mask.as_u64[i];
+        p->as_u64[i] |= t->post.as_u64[i];
+    }
+
+    /* Adjust IP checksum */
     ip_csum_t csumd = 0;
-
-    if (t->instructions & PNAT_INSTR_DESTINATION_ADDRESS) {
-        csumd = ip_csum_sub_even(csumd, ip->dst_address.as_u32);
-        csumd = ip_csum_add_even(csumd, t->post_da.as_u32);
-        ip->dst_address = t->post_da;
-    }
-    if (t->instructions & PNAT_INSTR_SOURCE_ADDRESS) {
-        csumd = ip_csum_sub_even(csumd, ip->src_address.as_u32);
-        csumd = ip_csum_add_even(csumd, t->post_sa.as_u32);
-        ip->src_address = t->post_sa;
-    }
-
+    csumd = ip_csum_sub_even(csumd, old.as_u64[0]);
+    csumd = ip_csum_add_even(csumd, t->post.as_u64[0]);
     ip_csum_t csum = ip->checksum;
     csum = ip_csum_sub_even(csum, csumd);
     ip->checksum = ip_csum_fold(csum);
@@ -72,71 +102,20 @@ static u32 pnat_rewrite_ip4(u32 pool_index, ip4_header_t *ip) {
         ip->checksum = 0;
     ASSERT(ip->checksum == ip4_header_checksum(ip));
 
-    u16 plen = clib_net_to_host_u16(ip->length);
+    /* Adjust L4 checksum */
+    if (t->l4_checksum_offset) {
+        u16 *l4csum_p = (u16 *)((char *)ip + t->l4_checksum_offset);
+        ip_csum_t l4csum = *l4csum_p;
+        if (l4csum) {
+            l4csum = ip_csum_sub_even(l4csum, old.as_u64[1]);
+            l4csum = ip_csum_sub_even(l4csum, old.as_u64[2]);
+            l4csum = ip_csum_add_even(l4csum, t->post.as_u64[1]);
+            l4csum = ip_csum_add_even(l4csum, t->post.as_u64[2]);
 
-    /* Nothing more to do if this is a fragment. */
-    if (ip4_is_fragment(ip))
-        return PNAT_ERROR_NONE;
-
-    /* L4 ports */
-    if (ip->protocol == IP_PROTOCOL_TCP) {
-        /* Assume IP4 header is 20 bytes */
-        if (plen < sizeof(ip4_header_t) + sizeof(tcp_header_t))
-            return PNAT_ERROR_TOOSHORT;
-
-        tcp_header_t *tcp = ip4_next_header(ip);
-        ip_csum_t l4csum = tcp->checksum;
-        if (t->instructions & PNAT_INSTR_DESTINATION_PORT) {
-            l4csum = ip_csum_sub_even(l4csum, tcp->dst_port);
-            l4csum = ip_csum_add_even(l4csum, clib_net_to_host_u16(t->post_dp));
-            tcp->dst_port = clib_net_to_host_u16(t->post_dp);
-        }
-        if (t->instructions & PNAT_INSTR_SOURCE_PORT) {
-            l4csum = ip_csum_sub_even(l4csum, tcp->src_port);
-            l4csum = ip_csum_add_even(l4csum, clib_net_to_host_u16(t->post_sp));
-            tcp->src_port = clib_net_to_host_u16(t->post_sp);
-        }
-        l4csum = ip_csum_sub_even(l4csum, csumd);
-        tcp->checksum = ip_csum_fold(l4csum);
-    } else if (ip->protocol == IP_PROTOCOL_UDP) {
-        if (plen < sizeof(ip4_header_t) + sizeof(udp_header_t))
-            return PNAT_ERROR_TOOSHORT;
-        udp_header_t *udp = ip4_next_header(ip);
-        ip_csum_t l4csum = udp->checksum;
-        if (t->instructions & PNAT_INSTR_DESTINATION_PORT) {
-            l4csum = ip_csum_sub_even(l4csum, udp->dst_port);
-            l4csum = ip_csum_add_even(l4csum, clib_net_to_host_u16(t->post_dp));
-            udp->dst_port = clib_net_to_host_u16(t->post_dp);
-        }
-        if (t->instructions & PNAT_INSTR_SOURCE_PORT) {
-            l4csum = ip_csum_sub_even(l4csum, udp->src_port);
-            l4csum = ip_csum_add_even(l4csum, clib_net_to_host_u16(t->post_sp));
-            udp->src_port = clib_net_to_host_u16(t->post_sp);
-        }
-        if (udp->checksum) {
             l4csum = ip_csum_sub_even(l4csum, csumd);
-            udp->checksum = ip_csum_fold(l4csum);
+            *l4csum_p = ip_csum_fold(l4csum);
         }
     }
-    if (t->instructions & PNAT_INSTR_COPY_BYTE) {
-        /* Copy byte from somewhere in packet to elsewhere */
-
-        if (t->to_offset >= plen || t->from_offset > plen) {
-            return PNAT_ERROR_TOOSHORT;
-        }
-        u8 *p = (u8 *)ip;
-        p[t->to_offset] = p[t->from_offset];
-        ip->checksum = ip4_header_checksum(ip);
-        // TODO: L4 checksum
-    }
-    if (t->instructions & PNAT_INSTR_CLEAR_BYTE) {
-        /* Clear byte at offset */
-        u8 *p = (u8 *)ip;
-        p[t->clear_offset] = 0;
-        ip->checksum = ip4_header_checksum(ip);
-        // TODO: L4 checksum
-    }
-
     return PNAT_ERROR_NONE;
 }
 
@@ -145,7 +124,6 @@ static u32 pnat_rewrite_ip4(u32 pool_index, ip4_header_t *ip) {
  * If a binding is found, rewrite the packet according to instructions,
  * otherwise follow configured default action (forward, punt or drop)
  */
-// TODO: Make use of SVR configurable
 static_always_inline uword pnat_node_inline(vlib_main_t *vm,
                                             vlib_node_runtime_t *node,
                                             vlib_frame_t *frame,
@@ -184,10 +162,17 @@ static_always_inline uword pnat_node_inline(vlib_main_t *vm,
         if (clib_bihash_search_16_8(&pm->flowhash, &kv, &value) == 0) {
             /* Cache hit */
             *pi = value.value;
-            u32 errno0 = pnat_rewrite_ip4(value.value, ip0);
-            if (PREDICT_FALSE(errno0)) {
+            if (pool_is_free_index(pm->translations, value.value)) {
                 next[0] = PNAT_NEXT_DROP;
-                b[0]->error = node->errors[errno0];
+                b[0]->error = node->errors[PNAT_ERROR_REWRITE];
+            } else {
+                u32 errno0 = 0;
+                pnat_translation_t *t = pool_elt_at_index(pm->translations, value.value);
+                errno0 = pnat_rewrite_ip4(t, ip0);
+                if (errno0) {
+                    next[0] = PNAT_NEXT_DROP;
+                    b[0]->error = node->errors[errno0];
+                }
             }
         } else {
             /* Cache miss */

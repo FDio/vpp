@@ -209,6 +209,39 @@ pnat_instructions_t pnat_instructions_from_mask(pnat_mask_t m) {
     return i;
 }
 
+void pnat_u64x3_mask_from_rewrite(pnat_rewrite_tuple_t *rewrite, pnat_u64x3_t *pre, pnat_u64x3_t *post) {
+    pnat_u64x3_t i = {0};
+    pnat_mask_t m = rewrite->mask;
+
+    if (m & PNAT_SA)
+        i.as_u64[0] |= 0xFFFFFFFF00000000;
+    if (m & PNAT_DA)
+        i.as_u64[0] |= 0x00000000FFFFFFFF;
+    if (m & PNAT_SPORT)
+        i.as_u64[1] |= 0xFFFF000000000000;
+    if (m & PNAT_DPORT)
+        i.as_u64[1] |= 0x0000FFFF00000000;
+    if (m & PNAT_CLEAR_BYTE) {
+        int o = rewrite->clear_offset - 12;
+        int idx = (rewrite->clear_offset - 12) >> 3;
+        i.as_u64[idx] |= 0xFFULL << ((7 - (o % 8)) << 3);
+    }
+
+    *pre = *post = i;
+
+    if (m & PNAT_COPY_BYTE) {
+        int o = rewrite->to_offset - 12;
+        int idx = (rewrite->to_offset - 12) >> 3;
+        pre->as_u64[idx] |=  0xFFULL << ((7 - (o % 8)) << 3);
+        post->as_u64[idx] |= 0xFFULL << ((7 - (o % 8)) << 3);
+    }
+    int j;
+    for (j = 0; j < 3; j++) {
+        pre->as_u64[j] = clib_host_to_net_u64(pre->as_u64[j]);
+        post->as_u64[j] = clib_host_to_net_u64(post->as_u64[j]);
+    }
+}
+
 /*
  * "Init" the PNAT datastructures. Called upon first creation of a PNAT rule.
  * TODO: Make number of buckets configurable.
@@ -265,6 +298,7 @@ static int pnat_interface_check_mask(u32 sw_if_index,
 int pnat_binding_add(pnat_match_tuple_t *match, pnat_rewrite_tuple_t *rewrite,
                      u32 *index) {
     pnat_main_t *pm = &pnat_main;
+    u16 max_rewrite = 20;
 
     *index = -1;
 
@@ -277,15 +311,45 @@ int pnat_binding_add(pnat_match_tuple_t *match, pnat_rewrite_tuple_t *rewrite,
         (match->proto != IP_API_PROTO_UDP && match->proto != IP_API_PROTO_TCP))
         return -2;
 
+    /* Rewrite byte must be with the valid rewrite range (24 octets) */
+    if (rewrite->from_offset > 0 || rewrite->to_offset > 0) {
+        if (rewrite->from_offset < 12 || rewrite->from_offset > 12 + 24 - 1)
+            return -3;
+        if (rewrite->to_offset < 12 || rewrite->to_offset > 12 + 24 - 1)
+            return -3;
+    }
+
     /* Create pool entry */
     pnat_translation_t *t;
     pool_get_zero(pm->translations, t);
+
     memcpy(&t->post_da, &rewrite->dst, 4);
     memcpy(&t->post_sa, &rewrite->src, 4);
+
+    /* Ensure these are in network order */
+    t->post.as_u64[0] = clib_host_to_net_u64((u64)clib_net_to_host_u32(t->post_sa.as_u32) << 32 | clib_net_to_host_u32(t->post_da.as_u32));
+    t->post.as_u64[1] = clib_host_to_net_u64((u64)rewrite->sport << 48 | (u64)rewrite->dport << 32);
+
+    pnat_u64x3_mask_from_rewrite(rewrite, &t->pre_mask, &t->post_mask);
+
+    // TODO: Validate that to_offset doesn't overlap with anything else
+    if (match->proto == IP_API_PROTO_UDP)
+        t->l4_checksum_offset = 26;
+    else if (match->proto == IP_API_PROTO_TCP)
+        t->l4_checksum_offset = 36;
+
+
+    if (rewrite->sport || rewrite->dport)
+        max_rewrite = 28;
+    t->max_rewrite = max_rewrite > rewrite->to_offset ? max_rewrite : rewrite->to_offset;
+
+
     t->post_sp = rewrite->sport;
     t->post_dp = rewrite->dport;
+
     t->from_offset = rewrite->from_offset;
     t->to_offset = rewrite->to_offset;
+
     t->clear_offset = rewrite->clear_offset;
     t->instructions = pnat_instructions_from_mask(rewrite->mask);
 

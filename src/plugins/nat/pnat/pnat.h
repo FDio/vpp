@@ -44,8 +44,25 @@ typedef struct {
     u64 as_u64[2];
 } pnat_mask_fast_t;
 
+typedef struct {
+    union {
+        u64 as_u64[3];
+        u8 as_u8[24];
+    };
+
+} pnat_u64x3_t;
+
+
 /* Session cache entries */
 typedef struct {
+    /* Used by data plane */
+    pnat_u64x3_t pre_mask;
+    pnat_u64x3_t post_mask;
+    pnat_u64x3_t post;
+    u16 l4_checksum_offset;
+    u16 max_rewrite;
+
+
     /* What to translate to */
     pnat_instructions_t instructions;
 

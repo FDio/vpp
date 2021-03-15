@@ -16,6 +16,61 @@
 #ifndef included_pnat_test_stubs_h
 #define included_pnat_test_stubs_h
 
+#include <asm/unistd.h>
+#include <linux/perf_event.h>
+#include <linux/hw_breakpoint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+#include <inttypes.h>
+
+/*************************************************************/
+static long perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
+                            int cpu, int group_fd, unsigned long flags)
+{
+    int ret;
+
+    ret = syscall(__NR_perf_event_open, hw_event, pid, cpu,
+                  group_fd, flags);
+    return ret;
+}
+
+static inline int perf_start(struct perf_event_attr *pe)
+{
+    int fd;
+    memset(pe, 0, sizeof(struct perf_event_attr));
+    pe->type = PERF_TYPE_HARDWARE;
+    pe->size = sizeof(struct perf_event_attr);
+    pe->config = PERF_COUNT_HW_CPU_CYCLES;
+    pe->disabled = 1;
+    pe->exclude_kernel = 1;
+    // Don't count hypervisor events.
+    pe->exclude_hv = 1;
+
+    fd = perf_event_open(pe, 0, -1, -1, 0);
+    if (fd == -1) {
+        fprintf(stderr, "Error opening leader %llx\n", pe->config);
+        exit(EXIT_FAILURE);
+    }
+    ioctl(fd, PERF_EVENT_IOC_RESET, 0);
+    ioctl(fd, PERF_EVENT_IOC_ENABLE, 0);
+    return fd;
+}
+
+static inline long long perf_stop(int fd)
+{
+    ssize_t read_bytes;
+    long long count;
+    ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);
+    read_bytes = read(fd, &count, sizeof(long long));
+    if (read_bytes != sizeof(long long)) return 0;
+    return count;
+}
+
+/*************************************************************/
+
 void os_panic(void) {}
 void os_exit(int code) {}
 u32 ip4_fib_table_get_index_for_sw_if_index(u32 sw_if_index) { return 0; }
@@ -37,8 +92,6 @@ u8 *format_ip4_address(u8 *s, va_list *args) {
 
 u8 *format_pnat_match_tuple(u8 *s, va_list *args) { return 0; }
 u8 *format_pnat_rewrite_tuple(u8 *s, va_list *args) { return 0; }
-
-vl_counter_t pnat_error_counters[10];
 
 int ip4_sv_reass_enable_disable_with_refcnt(u32 sw_if_index, int is_enable) {
     return 0;
