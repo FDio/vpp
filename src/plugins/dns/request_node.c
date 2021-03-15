@@ -152,7 +152,7 @@ dns46_request_inline (vlib_main_t * vm,
 	  dns_pending_request_t _t0, *t0 = &_t0;
 	  u16 flags0;
 	  u32 pool_index0 = ~0;
-	  u8 *name0;
+	  u8 *name0, *name_ex0;
 	  u8 *label0;
 
 	  /* speculatively enqueue b0 to the current next frame */
@@ -213,6 +213,7 @@ dns46_request_inline (vlib_main_t * vm,
 	   * vnet_dns_resolve_name expects a C-string.
 	   */
 	  name0 = vnet_dns_labels_to_name (label0, (u8 *) d0, (u8 **) & q0);
+
 	  vec_add1 (name0, 0);
 	  _vec_len (name0) -= 1;
 
@@ -235,6 +236,7 @@ dns46_request_inline (vlib_main_t * vm,
 	  t0->dst_port = u0->src_port;
 	  t0->id = d0->id;
 	  t0->name = name0;
+	  t0->query = *q0;
 	  if (is_ip6)
 	    clib_memcpy_fast (t0->dst_address, ip60->src_address.as_u8,
 			      sizeof (ip6_address_t));
@@ -242,7 +244,11 @@ dns46_request_inline (vlib_main_t * vm,
 	    clib_memcpy_fast (t0->dst_address, ip40->src_address.as_u8,
 			      sizeof (ip4_address_t));
 
-	  vnet_dns_resolve_name (vm, dm, name0, t0, &ep0);
+	  name_ex0 = vec_dup (name0);
+	  vnet_dns_format_name (&name_ex0, clib_net_to_host_u16 (q0->type));
+
+	  vnet_dns_resolve_name (vm, dm, name_ex0, t0, &ep0);
+	  vec_free (name_ex0);
 
 	  if (ep0)
 	    {
