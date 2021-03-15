@@ -23,7 +23,7 @@ from scapy.layers.l2 import Ether, ARP, GRE
 from scapy.packet import Raw
 from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogSeverity
-from util import ppp
+from util import ppp, sum_stats, sum_stats_for_intf
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_neighbor import VppNeighbor
 from vpp_papi import VppEnum
@@ -850,6 +850,18 @@ class MethodHolder(VppTestCase):
             else:
                 self.assertEqual(p[layer].id, self.port_in)
             self.assertEqual(data, p[Raw].load)
+
+
+def get_nat44_ei_in2out_worker_index(ip, vpp_worker_count):
+    if 0 == vpp_worker_count:
+        return 0
+    numeric = socket.inet_aton(ip)
+    numeric = struct.unpack("!L", numeric)[0]
+    numeric = socket.htonl(numeric)
+    h = numeric + (numeric >> 8) + (numeric >> 16) + (numeric >> 24)
+    print("ip is %s/%s" % (ip, numeric))
+    print("hash is %s" % h)
+    return 1 + h % vpp_worker_count
 
 
 @tag_fixme_vpp_workers
@@ -1828,7 +1840,7 @@ class TestNAT44EI(MethodHolder):
                                       server_in_port, server_out_port,
                                       proto=IP_PROTOS.tcp)
 
-        cnt = self.statistics.get_counter('/nat44-ei/hairpinning')[0]
+        cnt = self.statistics.get_counter('/nat44-ei/hairpinning')
         # send packet from host to server
         p = (Ether(src=host.mac, dst=self.pg0.local_mac) /
              IP(src=host.ip4, dst=self.nat_addr) /
@@ -1851,9 +1863,10 @@ class TestNAT44EI(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        after = self.statistics.get_counter('/nat44-ei/hairpinning')[0]
+        after = self.statistics.get_counter('/nat44-ei/hairpinning')
         if_idx = self.pg0.sw_if_index
-        self.assertEqual(after[if_idx] - cnt[if_idx], 1)
+        self.assertEqual(sum_stats_for_intf(after, if_idx) -
+                         sum_stats_for_intf(cnt, if_idx), 1)
 
         # send reply from server to host
         p = (Ether(src=server.mac, dst=self.pg0.local_mac) /
@@ -1876,9 +1889,11 @@ class TestNAT44EI(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        after = self.statistics.get_counter('/nat44-ei/hairpinning')[0]
+        after = self.statistics.get_counter('/nat44-ei/hairpinning')
         if_idx = self.pg0.sw_if_index
-        self.assertEqual(after[if_idx] - cnt[if_idx], 2)
+        self.assertEqual(sum_stats_for_intf(after, if_idx) -
+                         sum_stats_for_intf(cnt, if_idx),
+                         2+(1 if self.vpp_worker_count > 0 else 0))
 
     def test_hairpinning2(self):
         """ NAT44EI hairpinning - 1:1 NAT"""
@@ -2368,7 +2383,8 @@ class TestNAT44EI(MethodHolder):
             sw_if_index=self.pg1.sw_if_index,
             is_add=1)
 
-        max_sessions = self.max_translations
+        max_sessions_per_thread = self.max_translations
+        max_sessions = max(1, self.vpp_worker_count) * max_sessions_per_thread
 
         pkts = []
         for i in range(0, max_sessions):
@@ -2416,7 +2432,7 @@ class TestNAT44EI(MethodHolder):
         for p in capture:
             if p.haslayer(Data):
                 data = ipfix.decode_data_set(p.getlayer(Set))
-                self.verify_ipfix_max_sessions(data, max_sessions)
+                self.verify_ipfix_max_sessions(data, max_sessions_per_thread)
 
     def test_syslog_apmap(self):
         """ NAT44EI syslog address and port mapping creation and deletion """
@@ -3401,7 +3417,7 @@ class TestNAT44EI(MethodHolder):
         # active send HA events
         self.vapi.nat44_ei_ha_flush()
         stats = self.statistics.get_counter('/nat44-ei/ha/add-event-send')
-        self.assertEqual(stats[0][0], 3)
+        self.assertEqual(sum_stats(stats), 3)
         capture = self.pg3.get_capture(1)
         p = capture[0]
         self.assert_packet_checksums_valid(p)
@@ -3418,7 +3434,7 @@ class TestNAT44EI(MethodHolder):
             self.assertEqual(udp.sport, 12345)
             self.assertEqual(udp.dport, 12346)
             self.assertEqual(hanat.version, 1)
-            self.assertEqual(hanat.thread_index, 0)
+            # self.assertEqual(hanat.thread_index, 0)
             self.assertEqual(hanat.count, 3)
             seq = hanat.sequence_number
             for event in hanat.events:
@@ -3431,11 +3447,12 @@ class TestNAT44EI(MethodHolder):
         ack = (Ether(dst=self.pg3.local_mac, src=self.pg3.remote_mac) /
                IP(src=self.pg3.remote_ip4, dst=self.pg3.local_ip4) /
                UDP(sport=12346, dport=12345) /
-               HANATStateSync(sequence_number=seq, flags='ACK'))
+               HANATStateSync(sequence_number=seq, flags='ACK',
+                              thread_index=hanat.thread_index))
         self.pg3.add_stream(ack)
         self.pg_start()
         stats = self.statistics.get_counter('/nat44-ei/ha/ack-recv')
-        self.assertEqual(stats[0][0], 1)
+        self.assertEqual(sum_stats(stats), 1)
 
         # delete one session
         self.pg_enable_capture(self.pg_interfaces)
@@ -3444,7 +3461,7 @@ class TestNAT44EI(MethodHolder):
             protocol=IP_PROTOS.tcp, flags=self.config_flags.NAT44_EI_IF_INSIDE)
         self.vapi.nat44_ei_ha_flush()
         stats = self.statistics.get_counter('/nat44-ei/ha/del-event-send')
-        self.assertEqual(stats[0][0], 1)
+        self.assertEqual(sum_stats(stats), 1)
         capture = self.pg3.get_capture(1)
         p = capture[0]
         try:
@@ -3459,9 +3476,9 @@ class TestNAT44EI(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         sleep(12)
         stats = self.statistics.get_counter('/nat44-ei/ha/retry-count')
-        self.assertEqual(stats[0][0], 3)
+        self.assertEqual(sum_stats(stats), 3)
         stats = self.statistics.get_counter('/nat44-ei/ha/missed-count')
-        self.assertEqual(stats[0][0], 1)
+        self.assertEqual(sum_stats(stats), 1)
         capture = self.pg3.get_capture(3)
         for packet in capture:
             self.assertEqual(packet, p)
@@ -3474,7 +3491,7 @@ class TestNAT44EI(MethodHolder):
         self.pg0.get_capture(2)
         self.vapi.nat44_ei_ha_flush()
         stats = self.statistics.get_counter('/nat44-ei/ha/refresh-event-send')
-        self.assertEqual(stats[0][0], 2)
+        self.assertEqual(sum_stats(stats), 2)
         capture = self.pg3.get_capture(1)
         p = capture[0]
         self.assert_packet_checksums_valid(p)
@@ -3500,14 +3517,16 @@ class TestNAT44EI(MethodHolder):
                 self.assertEqual(event.total_pkts, 2)
                 self.assertGreater(event.total_bytes, 0)
 
+        stats = self.statistics.get_counter('/nat44-ei/ha/ack-recv')
         ack = (Ether(dst=self.pg3.local_mac, src=self.pg3.remote_mac) /
                IP(src=self.pg3.remote_ip4, dst=self.pg3.local_ip4) /
                UDP(sport=12346, dport=12345) /
-               HANATStateSync(sequence_number=seq, flags='ACK'))
+               HANATStateSync(sequence_number=seq, flags='ACK',
+                              thread_index=hanat.thread_index))
         self.pg3.add_stream(ack)
         self.pg_start()
         stats = self.statistics.get_counter('/nat44-ei/ha/ack-recv')
-        self.assertEqual(stats[0][0], 2)
+        self.assertEqual(sum_stats(stats), 2)
 
     def test_ha_recv(self):
         """ NAT44EI Receive HA session synchronization events (passive) """
@@ -3523,8 +3542,23 @@ class TestNAT44EI(MethodHolder):
                                            port=12345, path_mtu=512)
         bind_layers(UDP, HANATStateSync, sport=12345)
 
-        self.tcp_port_out = random.randint(1025, 65535)
-        self.udp_port_out = random.randint(1025, 65535)
+        # this is a bit tricky - HA dictates thread index due to how it's
+        # designed, but once we use HA to create a session, we also want
+        # to pass a packet through said session. so the session must end
+        # up on the correct thread from both directions - in2out (based on
+        # IP address) and out2in (based on outside port)
+
+        # first choose a thread index which is correct for IP
+        thread_index = get_nat44_ei_in2out_worker_index(self.pg0.remote_ip4,
+                                                        self.vpp_worker_count)
+
+        # now pick a port which is correct for given thread
+        port_per_thread = int((0xffff-1024) / max(1, self.vpp_worker_count))
+        self.tcp_port_out = 1024 + random.randint(1, port_per_thread)
+        self.udp_port_out = 1024 + random.randint(1, port_per_thread)
+        if self.vpp_worker_count > 0:
+            self.tcp_port_out += port_per_thread * (thread_index - 1)
+            self.udp_port_out += port_per_thread * (thread_index - 1)
 
         # send HA session add events to failover/passive
         p = (Ether(dst=self.pg3.local_mac, src=self.pg3.remote_mac) /
@@ -3544,7 +3578,8 @@ class TestNAT44EI(MethodHolder):
                        eh_addr=self.pg1.remote_ip4,
                        ehn_addr=self.pg1.remote_ip4,
                        eh_port=self.udp_external_port,
-                       ehn_port=self.udp_external_port, fib_index=0)]))
+                       ehn_port=self.udp_external_port, fib_index=0)],
+                 thread_index=thread_index))
 
         self.pg3.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
@@ -3561,15 +3596,15 @@ class TestNAT44EI(MethodHolder):
             self.assertEqual(hanat.sequence_number, 1)
             self.assertEqual(hanat.flags, 'ACK')
             self.assertEqual(hanat.version, 1)
-            self.assertEqual(hanat.thread_index, 0)
+            self.assertEqual(hanat.thread_index, thread_index)
         stats = self.statistics.get_counter('/nat44-ei/ha/ack-send')
-        self.assertEqual(stats[0][0], 1)
+        self.assertEqual(sum_stats(stats), 1)
         stats = self.statistics.get_counter('/nat44-ei/ha/add-event-recv')
-        self.assertEqual(stats[0][0], 2)
+        self.assertEqual(sum_stats(stats), 2)
         users = self.statistics.get_counter('/nat44-ei/total-users')
-        self.assertEqual(users[0][0], 1)
+        self.assertEqual(sum_stats(users), 1)
         sessions = self.statistics.get_counter('/nat44-ei/total-sessions')
-        self.assertEqual(sessions[0][0], 2)
+        self.assertEqual(sum_stats(sessions), 2)
         users = self.vapi.nat44_ei_user_dump()
         self.assertEqual(len(users), 1)
         self.assertEqual(str(users[0].ip_address),
@@ -3600,7 +3635,8 @@ class TestNAT44EI(MethodHolder):
                        eh_addr=self.pg1.remote_ip4,
                        ehn_addr=self.pg1.remote_ip4,
                        eh_port=self.udp_external_port,
-                       ehn_port=self.udp_external_port, fib_index=0)]))
+                       ehn_port=self.udp_external_port, fib_index=0)],
+                 thread_index=thread_index))
 
         self.pg3.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
@@ -3626,7 +3662,7 @@ class TestNAT44EI(MethodHolder):
                                                         users[0].vrf_id)
         self.assertEqual(len(sessions), 1)
         stats = self.statistics.get_counter('/nat44-ei/ha/del-event-recv')
-        self.assertEqual(stats[0][0], 1)
+        self.assertEqual(sum_stats(stats), 1)
 
         stats = self.statistics.get_err_counter(
             '/err/nat44-ei-ha/pkts-processed')
@@ -3644,7 +3680,8 @@ class TestNAT44EI(MethodHolder):
                        ehn_addr=self.pg1.remote_ip4,
                        eh_port=self.tcp_external_port,
                        ehn_port=self.tcp_external_port, fib_index=0,
-                       total_bytes=1024, total_pkts=2)]))
+                       total_bytes=1024, total_pkts=2)],
+                 thread_index=thread_index))
         self.pg3.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -3672,7 +3709,7 @@ class TestNAT44EI(MethodHolder):
         self.assertEqual(session.total_pkts, 2)
         stats = self.statistics.get_counter(
             '/nat44-ei/ha/refresh-event-recv')
-        self.assertEqual(stats[0][0], 1)
+        self.assertEqual(sum_stats(stats), 1)
 
         stats = self.statistics.get_err_counter(
             '/err/nat44-ei-ha/pkts-processed')
@@ -3898,9 +3935,7 @@ class TestNAT44Out2InDPO(MethodHolder):
 
 class TestNAT44EIMW(MethodHolder):
     """ NAT44EI Test Cases (multiple workers) """
-
     vpp_worker_count = 2
-
     max_translations = 10240
     max_users = 10240
 
