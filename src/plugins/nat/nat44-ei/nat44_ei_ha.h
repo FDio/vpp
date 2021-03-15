@@ -62,7 +62,8 @@ void nat_ha_init (vlib_main_t * vm, u32 num_workers, u32 num_threads);
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat_ha_set_listener (ip4_address_t * addr, u16 port, u32 path_mtu);
+int nat_ha_set_listener (vlib_main_t *vm, ip4_address_t *addr, u16 port,
+			 u32 path_mtu);
 
 /**
  * @brief Get HA listener/local configuration
@@ -79,7 +80,7 @@ void nat_ha_get_listener (ip4_address_t * addr, u16 * port, u32 * path_mtu);
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat_ha_set_failover (ip4_address_t * addr, u16 port,
+int nat_ha_set_failover (vlib_main_t *vm, ip4_address_t *addr, u16 port,
 			 u32 session_refresh_interval);
 
 /**
@@ -120,11 +121,11 @@ void nat_ha_sadd (ip4_address_t * in_addr, u16 in_port,
  * @param eh_port external host L4 port number
  * @param proto L4 protocol
  * @param fib_index fib index
- * @param thread_index thread index
+ * @param session_thread_index index of thread where this session was stored
  */
-void nat_ha_sdel (ip4_address_t * out_addr, u16 out_port,
-		  ip4_address_t * eh_addr, u16 eh_port, u8 proto,
-		  u32 fib_index, u32 thread_index);
+void nat_ha_sdel (ip4_address_t *out_addr, u16 out_port,
+		  ip4_address_t *eh_addr, u16 eh_port, u8 proto, u32 fib_index,
+		  u32 session_thread_index);
 
 /**
  * @brief Create session refresh HA event
