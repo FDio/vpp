@@ -21,9 +21,6 @@ from vpp_papi import VppEnum
 # 35 is enough to have >257 400-byte fragments
 test_packet_count = 35
 
-# number of workers used for multi-worker test cases
-worker_count = 3
-
 
 class TestIPv4Reassembly(VppTestCase):
     """ IPv4 Reassembly """
@@ -789,13 +786,13 @@ class TestIPv4SVReassembly(VppTestCase):
 
 class TestIPv4MWReassembly(VppTestCase):
     """ IPv4 Reassembly (multiple workers) """
-    worker_config = "workers %d" % worker_count
+    vpp_worker_count = 3
 
     @classmethod
     def setUpClass(cls):
         super(TestIPv4MWReassembly, cls).setUpClass()
 
-        cls.create_pg_interfaces(range(worker_count+1))
+        cls.create_pg_interfaces(range(cls.vpp_worker_count+1))
         cls.src_if = cls.pg0
         cls.send_ifs = cls.pg_interfaces[:-1]
         cls.dst_if = cls.pg_interfaces[-1]
@@ -908,7 +905,7 @@ class TestIPv4MWReassembly(VppTestCase):
                             "Packet with packet_index %d not received" % index)
 
     def send_packets(self, packets):
-        for counter in range(worker_count):
+        for counter in range(self.vpp_worker_count):
             if 0 == len(packets[counter]):
                 continue
             send_if = self.send_ifs[counter]
@@ -924,19 +921,19 @@ class TestIPv4MWReassembly(VppTestCase):
         # in first wave we send fragments which don't start at offset 0
         # then we send fragments with offset 0 on a different thread
         # then the rest of packets on a random thread
-        first_packets = [[] for n in range(worker_count)]
-        second_packets = [[] for n in range(worker_count)]
-        rest_of_packets = [[] for n in range(worker_count)]
+        first_packets = [[] for n in range(self.vpp_worker_count)]
+        second_packets = [[] for n in range(self.vpp_worker_count)]
+        rest_of_packets = [[] for n in range(self.vpp_worker_count)]
         for (_, p) in self.pkt_infos:
-            wi = randrange(worker_count)
+            wi = randrange(self.vpp_worker_count)
             second_packets[wi].append(p[0])
             if len(p) <= 1:
                 continue
             wi2 = wi
             while wi2 == wi:
-                wi2 = randrange(worker_count)
+                wi2 = randrange(self.vpp_worker_count)
             first_packets[wi2].append(p[1])
-            wi3 = randrange(worker_count)
+            wi3 = randrange(self.vpp_worker_count)
             rest_of_packets[wi3].extend(p[2:])
 
         self.pg_enable_capture()
@@ -1437,13 +1434,13 @@ class TestIPv6Reassembly(VppTestCase):
 
 class TestIPv6MWReassembly(VppTestCase):
     """ IPv6 Reassembly (multiple workers) """
-    worker_config = "workers %d" % worker_count
+    vpp_worker_count = 3
 
     @classmethod
     def setUpClass(cls):
         super(TestIPv6MWReassembly, cls).setUpClass()
 
-        cls.create_pg_interfaces(range(worker_count+1))
+        cls.create_pg_interfaces(range(cls.vpp_worker_count+1))
         cls.src_if = cls.pg0
         cls.send_ifs = cls.pg_interfaces[:-1]
         cls.dst_if = cls.pg_interfaces[-1]
@@ -1556,7 +1553,7 @@ class TestIPv6MWReassembly(VppTestCase):
                             "Packet with packet_index %d not received" % index)
 
     def send_packets(self, packets):
-        for counter in range(worker_count):
+        for counter in range(self.vpp_worker_count):
             if 0 == len(packets[counter]):
                 continue
             send_if = self.send_ifs[counter]
@@ -1572,19 +1569,19 @@ class TestIPv6MWReassembly(VppTestCase):
         # in first wave we send fragments which don't start at offset 0
         # then we send fragments with offset 0 on a different thread
         # then the rest of packets on a random thread
-        first_packets = [[] for n in range(worker_count)]
-        second_packets = [[] for n in range(worker_count)]
-        rest_of_packets = [[] for n in range(worker_count)]
+        first_packets = [[] for n in range(self.vpp_worker_count)]
+        second_packets = [[] for n in range(self.vpp_worker_count)]
+        rest_of_packets = [[] for n in range(self.vpp_worker_count)]
         for (_, p) in self.pkt_infos:
-            wi = randrange(worker_count)
+            wi = randrange(self.vpp_worker_count)
             second_packets[wi].append(p[0])
             if len(p) <= 1:
                 continue
             wi2 = wi
             while wi2 == wi:
-                wi2 = randrange(worker_count)
+                wi2 = randrange(self.vpp_worker_count)
             first_packets[wi2].append(p[1])
-            wi3 = randrange(worker_count)
+            wi3 = randrange(self.vpp_worker_count)
             rest_of_packets[wi3].extend(p[2:])
 
         self.pg_enable_capture()
