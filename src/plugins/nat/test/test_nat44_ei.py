@@ -3896,7 +3896,7 @@ class TestNAT44Out2InDPO(MethodHolder):
 class TestNAT44EIMW(MethodHolder):
     """ NAT44EI Test Cases (multiple workers) """
 
-    worker_config = "workers %d" % 2
+    vpp_worker_count = 2
 
     max_translations = 10240
     max_users = 10240
