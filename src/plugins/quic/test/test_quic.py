@@ -177,7 +177,7 @@ class QUICEchoExtTestCase(QUICTestCase):
     post_test_sleep = 1
     app = "vpp_echo"
     evt_q_len = 16384
-    worker_config = "workers 1"
+    vpp_worker_count = 1
     server_fifo_size = "1M"
     client_fifo_size = "4M"
     extra_vpp_punt_config = ["session", "{",
