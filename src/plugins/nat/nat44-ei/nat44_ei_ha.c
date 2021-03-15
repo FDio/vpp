@@ -143,7 +143,6 @@ typedef struct nat_ha_main_s
   u32 session_refresh_interval;
   /* counters */
   vlib_simple_counter_main_t counters[NAT_HA_N_COUNTERS];
-  vlib_main_t *vlib_main;
   /* sequence number counter */
   u32 sequence_number;
   /* 1 if resync in progress */
@@ -326,13 +325,13 @@ nat_ha_resync_fin (void)
 
 /* cache HA NAT data waiting for ACK */
 static int
-nat_ha_resend_queue_add (u32 seq, u8 * data, u8 data_len, u8 is_resync,
-			 u32 thread_index)
+nat_ha_resend_queue_add (vlib_main_t *vm, u32 seq, u8 *data, u8 data_len,
+			 u8 is_resync, u32 vlib_thread_index)
 {
   nat_ha_main_t *ha = &nat_ha_main;
-  nat_ha_per_thread_data_t *td = &ha->per_thread_data[thread_index];
+  nat_ha_per_thread_data_t *td = &ha->per_thread_data[vlib_thread_index];
   nat_ha_resend_entry_t *entry;
-  f64 now = vlib_time_now (ha->vlib_main);
+  f64 now = vlib_time_now (vm);
 
   vec_add2 (td->resend_queue, entry, 1);
   clib_memset (entry, 0, sizeof (*entry));
@@ -376,17 +375,17 @@ nat_ha_ack_recv (u32 seq, u32 thread_index)
 
 /* scan non-ACKed HA NAT for retry */
 static void
-nat_ha_resend_scan (f64 now, u32 thread_index)
+nat_ha_resend_scan (vlib_main_t *vm, u32 thread_index)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   nat_ha_main_t *ha = &nat_ha_main;
   nat_ha_per_thread_data_t *td = &ha->per_thread_data[thread_index];
   u32 i, *del, *to_delete = 0;
-  vlib_main_t *vm = ha->vlib_main;
   vlib_buffer_t *b = 0;
   vlib_frame_t *f;
   u32 bi, *to_next;
   ip4_header_t *ip;
+  f64 now = vlib_time_now (vm);
 
   vec_foreach_index (i, td->resend_queue)
   {
@@ -485,7 +484,6 @@ nat_ha_init (vlib_main_t * vm, u32 num_workers, u32 num_threads)
 
   nat_ha_set_node_indexes (ha, vm);
 
-  ha->vlib_main = vm;
   ha->fq_index = ~0;
 
   ha->num_workers = num_workers;
@@ -501,14 +499,15 @@ nat_ha_init (vlib_main_t * vm, u32 num_workers, u32 num_threads)
 }
 
 int
-nat_ha_set_listener (ip4_address_t * addr, u16 port, u32 path_mtu)
+nat_ha_set_listener (vlib_main_t *vm, ip4_address_t *addr, u16 port,
+		     u32 path_mtu)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   nat_ha_main_t *ha = &nat_ha_main;
 
   /* unregister previously set UDP port */
   if (ha->src_port)
-    udp_unregister_dst_port (ha->vlib_main, ha->src_port, 1);
+    udp_unregister_dst_port (vm, ha->src_port, 1);
 
   ha->src_ip_address.as_u32 = addr->as_u32;
   ha->src_port = port;
@@ -521,12 +520,11 @@ nat_ha_set_listener (ip4_address_t * addr, u16 port, u32 path_mtu)
 	{
 	  if (ha->fq_index == ~0)
 	    ha->fq_index = vlib_frame_queue_main_init (ha->ha_node_index, 0);
-	  udp_register_dst_port (ha->vlib_main, port,
-				 ha->ha_handoff_node_index, 1);
+	  udp_register_dst_port (vm, port, ha->ha_handoff_node_index, 1);
 	}
       else
 	{
-	  udp_register_dst_port (ha->vlib_main, port, ha->ha_node_index, 1);
+	  udp_register_dst_port (vm, port, ha->ha_node_index, 1);
 	}
       nat_elog_info_X1 (nm, "HA listening on port %d for state sync", "i4",
 			port);
@@ -546,7 +544,7 @@ nat_ha_get_listener (ip4_address_t * addr, u16 * port, u32 * path_mtu)
 }
 
 int
-nat_ha_set_failover (ip4_address_t * addr, u16 port,
+nat_ha_set_failover (vlib_main_t *vm, ip4_address_t *addr, u16 port,
 		     u32 session_refresh_interval)
 {
   nat_ha_main_t *ha = &nat_ha_main;
@@ -555,7 +553,7 @@ nat_ha_set_failover (ip4_address_t * addr, u16 port,
   ha->dst_port = port;
   ha->session_refresh_interval = session_refresh_interval;
 
-  vlib_process_signal_event (ha->vlib_main, ha->ha_process_node_index, 1, 0);
+  vlib_process_signal_event (vm, ha->ha_process_node_index, 1, 0);
 
   return 0;
 }
@@ -703,15 +701,15 @@ nat_ha_header_create (vlib_buffer_t * b, u32 * offset, u32 thread_index)
 }
 
 static inline void
-nat_ha_send (vlib_frame_t * f, vlib_buffer_t * b, u8 is_resync,
-	     u32 thread_index)
+nat_ha_send (vlib_frame_t *f, vlib_buffer_t *b, u8 is_resync,
+	     u32 vlib_thread_index)
 {
   nat_ha_main_t *ha = &nat_ha_main;
-  nat_ha_per_thread_data_t *td = &ha->per_thread_data[thread_index];
+  nat_ha_per_thread_data_t *td = &ha->per_thread_data[vlib_thread_index];
   nat_ha_message_header_t *h;
   ip4_header_t *ip;
   udp_header_t *udp;
-  vlib_main_t *vm = vlib_mains[thread_index];
+  vlib_main_t *vm = vlib_mains[vlib_thread_index];
 
   ip = vlib_buffer_get_current (b);
   udp = ip4_next_header (ip);
@@ -723,21 +721,22 @@ nat_ha_send (vlib_frame_t * f, vlib_buffer_t * b, u8 is_resync,
   ip->checksum = ip4_header_checksum (ip);
   udp->length = clib_host_to_net_u16 (b->current_length - sizeof (*ip));
 
-  nat_ha_resend_queue_add (h->sequence_number, (u8 *) ip, b->current_length,
-			   is_resync, thread_index);
+  nat_ha_resend_queue_add (vm, h->sequence_number, (u8 *) ip,
+			   b->current_length, is_resync, vlib_thread_index);
 
   vlib_put_frame_to_node (vm, ip4_lookup_node.index, f);
 }
 
 /* add NAT HA protocol event */
 static_always_inline void
-nat_ha_event_add (nat_ha_event_t * event, u8 do_flush, u32 thread_index,
+nat_ha_event_add (nat_ha_event_t *event, u8 do_flush, u32 session_thread_index,
 		  u8 is_resync)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   nat_ha_main_t *ha = &nat_ha_main;
-  nat_ha_per_thread_data_t *td = &ha->per_thread_data[thread_index];
-  vlib_main_t *vm = vlib_mains[thread_index];
+  u32 vlib_thread_index = vlib_get_thread_index ();
+  nat_ha_per_thread_data_t *td = &ha->per_thread_data[vlib_thread_index];
+  vlib_main_t *vm = vlib_mains[vlib_thread_index];
   vlib_buffer_t *b = 0;
   vlib_frame_t *f;
   u32 bi = ~0, offset;
@@ -778,7 +777,7 @@ nat_ha_event_add (nat_ha_event_t * event, u8 do_flush, u32 thread_index,
     }
 
   if (PREDICT_FALSE (td->state_sync_count == 0))
-    nat_ha_header_create (b, &offset, thread_index);
+    nat_ha_header_create (b, &offset, session_thread_index);
 
   if (PREDICT_TRUE (do_flush == 0))
     {
@@ -790,19 +789,17 @@ nat_ha_event_add (nat_ha_event_t * event, u8 do_flush, u32 thread_index,
       switch (event->event_type)
 	{
 	case NAT_HA_ADD:
-	  vlib_increment_simple_counter (&ha->counters
-					 [NAT_HA_COUNTER_SEND_ADD],
-					 thread_index, 0, 1);
+	  vlib_increment_simple_counter (
+	    &ha->counters[NAT_HA_COUNTER_SEND_ADD], vlib_thread_index, 0, 1);
 	  break;
 	case NAT_HA_DEL:
-	  vlib_increment_simple_counter (&ha->counters
-					 [NAT_HA_COUNTER_SEND_DEL],
-					 thread_index, 0, 1);
+	  vlib_increment_simple_counter (
+	    &ha->counters[NAT_HA_COUNTER_SEND_DEL], vlib_thread_index, 0, 1);
 	  break;
 	case NAT_HA_REFRESH:
-	  vlib_increment_simple_counter (&ha->counters
-					 [NAT_HA_COUNTER_SEND_REFRESH],
-					 thread_index, 0, 1);
+	  vlib_increment_simple_counter (
+	    &ha->counters[NAT_HA_COUNTER_SEND_REFRESH], vlib_thread_index, 0,
+	    1);
 	  break;
 	default:
 	  break;
@@ -812,7 +809,7 @@ nat_ha_event_add (nat_ha_event_t * event, u8 do_flush, u32 thread_index,
   if (PREDICT_FALSE
       (do_flush || offset + (sizeof (*event)) > ha->state_sync_path_mtu))
     {
-      nat_ha_send (f, b, is_resync, thread_index);
+      nat_ha_send (f, b, is_resync, vlib_thread_index);
       td->state_sync_buffer = 0;
       td->state_sync_frame = 0;
       td->state_sync_count = 0;
@@ -868,8 +865,8 @@ nat_ha_sadd (ip4_address_t * in_addr, u16 in_port, ip4_address_t * out_addr,
 }
 
 void
-nat_ha_sdel (ip4_address_t * out_addr, u16 out_port, ip4_address_t * eh_addr,
-	     u16 eh_port, u8 proto, u32 fib_index, u32 thread_index)
+nat_ha_sdel (ip4_address_t *out_addr, u16 out_port, ip4_address_t *eh_addr,
+	     u16 eh_port, u8 proto, u32 fib_index, u32 session_thread_index)
 {
   nat_ha_event_t event;
 
@@ -883,7 +880,7 @@ nat_ha_sdel (ip4_address_t * out_addr, u16 out_port, ip4_address_t * eh_addr,
   event.eh_port = eh_port;
   event.fib_index = clib_host_to_net_u32 (fib_index);
   event.protocol = proto;
-  nat_ha_event_add (&event, 0, thread_index, 0);
+  nat_ha_event_add (&event, 0, session_thread_index, 0);
 }
 
 void
@@ -933,7 +930,7 @@ nat_ha_worker_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
   /* flush HA NAT data under construction */
   nat_ha_event_add (0, 1, thread_index, 0);
   /* scan if we need to resend some non-ACKed data */
-  nat_ha_resend_scan (vlib_time_now (vm), thread_index);
+  nat_ha_resend_scan (vm, thread_index);
   return 0;
 }
 
