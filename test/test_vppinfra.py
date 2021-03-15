@@ -8,7 +8,7 @@ from framework import running_gcov_tests
 
 class TestVppinfra(VppTestCase):
     """ Vppinfra Unit Test Cases """
-    worker_config = "workers 1"
+    vpp_worker_count = 1
 
     @classmethod
     def setUpClass(cls):
