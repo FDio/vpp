@@ -2864,9 +2864,10 @@ vnet_send_dns4_reply (vlib_main_t * vm, dns_main_t * dm,
 
   if (sw_if_index == ~0)
     {
-      clib_warning
-	("route to %U exists, fei %d, get_resolving_interface returned"
-	 " ~0", fei, format_ip4_address, &prefix.fp_addr);
+      clib_warning (
+	"route to %U exists, fei %d, get_resolving_interface returned"
+	" ~0",
+	format_ip4_address, &prefix.fp_addr, fei);
       return;
     }
 
