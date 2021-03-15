@@ -1529,8 +1529,9 @@ vl_api_nat44_user_session_dump_t_handler (vl_api_nat44_user_session_dump_t *
   ip.src_address.as_u32 = ukey.addr.as_u32;
   ukey.fib_index = fib_table_find (FIB_PROTOCOL_IP4, ntohl (mp->vrf_id));
   if (sm->num_workers > 1)
-    tsm = vec_elt_at_index (sm->per_thread_data,
-			    sm->worker_in2out_cb (0, &ip, ukey.fib_index, 0));
+    tsm = vec_elt_at_index (
+      sm->per_thread_data,
+      nat44_ed_get_in2out_worker_index (0, &ip, ukey.fib_index, 0));
   else
     tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
 

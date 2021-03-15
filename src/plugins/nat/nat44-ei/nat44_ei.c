@@ -322,8 +322,6 @@ nat44_ei_init (vlib_main_t *vm)
   nm->fq_out2in_index = ~0;
   nm->fq_in2out_index = ~0;
   nm->fq_in2out_output_index = ~0;
-  nm->worker_in2out_cb = nat44_ei_get_in2out_worker_index;
-  nm->worker_out2in_cb = nat44_ei_get_out2in_worker_index;
 
   nm->log_level = NAT_LOG_ERROR;
 
@@ -2036,7 +2034,8 @@ nat44_ei_add_del_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	  ip4_header_t ip = {
 	    .src_address = m->local_addr,
 	  };
-	  vec_add1 (m->workers, nm->worker_in2out_cb (&ip, m->fib_index, 0));
+	  vec_add1 (m->workers,
+		    nat44_ei_get_in2out_worker_index (&ip, m->fib_index, 0));
 	  tnm = vec_elt_at_index (nm->per_thread_data, m->workers[0]);
 	}
       else
