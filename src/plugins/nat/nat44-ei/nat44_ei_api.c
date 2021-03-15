@@ -1066,8 +1066,9 @@ vl_api_nat44_ei_user_session_dump_t_handler (
   ukey.fib_index = fib_table_find (FIB_PROTOCOL_IP4, ntohl (mp->vrf_id));
   key.key = ukey.as_u64;
   if (nm->num_workers > 1)
-    tnm = vec_elt_at_index (nm->per_thread_data,
-			    nm->worker_in2out_cb (&ip, ukey.fib_index, 0));
+    tnm = vec_elt_at_index (
+      nm->per_thread_data,
+      nat44_ei_get_in2out_worker_index (&ip, ukey.fib_index, 0));
   else
     tnm = vec_elt_at_index (nm->per_thread_data, nm->num_workers);
 

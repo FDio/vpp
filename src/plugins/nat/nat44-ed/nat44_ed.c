@@ -176,13 +176,6 @@ static void nat44_ed_db_init (u32 translations, u32 translation_buckets);
 
 static void nat44_ed_db_free ();
 
-static u32
-nat44_ed_get_worker_out2in_cb (vlib_buffer_t * b, ip4_header_t * ip,
-			       u32 rx_fib_index, u8 is_output);
-
-static u32 nat44_ed_get_worker_in2out_cb (vlib_buffer_t *b, ip4_header_t *ip,
-					  u32 rx_fib_index, u8 is_output);
-
 u32 nat_calc_bihash_buckets (u32 n_elts);
 
 u8 *
@@ -723,8 +716,8 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	  ip4_header_t ip = {
 	    .src_address = m->local_addr,
 	  };
-	  vec_add1 (m->workers,
-		    sm->worker_in2out_cb (0, &ip, m->fib_index, 0));
+	  vec_add1 (m->workers, nat44_ed_get_in2out_worker_index (
+				  0, &ip, m->fib_index, 0));
 	  tsm = vec_elt_at_index (sm->per_thread_data, m->workers[0]);
 	}
       else
@@ -971,7 +964,8 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 		.src_address = locals[i].addr,
 	      };
 	      bitmap = clib_bitmap_set (
-		bitmap, sm->worker_in2out_cb (0, &ip, m->fib_index, 0), 1);
+		bitmap,
+		nat44_ed_get_in2out_worker_index (0, &ip, m->fib_index, 0), 1);
 	    }
 	}
 
@@ -1051,7 +1045,7 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 	      };
 	      tsm = vec_elt_at_index (
 		sm->per_thread_data,
-		sm->worker_in2out_cb (0, &ip, m->fib_index, 0));
+		nat44_ed_get_in2out_worker_index (0, &ip, m->fib_index, 0));
 	    }
 	  else
 	    tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
@@ -1164,9 +1158,9 @@ nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
 	  ip4_header_t ip = {
 	    .src_address = local->addr,
 	  };
-	  tsm =
-	    vec_elt_at_index (sm->per_thread_data,
-			      sm->worker_in2out_cb (0, &ip, m->fib_index, 0));
+	  tsm = vec_elt_at_index (
+	    sm->per_thread_data,
+	    nat44_ed_get_in2out_worker_index (0, &ip, m->fib_index, 0));
 	}
       else
 	tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
@@ -1197,7 +1191,8 @@ nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
         ip4_header_t ip;
 	ip.src_address.as_u32 = local->addr.as_u32,
 	bitmap = clib_bitmap_set (
-	  bitmap, sm->worker_in2out_cb (0, &ip, local->fib_index, 0), 1);
+	  bitmap,
+	  nat44_ed_get_in2out_worker_index (0, &ip, local->fib_index, 0), 1);
       }
   }
 
@@ -2140,9 +2135,6 @@ nat44_plugin_enable (nat44_config_t c)
   sm->outside_fib_index = fib_table_find_or_create_and_lock (
     FIB_PROTOCOL_IP4, c.outside_vrf, sm->fib_src_hi);
 
-  sm->worker_in2out_cb = nat44_ed_get_worker_in2out_cb;
-  sm->worker_out2in_cb = nat44_ed_get_worker_out2in_cb;
-
   nat44_ed_db_init (sm->max_translations_per_thread, sm->translation_buckets);
 
   nat_affinity_enable ();
@@ -2423,8 +2415,8 @@ snat_static_mapping_match (vlib_main_t *vm, snat_main_t *sm,
 		  .src_address = local->addr,
 	        };
 
-		if (sm->worker_in2out_cb (0, &ip, m->fib_index, 0) ==
-		    thread_index)
+		if (nat44_ed_get_in2out_worker_index (0, &ip, m->fib_index,
+						      0) == thread_index)
 		  {
 		    vec_add1 (tmp, i);
 		  }
@@ -2499,9 +2491,9 @@ end:
   return 0;
 }
 
-static u32
-nat44_ed_get_worker_in2out_cb (vlib_buffer_t *b, ip4_header_t *ip,
-			       u32 rx_fib_index, u8 is_output)
+u32
+nat44_ed_get_in2out_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
+				  u32 rx_fib_index, u8 is_output)
 {
   snat_main_t *sm = &snat_main;
   u32 next_worker_index = sm->first_worker_index;
@@ -2602,9 +2594,9 @@ out:
   return next_worker_index;
 }
 
-static u32
-nat44_ed_get_worker_out2in_cb (vlib_buffer_t * b, ip4_header_t * ip,
-			       u32 rx_fib_index, u8 is_output)
+u32
+nat44_ed_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
+				  u32 rx_fib_index, u8 is_output)
 {
   snat_main_t *sm = &snat_main;
   clib_bihash_kv_8_8_t kv, value;
@@ -3162,8 +3154,9 @@ nat44_del_ed_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
 
   ip.dst_address.as_u32 = ip.src_address.as_u32 = addr->as_u32;
   if (sm->num_workers > 1)
-    tsm = vec_elt_at_index (sm->per_thread_data,
-			    sm->worker_in2out_cb (0, &ip, fib_index, 0));
+    tsm = vec_elt_at_index (
+      sm->per_thread_data,
+      nat44_ed_get_in2out_worker_index (0, &ip, fib_index, 0));
   else
     tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
 

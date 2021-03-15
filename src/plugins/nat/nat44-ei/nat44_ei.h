@@ -301,16 +301,6 @@ typedef struct
 
 } nat44_ei_main_per_thread_data_t;
 
-/* Return worker thread index for given packet */
-typedef u32 (nat44_ei_get_worker_in2out_function_t) (ip4_header_t *ip,
-						     u32 rx_fib_index,
-						     u8 is_output);
-
-typedef u32 (nat44_ei_get_worker_out2in_function_t) (vlib_buffer_t *b,
-						     ip4_header_t *ip,
-						     u32 rx_fib_index,
-						     u8 is_output);
-
 typedef struct
 {
   u32 cached_sw_if_index;
@@ -366,8 +356,6 @@ typedef struct nat44_ei_main_s
   u32 num_workers;
   u32 first_worker_index;
   u32 *workers;
-  nat44_ei_get_worker_in2out_function_t *worker_in2out_cb;
-  nat44_ei_get_worker_out2in_function_t *worker_out2in_cb;
   u16 port_per_thread;
 
   /* Main lookup tables */

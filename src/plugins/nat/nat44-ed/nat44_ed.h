@@ -489,17 +489,12 @@ typedef struct
 
 struct snat_main_s;
 
+u32 nat44_ed_get_in2out_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
+				      u32 rx_fib_index, u8 is_output);
+u32 nat44_ed_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
+				      u32 rx_fib_index, u8 is_output);
+
 /* Return worker thread index for given packet */
-typedef u32 (snat_get_worker_in2out_function_t) (vlib_buffer_t *b,
-						 ip4_header_t *ip,
-						 u32 rx_fib_index,
-						 u8 is_output);
-
-typedef u32 (snat_get_worker_out2in_function_t) (vlib_buffer_t * b,
-						 ip4_header_t * ip,
-						 u32 rx_fib_index,
-						 u8 is_output);
-
 /* NAT address and port allocation function */
 typedef int (nat_alloc_out_addr_and_port_function_t) (snat_address_t *
 						      addresses,
@@ -517,8 +512,6 @@ typedef struct snat_main_s
   u32 num_workers;
   u32 first_worker_index;
   u32 *workers;
-  snat_get_worker_in2out_function_t *worker_in2out_cb;
-  snat_get_worker_out2in_function_t *worker_out2in_cb;
   u16 port_per_thread;
 
   /* Per thread data */

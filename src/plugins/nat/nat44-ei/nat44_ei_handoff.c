@@ -153,17 +153,25 @@ nat44_ei_worker_handoff_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (is_in2out)
 	{
-	  ti[0] = nm->worker_in2out_cb (ip0, rx_fib_index0, is_output);
-	  ti[1] = nm->worker_in2out_cb (ip1, rx_fib_index1, is_output);
-	  ti[2] = nm->worker_in2out_cb (ip2, rx_fib_index2, is_output);
-	  ti[3] = nm->worker_in2out_cb (ip3, rx_fib_index3, is_output);
+	  ti[0] =
+	    nat44_ei_get_in2out_worker_index (ip0, rx_fib_index0, is_output);
+	  ti[1] =
+	    nat44_ei_get_in2out_worker_index (ip1, rx_fib_index1, is_output);
+	  ti[2] =
+	    nat44_ei_get_in2out_worker_index (ip2, rx_fib_index2, is_output);
+	  ti[3] =
+	    nat44_ei_get_in2out_worker_index (ip3, rx_fib_index3, is_output);
 	}
       else
 	{
-	  ti[0] = nm->worker_out2in_cb (b[0], ip0, rx_fib_index0, is_output);
-	  ti[1] = nm->worker_out2in_cb (b[1], ip1, rx_fib_index1, is_output);
-	  ti[2] = nm->worker_out2in_cb (b[2], ip2, rx_fib_index2, is_output);
-	  ti[3] = nm->worker_out2in_cb (b[3], ip3, rx_fib_index3, is_output);
+	  ti[0] = nat44_ei_get_out2in_worker_index (b[0], ip0, rx_fib_index0,
+						    is_output);
+	  ti[1] = nat44_ei_get_out2in_worker_index (b[1], ip1, rx_fib_index1,
+						    is_output);
+	  ti[2] = nat44_ei_get_out2in_worker_index (b[2], ip2, rx_fib_index2,
+						    is_output);
+	  ti[3] = nat44_ei_get_out2in_worker_index (b[3], ip3, rx_fib_index3,
+						    is_output);
 	}
 
       if (ti[0] == thread_index)
@@ -213,11 +221,13 @@ nat44_ei_worker_handoff_fn_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (is_in2out)
 	{
-	  ti[0] = nm->worker_in2out_cb (ip0, rx_fib_index0, is_output);
+	  ti[0] =
+	    nat44_ei_get_in2out_worker_index (ip0, rx_fib_index0, is_output);
 	}
       else
 	{
-	  ti[0] = nm->worker_out2in_cb (b[0], ip0, rx_fib_index0, is_output);
+	  ti[0] = nat44_ei_get_out2in_worker_index (b[0], ip0, rx_fib_index0,
+						    is_output);
 	}
 
       if (ti[0] == thread_index)
