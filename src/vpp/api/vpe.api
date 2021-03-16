@@ -370,6 +370,25 @@ define get_f64_increment_by_one_reply
 };
 
 /*
+ * Get connection information (socket filnames) from running VPP instance.
+ */
+define connection_info
+{
+  u32 client_index;
+  u32 context;
+  option in_progress;
+};
+
+define connection_info_reply
+{
+  u32 context;
+  i32 retval;
+  string cli_socket_filename[108];
+  string stat_socket_filename[108];
+  option in_progress;
+};
+
+/*
  * Local Variables:
  * eval: (c-set-style "gnu")
  * End:

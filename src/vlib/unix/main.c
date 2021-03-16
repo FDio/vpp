@@ -381,6 +381,13 @@ VLIB_REGISTER_NODE (startup_config_node,static) = {
 };
 /* *INDENT-ON* */
 
+char *
+unix_get_cli_socket_filename (void)
+{
+  unix_main_t *um = &unix_main;
+  return (char *) um->cli_listen_socket.config;
+}
+
 static clib_error_t *
 unix_config (vlib_main_t * vm, unformat_input_t * input)
 {
