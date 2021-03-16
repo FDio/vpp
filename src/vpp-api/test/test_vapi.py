@@ -26,7 +26,7 @@ class VAPITestCase(VppTestCase):
                              "Environment variable `%s' not set" % var)
         executable = "%s/vapi_test/vapi_c_test" % built_root
         worker = Worker(
-            [executable, "vapi client", self.shm_prefix], self.logger)
+            [executable, "vapi client", self.get_shm_prefix()], self.logger)
         worker.start()
         timeout = 60
         worker.join(timeout)
@@ -55,7 +55,7 @@ class VAPITestCase(VppTestCase):
                              "Environment variable `%s' not set" % var)
         executable = "%s/vapi_test/vapi_cpp_test" % built_root
         worker = Worker(
-            [executable, "vapi client", self.shm_prefix], self.logger)
+            [executable, "vapi client", self.get_shm_prefix()], self.logger)
         worker.start()
         timeout = 120
         worker.join(timeout)
