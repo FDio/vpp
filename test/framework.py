@@ -563,7 +563,6 @@ class VppTestCase(unittest.TestCase):
         cls.logger.addHandler(cls.file_handler)
         cls.logger.debug("--- setUpClass() for %s called ---" %
                          cls.__name__)
-        cls.shm_prefix = os.path.basename(cls.tempdir)  # Only used for VAPI
         os.chdir(cls.tempdir)
         cls.logger.info("Temporary dir is %s, api socket is %s",
                         cls.tempdir, cls.api_sock)
