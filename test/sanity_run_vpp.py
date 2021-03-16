@@ -43,8 +43,8 @@ if __name__ == '__main__':
     y.close()
 
     if rc == 0:
-        print('Sanity test case passed.\n')
+        print('Sanity test case passed.')
     else:
-        print('Sanity test case failed.\n')
+        print('Sanity test case failed.')
 
     sys.exit(rc)
