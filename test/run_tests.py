@@ -19,7 +19,7 @@ import framework
 from framework import VppTestRunner, running_extended_tests, VppTestCase, \
     get_testcase_doc_name, get_test_description, PASS, FAIL, ERROR, SKIP, \
     TEST_RUN
-from debug import spawn_gdb
+from debug import spawn_gdb, start_vpp_in_gdb
 from log import get_parallel_logger, double_line_delim, RED, YELLOW, GREEN, \
     colorize, single_line_delim
 from discover_tests import discover_tests
@@ -779,10 +779,14 @@ if __name__ == '__main__':
 
     retries = parse_digit_env("RETRIES", 0)
 
-    debug = os.getenv("DEBUG", "n").lower() in ["gdb", "gdbserver"]
+    debug = os.getenv("DEBUG", "n").lower() in ["gdb", "gdbserver", "attach"]
 
     debug_core = os.getenv("DEBUG", "").lower() == "core"
     compress_core = framework.BoolEnvironmentVariable("CORE_COMPRESS")
+
+    if os.getenv("VPP_IN_GDB", "n").lower() in ["1", "y", "yes"]:
+        start_vpp_in_gdb()
+        exit()
 
     step = framework.BoolEnvironmentVariable("STEP")
     force_foreground = framework.BoolEnvironmentVariable("FORCE_FOREGROUND")
@@ -815,8 +819,9 @@ if __name__ == '__main__':
 
     if run_interactive and concurrent_tests > 1:
         raise NotImplementedError(
-            'Running tests interactively (DEBUG is gdb or gdbserver or STEP '
-            'is set) in parallel (TEST_JOBS is more than 1) is not supported')
+            'Running tests interactively (DEBUG is gdb[server] or ATTACH or '
+            'STEP is set) in parallel (TEST_JOBS is more than 1) is not '
+            'supported')
 
     parser = argparse.ArgumentParser(description="VPP unit tests")
     parser.add_argument("-f", "--failfast", action='store_true',
