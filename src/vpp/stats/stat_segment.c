@@ -896,6 +896,13 @@ stat_segment_set_state_counter (u32 index, u64 value)
   sm->directory_vector[index].index = value;
 }
 
+char *
+stat_get_socket_filename (void)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  return (char *) sm->socket_name;
+}
+
 static clib_error_t *
 statseg_config (vlib_main_t * vm, unformat_input_t * input)
 {
