@@ -74,20 +74,21 @@
 #undef vl_printfun
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                                             \
-_(CONTROL_PING, control_ping)                                           \
-_(CLI, cli)                                                             \
-_(CLI_INBAND, cli_inband)						                        \
-_(GET_NODE_INDEX, get_node_index)                                       \
-_(ADD_NODE_NEXT, add_node_next)						                    \
-_(SHOW_VERSION, show_version)						                    \
-_(SHOW_THREADS, show_threads)						                    \
-_(GET_NODE_GRAPH, get_node_graph)                                       \
-_(GET_NEXT_INDEX, get_next_index)                                       \
-_(LOG_DUMP, log_dump)                                                   \
-_(SHOW_VPE_SYSTEM_TIME, show_vpe_system_time)				\
-_(GET_F64_ENDIAN_VALUE, get_f64_endian_value)							\
-_(GET_F64_INCREMENT_BY_ONE, get_f64_increment_by_one)					\
+#define foreach_vpe_api_msg                                                   \
+  _ (CONTROL_PING, control_ping)                                              \
+  _ (CLI, cli)                                                                \
+  _ (CLI_INBAND, cli_inband)                                                  \
+  _ (GET_NODE_INDEX, get_node_index)                                          \
+  _ (ADD_NODE_NEXT, add_node_next)                                            \
+  _ (SHOW_VERSION, show_version)                                              \
+  _ (SHOW_THREADS, show_threads)                                              \
+  _ (GET_NODE_GRAPH, get_node_graph)                                          \
+  _ (GET_NEXT_INDEX, get_next_index)                                          \
+  _ (LOG_DUMP, log_dump)                                                      \
+  _ (SHOW_VPE_SYSTEM_TIME, show_vpe_system_time)                              \
+  _ (GET_F64_ENDIAN_VALUE, get_f64_endian_value)                              \
+  _ (GET_F64_INCREMENT_BY_ONE, get_f64_increment_by_one)                      \
+  _ (CONNECTION_INFO, connection_info)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -259,6 +260,34 @@ vl_api_show_version_t_handler (vl_api_show_version_t * mp)
              ARRAY_LEN(rmp->build_date)-1);
   }));
   /* *INDENT-ON* */
+}
+
+/*
+ * Get connection information from a running VPP instance
+ */
+static void
+vl_api_connection_info_t_handler (vl_api_connection_info_t *mp)
+{
+  vl_api_connection_info_reply_t *rmp;
+  int rv = 0;
+  char *stat_get_socket_filename (void);
+  char *unix_get_cli_socket_filename (void);
+
+  char *cli_socket_name = unix_get_cli_socket_filename ();
+  char *stat_socket_name = stat_get_socket_filename ();
+
+  if (!cli_socket_name)
+    cli_socket_name = "";
+  if (!stat_socket_name)
+    stat_socket_name = "";
+
+  REPLY_MACRO2 (VL_API_CONNECTION_INFO_REPLY, ({
+		  strncpy ((char *) rmp->cli_socket_filename, cli_socket_name,
+			   ARRAY_LEN (rmp->cli_socket_filename) - 1);
+		  strncpy ((char *) rmp->stat_socket_filename,
+			   stat_socket_name,
+			   ARRAY_LEN (rmp->stat_socket_filename) - 1);
+		}));
 }
 
 static void
