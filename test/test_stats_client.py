@@ -34,7 +34,7 @@ class StatsClientTestCase(VppTestCase):
         initial_fds = p.num_fds()
 
         for _ in range(100):
-            stats = VPPStats(socketname=cls.stats_sock)
+            stats = VPPStats(socketname=cls.get_stats_sock_path())
             stats.disconnect()
 
         ending_fds = p.num_fds()

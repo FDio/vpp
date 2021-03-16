@@ -87,7 +87,7 @@ class VCLTestCase(VppTestCase):
         self.vapi.session_enable_disable(is_enable=0)
 
     def cut_thru_test(self, server_app, server_args, client_app, client_args):
-        self.env = {'VCL_VPP_API_SOCKET': self.api_sock,
+        self.env = {'VCL_VPP_API_SOCKET': self.get_api_sock_path(),
                     'VCL_APP_SCOPE_LOCAL': "true"}
         worker_server = VCLAppWorker(self.build_dir, server_app, server_args,
                                      self.logger, self.env)
@@ -192,7 +192,7 @@ class VCLTestCase(VppTestCase):
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
     def thru_host_stack_test(self, server_app, server_args,
                              client_app, client_args):
-        self.env = {'VCL_VPP_API_SOCKET': self.api_sock,
+        self.env = {'VCL_VPP_API_SOCKET': self.get_api_sock_path(),
                     'VCL_APP_SCOPE_GLOBAL': "true",
                     'VCL_APP_NAMESPACE_ID': "1",
                     'VCL_APP_NAMESPACE_SECRET': "1234"}

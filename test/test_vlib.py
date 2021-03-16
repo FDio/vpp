@@ -192,7 +192,8 @@ class TestVlib(VppTestCase):
         """ Private Binary API Segment Test (takes 70 seconds) """
 
         vat_path = self.vpp_bin + '_api_test'
-        vat = pexpect.spawn(vat_path, ['socket-name', self.api_sock])
+        vat = pexpect.spawn(vat_path, ['socket-name',
+                                       self.get_api_sock_path()])
         vat.expect("vat# ", timeout=10)
         vat.sendline('sock_init_shm')
         vat.expect("vat# ", timeout=10)
@@ -202,6 +203,7 @@ class TestVlib(VppTestCase):
         self.logger.info("vat terminated, 70 second wait for the Reaper")
         time.sleep(70)
         self.logger.info("Reaper should be complete...")
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

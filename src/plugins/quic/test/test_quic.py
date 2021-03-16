@@ -199,7 +199,7 @@ class QUICEchoExtTestCase(QUICTestCase):
             "uri", self.uri,
             "json",
             self.test_bytes,
-            "socket-name", self.api_sock,
+            "socket-name", self.get_api_sock_path(),
             "quic-setup", self.quic_setup,
             "nthreads", "1",
             "mq-size", f"{self.evt_q_len}"

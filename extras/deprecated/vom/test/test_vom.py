@@ -27,8 +27,8 @@ class VOMTestCase(VppTestCase):
         self.assertIsNotNone(built_root,
                              "Environment variable `%s' not set" % var)
         executable = "%s/vom_test/vom_test" % built_root
-        worker = Worker(
-            [executable, "vpp object model", self.shm_prefix], self.logger)
+        worker = Worker([executable, "vpp object model",
+                         self.get_api_segment_prefix()], self.logger)
         worker.start()
         timeout = 120
         worker.join(timeout)
