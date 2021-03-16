@@ -499,6 +499,10 @@ retest-all-debug:
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_debug,retest)
 
+.PHONY: test-start-gdb
+test-start-gdb:
+	$(call test,vpp,vpp,start-gdb)
+
 ifeq ("$(wildcard $(STARTUP_CONF))","")
 define run
 	@echo "WARNING: STARTUP_CONF not defined or file doesn't exist."
