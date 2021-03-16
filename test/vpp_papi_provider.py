@@ -143,7 +143,7 @@ class VppPapiProvider(object):
         self.vpp = VPPApiClient(logger=test_class.logger,
                                 read_timeout=read_timeout,
                                 use_socket=True,
-                                server_address=test_class.api_sock)
+                                server_address=test_class.get_api_sock_path())
         self._events = queue.Queue()
 
     def __enter__(self):
@@ -252,7 +252,7 @@ class VppPapiProvider(object):
         """Connect the API to VPP"""
         # This might be called before VPP is prepared to listen to the socket
         retries = 0
-        while not os.path.exists(self.test_class.api_sock):
+        while not os.path.exists(self.test_class.get_api_sock_path()):
             time.sleep(0.5)
             retries += 1
             if retries > 120:
