@@ -780,13 +780,17 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 			 int maybe_next)
 {
   const int queue_size = 128;
-  vlib_buffer_pool_t *bp = 0;
-  u8 buffer_pool_index = ~0;
   u32 n_queue = 0, queue[queue_size + 4];
-  vlib_buffer_t bt = { };
+  vlib_buffer_t *b = vlib_get_buffer (vm, buffers[0]);
+  u8 buffer_pool_index = b->buffer_pool_index;
+  vlib_buffer_pool_t *bp = vlib_get_buffer_pool (vm, buffer_pool_index);
+  vlib_buffer_t bt;
+
+  vlib_buffer_copy_template (&bt, &bp->buffer_template);
+
 #if defined(CLIB_HAVE_VEC128)
   vlib_buffer_t bpi_mask = {.buffer_pool_index = ~0 };
-  vlib_buffer_t bpi_vec = {.buffer_pool_index = ~0 };
+  vlib_buffer_t bpi_vec = { .buffer_pool_index = buffer_pool_index };
   vlib_buffer_t flags_refs_mask = {
     .flags = VLIB_BUFFER_NEXT_PRESENT,
     .ref_count = ~1
@@ -898,10 +902,14 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
 
-      if (clib_atomic_sub_fetch (&b[0]->ref_count, 1) == 0)
+      if (b[0]->ref_count == 1)
 	{
 	  vlib_buffer_copy_template (b[0], &bt);
 	  queue[n_queue++] = bi;
+	}
+      else
+	{
+	  b[0]->ref_count--;
 	}
 
       if (n_queue == queue_size)
