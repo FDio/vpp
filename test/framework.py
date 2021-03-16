@@ -281,6 +281,17 @@ tag_run_solo = create_tag_decorator(TestCaseTag.RUN_SOLO)
 tag_fixme_vpp_workers = create_tag_decorator(TestCaseTag.FIXME_VPP_WORKERS)
 
 
+class DummyVpp:
+    returncode = None
+    pid = 0xcafebafe
+
+    def poll(self):
+        pass
+
+    def terminate(self):
+        pass
+
+
 class VppTestCase(unittest.TestCase):
     """This subclass is a base class for VPP test cases that are implemented as
     classes. It provides methods to create and run test case.
@@ -330,6 +341,7 @@ class VppTestCase(unittest.TestCase):
         cls.debug_gdb = False
         cls.debug_gdbserver = False
         cls.debug_all = False
+        cls.debug_attach = False
         if d is None:
             return
         dl = d.lower()
@@ -339,6 +351,8 @@ class VppTestCase(unittest.TestCase):
             cls.debug_gdb = True
         elif dl == "gdbserver" or dl == "gdbserver-all":
             cls.debug_gdbserver = True
+        elif dl == "attach":
+            cls.debug_attach = True
         else:
             raise Exception("Unrecognized DEBUG option: '%s'" % d)
         if dl == "gdb-all" or dl == "gdbserver-all":
@@ -377,11 +391,9 @@ class VppTestCase(unittest.TestCase):
     def setUpConstants(cls):
         """ Set-up the test case class based on environment variables """
         cls.step = BoolEnvironmentVariable('STEP')
-        d = os.getenv("DEBUG", None)
         # inverted case to handle '' == True
         c = os.getenv("CACHE_OUTPUT", "1")
         cls.cache_vpp_output = False if c.lower() in ("n", "no", "0") else True
-        cls.set_debug_flags(d)
         cls.vpp_bin = os.getenv('VPP_BIN', "vpp")
         cls.plugin_path = os.getenv('VPP_PLUGIN_PATH')
         cls.test_plugin_path = os.getenv('VPP_TEST_PLUGIN_PATH')
@@ -434,15 +446,15 @@ class VppTestCase(unittest.TestCase):
             "unix", "{", "nodaemon", debug_cli, "full-coredump",
             coredump_size, "runtime-dir", cls.tempdir, "}",
             "api-trace", "{", "on", "}",
-            "api-segment", "{", "prefix", cls.shm_prefix, "}",
+            "api-segment", "{", "prefix", cls.get_api_segment_prefix(), "}",
             "cpu", "{", "main-core", str(cpu_core_number), ]
         if cls.vpp_worker_count:
             cls.vpp_cmdline.extend(["workers", str(cls.vpp_worker_count)])
         cls.vpp_cmdline.extend([
             "}",
             "physmem", "{", "max-size", "32m", "}",
-            "statseg", "{", "socket-name", cls.stats_sock, "}",
-            "socksvr", "{", "socket-name", cls.api_sock, "}",
+            "statseg", "{", "socket-name", cls.get_stats_sock_path(), "}",
+            "socksvr", "{", "socket-name", cls.get_api_sock_path(), "}",
             "node { ", default_variant, "}",
             "api-fuzz {", api_fuzzing, "}",
             "plugins", "{", "plugin", "dpdk_plugin.so", "{", "disable", "}",
@@ -458,8 +470,9 @@ class VppTestCase(unittest.TestCase):
         if cls.test_plugin_path is not None:
             cls.vpp_cmdline.extend(["test_plugin_path", cls.test_plugin_path])
 
-        cls.logger.info("vpp_cmdline args: %s" % cls.vpp_cmdline)
-        cls.logger.info("vpp_cmdline: %s" % " ".join(cls.vpp_cmdline))
+        if not cls.debug_attach:
+            cls.logger.info("vpp_cmdline args: %s" % cls.vpp_cmdline)
+            cls.logger.info("vpp_cmdline: %s" % " ".join(cls.vpp_cmdline))
 
     @classmethod
     def wait_for_enter(cls):
@@ -489,6 +502,10 @@ class VppTestCase(unittest.TestCase):
                   " within gdb by issuing the 'continue' command")
         print(single_line_delim)
         input("Press ENTER to continue running the testcase...")
+
+    @classmethod
+    def attach_vpp(cls):
+        cls.vpp = DummyVpp()
 
     @classmethod
     def run_vpp(cls):
@@ -547,24 +564,41 @@ class VppTestCase(unittest.TestCase):
                                  corefile, curr_size)
 
     @classmethod
+    def get_stats_sock_path(cls):
+        return "%s/stats.sock" % cls.tempdir
+
+    @classmethod
+    def get_api_sock_path(cls):
+        return "%s/api.sock" % cls.tempdir
+
+    @classmethod
+    def get_api_segment_prefix(cls):
+        return os.path.basename(cls.tempdir)  # Only used for VAPI
+
+    @classmethod
+    def get_tempdir(cls):
+        if cls.debug_attach:
+            return os.getenv("VPP_IN_GDB_TMP_DIR",
+                             "/tmp/vpp-unittest-attach-gdb")
+        else:
+            return tempfile.mkdtemp(prefix='vpp-unittest-%s-' % cls.__name__)
+
+    @classmethod
     def setUpClass(cls):
         """
         Perform class setup before running the testcase
         Remove shared memory files, start vpp and connect the vpp-api
         """
         super(VppTestCase, cls).setUpClass()
-        gc.collect()  # run garbage collection first
         cls.logger = get_logger(cls.__name__)
         seed = os.environ["RND_SEED"]
         random.seed(seed)
         if hasattr(cls, 'parallel_handler'):
             cls.logger.addHandler(cls.parallel_handler)
             cls.logger.propagate = False
-
-        cls.tempdir = tempfile.mkdtemp(
-            prefix='vpp-unittest-%s-' % cls.__name__)
-        cls.stats_sock = "%s/stats.sock" % cls.tempdir
-        cls.api_sock = "%s/api.sock" % cls.tempdir
+        d = os.getenv("DEBUG", None)
+        cls.set_debug_flags(d)
+        cls.tempdir = cls.get_tempdir()
         cls.file_handler = FileHandler("%s/log.txt" % cls.tempdir)
         cls.file_handler.setFormatter(
             Formatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
@@ -573,10 +607,9 @@ class VppTestCase(unittest.TestCase):
         cls.logger.addHandler(cls.file_handler)
         cls.logger.debug("--- setUpClass() for %s called ---" %
                          cls.__name__)
-        cls.shm_prefix = os.path.basename(cls.tempdir)  # Only used for VAPI
         os.chdir(cls.tempdir)
         cls.logger.info("Temporary dir is %s, api socket is %s",
-                        cls.tempdir, cls.api_sock)
+                        cls.tempdir, cls.get_api_sock_path())
         cls.logger.debug("Random seed is %s" % seed)
         cls.setUpConstants()
         cls.reset_packet_infos()
@@ -589,18 +622,22 @@ class VppTestCase(unittest.TestCase):
         # need to catch exceptions here because if we raise, then the cleanup
         # doesn't get called and we might end with a zombie vpp
         try:
-            cls.run_vpp()
+            if cls.debug_attach:
+                cls.attach_vpp()
+            else:
+                cls.run_vpp()
             cls.reporter.send_keep_alive(cls, 'setUpClass')
             VppTestResult.current_test_case_info = TestCaseInfo(
                 cls.logger, cls.tempdir, cls.vpp.pid, cls.vpp_bin)
             cls.vpp_stdout_deque = deque()
             cls.vpp_stderr_deque = deque()
-            cls.pump_thread_stop_flag = Event()
-            cls.pump_thread_wakeup_pipe = os.pipe()
-            cls.pump_thread = Thread(target=pump_output, args=(cls,))
-            cls.pump_thread.daemon = True
-            cls.pump_thread.start()
-            if cls.debug_gdb or cls.debug_gdbserver:
+            if not cls.debug_attach:
+                cls.pump_thread_stop_flag = Event()
+                cls.pump_thread_wakeup_pipe = os.pipe()
+                cls.pump_thread = Thread(target=pump_output, args=(cls,))
+                cls.pump_thread.daemon = True
+                cls.pump_thread.start()
+            if cls.debug_gdb or cls.debug_gdbserver or cls.debug_attach:
                 cls.vapi_response_timeout = 0
             cls.vapi = VppPapiProvider(cls.__name__, cls,
                                        cls.vapi_response_timeout)
@@ -609,7 +646,7 @@ class VppTestCase(unittest.TestCase):
             else:
                 hook = hookmodule.PollHook(cls)
             cls.vapi.register_hook(hook)
-            cls.statistics = VPPStats(socketname=cls.stats_sock)
+            cls.statistics = VPPStats(socketname=cls.get_stats_sock_path())
             try:
                 hook.poll_vpp()
             except VppDiedError:
@@ -629,6 +666,10 @@ class VppTestCase(unittest.TestCase):
                                    "VPP-API connection failed, did you forget "
                                    "to 'continue' VPP from within gdb?", RED))
                 raise e
+            if cls.debug_attach:
+                last_line = cls.vapi.cli("show thread").split("\n")[-2]
+                cls.vpp_worker_count = int(last_line.split(" ")[0])
+                print("Detected VPP with %s workers." % cls.vpp_worker_count)
         except vpp_papi.VPPRuntimeError as e:
             cls.logger.debug("%s" % e)
             cls.quit()
@@ -683,7 +724,7 @@ class VppTestCase(unittest.TestCase):
                                  cls.__name__)
                 del cls.vapi
             cls.vpp.poll()
-            if cls.vpp.returncode is None:
+            if not cls.debug_attach and cls.vpp.returncode is None:
                 cls.wait_for_coredump()
                 cls.logger.debug("Sending TERM to vpp")
                 cls.vpp.terminate()
@@ -695,8 +736,9 @@ class VppTestCase(unittest.TestCase):
                     outs, errs = cls.vpp.communicate()
             cls.logger.debug("Deleting class vpp attribute on %s",
                              cls.__name__)
-            cls.vpp.stdout.close()
-            cls.vpp.stderr.close()
+            if not cls.debug_attach:
+                cls.vpp.stdout.close()
+                cls.vpp.stderr.close()
             del cls.vpp
 
         if cls.vpp_startup_failed:
