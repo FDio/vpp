@@ -425,9 +425,8 @@ class VppTestCase(unittest.TestCase):
         cls.vpp_cmdline = [cls.vpp_bin, "unix",
                            "{", "nodaemon", debug_cli, "full-coredump",
                            coredump_size, "runtime-dir", cls.tempdir, "}",
-                           "api-trace", "{", "on", "}", "api-segment", "{",
-                           "prefix", cls.shm_prefix, "}", "cpu", "{",
-                           "main-core", str(cpu_core_number),
+                           "api-trace", "{", "on", "}",
+                           "cpu", "{", "main-core", str(cpu_core_number),
                            cls.worker_config, "}",
                            "physmem", "{", "max-size", "32m", "}",
                            "statseg", "{", "socket-name", cls.stats_sock, "}",
@@ -564,7 +563,6 @@ class VppTestCase(unittest.TestCase):
         cls.logger.addHandler(cls.file_handler)
         cls.logger.debug("--- setUpClass() for %s called ---" %
                          cls.__name__)
-        cls.shm_prefix = os.path.basename(cls.tempdir)  # Only used for VAPI
         os.chdir(cls.tempdir)
         cls.logger.info("Temporary dir is %s, api socket is %s",
                         cls.tempdir, cls.api_sock)
