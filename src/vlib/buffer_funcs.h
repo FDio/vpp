@@ -793,21 +793,35 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
   };
 #endif
 
+  if (n_buffers)
+    {
+      vlib_buffer_t *b = vlib_get_buffer (vm, buffers[0]);
+      buffer_pool_index = b->buffer_pool_index;
+      bp = vlib_get_buffer_pool (vm, buffer_pool_index);
+      vlib_buffer_copy_template (&bt, &bp->buffer_template);
+#if defined(CLIB_HAVE_VEC128)
+      bpi_vec.buffer_pool_index = buffer_pool_index;
+#endif
+    }
+
   while (n_buffers)
     {
       vlib_buffer_t *b[8];
       u32 bi, sum = 0, flags, next;
 
-      if (n_buffers < 12)
+      if (n_buffers < 4)
 	goto one_by_one;
 
       vlib_get_buffers (vm, buffers, b, 4);
-      vlib_get_buffers (vm, buffers + 8, b + 4, 4);
 
-      vlib_prefetch_buffer_header (b[4], LOAD);
-      vlib_prefetch_buffer_header (b[5], LOAD);
-      vlib_prefetch_buffer_header (b[6], LOAD);
-      vlib_prefetch_buffer_header (b[7], LOAD);
+      if (n_buffers >= 12)
+	{
+	  vlib_get_buffers (vm, buffers + 8, b + 4, 4);
+	  vlib_prefetch_buffer_header (b[4], LOAD);
+	  vlib_prefetch_buffer_header (b[5], LOAD);
+	  vlib_prefetch_buffer_header (b[6], LOAD);
+	  vlib_prefetch_buffer_header (b[7], LOAD);
+	}
 
 #if defined(CLIB_HAVE_VEC128)
       u8x16 p0, p1, p2, p3, r;
