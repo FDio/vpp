@@ -193,7 +193,6 @@ PARALLEL_ILLEGAL=1
 endif
 
 sanity: test-dep verify-no-running-vpp
-	@sys_req/dev_shm_size.sh
 	@bash -c "test $(PARALLEL_ILLEGAL) -eq 0 ||\
 	    (echo \"*******************************************************************\" &&\
 		 echo \"* Sanity check failed, TEST_JOBS is not 1 or 'auto' and DEBUG, STEP or PROFILE is set\" &&\
@@ -258,7 +257,6 @@ shell: test-dep
 
 .PHONY: reset
 reset:
-	@rm -f /dev/shm/vpp-unittest-*
 	@rm -rf /tmp/vpp-unittest-*
 	@rm -f /tmp/api_post_mortem.*
 	@rm -rf $(FAILED_DIR)

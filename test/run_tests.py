@@ -28,12 +28,9 @@ from util import check_core_path, get_core_path, is_core_present
 
 # timeout which controls how long the child has to finish after seeing
 # a core dump in test temporary directory. If this is exceeded, parent assumes
-# that child process is stuck (e.g. waiting for shm mutex, which will never
-# get unlocked) and kill the child
+# that child process is stuck (e.g. waiting for event from vpp) and kill
+# the child
 core_timeout = 3
-min_req_shm = 536870912  # min 512MB shm required
-# 128MB per extra process
-shm_per_process = 134217728
 
 
 class StreamQueue(Queue):
@@ -796,10 +793,8 @@ if __name__ == '__main__':
         num_cpus = len(os.sched_getaffinity(0))
     except AttributeError:
         num_cpus = multiprocessing.cpu_count()
-    shm_free = psutil.disk_usage('/dev/shm').free
 
-    print('OS reports %s available cpu(s). Free shm: %s' % (
-        num_cpus, "{:,}MB".format(shm_free / (1024 * 1024))))
+    print("OS reports %s available cpu(s)." % num_cpus)
 
     test_jobs = os.getenv("TEST_JOBS", "1").lower()  # default = 1 process
     if test_jobs == 'auto':
@@ -807,15 +802,7 @@ if __name__ == '__main__':
             concurrent_tests = 1
             print('Interactive mode required, running on one core')
         else:
-            shm_max_processes = 1
-            if shm_free < min_req_shm:
-                raise Exception('Not enough free space in /dev/shm. Required '
-                                'free space is at least %sM.'
-                                % (min_req_shm >> 20))
-            else:
-                extra_shm = shm_free - min_req_shm
-                shm_max_processes += extra_shm // shm_per_process
-            concurrent_tests = min(cpu_count(), shm_max_processes)
+            concurrent_tests = num_cpus
             print('Found enough resources to run tests with %s cores'
                   % concurrent_tests)
     elif test_jobs.isdigit():
