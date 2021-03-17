@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c1a4bf42_46c722a4",
+        "filename": "src/plugins/cnat/cnat_node_snat.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-03-17T17:26:01Z",
+      "side": 1,
+      "message": "shouldn\u0027t it be clearing VNET_BUFFER_OFFLOAD_F_{IP,UDP,TCP}_CKSUM too?",
+      "revId": "b7d85e4a0e2d496e9e0e313094a6b52995cbed1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9c00bafd_eb93c67d",
+        "filename": "src/plugins/cnat/cnat_node_vip.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-03-17T17:26:01Z",
+      "side": 1,
+      "message": "shouldn\u0027t it be clearing VNET_BUFFER_OFFLOAD_F_{IP,UDP,TCP}_CKSUM too?",
+      "revId": "b7d85e4a0e2d496e9e0e313094a6b52995cbed1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c66f3f35_4298f991",
+        "filename": "src/vnet/devices/af_packet/node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-03-17T17:26:01Z",
+      "side": 1,
+      "message": "is it needed anymore? I think we do not need to reset checksum?\n(same comment for others below)",
+      "revId": "b7d85e4a0e2d496e9e0e313094a6b52995cbed1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2cda9390_bb667eae",
+        "filename": "src/vnet/ip/ip_psh_cksum.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-03-17T17:26:01Z",
+      "side": 1,
+      "message": "I suspect this could be costly because we are writing data in small chunks into psh (2x 32-bits + 1x 8-bit + 1x 16-bits) and will be reading it as 256-bits in ip_csum(). This will prevent store-forwarding and block the pipeline.\nIf this becomes performance sensitive, we might want to change that.\nSome for v6 below.",
+      "revId": "b7d85e4a0e2d496e9e0e313094a6b52995cbed1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
