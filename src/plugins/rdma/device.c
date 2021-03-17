@@ -788,12 +788,6 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd,
 
   ethernet_mac_address_generate (rd->hwaddr.bytes);
 
-  if ((rd->mr = ibv_reg_mr (rd->pd, (void *) bm->buffer_mem_start,
-			    bm->buffer_mem_size,
-			    IBV_ACCESS_LOCAL_WRITE)) == 0)
-    return clib_error_return_unix (0, "Register MR Failed");
-  rd->lkey = rd->mr->lkey;	/* avoid indirection in datapath */
-
   /*
    * /!\ WARNING /!\ creation order is important
    * We *must* create TX queues *before* RX queues, otherwise we will receive
