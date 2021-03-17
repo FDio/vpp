@@ -20,7 +20,7 @@ FAILED_DIR=/tmp/vpp-failed-unittests/
 PLUGIN_TEST_DIRS=$(shell find $(PLUGIN_SRC_DIR) -type d -name test -exec echo -n " -d {}" \;)
 CORE_TEST_DIRS=$(shell find $(WS_ROOT)/src -not \( -path $(INTERN_PLUGIN_SRC_DIR) -prune \) -type d -name test -exec echo -n " -d {}" \;)
 VPP_TEST_DIRS=$(shell ls -d $(TEST_DIR)$(PLUGIN_TEST_DIRS)$(CORE_TEST_DIRS) $(EXTERN_TESTS))
-VPP_TEST_SRC=$(shell for dir in $(VPP_TEST_DIRS) ; do ls $$dir/*.py; done)
+VPP_TEST_SRC=$(shell for dir in $(VPP_TEST_DIRS) ; do ls $$dir/*.py 2>/dev/null; done)
 
 .PHONY: verify-no-running-vpp
 
@@ -167,7 +167,7 @@ PLUGIN_SRC_DIR=$(INTERN_PLUGIN_SRC_DIR)
 endif
 
 define retest-func
-@env FORCE_FOREGROUND=$(FORCE_FOREGROUND) FAILED_DIR=$(FAILED_DIR) VENV_PATH=$(VENV_PATH) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(VENV_PATH)/bin/activate $(PYTHON_INTERP) $(PYTHON_PROFILE_OPTS) $(BUILD_TEST_SRC)/run_tests.py -d $(BUILD_TEST_SRC) $(UNITTEST_EXTRA_OPTS) || env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
+@env FORCE_FOREGROUND=$(FORCE_FOREGROUND) FAILED_DIR=$(FAILED_DIR) VENV_PATH=$(VENV_PATH) VPP_TEST_DIRS="$(VPP_TEST_DIRS)" scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(VENV_PATH)/bin/activate $(PYTHON_INTERP) $(PYTHON_PROFILE_OPTS) $(BUILD_TEST_SRC)/run_tests.py -d $(BUILD_TEST_SRC) $(UNITTEST_EXTRA_OPTS) || env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
 endef
 
 .PHONY: sanity
@@ -218,6 +218,7 @@ ext-test-apps:
 	make -C ext test-apps
 
 $(BUILD_TEST_SRC): verify-env
+	@rm -rf $@
 	@mkdir -p $@
 	@for file in $(VPP_TEST_SRC); do if [ ! -L $$file ] && [ ! -e $(BUILD_TEST_SRC)/$$(basename $$file) ] ; then ln -s $$file $(BUILD_TEST_SRC) ; fi ; done
 

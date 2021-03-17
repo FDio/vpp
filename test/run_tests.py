@@ -3,6 +3,7 @@
 import sys
 import shutil
 import os
+sys.path += os.getenv("VPP_TEST_DIRS").split()
 import fnmatch
 import unittest
 import argparse
