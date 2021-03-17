@@ -25,7 +25,6 @@ enum rdma_mode
   RDMA_API_MODE_DV = 2,
 };
 
-
 /** \brief
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

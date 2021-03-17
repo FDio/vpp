@@ -506,6 +506,44 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
   return 0;
 }
 
+static uint64_t
+rdma_rss42ibv (const rdma_rss4_t rss4)
+{
+  switch (rss4)
+    {
+    case RDMA_RSS4_IP:
+      return IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4;
+    case RDMA_RSS4_IP_UDP:
+      return IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4 |
+	IBV_RX_HASH_SRC_PORT_UDP | IBV_RX_HASH_DST_PORT_UDP;
+    case RDMA_RSS4_AUTO:	/* fallthrough */
+    case RDMA_RSS4_IP_TCP:
+      return IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4 |
+	IBV_RX_HASH_SRC_PORT_TCP | IBV_RX_HASH_DST_PORT_TCP;
+    }
+  ASSERT (0);
+  return 0;
+}
+
+static uint64_t
+rdma_rss62ibv (const rdma_rss6_t rss6)
+{
+  switch (rss6)
+    {
+    case RDMA_RSS6_IP:
+      return IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6;
+    case RDMA_RSS6_IP_UDP:
+      return IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6 |
+	IBV_RX_HASH_SRC_PORT_UDP | IBV_RX_HASH_DST_PORT_UDP;
+    case RDMA_RSS6_AUTO:	/* fallthrough */
+    case RDMA_RSS6_IP_TCP:
+      return IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6 |
+	IBV_RX_HASH_SRC_PORT_TCP | IBV_RX_HASH_DST_PORT_TCP;
+    }
+  ASSERT (0);
+  return 0;
+}
+
 static clib_error_t *
 rdma_rxq_finalize (vlib_main_t * vm, rdma_device_t * rd)
 {
@@ -539,15 +577,11 @@ rdma_rxq_finalize (vlib_main_t * vm, rdma_device_t * rd)
   qpia.rx_hash_conf.rx_hash_key = rdma_rss_hash_key;
   qpia.rx_hash_conf.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ;
 
-  qpia.rx_hash_conf.rx_hash_fields_mask =
-    IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4 | IBV_RX_HASH_SRC_PORT_TCP |
-    IBV_RX_HASH_DST_PORT_TCP;
+  qpia.rx_hash_conf.rx_hash_fields_mask = rdma_rss42ibv (rd->rss4);
   if ((rd->rx_qp4 = ibv_create_qp_ex (rd->ctx, &qpia)) == 0)
     return clib_error_return_unix (0, "IPv4 Queue Pair create failed");
 
-  qpia.rx_hash_conf.rx_hash_fields_mask =
-    IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6 | IBV_RX_HASH_SRC_PORT_TCP |
-    IBV_RX_HASH_DST_PORT_TCP;
+  qpia.rx_hash_conf.rx_hash_fields_mask = rdma_rss62ibv (rd->rss6);
   if ((rd->rx_qp6 = ibv_create_qp_ex (rd->ctx, &qpia)) == 0)
     return clib_error_return_unix (0, "IPv6 Queue Pair create failed");
 
@@ -657,8 +691,8 @@ rdma_txq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc)
 }
 
 static clib_error_t *
-rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd, u32 rxq_size,
-	       u32 txq_size, u32 rxq_num)
+rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd,
+	       rdma_create_if_args_t * args)
 {
   clib_error_t *err;
   vlib_buffer_main_t *bm = vm->buffer_main;
@@ -686,17 +720,20 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd, u32 rxq_size,
     return clib_error_return_unix (0, "Register MR Failed");
   rd->lkey = rd->mr->lkey;	/* avoid indirection in datapath */
 
+  rd->rss4 = args->rss4;
+  rd->rss6 = args->rss6;
+
   /*
    * /!\ WARNING /!\ creation order is important
    * We *must* create TX queues *before* RX queues, otherwise we will receive
    * the broacast packets we sent
    */
   for (i = 0; i < tm->n_vlib_mains; i++)
-    if ((err = rdma_txq_init (vm, rd, i, txq_size)))
+    if ((err = rdma_txq_init (vm, rd, i, args->txq_size)))
       return err;
 
-  for (i = 0; i < rxq_num; i++)
-    if ((err = rdma_rxq_init (vm, rd, i, rxq_size)))
+  for (i = 0; i < args->rxq_num; i++)
+    if ((err = rdma_rxq_init (vm, rd, i, args->rxq_size)))
       return err;
   if ((err = rdma_rxq_finalize (vm, rd)))
     return err;
@@ -841,8 +878,7 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
 	}
     }
 
-  if ((args->error = rdma_dev_init (vm, rd, args->rxq_size, args->txq_size,
-				    args->rxq_num)))
+  if ((args->error = rdma_dev_init (vm, rd, args)))
     goto err2;
 
   if ((args->error = rdma_register_interface (vnm, rd)))

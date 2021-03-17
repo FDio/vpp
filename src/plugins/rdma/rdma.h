@@ -147,6 +147,22 @@ STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline2, 128);
 #define RDMA_TXQ_USED_SZ(head, tail)            ((u16)((u16)(tail) - (u16)(head)))
 #define RDMA_TXQ_AVAIL_SZ(txq, head, tail)      ((u16)(RDMA_TXQ_BUF_SZ (txq) - RDMA_TXQ_USED_SZ (head, tail)))
 
+typedef enum
+{
+  RDMA_RSS4_AUTO = 0,
+  RDMA_RSS4_IP,
+  RDMA_RSS4_IP_UDP,
+  RDMA_RSS4_IP_TCP,
+} rdma_rss4_t;
+
+typedef enum
+{
+  RDMA_RSS6_AUTO = 0,
+  RDMA_RSS6_IP,
+  RDMA_RSS6_IP_UDP,
+  RDMA_RSS6_IP_TCP,
+} rdma_rss6_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -168,6 +184,8 @@ typedef struct
   mac_address_t hwaddr;
   u32 async_event_clib_file_index;
   u32 dev_instance;
+  rdma_rss4_t rss4;
+  rdma_rss6_t rss6;
 
   struct ibv_context *ctx;
   struct ibv_pd *pd;
@@ -220,6 +238,8 @@ typedef struct
   u32 txq_size;
   u32 rxq_num;
   rdma_mode_t mode;
+  rdma_rss4_t rss4;
+  rdma_rss6_t rss6;
 
   /* return */
   int rv;

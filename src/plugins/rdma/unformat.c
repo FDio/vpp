@@ -48,6 +48,18 @@ unformat_rdma_create_if_args (unformat_input_t * input, va_list * vargs)
 	args->mode = RDMA_MODE_IBV;
       else if (unformat (line_input, "mode dv"))
 	args->mode = RDMA_MODE_DV;
+      else if (unformat (line_input, "rss ipv4"))
+	args->rss4 = RDMA_RSS4_IP;
+      else if (unformat (line_input, "rss ipv4-udp"))
+	args->rss4 = RDMA_RSS4_IP_UDP;
+      else if (unformat (line_input, "rss ipv4-tcp"))
+	args->rss4 = RDMA_RSS4_IP_TCP;
+      else if (unformat (line_input, "rss ipv6"))
+	args->rss6 = RDMA_RSS6_IP;
+      else if (unformat (line_input, "rss ipv6-udp"))
+	args->rss6 = RDMA_RSS6_IP_UDP;
+      else if (unformat (line_input, "rss ipv6-tcp"))
+	args->rss6 = RDMA_RSS6_IP_TCP;
       else
 	{
 	  /* return failure on unknown input */

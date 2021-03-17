@@ -73,6 +73,42 @@ format_rdma_bit_flag (u8 * s, va_list * args)
 }
 
 u8 *
+format_rdma_rss4 (u8 * s, va_list * args)
+{
+  const rdma_rss4_t *rss4 = va_arg (*args, const rdma_rss4_t *);
+  switch (*rss4)
+    {
+    case RDMA_RSS4_IP:
+      return format (s, "ipv4");
+    case RDMA_RSS4_IP_UDP:
+      return format (s, "ipv4-udp");
+    case RDMA_RSS4_AUTO:	/* fallthrough */
+    case RDMA_RSS4_IP_TCP:
+      return format (s, "ipv4-tcp");
+    }
+  ASSERT (0);
+  return format (s, "unknown(%x)", *rss4);
+}
+
+u8 *
+format_rdma_rss6 (u8 * s, va_list * args)
+{
+  const rdma_rss6_t *rss6 = va_arg (*args, const rdma_rss6_t *);
+  switch (*rss6)
+    {
+    case RDMA_RSS6_IP:
+      return format (s, "ipv6");
+    case RDMA_RSS6_IP_UDP:
+      return format (s, "ipv6-udp");
+    case RDMA_RSS6_AUTO:	/* fallthrough */
+    case RDMA_RSS6_IP_TCP:
+      return format (s, "ipv6-tcp");
+    }
+  ASSERT (0);
+  return format (s, "unknown(%x)", *rss6);
+}
+
+u8 *
 format_rdma_device (u8 * s, va_list * args)
 {
   vlib_main_t *vm = vlib_get_main ();
@@ -96,8 +132,10 @@ format_rdma_device (u8 * s, va_list * args)
 		  format_vlib_pci_vpd, d->vpd_r, "SN");
       vlib_pci_free_device_info (d);
     }
-  s = format (s, "%Uflags: %U", format_white_space, indent,
+  s = format (s, "%Uflags: %U\n", format_white_space, indent,
 	      format_rdma_device_flags, rd);
+  s = format (s, "%Urss: %U %U", format_white_space, indent, format_rdma_rss4,
+	      &rd->rss4, format_rdma_rss6, &rd->rss6);
   if (rd->error)
     s = format (s, "\n%Uerror %U", format_white_space, indent,
 		format_clib_error, rd->error);
