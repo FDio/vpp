@@ -20,7 +20,7 @@ FAILED_DIR=/tmp/vpp-failed-unittests/
 PLUGIN_TEST_DIRS=$(shell find $(PLUGIN_SRC_DIR) -type d -name test -exec echo -n " -d {}" \;)
 CORE_TEST_DIRS=$(shell find $(WS_ROOT)/src -not \( -path $(INTERN_PLUGIN_SRC_DIR) -prune \) -type d -name test -exec echo -n " -d {}" \;)
 VPP_TEST_DIRS=$(shell ls -d $(TEST_DIR)$(PLUGIN_TEST_DIRS)$(CORE_TEST_DIRS) $(EXTERN_TESTS))
-VPP_TEST_SRC=$(shell for dir in $(VPP_TEST_DIRS) ; do ls $$dir/*.py; done)
+VPP_TEST_SRC=$(shell for dir in $(VPP_TEST_DIRS) ; do ls $$dir/*.py 2>/dev/null; done)
 
 .PHONY: verify-no-running-vpp
 
@@ -97,6 +97,11 @@ PYTHON_INTERP=python3
 else
 PYTHON_INTERP=$(PYTHON)
 endif
+
+empty:=
+space:= $(empty) $(empty)
+export PYTHONPATH=$(subst $(space),:,$(VPP_TEST_DIRS))
+export PYTHONPYCACHEPREFIX=$(TEST_BR)/pycache
 
 PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
 PIP_VERSION=20.1.1
@@ -177,7 +182,7 @@ SANITY_IMPORT_VPP_PAPI_CMD=true
 SANITY_RUN_VPP_CMD=true
 else
 SANITY_IMPORT_VPP_PAPI_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) $(BUILD_TEST_SRC)/sanity_import_vpp_papi.py
-SANITY_RUN_VPP_CMD=source $(VENV_PATH)/bin/activate && PYTHONPATH=$(BUILD_TEST_SRC) $(PYTHON_INTERP) $(BUILD_TEST_SRC)/sanity_run_vpp.py
+SANITY_RUN_VPP_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) $(BUILD_TEST_SRC)/sanity_run_vpp.py
 endif
 
 ifndef TEST_JOBS
@@ -217,6 +222,7 @@ ext-test-apps:
 	make -C ext test-apps
 
 $(BUILD_TEST_SRC): verify-env
+	@rm -rf $@
 	@mkdir -p $@
 	@for file in $(VPP_TEST_SRC); do if [ ! -L $$file ] && [ ! -e $(BUILD_TEST_SRC)/$$(basename $$file) ] ; then ln -s $$file $(BUILD_TEST_SRC) ; fi ; done
 
@@ -238,10 +244,10 @@ retest: verify-env sanity $(FAILED_DIR)
 shell: test-dep
 	@echo "source $(VENV_PATH)/bin/activate;\
 		cd $(BUILD_TEST_SRC);\
-		export PYTHONPATH=$(BUILD_TEST_SRC);\
+		export PYTHONPATH=$(PYTHONPATH);\
 		export RND_SEED=$(RND_SEED);\
 		echo '***';\
-		echo PYTHONPATH=$(BUILD_TEST_SRC);\
+		echo PYTHONPATH=$(PYTHONPATH);\
 		echo RND_SEED=$(RND_SEED);\
 		echo VPP_BUILD_DIR=$(VPP_BUILD_DIR);\
 		echo VPP_BIN=$(VPP_BIN);\
