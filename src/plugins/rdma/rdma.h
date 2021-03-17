@@ -174,6 +174,23 @@ STATIC_ASSERT_OFFSET_OF (rdma_txq_t, cacheline2, 128);
 #define RDMA_RXQ_MAX_CHAIN_LOG_SZ 3	/* This should NOT be lower than 3! */
 #define RDMA_RXQ_MAX_CHAIN_SZ (1U << RDMA_RXQ_MAX_CHAIN_LOG_SZ)
 #define RDMA_RXQ_LEGACY_MODE_MAX_CHAIN_SZ 5
+
+typedef enum
+{
+  RDMA_RSS4_AUTO = 0,
+  RDMA_RSS4_IP,
+  RDMA_RSS4_IP_UDP,
+  RDMA_RSS4_IP_TCP,
+} rdma_rss4_t;
+
+typedef enum
+{
+  RDMA_RSS6_AUTO = 0,
+  RDMA_RSS6_IP,
+  RDMA_RSS6_IP_UDP,
+  RDMA_RSS6_IP_TCP,
+} rdma_rss6_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -195,6 +212,8 @@ typedef struct
   mac_address_t hwaddr;
   u32 async_event_clib_file_index;
   u32 dev_instance;
+  rdma_rss4_t rss4;
+  rdma_rss6_t rss6;
 
   struct ibv_context *ctx;
   struct ibv_pd *pd;
@@ -264,6 +283,8 @@ typedef struct
   u8 no_multi_seg;
   u8 disable_striding_rq;
   u16 max_pktlen;
+  rdma_rss4_t rss4;
+  rdma_rss6_t rss6;
 
   /* return */
   int rv;

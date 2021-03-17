@@ -311,7 +311,7 @@ rdma_async_event_read_ready (clib_file_t * f)
       vlib_log_emerg (rm->log_class, "%s: fatal error", rd->name);
       break;
     default:
-      rdma_log__ (VLIB_LOG_LEVEL_ERR, rd, "unhandeld RDMA async event %i",
+      rdma_log__ (VLIB_LOG_LEVEL_ERR, rd, "unhandeld RDMA async event %d",
 		  event.event_type);
       break;
     }
@@ -611,8 +611,46 @@ rdma_rxq_init (vlib_main_t * vm, rdma_device_t * rd, u16 qid, u32 n_desc,
   return 0;
 }
 
+static uint64_t
+rdma_rss42ibv (const rdma_rss4_t rss4)
+{
+  switch (rss4)
+    {
+    case RDMA_RSS4_IP:
+      return IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4;
+    case RDMA_RSS4_IP_UDP:
+      return IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4 |
+	     IBV_RX_HASH_SRC_PORT_UDP | IBV_RX_HASH_DST_PORT_UDP;
+    case RDMA_RSS4_AUTO: /* fallthrough */
+    case RDMA_RSS4_IP_TCP:
+      return IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4 |
+	     IBV_RX_HASH_SRC_PORT_TCP | IBV_RX_HASH_DST_PORT_TCP;
+    }
+  ASSERT (0);
+  return 0;
+}
+
+static uint64_t
+rdma_rss62ibv (const rdma_rss6_t rss6)
+{
+  switch (rss6)
+    {
+    case RDMA_RSS6_IP:
+      return IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6;
+    case RDMA_RSS6_IP_UDP:
+      return IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6 |
+	     IBV_RX_HASH_SRC_PORT_UDP | IBV_RX_HASH_DST_PORT_UDP;
+    case RDMA_RSS6_AUTO: /* fallthrough */
+    case RDMA_RSS6_IP_TCP:
+      return IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6 |
+	     IBV_RX_HASH_SRC_PORT_TCP | IBV_RX_HASH_DST_PORT_TCP;
+    }
+  ASSERT (0);
+  return 0;
+}
+
 static clib_error_t *
-rdma_rxq_finalize (vlib_main_t * vm, rdma_device_t * rd)
+rdma_rxq_finalize (vlib_main_t *vm, rdma_device_t *rd)
 {
   struct ibv_rwq_ind_table_init_attr rwqia;
   struct ibv_qp_init_attr_ex qpia;
@@ -644,15 +682,11 @@ rdma_rxq_finalize (vlib_main_t * vm, rdma_device_t * rd)
   qpia.rx_hash_conf.rx_hash_key = rdma_rss_hash_key;
   qpia.rx_hash_conf.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ;
 
-  qpia.rx_hash_conf.rx_hash_fields_mask =
-    IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4 | IBV_RX_HASH_SRC_PORT_TCP |
-    IBV_RX_HASH_DST_PORT_TCP;
+  qpia.rx_hash_conf.rx_hash_fields_mask = rdma_rss42ibv (rd->rss4);
   if ((rd->rx_qp4 = ibv_create_qp_ex (rd->ctx, &qpia)) == 0)
     return clib_error_return_unix (0, "IPv4 Queue Pair create failed");
 
-  qpia.rx_hash_conf.rx_hash_fields_mask =
-    IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6 | IBV_RX_HASH_SRC_PORT_TCP |
-    IBV_RX_HASH_DST_PORT_TCP;
+  qpia.rx_hash_conf.rx_hash_fields_mask = rdma_rss62ibv (rd->rss6);
   if ((rd->rx_qp6 = ibv_create_qp_ex (rd->ctx, &qpia)) == 0)
     return clib_error_return_unix (0, "IPv6 Queue Pair create failed");
 
@@ -788,6 +822,9 @@ rdma_dev_init (vlib_main_t * vm, rdma_device_t * rd,
 
   ethernet_mac_address_generate (rd->hwaddr.bytes);
 
+  rd->rss4 = args->rss4;
+  rd->rss6 = args->rss6;
+
   /*
    * /!\ WARNING /!\ creation order is important
    * We *must* create TX queues *before* RX queues, otherwise we will receive
@@ -856,8 +893,9 @@ rdma_create_if (vlib_main_t * vm, rdma_create_if_args_t * args)
       !is_pow2 (args->rxq_size) || !is_pow2 (args->txq_size))
     {
       args->rv = VNET_API_ERROR_INVALID_VALUE;
-      args->error = clib_error_return (0, "queue size must be a power of two "
-				       "between %i and 65535",
+      args->error = clib_error_return (0,
+				       "queue size must be a power of two "
+				       "between %d and 65535",
 				       VLIB_FRAME_SIZE);
       goto err0;
     }
