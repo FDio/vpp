@@ -44,6 +44,40 @@ rdma_api_mode (vl_api_rdma_mode_t mode)
   return RDMA_MODE_AUTO;
 }
 
+static rdma_rss4_t
+rdma_api_rss4 (const vl_api_rdma_rss4_t rss4)
+{
+  switch (rss4)
+    {
+    case RDMA_API_RSS4_AUTO:
+      return RDMA_RSS4_AUTO;
+    case RDMA_API_RSS4_IP:
+      return RDMA_RSS4_IP;
+    case RDMA_API_RSS4_IP_UDP:
+      return RDMA_RSS4_IP_UDP;
+    case RDMA_API_RSS4_IP_TCP:
+      return RDMA_RSS4_IP_TCP;
+    }
+  return RDMA_RSS4_AUTO;
+}
+
+static rdma_rss6_t
+rdma_api_rss6 (const vl_api_rdma_rss6_t rss6)
+{
+  switch (rss6)
+    {
+    case RDMA_API_RSS6_AUTO:
+      return RDMA_RSS6_AUTO;
+    case RDMA_API_RSS6_IP:
+      return RDMA_RSS6_IP;
+    case RDMA_API_RSS6_IP_UDP:
+      return RDMA_RSS6_IP_UDP;
+    case RDMA_API_RSS6_IP_TCP:
+      return RDMA_RSS6_IP_TCP;
+    }
+  return RDMA_RSS6_AUTO;
+}
+
 static void
 vl_api_rdma_create_v2_t_handler (vl_api_rdma_create_v2_t * mp)
 {
@@ -64,6 +98,8 @@ vl_api_rdma_create_v2_t_handler (vl_api_rdma_create_v2_t * mp)
   args.disable_striding_rq = 0;
   args.no_multi_seg = mp->no_multi_seg;
   args.max_pktlen = ntohs (mp->max_pktlen);
+  args.rss4 = rdma_api_rss4 (mp->rss4);
+  args.rss6 = rdma_api_rss6 (mp->rss6);
   rdma_create_if (vm, &args);
   rv = args.rv;
 

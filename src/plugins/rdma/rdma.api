@@ -25,7 +25,6 @@ enum rdma_mode
   RDMA_API_MODE_DV = 2,
 };
 
-
 /** \brief
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -52,6 +51,22 @@ define rdma_create
   option vat_help = "<host-if ifname> [name <name>] [rx-queue-size <size>] [tx-queue-size <size>] [num-rx-queues <size>] [mode <auto|ibv|dv>]";
 };
 
+enum rdma_rss4
+{
+  RDMA_API_RSS4_AUTO = 0,
+  RDMA_API_RSS4_IP = 1,
+  RDMA_API_RSS4_IP_UDP = 2,
+  RDMA_API_RSS4_IP_TCP = 3,
+};
+
+enum rdma_rss6
+{
+  RDMA_API_RSS6_AUTO = 0,
+  RDMA_API_RSS6_IP = 1,
+  RDMA_API_RSS6_IP_UDP = 2,
+  RDMA_API_RSS6_IP_TCP = 3,
+};
+
 /** \brief
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -63,6 +78,8 @@ define rdma_create
     @param mode - operation mode (optional)
     @param no_multi_seg (optional) - disable chained buffer RX
     @param max_pktlen (optional) - maximal RX packet size.
+    @param rss4 (optional) - IPv4 RSS
+    @param rss6 (optional) - IPv6 RSS
 */
 
 define rdma_create_v2
@@ -78,7 +95,9 @@ define rdma_create_v2
   vl_api_rdma_mode_t mode [default=0];
   bool no_multi_seg [default=0];
   u16 max_pktlen [default=0];
-  option vat_help = "<host-if ifname> [name <name>] [rx-queue-size <size>] [tx-queue-size <size>] [num-rx-queues <size>] [mode <auto|ibv|dv>] [no-multi-seg] [max-pktlen <size>]";
+  vl_api_rdma_rss4_t rss4 [default=0];
+  vl_api_rdma_rss6_t rss6 [default=0];
+  option vat_help = "<host-if ifname> [name <name>] [rx-queue-size <size>] [tx-queue-size <size>] [num-rx-queues <size>] [mode <auto|ibv|dv>] [no-multi-seg] [max-pktlen <size>] [rss <ipv4|ipv4-udp|ipv4-tcp>] [rss <ipv6|ipv6-udp|ipv6-tcp>]";
 };
 
 

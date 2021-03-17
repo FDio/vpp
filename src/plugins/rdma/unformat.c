@@ -54,6 +54,18 @@ unformat_rdma_create_if_args (unformat_input_t * input, va_list * vargs)
 	args->no_multi_seg = 1;
       else if (unformat (line_input, "max-pktlen %u", &tmp))
 	args->max_pktlen = tmp;
+      else if (unformat (line_input, "rss ipv4"))
+	args->rss4 = RDMA_RSS4_IP;
+      else if (unformat (line_input, "rss ipv4-udp"))
+	args->rss4 = RDMA_RSS4_IP_UDP;
+      else if (unformat (line_input, "rss ipv4-tcp"))
+	args->rss4 = RDMA_RSS4_IP_TCP;
+      else if (unformat (line_input, "rss ipv6"))
+	args->rss6 = RDMA_RSS6_IP;
+      else if (unformat (line_input, "rss ipv6-udp"))
+	args->rss6 = RDMA_RSS6_IP_UDP;
+      else if (unformat (line_input, "rss ipv6-tcp"))
+	args->rss6 = RDMA_RSS6_IP_TCP;
       else
 	{
 	  /* return failure on unknown input */
