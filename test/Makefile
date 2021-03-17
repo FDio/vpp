@@ -20,7 +20,7 @@ FAILED_DIR=/tmp/vpp-failed-unittests/
 PLUGIN_TEST_DIRS=$(shell find $(PLUGIN_SRC_DIR) -type d -name test -exec echo -n " -d {}" \;)
 CORE_TEST_DIRS=$(shell find $(WS_ROOT)/src -not \( -path $(INTERN_PLUGIN_SRC_DIR) -prune \) -type d -name test -exec echo -n " -d {}" \;)
 VPP_TEST_DIRS=$(shell ls -d $(TEST_DIR)$(PLUGIN_TEST_DIRS)$(CORE_TEST_DIRS) $(EXTERN_TESTS))
-VPP_TEST_SRC=$(shell for dir in $(VPP_TEST_DIRS) ; do ls $$dir/*.py; done)
+VPP_TEST_SRC=$(shell for dir in $(VPP_TEST_DIRS) ; do ls $$dir/*.py 2>/dev/null; done)
 
 .PHONY: verify-no-running-vpp
 
@@ -98,6 +98,10 @@ else
 PYTHON_INTERP=$(PYTHON)
 endif
 
+empty:=
+space:= $(empty) $(empty)
+PYTHONPATH=$(subst $(space),:,$(VPP_TEST_DIRS))
+
 PYTHON_VERSION=$(shell $(PYTHON_INTERP) -c 'import sys; print(sys.version_info.major)')
 PIP_VERSION=20.1.1
 # Keep in sync with requirements.txt
@@ -167,7 +171,7 @@ PLUGIN_SRC_DIR=$(INTERN_PLUGIN_SRC_DIR)
 endif
 
 define retest-func
-@env FORCE_FOREGROUND=$(FORCE_FOREGROUND) FAILED_DIR=$(FAILED_DIR) VENV_PATH=$(VENV_PATH) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(VENV_PATH)/bin/activate $(PYTHON_INTERP) $(PYTHON_PROFILE_OPTS) $(BUILD_TEST_SRC)/run_tests.py -d $(BUILD_TEST_SRC) $(UNITTEST_EXTRA_OPTS) || env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
+@env FORCE_FOREGROUND=$(FORCE_FOREGROUND) FAILED_DIR=$(FAILED_DIR) VENV_PATH=$(VENV_PATH) PYTHONPATH=$(PYTHONPATH) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(VENV_PATH)/bin/activate $(PYTHON_INTERP) $(PYTHON_PROFILE_OPTS) $(BUILD_TEST_SRC)/run_tests.py -d $(BUILD_TEST_SRC) $(UNITTEST_EXTRA_OPTS) || env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
 endef
 
 .PHONY: sanity
@@ -177,7 +181,7 @@ SANITY_IMPORT_VPP_PAPI_CMD=true
 SANITY_RUN_VPP_CMD=true
 else
 SANITY_IMPORT_VPP_PAPI_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) $(BUILD_TEST_SRC)/sanity_import_vpp_papi.py
-SANITY_RUN_VPP_CMD=source $(VENV_PATH)/bin/activate && PYTHONPATH=$(BUILD_TEST_SRC) $(PYTHON_INTERP) $(BUILD_TEST_SRC)/sanity_run_vpp.py
+SANITY_RUN_VPP_CMD=source $(VENV_PATH)/bin/activate && PYTHONPATH=$(PYTHONPATH) $(PYTHON_INTERP) $(BUILD_TEST_SRC)/sanity_run_vpp.py
 endif
 
 ifndef TEST_JOBS
@@ -217,6 +221,7 @@ ext-test-apps:
 	make -C ext test-apps
 
 $(BUILD_TEST_SRC): verify-env
+	@rm -rf $@
 	@mkdir -p $@
 	@for file in $(VPP_TEST_SRC); do if [ ! -L $$file ] && [ ! -e $(BUILD_TEST_SRC)/$$(basename $$file) ] ; then ln -s $$file $(BUILD_TEST_SRC) ; fi ; done
 
@@ -238,10 +243,10 @@ retest: verify-env sanity $(FAILED_DIR)
 shell: test-dep
 	@echo "source $(VENV_PATH)/bin/activate;\
 		cd $(BUILD_TEST_SRC);\
-		export PYTHONPATH=$(BUILD_TEST_SRC);\
+		export PYTHONPATH=$(PYTHONPATH);\
 		export RND_SEED=$(RND_SEED);\
 		echo '***';\
-		echo PYTHONPATH=$(BUILD_TEST_SRC);\
+		echo PYTHONPATH=$(PYTHONPATH);\
 		echo RND_SEED=$(RND_SEED);\
 		echo VPP_BUILD_DIR=$(VPP_BUILD_DIR);\
 		echo VPP_BIN=$(VPP_BIN);\
