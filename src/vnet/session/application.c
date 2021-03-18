@@ -496,6 +496,9 @@ VLIB_NODE_FN (app_rx_mqs_input_node)
   if (aw->pending_rx_mqs)
     vlib_node_set_interrupt_pending (vm, app_rx_mqs_input_node.index);
 
+  if (n_msgs && wrk->state == SESSION_WRK_INTERRUPT)
+    vlib_node_set_interrupt_pending (vm, session_queue_node.index);
+
   return n_msgs;
 }
 
