@@ -69,6 +69,18 @@ typedef struct session_ctrl_evt_data_
   u8 data[SESSION_CTRL_MSG_MAX_SIZE];
 } session_evt_ctrl_data_t;
 
+typedef enum session_wrk_state_
+{
+  SESSION_WRK_POLLING,
+  SESSION_WRK_INTERRUPT,
+  SESSION_WRK_IDLE,
+} __clib_packed session_wrk_state_t;
+
+typedef enum session_wrk_flags_
+{
+  SESSION_WRK_F_ADAPTIVE = 1 << 0,
+} __clib_packed session_wrk_flag_t;
+
 typedef struct session_worker_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -90,6 +102,10 @@ typedef struct session_worker_
 
   /** Per-proto vector of sessions to enqueue */
   u32 **session_to_enqueue;
+
+  u32 timerfd;
+  session_wrk_flag_t flags;
+  session_wrk_state_t state;
 
   /** Context for session tx */
   session_tx_context_t ctx;
@@ -120,6 +136,9 @@ typedef struct session_worker_
 
   /** Vector of nexts for the pending tx buffers */
   u16 *pending_tx_nexts;
+
+  uword timerfd_file;
+  //  clib_time_type_t pm_switch_time;
 
 #if SESSION_DEBUG
   /** last event poll time by thread */
@@ -682,6 +701,16 @@ session_add_pending_tx_buffer (u32 thread_index, u32 bi, u32 next_node)
   session_worker_t *wrk = session_main_get_worker (thread_index);
   vec_add1 (wrk->pending_tx_buffers, bi);
   vec_add1 (wrk->pending_tx_nexts, next_node);
+  if (wrk->state == SESSION_WRK_INTERRUPT)
+    vlib_node_set_interrupt_pending (wrk->vm, session_queue_node.index);
+}
+
+always_inline void
+session_update_wrk_time (u32 thread_index)
+{
+  session_worker_t *wrk = session_main_get_worker (thread_index);
+  wrk->last_vlib_time = vlib_time_now (wrk->vm);
+  wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
 }
 
 fifo_segment_t *session_main_get_evt_q_segment (void);
