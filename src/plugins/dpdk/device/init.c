@@ -448,10 +448,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  switch (xd->pmd)
 	    {
 	      /* Drivers with valid speed_capa set */
+	    case VNET_DPDK_PMD_I40E:
+	      xd->flags |= DPDK_DEVICE_FLAG_INT_UNMASKABLE;
 	    case VNET_DPDK_PMD_E1000EM:
 	    case VNET_DPDK_PMD_IGB:
 	    case VNET_DPDK_PMD_IXGBE:
-	    case VNET_DPDK_PMD_I40E:
 	    case VNET_DPDK_PMD_ICE:
 	      xd->port_type = port_type_from_speed_capa (&dev_info);
 	      xd->supported_flow_actions = VNET_FLOW_ACTION_MARK |
@@ -471,7 +472,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 		}
 
 	      xd->port_conf.intr_conf.rxq = 1;
-
 	      break;
 	    case VNET_DPDK_PMD_CXGBE:
 	    case VNET_DPDK_PMD_MLX4:
@@ -482,9 +482,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      break;
 
 	      /* SR-IOV VFs */
+	    case VNET_DPDK_PMD_I40EVF:
+	      xd->flags |= DPDK_DEVICE_FLAG_INT_UNMASKABLE;
 	    case VNET_DPDK_PMD_IGBVF:
 	    case VNET_DPDK_PMD_IXGBEVF:
-	    case VNET_DPDK_PMD_I40EVF:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
 	      if (dm->conf->no_tx_checksum_offload == 0)
 		{
@@ -494,12 +495,14 @@ dpdk_lib_init (dpdk_main_t * dm)
 		    DPDK_DEVICE_FLAG_TX_OFFLOAD |
 		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
 		}
-	      /*xd->port_conf.intr_conf.rxq = 1;*/
+	      /* sDPDK bug in multiqueue... */
+	      /* xd->port_conf.intr_conf.rxq = 1; */
 	      break;
 
 	      /* iAVF */
 	    case VNET_DPDK_PMD_IAVF:
-        xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
+	      xd->flags |= DPDK_DEVICE_FLAG_INT_UNMASKABLE;
+	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
 	      xd->supported_flow_actions = VNET_FLOW_ACTION_MARK |
 		VNET_FLOW_ACTION_REDIRECT_TO_NODE |
 		VNET_FLOW_ACTION_REDIRECT_TO_QUEUE |
