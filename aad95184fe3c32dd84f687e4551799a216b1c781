@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "53a1eff7_83dacf82",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 475,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2021-03-18T03:51:06Z",
+      "side": 1,
+      "message": "Should remove the VECT512 portion above.",
+      "range": {
+        "startLine": 475,
+        "startChar": 1,
+        "endLine": 475,
+        "endChar": 6
+      },
+      "revId": "aad95184fe3c32dd84f687e4551799a216b1c781",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
