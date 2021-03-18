@@ -2516,7 +2516,8 @@ ldp_epoll_pwait_eventfd (int epfd, struct epoll_event *events,
       ldpw->mq_epfd_added = 1;
     }
 
-  rv = vls_epoll_wait (ep_vlsh, events, maxevents, 0);
+  /* Request to only drain unhandled to prevent libc_epoll_wait starved */
+  rv = vls_epoll_wait (ep_vlsh, events, maxevents, -2);
   if (rv > 0)
     goto done;
   else if (PREDICT_FALSE (rv < 0))
