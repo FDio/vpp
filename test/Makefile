@@ -257,6 +257,7 @@ shell: test-dep
 
 .PHONY: reset
 reset:
+  	@rm -f /dev/shm/vpp-unittest-*
 	@rm -rf /tmp/vpp-unittest-*
 	@rm -f /tmp/api_post_mortem.*
 	@rm -rf $(FAILED_DIR)
