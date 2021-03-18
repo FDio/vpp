@@ -478,12 +478,12 @@ class VppInterface(metaclass=abc.ABCMeta):
         return self.name
 
     def get_rx_stats(self):
-        c = self.test.statistics.get_counter("^/if/rx$")
-        return c[0][self.sw_if_index]
+        return (self.test.statistics["/if/rx"]
+                [:, self.sw_if_index].sum_packets())
 
     def get_tx_stats(self):
-        c = self.test.statistics.get_counter("^/if/tx$")
-        return c[0][self.sw_if_index]
+        return (self.test.statistics["/if/tx"]
+                [:, self.sw_if_index].sum_packets())
 
     def set_l3_mtu(self, mtu):
         self.test.vapi.sw_interface_set_mtu(self.sw_if_index, [mtu, 0, 0, 0])
