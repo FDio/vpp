@@ -16,8 +16,6 @@
 #include <vnet/vnet.h>
 #include <vppinfra/vec.h>
 #include <vppinfra/format.h>
-#include <vppinfra/file.h>
-#include <vlib/unix/unix.h>
 #include <assert.h>
 
 #include <vnet/ip/ip.h>
@@ -162,79 +160,6 @@ error:
   sw->flags |= VNET_SW_INTERFACE_FLAG_ERROR;
 }
 
-static clib_error_t *
-dpdk_rx_read_ready (clib_file_t *uf)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  dpdk_main_t *dm = &dpdk_main;
-  u32 qidx = uf->private_data;
-  vnet_hw_if_rx_queue_t *rxq = vnet_hw_if_get_rx_queue (vnm, qidx);
-  dpdk_device_t *xd = vec_elt_at_index (dm->devices, rxq->dev_instance);
-
-  u64 b;
-  CLIB_UNUSED (ssize_t size) = read (uf->file_descriptor, &b, sizeof (b));
-  if (rxq->mode != VNET_HW_IF_RX_MODE_POLLING)
-    {
-      vnet_hw_if_rx_queue_set_int_pending (vnm, uf->private_data);
-      rte_eth_dev_rx_intr_enable (xd->port_id, rxq->queue_id);
-    }
-
-  return 0;
-}
-
-static void
-dpdk_setup_interrupts (dpdk_device_t *xd)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
-  if (!hi)
-    return;
-
-  if (!xd->port_conf.intr_conf.rxq)
-    return;
-
-  /* Probe for interrupt support */
-  if (rte_eth_dev_rx_intr_enable (xd->port_id, 0))
-    {
-      dpdk_log_info ("probe for interrupt mode for device %U. Failed.\n",
-		     format_dpdk_device_name, xd->port_id);
-    }
-  else
-    {
-      xd->flags |= DPDK_DEVICE_FLAG_INT_SUPPORTED;
-      rte_eth_dev_rx_intr_disable (xd->port_id, 0);
-      dpdk_log_info ("Probe for interrupt mode for device %U. Success.\n",
-		     format_dpdk_device_name, xd->port_id);
-    }
-
-  if (xd->flags & DPDK_DEVICE_FLAG_INT_SUPPORTED)
-    {
-      hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
-      for (int q = 0; q < xd->rx_q_used; q++)
-	{
-	  dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
-	  clib_file_t f = { 0 };
-	  rxq->efd = rte_eth_dev_rx_intr_ctl_q_get_fd (xd->port_id, q);
-	  if (rxq->efd < 0)
-	    {
-	      xd->flags &= ~DPDK_DEVICE_FLAG_INT_SUPPORTED;
-	      hi->flags &= ~VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
-	      break;
-	    }
-	  f.read_function = dpdk_rx_read_ready;
-	  f.flags = UNIX_FILE_EVENT_EDGE_TRIGGERED;
-	  f.file_descriptor = rxq->efd;
-	  f.private_data = rxq->queue_index;
-	  f.description =
-	    format (0, "%U queue %u", format_dpdk_device_name, xd->port_id, q);
-	  rxq->clib_file_index = clib_file_add (&file_main, &f);
-	  vnet_hw_if_set_rx_queue_file_index (vnm, rxq->queue_index,
-					      rxq->clib_file_index);
-	}
-    }
-  vnet_hw_if_update_runtime_data (vnm, xd->hw_if_index);
-}
-
 void
 dpdk_device_start (dpdk_device_t * xd)
 {
@@ -250,8 +175,6 @@ dpdk_device_start (dpdk_device_t * xd)
       dpdk_device_error (xd, "rte_eth_dev_start", rv);
       return;
     }
-
-  dpdk_setup_interrupts (xd);
 
   if (xd->default_mac_address)
     rv = rte_eth_dev_default_mac_addr_set (xd->port_id,

@@ -128,18 +128,17 @@ typedef enum
 
 typedef uint16_t dpdk_portid_t;
 
-#define foreach_dpdk_device_flags                                             \
-  _ (0, ADMIN_UP, "admin-up")                                                 \
-  _ (1, PROMISC, "promisc")                                                   \
-  _ (2, PMD, "pmd")                                                           \
-  _ (3, PMD_INIT_FAIL, "pmd-init-fail")                                       \
-  _ (4, MAYBE_MULTISEG, "maybe-multiseg")                                     \
-  _ (5, HAVE_SUBIF, "subif")                                                  \
-  _ (9, TX_OFFLOAD, "tx-offload")                                             \
-  _ (10, INTEL_PHDR_CKSUM, "intel-phdr-cksum")                                \
-  _ (11, RX_FLOW_OFFLOAD, "rx-flow-offload")                                  \
-  _ (12, RX_IP4_CKSUM, "rx-ip4-cksum")                                        \
-  _ (13, INT_SUPPORTED, "int-supported")
+#define foreach_dpdk_device_flags \
+  _( 0, ADMIN_UP, "admin-up") \
+  _( 1, PROMISC, "promisc") \
+  _( 2, PMD, "pmd") \
+  _( 3, PMD_INIT_FAIL, "pmd-init-fail") \
+  _( 4, MAYBE_MULTISEG, "maybe-multiseg") \
+  _( 5, HAVE_SUBIF, "subif") \
+  _( 9, TX_OFFLOAD, "tx-offload") \
+  _(10, INTEL_PHDR_CKSUM, "intel-phdr-cksum") \
+  _(11, RX_FLOW_OFFLOAD, "rx-flow-offload") \
+  _(12, RX_IP4_CKSUM, "rx-ip4-cksum")
 
 enum
 {
@@ -167,8 +166,6 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u8 buffer_pool_index;
   u32 queue_index;
-  int efd;
-  uword clib_file_index;
 } dpdk_rx_queue_t;
 
 typedef struct
