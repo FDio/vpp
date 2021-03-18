@@ -28,11 +28,12 @@ static inline int
 session_send_evt_to_thread (void *data, void *args, u32 thread_index,
 			    session_evt_type_t evt_type)
 {
+  session_worker_t *wrk = session_main_get_worker (thread_index);
   session_event_t *evt;
   svm_msg_q_msg_t msg;
   svm_msg_q_t *mq;
 
-  mq = session_main_get_vpp_event_queue (thread_index);
+  mq = wrk->vpp_event_queue;
   if (PREDICT_FALSE (svm_msg_q_lock (mq)))
     return -1;
   if (PREDICT_FALSE (svm_msg_q_is_full (mq)
@@ -72,6 +73,10 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
   evt->event_type = evt_type;
 
   svm_msg_q_add_and_unlock (mq, &msg);
+
+  if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
+    vlib_node_set_interrupt_pending (wrk->vm, session_queue_node.index);
+
   return 0;
 }
 
@@ -121,19 +126,20 @@ session_send_rpc_evt_to_thread (u32 thread_index, void *fp, void *rpc_args)
 void
 session_add_self_custom_tx_evt (transport_connection_t * tc, u8 has_prio)
 {
-  session_t *s;
+  session_t *s = session_get (tc->s_index, tc->thread_index);
 
-  s = session_get (tc->s_index, tc->thread_index);
   ASSERT (s->thread_index == vlib_get_thread_index ());
   ASSERT (s->session_state != SESSION_STATE_TRANSPORT_DELETED);
+
   if (!(s->flags & SESSION_F_CUSTOM_TX))
     {
       s->flags |= SESSION_F_CUSTOM_TX;
       if (svm_fifo_set_event (s->tx_fifo)
 	  || transport_connection_is_descheduled (tc))
 	{
-	  session_worker_t *wrk;
 	  session_evt_elt_t *elt;
+	  session_worker_t *wrk;
+
 	  wrk = session_main_get_worker (tc->thread_index);
 	  if (has_prio)
 	    elt = session_evt_alloc_new (wrk);
@@ -142,6 +148,10 @@ session_add_self_custom_tx_evt (transport_connection_t * tc, u8 has_prio)
 	  elt->evt.session_index = tc->s_index;
 	  elt->evt.event_type = SESSION_IO_EVT_TX;
 	  tc->flags &= ~TRANSPORT_CONNECTION_F_DESCHED;
+
+	  if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
+	    vlib_node_set_interrupt_pending (wrk->vm,
+					     session_queue_node.index);
 	}
     }
 }
@@ -157,6 +167,9 @@ sesssion_reschedule_tx (transport_connection_t * tc)
   elt = session_evt_alloc_new (wrk);
   elt->evt.session_index = tc->s_index;
   elt->evt.event_type = SESSION_IO_EVT_TX;
+
+  if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
+    vlib_node_set_interrupt_pending (wrk->vm, session_queue_node.index);
 }
 
 static void
@@ -175,6 +188,9 @@ session_program_transport_ctrl_evt (session_t * s, session_evt_type_t evt)
       clib_memset (&elt->evt, 0, sizeof (session_event_t));
       elt->evt.session_handle = session_handle (s);
       elt->evt.event_type = evt;
+
+      if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
+	vlib_node_set_interrupt_pending (wrk->vm, session_queue_node.index);
     }
   else
     session_send_ctrl_evt_to_thread (s, evt);
@@ -1693,6 +1709,9 @@ session_manager_main_enable (vlib_main_t * vm)
 
       if (num_threads > 1)
 	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);
+
+      if (!smm->no_adaptive && smm->use_private_rx_mqs)
+	session_wrk_enable_adaptive_mode (wrk);
     }
 
   /* Allocate vpp event queues segment and queue */
@@ -1817,6 +1836,7 @@ session_main_init (vlib_main_t * vm)
   smm->session_enable_asap = 0;
   smm->poll_main = 0;
   smm->use_private_rx_mqs = 0;
+  smm->no_adaptive = 0;
   smm->session_baseva = HIGH_SEGMENT_BASEVA;
 
 #if (HIGH_SEGMENT_BASEVA > (4ULL << 30))
@@ -1938,6 +1958,8 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	smm->poll_main = 1;
       else if (unformat (input, "use-private-rx-mqs"))
 	smm->use_private_rx_mqs = 1;
+      else if (unformat (input, "no-adaptive"))
+	smm->no_adaptive = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
