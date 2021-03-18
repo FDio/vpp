@@ -41,7 +41,7 @@ typedef enum
 #define foreach_ah_encrypt_error                                \
  _(RX_PKTS, "AH pkts received")                                 \
  _(CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)") \
- _(SEQ_CYCLED, "sequence number cycled")
+ _(SEQ_CYCLED, "sequence number cycled (packet dropped)")
 
 
 typedef enum
