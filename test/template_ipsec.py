@@ -328,8 +328,9 @@ class IpsecTra4(object):
         p = self.params[socket.AF_INET]
         esn_en = p.vpp_tra_sa.esn_en
 
-        seq_cycle_node_name = ('/err/%s/sequence number cycled' %
-                               self.tra4_encrypt_node_name)
+        seq_cycle_node_name = \
+            ('/err/%s/sequence number cycled (packet dropped)' %
+             self.tra4_encrypt_node_name)
         replay_count = self.get_replay_counts(p)
         hash_failed_count = self.get_hash_failed_counts(p)
         seq_cycle_count = self.statistics.get_err_counter(seq_cycle_node_name)

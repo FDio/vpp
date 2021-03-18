@@ -90,7 +90,8 @@ class TestURPF(VppTestCase):
         # packets from address to which there is no route are dropped
         self.send_and_assert_no_replies(self.pg0, p_spoof_loose)
 
-        self.assert_error_counter_equal("ip4-rx-urpf-loose", N_PKTS)
+        self.assert_error_counter_equal("/err/ip4-rx-urpf-loose/uRPF Drop",
+                                        N_PKTS)
 
         #
         # crank it up to strict mode
@@ -106,7 +107,8 @@ class TestURPF(VppTestCase):
         self.send_and_assert_no_replies(self.pg0, p_spoof_strict)
         self.send_and_assert_no_replies(self.pg0, p_spoof_loose)
 
-        self.assert_error_counter_equal("ip4-rx-urpf-strict", 2 * N_PKTS)
+        self.assert_error_counter_equal("/err/ip4-rx-urpf-strict/uRPF Drop",
+                                        2 * N_PKTS)
 
         #
         # disable uRPF, all traffic should pass
@@ -136,7 +138,8 @@ class TestURPF(VppTestCase):
         self.send_and_expect(self.pg0, p_spoof_strict, self.pg1)
         self.send_and_assert_no_replies(self.pg0, p_spoof_loose)
 
-        self.assert_error_counter_equal("ip4-tx-urpf-loose", N_PKTS)
+        self.assert_error_counter_equal("/err/ip4-tx-urpf-loose/uRPF Drop",
+                                        N_PKTS)
 
         self.vapi.urpf_update(is_input=False,
                               mode=e.vl_api_urpf_mode_t.URPF_API_MODE_STRICT,
@@ -149,7 +152,8 @@ class TestURPF(VppTestCase):
         self.send_and_expect(self.pg0, p_spoof_strict, self.pg1)
         self.send_and_assert_no_replies(self.pg0, p_spoof_loose)
 
-        self.assert_error_counter_equal("ip4-tx-urpf-strict", N_PKTS)
+        self.assert_error_counter_equal("/err/ip4-tx-urpf-strict/uRPF Drop",
+                                        N_PKTS)
 
         # change the strict packet so that it would forward through pg1
         p_spoof_strict = (Ether(dst=self.pg0.local_mac,
@@ -160,7 +164,8 @@ class TestURPF(VppTestCase):
                           Raw(b'\xa5' * 100)) * N_PKTS
 
         self.send_and_assert_no_replies(self.pg0, p_spoof_strict)
-        self.assert_error_counter_equal("ip4-tx-urpf-strict", 2 * N_PKTS)
+        self.assert_error_counter_equal("/err/ip4-tx-urpf-strict/uRPF Drop",
+                                        2 * N_PKTS)
 
         # cleanup
         self.vapi.urpf_update(is_input=False,
@@ -212,7 +217,8 @@ class TestURPF(VppTestCase):
         # packets from address to which there is no route are dropped
         self.send_and_assert_no_replies(self.pg0, p_spoof_loose)
 
-        self.assert_error_counter_equal("ip6-rx-urpf-loose", N_PKTS)
+        self.assert_error_counter_equal("/err/ip6-rx-urpf-loose/uRPF Drop",
+                                        N_PKTS)
 
         #
         # crank it up to strict mode
@@ -228,7 +234,8 @@ class TestURPF(VppTestCase):
         self.send_and_assert_no_replies(self.pg0, p_spoof_strict)
         self.send_and_assert_no_replies(self.pg0, p_spoof_loose)
 
-        self.assert_error_counter_equal("ip6-rx-urpf-strict", 2 * N_PKTS)
+        self.assert_error_counter_equal("/err/ip6-rx-urpf-strict/uRPF Drop",
+                                        2 * N_PKTS)
 
         #
         # disable uRPF, all traffic should pass
@@ -258,7 +265,8 @@ class TestURPF(VppTestCase):
         self.send_and_expect(self.pg0, p_spoof_strict, self.pg1)
         self.send_and_assert_no_replies(self.pg0, p_spoof_loose)
 
-        self.assert_error_counter_equal("ip6-tx-urpf-loose", N_PKTS)
+        self.assert_error_counter_equal("/err/ip6-tx-urpf-loose/uRPF Drop",
+                                        N_PKTS)
 
         self.vapi.urpf_update(is_input=False,
                               mode=e.vl_api_urpf_mode_t.URPF_API_MODE_STRICT,
@@ -271,7 +279,8 @@ class TestURPF(VppTestCase):
         self.send_and_expect(self.pg0, p_spoof_strict, self.pg1)
         self.send_and_assert_no_replies(self.pg0, p_spoof_loose)
 
-        self.assert_error_counter_equal("ip6-tx-urpf-strict", N_PKTS)
+        self.assert_error_counter_equal("/err/ip6-tx-urpf-strict/uRPF Drop",
+                                        N_PKTS)
 
         # change the strict packet so that it would forward through pg1
         p_spoof_strict = (Ether(dst=self.pg0.local_mac,
@@ -282,7 +291,8 @@ class TestURPF(VppTestCase):
                           Raw(b'\xa5' * 100)) * N_PKTS
 
         self.send_and_assert_no_replies(self.pg0, p_spoof_strict)
-        self.assert_error_counter_equal("ip6-tx-urpf-strict", 2 * N_PKTS)
+        self.assert_error_counter_equal("/err/ip6-tx-urpf-strict/uRPF Drop",
+                                        2 * N_PKTS)
 
         # cleanup
         self.vapi.urpf_update(is_input=False,

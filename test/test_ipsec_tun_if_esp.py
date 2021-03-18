@@ -654,10 +654,8 @@ class TestIpsec4MultiTunIfEsp(TemplateIpsec4TunProtect,
         """Multiple IPSEC tunnel interfaces """
         for p in self.multi_params:
             self.verify_tun_44(p, count=127)
-            c = p.tun_if.get_rx_stats()
-            self.assertEqual(c['packets'], 127)
-            c = p.tun_if.get_tx_stats()
-            self.assertEqual(c['packets'], 127)
+            self.assertEqual(p.tun_if.get_rx_stats(), 127)
+            self.assertEqual(p.tun_if.get_tx_stats(), 127)
 
     def test_tun_rr_44(self):
         """ Round-robin packets acrros multiple interface """
@@ -929,10 +927,8 @@ class TestIpsec6MultiTunIfEsp(TemplateIpsec6TunProtect,
         """Multiple IPSEC tunnel interfaces """
         for p in self.multi_params:
             self.verify_tun_66(p, count=127)
-            c = p.tun_if.get_rx_stats()
-            self.assertEqual(c['packets'], 127)
-            c = p.tun_if.get_tx_stats()
-            self.assertEqual(c['packets'], 127)
+            self.assertEqual(p.tun_if.get_rx_stats(), 127)
+            self.assertEqual(p.tun_if.get_tx_stats(), 127)
 
 
 class TestIpsecGreTebIfEsp(TemplateIpsec,
@@ -1997,17 +1993,13 @@ class TestIpsec4TunProtect(TemplateIpsec,
         self.config_protect(p)
 
         self.verify_tun_44(p, count=127)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 127)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 127)
+        self.assertEqual(p.tun_if.get_rx_stats(), 127)
+        self.assertEqual(p.tun_if.get_tx_stats(), 127)
 
         self.vapi.cli("clear ipsec sa")
         self.verify_tun_64(p, count=127)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 254)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 254)
+        self.assertEqual(p.tun_if.get_rx_stats(), 254)
+        self.assertEqual(p.tun_if.get_tx_stats(), 254)
 
         # rekey - create new SAs and update the tunnel protection
         np = copy.copy(p)
@@ -2024,10 +2016,8 @@ class TestIpsec4TunProtect(TemplateIpsec,
         self.unconfig_sa(p)
 
         self.verify_tun_44(np, count=127)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 381)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 381)
+        self.assertEqual(p.tun_if.get_rx_stats(), 381)
+        self.assertEqual(p.tun_if.get_tx_stats(), 381)
 
         # teardown
         self.unconfig_protect(np)
@@ -2074,10 +2064,8 @@ class TestIpsec4TunProtectUdp(TemplateIpsec,
         p = self.ipv4_params
 
         self.verify_tun_44(p, count=127)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 127)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 127)
+        self.assertEqual(p.tun_if.get_rx_stats(), 127)
+        self.assertEqual(p.tun_if.get_tx_stats(), 127)
 
     def test_keepalive(self):
         """ IPSEC NAT Keepalive """
@@ -2168,10 +2156,8 @@ class TestIpsec4TunProtectTun(TemplateIpsec,
 
         self.verify_tun_44(p, count=127)
 
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 127)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 127)
+        self.assertEqual(p.tun_if.get_rx_stats(), 127)
+        self.assertEqual(p.tun_if.get_tx_stats(), 127)
 
         # rekey - create new SAs and update the tunnel protection
         np = copy.copy(p)
@@ -2188,10 +2174,8 @@ class TestIpsec4TunProtectTun(TemplateIpsec,
         self.unconfig_sa(p)
 
         self.verify_tun_44(np, count=127)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 254)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 254)
+        self.assertEqual(p.tun_if.get_rx_stats(), 254)
+        self.assertEqual(p.tun_if.get_tx_stats(), 254)
 
         # teardown
         self.unconfig_protect(np)
@@ -2275,10 +2259,8 @@ class TestIpsec6TunProtect(TemplateIpsec,
         self.config_protect(p)
 
         self.verify_tun_66(p, count=127)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 127)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 127)
+        self.assertEqual(p.tun_if.get_rx_stats(), 127)
+        self.assertEqual(p.tun_if.get_tx_stats(), 127)
 
         # rekey - create new SAs and update the tunnel protection
         np = copy.copy(p)
@@ -2295,10 +2277,8 @@ class TestIpsec6TunProtect(TemplateIpsec,
         self.unconfig_sa(p)
 
         self.verify_tun_66(np, count=127)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 254)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 254)
+        self.assertEqual(p.tun_if.get_rx_stats(), 254)
+        self.assertEqual(p.tun_if.get_tx_stats(), 254)
 
         # bounce the interface state
         p.tun_if.admin_down()
@@ -2342,10 +2322,8 @@ class TestIpsec6TunProtect(TemplateIpsec,
         self.verify_tun_66(np3, np3, count=127)
         self.verify_drop_tun_66(np, count=127)
 
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 127*9)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 127*8)
+        self.assertEqual(p.tun_if.get_rx_stats(), 127*9)
+        self.assertEqual(p.tun_if.get_tx_stats(), 127*8)
         self.unconfig_sa(np)
 
         # teardown
@@ -2363,10 +2341,8 @@ class TestIpsec6TunProtect(TemplateIpsec,
         self.config_protect(p)
 
         self.verify_tun_46(p, count=127)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 127)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 127)
+        self.assertEqual(p.tun_if.get_rx_stats(), 127)
+        self.assertEqual(p.tun_if.get_tx_stats(), 127)
 
         # teardown
         self.unconfig_protect(p)
@@ -2447,10 +2423,8 @@ class TestIpsec6TunProtectTun(TemplateIpsec,
 
         self.verify_tun_66(p, count=127)
 
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 127)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 127)
+        self.assertEqual(p.tun_if.get_rx_stats(), 127)
+        self.assertEqual(p.tun_if.get_tx_stats(), 127)
 
         # rekey - create new SAs and update the tunnel protection
         np = copy.copy(p)
@@ -2467,10 +2441,8 @@ class TestIpsec6TunProtectTun(TemplateIpsec,
         self.unconfig_sa(p)
 
         self.verify_tun_66(np, count=127)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 254)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 254)
+        self.assertEqual(p.tun_if.get_rx_stats(), 254)
+        self.assertEqual(p.tun_if.get_tx_stats(), 254)
 
         # teardown
         self.unconfig_protect(np)
@@ -2630,29 +2602,23 @@ class TestIpsecItf4(TemplateIpsec,
         self.config_protect(p)
 
         self.verify_tun_44(p, count=n_pkts)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], n_pkts)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], n_pkts)
+        self.assertEqual(p.tun_if.get_rx_stats(), n_pkts)
+        self.assertEqual(p.tun_if.get_tx_stats(), n_pkts)
 
         p.tun_if.admin_down()
         self.verify_tun_dropped_44(p, count=n_pkts)
         p.tun_if.admin_up()
         self.verify_tun_44(p, count=n_pkts)
 
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 3*n_pkts)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 2*n_pkts)
+        self.assertEqual(p.tun_if.get_rx_stats(), 3*n_pkts)
+        self.assertEqual(p.tun_if.get_tx_stats(), 2*n_pkts)
 
         # it's a v6 packet when its encrypted
         self.tun4_encrypt_node_name = "esp6-encrypt-tun"
 
         self.verify_tun_64(p, count=n_pkts)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 4*n_pkts)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 3*n_pkts)
+        self.assertEqual(p.tun_if.get_rx_stats(), 4*n_pkts)
+        self.assertEqual(p.tun_if.get_tx_stats(), 3*n_pkts)
 
         self.tun4_encrypt_node_name = "esp4-encrypt-tun"
 
@@ -2675,10 +2641,8 @@ class TestIpsecItf4(TemplateIpsec,
         self.unconfig_sa(p)
 
         self.verify_tun_44(np, count=n_pkts)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], n_pkts)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], n_pkts)
+        self.assertEqual(p.tun_if.get_rx_stats(), n_pkts)
+        self.assertEqual(p.tun_if.get_tx_stats(), n_pkts)
 
         # teardown
         self.unconfig_protect(np)
@@ -2735,10 +2699,8 @@ class TestIpsecItf4(TemplateIpsec,
         policer.apply_vpp_config(p.tun_if.sw_if_index, True)
 
         self.verify_tun_44(p, count=n_pkts)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], n_pkts)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], n_pkts)
+        self.assertEqual(p.tun_if.get_rx_stats(), n_pkts)
+        self.assertEqual(p.tun_if.get_tx_stats(), n_pkts)
 
         stats = policer.get_stats()
 
@@ -2942,29 +2904,23 @@ class TestIpsecItf6(TemplateIpsec,
         self.config_protect(p)
 
         self.verify_tun_66(p, count=n_pkts)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], n_pkts)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], n_pkts)
+        self.assertEqual(p.tun_if.get_rx_stats(), n_pkts)
+        self.assertEqual(p.tun_if.get_tx_stats(), n_pkts)
 
         p.tun_if.admin_down()
         self.verify_drop_tun_66(p, count=n_pkts)
         p.tun_if.admin_up()
         self.verify_tun_66(p, count=n_pkts)
 
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 3*n_pkts)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 2*n_pkts)
+        self.assertEqual(p.tun_if.get_rx_stats(), 3*n_pkts)
+        self.assertEqual(p.tun_if.get_tx_stats(), 2*n_pkts)
 
         # it's a v4 packet when its encrypted
         self.tun6_encrypt_node_name = "esp4-encrypt-tun"
 
         self.verify_tun_46(p, count=n_pkts)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], 4*n_pkts)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], 3*n_pkts)
+        self.assertEqual(p.tun_if.get_rx_stats(), 4*n_pkts)
+        self.assertEqual(p.tun_if.get_tx_stats(), 3*n_pkts)
 
         self.tun6_encrypt_node_name = "esp6-encrypt-tun"
 
@@ -2993,10 +2949,8 @@ class TestIpsecItf6(TemplateIpsec,
         self.unconfig_sa(p)
 
         self.verify_tun_66(np, count=n_pkts)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], n_pkts)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], n_pkts)
+        self.assertEqual(p.tun_if.get_rx_stats(), n_pkts)
+        self.assertEqual(p.tun_if.get_tx_stats(), n_pkts)
 
         # teardown
         self.unconfig_protect(np)
@@ -3032,10 +2986,8 @@ class TestIpsecItf6(TemplateIpsec,
         policer.apply_vpp_config(p.tun_if.sw_if_index, True)
 
         self.verify_tun_66(p, count=n_pkts)
-        c = p.tun_if.get_rx_stats()
-        self.assertEqual(c['packets'], n_pkts)
-        c = p.tun_if.get_tx_stats()
-        self.assertEqual(c['packets'], n_pkts)
+        self.assertEqual(p.tun_if.get_rx_stats(), n_pkts)
+        self.assertEqual(p.tun_if.get_tx_stats(), n_pkts)
 
         stats = policer.get_stats()
 
