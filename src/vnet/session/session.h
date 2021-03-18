@@ -69,6 +69,12 @@ typedef struct session_ctrl_evt_data_
   u8 data[SESSION_CTRL_MSG_MAX_SIZE];
 } session_evt_ctrl_data_t;
 
+enum
+{
+  SESSION_WRK_POLLING,
+  SESSION_WRK_INTERRUPT,
+};
+
 typedef struct session_worker_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -90,6 +96,9 @@ typedef struct session_worker_
 
   /** Per-proto vector of sessions to enqueue */
   u32 **session_to_enqueue;
+
+  u32 timerfd;
+  u8 state;
 
   /** Context for session tx */
   session_tx_context_t ctx;
@@ -120,6 +129,8 @@ typedef struct session_worker_
 
   /** Vector of nexts for the pending tx buffers */
   u16 *pending_tx_nexts;
+
+  uword timerfd_file;
 
 #if SESSION_DEBUG
   /** last event poll time by thread */

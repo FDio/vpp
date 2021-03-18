@@ -24,6 +24,7 @@
 #include <vnet/session/application_local.h>
 #include <vnet/session/session_debug.h>
 #include <svm/queue.h>
+#include <sys/timerfd.h>
 
 #define app_check_thread_and_barrier(_fn, _arg)				\
   if (!vlib_thread_is_main_w_barrier ())				\
@@ -1399,6 +1400,19 @@ session_flush_pending_tx_buffers (session_worker_t * wrk,
   vec_reset_length (wrk->pending_tx_nexts);
 }
 
+static void
+session_wrk_timerfd_update (session_worker_t *wrk, clib_us_time_t us_int)
+{
+  struct itimerspec its;
+
+  its.it_value.tv_sec = 0;
+  its.it_value.tv_nsec = us_int * 1000;
+  its.it_interval.tv_nsec = its.it_value.tv_nsec;
+
+  if (timerfd_settime (wrk->timerfd, 0, &its, NULL) == -1)
+    clib_warning ("timerfd_settime");
+}
+
 static uword
 session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * frame)
@@ -1513,6 +1527,27 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       SESSION_QUEUE_ERROR_TX, n_tx_packets);
 
   SESSION_EVT (SESSION_EVT_DISPATCH_END, wrk, n_tx_packets);
+
+  if (wrk->state == SESSION_WRK_POLLING)
+    {
+      if (vlib_last_vectors_per_main_loop (vm) < 1)
+	{
+	  wrk->state = SESSION_WRK_INTERRUPT;
+	  vlib_node_set_state (vm, session_queue_node.index,
+			       VLIB_NODE_STATE_INTERRUPT);
+	  session_wrk_timerfd_update (wrk, 1e3);
+	}
+    }
+  else
+    {
+      if (vlib_last_vectors_per_main_loop (vm) > 1)
+	{
+	  vlib_node_set_state (vm, session_queue_node.index,
+			       VLIB_NODE_STATE_POLLING);
+	  wrk->state = SESSION_WRK_POLLING;
+	  session_wrk_timerfd_update (wrk, 0);
+	}
+    }
 
   return n_tx_packets;
 }
