@@ -3052,6 +3052,51 @@ vppcom_epoll_wait (uint32_t vep_handle, struct epoll_event *events,
 }
 
 int
+vppcom_epoll_prewait (uint32_t vep_handle, struct epoll_event *events,
+		      int maxevents)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  vcl_session_t *vep_session;
+  u32 n_evts = 0;
+  int i;
+
+  if (PREDICT_FALSE (maxevents <= 0))
+    {
+      VDBG (0, "ERROR: Invalid maxevents (%d)!", maxevents);
+      return VPPCOM_EINVAL;
+    }
+
+  vep_session = vcl_session_get_w_handle (wrk, vep_handle);
+  if (!vep_session)
+    return VPPCOM_EBADFD;
+
+  if (PREDICT_FALSE (!(vep_session->flags & VCL_SESSION_F_IS_VEP)))
+    {
+      VDBG (0, "ERROR: vep_idx (%u) is not a vep!", vep_handle);
+      return VPPCOM_EINVAL;
+    }
+
+  memset (events, 0, sizeof (*events) * maxevents);
+
+  if (vec_len (wrk->unhandled_evts_vector))
+    {
+      for (i = 0; i < vec_len (wrk->unhandled_evts_vector); i++)
+	{
+	  vcl_epoll_wait_handle_mq_event (wrk, &wrk->unhandled_evts_vector[i],
+					  events, &n_evts);
+	  if (n_evts == maxevents)
+	    {
+	      vec_delete (wrk->unhandled_evts_vector, i + 1, 0);
+	      return n_evts;
+	    }
+	}
+      vec_reset_length (wrk->unhandled_evts_vector);
+    }
+
+  return n_evts;
+}
+
+int
 vppcom_session_attr (uint32_t session_handle, uint32_t op,
 		     void *buffer, uint32_t * buflen)
 {

@@ -1406,6 +1406,23 @@ vls_epoll_wait (vls_handle_t ep_vlsh, struct epoll_event *events,
   return rv;
 }
 
+int
+vls_epoll_prewait (vls_handle_t ep_vlsh, struct epoll_event *events,
+		   int maxevents)
+{
+  vcl_locked_session_t *vls, *vls_tmp = NULL;
+  int rv;
+
+  vls_mt_detect ();
+  if (!(vls = vls_get_w_dlock (ep_vlsh)))
+    return VPPCOM_EBADFD;
+  vls_mt_guard (vls_tmp, VLS_MT_OP_XPOLL);
+  rv = vppcom_epoll_prewait (vls_to_sh_tu (vls), events, maxevents);
+  vls_mt_unguard ();
+  vls_get_and_unlock (ep_vlsh);
+  return rv;
+}
+
 static void
 vls_select_mp_checks (vcl_si_set * read_map)
 {
