@@ -1162,7 +1162,7 @@ class VppTestCase(unittest.TestCase):
                           "packet counter `%s'" % counter)
 
     def assert_error_counter_equal(self, counter, expected_value):
-        counter_value = self.statistics.get_err_counter(counter)
+        counter_value = self.statistics[counter].sum()
         self.assert_equal(counter_value, expected_value,
                           "error counter `%s'" % counter)
 
