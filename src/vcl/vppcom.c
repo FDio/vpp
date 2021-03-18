@@ -3042,6 +3042,9 @@ vppcom_epoll_wait (uint32_t vep_handle, struct epoll_event *events,
 	}
       vec_reset_length (wrk->unhandled_evts_vector);
     }
+  /* Request to only drain unhandled */
+  if ((int) wait_for_time == -2)
+    return n_evts;
 
   if (vcm->cfg.use_mq_eventfd)
     return vppcom_epoll_wait_eventfd (wrk, events, maxevents, n_evts,
