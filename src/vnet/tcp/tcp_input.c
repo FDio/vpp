@@ -1483,6 +1483,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     tcp_established_trace_frame (vm, node, frame, is_ip4);
 
+  session_update_wrk_time (thread_index);
   first_buffer = from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
 
@@ -1788,6 +1789,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 my_thread_index = vm->thread_index;
   tcp_worker_ctx_t *wrk = tcp_get_worker (my_thread_index);
 
+  session_update_wrk_time (my_thread_index);
   from = first_buffer = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
 
@@ -2102,6 +2104,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   u32 n_left_from, *from, max_dequeue;
 
+  session_update_wrk_time (thread_index);
   from = first_buffer = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
 
@@ -2546,6 +2549,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_from, *from, n_syns = 0, *first_buffer;
   u32 thread_index = vm->thread_index;
 
+  session_update_wrk_time (thread_index);
   from = first_buffer = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
 
