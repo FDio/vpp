@@ -24,6 +24,7 @@
 #include <vnet/session/application_local.h>
 #include <vnet/session/session_debug.h>
 #include <svm/queue.h>
+#include <sys/timerfd.h>
 
 #define app_check_thread_and_barrier(_fn, _arg)				\
   if (!vlib_thread_is_main_w_barrier ())				\
@@ -1418,6 +1419,79 @@ session_wrk_handle_mq (session_worker_t *wrk, svm_msg_q_t *mq)
   return n_to_dequeue;
 }
 
+static void
+session_wrk_timerfd_update (session_worker_t *wrk, u64 time_ns)
+{
+  struct itimerspec its;
+
+  its.it_value.tv_sec = 0;
+  its.it_value.tv_nsec = time_ns;
+  its.it_interval.tv_sec = 0;
+  its.it_interval.tv_nsec = its.it_value.tv_nsec;
+
+  if (timerfd_settime (wrk->timerfd, 0, &its, NULL) == -1)
+    clib_warning ("timerfd_settime");
+}
+
+always_inline u64
+session_wrk_tfd_timeout (session_wrk_state_t state, u32 thread_index)
+{
+  if (state == SESSION_WRK_INTERRUPT)
+    return thread_index ? 1e6 : vlib_num_workers () ? 5e8 : 1e6;
+  else if (state == SESSION_WRK_IDLE)
+    return thread_index ? 1e8 : vlib_num_workers () ? 5e8 : 1e8;
+  else
+    return 0;
+}
+
+static inline void
+session_wrk_state_update (session_worker_t *wrk, session_wrk_state_t state)
+{
+  u64 time_ns;
+
+  wrk->state = state;
+  time_ns = session_wrk_tfd_timeout (state, wrk->vm->thread_index);
+  session_wrk_timerfd_update (wrk, time_ns);
+}
+
+static void
+session_wrk_update_state (session_worker_t *wrk)
+{
+  vlib_main_t *vm = wrk->vm;
+
+  if (wrk->state == SESSION_WRK_POLLING)
+    {
+      if (pool_elts (wrk->event_elts) == 3 &&
+	  vlib_last_vectors_per_main_loop (vm) < 1)
+	{
+	  session_wrk_state_update (wrk, SESSION_WRK_INTERRUPT);
+	  vlib_node_set_state (vm, session_queue_node.index,
+			       VLIB_NODE_STATE_INTERRUPT);
+	}
+    }
+  else if (wrk->state == SESSION_WRK_INTERRUPT)
+    {
+      if (pool_elts (wrk->event_elts) > 3 ||
+	  vlib_last_vectors_per_main_loop (vm) > 1)
+	{
+	  session_wrk_state_update (wrk, SESSION_WRK_POLLING);
+	  vlib_node_set_state (vm, session_queue_node.index,
+			       VLIB_NODE_STATE_POLLING);
+	}
+      else if (PREDICT_FALSE (!pool_elts (wrk->sessions)))
+	{
+	  session_wrk_state_update (wrk, SESSION_WRK_IDLE);
+	}
+    }
+  else
+    {
+      if (pool_elts (wrk->event_elts))
+	{
+	  session_wrk_state_update (wrk, SESSION_WRK_INTERRUPT);
+	}
+    }
+}
+
 static uword
 session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * frame)
@@ -1513,6 +1587,9 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   SESSION_EVT (SESSION_EVT_DISPATCH_END, wrk, n_tx_packets);
 
+  if (wrk->flags & SESSION_WRK_F_ADAPTIVE)
+    session_wrk_update_state (wrk);
+
   return n_tx_packets;
 }
 
@@ -1529,6 +1606,46 @@ VLIB_REGISTER_NODE (session_queue_node) =
   .state = VLIB_NODE_STATE_DISABLED,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+session_wrk_tfd_read_ready (clib_file_t *cf)
+{
+  session_worker_t *wrk = session_main_get_worker (cf->private_data);
+  u64 buf;
+  int rv;
+
+  vlib_node_set_interrupt_pending (wrk->vm, session_queue_node.index);
+  rv = read (wrk->timerfd, &buf, sizeof (buf));
+  if (rv < 0 && errno != EAGAIN)
+    clib_unix_warning ("failed");
+  return 0;
+}
+
+static clib_error_t *
+session_wrk_tfd_write_ready (clib_file_t *cf)
+{
+  return 0;
+}
+
+void
+session_wrk_enable_adaptive_mode (session_worker_t *wrk)
+{
+  u32 thread_index = wrk->vm->thread_index;
+  clib_file_t template = { 0 };
+
+  if ((wrk->timerfd = timerfd_create (CLOCK_MONOTONIC, TFD_NONBLOCK)) < 0)
+    clib_warning ("timerfd_create");
+
+  template.read_function = session_wrk_tfd_read_ready;
+  template.write_function = session_wrk_tfd_write_ready;
+  template.file_descriptor = wrk->timerfd;
+  template.private_data = thread_index;
+  template.polling_thread_index = thread_index;
+  template.description = format (0, "session-wrk-tfd-%u", thread_index);
+
+  wrk->timerfd_file = clib_file_add (&file_main, &template);
+  wrk->flags |= SESSION_WRK_F_ADAPTIVE;
+}
 
 static clib_error_t *
 session_queue_exit (vlib_main_t * vm)
