@@ -41,7 +41,7 @@
 #include <urpf/urpf_dp.h>
 
 static char *ip4_urpf_error_strings[] = {
-#define _(a,b) "ip4-" # b,
+#define _(a,b) b,
   foreach_urpf_error
 #undef _
 };
