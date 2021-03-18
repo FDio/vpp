@@ -218,6 +218,7 @@ tcp_set_time_now (tcp_worker_ctx_t *wrk, f64 now)
   /* TCP internal cache of time reference. Could use @ref transport_time_now
    * but because @ref tcp_time_now_us is used per packet, caching might
    * slightly improve efficiency. */
+  session_update_wrk_time (wrk->vm->thread_index);
   wrk->time_us = now;
   wrk->time_tstamp = (u64) (now * TCP_TSTP_HZ);
 }
