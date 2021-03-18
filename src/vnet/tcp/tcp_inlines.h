@@ -219,7 +219,8 @@ tcp_time_now_us (u32 thread_index)
 always_inline u32
 tcp_set_time_now (tcp_worker_ctx_t *wrk, f64 now)
 {
-  //  session_update_wrk_time (wrk->vm->thread_index);
+  // pacer needs right time?
+    session_update_wrk_time (wrk->vm->thread_index);
   wrk->time_us = now;
   return wrk->time_now = (u64) (now * TCP_TSTP_HZ);
 }
