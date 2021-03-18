@@ -23,8 +23,8 @@ class StatsClientTestCase(VppTestCase):
     def test_set_errors(self):
         """Test set errors"""
         self.assertEqual(self.statistics.set_errors(), {})
-        self.assertEqual(self.statistics.get_counter('/err/ethernet-input/no'),
-                         [0])
+        self.assertEqual(
+            self.statistics.get_counter('/err/ethernet-input/no error'), [0])
 
     def test_client_fd_leak(self):
         """Test file descriptor count - VPP-1486"""
