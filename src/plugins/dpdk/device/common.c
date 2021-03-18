@@ -202,7 +202,8 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
   else
     {
       xd->flags |= DPDK_DEVICE_FLAG_INT_SUPPORTED;
-      rte_eth_dev_rx_intr_disable (xd->port_id, 0);
+      if (!(xd->flags & DPDK_DEVICE_FLAG_INT_UNMASKABLE))
+	rte_eth_dev_rx_intr_disable (xd->port_id, 0);
       dpdk_log_info ("Probe for interrupt mode for device %U. Success.\n",
 		     format_dpdk_device_name, xd->port_id);
     }
@@ -230,6 +231,13 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
 	  rxq->clib_file_index = clib_file_add (&file_main, &f);
 	  vnet_hw_if_set_rx_queue_file_index (vnm, rxq->queue_index,
 					      rxq->clib_file_index);
+	  if (xd->flags & DPDK_DEVICE_FLAG_INT_UNMASKABLE)
+	    {
+	      clib_file_main_t *fm = &file_main;
+	      clib_file_t *f =
+		pool_elt_at_index (fm->file_pool, rxq->clib_file_index);
+	      fm->file_update (f, UNIX_FILE_UPDATE_DELETE);
+	    }
 	}
     }
   vnet_hw_if_update_runtime_data (vnm, xd->hw_if_index);

@@ -139,7 +139,8 @@ typedef uint16_t dpdk_portid_t;
   _ (10, INTEL_PHDR_CKSUM, "intel-phdr-cksum")                                \
   _ (11, RX_FLOW_OFFLOAD, "rx-flow-offload")                                  \
   _ (12, RX_IP4_CKSUM, "rx-ip4-cksum")                                        \
-  _ (13, INT_SUPPORTED, "int-supported")
+  _ (13, INT_SUPPORTED, "int-supported")                                      \
+  _ (14, INT_UNMASKABLE, "int-unmaskable")
 
 enum
 {
