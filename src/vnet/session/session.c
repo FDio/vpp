@@ -21,6 +21,7 @@
 #include <vnet/session/application.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/fib/ip4_fib.h>
+#include <sys/timerfd.h>
 
 session_main_t session_main;
 
@@ -1664,6 +1665,23 @@ session_queue_run_on_main_thread (vlib_main_t * vm)
 }
 
 static clib_error_t *
+session_wrk_tfd_read_ready (clib_file_t *cf)
+{
+  session_worker_t *wrk = session_main_get_worker (cf->private_data);
+  u64 buf;
+
+  vlib_node_set_interrupt_pending (wrk->vm, session_queue_node.index);
+  (void) read (wrk->timerfd, &buf, sizeof (buf));
+  return 0;
+}
+
+static clib_error_t *
+session_wrk_tfd_write_ready (clib_file_t *cf)
+{
+  return 0;
+}
+
+static clib_error_t *
 session_manager_main_enable (vlib_main_t * vm)
 {
   session_main_t *smm = &session_main;
@@ -1697,6 +1715,19 @@ session_manager_main_enable (vlib_main_t * vm)
 
       if (num_threads > 1)
 	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);
+
+      if ((wrk->timerfd = timerfd_create (CLOCK_REALTIME, TFD_NONBLOCK)) < 0)
+	clib_warning ("timerfd_create");
+
+      clib_file_t template = { 0 };
+
+      template.read_function = session_wrk_tfd_read_ready;
+      template.write_function = session_wrk_tfd_write_ready;
+      template.file_descriptor = wrk->timerfd;
+      template.private_data = i;
+      template.polling_thread_index = i;
+      template.description = format (0, "session-wrk-tfd-%u", i);
+      wrk->timerfd_file = clib_file_add (&file_main, &template);
     }
 
   /* Allocate vpp event queues segment and queue */
