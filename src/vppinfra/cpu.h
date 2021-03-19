@@ -185,6 +185,7 @@ clib_get_cpuid (const u32 lev, u32 * eax, u32 * ebx, u32 * ecx, u32 * edx)
   return 1;
 }
 
+typedef int (*clib_cpu_supports_func_t) ();
 
 #define _(flag, func, reg, bit) \
 static inline int							\
