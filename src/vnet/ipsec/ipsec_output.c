@@ -63,6 +63,63 @@ format_ipsec_output_trace (u8 * s, va_list * args)
   return s;
 }
 
+always_inline void
+ipsec4_out_spd_add_flow_cache_entry (ipsec_main_t *im, u8 pr, u32 la, u32 ra,
+				     u16 lp, u16 rp, u32 pol_id)
+{
+  u64 hash;
+  ipsec4_spd_5tuple_t ip4_5tuple = { .ip4_addr = { (ip4_address_t) la,
+						   (ip4_address_t) ra },
+				     .port = { lp, rp },
+				     .proto = pr };
+
+  ip4_5tuple.kv_16_8.value = (((u64) pol_id) << 32) | ((u64) im->epoch_count);
+
+  hash = ipsec4_hash_16_8 (&ip4_5tuple.kv_16_8);
+  hash &= (im->ipsec4_out_spd_hash_num_buckets - 1);
+
+  ipsec_spinlock_lock (&im->ipsec4_out_spd_hash_tbl[hash].bucket_lock);
+  clib_memcpy_fast (&im->ipsec4_out_spd_hash_tbl[hash], &ip4_5tuple.kv_16_8,
+		    sizeof (ip4_5tuple.kv_16_8));
+  ipsec_spinlock_unlock (&im->ipsec4_out_spd_hash_tbl[hash].bucket_lock);
+  /* Increment the counter to track active flow cache entries */
+  clib_atomic_fetch_add_relax (&im->ipsec4_out_spd_flow_cache_entries, 1);
+  return;
+}
+
+always_inline ipsec_policy_t *
+ipsec4_out_spd_find_flow_cache_entry (ipsec_main_t *im, u8 pr, u32 la, u32 ra,
+				      u16 lp, u16 rp)
+{
+  ipsec_policy_t *p = NULL;
+  ipsec4_hash_kv_16_8_t kv_result;
+  u64 hash;
+  ipsec4_spd_5tuple_t ip4_5tuple = { .ip4_addr = { (ip4_address_t) la,
+						   (ip4_address_t) ra },
+				     .port = { lp, rp },
+				     .proto = pr };
+
+  hash = ipsec4_hash_16_8 (&ip4_5tuple.kv_16_8);
+  hash &= (im->ipsec4_out_spd_hash_num_buckets - 1);
+
+  ipsec_spinlock_lock (&im->ipsec4_out_spd_hash_tbl[hash].bucket_lock);
+  kv_result = im->ipsec4_out_spd_hash_tbl[hash];
+  ipsec_spinlock_unlock (&im->ipsec4_out_spd_hash_tbl[hash].bucket_lock);
+
+  if (ipsec4_hash_key_compare_16_8 ((u64 *) &ip4_5tuple.kv_16_8,
+				    (u64 *) &kv_result))
+    {
+      if (im->epoch_count == ((u32) (kv_result.value & 0xFFFFFFFF)))
+	{
+	  /* Get the policy based on the index */
+	  p =
+	    pool_elt_at_index (im->policies, ((u32) (kv_result.value >> 32)));
+	}
+    }
+
+  return p;
+}
+
 always_inline ipsec_policy_t *
 ipsec_output_policy_match (ipsec_spd_t * spd, u8 pr, u32 la, u32 ra, u16 lp,
 			   u16 rp)
@@ -95,7 +152,7 @@ ipsec_output_policy_match (ipsec_spd_t * spd, u8 pr, u32 la, u32 ra, u16 lp,
     if (PREDICT_FALSE
 	((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP)
 	 && (pr != IP_PROTOCOL_SCTP)))
-      return p;
+      goto add_flow_cache;
 
     if (lp < p->lport.start)
       continue;
@@ -108,6 +165,15 @@ ipsec_output_policy_match (ipsec_spd_t * spd, u8 pr, u32 la, u32 ra, u16 lp,
 
     if (rp > p->rport.stop)
       continue;
+
+  add_flow_cache:
+    if (im->flow_cache_flag)
+      {
+	/* Add an Entry in Flow cache */
+	ipsec4_out_spd_add_flow_cache_entry (
+	  im, pr, clib_host_to_net_u32 (la), clib_host_to_net_u32 (ra),
+	  clib_host_to_net_u16 (lp), clib_host_to_net_u16 (rp), *i);
+      }
 
     return p;
   }
@@ -194,7 +260,7 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       u32 bi0, pi0, bi1;
       vlib_buffer_t *b0, *b1;
-      ipsec_policy_t *p0;
+      ipsec_policy_t *p0 = NULL;
       ip4_header_t *ip0;
       ip6_header_t *ip6_0 = 0;
       udp_header_t *udp0;
@@ -262,15 +328,26 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			sw_if_index0, spd_index0, spd0->id);
 #endif
 
-	  p0 = ipsec_output_policy_match (spd0, ip0->protocol,
-					  clib_net_to_host_u32
-					  (ip0->src_address.as_u32),
-					  clib_net_to_host_u32
-					  (ip0->dst_address.as_u32),
-					  clib_net_to_host_u16
-					  (udp0->src_port),
-					  clib_net_to_host_u16
-					  (udp0->dst_port));
+	  /*
+	   * Check whether flow cache is enabled.
+	   */
+	  if (im->flow_cache_flag)
+	    {
+	      p0 = ipsec4_out_spd_find_flow_cache_entry (
+		im, ip0->protocol, ip0->src_address.as_u32,
+		ip0->dst_address.as_u32, udp0->src_port, udp0->dst_port);
+	    }
+
+	  /* Fall back to linear search if flow cache lookup fails */
+	  if (p0 == NULL)
+	    {
+	      p0 = ipsec_output_policy_match (
+		spd0, ip0->protocol,
+		clib_net_to_host_u32 (ip0->src_address.as_u32),
+		clib_net_to_host_u32 (ip0->dst_address.as_u32),
+		clib_net_to_host_u16 (udp0->src_port),
+		clib_net_to_host_u16 (udp0->dst_port));
+	    }
 	}
       tcp0 = (void *) udp0;
 
