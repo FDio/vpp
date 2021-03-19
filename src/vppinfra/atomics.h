@@ -52,6 +52,8 @@
 #define clib_atomic_store_rel_n(a, b) __atomic_store_n ((a), (b), __ATOMIC_RELEASE)
 #define clib_atomic_store_seq_cst(a, b)                                       \
   __atomic_store_n ((a), (b), __ATOMIC_SEQ_CST)
+#define clib_atomic_store_relax_n(a, b)                                       \
+  __atomic_store_n ((a), (b), __ATOMIC_RELAXED)
 #define clib_atomic_load_seq_cst(a) __atomic_load_n ((a), __ATOMIC_SEQ_CST)
 
 #define clib_atomic_swap_acq_n(a, b) __atomic_exchange_n ((a), (b), __ATOMIC_ACQUIRE)
