@@ -25,9 +25,13 @@
 
 /* instantiate the bihash functions */
 #include <vppinfra/bihash_8_16.h>
+#if 0
 #include <vppinfra/bihash_template.c>
+#endif
 #include <vppinfra/bihash_24_16.h>
+#if 0
 #include <vppinfra/bihash_template.c>
+#endif
 
 #define IPSEC_TUN_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
 #define IPSEC_TUN_DEFAULT_HASH_MEMORY_SIZE 512 << 20
@@ -925,6 +929,7 @@ const static teib_vft_t ipsec_tun_teib_vft = {
   .nv_deleted = ipsec_tun_teib_entry_deleted,
 };
 
+#if 0
 static void
 ipsec_tun_table_init (ip_address_family_t af, uword table_size, u32 n_buckets)
 {
@@ -939,6 +944,7 @@ ipsec_tun_table_init (ip_address_family_t af, uword table_size, u32 n_buckets)
     clib_bihash_init_24_16 (&im->tun6_protect_by_key,
 			    "IPSec IPv6 tunnels", n_buckets, table_size);
 }
+#endif
 
 static clib_error_t *
 ipsec_tunnel_protect_init (vlib_main_t *vm)
@@ -979,14 +985,31 @@ ipsec_tunnel_protect_init (vlib_main_t *vm)
 
 VLIB_INIT_FUNCTION (ipsec_tunnel_protect_init);
 
+#if 0
 static clib_error_t *
 ipsec_config (vlib_main_t * vm, unformat_input_t * input)
 {
+  ipsec_main_t *im = &ipsec_main;
   unformat_input_t sub_input;
+  u32 ipsec4_out_spd_hash_num_buckets;
+  uword ipsec4_out_spd_hash_memory_size;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "ip4 %U", unformat_vlib_cli_sub_input, &sub_input))
+      /* To Do: IPSec config have to be moved to a common file */
+      if (unformat (input, "ipv4-out-spd-flow-cache on"))
+	im->flow_cache_flag = 1;
+      else if (unformat (input, "ipv4-out-spd-flow-cache off"))
+	im->flow_cache_flag = 0;
+      else if (unformat (input, "ipv4 outbound spd hash buckets %d",
+			 &ipsec4_out_spd_hash_num_buckets))
+	im->ipsec4_out_spd_hash_num_buckets = ipsec4_out_spd_hash_num_buckets;
+      else if (unformat (input, "ipv4 outbound spd hash memory %U",
+			 unformat_memory_size,
+			 &ipsec4_out_spd_hash_memory_size))
+	im->ipsec4_out_spd_hash_memory_size = ipsec4_out_spd_hash_memory_size;
+      else if (unformat (input, "ip4 %U", unformat_vlib_cli_sub_input,
+			 &sub_input))
 	{
 	  uword table_size = ~0;
 	  u32 n_buckets = ~0;
@@ -1023,11 +1046,19 @@ ipsec_config (vlib_main_t * vm, unformat_input_t * input)
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
+  if (im->flow_cache_flag)
+    {
+      clib_bihash_init_16_8_1 (&im->spd_hash_tbl,
+			       "IPSec IPv4 OUTBOUND SPD Flow cache",
+			       im->ipsec4_out_spd_hash_num_buckets,
+			       im->ipsec4_out_spd_hash_memory_size);
+    }
 
   return 0;
 }
 
 VLIB_CONFIG_FUNCTION (ipsec_config, "ipsec");
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON

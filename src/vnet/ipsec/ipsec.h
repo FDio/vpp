@@ -26,6 +26,7 @@
 #include <vnet/ipsec/ipsec_spd_policy.h>
 #include <vnet/ipsec/ipsec_sa.h>
 
+#include <vnet/ipsec/ipsec_bihash_16_8.h>
 #include <vppinfra/bihash_8_16.h>
 
 #include <vppinfra/bihash_24_16.h>
@@ -130,6 +131,7 @@ typedef struct
   uword *ipsec_if_real_dev_by_show_dev;
   uword *ipsec_if_by_sw_if_index;
 
+  clib_bihash_16_8_1_t spd_hash_tbl;
   clib_bihash_8_16_t tun4_protect_by_key;
   clib_bihash_24_16_t tun6_protect_by_key;
 
@@ -206,7 +208,12 @@ typedef struct
   u32 esp4_dec_tun_fq_index;
   u32 esp6_dec_tun_fq_index;
 
+  u32 epoch_count;
+  u32 ipsec4_out_spd_hash_num_buckets;
+  uword ipsec4_out_spd_hash_memory_size;
   u8 async_mode;
+  u8 flow_cache_flag;
+  u8 spd_update_flag;
 } ipsec_main_t;
 
 typedef enum ipsec_format_flags_t_
