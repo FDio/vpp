@@ -500,9 +500,8 @@ _(type)                                         \
 _(action)
 
 static clib_error_t *
-configure_policer_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+policer_add_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
 {
   qos_pol_cfg_params_st c;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -545,11 +544,168 @@ done:
   return error;
 }
 
+static clib_error_t *
+policer_del_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = NULL;
+  u8 *name = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "name %s", &name))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  error = policer_add_del (vm, name, NULL, NULL, 0);
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+static clib_error_t *
+policer_bind_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = NULL;
+  u8 bind, *name = 0;
+  u32 worker;
+  int rv;
+
+  bind = 1;
+  worker = ~0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "name %s", &name))
+	;
+      else if (unformat (line_input, "unapply"))
+	bind = 0;
+      else if (unformat (line_input, "%d", &bind))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (bind && ~0 == worker)
+    {
+      error = clib_error_return (0, "specify worker to bind to: `%U'",
+				 format_unformat_error, line_input);
+    }
+  else
+    {
+      rv = policer_bind_worker (name, worker, bind);
+
+      if (rv)
+	error = clib_error_return (0, "failed: `%d'", rv);
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+static clib_error_t *
+policer_input_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = NULL;
+  u8 apply, *name = 0;
+  u32 sw_if_index;
+  int rv;
+
+  apply = 1;
+  sw_if_index = ~0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "name %s", &name))
+	;
+      else if (unformat (line_input, "unapply"))
+	apply = 0;
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
+			 vnet_get_main (), &sw_if_index))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (~0 == sw_if_index)
+    {
+      error = clib_error_return (0, "specify interface to apply to: `%U'",
+				 format_unformat_error, line_input);
+    }
+  else
+    {
+      rv = policer_input (name, sw_if_index, apply);
+
+      if (rv)
+	error = clib_error_return (0, "failed: `%d'", rv);
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (configure_policer_command, static) = {
-    .path = "configure policer",
-    .short_help = "configure policer name <name> <params> ",
-    .function = configure_policer_command_fn,
+  .path = "configure policer",
+  .short_help = "configure policer name <name> <params> ",
+  .function = policer_add_command_fn,
+};
+VLIB_CLI_COMMAND (policer_add_command, static) = {
+  .path = "policer add",
+  .short_help = "policer name <name> <params> ",
+  .function = policer_add_command_fn,
+};
+VLIB_CLI_COMMAND (policer_del_command, static) = {
+  .path = "policer del",
+  .short_help = "policer del name <name> ",
+  .function = policer_del_command_fn,
+};
+VLIB_CLI_COMMAND (policer_bind_command, static) = {
+  .path = "policer bind",
+  .short_help = "policer bind [unbind] name <name> <worker>",
+  .function = policer_bind_command_fn,
+};
+VLIB_CLI_COMMAND (policer_input_command, static) = {
+  .path = "policer input",
+  .short_help = "policer input [unapply] name <name> <interfac>",
+  .function = policer_input_command_fn,
 };
 /* *INDENT-ON* */
 
