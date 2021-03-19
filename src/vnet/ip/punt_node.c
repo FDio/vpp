@@ -621,7 +621,7 @@ VLIB_REGISTER_NODE (punt_socket_rx_node) =
 {
  .function = punt_socket_rx,
  .name = "punt-socket-rx",
- .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
+ .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED | VLIB_NODE_FLAG_ADAPTIVE_MODE,
  .type = VLIB_NODE_TYPE_INPUT,
  .state = VLIB_NODE_STATE_INTERRUPT,
  .vector_size = 1,
