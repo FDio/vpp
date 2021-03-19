@@ -225,6 +225,27 @@ vlib_node_get_state (vlib_main_t * vm, u32 node_index)
 }
 
 always_inline void
+vlib_node_set_flag (vlib_main_t *vm, u32 node_index, u16 flag, u8 enable)
+{
+  vlib_node_runtime_t *r;
+  vlib_node_t *n;
+
+  n = vlib_get_node (vm, node_index);
+  r = vlib_node_get_runtime (vm, node_index);
+
+  if (enable)
+    {
+      n->flags |= flag;
+      r->flags |= flag;
+    }
+  else
+    {
+      n->flags &= ~flag;
+      r->flags &= ~flag;
+    }
+}
+
+always_inline void
 vlib_node_set_interrupt_pending (vlib_main_t *vm, u32 node_index)
 {
   vlib_node_main_t *nm = &vm->node_main;
