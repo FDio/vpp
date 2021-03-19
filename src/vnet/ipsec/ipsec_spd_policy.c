@@ -14,6 +14,8 @@
  */
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_bihash_16_8.h>
+#include <vppinfra/bihash_template.h>
 
 /**
  * @brief
@@ -136,6 +138,14 @@ ipsec_policy_mk_type (bool is_outbound,
   return (-1);
 }
 
+static int
+ipsec4_fc_reset (clib_bihash_kv_16_8_1_t *kvp,
+		 void *arg __attribute__ ((unused)))
+{
+  clib_memset_u8 (kvp, 0xff, sizeof (*(kvp)));
+  return (BIHASH_WALK_CONTINUE);
+}
+
 int
 ipsec_add_del_policy (vlib_main_t * vm,
 		      ipsec_policy_t * policy, int is_add, u32 * stat_index)
@@ -156,6 +166,26 @@ ipsec_add_del_policy (vlib_main_t * vm,
   if (!spd)
     return VNET_API_ERROR_SYSCALL_ERROR_1;
 
+  if (!policy->is_ipv6)
+    {
+      /* Disable flow cache. Reset this flag once SPD table add/del is
+       * complete. This flag is looked up in data plane to bypass flow cache,
+       * whenever the control plane work on SPD table.
+       */
+      im->spd_update_flag = 1;
+
+      /*
+       * Wait for inflight packets to flush out from all the worker cores
+       */
+      vlib_worker_wait_one_loop ();
+
+      CLIB_MEMORY_STORE_BARRIER ();
+
+      /* Reset all the entries in flow cache */
+      clib_bihash_foreach_key_value_pair_16_8_1 (&im->spd_hash_tbl,
+						 ipsec4_fc_reset, NULL);
+    }
+
   if (is_add)
     {
       u32 policy_index;
@@ -165,7 +195,15 @@ ipsec_add_del_policy (vlib_main_t * vm,
 	  index_t sa_index = ipsec_sa_find_and_lock (policy->sa_id);
 
 	  if (INDEX_INVALID == sa_index)
-	    return VNET_API_ERROR_SYSCALL_ERROR_1;
+	    {
+	      if (!policy->is_ipv6)
+		{
+		  CLIB_MEMORY_STORE_BARRIER ();
+		  /* Re-enable flow cache in data plane */
+		  im->spd_update_flag = 0;
+		}
+	      return VNET_API_ERROR_SYSCALL_ERROR_1;
+	    }
 	  policy->sa_index = sa_index;
 	}
       else
@@ -200,6 +238,13 @@ ipsec_add_del_policy (vlib_main_t * vm,
 	    break;
 	  }
       }
+    }
+
+  if (!policy->is_ipv6)
+    {
+      CLIB_MEMORY_STORE_BARRIER ();
+      /* Re-enable flow cache in data plane */
+      im->spd_update_flag = 0;
     }
 
   return 0;
