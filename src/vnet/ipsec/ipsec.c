@@ -26,6 +26,10 @@
 #include <vnet/ipsec/ah.h>
 #include <vnet/ipsec/ipsec_tun.h>
 
+/* Flow cache is sized for 1 million flows with a load factor of .25.
+ */
+#define IPSEC4_OUT_SPD_DEFAULT_HASH_NUM_BUCKETS (1 << 22)
+
 ipsec_main_t ipsec_main;
 esp_async_post_next_t esp_encrypt_async_next;
 esp_async_post_next_t esp_decrypt_async_next;
@@ -545,6 +549,13 @@ ipsec_init (vlib_main_t * vm)
   im->async_mode = 0;
   crypto_engine_backend_register_post_node (vm);
 
+  im->ipsec4_out_spd_hash_tbl = NULL;
+  im->flow_cache_flag = 0;
+  im->ipsec4_out_spd_flow_cache_entries = 0;
+  im->epoch_count = 0;
+  im->ipsec4_out_spd_hash_num_buckets =
+    IPSEC4_OUT_SPD_DEFAULT_HASH_NUM_BUCKETS;
+
   return 0;
 }
 
@@ -553,11 +564,25 @@ VLIB_INIT_FUNCTION (ipsec_init);
 static clib_error_t *
 ipsec_config (vlib_main_t *vm, unformat_input_t *input)
 {
+  ipsec_main_t *im = &ipsec_main;
   unformat_input_t sub_input;
+  u32 ipsec4_out_spd_hash_num_buckets;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "ip4 %U", unformat_vlib_cli_sub_input, &sub_input))
+      if (unformat (input, "ipv4-outbound-spd-flow-cache on"))
+	im->flow_cache_flag = 1;
+      else if (unformat (input, "ipv4-outbound-spd-flow-cache off"))
+	im->flow_cache_flag = 0;
+      else if (unformat (input, "ipv4-outbound-spd-hash-buckets %d",
+			 &ipsec4_out_spd_hash_num_buckets))
+	{
+	  /* Size of hash is power of 2 >= number of buckets */
+	  im->ipsec4_out_spd_hash_num_buckets =
+	    1ULL << max_log2 (ipsec4_out_spd_hash_num_buckets);
+	}
+      else if (unformat (input, "ip4 %U", unformat_vlib_cli_sub_input,
+			 &sub_input))
 	{
 	  uword table_size = ~0;
 	  u32 n_buckets = ~0;
@@ -593,6 +618,11 @@ ipsec_config (vlib_main_t *vm, unformat_input_t *input)
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
+    }
+  if (im->flow_cache_flag)
+    {
+      vec_add2 (im->ipsec4_out_spd_hash_tbl, im->ipsec4_out_spd_hash_tbl,
+		im->ipsec4_out_spd_hash_num_buckets);
     }
 
   return 0;
