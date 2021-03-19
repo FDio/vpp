@@ -156,6 +156,29 @@ ipsec_add_del_policy (vlib_main_t * vm,
   if (!spd)
     return VNET_API_ERROR_SYSCALL_ERROR_1;
 
+  if (im->flow_cache_flag && !policy->is_ipv6 &&
+      policy->type == IPSEC_SPD_POLICY_IP4_OUTBOUND)
+    {
+      /*
+       * Flow cache entry is valid only when epoch_count value in control
+       * plane and data plane match. Otherwise, flow cache entry is considered
+       * stale. To avoid the race condition of using old epoch_count value
+       * in data plane after the roll over of epoch_count in control plane,
+       * entire flow cache is reset.
+       */
+      if (im->epoch_count == 0xFFFFFFFF)
+	{
+	  /* Reset all the entries in flow cache */
+	  clib_memset_u8 (im->ipsec4_out_spd_hash_tbl, 0,
+			  im->ipsec4_out_spd_hash_num_buckets *
+			    (sizeof (*(im->ipsec4_out_spd_hash_tbl))));
+	}
+      /* Increment epoch counter by 1 */
+      clib_atomic_fetch_add_relax (&im->epoch_count, 1);
+      /* Reset spd flow cache counter since all old entries are stale */
+      clib_atomic_store_relax_n (&im->ipsec4_out_spd_flow_cache_entries, 0);
+    }
+
   if (is_add)
     {
       u32 policy_index;

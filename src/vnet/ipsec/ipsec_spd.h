@@ -64,6 +64,8 @@ extern int ipsec_set_interface_spd (vlib_main_t * vm,
 
 extern u8 *format_ipsec_spd (u8 * s, va_list * args);
 
+extern u8 *format_ipsec_spd_flow_cache (u8 *s, va_list *args);
+
 #endif /* __IPSEC_SPD_H__ */
 
 /*
