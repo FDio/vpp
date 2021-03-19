@@ -427,6 +427,11 @@ ipsec_spd_show_all (vlib_main_t * vm, ipsec_main_t * im)
   pool_foreach_index (spdi, im->spds)  {
     vlib_cli_output(vm, "%U", format_ipsec_spd, spdi);
   }
+
+  if (im->flow_cache_flag)
+    {
+      vlib_cli_output (vm, "%U", format_ipsec_spd_flow_cache);
+    }
   /* *INDENT-ON* */
 }
 
