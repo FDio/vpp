@@ -22,6 +22,9 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_io.h>
 
+#include <vnet/ipsec/ipsec_bihash_16_8.h>
+#include <vppinfra/bihash_template.h>
+
 #if WITH_LIBSSL > 0
 
 #define foreach_ipsec_output_error                   \
@@ -52,6 +55,18 @@ typedef struct
   u32 policy_id;
 } ipsec_output_trace_t;
 
+typedef union
+{
+  struct
+  {
+    ip4_address_t ip4_addr[2];
+    u16 port[2];
+    u8 proto;
+    u8 pad[3];
+  };
+  clib_bihash_kv_16_8_1_t kv_16_8_1;
+} ipsec4_spd_5tuple_t;
+
 /* packet trace format function */
 static u8 *
 format_ipsec_output_trace (u8 * s, va_list * args)
@@ -63,6 +78,71 @@ format_ipsec_output_trace (u8 * s, va_list * args)
   s = format (s, "spd %u policy %d", t->spd_id, t->policy_id);
 
   return s;
+}
+
+/* Call back function to overwrite colliding entries in bihash */
+static int
+ipsec4_spd_fc_cb (clib_bihash_kv_16_8_1_t *kv __attribute__ ((unused)),
+		  void *arg __attribute__ ((unused)))
+{
+  return 1; /* Always overwrite */
+}
+
+always_inline void
+ipsec4_spd_add_bihash_entry (ipsec_main_t *im, u8 pr, u32 la, u32 ra, u16 lp,
+			     u16 rp, u32 pol_id)
+{
+  ipsec4_spd_5tuple_t ip4_5tuple;
+
+  ip4_5tuple.ip4_addr[0] = (ip4_address_t) la;
+  ip4_5tuple.ip4_addr[1] = (ip4_address_t) ra;
+  ip4_5tuple.port[0] = lp;
+  ip4_5tuple.port[1] = rp;
+  ip4_5tuple.proto = pr;
+  ip4_5tuple.pad[0] = 0;
+  ip4_5tuple.pad[1] = 0;
+  ip4_5tuple.pad[2] = 0;
+
+  ip4_5tuple.kv_16_8_1.value = pol_id;
+
+  clib_bihash_add_or_overwrite_stale_16_8_1 (
+    &im->spd_hash_tbl, &ip4_5tuple.kv_16_8_1, ipsec4_spd_fc_cb, NULL);
+
+  return;
+}
+
+always_inline ipsec_policy_t *
+ipsec4_spd_find_bihash_entry (ipsec_main_t *im, u8 pr, u32 la, u32 ra, u16 lp,
+			      u16 rp)
+{
+  ipsec_policy_t *p = (ipsec_policy_t *) ~0ULL;
+
+  clib_bihash_kv_16_8_1_t kv_result;
+  u64 hash;
+  ipsec4_spd_5tuple_t ip4_5tuple;
+
+  ip4_5tuple.ip4_addr[0] = (ip4_address_t) la;
+  ip4_5tuple.ip4_addr[1] = (ip4_address_t) ra;
+  ip4_5tuple.port[0] = lp;
+  ip4_5tuple.port[1] = rp;
+  ip4_5tuple.proto = pr;
+  ip4_5tuple.pad[0] = 0;
+  ip4_5tuple.pad[1] = 0;
+  ip4_5tuple.pad[2] = 0;
+
+  kv_result.value = ~0ULL;
+  hash = clib_bihash_hash_16_8_1 (&ip4_5tuple.kv_16_8_1);
+
+  clib_bihash_search_inline_2_with_hash_16_8_1 (
+    &im->spd_hash_tbl, hash, &ip4_5tuple.kv_16_8_1, &kv_result);
+
+  if (kv_result.value != ~0ULL)
+    {
+      /* Get the policy based on the index */
+      p = pool_elt_at_index (im->policies, ((u32) kv_result.value));
+    }
+
+  return p;
 }
 
 always_inline ipsec_policy_t *
@@ -110,6 +190,15 @@ ipsec_output_policy_match (ipsec_spd_t * spd, u8 pr, u32 la, u32 ra, u16 lp,
 
     if (rp > p->rport.stop)
       continue;
+
+    /* Do not add an entry in flow cache when control plane is working on SPD
+     * table.
+     */
+    if (!im->spd_update_flag)
+      {
+	/* Add an Entry in Flow cache */
+	ipsec4_spd_add_bihash_entry (im, pr, la, ra, lp, rp, *i);
+      }
 
     return p;
   }
@@ -196,7 +285,7 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       u32 bi0, pi0, bi1;
       vlib_buffer_t *b0, *b1;
-      ipsec_policy_t *p0;
+      ipsec_policy_t *p0 = (ipsec_policy_t *) ~0ULL;
       ip4_header_t *ip0;
       ip6_header_t *ip6_0 = 0;
       udp_header_t *udp0;
@@ -264,15 +353,29 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			sw_if_index0, spd_index0, spd0->id);
 #endif
 
-	  p0 = ipsec_output_policy_match (spd0, ip0->protocol,
-					  clib_net_to_host_u32
-					  (ip0->src_address.as_u32),
-					  clib_net_to_host_u32
-					  (ip0->dst_address.as_u32),
-					  clib_net_to_host_u16
-					  (udp0->src_port),
-					  clib_net_to_host_u16
-					  (udp0->dst_port));
+	  /* Look up flow cache when control plane doesn't work on
+	   * SPD table. Otherwise, fall back to linear search.
+	   */
+	  if (!im->spd_update_flag)
+	    {
+	      p0 = ipsec4_spd_find_bihash_entry (
+		im, ip0->protocol,
+		clib_net_to_host_u32 (ip0->src_address.as_u32),
+		clib_net_to_host_u32 (ip0->dst_address.as_u32),
+		clib_net_to_host_u16 (udp0->src_port),
+		clib_net_to_host_u16 (udp0->dst_port));
+	    }
+
+	  /* Fall back to linear search if flow cache lookup fails */
+	  if (~0ULL == (u64) p0)
+	    {
+	      p0 = ipsec_output_policy_match (
+		spd0, ip0->protocol,
+		clib_net_to_host_u32 (ip0->src_address.as_u32),
+		clib_net_to_host_u32 (ip0->dst_address.as_u32),
+		clib_net_to_host_u16 (udp0->src_port),
+		clib_net_to_host_u16 (udp0->dst_port));
+	    }
 	}
       tcp0 = (void *) udp0;
 
