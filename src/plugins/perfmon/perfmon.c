@@ -193,6 +193,7 @@ perfmon_set (vlib_main_t *vm, perfmon_bundle_t *b)
 	{
 	  perfmon_thread_runtime_t *rt;
 	  rt = vec_elt_at_index (pm->thread_runtimes, i);
+	  rt->bundle = b;
 	  rt->n_events = b->n_events;
 	  rt->n_nodes = n_nodes;
 	  vec_validate_aligned (rt->node_stats, n_nodes - 1,
