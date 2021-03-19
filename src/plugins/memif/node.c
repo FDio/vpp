@@ -933,7 +933,7 @@ VLIB_NODE_FN (memif_input_node) (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (memif_input_node) = {
   .name = "memif-input",
-  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED | VLIB_NODE_FLAG_ADAPTIVE_MODE,
   .sibling_of = "device-input",
   .format_trace = format_memif_input_trace,
   .type = VLIB_NODE_TYPE_INPUT,
