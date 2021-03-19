@@ -203,15 +203,15 @@ teib_entry_add (u32 sw_if_index,
 {
   fib_protocol_t nh_proto;
   teib_entry_t *te;
-  u32 fib_index;
+  u32 nh_fib_index;
   index_t tei;
 
   nh_proto = (AF_IP4 == ip_addr_version (nh) ?
 	      FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
 
-  fib_index = fib_table_find (nh_proto, nh_table_id);
+  nh_fib_index = fib_table_find (nh_proto, nh_table_id);
 
-  if (~0 == fib_index)
+  if (~0 == nh_fib_index)
     {
       return (VNET_API_ERROR_NO_SUCH_FIB);
     }
@@ -224,10 +224,11 @@ teib_entry_add (u32 sw_if_index,
 	.tk_peer = *peer,
 	.tk_sw_if_index = sw_if_index,
       };
+      u32 peer_fib_index;
       teib_entry_t *te;
-      u32 fib_index;
 
-      fib_index = fib_table_get_index_for_sw_if_index (nh_proto, sw_if_index);
+      peer_fib_index =
+	fib_table_get_index_for_sw_if_index (nh_proto, sw_if_index);
 
       pool_get_zero (teib_pool, te);
 
@@ -236,12 +237,12 @@ teib_entry_add (u32 sw_if_index,
       clib_memcpy (te->te_key, &nk, sizeof (*te->te_key));
 
       ip_address_to_fib_prefix (nh, &te->te_nh);
-      te->te_fib_index = fib_index;
+      te->te_fib_index = nh_fib_index;
 
       hash_set_mem (teib_db.td_db, te->te_key, tei);
 
       /* we how have a /32 in the overlay, add an adj-fib */
-      teib_adj_fib_add (&te->te_key->tk_peer, sw_if_index, fib_index);
+      teib_adj_fib_add (&te->te_key->tk_peer, sw_if_index, peer_fib_index);
 
       TEIB_NOTIFY (te, nv_added);
       TEIB_TE_INFO (te, "created");
