@@ -20,12 +20,12 @@
 
 static perfmon_event_t events[] = {
 #define _(event, umask, edge, any, inv, cmask, n, suffix, desc)               \
-  [INTEL_CORE_E_##n##_##suffix] = {                                           \
-    .type = PERF_TYPE_RAW,                                                    \
-    .config = PERF_INTEL_CODE (event, umask, edge, any, inv, cmask),          \
-    .name = #n "." #suffix,                                                   \
-    .description = desc,                                                      \
-  },
+  [INTEL_CORE_E_##n##_##suffix] = { .type = PERF_TYPE_RAW,                    \
+				    .config = PERF_INTEL_CODE (               \
+				      event, umask, edge, any, inv, cmask),   \
+				    .name = #n "." #suffix,                   \
+				    .description = desc,                      \
+				    .exclude_kernel = 1 },
 
   foreach_perf_intel_core_event
 #undef _

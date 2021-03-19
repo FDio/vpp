@@ -20,6 +20,7 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
+#include <vppinfra/cpu.h>
 #include <vlib/vlib.h>
 
 #define PERF_MAX_EVENTS 7 /* 3 fixed and 4 programmable */
@@ -31,6 +32,12 @@ typedef enum
   PERFMON_BUNDLE_TYPE_THREAD,
   PERFMON_BUNDLE_TYPE_SYSTEM,
 } perfmon_bundle_type_t;
+
+typedef enum
+{
+  PERFMON_OFFSET_TYPE_MMAP,
+  PERFMON_OFFSET_TYPE_METRICS,
+} perfmon_offset_type_t;
 
 typedef struct
 {
@@ -78,8 +85,10 @@ typedef struct perfmon_source
 } perfmon_source_t;
 
 struct perfmon_bundle;
+
 typedef clib_error_t *(perfmon_bundle_init_fn_t) (vlib_main_t *vm,
 						  struct perfmon_bundle *);
+
 typedef struct perfmon_bundle
 {
   char *name;
@@ -87,7 +96,9 @@ typedef struct perfmon_bundle
   char *source;
   char *footer;
   perfmon_bundle_type_t type;
+  perfmon_offset_type_t offset_type;
   u32 events[PERF_MAX_EVENTS];
+  u32 metrics[PERF_MAX_EVENTS];
   u32 n_events;
 
   perfmon_bundle_init_fn_t *init_fn;
@@ -95,6 +106,7 @@ typedef struct perfmon_bundle
   char **column_headers;
   char **raw_column_headers;
   format_function_t *format_fn;
+  clib_cpu_supports_func_t cpu_supports;
 
   /* do not set manually */
   perfmon_source_t *src;
@@ -114,7 +126,14 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u64 n_calls;
   u64 n_packets;
-  u64 value[PERF_MAX_EVENTS];
+  union
+  {
+    struct
+    {
+      u64 value[PERF_MAX_EVENTS];
+    } t[2];
+    u64 value[PERF_MAX_EVENTS * 2];
+  };
 } perfmon_node_stats_t;
 
 typedef struct
@@ -122,6 +141,7 @@ typedef struct
   u8 n_events;
   u16 n_nodes;
   perfmon_node_stats_t *node_stats;
+  perfmon_bundle_t *bundle;
   struct perf_event_mmap_page *mmap_pages[PERF_MAX_EVENTS];
 } perfmon_thread_runtime_t;
 
@@ -166,6 +186,13 @@ extern perfmon_main_t perfmon_main;
 void perfmon_reset (vlib_main_t *vm);
 clib_error_t *perfmon_start (vlib_main_t *vm, perfmon_bundle_t *);
 clib_error_t *perfmon_stop (vlib_main_t *vm);
+
+always_inline void
+perfmon_calculate_deltas (perfmon_node_stats_t *ns, u8 n)
+{
+  for (int i = 0; i < n; i++)
+    ns->value[i] = ns->t[1].value[i] - ns->t[0].value[i];
+}
 
 #define PERFMON_STRINGS(...)                                                  \
   (char *[]) { __VA_ARGS__, 0 }
