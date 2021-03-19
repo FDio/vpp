@@ -595,6 +595,7 @@ list(APPEND VNET_HEADERS
   ipsec/ipsec_punt.h
   ipsec/esp.h
   ipsec/ah.h
+  ipsec/ipsec_bihash_16_8.h
 )
 
 ##############################################################################
