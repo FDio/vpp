@@ -193,6 +193,7 @@ perfmon_set (vlib_main_t *vm, perfmon_bundle_t *b)
 	{
 	  perfmon_thread_runtime_t *rt;
 	  rt = vec_elt_at_index (pm->thread_runtimes, i);
+	  rt->bundle = b;
 	  rt->n_events = b->n_events;
 	  rt->n_nodes = n_nodes;
 	  vec_validate_aligned (rt->node_stats, n_nodes - 1,
@@ -235,11 +236,20 @@ perfmon_start (vlib_main_t *vm, perfmon_bundle_t *b)
 	  return clib_error_return_unix (0, "ioctl(PERF_EVENT_IOC_ENABLE)");
 	}
     }
-  if (pm->active_bundle->type == PERFMON_BUNDLE_TYPE_NODE)
+  if (b->type == PERFMON_BUNDLE_TYPE_NODE)
     {
+
+      vlib_node_function_t *funcs[PERFMON_OFFSET_TYPE_MAX];
+#define _(type, pfunc) funcs[type] = pfunc;
+
+      foreach_permon_offset_type
+#undef _
+
+	ASSERT (funcs[b->offset_type]);
+
       for (int i = 0; i < vlib_get_n_threads (); i++)
 	vlib_node_set_dispatch_wrapper (vlib_get_main_by_index (i),
-					perfmon_dispatch_wrapper);
+					funcs[b->offset_type]);
     }
 
   pm->sample_time = vlib_time_now (vm);

@@ -30,4 +30,5 @@ add_vpp_plugin(perfmon
   intel/bundle/cache_hit_miss.c
   intel/bundle/branch_mispred.c
   intel/bundle/power_license.c
+  intel/bundle/topdown_metrics.c
 )
