@@ -45,8 +45,6 @@ DPDK_DRIVERS_DISABLED := baseband/\*,	\
 	compress/zlib,						\
 	crypto/ccp,							\
 	crypto/dpaa_sec,					\
-	crypto/openssl,						\
-	crypto/aesni_mb,						\
 	crypto/aesni_gcm,						\
 	crypto/kasumi,						\
 	crypto/snow3g,						\
@@ -64,7 +62,7 @@ DPDK_DRIVERS_DISABLED := baseband/\*,	\
 	net/softnic,						\
 	net/thunderx,						\
 	raw/ifpga,							\
-	net/af_xdp							
+	net/af_xdp
 
 DPDK_LIBS_DISABLED := acl,				\
 	bbdev,								\
