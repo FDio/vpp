@@ -64,6 +64,7 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
   vnet_hw_if_rxq_poll_vector_t *pv, **d = 0;
   vlib_node_state_t *per_thread_node_state = 0;
   u32 n_threads = vec_len (vlib_mains);
+  u16 *per_thread_node_adaptive = 0;
   int something_changed = 0;
   clib_bitmap_t *pending_int = 0;
   int last_int = -1;
@@ -74,6 +75,7 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
   vec_validate (d, n_threads - 1);
   vec_validate_init_empty (per_thread_node_state, n_threads - 1,
 			   VLIB_NODE_STATE_DISABLED);
+  vec_validate_init_empty (per_thread_node_adaptive, n_threads - 1, 0);
 
   /* find out desired node state on each thread */
   pool_foreach (rxq, im->hw_if_rx_queues)
@@ -89,7 +91,10 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 	continue;
 
       if (rxq->mode == VNET_HW_IF_RX_MODE_POLLING)
-	per_thread_node_state[ti] = VLIB_NODE_STATE_POLLING;
+	{
+	  per_thread_node_state[ti] = VLIB_NODE_STATE_POLLING;
+	  per_thread_node_adaptive[ti] = 0;
+	}
 
       if (per_thread_node_state[ti] == VLIB_NODE_STATE_POLLING)
 	continue;
@@ -97,6 +102,9 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
       if (rxq->mode == VNET_HW_IF_RX_MODE_INTERRUPT ||
 	  rxq->mode == VNET_HW_IF_RX_MODE_ADAPTIVE)
 	per_thread_node_state[ti] = VLIB_NODE_STATE_INTERRUPT;
+
+      if (rxq->mode == VNET_HW_IF_RX_MODE_ADAPTIVE)
+	per_thread_node_adaptive[ti] = 1;
     }
 
   /* construct per-thread polling vectors */
@@ -190,6 +198,8 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 	    }
 
 	  vlib_node_set_state (vm, node_index, per_thread_node_state[i]);
+	  vlib_node_set_flag (vm, node_index, VLIB_NODE_FLAG_ADAPTIVE_MODE,
+			      per_thread_node_adaptive[i]);
 
 	  if (last_int >= 0)
 	    clib_interrupt_resize (&rt->rxq_interrupts, last_int + 1);
@@ -219,4 +229,5 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 
   vec_free (d);
   vec_free (per_thread_node_state);
+  vec_free (per_thread_node_adaptive);
 }
