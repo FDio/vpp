@@ -1052,11 +1052,12 @@ dispatch_node (vlib_main_t * vm,
 
   /* When in interrupt mode and vector rate crosses threshold switch to
      polling mode. */
-  if (PREDICT_FALSE ((dispatch_state == VLIB_NODE_STATE_INTERRUPT)
-		     || (dispatch_state == VLIB_NODE_STATE_POLLING
-			 && (node->flags
-			     &
-			     VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE))))
+  if (PREDICT_FALSE (
+	(node->flags & VLIB_NODE_FLAG_ADAPTIVE_MODE) &&
+	((dispatch_state == VLIB_NODE_STATE_INTERRUPT) ||
+	 (dispatch_state == VLIB_NODE_STATE_POLLING &&
+	  (node->flags &
+	   VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE)))))
     {
       /* *INDENT-OFF* */
       ELOG_TYPE_DECLARE (e) =

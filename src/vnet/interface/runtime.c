@@ -181,12 +181,24 @@ vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 	    {
 	      void *in = rt->rxq_interrupts;
 	      int int_num = -1;
+	      vlib_node_t *n;
+	      u32 qi;
+
 	      while ((int_num = clib_interrupt_get_next (in, int_num)) != -1)
 		{
 		  clib_interrupt_clear (in, int_num);
 		  pending_int = clib_bitmap_set (pending_int, int_num, 1);
 		  last_int = clib_max (last_int, int_num);
 		}
+
+	      qi = vnet_hw_if_get_rx_queue_index_by_id (vnm, hw_if_index,
+							pv->queue_id);
+	      rxq = vnet_hw_if_get_rx_queue (vnm, qi);
+	      n = vlib_get_node (vm, node_index);
+	      if (rxq->mode == VNET_HW_IF_RX_MODE_ADAPTIVE)
+		n->flags |= VLIB_NODE_FLAG_ADAPTIVE_MODE;
+	      else
+		n->flags &= ~VLIB_NODE_FLAG_ADAPTIVE_MODE;
 	    }
 
 	  vlib_node_set_state (vm, node_index, per_thread_node_state[i]);
