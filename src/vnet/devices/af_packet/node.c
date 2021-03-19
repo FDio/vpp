@@ -391,7 +391,7 @@ VLIB_NODE_FN (af_packet_input_node) (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (af_packet_input_node) = {
   .name = "af-packet-input",
-  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
+  .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED | VLIB_NODE_FLAG_ADAPTIVE_MODE,
   .sibling_of = "device-input",
   .format_trace = format_af_packet_input_trace,
   .type = VLIB_NODE_TYPE_INPUT,
