@@ -25,6 +25,16 @@
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ah.h>
 
+#include <vnet/ipsec/ipsec_bihash_16_8.h>
+#include <vppinfra/bihash_template.h>
+#include <vppinfra/bihash_template.c>
+
+/* Flow cache is sized for 1 million flows with a load factor of .25.
+ * This can be made as a configurable option in future.
+ */
+#define IPSEC_SPD_DEFAULT_HASH_NUM_BUCKETS (1 << 22)
+#define IPSEC_SPD_DEFAULT_HASH_MEMORY_SIZE (32 << 22)
+
 ipsec_main_t ipsec_main;
 esp_async_post_next_t esp_encrypt_async_next;
 esp_async_post_next_t esp_decrypt_async_next;
@@ -543,6 +553,11 @@ ipsec_init (vlib_main_t * vm)
 
   im->async_mode = 0;
   crypto_engine_backend_register_post_node (vm);
+
+  im->spd_update_flag = 0;
+  clib_bihash_init_16_8_1 (&im->spd_hash_tbl, "IPSec IPv4 SPD Flow cache",
+			   IPSEC_SPD_DEFAULT_HASH_NUM_BUCKETS,
+			   IPSEC_SPD_DEFAULT_HASH_MEMORY_SIZE);
 
   return 0;
 }
