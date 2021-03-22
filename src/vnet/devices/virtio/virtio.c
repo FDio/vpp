@@ -263,7 +263,7 @@ virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif)
 	  i++;
 	}
     }
-  vnet_hw_if_update_runtime_data (vnm, vif->hw_if_index);
+  vnet_hw_if_rxq_update_runtime_data (vnm, vif->hw_if_index);
 }
 
 inline void

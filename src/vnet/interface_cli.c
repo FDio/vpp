@@ -1507,7 +1507,7 @@ set_hw_interface_change_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
 done:
   if (queue_indices != hw->rx_queue_indices)
     vec_free (queue_indices);
-  vnet_hw_if_update_runtime_data (vnm, hw_if_index);
+  vnet_hw_if_rxq_update_runtime_data (vnm, hw_if_index);
   return error;
 }
 
@@ -1700,7 +1700,7 @@ set_hw_interface_rx_placement (u32 hw_if_index, u32 queue_id,
     return clib_error_return (0, "unknown queue %u on interface %s", queue_id,
 			      hw->name);
   vnet_hw_if_set_rx_queue_thread_index (vnm, queue_index, thread_index);
-  vnet_hw_if_update_runtime_data (vnm, hw_if_index);
+  vnet_hw_if_rxq_update_runtime_data (vnm, hw_if_index);
   return 0;
 }
 

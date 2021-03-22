@@ -54,7 +54,7 @@ poll_data_sort (void *a1, void *a2)
 }
 
 void
-vnet_hw_if_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
+vnet_hw_if_rxq_update_runtime_data (vnet_main_t *vnm, u32 hw_if_index)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;

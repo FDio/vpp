@@ -994,7 +994,7 @@ are explicitly disabled, and if the interface supports it.*/
 	vnm, rd->hw_if_index, qid, VNET_HW_IF_RXQ_THREAD_ANY);
       rd->rxqs[qid].queue_index = queue_index;
     }
-  vnet_hw_if_update_runtime_data (vnm, rd->hw_if_index);
+  vnet_hw_if_rxq_update_runtime_data (vnm, rd->hw_if_index);
   vec_free (s);
   return;
 

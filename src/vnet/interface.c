@@ -495,7 +495,7 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
 						hi->flags &
 						~VNET_HW_INTERFACE_FLAG_LINK_UP,
 						helper_flags);
-	  vnet_hw_if_update_runtime_data (vnm, si->hw_if_index);
+	  vnet_hw_if_rxq_update_runtime_data (vnm, si->hw_if_index);
 	}
     }
 
@@ -1048,7 +1048,7 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
 
   /* delete rx queues */
   vnet_hw_if_unregister_all_rx_queues (vnm, hw_if_index);
-  vnet_hw_if_update_runtime_data (vnm, hw_if_index);
+  vnet_hw_if_rxq_update_runtime_data (vnm, hw_if_index);
 
   /* Delete any sub-interfaces. */
   {

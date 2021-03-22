@@ -834,7 +834,7 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
     vmxnet3_rxq_refill_ring0 (vm, vd, rxq);
     vmxnet3_rxq_refill_ring1 (vm, vd, rxq);
   }
-  vnet_hw_if_update_runtime_data (vnm, vd->hw_if_index);
+  vnet_hw_if_rxq_update_runtime_data (vnm, vd->hw_if_index);
 
   vd->flags |= VMXNET3_DEVICE_F_INITIALIZED;
   vmxnet3_enable_interrupt (vd);

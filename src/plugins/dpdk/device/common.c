@@ -240,7 +240,7 @@ dpdk_setup_interrupts (dpdk_device_t *xd)
 	    }
 	}
     }
-  vnet_hw_if_update_runtime_data (vnm, xd->hw_if_index);
+  vnet_hw_if_rxq_update_runtime_data (vnm, xd->hw_if_index);
 }
 
 void

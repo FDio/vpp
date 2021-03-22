@@ -305,7 +305,7 @@ mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args)
 
   vnet_hw_if_set_rx_queue_mode (vnm, ppif->inqs[0].queue_index,
 				VNET_HW_IF_RX_MODE_POLLING);
-  vnet_hw_if_update_runtime_data (vnm, ppif->hw_if_index);
+  vnet_hw_if_rxq_update_runtime_data (vnm, ppif->hw_if_index);
   vnet_hw_interface_set_flags (vnm, ppif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
   goto done;

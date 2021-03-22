@@ -178,7 +178,7 @@ vhost_user_rx_thread_placement (vhost_user_intf_t * vui, u32 qid)
   if (rv)
     vu_log_warn (vui, "unable to set rx mode for interface %d, "
 		 "queue %d: rc=%d", vui->hw_if_index, q, rv);
-  vnet_hw_if_update_runtime_data (vnm, vui->hw_if_index);
+  vnet_hw_if_rxq_update_runtime_data (vnm, vui->hw_if_index);
 }
 
 /** @brief Returns whether at least one TX and one RX vring are enabled */

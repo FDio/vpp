@@ -147,7 +147,7 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
 	}
     }
   vnet_hw_if_unregister_all_rx_queues (vnm, mif->hw_if_index);
-  vnet_hw_if_update_runtime_data (vnm, mif->hw_if_index);
+  vnet_hw_if_rxq_update_runtime_data (vnm, mif->hw_if_index);
 
   /* *INDENT-OFF* */
   vec_foreach_index (i, mif->tx_queues)
@@ -309,7 +309,7 @@ memif_connect (memif_if_t * mif)
       mq->buffer_pool_index =
 	vlib_buffer_pool_get_default_for_numa (vm, vlib_mains[ti]->numa_node);
       rv = vnet_hw_if_set_rx_queue_mode (vnm, qi, VNET_HW_IF_RX_MODE_DEFAULT);
-      vnet_hw_if_update_runtime_data (vnm, mif->hw_if_index);
+      vnet_hw_if_rxq_update_runtime_data (vnm, mif->hw_if_index);
 
       if (rv)
 	memif_log_err

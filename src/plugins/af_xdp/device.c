@@ -444,7 +444,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       af_xdp_device_set_rxq_mode (rxq, 1 /* polling */);
     }
 
-  vnet_hw_if_update_runtime_data (vnm, ad->hw_if_index);
+  vnet_hw_if_rxq_update_runtime_data (vnm, ad->hw_if_index);
 
   /* buffer template */
   vec_validate_aligned (ad->buffer_template, 1, CLIB_CACHE_LINE_BYTES);

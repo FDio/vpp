@@ -410,7 +410,7 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
 
   vnet_hw_if_set_rx_queue_mode (vnm, apif->queue_index,
 				VNET_HW_IF_RX_MODE_INTERRUPT);
-  vnet_hw_if_update_runtime_data (vnm, apif->hw_if_index);
+  vnet_hw_if_rxq_update_runtime_data (vnm, apif->hw_if_index);
   {
     clib_file_t template = { 0 };
     template.read_function = af_packet_fd_read_ready;

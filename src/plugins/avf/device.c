@@ -1675,7 +1675,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 	}
       ad->rxqs[i].queue_index = qi;
     }
-  vnet_hw_if_update_runtime_data (vnm, ad->hw_if_index);
+  vnet_hw_if_rxq_update_runtime_data (vnm, ad->hw_if_index);
 
   if (pool_elts (am->devices) == 1)
     vlib_process_signal_event (vm, avf_process_node.index,
