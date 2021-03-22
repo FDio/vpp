@@ -475,7 +475,7 @@ openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
   session_t *app_session;
-  int read, wrote = 0;
+  int read;
   svm_fifo_t *f;
 
   if (PREDICT_FALSE (SSL_in_init (oc->ssl)))
@@ -493,10 +493,11 @@ openssl_ctx_read_tls (tls_ctx_t *ctx, session_t *tls_session)
   if (read && app_session->session_state >= SESSION_STATE_READY)
     tls_notify_app_enqueue (ctx, app_session);
 
-  if (SSL_pending (oc->ssl) > 0)
+  if ((SSL_pending (oc->ssl) > 0) ||
+      svm_fifo_max_dequeue_cons (tls_session->rx_fifo))
     tls_add_vpp_q_builtin_rx_evt (tls_session);
 
-  return wrote;
+  return read;
 }
 
 static inline int
