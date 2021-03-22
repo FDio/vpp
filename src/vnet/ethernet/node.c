@@ -363,7 +363,7 @@ eth_input_adv_and_flags_x4 (vlib_buffer_t ** b, int is_l3)
 
   /* use old current_data as l2_hdr_offset and new current_data as
      l3_hdr_offset */
-  r = (u64x4) u16x16_blend (r, radv << 16, 0xaa);
+  r = (u64x4) u16x16_mask_blend ((u16x16) r, (u16x16) (radv << 16), 0xaa);
 
   /* store both l2_hdr_offset and l3_hdr_offset in single store operation */
   u32x8_scatter_one ((u32x8) r, 0, &vnet_buffer (b[0])->l2_hdr_offset);

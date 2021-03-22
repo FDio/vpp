@@ -153,6 +153,30 @@ _(i8x16, i64x4, epi8_epi64)
 #undef _
 /* *INDENT-ON* */
 
+/* extract the lowest-indexed half of a vector, and extend each element
+ * to double the width */
+static_always_inline u32x8
+u16x16_extract_extend_lo (u16x16 s)
+{
+  return u32x8_from_u16x8 (u16x16_extract_lo (s));
+}
+
+/* extract the highest-indexed half of a vector, and extend each element
+ * to double the width */
+static_always_inline u32x8
+u16x16_extract_extend_hi (u16x16 s)
+{
+  return u32x8_from_u16x8 (u16x16_extract_hi (s));
+}
+
+/* load 4x u32 elements from address *s, zero-extend each element to u64,
+ * and put all the elements into u64xn vector register */
+static_always_inline u64x4
+u64x4_load_extend_u32 (u32 *s)
+{
+  return u64x4_from_u32x4 (u32x4_load_unaligned (s));
+}
+
 static_always_inline u64x4
 u64x4_byte_swap (u64x4 v)
 {
@@ -246,10 +270,10 @@ u32x8_from_f32x8 (f32x8 v)
   return (u32x8) _mm256_cvttps_epi32 ((__m256) v);
 }
 
-#define u32x8_blend(a,b,m) \
+#define u32x8_mask_blend(a, b, m)                                             \
   (u32x8) _mm256_blend_epi32 ((__m256i) a, (__m256i) b, m)
 
-#define u16x16_blend(v1, v2, mask) \
+#define u16x16_mask_blend(v1, v2, mask)                                       \
   (u16x16) _mm256_blend_epi16 ((__m256i) (v1), (__m256i) (v2), mask)
 
 static_always_inline u64x4
