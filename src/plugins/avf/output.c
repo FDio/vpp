@@ -184,7 +184,7 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
   u16 n_desc_needed;
   vlib_buffer_t *b0;
 
-  /* avoid ring wrap */
+  /* avoid ring wrap in the middle of the fast path loop */
   n_desc_left = txq->size - clib_max (txq->next, txq->n_enqueued + 8);
 
   if (n_desc_left == 0)
@@ -240,7 +240,7 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
       n_packets_left -= 4;
       n_desc_left -= 4;
       d += 4;
-      continue;
+      goto loop_fastpath;
 
     one_by_one:
       one_by_one_offload_flags = 0;
@@ -329,6 +329,16 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
       n_packets_left -= 1;
       n_desc_left -= 1;
       d += 1;
+
+    loop_fastpath:
+      /* wrap around ideally resuming fast path */
+      if (PREDICT_FALSE (n_packets_left && n_desc_left == 0))
+	{
+	  next = txq->next = next & mask;
+	  d = txq->descs + next;
+	  n_desc_left =
+	    txq->size - clib_max (txq->next, (txq->n_enqueued + n_desc) + 8);
+	}
     }
 
   /* Slow path to support ring wrap */
