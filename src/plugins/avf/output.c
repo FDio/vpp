@@ -177,7 +177,7 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
   u64 one_by_one_offload_flags = 0;
   int is_tso;
   u16 n_desc = 0;
-  u16 *slot, n_desc_left, n_packets_left = n_packets;
+  u16 *slot, n_desc_left, n_packets_left = n_packets, n_passes = 1;
   u16 mask = txq->size - 1;
   vlib_buffer_t *b[4];
   avf_tx_desc_t *d = txq->descs + next;
@@ -189,183 +189,89 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
 
   if (n_desc_left == 0)
     return 0;
+  else if (n_desc_left < n_packets)
+    n_passes = 2; /* wrap around, we need a 2nd pass */
 
-  /* Fast path, no ring wrap */
-  while (n_packets_left && n_desc_left)
+  while (n_passes)
     {
-      u32 or_flags;
-      if (n_packets_left < 8 || n_desc_left < 4)
-	goto one_by_one;
+      /* keep processing one by one when required by flags*/
+      u16 slow_path = 0;
 
-      vlib_prefetch_buffer_with_index (vm, buffers[4], LOAD);
-      vlib_prefetch_buffer_with_index (vm, buffers[5], LOAD);
-      vlib_prefetch_buffer_with_index (vm, buffers[6], LOAD);
-      vlib_prefetch_buffer_with_index (vm, buffers[7], LOAD);
-
-      b[0] = vlib_get_buffer (vm, buffers[0]);
-      b[1] = vlib_get_buffer (vm, buffers[1]);
-      b[2] = vlib_get_buffer (vm, buffers[2]);
-      b[3] = vlib_get_buffer (vm, buffers[3]);
-
-      or_flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
-
-      if (or_flags & (VLIB_BUFFER_NEXT_PRESENT | offload_mask))
-	goto one_by_one;
-
-      vlib_buffer_copy_indices (txq->bufs + next, buffers, 4);
-
-      if (use_va_dma)
-	{
-	  d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
-	  d[1].qword[0] = vlib_buffer_get_current_va (b[1]);
-	  d[2].qword[0] = vlib_buffer_get_current_va (b[2]);
-	  d[3].qword[0] = vlib_buffer_get_current_va (b[3]);
-	}
-      else
-	{
-	  d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
-	  d[1].qword[0] = vlib_buffer_get_current_pa (vm, b[1]);
-	  d[2].qword[0] = vlib_buffer_get_current_pa (vm, b[2]);
-	  d[3].qword[0] = vlib_buffer_get_current_pa (vm, b[3]);
-	}
-
-      d[0].qword[1] = ((u64) b[0]->current_length) << 34 | bits;
-      d[1].qword[1] = ((u64) b[1]->current_length) << 34 | bits;
-      d[2].qword[1] = ((u64) b[2]->current_length) << 34 | bits;
-      d[3].qword[1] = ((u64) b[3]->current_length) << 34 | bits;
-
-      next += 4;
-      n_desc += 4;
-      buffers += 4;
-      n_packets_left -= 4;
-      n_desc_left -= 4;
-      d += 4;
-      continue;
-
-    one_by_one:
-      one_by_one_offload_flags = 0;
-      txq->bufs[next] = buffers[0];
-      b[0] = vlib_get_buffer (vm, buffers[0]);
-      is_tso = ! !(b[0]->flags & VNET_BUFFER_F_GSO);
-      if (PREDICT_FALSE (is_tso || b[0]->flags & offload_mask))
-	one_by_one_offload_flags |= avf_tx_prepare_cksum (b[0], is_tso);
-
-      /* Deal with chain buffer if present */
-      if (is_tso || b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
-	{
-	  n_desc_needed = 1 + is_tso;
-	  b0 = b[0];
-
-	  /* Wish there were a buffer count for chain buffer */
-	  while (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
-	    {
-	      b0 = vlib_get_buffer (vm, b0->next_buffer);
-	      n_desc_needed++;
-	    }
-
-	  /* spec says data descriptor is limited to 8 segments */
-	  if (PREDICT_FALSE (!is_tso && n_desc_needed > 8))
-	    {
-	      vlib_buffer_free_one (vm, buffers[0]);
-	      vlib_error_count (vm, node->node_index,
-				AVF_TX_ERROR_SEGMENT_SIZE_EXCEEDED, 1);
-	      n_packets_left -= 1;
-	      buffers += 1;
-	      continue;
-	    }
-
-	  if (PREDICT_FALSE (n_desc_left < n_desc_needed))
-	    /*
-	     * Slow path may be able to to deal with this since it can handle
-	     * ring wrap
-	     */
-	    break;
-
-	  /* Enqueue a context descriptor if needed */
-	  if (PREDICT_FALSE (is_tso))
-	    {
-	      if (avf_tx_fill_ctx_desc (vm, txq, d, b[0]))
-		/* Failure to acquire ref on ctx placeholder */
-		break;
-	      txq->bufs[next + 1] = txq->bufs[next];
-	      txq->bufs[next] = txq->ctx_desc_placeholder_bi;
-	      next += 1;
-	      n_desc += 1;
-	      n_desc_left -= 1;
-	      d += 1;
-	    }
-	  while (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
-	    {
-	      if (use_va_dma)
-		d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
-	      else
-		d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
-
-	      d[0].qword[1] = (((u64) b[0]->current_length) << 34) |
-		AVF_TXD_CMD_RSV | one_by_one_offload_flags;
-
-	      next += 1;
-	      n_desc += 1;
-	      n_desc_left -= 1;
-	      d += 1;
-
-	      txq->bufs[next] = b[0]->next_buffer;
-	      b[0] = vlib_get_buffer (vm, b[0]->next_buffer);
-	    }
-	}
-
-      if (use_va_dma)
-	d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
-      else
-	d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
-
-      d[0].qword[1] =
-	(((u64) b[0]->current_length) << 34) | bits |
-	one_by_one_offload_flags;
-
-      next += 1;
-      n_desc += 1;
-      buffers += 1;
-      n_packets_left -= 1;
-      n_desc_left -= 1;
-      d += 1;
-    }
-
-  /* Slow path to support ring wrap */
-  if (PREDICT_FALSE (n_packets_left))
-    {
-      txq->n_enqueued += n_desc;
-
-      n_desc = 0;
-      d = txq->descs + (next & mask);
-
-      /* +8 to be consistent with fast path */
-      n_desc_left = txq->size - (txq->n_enqueued + 8);
-
+      /* Fast path, no ring wrap */
       while (n_packets_left && n_desc_left)
 	{
+	  u32 or_flags;
+	  if (n_packets_left < 8 || n_desc_left < 4 || slow_path)
+	    goto one_by_one;
 
-	  txq->bufs[next & mask] = buffers[0];
+	  vlib_prefetch_buffer_with_index (vm, buffers[4], LOAD);
+	  vlib_prefetch_buffer_with_index (vm, buffers[5], LOAD);
+	  vlib_prefetch_buffer_with_index (vm, buffers[6], LOAD);
+	  vlib_prefetch_buffer_with_index (vm, buffers[7], LOAD);
+
 	  b[0] = vlib_get_buffer (vm, buffers[0]);
+	  b[1] = vlib_get_buffer (vm, buffers[1]);
+	  b[2] = vlib_get_buffer (vm, buffers[2]);
+	  b[3] = vlib_get_buffer (vm, buffers[3]);
 
+	  or_flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
+
+	  if (or_flags & (VLIB_BUFFER_NEXT_PRESENT | offload_mask))
+	    goto one_by_one;
+
+	  vlib_buffer_copy_indices (txq->bufs + next, buffers, 4);
+
+	  if (use_va_dma)
+	    {
+	      d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
+	      d[1].qword[0] = vlib_buffer_get_current_va (b[1]);
+	      d[2].qword[0] = vlib_buffer_get_current_va (b[2]);
+	      d[3].qword[0] = vlib_buffer_get_current_va (b[3]);
+	    }
+	  else
+	    {
+	      d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
+	      d[1].qword[0] = vlib_buffer_get_current_pa (vm, b[1]);
+	      d[2].qword[0] = vlib_buffer_get_current_pa (vm, b[2]);
+	      d[3].qword[0] = vlib_buffer_get_current_pa (vm, b[3]);
+	    }
+
+	  d[0].qword[1] = ((u64) b[0]->current_length) << 34 | bits;
+	  d[1].qword[1] = ((u64) b[1]->current_length) << 34 | bits;
+	  d[2].qword[1] = ((u64) b[2]->current_length) << 34 | bits;
+	  d[3].qword[1] = ((u64) b[3]->current_length) << 34 | bits;
+
+	  next += 4;
+	  n_desc += 4;
+	  buffers += 4;
+	  n_packets_left -= 4;
+	  n_desc_left -= 4;
+	  d += 4;
+	  continue;
+
+	one_by_one:
 	  one_by_one_offload_flags = 0;
-	  is_tso = ! !(b[0]->flags & VNET_BUFFER_F_GSO);
+	  txq->bufs[next] = buffers[0];
+	  b[0] = vlib_get_buffer (vm, buffers[0]);
+	  is_tso = !!(b[0]->flags & VNET_BUFFER_F_GSO);
 	  if (PREDICT_FALSE (is_tso || b[0]->flags & offload_mask))
 	    one_by_one_offload_flags |= avf_tx_prepare_cksum (b[0], is_tso);
 
 	  /* Deal with chain buffer if present */
 	  if (is_tso || b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
 	    {
+	      slow_path = 1;
 	      n_desc_needed = 1 + is_tso;
 	      b0 = b[0];
 
+	      /* Wish there were a buffer count for chain buffer */
 	      while (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
 		{
 		  b0 = vlib_get_buffer (vm, b0->next_buffer);
 		  n_desc_needed++;
 		}
 
-	      /* Spec says data descriptor is limited to 8 segments */
+	      /* spec says data descriptor is limited to 8 segments */
 	      if (PREDICT_FALSE (!is_tso && n_desc_needed > 8))
 		{
 		  vlib_buffer_free_one (vm, buffers[0]);
@@ -376,22 +282,18 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
 		  continue;
 		}
 
-	      if (PREDICT_FALSE (n_desc_left < n_desc_needed))
-		break;
-
 	      /* Enqueue a context descriptor if needed */
 	      if (PREDICT_FALSE (is_tso))
 		{
 		  if (avf_tx_fill_ctx_desc (vm, txq, d, b[0]))
 		    /* Failure to acquire ref on ctx placeholder */
 		    break;
-
-		  txq->bufs[(next + 1) & mask] = txq->bufs[next & mask];
-		  txq->bufs[next & mask] = txq->ctx_desc_placeholder_bi;
+		  txq->bufs[next + 1] = txq->bufs[next];
+		  txq->bufs[next] = txq->ctx_desc_placeholder_bi;
 		  next += 1;
 		  n_desc += 1;
 		  n_desc_left -= 1;
-		  d = txq->descs + (next & mask);
+		  d += 1;
 		}
 	      while (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
 		{
@@ -401,16 +303,20 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
 		    d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
 
 		  d[0].qword[1] = (((u64) b[0]->current_length) << 34) |
-		    AVF_TXD_CMD_RSV | one_by_one_offload_flags;
+				  AVF_TXD_CMD_RSV | one_by_one_offload_flags;
 
 		  next += 1;
 		  n_desc += 1;
 		  n_desc_left -= 1;
-		  d = txq->descs + (next & mask);
+		  d += 1;
 
-		  txq->bufs[next & mask] = b[0]->next_buffer;
+		  txq->bufs[next] = b[0]->next_buffer;
 		  b[0] = vlib_get_buffer (vm, b[0]->next_buffer);
 		}
+	    }
+	  else
+	    {
+	      slow_path = 0;
 	    }
 
 	  if (use_va_dma)
@@ -418,16 +324,25 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
 	  else
 	    d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
 
-	  d[0].qword[1] =
-	    (((u64) b[0]->current_length) << 34) | bits |
-	    one_by_one_offload_flags;
+	  d[0].qword[1] = (((u64) b[0]->current_length) << 34) | bits |
+			  one_by_one_offload_flags;
 
 	  next += 1;
 	  n_desc += 1;
 	  buffers += 1;
 	  n_packets_left -= 1;
 	  n_desc_left -= 1;
-	  d = txq->descs + (next & mask);
+	  d += 1;
+	}
+
+      n_passes -= 1;
+      /* if packets left wrap around for 2nd pass */
+      if (PREDICT_FALSE (n_packets_left))
+	{
+	  next = txq->next = next & mask;
+	  d = txq->descs + next;
+	  n_desc_left =
+	    txq->size - clib_max (txq->next, (txq->n_enqueued + n_desc) + 8);
 	}
     }
 
