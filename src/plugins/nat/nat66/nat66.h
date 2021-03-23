@@ -20,6 +20,7 @@
 #define __included_nat66_h__
 
 #include <vnet/ip/ip.h>
+#include <vnet/fib/fib_table.h>
 #include <vppinfra/bihash_24_8.h>
 
 typedef struct
@@ -48,6 +49,7 @@ typedef struct
   u32 sw_if_index;
   u8 flags;
 } nat66_interface_t;
+
 #define NAT66_INTERFACE_FLAG_IS_INSIDE 1
 #define NAT66_INTERFACE_FLAG_IS_OUTSIDE 2
 #define nat66_interface_is_inside(i) i->flags & NAT66_INTERFACE_FLAG_IS_INSIDE
@@ -65,15 +67,15 @@ typedef struct
   clib_bihash_24_8_t sm_e;
   /** Session counters */
   vlib_combined_counter_main_t session_counters;
-  /** node index **/
-  u32 in2out_node_index;
-  u32 out2in_node_index;
 
   u32 outside_vrf_id;
   u32 outside_fib_index;
+  fib_source_t nat_fib_src_hi;
 
   u16 msg_id_base;
   u8 log_level;
+
+  u8 enabled;
 
   vlib_simple_counter_main_t in2out_packets;
   vlib_simple_counter_main_t out2in_packets;;
@@ -114,6 +116,8 @@ nat66_static_mapping_t *nat66_static_mapping_get (ip6_address_t * addr,
 int nat66_static_mapping_add_del (ip6_address_t * l_addr,
 				  ip6_address_t * e_addr, u32 vrf_id,
 				  u8 is_add);
+int nat66_plugin_enable (u32 outside_vrf);
+int nat66_plugin_disable ();
 
 #endif /* __included_nat66_h__ */
 

@@ -23,9 +23,23 @@
 #define REPLY_MSG_ID_BASE nm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-/*************/
-/*** NAT66 ***/
-/*************/
+static void
+vl_api_nat66_plugin_enable_disable_t_handler (
+  vl_api_nat66_plugin_enable_disable_t *mp)
+{
+  nat66_main_t *nm = &nat66_main;
+  vl_api_nat66_plugin_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  if (mp->enable)
+    {
+      rv = nat66_plugin_enable (ntohl (mp->outside_vrf));
+    }
+  else
+    rv = nat66_plugin_disable ();
+
+  REPLY_MACRO (VL_API_NAT66_PLUGIN_ENABLE_DISABLE_REPLY);
+}
 
 static void
 vl_api_nat66_add_del_interface_t_handler (vl_api_nat66_add_del_interface_t *
@@ -96,6 +110,10 @@ static void
 vl_api_nat66_interface_dump_t_handler (vl_api_nat66_interface_dump_t * mp)
 {
   vl_api_registration_t *rp;
+  nat66_main_t *nm = &nat66_main;
+
+  if (PREDICT_FALSE (!nm->enabled))
+    return;
 
   rp = vl_api_client_index_to_registration (mp->client_index);
   if (rp == 0)
@@ -145,6 +163,10 @@ vl_api_nat66_static_mapping_dump_t_handler (vl_api_nat66_static_mapping_dump_t
 					    * mp)
 {
   vl_api_registration_t *rp;
+  nat66_main_t *nm = &nat66_main;
+
+  if (PREDICT_FALSE (!nm->enabled))
+    return;
 
   rp = vl_api_client_index_to_registration (mp->client_index);
   if (rp == 0)
@@ -167,8 +189,6 @@ clib_error_t *
 nat66_plugin_api_hookup (vlib_main_t * vm)
 {
   nat66_main_t *nm = &nat66_main;
-
   nm->msg_id_base = setup_message_id_table ();
-
   return 0;
 }
