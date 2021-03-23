@@ -17,16 +17,12 @@
  * @brief NAT66 implementation
  */
 
+#include <nat/nat66/nat66.h>
 #include <vpp/app/version.h>
 #include <vnet/plugin/plugin.h>
-#include <nat/nat66/nat66.h>
-#include <vnet/fib/fib_table.h>
 #include <vnet/ip/reass/ip6_sv_reass.h>
 
 nat66_main_t nat66_main;
-fib_source_t nat_fib_src_hi;
-
-/* *INDENT-OFF* */
 
 /* Hook up input features */
 VNET_FEATURE_INIT (nat66_in2out, static) = {
@@ -42,39 +38,109 @@ VNET_FEATURE_INIT (nat66_out2in, static) = {
   .runs_after = VNET_FEATURES ("ip6-sv-reassembly-feature"),
 };
 
-/* *INDENT-ON* */
-
 clib_error_t *nat66_plugin_api_hookup (vlib_main_t * vm);
+
+#define fail_if_enabled()                                                     \
+  do                                                                          \
+    {                                                                         \
+      nat66_main_t *nm = &nat66_main;                                         \
+      if (PREDICT_FALSE (nm->enabled))                                        \
+	{                                                                     \
+	  nat66_elog_warn ("plugin enabled");                                 \
+	  return 1;                                                           \
+	}                                                                     \
+    }                                                                         \
+  while (0)
+
+#define fail_if_disabled()                                                    \
+  do                                                                          \
+    {                                                                         \
+      nat66_main_t *nm = &nat66_main;                                         \
+      if (PREDICT_FALSE (!nm->enabled))                                       \
+	{                                                                     \
+	  nat66_elog_warn ("plugin disabled");                                \
+	  return 1;                                                           \
+	}                                                                     \
+    }                                                                         \
+  while (0)
+
 static clib_error_t *
 nat66_init (vlib_main_t * vm)
 {
   nat66_main_t *nm = &nat66_main;
-  vlib_node_t *node;
+
+  clib_memset (nm, 0, sizeof (*nm));
+
+  nm->session_counters.name = "session counters";
+  nm->in2out_packets.name = "in2out";
+  nm->in2out_packets.stat_segment_name = "/nat64/in2out";
+  nm->out2in_packets.name = "out2in";
+  nm->out2in_packets.stat_segment_name = "/nat64/out2in";
+
+  nm->nat_fib_src_hi = fib_source_allocate ("nat66-hi", FIB_SOURCE_PRIORITY_HI,
+					    FIB_SOURCE_BH_SIMPLE);
+  return nat66_plugin_api_hookup (vm);
+}
+
+int
+nat66_plugin_enable (u32 outside_vrf)
+{
+  nat66_main_t *nm = &nat66_main;
+
   u32 static_mapping_buckets = 1024;
   uword static_mapping_memory_size = 64 << 20;
 
-  node = vlib_get_node_by_name (vm, (u8 *) "nat66-in2out");
-  nm->in2out_node_index = node->index;
-
-  node = vlib_get_node_by_name (vm, (u8 *) "nat66-out2in");
-  nm->out2in_node_index = node->index;
+  fail_if_enabled ();
 
   clib_bihash_init_24_8 (&nm->sm_l, "nat66-static-map-by-local",
 			 static_mapping_buckets, static_mapping_memory_size);
   clib_bihash_init_24_8 (&nm->sm_e, "nat66-static-map-by-external",
 			 static_mapping_buckets, static_mapping_memory_size);
 
-  nm->session_counters.name = "session counters";
+  nm->outside_vrf_id = outside_vrf;
+  nm->outside_fib_index = fib_table_find_or_create_and_lock (
+    FIB_PROTOCOL_IP6, outside_vrf, nm->nat_fib_src_hi);
+  nm->enabled = 1;
+  return 0;
+}
 
-  nat_fib_src_hi = fib_source_allocate ("nat66-hi",
-					FIB_SOURCE_PRIORITY_HI,
-					FIB_SOURCE_BH_SIMPLE);
+int
+nat66_plugin_disable ()
+{
+  nat66_main_t *nm = &nat66_main;
+  nat66_interface_t *i, *temp;
+  int error = 0;
 
-  nm->in2out_packets.name = "in2out";
-  nm->in2out_packets.stat_segment_name = "/nat64/in2out";
-  nm->out2in_packets.name = "out2in";
-  nm->out2in_packets.stat_segment_name = "/nat64/out2in";
-  return nat66_plugin_api_hookup (vm);
+  temp = pool_dup (nm->interfaces);
+  pool_foreach (i, temp)
+    {
+      if (nat66_interface_is_inside (i))
+	error = nat66_interface_add_del (i->sw_if_index, 1, 0);
+
+      if (nat66_interface_is_outside (i))
+	error = nat66_interface_add_del (i->sw_if_index, 0, 0);
+
+      if (error)
+	{
+	  nat66_elog_warn ("error occurred while removing interface");
+	}
+    }
+  pool_free (temp);
+  pool_free (nm->interfaces);
+
+  pool_free (nm->sm);
+  clib_bihash_free_24_8 (&nm->sm_l);
+  clib_bihash_free_24_8 (&nm->sm_e);
+
+  nm->interfaces = 0;
+  nm->sm = 0;
+
+  vlib_clear_combined_counters (&nm->session_counters);
+  vlib_clear_simple_counters (&nm->in2out_packets);
+  vlib_clear_simple_counters (&nm->out2in_packets);
+
+  nm->enabled = 0;
+  return error;
 }
 
 static void
@@ -93,7 +159,8 @@ nat66_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add)
   nat66_interface_t *interface = 0, *i;
   const char *feature_name;
 
-  /* *INDENT-OFF* */
+  fail_if_disabled ();
+
   pool_foreach (i, nm->interfaces)
    {
     if (i->sw_if_index == sw_if_index)
@@ -102,7 +169,6 @@ nat66_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add)
         break;
       }
   }
-  /* *INDENT-ON* */
 
   if (is_add)
     {
@@ -138,13 +204,11 @@ nat66_interfaces_walk (nat66_interface_walk_fn_t fn, void *ctx)
   nat66_main_t *nm = &nat66_main;
   nat66_interface_t *i = 0;
 
-  /* *INDENT-OFF* */
   pool_foreach (i, nm->interfaces)
    {
     if (fn (i, ctx))
       break;
   }
-  /* *INDENT-ON* */
 }
 
 nat66_static_mapping_t *
@@ -182,6 +246,8 @@ nat66_static_mapping_add_del (ip6_address_t * l_addr, ip6_address_t * e_addr,
   clib_bihash_kv_24_8_t kv, value;
   u32 fib_index = fib_table_find (FIB_PROTOCOL_IP6, vrf_id);
 
+  fail_if_disabled ();
+
   sm_key.addr.as_u64[0] = l_addr->as_u64[0];
   sm_key.addr.as_u64[1] = l_addr->as_u64[1];
   sm_key.fib_index = fib_index;
@@ -199,7 +265,7 @@ nat66_static_mapping_add_del (ip6_address_t * l_addr, ip6_address_t * e_addr,
 	return VNET_API_ERROR_VALUE_EXIST;
 
       fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
-						     nat_fib_src_hi);
+						     nm->nat_fib_src_hi);
       pool_get (nm->sm, sm);
       clib_memset (sm, 0, sizeof (*sm));
       sm->l_addr.as_u64[0] = l_addr->as_u64[0];
@@ -243,7 +309,7 @@ nat66_static_mapping_add_del (ip6_address_t * l_addr, ip6_address_t * e_addr,
       kv.key[2] = sm_key.as_u64[2];
       if (clib_bihash_add_del_24_8 (&nm->sm_e, &kv, 0))
 	nat66_elog_warn ("nat66-static-map-by-external delete key failed");
-      fib_table_unlock (sm->fib_index, FIB_PROTOCOL_IP6, nat_fib_src_hi);
+      fib_table_unlock (sm->fib_index, FIB_PROTOCOL_IP6, nm->nat_fib_src_hi);
       pool_put (nm->sm, sm);
     }
 
@@ -256,29 +322,13 @@ nat66_static_mappings_walk (nat66_static_mapping_walk_fn_t fn, void *ctx)
   nat66_main_t *nm = &nat66_main;
   nat66_static_mapping_t *sm = 0;
 
-  /* *INDENT-OFF* */
   pool_foreach (sm, nm->sm)
    {
     if (fn (sm, ctx))
       break;
   }
-  /* *INDENT-ON* */
 }
 
-/*static*/ void
-nat66_config (void)
-{
-  nat66_main_t *nm = &nat66_main;
-  u32 outside_ip6_vrf_id = 0;
-
-  nm->outside_vrf_id = outside_ip6_vrf_id;
-  nm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
-							     outside_ip6_vrf_id,
-							     nat_fib_src_hi);
-
-}
-
-/* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () =
 {
  .version = VPP_BUILD_VER,
@@ -286,8 +336,6 @@ VLIB_PLUGIN_REGISTER () =
 };
 
 VLIB_INIT_FUNCTION (nat66_init);
-
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

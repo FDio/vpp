@@ -18,6 +18,20 @@ import "vnet/ip/ip_types.api";
 import "vnet/interface_types.api";
 import "plugins/nat/lib/nat_types.api";
 
+
+/** \brief Enable/disable NAT66 plugin
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param outside_vrf - outside vrf id
+    @param enable - true if enable, false if disable
+*/
+autoreply define nat66_plugin_enable_disable {
+  u32 client_index;
+  u32 context;
+  u32 outside_vrf;
+  bool enable;
+};
+
 /** \brief Enable/disable NAT66 feature on the interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
