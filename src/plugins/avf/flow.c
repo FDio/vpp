@@ -25,6 +25,43 @@
 #include <avf/avf.h>
 #include <avf/avf_advanced_flow.h>
 
+#define FLOW_IS_ETHERNET_CLASS(f) (f->type == VNET_FLOW_TYPE_ETHERNET)
+
+#define FLOW_IS_IPV4_CLASS(f)                                                 \
+  ((f->type == VNET_FLOW_TYPE_IP4) ||                                         \
+   (f->type == VNET_FLOW_TYPE_IP4_N_TUPLE) ||                                 \
+   (f->type == VNET_FLOW_TYPE_IP4_N_TUPLE_TAGGED) ||                          \
+   (f->type == VNET_FLOW_TYPE_IP4_VXLAN) ||                                   \
+   (f->type == VNET_FLOW_TYPE_IP4_GTPC) ||                                    \
+   (f->type == VNET_FLOW_TYPE_IP4_GTPU) ||                                    \
+   (f->type == VNET_FLOW_TYPE_IP4_L2TPV3OIP) ||                               \
+   (f->type == VNET_FLOW_TYPE_IP4_IPSEC_ESP) ||                               \
+   (f->type == VNET_FLOW_TYPE_IP4_IPSEC_AH))
+
+#define FLOW_IS_IPV6_CLASS(f)                                                 \
+  ((f->type == VNET_FLOW_TYPE_IP6) ||                                         \
+   (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE) ||                                 \
+   (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE_TAGGED) ||                          \
+   (f->type == VNET_FLOW_TYPE_IP6_VXLAN))
+
+/* check if flow is L3 type */
+#define FLOW_IS_L3_TYPE(f)                                                    \
+  ((f->type == VNET_FLOW_TYPE_IP4) || (f->type == VNET_FLOW_TYPE_IP6))
+
+/* check if flow is L4 type */
+#define FLOW_IS_L4_TYPE(f)                                                    \
+  ((f->type == VNET_FLOW_TYPE_IP4_N_TUPLE) ||                                 \
+   (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE) ||                                 \
+   (f->type == VNET_FLOW_TYPE_IP4_N_TUPLE_TAGGED) ||                          \
+   (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE_TAGGED))
+
+/* check if flow is L4 tunnel type */
+#define FLOW_IS_L4_TUNNEL_TYPE(f)                                             \
+  ((f->type == VNET_FLOW_TYPE_IP4_VXLAN) ||                                   \
+   (f->type == VNET_FLOW_TYPE_IP6_VXLAN) ||                                   \
+   (f->type == VNET_FLOW_TYPE_IP4_GTPC) ||                                    \
+   (f->type == VNET_FLOW_TYPE_IP4_GTPU))
+
 int
 avf_fdir_vc_op_callback (void *vc_hdl, enum virthnl_adv_ops vc_op, void *in,
 			 u32 in_len, void *out, u32 out_len)
@@ -85,13 +122,34 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
   struct avf_flow_item avf_items[VIRTCHNL_MAX_NUM_PROTO_HDRS];
   struct avf_flow_action avf_actions[VIRTCHNL_MAX_NUM_ACTIONS];
 
-  struct avf_ipv4_hdr ip4_spec, ip4_mask;
-  struct avf_tcp_hdr tcp_spec, tcp_mask;
-  struct avf_udp_hdr udp_spec, udp_mask;
-  struct avf_gtp_hdr gtp_spec, gtp_mask;
+  struct avf_ipv4_hdr ip4_spec = {}, ip4_mask = {};
+  struct avf_ipv6_hdr ip6_spec = {}, ip6_mask = {};
+  struct avf_tcp_hdr tcp_spec = {}, tcp_mask = {};
+  struct avf_udp_hdr udp_spec = {}, udp_mask = {};
+  struct avf_gtp_hdr gtp_spec = {}, gtp_mask = {};
+  struct avf_l2tpv3oip_hdr l2tpv3_spec = {}, l2tpv3_mask = {};
+  struct avf_esp_hdr esp_spec = {}, esp_mask = {};
+  struct avf_esp_hdr ah_spec = {}, ah_mask = {};
 
-  struct avf_flow_action_queue act_q;
-  struct avf_flow_action_mark act_msk;
+  struct avf_flow_action_queue act_q = {};
+  struct avf_flow_action_mark act_msk = {};
+
+  enum
+  {
+    FLOW_UNKNOWN_CLASS,
+    FLOW_ETHERNET_CLASS,
+    FLOW_IPV4_CLASS,
+    FLOW_IPV6_CLASS,
+  } flow_class = FLOW_UNKNOWN_CLASS;
+
+  if (FLOW_IS_ETHERNET_CLASS (f))
+    flow_class = FLOW_ETHERNET_CLASS;
+  else if (FLOW_IS_IPV4_CLASS (f))
+    flow_class = FLOW_IPV4_CLASS;
+  else if (FLOW_IS_IPV6_CLASS (f))
+    flow_class = FLOW_IPV6_CLASS;
+  else
+    return VNET_FLOW_ERROR_NOT_SUPPORTED;
 
   ret = avf_fdir_rcfg_create (&filter, 0, ad->vsi_id, ad->n_rx_queues);
   if (ret)
@@ -110,15 +168,12 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
   /* Ethernet Layer */
   avf_items[layer].type = VIRTCHNL_PROTO_HDR_ETH;
   avf_items[layer].spec = NULL;
+  avf_items[layer].mask = NULL;
   layer++;
 
-  /* IPv4 Layer */
-  if ((f->type == VNET_FLOW_TYPE_IP4_N_TUPLE) ||
-      (f->type == VNET_FLOW_TYPE_IP4_GTPU))
+  if (flow_class == FLOW_IPV4_CLASS)
     {
-      vnet_flow_ip4_n_tuple_t *t4 = &f->ip4_n_tuple;
-      memset (&ip4_spec, 0, sizeof (ip4_spec));
-      memset (&ip4_mask, 0, sizeof (ip4_mask));
+      vnet_flow_ip4_t *ip4_ptr = &f->ip4;
 
       /* IPv4 Layer */
       avf_items[layer].type = VIRTCHNL_PROTO_HDR_IPV4;
@@ -126,33 +181,140 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
       avf_items[layer].mask = &ip4_mask;
       layer++;
 
-      src_port = t4->src_port.port;
-      dst_port = t4->dst_port.port;
-      src_port_mask = t4->src_port.mask;
-      dst_port_mask = t4->dst_port.mask;
-      protocol = t4->protocol.prot;
+      // memset (&ip4_spec, 0, sizeof (ip4_spec));
+      // memset (&ip4_mask, 0, sizeof (ip4_mask));
 
-      if (t4->src_addr.mask.as_u32)
+      if ((!ip4_ptr->src_addr.mask.as_u32) &&
+	  (!ip4_ptr->dst_addr.mask.as_u32) && (!ip4_ptr->protocol.mask))
 	{
-	  ip4_spec.src_addr = t4->src_addr.addr.as_u32;
-	  ip4_mask.src_addr = t4->src_addr.mask.as_u32;
+	  ;
 	}
-      if (t4->dst_addr.mask.as_u32)
+      else
 	{
-	  ip4_spec.dst_addr = t4->dst_addr.addr.as_u32;
-	  ip4_mask.dst_addr = t4->dst_addr.mask.as_u32;
+	  ip4_spec.src_addr = ip4_ptr->src_addr.addr.as_u32;
+	  ip4_mask.src_addr = ip4_ptr->src_addr.mask.as_u32;
+
+	  ip4_spec.dst_addr = ip4_ptr->dst_addr.addr.as_u32;
+	  ip4_mask.dst_addr = ip4_ptr->dst_addr.mask.as_u32;
+
+	  ip4_spec.next_proto_id = ip4_ptr->protocol.prot;
+	  ip4_mask.next_proto_id = ip4_ptr->protocol.mask;
 	}
+
+      if (FLOW_IS_L4_TYPE (f) || FLOW_IS_L4_TUNNEL_TYPE (f))
+	{
+	  vnet_flow_ip4_n_tuple_t *ip4_n_ptr = &f->ip4_n_tuple;
+
+	  src_port = ip4_n_ptr->src_port.port;
+	  dst_port = ip4_n_ptr->dst_port.port;
+	  src_port_mask = ip4_n_ptr->src_port.mask;
+	  dst_port_mask = ip4_n_ptr->dst_port.mask;
+	}
+
+      protocol = ip4_ptr->protocol.prot;
+    }
+  else if (flow_class == FLOW_IPV6_CLASS)
+    {
+      vnet_flow_ip6_t *ip6_ptr = &f->ip6;
+
+      /* IPv6 Layer */
+      avf_items[layer].type = VIRTCHNL_PROTO_HDR_IPV4;
+      avf_items[layer].spec = &ip6_spec;
+      avf_items[layer].mask = &ip6_mask;
+      layer++;
+
+      // memset (&ip6_spec, 0, sizeof (ip6_spec));
+      // memset (&ip6_mask, 0, sizeof (ip6_mask));
+
+      if ((ip6_address_is_zero (&ip6_ptr->src_addr.mask)) &&
+	  (ip6_address_is_zero (&ip6_ptr->dst_addr.mask)) &&
+	  (!ip6_ptr->protocol.mask))
+	{
+	  ;
+	}
+      else
+	{
+	  clib_memcpy (ip6_spec.src_addr, &ip6_ptr->src_addr.addr,
+		       ARRAY_LEN (ip6_ptr->src_addr.addr.as_u8));
+	  clib_memcpy (ip6_mask.src_addr, &ip6_ptr->src_addr.mask,
+		       ARRAY_LEN (ip6_ptr->src_addr.mask.as_u8));
+	  clib_memcpy (ip6_spec.dst_addr, &ip6_ptr->dst_addr.addr,
+		       ARRAY_LEN (ip6_ptr->dst_addr.addr.as_u8));
+	  clib_memcpy (ip6_mask.dst_addr, &ip6_ptr->dst_addr.mask,
+		       ARRAY_LEN (ip6_ptr->dst_addr.mask.as_u8));
+	  ip6_spec.proto = ip6_ptr->protocol.prot;
+	  ip6_mask.proto = ip6_ptr->protocol.mask;
+	}
+
+      if (FLOW_IS_L4_TYPE (f) || FLOW_IS_L4_TUNNEL_TYPE (f))
+	{
+	  vnet_flow_ip6_n_tuple_t *ip6_n_ptr = &f->ip6_n_tuple;
+
+	  src_port = ip6_n_ptr->src_port.port;
+	  dst_port = ip6_n_ptr->dst_port.port;
+	  src_port_mask = ip6_n_ptr->src_port.mask;
+	  dst_port_mask = ip6_n_ptr->dst_port.mask;
+	}
+
+      protocol = ip6_ptr->protocol.prot;
     }
 
-  if (protocol == IP_PROTOCOL_TCP)
-    {
-      memset (&tcp_spec, 0, sizeof (tcp_spec));
-      memset (&tcp_mask, 0, sizeof (tcp_mask));
+  if (FLOW_IS_L3_TYPE (f))
+    goto pattern_end;
 
+  /* Layer 4 */
+  switch (protocol)
+    {
+    case IP_PROTOCOL_L2TP:
+      avf_items[layer].type = VIRTCHNL_PROTO_HDR_L2TPV3;
+      avf_items[layer].spec = &l2tpv3_spec;
+      avf_items[layer].mask = &l2tpv3_mask;
+      layer++;
+
+      // memset (&l2tpv3_spec, 0, sizeof (l2tpv3_spec));
+      // memset (&l2tpv3_mask, 0, sizeof (l2tpv3_mask));
+
+      vnet_flow_ip4_l2tpv3oip_t *l2tph = &f->ip4_l2tpv3oip;
+      l2tpv3_spec.session_id = clib_host_to_net_u32 (l2tph->session_id);
+      l2tpv3_mask.session_id = ~0;
+      break;
+
+    case IP_PROTOCOL_IPSEC_ESP:
+      avf_items[layer].type = VIRTCHNL_PROTO_HDR_ESP;
+      avf_items[layer].spec = &esp_spec;
+      avf_items[layer].mask = &esp_mask;
+      layer++;
+
+      // memset (&esp_spec, 0, sizeof (esp_spec));
+      // memset (&esp_mask, 0, sizeof (esp_mask));
+
+      vnet_flow_ip4_ipsec_esp_t *esph = &f->ip4_ipsec_esp;
+      esp_spec.spi = clib_host_to_net_u32 (esph->spi);
+      esp_mask.spi = ~0;
+      break;
+
+    case IP_PROTOCOL_IPSEC_AH:
+      avf_items[layer].type = VIRTCHNL_PROTO_HDR_AH;
+      avf_items[layer].spec = &ah_spec;
+      avf_items[layer].mask = &ah_mask;
+      layer++;
+
+      // memset (&ah_spec, 0, sizeof (ah_spec));
+      // memset (&ah_mask, 0, sizeof (ah_mask));
+
+      vnet_flow_ip4_ipsec_ah_t *ah = &f->ip4_ipsec_ah;
+      ah_spec.spi = clib_host_to_net_u32 (ah->spi);
+      ah_mask.spi = ~0;
+      break;
+
+    case IP_PROTOCOL_TCP:
       avf_items[layer].type = VIRTCHNL_PROTO_HDR_TCP;
       avf_items[layer].spec = &tcp_spec;
       avf_items[layer].mask = &tcp_mask;
       layer++;
+
+      // memset (&tcp_spec, 0, sizeof (tcp_spec));
+      // memset (&tcp_mask, 0, sizeof (tcp_mask));
 
       if (src_port_mask)
 	{
@@ -164,16 +326,16 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
 	  tcp_spec.dst_port = clib_host_to_net_u16 (dst_port);
 	  tcp_mask.dst_port = clib_host_to_net_u16 (dst_port_mask);
 	}
-    }
-  else if (protocol == IP_PROTOCOL_UDP)
-    {
-      memset (&udp_spec, 0, sizeof (udp_spec));
-      memset (&udp_mask, 0, sizeof (udp_mask));
+      break;
 
+    case IP_PROTOCOL_UDP:
       avf_items[layer].type = VIRTCHNL_PROTO_HDR_UDP;
       avf_items[layer].spec = &udp_spec;
       avf_items[layer].mask = &udp_mask;
       layer++;
+
+      // memset (&udp_spec, 0, sizeof (udp_spec));
+      // memset (&udp_mask, 0, sizeof (udp_mask));
 
       if (src_port_mask)
 	{
@@ -185,29 +347,30 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
 	  udp_spec.dst_port = clib_host_to_net_u16 (dst_port);
 	  udp_mask.dst_port = clib_host_to_net_u16 (dst_port_mask);
 	}
-    }
-  else
-    {
+
+      /* handle the UDP tunnels */
+      if (f->type == VNET_FLOW_TYPE_IP4_GTPU)
+	{
+	  avf_items[layer].type = VIRTCHNL_PROTO_HDR_GTPU_IP;
+	  avf_items[layer].spec = &gtp_spec;
+	  avf_items[layer].mask = &gtp_mask;
+	  layer++;
+
+	  // memset (&gtp_spec, 0, sizeof (gtp_spec));
+	  // memset (&gtp_mask, 0, sizeof (gtp_mask));
+
+	  vnet_flow_ip4_gtpu_t *gu = &f->ip4_gtpu;
+	  gtp_spec.teid = clib_host_to_net_u32 (gu->teid);
+	  gtp_mask.teid = ~0;
+	}
+      break;
+
+    default:
       rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
       goto done;
     }
 
-  if (f->type == VNET_FLOW_TYPE_IP4_GTPU)
-    {
-
-      memset (&gtp_spec, 0, sizeof (gtp_spec));
-      memset (&gtp_mask, 0, sizeof (gtp_mask));
-
-      vnet_flow_ip4_gtpu_t *gu = &f->ip4_gtpu;
-      gtp_spec.teid = clib_host_to_net_u32 (gu->teid);
-      gtp_mask.teid = ~0;
-
-      avf_items[layer].type = VIRTCHNL_PROTO_HDR_GTPU_IP;
-      avf_items[layer].spec = &gtp_spec;
-      avf_items[layer].mask = &gtp_mask;
-      layer++;
-    }
-
+pattern_end:
   /* pattern end flag  */
   avf_items[layer].type = VIRTCHNL_PROTO_HDR_NONE;
   ret = avf_fdir_parse_pattern (filter, avf_items, &error);
@@ -348,8 +511,15 @@ avf_flow_ops_fn (vnet_main_t *vm, vnet_flow_dev_op_t op, u32 dev_instance,
 
       switch (flow->type)
 	{
+	case VNET_FLOW_TYPE_IP4:
+	case VNET_FLOW_TYPE_IP6:
 	case VNET_FLOW_TYPE_IP4_N_TUPLE:
+	case VNET_FLOW_TYPE_IP6_N_TUPLE:
+	case VNET_FLOW_TYPE_IP4_VXLAN:
 	case VNET_FLOW_TYPE_IP4_GTPU:
+	case VNET_FLOW_TYPE_IP4_L2TPV3OIP:
+	case VNET_FLOW_TYPE_IP4_IPSEC_ESP:
+	case VNET_FLOW_TYPE_IP4_IPSEC_AH:
 	  if ((rv = avf_flow_add (dev_instance, flow, fe)))
 	    goto done;
 	  break;
