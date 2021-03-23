@@ -163,15 +163,11 @@ vnet_interface_output_trace (vlib_main_t * vm,
 }
 
 static_always_inline uword
-vnet_interface_output_node_inline (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame,
-				   vnet_main_t * vnm,
-				   vnet_hw_interface_t * hi,
-				   int do_tx_offloads)
+vnet_interface_output_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+				   vlib_frame_t *frame, vnet_main_t *vnm,
+				   vlib_buffer_t **b, int do_tx_offloads)
 {
   vnet_interface_output_runtime_t *rt = (void *) node->runtime_data;
-  vnet_sw_interface_t *si;
   u32 n_left_to_tx, *from, *from_end, *to_tx;
   u32 n_bytes, n_buffers, n_packets;
   u32 n_bytes_b0, n_bytes_b1, n_bytes_b2, n_bytes_b3;
@@ -180,43 +176,10 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
   u32 next_index = VNET_INTERFACE_OUTPUT_NEXT_TX;
   u32 current_config_index = ~0;
   u8 arc = im->output_feature_arc_index;
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
 
   n_buffers = frame->n_vectors;
 
-  if (node->flags & VLIB_NODE_FLAG_TRACE)
-    vnet_interface_output_trace (vm, node, frame, n_buffers);
-
   from = vlib_frame_vector_args (frame);
-  vlib_get_buffers (vm, from, b, n_buffers);
-
-  if (rt->is_deleted)
-    return vlib_error_drop_buffers (vm, node, from,
-				    /* buffer stride */ 1,
-				    n_buffers,
-				    VNET_INTERFACE_OUTPUT_NEXT_DROP,
-				    node->node_index,
-				    VNET_INTERFACE_OUTPUT_ERROR_INTERFACE_DELETED);
-
-  si = vnet_get_sw_interface (vnm, rt->sw_if_index);
-  hi = vnet_get_sup_hw_interface (vnm, rt->sw_if_index);
-  if (!(si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ||
-      !(hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP))
-    {
-      vlib_simple_counter_main_t *cm;
-
-      cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
-			     VNET_INTERFACE_COUNTER_TX_ERROR);
-      vlib_increment_simple_counter (cm, thread_index,
-				     rt->sw_if_index, n_buffers);
-
-      return vlib_error_drop_buffers (vm, node, from,
-				      /* buffer stride */ 1,
-				      n_buffers,
-				      VNET_INTERFACE_OUTPUT_NEXT_DROP,
-				      node->node_index,
-				      VNET_INTERFACE_OUTPUT_ERROR_INTERFACE_DOWN);
-    }
 
   from_end = from + n_buffers;
 
@@ -485,17 +448,53 @@ VLIB_NODE_FN (vnet_interface_output_node)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi;
+  vnet_sw_interface_t *si;
   vnet_interface_output_runtime_t *rt = (void *) node->runtime_data;
   hi = vnet_get_sup_hw_interface (vnm, rt->sw_if_index);
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  u32 n_buffers = frame->n_vectors;
+  u32 *from;
+
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+    vnet_interface_output_trace (vm, node, frame, n_buffers);
+
+  from = vlib_frame_vector_args (frame);
+
+  if (rt->is_deleted)
+    return vlib_error_drop_buffers (
+      vm, node, from,
+      /* buffer stride */ 1, n_buffers, VNET_INTERFACE_OUTPUT_NEXT_DROP,
+      node->node_index, VNET_INTERFACE_OUTPUT_ERROR_INTERFACE_DELETED);
 
   vnet_interface_pcap_tx_trace (vm, node, frame,
 				0 /* sw_if_index_from_buffer */ );
 
+  vlib_get_buffers (vm, from, bufs, n_buffers);
+
+  si = vnet_get_sw_interface (vnm, rt->sw_if_index);
+  hi = vnet_get_sup_hw_interface (vnm, rt->sw_if_index);
+
+  if (!(si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ||
+      !(hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP))
+    {
+      vlib_simple_counter_main_t *cm;
+
+      cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
+			     VNET_INTERFACE_COUNTER_TX_ERROR);
+      vlib_increment_simple_counter (cm, vm->thread_index, rt->sw_if_index,
+				     n_buffers);
+
+      return vlib_error_drop_buffers (
+	vm, node, from,
+	/* buffer stride */ 1, n_buffers, VNET_INTERFACE_OUTPUT_NEXT_DROP,
+	node->node_index, VNET_INTERFACE_OUTPUT_ERROR_INTERFACE_DOWN);
+    }
+
   if (hi->caps & VNET_HW_INTERFACE_CAP_SUPPORTS_TX_CKSUM)
-    return vnet_interface_output_node_inline (vm, node, frame, vnm, hi,
+    return vnet_interface_output_node_inline (vm, node, frame, vnm, bufs,
 					      /* do_tx_offloads */ 0);
   else
-    return vnet_interface_output_node_inline (vm, node, frame, vnm, hi,
+    return vnet_interface_output_node_inline (vm, node, frame, vnm, bufs,
 					      /* do_tx_offloads */ 1);
 }
 
