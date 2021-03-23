@@ -2604,7 +2604,6 @@ nat44_ed_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
   snat_main_per_thread_data_t *tsm;
 
   u32 proto, next_worker_index = 0;
-  udp_header_t *udp;
   u16 port;
   snat_static_mapping_t *m;
   u32 hash;
@@ -2613,8 +2612,6 @@ nat44_ed_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
 
   if (PREDICT_TRUE (proto == NAT_PROTOCOL_UDP || proto == NAT_PROTOCOL_TCP))
     {
-      udp = ip4_next_header (ip);
-
       init_ed_k (&kv16, ip->dst_address, vnet_buffer (b)->ip.reass.l4_dst_port,
 		 ip->src_address, vnet_buffer (b)->ip.reass.l4_src_port,
 		 rx_fib_index, ip->protocol);
@@ -2683,11 +2680,11 @@ nat44_ed_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
       goto done;
     }
 
-  udp = ip4_next_header (ip);
   port = vnet_buffer (b)->ip.reass.l4_dst_port;
 
   if (PREDICT_FALSE (ip->protocol == IP_PROTOCOL_ICMP))
     {
+      udp_header_t *udp = ip4_next_header (ip);
       icmp46_header_t *icmp = (icmp46_header_t *) udp;
       icmp_echo_header_t *echo = (icmp_echo_header_t *) (icmp + 1);
       if (!icmp_type_is_error_message
