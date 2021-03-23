@@ -21,18 +21,77 @@
 #include <vnet/fib/fib_table.h>
 
 static clib_error_t *
+nat66_enable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			 vlib_cli_command_t *cmd)
+{
+  nat66_main_t *nm = &nat66_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+  u32 outside_vrf = 0;
+
+  if (nm->enabled)
+    return clib_error_return (0, "nat66 already enabled");
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    {
+      if (nat66_plugin_enable (outside_vrf) != 0)
+	return clib_error_return (0, "nat66 enable failed");
+      return 0;
+    }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "outside-vrf %u", &outside_vrf))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (nat66_plugin_enable (outside_vrf) != 0)
+    error = clib_error_return (0, "nat66 enable failed");
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+static clib_error_t *
+nat66_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
+			  vlib_cli_command_t *cmd)
+{
+  nat66_main_t *nm = &nat66_main;
+  clib_error_t *error = 0;
+
+  if (!nm->enabled)
+    return clib_error_return (0, "nat66 already disabled");
+
+  if (nat66_plugin_disable () != 0)
+    error = clib_error_return (0, "nat66 disable failed");
+
+  return error;
+}
+
+static clib_error_t *
 nat66_interface_feature_command_fn (vlib_main_t * vm,
 				    unformat_input_t * input,
 				    vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
+  nat66_main_t *nm = &nat66_main;
   clib_error_t *error = 0;
   u32 sw_if_index;
   u32 *inside_sw_if_indices = 0;
   u32 *outside_sw_if_indices = 0;
   u8 is_add = 1;
   int i, rv;
+
+  if (!nm->enabled)
+    return clib_error_return (0, "nat66 disabled");
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -139,7 +198,6 @@ nat66_cli_interface_walk (nat66_interface_t * i, void *ctx)
 {
   vlib_main_t *vm = ctx;
   vnet_main_t *vnm = vnet_get_main ();
-
   vlib_cli_output (vm, " %U %s", format_vnet_sw_interface_name, vnm,
 		   vnet_get_sw_interface (vnm, i->sw_if_index),
 		   nat66_interface_is_inside (i) ? "in" : "out");
@@ -150,9 +208,11 @@ static clib_error_t *
 nat66_show_interfaces_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				  vlib_cli_command_t * cmd)
 {
+  nat66_main_t *nm = &nat66_main;
+  if (!nm->enabled)
+    return clib_error_return (0, "nat66 disabled");
   vlib_cli_output (vm, "NAT66 interfaces:");
   nat66_interfaces_walk (nat66_cli_interface_walk, vm);
-
   return 0;
 }
 
@@ -161,12 +221,16 @@ nat66_add_del_static_mapping_command_fn (vlib_main_t * vm,
 					 unformat_input_t * input,
 					 vlib_cli_command_t * cmd)
 {
+  nat66_main_t *nm = &nat66_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
   u8 is_add = 1;
   ip6_address_t l_addr, e_addr;
   u32 vrf_id = 0;
   int rv;
+
+  if (!nm->enabled)
+    return clib_error_return (0, "nat66 disabled");
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -238,12 +302,44 @@ nat66_show_static_mappings_command_fn (vlib_main_t * vm,
 				       unformat_input_t * input,
 				       vlib_cli_command_t * cmd)
 {
+  nat66_main_t *nm = &nat66_main;
+  if (!nm->enabled)
+    return clib_error_return (0, "nat66 disabled");
   vlib_cli_output (vm, "NAT66 static mappings:");
   nat66_static_mappings_walk (nat66_cli_static_mapping_walk, vm);
   return 0;
 }
 
-/* *INDENT-OFF* */
+/*?
+ * @cliexpar
+ * @cliexstart{nat66 enable}
+ * Enable NAT66 plugin
+ * To enable NAT66 plugin
+ *  vpp# nat66 enable
+ * To enable NAT66 plugin with outside-vrf id 10
+ *  vpp# nat66 enable outside-vrf 10
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat66_enable_command, static) = {
+  .path = "nat66 enable",
+  .short_help = "nat66 enable [outside-vrf <vrf-id>]",
+  .function = nat66_enable_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat66 disable}
+ * Disable NAT66 plugin
+ * To disable NAT66 plugin
+ *  vpp# nat66 disable
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat66_disable_command, static) = {
+  .path = "nat66 disable",
+  .short_help = "nat66 disable",
+  .function = nat66_disable_command_fn,
+};
+
 /*?
  * @cliexpar
  * @cliexstart{set interface nat66}
