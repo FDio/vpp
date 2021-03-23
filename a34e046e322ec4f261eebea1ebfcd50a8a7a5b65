@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9b53a0a3_a78307d7",
+        "filename": "src/vnet/ipsec/ipsec_bihash_16_8.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-03-23T22:02:06Z",
+      "side": 1,
+      "message": "you don\u0027t need this file, a 16_8 template already exists.",
+      "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e47e9495_521b7786",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-03-23T22:02:06Z",
+      "side": 1,
+      "message": "use the c99 initializers;\n\nipsec4_spd_5tuple_t ip4_5tuple \u003d {\n  .ip4_addr \u003d {\n      [0] \u003d le,\n      [1] \u003d le,\n  },\n  .port \u003d ...etc.\n}\n\nthen you don\u0027t need to specify pad as all other fields are set to 0.",
+      "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a86d3a1c_65f445cd",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 363,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-03-23T22:02:06Z",
+      "side": 1,
+      "message": "do the endian swap once in the control plane not for every packet in the data plane.",
+      "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "da7bcfd8_a0b2190d",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-03-23T22:02:06Z",
+      "side": 1,
+      "message": "what is the intent here? you\u0027re modifying the keys in the table in the hope they won\u0027t be found?",
+      "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a31070bb_ac8f6178",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-03-23T22:02:06Z",
+      "side": 1,
+      "message": "the add policy API is not mp-safe, so the workers are paused at this point. a walk/flush of a large table will result in packet loss.",
+      "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
