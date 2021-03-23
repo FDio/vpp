@@ -833,6 +833,7 @@ class TestGBP(VppTestCase):
                               "2001:10:2::1", "3001::4")]
 
         self.vapi.nat44_ed_plugin_enable_disable(enable=1)
+        self.vapi.nat66_plugin_enable_disable(enable=1)
 
         #
         # Config related to each of the EPGs
@@ -852,8 +853,8 @@ class TestGBP(VppTestCase):
                     sw_if_index=epg.bvi.sw_if_index,
                     flags=flags, is_add=1)
                 self.vapi.nat66_add_del_interface(
-                    is_add=1, flags=flags,
-                    sw_if_index=epg.bvi.sw_if_index)
+                    sw_if_index=epg.bvi.sw_if_index,
+                    flags=flags, is_add=1)
 
             if_ip4 = VppIpInterfaceAddress(self, epg.bvi,
                                            epg.bvi_ip4, 32,
@@ -889,8 +890,7 @@ class TestGBP(VppTestCase):
             self.vapi.nat44_interface_add_del_feature(
                 sw_if_index=recirc.recirc.sw_if_index, is_add=1)
             self.vapi.nat66_add_del_interface(
-                is_add=1,
-                sw_if_index=recirc.recirc.sw_if_index)
+                sw_if_index=recirc.recirc.sw_if_index, is_add=1)
 
             recirc.add_vpp_config()
 
@@ -1232,6 +1232,7 @@ class TestGBP(VppTestCase):
             [ETH_P_IP, ETH_P_IPV6])
         c2.add_vpp_config()
 
+
         self.send_and_expect_bridged(eps[0].itf,
                                      pkt_inter_epg_220_to_221 * NUM_PKTS,
                                      eps[2].itf)
@@ -1282,7 +1283,6 @@ class TestGBP(VppTestCase):
                                     pkt_inter_epg_220_to_222 * NUM_PKTS,
                                     eps[3].itf,
                                     str(self.router_mac))
-
         #
         # remove both contracts, traffic stops in both directions
         #
@@ -1397,7 +1397,6 @@ class TestGBP(VppTestCase):
                                      pkt_inter_epg_220_to_global * NUM_PKTS,
                                      self.pg7,
                                      eps[0].fip6)
-
         #
         # From a global address to an EP: OUT2IN
         #
@@ -1477,26 +1476,7 @@ class TestGBP(VppTestCase):
         # cleanup
         #
         self.vapi.nat44_ed_plugin_enable_disable(enable=0)
-
-        for ep in eps:
-            # del static mappings for each EP from the 10/8 to 11/8 network
-            flags = self.nat_config_flags.NAT_IS_ADDR_ONLY
-            self.vapi.nat66_add_del_static_mapping(
-                local_ip_address=ep.ip6,
-                external_ip_address=ep.fip6,
-                vrf_id=0, is_add=0)
-
-        for epg in epgs:
-            # IP config on the BVI interfaces
-            if epg != epgs[0] and epg != epgs[3]:
-                flags = self.nat_config_flags.NAT_IS_INSIDE
-                self.vapi.nat66_add_del_interface(
-                    sw_if_index=epg.bvi.sw_if_index,
-                    flags=flags, is_add=0)
-
-        for recirc in recircs:
-            self.vapi.nat66_add_del_interface(
-                sw_if_index=recirc.recirc.sw_if_index, is_add=0)
+        self.vapi.nat66_plugin_enable_disable(enable=0)
 
     def wait_for_ep_timeout(self, sw_if_index=None, ip=None, mac=None,
                             tep=None, n_tries=100, s_time=1):
