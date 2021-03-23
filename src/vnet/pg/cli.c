@@ -340,6 +340,7 @@ new_stream (vlib_main_t * vm,
   clib_error_t *error = 0;
   u8 *tmp = 0;
   u32 maxframe, hw_if_index;
+  unformat_input_t _line_input, *line_input = &_line_input;
   unformat_input_t sub_input = { 0 };
   int sub_input_given = 0;
   vnet_main_t *vnm = vnet_get_main ();
@@ -355,16 +356,19 @@ new_stream (vlib_main_t * vm,
   s.n_max_frame = VLIB_FRAME_SIZE;
   pcap_file_name = 0;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "name %v", &tmp))
+      if (unformat (line_input, "name %v", &tmp))
 	{
 	  if (s.name)
 	    vec_free (s.name);
 	  s.name = tmp;
 	}
 
-      else if (unformat (input, "node %U",
+      else if (unformat (line_input, "node %U",
 			 unformat_vnet_hw_interface, vnm, &hw_if_index))
 	{
 	  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
@@ -373,46 +377,46 @@ new_stream (vlib_main_t * vm,
 	  s.sw_if_index[VLIB_TX] = hi->sw_if_index;
 	}
 
-      else if (unformat (input, "source pg%u", &s.if_id))
+      else if (unformat (line_input, "source pg%u", &s.if_id))
 	;
 
-      else if (unformat (input, "buffer-flags %U",
+      else if (unformat (line_input, "buffer-flags %U",
 			 unformat_vnet_buffer_flags, &s.buffer_flags))
 	;
-      else if (unformat (input, "buffer-offload-flags %U",
+      else if (unformat (line_input, "buffer-offload-flags %U",
 			 unformat_vnet_buffer_offload_flags, &s.buffer_oflags))
 	;
-      else if (unformat (input, "node %U",
+      else if (unformat (line_input, "node %U",
 			 unformat_vlib_node, vm, &s.node_index))
 	;
-      else if (unformat (input, "maxframe %u", &maxframe))
+      else if (unformat (line_input, "maxframe %u", &maxframe))
 	s.n_max_frame = s.n_max_frame < maxframe ? s.n_max_frame : maxframe;
-      else if (unformat (input, "worker %u", &s.worker_index))
+      else if (unformat (line_input, "worker %u", &s.worker_index))
 	;
 
-      else if (unformat (input, "interface %U",
+      else if (unformat (line_input, "interface %U",
 			 unformat_vnet_sw_interface, vnm,
 			 &s.sw_if_index[VLIB_RX]))
 	;
-      else if (unformat (input, "tx-interface %U",
+      else if (unformat (line_input, "tx-interface %U",
 			 unformat_vnet_sw_interface, vnm,
 			 &s.sw_if_index[VLIB_TX]))
 	;
 
-      else if (unformat (input, "pcap %s", &pcap_file_name))
+      else if (unformat (line_input, "pcap %s", &pcap_file_name))
 	;
 
       else if (!sub_input_given
-	       && unformat (input, "data %U", unformat_input, &sub_input))
+	       && unformat (line_input, "data %U", unformat_input, &sub_input))
 	sub_input_given++;
 
-      else if (unformat_user (input, unformat_pg_stream_parameter, &s))
+      else if (unformat_user (line_input, unformat_pg_stream_parameter, &s))
 	;
 
       else
 	{
-	  error = clib_error_create ("unknown input `%U'",
-				     format_unformat_error, input);
+	  error = clib_error_create ("unknown line_input `%U'",
+				     format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -480,6 +484,7 @@ new_stream (vlib_main_t * vm,
 done:
   pg_stream_free (&s);
   unformat_free (&sub_input);
+  unformat_free (line_input);
   return error;
 }
 
@@ -532,28 +537,32 @@ change_stream_parameters (vlib_main_t * vm,
 			  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   pg_main_t *pg = &pg_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
   pg_stream_t *s, s_new;
   u32 stream_index = ~0;
   clib_error_t *error;
 
-  if (unformat (input, "%U", unformat_hash_vec_string,
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  if (unformat (line_input, "%U", unformat_hash_vec_string,
 		pg->stream_index_by_name, &stream_index))
     ;
   else
     return clib_error_create ("expecting stream name; got `%U'",
-			      format_unformat_error, input);
+			      format_unformat_error, line_input);
 
   s = pool_elt_at_index (pg->streams, stream_index);
   s_new = s[0];
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat_user (input, unformat_pg_stream_parameter, &s_new))
+      if (unformat_user (line_input, unformat_pg_stream_parameter, &s_new))
 	;
 
       else
 	return clib_error_create ("unknown input `%U'",
-				  format_unformat_error, input);
+				  format_unformat_error, line_input);
     }
 
   error = validate_stream (&s_new);
@@ -562,6 +571,8 @@ change_stream_parameters (vlib_main_t * vm,
       s[0] = s_new;
       pg_stream_change (pg, s);
     }
+
+  unformat_free (line_input);
 
   return error;
 }
