@@ -281,7 +281,8 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
      n_feature_config_bytes);
   if (ci == ~0)
     {
-      return 0;
+      // feature node does not exist
+      return VNET_API_ERROR_NO_SUCH_ENTRY;
     }
   cm->config_index_by_sw_if_index[sw_if_index] = ci;
 
