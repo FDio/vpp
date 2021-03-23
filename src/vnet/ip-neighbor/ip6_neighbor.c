@@ -22,6 +22,13 @@
 /** ND throttling */
 static throttle_t nd_throttle;
 
+VLIB_REGISTER_LOG_CLASS (ip6_neighbor_log, static) = {
+  .class_name = "ip6",
+  .subclass_name = "neighbor",
+};
+
+#define log_debug(fmt, ...)                                                   \
+  vlib_log_debug (ip6_neighbor_log.class, fmt, __VA_ARGS__)
 void
 ip6_neighbor_probe_dst (u32 sw_if_index, const ip6_address_t * dst)
 {
@@ -47,9 +54,8 @@ ip6_neighbor_advertise (vlib_main_t * vm,
 
   if (addr)
     {
-      clib_warning
-	("Sending unsolicitated NA IP6 address %U on sw_if_idex %d",
-	 format_ip6_address, addr, sw_if_index);
+      log_debug ("Sending unsolicitated NA IP6 address %U on sw_if_idex %d",
+		 format_ip6_address, addr, sw_if_index);
 
       /* Form unsolicited neighbor advertisement packet from NS pkt template */
       int bogus_length;

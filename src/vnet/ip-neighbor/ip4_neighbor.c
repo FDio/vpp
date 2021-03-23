@@ -45,6 +45,14 @@
 /** ARP throttling */
 static throttle_t arp_throttle;
 
+VLIB_REGISTER_LOG_CLASS (ip4_neighbor_log, static) = {
+  .class_name = "ip4",
+  .subclass_name = "neighbor",
+};
+
+#define log_debug(fmt, ...)                                                   \
+  vlib_log_debug (ip4_neighbor_log.class, fmt, __VA_ARGS__)
+
 void
 ip4_neighbor_probe_dst (u32 sw_if_index, const ip4_address_t * dst)
 {
@@ -77,8 +85,8 @@ ip4_neighbor_advertise (vlib_main_t * vm,
 
   if (addr)
     {
-      clib_warning ("Sending GARP for IP4 address %U on sw_if_idex %d",
-		    format_ip4_address, addr, sw_if_index);
+      log_debug ("Sending GARP for IP4 address %U on sw_if_idex %d",
+		 format_ip4_address, addr, sw_if_index);
 
       /* Form GARP packet for output - Gratuitous ARP is an ARP request packet
          where the interface IP/MAC pair is used for both source and request
