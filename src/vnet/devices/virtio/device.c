@@ -99,7 +99,7 @@ format_virtio_tx_trace (u8 * s, va_list * va)
   return s;
 }
 
-static_always_inline void
+static void
 virtio_tx_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 		 vlib_buffer_t * b0, u32 bi, int is_tun)
 {
@@ -135,7 +135,7 @@ virtio_tx_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    sizeof (t->buffer.pre_data));
 }
 
-static_always_inline void
+static void
 virtio_interface_drop_inline (vlib_main_t * vm, uword node_index,
 			      u32 * buffers, u16 n,
 			      virtio_tx_func_error_t error)
@@ -144,7 +144,7 @@ virtio_interface_drop_inline (vlib_main_t * vm, uword node_index,
   vlib_buffer_free (vm, buffers, n);
 }
 
-static_always_inline void
+static void
 virtio_memset_ring_u32 (u32 * ring, u32 start, u32 ring_size, u32 n_buffers)
 {
   ASSERT (n_buffers <= ring_size);
@@ -160,7 +160,7 @@ virtio_memset_ring_u32 (u32 * ring, u32 start, u32 ring_size, u32 n_buffers)
     }
 }
 
-static_always_inline void
+static void
 virtio_free_used_device_desc_split (vlib_main_t * vm, virtio_vring_t * vring,
 				    uword node_index)
 {
@@ -226,7 +226,7 @@ virtio_free_used_device_desc_split (vlib_main_t * vm, virtio_vring_t * vring,
   vring->last_used_idx = last;
 }
 
-static_always_inline void
+static void
 virtio_free_used_device_desc_packed (vlib_main_t * vm, virtio_vring_t * vring,
 				     uword node_index)
 {
@@ -267,7 +267,7 @@ virtio_free_used_device_desc_packed (vlib_main_t * vm, virtio_vring_t * vring,
     }
 }
 
-static_always_inline void
+static void
 virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring,
 			      uword node_index, int packed)
 {
@@ -278,7 +278,7 @@ virtio_free_used_device_desc (vlib_main_t * vm, virtio_vring_t * vring,
 
 }
 
-static_always_inline void
+static void
 set_checksum_offsets (vlib_buffer_t * b, virtio_net_hdr_v1_t * hdr,
 		      const int is_l2)
 {
@@ -328,7 +328,7 @@ set_checksum_offsets (vlib_buffer_t * b, virtio_net_hdr_v1_t * hdr,
     }
 }
 
-static_always_inline void
+static void
 set_gso_offsets (vlib_buffer_t * b, virtio_net_hdr_v1_t * hdr,
 		 const int is_l2)
 {
@@ -369,7 +369,7 @@ set_gso_offsets (vlib_buffer_t * b, virtio_net_hdr_v1_t * hdr,
     }
 }
 
-static_always_inline u16
+static u16
 add_buffer_to_slot (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    virtio_vring_t * vring, u32 bi, u16 free_desc_count,
 		    u16 avail, u16 next, u16 mask, int hdr_sz, int do_gso,
@@ -561,7 +561,7 @@ done:
   return n_added;
 }
 
-static_always_inline u16
+static u16
 add_buffer_to_slot_packed (vlib_main_t * vm, vlib_node_runtime_t * node,
 			   virtio_vring_t * vring, u32 bi, u16 next,
 			   int hdr_sz, int do_gso, int csum_offload,
@@ -701,7 +701,7 @@ done:
   return n_added;
 }
 
-static_always_inline uword
+static uword
 virtio_interface_tx_packed_gso_inline (vlib_main_t * vm,
 				       vlib_node_runtime_t * node,
 				       virtio_if_t * vif,
@@ -792,7 +792,7 @@ virtio_interface_tx_packed_gso_inline (vlib_main_t * vm,
   return n_left;
 }
 
-static_always_inline void
+static void
 virtio_find_free_desc (virtio_vring_t * vring, u16 size, u16 mask,
 		       u16 req, u16 next, u32 * first_free_desc_index,
 		       u16 * free_desc_count)
@@ -828,7 +828,7 @@ virtio_find_free_desc (virtio_vring_t * vring, u16 size, u16 mask,
     }
 }
 
-static_always_inline u16
+static u16
 virtio_interface_tx_split_gso_inline (vlib_main_t * vm,
 				      vlib_node_runtime_t * node,
 				      virtio_if_t * vif,
@@ -939,7 +939,7 @@ virtio_interface_tx_split_gso_inline (vlib_main_t * vm,
   return n_left;
 }
 
-static_always_inline u16
+static u16
 virtio_interface_tx_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				virtio_if_t * vif,
 				virtio_if_type_t type, virtio_vring_t * vring,
@@ -956,7 +956,7 @@ virtio_interface_tx_gso_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 						 do_gso, csum_offload);
 }
 
-static_always_inline u16
+static u16
 virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    virtio_if_t * vif,
 			    virtio_vring_t * vring, virtio_if_type_t type,
@@ -1078,7 +1078,7 @@ virtio_clear_hw_interface_counters (u32 instance)
   /* Nothing for now */
 }
 
-static_always_inline void
+static void
 virtio_set_rx_interrupt (virtio_if_t * vif, virtio_vring_t * vring)
 {
   if (vif->is_packed)
@@ -1087,7 +1087,7 @@ virtio_set_rx_interrupt (virtio_if_t * vif, virtio_vring_t * vring)
     vring->avail->flags &= ~VRING_AVAIL_F_NO_INTERRUPT;
 }
 
-static_always_inline void
+static void
 virtio_set_rx_polling (virtio_if_t * vif, virtio_vring_t * vring)
 {
   if (vif->is_packed)
