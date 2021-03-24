@@ -386,6 +386,9 @@ openssl_ctx_write_tls (tls_ctx_t *ctx, session_t *app_session,
 
 check_tls_fifo:
 
+  if (PREDICT_FALSE (ctx->app_closed && BIO_ctrl_pending (oc->rbio) <= 0))
+    openssl_confirm_app_close (ctx);
+
   /* Deschedule and wait for deq notification if fifo is almost full */
   enq_buf = clib_min (svm_fifo_size (ts->tx_fifo) / 2, TLSO_MIN_ENQ_SPACE);
   if (space < wrote + enq_buf)
