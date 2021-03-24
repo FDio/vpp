@@ -3703,7 +3703,7 @@ class TestNAT44EI(MethodHolder):
 
         stats = self.statistics.get_err_counter(
             '/err/nat44-ei-ha/pkts-processed')
-        self.assertEqual(stats, 3)
+        self.assertEqual(sum(stats), 3)
 
         # send packet to test session created by HA
         p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
