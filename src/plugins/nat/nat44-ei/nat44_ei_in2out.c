@@ -257,7 +257,12 @@ nat44_i2o_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg)
     vec_elt_at_index (nm->per_thread_data, ctx->thread_index);
   clib_bihash_kv_8_8_t s_kv;
 
-  s = pool_elt_at_index (tnm->sessions, kv->value);
+  if (ctx->thread_index != nat_value_get_thread_index (kv))
+    {
+      return 0;
+    }
+
+  s = pool_elt_at_index (tnm->sessions, nat_value_get_session_index (kv));
   sess_timeout_time = s->last_heard + (f64) nat_session_get_timeout (
 					&nm->timeouts, s->nat_proto, s->state);
   if (ctx->now >= sess_timeout_time)
