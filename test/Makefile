@@ -318,6 +318,21 @@ wipe-papi:
 wipe-all: wipe wipe-papi wipe-doc wipe-cov
 	@rm -rf $(TEST_BR)
 
+.PHONY: checkstyle-diff
+checkstyle-diff: $(BUILD_TEST_SRC) $(PIP_INSTALL_DONE)
+	@bash -c "source $(VENV_PATH)/bin/activate &&\
+		  $(PYTHON_INTERP) -m pip install pycodestyle"
+	@bash -c "source $(VENV_PATH)/bin/activate &&\
+		cd $(WS_ROOT) && git diff --name-only --no-color --relative HEAD~1 ':!*.patch' | grep '.py$$' | xargs -n 1 -I XXX \
+		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v XXX ||\
+		(echo \"*********************************************************************\" &&\
+		 echo \"* Test framework PEP8 compliance check FAILED (checked changed files)\" &&\
+	         echo \"*********************************************************************\" &&\
+		 false)"
+	@echo "*********************************************************************"
+	@echo "* Test framework PEP8 compliance check passed (checked changed files)"
+	@echo "*********************************************************************"
+
 .PHONY: checkstyle
 checkstyle: $(BUILD_TEST_SRC) $(PIP_INSTALL_DONE)
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
@@ -325,11 +340,11 @@ checkstyle: $(BUILD_TEST_SRC) $(PIP_INSTALL_DONE)
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v $(BUILD_TEST_SRC)/*.py ||\
 		(echo \"*******************************************************************\" &&\
-		 echo \"* Test framework PEP8 compliance check FAILED \" &&\
+		 echo \"* Test framework PEP8 compliance check FAILED (checked all files)\" &&\
 	         echo \"*******************************************************************\" &&\
 		 false)"
 	@echo "*******************************************************************"
-	@echo "* Test framework PEP8 compliance check passed"
+	@echo "* Test framework PEP8 compliance check passed (checked all files)"
 	@echo "*******************************************************************"
 
 .PHONY: help

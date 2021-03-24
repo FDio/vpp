@@ -206,6 +206,7 @@ help:
 	@echo " checkstyle           - check coding style"
 	@echo " checkstyle-commit    - check commit message format"
 	@echo " checkstyle-test      - check test framework coding style"
+	@echo " checkstyle-test-diff - check test framework coding style (only changed files)"
 	@echo " checkstyle-api       - check api for incompatible changes"
 	@echo " fixstyle             - fix coding style"
 	@echo " doxygen              - (re)generate documentation"
@@ -477,6 +478,10 @@ test-wipe-all:
 .PHONY: test-checkstyle
 test-checkstyle:
 	@make -C test checkstyle
+
+.PHONY: test-checkstyle-diff
+test-checkstyle-diff:
+	@make -C test checkstyle-diff
 
 .PHONY: test-refresh-deps
 test-refresh-deps:
