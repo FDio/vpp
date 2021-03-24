@@ -254,26 +254,19 @@ nat44_ei_ha_sadd (ip4_address_t *in_addr, u16 in_port, ip4_address_t *out_addr,
 static_always_inline void
 nat44_ei_ha_sdel (ip4_address_t *out_addr, u16 out_port,
 		  ip4_address_t *eh_addr, u16 eh_port, u8 proto, u32 fib_index,
-		  u32 ti)
+		  u32 thread_index)
 {
   nat44_ei_main_t *nm = &nat44_ei_main;
   clib_bihash_kv_8_8_t kv, value;
-  u32 thread_index;
   nat44_ei_session_t *s;
   nat44_ei_main_per_thread_data_t *tnm;
-
-  if (nm->num_workers > 1)
-    thread_index = nm->first_worker_index +
-		   (nm->workers[(clib_net_to_host_u16 (out_port) - 1024) /
-				nm->port_per_thread]);
-  else
-    thread_index = nm->num_workers;
-  tnm = vec_elt_at_index (nm->per_thread_data, thread_index);
 
   init_nat_k (&kv, *out_addr, out_port, fib_index, proto);
   if (clib_bihash_search_8_8 (&nm->out2in, &kv, &value))
     return;
 
+  ASSERT (thread_index == nat_value_get_thread_index (&value));
+  tnm = vec_elt_at_index (nm->per_thread_data, thread_index);
   s = pool_elt_at_index (tnm->sessions, nat_value_get_session_index (&value));
   nat44_ei_free_session_data_v2 (nm, s, thread_index, 1);
   nat44_ei_delete_session (nm, s, thread_index);
