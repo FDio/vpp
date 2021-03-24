@@ -25,6 +25,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"log/syslog"
 	"os"
 	"os/signal"
 	"runtime"
@@ -36,20 +38,32 @@ import (
 	"github.com/hanwen/go-fuse/v2/fs"
 )
 
+func LogMsg(msg string) {
+	fmt.Fprint(os.Stderr, msg)
+	log.Print(msg)
+}
+
 func main() {
+	syslogger, err := syslog.New(syslog.LOG_ERR|syslog.LOG_DAEMON, "statsfs")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.SetOutput(syslogger)
+
 	statsSocket := flag.String("socket", statsclient.DefaultSocketName, "Path to VPP stats socket")
 	debug := flag.Bool("debug", false, "print debugging messages.")
 	flag.Parse()
+
 	if flag.NArg() < 1 {
-		fmt.Fprintf(os.Stderr, "usage: %s MOUNTPOINT\n", os.Args[0])
+		LogMsg(fmt.Sprintf("usage: %s MOUNTPOINT\n", os.Args[0]))
 		os.Exit(2)
 	}
 	//Conection to the stat segment socket.
 	sc := statsclient.NewStatsClient(*statsSocket)
-	fmt.Printf("Waiting for the VPP socket to be available. Be sure a VPP instance is running.\n")
+	fmt.Println("Waiting for the VPP socket to be available. Be sure a VPP instance is running.")
 	c, err := core.ConnectStats(sc)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to connect to the stats socket: %v\n", err)
+		LogMsg(fmt.Sprintf("Failed to connect to the stats socket: %v\n", err))
 		os.Exit(1)
 	}
 	defer c.Disconnect()
@@ -57,7 +71,7 @@ func main() {
 	//Creating the filesystem instance
 	root, err := NewStatsFileSystem(sc)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "NewStatsFileSystem failed: %v\n", err)
+		LogMsg(fmt.Sprintf("NewStatsFileSystem failed: %v\n", err))
 		os.Exit(1)
 	}
 
@@ -67,7 +81,7 @@ func main() {
 	opts.AllowOther = true
 	server, err := fs.Mount(flag.Arg(0), root, opts)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Mount fail: %v\n", err)
+		LogMsg(fmt.Sprintf("Mount fail: %v\n", err))
 		os.Exit(1)
 	}
 
@@ -86,6 +100,6 @@ func main() {
 		if err == nil || !strings.Contains(err.Error(), "Device or resource busy") {
 			break
 		}
-		fmt.Fprintf(os.Stderr, "Unmount fail: %v\n", err)
+		LogMsg(fmt.Sprintf("Unmount fail: %v\n", err))
 	}
 }
