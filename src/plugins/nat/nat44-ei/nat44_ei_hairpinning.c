@@ -440,7 +440,6 @@ VLIB_NODE_FN (nat44_ei_hairpin_src_node)
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	  vnet_feature_next (&next0, b0);
 
 	  pool_foreach (i, nm->output_feature_interfaces)
 	    {
@@ -452,13 +451,22 @@ VLIB_NODE_FN (nat44_ei_hairpin_src_node)
 				     NAT44_EI_FLAG_HAIRPINNING))
 		    {
 		      if (PREDICT_TRUE (nm->num_workers > 1))
-			next0 = NAT44_EI_HAIRPIN_SRC_NEXT_SNAT_IN2OUT_WH;
+			{
+			  next0 = NAT44_EI_HAIRPIN_SRC_NEXT_SNAT_IN2OUT_WH;
+			  goto skip_feature_next;
+			}
 		      else
-			next0 = NAT44_EI_HAIRPIN_SRC_NEXT_SNAT_IN2OUT;
+			{
+			  next0 = NAT44_EI_HAIRPIN_SRC_NEXT_SNAT_IN2OUT;
+			  goto skip_feature_next;
+			}
 		    }
 		  break;
 		}
 	    }
+
+	  vnet_feature_next (&next0, b0);
+	skip_feature_next:
 
 	  if (next0 != NAT44_EI_HAIRPIN_SRC_NEXT_DROP)
 	    {
