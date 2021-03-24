@@ -3044,11 +3044,14 @@ class TestNAT44EI(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        err = self.statistics.get_err_counter(
-            '/err/nat44-ei-classify/next in2out')
+        if self.vpp_worker_count > 1:
+            node = "nat44-ei-handoff-classify"
+        else:
+            node = "nat44-ei-classify"
+
+        err = self.statistics.get_err_counter('/err/%s/next in2out' % node)
         self.assertEqual(err, 1)
-        err = self.statistics.get_err_counter(
-            '/err/nat44-ei-classify/next out2in')
+        err = self.statistics.get_err_counter('/err/%s/next out2in' % node)
         self.assertEqual(err, 1)
 
     def test_del_session(self):

@@ -86,6 +86,12 @@ VNET_FEATURE_INIT (ip4_nat_classify, static) = {
   .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
 			       "ip4-sv-reassembly-feature"),
 };
+VNET_FEATURE_INIT (ip4_nat_handoff_classify, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "nat44-ei-handoff-classify",
+  .runs_after = VNET_FEATURES ("acl-plugin-in-ip4-fa",
+			       "ip4-sv-reassembly-feature"),
+};
 VNET_FEATURE_INIT (ip4_nat44_ei_in2out, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-ei-in2out",
@@ -575,7 +581,9 @@ feature_set:
 
 		  if (nm->num_workers > 1)
 		    {
-		      del_feature_name = "nat44-handoff-classify";
+		      del_feature_name = "nat44-ei-handoff-classify";
+		      clib_warning (
+			"del_feature_name = nat44-ei-handoff-classify");
 		      feature_name = !is_inside ?
 				       "nat44-ei-in2out-worker-handoff" :
 				       "nat44-ei-out2in-worker-handoff";
@@ -583,6 +591,7 @@ feature_set:
 		  else
 		    {
 		      del_feature_name = "nat44-ei-classify";
+		      clib_warning ("del_feature_name = nat44-ei-classify");
 		      feature_name =
 			!is_inside ? "nat44-ei-in2out" : "nat44-ei-out2in";
 		    }
@@ -591,15 +600,21 @@ feature_set:
 		    ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, 0);
 		  if (rv)
 		    return rv;
-		  vnet_feature_enable_disable ("ip4-unicast", del_feature_name,
-					       sw_if_index, 0, 0, 0);
-		  vnet_feature_enable_disable ("ip4-unicast", feature_name,
-					       sw_if_index, 1, 0, 0);
+		  rv = vnet_feature_enable_disable (
+		    "ip4-unicast", del_feature_name, sw_if_index, 0, 0, 0);
+		  if (rv)
+		    return rv;
+		  rv = vnet_feature_enable_disable (
+		    "ip4-unicast", feature_name, sw_if_index, 1, 0, 0);
+		  if (rv)
+		    return rv;
 		  if (!is_inside)
 		    {
-		      vnet_feature_enable_disable ("ip4-local",
-						   "nat44-ei-hairpinning",
-						   sw_if_index, 1, 0, 0);
+		      rv = vnet_feature_enable_disable ("ip4-local",
+							"nat44-ei-hairpinning",
+							sw_if_index, 1, 0, 0);
+		      if (rv)
+			return rv;
 		    }
 		}
 	      else
@@ -608,14 +623,18 @@ feature_set:
 		    ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, 0);
 		  if (rv)
 		    return rv;
-		  vnet_feature_enable_disable ("ip4-unicast", feature_name,
-					       sw_if_index, 0, 0, 0);
+		  rv = vnet_feature_enable_disable (
+		    "ip4-unicast", feature_name, sw_if_index, 0, 0, 0);
+		  if (rv)
+		    return rv;
 		  pool_put (nm->interfaces, i);
 		  if (is_inside)
 		    {
-		      vnet_feature_enable_disable ("ip4-local",
-						   "nat44-ei-hairpinning",
-						   sw_if_index, 0, 0, 0);
+		      rv = vnet_feature_enable_disable ("ip4-local",
+							"nat44-ei-hairpinning",
+							sw_if_index, 0, 0, 0);
+		      if (rv)
+			return rv;
 		    }
 		}
 	    }
@@ -630,27 +649,35 @@ feature_set:
 		  del_feature_name = !is_inside ?
 				       "nat44-ei-in2out-worker-handoff" :
 				       "nat44-ei-out2in-worker-handoff";
-		  feature_name = "nat44-handoff-classify";
+		  feature_name = "nat44-ei-handoff-classify";
+		  clib_warning ("feature_name = nat44-ei-handoff-classify");
 		}
 	      else
 		{
 		  del_feature_name =
 		    !is_inside ? "nat44-ei-in2out" : "nat44-ei-out2in";
 		  feature_name = "nat44-ei-classify";
+		  clib_warning ("feature_name = nat44-ei-classify");
 		}
 
 	      int rv =
 		ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, 1);
 	      if (rv)
 		return rv;
-	      vnet_feature_enable_disable ("ip4-unicast", del_feature_name,
-					   sw_if_index, 0, 0, 0);
-	      vnet_feature_enable_disable ("ip4-unicast", feature_name,
-					   sw_if_index, 1, 0, 0);
+	      rv = vnet_feature_enable_disable (
+		"ip4-unicast", del_feature_name, sw_if_index, 0, 0, 0);
+	      if (rv)
+		return rv;
+	      rv = vnet_feature_enable_disable ("ip4-unicast", feature_name,
+						sw_if_index, 1, 0, 0);
+	      if (rv)
+		return rv;
 	      if (!is_inside)
 		{
-		  vnet_feature_enable_disable (
+		  rv = vnet_feature_enable_disable (
 		    "ip4-local", "nat44-ei-hairpinning", sw_if_index, 0, 0, 0);
+		  if (rv)
+		    return rv;
 		}
 	      goto set_flags;
 	    }
@@ -670,17 +697,21 @@ feature_set:
   i->flags = 0;
   nat_validate_interface_counters (nm, sw_if_index);
 
-  vnet_feature_enable_disable ("ip4-unicast", feature_name, sw_if_index, 1, 0,
-			       0);
+  int rv = vnet_feature_enable_disable ("ip4-unicast", feature_name,
+					sw_if_index, 1, 0, 0);
+  if (rv)
+    return rv;
 
-  int rv = ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, 1);
+  rv = ip4_sv_reass_enable_disable_with_refcnt (sw_if_index, 1);
   if (rv)
     return rv;
 
   if (is_inside && !nm->out2in_dpo)
     {
-      vnet_feature_enable_disable ("ip4-local", "nat44-ei-hairpinning",
-				   sw_if_index, 1, 0, 0);
+      rv = vnet_feature_enable_disable ("ip4-local", "nat44-ei-hairpinning",
+					sw_if_index, 1, 0, 0);
+      if (rv)
+	return rv;
     }
 
 set_flags:
@@ -775,10 +806,14 @@ feature_set:
 	ip4_sv_reass_output_enable_disable_with_refcnt (sw_if_index, !is_del);
       if (rv)
 	return rv;
-      vnet_feature_enable_disable ("ip4-unicast", "nat44-ei-hairpin-dst",
-				   sw_if_index, !is_del, 0, 0);
-      vnet_feature_enable_disable ("ip4-output", "nat44-ei-hairpin-src",
-				   sw_if_index, !is_del, 0, 0);
+      rv = vnet_feature_enable_disable ("ip4-unicast", "nat44-ei-hairpin-dst",
+					sw_if_index, !is_del, 0, 0);
+      if (rv)
+	return rv;
+      rv = vnet_feature_enable_disable ("ip4-output", "nat44-ei-hairpin-src",
+					sw_if_index, !is_del, 0, 0);
+      if (rv)
+	return rv;
       goto fq;
     }
 
@@ -791,12 +826,16 @@ feature_set:
 	ip4_sv_reass_output_enable_disable_with_refcnt (sw_if_index, !is_del);
       if (rv)
 	return rv;
-      vnet_feature_enable_disable ("ip4-unicast",
-				   "nat44-ei-out2in-worker-handoff",
-				   sw_if_index, !is_del, 0, 0);
-      vnet_feature_enable_disable ("ip4-output",
-				   "nat44-ei-in2out-output-worker-handoff",
-				   sw_if_index, !is_del, 0, 0);
+      rv = vnet_feature_enable_disable ("ip4-unicast",
+					"nat44-ei-out2in-worker-handoff",
+					sw_if_index, !is_del, 0, 0);
+      if (rv)
+	return rv;
+      rv = vnet_feature_enable_disable (
+	"ip4-output", "nat44-ei-in2out-output-worker-handoff", sw_if_index,
+	!is_del, 0, 0);
+      if (rv)
+	return rv;
     }
   else
     {
@@ -807,10 +846,14 @@ feature_set:
 	ip4_sv_reass_output_enable_disable_with_refcnt (sw_if_index, !is_del);
       if (rv)
 	return rv;
-      vnet_feature_enable_disable ("ip4-unicast", "nat44-ei-out2in",
-				   sw_if_index, !is_del, 0, 0);
-      vnet_feature_enable_disable ("ip4-output", "nat44-ei-in2out-output",
-				   sw_if_index, !is_del, 0, 0);
+      rv = vnet_feature_enable_disable ("ip4-unicast", "nat44-ei-out2in",
+					sw_if_index, !is_del, 0, 0);
+      if (rv)
+	return rv;
+      rv = vnet_feature_enable_disable ("ip4-output", "nat44-ei-in2out-output",
+					sw_if_index, !is_del, 0, 0);
+      if (rv)
+	return rv;
     }
 
 fq:
@@ -2900,8 +2943,9 @@ match:
 			"i4", rv);
 }
 
-VLIB_NODE_FN (nat44_ei_classify_node)
-(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+static_always_inline uword
+nat44_ei_classify_inline_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
+			     vlib_frame_t *frame)
 {
   u32 n_left_from, *from, *to_next;
   nat44_ei_classify_next_t next_index;
@@ -3000,6 +3044,12 @@ VLIB_NODE_FN (nat44_ei_classify_node)
   return frame->n_vectors;
 }
 
+VLIB_NODE_FN (nat44_ei_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return nat44_ei_classify_inline_fn (vm, node, frame);
+}
+
 VLIB_REGISTER_NODE (nat44_ei_classify_node) = {
   .name = "nat44-ei-classify",
   .vector_size = sizeof (u32),
@@ -3011,6 +3061,27 @@ VLIB_REGISTER_NODE (nat44_ei_classify_node) = {
   .next_nodes = {
     [NAT44_EI_CLASSIFY_NEXT_IN2OUT] = "nat44-ei-in2out",
     [NAT44_EI_CLASSIFY_NEXT_OUT2IN] = "nat44-ei-out2in",
+    [NAT44_EI_CLASSIFY_NEXT_DROP] = "error-drop",
+  },
+};
+
+VLIB_NODE_FN (nat44_ei_handoff_classify_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return nat44_ei_classify_inline_fn (vm, node, frame);
+}
+
+VLIB_REGISTER_NODE (nat44_ei_handoff_classify_node) = {
+  .name = "nat44-ei-handoff-classify",
+  .vector_size = sizeof (u32),
+  .format_trace = format_nat44_ei_classify_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(nat44_ei_classify_error_strings),
+  .error_strings = nat44_ei_classify_error_strings,
+  .n_next_nodes = NAT44_EI_CLASSIFY_N_NEXT,
+  .next_nodes = {
+    [NAT44_EI_CLASSIFY_NEXT_IN2OUT] = "nat44-ei-in2out-worker-handoff",
+    [NAT44_EI_CLASSIFY_NEXT_OUT2IN] = "nat44-ei-out2in-worker-handoff",
     [NAT44_EI_CLASSIFY_NEXT_DROP] = "error-drop",
   },
 };
