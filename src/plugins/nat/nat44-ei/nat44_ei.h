@@ -71,7 +71,7 @@ typedef struct
 #define _(N, i, n, s)                                                         \
   u32 busy_##n##_ports;                                                       \
   u32 *busy_##n##_ports_per_thread;                                           \
-  u32 busy_##n##_port_refcounts[65535];
+  u32 busy_##n##_port_refcounts[0xffff + 1];
   foreach_nat_protocol
 #undef _
 } nat44_ei_address_t;
