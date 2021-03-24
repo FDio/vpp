@@ -976,13 +976,13 @@ class TestNAT44EI(MethodHolder):
         self.verify_capture_out(capture)
 
         sessions = self.statistics.get_counter('/nat44-ei/total-sessions')
-        self.assertTrue(sessions[0][0] > 0)
+        self.assertGreater(sum_stats(sessions), 0, "Session count invalid")
         self.logger.info("sessions before clearing: %s" % sessions[0][0])
 
         self.vapi.cli("clear nat44 ei sessions")
 
         sessions = self.statistics.get_counter('/nat44-ei/total-sessions')
-        self.assertEqual(sessions[0][0], 0)
+        self.assertEqual(sum_stats(sessions), 0, "Session count invalid")
         self.logger.info("sessions after clearing: %s" % sessions[0][0])
 
     def test_dynamic(self):
@@ -997,12 +997,10 @@ class TestNAT44EI(MethodHolder):
             is_add=1)
 
         # in2out
-        tcpn = self.statistics.get_counter('/nat44-ei/in2out/slowpath/tcp')[0]
-        udpn = self.statistics.get_counter('/nat44-ei/in2out/slowpath/udp')[0]
-        icmpn = self.statistics.get_counter(
-            '/nat44-ei/in2out/slowpath/icmp')[0]
-        drops = self.statistics.get_counter(
-            '/nat44-ei/in2out/slowpath/drops')[0]
+        tcpn = self.statistics.get_counter('/nat44-ei/in2out/slowpath/tcp')
+        udpn = self.statistics.get_counter('/nat44-ei/in2out/slowpath/udp')
+        icmpn = self.statistics.get_counter('/nat44-ei/in2out/slowpath/icmp')
+        drops = self.statistics.get_counter('/nat44-ei/in2out/slowpath/drops')
 
         pkts = self.create_stream_in(self.pg0, self.pg1)
         self.pg0.add_stream(pkts)
@@ -1012,22 +1010,28 @@ class TestNAT44EI(MethodHolder):
         self.verify_capture_out(capture)
 
         if_idx = self.pg0.sw_if_index
-        cnt = self.statistics.get_counter('/nat44-ei/in2out/slowpath/tcp')[0]
-        self.assertEqual(cnt[if_idx] - tcpn[if_idx], 2)
-        cnt = self.statistics.get_counter('/nat44-ei/in2out/slowpath/udp')[0]
-        self.assertEqual(cnt[if_idx] - udpn[if_idx], 1)
-        cnt = self.statistics.get_counter('/nat44-ei/in2out/slowpath/icmp')[0]
-        self.assertEqual(cnt[if_idx] - icmpn[if_idx], 1)
-        cnt = self.statistics.get_counter('/nat44-ei/in2out/slowpath/drops')[0]
-        self.assertEqual(cnt[if_idx] - drops[if_idx], 0)
+        cnt = self.statistics.get_counter('/nat44-ei/in2out/slowpath/tcp')
+        self.assertEqual(sum_stats_for_intf(cnt, if_idx) -
+                         sum_stats_for_intf(tcpn, if_idx),
+                         2)
+        cnt = self.statistics.get_counter('/nat44-ei/in2out/slowpath/udp')
+        self.assertEqual(sum_stats_for_intf(cnt, if_idx) -
+                         sum_stats_for_intf(udpn, if_idx),
+                         1)
+        cnt = self.statistics.get_counter('/nat44-ei/in2out/slowpath/icmp')
+        self.assertEqual(sum_stats_for_intf(cnt, if_idx) -
+                         sum_stats_for_intf(icmpn, if_idx),
+                         1)
+        cnt = self.statistics.get_counter('/nat44-ei/in2out/slowpath/drops')
+        self.assertEqual(sum_stats_for_intf(cnt, if_idx) -
+                         sum_stats_for_intf(drops, if_idx),
+                         0)
 
         # out2in
-        tcpn = self.statistics.get_counter('/nat44-ei/out2in/slowpath/tcp')[0]
-        udpn = self.statistics.get_counter('/nat44-ei/out2in/slowpath/udp')[0]
-        icmpn = self.statistics.get_counter(
-            '/nat44-ei/out2in/slowpath/icmp')[0]
-        drops = self.statistics.get_counter(
-            '/nat44-ei/out2in/slowpath/drops')[0]
+        tcpn = self.statistics.get_counter('/nat44-ei/out2in/slowpath/tcp')
+        udpn = self.statistics.get_counter('/nat44-ei/out2in/slowpath/udp')
+        icmpn = self.statistics.get_counter('/nat44-ei/out2in/slowpath/icmp')
+        drops = self.statistics.get_counter('/nat44-ei/out2in/slowpath/drops')
 
         pkts = self.create_stream_out(self.pg1)
         self.pg1.add_stream(pkts)
@@ -1037,19 +1041,27 @@ class TestNAT44EI(MethodHolder):
         self.verify_capture_in(capture, self.pg0)
 
         if_idx = self.pg1.sw_if_index
-        cnt = self.statistics.get_counter('/nat44-ei/out2in/slowpath/tcp')[0]
-        self.assertEqual(cnt[if_idx] - tcpn[if_idx], 2)
-        cnt = self.statistics.get_counter('/nat44-ei/out2in/slowpath/udp')[0]
-        self.assertEqual(cnt[if_idx] - udpn[if_idx], 1)
-        cnt = self.statistics.get_counter('/nat44-ei/out2in/slowpath/icmp')[0]
-        self.assertEqual(cnt[if_idx] - icmpn[if_idx], 1)
-        cnt = self.statistics.get_counter('/nat44-ei/out2in/slowpath/drops')[0]
-        self.assertEqual(cnt[if_idx] - drops[if_idx], 0)
+        cnt = self.statistics.get_counter('/nat44-ei/out2in/slowpath/tcp')
+        self.assertEqual(sum_stats_for_intf(cnt, if_idx) -
+                         sum_stats_for_intf(tcpn, if_idx),
+                         2)
+        cnt = self.statistics.get_counter('/nat44-ei/out2in/slowpath/udp')
+        self.assertEqual(sum_stats_for_intf(cnt, if_idx) -
+                         sum_stats_for_intf(udpn, if_idx),
+                         1)
+        cnt = self.statistics.get_counter('/nat44-ei/out2in/slowpath/icmp')
+        self.assertEqual(sum_stats_for_intf(cnt, if_idx) -
+                         sum_stats_for_intf(icmpn, if_idx),
+                         1)
+        cnt = self.statistics.get_counter('/nat44-ei/out2in/slowpath/drops')
+        self.assertEqual(sum_stats_for_intf(cnt, if_idx) -
+                         sum_stats_for_intf(drops, if_idx),
+                         0)
 
         users = self.statistics.get_counter('/nat44-ei/total-users')
-        self.assertEqual(users[0][0], 1)
+        self.assertEqual(sum_stats(users), 1)
         sessions = self.statistics.get_counter('/nat44-ei/total-sessions')
-        self.assertEqual(sessions[0][0], 3)
+        self.assertEqual(sum_stats(sessions), 3)
 
     def test_dynamic_icmp_errors_in2out_ttl_1(self):
         """ NAT44EI handling of client packets with TTL=1 """
@@ -2101,7 +2113,7 @@ class TestNAT44EI(MethodHolder):
         self.pg_start()
         # Here VPP used to crash due to an infinite loop
 
-        cnt = self.statistics.get_counter('/nat44-ei/hairpinning')[0]
+        cnt = self.statistics.get_counter('/nat44-ei/hairpinning')
         # send packet from host to server
         p = (Ether(src=host.mac, dst=self.pg0.local_mac) /
              IP(src=host.ip4, dst=self.nat_addr) /
@@ -2124,9 +2136,10 @@ class TestNAT44EI(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        after = self.statistics.get_counter('/nat44-ei/hairpinning')[0]
+        after = self.statistics.get_counter('/nat44-ei/hairpinning')
         if_idx = self.pg0.sw_if_index
-        self.assertEqual(after[if_idx] - cnt[if_idx], 1)
+        self.assertEqual(sum_stats_for_intf(after, if_idx) -
+                         sum_stats_for_intf(cnt, if_idx), 1)
 
         # send reply from server to host
         p = (Ether(src=server.mac, dst=self.pg0.local_mac) /
@@ -2149,9 +2162,11 @@ class TestNAT44EI(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-        after = self.statistics.get_counter('/nat44-ei/hairpinning')[0]
+        after = self.statistics.get_counter('/nat44-ei/hairpinning')
         if_idx = self.pg0.sw_if_index
-        self.assertEqual(after[if_idx] - cnt[if_idx], 2)
+        self.assertEqual(sum_stats_for_intf(after, if_idx) -
+                         sum_stats_for_intf(cnt, if_idx),
+                         2+(1 if self.vpp_worker_count > 0 else 0))
 
     def test_interface_addr(self):
         """ NAT44EI acquire addresses from interface """
@@ -3786,22 +3801,35 @@ class TestNAT44EI(MethodHolder):
 
         pkts = []
         for i in range(x):
+            info = self.create_packet_info(self.pg0, self.pg1)
+            payload = self.info_to_payload(info)
             p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
                  IP(src=self.pg0.remote_hosts[i].ip4,
                      dst=self.pg1.remote_ip4) /
-                 UDP(sport=7000+i, dport=80+i))
+                 UDP(sport=7000+i, dport=8000+i) /
+                 Raw(payload))
+            info.data = p
             pkts.append(p)
 
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         recvd = self.pg1.get_capture(len(pkts))
-        for (p_sent, p_recvd) in zip(pkts, recvd):
+        for p_recvd in recvd:
+            payload_info = self.payload_to_info(p_recvd[Raw])
+            packet_index = payload_info.index
+            info = self._packet_infos[packet_index]
+            self.assertTrue(info is not None)
+            self.assertEqual(packet_index, info.index)
+            p_sent = info.data
             packed = socket.inet_aton(p_sent[IP].src)
             numeric = struct.unpack("!L", packed)[0]
             numeric = socket.htonl(numeric)
             a = nat_addresses[(numeric-1) % len(nat_addresses)]
-            self.assertEqual(a, p_recvd[IP].src, "Packet not translated")
+            self.assertEqual(
+                a, p_recvd[IP].src,
+                "Invalid packet (src IP %s translated to %s, but expected %s)"
+                % (p_sent[IP].src, p_recvd[IP].src, a))
 
 
 class TestNAT44Out2InDPO(MethodHolder):
