@@ -1552,6 +1552,8 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_handle_postponed_dequeues (wrk);
   tcp_handle_disconnects (wrk);
   vlib_buffer_free (vm, first_buffer, frame->n_vectors);
+  session_wrk_next_time_update (thread_index,
+                                tcp_next_time_update (wrk, transport_time_now (thread_index)));
 
   return frame->n_vectors;
 }
@@ -2036,6 +2038,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_inc_counter (syn_sent, TCP_ERROR_MSG_QUEUE_FULL, errors);
   vlib_buffer_free (vm, first_buffer, from_frame->n_vectors);
   tcp_handle_disconnects (wrk);
+  session_wrk_next_time_update (my_thread_index,
+                                tcp_next_time_update (wrk, transport_time_now (my_thread_index)));
 
   return from_frame->n_vectors;
 }
@@ -2483,6 +2487,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_handle_postponed_dequeues (wrk);
   tcp_handle_disconnects (wrk);
   vlib_buffer_free (vm, first_buffer, from_frame->n_vectors);
+  session_wrk_next_time_update (thread_index,
+                                tcp_next_time_update (wrk, transport_time_now (thread_index)));
 
   return from_frame->n_vectors;
 }
@@ -2669,6 +2675,8 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   tcp_inc_counter (listen, TCP_ERROR_SYNS_RCVD, n_syns);
   vlib_buffer_free (vm, first_buffer, from_frame->n_vectors);
+//  session_wrk_next_time_update (thread_index,
+//                                tcp_timer_next_expire (&wrk->timer_wheel));
 
   return from_frame->n_vectors;
 }

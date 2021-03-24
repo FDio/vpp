@@ -1441,12 +1441,16 @@ session_wrk_update_state (session_worker_t *wrk)
   if (wrk->state == SESSION_WRK_POLLING)
     {
       if (pool_elts (wrk->event_elts) == 3 &&
-	  vlib_last_vectors_per_main_loop (vm) < 1)
+	  vlib_last_vectors_per_main_loop (vm) < 1
+	  && wrk->next_time_update - wrk->last_vlib_time > 15e-3)
 	{
 	  //	  clib_warning ("switched to interrupt\n");
 	  wrk->state = SESSION_WRK_INTERRUPT;
 	  vlib_node_set_state (vm, session_queue_node.index,
 			       VLIB_NODE_STATE_INTERRUPT);
+//	  clib_time_type_t diff = wrk->next_time_update - wrk->last_vlib_time;
+//	  diff = clib_min (diff, 1e-3);
+//	  session_wrk_timerfd_update (wrk, (clib_us_time_t) diff * 1e6);
 	  session_wrk_timerfd_update (wrk, 1e3);
 	}
       //      else
@@ -1468,6 +1472,25 @@ session_wrk_update_state (session_worker_t *wrk)
     }
 }
 
+void
+session_wrk_next_time_update (u32 thread_index, clib_time_type_t next)
+{
+  session_worker_t *wrk = session_main_get_worker (thread_index);
+  clib_time_type_t next_time;
+
+  if (wrk->state == SESSION_WRK_POLLING)
+    return;
+
+  next_time = wrk->last_vlib_time + next;
+
+  if (next_time < wrk->next_time_update)
+    {
+      wrk->next_time_update = next_time;
+//      session_wrk_timerfd_update (wrk, (clib_us_time_t) next * 1e6);
+      vlib_node_set_interrupt_pending (wrk->vm, session_queue_node.index);
+    }
+}
+
 static uword
 session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * frame)
@@ -1481,6 +1504,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   int i = 0, n_tx_packets;
   session_event_t *evt;
   svm_msg_q_t *mq;
+  clib_time_type_t next_update;
 
   SESSION_EVT (SESSION_EVT_DISPATCH_START, wrk);
 
@@ -1490,7 +1514,10 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   /*
    *  Update transport time
    */
-  transport_update_time (wrk->last_vlib_time, thread_index);
+   next_update = transport_update_time (wrk->last_vlib_time,
+                                                 thread_index);
+   wrk->next_time_update = wrk->last_vlib_time + next_update;
+
   n_tx_packets = vec_len (wrk->pending_tx_buffers);
   SESSION_EVT (SESSION_EVT_DSP_CNTRS, UPDATE_TIME, wrk);
 

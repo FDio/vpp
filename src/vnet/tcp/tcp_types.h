@@ -467,7 +467,7 @@ tcp_get_connection_from_transport (transport_connection_t * tconn)
 #define TW_TIMERS_PER_OBJECT 16
 #define LOG2_TW_TIMERS_PER_OBJECT 4
 #define TW_SUFFIX _tcp_twsl
-#define TW_FAST_WHEEL_BITMAP 0
+#define TW_FAST_WHEEL_BITMAP 1
 #define TW_TIMER_ALLOW_DUPLICATE_STOP 1
 
 #include <vppinfra/tw_timer_template.h>

@@ -1096,7 +1096,7 @@ quic_set_time_now (u32 thread_index)
 }
 
 /* Transport proto callback */
-static void
+static clib_time_type_t
 quic_update_time (f64 now, u8 thread_index)
 {
   tw_timer_wheel_1t_3w_1024sl_ov_t *tw;
@@ -1104,6 +1104,10 @@ quic_update_time (f64 now, u8 thread_index)
   tw = &quic_main.wrk_ctx[thread_index].timer_wheel;
   quic_set_time_now (thread_index);
   tw_timer_expire_timers_1t_3w_1024sl_ov (tw, now);
+
+  /* This forces time update polling in session layer when quic enabled
+   * TODO return time to next timer expiry */
+  return 0;
 }
 
 static void

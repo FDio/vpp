@@ -87,7 +87,7 @@ typedef struct _transport_proto_vft
   u32 (*push_header) (transport_connection_t * tconn, vlib_buffer_t * b);
   int (*send_params) (transport_connection_t * tconn,
 		      transport_send_params_t *sp);
-  void (*update_time) (f64 time_now, u8 thread_index);
+  clib_time_type_t (*update_time) (f64 time_now, u8 thread_index);
   void (*flush_data) (transport_connection_t *tconn);
   int (*custom_tx) (void *session, transport_send_params_t *sp);
   int (*app_rx_evt) (transport_connection_t *tconn);
@@ -236,7 +236,8 @@ transport_proto_t
 transport_register_new_protocol (const transport_proto_vft_t * vft,
 				 fib_protocol_t fib_proto, u32 output_node);
 transport_proto_vft_t *transport_protocol_get_vft (transport_proto_t tp);
-void transport_update_time (clib_time_type_t time_now, u8 thread_index);
+clib_time_type_t transport_update_time (clib_time_type_t time_now,
+                                        u8 thread_index);
 
 int transport_alloc_local_port (u8 proto, ip46_address_t * ip);
 int transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt,

@@ -787,15 +787,20 @@ transport_fifos_init_ooo (transport_connection_t * tc)
   svm_fifo_init_ooo_lookup (s->tx_fifo, 1 /* ooo deq */ );
 }
 
-void
+clib_time_type_t
 transport_update_time (clib_time_type_t time_now, u8 thread_index)
 {
   transport_proto_vft_t *vft;
+  clib_time_type_t next_update = 10;
+
   vec_foreach (vft, tp_vfts)
   {
     if (vft->update_time)
-      (vft->update_time) (time_now, thread_index);
+      next_update = clib_min ((vft->update_time) (time_now, thread_index),
+                              next_update);
   }
+
+  return next_update;
 }
 
 void

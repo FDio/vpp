@@ -119,6 +119,13 @@ tcp_timer_expire_timers (tcp_timer_wheel_t * tw, f64 now)
   tw_timer_expire_timers_tcp_twsl (tw, now);
 }
 
+always_inline clib_time_type_t
+tcp_timer_next_expire (tcp_timer_wheel_t * tw)
+{
+  u32 ticks_to_expire = tw_timer_first_expires_in_ticks_tcp_twsl (tw);
+  return (clib_time_type_t) ticks_to_expire / TCP_TIMER_TICK;
+}
+
 void tcp_timer_initialize_wheel (tcp_timer_wheel_t * tw,
 				 void (*expired_timer_cb) (u32 *), f64 now);
 

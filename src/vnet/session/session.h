@@ -100,6 +100,8 @@ typedef struct session_worker_
   u32 timerfd;
   u8 state;
 
+  clib_time_type_t next_time_update;
+
   /** Context for session tx */
   session_tx_context_t ctx;
 
@@ -704,6 +706,7 @@ session_update_wrk_time (u32 thread_index)
   wrk->last_vlib_time = vlib_time_now (wrk->vm);
   wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
 }
+void session_wrk_next_time_update (u32 thread_index, clib_time_type_t next);
 
 fifo_segment_t *session_main_get_evt_q_segment (void);
 void session_node_enable_disable (u8 is_en);

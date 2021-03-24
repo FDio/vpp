@@ -1142,7 +1142,24 @@ tcp_handle_cleanups (tcp_worker_ctx_t * wrk, clib_time_type_t now)
     }
 }
 
-static void
+clib_time_type_t
+tcp_next_time_update (tcp_worker_ctx_t * wrk, clib_time_type_t now)
+{
+  clib_time_type_t cleanup_time;
+
+  /* Pending timers should be dispatched asap */
+  if (clib_fifo_elts (wrk->pending_timers))
+    return 0;
+
+  if (!wrk->pending_cleanups)
+    return 10;
+
+  cleanup_time = clib_fifo_head (wrk->pending_cleanups)->free_time - now;
+
+  return clib_min (tcp_timer_next_expire (&wrk->timer_wheel), cleanup_time);
+}
+
+static clib_time_type_t
 tcp_update_time (f64 now, u8 thread_index)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
@@ -1151,6 +1168,8 @@ tcp_update_time (f64 now, u8 thread_index)
   tcp_handle_cleanups (wrk, now);
   tcp_timer_expire_timers (&wrk->timer_wheel, now);
   tcp_dispatch_pending_timers (wrk);
+
+  return tcp_next_time_update (wrk, now);
 }
 
 static void
