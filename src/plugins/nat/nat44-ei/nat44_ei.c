@@ -2364,8 +2364,9 @@ format_nat44_ei_session_kvp (u8 *s, va_list *args)
 {
   clib_bihash_kv_8_8_t *v = va_arg (*args, clib_bihash_kv_8_8_t *);
 
-  s =
-    format (s, "%U session-index %llu", format_nat44_ei_key, v->key, v->value);
+  s = format (s, "%U thread-index %llu session-index %llu",
+	      format_nat44_ei_key, v->key, nat_value_get_thread_index (v),
+	      nat_value_get_session_index (v));
 
   return s;
 }
