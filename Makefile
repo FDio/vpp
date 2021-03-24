@@ -220,7 +220,6 @@ help:
 	@echo " docs                 - Build the Sphinx documentation"
 	@echo " docs-venv            - Build the virtual environment for the Sphinx docs"
 	@echo " docs-clean           - Remove the generated files from the Sphinx docs"
-	@echo " stats-fs-help        - Help to build the stats segment file system"
 	@echo ""
 	@echo "Make Arguments:"
 	@echo " V=[0|1]                  - set build verbosity level"
@@ -668,33 +667,6 @@ featurelist: centos-pyyaml
 .PHONY: checkfeaturelist
 checkfeaturelist: centos-pyyaml
 	@extras/scripts/fts.py --validate --all
-
-
-# Build vpp_stats_fs
-
-.PHONY: stats-fs-install
-stats-fs-install:
-	@extras/vpp_stats_fs/install.sh install
-
-.PHONY: stats-fs-start
-stats-fs-start:
-	@extras/vpp_stats_fs/install.sh start
-
-.PHONY: stats-fs-cleanup
-stats-fs-cleanup:
-	@extras/vpp_stats_fs/install.sh cleanup
-
-.PHONY: stats-fs-help
-stats-fs-help:
-	@extras/vpp_stats_fs/install.sh help
-
-.PHONY: stats-fs-force-unmount
-stats-fs-force-unmount:
-	@extras/vpp_stats_fs/install.sh unmount
-
-.PHONY: stats-fs-stop
-stats-fs-stop:
-	@extras/vpp_stats_fs/install.sh stop
 
 #
 # Build the documentation

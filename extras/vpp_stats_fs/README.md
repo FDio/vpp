@@ -1,61 +1,121 @@
 # VPP stats segment FUSE filesystem  {#stats_fs_doc}
 
 The statfs binary allows to create a FUSE filesystem to expose and to browse the stats segment.
-Is is leaned on the Go-FUSE library and requires Go-VPP stats bindings to work.
+It relies on the Go-FUSE library and requires Go-VPP stats bindings to work.
 
 The binary mounts a filesystem on the local machine whith the data from the stats segments.
 The counters can be opened and read as files (e.g. in a Unix shell).
 Note that the value of a counter is determined when the corresponding file is opened (as for /proc/interrupts).
 
-Directories regularly update their contents so that new counters get added to the filesystem.
+Directories update their contents on epoch changes so that new counters get added to the filesystem.
 
-## Prerequisites (for building)
+The script `install.sh` is responsible for buildiing and installing the filesystem.
 
-**GoVPP** library (master branch)
-**Go-FUSE** library
+## Dependencies
+
+**GoVPP** library (relevant commit)
+
+**Go-FUSE** library (relevant commit)
+
 vpp, vppapi
-
-## Building
-
-Here, we add the Go librairies before building the binary
-```bash
-go mod init stats_fs
-go get git.fd.io/govpp.git@master
-go get git.fd.io/govpp.git/adapter/statsclient@master
-go get github.com/hanwen/go-fuse/v2
-go build
-```
 
 ## Usage
 
-The basic usage is:
+The local Makefile contains targets for all the possible intercations with the stats_f binary.
+
+### Help
+A basic help menu
 ```bash
-sudo ./statfs <MOUNT_POINT> &
+make help
 ```
-**Options:**
- - debug \<true|false\> (default is false)
- - socket \<statSocket\> (default is /run/vpp/stats.sock)
+
+### Install
+Building the binary
+```bash
+make install
+```
+
+### Start
+Starts the filesystem. Requires a running VPP instance using the default socket /run/vpp/stats.sock.
+
+May require a privileged user (sudo)
+```bash
+make start
+```
+
+### Stop
+Stops and unmounts the filesystem if it is not busy.
+
+May require a privileged user (sudo)
+```bash
+make stop
+```
+
+### Force unmount
+Forces the unmount of the filesystem even if it is busy.
+
+May require a privileged user (sudo)
+```bash
+make force-unmount
+```
+
+### Cleanup
+Cleaning stats_fs binary.
+
+May require a privileged user (sudo).
+```bash
+make clean
+```
 
 ## Browsing the filesystem
 
+The default mountpoint is /run/vpp/stats_fs_dir.
 You can browse the filesystem as a regular user.
 Example:
 
 ```bash
-cd /path/to/mountpoint
+cd /run/vpp/stats_fs_dir
 cd sys/node
 ls -al
 cat names
 ```
 
-## Unmounting the file system
+## Building and mounting the filesystem manually
+
+For more modularity, you can build and mount the filesystem manually.
+
+### Building
+Inside the local directory, you can build the go binary:
+```bash
+go build
+```
+
+### Mounting
+Then, ou can mount the filesystem with the local binary.
+
+May require a privileged user (sudo).
+
+The basic usage is:
+```bash
+./statfs <MOUNT_POINT> &
+```
+
+**Options:**
+ - debug \<true|false\> (default is false)
+ - socket \<statSocket\> (default is /run/vpp/stats.sock) : VPP socket for stats
+
+
+### Unmounting the file system
 
 You can unmount the filesystem with the fusermount command.
+
+May require a privileged user (sudo)
+
 ```bash
-sudo fusermount -u /path/to/mountpoint
+fusermount -u /path/to/mountpoint
 ```
 
 To force the unmount even if the resource  is busy, add the -z option:
 ```bash
-sudo fusermount -uz /path/to/mountpoint
+fusermount -uz /path/to/mountpoint
 ```

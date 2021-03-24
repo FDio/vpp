@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Copyright (c) 2021 Cisco Systems and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#!/bin/bash
-
 # A simple script that installs stats_fs, a Fuse file system
 # for the stats segment
 
@@ -21,6 +21,7 @@ set -eo pipefail
 OPT_ARG=${1:-}
 
 STATS_FS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"/
+cd "${STATS_FS_DIR}"/../../
 VPP_DIR=$(pwd)/
 BUILD_ROOT=${VPP_DIR}build-root/
 BINARY_DIR=${BUILD_ROOT}install-vpp-native/vpp/bin/
@@ -75,6 +76,12 @@ function install_fuse() {
   apt-get install fuse -y
 }
 
+function install_nohup() {
+  echo "Installing nohup"
+  apt-get update
+  apt-get install nohup -y
+}
+
 function install_go_dep() {
   echo "Installing Go dependencies"
   if [[ ! -x "$(command -v go)" ]]; then
@@ -84,11 +91,11 @@ function install_go_dep() {
 
   if [ ! -e "go.mod" ]; then
     go mod init stats_fs
+    # We require a specific govpp commit for compatibility
+    go get git.fd.io/govpp.git@da95997338b77811bc2ea850db393c652b3bd18e
+    go get git.fd.io/govpp.git/adapter/statsclient@da95997338b77811bc2ea850db393c652b3bd18e
+    go get github.com/hanwen/go-fuse/v2
   fi
-  # master required
-  go get git.fd.io/govpp.git@master
-  go get git.fd.io/govpp.git/adapter/statsclient@master
-  go get github.com/hanwen/go-fuse/v2
 }
 
 # Resolve stats_fs dependencies and builds the binary
@@ -114,6 +121,10 @@ function install_statfs() {
     install_fuse
   fi
 
+  if [[ ! -x "$(command -v nohup)" ]]; then
+    install_nohup
+  fi
+
   if [ ! -d "${STATS_FS_DIR}" ]; then
     echo "${STATS_FS_DIR} directory does not exist"
     exit 1
@@ -137,6 +148,11 @@ function start_statfs() {
     EXE_DIR=$DEBUG_DIR
   fi
 
+  if [[ $(pidof "${EXE_DIR}"stats_fs) ]]; then
+    echo "The service stats_fs has already been launched"
+    exit 1
+  fi
+
   mountpoint="${RUN_DIR}stats_fs_dir"
 
   if [[ -x "$(command -v ${EXE_DIR}stats_fs)" ]] ; then
@@ -148,6 +164,7 @@ function start_statfs() {
   fi
 
   echo "stats_fs is not installed, use 'make stats-fs-install' first"
+  exit 1
 }
 
 function stop_statfs() {
@@ -165,7 +182,8 @@ function stop_statfs() {
   PID=$(pidof "${EXE_DIR}"stats_fs)
   kill "$PID"
   if [[ $(pidof "${EXE_DIR}"stats_fs) ]]; then
-    echo "Can't unmount the file system: Device or resource busy"
+    echo "Check your syslog file (default is /var/log/syslog)."
+    echo "It may be that the file system is busy."
     exit 1
   fi
 
@@ -196,12 +214,6 @@ function cleanup() {
 
   cd "${STATS_FS_DIR}"
 
-  if [ -e "go.mod" ]; then
-    rm -f go.mod
-  fi
-  if [ -e "go.sum" ]; then
-    rm -f go.sum
-  fi
   if [ -e "stats_fs" ]; then
     rm -f stats_fs
   fi
@@ -224,14 +236,14 @@ function cleanup() {
 # Show available commands
 function help() {
   cat <<__EOF__
-  Stats_fs installer
+  Stats-fs installer
 
-  stats-fs-install        - Installs requirements (Go, GoVPP, GoFUSE) and builds stats_fs
-  stats-fs-start          - Launches the stats_fs binary and creates a mountpoint
-  stats-fs-cleanup        - Removes stats_fs binary and deletes go module
-  stats-fs-stop           - Stops the executable, unmounts the file system
-                            and removes the mountpoint directory
-  stats-fs-force-unmount  - Forces the unmount of the filesystem even if it is busy
+  install        - Installs requirements (Go, GoVPP, GoFUSE) and builds stats_fs
+  start          - Launches the stats_fs binary and creates a mountpoint
+  clean          - Removes stats_fs binary
+  stop           - Stops the executable, unmounts the file system
+                   and removes the mountpoint directory
+  force-unmount  - Forces the unmount of the filesystem even if it is busy
 
 __EOF__
 }
@@ -246,7 +258,7 @@ function resolve_option() {
   "install")
     install_statfs
     ;;
-  "cleanup")
+  "clean")
     cleanup
     ;;
   "unmount")

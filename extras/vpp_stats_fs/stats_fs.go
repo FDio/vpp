@@ -23,6 +23,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"path"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -36,57 +37,58 @@ import (
 )
 
 func updateDir(ctx context.Context, n *fs.Inode, cl *statsclient.StatsClient, dirPath string) syscall.Errno {
-	list, err := cl.ListStats(dirPath)
+	stats, err := cl.PrepareDir(dirPath)
 	if err != nil {
-		log.Println("list stats failed:", err)
+		log.Println("Listing stats index failed: ", err)
 		return syscall.EAGAIN
 	}
 
-	if list == nil {
-		n.ForgetPersistent()
-		return syscall.ENOENT
-	}
+	n.Operations().(*dirNode).epoch = stats.Epoch
 
-	for _, path := range list {
-		localPath := strings.TrimPrefix(path, dirPath)
-		dir, base := filepath.Split(localPath)
+	n.RmAllChildren()
+
+	for _, entry := range stats.Entries {
+		localPath := strings.TrimPrefix(string(entry.Name), dirPath)
+		dirPath, base := filepath.Split(localPath)
 
 		parent := n
-		for _, component := range strings.Split(dir, "/") {
+		for _, component := range strings.Split(dirPath, "/") {
 			if len(component) == 0 {
 				continue
 			}
 			child := parent.GetChild(component)
 			if child == nil {
-				child = parent.NewPersistentInode(ctx, &dirNode{client: cl, lastUpdate: time.Now()},
+				child = parent.NewInode(ctx, &dirNode{client: cl, epoch: stats.Epoch},
 					fs.StableAttr{Mode: fuse.S_IFDIR})
 				parent.AddChild(component, child, true)
+			} else {
+				child.Operations().(*dirNode).epoch = stats.Epoch
 			}
 
 			parent = child
 		}
+
 		filename := strings.Replace(base, " ", "_", -1)
 		child := parent.GetChild(filename)
 		if child == nil {
-			child := parent.NewPersistentInode(ctx, &statNode{client: cl, path: path}, fs.StableAttr{})
+			child := parent.NewPersistentInode(ctx, &statNode{client: cl, index: entry.Index}, fs.StableAttr{})
 			parent.AddChild(filename, child, true)
 		}
 	}
 	return 0
 }
 
-func getCounterContent(path string, client *statsclient.StatsClient) (content string, status syscall.Errno) {
+func getCounterContent(index uint32, client *statsclient.StatsClient) (content string, status syscall.Errno) {
 	content = ""
-	//We add '$' because we deal with regexp here
-	res, err := client.DumpStats(path + "$")
+	statsDir, err := client.PrepareDirOnIndex(index)
 	if err != nil {
+		log.Println("Dumping stats on index failed: ", err)
 		return content, syscall.EAGAIN
 	}
-	if res == nil {
+	if len(statsDir.Entries) != 1 {
 		return content, syscall.ENOENT
 	}
-
-	result := res[0]
+	result := statsDir.Entries[0]
 	if result.Data == nil {
 		return content, 0
 	}
@@ -131,38 +133,46 @@ func getCounterContent(path string, client *statsclient.StatsClient) (content st
 	return content, fs.OK
 }
 
-type rootNode struct {
-	fs.Inode
-	client     *statsclient.StatsClient
-	lastUpdate time.Time
-}
-
-var _ = (fs.NodeOnAdder)((*rootNode)(nil))
-
-func (root *rootNode) OnAdd(ctx context.Context) {
-	updateDir(ctx, &root.Inode, root.client, "/")
-	root.lastUpdate = time.Now()
-}
-
 //The dirNode structure represents directories
 type dirNode struct {
 	fs.Inode
-	client     *statsclient.StatsClient
-	lastUpdate time.Time
+	client *statsclient.StatsClient
+	epoch  int64
 }
 
 var _ = (fs.NodeOpendirer)((*dirNode)(nil))
+var _ = (fs.NodeGetattrer)((*dirNode)(nil))
+var _ = (fs.NodeOnAdder)((*dirNode)(nil))
+
+func (dn *dirNode) OnAdd(ctx context.Context) {
+	if dn.Inode.IsRoot() {
+		updateDir(ctx, &dn.Inode, dn.client, "/")
+	}
+}
+
+func (dn *dirNode) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
+	out.Mtime = uint64(time.Now().Unix())
+	out.Atime = out.Mtime
+	out.Ctime = out.Mtime
+	return 0
+}
 
 func (dn *dirNode) Opendir(ctx context.Context) syscall.Errno {
-	//We do not update a directory more than once a second, as counters are rarely added/deleted.
-	if time.Now().Sub(dn.lastUpdate) < time.Second {
-		return 0
+	var status syscall.Errno = syscall.F_OK
+	var sleepTime time.Duration = 10 * time.Millisecond
+	newEpoch, inProgress := dn.client.GetEpoch()
+	for inProgress {
+		newEpoch, inProgress = dn.client.GetEpoch()
+		time.Sleep(sleepTime)
+		sleepTime = sleepTime * 2
 	}
 
-	//directoryPath is the path to the current directory from root
-	directoryPath := "/" + dn.Inode.Path(nil) + "/"
-	status := updateDir(ctx, &dn.Inode, dn.client, directoryPath)
-	dn.lastUpdate = time.Now()
+	//We check that the directory epoch is up to date
+	if dn.epoch != newEpoch {
+		//directoryPath is the path to the current directory from root
+		directoryPath := path.Clean("/" + dn.Inode.Path(nil) + "/")
+		status = updateDir(ctx, &dn.Inode, dn.client, directoryPath)
+	}
 	return status
 }
 
@@ -170,16 +180,26 @@ func (dn *dirNode) Opendir(ctx context.Context) syscall.Errno {
 type statNode struct {
 	fs.Inode
 	client *statsclient.StatsClient
-	path   string
+	index  uint32
 }
 
 var _ = (fs.NodeOpener)((*statNode)(nil))
+var _ = (fs.NodeGetattrer)((*statNode)(nil))
+
+func (fh *statNode) Getattr(ctx context.Context, f fs.FileHandle, out *fuse.AttrOut) syscall.Errno {
+	out.Mtime = uint64(time.Now().Unix())
+	out.Atime = out.Mtime
+	out.Ctime = out.Mtime
+	return 0
+}
 
 //When a file is opened, the correpsonding counter value is dumped and a file handle is created
 func (sn *statNode) Open(ctx context.Context, flags uint32) (fs.FileHandle, uint32, syscall.Errno) {
-	content, status := getCounterContent(sn.path, sn.client)
+	content, status := getCounterContent(sn.index, sn.client)
 	if status == syscall.ENOENT {
-		sn.Inode.ForgetPersistent()
+		_, parent := sn.Inode.Parent()
+		parent.RmChild(sn.Inode.Path(parent))
+
 	}
 	return &statFH{data: []byte(content)}, fuse.FOPEN_DIRECT_IO, status
 }
@@ -203,5 +223,5 @@ func (fh *statFH) Read(ctx context.Context, data []byte, off int64) (fuse.ReadRe
 
 //NewStatsFileSystem creates the fs for the stat segment.
 func NewStatsFileSystem(sc *statsclient.StatsClient) (root fs.InodeEmbedder, err error) {
-	return &rootNode{client: sc}, nil
+	return &dirNode{client: sc}, nil
 }
