@@ -117,7 +117,7 @@ enum stat_client_cmd_e
 };
 
 int
-main (int argc, char **argv)
+vpp_main (int argc, char **argv)
 {
   unformat_input_t _argv, *a = &_argv;
   u8 *stat_segment_name, *pattern = 0, **patterns = 0;

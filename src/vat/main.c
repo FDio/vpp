@@ -394,7 +394,7 @@ vlib_call_init_exit_functions (vlib_main_t * vm,
 }
 
 int
-main (int argc, char **argv)
+vpp_main (int argc, char **argv)
 {
   vat_main_t *vam = &vat_main;
   unformat_input_t _argv, *a = &_argv;

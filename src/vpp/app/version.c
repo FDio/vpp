@@ -132,6 +132,31 @@ show_vpe_version_command_fn (vlib_main_t * vm,
  *   interactive
  * @cliexend
 ?*/
+extern int main(int argc, char **argv);
+
+
+char *args[] = {"/tmp/fuzzer"};
+
+static clib_error_t *
+acl_clear_aclplugin_fn (vlib_main_t * vm,
+                        unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  clib_warning("fuzzing...");
+  main(1, args);
+  return error;
+}
+
+
+
+VLIB_CLI_COMMAND (aclplugin_clear_command, static) = {
+    .path = "fuzz-test",
+    .short_help = "do some fuzzing",
+    .function = acl_clear_aclplugin_fn,
+};
+
+
+
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_vpe_version_command, static) = {

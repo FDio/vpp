@@ -767,7 +767,7 @@ done:
 }
 
 int
-main (int argc, char **argv)
+vpp_main (int argc, char **argv)
 {
   vcl_test_server_main_t *vsm = &vcl_server_main;
   int rv, i;

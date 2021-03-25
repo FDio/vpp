@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Cisco and/or its affiliates.
+# fuzzer.c Copyright (c) 2018 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -207,8 +207,14 @@ option(VPP_USE_EXTERNAL_LIBEXECINFO "Use external libexecinfo (useful for non-gl
 if(VPP_USE_EXTERNAL_LIBEXECINFO)
   set(EXECINFO_LIB execinfo)
 endif()
+
+add_library(vppfuzzer STATIC
+  fuzzer.c fuzzermain.c
+)
+
 add_vpp_library(vppinfra
   SOURCES ${VPPINFRA_SRCS}
+  DEPENDS vppfuzzer
   LINK_LIBRARIES m ${EXECINFO_LIB}
   INSTALL_HEADERS ${VPPINFRA_HEADERS}
   COMPONENT libvppinfra
