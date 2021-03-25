@@ -247,7 +247,7 @@ svm_msg_q_lock_and_alloc_msg_w_ring (svm_msg_q_t * mq, u32 ring_index,
       svm_msg_q_lock (mq);
       while (svm_msg_q_is_full (mq)
 	     || svm_msg_q_ring_is_full (mq, ring_index))
-	svm_msg_q_wait (mq, SVM_MQ_WAIT_FULL);
+	svm_msg_q_wait_prod (mq);
       *msg = svm_msg_q_alloc_msg_w_ring (mq, ring_index);
     }
   return 0;
@@ -371,7 +371,7 @@ svm_msg_q_add (svm_msg_q_t * mq, svm_msg_q_msg_t * msg, int nowait)
       if (nowait)
 	return (-2);
       while (svm_msg_q_is_full (mq))
-	svm_msg_q_wait (mq, SVM_MQ_WAIT_FULL);
+	svm_msg_q_wait_prod (mq);
     }
 
   svm_msg_q_add_raw (mq, (u8 *) msg);
@@ -498,27 +498,52 @@ svm_msg_q_wait (svm_msg_q_t *mq, svm_msg_q_wait_type_t type)
 
   if (mq->q.evtfd == -1)
     {
-      if (type == SVM_MQ_WAIT_EMPTY)
+      rv = pthread_mutex_lock (&mq->q.shr->mutex);
+      if (PREDICT_FALSE (rv == EOWNERDEAD))
 	{
-	  rv = pthread_mutex_lock (&mq->q.shr->mutex);
-	  if (PREDICT_FALSE (rv == EOWNERDEAD))
-	    {
-	      rv = pthread_mutex_consistent (&mq->q.shr->mutex);
-	      return rv;
-	    }
+	  rv = pthread_mutex_consistent (&mq->q.shr->mutex);
+	  return rv;
 	}
 
       while (fn (mq))
 	pthread_cond_wait (&mq->q.shr->condvar, &mq->q.shr->mutex);
 
-      if (type == SVM_MQ_WAIT_EMPTY)
-	pthread_mutex_unlock (&mq->q.shr->mutex);
+      pthread_mutex_unlock (&mq->q.shr->mutex);
     }
   else
     {
       u64 buf;
 
       while (fn (mq))
+	{
+	  while ((rv = read (mq->q.evtfd, &buf, sizeof (buf))) < 0)
+	    {
+	      if (errno != EAGAIN)
+		{
+		  clib_unix_warning ("read error");
+		  return rv;
+		}
+	    }
+	}
+    }
+
+  return 0;
+}
+
+int
+svm_msg_q_wait_prod (svm_msg_q_t *mq)
+{
+  if (mq->q.evtfd == -1)
+    {
+      while (svm_msg_q_is_full (mq))
+	pthread_cond_wait (&mq->q.shr->condvar, &mq->q.shr->mutex);
+    }
+  else
+    {
+      u64 buf;
+      int rv;
+
+      while (svm_msg_q_is_full (mq))
 	{
 	  while ((rv = read (mq->q.evtfd, &buf, sizeof (buf))) < 0)
 	    {
