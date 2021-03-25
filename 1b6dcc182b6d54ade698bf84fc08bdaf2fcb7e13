@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2a84acd3_c86da273",
+        "filename": "extras/scripts/vpptop.sh",
+        "patchSetId": 16
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2021-03-25T10:33:28Z",
+      "side": 1,
+      "message": "For now, Go is reinstalled each time I run `sudo make vpp-install`\nMaybe, you could add `\u0026\u0026 PATH\u003d$GOROOT/bin:$PATH` at this line and the next one to prevent that.",
+      "revId": "1b6dcc182b6d54ade698bf84fc08bdaf2fcb7e13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "380cbf89_1e66abc8",
+        "filename": "extras/scripts/vpptop.sh",
+        "patchSetId": 16
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2021-03-25T10:33:28Z",
+      "side": 1,
+      "message": "I would add \u003cstart\u003e as well so that the user knows all the available commands when calling vpptop-help.\nWould be even clearer with statement of the form \"vpptop-install:\" instead of \"\u003cinstall\u003e:\"",
+      "revId": "1b6dcc182b6d54ade698bf84fc08bdaf2fcb7e13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "98e7b001_3c5a637b",
+        "filename": "extras/scripts/vpptop.sh",
+        "patchSetId": 16
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 2421
+      },
+      "writtenOn": "2021-03-25T10:33:28Z",
+      "side": 1,
+      "message": "If VPPTop has already been installed, do we really want to reinstall everything? Maybe, you could check if the binary exists.",
+      "revId": "1b6dcc182b6d54ade698bf84fc08bdaf2fcb7e13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
