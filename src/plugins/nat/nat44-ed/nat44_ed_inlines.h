@@ -329,6 +329,8 @@ nat_ed_ses_i2o_flow_hash_add_del (snat_main_t *sm, u32 thread_idx,
       nat_6t_flow_to_ed_kv (&kv, &s->i2o, thread_idx, s - tsm->sessions);
       nat_6t_l3_l4_csum_calc (&s->i2o);
     }
+
+  ASSERT (thread_idx == s->thread_index);
   return clib_bihash_add_del_16_8 (&sm->flow_hash, &kv, is_add);
 }
 
@@ -348,6 +350,7 @@ nat_ed_ses_o2i_flow_hash_add_del (snat_main_t *sm, u32 thread_idx,
       nat_6t_flow_to_ed_kv (&kv, &s->o2i, thread_idx, s - tsm->sessions);
       nat_6t_l3_l4_csum_calc (&s->o2i);
     }
+  ASSERT (thread_idx == s->thread_index);
   return clib_bihash_add_del_16_8 (&sm->flow_hash, &kv, is_add);
 }
 
@@ -441,6 +444,9 @@ nat_ed_session_alloc (snat_main_t *sm, u32 thread_index, f64 now, u8 proto)
   s->ha_last_refreshed = now;
   vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
 			   pool_elts (tsm->sessions));
+#if CLIB_ASSERT_ENABLE
+  s->thread_index = thread_index;
+#endif
   return s;
 }
 
