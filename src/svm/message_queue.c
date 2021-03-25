@@ -498,17 +498,23 @@ svm_msg_q_wait (svm_msg_q_t *mq, svm_msg_q_wait_type_t type)
 
   if (mq->q.evtfd == -1)
     {
-      rv = pthread_mutex_lock (&mq->q.shr->mutex);
-      if (PREDICT_FALSE (rv == EOWNERDEAD))
+      if (type == SVM_MQ_WAIT_EMPTY)
 	{
-	  rv = pthread_mutex_consistent (&mq->q.shr->mutex);
-	  return rv;
+	  rv = pthread_mutex_lock (&mq->q.shr->mutex);
+	  if (PREDICT_FALSE (rv == EOWNERDEAD))
+	    {
+	      rv = pthread_mutex_consistent (&mq->q.shr->mutex);
+	      return rv;
+	    }
 	}
+      do
+	{
+	  pthread_cond_wait (&mq->q.shr->condvar, &mq->q.shr->mutex);
+	}
+      while (fn (mq));
 
-      while (fn (mq))
-	pthread_cond_wait (&mq->q.shr->condvar, &mq->q.shr->mutex);
-
-      pthread_mutex_unlock (&mq->q.shr->mutex);
+      if (type == SVM_MQ_WAIT_EMPTY)
+	pthread_mutex_unlock (&mq->q.shr->mutex);
     }
   else
     {
