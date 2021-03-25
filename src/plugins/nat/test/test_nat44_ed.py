@@ -5,7 +5,7 @@ from io import BytesIO
 from random import randint
 
 import scapy.compat
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, running_extended_tests
 from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, TCP, UDP, ICMP, GRE
 from scapy.layers.inet import IPerror, TCPerror
@@ -17,6 +17,7 @@ from util import ppp, ip4_range
 from vpp_acl import AclRule, VppAcl, VppAclInterface
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi import VppEnum
+import ipaddress
 
 
 class NAT44EDTestCase(VppTestCase):
@@ -34,7 +35,7 @@ class NAT44EDTestCase(VppTestCase):
 
     tcp_external_port = 80
 
-    max_sessions = 100
+    max_sessions = 1000000
 
     def setUp(self):
         super(NAT44EDTestCase, self).setUp()
@@ -1192,6 +1193,34 @@ class TestNAT44ED(NAT44EDTestCase):
         self.pg_start()
         capture = self.pg0.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg0)
+
+    @unittest.skipUnless(running_extended_tests)
+    def test_negative_checksum(self):
+        """ NAT44ED negative checksum """
+
+        self.nat_add_address(self.nat_addr)
+        self.vapi.nat44_interface_add_del_output_feature(
+            sw_if_index=self.pg1.sw_if_index, is_add=1)
+
+        route_net = '192.168.0.0'
+        route_pfxlen = 16
+        route_in_src = VppIpRoute(self, route_net, route_pfxlen,
+                                  [VppRoutePath(self.pg1.remote_ip4,
+                                                self.pg1.sw_if_index)],
+                                  table_id=0)
+        route_in_src.add_vpp_config()
+        pkts = []
+        import ipaddress
+        i = 0
+        for dst in ipaddress.IPv4Network(route_net + '/' + str(route_pfxlen)):
+            p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+                 IP(src=self.pg0.remote_ip4, dst=dst) / UDP())
+            pkts.append(p)
+            i += 1
+
+        rx = self.send_and_expect(self.pg0, pkts, self.pg1)
+        for r in rx:
+            self.assertNotEqual(r[IP].chksum, 0xFFFF)
 
     def test_static_with_port_out2(self):
         """ NAT44ED 1:1 NAPT asymmetrical rule """
