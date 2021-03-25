@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "438011d7_837c69ea",
+        "filename": "src/vnet/ipsec/ipsec_bihash_16_8.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-03-25T01:39:25Z",
+      "side": 1,
+      "message": "I have to define a new bihash template for IPSec to change KVP per page value to 1.\nIn current bihash_16_8.h, it is set to 4 (#define BIHASH_KVP_PER_PAGE 4).\nAlso, when I do loop unroll, I can change other settings like BIHASH_BUCKET_PREFETCH_CACHE_LINES in ipsec bihash template to improve performance.",
+      "parentUuid": "9b53a0a3_a78307d7",
+      "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "e47e9495_521b7786",
         "filename": "src/vnet/ipsec/ipsec_output.c",
         "patchSetId": 5
@@ -53,6 +71,24 @@
     },
     {
       "key": {
+        "uuid": "7cc9f243_09b1a018",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 363,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-03-25T01:39:25Z",
+      "side": 1,
+      "message": "Flow cache is using the SPD index that is obtained during linear search. The SPD index contains the rule with ranges. Endianness swap is not done in control plane for existing linear search (as in ipsec_output_policy_match()) because of the range check involved in SPD rule match. For example, if the port range is \u003c0x1234 - 0x5678\u003e in little endian machine and if we make the endianness swap in control plane to \u003c0x3412 - 0x7856\u003e, the incoming packet with port 0x9125 (random val) in N/W order will not match this rule. Instead, if the endianness swap is done in data plane, it will become 0x2591 and it will match the range \u003c0x1234 - 0x5678\u003e.\nIn general, endianness swap can be done in control plane for exact match in data plane and not for range check.",
+      "parentUuid": "a86d3a1c_65f445cd",
+      "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "da7bcfd8_a0b2190d",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
         "patchSetId": 5
@@ -70,6 +106,24 @@
     },
     {
       "key": {
+        "uuid": "6333475d_18923a13",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-03-25T01:39:25Z",
+      "side": 1,
+      "message": "All the flow cache entries are flushed (Bihash KVP reset to ~0ULL) in control plane during every SPD rule add/delete. This is because,\na. Bihash keys for flow cache are based on complete 5 tuple obtained from packet header i.e. exact match of IP address and port values. Whereas, SPD rule will contain IP addr/Port ranges. During SPD rule delete, deleting specific flow cache entries corresponding to an SPD rule is expensive. For example, if the port range is \u003c1 - 100\u003e, SPD table will have it as single rule. Flow cache will maintain it as 100 entries, if all the 100 flows are active in system. Making a bihash walk from control plane to specifically delete the flow cache entries falling in that range is as expensive as flushing the entire flow cache. \nFlushing all the flow cache entries makes the code simple. \n\t\nb. A new SPD rule can have a new priority and the entire ruleset will be sorted again (as per ipsec_spd_entry_sort). This can make the corresponding flow cache entry invalid. For example,\n{ Rule 1 - Priority: LOW, Port range: \u003c1 - 100\u003e, Action: IPSEC_POLICY_ACTION_BYPASS }\nNow, flow cache will have 100 entries with action as bypass, if all the 100 flows are active in the system.\nIf control plane adds the below mentioned high priority rule, it will not reflect in flow cache. This is because, flow cache entries are added only in data plane.\n{ Rule 2 - Priority: HIGH, Port range: \u003c50 - 100\u003e, Action: IPSEC_POLICY_ACTION_PROTECT }\nOnce the flow cache is reset from control plane, the new high priority rule will be added into the flow cache in data plane whenever a packet arrives.",
+      "parentUuid": "da7bcfd8_a0b2190d",
+      "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a31070bb_ac8f6178",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
         "patchSetId": 5
@@ -81,6 +135,24 @@
       "writtenOn": "2021-03-23T22:02:06Z",
       "side": 1,
       "message": "the add policy API is not mp-safe, so the workers are paused at this point. a walk/flush of a large table will result in packet loss.",
+      "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bde5a1f9_7ecedcb1",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-03-25T01:39:25Z",
+      "side": 1,
+      "message": "Can you please elaborate why the workers are paused when it is not mp-safe ?\nI am using this function to detect whether inflight packets are sent out of the worker cores or not, before deleting the flow cache entries.\nI followed the same approach as in IPv6 FIB table entry insert/remove (as per compute_prefix_lengths_in_search_order() in ip6_fib.c).\n\t\t\nvlib_worker_wait_one_loop() reads the \"main_loop_count\" incremented in worker cores to detect the completion of 1 iteration in while loop. Please correct me if I am wrong.",
+      "parentUuid": "a31070bb_ac8f6178",
       "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
