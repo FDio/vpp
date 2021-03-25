@@ -34,6 +34,9 @@
 #include "hash_lookup_types.h"
 #include "lookup_context.h"
 
+extern void (*real_fuzz_driver_func)(const void *data, uword size);
+
+
 #define  ACL_PLUGIN_VERSION_MAJOR 1
 #define  ACL_PLUGIN_VERSION_MINOR 4
 

@@ -103,7 +103,7 @@ vpe_main_init (vlib_main_t * vm)
 char *vlib_default_runtime_dir = "vpp";
 
 int
-main (int argc, char *argv[])
+vpp_main (int argc, char *argv[])
 {
   int i;
   vlib_main_t *vm = &vlib_global_main;

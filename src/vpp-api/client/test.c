@@ -185,7 +185,7 @@ test_stats (void)
   clib_mem_trace (0);
 }
 
-int main (int argc, char ** argv)
+int vpp_main (int argc, char ** argv)
 {
   clib_mem_init (0, 3ULL << 30);
   test_stats();

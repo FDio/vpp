@@ -1816,6 +1816,12 @@ vl_api_acl_add_replace_t_handler (vl_api_acl_add_replace_t * mp)
 }
 
 static void
+fuzz_driver_acl_add_replace(const void *data, uword count)
+{
+    vl_api_acl_add_replace_t_handler((void *)data);
+}
+
+static void
 vl_api_acl_del_t_handler (vl_api_acl_del_t * mp)
 {
   acl_main_t *am = &acl_main;
@@ -2511,7 +2517,6 @@ acl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 }
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (acl_sw_interface_add_del);
-
 
 
 static clib_error_t *
@@ -3455,6 +3460,17 @@ acl_show_aclplugin_tables_fn (vlib_main_t * vm,
   return error;
 }
 
+void set_fuzz_driver(void *ptr);
+static clib_error_t *
+acl_set_fuzz_driver_fn (vlib_main_t * vm,
+			unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  set_fuzz_driver(fuzz_driver_acl_add_replace);
+  clib_warning("ACL fuzz driver set");
+  return error;
+}
+
 static clib_error_t *
 acl_clear_aclplugin_fn (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -3467,6 +3483,12 @@ acl_clear_aclplugin_fn (vlib_main_t * vm,
 }
 
  /* *INDENT-OFF* */
+VLIB_CLI_COMMAND (aclplugin_set_fuzz_command, static) = {
+    .path = "set acl-plugin fuzz",
+    .short_help = "set acl-plugin fuzz driver",
+    .function = acl_set_fuzz_driver_fn,
+};
+
 VLIB_CLI_COMMAND (aclplugin_set_command, static) = {
     .path = "set acl-plugin",
     .short_help = "set acl-plugin session timeout {{udp idle}|tcp {idle|transient}} <seconds>",
@@ -3654,6 +3676,7 @@ VLIB_CONFIG_FUNCTION (acl_plugin_config, "acl-plugin");
 static clib_error_t *
 acl_init (vlib_main_t * vm)
 {
+  clib_warning("in acl_init");
   acl_main_t *am = &acl_main;
   clib_error_t *error = 0;
   clib_memset (am, 0, sizeof (*am));

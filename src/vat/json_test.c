@@ -60,7 +60,7 @@ print_json_test (void)
 }
 
 int
-main (void)
+vpp_main (void)
 {
   print_json_test ();
   return 0;
