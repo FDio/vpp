@@ -974,7 +974,7 @@ rdma_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 							   n_rx_packets, bc);
 	  n_rx_bytes =
 	    rdma_device_mlx5dv_fast_input (vm, rxq, bufs, mask, &bt, to_next,
-					   n_rx_packets, bc, ~1);
+					   n_rx_packets, bc, ~0);
 
 	  /* If there are chained buffers, some of the head buffers have a current length
 	     higher than buf_sz: it needs to be fixed */
