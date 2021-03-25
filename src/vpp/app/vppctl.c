@@ -133,9 +133,15 @@ process_input (u8 * str, clib_socket_t * s, int is_interactive,
   return str;
 }
 
+int
+true_main (int argc, char *argv[])
+{
+	printf("Hello!\n");
+	return 0;
+}
 
 int
-main (int argc, char *argv[])
+vpp_main (int argc, char *argv[])
 {
   clib_socket_t _s = { 0 }, *s = &_s;
   clib_error_t *error = 0;

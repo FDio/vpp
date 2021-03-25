@@ -1084,7 +1084,7 @@ vtc_ctrl_session_exit (void)
 }
 
 int
-main (int argc, char **argv)
+vpp_main (int argc, char **argv)
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
   vcl_test_session_t *ctrl = &vcm->ctrl_session;

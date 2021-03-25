@@ -39,10 +39,6 @@ macro(add_vpp_library lib)
   )
 
   if (ARG_LTO AND VPP_USE_LTO)
-     set_property(TARGET ${lib} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-     target_compile_options (${lib} PRIVATE "-ffunction-sections")
-     target_compile_options (${lib} PRIVATE "-fdata-sections")
-     target_link_libraries (${lib} "-Wl,--gc-sections")
   endif()
 
   if(ARG_MULTIARCH_SOURCES)

@@ -1261,7 +1261,7 @@ vpp_echo_init ()
 }
 
 int
-main (int argc, char **argv)
+vpp_main (int argc, char **argv)
 {
   echo_main_t *em = &echo_main;
   fifo_segment_main_t *sm = &em->segment_main;

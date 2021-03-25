@@ -23,6 +23,7 @@
 typedef cJSON *(* tojson_fn_t)(void *);
 typedef void *(* fromjson_fn_t)(cJSON *o, int *len);
 
+
 static void
 test (tojson_fn_t tojson, fromjson_fn_t fromjson, cJSON *o, bool should_fail)
 {
@@ -198,7 +199,7 @@ struct tests tests[] = {
   { .s = "{\"_msgname\": \"test_interface\", \"sw_if_index\": 100 }" },
 };
 
-int main (int argc, char **argv)
+int vpp_main (int argc, char **argv)
 {
   clib_mem_init (0, 64 << 20);
   int n = sizeof(msgs)/sizeof(msgs[0]);
@@ -209,4 +210,5 @@ int main (int argc, char **argv)
   for (i = 0; i < n; i++) {
     runtest(tests[i].s, tests[i].should_fail);
   }
+  return 0;
 }

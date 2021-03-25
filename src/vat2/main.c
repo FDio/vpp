@@ -87,7 +87,7 @@ vat2_register_function(char *name, cJSON (*f)(cJSON *))
   hash_set_mem(function_by_name, name, f);
 }
 
-int main (int argc, char **argv)
+int vpp_main (int argc, char **argv)
 {
   /* Create a heap of 64MB */
   clib_mem_init (0, 64 << 20);

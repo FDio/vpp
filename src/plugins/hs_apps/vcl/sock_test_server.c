@@ -447,7 +447,7 @@ sts_conn_expect_config (sock_server_conn_t * conn)
 }
 
 int
-main (int argc, char **argv)
+vpp_main (int argc, char **argv)
 {
   int client_fd, rv, main_rv = 0, rx_bytes, c, v, i;
   sock_server_main_t *ssm = &sock_server_main;
