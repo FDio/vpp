@@ -290,6 +290,7 @@ class VppTestCase(unittest.TestCase):
     extra_vpp_plugin_config = []
     logger = null_logger
     vapi_response_timeout = 5
+    vpp_worker_count = None
 
     @property
     def packet_infos(self):
@@ -406,7 +407,7 @@ class VppTestCase(unittest.TestCase):
             coredump_size = "coredump-size unlimited"
 
         cpu_core_number = cls.get_least_used_cpu()
-        if not hasattr(cls, "vpp_worker_count"):
+        if cls.vpp_worker_count is None:
             cls.vpp_worker_count = 0
             worker_config = os.getenv("VPP_WORKER_CONFIG", "")
             if worker_config:
@@ -1456,12 +1457,11 @@ class VppTestResult(unittest.TestResult):
             test_doc = getdoc(test)
             if not test_doc:
                 raise Exception("No doc string for test '%s'" % test.id())
-            test_title = test_doc.splitlines()[0]
+            test_title = test_doc.splitlines()[0].rstrip()
             test_title_colored = colorize(test_title, GREEN)
             if test.is_tagged_run_solo():
-                # long live PEP-8 and 80 char width limitation...
-                c = YELLOW
-                test_title_colored = colorize("SOLO RUN: " + test_title, c)
+                test_title_colored = colorize("SOLO RUN: " + test_title,
+                                              YELLOW)
 
             # This block may overwrite the colorized title above,
             # but we want this to stand out and be fixed
@@ -1469,6 +1469,16 @@ class VppTestResult(unittest.TestResult):
                 c = RED
                 w = "FIXME with VPP workers: "
                 test_title_colored = colorize(w + test_title, c)
+
+            if test.vpp_worker_count is not None:
+                test_title_colored += " "
+                if test.vpp_worker_count == 0:
+                    test_title_colored += "[main thread only]"
+                elif test.vpp_worker_count == 1:
+                    test_title_colored += "[1 worker thread]"
+                else:
+                    test_title_colored += "[%s worker threads]" %\
+                        test.vpp_worker_count
 
             if not hasattr(test.__class__, '_header_printed'):
                 print(double_line_delim)
