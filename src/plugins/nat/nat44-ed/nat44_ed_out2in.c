@@ -933,6 +933,8 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 			   ed_value_get_session_index (&value0));
     skip_lookup:
 
+      ASSERT (thread_index == s0->thread_index);
+
       if (PREDICT_FALSE (per_vrf_sessions_is_expired (s0, thread_index)))
 	{
 	  // session is closed, go slow path
