@@ -2048,7 +2048,7 @@ vppcom_session_write_inline (vcl_worker_t * wrk, vcl_session_t * s, void *buf,
 	  if (vcl_session_is_closing (s))
 	    return vcl_session_closing_error (s);
 
-	  svm_msg_q_wait (mq, SVM_MQ_WAIT_EMPTY);
+	  svm_msg_q_wait (mq, SVM_MQ_WAIT_FULL);
 	  vcl_worker_flush_mq_events (wrk);
 	}
     }
