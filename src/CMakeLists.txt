@@ -132,6 +132,12 @@ if (VPP_ENABLE_SANITIZE_ADDR)
   set(CMAKE_SHARED_LINKER_FLAGS "-fsanitize=address ${CMAKE_SHARED_LINKER_FLAGS}")
 endif (VPP_ENABLE_SANITIZE_ADDR)
 
+if (VPP_ENABLE_FUZZER)
+  set(CMAKE_C_LINK_EXECUTABLE, "ldd")
+  set(CMAKE_C_FLAGS "-fsanitize=fuzzer-no-link ${CMAKE_C_FLAGS}")
+  # set(CMAKE_SHARED_LINKER_FLAGS "-fsanitize=,fuzzer-no-link ${CMAKE_SHARED_LINKER_FLAGS}")
+endif (VPP_ENABLE_FUZZER)
+
 ##############################################################################
 # install config
 ##############################################################################

@@ -708,7 +708,7 @@ print_usage_and_exit (void)
 }
 
 int
-main (int argc, char **argv)
+vpp_main (int argc, char **argv)
 {
   sock_client_main_t *scm = &sock_client_main;
   vcl_test_session_t *ctrl = &scm->ctrl_socket;

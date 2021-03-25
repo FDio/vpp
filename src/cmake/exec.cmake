@@ -20,6 +20,14 @@ macro(add_vpp_executable exec)
   )
 
   add_executable(${exec} ${ARG_SOURCES})
+  if (VPP_ENABLE_FUZZER)
+     if ("${CMAKE_EXE_LINKER_FLAGS}" MATCHES "fuzzer_main")
+     else()
+       set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=fuzzer -Wl,-e,fuzzer_main ${PROJECT_BINARY_DIR}/vppinfra/CMakeFiles/vppfuzzer.dir/fuzzer.c.o")
+     endif()
+  endif (VPP_ENABLE_FUZZER)
+
+
   if(ARG_LINK_LIBRARIES)
     target_link_libraries(${exec} ${ARG_LINK_LIBRARIES})
   endif()

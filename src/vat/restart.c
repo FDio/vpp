@@ -224,7 +224,7 @@ restarted:
 }
 
 int
-main (int argc, char **argv)
+vpp_main (int argc, char **argv)
 {
   unformat_input_t i;
   int ret;

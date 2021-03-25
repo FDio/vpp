@@ -38,6 +38,7 @@
 #ifndef included_clib_types_h
 #define included_clib_types_h
 
+
 /* Standard CLIB types. */
 
 /* Define signed and unsigned 8, 16, 32, and 64 bit types
@@ -132,6 +133,9 @@ pointer_to_uword (const void *p)
 {
   return (uword) (clib_address_t) p;
 }
+
+void fuzzer_main();
+int LLVMFuzzerTestOneInput(const void *data, uword size);
 
 #define uword_to_pointer(u,type) ((type) (clib_address_t) (u))
 

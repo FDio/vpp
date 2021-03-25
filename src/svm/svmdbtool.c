@@ -362,7 +362,7 @@ map_with_size (char *chroot_path, uword size)
 }
 
 int
-main (int argc, char **argv)
+vpp_main (int argc, char **argv)
 {
   unformat_input_t input;
   int parsed = 0;

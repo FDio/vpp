@@ -555,7 +555,7 @@ void test_checksum(void) {
  */
 clib_error_t *ip_checksum_init(vlib_main_t *vm);
 
-int main(int argc, char **argv) {
+int vpp_main(int argc, char **argv) {
 
     clib_mem_init(0, 3ULL << 30);
 
@@ -576,6 +576,7 @@ int main(int argc, char **argv) {
     test_packets();
     test_checksum();
     test_performance();
+    return 0;
 }
 
 /*
