@@ -344,6 +344,10 @@ typedef CLIB_PACKED(struct
   /* per vrf sessions index */
   u32 per_vrf_sessions_index;
 
+#if CLIB_ASSERT_ENABLE
+  u32 thread_index;
+#endif
+
 }) snat_session_t;
 
 typedef struct
