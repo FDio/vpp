@@ -89,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "1914ff70_9f8504bc",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 363,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-03-25T14:13:24Z",
+      "side": 1,
+      "message": "your flow cache in an exact match. so you can endian swap in the control plane, right?",
+      "parentUuid": "7cc9f243_09b1a018",
+      "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "da7bcfd8_a0b2190d",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
         "patchSetId": 5
@@ -153,6 +171,24 @@
       "side": 1,
       "message": "Can you please elaborate why the workers are paused when it is not mp-safe ?\nI am using this function to detect whether inflight packets are sent out of the worker cores or not, before deleting the flow cache entries.\nI followed the same approach as in IPv6 FIB table entry insert/remove (as per compute_prefix_lengths_in_search_order() in ip6_fib.c).\n\t\t\nvlib_worker_wait_one_loop() reads the \"main_loop_count\" incremented in worker cores to detect the completion of 1 iteration in while loop. Please correct me if I am wrong.",
       "parentUuid": "a31070bb_ac8f6178",
+      "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "78e5b634_5359e239",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-03-25T14:13:24Z",
+      "side": 1,
+      "message": "the workers are paused because the ipsec_add_del_policy API is not marked as mp-safe. the ip_route_add_Del api is marked mp-safe (see ip_api.c asm-\u003eis_mp_safe[]).\n\nmaking an API mp-safe is not just setting the above variable, you have to make sure all the work done in that API is safe. that\u0027s extra work to what you have here.",
+      "parentUuid": "bde5a1f9_7ecedcb1",
       "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
