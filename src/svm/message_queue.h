@@ -399,10 +399,18 @@ svm_msg_q_unlock (svm_msg_q_t * mq)
 /**
  * Wait for message queue event
  *
- * Must be called with mutex held. The queue only works non-blocking
- * with eventfds, so handle blocking calls as an exception here.
+ * When eventfds are not configured, the shared memory mutex is locked
+ * before waiting on the condvar. Typically called by consumers.
  */
 int svm_msg_q_wait (svm_msg_q_t *mq, svm_msg_q_wait_type_t type);
+
+/**
+ * Wait for message queue event as producer
+ *
+ * Similar to @ref svm_msg_q_wait but lock (mutex or spinlock) must
+ * be held. Should only be called by producers.
+ */
+int svm_msg_q_wait_prod (svm_msg_q_t *mq);
 
 /**
  * Timed wait for message queue event
