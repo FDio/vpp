@@ -1517,7 +1517,7 @@ class VppTestResult(unittest.TestResult):
             if not test_doc:
                 raise Exception("No doc string for test '%s'" % test.id())
 
-            test_title = test_doc.splitlines()[0]
+            test_title = test_doc.splitlines()[0].rstrip()
             test_title = colorize(test_title, GREEN)
             if test.is_tagged_run_solo():
                 test_title = colorize(f"SOLO RUN: {test_title}", YELLOW)
@@ -1527,6 +1527,14 @@ class VppTestResult(unittest.TestResult):
             if test.has_tag(TestCaseTag.FIXME_VPP_WORKERS):
                 test_title = colorize(
                     f"FIXME with VPP workers: {test_title}", RED)
+
+            if hasattr(test, 'vpp_worker_count'):
+                if test.vpp_worker_count == 0:
+                    test_title += " [main thread only]"
+                elif test.vpp_worker_count == 1:
+                    test_title += " [1 worker thread]"
+                else:
+                    test_title += f" [{test.vpp_worker_count} worker threads]"
 
             if test.__class__.skipped_due_to_cpu_lack:
                 test_title = colorize(
