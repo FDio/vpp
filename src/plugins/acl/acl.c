@@ -1772,7 +1772,7 @@ macip_acl_interface_add_del_acl (u32 sw_if_index, u8 is_add,
  *
  */
 static int
-verify_message_len (void *mp, u32 expected_len, char *where)
+verify_message_len (void *mp, u64 expected_len, char *where)
 {
   u32 supplied_len = vl_msg_api_get_msg_length (mp);
   if (supplied_len < expected_len)
@@ -1796,7 +1796,7 @@ vl_api_acl_add_replace_t_handler (vl_api_acl_add_replace_t * mp)
   int rv;
   u32 acl_list_index = ntohl (mp->acl_index);
   u32 acl_count = ntohl (mp->count);
-  u32 expected_len = sizeof (*mp) + acl_count * sizeof (mp->r[0]);
+  u64 expected_len = sizeof (*mp) + acl_count * sizeof (mp->r[0]);
 
   if (verify_message_len (mp, expected_len, "acl_add_replace"))
     {
@@ -2085,7 +2085,7 @@ vl_api_macip_acl_add_t_handler (vl_api_macip_acl_add_t * mp)
   int rv;
   u32 acl_list_index = ~0;
   u32 acl_count = ntohl (mp->count);
-  u32 expected_len = sizeof (*mp) + acl_count * sizeof (mp->r[0]);
+  u64 expected_len = sizeof (*mp) + acl_count * sizeof (mp->r[0]);
 
   if (verify_message_len (mp, expected_len, "macip_acl_add"))
     {
@@ -2112,7 +2112,7 @@ vl_api_macip_acl_add_replace_t_handler (vl_api_macip_acl_add_replace_t * mp)
   int rv;
   u32 acl_list_index = ntohl (mp->acl_index);
   u32 acl_count = ntohl (mp->count);
-  u32 expected_len = sizeof (*mp) + acl_count * sizeof (mp->r[0]);
+  u64 expected_len = sizeof (*mp) + acl_count * sizeof (mp->r[0]);
 
   if (verify_message_len (mp, expected_len, "macip_acl_add_replace"))
     {
