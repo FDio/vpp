@@ -1470,6 +1470,13 @@ class VppTestResult(unittest.TestResult):
                 w = "FIXME with VPP workers: "
                 test_title_colored = colorize(w + test_title, c)
 
+            if test.vpp_worker_count == 0:
+                test_title_colored += "[main thread only]"
+            elif test.vpp_worker_count == 1:
+                test_title_colored += "[1 worker thread]"
+            else:
+                test_title_colored += "[%s worker threads]" % test.vpp_worker_count
+
             if not hasattr(test.__class__, '_header_printed'):
                 print(double_line_delim)
                 print(test_title_colored)
