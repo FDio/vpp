@@ -16,6 +16,24 @@
       "revId": "c8cbd9d3afffc421f7031eb8b01a854fada9f9db",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0c08a986_43c73ede",
+        "filename": "src/plugins/avf/output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 333,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2021-03-25T16:21:31Z",
+      "side": 1,
+      "message": "This code needs to run after both quad-pumped and one-by-one versions in order to handle the wrap around.\nMaybe there is a more elegant way, maybe rewrite the loop as a do-while and check this at start, I will have a look.",
+      "parentUuid": "6415c575_719cd291",
+      "revId": "c8cbd9d3afffc421f7031eb8b01a854fada9f9db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
