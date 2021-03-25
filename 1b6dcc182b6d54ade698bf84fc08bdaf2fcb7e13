@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "fd5979ba_1f5a8aac",
+        "filename": "extras/scripts/vpptop.sh",
+        "patchSetId": 16
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1360
+      },
+      "writtenOn": "2021-03-25T13:14:20Z",
+      "side": 1,
+      "message": "The script should identify pre-installed go (lines 34-38) by trying \u0027go version\u0027 and then skip the installation.",
+      "parentUuid": "2a84acd3_c86da273",
+      "revId": "1b6dcc182b6d54ade698bf84fc08bdaf2fcb7e13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "380cbf89_1e66abc8",
         "filename": "extras/scripts/vpptop.sh",
         "patchSetId": 16
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "6411732d_00d68c2d",
+        "filename": "extras/scripts/vpptop.sh",
+        "patchSetId": 16
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 1360
+      },
+      "writtenOn": "2021-03-25T13:14:20Z",
+      "side": 1,
+      "message": "I\u0027ll add it, thanks.",
+      "parentUuid": "380cbf89_1e66abc8",
+      "revId": "1b6dcc182b6d54ade698bf84fc08bdaf2fcb7e13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "98e7b001_3c5a637b",
         "filename": "extras/scripts/vpptop.sh",
         "patchSetId": 16
@@ -47,6 +83,24 @@
       "writtenOn": "2021-03-25T10:33:28Z",
       "side": 1,
       "message": "If VPPTop has already been installed, do we really want to reinstall everything? Maybe, you could check if the binary exists.",
+      "revId": "1b6dcc182b6d54ade698bf84fc08bdaf2fcb7e13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dfb07a9c_56e2ab40",
+        "filename": "extras/scripts/vpptop.sh",
+        "patchSetId": 16
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 1360
+      },
+      "writtenOn": "2021-03-25T13:14:20Z",
+      "side": 1,
+      "message": "Good point. \n\nI believe dep_install doesn\u0027t harm anything. Go should be installed only when missing (see the comment at the top). The situation is more tricky about the vpptop, since the installation is bound to the current vpp. If you install vpptop for the vpp version X and then update vpp to version Y, you should be able to reinstall the vpptop (despite the binary exists).\nWhat do you think?",
+      "parentUuid": "98e7b001_3c5a637b",
       "revId": "1b6dcc182b6d54ade698bf84fc08bdaf2fcb7e13",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
