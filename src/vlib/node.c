@@ -613,9 +613,9 @@ vlib_node_get_nodes (vlib_main_t * vm, u32 max_threads, int include_stats,
 
   if (vec_len (stat_vms) == 0)
     {
-      for (i = 0; i < vec_len (vlib_mains); i++)
+      for (i = 0; i < vlib_get_n_threads (); i++)
 	{
-	  stat_vm = vlib_mains[i];
+	  stat_vm = vlib_get_main_by_index (i);
 	  if (stat_vm)
 	    vec_add1 (stat_vms, stat_vm);
 	}
@@ -837,10 +837,11 @@ vlib_node_set_march_variant (vlib_main_t *vm, u32 node_index,
 	{
 	  n->function = fnr->function;
 
-	  for (int i = 0; i < vec_len (vlib_mains); i++)
+	  for (int i = 0; i < vlib_get_n_threads (); i++)
 	    {
 	      vlib_node_runtime_t *nrt;
-	      nrt = vlib_node_get_runtime (vlib_mains[i], n->index);
+	      nrt =
+		vlib_node_get_runtime (vlib_get_main_by_index (i), n->index);
 	      nrt->function = fnr->function;
 	    }
 	  return 0;

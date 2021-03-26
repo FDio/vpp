@@ -521,7 +521,7 @@ vlib_get_worker_vlib_main (u32 worker_index)
   vlib_main_t *vm;
   vlib_thread_main_t *tm = &vlib_thread_main;
   ASSERT (worker_index < tm->n_vlib_mains - 1);
-  vm = vlib_mains[worker_index + 1];
+  vm = vlib_get_main_by_index (worker_index + 1);
   ASSERT (vm);
   return vm;
 }

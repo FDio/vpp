@@ -331,8 +331,8 @@ show_crypto_async_status_command_fn (vlib_main_t * vm,
 
   for (i = skip_master; i < tm->n_vlib_mains; i++)
     {
-      vlib_node_state_t state =
-	vlib_node_get_state (vlib_mains[i], cm->crypto_node_index);
+      vlib_node_state_t state = vlib_node_get_state (
+	vlib_get_main_by_index (i), cm->crypto_node_index);
       if (state == VLIB_NODE_STATE_POLLING)
 	vlib_cli_output (vm, "threadId: %-6d POLLING", i);
       if (state == VLIB_NODE_STATE_INTERRUPT)

@@ -306,8 +306,8 @@ memif_connect (memif_if_t * mif)
 					      mq->int_clib_file_index);
 	}
       ti = vnet_hw_if_get_rx_queue_thread_index (vnm, qi);
-      mq->buffer_pool_index =
-	vlib_buffer_pool_get_default_for_numa (vm, vlib_mains[ti]->numa_node);
+      mq->buffer_pool_index = vlib_buffer_pool_get_default_for_numa (
+	vm, vlib_get_main_by_index (ti)->numa_node);
       rv = vnet_hw_if_set_rx_queue_mode (vnm, qi, VNET_HW_IF_RX_MODE_DEFAULT);
       vnet_hw_if_update_runtime_data (vnm, mif->hw_if_index);
 

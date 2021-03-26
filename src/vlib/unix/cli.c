@@ -2886,9 +2886,9 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
        * the same new name.
        * Then, throw away the old shared name-vector.
        */
-      for (i = 0; i < vec_len (vlib_mains); i++)
+      for (i = 0; i < vlib_get_n_threads (); i++)
 	{
-	  this_vlib_main = vlib_mains[i];
+	  this_vlib_main = vlib_get_main_by_index (i);
 	  if (this_vlib_main == 0)
 	    continue;
 	  n = vlib_get_node (this_vlib_main,

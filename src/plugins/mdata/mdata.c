@@ -147,20 +147,21 @@ mdata_enable_disable (mdata_main_t * mmp, int enable_disable)
   if (vec_len (mmp->before_per_thread) == 0)
     {
       mdata_none.node_index = ~0;
-      vec_validate (mmp->before_per_thread, vec_len (vlib_mains) - 1);
+      vec_validate (mmp->before_per_thread, vlib_get_n_threads () - 1);
     }
 
   /* Reset the per-node accumulator, see vec_validate_init_empty above */
   vec_reset_length (mmp->modifies);
 
-  for (i = 0; i < vec_len (vlib_mains); i++)
+  for (i = 0; i < vlib_get_n_threads (); i++)
     {
-      if (vlib_mains[i] == 0)
+      vlib_main_t *ovm = vlib_get_main_by_index (i);
+      if (ovm == 0)
 	continue;
 
-      clib_callback_data_enable_disable
-	(&vlib_mains[i]->vlib_node_runtime_perf_callbacks,
-	 mdata_trace_callback, enable_disable);
+      clib_callback_data_enable_disable (
+	&ovm->vlib_node_runtime_perf_callbacks, mdata_trace_callback,
+	enable_disable);
     }
 
   return rv;

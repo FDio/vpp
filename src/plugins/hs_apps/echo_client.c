@@ -940,7 +940,7 @@ echo_clients_command_fn (vlib_main_t * vm,
 
   /* Turn on the builtin client input nodes */
   for (i = 0; i < thread_main->n_vlib_mains; i++)
-    vlib_node_set_state (vlib_mains[i], echo_clients_node.index,
+    vlib_node_set_state (vlib_get_main_by_index (i), echo_clients_node.index,
 			 VLIB_NODE_STATE_POLLING);
 
   if (preallocate_sessions)

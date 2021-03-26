@@ -477,9 +477,9 @@ crypto_dispatch_enable_disable (int is_enable)
   if (state_change)
     for (i = skip_master; i < tm->n_vlib_mains; i++)
       {
-	if (state !=
-	    vlib_node_get_state (vlib_mains[i], cm->crypto_node_index))
-	  vlib_node_set_state (vlib_mains[i], cm->crypto_node_index, state);
+	vlib_main_t *ovm = vlib_get_main_by_index (i);
+	if (state != vlib_node_get_state (ovm, cm->crypto_node_index))
+	  vlib_node_set_state (ovm, cm->crypto_node_index, state);
       }
   return 0;
 }
@@ -587,9 +587,9 @@ vnet_crypto_request_async_mode (int is_enable)
   if (state_change)
     for (i = skip_master; i < tm->n_vlib_mains; i++)
       {
-	if (state !=
-	    vlib_node_get_state (vlib_mains[i], cm->crypto_node_index))
-	  vlib_node_set_state (vlib_mains[i], cm->crypto_node_index, state);
+	vlib_main_t *ovm = vlib_get_main_by_index (i);
+	if (state != vlib_node_get_state (ovm, cm->crypto_node_index))
+	  vlib_node_set_state (ovm, cm->crypto_node_index, state);
       }
 
   if (is_enable)
@@ -623,8 +623,9 @@ vnet_crypto_set_async_dispatch_mode (u8 mode)
 
   for (i = skip_master; i < tm->n_vlib_mains; i++)
     {
-      if (state != vlib_node_get_state (vlib_mains[i], cm->crypto_node_index))
-	vlib_node_set_state (vlib_mains[i], cm->crypto_node_index, state);
+      vlib_main_t *ovm = vlib_get_main_by_index (i);
+      if (state != vlib_node_get_state (ovm, cm->crypto_node_index))
+	vlib_node_set_state (ovm, cm->crypto_node_index, state);
     }
 }
 

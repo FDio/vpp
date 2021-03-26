@@ -210,14 +210,14 @@ show_node_graphviz (vlib_main_t * vm,
       /* Updating the stats for multithreaded use cases.
        * We need to dup the nodes to sum the stats from all threads.*/
       nodes = vec_dup (nm->nodes);
-      for (i = 1; i < vec_len (vlib_mains); i++)
+      for (i = 1; i < vlib_get_n_threads (); i++)
 	{
 	  vlib_node_main_t *nm_clone;
 	  vlib_main_t *vm_clone;
 	  vlib_node_runtime_t *rt;
 	  vlib_node_t *n;
 
-	  vm_clone = vlib_mains[i];
+	  vm_clone = vlib_get_main_by_index (i);
 	  nm_clone = &vm_clone->node_main;
 
 	  for (j = 0; j < vec_len (nm_clone->nodes); j++)
@@ -516,9 +516,9 @@ show_node_runtime (vlib_main_t * vm,
 	  || unformat (input, "su"))
 	summary = 1;
 
-      for (i = 0; i < vec_len (vlib_mains); i++)
+      for (i = 0; i < vlib_get_n_threads (); i++)
 	{
-	  stat_vm = vlib_mains[i];
+	  stat_vm = vlib_get_main_by_index (i);
 	  if (stat_vm)
 	    vec_add1 (stat_vms, stat_vm);
 	}
@@ -592,7 +592,7 @@ show_node_runtime (vlib_main_t * vm,
 		}
 	    }
 
-	  if (vec_len (vlib_mains) > 1)
+	  if (vlib_get_n_threads () > 1)
 	    {
 	      vlib_worker_thread_t *w = vlib_worker_threads + j;
 	      if (j > 0)
@@ -665,9 +665,9 @@ clear_node_runtime (vlib_main_t * vm,
   vlib_main_t **stat_vms = 0, *stat_vm;
   vlib_node_runtime_t *r;
 
-  for (i = 0; i < vec_len (vlib_mains); i++)
+  for (i = 0; i < vlib_get_n_threads (); i++)
     {
-      stat_vm = vlib_mains[i];
+      stat_vm = vlib_get_main_by_index (i);
       if (stat_vm)
 	vec_add1 (stat_vms, stat_vm);
     }
@@ -848,10 +848,10 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
 
   s = format (s, "\n%8s %=12s %=12s %=12s %=12s %=12s\n", "Thread", "Calls",
 	      "Clocks", "Vectors", "Max Clock", "Max Vectors");
-  for (i = 0; i < vec_len (vlib_mains); i++)
+  for (i = 0; i < vlib_get_n_threads (); i++)
     {
-      n = vlib_get_node (vlib_mains[i], node_index);
-      vlib_node_sync_stats (vlib_mains[i], n);
+      n = vlib_get_node (vlib_get_main_by_index (i), node_index);
+      vlib_node_sync_stats (vlib_get_main_by_index (i), n);
 
       cl = n->stats_total.clocks - n->stats_last_clear.clocks;
       ca = n->stats_total.calls - n->stats_last_clear.calls;

@@ -1735,7 +1735,7 @@ dpdk_cryptodev_init (vlib_main_t * vm)
   for (i = skip_master; i < tm->n_vlib_mains; i++)
     {
       ptd = cmt->per_thread_data + i;
-      numa = vlib_mains[i]->numa_node;
+      numa = vlib_get_main_by_index (i)->numa_node;
 
       ptd->aad_buf = rte_zmalloc_socket (0, CRYPTODEV_NB_CRYPTO_OPS *
 					 CRYPTODEV_MAX_AAD_SIZE,
