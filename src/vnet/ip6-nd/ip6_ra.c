@@ -252,9 +252,10 @@ ip6_neighbor_syslog (vlib_main_t * vm, int priority, char *fmt, ...)
       {
 	u32 s[2];
       } *ed;
-      ed = ELOG_DATA (&vm->elog_main, e);
-      ed->s[0] = elog_string (&vm->elog_main, log_level_strings[priority]);
-      ed->s[1] = elog_string (&vm->elog_main, (char *) what);
+      ed = ELOG_DATA (vlib_get_elog_main (), e);
+      ed->s[0] =
+	elog_string (vlib_get_elog_main (), log_level_strings[priority]);
+      ed->s[1] = elog_string (vlib_get_elog_main (), (char *) what);
     }
   va_end (va);
   return;
