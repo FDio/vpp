@@ -257,23 +257,24 @@ vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t *a)
   /* Independent of enable/disable, to allow buffer trace multi nodes */
   if (a->buffer_trace_node_index != ~0)
     {
-      foreach_vlib_main (({
-	tm = &this_vlib_main->trace_main;
-	tm->verbose = 0; /* not sure this ever did anything... */
-	vec_validate (tm->nodes, a->buffer_trace_node_index);
-	tn = tm->nodes + a->buffer_trace_node_index;
-	tn->limit += a->buffer_traces_to_capture;
-	if (a->post_mortem)
-	  {
-	    tm->filter_flag = FILTER_FLAG_POST_MORTEM;
-	    tm->filter_count = ~0;
-	  }
-	tm->trace_enable = 1;
-	if (vlib_node_set_dispatch_wrapper (this_vlib_main,
-					    dispatch_pcap_trace))
-	  clib_warning (0, "Dispatch wrapper already in use on thread %u",
-			this_vlib_main->thread_index);
-      }));
+      foreach_vlib_main ()
+	{
+	  tm = &this_vlib_main->trace_main;
+	  tm->verbose = 0; /* not sure this ever did anything... */
+	  vec_validate (tm->nodes, a->buffer_trace_node_index);
+	  tn = tm->nodes + a->buffer_trace_node_index;
+	  tn->limit += a->buffer_traces_to_capture;
+	  if (a->post_mortem)
+	    {
+	      tm->filter_flag = FILTER_FLAG_POST_MORTEM;
+	      tm->filter_count = ~0;
+	    }
+	  tm->trace_enable = 1;
+	  if (vlib_node_set_dispatch_wrapper (this_vlib_main,
+					      dispatch_pcap_trace))
+	    clib_warning (0, "Dispatch wrapper already in use on thread %u",
+			  this_vlib_main->thread_index);
+	}
       vec_add1 (dtm->dispatch_buffer_trace_nodes, a->buffer_trace_node_index);
     }
 
@@ -301,12 +302,13 @@ vlib_pcap_dispatch_trace_configure (vlib_pcap_dispatch_trace_args_t *a)
   else
     {
       dtm->enable = 0;
-      foreach_vlib_main (({
-	tm = &this_vlib_main->trace_main;
-	tm->filter_flag = 0;
-	tm->filter_count = 0;
-	vlib_node_set_dispatch_wrapper (this_vlib_main, 0);
-      }));
+      foreach_vlib_main ()
+	{
+	  tm = &this_vlib_main->trace_main;
+	  tm->filter_flag = 0;
+	  tm->filter_count = 0;
+	  vlib_node_set_dispatch_wrapper (this_vlib_main, 0);
+	}
       vec_reset_length (dtm->dispatch_buffer_trace_nodes);
       if (pm->n_packets_captured)
 	{

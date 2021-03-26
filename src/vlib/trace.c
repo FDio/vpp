@@ -117,25 +117,23 @@ clear_trace_buffer (void)
   int i;
   vlib_trace_main_t *tm;
 
-  /* *INDENT-OFF* */
-  foreach_vlib_main (
-  ({
-    tm = &this_vlib_main->trace_main;
+  foreach_vlib_main ()
+    {
+      tm = &this_vlib_main->trace_main;
 
-    tm->trace_enable = 0;
-    vec_free (tm->nodes);
-  }));
+      tm->trace_enable = 0;
+      vec_free (tm->nodes);
+    }
 
-  foreach_vlib_main (
-  ({
-    tm = &this_vlib_main->trace_main;
+  foreach_vlib_main ()
+    {
+      tm = &this_vlib_main->trace_main;
 
-    for (i = 0; i < vec_len (tm->trace_buffer_pool); i++)
-      if (! pool_is_free_index (tm->trace_buffer_pool, i))
-        vec_free (tm->trace_buffer_pool[i]);
-    pool_free (tm->trace_buffer_pool);
-  }));
-  /* *INDENT-ON* */
+      for (i = 0; i < vec_len (tm->trace_buffer_pool); i++)
+	if (!pool_is_free_index (tm->trace_buffer_pool, i))
+	  vec_free (tm->trace_buffer_pool[i]);
+      pool_free (tm->trace_buffer_pool);
+    }
 }
 
 u8 *
@@ -309,52 +307,50 @@ cli_show_trace_buffer (vlib_main_t * vm,
 
   /* Get active traces from pool. */
 
-  /* *INDENT-OFF* */
-  foreach_vlib_main (
-  ({
-    fmt = "------------------- Start of thread %d %s -------------------\n";
-    s = format (s, fmt, index, vlib_worker_threads[index].name);
+  foreach_vlib_main ()
+    {
+      fmt = "------------------- Start of thread %d %s -------------------\n";
+      s = format (s, fmt, index, vlib_worker_threads[index].name);
 
-    tm = &this_vlib_main->trace_main;
+      tm = &this_vlib_main->trace_main;
 
-    trace_apply_filter(this_vlib_main);
+      trace_apply_filter (this_vlib_main);
 
-    traces = 0;
-    pool_foreach (h, tm->trace_buffer_pool)
-     {
-      vec_add1 (traces, h[0]);
+      traces = 0;
+      pool_foreach (h, tm->trace_buffer_pool)
+	{
+	  vec_add1 (traces, h[0]);
+	}
+
+      if (vec_len (traces) == 0)
+	{
+	  s = format (s, "No packets in trace buffer\n");
+	  goto done;
+	}
+
+      /* Sort them by increasing time. */
+      vec_sort_with_function (traces, trace_time_cmp);
+
+      for (i = 0; i < vec_len (traces); i++)
+	{
+	  if (i == max)
+	    {
+	      char *warn = "Limiting display to %d packets."
+			   " To display more specify max.";
+	      vlib_cli_output (vm, warn, max);
+	      s = format (s, warn, max);
+	      goto done;
+	    }
+
+	  s = format (s, "Packet %d\n%U\n\n", i + 1, format_vlib_trace, vm,
+		      traces[i]);
+	}
+
+    done:
+      vec_free (traces);
+
+      index++;
     }
-
-    if (vec_len (traces) == 0)
-      {
-        s = format (s, "No packets in trace buffer\n");
-        goto done;
-      }
-
-    /* Sort them by increasing time. */
-    vec_sort_with_function (traces, trace_time_cmp);
-
-    for (i = 0; i < vec_len (traces); i++)
-      {
-        if (i == max)
-          {
-            char *warn = "Limiting display to %d packets."
-                               " To display more specify max.";
-            vlib_cli_output (vm, warn, max);
-            s = format (s, warn, max);
-            goto done;
-          }
-
-        s = format (s, "Packet %d\n%U\n\n", i + 1,
-                         format_vlib_trace, vm, traces[i]);
-      }
-
-  done:
-    vec_free (traces);
-
-    index++;
-  }));
-  /* *INDENT-ON* */
 
   vlib_cli_output (vm, "%v", s);
   vec_free (s);
@@ -394,8 +390,7 @@ trace_update_capture_options (u32 add, u32 node_index, u32 filter, u8 verbose)
   if (add == ~0)
     add = 50;
 
-  /* *INDENT-OFF* */
-  foreach_vlib_main ((
+  foreach_vlib_main ()
     {
       tm = &this_vlib_main->trace_main;
       tm->verbose = verbose;
@@ -411,14 +406,13 @@ trace_update_capture_options (u32 add, u32 node_index, u32 filter, u8 verbose)
 	  tn->limit = tn->count = 0;
       else
 	  tn->limit += add;
-    }));
+    }
 
-  foreach_vlib_main ((
+  foreach_vlib_main ()
     {
       tm = &this_vlib_main->trace_main;
       tm->trace_enable = 1;
-    }));
-  /* *INDENT-ON* */
+    }
 
   vlib_enable_disable_pkt_trace_filter (! !filter);
 }
@@ -533,24 +527,22 @@ VLIB_CLI_COMMAND (add_trace_cli,static) = {
 void
 trace_filter_set (u32 node_index, u32 flag, u32 count)
 {
-  /* *INDENT-OFF* */
-  foreach_vlib_main (
-  ({
-    vlib_trace_main_t *tm;
+  foreach_vlib_main ()
+    {
+      vlib_trace_main_t *tm;
 
-    tm = &this_vlib_main->trace_main;
-    tm->filter_node_index = node_index;
-    tm->filter_flag = flag;
-    tm->filter_count = count;
+      tm = &this_vlib_main->trace_main;
+      tm->filter_node_index = node_index;
+      tm->filter_flag = flag;
+      tm->filter_count = count;
 
-    /*
-     * Clear the trace limits to stop any in-progress tracing
-     * Prevents runaway trace allocations when the filter changes
-     * (or is removed)
-     */
-    vec_free (tm->nodes);
-  }));
-  /* *INDENT-ON* */
+      /*
+       * Clear the trace limits to stop any in-progress tracing
+       * Prevents runaway trace allocations when the filter changes
+       * (or is removed)
+       */
+      vec_free (tm->nodes);
+    }
 }
 
 
