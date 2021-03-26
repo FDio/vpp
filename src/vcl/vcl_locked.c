@@ -51,7 +51,6 @@ typedef struct vls_local_
   pthread_mutex_t vls_mt_mq_mlock;
   pthread_mutex_t vls_mt_spool_mlock;
   volatile u8 select_mp_check;
-  volatile u8 epoll_mp_check;
 } vls_process_local_t;
 
 static vls_process_local_t vls_local;
@@ -1336,16 +1335,9 @@ vls_epoll_create (void)
 static void
 vls_epoll_ctl_mp_checks (vcl_locked_session_t * vls, int op)
 {
-  if (vcl_n_workers () <= 1)
-    {
-      vlsl->epoll_mp_check = 1;
-      return;
-    }
-
-  if (op == EPOLL_CTL_MOD)
+  if (vcl_n_workers () <= 1 || op == EPOLL_CTL_MOD)
     return;
 
-  vlsl->epoll_mp_check = 1;
   vls_mp_checks (vls, op == EPOLL_CTL_ADD);
 }
 
@@ -1372,11 +1364,8 @@ vls_epoll_ctl (vls_handle_t ep_vlsh, int op, vls_handle_t vlsh,
   vls = vls_get_and_lock (vlsh);
   sh = vls_to_sh (vls);
 
-  if (PREDICT_FALSE (!vlsl->epoll_mp_check))
-    vls_epoll_ctl_mp_checks (vls, op);
-
+  vls_epoll_ctl_mp_checks (vls, op);
   vls_mt_table_runlock ();
-
   rv = vppcom_epoll_ctl (ep_sh, op, sh, event);
 
   vls_mt_table_rlock ();
@@ -1619,7 +1608,6 @@ vls_app_fork_child_handler (void)
   vlsl->vls_mt_n_threads = 0;
   vlsl->vls_wrk_index = vcl_get_worker_index ();
   vlsl->select_mp_check = 0;
-  vlsl->epoll_mp_check = 0;
   vls_mt_locks_init ();
 
   VDBG (0, "forked child main worker initialized");
