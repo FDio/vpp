@@ -514,7 +514,6 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
   fe = frame->elts;
   bi = frame->buffer_indices;
   cop[0]->frame = frame;
-  cop[0]->n_elts = n_elts;
 
   while (n_elts)
     {
@@ -590,7 +589,25 @@ cryptodev_frame_linked_algs_enqueue (vlib_main_t * vm,
 					   cet->cryptodev_q,
 					   (struct rte_crypto_op **)
 					   cet->cops, frame->n_elts);
-  ASSERT (n_enqueue == frame->n_elts);
+  /*
+   * save the number actually enqueued in the first operation of the frame
+   * not the number we wanted to enqueue. that way we don't over-run the
+   * batch on the dequeue.
+   */
+  cet->cops[0]->n_elts = n_enqueue;
+
+  /*
+   * free up those ops we couldn't enqueue. again we assume these where
+   * those at the back of the batch - which is what DPDK examples assume too.
+   */
+  if (n_enqueue != frame->n_elts)
+    {
+      u32 n_lost = frame->n_elts - n_enqueue;
+      rte_mempool_put_bulk (numa->cop_pool,
+			    (void **) &cet->cops[frame->n_elts - (n_lost + 1)],
+			    n_lost);
+    }
+
   cet->inflight += n_enqueue;
 
   return 0;
@@ -635,7 +652,6 @@ cryptodev_frame_gcm_enqueue (vlib_main_t * vm,
   fe = frame->elts;
   bi = frame->buffer_indices;
   cop[0]->frame = frame;
-  cop[0]->n_elts = n_elts;
 
   while (n_elts)
     {
@@ -724,7 +740,25 @@ cryptodev_frame_gcm_enqueue (vlib_main_t * vm,
 					   cet->cryptodev_q,
 					   (struct rte_crypto_op **)
 					   cet->cops, frame->n_elts);
-  ASSERT (n_enqueue == frame->n_elts);
+
+  /*
+   * save the number actually enqueued in the first operation of the frame
+   * not the number we wanted to enqueue. that way we don't over-run the
+   * batch on the dequeue.
+   */
+  cet->cops[0]->n_elts = n_enqueue;
+
+  /*
+   * free up those ops we couldn't enqueue. again we assume these where
+   * those at the back of the batch - which is what DPDK examples assume too.
+   */
+  if (n_enqueue != frame->n_elts)
+    {
+      u32 n_lost = frame->n_elts - n_enqueue;
+      rte_mempool_put_bulk (
+	numa->cop_pool, (void **) &cet->cops[n_elts - (n_lost + 1)], n_lost);
+    }
+
   cet->inflight += n_enqueue;
 
   return 0;
@@ -800,7 +834,17 @@ cryptodev_frame_dequeue (vlib_main_t * vm, u32 * nb_elts_processed,
   frame->state = (ss0 | ss1 | ss2 | ss3) == VNET_CRYPTO_OP_STATUS_COMPLETED ?
     VNET_CRYPTO_FRAME_STATE_SUCCESS : VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
 
-  rte_mempool_put_bulk (numa->cop_pool, (void **) cet->cops, frame->n_elts);
+  /*
+   * if we didn't enqueue/dequeue as many ops as the are elements in the frame
+   * then one of them is errored, hence error the frame. the caller will
+   * figure out which operation/element based on the element's state.
+   */
+  if (PREDICT_FALSE (cop0->n_elts != frame->n_elts))
+    frame->state = VNET_CRYPTO_FRAME_STATE_ELT_ERROR;
+
+  /* put back the number of operations we dequeued */
+  rte_mempool_put_bulk (numa->cop_pool, (void **) cet->cops, cop0->n_elts);
+
   *nb_elts_processed = frame->n_elts;
   *enqueue_thread_idx = frame->enqueue_thread_index;
   return frame;
