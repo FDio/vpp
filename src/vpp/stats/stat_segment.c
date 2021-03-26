@@ -623,12 +623,12 @@ do_stat_segment_updates (stat_segment_main_t * sm)
    */
   vector_rate = 0.0;
 
-  for (i = 0; i < vec_len (vlib_mains); i++)
+  for (i = 0; i < vlib_get_n_threads (); i++)
     {
 
       f64 this_vector_rate;
 
-      this_vlib_main = vlib_mains[i];
+      this_vlib_main = vlib_get_other_main (i);
 
       this_vector_rate = vlib_internal_node_vector_rate (this_vlib_main);
       vlib_clear_internal_node_vector_rate (this_vlib_main);

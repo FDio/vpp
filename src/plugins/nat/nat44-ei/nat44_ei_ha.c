@@ -711,7 +711,7 @@ nat_ha_send (vlib_frame_t * f, vlib_buffer_t * b, u8 is_resync,
   nat_ha_message_header_t *h;
   ip4_header_t *ip;
   udp_header_t *udp;
-  vlib_main_t *vm = vlib_mains[thread_index];
+  vlib_main_t *vm = vlib_get_other_main (thread_index);
 
   ip = vlib_buffer_get_current (b);
   udp = ip4_next_header (ip);
@@ -737,7 +737,7 @@ nat_ha_event_add (nat_ha_event_t * event, u8 do_flush, u32 thread_index,
   nat44_ei_main_t *nm = &nat44_ei_main;
   nat_ha_main_t *ha = &nat_ha_main;
   nat_ha_per_thread_data_t *td = &ha->per_thread_data[thread_index];
-  vlib_main_t *vm = vlib_mains[thread_index];
+  vlib_main_t *vm = vlib_get_other_main (thread_index);
   vlib_buffer_t *b = 0;
   vlib_frame_t *f;
   u32 bi = ~0, offset;
@@ -967,12 +967,12 @@ nat_ha_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       vlib_process_wait_for_event_or_clock (vm, 1.0);
       event_type = vlib_process_get_events (vm, &event_data);
       vec_reset_length (event_data);
-      for (ti = 0; ti < vec_len (vlib_mains); ti++)
+      for (ti = 0; ti < vlib_get_n_threads (); ti++)
 	{
 	  if (ti >= vec_len (ha->per_thread_data))
 	    continue;
 
-	  vlib_node_set_interrupt_pending (vlib_mains[ti],
+	  vlib_node_set_interrupt_pending (vlib_get_other_main (ti),
 					   nat_ha_worker_node.index);
 	}
     }

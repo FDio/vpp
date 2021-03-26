@@ -692,7 +692,7 @@ vlib_thread_stack_init (uword thread_index)
 int
 vlib_unix_main (int argc, char *argv[])
 {
-  vlib_main_t *vm = &vlib_global_main;	/* one and only time for this! */
+  vlib_main_t *vm = vlib_get_first_main (); /* one and only time for this! */
   unformat_input_t input;
   clib_error_t *e;
   int i;

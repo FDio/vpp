@@ -1288,12 +1288,12 @@ nat_ipfix_flush_from_main (void)
 
   if (PREDICT_FALSE (!silm->worker_vms))
     {
-      for (i = 1; i < vec_len (vlib_mains); i++)
-        {
-          worker_vm = vlib_mains[i];
-          if (worker_vm)
-            vec_add1 (silm->worker_vms, worker_vm);
-        }
+      for (i = 1; i < vlib_get_n_threads (); i++)
+	{
+	  worker_vm = vlib_get_other_main (i);
+	  if (worker_vm)
+	    vec_add1 (silm->worker_vms, worker_vm);
+	}
     }
 
   /* Trigger flush for each worker thread */

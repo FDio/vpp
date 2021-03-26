@@ -1553,7 +1553,7 @@ appliction_format_all_app_mq (vlib_main_t * vm)
   application_t *app;
   int i, n_threads;
 
-  n_threads = vec_len (vlib_mains);
+  n_threads = vlib_get_n_threads ();
 
   for (i = 0; i < n_threads; i++)
     {

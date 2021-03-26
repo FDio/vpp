@@ -466,7 +466,7 @@ acl_fa_can_add_session (acl_main_t * am, int is_input, u32 sw_if_index)
 {
   u64 curr_sess_count;
   curr_sess_count = am->fa_session_total_adds - am->fa_session_total_dels;
-  return (curr_sess_count + vec_len (vlib_mains) <
+  return (curr_sess_count + vlib_get_n_threads () <
 	  am->fa_conn_table_max_entries);
 }
 
