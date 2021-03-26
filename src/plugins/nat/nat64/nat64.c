@@ -998,7 +998,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
       static_bib->is_add = is_add;
       static_bib->thread_index = thread_index;
       static_bib->done = 0;
-      worker_vm = vlib_mains[thread_index];
+      worker_vm = vlib_get_other_main (thread_index);
       if (worker_vm)
 	vlib_node_set_interrupt_pending (worker_vm,
 					 nat64_static_bib_worker_node.index);
@@ -1452,13 +1452,13 @@ nat64_expire_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
   int i;
   uword event_type, *event_data = 0;
 
-  if (vec_len (vlib_mains) == 0)
+  if (vlib_get_n_threads () == 0)
     vec_add1 (worker_vms, vm);
   else
     {
-      for (i = 0; i < vec_len (vlib_mains); i++)
+      for (i = 0; i < vlib_get_n_threads (); i++)
 	{
-	  worker_vm = vlib_mains[i];
+	  worker_vm = vlib_get_other_main (i);
 	  if (worker_vm)
 	    vec_add1 (worker_vms, worker_vm);
 	}

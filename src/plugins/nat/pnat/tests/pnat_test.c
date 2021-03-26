@@ -347,7 +347,7 @@ extern vlib_node_registration_t pnat_input_node;
 static void test_table(test_t *t, int no_tests) {
     // walk through table of tests
     int i;
-    vlib_main_t *vm = &vlib_global_main;
+    vlib_main_t *vm = vlib_get_first_main();
 
     /* Generate packet data */
     for (i = 0; i < no_tests; i++) {
@@ -376,7 +376,7 @@ static void test_table(test_t *t, int no_tests) {
 void test_performance(void) {
     pnat_main_t *pm = &pnat_main;
     int i;
-    vlib_main_t *vm = &vlib_global_main;
+    vlib_main_t *vm = vlib_get_first_main();
 
     for (i = 0; i < sizeof(rules) / sizeof(rules[0]); i++) {
         add_translation(&rules[i]);
@@ -505,7 +505,7 @@ void test_api(void) {
 
 void test_checksum(void) {
     int i;
-    vlib_main_t *vm = &vlib_global_main;
+    vlib_main_t *vm = vlib_get_first_main();
     pnat_main_t *pm = &pnat_main;
 
     test_t test = {
@@ -559,7 +559,7 @@ int main(int argc, char **argv) {
 
     clib_mem_init(0, 3ULL << 30);
 
-    vlib_main_t *vm = &vlib_global_main;
+    vlib_main_t *vm = vlib_get_first_main();
 
     buffers_vector = buffer_init(buffers_vector, 256);
 

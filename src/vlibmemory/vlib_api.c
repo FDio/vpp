@@ -561,7 +561,7 @@ vl_api_rpc_call_reply_t_handler (vl_api_rpc_call_reply_t * mp)
 void
 vl_api_send_pending_rpc_requests (vlib_main_t * vm)
 {
-  vlib_main_t *vm_global = &vlib_global_main;
+  vlib_main_t *vm_global = vlib_get_first_main ();
 
   ASSERT (vm != vm_global);
 
@@ -576,7 +576,7 @@ vl_api_rpc_call_main_thread_inline (void *fp, u8 * data, u32 data_length,
 				    u8 force_rpc)
 {
   vl_api_rpc_call_t *mp;
-  vlib_main_t *vm_global = &vlib_global_main;
+  vlib_main_t *vm_global = vlib_get_first_main ();
   vlib_main_t *vm = vlib_get_main ();
 
   /* Main thread and not a forced RPC: call the function directly */

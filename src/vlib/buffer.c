@@ -569,7 +569,7 @@ vlib_buffer_pool_create (vlib_main_t * vm, char *name, u32 data_size,
   bp->data_size = data_size;
   bp->numa_node = m->numa_node;
 
-  vec_validate_aligned (bp->threads, vec_len (vlib_mains) - 1,
+  vec_validate_aligned (bp->threads, vlib_get_n_threads () - 1,
 			CLIB_CACHE_LINE_BYTES);
 
   alloc_size = vlib_buffer_alloc_size (bm->ext_hdr_size, data_size);
@@ -673,7 +673,7 @@ vlib_buffer_worker_init (vlib_main_t * vm)
   vec_foreach (bp, bm->buffer_pools)
     {
       clib_spinlock_lock (&bp->lock);
-      vec_validate_aligned (bp->threads, vec_len (vlib_mains) - 1,
+      vec_validate_aligned (bp->threads, vlib_get_n_threads () - 1,
 			    CLIB_CACHE_LINE_BYTES);
       clib_spinlock_unlock (&bp->lock);
     }

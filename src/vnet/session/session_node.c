@@ -1534,7 +1534,7 @@ VLIB_REGISTER_NODE (session_queue_node) =
 static clib_error_t *
 session_queue_exit (vlib_main_t * vm)
 {
-  if (vec_len (vlib_mains) < 2)
+  if (vlib_get_n_threads () < 2)
     return 0;
 
   /*
