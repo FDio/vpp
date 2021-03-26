@@ -849,17 +849,14 @@ show_memory_usage (vlib_main_t * vm,
 	 */
 	was_enabled = clib_mem_trace_enable_disable (0);
 
-        /* *INDENT-OFF* */
-        foreach_vlib_main (
-        ({
-          vlib_cli_output (vm, "%sThread %d %s\n", index ? "\n":"", index,
-                           vlib_worker_threads[index].name);
-          vlib_cli_output (vm, "  %U\n", format_clib_mem_heap,
-                           mm->per_cpu_mheaps[index],
-                           verbose);
-          index++;
-        }));
-        /* *INDENT-ON* */
+	foreach_vlib_main ()
+	  {
+	    vlib_cli_output (vm, "%sThread %d %s\n", index ? "\n" : "", index,
+			     vlib_worker_threads[index].name);
+	    vlib_cli_output (vm, "  %U\n", format_clib_mem_heap,
+			     mm->per_cpu_mheaps[index], verbose);
+	    index++;
+	  }
 
 	/* Restore the trace flag */
 	clib_mem_trace_enable_disable (was_enabled);

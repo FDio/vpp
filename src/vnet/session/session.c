@@ -1590,16 +1590,14 @@ session_register_transport (transport_proto_t transport_proto,
   vec_validate (smm->session_type_to_next, session_type);
   vec_validate (smm->session_tx_fns, session_type);
 
-  /* *INDENT-OFF* */
   if (output_node != ~0)
     {
-      foreach_vlib_main (({
-          next_index = vlib_node_add_next (this_vlib_main,
-                                           session_queue_node.index,
-                                           output_node);
-      }));
+      foreach_vlib_main ()
+	{
+	  next_index = vlib_node_add_next (
+	    this_vlib_main, session_queue_node.index, output_node);
+	}
     }
-  /* *INDENT-ON* */
 
   smm->session_type_to_next[session_type] = next_index;
   smm->session_tx_fns[session_type] =
@@ -1755,31 +1753,29 @@ session_node_enable_disable (u8 is_en)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u8 have_workers = vtm->n_threads != 0;
 
-  /* *INDENT-OFF* */
-  foreach_vlib_main (({
-    if (have_workers && ii == 0)
-      {
-	if (is_en)
-	  {
-	    vlib_node_set_state (this_vlib_main,
-	                         session_queue_process_node.index, state);
-	    vlib_node_t *n = vlib_get_node (this_vlib_main,
-	                                    session_queue_process_node.index);
-	    vlib_start_process (this_vlib_main, n->runtime_index);
-	  }
-	else
-	  {
-	    vlib_process_signal_event_mt (this_vlib_main,
-	                                  session_queue_process_node.index,
-	                                  SESSION_Q_PROCESS_STOP, 0);
-	  }
-	if (!session_main.poll_main)
-	  continue;
-      }
-    vlib_node_set_state (this_vlib_main, session_queue_node.index,
-                         state);
-  }));
-  /* *INDENT-ON* */
+  foreach_vlib_main ()
+    {
+      if (have_workers && ii == 0)
+	{
+	  if (is_en)
+	    {
+	      vlib_node_set_state (this_vlib_main,
+				   session_queue_process_node.index, state);
+	      vlib_node_t *n = vlib_get_node (
+		this_vlib_main, session_queue_process_node.index);
+	      vlib_start_process (this_vlib_main, n->runtime_index);
+	    }
+	  else
+	    {
+	      vlib_process_signal_event_mt (this_vlib_main,
+					    session_queue_process_node.index,
+					    SESSION_Q_PROCESS_STOP, 0);
+	    }
+	  if (!session_main.poll_main)
+	    continue;
+	}
+      vlib_node_set_state (this_vlib_main, session_queue_node.index, state);
+    }
 }
 
 clib_error_t *
