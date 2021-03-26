@@ -224,14 +224,6 @@ alloc_unaligned (uword size, uword offset, void **ptr_to_free)
   return (void *) ((u8 *) p + (offset % MAX_UNALIGN_OFFSET));
 }
 
-#define memory_snap()						\
-do {								\
-  clib_mem_usage_t _usage = { 0 };				\
-  clib_mem_usage (&_usage);					\
-  fformat (stdout, "%U\n", format_clib_mem_usage, _usage, 0);	\
-} while (0)
-
-
 #endif /* included_test_vec_h */
 
 /*
