@@ -708,8 +708,8 @@ vlib_unix_main (int argc, char *argv[])
 
   /* Turn on the event logger at the first possible moment */
   vm->configured_elog_ring_size = 128 << 10;
-  elog_init (&vm->elog_main, vm->configured_elog_ring_size);
-  elog_enable_disable (&vm->elog_main, 1);
+  elog_init (vlib_get_elog_main (), vm->configured_elog_ring_size);
+  elog_enable_disable (vlib_get_elog_main (), 1);
 
   unformat_init_command_line (&input, (char **) vm->argv);
   if ((e = vlib_plugin_config (vm, &input)))
