@@ -694,7 +694,7 @@ static clib_error_t *
 vlib_cli_elog_clear (vlib_main_t * vm,
 		     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  elog_reset_buffer (&vm->elog_main);
+  elog_reset_buffer (&vlib_global_main.elog_main);
   return 0;
 }
 
@@ -711,7 +711,7 @@ static clib_error_t *
 elog_save_buffer (vlib_main_t * vm,
 		  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  elog_main_t *em = &vm->elog_main;
+  elog_main_t *em = &vlib_global_main.elog_main;
   char *file, *chroot_file;
   clib_error_t *error = 0;
 
@@ -765,7 +765,7 @@ static clib_error_t *
 elog_stop (vlib_main_t * vm,
 	   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  elog_main_t *em = &vm->elog_main;
+  elog_main_t *em = &vlib_global_main.elog_main;
 
   em->n_total_events_disable_limit = em->n_total_events;
 
@@ -785,7 +785,7 @@ static clib_error_t *
 elog_restart (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  elog_main_t *em = &vm->elog_main;
+  elog_main_t *em = &vlib_global_main.elog_main;
 
   em->n_total_events_disable_limit = ~0;
 
@@ -805,11 +805,11 @@ static clib_error_t *
 elog_resize_command_fn (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  elog_main_t *em = &vm->elog_main;
+  elog_main_t *em = &vlib_global_main.elog_main;
   u32 tmp;
 
   /* Stop the parade */
-  elog_reset_buffer (&vm->elog_main);
+  elog_reset_buffer (em);
 
   if (unformat (input, "%d", &tmp))
     {
@@ -836,7 +836,7 @@ VLIB_CLI_COMMAND (elog_resize_cli, static) = {
 static void
 elog_show_buffer_internal (vlib_main_t * vm, u32 n_events_to_show)
 {
-  elog_main_t *em = &vm->elog_main;
+  elog_main_t *em = &vlib_global_main.elog_main;
   elog_event_t *e, *es;
   f64 dt;
 
@@ -902,7 +902,7 @@ vlib_elog_main_loop_event (vlib_main_t * vm,
 			   u64 time, u32 n_vectors, u32 is_return)
 {
   vlib_main_t *evm = &vlib_global_main;
-  elog_main_t *em = &evm->elog_main;
+  elog_main_t *em = vlib_get_elog_main ();
   int enabled = evm->elog_trace_graph_dispatch |
     evm->elog_trace_graph_circuit;
 
@@ -1819,8 +1819,7 @@ vlib_add_del_post_mortem_callback (void *cb, int is_add)
 static void
 elog_post_mortem_dump (void)
 {
-  vlib_main_t *vm = &vlib_global_main;
-  elog_main_t *em = &vm->elog_main;
+  elog_main_t *em = vlib_get_elog_main ();
 
   u8 *filename;
   clib_error_t *error;
@@ -1933,7 +1932,7 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
   if (vm->configured_elog_ring_size &&
       vm->configured_elog_ring_size != vm->elog_main.event_ring_size)
     elog_resize (&vm->elog_main, vm->configured_elog_ring_size);
-  vl_api_set_elog_main (&vm->elog_main);
+  vl_api_set_elog_main (vlib_get_elog_main ());
   (void) vl_api_set_elog_trace_api_messages (1);
 
   /* Default name. */

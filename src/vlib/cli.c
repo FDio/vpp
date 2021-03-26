@@ -575,8 +575,8 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 		  {
 		    u32 c;
 		  } *ed;
-		  ed = ELOG_DATA (&vm->elog_main, e);
-		  ed->c = elog_string (&vm->elog_main, "%v", c->path);
+		  ed = ELOG_DATA (vlib_get_elog_main (), e);
+		  ed->c = elog_string (vlib_get_elog_main (), "%v", c->path);
 		}
 
 	      if (!c->is_mp_safe)
@@ -607,17 +607,17 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 		  {
 		    u32 c, err;
 		  } *ed;
-		  ed = ELOG_DATA (&vm->elog_main, e);
-		  ed->c = elog_string (&vm->elog_main, "%v", c->path);
+		  ed = ELOG_DATA (vlib_get_elog_main (), e);
+		  ed->c = elog_string (vlib_get_elog_main (), "%v", c->path);
 		  if (c_error)
 		    {
 		      vec_add1 (c_error->what, 0);
-		      ed->err =
-			elog_string (&vm->elog_main, (char *) c_error->what);
+		      ed->err = elog_string (vlib_get_elog_main (),
+					     (char *) c_error->what);
 		      _vec_len (c_error->what) -= 1;
 		    }
 		  else
-		    ed->err = elog_string (&vm->elog_main, "OK");
+		    ed->err = elog_string (vlib_get_elog_main (), "OK");
 		}
 
 	      if (c_error)
@@ -1547,7 +1547,7 @@ event_logger_trace_command_fn (vlib_main_t * vm,
    */
   if (dispatch || circuit)
     {
-      elog_main_t *em = &vm->elog_main;
+      elog_main_t *em = &vlib_global_main.elog_main;
 
       em->n_total_events_disable_limit =
 	em->n_total_events + vec_len (em->event_ring);
