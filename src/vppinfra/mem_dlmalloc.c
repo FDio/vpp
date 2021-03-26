@@ -297,8 +297,8 @@ clib_mem_destroy (void)
   clib_mem_vm_unmap (base);
 }
 
-u8 *
-format_clib_mem_usage (u8 * s, va_list * va)
+__clib_export u8 *
+format_clib_mem_usage (u8 *s, va_list *va)
 {
   int verbose = va_arg (*va, int);
   return format (s, "$$$$ heap at %llx verbose %d", clib_mem_get_heap (),

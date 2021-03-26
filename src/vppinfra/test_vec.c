@@ -1153,6 +1153,7 @@ test_vec_main (unformat_input_t * input)
     {
       memory_snap ();
     }
+
   return 0;
 
 usage:
