@@ -210,6 +210,24 @@
       "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c287a986_67140954",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-03-26T04:33:43Z",
+      "side": 1,
+      "message": "I will check how to make the API mp-safe. \nBefore that, if the SPD policy add/del is a very less frequent operation from control plane, is it acceptable to go with existing non mp-safe API ?",
+      "parentUuid": "78e5b634_5359e239",
+      "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
