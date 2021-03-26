@@ -415,15 +415,14 @@ openssl_async_node_enable_disable (u8 is_en)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u8 have_workers = vtm->n_threads != 0;
 
-  /* *INDENT-OFF* */
-  foreach_vlib_main (({
-    if (have_workers && ii != 0)
-      {
-        vlib_node_set_state (this_vlib_main, tls_async_process_node.index,
-                         state);
-      }
-  }));
-  /* *INDENT-ON* */
+  foreach_vlib_main ()
+    {
+      if (have_workers && ii != 0)
+	{
+	  vlib_node_set_state (this_vlib_main, tls_async_process_node.index,
+			       state);
+	}
+    }
 }
 
 int

@@ -252,42 +252,40 @@ show_errors (vlib_main_t * vm,
     vlib_cli_output (vm, "%=10s%=35s%=35s%=10s", "Count", "Node", "Reason",
 		     "Severity");
 
+  foreach_vlib_main ()
+    {
+      em = &this_vlib_main->error_main;
 
-  /* *INDENT-OFF* */
-  foreach_vlib_main(({
-    em = &this_vlib_main->error_main;
+      if (verbose)
+	vlib_cli_output (vm, "Thread %u (%v):", index,
+			 vlib_worker_threads[index].name);
 
-    if (verbose)
-      vlib_cli_output(vm, "Thread %u (%v):", index,
-                      vlib_worker_threads[index].name);
+      for (ni = 0; ni < vec_len (this_vlib_main->node_main.nodes); ni++)
+	{
+	  n = vlib_get_node (this_vlib_main, ni);
+	  for (code = 0; code < n->n_errors; code++)
+	    {
+	      i = n->error_heap_index + code;
+	      c = em->counters[i];
+	      if (i < vec_len (em->counters_last_clear))
+		c -= em->counters_last_clear[i];
+	      sums[i] += c;
 
-    for (ni = 0; ni < vec_len (this_vlib_main->node_main.nodes); ni++)
-      {
-	n = vlib_get_node (this_vlib_main, ni);
-	for (code = 0; code < n->n_errors; code++)
-	  {
-	    i = n->error_heap_index + code;
-	    c = em->counters[i];
-	    if (i < vec_len (em->counters_last_clear))
-	      c -= em->counters_last_clear[i];
-	    sums[i] += c;
+	      if (c == 0 && verbose < 2)
+		continue;
 
-	    if (c == 0 && verbose < 2)
-	      continue;
-
-            if (verbose)
-              vlib_cli_output (vm, "%10lu%=35v%=35s%=10s%=6d", c, n->name,
-                               em->counters_heap[i].name,
-                               sev2str(em->counters_heap[i].severity), i);
-            else
-              vlib_cli_output (vm, "%10lu%=35v%=35s%=10s", c, n->name,
-                               em->counters_heap[i].name,
-                               sev2str(em->counters_heap[i].severity));
-	  }
-      }
-    index++;
-  }));
-  /* *INDENT-ON* */
+	      if (verbose)
+		vlib_cli_output (vm, "%10lu%=35v%=35s%=10s%=6d", c, n->name,
+				 em->counters_heap[i].name,
+				 sev2str (em->counters_heap[i].severity), i);
+	      else
+		vlib_cli_output (vm, "%10lu%=35v%=35s%=10s", c, n->name,
+				 em->counters_heap[i].name,
+				 sev2str (em->counters_heap[i].severity));
+	    }
+	}
+      index++;
+    }
 
   if (verbose)
     vlib_cli_output (vm, "Total:");
@@ -335,14 +333,13 @@ clear_error_counters (vlib_main_t * vm,
   vlib_error_main_t *em;
   u32 i;
 
-  /* *INDENT-OFF* */
-  foreach_vlib_main(({
-    em = &this_vlib_main->error_main;
-    vec_validate (em->counters_last_clear, vec_len (em->counters) - 1);
-    for (i = 0; i < vec_len (em->counters); i++)
-      em->counters_last_clear[i] = em->counters[i];
-  }));
-  /* *INDENT-ON* */
+  foreach_vlib_main ()
+    {
+      em = &this_vlib_main->error_main;
+      vec_validate (em->counters_last_clear, vec_len (em->counters) - 1);
+      for (i = 0; i < vec_len (em->counters); i++)
+	em->counters_last_clear[i] = em->counters[i];
+    }
   return 0;
 }
 
