@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5372cbf7_0ddbb687",
+        "filename": "src/plugins/nat/nat44-ei/nat44_ei.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 1796,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-03-26T10:10:59Z",
+      "side": 1,
+      "message": "Why is the world stopped here?",
+      "revId": "1a00c830667cb90b5c16ca7e6cc18e2470b2cd72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cc58b25f_7f2ad7e0",
+        "filename": "test/util.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 457,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-03-26T10:10:59Z",
+      "side": 1,
+      "message": "More wrappers.\nWhy not use stat[\u0027/if/rx-miss\u0027][:, 1].sum()",
+      "revId": "1a00c830667cb90b5c16ca7e6cc18e2470b2cd72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
