@@ -574,7 +574,7 @@ vlib_worker_thread_bootstrap_fn (void *arg)
 
   __os_thread_index = w - vlib_worker_threads;
 
-  vlib_process_start_switch_stack (vlib_mains[__os_thread_index], 0);
+  vlib_process_start_switch_stack (vlib_get_other_main (__os_thread_index), 0);
   rv = (void *) clib_calljmp
     ((uword (*)(uword)) w->thread_function,
      (uword) arg, w->thread_stack + VLIB_THREAD_STACK_SIZE);
@@ -1001,7 +1001,7 @@ worker_thread_node_runtime_update_internal (void)
 
   ASSERT (vlib_get_thread_index () == 0);
 
-  vm = vlib_mains[0];
+  vm = vlib_get_first_main ();
   nm = &vm->node_main;
 
   ASSERT (*vlib_worker_threads->wait_at_barrier == 1);
@@ -1017,11 +1017,11 @@ worker_thread_node_runtime_update_internal (void)
       vlib_node_sync_stats (vm, n);
     }
 
-  for (i = 1; i < vec_len (vlib_mains); i++)
+  for (i = 1; i < vlib_get_n_mains (); i++)
     {
       vlib_node_t *n;
 
-      vm_clone = vlib_mains[i];
+      vm_clone = vlib_get_other_main (i);
       nm_clone = &vm_clone->node_main;
 
       for (j = 0; j < vec_len (nm_clone->nodes); j++)
@@ -1049,7 +1049,7 @@ vlib_worker_thread_node_refork (void)
 
   int j;
 
-  vm = vlib_mains[0];
+  vm = vlib_get_first_main ();
   nm = &vm->node_main;
   vm_clone = vlib_get_main ();
   nm_clone = &vm_clone->node_main;
@@ -1425,7 +1425,7 @@ vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t * vm)
 {
   f64 deadline;
   f64 now = vlib_time_now (vm);
-  u32 count = vec_len (vlib_mains) - 1;
+  u32 count = vlib_get_n_mains () - 1;
 
   /* No worker threads? */
   if (count == 0)
@@ -1451,7 +1451,7 @@ vlib_worker_thread_initial_barrier_sync_and_release (vlib_main_t * vm)
 u8
 vlib_worker_thread_barrier_held (void)
 {
-  if (vec_len (vlib_mains) < 2)
+  if (vlib_get_n_mains () < 2)
     return (1);
 
   return (*vlib_worker_threads->wait_at_barrier == 1);
@@ -1469,13 +1469,13 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
   u32 count;
   int i;
 
-  if (vec_len (vlib_mains) < 2)
+  if (vlib_get_n_mains () < 2)
     return;
 
   ASSERT (vlib_get_thread_index () == 0);
 
   vlib_worker_threads[0].barrier_caller = func_name;
-  count = vec_len (vlib_mains) - 1;
+  count = vlib_get_n_mains () - 1;
 
   /* Record entry relative to last close */
   now = vlib_time_now (vm);
@@ -1497,10 +1497,12 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
    * the barrier hold-down timer.
    */
   max_vector_rate = 0.0;
-  for (i = 1; i < vec_len (vlib_mains); i++)
-    max_vector_rate =
-      clib_max (max_vector_rate,
-		(f64) vlib_last_vectors_per_main_loop (vlib_mains[i]));
+  for (i = 1; i < vlib_get_n_mains (); i++)
+    {
+      vlib_main_t *ovm = vlib_get_other_main (i);
+      max_vector_rate = clib_max (max_vector_rate,
+				  (f64) vlib_last_vectors_per_main_loop (ovm));
+    }
 
   vlib_worker_threads[0].barrier_sync_count++;
 
@@ -1562,7 +1564,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
   f64 t_update_main = 0.0;
   int refork_needed = 0;
 
-  if (vec_len (vlib_mains) < 2)
+  if (vlib_get_n_mains () < 2)
     return;
 
   ASSERT (vlib_get_thread_index () == 0);
@@ -1594,7 +1596,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
       /* Do per thread rebuilds in parallel */
       refork_needed = 1;
       clib_atomic_fetch_add (vlib_worker_threads->node_reforks_required,
-			     (vec_len (vlib_mains) - 1));
+			     (vlib_get_n_mains () - 1));
       now = vlib_time_now (vm);
       t_update_main = now - vm->barrier_epoch;
     }
@@ -1668,7 +1670,7 @@ vlib_worker_wait_one_loop (void)
 {
   ASSERT (vlib_get_thread_index () == 0);
 
-  if (vec_len (vlib_mains) < 2)
+  if (vlib_get_n_mains () < 2)
     return;
 
   if (vlib_worker_thread_barrier_held ())
@@ -1677,7 +1679,7 @@ vlib_worker_wait_one_loop (void)
   u32 *counts = 0;
   u32 ii;
 
-  vec_validate (counts, vec_len (vlib_mains) - 1);
+  vec_validate (counts, vlib_get_n_mains () - 1);
 
   /* record the current loop counts */
   vec_foreach_index (ii, vlib_mains)
@@ -1973,24 +1975,24 @@ show_clock_command_fn (vlib_main_t * vm,
 		   verbose, format_clib_timebase_time,
 		   clib_timebase_now (tb));
 
-  if (vec_len (vlib_mains) == 1)
+  if (vlib_get_n_mains () == 1)
     return 0;
 
   vlib_cli_output (vm, "Time last barrier release %.9f",
 		   vm->time_last_barrier_release);
 
-  for (i = 1; i < vec_len (vlib_mains); i++)
+  for (i = 1; i < vlib_get_n_mains (); i++)
     {
-      if (vlib_mains[i] == 0)
+      vlib_main_t *ovm = vlib_get_other_main (i);
+      if (ovm == 0)
 	continue;
 
-      vlib_cli_output (vm, "%d: %U", i, format_clib_time,
-		       &vlib_mains[i]->clib_time, verbose);
+      vlib_cli_output (vm, "%d: %U", i, format_clib_time, &ovm->clib_time,
+		       verbose);
 
-      vlib_cli_output (vm, "Thread %d offset %.9f error %.9f", i,
-		       vlib_mains[i]->time_offset,
-		       vm->time_last_barrier_release -
-		       vlib_mains[i]->time_last_barrier_release);
+      vlib_cli_output (
+	vm, "Thread %d offset %.9f error %.9f", i, ovm->time_offset,
+	vm->time_last_barrier_release - ovm->time_last_barrier_release);
     }
   return 0;
 }

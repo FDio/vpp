@@ -272,8 +272,8 @@ gdb_show_traces ()
             goto done;
           }
 
-        s = format (s, "Packet %d\n%U\n\n", i + 1,
-                         format_vlib_trace, vlib_mains[0], traces[i]);
+	s = format (s, "Packet %d\n%U\n\n", i + 1, format_vlib_trace,
+		    vlib_get_first_main (), traces[i]);
       }
 
   done:
