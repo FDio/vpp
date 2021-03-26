@@ -237,29 +237,15 @@ typedef enum
 
 void vlib_worker_thread_fork_fixup (vlib_fork_fixup_t which);
 
-#define foreach_vlib_main(body)                                               \
-  do                                                                          \
-    {                                                                         \
-      vlib_main_t **__vlib_mains = 0, *this_vlib_main;                        \
-      int ii;                                                                 \
-                                                                              \
-      for (ii = 0; ii < vec_len (vlib_global_main.vlib_mains); ii++)          \
-	{                                                                     \
-	  this_vlib_main = vlib_global_main.vlib_mains[ii];                   \
-	  ASSERT (ii == 0 || this_vlib_main->parked_at_barrier == 1);         \
-	  if (this_vlib_main)                                                 \
-	    vec_add1 (__vlib_mains, this_vlib_main);                          \
-	}                                                                     \
-                                                                              \
-      for (ii = 0; ii < vec_len (__vlib_mains); ii++)                         \
-	{                                                                     \
-	  this_vlib_main = __vlib_mains[ii];                                  \
-	  /* body uses this_vlib_main... */                                   \
-	  (body);                                                             \
-	}                                                                     \
-      vec_free (__vlib_mains);                                                \
-    }                                                                         \
-  while (0);
+#define foreach_vlib_main()                                                   \
+  for (vlib_main_t *ii = 0, *this_vlib_main = vlib_global_main.vlib_mains[0]; \
+       (ii - (vlib_main_t *) 0) < vec_len (vlib_global_main.vlib_mains);      \
+       ii++, this_vlib_main =                                                 \
+	       vlib_global_main.vlib_mains[ii - (vlib_main_t *) 0])           \
+    if (CLIB_ASSERT_ENABLE &&                                                 \
+	!(ii == 0 || this_vlib_main->parked_at_barrier == 1))                 \
+      ASSERT (0);                                                             \
+    else if (this_vlib_main)
 
 #define foreach_sched_policy \
   _(SCHED_OTHER, OTHER, "other") \
