@@ -52,6 +52,13 @@ vlib_get_thread_main ()
   return &vlib_thread_main;
 }
 
+always_inline elog_main_t *
+vlib_get_elog_main ()
+{
+  vlib_main_t *vm = vlib_get_first_main ();
+  return &vm->elog_main;
+}
+
 #endif /* included_vlib_global_funcs_h_ */
 
 /*
