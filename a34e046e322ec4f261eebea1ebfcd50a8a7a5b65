@@ -107,6 +107,24 @@
     },
     {
       "key": {
+        "uuid": "cf9c79cb_4f8f6742",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 363,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-03-26T02:33:43Z",
+      "side": 1,
+      "message": "The flow cache entries are added in data plane and not in control plane. But, I can do this change in data plane itself. While adding the entry in flow cache, I will supply the bihash key in N/W order and lookup without doing host order conversion.",
+      "parentUuid": "1914ff70_9f8504bc",
+      "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "da7bcfd8_a0b2190d",
         "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
         "patchSetId": 5
