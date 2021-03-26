@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b653830d_4e538a22",
+        "filename": "src/vlib/threads.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 245,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2021-03-26T12:45:40Z",
+      "side": 1,
+      "message": "if (CLIB_ASSERT_ENABLE \u0026\u0026 this_vlib_main \u0026\u0026 ...)\n\nthis_vlib_main might be NULL...",
+      "revId": "fad38bc817a611386ab3aa882b1bf7705ac0d81a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
