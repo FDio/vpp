@@ -2649,18 +2649,17 @@ quic_get_counter_value (u32 event_code)
   em = &vm->error_main;
   n = vlib_get_node (vm, quic_input_node.index);
   code = event_code;
-  /* *INDENT-OFF* */
-  foreach_vlib_main(({
-    em = &this_vlib_main->error_main;
-    i = n->error_heap_index + code;
-    c = em->counters[i];
+  foreach_vlib_main ()
+    {
+      em = &this_vlib_main->error_main;
+      i = n->error_heap_index + code;
+      c = em->counters[i];
 
-    if (i < vec_len (em->counters_last_clear))
-       c -= em->counters_last_clear[i];
-    sum += c;
-    index++;
-  }));
-  /* *INDENT-ON* */
+      if (i < vec_len (em->counters_last_clear))
+	c -= em->counters_last_clear[i];
+      sum += c;
+      index++;
+    }
   return sum;
 }
 
