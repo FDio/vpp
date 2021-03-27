@@ -522,7 +522,7 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
       app_wrk = app_worker_get_if_valid (ho_ctx->parent_app_wrk_index);
       if (app_wrk)
 	{
-	  api_context = ho_ctx->c_s_index;
+	  api_context = ho_ctx->parent_app_api_context;
 	  app_worker_connect_notify (app_wrk, 0, err, api_context);
 	}
       tls_ctx_half_open_reader_unlock ();
