@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "37d821fa_75e615e8",
+        "filename": "src/vcl/vcl_locked.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1339,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-03-27T17:23:48Z",
+      "side": 0,
+      "message": "This shouldn\u0027t have been removed because of the return lower",
+      "range": {
+        "startLine": 1339,
+        "startChar": 0,
+        "endLine": 1339,
+        "endChar": 28
+      },
+      "revId": "043f0b0ebfc8213358849ef845df2327f861708e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
