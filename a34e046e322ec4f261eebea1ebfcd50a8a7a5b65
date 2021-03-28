@@ -228,6 +228,24 @@
       "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1474e9c5_3cb67e73",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2021-03-28T07:36:22Z",
+      "side": 1,
+      "message": "i would say no, walking a bihash with millions of entries with the workers held would take too long and result in too much traffic loss. But that \"too much\" might depend on the use case.\nhave a look at how the ACL code deals with stale entries in its connection hash, or the l2fib. both empty an epoch scheme where after a change in the CP the global epoch number is incremented. in the DP entries in the cache that have an old epoch number are considered stale and treated like a miss.",
+      "parentUuid": "c287a986_67140954",
+      "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
