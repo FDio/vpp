@@ -246,6 +246,24 @@
       "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "84dcb7d0_d3d81342",
+        "filename": "src/vnet/ipsec/ipsec_spd_policy.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-03-28T19:51:52Z",
+      "side": 1,
+      "message": "That\u0027s a good idea. This will eliminate the need for flow cache reset (Bihash walk) in control plane. I will maintain epoch counter in ipsec_main_t and in the value field of bihash KVP in flow cache. This KVP will be populated with epoch counter during flow cache add by copying it from ipsec_main_t. On every packet arrival, the epoch counter from flow cache will be checked against ipsec_main_t to detect a stale entry. \n\nThe above mechanism will reduce the packet loss in data plane. But ipsec_add_del_policy() is still not mp safe because both linear table (ipsec_spd_t) and combined counters (ipsec_spd_policy_counters) are vectors and grows after every rule addition. Also, the rules in linear table are sorted based on the rule priority during every add. To make it mp safe, we have to maintain a mirror copy of ipsec_spd_t and one more vector for ipsec_spd_policy_counters. With this change, we have to work with 2 different tables (Vectors) and let us call it as Table-A and Table-B. When control plane work on Table-A, data plane will lookup Table-B. Once control plane completes all the work on Table-A, it will atomically update Table-B with Table-A pointer. Then Table-B will be made in sync with Table-A only after checking for inflight packets in data plane using vlib_worker_wait_one_loop(). If you are fine with this idea, I will work on this further and create a separate patch to make it as mp safe, once I complete the flow cache implementation.",
+      "parentUuid": "1474e9c5_3cb67e73",
+      "revId": "a34e046e322ec4f261eebea1ebfcd50a8a7a5b65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
