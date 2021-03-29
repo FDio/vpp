@@ -468,7 +468,7 @@ avf_flow_ops_fn (vnet_main_t *vm, vnet_flow_dev_op_t op, u32 dev_instance,
   avf_flow_lookup_entry_t *fle = NULL;
   int rv = 0;
 
-  if ((ad->feature_bitmap & VIRTCHNL_VF_OFFLOAD_FDIR_PF) == 0)
+  if ((ad->cap_flags & VIRTCHNL_VF_OFFLOAD_FDIR_PF) == 0)
     {
       rv = VNET_FLOW_ERROR_NOT_SUPPORTED;
       goto done;

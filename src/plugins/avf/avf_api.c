@@ -51,12 +51,10 @@ vl_api_avf_create_t_handler (vl_api_avf_create_t * mp)
   avf_create_if (vm, &args);
   rv = args.rv;
 
-  /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_AVF_CREATE_REPLY + am->msg_id_base,
     ({
       rmp->sw_if_index = ntohl (args.sw_if_index);
     }));
-  /* *INDENT-ON* */
 }
 
 static void
@@ -102,10 +100,3 @@ avf_plugin_api_hookup (vlib_main_t * vm)
 
 VLIB_API_INIT_FUNCTION (avf_plugin_api_hookup);
 
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */

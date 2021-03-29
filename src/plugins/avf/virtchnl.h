@@ -130,6 +130,8 @@ typedef enum
   _ (5, OFFLOAD_WB_ON_ITR, "wb-on-itr")                                       \
   _ (6, OFFLOAD_REQ_QUEUES, "req-queues")                                     \
   _ (7, CAP_ADV_LINK_SPEED, "adv-link-speed")                                 \
+  _ (9, LARGE_NUM_QPAIRS, "large-num-qpairs")                                 \
+  _ (15, OFFLOAD_VLAN_V2, "vlan-v2")                                          \
   _ (16, OFFLOAD_VLAN, "vlan")                                                \
   _ (17, OFFLOAD_RX_POLLING, "rx-polling")                                    \
   _ (18, OFFLOAD_RSS_PCTYPE_V2, "rss-pctype-v2")                              \
@@ -138,8 +140,12 @@ typedef enum
   _ (21, OFFLOAD_ENCAP_CSUM, "encap-csum")                                    \
   _ (22, OFFLOAD_RX_ENCAP_CSUM, "rx-encap-csum")                              \
   _ (23, OFFLOAD_ADQ, "offload-adq")                                          \
+  _ (24, OFFLOAD_ADQ_v2, "offload-adq-v2")                                    \
+  _ (25, OFFLOAD_USO, "offload-uso")                                          \
+  _ (26, OFFLOAD_RX_FLEX_DESC, "offload-rx-flex-desc")                        \
   _ (27, OFFLOAD_ADV_RSS_PF, "offload-adv-rss-pf")                            \
-  _ (28, OFFLOAD_FDIR_PF, "offload-fdir-pf")
+  _ (28, OFFLOAD_FDIR_PF, "offload-fdir-pf")                                  \
+  _ (30, CAP_DCF, "dcf")
 
 typedef enum
 {
@@ -176,7 +182,7 @@ typedef struct
   u16 num_queue_pairs;
   u16 max_vectors;
   u16 max_mtu;
-  u32 vf_offload_flags;
+  u32 vf_cap_flags;
   u32 rss_key_size;
   u32 rss_lut_size;
   virtchnl_vsi_resource_t vsi_res[1];
@@ -404,10 +410,3 @@ typedef struct
 
 #endif /* AVF_VIRTCHNL_H */
 
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
