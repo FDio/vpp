@@ -247,6 +247,8 @@ class VPPStats():
         # pylint: disable=invalid-name
         if not self.connected:
             self.connect()
+        if not isinstance(patterns, list):
+            patterns = [patterns]
         regex = [re.compile(i) for i in patterns]
         return [k for k, v in self.directory.items()
                 if any(re.match(pattern, k) for pattern in regex)]
@@ -498,6 +500,13 @@ class TestStats(unittest.TestCase):
         directory = self.stat.ls(["^/foobar"])
         data = self.stat.dump(directory)
         print(data)
+
+    def test_sys_nodes(self):
+        '''Test /sys/nodes'''
+        counters = self.stat.ls('^/sys/node')
+        print('COUNTERS:', counters)
+        print('/sys/node', self.stat.dump(counters))
+        print('/net/route/to', self.stat['/net/route/to'])
 
 if __name__ == '__main__':
     import cProfile
