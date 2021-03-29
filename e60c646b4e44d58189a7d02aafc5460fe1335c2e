@@ -16,6 +16,41 @@
       "revId": "e60c646b4e44d58189a7d02aafc5460fe1335c2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a06fc70d_baaa85be",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 597,
+      "author": {
+        "id": 2429
+      },
+      "writtenOn": "2021-03-29T17:44:16Z",
+      "side": 1,
+      "message": "As per the documentation of https://doc.dpdk.org/api/rte__cryptodev_8h.html#a1e1336b0a8fe381ea03a52bad85e5734, then the number enqueued can be less than the number requested to be enqueued.\n\nSince this is an asynchronous operation then any device can experience congestion where only some of the crypto ops were enqueued, or in extreme cases zero.",
+      "parentUuid": "5ff33e46_deee9e26",
+      "revId": "e60c646b4e44d58189a7d02aafc5460fe1335c2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e01a2a68_f008ff44",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 759,
+      "author": {
+        "id": 2429
+      },
+      "writtenOn": "2021-03-29T17:44:16Z",
+      "side": 1,
+      "message": "n_elts is zero at this point as per the loop termination condition above, so this should be frame-\u003en_elts.",
+      "revId": "e60c646b4e44d58189a7d02aafc5460fe1335c2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
