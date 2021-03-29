@@ -466,11 +466,10 @@ retry:
 
   if (d->v_opcode != op)
     {
-      err =
-	clib_error_return (0,
-			   "unexpected message receiver [v_opcode = %u, "
-			   "expected %u, v_retval %d]", d->v_opcode, op,
-			   d->v_retval);
+      err = clib_error_return (0,
+			       "unexpected message received [v_opcode = %u, "
+			       "expected %u, v_retval %d]",
+			       d->v_opcode, op, d->v_retval);
       goto done;
     }
 
@@ -556,18 +555,20 @@ avf_op_get_vf_resources (vlib_main_t * vm, avf_device_t * ad,
      VIRTCHNL_VF_OFFLOAD_RX_POLLING | VIRTCHNL_VF_CAP_ADV_LINK_SPEED |
      VIRTCHNL_VF_OFFLOAD_FDIR_PF | VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF);
 
-  avf_log_debug (ad, "get_vf_reqources: bitmap 0x%x", bitmap);
+  avf_log_debug (ad, "get_vf_reqources: bitmap 0x%x (%U)", bitmap,
+		 format_avf_vf_cap_flags, bitmap);
   err = avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_VF_RESOURCES, &bitmap,
 			sizeof (u32), res, sizeof (virtchnl_vf_resource_t));
 
   if (err == 0)
     {
       int i;
-      avf_log_debug (ad, "get_vf_reqources: num_vsis %u num_queue_pairs %u "
-		     "max_vectors %u max_mtu %u vf_offload_flags 0x%04x "
+      avf_log_debug (ad,
+		     "get_vf_reqources: num_vsis %u num_queue_pairs %u "
+		     "max_vectors %u max_mtu %u vf_cap_flags 0x%08x "
 		     "rss_key_size %u rss_lut_size %u",
 		     res->num_vsis, res->num_queue_pairs, res->max_vectors,
-		     res->max_mtu, res->vf_offload_flags, res->rss_key_size,
+		     res->max_mtu, res->vf_cap_flags, res->rss_key_size,
 		     res->rss_lut_size);
       for (i = 0; i < res->num_vsis; i++)
 	avf_log_debug (ad, "get_vf_reqources_vsi[%u]: vsi_id %u "
@@ -948,20 +949,21 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
     return clib_error_return (0, "unexpected GET_VF_RESOURCE reply received");
 
   ad->vsi_id = res.vsi_res[0].vsi_id;
-  ad->feature_bitmap = res.vf_offload_flags;
+  ad->cap_flags = res.vf_cap_flags;
   ad->num_queue_pairs = res.num_queue_pairs;
   ad->max_vectors = res.max_vectors;
   ad->max_mtu = res.max_mtu;
   ad->rss_key_size = res.rss_key_size;
   ad->rss_lut_size = res.rss_lut_size;
-  wb_on_itr = (ad->feature_bitmap & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) != 0;
+  wb_on_itr = (ad->cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) != 0;
 
   clib_memcpy_fast (ad->hwaddr, res.vsi_res[0].default_mac_addr, 6);
 
   /*
    * Disable VLAN stripping
    */
-  if ((error = avf_op_disable_vlan_stripping (vm, ad)))
+  if ((ad->cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN) &&
+      (error = avf_op_disable_vlan_stripping (vm, ad)))
     return error;
 
   /*
@@ -994,12 +996,11 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   else
     ad->n_rx_irqs = 1;
 
-
-  if ((ad->feature_bitmap & VIRTCHNL_VF_OFFLOAD_RSS_PF) &&
+  if ((ad->cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF) &&
       (error = avf_op_config_rss_lut (vm, ad)))
     return error;
 
-  if ((ad->feature_bitmap & VIRTCHNL_VF_OFFLOAD_RSS_PF) &&
+  if ((ad->cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF) &&
       (error = avf_op_config_rss_key (vm, ad)))
     return error;
 
@@ -1077,12 +1078,12 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 	  u32 flags = 0;
 	  u32 mbps = 0;
 
-	  if (ad->feature_bitmap & VIRTCHNL_VF_CAP_ADV_LINK_SPEED)
+	  if (ad->cap_flags & VIRTCHNL_VF_CAP_ADV_LINK_SPEED)
 	    link_up = e->event_data.link_event_adv.link_status;
 	  else
 	    link_up = e->event_data.link_event.link_status;
 
-	  if (ad->feature_bitmap & VIRTCHNL_VF_CAP_ADV_LINK_SPEED)
+	  if (ad->cap_flags & VIRTCHNL_VF_CAP_ADV_LINK_SPEED)
 	    mbps = e->event_data.link_event_adv.link_speed;
 	  if (speed == VIRTCHNL_LINK_SPEED_40GB)
 	    mbps = 40000;
@@ -1740,7 +1741,7 @@ avf_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
     {
       if (rxq->int_mode == 0)
 	return 0;
-      if (ad->feature_bitmap & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR)
+      if (ad->cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR)
 	avf_irq_n_set_state (ad, qid, AVF_IRQ_STATE_WB_ON_ITR);
       else
 	avf_irq_n_set_state (ad, qid, AVF_IRQ_STATE_ENABLED);
