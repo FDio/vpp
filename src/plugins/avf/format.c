@@ -57,14 +57,26 @@ u8 *
 format_avf_vf_cap_flags (u8 * s, va_list * args)
 {
   u32 flags = va_arg (*args, u32);
-  u8 *t = 0;
+  int not_first = 0;
 
-#define _(a, b, c) if (flags & (1 << a)) \
-  t = format (t, "%s%s", t ? " ":"", c);
-  foreach_avf_vf_cap_flag;
+  char *strs[32] = {
+#define _(a, b, c) [a] = c,
+    foreach_avf_vf_cap_flag
 #undef _
-  s = format (s, "%v", t);
-  vec_free (t);
+  };
+
+  for (int i = 0; i < 32; i++)
+    {
+      if ((flags & (1 << i)) == 0)
+	continue;
+      if (not_first)
+	s = format (s, " ");
+      if (strs[i])
+	s = format (s, "%s", strs[i]);
+      else
+	s = format (s, "unknown(%u)", i);
+      not_first = 1;
+    }
   return s;
 }
 
@@ -100,8 +112,8 @@ format_avf_device (u8 * s, va_list * args)
 	      AVF_QUEUE_SZ_MIN, AVF_QUEUE_SZ_MAX);
   s = format (s, "\n%Uflags: %U", format_white_space, indent,
 	      format_avf_device_flags, ad);
-  s = format (s, "\n%Uoffload features: %U", format_white_space, indent,
-	      format_avf_vf_cap_flags, ad->feature_bitmap);
+  s = format (s, "\n%Ucapability flags: %U", format_white_space, indent,
+	      format_avf_vf_cap_flags, ad->cap_flags);
 
   s = format (s, "\n%Unum-queue-pairs %d max-vectors %u max-mtu %u "
 	      "rss-key-size %u rss-lut-size %u", format_white_space, indent,
