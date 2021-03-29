@@ -89,6 +89,23 @@
     },
     {
       "key": {
+        "uuid": "bc32098a_dfedca38",
+        "filename": "src/vnet/devices/virtio/vhost_user_output.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2021-03-29T18:21:42Z",
+      "side": 1,
+      "message": "If psh_cksum \u003d\u003d 0, do we not need to set udp-\u003echecksum \u003d psh_cksum?\nWhat if ip4_pseudo_header_cksum returns the value of 0 in the statement few lines above here?",
+      "revId": "b7d85e4a0e2d496e9e0e313094a6b52995cbed1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "2cda9390_bb667eae",
         "filename": "src/vnet/ip/ip_psh_cksum.h",
         "patchSetId": 7
