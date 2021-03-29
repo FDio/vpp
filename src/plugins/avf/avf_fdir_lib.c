@@ -73,7 +73,7 @@ avf_fdir_rcfg_set_hdr (struct avf_fdir_conf *rcfg, int layer,
   struct virtchnl_proto_hdrs *hdrs;
 
   hdrs = &rcfg->add_fltr.rule_cfg.proto_hdrs;
-  if (layer > VIRTCHNL_MAX_NUM_PROTO_HDRS)
+  if (layer >= VIRTCHNL_MAX_NUM_PROTO_HDRS)
     return -1;
 
   hdrs->proto_hdr[layer].type = hdr;
@@ -486,7 +486,7 @@ int
 avf_fdir_rcfg_act_queue (struct avf_fdir_conf *rcfg, int queue, int size,
 			 int act_idx)
 {
-  if (act_idx > VIRTCHNL_MAX_NUM_ACTIONS)
+  if (act_idx >= VIRTCHNL_MAX_NUM_ACTIONS)
     return -AVF_FAILURE;
 
   struct virtchnl_filter_action *filter_action;
@@ -565,7 +565,7 @@ avf_fdir_rcfg_act_drop (struct avf_fdir_conf *rcfg, int act_idx)
 {
   struct virtchnl_filter_action *filter_action;
 
-  if (act_idx > VIRTCHNL_MAX_NUM_ACTIONS)
+  if (act_idx >= VIRTCHNL_MAX_NUM_ACTIONS)
     return -AVF_FAILURE;
 
   filter_action = rcfg->add_fltr.rule_cfg.action_set.actions + act_idx;
@@ -579,7 +579,7 @@ avf_fdir_rcfg_act_mark (struct avf_fdir_conf *rcfg, const u32 mark,
 			int act_idx)
 {
   struct virtchnl_filter_action *filter_action;
-  if (act_idx > VIRTCHNL_MAX_NUM_ACTIONS)
+  if (act_idx >= VIRTCHNL_MAX_NUM_ACTIONS)
     return -AVF_FAILURE;
 
   filter_action = rcfg->add_fltr.rule_cfg.action_set.actions + act_idx;
