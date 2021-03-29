@@ -63,7 +63,7 @@ vnet_netlink_msg_add_rtattr (vnet_netlink_msg_t * m, u16 rta_type,
 }
 
 static clib_error_t *
-vnet_netlink_msg_send (vnet_netlink_msg_t * m)
+vnet_netlink_msg_send (vnet_netlink_msg_t *m, vnet_netlink_msg_t **replies)
 {
   clib_error_t *err = 0;
   struct sockaddr_nl ra = { 0 };
@@ -103,6 +103,15 @@ vnet_netlink_msg_send (vnet_netlink_msg_t * m)
 	    err = clib_error_return (0, "netlink error %d", e->error);
 	  goto done;
 	}
+
+      if (replies)
+	{
+	  vnet_netlink_msg_t msg = { NULL };
+	  u8 *p;
+	  vec_add2 (msg.data, p, nh->nlmsg_len);
+	  clib_memcpy (p, nh, nh->nlmsg_len);
+	  vec_add1 (*replies, msg);
+	}
     }
 
 done:
@@ -125,7 +134,7 @@ vnet_netlink_set_link_name (int ifindex, char *new_ifname)
   vnet_netlink_msg_add_rtattr (&m, IFLA_IFNAME, new_ifname,
 			       strlen (new_ifname) + 1);
 
-  err = vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m, NULL);
   if (err)
     err = clib_error_return (0, "set link name %U", format_clib_error, err);
   return err;
@@ -147,7 +156,7 @@ vnet_netlink_set_link_netns (int ifindex, int netns_fd, char *new_ifname)
     vnet_netlink_msg_add_rtattr (&m, IFLA_IFNAME, new_ifname,
 				 strlen (new_ifname) + 1);
 
-  err = vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m, NULL);
   if (err)
     err = clib_error_return (0, "set link netns %U", format_clib_error, err);
   return err;
@@ -170,7 +179,7 @@ vnet_netlink_set_link_master (int ifindex, char *master_ifname)
   vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST,
 			 &ifmsg, sizeof (struct ifinfomsg));
   vnet_netlink_msg_add_rtattr (&m, IFLA_MASTER, &i, sizeof (int));
-  err = vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m, NULL);
   if (err)
     err = clib_error_return (0, "set link master %U", format_clib_error, err);
   return err;
@@ -188,7 +197,7 @@ vnet_netlink_set_link_addr (int ifindex, u8 * mac)
   vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST,
 			 &ifmsg, sizeof (struct ifinfomsg));
   vnet_netlink_msg_add_rtattr (&m, IFLA_ADDRESS, mac, 6);
-  err = vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m, NULL);
   if (err)
     err = clib_error_return (0, "set link addr %U", format_clib_error, err);
   return err;
@@ -207,9 +216,82 @@ vnet_netlink_set_link_state (int ifindex, int up)
 
   vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST,
 			 &ifmsg, sizeof (struct ifinfomsg));
-  err = vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m, NULL);
   if (err)
     err = clib_error_return (0, "set link state %U", format_clib_error, err);
+  return err;
+}
+
+clib_error_t *
+vnet_netlink_get_link_mtu (int ifindex, u32 *mtu)
+{
+  vnet_netlink_msg_t m, *msg;
+  struct ifinfomsg ifmsg = { 0 };
+  struct nlattr *attr;
+  clib_error_t *err = 0;
+  vnet_netlink_msg_t *replies = NULL;
+  int len = 0, offset = 0;
+  u32 msg_mtu;
+
+  ifmsg.ifi_index = ifindex;
+
+  vnet_netlink_msg_init (&m, RTM_GETLINK, NLM_F_REQUEST, &ifmsg,
+			 sizeof (struct ifinfomsg));
+  // vnet_netlink_msg_add_rtattr (&m, IFLA_MTU, &mtu, sizeof (int));
+  err = vnet_netlink_msg_send (&m, &replies);
+  if (err)
+    {
+      err = clib_error_return (0, "get link mtu %U", format_clib_error, err);
+      goto done;
+    }
+
+  if (vec_len (replies) != 1)
+    {
+      err = clib_error_return (0, "got %d != 1 netlink reply msg",
+			       vec_len (replies));
+      goto done;
+    }
+
+  struct nlmsghdr *nh = (struct nlmsghdr *) replies[0].data;
+  if (nh->nlmsg_type != RTM_NEWLINK)
+    {
+      err = clib_error_return (
+	0, "netlink reply has wrong type: %d != RTM_NEWLINK", nh->nlmsg_type);
+      goto done;
+    }
+
+  offset = NLMSG_HDRLEN + NLMSG_ALIGN (sizeof (struct ifinfomsg));
+  attr = (struct nlattr *) ((u8 *) nh + offset);
+  len = nh->nlmsg_len - offset;
+
+  do
+    {
+      if ((attr->nla_type & NLA_TYPE_MASK) == IFLA_MTU)
+	{
+	  msg_mtu = *(u32 *) ((u8 *) attr + NLA_HDRLEN);
+	  if (attr->nla_type & NLA_F_NET_BYTEORDER)
+	    *mtu = clib_net_to_host_u32 (msg_mtu);
+	  else
+	    *mtu = msg_mtu;
+	  clib_warning ("mtu: %d", *mtu);
+	  goto done;
+	}
+      offset = NLA_ALIGN (attr->nla_len);
+      len -= offset;
+      attr = (struct nlattr *) ((u8 *) attr + offset);
+    }
+  while (len > sizeof (struct nlattr));
+
+  /* not found */
+  err = clib_error_return (0, "mtu not found in netlink message");
+
+done:
+  vec_foreach (msg, replies)
+    {
+      vec_free (msg->data);
+    }
+  vec_free (replies);
+
   return err;
 }
 
@@ -225,7 +307,7 @@ vnet_netlink_set_link_mtu (int ifindex, int mtu)
   vnet_netlink_msg_init (&m, RTM_SETLINK, NLM_F_REQUEST,
 			 &ifmsg, sizeof (struct ifinfomsg));
   vnet_netlink_msg_add_rtattr (&m, IFLA_MTU, &mtu, sizeof (int));
-  err = vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m, NULL);
   if (err)
     err = clib_error_return (0, "set link mtu %U", format_clib_error, err);
   return err;
@@ -248,7 +330,7 @@ vnet_netlink_add_ip4_addr (int ifindex, void *addr, int pfx_len)
 
   vnet_netlink_msg_add_rtattr (&m, IFA_LOCAL, addr, 4);
   vnet_netlink_msg_add_rtattr (&m, IFA_ADDRESS, addr, 4);
-  err = vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m, NULL);
   if (err)
     err = clib_error_return (0, "add ip4 addr %U", format_clib_error, err);
   return err;
@@ -271,7 +353,7 @@ vnet_netlink_add_ip6_addr (int ifindex, void *addr, int pfx_len)
 
   vnet_netlink_msg_add_rtattr (&m, IFA_LOCAL, addr, 16);
   vnet_netlink_msg_add_rtattr (&m, IFA_ADDRESS, addr, 16);
-  err = vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m, NULL);
   if (err)
     err = clib_error_return (0, "add ip6 addr %U", format_clib_error, err);
   return err;
@@ -296,7 +378,7 @@ vnet_netlink_add_ip4_route (void *dst, u8 dst_len, void *gw)
 
   vnet_netlink_msg_add_rtattr (&m, RTA_GATEWAY, gw, 4);
   vnet_netlink_msg_add_rtattr (&m, RTA_DST, dst ? dst : dflt, 4);
-  err = vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m, NULL);
   if (err)
     err = clib_error_return (0, "add ip4 route %U", format_clib_error, err);
   return err;
@@ -321,7 +403,7 @@ vnet_netlink_add_ip6_route (void *dst, u8 dst_len, void *gw)
 
   vnet_netlink_msg_add_rtattr (&m, RTA_GATEWAY, gw, 16);
   vnet_netlink_msg_add_rtattr (&m, RTA_DST, dst ? dst : dflt, 16);
-  err = vnet_netlink_msg_send (&m);
+  err = vnet_netlink_msg_send (&m, NULL);
   if (err)
     err = clib_error_return (0, "add ip6 route %U", format_clib_error, err);
   return err;
