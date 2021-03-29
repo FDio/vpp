@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "aea99482_2ba95c7e",
+        "filename": "src/plugins/cnat/cnat_node_snat.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2021-03-29T09:35:30Z",
+      "side": 1,
+      "message": "I think we want to keep these set so that the corresponding checksums eventually get recomputed.\nThe VNET_BUFFER_OFFLOAD_F_PARTIAL_CKSUM indicates that the transport checksum contains the checksum the IP pseudo-header, which isn\u0027t true anymore after the NAT, so we clear it.",
+      "parentUuid": "c1a4bf42_46c722a4",
+      "revId": "b7d85e4a0e2d496e9e0e313094a6b52995cbed1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "9c00bafd_eb93c67d",
         "filename": "src/plugins/cnat/cnat_node_vip.c",
         "patchSetId": 7
@@ -30,6 +48,24 @@
       "writtenOn": "2021-03-17T17:26:01Z",
       "side": 1,
       "message": "shouldn\u0027t it be clearing VNET_BUFFER_OFFLOAD_F_{IP,UDP,TCP}_CKSUM too?",
+      "revId": "b7d85e4a0e2d496e9e0e313094a6b52995cbed1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d4c7146b_ea37c943",
+        "filename": "src/plugins/cnat/cnat_node_vip.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2021-03-29T09:35:30Z",
+      "side": 1,
+      "message": "Same as before.",
+      "parentUuid": "9c00bafd_eb93c67d",
       "revId": "b7d85e4a0e2d496e9e0e313094a6b52995cbed1b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
