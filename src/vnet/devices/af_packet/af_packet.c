@@ -30,6 +30,7 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ip/ip.h>
+#include <vnet/devices/netlink.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface/rx_queue_funcs.h>
 
@@ -63,22 +64,18 @@ af_packet_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
 			   u32 flags)
 {
   clib_error_t *error;
-  u8 *s;
   af_packet_main_t *apm = &af_packet_main;
   af_packet_if_t *apif =
     pool_elt_at_index (apm->interfaces, hi->dev_instance);
 
   if (flags == ETHERNET_INTERFACE_FLAG_MTU)
     {
-      s = format (0, "/sys/class/net/%s/mtu%c", apif->host_if_name, 0);
-
-      error = clib_sysfs_write ((char *) s, "%d", hi->max_packet_bytes);
-      vec_free (s);
+      error =
+	vnet_netlink_set_link_mtu (apif->host_if_index, hi->max_packet_bytes);
 
       if (error)
 	{
-	  vlib_log_err (apm->log_class,
-			"sysfs write failed to change MTU: %U",
+	  vlib_log_err (apm->log_class, "netlink failed to change MTU: %U",
 			format_clib_error, error);
 	  clib_error_free (error);
 	  return VNET_API_ERROR_SYSCALL_ERROR_1;
@@ -95,13 +92,10 @@ af_packet_read_mtu (af_packet_if_t *apif)
 {
   af_packet_main_t *apm = &af_packet_main;
   clib_error_t *error;
-  u8 *s;
-  s = format (0, "/sys/class/net/%s/mtu%c", apif->host_if_name, 0);
-  error = clib_sysfs_read ((char *) s, "%d", &apif->host_mtu);
-  vec_free (s);
+  error = vnet_netlink_get_link_mtu (apif->host_if_index, &apif->host_mtu);
   if (error)
     {
-      vlib_log_err (apm->log_class, "sysfs read failed to get MTU: %U",
+      vlib_log_err (apm->log_class, "netlink failed to get MTU: %U",
 		    format_clib_error, error);
       clib_error_free (error);
       return VNET_API_ERROR_SYSCALL_ERROR_1;
