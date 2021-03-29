@@ -236,7 +236,7 @@ typedef struct
   virtchnl_pf_event_t *events;
 
   u16 vsi_id;
-  u32 feature_bitmap;
+  u32 cap_flags;
   u8 hwaddr[6];
   u16 num_queue_pairs;
   u16 max_vectors;
@@ -348,6 +348,7 @@ clib_error_t *avf_program_flow (u32 dev_instance, int is_add, u8 *rule,
 format_function_t format_avf_device;
 format_function_t format_avf_device_name;
 format_function_t format_avf_input_trace;
+format_function_t format_avf_vf_cap_flags;
 vnet_flow_dev_ops_function_t avf_flow_ops_fn;
 
 static_always_inline avf_device_t *
