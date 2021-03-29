@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5ff33e46_deee9e26",
+        "filename": "src/plugins/dpdk/cryptodev/cryptodev.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 597,
+      "author": {
+        "id": 1849
+      },
+      "writtenOn": "2021-03-29T09:55:24Z",
+      "side": 1,
+      "message": "Hi Neale,\n\nThe cryptodev engine was designed in a way when line 498 check passes all ops in the frame shall be enqueued in full, hence the mempool_put of unenqueued ops are not needed. Was it because the device you are working having different behavior?\n\nP.S. I have submitted the patch https://gerrit.fd.io/r/c/vpp/+/31703 to use adaptive cryptodev data path depends on the device capability, could you have a look?\n\nRegards,\nFan",
+      "revId": "e60c646b4e44d58189a7d02aafc5460fe1335c2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
