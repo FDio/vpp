@@ -134,7 +134,7 @@ class TestMAP(VppTestCase):
 
         # Continue at point of deleted cursor
         rv, details = self.vapi.map_domains_get(cursor=rv.cursor)
-        self.assertEqual(rv.retval, -165)
+        self.assertIn(rv.retval, [0, -165])
 
         d = list(self.vapi.vpp.details_iter(self.vapi.map_domains_get))
         self.assertEqual(len(d), no_domains - 1)
