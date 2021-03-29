@@ -11,6 +11,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+execute_process(COMMAND ${CMAKE_C_COMPILER} --print-file-name libclang_rt.fuzzer-x86_64.a
+	OUTPUT_VARIABLE LIB_FUZZER_PATH
+	OUTPUT_STRIP_TRAILING_WHITESPACE)
+add_custom_target(modified_lib_fuzzer
+           COMMAND objcopy --redefine-sym main=fuzzer_lib_main ${LIB_FUZZER_PATH} ${PROJECT_BINARY_DIR}/lib/fuzzer.a
+)
+
 macro(add_vpp_executable exec)
   cmake_parse_arguments(ARG
     "ENABLE_EXPORTS;NO_INSTALL"
@@ -20,6 +27,16 @@ macro(add_vpp_executable exec)
   )
 
   add_executable(${exec} ${ARG_SOURCES})
+  if (VPP_ENABLE_FUZZER)
+     add_dependencies(${exec} fuzzer_plugin)
+     if ("${CMAKE_EXE_LINKER_FLAGS}" MATCHES "fuzzer-no-link")
+     else()
+       set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=fuzzer-no-link ${PROJECT_BINARY_DIR}/plugins/fuzzer/CMakeFiles/fuzzer_plugin.dir/fuzzer_entry.c.o ${PROJECT_BINARY_DIR}/lib/fuzzer.a -lstdc++")
+       add_dependencies(${exec} modified_lib_fuzzer)
+     endif()
+  endif (VPP_ENABLE_FUZZER)
+
+
   if(ARG_LINK_LIBRARIES)
     target_link_libraries(${exec} ${ARG_LINK_LIBRARIES})
   endif()

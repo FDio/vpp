@@ -38,7 +38,7 @@ macro(add_vpp_library lib)
     COMPONENT ${ARG_COMPONENT}
   )
 
-  if (ARG_LTO AND VPP_USE_LTO)
+  if (ARG_LTO AND VPP_USE_LTO AND NOT VPP_ENABLE_FUZZER)
      set_property(TARGET ${lib} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
      target_compile_options (${lib} PRIVATE "-ffunction-sections")
      target_compile_options (${lib} PRIVATE "-fdata-sections")
