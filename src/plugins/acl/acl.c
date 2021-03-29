@@ -1815,6 +1815,42 @@ vl_api_acl_add_replace_t_handler (vl_api_acl_add_replace_t * mp)
   /* *INDENT-ON* */
 }
 
+static int
+fuzz_driver_acl_add_replace(const void *data, uword count)
+{
+    vl_api_acl_add_replace_t_handler((void *)data);
+    return 0;
+}
+
+extern int vpp_fuzzer_run_driver(int *argc, char ***argv,
+                  int (*UserCb)(const void *Data, uword Size));
+
+
+static char *args[] = { "/tmp/fuzzer", 0 };
+
+
+static clib_error_t *
+acl_fuzz_aclplugin_fn (vlib_main_t * vm,
+                        unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  clib_warning("fuzzing...");
+  int argc = 1;
+  char **argv = args;
+  vpp_fuzzer_run_driver(&argc, &argv, fuzz_driver_acl_add_replace);
+  return error;
+}
+
+
+
+VLIB_CLI_COMMAND (aclplugin_fuzz_command, static) = {
+    .path = "acl-plugin fuzz-test",
+    .short_help = "do some fuzzing",
+    .function = acl_fuzz_aclplugin_fn,
+};
+
+
+
 static void
 vl_api_acl_del_t_handler (vl_api_acl_del_t * mp)
 {
@@ -2511,7 +2547,6 @@ acl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 }
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (acl_sw_interface_add_del);
-
 
 
 static clib_error_t *
