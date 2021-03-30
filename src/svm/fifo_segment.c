@@ -814,7 +814,7 @@ fifo_segment_cleanup (fifo_segment_t *fs)
   vec_free (fs->slices);
 
   vec_foreach (fs->mqs, mq)
-    vec_free (mq->rings);
+    svm_msg_q_cleanup (mq);
 
   vec_free (fs->mqs);
 }

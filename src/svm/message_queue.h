@@ -126,6 +126,11 @@ uword svm_msg_q_size_to_alloc (svm_msg_q_cfg_t *cfg);
 void svm_msg_q_attach (svm_msg_q_t *mq, void *smq_base);
 
 /**
+ * Cleanup mq's private data
+ */
+void svm_msg_q_cleanup (svm_msg_q_t *mq);
+
+/**
  * Free message queue
  *
  * @param mq		message queue to be freed
