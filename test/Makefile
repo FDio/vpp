@@ -124,7 +124,7 @@ PAPI_WIPE_DIST=$(WS_ROOT)/src/vpp-api/vapi/__pycache__ \
 $(PIP_TOOLS_INSTALL_DONE):
 	@rm -rf $(VENV_PATH)
 	@mkdir -p $(VENV_RUN_DIR)
-	@virtualenv $(VENV_PATH) -p $(PYTHON_INTERP)
+	@$(PYTHON_INTERP) -m venv $(VENV_PATH)
 	# pip version pinning
 	@bash -c "source $(VENV_PATH)/bin/activate && \
 		  $(PYTHON_INTERP) -m pip install pip===$(PIP_VERSION)"
