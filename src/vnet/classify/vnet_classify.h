@@ -249,8 +249,6 @@ vnet_classify_table_get (u32 table_index)
 static inline u64
 vnet_classify_hash_packet_inline (vnet_classify_table_t *t, const u8 *h)
 {
-  u32x4 *mask;
-
   union
   {
     u32x4 as_u32x4;
@@ -258,8 +256,68 @@ vnet_classify_hash_packet_inline (vnet_classify_table_t *t, const u8 *h)
   } xor_sum __attribute__ ((aligned (sizeof (u32x4))));
 
   ASSERT (t);
+
+#if defined(CLIB_HAVE_VEC512)
+  union
+  {
+    u64x8u q8[2]; /* 2 x m512 */
+    u64x4u q4[4]; /* 4 x m256 */
+  } d52;
+
+  union
+  {
+    u64x4u q4[2]; /* 2 x m256 */
+    u64x2u q2[4]; /* 4 x m128 */
+  } d21;
+
+  union
+  {
+    u8 x16[2];
+    u16 x32;
+  } kmask;
+
+  u64x8u u64x8_idx, u64x8_mask;
+  u64x8u *mask512;
+  u64x2u q2;
+
+  /* load the table mask */
+  u64x8_mask = u64x8_load_unaligned (t->mask);
+  mask512 = &u64x8_mask;
+
+  /* mask which lanes are being operated on */
+  kmask.x32 = pow2_mask (t->match_n_vectors * 2);
+  kmask.x32 = kmask.x32 << (t->skip_n_vectors * 2);
+
+  d52.q8[0] = u64x8_maskz_load_unaligned (kmask.x16[0], (u8 *) h);
+
+  if (kmask.x16[1])
+    d52.q8[1] = u64x8_maskz_load_unaligned (kmask.x16[1], (u8 *) h + sizeof(u64x8));
+
+  if(t->skip_n_vectors)
+    {
+      kmask.x32 = kmask.x32 >> (t->skip_n_vectors * 2);
+      u64x8_idx =
+	((u64x8u) {0, 1, 2, 3, 4, 5, 6, 7})
+	+ u64x8_splat(t->skip_n_vectors * 2);
+
+      d52.q8[0] = u64x8_mask_permute (d52.q8[0], kmask.x16[0],
+				      u64x8_idx, d52.q8[1]);
+    }
+
+  d52.q8[0] = u64x8_maskz_and (kmask.x16[0], d52.q8[0], mask512[0]);
+  d21.q4[0] = d52.q4[0] ^ d52.q4[1];
+  q2 = d21.q2[0] ^ d21.q2[1];
+
+  if (kmask.x16[1])
+    {
+      d52.q8[1] = u64x8_maskz_and (kmask.x16[1], d52.q8[1], mask512[1]);
+      d21.q4[1] = d52.q4[2] ^ d52.q4[3];
+      q2 ^= d21.q2[2] ^ d21.q2[3];
+    }
+  xor_sum.as_u32x4  = (u32x4) q2;
+#elif defined(CLIB_HAVE_VEC128)
+  u32x4 *mask;
   mask = t->mask;
-#ifdef CLIB_HAVE_VEC128
   u32x4u *data = (u32x4u *) h;
   xor_sum.as_u32x4 = data[0 + t->skip_n_vectors] & mask[0];
   switch (t->match_n_vectors)
@@ -282,6 +340,8 @@ vnet_classify_hash_packet_inline (vnet_classify_table_t *t, const u8 *h)
       abort ();
     }
 #else
+  u32x4 *mask;
+  mask = t->mask;
   u32 skip_u64 = t->skip_n_vectors * 2;
   u64 *data64 = (u64 *) h;
   xor_sum.as_u64[0] = data64[0 + skip_u64] & ((u64 *) mask)[0];
@@ -310,7 +370,7 @@ vnet_classify_hash_packet_inline (vnet_classify_table_t *t, const u8 *h)
     default:
       abort ();
     }
-#endif /* CLIB_HAVE_VEC128 */
+#endif
 
 #ifdef clib_crc32c_uses_intrinsics
   return clib_crc32c ((u8 *) & xor_sum, sizeof (xor_sum));
@@ -400,12 +460,6 @@ vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
 				 u64 hash, f64 now)
 {
   vnet_classify_entry_t *v;
-  u32x4 *mask, *key;
-  union
-  {
-    u32x4 as_u32x4;
-    u64 as_u64[2];
-  } result __attribute__ ((aligned (sizeof (u32x4))));
   vnet_classify_bucket_t *b;
   u32 value_index;
   u32 bucket_index;
@@ -414,7 +468,6 @@ vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
 
   bucket_index = hash & (t->nbuckets - 1);
   b = &t->buckets[bucket_index];
-  mask = t->mask;
 
   if (b->offset == 0)
     return 0;
@@ -432,25 +485,107 @@ vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
 
   v = vnet_classify_entry_at_index (t, v, value_index);
 
-#ifdef CLIB_HAVE_VEC128
-  const u32x4u *data = (const u32x4u *) h;
+#if defined(CLIB_HAVE_VEC512)
+  u64x8u data[2], u64x8_mask, u64x8_key;
+  u64x8u *mask512, *key512;
+
+  union
+  {
+    u64x8u x8;
+    u64x4u x4[2];
+  } result64 __attribute__ ((aligned (sizeof (u64x8))));
+
+  u64x8u u64x8_idx;
+  u32 kmask_result;
+
+  union
+  {
+    u8 x16[2];
+    u16 x32;
+  } kmask;
+
+
+  kmask.x32 = pow2_mask(t->match_n_vectors * 2);
+  kmask.x32 = kmask.x32 << (t->skip_n_vectors * 2);
+
+  u64x8_mask = u64x8_load_unaligned (t->mask);
+  mask512 = &u64x8_mask;
+
+  for (i = 0; i < limit; i++)
+    {
+      u64x8_key = u64x8_load_unaligned (v->key);
+      key512 = &u64x8_key;
+
+      data[0] = u64x8_maskz_load_unaligned (kmask.x16[0], (u8 *) h);
+
+      if (kmask.x16[1])
+	data[1] = u64x8_maskz_load_unaligned (kmask.x16[1], (u8 *) h + 64);
+
+      if(t->skip_n_vectors)
+	{
+	  kmask.x32 = kmask.x32 >> (t->skip_n_vectors * 2);
+	  u64x8_idx =
+	    ((u64x8u) {0, 1, 2, 3, 4, 5, 6, 7})
+	    + u64x8_splat(t->skip_n_vectors * 2);
+
+	  data[0] = u64x8_mask_permute (data[0], kmask.x16[0],
+					u64x8_idx, data[1]);
+	}
+      /*
+       * Combine the logical ((data and mask) xor key) using a truth table and
+       * tenary operation. Repeat for the full 80 bytes where necessary.
+       */
+
+      result64.x8 = u64x8_maskz_ternarylogic (kmask.x16[0], data[0],
+					      mask512[0], key512[0], 0x6A);
+
+      kmask_result = u8x32_msb_mask ((u8x32) result64.x4[0]);
+      kmask_result |= u8x32_msb_mask ((u8x32) result64.x4[1]);
+      if (kmask.x16[1])
+        {
+          result64.x8 = u64x8_maskz_ternarylogic (kmask.x16[1], data[1], 
+						  mask512[1], key512[1], 0x6A);
+
+	  kmask_result |= u8x32_msb_mask ((u8x32) result64.x4[0]);
+	}
+
+      kmask_result = kmask_result - 1;
+
+      if (kmask_result == 0xff)
+	{
+	  if (PREDICT_TRUE (now))
+	    {
+	      v->hits++;
+	      v->last_heard = now;
+	    }
+	  return (v);
+	}
+      v = vnet_classify_entry_at_index (t, v, 1);
+    }
+#elif defined(CLIB_HAVE_VEC128)
+  u32x4 *mask, *key;
+  u32x4 result __attribute__ ((aligned (sizeof (u32x4))));
+  const u32x4u *data = (u32x4u *) h;
+
+  mask = t->mask;
+
   for (i = 0; i < limit; i++)
     {
       key = v->key;
-      result.as_u32x4 = (data[0 + t->skip_n_vectors] & mask[0]) ^ key[0];
+      result = (data[0 + t->skip_n_vectors] & mask[0]) ^ key[0];
       switch (t->match_n_vectors)
 	{
 	case 5:
-	  result.as_u32x4 |= (data[4 + t->skip_n_vectors] & mask[4]) ^ key[4];
+	  result |= (data[4 + t->skip_n_vectors] & mask[4]) ^ key[4];
 	  /* FALLTHROUGH */
 	case 4:
-	  result.as_u32x4 |= (data[3 + t->skip_n_vectors] & mask[3]) ^ key[3];
+	  result |= (data[3 + t->skip_n_vectors] & mask[3]) ^ key[3];
 	  /* FALLTHROUGH */
 	case 3:
-	  result.as_u32x4 |= (data[2 + t->skip_n_vectors] & mask[2]) ^ key[2];
+	  result |= (data[2 + t->skip_n_vectors] & mask[2]) ^ key[2];
 	  /* FALLTHROUGH */
 	case 2:
-	  result.as_u32x4 |= (data[1 + t->skip_n_vectors] & mask[1]) ^ key[1];
+	  result |= (data[1 + t->skip_n_vectors] & mask[1]) ^ key[1];
 	  /* FALLTHROUGH */
 	case 1:
 	  break;
@@ -458,7 +593,7 @@ vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
 	  abort ();
 	}
 
-      if (u32x4_zero_byte_mask (result.as_u32x4) == 0xffff)
+      if (u32x4_zero_byte_mask (result) == 0xffff)
 	{
 	  if (PREDICT_TRUE (now))
 	    {
@@ -470,40 +605,43 @@ vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
       v = vnet_classify_entry_at_index (t, v, 1);
     }
 #else
+  u32x4 *mask, *key;
+  u64 result[2];
   u32 skip_u64 = t->skip_n_vectors * 2;
+  mask = t->mask;
   const u64 *data64 = (const u64 *) h;
   for (i = 0; i < limit; i++)
     {
       key = v->key;
 
-      result.as_u64[0] =
+      result[0] =
 	(data64[0 + skip_u64] & ((u64 *) mask)[0]) ^ ((u64 *) key)[0];
-      result.as_u64[1] =
+      result[1] =
 	(data64[1 + skip_u64] & ((u64 *) mask)[1]) ^ ((u64 *) key)[1];
       switch (t->match_n_vectors)
 	{
 	case 5:
-	  result.as_u64[0] |=
+	  result[0] |=
 	    (data64[8 + skip_u64] & ((u64 *) mask)[8]) ^ ((u64 *) key)[8];
-	  result.as_u64[1] |=
+	  result[1] |=
 	    (data64[9 + skip_u64] & ((u64 *) mask)[9]) ^ ((u64 *) key)[9];
 	  /* FALLTHROUGH */
 	case 4:
-	  result.as_u64[0] |=
+	  result[0] |=
 	    (data64[6 + skip_u64] & ((u64 *) mask)[6]) ^ ((u64 *) key)[6];
-	  result.as_u64[1] |=
+	  result[1] |=
 	    (data64[7 + skip_u64] & ((u64 *) mask)[7]) ^ ((u64 *) key)[7];
 	  /* FALLTHROUGH */
 	case 3:
-	  result.as_u64[0] |=
+	  result[0] |=
 	    (data64[4 + skip_u64] & ((u64 *) mask)[4]) ^ ((u64 *) key)[4];
-	  result.as_u64[1] |=
+	  result[1] |=
 	    (data64[5 + skip_u64] & ((u64 *) mask)[5]) ^ ((u64 *) key)[5];
 	  /* FALLTHROUGH */
 	case 2:
-	  result.as_u64[0] |=
+	  result[0] |=
 	    (data64[2 + skip_u64] & ((u64 *) mask)[2]) ^ ((u64 *) key)[2];
-	  result.as_u64[1] |=
+	  result[1] |=
 	    (data64[3 + skip_u64] & ((u64 *) mask)[3]) ^ ((u64 *) key)[3];
 	  /* FALLTHROUGH */
 	case 1:
@@ -512,7 +650,7 @@ vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
 	  abort ();
 	}
 
-      if (result.as_u64[0] == 0 && result.as_u64[1] == 0)
+      if (result[0] == 0 && result[1] == 0)
 	{
 	  if (PREDICT_TRUE (now))
 	    {
@@ -524,7 +662,7 @@ vnet_classify_find_entry_inline (vnet_classify_table_t *t, const u8 *h,
 
       v = vnet_classify_entry_at_index (t, v, 1);
     }
-#endif /* CLIB_HAVE_VEC128 */
+#endif
   return 0;
 }
 
