@@ -416,10 +416,10 @@ VLIB_NODE_FN (vnet_interface_output_node)
   if (do_tx_offloads == 0 && arc_or_subif == 0)
     n_bytes = vnet_interface_output_node_inline (
       vm, sw_if_index, ccm, bufs, config_index, arc, n_buffers, 0, 0);
-  else if (arc_or_subif)
+  else if (do_tx_offloads == 0 && arc_or_subif == 1)
     n_bytes = vnet_interface_output_node_inline (
       vm, sw_if_index, ccm, bufs, config_index, arc, n_buffers, 0, 1);
-  else if (do_tx_offloads)
+  else if (do_tx_offloads == 1 && arc_or_subif == 0)
     n_bytes = vnet_interface_output_node_inline (
       vm, sw_if_index, ccm, bufs, config_index, arc, n_buffers, 1, 0);
   else
