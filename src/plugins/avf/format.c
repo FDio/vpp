@@ -168,10 +168,74 @@ format_avf_input_trace (u8 * s, va_list * args)
   return s;
 }
 
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+u8 *
+format_avf_vlan_support (u8 *s, va_list *args)
+{
+  virtchnl_vlan_support_t v = va_arg (*args, u32);
+  int not_first = 0;
+
+  char *strs[32] = {
+#define _(a, b, c) [a] = c,
+    foreach_virtchnl_vlan_support_bit
+#undef _
+  };
+
+  if (v == VIRTCHNL_VLAN_UNSUPPORTED)
+    return format (s, "unsupported");
+
+  for (int i = 0; i < 32; i++)
+    {
+      if ((v & (1 << i)) == 0)
+	continue;
+      if (not_first)
+	s = format (s, " ");
+      if (strs[i])
+	s = format (s, "%s", strs[i]);
+      else
+	s = format (s, "unknown(%u)", i);
+      not_first = 1;
+    }
+  return s;
+}
+
+u8 *
+format_avf_vlan_supported_caps (u8 *s, va_list *args)
+{
+  virtchnl_vlan_supported_caps_t *sc =
+    va_arg (*args, virtchnl_vlan_supported_caps_t *);
+  u32 indent = format_get_indent (s);
+
+  s = format (s, "outer: %U", format_avf_vlan_support, sc->outer);
+  s = format (s, "\n%Uinner: %U", format_white_space, indent,
+	      format_avf_vlan_support, sc->inner);
+  return s;
+}
+
+u8 *
+format_avf_vlan_caps (u8 *s, va_list *args)
+{
+  virtchnl_vlan_caps_t *vc = va_arg (*args, virtchnl_vlan_caps_t *);
+  u32 indent = format_get_indent (s);
+
+  s = format (s, "filtering:");
+  s = format (s, "\n%Usupport:", format_white_space, indent + 2);
+  s =
+    format (s, "\n%U%U", format_white_space, indent + 4,
+	    format_avf_vlan_supported_caps, &vc->filtering.filtering_support);
+  s = format (s, "\n%Uethertype-init: 0x%x", format_white_space, indent + 4,
+	      vc->filtering.ethertype_init);
+  s = format (s, "\n%Umax-filters: %u", format_white_space, indent + 4,
+	      vc->filtering.max_filters);
+  s = format (s, "\n%Uoffloads:", format_white_space, indent);
+  s = format (s, "\n%Ustripping support:", format_white_space, indent + 2);
+  s = format (s, "\n%U%U", format_white_space, indent + 4,
+	      format_avf_vlan_supported_caps, &vc->offloads.stripping_support);
+  s = format (s, "\n%Uinserion support:", format_white_space, indent + 2);
+  s = format (s, "\n%U%U", format_white_space, indent + 4,
+	      format_avf_vlan_supported_caps, &vc->offloads.insertion_support);
+  s = format (s, "\n%Uethertype-init: 0x%x", format_white_space, indent + 4,
+	      vc->offloads.ethertype_init);
+  s = format (s, "\n%Uethertype-match: 0x%x", format_white_space, indent + 4,
+	      vc->offloads.ethertype_match);
+  return s;
+}
