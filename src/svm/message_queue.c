@@ -167,10 +167,19 @@ svm_msg_q_attach (svm_msg_q_t *mq, void *smq_base)
 }
 
 void
+svm_msg_q_cleanup (svm_msg_q_t *mq)
+{
+  vec_free (mq->rings);
+  clib_spinlock_free (&mq->q.lock);
+  if (mq->q.evtfd != -1)
+    close (mq->q.evtfd);
+}
+
+void
 svm_msg_q_free (svm_msg_q_t * mq)
 {
+  svm_msg_q_cleanup (mq);
   clib_mem_free (mq->q.shr);
-  clib_spinlock_free (&mq->q.lock);
   clib_mem_free (mq);
 }
 
@@ -486,6 +495,13 @@ svm_msg_q_alloc_eventfd (svm_msg_q_t *mq)
     return -1;
   svm_msg_q_set_eventfd (mq, fd);
   return 0;
+}
+
+void
+svm_msg_q_free_eventfd (svm_msg_q_t *mq)
+{
+  if (mq->q.evtfd != -1)
+    close (mq->q.evtfd);
 }
 
 int
