@@ -549,11 +549,11 @@ avf_op_get_vf_resources (vlib_main_t * vm, avf_device_t * ad,
 			 virtchnl_vf_resource_t * res)
 {
   clib_error_t *err = 0;
-  u32 bitmap =
-    (VIRTCHNL_VF_OFFLOAD_L2 | VIRTCHNL_VF_OFFLOAD_RSS_PF |
-     VIRTCHNL_VF_OFFLOAD_WB_ON_ITR | VIRTCHNL_VF_OFFLOAD_VLAN |
-     VIRTCHNL_VF_OFFLOAD_RX_POLLING | VIRTCHNL_VF_CAP_ADV_LINK_SPEED |
-     VIRTCHNL_VF_OFFLOAD_FDIR_PF | VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF);
+  u32 bitmap = (VIRTCHNL_VF_OFFLOAD_L2 | VIRTCHNL_VF_OFFLOAD_RSS_PF |
+		VIRTCHNL_VF_OFFLOAD_WB_ON_ITR | VIRTCHNL_VF_OFFLOAD_VLAN |
+		VIRTCHNL_VF_OFFLOAD_RX_POLLING |
+		VIRTCHNL_VF_CAP_ADV_LINK_SPEED | VIRTCHNL_VF_OFFLOAD_FDIR_PF |
+		VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF | VIRTCHNL_VF_OFFLOAD_VLAN_V2);
 
   avf_log_debug (ad, "get_vf_resources: bitmap 0x%x (%U)", bitmap,
 		 format_avf_vf_cap_flags, bitmap);
@@ -816,6 +816,39 @@ avf_op_get_stats (vlib_main_t * vm, avf_device_t * ad,
 }
 
 clib_error_t *
+avf_op_get_offload_vlan_v2_caps (vlib_main_t *vm, avf_device_t *ad,
+				 virtchnl_vlan_caps_t *vc)
+{
+  clib_error_t *err;
+
+  err = avf_send_to_pf (vm, ad, VIRTCHNL_OP_GET_OFFLOAD_VLAN_V2_CAPS, 0, 0, vc,
+			sizeof (virtchnl_vlan_caps_t));
+
+  avf_log_debug (ad, "get_offload_vlan_v2_caps:\n%U%U", format_white_space, 16,
+		 format_avf_vlan_caps, vc);
+
+  return err;
+}
+
+clib_error_t *
+avf_op_disable_vlan_stripping_v2 (vlib_main_t *vm, avf_device_t *ad, u32 outer,
+				  u32 inner)
+{
+  virtchnl_vlan_setting_t vs = {
+    .outer_ethertype_setting = outer,
+    .inner_ethertype_setting = inner,
+    .vport_id = ad->vsi_id,
+  };
+
+  avf_log_debug (ad, "disable_vlan_stripping_v2: outer: %U, inner %U",
+		 format_avf_vlan_support, outer, format_avf_vlan_support,
+		 inner);
+
+  return avf_send_to_pf (vm, ad, VIRTCHNL_OP_DISABLE_VLAN_STRIPPING_V2, &vs,
+			 sizeof (virtchnl_vlan_setting_t), 0, 0);
+}
+
+clib_error_t *
 avf_device_reset (vlib_main_t * vm, avf_device_t * ad)
 {
   avf_aq_desc_t d = { 0 };
@@ -960,7 +993,23 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   /*
    * Disable VLAN stripping
    */
-  if ((error = avf_op_disable_vlan_stripping (vm, ad)))
+  if (ad->cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN_V2)
+    {
+      virtchnl_vlan_caps_t vc = {};
+      u32 outer = VIRTCHNL_VLAN_UNSUPPORTED, inner = VIRTCHNL_VLAN_UNSUPPORTED;
+      u32 mask = VIRTCHNL_VLAN_ETHERTYPE_8100;
+
+      if ((error = avf_op_get_offload_vlan_v2_caps (vm, ad, &vc)))
+	return error;
+
+      outer = vc.offloads.stripping_support.outer & mask;
+      inner = vc.offloads.stripping_support.inner & mask;
+
+      if ((outer || inner) &&
+	  (error = avf_op_disable_vlan_stripping_v2 (vm, ad, outer, inner)))
+	return error;
+    }
+  else if ((error = avf_op_disable_vlan_stripping (vm, ad)))
     return error;
 
   /*

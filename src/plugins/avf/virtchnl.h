@@ -99,7 +99,20 @@ enum
   _ (33, DEL_CLOUD_FILTER)                                                    \
   _ (47, ADD_FDIR_FILTER)                                                     \
   _ (48, DEL_FDIR_FILTER)                                                     \
-  _ (49, QUERY_FDIR_FILTER)
+  _ (49, QUERY_FDIR_FILTER)                                                   \
+  _ (50, GET_MAX_RSS_QREGION)                                                 \
+  _ (51, GET_OFFLOAD_VLAN_V2_CAPS)                                            \
+  _ (52, ADD_VLAN_V2)                                                         \
+  _ (53, DEL_VLAN_V2)                                                         \
+  _ (54, ENABLE_VLAN_STRIPPING_V2)                                            \
+  _ (55, DISABLE_VLAN_STRIPPING_V2)                                           \
+  _ (56, ENABLE_VLAN_INSERTION_V2)                                            \
+  _ (57, DISABLE_VLAN_INSERTION_V2)                                           \
+  _ (58, ENABLE_VLAN_FILTERING_V2)                                            \
+  _ (59, DISABLE_VLAN_FILTERING_V2)                                           \
+  _ (107, ENABLE_QUEUES_V2)                                                   \
+  _ (108, DISABLE_QUEUES_V2)                                                  \
+  _ (111, MAP_QUEUE_VECTOR)
 
 typedef enum
 {
@@ -407,6 +420,64 @@ typedef struct
 {
   u16 num_queue_pairs;
 } virtchnl_vf_res_request_t;
+
+typedef struct
+{
+  u32 outer;
+  u32 inner;
+} virtchnl_vlan_supported_caps_t;
+
+typedef struct
+{
+  virtchnl_vlan_supported_caps_t filtering_support;
+  u32 ethertype_init;
+  u16 max_filters;
+  u8 pad[2];
+} virtchnl_vlan_filtering_caps_t;
+
+typedef struct virtchnl_vlan_offload_caps
+{
+  virtchnl_vlan_supported_caps_t stripping_support;
+  virtchnl_vlan_supported_caps_t insertion_support;
+  u32 ethertype_init;
+  u8 ethertype_match;
+  u8 pad[3];
+} virtchnl_vlan_offload_caps_t;
+
+typedef struct
+{
+  virtchnl_vlan_filtering_caps_t filtering;
+  virtchnl_vlan_offload_caps_t offloads;
+} virtchnl_vlan_caps_t;
+
+#define foreach_virtchnl_vlan_support_bit                                     \
+  _ (0, ETHERTYPE_8100, "dot1Q")                                              \
+  _ (1, ETHERTYPE_88A8, "dot1AD")                                             \
+  _ (2, ETHERTYPE_9100, "QinQ")                                               \
+  _ (8, TAG_LOCATION_L2TAG1, "l2tag1")                                        \
+  _ (9, TAG_LOCATION_L2TAG2, "l2tag2")                                        \
+  _ (10, TAG_LOCATION_L2TAG2_2, "l2tag2_2")                                   \
+  _ (24, PRIO, "prio")                                                        \
+  _ (28, FILTER_MASK, "filter-mask")                                          \
+  _ (29, ETHERTYPE_AND, "etype-and")                                          \
+  _ (30, ETHERTYPE_XOR, "etype-xor")                                          \
+  _ (31, TOGGLE, "toggle")
+
+typedef enum
+{
+  VIRTCHNL_VLAN_UNSUPPORTED = 0,
+#define _(a, b, c) VIRTCHNL_VLAN_##b = (1 << a),
+  foreach_virtchnl_vlan_support_bit
+#undef _
+} virtchnl_vlan_support_t;
+
+typedef struct
+{
+  u32 outer_ethertype_setting;
+  u32 inner_ethertype_setting;
+  u16 vport_id;
+  u8 pad[6];
+} virtchnl_vlan_setting_t;
 
 #endif /* AVF_VIRTCHNL_H */
 

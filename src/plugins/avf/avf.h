@@ -349,6 +349,9 @@ format_function_t format_avf_device;
 format_function_t format_avf_device_name;
 format_function_t format_avf_input_trace;
 format_function_t format_avf_vf_cap_flags;
+format_function_t format_avf_vlan_supported_caps;
+format_function_t format_avf_vlan_caps;
+format_function_t format_avf_vlan_support;
 vnet_flow_dev_ops_function_t avf_flow_ops_fn;
 
 static_always_inline avf_device_t *
