@@ -960,7 +960,8 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   /*
    * Disable VLAN stripping
    */
-  if ((error = avf_op_disable_vlan_stripping (vm, ad)))
+  if ((ad->cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN) &&
+      (error = avf_op_disable_vlan_stripping (vm, ad)))
     return error;
 
   /*
