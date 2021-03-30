@@ -118,9 +118,7 @@ endif()
 ##############################################################################
 
 if (${DPDK_VERSION} VERSION_GREATER_EQUAL "20.8.0")
-  set(DPDK_CRYPTODEV_SOURCE cryptodev_dp_api)
-else ()
-  set(DPDK_CRYPTODEV_SOURCE cryptodev)
+  set(DPDK_CRYPTODEV_RAW_SOURCE cryptodev/cryptodev_raw_data_path.c)
 endif ()
 
 add_vpp_plugin(dpdk
@@ -135,7 +133,9 @@ add_vpp_plugin(dpdk
   device/format.c
   device/init.c
   device/node.c
-  cryptodev/${DPDK_CRYPTODEV_SOURCE}.c
+  cryptodev/cryptodev_op_data_path.c
+  cryptodev/cryptodev.c
+  ${DPDK_CRYPTODEV_RAW_SOURCE}
 
   MULTIARCH_SOURCES
   buffer.c
