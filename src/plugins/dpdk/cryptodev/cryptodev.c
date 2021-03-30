@@ -684,6 +684,7 @@ cryptodev_frame_gcm_enqueue (vlib_main_t * vm,
 	}
 
       sop->m_src = rte_mbuf_from_vlib_buffer (b);
+      sop->m_src->data_off = VLIB_BUFFER_PRE_DATA_SIZE;
       sop->m_dst = 0;
       /* mbuf prepend happens in the tx, but vlib_buffer happens in the nodes,
        * so we have to manually adjust mbuf data_off here so cryptodev can
