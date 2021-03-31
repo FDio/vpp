@@ -18,9 +18,6 @@
 
 #include <vnet/adj/adj.h>
 
-extern vlib_node_registration_t adj_nsh_midchain_node;
-extern vlib_node_registration_t adj_nsh_rewrite_node;
-
 typedef struct _nsh_main_placeholder
 {
   u8 output_feature_arc_index;
