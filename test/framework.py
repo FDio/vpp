@@ -581,6 +581,7 @@ class VppTestCase(unittest.TestCase):
         cls.setUpConstants()
         cls.reset_packet_infos()
         cls._captures = []
+        cls._old_captures = []
         cls.verbose = 0
         cls.vpp_dead = False
         cls.registry = VppObjectRegistry()
@@ -814,10 +815,10 @@ class VppTestCase(unittest.TestCase):
             i.enable_capture()
 
     @classmethod
-    def register_capture(cls, cap_name):
+    def register_capture(cls, intf, worker):
         """ Register a capture in the testclass """
         # add to the list of captures with current timestamp
-        cls._captures.append((time.time(), cap_name))
+        cls._captures.append((intf, worker))
 
     @classmethod
     def get_vpp_time(cls):
@@ -841,6 +842,10 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def pg_start(cls, trace=True):
         """ Enable the PG, wait till it is done, then clean up """
+        for (intf, worker) in cls._old_captures:
+            intf.rename_previous_capture_file(intf.get_in_path(worker),
+                                              intf.in_history_counter)
+        cls._old_captures = []
         if trace:
             cls.vapi.cli("clear trace")
             cls.vapi.cli("trace add pg-input 1000")
@@ -855,8 +860,10 @@ class VppTestCase(unittest.TestCase):
             if time.time() > deadline:
                 cls.logger.error("Timeout waiting for pg to stop")
                 break
-        for stamp, cap_name in cls._captures:
-            cls.vapi.cli('packet-generator delete %s' % cap_name)
+        for intf, worker in cls._captures:
+            cls.vapi.cli('packet-generator delete %s' %
+                         intf.get_cap_name(worker))
+        cls._old_captures = cls._captures
         cls._captures = []
 
     @classmethod
