@@ -171,14 +171,15 @@ vnet_set_geneve_version (geneve_header_t * h, u8 version)
 static inline u8
 vnet_get_geneve_options_len (geneve_header_t * h)
 {
-  return ((h->first_word & GENEVE_OPTLEN_MASK) >> GENEVE_OPTLEN_SHIFT);
+  return ((h->first_word & GENEVE_OPTLEN_MASK) >> GENEVE_OPTLEN_SHIFT) << 2;
 }
 
 static inline void
 vnet_set_geneve_options_len (geneve_header_t * h, u8 len)
 {
+  ASSERT ((len & 0x3) == 0);
   h->first_word &= ~(GENEVE_OPTLEN_MASK);
-  h->first_word |= ((len << GENEVE_OPTLEN_SHIFT) & GENEVE_OPTLEN_MASK);
+  h->first_word |= ((len << (GENEVE_OPTLEN_SHIFT - 2)) & GENEVE_OPTLEN_MASK);
 }
 
 static inline u8
