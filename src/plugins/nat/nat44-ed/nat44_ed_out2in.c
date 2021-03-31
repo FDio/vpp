@@ -37,6 +37,15 @@ static char *nat_out2in_ed_error_strings[] = {
 #undef _
 };
 
+typedef enum
+{
+  NAT_ED_SP_REASON_NO_REASON,
+  NAT_ED_SP_REASON_LOOKUP_FAILED,
+  NAT_ED_SP_REASON_VRF_EXPIRED,
+  NAT_ED_SP_TCP_CLOSED,
+  NAT_ED_SP_SESS_EXPIRED,
+} nat_slow_path_reason_e;
+
 typedef struct
 {
   u32 sw_if_index;
@@ -49,7 +58,28 @@ typedef struct
   u8 is_slow_path;
   u8 translation_via_i2of;
   u8 lookup_skipped;
+  nat_slow_path_reason_e slow_path_reason;
 } nat44_ed_out2in_trace_t;
+
+static u8 *
+format_slow_path_reason (u8 *s, va_list *args)
+{
+  nat_slow_path_reason_e reason = va_arg (*args, nat_slow_path_reason_e);
+  switch (reason)
+    {
+    case NAT_ED_SP_REASON_NO_REASON:
+      return format (s, "no reason for slow path");
+    case NAT_ED_SP_REASON_LOOKUP_FAILED:
+      return format (s, "slow path because lookup failed");
+    case NAT_ED_SP_REASON_VRF_EXPIRED:
+      return format (s, "slow path because vrf expired");
+    case NAT_ED_SP_TCP_CLOSED:
+      return format (s, "slow path because tcp closed");
+    case NAT_ED_SP_SESS_EXPIRED:
+      return format (s, "slow path because session expired");
+    }
+  return format (s, "invalid reason value");
+}
 
 static u8 *
 format_nat44_ed_out2in_trace (u8 * s, va_list * args)
@@ -84,6 +114,7 @@ format_nat44_ed_out2in_trace (u8 * s, va_list * args)
 	  s = format (s, "\n  search key %U", format_ed_session_kvp,
 		      &t->search_key);
 	}
+      s = format (s, "\n %U", format_slow_path_reason, t->slow_path_reason);
     }
 
   return s;
@@ -789,6 +820,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
       snat_session_t *s0 = 0;
       clib_bihash_kv_16_8_t kv0, value0;
       nat_translation_error_e translation_error = NAT_ED_TRNSL_ERR_SUCCESS;
+      nat_slow_path_reason_e slow_path_reason = NAT_ED_SP_REASON_NO_REASON;
       nat_6t_flow_t *f = 0;
       nat_6t_t lookup;
       int lookup_skipped = 0;
@@ -890,6 +922,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
       if (clib_bihash_search_16_8 (&sm->flow_hash, &kv0, &value0))
 	{
 	  // flow does not exist go slow path
+	  slow_path_reason = NAT_ED_SP_REASON_LOOKUP_FAILED;
 	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	  goto trace0;
 	}
@@ -904,6 +937,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	  // session is closed, go slow path
 	  nat_free_session_data (sm, s0, thread_index, 0);
 	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  slow_path_reason = NAT_ED_SP_REASON_VRF_EXPIRED;
 	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	  goto trace0;
 	}
@@ -913,6 +947,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	  if (now >= s0->tcp_closed_timestamp)
 	    {
 	      // session is closed, go slow path, freed in slow path
+	      slow_path_reason = NAT_ED_SP_TCP_CLOSED;
 	      next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	    }
 	  else
@@ -933,6 +968,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	  // session is closed, go slow path
 	  nat_free_session_data (sm, s0, thread_index, 0);
 	  nat_ed_session_delete (sm, s0, thread_index, 1);
+	  slow_path_reason = NAT_ED_SP_SESS_EXPIRED;
 	  next[0] = NAT_NEXT_OUT2IN_ED_SLOW_PATH;
 	  goto trace0;
 	}
@@ -1041,6 +1077,7 @@ nat44_ed_out2in_fast_path_node_fn_inline (vlib_main_t * vm,
 	  t->translation_error = translation_error;
 	  clib_memcpy (&t->search_key, &kv0, sizeof (t->search_key));
 	  t->lookup_skipped = lookup_skipped;
+	  t->slow_path_reason = slow_path_reason;
 
 	  if (s0)
 	    {
