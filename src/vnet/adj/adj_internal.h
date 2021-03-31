@@ -42,6 +42,14 @@
 #define ADJ_DBG(_e, _fmt, _args...)
 #endif
 
+/*
+ * Vlib nodes
+ */
+extern vlib_node_registration_t adj_nsh_midchain_node;
+extern vlib_node_registration_t adj_nsh_rewrite_node;
+extern vlib_node_registration_t adj_midchain_tx_no_count_node;
+extern vlib_node_registration_t adj_midchain_tx_node;
+
 static inline u32
 adj_get_rewrite_node (vnet_link_t linkt)
 {
