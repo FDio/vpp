@@ -22,10 +22,10 @@ DPDK_FAILSAFE_PMD            ?= n
 DPDK_MACHINE                 ?= default
 DPDK_MLX_IBV_LINK            ?= static
 
-dpdk_version                 ?= 20.11
+dpdk_version                 ?= 21.02
 dpdk_base_url                ?= http://fast.dpdk.org/rel
 dpdk_tarball                 := dpdk-$(dpdk_version).tar.xz
-dpdk_tarball_md5sum_20.11    := 13a990dc3b300635f685e268b36918a3
+dpdk_tarball_md5sum_21.02    := 2c3e4800b04495ad7fa8656a7e1a3ec1
 dpdk_tarball_md5sum          := $(dpdk_tarball_md5sum_$(dpdk_version))
 dpdk_url                     := $(dpdk_base_url)/$(dpdk_tarball)
 dpdk_tarball_strip_dirs      := 1
@@ -168,8 +168,8 @@ define dpdk_config_cmds
 	mkdir -p ../dpdk-meson-venv && \
 	python3 -m venv ../dpdk-meson-venv && \
 	source ../dpdk-meson-venv/bin/activate && \
-	(if ! ls $(PIP_DOWNLOAD_DIR)meson* ; then pip3 download -d $(PIP_DOWNLOAD_DIR) -f $(DL_CACHE_DIR) meson==0.54 setuptools wheel; fi) && \
-	pip3 install --no-index --find-links=$(PIP_DOWNLOAD_DIR) meson==0.54 && \
+	(if ! ls $(PIP_DOWNLOAD_DIR)meson* ; then pip3 download -d $(PIP_DOWNLOAD_DIR) -f $(DL_CACHE_DIR) meson==0.54 setuptools wheel pyelftools; fi) && \
+	pip3 install --no-index --find-links=$(PIP_DOWNLOAD_DIR) meson==0.54 pyelftools && \
 	PKG_CONFIG_PATH=$(dpdk_install_dir)/lib/pkgconfig meson setup $(dpdk_src_dir) \
 		$(dpdk_build_dir) \
 		$(DPDK_MESON_ARGS) \
