@@ -2603,7 +2603,6 @@ nat44_ed_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
   snat_main_t *sm = &snat_main;
   clib_bihash_kv_8_8_t kv, value;
   clib_bihash_kv_16_8_t kv16, value16;
-  snat_main_per_thread_data_t *tsm;
 
   u32 proto, next_worker_index = 0;
   u16 port;
@@ -2612,29 +2611,7 @@ nat44_ed_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
 
   proto = ip_proto_to_nat_proto (ip->protocol);
 
-  if (PREDICT_TRUE (proto == NAT_PROTOCOL_UDP || proto == NAT_PROTOCOL_TCP))
-    {
-      init_ed_k (&kv16, ip->dst_address, vnet_buffer (b)->ip.reass.l4_dst_port,
-		 ip->src_address, vnet_buffer (b)->ip.reass.l4_src_port,
-		 rx_fib_index, ip->protocol);
-
-      if (PREDICT_TRUE (
-	    !clib_bihash_search_16_8 (&sm->flow_hash, &kv16, &value16)))
-	{
-	  tsm =
-	    vec_elt_at_index (sm->per_thread_data,
-			      ed_value_get_thread_index (&value16));
-	  vnet_buffer2 (b)->nat.cached_session_index =
-	    ed_value_get_session_index (&value16);
-	  next_worker_index = sm->first_worker_index + tsm->thread_index;
-	  nat_elog_debug_handoff (
-	    sm, "HANDOFF OUT2IN (session)", next_worker_index, rx_fib_index,
-	    clib_net_to_host_u32 (ip->src_address.as_u32),
-	    clib_net_to_host_u32 (ip->dst_address.as_u32));
-	  return next_worker_index;
-	}
-    }
-  else if (proto == NAT_PROTOCOL_ICMP)
+  if (PREDICT_FALSE (proto == NAT_PROTOCOL_ICMP))
     {
       ip4_address_t lookup_saddr, lookup_daddr;
       u16 lookup_sport, lookup_dport;
@@ -2648,10 +2625,7 @@ nat44_ed_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
 	  if (PREDICT_TRUE (
 		!clib_bihash_search_16_8 (&sm->flow_hash, &kv16, &value16)))
 	    {
-	      tsm =
-		vec_elt_at_index (sm->per_thread_data,
-				  ed_value_get_thread_index (&value16));
-	      next_worker_index = sm->first_worker_index + tsm->thread_index;
+	      next_worker_index = ed_value_get_thread_index (&value16);
 	      nat_elog_debug_handoff (
 		sm, "HANDOFF OUT2IN (session)", next_worker_index,
 		rx_fib_index, clib_net_to_host_u32 (ip->src_address.as_u32),
@@ -2659,6 +2633,23 @@ nat44_ed_get_out2in_worker_index (vlib_buffer_t *b, ip4_header_t *ip,
 	      return next_worker_index;
 	    }
 	}
+    }
+
+  init_ed_k (&kv16, ip->src_address, vnet_buffer (b)->ip.reass.l4_src_port,
+	     ip->dst_address, vnet_buffer (b)->ip.reass.l4_dst_port,
+	     rx_fib_index, ip->protocol);
+
+  if (PREDICT_TRUE (
+	!clib_bihash_search_16_8 (&sm->flow_hash, &kv16, &value16)))
+    {
+      vnet_buffer2 (b)->nat.cached_session_index =
+	ed_value_get_session_index (&value16);
+      next_worker_index = ed_value_get_thread_index (&value16);
+      nat_elog_debug_handoff (sm, "HANDOFF OUT2IN (session)",
+			      next_worker_index, rx_fib_index,
+			      clib_net_to_host_u32 (ip->src_address.as_u32),
+			      clib_net_to_host_u32 (ip->dst_address.as_u32));
+      return next_worker_index;
     }
 
   /* first try static mappings without port */
