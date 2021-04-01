@@ -132,8 +132,7 @@ class VppPGInterface(VppInterface):
         self._cap_name = "pcap%u-sw_if_index-%s" % (
             self.pg_index, self.sw_if_index)
 
-    def rename_previous_capture_file(self, path, counter):
-        # if a file from a previous capture exists, rename it.
+    def rename_old_pcap_file(self, path, counter):
         filename = os.path.basename(path)
         try:
             if os.path.isfile(path):
@@ -157,8 +156,7 @@ class VppPGInterface(VppInterface):
         """
         # disable the capture to flush the capture
         self.disable_capture()
-        self.rename_previous_capture_file(self.out_path,
-                                          self.out_history_counter)
+        self.rename_old_pcap_file(self.out_path, self.out_history_counter)
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.capture_cli)
         self._pcap_reader = None
@@ -186,7 +184,7 @@ class VppPGInterface(VppInterface):
 
         """
         wrpcap(self.get_in_path(worker), pkts)
-        self.test.register_capture(self, worker)
+        self.test.register_pcap(self, worker)
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.get_input_cli(nb_replays, worker))
 
