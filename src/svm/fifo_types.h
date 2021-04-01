@@ -119,14 +119,12 @@ typedef struct _svm_fifo
 
 typedef struct fifo_segment_slice_
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline);
   fs_sptr_t free_chunks[FS_CHUNK_VEC_LEN]; /**< Free chunks by size */
   fs_sptr_t free_fifos;			/**< Freelists of fifo shared hdrs  */
   uword n_fl_chunk_bytes;		/**< Chunk bytes on freelist */
   uword virtual_mem;			/**< Slice sum of all fifo sizes */
   u32 num_chunks[FS_CHUNK_VEC_LEN];	/**< Allocated chunks by chunk size */
-
-  CLIB_CACHE_LINE_ALIGN_MARK (lock);
-  u32 chunk_lock;
 } fifo_segment_slice_t;
 
 typedef struct fifo_slice_private_
