@@ -127,26 +127,27 @@ fsh_virtual_mem_update (fifo_segment_header_t * fsh, u32 slice_index,
   fss->virtual_mem += n_bytes;
 }
 
-static inline void
-fss_chunk_freelist_lock (fifo_segment_slice_t *fss)
-{
-  u32 free = 0;
-  while (!clib_atomic_cmp_and_swap_acq_relax_n (&fss->chunk_lock, &free, 1, 0))
-    {
-      /* atomic load limits number of compare_exchange executions */
-      while (clib_atomic_load_relax_n (&fss->chunk_lock))
-	CLIB_PAUSE ();
-      /* on failure, compare_exchange writes (*p)->lock into free */
-      free = 0;
-    }
-}
-
-static inline void
-fss_chunk_freelist_unlock (fifo_segment_slice_t *fss)
-{
-  /* Make sure all reads/writes are complete before releasing the lock */
-  clib_atomic_release (&fss->chunk_lock);
-}
+// static inline void
+// fss_chunk_freelist_lock (fifo_segment_slice_t *fss)
+//{
+//  u32 free = 0;
+//  while (!clib_atomic_cmp_and_swap_acq_relax_n (&fss->chunk_lock, &free, 1,
+//  0))
+//    {
+//      /* atomic load limits number of compare_exchange executions */
+//      while (clib_atomic_load_relax_n (&fss->chunk_lock))
+//	CLIB_PAUSE ();
+//      /* on failure, compare_exchange writes (*p)->lock into free */
+//      free = 0;
+//    }
+//}
+//
+// static inline void
+// fss_chunk_freelist_unlock (fifo_segment_slice_t *fss)
+//{
+//  /* Make sure all reads/writes are complete before releasing the lock */
+//  clib_atomic_release (&fss->chunk_lock);
+//}
 
 static inline int
 fss_chunk_fl_index_is_valid (fifo_segment_slice_t * fss, u32 fl_index)
@@ -159,10 +160,24 @@ fss_chunk_free_list_push (fifo_segment_header_t *fsh,
 			  fifo_segment_slice_t *fss, u32 fl_index,
 			  svm_fifo_chunk_t *c)
 {
-  fss_chunk_freelist_lock (fss);
-  c->next = fss->free_chunks[fl_index];
-  fss->free_chunks[fl_index] = fs_chunk_sptr (fsh, c);
-  fss_chunk_freelist_unlock (fss);
+  //  fss_chunk_freelist_lock (fss);
+  //  c->next = fss->free_chunks[fl_index];
+  //  fss->free_chunks[fl_index] = fs_chunk_sptr (fsh, c);
+  //  fss_chunk_freelist_unlock (fss);
+
+  fs_sptr_t old_head, new_head;
+  __atomic_load (&fss->free_chunks[fl_index], &old_head, __ATOMIC_RELAXED);
+  c->next = old_head & 0xFFFFFFFFFFFF;
+  new_head =
+    fs_chunk_sptr (fsh, c) + ((old_head & 0xFFFF000000000000) + (1ULL << 48));
+
+  while (!clib_atomic_cmp_and_swap_acq_relax (
+    &fss->free_chunks[fl_index], &old_head, &new_head, 1 /* weak */))
+    {
+      c->next = old_head & 0xFFFFFFFFFFFF;
+      new_head = fs_chunk_sptr (fsh, c) +
+		 ((old_head & 0xFFFF000000000000) + (1ULL << 48));
+    }
 }
 
 static void
@@ -170,10 +185,25 @@ fss_chunk_free_list_push_list (fifo_segment_header_t *fsh,
 			       fifo_segment_slice_t *fss, u32 fl_index,
 			       svm_fifo_chunk_t *head, svm_fifo_chunk_t *tail)
 {
-  fss_chunk_freelist_lock (fss);
-  tail->next = fss->free_chunks[fl_index];
-  fss->free_chunks[fl_index] = fs_chunk_sptr (fsh, head);
-  fss_chunk_freelist_unlock (fss);
+  //  fss_chunk_freelist_lock (fss);
+  //  tail->next = fss->free_chunks[fl_index];
+  //  fss->free_chunks[fl_index] = fs_chunk_sptr (fsh, head);
+  //  fss_chunk_freelist_unlock (fss);
+
+  fs_sptr_t old_head, new_head;
+
+  __atomic_load (&fss->free_chunks[fl_index], &old_head, __ATOMIC_RELAXED);
+  tail->next = old_head & 0xFFFFFFFFFFFF;
+  new_head = fs_chunk_sptr (fsh, head) +
+	     ((old_head & 0xFFFF000000000000) + (1ULL << 48));
+
+  while (!clib_atomic_cmp_and_swap_acq_relax (
+    &fss->free_chunks[fl_index], &old_head, &new_head, 1 /* weak */))
+    {
+      tail->next = old_head & 0xFFFFFFFFFFFF;
+      new_head = fs_chunk_sptr (fsh, head) +
+		 ((old_head & 0xFFFF000000000000) + (1ULL << 48));
+    }
 }
 
 static svm_fifo_chunk_t *
@@ -184,18 +214,41 @@ fss_chunk_free_list_pop (fifo_segment_header_t *fsh, fifo_segment_slice_t *fss,
 
   ASSERT (fss_chunk_fl_index_is_valid (fss, fl_index));
 
-  fss_chunk_freelist_lock (fss);
+  //  fss_chunk_freelist_lock (fss);
+  //
+  //  if (!fss->free_chunks[fl_index])
+  //    {
+  //      fss_chunk_freelist_unlock (fss);
+  //      return 0;
+  //    }
+  //
+  //  c = fs_chunk_ptr (fsh, fss->free_chunks[fl_index]);
+  //  fss->free_chunks[fl_index] = c->next;
+  //
+  //  fss_chunk_freelist_unlock (fss);
+  //
+  //  return c;
 
-  if (!fss->free_chunks[fl_index])
+  fs_sptr_t old_head, new_head;
+
+  __atomic_load (&fss->free_chunks[fl_index], &old_head, __ATOMIC_RELAXED);
+  if (!old_head)
+    return 0;
+
+  c = fs_chunk_ptr (fsh, old_head & 0xFFFFFFFFFFFF);
+  new_head =
+    c->next ? c->next + ((old_head & 0xFFFF000000000000) + (1ULL << 48)) : 0;
+
+  /* This is affected by ABA if a side allocates a chunk and shortly thereafter
+   * frees it. */
+  while (!clib_atomic_cmp_and_swap_acq_relax (
+    &fss->free_chunks[fl_index], &old_head, &new_head, 1 /* weak */))
     {
-      fss_chunk_freelist_unlock (fss);
-      return 0;
+      c = fs_chunk_ptr (fsh, old_head & 0xFFFFFFFFFFFF);
+      new_head = c->next ?
+		   c->next + ((old_head & 0xFFFF000000000000) + (1ULL << 48)) :
+		   0;
     }
-
-  c = fs_chunk_ptr (fsh, fss->free_chunks[fl_index]);
-  fss->free_chunks[fl_index] = c->next;
-
-  fss_chunk_freelist_unlock (fss);
 
   return c;
 }
@@ -1271,7 +1324,7 @@ fs_slice_num_free_chunks (fifo_segment_header_t *fsh,
     {
       for (i = 0; i < FS_CHUNK_VEC_LEN; i++)
 	{
-	  c = fs_chunk_ptr (fsh, fss->free_chunks[i]);
+	  c = fs_chunk_ptr (fsh, fss->free_chunks[i] & 0xFFFFFFFFFFFF);
 	  if (c == 0)
 	    continue;
 
@@ -1290,7 +1343,7 @@ fs_slice_num_free_chunks (fifo_segment_header_t *fsh,
   if (fl_index >= FS_CHUNK_VEC_LEN)
     return 0;
 
-  c = fs_chunk_ptr (fsh, fss->free_chunks[fl_index]);
+  c = fs_chunk_ptr (fsh, fss->free_chunks[fl_index] & 0xFFFFFFFFFFFF);
   if (c == 0)
     return 0;
 
@@ -1519,7 +1572,7 @@ format_fifo_segment (u8 * s, va_list * args)
       fss = fsh_slice_get (fsh, slice_index);
       for (i = 0; i < FS_CHUNK_VEC_LEN; i++)
 	{
-	  c = fs_chunk_ptr (fsh, fss->free_chunks[i]);
+	  c = fs_chunk_ptr (fsh, fss->free_chunks[i] & 0xFFFFFFFFFFFF);
 	  if (c == 0 && fss->num_chunks[i] == 0)
 	    continue;
 	  count = 0;
