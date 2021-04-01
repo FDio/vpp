@@ -574,11 +574,10 @@ app_rx_mqs_epoll_del (application_t *app, app_rx_mq_elt_t *mqe)
 
   aw = &am->wrk[thread_index];
 
+  session_wrk_handle_mq (session_main_get_worker (thread_index), mqe->mq);
+
   if (mqe->flags & APP_RX_MQ_F_PENDING)
-    {
-      session_wrk_handle_mq (session_main_get_worker (thread_index), mqe->mq);
-      appsl_pending_rx_mqs_del (aw, mqe);
-    }
+    appsl_pending_rx_mqs_del (aw, mqe);
 
   clib_file_del_by_index (&file_main, mqe->file_index);
 }
