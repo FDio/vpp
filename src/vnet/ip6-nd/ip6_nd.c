@@ -24,6 +24,8 @@
 #include <vnet/ip/ip6_link.h>
 #include <vnet/ip/ip6_ll_table.h>
 
+ip6_nd_main_t ip6_nd_main;
+
 /**
  * @file
  * @brief IPv6 Neighbor Adjacency and Neighbor Discovery.
@@ -64,6 +66,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip6_main_t *im = &ip6_main;
+  ip6_nd_main_t *inm = &ip6_nd_main;
   uword n_packets = frame->n_vectors;
   u32 *from, *to_next;
   u32 n_left_from, n_left_to_next, next_index, n_advertisements_sent;
@@ -99,6 +102,8 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 	  icmp6_neighbor_discovery_ethernet_link_layer_address_option_t *o0;
 	  u32 bi0, options_len0, sw_if_index0, next0, error0;
 	  u32 ip6_sadd_link_local, ip6_sadd_unspecified;
+	  u32 silent_st_check = 0;
+	  uword *p;
 	  int is_rewrite0;
 	  u32 ni0;
 
@@ -117,13 +122,17 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 
 	  error0 = ICMP6_ERROR_NONE;
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
+	  p = hash_get_mem (inm->silent_st_by_sw_if_index, &sw_if_index0);
+	  if (p)
+	    silent_st_check = p[0];
 	  ip6_sadd_link_local =
 	    ip6_address_is_link_local_unicast (&ip0->src_address);
 	  ip6_sadd_unspecified =
 	    ip6_address_is_unspecified (&ip0->src_address);
 
 	  /* Check that source address is unspecified, link-local or else on-link. */
-	  if (!ip6_sadd_unspecified && !ip6_sadd_link_local)
+	  if (!ip6_sadd_unspecified && !ip6_sadd_link_local &&
+	      !silent_st_check)
 	    {
 	      u32 src_adj_index0 = ip6_src_lookup_for_packet (im, p0, ip0);
 
@@ -136,11 +145,11 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 		  is_rewrite0 = (ni0 >= IP_LOOKUP_NEXT_ARP) &&
 		    (ni0 < IP6_LOOKUP_N_NEXT);
 
-		  error0 = ((adj0->rewrite_header.sw_if_index != sw_if_index0
-			     || !is_rewrite0)
-			    ?
-			    ICMP6_ERROR_NEIGHBOR_SOLICITATION_SOURCE_NOT_ON_LINK
-			    : error0);
+		  error0 =
+		    ((adj0->rewrite_header.sw_if_index != sw_if_index0 ||
+		      !is_rewrite0) ?
+		       ICMP6_ERROR_NEIGHBOR_SOLICITATION_SOURCE_NOT_ON_LINK :
+		       error0);
 		}
 	      else
 		{
@@ -185,7 +194,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 		{
 		  error0 = ICMP6_ERROR_NEIGHBOR_SOLICITATION_SOURCE_UNKNOWN;
 		}
-	      else
+	      else if (!silent_st_check)
 		{
 		  if (ip6_address_is_link_local_unicast (&h0->target_address))
 		    {
@@ -456,9 +465,41 @@ const static ip6_link_delegate_vft_t ip6_nd_delegate_vft = {
   .ildv_format = format_ip6_nd,
 };
 
+int
+ip6_nd_proxy_silent_st (u32 sw_if_index, u32 is_enable)
+{
+  ip6_nd_main_t *inm = &ip6_nd_main;
+  uword *p;
+  u32 value = 0;
+
+  p = hash_get_mem (inm->silent_st_by_sw_if_index, &sw_if_index);
+  if (p)
+    value = p[0];
+
+  if (is_enable)
+    {
+      if (value == 1)
+	return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
+      else
+	hash_set_mem_alloc (&inm->silent_st_by_sw_if_index, &sw_if_index, 1);
+    }
+  else
+    {
+      if (value == 1)
+	hash_unset_mem_free (&inm->silent_st_by_sw_if_index, &sw_if_index);
+    }
+
+  return 0;
+}
+
 static clib_error_t *
 ip6_nd_init (vlib_main_t * vm)
 {
+  ip6_nd_main_t *inm = &ip6_nd_main;
+
+  inm->silent_st_by_sw_if_index =
+    hash_create_mem (0, sizeof (u32), sizeof (u32));
+
   icmp6_register_type (vm, ICMP6_neighbor_solicitation,
 		       ip6_icmp_neighbor_solicitation_node.index);
   icmp6_register_type (vm, ICMP6_neighbor_advertisement,

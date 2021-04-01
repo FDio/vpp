@@ -122,6 +122,48 @@ VLIB_CLI_COMMAND (set_ip6_nd_proxy_command, static) =
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+set_ip6_nd_proxy_silent_st_cmd (vlib_main_t *vm, unformat_input_t *input,
+				vlib_cli_command_t *cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index;
+  u32 is_enable = 0;
+  u32 rv = 0;
+
+  if (unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+    {
+      /* get the rest of the command */
+      while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+	{
+	  if (unformat (input, "enable"))
+	    is_enable = 1;
+	  else if (unformat (input, "disable"))
+	    is_enable = 0;
+	  else
+	    return (unformat_parse_error (input));
+	}
+    }
+
+  rv = ip6_nd_proxy_silent_st (sw_if_index, is_enable);
+  switch (rv)
+    {
+    case 0:
+      break;
+
+    default:
+      return clib_error_return (0, "ip6_nd_proxy_silent_st returned %d", rv);
+    }
+
+  return 0;
+}
+
+VLIB_CLI_COMMAND (set_ip6_nd_proxy_silent_st_command, static) = {
+  .path = "set ip6 nd proxy silent st",
+  .short_help = "set ip6 nd proxy silent st <interface> [enable|disable]",
+  .function = set_ip6_nd_proxy_silent_st_cmd,
+};
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

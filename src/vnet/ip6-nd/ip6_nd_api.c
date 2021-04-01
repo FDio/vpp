@@ -140,6 +140,23 @@ vl_api_ip6nd_proxy_add_del_t_handler (vl_api_ip6nd_proxy_add_del_t * mp)
 }
 
 static void
+vl_api_ip6nd_proxy_silent_st_t_handler (vl_api_ip6nd_proxy_silent_st_t *mp)
+{
+  vl_api_ip6nd_proxy_silent_st_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  if (mp->is_enable)
+    rv = ip6_nd_proxy_silent_st (ntohl (mp->sw_if_index), 1);
+  else
+    rv = ip6_nd_proxy_silent_st (ntohl (mp->sw_if_index), 0);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_IP6ND_PROXY_SILENT_ST_REPLY);
+}
+
+static void
   vl_api_sw_interface_ip6nd_ra_config_t_handler
   (vl_api_sw_interface_ip6nd_ra_config_t * mp)
 {

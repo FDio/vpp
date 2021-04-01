@@ -21,6 +21,12 @@
 
 #include <vnet/ip/ip6_packet.h>
 
+typedef struct _ip6_nd_main_t
+{
+  uword *silent_st_by_sw_if_index;
+} ip6_nd_main_t;
+
+extern int ip6_nd_proxy_silent_st (u32 sw_if_index, u32 is_enable);
 extern int ip6_nd_proxy_add (u32 sw_if_index, const ip6_address_t * addr);
 extern int ip6_nd_proxy_del (u32 sw_if_index, const ip6_address_t * addr);
 
