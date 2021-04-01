@@ -204,12 +204,14 @@ gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
       flags = gro_validate_checksum (vm, b0, gho0, 1);
       gro_get_ip4_flow_from_packet (sw_if_index0, ip4_0, tcp0, flow_key0,
 				    is_l2);
+      pkt_len0 = gho0->l3_hdr_offset + ip4_0->length;
     }
   else if (gho0->gho_flags & GHO_F_IP6)
     {
       flags = gro_validate_checksum (vm, b0, gho0, 0);
       gro_get_ip6_flow_from_packet (sw_if_index0, ip6_0, tcp0, flow_key0,
 				    is_l2);
+      pkt_len0 = gho0->l4_hdr_offset + ip6_0->payload_length;
     }
   else
     return 0;
@@ -217,7 +219,6 @@ gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
   if ((flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) == 0)
     return 0;
 
-  pkt_len0 = vlib_buffer_length_in_chain (vm, b0);
   if (PREDICT_FALSE (pkt_len0 >= TCP_MAX_GSO_SZ))
     return 0;
 
