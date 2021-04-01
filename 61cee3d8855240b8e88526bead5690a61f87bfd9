@@ -1,0 +1,191 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0185d444_8053d952",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-01T08:54:29Z",
+      "side": 1,
+      "message": "Can we come up with a generic solution for this - seems to be a common enough problem?",
+      "revId": "61cee3d8855240b8e88526bead5690a61f87bfd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "427e39ea_94ba46b4",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-01T08:54:29Z",
+      "side": 1,
+      "message": "Can we come up with a generic solution for this - seems to be a common enough problem?",
+      "revId": "61cee3d8855240b8e88526bead5690a61f87bfd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d367d771_c93405da",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 295,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-01T08:54:29Z",
+      "side": 1,
+      "message": "\"on  writeback\" should be \"on writeback\"",
+      "revId": "61cee3d8855240b8e88526bead5690a61f87bfd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cc124b8b_a1e8d15b",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 517,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-01T08:54:29Z",
+      "side": 1,
+      "message": "Can we come up with a generic solution for this - seems to be a common enough problem?",
+      "revId": "61cee3d8855240b8e88526bead5690a61f87bfd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7b6777fa_9a62d600",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 518,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-01T08:54:29Z",
+      "side": 1,
+      "message": "Commented code?",
+      "revId": "61cee3d8855240b8e88526bead5690a61f87bfd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2ed80ab0_0f4f6cee",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-01T08:54:29Z",
+      "side": 1,
+      "message": "Commented code?",
+      "revId": "61cee3d8855240b8e88526bead5690a61f87bfd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4892d186_14abce00",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 544,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-01T08:54:29Z",
+      "side": 1,
+      "message": "TODO?",
+      "revId": "61cee3d8855240b8e88526bead5690a61f87bfd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0c4317f8_4d717efd",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 588,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-01T08:54:29Z",
+      "side": 1,
+      "message": "We shouldn\u0027t be calling an intrinsic directly.",
+      "revId": "61cee3d8855240b8e88526bead5690a61f87bfd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "116e18e7_d4704d18",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 593,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-01T08:54:29Z",
+      "side": 1,
+      "message": "We shouldn\u0027t be calling an intrinsic directly.",
+      "revId": "61cee3d8855240b8e88526bead5690a61f87bfd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7ef42f71_5d66d3df",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 596,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-01T08:54:29Z",
+      "side": 1,
+      "message": "Commented code?",
+      "revId": "61cee3d8855240b8e88526bead5690a61f87bfd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "dec3f1a4_f9b9230b",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-01T08:54:29Z",
+      "side": 1,
+      "message": "carriage return?",
+      "revId": "61cee3d8855240b8e88526bead5690a61f87bfd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
