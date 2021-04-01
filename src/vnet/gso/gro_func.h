@@ -204,12 +204,15 @@ gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
       flags = gro_validate_checksum (vm, b0, gho0, 1);
       gro_get_ip4_flow_from_packet (sw_if_index0, ip4_0, tcp0, flow_key0,
 				    is_l2);
+      pkt_len0 = gho0->l3_hdr_offset + clib_net_to_host_u16 (ip4_0->length);
     }
   else if (gho0->gho_flags & GHO_F_IP6)
     {
       flags = gro_validate_checksum (vm, b0, gho0, 0);
       gro_get_ip6_flow_from_packet (sw_if_index0, ip6_0, tcp0, flow_key0,
 				    is_l2);
+      pkt_len0 =
+	gho0->l4_hdr_offset + clib_net_to_host_u16 (ip6_0->payload_length);
     }
   else
     return 0;
@@ -217,7 +220,6 @@ gro_get_packet_data (vlib_main_t * vm, vlib_buffer_t * b0,
   if ((flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) == 0)
     return 0;
 
-  pkt_len0 = vlib_buffer_length_in_chain (vm, b0);
   if (PREDICT_FALSE (pkt_len0 >= TCP_MAX_GSO_SZ))
     return 0;
 
@@ -243,38 +245,48 @@ gro_coalesce_buffers (vlib_main_t * vm, vlib_buffer_t * b0,
   u32 is_ip1 = gro_is_ip4_or_ip6_packet (b1, is_l2);
 
   if (is_ip0 & VNET_BUFFER_F_IS_IP4)
-    vnet_generic_header_offset_parser (b0, &gho0, is_l2, 1 /* is_ip4 */ ,
-				       0 /* is_ip6 */ );
+    {
+      vnet_generic_header_offset_parser (b0, &gho0, is_l2, 1 /* is_ip4 */,
+					 0 /* is_ip6 */);
+      ip4_0 =
+	(ip4_header_t *) (vlib_buffer_get_current (b0) + gho0.l3_hdr_offset);
+      pkt_len0 = gho0.l3_hdr_offset + clib_net_to_host_u16 (ip4_0->length);
+    }
   else if (is_ip0 & VNET_BUFFER_F_IS_IP6)
-    vnet_generic_header_offset_parser (b0, &gho0, is_l2, 0 /* is_ip4 */ ,
-				       1 /* is_ip6 */ );
+    {
+      vnet_generic_header_offset_parser (b0, &gho0, is_l2, 0 /* is_ip4 */,
+					 1 /* is_ip6 */);
+      ip6_0 =
+	(ip6_header_t *) (vlib_buffer_get_current (b0) + gho0.l3_hdr_offset);
+      pkt_len0 =
+	gho0.l4_hdr_offset + clib_net_to_host_u16 (ip6_0->payload_length);
+    }
   else
     return 0;
 
   if (is_ip1 & VNET_BUFFER_F_IS_IP4)
-    vnet_generic_header_offset_parser (b1, &gho1, is_l2, 1 /* is_ip4 */ ,
-				       0 /* is_ip6 */ );
+    {
+      vnet_generic_header_offset_parser (b1, &gho1, is_l2, 1 /* is_ip4 */,
+					 0 /* is_ip6 */);
+      ip4_1 =
+	(ip4_header_t *) (vlib_buffer_get_current (b1) + gho1.l3_hdr_offset);
+      pkt_len1 = gho1.l3_hdr_offset + clib_net_to_host_u16 (ip4_1->length);
+    }
   else if (is_ip1 & VNET_BUFFER_F_IS_IP6)
-    vnet_generic_header_offset_parser (b1, &gho1, is_l2, 0 /* is_ip4 */ ,
-				       1 /* is_ip6 */ );
+    {
+      vnet_generic_header_offset_parser (b1, &gho1, is_l2, 0 /* is_ip4 */,
+					 1 /* is_ip6 */);
+      ip6_1 =
+	(ip6_header_t *) (vlib_buffer_get_current (b1) + gho1.l3_hdr_offset);
+      pkt_len1 =
+	gho1.l4_hdr_offset + clib_net_to_host_u16 (ip6_1->payload_length);
+    }
   else
     return 0;
-
-  pkt_len0 = vlib_buffer_length_in_chain (vm, b0);
-  pkt_len1 = vlib_buffer_length_in_chain (vm, b1);
 
   if (((gho0.gho_flags & GHO_F_TCP) == 0)
       || ((gho1.gho_flags & GHO_F_TCP) == 0))
     return 0;
-
-  ip4_0 =
-    (ip4_header_t *) (vlib_buffer_get_current (b0) + gho0.l3_hdr_offset);
-  ip4_1 =
-    (ip4_header_t *) (vlib_buffer_get_current (b1) + gho1.l3_hdr_offset);
-  ip6_0 =
-    (ip6_header_t *) (vlib_buffer_get_current (b0) + gho0.l3_hdr_offset);
-  ip6_1 =
-    (ip6_header_t *) (vlib_buffer_get_current (b1) + gho1.l3_hdr_offset);
 
   tcp0 = (tcp_header_t *) (vlib_buffer_get_current (b0) + gho0.l4_hdr_offset);
   tcp1 = (tcp_header_t *) (vlib_buffer_get_current (b1) + gho1.l4_hdr_offset);
@@ -322,6 +334,14 @@ gro_coalesce_buffers (vlib_main_t * vm, vlib_buffer_t * b0,
   if (gro_tcp_sequence_check (tcp0, tcp1, payload_len0) ==
       GRO_PACKET_ACTION_ENQUEUE)
     {
+      /* minimum ethernet frame is 64 bytes, including 4 bytes FCS that we
+      never see and the 14 bytes ethernet header, so if the ethernet payload is
+      smaller than 46 bytes, there may be some padding that we need to drop */
+      if (pkt_len0 < 60 && b0->current_length > pkt_len0)
+	b0->current_length = pkt_len0;
+      if (pkt_len1 < 60 && b1->current_length > pkt_len1)
+	b1->current_length = pkt_len1;
+
       gro_merge_buffers (vm, b0, b1, bi1, payload_len1, l234_sz1);
       return tcp1->ack_number;
     }
@@ -464,6 +484,12 @@ vnet_gro_flow_table_inline (vlib_main_t * vm, gro_flow_table_t * flow_table,
       to[0] = bi0;
       return 1;
     }
+
+  /* minimum ethernet frame is 64 bytes, including 4 bytes FCS that we never
+     see and the 14 bytes ethernet header, so if the ethernet payload is
+     smaller than 46 bytes, there may be some padding that we need to drop */
+  if (pkt_len0 < 60 && b0->current_length > pkt_len0)
+    b0->current_length = pkt_len0;
 
   gro_flow = gro_flow_table_find_or_add_flow (flow_table, &flow_key0);
   if (!gro_flow)
