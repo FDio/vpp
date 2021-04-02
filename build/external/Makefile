@@ -51,7 +51,7 @@ clean:
 install: $(if $(ARCH_X86_64), nasm-install ipsec-mb-install) dpdk-install rdma-core-install quicly-install libbpf-install
 
 .PHONY: config
-config: $(if $(ARCH_X86_64), nasm-config ipsec-mb-config) dpdk-config rdma-core-config
+config: $(if $(ARCH_X86_64), nasm-config ipsec-mb-config) dpdk-config rdma-core-config quicly-build
 
 ##############################################################################
 # .deb packaging
