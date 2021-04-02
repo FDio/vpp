@@ -13,15 +13,25 @@
 
 macro(add_vpp_executable exec)
   cmake_parse_arguments(ARG
-    "ENABLE_EXPORTS;NO_INSTALL"
+    "ENABLE_EXPORTS;NO_INSTALL;LTO"
     ""
-    "SOURCES;LINK_LIBRARIES;DEPENDS"
+    "SOURCES;LINK_LIBRARIES;DEPENDS;TARGET_OBJECTS"
     ${ARGN}
   )
 
   add_executable(${exec} ${ARG_SOURCES})
+
+  if (ARG_LTO AND VPP_USE_LTO)
+      set_property(TARGET ${exec} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+      target_compile_options (${exec} PRIVATE "-ffunction-sections")
+      target_compile_options (${exec} PRIVATE "-fdata-sections")
+      target_link_libraries (${exec} "-Wl,--gc-sections")
+   endif()
   if(ARG_LINK_LIBRARIES)
     target_link_libraries(${exec} ${ARG_LINK_LIBRARIES})
+  endif()
+  if(ARG_TARGET_OBJECTS)
+    target_sources(${exec} PRIVATE $<TARGET_OBJECTS:${ARG_TARGET_OBJECTS}>)
   endif()
   if(ARG_ENABLE_EXPORTS)
     set_target_properties(${exec} PROPERTIES ENABLE_EXPORTS 1)
