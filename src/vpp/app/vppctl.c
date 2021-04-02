@@ -31,10 +31,6 @@
 
 #include <arpa/telnet.h>
 
-#include <vppinfra/mem.h>
-#include <vppinfra/format.h>
-#include <vppinfra/socket.h>
-
 #define SOCKET_FILE "/run/vpp/cli.sock"
 
 volatile int window_resized = 0;
