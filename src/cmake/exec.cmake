@@ -15,13 +15,16 @@ macro(add_vpp_executable exec)
   cmake_parse_arguments(ARG
     "ENABLE_EXPORTS;NO_INSTALL"
     ""
-    "SOURCES;LINK_LIBRARIES;DEPENDS"
+    "SOURCES;LINK_LIBRARIES;DEPENDS;TARGET_OBJECTS"
     ${ARGN}
   )
 
   add_executable(${exec} ${ARG_SOURCES})
   if(ARG_LINK_LIBRARIES)
     target_link_libraries(${exec} ${ARG_LINK_LIBRARIES})
+  endif()
+  if(ARG_TARGET_OBJECTS)
+    target_sources(${exec} PRIVATE $<TARGET_OBJECTS:${ARG_TARGET_OBJECTS}>)
   endif()
   if(ARG_ENABLE_EXPORTS)
     set_target_properties(${exec} PROPERTIES ENABLE_EXPORTS 1)
