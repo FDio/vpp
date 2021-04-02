@@ -505,6 +505,18 @@ class TestIPv6(TestIPv6ND):
                                 tgt_ip=self.pg0.local_ip6_ll)
 
         #
+        # do not respond to a NS for the peer's address
+        #
+        p = (Ether(dst=in6_getnsmac(nsma), src=self.pg0.remote_mac) /
+             IPv6(dst=d,
+                  src=self.pg0._remote_hosts[3].ip6_ll) /
+             ICMPv6ND_NS(tgt=self.pg0._remote_hosts[3].ip6_ll) /
+             ICMPv6NDOptSrcLLAddr(
+                 lladdr=self.pg0.remote_mac))
+
+        self.send_and_assert_no_replies(self.pg0, p)
+
+        #
         # we should have learned an ND entry for the peer's link-local
         # but not inserted a route to it in the FIB
         #

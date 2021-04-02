@@ -215,10 +215,15 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 			  /* It's an address that belongs to one of our interfaces
 			   * that's good. */
 			}
-		      else
-			if (fib_entry_is_sourced
-			    (fei, FIB_SOURCE_IP6_ND_PROXY) ||
-			    fib_entry_is_sourced (fei, FIB_SOURCE_IP6_ND))
+		      else if (FIB_ENTRY_FLAG_LOCAL &
+			       fib_entry_get_flags_for_source (
+				 fei, FIB_SOURCE_IP6_ND))
+			{
+			  /* It's one of our link local addresses
+			   * that's good. */
+			}
+		      else if (fib_entry_is_sourced (fei,
+						     FIB_SOURCE_IP6_ND_PROXY))
 			{
 			  /* The address was added by IPv6 Proxy ND config.
 			   * We should only respond to these if the NS arrived on
