@@ -125,6 +125,8 @@ class VppPGInterface(VppInterface):
         self._gso_enabled = gso
         self._gso_size = gso_size
         self._coalesce_enabled = 0
+        self._in_streams_on_workers = []
+        self._prev_in_streams_on_workers = []
         self._out_file = "pg%u_out.pcap" % self.pg_index
         self._out_path = self.test.tempdir + "/" + self._out_file
         self._capture_cli = "packet-generator capture pg%u pcap %s" % (
@@ -132,7 +134,7 @@ class VppPGInterface(VppInterface):
         self._cap_name = "pcap%u-sw_if_index-%s" % (
             self.pg_index, self.sw_if_index)
 
-    def rename_previous_capture_file(self, path, counter):
+    def _rename_previous_capture_file(self, path, counter):
         # if a file from a previous capture exists, rename it.
         filename = os.path.basename(path)
         try:
@@ -150,6 +152,20 @@ class VppPGInterface(VppInterface):
             self.test.logger.debug("OSError: Could not rename %s %s" %
                                    (path, filename))
 
+    def on_start_pg_run(self):
+        """ called just before pg start """
+        for worker in self._prev_in_streams_on_workers:
+            self._rename_previous_capture_file(self.get_in_path(worker),
+                                               self.in_history_counter)
+
+    def on_finish_pg_run(self):
+        """ called after the pg is done """
+        for worker in self._in_streams_on_workers:
+            self.test.vapi.cli('packet-generator delete %s' %
+                               self.get_cap_name(worker))
+        self._prev_in_streams_on_workers = self._in_streams_on_workers
+        self._in_streams_on_workers = []
+
     def enable_capture(self):
         """ Enable capture on this packet-generator interface
             of at most n packets.
@@ -157,8 +173,8 @@ class VppPGInterface(VppInterface):
         """
         # disable the capture to flush the capture
         self.disable_capture()
-        self.rename_previous_capture_file(self.out_path,
-                                          self.out_history_counter)
+        self._rename_previous_capture_file(self.out_path,
+                                           self.out_history_counter)
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.capture_cli)
         self._pcap_reader = None
@@ -186,7 +202,7 @@ class VppPGInterface(VppInterface):
 
         """
         wrpcap(self.get_in_path(worker), pkts)
-        self.test.register_capture(self, worker)
+        self._in_streams_on_workers.append(worker)
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.get_input_cli(nb_replays, worker))
 
