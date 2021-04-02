@@ -178,7 +178,7 @@ VLIB_NODE_FN (arping_input_node)
 		  aif1->recv.from4.ip4.as_u32 =
 		    arp1->ip4_over_ethernet[0].ip4.as_u32;
 		  clib_memcpy_fast (&aif1->recv.from4.mac,
-				    &arp0->ip4_over_ethernet[0].mac, 6);
+				    &arp1->ip4_over_ethernet[0].mac, 6);
 		  aif1->reply_count++;
 		}
 	    }
