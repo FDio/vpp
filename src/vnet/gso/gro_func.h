@@ -25,6 +25,8 @@
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/vnet.h>
 
+#define GRO_MIN_PACKET_SIZE 256
+
 static_always_inline u8
 gro_is_bad_packet (vlib_buffer_t * b, u8 flags, i16 l234_sz)
 {
@@ -465,11 +467,20 @@ vnet_gro_flow_table_inline (vlib_main_t * vm, gro_flow_table_t * flow_table,
       return 1;
     }
 
-  gro_flow = gro_flow_table_find_or_add_flow (flow_table, &flow_key0);
+  gro_flow = gro_flow_table_get_flow (flow_table, &flow_key0);
   if (!gro_flow)
     {
-      to[0] = bi0;
-      return 1;
+      if (pkt_len0 > GRO_MIN_PACKET_SIZE)
+	{
+	  gro_flow = gro_flow_table_new_flow (flow_table);
+	  if (gro_flow)
+	    gro_flow_set_flow_key (gro_flow, &flow_key0);
+	}
+      if (!gro_flow)
+	{
+	  to[0] = bi0;
+	  return 1;
+	}
     }
 
   if (PREDICT_FALSE (gro_flow->n_buffers == 0))
@@ -512,7 +523,8 @@ vnet_gro_flow_table_inline (vlib_main_t * vm, gro_flow_table_t * flow_table,
       gro_packet_action_t action =
 	gro_tcp_sequence_check (tcp_s, tcp0, payload_len_s);
 
-      if (PREDICT_TRUE (action == GRO_PACKET_ACTION_ENQUEUE))
+      if (PREDICT_TRUE (action == GRO_PACKET_ACTION_ENQUEUE &&
+			pkt_len0 > GRO_MIN_PACKET_SIZE))
 	{
 	  if (PREDICT_TRUE ((pkt_len_s + payload_len0) < TCP_MAX_GSO_SZ))
 	    {
