@@ -19,7 +19,13 @@ macro(add_vpp_library lib)
     ${ARGN}
   )
 
-  add_library(${lib} SHARED ${ARG_SOURCES})
+  set (lo ${lib}_objs)
+  add_library(${lo} OBJECT ${ARG_SOURCES})
+  set_target_properties(${lo} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+  add_library(${lib} SHARED)
+  target_sources(${lib} PRIVATE $<TARGET_OBJECTS:${lo}>)
+
   if(VPP_LIB_VERSION)
     set_target_properties(${lib} PROPERTIES SOVERSION ${VPP_LIB_VERSION})
   endif()
@@ -39,6 +45,7 @@ macro(add_vpp_library lib)
   )
 
   if (ARG_LTO AND VPP_USE_LTO)
+     set_property(TARGET ${lo} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
      set_property(TARGET ${lib} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
      target_compile_options (${lib} PRIVATE "-ffunction-sections")
      target_compile_options (${lib} PRIVATE "-fdata-sections")
@@ -66,11 +73,11 @@ macro(add_vpp_library lib)
   endif()
 
   if(NOT VPP_EXTERNAL_PROJECT)
-    add_dependencies(${lib} api_headers)
+    add_dependencies(${lo} api_headers)
   endif()
 
   if(ARG_DEPENDS)
-    add_dependencies(${lib} ${ARG_DEPENDS})
+    add_dependencies(${lo} ${ARG_DEPENDS})
   endif()
 
   # install headers
