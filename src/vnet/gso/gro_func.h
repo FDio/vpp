@@ -25,6 +25,8 @@
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/vnet.h>
 
+#define GRO_MIN_PACKET_SIZE 256
+
 static_always_inline u8
 gro_is_bad_packet (vlib_buffer_t * b, u8 flags, i16 l234_sz)
 {
@@ -263,8 +265,8 @@ gro_coalesce_buffers (vlib_main_t * vm, vlib_buffer_t * b0,
   pkt_len0 = vlib_buffer_length_in_chain (vm, b0);
   pkt_len1 = vlib_buffer_length_in_chain (vm, b1);
 
-  if (((gho0.gho_flags & GHO_F_TCP) == 0)
-      || ((gho1.gho_flags & GHO_F_TCP) == 0))
+  if (((gho0.gho_flags & GHO_F_TCP) == 0 || pkt_len0 <= GRO_MIN_PACKET_SIZE) ||
+      ((gho1.gho_flags & GHO_F_TCP) == 0 || pkt_len1 <= GRO_MIN_PACKET_SIZE))
     return 0;
 
   ip4_0 =
@@ -465,7 +467,11 @@ vnet_gro_flow_table_inline (vlib_main_t * vm, gro_flow_table_t * flow_table,
       return 1;
     }
 
-  gro_flow = gro_flow_table_find_or_add_flow (flow_table, &flow_key0);
+  if (pkt_len0 > GRO_MIN_PACKET_SIZE)
+    gro_flow = gro_flow_table_find_or_add_flow (flow_table, &flow_key0);
+  else /* still add small packets to the flow if it exists */
+    gro_flow = gro_flow_table_get_flow (flow_table, &flow_key0);
+
   if (!gro_flow)
     {
       to[0] = bi0;
@@ -512,7 +518,8 @@ vnet_gro_flow_table_inline (vlib_main_t * vm, gro_flow_table_t * flow_table,
       gro_packet_action_t action =
 	gro_tcp_sequence_check (tcp_s, tcp0, payload_len_s);
 
-      if (PREDICT_TRUE (action == GRO_PACKET_ACTION_ENQUEUE))
+      if (PREDICT_TRUE (action == GRO_PACKET_ACTION_ENQUEUE &&
+			pkt_len0 > GRO_MIN_PACKET_SIZE))
 	{
 	  if (PREDICT_TRUE ((pkt_len_s + payload_len0) < TCP_MAX_GSO_SZ))
 	    {
