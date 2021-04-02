@@ -25,10 +25,13 @@
 #include <vnet/tcp/tcp_packet.h>
 #include <vnet/vnet.h>
 
+#define GRO_MIN_PAYLOAD_SIZE 200
+
 static_always_inline u8
 gro_is_bad_packet (vlib_buffer_t * b, u8 flags, i16 l234_sz)
 {
-  if (((b->current_length - l234_sz) <= 0) || ((flags &= ~TCP_FLAG_ACK) != 0))
+  if (((b->current_length - l234_sz) <= GRO_MIN_PAYLOAD_SIZE) ||
+      ((flags &= ~TCP_FLAG_ACK) != 0))
     return 1;
   return 0;
 }
