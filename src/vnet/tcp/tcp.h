@@ -85,20 +85,20 @@ typedef struct tcp_worker_ctx_
   /** vector of pending disconnect notifications */
   u32 *pending_disconnects;
 
-  /** vector of pending reset notifications */
-  u32 *pending_resets;
-
   /** convenience pointer to this thread's vlib main */
   vlib_main_t *vm;
+
+  /** Time used for high precision (us) measurements in seconds */
+  f64 time_us;
 
   /** Time measured in @ref TCP_TSTAMP_TICK used for time stamps */
   u32 time_now;
 
-  /* Max timers to be handled per dispatch loop */
-  u32 max_timers_per_loop;
-
   /** Session layer edge indices to tcp output */
   u32 tco_next_node[2];
+
+  /* Max timers to be handled per dispatch loop */
+  u32 max_timers_per_loop;
 
   /* Fifo of pending timer expirations */
   u32 *pending_timers;
@@ -110,6 +110,9 @@ typedef struct tcp_worker_ctx_
 
   /** tx buffer free list */
   u32 *tx_buffers;
+
+  /** vector of pending reset notifications */
+  u32 *pending_resets;
 
   /* fifo of pending free requests */
   tcp_cleanup_req_t *pending_cleanups;

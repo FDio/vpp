@@ -2188,7 +2188,7 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
-  tcp_set_time_now (tcp_get_worker (thread_index));
+  tcp_update_time_now (tcp_get_worker (thread_index));
 
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
     tcp46_output_trace_frame (vm, node, from, n_left_from);
