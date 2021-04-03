@@ -1431,8 +1431,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   SESSION_EVT (SESSION_EVT_DISPATCH_START, wrk);
 
-  wrk->last_vlib_time = vlib_time_now (vm);
-  wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
+  session_wrk_update_time (wrk, vlib_time_now (vm));
 
   /*
    *  Update transport time
