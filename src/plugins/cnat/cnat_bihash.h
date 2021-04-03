@@ -20,12 +20,14 @@
 #undef BIHASH_KVP_AT_BUCKET_LEVEL
 #undef BIHASH_LAZY_INSTANTIATE
 #undef BIHASH_BUCKET_PREFETCH_CACHE_LINES
+#undef BIHASH_USE_HEAP
 
 #define BIHASH_TYPE			   _40_56
 #define BIHASH_KVP_PER_PAGE 2
 #define BIHASH_KVP_AT_BUCKET_LEVEL 1
 #define BIHASH_LAZY_INSTANTIATE 1
 #define BIHASH_BUCKET_PREFETCH_CACHE_LINES 2
+#define BIHASH_USE_HEAP			   1
 
 #ifndef __included_bihash_40_56_h__
 #define __included_bihash_40_56_h__
