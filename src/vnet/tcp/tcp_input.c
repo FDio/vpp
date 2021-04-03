@@ -2834,7 +2834,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
 
-  tcp_set_time_now (tcp_get_worker (thread_index));
+  tcp_update_time_now (tcp_get_worker (thread_index));
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
