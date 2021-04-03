@@ -212,13 +212,22 @@ tcp_tstamp (tcp_connection_t * tc)
 always_inline f64
 tcp_time_now_us (u32 thread_index)
 {
-  return transport_time_now (thread_index);
+  return tcp_main.wrk_ctx[thread_index].time_us;
+  //  return transport_time_now (thread_index);
 }
 
 always_inline u32
-tcp_set_time_now (tcp_worker_ctx_t * wrk)
+tcp_set_time_now (tcp_worker_ctx_t *wrk, f64 now)
 {
-  return wrk->time_now = (u64) (vlib_time_now (wrk->vm) * TCP_TSTP_HZ);
+  //  session_update_wrk_time (wrk->vm->thread_index);
+  wrk->time_us = now;
+  return wrk->time_now = (u64) (now * TCP_TSTP_HZ);
+}
+
+always_inline u32
+tcp_update_time_now (tcp_worker_ctx_t *wrk)
+{
+  return tcp_set_time_now (wrk, vlib_time_now (wrk->vm));
 }
 
 always_inline tcp_connection_t *
