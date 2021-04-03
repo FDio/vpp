@@ -149,9 +149,8 @@ format_tcp_congestion (u8 * s, va_list * args)
 	      format_white_space, indent, tc->snd_congestion - tc->iss,
 	      tc->rcv_dupacks, tc->limited_transmit - tc->iss);
   s = format (s, "%Urxt_bytes %u rxt_delivered %u rxt_head %u rxt_ts %u\n",
-	      format_white_space, indent, tc->snd_rxt_bytes,
-	      tc->rxt_delivered, tc->rxt_head - tc->iss,
-	      tcp_time_now_w_thread (tc->c_thread_index) - tc->snd_rxt_ts);
+	      format_white_space, indent, tc->snd_rxt_bytes, tc->rxt_delivered,
+	      tc->rxt_head - tc->iss, tcp_tstamp (tc) - tc->snd_rxt_ts);
   if (tcp_in_fastrecovery (tc))
     prr_space = tcp_fastrecovery_prr_snd_space (tc);
   s = format (s, "%Uprr_start %u prr_delivered %u prr space %u\n",
@@ -202,7 +201,7 @@ format_tcp_vars (u8 * s, va_list * args)
   s = format (s, " tsval_recent %u\n", tc->tsval_recent);
   s = format (s, " tsecr %u tsecr_last_ack %u tsval_recent_age %u",
 	      tc->rcv_opts.tsecr, tc->tsecr_last_ack,
-	      tcp_time_now () - tc->tsval_recent_age);
+	      tcp_time_tstamp (tc->c_thread_index) - tc->tsval_recent_age);
   s = format (s, " snd_mss %u\n", tc->snd_mss);
   s = format (s, " rto %u rto_boff %u srtt %.1f us %.3f rttvar %.1f",
 	      tc->rto / 1000, tc->rto_boff, tc->srtt / 1000.0,

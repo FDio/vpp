@@ -91,14 +91,14 @@ typedef struct tcp_worker_ctx_
   /** convenience pointer to this thread's vlib main */
   vlib_main_t *vm;
 
+  /** Time used for high precision (us) measurements in seconds */
+  f64 time_us;
+
   /** Time measured in @ref TCP_TSTAMP_TICK used for time stamps */
-  u32 time_now;
+  u32 time_tstamp;
 
   /* Max timers to be handled per dispatch loop */
   u32 max_timers_per_loop;
-
-  /** Session layer edge indices to tcp output */
-  u32 tco_next_node[2];
 
   /* Fifo of pending timer expirations */
   u32 *pending_timers;
@@ -113,6 +113,9 @@ typedef struct tcp_worker_ctx_
 
   /* fifo of pending free requests */
   tcp_cleanup_req_t *pending_cleanups;
+
+  /** Session layer edge indices to tcp output */
+  u32 tco_next_node[2];
 
   /** worker timer wheel */
   tcp_timer_wheel_t timer_wheel;
