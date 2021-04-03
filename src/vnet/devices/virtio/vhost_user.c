@@ -1271,7 +1271,6 @@ vhost_user_process (vlib_main_t * vm,
   sun.sun_family = AF_UNIX;
   template.read_function = vhost_user_socket_read;
   template.error_function = vhost_user_socket_error;
-  template.description = format (0, "vhost user process");
 
   while (1)
     {
@@ -1324,6 +1323,7 @@ vhost_user_process (vlib_main_t * vm,
 		      template.file_descriptor = sockfd;
 		      template.private_data =
 			  vui - vhost_user_main.vhost_user_interfaces;
+		      template.description = format (0, "vhost user process");
 		      vui->clib_file_index = clib_file_add (&file_main, &template);
 		      vui->num_qid = 2;
 
