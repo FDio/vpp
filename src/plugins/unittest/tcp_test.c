@@ -1003,6 +1003,13 @@ tbt_seq_lt (u32 a, u32 b)
   return seq_lt (a, b);
 }
 
+static void
+tcp_test_set_time (u32 thread_index, u32 val)
+{
+  session_main.wrk[thread_index].last_vlib_time = val;
+  tcp_set_time_now (&tcp_main.wrk_ctx[thread_index], val);
+}
+
 static int
 tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -1031,7 +1038,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
 
   /* Init data structures */
   memset (tc, 0, sizeof (*tc));
-  session_main.wrk[thread_index].last_vlib_time = 1;
+  tcp_test_set_time (thread_index, 1);
   transport_connection_tx_pacer_update (&tc->connection, rate, 1e6);
 
   tcp_bt_init (tc);
@@ -1056,7 +1063,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (!(bts->flags & TCP_BTS_IS_APP_LIMITED), "not app limited");
 
   /* 2) check delivery rate at time 2 */
-  session_main.wrk[thread_index].last_vlib_time = 2;
+  tcp_test_set_time (thread_index, 2);
   tc->snd_una = tc->snd_nxt = burst;
   tc->bytes_acked = burst;
 
@@ -1077,7 +1084,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   tc->snd_nxt += burst;
 
   /* 4) track second burst at time 3 */
-  session_main.wrk[thread_index].last_vlib_time = 3;
+  tcp_test_set_time (thread_index, 3);
   tcp_bt_track_tx (tc, burst);
   tc->snd_nxt += burst;
 
@@ -1094,7 +1101,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (bts->prev == bt->head, "prev should be head");
 
   /* 5) check delivery rate at time 4 */
-  session_main.wrk[thread_index].last_vlib_time = 4;
+  tcp_test_set_time (thread_index, 4);
   tc->snd_una = tc->snd_nxt;
   tc->bytes_acked = 2 * burst;
 
@@ -1124,17 +1131,17 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   tc->snd_nxt += burst;
 
   /* 2) track second burst at time 5 */
-  session_main.wrk[thread_index].last_vlib_time = 5;
+  tcp_test_set_time (thread_index, 5);
   tcp_bt_track_tx (tc, burst);
   tc->snd_nxt += burst;
 
   /* 3) track third burst at time 6 */
-  session_main.wrk[thread_index].last_vlib_time = 6;
+  tcp_test_set_time (thread_index, 6);
   tcp_bt_track_tx (tc, burst);
   tc->snd_nxt += burst;
 
   /* 4) track fourth burst at time 7 */
-  session_main.wrk[thread_index].last_vlib_time = 7;
+  tcp_test_set_time (thread_index, 7);
   /* Limited until last burst is acked */
   tc->app_limited = snd_una + 4 * burst - 1;
   tcp_bt_track_tx (tc, burst);
@@ -1147,7 +1154,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
    * [snd_una + burst, snd_una + burst + 10]
    * [snd_una + 2 * burst + 10, snd_una + 2 * burst + 20]
    */
-  session_main.wrk[thread_index].last_vlib_time = 8;
+  tcp_test_set_time (thread_index, 8);
   tc->snd_una += 10;
   tc->bytes_acked = 10;
   sb->last_sacked_bytes = 20;
@@ -1192,7 +1199,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
    * [snd_una + burst + 10, snd_una + 2 * burst + 10]
    * [snd_una + 2 * burst + 20, snd_una + 4 * burst]
    */
-  session_main.wrk[thread_index].last_vlib_time = 9;
+  tcp_test_set_time (thread_index, 9);
 
   tcp_bt_track_rxt (tc, snd_una + 10, snd_una + burst);
   TCP_TEST (tcp_bt_is_sane (bt), "tracker should be sane");
@@ -1238,7 +1245,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
    * [snd_una + 2 * burst + 20, snd_una + 2 * burst + 30]
    * [snd_una + 2 * burst + 50, snd_una + 2 * burst + 60]
    */
-  session_main.wrk[thread_index].last_vlib_time = 10;
+  tcp_test_set_time (thread_index, 10);
   tc->snd_una = snd_una + 2 * burst;
   tc->bytes_acked = 2 * burst - 10;
   sb->last_sacked_bytes = 20;
@@ -1276,7 +1283,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   /*
    * 8) check delivery rate at time 11
    */
-  session_main.wrk[thread_index].last_vlib_time = 11;
+  tcp_test_set_time (thread_index, 11);
   tc->snd_una = tc->snd_nxt;
   tc->bytes_acked = 2 * burst;
   sb->last_sacked_bytes = 0;
@@ -1314,7 +1321,7 @@ tcp_test_delivery (vlib_main_t * vm, unformat_input_t * input)
   tcp_bt_track_tx (tc, burst);
   tc->snd_nxt += burst;
 
-  session_main.wrk[thread_index].last_vlib_time = 12;
+  tcp_test_set_time (thread_index, 12);
   tcp_bt_track_tx (tc, burst);
   tc->snd_nxt += burst;
 

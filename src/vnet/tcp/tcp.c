@@ -337,7 +337,7 @@ tcp_program_cleanup (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
   tcp_cleanup_req_t *req;
   clib_time_type_t now;
 
-  now = transport_time_now (tc->c_thread_index);
+  now = tcp_time_now_us (tc->c_thread_index);
   clib_fifo_add2 (wrk->pending_cleanups, req);
   req->connection_index = tc->c_c_index;
   req->free_time = now + tcp_cfg.cleanup_time;
@@ -675,7 +675,7 @@ tcp_init_snd_vars (tcp_connection_t * tc)
    * handshake may make it look as if time has flown in the opposite
    * direction for us.
    */
-  tcp_set_time_now (tcp_get_worker (vlib_get_thread_index ()));
+  tcp_update_time_now (tcp_get_worker (vlib_get_thread_index ()));
 
   tcp_init_rcv_mss (tc);
   tc->iss = tcp_generate_random_iss (tc);
@@ -1147,7 +1147,7 @@ tcp_update_time (f64 now, u8 thread_index)
 {
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
 
-  tcp_set_time_now (wrk);
+  tcp_set_time_now (wrk, now);
   tcp_handle_cleanups (wrk, now);
   tcp_timer_expire_timers (&wrk->timer_wheel, now);
   tcp_dispatch_pending_timers (wrk);

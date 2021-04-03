@@ -187,16 +187,13 @@ tcp_is_lost_fin (tcp_connection_t * tc)
   return 0;
 }
 
+/**
+ * Time used to generate timestamps, not the timestamp
+ */
 always_inline u32
-tcp_time_now (void)
+tcp_time_tstamp (u32 thread_index)
 {
-  return tcp_main.wrk_ctx[vlib_get_thread_index ()].time_now;
-}
-
-always_inline u32
-tcp_time_now_w_thread (u32 thread_index)
-{
-  return tcp_main.wrk_ctx[thread_index].time_now;
+  return tcp_main.wrk_ctx[thread_index].time_tstamp;
 }
 
 /**
@@ -205,20 +202,34 @@ tcp_time_now_w_thread (u32 thread_index)
 always_inline u32
 tcp_tstamp (tcp_connection_t * tc)
 {
-  return (tcp_main.wrk_ctx[tc->c_thread_index].time_now -
+  return (tcp_main.wrk_ctx[tc->c_thread_index].time_tstamp -
 	  tc->timestamp_delta);
 }
 
 always_inline f64
 tcp_time_now_us (u32 thread_index)
 {
-  return transport_time_now (thread_index);
+  return tcp_main.wrk_ctx[thread_index].time_us;
 }
 
-always_inline u32
-tcp_set_time_now (tcp_worker_ctx_t * wrk)
+always_inline void
+tcp_set_time_now (tcp_worker_ctx_t *wrk, f64 now)
 {
-  return wrk->time_now = (u64) (vlib_time_now (wrk->vm) * TCP_TSTP_HZ);
+  /* TCP internal cache of time reference. Could use @ref transport_time_now
+   * but because @ref tcp_time_now_us is used per packet, caching might
+   * slightly improve efficiency. */
+  wrk->time_us = now;
+  wrk->time_tstamp = (u64) (now * TCP_TSTP_HZ);
+}
+
+always_inline void
+tcp_update_time_now (tcp_worker_ctx_t *wrk)
+{
+  f64 now = vlib_time_now (wrk->vm);
+
+  /* Both pacer and tcp us time need to be updated */
+  transport_update_pacer_time (wrk->vm->thread_index, now);
+  tcp_set_time_now (wrk, now);
 }
 
 always_inline tcp_connection_t *
@@ -359,7 +370,7 @@ tcp_init_w_buffer (tcp_connection_t * tc, vlib_buffer_t * b, u8 is_ip4)
   if (tcp_opts_tstamp (&tc->rcv_opts))
     {
       tc->tsval_recent = tc->rcv_opts.tsval;
-      tc->tsval_recent_age = tcp_time_now ();
+      tc->tsval_recent_age = tcp_time_tstamp (tc->c_thread_index);
     }
 
   if (tcp_opts_wscale (&tc->rcv_opts))
