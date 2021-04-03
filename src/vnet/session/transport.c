@@ -763,6 +763,12 @@ transport_connection_tx_pacer_update_bytes (transport_connection_t * tc,
 }
 
 void
+transport_update_pacer_time (u32 thread_index, clib_time_type_t now)
+{
+  session_wrk_update_time (session_main_get_worker (thread_index), now);
+}
+
+void
 transport_connection_reschedule (transport_connection_t * tc)
 {
   tc->flags &= ~TRANSPORT_CONNECTION_F_DESCHED;

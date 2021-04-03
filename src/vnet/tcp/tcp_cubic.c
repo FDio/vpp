@@ -51,7 +51,7 @@ STATIC_ASSERT (sizeof (cubic_data_t) <= TCP_CC_DATA_SZ, "cubic data len");
 static inline f64
 cubic_time (u32 thread_index)
 {
-  return transport_time_now (thread_index);
+  return tcp_time_now_us (thread_index);
 }
 
 /**

@@ -684,6 +684,13 @@ session_add_pending_tx_buffer (u32 thread_index, u32 bi, u32 next_node)
   vec_add1 (wrk->pending_tx_nexts, next_node);
 }
 
+always_inline void
+session_wrk_update_time (session_worker_t *wrk, f64 now)
+{
+  wrk->last_vlib_time = now;
+  wrk->last_vlib_us_time = wrk->last_vlib_time * CLIB_US_TIME_FREQ;
+}
+
 fifo_segment_t *session_main_get_evt_q_segment (void);
 void session_node_enable_disable (u8 is_en);
 clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
