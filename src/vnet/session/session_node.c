@@ -1445,7 +1445,7 @@ session_wrk_tfd_timeout (session_wrk_state_t state, u32 thread_index)
 }
 
 static inline void
-session_wrk_state_update (session_worker_t *wrk, session_wrk_state_t state)
+session_wrk_set_state (session_worker_t *wrk, session_wrk_state_t state)
 {
   u64 time_ns;
 
@@ -1464,7 +1464,7 @@ session_wrk_update_state (session_worker_t *wrk)
       if (pool_elts (wrk->event_elts) == 3 &&
 	  vlib_last_vectors_per_main_loop (vm) < 1)
 	{
-	  session_wrk_state_update (wrk, SESSION_WRK_INTERRUPT);
+	  session_wrk_set_state (wrk, SESSION_WRK_INTERRUPT);
 	  vlib_node_set_state (vm, session_queue_node.index,
 			       VLIB_NODE_STATE_INTERRUPT);
 	}
@@ -1474,20 +1474,20 @@ session_wrk_update_state (session_worker_t *wrk)
       if (pool_elts (wrk->event_elts) > 3 ||
 	  vlib_last_vectors_per_main_loop (vm) > 1)
 	{
-	  session_wrk_state_update (wrk, SESSION_WRK_POLLING);
+	  session_wrk_set_state (wrk, SESSION_WRK_POLLING);
 	  vlib_node_set_state (vm, session_queue_node.index,
 			       VLIB_NODE_STATE_POLLING);
 	}
       else if (PREDICT_FALSE (!pool_elts (wrk->sessions)))
 	{
-	  session_wrk_state_update (wrk, SESSION_WRK_IDLE);
+	  session_wrk_set_state (wrk, SESSION_WRK_IDLE);
 	}
     }
   else
     {
       if (pool_elts (wrk->event_elts))
 	{
-	  session_wrk_state_update (wrk, SESSION_WRK_INTERRUPT);
+	  session_wrk_set_state (wrk, SESSION_WRK_INTERRUPT);
 	}
     }
 }

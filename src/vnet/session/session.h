@@ -104,7 +104,7 @@ typedef struct session_worker_
   u32 **session_to_enqueue;
 
   /** Timerfd used to periodically signal wrk session queue node */
-  u32 timerfd;
+  int timerfd;
 
   /** Worker flags */
   session_wrk_flag_t flags;
