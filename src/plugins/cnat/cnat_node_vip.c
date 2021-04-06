@@ -148,6 +148,7 @@ cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
 
       session->value.dpoi_next_node = ct->ct_lb.dpoi_next_node;
       session->value.cs_lbi = dpoi_index;
+      session->value.flags = 0;
 
       rv = cspm->vip_policy (vm, b, session, &rsession_flags, ct, ctx);
       if (CNAT_SOURCE_ERROR_USE_DEFAULT == rv)

@@ -922,7 +922,7 @@ cnat_session_create (cnat_session_t *session, cnat_node_ctx_t *ctx,
 		     &session->key.cs_ip[VLIB_RX]);
   rsession->value.cs_ts_index = session->value.cs_ts_index;
   rsession->value.cs_lbi = INDEX_INVALID;
-  rsession->value.flags = rsession_flags;
+  rsession->value.flags = rsession_flags | CNAT_SESSION_IS_RETURN;
   rsession->value.cs_port[VLIB_TX] = session->key.cs_port[VLIB_RX];
   rsession->value.cs_port[VLIB_RX] = session->key.cs_port[VLIB_TX];
 
