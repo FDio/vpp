@@ -286,6 +286,10 @@ nsh_header_rewrite (nsh_entry_t * nsh_entry)
   else if (nsh_base->md_type == 2)
     {
       opt0 = (nsh_md2_data_t *) (nsh_entry->tlvs_data);
+      if (opt0 == NULL)
+	{
+	  goto done_tlv_md2;
+	}
       limit0 = (nsh_md2_data_t *) ((u8 *) opt0 + nsh_entry->tlvs_len);
 
       nsh_md2 = (nsh_md2_data_t *) (rw + sizeof (nsh_base_header_t));
@@ -328,6 +332,7 @@ nsh_header_rewrite (nsh_entry_t * nsh_entry)
 	}
     }
 
+done_tlv_md2:
   nsh_entry->rewrite = rw;
   nsh_base->length = (nsh_base->length & NSH_TTL_L2_MASK) |
     ((nsh_entry->rewrite_size >> 2) & NSH_LEN_MASK);
@@ -555,10 +560,6 @@ nsh_add_del_entry (nsh_add_del_entry_args_t * a, u32 * entry_indexp)
 	  vec_free (a->nsh_entry.tlvs_data);
 	}
 
-      if (nsh_entry && nsh_entry->tlvs_data)
-	{
-	  nsh_header_rewrite (nsh_entry);
-	}
       nsh_header_rewrite (nsh_entry);
 
       key_copy = clib_mem_alloc (sizeof (*key_copy));
