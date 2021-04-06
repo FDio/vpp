@@ -123,7 +123,12 @@ typedef enum cnat_session_flag_t_
    */
   CNAT_SESSION_FLAG_NO_CLIENT = (1 << 2),
 
+  /* Do not actually translate the packet but still forward it
+   * Used for Maglev, with an encap */
   CNAT_SESSION_FLAG_NO_NAT = (1 << 3),
+
+  /* Debug flag marking return sessions */
+  CNAT_SESSION_IS_RETURN = (1 << 4),
 } cnat_session_flag_t;
 
 typedef enum cnat_session_location_t_
