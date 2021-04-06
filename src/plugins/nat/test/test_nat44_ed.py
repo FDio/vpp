@@ -2056,6 +2056,7 @@ class TestNAT44EDMW(TestNAT44ED):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg1.get_capture(pkt_count * 3)
+        self.verify_capture_out(capture)
 
         if_idx = self.pg0.sw_if_index
         tc2 = self.statistics['/nat44-ed/in2out/slowpath/tcp']

@@ -122,39 +122,39 @@ PAPI_WIPE_DIST=$(WS_ROOT)/src/vpp-api/vapi/__pycache__ \
 	$(PAPI_PYTHON_SRC_DIR)/vpp_papi/__pycache__
 
 $(PIP_TOOLS_INSTALL_DONE):
-	@rm -rf $(VENV_PATH)
-	@mkdir -p $(VENV_RUN_DIR)
-	@$(PYTHON_INTERP) -m venv $(VENV_PATH)
+	rm -rf $(VENV_PATH)
+	mkdir -p $(VENV_RUN_DIR)
+	$(PYTHON_INTERP) -m venv $(VENV_PATH)
 	# pip version pinning
-	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  $(PYTHON_INTERP) -m pip install pip===$(PIP_VERSION)"
-	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  $(PYTHON_INTERP) -m pip install pip-tools===$(PIP_TOOLS_VERSION)"
-	@touch $@
+	bash -c "source $(VENV_PATH)/bin/activate && \
+		  python -m pip install pip===$(PIP_VERSION)"
+	bash -c "source $(VENV_PATH)/bin/activate && \
+		  python -m pip install pip-tools===$(PIP_TOOLS_VERSION)"
+	touch $@
 
 $(PYTHON_DEPENDS): requirements.txt
-	@bash -c "source $(VENV_PATH)/bin/activate && \
+	bash -c "source $(VENV_PATH)/bin/activate && \
 		  CUSTOM_COMPILE_COMMAND='make test-refresh-deps (or update requirements.txt)' \
-		  $(PYTHON_INTERP) -m piptools compile -q --generate-hashes requirements.txt --output-file $@"
+		  python -m piptools compile -q --generate-hashes requirements.txt --output-file $@"
 
 $(PIP_INSTALL_DONE): $(PIP_TOOLS_INSTALL_DONE) $(PYTHON_DEPENDS)
-	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  $(PYTHON_INTERP) -m piptools sync $(PYTHON_DEPENDS)"
-	@touch $@
+	bash -c "source $(VENV_PATH)/bin/activate && \
+		  python -m piptools sync $(PYTHON_DEPENDS)"
+	touch $@
 
 $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
 	@echo --- patching ---
 	@sleep 1 # Ensure python recompiles patched *.py files -> *.pyc
 	for f in $(CURDIR)/patches/scapy-2.4.3/*.patch ; do \
 		echo Applying patch: $$(basename $$f) ; \
-		patch --forward -p1 -d $(SCAPY_SOURCE) < $$f ; \
+		patch --forward -p1 -d $(VENV_PATH)/site-packages < $$f ; \
 		retCode=$$?; \
 		[ $$retCode -gt 1 ] && exit $$retCode; \
 	done; \
 	touch $@
 
 $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
-	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install -e $(PAPI_PYTHON_SRC_DIR)"
+	@bash -c "source $(VENV_PATH)/bin/activate && python -m pip install -e $(PAPI_PYTHON_SRC_DIR)"
 	@touch $@
 
 .PHONY: refresh-deps
@@ -172,7 +172,7 @@ PLUGIN_SRC_DIR=$(INTERN_PLUGIN_SRC_DIR)
 endif
 
 define retest-func
-@env FORCE_FOREGROUND=$(FORCE_FOREGROUND) FAILED_DIR=$(FAILED_DIR) VENV_PATH=$(VENV_PATH) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(VENV_PATH)/bin/activate $(PYTHON_INTERP) $(PYTHON_PROFILE_OPTS) $(BUILD_TEST_SRC)/run_tests.py -d $(BUILD_TEST_SRC) $(UNITTEST_EXTRA_OPTS) || env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
+@env FORCE_FOREGROUND=$(FORCE_FOREGROUND) FAILED_DIR=$(FAILED_DIR) VENV_PATH=$(VENV_PATH) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(VENV_PATH)/bin/activate python $(PYTHON_PROFILE_OPTS) $(BUILD_TEST_SRC)/run_tests.py -d $(BUILD_TEST_SRC) $(UNITTEST_EXTRA_OPTS) || env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
 endef
 
 .PHONY: sanity
@@ -181,8 +181,8 @@ ifeq ($(SANITY),no)
 SANITY_IMPORT_VPP_PAPI_CMD=true
 SANITY_RUN_VPP_CMD=true
 else
-SANITY_IMPORT_VPP_PAPI_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) $(BUILD_TEST_SRC)/sanity_import_vpp_papi.py
-SANITY_RUN_VPP_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) $(BUILD_TEST_SRC)/sanity_run_vpp.py
+SANITY_IMPORT_VPP_PAPI_CMD=source $(VENV_PATH)/bin/activate && python $(BUILD_TEST_SRC)/sanity_import_vpp_papi.py
+SANITY_RUN_VPP_CMD=source $(VENV_PATH)/bin/activate && python $(BUILD_TEST_SRC)/sanity_run_vpp.py
 endif
 
 ifndef TEST_JOBS
@@ -321,7 +321,7 @@ wipe-all: wipe wipe-papi wipe-doc wipe-cov
 .PHONY: checkstyle-diff
 checkstyle-diff: $(BUILD_TEST_SRC) $(PIP_INSTALL_DONE)
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
-		  $(PYTHON_INTERP) -m pip install pycodestyle"
+		  python -m pip install pycodestyle"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		cd $(WS_ROOT) && git diff --name-only --no-color --relative HEAD~1 ':!*.patch' | grep '.py$$' | xargs -n 1 -I XXX \
 		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v XXX ||\
@@ -336,7 +336,7 @@ checkstyle-diff: $(BUILD_TEST_SRC) $(PIP_INSTALL_DONE)
 .PHONY: checkstyle
 checkstyle: $(BUILD_TEST_SRC) $(PIP_INSTALL_DONE)
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
-		  $(PYTHON_INTERP) -m pip install pycodestyle"
+		  python -m pip install pycodestyle"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v $(BUILD_TEST_SRC)/*.py ||\
 		(echo \"*******************************************************************\" &&\
