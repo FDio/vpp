@@ -1,0 +1,211 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "49e20938_5fda60dc",
+        "filename": "docs/behavior_stability.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2021-04-06T13:55:12Z",
+      "side": 1,
+      "message": "Preamble",
+      "range": {
+        "startLine": 8,
+        "startChar": 0,
+        "endLine": 8,
+        "endChar": 7
+      },
+      "revId": "d60a0cc718f4c4f4e8848ebeb9ff3ab209f51d13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "80642805_0ad0ef08",
+        "filename": "docs/behavior_stability.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2021-04-06T13:55:12Z",
+      "side": 1,
+      "message": "selection",
+      "range": {
+        "startLine": 17,
+        "startChar": 35,
+        "endLine": 17,
+        "endChar": 43
+      },
+      "revId": "d60a0cc718f4c4f4e8848ebeb9ff3ab209f51d13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fda9758e_fcd42b8c",
+        "filename": "docs/behavior_stability.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2021-04-06T13:55:12Z",
+      "side": 1,
+      "message": "checks?",
+      "range": {
+        "startLine": 18,
+        "startChar": 26,
+        "endLine": 18,
+        "endChar": 36
+      },
+      "revId": "d60a0cc718f4c4f4e8848ebeb9ff3ab209f51d13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "661b1934_fd6e74f9",
+        "filename": "docs/behavior_stability.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2021-04-06T13:55:12Z",
+      "side": 1,
+      "message": "snapshot",
+      "range": {
+        "startLine": 33,
+        "startChar": 51,
+        "endLine": 33,
+        "endChar": 58
+      },
+      "revId": "d60a0cc718f4c4f4e8848ebeb9ff3ab209f51d13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4586b837_dc3a3a8b",
+        "filename": "docs/behavior_stability.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2021-04-06T13:55:12Z",
+      "side": 1,
+      "message": "use \"do not change\" instead? :)",
+      "range": {
+        "startLine": 72,
+        "startChar": 35,
+        "endLine": 72,
+        "endChar": 40
+      },
+      "revId": "d60a0cc718f4c4f4e8848ebeb9ff3ab209f51d13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "98dae515_fab1d15b",
+        "filename": "docs/behavior_stability.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2021-04-06T13:55:12Z",
+      "side": 1,
+      "message": "Add a note about importance of the VPP API change scheme, in-progress / production / deprecated, how it facilitates smooth rolling API consumption allowing the environment to adopt.",
+      "range": {
+        "startLine": 73,
+        "startChar": 11,
+        "endLine": 73,
+        "endChar": 79
+      },
+      "revId": "d60a0cc718f4c4f4e8848ebeb9ff3ab209f51d13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bfb824dd_768f2858",
+        "filename": "docs/behavior_stability.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2021-04-06T13:55:12Z",
+      "side": 1,
+      "message": "Releases",
+      "range": {
+        "startLine": 96,
+        "startChar": 0,
+        "endLine": 96,
+        "endChar": 7
+      },
+      "revId": "d60a0cc718f4c4f4e8848ebeb9ff3ab209f51d13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bea1db3b_2873e461",
+        "filename": "docs/behavior_stability.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2021-04-06T13:55:12Z",
+      "side": 1,
+      "message": "switched",
+      "range": {
+        "startLine": 127,
+        "startChar": 63,
+        "endLine": 127,
+        "endChar": 70
+      },
+      "revId": "d60a0cc718f4c4f4e8848ebeb9ff3ab209f51d13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "98118b67_f599163a",
+        "filename": "docs/behavior_stability.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 45
+      },
+      "writtenOn": "2021-04-06T13:55:12Z",
+      "side": 1,
+      "message": "This use case seems to be aligned with the \"Cutting Edge\" scenario. If API changes are addressed, and stability is there, then the only thing that could break it is behaviour change(s) :)",
+      "range": {
+        "startLine": 140,
+        "startChar": 0,
+        "endLine": 140,
+        "endChar": 32
+      },
+      "revId": "d60a0cc718f4c4f4e8848ebeb9ff3ab209f51d13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
