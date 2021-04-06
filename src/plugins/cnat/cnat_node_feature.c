@@ -125,6 +125,7 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       session->value.cs_port[VLIB_TX] =
 	clib_host_to_net_u16 (trk0->ct_ep[VLIB_TX].ce_port);
       session->value.cs_port[VLIB_RX] = udp0->src_port;
+      session->value.flags = 0;
 
       if (trk0->ct_flags & CNAT_TRK_FLAG_NO_NAT)
 	{
