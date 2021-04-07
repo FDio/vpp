@@ -348,6 +348,7 @@ VLIB_REGISTER_NODE (ip6_icmp_neighbor_solicitation_node,static) =
   .next_nodes = {
     [ICMP6_NEIGHBOR_SOLICITATION_NEXT_DROP] = "ip6-drop",
     [ICMP6_NEIGHBOR_SOLICITATION_NEXT_REPLY] = "interface-output",
+    [ICMP6_NEIGHBOR_SOLICITATION_NEXT_PUNT] = "ip6-punt",
   },
 };
 
