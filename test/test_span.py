@@ -3,7 +3,8 @@
 import unittest
 
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether, Dot1Q, GRE, ERSPAN
+from scapy.layers.l2 import Ether, Dot1Q, GRE
+from scapy.contrib.erspan import ERSPAN
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 

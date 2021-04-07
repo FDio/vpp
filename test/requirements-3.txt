@@ -243,8 +243,8 @@ requests==2.25.1 \
     --hash=sha256:27973dd4a904a4f13b263a19c866c13b92a39ed1c964655f025f3f8d3d75b804 \
     --hash=sha256:c210084e36a42ae6b9219e00e48287def368a26d03a048ddad7bfee44f75871e \
     # via sphinx
-scapy==2.4.3 ; python_version >= "2.7" or python_version >= "3.4" \
-    --hash=sha256:e2f8d11f6a941c14a789ae8b236b27bd634681f1b29b5e893861e284d234f6b0 \
+scapy==2.4.4 ; python_version >= "2.7" or python_version >= "3.4" \
+    --hash=sha256:ecfd7a14cd9c3ef0eb08d28d5bb71d97219edff1454ccbdff229f676b27900ee \
     # via -r requirements.txt
 six==1.15.0 \
     --hash=sha256:30639c035cdb23534cd4aa2dd52c3bf48f06e5f4a941509c8bafd8ce11080259 \

@@ -4,13 +4,13 @@ import unittest
 from io import BytesIO
 from random import randint, shuffle, choice
 
-import scapy.compat
 from framework import VppTestCase, VppTestRunner
 from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, TCP, UDP, ICMP, GRE
 from scapy.layers.inet import IPerror, TCPerror
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
+from scapy.config import conf
 from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogSeverity
 from util import ppp, ip4_range
@@ -41,6 +41,8 @@ class NAT44EDTestCase(VppTestCase):
         self.plugin_enable()
 
     def tearDown(self):
+        if conf.layers.filtered:
+            conf.layers.unfilter()
         super(NAT44EDTestCase, self).tearDown()
         if not self.vpp_dead:
             self.plugin_disable()
@@ -2021,6 +2023,7 @@ class TestNAT44EDMW(TestNAT44ED):
         udp_port_offset = 20
         icmp_id_offset = 20
 
+        conf.layers.filter([Ether, IP, TCP, UDP, ICMP])
         self.nat_add_address(self.nat_addr)
         self.nat_add_inside_interface(self.pg0)
         self.nat_add_outside_interface(self.pg1)
