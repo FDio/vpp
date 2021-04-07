@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "c8f7a1cc_8a50dbec",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-04-07T15:06:06Z",
+      "side": 1,
+      "message": "I did the foll. in ipsec4_spd_add_bihash_entry() and missed it in ipsec4_spd_find_bihash_entry(). I will make this change.\nipsec4_spd_5tuple_t ip4_5tuple \u003d { .ip4_addr \u003d { (ip4_address_t) la,\n                                                 (ip4_address_t) ra },\n                                   .port \u003d { lp, rp },\n                                   .proto \u003d pr };\n\nCan you please elaborate long load after short store issue ?",
+      "parentUuid": "f52ed6b2_70a80cb2",
+      "range": {
+        "startLine": 119,
+        "startChar": 0,
+        "endLine": 126,
+        "endChar": 22
+      },
+      "revId": "38aa7544914ac307678683b8606d651d0bdb3226",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "adbec94f_fa11ee5f",
         "filename": "src/vnet/ipsec/ipsec_output.c",
         "patchSetId": 6
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "700cc923_ca43c03b",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-04-07T15:06:06Z",
+      "side": 1,
+      "message": "In ipsec_output_policy_match(),  range check is performed on local/remote ip_addr \u0026 ports.  Range check have to be done in host order only. While adding an entry in flow cache, it is added in N/W order for fast lookup.",
+      "parentUuid": "adbec94f_fa11ee5f",
+      "range": {
+        "startLine": 369,
+        "startChar": 0,
+        "endLine": 372,
+        "endChar": 35
+      },
+      "revId": "38aa7544914ac307678683b8606d651d0bdb3226",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "aad7df72_45b2795d",
         "filename": "src/vnet/ipsec/ipsec_tun.c",
         "patchSetId": 6
@@ -59,6 +107,30 @@
       "writtenOn": "2021-04-07T12:08:23Z",
       "side": 1,
       "message": "This should be removed from the final patch.....",
+      "range": {
+        "startLine": 932,
+        "startChar": 0,
+        "endLine": 932,
+        "endChar": 5
+      },
+      "revId": "38aa7544914ac307678683b8606d651d0bdb3226",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "37729cf3_63941144",
+        "filename": "src/vnet/ipsec/ipsec_tun.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 932,
+      "author": {
+        "id": 2229
+      },
+      "writtenOn": "2021-04-07T15:06:06Z",
+      "side": 1,
+      "message": "Sure. I am waiting for Neale\u0027s comment to move IPSec startup config options to a common file. Currently, I have moved it to ipsec.c from ipsec_tun.c to add flow cache options.",
+      "parentUuid": "aad7df72_45b2795d",
       "range": {
         "startLine": 932,
         "startChar": 0,
