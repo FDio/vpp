@@ -1470,6 +1470,7 @@ list (APPEND VNET_SOURCES
   ip6-nd/ip6_nd.c
   ip6-nd/ip6_nd_api.c
   ip6-nd/ip6_nd_proxy.c
+  ip6-nd/ip6_nd_mirror_proxy.c
   ip6-nd/ip6_ra.c
   ip6-nd/rd_cp.c
   ip6-nd/rd_cp_api.c
