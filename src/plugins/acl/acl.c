@@ -1838,7 +1838,7 @@ static void
 
   rv = acl_stats_intf_counters_enable_disable (am, mp->enable);
 
-  REPLY_MACRO (VL_API_ACL_DEL_REPLY);
+  REPLY_MACRO (VL_API_ACL_STATS_INTF_COUNTERS_ENABLE_REPLY);
 }
 
 
