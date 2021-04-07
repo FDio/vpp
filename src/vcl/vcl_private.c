@@ -138,8 +138,14 @@ vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp)
 static void
 vcl_worker_cleanup_cb (void *arg)
 {
-  vcl_worker_t *wrk = vcl_worker_get_current ();
-  u32 wrk_index = wrk->wrk_index;
+  vcl_worker_t *wrk;
+  u32 wrk_index;
+
+  wrk_index = vcl_get_worker_index ();
+  wrk = vcl_worker_get_if_valid (wrk_index);
+  if (!wrk)
+    return;
+
   vcl_worker_cleanup (wrk, 1 /* notify vpp */ );
   vcl_set_worker_index (~0);
   VDBG (0, "cleaned up worker %u", wrk_index);
