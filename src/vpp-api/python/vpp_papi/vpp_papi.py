@@ -389,7 +389,7 @@ class VPPApiClient:
     def __init__(self, apifiles=None, testmode=False, async_thread=True,
                  logger=None, loglevel=None,
                  read_timeout=5, use_socket=False,
-                 server_address='/run/vpp/api.sock'):
+                 server_address='/run/vpp/api.sock', foreground=False):
         """Create a VPP API object.
 
         apifiles is a list of files containing API
@@ -428,7 +428,10 @@ class VPPApiClient:
         self.stats = {}
 
         if use_socket:
-            from . vpp_transport_socket import VppTransport
+            if foreground:
+                from . vpp_transport_foreground_socket import VppTransport
+            else:
+                from . vpp_transport_socket import VppTransport
         else:
             from . vpp_transport_shmem import VppTransport
 
