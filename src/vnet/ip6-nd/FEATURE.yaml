@@ -1,12 +1,13 @@
 ---
-name: IPv6 Neighbor Discovery
+name: IPv6 Neighbor Discovery and Proxy
 maintainer: Neale Ranns <nranns@cisco.com>
 features:
   - Neighbor discovery.
   - ND Auto address configuration
   - Multicast Listener Discovery - only as host role to send adverts
   - Router Advertisements
+  - ND (mirror) proxy on given interface
 
-description: "An implementation of the IPv6 Neighbor discovery protocol as described in RFC4861 and RFC4862."
+description: "An implementation of the IPv6 Neighbor discovery protocol as described in RFC4861 and RFC4862. It also implements ND (mirror) proxy on given interface (some inspiration from RFC4389)."
 state: production
 properties: [API, CLI, MULTITHREAD]
