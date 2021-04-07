@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c37aa29f_51c19413",
+        "filename": "src/plugins/nsh/nsh_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 558,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2021-04-07T15:19:52Z",
+      "side": 0,
+      "message": "These 3 lines are not currently present in the repository but I am not sure if the diff should reflect them. They were introduced in Changeset 1 and got removed in the subsequent changesets as part of review.",
+      "revId": "8ae50ec1ed041717eb3bb2596eb1572ccd52e89a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
