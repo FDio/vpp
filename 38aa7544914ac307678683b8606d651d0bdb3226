@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f52ed6b2_70a80cb2",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-04-07T12:08:23Z",
+      "side": 1,
+      "message": "This will likely cause long load after short store issue. Possible penalty around 20 clocks.",
+      "range": {
+        "startLine": 119,
+        "startChar": 0,
+        "endLine": 126,
+        "endChar": 22
+      },
+      "revId": "38aa7544914ac307678683b8606d651d0bdb3226",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "adbec94f_fa11ee5f",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-04-07T12:08:23Z",
+      "side": 1,
+      "message": "why not leave it in the network order in the hash key instead of wasting 4 clock cycles on byte swap?",
+      "range": {
+        "startLine": 369,
+        "startChar": 0,
+        "endLine": 372,
+        "endChar": 35
+      },
+      "revId": "38aa7544914ac307678683b8606d651d0bdb3226",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aad7df72_45b2795d",
+        "filename": "src/vnet/ipsec/ipsec_tun.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 932,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-04-07T12:08:23Z",
+      "side": 1,
+      "message": "This should be removed from the final patch.....",
+      "range": {
+        "startLine": 932,
+        "startChar": 0,
+        "endLine": 932,
+        "endChar": 5
+      },
+      "revId": "38aa7544914ac307678683b8606d651d0bdb3226",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
