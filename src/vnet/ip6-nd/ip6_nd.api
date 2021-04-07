@@ -106,6 +106,20 @@ autoreply define sw_interface_ip6nd_ra_prefix
   u32 pref_lifetime;
 };
 
+/** \brief IPv6 ND (mirror) proxy
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - The interface the host is on
+    @param is_enable - enable or disable
+*/
+autoreply define ip6nd_proxy_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  vl_api_interface_index_t sw_if_index;
+  bool is_enable;
+};
+
 /** \brief IPv6 ND proxy config
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
