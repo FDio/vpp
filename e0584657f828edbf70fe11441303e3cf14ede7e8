@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fca27ee4_c02fb3cb",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-04-08T14:46:26Z",
+      "side": 1,
+      "message": "Usually binapi-generator -version isn\u0027t very expressive (govpp v0.4.0-dev for most of the times). But the right place to fix this might be in govpp itself",
+      "revId": "e0584657f828edbf70fe11441303e3cf14ede7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0bb06bca_971cace3",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-04-08T14:46:26Z",
+      "side": 1,
+      "message": "Maybe the govpp.git commit we checkout should be made parametric ?\nAlso maybe we should default to something that\u0027s not \"master\", this way if we add a CI job, rogue commits in govpp won\u0027t automatically break the CI 😊",
+      "revId": "e0584657f828edbf70fe11441303e3cf14ede7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ac0df403_5248702b",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-04-08T14:46:26Z",
+      "side": 1,
+      "message": "Maybe we should make json-api-files as part of this command ?",
+      "revId": "e0584657f828edbf70fe11441303e3cf14ede7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d9954b9a_05f0383f",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-04-08T14:46:26Z",
+      "side": 1,
+      "message": "A bunch of option that would also be nice to expose:\n--import-prefix\u003d To change to import stanza in the bindings\n--no-source-path-info --no-version-info to silence debug comments that depend on the path/user who generates the bindings",
+      "revId": "e0584657f828edbf70fe11441303e3cf14ede7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "30c8f9e1_91a750e3",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-04-08T14:46:26Z",
+      "side": 1,
+      "message": "Maybe we could use something like argparse ?\nI\u0027m a big fan of --options 😄",
+      "revId": "e0584657f828edbf70fe11441303e3cf14ede7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
