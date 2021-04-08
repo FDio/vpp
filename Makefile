@@ -216,6 +216,7 @@ help:
 	@echo " featurelist          - dump feature list in markdown"
 	@echo " json-api-files       - (re)-generate json api files"
 	@echo " json-api-files-debug - (re)-generate json api files for debug target"
+	@echo " go-api-files         - (re)-generate golang api files"
 	@echo " docs                 - Build the Sphinx documentation"
 	@echo " docs-venv            - Build the virtual environment for the Sphinx docs"
 	@echo " docs-clean           - Remove the generated files from the Sphinx docs"
@@ -612,6 +613,10 @@ json-api-files:
 .PHONY: json-api-files-debug
 json-api-files-debug:
 	$(WS_ROOT)/src/tools/vppapigen/generate_json.py --debug-target
+
+.PHONY: go-api-files
+go-api-files: json-api-files
+	$(WS_ROOT)/src/tools/vppapigen/generate_go.py
 
 .PHONY: ctags
 ctags: ctags.files
