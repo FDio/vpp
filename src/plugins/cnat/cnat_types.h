@@ -150,6 +150,8 @@ typedef struct cnat_timestamp_t_
   u16 lifetime;
   /* Users refcount, initially 3 (session, rsession, dpo) */
   u16 refcnt;
+  /* Translation index that created the session pair */
+  u32 ct_index;
 } cnat_timestamp_t;
 
 typedef struct cnat_node_ctx_

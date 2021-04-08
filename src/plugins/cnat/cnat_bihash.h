@@ -105,13 +105,22 @@ clib_bihash_key_compare_40_56 (u64 *a, u64 *b)
 
 typedef clib_bihash_kv_40_56_t cnat_bihash_kv_t;
 typedef clib_bihash_40_56_t cnat_bihash_t;
+typedef clib_bihash_bucket_40_56_t cnat_bihash_bucket_t;
+typedef clib_bihash_value_40_56_t cnat_bihash_value_t;
 
 #define cnat_bihash_search_i2_hash  clib_bihash_search_inline_2_with_hash_40_56
 #define cnat_bihash_search_i2	    clib_bihash_search_inline_2_40_56
 #define cnat_bihash_add_del	    clib_bihash_add_del_40_56
 #define cnat_bihash_hash	    clib_bihash_hash_40_56
+#define cnat_bihash_get_bucket	    clib_bihash_get_bucket_40_56
+#define cnat_bihash_bucket_is_empty clib_bihash_bucket_is_empty_40_56
+#define cnat_bihash_get_value	    clib_bihash_get_value_40_56
 #define cnat_bihash_prefetch_bucket clib_bihash_prefetch_bucket_40_56
 #define cnat_bihash_prefetch_data   clib_bihash_prefetch_data_40_56
+#define cnat_bihash_init	    clib_bihash_init_40_56
+#define cnat_bihash_set_kvp_format  clib_bihash_set_kvp_format_fn_40_56
+#define cnat_bihash_format	    format_bihash_40_56
+#define cnat_bihash_foreach_kv_pair clib_bihash_foreach_key_value_pair_40_56
 
 #endif /* __included_bihash_40_56_h__ */
 

@@ -840,7 +840,7 @@ cnat_load_balance (const cnat_translation_t *ct, ip_address_family_t af,
 static_always_inline void
 cnat_session_create (cnat_session_t *session, cnat_node_ctx_t *ctx,
 		     cnat_session_location_t rsession_location,
-		     u8 rsession_flags)
+		     u8 rsession_flags, cnat_translation_t *ct)
 {
   cnat_client_t *cc;
   cnat_bihash_kv_t rkey;
@@ -849,7 +849,14 @@ cnat_session_create (cnat_session_t *session, cnat_node_ctx_t *ctx,
   cnat_bihash_kv_t rvalue;
   int rv;
 
-  session->value.cs_ts_index = cnat_timestamp_new (ctx->now);
+  if (NULL == ct)
+    session->value.cs_ts_index = cnat_timestamp_new (ctx->now, INDEX_INVALID);
+  else
+    {
+      session->value.cs_ts_index =
+	cnat_timestamp_new (ctx->now, ct - cnat_translation_pool);
+      clib_atomic_add_fetch (&ct->timestamp_refcnt, 1);
+    }
   cnat_bihash_add_del (&cnat_session_db, bkey, 1);
 
   if (!(rsession_flags & CNAT_SESSION_FLAG_NO_CLIENT))

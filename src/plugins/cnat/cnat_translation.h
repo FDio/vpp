@@ -57,7 +57,7 @@ typedef struct cnat_ep_trk_t_
   u8 ct_flags; /* cnat_trk_flag_t */
 } cnat_ep_trk_t;
 
-typedef enum cnat_translation_flag_t_
+typedef enum __attribute__ ((__packed__))
 {
   /* Do allocate a source port */
   CNAT_TRANSLATION_FLAG_ALLOCATE_PORT = (1 << 0),
@@ -65,6 +65,9 @@ typedef enum cnat_translation_flag_t_
    * this allow not being called twice when
    * with more then FIB_PATH_LIST_POPULAR backends  */
   CNAT_TRANSLATION_STACKED = (1 << 1),
+  /* Translation has been deleted, wait for sessions
+   * to be deleted by scanner before we free the index */
+  CNAT_TRANSLATION_WAIT_SESSION_DEL = (1 << 2),
 } cnat_translation_flag_t;
 
 typedef enum
@@ -158,9 +161,14 @@ typedef struct cnat_translation_t_
   index_t index;
 
   /**
+   * Session timestamp refcount for cleanup
+   */
+  u32 timestamp_refcnt;
+
+  /**
    * Translation flags
    */
-  u8 flags;
+  cnat_translation_flag_t flags;
 
   /**
    * Type of load balancing
@@ -197,6 +205,13 @@ extern u32 cnat_translation_update (cnat_endpoint_t *vip,
  * @param id the ID as returned from the create
  */
 extern int cnat_translation_delete (u32 id);
+
+/**
+ * Callback when a session pair was deleted for the translation
+ *
+ * @param id the ID as returned from the create
+ */
+extern void cnat_translation_timestamp_deleted (u32 id);
 
 /**
  * Callback function invoked during a walk of all translations
