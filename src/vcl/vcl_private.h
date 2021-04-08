@@ -286,6 +286,7 @@ typedef struct vcl_worker_
   clib_socket_t app_api_sock;
   socket_client_main_t bapi_sock_ctx;
   api_main_t bapi_api_ctx;
+  memory_client_main_t bapi_mem_ctx;
 
   /* State of the connection, shared between msg RX thread and main thread */
   volatile vcl_bapi_app_state_t bapi_app_state;

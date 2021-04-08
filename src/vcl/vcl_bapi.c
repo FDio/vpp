@@ -495,6 +495,7 @@ vcl_bapi_connect_to_vpp (void)
   vcl_bapi_cleanup ();
 
   vlibapi_set_main (&wrk->bapi_api_ctx);
+  vlibapi_set_memory_client_main (&wrk->bapi_mem_ctx);
   vcl_bapi_hookup ();
 
   if (!vcl_cfg->vpp_bapi_socket_name)
