@@ -55,7 +55,7 @@
 
 #define MIN_SRC_PORT ((u16) 0xC000)
 
-typedef enum cnat_trk_flag_t_
+typedef enum __attribute__ ((__packed__))
 {
   /* Endpoint is active (static or dhcp resolved) */
   CNAT_TRK_ACTIVE = (1 << 0),
@@ -82,7 +82,7 @@ typedef struct cnat_endpoint_tuple_t_
 {
   cnat_endpoint_t dst_ep;
   cnat_endpoint_t src_ep;
-  u8 ep_flags; /* cnat_trk_flag_t */
+  cnat_trk_flag_t ep_flags;
 } cnat_endpoint_tuple_t;
 
 typedef struct
@@ -150,6 +150,8 @@ typedef struct cnat_timestamp_t_
   u16 lifetime;
   /* Users refcount, initially 3 (session, rsession, dpo) */
   u16 refcnt;
+  /* Translation index that created the session pair */
+  u32 ct_index;
 } cnat_timestamp_t;
 
 typedef struct cnat_node_ctx_

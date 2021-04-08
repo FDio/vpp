@@ -132,9 +132,8 @@ cnat_client_db_add (cnat_client_t * cc)
 			&ip_addr_v6 (&cc->cc_ip), cci);
 }
 
-
 index_t
-cnat_client_add (const ip_address_t * ip, u8 flags)
+cnat_client_add (const ip_address_t *ip, u8 is_exclusive)
 {
   cnat_client_t *cc;
   dpo_id_t tmp = DPO_INVALID;
@@ -157,7 +156,6 @@ cnat_client_add (const ip_address_t * ip, u8 flags)
   cc->cc_locks = 1;
   cci = cc - cnat_client_pool;
   cc->parent_cci = cci;
-  cc->flags = flags;
   cc->tr_refcnt = 0;
   cc->session_refcnt = 0;
 
@@ -171,8 +169,8 @@ cnat_client_add (const ip_address_t * ip, u8 flags)
   dpo_stack (cnat_client_dpo, dproto, &cc->cc_parent, drop_dpo_get (dproto));
 
   fib_flags = FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT;
-  fib_flags |= (flags & CNAT_FLAG_EXCLUSIVE) ?
-    FIB_ENTRY_FLAG_EXCLUSIVE : FIB_ENTRY_FLAG_INTERPOSE;
+  fib_flags |=
+    is_exclusive ? FIB_ENTRY_FLAG_EXCLUSIVE : FIB_ENTRY_FLAG_INTERPOSE;
 
   fei = fib_table_entry_special_dpo_add (CNAT_FIB_TABLE,
 					 &pfx, cnat_fib_source, fib_flags,
@@ -190,7 +188,7 @@ cnat_client_learn (const ip_address_t *addr)
   /* RPC call to add a client from the dataplane */
   index_t cci;
   cnat_client_t *cc;
-  cci = cnat_client_add (addr, 0 /* flags */);
+  cci = cnat_client_add (addr, 0 /* is_exclusive */);
   cc = pool_elt_at_index (cnat_client_pool, cci);
   cnat_client_cnt_session (cc);
   /* Process throttled calls if any */
@@ -211,7 +209,6 @@ cnat_client_dpo_interpose (const dpo_id_t * original,
 
   cc_clone->cc_fei = FIB_NODE_INDEX_INVALID;
   cc_clone->parent_cci = cc->parent_cci;
-  cc_clone->flags = cc->flags;
   ip_address_copy (&cc_clone->cc_ip, &cc->cc_ip);
 
   /* stack the clone on the FIB provided parent */
@@ -248,6 +245,7 @@ format_cnat_client (u8 * s, va_list * args)
 {
   index_t cci = va_arg (*args, index_t);
   u32 indent = va_arg (*args, u32);
+  fib_entry_flag_t fib_flags;
 
   cnat_client_t *cc = pool_elt_at_index (cnat_client_pool, cci);
 
@@ -255,14 +253,17 @@ format_cnat_client (u8 * s, va_list * args)
 	      format_ip_address, &cc->cc_ip,
 	      cc->tr_refcnt, cc->session_refcnt);
 
-  if (cc->flags & CNAT_FLAG_EXCLUSIVE)
-    s = format (s, " exclusive");
-
   if (cnat_client_is_clone (cc))
     s = format (s, "\n%Uclone of [%d]\n%U%U",
 		format_white_space, indent + 2, cc->parent_cci,
 		format_white_space, indent + 2,
 		format_dpo_id, &cc->cc_parent, indent + 4);
+  else
+    {
+      fib_flags = fib_entry_get_flags_for_source (cc->cc_fei, cnat_fib_source);
+      if (fib_flags & FIB_ENTRY_FLAG_EXCLUSIVE)
+	s = format (s, " exclusive");
+    }
 
   return (s);
 }
