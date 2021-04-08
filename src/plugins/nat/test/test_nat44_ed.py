@@ -4,6 +4,8 @@ import unittest
 from io import BytesIO
 from random import randint
 
+import socket
+import struct
 import scapy.compat
 from framework import VppTestCase, VppTestRunner
 from scapy.data import IP_PROTOS
