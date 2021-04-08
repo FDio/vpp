@@ -9,7 +9,7 @@ from framework import VppDiedError, VppTestCase, KeepAliveReporter
 
 class SanityTestCase(VppTestCase):
     """ Sanity test case - verify whether VPP is able to start """
-    pass
+    cpus = [0]
 
     # don't ask to debug SanityTestCase
     @classmethod
@@ -43,8 +43,8 @@ if __name__ == '__main__':
     y.close()
 
     if rc == 0:
-        print('Sanity test case passed.\n')
+        print('Sanity test case passed.')
     else:
-        print('Sanity test case failed.\n')
+        print('Sanity test case failed.')
 
     sys.exit(rc)
