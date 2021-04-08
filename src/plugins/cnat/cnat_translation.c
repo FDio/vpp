@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vlibmemory/api.h>
 #include <vnet/fib/fib_source.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_entry_track.h>
@@ -20,7 +21,6 @@
 #include <vnet/dpo/drop_dpo.h>
 
 #include <cnat/cnat_translation.h>
-#include <cnat/cnat_session.h>
 #include <cnat/cnat_client.h>
 
 cnat_translation_t *cnat_translation_pool;
@@ -338,6 +338,26 @@ cnat_translation_stack (cnat_translation_t * ct)
   ct->flags |= CNAT_TRANSLATION_STACKED;
 }
 
+void
+cnat_translation_clear_rpc (const u32 *id)
+{
+  pool_put_index (cnat_translation_pool, *id);
+}
+
+void
+cnat_translation_timestamp_deleted (u32 id)
+{
+  /* Session were cleaned up by scanner */
+  cnat_translation_t *ct;
+  if (INDEX_INVALID == id)
+    return;
+  ct = pool_elt_at_index (cnat_translation_pool, id);
+  if ((0 == clib_atomic_sub_fetch (&ct->timestamp_refcnt, 1)) &&
+      (ct->flags & CNAT_TRANSLATION_WAIT_SESSION_DEL))
+    vl_api_rpc_call_main_thread (cnat_translation_clear_rpc, (u8 *) &id,
+				 sizeof (id));
+}
+
 int
 cnat_translation_delete (u32 id)
 {
@@ -357,7 +377,11 @@ cnat_translation_delete (u32 id)
   cnat_remove_translation_from_db (ct->ct_cci, &ct->ct_vip, ct->ct_proto);
   cnat_client_translation_deleted (ct->ct_cci);
   cnat_translation_unwatch_addr (id, CNAT_RESOLV_ADDR_ANY);
-  pool_put (cnat_translation_pool, ct);
+  if (0 == ct->timestamp_refcnt)
+    pool_put (cnat_translation_pool, ct);
+  else
+    /* Session remain, wait for their cleanup */
+    ct->flags |= CNAT_TRANSLATION_WAIT_SESSION_DEL;
 
   return (0);
 }
@@ -540,10 +564,10 @@ cnat_translation_show (vlib_main_t * vm,
   if (INDEX_INVALID == cti)
     {
       pool_foreach_index (cti, cnat_translation_pool)
-       {
-	ct = pool_elt_at_index (cnat_translation_pool, cti);
-        vlib_cli_output(vm, "%U", format_cnat_translation, ct);
-      }
+	{
+	  ct = pool_elt_at_index (cnat_translation_pool, cti);
+	  vlib_cli_output (vm, "%U", format_cnat_translation, ct);
+	}
     }
   else
     {
@@ -560,9 +584,7 @@ cnat_translation_purge (void)
   index_t tri, *trp, *trs = NULL;
 
   pool_foreach_index (tri, cnat_translation_pool)
-   {
-    vec_add1(trs, tri);
-  }
+    vec_add1 (trs, tri);
 
   vec_foreach (trp, trs) cnat_translation_delete (*trp);
 

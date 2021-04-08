@@ -43,7 +43,7 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		       int session_not_found, cnat_session_t *session)
 {
   vlib_combined_counter_main_t *cntm = &cnat_translation_counters;
-  const cnat_translation_t *ct = NULL;
+  cnat_translation_t *ct = NULL;
   ip4_header_t *ip4 = NULL;
   ip_protocol_t iproto;
   ip6_header_t *ip6 = NULL;
@@ -142,7 +142,8 @@ cnat_input_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       /* refcnt session in current client */
       cnat_client_cnt_session (cc);
-      cnat_session_create (session, ctx, CNAT_LOCATION_OUTPUT, rsession_flags);
+      cnat_session_create (session, ctx, CNAT_LOCATION_OUTPUT, rsession_flags,
+			   ct);
       trace_flags |= CNAT_TRACE_SESSION_CREATED;
     }
 
@@ -320,7 +321,7 @@ cnat_output_feature_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       trace_flags |= CNAT_TRACE_SESSION_CREATED;
       cnat_session_create (session, ctx, CNAT_LOCATION_INPUT,
-			   CNAT_SESSION_FLAG_NO_CLIENT);
+			   CNAT_SESSION_FLAG_NO_CLIENT, NULL);
     }
 
   if (AF_IP4 == ctx->af)

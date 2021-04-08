@@ -130,7 +130,7 @@ cnat_snat_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
       trace_flags |= CNAT_TRACE_SESSION_CREATED;
 
       cnat_session_create (session, ctx, CNAT_LOCATION_FIB,
-			   CNAT_SESSION_FLAG_HAS_SNAT);
+			   CNAT_SESSION_FLAG_HAS_SNAT, NULL);
     }
 
 

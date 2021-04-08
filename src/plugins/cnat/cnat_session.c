@@ -16,9 +16,7 @@
 #include <vnet/ip/ip.h>
 #include <cnat/cnat_session.h>
 #include <cnat/cnat_inline.h>
-
-#include <vppinfra/bihash_template.h>
-#include <vppinfra/bihash_template.c>
+#include <cnat/cnat_translation.h>
 
 cnat_bihash_t cnat_session_db;
 void (*cnat_free_port_cb) (u16 port, ip_protocol_t iproto);
@@ -29,8 +27,44 @@ typedef struct cnat_session_walk_ctx_t_
   void *ctx;
 } cnat_session_walk_ctx_t;
 
+always_inline f64
+cnat_timestamp_exp (u32 index, u8 *stale_translation)
+{
+  f64 t;
+  cnat_translation_t *ct;
+  *stale_translation = 0;
+  if (INDEX_INVALID == index)
+    return -1;
+  clib_rwlock_reader_lock (&cnat_main.ts_lock);
+  cnat_timestamp_t *ts = pool_elt_at_index (cnat_timestamps, index);
+  t = ts->last_seen + (f64) ts->lifetime;
+  if (INDEX_INVALID != ts->ct_index)
+    {
+      ct = pool_elt_at_index (cnat_translation_pool, ts->ct_index);
+      *stale_translation = ct->flags & CNAT_TRANSLATION_WAIT_SESSION_DEL;
+    }
+  clib_rwlock_reader_unlock (&cnat_main.ts_lock);
+  return t;
+}
+
+always_inline void
+cnat_timestamp_free (u32 index)
+{
+  if (INDEX_INVALID == index)
+    return;
+  clib_rwlock_writer_lock (&cnat_main.ts_lock);
+  cnat_timestamp_t *ts = pool_elt_at_index (cnat_timestamps, index);
+  ts->refcnt--;
+  if (0 == ts->refcnt)
+    {
+      cnat_translation_timestamp_deleted (ts->ct_index);
+      pool_put (cnat_timestamps, ts);
+    }
+  clib_rwlock_writer_unlock (&cnat_main.ts_lock);
+}
+
 static int
-cnat_session_walk_cb (BVT (clib_bihash_kv) * kv, void *arg)
+cnat_session_walk_cb (clib_bihash_kv_40_56_t *kv, void *arg)
 {
   cnat_session_t *session = (cnat_session_t *) kv;
   cnat_session_walk_ctx_t *ctx = arg;
@@ -47,8 +81,7 @@ cnat_session_walk (cnat_session_walk_cb_t cb, void *ctx)
     .cb = cb,
     .ctx = ctx,
   };
-  BV (clib_bihash_foreach_key_value_pair) (&cnat_session_db,
-					   cnat_session_walk_cb, &wctx);
+  cnat_bihash_foreach_kv_pair (&cnat_session_db, cnat_session_walk_cb, &wctx);
 }
 
 typedef struct cnat_session_purge_walk_t_
@@ -57,7 +90,7 @@ typedef struct cnat_session_purge_walk_t_
 } cnat_session_purge_walk_ctx_t;
 
 static int
-cnat_session_purge_walk (BVT (clib_bihash_kv) * key, void *arg)
+cnat_session_purge_walk (clib_bihash_kv_40_56_t *key, void *arg)
 {
   cnat_session_purge_walk_ctx_t *ctx = arg;
 
@@ -93,9 +126,10 @@ format_cnat_session (u8 * s, va_list * args)
 {
   cnat_session_t *sess = va_arg (*args, cnat_session_t *);
   CLIB_UNUSED (int verbose) = va_arg (*args, int);
+  u8 stale;
   f64 ts = 0;
   if (!pool_is_free_index (cnat_timestamps, sess->value.cs_ts_index))
-    ts = cnat_timestamp_exp (sess->value.cs_ts_index);
+    ts = cnat_timestamp_exp (sess->value.cs_ts_index, &stale);
 
   s = format (
     s, "session:[%U;%d -> %U;%d, %U] => %U;%d -> %U;%d %U lb:%d age:%f",
@@ -126,9 +160,8 @@ cnat_session_show (vlib_main_t * vm,
 				   format_unformat_error, input));
     }
 
-  vlib_cli_output (vm, "CNat Sessions: now:%f\n%U\n",
-		   vlib_time_now (vm),
-		   BV (format_bihash), &cnat_session_db, verbose);
+  vlib_cli_output (vm, "CNat Sessions: now:%f\n%U\n", vlib_time_now (vm),
+		   cnat_bihash_format, &cnat_session_db, verbose);
 
   return (NULL);
 }
@@ -162,8 +195,8 @@ cnat_session_purge (void)
   cnat_session_purge_walk_ctx_t ctx = { };
   cnat_bihash_kv_t *key;
 
-  BV (clib_bihash_foreach_key_value_pair) (&cnat_session_db,
-					   cnat_session_purge_walk, &ctx);
+  cnat_bihash_foreach_kv_pair (&cnat_session_db, cnat_session_purge_walk,
+			       &ctx);
 
   vec_foreach (key, ctx.keys) cnat_session_free ((cnat_session_t *) key);
 
@@ -175,8 +208,10 @@ cnat_session_purge (void)
 u64
 cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 {
-  BVT (clib_bihash) * h = &cnat_session_db;
+  cnat_bihash_t *h = &cnat_session_db;
   int j, k;
+  f64 exp;
+  u8 stale_translation;
 
   /* Don't scan the l2 fib if it hasn't been instantiated yet */
   if (alloc_arena (h) == 0)
@@ -190,22 +225,20 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 
       if (i < (h->nbuckets - 3))
 	{
-	  BVT (clib_bihash_bucket) * b =
-	    BV (clib_bihash_get_bucket) (h, i + 3);
+	  cnat_bihash_bucket_t *b = cnat_bihash_get_bucket (h, i + 3);
 	  CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
-	  b = BV (clib_bihash_get_bucket) (h, i + 1);
-	  if (!BV (clib_bihash_bucket_is_empty) (b))
+	  b = cnat_bihash_get_bucket (h, i + 1);
+	  if (!cnat_bihash_bucket_is_empty (b))
 	    {
-	      BVT (clib_bihash_value) * v =
-		BV (clib_bihash_get_value) (h, b->offset);
+	      cnat_bihash_value_t *v = cnat_bihash_get_value (h, b->offset);
 	      CLIB_PREFETCH (v, CLIB_CACHE_LINE_BYTES, LOAD);
 	    }
 	}
 
-      BVT (clib_bihash_bucket) * b = BV (clib_bihash_get_bucket) (h, i);
-      if (BV (clib_bihash_bucket_is_empty) (b))
+      cnat_bihash_bucket_t *b = cnat_bihash_get_bucket (h, i);
+      if (cnat_bihash_bucket_is_empty (b))
 	continue;
-      BVT (clib_bihash_value) * v = BV (clib_bihash_get_value) (h, b->offset);
+      cnat_bihash_value_t *v = cnat_bihash_get_value (h, b->offset);
       for (j = 0; j < (1 << b->log2_pages); j++)
 	{
 	  for (k = 0; k < BIHASH_KVP_PER_PAGE; k++)
@@ -214,9 +247,10 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 		continue;
 
 	      cnat_session_t *session = (cnat_session_t *) & v->kvp[k];
+	      exp = cnat_timestamp_exp (session->value.cs_ts_index,
+					&stale_translation);
 
-	      if (start_time >
-		  cnat_timestamp_exp (session->value.cs_ts_index))
+	      if (start_time > exp || stale_translation)
 		{
 		  /* age it */
 		  cnat_session_free (session);
@@ -225,7 +259,7 @@ cnat_session_scan (vlib_main_t * vm, f64 start_time, int i)
 		   * Note: we may have just freed the bucket's backing
 		   * storage, so check right here...
 		   */
-		  if (BV (clib_bihash_bucket_is_empty) (b))
+		  if (cnat_bihash_bucket_is_empty (b))
 		    goto doublebreak;
 		}
 	    }
@@ -243,10 +277,9 @@ static clib_error_t *
 cnat_session_init (vlib_main_t * vm)
 {
   cnat_main_t *cm = &cnat_main;
-  BV (clib_bihash_init) (&cnat_session_db,
-			 "CNat Session DB", cm->session_hash_buckets,
-			 cm->session_hash_memory);
-  BV (clib_bihash_set_kvp_format_fn) (&cnat_session_db, format_cnat_session);
+  cnat_bihash_init (&cnat_session_db, "CNat Session DB",
+		    cm->session_hash_buckets, cm->session_hash_memory);
+  cnat_bihash_set_kvp_format (&cnat_session_db, format_cnat_session);
 
   return (NULL);
 }
