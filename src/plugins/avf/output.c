@@ -53,8 +53,8 @@ struct avf_ip6_psh
   u32 proto;
 };
 
-static_always_inline u64
-avf_tx_prepare_cksum (vlib_buffer_t * b, u8 is_tso)
+static_always_inline __clib_unused u64
+avf_tx_prepare_cksum (vlib_buffer_t *b, u8 is_tso)
 {
   u64 flags = 0;
   if (!is_tso && !(b->flags & VNET_BUFFER_F_OFFLOAD))
@@ -129,9 +129,9 @@ avf_tx_prepare_cksum (vlib_buffer_t * b, u8 is_tso)
   return flags;
 }
 
-static_always_inline int
-avf_tx_fill_ctx_desc (vlib_main_t * vm, avf_txq_t * txq, avf_tx_desc_t * d,
-		      vlib_buffer_t * b)
+static_always_inline __clib_unused int
+avf_tx_fill_ctx_desc (vlib_main_t *vm, avf_txq_t *txq, avf_tx_desc_t *d,
+		      vlib_buffer_t *b)
 {
   vlib_buffer_t *ctx_ph = vlib_get_buffer (vm, txq->ctx_desc_placeholder_bi);
   if (PREDICT_FALSE (ctx_ph->ref_count == 255))
@@ -166,6 +166,61 @@ avf_tx_fill_ctx_desc (vlib_main_t * vm, avf_txq_t * txq, avf_tx_desc_t * d,
   return 0;
 }
 
+static_always_inline void
+avf_tx_copy_desc (avf_tx_desc_t *d, avf_tx_desc_t *s, u32 n_descs)
+{
+#if defined CLIB_HAVE_VEC512
+  while (n_descs >= 8)
+    {
+      u64x8u *dv = (u64x8u *) d;
+      u64x8u *sv = (u64x8u *) s;
+
+      dv[0] = sv[0];
+      dv[1] = sv[1];
+
+      /* next */
+      d += 8;
+      s += 8;
+      n_descs -= 8;
+    }
+#elif defined CLIB_HAVE_VEC256
+  while (n_descs >= 4)
+    {
+      u64x4u *dv = (u64x4u *) d;
+      u64x4u *sv = (u64x4u *) s;
+
+      dv[0] = sv[0];
+      dv[1] = sv[1];
+
+      /* next */
+      d += 4;
+      s += 4;
+      n_descs -= 4;
+    }
+#elif defined CLIB_HAVE_VEC128
+  while (n_descs >= 2)
+    {
+      u64x2u *dv = (u64x2u *) d;
+      u64x2u *sv = (u64x2u *) s;
+
+      dv[0] = sv[0];
+      dv[1] = sv[1];
+
+      /* next */
+      d += 2;
+      s += 2;
+      n_descs -= 2;
+    }
+#endif
+  while (n_descs)
+    {
+      d[0].qword[0] = s[0].qword[0];
+      d[0].qword[1] = s[0].qword[1];
+      d++;
+      s++;
+      n_descs--;
+    }
+}
 
 static_always_inline u16
 avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
@@ -175,6 +230,125 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
   u64 bits = AVF_TXD_CMD_EOP | AVF_TXD_CMD_RSV;
   const u32 offload_mask = VNET_BUFFER_F_OFFLOAD | VNET_BUFFER_F_GSO;
   u64 one_by_one_offload_flags = 0;
+#if 1
+  u16 n_desc = 0;
+  u16 *slot, n_desc_left, n_packets_left = n_packets;
+  u16 mask = txq->size - 1;
+  vlib_buffer_t *b[4];
+  avf_tx_desc_t *td = txq->tmp_descs;
+  u32 *tb = txq->tmp_bufs;
+
+  n_desc_left = txq->size - txq->n_enqueued - 8;
+
+  if (n_desc_left == 0)
+    return 0;
+
+  while (n_packets_left && n_desc_left)
+    {
+      u32 or_flags;
+      if (n_packets_left < 8 || n_desc_left < 4)
+	goto one_by_one;
+
+      vlib_prefetch_buffer_with_index (vm, buffers[4], LOAD);
+      vlib_prefetch_buffer_with_index (vm, buffers[5], LOAD);
+      vlib_prefetch_buffer_with_index (vm, buffers[6], LOAD);
+      vlib_prefetch_buffer_with_index (vm, buffers[7], LOAD);
+
+      b[0] = vlib_get_buffer (vm, buffers[0]);
+      b[1] = vlib_get_buffer (vm, buffers[1]);
+      b[2] = vlib_get_buffer (vm, buffers[2]);
+      b[3] = vlib_get_buffer (vm, buffers[3]);
+
+      or_flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
+
+      if (or_flags & (VLIB_BUFFER_NEXT_PRESENT | offload_mask))
+	goto one_by_one;
+
+      vlib_buffer_copy_indices (tb, buffers, 4);
+
+      if (use_va_dma)
+	{
+	  td[0].qword[0] = vlib_buffer_get_current_va (b[0]);
+	  td[1].qword[0] = vlib_buffer_get_current_va (b[1]);
+	  td[2].qword[0] = vlib_buffer_get_current_va (b[2]);
+	  td[3].qword[0] = vlib_buffer_get_current_va (b[3]);
+	}
+      else
+	{
+	  td[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
+	  td[1].qword[0] = vlib_buffer_get_current_pa (vm, b[1]);
+	  td[2].qword[0] = vlib_buffer_get_current_pa (vm, b[2]);
+	  td[3].qword[0] = vlib_buffer_get_current_pa (vm, b[3]);
+	}
+
+      td[0].qword[1] = ((u64) b[0]->current_length) << 34 | bits;
+      td[1].qword[1] = ((u64) b[1]->current_length) << 34 | bits;
+      td[2].qword[1] = ((u64) b[2]->current_length) << 34 | bits;
+      td[3].qword[1] = ((u64) b[3]->current_length) << 34 | bits;
+
+      n_desc += 4;
+      buffers += 4;
+      n_packets_left -= 4;
+      n_desc_left -= 4;
+      td += 4;
+      tb += 4;
+      continue;
+
+    one_by_one:
+      one_by_one_offload_flags = 0;
+      tb[0] = buffers[0];
+      b[0] = vlib_get_buffer (vm, buffers[0]);
+
+      if (use_va_dma)
+	td[0].qword[0] = vlib_buffer_get_current_va (b[0]);
+      else
+	td[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
+
+      td[0].qword[1] =
+	(((u64) b[0]->current_length) << 34) | bits | one_by_one_offload_flags;
+
+      n_desc += 1;
+      buffers += 1;
+      n_packets_left -= 1;
+      n_desc_left -= 1;
+      td += 1;
+      tb += 1;
+    }
+
+  if (PREDICT_TRUE (next + n_desc <= txq->size))
+    {
+      /* no wrap */
+      avf_tx_copy_desc (txq->descs + next, txq->tmp_descs, n_desc);
+      vlib_buffer_copy_indices (txq->bufs + next, txq->tmp_bufs, n_desc);
+    }
+  else
+    {
+      /* wrap */
+      u32 n_not_wrap = txq->size - next;
+      avf_tx_copy_desc (txq->descs + next, txq->tmp_descs, n_not_wrap);
+      avf_tx_copy_desc (txq->descs, txq->tmp_descs + n_not_wrap,
+			n_desc - n_not_wrap);
+      vlib_buffer_copy_indices (txq->bufs + next, txq->tmp_bufs, n_not_wrap);
+      vlib_buffer_copy_indices (txq->bufs, txq->tmp_bufs + n_not_wrap,
+				n_desc - n_not_wrap);
+    }
+
+  next += n_desc;
+
+  if ((slot = clib_ring_enq (txq->rs_slots)))
+    {
+      avf_tx_desc_t *d;
+      u16 rs_slot = slot[0] = (next - 1) & mask;
+      d = txq->descs + rs_slot;
+      d[0].qword[1] |= AVF_TXD_CMD_RS;
+    }
+
+  txq->next = next & mask;
+  avf_tail_write (txq->qtx_tail, txq->next);
+  txq->n_enqueued += n_desc;
+  return n_packets - n_packets_left;
+
+#else
   int is_tso;
   u16 n_desc = 0;
   u16 *slot, n_desc_left, n_packets_left = n_packets;
@@ -442,6 +616,7 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
   avf_tail_write (txq->qtx_tail, txq->next);
   txq->n_enqueued += n_desc;
   return n_packets - n_packets_left;
+#endif
 }
 
 VNET_DEVICE_CLASS_TX_FN (avf_device_class) (vlib_main_t * vm,
