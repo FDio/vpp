@@ -2,11 +2,11 @@
 """Test framework utility functions tests"""
 
 import unittest
-from framework import VppTestRunner
+from framework import VppTestRunner, CPUInterface
 from vpp_papi import mac_pton, mac_ntop
 
 
-class TestUtil (unittest.TestCase):
+class TestUtil (CPUInterface, unittest.TestCase):
     """ Test framework utility tests """
 
     @classmethod
@@ -22,6 +22,14 @@ class TestUtil (unittest.TestCase):
         except AttributeError:
             pass
         return False
+
+    @classmethod
+    def _get_cpus_required(cls):
+        return 0
+
+    @classmethod
+    def get_cpus_used(cls):
+        return 0
 
     def test_mac_to_binary(self):
         """ MAC to binary and back """
