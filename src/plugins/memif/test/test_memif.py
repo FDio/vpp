@@ -16,11 +16,24 @@ from vpp_papi import VppEnum
 @tag_run_solo
 class TestMemif(VppTestCase):
     """ Memif Test Case """
+    remote_class = RemoteVppTestCase
+
+    @classmethod
+    def get_cpus_required(cls):
+        return (super().get_cpus_required() +
+                cls.remote_class.get_cpus_required())
+
+    @classmethod
+    def assign_cpus(cls, cpus):
+        remote_cpus = cpus[:cls.remote_class.get_cpus_required()]
+        my_cpus = cpus[cls.remote_class.get_cpus_required():]
+        cls.remote_class.assign_cpus(remote_cpus)
+        super().assign_cpus(my_cpus)
 
     @classmethod
     def setUpClass(cls):
         # fork new process before client connects to VPP
-        cls.remote_test = RemoteClass(RemoteVppTestCase)
+        cls.remote_test = RemoteClass(cls.remote_class)
         cls.remote_test.start_remote()
         cls.remote_test.set_request_timeout(10)
         super(TestMemif, cls).setUpClass()

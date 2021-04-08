@@ -396,9 +396,9 @@ class TestIpsecAhTun2(TemplateIpsecAh, IpsecTun46Tests):
             self.assertEqual(rx[IPv6].tc, 0x10)
 
 
-class TestIpsecAhHandoff(TemplateIpsecAh,
-                         IpsecTun6HandoffTests,
-                         IpsecTun4HandoffTests):
+class TestIpsecAhHandoff(IpsecTun6HandoffTests,
+                         IpsecTun4HandoffTests,
+                         TemplateIpsecAh):
     """ Ipsec AH Handoff """
     pass
 
