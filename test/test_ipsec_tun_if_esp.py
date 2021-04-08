@@ -464,8 +464,8 @@ class TestIpsec6TunIfEsp1(TemplateIpsec6TunIfEsp,
         self.verify_tun_46(self.params[socket.AF_INET6], count=257)
 
 
-class TestIpsec6TunIfEspHandoff(TemplateIpsec6TunIfEsp,
-                                IpsecTun6HandoffTests):
+class TestIpsec6TunIfEspHandoff(IpsecTun6HandoffTests,
+                                TemplateIpsec6TunIfEsp):
     """ Ipsec ESP 6 Handoff tests """
     tun6_encrypt_node_name = "esp6-encrypt-tun"
     tun6_decrypt_node_name = ["esp6-decrypt-tun", "esp6-decrypt-tun-post"]
@@ -536,8 +536,7 @@ class TestIpsec6TunIfEspHandoff(TemplateIpsec6TunIfEsp,
         policer.remove_vpp_config()
 
 
-class TestIpsec4TunIfEspHandoff(TemplateIpsec4TunIfEsp,
-                                IpsecTun4HandoffTests):
+class TestIpsec4TunIfEspHandoff(IpsecTun4HandoffTests, TemplateIpsec4TunIfEsp):
     """ Ipsec ESP 4 Handoff tests """
     tun4_encrypt_node_name = "esp4-encrypt-tun"
     tun4_decrypt_node_name = ["esp4-decrypt-tun", "esp4-decrypt-tun-post"]

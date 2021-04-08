@@ -9,7 +9,7 @@ from framework import VppDiedError, VppTestCase, KeepAliveReporter
 
 class SanityTestCase(VppTestCase):
     """ Sanity test case - verify whether VPP is able to start """
-    pass
+    cpus = [0]
 
     # don't ask to debug SanityTestCase
     @classmethod
