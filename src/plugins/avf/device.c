@@ -336,6 +336,9 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
   /* initialize ring of pending RS slots */
   clib_ring_new_aligned (txq->rs_slots, 32, CLIB_CACHE_LINE_BYTES);
 
+  vec_validate_aligned (txq->tmp_descs, txq->size, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (txq->tmp_bufs, txq->size, CLIB_CACHE_LINE_BYTES);
+
   ad->n_tx_queues = clib_min (ad->num_queue_pairs, qid + 1);
   return 0;
 }
