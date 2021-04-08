@@ -36,7 +36,7 @@ cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
 {
   vlib_combined_counter_main_t *cntm = &cnat_translation_counters;
   cnat_src_policy_main_t *cspm = &cnat_src_policy_main;
-  const cnat_translation_t *ct = NULL;
+  cnat_translation_t *ct = NULL;
   ip4_header_t *ip4 = NULL;
   ip_protocol_t iproto;
   ip6_header_t *ip6 = NULL;
@@ -167,7 +167,8 @@ cnat_vip_node_fn (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t *b,
 
       /* refcnt session in current client */
       cnat_client_cnt_session (cc);
-      cnat_session_create (session, ctx, CNAT_LOCATION_FIB, rsession_flags);
+      cnat_session_create (session, ctx, CNAT_LOCATION_FIB, rsession_flags,
+			   ct);
       trace_flags |= CNAT_TRACE_SESSION_CREATED;
 
       next0 = ct->ct_lb.dpoi_next_node;

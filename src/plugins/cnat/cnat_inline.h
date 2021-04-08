@@ -20,7 +20,7 @@
 #include <cnat/cnat_types.h>
 
 always_inline u32
-cnat_timestamp_new (f64 t)
+cnat_timestamp_new (f64 t, u32 ct_index)
 {
   u32 index;
   cnat_timestamp_t *ts;
@@ -30,17 +30,9 @@ cnat_timestamp_new (f64 t)
   ts->lifetime = cnat_main.session_max_age;
   ts->refcnt = CNAT_TIMESTAMP_INIT_REFCNT;
   index = ts - cnat_timestamps;
+  ts->ct_index = ct_index;
   clib_rwlock_writer_unlock (&cnat_main.ts_lock);
   return index;
-}
-
-always_inline void
-cnat_timestamp_inc_refcnt (u32 index)
-{
-  clib_rwlock_reader_lock (&cnat_main.ts_lock);
-  cnat_timestamp_t *ts = pool_elt_at_index (cnat_timestamps, index);
-  ts->refcnt++;
-  clib_rwlock_reader_unlock (&cnat_main.ts_lock);
 }
 
 always_inline void
@@ -59,32 +51,6 @@ cnat_timestamp_set_lifetime (u32 index, u16 lifetime)
   cnat_timestamp_t *ts = pool_elt_at_index (cnat_timestamps, index);
   ts->lifetime = lifetime;
   clib_rwlock_reader_unlock (&cnat_main.ts_lock);
-}
-
-always_inline f64
-cnat_timestamp_exp (u32 index)
-{
-  f64 t;
-  if (INDEX_INVALID == index)
-    return -1;
-  clib_rwlock_reader_lock (&cnat_main.ts_lock);
-  cnat_timestamp_t *ts = pool_elt_at_index (cnat_timestamps, index);
-  t = ts->last_seen + (f64) ts->lifetime;
-  clib_rwlock_reader_unlock (&cnat_main.ts_lock);
-  return t;
-}
-
-always_inline void
-cnat_timestamp_free (u32 index)
-{
-  if (INDEX_INVALID == index)
-    return;
-  clib_rwlock_writer_lock (&cnat_main.ts_lock);
-  cnat_timestamp_t *ts = pool_elt_at_index (cnat_timestamps, index);
-  ts->refcnt--;
-  if (0 == ts->refcnt)
-    pool_put (cnat_timestamps, ts);
-  clib_rwlock_writer_unlock (&cnat_main.ts_lock);
 }
 
 /*
