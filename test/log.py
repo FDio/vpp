@@ -11,7 +11,7 @@ single_line_delim = '-' * 78
 
 
 def colorize(msg, color):
-    return color + msg + COLOR_RESET
+    return f"{color}{msg}{COLOR_RESET}"
 
 
 class ColorFormatter(logging.Formatter):
