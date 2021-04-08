@@ -149,7 +149,7 @@ typedef volatile struct
 
 STATIC_ASSERT_SIZEOF (avf_rx_desc_t, 32);
 
-typedef volatile struct
+typedef struct
 {
   union
   {
@@ -188,6 +188,9 @@ typedef struct
   u32 *bufs;
   u16 n_enqueued;
   u16 *rs_slots;
+
+  avf_tx_desc_t *tmp_descs;
+  u32 *tmp_bufs;
 } avf_txq_t;
 
 typedef struct
