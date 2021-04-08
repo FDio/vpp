@@ -1469,6 +1469,7 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier)
   vnet_main_t *vnm = vnet_get_main ();
   avf_main_t *am = &avf_main;
   int i;
+  u32 dev_instance;
 
   ad->flags &= ~AVF_DEVICE_F_ADMIN_UP;
 
@@ -1523,8 +1524,9 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier)
   vec_free (ad->name);
 
   clib_error_free (ad->error);
+  dev_instance = ad->dev_instance;
   clib_memset (ad, 0, sizeof (*ad));
-  pool_put_index (am->devices, ad->dev_instance);
+  pool_put_index (am->devices, dev_instance);
   clib_mem_free (ad);
 }
 
