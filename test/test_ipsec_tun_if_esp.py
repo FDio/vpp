@@ -464,8 +464,8 @@ class TestIpsec6TunIfEsp1(TemplateIpsec6TunIfEsp,
         self.verify_tun_46(self.params[socket.AF_INET6], count=257)
 
 
-class TestIpsec6TunIfEspHandoff(TemplateIpsec6TunIfEsp,
-                                IpsecTun6HandoffTests):
+class TestIpsec6TunIfEspHandoff(IpsecTun6HandoffTests,
+                                TemplateIpsec6TunIfEsp):
     """ Ipsec ESP 6 Handoff tests """
     tun6_encrypt_node_name = "esp6-encrypt-tun"
     tun6_decrypt_node_name = ["esp6-decrypt-tun", "esp6-decrypt-tun-post"]
