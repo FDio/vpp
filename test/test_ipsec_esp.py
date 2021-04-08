@@ -669,9 +669,9 @@ class TestIpsecEspAsync(TemplateIpsecEsp):
         self.assertTrue("DISABLED" in self.vapi.cli("sh crypto async status"))
 
 
-class TestIpsecEspHandoff(TemplateIpsecEsp,
-                          IpsecTun6HandoffTests,
-                          IpsecTun4HandoffTests):
+class TestIpsecEspHandoff(IpsecTun6HandoffTests,
+                          IpsecTun4HandoffTests,
+                          TemplateIpsecEsp):
     """ Ipsec ESP - handoff tests """
     pass
 
