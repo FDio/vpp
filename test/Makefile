@@ -367,6 +367,7 @@ help:
 	@echo " V=[0|1|2]              - set test verbosity level"
 	@echo "                          0=ERROR, 1=INFO, 2=DEBUG"
 	@echo " TEST_JOBS=[<n>|auto]   - use <n> parallel processes for test execution or automatic discovery of maximum acceptable processes (default: 1)"
+	@echo " MAX_CPUS=[<n>|<auto>]  - use at most <n> cpus at the same time or maximum available if 'auto' specified (default: auto)"
 	@echo " CACHE_OUTPUT=[0|1]     - cache VPP stdout/stderr and log as one block after test finishes (default: 1)"
 	@echo " FAILFAST=[0|1]         - fail fast if 1, complete all tests if 0"
 	@echo " TIMEOUT=<timeout>      - fail test suite if any single test takes longer than <timeout> (in seconds) to finish (default: 600)"
