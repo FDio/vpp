@@ -142,6 +142,7 @@ typedef struct session_worker_
   /** Vector of nexts for the pending tx buffers */
   u16 *pending_tx_nexts;
 
+  vlib_buffer_t **tx_bufs;
   vlib_buffer_t **transport_pending_bufs;
 
   /** Clib file for timerfd. Used only if adaptive mode is on */
