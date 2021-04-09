@@ -704,7 +704,7 @@ rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
     *(u32x4 *) (bc + i) = u32x4_byte_swap (*(u32x4 *) (bc + i));
 #else
   for (int i = 0; i < n_rx_packets; i++)
-    if ((ptd->cqe_flags[i] & mask) == match)
+    if ((ptd->cqe_flags[i] & mask) != match)
       skip_ip4_cksum = 0;
 
   for (int i = 0; i < n_rx_packets; i++)
