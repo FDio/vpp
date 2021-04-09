@@ -129,28 +129,19 @@ avf_tx_prepare_cksum (vlib_buffer_t * b, u8 is_tso)
   return flags;
 }
 
-static_always_inline int
-avf_tx_fill_ctx_desc (vlib_main_t * vm, avf_txq_t * txq, avf_tx_desc_t * d,
-		      vlib_buffer_t * b)
+static_always_inline u32
+avf_tx_fill_ctx_desc (vlib_main_t *vm, avf_txq_t *txq, avf_tx_desc_t *d,
+		      vlib_buffer_t *b)
 {
-  vlib_buffer_t *ctx_ph = vlib_get_buffer (vm, txq->ctx_desc_placeholder_bi);
+  vlib_buffer_t *ctx_ph;
+  u32 *bi = txq->ph_bufs;
+
+next:
+  ctx_ph = vlib_get_buffer (vm, bi[0]);
   if (PREDICT_FALSE (ctx_ph->ref_count == 255))
     {
-      /* We need a new placeholder buffer */
-      u32 new_bi;
-      u8 bpi = vlib_buffer_pool_get_default_for_numa (vm, vm->numa_node);
-      if (PREDICT_TRUE
-	  (vlib_buffer_alloc_from_pool (vm, &new_bi, 1, bpi) == 1))
-	{
-	  /* Remove our own reference on the current placeholder buffer */
-	  ctx_ph->ref_count--;
-	  /* Replace with the new placeholder buffer */
-	  txq->ctx_desc_placeholder_bi = new_bi;
-	  ctx_ph = vlib_get_buffer (vm, new_bi);
-	}
-      else
-	/* Impossible to enqueue a ctx descriptor, fail */
-	return 1;
+      bi++;
+      goto next;
     }
 
   /* Acquire a reference on the placeholder buffer */
@@ -163,7 +154,7 @@ avf_tx_fill_ctx_desc (vlib_main_t * vm, avf_txq_t * txq, avf_tx_desc_t * d,
   d[0].qword[1] = AVF_TXD_DTYP_CTX | AVF_TXD_CTX_CMD_TSO
     | AVF_TXD_CTX_SEG_MSS (vnet_buffer2 (b)->gso_size) |
     AVF_TXD_CTX_SEG_TLEN (tlen);
-  return 0;
+  return bi[0];
 }
 
 static_always_inline void
@@ -334,11 +325,8 @@ avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
 	  /* Enqueue a context descriptor if needed */
 	  if (PREDICT_FALSE (is_tso))
 	    {
-	      if (avf_tx_fill_ctx_desc (vm, txq, d, b[0]))
-		/* Failure to acquire ref on ctx placeholder */
-		break;
 	      tb[1] = tb[0];
-	      tb[0] = txq->ctx_desc_placeholder_bi;
+	      tb[0] = avf_tx_fill_ctx_desc (vm, txq, d, b[0]);
 	      n_desc += 1;
 	      n_desc_left -= 1;
 	      d += 1;
