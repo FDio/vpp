@@ -215,7 +215,7 @@ avf_tx_copy_desc (avf_tx_desc_t *d, avf_tx_desc_t *s, u32 n_descs)
 
 static_always_inline u16
 avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
-		u32 *buffers, u32 n_packets, u16 *n_enq_descs, int use_va_dma)
+		u32 *buffers, u32 n_packets, u16 *n_enq_descs)
 {
   u64 bits = AVF_TXD_CMD_EOP | AVF_TXD_CMD_RSV;
   const u32 offload_mask = VNET_BUFFER_F_OFFLOAD | VNET_BUFFER_F_GSO;
@@ -255,20 +255,10 @@ avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
 
       vlib_buffer_copy_indices (tb, buffers, 4);
 
-      if (use_va_dma)
-	{
-	  d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
-	  d[1].qword[0] = vlib_buffer_get_current_va (b[1]);
-	  d[2].qword[0] = vlib_buffer_get_current_va (b[2]);
-	  d[3].qword[0] = vlib_buffer_get_current_va (b[3]);
-	}
-      else
-	{
-	  d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
-	  d[1].qword[0] = vlib_buffer_get_current_pa (vm, b[1]);
-	  d[2].qword[0] = vlib_buffer_get_current_pa (vm, b[2]);
-	  d[3].qword[0] = vlib_buffer_get_current_pa (vm, b[3]);
-	}
+      d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
+      d[1].qword[0] = vlib_buffer_get_current_va (b[1]);
+      d[2].qword[0] = vlib_buffer_get_current_va (b[2]);
+      d[3].qword[0] = vlib_buffer_get_current_va (b[3]);
 
       d[0].qword[1] = ((u64) b[0]->current_length) << 34 | bits;
       d[1].qword[1] = ((u64) b[1]->current_length) << 34 | bits;
@@ -334,11 +324,7 @@ avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
 	    }
 	  while (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
 	    {
-	      if (use_va_dma)
-		d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
-	      else
-		d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
-
+	      d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
 	      d[0].qword[1] = (((u64) b[0]->current_length) << 34) |
 		AVF_TXD_CMD_RSV | one_by_one_offload_flags;
 
@@ -352,10 +338,7 @@ avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
 	    }
 	}
 
-      if (use_va_dma)
-	d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
-      else
-	d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
+      d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
 
       d[0].qword[1] =
 	(((u64) b[0]->current_length) << 34) | bits | one_by_one_offload_flags;
@@ -424,10 +407,15 @@ retry:
 	}
     }
 
-  if (ad->flags & AVF_DEVICE_F_VA_DMA)
-    n_enq = avf_tx_prepare (vm, node, txq, buffers, n_left, &n_desc, 1);
-  else
-    n_enq = avf_tx_prepare (vm, node, txq, buffers, n_left, &n_desc, 0);
+  n_enq = avf_tx_prepare (vm, node, txq, buffers, n_left, &n_desc);
+
+  if ((ad->flags & AVF_DEVICE_F_VA_DMA) == 0)
+    for (u16 i = 0; i < n_desc; n_desc++)
+      {
+	avf_tx_desc_t *d = txq->tmp_descs + i;
+	if ((d->qword[1] & AVF_TXD_DTYP_CTX) == 0)
+	  d->qword[0] = vlib_physmem_get_pa (vm, (void *) d->qword[0]);
+      }
 
   if (PREDICT_TRUE (next + n_desc <= txq->size))
     {
