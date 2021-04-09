@@ -236,16 +236,11 @@ udp_session_get_listener (u32 listener_index)
   return &us->connection;
 }
 
-static u32
-udp_push_header (transport_connection_t * tc, vlib_buffer_t * b)
+always_inline u32
+udp_push_one_header (vlib_main_t *vm, udp_connection_t *uc, vlib_buffer_t *b)
 {
-  udp_connection_t *uc;
-  vlib_main_t *vm = vlib_get_main ();
-
-  uc = udp_connection_from_transport (tc);
-
   vlib_buffer_push_udp (b, uc->c_lcl_port, uc->c_rmt_port, 1);
-  if (tc->is_ip4)
+  if (uc->c_is_ip4)
     vlib_buffer_push_ip4_custom (vm, b, &uc->c_lcl_ip4, &uc->c_rmt_ip4,
 				 IP_PROTOCOL_UDP, 1 /* csum offload */,
 				 0 /* is_df */, uc->c_dscp);
@@ -255,6 +250,39 @@ udp_push_header (transport_connection_t * tc, vlib_buffer_t * b)
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
   vnet_buffer (b)->sw_if_index[VLIB_TX] = uc->c_fib_index;
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+
+  return 0;
+}
+
+static u32
+udp_push_header (transport_connection_t *tc, vlib_buffer_t **bs, u32 n_bufs)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  udp_connection_t *uc;
+
+  uc = udp_connection_from_transport (tc);
+
+  while (n_bufs >= 4)
+    {
+      vlib_prefetch_buffer_header (bs[2], STORE);
+      vlib_prefetch_buffer_header (bs[3], STORE);
+
+      udp_push_one_header (vm, uc, bs[0]);
+      udp_push_one_header (vm, uc, bs[1]);
+
+      n_bufs -= 2;
+      bs += 2;
+    }
+  while (n_bufs)
+    {
+      if (n_bufs > 1)
+	vlib_prefetch_buffer_header (bs[1], STORE);
+
+      udp_push_one_header (vm, uc, bs[0]);
+
+      n_bufs -= 1;
+      bs += 1;
+    }
 
   if (PREDICT_FALSE (uc->flags & UDP_CONN_F_CLOSING))
     {
