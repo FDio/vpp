@@ -615,8 +615,9 @@ session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
       len_to_deq = clib_min (to_deq, ctx->deq_per_buf);
 
       *n_bufs -= 1;
-      chain_bi0 = wrk->tx_buffers[*n_bufs];
-      chain_b = vlib_get_buffer (vm, chain_bi0);
+//      chain_bi0 = wrk->tx_buffers[*n_bufs];
+//      chain_b = vlib_get_buffer (vm, chain_bi0);
+      chain_b = wrk->tx_bufs[*n_bufs];
       chain_b->current_data = 0;
       data = vlib_buffer_get_current (chain_b);
       if (peek_data)
@@ -938,13 +939,13 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 				session_evt_elt_t * elt,
 				int *n_tx_packets, u8 peek_data)
 {
-  u32 n_trace, n_left, pbi, next_index, max_burst;
+  u32 n_trace, n_left, next_index, max_burst;
   session_tx_context_t *ctx = &wrk->ctx;
   session_main_t *smm = &session_main;
   session_event_t *e = &elt->evt;
   vlib_main_t *vm = wrk->vm;
   transport_proto_t tp;
-  vlib_buffer_t *pb;
+//  vlib_buffer_t *pb;
   u16 n_bufs, rv;
 
   if (PREDICT_FALSE ((rv = session_tx_not_ready (ctx->s, peek_data))))
@@ -1048,6 +1049,8 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   ctx->left_to_snd = ctx->max_len_to_snd;
   n_left = ctx->n_segs_per_evt;
 
+  vec_validate (wrk->tx_bufs, ctx->n_bufs_needed);
+  vlib_get_buffers (vm, wrk->tx_buffers, wrk->tx_bufs, ctx->n_bufs_needed);
   vec_validate (wrk->transport_pending_bufs, n_left);
 
   while (n_left >= 4)
@@ -1055,18 +1058,22 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       vlib_buffer_t *b0, *b1;
       u32 bi0, bi1;
 
-      pbi = wrk->tx_buffers[n_bufs - 3];
-      pb = vlib_get_buffer (vm, pbi);
-      vlib_prefetch_buffer_header (pb, STORE);
-      pbi = wrk->tx_buffers[n_bufs - 4];
-      pb = vlib_get_buffer (vm, pbi);
-      vlib_prefetch_buffer_header (pb, STORE);
+//      pbi = wrk->tx_buffers[n_bufs - 3];
+//      pb = vlib_get_buffer (vm, pbi);
+      vlib_prefetch_buffer_header (wrk->tx_bufs[n_bufs - 3], STORE);
+//      pbi = wrk->tx_buffers[n_bufs - 4];
+//      pb = vlib_get_buffer (vm, pbi);
+      vlib_prefetch_buffer_header (wrk->tx_bufs[n_bufs - 4], STORE);
 
-      bi0 = wrk->tx_buffers[--n_bufs];
-      bi1 = wrk->tx_buffers[--n_bufs];
-
-      b0 = vlib_get_buffer (vm, bi0);
-      b1 = vlib_get_buffer (vm, bi1);
+      bi0 = wrk->tx_buffers[n_bufs - 1];
+      bi1 = wrk->tx_buffers[n_bufs - 2];
+      b0 = wrk->tx_bufs[--n_bufs];
+      b1 = wrk->tx_bufs[--n_bufs];
+//      bi0 = wrk->tx_buffers[--n_bufs];
+//      bi1 = wrk->tx_buffers[--n_bufs];
+//
+//      b0 = vlib_get_buffer (vm, bi0);
+//      b1 = vlib_get_buffer (vm, bi1);
 
       session_tx_fill_buffer (vm, ctx, b0, &n_bufs, peek_data);
       session_tx_fill_buffer (vm, ctx, b1, &n_bufs, peek_data);
@@ -1093,13 +1100,15 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
       if (n_left > 1)
 	{
-	  pbi = wrk->tx_buffers[n_bufs - 2];
-	  pb = vlib_get_buffer (vm, pbi);
-	  vlib_prefetch_buffer_header (pb, STORE);
+//	  pbi = wrk->tx_buffers[n_bufs - 2];
+//	  pb = vlib_get_buffer (vm, pbi);
+	  vlib_prefetch_buffer_header (wrk->tx_bufs[n_bufs - 2], STORE);
 	}
 
-      bi0 = wrk->tx_buffers[--n_bufs];
-      b0 = vlib_get_buffer (vm, bi0);
+//      bi0 = wrk->tx_buffers[--n_bufs];
+//      b0 = vlib_get_buffer (vm, bi0);
+      bi0 = wrk->tx_buffers[n_bufs - 1];
+      b0 = wrk->tx_bufs[--n_bufs];
       session_tx_fill_buffer (vm, ctx, b0, &n_bufs, peek_data);
 
       /* Ask transport to push header after current_length and
