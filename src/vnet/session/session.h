@@ -58,7 +58,8 @@ typedef struct session_tx_context_
   session_dgram_hdr_t hdr;
 
   /** Vector of tx buffer free lists */
-  u32 *tx_buffers;
+  u32 *tx_bufs_idx;
+  vlib_buffer_t **tx_bufs;
   vlib_buffer_t **transport_pending_bufs;
 } session_tx_context_t;
 
