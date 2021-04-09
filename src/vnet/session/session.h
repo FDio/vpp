@@ -59,6 +59,7 @@ typedef struct session_tx_context_
 
   /** Vector of tx buffer free lists */
   u32 *tx_buffers;
+  vlib_buffer_t **transport_pending_bufs;
 } session_tx_context_t;
 
 typedef struct session_evt_elt
