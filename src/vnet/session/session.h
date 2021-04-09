@@ -56,6 +56,7 @@ typedef struct session_tx_context_
   u8 n_bufs_per_seg;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   session_dgram_hdr_t hdr;
+  vlib_buffer_t **transport_pending_bufs;
 } session_tx_context_t;
 
 typedef struct session_evt_elt
