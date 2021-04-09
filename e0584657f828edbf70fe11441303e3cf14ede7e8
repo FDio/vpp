@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "5f7cb352_59ab2abf",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 1360
+      },
+      "writtenOn": "2021-04-09T09:29:53Z",
+      "side": 1,
+      "message": "Yes, any changes to the version format should be done in the govpp. I agree that at least commit ID would be handy (I believe it was displayed as such before already)",
+      "parentUuid": "fca27ee4_c02fb3cb",
+      "revId": "e0584657f828edbf70fe11441303e3cf14ede7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "0bb06bca_971cace3",
         "filename": "src/tools/vppapigen/generate_go.py",
         "patchSetId": 2
@@ -30,6 +48,24 @@
       "writtenOn": "2021-04-08T14:46:26Z",
       "side": 1,
       "message": "Maybe the govpp.git commit we checkout should be made parametric ?\nAlso maybe we should default to something that\u0027s not \"master\", this way if we add a CI job, rogue commits in govpp won\u0027t automatically break the CI 😊",
+      "revId": "e0584657f828edbf70fe11441303e3cf14ede7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d4a4735a_e9668b16",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 1360
+      },
+      "writtenOn": "2021-04-09T09:29:53Z",
+      "side": 1,
+      "message": "Yep that\u0027s reasonable. Perhaps I can keep master as default and allow providing specific commit if needed.",
+      "parentUuid": "0bb06bca_971cace3",
       "revId": "e0584657f828edbf70fe11441303e3cf14ede7e8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "008eec5b_852967cc",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 1360
+      },
+      "writtenOn": "2021-04-09T09:29:53Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "ac0df403_5248702b",
+      "revId": "e0584657f828edbf70fe11441303e3cf14ede7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d9954b9a_05f0383f",
         "filename": "src/tools/vppapigen/generate_go.py",
         "patchSetId": 2
@@ -70,6 +124,24 @@
     },
     {
       "key": {
+        "uuid": "b87efd24_f2363765",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 1360
+      },
+      "writtenOn": "2021-04-09T09:29:53Z",
+      "side": 1,
+      "message": "Ok, agree",
+      "parentUuid": "d9954b9a_05f0383f",
+      "revId": "e0584657f828edbf70fe11441303e3cf14ede7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "30c8f9e1_91a750e3",
         "filename": "src/tools/vppapigen/generate_go.py",
         "patchSetId": 2
@@ -81,6 +153,24 @@
       "writtenOn": "2021-04-08T14:46:26Z",
       "side": 1,
       "message": "Maybe we could use something like argparse ?\nI\u0027m a big fan of --options 😄",
+      "revId": "e0584657f828edbf70fe11441303e3cf14ede7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0b22c8d5_ef6cf099",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 1360
+      },
+      "writtenOn": "2021-04-09T09:29:53Z",
+      "side": 1,
+      "message": "I went for env vars because passing args from a makefile is somewhat clumsy, but yes, it would be definitely more friendly to use 😊",
+      "parentUuid": "30c8f9e1_91a750e3",
       "revId": "e0584657f828edbf70fe11441303e3cf14ede7e8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
