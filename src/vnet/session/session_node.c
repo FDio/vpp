@@ -1115,6 +1115,8 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
   ctx->left_to_snd = ctx->max_len_to_snd;
   n_left = ctx->n_segs_per_evt;
 
+  vec_validate (wrk->transport_pending_bufs, n_left);
+
   while (n_left >= 4)
     {
       vlib_buffer_t *b0, *b1;
@@ -1136,9 +1138,11 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       session_tx_fill_buffer (vm, ctx, b0, &n_bufs, peek_data);
       session_tx_fill_buffer (vm, ctx, b1, &n_bufs, peek_data);
 
-      ctx->transport_vft->push_header (ctx->tc, b0);
-      ctx->transport_vft->push_header (ctx->tc, b1);
+      //      ctx->transport_vft->push_header (ctx->tc, b0);
+      //      ctx->transport_vft->push_header (ctx->tc, b1);
 
+      wrk->transport_pending_bufs[ctx->n_segs_per_evt - n_left] = b0;
+      wrk->transport_pending_bufs[ctx->n_segs_per_evt - n_left + 1] = b1;
       n_left -= 2;
 
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
@@ -1167,8 +1171,9 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
 
       /* Ask transport to push header after current_length and
        * total_length_not_including_first_buffer are updated */
-      ctx->transport_vft->push_header (ctx->tc, b0);
+      //      ctx->transport_vft->push_header (ctx->tc, b0);
 
+      wrk->transport_pending_bufs[ctx->n_segs_per_evt - n_left] = b0;
       n_left -= 1;
 
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
@@ -1176,6 +1181,9 @@ session_tx_fifo_read_and_snd_i (session_worker_t * wrk,
       vec_add1 (wrk->pending_tx_buffers, bi0);
       vec_add1 (wrk->pending_tx_nexts, next_index);
     }
+
+  ctx->transport_vft->push_header (ctx->tc, wrk->transport_pending_bufs,
+				   ctx->n_segs_per_evt);
 
   if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (vm, node)) > 0))
     session_tx_trace_frame (vm, node, next_index, wrk->pending_tx_buffers,
