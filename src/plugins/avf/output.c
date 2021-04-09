@@ -223,17 +223,15 @@ avf_tx_copy_desc (avf_tx_desc_t *d, avf_tx_desc_t *s, u32 n_descs)
 }
 
 static_always_inline u16
-avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
-		u32 * buffers, u32 n_packets, int use_va_dma)
+avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
+		u32 *buffers, u32 n_packets, u16 *n_enq_descs, int use_va_dma)
 {
-  u16 next = txq->next;
   u64 bits = AVF_TXD_CMD_EOP | AVF_TXD_CMD_RSV;
   const u32 offload_mask = VNET_BUFFER_F_OFFLOAD | VNET_BUFFER_F_GSO;
   u64 one_by_one_offload_flags = 0;
   int is_tso;
   u16 n_desc = 0;
-  u16 *slot, n_desc_left, n_packets_left = n_packets;
-  u16 mask = txq->size - 1;
+  u16 n_desc_left, n_packets_left = n_packets;
   vlib_buffer_t *b[4];
   avf_tx_desc_t *d = txq->tmp_descs;
   u32 *tb = txq->tmp_bufs;
@@ -382,35 +380,7 @@ avf_tx_enqueue (vlib_main_t * vm, vlib_node_runtime_t * node, avf_txq_t * txq,
       tb += 1;
     }
 
-  if (PREDICT_TRUE (next + n_desc <= txq->size))
-    {
-      /* no wrap */
-      avf_tx_copy_desc (txq->descs + next, txq->tmp_descs, n_desc);
-      vlib_buffer_copy_indices (txq->bufs + next, txq->tmp_bufs, n_desc);
-    }
-  else
-    {
-      /* wrap */
-      u32 n_not_wrap = txq->size - next;
-      avf_tx_copy_desc (txq->descs + next, txq->tmp_descs, n_not_wrap);
-      avf_tx_copy_desc (txq->descs, txq->tmp_descs + n_not_wrap,
-			n_desc - n_not_wrap);
-      vlib_buffer_copy_indices (txq->bufs + next, txq->tmp_bufs, n_not_wrap);
-      vlib_buffer_copy_indices (txq->bufs, txq->tmp_bufs + n_not_wrap,
-				n_desc - n_not_wrap);
-    }
-
-  next += n_desc;
-  if ((slot = clib_ring_enq (txq->rs_slots)))
-    {
-      u16 rs_slot = slot[0] = (next - 1) & mask;
-      d = txq->descs + rs_slot;
-      d[0].qword[1] |= AVF_TXD_CMD_RS;
-    }
-
-  txq->next = next & mask;
-  avf_tail_write (txq->qtx_tail, txq->next);
-  txq->n_enqueued += n_desc;
+  *n_enq_descs = n_desc;
   return n_packets - n_packets_left;
 }
 
@@ -423,8 +393,10 @@ VNET_DEVICE_CLASS_TX_FN (avf_device_class) (vlib_main_t * vm,
   u32 thread_index = vm->thread_index;
   u8 qid = thread_index;
   avf_txq_t *txq = vec_elt_at_index (ad->txqs, qid % ad->num_queue_pairs);
+  u16 next = txq->next;
+  u16 mask = txq->size - 1;
   u32 *buffers = vlib_frame_vector_args (frame);
-  u16 n_enq, n_left;
+  u16 n_enq, n_left, n_desc, *slot;
   u16 n_retry = 2;
 
   clib_spinlock_lock_if_init (&txq->lock);
@@ -465,10 +437,38 @@ retry:
     }
 
   if (ad->flags & AVF_DEVICE_F_VA_DMA)
-    n_enq = avf_tx_enqueue (vm, node, txq, buffers, n_left, 1);
+    n_enq = avf_tx_prepare (vm, node, txq, buffers, n_left, &n_desc, 1);
   else
-    n_enq = avf_tx_enqueue (vm, node, txq, buffers, n_left, 0);
+    n_enq = avf_tx_prepare (vm, node, txq, buffers, n_left, &n_desc, 0);
 
+  if (PREDICT_TRUE (next + n_desc <= txq->size))
+    {
+      /* no wrap */
+      avf_tx_copy_desc (txq->descs + next, txq->tmp_descs, n_desc);
+      vlib_buffer_copy_indices (txq->bufs + next, txq->tmp_bufs, n_desc);
+    }
+  else
+    {
+      /* wrap */
+      u32 n_not_wrap = txq->size - next;
+      avf_tx_copy_desc (txq->descs + next, txq->tmp_descs, n_not_wrap);
+      avf_tx_copy_desc (txq->descs, txq->tmp_descs + n_not_wrap,
+			n_desc - n_not_wrap);
+      vlib_buffer_copy_indices (txq->bufs + next, txq->tmp_bufs, n_not_wrap);
+      vlib_buffer_copy_indices (txq->bufs, txq->tmp_bufs + n_not_wrap,
+				n_desc - n_not_wrap);
+    }
+
+  next += n_desc;
+  if ((slot = clib_ring_enq (txq->rs_slots)))
+    {
+      u16 rs_slot = slot[0] = (next - 1) & mask;
+      txq->descs[rs_slot].qword[1] |= AVF_TXD_CMD_RS;
+    }
+
+  txq->next = next & mask;
+  avf_tail_write (txq->qtx_tail, txq->next);
+  txq->n_enqueued += n_desc;
   n_left -= n_enq;
 
   if (n_left)
