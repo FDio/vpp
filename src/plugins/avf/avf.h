@@ -182,7 +182,7 @@ typedef struct
   volatile u32 *qtx_tail;
   u16 next;
   u16 size;
-  u32 ctx_desc_placeholder_bi;
+  u32 *ph_bufs;
   clib_spinlock_t lock;
   avf_tx_desc_t *descs;
   u32 *bufs;

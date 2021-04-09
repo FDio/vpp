@@ -295,6 +295,7 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
 {
   clib_error_t *err;
   avf_txq_t *txq;
+  u16 n;
   u8 bpi = vlib_buffer_pool_get_default_for_numa (vm,
 						  ad->numa_node);
 
@@ -313,11 +314,15 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
   txq->size = txq_size;
   txq->next = 0;
 
-  /* Prepare a placeholder buffer to maintain a 1-1
-     relationship between bufs and descs when a context
-     descriptor is added in descs */
-  if (!vlib_buffer_alloc_from_pool
-      (vm, &txq->ctx_desc_placeholder_bi, 1, bpi))
+  /* Prepare a placeholder buffer(s) to maintain a 1-1 relationship between
+   * bufs and descs when a context descriptor is added in descs. Worst case
+   * every second descriptor is context descriptor and due to b->ref_count
+   * being u8 we need one for each block of 510 descriptors */
+
+  n = (txq->size / 510) + 1;
+  vec_validate_aligned (txq->ph_bufs, n, CLIB_CACHE_LINE_BYTES);
+
+  if (!vlib_buffer_alloc_from_pool (vm, txq->ph_bufs, n, bpi))
     return clib_error_return (0, "buffer allocation error");
 
   txq->descs = vlib_physmem_alloc_aligned_on_numa (vm, txq->size *
@@ -1518,7 +1523,8 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad, int with_barrier)
 				      txq->n_enqueued);
 	}
       /* Free the placeholder buffer */
-      vlib_buffer_free_one(vm, txq->ctx_desc_placeholder_bi);
+      vlib_buffer_free (vm, txq->ph_bufs, vec_len (txq->ph_bufs));
+      vec_free (txq->ph_bufs);
       vec_free (txq->bufs);
       clib_ring_free (txq->rs_slots);
       vec_free (txq->tmp_bufs);
