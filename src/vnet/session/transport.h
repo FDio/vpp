@@ -85,7 +85,8 @@ typedef struct _transport_proto_vft
    * Transmission
    */
 
-  u32 (*push_header) (transport_connection_t * tconn, vlib_buffer_t * b);
+  u32 (*push_header) (transport_connection_t *tconn, vlib_buffer_t **b,
+		      u32 n_bufs);
   int (*send_params) (transport_connection_t * tconn,
 		      transport_send_params_t *sp);
   void (*update_time) (f64 time_now, u8 thread_index);

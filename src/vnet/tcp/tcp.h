@@ -313,8 +313,8 @@ u32 tcp_snd_space (tcp_connection_t * tc);
 int tcp_fastrecovery_prr_snd_space (tcp_connection_t * tc);
 void tcp_reschedule (tcp_connection_t * tc);
 fib_node_index_t tcp_lookup_rmt_in_fib (tcp_connection_t * tc);
-u32 tcp_session_push_header (transport_connection_t * tconn,
-			     vlib_buffer_t * b);
+u32 tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **b,
+			     u32 n_bufs);
 int tcp_session_custom_tx (void *conn, transport_send_params_t * sp);
 
 void tcp_connection_timers_init (tcp_connection_t * tc);
