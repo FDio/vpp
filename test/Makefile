@@ -103,19 +103,19 @@ $(PIP_TOOLS_INSTALL_DONE):
 	@$(PYTHON_INTERP) -m venv $(VENV_PATH)
 	# pip version pinning
 	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  $(PYTHON_INTERP) -m pip install pip===$(PIP_VERSION)"
+		  python3 -m pip install pip===$(PIP_VERSION)"
 	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  $(PYTHON_INTERP) -m pip install pip-tools===$(PIP_TOOLS_VERSION)"
+		  python3 -m pip install pip-tools===$(PIP_TOOLS_VERSION)"
 	@touch $@
 
 $(PYTHON_DEPENDS): requirements.txt
 	@bash -c "source $(VENV_PATH)/bin/activate && \
 		  CUSTOM_COMPILE_COMMAND='make test-refresh-deps (or update requirements.txt)' \
-		  $(PYTHON_INTERP) -m piptools compile -q --generate-hashes requirements.txt --output-file $@"
+		  python3 -m piptools compile -q --generate-hashes requirements.txt --output-file $@"
 
 $(PIP_INSTALL_DONE): $(PIP_TOOLS_INSTALL_DONE) $(PYTHON_DEPENDS)
 	@bash -c "source $(VENV_PATH)/bin/activate && \
-		  $(PYTHON_INTERP) -m piptools sync $(PYTHON_DEPENDS)"
+		  python3 -m piptools sync $(PYTHON_DEPENDS)"
 	@touch $@
 
 $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
@@ -130,7 +130,7 @@ $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
 	touch $@
 
 $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
-	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install -e $(PAPI_PYTHON_SRC_DIR)"
+	@bash -c "source $(VENV_PATH)/bin/activate && python3 -m pip install -e $(PAPI_PYTHON_SRC_DIR)"
 	@touch $@
 
 .PHONY: refresh-deps
@@ -157,8 +157,8 @@ ifeq ($(SANITY),no)
 SANITY_IMPORT_VPP_PAPI_CMD=true
 SANITY_RUN_VPP_CMD=true
 else
-SANITY_IMPORT_VPP_PAPI_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) sanity_import_vpp_papi.py
-SANITY_RUN_VPP_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) sanity_run_vpp.py
+SANITY_IMPORT_VPP_PAPI_CMD=source $(VENV_PATH)/bin/activate && python3 sanity_import_vpp_papi.py
+SANITY_RUN_VPP_CMD=source $(VENV_PATH)/bin/activate && python3 sanity_run_vpp.py
 endif
 
 ifndef TEST_JOBS
@@ -269,7 +269,7 @@ wipe-all: wipe wipe-papi wipe-cov
 .PHONY: checkstyle-diff
 checkstyle-diff: $(PIP_INSTALL_DONE)
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
-		  $(PYTHON_INTERP) -m pip install pycodestyle"
+		  python3 -m pip install pycodestyle"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		cd $(WS_ROOT) && git diff --name-only --no-color --relative HEAD~1 ':!*.patch' | grep '.py$$' | xargs -n 1 \
 		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v ||\
@@ -290,7 +290,7 @@ start-gdb: sanity
 .PHONY: checkstyle
 checkstyle: $(PIP_INSTALL_DONE)
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
-		  $(PYTHON_INTERP) -m pip install pycodestyle"
+		  python3 -m pip install pycodestyle"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v *.py ||\
 		(echo \"*******************************************************************\" &&\
