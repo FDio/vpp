@@ -39,8 +39,8 @@ extern void ipsec_key_decode (const vl_api_key_t * key, ipsec_key_t * out);
 extern void ipsec_key_encode (const ipsec_key_t * in, vl_api_key_t * out);
 
 extern ipsec_sa_flags_t ipsec_sa_flags_decode (vl_api_ipsec_sad_flags_t in);
-extern vl_api_ipsec_sad_flags_t ipsec_sad_flags_encode (const ipsec_sa_t *
-							sa);
+extern vl_api_ipsec_sad_flags_t
+ipsec_sad_flags_encode (const ipsec_sa_flags_t in);
 
 #endif
 

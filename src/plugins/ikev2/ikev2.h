@@ -455,6 +455,8 @@ void ikev2_cli_reference (void);
 
 clib_error_t *ikev2_set_liveness_params (u32 period, u32 max_retries);
 
+u32 ikev2_get_api_index ();
+
 #endif /* __included_ikev2_h__ */
 
 

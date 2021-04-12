@@ -154,23 +154,23 @@ ipsec_sa_flags_decode (vl_api_ipsec_sad_flags_t in)
 }
 
 vl_api_ipsec_sad_flags_t
-ipsec_sad_flags_encode (const ipsec_sa_t * sa)
+ipsec_sad_flags_encode (const ipsec_sa_flags_t in)
 {
   vl_api_ipsec_sad_flags_t flags = IPSEC_API_SAD_FLAG_NONE;
 
-  if (ipsec_sa_is_set_USE_ESN (sa))
+  if (in & IPSEC_SA_FLAG_USE_ESN)
     flags |= IPSEC_API_SAD_FLAG_USE_ESN;
-  if (ipsec_sa_is_set_USE_ANTI_REPLAY (sa))
+  if (in & IPSEC_SA_FLAG_USE_ANTI_REPLAY)
     flags |= IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY;
-  if (ipsec_sa_is_set_IS_TUNNEL (sa))
+  if (in & IPSEC_SA_FLAG_IS_TUNNEL)
     flags |= IPSEC_API_SAD_FLAG_IS_TUNNEL;
-  if (ipsec_sa_is_set_IS_TUNNEL_V6 (sa))
+  if (in & IPSEC_SA_FLAG_IS_TUNNEL_V6)
     flags |= IPSEC_API_SAD_FLAG_IS_TUNNEL_V6;
-  if (ipsec_sa_is_set_UDP_ENCAP (sa))
+  if (in & IPSEC_SA_FLAG_UDP_ENCAP)
     flags |= IPSEC_API_SAD_FLAG_UDP_ENCAP;
-  if (ipsec_sa_is_set_IS_INBOUND (sa))
+  if (in & IPSEC_SA_FLAG_IS_INBOUND)
     flags |= IPSEC_API_SAD_FLAG_IS_INBOUND;
-  if (ipsec_sa_is_set_IS_ASYNC (sa))
+  if (in & IPSEC_SA_FLAG_IS_ASYNC)
     flags |= IPSEC_API_SAD_FLAG_ASYNC;
 
   return clib_host_to_net_u32 (flags);

@@ -30,6 +30,7 @@
 #include <openssl/sha.h>
 #include <vnet/ipsec/ipsec_punt.h>
 #include <plugins/ikev2/ikev2.api_enum.h>
+#include <plugins/ikev2/ikev2_api_calls.h>
 
 #define IKEV2_LIVENESS_RETRIES 3
 #define IKEV2_LIVENESS_PERIOD_CHECK 30
@@ -1912,23 +1913,23 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
   vec_add1 (sas_in, a->remote_sa_id);
   if (a->is_rekey)
     {
-      ipsec_tun_protect_del (sw_if_index, NULL);
+      ikev2_api_ipsec_tun_protect_del (sw_if_index, NULL);
 
       /* replace local SA immediately */
-      ipsec_sa_unlock_id (a->local_sa_id);
+      ikev2_api_ipsec_sa_unlock_id (a->local_sa_id);
 
       /* keep the old sa */
       vec_add1 (sas_in, a->old_remote_sa_id);
     }
 
-  rv = ipsec_sa_add_and_lock (a->local_sa_id, a->local_spi, IPSEC_PROTOCOL_ESP,
-			      a->encr_type, &a->loc_ckey, a->integ_type,
-			      &a->loc_ikey, a->flags, a->salt_local,
-			      a->src_port, a->dst_port, &tun_out, NULL);
+  rv = ikev2_api_ipsec_sa_add_and_lock (
+    a->local_sa_id, a->local_spi, IPSEC_PROTOCOL_ESP, a->encr_type,
+    &a->loc_ckey, a->integ_type, &a->loc_ikey, a->flags, a->salt_local,
+    a->src_port, a->dst_port, &tun_out, NULL);
   if (rv)
     goto err0;
 
-  rv = ipsec_sa_add_and_lock (
+  rv = ikev2_api_ipsec_sa_add_and_lock (
     a->remote_sa_id, a->remote_spi, IPSEC_PROTOCOL_ESP, a->encr_type,
     &a->rem_ckey, a->integ_type, &a->rem_ikey,
     (a->flags | IPSEC_SA_FLAG_IS_INBOUND), a->salt_remote,
@@ -1936,16 +1937,17 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
   if (rv)
     goto err1;
 
-  rv = ipsec_tun_protect_update (sw_if_index, NULL, a->local_sa_id, sas_in);
+  rv = ikev2_api_ipsec_tun_protect_update (sw_if_index, NULL, a->local_sa_id,
+					   sas_in);
   if (rv)
     goto err2;
 
   return;
 
 err2:
-  ipsec_sa_unlock_id (a->remote_sa_id);
+  ikev2_api_ipsec_sa_unlock_id (a->remote_sa_id);
 err1:
-  ipsec_sa_unlock_id (a->local_sa_id);
+  ikev2_api_ipsec_sa_unlock_id (a->local_sa_id);
 err0:
   vec_free (sas_in);
 }
@@ -2246,11 +2248,11 @@ ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t * a)
     }
 
   if (~0 != sw_if_index)
-    ipsec_tun_protect_del (sw_if_index, NULL);
+    ikev2_api_ipsec_tun_protect_del (sw_if_index, NULL);
 
-  ipsec_sa_unlock_id (a->remote_sa_id);
-  ipsec_sa_unlock_id (a->local_sa_id);
-  ipsec_sa_unlock_id (ikev2_flip_alternate_sa_bit (a->remote_sa_id));
+  ikev2_api_ipsec_sa_unlock_id (a->remote_sa_id);
+  ikev2_api_ipsec_sa_unlock_id (a->local_sa_id);
+  ikev2_api_ipsec_sa_unlock_id (ikev2_flip_alternate_sa_bit (a->remote_sa_id));
 
   if (ipip)
     ipip_del_tunnel (ipip->sw_if_index);
@@ -3724,7 +3726,7 @@ ikev2_set_local_key (vlib_main_t * vm, u8 * file)
 static_always_inline vnet_api_error_t
 ikev2_register_udp_port (ikev2_profile_t * p, u16 port)
 {
-  ipsec_register_udp_port (port);
+  ikev2_api_ipsec_register_udp_port (port);
   p->ipsec_over_udp_port = port;
   return 0;
 }
@@ -3735,7 +3737,7 @@ ikev2_unregister_udp_port (ikev2_profile_t * p)
   if (p->ipsec_over_udp_port == IPSEC_UDP_PORT_NONE)
     return;
 
-  ipsec_unregister_udp_port (p->ipsec_over_udp_port);
+  ikev2_api_ipsec_unregister_udp_port (p->ipsec_over_udp_port);
   p->ipsec_over_udp_port = IPSEC_UDP_PORT_NONE;
 }
 
@@ -4740,6 +4742,12 @@ ikev2_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ikev2_sw_interface_add_del);
 
+u32
+ikev2_get_api_index ()
+{
+  return (&ikev2_main)->api_client_index;
+}
+
 clib_error_t *
 ikev2_init (vlib_main_t * vm)
 {
@@ -4797,6 +4805,7 @@ ikev2_init (vlib_main_t * vm)
 
   km->log_level = IKEV2_LOG_ERROR;
   km->log_class = vlib_log_register_class ("ikev2", 0);
+  km->api_client_index = ikev2_api_register_client ();
   return 0;
 }
 
@@ -4895,11 +4904,12 @@ ikev2_mngr_process_child_sa (ikev2_sa_t * sa, ikev2_child_sa_t * csa,
       u32 *sas_in = NULL;
       vec_add1 (sas_in, csa->remote_sa_id);
       vlib_worker_thread_barrier_sync (vm);
-      int rv = ipsec_tun_protect_update (sw_if_index, NULL,
-					 csa->local_sa_id, sas_in);
+      int rv = ikev2_api_ipsec_tun_protect_update (sw_if_index, NULL,
+						   csa->local_sa_id, sas_in);
       if (rv)
 	vec_free (sas_in);
-      ipsec_sa_unlock_id (ikev2_flip_alternate_sa_bit (csa->remote_sa_id));
+      ikev2_api_ipsec_sa_unlock_id (
+	ikev2_flip_alternate_sa_bit (csa->remote_sa_id));
       vlib_worker_thread_barrier_release (vm);
     }
 

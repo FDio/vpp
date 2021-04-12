@@ -264,7 +264,18 @@ foreach_ipsec_sa_flags
  */
 extern vlib_combined_counter_main_t ipsec_sa_counters;
 
-extern void ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len);
+always_inline void
+ipsec_mk_key (ipsec_key_t *key, const u8 *data, u8 len)
+{
+  memset (key, 0, sizeof (*key));
+
+  if (len > sizeof (key->data))
+    key->len = sizeof (key->data);
+  else
+    key->len = len;
+
+  memcpy (key->data, data, key->len);
+}
 
 extern int
 ipsec_sa_add_and_lock (u32 id, u32 spi, ipsec_protocol_t proto,

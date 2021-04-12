@@ -300,6 +300,23 @@ autoreply define ipsec_tunnel_protect_del
 };
 
 /**
+ * @brief Register/Unregister udp ports for IPsec
+ */
+autoreply define ipsec_register_udp_port
+{
+  u32 client_index;
+  u32 context;
+  u16 port;
+};
+
+autoreply define ipsec_unregister_udp_port
+{
+  u32 client_index;
+  u32 context;
+  u16 port;
+};
+
+/**
  * @brief Dump all tunnel protections
  */
 define ipsec_tunnel_protect_dump
