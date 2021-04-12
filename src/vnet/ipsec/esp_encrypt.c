@@ -631,6 +631,12 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  /* speculate that the trailer goes in the first buffer */
 	  CLIB_PREFETCH (vlib_buffer_get_tail (b[1]),
 			 CLIB_CACHE_LINE_BYTES, LOAD);
+
+	  if (is_async)
+	    {
+	      p = b[1]->pre_data;
+	      CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
+	    }
 	}
 
       if (is_tun)
