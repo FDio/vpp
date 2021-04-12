@@ -53,19 +53,6 @@ ipsec_call_add_del_callbacks (ipsec_main_t * im, ipsec_sa_t * sa,
   return 0;
 }
 
-void
-ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len)
-{
-  memset (key, 0, sizeof (*key));
-
-  if (len > sizeof (key->data))
-    key->len = sizeof (key->data);
-  else
-    key->len = len;
-
-  memcpy (key->data, data, key->len);
-}
-
 /**
  * 'stack' (resolve the recursion for) the SA tunnel destination
  */

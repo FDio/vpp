@@ -36,7 +36,8 @@
 typedef enum
 {
   REGISTRATION_TYPE_FREE = 0,
-  REGISTRATION_TYPE_SHMEM,	/**< Shared memory connection */
+  REGISTRATION_TYPE_INTERNAL,	   /**< API calls from main thread */
+  REGISTRATION_TYPE_SHMEM,	   /**< Shared memory connection */
   REGISTRATION_TYPE_SOCKET_LISTEN, /**< Socket listener  */
   REGISTRATION_TYPE_SOCKET_SERVER, /**< Socket server */
   REGISTRATION_TYPE_SOCKET_CLIENT, /**< Socket client */
@@ -74,6 +75,9 @@ typedef struct vl_api_registration_
   /* socket client only */
   u32 server_handle;		/**< Socket client only: server handle */
   u32 server_index;		/**< Socket client only: server index */
+
+  /* Internal VPP API calls */
+  u8 *buf;
 } vl_api_registration_t;
 
 #define VL_API_INVALID_FI ((u32)~0)
@@ -341,6 +345,9 @@ typedef struct api_main_t
    * This is the (shared VM) address of the registration,
    * don't use it to id the connection since it can't possibly
    * work in simulator replay.
+   *
+   * This is also used to reguster the internal API client.
+   * (For calls from inside VPP)
    */
   vl_api_registration_t *my_registration;
 

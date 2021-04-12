@@ -61,6 +61,8 @@
   _ (IPSEC_SAD_ENTRY_ADD_DEL, ipsec_sad_entry_add_del)                        \
   _ (IPSEC_SAD_ENTRY_ADD_DEL_V2, ipsec_sad_entry_add_del_v2)                  \
   _ (IPSEC_SAD_ENTRY_ADD_DEL_V3, ipsec_sad_entry_add_del_v3)                  \
+  _ (IPSEC_REGISTER_UDP_PORT, ipsec_register_udp_port)                        \
+  _ (IPSEC_UNREGISTER_UDP_PORT, ipsec_unregister_udp_port)                    \
   _ (IPSEC_SA_DUMP, ipsec_sa_dump)                                            \
   _ (IPSEC_SA_V2_DUMP, ipsec_sa_v2_dump)                                      \
   _ (IPSEC_SA_V3_DUMP, ipsec_sa_v3_dump)                                      \
@@ -545,6 +547,33 @@ out:
 }
 
 static void
+vl_api_ipsec_register_udp_port_t_handler (vl_api_ipsec_register_udp_port_t *mp)
+{
+  vl_api_ipsec_register_udp_port_reply_t *rmp;
+  int rv = 0;
+#if WITH_LIBSSL > 0
+  ipsec_register_udp_port (ntohs (mp->port));
+  REPLY_MACRO (VL_API_IPSEC_REGISTER_UDP_PORT_REPLY);
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+}
+
+static void
+vl_api_ipsec_unregister_udp_port_t_handler (
+  vl_api_ipsec_unregister_udp_port_t *mp)
+{
+  vl_api_ipsec_unregister_udp_port_reply_t *rmp;
+  int rv = 0;
+#if WITH_LIBSSL > 0
+  ipsec_unregister_udp_port (ntohs (mp->port));
+  REPLY_MACRO (VL_API_IPSEC_UNREGISTER_UDP_PORT_REPLY);
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+}
+
+static void
 send_ipsec_spds_details (ipsec_spd_t * spd, vl_api_registration_t * reg,
 			 u32 context)
 {
@@ -822,7 +851,7 @@ send_ipsec_sa_details (ipsec_sa_t * sa, void *arg)
   mp->entry.integrity_algorithm = ipsec_integ_algo_encode (sa->integ_alg);
   ipsec_key_encode (&sa->integ_key, &mp->entry.integrity_key);
 
-  mp->entry.flags = ipsec_sad_flags_encode (sa);
+  mp->entry.flags = ipsec_sad_flags_encode (sa->flags);
   mp->entry.salt = clib_host_to_net_u32 (sa->salt);
 
   if (ipsec_sa_is_set_IS_PROTECT (sa))
@@ -910,7 +939,7 @@ send_ipsec_sa_v2_details (ipsec_sa_t * sa, void *arg)
   mp->entry.integrity_algorithm = ipsec_integ_algo_encode (sa->integ_alg);
   ipsec_key_encode (&sa->integ_key, &mp->entry.integrity_key);
 
-  mp->entry.flags = ipsec_sad_flags_encode (sa);
+  mp->entry.flags = ipsec_sad_flags_encode (sa->flags);
   mp->entry.salt = clib_host_to_net_u32 (sa->salt);
 
   if (ipsec_sa_is_set_IS_PROTECT (sa))
@@ -1001,7 +1030,7 @@ send_ipsec_sa_v3_details (ipsec_sa_t *sa, void *arg)
   mp->entry.integrity_algorithm = ipsec_integ_algo_encode (sa->integ_alg);
   ipsec_key_encode (&sa->integ_key, &mp->entry.integrity_key);
 
-  mp->entry.flags = ipsec_sad_flags_encode (sa);
+  mp->entry.flags = ipsec_sad_flags_encode (sa->flags);
   mp->entry.salt = clib_host_to_net_u32 (sa->salt);
 
   if (ipsec_sa_is_set_IS_PROTECT (sa))

@@ -22,6 +22,7 @@ add_vpp_plugin(ikev2
   ikev2_crypto.c
   ikev2_format.c
   ikev2_payload.c
+  ikev2_api_calls.c
 
   API_FILES
   ikev2_types.api
@@ -33,6 +34,7 @@ add_vpp_plugin(ikev2
   INSTALL_HEADERS
   ikev2.h
   ikev2_priv.h
+  ikev2_api_calls.h
 
   LINK_LIBRARIES
   ${OPENSSL_LIBRARIES}

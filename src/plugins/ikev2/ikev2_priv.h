@@ -531,6 +531,9 @@ typedef struct
 
   /* pointer to name resolver function in dns plugin */
   int (*dns_resolve_name) ();
+
+  /* API client index to be used when calling API from main thread */
+  u32 api_client_index;
 } ikev2_main_t;
 
 extern ikev2_main_t ikev2_main;

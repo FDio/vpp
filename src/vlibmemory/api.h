@@ -38,6 +38,10 @@ vl_api_send_msg (vl_api_registration_t * rp, u8 * elem)
     {
       vl_socket_api_send (rp, elem);
     }
+  else if (rp->registration_type == REGISTRATION_TYPE_INTERNAL)
+    {
+      rp->buf = elem;
+    }
   else
     {
       vl_msg_api_send_shmem (rp->vl_input_queue, (u8 *) & elem);
@@ -75,11 +79,26 @@ vl_api_process_may_suspend (vlib_main_t * vm, vl_api_registration_t * rp,
   return false;
 }
 
+always_inline u8
+vl_internal_api_index_is_valid (u32 index)
+{
+  return index == 1 << 30;
+}
+
+always_inline vl_api_registration_t *
+vl_internal_api_index_to_registration ()
+{
+  api_main_t *am = vlibapi_get_main ();
+  return am->my_registration;
+}
+
 always_inline vl_api_registration_t *
 vl_api_client_index_to_registration (u32 index)
 {
   if (vl_socket_api_registration_handle_is_valid (ntohl (index)))
     return vl_socket_api_client_handle_to_registration (ntohl (index));
+  else if (vl_internal_api_index_is_valid (index))
+    return vl_internal_api_index_to_registration ();
   return vl_mem_api_client_index_to_registration (index);
 }
 
