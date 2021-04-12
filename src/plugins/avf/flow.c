@@ -129,7 +129,7 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
   struct avf_gtp_hdr gtp_spec = {}, gtp_mask = {};
   struct avf_l2tpv3oip_hdr l2tpv3_spec = {}, l2tpv3_mask = {};
   struct avf_esp_hdr esp_spec = {}, esp_mask = {};
-  struct avf_esp_hdr ah_spec = {}, ah_mask = {};
+  struct avf_ah_hdr ah_spec = {}, ah_mask = {};
 
   struct avf_flow_action_queue act_q = {};
   struct avf_flow_action_mark act_msk = {};
@@ -181,9 +181,6 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
       avf_items[layer].mask = &ip4_mask;
       layer++;
 
-      // memset (&ip4_spec, 0, sizeof (ip4_spec));
-      // memset (&ip4_mask, 0, sizeof (ip4_mask));
-
       if ((!ip4_ptr->src_addr.mask.as_u32) &&
 	  (!ip4_ptr->dst_addr.mask.as_u32) && (!ip4_ptr->protocol.mask))
 	{
@@ -218,13 +215,10 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
       vnet_flow_ip6_t *ip6_ptr = &f->ip6;
 
       /* IPv6 Layer */
-      avf_items[layer].type = VIRTCHNL_PROTO_HDR_IPV4;
+      avf_items[layer].type = VIRTCHNL_PROTO_HDR_IPV6;
       avf_items[layer].spec = &ip6_spec;
       avf_items[layer].mask = &ip6_mask;
       layer++;
-
-      // memset (&ip6_spec, 0, sizeof (ip6_spec));
-      // memset (&ip6_mask, 0, sizeof (ip6_mask));
 
       if ((ip6_address_is_zero (&ip6_ptr->src_addr.mask)) &&
 	  (ip6_address_is_zero (&ip6_ptr->dst_addr.mask)) &&
@@ -271,9 +265,6 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
       avf_items[layer].mask = &l2tpv3_mask;
       layer++;
 
-      // memset (&l2tpv3_spec, 0, sizeof (l2tpv3_spec));
-      // memset (&l2tpv3_mask, 0, sizeof (l2tpv3_mask));
-
       vnet_flow_ip4_l2tpv3oip_t *l2tph = &f->ip4_l2tpv3oip;
       l2tpv3_spec.session_id = clib_host_to_net_u32 (l2tph->session_id);
       l2tpv3_mask.session_id = ~0;
@@ -284,9 +275,6 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
       avf_items[layer].spec = &esp_spec;
       avf_items[layer].mask = &esp_mask;
       layer++;
-
-      // memset (&esp_spec, 0, sizeof (esp_spec));
-      // memset (&esp_mask, 0, sizeof (esp_mask));
 
       vnet_flow_ip4_ipsec_esp_t *esph = &f->ip4_ipsec_esp;
       esp_spec.spi = clib_host_to_net_u32 (esph->spi);
@@ -299,9 +287,6 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
       avf_items[layer].mask = &ah_mask;
       layer++;
 
-      // memset (&ah_spec, 0, sizeof (ah_spec));
-      // memset (&ah_mask, 0, sizeof (ah_mask));
-
       vnet_flow_ip4_ipsec_ah_t *ah = &f->ip4_ipsec_ah;
       ah_spec.spi = clib_host_to_net_u32 (ah->spi);
       ah_mask.spi = ~0;
@@ -312,9 +297,6 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
       avf_items[layer].spec = &tcp_spec;
       avf_items[layer].mask = &tcp_mask;
       layer++;
-
-      // memset (&tcp_spec, 0, sizeof (tcp_spec));
-      // memset (&tcp_mask, 0, sizeof (tcp_mask));
 
       if (src_port_mask)
 	{
@@ -334,9 +316,6 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
       avf_items[layer].mask = &udp_mask;
       layer++;
 
-      // memset (&udp_spec, 0, sizeof (udp_spec));
-      // memset (&udp_mask, 0, sizeof (udp_mask));
-
       if (src_port_mask)
 	{
 	  udp_spec.src_port = clib_host_to_net_u16 (src_port);
@@ -355,9 +334,6 @@ avf_flow_add (u32 dev_instance, vnet_flow_t *f, avf_flow_entry_t *fe)
 	  avf_items[layer].spec = &gtp_spec;
 	  avf_items[layer].mask = &gtp_mask;
 	  layer++;
-
-	  // memset (&gtp_spec, 0, sizeof (gtp_spec));
-	  // memset (&gtp_mask, 0, sizeof (gtp_mask));
 
 	  vnet_flow_ip4_gtpu_t *gu = &f->ip4_gtpu;
 	  gtp_spec.teid = clib_host_to_net_u32 (gu->teid);
