@@ -503,11 +503,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IAVF:
 	      xd->flags |= DPDK_DEVICE_FLAG_INT_UNMASKABLE;
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
-	      xd->supported_flow_actions = VNET_FLOW_ACTION_MARK |
-		VNET_FLOW_ACTION_REDIRECT_TO_NODE |
+	      xd->supported_flow_actions =
+		VNET_FLOW_ACTION_MARK | VNET_FLOW_ACTION_REDIRECT_TO_NODE |
 		VNET_FLOW_ACTION_REDIRECT_TO_QUEUE |
-		VNET_FLOW_ACTION_BUFFER_ADVANCE |
-		VNET_FLOW_ACTION_COUNT | VNET_FLOW_ACTION_DROP;
+		VNET_FLOW_ACTION_BUFFER_ADVANCE | VNET_FLOW_ACTION_COUNT |
+		VNET_FLOW_ACTION_DROP | VNET_FLOW_ACTION_RSS;
 
 	      if (dm->conf->no_tx_checksum_offload == 0)
 		{
