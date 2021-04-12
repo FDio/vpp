@@ -581,6 +581,9 @@ punt_socket_register_cmd (vlib_main_t * vm,
 	pr.punt.l4.port = ~0;
       else if (unformat (input, "socket %s", &socket_name))
 	;
+      else if (unformat (input, "reason %U", unformat_punt_reason,
+			 &pr.punt.exception.reason))
+	pr.type = PUNT_TYPE_EXCEPTION;
       else
 	{
 	  error = clib_error_return (0, "parse error: '%U'",
@@ -652,6 +655,9 @@ punt_socket_deregister_cmd (vlib_main_t * vm,
 	;
       else if (unformat (input, "all"))
 	pr.punt.l4.port = ~0;
+      else if (unformat (input, "reason %U", unformat_punt_reason,
+			 &pr.punt.exception.reason))
+	pr.type = PUNT_TYPE_EXCEPTION;
       else
 	{
 	  error = clib_error_return (0, "parse error: '%U'",
