@@ -118,17 +118,17 @@ esp_seq_advance (ipsec_sa_t * sa)
 }
 
 always_inline u16
-esp_aad_fill (u8 * data, const esp_header_t * esp, const ipsec_sa_t * sa)
+esp_aad_fill_seq (u8 *data, const esp_header_t *esp, u32 seq_hi)
 {
   esp_aead_t *aad;
 
   aad = (esp_aead_t *) data;
   aad->data[0] = esp->spi;
 
-  if (ipsec_sa_is_set_USE_ESN (sa))
+  if (seq_hi != ~0)
     {
       /* SPI, seq-hi, seq-low */
-      aad->data[1] = (u32) clib_host_to_net_u32 (sa->seq_hi);
+      aad->data[1] = (u32) clib_host_to_net_u32 (seq_hi);
       aad->data[2] = esp->seq;
       return 12;
     }
@@ -138,6 +138,13 @@ esp_aad_fill (u8 * data, const esp_header_t * esp, const ipsec_sa_t * sa)
       aad->data[1] = esp->seq;
       return 8;
     }
+}
+
+always_inline u16
+esp_aad_fill (u8 *data, const esp_header_t *esp, const ipsec_sa_t *sa)
+{
+  return esp_aad_fill_seq (data, esp,
+			   ipsec_sa_is_set_USE_ESN (sa) ? sa->seq_hi : ~0);
 }
 
 /* Special case to drop or hand off packets for sync/async modes.
@@ -200,19 +207,10 @@ typedef struct
   u16 hdr_sz;
   u16 is_chain;
   u32 protect_index;
-} esp_decrypt_packet_data_t;
-
-STATIC_ASSERT_SIZEOF (esp_decrypt_packet_data_t, 3 * sizeof (u64));
-STATIC_ASSERT_OFFSET_OF (esp_decrypt_packet_data_t, seq, sizeof (u64));
-
-/* we are forced to store the decrypt post data into 2 separate places -
-   vlib_opaque and opaque2. */
-typedef struct
-{
   vlib_buffer_t *lb;
   u32 free_buffer_index;
   u8 icv_removed;
-} esp_decrypt_packet_data2_t;
+} esp_decrypt_packet_data_t;
 
 typedef union
 {
@@ -220,21 +218,9 @@ typedef union
   esp_decrypt_packet_data_t decrypt_data;
 } esp_post_data_t;
 
-STATIC_ASSERT (sizeof (esp_post_data_t) <=
-	       STRUCT_SIZE_OF (vnet_buffer_opaque_t, unused),
-	       "Custom meta-data too large for vnet_buffer_opaque_t");
-
-#define esp_post_data(b) \
-    ((esp_post_data_t *)((u8 *)((b)->opaque) \
-        + STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused)))
-
-STATIC_ASSERT (sizeof (esp_decrypt_packet_data2_t) <=
-	       STRUCT_SIZE_OF (vnet_buffer_opaque2_t, unused),
-	       "Custom meta-data too large for vnet_buffer_opaque2_t");
-
-#define esp_post_data2(b) \
-    ((esp_decrypt_packet_data2_t *)((u8 *)((b)->opaque2) \
-        + STRUCT_OFFSET_OF (vnet_buffer_opaque2_t, unused)))
+#define esp_post_data(b)                                                      \
+  ((esp_post_data_t *) ((u8 *) ((b)->pre_data) +                              \
+			STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused)))
 
 typedef struct
 {
