@@ -129,40 +129,64 @@ wg_handoff (vlib_main_t * vm,
   return n_enq;
 }
 
-VLIB_NODE_FN (wg_handshake_handoff) (vlib_main_t * vm,
-				     vlib_node_runtime_t * node,
-				     vlib_frame_t * from_frame)
+VLIB_NODE_FN (wg4_handshake_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   wg_main_t *wmp = &wg_main;
 
-  return wg_handoff (vm, node, from_frame, wmp->in_fq_index,
+  return wg_handoff (vm, node, from_frame, wmp->in4_fq_index,
 		     WG_HANDOFF_HANDSHAKE);
 }
 
-VLIB_NODE_FN (wg_input_data_handoff) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * from_frame)
+VLIB_NODE_FN (wg6_handshake_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   wg_main_t *wmp = &wg_main;
 
-  return wg_handoff (vm, node, from_frame, wmp->in_fq_index,
+  return wg_handoff (vm, node, from_frame, wmp->in6_fq_index,
+		     WG_HANDOFF_HANDSHAKE);
+}
+
+VLIB_NODE_FN (wg4_input_data_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
+{
+  wg_main_t *wmp = &wg_main;
+
+  return wg_handoff (vm, node, from_frame, wmp->in4_fq_index,
 		     WG_HANDOFF_INP_DATA);
 }
 
-VLIB_NODE_FN (wg_output_tun_handoff) (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * from_frame)
+VLIB_NODE_FN (wg6_input_data_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
   wg_main_t *wmp = &wg_main;
 
-  return wg_handoff (vm, node, from_frame, wmp->out_fq_index,
+  return wg_handoff (vm, node, from_frame, wmp->in6_fq_index,
+		     WG_HANDOFF_INP_DATA);
+}
+
+VLIB_NODE_FN (wg4_output_tun_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
+{
+  wg_main_t *wmp = &wg_main;
+
+  return wg_handoff (vm, node, from_frame, wmp->out4_fq_index,
+		     WG_HANDOFF_OUT_TUN);
+}
+
+VLIB_NODE_FN (wg6_output_tun_handoff)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
+{
+  wg_main_t *wmp = &wg_main;
+
+  return wg_handoff (vm, node, from_frame, wmp->out6_fq_index,
 		     WG_HANDOFF_OUT_TUN);
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (wg_handshake_handoff) =
+VLIB_REGISTER_NODE (wg4_handshake_handoff) =
 {
-  .name = "wg-handshake-handoff",
+  .name = "wg4-handshake-handoff",
   .vector_size = sizeof (u32),
   .format_trace = format_wg_handoff_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -174,9 +198,9 @@ VLIB_REGISTER_NODE (wg_handshake_handoff) =
   },
 };
 
-VLIB_REGISTER_NODE (wg_input_data_handoff) =
+VLIB_REGISTER_NODE (wg6_handshake_handoff) =
 {
-  .name = "wg-input-data-handoff",
+  .name = "wg6-handshake-handoff",
   .vector_size = sizeof (u32),
   .format_trace = format_wg_handoff_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -188,9 +212,51 @@ VLIB_REGISTER_NODE (wg_input_data_handoff) =
   },
 };
 
-VLIB_REGISTER_NODE (wg_output_tun_handoff) =
+VLIB_REGISTER_NODE (wg4_input_data_handoff) =
 {
-  .name = "wg-output-tun-handoff",
+  .name = "wg4-input-data-handoff",
+  .vector_size = sizeof (u32),
+  .format_trace = format_wg_handoff_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (wg_handoff_error_strings),
+  .error_strings = wg_handoff_error_strings,
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_REGISTER_NODE (wg6_input_data_handoff) =
+{
+  .name = "wg6-input-data-handoff",
+  .vector_size = sizeof (u32),
+  .format_trace = format_wg_handoff_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (wg_handoff_error_strings),
+  .error_strings = wg_handoff_error_strings,
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_REGISTER_NODE (wg4_output_tun_handoff) =
+{
+  .name = "wg4-output-tun-handoff",
+  .vector_size = sizeof (u32),
+  .format_trace = format_wg_handoff_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (wg_handoff_error_strings),
+  .error_strings = wg_handoff_error_strings,
+  .n_next_nodes = 1,
+  .next_nodes =  {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_REGISTER_NODE (wg6_output_tun_handoff) =
+{
+  .name = "wg6-output-tun-handoff",
   .vector_size = sizeof (u32),
   .format_trace = format_wg_handoff_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,

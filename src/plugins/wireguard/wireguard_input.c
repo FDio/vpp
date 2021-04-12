@@ -79,11 +79,11 @@ format_wg_input_trace (u8 * s, va_list * args)
 
   wg_input_trace_t *t = va_arg (*args, wg_input_trace_t *);
 
-  s = format (s, "WG input: \n");
-  s = format (s, "  Type: %U\n", format_wg_message_type, t->type);
-  s = format (s, "  peer: %d\n", t->peer);
-  s = format (s, "  Length: %d\n", t->current_length);
-  s = format (s, "  Keepalive: %s", t->is_keepalive ? "true" : "false");
+  s = format (s, "Wireguard input: \n");
+  s = format (s, "    Type: %U\n", format_wg_message_type, t->type);
+  s = format (s, "    Peer: %d\n", t->peer);
+  s = format (s, "    Length: %d\n", t->current_length);
+  s = format (s, "    Keepalive: %s", t->is_keepalive ? "true" : "false");
 
   return s;
 }
@@ -93,6 +93,7 @@ typedef enum
   WG_INPUT_NEXT_HANDOFF_HANDSHAKE,
   WG_INPUT_NEXT_HANDOFF_DATA,
   WG_INPUT_NEXT_IP4_INPUT,
+  WG_INPUT_NEXT_IP6_INPUT,
   WG_INPUT_NEXT_PUNT,
   WG_INPUT_NEXT_ERROR,
   WG_INPUT_N_NEXT,
@@ -108,8 +109,15 @@ typedef enum
 /*     } */
 /* } */
 
+static u8
+is_ip4_header (u8 *data)
+{
+  return (data[0] >> 4) == 0x4;
+}
+
 static wg_input_error_t
-wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
+wg_handshake_process (vlib_main_t *vm, wg_main_t *wmp, vlib_buffer_t *b,
+		      u32 node_idx, u8 is_ip4)
 {
   ASSERT (vm->thread_index == 0);
 
@@ -121,10 +129,21 @@ wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
 
   void *current_b_data = vlib_buffer_get_current (b);
 
+  ip46_address_t src_ip;
+  if (is_ip4)
+    {
+      ip4_header_t *iph4 =
+	current_b_data - sizeof (udp_header_t) - sizeof (ip4_header_t);
+      ip46_address_set_ip4 (&src_ip, &iph4->src_address);
+    }
+  else
+    {
+      ip6_header_t *iph6 =
+	current_b_data - sizeof (udp_header_t) - sizeof (ip6_header_t);
+      ip46_address_set_ip6 (&src_ip, &iph6->src_address);
+    }
+
   udp_header_t *uhd = current_b_data - sizeof (udp_header_t);
-  ip4_header_t *iph =
-    current_b_data - sizeof (udp_header_t) - sizeof (ip4_header_t);
-  ip4_address_t ip4_src = iph->src_address;
   u16 udp_src_port = clib_host_to_net_u16 (uhd->src_port);;
   u16 udp_dst_port = clib_host_to_net_u16 (uhd->dst_port);;
 
@@ -159,10 +178,9 @@ wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
   message_macs_t *macs = (message_macs_t *)
     ((u8 *) current_b_data + len - sizeof (*macs));
 
-  mac_state =
-    cookie_checker_validate_macs (vm, &wg_if->cookie_checker, macs,
-				  current_b_data, len, under_load, ip4_src,
-				  udp_src_port);
+  mac_state = cookie_checker_validate_macs (vm, &wg_if->cookie_checker, macs,
+					    current_b_data, len, under_load,
+					    &src_ip, udp_src_port);
 
   if ((under_load && mac_state == VALID_MAC_WITH_COOKIE)
       || (!under_load && mac_state == VALID_MAC_BUT_NO_COOKIE))
@@ -198,7 +216,7 @@ wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
 	// set_peer_address (peer, ip4_src, udp_src_port);
 	if (PREDICT_FALSE (!wg_send_handshake_response (vm, peer)))
 	  {
-	    vlib_node_increment_counter (vm, wg_input_node.index,
+	    vlib_node_increment_counter (vm, node_idx,
 					 WG_INPUT_ERROR_HANDSHAKE_SEND, 1);
 	  }
 	break;
@@ -238,9 +256,8 @@ wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
 	    wg_timers_handshake_complete (peer);
 	    if (PREDICT_FALSE (!wg_send_keepalive (vm, peer)))
 	      {
-		vlib_node_increment_counter (vm, wg_input_node.index,
-					     WG_INPUT_ERROR_KEEPALIVE_SEND,
-					     1);
+		vlib_node_increment_counter (vm, node_idx,
+					     WG_INPUT_ERROR_KEEPALIVE_SEND, 1);
 	      }
 	  }
 	break;
@@ -255,26 +272,25 @@ wg_handshake_process (vlib_main_t * vm, wg_main_t * wmp, vlib_buffer_t * b)
 }
 
 static_always_inline bool
-fib_prefix_is_cover_addr_4 (const fib_prefix_t * p1,
-			    const ip4_address_t * ip4)
+fib_prefix_is_cover_addr_46 (const fib_prefix_t *p1, const ip46_address_t *ip)
 {
   switch (p1->fp_proto)
     {
     case FIB_PROTOCOL_IP4:
-      return (ip4_destination_matches_route (&ip4_main,
-					     &p1->fp_addr.ip4,
-					     ip4, p1->fp_len) != 0);
+      return (ip4_destination_matches_route (&ip4_main, &p1->fp_addr.ip4,
+					     &ip->ip4, p1->fp_len) != 0);
     case FIB_PROTOCOL_IP6:
-      return (false);
+      return (ip6_destination_matches_route (&ip6_main, &p1->fp_addr.ip6,
+					     &ip->ip6, p1->fp_len) != 0);
     case FIB_PROTOCOL_MPLS:
       break;
     }
   return (false);
 }
 
-VLIB_NODE_FN (wg_input_node) (vlib_main_t * vm,
-			      vlib_node_runtime_t * node,
-			      vlib_frame_t * frame)
+always_inline uword
+wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		 vlib_frame_t *frame, u8 is_ip4)
 {
   message_type_t header_type;
   u32 n_left_from;
@@ -384,7 +400,20 @@ VLIB_NODE_FN (wg_input_node) (vlib_main_t * vm,
 
 	  wg_timers_data_received (peer);
 
-	  ip4_header_t *iph = vlib_buffer_get_current (b[0]);
+	  ip46_address_t src_ip;
+	  u8 is_ip4_inner = is_ip4_header (vlib_buffer_get_current (b[0]));
+	  if (is_ip4_inner)
+	    {
+	      ip46_address_set_ip4 (
+		&src_ip, &((ip4_header_t *) vlib_buffer_get_current (b[0]))
+			    ->src_address);
+	    }
+	  else
+	    {
+	      ip46_address_set_ip6 (
+		&src_ip, &((ip6_header_t *) vlib_buffer_get_current (b[0]))
+			    ->src_address);
+	    }
 
 	  const wg_peer_allowed_ip_t *allowed_ip;
 	  bool allowed = false;
@@ -394,19 +423,20 @@ VLIB_NODE_FN (wg_input_node) (vlib_main_t * vm,
 	   * is that there aren't many allowed IPs and thus a linear
 	   * walk is fater than an ACL
 	   */
+
 	  vec_foreach (allowed_ip, peer->allowed_ips)
-	  {
-	    if (fib_prefix_is_cover_addr_4 (&allowed_ip->prefix,
-					    &iph->src_address))
-	      {
-		allowed = true;
-		break;
-	      }
-	  }
+	    {
+	      if (fib_prefix_is_cover_addr_46 (&allowed_ip->prefix, &src_ip))
+		{
+		  allowed = true;
+		  break;
+		}
+	    }
 	  if (allowed)
 	    {
 	      vnet_buffer (b[0])->sw_if_index[VLIB_RX] = peer->wg_sw_if_index;
-	      next[0] = WG_INPUT_NEXT_IP4_INPUT;
+	      next[0] = is_ip4_inner ? WG_INPUT_NEXT_IP4_INPUT :
+				       WG_INPUT_NEXT_IP6_INPUT;
 	    }
 	}
       else
@@ -420,7 +450,8 @@ VLIB_NODE_FN (wg_input_node) (vlib_main_t * vm,
 	      goto next;
 	    }
 
-	  wg_input_error_t ret = wg_handshake_process (vm, wmp, b[0]);
+	  wg_input_error_t ret =
+	    wg_handshake_process (vm, wmp, b[0], node->node_index, is_ip4);
 	  if (ret != WG_INPUT_ERROR_NONE)
 	    {
 	      next[0] = WG_INPUT_NEXT_ERROR;
@@ -448,10 +479,22 @@ VLIB_NODE_FN (wg_input_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (wg_input_node) =
+VLIB_NODE_FN (wg4_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  .name = "wg-input",
+  return wg_input_inline (vm, node, frame, /* is_ip4 */ 1);
+}
+
+VLIB_NODE_FN (wg6_input_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  return wg_input_inline (vm, node, frame, /* is_ip4 */ 0);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (wg4_input_node) =
+{
+  .name = "wg4-input",
   .vector_size = sizeof (u32),
   .format_trace = format_wg_input_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -460,9 +503,30 @@ VLIB_REGISTER_NODE (wg_input_node) =
   .n_next_nodes = WG_INPUT_N_NEXT,
   /* edit / add dispositions here */
   .next_nodes = {
-        [WG_INPUT_NEXT_HANDOFF_HANDSHAKE] = "wg-handshake-handoff",
-        [WG_INPUT_NEXT_HANDOFF_DATA] = "wg-input-data-handoff",
+        [WG_INPUT_NEXT_HANDOFF_HANDSHAKE] = "wg4-handshake-handoff",
+        [WG_INPUT_NEXT_HANDOFF_DATA] = "wg4-input-data-handoff",
         [WG_INPUT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
+        [WG_INPUT_NEXT_IP6_INPUT] = "ip6-input",
+        [WG_INPUT_NEXT_PUNT] = "error-punt",
+        [WG_INPUT_NEXT_ERROR] = "error-drop",
+  },
+};
+
+VLIB_REGISTER_NODE (wg6_input_node) =
+{
+  .name = "wg6-input",
+  .vector_size = sizeof (u32),
+  .format_trace = format_wg_input_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (wg_input_error_strings),
+  .error_strings = wg_input_error_strings,
+  .n_next_nodes = WG_INPUT_N_NEXT,
+  /* edit / add dispositions here */
+  .next_nodes = {
+        [WG_INPUT_NEXT_HANDOFF_HANDSHAKE] = "wg6-handshake-handoff",
+        [WG_INPUT_NEXT_HANDOFF_DATA] = "wg6-input-data-handoff",
+        [WG_INPUT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
+        [WG_INPUT_NEXT_IP6_INPUT] = "ip6-input",
         [WG_INPUT_NEXT_PUNT] = "error-punt",
         [WG_INPUT_NEXT_ERROR] = "error-drop",
   },

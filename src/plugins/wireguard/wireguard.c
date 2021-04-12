@@ -15,7 +15,6 @@
 
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
-#include <vnet/ipip/ipip.h>
 #include <vpp/app/version.h>
 
 #include <wireguard/wireguard_send.h>
@@ -32,9 +31,12 @@ wg_init (vlib_main_t * vm)
 
   wmp->vlib_main = vm;
 
-  wmp->in_fq_index = vlib_frame_queue_main_init (wg_input_node.index, 0);
-  wmp->out_fq_index =
-    vlib_frame_queue_main_init (wg_output_tun_node.index, 0);
+  wmp->in4_fq_index = vlib_frame_queue_main_init (wg4_input_node.index, 0);
+  wmp->in6_fq_index = vlib_frame_queue_main_init (wg6_input_node.index, 0);
+  wmp->out4_fq_index =
+    vlib_frame_queue_main_init (wg4_output_tun_node.index, 0);
+  wmp->out6_fq_index =
+    vlib_frame_queue_main_init (wg6_output_tun_node.index, 0);
 
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
@@ -50,11 +52,16 @@ VLIB_INIT_FUNCTION (wg_init);
 
 /* *INDENT-OFF* */
 
-VNET_FEATURE_INIT (wg_output_tun, static) =
-{
+VNET_FEATURE_INIT (wg4_output_tun, static) = {
   .arc_name = "ip4-output",
-  .node_name = "wg-output-tun",
+  .node_name = "wg4-output-tun",
   .runs_after = VNET_FEATURES ("gso-ip4"),
+};
+
+VNET_FEATURE_INIT (wg6_output_tun, static) = {
+  .arc_name = "ip6-output",
+  .node_name = "wg6-output-tun",
+  .runs_after = VNET_FEATURES ("gso-ip6"),
 };
 
 VLIB_PLUGIN_REGISTER () =

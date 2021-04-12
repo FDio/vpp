@@ -22,6 +22,7 @@
 #include <wireguard/wireguard_key.h>
 #include <wireguard/wireguard_send.h>
 #include <wireguard/wireguard.h>
+#include <vnet/tunnel/tunnel_dp.h>
 
 static fib_source_t wg_fib_source;
 wg_peer_t *wg_peer_pool;
@@ -36,8 +37,8 @@ wg_peer_endpoint_reset (wg_peer_endpoint_t * ep)
 }
 
 static void
-wg_peer_endpoint_init (wg_peer_endpoint_t * ep,
-		       const ip46_address_t * addr, u16 port)
+wg_peer_endpoint_init (wg_peer_endpoint_t *ep, const ip46_address_t *addr,
+		       u16 port)
 {
   ip46_address_copy (&ep->addr, addr);
   ep->port = port;
@@ -62,15 +63,11 @@ wg_peer_fib_populate (wg_peer_t * peer, u32 fib_index)
 
   vec_foreach (allowed_ip, peer->allowed_ips)
   {
-    allowed_ip->fib_entry_index =
-      fib_table_entry_path_add (fib_index,
-				&allowed_ip->prefix,
-				wg_fib_source,
-				FIB_ENTRY_FLAG_NONE,
-				fib_proto_to_dpo (allowed_ip->
-						  prefix.fp_proto),
-				&peer->dst.addr, peer->wg_sw_if_index, ~0, 1,
-				NULL, FIB_ROUTE_PATH_FLAG_NONE);
+    allowed_ip->fib_entry_index = fib_table_entry_path_add (
+      fib_index, &allowed_ip->prefix, wg_fib_source, FIB_ENTRY_FLAG_NONE,
+      ip46_address_is_ip4 (&peer->dst.addr) ? DPO_PROTO_IP4 : DPO_PROTO_IP6,
+      &peer->dst.addr, peer->wg_sw_if_index, ~0, 1, NULL,
+      FIB_ROUTE_PATH_FLAG_NONE);
   }
 }
 
@@ -123,25 +120,44 @@ wg_peer_init (vlib_main_t * vm, wg_peer_t * peer)
 }
 
 static u8 *
-wg_peer_build_rewrite (const wg_peer_t * peer)
+wg_peer_build_rewrite (const wg_peer_t *peer, u8 is_ip4)
 {
-  // v4 only for now
-  ip4_udp_header_t *hdr;
   u8 *rewrite = NULL;
+  if (is_ip4)
+    {
+      ip4_udp_header_t *hdr;
 
-  vec_validate (rewrite, sizeof (*hdr) - 1);
-  hdr = (ip4_udp_header_t *) rewrite;
+      vec_validate (rewrite, sizeof (*hdr) - 1);
+      hdr = (ip4_udp_header_t *) rewrite;
 
-  hdr->ip4.ip_version_and_header_length = 0x45;
-  hdr->ip4.ttl = 64;
-  hdr->ip4.src_address = peer->src.addr.ip4;
-  hdr->ip4.dst_address = peer->dst.addr.ip4;
-  hdr->ip4.protocol = IP_PROTOCOL_UDP;
-  hdr->ip4.checksum = ip4_header_checksum (&hdr->ip4);
+      hdr->ip4.ip_version_and_header_length = 0x45;
+      hdr->ip4.ttl = 64;
+      hdr->ip4.src_address = peer->src.addr.ip4;
+      hdr->ip4.dst_address = peer->dst.addr.ip4;
+      hdr->ip4.protocol = IP_PROTOCOL_UDP;
+      hdr->ip4.checksum = ip4_header_checksum (&hdr->ip4);
 
-  hdr->udp.src_port = clib_host_to_net_u16 (peer->src.port);
-  hdr->udp.dst_port = clib_host_to_net_u16 (peer->dst.port);
-  hdr->udp.checksum = 0;
+      hdr->udp.src_port = clib_host_to_net_u16 (peer->src.port);
+      hdr->udp.dst_port = clib_host_to_net_u16 (peer->dst.port);
+      hdr->udp.checksum = 0;
+    }
+  else
+    {
+      ip6_udp_header_t *hdr;
+
+      vec_validate (rewrite, sizeof (*hdr) - 1);
+      hdr = (ip6_udp_header_t *) rewrite;
+
+      hdr->ip6.ip_version_traffic_class_and_flow_label = 0x60;
+      ip6_address_copy (&hdr->ip6.src_address, &peer->src.addr.ip6);
+      ip6_address_copy (&hdr->ip6.dst_address, &peer->dst.addr.ip6);
+      hdr->ip6.protocol = IP_PROTOCOL_UDP;
+      hdr->ip6.hop_limit = 255;
+
+      hdr->udp.src_port = clib_host_to_net_u16 (peer->src.port);
+      hdr->udp.dst_port = clib_host_to_net_u16 (peer->dst.port);
+      hdr->udp.checksum = 0;
+    }
 
   return (rewrite);
 }
@@ -152,9 +168,12 @@ wg_peer_adj_stack (wg_peer_t * peer)
   ip_adjacency_t *adj;
   u32 sw_if_index;
   wg_if_t *wgi;
+  fib_protocol_t fib_proto;
 
   adj = adj_get (peer->adj_index);
   sw_if_index = adj->rewrite_header.sw_if_index;
+  u8 is_ip4 = ip46_address_is_ip4 (&peer->src.addr);
+  fib_proto = is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
 
   wgi = wg_if_get (wg_if_find_by_sw_if_index (sw_if_index));
 
@@ -169,14 +188,14 @@ wg_peer_adj_stack (wg_peer_t * peer)
     {
       /* *INDENT-OFF* */
       fib_prefix_t dst = {
-        .fp_len = 32,
-        .fp_proto = FIB_PROTOCOL_IP4,
-        .fp_addr = peer->dst.addr,
+	.fp_len = is_ip4 ? 32 : 128,
+	.fp_proto = fib_proto,
+	.fp_addr = peer->dst.addr,
       };
       /* *INDENT-ON* */
       u32 fib_index;
 
-      fib_index = fib_table_find (FIB_PROTOCOL_IP4, peer->table_id);
+      fib_index = fib_table_find (fib_proto, peer->table_id);
 
       adj_midchain_delegate_stack (peer->adj_index, fib_index, &dst);
     }
@@ -205,12 +224,10 @@ wg_peer_if_table_change (wg_if_t * wgi, index_t peeri, void *data)
 }
 
 static int
-wg_peer_fill (vlib_main_t * vm, wg_peer_t * peer,
-	      u32 table_id,
-	      const ip46_address_t * dst,
-	      u16 port,
+wg_peer_fill (vlib_main_t *vm, wg_peer_t *peer, u32 table_id,
+	      const ip46_address_t *dst, u16 port,
 	      u16 persistent_keepalive_interval,
-	      const fib_prefix_t * allowed_ips, u32 wg_sw_if_index)
+	      const fib_prefix_t *allowed_ips, u32 wg_sw_if_index)
 {
   wg_peer_endpoint_init (&peer->dst, dst, port);
 
@@ -233,19 +250,19 @@ wg_peer_fill (vlib_main_t * vm, wg_peer_t * peer,
    * and an adjacency for the endpoint address in the overlay
    * on the wg interface
    */
-  peer->rewrite = wg_peer_build_rewrite (peer);
+  u8 is_ip4 = ip46_address_is_ip4 (&peer->src.addr);
+  fib_protocol_t fib_proto = is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
 
-  peer->adj_index = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4,
-					 VNET_LINK_IP4,
-					 &peer->dst.addr, wgi->sw_if_index);
+  peer->rewrite = wg_peer_build_rewrite (peer, is_ip4);
+  peer->adj_index = adj_nbr_add_or_lock (
+    fib_proto, fib_proto_to_link (allowed_ips[0].fp_proto), &peer->dst.addr,
+    wgi->sw_if_index);
 
-  vec_validate_init_empty (wg_peer_by_adj_index,
-			   peer->adj_index, INDEX_INVALID);
+  vec_validate_init_empty (wg_peer_by_adj_index, peer->adj_index,
+			   INDEX_INVALID);
   wg_peer_by_adj_index[peer->adj_index] = peer - wg_peer_pool;
 
-  adj_nbr_midchain_update_rewrite (peer->adj_index,
-				   NULL,
-				   NULL,
+  adj_nbr_midchain_update_rewrite (peer->adj_index, NULL, NULL,
 				   ADJ_FLAG_MIDCHAIN_IP_STACK,
 				   vec_dup (peer->rewrite));
   wg_peer_adj_stack (peer);
@@ -262,20 +279,17 @@ wg_peer_fill (vlib_main_t * vm, wg_peer_t * peer,
     peer->allowed_ips[ii].prefix = allowed_ips[ii];
   }
 
-  wg_peer_fib_populate (peer,
-			fib_table_get_index_for_sw_if_index
-			(FIB_PROTOCOL_IP4, peer->wg_sw_if_index));
+  wg_peer_fib_populate (peer, fib_table_get_index_for_sw_if_index (
+				fib_proto, peer->wg_sw_if_index));
 
   return (0);
 }
 
 int
-wg_peer_add (u32 tun_sw_if_index,
-	     const u8 public_key[NOISE_PUBLIC_KEY_LEN],
-	     u32 table_id,
-	     const ip46_address_t * endpoint,
-	     const fib_prefix_t * allowed_ips,
-	     u16 port, u16 persistent_keepalive, u32 * peer_index)
+wg_peer_add (u32 tun_sw_if_index, const u8 public_key[NOISE_PUBLIC_KEY_LEN],
+	     u32 table_id, const ip46_address_t *endpoint,
+	     const fib_prefix_t *allowed_ips, u16 port,
+	     u16 persistent_keepalive, u32 *peer_index)
 {
   wg_if_t *wg_if;
   wg_peer_t *peer;
@@ -347,9 +361,6 @@ wg_peer_remove (index_t peeri)
   wgi = wg_if_get (wg_if_find_by_sw_if_index (peer->wg_sw_if_index));
   wg_if_peer_remove (wgi, peeri);
 
-  vnet_feature_enable_disable ("ip4-output", "wg-output-tun",
-			       peer->wg_sw_if_index, 0, 0, 0);
-
   noise_remote_clear (wmp->vlib_main, &peer->remote);
   wg_peer_clear (wmp->vlib_main, peer);
   pool_put (wg_peer_pool, peer);
@@ -377,8 +388,8 @@ format_wg_peer_endpoint (u8 * s, va_list * args)
 {
   wg_peer_endpoint_t *ep = va_arg (*args, wg_peer_endpoint_t *);
 
-  s = format (s, "%U:%d",
-	      format_ip46_address, &ep->addr, IP46_TYPE_ANY, ep->port);
+  s = format (s, "%U:%d", format_ip46_address, &ep->addr, IP46_TYPE_ANY,
+	      ep->port);
 
   return (s);
 }
@@ -394,16 +405,13 @@ format_wg_peer (u8 * s, va_list * va)
   peer = wg_peer_get (peeri);
   key_to_base64 (peer->remote.r_public, NOISE_PUBLIC_KEY_LEN, key);
 
-  s = format (s, "[%d] endpoint:[%U->%U] %U keep-alive:%d adj:%d",
-	      peeri,
-	      format_wg_peer_endpoint, &peer->src,
-	      format_wg_peer_endpoint, &peer->dst,
-	      format_vnet_sw_if_index_name, vnet_get_main (),
-	      peer->wg_sw_if_index,
-	      peer->persistent_keepalive_interval, peer->adj_index);
-  s = format (s, "\n  key:%=s %U",
-	      key, format_hex_bytes, peer->remote.r_public,
-	      NOISE_PUBLIC_KEY_LEN);
+  s = format (s, "[%d] endpoint:[%U->%U] %U keep-alive:%d adj:%d", peeri,
+	      format_wg_peer_endpoint, &peer->src, format_wg_peer_endpoint,
+	      &peer->dst, format_vnet_sw_if_index_name, vnet_get_main (),
+	      peer->wg_sw_if_index, peer->persistent_keepalive_interval,
+	      peer->adj_index);
+  s = format (s, "\n  key:%=s %U", key, format_hex_bytes,
+	      peer->remote.r_public, NOISE_PUBLIC_KEY_LEN);
   s = format (s, "\n  allowed-ips:");
   vec_foreach (allowed_ip, peer->allowed_ips)
   {

@@ -31,7 +31,14 @@ typedef struct ip4_udp_header_t_
   udp_header_t udp;
 } __clib_packed ip4_udp_header_t;
 
+typedef struct ip6_udp_header_t_
+{
+  ip6_header_t ip6;
+  udp_header_t udp;
+} __clib_packed ip6_udp_header_t;
+
 u8 *format_ip4_udp_header (u8 * s, va_list * va);
+u8 *format_ip6_udp_header (u8 *s, va_list *va);
 
 typedef struct wg_peer_allowed_ip_t_
 {

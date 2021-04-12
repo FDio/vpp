@@ -49,7 +49,6 @@ format_wg_if (u8 * s, va_list * args)
   noise_local_t *local = noise_local_get (wgi->local_idx);
   u8 key[NOISE_KEY_LEN_BASE64];
 
-
   s = format (s, "[%d] %U src:%U port:%d",
 	      wgii,
 	      format_vnet_sw_if_index_name, vnet_get_main (),
@@ -292,7 +291,10 @@ wg_if_create (u32 user_instance,
   if (~0 == wg_if->user_instance)
     wg_if->user_instance = t_idx;
 
-  udp_register_dst_port (vlib_get_main (), port, wg_input_node.index, 1);
+  udp_register_dst_port (vlib_get_main (), port, wg4_input_node.index,
+			 UDP_IP4);
+  udp_register_dst_port (vlib_get_main (), port, wg6_input_node.index,
+			 UDP_IP6);
 
   vec_validate_init_empty (wg_if_index_by_port, port, INDEX_INVALID);
   wg_if_index_by_port[port] = wg_if - wg_if_pool;
@@ -353,8 +355,12 @@ wg_if_peer_add (wg_if_t * wgi, index_t peeri)
   hash_set (wgi->peers, peeri, peeri);
 
   if (1 == hash_elts (wgi->peers))
-    vnet_feature_enable_disable ("ip4-output", "wg-output-tun",
-				 wgi->sw_if_index, 1, 0, 0);
+    {
+      vnet_feature_enable_disable ("ip4-output", "wg4-output-tun",
+				   wgi->sw_if_index, 1, 0, 0);
+      vnet_feature_enable_disable ("ip6-output", "wg6-output-tun",
+				   wgi->sw_if_index, 1, 0, 0);
+    }
 }
 
 void
@@ -363,8 +369,12 @@ wg_if_peer_remove (wg_if_t * wgi, index_t peeri)
   hash_unset (wgi->peers, peeri);
 
   if (0 == hash_elts (wgi->peers))
-    vnet_feature_enable_disable ("ip4-output", "wg-output-tun",
-				 wgi->sw_if_index, 0, 0, 0);
+    {
+      vnet_feature_enable_disable ("ip4-output", "wg4-output-tun",
+				   wgi->sw_if_index, 0, 0, 0);
+      vnet_feature_enable_disable ("ip6-output", "wg6-output-tun",
+				   wgi->sw_if_index, 0, 0, 0);
+    }
 }
 
 void
