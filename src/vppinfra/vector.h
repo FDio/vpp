@@ -65,6 +65,10 @@
 #define CLIB_HAVE_VEC512
 #endif
 
+#if defined(__aarch64__) && defined(__ARM_FEATURE_SVE)
+#define CLIB_HAVE_VEC_SCALABLE
+#endif
+
 #define _vector_size(n) __attribute__ ((vector_size (n), __may_alias__))
 #define _vector_size_unaligned(n)                                             \
   __attribute__ ((vector_size (n), __aligned__ (1), __may_alias__))
@@ -209,6 +213,10 @@ foreach_vec
 
 #if defined (__aarch64__)
 #include <vppinfra/vector_neon.h>
+#endif
+
+#if defined(__ARM_FEATURE_SVE)
+#include <vppinfra/vector_sve.h>
 #endif
 
 /* this macro generate _splat inline functions for each scalar vector type */
