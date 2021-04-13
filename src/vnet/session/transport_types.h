@@ -215,6 +215,42 @@ typedef struct transport_endpoint_pair_
 #undef _
 } transport_endpoint_cfg_t;
 
+#define foreach_transport_endpt_cfg_flags                                     \
+  _ (CSUM_OFFLOAD)                                                            \
+  _ (GSO)                                                                     \
+  _ (RATE_SAMPLING)
+
+typedef enum transport_endpt_attr_flag_
+{
+#define _(name) TRANSPORT_ENDPT_ATTR_F_##name,
+  foreach_transport_endpt_cfg_flags
+#undef _
+} __clib_packed transport_endpt_attr_flag_t;
+
+#define foreach_transport_attr_fields                                         \
+  _ (u64, next_output_node, NEXT_OUTPUT_NODE)                                 \
+  _ (u16, mss, MSS)                                                           \
+  _ (u8, flags, FLAGS)                                                        \
+  _ (u8, cc_algo, CC_ALGO)
+
+typedef enum transport_endpt_attr_type_
+{
+#define _(type, name, str) TRANSPORT_ENDPT_ATTR_##str,
+  foreach_transport_attr_fields
+#undef _
+} __clib_packed transport_endpt_attr_type_t;
+
+typedef struct transport_endpt_attr_
+{
+  transport_endpt_attr_type_t type;
+  union
+  {
+#define _(type, name, str) type name;
+    foreach_transport_attr_fields
+#undef _
+  };
+} transport_endpt_attr_t;
+
 typedef clib_bihash_24_8_t transport_endpoint_table_t;
 
 #define ENDPOINT_INVALID_INDEX ((u32)~0)
