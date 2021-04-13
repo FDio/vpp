@@ -793,7 +793,8 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (vlib_num_workers ())
     clib_spinlock_init (&pm->sessions_lock);
 
-  unformat_user (input, unformat_line_input, line_input);
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -857,7 +858,7 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
   if (parse_uri ((char *) client_uri, &pm->client_sep))
     {
-      error = clib_error_return (0, "Invalid client uri %v", server_uri);
+      error = clib_error_return (0, "Invalid client uri %v", client_uri);
       goto done;
     }
 
