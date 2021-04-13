@@ -107,13 +107,15 @@ typedef struct _transport_proto_vft
   u8 *(*format_half_open) (u8 * s, va_list * args);
 
   /*
-   *  Properties retrieval
+   *  Properties retrieval/setting
    */
   void (*get_transport_endpoint) (u32 conn_index, u32 thread_index,
 				  transport_endpoint_t *tep, u8 is_lcl);
   void (*get_transport_listener_endpoint) (u32 conn_index,
 					   transport_endpoint_t *tep,
 					   u8 is_lcl);
+  int (*attribute) (u32 conn_index, u32 thread_index, u8 is_get,
+		    transport_endpt_attr_t *attr);
 
   /*
    * Properties
@@ -145,6 +147,9 @@ void transport_get_endpoint (transport_proto_t tp, u32 conn_index,
 			     u8 is_lcl);
 void transport_get_listener_endpoint (transport_proto_t tp, u32 conn_index,
 				      transport_endpoint_t * tep, u8 is_lcl);
+int transport_connection_attribute (transport_proto_t tp, u32 conn_index,
+				    u8 thread_index, u8 is_get,
+				    transport_endpt_attr_t *attr);
 
 static inline transport_connection_t *
 transport_get_connection (transport_proto_t tp, u32 conn_index,

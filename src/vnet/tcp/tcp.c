@@ -873,6 +873,101 @@ tcp_half_open_session_get_transport (u32 conn_index)
   return &tc->connection;
 }
 
+static int
+tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
+{
+  int rv = 0;
+
+  switch (attr->type)
+    {
+    case TRANSPORT_ENDPT_ATTR_NEXT_OUTPUT_NODE:
+      tc->next_node_index = attr->next_output_node & 0xffffffff;
+      tc->next_node_opaque = attr->next_output_node >> 32;
+      break;
+    case TRANSPORT_ENDPT_ATTR_MSS:
+      tc->mss = attr->mss;
+      tc->snd_mss = clib_min (tc->snd_mss, tc->mss);
+      break;
+    case TRANSPORT_ENDPT_ATTR_FLAGS:
+      if (attr->flags & TRANSPORT_ENDPT_ATTR_F_CSUM_OFFLOAD)
+	tc->cfg_flags |= TCP_CFG_F_NO_CSUM_OFFLOAD;
+      else
+	tc->cfg_flags &= ~TCP_CFG_F_NO_CSUM_OFFLOAD;
+      if (attr->flags & TRANSPORT_ENDPT_ATTR_F_GSO)
+	{
+	  if (!(tc->cfg_flags & TCP_CFG_F_TSO))
+	    tcp_check_gso (tc);
+	  tc->cfg_flags &= ~TCP_CFG_F_NO_TSO;
+	}
+      else
+	{
+	  tc->cfg_flags |= TCP_CFG_F_NO_TSO;
+	  tc->cfg_flags &= ~TCP_CFG_F_TSO;
+	}
+      break;
+    case TRANSPORT_ENDPT_ATTR_CC_ALGO:
+      if (tc->cc_algo == tcp_cc_algo_get (attr->cc_algo))
+	break;
+      tcp_cc_cleanup (tc);
+      tc->cc_algo = tcp_cc_algo_get (attr->cc_algo);
+      tcp_cc_init (tc);
+      break;
+    default:
+      rv = -1;
+      break;
+    }
+
+  return rv;
+}
+
+static int
+tcp_get_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
+{
+  int rv = 0;
+  u64 non;
+
+  switch (attr->type)
+    {
+    case TRANSPORT_ENDPT_ATTR_NEXT_OUTPUT_NODE:
+      non = (u64) tc->next_node_opaque << 32 | tc->next_node_index;
+      attr->next_output_node = non;
+      break;
+    case TRANSPORT_ENDPT_ATTR_MSS:
+      attr->mss = tc->snd_mss;
+      break;
+    case TRANSPORT_ENDPT_ATTR_FLAGS:
+      attr->flags = 0;
+      if (!(tc->cfg_flags & TCP_CFG_F_NO_CSUM_OFFLOAD))
+	attr->flags |= TRANSPORT_ENDPT_ATTR_F_CSUM_OFFLOAD;
+      if (tc->cfg_flags & TCP_CFG_F_TSO)
+	attr->flags |= TRANSPORT_ENDPT_ATTR_F_GSO;
+      break;
+    case TRANSPORT_ENDPT_ATTR_CC_ALGO:
+      attr->cc_algo = tc->cc_algo - tcp_main.cc_algos;
+      break;
+    default:
+      rv = -1;
+      break;
+    }
+
+  return rv;
+}
+
+static int
+tcp_session_attribute (u32 conn_index, u32 thread_index, u8 is_get,
+		       transport_endpt_attr_t *attr)
+{
+  tcp_connection_t *tc = tcp_connection_get (conn_index, thread_index);
+
+  if (PREDICT_FALSE (!tc))
+    return -1;
+
+  if (is_get)
+    return tcp_get_attribute (tc, attr);
+  else
+    return tcp_set_attribute (tc, attr);
+}
+
 static u16
 tcp_session_cal_goal_size (tcp_connection_t * tc)
 {
@@ -1172,6 +1267,7 @@ const static transport_proto_vft_t tcp_proto = {
   .get_connection = tcp_session_get_transport,
   .get_listener = tcp_session_get_listener,
   .get_half_open = tcp_half_open_session_get_transport,
+  .attribute = tcp_session_attribute,
   .connect = tcp_session_open,
   .close = tcp_session_close,
   .cleanup = tcp_session_cleanup,
