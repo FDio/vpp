@@ -327,6 +327,136 @@ STATIC_ASSERT (STRUCT_OFFSET_OF (vnet_buffer_opaque_t, l2_hdr_offset) ==
 	       STRUCT_OFFSET_OF (vnet_buffer_opaque_t, l3_hdr_offset) - 2,
 	       "l3_hdr_offset must follow l2_hdr_offset");
 
+#ifdef CLIB_HAVE_VEC_SCALABLE
+static_always_inline i32
+eth_input_adv_and_flags_xn (vlib_buffer_t **b, i32 n_left, u16 *etype,
+			    u64 *tag, u64 *dmac, int main_is_l3)
+{
+  i32 i = 0;
+  i32 eno = (i32) u64xn_max_elts ();
+  i32 enoh = eno * 2;
+  i32 enod = eno * 1;
+  boolxn ph_m, pd_m, b_m = u64xn_elt_mask (0, 0);
+
+  while (i < n_left)
+    {
+      u64xn ph_addr, pd_addr, buf_addr;
+      u64xn current_data_addr, current_length_addr;
+      u64xn data_addr, current_addr, flags_addr;
+      i64xn current_data;
+      u64xn current_length, flags;
+      u64xn dmacx, tagx, etypex;
+      u64xn opaque_addr, l2_hdr_offset_addr, l3_hdr_offset_addr;
+      i64 offset;
+      i16 adv = sizeof (ethernet_header_t);
+
+      /* compute predict registers */
+      ph_m = u64xn_elt_mask (i + enoh, n_left);
+      pd_m = u64xn_elt_mask (i + enod, n_left);
+      b_m = u64xn_elt_mask (i, n_left);
+
+      ph_addr = u64xn_load_unaligned (ph_m, (u64 *) (b + enoh));
+      pd_addr = u64xn_load_unaligned (pd_m, (u64 *) (b + enod));
+      buf_addr = u64xn_load_unaligned (b_m, (u64 *) b);
+
+      /* prefetch buffer header */
+      u64xn_prefetch_vector (ph_m, ph_addr);
+
+      /* prefetch buffer data */
+      offset = STRUCT_OFFSET_OF (vlib_buffer_t, current_data);
+      current_data = i64xn_gather_offset_i16 (pd_m, pd_addr, offset);
+      data_addr = u64xn_add_n (pd_m, pd_addr, sizeof (vlib_buffer_t));
+      current_addr = u64xn_cast_i64xn (
+	i64xn_add (pd_m, i64xn_cast_u64xn (data_addr), current_data));
+      u64xn_prefetch_vector (pd_m, current_addr);
+
+      /* process buffers */
+      offset = STRUCT_OFFSET_OF (vlib_buffer_t, current_data);
+      current_data_addr = u64xn_add_n (b_m, buf_addr, offset);
+      current_data = i64xn_gather_offset_i16 (b_m, current_data_addr, 0);
+      data_addr = u64xn_add_n (b_m, buf_addr, sizeof (vlib_buffer_t));
+      current_addr = u64xn_cast_i64xn (
+	i64xn_add (b_m, i64xn_cast_u64xn (data_addr), current_data));
+
+      /* parse and store ethernet type, destination mac into arrays */
+      dmacx = u64xn_gather_offset_u64 (b_m, current_addr, 0);
+      u64xn_store_unaligned (b_m, dmacx, dmac);
+
+      offset = sizeof (ethernet_header_t);
+      tagx = u64xn_gather_offset_u64 (b_m, current_addr, offset);
+      u64xn_store_unaligned (b_m, tagx, tag);
+
+      offset = STRUCT_OFFSET_OF (ethernet_header_t, type);
+      etypex = u64xn_gather_offset_u16 (b_m, current_addr, offset);
+      u64xn_store_u16 (b_m, etypex, etype);
+
+      /* vnet_buffer (b[i])->l2_hdr_offset = b[0]->current_data; */
+      /* vnet_buffer (b[i])->l3_hdr_offset = b[0]->current_data + adv; */
+      offset = STRUCT_OFFSET_OF (vlib_buffer_t, opaque);
+      opaque_addr = u64xn_add_n (b_m, buf_addr, offset);
+
+      offset = STRUCT_OFFSET_OF (vnet_buffer_opaque_t, l2_hdr_offset);
+      l2_hdr_offset_addr = u64xn_add_n (b_m, opaque_addr, offset);
+      i64xn_scatter_u16 (b_m, l2_hdr_offset_addr, current_data);
+
+      offset = STRUCT_OFFSET_OF (vnet_buffer_opaque_t, l3_hdr_offset);
+      l3_hdr_offset_addr = u64xn_add_n (b_m, opaque_addr, offset);
+      i64xn_scatter_u16 (b_m, l3_hdr_offset_addr,
+			 i64xn_add_n (b_m, current_data, (i64) adv));
+
+      /* update current_data & current_length in vlib_buffer_t */
+      if (main_is_l3)
+	{
+	  i64xn_scatter_u16 (b_m, current_data_addr,
+			     i64xn_add_n (b_m, current_data, (i64) adv));
+
+	  offset = STRUCT_OFFSET_OF (vlib_buffer_t, current_length);
+	  current_length_addr = u64xn_add_n (b_m, buf_addr, offset);
+	  current_length =
+	    u64xn_gather_offset_u16 (b_m, current_length_addr, 0);
+	  u64xn_scatter_u16 (b_m, current_length_addr,
+			     u64xn_sub_n (b_m, current_length, (u64) adv));
+	}
+
+      /* update flags in vlib_buffer_t */
+      u32 flag =
+	VNET_BUFFER_F_L2_HDR_OFFSET_VALID | VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+
+      offset = STRUCT_OFFSET_OF (vlib_buffer_t, flags);
+      flags_addr = u64xn_add_n (b_m, buf_addr, offset);
+      flags = u64xn_gather_offset_u32 (b_m, flags_addr, 0);
+      flags = u64xn_or_n (b_m, flags, (u64) flag);
+      u64xn_scatter_u32 (b_m, flags_addr, flags);
+
+      /* vnet_buffer (b[0])->l2.l2_len = adv; */
+      if (!main_is_l3)
+	{
+	  u64xn l2_addr, l2_len_addr;
+
+	  offset = STRUCT_OFFSET_OF (vnet_buffer_opaque_t, l2);
+	  l2_addr = u64xn_add_n (b_m, opaque_addr, offset);
+
+	  offset = STRUCT_OFFSET_OF (struct opaque_l2, l2_len);
+	  l2_len_addr = u64xn_add_n (b_m, l2_addr, offset);
+
+	  u64xn_scatter_u8 (b_m, l2_len_addr, u64xn_splat ((u64) adv));
+	}
+
+      /* next */
+      b += eno;
+      i += eno;
+      etype += eno;
+      tag += eno;
+      dmac += eno;
+    }
+
+  i -= (eno - u64xn_active_eno (b_m, b_m));
+  n_left -= i;
+  ASSERT (n_left == 0);
+  return n_left;
+}
+#endif
+
 static_always_inline void
 eth_input_adv_and_flags_x4 (vlib_buffer_t ** b, int is_l3)
 {
@@ -628,6 +758,40 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
 #define DMAC_MASK clib_net_to_host_u64 (0xFFFFFFFFFFFF0000)
 #define DMAC_IGBIT clib_net_to_host_u64 (0x0100000000000000)
 
+#ifdef CLIB_HAVE_VEC_SCALABLE
+static_always_inline u32
+is_dmac_bad_xn (u64 *dmac, u8 *dmac_bad, i32 n_left, u64 hwaddr)
+{
+  u32 bad = 0;
+  i32 i;
+  i32 eno;
+  boolxn e_m;
+  scalable_vector_foreach (i, eno, e_m, n_left, 64, ({
+			     u64xn mac, mac_mask, mac_igbit, hwmac, mac_bad;
+
+			     hwmac = u64xn_splat_zero (e_m, hwaddr);
+			     mac_mask = u64xn_splat_zero (e_m, DMAC_MASK);
+			     mac_igbit = u64xn_splat_zero (e_m, DMAC_IGBIT);
+			     mac = u64xn_load_unaligned (e_m, (u64 *) dmac);
+			     mac = u64xn_and (e_m, mac, mac_mask);
+			     mac_igbit = u64xn_and (e_m, mac_igbit, mac);
+
+			     boolxn r0 = u64xn_unequal (e_m, mac, hwmac);
+			     boolxn r1 =
+			       u64xn_equal (e_m, mac_igbit,
+					    u64xn_splat_zero (e_m, (u64) 0));
+			     r0 = boolxn_and (e_m, r0, r1);
+			     mac_bad = u64xn_splat_zero (r0, (u64) ~0);
+			     u64xn_store_u8 (e_m, mac_bad, (u8 *) dmac_bad);
+			     bad |= (u32) u64xn_reduction_or (e_m, mac_bad);
+			     /* next */
+			     dmac += eno;
+			     dmac_bad += eno;
+			   }));
+  return bad;
+}
+#endif
+
 #ifdef CLIB_HAVE_VEC256
 static_always_inline u32
 is_dmac_bad_x4 (u64 * dmacs, u64 hwaddr)
@@ -658,6 +822,102 @@ is_sec_dmac_bad_x4 (u64 * dmacs, u64 hwaddr)
   u64x4 r0 = u64x4_load_unaligned (dmacs) & u64x4_splat (DMAC_MASK);
   r0 = (r0 != u64x4_splat (hwaddr));
   return u8x32_msb_mask ((u8x32) (r0));
+}
+#endif
+
+#ifdef CLIB_HAVE_VEC_SCALABLE
+static_always_inline u32
+eth_input_sec_dmac_check_xn (u64 *dmac, u8 *dmac_bad, i32 n_left, u64 hwaddr)
+{
+  u32 bad = 0;
+  i32 i = 0;
+  i32 eno_b8 = (i32) u8xn_max_elts ();
+  i32 eno_b64 = (i32) u64xn_max_elts ();
+  while (i < n_left)
+    {
+      u64xn mac_mask, hwmac;
+      boolxn mac_m0, mac_m1, mac_m2, mac_m3;
+      boolxn mac_m4, mac_m5, mac_m6, mac_m7;
+      u64xn mac0, mac1, mac2, mac3, mac4, mac5, mac6, mac7;
+      boolxn r0, r1, r2, r3, r4, r5, r6, r7;
+      u64xn mac_bad0, mac_bad1, mac_bad2, mac_bad3;
+      u64xn mac_bad4, mac_bad5, mac_bad6, mac_bad7;
+      boolxn mac_m;
+      u8xn mac_bad;
+
+      mac_m = u8xn_elt_mask (i, n_left);
+      mac_bad = u8xn_load_unaligned (mac_m, (u8 *) dmac_bad);
+
+      /* skip any that have already matched */
+      if (!u8xn_reduction_or (mac_m, mac_bad))
+	{
+	  dmac += eno_b8;
+	  dmac_bad += eno_b8;
+	  i += eno_b8;
+	  continue;
+	}
+
+      /* handle unmaptched */
+      hwmac = u64xn_splat (hwaddr);
+      mac_mask = u64xn_splat (DMAC_MASK);
+
+      mac_m0 = u64xn_elt_mask (i + eno_b64 * 0, n_left);
+      mac_m1 = u64xn_elt_mask (i + eno_b64 * 1, n_left);
+      mac_m2 = u64xn_elt_mask (i + eno_b64 * 2, n_left);
+      mac_m3 = u64xn_elt_mask (i + eno_b64 * 3, n_left);
+      mac_m4 = u64xn_elt_mask (i + eno_b64 * 4, n_left);
+      mac_m5 = u64xn_elt_mask (i + eno_b64 * 5, n_left);
+      mac_m6 = u64xn_elt_mask (i + eno_b64 * 6, n_left);
+      mac_m7 = u64xn_elt_mask (i + eno_b64 * 7, n_left);
+      mac0 = u64xn_load_unaligned (mac_m0, (u64 *) dmac + eno_b64 * 0);
+      mac1 = u64xn_load_unaligned (mac_m1, (u64 *) dmac + eno_b64 * 1);
+      mac2 = u64xn_load_unaligned (mac_m2, (u64 *) dmac + eno_b64 * 2);
+      mac3 = u64xn_load_unaligned (mac_m3, (u64 *) dmac + eno_b64 * 3);
+      mac4 = u64xn_load_unaligned (mac_m4, (u64 *) dmac + eno_b64 * 4);
+      mac5 = u64xn_load_unaligned (mac_m5, (u64 *) dmac + eno_b64 * 5);
+      mac6 = u64xn_load_unaligned (mac_m6, (u64 *) dmac + eno_b64 * 6);
+      mac7 = u64xn_load_unaligned (mac_m7, (u64 *) dmac + eno_b64 * 7);
+      mac0 = u64xn_and (mac_m0, mac0, mac_mask);
+      mac1 = u64xn_and (mac_m1, mac1, mac_mask);
+      mac2 = u64xn_and (mac_m2, mac2, mac_mask);
+      mac3 = u64xn_and (mac_m3, mac3, mac_mask);
+      mac4 = u64xn_and (mac_m4, mac4, mac_mask);
+      mac5 = u64xn_and (mac_m5, mac5, mac_mask);
+      mac6 = u64xn_and (mac_m6, mac6, mac_mask);
+      mac7 = u64xn_and (mac_m7, mac7, mac_mask);
+      r0 = u64xn_unequal (mac_m0, mac0, hwmac);
+      r1 = u64xn_unequal (mac_m1, mac1, hwmac);
+      r2 = u64xn_unequal (mac_m2, mac2, hwmac);
+      r3 = u64xn_unequal (mac_m3, mac3, hwmac);
+      r4 = u64xn_unequal (mac_m4, mac4, hwmac);
+      r5 = u64xn_unequal (mac_m5, mac5, hwmac);
+      r6 = u64xn_unequal (mac_m6, mac6, hwmac);
+      r7 = u64xn_unequal (mac_m7, mac7, hwmac);
+      mac_bad0 = u64xn_splat_zero (r0, (u64) ~0);
+      mac_bad1 = u64xn_splat_zero (r1, (u64) ~0);
+      mac_bad2 = u64xn_splat_zero (r2, (u64) ~0);
+      mac_bad3 = u64xn_splat_zero (r3, (u64) ~0);
+      mac_bad4 = u64xn_splat_zero (r4, (u64) ~0);
+      mac_bad5 = u64xn_splat_zero (r5, (u64) ~0);
+      mac_bad6 = u64xn_splat_zero (r6, (u64) ~0);
+      mac_bad7 = u64xn_splat_zero (r7, (u64) ~0);
+      u64xn_store_u8 (mac_m0, mac_bad0, (u8 *) dmac_bad + eno_b64 * 0);
+      u64xn_store_u8 (mac_m1, mac_bad1, (u8 *) dmac_bad + eno_b64 * 1);
+      u64xn_store_u8 (mac_m2, mac_bad2, (u8 *) dmac_bad + eno_b64 * 2);
+      u64xn_store_u8 (mac_m3, mac_bad3, (u8 *) dmac_bad + eno_b64 * 3);
+      u64xn_store_u8 (mac_m4, mac_bad4, (u8 *) dmac_bad + eno_b64 * 4);
+      u64xn_store_u8 (mac_m5, mac_bad5, (u8 *) dmac_bad + eno_b64 * 5);
+      u64xn_store_u8 (mac_m6, mac_bad6, (u8 *) dmac_bad + eno_b64 * 6);
+      u64xn_store_u8 (mac_m7, mac_bad7, (u8 *) dmac_bad + eno_b64 * 7);
+      mac_bad = u8xn_load_unaligned (mac_m, (u8 *) dmac_bad);
+      bad |= u8xn_reduction_or (mac_m, mac_bad);
+
+      /* next */
+      dmac += eno_b8;
+      dmac_bad += eno_b8;
+      i += eno_b8;
+    }
+  return bad;
 }
 #endif
 
@@ -737,7 +997,9 @@ eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
 
   ASSERT (0 == ei->address.zero);
 
-#ifdef CLIB_HAVE_VEC256
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  bad = is_dmac_bad_xn (dmac, dmac_bad, n_left, hwaddr);
+#elif defined(CLIB_HAVE_VEC256)
   while (n_left > 0)
     {
       bad |= *(u32 *) (dmac_bad + 0) = is_dmac_bad_x4 (dmac + 0, hwaddr);
@@ -778,6 +1040,9 @@ eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
 
 	bad = 0;
 
+#ifdef CLIB_HAVE_VEC_SCALABLE
+	bad = eth_input_sec_dmac_check_xn (dmac, dmac_bad, n_left, hwaddr);
+#else
 	while (n_left > 0)
 	  {
 	    int adv = 0;
@@ -815,12 +1080,107 @@ eth_input_process_frame_dmac_check (vnet_hw_interface_t * hi,
 	    dmac_bad += adv;
 	    n_left -= adv;
 	  }
+#endif
 
 	if (!bad)		/* can stop looping if everything matched */
 	  break;
       }
     }
 }
+
+#ifdef CLIB_HAVE_VEC_SCALABLE
+static_always_inline i32
+eth_input_next_determine_xn (u16 *etype, u16 *next, i32 n_left,
+			     u16 *slowpath_indices, u16 *n_spath,
+			     int main_is_l3, u16 next_ip4, u16 next_ip6,
+			     u16 next_mpls, u16 next_l2, u16 et_ip4,
+			     u16 et_ip6, u16 et_mpls, u16 et_vlan,
+			     u16 et_dot1ad)
+{
+  u16xn etxn_ip4 = u16xn_splat (et_ip4);
+  u16xn etxn_ip6 = u16xn_splat (et_ip6);
+  u16xn etxn_mpls = u16xn_splat (et_mpls);
+  u16xn etxn_vlan = u16xn_splat (et_vlan);
+  u16xn etxn_dot1ad = u16xn_splat (et_dot1ad);
+  u16xn nextxn_ip4 = u16xn_splat (next_ip4);
+  u16xn nextxn_ip6 = u16xn_splat (next_ip6);
+  u16xn nextxn_mpls = u16xn_splat (next_mpls);
+  u16xn nextxn_l2 = u16xn_splat (next_l2);
+  u16xn zero, r, isl3, l3true, l3false, etypexn;
+  u16xn r_ip4, r_ip6, r_mpls, r_l2;
+  u16xn base, stair;
+  boolxn e_m = u16xn_elt_mask (0, 0), l3_m, l3n_m, r_m, s_m, all_m;
+  u16 n_slowpath = *n_spath;
+  i32 i = 0;
+  i32 eno_b16 = (i32) u16xn_max_elts ();
+
+  zero = u16xn_splat (0);
+  isl3 = u16xn_splat (main_is_l3);
+  l3true = u16xn_splat (1);
+  l3false = u16xn_splat (0);
+
+  all_m = u16xn_eltall_mask ();
+  l3_m = u16xn_equal (all_m, isl3, l3true);
+  l3n_m = u16xn_equal (all_m, isl3, l3false);
+
+  stair = u16xn_create_indexes (0, 1);
+
+  while (i < n_left)
+    {
+      r = u16xn_splat (0);
+      e_m = u16xn_elt_mask (i, n_left);
+
+      etypexn = u16xn_load_unaligned (e_m, etype);
+
+      /* set ip4-next if ethernet type is ip4 */
+      r_m = u16xn_equal (e_m, etypexn, etxn_ip4);
+      r_m = boolxn_and (e_m, r_m, l3_m);
+      r_ip4 = u16xn_or (r_m, nextxn_ip4, zero);
+      r = u16xn_or (e_m, r, r_ip4);
+
+      /* set ip6-next if ethernet type is ip6 */
+      r_m = u16xn_equal (e_m, etypexn, etxn_ip6);
+      r_m = boolxn_and (e_m, r_m, l3_m);
+      r_ip6 = u16xn_or (r_m, nextxn_ip6, zero);
+      r = u16xn_or (e_m, r, r_ip6);
+
+      /* set mpls-next if ethernet type is mpls */
+      r_m = u16xn_equal (e_m, etypexn, etxn_mpls);
+      r_m = boolxn_and (e_m, r_m, l3_m);
+      r_mpls = u16xn_or (r_m, nextxn_mpls, zero);
+      r = u16xn_or (e_m, r, r_mpls);
+
+      /* set l2-next if ethernet type is not vlan or dot1ad */
+      r_m = u16xn_unequal (e_m, etypexn, etxn_vlan);
+      s_m = u16xn_unequal (e_m, etypexn, etxn_dot1ad);
+      r_m = boolxn_and (e_m, r_m, l3n_m);
+      r_m = boolxn_and (e_m, r_m, s_m);
+      r_l2 = u16xn_or (r_m, nextxn_l2, zero);
+      r = u16xn_or (e_m, r, r_l2);
+
+      u16xn_store_unaligned (e_m, r, next);
+
+      if (!u16xn_eltmin (e_m, r))
+	{
+	  base = u16xn_splat (i);
+	  base = u16xn_add (e_m, base, stair);
+	  r_m = u16xn_equal (e_m, r, zero);
+	  u16xn_compact_store (r_m, base, slowpath_indices + n_slowpath);
+	  n_slowpath += u16xn_active_eno (e_m, r_m);
+	}
+
+      /* next */
+      etype += eno_b16;
+      next += eno_b16;
+      i += eno_b16;
+    }
+  i -= (eno_b16 - u16xn_active_eno (e_m, e_m));
+  n_left -= i;
+  ASSERT (n_left == 0);
+  *n_spath = n_slowpath;
+  return n_left;
+}
+#endif
 
 /* process frame of buffers, store ethertype into array and update
    buffer metadata fields depending on interface being l2 or l3 assuming that
@@ -856,6 +1216,11 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
   ethernet_interface_t *ei = ethernet_get_interface (em, hi->hw_if_index);
 
   vlib_get_buffers (vm, buffer_indices, b, n_left);
+
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  n_left =
+    eth_input_adv_and_flags_xn (b, n_left, etype, tag, dmac, main_is_l3);
+#endif
 
   while (n_left >= 20)
     {
@@ -955,6 +1320,11 @@ eth_input_process_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* fastpath - in l3 mode hadles ip4, ip6 and mpls packets, other packets
      are considered as slowpath, in l2 mode all untagged packets are
      considered as fastpath */
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  n_left = eth_input_next_determine_xn (
+    etype, next, n_left, slowpath_indices, &n_slowpath, main_is_l3, next_ip4,
+    next_ip6, next_mpls, next_l2, et_ip4, et_ip6, et_mpls, et_vlan, et_dot1ad);
+#endif
   while (n_left > 0)
     {
 #ifdef CLIB_HAVE_VEC256
