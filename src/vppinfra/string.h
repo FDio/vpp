@@ -333,6 +333,14 @@ static_always_inline void
 clib_memset_u64 (void *p, u64 val, uword count)
 {
   u64 *ptr = p;
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  i32 i, eno;
+  u64xn v = u64xn_splat (val);
+  boolxn m;
+  scalable_vector_foreach2 (i, eno, m, count, 64,
+			    ({ u64xn_store_unaligned (m, v, ptr + i); }));
+  return;
+#endif
 #if defined(CLIB_HAVE_VEC512)
   u64x8 v512 = u64x8_splat (val);
   while (count >= 8)
@@ -370,6 +378,14 @@ static_always_inline void
 clib_memset_u32 (void *p, u32 val, uword count)
 {
   u32 *ptr = p;
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  i32 i, eno;
+  u32xn v = u32xn_splat (val);
+  boolxn m;
+  scalable_vector_foreach2 (i, eno, m, count, 32,
+			    ({ u32xn_store_unaligned (m, v, ptr + i); }));
+  return;
+#endif
 #if defined(CLIB_HAVE_VEC512)
   u32x16 v512 = u32x16_splat (val);
   while (count >= 16)
@@ -416,6 +432,14 @@ static_always_inline void
 clib_memset_u16 (void *p, u16 val, uword count)
 {
   u16 *ptr = p;
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  i32 i, eno;
+  u16xn v = u16xn_splat (val);
+  boolxn m;
+  scalable_vector_foreach2 (i, eno, m, count, 16,
+			    ({ u16xn_store_unaligned (m, v, ptr + i); }));
+  return;
+#endif
 #if defined(CLIB_HAVE_VEC512)
   u16x32 v512 = u16x32_splat (val);
   while (count >= 32)
@@ -462,6 +486,14 @@ static_always_inline void
 clib_memset_u8 (void *p, u8 val, uword count)
 {
   u8 *ptr = p;
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  i32 i, eno;
+  u8xn v = u8xn_splat (val);
+  boolxn m;
+  scalable_vector_foreach2 (i, eno, m, count, 8,
+			    ({ u8xn_store_unaligned (m, v, ptr + i); }));
+  return;
+#endif
 #if defined(CLIB_HAVE_VEC512)
   u8x64 v512 = u8x64_splat (val);
   while (count >= 64)
