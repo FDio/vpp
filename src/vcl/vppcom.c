@@ -360,6 +360,26 @@ done:
   return ret;
 }
 
+int
+vcl_send_session_transport_attr (vcl_worker_t *wrk, vcl_session_t *s,
+				 u8 is_get, transport_endpt_attr_t attr)
+{
+  app_session_evt_t _app_evt, *app_evt = &_app_evt;
+  session_transport_attr_msg_t *mp;
+  svm_msg_q_t *mq;
+
+  mq = s->vpp_evt_q;
+  app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_TRANSPORT_ATTR);
+  mp = (session_transport_attr_msg_t *) app_evt->evt->data;
+  memset (mp, 0, sizeof (*mp));
+  mp->client_index = wrk->api_client_handle;
+  mp->handle = s->vpp_handle;
+  mp->is_get = is_get;
+  app_send_ctrl_evt_to_vpp (mq, app_evt);
+
+  return 0;
+}
+
 static u32
 vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp,
 			      u32 ls_index)
@@ -3061,6 +3081,7 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
   vcl_worker_t *wrk = vcl_worker_get_current ();
   u32 *flags = buffer, tmp_flags = 0;
   vppcom_endpt_t *ep = buffer;
+  transport_endpt_attr_t tea;
   vcl_session_t *session;
   int rv = VPPCOM_OK;
 
@@ -3575,10 +3596,14 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
     case VPPCOM_ATTR_SET_TCP_USER_MSS:
       if (buffer && buflen && (*buflen == sizeof (u32)))
 	{
+	  tea.type = TRANSPORT_ENDPT_ATTR_MSS;
+	  tea.mss = *(u32 *) buffer;
+	  vcl_send_session_transport_attr (wrk, session, 0 /* is_get */, tea);
+
 	  /* VPP-TBD */
 	  session->user_mss = *(u32 *) buffer;
 
-	  VDBG (2, "VPPCOM_ATTR_SET_TCP_USER_MSS: %u, buflen %d, #VPP-TBD#",
+	  VDBG (2, "VPPCOM_ATTR_SET_TCP_USER_MSS: %u, buflen %d",
 		session->user_mss, *buflen);
 	}
       else
