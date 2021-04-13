@@ -417,7 +417,7 @@ openssl_async_node_enable_disable (u8 is_en)
 
   foreach_vlib_main ()
     {
-      if (have_workers && ii != 0)
+      if (have_workers && this_vlib_main->thread_index)
 	{
 	  vlib_node_set_state (this_vlib_main, tls_async_process_node.index,
 			       state);
