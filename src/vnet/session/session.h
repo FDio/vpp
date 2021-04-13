@@ -477,6 +477,8 @@ void sesssion_reschedule_tx (transport_connection_t * tc);
 transport_connection_t *session_get_transport (session_t * s);
 void session_get_endpoint (session_t * s, transport_endpoint_t * tep,
 			   u8 is_lcl);
+int session_transport_attribute (session_t *s, u8 is_get,
+				 transport_endpt_attr_t *attr);
 
 u8 *format_session (u8 * s, va_list * args);
 uword unformat_session (unformat_input_t * input, va_list * args);
