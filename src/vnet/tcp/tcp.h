@@ -336,6 +336,7 @@ void tcp_connection_tx_pacer_update (tcp_connection_t * tc);
 void tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
 				    u32 start_bucket);
 void tcp_program_cleanup (tcp_worker_ctx_t * wrk, tcp_connection_t * tc);
+void tcp_check_gso (tcp_connection_t *tc);
 
 void tcp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
 int tcp_configure_v4_source_address_range (vlib_main_t * vm,

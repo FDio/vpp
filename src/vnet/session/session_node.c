@@ -520,6 +520,51 @@ session_mq_app_wrk_rpc_handler (void *data)
   svm_msg_q_add_and_unlock (app_wrk->event_queue, msg);
 }
 
+static void
+session_mq_transport_attr_handler (void *data)
+{
+  session_transport_attr_msg_t *mp = (session_transport_attr_msg_t *) data;
+  session_transport_attr_reply_msg_t *rmp;
+  svm_msg_q_msg_t _msg, *msg = &_msg;
+  app_worker_t *app_wrk;
+  session_event_t *evt;
+  application_t *app;
+  session_t *s;
+  int rv;
+
+  app = application_lookup (mp->client_index);
+  if (!app)
+    return;
+
+  if (!(s = session_get_from_handle_if_valid (mp->handle)))
+    {
+      clib_warning ("invalid handle %llu", mp->handle);
+      return;
+    }
+  app_wrk = app_worker_get (s->app_wrk_index);
+  if (app_wrk->app_index != app->app_index)
+    {
+      clib_warning ("app %u does not own session %llu", app->app_index,
+		    mp->handle);
+      return;
+    }
+
+  rv = session_transport_attribute (s, mp->is_get, &mp->attr);
+
+  svm_msg_q_lock_and_alloc_msg_w_ring (
+    app_wrk->event_queue, SESSION_MQ_CTRL_EVT_RING, SVM_Q_WAIT, msg);
+  evt = svm_msg_q_msg_data (app_wrk->event_queue, msg);
+  clib_memset (evt, 0, sizeof (*evt));
+  evt->event_type = SESSION_CTRL_EVT_TRANSPORT_ATTR_REPLY;
+  rmp = (session_transport_attr_reply_msg_t *) evt->data;
+  rmp->handle = mp->handle;
+  rmp->retval = rv;
+  rmp->is_get = mp->is_get;
+  if (!rv && mp->is_get)
+    rmp->attr = mp->attr;
+  svm_msg_q_add_and_unlock (app_wrk->event_queue, msg);
+}
+
 vlib_node_registration_t session_queue_node;
 
 typedef struct
@@ -1276,6 +1321,9 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
       break;
     case SESSION_CTRL_EVT_APP_WRK_RPC:
       session_mq_app_wrk_rpc_handler (session_evt_ctrl_data (wrk, elt));
+      break;
+    case SESSION_CTRL_EVT_TRANSPORT_ATTR:
+      session_mq_transport_attr_handler (session_evt_ctrl_data (wrk, elt));
       break;
     default:
       clib_warning ("unhandled event type %d", e->event_type);
