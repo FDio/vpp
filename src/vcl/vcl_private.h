@@ -165,7 +165,6 @@ typedef struct vcl_session_
 
   u32 sndbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_SNDBUF)
   u32 rcvbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_RCVBUF)
-  u32 user_mss;			// VPP-TBD: Hack until support setsockopt(TCP_MAXSEG)
 
 #if VCL_ELOG
   elog_track_t elog_track;
@@ -291,6 +290,10 @@ typedef struct vcl_worker_
   /* State of the connection, shared between msg RX thread and main thread */
   volatile vcl_bapi_app_state_t bapi_app_state;
   volatile uword bapi_return;
+
+  u8 session_attr_op;
+  int session_attr_op_rv;
+  transport_endpt_attr_t session_attr_rv;
 
   /** vcl needs next epoll_create to go to libc_epoll */
   u8 vcl_needs_real_epoll;
