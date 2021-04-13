@@ -76,7 +76,9 @@ format_bihash_kvp_32_8 (u8 *s, va_list *args)
 static inline int
 clib_bihash_key_compare_32_8 (u64 *a, u64 *b)
 {
-#if defined(CLIB_HAVE_VEC512)
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  return u8xn_memcmp ((u8 *) a, (u8 *) b, 32);
+#elif defined(CLIB_HAVE_VEC512)
   u64x8 v = u64x8_load_unaligned (a) ^ u64x8_load_unaligned (b);
   return (u64x8_is_zero_mask (v) & 0xf) == 0;
 #elif defined(CLIB_HAVE_VEC256)
