@@ -168,7 +168,23 @@ ip_csum (void *data, u16 n_left)
   /* we deal with words */
   n_left >>= 1;
 
-#ifdef CLIB_HAVE_VEC256
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  i32 i = 0;
+  boolxn m;
+  i32 eno = (i32) u16xn_max_elts ();
+  u16xn s;
+  while (i < n_left)
+    {
+      m = u16xn_elt_mask (i, n_left);
+      s = u16xn_load_unaligned (m, (u16 *) data);
+#ifdef CLIB_ARCH_IS_LITTLE_ENDIAN
+      s = u16xn_byte_swap (m, s);
+#endif
+      sum += u16xn_addsum (m, s);
+      i += eno;
+      data += eno << 1;
+    }
+#elif defined CLIB_HAVE_VEC256
   while (n_left >= 32)
     {
       v1 = u16x16_load_unaligned (data);
