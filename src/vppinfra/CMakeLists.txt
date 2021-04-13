@@ -153,6 +153,7 @@ set(VPPINFRA_HEADERS
   memcpy_avx2.h
   memcpy_avx512.h
   memcpy_sse3.h
+  memcpy_sve.h
   mem.h
   mhash.h
   mpcap.h
