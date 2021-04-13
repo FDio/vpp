@@ -349,6 +349,8 @@ ip_punt_redirect (vlib_main_t * vm,
 
 	  if (PREDICT_TRUE (INDEX_INVALID != rrxi0))
 	    {
+	      /* prevent ttl decrement on forward */
+	      b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	      rrx0 = ip_punt_redirect_get (rrxi0);
 	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = rrx0->dpo.dpoi_index;
 	      next0 = rrx0->dpo.dpoi_next_node;
