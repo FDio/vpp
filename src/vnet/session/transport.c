@@ -399,6 +399,17 @@ transport_get_listener_endpoint (transport_proto_t tp, u32 conn_index,
     }
 }
 
+int
+transport_connection_attribute (transport_proto_t tp, u32 conn_index,
+				u8 thread_index, u8 is_get,
+				transport_endpt_attr_t *attr)
+{
+  if (!tp_vfts[tp].attribute)
+    return -1;
+
+  return tp_vfts[tp].attribute (conn_index, thread_index, is_get, attr);
+}
+
 #define PORT_MASK ((1 << 16)- 1)
 
 void
