@@ -94,7 +94,6 @@ class NAT44EDTestCase(VppTestCase):
             cls.create_and_add_ip4_table(i, table_id)
 
         i.admin_up()
-        i.unconfig_ip4()
         i.config_ip4()
         i.resolve_arp()
 
@@ -3331,6 +3330,45 @@ class TestNAT44EDMW(TestNAT44ED):
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4, 0)
         self.assertEqual(len(sessions) - session_n, 0)
 
+    def test_dynamic_vrf(self):
+        """ NAT44ED dynamic translation test: different VRF"""
+
+        vrf_id_in = 33
+        vrf_id_out = 34
+
+        self.nat_add_address(self.nat_addr, vrf_id=vrf_id_in)
+
+        try:
+            self.configure_ip4_interface(self.pg7, table_id=vrf_id_in)
+            self.configure_ip4_interface(self.pg8, table_id=vrf_id_out)
+
+            self.nat_add_inside_interface(self.pg7)
+            self.nat_add_outside_interface(self.pg8)
+
+            # just basic stuff nothing special
+            pkts = self.create_stream_in(self.pg7, self.pg8)
+            self.pg7.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            capture = self.pg8.get_capture(len(pkts))
+            self.verify_capture_out(capture, ignore_port=True)
+
+            pkts = self.create_stream_out(self.pg8)
+            self.pg8.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            capture = self.pg7.get_capture(len(pkts))
+            self.verify_capture_in(capture, self.pg7)
+
+        finally:
+            self.pg7.unconfig()
+            self.pg8.unconfig()
+
+            self.vapi.ip_table_add_del(is_add=0,
+                                       table={'table_id': vrf_id_in})
+            self.vapi.ip_table_add_del(is_add=0,
+                                       table={'table_id': vrf_id_out})
+
     def test_dynamic_output_feature_vrf(self):
         """ NAT44ED dynamic translation test: output-feature, VRF"""
 
@@ -3400,8 +3438,8 @@ class TestNAT44EDMW(TestNAT44ED):
             self.assertEqual(sessions[:, 0].sum(), 3)
 
         finally:
-            self.configure_ip4_interface(self.pg7, table_id=0)
-            self.configure_ip4_interface(self.pg8, table_id=0)
+            self.pg7.unconfig()
+            self.pg8.unconfig()
 
             self.vapi.ip_table_add_del(is_add=0,
                                        table={'table_id': new_vrf_id})
