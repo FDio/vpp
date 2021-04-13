@@ -213,28 +213,35 @@ avf_tx_copy_desc (avf_tx_desc_t *d, avf_tx_desc_t *s, u32 n_descs)
     }
 }
 
+static_always_inline void
+avf_tx_fill_data_desc (vlib_main_t *vm, avf_tx_desc_t *d, vlib_buffer_t *b,
+		       u64 cmd, int use_va_dma)
+{
+  if (use_va_dma)
+    d->qword[0] = vlib_buffer_get_current_va (b);
+  else
+    d->qword[0] = vlib_buffer_get_current_pa (vm, b);
+  d->qword[1] = (((u64) b->current_length) << 34 | cmd | AVF_TXD_CMD_RSV);
+}
 static_always_inline u16
 avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
 		u32 *buffers, u32 n_packets, u16 *n_enq_descs, int use_va_dma)
 {
-  u64 bits = AVF_TXD_CMD_EOP | AVF_TXD_CMD_RSV;
-  const u32 offload_mask = VNET_BUFFER_F_OFFLOAD | VNET_BUFFER_F_GSO;
-  u64 one_by_one_offload_flags = 0;
-  int is_tso;
-  u16 n_desc = 0;
-  u16 n_desc_left, n_packets_left = n_packets;
+  const u64 cmd_eop = AVF_TXD_CMD_EOP;
+  u16 n_free_desc, n_desc_left, n_packets_left = n_packets;
   vlib_buffer_t *b[4];
   avf_tx_desc_t *d = txq->tmp_descs;
   u32 *tb = txq->tmp_bufs;
 
-  n_desc_left = txq->size - txq->n_enqueued - 8;
+  n_free_desc = n_desc_left = txq->size - txq->n_enqueued - 8;
 
   if (n_desc_left == 0)
     return 0;
 
   while (n_packets_left && n_desc_left)
     {
-      u32 or_flags;
+      u32 flags, or_flags;
+
       if (n_packets_left < 8 || n_desc_left < 4)
 	goto one_by_one;
 
@@ -250,32 +257,18 @@ avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
 
       or_flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
 
-      if (or_flags & (VLIB_BUFFER_NEXT_PRESENT | offload_mask))
+      if (PREDICT_FALSE (or_flags &
+			 (VLIB_BUFFER_NEXT_PRESENT | VNET_BUFFER_F_OFFLOAD |
+			  VNET_BUFFER_F_GSO)))
 	goto one_by_one;
 
       vlib_buffer_copy_indices (tb, buffers, 4);
 
-      if (use_va_dma)
-	{
-	  d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
-	  d[1].qword[0] = vlib_buffer_get_current_va (b[1]);
-	  d[2].qword[0] = vlib_buffer_get_current_va (b[2]);
-	  d[3].qword[0] = vlib_buffer_get_current_va (b[3]);
-	}
-      else
-	{
-	  d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
-	  d[1].qword[0] = vlib_buffer_get_current_pa (vm, b[1]);
-	  d[2].qword[0] = vlib_buffer_get_current_pa (vm, b[2]);
-	  d[3].qword[0] = vlib_buffer_get_current_pa (vm, b[3]);
-	}
+      avf_tx_fill_data_desc (vm, d + 0, b[0], cmd_eop, use_va_dma);
+      avf_tx_fill_data_desc (vm, d + 1, b[1], cmd_eop, use_va_dma);
+      avf_tx_fill_data_desc (vm, d + 2, b[2], cmd_eop, use_va_dma);
+      avf_tx_fill_data_desc (vm, d + 3, b[3], cmd_eop, use_va_dma);
 
-      d[0].qword[1] = ((u64) b[0]->current_length) << 34 | bits;
-      d[1].qword[1] = ((u64) b[1]->current_length) << 34 | bits;
-      d[2].qword[1] = ((u64) b[2]->current_length) << 34 | bits;
-      d[3].qword[1] = ((u64) b[3]->current_length) << 34 | bits;
-
-      n_desc += 4;
       buffers += 4;
       n_packets_left -= 4;
       n_desc_left -= 4;
@@ -284,28 +277,42 @@ avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
       continue;
 
     one_by_one:
-      one_by_one_offload_flags = 0;
       tb[0] = buffers[0];
       b[0] = vlib_get_buffer (vm, buffers[0]);
-      is_tso = ! !(b[0]->flags & VNET_BUFFER_F_GSO);
-      if (PREDICT_FALSE (is_tso || b[0]->flags & offload_mask))
-	one_by_one_offload_flags |= avf_tx_prepare_cksum (b[0], is_tso);
+      flags = b[0]->flags;
 
-      /* Deal with chain buffer if present */
-      if (is_tso || b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
+      /* No chained buffers or TSO case */
+      if (PREDICT_TRUE (
+	    (flags & (VLIB_BUFFER_NEXT_PRESENT | VNET_BUFFER_F_GSO)) == 0))
 	{
-	  u16 n_desc_needed = 1 + is_tso;
-	  vlib_buffer_t *b0 = b[0];
+	  u64 cmd = cmd_eop;
 
-	  /* Wish there were a buffer count for chain buffer */
-	  while (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  if (PREDICT_FALSE (flags & VNET_BUFFER_F_OFFLOAD))
+	    cmd |= avf_tx_prepare_cksum (b[0], 0 /* is_tso */);
+
+	  avf_tx_fill_data_desc (vm, d, b[0], cmd, use_va_dma);
+	}
+      else
+	{
+	  u16 n_desc_needed = 1;
+	  u64 cmd = 0;
+
+	  if (flags & VLIB_BUFFER_NEXT_PRESENT)
 	    {
-	      b0 = vlib_get_buffer (vm, b0->next_buffer);
-	      n_desc_needed++;
+	      vlib_buffer_t *next = vlib_get_buffer (vm, b[0]->next_buffer);
+	      n_desc_needed = 2;
+	      while (next->flags & VLIB_BUFFER_NEXT_PRESENT)
+		{
+		  next = vlib_get_buffer (vm, next->next_buffer);
+		  n_desc_needed++;
+		}
 	    }
 
-	  /* spec says data descriptor is limited to 8 segments */
-	  if (PREDICT_FALSE (!is_tso && n_desc_needed > 8))
+	  if (flags & VNET_BUFFER_F_GSO)
+	    {
+	      n_desc_needed++;
+	    }
+	  else if (PREDICT_FALSE (n_desc_needed > 8))
 	    {
 	      vlib_buffer_free_one (vm, buffers[0]);
 	      vlib_error_count (vm, node->node_index,
@@ -316,33 +323,28 @@ avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
 	    }
 
 	  if (PREDICT_FALSE (n_desc_left < n_desc_needed))
-	    /*
-	     * Slow path may be able to to deal with this since it can handle
-	     * ring wrap
-	     */
 	    break;
 
-	  /* Enqueue a context descriptor if needed */
-	  if (PREDICT_FALSE (is_tso))
+	  if (flags & VNET_BUFFER_F_GSO)
 	    {
+	      /* Enqueue a context descriptor */
 	      tb[1] = tb[0];
 	      tb[0] = avf_tx_fill_ctx_desc (vm, txq, d, b[0]);
-	      n_desc += 1;
 	      n_desc_left -= 1;
 	      d += 1;
 	      tb += 1;
+	      cmd = avf_tx_prepare_cksum (b[0], 1 /* is_tso */);
 	    }
+	  else if (flags & VNET_BUFFER_F_OFFLOAD)
+	    {
+	      cmd = avf_tx_prepare_cksum (b[0], 0 /* is_tso */);
+	    }
+
+	  /* Deal with chain buffer if present */
 	  while (b[0]->flags & VLIB_BUFFER_NEXT_PRESENT)
 	    {
-	      if (use_va_dma)
-		d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
-	      else
-		d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
+	      avf_tx_fill_data_desc (vm, d, b[0], cmd, use_va_dma);
 
-	      d[0].qword[1] = (((u64) b[0]->current_length) << 34) |
-		AVF_TXD_CMD_RSV | one_by_one_offload_flags;
-
-	      n_desc += 1;
 	      n_desc_left -= 1;
 	      d += 1;
 	      tb += 1;
@@ -350,17 +352,10 @@ avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
 	      tb[0] = b[0]->next_buffer;
 	      b[0] = vlib_get_buffer (vm, b[0]->next_buffer);
 	    }
+
+	  avf_tx_fill_data_desc (vm, d, b[0], cmd_eop | cmd, use_va_dma);
 	}
 
-      if (use_va_dma)
-	d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
-      else
-	d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
-
-      d[0].qword[1] =
-	(((u64) b[0]->current_length) << 34) | bits | one_by_one_offload_flags;
-
-      n_desc += 1;
       buffers += 1;
       n_packets_left -= 1;
       n_desc_left -= 1;
@@ -368,7 +363,7 @@ avf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node, avf_txq_t *txq,
       tb += 1;
     }
 
-  *n_enq_descs = n_desc;
+  *n_enq_descs = n_free_desc - n_desc_left;
   return n_packets - n_packets_left;
 }
 
