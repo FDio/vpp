@@ -31,7 +31,8 @@
   _ (thunderx2t99, "Marvell ThunderX2 T99")                                   \
   _ (qdf24xx, "Qualcomm CentriqTM 2400")                                      \
   _ (cortexa72, "ARM Cortex-A72")                                             \
-  _ (neoversen1, "ARM Neoverse N1")
+  _ (neoversen1, "ARM Neoverse N1")                                           \
+  _ (neoversen2, "ARM Neoverse N2")
 #else
 #define foreach_march_variant
 #endif
@@ -331,6 +332,8 @@ clib_cpu_part ()
 #define AARCH64_CPU_PART_CORTEXA72          0xd08
 #define AARCH64_CPU_IMPLEMENTER_NEOVERSEN1  0x41
 #define AARCH64_CPU_PART_NEOVERSEN1         0xd0c
+#define AARCH64_CPU_IMPLEMENTER_NEOVERSEN2  0x41
+#define AARCH64_CPU_PART_NEOVERSEN2	    0xd0d
 
 static inline int
 clib_cpu_march_priority_octeontx2 ()
@@ -374,6 +377,15 @@ clib_cpu_march_priority_neoversen1 ()
 {
   if ((AARCH64_CPU_IMPLEMENTER_NEOVERSEN1 == clib_cpu_implementer ()) &&
       (AARCH64_CPU_PART_NEOVERSEN1 == clib_cpu_part ()))
+    return 10;
+  return -1;
+}
+
+static inline int
+clib_cpu_march_priority_neoversen2 ()
+{
+  if ((AARCH64_CPU_IMPLEMENTER_NEOVERSEN2 == clib_cpu_implementer ()) &&
+      (AARCH64_CPU_PART_NEOVERSEN2 == clib_cpu_part ()))
     return 10;
   return -1;
 }
