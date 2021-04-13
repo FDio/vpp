@@ -280,6 +280,21 @@ static_always_inline void
 vlib_get_buffer_indices_with_offset (vlib_main_t * vm, void **b, u32 * bi,
 				     uword count, i32 offset)
 {
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  uword buffer_mem_start = vm->buffer_main->buffer_mem_start;
+  i32 i;
+  i32 eno;
+  boolxn m;
+  u64xn voff = u64xn_splat ((u64) (buffer_mem_start - offset));
+  scalable_vector_foreach2 (
+    i, eno, m, count, 64, ({
+      u64xn vb = u64xn_load_unaligned (m, (u64 *) b + i);
+      vb = u64xn_sub (m, vb, voff);
+      vb = u64xn_shift_right_n (m, vb, CLIB_LOG2_CACHE_LINE_BYTES);
+      u64xn_store_u32 (m, vb, bi + i);
+    }));
+  return;
+#endif
 #ifdef CLIB_HAVE_VEC256
   u32x8 mask = { 0, 2, 4, 6, 1, 3, 5, 7 };
   u64x4 off4 = u64x4_splat (vm->buffer_main->buffer_mem_start - offset);
