@@ -360,33 +360,36 @@ typedef enum
   SESSION_CTRL_EVT_MIGRATED,
   SESSION_CTRL_EVT_CLEANUP,
   SESSION_CTRL_EVT_APP_WRK_RPC,
+  SESSION_CTRL_EVT_TRANSPORT_ATTR,
+  SESSION_CTRL_EVT_TRANSPORT_ATTR_REPLY,
 } session_evt_type_t;
 
-#define foreach_session_ctrl_evt				\
-  _(LISTEN, listen)						\
-  _(LISTEN_URI, listen_uri)					\
-  _(BOUND, bound)						\
-  _(UNLISTEN, unlisten)						\
-  _(UNLISTEN_REPLY, unlisten_reply)				\
-  _(ACCEPTED, accepted)						\
-  _(ACCEPTED_REPLY, accepted_reply)				\
-  _(CONNECT, connect)						\
-  _(CONNECT_URI, connect_uri)					\
-  _(CONNECTED, connected)					\
-  _(DISCONNECT, disconnect)					\
-  _(DISCONNECTED, disconnected)					\
-  _(DISCONNECTED_REPLY, disconnected_reply)			\
-  _(RESET_REPLY, reset_reply)					\
-  _(REQ_WORKER_UPDATE, req_worker_update)			\
-  _(WORKER_UPDATE, worker_update)				\
-  _(WORKER_UPDATE_REPLY, worker_update_reply)			\
-  _(APP_DETACH, app_detach)					\
-  _(APP_ADD_SEGMENT, app_add_segment)				\
-  _(APP_DEL_SEGMENT, app_del_segment)				\
-  _(MIGRATED, migrated)						\
-  _(CLEANUP, cleanup)						\
-  _(APP_WRK_RPC, app_wrk_rpc)					\
-
+#define foreach_session_ctrl_evt                                              \
+  _ (LISTEN, listen)                                                          \
+  _ (LISTEN_URI, listen_uri)                                                  \
+  _ (BOUND, bound)                                                            \
+  _ (UNLISTEN, unlisten)                                                      \
+  _ (UNLISTEN_REPLY, unlisten_reply)                                          \
+  _ (ACCEPTED, accepted)                                                      \
+  _ (ACCEPTED_REPLY, accepted_reply)                                          \
+  _ (CONNECT, connect)                                                        \
+  _ (CONNECT_URI, connect_uri)                                                \
+  _ (CONNECTED, connected)                                                    \
+  _ (DISCONNECT, disconnect)                                                  \
+  _ (DISCONNECTED, disconnected)                                              \
+  _ (DISCONNECTED_REPLY, disconnected_reply)                                  \
+  _ (RESET_REPLY, reset_reply)                                                \
+  _ (REQ_WORKER_UPDATE, req_worker_update)                                    \
+  _ (WORKER_UPDATE, worker_update)                                            \
+  _ (WORKER_UPDATE_REPLY, worker_update_reply)                                \
+  _ (APP_DETACH, app_detach)                                                  \
+  _ (APP_ADD_SEGMENT, app_add_segment)                                        \
+  _ (APP_DEL_SEGMENT, app_del_segment)                                        \
+  _ (MIGRATED, migrated)                                                      \
+  _ (CLEANUP, cleanup)                                                        \
+  _ (APP_WRK_RPC, app_wrk_rpc)                                                \
+  _ (TRANSPORT_ATTR, transport_attr)                                          \
+  _ (TRANSPORT_ATTR_REPLY, transport_attr_reply)                              \
 /* Deprecated and will be removed. Use types above */
 #define FIFO_EVENT_APP_RX SESSION_IO_EVT_RX
 #define FIFO_EVENT_APP_TX SESSION_IO_EVT_TX
