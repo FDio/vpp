@@ -3050,6 +3050,12 @@ VLIB_REGISTER_NODE (tcp6_input_node) =
 /* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
+void
+tcp_check_gso (tcp_connection_t *tc)
+{
+  tcp_check_tx_offload (tc, tc->c_is_ip4);
+}
+
 static void
 tcp_dispatch_table_init (tcp_main_t * tm)
 {

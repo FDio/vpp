@@ -1661,6 +1661,18 @@ session_get_endpoint (session_t * s, transport_endpoint_t * tep, u8 is_lcl)
 					    s->connection_index, tep, is_lcl);
 }
 
+int
+session_transport_attribute (session_t *s, u8 is_get,
+			     transport_endpt_attr_t *attr)
+{
+  if (s->session_state < SESSION_STATE_READY)
+    return -1;
+
+  return transport_connection_attribute (session_get_transport_proto (s),
+					 s->connection_index, s->thread_index,
+					 is_get, attr);
+}
+
 transport_connection_t *
 listen_session_get_transport (session_t * s)
 {
