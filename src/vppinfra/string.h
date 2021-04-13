@@ -81,6 +81,9 @@ void clib_memswap (void *_a, void *_b, uword bytes);
 #elif __SSSE3__
 #include <vppinfra/memcpy_sse3.h>
 #define clib_memcpy_fast_arch(a, b, c) clib_memcpy_fast_sse3 (a, b, c)
+#elif defined(__ARM_FEATURE_SVE) && !defined(__ARM_FEATURE_SVE_BITS)
+#include <vppinfra/memcpy_sve.h>
+#define clib_memcpy_fast_arch(a, b, c) clib_memcpy_fast_sve (a, b, c)
 #endif /* __AVX512BITALG__ */
 #endif /* __COVERITY__ */
 
