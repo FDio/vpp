@@ -496,7 +496,36 @@ bond_hash_to_port (u32 * h, u32 n_left, u32 n_members,
 {
   u32 mask = n_members - 1;
 
-#ifdef CLIB_HAVE_VEC256
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  i32 i = 0;
+  i32 eno = (i32) u32xn_max_elts ();
+  boolxn m;
+  u32xn hv;
+  u32xn maskv = u32xn_splat (mask);
+  u32xn memberv = u32xn_splat (n_members);
+  if (use_modulo_shortcut)
+    {
+      while (i < n_left)
+	{
+	  m = u32xn_elt_mask (i, n_left);
+	  hv = u32xn_load_unaligned (m, h + i);
+	  hv = u32xn_and (m, hv, maskv);
+	  u32xn_store_unaligned (m, hv, h + i);
+	  i += eno;
+	}
+    }
+  else
+    {
+      while (i < n_left)
+	{
+	  m = u32xn_elt_mask (i, n_left);
+	  hv = u32xn_load_unaligned (m, h + i);
+	  hv = u32xn_modulo (m, hv, memberv);
+	  u32xn_store_unaligned (m, hv, h + i);
+	  i += eno;
+	}
+    }
+#elif defined CLIB_HAVE_VEC256
   /* only lower 16 bits of hash due to single precision fp arithmetic */
   u32x8 mask8, sc8u, h8a, h8b;
   f32x8 sc8f;
