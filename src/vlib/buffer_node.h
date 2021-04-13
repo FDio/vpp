@@ -356,7 +356,12 @@ vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 	  max = clib_min (n_left_to_next, count);
 	}
-#if defined(CLIB_HAVE_VEC512)
+#ifdef CLIB_HAVE_VEC_SCALABLE
+      boolxn m = u16xn_elt_mask (0, count);
+      u16xn next16 = u16xn_load_unaligned (m, nexts);
+      boolxn eq = u16xn_equal (m, next16, u16xn_splat (nexts[0]));
+      n_enqueued = u16xn_cla (m, eq);
+#elif defined(CLIB_HAVE_VEC512)
       u16x32 next32 = CLIB_MEM_OVERFLOW_LOAD (u16x32_load_unaligned, nexts);
       next32 = (next32 == u16x32_splat (next32[0]));
       u64 bitmap = u16x32_msb_mask (next32);
@@ -386,6 +391,19 @@ vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (PREDICT_FALSE (n_enqueued > max))
 	n_enqueued = max;
+
+#ifdef CLIB_HAVE_VEC_SCALABLE
+      {
+	vlib_buffer_copy_indices (to_next, buffers, n_enqueued);
+	nexts += n_enqueued;
+	to_next += n_enqueued;
+	buffers += n_enqueued;
+	n_left_to_next -= n_enqueued;
+	count -= n_enqueued;
+	max -= n_enqueued;
+	continue;
+      }
+#endif
 
 #ifdef CLIB_HAVE_VEC512
       if (n_enqueued >= 32)
