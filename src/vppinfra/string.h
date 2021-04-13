@@ -588,7 +588,23 @@ clib_count_equal_u64 (u64 * data, uword max_count)
   count = 0;
   first = data[0];
 
-#if defined(CLIB_HAVE_VEC256)
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  i32 i = 0;
+  i32 len = (i32) max_count;
+  i32 eno = (i32) u64xn_max_elts ();
+  u64xn s, splat = u64xn_splat (first);
+  boolxn m, neq, all_m = u64xn_eltall_mask ();
+  while (i < len)
+    {
+      m = u64xn_elt_mask (i, len);
+      s = u64xn_load_unaligned (m, data);
+      neq = u64xn_unequal (m, s, splat);
+      if (boolxn_anytrue (all_m, neq))
+	break;
+      data += eno;
+      count += eno;
+    }
+#elif defined(CLIB_HAVE_VEC256)
   u64x4 splat = u64x4_splat (first);
   while (count + 3 < max_count)
     {
@@ -636,7 +652,23 @@ clib_count_equal_u32 (u32 * data, uword max_count)
   count = 0;
   first = data[0];
 
-#if defined(CLIB_HAVE_VEC256)
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  i32 i = 0;
+  i32 len = (i32) max_count;
+  i32 eno = (i32) u32xn_max_elts ();
+  u32xn s, splat = u32xn_splat (first);
+  boolxn m, neq, all_m = u32xn_eltall_mask ();
+  while (i < len)
+    {
+      m = u32xn_elt_mask (i, len);
+      s = u32xn_load_unaligned (m, data);
+      neq = u32xn_unequal (m, s, splat);
+      if (boolxn_anytrue (all_m, neq))
+	break;
+      data += eno;
+      count += eno;
+    }
+#elif defined(CLIB_HAVE_VEC256)
   u32x8 splat = u32x8_splat (first);
   while (count + 7 < max_count)
     {
@@ -699,7 +731,23 @@ clib_count_equal_u16 (u16 * data, uword max_count)
   count = 0;
   first = data[0];
 
-#if defined(CLIB_HAVE_VEC256)
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  i32 i = 0;
+  i32 len = (i32) max_count;
+  i32 eno = (i32) u16xn_max_elts ();
+  u16xn s, splat = u16xn_splat (first);
+  boolxn m, neq, all_m = u16xn_eltall_mask ();
+  while (i < len)
+    {
+      m = u16xn_elt_mask (i, len);
+      s = u16xn_load_unaligned (m, data);
+      neq = u16xn_unequal (m, s, splat);
+      if (boolxn_anytrue (all_m, neq))
+	break;
+      data += eno;
+      count += eno;
+    }
+#elif defined(CLIB_HAVE_VEC256)
   u16x16 splat = u16x16_splat (first);
   while (count + 15 < max_count)
     {
@@ -762,7 +810,23 @@ clib_count_equal_u8 (u8 * data, uword max_count)
   count = 0;
   first = data[0];
 
-#if defined(CLIB_HAVE_VEC256)
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  i32 i = 0;
+  i32 len = (i32) max_count;
+  i32 eno = (i32) u8xn_max_elts ();
+  u8xn s, splat = u8xn_splat (first);
+  boolxn m, neq, all_m = u8xn_eltall_mask ();
+  while (i < len)
+    {
+      m = u8xn_elt_mask (i, len);
+      s = u8xn_load_unaligned (m, data);
+      neq = u8xn_unequal (m, s, splat);
+      if (boolxn_anytrue (all_m, neq))
+	break;
+      data += eno;
+      count += eno;
+    }
+#elif defined(CLIB_HAVE_VEC256)
   u8x32 splat = u8x32_splat (first);
   while (count + 31 < max_count)
     {
