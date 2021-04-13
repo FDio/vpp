@@ -398,7 +398,19 @@ clib_bitmap_first_set (uword * ai)
 {
   uword i = 0;
 #if uword_bits == 64
-#if defined(CLIB_HAVE_VEC256)
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  u64 eno = (u64) u64xn_max_elts ();
+  u64 len = round_down_pow2 (vec_len (ai), eno);
+  boolxn m = u64xn_eltall_mask ();
+  u64xn v;
+  while (i < len)
+    {
+      v = u64xn_load_unaligned (m, ai + i);
+      if (!u64xn_is_all_zero (m, v))
+	break;
+      i += eno;
+    }
+#elif defined(CLIB_HAVE_VEC256)
   while (i + 7 < vec_len (ai))
     {
       u64x4 v;
