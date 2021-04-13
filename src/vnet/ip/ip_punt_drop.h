@@ -349,6 +349,23 @@ ip_punt_redirect (vlib_main_t * vm,
 
 	  if (PREDICT_TRUE (INDEX_INVALID != rrxi0))
 	    {
+	      if (fproto == FIB_PROTOCOL_IP4)
+		{
+		  ip4_header_t *ip4 =
+		    (ip4_header_t *) (vlib_buffer_get_current (b0) +
+				      vnet_buffer (b0)->l3_hdr_offset);
+		  if (PREDICT_FALSE (ip4->ttl < 2))
+		    ip4->ttl++;
+		}
+	      if (fproto == FIB_PROTOCOL_IP6)
+		{
+		  ip6_header_t *ip6 =
+		    (ip6_header_t *) (vlib_buffer_get_current (b0) +
+				      vnet_buffer (b0)->l3_hdr_offset);
+		  if (PREDICT_FALSE (ip6->hop_limit < 2))
+		    ip6->hop_limit++;
+		}
+
 	      rrx0 = ip_punt_redirect_get (rrxi0);
 	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = rrx0->dpo.dpoi_index;
 	      next0 = rrx0->dpo.dpoi_next_node;
