@@ -189,6 +189,11 @@ foreach_sve_vec_i foreach_sve_vec_u foreach_sve_vec_f
     return svcntp_b##s (pg, svbrkb_b_z (pg, svnot_b_z (pg, m)));              \
   }                                                                           \
                                                                               \
+  static_always_inline int t##s##x##c##_clz (boolxn pg, boolxn m)             \
+  {                                                                           \
+    return svcntp_b##s (pg, svbrkb_b_z (pg, m));                              \
+  }                                                                           \
+                                                                              \
   static_always_inline t##s##x##c t##s##x##c##_cast_u8xn (u8xn a)             \
   {                                                                           \
     return svreinterpret_##i (a);                                             \

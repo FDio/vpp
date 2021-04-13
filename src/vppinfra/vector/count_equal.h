@@ -20,7 +20,23 @@ clib_count_equal_u64 (u64 *data, uword max_count)
   count = 0;
   first = data[0];
 
-#if defined(CLIB_HAVE_VEC256)
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  i32 i, eno;
+  i32 len = (i32) max_count;
+  u64xn s, splat = u64xn_splat (first);
+  boolxn m, neq;
+  scalable_vector_foreach2 (i, eno, m, len, 64, ({
+			      s = u64xn_load_unaligned (m, data + i);
+			      neq = u64xn_unequal (m, s, splat);
+			      if (boolxn_anytrue (m, neq))
+				{
+				  count += u64xn_clz (m, neq);
+				  return count;
+				}
+			      count += u64xn_clz (m, neq);
+			    }));
+  return count;
+#elif defined(CLIB_HAVE_VEC256)
   u64x4 splat = u64x4_splat (first);
   while (count + 3 < max_count)
     {
@@ -67,7 +83,23 @@ clib_count_equal_u32 (u32 *data, uword max_count)
   count = 0;
   first = data[0];
 
-#if defined(CLIB_HAVE_VEC512)
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  i32 i, eno;
+  i32 len = (i32) max_count;
+  u32xn s, splat = u32xn_splat (first);
+  boolxn m, neq;
+  scalable_vector_foreach2 (i, eno, m, len, 32, ({
+			      s = u32xn_load_unaligned (m, data + i);
+			      neq = u32xn_unequal (m, s, splat);
+			      if (boolxn_anytrue (m, neq))
+				{
+				  count += u32xn_clz (m, neq);
+				  return count;
+				}
+			      count += u32xn_clz (m, neq);
+			    }));
+  return count;
+#elif defined(CLIB_HAVE_VEC512)
   u32x16 splat = u32x16_splat (first);
   while (count + 15 < max_count)
     {
@@ -165,7 +197,23 @@ clib_count_equal_u16 (u16 *data, uword max_count)
   count = 0;
   first = data[0];
 
-#if defined(CLIB_HAVE_VEC256)
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  i32 i, eno;
+  i32 len = (i32) max_count;
+  u16xn s, splat = u16xn_splat (first);
+  boolxn m, neq;
+  scalable_vector_foreach2 (i, eno, m, len, 16, ({
+			      s = u16xn_load_unaligned (m, data + i);
+			      neq = u16xn_unequal (m, s, splat);
+			      if (boolxn_anytrue (m, neq))
+				{
+				  count += u16xn_clz (m, neq);
+				  return count;
+				}
+			      count += u16xn_clz (m, neq);
+			    }));
+  return count;
+#elif defined(CLIB_HAVE_VEC256)
   u16x16 splat = u16x16_splat (first);
   while (count + 15 < max_count)
     {
@@ -227,7 +275,23 @@ clib_count_equal_u8 (u8 *data, uword max_count)
   count = 0;
   first = data[0];
 
-#if defined(CLIB_HAVE_VEC512)
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  i32 i, eno;
+  i32 len = (i32) max_count;
+  u8xn s, splat = u8xn_splat (first);
+  boolxn m, neq;
+  scalable_vector_foreach2 (i, eno, m, len, 8, ({
+			      s = u8xn_load_unaligned (m, data + i);
+			      neq = u8xn_unequal (m, s, splat);
+			      if (boolxn_anytrue (m, neq))
+				{
+				  count += u8xn_clz (m, neq);
+				  return count;
+				}
+			      count += u8xn_clz (m, neq);
+			    }));
+  return count;
+#elif defined(CLIB_HAVE_VEC512)
   u8x64 splat = u8x64_splat (first);
   while (count + 63 < max_count)
     {
