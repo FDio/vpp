@@ -236,7 +236,39 @@ memset_s_inline (void *s, rsize_t smax, int c, rsize_t n)
 static_always_inline void
 clib_memcpy_le (u8 * dst, u8 * src, u8 len, u8 max_len)
 {
-#if defined (CLIB_HAVE_VEC256)
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  i32 eno = (i32) u8xn_max_elts ();
+  boolxn m, all_m = u8xn_eltall_mask ();
+  u8xn s0, s1, s2, s3;
+  u8xn d0, d1, d2, d3;
+
+  s0 = u8xn_load_unaligned (u8xn_elt_mask (0, max_len), src + 0);
+  s1 = u8xn_load_unaligned (u8xn_elt_mask (eno, max_len), src + eno);
+  d0 = u8xn_load_unaligned (u8xn_elt_mask (0, max_len), dst + 0);
+  d1 = u8xn_load_unaligned (u8xn_elt_mask (eno, max_len), dst + eno);
+  s2 = u8xn_load_unaligned (u8xn_elt_mask (eno * 2, max_len), src + eno * 2);
+  s3 = u8xn_load_unaligned (u8xn_elt_mask (eno * 3, max_len), src + eno * 3);
+  d2 = u8xn_load_unaligned (u8xn_elt_mask (eno * 2, max_len), dst + eno * 2);
+  d3 = u8xn_load_unaligned (u8xn_elt_mask (eno * 3, max_len), dst + eno * 3);
+  m = u8xn_elt_mask (0, len);
+  d0 = u8xn_sel (m, s0, d0);
+  u8xn_store_unaligned (all_m, d0, dst + 0);
+  if (len <= eno)
+    return;
+  m = u8xn_elt_mask (eno, len);
+  d1 = u8xn_sel (m, s1, d1);
+  u8xn_store_unaligned (all_m, d1, dst + eno);
+  if (len <= eno * 2)
+    return;
+  m = u8xn_elt_mask (eno * 2, len);
+  d2 = u8xn_sel (m, s2, d2);
+  u8xn_store_unaligned (all_m, d2, dst + eno * 2);
+  if (len <= eno * 3)
+    return;
+  m = u8xn_elt_mask (eno * 3, len);
+  d3 = u8xn_sel (m, s3, d3);
+  u8xn_store_unaligned (all_m, d3, dst + eno * 3);
+#elif defined(CLIB_HAVE_VEC256)
   u8x32 s0, s1, d0, d1;
   u8x32 mask = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
     18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
