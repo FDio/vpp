@@ -205,6 +205,22 @@ vlib_get_buffers_with_offset (vlib_main_t * vm, u32 * bi, void **b, int count,
 			      i32 offset)
 {
   uword buffer_mem_start = vm->buffer_main->buffer_mem_start;
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  i32 i;
+  i32 eno;
+  boolxn eactive;
+  u64xn vstart = u64xn_splat ((u64) (buffer_mem_start + offset));
+  scalable_vector_foreach (i, eno, eactive, count, 64, ({
+			     u64xn vbi = u64xn_load_u32 (eactive, bi);
+			     vbi = u64xn_shift_left_n (
+			       eactive, vbi, CLIB_LOG2_CACHE_LINE_BYTES);
+			     vbi = u64xn_add (eactive, vbi, vstart);
+			     u64xn_store_unaligned (eactive, vbi, (u64 *) b);
+			     bi += eno;
+			     b += eno;
+			   }));
+  return;
+#endif
 #ifdef CLIB_HAVE_VEC512
   u64x8 of8 = u64x8_splat (buffer_mem_start + offset);
   u64x4 off = u64x8_extract_lo (of8);
@@ -343,6 +359,23 @@ static_always_inline void
 vlib_get_buffer_indices_with_offset (vlib_main_t * vm, void **b, u32 * bi,
 				     uword count, i32 offset)
 {
+#ifdef CLIB_HAVE_VEC_SCALABLE
+  uword buffer_mem_start = vm->buffer_main->buffer_mem_start;
+  i32 i;
+  i32 eno;
+  boolxn eactive;
+  u64xn voff = u64xn_splat ((u64) (buffer_mem_start - offset));
+  scalable_vector_foreach (
+    i, eno, eactive, count, 64, ({
+      u64xn vb = u64xn_load_unaligned (eactive, (u64 *) b);
+      vb = u64xn_sub (eactive, vb, voff);
+      vb = u64xn_shift_right_n (eactive, vb, CLIB_LOG2_CACHE_LINE_BYTES);
+      u64xn_store_u32 (eactive, vb, bi);
+      bi += eno;
+      b += eno;
+    }));
+  return;
+#endif
 #ifdef CLIB_HAVE_VEC256
   u32x8 mask = { 0, 2, 4, 6, 1, 3, 5, 7 };
   u64x4 off4 = u64x4_splat (vm->buffer_main->buffer_mem_start - offset);
