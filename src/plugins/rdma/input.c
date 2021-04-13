@@ -642,7 +642,19 @@ static_always_inline int
 rdma_device_mlx5dv_legacy_rq_slow_path_needed (u32 buf_sz, int n_rx_packets,
 					       u32 * bc)
 {
-#if defined CLIB_HAVE_VEC256
+#if defined CLIB_HAVE_VEC_SCALABLE
+  i32 i = 0;
+  boolxn m;
+  u32xn bcv;
+  i32 eno;
+  u32xn thresh = u32xn_splat (buf_sz);
+  scalable_vector_foreach2 (
+    i, eno, m, n_rx_packets, 32, ({
+      bcv = u32xn_load_unaligned (m, bc + i);
+      if (boolxn_anytrue (m, u32xn_great_than (m, bcv, thresh)))
+	return 1;
+    }));
+#elif defined CLIB_HAVE_VEC256
   u32x8 thresh8 = u32x8_splat (buf_sz);
   for (int i = 0; i < n_rx_packets; i += 8)
     if (!u32x8_is_all_zero (*(u32x8 *) (bc + i) > thresh8))
@@ -676,7 +688,31 @@ rdma_device_mlx5dv_l3_validate_and_swap_bc (rdma_per_thread_data_t
      length from network to host byte order */
   int skip_ip4_cksum = 1;
 
-#if defined CLIB_HAVE_VEC256
+#if defined CLIB_HAVE_VEC_SCALABLE
+  i32 i = 0;
+  boolxn m;
+  i32 eno;
+  u16xn maskv = u16xn_splat (mask);
+  u16xn matchv = u16xn_splat (match);
+  u16xn flagsv;
+  u32xn bcv;
+  scalable_vector_foreach2 (
+    i, eno, m, n_rx_packets, 16, ({
+      flagsv = u16xn_load_unaligned (m, ptd->cqe_flags + i);
+      boolxn ne = u16xn_unequal (m, matchv, u16xn_and (m, flagsv, maskv));
+      if (boolxn_anytrue (m, ne))
+	{
+	  skip_ip4_cksum = 0;
+	  goto fast_ntoh;
+	}
+    }));
+fast_ntoh:
+  scalable_vector_foreach2 (i, eno, m, n_rx_packets, 32, ({
+			      bcv = u32xn_load_unaligned (m, bc + i);
+			      bcv = u32xn_byte_swap (m, bcv);
+			      u32xn_store_unaligned (m, bcv, bc + i);
+			    }));
+#elif defined CLIB_HAVE_VEC256
   u16x16 mask16 = u16x16_splat (mask);
   u16x16 match16 = u16x16_splat (match);
   u16x16 r = { };
