@@ -120,14 +120,26 @@ retry:
 
   if (type == MEMIF_RING_S2M)
     {
-      slot = head = ring->head;
+      /* For C2S queues ring->head is updated by the sender and
+       * this function is called in the context of sending thread.
+       * The loads in the sender do not need to synchronize with
+       * its own stores. Hence, the following load can be a
+       * relaxed load.
+       */
+      slot = head = __atomic_load_n (&ring->head, __ATOMIC_RELAXED);
       tail = __atomic_load_n (&ring->tail, __ATOMIC_ACQUIRE);
       mq->last_tail += tail - mq->last_tail;
       free_slots = ring_size - head + mq->last_tail;
     }
   else
     {
-      slot = tail = ring->tail;
+      /* For S2C queues ring->tail is updated by the sender and
+       * this function is called in the context of sending thread.
+       * The loads in the sender do not need to synchronize with
+       * its own stores. Hence, the following load can be a
+       * relaxed load.
+       */
+      slot = tail = __atomic_load_n (&ring->tail, __ATOMIC_RELAXED);
       head = __atomic_load_n (&ring->head, __ATOMIC_ACQUIRE);
       mq->last_tail += tail - mq->last_tail;
       free_slots = head - tail;
@@ -294,7 +306,7 @@ memif_interface_tx_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 retry:
   tail = __atomic_load_n (&ring->tail, __ATOMIC_ACQUIRE);
-  slot = head = ring->head;
+  slot = head = __atomic_load_n (&ring->head, __ATOMIC_RELAXED);
 
   n_free = tail - mq->last_tail;
   if (n_free >= 16)

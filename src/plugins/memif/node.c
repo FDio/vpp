@@ -502,7 +502,7 @@ refill:
 
   if (type == MEMIF_RING_M2S)
     {
-      u16 head = ring->head;
+      u16 head = __atomic_load_n (&ring->head, __ATOMIC_RELAXED);
       n_slots = ring_size - head + mq->last_tail;
 
       while (n_slots--)
@@ -759,7 +759,7 @@ memif_device_input_zc_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 refill:
   vec_reset_length (ptd->buffers);
 
-  head = ring->head;
+  head = __atomic_load_n (&ring->head, __ATOMIC_RELAXED);
   n_slots = ring_size - head + mq->last_tail;
   slot = head & mask;
 
