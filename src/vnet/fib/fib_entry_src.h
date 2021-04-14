@@ -248,12 +248,8 @@ typedef struct fib_entry_src_vft_t_ {
     }                                                          \
 }
 
-#define FIB_ENTRY_SRC_VFT_EXISTS(esrc, func)        \
-{                                                   \
-    const fib_entry_src_vft_t *_vft;                \
-    _vft = fib_entry_src_get_vft(esrc);             \
-    (_vft->func);                                   \
-}
+#define FIB_ENTRY_SRC_VFT_EXISTS(esrc, func) \
+    (fib_entry_src_get_vft(esrc)->func != 0)
 
 extern const fib_entry_src_vft_t*fib_entry_src_get_vft(
     const fib_entry_src_t *esrc);
