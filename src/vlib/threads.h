@@ -237,16 +237,24 @@ typedef enum
 
 void vlib_worker_thread_fork_fixup (vlib_fork_fixup_t which);
 
+always_inline int
+__foreach_vlib_main_helper (vlib_main_t *ii, vlib_main_t **p)
+{
+  vlib_main_t *vm;
+  u32 index = ii - (vlib_main_t *) 0;
+
+  if (index >= vec_len (vlib_global_main.vlib_mains))
+    return 0;
+
+  *p = vm = vlib_global_main.vlib_mains[index];
+  ASSERT (index == 0 || vm->parked_at_barrier == 1);
+  return 1;
+}
+
 #define foreach_vlib_main()                                                   \
-  for (vlib_main_t *ii = 0, *this_vlib_main = vlib_global_main.vlib_mains[0]; \
-       (ii - (vlib_main_t *) 0) < vec_len (vlib_global_main.vlib_mains);      \
-       ii++, this_vlib_main =                                                 \
-	       vlib_global_main.vlib_mains[ii - (vlib_main_t *) 0])           \
-    if (CLIB_ASSERT_ENABLE &&                                                 \
-	!(ii == 0 ||                                                          \
-	  (this_vlib_main && this_vlib_main->parked_at_barrier == 1)))        \
-      ASSERT (0);                                                             \
-    else if (this_vlib_main)
+  for (vlib_main_t *ii = 0, *this_vlib_main;                                  \
+       __foreach_vlib_main_helper (ii, &this_vlib_main); ii++)                \
+    if (this_vlib_main)
 
 #define foreach_sched_policy \
   _(SCHED_OTHER, OTHER, "other") \
