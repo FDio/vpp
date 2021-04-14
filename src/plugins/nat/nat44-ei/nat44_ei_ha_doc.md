@@ -1,4 +1,4 @@
-# Active-Passive NAT HA {#nat_ha_doc}
+# Active-Passive NAT HA
 
 ## Introduction
 
