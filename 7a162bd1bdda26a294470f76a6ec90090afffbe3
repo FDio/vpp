@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bdbd4091_296f1627",
+        "filename": "test/scripts/boot_vm.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-04-14T10:22:30Z",
+      "side": 1,
+      "message": "This is very aggressive. We should not do that.....",
+      "range": {
+        "startLine": 79,
+        "startChar": 0,
+        "endLine": 81,
+        "endChar": 126
+      },
+      "revId": "7a162bd1bdda26a294470f76a6ec90090afffbe3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
