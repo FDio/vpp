@@ -49,6 +49,7 @@ from struct import Struct
 import time
 import unittest
 import re
+import sys
 
 def recv_fd(sock):
     '''Get file descriptor for memory map'''
@@ -132,7 +133,7 @@ class VPPStats():
 
         stat_result = os.fstat(mfd)
         self.statseg = mmap.mmap(mfd, stat_result.st_size, mmap.PROT_READ, mmap.MAP_SHARED)
-        socket.close(mfd)
+        os.close(mfd)
 
         self.size = stat_result.st_size
         if self.version != 2:
