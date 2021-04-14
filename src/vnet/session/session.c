@@ -1607,13 +1607,8 @@ session_register_transport (transport_proto_t transport_proto,
   vec_validate (smm->session_tx_fns, session_type);
 
   if (output_node != ~0)
-    {
-      foreach_vlib_main ()
-	{
-	  next_index = vlib_node_add_next (
-	    this_vlib_main, session_queue_node.index, output_node);
-	}
-    }
+    next_index = vlib_node_add_next (vlib_get_main (),
+				     session_queue_node.index, output_node);
 
   smm->session_type_to_next[session_type] = next_index;
   smm->session_tx_fns[session_type] =
