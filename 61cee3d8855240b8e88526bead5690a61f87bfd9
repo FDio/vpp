@@ -366,6 +366,24 @@
       "revId": "61cee3d8855240b8e88526bead5690a61f87bfd9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c9f7afb6_009a7f6a",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2021-04-14T05:51:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "dec3f1a4_f9b9230b",
+      "revId": "61cee3d8855240b8e88526bead5690a61f87bfd9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
