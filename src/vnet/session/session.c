@@ -1610,6 +1610,7 @@ session_register_transport (transport_proto_t transport_proto,
     {
       foreach_vlib_main ()
 	{
+	  fformat (stderr, "%p %p\n", ii, this_vlib_main);
 	  next_index = vlib_node_add_next (
 	    this_vlib_main, session_queue_node.index, output_node);
 	}
