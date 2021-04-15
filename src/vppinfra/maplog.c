@@ -24,8 +24,8 @@
  * @param[in/out] a   init args structure
  * @return    0 => success, <0 => failure
  */
-int
-clib_maplog_init (clib_maplog_init_args_t * a)
+__clib_export int
+clib_maplog_init (clib_maplog_init_args_t *a)
 {
   int i, fd, limit;
   int rv = 0;
@@ -171,8 +171,8 @@ fail:
 
 /* slow path: unmap a full log segment, and replace it */
 
-u8 *
-_clib_maplog_get_entry_slowpath (clib_maplog_main_t * mm, u64 my_record_index)
+__clib_export u8 *
+_clib_maplog_get_entry_slowpath (clib_maplog_main_t *mm, u64 my_record_index)
 {
   int fd;
   u8 *rv;
@@ -295,8 +295,8 @@ out:
  *
  * @param[in/out] mm	mapped log object
  */
-void
-clib_maplog_close (clib_maplog_main_t * mm)
+__clib_export void
+clib_maplog_close (clib_maplog_main_t *mm)
 {
   int i, limit;
   u64 file_size_in_bytes;
@@ -331,8 +331,8 @@ clib_maplog_close (clib_maplog_main_t * mm)
  * @param [in] h clib_maplog_header_t pointer
  * @param [in] verbose self-explanatory
  */
-u8 *
-format_maplog_header (u8 * s, va_list * args)
+__clib_export u8 *
+format_maplog_header (u8 *s, va_list *args)
 {
   clib_maplog_header_t *h = va_arg (*args, clib_maplog_header_t *);
   int verbose = va_arg (*args, int);
@@ -380,7 +380,7 @@ brief:
  * @param [in] file_basename Same basename supplied to clib_maplog_init
  * @param [in] fp_arg Callback function pointer
  */
-int
+__clib_export int
 clib_maplog_process (char *file_basename, void *fp_arg)
 {
   clib_maplog_header_t _h, *h = &_h;

@@ -68,8 +68,8 @@
   *(r++) = b = ind32(mm,y>>ISAAC_LOG2_SIZE) + x;	\
 }
 
-void
-isaac (isaac_t * ctx, uword * results)
+__clib_export void
+isaac (isaac_t *ctx, uword *results)
 {
   u32 a, b, c, x, y, *m, *mm, *m2, *r, *mend;
 
@@ -179,8 +179,8 @@ do {								\
    h^=a>>9;  c+=h; a+=b;			\
 }
 
-void
-isaac_init (isaac_t * ctx, uword * seeds)
+__clib_export void
+isaac_init (isaac_t *ctx, uword *seeds)
 {
   word i;
   u32 a, b, c, d, e, f, g, h, *m, *r;
@@ -251,8 +251,8 @@ isaac_init (isaac_t * ctx, uword * seeds)
   *(r++) = b = ind64(mm,y>>ISAAC_LOG2_SIZE) + x;	\
 }
 
-void
-isaac (isaac_t * ctx, uword * results)
+__clib_export void
+isaac (isaac_t *ctx, uword *results)
 {
   u64 a, b, c, x, y, *m, *mm, *m2, *r, *mend;
 
@@ -364,8 +364,8 @@ do {								\
    h-=d; e^=g<<14; g+=h;			\
 }
 
-void
-isaac_init (isaac_t * ctx, uword * seeds)
+__clib_export void
+isaac_init (isaac_t *ctx, uword *seeds)
 {
   word i;
   u64 a, b, c, d, e, f, g, h, *m, *r;

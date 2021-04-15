@@ -29,9 +29,8 @@
     chunks, the chunk fusion algorithm won't merge them.
  */
 
-void
-clib_valloc_add_chunk (clib_valloc_main_t * vam,
-		       clib_valloc_chunk_t * template)
+__clib_export void
+clib_valloc_add_chunk (clib_valloc_main_t *vam, clib_valloc_chunk_t *template)
 {
   clib_valloc_chunk_t *ch, *new_ch;
   u32 index;
@@ -309,8 +308,8 @@ clib_valloc_free (clib_valloc_main_t * vam, uword baseva)
     @param verbose - int - verbosity level
     @return u8 vector
 */
-u8 *
-format_valloc (u8 * s, va_list * va)
+__clib_export u8 *
+format_valloc (u8 *s, va_list *va)
 {
   clib_valloc_main_t *vam = va_arg (*va, clib_valloc_main_t *);
   int verbose = va_arg (*va, int);

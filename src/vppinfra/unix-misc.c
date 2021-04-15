@@ -171,7 +171,7 @@ unix_proc_file_contents (char *file, u8 ** result)
 
 void os_panic (void) __attribute__ ((weak));
 
-void
+__clib_export void
 os_panic (void)
 {
   abort ();

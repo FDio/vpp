@@ -1149,10 +1149,6 @@ test_vec_main (unformat_input_t * input)
     dump_call_stats (g_call_stats);
   prob_free ();
 
-  if (verbose)
-    {
-      memory_snap ();
-    }
   return 0;
 
 usage:

@@ -61,8 +61,8 @@ u32 standalone_random_default_seed = 1;
  * @return    d - Pearson's X2 test statistic
  */
 
-f64
-clib_chisquare (u64 * values)
+__clib_export f64
+clib_chisquare (u64 *values)
 {
   u32 i, len;
   f64 d, delta_d, actual_frequency, expected_frequency;

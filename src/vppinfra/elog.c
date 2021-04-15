@@ -395,8 +395,8 @@ format_elog_event (u8 * s, va_list * va)
   return s;
 }
 
-u8 *
-format_elog_track_name (u8 * s, va_list * va)
+__clib_export u8 *
+format_elog_track_name (u8 *s, va_list *va)
 {
   elog_main_t *em = va_arg (*va, elog_main_t *);
   elog_event_t *e = va_arg (*va, elog_event_t *);
@@ -695,8 +695,8 @@ elog_cmp (void *a1, void *a2)
 /*
  * merge two event logs. Complicated and cranky.
  */
-void
-elog_merge (elog_main_t * dst, u8 * dst_tag, elog_main_t * src, u8 * src_tag,
+__clib_export void
+elog_merge (elog_main_t *dst, u8 *dst_tag, elog_main_t *src, u8 *src_tag,
 	    f64 align_tweak)
 {
   elog_event_t *e;
@@ -1143,8 +1143,8 @@ serialize_elog_main (serialize_main_t * m, va_list * va)
   vec_foreach (e, em->events) serialize (m, serialize_elog_event, em, e);
 }
 
-void
-unserialize_elog_main (serialize_main_t * m, va_list * va)
+__clib_export void
+unserialize_elog_main (serialize_main_t *m, va_list *va)
 {
   elog_main_t *em = va_arg (*va, elog_main_t *);
   uword i;

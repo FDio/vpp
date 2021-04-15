@@ -261,4 +261,23 @@ if(VPP_BUILD_VPPINFRA_TESTS)
       LINK_LIBRARIES vppinfra Threads::Threads
       )
   endforeach()
+
+set(test_files
+  test_vector_funcs_compress.c
+  test_vector_funcs_mask_compare.c
+)
+
+add_vpp_executable(test_vector_funcs
+  SOURCES
+  test_vector_funcs.c
+  ${test_files}
+  LINK_LIBRARIES vppinfra
+)
+
+vpp_library_set_multiarch_sources(test_vector_funcs
+  SOURCES
+  ${test_files}
+)
+
 endif(VPP_BUILD_VPPINFRA_TESTS)
+
