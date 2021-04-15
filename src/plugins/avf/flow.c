@@ -491,7 +491,6 @@ avf_flow_ops_fn (vnet_main_t *vm, vnet_flow_dev_op_t op, u32 dev_instance,
 	case VNET_FLOW_TYPE_IP6:
 	case VNET_FLOW_TYPE_IP4_N_TUPLE:
 	case VNET_FLOW_TYPE_IP6_N_TUPLE:
-	case VNET_FLOW_TYPE_IP4_VXLAN:
 	case VNET_FLOW_TYPE_IP4_GTPU:
 	case VNET_FLOW_TYPE_IP4_L2TPV3OIP:
 	case VNET_FLOW_TYPE_IP4_IPSEC_ESP:
