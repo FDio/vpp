@@ -439,11 +439,11 @@ vlib_next_frame_init (vlib_next_frame_t * nf)
 /* A frame pending dispatch by main loop. */
 typedef struct
 {
-  /* Node and runtime for this frame. */
-  u32 node_runtime_index;
-
   /* Frame index (in the heap). */
   vlib_frame_t *frame;
+
+  /* Node and runtime for this frame. */
+  u32 node_runtime_index;
 
   /* Start of next frames for this node. */
   u32 next_frame_index;
