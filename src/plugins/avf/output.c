@@ -375,16 +375,17 @@ VNET_DEVICE_CLASS_TX_FN (avf_device_class) (vlib_main_t * vm,
 {
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
   avf_device_t *ad = avf_get_device (rd->dev_instance);
-  u32 thread_index = vm->thread_index;
-  u8 qid = thread_index;
-  avf_txq_t *txq = vec_elt_at_index (ad->txqs, qid % ad->num_queue_pairs);
+  vnet_hw_if_tx_frame_t *tf = vlib_frame_scalar_args (frame);
+  u8 qid = tf->queue_id;
+  avf_txq_t *txq = vec_elt_at_index (ad->txqs, qid);
   u16 next;
   u16 mask = txq->size - 1;
   u32 *buffers = vlib_frame_vector_args (frame);
   u16 n_enq, n_left, n_desc, *slot;
   u16 n_retry = 2;
 
-  clib_spinlock_lock_if_init (&txq->lock);
+  if (tf->shared_queue)
+    clib_spinlock_lock (&txq->lock);
 
   n_left = frame->n_vectors;
 
@@ -474,7 +475,8 @@ retry:
 			AVF_TX_ERROR_NO_FREE_SLOTS, n_left);
     }
 
-  clib_spinlock_unlock_if_init (&txq->lock);
+  if (tf->shared_queue)
+    clib_spinlock_unlock (&txq->lock);
 
   return frame->n_vectors - n_left;
 }
