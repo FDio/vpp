@@ -220,9 +220,17 @@ typedef struct transport_endpoint_pair_
   _ (GSO)                                                                     \
   _ (RATE_SAMPLING)
 
+typedef enum transport_endpt_attr_flag_bit_
+{
+#define _(name) TRANSPORT_ENDPT_ATTR_F_BIT_##name,
+  foreach_transport_endpt_cfg_flags
+#undef _
+} __clib_packed transport_endpt_attr_flag_bit_t;
+
 typedef enum transport_endpt_attr_flag_
 {
-#define _(name) TRANSPORT_ENDPT_ATTR_F_##name,
+#define _(name)                                                               \
+  TRANSPORT_ENDPT_ATTR_F_##name = 1 << TRANSPORT_ENDPT_ATTR_F_BIT_##name,
   foreach_transport_endpt_cfg_flags
 #undef _
 } __clib_packed transport_endpt_attr_flag_t;

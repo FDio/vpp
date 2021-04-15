@@ -904,6 +904,18 @@ tcp_set_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
 	  tc->cfg_flags |= TCP_CFG_F_NO_TSO;
 	  tc->cfg_flags &= ~TCP_CFG_F_TSO;
 	}
+      if (attr->flags & TRANSPORT_ENDPT_ATTR_F_RATE_SAMPLING)
+	{
+	  if (!(tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE))
+	    tcp_bt_init (tc);
+	  tc->cfg_flags |= TCP_CFG_F_RATE_SAMPLE;
+	}
+      else
+	{
+	  if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+	    tcp_bt_cleanup (tc);
+	  tc->cfg_flags &= ~TCP_CFG_F_RATE_SAMPLE;
+	}
       break;
     case TRANSPORT_ENDPT_ATTR_CC_ALGO:
       if (tc->cc_algo == tcp_cc_algo_get (attr->cc_algo))
@@ -941,6 +953,8 @@ tcp_get_attribute (tcp_connection_t *tc, transport_endpt_attr_t *attr)
 	attr->flags |= TRANSPORT_ENDPT_ATTR_F_CSUM_OFFLOAD;
       if (tc->cfg_flags & TCP_CFG_F_TSO)
 	attr->flags |= TRANSPORT_ENDPT_ATTR_F_GSO;
+      if (tc->cfg_flags & TCP_CFG_F_RATE_SAMPLE)
+	attr->flags |= TRANSPORT_ENDPT_ATTR_F_RATE_SAMPLING;
       break;
     case TRANSPORT_ENDPT_ATTR_CC_ALGO:
       attr->cc_algo = tc->cc_algo - tcp_main.cc_algos;
