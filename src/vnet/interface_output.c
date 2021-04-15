@@ -47,6 +47,7 @@
 #include <vnet/feature/feature.h>
 #include <vnet/classify/pcap_classify.h>
 #include <vnet/interface_output.h>
+#include <vppinfra/vector_funcs.h>
 
 typedef struct
 {
@@ -321,6 +322,72 @@ static_always_inline void vnet_interface_pcap_tx_trace
     }
 }
 
+static_always_inline void
+store_tx_frame_scalar_data (vnet_hw_if_output_node_runtime_t *r,
+			    vnet_hw_if_tx_frame_t *tf)
+{
+  if (r)
+    clib_memcpy_fast (tf, &r->frame, sizeof (vnet_hw_if_tx_frame_t));
+}
+
+static_always_inline void
+enqueu_to_tx_node (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vnet_hw_interface_t *hi, u32 *from, u32 n_vectors)
+{
+  u32 next_index = VNET_INTERFACE_OUTPUT_NEXT_TX;
+  vnet_hw_if_output_node_runtime_t *r = 0;
+  u32 n_free, n_copy, *to;
+  vnet_hw_if_tx_frame_t *tf;
+  vlib_frame_t *f;
+
+  ASSERT (n_vectors <= VLIB_FRAME_SIZE);
+
+  if (hi->output_node_thread_runtimes)
+    r = vec_elt_at_index (hi->output_node_thread_runtimes, vm->thread_index);
+
+  f = vlib_get_next_frame_internal (vm, node, next_index, 0);
+  tf = vlib_frame_scalar_args (f);
+
+  if (f->n_vectors > 0 && (r == 0 || tf->queue_id == r->frame.queue_id))
+    {
+      /* append current next frame */
+      n_free = VLIB_FRAME_SIZE - f->n_vectors;
+      n_copy = clib_min (n_vectors, n_free);
+      n_vectors -= n_copy;
+      to = vlib_frame_vector_args (f);
+      to += f->n_vectors;
+    }
+  else
+    {
+      if (f->n_vectors > 0)
+	{
+	  /* current frame doesn't fit - grab empty one */
+	  f = vlib_get_next_frame_internal (vm, node, next_index, 1);
+	  tf = vlib_frame_scalar_args (f);
+	}
+
+      /* empty frame - store scalar data */
+      store_tx_frame_scalar_data (r, tf);
+      to = vlib_frame_vector_args (f);
+      n_free = VLIB_FRAME_SIZE;
+      n_copy = n_vectors;
+      n_vectors = 0;
+    }
+
+  vlib_buffer_copy_indices (to, from, n_copy);
+  vlib_put_next_frame (vm, node, next_index, n_free - n_copy);
+
+  if (n_vectors == 0)
+    return;
+
+  /* we have more indices to store, take empty frame */
+  from += n_copy;
+  f = vlib_get_next_frame_internal (vm, node, next_index, 1);
+  store_tx_frame_scalar_data (r, vlib_frame_scalar_args (f));
+  vlib_buffer_copy_indices (vlib_frame_vector_args (f), from, n_vectors);
+  vlib_put_next_frame (vm, node, next_index, VLIB_FRAME_SIZE - n_vectors);
+}
+
 VLIB_NODE_FN (vnet_interface_output_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
@@ -405,8 +472,16 @@ VLIB_NODE_FN (vnet_interface_output_node)
     n_bytes = vnet_interface_output_node_inline (
       vm, sw_if_index, ccm, bufs, config_index, arc, n_buffers, 1, 1);
 
-  vlib_buffer_enqueue_to_single_next (vm, node, vlib_frame_vector_args (frame),
-				      next_index, frame->n_vectors);
+  from = vlib_frame_vector_args (frame);
+  if (PREDICT_TRUE (next_index == VNET_INTERFACE_OUTPUT_NEXT_TX))
+    {
+      enqueu_to_tx_node (vm, node, hi, from, frame->n_vectors);
+    }
+  else
+    {
+      vlib_buffer_enqueue_to_single_next (vm, node, from, next_index,
+					  frame->n_vectors);
+    }
 
   /* Update main interface stats. */
   vlib_increment_combined_counter (ccm, ti, sw_if_index, n_buffers, n_bytes);
@@ -993,10 +1068,16 @@ VLIB_NODE_FN (vnet_interface_output_arc_end_node)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
+  vnet_hw_if_output_node_runtime_t *r = 0;
+  vnet_hw_interface_t *hi;
+  vnet_hw_if_tx_frame_t *tf;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
-  u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
-  u32 *from, n_left;
-  u16 *lt = im->if_out_arc_end_next_index_by_sw_if_index;
+  u32 sw_if_indices[VLIB_FRAME_SIZE], *sw_if_index = sw_if_indices;
+  u64 used_elts[VLIB_FRAME_SIZE / 64] = {};
+  u64 mask[VLIB_FRAME_SIZE / 64] = {};
+  u32 *tmp, *from, n_left, n_free, n_comp, *to, swif, off;
+  u16 next_index;
+  vlib_frame_t *f;
 
   from = vlib_frame_vector_args (frame);
   n_left = frame->n_vectors;
@@ -1008,25 +1089,113 @@ VLIB_NODE_FN (vnet_interface_output_arc_end_node)
       vlib_prefetch_buffer_header (b[5], LOAD);
       vlib_prefetch_buffer_header (b[6], LOAD);
       vlib_prefetch_buffer_header (b[7], LOAD);
-      next[0] = vec_elt (lt, vnet_buffer (b[0])->sw_if_index[VLIB_TX]);
-      next[1] = vec_elt (lt, vnet_buffer (b[1])->sw_if_index[VLIB_TX]);
-      next[2] = vec_elt (lt, vnet_buffer (b[2])->sw_if_index[VLIB_TX]);
-      next[3] = vec_elt (lt, vnet_buffer (b[3])->sw_if_index[VLIB_TX]);
+      sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
+      sw_if_index[1] = vnet_buffer (b[1])->sw_if_index[VLIB_TX];
+      sw_if_index[2] = vnet_buffer (b[2])->sw_if_index[VLIB_TX];
+      sw_if_index[3] = vnet_buffer (b[3])->sw_if_index[VLIB_TX];
 
       b += 4;
-      next += 4;
+      sw_if_index += 4;
       n_left -= 4;
     }
 
   while (n_left)
     {
-      next[0] = vec_elt (lt, vnet_buffer (b[0])->sw_if_index[VLIB_TX]);
+      sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
       b++;
-      next++;
+      sw_if_index++;
       n_left--;
     }
 
-  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+  n_left = frame->n_vectors;
+  swif = sw_if_indices[0];
+  off = 0;
+
+  /* a bit ugly but it allows us to reuse stack space for temporary store
+   * which may also improve memory latency */
+  tmp = (u32 *) bufs;
+
+more:
+  next_index = vec_elt (im->if_out_arc_end_next_index_by_sw_if_index, swif);
+  hi = vnet_get_sup_hw_interface (vnm, swif);
+  if (hi->output_node_thread_runtimes)
+    r = vec_elt_at_index (hi->output_node_thread_runtimes, vm->thread_index);
+  f = vlib_get_next_frame_internal (vm, node, next_index, 0);
+  tf = vlib_frame_scalar_args (f);
+
+  if (f->n_vectors > 0 && (r == 0 || r->frame.queue_id == tf->queue_id))
+    {
+      /* append frame */
+      n_free = VLIB_FRAME_SIZE - f->n_vectors;
+      if (n_free >= f->n_vectors)
+	to = (u32 *) vlib_frame_vector_args (f) + f->n_vectors;
+      else
+	to = tmp;
+    }
+  else
+    {
+      if (f->n_vectors > 0)
+	{
+	  /* current frame doesn't fit - grab empty one */
+	  f = vlib_get_next_frame_internal (vm, node, next_index, 1);
+	  tf = vlib_frame_scalar_args (f);
+	}
+
+      /* empty frame - store scalar data */
+      store_tx_frame_scalar_data (r, tf);
+      n_free = VLIB_FRAME_SIZE;
+      to = vlib_frame_vector_args (f);
+    }
+
+  /* compare and compress based on comparison mask */
+  clib_mask_compare_u32 (swif, sw_if_indices, mask, frame->n_vectors);
+  n_comp = clib_compress_u32 (to, from, mask, frame->n_vectors);
+
+  if (tmp != to)
+    {
+      /* indices already written to frame, just close it */
+      vlib_put_next_frame (vm, node, next_index, n_free - n_comp);
+    }
+  else if (n_free >= n_comp)
+    {
+      /* enough space in the existing frame */
+      to = (u32 *) vlib_frame_vector_args (f) + f->n_vectors;
+      vlib_buffer_copy_indices (to, tmp, n_comp);
+      vlib_put_next_frame (vm, node, next_index, n_free - n_comp);
+    }
+  else
+    {
+      /* full frame */
+      to = (u32 *) vlib_frame_vector_args (f) + f->n_vectors;
+      vlib_buffer_copy_indices (to, tmp, n_free);
+      vlib_put_next_frame (vm, node, next_index, 0);
+
+      /* second frame */
+      u32 n_frame2 = n_comp - n_free;
+      f = vlib_get_next_frame_internal (vm, node, next_index, 1);
+      to = vlib_frame_vector_args (f);
+      vlib_buffer_copy_indices (to, tmp + n_free, n_frame2);
+      tf = vlib_frame_scalar_args (f);
+      store_tx_frame_scalar_data (r, tf);
+      vlib_put_next_frame (vm, node, next_index, VLIB_FRAME_SIZE - n_frame2);
+    }
+
+  n_left -= n_comp;
+  if (n_left)
+    {
+      /* store comparison mask so we can find next unused element */
+      for (int i = 0; i < ARRAY_LEN (used_elts); i++)
+	used_elts[i] |= mask[i];
+
+      /* fine first unused sw_if_index by scanning trough used_elts bitmap */
+      while (PREDICT_FALSE (used_elts[off] == ~0))
+	off++;
+
+      swif =
+	sw_if_indices[(off << 6) + count_trailing_zeros (~used_elts[off])];
+      goto more;
+    }
+
   return frame->n_vectors;
 }
 
