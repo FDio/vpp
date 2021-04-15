@@ -1128,6 +1128,7 @@ vlib_worker_thread_node_refork (void)
 
 	  /* keep previous node state */
 	  new_n_clone->state = old_n_clone->state;
+	  new_n_clone->flags = old_n_clone->flags;
 	}
       vec_add1 (nm_clone->nodes, new_n_clone);
       new_n_clone++;
@@ -1189,6 +1190,7 @@ vlib_worker_thread_node_refork (void)
     {
       rt = vlib_node_get_runtime (vm_clone, old_rt[j].node_index);
       rt->state = old_rt[j].state;
+      rt->flags = old_rt[j].flags;
       clib_memcpy_fast (rt->runtime_data, old_rt[j].runtime_data,
 			VLIB_NODE_RUNTIME_DATA_SIZE);
     }
