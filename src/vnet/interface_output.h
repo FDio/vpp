@@ -87,6 +87,9 @@ vnet_calc_checksums_inline (vlib_main_t * vm, vlib_buffer_t * b,
   udp_header_t *uh;
   u32 oflags = vnet_buffer2 (b)->oflags;
 
+  if (!(b->flags & VNET_BUFFER_F_OFFLOAD))
+    return;
+
   ASSERT (!(is_ip4 && is_ip6));
 
   ip4 = (ip4_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
