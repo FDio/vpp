@@ -48,6 +48,7 @@ set_source_files_properties( cJSON.c PROPERTIES
 ##############################################################################
 set(VPPINFRA_SRCS
   backtrace.c
+  bitmap.c
   bihash_all_vector.c
   cpu.c
   dlmalloc.c
