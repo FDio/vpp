@@ -598,6 +598,26 @@ typedef struct
 #define VNET_HW_IF_RXQ_NO_RX_INTERRUPT ~0
 } vnet_hw_if_rx_queue_t;
 
+typedef struct
+{
+  u8 shared_queue : 1;
+  /* hw interface index */
+  u32 hw_if_index;
+
+  /* hardware queue identifier */
+  u32 queue_id;
+
+  /* bitmap of threads which use this queue */
+  clib_bitmap_t *threads;
+} vnet_hw_if_tx_queue_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u32 queue_id;
+  u8 shared_queue : 1;
+} vnet_hw_if_output_node_runtime_t;
+
 /* Hardware-interface.  This corresponds to a physical wire
    that packets flow over. */
 typedef struct vnet_hw_interface_t
@@ -611,9 +631,6 @@ typedef struct vnet_hw_interface_t
 
   /* capabilities flags */
   vnet_hw_interface_capabilities_t caps;
-
-  /* link speed in kbps */
-  u32 link_speed;
 
   /* Hardware address as vector.  Zero (e.g. zero-length vector) if no
      address for this class (e.g. PPP). */
@@ -637,7 +654,13 @@ typedef struct vnet_hw_interface_t
   /* Software index for this hardware interface. */
   u32 sw_if_index;
 
+  /* per thread output-node runtimes */
+  vnet_hw_if_output_node_runtime_t *output_node_thread_runtimes;
+
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+
+  /* link speed in kbps */
+  u32 link_speed;
 
   /* Next index in interface-output node for this interface
      used by node function vnet_per_buffer_interface_output() */
@@ -683,6 +706,9 @@ typedef struct vnet_hw_interface_t
 
   /* rx queues */
   u32 *rx_queue_indices;
+
+  /* tx queues */
+  u32 *tx_queue_indices;
 
   /* numa node that hardware device connects to */
   u8 numa_node;
@@ -951,6 +977,10 @@ typedef struct
   vnet_hw_if_rx_queue_t *hw_if_rx_queues;
   uword *rxq_index_by_hw_if_index_and_queue_id;
 
+  /* Hardware interface TX queues */
+  vnet_hw_if_tx_queue_t *hw_if_tx_queues;
+  uword *txq_index_by_hw_if_index_and_queue_id;
+
   /* Hash table mapping HW interface name to index. */
   uword *hw_interface_by_name;
 
@@ -993,6 +1023,20 @@ typedef struct
   /* feature_arc_index */
   u8 output_feature_arc_index;
 } vnet_interface_main_t;
+
+typedef enum
+{
+  VNET_HW_IF_TX_FRAME_HINT_NOT_CHAINED = (1 << 0),
+  VNET_HW_IF_TX_FRAME_HINT_NO_GSO = (1 << 1),
+  VNET_HW_IF_TX_FRAME_HINT_NO_CKSUM_OFFLOAD = (1 << 2),
+} vnet_hw_if_tx_frame_hint_t;
+
+typedef struct
+{
+  u8 shared_queue : 1;
+  vnet_hw_if_tx_frame_hint_t hints : 16;
+  u32 queue_id;
+} vnet_hw_if_tx_frame_t;
 
 static inline void
 vnet_interface_counter_lock (vnet_interface_main_t * im)

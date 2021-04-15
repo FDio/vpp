@@ -426,8 +426,34 @@ VLIB_NODE_FN (vnet_interface_output_node)
     n_bytes = vnet_interface_output_node_inline (
       vm, sw_if_index, ccm, bufs, config_index, arc, n_buffers, 1, 1);
 
-  vlib_buffer_enqueue_to_single_next (vm, node, vlib_frame_vector_args (frame),
-				      next_index, frame->n_vectors);
+  if (PREDICT_TRUE (next_index == VNET_INTERFACE_OUTPUT_NEXT_TX))
+    {
+      vnet_hw_if_output_node_runtime_t *r;
+      u32 *to_next, n_left_to_next;
+      vnet_hw_if_tx_frame_t *tf;
+      vlib_next_frame_t *nf;
+      vlib_frame_t *f;
+
+      vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      from = vlib_frame_vector_args (frame);
+      vlib_buffer_copy_indices (to_next, from, frame->n_vectors);
+      n_left_to_next -= frame->n_vectors;
+      nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
+      f = vlib_get_frame (vm, nf->frame);
+      tf = vlib_frame_scalar_args (f);
+      r = vec_elt_at_index (hi->output_node_thread_runtimes, vm->thread_index);
+      tf->hints = 0;
+      tf->queue_id = r->queue_id;
+      tf->shared_queue = r->shared_queue;
+      vlib_frame_no_append (f);
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+  else
+    {
+      vlib_buffer_enqueue_to_single_next (vm, node,
+					  vlib_frame_vector_args (frame),
+					  next_index, frame->n_vectors);
+    }
 
   /* Update main interface stats. */
   vlib_increment_combined_counter (ccm, ti, sw_if_index, n_buffers, n_bytes);
