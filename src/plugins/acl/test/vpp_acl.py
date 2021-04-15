@@ -6,33 +6,6 @@ from vpp_ip import INVALID_INDEX
 from vpp_papi_provider import UnexpectedApiReturnValueError
 
 
-class VppAclPlugin(VppObject):
-
-    def __init__(self, test, enable_intf_counters=False):
-        self._test = test
-        self.enable_intf_counters = enable_intf_counters
-
-    @property
-    def enable_intf_counters(self):
-        return self._enable_intf_counters
-
-    @enable_intf_counters.setter
-    def enable_intf_counters(self, enable):
-        self.vapi.acl_stats_intf_counters_enable(enable=enable)
-
-    def add_vpp_config(self):
-        pass
-
-    def remove_vpp_config(self):
-        pass
-
-    def query_vpp_config(self):
-        pass
-
-    def object_id(self):
-        return ("acl-plugin-%d" % (self._sw_if_index))
-
-
 class AclRule():
     """ ACL Rule """
 
