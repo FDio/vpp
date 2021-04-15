@@ -388,7 +388,7 @@ class VPPApiClient:
 
     def __init__(self, apifiles=None, testmode=False, async_thread=True,
                  logger=None, loglevel=None,
-                 read_timeout=5, use_socket=False,
+                 read_timeout=5, use_socket=True,
                  server_address='/run/vpp/api.sock'):
         """Create a VPP API object.
 
