@@ -459,8 +459,11 @@ vcl_session_detach_fifos (vcl_session_t *s)
   fifo_segment_free_client_fifo (fs, s->tx_fifo);
   if (s->ct_rx_fifo)
     {
-      fs = fifo_segment_get_segment (&vcm->segment_main,
-				     s->ct_rx_fifo->segment_index);
+      fs = fifo_segment_get_segment_if_valid (&vcm->segment_main,
+					      s->ct_rx_fifo->segment_index);
+      if (!fs)
+	goto done;
+
       fifo_segment_free_client_fifo (fs, s->ct_rx_fifo);
       fifo_segment_free_client_fifo (fs, s->ct_tx_fifo);
     }
