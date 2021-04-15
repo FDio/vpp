@@ -21,6 +21,7 @@
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/interface/tx_queue_funcs.h>
 
 #include <avf/avf.h>
 
@@ -303,8 +304,7 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
     {
       qid = qid % ad->num_queue_pairs;
       txq = vec_elt_at_index (ad->txqs, qid);
-      if (txq->lock == 0)
-	clib_spinlock_init (&txq->lock);
+      clib_spinlock_init (&txq->lock);
       ad->flags |= AVF_DEVICE_F_SHARED_TXQ_LOCK;
       return 0;
     }
@@ -1748,6 +1748,14 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
 	}
       ad->rxqs[i].queue_index = qi;
     }
+
+  for (i = 0; i < ad->n_tx_queues; i++)
+    {
+      u32 qi = vnet_hw_if_register_tx_queue (vnm, ad->hw_if_index, i);
+      vnet_hw_if_tx_queue_assign_thread (vnm, qi, i);
+      ad->txqs[i].queue_index = qi;
+    }
+
   vnet_hw_if_update_runtime_data (vnm, ad->hw_if_index);
 
   if (pool_elts (am->devices) == 1)
