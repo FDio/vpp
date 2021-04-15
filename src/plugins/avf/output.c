@@ -454,6 +454,7 @@ retry:
 	}
 
       txq->next = next & mask;
+      next = txq->next;
       avf_tail_write (txq->qtx_tail, txq->next);
       txq->n_enqueued += n_desc;
       n_left -= n_enq;
