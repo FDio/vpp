@@ -47,6 +47,7 @@
 #include <vnet/feature/feature.h>
 #include <vnet/classify/pcap_classify.h>
 #include <vnet/interface_output.h>
+#include <vppinfra/vector_funcs.h>
 
 typedef struct
 {
@@ -321,6 +322,38 @@ static_always_inline void vnet_interface_pcap_tx_trace
     }
 }
 
+static_always_inline void
+enqueu_to_tx_node (vlib_main_t *vm, vlib_node_runtime_t *node,
+		   vnet_hw_interface_t *hi, u32 *from, u32 n_vectors)
+{
+  u32 next_index = VNET_INTERFACE_OUTPUT_NEXT_TX;
+  vnet_hw_if_output_node_runtime_t *r;
+
+  r = vec_elt_at_index (hi->output_node_thread_runtimes, vm->thread_index);
+
+  do
+    {
+      u32 n_free, n_copy, *to;
+      vnet_hw_if_tx_frame_t *tf;
+      vlib_frame_t *f = vlib_get_next_frame_internal (vm, node, next_index, 0);
+
+      n_free = VLIB_FRAME_SIZE - f->n_vectors;
+      n_copy = clib_min (n_vectors, n_free);
+      n_vectors -= n_copy;
+
+      tf = vlib_frame_scalar_args (f);
+      tf->hints = 0;
+      tf->queue_id = r->queue_id;
+      tf->shared_queue = r->shared_queue;
+      to = vlib_frame_vector_args (f);
+      vlib_buffer_copy_indices (to, from, n_copy);
+      from += n_copy;
+      f->n_vectors += n_copy;
+      vlib_put_next_frame (vm, node, next_index, n_free - n_copy);
+    }
+  while (n_vectors > 0);
+}
+
 VLIB_NODE_FN (vnet_interface_output_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
@@ -405,8 +438,16 @@ VLIB_NODE_FN (vnet_interface_output_node)
     n_bytes = vnet_interface_output_node_inline (
       vm, sw_if_index, ccm, bufs, config_index, arc, n_buffers, 1, 1);
 
-  vlib_buffer_enqueue_to_single_next (vm, node, vlib_frame_vector_args (frame),
-				      next_index, frame->n_vectors);
+  from = vlib_frame_vector_args (frame);
+  if (PREDICT_TRUE (next_index == VNET_INTERFACE_OUTPUT_NEXT_TX))
+    {
+      enqueu_to_tx_node (vm, node, hi, from, frame->n_vectors);
+    }
+  else
+    {
+      vlib_buffer_enqueue_to_single_next (vm, node, from, next_index,
+					  frame->n_vectors);
+    }
 
   /* Update main interface stats. */
   vlib_increment_combined_counter (ccm, ti, sw_if_index, n_buffers, n_bytes);
@@ -995,6 +1036,7 @@ VLIB_NODE_FN (vnet_interface_output_arc_end_node)
   vnet_interface_main_t *im = &vnm->interface_main;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
+  // u64 used_elt_bmp[VLIB_FRAME_SIZE / 64] = {};
   u32 *from, n_left;
   u16 *lt = im->if_out_arc_end_next_index_by_sw_if_index;
 
@@ -1026,6 +1068,12 @@ VLIB_NODE_FN (vnet_interface_output_arc_end_node)
       n_left--;
     }
 
+  n_left = frame->n_vectors;
+
+  while (n_left)
+    {
+      // u16 next_index = find_first_unused_elt (used_elt_bmp);
+    }
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   return frame->n_vectors;
 }

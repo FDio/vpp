@@ -37,6 +37,7 @@ list(APPEND VNET_SOURCES
   interface_format.c
   interface_output.c
   interface/rx_queue.c
+  interface/tx_queue.c
   interface/runtime.c
   interface_stats.c
   misc.c
@@ -58,6 +59,7 @@ list(APPEND VNET_HEADERS
   global_funcs.h
   handoff.h
   interface/rx_queue_funcs.h
+  interface/tx_queue_funcs.h
   interface.h
   interface_funcs.h
   interface_output.h

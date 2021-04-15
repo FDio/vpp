@@ -43,6 +43,7 @@
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/ip/ip.h>
 #include <vnet/interface/rx_queue_funcs.h>
+#include <vnet/interface/tx_queue_funcs.h>
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_LOG_CLASS (if_default_log, static) = {
@@ -959,7 +960,7 @@ vnet_register_interface (vnet_main_t * vnm,
       r.type = VLIB_NODE_TYPE_INTERNAL;
       r.runtime_data = &rt;
       r.runtime_data_bytes = sizeof (rt);
-      r.scalar_size = 0;
+      r.scalar_size = sizeof (vnet_hw_if_tx_frame_t);
       r.vector_size = sizeof (u32);
 
       r.flags = VLIB_NODE_FLAG_IS_OUTPUT;
@@ -1063,8 +1064,9 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
   /* Call delete callbacks. */
   call_hw_interface_add_del_callbacks (vnm, hw_if_index, /* is_create */ 0);
 
-  /* delete rx queues */
+  /* delete rx & tx queues */
   vnet_hw_if_unregister_all_rx_queues (vnm, hw_if_index);
+  vnet_hw_if_unregister_all_tx_queues (vnm, hw_if_index);
   vnet_hw_if_update_runtime_data (vnm, hw_if_index);
 
   /* Delete any sub-interfaces. */
@@ -1407,6 +1409,8 @@ vnet_interface_init (vlib_main_t * vm)
 						       sizeof (uword));
 
   im->rxq_index_by_hw_if_index_and_queue_id =
+    hash_create_mem (0, sizeof (u64), sizeof (u32));
+  im->txq_index_by_hw_if_index_and_queue_id =
     hash_create_mem (0, sizeof (u64), sizeof (u32));
   im->sw_if_index_by_sup_and_sub = hash_create_mem (0, sizeof (u64),
 						    sizeof (uword));

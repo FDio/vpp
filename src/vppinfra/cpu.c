@@ -238,6 +238,18 @@ clib_get_current_numa_node ()
   return node;
 }
 
+__clib_export u8 *
+format_march_variant (u8 *s, va_list *args)
+{
+  clib_march_variant_type_t t = va_arg (*args, clib_march_variant_type_t);
+  char *variants[] = { [0] = "default",
+#define _(s, n) [CLIB_MARCH_VARIANT_TYPE_##s] = n,
+		       foreach_march_variant
+#undef _
+  };
+  return format (s, "%s", variants[t]);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

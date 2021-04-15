@@ -262,3 +262,16 @@ if(VPP_BUILD_VPPINFRA_TESTS)
       )
   endforeach()
 endif(VPP_BUILD_VPPINFRA_TESTS)
+
+add_vpp_executable(test_runner
+  SOURCES
+  test/main.c
+  test/test_foo.c
+  LINK_LIBRARIES vppinfra pthread
+)
+
+vpp_library_set_multiarch_sources(test_runner
+  SOURCES
+  test/test_foo.c
+)
+
