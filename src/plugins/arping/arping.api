@@ -38,7 +38,7 @@ define arping
   bool is_garp;
   u32 repeat [default=1];
   f64 interval [default=1.0];
-  option vat_help = "<address> <interface> [gratuitouss] [repeat <count>] [interval <sec>]";
+  option vat_help = "<address> <interface> [gratuitous] [repeat <count>] [interval <sec>]";
 };
 
 /** \brief
