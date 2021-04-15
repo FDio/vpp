@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "144858e2_a9e6581e",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_stats.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-04-15T14:35:03Z",
+      "side": 1,
+      "message": "My preference would be:\n```\n# while we support PY\u003c3.7\ntry:\n   socket.close(mfd)\nexcept AttributeError:\n   os.close(mfd)\n```",
+      "range": {
+        "startLine": 135,
+        "startChar": 7,
+        "endLine": 135,
+        "endChar": 21
+      },
+      "revId": "11f0b14a1f6963ceaf7c4e11b51df62ea7cd7fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
