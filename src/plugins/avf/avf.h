@@ -191,6 +191,7 @@ typedef struct
 
   avf_tx_desc_t *tmp_descs;
   u32 *tmp_bufs;
+  u32 queue_index;
 } avf_txq_t;
 
 typedef struct

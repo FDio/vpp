@@ -119,6 +119,18 @@ _ (i32x8, u16x16, _mm256_packus_epi32)
 
 #undef _
 
+always_inline u16x16
+u32x8_pack (u32x8 lo, u32x8 hi)
+{
+  return (u16x16) _mm256_packs_epi32 ((__m256i) lo, (__m256i) hi);
+}
+
+always_inline i16x16
+i32x8_pack (i32x8 lo, i32x8 hi)
+{
+  return (i16x16) _mm256_packs_epi32 ((__m256i) lo, (__m256i) hi);
+}
+
 static_always_inline u32
 u8x32_msb_mask (u8x32 v)
 {

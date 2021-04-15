@@ -262,3 +262,22 @@ if(VPP_BUILD_VPPINFRA_TESTS)
       )
   endforeach()
 endif(VPP_BUILD_VPPINFRA_TESTS)
+
+
+set(test_files
+  test/test_compress.c
+  test/test_mask_compare.c
+)
+
+add_vpp_executable(unittest
+  SOURCES
+  test/main.c
+  ${test_files}
+  LINK_LIBRARIES vppinfra pthread
+)
+
+vpp_library_set_multiarch_sources(unittest
+  SOURCES
+  ${test_files}
+)
+
