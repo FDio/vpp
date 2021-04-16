@@ -1,0 +1,248 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2c579ce0_cea30a58",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-16T06:31:02Z",
+      "side": 1,
+      "message": "Can we guarantee alignment here?\nShould it be u64x8_load_unaligned?",
+      "revId": "b21808903ac6c3ccb36251e630bc8885b04caf1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4b830838_c566f342",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-16T06:31:02Z",
+      "side": 1,
+      "message": "Remove commentary on the packet buffer.",
+      "revId": "b21808903ac6c3ccb36251e630bc8885b04caf1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bc405099_710a3890",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 295,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-16T06:31:02Z",
+      "side": 1,
+      "message": "which means the 2nd load will ....",
+      "revId": "b21808903ac6c3ccb36251e630bc8885b04caf1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "72bb20ef_2bf2b612",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 322,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-16T06:31:02Z",
+      "side": 1,
+      "message": "remove carriage return",
+      "revId": "b21808903ac6c3ccb36251e630bc8885b04caf1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c656a825_dca5c49b",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 324,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-16T06:31:02Z",
+      "side": 1,
+      "message": "remove carriage return",
+      "revId": "b21808903ac6c3ccb36251e630bc8885b04caf1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b8983f5c_7da927e3",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 330,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-16T06:31:02Z",
+      "side": 1,
+      "message": "remove carriage return",
+      "revId": "b21808903ac6c3ccb36251e630bc8885b04caf1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "687363b0_b5b3bdeb",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-16T06:31:02Z",
+      "side": 1,
+      "message": "remove carriage return",
+      "revId": "b21808903ac6c3ccb36251e630bc8885b04caf1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "43de9119_86478799",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 363,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-16T06:31:02Z",
+      "side": 1,
+      "message": "move ASSERT(t) to in front of the #define(s).",
+      "revId": "b21808903ac6c3ccb36251e630bc8885b04caf1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "56a7b8d5_02b96c2a",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 516,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-16T06:31:02Z",
+      "side": 1,
+      "message": "pretty sure they is a clib macro for aligning data structures.",
+      "revId": "b21808903ac6c3ccb36251e630bc8885b04caf1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a457bf7b_ca819ae0",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 518,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-16T06:31:02Z",
+      "side": 1,
+      "message": "Why is this annotated unused?",
+      "revId": "b21808903ac6c3ccb36251e630bc8885b04caf1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "65c58ddf_6c0e1dd1",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 536,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-16T06:31:02Z",
+      "side": 1,
+      "message": "If the key is not 64 byte aligned, we should be using and unaligned load 😊\n\nu64x8_load_unaligned()",
+      "revId": "b21808903ac6c3ccb36251e630bc8885b04caf1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6a564c01_f5d518ce",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 583,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-16T06:31:02Z",
+      "side": 1,
+      "message": "What about those last 16bytes in data[1] ... :), are we just not looking at those?",
+      "revId": "b21808903ac6c3ccb36251e630bc8885b04caf1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0306f77c_3ff55392",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 600,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-16T06:31:02Z",
+      "side": 1,
+      "message": "pretty sure they is a clib macro for aligning data structures.",
+      "revId": "b21808903ac6c3ccb36251e630bc8885b04caf1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "182ed580_9886ebec",
+        "filename": "src/vppinfra/vector_avx512.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2021-04-16T06:31:02Z",
+      "side": 1,
+      "message": "Move to be adjacent to u32x16_maskz_ternarylogic.",
+      "range": {
+        "startLine": 124,
+        "startChar": 8,
+        "endLine": 124,
+        "endChar": 32
+      },
+      "revId": "b21808903ac6c3ccb36251e630bc8885b04caf1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
