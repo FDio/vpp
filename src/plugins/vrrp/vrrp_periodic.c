@@ -211,11 +211,11 @@ vrrp_periodic_process (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (vrrp_periodic_node) =
-{
+VLIB_REGISTER_NODE (vrrp_periodic_node) = {
   .function = vrrp_periodic_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "vrrp-periodic-process",
+  .process_log2_n_stack_bytes = 17,
 };
 /* *INDENT-ON* */
 
