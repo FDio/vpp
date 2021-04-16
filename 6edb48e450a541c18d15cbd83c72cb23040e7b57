@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "561aaa20_f319612b",
+        "filename": "src/vlibmemory/vlib_api.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-04-16T07:20:05Z",
+      "side": 1,
+      "message": "Is it a filename or a path?\nIf the former just do a fixed 256 character string?",
+      "revId": "6edb48e450a541c18d15cbd83c72cb23040e7b57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7a14af2c_61512315",
+        "filename": "src/vlibmemory/vlib_api.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-04-16T07:20:05Z",
+      "side": 1,
+      "message": "Could you explain how first index - last index is used?\nHow is a caller supposed to know the values?",
+      "revId": "6edb48e450a541c18d15cbd83c72cb23040e7b57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d22841f4_82cba7e4",
+        "filename": "src/vlibmemory/vlib_api.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2021-04-16T07:20:05Z",
+      "side": 1,
+      "message": "Is this trace_name related to filename in anyway?",
+      "revId": "6edb48e450a541c18d15cbd83c72cb23040e7b57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
