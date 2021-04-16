@@ -33,7 +33,7 @@ autoreply define ipsec_spd_add_del
 {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   u32 spd_id;
 };
 
@@ -52,7 +52,7 @@ autoreply define ipsec_interface_add_del_spd
   u32 client_index;
   u32 context;
 
-  bool is_add;
+  bool is_add [default=true];
   vl_api_interface_index_t sw_if_index;
   u32 spd_id;
 };
@@ -123,7 +123,7 @@ define ipsec_spd_entry_add_del
 {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_ipsec_spd_entry_t entry;
 };
 
@@ -208,7 +208,7 @@ define ipsec_sad_entry_add_del_v3
 {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_ipsec_sad_entry_v3_t entry;
 };
 

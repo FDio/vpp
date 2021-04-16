@@ -55,15 +55,15 @@ typedef ip_neighbor {
 /** \brief IP neighbor add / del request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - 1 to add neighbor, 0 to delete
+    @param is_add - true to add neighbor, false to delete
     @param neighbor - the neighbor to add/remove
 */
 define ip_neighbor_add_del
 {
   u32 client_index;
   u32 context;
-  /* 1 = add, 0 = delete */
-  bool is_add;
+  /* true = add, false = delete */
+  bool is_add [default=true];
   vl_api_ip_neighbor_t neighbor;
 };
 /** \brief IP neighbor add / del reply

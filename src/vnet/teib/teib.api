@@ -34,7 +34,7 @@ autoreply define teib_entry_add_del
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
+  u8 is_add [default=true];
   vl_api_teib_entry_t entry;
 };
 

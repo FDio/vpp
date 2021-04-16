@@ -273,7 +273,7 @@ typedef gbp_subnet
   option status="in_progress";
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_gbp_subnet_t subnet;
 };
 
@@ -343,7 +343,7 @@ typedef gbp_contract
   option status="in_progress";
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_gbp_contract_t contract;
 };
 define gbp_contract_add_del_reply
@@ -445,7 +445,7 @@ typedef gbp_ext_itf
   option status="in_progress";
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_gbp_ext_itf_t ext_itf;
 };
 

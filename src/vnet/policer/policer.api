@@ -55,7 +55,7 @@ autoreply define policer_input
 /** \brief Add/del policer
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - add policer if non-zero, else delete
+    @param is_add - add policer if true, else delete
     @param name - policer name
     @param cir - CIR
     @param eir - EIR
@@ -74,7 +74,7 @@ define policer_add_del
   u32 client_index;
   u32 context;
 
-  bool is_add;
+  bool is_add [default=true];
   string name[64];
   u32 cir;
   u32 eir;

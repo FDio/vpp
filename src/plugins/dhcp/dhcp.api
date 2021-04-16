@@ -113,7 +113,7 @@ autoreply define dhcp_proxy_config
   u32 context;
   u32 rx_vrf_id;
   u32 server_vrf_id;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_address_t dhcp_server;
   vl_api_address_t dhcp_src_address;
 };
@@ -174,7 +174,7 @@ autoreply define dhcp_client_config
 {
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_dhcp_client_t client;
 };
 

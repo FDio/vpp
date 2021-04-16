@@ -73,7 +73,7 @@ autoreply define abf_policy_add_del
   option status="in_progress";
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_abf_policy_t policy;
 };
 
@@ -117,7 +117,7 @@ autoreply define abf_itf_attach_add_del
   option status="in_progress";
   u32 client_index;
   u32 context;
-  bool is_add;
+  bool is_add [default=true];
   vl_api_abf_itf_attach_t attach;
 };
 

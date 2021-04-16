@@ -163,7 +163,7 @@ define mpls_route_add_del
 {
   u32 client_index;
   u32 context;
-  bool mr_is_add;
+  bool mr_is_add [default=true];
   bool mr_is_multipath;
   vl_api_mpls_route_t mr_route;
 };

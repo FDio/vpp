@@ -200,7 +200,7 @@ autoreply define ikev2_profile_add_del
   u32 context;
 
   string name[64];
-  bool is_add;
+  bool is_add [default=true];
   option vat_help = "name <profile_name> [del]";
   option status="in_progress";
 };

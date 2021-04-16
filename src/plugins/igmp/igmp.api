@@ -94,7 +94,7 @@ autoreply define igmp_enable_disable
   u32 client_index;
   u32 context;
 
-  bool enable;
+  bool enable [default=true];
   u8 mode;
   vl_api_interface_index_t sw_if_index;
 };
@@ -106,7 +106,7 @@ autoreply define igmp_enable_disable
  *
  *   @param client_index - opaque cookie to identify the sender
  *   @param context - sender context, to match reply w/ request
- *   @param add - add (1) del (0)
+ *   @param add - add (true) del (false)
  *   @param vrf_id - VRF id
  *   @param sw_if_index - upstream interface sw index
  */
@@ -115,7 +115,7 @@ autoreply define igmp_proxy_device_add_del
   u32 client_index;
   u32 context;
 
-  u8 add;
+  bool add [default=true];
   u32 vrf_id;
   vl_api_interface_index_t sw_if_index;
 };
@@ -127,7 +127,7 @@ autoreply define igmp_proxy_device_add_del
  *
  *   @param client_index - opaque cookie to identify the sender
  *   @param context - sender context, to match reply w/ request
- *   @param add - add (1) del (0)
+ *   @param add - add (true) del (false)
  *   @param vrf_id - VRF id
  *   @param sw_if_index - downstream interface sw index
  */
@@ -136,7 +136,7 @@ autoreply define igmp_proxy_device_add_del_interface
   u32 client_index;
   u32 context;
 
-  bool add;
+  bool add [default=true];
   u32 vrf_id;
   vl_api_interface_index_t sw_if_index;
 };
