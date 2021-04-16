@@ -175,6 +175,15 @@ esp_async_recycle_failed_submit (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
   return (f->n_elts);
 }
 
+typedef struct
+{
+  u16 next_index;
+  u32 sad_index;
+  u32 seq;
+  u64 gcm_iv_counter;
+  u32 seq_hi;
+} esp_encrypt_packet_data_t;
+
 /**
  * The post data structure to for esp_encrypt/decrypt_inline to write to
  * vib_buffer_t opaque unused field, and for post nodes to pick up after
@@ -207,7 +216,7 @@ typedef struct
 
 typedef union
 {
-  u16 next_index;
+  esp_encrypt_packet_data_t encrypt_data;
   esp_decrypt_packet_data_t decrypt_data;
 } esp_post_data_t;
 
@@ -228,6 +237,23 @@ typedef struct
 
 extern esp_async_post_next_t esp_encrypt_async_next;
 extern esp_async_post_next_t esp_decrypt_async_next;
+
+typedef struct
+{
+  /* esp schedule post node index */
+  u16 esp4_distribute;
+  u16 esp6_distribute;
+  u16 esp4_aggregate;
+  u16 esp6_aggregate;
+  u16 esp_mpls_distribute;
+  u16 esp_mpls_aggregate;
+  u16 esp4_tun_distribute;
+  u16 esp6_tun_distribute;
+  u16 esp4_tun_aggregate;
+  u16 esp6_tun_aggregate;
+} esp_sched_post_next_t;
+
+extern esp_sched_post_next_t esp_encrypt_sched_next;
 
 #endif /* __ESP_H__ */
 
