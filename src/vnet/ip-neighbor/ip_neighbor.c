@@ -85,6 +85,26 @@ static ip_neighbor_db_t ip_neighbor_db[N_AF] = {
 #define IP_NEIGHBOR_INFO(...)                          \
     vlib_log_notice (ipn_logger, __VA_ARGS__);
 
+static ip_neighbor_t *
+ip_neighbor_db_find (const ip_neighbor_key_t * key)
+{
+  ip_address_family_t af;
+  uword *p;
+
+  af = ip_addr_version (&key->ipnk_ip);
+
+  if (key->ipnk_sw_if_index >= vec_len (ip_neighbor_db[af].ipndb_hash))
+    return NULL;
+
+  p = hash_get_mem (ip_neighbor_db[af].ipndb_hash
+		    [key->ipnk_sw_if_index], key);
+
+  if (p)
+    return ip_neighbor_get (p[0]);
+
+  return (NULL);
+}
+
 ip_neighbor_t *
 ip_neighbor_get (index_t ipni)
 {
@@ -124,9 +144,18 @@ ip_neighbor_get_af (const ip_neighbor_t * ipn)
   return (ip_addr_version (&ipn->ipn_key->ipnk_ip));
 }
 
+/*
+ * A caller sends input ipn with zero ipn_mac because
+ * the caller is trying to find the mac-addr in the ipn
+ * entry. So, first try to find the entry.
+*/
 const mac_address_t *
 ip_neighbor_get_mac (const ip_neighbor_t * ipn)
 {
+  ip_neighbor_t *db_ipn;
+  db_ipn = ip_neighbor_db_find (ipn->ipn_key);
+  if (db_ipn)
+      return (&db_ipn->ipn_mac);
   return (&ipn->ipn_mac);
 }
 
@@ -221,26 +250,6 @@ ip_neighbor_db_remove (const ip_neighbor_t * ipn)
   hash_unset_mem (ip_neighbor_db[af].ipndb_hash[sw_if_index], ipn->ipn_key);
 
   ip_neighbor_db[af].ipndb_n_elts--;
-}
-
-static ip_neighbor_t *
-ip_neighbor_db_find (const ip_neighbor_key_t * key)
-{
-  ip_address_family_t af;
-  uword *p;
-
-  af = ip_addr_version (&key->ipnk_ip);
-
-  if (key->ipnk_sw_if_index >= vec_len (ip_neighbor_db[af].ipndb_hash))
-    return NULL;
-
-  p = hash_get_mem (ip_neighbor_db[af].ipndb_hash
-		    [key->ipnk_sw_if_index], key);
-
-  if (p)
-    return ip_neighbor_get (p[0]);
-
-  return (NULL);
 }
 
 static u8
