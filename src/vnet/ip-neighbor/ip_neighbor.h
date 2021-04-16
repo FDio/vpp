@@ -28,6 +28,7 @@
  */
 
 extern ip_neighbor_t *ip_neighbor_get (index_t ipni);
+extern const mac_address_t *ip_neighbor_find_mac (const ip_neighbor_t * ipn);
 extern int ip_neighbor_add (const ip_address_t * ip,
 			    const mac_address_t * mac,
 			    u32 sw_if_index,
