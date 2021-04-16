@@ -472,11 +472,10 @@ VNET_FEATURE_INIT (mactime, static) =
 /* *INDENT-ON */
 
 /* *INDENT-OFF* */
-VNET_FEATURE_INIT (mactime_tx, static) =
-{
+VNET_FEATURE_INIT (mactime_tx, static) = {
   .arc_name = "interface-output",
   .node_name = "mactime-tx",
-  .runs_before = VNET_FEATURES ("interface-tx"),
+  .runs_before = VNET_FEATURES ("interface-output-arc-end"),
 };
 /* *INDENT-ON */
 

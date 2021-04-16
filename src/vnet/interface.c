@@ -554,6 +554,21 @@ vnet_sw_interface_admin_down (vnet_main_t * vnm, u32 sw_if_index)
     }
 }
 
+static void
+vnet_if_update_lookup_tables (vnet_main_t *vnm, u32 sw_if_index)
+{
+  vnet_interface_main_t *im = &vnm->interface_main;
+  vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+
+  vec_validate_init_empty (im->hw_if_index_by_sw_if_index, sw_if_index, ~0);
+  vec_validate_init_empty (im->if_out_arc_end_next_index_by_sw_if_index,
+			   sw_if_index, ~0);
+
+  im->hw_if_index_by_sw_if_index[sw_if_index] = hi->hw_if_index;
+  im->if_out_arc_end_next_index_by_sw_if_index[sw_if_index] =
+    hi->if_out_arc_end_node_next_index;
+}
+
 static u32
 vnet_create_sw_interface_no_callbacks (vnet_main_t * vnm,
 				       vnet_sw_interface_t * template)
@@ -595,6 +610,7 @@ vnet_create_sw_interface_no_callbacks (vnet_main_t * vnm,
     vnet_interface_counter_unlock (im);
   }
 
+  vnet_if_update_lookup_tables (vnm, sw_if_index);
   return sw_if_index;
 }
 
@@ -991,7 +1007,6 @@ vnet_register_interface (vnet_main_t * vnm,
       vlib_node_add_next_with_slot (vm, hw->output_node_index,
 				    hw->tx_node_index,
 				    VNET_INTERFACE_OUTPUT_NEXT_TX);
-
       /* add interface to the list of "output-interface" feature arc start nodes
          and clone nexts from 1st interface if it exists */
       fcm = vnet_feature_get_config_main (im->output_feature_arc_index);
@@ -1015,6 +1030,9 @@ vnet_register_interface (vnet_main_t * vnm,
 	}
     }
 
+  hw->if_out_arc_end_node_next_index = vlib_node_add_next (
+    vm, vnet_interface_output_arc_end_node.index, hw->tx_node_index);
+  vnet_if_update_lookup_tables (vnm, hw->sw_if_index);
   setup_output_node (vm, hw->output_node_index, hw_class);
   setup_tx_node (vm, hw->tx_node_index, dev_class);
 

@@ -603,17 +603,11 @@ typedef struct
 typedef struct vnet_hw_interface_t
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  /* Interface name. */
-  u8 *name;
-
   /* flags */
   vnet_hw_interface_flags_t flags;
 
   /* capabilities flags */
   vnet_hw_interface_capabilities_t caps;
-
-  /* link speed in kbps */
-  u32 link_speed;
 
   /* Hardware address as vector.  Zero (e.g. zero-length vector) if no
      address for this class (e.g. PPP). */
@@ -622,6 +616,9 @@ typedef struct vnet_hw_interface_t
   /* Interface is up as far as software is concerned. */
   /* NAME.{output,tx} nodes for this interface. */
   u32 output_node_index, tx_node_index;
+
+  /* interface-output-arc-end node next index for tx node */
+  u32 if_out_arc_end_node_next_index;
 
   /* (dev_class, dev_instance) uniquely identifies hw interface. */
   u32 dev_class_index;
@@ -638,6 +635,12 @@ typedef struct vnet_hw_interface_t
   u32 sw_if_index;
 
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+
+  /* Interface name. */
+  u8 *name;
+
+  /* link speed in kbps */
+  u32 link_speed;
 
   /* Next index in interface-output node for this interface
      used by node function vnet_per_buffer_interface_output() */
@@ -992,6 +995,10 @@ typedef struct
 
   /* feature_arc_index */
   u8 output_feature_arc_index;
+
+  /* fast lookup tables */
+  u32 *hw_if_index_by_sw_if_index;
+  u16 *if_out_arc_end_next_index_by_sw_if_index;
 } vnet_interface_main_t;
 
 static inline void
@@ -1037,6 +1044,7 @@ typedef struct
 int vnet_pcap_dispatch_trace_configure (vnet_pcap_dispatch_trace_args_t *);
 
 extern vlib_node_registration_t vnet_interface_output_node;
+extern vlib_node_registration_t vnet_interface_output_arc_end_node;
 
 #endif /* included_vnet_interface_h */
 

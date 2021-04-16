@@ -198,7 +198,7 @@ VNET_FEATURE_INIT (stats_collect_rx_node, static) = {
 VNET_FEATURE_INIT (stats_collect_tx_node, static) = {
   .arc_name = "interface-output",
   .node_name = "stats-collect-tx",
-  .runs_before = VNET_FEATURES ("interface-tx"),
+  .runs_before = VNET_FEATURES ("interface-output-arc-end"),
 };
 
 /* *INDENT-ON* */

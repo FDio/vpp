@@ -672,8 +672,8 @@ lisp_gpe_test_send_nsh_packet (u8 * file_name)
   clib_memcpy_fast (p, pm.packets_read[0], vec_len (pm.packets_read[0]));
   vlib_buffer_pull (b, sizeof (ethernet_header_t));
 
-  vlib_node_t *n = vlib_get_node_by_name (lgm->vlib_main,
-					  (u8 *) "interface-tx");
+  vlib_node_t *n =
+    vlib_get_node_by_name (lgm->vlib_main, (u8 *) "interface-output-arc-end");
   f = vlib_get_frame_to_node (lgm->vlib_main, n->index);
   u32 *to_next = vlib_frame_vector_args (f);
   to_next[0] = bi;

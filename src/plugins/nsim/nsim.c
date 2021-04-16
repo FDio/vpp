@@ -559,11 +559,10 @@ VNET_FEATURE_INIT (nsim, static) =
 /* *INDENT-ON */
 
 /* *INDENT-OFF* */
-VNET_FEATURE_INIT (nsim_feature, static) =
-{
+VNET_FEATURE_INIT (nsim_feature, static) = {
   .arc_name = "interface-output",
   .node_name = "nsim-output-feature",
-  .runs_before = VNET_FEATURES ("interface-tx"),
+  .runs_before = VNET_FEATURES ("interface-output-arc-end"),
 };
 /* *INDENT-ON */
 
