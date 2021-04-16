@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e67fd054_f8f38ee6",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 337,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-04-16T15:18:44Z",
+      "side": 1,
+      "message": "Don\u0027t set this to None.  Just set it to 0.",
+      "range": {
+        "startLine": 337,
+        "startChar": 23,
+        "endLine": 337,
+        "endChar": 27
+      },
+      "revId": "34649d05fc82cbd6dd277400775c3486c34b0287",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "98ac9e89_d4308126",
+        "filename": "test/framework.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 1539,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-04-16T15:18:44Z",
+      "side": 1,
+      "message": "Maybe you should extend the length of the output for the additional length or ellipsis long test titles to fit in the length.\nYour examples only show untypical title lengths.",
+      "range": {
+        "startLine": 1533,
+        "startChar": 0,
+        "endLine": 1539,
+        "endChar": 77
+      },
+      "revId": "34649d05fc82cbd6dd277400775c3486c34b0287",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
