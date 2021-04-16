@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "74ee8b0c_1582ed4e",
+        "filename": "src/vlibmemory/vlib_api.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-04-16T14:42:45Z",
+      "side": 1,
+      "message": "I support this.\nThis is movement the right direction. The default should be the name of the enum member, not the value.  It may require change to vppapigen.",
+      "range": {
+        "startLine": 74,
+        "startChar": 0,
+        "endLine": 74,
+        "endChar": 43
+      },
+      "revId": "03d7f0c30b916387163b108816d667efb4d78f71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "33d66732_1dd0bbe7",
+        "filename": "test/vpp_api_trace.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2021-04-16T14:42:45Z",
+      "side": 1,
+      "message": "This doesn\u0027t belong here.  It is either the default within vpp and belongs in the api definition (and thus discoverable from the client via the api), or it is a test implementation detail and belongs in the test itself.  In either case, it doesn\u0027t belong hard coded in the constructor.",
+      "range": {
+        "startLine": 7,
+        "startChar": 29,
+        "endLine": 7,
+        "endChar": 49
+      },
+      "revId": "03d7f0c30b916387163b108816d667efb4d78f71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
