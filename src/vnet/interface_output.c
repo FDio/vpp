@@ -1017,63 +1017,55 @@ VLIB_REGISTER_NODE (interface_punt) = {
 };
 /* *INDENT-ON* */
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vnet_per_buffer_interface_output_node) = {
   .name = "interface-output",
   .vector_size = sizeof (u32),
 };
-/* *INDENT-ON* */
 
-static uword
-interface_tx_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vlib_frame_t * from_frame)
+VLIB_NODE_FN (vnet_interface_output_arc_end_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  u32 last_sw_if_index = ~0;
-  vlib_frame_t *to_frame = 0;
-  vnet_hw_interface_t *hw = 0;
-  u32 *from, *to_next = 0;
-  u32 n_left_from;
+  vnet_interface_main_t *im = &vnm->interface_main;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
+  u32 *from, n_left;
+  u16 *lt = im->if_out_arc_end_next_index_by_sw_if_index;
 
-  from = vlib_frame_vector_args (from_frame);
-  n_left_from = from_frame->n_vectors;
-  while (n_left_from > 0)
+  from = vlib_frame_vector_args (frame);
+  n_left = frame->n_vectors;
+  vlib_get_buffers (vm, from, bufs, n_left);
+
+  while (n_left >= 8)
     {
-      u32 bi0;
-      vlib_buffer_t *b0;
-      u32 sw_if_index0;
+      vlib_prefetch_buffer_header (b[4], LOAD);
+      vlib_prefetch_buffer_header (b[5], LOAD);
+      vlib_prefetch_buffer_header (b[6], LOAD);
+      vlib_prefetch_buffer_header (b[7], LOAD);
+      next[0] = vec_elt (lt, vnet_buffer (b[0])->sw_if_index[VLIB_TX]);
+      next[1] = vec_elt (lt, vnet_buffer (b[1])->sw_if_index[VLIB_TX]);
+      next[2] = vec_elt (lt, vnet_buffer (b[2])->sw_if_index[VLIB_TX]);
+      next[3] = vec_elt (lt, vnet_buffer (b[3])->sw_if_index[VLIB_TX]);
 
-      bi0 = from[0];
-      from++;
-      n_left_from--;
-      b0 = vlib_get_buffer (vm, bi0);
-      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-
-      if (PREDICT_FALSE ((last_sw_if_index != sw_if_index0) || to_frame == 0))
-	{
-	  if (to_frame)
-	    {
-	      hw = vnet_get_sup_hw_interface (vnm, last_sw_if_index);
-	      vlib_put_frame_to_node (vm, hw->tx_node_index, to_frame);
-	    }
-	  last_sw_if_index = sw_if_index0;
-	  hw = vnet_get_sup_hw_interface (vnm, sw_if_index0);
-	  to_frame = vlib_get_frame_to_node (vm, hw->tx_node_index);
-	  to_next = vlib_frame_vector_args (to_frame);
-	}
-
-      to_next[0] = bi0;
-      to_next++;
-      to_frame->n_vectors++;
+      b += 4;
+      next += 4;
+      n_left -= 4;
     }
-  vlib_put_frame_to_node (vm, hw->tx_node_index, to_frame);
-  return from_frame->n_vectors;
+
+  while (n_left)
+    {
+      next[0] = vec_elt (lt, vnet_buffer (b[0])->sw_if_index[VLIB_TX]);
+      b++;
+      next++;
+      n_left--;
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+  return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (interface_tx) = {
-  .function = interface_tx_node_fn,
-  .name = "interface-tx",
+VLIB_REGISTER_NODE (vnet_interface_output_arc_end_node) = {
+  .name = "interface-output-arc-end",
   .vector_size = sizeof (u32),
   .n_next_nodes = 1,
   .next_nodes = {
@@ -1081,32 +1073,30 @@ VLIB_REGISTER_NODE (interface_tx) = {
   },
 };
 
-VNET_FEATURE_ARC_INIT (interface_output, static) =
-{
-  .arc_name  = "interface-output",
+VNET_FEATURE_ARC_INIT (interface_output, static) = {
+  .arc_name = "interface-output",
   .start_nodes = VNET_FEATURES (0),
-  .last_in_arc = "interface-tx",
+  .last_in_arc = "interface-output-arc-end",
   .arc_index_ptr = &vnet_main.interface_main.output_feature_arc_index,
 };
 
 VNET_FEATURE_INIT (span_tx, static) = {
   .arc_name = "interface-output",
   .node_name = "span-output",
-  .runs_before = VNET_FEATURES ("interface-tx"),
+  .runs_before = VNET_FEATURES ("interface-output-arc-end"),
 };
 
 VNET_FEATURE_INIT (ipsec_if_tx, static) = {
   .arc_name = "interface-output",
   .node_name = "ipsec-if-output",
-  .runs_before = VNET_FEATURES ("interface-tx"),
+  .runs_before = VNET_FEATURES ("interface-output-arc-end"),
 };
 
-VNET_FEATURE_INIT (interface_tx, static) = {
+VNET_FEATURE_INIT (interface_output_arc_end, static) = {
   .arc_name = "interface-output",
-  .node_name = "interface-tx",
+  .node_name = "interface-output-arc-end",
   .runs_before = 0,
 };
-/* *INDENT-ON* */
 
 #ifndef CLIB_MARCH_VARIANT
 clib_error_t *

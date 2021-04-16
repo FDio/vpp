@@ -60,11 +60,10 @@ VNET_FEATURE_INIT (flow_perpacket_ip6, static) =
   .runs_before = VNET_FEATURES ("interface-output"),
 };
 
-VNET_FEATURE_INIT (flow_perpacket_l2, static) =
-{
+VNET_FEATURE_INIT (flow_perpacket_l2, static) = {
   .arc_name = "interface-output",
   .node_name = "flowprobe-l2",
-  .runs_before = VNET_FEATURES ("interface-tx"),
+  .runs_before = VNET_FEATURES ("interface-output-arc-end"),
 };
 /* *INDENT-ON* */
 

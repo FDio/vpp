@@ -226,11 +226,10 @@ VNET_FEATURE_INIT (ct6out2in, static) =
 /* *INDENT-ON */
 
 /* *INDENT-OFF* */
-VNET_FEATURE_INIT (ct6in2out, static) =
-{
+VNET_FEATURE_INIT (ct6in2out, static) = {
   .arc_name = "interface-output",
   .node_name = "ct6-in2out",
-  .runs_before = VNET_FEATURES ("interface-tx"),
+  .runs_before = VNET_FEATURES ("interface-output-arc-end"),
 };
 /* *INDENT-ON */
 
