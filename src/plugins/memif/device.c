@@ -133,15 +133,127 @@ retry:
       free_slots = head - tail;
     }
 
+  memif_desc_t *d0 = &ring->desc[slot & mask];
+  last_region_shm = mif->regions[d0->region].shm;
+  last_region = d0->region;
+
   while (n_left && free_slots)
     {
-      memif_desc_t *d0;
-      void *mb0;
+      memif_desc_t *d0, *d1, *d2, *d3;
+      void *mb0, *mb1, *mb2, *mb3;
+      u32 bi0, bi1, bi2, bi3;
+      u32 src_left0, src_left1, src_left2, src_left3;
+      u32 or_flags;
       i32 src_off;
-      u32 bi0, dst_off, src_left, dst_left, bytes_to_copy;
-      u32 saved_ptd_copy_ops_len = _vec_len (ptd->copy_ops);
-      u32 saved_ptd_buffers_len = _vec_len (ptd->buffers);
-      u16 saved_slot = slot;
+      u32 dst_off, src_left, dst_left, bytes_to_copy;
+      u32 saved_ptd_copy_ops_len;
+      u32 saved_ptd_buffers_len;
+      u16 saved_slot;
+
+      if (n_left < 4 || free_slots < 4)
+	goto one_by_one;
+
+      CLIB_PREFETCH (&ring->desc[(slot + 4) & mask], CLIB_CACHE_LINE_BYTES,
+		     LOAD);
+
+      d0 = &ring->desc[slot & mask];
+      d1 = &ring->desc[(slot + 1) & mask];
+      d2 = &ring->desc[(slot + 2) & mask];
+      d3 = &ring->desc[(slot + 3) & mask];
+
+      or_flags = (last_region ^ d0->region) | (last_region ^ d1->region) |
+		 (last_region ^ d2->region) | (last_region ^ d3->region);
+      if (PREDICT_FALSE (or_flags))
+	goto one_by_one;
+
+      mb0 = last_region_shm + d0->offset;
+      mb1 = last_region_shm + d1->offset;
+      mb2 = last_region_shm + d2->offset;
+      mb3 = last_region_shm + d3->offset;
+
+      u32 dst_left0, dst_left1, dst_left2, dst_left3;
+
+      /* slave is the producer, so it should be able to reset buffer length */
+      if (type == MEMIF_RING_S2M)
+	{
+	  dst_left0 = dst_left1 = dst_left2 = dst_left3 = mif->run.buffer_size;
+	}
+      else
+	{
+	  dst_left0 = d0->length;
+	  dst_left1 = d1->length;
+	  dst_left2 = d2->length;
+	  dst_left3 = d3->length;
+	}
+
+      if (PREDICT_TRUE (n_left >= 8))
+	{
+	  vlib_prefetch_buffer_header (vlib_get_buffer (vm, buffers[4]), LOAD);
+	  vlib_prefetch_buffer_header (vlib_get_buffer (vm, buffers[5]), LOAD);
+	  vlib_prefetch_buffer_header (vlib_get_buffer (vm, buffers[6]), LOAD);
+	  vlib_prefetch_buffer_header (vlib_get_buffer (vm, buffers[7]), LOAD);
+	}
+
+      bi0 = buffers[0];
+      bi1 = buffers[1];
+      bi2 = buffers[2];
+      bi3 = buffers[3];
+
+      b0 = vlib_get_buffer (vm, bi0);
+      b1 = vlib_get_buffer (vm, bi1);
+      b2 = vlib_get_buffer (vm, bi2);
+      b3 = vlib_get_buffer (vm, bi3);
+
+      or_flags = b0->flags | b1->flags | b2->flags | b3->flags;
+      if (PREDICT_FALSE (or_flags & VLIB_BUFFER_NEXT_PRESENT))
+	goto one_by_one;
+
+      src_left0 = b0->current_length;
+      src_left1 = b1->current_length;
+      src_left2 = b2->current_length;
+      src_left3 = b3->current_length;
+
+      or_flags = (src_left0 > dst_left0) | (src_left1 > dst_left1) |
+		 (src_left2 > dst_left2) | (src_left3 > dst_left3);
+      if (PREDICT_FALSE (or_flags))
+	goto one_by_one;
+
+      memif_add_copy_op (ptd, mb0, src_left0, b0->current_data,
+			 vec_len (ptd->buffers));
+      vec_add1_aligned (ptd->buffers, bi0, CLIB_CACHE_LINE_BYTES);
+
+      memif_add_copy_op (ptd, mb1, src_left1, b1->current_data,
+			 vec_len (ptd->buffers));
+      vec_add1_aligned (ptd->buffers, bi1, CLIB_CACHE_LINE_BYTES);
+
+      memif_add_copy_op (ptd, mb2, src_left2, b2->current_data,
+			 vec_len (ptd->buffers));
+      vec_add1_aligned (ptd->buffers, bi2, CLIB_CACHE_LINE_BYTES);
+
+      memif_add_copy_op (ptd, mb3, src_left3, b3->current_data,
+			 vec_len (ptd->buffers));
+      vec_add1_aligned (ptd->buffers, bi3, CLIB_CACHE_LINE_BYTES);
+
+      d0->length = src_left0;
+      d0->flags = 0;
+      d1->length = src_left1;
+      d1->flags = 0;
+      d2->length = src_left2;
+      d2->flags = 0;
+      d3->length = src_left3;
+      d3->flags = 0;
+
+      free_slots -= 4;
+      slot += 4;
+
+      buffers += 4;
+      n_left -= 4;
+      continue;
+
+    one_by_one:
+      saved_ptd_copy_ops_len = _vec_len (ptd->copy_ops);
+      saved_ptd_buffers_len = _vec_len (ptd->buffers);
+      saved_slot = slot;
 
       CLIB_PREFETCH (&ring->desc[(slot + 8) & mask], CLIB_CACHE_LINE_BYTES,
 		     LOAD);
