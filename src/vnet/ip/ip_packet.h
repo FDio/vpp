@@ -192,7 +192,6 @@ ip_csum (void *data, u16 n_left)
 #ifdef CLIB_ARCH_IS_LITTLE_ENDIAN
       v1 = u16x16_byte_swap (v1);
 #endif
-      v1 = u16x16_byte_swap (u16x16_load_unaligned (data));
       sum8 += u32x8_from_u16x8 (u16x16_extract_lo (v1));
       sum8 += u32x8_from_u16x8 (u16x16_extract_hi (v1));
       n_left -= 16;
