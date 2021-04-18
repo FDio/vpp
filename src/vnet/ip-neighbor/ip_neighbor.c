@@ -149,23 +149,16 @@ ip_neighbor_get_mac (const ip_neighbor_t * ipn)
 {
   return (&ipn->ipn_mac);
 }
-/*
- * A caller sends input ipn with zero ipn_mac because
- * the caller is trying to find the mac-addr in the ipn
- * entry. Function returns error if a search by wildcard
- * over all interfaces is invoked.
-*/
-const mac_address_t *
-ip_neighbor_find_mac (const ip_neighbor_t * ipn)
+
+ip_neighbor_t  *
+ip_neighbor_find_entry (ip_neighbor_key_t *key)
 {
-  ip_neighbor_t *db_ipn;
+  ip_neighbor_t *db_ipn = NULL;
   // Do not search for wildcard sw_if_index.
-  if (ipn->ipn_key->ipnk_sw_if_index == 0xffffffff)
-    return &ZERO_MAC_ADDRESS;
-  db_ipn = ip_neighbor_db_find (ipn->ipn_key);
-  if (db_ipn)
-      return (&db_ipn->ipn_mac);
-  return (&ipn->ipn_mac);
+  if (key->ipnk_sw_if_index == 0xffffffff)
+    return NULL;
+  db_ipn = ip_neighbor_db_find (key);
+  return (db_ipn);
 }
 
 const u32
