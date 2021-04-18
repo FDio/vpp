@@ -102,17 +102,10 @@ _(format_time_interval);
 #ifdef CLIB_UNIX
 /* Unix specific formats. */
 _(format_address_family);
-_(format_unix_arphrd);
-_(format_unix_interface_flags);
 _(format_network_address);
 _(format_network_protocol);
 _(format_network_port);
 _(format_sockaddr);
-_(format_ip4_tos_byte);
-_(format_ip4_packet);
-_(format_icmp4_type_and_code);
-_(format_ethernet_packet);
-_(format_hostname);
 _(format_timeval);
 _(format_time_float);
 _(format_signal);
