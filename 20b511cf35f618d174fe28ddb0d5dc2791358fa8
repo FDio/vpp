@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ae8dbff5_e6638e80",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 1698
+      },
+      "writtenOn": "2021-04-19T13:04:31Z",
+      "side": 1,
+      "message": "Just, this fails if no args are passed...",
+      "revId": "20b511cf35f618d174fe28ddb0d5dc2791358fa8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
