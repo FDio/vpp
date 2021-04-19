@@ -77,6 +77,12 @@ bio_tls_read (BIO * b, char *out, int outl)
       return -1;
     }
 
+  if (svm_fifo_needs_deq_ntf (s->rx_fifo, rv))
+    {
+      svm_fifo_clear_deq_ntf (s->rx_fifo);
+      session_send_io_evt_to_thread (s->rx_fifo, SESSION_IO_EVT_RX);
+    }
+
   if (svm_fifo_is_empty_cons (s->rx_fifo))
     svm_fifo_unset_event (s->rx_fifo);
 
