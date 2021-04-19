@@ -166,33 +166,6 @@ sort_registrations_by_no_clone (void *a0, void *a1)
 	  - ((i32) ((*tr1)->no_data_structure_clone)));
 }
 
-static uword *
-clib_sysfs_list_to_bitmap (char *filename)
-{
-  FILE *fp;
-  uword *r = 0;
-
-  fp = fopen (filename, "r");
-
-  if (fp != NULL)
-    {
-      u8 *buffer = 0;
-      vec_validate (buffer, 256 - 1);
-      if (fgets ((char *) buffer, 256, fp))
-	{
-	  unformat_input_t in;
-	  unformat_init_string (&in, (char *) buffer,
-				strlen ((char *) buffer));
-	  if (unformat (&in, "%U", unformat_bitmap_list, &r) != 1)
-	    clib_warning ("unformat_bitmap_list failed");
-	  unformat_free (&in);
-	}
-      vec_free (buffer);
-      fclose (fp);
-    }
-  return r;
-}
-
 
 /* Called early in the init sequence */
 
