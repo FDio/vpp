@@ -1377,36 +1377,6 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_EARLY_CONFIG_FUNCTION (cpu_config, "cpu");
 
-void vnet_main_fixup (vlib_fork_fixup_t which) __attribute__ ((weak));
-void
-vnet_main_fixup (vlib_fork_fixup_t which)
-{
-}
-
-void
-vlib_worker_thread_fork_fixup (vlib_fork_fixup_t which)
-{
-  vlib_global_main_t *vgm = vlib_get_global_main ();
-  vlib_main_t *vm = vlib_get_main ();
-
-  if (vgm->vlib_mains == 0)
-    return;
-
-  ASSERT (vlib_get_thread_index () == 0);
-  vlib_worker_thread_barrier_sync (vm);
-
-  switch (which)
-    {
-    case VLIB_WORKER_THREAD_FORK_FIXUP_NEW_SW_IF_INDEX:
-      vnet_main_fixup (VLIB_WORKER_THREAD_FORK_FIXUP_NEW_SW_IF_INDEX);
-      break;
-
-    default:
-      ASSERT (0);
-    }
-  vlib_worker_thread_barrier_release (vm);
-}
-
   /*
    * Enforce minimum open time to minimize packet loss due to Rx overflow,
    * based on a test based heuristic that barrier should be open for at least

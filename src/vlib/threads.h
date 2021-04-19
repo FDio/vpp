@@ -229,14 +229,6 @@ vlib_smp_unsafe_warning (void)
     }
 }
 
-typedef enum
-{
-  VLIB_WORKER_THREAD_FORK_FIXUP_ILLEGAL = 0,
-  VLIB_WORKER_THREAD_FORK_FIXUP_NEW_SW_IF_INDEX,
-} vlib_fork_fixup_t;
-
-void vlib_worker_thread_fork_fixup (vlib_fork_fixup_t which);
-
 always_inline int
 __foreach_vlib_main_helper (vlib_main_t *ii, vlib_main_t **p)
 {
