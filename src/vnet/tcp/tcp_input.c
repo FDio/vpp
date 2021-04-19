@@ -1176,9 +1176,11 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
       /* We've written something but FIFO is probably full now */
       tc->rcv_nxt += written;
       error = TCP_ERROR_PARTIALLY_ENQUEUED;
+      transport_rx_fifo_req_app_ntf (&tc->connection);
     }
   else
     {
+      transport_rx_fifo_req_app_ntf (&tc->connection);
       /* Packet made it through for ack processing */
       if (tc->rcv_wnd < tc->snd_mss)
 	return TCP_ERROR_ZERO_RWND;
