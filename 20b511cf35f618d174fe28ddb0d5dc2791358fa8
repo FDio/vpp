@@ -16,6 +16,24 @@
       "revId": "20b511cf35f618d174fe28ddb0d5dc2791358fa8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2e50b627_e4b7e9c2",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 1360
+      },
+      "writtenOn": "2021-04-19T13:13:36Z",
+      "side": 1,
+      "message": "A test log I forgot to remove :(",
+      "parentUuid": "ae8dbff5_e6638e80",
+      "revId": "20b511cf35f618d174fe28ddb0d5dc2791358fa8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
