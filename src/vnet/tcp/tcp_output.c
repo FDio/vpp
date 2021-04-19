@@ -2044,6 +2044,7 @@ tcp_session_custom_tx (void *conn, transport_send_params_t * sp)
 
   return n_segs;
 }
+
 #endif /* CLIB_MARCH_VARIANT */
 
 static void
