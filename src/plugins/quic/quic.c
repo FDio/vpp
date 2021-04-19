@@ -652,6 +652,9 @@ quic_send_datagram (session_t *udp_session, struct iovec *packet,
   svm_fifo_t *f;
   transport_connection_t *tc;
 
+  /* DAW: DO NOT COMMIT - test code to generate core dumps */
+  packet = 0;
+
   len = packet->iov_len;
   f = udp_session->tx_fifo;
   tc = session_get_transport (udp_session);
