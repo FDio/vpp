@@ -32,11 +32,9 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#if WITH_LIBSSL > 0
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_tun.h>
 #include <vnet/ipsec/ipsec_itf.h>
-#endif /* IPSEC */
 
 #define vl_typedefs		/* define message structures */
 #include <vnet/vnet_all_api_h.h>
@@ -80,10 +78,6 @@
 static void
 vl_api_ipsec_spd_add_del_t_handler (vl_api_ipsec_spd_add_del_t * mp)
 {
-#if WITH_LIBSSL == 0
-  clib_warning ("unimplemented");
-#else
-
   vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
   vl_api_ipsec_spd_add_del_reply_t *rmp;
   int rv;
@@ -91,7 +85,6 @@ vl_api_ipsec_spd_add_del_t_handler (vl_api_ipsec_spd_add_del_t * mp)
   rv = ipsec_add_del_spd (vm, ntohl (mp->spd_id), mp->is_add);
 
   REPLY_MACRO (VL_API_IPSEC_SPD_ADD_DEL_REPLY);
-#endif
 }
 
 static void vl_api_ipsec_interface_add_del_spd_t_handler
@@ -108,11 +101,7 @@ static void vl_api_ipsec_interface_add_del_spd_t_handler
 
   VALIDATE_SW_IF_INDEX (mp);
 
-#if WITH_LIBSSL > 0
   rv = ipsec_set_interface_spd (vm, sw_if_index, spd_id, mp->is_add);
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -132,8 +121,6 @@ static void vl_api_ipsec_tunnel_protect_update_t_handler
 
   VALIDATE_SW_IF_INDEX (&(mp->tunnel));
 
-#if WITH_LIBSSL > 0
-
   for (ii = 0; ii < mp->tunnel.n_sa_in; ii++)
     vec_add1 (sa_ins, ntohl (mp->tunnel.sa_in[ii]));
 
@@ -141,9 +128,6 @@ static void vl_api_ipsec_tunnel_protect_update_t_handler
 
   rv = ipsec_tun_protect_update (sw_if_index, &nh,
 				 ntohl (mp->tunnel.sa_out), sa_ins);
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -163,12 +147,8 @@ static void vl_api_ipsec_tunnel_protect_del_t_handler
 
   VALIDATE_SW_IF_INDEX (mp);
 
-#if WITH_LIBSSL > 0
   ip_address_decode2 (&mp->nh, &nh);
   rv = ipsec_tun_protect_del (sw_if_index, &nh);
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -222,7 +202,6 @@ vl_api_ipsec_tunnel_protect_dump_t_handler (vl_api_ipsec_tunnel_protect_dump_t
   vl_api_registration_t *reg;
   u32 sw_if_index;
 
-#if WITH_LIBSSL > 0
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
@@ -243,9 +222,6 @@ vl_api_ipsec_tunnel_protect_dump_t_handler (vl_api_ipsec_tunnel_protect_dump_t
       ipsec_tun_protect_walk_itf (sw_if_index,
 				  send_ipsec_tunnel_protect_details, &ctx);
     }
-#else
-  clib_warning ("unimplemented");
-#endif
 }
 
 static int
@@ -276,7 +252,6 @@ static void vl_api_ipsec_spd_entry_add_del_t_handler
 
   stat_index = ~0;
 
-#if WITH_LIBSSL > 0
   ipsec_policy_t p;
 
   clib_memset (&p, 0, sizeof (p));
@@ -320,11 +295,6 @@ static void vl_api_ipsec_spd_entry_add_del_t_handler
   if (rv)
     goto out;
 
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-  goto out;
-#endif
-
 out:
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_IPSEC_SPD_ENTRY_ADD_DEL_REPLY,
@@ -353,8 +323,6 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
     .t_hop_limit = 255,
   };
   int rv;
-
-#if WITH_LIBSSL > 0
 
   id = ntohl (mp->entry.sad_id);
   spi = ntohl (mp->entry.spi);
@@ -390,10 +358,6 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
   else
     rv = ipsec_sa_unlock_id (id);
 
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
 out:
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_IPSEC_SAD_ENTRY_ADD_DEL_REPLY,
@@ -423,8 +387,6 @@ static void vl_api_ipsec_sad_entry_add_del_v2_t_handler
     .t_table_id = htonl (mp->entry.tx_table_id),
     .t_hop_limit = 255,
   };
-
-#if WITH_LIBSSL > 0
 
   id = ntohl (mp->entry.sad_id);
   spi = ntohl (mp->entry.spi);
@@ -467,10 +429,6 @@ static void vl_api_ipsec_sad_entry_add_del_v2_t_handler
   else
     rv = ipsec_sa_unlock_id (id);
 
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
 out:
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_IPSEC_SAD_ENTRY_ADD_DEL_V2_REPLY,
@@ -493,8 +451,6 @@ vl_api_ipsec_sad_entry_add_del_v3_t_handler (
   u32 id, spi, sa_index = ~0;
   tunnel_t tun;
   int rv;
-
-#if WITH_LIBSSL > 0
 
   id = ntohl (mp->entry.sad_id);
   spi = ntohl (mp->entry.spi);
@@ -535,10 +491,6 @@ vl_api_ipsec_sad_entry_add_del_v3_t_handler (
   else
     rv = ipsec_sa_unlock_id (id);
 
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
 out:
   REPLY_MACRO2 (VL_API_IPSEC_SAD_ENTRY_ADD_DEL_V3_REPLY,
 		{ rmp->stat_index = htonl (sa_index); });
@@ -571,19 +523,14 @@ vl_api_ipsec_spds_dump_t_handler (vl_api_ipsec_spds_dump_t * mp)
   vl_api_registration_t *reg;
   ipsec_main_t *im = &ipsec_main;
   ipsec_spd_t *spd;
-#if WITH_LIBSSL > 0
+
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
 
-  /* *INDENT-OFF* */
   pool_foreach (spd, im->spds)  {
     send_ipsec_spds_details (spd, reg, mp->context);
   }
-  /* *INDENT-ON* */
-#else
-  clib_warning ("unimplemented");
-#endif
 }
 
 vl_api_ipsec_spd_action_t
@@ -647,7 +594,7 @@ vl_api_ipsec_spd_dump_t_handler (vl_api_ipsec_spd_dump_t * mp)
   ipsec_spd_t *spd;
   uword *p;
   u32 spd_index, *ii;
-#if WITH_LIBSSL > 0
+
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
@@ -659,7 +606,6 @@ vl_api_ipsec_spd_dump_t_handler (vl_api_ipsec_spd_dump_t * mp)
   spd_index = p[0];
   spd = pool_elt_at_index (im->spds, spd_index);
 
-  /* *INDENT-OFF* */
   FOR_EACH_IPSEC_SPD_POLICY_TYPE(ptype) {
     vec_foreach(ii, spd->policies[ptype])
       {
@@ -669,10 +615,6 @@ vl_api_ipsec_spd_dump_t_handler (vl_api_ipsec_spd_dump_t * mp)
           send_ipsec_spd_details (policy, reg, mp->context);
       }
   }
-  /* *INDENT-ON* */
-#else
-  clib_warning ("unimplemented");
-#endif
 }
 
 static void
@@ -700,7 +642,6 @@ vl_api_ipsec_spd_interface_dump_t_handler (vl_api_ipsec_spd_interface_dump_t *
   vl_api_registration_t *reg;
   u32 k, v, spd_index;
 
-#if WITH_LIBSSL > 0
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
@@ -717,16 +658,10 @@ vl_api_ipsec_spd_interface_dump_t_handler (vl_api_ipsec_spd_interface_dump_t *
     }
   else
     {
-      /* *INDENT-OFF* */
       hash_foreach(k, v, im->spd_index_by_sw_if_index, ({
         send_ipsec_spd_interface_details(reg, v, k, mp->context);
       }));
-      /* *INDENT-ON* */
     }
-
-#else
-  clib_warning ("unimplemented");
-#endif
 }
 
 static void
@@ -786,7 +721,7 @@ ipsec_sa_dump_match_sa (index_t itpi, void *arg)
       ctx->sw_if_index = itp->itp_sw_if_index;
       return (WALK_STOP);
     }
-  /* *INDENT-OFF* */
+
   FOR_EACH_IPSEC_PROTECT_INPUT_SAI (itp, sai,
   ({
     if (sai == ctx->sai)
@@ -795,7 +730,6 @@ ipsec_sa_dump_match_sa (index_t itpi, void *arg)
         return (WALK_STOP);
       }
   }));
-  /* *INDENT-OFF* */
 
   return (WALK_CONTINUE);
 }
@@ -871,7 +805,6 @@ vl_api_ipsec_sa_dump_t_handler (vl_api_ipsec_sa_dump_t * mp)
 {
   vl_api_registration_t *reg;
 
-#if WITH_LIBSSL > 0
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
@@ -882,10 +815,6 @@ vl_api_ipsec_sa_dump_t_handler (vl_api_ipsec_sa_dump_t * mp)
   };
 
   ipsec_sa_walk (send_ipsec_sa_details, &ctx);
-
-#else
-  clib_warning ("unimplemented");
-#endif
 }
 
 static walk_rc_t
@@ -963,7 +892,6 @@ vl_api_ipsec_sa_v2_dump_t_handler (vl_api_ipsec_sa_v2_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
-#if WITH_LIBSSL > 0
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
@@ -974,10 +902,6 @@ vl_api_ipsec_sa_v2_dump_t_handler (vl_api_ipsec_sa_v2_dump_t *mp)
   };
 
   ipsec_sa_walk (send_ipsec_sa_v2_details, &ctx);
-
-#else
-  clib_warning ("unimplemented");
-#endif
 }
 
 static walk_rc_t
@@ -1048,7 +972,6 @@ vl_api_ipsec_sa_v3_dump_t_handler (vl_api_ipsec_sa_v3_dump_t *mp)
 {
   vl_api_registration_t *reg;
 
-#if WITH_LIBSSL > 0
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     return;
@@ -1059,10 +982,6 @@ vl_api_ipsec_sa_v3_dump_t_handler (vl_api_ipsec_sa_v3_dump_t *mp)
   };
 
   ipsec_sa_walk (send_ipsec_sa_v3_details, &ctx);
-
-#else
-  clib_warning ("unimplemented");
-#endif
 }
 
 static void
@@ -1128,7 +1047,6 @@ vl_api_ipsec_select_backend_t_handler (vl_api_ipsec_select_backend_t * mp)
   if (rv)
     goto done;
 
-#if WITH_LIBSSL > 0
   switch (protocol)
     {
     case IPSEC_PROTOCOL_ESP:
@@ -1141,9 +1059,6 @@ vl_api_ipsec_select_backend_t_handler (vl_api_ipsec_select_backend_t * mp)
       rv = VNET_API_ERROR_INVALID_PROTOCOL;
       break;
     }
-#else
-  clib_warning ("unimplemented");	/* FIXME */
-#endif
 done:
   REPLY_MACRO (VL_API_IPSEC_SELECT_BACKEND_REPLY);
 }

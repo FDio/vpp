@@ -22,8 +22,6 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec_io.h>
 
-#if WITH_LIBSSL > 0
-
 #define foreach_ipsec_output_error                   \
  _(RX_PKTS, "IPSec pkts received")                   \
  _(POLICY_DISCARD, "IPSec policy discard")           \
@@ -458,7 +456,6 @@ VLIB_NODE_FN (ipsec6_output_node) (vlib_main_t * vm,
   return ipsec_output_inline (vm, node, frame, 1);
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec6_output_node) = {
   .name = "ipsec6-output-feature",
   .vector_size = sizeof (u32),
@@ -475,38 +472,4 @@ VLIB_REGISTER_NODE (ipsec6_output_node) = {
 #undef _
   },
 };
-/* *INDENT-ON* */
 
-#else /* IPSEC > 1 */
-
-/* Dummy ipsec output node, in case when IPSec is disabled */
-
-static uword
-ipsec_output_node_fn (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ipsec4_output_node) = {
-  .vector_size = sizeof (u32),
-  .function = ipsec_output_node_fn,
-  .name = "ipsec4-output-feature",
-};
-
-VLIB_REGISTER_NODE (ipsec6_output_node) = {
-  .vector_size = sizeof (u32),
-  .function = ipsec_output_node_fn,
-  .name = "ipsec6-output-feature",
-};
-/* *INDENT-ON* */
-#endif
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
