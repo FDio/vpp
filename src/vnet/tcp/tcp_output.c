@@ -463,7 +463,10 @@ tcp_make_ack_i (tcp_connection_t * tc, vlib_buffer_t * b, tcp_state_t state,
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
 
   if (wnd == 0)
-    tcp_zero_rwnd_sent_on (tc);
+    {
+      transport_rx_fifo_req_deq_ntf (&tc->connection);
+      tcp_zero_rwnd_sent_on (tc);
+    }
   else
     tcp_zero_rwnd_sent_off (tc);
 }
