@@ -1272,6 +1272,27 @@ tcp_session_flush_data (transport_connection_t * tconn)
   tc->psh_seq = tc->snd_una + transport_max_tx_dequeue (tconn) - 1;
 }
 
+static int
+tcp_session_app_rx_evt (transport_connection_t *conn)
+{
+  tcp_connection_t *tc = (tcp_connection_t *) conn;
+  u32 min_free, lo = 4 << 10, hi = 128 << 10;
+
+  if (!(tc->flags & TCP_CONN_ZERO_RWND_SENT))
+    return 0;
+
+  min_free = clib_clamp (transport_rx_fifo_size (conn) >> 3, lo, hi);
+  if (transport_max_rx_enqueue (conn) < min_free)
+    {
+      transport_rx_fifo_req_deq_ntf (conn);
+      return 0;
+    }
+
+  tcp_send_ack (tc);
+
+  return 0;
+}
+
 /* *INDENT-OFF* */
 const static transport_proto_vft_t tcp_proto = {
   .enable = vnet_tcp_enable_disable,
@@ -1291,6 +1312,7 @@ const static transport_proto_vft_t tcp_proto = {
   .update_time = tcp_update_time,
   .flush_data = tcp_session_flush_data,
   .custom_tx = tcp_session_custom_tx,
+  .app_rx_evt = tcp_session_app_rx_evt,
   .format_connection = format_tcp_session,
   .format_listener = format_tcp_listener_session,
   .format_half_open = format_tcp_half_open_session,
