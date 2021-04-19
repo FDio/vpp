@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "4500da85_f3a375ce",
+        "filename": "src/vlibmemory/vlib_api.api",
+        "patchSetId": 7
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2021-04-19T06:53:04Z",
+      "side": 1,
+      "message": "Indeed it would be nice to have enum names in api defaults, but providing this functionality is beyond the scope of this patch.",
+      "parentUuid": "74ee8b0c_1582ed4e",
+      "range": {
+        "startLine": 74,
+        "startChar": 0,
+        "endLine": 74,
+        "endChar": 43
+      },
+      "revId": "03d7f0c30b916387163b108816d667efb4d78f71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "33d66732_1dd0bbe7",
         "filename": "test/vpp_api_trace.py",
         "patchSetId": 7
