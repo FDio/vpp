@@ -1974,7 +1974,7 @@ VLIB_CLI_COMMAND (nat44_show_interface_address_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (nat44_show_sessions_command, static) = {
   .path = "show nat44 sessions",
-  .short_help = "show nat44 sessions [detail|metrics]",
+  .short_help = "show nat44 sessions",
   .function = nat44_show_sessions_command_fn,
 };
 
