@@ -259,6 +259,13 @@ typedef struct transport_endpt_attr_
   };
 } transport_endpt_attr_t;
 
+typedef struct transport_endpt_ext_cfg_
+{
+  u16 type;
+  u16 len;
+  u8 data[0];
+} transport_endpt_ext_cfg_t;
+
 typedef clib_bihash_24_8_t transport_endpoint_table_t;
 
 #define ENDPOINT_INVALID_INDEX ((u32)~0)
