@@ -63,12 +63,13 @@ format_nat44_ed_out2in_trace (u8 * s, va_list * args)
     t->is_slow_path ? "NAT44_OUT2IN_ED_SLOW_PATH" :
     "NAT44_OUT2IN_ED_FAST_PATH";
 
-  s = format (s, "%s: sw_if_index %d, next index %d, session %d", tag,
-	      t->sw_if_index, t->next_index, t->session_index);
+  s = format (s, "%s: sw_if_index %d, next index %d", tag, t->sw_if_index,
+	      t->next_index);
   if (~0 != t->session_index)
     {
-      s = format (s, ", translation result '%U' via %s",
-		  format_nat_ed_translation_error, t->translation_error,
+      s = format (s, ", session %d, translation result '%U' via %s",
+		  t->session_index, format_nat_ed_translation_error,
+		  t->translation_error,
 		  t->translation_via_i2of ? "i2of" : "o2if");
       s = format (s, "\n  i2of %U", format_nat_6t_flow, &t->i2of);
       s = format (s, "\n  o2if %U", format_nat_6t_flow, &t->o2if);
