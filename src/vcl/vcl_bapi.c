@@ -127,6 +127,7 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
 			     mp->vpp_ctrl_mq, mp->vpp_ctrl_mq_thread,
 			     &wrk->ctrl_mq);
       vcm->ctrl_mq = wrk->ctrl_mq;
+      vcm->ctrl_mq_slice_index = mp->vpp_ctrl_mq_thread;
 
       vec_free (fds);
     }

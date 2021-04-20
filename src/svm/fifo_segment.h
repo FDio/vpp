@@ -329,6 +329,14 @@ svm_fifo_t *fifo_segment_get_slice_fifo_list (fifo_segment_t * fs,
 					      u32 slice_index);
 u32 fifo_segment_num_fifos (fifo_segment_t * fs);
 u32 fifo_segment_num_free_fifos (fifo_segment_t * fs);
+
+svm_fifo_chunk_t * fifo_segment_alloc_chunk_w_slice (fifo_segment_t * fs,
+                                                     u32 slice_index,
+                                                     u32 chunk_size);
+void fifo_segment_collect_chunk (fifo_segment_t *fs, u32 slice_index,
+                                 svm_fifo_chunk_t *c);
+uword fifo_segment_chunk_offset (fifo_segment_t *fs, svm_fifo_chunk_t *c);
+
 /**
  * Find number of free chunks of given size
  *

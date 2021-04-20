@@ -213,7 +213,22 @@ vcl_send_session_connect (vcl_worker_t * wrk, vcl_session_t * s)
   mp->vrf = s->vrf;
   if (s->flags & VCL_SESSION_F_CONNECTED)
     mp->flags |= TRANSPORT_CFG_F_CONNECTED;
+  if (s->ext_config)
+    {
+      svm_fifo_chunk_t *c;
+
+      c = vcl_segment_alloc (vcl_vpp_worker_segment_handle (0),
+                             vcm->ctrl_mq_slice_index,
+                             s->ext_config_len,
+                             &mp->ext_config);
+      if (c)
+	clib_memcpy_fast (c->data, s->ext_config,
+	                  s->ext_config_len);
+    }
   app_send_ctrl_evt_to_vpp (mq, app_evt);
+
+  if (s->ext_config)
+    clib_mem_free (s->ext_config);
 }
 
 void

@@ -135,12 +135,29 @@ session_mq_connect_handler (void *data)
   a->app_index = app->app_index;
   a->wrk_map_index = mp->wrk_index;
 
+  if (mp->ext_config)
+    {
+      u32 ctrl_thread = vlib_num_workers () ? 1 : 0;
+      svm_fifo_chunk_t *c;
+      fifo_segment_t *fs;
+
+      fs = application_get_rx_mqs_segment (app);
+      a->ext_config = clib_mem_alloc (mp->ext_config_len);
+      c = fs_chunk_ptr (fs->h, mp->ext_config);
+      clib_memcpy_fast (a->ext_config, c->data, mp->ext_config_len);
+      a->ext_config_len = mp->ext_config_len;
+      fifo_segment_collect_chunk (fs, ctrl_thread, a->ext_config);
+    }
+
   if ((rv = vnet_connect (a)))
     {
       clib_warning ("connect returned: %U", format_session_error, rv);
       app_wrk = application_get_worker (app, mp->wrk_index);
       mq_send_session_connected_cb (app_wrk->wrk_index, mp->context, 0, rv);
     }
+
+  if (a->ext_config)
+    clib_mem_free (a->ext_config);
 
   vec_free (a->sep_ext.hostname);
 }

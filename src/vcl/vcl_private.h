@@ -166,6 +166,9 @@ typedef struct vcl_session_
   u32 sndbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_SNDBUF)
   u32 rcvbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_RCVBUF)
 
+  void *ext_config;
+  u32 ext_config_len;
+
 #if VCL_ELOG
   elog_track_t elog_track;
 #endif
@@ -340,6 +343,8 @@ typedef struct vppcom_main_t_
 
   /** Control mq obtained from attach */
   svm_msg_q_t *ctrl_mq;
+
+  u32 ctrl_mq_slice_index;
 
   fifo_segment_main_t segment_main;
 
@@ -709,6 +714,8 @@ int vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
 int vcl_segment_attach_mq (uword segment_handle, uword mq_offset, u32 mq_index,
 			   svm_msg_q_t **mq);
 int vcl_segment_discover_mqs (uword segment_handle, int *fds, u32 n_fds);
+svm_fifo_chunk_t *vcl_segment_alloc (uword segment_handle, u32 slice_index,
+                                     u32 size, uword *offset);
 
 /*
  * VCL Binary API
