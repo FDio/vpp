@@ -20,6 +20,7 @@ The Developers section covers the following areas:
 
    building
    running_vpp
+   testing_vpp
    gdb_examples
    add_plugin
    add_plugin_goapi

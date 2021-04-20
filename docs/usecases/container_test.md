@@ -64,9 +64,9 @@ Create three network segments
 Aka, linux bridges.
 
 ```
-    # lxc network create dora
+    # lxc network create respond
     # lxc network create internet
-    # lxc network create swan
+    # lxc network create initiate
 ```
 
 We'll explain the test topology in a bit. Stay tuned.
@@ -95,12 +95,12 @@ containers, run vpp without installing it, etc.
       eth2:
         name: eth2
         nictype: bridged
-        parent: dora
+        parent: respond
         type: nic
       eth3:
         name: eth3
         nictype: bridged
-        parent: swan
+        parent: initiate
         type: nic
       root:
         path: /
@@ -142,10 +142,10 @@ and host configuration:
     - none
 ```
 
-Repeat the process with the "dora" and "swan" networks, using these
+Repeat the process with the "respond" and "initiate" networks, using these
 configurations:
 
-### dora network configuration
+### respond network configuration
 
 ```
     config:
@@ -155,7 +155,7 @@ configurations:
       ipv6.address: none
       ipv6.nat: "false"
     description: ""
-    name: dora
+    name: respond
     type: bridge
     used_by:
     managed: true
@@ -163,7 +163,7 @@ configurations:
     locations:
     - none
 ```
-### swan network configuration
+### initiate network configuration
 
 ```
     config:
@@ -173,7 +173,7 @@ configurations:
       ipv6.address: none
       ipv6.nat: "false"
     description: ""
-    name: swan
+    name: initiate
     type: bridge
     used_by:
     managed: true
@@ -191,14 +191,14 @@ build vpp, ssh into the container, edit source code, run gdb, etc.
 Make sure that e.g. public key auth ssh works.
 
 ```
-    # lxd launch ubuntu:18.04 dora
+    # lxd launch ubuntu:18.04 respond
     <spew>
-    # lxc exec dora bash
-    dora# cd /scratch/my-vpp-workspace
-    dora# apt-get install make ssh
-    dora# make install-dep
-    dora# exit
-    # lxc stop dora
+    # lxc exec respond bash
+    respond# cd /scratch/my-vpp-workspace
+    respond# apt-get install make ssh
+    respond# make install-dep
+    respond# exit
+    # lxc stop respond
 ```
 
 Mark the container image privileged. If you forget this step, you'll
@@ -206,7 +206,7 @@ trip over a netlink error (-11) aka EAGAIN when you try to roll in the
 vpp configurations.
 
 ```
-    # lxc config set dora security.privileged "true"
+    # lxc config set respond security.privileged "true"
 ```
 
 Duplicate the "master" container image
@@ -216,10 +216,10 @@ To avoid having to configure N containers, be sure that the master
 container image is fully set up before you help it have children:
 
 ```
-    # lxc copy dora dorahost
-    # lxc copy dora swan
-    # lxc copy dora swanhost
-    # lxc copy dora dhcpserver    # optional, to test ipv6 prefix delegation
+    # lxc copy respond respondhost
+    # lxc copy respond initiate
+    # lxc copy respond initiatehost
+    # lxc copy respond dhcpserver    # optional, to test ipv6 prefix delegation
 ```
 
 Install handy script
@@ -250,7 +250,7 @@ Here's the script:
     #!/bin/bash
 
     set -u
-    export containers="dora dorahost swan swanhost dhcpserver"
+    export containers="respond respondhost initiate initiatehost dhcpserver"
 
     if [ x$1 = "x" ] ; then
         echo missing command
@@ -292,16 +292,16 @@ Finally, we're ready to describe a test topology. First, a picture:
        v                             |                          v
       eth0                           |                         eth0
     +------+ eth1                                       eth1 +------+
-    | dora | 10.26.88.100 <= internet bridge => 10.26.88.101 | swan |
+    | respond | 10.26.88.100 <= internet bridge => 10.26.88.101 | initiate |
     +------+                                                 +------+
       eth2 / bvi0 10.166.14.2        |       10.219.188.2 eth3 / bvi0
        |                             |                          |
-       | ("dora" bridge)             |          ("swan" bridge) |
+       | ("respond" bridge)             |          ("initiate" bridge) |
        |                             |                          |
        v                             |                          v
       eth2 10.166.14.3               |           eth3 10.219.188.3
     +----------+                     |                   +----------+
-    | dorahost |                     |                   | dorahost |
+    | respondhost |                     |                   | respondhost |
     +----------+                     |                   +----------+
       eth0 (management lan) <========+========> eth0 (management lan)
 ```
@@ -309,14 +309,14 @@ Finally, we're ready to describe a test topology. First, a picture:
 ### Test topology discussion
 
 This topology is suitable for testing almost any tunnel encap/decap
-scenario.  The two containers "dorahost" and "swanhost" are end-stations
-connected to two vpp instances running on "dora" and "swan".
+scenario.  The two containers "respondhost" and "initiatehost" are end-stations
+connected to two vpp instances running on "respond" and "initiate".
 
 We leverage the Linux end-station network stacks to generate traffic
 of all sorts.
 
-The so-called "internet" bridge models the public internet. The "dora" and
-"swan" bridges connect vpp instances to local hosts
+The so-called "internet" bridge models the public internet. The "respond" and
+"initiate" bridges connect vpp instances to local hosts
 
 End station configs
 -------------------
@@ -325,14 +325,14 @@ The end-station Linux configurations set up the eth2 and eth3 ip
 addresses shown above, and add tunnel routes to the opposite
 end-station networks.
 
-### dorahost configuration
+### respondhost configuration
 
 ```
     ifconfig eth2 10.166.14.3/24 up
     route add -net 10.219.188.0/24 gw 10.166.14.2
 ```
 
-### swanhost configuration
+### initiatehost configuration
 
 ```
     sudo ifconfig eth3 10.219.188.3/24 up
@@ -343,9 +343,9 @@ VPP configs
 -----------
 
 Split nat44 / ikev2 + ipsec tunneling, with ipv6 prefix delegation in
-the "dora" config.
+the "respond" config.
 
-### dora configuration
+### respond configuration
 
 ```
     set term pag off
@@ -356,10 +356,10 @@ the "dora" config.
     set int ip6 table host-eth1 0
     set int state host-eth1 up
 
-    comment { default route via swan }
+    comment { default route via initiate }
     ip route add 0.0.0.0/0 via 10.26.68.101
 
-    comment { "dora-private-net" }
+    comment { "respond-private-net" }
     create host-interface name eth2
     bvi create instance 0
     set int l2 bridge bvi0 1 bvi
@@ -376,16 +376,16 @@ the "dora" config.
     comment { nat44 untranslated subnet 10.219.188.0/24 }
 
     comment { responder profile }
-    ikev2 profile add swan
-    ikev2 profile set swan udp-encap
-    ikev2 profile set swan auth rsa-sig cert-file /scratch/setups/doracert.pem
-    set ikev2 local key /scratch/setups/swankey.pem
-    ikev2 profile set swan id local fqdn swan.barachs.net
-    ikev2 profile set swan id remote fqdn broiler2.barachs.net
-    ikev2 profile set swan traffic-selector remote ip-range 10.219.188.0 - 10.219.188.255 port-range 0 - 65535 protocol 0
-    ikev2 profile set swan traffic-selector local ip-range 10.166.14.0 - 10.166.14.255 port-range 0 - 65535 protocol 0
+    ikev2 profile add initiate
+    ikev2 profile set initiate udp-encap
+    ikev2 profile set initiate auth rsa-sig cert-file /scratch/setups/respondcert.pem
+    set ikev2 local key /scratch/setups/initiatekey.pem
+    ikev2 profile set initiate id local fqdn initiator.my.net
+    ikev2 profile set initiate id remote fqdn responder.my.net
+    ikev2 profile set initiate traffic-selector remote ip-range 10.219.188.0 - 10.219.188.255 port-range 0 - 65535 protocol 0
+    ikev2 profile set initiate traffic-selector local ip-range 10.166.14.0 - 10.166.14.255 port-range 0 - 65535 protocol 0
     create ipip tunnel src 10.26.68.100 dst 10.26.68.101
-    ikev2 profile set swan tunnel ipip0
+    ikev2 profile set initiate tunnel ipip0
 
     comment { ipv6 prefix delegation }
     ip6 nd address autoconfig host-eth1 default-route
@@ -400,21 +400,21 @@ the "dora" config.
     ip route add 10.219.188.0/24 via ipip0
 ```
 
-### swan configuration
+### initiate configuration
 
 ```
     set term pag off
 
     comment { "internet" }
     create host-interface name eth1
-    comment { set dhcp client intfc host-eth1 hostname swan }
+    comment { set dhcp client intfc host-eth1 hostname initiate }
     set int ip address host-eth1 10.26.68.101/24
     set int state host-eth1 up
 
     comment { default route via "internet gateway" }
     comment { ip route add 0.0.0.0/0 via 10.26.68.1 }
 
-    comment { "swan-private-net" }
+    comment { "initiate-private-net" }
     create host-interface name eth3
     bvi create instance 0
     set int l2 bridge bvi0 1 bvi
@@ -430,24 +430,24 @@ the "dora" config.
     comment { nat44 untranslated subnet 10.166.14.0/24 }
 
     comment { initiator profile }
-    ikev2 profile add dora
-    ikev2 profile set dora udp-encap
-    ikev2 profile set dora auth rsa-sig cert-file /scratch/setups/swancert.pem
-    set ikev2 local key /scratch/setups/dorakey.pem
-    ikev2 profile set dora id local fqdn broiler2.barachs.net
-    ikev2 profile set dora id remote fqdn swan.barachs.net
+    ikev2 profile add respond
+    ikev2 profile set respond udp-encap
+    ikev2 profile set respond auth rsa-sig cert-file /scratch/setups/initiatecert.pem
+    set ikev2 local key /scratch/setups/respondkey.pem
+    ikev2 profile set respond id local fqdn responder.my.net
+    ikev2 profile set respond id remote fqdn initiator.my.net
 
-    ikev2 profile set dora traffic-selector remote ip-range 10.166.14.0 - 10.166.14.255 port-range 0 - 65535 protocol 0
-    ikev2 profile set dora traffic-selector local ip-range 10.219.188.0 - 10.219.188.255 port-range 0 - 65535 protocol 0
+    ikev2 profile set respond traffic-selector remote ip-range 10.166.14.0 - 10.166.14.255 port-range 0 - 65535 protocol 0
+    ikev2 profile set respond traffic-selector local ip-range 10.219.188.0 - 10.219.188.255 port-range 0 - 65535 protocol 0
 
-    ikev2 profile set dora responder host-eth1 10.26.68.100
-    ikev2 profile set dora ike-crypto-alg aes-cbc 256  ike-integ-alg sha1-96  ike-dh modp-2048
-    ikev2 profile set dora esp-crypto-alg aes-cbc 256  esp-integ-alg sha1-96  esp-dh ecp-256
-    ikev2 profile set dora sa-lifetime 3600 10 5 0
+    ikev2 profile set respond responder host-eth1 10.26.68.100
+    ikev2 profile set respond ike-crypto-alg aes-cbc 256  ike-integ-alg sha1-96  ike-dh modp-2048
+    ikev2 profile set respond esp-crypto-alg aes-cbc 256  esp-integ-alg sha1-96  esp-dh ecp-256
+    ikev2 profile set respond sa-lifetime 3600 10 5 0
 
     create ipip tunnel src 10.26.68.101 dst 10.26.68.100
-    ikev2 profile set dora tunnel ipip0
-    ikev2 initiate sa-init dora
+    ikev2 profile set respond tunnel ipip0
+    ikev2 initiate sa-init respond
 
     set int mtu packet 1390 ipip0
     set int unnum ipip0 use host-eth1
@@ -463,13 +463,13 @@ mentioned. These certificates are used in the ikev2 key exchange.
 Here's how to generate the certificates:
 
 ```
-    openssl req -x509 -nodes -newkey rsa:4096 -keyout dorakey.pem -out doracert.pem -days 3560
-    openssl x509 -text -noout -in doracert.pem
-    openssl req -x509 -nodes -newkey rsa:4096 -keyout swankey.pem -out swancert.pem -days 3560
-    openssl x509 -text -noout -in swancert.pem
+    openssl req -x509 -nodes -newkey rsa:4096 -keyout respondkey.pem -out respondcert.pem -days 3560
+    openssl x509 -text -noout -in respondcert.pem
+    openssl req -x509 -nodes -newkey rsa:4096 -keyout initiatekey.pem -out initiatecert.pem -days 3560
+    openssl x509 -text -noout -in initiatecert.pem
 ```
 
-Make sure that the "dora" and "swan" configurations point to the certificates.
+Make sure that the "respond" and "initiate" configurations point to the certificates.
 
 DHCPv6 server setup
 -------------------
