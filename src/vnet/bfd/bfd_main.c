@@ -17,10 +17,6 @@
  * @brief BFD nodes implementation
  */
 
-#if WITH_LIBSSL > 0
-#include <openssl/sha.h>
-#endif
-
 #if __SSE4_2__
 #include <x86intrin.h>
 #endif
@@ -36,6 +32,7 @@
 #include <vnet/bfd/bfd_protocol.h>
 #include <vnet/bfd/bfd_main.h>
 #include <vlib/log.h>
+#include <vnet/crypto/crypto.h>
 
 static u64
 bfd_calc_echo_checksum (u32 discriminator, u64 expire_time, u32 secret)
@@ -784,9 +781,9 @@ bfd_transport_echo (vlib_main_t * vm, u32 bi, bfd_session_t * bs)
   return 0;
 }
 
-#if WITH_LIBSSL > 0
 static void
-bfd_add_sha1_auth_section (vlib_buffer_t * b, bfd_session_t * bs)
+bfd_add_sha1_auth_section (vlib_main_t *vm, vlib_buffer_t *b,
+			   bfd_session_t *bs)
 {
   bfd_pkt_with_sha1_auth_t *pkt = vlib_buffer_get_current (b);
   bfd_auth_sha1_t *auth = &pkt->sha1_auth;
@@ -810,14 +807,19 @@ bfd_add_sha1_auth_section (vlib_buffer_t * b, bfd_session_t * bs)
   clib_memcpy (auth->hash, bs->auth.curr_key->key,
 	       sizeof (bs->auth.curr_key->key));
   unsigned char hash[sizeof (auth->hash)];
-  SHA1 ((unsigned char *) pkt, sizeof (*pkt), hash);
+
+  vnet_crypto_op_t op;
+  vnet_crypto_op_init (&op, VNET_CRYPTO_OP_SHA1_HASH);
+  op.src = (u8 *) pkt;
+  op.len = sizeof (*pkt);
+  op.digest = hash;
+  vnet_crypto_process_ops (vm, &op, 1);
   BFD_DBG ("hashing: %U", format_hex_bytes, pkt, sizeof (*pkt));
   clib_memcpy (auth->hash, hash, sizeof (hash));
 }
-#endif
 
 static void
-bfd_add_auth_section (vlib_buffer_t * b, bfd_session_t * bs)
+bfd_add_auth_section (vlib_main_t *vm, vlib_buffer_t *b, bfd_session_t *bs)
 {
   bfd_main_t *bm = &bfd_main;
   if (bs->auth.curr_key)
@@ -836,21 +838,11 @@ bfd_add_auth_section (vlib_buffer_t * b, bfd_session_t * bs)
 			 "internal error, unexpected BFD auth type '%d'",
 			 auth_type);
 	  break;
-#if WITH_LIBSSL > 0
 	case BFD_AUTH_TYPE_keyed_sha1:
 	  /* fallthrough */
 	case BFD_AUTH_TYPE_meticulous_keyed_sha1:
-	  bfd_add_sha1_auth_section (b, bs);
+	  bfd_add_sha1_auth_section (vm, b, bs);
 	  break;
-#else
-	case BFD_AUTH_TYPE_keyed_sha1:
-	  /* fallthrough */
-	case BFD_AUTH_TYPE_meticulous_keyed_sha1:
-	  vlib_log_crit (bm->log_class,
-			 "internal error, unexpected BFD auth type '%d'",
-			 auth_type);
-	  break;
-#endif
 	}
     }
 }
@@ -1016,7 +1008,7 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  /* fallthrough */
 	  break;
 	}
-      bfd_add_auth_section (b, bs);
+      bfd_add_auth_section (vm, b, bs);
       bfd_add_transport_layer (vm, bi, bs);
       if (!bfd_transport_control_frame (vm, bi, bs))
 	{
@@ -1041,7 +1033,7 @@ bfd_init_final_control_frame (vlib_main_t * vm, vlib_buffer_t * b,
   BFD_DBG ("Send final control frame for bs_idx=%lu", bs->bs_idx);
   bfd_init_control_frame (bm, bs, b);
   bfd_pkt_set_final (vlib_buffer_get_current (b));
-  bfd_add_auth_section (b, bs);
+  bfd_add_auth_section (vm, b, bs);
   u32 bi = vlib_get_buffer_index (vm, b);
   bfd_add_transport_layer (vm, bi, bs);
   bs->last_tx_nsec = bfd_time_now_nsec (vm, NULL);
@@ -1592,14 +1584,13 @@ bfd_verify_pkt_auth_seq_num (vlib_main_t * vm, bfd_session_t * bs,
 }
 
 static int
-bfd_verify_pkt_auth_key_sha1 (const bfd_pkt_t * pkt, u32 pkt_size,
-			      bfd_session_t * bs, u8 bfd_key_id,
-			      bfd_auth_key_t * auth_key)
+bfd_verify_pkt_auth_key_sha1 (vlib_main_t *vm, const bfd_pkt_t *pkt,
+			      u32 pkt_size, bfd_session_t *bs, u8 bfd_key_id,
+			      bfd_auth_key_t *auth_key)
 {
   ASSERT (auth_key->auth_type == BFD_AUTH_TYPE_keyed_sha1 ||
 	  auth_key->auth_type == BFD_AUTH_TYPE_meticulous_keyed_sha1);
 
-  u8 result[SHA_DIGEST_LENGTH];
   bfd_pkt_with_common_auth_t *with_common = (void *) pkt;
   if (pkt_size < sizeof (*with_common))
     {
@@ -1634,36 +1625,29 @@ bfd_verify_pkt_auth_key_sha1 (const bfd_pkt_t * pkt, u32 pkt_size,
 	 auth.is_delayed ? " (but a delayed auth change is scheduled)" : "");
       return 0;
     }
-  SHA_CTX ctx;
-  if (!SHA1_Init (&ctx))
+
+  u8 hash_from_packet[STRUCT_SIZE_OF (bfd_auth_sha1_t, hash)];
+  u8 calculated_hash[STRUCT_SIZE_OF (bfd_auth_sha1_t, hash)];
+  clib_memcpy (hash_from_packet, with_sha1->sha1_auth.hash,
+	       sizeof (with_sha1->sha1_auth.hash));
+  clib_memcpy (with_sha1->sha1_auth.hash, auth_key->key,
+	       sizeof (auth_key->key));
+  vnet_crypto_op_t op;
+  vnet_crypto_op_init (&op, VNET_CRYPTO_OP_SHA1_HASH);
+  op.src = (u8 *) with_sha1;
+  op.len = sizeof (*with_sha1);
+  op.digest = calculated_hash;
+  vnet_crypto_process_ops (vm, &op, 1);
+  if (0 ==
+      memcmp (calculated_hash, hash_from_packet, sizeof (calculated_hash)))
     {
-      BFD_ERR ("SHA1_Init failed");
-      return 0;
-    }
-  /* ignore last 20 bytes - use the actual key data instead pkt data */
-  if (!SHA1_Update (&ctx, with_sha1,
-		    sizeof (*with_sha1) - sizeof (with_sha1->sha1_auth.hash)))
-    {
-      BFD_ERR ("SHA1_Update failed");
-      return 0;
-    }
-  if (!SHA1_Update (&ctx, auth_key->key, sizeof (auth_key->key)))
-    {
-      BFD_ERR ("SHA1_Update failed");
-      return 0;
-    }
-  if (!SHA1_Final (result, &ctx))
-    {
-      BFD_ERR ("SHA1_Final failed");
-      return 0;
-    }
-  if (0 == memcmp (result, with_sha1->sha1_auth.hash, SHA_DIGEST_LENGTH))
-    {
+      clib_memcpy (with_sha1->sha1_auth.hash, hash_from_packet,
+		   sizeof (hash_from_packet));
       return 1;
     }
   BFD_ERR ("SHA1 hash: %U doesn't match the expected value: %U",
-	   format_hex_bytes, with_sha1->sha1_auth.hash, SHA_DIGEST_LENGTH,
-	   format_hex_bytes, result, SHA_DIGEST_LENGTH);
+	   format_hex_bytes, hash_from_packet, sizeof (hash_from_packet),
+	   format_hex_bytes, calculated_hash, sizeof (calculated_hash));
   return 0;
 }
 
@@ -1698,25 +1682,18 @@ bfd_verify_pkt_auth_key (vlib_main_t * vm, const bfd_pkt_t * pkt,
     case BFD_AUTH_TYPE_keyed_sha1:
       /* fallthrough */
     case BFD_AUTH_TYPE_meticulous_keyed_sha1:
-#if WITH_LIBSSL > 0
       do
 	{
 	  const u32 seq_num = clib_net_to_host_u32 (((bfd_pkt_with_sha1_auth_t
 						      *) pkt)->
 						    sha1_auth.seq_num);
-	  return bfd_verify_pkt_auth_seq_num (vm, bs, seq_num,
-					      bfd_auth_type_is_meticulous
-					      (auth_key->auth_type))
-	    && bfd_verify_pkt_auth_key_sha1 (pkt, pkt_size, bs, bfd_key_id,
-					     auth_key);
+	  return bfd_verify_pkt_auth_seq_num (
+		   vm, bs, seq_num,
+		   bfd_auth_type_is_meticulous (auth_key->auth_type)) &&
+		 bfd_verify_pkt_auth_key_sha1 (vm, pkt, pkt_size, bs,
+					       bfd_key_id, auth_key);
 	}
       while (0);
-#else
-      vlib_log_err
-	(bm->log_class,
-	 "internal error, attempt to use SHA1 without SSL support");
-      return 0;
-#endif
     }
   return 0;
 }
@@ -2082,7 +2059,6 @@ vnet_api_error_t
 bfd_auth_deactivate (bfd_session_t * bs, u8 is_delayed)
 {
   bfd_main_t *bm = &bfd_main;
-#if WITH_LIBSSL > 0
   if (!is_delayed)
     {
       /* not delayed - deactivate the current key right now */
@@ -2113,11 +2089,6 @@ bfd_auth_deactivate (bfd_session_t * bs, u8 is_delayed)
   vlib_log_info (bm->log_class, "session auth modified: %U",
 		 format_bfd_session_brief, bs);
   return 0;
-#else
-  vlib_log_err (bm->log_class,
-		"SSL missing, cannot deactivate BFD authentication");
-  return VNET_API_ERROR_BFD_NOTSUPP;
-#endif
 }
 
 vnet_api_error_t
@@ -2187,7 +2158,6 @@ bfd_auth_set_key (u32 conf_key_id, u8 auth_type, u8 key_len,
 		  const u8 * key_data)
 {
   bfd_main_t *bm = &bfd_main;
-#if WITH_LIBSSL > 0
   bfd_auth_key_t *auth_key = NULL;
   if (!key_len || key_len > bfd_max_key_len_for_auth_type (auth_type))
     {
@@ -2231,17 +2201,11 @@ bfd_auth_set_key (u32 conf_key_id, u8 auth_type, u8 key_len,
   clib_memset (auth_key->key, 0, sizeof (auth_key->key));
   clib_memcpy (auth_key->key, key_data, key_len);
   return 0;
-#else
-  vlib_log_err (bm->log_class,
-		"SSL missing, cannot manipulate authentication keys");
-  return VNET_API_ERROR_BFD_NOTSUPP;
-#endif
 }
 
 vnet_api_error_t
 bfd_auth_del_key (u32 conf_key_id)
 {
-#if WITH_LIBSSL > 0
   bfd_auth_key_t *auth_key = NULL;
   bfd_main_t *bm = &bfd_main;
   uword *key_idx_p = hash_get (bm->auth_key_by_conf_key_id, conf_key_id);
@@ -2271,11 +2235,6 @@ bfd_auth_del_key (u32 conf_key_id)
       return VNET_API_ERROR_BFD_ENOENT;
     }
   return 0;
-#else
-  vlib_log_err (bm->log_class,
-		"SSL missing, cannot manipulate authentication keys");
-  return VNET_API_ERROR_BFD_NOTSUPP;
-#endif
 }
 
 bfd_main_t bfd_main;
