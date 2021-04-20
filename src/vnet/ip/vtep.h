@@ -131,7 +131,7 @@ vtep4_check_vector (vtep_table_t * t, vlib_buffer_t * b0, ip4_header_t * ip40,
 
   u64x8 k4_u64x8 = u64x8_splat (k4.as_u64);
   u64x8 cache = u64x8_load_unaligned (vtep4_u512->vtep4_cache);
-  u8 result = u64x8_mask_is_equal (cache, k4_u64x8);
+  u8 result = u64x8_is_equal_mask (cache, k4_u64x8);
   if (PREDICT_TRUE (result != 0))
     {
       last_k4->as_u64 =

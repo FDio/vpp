@@ -109,29 +109,21 @@ u16x32_byte_swap (u16x32 v)
   return (u16x32) _mm512_shuffle_epi8 ((__m512i) v, (__m512i) swap);
 }
 
-static_always_inline u32x8
-u32x16_extract_lo (u32x16 v)
-{
-  return (u32x8) _mm512_extracti64x4_epi64 ((__m512i) v, 0);
-}
+#define _(f, t)                                                               \
+  static_always_inline t f##_extract_lo (f v)                                 \
+  {                                                                           \
+    return (t) _mm512_extracti64x4_epi64 ((__m512i) v, 0);                    \
+  }                                                                           \
+  static_always_inline t f##_extract_hi (f v)                                 \
+  {                                                                           \
+    return (t) _mm512_extracti64x4_epi64 ((__m512i) v, 1);                    \
+  }
 
-static_always_inline u32x8
-u32x16_extract_hi (u32x16 v)
-{
-  return (u32x8) _mm512_extracti64x4_epi64 ((__m512i) v, 1);
-}
-
-static_always_inline u8x32
-u8x64_extract_lo (u8x64 v)
-{
-  return (u8x32) _mm512_extracti64x4_epi64 ((__m512i) v, 0);
-}
-
-static_always_inline u8x32
-u8x64_extract_hi (u8x64 v)
-{
-  return (u8x32) _mm512_extracti64x4_epi64 ((__m512i) v, 1);
-}
+_ (u64x8, u64x4)
+_ (u32x16, u32x8)
+_ (u16x32, u16x16)
+_ (u8x64, u8x32)
+#undef _
 
 static_always_inline u32
 u32x16_min_scalar (u32x16 v)
@@ -246,11 +238,72 @@ u8x64_mask_blend (u8x64 a, u8x64 b, u64 mask)
   return (u8x64) _mm512_mask_blend_epi8 (mask, (__m512i) a, (__m512i) b);
 }
 
-static_always_inline u8
-u64x8_mask_is_equal (u64x8 a, u64x8 b)
+#define _(t, m, e, p, it)                                                     \
+  static_always_inline m t##_is_equal_mask (t a, t b)                         \
+  {                                                                           \
+    return p##_cmpeq_##e##_mask ((it) a, (it) b);                             \
+  }
+_ (u8x16, u16, epu8, _mm, __m128i)
+_ (u16x8, u8, epu16, _mm, __m128i)
+_ (u32x4, u8, epu32, _mm, __m128i)
+_ (u64x2, u8, epu64, _mm, __m128i)
+
+_ (u8x32, u32, epu8, _mm256, __m256i)
+_ (u16x16, u16, epu16, _mm256, __m256i)
+_ (u32x8, u8, epu32, _mm256, __m256i)
+_ (u64x4, u8, epu64, _mm256, __m256i)
+
+_ (u8x64, u64, epu8, _mm512, __m512i)
+_ (u16x32, u32, epu16, _mm512, __m512i)
+_ (u32x16, u16, epu32, _mm512, __m512i)
+_ (u64x8, u8, epu64, _mm512, __m512i)
+#undef _
+
+#define _(f, t, fn, it)                                                       \
+  static_always_inline t t##_from_##f (f x) { return (t) fn ((it) x); }
+_ (u16x16, u32x16, _mm512_cvtepi16_epi32, __m256i)
+_ (u32x16, u16x16, _mm512_cvtusepi32_epi16, __m512i)
+_ (u32x8, u16x8, _mm256_cvtusepi32_epi16, __m256i)
+#undef _
+
+#define _(vt, mt, bits, epi)                                                  \
+  static_always_inline vt vt##_compress (vt a, mt mask)                       \
+  {                                                                           \
+    return (vt) _mm##bits##_maskz_compress_##epi (mask, (__m##bits##i) a);    \
+  }                                                                           \
+  static_always_inline vt vt##_expand (vt a, mt mask)                         \
+  {                                                                           \
+    return (vt) _mm##bits##_maskz_expand_##epi (mask, (__m##bits##i) a);      \
+  }
+
+_ (u64x8, u8, 512, epi64)
+_ (u32x16, u16, 512, epi32)
+_ (u64x4, u8, 256, epi64)
+_ (u32x8, u8, 256, epi32)
+#ifdef __AVX512VBMI2__
+_ (u16x32, u32, 512, epi16)
+_ (u8x64, u64, 512, epi8)
+_ (u16x16, u16, 256, epi16)
+_ (u8x32, u32, 256, epi8)
+#endif
+#undef _
+
+#define CLIB_HAVE_VEC256_COMPRESS
+#define CLIB_HAVE_VEC512_COMPRESS
+
+#ifndef __AVX512VBMI2__
+static_always_inline u16x16
+u16x16_compress (u16x16 v, u16 mask)
 {
-  return _mm512_cmpeq_epu64_mask ((__m512i) a, (__m512i) b);
+  return u16x16_from_u32x16 (u32x16_compress (u32x16_from_u16x16 (v), mask));
 }
+
+static_always_inline u16x8
+u16x8_compress (u16x8 v, u8 mask)
+{
+  return u16x8_from_u32x8 (u32x8_compress (u32x8_from_u16x8 (v), mask));
+}
+#endif
 
 static_always_inline void
 u32x16_transpose (u32x16 m[16])

@@ -177,10 +177,7 @@ foreach_vec
 #include <vppinfra/vector_avx2.h>
 #endif
 
-#if defined (__AVX512BITALG__)
-/* Due to power level transition issues, we don't preffer AVX-512 on
-   Skylake X and CascadeLake CPUs, AVX512BITALG is introduced on
-   icelake CPUs  */
+#if defined(__AVX512F__)
 #include <vppinfra/vector_avx512.h>
 #endif
 
