@@ -11,9 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_definitions (-DWITH_LIBSSL=1)
-include_directories(${OPENSSL_INCLUDE_DIR})
-
 unset(VNET_SOURCES)
 unset(VNET_HEADERS)
 unset(VNET_API_FILES)
@@ -1489,7 +1486,7 @@ add_vpp_library(vnet
   MULTIARCH_SOURCES ${VNET_MULTIARCH_SOURCES}
   INSTALL_HEADERS ${VNET_HEADERS}
   API_FILES ${VNET_API_FILES}
-  LINK_LIBRARIES vppinfra svm vlib ${OPENSSL_LIBRARIES}
+  LINK_LIBRARIES vppinfra svm vlib
   DEPENDS vpp_version_h api_headers
 )
 
