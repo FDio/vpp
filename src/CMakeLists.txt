@@ -176,7 +176,7 @@ option(VPP_HOST_TOOLS_ONLY "Build only host tools" OFF)
 if(VPP_HOST_TOOLS_ONLY)
   set(SUBDIRS tools/vppapigen cmake)
 elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-  find_package(OpenSSL REQUIRED)
+  find_package(OpenSSL)
   set(SUBDIRS
     vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vat2 vcl plugins
     vpp-api tools/vppapigen tools/g2 tools/perftool cmake pkg
