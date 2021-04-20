@@ -763,14 +763,8 @@ bfd_udp_add_session (u32 sw_if_index, const ip46_address_t * local_addr,
     }
   if (!rv && is_authenticated)
     {
-#if WITH_LIBSSL > 0
       rv = bfd_auth_activate (bs, conf_key_id, bfd_key_id,
 			      0 /* is not delayed */ );
-#else
-      vlib_log_err (bfd_udp_main.log_class,
-		    "SSL missing, cannot add authenticated BFD session");
-      rv = VNET_API_ERROR_BFD_NOTSUPP;
-#endif
       if (rv)
 	{
 	  bfd_udp_del_session_internal (vlib_get_main (), bs);
@@ -864,7 +858,6 @@ bfd_udp_auth_activate (u32 sw_if_index,
   bfd_lock (bm);
   vnet_api_error_t error;
 
-#if WITH_LIBSSL > 0
   bfd_session_t *bs = NULL;
   vnet_api_error_t rv =
     bfd_udp_find_session_by_api_input (sw_if_index, local_addr, peer_addr,
@@ -877,12 +870,6 @@ bfd_udp_auth_activate (u32 sw_if_index,
   error = bfd_auth_activate (bs, conf_key_id, key_id, is_delayed);
   bfd_unlock (bm);
   return error;
-#else
-  vlib_log_err (bfd_udp_main->log_class,
-		"SSL missing, cannot activate BFD authentication");
-  bfd_unlock (bm);
-  return VNET_API_ERROR_BFD_NOTSUPP;
-#endif
 }
 
 vnet_api_error_t
