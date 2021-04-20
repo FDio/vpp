@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4365502e_8076ec4e",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2021-04-20T03:28:03Z",
+      "side": 1,
+      "message": "from line 291 to line 305, why not right shift h to skip_n_vectors*2, then load h to d52.q8?\nThis can save some cycles.",
+      "revId": "dab16a2b5b854edd6ff9192c578713fe5ebac81f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "43f277e0_c8086c72",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2021-04-20T03:28:03Z",
+      "side": 1,
+      "message": "from line 519 to line 532, why not right shift *h to skip_n_vectors*2, then load *h to d52.q8?\nThis can save some cycles.",
+      "revId": "dab16a2b5b854edd6ff9192c578713fe5ebac81f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
