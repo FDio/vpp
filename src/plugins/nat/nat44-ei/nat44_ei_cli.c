@@ -1952,7 +1952,7 @@ VLIB_CLI_COMMAND (nat44_ei_show_interface_address_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (nat44_ei_show_sessions_command, static) = {
   .path = "show nat44 ei sessions",
-  .short_help = "show nat44 ei sessions [detail|metrics]",
+  .short_help = "show nat44 ei sessions [detail]",
   .function = nat44_ei_show_sessions_command_fn,
 };
 
