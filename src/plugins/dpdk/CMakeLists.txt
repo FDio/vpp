@@ -96,7 +96,7 @@ else()
     ##############################################################################
     # Mellanox libraries
     ##############################################################################
-    if(DPDK_RTE_LIBRTE_MLX4_PMD OR DPDK_RTE_LIBRTE_MLX5_PMD)
+    if(DPDK_RTE_NET_MLX4 OR DPDK_RTE_NET_MLX5)
       if (DPDK_RTE_IBVERBS_LINK_DLOPEN)
         message(STATUS "DPDK depends on libmnl (Mellanox PMD requirement)")
         vpp_plugin_find_library(dpdk MNL_LIB "mnl")
