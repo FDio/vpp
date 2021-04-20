@@ -1038,6 +1038,30 @@ fifo_segment_fifo_offset (svm_fifo_t *f)
   return (u8 *) f->shr - (u8 *) f->fs_hdr;
 }
 
+svm_fifo_chunk_t *
+fifo_segment_alloc_chunk_w_slice (fifo_segment_t *fs, u32 slice_index,
+				  u32 chunk_size)
+{
+  fifo_segment_header_t *fsh = fs->h;
+  fifo_segment_slice_t *fss;
+
+  fss = fsh_slice_get (fsh, slice_index);
+  return fsh_try_alloc_chunk (fsh, fss, chunk_size);
+}
+
+void
+fifo_segment_collect_chunk (fifo_segment_t *fs, u32 slice_index,
+			    svm_fifo_chunk_t *c)
+{
+  fsh_collect_chunks (fs->h, slice_index, c);
+}
+
+uword
+fifo_segment_chunk_offset (fifo_segment_t *fs, svm_fifo_chunk_t *c)
+{
+  return (u8 *) c - (u8 *) fs->h;
+}
+
 svm_msg_q_t *
 fifo_segment_msg_q_alloc (fifo_segment_t *fs, u32 mq_index,
 			  svm_msg_q_cfg_t *cfg)
