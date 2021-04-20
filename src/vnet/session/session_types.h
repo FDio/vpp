@@ -49,6 +49,7 @@ typedef struct _session_endpoint_cfg
   u32 ckpair_index;
   u8 crypto_engine;
   u8 flags;
+  transport_endpt_ext_cfg_t *ext_cfg;
 } session_endpoint_cfg_t;
 
 #define SESSION_IP46_ZERO			\
@@ -76,21 +77,15 @@ typedef struct _session_endpoint_cfg
   .peer = TRANSPORT_ENDPOINT_NULL,		\
   .transport_proto = 0,				\
 }
-#define SESSION_ENDPOINT_CFG_NULL 		\
-{						\
-  .sw_if_index = ENDPOINT_INVALID_INDEX,	\
-  .ip = SESSION_IP46_ZERO,			\
-  .fib_index = ENDPOINT_INVALID_INDEX,		\
-  .is_ip4 = 0,					\
-  .port = 0,					\
-  .peer = TRANSPORT_ENDPOINT_NULL,		\
-  .transport_proto = 0,				\
-  .app_wrk_index = ENDPOINT_INVALID_INDEX,	\
-  .opaque = ENDPOINT_INVALID_INDEX,		\
-  .hostname = 0,				\
-  .parent_handle = SESSION_INVALID_HANDLE,	\
-  .ckpair_index = 0				\
-}
+#define SESSION_ENDPOINT_CFG_NULL                                             \
+  {                                                                           \
+    .sw_if_index = ENDPOINT_INVALID_INDEX, .ip = SESSION_IP46_ZERO,           \
+    .fib_index = ENDPOINT_INVALID_INDEX, .is_ip4 = 0, .port = 0,              \
+    .peer = TRANSPORT_ENDPOINT_NULL, .transport_proto = 0,                    \
+    .app_wrk_index = ENDPOINT_INVALID_INDEX,                                  \
+    .opaque = ENDPOINT_INVALID_INDEX, .hostname = 0,                          \
+    .parent_handle = SESSION_INVALID_HANDLE, .ckpair_index = 0, .ext_cfg = 0, \
+  }
 
 #define session_endpoint_to_transport(_sep) ((transport_endpoint_t *)_sep)
 #define session_endpoint_to_transport_cfg(_sep)		\

@@ -33,6 +33,29 @@
       return;								\
    }
 
+static transport_endpt_ext_cfg_t *
+session_mq_get_ext_config (application_t *app, uword offset)
+{
+  svm_fifo_chunk_t *c;
+  fifo_segment_t *fs;
+
+  fs = application_get_rx_mqs_segment (app);
+  c = fs_chunk_ptr (fs->h, offset);
+  return (transport_endpt_ext_cfg_t *) c->data;
+}
+
+static void
+session_mq_free_ext_config (application_t *app, uword offset)
+{
+  u32 ctrl_thread = vlib_num_workers () ? 1 : 0;
+  svm_fifo_chunk_t *c;
+  fifo_segment_t *fs;
+
+  fs = application_get_rx_mqs_segment (app);
+  c = fs_chunk_ptr (fs->h, offset);
+  fifo_segment_collect_chunk (fs, ctrl_thread, c);
+}
+
 static void
 session_mq_listen_handler (void *data)
 {
@@ -61,12 +84,17 @@ session_mq_listen_handler (void *data)
   a->wrk_map_index = mp->wrk_index;
   a->sep_ext.transport_flags = mp->flags;
 
+  if (mp->ext_config)
+    a->sep_ext.ext_cfg = session_mq_get_ext_config (app, mp->ext_config);
+
   if ((rv = vnet_listen (a)))
     clib_warning ("listen returned: %U", format_session_error, rv);
 
   app_wrk = application_get_worker (app, mp->wrk_index);
   mq_send_session_bound_cb (app_wrk->wrk_index, mp->context, a->handle, rv);
-  return;
+
+  if (mp->ext_config)
+    session_mq_free_ext_config (app, mp->ext_config);
 }
 
 static void
@@ -135,12 +163,18 @@ session_mq_connect_handler (void *data)
   a->app_index = app->app_index;
   a->wrk_map_index = mp->wrk_index;
 
+  if (mp->ext_config)
+    a->sep_ext.ext_cfg = session_mq_get_ext_config (app, mp->ext_config);
+
   if ((rv = vnet_connect (a)))
     {
       clib_warning ("connect returned: %U", format_session_error, rv);
       app_wrk = application_get_worker (app, mp->wrk_index);
       mq_send_session_connected_cb (app_wrk->wrk_index, mp->context, 0, rv);
     }
+
+  if (mp->ext_config)
+    session_mq_free_ext_config (app, mp->ext_config);
 
   vec_free (a->sep_ext.hostname);
 }
