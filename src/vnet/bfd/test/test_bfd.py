@@ -212,7 +212,7 @@ class BFDAPITestCase(VppTestCase):
             session.add_vpp_config()
 
     def test_shared_sha1_key(self):
-        """ share single SHA1 key between multiple BFD sessions """
+        """ single SHA1 key shared by multiple BFD sessions """
         key = self.factory.create_random_key(self)
         key.add_vpp_config()
         sessions = [
