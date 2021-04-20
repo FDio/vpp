@@ -49,6 +49,7 @@ typedef struct _session_endpoint_cfg
   u32 ckpair_index;
   u8 crypto_engine;
   u8 flags;
+  transport_endpt_ext_cfg_t *ext_cfg;
 } session_endpoint_cfg_t;
 
 #define SESSION_IP46_ZERO			\

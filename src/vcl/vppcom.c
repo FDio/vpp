@@ -164,6 +164,18 @@ format_ip46_address (u8 * s, va_list * args)
  */
 
 static void
+vcl_msg_add_ext_config (vcl_session_t *s, uword *offset)
+{
+  svm_fifo_chunk_t *c;
+
+  c = vcl_segment_alloc_chunk (vcl_vpp_worker_segment_handle (0),
+			       0 /* one slice only */, s->ext_config->len,
+			       offset);
+  if (c)
+    clib_memcpy_fast (c->data, s->ext_config, s->ext_config->len);
+}
+
+static void
 vcl_send_session_listen (vcl_worker_t * wrk, vcl_session_t * s)
 {
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
@@ -185,7 +197,14 @@ vcl_send_session_listen (vcl_worker_t * wrk, vcl_session_t * s)
   mp->vrf = s->vrf;
   if (s->flags & VCL_SESSION_F_CONNECTED)
     mp->flags = TRANSPORT_CFG_F_CONNECTED;
+  if (s->ext_config)
+    vcl_msg_add_ext_config (s, &mp->ext_config);
   app_send_ctrl_evt_to_vpp (mq, app_evt);
+  if (s->ext_config)
+    {
+      clib_mem_free (s->ext_config);
+      s->ext_config = 0;
+    }
 }
 
 static void
@@ -213,7 +232,15 @@ vcl_send_session_connect (vcl_worker_t * wrk, vcl_session_t * s)
   mp->vrf = s->vrf;
   if (s->flags & VCL_SESSION_F_CONNECTED)
     mp->flags |= TRANSPORT_CFG_F_CONNECTED;
+  if (s->ext_config)
+    vcl_msg_add_ext_config (s, &mp->ext_config);
   app_send_ctrl_evt_to_vpp (mq, app_evt);
+
+  if (s->ext_config)
+    {
+      clib_mem_free (s->ext_config);
+      s->ext_config = 0;
+    }
 }
 
 void
