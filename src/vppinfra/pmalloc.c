@@ -309,7 +309,8 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
      to support non-numa kernels */
   clib_mem_get_page_stats (va, CLIB_MEM_PAGE_SZ_DEFAULT, 1, &stats);
 
-  if (stats.per_numa[numa_node] != 1)
+  if (stats.per_numa[numa_node] != 1 &&
+      !(numa_node == 0 && stats.unknown == 1))
     {
       u16 allocated_at = ~0;
       if (stats.unknown)
