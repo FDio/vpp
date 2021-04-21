@@ -150,7 +150,7 @@ ip_neighbor_get_mac (const ip_neighbor_t * ipn)
   return (&ipn->ipn_mac);
 }
 
-ip_neighbor_t  *
+ip_neighbor_t *
 ip_neighbor_find_entry (ip_neighbor_key_t *key)
 {
   ip_neighbor_t *db_ipn = NULL;
