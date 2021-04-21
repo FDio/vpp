@@ -215,20 +215,61 @@ vlib_get_buffers_with_offset (vlib_main_t * vm, u32 * bi, void **b, int count,
 			      i32 offset)
 {
   uword buffer_mem_start = vm->buffer_main->buffer_mem_start;
-#ifdef CLIB_HAVE_VEC256
-  u64x4 off = u64x4_splat (buffer_mem_start + offset);
+#ifdef CLIB_HAVE_VEC512
+  u64x8 of8 = u64x8_splat (buffer_mem_start + offset);
+  u64x4 off = u64x8_extract_lo (of8);
   /* if count is not const, compiler will not unroll while loop
      se we maintain two-in-parallel variant */
+  while (count >= 32)
+    {
+      u64x8 b0 = u64x8_from_u32x8 (u32x8_load_unaligned (bi));
+      u64x8 b1 = u64x8_from_u32x8 (u32x8_load_unaligned (bi + 8));
+      u64x8 b2 = u64x8_from_u32x8 (u32x8_load_unaligned (bi + 16));
+      u64x8 b3 = u64x8_from_u32x8 (u32x8_load_unaligned (bi + 24));
+      /* shift and add to get vlib_buffer_t pointer */
+      u64x8_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) + of8, b);
+      u64x8_store_unaligned ((b1 << CLIB_LOG2_CACHE_LINE_BYTES) + of8, b + 8);
+      u64x8_store_unaligned ((b2 << CLIB_LOG2_CACHE_LINE_BYTES) + of8, b + 16);
+      u64x8_store_unaligned ((b3 << CLIB_LOG2_CACHE_LINE_BYTES) + of8, b + 24);
+      b += 32;
+      bi += 32;
+      count -= 32;
+    }
   while (count >= 8)
     {
-      u64x4 b0 = u64x4_from_u32x4 (u32x4_load_unaligned (bi));
-      u64x4 b1 = u64x4_from_u32x4 (u32x4_load_unaligned (bi + 4));
+      u64x8 b0 = u64x8_from_u32x8 (u32x8_load_unaligned (bi));
       /* shift and add to get vlib_buffer_t pointer */
-      u64x4_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b);
-      u64x4_store_unaligned ((b1 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 4);
+      u64x8_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) + of8, b);
       b += 8;
       bi += 8;
       count -= 8;
+    }
+#elif defined CLIB_HAVE_VEC256
+  u64x4 off = u64x4_splat (buffer_mem_start + offset);
+  /* if count is not const, compiler will not unroll while loop
+     se we maintain two-in-parallel variant */
+  while (count >= 32)
+    {
+      u64x4 b0 = u64x4_from_u32x4 (u32x4_load_unaligned (bi));
+      u64x4 b1 = u64x4_from_u32x4 (u32x4_load_unaligned (bi + 4));
+      u64x4 b2 = u64x4_from_u32x4 (u32x4_load_unaligned (bi + 8));
+      u64x4 b3 = u64x4_from_u32x4 (u32x4_load_unaligned (bi + 12));
+      u64x4 b4 = u64x4_from_u32x4 (u32x4_load_unaligned (bi + 16));
+      u64x4 b5 = u64x4_from_u32x4 (u32x4_load_unaligned (bi + 20));
+      u64x4 b6 = u64x4_from_u32x4 (u32x4_load_unaligned (bi + 24));
+      u64x4 b7 = u64x4_from_u32x4 (u32x4_load_unaligned (bi + 28));
+      /* shift and add to get vlib_buffer_t pointer */
+      u64x4_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b);
+      u64x4_store_unaligned ((b1 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 4);
+      u64x4_store_unaligned ((b2 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 8);
+      u64x4_store_unaligned ((b3 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 12);
+      u64x4_store_unaligned ((b4 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 16);
+      u64x4_store_unaligned ((b5 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 20);
+      u64x4_store_unaligned ((b6 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 24);
+      u64x4_store_unaligned ((b7 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 28);
+      b += 32;
+      bi += 32;
+      count -= 32;
     }
 #endif
   while (count >= 4)
