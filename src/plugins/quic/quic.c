@@ -1304,6 +1304,7 @@ static int
 quic_connect_connection (session_endpoint_cfg_t * sep)
 {
   vnet_connect_args_t _cargs, *cargs = &_cargs;
+  transport_endpt_crypto_cfg_t *ccfg;
   quic_main_t *qm = &quic_main;
   quic_ctx_t *ctx;
   app_worker_t *app_wrk;
@@ -1311,6 +1312,11 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   u32 ctx_index;
   u32 thread_index = vlib_get_thread_index ();
   int error;
+
+  if (!sep->ext_cfg)
+    return -1;
+
+  ccfg = &sep->ext_cfg->crypto_cfg;
 
   clib_memset (cargs, 0, sizeof (*cargs));
   ctx_index = quic_ctx_alloc (thread_index);
@@ -1323,8 +1329,8 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   ctx->conn_state = QUIC_CONN_STATE_HANDSHAKE;
   ctx->client_opaque = sep->opaque;
   ctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
-  if (sep->hostname)
-    ctx->srv_hostname = format (0, "%v", sep->hostname);
+  if (ccfg->hostname[0])
+    ctx->srv_hostname = format (0, "%s", ccfg->hostname);
   else
     /*  needed by quic for crypto + determining client / server */
     ctx->srv_hostname = format (0, "%U", format_ip46_address,
@@ -1342,8 +1348,8 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   cargs->sep_ext.ns_index = app->ns_index;
   cargs->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
 
-  ctx->crypto_engine = sep->crypto_engine;
-  ctx->ckpair_index = sep->ckpair_index;
+  ctx->crypto_engine = ccfg->crypto_engine;
+  ctx->ckpair_index = ccfg->ckpair_index;
   if ((error = quic_acquire_crypto_context (ctx)))
     return error;
 
@@ -1435,6 +1441,7 @@ static u32
 quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
 {
   vnet_listen_args_t _bargs, *args = &_bargs;
+  transport_endpt_crypto_cfg_t *ccfg;
   quic_main_t *qm = &quic_main;
   session_handle_t udp_handle;
   session_endpoint_cfg_t *sep;
@@ -1447,6 +1454,10 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
   int rv;
 
   sep = (session_endpoint_cfg_t *) tep;
+  if (!sep->ext_cfg)
+    return -1;
+
+  ccfg = &sep->ext_cfg->crypto_cfg;
   app_wrk = app_worker_get (sep->app_wrk_index);
   /* We need to call this because we call app_worker_init_connected in
    * quic_accept_stream, which assumes the connect segment manager exists */
@@ -1483,8 +1494,8 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
   lctx->parent_app_id = app_wrk->app_index;
   lctx->udp_session_handle = udp_handle;
   lctx->c_s_index = quic_listen_session_index;
-  lctx->crypto_engine = sep->crypto_engine;
-  lctx->ckpair_index = sep->ckpair_index;
+  lctx->crypto_engine = ccfg->crypto_engine;
+  lctx->ckpair_index = ccfg->ckpair_index;
   if (quic_acquire_crypto_context (lctx))
     return -1;
 

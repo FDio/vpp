@@ -280,8 +280,15 @@ tls_ctx_parse_handle (u32 ctx_handle, u32 * ctx_index, u32 * engine_type)
 }
 
 static inline crypto_engine_type_t
-tls_get_engine_type (crypto_engine_type_t preferred)
+tls_get_engine_type (crypto_engine_type_t requested,
+                     crypto_engine_type_t preferred)
 {
+  if (requested != CRYPTO_ENGINE_NONE)
+    {
+      if (tls_vfts[requested].ctx_alloc)
+	return requested;
+      return CRYPTO_ENGINE_NONE;
+    }
   if (!tls_vfts[preferred].ctx_alloc)
     return tls_get_available_engine ();
   return preferred;
@@ -662,6 +669,7 @@ int
 tls_connect (transport_endpoint_cfg_t * tep)
 {
   vnet_connect_args_t _cargs = { {}, }, *cargs = &_cargs;
+  transport_endpt_crypto_cfg_t *ccfg;
   crypto_engine_type_t engine_type;
   session_endpoint_cfg_t *sep;
   tls_main_t *tm = &tls_main;
@@ -672,9 +680,14 @@ tls_connect (transport_endpoint_cfg_t * tep)
   int rv;
 
   sep = (session_endpoint_cfg_t *) tep;
+  if (!sep->ext_cfg)
+    return -1;
+
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
-  engine_type = tls_get_engine_type (app->tls_engine);
+
+  ccfg = &sep->ext_cfg->crypto_cfg;
+  engine_type = tls_get_engine_type (ccfg->crypto_engine, app->tls_engine);
   if (engine_type == CRYPTO_ENGINE_NONE)
     {
       clib_warning ("No tls engine_type available");
@@ -686,11 +699,11 @@ tls_connect (transport_endpoint_cfg_t * tep)
   ctx->parent_app_wrk_index = sep->app_wrk_index;
   ctx->parent_app_api_context = sep->opaque;
   ctx->tcp_is_ip4 = sep->is_ip4;
-  ctx->ckpair_index = sep->ckpair_index;
   ctx->tls_type = sep->transport_proto;
-  if (sep->hostname)
+  ctx->ckpair_index = ccfg->ckpair_index;
+  if (ccfg->hostname[0])
     {
-      ctx->srv_hostname = format (0, "%v", sep->hostname);
+      ctx->srv_hostname = format (0, "%s", ccfg->hostname);
       vec_terminate_c_string (ctx->srv_hostname);
     }
   tls_ctx_half_open_reader_unlock ();
@@ -725,6 +738,7 @@ u32
 tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
 {
   vnet_listen_args_t _bargs, *args = &_bargs;
+  transport_endpt_crypto_cfg_t *ccfg;
   app_worker_t *app_wrk;
   tls_main_t *tm = &tls_main;
   session_handle_t tls_al_handle;
@@ -738,9 +752,14 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   u32 lctx_index;
 
   sep = (session_endpoint_cfg_t *) tep;
+  if (!sep->ext_cfg)
+    return -1;
+
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
-  engine_type = tls_get_engine_type (app->tls_engine);
+
+  ccfg = &sep->ext_cfg->crypto_cfg;
+  engine_type = tls_get_engine_type (ccfg->crypto_engine, app->tls_engine);
   if (engine_type == CRYPTO_ENGINE_NONE)
     {
       clib_warning ("No tls engine_type available");
@@ -774,8 +793,8 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   lctx->app_session_handle = listen_session_get_handle (app_listener);
   lctx->tcp_is_ip4 = sep->is_ip4;
   lctx->tls_ctx_engine = engine_type;
-  lctx->ckpair_index = sep->ckpair_index;
   lctx->tls_type = sep->transport_proto;
+  lctx->ckpair_index = ccfg->ckpair_index;
 
   if (tls_vfts[engine_type].ctx_start_listen (lctx))
     {
@@ -1076,6 +1095,7 @@ int
 dtls_connect (transport_endpoint_cfg_t *tep)
 {
   vnet_connect_args_t _cargs = { {}, }, *cargs = &_cargs;
+  transport_endpt_crypto_cfg_t *ccfg;
   crypto_engine_type_t engine_type;
   session_endpoint_cfg_t *sep;
   tls_main_t *tm = &tls_main;
@@ -1086,9 +1106,14 @@ dtls_connect (transport_endpoint_cfg_t *tep)
   int rv;
 
   sep = (session_endpoint_cfg_t *) tep;
+  if (!sep->ext_cfg)
+    return -1;
+
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
-  engine_type = tls_get_engine_type (app->tls_engine);
+
+  ccfg = &sep->ext_cfg->crypto_cfg;
+  engine_type = tls_get_engine_type (ccfg->crypto_engine, app->tls_engine);
   if (engine_type == CRYPTO_ENGINE_NONE)
     {
       clib_warning ("No tls engine_type available");
@@ -1100,12 +1125,12 @@ dtls_connect (transport_endpoint_cfg_t *tep)
   ctx->parent_app_wrk_index = sep->app_wrk_index;
   ctx->parent_app_api_context = sep->opaque;
   ctx->tcp_is_ip4 = sep->is_ip4;
-  ctx->ckpair_index = sep->ckpair_index;
+  ctx->ckpair_index = ccfg->ckpair_index;
   ctx->tls_type = sep->transport_proto;
   ctx->tls_ctx_handle = ctx_handle;
-  if (sep->hostname)
+  if (ccfg->hostname[0])
     {
-      ctx->srv_hostname = format (0, "%v", sep->hostname);
+      ctx->srv_hostname = format (0, "%s", ccfg->hostname);
       vec_terminate_c_string (ctx->srv_hostname);
     }
 

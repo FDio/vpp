@@ -164,12 +164,12 @@ format_ip46_address (u8 * s, va_list * args)
  */
 
 static void
-vcl_msg_add_ext_config (vcl_session_t *s, uword *offset)
+vcl_msg_add_ext_config (vcl_session_t *s, u32 slice_index, uword *offset)
 {
   svm_fifo_chunk_t *c;
 
   c = vcl_segment_alloc_chunk (vcl_vpp_worker_segment_handle (0),
-			       vcm->ctrl_mq_slice_index, s->ext_config->len,
+			       slice_index, s->ext_config->len,
 			       offset);
   if (c)
     clib_memcpy_fast (c->data, s->ext_config, s->ext_config->len);
@@ -193,15 +193,18 @@ vcl_send_session_listen (vcl_worker_t * wrk, vcl_session_t * s)
   clib_memcpy_fast (&mp->ip, &s->transport.lcl_ip, sizeof (mp->ip));
   mp->port = s->transport.lcl_port;
   mp->proto = s->session_type;
-  mp->ckpair_index = s->ckpair_index;
+//  mp->ckpair_index = s->ckpair_index;
   mp->vrf = s->vrf;
   if (s->flags & VCL_SESSION_F_CONNECTED)
     mp->flags = TRANSPORT_CFG_F_CONNECTED;
   if (s->ext_config)
-    vcl_msg_add_ext_config (s, &mp->ext_config);
+    vcl_msg_add_ext_config (s, 0, &mp->ext_config);
   app_send_ctrl_evt_to_vpp (mq, app_evt);
   if (s->ext_config)
-    clib_mem_free (s->ext_config);
+    {
+      clib_mem_free (s->ext_config);
+      s->ext_config = 0;
+    }
 }
 
 static void
@@ -225,16 +228,19 @@ vcl_send_session_connect (vcl_worker_t * wrk, vcl_session_t * s)
   mp->port = s->transport.rmt_port;
   mp->lcl_port = s->transport.lcl_port;
   mp->proto = s->session_type;
-  mp->ckpair_index = s->ckpair_index;
+//  mp->ckpair_index = s->ckpair_index;
   mp->vrf = s->vrf;
   if (s->flags & VCL_SESSION_F_CONNECTED)
     mp->flags |= TRANSPORT_CFG_F_CONNECTED;
   if (s->ext_config)
-    vcl_msg_add_ext_config (s, &mp->ext_config);
+    vcl_msg_add_ext_config (s, 0, &mp->ext_config);
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 
   if (s->ext_config)
-    clib_mem_free (s->ext_config);
+    {
+      clib_mem_free (s->ext_config);
+      s->ext_config = 0;
+    }
 }
 
 void
@@ -1368,7 +1374,7 @@ vppcom_session_create (u8 proto, u8 is_nonblocking)
   session->session_type = proto;
   session->session_state = VCL_STATE_CLOSED;
   session->vpp_handle = ~0;
-  session->ckpair_index = ~0;
+//  session->ckpair_index = ~0;
   session->is_dgram = vcl_proto_is_dgram (proto);
 
   if (is_nonblocking)
@@ -3704,7 +3710,17 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	  rv = VPPCOM_EINVAL;
 	  break;
 	}
-      session->ckpair_index = *(uint32_t *) buffer;
+      if (!session->ext_config)
+	{
+	  vcl_session_alloc_ext_cfg (session, TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+	}
+      else if (session->ext_config->type != TRANSPORT_ENDPT_EXT_CFG_CRYPTO)
+	{
+	  rv = VPPCOM_EINVAL;
+	  break;
+	}
+
+      session->ext_config->crypto_cfg.ckpair_index = *(uint32_t *) buffer;
       break;
 
     case VPPCOM_ATTR_SET_VRF:
