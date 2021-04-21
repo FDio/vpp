@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "1b13377c_2cfc90be",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2021-04-21T06:38:55Z",
+      "side": 1,
+      "message": "argeed, change to this",
+      "parentUuid": "4365502e_8076ec4e",
+      "revId": "dab16a2b5b854edd6ff9192c578713fe5ebac81f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "43f277e0_c8086c72",
         "filename": "src/vnet/classify/vnet_classify.h",
         "patchSetId": 16
@@ -30,6 +48,24 @@
       "writtenOn": "2021-04-20T03:28:03Z",
       "side": 1,
       "message": "from line 519 to line 532, why not right shift *h to skip_n_vectors*2, then load *h to d52.q8?\nThis can save some cycles.",
+      "revId": "dab16a2b5b854edd6ff9192c578713fe5ebac81f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "54091d17_def09995",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 533,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2021-04-21T06:38:55Z",
+      "side": 1,
+      "message": "argeed, change to this",
+      "parentUuid": "43f277e0_c8086c72",
       "revId": "dab16a2b5b854edd6ff9192c578713fe5ebac81f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
