@@ -106,13 +106,13 @@ unmap_all_mem_regions (vhost_user_intf_t * vui)
     }
   vui->nregions = 0;
 
-  for (q = 0; q < vui->num_qid; q++)
-    {
-      vq = &vui->vrings[q];
-      vq->avail = 0;
-      vq->used = 0;
-      vq->desc = 0;
-    }
+  FOR_ALL_VHOST_RX_TXQ (q, vui)
+  {
+    vq = &vui->vrings[q];
+    vq->avail = 0;
+    vq->used = 0;
+    vq->desc = 0;
+  }
 }
 
 static_always_inline void
@@ -166,6 +166,8 @@ vhost_user_rx_thread_placement (vhost_user_intf_t * vui, u32 qid)
 
   ASSERT ((qid & 1) == 1);	// should be odd
   // Assign new queue mappings for the interface
+  if (txvq->queue_index != ~0)
+    return;
   vnet_hw_if_set_input_node (vnm, vui->hw_if_index,
 			     vhost_user_input_node.index);
   txvq->queue_index = vnet_hw_if_register_rx_queue (vnm, vui->hw_if_index, q,
@@ -227,7 +229,7 @@ vhost_user_thread_placement (vhost_user_intf_t * vui, u32 qid)
 {
   if (qid & 1)			// RX is odd, TX is even
     {
-      if (vui->vrings[qid].qid == -1)
+      if (vui->vrings[qid].queue_index == ~0)
 	vhost_user_rx_thread_placement (vui, qid);
     }
   else
@@ -261,7 +263,32 @@ vhost_user_kickfd_read_ready (clib_file_t * uf)
   if (is_txq && (vhost_user_intf_ready (vui) &&
 		 ((vq->mode == VNET_HW_IF_RX_MODE_ADAPTIVE) ||
 		  (vq->mode == VNET_HW_IF_RX_MODE_INTERRUPT))))
-    vnet_hw_if_rx_queue_set_int_pending (vnm, vq->queue_index);
+    {
+      u32 thread_index =
+	vnet_hw_if_get_rx_queue_thread_index (vnm, vq->queue_index);
+      u32 q;
+      u8 skip = 0;
+      /*
+       * If the thread has more than 1 queue and the other queue is in polling
+       * mode, there is no need to trigger an interrupt
+       */
+      FOR_ALL_VHOST_TXQ (q, vui)
+      {
+	vhost_user_vring_t *txvq = &vui->vrings[q];
+
+	if ((q == qid) || (txvq->queue_index == ~0))
+	  continue;
+	if ((txvq->mode == VNET_HW_IF_RX_MODE_POLLING) &&
+	    vnet_hw_if_get_rx_queue_thread_index (vnm, txvq->queue_index) ==
+	      thread_index)
+	  {
+	    skip = 1;
+	    break;
+	  }
+      }
+      if (skip == 0)
+	vnet_hw_if_rx_queue_set_int_pending (vnm, vq->queue_index);
+    }
 
   return 0;
 }
@@ -276,6 +303,7 @@ vhost_user_vring_init (vhost_user_intf_t * vui, u32 qid)
   vring->callfd_idx = ~0;
   vring->errfd = -1;
   vring->qid = -1;
+  vring->queue_index = ~0;
 
   clib_spinlock_init (&vring->vring_lock);
 
@@ -319,11 +347,14 @@ vhost_user_vring_close (vhost_user_intf_t * vui, u32 qid)
 
   clib_spinlock_free (&vring->vring_lock);
 
-  // save the qid so that we don't need to unassign and assign_rx_thread
-  // when the interface comes back up. They are expensive calls.
+  // save the needed information in vrings prior to being wiped out
   u16 q = vui->vrings[qid].qid;
+  u32 queue_index = vui->vrings[qid].queue_index;
+  u32 mode = vui->vrings[qid].mode;
   vhost_user_vring_init (vui, qid);
   vui->vrings[qid].qid = q;
+  vui->vrings[qid].queue_index = queue_index;
+  vui->vrings[qid].mode = mode;
 }
 
 static_always_inline void
@@ -342,11 +373,36 @@ vhost_user_if_disconnect (vhost_user_intf_t * vui)
 
   vui->is_ready = 0;
 
-  for (q = 0; q < vui->num_qid; q++)
-    vhost_user_vring_close (vui, q);
+  FOR_ALL_VHOST_RX_TXQ (q, vui) { vhost_user_vring_close (vui, q); }
 
   unmap_all_mem_regions (vui);
   vu_log_debug (vui, "interface ifindex %d disconnected", vui->sw_if_index);
+}
+
+void
+vhost_user_set_operation_mode (vhost_user_intf_t *vui,
+			       vhost_user_vring_t *txvq)
+{
+  if (vhost_user_is_packed_ring_supported (vui))
+    {
+      if (txvq->used_event)
+	{
+	  if (txvq->mode == VNET_HW_IF_RX_MODE_POLLING)
+	    txvq->used_event->flags = VRING_EVENT_F_DISABLE;
+	  else
+	    txvq->used_event->flags = 0;
+	}
+    }
+  else
+    {
+      if (txvq->used)
+	{
+	  if (txvq->mode == VNET_HW_IF_RX_MODE_POLLING)
+	    txvq->used->flags = VRING_USED_F_NO_NOTIFY;
+	  else
+	    txvq->used->flags = 0;
+	}
+    }
 }
 
 static clib_error_t *
@@ -579,19 +635,19 @@ vhost_user_socket_read (clib_file_t * uf)
        * Re-compute desc, used, and avail descriptor table if vring address
        * is set.
        */
-      for (q = 0; q < vui->num_qid; q++)
-	{
-	  if (vui->vrings[q].desc_user_addr &&
-	      vui->vrings[q].used_user_addr && vui->vrings[q].avail_user_addr)
-	    {
-	      vui->vrings[q].desc =
-		map_user_mem (vui, vui->vrings[q].desc_user_addr);
-	      vui->vrings[q].used =
-		map_user_mem (vui, vui->vrings[q].used_user_addr);
-	      vui->vrings[q].avail =
-		map_user_mem (vui, vui->vrings[q].avail_user_addr);
-	    }
-	}
+      FOR_ALL_VHOST_RX_TXQ (q, vui)
+      {
+	if (vui->vrings[q].desc_user_addr && vui->vrings[q].used_user_addr &&
+	    vui->vrings[q].avail_user_addr)
+	  {
+	    vui->vrings[q].desc =
+	      map_user_mem (vui, vui->vrings[q].desc_user_addr);
+	    vui->vrings[q].used =
+	      map_user_mem (vui, vui->vrings[q].used_user_addr);
+	    vui->vrings[q].avail =
+	      map_user_mem (vui, vui->vrings[q].avail_user_addr);
+	  }
+      }
       vlib_worker_thread_barrier_release (vm);
       break;
 
@@ -665,12 +721,8 @@ vhost_user_socket_read (clib_file_t * uf)
       vui->vrings[msg.state.index].last_kick =
 	vui->vrings[msg.state.index].last_used_idx;
 
-      /* tell driver that we don't want interrupts */
-      if (vhost_user_is_packed_ring_supported (vui))
-	vui->vrings[msg.state.index].used_event->flags =
-	  VRING_EVENT_F_DISABLE;
-      else
-	vui->vrings[msg.state.index].used->flags = VRING_USED_F_NO_NOTIFY;
+      /* tell driver that we want interrupts or not */
+      vhost_user_set_operation_mode (vui, &vui->vrings[msg.state.index]);
       vlib_worker_thread_barrier_release (vm);
       vhost_user_update_iface_state (vui);
       break;
@@ -1180,6 +1232,7 @@ vhost_user_send_interrupt_process (vlib_main_t * vm,
 
 	case VHOST_USER_EVENT_START_TIMER:
 	  stop_timer = 0;
+	  timeout = 1e-3;
 	  if (!vlib_process_suspend_time_is_zero (poll_time_remaining))
 	    break;
 	  /* fall through */
@@ -1188,32 +1241,23 @@ vhost_user_send_interrupt_process (vlib_main_t * vm,
 	  /* *INDENT-OFF* */
 	  pool_foreach (vui, vum->vhost_user_interfaces) {
 	      next_timeout = timeout;
-	      for (qid = 0; qid < vui->num_qid / 2; qid += 2)
-		{
-		  vhost_user_vring_t *rxvq = &vui->vrings[qid];
-		  vhost_user_vring_t *txvq = &vui->vrings[qid + 1];
+	      FOR_ALL_VHOST_RX_TXQ (qid, vui)
+	      {
+		vhost_user_vring_t *vq = &vui->vrings[qid];
 
-		  if (txvq->qid == -1)
-		    continue;
-		  if (txvq->n_since_last_int)
-		    {
-		      if (now >= txvq->int_deadline)
-			vhost_user_send_call (vm, vui, txvq);
-		      else
-			next_timeout = txvq->int_deadline - now;
-		    }
+		if (vq->started == 0)
+		  continue;
+		if (vq->n_since_last_int)
+		  {
+		    if (now >= vq->int_deadline)
+		      vhost_user_send_call (vm, vui, vq);
+		    else
+		      next_timeout = vq->int_deadline - now;
+		  }
 
-		  if (rxvq->n_since_last_int)
-		    {
-		      if (now >= rxvq->int_deadline)
-			vhost_user_send_call (vm, vui, rxvq);
-		      else
-			next_timeout = rxvq->int_deadline - now;
-		    }
-
-		  if ((next_timeout < timeout) && (next_timeout > 0.0))
-		    timeout = next_timeout;
-		}
+		if ((next_timeout < timeout) && (next_timeout > 0.0))
+		  timeout = next_timeout;
+	      }
 	  }
           /* *INDENT-ON* */
 	  break;
@@ -1364,10 +1408,10 @@ vhost_user_term_if (vhost_user_intf_t * vui)
   vhost_user_update_gso_interface_count (vui, 0 /* delete */ );
   vhost_user_update_iface_state (vui);
 
-  for (q = 0; q < vui->num_qid; q++)
-    {
-      clib_spinlock_free (&vui->vrings[q].vring_lock);
-    }
+  FOR_ALL_VHOST_RX_TXQ (q, vui)
+  {
+    clib_spinlock_free (&vui->vrings[q].vring_lock);
+  }
 
   if (vui->unix_server_index != ~0)
     {
@@ -1403,28 +1447,25 @@ vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
   vu_log_debug (vui, "Deleting vhost-user interface %s (instance %d)",
 		hwif->name, hwif->dev_instance);
 
-  for (qid = 1; qid < vui->num_qid / 2; qid += 2)
-    {
-      vhost_user_vring_t *txvq = &vui->vrings[qid];
+  FOR_ALL_VHOST_TXQ (qid, vui)
+  {
+    vhost_user_vring_t *txvq = &vui->vrings[qid];
 
-      if (txvq->qid == -1)
-	continue;
-      if ((vum->ifq_count > 0) &&
-	  ((txvq->mode == VNET_HW_IF_RX_MODE_INTERRUPT) ||
-	   (txvq->mode == VNET_HW_IF_RX_MODE_ADAPTIVE)))
-	{
-	  vum->ifq_count--;
-	  // Stop the timer if there is no more interrupt interface/queue
-	  if ((vum->ifq_count == 0) &&
-	      (vum->coalesce_time > 0.0) && (vum->coalesce_frames > 0))
-	    {
-	      vlib_process_signal_event (vm,
-					 vhost_user_send_interrupt_node.index,
-					 VHOST_USER_EVENT_STOP_TIMER, 0);
-	      break;
-	    }
-	}
-    }
+    if ((vum->ifq_count > 0) &&
+	((txvq->mode == VNET_HW_IF_RX_MODE_INTERRUPT) ||
+	 (txvq->mode == VNET_HW_IF_RX_MODE_ADAPTIVE)))
+      {
+	vum->ifq_count--;
+	// Stop the timer if there is no more interrupt interface/queue
+	if (vum->ifq_count == 0)
+	  {
+	    vlib_process_signal_event (vm,
+				       vhost_user_send_interrupt_node.index,
+				       VHOST_USER_EVENT_STOP_TIMER, 0);
+	    break;
+	  }
+      }
+  }
 
   // Disable and reset interface
   vhost_user_term_if (vui);
@@ -1922,9 +1963,11 @@ vhost_user_show_desc (vlib_main_t * vm, vhost_user_intf_t * vui, int q,
   vhost_user_vring_t *vq = &vui->vrings[q];
 
   if (vq->avail && vq->used)
-    vlib_cli_output (vm, "  avail.flags %x avail event idx %u avail.idx %d "
-		     "used event idx %u used.idx %d\n", vq->avail->flags,
-		     vhost_user_avail_event_idx (vq), vq->avail->idx,
+    vlib_cli_output (vm,
+		     "  avail.flags %x avail event idx %u avail.idx %d "
+		     "used.flags %x used event idx %u used.idx %d\n",
+		     vq->avail->flags, vhost_user_avail_event_idx (vq),
+		     vq->avail->idx, vq->used->flags,
 		     vhost_user_used_event_idx (vq), vq->used->idx);
 
   vhost_user_show_fds (vm, vq);
@@ -2199,19 +2242,18 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 
       vlib_cli_output (vm, " rx placement: ");
 
-      for (qid = 1; qid < vui->num_qid / 2; qid += 2)
-	{
-	  vnet_main_t *vnm = vnet_get_main ();
-	  uword thread_index;
-	  vhost_user_vring_t *txvq = &vui->vrings[qid];
+      FOR_ALL_VHOST_TXQ (qid, vui)
+      {
+	uword thread_index;
+	vhost_user_vring_t *txvq = &vui->vrings[qid];
 
-	  if (txvq->qid == -1)
-	    continue;
-	  thread_index =
-	    vnet_hw_if_get_rx_queue_thread_index (vnm, txvq->queue_index);
-	  vlib_cli_output (vm, "   thread %d on vring %d, %U\n", thread_index,
-			   qid, format_vnet_hw_if_rx_mode, txvq->mode);
-	}
+	if (txvq->qid == -1)
+	  continue;
+	thread_index =
+	  vnet_hw_if_get_rx_queue_thread_index (vnm, txvq->queue_index);
+	vlib_cli_output (vm, "   thread %d on vring %d, %U\n", thread_index,
+			 qid, format_vnet_hw_if_rx_mode, txvq->mode);
+      }
 
       vlib_cli_output (vm, " tx placement: %s\n",
 		       vui->use_tx_spinlock ? "spin-lock" : "lock-free");
@@ -2244,29 +2286,30 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 			   vui->regions[j].mmap_offset,
 			   pointer_to_uword (vui->region_mmap_addr[j]));
 	}
-      for (q = 0; q < vui->num_qid; q++)
-	{
-	  if (!vui->vrings[q].started)
-	    continue;
+      FOR_ALL_VHOST_RX_TXQ (q, vui)
+      {
+	if (!vui->vrings[q].started)
+	  continue;
 
-	  vlib_cli_output (vm, "\n Virtqueue %d (%s%s)\n", q,
-			   (q & 1) ? "RX" : "TX",
-			   vui->vrings[q].enabled ? "" : " disabled");
+	vlib_cli_output (vm, "\n Virtqueue %d (%s%s)\n", q,
+			 (q & 1) ? "RX" : "TX",
+			 vui->vrings[q].enabled ? "" : " disabled");
+	if (q & 1)
+	  vlib_cli_output (vm, "  global RX queue index %u\n",
+			   vui->vrings[q].queue_index);
 
-	  vlib_cli_output (vm,
-			   "  qsz %d last_avail_idx %d last_used_idx %d"
-			   " last_kick %u\n",
-			   vui->vrings[q].qsz_mask + 1,
-			   vui->vrings[q].last_avail_idx,
-			   vui->vrings[q].last_used_idx,
-			   vui->vrings[q].last_kick);
+	vlib_cli_output (
+	  vm,
+	  "  qsz %d last_avail_idx %d last_used_idx %d"
+	  " last_kick %u\n",
+	  vui->vrings[q].qsz_mask + 1, vui->vrings[q].last_avail_idx,
+	  vui->vrings[q].last_used_idx, vui->vrings[q].last_kick);
 
-	  if (vhost_user_is_packed_ring_supported (vui))
-	    vhost_user_show_desc_packed (vm, vui, q, show_descr,
-					 show_verbose);
-	  else
-	    vhost_user_show_desc (vm, vui, q, show_descr, show_verbose);
-	}
+	if (vhost_user_is_packed_ring_supported (vui))
+	  vhost_user_show_desc_packed (vm, vui, q, show_descr, show_verbose);
+	else
+	  vhost_user_show_desc (vm, vui, q, show_descr, show_verbose);
+      }
       vlib_cli_output (vm, "\n");
     }
 done:

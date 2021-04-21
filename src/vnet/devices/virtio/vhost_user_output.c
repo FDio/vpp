@@ -1047,6 +1047,9 @@ vhost_user_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index,
     pool_elt_at_index (vum->vhost_user_interfaces, hif->dev_instance);
   vhost_user_vring_t *txvq = &vui->vrings[VHOST_VRING_IDX_TX (qid)];
 
+  if (mode == txvq->mode)
+    return 0;
+
   if ((mode == VNET_HW_IF_RX_MODE_INTERRUPT) ||
       (mode == VNET_HW_IF_RX_MODE_ADAPTIVE))
     {
@@ -1061,7 +1064,7 @@ vhost_user_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index,
 	  // Start the timer if this is the first encounter on interrupt
 	  // interface/queue
 	  if ((vum->ifq_count == 1) &&
-	      (vum->coalesce_time > 0.0) && (vum->coalesce_frames > 0))
+	      ((vum->coalesce_time > 0.0) || (vum->coalesce_frames > 0)))
 	    vlib_process_signal_event (vm,
 				       vhost_user_send_interrupt_node.index,
 				       VHOST_USER_EVENT_START_TIMER, 0);
@@ -1074,26 +1077,24 @@ vhost_user_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index,
 	{
 	  vum->ifq_count--;
 	  // Stop the timer if there is no more interrupt interface/queue
-	  if ((vum->ifq_count == 0) &&
-	      (vum->coalesce_time > 0.0) && (vum->coalesce_frames > 0))
+	  if (vum->ifq_count == 0)
 	    vlib_process_signal_event (vm,
 				       vhost_user_send_interrupt_node.index,
 				       VHOST_USER_EVENT_STOP_TIMER, 0);
 	}
     }
 
-  txvq->mode = mode;
-  if (mode == VNET_HW_IF_RX_MODE_POLLING)
-    txvq->used->flags = VRING_USED_F_NO_NOTIFY;
-  else if ((mode == VNET_HW_IF_RX_MODE_ADAPTIVE) ||
-	   (mode == VNET_HW_IF_RX_MODE_INTERRUPT))
-    txvq->used->flags = 0;
-  else
+  if ((mode != VNET_HW_IF_RX_MODE_POLLING) &&
+      (mode != VNET_HW_IF_RX_MODE_ADAPTIVE) &&
+      (mode != VNET_HW_IF_RX_MODE_INTERRUPT))
     {
       vu_log_err (vui, "unhandled mode %d changed for if %d queue %d", mode,
 		  hw_if_index, qid);
       return clib_error_return (0, "unsupported");
     }
+
+  txvq->mode = mode;
+  vhost_user_set_operation_mode (vui, txvq);
 
   return 0;
 }

@@ -290,6 +290,12 @@ typedef struct
   u8 enable_event_idx;
 } vhost_user_intf_t;
 
+#define FOR_ALL_VHOST_TXQ(qid, vui) for (qid = 1; qid < vui->num_qid; qid += 2)
+
+#define FOR_ALL_VHOST_RXQ(qid, vui) for (qid = 0; qid < vui->num_qid; qid += 2)
+
+#define FOR_ALL_VHOST_RX_TXQ(qid, vui) for (qid = 0; qid < vui->num_qid; qid++)
+
 typedef struct
 {
   uword dst;
@@ -365,6 +371,8 @@ typedef struct
 
 int vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
 			 vhost_user_intf_details_t ** out_vuids);
+void vhost_user_set_operation_mode (vhost_user_intf_t *vui,
+				    vhost_user_vring_t *txvq);
 
 extern vlib_node_registration_t vhost_user_send_interrupt_node;
 extern vnet_device_class_t vhost_user_device_class;
