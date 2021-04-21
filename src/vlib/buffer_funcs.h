@@ -51,10 +51,22 @@
     vlib buffer access methods.
 */
 
+typedef void (vlib_buffer_free_fn_t) (vlib_main_t *vm, u32 *buffers,
+				      u32 n_buffers);
+
 typedef void (vlib_buffer_enqueue_to_next_fn_t) (vlib_main_t *vm,
 						 vlib_node_runtime_t *node,
 						 u32 *buffers, u16 *nexts,
 						 uword count);
+
+typedef uword (vlib_buffer_pool_get_fn_t) (vlib_main_t *vm,
+					   u8 buffer_pool_index, u32 *buffers,
+					   u32 n_buffers);
+
+typedef void (vlib_buffer_pool_put_fn_t) (vlib_main_t *vm,
+					  u8 buffer_pool_index, u32 *buffers,
+					  u32 n_buffers);
+
 typedef void (vlib_buffer_enqueue_to_single_next_fn_t) (
   vlib_main_t *vm, vlib_node_runtime_t *node, u32 *ers, u16 next_index,
   u32 count);
@@ -64,6 +76,10 @@ typedef u32 (vlib_buffer_enqueue_to_thread_fn_t) (
   u16 *thread_indices, u32 n_packets, int drop_on_congestion);
 typedef struct
 {
+  vlib_buffer_free_fn_t *buffer_free_fn;
+  vlib_buffer_free_fn_t *buffer_free_no_next_fn;
+  vlib_buffer_pool_get_fn_t *buffer_pool_get_fn;
+  vlib_buffer_pool_put_fn_t *buffer_pool_put_fn;
   vlib_buffer_enqueue_to_next_fn_t *buffer_enqueue_to_next_fn;
   vlib_buffer_enqueue_to_single_next_fn_t *buffer_enqueue_to_single_next_fn;
   vlib_buffer_enqueue_to_thread_fn_t *buffer_enqueue_to_thread_fn;
@@ -553,30 +569,9 @@ static_always_inline __clib_warn_unused_result uword
 vlib_buffer_pool_get (vlib_main_t * vm, u8 buffer_pool_index, u32 * buffers,
 		      u32 n_buffers)
 {
-  vlib_buffer_pool_t *bp = vlib_get_buffer_pool (vm, buffer_pool_index);
-  u32 len;
-
-  ASSERT (bp->buffers);
-
-  clib_spinlock_lock (&bp->lock);
-  len = bp->n_avail;
-  if (PREDICT_TRUE (n_buffers < len))
-    {
-      len -= n_buffers;
-      vlib_buffer_copy_indices (buffers, bp->buffers + len, n_buffers);
-      bp->n_avail = len;
-      clib_spinlock_unlock (&bp->lock);
-      return n_buffers;
-    }
-  else
-    {
-      vlib_buffer_copy_indices (buffers, bp->buffers, len);
-      bp->n_avail = 0;
-      clib_spinlock_unlock (&bp->lock);
-      return len;
-    }
+  vlib_buffer_pool_get_fn_t *fn = vlib_buffer_func_main.buffer_pool_get_fn;
+  return (fn) (vm, buffer_pool_index, buffers, n_buffers);
 }
-
 
 /** \brief Allocate buffers from specific pool into supplied array
 
@@ -770,34 +765,8 @@ static_always_inline void
 vlib_buffer_pool_put (vlib_main_t * vm, u8 buffer_pool_index,
 		      u32 * buffers, u32 n_buffers)
 {
-  vlib_buffer_pool_t *bp = vlib_get_buffer_pool (vm, buffer_pool_index);
-  vlib_buffer_pool_thread_t *bpt = vec_elt_at_index (bp->threads,
-						     vm->thread_index);
-  u32 n_cached, n_empty;
-
-  if (CLIB_DEBUG > 0)
-    vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
-				     VLIB_BUFFER_KNOWN_ALLOCATED);
-
-  n_cached = bpt->n_cached;
-  n_empty = VLIB_BUFFER_POOL_PER_THREAD_CACHE_SZ - n_cached;
-  if (n_buffers <= n_empty)
-    {
-      vlib_buffer_copy_indices (bpt->cached_buffers + n_cached,
-				buffers, n_buffers);
-      bpt->n_cached = n_cached + n_buffers;
-      return;
-    }
-
-  vlib_buffer_copy_indices (bpt->cached_buffers + n_cached,
-			    buffers + n_buffers - n_empty, n_empty);
-  bpt->n_cached = VLIB_BUFFER_POOL_PER_THREAD_CACHE_SZ;
-
-  clib_spinlock_lock (&bp->lock);
-  vlib_buffer_copy_indices (bp->buffers + bp->n_avail, buffers,
-			    n_buffers - n_empty);
-  bp->n_avail += n_buffers - n_empty;
-  clib_spinlock_unlock (&bp->lock);
+  vlib_buffer_pool_put_fn_t *fn = vlib_buffer_func_main.buffer_pool_put_fn;
+  (fn) (vm, buffer_pool_index, buffers, n_buffers);
 }
 
 static_always_inline void
@@ -979,7 +948,13 @@ vlib_buffer_free (vlib_main_t * vm,
 		  /* number of buffers to free */
 		  u32 n_buffers)
 {
-  vlib_buffer_free_inline (vm, buffers, n_buffers, /* maybe next */ 1);
+  if (__builtin_constant_p (n_buffers))
+    vlib_buffer_free_inline (vm, buffers, n_buffers, /* maybe next */ 1);
+  else
+    {
+      vlib_buffer_free_fn_t *fn = vlib_buffer_func_main.buffer_free_fn;
+      (fn) (vm, buffers, n_buffers);
+    }
 }
 
 /** \brief Free buffers, does not free the buffer chain for each buffer
@@ -996,7 +971,13 @@ vlib_buffer_free_no_next (vlib_main_t * vm,
 			  /* number of buffers to free */
 			  u32 n_buffers)
 {
-  vlib_buffer_free_inline (vm, buffers, n_buffers, /* maybe next */ 0);
+  if (__builtin_constant_p (n_buffers))
+    vlib_buffer_free_inline (vm, buffers, n_buffers, /* maybe next */ 0);
+  else
+    {
+      vlib_buffer_free_fn_t *fn = vlib_buffer_func_main.buffer_free_no_next_fn;
+      (fn) (vm, buffers, n_buffers);
+    }
 }
 
 /** \brief Free one buffer
