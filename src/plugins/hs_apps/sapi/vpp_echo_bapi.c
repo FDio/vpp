@@ -139,6 +139,30 @@ echo_send_unbind (echo_main_t * em, echo_session_t * s)
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
+static void
+echo_msg_add_crypto_ext_config (echo_main_t *em, uword *offset)
+{
+  transport_endpt_ext_cfg_t cfg;
+  svm_fifo_chunk_t *c;
+
+  c = echo_segment_alloc_chunk (ECHO_MQ_SEG_HANDLE, 0, sizeof (cfg), offset);
+  if (!c)
+    return;
+
+  memset (&cfg, 0, sizeof (cfg));
+  cfg.type = TRANSPORT_ENDPT_EXT_CFG_CRYPTO;
+  cfg.len = sizeof (cfg);
+  cfg.crypto_cfg.ckpair_index = em->ckpair_index;
+  clib_memcpy_fast (c->data, &cfg, cfg.len);
+}
+
+static u8
+echo_transport_needs_crypto (transport_proto_t proto)
+{
+  return proto == TRANSPORT_PROTO_TLS || proto == TRANSPORT_PROTO_DTLS ||
+	 proto == TRANSPORT_PROTO_QUIC;
+}
+
 void
 echo_send_connect (echo_main_t * em, void *args)
 {
@@ -163,8 +187,10 @@ echo_send_connect (echo_main_t * em, void *args)
   mp->port = em->uri_elts.port;
   mp->proto = em->uri_elts.transport_proto;
   mp->parent_handle = a->parent_session_handle;
-  mp->ckpair_index = em->ckpair_index;
-  mp->crypto_engine = em->crypto_engine;
+  //  mp->ckpair_index = em->ckpair_index;
+  //  mp->crypto_engine = em->crypto_engine;
+  if (echo_transport_needs_crypto (mp->proto))
+    echo_msg_add_crypto_ext_config (em, &mp->ext_config);
   mp->flags = em->connect_flag;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
@@ -330,6 +356,34 @@ echo_segment_attach_mq (uword segment_handle, uword mq_offset, u32 mq_index,
   clib_spinlock_unlock (&em->segment_handles_lock);
 
   return 0;
+}
+
+svm_fifo_chunk_t *
+echo_segment_alloc_chunk (uword segment_handle, u32 slice_index, u32 size,
+			  uword *offset)
+{
+  echo_main_t *em = &echo_main;
+  svm_fifo_chunk_t *c;
+  fifo_segment_t *fs;
+  u32 fs_index;
+
+  fs_index = echo_segment_lookup (segment_handle);
+  if (fs_index == (u32) ~0)
+    {
+      ECHO_LOG (0, "ERROR: mq segment %lx for is not attached!",
+		segment_handle);
+      return 0;
+    }
+
+  clib_spinlock_lock (&em->segment_handles_lock);
+
+  fs = fifo_segment_get_segment (&em->segment_main, fs_index);
+  c = fifo_segment_alloc_chunk_w_slice (fs, 0, size);
+  *offset = fifo_segment_chunk_offset (fs, c);
+
+  clib_spinlock_unlock (&em->segment_handles_lock);
+
+  return c;
 }
 
 /*

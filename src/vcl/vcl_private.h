@@ -160,7 +160,7 @@ typedef struct vcl_session_
   vppcom_epoll_t vep;
   u32 attributes;		/**< see @ref vppcom_session_attr_t */
   int libc_epfd;
-  u32 ckpair_index;
+  //  u32 ckpair_index;
   u32 vrf;
 
   u32 sndbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_SNDBUF)
@@ -389,6 +389,8 @@ vcl_session_free (vcl_worker_t * wrk, vcl_session_t * s)
   /* Debug level set to 1 to avoid debug messages while ldp is cleaning up */
   VDBG (1, "session %u [0x%llx] removed", s->session_index, s->vpp_handle);
   vcl_session_detach_fifos (s);
+  if (s->ext_config)
+    clib_mem_free (s->ext_config);
   pool_put (wrk->sessions, s);
 }
 
@@ -663,6 +665,8 @@ void vcl_segment_table_del (u64 segment_handle);
 
 int vcl_session_read_ready (vcl_session_t * session);
 int vcl_session_write_ready (vcl_session_t * session);
+int vcl_session_alloc_ext_cfg (vcl_session_t *s,
+			       transport_endpt_ext_cfg_type_t type);
 
 static inline vcl_worker_t *
 vcl_worker_get (u32 wrk_index)
