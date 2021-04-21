@@ -259,11 +259,28 @@ typedef struct transport_endpt_attr_
   };
 } transport_endpt_attr_t;
 
+typedef enum transport_endpt_ext_cfg_type_
+{
+  TRANSPORT_ENDPT_EXT_CFG_NONE,
+  TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
+} transport_endpt_ext_cfg_type_t;
+
+typedef struct transport_endpt_crypto_cfg_
+{
+  u32 ckpair_index;
+  u8 crypto_engine;
+  u8 hostname[256]; /**< full domain len is 255 as per rfc 3986 */
+} transport_endpt_crypto_cfg_t;
+
 typedef struct transport_endpt_ext_cfg_
 {
-  u8 type;
+  u16 type;
   u16 len;
-  u8 data[0];
+  union
+  {
+    transport_endpt_crypto_cfg_t crypto_cfg;
+    u8 data[0];
+  };
 } transport_endpt_ext_cfg_t;
 
 typedef clib_bihash_24_8_t transport_endpoint_table_t;
