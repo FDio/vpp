@@ -264,6 +264,7 @@ _ (u64x8, u8, epu64, _mm512, __m512i)
 _ (u16x16, u32x16, _mm512_cvtepi16_epi32, __m256i)
 _ (u32x16, u16x16, _mm512_cvtusepi32_epi16, __m512i)
 _ (u32x8, u16x8, _mm256_cvtusepi32_epi16, __m256i)
+_ (u32x8, u64x8, _mm512_cvtepu32_epi64, __m256i)
 #undef _
 
 #define _(vt, mt, bits, epi)                                                  \
