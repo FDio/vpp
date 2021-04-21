@@ -764,14 +764,6 @@ u8x16_xor3 (u8x16 a, u8x16 b, u8x16 c)
   return a ^ b ^ c;
 }
 
-#ifdef __AVX512F__
-static_always_inline u8x16
-u8x16_mask_load (u8x16 a, void *p, u16 mask)
-{
-  return (u8x16) _mm_mask_loadu_epi8 ((__m128i) a, mask, p);
-}
-#endif
-
 #endif /* included_vector_sse2_h */
 
 /*
