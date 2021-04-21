@@ -51,6 +51,26 @@
     vlib buffer access methods.
 */
 
+typedef void (vlib_buffer_enqueue_to_next_fn_t) (vlib_main_t *vm,
+						 vlib_node_runtime_t *node,
+						 u32 *buffers, u16 *nexts,
+						 uword count);
+typedef void (vlib_buffer_enqueue_to_single_next_fn_t) (
+  vlib_main_t *vm, vlib_node_runtime_t *node, u32 *ers, u16 next_index,
+  u32 count);
+
+typedef u32 (vlib_buffer_enqueue_to_thread_fn_t) (
+  vlib_main_t *vm, u32 frame_queue_index, u32 *buffer_indices,
+  u16 *thread_indices, u32 n_packets, int drop_on_congestion);
+typedef struct
+{
+  vlib_buffer_enqueue_to_next_fn_t *buffer_enqueue_to_next_fn;
+  vlib_buffer_enqueue_to_single_next_fn_t *buffer_enqueue_to_single_next_fn;
+  vlib_buffer_enqueue_to_thread_fn_t *buffer_enqueue_to_thread_fn;
+} vlib_buffer_func_main_t;
+
+extern vlib_buffer_func_main_t vlib_buffer_func_main;
+
 always_inline void
 vlib_buffer_validate (vlib_main_t * vm, vlib_buffer_t * b)
 {
