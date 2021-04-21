@@ -159,6 +159,7 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
     .mcast_sw_if_index = ntohl (mp->mcast_sw_if_index),
     .encap_fib_index = fib_index,
     .decap_next_index = ntohl (mp->decap_next_index),
+    .is_l3 = mp->is_l3,
     .vni = ntohl (mp->vni),
     .dst = dst,
     .src = src,
