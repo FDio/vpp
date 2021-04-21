@@ -67,6 +67,7 @@ endif()
 add_vpp_library(vlib
   SOURCES
   buffer.c
+  buffer_funcs.c
   cli.c
   counter.c
   drop.c
@@ -99,6 +100,7 @@ add_vpp_library(vlib
   ${VMBUS_SOURCE}
 
   MULTIARCH_SOURCES
+  buffer_funcs.c
   drop.c
   punt_node.c
   node_init.c
