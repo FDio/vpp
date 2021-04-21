@@ -202,17 +202,36 @@ u32x16_sum_elts (u32x16 sum16)
   return sum8[0] + sum8[4];
 }
 
-static_always_inline u8x64
-u8x64_mask_load (u8x64 a, void *p, u64 mask)
-{
-  return (u8x64) _mm512_mask_loadu_epi8 ((__m512i) a, mask, p);
-}
+#define _(t, m, p, i, e)                                                      \
+  static_always_inline t t##_mask_load (t a, void *p, m mask)                 \
+  {                                                                           \
+    return (t) p##_mask_loadu_##e ((i) a, mask, p);                           \
+  }                                                                           \
+  static_always_inline t t##_mask_load_zero (void *p, m mask)                 \
+  {                                                                           \
+    return (t) p##_maskz_loadu_##e (mask, p);                                 \
+  }                                                                           \
+  static_always_inline void t##_mask_store (t a, void *p, m mask)             \
+  {                                                                           \
+    p##_mask_storeu_##e (p, mask, (i) a);                                     \
+  }
 
-static_always_inline void
-u8x64_mask_store (u8x64 a, void *p, u64 mask)
-{
-  _mm512_mask_storeu_epi8 (p, mask, (__m512i) a);
-}
+_ (u8x64, u64, _mm512, __m512i, epi8)
+_ (u8x32, u32, _mm256, __m256i, epi8)
+_ (u8x16, u16, _mm, __m128i, epi8)
+_ (u16x32, u32, _mm512, __m512i, epi16)
+_ (u16x16, u16, _mm256, __m256i, epi16)
+_ (u16x8, u8, _mm, __m128i, epi16)
+_ (u32x16, u16, _mm512, __m512i, epi32)
+_ (u32x8, u8, _mm256, __m256i, epi32)
+_ (u32x4, u8, _mm, __m128i, epi32)
+_ (u64x8, u8, _mm512, __m512i, epi64)
+_ (u64x4, u8, _mm256, __m256i, epi64)
+_ (u64x2, u8, _mm, __m128i, epi64)
+#undef _
+
+#define CLIB_HAVE_VEC512_MASK_LOAD_STORE
+#define CLIB_HAVE_VEC256_MASK_LOAD_STORE
 
 static_always_inline u8x64
 u8x64_splat_u8x16 (u8x16 a)
