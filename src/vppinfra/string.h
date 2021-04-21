@@ -71,6 +71,7 @@ void clib_memswap (void *_a, void *_b, uword bytes);
  * the vector unit memcpy variants confuse coverity
  * so don't let it anywhere near them.
  */
+#include <vppinfra/memcpy.h>
 #ifndef __COVERITY__
 #if __AVX512BITALG__
 #include <vppinfra/memcpy_avx512.h>
