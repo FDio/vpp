@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "70fa9bc1_9876a741",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1632
+      },
+      "writtenOn": "2021-04-21T12:31:28Z",
+      "side": 1,
+      "message": "Should we default to the current release instead?\nThis would ensure that the command always produces the exact same result for a given version of the VPP repo, unless extra arguments are passed.",
+      "revId": "fae12a7393b231d8d4d1944cdbeadbb0af98c5b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
