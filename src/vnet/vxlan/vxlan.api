@@ -22,6 +22,7 @@ import "vnet/ip/ip_types.api";
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - Use 1 to create the tunnel, 0 to remove it
+    @param is_l3 - if true, create the interface in L3 mode, w/o MAC
     @param instance - optional unique custom device instance, else ~0.
     @param src_address - Source IP address
     @param dst_address - Destination IP address, can be multicast
@@ -42,6 +43,7 @@ define vxlan_add_del_tunnel
   u32 encap_vrf_id;
   u32 decap_next_index;
   u32 vni;
+  bool is_l3 [default=true];
 };
 
 /** \brief Create or delete a VXLAN tunnel

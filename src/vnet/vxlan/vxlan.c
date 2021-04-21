@@ -364,8 +364,6 @@ int vnet_vxlan_add_del_tunnel
   vxlan4_tunnel_key_t key4;
   vxlan6_tunnel_key_t key6;
   u32 is_ip6 = a->is_ip6;
-  vlib_main_t *vm = vlib_get_main ();
-  u8 hw_addr[6];
 
   /* Set udp-ports */
   if (a->src_port == 0)
@@ -442,29 +440,36 @@ int vnet_vxlan_add_del_tunnel
 	  return VNET_API_ERROR_INSTANCE_IN_USE;
 	}
 
-      f64 now = vlib_time_now (vm);
-      u32 rnd;
-      rnd = (u32) (now * 1e6);
-      rnd = random_u32 (&rnd);
-
-      memcpy (hw_addr + 2, &rnd, sizeof (rnd));
-      hw_addr[0] = 2;
-      hw_addr[1] = 0xfe;
-
       hash_set (vxm->instance_used, user_instance, 1);
 
       t->dev_instance = dev_instance;	/* actual */
       t->user_instance = user_instance; /* name */
       t->flow_index = ~0;
 
-      if (ethernet_register_interface (vnm, vxlan_device_class.index,
-				       dev_instance, hw_addr, &t->hw_if_index,
-				       vxlan_eth_flag_change))
+      if (a->is_l3)
+	t->hw_if_index =
+	  vnet_register_interface (vnm, vxlan_device_class.index, dev_instance,
+				   vxlan_hw_class.index, dev_instance);
+      else
 	{
-	  hash_unset (vxm->instance_used, t->user_instance);
+	  vlib_main_t *vm = vlib_get_main ();
+	  u8 hw_addr[6];
+	  f64 now = vlib_time_now (vm);
+	  u32 rnd;
+	  rnd = (u32) (now * 1e6);
+	  rnd = random_u32 (&rnd);
+	  memcpy (hw_addr + 2, &rnd, sizeof (rnd));
+	  hw_addr[0] = 2;
+	  hw_addr[1] = 0xfe;
+	  if (ethernet_register_interface (
+		vnm, vxlan_device_class.index, dev_instance, hw_addr,
+		&t->hw_if_index, vxlan_eth_flag_change))
+	    {
+	      hash_unset (vxm->instance_used, t->user_instance);
 
-	  pool_put (vxm->tunnels, t);
-	  return VNET_API_ERROR_SYSCALL_ERROR_2;
+	      pool_put (vxm->tunnels, t);
+	      return VNET_API_ERROR_SYSCALL_ERROR_2;
+	    }
 	}
 
       vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, t->hw_if_index);
@@ -498,7 +503,10 @@ int vnet_vxlan_add_del_tunnel
 
       if (add_failed)
 	{
-	  ethernet_delete_interface (vnm, t->hw_if_index);
+	  if (a->is_l3)
+	    vnet_delete_hw_interface (vnm, t->hw_if_index);
+	  else
+	    ethernet_delete_interface (vnm, t->hw_if_index);
 	  hash_unset (vxm->instance_used, t->user_instance);
 	  pool_put (vxm->tunnels, t);
 	  return VNET_API_ERROR_INVALID_REGISTRATION;
@@ -647,7 +655,11 @@ int vnet_vxlan_add_del_tunnel
 	  mcast_shared_remove (&t->dst);
 	}
 
-      ethernet_delete_interface (vnm, t->hw_if_index);
+      vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, t->hw_if_index);
+      if (hw->dev_class_index == vxlan_device_class.index)
+	vnet_delete_hw_interface (vnm, t->hw_if_index);
+      else
+	ethernet_delete_interface (vnm, t->hw_if_index);
       hash_unset (vxm->instance_used, t->user_instance);
 
       fib_node_deinit (&t->node);
@@ -717,6 +729,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   u8 grp_set = 0;
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;
+  u8 is_l3 = 0;
   u32 instance = ~0;
   u32 encap_fib_index = 0;
   u32 mcast_sw_if_index = ~0;
@@ -764,6 +777,8 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
 	  encap_fib_index =
 	    fib_table_find (fib_ip_proto (ipv6_set), table_id);
 	}
+      else if (unformat (line_input, "l3"))
+	is_l3 = 1;
       else if (unformat (line_input, "decap-next %U", unformat_decap_next,
 			 &decap_next_index, ipv4_set))
 	;
@@ -785,6 +800,13 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
 
   if (parse_error)
     return parse_error;
+
+  if (is_l3 && decap_next_index == VXLAN_INPUT_NEXT_L2_INPUT)
+    {
+      vlib_node_t *node = vlib_get_node_by_name (
+	vm, (u8 *) (ipv4_set ? "ip4-input" : "ip6-input"));
+      decap_next_index = get_decap_next_for_node (node->index, ipv4_set);
+    }
 
   if (encap_fib_index == ~0)
     return clib_error_return (0, "nonexistent encap-vrf-id %d", table_id);
@@ -819,12 +841,12 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   if (vni >> 24)
     return clib_error_return (0, "vni %d out of range", vni);
 
-  vnet_vxlan_add_del_tunnel_args_t a = {
-    .is_add = is_add,
-    .is_ip6 = ipv6_set,
-    .instance = instance,
+  vnet_vxlan_add_del_tunnel_args_t a = { .is_add = is_add,
+					 .is_ip6 = ipv6_set,
+					 .is_l3 = is_l3,
+					 .instance = instance,
 #define _(x) .x = x,
-    foreach_copy_field
+					 foreach_copy_field
 #undef _
   };
 
@@ -893,7 +915,7 @@ VLIB_CLI_COMMAND (create_vxlan_tunnel_command, static) = {
     "create vxlan tunnel src <local-vtep-addr>"
     " {dst <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} vni <nn>"
     " [instance <id>]"
-    " [encap-vrf-id <nn>] [decap-next [l2|node <name>]] [del]"
+    " [encap-vrf-id <nn>] [decap-next [l2|node <name>]] [del] [l3]"
     " [src_port <local-vtep-udp-port>] [dst_port <remote-vtep-udp-port>]",
   .function = vxlan_add_del_tunnel_command_fn,
 };

@@ -214,6 +214,7 @@ typedef struct
   /* we normally use is_ip4, but since this adds to the
    * structure, this seems less of a breaking change */
   u8 is_ip6;
+  u8 is_l3;
   u32 instance;
   ip46_address_t src, dst;
   u32 mcast_sw_if_index;
