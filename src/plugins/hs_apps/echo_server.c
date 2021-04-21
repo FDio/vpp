@@ -385,6 +385,13 @@ echo_server_detach (void)
 }
 
 static int
+echo_client_transport_needs_crypto (transport_proto_t proto)
+{
+  return proto == TRANSPORT_PROTO_TLS || proto == TRANSPORT_PROTO_DTLS ||
+	 proto == TRANSPORT_PROTO_QUIC;
+}
+
+static int
 echo_server_listen ()
 {
   i32 rv;
@@ -398,7 +405,12 @@ echo_server_listen ()
       return -1;
     }
   args->app_index = esm->app_index;
-  args->sep_ext.ckpair_index = esm->ckpair_index;
+  if (echo_client_transport_needs_crypto (args->sep_ext.transport_proto))
+    {
+      session_endpoint_alloc_ext_cfg (&args->sep_ext,
+				      TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+      args->sep_ext.ext_cfg->crypto_cfg.ckpair_index = esm->ckpair_index;
+    }
 
   if (args->sep_ext.transport_proto == TRANSPORT_PROTO_UDP)
     {
@@ -407,6 +419,7 @@ echo_server_listen ()
 
   rv = vnet_listen (args);
   esm->listener_handle = args->handle;
+  clib_mem_free (args->sep_ext.ext_cfg);
   return rv;
 }
 

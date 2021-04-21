@@ -615,7 +615,7 @@ app_rx_mqs_alloc (application_t *app)
   cfg->q_nitems = evt_q_length;
   cfg->ring_cfgs = rc;
 
-  eqs->ssvm.ssvm_size = svm_msg_q_size_to_alloc (cfg) * n_mqs + (16 << 10);
+  eqs->ssvm.ssvm_size = svm_msg_q_size_to_alloc (cfg) * n_mqs + (1 << 20);
   eqs->ssvm.name = format (0, "%s-rx-mqs-seg%c", app->name, 0);
 
   if (ssvm_server_init (&eqs->ssvm, SSVM_SEGMENT_MEMFD))

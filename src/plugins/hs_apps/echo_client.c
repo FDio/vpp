@@ -718,6 +718,13 @@ echo_clients_start_tx_pthread (echo_client_main_t * ecm)
   return 0;
 }
 
+static int
+echo_client_transport_needs_crypto (transport_proto_t proto)
+{
+  return proto == TRANSPORT_PROTO_TLS || proto == TRANSPORT_PROTO_DTLS ||
+	 proto == TRANSPORT_PROTO_QUIC;
+}
+
 clib_error_t *
 echo_clients_connect (vlib_main_t * vm, u32 n_clients)
 {
@@ -736,10 +743,17 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
       clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
       a->api_context = i;
       a->app_index = ecm->app_index;
-      a->sep_ext.ckpair_index = ecm->ckpair_index;
+      if (echo_client_transport_needs_crypto (a->sep_ext.transport_proto))
+	{
+	  session_endpoint_alloc_ext_cfg (&a->sep_ext,
+					  TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+	  a->sep_ext.ext_cfg->crypto_cfg.ckpair_index = ecm->ckpair_index;
+	}
 
       vlib_worker_thread_barrier_sync (vm);
-      if ((rv = vnet_connect (a)))
+      rv = vnet_connect (a);
+      clib_mem_free (a->sep_ext.ext_cfg);
+      if (rv)
 	{
 	  vlib_worker_thread_barrier_release (vm);
 	  return clib_error_return (0, "connect returned: %d", rv);
