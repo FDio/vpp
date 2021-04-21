@@ -760,12 +760,20 @@ http_server_attach ()
 }
 
 static int
+http_transport_needs_crypto (transport_proto_t proto)
+{
+  return proto == TRANSPORT_PROTO_TLS || proto == TRANSPORT_PROTO_DTLS ||
+	 proto == TRANSPORT_PROTO_QUIC;
+}
+
+static int
 http_server_listen ()
 {
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   http_server_main_t *hsm = &http_server_main;
   vnet_listen_args_t _a, *a = &_a;
   char *uri = "tcp://0.0.0.0/80";
+  int rv;
 
   clib_memset (a, 0, sizeof (*a));
   a->app_index = hsm->app_index;
@@ -777,9 +785,16 @@ http_server_listen ()
     return -1;
 
   clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
-  a->sep_ext.ckpair_index = hsm->ckpair_index;
+  if (http_transport_needs_crypto (a->sep_ext.transport_proto))
+    {
+      session_endpoint_alloc_ext_cfg (&a->sep_ext,
+				      TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+      a->sep_ext.ext_cfg->crypto.ckpair_index = hsm->ckpair_index;
+    }
 
-  return vnet_listen (a);
+  rv = vnet_listen (a);
+  clib_mem_free (a->sep_ext.ext_cfg);
+  return rv;
 }
 
 static void

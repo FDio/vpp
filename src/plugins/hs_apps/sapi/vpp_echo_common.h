@@ -448,6 +448,9 @@ int echo_attach_session (uword segment_handle, uword rxf_offset,
 			 uword mq_offset, uword txf_offset, echo_session_t *s);
 int echo_segment_attach_mq (uword segment_handle, uword mq_offset,
 			    u32 mq_index, svm_msg_q_t **mq);
+svm_fifo_chunk_t *echo_segment_alloc_chunk (uword segment_handle,
+					    u32 slice_index, u32 size,
+					    uword *offset);
 
 /* Binary API */
 
