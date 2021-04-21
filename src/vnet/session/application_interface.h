@@ -399,18 +399,19 @@ typedef struct session_connect_msg_
   u32 ckpair_index;
   u8 crypto_engine;
   u8 flags;
-  union
-  {
-    struct
-    {
-      u8 hostname[16];
-      u8 hostname_len;
-    } __clib_packed;
-    struct
-    {
-      uword ext_config;
-    } __clib_packed;
-  };
+//  union
+//  {
+//    struct
+//    {
+//      u8 hostname[16];
+//      u8 hostname_len;
+//    } __clib_packed;
+//    struct
+//    {
+//      uword ext_config;
+//    } __clib_packed;
+//  };
+  uword ext_config;
 } __clib_packed session_connect_msg_t;
 
 STATIC_ASSERT (sizeof (session_connect_msg_t) <= SESSION_CTRL_MSG_MAX_SIZE,

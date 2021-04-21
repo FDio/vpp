@@ -78,8 +78,8 @@ session_mq_listen_handler (void *data)
   a->sep.fib_index = mp->vrf;
   a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
   a->sep.transport_proto = mp->proto;
-  a->sep_ext.ckpair_index = mp->ckpair_index;
-  a->sep_ext.crypto_engine = mp->crypto_engine;
+//  a->sep_ext.ckpair_index = mp->ckpair_index;
+//  a->sep_ext.crypto_engine = mp->crypto_engine;
   a->app_index = app->app_index;
   a->wrk_map_index = mp->wrk_index;
   a->sep_ext.transport_flags = mp->flags;
@@ -154,11 +154,11 @@ session_mq_connect_handler (void *data)
   a->sep_ext.ckpair_index = mp->ckpair_index;
   a->sep_ext.crypto_engine = mp->crypto_engine;
   a->sep_ext.transport_flags = mp->flags;
-  if (mp->hostname_len)
-    {
-      vec_validate (a->sep_ext.hostname, mp->hostname_len - 1);
-      clib_memcpy_fast (a->sep_ext.hostname, mp->hostname, mp->hostname_len);
-    }
+//  if (mp->hostname_len)
+//    {
+//      vec_validate (a->sep_ext.hostname, mp->hostname_len - 1);
+//      clib_memcpy_fast (a->sep_ext.hostname, mp->hostname, mp->hostname_len);
+//    }
   a->api_context = mp->context;
   a->app_index = app->app_index;
   a->wrk_map_index = mp->wrk_index;
@@ -176,7 +176,7 @@ session_mq_connect_handler (void *data)
   if (mp->ext_config)
     session_mq_free_ext_config (app, mp->ext_config);
 
-  vec_free (a->sep_ext.hostname);
+//  vec_free (a->sep_ext.hostname);
 }
 
 static void
