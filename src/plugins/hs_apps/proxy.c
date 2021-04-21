@@ -42,6 +42,7 @@ proxy_cb_fn (void *data, u32 data_len)
   a.app_index = pa->app_index;
   clib_memcpy (&a.sep_ext, &pa->sep, sizeof (pa->sep));
   vnet_connect (&a);
+  clib_mem_free (a.sep_ext.ext_cfg);
 }
 
 static void
@@ -50,6 +51,7 @@ proxy_call_main_thread (vnet_connect_args_t * a)
   if (vlib_get_thread_index () == 0)
     {
       vnet_connect (a);
+      clib_mem_free (a->sep_ext.ext_cfg);
     }
   else
     {
@@ -283,6 +285,12 @@ proxy_add_segment_callback (u32 client_index, u64 segment_handle)
 }
 
 static int
+proxy_transport_needs_crypto (transport_proto_t proto)
+{
+  return proto == TRANSPORT_PROTO_TLS;
+}
+
+static int
 proxy_rx_callback (session_t * s)
 {
   proxy_main_t *pm = &proxy_main;
@@ -353,9 +361,16 @@ proxy_rx_callback (session_t * s)
       clib_spinlock_unlock_if_init (&pm->sessions_lock);
 
       clib_memcpy (&a->sep_ext, &pm->client_sep, sizeof (pm->client_sep));
-      a->sep_ext.ckpair_index = pm->ckpair_index;
       a->api_context = proxy_index;
       a->app_index = pm->active_open_app_index;
+
+      if (proxy_transport_needs_crypto (a->sep.transport_proto))
+	{
+	  session_endpoint_alloc_ext_cfg (&a->sep_ext,
+					  TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+	  a->sep_ext.ext_cfg->crypto.ckpair_index = pm->ckpair_index;
+	}
+
       proxy_call_main_thread (a);
     }
 
@@ -697,13 +712,23 @@ proxy_server_listen ()
 {
   proxy_main_t *pm = &proxy_main;
   vnet_listen_args_t _a, *a = &_a;
+  int rv;
+
   clib_memset (a, 0, sizeof (*a));
 
   a->app_index = pm->server_app_index;
   clib_memcpy (&a->sep_ext, &pm->server_sep, sizeof (pm->server_sep));
-  a->sep_ext.ckpair_index = pm->ckpair_index;
+  if (proxy_transport_needs_crypto (a->sep.transport_proto))
+    {
+      session_endpoint_alloc_ext_cfg (&a->sep_ext,
+				      TRANSPORT_ENDPT_EXT_CFG_CRYPTO);
+      a->sep_ext.ext_cfg->crypto.ckpair_index = pm->ckpair_index;
+    }
 
-  return vnet_listen (a);
+  rv = vnet_listen (a);
+  clib_mem_free (a->sep_ext.ext_cfg);
+
+  return rv;
 }
 
 static void

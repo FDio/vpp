@@ -51,27 +51,9 @@ unformat_vnet_uri (unformat_input_t * input, va_list * args)
       sep->is_ip4 = 1;
       return 1;
     }
-  else if (unformat (input, "%U://[%s]%U/%d", unformat_transport_proto,
-		     &transport_proto, &sep->hostname, unformat_ip4_address,
-		     &sep->ip.ip4, &port))
-    {
-      sep->transport_proto = transport_proto;
-      sep->port = clib_host_to_net_u16 (port);
-      sep->is_ip4 = 1;
-      return 1;
-    }
   else if (unformat (input, "%U://%U/%d", unformat_transport_proto,
 		     &transport_proto, unformat_ip6_address, &sep->ip.ip6,
 		     &port))
-    {
-      sep->transport_proto = transport_proto;
-      sep->port = clib_host_to_net_u16 (port);
-      sep->is_ip4 = 0;
-      return 1;
-    }
-  else if (unformat (input, "%U://[%s]%U/%d", unformat_transport_proto,
-		     &transport_proto, &sep->hostname, unformat_ip6_address,
-		     &sep->ip.ip6, &port))
     {
       sep->transport_proto = transport_proto;
       sep->port = clib_host_to_net_u16 (port);
