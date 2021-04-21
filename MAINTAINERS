@@ -334,22 +334,22 @@ M:	Dave Barach <vpp@barachs.net>
 M:	Neale Ranns <neale@graphiant.com>
 F:	src/plugins/dhcp/
 
-Plugin - ARP
+VNET - ARP
 I:	arp
 M:	Dave Barach <vpp@barachs.net>
 M:	Neale Ranns <neale@graphiant.com>
-F:	src/plugins/arp/
+F:	src/vnet/arp/
 
 Plugin - ARPing CLI
 I:	arping
 M:	Steven Luong <sluong@cisco.com>
 F:	src/plugins/arping/
 
-Plugin - IP6 Neighbor Discovery
+VNET - IP6 Neighbor Discovery
 I:	ip6-nd
 M:	Dave Barach <vpp@barachs.net>
 M:	Neale Ranns <neale@graphiant.com>
-F:	src/plugins/ip6-nd/
+F:	src/vnet/ip6-nd/
 
 VNET GENEVE
 I:	geneve
