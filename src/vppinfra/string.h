@@ -99,6 +99,8 @@ clib_memcpy_fast (void *restrict dst, const void *restrict src, size_t n)
 
 #undef clib_memcpy_fast_arch
 
+#include <vppinfra/memcpy.h>
+
 /* c-11 string manipulation variants */
 
 #ifndef EOK
