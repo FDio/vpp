@@ -2070,12 +2070,10 @@ ip4_ttl_and_checksum_check (vlib_buffer_t * b, ip4_header_t * ip, u16 * next,
 	  (vnet_buffer2 (b)->oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM));
 }
 
-
 always_inline uword
-ip4_rewrite_inline_with_gso (vlib_main_t * vm,
-			     vlib_node_runtime_t * node,
-			     vlib_frame_t * frame,
-			     int do_counters, int is_midchain, int is_mcast)
+ip4_rewrite_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
+		    vlib_frame_t *frame, int do_counters, int is_midchain,
+		    int is_mcast)
 {
   ip_lookup_main_t *lm = &ip4_main.lookup_main;
   u32 *from = vlib_frame_vector_args (frame);
@@ -2535,17 +2533,6 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   return frame->n_vectors;
 }
-
-always_inline uword
-ip4_rewrite_inline (vlib_main_t * vm,
-		    vlib_node_runtime_t * node,
-		    vlib_frame_t * frame,
-		    int do_counters, int is_midchain, int is_mcast)
-{
-  return ip4_rewrite_inline_with_gso (vm, node, frame, do_counters,
-				      is_midchain, is_mcast);
-}
-
 
 /** @brief IPv4 rewrite node.
     @node ip4-rewrite
