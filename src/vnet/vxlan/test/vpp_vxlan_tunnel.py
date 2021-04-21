@@ -38,7 +38,7 @@ class VppVxlanTunnel(VppInterface):
                  mcast_itf=None,
                  mcast_sw_if_index=INDEX_INVALID,
                  decap_next_index=INDEX_INVALID,
-                 encap_vrf_id=None, instance=0xffffffff):
+                 encap_vrf_id=None, instance=0xffffffff, is_l3=False):
         """ Create VXLAN Tunnel interface """
         super(VppVxlanTunnel, self).__init__(test)
         self.src = src
@@ -51,16 +51,17 @@ class VppVxlanTunnel(VppInterface):
         self.encap_vrf_id = encap_vrf_id
         self.decap_next_index = decap_next_index
         self.instance = instance
+        self.is_l3 = is_l3
 
         if (self.mcast_itf):
             self.mcast_sw_if_index = self.mcast_itf.sw_if_index
 
     def add_vpp_config(self):
-        reply = self.test.vapi.vxlan_add_del_tunnel_v2(
+        reply = self.test.vapi.vxlan_add_del_tunnel_v3(
             is_add=1, src_address=self.src, dst_address=self.dst, vni=self.vni,
             src_port=self.src_port, dst_port=self.dst_port,
             mcast_sw_if_index=self.mcast_sw_if_index,
-            encap_vrf_id=self.encap_vrf_id,
+            encap_vrf_id=self.encap_vrf_id, is_l3=self.is_l3,
             instance=self.instance, decap_next_index=self.decap_next_index)
         self.set_sw_if_index(reply.sw_if_index)
         self._test.registry.register(self, self._test.logger)
