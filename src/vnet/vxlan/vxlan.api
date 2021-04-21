@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.1.0";
+option version = "2.2.0";
 
 import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
@@ -22,6 +22,7 @@ import "vnet/ip/ip_types.api";
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - Use 1 to create the tunnel, 0 to remove it
+    @param is_l3 - if true, create the interface in L3 mode, w/o MAC
     @param instance - optional unique custom device instance, else ~0.
     @param src_address - Source IP address
     @param dst_address - Destination IP address, can be multicast
@@ -72,6 +73,7 @@ define vxlan_add_del_tunnel_v2
   u32 encap_vrf_id;
   u32 decap_next_index;
   u32 vni;
+  bool is_l3 [default=false];
 };
 
 define vxlan_add_del_tunnel_reply
