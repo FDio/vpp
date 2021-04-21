@@ -1495,7 +1495,14 @@ set_hw_interface_change_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
       vec_add1 (queue_indices, queue_index);
     }
   else
-    queue_indices = hw->rx_queue_indices;
+    {
+      queue_indices = hw->rx_queue_indices;
+      if (queue_indices == 0)
+	return clib_error_return (0,
+				  "queue is not yet initialized on "
+				  "interface %s. Please try again.",
+				  hw->name);
+    }
 
   for (int i = 0; i < vec_len (queue_indices); i++)
     {
