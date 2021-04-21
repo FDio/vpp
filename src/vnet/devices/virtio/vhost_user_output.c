@@ -1084,10 +1084,20 @@ vhost_user_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index,
 
   txvq->mode = mode;
   if (mode == VNET_HW_IF_RX_MODE_POLLING)
-    txvq->used->flags = VRING_USED_F_NO_NOTIFY;
+    {
+      if (vhost_user_is_packed_ring_supported (vui))
+	txvq->used_event->flags = VRING_EVENT_F_DISABLE;
+      else
+	txvq->used->flags = VRING_USED_F_NO_NOTIFY;
+    }
   else if ((mode == VNET_HW_IF_RX_MODE_ADAPTIVE) ||
 	   (mode == VNET_HW_IF_RX_MODE_INTERRUPT))
-    txvq->used->flags = 0;
+    {
+      if (vhost_user_is_packed_ring_supported (vui))
+	txvq->used_event->flags = 0;
+      else
+	txvq->used->flags = 0;
+    }
   else
     {
       vu_log_err (vui, "unhandled mode %d changed for if %d queue %d", mode,

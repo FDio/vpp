@@ -248,7 +248,7 @@ vhost_user_thread_placement (vhost_user_intf_t * vui, u32 qid)
 {
   if (qid & 1)			// RX is odd, TX is even
     {
-      if (vui->vrings[qid].qid == -1)
+      if (vui->vrings[qid].queue_index == ~0)
 	vhost_user_rx_thread_placement (vui, qid);
     }
   else
@@ -292,6 +292,7 @@ vhost_user_vring_init (vhost_user_intf_t * vui, u32 qid)
   vring->callfd_idx = ~0;
   vring->errfd = -1;
   vring->qid = -1;
+  vring->queue_index = ~0;
 
   clib_spinlock_init (&vring->vring_lock);
 
@@ -335,11 +336,14 @@ vhost_user_vring_close (vhost_user_intf_t * vui, u32 qid)
 
   clib_spinlock_free (&vring->vring_lock);
 
-  // save the qid so that we don't need to unassign and assign_rx_thread
-  // when the interface comes back up. They are expensive calls.
+  // save the needed information in vrings prior to being wiped out
   u16 q = vui->vrings[qid].qid;
+  u32 queue_index = vui->vrings[qid].queue_index;
+  u32 mode = vui->vrings[qid].mode;
   vhost_user_vring_init (vui, qid);
   vui->vrings[qid].qid = q;
+  vui->vrings[qid].queue_index = queue_index;
+  vui->vrings[qid].mode = mode;
 }
 
 static_always_inline void
@@ -681,12 +685,22 @@ vhost_user_socket_read (clib_file_t * uf)
       vui->vrings[msg.state.index].last_kick =
 	vui->vrings[msg.state.index].last_used_idx;
 
-      /* tell driver that we don't want interrupts */
+      /* tell driver that we want interrupts or not */
       if (vhost_user_is_packed_ring_supported (vui))
-	vui->vrings[msg.state.index].used_event->flags =
-	  VRING_EVENT_F_DISABLE;
+	{
+	  if (vui->vrings[msg.state.index].mode == VNET_HW_IF_RX_MODE_POLLING)
+	    vui->vrings[msg.state.index].used_event->flags =
+	      VRING_EVENT_F_DISABLE;
+	  else
+	    vui->vrings[msg.state.index].used_event->flags = 0;
+	}
       else
-	vui->vrings[msg.state.index].used->flags = VRING_USED_F_NO_NOTIFY;
+	{
+	  if (vui->vrings[msg.state.index].mode == VNET_HW_IF_RX_MODE_POLLING)
+	    vui->vrings[msg.state.index].used->flags = VRING_USED_F_NO_NOTIFY;
+	  else
+	    vui->vrings[msg.state.index].used->flags = 0;
+	}
       vlib_worker_thread_barrier_release (vm);
       vhost_user_update_iface_state (vui);
       break;
@@ -1204,7 +1218,7 @@ vhost_user_send_interrupt_process (vlib_main_t * vm,
 	  /* *INDENT-OFF* */
 	  pool_foreach (vui, vum->vhost_user_interfaces) {
 	      next_timeout = timeout;
-	      for (qid = 0; qid < vui->num_qid / 2; qid += 2)
+	      for (qid = 0; qid <= vui->num_qid / 2; qid += 2)
 		{
 		  vhost_user_vring_t *rxvq = &vui->vrings[qid];
 		  vhost_user_vring_t *txvq = &vui->vrings[qid + 1];
@@ -1419,9 +1433,9 @@ vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
   vu_log_debug (vui, "Deleting vhost-user interface %s (instance %d)",
 		hwif->name, hwif->dev_instance);
 
-  for (qid = 1; qid < vui->num_qid / 2; qid += 2)
+  for (qid = 0; qid <= vui->num_qid / 2; qid += 2)
     {
-      vhost_user_vring_t *txvq = &vui->vrings[qid];
+      vhost_user_vring_t *txvq = &vui->vrings[qid + 1];
 
       if (txvq->qid == -1)
 	continue;
@@ -1938,9 +1952,11 @@ vhost_user_show_desc (vlib_main_t * vm, vhost_user_intf_t * vui, int q,
   vhost_user_vring_t *vq = &vui->vrings[q];
 
   if (vq->avail && vq->used)
-    vlib_cli_output (vm, "  avail.flags %x avail event idx %u avail.idx %d "
-		     "used event idx %u used.idx %d\n", vq->avail->flags,
-		     vhost_user_avail_event_idx (vq), vq->avail->idx,
+    vlib_cli_output (vm,
+		     "  avail.flags %x avail event idx %u avail.idx %d "
+		     "used.flags %x used event idx %u used.idx %d\n",
+		     vq->avail->flags, vhost_user_avail_event_idx (vq),
+		     vq->avail->idx, vq->used->flags,
 		     vhost_user_used_event_idx (vq), vq->used->idx);
 
   vhost_user_show_fds (vm, vq);
@@ -2265,9 +2281,10 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 	  if (!vui->vrings[q].started)
 	    continue;
 
-	  vlib_cli_output (vm, "\n Virtqueue %d (%s%s)\n", q,
+	  vlib_cli_output (vm, "\n Virtqueue %d (%s%s) queue_index %u\n", q,
 			   (q & 1) ? "RX" : "TX",
-			   vui->vrings[q].enabled ? "" : " disabled");
+			   vui->vrings[q].enabled ? "" : " disabled",
+			   vui->vrings[q].queue_index);
 
 	  vlib_cli_output (vm,
 			   "  qsz %d last_avail_idx %d last_used_idx %d"
