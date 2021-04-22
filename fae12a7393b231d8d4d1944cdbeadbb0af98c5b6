@@ -34,6 +34,24 @@
       "revId": "fae12a7393b231d8d4d1944cdbeadbb0af98c5b6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "79e970d0_8cc74528",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1360
+      },
+      "writtenOn": "2021-04-22T13:00:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a17318f5_b7dfb3a4",
+      "revId": "fae12a7393b231d8d4d1944cdbeadbb0af98c5b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
