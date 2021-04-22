@@ -49,6 +49,9 @@
  * crypto (alg, cryptodev_alg, key_size), hash (alg, digest-size)
  **/
 #define foreach_cryptodev_link_async_alg                                      \
+  _ (AES_128_CBC, AES_CBC, 16, MD5, 12)                                       \
+  _ (AES_192_CBC, AES_CBC, 24, MD5, 12)                                       \
+  _ (AES_256_CBC, AES_CBC, 32, MD5, 12)                                       \
   _ (AES_128_CBC, AES_CBC, 16, SHA1, 12)                                      \
   _ (AES_192_CBC, AES_CBC, 24, SHA1, 12)                                      \
   _ (AES_256_CBC, AES_CBC, 32, SHA1, 12)                                      \
