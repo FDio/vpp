@@ -97,12 +97,9 @@ class TestClassifier(VppTestCase):
 
             self.logger.info(self.vapi.cli("show classify table verbose"))
             self.logger.info(self.vapi.cli("show ip fib"))
+            self.logger.info(self.vapi.cli("show error"))
 
-            acl_active_table = 'ip_out'
-            if self.af == AF_INET6:
-                acl_active_table = 'ip6_out'
-
-            if self.acl_active_table == acl_active_table:
+            if self.acl_active_table.endswith('out'):
                 self.output_acl_set_interface(
                     self.pg0, self.acl_tbl_idx.get(self.acl_active_table), 0)
                 self.acl_active_table = ''
@@ -306,12 +303,13 @@ class TestClassifier(VppTestCase):
                             "Interface %s: Packet expected from interface %s "
                             "didn't arrive" % (dst_if.name, i.name))
 
-    def create_classify_table(self, key, mask, data_offset=0):
+    def create_classify_table(self, key, mask, data_offset=0, next_table_index=None):
         """Create Classify Table
 
         :param str key: key for classify table (ex, ACL name).
         :param str mask: mask value for interested traffic.
         :param int data_offset:
+        :param str next_table_index
         """
         mask_match, mask_match_len = self._resolve_mask_match(mask)
         r = self.vapi.classify_add_del_table(
@@ -321,7 +319,8 @@ class TestClassifier(VppTestCase):
             match_n_vectors=(len(mask) - 1) // 32 + 1,
             miss_next_index=0,
             current_data_flag=1,
-            current_data_offset=data_offset)
+            current_data_offset=data_offset,
+            next_table_index=next_table_index)
         self.assertIsNotNone(r, 'No response msg for add_del_table')
         self.acl_tbl_idx[key] = r.new_table_index
 
