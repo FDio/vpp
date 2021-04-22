@@ -475,7 +475,10 @@ STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 8),
   _ (BAPI_NO_REG, "app bapi registration not found")                          \
   _ (MQ_MSG_ALLOC, "failed to alloc mq msg")                                  \
   _ (TLS_HANDSHAKE, "failed tls handshake")                                   \
-  _ (EVENTFD_ALLOC, "failed to alloc eventfd")
+  _ (EVENTFD_ALLOC, "failed to alloc eventfd")                                \
+  _ (NOEXTCFG, "no extended transport config")                                \
+  _ (NOCRYPTOENG, "no crypto engine")                                         \
+  _ (NOCRYPTOCKP, "cert key pair not found ")
 
 typedef enum session_error_p_
 {
