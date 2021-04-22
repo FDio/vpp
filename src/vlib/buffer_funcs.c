@@ -4,131 +4,367 @@
 
 #include <vlib/vlib.h>
 
-void __clib_section (".vlib_buffer_enqueue_to_next_fn") CLIB_MULTIARCH_FN (
-  vlib_buffer_enqueue_to_next_fn) (vlib_main_t *vm, vlib_node_runtime_t *node,
-				   u32 *buffers, u16 *nexts, uword count)
+#ifdef CLIB_HAVE_VEC512_COMPRESS
+static_always_inline u16
+compress_and_store16 (u32x16 fv, u16x16 nv, u16 n_elts, u16 mask, u32 *sp,
+		      u32 *dp, u16 *np)
 {
-  u32 *to_next, n_left_to_next, max;
-  u16 next_index;
+  u16 rv = _popcnt32 (mask);
 
-  next_index = nexts[0];
-  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-  max = clib_min (n_left_to_next, count);
+  /* store matched */
+  *(u32x16u *) dp = u32x16_compress (fv, mask);
 
-  while (count)
+  /* inverse mask */
+  mask = ~mask & pow2_mask (n_elts);
+
+  /* remaining indices */
+  *(u32x16u *) sp = u32x16_compress (fv, mask);
+
+  /* remaining nexts */
+  *(u16x16u *) np = u16x16_compress (nv, mask);
+  return rv;
+}
+#elif defined CLIB_HAVE_VEC256_COMPRESS
+static_always_inline u8
+compress_and_store8 (u32x8 fv, u16x8 nv, u16 n_elts, u8 mask, u32 *sp, u32 *dp,
+		     u16 *np)
+{
+  u16 rv = _popcnt32 (mask);
+
+  /* store matched */
+  *(u32x8u *) dp = u32x8_compress (fv, mask);
+
+  /* inverse mask */
+  mask = ~mask & pow2_mask (n_elts);
+
+  /* remaining indices */
+  *(u32x8u *) sp = u32x8_compress (fv, mask);
+
+  /* remaining nexts */
+  *(u16x8u *) np = u16x8_compress (nv, mask);
+  return rv;
+}
+#endif
+
+static_always_inline u32
+vlib_buffer_extract_indices_by_next (u32 *from, u16 *nexts, u16 next_index,
+				     int n_left, u32 *extracted,
+				     u32 *remaining, u16 *remainining_nexts)
+{
+  u32 *tp = extracted;	       /* extracted inidice write pointer */
+  u32 *fp = remaining;	       /* remaining indices write pointer */
+  u16 *np = remainining_nexts; /* remaining nexts write pointer */
+
+#ifdef CLIB_HAVE_VEC512_COMPRESS
+  u16x32 next0x32 = u16x32_splat (next_index);
+  u16x16 next0x16 = u16x32_extract_lo (next0x32);
+  u32x16 f;
+  u16x16 n;
+  u16 mask, cnt;
+
+  while (n_left >= 32)
     {
-      u32 n_enqueued;
-      if ((nexts[0] != next_index) || n_left_to_next == 0)
+      u32 mask32;
+      u16x32 next32 = *(u16x32u *) nexts;
+      mask32 = u16x32_is_equal_mask (next32, next0x32);
+      u32x16u *fv = (u32x16u *) from;
+
+      if (PREDICT_TRUE (mask32 == pow2_mask (32)))
 	{
-	  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-	  next_index = nexts[0];
-	  vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-	  max = clib_min (n_left_to_next, count);
-	}
-#if defined(CLIB_HAVE_VEC512)
-      u16x32 next32 = CLIB_MEM_OVERFLOW_LOAD (u16x32_load_unaligned, nexts);
-      next32 = (next32 == u16x32_splat (next32[0]));
-      u64 bitmap = u16x32_msb_mask (next32);
-      n_enqueued = count_trailing_zeros (~bitmap);
-#elif defined(CLIB_HAVE_VEC256)
-      u16x16 next16 = CLIB_MEM_OVERFLOW_LOAD (u16x16_load_unaligned, nexts);
-      next16 = (next16 == u16x16_splat (next16[0]));
-      u64 bitmap = u8x32_msb_mask ((u8x32) next16);
-      n_enqueued = count_trailing_zeros (~bitmap) / 2;
-#elif defined(CLIB_HAVE_VEC128) && defined(CLIB_HAVE_VEC128_MSB_MASK)
-      u16x8 next8 = CLIB_MEM_OVERFLOW_LOAD (u16x8_load_unaligned, nexts);
-      next8 = (next8 == u16x8_splat (next8[0]));
-      u64 bitmap = u8x16_msb_mask ((u8x16) next8);
-      n_enqueued = count_trailing_zeros (~bitmap) / 2;
-#else
-      u16 x = 0;
-      if (count + 3 < max)
-	{
-	  x |= next_index ^ nexts[1];
-	  x |= next_index ^ nexts[2];
-	  x |= next_index ^ nexts[3];
-	  n_enqueued = (x == 0) ? 4 : 1;
+	  u32x16u *tv = (u32x16u *) tp;
+	  tv[0] = fv[0];
+	  tv[1] = fv[1];
+	  tp += 32;
 	}
       else
-	n_enqueued = 1;
-#endif
-
-      if (PREDICT_FALSE (n_enqueued > max))
-	n_enqueued = max;
-
-#ifdef CLIB_HAVE_VEC512
-      if (n_enqueued >= 32)
 	{
-	  vlib_buffer_copy_indices (to_next, buffers, 32);
-	  nexts += 32;
-	  to_next += 32;
-	  buffers += 32;
-	  n_left_to_next -= 32;
-	  count -= 32;
-	  max -= 32;
-	  continue;
-	}
-#endif
+	  n = u16x32_extract_lo (next32);
+	  cnt = compress_and_store16 (fv[0], n, 16, mask32, fp, tp, np);
+	  tp += cnt;
+	  cnt = 16 - cnt;
+	  fp += cnt;
+	  np += cnt;
 
-#ifdef CLIB_HAVE_VEC256
-      if (n_enqueued >= 16)
-	{
-	  vlib_buffer_copy_indices (to_next, buffers, 16);
-	  nexts += 16;
-	  to_next += 16;
-	  buffers += 16;
-	  n_left_to_next -= 16;
-	  count -= 16;
-	  max -= 16;
-	  continue;
+	  n = u16x32_extract_hi (next32);
+	  cnt = compress_and_store16 (fv[1], n, 16, mask32 >> 16, fp, tp, np);
+	  tp += cnt;
+	  cnt = 16 - cnt;
+	  fp += cnt;
+	  np += cnt;
 	}
-#endif
-
-#ifdef CLIB_HAVE_VEC128
-      if (n_enqueued >= 8)
-	{
-	  vlib_buffer_copy_indices (to_next, buffers, 8);
-	  nexts += 8;
-	  to_next += 8;
-	  buffers += 8;
-	  n_left_to_next -= 8;
-	  count -= 8;
-	  max -= 8;
-	  continue;
-	}
-#endif
-
-      if (n_enqueued >= 4)
-	{
-	  vlib_buffer_copy_indices (to_next, buffers, 4);
-	  nexts += 4;
-	  to_next += 4;
-	  buffers += 4;
-	  n_left_to_next -= 4;
-	  count -= 4;
-	  max -= 4;
-	  continue;
-	}
-
-      /* copy */
-      to_next[0] = buffers[0];
 
       /* next */
-      nexts += 1;
-      to_next += 1;
-      buffers += 1;
-      n_left_to_next -= 1;
-      count -= 1;
-      max -= 1;
+      nexts += 32;
+      from += 32;
+      n_left -= 32;
     }
-  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+
+  if (n_left >= 16)
+    {
+      n = *(u16x16u *) nexts;
+      u32x16u *fv = (u32x16u *) from;
+      mask = u16x16_is_equal_mask (n, next0x16);
+
+      if (PREDICT_TRUE (mask == pow2_mask (16)))
+	{
+	  u32x16u *tv = (u32x16u *) tp;
+	  tv[0] = fv[0];
+	  tp += 16;
+	}
+      else
+	{
+	  cnt = compress_and_store16 (fv[0], n, 16, mask, fp, tp, np);
+	  tp += cnt;
+	  fp += 16 - cnt;
+	  np += 16 - cnt;
+	}
+
+      /* next */
+      nexts += 16;
+      from += 16;
+      n_left -= 16;
+    }
+
+  if (n_left > 0)
+    {
+      n = *(u16x16u *) nexts;
+      f = *(u32x16u *) from;
+      mask = u16x16_is_equal_mask (n, next0x16) & pow2_mask (n_left);
+      tp += compress_and_store16 (f, n, n_left, mask, fp, tp, np);
+    }
+#elif defined CLIB_HAVE_VEC256_COMPRESS
+  u16x16 next0x16 = u16x16_splat (next_index);
+  u16x8 next0x8 = u16x16_extract_lo (next0x16);
+  u32x8 f;
+  u16x8 n;
+  u16 cnt;
+  u8 mask;
+
+  while (n_left >= 16)
+    {
+      u16 mask16;
+      u16x16 next16 = *(u16x16u *) nexts;
+      mask16 = u16x16_is_equal_mask (next16, next0x16);
+      u32x8u *fv = (u32x8u *) from;
+
+      if (PREDICT_TRUE (mask16 == pow2_mask (16)))
+	{
+	  u32x8u *tv = (u32x8u *) tp;
+	  tv[0] = fv[0];
+	  tv[1] = fv[1];
+	  tp += 16;
+	}
+      else
+	{
+	  n = u16x16_extract_lo (next16);
+	  cnt = compress_and_store8 (fv[0], n, 8, mask16, fp, tp, np);
+	  tp += cnt;
+	  cnt = 8 - cnt;
+	  fp += cnt;
+	  np += cnt;
+
+	  n = u16x16_extract_hi (next16);
+	  cnt = compress_and_store8 (fv[1], n, 8, mask16 >> 8, fp, tp, np);
+	  tp += cnt;
+	  cnt = 8 - cnt;
+	  fp += cnt;
+	  np += cnt;
+	}
+
+      /* next */
+      nexts += 16;
+      from += 16;
+      n_left -= 16;
+    }
+
+  while (n_left >= 8)
+    {
+      n = *(u16x8u *) nexts;
+      u32x8u *fv = (u32x8u *) from;
+      mask = u16x8_is_equal_mask (n, next0x8);
+
+      if (PREDICT_TRUE (mask == pow2_mask (8)))
+	{
+	  u32x8u *tv = (u32x8u *) tp;
+	  tv[0] = fv[0];
+	  tp += 8;
+	}
+      else
+	{
+	  cnt = compress_and_store8 (fv[0], n, 8, mask, fp, tp, np);
+	  tp += cnt;
+	  fp += 8 - cnt;
+	  np += 8 - cnt;
+	}
+
+      /* next */
+      nexts += 8;
+      from += 8;
+      n_left -= 8;
+    }
+
+  if (n_left > 0)
+    {
+      n = *(u16x8u *) nexts;
+      f = *(u32x8u *) from;
+      mask = u16x8_is_equal_mask (n, next0x8) & pow2_mask (n_left);
+      tp += compress_and_store8 (f, n, n_left, mask, fp, tp, np);
+    }
+#else
+#ifdef CLIB_HAVE_VEC256
+  u16x16 n16, next0x16 = u16x16_splat (next_index);
+#elif defined CLIB_HAVE_VEC128
+  u16x8 n8, next0x8 = u16x8_splat (next_index);
+#endif
+
+  while (n_left)
+    {
+#ifdef CLIB_HAVE_VEC256
+      n16 = *(u16x16u *) nexts;
+      if (n_left >= 16 && u16x16_is_equal (n16, next0x16))
+	{
+	  u32x8u *fv = (u32x8u *) from;
+	  u32x8u *tv = (u32x8u *) tp;
+
+	  tv[0] = fv[0];
+	  tv[1] = fv[1];
+	  tp += 16;
+	  from += 16;
+	  nexts += 16;
+	  n_left -= 16;
+	  continue;
+	}
+#elif defined CLIB_HAVE_VEC128
+      n8 = *(u16x8u *) nexts;
+      if (n_left >= 8 && u16x8_is_equal (n8, next0x8))
+	{
+	  u32x4u *fv = (u32x4u *) from;
+	  u32x4u *tv = (u32x4u *) tp;
+
+	  tv[0] = fv[0];
+	  tv[1] = fv[1];
+	  tp += 8;
+	  from += 8;
+	  nexts += 8;
+	  n_left -= 8;
+	  continue;
+	}
+#endif
+      if (nexts[0] == next_index)
+	{
+	  tp++[0] = from[0];
+	}
+      else
+	{
+	  fp++[0] = from[0];
+	  np++[0] = nexts[0];
+	}
+
+      from++;
+      nexts++;
+      n_left--;
+    }
+#endif
+  return tp - extracted;
 }
+
+static_always_inline u32
+enqueue_one (vlib_main_t *vm, vlib_node_runtime_t *node, u32 *buffers,
+	     u16 *nexts, u32 n_buffers, u32 *remaining_buffers,
+	     u16 *remaining_nexts, u32 *tmp)
+{
+  vlib_frame_t *f;
+  u16 next_index;
+  u32 n_extracted, n_free;
+  u32 *to;
+
+  next_index = nexts[0];
+  f = vlib_get_next_frame_internal (vm, node, next_index, 0);
+
+  n_free = VLIB_FRAME_SIZE - f->n_vectors;
+
+  /* if frame contains enough space for worst case scenario, we can avoid
+   * use of tmp */
+  if (n_free >= n_buffers)
+    to = (u32 *) vlib_frame_vector_args (f) + f->n_vectors;
+  else
+    to = tmp;
+
+  n_extracted = vlib_buffer_extract_indices_by_next (
+    buffers, nexts, next_index, n_buffers, to, remaining_buffers,
+    remaining_nexts);
+
+  if (to != tmp)
+    {
+      /* indices already written to frame, just close it */
+      vlib_put_next_frame (vm, node, next_index, n_free - n_extracted);
+    }
+  else if (n_free >= n_extracted)
+    {
+      /* enough space in the existing frame */
+      to = (u32 *) vlib_frame_vector_args (f) + f->n_vectors;
+      vlib_buffer_copy_indices (to, tmp, n_extracted);
+      vlib_put_next_frame (vm, node, next_index, n_free - n_extracted);
+    }
+  else
+    {
+      /* full frame */
+      to = (u32 *) vlib_frame_vector_args (f) + f->n_vectors;
+      vlib_buffer_copy_indices (to, tmp, n_free);
+      vlib_put_next_frame (vm, node, next_index, 0);
+
+      /* second frame */
+      n_free = n_extracted - n_free;
+      f = vlib_get_next_frame_internal (vm, node, next_index, 1);
+      to = vlib_frame_vector_args (f);
+      vlib_buffer_copy_indices (to, tmp + n_free, n_free);
+      vlib_put_next_frame (vm, node, next_index, VLIB_FRAME_SIZE - n_free);
+    }
+
+  return n_buffers - n_extracted;
+}
+
+void __clib_section (".vlib_buffer_enqueue_to_next_fn")
+CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_next_fn)
+(vlib_main_t *vm, vlib_node_runtime_t *node, u32 *buffers, u16 *nexts,
+ uword count)
+{
+  u32 remaining_buffers[VLIB_FRAME_SIZE];
+  u32 tmp[VLIB_FRAME_SIZE];
+  u16 remaining_nexts[VLIB_FRAME_SIZE];
+  u32 n_left;
+
+  while (count >= VLIB_FRAME_SIZE)
+    {
+      n_left = enqueue_one (vm, node, buffers, nexts, VLIB_FRAME_SIZE,
+			    remaining_buffers, remaining_nexts, tmp);
+
+      while (n_left)
+	n_left = enqueue_one (vm, node, remaining_buffers, remaining_nexts,
+			      n_left, remaining_buffers, remaining_nexts, tmp);
+
+      buffers += VLIB_FRAME_SIZE;
+      nexts += VLIB_FRAME_SIZE;
+      count -= VLIB_FRAME_SIZE;
+    }
+
+  if (count)
+    {
+      n_left = enqueue_one (vm, node, buffers, nexts, count, remaining_buffers,
+			    remaining_nexts, tmp);
+
+      while (n_left)
+	n_left = enqueue_one (vm, node, remaining_buffers, remaining_nexts,
+			      n_left, remaining_buffers, remaining_nexts, tmp);
+    }
+}
+
 CLIB_MARCH_FN_REGISTRATION (vlib_buffer_enqueue_to_next_fn);
 
 void __clib_section (".vlib_buffer_enqueue_to_single_next_fn")
-  CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_single_next_fn) (
-    vlib_main_t *vm, vlib_node_runtime_t *node, u32 *buffers, u16 next_index,
-    u32 count)
+CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_single_next_fn)
+(vlib_main_t *vm, vlib_node_runtime_t *node, u32 *buffers, u16 next_index,
+ u32 count)
 {
   u32 *to_next, n_left_to_next, n_enq;
 
@@ -162,9 +398,9 @@ next:
 CLIB_MARCH_FN_REGISTRATION (vlib_buffer_enqueue_to_single_next_fn);
 
 u32 __clib_section (".vlib_buffer_enqueue_to_thread_fn")
-  CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_fn) (
-    vlib_main_t *vm, u32 frame_queue_index, u32 *buffer_indices,
-    u16 *thread_indices, u32 n_packets, int drop_on_congestion)
+CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_fn)
+(vlib_main_t *vm, u32 frame_queue_index, u32 *buffer_indices,
+ u16 *thread_indices, u32 n_packets, int drop_on_congestion)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_frame_queue_main_t *fqm;

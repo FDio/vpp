@@ -230,8 +230,15 @@ _ (u64x4, u8, _mm256, __m256i, epi64)
 _ (u64x2, u8, _mm, __m128i, epi64)
 #undef _
 
+#ifdef CLIB_HAVE_VEC512
 #define CLIB_HAVE_VEC512_MASK_LOAD_STORE
+#endif
+#ifdef CLIB_HAVE_VEC256
 #define CLIB_HAVE_VEC256_MASK_LOAD_STORE
+#endif
+#ifdef CLIB_HAVE_VEC128
+#define CLIB_HAVE_VEC128_MASK_LOAD_STORE
+#endif
 
 static_always_inline u8x64
 u8x64_splat_u8x16 (u8x16 a)
@@ -286,25 +293,29 @@ _ (u32x8, u16x8, _mm256_cvtusepi32_epi16, __m256i)
 _ (u32x8, u64x8, _mm512_cvtepu32_epi64, __m256i)
 #undef _
 
-#define _(vt, mt, bits, epi)                                                  \
+#define _(vt, mt, p, it, epi)                                                 \
   static_always_inline vt vt##_compress (vt a, mt mask)                       \
   {                                                                           \
-    return (vt) _mm##bits##_maskz_compress_##epi (mask, (__m##bits##i) a);    \
+    return (vt) p##_maskz_compress_##epi (mask, (it) a);                      \
   }                                                                           \
   static_always_inline vt vt##_expand (vt a, mt mask)                         \
   {                                                                           \
-    return (vt) _mm##bits##_maskz_expand_##epi (mask, (__m##bits##i) a);      \
+    return (vt) p##_maskz_expand_##epi (mask, (it) a);                        \
   }
 
-_ (u64x8, u8, 512, epi64)
-_ (u32x16, u16, 512, epi32)
-_ (u64x4, u8, 256, epi64)
-_ (u32x8, u8, 256, epi32)
+_ (u64x8, u8, _mm512, __m512i, epi64)
+_ (u32x16, u16, _mm512, __m512i, epi32)
+_ (u64x4, u8, _mm256, __m256i, epi64)
+_ (u32x8, u8, _mm256, __m256i, epi32)
+_ (u64x2, u8, _mm, __m128i, epi64)
+_ (u32x4, u8, _mm, __m128i, epi32)
 #ifdef __AVX512VBMI2__
-_ (u16x32, u32, 512, epi16)
-_ (u8x64, u64, 512, epi8)
-_ (u16x16, u16, 256, epi16)
-_ (u8x32, u32, 256, epi8)
+_ (u16x32, u32, _mm512, __m512i, epi16)
+_ (u8x64, u64, _mm512, __m512i, epi8)
+_ (u16x16, u16, _mm256, __m256i, epi16)
+_ (u8x32, u32, _mm256, __m256i, epi8)
+_ (u16x8, u8, _mm, __m128i, epi16)
+_ (u8x16, u16, _mm, __m128i, epi8)
 #endif
 #undef _
 
