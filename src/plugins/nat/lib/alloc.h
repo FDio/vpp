@@ -21,6 +21,7 @@
 #define included_nat_lib_alloc_h__
 
 #include <vnet/ip/ip.h>
+#include <nat/lib/nat_proto.h>
 
 typedef struct nat_ip4_pool_addr_s nat_ip4_pool_addr_t;
 typedef struct nat_ip4_addr_port_s nat_ip4_addr_port_t;
