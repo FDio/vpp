@@ -345,7 +345,7 @@ quic_acquire_crypto_context (quic_ctx_t * ctx)
     {
       QUIC_DBG (1, "Quic does not support crypto engine %d",
 		ctx->crypto_engine);
-      return VNET_API_ERROR_MISSING_CERT_KEY;
+      return SESSION_E_NOCRYPTOENG;
     }
 
   /* Check for exisiting crypto ctx */
@@ -377,7 +377,7 @@ quic_acquire_crypto_context (quic_ctx_t * ctx)
 
 error:
   quic_crypto_context_free_if_needed (crctx, ctx->c_thread_index);
-  return VNET_API_ERROR_MISSING_CERT_KEY;
+  return SESSION_E_NOCRYPTOCKP;
 }
 
 /*  Helper functions */
@@ -1314,7 +1314,7 @@ quic_connect_connection (session_endpoint_cfg_t * sep)
   int error;
 
   if (!sep->ext_cfg)
-    return -1;
+    return SESSION_E_NOEXTCFG;
 
   ccfg = &sep->ext_cfg->crypto;
 
@@ -1455,7 +1455,7 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
 
   sep = (session_endpoint_cfg_t *) tep;
   if (!sep->ext_cfg)
-    return -1;
+    return SESSION_E_NOEXTCFG;
 
   ccfg = &sep->ext_cfg->crypto;
   app_wrk = app_worker_get (sep->app_wrk_index);
@@ -1496,8 +1496,8 @@ quic_start_listen (u32 quic_listen_session_index, transport_endpoint_t * tep)
   lctx->c_s_index = quic_listen_session_index;
   lctx->crypto_engine = ccfg->crypto_engine;
   lctx->ckpair_index = ccfg->ckpair_index;
-  if (quic_acquire_crypto_context (lctx))
-    return -1;
+  if ((rv = quic_acquire_crypto_context (lctx)))
+    return rv;
 
   QUIC_DBG (2, "Listening UDP session 0x%lx",
 	    session_handle (udp_listen_session));
