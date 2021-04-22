@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9bc52592_f75670c4",
+        "filename": "src/plugins/perfmon/dispatch_wrapper.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2021-04-22T11:34:33Z",
+      "side": 1,
+      "message": "It would be less intrusive if we simply have two dispatch_wrapper functions and we select one which we want....",
+      "range": {
+        "startLine": 127,
+        "startChar": 0,
+        "endLine": 127,
+        "endChar": 24
+      },
+      "revId": "aee4f9a41be6f4d8a170c920c1851916284e9502",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
