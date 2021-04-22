@@ -681,7 +681,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
 
   sep = (session_endpoint_cfg_t *) tep;
   if (!sep->ext_cfg)
-    return -1;
+    return SESSION_E_NOEXTCFG;
 
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
@@ -691,7 +691,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
   if (engine_type == CRYPTO_ENGINE_NONE)
     {
       clib_warning ("No tls engine_type available");
-      return -1;
+      return SESSION_E_NOCRYPTOENG;
     }
 
   ctx_index = tls_ctx_half_open_alloc ();
@@ -750,10 +750,11 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   app_listener_t *al;
   tls_ctx_t *lctx;
   u32 lctx_index;
+  int rv;
 
   sep = (session_endpoint_cfg_t *) tep;
   if (!sep->ext_cfg)
-    return -1;
+    return SESSION_E_NOEXTCFG;
 
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
@@ -763,7 +764,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   if (engine_type == CRYPTO_ENGINE_NONE)
     {
       clib_warning ("No tls engine_type available");
-      return -1;
+      return SESSION_E_NOCRYPTOENG;
     }
 
   clib_memset (args, 0, sizeof (*args));
@@ -776,8 +777,8 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
       args->sep_ext.transport_proto = TRANSPORT_PROTO_UDP;
       args->sep_ext.transport_flags = TRANSPORT_CFG_F_CONNECTED;
     }
-  if (vnet_listen (args))
-    return -1;
+  if ((rv = vnet_listen (args)))
+    return rv;
 
   lctx_index = tls_listener_ctx_alloc ();
   tls_al_handle = args->handle;
