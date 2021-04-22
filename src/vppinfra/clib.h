@@ -369,6 +369,7 @@ void qsort (void *base, uword n, uword size,
 uword
 clib_backtrace (uword * callers, uword max_callers, uword n_frames_to_skip);
 
+#include <vppinfra/byte_order.h>
 #endif /* included_clib_h */
 
 /*

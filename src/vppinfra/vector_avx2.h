@@ -75,6 +75,10 @@ u32x8_permute (u32x8 v, u32x8 idx)
   return (u32x8) _mm256_permutevar8x32_epi32 ((__m256i) v, (__m256i) idx);
 }
 
+#define u64x4_permute(v, m0, m1, m2, m3)                                      \
+  (u64x4) _mm256_permute4x64_epi64 (                                          \
+    (__m256i) v, ((m0) | (m1) << 2 | (m2) << 4 | (m3) << 6))
+
 /* _extract_lo, _extract_hi */
 /* *INDENT-OFF* */
 #define _(t1,t2) \
@@ -101,11 +105,26 @@ _(u64x2, u64x4)
 #undef _
 /* *INDENT-ON* */
 
+always_inline u8x32
+u16x16_pack (u16x16 lo, u16x16 hi)
+{
+  return (u8x32) _mm256_packus_epi16 ((__m256i) lo, (__m256i) hi);
+}
 
-
+always_inline i8x32
+i16x16_pack (i16x16 lo, i16x16 hi)
+{
+  return (i8x32) _mm256_packs_epi16 ((__m256i) lo, (__m256i) hi);
+}
 
 static_always_inline u32
 u8x32_msb_mask (u8x32 v)
+{
+  return _mm256_movemask_epi8 ((__m256i) v);
+}
+
+static_always_inline u32
+i8x32_msb_mask (i8x32 v)
 {
   return _mm256_movemask_epi8 ((__m256i) v);
 }
