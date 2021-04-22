@@ -94,7 +94,7 @@ path_search (char *file)
 
   result = 0;
   if (i < vec_len (ps.path))
-    result = (char *) format (0, "%s/%s%c", ps.path[i], file);
+    result = (char *) format (0, "%s/%s%c", ps.path[i], file, 0);
 
   path_search_free (&ps);
 
