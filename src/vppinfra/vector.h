@@ -189,10 +189,6 @@ foreach_vec
 #include <vppinfra/vector_neon.h>
 #endif
 
-#if (defined(CLIB_HAVE_VEC128) || defined(CLIB_HAVE_VEC64))
-#include <vppinfra/vector_funcs.h>
-#endif
-
 /* this macro generate _splat inline functions for each scalar vector type */
 #ifndef CLIB_VEC128_SPLAT_DEFINED
 #define _(t, s, c) \

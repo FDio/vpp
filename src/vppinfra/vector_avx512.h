@@ -323,8 +323,12 @@ _ (u8x16, u16, _mm, __m128i, epi8)
 #endif
 #undef _
 
+#ifdef CLIB_HAVE_VEC256
 #define CLIB_HAVE_VEC256_COMPRESS
+#endif
+#ifdef CLIB_HAVE_VEC512
 #define CLIB_HAVE_VEC512_COMPRESS
+#endif
 
 #ifndef __AVX512VBMI2__
 static_always_inline u16x16
