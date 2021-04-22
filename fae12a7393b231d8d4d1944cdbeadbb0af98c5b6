@@ -16,6 +16,24 @@
       "revId": "fae12a7393b231d8d4d1944cdbeadbb0af98c5b6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a17318f5_b7dfb3a4",
+        "filename": "src/tools/vppapigen/generate_go.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1360
+      },
+      "writtenOn": "2021-04-22T12:59:12Z",
+      "side": 1,
+      "message": "The latest release is quite old now and is missing some important API generator fixes required for the VPP master. I\u0027ve set the specific commit which I know works well to fulfill the requirement about consistent results. Later on, when we release another GoVPP version, I\u0027ll update it here as well.",
+      "parentUuid": "70fa9bc1_9876a741",
+      "revId": "fae12a7393b231d8d4d1944cdbeadbb0af98c5b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
