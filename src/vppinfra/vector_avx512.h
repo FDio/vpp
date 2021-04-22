@@ -19,71 +19,139 @@
 #include <vppinfra/clib.h>
 #include <x86intrin.h>
 
-/* *INDENT-OFF* */
-#define foreach_avx512_vec512i \
-  _(i,8,64,epi8) _(i,16,32,epi16) _(i,32,16,epi32)  _(i,64,8,epi64)
-#define foreach_avx512_vec512u \
-  _(u,8,64,epi8) _(u,16,32,epi16) _(u,32,16,epi32)  _(u,64,8,epi64)
-#define foreach_avx512_vec512f \
-  _(f,32,8,ps) _(f,64,4,pd)
+#define foreach_avx512_vec256i                                                \
+  _m (i, 32, 8, epi32, 256) _m (i, 64, 4, epi64, 256)
+#define foreach_avx512_vec256u                                                \
+  _m (u, 32, 8, epi32, 256) _m (u, 64, 4, epi64, 256)
+
+#define foreach_avx512_vec512i                                                \
+  _ (i, 8, 64, epi8, 512)                                                     \
+  _ (i, 16, 32, epi16, 512)                                                   \
+  _ (i, 32, 16, epi32, 512)                                                   \
+  _ (i, 64, 8, epi64, 512) _m (i, 32, 16, epi32, 512) _m (i, 64, 8, epi64, 512)
+#define foreach_avx512_vec512u                                                \
+  _ (u, 8, 64, epi8, 512)                                                     \
+  _ (u, 16, 32, epi16, 512)                                                   \
+  _ (u, 32, 16, epi32, 512)                                                   \
+  _ (u, 64, 8, epi64, 512) _m (u, 32, 16, epi32, 512) _m (u, 64, 8, epi64, 512)
+#define foreach_avx512_vec512f _ (f, 32, 8, ps, 512) _ (f, 64, 4, pd, 512)
+
+/* split out the masked operations so as not to conflict with vector_avx2
+   and sse operations */
+#define _m(t, s, c, f, l)                                                     \
+  static_always_inline void t##s##x##c##_mask_store_unaligned (               \
+    t##s m, t##s##x##c v, void *p)                                            \
+  {                                                                           \
+    _mm##l##_mask_storeu_##f ((__m##l##i *) p, m, (__m##l##i) v);             \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s##x##c t##s##x##c##_mask_permute (                 \
+    t##s##x##c a, t##s m, t##s##x##c idx, t##s##x##c b)                       \
+  {                                                                           \
+    return (t##s##x##c) _mm##l##_mask_permutex2var_##f (                      \
+      (__m##l##i) a, m, (__m##l##i) idx, (__m##l##i) b);                      \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s##x##c t##s##x##c##_maskz_and (                    \
+    t##s m, t##s##x##c a, t##s##x##c b)                                       \
+  {                                                                           \
+    return (t##s##x##c) _mm##l##_maskz_and_##f (m, (__m##l##i) a,             \
+						(__m##l##i) b);               \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s##x##c t##s##x##c##_maskz_splat (t##s m, t##s x)   \
+  {                                                                           \
+    return (t##s##x##c) _mm##l##_maskz_set1_##f (m, x);                       \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s##x##c t##s##x##c##_maskz_load_unaligned (t##s m,  \
+								     void *p) \
+  {                                                                           \
+    return (t##s##x##c) _mm##l##_maskz_loadu_##f (m, p);                      \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s t##s##x##c##_cmpeq_mask (t##s##x##c a,            \
+						     t##s##x##c b)            \
+  {                                                                           \
+    return (t##s) _mm##l##_cmpeq_##f##_mask ((__m##l##i) a, (__m##l##i) b);   \
+  }
 
 /* splat, load_unaligned, store_unaligned, is_all_zero, is_equal,
    is_all_equal, is_zero_mask */
-#define _(t, s, c, i) \
-static_always_inline t##s##x##c						\
-t##s##x##c##_splat (t##s x)						\
-{ return (t##s##x##c) _mm512_set1_##i (x); }				\
-\
-static_always_inline t##s##x##c						\
-t##s##x##c##_load_aligned (void *p)					\
-{ return (t##s##x##c) _mm512_load_si512 (p); }				\
-\
-static_always_inline void						\
-t##s##x##c##_store_aligned (t##s##x##c v, void *p)			\
-{ _mm512_store_si512 ((__m512i *) p, (__m512i) v); }			\
-\
-static_always_inline t##s##x##c						\
-t##s##x##c##_load_unaligned (void *p)					\
-{ return (t##s##x##c) _mm512_loadu_si512 (p); }				\
-\
-static_always_inline void						\
-t##s##x##c##_store_unaligned (t##s##x##c v, void *p)			\
-{ _mm512_storeu_si512 ((__m512i *) p, (__m512i) v); }			\
-\
-static_always_inline int						\
-t##s##x##c##_is_all_zero (t##s##x##c v)					\
-{ return (_mm512_test_epi64_mask ((__m512i) v, (__m512i) v) == 0); }	\
-\
-static_always_inline int						\
-t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b)			\
-{ return t##s##x##c##_is_all_zero (a ^ b); }				\
-\
-static_always_inline int						\
-t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)			\
-{ return t##s##x##c##_is_equal (v, t##s##x##c##_splat (x)); }		\
-\
-static_always_inline u##c						\
-t##s##x##c##_is_zero_mask (t##s##x##c v)				\
-{ return _mm512_test_##i##_mask ((__m512i) v, (__m512i) v); }		\
-\
-static_always_inline t##s##x##c                                         \
-t##s##x##c##_interleave_lo (t##s##x##c a, t##s##x##c b)                 \
-{ return (t##s##x##c) _mm512_unpacklo_##i ((__m512i) a, (__m512i) b); } \
-\
-static_always_inline t##s##x##c                                         \
-t##s##x##c##_interleave_hi (t##s##x##c a, t##s##x##c b)                 \
-{ return (t##s##x##c) _mm512_unpackhi_##i ((__m512i) a, (__m512i) b); } \
+#define _(t, s, c, f, l)                                                      \
+  static_always_inline t##s##x##c t##s##x##c##_splat (t##s x)                 \
+  {                                                                           \
+    return (t##s##x##c) _mm##l##_set1_##f (x);                                \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s##x##c t##s##x##c##_load_aligned (void *p)         \
+  {                                                                           \
+    return (t##s##x##c) _mm##l##_load_si512 (p);                              \
+  }                                                                           \
+                                                                              \
+  static_always_inline void t##s##x##c##_store_aligned (t##s##x##c v,         \
+							void *p)              \
+  {                                                                           \
+    _mm##l##_store_si512 ((__m##l##i *) p, (__m##l##i) v);                    \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s##x##c t##s##x##c##_load_unaligned (void *p)       \
+  {                                                                           \
+    return (t##s##x##c) _mm##l##_loadu_si512 (p);                             \
+  }                                                                           \
+                                                                              \
+  static_always_inline void t##s##x##c##_store_unaligned (t##s##x##c v,       \
+							  void *p)            \
+  {                                                                           \
+    _mm##l##_storeu_si512 ((__m##l##i *) p, (__m##l##i) v);                   \
+  }                                                                           \
+                                                                              \
+  static_always_inline int t##s##x##c##_is_all_zero (t##s##x##c v)            \
+  {                                                                           \
+    return (_mm##l##_test_epi64_mask ((__m##l##i) v, (__m##l##i) v) == 0);    \
+  }                                                                           \
+                                                                              \
+  static_always_inline int t##s##x##c##_is_equal (t##s##x##c a, t##s##x##c b) \
+  {                                                                           \
+    return t##s##x##c##_is_all_zero (a ^ b);                                  \
+  }                                                                           \
+                                                                              \
+  static_always_inline int t##s##x##c##_is_all_equal (t##s##x##c v, t##s x)   \
+  {                                                                           \
+    return t##s##x##c##_is_equal (v, t##s##x##c##_splat (x));                 \
+  }                                                                           \
+                                                                              \
+  static_always_inline u##c t##s##x##c##_is_zero_mask (t##s##x##c v)          \
+  {                                                                           \
+    return _mm512_test_##f##_mask ((__m##l##i) v, (__m##l##i) v);             \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s##x##c t##s##x##c##_interleave_lo (t##s##x##c a,   \
+							      t##s##x##c b)   \
+  {                                                                           \
+    return (t##s##x##c) _mm##l##_unpacklo_##f ((__m##l##i) a, (__m##l##i) b); \
+  }                                                                           \
+                                                                              \
+  static_always_inline t##s##x##c t##s##x##c##_interleave_hi (t##s##x##c a,   \
+							      t##s##x##c b)   \
+  {                                                                           \
+    return (t##s##x##c) _mm##l##_unpackhi_##f ((__m##l##i) a, (__m##l##i) b); \
+  }
 
-
-foreach_avx512_vec512i foreach_avx512_vec512u
+foreach_avx512_vec256i
+  foreach_avx512_vec256u foreach_avx512_vec512i foreach_avx512_vec512u
 #undef _
-/* *INDENT-ON* */
+#undef _m
 
-static_always_inline u32
-u16x32_msb_mask (u16x32 v)
+    static_always_inline u32
+    u16x32_msb_mask (u16x32 v)
 {
   return (u32) _mm512_movepi16_mask ((__m512i) v);
 }
+
+#define u64x8_maskz_ternarylogic(k, a, b, c, imm8)                            \
+  (u64x8) _mm512_maskz_ternarylogic_epi64 (                                   \
+    (__mmask8) k, (__m512i) a, (__m512i) b, (__m512i) c, (int) imm8)
 
 static_always_inline u32x16
 u32x16_byte_swap (u32x16 v)
