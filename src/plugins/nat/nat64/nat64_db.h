@@ -18,6 +18,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_source.h>
+#include <nat/lib/nat_proto.h>
 
 #include <vppinfra/bihash_24_8.h>
 #include <vppinfra/bihash_48_8.h>
