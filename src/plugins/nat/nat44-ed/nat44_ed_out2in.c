@@ -583,8 +583,8 @@ create_bypass_for_fwd (snat_main_t *sm, vlib_buffer_t *b, snat_session_t *s,
 
   if (ip->protocol == IP_PROTOCOL_ICMP)
     {
-      if (nat_get_icmp_session_lookup_values (b, ip, &lookup_saddr,
-					      &lookup_sport, &lookup_daddr,
+      if (nat_get_icmp_session_lookup_values (b, ip, &lookup_daddr,
+					      &lookup_sport, &lookup_saddr,
 					      &lookup_dport, &lookup_protocol))
 	return;
     }
