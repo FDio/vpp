@@ -105,8 +105,8 @@ next_src_nat (snat_main_t *sm, ip4_header_t *ip, u16 src_port, u16 dst_port,
 }
 
 static void create_bypass_for_fwd (snat_main_t *sm, vlib_buffer_t *b,
-				   snat_session_t *s, ip4_header_t *ip,
-				   u32 rx_fib_index, u32 thread_index);
+				   ip4_header_t *ip, u32 rx_fib_index,
+				   u32 thread_index);
 
 static snat_session_t *create_session_for_static_mapping_ed (
   snat_main_t *sm, vlib_buffer_t *b, ip4_address_t i2o_addr, u16 i2o_port,
@@ -158,8 +158,12 @@ icmp_out2in_ed_slow_path (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
       if (!sm->forwarding_enabled)
 	{
 	  /* Don't NAT packet aimed at the intfc address */
-	  if (!is_interface_addr (sm, node, sw_if_index,
-				  ip->dst_address.as_u32))
+	  if (is_interface_addr (sm, node, sw_if_index,
+				 ip->dst_address.as_u32))
+	    {
+	      create_bypass_for_fwd (sm, b, ip, rx_fib_index, thread_index);
+	    }
+	  else
 	    {
 	      b->error = node->errors[NAT_OUT2IN_ED_ERROR_NO_TRANSLATION];
 	      next = NAT_NEXT_DROP;
@@ -174,7 +178,7 @@ icmp_out2in_ed_slow_path (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
 	    }
 	  else
 	    {
-	      create_bypass_for_fwd (sm, b, s, ip, rx_fib_index, thread_index);
+	      create_bypass_for_fwd (sm, b, ip, rx_fib_index, thread_index);
 	    }
 	}
       goto out;
@@ -570,8 +574,8 @@ create_session_for_static_mapping_ed (
 }
 
 static void
-create_bypass_for_fwd (snat_main_t *sm, vlib_buffer_t *b, snat_session_t *s,
-		       ip4_header_t *ip, u32 rx_fib_index, u32 thread_index)
+create_bypass_for_fwd (snat_main_t *sm, vlib_buffer_t *b, ip4_header_t *ip,
+		       u32 rx_fib_index, u32 thread_index)
 {
   clib_bihash_kv_16_8_t kv, value;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
@@ -580,6 +584,7 @@ create_bypass_for_fwd (snat_main_t *sm, vlib_buffer_t *b, snat_session_t *s,
   u16 lookup_sport, lookup_dport;
   u8 lookup_protocol;
   ip4_address_t lookup_saddr, lookup_daddr;
+  snat_session_t *s;
 
   if (ip->protocol == IP_PROTOCOL_ICMP)
     {
@@ -1234,7 +1239,7 @@ nat44_ed_out2in_slow_path_node_fn_inline (vlib_main_t * vm,
 		    }
 		  else
 		    {
-		      create_bypass_for_fwd (sm, b0, s0, ip0, rx_fib_index0,
+		      create_bypass_for_fwd (sm, b0, ip0, rx_fib_index0,
 					     thread_index);
 		    }
 		}
