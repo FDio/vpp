@@ -54,19 +54,6 @@ typedef enum
 #undef _
 } nat_error_t;
 
-#define foreach_nat_protocol   \
-  _ (OTHER, 0, other, "other") \
-  _ (UDP, 1, udp, "udp")       \
-  _ (TCP, 2, tcp, "tcp")       \
-  _ (ICMP, 3, icmp, "icmp")
-
-typedef enum
-{
-#define _(N, i, n, s) NAT_PROTOCOL_##N = i,
-  foreach_nat_protocol
-#undef _
-} nat_protocol_t;
-
 /* default protocol timeouts */
 #define NAT_UDP_TIMEOUT 300
 #define NAT_TCP_TRANSITORY_TIMEOUT 240
@@ -96,29 +83,6 @@ nat_reset_timeouts (nat_timeouts_t * timeouts)
 }
 
 static_always_inline u32
-nat_session_get_timeout (nat_timeouts_t *timeouts, nat_protocol_t proto,
-			 u8 state)
-{
-  switch (proto)
-    {
-    case NAT_PROTOCOL_ICMP:
-      return timeouts->icmp;
-    case NAT_PROTOCOL_UDP:
-      return timeouts->udp;
-    case NAT_PROTOCOL_TCP:
-      {
-	if (state)
-	  return timeouts->tcp.transitory;
-	else
-	  return timeouts->tcp.established;
-      }
-    default:
-      return timeouts->udp;
-    }
-  return 0;
-}
-
-static_always_inline u32
 nat_calc_bihash_buckets (u32 n_elts)
 {
   n_elts = n_elts / 2.5;
@@ -137,10 +101,6 @@ nat_calc_bihash_buckets (u32 n_elts)
     }
   return lower_pow2;
 }
-
-u8 *format_nat_protocol (u8 *s, va_list *args);
-
-uword unformat_nat_protocol (unformat_input_t *input, va_list *args);
 
 #endif /* included_nat_lib_h__ */
 /*
