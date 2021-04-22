@@ -307,20 +307,19 @@ typedef struct _tcp_connection
   u32 rcv_wnd;		/**< receive window we expect */
 
   u32 rcv_las;		/**< rcv_nxt at last ack sent/rcv_wnd update */
-  u32 iss;		/**< initial sent sequence */
-  u32 irs;		/**< initial remote sequence */
 
   /* Options */
   u8 snd_opts_len;		/**< Tx options len */
+  u8 snd_sack_pos;		/**< Position in vec of first block to send */
   u8 rcv_wscale;		/**< Window scale to advertise to peer */
   u8 snd_wscale;		/**< Window scale to use when sending */
   u32 tsval_recent;		/**< Last timestamp received */
   u32 tsval_recent_age;		/**< When last updated tstamp_recent*/
+  u32 timestamp_delta;		/**< Offset for timestamp */
   tcp_options_t snd_opts;	/**< Tx options for connection */
   tcp_options_t rcv_opts;	/**< Rx options for connection */
 
   sack_block_t *snd_sacks;	/**< Vector of SACKs to send. XXX Fixed size? */
-  u8 snd_sack_pos;		/**< Position in vec of first block to send */
   sack_block_t *snd_sacks_fl;	/**< Vector for building new list */
   sack_scoreboard_t sack_sb;	/**< SACK "scoreboard" that tracks holes */
 
@@ -380,10 +379,11 @@ typedef struct _tcp_connection
 
   tcp_errors_t errors;	/**< Soft connection errors */
 
+  u32 iss;		/**< initial sent sequence */
+  u32 irs;		/**< initial remote sequence */
   f64 start_ts;		/**< Timestamp when connection initialized */
   u32 last_fib_check;	/**< Last time we checked fib route for peer */
   u16 mss;		/**< Our max seg size that includes options */
-  u32 timestamp_delta;	/**< Offset for timestamp */
   u32 ipv6_flow_label;	/**< flow label for ipv6 header */
 
 #define rst_state snd_wl1
