@@ -114,9 +114,6 @@ typedef struct _vnet_bind_args_t
   /*
    * Results
    */
-  char *segment_name;
-  u32 segment_name_length;
-  u64 server_event_queue_address;
   u64 handle;
 } vnet_listen_args_t;
 
@@ -142,8 +139,6 @@ typedef struct _vnet_connect_args
   u32 app_index;
   u32 wrk_map_index;
   u32 api_context;
-
-  session_handle_t session_handle;
 } vnet_connect_args_t;
 
 typedef struct _vnet_disconnect_args_t
