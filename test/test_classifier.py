@@ -504,6 +504,255 @@ class TestClassifierMAC(TestClassifier):
         self.pg3.assert_nothing_captured(remark="packets forwarded")
 
 
+class TestClassifierComplex(TestClassifier):
+    """ Large & Nested Classifiers Test Cases """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestClassifierComplex, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestClassifierComplex, cls).tearDownClass()
+
+    def test_iacl_large(self):
+        """ Large input ACL test
+
+        Test scenario for Large ACL matching on ethernet+ip+udp headers
+            - Create IPv4 stream for pg0 -> pg1 interface.
+            - Create large acl matching on ethernet+ip+udp header fields
+            - Send and verify received packets on pg1 interface.
+        """
+
+        sport = 13720
+        dport = 9080
+        pkts = self.create_stream(self.pg0, self.pg1, self.pg_if_packet_sizes,
+                                  UDP(sport=sport, dport=dport))
+
+        self.pg0.add_stream(pkts)
+
+        key = 'large_in'
+        self.create_classify_table(
+            key,
+            self.build_mac_mask(src_mac='ffffffffffff',
+                                dst_mac='ffffffffffff',
+                                ether_type='ffff') +
+            self.build_ip_mask(proto='ff',
+                               src_ip='ffffffff',
+                               dst_ip='ffffffff',
+                               src_port='ffff',
+                               dst_port='ffff'),
+            data_offset=-14)
+
+        self.create_classify_session(
+            self.acl_tbl_idx.get(key),
+            self.build_mac_match(src_mac=self.pg0.remote_mac,
+                                 dst_mac=self.pg0.local_mac,
+                                 # ipv4 next header
+                                 ether_type='0800') +
+            self.build_ip_match(proto=socket.IPPROTO_UDP,
+                                src_ip=self.pg0.remote_ip4,
+                                dst_ip=self.pg1.remote_ip4,
+                                src_port=sport,
+                                dst_port=dport))
+
+        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get(key))
+        self.acl_active_table = key
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        pkts = self.pg1.get_capture(len(pkts))
+        self.verify_capture(self.pg1, pkts)
+        self.pg0.assert_nothing_captured(remark="packets forwarded")
+        self.pg2.assert_nothing_captured(remark="packets forwarded")
+        self.pg3.assert_nothing_captured(remark="packets forwarded")
+
+    def test_oacl_large(self):
+        """ Large output ACL test
+        Test scenario for Large ACL matching on ethernet+ip+udp headers
+            - Create IPv4 stream for pg1 -> pg0 interface.
+            - Create large acl matching on ethernet+ip+udp header fields
+            - Send and verify received packets on pg0 interface.
+        """
+
+        sport = 13720
+        dport = 9080
+        pkts = self.create_stream(self.pg1, self.pg0, self.pg_if_packet_sizes,
+                                  UDP(sport=sport, dport=dport))
+        self.pg1.add_stream(pkts)
+
+        key = 'large_out'
+        self.create_classify_table(
+            key,
+            self.build_mac_mask(src_mac='ffffffffffff',
+                                dst_mac='ffffffffffff',
+                                ether_type='ffff') +
+            self.build_ip_mask(proto='ff',
+                               src_ip='ffffffff',
+                               dst_ip='ffffffff',
+                               src_port='ffff',
+                               dst_port='ffff'),
+            data_offset=-14)
+
+        self.create_classify_session(
+            self.acl_tbl_idx.get(key),
+            self.build_mac_match(src_mac=self.pg0.local_mac,
+                                 dst_mac=self.pg0.remote_mac,
+                                 # ipv4 next header
+                                 ether_type='0800') +
+            self.build_ip_match(proto=socket.IPPROTO_UDP,
+                                src_ip=self.pg1.remote_ip4,
+                                dst_ip=self.pg0.remote_ip4,
+                                src_port=sport,
+                                dst_port=dport))
+
+        self.output_acl_set_interface(self.pg0, self.acl_tbl_idx.get(key))
+        self.acl_active_table = key
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        pkts = self.pg0.get_capture(len(pkts))
+        self.verify_capture(self.pg0, pkts)
+        self.pg1.assert_nothing_captured(remark="packets forwarded")
+        self.pg2.assert_nothing_captured(remark="packets forwarded")
+        self.pg3.assert_nothing_captured(remark="packets forwarded")
+
+    def test_iacl_nested(self):
+        """ Nested input ACL test
+
+        Test scenario for Large ACL matching on ethernet+ip+udp headers
+            - Create IPv4 stream for pg0 -> pg1 interface.
+            - Create 1st classifier table, without any entries
+            - Create nested acl matching on ethernet+ip+udp header fields
+            - Send and verify received packets on pg1 interface.
+        """
+
+        sport = 13720
+        dport = 9080
+        pkts = self.create_stream(self.pg0, self.pg1, self.pg_if_packet_sizes,
+                                  UDP(sport=sport, dport=dport))
+
+        self.pg0.add_stream(pkts)
+
+        subtable_key = 'subtable_in'
+        self.create_classify_table(
+            subtable_key,
+            self.build_mac_mask(src_mac='ffffffffffff',
+                                dst_mac='ffffffffffff',
+                                ether_type='ffff') +
+            self.build_ip_mask(proto='ff',
+                               src_ip='ffffffff',
+                               dst_ip='ffffffff',
+                               src_port='ffff',
+                               dst_port='ffff'))
+
+        key = 'nested_in'
+        self.create_classify_table(
+            key,
+            self.build_mac_mask(src_mac='ffffffffffff',
+                                dst_mac='ffffffffffff',
+                                ether_type='ffff') +
+            self.build_ip_mask(proto='ff',
+                               src_ip='ffffffff',
+                               dst_ip='ffffffff',
+                               src_port='ffff',
+                               dst_port='ffff'),
+            next_table_index=self.acl_tbl_idx.get(subtable_key))
+
+        self.create_classify_session(
+            self.acl_tbl_idx.get(subtable_key),
+            self.build_mac_match(src_mac=self.pg0.remote_mac,
+                                 dst_mac=self.pg0.local_mac,
+                                 # ipv4 next header
+                                 ether_type='0800') +
+            self.build_ip_match(proto=socket.IPPROTO_UDP,
+                                src_ip=self.pg0.remote_ip4,
+                                dst_ip=self.pg1.remote_ip4,
+                                src_port=sport,
+                                dst_port=dport))
+
+        self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get(key))
+        self.acl_active_table = key
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        pkts = self.pg1.get_capture(len(pkts))
+        self.verify_capture(self.pg1, pkts)
+        self.pg0.assert_nothing_captured(remark="packets forwarded")
+        self.pg2.assert_nothing_captured(remark="packets forwarded")
+        self.pg3.assert_nothing_captured(remark="packets forwarded")
+
+    def test_oacl_nested(self):
+        """ Nested output ACL test
+
+        Test scenario for Large ACL matching on ethernet+ip+udp headers
+            - Create IPv4 stream for pg1 -> pg0 interface.
+            - Create 1st classifier table, without any entries
+            - Create nested acl matching on ethernet+ip+udp header fields
+            - Send and verify received packets on pg0 interface.
+        """
+
+        sport = 13720
+        dport = 9080
+        pkts = self.create_stream(self.pg1, self.pg0, self.pg_if_packet_sizes,
+                                  UDP(sport=sport, dport=dport))
+        self.pg1.add_stream(pkts)
+
+        subtable_key = 'subtable_out'
+        self.create_classify_table(
+            subtable_key,
+            self.build_mac_mask(src_mac='ffffffffffff',
+                                dst_mac='ffffffffffff',
+                                ether_type='ffff') +
+            self.build_ip_mask(proto='ff',
+                               src_ip='ffffffff',
+                               dst_ip='ffffffff',
+                               src_port='ffff',
+                               dst_port='ffff'),
+            data_offset=-14)
+
+        key = 'nested_out'
+        self.create_classify_table(
+            key,
+            self.build_mac_mask(src_mac='ffffffffffff',
+                                dst_mac='ffffffffffff',
+                                ether_type='ffff') +
+            self.build_ip_mask(proto='ff',
+                               src_ip='ffffffff',
+                               dst_ip='ffffffff',
+                               src_port='ffff',
+                               dst_port='ffff'),
+            next_table_index=self.acl_tbl_idx.get(subtable_key),
+            data_offset=-14)
+
+        self.create_classify_session(
+            self.acl_tbl_idx.get(subtable_key),
+            self.build_mac_match(src_mac=self.pg0.local_mac,
+                                 dst_mac=self.pg0.remote_mac,
+                                 # ipv4 next header
+                                 ether_type='0800') +
+            self.build_ip_match(proto=socket.IPPROTO_UDP,
+                                src_ip=self.pg1.remote_ip4,
+                                dst_ip=self.pg0.remote_ip4,
+                                src_port=sport,
+                                dst_port=dport))
+
+        self.output_acl_set_interface(self.pg0, self.acl_tbl_idx.get(key))
+        self.acl_active_table = key
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        pkts = self.pg0.get_capture(len(pkts))
+        self.verify_capture(self.pg0, pkts)
+        self.pg1.assert_nothing_captured(remark="packets forwarded")
+        self.pg2.assert_nothing_captured(remark="packets forwarded")
+        self.pg3.assert_nothing_captured(remark="packets forwarded")
+
+
 class TestClassifierPBR(TestClassifier):
     """ Classifier PBR Test Case """
 
