@@ -439,8 +439,6 @@ vcl_segment_attach_session (uword segment_handle, uword rxf_offset,
 
   if (!is_ct)
     {
-      rxf->shr->client_session_index = s->session_index;
-      txf->shr->client_session_index = s->session_index;
       rxf->client_thread_index = vcl_get_worker_index ();
       txf->client_thread_index = vcl_get_worker_index ();
       s->rx_fifo = rxf;
