@@ -79,11 +79,19 @@ typedef enum
   VCL_TEST_TYPE_EXIT,
 } vcl_test_t;
 
+typedef enum
+{
+  VCL_TEST_CMD_SYNC,
+  VCL_TEST_CMD_START,
+  VCL_TEST_CMD_STOP,
+} vcl_test_cmd_t;
+
 typedef struct __attribute__ ((packed))
 {
   uint32_t magic;
   uint32_t seq_num;
   uint32_t test;
+  uint32_t cmd;
   uint32_t ctrl_handle;
   uint32_t num_test_sessions;
   uint32_t num_test_sessions_perq;
