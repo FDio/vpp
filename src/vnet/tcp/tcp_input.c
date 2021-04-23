@@ -1477,71 +1477,70 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 thread_index = vm->thread_index, errors = 0;
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
-  u32 n_left_from, *from, *first_buffer;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 err_counters[TCP_N_ERROR] = { 0 };
+  u32 n_left_from, *from;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     tcp_established_trace_frame (vm, node, frame, is_ip4);
 
-  first_buffer = from = vlib_frame_vector_args (frame);
+  from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
+
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+  b = bufs;
 
   while (n_left_from > 0)
     {
-      u32 bi0, error0 = TCP_ERROR_ACK_OK;
-      vlib_buffer_t *b0;
-      tcp_header_t *th0;
-      tcp_connection_t *tc0;
+      u32 error = TCP_ERROR_ACK_OK;
+      tcp_connection_t *tc;
+      tcp_header_t *th;
 
       if (n_left_from > 1)
 	{
-	  vlib_buffer_t *pb;
-	  pb = vlib_get_buffer (vm, from[1]);
-	  vlib_prefetch_buffer_header (pb, LOAD);
-	  CLIB_PREFETCH (pb->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	  vlib_prefetch_buffer_header (b[1], LOAD);
+	  CLIB_PREFETCH (b[1]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	}
 
-      bi0 = from[0];
-      from += 1;
-      n_left_from -= 1;
+      tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
+			       thread_index);
 
-      b0 = vlib_get_buffer (vm, bi0);
-      tc0 = tcp_connection_get (vnet_buffer (b0)->tcp.connection_index,
-				thread_index);
-
-      if (PREDICT_FALSE (tc0 == 0))
+      if (PREDICT_FALSE (tc == 0))
 	{
-	  error0 = TCP_ERROR_INVALID_CONNECTION;
+	  error = TCP_ERROR_INVALID_CONNECTION;
 	  goto done;
 	}
 
-      th0 = tcp_buffer_hdr (b0);
+      th = tcp_buffer_hdr (b[0]);
 
       /* TODO header prediction fast path */
 
       /* 1-4: check SEQ, RST, SYN */
-      if (PREDICT_FALSE (tcp_segment_validate (wrk, tc0, b0, th0, &error0)))
+      if (PREDICT_FALSE (tcp_segment_validate (wrk, tc, b[0], th, &error)))
 	{
-	  TCP_EVT (TCP_EVT_SEG_INVALID, tc0, vnet_buffer (b0)->tcp);
+	  TCP_EVT (TCP_EVT_SEG_INVALID, tc, vnet_buffer (b[0])->tcp);
 	  goto done;
 	}
 
       /* 5: check the ACK field  */
-      if (PREDICT_FALSE (tcp_rcv_ack (wrk, tc0, b0, th0, &error0)))
+      if (PREDICT_FALSE (tcp_rcv_ack (wrk, tc, b[0], th, &error)))
 	goto done;
 
       /* 6: check the URG bit TODO */
 
       /* 7: process the segment text */
-      if (vnet_buffer (b0)->tcp.data_len)
-	error0 = tcp_segment_rcv (wrk, tc0, b0);
+      if (vnet_buffer (b[0])->tcp.data_len)
+	error = tcp_segment_rcv (wrk, tc, b[0]);
 
       /* 8: check the FIN bit */
-      if (PREDICT_FALSE (tcp_is_fin (th0)))
-	tcp_rcv_fin (wrk, tc0, b0, &error0);
+      if (PREDICT_FALSE (tcp_is_fin (th)))
+	tcp_rcv_fin (wrk, tc, b[0], &error);
 
     done:
-      tcp_inc_err_counter (err_counters, error0, 1);
+      tcp_inc_err_counter (err_counters, error, 1);
+
+      n_left_from -= 1;
+      b += 1;
     }
 
   errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP,
@@ -1550,7 +1549,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_store_err_counters (established, err_counters);
   tcp_handle_postponed_dequeues (wrk);
   tcp_handle_disconnects (wrk);
-  vlib_buffer_free (vm, first_buffer, frame->n_vectors);
+  vlib_buffer_free (vm, from, frame->n_vectors);
 
   return frame->n_vectors;
 }
