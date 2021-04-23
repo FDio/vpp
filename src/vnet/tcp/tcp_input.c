@@ -1187,7 +1187,7 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
     }
 
   /* Update SACK list if need be */
-  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+  if (tcp_opts_sack_permitted (&tc->rcv_opts) && vec_len (tc->snd_sacks))
     {
       /* Remove SACK blocks that have been delivered */
       tcp_update_sack_list (tc, tc->rcv_nxt, tc->rcv_nxt);
