@@ -303,8 +303,6 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       m.server_rx_fifo = fifo_segment_fifo_offset (s->rx_fifo);
       m.server_tx_fifo = fifo_segment_fifo_offset (s->tx_fifo);
       m.segment_handle = session_segment_handle (s);
-      s->rx_fifo->shr->client_session_index = api_context;
-      s->tx_fifo->shr->client_session_index = api_context;
     }
   else
     {
@@ -325,6 +323,11 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       m.ct_tx_fifo = fifo_segment_fifo_offset (ss->rx_fifo);
       m.ct_segment_handle = session_segment_handle (ss);
     }
+
+  /* Setup client session index in advance, in case data arrives
+   * before the client processes message and updates it */
+  s->rx_fifo->shr->client_session_index = api_context;
+  s->tx_fifo->shr->client_session_index = api_context;
 
 snd_msg:
 
