@@ -213,14 +213,6 @@ u16x16_mask_last (u16x16 v, u8 n_last)
   return v & masks[16 - n_last];
 }
 
-#ifdef __AVX512F__
-static_always_inline u8x32
-u8x32_mask_load (u8x32 a, void *p, u32 mask)
-{
-  return (u8x32) _mm256_mask_loadu_epi8 ((__m256i) a, mask, p);
-}
-#endif
-
 static_always_inline f32x8
 f32x8_from_u32x8 (u32x8 v)
 {
