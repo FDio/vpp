@@ -368,6 +368,7 @@ typedef struct _tcp_connection
   u32 next_node_opaque;	/**< Opaque to pass to next node */
   u32 limited_transmit;	/**< snd_nxt when limited transmit starts */
   u32 sw_if_index;	/**< Interface for the connection */
+  vlib_buffer_t **bufs;
 
   /* Delivery rate estimation */
   u64 delivered;		/**< Total bytes delivered to peer */

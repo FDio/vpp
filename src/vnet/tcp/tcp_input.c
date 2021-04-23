@@ -1078,6 +1078,23 @@ tcp_rcv_fin (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   *error = TCP_ERROR_FIN_RCVD;
 }
 
+static void
+tcp_flush_bufs (tcp_connection_t * tc)
+{
+  vlib_buffer_t **b;
+  vlib_main_t *vm = vlib_get_main ();
+  int rv;
+
+  vec_foreach (b, tc->bufs)
+    {
+      rv = session_enqueue_stream_connection (&tc->connection, b[0], 0,
+	                                 1 /* queue event */, 1);
+      if (rv != vlib_buffer_length_in_chain (vm, b[0]))
+	clib_warning ("BAD");
+    }
+  vec_reset_length (tc->bufs);
+}
+
 /** Enqueue data for delivery to application */
 static int
 tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
@@ -1085,8 +1102,17 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
 {
   int written, error = TCP_ERROR_ENQUEUED;
 
-  ASSERT (seq_geq (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt));
-  ASSERT (data_len);
+  ASSERT (seq_geq (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt) && data_len);
+
+  if (!vec_len (tc->snd_sacks))
+    {
+      u32 len = vlib_buffer_length_in_chain (vlib_get_main (), b);
+      vec_add1 (tc->bufs, b);
+      tc->bytes_in += len;
+      tc->rcv_nxt += len;
+      return error;
+    }
+
   written = session_enqueue_stream_connection (&tc->connection, b, 0,
 					       1 /* queue event */ , 1);
 
@@ -1139,8 +1165,10 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
   session_t *s0;
   int rv, offset;
 
-  ASSERT (seq_gt (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt));
-  ASSERT (data_len);
+  ASSERT (seq_gt (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt) && data_len);
+
+  if (tc->bufs)
+    tcp_flush_bufs (tc);
 
   /* Enqueue out-of-order data with relative offset */
   rv = session_enqueue_stream_connection (&tc->connection, b,
@@ -1390,10 +1418,11 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_get_buffers (vm, from, bufs, n_left_from);
   b = bufs;
 
+  tcp_connection_t *tc = 0;
+
   while (n_left_from > 0)
     {
       u32 error = TCP_ERROR_ACK_OK;
-      tcp_connection_t *tc;
       tcp_header_t *th;
 
       if (n_left_from > 1)
@@ -1401,6 +1430,9 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_prefetch_buffer_header (b[1], LOAD);
 	  CLIB_PREFETCH (b[1]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	}
+
+      if (tc && tc->bufs && tc->c_c_index != vnet_buffer (b[0])->tcp.connection_index)
+	tcp_flush_bufs (tc);
 
       tc = tcp_connection_get (vnet_buffer (b[0])->tcp.connection_index,
 			       thread_index);
@@ -1442,6 +1474,9 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       n_left_from -= 1;
       b += 1;
     }
+
+  if (tc->bufs)
+    tcp_flush_bufs (tc);
 
   session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP, thread_index);
   tcp_store_err_counters (established, err_counters);
