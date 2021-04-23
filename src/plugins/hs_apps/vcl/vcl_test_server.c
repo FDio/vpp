@@ -31,6 +31,7 @@
 typedef struct
 {
   uint8_t is_alloc;
+  uint8_t is_open;
   int fd;
   uint8_t *buf;
   uint32_t buf_size;
@@ -67,6 +68,8 @@ typedef struct
   vcl_test_server_cfg_t cfg;
   vcl_test_server_worker_t *workers;
 
+  vcl_test_server_conn_t *ctrl;
+  int ctrl_listen_fd;
   struct sockaddr_storage servaddr;
   volatile int worker_fails;
   volatile int active_workers;
@@ -152,6 +155,7 @@ sync_config_and_reply (vcl_test_server_conn_t * conn, vcl_test_cfg_t * rx_cfg)
       vtinf ("(fd %d): Replying to cfg message!\n", conn->fd);
       vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */ );
     }
+  vtinf ("writing %lu", sizeof (conn->cfg));
   (void) vcl_test_write (conn->fd, (uint8_t *) & conn->cfg,
 			 sizeof (conn->cfg), NULL, conn->cfg.verbose);
 }
@@ -165,8 +169,11 @@ vts_server_start_stop (vcl_test_server_worker_t * wrk,
   char buf[64];
   int i;
 
-  if (rx_cfg->ctrl_handle == conn->fd)
+//  if (rx_cfg->ctrl_handle == conn->fd)
+  if (rx_cfg->cmd == VCL_TEST_CMD_STOP)
     {
+      struct timespec stop;
+      clock_gettime (CLOCK_REALTIME, &stop);
       for (i = 0; i < wrk->conn_pool_size; i++)
 	{
 	  tc = &wrk->conn_pool[i];
@@ -177,13 +184,20 @@ vts_server_start_stop (vcl_test_server_worker_t * wrk,
 	  if (vcl_comp_tspec (&conn->stats.stop, &tc->stats.stop) < 0)
 	    conn->stats.stop = tc->stats.stop;
 	  /* Client delays sending of disconnect */
-	  conn->stats.stop.tv_sec -= VCL_TEST_DELAY_DISCONNECT;
+//	  conn->stats.stop.tv_sec -= VCL_TEST_DELAY_DISCONNECT;
 	  if (conn->cfg.verbose)
 	    {
 	      snprintf (buf, sizeof (buf), "SERVER (fd %d) RESULTS", tc->fd);
 	      vcl_test_stats_dump (buf, &tc->stats, 1 /* show_rx */ ,
 				   is_bi /* show tx */ , conn->cfg.verbose);
 	    }
+	}
+
+      /* Test session are not closed (e.g., connection-less) */
+      if (wrk->nfds > 1)
+	{
+	  stop.tv_sec -= VCL_TEST_DELAY_DISCONNECT;
+	  conn->stats.stop = stop;
 	}
 
       vcl_test_stats_dump ("SERVER RESULTS", &conn->stats, 1 /* show_rx */ ,
@@ -202,25 +216,43 @@ vts_server_start_stop (vcl_test_server_worker_t * wrk,
       sync_config_and_reply (conn, rx_cfg);
       memset (&conn->stats, 0, sizeof (conn->stats));
     }
-  else
+  else if (rx_cfg->cmd == VCL_TEST_CMD_SYNC)
     {
-      if (rx_cfg->ctrl_handle == ~0)
-	{
-	  rx_cfg->ctrl_handle = conn->fd;
-	  vtinf ("Set control fd %d for test!", conn->fd);
-	}
-      else
-	{
-	  vtinf ("Starting %s-directional Stream Test (fd %d)!",
-		 is_bi ? "Bi" : "Uni", conn->fd);
-	}
-
+      rx_cfg->ctrl_handle = conn->fd;
+      vtinf ("Set control fd %d for test!", conn->fd);
+      sync_config_and_reply (conn, rx_cfg);
+    }
+  else if (rx_cfg->cmd == VCL_TEST_CMD_START)
+    {
+      vtinf ("Starting %s-directional Stream Test (fd %d)!",
+	     is_bi ? "Bi" : "Uni", conn->fd);
+      rx_cfg->ctrl_handle = conn->fd;
       sync_config_and_reply (conn, rx_cfg);
 
       /* read the 1st chunk, record start time */
-      memset (&conn->stats, 0, sizeof (conn->stats));
+      memset(&conn->stats, 0, sizeof(conn->stats));
       clock_gettime (CLOCK_REALTIME, &conn->stats.start);
     }
+//  else
+//    {
+//      if (rx_cfg->ctrl_handle == ~0)
+//	{
+//	  rx_cfg->ctrl_handle = conn->fd;
+//	  vtinf ("Set control fd %d for test!", conn->fd);
+//	}
+//      else
+//	{
+//	  vtinf ("Starting %s-directional Stream Test (fd %d)!",
+//		 is_bi ? "Bi" : "Uni", conn->fd);
+//	}
+//
+//      vtinf ("resetting time");
+//      sync_config_and_reply (conn, rx_cfg);
+//
+//      /* read the 1st chunk, record start time */
+//      memset (&conn->stats, 0, sizeof (conn->stats));
+//      clock_gettime (CLOCK_REALTIME, &conn->stats.start);
+//    }
 }
 
 static inline void
@@ -290,7 +322,7 @@ vts_server_echo (vcl_test_server_conn_t * conn, int rx_bytes)
     vtinf ("(fd %d): TX (%d bytes) - '%s'", conn->fd, tx_bytes, conn->buf);
 }
 
-static void
+static vcl_test_server_conn_t *
 vts_new_client (vcl_test_server_worker_t * wrk, int listen_fd)
 {
   vcl_test_server_conn_t *conn;
@@ -301,16 +333,17 @@ vts_new_client (vcl_test_server_worker_t * wrk, int listen_fd)
   if (!conn)
     {
       vtwrn ("No free connections!");
-      return;
+      return 0;
     }
 
   client_fd = vppcom_session_accept (listen_fd, &conn->endpt, 0);
   if (client_fd < 0)
     {
       vterr ("vppcom_session_accept()", client_fd);
-      return;
+      return 0;
     }
   conn->fd = client_fd;
+  conn->is_open = 1;
 
   vtinf ("Got a connection -- fd = %d (0x%08x) on listener fd = %d (0x%08x)",
 	 client_fd, client_fd, listen_fd, listen_fd);
@@ -321,9 +354,11 @@ vts_new_client (vcl_test_server_worker_t * wrk, int listen_fd)
   if (rv < 0)
     {
       vterr ("vppcom_epoll_ctl()", rv);
-      return;
+      return 0;
     }
   wrk->nfds++;
+
+  return conn;
 }
 
 static void
@@ -466,10 +501,44 @@ vts_clean_connected_listeners (vcl_test_server_worker_t * wrk,
     }
 }
 
+static void
+vts_session_close (vcl_test_server_conn_t *conn)
+{
+  if (!conn->is_open)
+    return;
+  vppcom_session_close (conn->fd);
+  conn->is_open = 0;
+}
+
+static void
+vts_session_cleanup (vcl_test_server_conn_t *conn)
+{
+  vts_session_close (conn);
+  conn_pool_free (conn);
+}
+
+
+static void
+vts_wrk_cleanup_all (vcl_test_server_worker_t * wrk)
+{
+  vcl_test_server_conn_t *conn;
+  int i;
+
+  for (i = 0; i < wrk->conn_pool_size; i++)
+    {
+      conn = &wrk->conn_pool[i];
+      vts_session_cleanup (conn);
+    }
+
+  wrk->nfds = 0;
+}
+
 int
 vts_handle_cfg (vcl_test_server_worker_t * wrk, vcl_test_cfg_t * rx_cfg,
 		vcl_test_server_conn_t * conn, int rx_bytes)
 {
+  vtinf("reading config on %u type %u", conn->fd, rx_cfg->test);
+
   int listener_fd;
   if (rx_cfg->verbose)
     {
@@ -506,13 +575,13 @@ vts_handle_cfg (vcl_test_server_worker_t * wrk, vcl_test_cfg_t * rx_cfg,
       break;
 
     case VCL_TEST_TYPE_EXIT:
-      vtinf ("Session fd %d closing!", conn->fd);
-      clock_gettime (CLOCK_REALTIME, &conn->stats.stop);
+      vtinf ("Ctrl session fd %d closing!", conn->fd);
       listener_fd = vppcom_session_listener (conn->fd);
-      vppcom_session_close (conn->fd);
-      conn_pool_free (conn);
-      wrk->nfds--;
       vts_clean_connected_listeners (wrk, listener_fd);
+      vts_session_cleanup (conn);
+      wrk->nfds--;
+      if (wrk->nfds)
+	vts_wrk_cleanup_all (wrk);
       break;
 
     default:
@@ -583,9 +652,12 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
 	vtfail ("vppcom_session_listen()", rv);
     }
 
-  wrk->epfd = vppcom_epoll_create ();
-  if (wrk->epfd < 0)
-    vtfail ("vppcom_epoll_create()", wrk->epfd);
+  if (!wrk->epfd)
+    {
+      wrk->epfd = vppcom_epoll_create ();
+      if (wrk->epfd < 0)
+	vtfail("vppcom_epoll_create()", wrk->epfd);
+    }
 
   listen_ev.events = EPOLLIN;
   listen_ev.data.u32 = ~0;
@@ -598,9 +670,56 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
   vtinf ("Waiting for a client to connect on port %d ...", vsm->cfg.port);
 }
 
+static void
+vts_ctrl_session_init (vcl_test_server_worker_t * wrk)
+{
+  vcl_test_server_main_t *vsm = &vcl_server_main;
+  struct epoll_event listen_ev;
+  int rv;
+
+  vtinf ("Initializing main ctrl session ...");
+
+  rv = vppcom_app_create ("vcl_test_server");
+  if (rv)
+    vtfail ("vppcom_app_create()", rv);
+
+  vsm->ctrl_listen_fd = vppcom_session_create (VPPCOM_PROTO_TCP,
+					  0 /* is_nonblocking */ );
+  if (vsm->ctrl_listen_fd < 0)
+    vtfail ("vppcom_session_create()", vsm->ctrl_listen_fd);
+
+  rv = vppcom_session_bind (vsm->ctrl_listen_fd, &vsm->cfg.endpt);
+  if (rv < 0)
+    vtfail ("vppcom_session_bind()", rv);
+
+  rv = vppcom_session_listen (vsm->ctrl_listen_fd, 10);
+  if (rv < 0)
+    vtfail("vppcom_session_listen()", rv);
+
+  wrk->epfd = vppcom_epoll_create ();
+  if (wrk->epfd < 0)
+    vtfail ("vppcom_epoll_create()", wrk->epfd);
+
+  listen_ev.events = EPOLLIN;
+  listen_ev.data.u32 = ~0 - 1;
+  rv = vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, vsm->ctrl_listen_fd,
+			 &listen_ev);
+  if (rv < 0)
+    vtfail ("vppcom_epoll_ctl", rv);
+
+  vtinf ("Waiting for a client to connect on port %d ...", vsm->cfg.port);
+}
+
+
 static int
 vts_conn_expect_config (vcl_test_server_conn_t * conn)
 {
+  vcl_test_server_main_t *vsm = &vcl_server_main;
+
+  if (conn->fd != vsm->ctrl->fd)
+    return 0;
+
+  return 1;
   if (conn->cfg.test == VCL_TEST_TYPE_ECHO)
     return 1;
 
@@ -676,9 +795,9 @@ vts_worker_loop (void *arg)
 	    {
 	      vtinf ("Closing session %d on HUP", conn->fd);
 	      listener_fd = vppcom_session_listener (conn->fd);
-	      vppcom_session_close (conn->fd);
-	      wrk->nfds--;
 	      vts_clean_connected_listeners (wrk, listener_fd);
+	      vts_session_close (conn);
+	      wrk->nfds--;
 	      if (!wrk->nfds)
 		{
 		  vtinf ("All client connections closed\n");
@@ -686,9 +805,20 @@ vts_worker_loop (void *arg)
 		}
 	      continue;
 	    }
+	  if (wrk->wait_events[i].data.u32 == ~0 - 1)
+	    {
+	      if (vsm->ctrl)
+		{
+		  vtinf ("ctrl exists");
+		  continue;
+		}
+	      vsm->ctrl = vts_new_client (wrk, vsm->ctrl_listen_fd);
+	      continue;
+	    }
 	  if (wrk->wait_events[i].data.u32 == ~0)
 	    {
-	      vts_new_client (wrk, wrk->listen_fd);
+	      conn = vts_new_client (wrk, wrk->listen_fd);
+	      conn->cfg = vsm->ctrl->cfg;
 	      continue;
 	    }
 	  else if (vppcom_session_is_connectable_listener (conn->fd))
@@ -778,11 +908,12 @@ main (int argc, char **argv)
   vsm->active_workers = 0;
   vcl_test_server_process_opts (vsm, argc, argv);
 
-  rv = vppcom_app_create ("vcl_test_server");
-  if (rv)
-    vtfail ("vppcom_app_create()", rv);
-
   vsm->workers = calloc (vsm->cfg.workers, sizeof (*vsm->workers));
+
+  vts_ctrl_session_init (&vsm->workers[0]);
+
+  /* update port to data port */
+  vsm->cfg.endpt.port += 1;
   vts_worker_init (&vsm->workers[0]);
   for (i = 1; i < vsm->cfg.workers; i++)
     {
@@ -790,6 +921,7 @@ main (int argc, char **argv)
       rv = pthread_create (&vsm->workers[i].thread_handle, NULL,
 			   vts_worker_loop, (void *) &vsm->workers[i]);
     }
+
   vts_worker_loop (&vsm->workers[0]);
 
   while (vsm->active_workers > 0)
