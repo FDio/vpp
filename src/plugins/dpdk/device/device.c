@@ -228,7 +228,7 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
   if (PREDICT_TRUE (((b->flags & VNET_BUFFER_F_OFFLOAD) | tso) == 0))
     return;
 
-  oflags = vnet_buffer2 (b)->oflags;
+  oflags = vnet_buffer (b)->oflags;
   ip_cksum = oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM;
   tcp_cksum = oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
   udp_cksum = oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;

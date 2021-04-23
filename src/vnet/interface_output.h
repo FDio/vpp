@@ -85,7 +85,7 @@ vnet_calc_checksums_inline (vlib_main_t * vm, vlib_buffer_t * b,
   ip6_header_t *ip6;
   tcp_header_t *th;
   udp_header_t *uh;
-  u32 oflags = vnet_buffer2 (b)->oflags;
+  u32 oflags = vnet_buffer (b)->oflags;
 
   if (!(b->flags & VNET_BUFFER_F_OFFLOAD))
     return;

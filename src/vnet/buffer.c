@@ -22,7 +22,7 @@ format_vnet_buffer_offload (u8 *s, va_list *args)
   vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
 
 #define _(bit, name, ss, v)                                                   \
-  if (v && (vnet_buffer2 (b)->oflags & VNET_BUFFER_OFFLOAD_F_##name))         \
+  if (v && (vnet_buffer (b)->oflags & VNET_BUFFER_OFFLOAD_F_##name))          \
     s = format (s, "%s ", ss);
   foreach_vnet_buffer_offload_flag
 #undef _

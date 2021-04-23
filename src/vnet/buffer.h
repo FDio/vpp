@@ -138,7 +138,8 @@ typedef struct
   i16 l3_hdr_offset;
   i16 l4_hdr_offset;
   u8 feature_arc_index;
-  u8 dont_waste_me;
+  /* offload flags */
+  u8 oflags;
 
   union
   {
@@ -472,9 +473,6 @@ typedef struct
     u16 gso_size;
     /* size of L4 prototol header */
     u16 gso_l4_hdr_sz;
-
-    /* offload flags */
-    u32 oflags;
   };
 
   struct
@@ -533,12 +531,12 @@ vnet_buffer_offload_flags_set (vlib_buffer_t *b, u32 oflags)
   if (b->flags & VNET_BUFFER_F_OFFLOAD)
     {
       /* add a flag to existing offload */
-      vnet_buffer2 (b)->oflags |= oflags;
+      vnet_buffer (b)->oflags |= oflags;
     }
   else
     {
       /* no offload yet: reset offload flags to new value */
-      vnet_buffer2 (b)->oflags = oflags;
+      vnet_buffer (b)->oflags = oflags;
       b->flags |= VNET_BUFFER_F_OFFLOAD;
     }
 }
@@ -546,8 +544,8 @@ vnet_buffer_offload_flags_set (vlib_buffer_t *b, u32 oflags)
 static_always_inline void
 vnet_buffer_offload_flags_clear (vlib_buffer_t *b, u32 oflags)
 {
-  vnet_buffer2 (b)->oflags &= ~oflags;
-  if (0 == vnet_buffer2 (b)->oflags)
+  vnet_buffer (b)->oflags &= ~oflags;
+  if (0 == vnet_buffer (b)->oflags)
     b->flags &= ~VNET_BUFFER_F_OFFLOAD;
 }
 
