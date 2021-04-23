@@ -121,35 +121,38 @@ vlib_buffer_get_default_data_size (vlib_main_t * vm)
 static_always_inline void
 vlib_buffer_copy_indices (u32 * dst, u32 * src, u32 n_indices)
 {
-#if defined(CLIB_HAVE_VEC512)
-  while (n_indices >= 16)
+  while (n_indices >= 32)
     {
-      u32x16_store_unaligned (u32x16_load_unaligned (src), dst);
+      clib_memcpy_u32_x16 (dst, src);
+      clib_memcpy_u32_x16 (dst + 16, src + 16);
+      dst += 32;
+      src += 32;
+      n_indices -= 32;
+    }
+
+  if (n_indices >= 16)
+    {
+      clib_memcpy_u32_x16 (dst, src);
       dst += 16;
       src += 16;
       n_indices -= 16;
     }
-#endif
 
-#if defined(CLIB_HAVE_VEC256)
-  while (n_indices >= 8)
+  if (n_indices >= 8)
     {
-      u32x8_store_unaligned (u32x8_load_unaligned (src), dst);
+      clib_memcpy_u32_x8 (dst, src);
       dst += 8;
       src += 8;
       n_indices -= 8;
     }
-#endif
 
-#if defined(CLIB_HAVE_VEC128)
-  while (n_indices >= 4)
+  if (n_indices >= 4)
     {
-      u32x4_store_unaligned (u32x4_load_unaligned (src), dst);
+      clib_memcpy_u32_x4 (dst, src);
       dst += 4;
       src += 4;
       n_indices -= 4;
     }
-#endif
 
   while (n_indices)
     {

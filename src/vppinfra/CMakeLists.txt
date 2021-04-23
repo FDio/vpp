@@ -144,6 +144,7 @@ set(VPPINFRA_HEADERS
   macros.h
   maplog.h
   math.h
+  memcpy.h
   memcpy_avx2.h
   memcpy_avx512.h
   memcpy_sse3.h
