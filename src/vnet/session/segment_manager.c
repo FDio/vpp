@@ -88,7 +88,8 @@ segment_manager_segment_index (segment_manager_t * sm, fifo_segment_t * seg)
  * to avoid affecting any of the segments pool readers.
  */
 int
-segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
+segment_manager_add_segment (segment_manager_t *sm, uword segment_size,
+			     u8 notify_app)
 {
   segment_manager_main_t *smm = &sm_main;
   segment_manager_props_t *props;
@@ -162,6 +163,16 @@ segment_manager_add_segment (segment_manager_t * sm, uword segment_size)
   fs->h->pct_first_alloc = props->pct_first_alloc;
   fs->h->flags &= ~FIFO_SEGMENT_F_MEM_LIMIT;
 
+  if (notify_app)
+    {
+      app_worker_t *app_wrk;
+      u64 fs_handle;
+      fs_handle = segment_manager_segment_handle (sm, fs);
+      app_wrk = app_worker_get (sm->app_wrk_index);
+      rv = app_worker_add_segment_notify (app_wrk, fs_handle);
+      if (rv)
+	return rv;
+    }
 done:
 
   if (vlib_num_workers ())
@@ -376,7 +387,7 @@ segment_manager_init_first (segment_manager_t * sm)
       /* Allocate the segments */
       for (i = 0; i < approx_segment_count + 1; i++)
 	{
-	  fs_index = segment_manager_add_segment (sm, max_seg_size);
+	  fs_index = segment_manager_add_segment (sm, max_seg_size, 0);
 	  if (fs_index < 0)
 	    {
 	      clib_warning ("Failed to preallocate segment %d", i);
@@ -398,7 +409,7 @@ segment_manager_init_first (segment_manager_t * sm)
       return 0;
     }
 
-  fs_index = segment_manager_add_segment (sm, first_seg_size);
+  fs_index = segment_manager_add_segment (sm, first_seg_size, 0);
   if (fs_index < 0)
     {
       clib_warning ("Failed to allocate segment");
@@ -665,8 +676,6 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
   segment_manager_props_t *props;
   fifo_segment_t *fs = 0, *cur;
   u32 sm_index, fs_index;
-  u8 added_a_segment = 0;
-  u64 fs_handle;
 
   props = segment_manager_properties_get (sm);
 
@@ -700,45 +709,12 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
 
   segment_manager_segment_reader_unlock (sm);
 
-alloc_check:
-
-  if (!alloc_fail)
-    {
-
-    alloc_success:
-
-      ASSERT (rx_fifo && tx_fifo);
-      sm_index = segment_manager_index (sm);
-      fs_index = segment_manager_segment_index (sm, fs);
-      (*tx_fifo)->segment_manager = sm_index;
-      (*rx_fifo)->segment_manager = sm_index;
-      (*tx_fifo)->segment_index = fs_index;
-      (*rx_fifo)->segment_index = fs_index;
-
-      if (added_a_segment)
-	{
-	  app_worker_t *app_wrk;
-	  fs_handle = segment_manager_segment_handle (sm, fs);
-	  app_wrk = app_worker_get (sm->app_wrk_index);
-	  rv = app_worker_add_segment_notify (app_wrk, fs_handle);
-	}
-      /* Drop the lock after app is notified */
-      segment_manager_segment_reader_unlock (sm);
-      return rv;
-    }
-
   /*
    * Allocation failed, see if we can add a new segment
    */
   if (props->add_segment)
     {
-      if (added_a_segment)
-	{
-	  clib_warning ("Added a segment, still can't allocate a fifo");
-	  segment_manager_segment_reader_unlock (sm);
-	  return SESSION_E_SEG_NO_SPACE2;
-	}
-      if ((new_fs_index = segment_manager_add_segment (sm, 0)) < 0)
+      if ((new_fs_index = segment_manager_add_segment (sm, 0, 1)) < 0)
 	{
 	  clib_warning ("Failed to add new segment");
 	  return SESSION_E_SEG_CREATE;
@@ -748,14 +724,33 @@ alloc_check:
 						    props->rx_fifo_size,
 						    props->tx_fifo_size,
 						    rx_fifo, tx_fifo);
-      added_a_segment = 1;
-      goto alloc_check;
+      if (alloc_fail)
+	{
+	  clib_warning ("Added a segment, still can't allocate a fifo");
+	  segment_manager_segment_reader_unlock (sm);
+	  return SESSION_E_SEG_NO_SPACE2;
+	}
     }
   else
     {
       SESSION_DBG ("Can't add new seg and no space to allocate fifos!");
       return SESSION_E_SEG_NO_SPACE;
     }
+
+alloc_success:
+  ASSERT (rx_fifo && tx_fifo);
+
+  sm_index = segment_manager_index (sm);
+  fs_index = segment_manager_segment_index (sm, fs);
+  (*tx_fifo)->segment_manager = sm_index;
+  (*rx_fifo)->segment_manager = sm_index;
+  (*tx_fifo)->segment_index = fs_index;
+  (*rx_fifo)->segment_index = fs_index;
+
+  /* Drop the lock after app is notified */
+  segment_manager_segment_reader_unlock (sm);
+
+  return rv;
 }
 
 void
