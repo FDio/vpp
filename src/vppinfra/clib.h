@@ -159,6 +159,16 @@
 
 #if defined (count_leading_zeros)
 always_inline uword
+clear_lowest_set_bit (uword x)
+{
+#ifdef __BMI2__
+  return _blsr_u64 (x);
+#else
+  return x ^ (1ULL << count_trailing_zeros (x));
+#endif
+}
+
+always_inline uword
 min_log2 (uword x)
 {
   uword n;
