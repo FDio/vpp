@@ -4,9 +4,10 @@
 
 #include <vlib/vlib.h>
 
-void __clib_section (".vlib_buffer_enqueue_to_next_fn") CLIB_MULTIARCH_FN (
-  vlib_buffer_enqueue_to_next_fn) (vlib_main_t *vm, vlib_node_runtime_t *node,
-				   u32 *buffers, u16 *nexts, uword count)
+void __clib_section (".vlib_buffer_enqueue_to_next_fn")
+CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_next_fn)
+(vlib_main_t *vm, vlib_node_runtime_t *node, u32 *buffers, u16 *nexts,
+ uword count)
 {
   u32 *to_next, n_left_to_next, max;
   u16 next_index;
@@ -123,12 +124,13 @@ void __clib_section (".vlib_buffer_enqueue_to_next_fn") CLIB_MULTIARCH_FN (
     }
   vlib_put_next_frame (vm, node, next_index, n_left_to_next);
 }
+
 CLIB_MARCH_FN_REGISTRATION (vlib_buffer_enqueue_to_next_fn);
 
 void __clib_section (".vlib_buffer_enqueue_to_single_next_fn")
-  CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_single_next_fn) (
-    vlib_main_t *vm, vlib_node_runtime_t *node, u32 *buffers, u16 next_index,
-    u32 count)
+CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_single_next_fn)
+(vlib_main_t *vm, vlib_node_runtime_t *node, u32 *buffers, u16 next_index,
+ u32 count)
 {
   u32 *to_next, n_left_to_next, n_enq;
 
@@ -159,12 +161,13 @@ next:
     }
   vlib_put_next_frame (vm, node, next_index, n_left_to_next);
 }
+
 CLIB_MARCH_FN_REGISTRATION (vlib_buffer_enqueue_to_single_next_fn);
 
 u32 __clib_section (".vlib_buffer_enqueue_to_thread_fn")
-  CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_fn) (
-    vlib_main_t *vm, u32 frame_queue_index, u32 *buffer_indices,
-    u16 *thread_indices, u32 n_packets, int drop_on_congestion)
+CLIB_MULTIARCH_FN (vlib_buffer_enqueue_to_thread_fn)
+(vlib_main_t *vm, u32 frame_queue_index, u32 *buffer_indices,
+ u16 *thread_indices, u32 n_packets, int drop_on_congestion)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_frame_queue_main_t *fqm;
