@@ -448,7 +448,7 @@ segment_manager_test_fifo_balanced_alloc (vlib_main_t * vm,
     }
 
   /* add another 2MB segment */
-  fs_index = segment_manager_add_segment (sm, size_2MB);
+  fs_index = segment_manager_add_segment (sm, size_2MB, 0);
   SEG_MGR_TEST ((fs_index == 1), "fs_index %d", fs_index);
 
   /* allocate fifos : 4KB x2
