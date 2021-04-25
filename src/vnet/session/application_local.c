@@ -188,7 +188,7 @@ ct_init_accepted_session (app_worker_t * server_wrk,
   seg_size = 4 * (round_rx_fifo_sz + round_tx_fifo_sz + margin);
 
   sm = app_worker_get_listen_segment_manager (server_wrk, ll);
-  seg_index = segment_manager_add_segment (sm, seg_size);
+  seg_index = segment_manager_add_segment (sm, seg_size, 0);
   if (seg_index < 0)
     {
       clib_warning ("failed to add new cut-through segment");
