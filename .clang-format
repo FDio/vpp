@@ -20,3 +20,9 @@ ForEachMacros:
   - 'vlib_foreach_rx_tx'
   - 'foreach_vlib_main'
 
+StatementMacros:
+  - 'CLIB_MULTIARCH_FN'
+  - 'VLIB_NODE_FN'
+  - 'VNET_DEVICE_CLASS_TX_FN'
+  - '__clib_section'
+  - '__clib_aligned'
