@@ -143,7 +143,7 @@ memcpy_s_inline (void *__restrict__ dest, rsize_t dmax,
    * Optimize constant-number-of-bytes calls without asking
    * "too many questions for someone from New Jersey"
    */
-  if (__builtin_constant_p (n))
+  if (COMPILE_TIME_CONST (n))
     {
       clib_memcpy_fast (dest, src, n);
       return EOK;
