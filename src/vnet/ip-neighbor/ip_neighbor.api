@@ -63,7 +63,7 @@ define ip_neighbor_add_del
   u32 client_index;
   u32 context;
   /* 1 = add, 0 = delete */
-  bool is_add;
+  bool is_add [default=true];
   vl_api_ip_neighbor_t neighbor;
 };
 /** \brief IP neighbor add / del reply
