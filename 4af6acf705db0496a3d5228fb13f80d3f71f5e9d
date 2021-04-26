@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "ff047ec3_5f59a1c3",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 21
+      },
+      "lineNbr": 274,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2021-04-26T04:32:44Z",
+      "side": 1,
+      "message": "Hi,ray: in CLIB_HAVE_VEC512, we would like to process one 512 data and one 128 data(may), the 128 part was following the CLIB_HAVE_VEC128 code implement.",
+      "parentUuid": "e12323dd_d21f0102",
+      "revId": "4af6acf705db0496a3d5228fb13f80d3f71f5e9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "e2c2c0f4_17d68191",
         "filename": "src/vnet/classify/vnet_classify.h",
         "patchSetId": 21
@@ -30,6 +48,24 @@
       "writtenOn": "2021-04-22T16:03:50Z",
       "side": 1,
       "message": "load it, when you need it.",
+      "revId": "4af6acf705db0496a3d5228fb13f80d3f71f5e9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "031a4ba6_6c0444e1",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 21
+      },
+      "lineNbr": 279,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2021-04-26T04:32:44Z",
+      "side": 1,
+      "message": "Hi,ray: in CLIB_HAVE_VEC512, we would like to process one 512 data and one 128 data(may), the 128 part was following the CLIB_HAVE_VEC128 code implement. we needn\u0027t load it, it was aligned.",
+      "parentUuid": "e2c2c0f4_17d68191",
       "revId": "4af6acf705db0496a3d5228fb13f80d3f71f5e9d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "c83a62db_8e1fa7fb",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 21
+      },
+      "lineNbr": 300,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2021-04-26T04:32:44Z",
+      "side": 1,
+      "message": "Hi,ray: in CLIB_HAVE_VEC512, we would like to process one 512 data and one 128 data(may), the 128 part was following the CLIB_HAVE_VEC128 code implement. we needn\u0027t load it, it was aligned.",
+      "parentUuid": "7cf47e16_a3474c52",
+      "revId": "4af6acf705db0496a3d5228fb13f80d3f71f5e9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "36ad00f8_87921b08",
         "filename": "src/vnet/classify/vnet_classify.h",
         "patchSetId": 21
@@ -64,6 +118,24 @@
       "writtenOn": "2021-04-22T16:03:50Z",
       "side": 1,
       "message": "Pointers are needless here?",
+      "revId": "4af6acf705db0496a3d5228fb13f80d3f71f5e9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b033408e_8a978a0f",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 21
+      },
+      "lineNbr": 477,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2021-04-26T04:32:44Z",
+      "side": 1,
+      "message": "Hi,ray: in CLIB_HAVE_VEC512, we would like to process one 512 data and one 128 data(may), the 128 part was following the CLIB_HAVE_VEC128 code implement. we needn\u0027t load it, it was aligned.",
+      "parentUuid": "36ad00f8_87921b08",
       "revId": "4af6acf705db0496a3d5228fb13f80d3f71f5e9d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "96b805ec_2a9eb11c",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 21
+      },
+      "lineNbr": 500,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2021-04-26T04:32:44Z",
+      "side": 1,
+      "message": "Hi,ray: in CLIB_HAVE_VEC512, we would like to process one 512 data and one 128 data(may), the 128 part was following the CLIB_HAVE_VEC128 code implement. we needn\u0027t load it, it was aligned.",
+      "parentUuid": "bb882158_3452e383",
+      "revId": "4af6acf705db0496a3d5228fb13f80d3f71f5e9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "7af23684_4b15f70f",
         "filename": "src/vnet/classify/vnet_classify.h",
         "patchSetId": 21
@@ -98,6 +188,24 @@
       "writtenOn": "2021-04-22T16:03:50Z",
       "side": 1,
       "message": "only load the key when you need it, and use u32x4_load_unaligned to ensure alignment is good.",
+      "revId": "4af6acf705db0496a3d5228fb13f80d3f71f5e9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0fec4079_6bb76e56",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 21
+      },
+      "lineNbr": 505,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2021-04-26T04:32:44Z",
+      "side": 1,
+      "message": "Hi,ray: in CLIB_HAVE_VEC512, we would like to process one 512 data and one 128 data(may), the 128 part was following the CLIB_HAVE_VEC128 code implement. we needn\u0027t load it, it was aligned.",
+      "parentUuid": "7af23684_4b15f70f",
       "revId": "4af6acf705db0496a3d5228fb13f80d3f71f5e9d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
@@ -121,6 +229,24 @@
     },
     {
       "key": {
+        "uuid": "2c296ee1_a6be561c",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 21
+      },
+      "lineNbr": 529,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2021-04-26T04:32:44Z",
+      "side": 1,
+      "message": "Hi,ray: in CLIB_HAVE_VEC512, we would like to process one 512 data and one 128 data(may), the 128 part was following the CLIB_HAVE_VEC128 code implement. we needn\u0027t load it, it was aligned.",
+      "parentUuid": "38c1100f_3a69401f",
+      "revId": "4af6acf705db0496a3d5228fb13f80d3f71f5e9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ebd09949_b23a0460",
         "filename": "src/vnet/classify/vnet_classify.h",
         "patchSetId": 21
@@ -132,6 +258,24 @@
       "writtenOn": "2021-04-22T16:03:50Z",
       "side": 1,
       "message": "collapse kmask_result128 into kmask_result512 here? instead of needlessly checking kmask_result128 everytime.",
+      "revId": "4af6acf705db0496a3d5228fb13f80d3f71f5e9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6866f594_2d87ecd2",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 21
+      },
+      "lineNbr": 530,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2021-04-26T04:32:44Z",
+      "side": 1,
+      "message": "Hi ray, I argee with you, but kmask_result128 is u32x4,kmask_result512 is u32, so if using kmask_result512, we need to do 3 times \"|\" I think.",
+      "parentUuid": "ebd09949_b23a0460",
       "revId": "4af6acf705db0496a3d5228fb13f80d3f71f5e9d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
