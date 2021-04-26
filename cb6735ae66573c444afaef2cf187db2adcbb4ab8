@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7f1734b4_63317d0f",
+        "filename": "src/vnet/classify/test/test_classifier.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 537,
+      "author": {
+        "id": 1482
+      },
+      "writtenOn": "2021-04-26T05:04:15Z",
+      "side": 1,
+      "message": "Hi,ray, I don\u0027t know if there are some problems with the case, when we have this classify_table, we will fail the three new added cases(both with or without patch 30478), I uploaded the case that can successfully run, maybe not the right scenario you want, please help to review.",
+      "range": {
+        "startLine": 535,
+        "startChar": 0,
+        "endLine": 537,
+        "endChar": 52
+      },
+      "revId": "cb6735ae66573c444afaef2cf187db2adcbb4ab8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
