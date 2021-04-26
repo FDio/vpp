@@ -1,27 +1,45 @@
 #!/usr/bin/env python3
-
-from socket import AF_INET, AF_INET6, inet_pton, inet_ntop
+import typing
+from socket import AF_INET6, inet_pton, inet_ntop
 import unittest
 from ipaddress import ip_address, IPv4Network, IPv6Network
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP, Dot1Q
 from scapy.layers.inet import IP, UDP, ICMP
-from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6NDOptSrcLLAddr, \
-    ICMPv6ND_NA, ICMPv6EchoRequest
+from scapy.layers.inet6 import (
+    IPv6,
+    ICMPv6ND_NS,
+    ICMPv6NDOptSrcLLAddr,
+    ICMPv6ND_NA,
+    ICMPv6EchoRequest,
+)
 from scapy.utils6 import in6_getnsma, in6_getnsmac
 from scapy.layers.vxlan import VXLAN
-from scapy.data import ETH_P_IP, ETH_P_IPV6, ETH_P_ARP
+from scapy.data import ETH_P_IP, ETH_P_IPV6
 
 from framework import tag_fixme_vpp_workers
 from framework import VppTestCase, VppTestRunner
 from vpp_object import VppObject
 from vpp_interface import VppInterface
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, \
-    VppIpInterfaceAddress, VppIpInterfaceBind, find_route, FibPathProto, \
-    FibPathType
-from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort, \
-    VppBridgeDomainArpEntry, VppL2FibEntry, find_bridge_domain_port, VppL2Vtr
+from vpp_ip_route import (
+    VppIpRoute,
+    VppRoutePath,
+    VppIpTable,
+    VppIpInterfaceAddress,
+    VppIpInterfaceBind,
+    find_route,
+    FibPathProto,
+    FibPathType,
+)
+from vpp_l2 import (
+    VppBridgeDomain,
+    VppBridgeDomainPort,
+    VppBridgeDomainArpEntry,
+    VppL2FibEntry,
+    find_bridge_domain_port,
+    VppL2Vtr,
+)
 from vpp_sub_interface import L2_VTR_OP, VppDot1QSubint
 from vpp_ip import DpoProto, get_dpo_proto
 from vpp_papi import VppEnum, MACAddress
@@ -29,10 +47,6 @@ from vpp_vxlan_gbp_tunnel import find_vxlan_gbp_tunnel, INDEX_INVALID, \
     VppVxlanGbpTunnel
 from vpp_neighbor import VppNeighbor
 from vpp_acl import AclRule, VppAcl
-try:
-    text_type = unicode
-except NameError:
-    text_type = str
 
 NUM_PKTS = 67
 
@@ -73,7 +87,7 @@ def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None,
     return False
 
 
-def find_gbp_vxlan(test, vni):
+def find_gbp_vxlan(test: VppTestCase, vni):
     ts = test.vapi.gbp_vxlan_tunnel_dump()
     for t in ts:
         if t.tunnel.vni == vni:
@@ -121,6 +135,7 @@ class VppGbpEndpoint(VppObject):
                  mac=True):
         self._test = test
         self.itf = itf
+        self.handle = None
         self.epg = epg
         self.recirc = recirc
 
@@ -138,20 +153,30 @@ class VppGbpEndpoint(VppObject):
         self.tun_src = tun_src
         self.tun_dst = tun_dst
 
+    def encode(self):
+        ips = [self.ip4, self.ip6]
+        return {
+            "sw_if_index": self.itf.sw_if_index,
+            "ips": ips,
+            "n_ips": len(ips),
+            "mac": self.vmac.packed,
+            "sclass": self.epg.sclass,
+            "flags": self.flags,
+            "tun": {
+                "src": self.tun_src,
+                "dst": self.tun_dst,
+            },
+        }
+
     def add_vpp_config(self):
         res = self._test.vapi.gbp_endpoint_add(
-            self.itf.sw_if_index,
-            [self.ip4, self.ip6],
-            self.vmac.packed,
-            self.epg.sclass,
-            self.flags,
-            self.tun_src,
-            self.tun_dst)
+            endpoint=self.encode(),
+        )
         self.handle = res.handle
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.gbp_endpoint_del(self.handle)
+        self._test.vapi.gbp_endpoint_del(handle=self.handle)
 
     def object_id(self):
         return "gbp-endpoint:[%d==%d:%s:%d]" % (self.handle,
@@ -176,20 +201,25 @@ class VppGbpRecirc(VppObject):
         self.epg = epg
         self.is_ext = is_ext
 
+    def encode(self):
+        return {
+            "is_ext": self.is_ext,
+            "sw_if_index": self.recirc.sw_if_index,
+            "sclass": self.epg.sclass,
+        }
+
     def add_vpp_config(self):
         self._test.vapi.gbp_recirc_add_del(
             1,
-            self.recirc.sw_if_index,
-            self.epg.sclass,
-            self.is_ext)
+            recirc=self.encode(),
+        )
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         self._test.vapi.gbp_recirc_add_del(
             0,
-            self.recirc.sw_if_index,
-            self.epg.sclass,
-            self.is_ext)
+            recirc=self.encode(),
+        )
 
     def object_id(self):
         return "gbp-recirc:[%d]" % (self.recirc.sw_if_index)
@@ -214,14 +244,26 @@ class VppGbpExtItf(VppObject):
         self.rd = rd
         self.flags = 1 if anon else 0
 
+    def encode(self):
+        return {
+            "sw_if_index": self.itf.sw_if_index,
+            "bd_id": self.bd.bd_id,
+            "rd_id": self.rd.rd_id,
+            "flags": self.flags,
+        }
+
     def add_vpp_config(self):
         self._test.vapi.gbp_ext_itf_add_del(
-            1, self.itf.sw_if_index, self.bd.bd_id, self.rd.rd_id, self.flags)
+            1,
+            ext_itf=self.encode(),
+        )
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         self._test.vapi.gbp_ext_itf_add_del(
-            0, self.itf.sw_if_index, self.bd.bd_id, self.rd.rd_id, self.flags)
+            0,
+            ext_itf=self.encode(),
+        )
 
     def object_id(self):
         return "gbp-ext-itf:[%d]%s" % (self.itf.sw_if_index,
@@ -241,7 +283,9 @@ class VppGbpSubnet(VppObject):
     """
 
     def __init__(self, test, rd, address, address_len,
-                 type, sw_if_index=None, sclass=None):
+                 type, sw_if_index=0xffffffff, sclass=0xffff):
+        # TODO: replace hardcoded defaults when vpp_papi supports
+        #  defaults in typedefs
         self._test = test
         self.rd_id = rd.rd_id
         a = ip_address(address)
@@ -255,22 +299,27 @@ class VppGbpSubnet(VppObject):
         self.sw_if_index = sw_if_index
         self.sclass = sclass
 
+    def encode(self):
+        return {
+            "type": self.type,
+            "sw_if_index": self.sw_if_index,
+            "sclass": self.sclass,
+            "prefix": self.prefix,
+            "rd_id": self.rd_id,
+        }
+
     def add_vpp_config(self):
         self._test.vapi.gbp_subnet_add_del(
-            1,
-            self.rd_id,
-            self.prefix,
-            self.type,
-            sw_if_index=self.sw_if_index if self.sw_if_index else 0xffffffff,
-            sclass=self.sclass if self.sclass else 0xffff)
+            is_add=1,
+            subnet=self.encode(),
+        )
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         self._test.vapi.gbp_subnet_add_del(
-            0,
-            self.rd_id,
-            self.prefix,
-            self.type)
+            is_add=0,
+            subnet=self.encode()
+        )
 
     def object_id(self):
         return "gbp-subnet:[%d-%s]" % (self.rd_id, self.prefix)
@@ -307,30 +356,35 @@ class VppGbpEndpointGroup(VppObject):
         self.bvi_ip4 = bvi_ip4
         self.bvi_ip6 = bvi_ip6
         self.vnid = vnid
-        self.bd = bd
+        self.bd = bd  # VppGbpBridgeDomain
         self.rd = rd
         self.sclass = sclass
         if 0 == self.sclass:
             self.sclass = 0xffff
         self.retention = retention
 
+    def encode(self) -> dict:
+        return {
+            "uplink_sw_if_index": self.uplink.sw_if_index
+            if self.uplink else INDEX_INVALID,
+            "bd_id": self.bd.bd.bd_id,
+            "rd_id": self.rd.rd_id,
+            "vnid": self.vnid,
+            "sclass": self.sclass,
+            "retention": self.retention.encode(),
+        }
+
     def add_vpp_config(self):
-        self._test.vapi.gbp_endpoint_group_add(
-            self.vnid,
-            self.sclass,
-            self.bd.bd.bd_id,
-            self.rd.rd_id,
-            self.uplink.sw_if_index if self.uplink else INDEX_INVALID,
-            self.retention.encode())
+        self._test.vapi.gbp_endpoint_group_add(epg=self.encode())
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.gbp_endpoint_group_del(self.sclass)
+        self._test.vapi.gbp_endpoint_group_del(sclass=self.sclass)
 
-    def object_id(self):
+    def object_id(self) -> str:
         return "gbp-endpoint-group:[%d]" % (self.vnid)
 
-    def query_vpp_config(self):
+    def query_vpp_config(self) -> bool:
         epgs = self._test.vapi.gbp_endpoint_group_dump()
         for epg in epgs:
             if epg.epg.vnid == self.vnid:
@@ -343,7 +397,8 @@ class VppGbpBridgeDomain(VppObject):
     GBP Bridge Domain
     """
 
-    def __init__(self, test, bd, rd, bvi, uu_fwd=None,
+    def __init__(self, test, bd, rd, bvi,
+                 uu_fwd: typing.Optional[VppVxlanGbpTunnel] = None,
                  bm_flood=None, learn=True,
                  uu_drop=False, bm_drop=False,
                  ucast_arp=False):
@@ -366,23 +421,31 @@ class VppGbpBridgeDomain(VppObject):
         if ucast_arp:
             self.flags |= e.GBP_BD_API_FLAG_UCAST_ARP
 
+    def encode(self) -> dict:
+        return {
+            "flags": self.flags,
+            "bvi_sw_if_index": self.bvi.sw_if_index,
+            "uu_fwd_sw_if_index": self.uu_fwd.sw_if_index
+            if self.uu_fwd else INDEX_INVALID,
+            "bm_flood_sw_if_index": self.bm_flood.sw_if_index
+            if self.bm_flood else INDEX_INVALID,
+            "bd_id": self.bd.bd_id,
+            "rd_id": self.rd.rd_id,
+        }
+
     def add_vpp_config(self):
         self._test.vapi.gbp_bridge_domain_add(
-            self.bd.bd_id,
-            self.rd.rd_id,
-            self.flags,
-            self.bvi.sw_if_index,
-            self.uu_fwd.sw_if_index if self.uu_fwd else INDEX_INVALID,
-            self.bm_flood.sw_if_index if self.bm_flood else INDEX_INVALID)
+            bd=self.encode(),
+        )
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.gbp_bridge_domain_del(self.bd.bd_id)
+        self._test.vapi.gbp_bridge_domain_del(bd_id=self.bd.bd_id)
 
-    def object_id(self):
+    def object_id(self) -> str:
         return "gbp-bridge-domain:[%d]" % (self.bd.bd_id)
 
-    def query_vpp_config(self):
+    def query_vpp_config(self) -> bool:
         bds = self._test.vapi.gbp_bridge_domain_dump()
         for bd in bds:
             if bd.bd.bd_id == self.bd.bd_id:
@@ -404,18 +467,27 @@ class VppGbpRouteDomain(VppObject):
         self.ip4_uu = ip4_uu
         self.ip6_uu = ip6_uu
 
+    def encode(self) -> dict:
+        return {
+            "rd_id": self.rd_id,
+            "scope": self.scope,
+            "ip4_table_id": self.t4.table_id,
+            "ip6_table_id": self.t6.table_id,
+            "ip4_uu_sw_if_index": self.ip4_uu.sw_if_index
+            if self.ip4_uu else INDEX_INVALID,
+            "ip6_uu_sw_if_index": self.ip6_uu.sw_if_index
+            if self.ip6_uu else INDEX_INVALID,
+
+        }
+
     def add_vpp_config(self):
         self._test.vapi.gbp_route_domain_add(
-            self.rd_id,
-            self.scope,
-            self.t4.table_id,
-            self.t6.table_id,
-            self.ip4_uu.sw_if_index if self.ip4_uu else INDEX_INVALID,
-            self.ip6_uu.sw_if_index if self.ip6_uu else INDEX_INVALID)
+            rd=self.encode(),
+        )
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.gbp_route_domain_del(self.rd_id)
+        self._test.vapi.gbp_route_domain_del(rd_id=self.rd_id)
 
     def object_id(self):
         return "gbp-route-domain:[%d]" % (self.rd_id)
@@ -428,27 +500,29 @@ class VppGbpRouteDomain(VppObject):
         return False
 
 
-class VppGbpContractNextHop():
+class VppGbpContractNextHop:
     def __init__(self, mac, bd, ip, rd):
         self.mac = mac
         self.ip = ip
         self.bd = bd
         self.rd = rd
 
-    def encode(self):
-        return {'ip': self.ip,
-                'mac': self.mac.packed,
-                'bd_id': self.bd.bd.bd_id,
-                'rd_id': self.rd.rd_id}
+    def encode(self) -> dict:
+        return {
+            "ip": self.ip,
+            "mac": self.mac.packed,
+            "bd_id": self.bd.bd.bd_id,
+            "rd_id": self.rd.rd_id,
+        }
 
 
-class VppGbpContractRule():
+class VppGbpContractRule:
     def __init__(self, action, hash_mode, nhs=None):
         self.action = action
         self.hash_mode = hash_mode
         self.nhs = [] if nhs is None else nhs
 
-    def encode(self):
+    def encode(self) -> dict:
         nhs = []
         for nh in self.nhs:
             nhs.append(nh.encode())
@@ -471,12 +545,8 @@ class VppGbpContract(VppObject):
     """
 
     def __init__(self, test, scope, sclass, dclass, acl_index,
-                 rules, allowed_ethertypes):
+                 rules: list, allowed_ethertypes: list):
         self._test = test
-        if not isinstance(rules, list):
-            raise ValueError("'rules' must be a list.")
-        if not isinstance(allowed_ethertypes, list):
-            raise ValueError("'allowed_ethertypes' must be a list.")
         self.scope = scope
         self.acl_index = acl_index
         self.sclass = sclass
@@ -486,36 +556,35 @@ class VppGbpContract(VppObject):
         while (len(self.allowed_ethertypes) < 16):
             self.allowed_ethertypes.append(0)
 
-    def add_vpp_config(self):
+    def encode(self) -> dict:
         rules = []
         for r in self.rules:
             rules.append(r.encode())
+        return {
+            'acl_index': self.acl_index,
+            'scope': self.scope,
+            'sclass': self.sclass,
+            'dclass': self.dclass,
+            'n_rules': len(rules),
+            'rules': rules,
+            'n_ether_types': len(self.allowed_ethertypes),
+            'allowed_ethertypes': self.allowed_ethertypes,
+        }
+
+    def add_vpp_config(self):
         r = self._test.vapi.gbp_contract_add_del(
             is_add=1,
-            contract={
-                'acl_index': self.acl_index,
-                'scope': self.scope,
-                'sclass': self.sclass,
-                'dclass': self.dclass,
-                'n_rules': len(rules),
-                'rules': rules,
-                'n_ether_types': len(self.allowed_ethertypes),
-                'allowed_ethertypes': self.allowed_ethertypes})
+            contract=self.encode()
+        )
+
         self.stats_index = r.stats_index
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         self._test.vapi.gbp_contract_add_del(
             is_add=0,
-            contract={
-                'acl_index': self.acl_index,
-                'scope': self.scope,
-                'sclass': self.sclass,
-                'dclass': self.dclass,
-                'n_rules': 0,
-                'rules': [],
-                'n_ether_types': len(self.allowed_ethertypes),
-                'allowed_ethertypes': self.allowed_ethertypes})
+            contract=self.encode(),
+        )
 
     def object_id(self):
         return "gbp-contract:[%d:%d:%d:%d]" % (self.scope,
@@ -554,17 +623,23 @@ class VppGbpVxlanTunnel(VppInterface):
         self.mode = mode
         self.src = src
 
+    def encode(self) -> dict:
+        return {
+            "vni": self.vni,
+            "mode": self.mode,
+            "bd_rd_id": self.bd_rd_id,
+            "src": self.src,
+        }
+
     def add_vpp_config(self):
         r = self._test.vapi.gbp_vxlan_tunnel_add(
-            self.vni,
-            self.bd_rd_id,
-            self.mode,
-            self.src)
+            tunnel=self.encode(),
+        )
         self.set_sw_if_index(r.sw_if_index)
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.gbp_vxlan_tunnel_del(self.vni)
+        self._test.vapi.gbp_vxlan_tunnel_del(vni=self.vni)
 
     def object_id(self):
         return "gbp-vxlan:%d" % (self.sw_if_index)
@@ -728,7 +803,6 @@ class TestGBP(VppTestCase):
         self.pg_send(src, tx)
         dst.get_capture(0, timeout=1)
         dst.assert_nothing_captured(remark="")
-        timeout = 0.1
 
     def send_and_expect_arp(self, src, tx, dst):
         rx = self.send_and_expect(src, tx, dst)
