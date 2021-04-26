@@ -85,7 +85,8 @@ vnet_calc_checksums_inline (vlib_main_t * vm, vlib_buffer_t * b,
   ip6_header_t *ip6;
   tcp_header_t *th;
   udp_header_t *uh;
-  u32 oflags = vnet_buffer2 (b)->oflags;
+  u32 oflags =
+    (b->flags & VNET_BUFFER_F_OFFLOAD) ? vnet_buffer2 (b)->oflags : 0;
 
   if (!(b->flags & VNET_BUFFER_F_OFFLOAD))
     return;
@@ -106,9 +107,12 @@ vnet_calc_checksums_inline (vlib_main_t * vm, vlib_buffer_t * b,
       vnet_calc_ip6_checksums (vm, b, ip6, th, uh, oflags);
     }
 
-  vnet_buffer_offload_flags_clear (b, (VNET_BUFFER_OFFLOAD_F_IP_CKSUM |
-				       VNET_BUFFER_OFFLOAD_F_UDP_CKSUM |
-				       VNET_BUFFER_OFFLOAD_F_TCP_CKSUM));
+  if (oflags)
+    {
+      vnet_buffer_offload_flags_clear (b, (VNET_BUFFER_OFFLOAD_F_IP_CKSUM |
+					   VNET_BUFFER_OFFLOAD_F_UDP_CKSUM |
+					   VNET_BUFFER_OFFLOAD_F_TCP_CKSUM));
+    }
 }
 
 #endif
