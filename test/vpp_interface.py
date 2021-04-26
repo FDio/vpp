@@ -265,9 +265,14 @@ class VppInterface(metaclass=abc.ABCMeta):
         :param vrf_id: The FIB table / VRF ID. (Default value = 0)
         """
         for host in self._remote_hosts:
-            self.test.vapi.ip_neighbor_add_del(self.sw_if_index,
-                                               host.mac,
-                                               host.ip4)
+            self.test.vapi.ip_neighbor_add_del(
+                is_add=True,
+                neighbor={
+                    'sw_if_index': self.sw_if_index,
+                    'mac_address': host.mac,
+                    'ip_address':  host.ip4
+                }
+            )
         return self
 
     def config_ip6(self):
@@ -295,9 +300,14 @@ class VppInterface(metaclass=abc.ABCMeta):
         :param vrf_id: The FIB table / VRF ID. (Default value = 0)
         """
         for host in self._remote_hosts:
-            self.test.vapi.ip_neighbor_add_del(self.sw_if_index,
-                                               host.mac,
-                                               host.ip6)
+            self.test.vapi.ip_neighbor_add_del(
+                is_add=True,
+                neighbor={
+                    'sw_if_index': self.sw_if_index,
+                    'mac_address': host.mac,
+                    'ip_address': host.ip6,
+                }
+            )
 
     def unconfig(self):
         """Unconfigure IPv6 and IPv4 address on the VPP interface."""

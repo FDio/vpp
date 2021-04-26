@@ -7,14 +7,10 @@
 from ipaddress import ip_address
 from vpp_object import VppObject
 from vpp_papi import mac_pton, VppEnum
-try:
-    text_type = unicode
-except NameError:
-    text_type = str
 
 
 def find_nbr(test, sw_if_index, nbr_addr, is_static=0, mac=None):
-    ip_addr = ip_address(text_type(nbr_addr))
+    ip_addr = ip_address(str(nbr_addr))
     e = VppEnum.vl_api_ip_neighbor_flags_t
     nbrs = test.vapi.ip_neighbor_dump(sw_if_index=sw_if_index,
                                       af=ip_addr.vapi_af)
@@ -50,24 +46,28 @@ class VppNeighbor(VppObject):
         if is_no_fib_entry:
             self.flags |= e.IP_API_NEIGHBOR_FLAG_NO_FIB_ENTRY
 
+    def encode(self):
+        return {
+            'sw_if_index': self.sw_if_index,
+            'flags': self.flags,
+            'mac_address': self.mac_addr,
+            'ip_address': self.nbr_addr,
+        }
+
     def add_vpp_config(self):
         r = self._test.vapi.ip_neighbor_add_del(
-            self.sw_if_index,
-            self.mac_addr,
-            self.nbr_addr,
-            is_add=1,
-            flags=self.flags)
+            is_add=True,
+            neighbor=self.encode(),
+        )
         self.stats_index = r.stats_index
         self._test.registry.register(self, self._test.logger)
         return self
 
     def remove_vpp_config(self):
         self._test.vapi.ip_neighbor_add_del(
-            self.sw_if_index,
-            self.mac_addr,
-            self.nbr_addr,
-            is_add=0,
-            flags=self.flags)
+            is_add=False,
+            neighbor=self.encode(),
+        )
 
     def is_static(self):
         e = VppEnum.vl_api_ip_neighbor_flags_t

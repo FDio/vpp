@@ -47,7 +47,6 @@ defaultmapping = {
                          'next_hop_weight': 1, 'next_hop_via_label': 1048576,
                          'classify_table_index': 4294967295, 'is_add': 1, },
     'ip_mroute_add_del': {'is_add': 1, },
-    'ip_neighbor_add_del': {'is_add': 1, },
     'ipsec_interface_add_del_spd': {'is_add': 1, },
     'ipsec_spd_add_del': {'is_add': 1, },
     'ipsec_spd_dump': {'sa_id': 4294967295, },
@@ -418,33 +417,6 @@ class VppPapiProvider(object):
                                 'is_ip6': is_ip6
                             }
                         })
-
-    def ip_neighbor_add_del(self,
-                            sw_if_index,
-                            mac_address,
-                            ip_address,
-                            is_add=1,
-                            flags=0):
-        """ Add neighbor MAC to IPv4 or IPv6 address.
-
-        :param sw_if_index:
-        :param mac_address:
-        :param dst_address:
-        :param is_add:  (Default value = 1)
-        :param flags:  (Default value = 0/NONE)
-        """
-        return self.api(
-            self.papi.ip_neighbor_add_del,
-            {
-                'is_add': is_add,
-                'neighbor': {
-                    'sw_if_index': sw_if_index,
-                    'flags': flags,
-                    'mac_address': mac_address,
-                    'ip_address': ip_address
-                }
-            }
-        )
 
     def udp_encap_add(self,
                       src_ip,
