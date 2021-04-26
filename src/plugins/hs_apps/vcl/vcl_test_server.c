@@ -30,20 +30,6 @@
 
 typedef struct
 {
-  uint8_t is_alloc;
-  uint8_t is_open;
-  int fd;
-  uint8_t *buf;
-  uint32_t buf_size;
-  vcl_test_cfg_t cfg;
-  vcl_test_stats_t stats;
-  vppcom_endpt_t endpt;
-  uint8_t ip[16];
-  vppcom_data_segment_t ds[2];
-} vcl_test_server_conn_t;
-
-typedef struct
-{
   uint16_t port;
   uint32_t address_ip6;
   u8 proto;
@@ -58,7 +44,7 @@ typedef struct
   int epfd;
   struct epoll_event wait_events[VCL_TEST_CFG_MAX_EPOLL_EVENTS];
   size_t conn_pool_size;
-  vcl_test_server_conn_t *conn_pool;
+  vcl_test_session_t *conn_pool;
   int nfds;
   pthread_t thread_handle;
 } vcl_test_server_worker_t;
@@ -68,7 +54,7 @@ typedef struct
   vcl_test_server_cfg_t cfg;
   vcl_test_server_worker_t *workers;
 
-  vcl_test_server_conn_t *ctrl;
+  vcl_test_session_t *ctrl;
   int ctrl_listen_fd;
   struct sockaddr_storage servaddr;
   volatile int worker_fails;
@@ -83,7 +69,7 @@ static vcl_test_server_main_t vcl_server_main;
 static inline void
 conn_pool_expand (vcl_test_server_worker_t * wrk, size_t expand_size)
 {
-  vcl_test_server_conn_t *conn_pool;
+  vcl_test_session_t *conn_pool;
   size_t new_size = wrk->conn_pool_size + expand_size;
   int i;
 
@@ -92,11 +78,11 @@ conn_pool_expand (vcl_test_server_worker_t * wrk, size_t expand_size)
     {
       for (i = wrk->conn_pool_size; i < new_size; i++)
 	{
-	  vcl_test_server_conn_t *conn = &conn_pool[i];
+	  vcl_test_session_t *conn = &conn_pool[i];
 	  memset (conn, 0, sizeof (*conn));
 	  vcl_test_cfg_init (&conn->cfg);
-	  vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */ ,
-			      &conn->buf, &conn->buf_size);
+	  vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */,
+			      (uint8_t **) &conn->rxbuf, &conn->rxbuf_size);
 	  conn->cfg.txbuf_size = conn->cfg.rxbuf_size;
 	}
 
@@ -109,8 +95,8 @@ conn_pool_expand (vcl_test_server_worker_t * wrk, size_t expand_size)
     }
 }
 
-static inline vcl_test_server_conn_t *
-conn_pool_alloc (vcl_test_server_worker_t * wrk)
+static inline vcl_test_session_t *
+conn_pool_alloc (vcl_test_server_worker_t *wrk)
 {
   int i, expand = 0;
 
@@ -136,18 +122,18 @@ again:
 }
 
 static inline void
-conn_pool_free (vcl_test_server_conn_t * conn)
+conn_pool_free (vcl_test_session_t *conn)
 {
   conn->fd = 0;
   conn->is_alloc = 0;
 }
 
 static inline void
-sync_config_and_reply (vcl_test_server_conn_t * conn, vcl_test_cfg_t * rx_cfg)
+sync_config_and_reply (vcl_test_session_t *conn, vcl_test_cfg_t *rx_cfg)
 {
   conn->cfg = *rx_cfg;
-  vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */ ,
-		      &conn->buf, &conn->buf_size);
+  vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */, (uint8_t **) &conn->rxbuf,
+		      &conn->rxbuf_size);
   conn->cfg.txbuf_size = conn->cfg.rxbuf_size;
 
   if (conn->cfg.verbose)
@@ -155,12 +141,11 @@ sync_config_and_reply (vcl_test_server_conn_t * conn, vcl_test_cfg_t * rx_cfg)
       vtinf ("(fd %d): Replying to cfg message!\n", conn->fd);
       vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */ );
     }
-  (void) vcl_test_write (conn->fd, (uint8_t *) & conn->cfg,
-			 sizeof (conn->cfg), NULL, conn->cfg.verbose);
+  (void) vcl_test_write (conn, (uint8_t *) &conn->cfg, sizeof (conn->cfg));
 }
 
 static void
-vts_session_close (vcl_test_server_conn_t *conn)
+vts_session_close (vcl_test_session_t *conn)
 {
   if (!conn->is_open)
     return;
@@ -169,7 +154,7 @@ vts_session_close (vcl_test_server_conn_t *conn)
 }
 
 static void
-vts_session_cleanup (vcl_test_server_conn_t *conn)
+vts_session_cleanup (vcl_test_session_t *conn)
 {
   vts_session_close (conn);
   conn_pool_free (conn);
@@ -178,7 +163,7 @@ vts_session_cleanup (vcl_test_server_conn_t *conn)
 static void
 vts_wrk_cleanup_all (vcl_test_server_worker_t *wrk)
 {
-  vcl_test_server_conn_t *conn;
+  vcl_test_session_t *conn;
   int i;
 
   for (i = 0; i < wrk->conn_pool_size; i++)
@@ -191,11 +176,11 @@ vts_wrk_cleanup_all (vcl_test_server_worker_t *wrk)
 }
 
 static void
-vts_test_cmd (vcl_test_server_worker_t *wrk, vcl_test_server_conn_t *conn,
+vts_test_cmd (vcl_test_server_worker_t *wrk, vcl_test_session_t *conn,
 	      vcl_test_cfg_t *rx_cfg)
 {
   u8 is_bi = rx_cfg->test == VCL_TEST_TYPE_BI;
-  vcl_test_server_conn_t *tc;
+  vcl_test_session_t *tc;
   char buf[64];
   int i;
 
@@ -242,12 +227,10 @@ vts_test_cmd (vcl_test_server_worker_t *wrk, vcl_test_server_conn_t *conn,
       vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */ );
       if (conn->cfg.verbose)
 	{
-	  vtinf ("  vcl server main\n"
-		 VCL_TEST_SEPARATOR_STRING
+	  vtinf ("  vcl server main\n" VCL_TEST_SEPARATOR_STRING
 		 "       buf:  %p\n"
-		 "  buf size:  %u (0x%08x)\n"
-		 VCL_TEST_SEPARATOR_STRING,
-		 conn->buf, conn->buf_size, conn->buf_size);
+		 "  buf size:  %u (0x%08x)\n" VCL_TEST_SEPARATOR_STRING,
+		 conn->rxbuf, conn->rxbuf_size, conn->rxbuf_size);
 	}
 
       sync_config_and_reply (conn, rx_cfg);
@@ -273,25 +256,20 @@ vts_test_cmd (vcl_test_server_worker_t *wrk, vcl_test_server_conn_t *conn,
 }
 
 static inline void
-vts_server_process_rx (vcl_test_server_conn_t *conn, int rx_bytes)
+vts_server_process_rx (vcl_test_session_t *conn, int rx_bytes)
 {
   vcl_test_server_main_t *vsm = &vcl_server_main;
-  int client_fd = conn->fd;
 
   if (conn->cfg.test == VCL_TEST_TYPE_BI)
     {
       if (vsm->use_ds)
 	{
-	  (void) vcl_test_write (client_fd, conn->ds[0].data, conn->ds[0].len,
-				 &conn->stats, conn->cfg.verbose);
+	  (void) vcl_test_write (conn, conn->ds[0].data, conn->ds[0].len);
 	  if (conn->ds[1].len)
-	    (void) vcl_test_write (client_fd, conn->ds[1].data,
-				   conn->ds[1].len, &conn->stats,
-				   conn->cfg.verbose);
+	    (void) vcl_test_write (conn, conn->ds[1].data, conn->ds[1].len);
 	}
       else
-	(void) vcl_test_write (client_fd, conn->buf, rx_bytes, &conn->stats,
-			       conn->cfg.verbose);
+	(void) vcl_test_write (conn, (uint8_t *) conn->rxbuf, rx_bytes);
     }
 
   if (vsm->use_ds)
@@ -302,47 +280,28 @@ vts_server_process_rx (vcl_test_server_conn_t *conn, int rx_bytes)
 }
 
 static void
-vts_copy_ds (void *buf, vppcom_data_segment_t * ds, u32 max_bytes)
+vts_server_echo (vcl_test_session_t *conn, int rx_bytes)
 {
-  uint32_t n_bytes = 0, ds_idx = 0, to_copy;
-
-  while (n_bytes < max_bytes)
-    {
-      to_copy = clib_min (ds[ds_idx].len, max_bytes - n_bytes);
-      clib_memcpy_fast (buf + n_bytes, ds[ds_idx].data, to_copy);
-      n_bytes += to_copy;
-      ds_idx += 1;
-    }
-}
-
-static void
-vts_server_echo (vcl_test_server_conn_t * conn, int rx_bytes)
-{
-  vcl_test_server_main_t *vsm = &vcl_server_main;
   int tx_bytes, nbytes, pos;
 
-  if (vsm->use_ds)
-    vts_copy_ds (conn->buf, conn->ds, rx_bytes);
-
   /* If it looks vaguely like a string, make sure it's terminated */
-  pos = rx_bytes < conn->buf_size ? rx_bytes : conn->buf_size - 1;
-  ((char *) conn->buf)[pos] = 0;
-  vtinf ("(fd %d): RX (%d bytes) - '%s'", conn->fd, rx_bytes, conn->buf);
+  pos = rx_bytes < conn->rxbuf_size ? rx_bytes : conn->rxbuf_size - 1;
+  ((char *) conn->rxbuf)[pos] = 0;
+  vtinf ("(fd %d): RX (%d bytes) - '%s'", conn->fd, rx_bytes, conn->rxbuf);
 
   if (conn->cfg.verbose)
     vtinf ("(fd %d): Echoing back", conn->fd);
 
-  nbytes = strlen ((const char *) conn->buf) + 1;
-  tx_bytes = vcl_test_write (conn->fd, conn->buf, nbytes, &conn->stats,
-			     conn->cfg.verbose);
+  nbytes = strlen ((const char *) conn->rxbuf) + 1;
+  tx_bytes = vcl_test_write (conn, (uint8_t *) conn->rxbuf, nbytes);
   if (tx_bytes >= 0)
-    vtinf ("(fd %d): TX (%d bytes) - '%s'", conn->fd, tx_bytes, conn->buf);
+    vtinf ("(fd %d): TX (%d bytes) - '%s'", conn->fd, tx_bytes, conn->rxbuf);
 }
 
-static vcl_test_server_conn_t *
+static vcl_test_session_t *
 vts_accept_client (vcl_test_server_worker_t *wrk, int listen_fd)
 {
-  vcl_test_server_conn_t *conn;
+  vcl_test_session_t *conn;
   struct epoll_event ev;
   int rv, client_fd;
 
@@ -520,7 +479,7 @@ vts_clean_connected_listeners (vcl_test_server_worker_t * wrk,
 
 int
 vts_handle_ctrl_cfg (vcl_test_server_worker_t *wrk, vcl_test_cfg_t *rx_cfg,
-		     vcl_test_server_conn_t *conn, int rx_bytes)
+		     vcl_test_session_t *conn, int rx_bytes)
 {
   int listener_fd;
   if (rx_cfg->verbose)
@@ -540,8 +499,7 @@ vts_handle_ctrl_cfg (vcl_test_server_worker_t *wrk, vcl_test_cfg_t *rx_cfg,
 	  vtinf ("(fd %d): Replying to cfg msg", conn->fd);
 	  vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
 	}
-      vcl_test_write (conn->fd, (uint8_t *) & conn->cfg,
-		      sizeof (conn->cfg), NULL, conn->cfg.verbose);
+      vcl_test_write (conn, (uint8_t *) &conn->cfg, sizeof (conn->cfg));
       return -1;
     }
 
@@ -655,13 +613,14 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
 }
 
 static inline int
-vts_conn_read (vcl_test_server_conn_t * conn)
+vts_conn_read (vcl_test_session_t *conn)
 {
   vcl_test_server_main_t *vsm = &vcl_server_main;
   if (vsm->use_ds)
     return vcl_test_read_ds (conn->fd, conn->ds, &conn->stats);
   else
-    return vcl_test_read (conn->fd, conn->buf, conn->buf_size, &conn->stats);
+    return vcl_test_read (conn->fd, (uint8_t *) conn->rxbuf, conn->rxbuf_size,
+			  &conn->stats);
 }
 
 static void *
@@ -669,7 +628,7 @@ vts_worker_loop (void *arg)
 {
   vcl_test_server_main_t *vsm = &vcl_server_main;
   vcl_test_server_worker_t *wrk = arg;
-  vcl_test_server_conn_t *conn;
+  vcl_test_session_t *conn;
   int i, rx_bytes, num_ev, listener_fd;
   vcl_test_cfg_t *rx_cfg;
 
@@ -742,9 +701,9 @@ vts_worker_loop (void *arg)
 
 	  if (!wrk->wrk_index && conn->fd == vsm->ctrl->fd)
 	    {
-	      rx_bytes = vcl_test_read (conn->fd, conn->buf, conn->buf_size,
-					&conn->stats);
-	      rx_cfg = (vcl_test_cfg_t *) conn->buf;
+	      rx_bytes = vcl_test_read (conn->fd, (uint8_t *) conn->rxbuf,
+					conn->rxbuf_size, &conn->stats);
+	      rx_cfg = (vcl_test_cfg_t *) conn->rxbuf;
 	      if (rx_cfg->magic == VCL_TEST_CFG_CTRL_MAGIC)
 		{
 		  vts_handle_ctrl_cfg (wrk, rx_cfg, conn, rx_bytes);
@@ -754,7 +713,7 @@ vts_worker_loop (void *arg)
 		      goto done;
 		    }
 		}
-	      else if (isascii (conn->buf[0]))
+	      else if (isascii (conn->rxbuf[0]))
 		{
 		  vts_server_echo (conn, rx_bytes);
 		}
