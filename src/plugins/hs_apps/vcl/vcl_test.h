@@ -123,6 +123,8 @@ typedef struct
 
 typedef struct
 {
+  uint8_t is_alloc;
+  uint8_t is_open;
   int fd;
   uint32_t txbuf_size;
   char *txbuf;
@@ -131,8 +133,10 @@ typedef struct
   vcl_test_cfg_t cfg;
   vcl_test_stats_t stats;
   int session_index;
+  vppcom_endpt_t endpt;
+  uint8_t ip[16];
+  vppcom_data_segment_t ds[2];
 } vcl_test_session_t;
-
 
 /*
  * TLS server cert and keys to be used for testing only

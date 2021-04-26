@@ -432,7 +432,7 @@ vtc_worker_loop (void *arg)
   vcl_test_client_main_t *vcm = &vcl_client_main;
   vcl_test_session_t *ctrl = &vcm->ctrl_session;
   vcl_test_client_worker_t *wrk = arg;
-  uint32_t n_active_sessions, n_bytes;
+  uint32_t n_active_sessions;
   fd_set _wfdset, *wfdset = &_wfdset;
   fd_set _rfdset, *rfdset = &_rfdset;
   vcl_test_session_t *ts;
@@ -484,11 +484,9 @@ vtc_worker_loop (void *arg)
 	  if (FD_ISSET (vppcom_session_index (ts->fd), wfdset)
 	      && ts->stats.tx_bytes < ts->cfg.total_bytes)
 	    {
-	      n_bytes = ts->cfg.txbuf_size;
-	      if (ts->cfg.test == VCL_TEST_TYPE_ECHO)
-		n_bytes = strlen (ctrl->txbuf) + 1;
 	      rv = vcl_test_write (ts->fd, (uint8_t *) ts->txbuf,
-				   n_bytes, &ts->stats, ts->cfg.verbose);
+				   ts->cfg.txbuf_size, &ts->stats,
+				   ts->cfg.verbose);
 	      if (rv < 0)
 		{
 		  vtwrn ("vppcom_test_write (%d) failed -- aborting test",
