@@ -80,7 +80,6 @@ defaultmapping = {
                                  'l2_table_index': 4294967295, },
     'pppoe_add_del_session': {'is_add': 1, },
     'policer_add_del': {'is_add': 1, 'conform_action': {'type': 1}, },
-    'set_ipfix_exporter': {'collector_port': 4739, },
     'sr_policy_add': {'weight': 1, 'is_encap': 1, },
     'sw_interface_add_del_address': {'is_add': 1, },
     'sw_interface_ip6nd_ra_prefix': {'val_lifetime': 4294967295,
@@ -619,27 +618,6 @@ class VppPapiProvider(object):
              'ip6_table_index': ip6_table_index,
              'l2_table_index': l2_table_index,
              'is_add': is_add})
-
-    def set_ipfix_exporter(
-            self,
-            collector_address,
-            src_address,
-            path_mtu,
-            template_interval,
-            vrf_id=0,
-            collector_port=4739,
-            udp_checksum=0):
-        return self.api(
-            self.papi.set_ipfix_exporter,
-            {
-                'collector_address': collector_address,
-                'collector_port': collector_port,
-                'src_address': src_address,
-                'vrf_id': vrf_id,
-                'path_mtu': path_mtu,
-                'template_interval': template_interval,
-                'udp_checksum': udp_checksum,
-            })
 
     def mfib_signal_dump(self):
         return self.api(self.papi.mfib_signal_dump, {})
