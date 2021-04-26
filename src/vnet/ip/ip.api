@@ -183,6 +183,27 @@ define ip_route_add_del_v2
   bool is_multipath;
   vl_api_ip_route_v2_t route;
 };
+/** \brief Bulk add / del route request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_multipath - Set to 1 if these paths will be added/removed
+                          to/from the existing set, or 0 to replace
+			  the existing set.
+                          is_add=0 & is_multipath=0 implies delete all paths
+    @param is_add - Are the paths being added or removed
+    @param count - Add/delete routes for this many contiguous subnets.
+		   That means the prefix adress is incremented according to prefix length.
+*/
+define ip_route_add_del_bulk
+{
+  option in_progress;
+  u32 client_index;
+  u32 context;
+  bool is_add [default=true];
+  bool is_multipath;
+  vl_api_ip_route_v2_t route;
+  u64 count;
+};
 define ip_route_add_del_reply
 {
   u32 context;
