@@ -38,18 +38,24 @@ class VppUdpEncap(VppObject):
         self.src_port = src_port
         self.dst_port = dst_port
 
+    def encode(self):
+        return {
+            'src_ip': self.src_ip,
+            'dst_ip': self.dst_ip,
+            'src_port': self.src_port,
+            'dst_port': self.dst_port,
+            'table_id': self.table_id,
+        }
+
     def add_vpp_config(self):
         r = self._test.vapi.udp_encap_add(
-            self.src_ip,
-            self.dst_ip,
-            self.src_port,
-            self.dst_port,
-            self.table_id)
+            udp_encap=self.encode(),
+        )
         self.id = r.id
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.udp_encap_del(self.id)
+        self._test.vapi.udp_encap_del(id=self.id)
 
     def query_vpp_config(self):
         return find_udp_encap(self._test, self)
