@@ -19,6 +19,24 @@
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 
+static void
+vl_api_unittest_control_ping_t_handler (vl_api_unittest_control_ping_t *
+                                          mp)
+{
+  vl_api_unittest_control_ping_reply_t *rmp;
+  acl_main_t *am = &acl_main;
+  int rv = 0;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_UNITTEST_CONTROL_PING_REPLY,
+  ({
+    rmp->vpe_pid = ntohl (getpid ());
+  }));
+  /* *INDENT-ON* */
+}
+
+
+
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () =
 {
