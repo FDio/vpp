@@ -75,16 +75,15 @@ vtc_cfg_sync (vcl_test_session_t * ts)
       vtinf ("(fd %d): Sending config to server.", ts->fd);
       vcl_test_cfg_dump (&ts->cfg, 1 /* is_client */ );
     }
-  tx_bytes = vcl_test_write (ts->fd, (uint8_t *) & ts->cfg,
-			     sizeof (ts->cfg), NULL, ts->cfg.verbose);
+  tx_bytes = vcl_test_write (ts, (uint8_t *) &ts->cfg, sizeof (ts->cfg));
   if (tx_bytes < 0)
     {
       vtwrn ("(fd %d): write test cfg failed (%d)!", ts->fd, tx_bytes);
       return tx_bytes;
     }
 
-  rx_bytes = vcl_test_read (ts->fd, (uint8_t *) ts->rxbuf,
-			    sizeof (vcl_test_cfg_t), NULL);
+  rx_bytes =
+    vcl_test_read (ts, (uint8_t *) ts->rxbuf, sizeof (vcl_test_cfg_t));
   if (rx_bytes < 0)
     return rx_bytes;
 
@@ -432,7 +431,7 @@ vtc_worker_loop (void *arg)
   vcl_test_client_main_t *vcm = &vcl_client_main;
   vcl_test_session_t *ctrl = &vcm->ctrl_session;
   vcl_test_client_worker_t *wrk = arg;
-  uint32_t n_active_sessions, n_bytes;
+  uint32_t n_active_sessions;
   fd_set _wfdset, *wfdset = &_wfdset;
   fd_set _rfdset, *rfdset = &_rfdset;
   vcl_test_session_t *ts;
@@ -477,18 +476,14 @@ vtc_worker_loop (void *arg)
 	  if (FD_ISSET (vppcom_session_index (ts->fd), rfdset)
 	      && ts->stats.rx_bytes < ts->cfg.total_bytes)
 	    {
-	      (void) vcl_test_read (ts->fd, (uint8_t *) ts->rxbuf,
-				    ts->rxbuf_size, &ts->stats);
+	      (void) vcl_test_read (ts, (uint8_t *) ts->rxbuf, ts->rxbuf_size);
 	    }
 
 	  if (FD_ISSET (vppcom_session_index (ts->fd), wfdset)
 	      && ts->stats.tx_bytes < ts->cfg.total_bytes)
 	    {
-	      n_bytes = ts->cfg.txbuf_size;
-	      if (ts->cfg.test == VCL_TEST_TYPE_ECHO)
-		n_bytes = strlen (ctrl->txbuf) + 1;
-	      rv = vcl_test_write (ts->fd, (uint8_t *) ts->txbuf,
-				   n_bytes, &ts->stats, ts->cfg.verbose);
+	      rv =
+		vcl_test_write (ts, (uint8_t *) ts->txbuf, ts->cfg.txbuf_size);
 	      if (rv < 0)
 		{
 		  vtwrn ("vppcom_test_write (%d) failed -- aborting test",
@@ -563,16 +558,14 @@ vtc_echo_client (vcl_test_client_main_t * vcm)
   cfg->total_bytes = strlen (ctrl->txbuf) + 1;
   memset (&ctrl->stats, 0, sizeof (ctrl->stats));
 
-  rv = vcl_test_write (ctrl->fd, (uint8_t *) ctrl->txbuf, cfg->total_bytes,
-		       &ctrl->stats, ctrl->cfg.verbose);
+  rv = vcl_test_write (ctrl, (uint8_t *) ctrl->txbuf, cfg->total_bytes);
   if (rv < 0)
     {
       vtwrn ("vppcom_test_write (%d) failed ", ctrl->fd);
       return;
     }
 
-  (void) vcl_test_read (ctrl->fd, (uint8_t *) ctrl->rxbuf, ctrl->rxbuf_size,
-			&ctrl->stats);
+  (void) vcl_test_read (ctrl, (uint8_t *) ctrl->rxbuf, ctrl->rxbuf_size);
 }
 
 static void
@@ -1062,8 +1055,7 @@ vtc_ctrl_session_exit (void)
   vtinf ("(fd %d): Sending exit cfg to server...", ctrl->fd);
   if (verbose)
     vcl_test_cfg_dump (&ctrl->cfg, 1 /* is_client */);
-  (void) vcl_test_write (ctrl->fd, (uint8_t *) & ctrl->cfg,
-			 sizeof (ctrl->cfg), &ctrl->stats, verbose);
+  (void) vcl_test_write (ctrl, (uint8_t *) &ctrl->cfg, sizeof (ctrl->cfg));
   sleep (1);
 }
 

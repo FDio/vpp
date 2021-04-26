@@ -123,6 +123,8 @@ typedef struct
 
 typedef struct
 {
+  uint8_t is_alloc;
+  uint8_t is_open;
   int fd;
   uint32_t txbuf_size;
   char *txbuf;
@@ -131,8 +133,10 @@ typedef struct
   vcl_test_cfg_t cfg;
   vcl_test_stats_t stats;
   int session_index;
+  vppcom_endpt_t endpt;
+  uint8_t ip[16];
+  vppcom_data_segment_t ds[2];
 } vcl_test_session_t;
-
 
 /*
  * TLS server cert and keys to be used for testing only
@@ -414,31 +418,26 @@ vcl_comp_tspec (struct timespec *a, struct timespec *b)
 }
 
 static inline int
-vcl_test_read (int fd, uint8_t * buf, uint32_t nbytes,
-	       vcl_test_stats_t * stats)
+vcl_test_read (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
 {
+  vcl_test_stats_t *stats = &ts->stats;
   int rx_bytes;
 
   do
     {
-      if (stats)
-	stats->rx_xacts++;
-      rx_bytes = vppcom_session_read (fd, buf, nbytes);
+      stats->rx_xacts++;
+      rx_bytes = vppcom_session_read (ts->fd, buf, nbytes);
 
       if (rx_bytes < 0)
 	{
 	  errno = -rx_bytes;
 	  rx_bytes = -1;
 	}
-      if (stats)
-	{
-	  if ((rx_bytes == 0) ||
-	      ((rx_bytes < 0)
-	       && ((errno == EAGAIN) || (errno == EWOULDBLOCK))))
-	    stats->rx_eagain++;
-	  else if (rx_bytes < nbytes)
-	    stats->rx_incomp++;
-	}
+      if ((rx_bytes == 0) ||
+	  ((rx_bytes < 0) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))))
+	stats->rx_eagain++;
+      else if (rx_bytes < nbytes)
+	stats->rx_incomp++;
     }
   while ((rx_bytes == 0) ||
 	 ((rx_bytes < 0) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))));
@@ -447,36 +446,32 @@ vcl_test_read (int fd, uint8_t * buf, uint32_t nbytes,
     {
       vterr ("vppcom_session_read()", -errno);
     }
-  else if (stats)
+  else
     stats->rx_bytes += rx_bytes;
 
   return (rx_bytes);
 }
 
 static inline int
-vcl_test_read_ds (int fd, vppcom_data_segment_t * ds,
-		  vcl_test_stats_t * stats)
+vcl_test_read_ds (vcl_test_session_t *ts)
 {
+  vcl_test_stats_t *stats = &ts->stats;
   int rx_bytes;
 
   do
     {
-      if (stats)
-	stats->rx_xacts++;
-      rx_bytes = vppcom_session_read_segments (fd, ds, 2, ~0);
+      stats->rx_xacts++;
+      rx_bytes = vppcom_session_read_segments (ts->fd, ts->ds, 2, ~0);
 
       if (rx_bytes < 0)
 	{
 	  errno = -rx_bytes;
 	  rx_bytes = -1;
 	}
-      if (stats)
-	{
 	  if ((rx_bytes == 0) ||
 	      ((rx_bytes < 0)
 	       && ((errno == EAGAIN) || (errno == EWOULDBLOCK))))
 	    stats->rx_eagain++;
-	}
     }
   while ((rx_bytes == 0) ||
 	 ((rx_bytes < 0) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))));
@@ -485,27 +480,26 @@ vcl_test_read_ds (int fd, vppcom_data_segment_t * ds,
     {
       vterr ("vppcom_session_read()", -errno);
     }
-  else if (stats)
+  else
     stats->rx_bytes += rx_bytes;
 
   return (rx_bytes);
 }
 
 static inline int
-vcl_test_write (int fd, uint8_t * buf, uint32_t nbytes,
-		vcl_test_stats_t * stats, uint32_t verbose)
+vcl_test_write (vcl_test_session_t *ts, void *buf, uint32_t nbytes)
 {
   int tx_bytes = 0, nbytes_left = nbytes, rv;
+  vcl_test_stats_t *stats = &ts->stats;
 
   do
     {
-      if (stats)
-	stats->tx_xacts++;
-      rv = vppcom_session_write (fd, buf, nbytes_left);
+      stats->tx_xacts++;
+      rv = vppcom_session_write (ts->fd, buf, nbytes_left);
       if (rv < 0)
 	{
 	  errno = -rv;
-	  if ((errno == EAGAIN || errno == EWOULDBLOCK) && stats)
+	  if ((errno == EAGAIN || errno == EWOULDBLOCK))
 	    stats->tx_eagain++;
 	  break;
 	}
@@ -513,9 +507,7 @@ vcl_test_write (int fd, uint8_t * buf, uint32_t nbytes,
 
       nbytes_left = nbytes_left - rv;
       buf += rv;
-      if (stats)
-	stats->tx_incomp++;
-
+      stats->tx_incomp++;
     }
   while (tx_bytes != nbytes);
 
@@ -523,7 +515,7 @@ vcl_test_write (int fd, uint8_t * buf, uint32_t nbytes,
     {
       vterr ("vpcom_session_write", -errno);
     }
-  else if (stats)
+  else
     stats->tx_bytes += tx_bytes;
 
   return (tx_bytes);
