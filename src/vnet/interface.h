@@ -333,6 +333,9 @@ static __clib_unused vnet_device_class_t __clib_unused_##x
   }                                                                           \
   uword CLIB_MARCH_SFX (devclass##_tx_fn)
 
+//#define VNET_REGISTER_HASH_FUNCTION(x,....)
+//__VA_ARGS__ vnet_hash_func_t x;
+
 /**
  * Link Type: A description of the protocol of packets on the link.
  * On an ethernet link this maps directly into the ethertype. On a GRE tunnel
