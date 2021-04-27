@@ -19,6 +19,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <vcl/vppcom.h>
 
@@ -121,14 +122,16 @@ typedef struct
   struct timespec stop;
 } vcl_test_stats_t;
 
-typedef struct
+typedef struct vcl_test_session
 {
   uint8_t is_alloc;
   uint8_t is_open;
   int fd;
+  int (*read) (struct vcl_test_session *ts, void *buf, uint32_t buflen);
+  int (*write) (struct vcl_test_session *ts, void *buf, uint32_t buflen);
   uint32_t txbuf_size;
-  char *txbuf;
   uint32_t rxbuf_size;
+  char *txbuf;
   char *rxbuf;
   vcl_test_cfg_t cfg;
   vcl_test_stats_t stats;
@@ -138,10 +141,34 @@ typedef struct
   vppcom_data_segment_t ds[2];
 } vcl_test_session_t;
 
+static __thread int __wrk_index = 0;
+
+typedef struct
+{
+  int (*init) (void);
+  int (*open) (vcl_test_session_t *ts, vppcom_endpt_t *endpt);
+  int (*listen) (vcl_test_session_t *ts, vppcom_endpt_t *endpt);
+  int (*accept) (int listen_fd, vcl_test_session_t *ts);
+} vcl_test_proto_vft_t;
+
+typedef struct
+{
+  vcl_test_proto_vft_t *protos[VPPCOM_PROTO_DTLS + 1];
+  uint32_t ckpair_index;
+} vcl_test_main_t;
+
+extern vcl_test_main_t vcl_test_main;
+
+#define VCL_TEST_REGISTER_PROTO(proto, vft)                                   \
+  static void __attribute__ ((constructor)) vcl_test_init_##proto (void)      \
+  {                                                                           \
+    vcl_test_main.protos[proto] = &vft;                                       \
+  }
+
 /*
  * TLS server cert and keys to be used for testing only
  */
-char vcl_test_crt_rsa[] =
+static char vcl_test_crt_rsa[] =
   "-----BEGIN CERTIFICATE-----\r\n"
   "MIID5zCCAs+gAwIBAgIJALeMYCEHrTtJMA0GCSqGSIb3DQEBCwUAMIGJMQswCQYD\r\n"
   "VQQGEwJVUzELMAkGA1UECAwCQ0ExETAPBgNVBAcMCFNhbiBKb3NlMQ4wDAYDVQQK\r\n"
@@ -165,9 +192,9 @@ char vcl_test_crt_rsa[] =
   "twub17Bq2kykHpppCwPg5M+v30tHG/R2Go15MeFWbEJthFk3TZMjKL7UFs7fH+x2\r\n"
   "wSonXb++jY+KmCb93C+soABBizE57g/KmiR2IxQ/LMjDik01RSUIaM0lLA==\r\n"
   "-----END CERTIFICATE-----\r\n";
-uint32_t vcl_test_crt_rsa_len = sizeof (vcl_test_crt_rsa);
+static uint32_t vcl_test_crt_rsa_len = sizeof (vcl_test_crt_rsa);
 
-char vcl_test_key_rsa[] =
+static char vcl_test_key_rsa[] =
   "-----BEGIN PRIVATE KEY-----\r\n"
   "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDgLWTxrUO5K2CC\r\n"
   "CpPijT18/2wnZ0LnhvGFL9eTZUR9ohnbbZZKjhf+zJFV9XL1hqFykjXMn9EPFplI\r\n"
@@ -194,8 +221,9 @@ char vcl_test_key_rsa[] =
   "EDSKc/X8ESLfOB44iGvZUEMG6zJFscx9DgN25iQZAoGAbyd+JEWwdVH9/K3IH1t2\r\n"
   "PBkZX17kNWv+iVM1WyFjbe++vfKZCrOJiyiqhDeEqgrP3AuNMlaaduC3VRC3G5oV\r\n"
   "Mj1tlhDWQ/qhvKdCKNdIVQYDE75nw+FRWV8yYkHAnXYW3tNoweDIwixE0hkPR1bc\r\n"
-  "oEjPLVNtx8SOj/M4rhaPT3I=\r\n" "-----END PRIVATE KEY-----\r\n";
-uint32_t vcl_test_key_rsa_len = sizeof (vcl_test_key_rsa);
+  "oEjPLVNtx8SOj/M4rhaPT3I=\r\n"
+  "-----END PRIVATE KEY-----\r\n";
+static uint32_t vcl_test_key_rsa_len = sizeof (vcl_test_key_rsa);
 
 static inline void
 vcl_test_stats_accumulate (vcl_test_stats_t * accum, vcl_test_stats_t * incr)
