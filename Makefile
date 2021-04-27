@@ -529,9 +529,7 @@ endef
 endif
 
 %.files: .FORCE
-	@find . \( -name '*\.[chyS]' -o -name '*\.java' -o -name '*\.lex' -o -name '*\.py' \) -and \
-		\( -not -path './build-root*' -o -path \
-		'./build-root/build-vpp_debug-native/dpdk*' \) > $@
+	@find src -name '*.[chS]' > $@
 
 .FORCE:
 
@@ -593,11 +591,6 @@ pkg-rpm: dist
 .PHONY: pkg-srpm
 pkg-srpm: dist
 	make -C extras/rpm srpm
-
-.PHONY: dpdk-install-dev
-dpdk-install-dev:
-	$(call banner,"This command is deprecated. Please use 'make install-ext-deps'")
-	make -C build/external install-$(PKG)
 
 .PHONY: install-ext-deps
 install-ext-deps:
@@ -670,11 +663,11 @@ endif
 
 .PHONY: featurelist
 featurelist: centos-pyyaml
-	@build-root/scripts/fts.py --all --markdown
+	@extras/scripts/fts.py --all --markdown
 
 .PHONY: checkfeaturelist
 checkfeaturelist: centos-pyyaml
-	@build-root/scripts/fts.py --validate --all
+	@extras/scripts/fts.py --validate --all
 
 
 # Build vpp_stats_fs
