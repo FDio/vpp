@@ -1133,12 +1133,10 @@ class TestGRE(VppTestCase):
                 route_via_tun.add_vpp_config()
 
                 # all packets dropped at this point
-                self.logger.error(self.vapi.cli("sh adj 19"))
                 rx = self.send_and_assert_no_replies(self.pg0, tx_e)
 
                 gre_if.admin_down()
                 gre_if.admin_up()
-                self.logger.error(self.vapi.cli("sh adj 19"))
                 rx = self.send_and_assert_no_replies(self.pg0, tx_e)
 
                 #
@@ -1153,10 +1151,7 @@ class TestGRE(VppTestCase):
                 # Send a packet stream that is routed into the tunnel
                 #  - packets are GRE encapped
                 #
-                try:
-                    rx = self.send_and_expect(self.pg0, tx_e, itf)
-                finally:
-                    self.logger.error(self.vapi.cli("sh adj 19"))
+                rx = self.send_and_expect(self.pg0, tx_e, itf)
                 self.verify_tunneled_4o4(self.pg0, rx, tx_e,
                                          itf.local_ip4,
                                          itf._remote_hosts[ii].ip4)
