@@ -211,7 +211,7 @@ ip_csum (void *data, u16 n_left)
 
   sum8 = u32x8_hadd (sum8, zero);
   sum4 = u32x8_extract_lo (sum8) + u32x8_extract_hi (sum8);
-  sum = sum4[0] + sum4[1];
+  sum += sum4[0] + sum4[1];
 
 #else
   /* scalar version */

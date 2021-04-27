@@ -678,10 +678,7 @@ clib_count_equal_u8 (u8 * data, uword max_count)
       u64 bmp;
       bmp = u8x32_msb_mask ((u8x32) (u8x32_load_unaligned (data) == splat));
       if (bmp != 0xffffffff)
-	{
-	  count += count_trailing_zeros (~bmp);
-	  return max_count;
-	}
+	return max_count;
 
       data += 32;
       count += 32;
