@@ -56,12 +56,12 @@ typedef struct
   struct sockaddr_storage server_addr;
 } vcl_test_client_main_t;
 
-static __thread int __wrk_index = 0;
-
 vcl_test_client_main_t vcl_client_main;
 
 #define vtc_min(a, b) (a < b ? a : b)
 #define vtc_max(a, b) (a > b ? a : b)
+
+vcl_test_main_t vcl_test_main;
 
 static int
 vtc_cfg_sync (vcl_test_session_t * ts)
@@ -227,7 +227,6 @@ vtc_connect_test_sessions (vcl_test_client_worker_t * wrk)
   vcl_test_client_main_t *vcm = &vcl_client_main;
   vcl_test_session_t *ts;
   uint32_t n_test_sessions;
-  uint32_t flags, flen;
   int i, rv;
 
   if (vcm->proto == VPPCOM_PROTO_QUIC)
@@ -255,34 +254,42 @@ vtc_connect_test_sessions (vcl_test_client_worker_t * wrk)
       return errno;
     }
 
+  vcl_test_proto_vft_t *tp = vcl_test_main.protos[vcm->proto];
+
   for (i = 0; i < n_test_sessions; i++)
     {
       ts = &wrk->sessions[i];
-      ts->fd = vppcom_session_create (vcm->proto, 0 /* is_nonblocking */ );
-      if (ts->fd < 0)
-	{
-	  vterr ("vppcom_session_create()", ts->fd);
-	  return ts->fd;
-	}
-
-      if (vcm->proto == VPPCOM_PROTO_TLS || vcm->proto == VPPCOM_PROTO_DTLS)
-	{
-	  uint32_t ckp_len = sizeof (vcm->ckpair_index);
-	  vppcom_session_attr (ts->fd, VPPCOM_ATTR_SET_CKPAIR,
-			       &vcm->ckpair_index, &ckp_len);
-	}
-
-      /* Connect is blocking */
-      rv = vppcom_session_connect (ts->fd, &vcm->server_endpt);
+      ts->session_index = i;
+      rv = tp->open (&wrk->sessions[i], &vcm->server_endpt);
       if (rv < 0)
-	{
-	  vterr ("vppcom_session_connect()", rv);
-	  return rv;
-	}
-      flags = O_NONBLOCK;
-      flen = sizeof (flags);
-      vppcom_session_attr (ts->fd, VPPCOM_ATTR_SET_FLAGS, &flags, &flen);
-      vtinf ("Test session %d (fd %d) connected.", i, ts->fd);
+	return rv;
+
+
+//      ts->fd = vppcom_session_create (vcm->proto, 0 /* is_nonblocking */ );
+//      if (ts->fd < 0)
+//	{
+//	  vterr ("vppcom_session_create()", ts->fd);
+//	  return ts->fd;
+//	}
+//
+//      if (vcm->proto == VPPCOM_PROTO_TLS || vcm->proto == VPPCOM_PROTO_DTLS)
+//	{
+//	  uint32_t ckp_len = sizeof (vcm->ckpair_index);
+//	  vppcom_session_attr (ts->fd, VPPCOM_ATTR_SET_CKPAIR,
+//			       &vcm->ckpair_index, &ckp_len);
+//	}
+//
+//      /* Connect is blocking */
+//      rv = vppcom_session_connect (ts->fd, &vcm->server_endpt);
+//      if (rv < 0)
+//	{
+//	  vterr ("vppcom_session_connect()", rv);
+//	  return rv;
+//	}
+//      flags = O_NONBLOCK;
+//      flen = sizeof (flags);
+//      vppcom_session_attr (ts->fd, VPPCOM_ATTR_SET_FLAGS, &flags, &flen);
+//      vtinf ("Test session %d (fd %d) connected.", i, ts->fd);
     }
   wrk->n_sessions = n_test_sessions;
 
@@ -476,14 +483,13 @@ vtc_worker_loop (void *arg)
 	  if (FD_ISSET (vppcom_session_index (ts->fd), rfdset)
 	      && ts->stats.rx_bytes < ts->cfg.total_bytes)
 	    {
-	      (void) vcl_test_read (ts, (uint8_t *) ts->rxbuf, ts->rxbuf_size);
+	      (void) vcl_test_read (ts, ts->rxbuf, ts->rxbuf_size);
 	    }
 
 	  if (FD_ISSET (vppcom_session_index (ts->fd), wfdset)
 	      && ts->stats.tx_bytes < ts->cfg.total_bytes)
 	    {
-	      rv =
-		vcl_test_write (ts, (uint8_t *) ts->txbuf, ts->cfg.txbuf_size);
+	      rv = vcl_test_write (ts, ts->txbuf, ts->cfg.txbuf_size);
 	      if (rv < 0)
 		{
 		  vtwrn ("vppcom_test_write (%d) failed -- aborting test",
@@ -1064,7 +1070,6 @@ main (int argc, char **argv)
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
   vcl_test_session_t *ctrl = &vcm->ctrl_session;
-  vcl_test_session_t *quic_session = &vcm->quic_session;
   int rv;
 
   vcm->n_workers = 1;
@@ -1157,8 +1162,6 @@ main (int argc, char **argv)
     }
 
   vtc_ctrl_session_exit ();
-  if (quic_session)
-    vppcom_session_close (quic_session->fd);
   vppcom_app_destroy ();
   free (vcm->workers);
   return 0;

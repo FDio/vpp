@@ -40,6 +40,7 @@ typedef struct
 typedef struct
 {
   uint32_t wrk_index;
+  vcl_test_session_t listener;
   int listen_fd;
   int epfd;
   struct epoll_event wait_events[VCL_TEST_CFG_MAX_EPOLL_EVENTS];
@@ -62,7 +63,9 @@ typedef struct
   u8 use_ds;
 } vcl_test_server_main_t;
 
-static __thread int __wrk_index = 0;
+vcl_test_main_t vcl_test_main;
+
+//static __thread int __wrk_index = 0;
 
 static vcl_test_server_main_t vcl_server_main;
 
@@ -107,6 +110,7 @@ again:
 	{
 	  wrk->conn_pool[i].endpt.ip = wrk->conn_pool[i].ip;
 	  wrk->conn_pool[i].is_alloc = 1;
+	  wrk->conn_pool[i].session_index = i;
 	  return (&wrk->conn_pool[i]);
 	}
     }
@@ -301,9 +305,11 @@ vts_server_echo (vcl_test_session_t *conn, int rx_bytes)
 static vcl_test_session_t *
 vts_accept_client (vcl_test_server_worker_t *wrk, int listen_fd)
 {
+  vcl_test_server_main_t *vsm = &vcl_server_main;
+  vcl_test_proto_vft_t *tp;
   vcl_test_session_t *conn;
   struct epoll_event ev;
-  int rv, client_fd;
+  int rv;
 
   conn = conn_pool_alloc (wrk);
   if (!conn)
@@ -312,21 +318,16 @@ vts_accept_client (vcl_test_server_worker_t *wrk, int listen_fd)
       return 0;
     }
 
-  client_fd = vppcom_session_accept (listen_fd, &conn->endpt, 0);
-  if (client_fd < 0)
-    {
-      vterr ("vppcom_session_accept()", client_fd);
-      return 0;
-    }
-  conn->fd = client_fd;
-  conn->is_open = 1;
+  tp = vcl_test_main.protos[vsm->cfg.proto];
+  if (tp->accept (listen_fd, conn))
+    return 0;
 
   vtinf ("Got a connection -- fd = %d (0x%08x) on listener fd = %d (0x%08x)",
-	 client_fd, client_fd, listen_fd, listen_fd);
+	 conn->fd, conn->fd, listen_fd, listen_fd);
 
   ev.events = EPOLLIN;
   ev.data.u64 = conn - wrk->conn_pool;
-  rv = vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, client_fd, &ev);
+  rv = vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, conn->fd, &ev);
   if (rv < 0)
     {
       vterr ("vppcom_epoll_ctl()", rv);
@@ -539,6 +540,7 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
 {
   vcl_test_server_main_t *vsm = &vcl_server_main;
   struct epoll_event listen_ev;
+  vcl_test_proto_vft_t *tp;
   int rv;
 
   __wrk_index = wrk->wrk_index;
@@ -550,48 +552,53 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
     if (vppcom_worker_register ())
       vtfail ("vppcom_worker_register()", 1);
 
-  wrk->listen_fd = vppcom_session_create (vsm->cfg.proto,
-					  0 /* is_nonblocking */ );
-  if (wrk->listen_fd < 0)
-    vtfail ("vppcom_session_create()", wrk->listen_fd);
 
-  if (vsm->cfg.proto == VPPCOM_PROTO_UDP)
-    {
-      vppcom_session_attr (wrk->listen_fd, VPPCOM_ATTR_SET_CONNECTED, 0, 0);
-    }
+//  wrk->listen_fd = vppcom_session_create (vsm->cfg.proto,
+//					  0 /* is_nonblocking */ );
+//  if (wrk->listen_fd < 0)
+//    vtfail ("vppcom_session_create()", wrk->listen_fd);
+//
+//  if (vsm->cfg.proto == VPPCOM_PROTO_UDP)
+//    {
+//      vppcom_session_attr (wrk->listen_fd, VPPCOM_ATTR_SET_CONNECTED, 0, 0);
+//    }
+//
+//  if (vsm->cfg.proto == VPPCOM_PROTO_TLS ||
+//      vsm->cfg.proto == VPPCOM_PROTO_QUIC ||
+//      vsm->cfg.proto == VPPCOM_PROTO_DTLS)
+//    {
+//      vppcom_cert_key_pair_t ckpair;
+//      uint32_t ckp_len;
+//      int ckp_index;
+//
+//      vtinf ("Adding tls certs ...");
+//      ckpair.cert = vcl_test_crt_rsa;
+//      ckpair.key = vcl_test_key_rsa;
+//      ckpair.cert_len = vcl_test_crt_rsa_len;
+//      ckpair.key_len = vcl_test_key_rsa_len;
+//      ckp_index = vppcom_add_cert_key_pair (&ckpair);
+//      if (ckp_index < 0)
+//	vtfail ("vppcom_add_cert_key_pair()", ckp_index);
+//
+//      ckp_len = sizeof (ckp_index);
+//      vppcom_session_attr (wrk->listen_fd, VPPCOM_ATTR_SET_CKPAIR, &ckp_index,
+//			   &ckp_len);
+//    }
+//
+//  rv = vppcom_session_bind (wrk->listen_fd, &vsm->cfg.endpt);
+//  if (rv < 0)
+//    vtfail ("vppcom_session_bind()", rv);
+//
+//  if (!(vsm->cfg.proto == VPPCOM_PROTO_UDP))
+//    {
+//      rv = vppcom_session_listen (wrk->listen_fd, 10);
+//      if (rv < 0)
+//	vtfail ("vppcom_session_listen()", rv);
+//    }
 
-  if (vsm->cfg.proto == VPPCOM_PROTO_TLS ||
-      vsm->cfg.proto == VPPCOM_PROTO_QUIC ||
-      vsm->cfg.proto == VPPCOM_PROTO_DTLS)
-    {
-      vppcom_cert_key_pair_t ckpair;
-      uint32_t ckp_len;
-      int ckp_index;
-
-      vtinf ("Adding tls certs ...");
-      ckpair.cert = vcl_test_crt_rsa;
-      ckpair.key = vcl_test_key_rsa;
-      ckpair.cert_len = vcl_test_crt_rsa_len;
-      ckpair.key_len = vcl_test_key_rsa_len;
-      ckp_index = vppcom_add_cert_key_pair (&ckpair);
-      if (ckp_index < 0)
-	vtfail ("vppcom_add_cert_key_pair()", ckp_index);
-
-      ckp_len = sizeof (ckp_index);
-      vppcom_session_attr (wrk->listen_fd, VPPCOM_ATTR_SET_CKPAIR, &ckp_index,
-			   &ckp_len);
-    }
-
-  rv = vppcom_session_bind (wrk->listen_fd, &vsm->cfg.endpt);
-  if (rv < 0)
-    vtfail ("vppcom_session_bind()", rv);
-
-  if (!(vsm->cfg.proto == VPPCOM_PROTO_UDP))
-    {
-      rv = vppcom_session_listen (wrk->listen_fd, 10);
-      if (rv < 0)
-	vtfail ("vppcom_session_listen()", rv);
-    }
+  tp = vcl_test_main.protos[vsm->cfg.proto];
+  if ((rv = tp->listen (&wrk->listener, &vsm->cfg.endpt)))
+    vtfail ("proto listen", rv);
 
   /* First worker already has epoll fd */
   if (wrk->wrk_index)
@@ -603,7 +610,7 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
 
   listen_ev.events = EPOLLIN;
   listen_ev.data.u32 = VCL_TEST_DATA_LISTENER;
-  rv = vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, wrk->listen_fd,
+  rv = vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, wrk->listener.fd,
 			 &listen_ev);
   if (rv < 0)
     vtfail ("vppcom_epoll_ctl", rv);
@@ -684,7 +691,7 @@ vts_worker_loop (void *arg)
 	    }
 	  if (wrk->wait_events[i].data.u32 == VCL_TEST_DATA_LISTENER)
 	    {
-	      conn = vts_accept_client (wrk, wrk->listen_fd);
+	      conn = vts_accept_client (wrk, wrk->listener.fd);
 	      conn->cfg = vsm->ctrl->cfg;
 	      continue;
 	    }
@@ -759,7 +766,7 @@ fail:
   vsm->worker_fails -= 1;
 
 done:
-  vppcom_session_close (wrk->listen_fd);
+  vppcom_session_close (wrk->listener.fd);
   if (wrk->conn_pool)
     free (wrk->conn_pool);
   vsm->active_workers -= 1;
