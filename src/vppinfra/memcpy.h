@@ -6,6 +6,8 @@
 #ifndef included_memcpy_h
 #define included_memcpy_h
 
+#ifndef __COVERITY__
+
 static_always_inline void
 clib_memcpy_u32_x4 (u32 *dst, u32 *src)
 {
@@ -151,5 +153,13 @@ clib_memcpy_u32 (u32 *dst, u32 *src, u32 n_left)
       n_left -= 1;
     }
 }
+
+#else /* __COVERITY__ */
+static_always_inline void
+clib_memcpy_u32 (u32 *dst, u32 *src, u32 n_left)
+{
+  memcpy (dst, src, n_left * sizeof (u32));
+}
+#endif
 
 #endif
