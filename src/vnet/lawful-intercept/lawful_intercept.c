@@ -59,13 +59,13 @@ set_li_command_fn (vlib_main_t * vm,
 	  if (lm->collectors[i].as_u32 == collector.as_u32)
 	    {
 	      if (lm->ports[i] == udp_port)
-		return clib_error_return
-		  (0, "collector %U:%d already configured",
-		   &collector, udp_port);
+		return clib_error_return (
+		  0, "collector %U:%d already configured", format_ip4_address,
+		  &collector, udp_port);
 	      else
-		return clib_error_return
-		  (0, "collector %U already configured with port %d",
-		   &collector, (int) (lm->ports[i]));
+		return clib_error_return (
+		  0, "collector %U already configured with port %d",
+		  format_ip4_address, &collector, (int) (lm->ports[i]));
 	    }
 	}
       vec_add1 (lm->collectors, collector);
