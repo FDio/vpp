@@ -47,13 +47,12 @@ session_mq_get_ext_config (application_t *app, uword offset)
 static void
 session_mq_free_ext_config (application_t *app, uword offset)
 {
-  u32 ctrl_thread = vlib_num_workers () ? 1 : 0;
   svm_fifo_chunk_t *c;
   fifo_segment_t *fs;
 
   fs = application_get_rx_mqs_segment (app);
   c = fs_chunk_ptr (fs->h, offset);
-  fifo_segment_collect_chunk (fs, ctrl_thread, c);
+  fifo_segment_collect_chunk (fs, 0 /* only one slice */, c);
 }
 
 static void
