@@ -38,6 +38,11 @@
 /* default number of worker handoff frame queue elements */
 #define NAT_FQ_NELTS_DEFAULT 64
 
+/* number of attempts to get a port for ED overloading algorithm, if rolling
+ * a dice this many times doesn't produce a free port, it's treated
+ * as if there were no free ports available to conserve resources */
+#define ED_PORT_ALLOC_ATTEMPTS (10)
+
 /* NAT buffer flags */
 #define SNAT_FLAG_HAIRPINNING (1 << 0)
 
@@ -350,12 +355,6 @@ typedef struct
 {
   ip4_address_t addr;
   u32 fib_index;
-#define _(N, i, n, s) \
-  u32 busy_##n##_ports; \
-  u32 * busy_##n##_ports_per_thread; \
-  u32 busy_##n##_port_refcounts[65535];
-  foreach_nat_protocol
-#undef _
 } snat_address_t;
 
 typedef struct
@@ -1039,19 +1038,6 @@ int nat44_set_session_limit (u32 session_limit, u32 vrf_id);
  */
 int nat44_update_session_limit (u32 session_limit, u32 vrf_id);
 
-/**
- * @brief Free outside address and port pair
- *
- * @param addresses    vector of outside addresses
- * @param thread_index thread index
- * @param key          address, port and protocol
- */
-void
-snat_free_outside_address_and_port (snat_address_t * addresses,
-				    u32 thread_index,
-				    ip4_address_t * addr,
-				    u16 port, nat_protocol_t protocol);
-
 void expire_per_vrf_sessions (u32 fib_index);
 
 /**
@@ -1115,10 +1101,6 @@ nat_ha_sref_ed_cb (ip4_address_t * out_addr, u16 out_port,
 		   u32 thread_index);
 #endif
 
-int nat_set_outside_address_and_port (snat_address_t *addresses,
-				      u32 thread_index, ip4_address_t addr,
-				      u16 port, nat_protocol_t protocol);
-
 /*
  * Why is this here? Because we don't need to touch this layer to
  * simply reply to an icmp. We need to change id to a unique
@@ -1168,6 +1150,13 @@ format_function_t format_nat_ed_translation_error;
 format_function_t format_nat_6t_flow;
 format_function_t format_ed_session_kvp;
 
+int nat44_ed_ext_addr_port_lock (snat_main_t *sm, ip4_address_t addr, u16 port,
+				 u32 fib_index, u8 ip_proto);
+
+int nat44_ed_ext_addr_port_unlock (snat_main_t *sm, ip4_address_t addr,
+				   u16 port, u32 fib_index, u8 ip_proto);
+int nat44_ed_ext_addr_port_is_locked (snat_main_t *sm, ip4_address_t addr,
+				      u16 port, u32 fib_index, u8 ip_proto);
 #endif /* __included_nat44_ed_h__ */
 /*
  * fd.io coding-style-patch-verification: ON

@@ -346,6 +346,16 @@ nat_ed_ses_o2i_flow_hash_add_del (snat_main_t *sm, u32 thread_idx,
   else
     {
       nat_6t_flow_to_ed_kv (&kv, &s->o2i, thread_idx, s - tsm->sessions);
+      if (!(s->flags & SNAT_SESSION_FLAG_STATIC_MAPPING))
+	{
+	  int rc = nat44_ed_ext_addr_port_is_locked (
+	    sm, s->o2i.match.daddr, s->o2i.match.dport, s->o2i.match.fib_index,
+	    s->o2i.match.proto);
+	  if (rc)
+	    {
+	      return rc;
+	    }
+	}
       nat_6t_l3_l4_csum_calc (&s->o2i);
     }
   return clib_bihash_add_del_16_8 (&sm->flow_hash, &kv, is_add);

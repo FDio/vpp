@@ -32,11 +32,6 @@
 #include <nat/nat44-ed/nat44_ed.h>
 #include <nat/nat44-ed/nat44_ed_inlines.h>
 
-/* number of attempts to get a port for ED overloading algorithm, if rolling
- * a dice this many times doesn't produce a free port, it's treated
- * as if there were no free ports available to conserve resources */
-#define ED_PORT_ALLOC_ATTEMPTS (10)
-
 static char *nat_in2out_ed_error_strings[] = {
 #define _(sym,string) string,
   foreach_nat_in2out_ed_error
@@ -195,20 +190,6 @@ nat_ed_alloc_addr_and_port_with_snat_address (
       s->o2i.match.dport = clib_host_to_net_u16 (port);
       if (0 == nat_ed_ses_o2i_flow_hash_add_del (sm, thread_index, s, 2))
 	{
-#define _(N, i, n, s)                                                         \
-  case NAT_PROTOCOL_##N:                                                      \
-    ++a->busy_##n##_port_refcounts[port];                                     \
-    a->busy_##n##_ports_per_thread[thread_index]++;                           \
-    a->busy_##n##_ports++;                                                    \
-    break;
-	  switch (nat_proto)
-	    {
-	      foreach_nat_protocol;
-	    default:
-	      nat_elog_info (sm, "unknown protocol");
-	      return 1;
-	    }
-#undef _
 	  *outside_addr = a->addr;
 	  *outside_port = clib_host_to_net_u16 (port);
 	  return 0;
@@ -224,9 +205,8 @@ nat_ed_alloc_addr_and_port_with_snat_address (
 static int
 nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index, u32 nat_proto,
 			    u32 thread_index, ip4_address_t s_addr,
-			    u16 port_per_thread, u32 snat_thread_index,
-			    snat_session_t *s, ip4_address_t *outside_addr,
-			    u16 *outside_port)
+			    u32 snat_thread_index, snat_session_t *s,
+			    ip4_address_t *outside_addr, u16 *outside_port)
 {
   int i;
   snat_address_t *a, *ga = 0;
@@ -241,7 +221,7 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index, u32 nat_proto,
 	  if (a->fib_index == rx_fib_index)
 	    {
 	      return nat_ed_alloc_addr_and_port_with_snat_address (
-		sm, nat_proto, thread_index, a, port_per_thread,
+		sm, nat_proto, thread_index, a, sm->port_per_thread,
 		snat_thread_index, s, outside_addr, outside_port);
 	    }
 	  else if (a->fib_index == ~0)
@@ -256,7 +236,7 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index, u32 nat_proto,
 	  if (a->fib_index == rx_fib_index)
 	    {
 	      return nat_ed_alloc_addr_and_port_with_snat_address (
-		sm, nat_proto, thread_index, a, port_per_thread,
+		sm, nat_proto, thread_index, a, sm->port_per_thread,
 		snat_thread_index, s, outside_addr, outside_port);
 	    }
 	  else if (a->fib_index == ~0)
@@ -268,8 +248,8 @@ nat_ed_alloc_addr_and_port (snat_main_t *sm, u32 rx_fib_index, u32 nat_proto,
       if (ga)
 	{
 	  return nat_ed_alloc_addr_and_port_with_snat_address (
-	    sm, nat_proto, thread_index, a, port_per_thread, snat_thread_index,
-	    s, outside_addr, outside_port);
+	    sm, nat_proto, thread_index, a, sm->port_per_thread,
+	    snat_thread_index, s, outside_addr, outside_port);
 	}
     }
   /* Totally out of translations to use... */
@@ -447,8 +427,7 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 
       if (nat_ed_alloc_addr_and_port (
 	    sm, rx_fib_index, nat_proto, thread_index, l_addr,
-	    sm->port_per_thread, tsm->snat_thread_index, s, &outside_addr,
-	    &outside_port))
+	    tsm->snat_thread_index, s, &outside_addr, &outside_port))
 	{
 	  nat_elog_notice (sm, "addresses exhausted");
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_OUT_OF_PORTS];
@@ -544,12 +523,6 @@ slow_path_ed (vlib_main_t *vm, snat_main_t *sm, vlib_buffer_t *b,
 error:
   if (s)
     {
-      if (!is_sm)
-	{
-	  snat_free_outside_address_and_port (sm->addresses, thread_index,
-					      &outside_addr, outside_port,
-					      nat_proto);
-	}
       nat_ed_session_delete (sm, s, thread_index, 1);
     }
   *sessionp = s = NULL;
