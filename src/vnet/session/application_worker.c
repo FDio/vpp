@@ -293,6 +293,7 @@ app_worker_stop_listen_session (app_worker_t * app_wrk, session_t * ls)
   session_handle_t handle;
   segment_manager_t *sm;
   uword *sm_indexp;
+  session_state_t *states = 0;
 
   handle = listen_session_get_handle (ls);
   sm_indexp = hash_get (app_wrk->listeners_table, handle);
@@ -308,6 +309,13 @@ app_worker_stop_listen_session (app_worker_t * app_wrk, session_t * ls)
 
   /* Try to cleanup segment manager */
   sm = segment_manager_get (*sm_indexp);
+  if (sm && segment_manager_has_fifos (sm))
+    {
+      /* Delete sessions in CREATED state */
+      vec_add1 (states, SESSION_STATE_CREATED);
+      segment_manager_del_sessions_filter (sm, states);
+      vec_free (states);
+    }
   if (sm && app_wrk->first_segment_manager != *sm_indexp)
     {
       segment_manager_app_detach (sm);

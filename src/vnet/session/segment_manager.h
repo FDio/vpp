@@ -159,6 +159,8 @@ void segment_manager_app_detach (segment_manager_t * sm);
  * @param sm	segment manager whose sessions are to be disconnected
  */
 void segment_manager_del_sessions (segment_manager_t * sm);
+void segment_manager_del_sessions_filter (segment_manager_t *sm,
+					  session_state_t *states);
 void segment_manager_format_sessions (segment_manager_t * sm, int verbose);
 
 void segment_manager_main_init (void);
