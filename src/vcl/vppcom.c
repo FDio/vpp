@@ -1852,12 +1852,12 @@ vppcom_session_stream_connect (uint32_t session_handle,
   rv = vppcom_wait_for_session_state_change (session_index, VCL_STATE_READY,
 					     vcm->cfg.session_timeout);
 
+  session = vcl_session_get (wrk, session_index);
   session->listener_index = parent_session_index;
   parent_session = vcl_session_get_w_handle (wrk, parent_session_handle);
   if (parent_session)
     parent_session->n_accepted_sessions++;
 
-  session = vcl_session_get (wrk, session_index);
   VDBG (0, "session %u [0x%llx]: connect %s!", session->session_index,
 	session->vpp_handle, rv ? "failed" : "succeeded");
 
