@@ -30,6 +30,7 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/devices/virtio/virtio.h>
+#include <vnet/devices/virtio/virtio_inline.h>
 #include <vnet/devices/virtio/pci.h>
 #include <vnet/interface/rx_queue_funcs.h>
 
@@ -221,6 +222,19 @@ virtio_set_packet_buffering (virtio_if_t * vif, u16 buffering_size)
 }
 
 void
+virtio_vring_rill (vlib_main_t *vm, virtio_if_t *vif, virtio_vring_t *vring)
+{
+  if (vif->is_packed)
+    virtio_refill_vring_packed (vm, vif, vif->type, vring,
+				vif->virtio_net_hdr_sz,
+				virtio_input_node.index);
+  else
+    virtio_refill_vring_split (vm, vif, vif->type, vring,
+			       vif->virtio_net_hdr_sz,
+			       virtio_input_node.index);
+}
+
+void
 virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif)
 {
   vnet_main_t *vnm = vnet_get_main ();
@@ -262,6 +276,10 @@ virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif)
 					      file_index);
 	  i++;
 	}
+      vnet_hw_if_set_rx_queue_mode (vnm, vring->queue_index,
+				    VNET_HW_IF_RX_MODE_POLLING);
+      vring->mode = VNET_HW_IF_RX_MODE_POLLING;
+      virtio_vring_rill (vm, vif, vring);
     }
   vnet_hw_if_update_runtime_data (vnm, vif->hw_if_index);
 }
