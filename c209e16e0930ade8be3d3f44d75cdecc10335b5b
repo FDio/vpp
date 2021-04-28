@@ -33,6 +33,29 @@
       "revId": "c209e16e0930ade8be3d3f44d75cdecc10335b5b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7bdf9215_587a2466",
+        "filename": "src/plugins/wireguard/wireguard_peer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 2280
+      },
+      "writtenOn": "2021-04-28T13:35:51Z",
+      "side": 1,
+      "message": "Probably using allowed_ips[0] is a bad idea.",
+      "range": {
+        "startLine": 258,
+        "startChar": 33,
+        "endLine": 258,
+        "endChar": 58
+      },
+      "revId": "c209e16e0930ade8be3d3f44d75cdecc10335b5b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
