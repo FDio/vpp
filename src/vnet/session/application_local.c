@@ -298,6 +298,7 @@ ct_accept_rpc_wrk_handler (void *accept_args)
 						     sct->c_is_ip4);
   ss->connection_index = sct->c_c_index;
   ss->listener_handle = listen_session_get_handle (ll);
+  ss->listener_seq = ll->listener_seq;
   ss->session_state = SESSION_STATE_CREATED;
 
   server_wrk = application_listener_select_worker (ll);

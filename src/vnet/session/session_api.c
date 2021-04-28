@@ -135,6 +135,13 @@ mq_send_session_accepted_cb (session_t * s)
   session_event_t *evt;
   application_t *app;
 
+  listener = listen_session_get_from_handle_if_valid (s->listener_handle);
+  if (PREDICT_FALSE ((!listener) ||
+		     (listener->listener_seq != s->listener_seq)))
+    {
+      return SESSION_E_NOLISTEN;
+    }
+
   app = application_get (app_wrk->app_index);
 
   m.context = app->app_index;
@@ -147,7 +154,6 @@ mq_send_session_accepted_cb (session_t * s)
 
   if (session_has_transport (s))
     {
-      listener = listen_session_get_from_handle (s->listener_handle);
       m.listener_handle = app_listen_session_handle (listener);
       if (application_is_proxy (app))
 	{
@@ -169,7 +175,6 @@ mq_send_session_accepted_cb (session_t * s)
       ct_connection_t *ct;
 
       ct = (ct_connection_t *) session_get_transport (s);
-      listener = listen_session_get_from_handle (s->listener_handle);
       m.listener_handle = app_listen_session_handle (listener);
       m.rmt.is_ip4 = session_type_is_ip4 (listener->session_type);
       m.rmt.port = ct->c_rmt_port;

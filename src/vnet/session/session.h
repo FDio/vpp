@@ -612,6 +612,8 @@ transport_add_tx_event (transport_connection_t * tc)
  * Listen sessions
  */
 
+int listen_session_get_and_inc_sequence ();
+
 always_inline u64
 listen_session_get_handle (session_t * s)
 {
@@ -624,6 +626,18 @@ always_inline session_t *
 listen_session_get_from_handle (session_handle_t handle)
 {
   return session_get_from_handle (handle);
+}
+
+always_inline session_t *
+listen_session_get_from_handle_if_valid (session_handle_t handle)
+{
+  session_t *s;
+
+  s = session_get_from_handle_if_valid (handle);
+  if (s && s->session_state == SESSION_STATE_LISTENING)
+    return s;
+
+  return 0;
 }
 
 always_inline void
