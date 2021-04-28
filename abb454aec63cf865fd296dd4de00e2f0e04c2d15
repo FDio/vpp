@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2f46989f_09d5ab8a",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1163,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2021-04-28T17:02:42Z",
+      "side": 1,
+      "message": "This guarantees that the session has fifos allocated in one of the listener\u0027s segments. So the segment manager should close it when the listener goes down. In other words, we should have a tight coupling between the session that\u0027s accepted here and the listener already. \n\nAre you hitting an issue when the session is not properly cleaned up?",
+      "range": {
+        "startLine": 1163,
+        "startChar": 12,
+        "endLine": 1163,
+        "endChar": 36
+      },
+      "revId": "abb454aec63cf865fd296dd4de00e2f0e04c2d15",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
