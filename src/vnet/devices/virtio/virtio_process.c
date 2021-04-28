@@ -25,6 +25,7 @@ virtio_send_interrupt_process (vlib_main_t * vm,
 			       vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
   virtio_if_t *vif;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
   f64 timeout = 3153600000.0 /* 100 years */ ;
   uword event_type, *event_data = 0;
   virtio_main_t *vim = &virtio_main;
@@ -48,7 +49,8 @@ virtio_send_interrupt_process (vlib_main_t * vm,
 	case ~0:
 	  pool_foreach (vif, vim->interfaces)
 	    {
-	      if (vif->packet_coalesce || vif->packet_buffering)
+	      if (vif->packet_coalesce || vif->packet_buffering ||
+		  vtm->n_vlib_mains == 1)
 		{
 		  virtio_vring_t *vring;
 		  vec_foreach (vring, vif->rxq_vrings)

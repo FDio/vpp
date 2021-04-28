@@ -262,6 +262,9 @@ virtio_vring_set_rx_queues (vlib_main_t *vm, virtio_if_t *vif)
 					      file_index);
 	  i++;
 	}
+      vnet_hw_if_set_rx_queue_mode (vnm, vring->queue_index,
+				    VNET_HW_IF_RX_MODE_POLLING);
+      vring->mode = VNET_HW_IF_RX_MODE_POLLING;
     }
   vnet_hw_if_update_runtime_data (vnm, vif->hw_if_index);
 }
