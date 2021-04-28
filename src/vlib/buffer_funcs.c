@@ -3,8 +3,8 @@
  */
 
 #include <vppinfra/clib.h>
-#include <vppinfra/vector_funcs.h>
 #include <vlib/vlib.h>
+#include <vppinfra/vector_funcs.h>
 
 typedef struct
 {
