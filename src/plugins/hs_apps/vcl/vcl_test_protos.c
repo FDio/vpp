@@ -51,7 +51,7 @@ vt_tcp_listen (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
 {
   int rv;
 
-  ts->fd = vppcom_session_create (VPPCOM_PROTO_TCP, 0 /* is_nonblocking */);
+  ts->fd = vppcom_session_create (VPPCOM_PROTO_TCP, 1 /* is_nonblocking */);
   if (ts->fd < 0)
     {
       vterr ("vppcom_session_create()", ts->fd);
@@ -138,7 +138,7 @@ vt_udp_listen (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
 {
   int rv;
 
-  ts->fd = vppcom_session_create (VPPCOM_PROTO_UDP, 0 /* is_nonblocking */);
+  ts->fd = vppcom_session_create (VPPCOM_PROTO_UDP, 1 /* is_nonblocking */);
   if (ts->fd < 0)
     {
       vterr ("vppcom_session_create()", ts->fd);
@@ -318,7 +318,7 @@ vt_tls_listen (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
   uint32_t ckp_len;
   int rv;
 
-  ts->fd = vppcom_session_create (VPPCOM_PROTO_TLS, 0 /* is_nonblocking */);
+  ts->fd = vppcom_session_create (VPPCOM_PROTO_TLS, 1 /* is_nonblocking */);
   if (ts->fd < 0)
     {
       vterr ("vppcom_session_create()", ts->fd);
@@ -423,7 +423,7 @@ vt_dtls_listen (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
   uint32_t ckp_len;
   int rv;
 
-  ts->fd = vppcom_session_create (VPPCOM_PROTO_DTLS, 0 /* is_nonblocking */);
+  ts->fd = vppcom_session_create (VPPCOM_PROTO_DTLS, 1 /* is_nonblocking */);
   if (ts->fd < 0)
     {
       vterr ("vppcom_session_create()", ts->fd);
