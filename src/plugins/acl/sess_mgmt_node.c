@@ -156,6 +156,36 @@ acl_fa_conn_time_to_check (acl_main_t * am, acl_fa_per_worker_data_t * pw,
     || (sess->link_enqueue_time <= pw->swipe_end_time);
 }
 
+static int
+acl_fa_conn_can_purge (acl_main_t *am, acl_fa_per_worker_data_t *pw,
+		       u32 min_run_count, u16 thread_index, u32 session_index)
+{
+  if (session_index == FA_SESSION_BOGUS_INDEX)
+    return 0;
+  fa_session_t *sess = get_session_ptr (am, thread_index, session_index);
+  u32 distance = min_run_count - sess->purg_max_run_count;
+  /* (min_run_count > sess_run_count), with wraparound */
+  return ((distance > 0) && (distance < 0x8000000));
+}
+
+u32
+get_min_run_count (acl_main_t *am)
+{
+  u16 wk;
+  u32 min_run_count =
+    clib_atomic_fetch_or (&am->per_worker_data[0].run_count, 0);
+  for (wk = 1; wk < vec_len (am->per_worker_data); wk++)
+    {
+      acl_fa_per_worker_data_t *pw = &am->per_worker_data[wk];
+      u32 test_run_count = clib_atomic_fetch_or (&pw->run_count, 0);
+      if (test_run_count < min_run_count)
+	{
+	  min_run_count = test_run_count;
+	}
+    }
+  return min_run_count;
+}
+
 /*
  * see if there are sessions ready to be checked,
  * do the maintenance (requeue or delete), and
@@ -168,6 +198,8 @@ acl_fa_check_idle_sessions (acl_main_t * am, u16 thread_index, u64 now)
   fa_full_session_id_t fsid;
   fsid.thread_index = thread_index;
   int total_expired = 0;
+
+  u32 min_run_count = get_min_run_count (am);
 
   /* let the other threads enqueue more requests while we process, if they like */
   aclp_swap_wip_and_pending_session_change_requests (am, thread_index);
@@ -199,6 +231,13 @@ acl_fa_check_idle_sessions (acl_main_t * am, u16 thread_index, u64 now)
 	while (n_expired < am->fa_max_deleted_sessions_per_interval)
 	  {
 	    fsid.session_index = pw->fa_conn_list_head[tt];
+	    if ((tt == ACL_TIMEOUT_PURGATORY) &&
+		(0 == acl_fa_conn_can_purge (am, pw, min_run_count,
+					     thread_index,
+					     pw->fa_conn_list_head[tt])))
+	      {
+		break;
+	      }
 	    if (!acl_fa_conn_time_to_check
 		(am, pw, now, thread_index, pw->fa_conn_list_head[tt]))
 	      {

@@ -420,6 +420,7 @@ acl_fa_deactivate_session (acl_main_t * am, u32 sw_if_index,
     }
 
   sess->deleted = 1;
+  sess->purg_max_run_count = clib_atomic_fetch_or (&am->max_run_count, 0);
   clib_atomic_fetch_add (&am->fa_session_total_deactivations, 1);
 }
 
