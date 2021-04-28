@@ -1094,6 +1094,7 @@ virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
 				 vnet_hw_if_rx_mode mode)
 {
   vlib_main_t *vm = vnm->vlib_main;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
   virtio_main_t *mm = &virtio_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   virtio_if_t *vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
@@ -1107,7 +1108,8 @@ virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
 
   if (mode == VNET_HW_IF_RX_MODE_POLLING)
     {
-      if (vif->packet_coalesce || vif->packet_buffering)
+      if (vif->packet_coalesce || vif->packet_buffering ||
+	  vtm->n_vlib_mains == 1)
 	{
 	  if (mm->interrupt_queues_count > 0)
 	    mm->interrupt_queues_count--;
@@ -1120,7 +1122,8 @@ virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
     }
   else
     {
-      if (vif->packet_coalesce || vif->packet_buffering)
+      if (vif->packet_coalesce || vif->packet_buffering ||
+	  vtm->n_vlib_mains == 1)
 	{
 	  mm->interrupt_queues_count++;
 	  if (mm->interrupt_queues_count == 1)
