@@ -3009,7 +3009,8 @@ vppcom_epoll_wait_condvar (vcl_worker_t * wrk, struct epoll_event *events,
   if (!n_evts)
     {
       wait = wait_for_time;
-      start = clib_time_now (&wrk->clib_time);
+      if (wait > 0)
+	start = clib_time_now (&wrk->clib_time);
     }
 
   do
@@ -3018,14 +3019,14 @@ vppcom_epoll_wait_condvar (vcl_worker_t * wrk, struct epoll_event *events,
 				wait, &n_evts);
       if (n_evts)
 	return n_evts;
-      if (wait == -1)
-	continue;
-
-      now = clib_time_now (&wrk->clib_time);
-      wait -= (now - start) * 1e3;
-      start = now;
+      if (wait > 0)
+	{
+	  now = clib_time_now (&wrk->clib_time);
+	  wait -= (now - start) * 1e3;
+	  start = now;
+	}
     }
-  while (wait > 0);
+  while (wait == -1 || wait > 0);
 
   return 0;
 }
@@ -3044,7 +3045,8 @@ vppcom_epoll_wait_eventfd (vcl_worker_t * wrk, struct epoll_event *events,
   if (!n_evts)
     {
       wait = wait_for_time;
-      start = clib_time_now (&wrk->clib_time);
+      if (wait > 0)
+	start = clib_time_now (&wrk->clib_time);
     }
 
   do
@@ -3067,14 +3069,14 @@ vppcom_epoll_wait_eventfd (vcl_worker_t * wrk, struct epoll_event *events,
 
       if (n_evts)
 	return n_evts;
-      if (wait == -1)
-	continue;
-
-      now = clib_time_now (&wrk->clib_time);
-      wait -= (now - start) * 1e3;
-      start = now;
+      if (wait > 0)
+	{
+	  now = clib_time_now (&wrk->clib_time);
+	  wait -= (now - start) * 1e3;
+	  start = now;
+	}
     }
-  while (wait > 0);
+  while (wait == -1 || wait > 0);
 
   return 0;
 }
