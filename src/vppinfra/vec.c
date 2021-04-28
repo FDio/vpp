@@ -38,6 +38,10 @@
 #include <vppinfra/vec.h>
 #include <vppinfra/mem.h>
 
+#ifndef CLIB_VECTOR_GROW_BY_ONE
+#define CLIB_VECTOR_GROW_BY_ONE 0
+#endif
+
 /* Vector resize operator.  Called as needed by various macros such as
    vec_add1() when we need to allocate memory. */
 __clib_export void *

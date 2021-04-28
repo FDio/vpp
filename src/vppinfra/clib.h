@@ -39,7 +39,10 @@
 #define included_clib_h
 
 #include <stddef.h>
+
+#if __has_include(<vppinfra/config.h>)
 #include <vppinfra/config.h>
+#endif
 
 #ifdef  __x86_64__
 #include <x86intrin.h>
