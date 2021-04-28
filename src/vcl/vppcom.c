@@ -3001,40 +3001,40 @@ handle_dequeued:
 }
 
 static int
-vppcom_epoll_wait_condvar (vcl_worker_t * wrk, struct epoll_event *events,
-			   int maxevents, u32 n_evts, double wait_for_time)
+vppcom_epoll_wait_condvar (vcl_worker_t *wrk, struct epoll_event *events,
+			   int maxevents, u32 n_evts, double timeout_ms)
 {
-  double wait = 0, start = 0, now;
+  double start = -1, now;
 
   if (!n_evts)
     {
-      wait = wait_for_time;
-      start = clib_time_now (&wrk->clib_time);
+      if (timeout_ms > 0)
+	start = clib_time_now (&wrk->clib_time);
     }
 
   do
     {
       vcl_epoll_wait_handle_mq (wrk, wrk->app_event_queue, events, maxevents,
-				wait, &n_evts);
+				timeout_ms, &n_evts);
       if (n_evts)
 	return n_evts;
-      if (wait == -1)
-	continue;
-
-      now = clib_time_now (&wrk->clib_time);
-      wait -= (now - start) * 1e3;
-      start = now;
+      if (start != -1)
+	{
+	  now = clib_time_now (&wrk->clib_time);
+	  timeout_ms -= (now - start) * 1e3;
+	  start = now;
+	}
     }
-  while (wait > 0);
+  while (start == -1 || timeout_ms > 0);
 
   return 0;
 }
 
 static int
-vppcom_epoll_wait_eventfd (vcl_worker_t * wrk, struct epoll_event *events,
-			   int maxevents, u32 n_evts, double wait_for_time)
+vppcom_epoll_wait_eventfd (vcl_worker_t *wrk, struct epoll_event *events,
+			   int maxevents, u32 n_evts, double timeout_ms)
 {
-  double wait = 0, start = 0, now;
+  double start = -1, now;
   int __clib_unused n_read;
   vcl_mq_evt_conn_t *mqc;
   int n_mq_evts, i;
@@ -3043,14 +3043,14 @@ vppcom_epoll_wait_eventfd (vcl_worker_t * wrk, struct epoll_event *events,
   vec_validate (wrk->mq_events, pool_elts (wrk->mq_evt_conns));
   if (!n_evts)
     {
-      wait = wait_for_time;
-      start = clib_time_now (&wrk->clib_time);
+      if (timeout_ms > 0)
+	start = clib_time_now (&wrk->clib_time);
     }
 
   do
     {
       n_mq_evts = epoll_wait (wrk->mqs_epfd, wrk->mq_events,
-			      vec_len (wrk->mq_events), wait);
+			      vec_len (wrk->mq_events), timeout_ms);
       if (n_mq_evts < 0)
 	{
 	  VDBG (0, "epoll_wait error %u", errno);
@@ -3067,14 +3067,14 @@ vppcom_epoll_wait_eventfd (vcl_worker_t * wrk, struct epoll_event *events,
 
       if (n_evts)
 	return n_evts;
-      if (wait == -1)
-	continue;
-
-      now = clib_time_now (&wrk->clib_time);
-      wait -= (now - start) * 1e3;
-      start = now;
+      if (start != -1)
+	{
+	  now = clib_time_now (&wrk->clib_time);
+	  timeout_ms -= (now - start) * 1e3;
+	  start = now;
+	}
     }
-  while (wait > 0);
+  while (start == -1 || timeout_ms > 0);
 
   return 0;
 }
