@@ -171,6 +171,7 @@ app_listener_alloc_and_init (application_t * app,
       app_listener->local_index = ls->session_index;
       app_listener->ls_handle = lh;
       ls->al_index = al_index;
+      ls->listener_seq = listen_session_get_and_inc_sequence ();
 
       table_index = application_local_session_table (app);
       session_lookup_add_session_endpoint (table_index,
@@ -204,6 +205,7 @@ app_listener_alloc_and_init (application_t * app,
       app_listener->session_index = ls->session_index;
       app_listener->ls_handle = lh;
       ls->al_index = al_index;
+      ls->listener_seq = listen_session_get_and_inc_sequence ();
 
       /* Add to the global lookup table after transport was initialized.
        * Lookup table needs to be populated only now because sessions

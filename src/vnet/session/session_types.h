@@ -210,6 +210,10 @@ typedef struct session_
     u32 al_index;
   };
 
+  /** Sequence of the (parent) listener session. Set only if a listener or the
+   * result of an accept */
+  u32 listener_seq;
+
   /** Opaque, for general use */
   u32 opaque;
 

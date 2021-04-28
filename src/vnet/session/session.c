@@ -1151,11 +1151,13 @@ int
 session_stream_accept (transport_connection_t * tc, u32 listener_index,
 		       u32 thread_index, u8 notify)
 {
-  session_t *s;
+  session_t *s, *ls;
   int rv;
 
+  ls = session_get (listener_index, 0);
   s = session_alloc_for_connection (tc);
   s->listener_handle = ((u64) thread_index << 32) | (u64) listener_index;
+  s->listener_seq = ls->listener_seq;
   s->session_state = SESSION_STATE_CREATED;
 
   if ((rv = app_worker_init_accepted (s)))
@@ -1187,11 +1189,13 @@ session_dgram_accept (transport_connection_t * tc, u32 listener_index,
 		      u32 thread_index)
 {
   app_worker_t *app_wrk;
-  session_t *s;
+  session_t *s, *ls;
   int rv;
 
+  ls = session_get (listener_index, 0);
   s = session_alloc_for_connection (tc);
   s->listener_handle = ((u64) thread_index << 32) | (u64) listener_index;
+  s->listener_seq = ls->listener_seq;
 
   if ((rv = app_worker_init_accepted (s)))
     {
@@ -1666,6 +1670,16 @@ session_transport_attribute (session_t *s, u8 is_get,
   return transport_connection_attribute (session_get_transport_proto (s),
 					 s->connection_index, s->thread_index,
 					 is_get, attr);
+}
+
+int
+listen_session_get_and_inc_sequence ()
+{
+  static int listener_seq = 0;
+
+  ASSERT (vlib_get_thread_index () == 0);
+
+  return listener_seq++;
 }
 
 transport_connection_t *
