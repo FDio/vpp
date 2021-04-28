@@ -24,6 +24,7 @@
 #include <arpa/inet.h>
 #include <hs_apps/vcl/vcl_test.h>
 #include <pthread.h>
+#include <signal.h>
 
 typedef struct
 {
@@ -51,6 +52,7 @@ typedef struct
   uint8_t proto;
   uint32_t n_workers;
   volatile int active_workers;
+  volatile int test_running;
   struct sockaddr_storage server_addr;
 } vcl_test_client_main_t;
 
@@ -324,7 +326,7 @@ vtc_worker_loop (void *arg)
 
   check_rx = wrk->cfg.test != VCL_TEST_TYPE_UNI;
   n_active_sessions = wrk->cfg.num_test_sessions;
-  while (n_active_sessions)
+  while (n_active_sessions && vcm->test_running)
     {
       _wfdset = wrk->wr_fdset;
       _rfdset = wrk->rd_fdset;
@@ -349,7 +351,9 @@ vtc_worker_loop (void *arg)
 	  if (FD_ISSET (vppcom_session_index (ts->fd), rfdset)
 	      && ts->stats.rx_bytes < ts->cfg.total_bytes)
 	    {
-	      (void) ts->read (ts, ts->rxbuf, ts->rxbuf_size);
+	      rv = ts->read (ts, ts->rxbuf, ts->rxbuf_size);
+	      if (rv < 0)
+		goto exit;
 	    }
 
 	  if (FD_ISSET (vppcom_session_index (ts->fd), wfdset)
@@ -464,6 +468,7 @@ vtc_stream_client (vcl_test_client_main_t * vcm)
       n_conn -= wrk->cfg.num_test_sessions;
     }
 
+  vcm->test_running = 1;
   ctrl->cfg.cmd = VCL_TEST_CMD_START;
   if (vtc_cfg_sync (ctrl))
     {
@@ -968,6 +973,45 @@ vtc_ctrl_session_init (vcl_test_client_main_t *vcm, vcl_test_session_t *ctrl)
   return 0;
 }
 
+static struct sigaction old_sa;
+
+static void
+vt_sigs_handler (int signum, siginfo_t *si, void *uc)
+{
+  vcl_test_client_main_t *vcm = &vcl_client_main;
+  vcl_test_session_t *ctrl = &vcm->ctrl_session;
+
+  if (sigaction (SIGINT, &old_sa, 0))
+    {
+      vtinf ("couldn't restore sigchld");
+      exit (-1);
+    }
+
+  vcm->test_running = 0;
+  clock_gettime (CLOCK_REALTIME, &ctrl->stats.stop);
+
+  if (old_sa.sa_flags & SA_SIGINFO)
+    {
+      void (*fn) (int, siginfo_t *, void *) = old_sa.sa_sigaction;
+      fn (signum, si, uc);
+    }
+}
+
+static void
+vt_incercept_sigs (void)
+{
+  struct sigaction sa;
+
+  memset (&sa, 0, sizeof (sa));
+  sa.sa_sigaction = vt_sigs_handler;
+  sa.sa_flags = SA_SIGINFO;
+  if (sigaction (SIGINT, &sa, &old_sa))
+    {
+      vtwrn ("couldn't intercept sigint");
+      exit (-1);
+    }
+}
+
 int
 main (int argc, char **argv)
 {
@@ -980,6 +1024,7 @@ main (int argc, char **argv)
   vcl_test_cfg_init (&ctrl->cfg);
   vcl_test_session_buf_alloc (ctrl);
   vtc_process_opts (vcm, argc, argv);
+  vt_incercept_sigs ();
 
   vcm->workers = calloc (vcm->n_workers, sizeof (vcl_test_client_worker_t));
   vt->wrk = calloc (vcm->n_workers, sizeof (vcl_test_wrk_t));
