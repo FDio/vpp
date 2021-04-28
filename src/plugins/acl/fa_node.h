@@ -118,7 +118,9 @@ typedef struct {
   u8 deleted;             /* +1 bytes = 18 */
   u8 is_ip6;              /* +1 bytes = 19 */
   u8 reserved1[5];        /* +5 bytes = 24 */
-  u64 reserved2[5];       /* +5*8 bytes = 64 */
+  u32 purg_max_run_count; /* +4 bytes = 28 */
+  u32 reserved3;	  /* +4 bytes = 32 */
+  u64 reserved2[4];	  /* +4*8 bytes = 64 */
 } fa_session_t;
 
 #define FA_POLICY_EPOCH_MASK 0x7fff
@@ -223,9 +225,11 @@ typedef struct {
    * Set to copy of a "generation" counter in main thread so we can sync the interrupts.
    */
   int interrupt_generation;
-   /*
-    * work in progress data for the pipelined node operation
-    */
+  /* atomic, incremented each time a worker thread is scheduled */
+  u32 run_count;
+  /*
+   * work in progress data for the pipelined node operation
+   */
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
   u32 sw_if_indices[VLIB_FRAME_SIZE];
   fa_5tuple_t fa_5tuples[VLIB_FRAME_SIZE];
