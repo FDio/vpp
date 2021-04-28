@@ -279,7 +279,7 @@ static int
 vt_tls_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
 {
   vcl_test_main_t *vt = &vcl_test_main;
-  uint32_t flags, flen;
+  uint32_t flags, flen, ckp_len;
   int rv;
 
   ts->fd = vppcom_session_create (VPPCOM_PROTO_TLS, 0 /* is_nonblocking */);
@@ -289,7 +289,7 @@ vt_tls_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
       return ts->fd;
     }
 
-  uint32_t ckp_len = sizeof (vt->ckpair_index);
+  ckp_len = sizeof (vt->ckpair_index);
   vppcom_session_attr (ts->fd, VPPCOM_ATTR_SET_CKPAIR, &vt->ckpair_index,
 		       &ckp_len);
 
@@ -384,7 +384,7 @@ static int
 vt_dtls_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
 {
   vcl_test_main_t *vt = &vcl_test_main;
-  uint32_t flags, flen;
+  uint32_t flags, flen, ckp_len;
   int rv;
 
   ts->fd = vppcom_session_create (VPPCOM_PROTO_DTLS, 0 /* is_nonblocking */);
@@ -394,7 +394,7 @@ vt_dtls_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
       return ts->fd;
     }
 
-  uint32_t ckp_len = sizeof (vt->ckpair_index);
+  ckp_len = sizeof (vt->ckpair_index);
   vppcom_session_attr (ts->fd, VPPCOM_ATTR_SET_CKPAIR, &vt->ckpair_index,
 		       &ckp_len);
 
@@ -494,7 +494,7 @@ static int
 vt_quic_maybe_init_wrk (vcl_test_main_t *vt, vcl_test_wrk_t *wrk,
 			vppcom_endpt_t *endpt)
 {
-  uint32_t size, i, flags, flen;
+  uint32_t size, i, flags, flen, ckp_len;
   vcl_test_session_t *tq;
   int rv;
 
@@ -532,6 +532,10 @@ vt_quic_maybe_init_wrk (vcl_test_main_t *vt, vcl_test_wrk_t *wrk,
 	  return tq->fd;
 	}
 
+      ckp_len = sizeof (vt->ckpair_index);
+      vppcom_session_attr (tq->fd, VPPCOM_ATTR_SET_CKPAIR, &vt->ckpair_index,
+			   &ckp_len);
+
       /* Connect is blocking */
       rv = vppcom_session_connect (tq->fd, endpt);
       if (rv < 0)
@@ -553,9 +557,9 @@ static int
 vt_quic_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
 {
   vcl_test_main_t *vt = &vcl_test_main;
+  uint32_t wrk_index, flags, flen;
   vcl_test_session_t *tq;
   vcl_test_wrk_t *wrk;
-  uint32_t wrk_index;
   int rv;
 
   wrk_index = vcl_test_worker_index ();
@@ -564,7 +568,7 @@ vt_quic_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
   /* Make sure qsessions are initialized */
   vt_quic_maybe_init_wrk (vt, wrk, endpt);
 
-  ts->fd = vppcom_session_create (VPPCOM_PROTO_QUIC, 1 /* is_nonblocking */);
+  ts->fd = vppcom_session_create (VPPCOM_PROTO_QUIC, 0 /* is_nonblocking */);
   if (ts->fd < 0)
     {
       vterr ("vppcom_session_create()", ts->fd);
@@ -581,7 +585,15 @@ vt_quic_connect (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
       return rv;
     }
 
-  vtinf ("Test session %d (fd %d) connected.", ts->session_index, ts->fd);
+  flags = O_NONBLOCK;
+  flen = sizeof (flags);
+  vppcom_session_attr (ts->fd, VPPCOM_ATTR_SET_FLAGS, &flags, &flen);
+
+  ts->read = vcl_test_read;
+  ts->write = vcl_test_write;
+
+  vtinf ("Test (quic stream) session %d (fd %d) connected.", ts->session_index,
+	 ts->fd);
 
   return 0;
 }
@@ -593,7 +605,7 @@ vt_quic_listen (vcl_test_session_t *ts, vppcom_endpt_t *endpt)
   uint32_t ckp_len;
   int rv;
 
-  ts->fd = vppcom_session_create (VPPCOM_PROTO_QUIC, 0 /* is_nonblocking */);
+  ts->fd = vppcom_session_create (VPPCOM_PROTO_QUIC, 1 /* is_nonblocking */);
   if (ts->fd < 0)
     {
       vterr ("vppcom_session_create()", ts->fd);
