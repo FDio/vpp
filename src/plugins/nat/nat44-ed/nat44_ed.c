@@ -271,18 +271,14 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index,
   /* Twice NAT address and port for external host */
   if (is_twice_nat_session (s))
     {
-      snat_free_outside_address_and_port (sm->twice_nat_addresses,
-					  thread_index,
-					  &s->ext_host_nat_addr,
-					  s->ext_host_nat_port, s->nat_proto);
+      int rc = nat44_ed_ext_addr_port_unlock (
+	sm, s->ext_host_nat_addr, s->ext_host_nat_port, s->out2in.fib_index,
+	nat_proto_to_ip_proto (s->nat_proto));
+      ASSERT (0 == rc);
     }
 
   if (snat_is_session_static (s))
     return;
-
-  snat_free_outside_address_and_port (sm->addresses, thread_index,
-				      &s->out2in.addr, s->out2in.port,
-				      s->nat_proto);
 }
 
 void
@@ -320,7 +316,6 @@ snat_add_address (snat_main_t * sm, ip4_address_t * addr, u32 vrf_id,
 {
   snat_address_t *ap;
   snat_interface_t *i;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   /* Check if address already exists */
   vec_foreach (ap, twice_nat ? sm->twice_nat_addresses : sm->addresses)
@@ -344,14 +339,6 @@ snat_add_address (snat_main_t * sm, ip4_address_t * addr, u32 vrf_id,
 					 sm->fib_src_low);
   else
     ap->fib_index = ~0;
-
-  #define _(N, i, n, s) \
-    clib_memset(ap->busy_##n##_port_refcounts, 0, sizeof(ap->busy_##n##_port_refcounts));\
-    ap->busy_##n##_ports = 0; \
-    ap->busy_##n##_ports_per_thread = 0;\
-    vec_validate_init_empty (ap->busy_##n##_ports_per_thread, tm->n_vlib_mains - 1, 0);
-    foreach_nat_protocol
-  #undef _
 
   if (twice_nat)
     return 0;
@@ -476,6 +463,69 @@ nat_ed_static_mapping_del_sessions (snat_main_t * sm,
     nat_ed_session_delete (sm, s, tsm - sm->per_thread_data, 1);
   }
   vec_free (indexes_to_free);
+}
+
+int
+nat44_ed_ext_addr_port_lock (snat_main_t *sm, ip4_address_t addr, u16 port,
+			     u32 fib_index, u8 ip_proto)
+{
+  clib_bihash_kv_16_8_t kv;
+  const ip4_address_t zero_addr = { 0 };
+  init_ed_kv (&kv, zero_addr, 0, addr, port, fib_index, ip_proto, 0, 0);
+  int rc = clib_bihash_add_del_16_8 (&sm->flow_hash, &kv, 1 /*is_add*/);
+#if 0
+  if (rc)
+    {
+      clib_warning ("lock failed: %U", format_ed_session_kvp, &kv);
+    }
+  else
+    {
+      clib_warning ("lock success: %U", format_ed_session_kvp, &kv);
+    }
+#endif
+  return rc;
+}
+
+int
+nat44_ed_ext_addr_port_unlock (snat_main_t *sm, ip4_address_t addr, u16 port,
+			       u32 fib_index, u8 ip_proto)
+{
+  clib_bihash_kv_16_8_t kv;
+  const ip4_address_t zero_addr = { 0 };
+  init_ed_kv (&kv, zero_addr, 0, addr, port, fib_index, ip_proto, 0, 0);
+  int rc = clib_bihash_add_del_16_8 (&sm->flow_hash, &kv, 0 /*is_add*/);
+#if 0
+  if (rc)
+    {
+      clib_warning ("unlock failed: %U", format_ed_session_kvp, &kv);
+    }
+  else
+    {
+      clib_warning ("unlock success: %U", format_ed_session_kvp, &kv);
+    }
+#endif
+  return rc;
+}
+
+int
+nat44_ed_ext_addr_port_is_locked (snat_main_t *sm, ip4_address_t addr,
+				  u16 port, u32 fib_index, u8 ip_proto)
+{
+  clib_bihash_kv_16_8_t kv;
+  const ip4_address_t zero_addr = { 0 };
+  init_ed_kv (&kv, zero_addr, 0, addr, port, fib_index, ip_proto, 0, 0);
+  int rc = clib_bihash_search_16_8 (&sm->flow_hash, &kv, &kv);
+#if 0
+  if (rc)
+    {
+      clib_warning ("is not locked: %U", format_ed_session_kvp, &kv);
+    }
+  else
+    {
+      clib_warning ("is locked: %U", format_ed_session_kvp, &kv);
+    }
+#endif
+  return !rc;
 }
 
 int
@@ -630,25 +680,13 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	    {
 	      if (sm->addresses[i].addr.as_u32 == e_addr.as_u32)
 		{
-		  a = sm->addresses + i;
 		  /* External port must be unused */
-		  switch (proto)
+		  a = sm->addresses + i;
+		  if (nat44_ed_ext_addr_port_is_locked (
+			sm, a->addr, e_port, a->fib_index,
+			nat_proto_to_ip_proto (proto)))
 		    {
-#define _(N, j, n, s) \
-                    case NAT_PROTOCOL_##N: \
-                      if (a->busy_##n##_port_refcounts[e_port]) \
-                        return VNET_API_ERROR_INVALID_VALUE; \
-                      ++a->busy_##n##_port_refcounts[e_port]; \
-                      if (e_port > 1024) \
-                        { \
-                          a->busy_##n##_ports++; \
-                          a->busy_##n##_ports_per_thread[get_thread_idx_by_port(e_port)]++; \
-                        } \
-                      break;
-		      foreach_nat_protocol
-#undef _
-			default : nat_elog_info (sm, "unknown protocol");
-		      return VNET_API_ERROR_INVALID_VALUE_2;
+		      return VNET_API_ERROR_VALUE_EXIST;
 		    }
 		  break;
 		}
@@ -725,6 +763,14 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
       else
 	tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
 
+      if (nat44_ed_ext_addr_port_lock (sm, m->external_addr, m->external_port,
+				       fib_index,
+				       nat_proto_to_ip_proto (proto)))
+	{
+	  /* TODO error handling in general in this function */
+	  return VNET_API_ERROR_INVALID_VALUE;
+	}
+
       if (!out2in_only)
 	{
 	  init_nat_kv (&kv, m->local_addr, m->local_port, fib_index, m->proto,
@@ -774,22 +820,10 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	      if (sm->addresses[i].addr.as_u32 == e_addr.as_u32)
 		{
 		  a = sm->addresses + i;
-		  switch (proto)
-		    {
-#define _(N, j, n, s) \
-                    case NAT_PROTOCOL_##N: \
-                      --a->busy_##n##_port_refcounts[e_port]; \
-                      if (e_port > 1024) \
-                        { \
-                          a->busy_##n##_ports--; \
-                          a->busy_##n##_ports_per_thread[get_thread_idx_by_port(e_port)]--; \
-                        } \
-                      break;
-		      foreach_nat_protocol
-#undef _
-			default : nat_elog_info (sm, "unknown protocol");
-		      return VNET_API_ERROR_INVALID_VALUE_2;
-		    }
+		  int rc = nat44_ed_ext_addr_port_unlock (
+		    sm, a->addr, e_port, fib_index,
+		    nat_proto_to_ip_proto (proto));
+		  ASSERT (0 == rc);
 		  break;
 		}
 	    }
@@ -889,25 +923,13 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 	    {
 	      if (sm->addresses[i].addr.as_u32 == e_addr.as_u32)
 		{
-		  a = sm->addresses + i;
 		  /* External port must be unused */
-		  switch (proto)
+		  a = sm->addresses + i;
+		  if (nat44_ed_ext_addr_port_is_locked (
+			sm, a->addr, e_port, a->fib_index,
+			nat_proto_to_ip_proto (proto)))
 		    {
-#define _(N, j, n, s) \
-                    case NAT_PROTOCOL_##N: \
-                      if (a->busy_##n##_port_refcounts[e_port]) \
-                        return VNET_API_ERROR_INVALID_VALUE; \
-                      ++a->busy_##n##_port_refcounts[e_port]; \
-                      if (e_port > 1024) \
-                        { \
-                          a->busy_##n##_ports++; \
-                          a->busy_##n##_ports_per_thread[get_thread_idx_by_port(e_port)]++; \
-                        } \
-                      break;
-		      foreach_nat_protocol
-#undef _
-			default : nat_elog_info (sm, "unknown protocol");
-		      return VNET_API_ERROR_INVALID_VALUE_2;
+		      return VNET_API_ERROR_VALUE_EXIST;
 		    }
 		  break;
 		}
@@ -935,6 +957,11 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
       else
 	m->affinity_per_service_list_head_index = ~0;
 
+      if (nat44_ed_ext_addr_port_lock (sm, e_addr, e_port, 0,
+				       nat_proto_to_ip_proto (proto)))
+	{
+	  return VNET_API_ERROR_INVALID_VALUE;
+	}
       init_nat_kv (&kv, m->external_addr, m->external_port, 0, m->proto, 0,
 		   m - sm->static_mappings);
       if (clib_bihash_add_del_8_8 (&sm->static_mapping_by_external, &kv, 1))
@@ -996,22 +1023,10 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 	      if (sm->addresses[i].addr.as_u32 == e_addr.as_u32)
 		{
 		  a = sm->addresses + i;
-		  switch (proto)
-		    {
-#define _(N, j, n, s) \
-                    case NAT_PROTOCOL_##N: \
-                      --a->busy_##n##_port_refcounts[e_port]; \
-                      if (e_port > 1024) \
-                        { \
-                          a->busy_##n##_ports--; \
-                          a->busy_##n##_ports_per_thread[get_thread_idx_by_port(e_port)]--; \
-                        } \
-                      break;
-		      foreach_nat_protocol
-#undef _
-			default : nat_elog_info (sm, "unknown protocol");
-		      return VNET_API_ERROR_INVALID_VALUE_2;
-		    }
+		  int rc = nat44_ed_ext_addr_port_unlock (
+		    sm, a->addr, e_port, a->fib_index,
+		    nat_proto_to_ip_proto (proto));
+		  ASSERT (0 == rc);
 		  break;
 		}
 	    }
@@ -1278,33 +1293,25 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
   if (a->fib_index != ~0)
     fib_table_unlock (a->fib_index, FIB_PROTOCOL_IP4, sm->fib_src_low);
 
-  /* Delete sessions using address */
-  if (a->busy_tcp_ports || a->busy_udp_ports || a->busy_icmp_ports)
-    {
       vec_foreach (tsm, sm->per_thread_data)
       {
-        pool_foreach (ses, tsm->sessions)  {
-          if (ses->out2in.addr.as_u32 == addr.as_u32)
-            {
-              nat_free_session_data (sm, ses, tsm - sm->per_thread_data, 0);
-              vec_add1 (ses_to_be_removed, ses - tsm->sessions);
-            }
-        }
+	pool_foreach (ses, tsm->sessions)
+	  {
+	    if (ses->out2in.addr.as_u32 == addr.as_u32)
+	      {
+		nat_free_session_data (sm, ses, tsm - sm->per_thread_data, 0);
+		vec_add1 (ses_to_be_removed, ses - tsm->sessions);
+	      }
+	  }
 
-	    vec_foreach (ses_index, ses_to_be_removed)
-	    {
-	      ses = pool_elt_at_index (tsm->sessions, ses_index[0]);
-	      nat_ed_session_delete (sm, ses, tsm - sm->per_thread_data, 1);
-	    }
+	vec_foreach (ses_index, ses_to_be_removed)
+	  {
+	    ses = pool_elt_at_index (tsm->sessions, ses_index[0]);
+	    nat_ed_session_delete (sm, ses, tsm - sm->per_thread_data, 1);
+	  }
 
 	vec_free (ses_to_be_removed);
       }
-    }
-
-#define _(N, i, n, s) \
-  vec_free (a->busy_##n##_ports_per_thread);
-  foreach_nat_protocol
-#undef _
 
     if (twice_nat)
   {
@@ -2157,14 +2164,6 @@ nat44_plugin_enable (nat44_config_t c)
 void
 nat44_addresses_free (snat_address_t ** addresses)
 {
-  snat_address_t *ap;
-  vec_foreach (ap, *addresses)
-    {
-    #define _(N, i, n, s) \
-      vec_free (ap->busy_##n##_ports_per_thread);
-      foreach_nat_protocol
-    #undef _
-    }
   vec_free (*addresses);
   *addresses = 0;
 }
@@ -2268,80 +2267,6 @@ nat44_ed_forwarding_enable_disable (u8 is_enable)
 
       vec_free (ses_to_be_removed);
     }
-}
-
-void
-snat_free_outside_address_and_port (snat_address_t *addresses,
-				    u32 thread_index, ip4_address_t *addr,
-				    u16 port, nat_protocol_t protocol)
-{
-  snat_main_t *sm = &snat_main;
-  snat_address_t *a;
-  u32 address_index;
-  u16 port_host_byte_order = clib_net_to_host_u16 (port);
-
-  for (address_index = 0; address_index < vec_len (addresses);
-       address_index++)
-    {
-      if (addresses[address_index].addr.as_u32 == addr->as_u32)
-	break;
-    }
-
-  ASSERT (address_index < vec_len (addresses));
-
-  a = addresses + address_index;
-
-  switch (protocol)
-    {
-#define _(N, i, n, s) \
-    case NAT_PROTOCOL_##N: \
-      ASSERT (a->busy_##n##_port_refcounts[port_host_byte_order] >= 1); \
-      --a->busy_##n##_port_refcounts[port_host_byte_order]; \
-      a->busy_##n##_ports--; \
-      a->busy_##n##_ports_per_thread[thread_index]--; \
-      break;
-      foreach_nat_protocol
-#undef _
-	default : nat_elog_info (sm, "unknown protocol");
-      return;
-    }
-}
-
-int
-nat_set_outside_address_and_port (snat_address_t *addresses, u32 thread_index,
-				  ip4_address_t addr, u16 port,
-				  nat_protocol_t protocol)
-{
-  snat_main_t *sm = &snat_main;
-  snat_address_t *a = 0;
-  u32 address_index;
-  u16 port_host_byte_order = clib_net_to_host_u16 (port);
-
-  for (address_index = 0; address_index < vec_len (addresses);
-       address_index++)
-    {
-      if (addresses[address_index].addr.as_u32 != addr.as_u32)
-	continue;
-
-      a = addresses + address_index;
-      switch (protocol)
-	{
-#define _(N, j, n, s) \
-        case NAT_PROTOCOL_##N: \
-          if (a->busy_##n##_port_refcounts[port_host_byte_order]) \
-            return VNET_API_ERROR_INSTANCE_IN_USE; \
-	  ++a->busy_##n##_port_refcounts[port_host_byte_order]; \
-          a->busy_##n##_ports_per_thread[thread_index]++; \
-          a->busy_##n##_ports++; \
-          return 0;
-	  foreach_nat_protocol
-#undef _
-	    default : nat_elog_info (sm, "unknown protocol");
-	  return 1;
-	}
-    }
-
-  return VNET_API_ERROR_NO_SUCH_ENTRY;
 }
 
 int
