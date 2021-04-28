@@ -353,6 +353,21 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
   no_error_existing_session =
     error_node->errors[ACL_FA_ERROR_ACL_EXIST_SESSION];
 
+  u32 pw_run_count = clib_atomic_add_fetch (&pw->run_count, 1);
+  while (1)
+    {
+      u32 max_run_count = clib_atomic_fetch_or (&am->max_run_count, 0);
+      if (pw_run_count <= max_run_count)
+	{
+	  break;
+	}
+      if (clib_atomic_cmp_and_swap (&am->max_run_count, max_run_count,
+				    pw_run_count))
+	{
+	  break;
+	}
+    }
+
   b = pw->bufs;
   next = pw->nexts;
   sw_if_index = pw->sw_if_indices;

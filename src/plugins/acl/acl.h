@@ -269,6 +269,9 @@ typedef struct {
 
   int fa_interrupt_generation;
 
+  /* atomic max of run counts in all workers */
+  u32 max_run_count;
+
   /* per-worker data related t conn management */
   acl_fa_per_worker_data_t *per_worker_data;
 
