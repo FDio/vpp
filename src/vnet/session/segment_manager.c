@@ -626,6 +626,59 @@ segment_manager_del_sessions (segment_manager_t * sm)
   vec_free (handles);
 }
 
+/**
+ * Initiate disconnects for sessions in specified state 'owned' by a segment
+ * manager
+ */
+void
+segment_manager_del_sessions_filter (segment_manager_t *sm,
+				     session_state_t *states)
+{
+  session_handle_t *handles = 0, *handle;
+  fifo_segment_t *fs;
+  session_t *session;
+  int slice_index;
+  svm_fifo_t *f;
+
+  ASSERT (pool_elts (sm->segments) != 0);
+
+  /* Across all fifo segments used by the server */
+  segment_manager_foreach_segment_w_lock (
+    fs, sm, ({
+      for (slice_index = 0; slice_index < fs->n_slices; slice_index++)
+	{
+	  f = fifo_segment_get_slice_fifo_list (fs, slice_index);
+	  while (f)
+	    {
+	      session = session_get_if_valid (f->shr->master_session_index,
+					      f->master_thread_index);
+	      if (session)
+		{
+		  session_state_t *state;
+		  vec_foreach (state, states)
+		    {
+		      if (session->session_state == *state)
+			{
+			  vec_add1 (handles, session_handle (session));
+			  break;
+			}
+		    }
+		}
+	      f = f->next;
+	    }
+	}
+    }));
+
+  vec_foreach (handle, handles)
+    {
+      session = session_get_from_handle (*handle);
+      session_close (session);
+      /* Avoid propagating notifications back to the app */
+      session->app_wrk_index = APP_INVALID_INDEX;
+    }
+  vec_free (handles);
+}
+
 int
 segment_manager_try_alloc_fifos (fifo_segment_t * fifo_segment,
 				 u32 thread_index,
