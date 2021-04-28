@@ -39,21 +39,20 @@ typedef struct
 
 typedef struct
 {
-  uint32_t wrk_index;
-  vcl_test_session_t listener;
-  int epfd;
-  struct epoll_event wait_events[VCL_TEST_CFG_MAX_EPOLL_EVENTS];
-  size_t conn_pool_size;
   vcl_test_session_t *conn_pool;
+  uint32_t wrk_index;
+  int epfd;
+  int conn_pool_size;
   int nfds;
+  vcl_test_session_t listener;
   pthread_t thread_handle;
 } vcl_test_server_worker_t;
 
 typedef struct
 {
-  vcl_test_server_cfg_t cfg;
   vcl_test_server_worker_t *workers;
   vcl_test_session_t *ctrl;
+  vcl_test_server_cfg_t cfg;
   int ctrl_listen_fd;
   struct sockaddr_storage servaddr;
   volatile int worker_fails;
@@ -577,6 +576,7 @@ vts_conn_read (vcl_test_session_t *conn)
 static void *
 vts_worker_loop (void *arg)
 {
+  struct epoll_event ep_evts[VCL_TEST_CFG_MAX_EPOLL_EVENTS];
   vcl_test_server_main_t *vsm = &vcl_server_main;
   vcl_test_server_worker_t *wrk = arg;
   vcl_test_session_t *conn;
@@ -588,8 +588,8 @@ vts_worker_loop (void *arg)
 
   while (1)
     {
-      num_ev = vppcom_epoll_wait (wrk->epfd, wrk->wait_events,
-				  VCL_TEST_CFG_MAX_EPOLL_EVENTS, 60000.0);
+      num_ev = vppcom_epoll_wait (wrk->epfd, ep_evts,
+				  VCL_TEST_CFG_MAX_EPOLL_EVENTS, -1);
       if (num_ev < 0)
 	{
 	  vterr ("vppcom_epoll_wait()", num_ev);
@@ -597,18 +597,23 @@ vts_worker_loop (void *arg)
 	}
       else if (num_ev == 0)
 	{
-	  vtinf ("vppcom_epoll_wait() timeout!");
+	  vtinf ("huh?");
 	  continue;
 	}
       for (i = 0; i < num_ev; i++)
 	{
-	  conn = &wrk->conn_pool[wrk->wait_events[i].data.u32];
+	  conn = &wrk->conn_pool[ep_evts[i].data.u32];
 	  /*
 	   * Check for close events
 	   */
-	  if (wrk->wait_events[i].events & (EPOLLHUP | EPOLLRDHUP))
+	  if (ep_evts[i].events & (EPOLLHUP | EPOLLRDHUP))
 	    {
 	      vts_session_close (conn);
+	      if (conn == vsm->ctrl)
+		{
+		  vts_wrk_cleanup_all (wrk);
+		  goto done;
+		}
 	      wrk->nfds--;
 	      if (!wrk->nfds)
 		{
@@ -622,7 +627,7 @@ vts_worker_loop (void *arg)
 	   * Check if new session needs to be accepted
 	   */
 
-	  if (wrk->wait_events[i].data.u32 == VCL_TEST_CTRL_LISTENER)
+	  if (!wrk->wrk_index && ep_evts[i].data.u32 == VCL_TEST_CTRL_LISTENER)
 	    {
 	      if (vsm->ctrl)
 		{
@@ -632,7 +637,7 @@ vts_worker_loop (void *arg)
 	      vsm->ctrl = vts_accept_client (wrk, vsm->ctrl_listen_fd);
 	      continue;
 	    }
-	  if (wrk->wait_events[i].data.u32 == VCL_TEST_DATA_LISTENER)
+	  if (ep_evts[i].data.u32 == VCL_TEST_DATA_LISTENER)
 	    {
 	      conn = vts_accept_client (wrk, wrk->listener.fd);
 	      conn->cfg = vsm->ctrl->cfg;
@@ -676,7 +681,7 @@ vts_worker_loop (void *arg)
 	   * Read perf test data
 	   */
 
-	  if (EPOLLIN & wrk->wait_events[i].events)
+	  if (EPOLLIN & ep_evts[i].events)
 	    {
 	    read_again:
 	      rx_bytes = vts_conn_read (conn);
