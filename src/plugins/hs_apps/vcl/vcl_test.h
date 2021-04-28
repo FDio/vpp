@@ -126,6 +126,7 @@ typedef struct vcl_test_session
 {
   uint8_t is_alloc;
   uint8_t is_open;
+  uint8_t is_done;
   int fd;
   int (*read) (struct vcl_test_session *ts, void *buf, uint32_t buflen);
   int (*write) (struct vcl_test_session *ts, void *buf, uint32_t buflen);
@@ -247,14 +248,23 @@ vcl_test_buf_alloc (vcl_test_cfg_t * cfg, uint8_t is_rxbuf, uint8_t ** buf,
 }
 
 static inline void
-vcl_test_session_buf_alloc (vcl_test_session_t * socket)
+vcl_test_session_buf_alloc (vcl_test_session_t * ts)
 {
-  socket->rxbuf_size = socket->cfg.rxbuf_size;
-  socket->txbuf_size = socket->cfg.txbuf_size;
-  vcl_test_buf_alloc (&socket->cfg, 0 /* is_rxbuf */ ,
-		      (uint8_t **) & socket->txbuf, &socket->txbuf_size);
-  vcl_test_buf_alloc (&socket->cfg, 1 /* is_rxbuf */ ,
-		      (uint8_t **) & socket->rxbuf, &socket->rxbuf_size);
+  ts->rxbuf_size = ts->cfg.rxbuf_size;
+  ts->txbuf_size = ts->cfg.txbuf_size;
+  vcl_test_buf_alloc (&ts->cfg, 0 /* is_rxbuf */ ,
+		      (uint8_t **) & ts->txbuf, &ts->txbuf_size);
+  vcl_test_buf_alloc (&ts->cfg, 1 /* is_rxbuf */ ,
+		      (uint8_t **) & ts->rxbuf, &ts->rxbuf_size);
+}
+
+static inline void
+vcl_test_session_buf_free (vcl_test_session_t * ts)
+{
+  free (ts->rxbuf);
+  free (ts->txbuf);
+  ts->rxbuf = 0;
+  ts->txbuf = 0;
 }
 
 static inline char *
