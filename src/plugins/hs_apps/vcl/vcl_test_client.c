@@ -31,7 +31,6 @@ typedef struct
   vcl_test_session_t *sessions;
   vcl_test_session_t *qsessions;
   uint32_t n_sessions;
-  uint32_t n_qsessions;
   uint32_t wrk_index;
   fd_set wr_fdset;
   fd_set rd_fdset;
@@ -43,10 +42,9 @@ typedef struct
 typedef struct
 {
   vcl_test_client_worker_t *workers;
+  vcl_test_session_t ctrl_session;
   vppcom_endpt_t server_endpt;
   uint32_t cfg_seq_num;
-  vcl_test_session_t ctrl_session;
-  vcl_test_session_t *sessions;
   uint8_t dump_cfg;
   vcl_test_t post_test;
   uint8_t proto;
@@ -154,7 +152,10 @@ vtc_connect_test_sessions (vcl_test_client_worker_t * wrk)
   for (i = 0; i < n_test_sessions; i++)
     {
       ts = &wrk->sessions[i];
+      memset (ts, 0, sizeof (*ts));
       ts->session_index = i;
+      ts->cfg = wrk->cfg;
+      vcl_test_session_buf_alloc (ts);
       rv = tp->open (&wrk->sessions[i], &vcm->server_endpt);
       if (rv < 0)
 	return rv;
@@ -169,8 +170,6 @@ done:
 static int
 vtc_worker_test_setup (vcl_test_client_worker_t * wrk)
 {
-  vcl_test_client_main_t *vcm = &vcl_client_main;
-  vcl_test_session_t *ctrl = &vcm->ctrl_session;
   vcl_test_cfg_t *cfg = &wrk->cfg;
   vcl_test_session_t *ts;
   uint32_t sidx;
@@ -182,18 +181,15 @@ vtc_worker_test_setup (vcl_test_client_worker_t * wrk)
   for (i = 0; i < cfg->num_test_sessions; i++)
     {
       ts = &wrk->sessions[i];
-      ts->cfg = wrk->cfg;
-      vcl_test_session_buf_alloc (ts);
 
       switch (cfg->test)
 	{
-	case VCL_TEST_TYPE_ECHO:
-	  memcpy (ts->txbuf, ctrl->txbuf, cfg->total_bytes);
-	  break;
 	case VCL_TEST_TYPE_UNI:
 	case VCL_TEST_TYPE_BI:
 	  for (j = 0; j < ts->txbuf_size; j++)
 	    ts->txbuf[j] = j & 0xff;
+	  break;
+	default:
 	  break;
 	}
 
@@ -211,9 +207,6 @@ static int
 vtc_worker_init (vcl_test_client_worker_t * wrk)
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
-  vcl_test_cfg_t *cfg = &wrk->cfg;
-  vcl_test_session_t *ts;
-  uint32_t n;
   int rv;
 
   __wrk_index = wrk->wrk_index;
@@ -238,12 +231,6 @@ vtc_worker_init (vcl_test_client_worker_t * wrk)
 
   if (vtc_worker_test_setup (wrk))
     return -1;
-
-  for (n = 0; n < cfg->num_test_sessions; n++)
-    {
-      ts = &wrk->sessions[n];
-      memset (&ts->stats, 0, sizeof (ts->stats));
-    }
 
   return 0;
 }
@@ -295,6 +282,7 @@ vtc_worker_sessions_exit (vcl_test_client_worker_t * wrk)
     {
       ts = &wrk->sessions[i];
       vppcom_session_close (ts->fd);
+      vcl_test_session_buf_free (ts);
     }
 
   wrk->n_sessions = 0;
@@ -344,8 +332,7 @@ vtc_worker_loop (void *arg)
       for (i = 0; i < wrk->cfg.num_test_sessions; i++)
 	{
 	  ts = &wrk->sessions[i];
-	  if (!((ts->stats.stop.tv_sec == 0) &&
-		(ts->stats.stop.tv_nsec == 0)))
+	  if (ts->is_done)
 	    continue;
 
 	  if (FD_ISSET (vppcom_session_index (ts->fd), rfdset)
@@ -371,6 +358,7 @@ vtc_worker_loop (void *arg)
 	      || (check_rx && ts->stats.rx_bytes >= ts->cfg.total_bytes))
 	    {
 	      clock_gettime (CLOCK_REALTIME, &ts->stats.stop);
+	      ts->is_done = 1;
 	      n_active_sessions--;
 	    }
 	}
@@ -454,6 +442,7 @@ vtc_stream_client (vcl_test_client_main_t * vcm)
   vtinf ("%s-directional Stream Test Starting!",
 	 ctrl->cfg.test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
 
+  memset (&ctrl->stats, 0, sizeof (vcl_test_stats_t));
   cfg->total_bytes = cfg->num_writes * cfg->txbuf_size;
   cfg->ctrl_handle = ctrl->fd;
 
