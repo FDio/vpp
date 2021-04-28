@@ -263,7 +263,8 @@ flow_report_process (vlib_main_t * vm,
   u32 template_bi;
   u32 *to_next;
   int send_template;
-  f64 now;
+  f64 now, wait_time;
+  f64 def_wait_time = 5.0;
   int rv;
   uword event_type;
   uword *event_data = 0;
@@ -279,14 +280,20 @@ flow_report_process (vlib_main_t * vm,
   ip4_lookup_node = vlib_get_node_by_name (vm, (u8 *) "ip4-lookup");
   ip4_lookup_node_index = ip4_lookup_node->index;
 
+  wait_time = def_wait_time;
+
   while (1)
     {
-      vlib_process_wait_for_event_or_clock (vm, 5.0);
+      vlib_process_wait_for_event_or_clock (vm, wait_time);
       event_type = vlib_process_get_events (vm, &event_data);
       vec_reset_length (event_data);
 
+      /* 5s delay by default, possibly reduced by template intervals */
+      wait_time = def_wait_time;
+
       vec_foreach (fr, frm->reports)
       {
+	f64 next_template;
 	now = vlib_time_now (vm);
 
 	/* Need to send a template packet? */
@@ -301,6 +308,11 @@ flow_report_process (vlib_main_t * vm,
 
 	if (rv < 0)
 	  continue;
+
+	/* decide if template should be sent sooner than current wait time */
+	next_template =
+	  (fr->last_template_sent + frm->template_interval) - now;
+	wait_time = clib_min (wait_time, next_template);
 
 	nf = vlib_get_frame_to_node (vm, ip4_lookup_node_index);
 	nf->n_vectors = 0;
