@@ -39,21 +39,20 @@ typedef struct
 
 typedef struct
 {
-  uint32_t wrk_index;
-  vcl_test_session_t listener;
-  int epfd;
-  struct epoll_event wait_events[VCL_TEST_CFG_MAX_EPOLL_EVENTS];
-  size_t conn_pool_size;
   vcl_test_session_t *conn_pool;
+  uint32_t wrk_index;
+  int epfd;
+  int conn_pool_size;
   int nfds;
+  vcl_test_session_t listener;
   pthread_t thread_handle;
 } vcl_test_server_worker_t;
 
 typedef struct
 {
-  vcl_test_server_cfg_t cfg;
   vcl_test_server_worker_t *workers;
   vcl_test_session_t *ctrl;
+  vcl_test_server_cfg_t server_cfg;
   int ctrl_listen_fd;
   struct sockaddr_storage servaddr;
   volatile int worker_fails;
@@ -79,10 +78,6 @@ conn_pool_expand (vcl_test_server_worker_t * wrk, size_t expand_size)
 	{
 	  vcl_test_session_t *conn = &conn_pool[i];
 	  memset (conn, 0, sizeof (*conn));
-	  vcl_test_cfg_init (&conn->cfg);
-	  vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */,
-			      (uint8_t **) &conn->rxbuf, &conn->rxbuf_size);
-	  conn->cfg.txbuf_size = conn->cfg.rxbuf_size;
 	}
 
       wrk->conn_pool = conn_pool;
@@ -104,9 +99,12 @@ again:
     {
       if (!wrk->conn_pool[i].is_alloc)
 	{
-	  wrk->conn_pool[i].endpt.ip = wrk->conn_pool[i].ip;
-	  wrk->conn_pool[i].is_alloc = 1;
-	  wrk->conn_pool[i].session_index = i;
+	  vcl_test_session_t *conn = &wrk->conn_pool[i];
+	  conn->endpt.ip = wrk->conn_pool[i].ip;
+	  conn->is_alloc = 1;
+	  conn->session_index = i;
+	  memset (&conn->stats, 0, sizeof (vcl_test_stats_t));
+	  vcl_test_cfg_init (&conn->cfg);
 	  return (&wrk->conn_pool[i]);
 	}
     }
@@ -122,10 +120,11 @@ again:
 }
 
 static inline void
-conn_pool_free (vcl_test_session_t *conn)
+conn_pool_free (vcl_test_session_t *ts)
 {
-  conn->fd = 0;
-  conn->is_alloc = 0;
+  ts->fd = 0;
+  ts->is_alloc = 0;
+  vcl_test_session_buf_free (ts);
 }
 
 static inline void
@@ -153,18 +152,18 @@ vts_session_close (vcl_test_session_t *conn)
   if (!conn->is_open)
     return;
 
-  if (vt->protos[vsm->cfg.proto]->close)
-    vt->protos[vsm->cfg.proto]->close (conn);
+  if (vt->protos[vsm->server_cfg.proto]->close)
+    vt->protos[vsm->server_cfg.proto]->close (conn);
 
   vppcom_session_close (conn->fd);
   conn->is_open = 0;
 }
 
 static void
-vts_session_cleanup (vcl_test_session_t *conn)
+vts_session_cleanup (vcl_test_session_t *ts)
 {
-  vts_session_close (conn);
-  conn_pool_free (conn);
+  vts_session_close (ts);
+  conn_pool_free (ts);
 }
 
 static void
@@ -214,7 +213,7 @@ vts_test_cmd (vcl_test_server_worker_t *wrk, vcl_test_session_t *conn,
 	  vcl_test_stats_accumulate (&conn->stats, &tc->stats);
 	  if (tc->is_open)
 	    {
-	      vts_session_close (tc);
+	      vts_session_cleanup (tc);
 	      continue;
 	    }
 	  /* Only relevant if all connections previously closed */
@@ -321,7 +320,11 @@ vts_accept_client (vcl_test_server_worker_t *wrk, int listen_fd)
       return 0;
     }
 
-  tp = vcl_test_main.protos[vsm->cfg.proto];
+  if (vsm->ctrl)
+    conn->cfg = vsm->ctrl->cfg;
+  vcl_test_session_buf_alloc (conn);
+
+  tp = vcl_test_main.protos[vsm->server_cfg.proto];
   if (tp->accept (listen_fd, conn))
     return 0;
 
@@ -362,34 +365,34 @@ vcl_test_init_endpoint_addr (vcl_test_server_main_t * vsm)
   struct sockaddr_storage *servaddr = &vsm->servaddr;
   memset (servaddr, 0, sizeof (*servaddr));
 
-  if (vsm->cfg.address_ip6)
+  if (vsm->server_cfg.address_ip6)
     {
       struct sockaddr_in6 *server_addr = (struct sockaddr_in6 *) servaddr;
       server_addr->sin6_family = AF_INET6;
       server_addr->sin6_addr = in6addr_any;
-      server_addr->sin6_port = htons (vsm->cfg.port);
+      server_addr->sin6_port = htons (vsm->server_cfg.port);
     }
   else
     {
       struct sockaddr_in *server_addr = (struct sockaddr_in *) servaddr;
       server_addr->sin_family = AF_INET;
       server_addr->sin_addr.s_addr = htonl (INADDR_ANY);
-      server_addr->sin_port = htons (vsm->cfg.port);
+      server_addr->sin_port = htons (vsm->server_cfg.port);
     }
 
-  if (vsm->cfg.address_ip6)
+  if (vsm->server_cfg.address_ip6)
     {
       struct sockaddr_in6 *server_addr = (struct sockaddr_in6 *) servaddr;
-      vsm->cfg.endpt.is_ip4 = 0;
-      vsm->cfg.endpt.ip = (uint8_t *) & server_addr->sin6_addr;
-      vsm->cfg.endpt.port = (uint16_t) server_addr->sin6_port;
+      vsm->server_cfg.endpt.is_ip4 = 0;
+      vsm->server_cfg.endpt.ip = (uint8_t *) &server_addr->sin6_addr;
+      vsm->server_cfg.endpt.port = (uint16_t) server_addr->sin6_port;
     }
   else
     {
       struct sockaddr_in *server_addr = (struct sockaddr_in *) servaddr;
-      vsm->cfg.endpt.is_ip4 = 1;
-      vsm->cfg.endpt.ip = (uint8_t *) & server_addr->sin_addr;
-      vsm->cfg.endpt.port = (uint16_t) server_addr->sin_port;
+      vsm->server_cfg.endpt.is_ip4 = 1;
+      vsm->server_cfg.endpt.ip = (uint8_t *) &server_addr->sin_addr;
+      vsm->server_cfg.endpt.port = (uint16_t) server_addr->sin_port;
     }
 }
 
@@ -399,33 +402,33 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
 {
   int v, c;
 
-  vsm->cfg.proto = VPPCOM_PROTO_TCP;
+  vsm->server_cfg.proto = VPPCOM_PROTO_TCP;
 
   opterr = 0;
   while ((c = getopt (argc, argv, "6DLsw:hp:")) != -1)
     switch (c)
       {
       case '6':
-	vsm->cfg.address_ip6 = 1;
+	vsm->server_cfg.address_ip6 = 1;
 	break;
 
       case 'p':
-	if (vppcom_unformat_proto (&vsm->cfg.proto, optarg))
+	if (vppcom_unformat_proto (&vsm->server_cfg.proto, optarg))
 	  vtwrn ("Invalid vppcom protocol %s, defaulting to TCP", optarg);
 	break;
 
       case 'D':
-	vsm->cfg.proto = VPPCOM_PROTO_UDP;
+	vsm->server_cfg.proto = VPPCOM_PROTO_UDP;
 	break;
 
       case 'L':
-	vsm->cfg.proto = VPPCOM_PROTO_TLS;
+	vsm->server_cfg.proto = VPPCOM_PROTO_TLS;
 	break;
 
       case 'w':
 	v = atoi (optarg);
 	if (v > 1)
-	  vsm->cfg.workers = v;
+	  vsm->server_cfg.workers = v;
 	else
 	  vtwrn ("Invalid number of workers %d", v);
 	break;
@@ -458,7 +461,7 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
     }
 
   if (sscanf (argv[optind], "%d", &v) == 1)
-    vsm->cfg.port = (uint16_t) v;
+    vsm->server_cfg.port = (uint16_t) v;
   else
     {
       fprintf (stderr, "SERVER: ERROR: Invalid port (%s)!\n", argv[optind]);
@@ -540,8 +543,8 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
     if (vppcom_worker_register ())
       vtfail ("vppcom_worker_register()", 1);
 
-  tp = vt->protos[vsm->cfg.proto];
-  if ((rv = tp->listen (&wrk->listener, &vsm->cfg.endpt)))
+  tp = vt->protos[vsm->server_cfg.proto];
+  if ((rv = tp->listen (&wrk->listener, &vsm->server_cfg.endpt)))
     vtfail ("proto listen", rv);
 
   /* First worker already has epoll fd */
@@ -561,7 +564,7 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
 
   vsm->active_workers += 1;
   vtinf ("Waiting for client data connections on port %d ...",
-	 ntohs (vsm->cfg.endpt.port));
+	 ntohs (vsm->server_cfg.endpt.port));
 }
 
 static inline int
@@ -577,6 +580,7 @@ vts_conn_read (vcl_test_session_t *conn)
 static void *
 vts_worker_loop (void *arg)
 {
+  struct epoll_event ep_evts[VCL_TEST_CFG_MAX_EPOLL_EVENTS];
   vcl_test_server_main_t *vsm = &vcl_server_main;
   vcl_test_server_worker_t *wrk = arg;
   vcl_test_session_t *conn;
@@ -588,8 +592,9 @@ vts_worker_loop (void *arg)
 
   while (1)
     {
-      num_ev = vppcom_epoll_wait (wrk->epfd, wrk->wait_events,
-				  VCL_TEST_CFG_MAX_EPOLL_EVENTS, 60000.0);
+      num_ev =
+	vppcom_epoll_wait (wrk->epfd, ep_evts, VCL_TEST_CFG_MAX_EPOLL_EVENTS,
+			   0 /* poll session events */);
       if (num_ev < 0)
 	{
 	  vterr ("vppcom_epoll_wait()", num_ev);
@@ -597,18 +602,17 @@ vts_worker_loop (void *arg)
 	}
       else if (num_ev == 0)
 	{
-	  vtinf ("vppcom_epoll_wait() timeout!");
 	  continue;
 	}
       for (i = 0; i < num_ev; i++)
 	{
-	  conn = &wrk->conn_pool[wrk->wait_events[i].data.u32];
+	  conn = &wrk->conn_pool[ep_evts[i].data.u32];
 	  /*
 	   * Check for close events
 	   */
-	  if (wrk->wait_events[i].events & (EPOLLHUP | EPOLLRDHUP))
+	  if (ep_evts[i].events & (EPOLLHUP | EPOLLRDHUP))
 	    {
-	      vts_session_close (conn);
+	      vts_session_cleanup (conn);
 	      wrk->nfds--;
 	      if (!wrk->nfds)
 		{
@@ -622,7 +626,7 @@ vts_worker_loop (void *arg)
 	   * Check if new session needs to be accepted
 	   */
 
-	  if (wrk->wait_events[i].data.u32 == VCL_TEST_CTRL_LISTENER)
+	  if (!wrk->wrk_index && ep_evts[i].data.u32 == VCL_TEST_CTRL_LISTENER)
 	    {
 	      if (vsm->ctrl)
 		{
@@ -632,7 +636,7 @@ vts_worker_loop (void *arg)
 	      vsm->ctrl = vts_accept_client (wrk, vsm->ctrl_listen_fd);
 	      continue;
 	    }
-	  if (wrk->wait_events[i].data.u32 == VCL_TEST_DATA_LISTENER)
+	  if (ep_evts[i].data.u32 == VCL_TEST_DATA_LISTENER)
 	    {
 	      conn = vts_accept_client (wrk, wrk->listener.fd);
 	      conn->cfg = vsm->ctrl->cfg;
@@ -676,7 +680,7 @@ vts_worker_loop (void *arg)
 	   * Read perf test data
 	   */
 
-	  if (EPOLLIN & wrk->wait_events[i].events)
+	  if (EPOLLIN & ep_evts[i].events)
 	    {
 	    read_again:
 	      rx_bytes = vts_conn_read (conn);
@@ -730,7 +734,7 @@ vts_ctrl_session_init (vcl_test_server_worker_t *wrk)
   if (vsm->ctrl_listen_fd < 0)
     vtfail ("vppcom_session_create()", vsm->ctrl_listen_fd);
 
-  rv = vppcom_session_bind (vsm->ctrl_listen_fd, &vsm->cfg.endpt);
+  rv = vppcom_session_bind (vsm->ctrl_listen_fd, &vsm->server_cfg.endpt);
   if (rv < 0)
     vtfail ("vppcom_session_bind()", rv);
 
@@ -749,7 +753,8 @@ vts_ctrl_session_init (vcl_test_server_worker_t *wrk)
   if (rv < 0)
     vtfail ("vppcom_epoll_ctl", rv);
 
-  vtinf ("Waiting for client ctrl connection on port %d ...", vsm->cfg.port);
+  vtinf ("Waiting for client ctrl connection on port %d ...",
+	 vsm->server_cfg.port);
 }
 
 int
@@ -760,8 +765,8 @@ main (int argc, char **argv)
   int rv, i;
 
   clib_mem_init_thread_safe (0, 64 << 20);
-  vsm->cfg.port = VCL_TEST_SERVER_PORT;
-  vsm->cfg.workers = 1;
+  vsm->server_cfg.port = VCL_TEST_SERVER_PORT;
+  vsm->server_cfg.workers = 1;
   vsm->active_workers = 0;
   vcl_test_server_process_opts (vsm, argc, argv);
 
@@ -770,16 +775,16 @@ main (int argc, char **argv)
     vtfail ("vppcom_app_create()", rv);
 
   /* Protos like tls/dtls/quic need init */
-  if (vt->protos[vsm->cfg.proto]->init)
-    vt->protos[vsm->cfg.proto]->init (0);
+  if (vt->protos[vsm->server_cfg.proto]->init)
+    vt->protos[vsm->server_cfg.proto]->init (0);
 
-  vsm->workers = calloc (vsm->cfg.workers, sizeof (*vsm->workers));
+  vsm->workers = calloc (vsm->server_cfg.workers, sizeof (*vsm->workers));
   vts_ctrl_session_init (&vsm->workers[0]);
 
   /* Update ctrl port to data port */
-  vsm->cfg.endpt.port += 1;
+  vsm->server_cfg.endpt.port += 1;
   vts_worker_init (&vsm->workers[0]);
-  for (i = 1; i < vsm->cfg.workers; i++)
+  for (i = 1; i < vsm->server_cfg.workers; i++)
     {
       vsm->workers[i].wrk_index = i;
       rv = pthread_create (&vsm->workers[i].thread_handle, NULL,
