@@ -17,7 +17,7 @@ static_always_inline u64
 clib_compare_u16_x64 (u16 v, u16 *a)
 {
   u64 mask = 0;
-#if defined(CLIB_HAVE_VEC512) && !defined(__aarch64__)
+#if defined(CLIB_HAVE_VEC512)
   u16x32 v32 = u16x32_splat (v);
   u16x32u *av = (u16x32u *) a;
   mask = ((u64) u16x32_is_equal_mask (av[0], v32) |
