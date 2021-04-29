@@ -93,8 +93,7 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
   af_xdp_main_t *axm = &af_xdp_main;
   struct xsk_socket **xsk;
   struct xsk_umem **umem;
-  af_xdp_rxq_t *rxq;
-  af_xdp_txq_t *txq;
+  int i;
 
   if (ad->hw_if_index)
     {
@@ -102,11 +101,17 @@ af_xdp_delete_if (vlib_main_t * vm, af_xdp_device_t * ad)
       ethernet_delete_interface (vnm, ad->hw_if_index);
     }
 
-  vec_foreach (rxq, ad->rxqs) clib_file_del_by_index (&file_main,
-						      rxq->file_index);
-  vec_foreach (txq, ad->txqs) clib_spinlock_free (&txq->lock);
-  vec_foreach (xsk, ad->xsk) xsk_socket__delete (*xsk);
-  vec_foreach (umem, ad->umem) xsk_umem__delete (*umem);
+  for (i = 0; i < ad->rxq_num; i++)
+    clib_file_del_by_index (&file_main, vec_elt (ad->rxqs, i).file_index);
+
+  for (i = 0; i < ad->txq_num; i++)
+    clib_spinlock_free (&vec_elt (ad->txqs, i).lock);
+
+  vec_foreach (xsk, ad->xsk)
+    xsk_socket__delete (*xsk);
+
+  vec_foreach (umem, ad->umem)
+    xsk_umem__delete (*umem);
 
   if (ad->bpf_obj)
     {
@@ -169,8 +174,8 @@ err0:
 }
 
 static int
-af_xdp_create_queue (vlib_main_t * vm, af_xdp_create_if_args_t * args,
-		     af_xdp_device_t * ad, int qid, int rxq_num, int txq_num)
+af_xdp_create_queue (vlib_main_t *vm, af_xdp_create_if_args_t *args,
+		     af_xdp_device_t *ad, int qid)
 {
   struct xsk_umem **umem;
   struct xsk_socket **xsk;
@@ -180,6 +185,8 @@ af_xdp_create_queue (vlib_main_t * vm, af_xdp_create_if_args_t * args,
   struct xsk_socket_config sock_config;
   struct xdp_options opt;
   socklen_t optlen;
+  const int is_rx = qid < ad->rxq_num;
+  const int is_tx = qid < ad->txq_num;
 
   vec_validate_aligned (ad->umem, qid, CLIB_CACHE_LINE_BYTES);
   umem = vec_elt_at_index (ad->umem, qid);
@@ -197,9 +204,9 @@ af_xdp_create_queue (vlib_main_t * vm, af_xdp_create_if_args_t * args,
    * fq and cq must always be allocated even if unused
    * whereas rx and tx indicates whether we want rxq, txq, or both
    */
-  struct xsk_ring_cons *rx = qid < rxq_num ? &rxq->rx : 0;
+  struct xsk_ring_cons *rx = is_rx ? &rxq->rx : 0;
   struct xsk_ring_prod *fq = &rxq->fq;
-  struct xsk_ring_prod *tx = qid < txq_num ? &txq->tx : 0;
+  struct xsk_ring_prod *tx = is_tx ? &txq->tx : 0;
   struct xsk_ring_cons *cq = &txq->cq;
   int fd;
 
@@ -268,8 +275,32 @@ af_xdp_create_queue (vlib_main_t * vm, af_xdp_create_if_args_t * args,
   if (opt.flags & XDP_OPTIONS_ZEROCOPY)
     ad->flags |= AF_XDP_DEVICE_F_ZEROCOPY;
 
-  rxq->xsk_fd = qid < rxq_num ? fd : -1;
-  txq->xsk_fd = qid < txq_num ? fd : -1;
+  rxq->xsk_fd = is_rx ? fd : -1;
+
+  if (is_tx)
+    {
+      txq->xsk_fd = fd;
+      if (is_rx && (ad->flags & AF_XDP_DEVICE_F_SYSCALL_LOCK))
+	{
+	  /* This is a shared rx+tx queue and we need to lock before syscalls.
+	   * Prior to Linux 5.6 there is a race condition preventing to call
+	   * poll() and sendto() concurrently on AF_XDP sockets. This was
+	   * fixed with commit 11cc2d21499cabe7e7964389634ed1de3ee91d33
+	   * to workaround this issue, we protect the syscalls with a
+	   * spinlock. Note that it also prevents to use interrupt mode in
+	   * multi workers setup, because in this case the poll() is done in
+	   * the framework w/o any possibility to protect it.
+	   * See
+	   * https://lore.kernel.org/bpf/BYAPR11MB365382C5DB1E5FCC53242609C1549@BYAPR11MB3653.namprd11.prod.outlook.com/
+	   */
+	  clib_spinlock_init (&rxq->syscall_lock);
+	  txq->syscall_lock = rxq->syscall_lock;
+	}
+    }
+  else
+    {
+      txq->xsk_fd = -1;
+    }
 
   return 0;
 
@@ -308,19 +339,37 @@ af_xdp_device_rxq_read_ready (clib_file_t * f)
   return 0;
 }
 
-static void
-af_xdp_device_set_rxq_mode (af_xdp_rxq_t *rxq, int is_polling)
+static clib_error_t *
+af_xdp_device_set_rxq_mode (const af_xdp_device_t *ad, af_xdp_rxq_t *rxq,
+			    const af_xdp_rxq_mode_t mode)
 {
   clib_file_main_t *fm = &file_main;
+  clib_file_update_type_t update;
   clib_file_t *f;
 
-  if (rxq->is_polling == is_polling)
-    return;
+  if (rxq->mode == mode)
+    return 0;
+
+  switch (mode)
+    {
+    case AF_XDP_RXQ_MODE_POLLING:
+      update = UNIX_FILE_UPDATE_DELETE;
+      break;
+    case AF_XDP_RXQ_MODE_INTERRUPT:
+      if (ad->flags & AF_XDP_DEVICE_F_SYSCALL_LOCK)
+	return clib_error_create (
+	  "kernel workaround incompatible with interrupt mode");
+      update = UNIX_FILE_UPDATE_ADD;
+      break;
+    default:
+      ASSERT (0);
+      return clib_error_create ("unknown rxq mode %i", mode);
+    }
 
   f = clib_file_get (fm, rxq->file_index);
-  fm->file_update (f, is_polling ? UNIX_FILE_UPDATE_DELETE :
-				   UNIX_FILE_UPDATE_ADD);
-  rxq->is_polling = !!is_polling;
+  fm->file_update (f, update);
+  rxq->mode = mode;
+  return 0;
 }
 
 void
@@ -361,6 +410,10 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 
   pool_get_zero (am->devices, ad);
 
+  if (tm->n_vlib_mains > 1 &&
+      0 == (args->flags & AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK))
+    ad->flags |= AF_XDP_DEVICE_F_SYSCALL_LOCK;
+
   ad->linux_ifname = (char *) format (0, "%s", args->linux_ifname);
   vec_validate (ad->linux_ifname, IFNAMSIZ - 1);	/* libbpf expects ifname to be at least IFNAMSIZ */
 
@@ -368,10 +421,11 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
     goto err1;
 
   q_num = clib_max (rxq_num, txq_num);
+  ad->rxq_num = rxq_num;
   ad->txq_num = txq_num;
   for (i = 0; i < q_num; i++)
     {
-      if (af_xdp_create_queue (vm, args, ad, i, rxq_num, txq_num))
+      if (af_xdp_create_queue (vm, args, ad, i))
 	{
 	  /*
 	   * queue creation failed
@@ -387,15 +441,21 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 	  vec_set_len (ad->rxqs, i);
 	  vec_set_len (ad->txqs, i);
 
+	  ad->rxq_num = clib_min (i, rxq_num);
+	  ad->txq_num = clib_min (i, txq_num);
+
 	  if (i < rxq_num && AF_XDP_NUM_RX_QUEUES_ALL != rxq_num)
-	    goto err1;		/* failed creating requested rxq: fatal error, bailing out */
+	    {
+	      ad->rxq_num = ad->txq_num = 0;
+	      goto err1; /* failed creating requested rxq: fatal error, bailing
+			    out */
+	    }
 
 	  if (i < txq_num)
 	    {
 	      /* we created less txq than threads not an error but initialize lock for shared txq */
-	      af_xdp_txq_t *txq;
-	      ad->txq_num = i;
-	      vec_foreach (txq, ad->txqs) clib_spinlock_init (&txq->lock);
+	      for (i = 0; i < ad->txq_num; i++)
+		clib_spinlock_init (&vec_elt (ad->txqs, i).lock);
 	    }
 
 	  args->rv = 0;
@@ -436,7 +496,7 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 
   vnet_hw_if_set_input_node (vnm, ad->hw_if_index, af_xdp_input_node.index);
 
-  for (i = 0; i < vec_len (ad->rxqs); i++)
+  for (i = 0; i < ad->rxq_num; i++)
     {
       af_xdp_rxq_t *rxq = vec_elt_at_index (ad->rxqs, i);
       rxq->queue_index = vnet_hw_if_register_rx_queue (
@@ -445,7 +505,6 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
 			 ad->dev_instance, i);
       clib_file_t f = {
 	.file_descriptor = rxq->xsk_fd,
-	.flags = UNIX_FILE_EVENT_EDGE_TRIGGERED,
 	.private_data = rxq->queue_index,
 	.read_function = af_xdp_device_rxq_read_ready,
 	.description = desc,
@@ -453,7 +512,8 @@ af_xdp_create_if (vlib_main_t * vm, af_xdp_create_if_args_t * args)
       rxq->file_index = clib_file_add (&file_main, &f);
       vnet_hw_if_set_rx_queue_file_index (vnm, rxq->queue_index,
 					  rxq->file_index);
-      af_xdp_device_set_rxq_mode (rxq, 1 /* polling */);
+      if (af_xdp_device_set_rxq_mode (ad, rxq, AF_XDP_RXQ_MODE_POLLING))
+	goto err1;
     }
 
   vnet_hw_if_update_runtime_data (vnm, ad->hw_if_index);
@@ -510,24 +570,20 @@ af_xdp_interface_rx_mode_change (vnet_main_t *vnm, u32 hw_if_index, u32 qid,
 
   switch (mode)
     {
-    case VNET_HW_IF_RX_MODE_UNKNOWN:
-    case VNET_HW_IF_NUM_RX_MODES: /* fallthrough */
+    default:			     /* fallthrough */
+    case VNET_HW_IF_RX_MODE_UNKNOWN: /* fallthrough */
+    case VNET_HW_IF_NUM_RX_MODES:
       return clib_error_create ("uknown rx mode - doing nothing");
-    case VNET_HW_IF_RX_MODE_DEFAULT:
-    case VNET_HW_IF_RX_MODE_POLLING: /* fallthrough */
-      if (rxq->is_polling)
-	break;
-      af_xdp_device_set_rxq_mode (rxq, 1 /* polling */);
-      break;
-    case VNET_HW_IF_RX_MODE_INTERRUPT:
-    case VNET_HW_IF_RX_MODE_ADAPTIVE: /* fallthrough */
-      if (0 == rxq->is_polling)
-	break;
-      af_xdp_device_set_rxq_mode (rxq, 0 /* interrupt */);
-      break;
+    case VNET_HW_IF_RX_MODE_DEFAULT: /* fallthrough */
+    case VNET_HW_IF_RX_MODE_POLLING:
+      return af_xdp_device_set_rxq_mode (ad, rxq, AF_XDP_RXQ_MODE_POLLING);
+    case VNET_HW_IF_RX_MODE_INTERRUPT: /* fallthrough */
+    case VNET_HW_IF_RX_MODE_ADAPTIVE:
+      return af_xdp_device_set_rxq_mode (ad, rxq, AF_XDP_RXQ_MODE_INTERRUPT);
     }
 
-  return 0;
+  ASSERT (0 && "unreachable");
+  return clib_error_create ("unreachable");
 }
 
 static void

@@ -44,6 +44,17 @@ af_xdp_api_mode (vl_api_af_xdp_mode_t mode)
   return AF_XDP_MODE_AUTO;
 }
 
+static af_xdp_create_flag_t
+af_xdp_api_flags (vl_api_af_xdp_flag_t flags)
+{
+  af_xdp_create_flag_t cflags = 0;
+
+  if (flags & AF_XDP_API_FLAGS_NO_SYSCALL_LOCK)
+    cflags |= AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK;
+
+  return cflags;
+}
+
 static void
 vl_api_af_xdp_create_t_handler (vl_api_af_xdp_create_t * mp)
 {
@@ -59,6 +70,7 @@ vl_api_af_xdp_create_t_handler (vl_api_af_xdp_create_t * mp)
   args.name = mp->name[0] ? (char *) mp->name : 0;
   args.prog = mp->prog[0] ? (char *) mp->prog : 0;
   args.mode = af_xdp_api_mode (mp->mode);
+  args.flags = af_xdp_api_flags (mp->flags);
   args.rxq_size = ntohs (mp->rxq_size);
   args.txq_size = ntohs (mp->txq_size);
   args.rxq_num = ntohs (mp->rxq_num);
