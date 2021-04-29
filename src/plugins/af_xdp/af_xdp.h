@@ -32,7 +32,8 @@
   _ (1, ERROR, "error")                                                       \
   _ (2, ADMIN_UP, "admin-up")                                                 \
   _ (3, LINK_UP, "link-up")                                                   \
-  _ (4, ZEROCOPY, "zero-copy")
+  _ (4, ZEROCOPY, "zero-copy")                                                \
+  _ (5, SYSCALL_LOCK, "syscall-lock")
 
 enum
 {
@@ -49,12 +50,20 @@ enum
         clib_error_free(err_); \
     }
 
+typedef enum
+{
+  AF_XDP_RXQ_MODE_UNKNOWN,
+  AF_XDP_RXQ_MODE_POLLING,
+  AF_XDP_RXQ_MODE_INTERRUPT,
+} __clib_packed af_xdp_rxq_mode_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
   /* fields below are accessed in data-plane (hot) */
 
+  clib_spinlock_t syscall_lock;
   struct xsk_ring_cons rx;
   struct xsk_ring_prod fq;
   int xsk_fd;
@@ -63,7 +72,7 @@ typedef struct
 
   uword file_index;
   u32 queue_index;
-  u8 is_polling;
+  af_xdp_rxq_mode_t mode;
 } af_xdp_rxq_t;
 
 typedef struct
@@ -73,6 +82,7 @@ typedef struct
   /* fields below are accessed in data-plane (hot) */
 
   clib_spinlock_t lock;
+  clib_spinlock_t syscall_lock;
   struct xsk_ring_prod tx;
   struct xsk_ring_cons cq;
   int xsk_fd;
@@ -101,6 +111,8 @@ typedef struct
   u32 dev_instance;
   u8 hwaddr[6];
 
+  u8 rxq_num;
+
   struct xsk_umem **umem;
   struct xsk_socket **xsk;
 
@@ -127,12 +139,18 @@ typedef enum
   AF_XDP_MODE_ZERO_COPY = 2,
 } af_xdp_mode_t;
 
+typedef enum
+{
+  AF_XDP_CREATE_FLAGS_NO_SYSCALL_LOCK = 1,
+} af_xdp_create_flag_t;
+
 typedef struct
 {
   char *linux_ifname;
   char *name;
   char *prog;
   af_xdp_mode_t mode;
+  af_xdp_create_flag_t flags;
   u32 rxq_size;
   u32 txq_size;
   u32 rxq_num;
@@ -163,10 +181,10 @@ typedef struct
   u32 hw_if_index;
 } af_xdp_input_trace_t;
 
-#define foreach_af_xdp_tx_func_error \
-_(NO_FREE_SLOTS, "no free tx slots") \
-_(SENDTO_REQUIRED, "sendto required") \
-_(SENDTO_FAILURES, "sendto failures")
+#define foreach_af_xdp_tx_func_error                                          \
+  _ (NO_FREE_SLOTS, "no free tx slots")                                       \
+  _ (SYSCALL_REQUIRED, "syscall required")                                    \
+  _ (SYSCALL_FAILURES, "syscall failures")
 
 typedef enum
 {

@@ -25,6 +25,10 @@ enum af_xdp_mode
   AF_XDP_API_MODE_ZERO_COPY = 2,
 };
 
+enum af_xdp_flag
+{
+  AF_XDP_API_FLAGS_NO_SYSCALL_LOCK = 1,
+};
 
 /** \brief
     @param client_index - opaque cookie to identify the sender
@@ -35,6 +39,7 @@ enum af_xdp_mode
     @param rxq_size - receive queue size (optional)
     @param txq_size - transmit queue size (optional)
     @param mode - operation mode (optional)
+    @param flags - flags (optional)
     @param prog - eBPF program path (optional)
 */
 
@@ -49,6 +54,7 @@ define af_xdp_create
   u16 rxq_size [default=0];
   u16 txq_size [default=0];
   vl_api_af_xdp_mode_t mode [default=0];
+  vl_api_af_xdp_flag_t flags [default=0];
   string prog[256];
   option vat_help = "<host-if linux-ifname> [name ifname] [rx-queue-size size] [tx-queue-size size] [num-rx-queues <num|all>] [prog pathname] [zero-copy|no-zero-copy]";
   option status="in_progress";
