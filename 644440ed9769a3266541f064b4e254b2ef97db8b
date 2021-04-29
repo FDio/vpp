@@ -22,6 +22,30 @@
       "revId": "644440ed9769a3266541f064b4e254b2ef97db8b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "539137af_c2736b27",
+        "filename": "src/plugins/crypto_sw_scheduler/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2021-04-29T15:28:24Z",
+      "side": 1,
+      "message": "ASSERT is not compiled in release mode - so I think it is good to abort in debug mode to catch errors more easily, but in release mode it will just ends failing the integrity check (because we\u0027ll be missing the ESN)",
+      "parentUuid": "d0535f9f_b6cef5f1",
+      "range": {
+        "startLine": 183,
+        "startChar": 0,
+        "endLine": 183,
+        "endChar": 61
+      },
+      "revId": "644440ed9769a3266541f064b4e254b2ef97db8b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
